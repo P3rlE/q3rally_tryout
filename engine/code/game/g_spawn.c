@@ -679,6 +679,7 @@ void SP_worldspawn( void ) {
 	char	*pstr;
 	char	image[MAX_QPATH];
 	int		allowTrack[3];
+	char	serverinfo[MAX_INFO_STRING];
 // END
 
 	G_SpawnString( "classname", "", &s );
@@ -774,8 +775,6 @@ void SP_worldspawn( void ) {
 	if (isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS){
 		CreateRallyStarter();
 	}
-
-	char	serverinfo[MAX_INFO_STRING];
 
 	trap_GetServerinfo( serverinfo, sizeof(serverinfo) );
 	loadBezierPathFile(va("bezier/%s_bpd.txt", Info_ValueForKey( serverinfo, "mapname" )));

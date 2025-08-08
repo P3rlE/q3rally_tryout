@@ -107,7 +107,6 @@ void loadBezierPathFile(char *filename) {
 		}
 	}
 
-	G_Free(buf);
 }
 
 
