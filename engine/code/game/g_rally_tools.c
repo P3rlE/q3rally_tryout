@@ -29,7 +29,7 @@ void loadBezierPathFile(char *filename) {
 	fileHandle_t	f;
 	char			*buf, *p;
 	char			token[MAX_TOKEN_CHARS];
-	int				i;
+	int				i, j;
 	gentity_t		*ent;
 	vec3_t			pos, dir;
 
@@ -98,12 +98,17 @@ void loadBezierPathFile(char *filename) {
 		}
 
 		ent = NULL;
-		while ((ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL) {
-			if ( ent->number == i ) {
+		for (j = 0; j < level.num_entities; j++) {
+			ent = &g_entities[j];
+			if (!ent->inuse) {
+				continue;
+			}
+			if (ent->s.eType == ET_CHECKPOINT && ent->number == i) {
 				VectorCopy(pos, ent->s.origin2);
 				VectorCopy(dir, ent->s.angles2);
-				break;
+				break; // found it
 			}
+			ent = NULL; // not found in this iteration
 		}
 	}
 
