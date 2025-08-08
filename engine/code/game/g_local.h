@@ -756,6 +756,7 @@ void DropToFloor( gentity_t *self );
 //
 // g_rally_tools.c
 //
+void loadBezierPathFile(char *filename);
 void G_GetPointOnCurveBetweenCheckpoints( gentity_t *start, gentity_t *end, float f, vec3_t origin );
 void G_GetDervOnCurveBetweenCheckpoints( gentity_t *start, gentity_t *end, float f, vec3_t vec );
 void G_Get2ndDervOnCurveBetweenCheckpoints( gentity_t *start, gentity_t *end, float f, vec3_t vec );
