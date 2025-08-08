@@ -680,6 +680,7 @@ void SP_worldspawn( void ) {
 	char	image[MAX_QPATH];
 	int		allowTrack[3];
 	char	serverinfo[MAX_INFO_STRING];
+	char	basemap[MAX_QPATH];
 // END
 
 	G_SpawnString( "classname", "", &s );
@@ -777,7 +778,8 @@ void SP_worldspawn( void ) {
 	}
 
 	trap_GetServerinfo( serverinfo, sizeof(serverinfo) );
-	loadBezierPathFile(va("bezier/%s_bpd.txt", Info_ValueForKey( serverinfo, "mapname" )));
+	COM_StripExtension(COM_SkipPath(Info_ValueForKey( serverinfo, "mapname" )), basemap, sizeof(basemap));
+	loadBezierPathFile(va("maps/%s.bpd", basemap));
 // END
 }
 
