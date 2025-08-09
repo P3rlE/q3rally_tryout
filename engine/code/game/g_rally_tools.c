@@ -56,6 +56,7 @@ void loadBezierPathFile(char *filename) {
 			break;
 		}
 		i = atoi(token);
+		G_Printf("[BPD-DEBUG] Parsed checkpoint number from file: %d\n", i);
 
 		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
 		if ( !token[0] || token[0] != ':' ) {
@@ -110,10 +111,13 @@ void loadBezierPathFile(char *filename) {
 			if (ent->s.eType == ET_CHECKPOINT && ent->number == i) {
 				VectorCopy(pos, ent->s.origin2);
 				VectorCopy(dir, ent->s.angles2);
-				G_Printf("[BPD-DEBUG] Loaded bezier data for checkpoint %d\n", i);
+				G_Printf("[BPD-DEBUG] SUCCESS: Loaded data into entity for checkpoint %d\n", i);
 				break; // found it
 			}
 			ent = NULL; // not found in this iteration
+		}
+		if (!ent) {
+			G_Printf("[BPD-DEBUG] FAILED: Could not find map entity for checkpoint %d\n", i);
 		}
 	}
 
@@ -458,3 +462,4 @@ starts "10"
 	trap_FS_Write( string, strlen( string ), arenaFile );
 	trap_FS_FCloseFile( arenaFile );
 }
+
