@@ -65,64 +65,19 @@ void loadBezierPathFile(char *filename) {
 			break;
 		}
 
-		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
-		G_Printf("[BPD-DEBUG] Parsed token: '%s'\n", token);
-		if ( !token[0] || token[0] != '(' ) {
-			G_Printf("[BPD-DEBUG] Parse error: expected '(', got '%s'. Stopping.\n", token);
-			break;
-		}
+		pos[0] = atof(COM_Parse( &p ));
+		pos[1] = atof(COM_Parse( &p ));
+		pos[2] = atof(COM_Parse( &p ));
 
 		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
-		pos[0] = atof(token);
-		G_Printf("[BPD-DEBUG] Parsed pos[0]: '%s'\n", token);
-
-		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
-		pos[1] = atof(token);
-		G_Printf("[BPD-DEBUG] Parsed pos[1]: '%s'\n", token);
-
-		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
-		pos[2] = atof(token);
-		G_Printf("[BPD-DEBUG] Parsed pos[2]: '%s'\n", token);
-
-		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
-		G_Printf("[BPD-DEBUG] Parsed token: '%s'\n", token);
-		if ( !token[0] || token[0] != ')' ) {
-			G_Printf("[BPD-DEBUG] Parse error: expected ')', got '%s'. Stopping.\n", token);
-			break;
-		}
-
-		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
-		G_Printf("[BPD-DEBUG] Parsed token: '%s'\n", token);
 		if ( !token[0] || token[0] != ':' ) {
 			G_Printf("[BPD-DEBUG] Parse error: expected ':', got '%s'. Stopping.\n", token);
 			break;
 		}
 
-		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
-		G_Printf("[BPD-DEBUG] Parsed token: '%s'\n", token);
-		if ( !token[0] || token[0] != '(' ) {
-			G_Printf("[BPD-DEBUG] Parse error: expected '(', got '%s'. Stopping.\n", token);
-			break;
-		}
-
-		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
-		dir[0] = atof(token);
-		G_Printf("[BPD-DEBUG] Parsed dir[0]: '%s'\n", token);
-
-		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
-		dir[1] = atof(token);
-		G_Printf("[BPD-DEBUG] Parsed dir[1]: '%s'\n", token);
-
-		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
-		dir[2] = atof(token);
-		G_Printf("[BPD-DEBUG] Parsed dir[2]: '%s'\n", token);
-
-		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
-		G_Printf("[BPD-DEBUG] Parsed token: '%s'\n", token);
-		if ( !token[0] || token[0] != ')' ) {
-			G_Printf("[BPD-DEBUG] Parse error: expected ')', got '%s'. Stopping.\n", token);
-			break;
-		}
+		dir[0] = atof(COM_Parse( &p ));
+		dir[1] = atof(COM_Parse( &p ));
+		dir[2] = atof(COM_Parse( &p ));
 
 		ent = NULL;
 		for (j = 0; j < level.num_entities; j++) {
@@ -133,7 +88,7 @@ void loadBezierPathFile(char *filename) {
 			if (ent->s.eType == ET_CHECKPOINT && ent->number == i) {
 				VectorCopy(pos, ent->s.origin2);
 				VectorCopy(dir, ent->s.angles2);
-				G_Printf("[BPD-DEBUG] SUCCESS: Loaded data into entity for checkpoint %d\n", i);
+				G_Printf("[BPD-DEBUG] SUCCESS: Loaded for CP %d -> pos(%f, %f, %f), dir(%f, %f, %f)\n", i, pos[0], pos[1], pos[2], dir[0], dir[1], dir[2]);
 				break;
 			}
 			ent = NULL;
