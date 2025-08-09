@@ -35,12 +35,16 @@ void loadBezierPathFile(char *filename) {
 
 	len = trap_FS_FOpenFile( filename, &f, FS_READ );
 	if ( !f ) {
+		G_Printf( "[BPD-DEBUG] Bezier path file not found: %s\n", filename );
 		return;
 	}
 	if ( !len ) {
+		G_Printf( "[BPD-DEBUG] Bezier path file is empty: %s\n", filename );
+		trap_FS_FCloseFile( f );
 		return;
 	}
 
+	G_Printf( "[BPD-DEBUG] Loading bezier path file: %s\n", filename );
 	buf = G_Alloc( len + 1 );
 	trap_FS_Read( buf, len, f );
 	trap_FS_FCloseFile( f );
@@ -106,12 +110,14 @@ void loadBezierPathFile(char *filename) {
 			if (ent->s.eType == ET_CHECKPOINT && ent->number == i) {
 				VectorCopy(pos, ent->s.origin2);
 				VectorCopy(dir, ent->s.angles2);
+				G_Printf("[BPD-DEBUG] Loaded bezier data for checkpoint %d\n", i);
 				break; // found it
 			}
 			ent = NULL; // not found in this iteration
 		}
 	}
 
+	G_Printf( "[BPD-DEBUG] Finished loading bezier path file.\n" );
 }
 
 
