@@ -178,6 +178,7 @@ void Think_StartFinish( gentity_t *self ){
 
 	self->number = level.numCheckpoints;
 	self->s.weapon = self->number;
+	G_Printf("[BPD-DEBUG] Think_StartFinish: entity %d run at time %d. Setting my checkpoint number to %d\n", self->s.number, level.time, self->number);
 }
 
 

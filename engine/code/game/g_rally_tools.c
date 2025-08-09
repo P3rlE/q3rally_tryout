@@ -35,16 +35,16 @@ void loadBezierPathFile(char *filename) {
 
 	len = trap_FS_FOpenFile( filename, &f, FS_READ );
 	if ( !f ) {
-		G_Printf( "[BPD-DEBUG] Bezier path file not found: %s\n", filename );
+		G_Printf( "[BPD-DIAG] Bezier path file not found: %s\n", filename );
 		return;
 	}
 	if ( !len ) {
-		G_Printf( "[BPD-DEBUG] Bezier path file is empty: %s\n", filename );
+		G_Printf( "[BPD-DIAG] Bezier path file is empty: %s\n", filename );
 		trap_FS_FCloseFile( f );
 		return;
 	}
 
-	G_Printf( "[BPD-DEBUG] Loading bezier path file: %s\n", filename );
+	G_Printf( "[BPD-DIAG] Loading bezier path file: %s at time %d\n", filename, level.time );
 	buf = G_Alloc( len + 1 );
 	trap_FS_Read( buf, len, f );
 	trap_FS_FCloseFile( f );
@@ -56,12 +56,11 @@ void loadBezierPathFile(char *filename) {
 			break;
 		}
 		i = atoi(token);
-		G_Printf("[BPD-DEBUG] Parsed token: '%s' -> number %d\n", token, i);
+		G_Printf("[BPD-DIAG] Parsed file: Attempting to load data for checkpoint index %d.\n", i);
 
 		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
-		G_Printf("[BPD-DEBUG] Parsed token: '%s'\n", token);
 		if ( !token[0] || token[0] != ':' ) {
-			G_Printf("[BPD-DEBUG] Parse error: expected ':', got '%s'. Stopping.\n", token);
+			G_Printf("[BPD-DIAG] Parse error: expected ':', got '%s'. Stopping.\n", token);
 			break;
 		}
 
@@ -71,7 +70,7 @@ void loadBezierPathFile(char *filename) {
 
 		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
 		if ( !token[0] || token[0] != ':' ) {
-			G_Printf("[BPD-DEBUG] Parse error: expected ':', got '%s'. Stopping.\n", token);
+			G_Printf("[BPD-DIAG] Parse error: expected ':', got '%s'. Stopping.\n", token);
 			break;
 		}
 
@@ -88,17 +87,17 @@ void loadBezierPathFile(char *filename) {
 			if (ent->s.eType == ET_CHECKPOINT && ent->number == i) {
 				VectorCopy(pos, ent->s.origin2);
 				VectorCopy(dir, ent->s.angles2);
-				G_Printf("[BPD-DEBUG] SUCCESS: Loaded for CP %d -> pos(%f, %f, %f), dir(%f, %f, %f)\n", i, pos[0], pos[1], pos[2], dir[0], dir[1], dir[2]);
+				G_Printf("[BPD-DIAG] SUCCESS: Found entity %d and loaded data for checkpoint %d.\n", ent->s.number, i);
 				break;
 			}
 			ent = NULL;
 		}
 		if (!ent) {
-			G_Printf("[BPD-DEBUG] FAILED: Could not find map entity for checkpoint %d\n", i);
+			G_Printf("[BPD-DIAG] FAILED: Could not find an active map entity for checkpoint %d.\n", i);
 		}
 	}
 
-	G_Printf( "[BPD-DEBUG] Finished loading bezier path file.\n" );
+	G_Printf( "[BPD-DIAG] Finished loading bezier path file.\n" );
 }
 
 
@@ -439,3 +438,4 @@ starts "10"
 	trap_FS_Write( string, strlen( string ), arenaFile );
 	trap_FS_FCloseFile( arenaFile );
 }
+
