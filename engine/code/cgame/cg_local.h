@@ -250,6 +250,7 @@ typedef struct centity_s {
 
 	int				skidSoundTime;
 	int				engineSoundTime;
+	int				lastEngineSoundIndex;
 
 	// scripted object variables
 	int				scriptLoadTime;
