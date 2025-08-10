@@ -103,7 +103,6 @@ Helper function to determine if current gametype is team-based
 =================
 */
 static qboolean CG_IsTeamGametype(void) {
-    CG_Printf("CG_IsTeamGametype: cgs.gametype = %d\n", cgs.gametype);
     return (cgs.gametype == GT_TEAM || 
             cgs.gametype == GT_TEAM_RACING ||
             cgs.gametype == GT_TEAM_RACING_DM ||
@@ -757,6 +756,13 @@ Main function to draw the adaptive modern scoreboard
 =================
 */
 qboolean CG_DrawModernScoreboard(void) {
+    // Debug message to check gametype detection
+    if (CG_IsTeamGametype()) {
+        CG_DrawBigString(10, 10, "TEAM GAME", 1.0f);
+    } else {
+        CG_DrawBigString(10, 10, "NOT TEAM GAME", 1.0f);
+    }
+
     int y, maxClients, rowHeight;
     int i, drawnClients;
     int team, teamClients;
