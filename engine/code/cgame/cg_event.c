@@ -96,6 +96,26 @@ const char *CG_GetTeamName(team_t team) {
 }
 
 /*
+=================
+CG_GetTeamNameWithColor
+=================
+*/
+const char *CG_GetTeamNameWithColor(team_t team) {
+	switch (team) {
+		case TEAM_RED:
+			return S_COLOR_RED "Team Red";
+		case TEAM_BLUE:
+			return S_COLOR_BLUE "Team Blue";
+		case TEAM_GREEN:
+			return S_COLOR_GREEN "Team Green";
+		case TEAM_YELLOW:
+			return S_COLOR_YELLOW "Team Yellow";
+		default:
+			return "No Team";
+	}
+}
+
+/*
 =============
 CG_Obituary
 =============
@@ -314,7 +334,7 @@ static void CG_Obituary( entityState_t *ent ) {
 				cg.snap->ps.persistant[PERS_SCORE] );
 		} else {
 			if ( ci->team != TEAM_FREE )
-				s = va("You fragged %s from %s", targetName, CG_GetTeamName(ci->team));
+				s = va("You fragged %s from %s", targetName, CG_GetTeamNameWithColor(ci->team));
 			else
 				s = va("You fragged %s", targetName);
 		}
@@ -339,7 +359,7 @@ static void CG_Obituary( entityState_t *ent ) {
 		// check for kill messages about the current clientNum
 		if ( target == cg.snap->ps.clientNum ) {
 			if (cgs.gametype >= GT_TEAM && attackerCi && attackerCi->team != TEAM_FREE) {
-				Q_strncpyz( cg.killerName, va("%s from %s", attackerName, CG_GetTeamName(attackerCi->team)), sizeof( cg.killerName ) );
+				Q_strncpyz( cg.killerName, va("%s from %s", attackerName, CG_GetTeamNameWithColor(attackerCi->team)), sizeof( cg.killerName ) );
 			} else {
 				Q_strncpyz( cg.killerName, attackerName, sizeof( cg.killerName ) );
 			}
@@ -450,10 +470,10 @@ static void CG_Obituary( entityState_t *ent ) {
 			if (cgs.gametype >= GT_TEAM) {
 				if (attackerCi) {
 					CG_Printf( "%s from %s %s %s from %s%s\n",
-						targetName, CG_GetTeamName(ci->team), message, attackerName, CG_GetTeamName(attackerCi->team), message2);
+						targetName, CG_GetTeamNameWithColor(ci->team), message, attackerName, CG_GetTeamNameWithColor(attackerCi->team), message2);
 				} else {
 					CG_Printf( "%s from %s %s %s%s\n",
-						targetName, CG_GetTeamName(ci->team), message, attackerName, message2);
+						targetName, CG_GetTeamNameWithColor(ci->team), message, attackerName, message2);
 				}
 			} else {
 				CG_Printf( "%s %s %s%s\n",
