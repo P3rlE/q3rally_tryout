@@ -3563,30 +3563,21 @@ void CG_Player( centity_t *cent ) {
 
 
 	// engine sounds
+
 	if( cent->currentState.clientNum == cg.predictedPlayerState.clientNum &&
-		cg_engineSounds.integer )
+		cg_engineSounds.integer &&
+		cent->engineSoundTime + cg_engineSoundDelay.integer < cg.time )
 	{
 		int index = (int) (10.0f * (cg.predictedPlayerState.stats[STAT_RPM] - CP_RPM_MIN) / (CP_RPM_MAX - CP_RPM_MIN));
 
-		if (index < 0) index = 0;
-		if (index > 10) index = 10;
+		trap_S_StartSound( cg.predictedPlayerState.origin,
+						cg.predictedPlayerState.clientNum,
+						CHAN_VOICE,
+						cgs.clientinfo[cg.predictedPlayerState.clientNum].sounds[index] );
 
-		if (cent->lastEngineSoundIndex != index) {
-			// A new sound should be played. Stop the old one first.
-			// The channel for looping sounds is the entity number.
-			trap_S_StopLoopingSound(cent->currentState.number);
-
-			if (index >= 0) {
-				// Start the new looping sound.
-				trap_S_AddLoopingSound( cent->currentState.number,
-										cent->lerpOrigin,
-										vec3_origin,
-										cgs.clientinfo[cent->currentState.clientNum].sounds[index] );
-			}
-
-			cent->lastEngineSoundIndex = index;
-		}
+		cent->engineSoundTime = cg.time;
 	}
+
 
 	if (ci->controlMode == CT_MOUSE){
 		wheelAngle = WheelAngle(cent->currentState.apos.trBase[YAW], cent->currentState.angles2[YAW]);
@@ -4168,8 +4159,6 @@ void CG_ResetPlayerEntity( centity_t *cent ) {
 	cent->pe.body.yawing		= qfalse;
 	cent->pe.body.pitchAngle	= cent->rawAngles[PITCH];
 	cent->pe.body.pitching		= qfalse;
-
-	cent->lastEngineSoundIndex = -1;
 
 /*
 	memset( &cent->pe.legs, 0, sizeof( cent->pe.legs ) );
