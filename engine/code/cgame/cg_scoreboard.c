@@ -756,13 +756,6 @@ Main function to draw the adaptive modern scoreboard
 =================
 */
 qboolean CG_DrawModernScoreboard(void) {
-    // Debug message to check gametype detection
-    if (CG_IsTeamGametype()) {
-        CG_DrawBigString(10, 10, "TEAM GAME", 1.0f);
-    } else {
-        CG_DrawBigString(10, 10, "NOT TEAM GAME", 1.0f);
-    }
-
     int y, maxClients, rowHeight;
     int i, drawnClients;
     int team, teamClients;
@@ -771,6 +764,13 @@ qboolean CG_DrawModernScoreboard(void) {
     qboolean isCompact;
     score_t *score;
     clientInfo_t *ci;
+
+    // Debug message to check gametype detection
+    if (CG_IsTeamGametype()) {
+        CG_DrawBigString(10, 10, "TEAM GAME", 1.0f);
+    } else {
+        CG_DrawBigString(10, 10, "NOT TEAM GAME", 1.0f);
+    }
     
     CG_SetScreenPlacement(PLACE_CENTER, PLACE_CENTER);
     
