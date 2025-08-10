@@ -453,21 +453,6 @@ static void CG_GetModernTeamColor(team_t team, vec4_t color) {
     }
 }
 
-/*
-=================
-CG_GetTeamName
-Helper function to get a string representation of a team
-=================
-*/
-static const char* CG_GetTeamName(team_t team) {
-    switch (team) {
-        case TEAM_RED:    return "Red Team";
-        case TEAM_BLUE:   return "Blue Team";
-        case TEAM_GREEN:  return "Green Team";
-        case TEAM_YELLOW: return "Yellow Team";
-        default:          return "Unknown Team";
-    }
-}
 
 /*
 =================
