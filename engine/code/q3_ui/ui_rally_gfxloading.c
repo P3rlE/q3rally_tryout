@@ -33,8 +33,8 @@ for improved user experience and better visual feedback.
 #include "ui_local.h"
 
 #define NUM_OF_CACHES 7         /* total number of caching stages */
-#define MIN_STAGE_TIME 450      /* minimum milliseconds per stage */
-#define FINAL_DISPLAY_TIME 1000 /* time to display 100% before transition */
+#define MIN_STAGE_TIME 800      /* minimum milliseconds per stage */
+#define FINAL_DISPLAY_TIME 1200 /* time to display 100% before transition */
 
 typedef struct {
     menuframework_s menu;
@@ -189,19 +189,14 @@ static void UI_GFX_Loading_MenuDraw(void) {
     s_gfxloading.smoothProgress += (s_gfxloading.loadPercent - s_gfxloading.smoothProgress) * blendRate;
 
     /* Draw loading header */
-    UI_DrawProportionalString(320, 160, "Q3Rally - Loading Graphics", UI_CENTER | UI_BIGFONT, text_color_normal);
+    UI_DrawString(320, 160, "Q3Rally - Loading Graphics", UI_CENTER | UI_BIGFONT, text_color_normal);
 
     /* Draw current stage message */
     stage_index = s_gfxloading.currentCache;
     if (stage_index > NUM_OF_CACHES + 1) {
         stage_index = NUM_OF_CACHES + 1;
     }
-
-    int style = UI_CENTER | UI_SMALLFONT;
-    if (stage_index == NUM_OF_CACHES + 1) {
-        style |= UI_PULSE;
-    }
-    UI_DrawString(320, 200, stageNames[stage_index], style, text_color_highlight);
+    UI_DrawString(320, 200, stageNames[stage_index], UI_CENTER | UI_SMALLFONT, text_color_highlight);
 
     /* Draw progress bar with enhanced visuals */
     bar_x = 200;
@@ -218,12 +213,7 @@ static void UI_GFX_Loading_MenuDraw(void) {
     
     /* Actual progress fill */
     if (s_gfxloading.smoothProgress > 0.0f) {
-        float bar_fill_w = (int)(bar_w * s_gfxloading.smoothProgress);
-        vec4_t shine_color = {1.0f, 1.0f, 1.0f, 0.2f};
-        UI_FillRect(bar_x, bar_y, bar_fill_w, bar_h, text_color_highlight);
-
-        /* Add a subtle shine/gloss effect */
-        UI_FillRect(bar_x + 2, bar_y + 2, bar_fill_w - 4, bar_h / 3, shine_color);
+        UI_FillRect(bar_x, bar_y, (int)(bar_w * s_gfxloading.smoothProgress), bar_h, text_color_highlight);
     }
 
     /* Progress bar border */
