@@ -792,7 +792,7 @@ void SP_worldspawn( void ) {
 
 		thinker = G_Spawn();
 		thinker->think = LoadBezierPathFile_Think;
-		thinker->nextthink = level.time + FRAMETIME;
+		thinker->nextthink = level.time + (FRAMETIME * 2);
 	}
 // END
 }
@@ -844,3 +844,4 @@ if (g_gametype.integer == GT_DOMINATION)
     
 	level.spawning = qfalse;			// any future calls to G_Spawn*() will be errors
 }
+
