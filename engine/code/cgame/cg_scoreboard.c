@@ -460,7 +460,7 @@ CG_DrawModernTeamHeaderRow
 Draws a header row for a team in the scoreboard
 =================
 */
-static void CG_DrawModernTeamHeaderRow(int y, team_t team, int rank, int score, float fade) {
+static void CG_DrawModernTeamHeaderRow(int y, team_t team, int rank, int score, int damage, float fade) {
     char teamText[128];
     char scoreText[64];
     vec4_t teamColor;
@@ -477,9 +477,9 @@ static void CG_DrawModernTeamHeaderRow(int y, team_t team, int rank, int score, 
     Com_sprintf(teamText, sizeof(teamText), "%d. %s", rank, CG_GetTeamName(team));
     CG_DrawModernText(scoreboardX, textY, teamText, 0, currentScoreboardWidth, teamColor, qtrue);
 
-    /* Team Score */
+    /* Team Score & Damage */
     textColor[0] = 0.9f; textColor[1] = 0.9f; textColor[2] = 0.9f; textColor[3] = fade;
-    Com_sprintf(scoreText, sizeof(scoreText), "%d pts", score);
+    Com_sprintf(scoreText, sizeof(scoreText), "%d pts / %d dmg", score, damage);
     CG_DrawModernText(scoreboardX, textY, scoreText, 2, currentScoreboardWidth, textColor, qtrue);
 }
 
@@ -750,12 +750,6 @@ qboolean CG_DrawModernScoreboard(void) {
     score_t *score;
     clientInfo_t *ci;
 
-    // Debug message to check gametype detection
-    if (CG_IsTeamGametype()) {
-        CG_DrawBigString(10, 10, "TEAM GAME", 1.0f);
-    } else {
-        CG_DrawBigString(10, 10, "NOT TEAM GAME", 1.0f);
-    }
     
     CG_SetScreenPlacement(PLACE_CENTER, PLACE_CENTER);
     
@@ -845,16 +839,18 @@ qboolean CG_DrawModernScoreboard(void) {
         /* Team-based scoreboard */
         for (i = 0; i < 4 && drawnClients < maxClients; i++) {
             qboolean hasPlayers = qfalse;
+            int teamDamage = 0;
             team = GetTeamAtRank(i + 1);
             if (team == -1) {
                 continue;
             }
             
-            // Check if team has players before drawing header
+            // Check if team has players and calculate team damage
             for (j = 0; j < cg.numScores; j++) {
-                if (cgs.clientinfo[cg.scores[j].client].team == team) {
+                score = &cg.scores[j];
+                if (cgs.clientinfo[score->client].team == team) {
                     hasPlayers = qtrue;
-                    break;
+                    teamDamage += score->damageDealt;
                 }
             }
 
@@ -863,7 +859,7 @@ qboolean CG_DrawModernScoreboard(void) {
             }
 
             // Draw team header
-            CG_DrawModernTeamHeaderRow(y, team, i + 1, cg.teamScores[team - TEAM_RED], fade);
+            CG_DrawModernTeamHeaderRow(y, team, i + 1, cg.teamScores[team - TEAM_RED], teamDamage, fade);
             y += MODERN_SB_COMPACT_HEIGHT + 2;
 
             teamClients = 0;
