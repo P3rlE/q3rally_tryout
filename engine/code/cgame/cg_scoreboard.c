@@ -429,6 +429,32 @@ static void CG_GetRankColor(int rank, vec4_t color) {
 
 /*
 =================
+CG_GetModernTeamColor
+Helper function to get team-specific colors
+=================
+*/
+static void CG_GetModernTeamColor(team_t team, vec4_t color) {
+    switch (team) {
+        case TEAM_RED:
+            color[0] = 1.0f; color[1] = 0.2f; color[2] = 0.2f; color[3] = 1.0f;
+            break;
+        case TEAM_BLUE:
+            color[0] = 0.2f; color[1] = 0.2f; color[2] = 1.0f; color[3] = 1.0f;
+            break;
+        case TEAM_GREEN:
+            color[0] = 0.2f; color[1] = 1.0f; color[2] = 0.2f; color[3] = 1.0f;
+            break;
+        case TEAM_YELLOW:
+            color[0] = 1.0f; color[1] = 1.0f; color[2] = 0.2f; color[3] = 1.0f;
+            break;
+        default:
+            color[0] = 0.9f; color[1] = 0.9f; color[2] = 0.9f; color[3] = 1.0f;
+            break;
+    }
+}
+
+/*
+=================
 CG_GetTeamName
 Helper function to get a string representation of a team
 =================
@@ -470,32 +496,6 @@ static void CG_DrawModernTeamHeaderRow(int y, team_t team, int rank, int score, 
     textColor[0] = 0.9f; textColor[1] = 0.9f; textColor[2] = 0.9f; textColor[3] = fade;
     Com_sprintf(scoreText, sizeof(scoreText), "%d pts", score);
     CG_DrawModernText(scoreboardX, textY, scoreText, 2, currentScoreboardWidth, textColor, qtrue);
-}
-
-/*
-=================
-CG_GetModernTeamColor
-Helper function to get team-specific colors
-=================
-*/
-static void CG_GetModernTeamColor(team_t team, vec4_t color) {
-    switch (team) {
-        case TEAM_RED:
-            color[0] = 1.0f; color[1] = 0.2f; color[2] = 0.2f; color[3] = 1.0f;
-            break;
-        case TEAM_BLUE:
-            color[0] = 0.2f; color[1] = 0.2f; color[2] = 1.0f; color[3] = 1.0f;
-            break;
-        case TEAM_GREEN:
-            color[0] = 0.2f; color[1] = 1.0f; color[2] = 0.2f; color[3] = 1.0f;
-            break;
-        case TEAM_YELLOW:
-            color[0] = 1.0f; color[1] = 1.0f; color[2] = 0.2f; color[3] = 1.0f;
-            break;
-        default:
-            color[0] = 0.9f; color[1] = 0.9f; color[2] = 0.9f; color[3] = 1.0f;
-            break;
-    }
 }
 
 /*
