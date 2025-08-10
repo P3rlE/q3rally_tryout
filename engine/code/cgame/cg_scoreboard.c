@@ -103,6 +103,7 @@ Helper function to determine if current gametype is team-based
 =================
 */
 static qboolean CG_IsTeamGametype(void) {
+    CG_Printf("CG_IsTeamGametype: cgs.gametype = %d\n", cgs.gametype);
     return (cgs.gametype == GT_TEAM || 
             cgs.gametype == GT_TEAM_RACING ||
             cgs.gametype == GT_TEAM_RACING_DM ||
