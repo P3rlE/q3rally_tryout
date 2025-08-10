@@ -56,10 +56,8 @@ void loadBezierPathFile(char *filename) {
 			break;
 		}
 		i = atoi(token);
-		G_Printf("[BPD-DEBUG] Parsed token: '%s' -> number %d\n", token, i);
 
 		Q_strncpyz(token, COM_Parse( &p ), sizeof(token));
-		G_Printf("[BPD-DEBUG] Parsed token: '%s'\n", token);
 		if ( !token[0] || token[0] != ':' ) {
 			G_Printf("[BPD-DEBUG] Parse error: expected ':', got '%s'. Stopping.\n", token);
 			break;
@@ -88,13 +86,9 @@ void loadBezierPathFile(char *filename) {
 			if (ent->s.eType == ET_CHECKPOINT && ent->number == i) {
 				VectorCopy(pos, ent->s.origin2);
 				VectorCopy(dir, ent->s.angles2);
-				G_Printf("[BPD-DEBUG] SUCCESS: Loaded for CP %d -> pos(%f, %f, %f), dir(%f, %f, %f)\n", i, pos[0], pos[1], pos[2], dir[0], dir[1], dir[2]);
 				break;
 			}
 			ent = NULL;
-		}
-		if (!ent) {
-			G_Printf("[BPD-DEBUG] FAILED: Could not find map entity for checkpoint %d\n", i);
 		}
 	}
 

@@ -792,7 +792,7 @@ void SP_worldspawn( void ) {
 
 		thinker = G_Spawn();
 		thinker->think = LoadBezierPathFile_Think;
-		thinker->nextthink = level.time + 1;
+		thinker->nextthink = level.time + (FRAMETIME * 2);
 	}
 // END
 }
