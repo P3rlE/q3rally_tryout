@@ -189,7 +189,7 @@ static void UI_GFX_Loading_MenuDraw(void) {
     s_gfxloading.smoothProgress += (s_gfxloading.loadPercent - s_gfxloading.smoothProgress) * blendRate;
 
     /* Draw loading header */
-    UI_DrawString(320, 160, "Q3Rally - Loading Graphics", UI_CENTER | UI_BIGFONT, text_color_normal);
+    UI_DrawProportionalString(320, 160, "Q3Rally - Loading Graphics", UI_CENTER | UI_BIGFONT, text_color_normal);
 
     /* Draw current stage message */
     stage_index = s_gfxloading.currentCache;
