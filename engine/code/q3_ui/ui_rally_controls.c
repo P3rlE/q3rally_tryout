@@ -708,22 +708,30 @@ static void Controls_DrawKeyBinding( void *self )
 
 	c = (Menu_ItemAtCursor( a->generic.parent ) == a);
 
-	b1 = g_bindings[a->generic.id].bind1;
-	if (b1 == -1)
-		strcpy(name,"-?-");
-	else
-	{
-		trap_Key_KeynumToStringBuf( b1, name, 32 );
-		Q_strupr(name);
+	// find the binding
+	for (b1 = 0; g_bindings[b1].command; b1++) {
+		if (g_bindings[b1].id == a->generic.id) {
+			break;
+		}
+	}
 
-		b2 = g_bindings[a->generic.id].bind2;
-		if (b2 != -1)
-		{
-			trap_Key_KeynumToStringBuf( b2, name2, 32 );
-			Q_strupr(name2);
+	if (!g_bindings[b1].command) {
+		strcpy(name, "<OUT OF RANGE>");
+	} else {
+		b2 = g_bindings[b1].bind1;
+		if (b2 == -1) {
+			strcpy(name, "-?-");
+		} else {
+			trap_Key_KeynumToStringBuf( b2, name, 32 );
+			Q_strupr(name);
 
-			strcat( name, " or " );
-			strcat( name, name2 );
+			b2 = g_bindings[b1].bind2;
+			if (b2 != -1) {
+				trap_Key_KeynumToStringBuf( b2, name2, 32 );
+				Q_strupr(name2);
+				strcat( name, " or " );
+				strcat( name, name2 );
+			}
 		}
 	}
 
