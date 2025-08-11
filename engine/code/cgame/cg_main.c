@@ -23,7 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 // cg_main.c -- initialization and primary entry point for cgame
 #include "cg_local.h"
-#include "cg_cameraangles.h"
 
 #ifdef MISSIONPACK
 #include "../ui/ui_shared.h"
@@ -187,7 +186,6 @@ vmCvar_t	cg_thirdPerson;
 vmCvar_t	cg_thirdPersonRange;
 // Q3Rally Code Start
 vmCvar_t	cg_thirdPersonHeight;
-extern vmCvar_t	cg_cameraAngle;
 // Q3Rally Code END
 vmCvar_t	cg_thirdPersonAngle;
 vmCvar_t	cg_lagometer;
@@ -2192,7 +2190,6 @@ void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum ) {
 	cgs.media.charsetPropB		= trap_R_RegisterShaderNoMip( "menu/art/font2_prop.tga" );
 
 	CG_RegisterCvars();
-	trap_Cvar_Register(&cg_cameraAngle, "cg_cameraAngle", "0", CVAR_ARCHIVE);
 
 	CG_InitConsoleCommands();
 

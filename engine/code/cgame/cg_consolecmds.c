@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // executed by a key binding
 
 #include "cg_local.h"
-#include "cg_cameraangles.h"
 #ifdef MISSIONPACK
 #include "../ui/ui_shared.h"
 extern menuDef_t *menuScoreboard;
@@ -433,6 +432,37 @@ static void CG_StartOrbit_f( void ) {
 	}
 }
 
+static void CG_NextCameraAngle_f( void ) {
+	static int currentCamera = 0;
+	currentCamera++;
+	if (currentCamera >= 4) {
+		currentCamera = 0;
+	}
+
+	switch (currentCamera) {
+		case 0: // Default view
+			trap_Cvar_Set("cg_thirdPersonAngle", "0");
+			trap_Cvar_Set("cg_thirdPersonRange", "130");
+			trap_Cvar_Set("cg_thirdPersonHeight", "32");
+			break;
+		case 1: // Right side view
+			trap_Cvar_Set("cg_thirdPersonAngle", "45");
+			trap_Cvar_Set("cg_thirdPersonRange", "150");
+			trap_Cvar_Set("cg_thirdPersonHeight", "40");
+			break;
+		case 2: // Left side view
+			trap_Cvar_Set("cg_thirdPersonAngle", "-45");
+			trap_Cvar_Set("cg_thirdPersonRange", "150");
+			trap_Cvar_Set("cg_thirdPersonHeight", "40");
+			break;
+		case 3: // Rear view
+			trap_Cvar_Set("cg_thirdPersonAngle", "180");
+			trap_Cvar_Set("cg_thirdPersonRange", "200");
+			trap_Cvar_Set("cg_thirdPersonHeight", "50");
+			break;
+	}
+}
+
 /*
 static void CG_Camera_f( void ) {
 	char name[1024];
@@ -659,9 +689,9 @@ static consoleCommand_t	commands[] = {
 	{ "saveBPoints", CG_SaveBezierPoints_f },
 // Q3Rally Code End
 	{ "startOrbit", CG_StartOrbit_f },
+	{ "nextcamera", CG_NextCameraAngle_f },
 	//{ "camera", CG_Camera_f },
-	{ "loaddeferred", CG_LoadDeferredPlayers },
-	{ "nextcamera", CG_NextCameraAngle_f }
+	{ "loaddeferred", CG_LoadDeferredPlayers }
 };
 
 
