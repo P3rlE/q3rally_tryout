@@ -362,7 +362,7 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_drawRearView, "cg_drawRearView", "0", CVAR_ARCHIVE },
 	{ &cg_drawMMap, "cg_drawMMap", "1", CVAR_ARCHIVE }, //TBB minimap - default on
 	{ &cg_mmap_fov, "cg_mmap_fov", "70", CVAR_ARCHIVE },
-	{ &cg_mmap_size, "cg_mmap_size", "1", CVAR_ARCHIVE },
+	{ &cg_mmap_size, "cg_mmap_size", "0.7", CVAR_ARCHIVE },
 	{ &cg_mmap_renderLevel, "cg_mmap_renderLevel", "3", CVAR_ARCHIVE },
 	{ &cg_controlMode, "cg_controlMode", "0", CVAR_ARCHIVE | CVAR_USERINFO },
 	{ &cg_manualShift, "cg_manualShift", "0", CVAR_ARCHIVE | CVAR_USERINFO },
