@@ -435,7 +435,7 @@ static void CG_StartOrbit_f( void ) {
 static void CG_NextCameraAngle_f( void ) {
 	static int currentCamera = 0;
 	currentCamera++;
-	if (currentCamera >= 4) {
+	if (currentCamera >= 6) {
 		currentCamera = 0;
 	}
 
@@ -455,10 +455,20 @@ static void CG_NextCameraAngle_f( void ) {
 			trap_Cvar_Set("cg_thirdPersonRange", "150");
 			trap_Cvar_Set("cg_thirdPersonHeight", "40");
 			break;
-		case 3: // Rear view
+		case 3: // Front view
 			trap_Cvar_Set("cg_thirdPersonAngle", "180");
 			trap_Cvar_Set("cg_thirdPersonRange", "200");
 			trap_Cvar_Set("cg_thirdPersonHeight", "50");
+			break;
+		case 4: // Dense view
+			trap_Cvar_Set("cg_thirdPersonAngle", "0");
+			trap_Cvar_Set("cg_thirdPersonRange", "100");
+			trap_Cvar_Set("cg_thirdPersonHeight", "20");
+			break;
+		case 5: // Hood view
+			trap_Cvar_Set("cg_thirdPersonAngle", "0");
+			trap_Cvar_Set("cg_thirdPersonRange", "-20");
+			trap_Cvar_Set("cg_thirdPersonHeight", "10");
 			break;
 	}
 }

@@ -113,6 +113,7 @@ typedef struct
 #define ID_JOYTHRESHOLD	46
 #define ID_SMOOTHMOUSE	47
 #define ID_AUTODROP		48
+#define ID_NEXTCAMERA	49
 
 
 #define ANIM_IDLE		0
@@ -211,6 +212,7 @@ typedef struct
 
 	menuaction_s		headlight;
 	menuaction_s		horn;
+	menuaction_s		nextcamera;
     menuaction_s        startdemo;
     menuaction_s        stopdemo;
 
@@ -276,6 +278,7 @@ static bind_t g_bindings[] =
     {"headlights", 		"headlight toggle",	ID_HEADLIGHT,	ANIM_HEADLIGHT,	'l',		    -1,		-1, -1},
     {"record",          "start demo record",            ID_STARTDEMO,   ANIM_STARTDEMO, 'z',            -1,     -1, -1},
     {"stoprecord",      "stop demo record",             ID_STOPDEMO,    ANIM_STOPDEMO,  'u',            -1,     -1, -1},
+	{"nextcamera",		"next camera",		  ID_NEXTCAMERA,	  ANIM_IDLE,		  'c',			-1,		-1, -1},
 
 	{(char*)NULL,		(char*)NULL,		0,				0,				-1,				-1,		-1,	-1},
 };
@@ -356,6 +359,7 @@ static menucommon_s *g_misc_controls[] = {
 	(menucommon_s *)&s_controls.horn,
     (menucommon_s *)&s_controls.startdemo,
     (menucommon_s *)&s_controls.stopdemo,
+	(menucommon_s *)&s_controls.nextcamera,
 	NULL,
 };
 
@@ -1751,6 +1755,12 @@ static void Controls_MenuInit( void )
 	s_controls.horn.generic.callback  = Controls_ActionEvent;
 	s_controls.horn.generic.ownerdraw = Controls_DrawKeyBinding;
 	s_controls.horn.generic.id        = ID_HORN;
+
+	s_controls.nextcamera.generic.type       = MTYPE_ACTION;
+	s_controls.nextcamera.generic.flags      = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.nextcamera.generic.callback   = Controls_ActionEvent;
+	s_controls.nextcamera.generic.ownerdraw  = Controls_DrawKeyBinding;
+	s_controls.nextcamera.generic.id         = ID_NEXTCAMERA;
     
     s_controls.startdemo.generic.type      = MTYPE_ACTION;
     s_controls.startdemo.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
@@ -1870,7 +1880,8 @@ static void Controls_MenuInit( void )
 // STONELANCE
 	Menu_AddItem( &s_controls.menu, &s_controls.headlight );
     Menu_AddItem( &s_controls.menu, &s_controls.startdemo );
-    Menu_AddItem( &s_controls.menu, &s_controls.stopdemo );    
+    Menu_AddItem( &s_controls.menu, &s_controls.stopdemo );
+	Menu_AddItem( &s_controls.menu, &s_controls.nextcamera );
 	Menu_AddItem( &s_controls.menu, &s_controls.horn );
 
 // END
