@@ -73,7 +73,6 @@ CG_DrawRearviewMirror
 */
 void CG_DrawRearviewMirror( float x, float y, float w, float h) {
 //	static int  lastLowFPSTime;
-	int		i;
 //	int		fps;
 	float	mx, my, mw, mh;
 	int		tmp;
@@ -124,7 +123,7 @@ Draws the minimap overlay.
 void CG_DrawMMap(float x, float y, float w, float h) {
 	
     float overlay_x, overlay_y, overlay_w, overlay_h;
-	float aspect, tmp;
+	float tmp;
     
     if (!cg_drawMMap.integer)
 		return;
