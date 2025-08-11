@@ -124,7 +124,7 @@ Draws the minimap overlay.
 void CG_DrawMMap(float x, float y, float w, float h) {
 	
     float overlay_x, overlay_y, overlay_w, overlay_h;
-	float aspect;
+	float aspect, tmp;
     
     if (!cg_drawMMap.integer)
 		return;
@@ -152,7 +152,6 @@ void CG_DrawMMap(float x, float y, float w, float h) {
     cg.mmapRefdef.fov_x = cg_mmap_fov.value;
 	
     // Calculate fov_y from fov_x and aspect ratio
-	float tmp;
 	tmp = cg.mmapRefdef.width / tan(cg_mmap_fov.value / 360.0f * M_PI);
 	cg.mmapRefdef.fov_y = atan2(cg.mmapRefdef.height, tmp) * 360.0f / M_PI;
 
