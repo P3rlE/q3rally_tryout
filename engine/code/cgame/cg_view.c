@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // cg_view.c -- setup all the parameters (position, angle, etc)
 // for a 3D rendering
 #include "cg_local.h"
+#include "cg_cameraangles.h"
 
 
 /*
@@ -234,6 +235,7 @@ static void CG_OffsetThirdPersonView( void ) {
 	vec3_t		focusPoint;
 	float		focusDist;
 	float		forwardScale, sideScale;
+	const cameraAngle_t* camAngle;
 
 // STONELANCE dont need this
 //	cg.refdef.vieworg[2] += cg.predictedPlayerState.viewheight;
@@ -268,16 +270,18 @@ static void CG_OffsetThirdPersonView( void ) {
 
 	AngleVectors( cg.refdefViewAngles, forward, right, up );
 
+	camAngle = CG_GetCameraAngle();
+
 // Q3Rally Code Start
-//	forwardScale = cos( cg_thirdPersonAngle.value / 180 * M_PI );
-//	sideScale = sin( cg_thirdPersonAngle.value / 180 * M_PI );
-	forwardScale = cos( cg_thirdPersonAngle.value * M_PI_180 );
-	sideScale = sin( cg_thirdPersonAngle.value * M_PI_180 );
+//	forwardScale = cos( camAngle->angle / 180 * M_PI );
+//	sideScale = sin( camAngle->angle / 180 * M_PI );
+	forwardScale = cos( camAngle->angle * M_PI_180 );
+	sideScale = sin( camAngle->angle * M_PI_180 );
 // END
-	VectorMA( view, -cg_thirdPersonRange.value * forwardScale, forward, view );
-	VectorMA( view, -cg_thirdPersonRange.value * sideScale, right, view );
+	VectorMA( view, -camAngle->range * forwardScale, forward, view );
+	VectorMA( view, -camAngle->range * sideScale, right, view );
 // Q3Rally Code Start
-	VectorMA( view, cg_thirdPersonHeight.value, up, view );
+	VectorMA( view, camAngle->height, up, view );
 // END
 
 	// trace a ray from the origin to the viewpoint to make sure the view isn't
@@ -310,7 +314,7 @@ static void CG_OffsetThirdPersonView( void ) {
 //	cg.refdefViewAngles[PITCH] = -180 / M_PI * atan2( focusPoint[2], focusDist );
 	cg.refdefViewAngles[PITCH] = -M_180_PI * atan2( focusPoint[2], focusDist );
 // END
-	cg.refdefViewAngles[YAW] -= cg_thirdPersonAngle.value;
+	cg.refdefViewAngles[YAW] -= CG_GetCameraAngle()->angle;
 }
 
 
