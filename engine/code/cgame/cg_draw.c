@@ -1746,7 +1746,7 @@ float CG_DrawScores( float x, float y ) {
 			if (cgs.blueflag >= 0 && cgs.blueflag <= 2) {
 				item = BG_FindItemForPowerup(PW_BLUEFLAG);
 				if (item) {
-					y1 = y + TINYCHAR_HEIGHT + 8;
+          y1 = y + TINYCHAR_HEIGHT + 8;
 					CG_DrawPic( x+1, y1+1, w-2, 16, cgs.media.blueFlagShader[cgs.blueflag] );
 				}
 			}
