@@ -691,6 +691,54 @@ static void CG_DrawStatusBar( void ) {
 				}
 			}
 		}
+
+		// draw green
+		if (cgs.gametype == GT_CTF4) {
+			color[0] = 0.0f;
+			color[1] = 1.0f;
+			color[2] = 0.0f;
+			color[3] = 0.33f;
+			s = va( "%2i", s3 );
+			w = CG_DrawStrlen( s ) * TINYCHAR_WIDTH + 8;
+			x -= w;
+			CG_FillRect( x+1, y+1, w-2, 16, color );
+			if ( cg.snap->ps.persistant[PERS_TEAM] == TEAM_GREEN ) {
+				CG_DrawPic( x+1, y+1, w-2, 16, cgs.media.selectShader );
+			}
+			CG_DrawTinyDigitalString( x + 4, y+4, s, 1.0F);
+
+			if( cgs.greenflag >= 0 && cgs.greenflag <= 2 ) {
+				item = BG_FindItemForPowerup( PW_GREENFLAG );
+				if (item) {
+					y1 = y + TINYCHAR_HEIGHT + 8;
+					CG_DrawPic( x+1, y1+1, w-2, 16, cgs.media.greenFlagShader[cgs.greenflag] );
+				}
+			}
+		}
+
+		// draw yellow
+		if (cgs.gametype == GT_CTF4) {
+			color[0] = 1.0f;
+			color[1] = 1.0f;
+			color[2] = 0.0f;
+			color[3] = 0.33f;
+			s = va( "%2i", s4 );
+			w = CG_DrawStrlen( s ) * TINYCHAR_WIDTH + 8;
+			x -= w;
+			CG_FillRect( x+1, y+1, w-2, 16, color );
+			if ( cg.snap->ps.persistant[PERS_TEAM] == TEAM_YELLOW ) {
+				CG_DrawPic( x+1, y+1, w-2, 16, cgs.media.selectShader );
+			}
+			CG_DrawTinyDigitalString( x + 4, y+4, s, 1.0F);
+
+			if( cgs.yellowflag >= 0 && cgs.yellowflag <= 2 ) {
+				item = BG_FindItemForPowerup( PW_YELLOWFLAG );
+				if (item) {
+					y1 = y + TINYCHAR_HEIGHT + 8;
+					CG_DrawPic( x+1, y1+1, w-2, 16, cgs.media.yellowFlagShader[cgs.yellowflag] );
+				}
+			}
+		}
 	}
 
 	//
@@ -1694,17 +1742,12 @@ float CG_DrawScores( float x, float y ) {
 
 		CG_DrawTinyDigitalString( x + 4, y+4, s, 1.0F);
 
-		if ( cgs.gametype == GT_CTF ) {
-			// Display flag status
-			item = BG_FindItemForPowerup( PW_BLUEFLAG );
-
-			if (item) {
-
-				y1 = y + TINYCHAR_HEIGHT + 8;		
-				if( cgs.blueflag >= 0 && cgs.blueflag <= 2 ) {
-
+		if ( cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 ) {
+			if (cgs.blueflag >= 0 && cgs.blueflag <= 2) {
+				item = BG_FindItemForPowerup(PW_BLUEFLAG);
+				if (item) {
+					y1 = y + TINYCHAR_HEIGHT + 8;		
 					CG_DrawPic( x+1, y1+1, w-2, 16, cgs.media.blueFlagShader[cgs.blueflag] );
-
 				}
 			}
 		}
@@ -1726,36 +1769,13 @@ float CG_DrawScores( float x, float y ) {
 
 		CG_DrawTinyDigitalString( x + 4, y+4, s, 1.0F);
 
-		if ( cgs.gametype == GT_CTF ) {
-			// Display flag status
-			item = BG_FindItemForPowerup( PW_REDFLAG );
-
-			if (item) {
-
-				y1 = y + TINYCHAR_HEIGHT + 8;
-
-				if( cgs.redflag >= 0 && cgs.redflag <= 2 ) {
+		if ( cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 ) {
+			if (cgs.redflag >= 0 && cgs.redflag <= 2) {
+				item = BG_FindItemForPowerup(PW_REDFLAG);
+				if (item) {
+					y1 = y + TINYCHAR_HEIGHT + 8;
 					CG_DrawPic( x+1, y1+1, w-2, 16, cgs.media.redFlagShader[cgs.redflag] );
 				}
-			}
-		}
-		else if ( cgs.gametype == GT_CTF4 ) {
-			float flag_x = x;
-			// Display flag status
-			if( cgs.redflag >= 0 && cgs.redflag <= 2 ) {
-				CG_DrawPic( flag_x+1, y1+1, w-2, 16, cgs.media.redFlagShader[cgs.redflag] );
-				flag_x += w;
-			}
-			if( cgs.blueflag >= 0 && cgs.blueflag <= 2 ) {
-				CG_DrawPic( flag_x+1, y1+1, w-2, 16, cgs.media.blueFlagShader[cgs.blueflag] );
-				flag_x += w;
-			}
-			if( cgs.greenflag >= 0 && cgs.greenflag <= 2 ) {
-				CG_DrawPic( flag_x+1, y1+1, w-2, 16, cgs.media.greenFlagShader[cgs.greenflag] );
-				flag_x += w;
-			}
-			if( cgs.yellowflag >= 0 && cgs.yellowflag <= 2 ) {
-				CG_DrawPic( flag_x+1, y1+1, w-2, 16, cgs.media.yellowFlagShader[cgs.yellowflag] );
 			}
 		}
 

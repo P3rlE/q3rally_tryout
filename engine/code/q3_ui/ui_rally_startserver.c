@@ -1601,7 +1601,7 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 		s_serveroptions.fraglimit.field.widthInChars = 3;
 		s_serveroptions.fraglimit.field.maxchars     = 3;
 	}
-		else if( s_serveroptions.gametype != GT_CTF && s_serveroptions.gametype != GT_DOMINATION ) {
+		else if( s_serveroptions.gametype != GT_CTF && s_serveroptions.gametype != GT_CTF4 && s_serveroptions.gametype != GT_DOMINATION ) {
 
 		s_serveroptions.fraglimit.generic.type       = MTYPE_FIELD;
 		s_serveroptions.fraglimit.generic.name       = "Frag Limit:";
