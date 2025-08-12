@@ -1599,15 +1599,6 @@ Only in CTF games.  Blue players spawn here at game start.
 void SP_team_CTF_blueplayer( gentity_t *ent ) {
 }
 
-void SP_team_CTF_greenflag(gentity_t *ent) {
-	(void)ent;
-}
-
-void SP_team_CTF_yellowflag(gentity_t *ent) {
-	(void)ent;
-}
-
-
 /*QUAKED team_CTF_redspawn (1 0 0) (-16 -16 -24) (16 16 32)
 potential spawning position for red team in CTF games.
 Targets will be fired when someone spawns in on them.

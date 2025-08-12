@@ -293,7 +293,7 @@ spawn_t	spawns[] = {
 	{"team_CTF_bluespawn", SP_team_CTF_bluespawn},
 	{"team_CTF_greenspawn", SP_team_CTF_greenspawn},
 	{"team_CTF_yellowspawn", SP_team_CTF_yellowspawn},
-
+    
 	{"team_CTF_greenflag", SP_team_CTF_greenflag},
 	{"team_CTF_yellowflag", SP_team_CTF_yellowflag},
 	
@@ -494,7 +494,7 @@ void G_SpawnGEntityFromSpawnVars( void ) {
 	// UPDATE : change these
 // STONELANCE
 //	static char *gametypeNames[] = {"ffa", "tournament", "single", "team", "ctf", "oneflag", "obelisk", "harvester"};
-	static char *gametypeNames[] = {"racing", "racing_dm", "single", "derby", "lcs", "dm", "team", "team_racing", "team_racing_dm", "ctf"};
+	static char *gametypeNames[] = {"racing", "racing_dm", "single", "derby", "lcs", "dm", "team", "team_racing", "team_racing_dm", "ctf", "ctf4", "domination"};
 // END
 
 	// get the next free entity
