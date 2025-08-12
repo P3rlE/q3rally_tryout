@@ -992,8 +992,9 @@ int Team_TouchOurFlag( gentity_t *ent, gentity_t *other, int team ) {
 
 	// the flag is at home base.  if the player has the enemy
 	// flag, he's just won!
-	if ( !enemy_flag || !cl->ps.powerups[enemy_flag] )
+	if ( !enemy_flag || !cl->ps.powerups[enemy_flag] ) {
 		return 0; // We don't have the flag
+	}
 #ifdef MISSIONPACK
 	if( g_gametype.integer == GT_1FCTF ) {
 		PrintMsg( NULL, "%s" S_COLOR_WHITE " captured the flag!\n", cl->pers.netname );
