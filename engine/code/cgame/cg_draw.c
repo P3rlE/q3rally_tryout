@@ -392,6 +392,10 @@ void CG_DrawFlagModel( float x, float y, float w, float h, int team, qboolean fo
 			handle = cgs.media.redFlagModel;
 		} else if( team == TEAM_BLUE ) {
 			handle = cgs.media.blueFlagModel;
+		} else if( team == TEAM_GREEN ) {
+			handle = cgs.media.greenFlagModel;
+		} else if( team == TEAM_YELLOW ) {
+			handle = cgs.media.yellowFlagModel;
 		} else if( team == TEAM_FREE ) {
 			handle = cgs.media.neutralFlagModel;
 		} else {
@@ -848,6 +852,10 @@ static void CG_DrawRallyStatusBar( void ) {
 		CG_DrawStatusBarFlag( 495, TEAM_RED);
 	else if (cg.predictedPlayerState.powerups[PW_BLUEFLAG])
 		CG_DrawStatusBarFlag( 495, TEAM_BLUE);
+	else if (cg.predictedPlayerState.powerups[PW_GREENFLAG])
+		CG_DrawStatusBarFlag( 495, TEAM_GREEN);
+	else if (cg.predictedPlayerState.powerups[PW_YELLOWFLAG])
+		CG_DrawStatusBarFlag( 495, TEAM_YELLOW);
 	else if (cg_entities[cg.snap->ps.clientNum].finishRaceTime &&
 		cg_entities[cg.snap->ps.clientNum].currentPosition == 1){
 
@@ -1727,9 +1735,27 @@ float CG_DrawScores( float x, float y ) {
 				y1 = y + TINYCHAR_HEIGHT + 8;
 
 				if( cgs.redflag >= 0 && cgs.redflag <= 2 ) {
-
-
+					CG_DrawPic( x+1, y1+1, w-2, 16, cgs.media.redFlagShader[cgs.redflag] );
 				}
+			}
+		}
+		else if ( cgs.gametype == GT_CTF4 ) {
+			float flag_x = x;
+			// Display flag status
+			if( cgs.redflag >= 0 && cgs.redflag <= 2 ) {
+				CG_DrawPic( flag_x+1, y1+1, w-2, 16, cgs.media.redFlagShader[cgs.redflag] );
+				flag_x += w;
+			}
+			if( cgs.blueflag >= 0 && cgs.blueflag <= 2 ) {
+				CG_DrawPic( flag_x+1, y1+1, w-2, 16, cgs.media.blueFlagShader[cgs.blueflag] );
+				flag_x += w;
+			}
+			if( cgs.greenflag >= 0 && cgs.greenflag <= 2 ) {
+				CG_DrawPic( flag_x+1, y1+1, w-2, 16, cgs.media.greenFlagShader[cgs.greenflag] );
+				flag_x += w;
+			}
+			if( cgs.yellowflag >= 0 && cgs.yellowflag <= 2 ) {
+				CG_DrawPic( flag_x+1, y1+1, w-2, 16, cgs.media.yellowFlagShader[cgs.yellowflag] );
 			}
 		}
 
