@@ -1600,9 +1600,11 @@ void SP_team_CTF_blueplayer( gentity_t *ent ) {
 }
 
 void SP_team_CTF_greenflag(gentity_t *ent) {
+	(void)ent;
 }
 
 void SP_team_CTF_yellowflag(gentity_t *ent) {
+	(void)ent;
 }
 
 
@@ -1624,12 +1626,14 @@ void SP_team_CTF_bluespawn(gentity_t *ent) {
 Only in CTF games.  Green players spawn here at game start.
 */
 void SP_team_CTF_greenplayer( gentity_t *ent ) {
+	(void)ent;
 }
 
 /*QUAKED team_CTF_yellowplayer (1 1 0) (-16 -16 -16) (16 16 32)
 Only in CTF games.  Yellow players spawn here at game start.
 */
 void SP_team_CTF_yellowplayer( gentity_t *ent ) {
+	(void)ent;
 }
 
 /*QUAKED team_CTF_greenspawn (0 1 0) (-16 -16 -24) (16 16 32)
@@ -1637,6 +1641,7 @@ potential spawning position for green team in CTF games.
 Targets will be fired when someone spawns in on them.
 */
 void SP_team_CTF_greenspawn(gentity_t *ent) {
+	(void)ent;
 }
 
 /*QUAKED team_CTF_yellowspawn (1 1 0) (-16 -16 -24) (16 16 32)
@@ -1644,6 +1649,7 @@ potential spawning position for yellow team in CTF games.
 Targets will be fired when someone spawns in on them.
 */
 void SP_team_CTF_yellowspawn(gentity_t *ent) {
+	(void)ent;
 }
 
 
