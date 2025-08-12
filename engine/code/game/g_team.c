@@ -498,7 +498,7 @@ void Team_FragBonuses(gentity_t *targ, gentity_t *inflictor, gentity_t *attacker
 {
 	int i;
 	gentity_t *ent;
-	int flag_pw, enemy_flag_pw;
+	int flag_pw = 0, enemy_flag_pw = 0;
 	int otherteam;
 	int tokens;
 	gentity_t *flag, *carrier = NULL;
