@@ -481,6 +481,7 @@ void UI_MainMenu( void ) {
         s_main.discordlogo.width                        = 442 / 3;
         s_main.discordlogo.height                       = 40 / 3;
         s_main.discordlogo.generic.callback             = DiscordLogo_Activate;
+        Vector4Copy( text_color_highlight, s_main.discordlogo.focuscolor );
 
         y += MAIN_MENU_VERTICAL_SPACING;
         s_main.exit.generic.type                        = MTYPE_PTEXT;
