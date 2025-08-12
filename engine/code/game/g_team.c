@@ -954,13 +954,13 @@ int Team_TouchOurFlag( gentity_t *ent, gentity_t *other, int team ) {
 	int			enemy_flag = 0;
 
 	if ( g_gametype.integer == GT_CTF4 ) {
-		if ( cl->ps.powerups[PW_REDFLAG] ) {
+		if ( cl->ps.powerups[PW_REDFLAG] && cl->sess.sessionTeam != TEAM_RED) {
 			enemy_flag = PW_REDFLAG;
-		} else if ( cl->ps.powerups[PW_BLUEFLAG] ) {
+		} else if ( cl->ps.powerups[PW_BLUEFLAG] && cl->sess.sessionTeam != TEAM_BLUE) {
 			enemy_flag = PW_BLUEFLAG;
-		} else if ( cl->ps.powerups[PW_GREENFLAG] ) {
+		} else if ( cl->ps.powerups[PW_GREENFLAG] && cl->sess.sessionTeam != TEAM_GREEN) {
 			enemy_flag = PW_GREENFLAG;
-		} else if ( cl->ps.powerups[PW_YELLOWFLAG] ) {
+		} else if ( cl->ps.powerups[PW_YELLOWFLAG] && cl->sess.sessionTeam != TEAM_YELLOW) {
 			enemy_flag = PW_YELLOWFLAG;
 		}
 	}
@@ -992,7 +992,7 @@ int Team_TouchOurFlag( gentity_t *ent, gentity_t *other, int team ) {
 
 	// the flag is at home base.  if the player has the enemy
 	// flag, he's just won!
-	if ( !enemy_flag )
+	if ( !enemy_flag || !cl->ps.powerups[enemy_flag] )
 		return 0; // We don't have the flag
 #ifdef MISSIONPACK
 	if( g_gametype.integer == GT_1FCTF ) {

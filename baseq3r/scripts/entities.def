@@ -2014,6 +2014,58 @@ count : number of times this spawnpoint can be used to spawn a player. Omit or s
 
 //=============================================================================
 
+/*QUAKED team_CTF_greenflag (0 1 0) (-16 -16 -16) (16 16 16)
+Green team flag for CTF games.
+-------- MODEL FOR RADIANT ONLY - DO NOT SET THIS AS A KEY --------
+model="models/flags/g_flag.md3"*/
+
+//=============================================================================
+
+/*QUAKED team_CTF_greenplayer (0 1 0) (-16 -16 -24) (16 16 32)
+Initial Green team spawning position for CTF games. This is where players spawn when they join the Green team.
+-------- KEYS --------
+target : this can point at a target_give entity for respawn freebies.
+target2 : this can point at a target_give entity for respawn freebies.
+count : number of times this spawnpoint can be used to spawn a player. Omit or set to 0 to set no limit.
+*/
+
+//=============================================================================
+
+/*QUAKED team_CTF_greenspawn (0 1 0) (-16 -16 -24) (16 16 32)
+Green team respawning position for CTF games. This is where Green team players respawn after they get fragged.
+-------- KEYS --------
+target : this can point at a target_give entity for respawn freebies.
+target2 : this can point at a target_give entity for respawn freebies.
+count : number of times this spawnpoint can be used to spawn a player. Omit or set to 0 to set no limit.*/
+
+//=============================================================================
+
+/*QUAKED team_CTF_yellowflag (1 1 0) (-16 -16 -16) (16 16 16)
+Yellow team flag for CTF games.
+-------- MODEL FOR RADIANT ONLY - DO NOT SET THIS AS A KEY --------
+model="models/flags/y_flag.md3"*/
+
+//=============================================================================
+
+/*QUAKED team_CTF_yellowplayer (1 1 0) (-16 -16 -24) (16 16 32)
+Initial Yellow team spawning position for CTF games. This is where players spawn when they join the Yellow team.
+-------- KEYS --------
+target : this can point at a target_give entity for respawn freebies.
+target2 : this can point at a target_give entity for respawn freebies.
+count : number of times this spawnpoint can be used to spawn a player. Omit or set to 0 to set no limit.
+*/
+
+//=============================================================================
+
+/*QUAKED team_CTF_yellowspawn (1 1 0) (-16 -16 -24) (16 16 32)
+Yellow team respawning position for CTF games. This is where Yellow team players respawn after they get fragged.
+-------- KEYS --------
+target : this can point at a target_give entity for respawn freebies.
+target2 : this can point at a target_give entity for respawn freebies.
+count : number of times this spawnpoint can be used to spawn a player. Omit or set to 0 to set no limit.*/
+
+//=============================================================================
+
 /*QUAKED team_CTF_redflag (1 .2 0) (-16 -16 -16) (16 16 16)
 Red team flag for CTF games.
 -------- MODEL FOR RADIANT ONLY - DO NOT SET THIS AS A KEY --------
