@@ -190,6 +190,8 @@ void SP_team_CTF_bluespawn( gentity_t *ent );
 void SP_team_CTF_greenspawn( gentity_t *ent );
 void SP_team_CTF_yellowspawn( gentity_t *ent );
 
+void SP_team_CTF_redflag( gentity_t *ent );
+void SP_team_CTF_blueflag( gentity_t *ent );
 void SP_team_CTF_greenflag( gentity_t *ent );
 void SP_team_CTF_yellowflag( gentity_t *ent );
 
@@ -294,6 +296,8 @@ spawn_t	spawns[] = {
 	{"team_CTF_greenspawn", SP_team_CTF_greenspawn},
 	{"team_CTF_yellowspawn", SP_team_CTF_yellowspawn},
     
+    {"team_CTF_redflag", SP_team_CTF_redflag},
+    {"team_CTF_blueflag", SP_team_CTF_blueflag},
 	{"team_CTF_greenflag", SP_team_CTF_greenflag},
 	{"team_CTF_yellowflag", SP_team_CTF_yellowflag},
 	
