@@ -345,13 +345,7 @@ static void DiscordLogo_Activate(void *self, int event) {
     if (event != QM_ACTIVATED)
         return;
 
-#if defined(_WIN32)
-    trap_Cmd_ExecuteText(EXEC_APPEND, "start https://discord.gg/enHZNxkYhH\n");
-#elif defined(__APPLE__)
-    trap_Cmd_ExecuteText(EXEC_APPEND, "open https://discord.gg/enHZNxkYhH\n");
-#else
-    trap_Cmd_ExecuteText(EXEC_APPEND, "xdg-open https://discord.gg/enHZNxkYhH\n");
-#endif
+    trap_Cmd_ExecuteText(EXEC_APPEND, "openURL https://discord.gg/enHZNxkYhH\n");
 }
 
 /*
