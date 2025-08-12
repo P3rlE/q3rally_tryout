@@ -182,9 +182,16 @@ void SP_shooter_grenade( gentity_t *ent );
 
 void SP_team_CTF_redplayer( gentity_t *ent );
 void SP_team_CTF_blueplayer( gentity_t *ent );
+void SP_team_CTF_greenplayer( gentity_t *ent );
+void SP_team_CTF_yellowplayer( gentity_t *ent );
 
 void SP_team_CTF_redspawn( gentity_t *ent );
 void SP_team_CTF_bluespawn( gentity_t *ent );
+void SP_team_CTF_greenspawn( gentity_t *ent );
+void SP_team_CTF_yellowspawn( gentity_t *ent );
+
+void SP_team_CTF_greenflag( gentity_t *ent );
+void SP_team_CTF_yellowflag( gentity_t *ent );
 
 void SP_func_door_rotating( gentity_t *ent );	// Rotating Doors
 
@@ -279,9 +286,16 @@ spawn_t	spawns[] = {
 
 	{"team_CTF_redplayer", SP_team_CTF_redplayer},
 	{"team_CTF_blueplayer", SP_team_CTF_blueplayer},
+	{"team_CTF_greenplayer", SP_team_CTF_greenplayer},
+	{"team_CTF_yellowplayer", SP_team_CTF_yellowplayer},
 
 	{"team_CTF_redspawn", SP_team_CTF_redspawn},
 	{"team_CTF_bluespawn", SP_team_CTF_bluespawn},
+	{"team_CTF_greenspawn", SP_team_CTF_greenspawn},
+	{"team_CTF_yellowspawn", SP_team_CTF_yellowspawn},
+
+	{"team_CTF_greenflag", SP_team_CTF_greenflag},
+	{"team_CTF_yellowflag", SP_team_CTF_yellowflag},
 	
 	{"func_door_rotating", SP_func_door_rotating},	// Rotating Doors
 
