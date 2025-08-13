@@ -1648,33 +1648,6 @@ void SP_team_CTF_yellowspawn(gentity_t *ent) {
 }
 
 
-/*QUAKED team_CTF_redflag (1 0 0) (-16 -16 -16) (16 16 16)
-Only in CTF games
-*/
-void SP_team_CTF_redflag( gentity_t *ent ) {
-	(void)ent;
-}
-
-/*QUAKED team_CTF_blueflag (0 0 1) (-16 -16 -16) (16 16 16)
-Only in CTF games
-*/
-void SP_team_CTF_blueflag( gentity_t *ent ) {
-	(void)ent;
-}
-
-/*QUAKED team_CTF_greenflag (0 1 0) (-16 -16 -16) (16 16 16)
-Only in CTF games
-*/
-void SP_team_CTF_greenflag( gentity_t *ent ) {
-	(void)ent;
-}
-
-/*QUAKED team_CTF_yellowflag (1 1 0) (-16 -16 -16) (16 16 16)
-Only in CTF games
-*/
-void SP_team_CTF_yellowflag( gentity_t *ent ) {
-	(void)ent;
-}
 
 
 #ifdef MISSIONPACK

@@ -282,10 +282,6 @@ spawn_t	spawns[] = {
 	{"team_CTF_greenspawn", SP_team_CTF_greenspawn},
 	{"team_CTF_yellowspawn", SP_team_CTF_yellowspawn},
     
-    {"team_CTF_redflag", SP_team_CTF_redflag},
-    {"team_CTF_blueflag", SP_team_CTF_blueflag},
-	{"team_CTF_greenflag", SP_team_CTF_greenflag},
-	{"team_CTF_yellowflag", SP_team_CTF_yellowflag},
 	
 	{"func_door_rotating", SP_func_door_rotating},	// Rotating Doors
 
