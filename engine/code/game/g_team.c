@@ -1647,6 +1647,62 @@ void SP_team_CTF_yellowspawn(gentity_t *ent) {
 	(void)ent;
 }
 
+/*QUAKED team_CTF_redflag (1 0 0) (-16 -16 -16) (16 16 16)
+Red flag
+*/
+void SP_team_CTF_redflag( gentity_t *ent ) {
+	gitem_t *it = BG_FindItemForPowerup( PW_REDFLAG );
+	if (!it) {
+		ent->think = G_FreeEntity;
+		ent->nextthink = level.time + FRAMETIME;
+		G_Printf( "Couldn't find item for team_CTF_redflag\n" );
+		return;
+	}
+	G_SpawnItem( ent, it );
+}
+
+/*QUAKED team_CTF_blueflag (0 0 1) (-16 -16 -16) (16 16 16)
+Blue flag
+*/
+void SP_team_CTF_blueflag( gentity_t *ent ) {
+	gitem_t *it = BG_FindItemForPowerup( PW_BLUEFLAG );
+	if (!it) {
+		ent->think = G_FreeEntity;
+		ent->nextthink = level.time + FRAMETIME;
+		G_Printf( "Couldn't find item for team_CTF_blueflag\n" );
+		return;
+	}
+	G_SpawnItem( ent, it );
+}
+
+/*QUAKED team_CTF_greenflag (0 1 0) (-16 -16 -16) (16 16 16)
+Green flag
+*/
+void SP_team_CTF_greenflag( gentity_t *ent ) {
+	gitem_t *it = BG_FindItemForPowerup( PW_GREENFLAG );
+	if (!it) {
+		ent->think = G_FreeEntity;
+		ent->nextthink = level.time + FRAMETIME;
+		G_Printf( "Couldn't find item for team_CTF_greenflag\n" );
+		return;
+	}
+	G_SpawnItem( ent, it );
+}
+
+/*QUAKED team_CTF_yellowflag (1 1 0) (-16 -16 -16) (16 16 16)
+Yellow flag
+*/
+void SP_team_CTF_yellowflag( gentity_t *ent ) {
+	gitem_t *it = BG_FindItemForPowerup( PW_YELLOWFLAG );
+	if (!it) {
+		ent->think = G_FreeEntity;
+		ent->nextthink = level.time + FRAMETIME;
+		G_Printf( "Couldn't find item for team_CTF_yellowflag\n" );
+		return;
+	}
+	G_SpawnItem( ent, it );
+}
+
 
 
 
