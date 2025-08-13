@@ -409,6 +409,10 @@ void CG_DrawFlagModel( float x, float y, float w, float h, int team, qboolean fo
 			item = BG_FindItemForPowerup( PW_REDFLAG );
 		} else if( team == TEAM_BLUE ) {
 			item = BG_FindItemForPowerup( PW_BLUEFLAG );
+		} else if( team == TEAM_GREEN ) {
+			item = BG_FindItemForPowerup( PW_GREENFLAG );
+		} else if( team == TEAM_YELLOW ) {
+			item = BG_FindItemForPowerup( PW_YELLOWFLAG );
 		} else if( team == TEAM_FREE ) {
 			item = BG_FindItemForPowerup( PW_NEUTRALFLAG );
 		} else {
