@@ -180,20 +180,6 @@ void SP_shooter_rocket( gentity_t *ent );
 void SP_shooter_plasma( gentity_t *ent );
 void SP_shooter_grenade( gentity_t *ent );
 
-void SP_team_CTF_redplayer( gentity_t *ent );
-void SP_team_CTF_blueplayer( gentity_t *ent );
-void SP_team_CTF_greenplayer( gentity_t *ent );
-void SP_team_CTF_yellowplayer( gentity_t *ent );
-
-void SP_team_CTF_redspawn( gentity_t *ent );
-void SP_team_CTF_bluespawn( gentity_t *ent );
-void SP_team_CTF_greenspawn( gentity_t *ent );
-void SP_team_CTF_yellowspawn( gentity_t *ent );
-
-void SP_team_CTF_redflag( gentity_t *ent );
-void SP_team_CTF_blueflag( gentity_t *ent );
-void SP_team_CTF_greenflag( gentity_t *ent );
-void SP_team_CTF_yellowflag( gentity_t *ent );
 
 void SP_func_door_rotating( gentity_t *ent );	// Rotating Doors
 
