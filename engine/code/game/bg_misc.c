@@ -92,6 +92,40 @@ gitem_t	bg_itemlist[] =
 /* sounds */ ""
 	},
 
+/*QUAKED team_CTF_greenflag (0 1 0) (-16 -16 -16) (16 16 16)
+Only in CTF games
+*/
+	{
+		"team_CTF_greenflag",
+		NULL,
+        { "models/flags/g_flag.md3",
+		NULL, NULL, NULL },
+/* icon */		"icons/iconf_green1",
+/* pickup */	"Green Flag",
+		0,
+		IT_TEAM,
+		PW_GREENFLAG,
+/* precache */ "",
+/* sounds */ ""
+	},
+
+/*QUAKED team_CTF_yellowflag (1 1 0) (-16 -16 -16) (16 16 16)
+Only in CTF games
+*/
+	{
+		"team_CTF_yellowflag",
+		NULL,
+        { "models/flags/y_flag.md3",
+		NULL, NULL, NULL },
+/* icon */		"icons/iconf_yell1",
+/* pickup */	"Yellow Flag",
+		0,
+		IT_TEAM,
+		PW_YELLOWFLAG,
+/* precache */ "",
+/* sounds */ ""
+	},
+
 /*QUAKED item_armor_combat (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 */
 	{
