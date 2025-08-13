@@ -378,7 +378,11 @@ endif
 ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu"))
   BASE_CFLAGS = -Wall -fno-strict-aliasing -Wimplicit -Wstrict-prototypes \
     -pipe -DUSE_ICON -DARCH_STRING=\\\"$(ARCH)\\\"
-  CLIENT_CFLAGS += $(SDL_CFLAGS)
+  ifeq ($(USE_LOCAL_HEADERS),1)
+    CLIENT_CFLAGS += -I$(SDLHDIR)/include
+  else
+    CLIENT_CFLAGS += $(SDL_CFLAGS)
+  endif
 
   OPTIMIZEVM = -O3
   OPTIMIZE = $(OPTIMIZEVM) -ffast-math
@@ -425,7 +429,11 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
   LIBS=-ldl -lm
   AUTOUPDATER_LIBS += -ldl
 
-  CLIENT_LIBS=$(SDL_LIBS)
+  ifeq ($(USE_LOCAL_HEADERS),1)
+    CLIENT_LIBS = $(LIBSDIR)/linux-$(ARCH)/libSDL2-2.0.so.0
+  else
+    CLIENT_LIBS = $(SDL_LIBS)
+  endif
   RENDERER_LIBS = $(SDL_LIBS)
 
   ifeq ($(USE_PORTABLE_RPATH),1)

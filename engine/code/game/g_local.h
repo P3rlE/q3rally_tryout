@@ -547,6 +547,11 @@ extern void SP_team_CTF_bluespawn( gentity_t *ent );
 extern void SP_team_CTF_greenspawn( gentity_t *ent );
 extern void SP_team_CTF_yellowspawn( gentity_t *ent );
 
+extern void SP_team_CTF_redflag( gentity_t *ent );
+extern void SP_team_CTF_blueflag( gentity_t *ent );
+extern void SP_team_CTF_greenflag( gentity_t *ent );
+extern void SP_team_CTF_yellowflag( gentity_t *ent );
+
 
 //
 // g_cmds.c
