@@ -1138,6 +1138,8 @@ static void CG_RegisterGraphics( void ) {
 
 		cgs.media.redFlagFlapSkin = trap_R_RegisterSkin( "models/flag2/red.skin" );
 		cgs.media.blueFlagFlapSkin = trap_R_RegisterSkin( "models/flag2/blue.skin" );
+		cgs.media.greenFlagFlapSkin = trap_R_RegisterSkin( "models/flag2/green.skin" );
+		cgs.media.yellowFlagFlapSkin = trap_R_RegisterSkin( "models/flag2/yellow.skin" );
 		cgs.media.neutralFlagFlapSkin = trap_R_RegisterSkin( "models/flag2/white.skin" );
 
 		cgs.media.redFlagBaseModel = trap_R_RegisterModel( "models/mapobjects/flagbase/red_base.md3" );
