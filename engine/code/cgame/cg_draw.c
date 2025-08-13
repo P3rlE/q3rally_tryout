@@ -1715,6 +1715,16 @@ float CG_DrawScores( float x, float y ) {
 			}
 			CG_DrawTinyDigitalString( x + 4, y+4, s, 1.0F);
 
+			if( cgs.gametype == GT_CTF4 ) {
+				if (cgs.yellowflag >= 0 && cgs.yellowflag <= 2) {
+					item = BG_FindItemForPowerup(PW_YELLOWFLAG);
+					if (item) {
+						y1 = y + TINYCHAR_HEIGHT + 8;
+						CG_DrawPic( x+1, y1+1, w-2, 16, cgs.media.yellowFlagShader[cgs.yellowflag] );
+					}
+				}
+			}
+
 			// draw green
 			color[0] = 0.0f;
 			color[1] = 1.0f;
@@ -1728,6 +1738,16 @@ float CG_DrawScores( float x, float y ) {
 				CG_DrawPic( x+1, y+1, w-2, 16, cgs.media.selectShader );
 			}
 			CG_DrawTinyDigitalString( x + 4, y+4, s, 1.0F);
+
+			if( cgs.gametype == GT_CTF4 ) {
+				if (cgs.greenflag >= 0 && cgs.greenflag <= 2) {
+					item = BG_FindItemForPowerup(PW_GREENFLAG);
+					if (item) {
+						y1 = y + TINYCHAR_HEIGHT + 8;
+						CG_DrawPic( x+1, y1+1, w-2, 16, cgs.media.greenFlagShader[cgs.greenflag] );
+					}
+				}
+			}
 		}
 
 		color[0] = 0.0f;
