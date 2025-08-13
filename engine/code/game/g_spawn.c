@@ -185,6 +185,7 @@ void SP_shooter_rocket( gentity_t *ent );
 void SP_shooter_plasma( gentity_t *ent );
 void SP_shooter_grenade( gentity_t *ent );
 
+<<<<<<< HEAD
 
 void SP_team_CTF_redspawn( gentity_t *ent );
 void SP_team_CTF_bluespawn( gentity_t *ent );
@@ -193,6 +194,8 @@ void SP_team_CTF_yellowspawn( gentity_t *ent );
 
 void SP_team_CTF_greenflag( gentity_t *ent );
 void SP_team_CTF_yellowflag( gentity_t *ent );
+=======
+>>>>>>> d623bc8105789334a548efc9d68165e80ed546e5
 
 void SP_func_door_rotating( gentity_t *ent );	// Rotating Doors
 
