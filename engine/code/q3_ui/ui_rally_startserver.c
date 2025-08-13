@@ -1278,13 +1278,16 @@ static void ServerOptions_LevelshotDraw( void *self ) {
 		b->focusshader = trap_R_RegisterShaderNoMip( b->focuspic );
 	}
 
-	UI_FillRect( 325, 80, 256, 160, menu_back_color );
+	w = 256;
+	x = b->generic.x - w / 2;
+	y = b->generic.y;
+	UI_FillRect( x, y, w, 140, menu_back_color );
 
 	if (s_startserver.list.curvalue < 0 || s_startserver.list.curvalue >= s_startserver.nummaps)
 		return;
 
 	x = b->generic.x - b->width / 2;
-	y = b->generic.y;
+	y = b->generic.y + 10;
 	w = b->width;
 	h =	b->height;
 	if( b->shader ) {
