@@ -1513,6 +1513,17 @@ qboolean BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const play
 #endif
 
 	case IT_TEAM: // team items, such as flags
+		// if the player is already carrying a flag, they can't pick up another enemy flag
+		if ( ps->powerups[PW_REDFLAG] || ps->powerups[PW_BLUEFLAG] || ps->powerups[PW_GREENFLAG] || ps->powerups[PW_YELLOWFLAG] || ps->powerups[PW_NEUTRALFLAG] ) {
+			if (item->giTag == PW_REDFLAG && ps->persistant[PERS_TEAM] != TEAM_RED)
+				return qfalse;
+			if (item->giTag == PW_BLUEFLAG && ps->persistant[PERS_TEAM] != TEAM_BLUE)
+				return qfalse;
+			if (item->giTag == PW_GREENFLAG && ps->persistant[PERS_TEAM] != TEAM_GREEN)
+				return qfalse;
+			if (item->giTag == PW_YELLOWFLAG && ps->persistant[PERS_TEAM] != TEAM_YELLOW)
+				return qfalse;
+		}
 #ifdef MISSIONPACK		
 		if( gametype == GT_1FCTF ) {
 			// neutral flag can always be picked up
