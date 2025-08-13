@@ -1581,7 +1581,7 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
     
 	s_serveroptions.mappic.generic.type			= MTYPE_BITMAP;
 	s_serveroptions.mappic.generic.flags		= QMF_LEFT_JUSTIFY|QMF_INACTIVE;
-	s_serveroptions.mappic.generic.x			= 455;
+	s_serveroptions.mappic.generic.x			= 445;
 	s_serveroptions.mappic.generic.y			= 80;
 	s_serveroptions.mappic.width				= 170;
 	s_serveroptions.mappic.height				= 96;
