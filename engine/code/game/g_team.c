@@ -218,10 +218,22 @@ void AddTeamScore(vec3_t origin, int team, int score) {
 		} else { // GT_CTF4
 			// In 4-team CTF, we need to decide what "taking the lead" means.
 			// For now, I will just play the scored sound.
-			if (team == TEAM_RED) te->s.eventParm = GTS_REDTEAM_SCORED;
-			else if (team == TEAM_BLUE) te->s.eventParm = GTS_BLUETEAM_SCORED;
-			else if (team == TEAM_GREEN) te->s.eventParm = GTS_REDTEAM_SCORED; // FIXME: need green sound
-			else if (team == TEAM_YELLOW) te->s.eventParm = GTS_BLUETEAM_SCORED; // FIXME: need yellow sound
+			// FIXME: There are no unique sound assets for Green and Yellow teams scoring.
+			// Using Red and Blue sounds as a fallback.
+			switch (team) {
+				case TEAM_RED:
+					te->s.eventParm = GTS_REDTEAM_SCORED;
+					break;
+				case TEAM_BLUE:
+					te->s.eventParm = GTS_BLUETEAM_SCORED;
+					break;
+				case TEAM_GREEN:
+					te->s.eventParm = GTS_REDTEAM_SCORED; // Fallback
+					break;
+				case TEAM_YELLOW:
+					te->s.eventParm = GTS_BLUETEAM_SCORED; // Fallback
+					break;
+			}
 			level.teamScores[ team ] += score;
 			return;
 		}
@@ -1598,6 +1610,8 @@ Only in CTF games.  Blue players spawn here at game start.
 */
 void SP_team_CTF_blueplayer( gentity_t *ent ) {
 }
+
+
 
 /*QUAKED team_CTF_redspawn (1 0 0) (-16 -16 -24) (16 16 32)
 potential spawning position for red team in CTF games.
