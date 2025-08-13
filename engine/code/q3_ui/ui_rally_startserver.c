@@ -1281,7 +1281,7 @@ static void ServerOptions_LevelshotDraw( void *self ) {
 	w = 256;
 	x = b->generic.x - w / 2;
 	y = b->generic.y;
-	UI_FillRect( x, y, w, 140, menu_back_color );
+	UI_FillRect( x, y, w, 160, menu_back_color );
 
 	if (s_startserver.list.curvalue < 0 || s_startserver.list.curvalue >= s_startserver.nummaps)
 		return;
