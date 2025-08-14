@@ -138,10 +138,15 @@ void FlameThink(gentity_t *ent){
 	trace_t		tr;
 	vec3_t		dest;
 	vec3_t		angles;
+	gentity_t	*smoke;
 
 	ent->nextthink = level.time + 200;
 
 	if (ent->freeAfterTime < level.time){
+		// puff of smoke when flame dies
+		smoke = G_TempEntity(ent->r.currentOrigin, EV_HAZARD);
+		smoke->s.weapon = HT_FLAME_SMOKE;
+
 		ent->think = G_FreeEntity;
 		return;
 	}
