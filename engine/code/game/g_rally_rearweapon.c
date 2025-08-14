@@ -47,14 +47,6 @@ void SmokerThink(gentity_t *ent){
 		return;
 	}
 
-	// trigger bright smoke
-	if (ent->count > 0 && level.time >= ent->timestamp) {
-		smoke = G_TempEntity(ent->r.currentOrigin, EV_HAZARD);
-		smoke->s.weapon = HT_BRIGHT_FLAME_SMOKE;
-		ent->count--;
-		ent->timestamp = level.time + 3000;
-	}
-
 	owner = &g_entities[ent->r.ownerNum];
 
 	VectorCopy(owner->client->ps.viewangles, angles);
@@ -157,6 +149,14 @@ void FlameThink(gentity_t *ent){
 
 		ent->think = G_FreeEntity;
 		return;
+	}
+
+	// trigger bright smoke
+	if (ent->count > 0 && level.time >= ent->timestamp) {
+		smoke = G_TempEntity(ent->r.currentOrigin, EV_HAZARD);
+		smoke->s.weapon = HT_BRIGHT_FLAME_SMOKE;
+		ent->count--;
+		ent->timestamp = level.time + 3000;
 	}
 
 	owner = &g_entities[ent->r.ownerNum];
