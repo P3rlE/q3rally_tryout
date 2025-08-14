@@ -135,9 +135,6 @@ REAR WEAPON - Flame
 */
 void FlameThink(gentity_t *ent){
 	gentity_t	*owner;
-	trace_t		tr;
-	vec3_t		dest;
-	vec3_t		angles;
 	gentity_t	*smoke;
 
 	ent->nextthink = level.time + 200;
