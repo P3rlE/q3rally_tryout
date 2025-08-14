@@ -411,6 +411,7 @@ struct gclient_s {
 	int			horn_sound_time;
 
 	int			lastCheckpointTime;
+	int			last_hill_touch_time;
 // END
 
 	char		*areabits;
