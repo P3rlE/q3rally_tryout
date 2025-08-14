@@ -161,17 +161,6 @@ void FlameThink(gentity_t *ent){
 
 	owner = &g_entities[ent->r.ownerNum];
 
-	VectorCopy(owner->client->ps.viewangles, angles);
-	angles[PITCH] = 0;
-	AngleVectors (angles, forward, NULL, NULL);
-	VectorMA( owner->r.currentOrigin, -80, forward, dest );
-
-	trap_Trace( &tr, owner->r.currentOrigin, NULL, NULL, dest, ent->s.number, MASK_SOLID );
-	VectorMA(tr.endpos, 1, tr.plane.normal, dest);
-	// allow to ride movers
-	ent->s.groundEntityNum = tr.entityNum;
-	G_SetOrigin( ent, dest );
-
 	CreateFireHazard(owner, ent->r.currentOrigin);
 }
 
