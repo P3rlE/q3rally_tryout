@@ -32,6 +32,14 @@ typedef struct domination_sigil_s
   sigilStatus_t   status;
 } domination_sigil_t;
 
+typedef struct koth_hill_s
+{
+	gentity_t	*ent;
+	int			owner; // client number of the owner, or -1 for neutral
+	team_t		owner_team;
+	int			capture_time;
+} koth_hill_t;
+
 // Q3Rally Code END
 
 typedef struct teamgame_s {
@@ -43,6 +51,7 @@ typedef struct teamgame_s {
 // Q3Rally Code Start
 	domination_sigil_t     sigil[MAX_SIGILS];
 	int				numSigils;
+	koth_hill_t		hill;
 // Q3Rally Code END
 } teamgame_t;
 
@@ -54,6 +63,9 @@ void Team_SetFlagStatus( int team, flagStatus_t status );
 // Q3Rally Code Start
 void Team_SetSigilStatus( int sigilNum, sigilStatus_t status );
 void Init_Sigils( void );
+void Init_Hill( void );
+void Hill_Think( gentity_t *ent );
+void Hill_Touch( gentity_t *self, gentity_t *other, trace_t *trace );
 // Q3Rally Code END
 
 void Team_InitGame( void ) {
@@ -93,6 +105,9 @@ void Team_InitGame( void ) {
 	    Team_SetSigilStatus( i, SIGIL_NONE );
 	  }
 	  break;
+	case GT_KOTH:
+		Init_Hill();
+		break;
 	  
 // Q3Rally Code END
 
@@ -2010,3 +2025,119 @@ qboolean CheckObeliskAttack( gentity_t *obelisk, gentity_t *attacker ) {
 	return qfalse;
 }
 #endif
+
+void Hill_Touch( gentity_t *self, gentity_t *other, trace_t *trace ) {
+	if ( !other->client ) {
+		return;
+	}
+	other->client->last_hill_touch_time = level.time;
+}
+
+void Hill_Think( gentity_t *self ) {
+	int i;
+	gclient_t *cl;
+	int players_on_hill[TEAM_NUM_TEAMS] = {0};
+	int num_players_on_hill = 0;
+	team_t owning_team = TEAM_FREE;
+	int owning_player = -1;
+
+	// find out who is on the hill
+	for ( i = 0 ; i < level.maxclients ; i++ ) {
+		cl = &level.clients[i];
+		if ( cl->pers.connected != CON_CONNECTED ) {
+			continue;
+		}
+		if ( cl->sess.sessionTeam == TEAM_SPECTATOR ) {
+			continue;
+		}
+
+		// if the player has touched the hill in the last second
+		if ( cl->last_hill_touch_time > level.time - 1000 ) {
+			if (g_gametype.integer >= GT_TEAM) {
+				players_on_hill[cl->sess.sessionTeam]++;
+			} else {
+				players_on_hill[TEAM_FREE]++; // count all players for FFA
+                owning_player = i; // last one to touch it gets it
+			}
+			num_players_on_hill++;
+		}
+	}
+
+	if (g_gametype.integer >= GT_TEAM) {
+		// determine the owning team
+		int num_teams_on_hill = 0;
+		for (i = TEAM_RED; i < TEAM_NUM_TEAMS; i++) {
+			if (players_on_hill[i] > 0) {
+				num_teams_on_hill++;
+				owning_team = i;
+			}
+		}
+
+		if (num_teams_on_hill != 1) {
+			owning_team = TEAM_FREE; // contested
+		}
+
+		if (teamgame.hill.owner_team != owning_team) {
+			teamgame.hill.owner_team = owning_team;
+			teamgame.hill.capture_time = level.time;
+			if (owning_team != TEAM_FREE) {
+				trap_SetConfigstring( CS_KOTH_STATUS, va("%s controls the hill", TeamName(owning_team)) );
+			} else {
+				trap_SetConfigstring( CS_KOTH_STATUS, "Hill is contested" );
+			}
+		}
+
+		// award points
+		if (teamgame.hill.owner_team != TEAM_FREE) {
+			AddTeamScore(self->s.pos.trBase, teamgame.hill.owner_team, 1); // 1 point per second
+			CalculateRanks();
+		}
+	} else { // FFA
+		if (num_players_on_hill != 1) {
+			owning_player = -1; // contested
+		}
+
+		if (teamgame.hill.owner != owning_player) {
+			teamgame.hill.owner = owning_player;
+			teamgame.hill.capture_time = level.time;
+			if (owning_player != -1) {
+				trap_SetConfigstring( CS_KOTH_STATUS, va("%s controls the hill", g_entities[owning_player].client->pers.netname) );
+			} else {
+				trap_SetConfigstring( CS_KOTH_STATUS, "Hill is contested" );
+			}
+		}
+
+		if (teamgame.hill.owner != -1) {
+			AddScore(&g_entities[teamgame.hill.owner], self->s.pos.trBase, 1);
+			CalculateRanks();
+		}
+	}
+
+	self->nextthink = level.time + 1000; // check again in a second
+}
+
+void Init_Hill( void ) {
+	gentity_t *hill_ent;
+
+	memset(&teamgame.hill, 0, sizeof(teamgame.hill));
+
+	hill_ent = NULL;
+	while ( (hill_ent = G_Find(hill_ent, FOFS(classname), "target_hill")) != NULL ) {
+		teamgame.hill.ent = hill_ent;
+		break; // there should only be one hill
+	}
+
+	if ( !teamgame.hill.ent ) {
+		G_Printf( "Warning: no target_hill found\\n" );
+		return;
+	}
+
+	teamgame.hill.owner = -1;
+	teamgame.hill.owner_team = TEAM_FREE;
+	teamgame.hill.capture_time = 0;
+
+	// set up the trigger
+	teamgame.hill.ent->touch = Hill_Touch;
+	teamgame.hill.ent->think = Hill_Think;
+	teamgame.hill.ent->nextthink = level.time + 1000;
+}

@@ -104,6 +104,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define CS_SCORES4                              28
 #define CS_REFLECTION_IMAGE             29
 #define CS_SIGILSTATUS                  30
+#define CS_KOTH_STATUS                  31
 // Q3Rally Code END
 
 #define CS_MODELS                               32
@@ -151,6 +152,7 @@ typedef enum {
         GT_CTF,                         // capture the flag
         GT_CTF4,                        // 4 team capture the flag
         GT_DOMINATION,              // domination
+        GT_KOTH,                      // king of the hill
 // Q3Rally Code END
         GT_MAX_GAME_TYPE
 } gametype_t;
