@@ -1724,7 +1724,6 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 	}
 
 if (s_serveroptions.gametype == GT_DOMINATION) {
-    y += BIGCHAR_HEIGHT+2;
     s_serveroptions.dominationScoreInterval.generic.type       = MTYPE_FIELD;
     s_serveroptions.dominationScoreInterval.generic.name       = "Score Interval (s):";
     s_serveroptions.dominationScoreInterval.generic.flags      = QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
