@@ -378,11 +378,7 @@ endif
 ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu"))
   BASE_CFLAGS = -Wall -fno-strict-aliasing -Wimplicit -Wstrict-prototypes \
     -pipe -DUSE_ICON -DARCH_STRING=\\\"$(ARCH)\\\"
-  ifeq ($(USE_LOCAL_HEADERS),1)
-    CLIENT_CFLAGS += -I$(SDLHDIR)/include
-  else
-    CLIENT_CFLAGS += $(SDL_CFLAGS)
-  endif
+  CLIENT_CFLAGS += $(SDL_CFLAGS)
 
   OPTIMIZEVM = -O3
   OPTIMIZE = $(OPTIMIZEVM) -ffast-math
@@ -429,11 +425,7 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
   LIBS=-ldl -lm
   AUTOUPDATER_LIBS += -ldl
 
-  ifeq ($(USE_LOCAL_HEADERS),1)
-    CLIENT_LIBS = $(LIBSDIR)/linux-$(ARCH)/libSDL2-2.0.so.0
-  else
-    CLIENT_LIBS = $(SDL_LIBS)
-  endif
+  CLIENT_LIBS=$(SDL_LIBS)
   RENDERER_LIBS = $(SDL_LIBS)
 
   ifeq ($(USE_PORTABLE_RPATH),1)
@@ -2687,6 +2679,7 @@ $(B)/$(SERVERBIN)$(FULLBINEXT): $(Q3DOBJ)
 
 Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_main.o \
+  $(B)/$(BASEGAME)/cgame/bg_misc.o \
   $(B)/$(BASEGAME)/cgame/bg_pmove.o \
   $(B)/$(BASEGAME)/cgame/bg_physics.o \
   $(B)/$(BASEGAME)/cgame/bg_slidemove.o \
