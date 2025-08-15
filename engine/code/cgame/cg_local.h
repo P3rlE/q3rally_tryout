@@ -2062,9 +2062,7 @@ void		trap_GetCurrentSnapshotNumber( int *snapshotNumber, int *serverTime );
 // old that it has fallen out of the client system queue
 qboolean	trap_GetSnapshot( int snapshotNumber, snapshot_t *snapshot );
 
-static inline void trap_GetConfigstring( int num, char *buffer, int bufferSize ) {
-	syscall( CG_GET_CONFIGSTRING, num, buffer, bufferSize );
-}
+void		trap_GetConfigstring( int num, char *buffer, int bufferSize );
 
 // retrieve a text command from the server stream
 // the current snapshot will hold the number of the most recent command
