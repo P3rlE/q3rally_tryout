@@ -462,13 +462,8 @@ qboolean CG_DrawHUD( void ) {
 	case GT_TEAM:
 	case GT_CTF:
     case GT_DOMINATION:
-	case GT_KOTH:
-		{
-			char s[1024];
-			trap_GetConfigstring( CS_KOTH_STATUS, s, sizeof(s) );
-			CG_DrawStringExt( 320, 440, s, colorWhite, qfalse, qtrue, BIGCHAR_WIDTH, BIGCHAR_HEIGHT, 0 );
-			CG_DrawHUD_Scores(264, 130);
-		}
+		CG_DrawHUD_Scores(264, 130);
+
 		break;
 
 	case GT_DERBY:

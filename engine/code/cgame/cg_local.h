@@ -2051,7 +2051,6 @@ void		trap_GetGlconfig( glconfig_t *glconfig );
 // the gamestate should be grabbed at startup, and whenever a
 // configstring changes
 void		trap_GetGameState( gameState_t *gamestate );
-void		trap_GetConfigstring( int num, char *buffer, int bufferSize );
 
 // cgame will poll each frame to see if a newer snapshot has arrived
 // that it is interested in.  The time is returned separately so that
@@ -2061,8 +2060,6 @@ void		trap_GetCurrentSnapshotNumber( int *snapshotNumber, int *serverTime );
 // a snapshot get can fail if the snapshot (or the entties it holds) is so
 // old that it has fallen out of the client system queue
 qboolean	trap_GetSnapshot( int snapshotNumber, snapshot_t *snapshot );
-
-void		trap_GetConfigstring( int num, char *buffer, int bufferSize );
 
 // retrieve a text command from the server stream
 // the current snapshot will hold the number of the most recent command

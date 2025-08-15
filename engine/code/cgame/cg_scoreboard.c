@@ -965,7 +965,6 @@ void CG_DrawScoreboardGameModeInfo(void) {
         case GT_TEAM_RACING_DM:   gametypeName = "Team Racing DM"; break;
         case GT_CTF:              gametypeName = "Capture The Flag"; break;
         case GT_DOMINATION:       gametypeName = "Domination"; break;
-        case GT_KOTH:             gametypeName = "King of the Hill"; break;
         default:                  gametypeName = "Unknown"; break;
     }
     
