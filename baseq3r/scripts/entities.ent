@@ -40,18 +40,6 @@ Compiler-only entity that specifies a the origin of a skybox (a wholly contained
 
 <!--
 =============================================================================
--->
-
-<group name="target_hill" color="0 .7 .7">
-King of the Hill trigger volume. In King of the Hill mode, players will get points for staying inside this volume. There should only be one of these per map.
--------- KEYS --------
-(none)
--------- NOTES --------
-This entity only works in the King of the Hill game mode.
-</group>
-
-<!--
-=============================================================================
 
 AMMO_* ENTITIES
 

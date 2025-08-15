@@ -47,7 +47,6 @@ vmCvar_t	g_laplimit;
 // END
 vmCvar_t	g_timelimit;
 vmCvar_t	g_capturelimit;
-vmCvar_t	g_koth_pointlimit;
 vmCvar_t	g_friendlyFire;
 vmCvar_t	g_password;
 vmCvar_t	g_needpass;
@@ -157,7 +156,6 @@ static cvarTable_t		gameCvarTable[] = {
 // END
 	{ &g_timelimit, "timelimit", "0", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
 	{ &g_capturelimit, "capturelimit", "8", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
-	{ &g_koth_pointlimit, "koth_pointlimit", "200", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
 
 	{ &g_synchronousClients, "g_synchronousClients", "0", CVAR_SYSTEMINFO, 0, qfalse  },
 
@@ -1854,49 +1852,6 @@ void CheckExitRules( void ) {
 			trap_SendServerCommand( -1, "print \"Blue hit the capturelimit.\n\"" );
 			LogExit( "Capturelimit hit." );
 			return;
-		}
-	}
-
-	if ( g_gametype.integer == GT_KOTH && g_koth_pointlimit.integer ) {
-		if ( g_gametype.integer >= GT_TEAM ) {
-			if ( level.teamScores[TEAM_RED] >= g_koth_pointlimit.integer ) {
-				trap_SendServerCommand( -1, "print \"Red hit the pointlimit.\\n\"" );
-				LogExit( "Pointlimit hit." );
-				return;
-			}
-
-			if ( level.teamScores[TEAM_BLUE] >= g_koth_pointlimit.integer ) {
-				trap_SendServerCommand( -1, "print \"Blue hit the pointlimit.\\n\"" );
-				LogExit( "Pointlimit hit." );
-				return;
-			}
-			if ( level.teamScores[TEAM_GREEN] >= g_koth_pointlimit.integer ) {
-				trap_SendServerCommand( -1, "print \"Green hit the pointlimit.\\n\"" );
-				LogExit( "Pointlimit hit." );
-				return;
-			}
-			if ( level.teamScores[TEAM_YELLOW] >= g_koth_pointlimit.integer ) {
-				trap_SendServerCommand( -1, "print \"Yellow hit the pointlimit.\\n\"" );
-				LogExit( "Pointlimit hit." );
-				return;
-			}
-		} else {
-			for ( i=0 ; i< g_maxclients.integer ; i++ ) {
-				cl = level.clients + i;
-				if ( cl->pers.connected != CON_CONNECTED ) {
-					continue;
-				}
-				if ( cl->sess.sessionTeam != TEAM_FREE ) {
-					continue;
-				}
-
-				if ( cl->ps.persistant[PERS_SCORE] >= g_koth_pointlimit.integer ) {
-					LogExit( "Pointlimit hit." );
-					trap_SendServerCommand( -1, va("print \"%s" S_COLOR_WHITE " hit the pointlimit.\\n\"",
-						cl->pers.netname ) );
-					return;
-				}
-			}
 		}
 	}
 }
