@@ -1036,8 +1036,8 @@ static void ServerOptions_Start( void ) {
 		
     case GT_DOMINATION:
 		trap_Cvar_SetValue( "g_dominationSpawnStyle", Com_Clamp( 0, 1, dominationSpawnStyle ) );
-		trap_Cvar_SetValue( "g_dominationScoreInterval", Com_Clamp( 0, 99999, dominationScoreInterval ) );
-		trap_Cvar_SetValue( "g_dominationCaptureDelay", Com_Clamp( 0, 9999, dominationCaptureDelay ) );
+		trap_Cvar_SetValue( "g_dominationScoreInterval", Com_Clamp( 0, 99999, dominationScoreInterval * 1000 ) );
+		trap_Cvar_SetValue( "g_dominationCaptureDelay", Com_Clamp( 0, 9999, dominationCaptureDelay * 1000 ) );
 		trap_Cvar_SetValue( "cg_sigilLocator", Com_Clamp( 0, 1, sigillocator) );
 		trap_Cvar_SetValue( "ui_dom_capturelimit", flaglimit );
 		trap_Cvar_SetValue( "ui_dom_timelimit", timelimit );
@@ -1483,8 +1483,8 @@ static void ServerOptions_SetMenuItems( void ) {
 		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_dom_timelimit" ) ) );
 		s_serveroptions.friendlyfire.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_dom_friendly" ) );
 		s_serveroptions.sigillocator.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "cg_sigilLocator" ) );
-		Com_sprintf( s_serveroptions.dominationScoreInterval.field.buffer, 6, "%i", (int)Com_Clamp( 0, 99999, trap_Cvar_VariableValue( "g_dominationScoreInterval" ) ) );
-		Com_sprintf( s_serveroptions.dominationCaptureDelay.field.buffer, 5, "%i", (int)Com_Clamp( 0, 9999, trap_Cvar_VariableValue( "g_dominationCaptureDelay" ) ) );
+		Com_sprintf( s_serveroptions.dominationScoreInterval.field.buffer, 6, "%i", (int)Com_Clamp( 0, 99999, trap_Cvar_VariableValue( "g_dominationScoreInterval" ) ) / 1000 );
+		Com_sprintf( s_serveroptions.dominationCaptureDelay.field.buffer, 5, "%i", (int)Com_Clamp( 0, 9999, trap_Cvar_VariableValue( "g_dominationCaptureDelay" ) ) / 1000 );
 		break;
 
 	}
@@ -1726,7 +1726,7 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 if (s_serveroptions.gametype == GT_DOMINATION) {
     y += BIGCHAR_HEIGHT+2;
     s_serveroptions.dominationScoreInterval.generic.type       = MTYPE_FIELD;
-    s_serveroptions.dominationScoreInterval.generic.name       = "Score Interval:";
+    s_serveroptions.dominationScoreInterval.generic.name       = "Score Interval (s):";
     s_serveroptions.dominationScoreInterval.generic.flags      = QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
     s_serveroptions.dominationScoreInterval.generic.x	         = OPTIONS_X;
     s_serveroptions.dominationScoreInterval.generic.y	         = y;
@@ -1735,7 +1735,7 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 
     y += BIGCHAR_HEIGHT+2;
     s_serveroptions.dominationCaptureDelay.generic.type       = MTYPE_FIELD;
-    s_serveroptions.dominationCaptureDelay.generic.name       = "Capture Delay:";
+    s_serveroptions.dominationCaptureDelay.generic.name       = "Capture Delay (s):";
     s_serveroptions.dominationCaptureDelay.generic.flags      = QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
     s_serveroptions.dominationCaptureDelay.generic.x	         = OPTIONS_X;
     s_serveroptions.dominationCaptureDelay.generic.y	         = y;
