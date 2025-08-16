@@ -1298,9 +1298,6 @@ typedef struct playerState_s {
 
 	// STONELANCE - 16 bits over the net
 	int			eFlags;			// copied to entityState_t->eFlags
-
-	int			rammedEntityNum;
-	float		rammingImpactSpeed;
 // END
 
 	int			eventSequence;	// pmove generated events
@@ -1345,6 +1342,10 @@ typedef struct playerState_s {
 	int			loopSound;
 	// STONELANCE - 10 bits over the net
 	int			jumppad_ent;	// jumppad entity hit this frame
+
+	// Demolition Derby ramming damage
+	int			rammedEntityNum;
+	float		rammingImpactSpeed;
 
 	// not communicated over the net at all
 	int			ping;			// server to game info for scoreboard

@@ -689,59 +689,9 @@ static void CG_DrawStatusBar( void ) {
 			if ( !cg_draw3dIcons.integer && cg_drawIcons.integer ) {
 				qhandle_t	icon;
 
-				if (cg.predictedPlayerState.weapon > WP_NONE) {
-					icon = cg_weapons[ cg.predictedPlayerState.weapon ].ammoIcon;
-					if ( icon ) {
-						CG_DrawPic( CHAR_WIDTH*3 + TEXT_ICON_SPACE, 480 - iconSize, iconSize, iconSize, icon );
-					}
-				}
-			}
-		}
-
-		// draw green
-		if (cgs.gametype == GT_CTF4) {
-			color[0] = 0.0f;
-			color[1] = 1.0f;
-			color[2] = 0.0f;
-			color[3] = 0.33f;
-			s = va( "%2i", s3 );
-			w = CG_DrawStrlen( s ) * TINYCHAR_WIDTH + 8;
-			x -= w;
-			CG_FillRect( x+1, y+1, w-2, 16, color );
-			if ( cg.snap->ps.persistant[PERS_TEAM] == TEAM_GREEN ) {
-				CG_DrawPic( x+1, y+1, w-2, 16, cgs.media.selectShader );
-			}
-			CG_DrawTinyDigitalString( x + 4, y+4, s, 1.0F);
-
-			if( cgs.greenflag >= 0 && cgs.greenflag <= 2 ) {
-				item = BG_FindItemForPowerup( PW_GREENFLAG );
-				if (item) {
-					y1 = y + TINYCHAR_HEIGHT + 8;
-					CG_DrawPic( x+1, y1+1, w-2, 16, cgs.media.greenFlagShader[cgs.greenflag] );
-				}
-			}
-		}
-
-		// draw yellow
-		if (cgs.gametype == GT_CTF4) {
-			color[0] = 1.0f;
-			color[1] = 1.0f;
-			color[2] = 0.0f;
-			color[3] = 0.33f;
-			s = va( "%2i", s4 );
-			w = CG_DrawStrlen( s ) * TINYCHAR_WIDTH + 8;
-			x -= w;
-			CG_FillRect( x+1, y+1, w-2, 16, color );
-			if ( cg.snap->ps.persistant[PERS_TEAM] == TEAM_YELLOW ) {
-				CG_DrawPic( x+1, y+1, w-2, 16, cgs.media.selectShader );
-			}
-			CG_DrawTinyDigitalString( x + 4, y+4, s, 1.0F);
-
-			if( cgs.yellowflag >= 0 && cgs.yellowflag <= 2 ) {
-				item = BG_FindItemForPowerup( PW_YELLOWFLAG );
-				if (item) {
-					y1 = y + TINYCHAR_HEIGHT + 8;
-					CG_DrawPic( x+1, y1+1, w-2, 16, cgs.media.yellowFlagShader[cgs.yellowflag] );
+				icon = cg_weapons[ cg.predictedPlayerState.weapon ].ammoIcon;
+				if ( icon ) {
+					CG_DrawPic( CHAR_WIDTH*3 + TEXT_ICON_SPACE, 480 - iconSize, iconSize, iconSize, icon );
 				}
 			}
 		}
@@ -1001,11 +951,9 @@ static void CG_DrawRallyStatusBar( void ) {
 			if ( !cg_draw3dIcons.integer && cg_drawIcons.integer ) {
 				qhandle_t	icon;
 
-				if (weapon > WP_NONE) {
-					icon = cg_weapons[ weapon ].weaponIcon;
-					if ( icon ) {
-						CG_DrawPic( 6, 480 - 67, 26, 26, icon );
-					}
+				icon = cg_weapons[ weapon ].weaponIcon;
+				if ( icon ) {
+					CG_DrawPic( 6, 480 - 67, 26, 26, icon );
 				}
 			}
 		}
@@ -1589,7 +1537,7 @@ static float CG_DrawTeamOverlay( float y, qboolean right, qboolean upper ) {
 			// draw weapon icon
 			xx += TINYCHAR_WIDTH * 3;
 
-			if ( ci->curWeapon > WP_NONE && cg_weapons[ci->curWeapon].weaponIcon ) {
+			if ( cg_weapons[ci->curWeapon].weaponIcon ) {
 				CG_DrawPic( xx, y, TINYCHAR_WIDTH, TINYCHAR_HEIGHT, 
 					cg_weapons[ci->curWeapon].weaponIcon );
 			} else {
@@ -3324,6 +3272,3 @@ void CG_DrawActive( stereoFrame_t stereoView ) {
 	// draw status bar and other floating elements
  	CG_Draw2D(stereoView);
 }
-
-
-

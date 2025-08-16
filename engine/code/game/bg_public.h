@@ -278,10 +278,6 @@ typedef struct {
         int                     controlMode;
         qboolean        manualShift;
         collisionDamage_t       damage;
-        int                     otherDamage;
-        int                     gametype;
-        float                   derbyDamageFactor;
-        float                   derbyRammerDamageRatio;
 
         qboolean        (*frictionFunc)( const carPoint_t *point, float *sCOF, float *kCOF );
 
