@@ -2154,6 +2154,7 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 	{
 		float	impulseDamage;
 
+		G_Printf("Car-to-car collision detected between %d and %d\n", pm->ps->clientNum, hitEnt);
 //		G_LogPrintf( "minTrace %f\n", minTrace );
 //		G_LogPrintf("count = %d\n", count);
 //		G_LogPrintf("pml.physicsSplit = %d\n", pml.physicsSplit);
@@ -2171,6 +2172,8 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 		VectorNormalize(normal);
 
 		impulseDamage = PM_ApplyBodyBodyCollision(&car->tBody, car->tPoints, &pm->cars[hitEnt]->sBody, pm->cars[hitEnt]->sPoints, hitOrigin, normal, 0.25f);
+
+		G_Printf("Collision impulse: %f\n", impulseDamage);
 
 		// set normal on this car
 		for (i = 0; i < 3; i++){
