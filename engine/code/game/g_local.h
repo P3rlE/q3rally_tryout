@@ -991,6 +991,8 @@ extern	vmCvar_t	g_trackReversed;
 extern	vmCvar_t	g_trackLength;
 extern	vmCvar_t	g_developer;
 extern	vmCvar_t	g_damageScale;
+extern	vmCvar_t	g_derbyDamageFactor;
+extern	vmCvar_t	g_derbyRammerDamageRatio;
 
 // car variables
 extern	vmCvar_t	car_spring;
