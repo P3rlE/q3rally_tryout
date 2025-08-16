@@ -1946,20 +1946,6 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 			numTraces++;
 			pm->trace ( &trace, start, mins, maxs, dest, pm->ps->clientNum, pm->tracemask);
 
-			if ( pm->gametype == GT_DERBY && trace.fraction < 1.0f && trace.entityNum < ENTITYNUM_MAX_NORMAL ) {
-				// if we already have a ramming event, only overwrite it if this one is faster
-				if (pm->ps->rammedEntityNum == ENTITYNUM_NONE || VectorLength(sPoint->v) > pm->ps->rammingImpactSpeed) {
-					pm->ps->rammedEntityNum = trace.entityNum;
-					pm->ps->rammingImpactSpeed = VectorLength(sPoint->v);
-				}
-			}
-
-#ifdef GAME
-			if (trace.fraction < 1.0f) {
-				G_Printf("Collision trace: point %d, entity %d, fraction %f\n", i, trace.entityNum, trace.fraction);
-			}
-#endif
-
 			if ( trace.startsolid && !bumpcount ) {
 				VectorCopy( sPoint->r, start );
 				VectorSubtract( dest, start, vel );
@@ -2168,7 +2154,6 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 	{
 		float	impulseDamage;
 
-		G_Printf("Car-to-car collision detected between %d and %d\n", pm->ps->clientNum, hitEnt);
 //		G_LogPrintf( "minTrace %f\n", minTrace );
 //		G_LogPrintf("count = %d\n", count);
 //		G_LogPrintf("pml.physicsSplit = %d\n", pml.physicsSplit);
@@ -2185,9 +2170,39 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 		VectorSubtract(hitOrigin, pm->cars[hitEnt]->sBody.r, normal);
 		VectorNormalize(normal);
 
-		impulseDamage = PM_ApplyBodyBodyCollision(&car->tBody, car->tPoints, &pm->cars[hitEnt]->sBody, pm->cars[hitEnt]->sPoints, hitOrigin, normal, 0.25f);
+		// Q3Rally - Demolition Derby Ramming Damage
+		if ( pm->gametype == GT_DERBY || pm->gametype == GT_LCS )
+		{
+			vec3_t v1, v2, arm1, arm2, cross, v_rel;
+			float impactSpeed;
+			carBody_t *rammerBody = &car->tBody;
+			carBody_t *rammedBody = &pm->cars[hitEnt]->sBody;
 
-		G_Printf("Collision impulse: %f\n", impulseDamage);
+			// Velocity of collision point on rammer
+			VectorSubtract(hitOrigin, rammerBody->CoM, arm1);
+			CrossProduct(rammerBody->w, arm1, cross);
+			VectorAdd(rammerBody->v, cross, v1);
+
+			// Velocity of collision point on rammed
+			VectorSubtract(hitOrigin, rammedBody->CoM, arm2);
+			CrossProduct(rammedBody->w, arm2, cross);
+			VectorAdd(rammedBody->v, cross, v2);
+
+			// Relative velocity
+			VectorSubtract(v1, v2, v_rel);
+
+			// Impact speed along the collision normal
+			impactSpeed = -DotProduct(v_rel, normal);
+
+			if ( impactSpeed > 0 ) {
+				// Set the fields in the playerState of the rammer.
+				// The server will read this and apply damage in g_client.c
+				pm->ps->rammedEntityNum = hitEnt;
+				pm->ps->rammingImpactSpeed = impactSpeed;
+			}
+		}
+
+		impulseDamage = PM_ApplyBodyBodyCollision(&car->tBody, car->tPoints, &pm->cars[hitEnt]->sBody, pm->cars[hitEnt]->sPoints, hitOrigin, normal, 0.25f);
 
 		// set normal on this car
 		for (i = 0; i < 3; i++){
@@ -2198,37 +2213,12 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 		}
 
 		// damage stuff
-		if (impulseDamage > 20000.0f){
-			if (pm->gametype == GT_DERBY) {
-				float totalDamage;
-				float v1_n, v2_n;
 
-				totalDamage = (impulseDamage - 20000.0f) / 5000.0f * pm->derbyDamageFactor;
-
-				// Determine who is the rammer
-				v1_n = DotProduct(car->sBody.v, normal);
-				v2_n = DotProduct(pm->cars[hitEnt]->sBody.v, normal);
-
-				// The car with the higher velocity component against the normal is the rammer
-				if ( -v1_n > v2_n ) { // pm->car is the rammer
-					pm->damage.damage = totalDamage * pm->derbyRammerDamageRatio;
-					pm->otherDamage = totalDamage * (1.0 - pm->derbyRammerDamageRatio);
-				} else { // other is the rammer
-					pm->damage.damage = totalDamage * (1.0 - pm->derbyRammerDamageRatio);
-					pm->otherDamage = totalDamage * pm->derbyRammerDamageRatio;
-				}
-
-			} else {
-				pm->damage.damage = (impulseDamage - 20000.0f) / 5000.0f;
-				pm->otherDamage = pm->damage.damage;
-			}
-
-			pm->damage.otherEnt = hitEnt;
-			VectorCopy( hitOrigin, pm->damage.origin );
-			VectorCopy( normal, pm->damage.dir );
-			pm->damage.dflags = 0;
-			pm->damage.mod = MOD_CAR_COLLISION;
-		}
+		VectorCopy(hitOrigin, pm->damage.origin);
+		VectorCopy(normal, pm->damage.dir);
+		pm->damage.dflags = DAMAGE_NO_KNOCKBACK;
+		pm->damage.mod = MOD_CAR_COLLISION;
+		pm->damage.otherEnt = trace.entityNum;
 
 		PM_CopyTargetToSource(&car->tBody, &car->sBody, tPoints, sPoints);
 

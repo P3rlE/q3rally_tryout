@@ -2789,9 +2789,6 @@ void Pmove (pmove_t *pmove) {
 		pmove->ps->commandTime = finalTime - 1000;
 	}
 
-	pmove->ps->rammedEntityNum = ENTITYNUM_NONE;
-	pmove->ps->rammingImpactSpeed = 0;
-
 	pmove->ps->pmove_framecount = (pmove->ps->pmove_framecount+1) & ((1<<PS_PMOVEFRAMECOUNTBITS)-1);
 
 // STONELANCE
