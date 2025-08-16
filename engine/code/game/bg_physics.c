@@ -1945,6 +1945,11 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 			// see if we can make it there
 			numTraces++;
 			pm->trace ( &trace, start, mins, maxs, dest, pm->ps->clientNum, pm->tracemask);
+#ifdef GAME
+			if (trace.fraction < 1.0f) {
+				G_Printf("Collision trace: point %d, entity %d, fraction %f\n", i, trace.entityNum, trace.fraction);
+			}
+#endif
 
 			if ( trace.startsolid && !bumpcount ) {
 				VectorCopy( sPoint->r, start );
