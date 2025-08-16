@@ -1536,6 +1536,12 @@ void ClientSpawn(gentity_t *ent) {
 
 	client->ps.ammo[WP_GAUNTLET] = -1;
 
+	if ( g_gametype.integer == GT_DERBY ) {
+		client->ps.stats[STAT_WEAPONS] = 0;
+		client->ps.ammo[WP_GAUNTLET] = 0;
+		client->ps.ammo[WP_MACHINEGUN] = 0;
+	}
+
 	// health will count down towards max_health
 	ent->health = client->ps.stats[STAT_HEALTH] = client->ps.stats[STAT_MAX_HEALTH] + 25;
 
