@@ -1945,6 +1945,15 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 			// see if we can make it there
 			numTraces++;
 			pm->trace ( &trace, start, mins, maxs, dest, pm->ps->clientNum, pm->tracemask);
+
+			if ( pm->gametype == GT_DERBY && trace.fraction < 1.0f && trace.entityNum < ENTITYNUM_MAX_NORMAL ) {
+				// if we already have a ramming event, only overwrite it if this one is faster
+				if (pm->ps->rammedEntityNum == ENTITYNUM_NONE || VectorLength(sPoint->v) > pm->ps->rammingImpactSpeed) {
+					pm->ps->rammedEntityNum = trace.entityNum;
+					pm->ps->rammingImpactSpeed = VectorLength(sPoint->v);
+				}
+			}
+
 #ifdef GAME
 			if (trace.fraction < 1.0f) {
 				G_Printf("Collision trace: point %d, entity %d, fraction %f\n", i, trace.entityNum, trace.fraction);

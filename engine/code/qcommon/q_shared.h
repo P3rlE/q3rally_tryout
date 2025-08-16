@@ -1298,6 +1298,9 @@ typedef struct playerState_s {
 
 	// STONELANCE - 16 bits over the net
 	int			eFlags;			// copied to entityState_t->eFlags
+
+	int			rammedEntityNum;
+	float		rammingImpactSpeed;
 // END
 
 	int			eventSequence;	// pmove generated events
