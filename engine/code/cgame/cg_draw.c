@@ -689,9 +689,11 @@ static void CG_DrawStatusBar( void ) {
 			if ( !cg_draw3dIcons.integer && cg_drawIcons.integer ) {
 				qhandle_t	icon;
 
-				icon = cg_weapons[ cg.predictedPlayerState.weapon ].ammoIcon;
-				if ( icon ) {
-					CG_DrawPic( CHAR_WIDTH*3 + TEXT_ICON_SPACE, 480 - iconSize, iconSize, iconSize, icon );
+				if (cg.predictedPlayerState.weapon > WP_NONE) {
+					icon = cg_weapons[ cg.predictedPlayerState.weapon ].ammoIcon;
+					if ( icon ) {
+						CG_DrawPic( CHAR_WIDTH*3 + TEXT_ICON_SPACE, 480 - iconSize, iconSize, iconSize, icon );
+					}
 				}
 			}
 		}
@@ -999,9 +1001,11 @@ static void CG_DrawRallyStatusBar( void ) {
 			if ( !cg_draw3dIcons.integer && cg_drawIcons.integer ) {
 				qhandle_t	icon;
 
-				icon = cg_weapons[ weapon ].weaponIcon;
-				if ( icon ) {
-					CG_DrawPic( 6, 480 - 67, 26, 26, icon );
+				if (weapon > WP_NONE) {
+					icon = cg_weapons[ weapon ].weaponIcon;
+					if ( icon ) {
+						CG_DrawPic( 6, 480 - 67, 26, 26, icon );
+					}
 				}
 			}
 		}
@@ -1585,7 +1589,7 @@ static float CG_DrawTeamOverlay( float y, qboolean right, qboolean upper ) {
 			// draw weapon icon
 			xx += TINYCHAR_WIDTH * 3;
 
-			if ( cg_weapons[ci->curWeapon].weaponIcon ) {
+			if ( ci->curWeapon > WP_NONE && cg_weapons[ci->curWeapon].weaponIcon ) {
 				CG_DrawPic( xx, y, TINYCHAR_WIDTH, TINYCHAR_HEIGHT, 
 					cg_weapons[ci->curWeapon].weaponIcon );
 			} else {
