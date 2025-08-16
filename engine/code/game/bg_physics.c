@@ -2170,38 +2170,6 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 		VectorSubtract(hitOrigin, pm->cars[hitEnt]->sBody.r, normal);
 		VectorNormalize(normal);
 
-		// Q3Rally - Demolition Derby Ramming Damage
-		if ( pm->gametype == GT_DERBY || pm->gametype == GT_LCS )
-		{
-			vec3_t v1, v2, arm1, arm2, cross, v_rel;
-			float impactSpeed;
-			carBody_t *rammerBody = &car->tBody;
-			carBody_t *rammedBody = &pm->cars[hitEnt]->sBody;
-
-			// Velocity of collision point on rammer
-			VectorSubtract(hitOrigin, rammerBody->CoM, arm1);
-			CrossProduct(rammerBody->w, arm1, cross);
-			VectorAdd(rammerBody->v, cross, v1);
-
-			// Velocity of collision point on rammed
-			VectorSubtract(hitOrigin, rammedBody->CoM, arm2);
-			CrossProduct(rammedBody->w, arm2, cross);
-			VectorAdd(rammedBody->v, cross, v2);
-
-			// Relative velocity
-			VectorSubtract(v1, v2, v_rel);
-
-			// Impact speed along the collision normal
-			impactSpeed = -DotProduct(v_rel, normal);
-
-			if ( impactSpeed > 0 ) {
-				// Set the fields in the playerState of the rammer.
-				// The server will read this and apply damage in g_client.c
-				pm->ps->rammedEntityNum = hitEnt;
-				pm->ps->rammingImpactSpeed = impactSpeed;
-			}
-		}
-
 		impulseDamage = PM_ApplyBodyBodyCollision(&car->tBody, car->tPoints, &pm->cars[hitEnt]->sBody, pm->cars[hitEnt]->sPoints, hitOrigin, normal, 0.25f);
 
 		// set normal on this car

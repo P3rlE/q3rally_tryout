@@ -70,7 +70,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define BASETA				"missionpack"
 
 #ifndef PRODUCT_VERSION
-#define PRODUCT_VERSION "v0.5c (r667)"
+#define PRODUCT_VERSION "v0.5c (r671)"
 //#define PRODUCT_VERSION "v0.5"
 #endif
 
@@ -1342,10 +1342,6 @@ typedef struct playerState_s {
 	int			loopSound;
 	// STONELANCE - 10 bits over the net
 	int			jumppad_ent;	// jumppad entity hit this frame
-
-	// Demolition Derby ramming damage
-	int			rammedEntityNum;
-	float		rammingImpactSpeed;
 
 	// not communicated over the net at all
 	int			ping;			// server to game info for scoreboard

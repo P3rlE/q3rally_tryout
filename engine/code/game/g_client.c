@@ -1484,9 +1484,6 @@ void ClientSpawn(gentity_t *ent) {
 	client->ps.persistant[PERS_SPAWN_COUNT]++;
 	client->ps.persistant[PERS_TEAM] = client->sess.sessionTeam;
 
-	client->ps.rammedEntityNum = ENTITYNUM_NONE;
-	client->ps.rammingImpactSpeed = 0;
-
 	client->airOutTime = level.time + 12000;
 
 	trap_GetUserinfo( index, userinfo, sizeof(userinfo) );
