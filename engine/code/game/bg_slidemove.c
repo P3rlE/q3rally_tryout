@@ -241,6 +241,67 @@ qboolean	PM_SlideMove( qboolean gravity ) {
 
 /*
 ==================
+PM_CarCollision
+==================
+*/
+void PM_CarCollision( pmove_t *pm, car_t *other, trace_t *trace ) {
+	int i, otherPoint;
+	float j;
+	vec3_t vector; // used for temporary vector storage
+
+	// find closest point on other car
+	VectorSubtract(trace->endpos, other->body.r, vector);
+	otherPoint = PM_BodyFindClosestPoint(&other->body, vector);
+
+	// find closest point on this car
+	VectorSubtract(trace->endpos, pm->car->body.r, vector);
+	i = PM_BodyFindClosestPoint(&pm->car->body, vector);
+
+	if ( i != -1 && otherPoint != -1 ){
+
+		j = PM_CalcCollisionImpulse( &pm->car->body, &pm->car->points[i], trace, qfalse );
+
+		// apply impulse to both cars
+		PM_ApplyCollisionImpulse( &pm->car->body, &pm->car->points[i], trace, j );
+		PM_ApplyCollisionImpulse( &other->body, &other->points[otherPoint], trace, -j );
+
+		if (j > 20000.0f){
+			if (pm->gametype == GT_DERBY) {
+				float totalDamage;
+				float v1_n, v2_n;
+
+				totalDamage = (j - 20000.0f) / 5000.0f * pm->derbyDamageFactor;
+
+				// Determine who is the rammer
+				v1_n = DotProduct(pm->car->body.v, trace->plane.normal);
+				v2_n = DotProduct(other->body.v, trace->plane.normal);
+
+				// The car with the higher velocity component against the normal is the rammer
+				// Note: normal points away from 'other', so a negative v1_n means pm->car is moving towards other.
+				if ( -v1_n > v2_n ) { // pm->car is the rammer
+					pm->damage.damage = totalDamage * pm->derbyRammerDamageRatio;
+					pm->otherDamage = totalDamage * (1.0 - pm->derbyRammerDamageRatio);
+				} else { // other is the rammer
+					pm->damage.damage = totalDamage * (1.0 - pm->derbyRammerDamageRatio);
+					pm->otherDamage = totalDamage * pm->derbyRammerDamageRatio;
+				}
+
+			} else {
+				pm->damage.damage = (j - 20000.0f) / 5000.0f;
+				pm->otherDamage = pm->damage.damage;
+			}
+
+			pm->damage.otherEnt = other->body.entityNum;
+			VectorCopy( trace->endpos, pm->damage.origin );
+			VectorCopy( trace->plane.normal, pm->damage.dir );
+			pm->damage.dflags = 0;
+			pm->damage.mod = MOD_CAR_COLLISION;
+		}
+	}
+}
+
+/*
+==================
 PM_StepSlideMove
 
 ==================

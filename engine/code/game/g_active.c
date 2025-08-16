@@ -1326,6 +1326,11 @@ void ClientThink_real( gentity_t *ent ) {
 	pm.car_air_cof = car_air_cof.value;
 	pm.car_air_frac_to_df = car_air_frac_to_df.value;
 	pm.car_friction_scale = car_friction_scale.value;
+
+	pm.gametype = g_gametype.integer;
+	pm.derbyDamageFactor = g_derbyDamageFactor.value;
+	pm.derbyRammerDamageRatio = g_derbyRammerDamageRatio.value;
+	pm.otherDamage = 0;
 // END
 
 	VectorCopy( client->ps.origin, client->oldOrigin );
@@ -1521,20 +1526,24 @@ void ClientThink_real( gentity_t *ent ) {
 	ClientEvents( ent, oldEventSequence );
 
 // STONELANCE - do damage from pmove
-	if (pm.damage.damage)
+	if (pm.damage.damage || pm.otherDamage)
 	{
-		if( !(pm.damage.dflags & DAMAGE_NO_PROTECTION) )
+		if( !(pm.damage.dflags & DAMAGE_NO_PROTECTION) ) {
 			pm.damage.damage *= g_damageScale.value;
+			pm.otherDamage *= g_damageScale.value;
+		}
 
-		if( pm.damage.damage > 0 )
-		{
-			if (pm.damage.otherEnt >= 0){
+		if (pm.damage.otherEnt >= 0){
+			if (pm.damage.damage > 0) {
 				G_Damage(ent, NULL, &g_entities[pm.damage.otherEnt], pm.damage.dir, pm.damage.origin, pm.damage.damage, pm.damage.dflags, pm.damage.mod);
-				VectorInverse(pm.damage.dir);
-				G_Damage(&g_entities[pm.damage.otherEnt], NULL, ent, pm.damage.dir, pm.damage.origin, pm.damage.damage, pm.damage.dflags, pm.damage.mod);
 			}
-			else
-				G_Damage(ent, NULL, NULL, pm.damage.dir, pm.damage.origin, pm.damage.damage, pm.damage.dflags, pm.damage.mod);
+			if (pm.otherDamage > 0) {
+				VectorInverse(pm.damage.dir);
+				G_Damage(&g_entities[pm.damage.otherEnt], NULL, ent, pm.damage.dir, pm.damage.origin, pm.otherDamage, pm.damage.dflags, pm.damage.mod);
+			}
+		}
+		else if (pm.damage.damage > 0) {
+			G_Damage(ent, NULL, NULL, pm.damage.dir, pm.damage.origin, pm.damage.damage, pm.damage.dflags, pm.damage.mod);
 		}
 	}
 // END
