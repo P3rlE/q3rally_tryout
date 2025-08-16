@@ -503,16 +503,16 @@ static qboolean CG_SnowParticleGenerate( int type, cg_atmosphericParticle_t *par
 
 // Q3Rally Code Start
 //	if drawing snow start drawing it a little lower because it falls too slowly
-	if (tr.endpos[2] - origz > START_SNOW_HEIGHT){
-		VectorCopy(tr.endpos, testpoint);
-		testpoint[2] -= 10;
-		testend[2] = origz + (START_SNOW_HEIGHT * (random() * 0.8f + 0.2f));
-
-		CG_Trace( &tr, testpoint, NULL, NULL, testend, ENTITYNUM_NONE, MASK_SOLID|MASK_WATER );
-		if ( tr.fraction != 1 ){
-			return qfalse;
-		}
-	}
+//	if (tr.endpos[2] - origz > START_SNOW_HEIGHT){
+//		VectorCopy(tr.endpos, testpoint);
+//		testpoint[2] -= 10;
+//		testend[2] = origz + (START_SNOW_HEIGHT * (random() * 0.8f + 0.2f));
+//
+//		CG_Trace( &tr, testpoint, NULL, NULL, testend, ENTITYNUM_NONE, MASK_SOLID|MASK_WATER );
+//		if ( tr.fraction != 1 ){
+//			return qfalse;
+//		}
+//	}
 // END
 
 	particle->active = qtrue;
