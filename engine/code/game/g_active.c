@@ -1326,9 +1326,6 @@ void ClientThink_real( gentity_t *ent ) {
 	pm.car_air_cof = car_air_cof.value;
 	pm.car_air_frac_to_df = car_air_frac_to_df.value;
 	pm.car_friction_scale = car_friction_scale.value;
-
-	pm.pm_tireStiffLong = pm_tireStiffLong.value;
-	pm.pm_tireStiffLat = pm_tireStiffLat.value;
 // END
 
 	VectorCopy( client->ps.origin, client->oldOrigin );

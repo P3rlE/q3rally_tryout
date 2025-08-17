@@ -130,9 +130,6 @@ vmCvar_t	car_body_elasticity;
 vmCvar_t	car_air_cof;
 vmCvar_t	car_air_frac_to_df;
 vmCvar_t	car_friction_scale;
-
-vmCvar_t	pm_tireStiffLong;
-vmCvar_t	pm_tireStiffLat;
 // END
 
 // bk001129 - made static to avoid aliasing
@@ -259,9 +256,6 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &car_air_cof, "car_air_cof", "0.31", 0, 0, qfalse },
 	{ &car_air_frac_to_df, "car_air_frac_to_df", "0.5", 0, 0, qfalse },
 	{ &car_friction_scale, "car_friction_scale", "1.1", 0, 0, qfalse },
-
-	{ &pm_tireStiffLong, "pm_tireStiffLong", "600000", 0, 0, qfalse },
-	{ &pm_tireStiffLat, "pm_tireStiffLat", "1000000", 0, 0, qfalse },
 
 	{ &g_damageScale, "g_damageScale", "0.3", CVAR_ARCHIVE, 0, qfalse },
 // END
