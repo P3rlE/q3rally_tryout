@@ -421,10 +421,11 @@ void PM_AddRoadForces( car_t *car, carBody_t *body, carPoint_t *points, float se
         v_forward = DotProduct(wheel->v, forward);
         v_wheel   = wheel->w * WHEEL_RADIUS;
 
-        slip = 0.0f;
-        if (fabs(v_forward) > 1.0f) {
-            slip = (v_wheel - v_forward) / fabs(v_forward);
+        float denominator = fabs(v_forward);
+        if (denominator < 1.0f) {
+            denominator = 1.0f;
         }
+        slip = (v_wheel - v_forward) / denominator;
         slip = Com_Clamp(-1.0f, 1.0f, slip);
 
         /* stiffness from cvars */
