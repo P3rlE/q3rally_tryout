@@ -781,6 +781,7 @@ static float PM_ApplyCollision( carBody_t *body, carPoint_t *points, vec3_t at, 
 }
 
 
+#if 0
 /*
 ================================================================================
 PM_ApplyBodyBodyCollision
@@ -792,20 +793,18 @@ Given: 2 rigid bodies, impact origin, impact normal, and elasticity
 Find:  the new linear and angular velocities of the two objects as a result of the impact.
 ================================================================================
 */
-static float PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, carBody_t *body2, carPoint_t *points2, vec3_t at, vec3_t normal, float elasticity ) __attribute__((unused));
-static void PM_ApplyPointBodyCollision( carBody_t *body, carPoint_t *points, carPoint_t *pt, vec3_t at, vec3_t normal, float elasticity ) __attribute__((unused));
-
-
 static float PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, carBody_t *body2, carPoint_t *points2, vec3_t at, vec3_t normal, float elasticity ){
-	vec3_t	arm1, arm2;
+	//vec3_t	arm1, arm2;
 	vec3_t	vP1, vP2;
-	vec3_t	impulse, impulseMoment;
-	vec3_t	cross, cross2;
-	float	impulseNum, oppositeImpulseNum, impulseDen;
-//	float	totalMass;
-//	int		i;
+	//vec3_t	impulse, impulseMoment;
+	//vec3_t	cross, cross2;
+	vec3_t	diff1, diff2, delta;
+	//float	impulseNum, oppositeImpulseNum, impulseDen;
+	//float	totalMass;
+	int		i;
 
-	//totalMass = body1->mass + body2->mass;
+/*
+	totalMass = body1->mass + body2->mass;
 
 	VectorSubtract(at, body1->CoM, arm1);
 	VectorSubtract(at, body2->CoM, arm2);
@@ -821,8 +820,8 @@ static float PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, c
 
 	CrossProduct(body2->w, arm2, cross);
 	VectorAdd(body2->v, cross, vP2);
+*/
 
-	/*
 	// hacked up physics
 	VectorCopy( body1->v, vP1 );
 	VectorCopy( body1->L, vP2 );
@@ -856,8 +855,8 @@ static float PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, c
 //	Com_Printf( "PM_ApplyBodyBodyCollision: v after %0.3f, %0.3f, %0.3f\n", body2->v[0], body2->v[1], body2->v[2] );
 
 	return 0;
-	*/
 
+/*
 	VectorSubtract(vP1, vP2, vP1);
 
 	// added from collision
@@ -919,6 +918,7 @@ static float PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, c
 		return fabs(oppositeImpulseNum / impulseDen);
 	else
 		return 0;
+*/
 }
 
 
@@ -985,6 +985,7 @@ static void PM_ApplyPointBodyCollision( carBody_t *body, carPoint_t *points, car
 */
 	PM_UpdateFrameVelocities(body, points);
 }
+#endif
 
 #ifdef CGAME
 void CG_Sparks( const vec3_t origin, const vec3_t normal, const vec3_t direction, const float speed );

@@ -579,7 +579,7 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
                 CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
             } else {
                 /* Use damageDealt as damage indicator for Q3Rally */
-                Com_sprintf(buffer, sizeof(buffer), "%d", score->damageDealt);
+                Com_sprintf(buffer, sizeof(buffer), "%d", score->damageTaken);
                 CG_DrawModernText(x, y, buffer, 1, width, textColor, qfalse);
             }
             break;
