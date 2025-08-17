@@ -393,6 +393,7 @@ void PM_AddRoadForces( car_t *car, carBody_t *body, carPoint_t *points, float se
         float tireStiffnessLong, tireStiffnessLat;
         float maxTireForce, totalForceMag, scale;
         vec3_t longForce, latForce;
+		float denominator;
 
         wheel = &points[i];
 
@@ -421,7 +422,7 @@ void PM_AddRoadForces( car_t *car, carBody_t *body, carPoint_t *points, float se
         v_forward = DotProduct(wheel->v, forward);
         v_wheel   = wheel->w * WHEEL_RADIUS;
 
-        float denominator = fabs(v_forward);
+        denominator = fabs(v_forward);
         if (denominator < 1.0f) {
             denominator = 1.0f;
         }
