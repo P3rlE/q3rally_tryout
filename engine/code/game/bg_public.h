@@ -297,6 +297,9 @@ typedef struct {
         float           car_air_cof;
         float           car_air_frac_to_df;
         float           car_friction_scale;
+
+        float           pm_tireStiffLong;
+        float           pm_tireStiffLat;
 // END
 } pmove_t;
 
