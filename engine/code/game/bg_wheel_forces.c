@@ -322,7 +322,7 @@ void PM_AddRoadForces( car_t *car, carBody_t *body, carPoint_t *points, float se
         if (fabs(v_forward) > 1.0f) {
             slip = (v_wheel - v_forward) / fabs(v_forward);
         }
-        slip = Com_ClampFloat(-1.0f, 1.0f, slip);
+        slip = Com_Clamp(-1.0f, 1.0f, slip);
 
         /* stiffness from cvars */
         tireStiffnessLong = pm->pm_tireStiffLong;
