@@ -438,7 +438,7 @@ void PM_AddRoadForces( car_t *car, carBody_t *body, carPoint_t *points, float se
 		if (pm->ps->powerups[PW_TURBO] > 0)
 			maxTireForce *= 2.0f;
 
-        gripForceLong = slip * tireStiffnessLong;
+        gripForceLong = -slip * tireStiffnessLong;
 
         /* --- Lateral force (slip angle) --- */
         v_side = DotProduct(wheel->v, right);
