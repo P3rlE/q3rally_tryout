@@ -171,6 +171,109 @@ static void PM_AirFrictionForces( car_t *car, carBody_t *body, carPoint_t *point
 	}
 }
 
+static float CP_TORQUE_SLOPE = (float)(CP_RPM_HP_PEAK * M_PI * CP_TORQUE_PEAK - 16500 * CP_HP_PEAK) / (float)(CP_RPM_HP_PEAK * M_PI * (CP_RPM_HP_PEAK*CP_RPM_HP_PEAK - 2 * CP_RPM_HP_PEAK * CP_RPM_TORQUE_PEAK + CP_RPM_TORQUE_PEAK*CP_RPM_TORQUE_PEAK));
+
+/*
+================================================================================
+PM_TireFrictionForces
+================================================================================
+*/
+static void PM_TireFrictionForces( car_t *car, carPoint_t *points, int i, vec3_t forward, float sec ){
+	float	torque;
+
+	if (fabs(points[i].w) <= 0.001f)
+		return;
+
+	torque = -points[i].w * CP_ENGINE_TIRE_COF;
+	points[i].netMoment += torque;
+}
+
+/*
+================================================================================
+PM_TireEngineForces
+================================================================================
+*/
+static void PM_TireEngineForces( car_t *car, carPoint_t *points, int i, vec3_t forward ){
+	float	torque, ratio, relrpm, friction;
+
+	if (car->throttle < 0.00f)
+		return;
+
+	if (VectorLength(forward) == 0.0f){
+		if (pm->pDebug)
+			Com_Printf("PM_TireEngineForces: invalid forward vector\n");
+		return;
+	}
+
+	if (car->rpm >= CP_RPM_MAX){
+		return;
+	}
+
+
+	relrpm = (car->rpm - CP_RPM_TORQUE_PEAK);
+	torque = car->throttle * ((-1.0f * CP_TORQUE_SLOPE * relrpm * relrpm) + CP_TORQUE_PEAK); // ft.lb
+
+	if (car->gear < 0)
+		ratio = CP_GEARR;
+	else if (car->gear == 0)
+		ratio = CP_GEARN;
+	else
+		ratio = CP_GEAR_RATIOS[car->gear-1];
+
+	friction = 0;
+	if (fabs(car->throttle < 0.01f) && car->gear)
+		friction = (CP_M_2_QU * CP_M_2_QU * (car->rpm - CP_RPM_MIN) / 10.0f / ratio);// frictional torque
+
+	ratio *= CP_AXLEGEAR;
+
+	torque *= 1.355818f; // Nm = kg*m^2/s^2
+	torque *= -ratio;
+	if (i < 2)
+		torque *= CP_M_2_QU * CP_M_2_QU / 6.0f; // qu
+	else
+		torque *= CP_M_2_QU * CP_M_2_QU / 3.0f; // qu
+
+	torque += friction;
+
+	if (pm->ps->powerups[PW_TURBO] > 0){
+		torque *= 4.5f;
+	}
+
+	points[i].netMoment += torque;
+}
+
+
+/*
+================================================================================
+PM_TireBrakingForces
+================================================================================
+*/
+static void PM_TireBrakingForces( car_t *car, carPoint_t *points, int i, vec3_t forward, float throttle ){
+	float	torque;
+	float	normalForce;
+
+	if (throttle >= -0.01f)
+		return;
+
+	if (VectorLength(forward) == 0.0f){
+		if (pm->pDebug)
+			Com_Printf("PM_TireBrakingForces: invalid forward vector\n");
+		return;
+	}
+
+	normalForce = CP_CURRENT_GRAVITY * (CP_FRAME_MASS + CP_WHEEL_MASS);
+	torque = throttle * normalForce * CP_SCOF * 0.6f * WHEEL_RADIUS;
+
+	if (points[i].w < 0.0f)
+		torque *= -1;
+
+	if (fabs(points[i].w) < 6.0f)
+		torque *= fabs(points[i].w) / 6.0f;
+
+	points[i].netMoment += torque;
+}
+
+
 /*
 ================================================================================
 PM_AddRoadForces
@@ -373,23 +476,13 @@ void PM_AddRoadForces( car_t *car, carBody_t *body, carPoint_t *points, float se
 
         VectorAdd(longForce, latForce, wheel->forces[ROAD]);
 
-		/* --- Apply engine/braking torque --- */
-		// This is a simplified model. A more complex one would be tied to the RPM and torque curve.
-		if (car->throttle > 0.01f) { // Accelerating
-			float engine_torque = car->throttle * 20000.0f; // Simplified engine torque
-			if (pm->ps->powerups[PW_TURBO] > 0)
-				engine_torque *= 2.5f;
-			wheel->netMoment += engine_torque;
-		} else if (car->throttle < -0.01f) { // Braking
-			float brake_torque = car->throttle * 30000.0f; // Simplified brake torque
-			if (fabs(brake_torque) > fabs(wheel->w * 1000.0f)) { // Prevent wheel lockup from reversing direction instantly
-				wheel->w = 0;
-			} else {
-				wheel->netMoment += brake_torque;
-			}
-		}
+		// Apply torque from engine, brakes, and rolling resistance
+		PM_TireEngineForces(car, points, i, forward);
+		PM_TireBrakingForces(car, points, i, forward, car->throttle);
+		PM_TireFrictionForces(car, points, i, forward, sec);
 
-		if (pm->cmd.buttons & BUTTON_HANDBRAKE && i >= 2){ // handbrake on rear wheels
+		// Handbrake for rear wheels
+		if (i >= 2 && (pm->cmd.buttons & BUTTON_HANDBRAKE)) {
 			wheel->w = 0;
 			wheel->netMoment = 0;
 			// Also drastically reduce lateral grip for handbrake turns
