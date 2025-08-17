@@ -114,8 +114,6 @@ typedef struct
 #define ID_SMOOTHMOUSE	47
 #define ID_AUTODROP		48
 #define ID_NEXTCAMERA	49
-#define ID_MMAP_SIZE	50
-#define ID_MMAP_FOV		51
 
 
 #define ANIM_IDLE		0
@@ -220,10 +218,6 @@ typedef struct
 
 	menuradiobutton_s	joyenable;
 	menuslider_s		joythreshold;
-
-	menuslider_s		mmap_size;
-	menuslider_s		mmap_fov;
-
 	int					section;
 	qboolean			waitingforkey;
 	char				playerModel[64];
@@ -302,8 +296,6 @@ static configcvar_t g_configcvars[] =
 	{"joy_threshold",	0,					0},
 	{"m_filter",		0,					0},
 	{"cl_freelook",		0,					0},
-	{"cg_mmap_size",	0,					0},
-	{"cg_mmap_fov",		0,					0},
 	{NULL,				0,					0}
 };
 
@@ -368,8 +360,6 @@ static menucommon_s *g_misc_controls[] = {
     (menucommon_s *)&s_controls.startdemo,
     (menucommon_s *)&s_controls.stopdemo,
 	(menucommon_s *)&s_controls.nextcamera,
-	(menucommon_s *)&s_controls.mmap_size,
-	(menucommon_s *)&s_controls.mmap_fov,
 	NULL,
 };
 
@@ -891,8 +881,6 @@ static void Controls_GetConfig( void )
 	s_controls.freelook.curvalue     = UI_ClampCvar( 0, 1, Controls_GetCvarValue( "cl_freelook" ) );
 // STONELANCE
 	s_controls.autodroprear.curvalue = UI_ClampCvar( 0, 1, Controls_GetCvarValue( "cg_autodrop" ) );
-	s_controls.mmap_size.curvalue = UI_ClampCvar( 0.5, 2.0, Controls_GetCvarValue( "cg_mmap_size" ) );
-	s_controls.mmap_fov.curvalue = UI_ClampCvar( 10, 120, Controls_GetCvarValue( "cg_mmap_fov" ) );
 // END
 }
 
@@ -938,8 +926,6 @@ static void Controls_SetConfig( void )
 	trap_Cvar_SetValue( "cl_freelook", s_controls.freelook.curvalue );
 // STONELANCE
 	trap_Cvar_SetValue( "cg_autodrop", s_controls.autodroprear.curvalue );
-	trap_Cvar_SetValue( "cg_mmap_size", s_controls.mmap_size.curvalue );
-	trap_Cvar_SetValue( "cg_mmap_fov", s_controls.mmap_fov.curvalue );
 // END
 	trap_Cmd_ExecuteText( EXEC_APPEND, "in_restart\n" );
 }
@@ -977,8 +963,6 @@ static void Controls_SetDefaults( void )
 	s_controls.freelook.curvalue     = Controls_GetCvarDefault( "cl_freelook" );
 // STONELANCE
 	s_controls.autodroprear.curvalue = Controls_GetCvarDefault( "cg_autodrop" );
-	s_controls.mmap_size.curvalue = Controls_GetCvarDefault( "cg_mmap_size" );
-	s_controls.mmap_fov.curvalue = Controls_GetCvarDefault( "cg_mmap_fov" );
 // END
 }
 
@@ -1210,8 +1194,6 @@ static void Controls_MenuEvent( void* ptr, int event )
 		case ID_AUTOSWITCH:
 		case ID_JOYENABLE:
 		case ID_JOYTHRESHOLD:
-		case ID_MMAP_SIZE:
-		case ID_MMAP_FOV:
 // STONELANCE
 		case ID_AUTODROP:
 // END
@@ -1820,26 +1802,6 @@ static void Controls_MenuInit( void )
 	s_controls.joythreshold.maxvalue		  = 0.75;
 	s_controls.joythreshold.generic.statusbar = Controls_StatusBar;
 
-	s_controls.mmap_size.generic.type	  = MTYPE_SLIDER;
-	s_controls.mmap_size.generic.x		  = SCREEN_WIDTH/2;
-	s_controls.mmap_size.generic.flags	  = QMF_SMALLFONT;
-	s_controls.mmap_size.generic.name	  = "minimap size";
-	s_controls.mmap_size.generic.id 	      = ID_MMAP_SIZE;
-	s_controls.mmap_size.generic.callback  = Controls_MenuEvent;
-	s_controls.mmap_size.minvalue		  = 0.5;
-	s_controls.mmap_size.maxvalue		  = 2.0;
-	s_controls.mmap_size.generic.statusbar = Controls_StatusBar;
-
-	s_controls.mmap_fov.generic.type	  = MTYPE_SLIDER;
-	s_controls.mmap_fov.generic.x		  = SCREEN_WIDTH/2;
-	s_controls.mmap_fov.generic.flags	  = QMF_SMALLFONT;
-	s_controls.mmap_fov.generic.name	  = "minimap zoom";
-	s_controls.mmap_fov.generic.id 	      = ID_MMAP_FOV;
-	s_controls.mmap_fov.generic.callback  = Controls_MenuEvent;
-	s_controls.mmap_fov.minvalue		  = 10;
-	s_controls.mmap_fov.maxvalue		  = 120;
-	s_controls.mmap_fov.generic.statusbar = Controls_StatusBar;
-
 	s_controls.name.generic.type	= MTYPE_PTEXT;
 	s_controls.name.generic.flags	= QMF_CENTER_JUSTIFY|QMF_INACTIVE;
 	s_controls.name.generic.x		= 320;
@@ -1872,8 +1834,6 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.zoomview );
 	Menu_AddItem( &s_controls.menu, &s_controls.joyenable );
 	Menu_AddItem( &s_controls.menu, &s_controls.joythreshold );
-	Menu_AddItem( &s_controls.menu, &s_controls.mmap_size );
-	Menu_AddItem( &s_controls.menu, &s_controls.mmap_fov );
 
 // STONELANCE
 //	Menu_AddItem( &s_controls.menu, &s_controls.alwaysrun );
