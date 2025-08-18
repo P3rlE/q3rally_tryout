@@ -77,6 +77,8 @@ typedef struct {
 	int				selectedBotNum;
 	int				sortedBotNums[MAX_BOTS];
 	char			botnames[7][32];
+	char			personality_buffer[MAX_INFO_STRING];
+	char			description_buffer[MAX_INFO_STRING];
 } addBotsMenuInfo_t;
 
 static addBotsMenuInfo_t	addBotsMenuInfo;
@@ -410,7 +412,7 @@ static void UI_AddBotsMenu_Init( void ) {
 	addBotsMenuInfo.personality.generic.flags		= QMF_LEFT_JUSTIFY;
 	addBotsMenuInfo.personality.generic.x			= 440;
 	addBotsMenuInfo.personality.generic.y			= 120;
-	addBotsMenuInfo.personality.string				= "";
+	addBotsMenuInfo.personality.string				= addBotsMenuInfo.personality_buffer;
 	addBotsMenuInfo.personality.color				= color_orange;
 	addBotsMenuInfo.personality.style				= UI_LEFT|UI_SMALLFONT;
 
@@ -418,7 +420,7 @@ static void UI_AddBotsMenu_Init( void ) {
 	addBotsMenuInfo.description.generic.flags		= QMF_LEFT_JUSTIFY;
 	addBotsMenuInfo.description.generic.x			= 440;
 	addBotsMenuInfo.description.generic.y			= 140;
-	addBotsMenuInfo.description.string				= "";
+	addBotsMenuInfo.description.string				= addBotsMenuInfo.description_buffer;
 	addBotsMenuInfo.description.color				= color_white;
 	addBotsMenuInfo.description.style				= UI_LEFT|UI_SMALLFONT;
 
