@@ -111,11 +111,11 @@ UI_AddBotsMenu_BotEvent
 =================
 */
 static void UI_AddBotsMenu_BotEvent( void* ptr, int event ) {
+	const char	*info;
+
 	if (event != QM_ACTIVATED) {
 		return;
 	}
-
-	const char	*info;
 
 	addBotsMenuInfo.bots[addBotsMenuInfo.selectedBotNum].color = color_orange;
 	addBotsMenuInfo.selectedBotNum = ((menucommon_s*)ptr)->id - ID_BOTNAME0;
