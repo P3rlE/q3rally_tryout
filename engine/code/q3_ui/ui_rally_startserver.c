@@ -2270,9 +2270,10 @@ void UI_BotSelectMenu_Cache( void ) {
 
 
 static void UI_BotSelectMenu_Init( char *bot ) {
-	trap_Print("UI_BotSelectMenu_Init: Initializing Bot Select Menu\n");
 	int		i, j, k;
 	int		x, y;
+
+	trap_Print("UI_BotSelectMenu_Init: Initializing Bot Select Menu\n");
 
 	memset( &botSelectInfo, 0 ,sizeof(botSelectInfo) );
 	botSelectInfo.menu.wrapAround = qtrue;
