@@ -2092,9 +2092,6 @@ static void UI_BotSelectMenu_UpdateGrid( void ) {
 	botSelectInfo.picbuttons[i].generic.flags &= ~QMF_PULSEIFFOCUS;
 
 	info = UI_GetBotInfoByNumber( botSelectInfo.sortedBotNums[botSelectInfo.selectedmodel] );
-	trap_Print(va("UI_BotSelectMenu_UpdateGrid: Bot: %s\n", Info_ValueForKey(info, "name")));
-	trap_Print(va("UI_BotSelectMenu_UpdateGrid: Personality: %s\n", Info_ValueForKey(info, "personality")));
-	trap_Print(va("UI_BotSelectMenu_UpdateGrid: Description: %s\n", Info_ValueForKey(info, "description")));
 	Q_strncpyz( botSelectInfo.personality.string, Info_ValueForKey( info, "personality" ), sizeof(botSelectInfo.personality.string) );
 	Q_strncpyz( botSelectInfo.description.string, Info_ValueForKey( info, "description" ), sizeof(botSelectInfo.description.string) );
 
@@ -2272,8 +2269,6 @@ void UI_BotSelectMenu_Cache( void ) {
 static void UI_BotSelectMenu_Init( char *bot ) {
 	int		i, j, k;
 	int		x, y;
-
-	trap_Print("UI_BotSelectMenu_Init: Initializing Bot Select Menu\n");
 
 	memset( &botSelectInfo, 0 ,sizeof(botSelectInfo) );
 	botSelectInfo.menu.wrapAround = qtrue;
