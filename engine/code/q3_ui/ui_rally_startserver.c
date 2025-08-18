@@ -2373,17 +2373,17 @@ static void UI_BotSelectMenu_Init( char *bot ) {
 
 	botSelectInfo.personality.generic.type		= MTYPE_PTEXT;
 	botSelectInfo.personality.generic.flags		= QMF_LEFT_JUSTIFY;
-	botSelectInfo.personality.generic.x			= 440;
-	botSelectInfo.personality.generic.y			= 300;
-	botSelectInfo.personality.string				= botSelectInfo.personality_buffer;
-	botSelectInfo.personality.color				= color_orange;
+	botSelectInfo.personality.generic.x			= 500;
+	botSelectInfo.personality.generic.y			= 100;
+	botSelectInfo.personality.string			= botSelectInfo.personality_buffer;
+	botSelectInfo.personality.color				= color_white;
 	botSelectInfo.personality.style				= UI_LEFT|UI_SMALLFONT;
 
 	botSelectInfo.description.generic.type		= MTYPE_PTEXT;
 	botSelectInfo.description.generic.flags		= QMF_LEFT_JUSTIFY;
-	botSelectInfo.description.generic.x			= 440;
-	botSelectInfo.description.generic.y			= 320;
-	botSelectInfo.description.string				= botSelectInfo.description_buffer;
+	botSelectInfo.description.generic.x			= 500;
+	botSelectInfo.description.generic.y			= 200;
+	botSelectInfo.description.string			= botSelectInfo.description_buffer;
 	botSelectInfo.description.color				= color_white;
 	botSelectInfo.description.style				= UI_LEFT|UI_SMALLFONT;
 
