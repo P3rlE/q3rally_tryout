@@ -203,6 +203,9 @@ chat "Major"
 		"This is far more painful than it looks.";
 		"One day, ", 0, " you me and a ", weapon, " are going to have a discussion.";
 		"Is that the best you can do?";
+		"An anomaly. It won't happen again.";
+		"A momentary lapse in perfection.";
+		"Recalibrating...";
 		DEATH_INSULT2;
 		DEATH_INSULT0;
 		// 0 = enemy name
@@ -246,6 +249,9 @@ chat "Major"
 		"Why do you even bother?";
 		"This is why the upper classes are called the 'ruling elite.'";
 		"Why do the lower classes think they can match someone of my caliber?";
+		"Another one. As expected.";
+		"The result was never in doubt.";
+		"That's how you do it, every single time.";
 		
 		// 0 = enemy name
 	} //end type
@@ -267,6 +273,9 @@ chat "Major"
 		"I saw those pictures of ", 0, " and a ", animal, " posted on the web last night... Like, ewww!";
 		immaturity01;
 		"Your ", family_member, " needs to stop calling me.";
+		"You can't stop the inevitable.";
+		"I'm the final boss of this arena.";
+		"Just give up. It's more efficient.";
 		
 		// 0 = name of randomly chosen player
 		// 1 = name of the last player killed by this bot

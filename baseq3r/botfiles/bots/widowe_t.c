@@ -190,6 +190,9 @@ chat "Widowe"
 		"This is far more painful than it looks.";
 		"One day, ", 0, " you me and a ", weapon, " are going to have a discussion.";
 		"Is that the best you can do?";
+		"You can't catch a ghost.";
+		"I'll be back before you know it.";
+		"Just a quick pit stop.";
 		DEATH_INSULT2;
 		DEATH_INSULT0;
 		// 0 = enemy name
@@ -233,6 +236,9 @@ chat "Widowe"
 		"Why do you even bother?";
 		"This is why the upper classes are called the 'ruling elite.'";
 		"Why do the lower classes think they can match someone of my caliber?";
+		"Too fast for you!";
+		"Eat my dust!";
+		"Gone in a flash.";
 		
 		// 0 = enemy name
 	} //end type
@@ -254,6 +260,9 @@ chat "Widowe"
 		"I saw those pictures of ", 0, " and a ", animal, " posted on the web last night... Like, ewww!";
 		immaturity01;
 		"Your ", family_member, " needs to stop calling me.";
+		"You're driving in slow motion.";
+		"Try to keep up!";
+		"Can't catch what you can't see.";
 		
 		// 0 = name of randomly chosen player
 		// 1 = name of the last player killed by this bot

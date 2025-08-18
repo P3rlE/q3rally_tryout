@@ -190,6 +190,9 @@ chat "Jenna"
 		"This is far more painful than it looks.";
 		"One day, ", 0, " you me and a ", weapon, " are going to have a discussion.";
 		"Is that the best you can do?";
+		"Of course. Why does this always happen to me?";
+		"Can I just respawn on a couch or something?";
+		"*sigh* This is so much effort.";
 		DEATH_INSULT2;
 		DEATH_INSULT0;
 		// 0 = enemy name
@@ -233,6 +236,9 @@ chat "Jenna"
 		"Why do you even bother?";
 		"This is why the upper classes are called the 'ruling elite.'";
 		"Why do the lower classes think they can match someone of my caliber?";
+		"Did I do that? Oops.";
+		"I was just trying to shoot the wall.";
+		"Oh, hey, a frag. Cool.";
 		
 		// 0 = enemy name
 	} //end type
@@ -254,6 +260,9 @@ chat "Jenna"
 		"I saw those pictures of ", 0, " and a ", animal, " posted on the web last night... Like, ewww!";
 		immaturity01;
 		"Your ", family_member, " needs to stop calling me.";
+		"I'd chase you, but that sounds tiring.";
+		"Whatever.";
+		"Are we done yet? I need a nap.";
 		
 		// 0 = name of randomly chosen player
 		// 1 = name of the last player killed by this bot

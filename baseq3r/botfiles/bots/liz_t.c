@@ -178,6 +178,9 @@ chat "Liz"
 	{
 		DEATH_INSULT2;
 		DEATH_INSULT0;
+		"A dramatic exit!";
+		"I'll return for the final act!";
+		"You've merely interrupted the performance.";
 		// 0 = enemy name
 		// 1 = weapon used by enemy
 	} //end type
@@ -216,6 +219,9 @@ chat "Liz"
 	{
 		KILL_INSULT4;
 		KILL_INSULT2;
+		"And that's how it's done!";
+		"Don't you know who I am?";
+		"Another one for the highlight reel!";
 		
 		// 0 = enemy name
 	} //end type
@@ -232,6 +238,9 @@ chat "Liz"
 		"Your breath stinks";
 		"Get off your dead butt and something for a change.";
 		"Life got you down?  Give it up.";
+		"You're not even on my level.";
+		"I'm the star of this show!";
+		"Try to keep up, darling.";
 		// 0 = name of randomly chosen player
 		// 1 = name of the last player killed by this bot
 		// 4 = level's title
