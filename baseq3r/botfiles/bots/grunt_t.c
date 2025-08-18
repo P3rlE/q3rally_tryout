@@ -179,9 +179,6 @@ chat "grunt"
 		"Oh please, my ", family_member, " could do better than that.";
 		"took you long enough...";
 		"Is that all you've got?";
-		"My form is temporary.";
-		"I am everywhere and nowhere.";
-		"The journey continues, even in defeat.";
 		curse;
 		"You should practice more.";
 	}
@@ -238,9 +235,6 @@ chat "grunt"
 		"looser";
 		"Eesh!  You need practice.";
 		"Too easy.";
-		"Be one with the frag.";
-		"Your path ends here.";
-		"The wind carries away your defeat.";
 		KILL_EXTREME_INSULT;
 		curse;
 	}
@@ -259,9 +253,6 @@ chat "grunt"
 		peeps, " is better.";
 		number, " US dollars says you don't win.";
 		peeps, " needs to stop calling my ~Mom.";
-		"You cannot hit what you cannot see.";
-		"Your aggression is a weakness.";
-		"Flow like water, my friend... or get run over.";
 	}
 
 	type "random_misc"

@@ -211,9 +211,6 @@ chat "Dark"
 	{
 		"Not bad, ", 0, ", have you been practicing?";
 		"I never saw it coming.";
-		"I'll learn from that.";
-		"Okay, deep breaths.";
-		"Well, that's one way to learn.";
 		D_PRAISE0;
 		D_PRAISE1;
 		// 0 = enemy name
@@ -253,9 +250,6 @@ chat "Dark"
 	type "kill_praise" //praise initiated when the bot killed someone
 	{
 		"You are getting better, ", 0, ", keep it up and you might actually win something.";
-		"Oh, I got one!";
-		"I think I'm getting the hang of this.";
-		"Did I do that right?";
 	
 		// 0 = enemy name
 	} //end type
@@ -286,9 +280,6 @@ chat "Dark"
 		"You would be surprised what you can do with a ", animal, " a ", food, " and ", peeps, ".";
 		"Next time you see ", peeps, " tell 'em to call me, mmmkay?";
 		neuterbot, " is cute.";
-		"Hey, take it easy on me, I'm new!";
-		"I'm just happy to be here.";
-		"Let's all just have a good time, okay?";
 		// 0 = name of randomly chosen player
 		// 1 = name of the last player killed by this bot
 		// 4 = level's title

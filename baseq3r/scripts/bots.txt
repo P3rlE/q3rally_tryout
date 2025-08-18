@@ -2,182 +2,136 @@
 name		Chloe
 model		roadster/blue
 aifile		bots/angelyss_c.c
-personality	aggressive, tricky
-description	A bot with an aggressive and tricky personality.
 }
 
 {
 name		Janine
 model		reaper/yellow
 aifile		bots/arachna_c.c
-personality	defensive, tactical
-description	A defensive and tactical opponent.
 }
 
 {
 name		Jennifer
 model		mini/blue
 aifile		bots/ayumi_c.c
-personality	joker, speedster
-description	A bot with a joker and speedster personality.
 }
 
 {
 name		Samuel
 model		alpine/stomped
 aifile		bots/beret_c.c
-personality	leader, rammer
-description	A bot with a leader and rammer personality.
 }
 
 {
 name		Jim
 model		raptor/jp
 aifile		bots/dark_c.c
-personality	rookie, calm
-description	A bot with a rookie and calm personality.
 }
 
 {
 name		Bobby
 model		slingshot/yellow
 aifile		bots/gargoyle_c.c
-personality	chaotic, saboteur
-description	A bot with a chaotic and saboteur personality.
 }
 
 {
 name		Sam
 model		sidepipe/green
 aifile		bots/grism_c.c
-personality	gladiator, collector
-description	A bot with a gladiator and collector personality.
 }
 
 {
 name		Dean
 model		alpine/green
 aifile		bots/grunt_c.c
-personality	zen driver, ghost
-description	A bot with a zen driver and ghost personality.
 }
 
 {
 name		Carla
 model		reaper/green
 aifile		bots/jenna_c.c
-personality	lazy, unlucky
-description	A bot with a lazy and unlucky personality.
 }
 
 {
 name		Minori
 model		mini/vaporwave
 aifile		bots/kyonshi_c.c
-personality	grumpy, berserker
-description	A bot with a grumpy and berserker personality.
 }
 
 {
 name		Alexandra
 model		mini/green
 aifile		bots/liz_c.c
-personality	hothead, showgirl
-description	A bot with a hothead and showgirl personality.
 }
 
 {
 name		Vlad
 model		viper/graphite
 aifile		bots/major_c.c
-personality	consistent, showstopper
-description	A bot with a consistent and showstopper personality.
 }
 
 {
 name		Zack
 model		roadster/green
 aifile		bots/merman_c.c
-personality	coward, opportunist
-description	A bot with a coward and opportunist personality.
 }
 
 {
 name		Kuro
 model		murcielago/redhot
 aifile		bots/neko_c.c
-personality	veteran, zen driver
-description	A bot with a veteran and zen driver personality.
 }
 
 {
 name		Paul
 model		sidepipe/blue
 aifile		bots/penguin_c.c
-personality	late breaker, demolisher
-description	A bot with a late breaker and demolisher personality.
 }
 
 {
 name		Emma
 model		alpine/frefrafac
 aifile		bots/rai_c.c
-personality	clown, mine layer
-description	A bot with a clown and mine layer personality.
 }
 
 {
 name		Tobias
 model		raptor/black
 aifile		bots/sarge_c.c
-personality	drifter, sharp shooter
-description	A bot with a drifter and sharp shooter personality.
 }
 
 {
 name		Ivan
 model		murcielago/red
 aifile		bots/sergei_c.c
-personality	hero, last man
-description	A bot with a hero and last man personality.
 }
 
 {
 name		Josh
 model		camaro/green
 aifile		bots/skelebot_c.c
-personality	snare, pacifist
-description	A bot with a snare and pacifist personality.
 }
 
 {
 name		Steve
 model		mini/brown
 aifile		bots/sly_c.c
-personality	oldtimer, villain
-description	A bot with an oldtimer and villain personality.
 }
 
 {
 name		Tanya
 model		raptor/pink
 aifile		bots/tanisha_c.c
-personality	cautious, follower
-description	A bot with a cautious and follower personality.
 }
 
 {
 name		Tony
 model		macdaddy/checker
 aifile		bots/tony_c.c
-personality	slingshot, trigger happy
-description	A bot with a slingshot and trigger happy personality.
 }
 
 {
 name		Bee
 model		camaro/yellow
 aifile		bots/widowe_c.c
-personality	sprinter, drifter
-description	A bot with a sprinter and drifter personality.
 }
