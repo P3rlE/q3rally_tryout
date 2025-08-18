@@ -2209,7 +2209,6 @@ static void UI_BotSelectMenu_BotEvent( void* ptr, int event ) {
 
 	// set selected
 	i = ((menucommon_s*)ptr)->id;
-	const char *info;
 	botSelectInfo.pics[i].generic.flags |= QMF_HIGHLIGHT;
 	botSelectInfo.picbuttons[i].generic.flags &= ~QMF_PULSEIFFOCUS;
 	botSelectInfo.selectedmodel = botSelectInfo.modelpage * MAX_MODELSPERPAGE + i;
