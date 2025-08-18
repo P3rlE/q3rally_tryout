@@ -192,6 +192,9 @@ chat "Beret"
 		"pfff";
 		"Wuss";
 		"Sissy";
+		"I'll be back, stronger.";
+		"They can't stop us all.";
+		"A strategic retreat.";
 		DEATH_INSULT2;
 		DEATH_INSULT0;
 		// 0 = enemy name
@@ -233,6 +236,9 @@ chat "Beret"
 		"I just made my perfect world, oops you're gone.";
 		KILL_INSULT4;
 		KILL_INSULT2;
+		"Get out of my way!";
+		"Another one down, move up!";
+		"For the win!";
 		
 		// 0 = enemy name
 	} //end type
@@ -250,6 +256,9 @@ chat "Beret"
 		"Get a hair cut";
 		"Get a real job";
 		"Get a life";
+		"Follow my lead or get run over.";
+		"You're just a roadblock.";
+		"I'm the juggernaut!";
 		TAUNT0;
 		TAUNT1;
 		

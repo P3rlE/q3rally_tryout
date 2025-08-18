@@ -202,6 +202,9 @@ chat "Angelyss"
 		"This is far more painful than it looks.";
 		"One day, ", 0, " you me and a ", weapon, " are going to have a discussion.";
 		"Is that the best you can do?";
+		"You got lucky this time.";
+		"I'll remember that.";
+		"A calculated risk.";
 		DEATH_INSULT2;
 		DEATH_INSULT0;
 		// 0 = enemy name
@@ -243,7 +246,9 @@ chat "Angelyss"
 	{
 		KILL_INSULT4;
 		"Why do you even bother?";
-	
+		"Too easy! Try to keep up.";
+		"Outsmarted and outgunned.";
+		"That was just a warning shot.";
 		
 		// 0 = enemy name
 	} //end type
@@ -264,6 +269,9 @@ chat "Angelyss"
 		"I saw those pictures of ", 0, " and a ", animal, " posted on the web last night... Like, ewww!";
 		immaturity01;
 		"Your ", family_member, " needs to stop calling me.";
+		"Are you even trying?";
+		"I'm running circles around you!";
+		"It's not your fault you're so slow.";
 		
 		// 0 = name of randomly chosen player
 		// 1 = name of the last player killed by this bot

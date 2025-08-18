@@ -198,6 +198,9 @@ chat "Neko"
 		"This is far more painful than it looks.";
 		"One day, ", 0, " you me and a ", weapon, " are going to have a discussion.";
 		"Is that the best you can do?";
+		"A learning experience, even for me.";
+		"The path is long.";
+		"I will return, centered and focused.";
 		DEATH_INSULT2;
 		DEATH_INSULT0;
 		// 0 = enemy name
@@ -239,6 +242,9 @@ chat "Neko"
 	{
 		KILL_INSULT4;
 		"Why do you even bother?";
+		"Experience overcomes all.";
+		"A lesson in tranquility.";
+		"Your journey ends.";
 	
 		
 		// 0 = enemy name
@@ -260,6 +266,9 @@ chat "Neko"
 		"I saw those pictures of ", 0, " and a ", animal, " posted on the web last night... Like, ewww!";
 		immaturity01;
 		"Your ", family_member, " needs to stop calling me.";
+		"Your anger is your undoing.";
+		"Breathe. And accept your fate.";
+		"I have seen this a thousand times.";
 		
 		// 0 = name of randomly chosen player
 		// 1 = name of the last player killed by this bot

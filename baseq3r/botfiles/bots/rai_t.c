@@ -202,6 +202,9 @@ chat "Rai"
 		"This is far more painful than it looks.";
 		"One day, ", 0, " you me and a ", weapon, " are going to have a discussion.";
 		"Is that the best you can do?";
+		"The show must go on!";
+		"That was just part of the act.";
+		"I'll be back with a bigger pie.";
 		DEATH_INSULT2;
 		DEATH_INSULT0;
 		// 0 = enemy name
@@ -243,6 +246,9 @@ chat "Rai"
 	{
 		KILL_INSULT4;
 		"Why do you even bother?";
+		"Honk honk! You're dead!";
+		"Wasn't that funny?";
+		"You fell right into my trap!";
 	
 		
 		// 0 = enemy name
@@ -264,6 +270,9 @@ chat "Rai"
 		"I saw those pictures of ", 0, " and a ", animal, " posted on the web last night... Like, ewww!";
 		immaturity01;
 		"Your ", family_member, " needs to stop calling me.";
+		"Watch your step!";
+		"I've got a surprise for you.";
+		"Why so serious? Let's have some fun!";
 		
 		// 0 = name of randomly chosen player
 		// 1 = name of the last player killed by this bot

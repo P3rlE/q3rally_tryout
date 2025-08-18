@@ -202,6 +202,9 @@ chat "Sly"
 		"This is far more painful than it looks.";
 		"One day, ", 0, " you me and a ", weapon, " are going to have a discussion.";
 		"Is that the best you can do?";
+		"I'll get you next time, you meddling kids!";
+		"This is only a minor setback in my grand plan.";
+		"You haven't seen the last of me!";
 		DEATH_INSULT2;
 		DEATH_INSULT0;
 		// 0 = enemy name
@@ -243,6 +246,9 @@ chat "Sly"
 	{
 		KILL_INSULT4;
 		"Why do you even bother?";
+		"Heh, they don't make 'em like they used to.";
+		"You're good, but I'm bad.";
+		"Another one bites the dust.";
 	
 		
 		// 0 = enemy name
@@ -264,6 +270,9 @@ chat "Sly"
 		"I saw those pictures of ", 0, " and a ", animal, " posted on the web last night... Like, ewww!";
 		immaturity01;
 		"Your ", family_member, " needs to stop calling me.";
+		"Back in my day, we had real competition.";
+		"You're playing a fool's game.";
+		"It's good to be bad.";
 		
 		// 0 = name of randomly chosen player
 		// 1 = name of the last player killed by this bot

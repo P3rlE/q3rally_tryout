@@ -147,6 +147,9 @@ chat "skelebot"
 	type "death_praise"
 	{
 		 0, " is death incarnate.";
+		"See? Violence is never the answer.";
+		"Finally, peace.";
+		"I hope you're happy now.";
 	}
 
 	type "kill_rail"
@@ -185,6 +188,9 @@ chat "skelebot"
 	{
 		"Nice one, ", 0, ".";
 		"Wow, ~you never saw that one coming, ", 0, ".";
+		"I didn't want to do that.";
+		"You left me no choice.";
+		"There are better ways to solve this.";
 	}
 
 	type "random_insult"
@@ -197,6 +203,9 @@ chat "skelebot"
 	{
 		0, " gave my ~mom ", disease, ".";
 		"Is it true that ", peeps, " is a bot?";
+		"Why can't we all just get along?";
+		"I'd rather not fight, but I will defend myself.";
+		"It's a trap! (But a friendly one, I promise).";
 		
 	}
 }

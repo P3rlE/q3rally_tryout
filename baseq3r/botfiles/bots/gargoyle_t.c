@@ -179,6 +179,9 @@ chat "gargoyle"
 		"Oh please, my ", family_member, " could do better than that.";
 		"took you long enough...";
 		"Is that all you've got?";
+		"You're just delaying the inevitable pandemonium.";
+		"A small price to pay for mayhem.";
+		"My work here is done... for now.";
 		curse;
 		"You should practice more.";
 	}
@@ -235,6 +238,9 @@ chat "gargoyle"
 		"looser";
 		"Eesh!  You need practice.";
 		"Too easy.";
+		"Just as planned... pure chaos!";
+		"Everything is going according to my non-plan!";
+		"Boom! Didn't see that coming, did you?";
 		KILL_EXTREME_INSULT;
 		curse;
 	}
@@ -253,6 +259,9 @@ chat "gargoyle"
 		peeps, " is better.";
 		number, " US dollars says you don't win.";
 		peeps, " needs to stop calling my ~Mom.";
+		"Let's make a little mess.";
+		"I wonder what happens if I press this button...";
+		"Predictability is so boring.";
 	}
 
 	type "random_misc"

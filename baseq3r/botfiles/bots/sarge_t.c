@@ -142,6 +142,9 @@ chat "sarge"
 	{
 		"What the... how cheap!";
 		"Back in my day, frags weren't so cheap.";
+		"My journey continues elsewhere.";
+		"A minor detour.";
+		"The wind will carry my story.";
 	}
 
 	type "death_praise"
@@ -179,6 +182,9 @@ chat "sarge"
 		"Pathetic.";
 		"tsk";
 		"My ", family_member, " could do better.";
+		"One shot, one kill.";
+		"Just passing through.";
+		"Nothing personal.";
 	}
 
 	type "kill_praise"
@@ -191,6 +197,9 @@ chat "sarge"
 	{
 		 0, ", ~you suck!";
 		 0, " needs to stop calling my mom.";
+		"You can't hit what isn't there.";
+		"I'm just a shadow in the dust.";
+		"Don't blink.";
 	}
 
 	type "random_misc"
