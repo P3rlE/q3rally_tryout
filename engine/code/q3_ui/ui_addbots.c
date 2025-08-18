@@ -68,6 +68,8 @@ typedef struct {
 	menulist_s		team;
 	menutext_s	go;
 	menutext_s	back;
+	menutext_s	personality;
+	menutext_s	description;
 
 	int				numBots;
 	int				delay;
@@ -113,9 +115,15 @@ static void UI_AddBotsMenu_BotEvent( void* ptr, int event ) {
 		return;
 	}
 
+	const char	*info;
+
 	addBotsMenuInfo.bots[addBotsMenuInfo.selectedBotNum].color = color_orange;
 	addBotsMenuInfo.selectedBotNum = ((menucommon_s*)ptr)->id - ID_BOTNAME0;
 	addBotsMenuInfo.bots[addBotsMenuInfo.selectedBotNum].color = color_white;
+
+	info = UI_GetBotInfoByNumber( addBotsMenuInfo.sortedBotNums[addBotsMenuInfo.baseBotNum + addBotsMenuInfo.selectedBotNum] );
+	Q_strncpyz( addBotsMenuInfo.personality.string, Info_ValueForKey( info, "personality" ), sizeof(addBotsMenuInfo.personality.string) );
+	Q_strncpyz( addBotsMenuInfo.description.string, Info_ValueForKey( info, "description" ), sizeof(addBotsMenuInfo.description.string) );
 }
 
 
@@ -146,6 +154,9 @@ static void UI_AddBotsMenu_SetBotNames( void ) {
 		Q_strncpyz( addBotsMenuInfo.botnames[n], Info_ValueForKey( info, "name" ), sizeof(addBotsMenuInfo.botnames[n]) );
 	}
 
+	info = UI_GetBotInfoByNumber( addBotsMenuInfo.sortedBotNums[addBotsMenuInfo.baseBotNum + addBotsMenuInfo.selectedBotNum] );
+	Q_strncpyz( addBotsMenuInfo.personality.string, Info_ValueForKey( info, "personality" ), sizeof(addBotsMenuInfo.personality.string) );
+	Q_strncpyz( addBotsMenuInfo.description.string, Info_ValueForKey( info, "description" ), sizeof(addBotsMenuInfo.description.string) );
 }
 
 
@@ -394,6 +405,23 @@ static void UI_AddBotsMenu_Init( void ) {
   addBotsMenuInfo.back.string					= "< BACK";
 	addBotsMenuInfo.back.color					= text_color_normal;
 	addBotsMenuInfo.back.style					= UI_LEFT | UI_SMALLFONT;
+
+	addBotsMenuInfo.personality.generic.type		= MTYPE_PTEXT;
+	addBotsMenuInfo.personality.generic.flags		= QMF_LEFT_JUSTIFY;
+	addBotsMenuInfo.personality.generic.x			= 440;
+	addBotsMenuInfo.personality.generic.y			= 120;
+	addBotsMenuInfo.personality.string				= "";
+	addBotsMenuInfo.personality.color				= color_orange;
+	addBotsMenuInfo.personality.style				= UI_LEFT|UI_SMALLFONT;
+
+	addBotsMenuInfo.description.generic.type		= MTYPE_PTEXT;
+	addBotsMenuInfo.description.generic.flags		= QMF_LEFT_JUSTIFY;
+	addBotsMenuInfo.description.generic.x			= 440;
+	addBotsMenuInfo.description.generic.y			= 140;
+	addBotsMenuInfo.description.string				= "";
+	addBotsMenuInfo.description.color				= color_white;
+	addBotsMenuInfo.description.style				= UI_LEFT|UI_SMALLFONT;
+
 	addBotsMenuInfo.baseBotNum = 0;
 	addBotsMenuInfo.selectedBotNum = 0;
 	addBotsMenuInfo.bots[0].color = color_white;
@@ -412,6 +440,8 @@ static void UI_AddBotsMenu_Init( void ) {
 	Menu_AddItem( &addBotsMenuInfo.menu, &addBotsMenuInfo.team );
 	Menu_AddItem( &addBotsMenuInfo.menu, &addBotsMenuInfo.go );
 	Menu_AddItem( &addBotsMenuInfo.menu, &addBotsMenuInfo.back );
+	Menu_AddItem( &addBotsMenuInfo.menu, &addBotsMenuInfo.personality );
+	Menu_AddItem( &addBotsMenuInfo.menu, &addBotsMenuInfo.description );
 }
 
 
