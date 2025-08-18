@@ -200,9 +200,6 @@ chat "Sergei"
 		"Sissy";
 		"Pansy!";
 		"Come back here... I'll chew your leg off!";
-		"A hero's death is never in vain.";
-		"I'll be back when you need me most.";
-		"This is not the end.";
 		DEATH_INSULT2;
 		DEATH_INSULT0;
 		// 0 = enemy name
@@ -241,9 +238,6 @@ chat "Sergei"
 	{
 		KILL_INSULT4;
 		KILL_INSULT2;
-		"For justice!";
-		"Another victory for the righteous!";
-		"I will not fall.";
 		
 		// 0 = enemy name
 	} //end type
@@ -264,9 +258,6 @@ chat "Sergei"
 		"Neo-conservative twit!";
 		"Redneck";
 		"White Trash";
-		"I am the last line of defense.";
-		"You will not pass.";
-		"Even alone, I am stronger than all of you.";
 		TAUNT0;
 		TAUNT1;
 		

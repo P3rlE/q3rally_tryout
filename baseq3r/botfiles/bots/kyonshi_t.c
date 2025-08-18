@@ -142,9 +142,6 @@ chat "kyonshi"
 		DEATH_FEM_INSULT2;
 		DEATH_FEM_INSULT1;
 		DEATH_FEM_INSULT3;
-		"Leave me alone!";
-		"Is it over yet? Good.";
-		"I was having a bad day anyway.";
 	}
 
 	type "death_praise"
@@ -186,9 +183,6 @@ chat "kyonshi"
 		"Oh puh-lease!";
 		"You might want to put that gun down before you hurt yourself.";
 		"Pure luck.";
-		"Get out of my sight!";
-		"Finally, some peace and quiet.";
-		"Don't bother me!";
 	}
 
 	type "kill_praise"
@@ -202,9 +196,6 @@ chat "kyonshi"
 		"Your ~mother needs to stop calling me.";
 		"Your ~mama is a necrophiliac.";
 		"douchebag";
-		"I'm not in the mood for this.";
-		"Just go away.";
-		"Don't make me angry. You wouldn't like me when I'm angry.";
 	}
 
 	type "random_misc"

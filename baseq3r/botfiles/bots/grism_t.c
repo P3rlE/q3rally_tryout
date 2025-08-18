@@ -142,9 +142,6 @@ chat "grism"
 	{
 		"What the... how cheap!";
 		"Back in my day, frags weren't so cheap.";
-		"I will return from the dust of the arena.";
-		"A temporary setback. The crowd still loves me.";
-		"You can have that one. I have plenty.";
 	}
 
 	type "death_praise"
@@ -182,9 +179,6 @@ chat "grism"
 		"Pathetic.";
 		"tsk";
 		"My ", family_member, " could do better.";
-		"For the glory of the arena!";
-		"Another trophy for my collection.";
-		"Are you not entertained?";
 	}
 
 	type "kill_praise"
@@ -197,9 +191,6 @@ chat "grism"
 	{
 		 0, ", ~you suck!";
 		 0, " needs to stop calling my mom.";
-		"That's a nice weapon. It will look good in my collection.";
-		"All your items are belong to me.";
-		"I must have all the shiny things!";
 	}
 
 	type "random_misc"

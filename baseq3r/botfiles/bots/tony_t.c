@@ -142,9 +142,6 @@ chat "Tony"
 	{
 		"What the... how cheap!";
 		"Back in my day, frags weren't so cheap.";
-		"I'll be back with a bigger gun.";
-		"You can't stop me, you can only hope to contain me.";
-		"Out of ammo, not out of fight.";
 	}
 
 	type "death_praise"
@@ -182,9 +179,6 @@ chat "Tony"
 		"Pathetic.";
 		"tsk";
 		"My ", family_member, " could do better.";
-		"Say hello to my little friend!";
-		"Lock and load!";
-		"Eat lead!";
 	}
 
 	type "kill_praise"
@@ -197,9 +191,6 @@ chat "Tony"
 	{
 		 0, ", ~you suck!";
 		 0, " needs to stop calling my mom.";
-		"Let's dance.";
-		"You feelin' lucky, punk?";
-		"I've got a bullet with your name on it.";
 	}
 
 	type "random_misc"

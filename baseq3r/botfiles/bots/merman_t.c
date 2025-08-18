@@ -199,9 +199,6 @@ chat "Merman"
 		"pfff";
 		"Wuss";
 		"Sissy";
-		"I knew this was a bad idea.";
-		"I shouldn't have been here.";
-		"Run away!";
 		DEATH_INSULT2;
 		DEATH_INSULT0;
 		// 0 = enemy name
@@ -243,9 +240,6 @@ chat "Merman"
 		"I just made my perfect world, oops you're gone.";
 		KILL_INSULT4;
 		KILL_INSULT2;
-		"Thanks for doing all the hard work!";
-		"I saw my chance and I took it.";
-		"All's fair in love and war, right?";
 		
 		// 0 = enemy name
 	} //end type
@@ -263,9 +257,6 @@ chat "Merman"
 		"Get a hair cut";
 		"Get a real job";
 		"Get a life";
-		"You'll never catch me!";
-		"I'll just wait until you're weak.";
-		"Fighting is for fools. I'll just take the win.";
 		TAUNT0;
 		TAUNT1;
 		

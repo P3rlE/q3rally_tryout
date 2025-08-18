@@ -191,9 +191,6 @@ chat "Penguin"
 	{
 		DEATH_INSULT2;
 		DEATH_INSULT0;
-		"If I'm going down, I'm taking you with me!";
-		"Worth it.";
-		"I'll be back for more.";
 		// 0 = enemy name
 		// 1 = weapon used by enemy
 	} //end type
@@ -235,9 +232,6 @@ chat "Penguin"
 		"p0wn3d";
 		"you are not 1337";
 		"Bi11 G473z owns you.";
-		"Brakes are for cowards!";
-		"CRUNCH!";
-		"That's what you get for being in my way.";
 		KILL_INSULT4;
 		KILL_INSULT2;
 		
@@ -259,9 +253,6 @@ chat "Penguin"
 		"Get a life";
 		"You need 1337 lessons";
 		"I so nailed your mom last night.";
-		"Get ready for the pain train!";
-		"I don't stop for anyone.";
-		"Hope you have good insurance.";
 		// 0 = name of randomly chosen player
 		// 1 = name of the last player killed by this bot
 		// 4 = level's title

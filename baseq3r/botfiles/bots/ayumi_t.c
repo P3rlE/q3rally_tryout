@@ -178,9 +178,6 @@ chat "Ayumi"
 	{
 		DEATH_INSULT2;
 		DEATH_INSULT0;
-		"You can't keep me down!";
-		"I'll be back in a flash!";
-		"Guess I'll have to go even faster.";
 		// 0 = enemy name
 		// 1 = weapon used by enemy
 	} //end type
@@ -219,9 +216,6 @@ chat "Ayumi"
 	{
 		KILL_INSULT4;
 		KILL_INSULT2;
-		"Too slow!";
-		"Now you see me, now you're dead!";
-		"Was that a blur? Oh, that was me.";
 		
 		// 0 = enemy name
 	} //end type
@@ -238,9 +232,6 @@ chat "Ayumi"
 		"Your breath stinks";
 		"Get off your dead butt and something for a change.";
 		"Life got you down?  Give it up.";
-		"Wanna see a magic trick? I'm gonna make your health disappear.";
-		"Catch me if you can!";
-		"Why so serious?";
 		// 0 = name of randomly chosen player
 		// 1 = name of the last player killed by this bot
 		// 4 = level's title

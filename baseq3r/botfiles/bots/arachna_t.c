@@ -190,9 +190,6 @@ chat "Arachna"
 		"This is far more painful than it looks.";
 		"One day, ", 0, " you me and a ", weapon, " are going to have a discussion.";
 		"Is that the best you can do?";
-		"A worthy opponent.";
-		"I'll adapt and overcome.";
-		"You won't be so lucky next time.";
 		DEATH_INSULT2;
 		DEATH_INSULT0;
 		// 0 = enemy name
@@ -236,9 +233,6 @@ chat "Arachna"
 		"Why do you even bother?";
 		"This is why the upper classes are called the 'ruling elite.'";
 		"Why do the lower classes think they can match someone of my caliber?";
-		"A perfect ambush.";
-		"Your strategy was flawed.";
-		"Predictable.";
 		
 		// 0 = enemy name
 	} //end type
@@ -260,9 +254,6 @@ chat "Arachna"
 		"I saw those pictures of ", 0, " and a ", animal, " posted on the web last night... Like, ewww!";
 		immaturity01;
 		"Your ", family_member, " needs to stop calling me.";
-		"You can't touch me.";
-		"I'm always ten steps ahead.";
-		"Your every move is monitored.";
 		
 		// 0 = name of randomly chosen player
 		// 1 = name of the last player killed by this bot

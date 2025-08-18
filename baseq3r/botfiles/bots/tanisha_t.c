@@ -211,9 +211,6 @@ chat "Tanisha"
 	{
 		"Not bad, ", 0, ", have you been practicing?";
 		"I never saw it coming.";
-		"I should have stayed back.";
-		"Where's my team?";
-		"This is why I hate fighting alone.";
 		D_PRAISE0;
 		D_PRAISE1;
 		// 0 = enemy name
@@ -253,9 +250,6 @@ chat "Tanisha"
 	type "kill_praise" //praise initiated when the bot killed someone
 	{
 		"You are getting better, ", 0, ", keep it up and you might actually win something.";
-		"I... I did it?";
-		"Was that okay?";
-		"I was just trying to help!";
 	
 		// 0 = enemy name
 	} //end type
@@ -286,9 +280,6 @@ chat "Tanisha"
 		"You would be surprised what you can do with a ", animal, " a ", food, " and ", peeps, ".";
 		"Next time you see Gargoyle tell him to call me, mmmkay?";
 		neuterbot, " is cute.";
-		"Let's not fight, okay?";
-		"Can we just talk this out?";
-		"I'm just following orders.";
 		// 0 = name of randomly chosen player
 		// 1 = name of the last player killed by this bot
 		// 4 = level's title
