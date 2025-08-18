@@ -1960,10 +1960,6 @@ typedef struct {
 	int				sortedBotNums[MAX_BOTS];
 	char			boticons[MAX_MODELSPERPAGE][MAX_QPATH];
 	char			botnames[MAX_MODELSPERPAGE][16];
-	menutext_s		personality;
-	menutext_s		description;
-	char			personality_buffer[MAX_INFO_STRING];
-	char			description_buffer[MAX_INFO_STRING];
 } botSelectInfo_t;
 
 static botSelectInfo_t	botSelectInfo;
@@ -2091,10 +2087,6 @@ static void UI_BotSelectMenu_UpdateGrid( void ) {
 	botSelectInfo.pics[i].generic.flags |= QMF_HIGHLIGHT;
 	botSelectInfo.picbuttons[i].generic.flags &= ~QMF_PULSEIFFOCUS;
 
-	info = UI_GetBotInfoByNumber( botSelectInfo.sortedBotNums[botSelectInfo.selectedmodel] );
-	Q_strncpyz( botSelectInfo.personality.string, Info_ValueForKey( info, "personality" ), sizeof(botSelectInfo.personality.string) );
-	Q_strncpyz( botSelectInfo.description.string, Info_ValueForKey( info, "description" ), sizeof(botSelectInfo.description.string) );
-
 	if( botSelectInfo.numpages > 1 ) {
 		if( botSelectInfo.modelpage > 0 ) {
 			botSelectInfo.left.generic.flags &= ~QMF_INACTIVE;
@@ -2196,7 +2188,6 @@ UI_BotSelectMenu_BotEvent
 */
 static void UI_BotSelectMenu_BotEvent( void* ptr, int event ) {
 	int		i;
-	const char *info;
 
 	if( event != QM_ACTIVATED ) {
 		return;
@@ -2212,10 +2203,6 @@ static void UI_BotSelectMenu_BotEvent( void* ptr, int event ) {
 	botSelectInfo.pics[i].generic.flags |= QMF_HIGHLIGHT;
 	botSelectInfo.picbuttons[i].generic.flags &= ~QMF_PULSEIFFOCUS;
 	botSelectInfo.selectedmodel = botSelectInfo.modelpage * MAX_MODELSPERPAGE + i;
-
-	info = UI_GetBotInfoByNumber( botSelectInfo.sortedBotNums[botSelectInfo.selectedmodel] );
-	Q_strncpyz( botSelectInfo.personality.string, Info_ValueForKey( info, "personality" ), sizeof(botSelectInfo.personality.string) );
-	Q_strncpyz( botSelectInfo.description.string, Info_ValueForKey( info, "description" ), sizeof(botSelectInfo.description.string) );
 }
 
 
@@ -2371,22 +2358,6 @@ static void UI_BotSelectMenu_Init( char *bot ) {
 	botSelectInfo.go.color				= text_color_normal;
 	botSelectInfo.go.style				= UI_RIGHT | UI_SMALLFONT;
 
-	botSelectInfo.personality.generic.type		= MTYPE_PTEXT;
-	botSelectInfo.personality.generic.flags		= QMF_LEFT_JUSTIFY;
-	botSelectInfo.personality.generic.x			= 500;
-	botSelectInfo.personality.generic.y			= 100;
-	botSelectInfo.personality.string			= botSelectInfo.personality_buffer;
-	botSelectInfo.personality.color				= color_white;
-	botSelectInfo.personality.style				= UI_LEFT|UI_SMALLFONT;
-
-	botSelectInfo.description.generic.type		= MTYPE_PTEXT;
-	botSelectInfo.description.generic.flags		= QMF_LEFT_JUSTIFY;
-	botSelectInfo.description.generic.x			= 500;
-	botSelectInfo.description.generic.y			= 200;
-	botSelectInfo.description.string			= botSelectInfo.description_buffer;
-	botSelectInfo.description.color				= color_white;
-	botSelectInfo.description.style				= UI_LEFT|UI_SMALLFONT;
-
 	Menu_AddItem( &botSelectInfo.menu, &botSelectInfo.banner );
 	for( i = 0; i < MAX_MODELSPERPAGE; i++ ) {
 		Menu_AddItem( &botSelectInfo.menu,	&botSelectInfo.pics[i] );
@@ -2398,8 +2369,6 @@ static void UI_BotSelectMenu_Init( char *bot ) {
 	Menu_AddItem( &botSelectInfo.menu, &botSelectInfo.right );
 	Menu_AddItem( &botSelectInfo.menu, &botSelectInfo.back );
 	Menu_AddItem( &botSelectInfo.menu, &botSelectInfo.go );
-	Menu_AddItem( &botSelectInfo.menu, &botSelectInfo.personality );
-	Menu_AddItem( &botSelectInfo.menu, &botSelectInfo.description );
 
 	UI_BotSelectMenu_BuildList();
 	UI_BotSelectMenu_Default( bot );
