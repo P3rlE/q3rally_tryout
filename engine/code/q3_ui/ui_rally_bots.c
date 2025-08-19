@@ -65,18 +65,12 @@ UI_Bots_ParseBots
 =================
 */
 static void UI_Bots_ParseBots( void ) {
-	static qboolean parsed = qfalse;
 	char *buf;
 	char *token;
 	char *p;
 	int len;
 	fileHandle_t f;
 	botinfo_t *bot;
-
-	if (parsed) {
-		return;
-	}
-	parsed = qtrue;
 
 	len = trap_FS_FOpenFile( "scripts/bots.txt", &f, FS_READ );
 	if ( !f ) {
