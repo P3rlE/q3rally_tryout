@@ -65,12 +65,18 @@ UI_Bots_ParseBots
 =================
 */
 static void UI_Bots_ParseBots( void ) {
+	static qboolean parsed = qfalse;
 	char *buf;
 	char *token;
 	char *p;
 	int len;
 	fileHandle_t f;
 	botinfo_t *bot;
+
+	if (parsed) {
+		return;
+	}
+	parsed = qtrue;
 
 	len = trap_FS_FOpenFile( "scripts/bots.txt", &f, FS_READ );
 	if ( !f ) {
@@ -109,7 +115,7 @@ static void UI_Bots_ParseBots( void ) {
 		bot = &s_bots.botinfo[s_bots.numBots];
 
 		while ( 1 ) {
-			token = COM_Parse( &p );
+			token = COM_ParseExt( &p, qfalse );
 			if ( !token[0] ) {
 				break;
 			}
@@ -119,16 +125,16 @@ static void UI_Bots_ParseBots( void ) {
 			}
 
 			if ( Q_stricmp( token, "name" ) == 0 ) {
-				token = COM_Parse( &p );
+				token = COM_ParseExt( &p, qfalse );
 				Q_strncpyz( bot->name, token, sizeof( bot->name ) );
 			} else if ( Q_stricmp( token, "personality" ) == 0 ) {
-				token = COM_Parse( &p );
+				token = COM_ParseExt( &p, qfalse );
 				Q_strncpyz( bot->personality, token, sizeof( bot->personality ) );
 			} else if ( Q_stricmp( token, "description" ) == 0 ) {
-				token = COM_Parse( &p );
+				token = COM_ParseExt( &p, qfalse );
 				Q_strncpyz( bot->description, token, sizeof( bot->description ) );
 			} else if ( Q_stricmp( token, "model" ) == 0 ) {
-				token = COM_Parse( &p );
+				token = COM_ParseExt( &p, qfalse );
 				Q_strncpyz( bot->model, token, sizeof( bot->model ) );
 			}
 		}
