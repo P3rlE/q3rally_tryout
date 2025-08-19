@@ -455,6 +455,9 @@ void UI_MainMenu( void ) {
         s_main.garage.generic.y                         = y + 12;
         s_main.garage.string                            = "THE GARAGE";
         s_main.garage.color                             = text_color_normal;
+        
+        
+        y += MAIN_MENU_VERTICAL_SPACING;
         s_main.demos.generic.type                       = MTYPE_PTEXT;
         s_main.demos.generic.id                         = ID_DEMOS;
         s_main.demos.generic.callback                   = Main_MenuEvent;
