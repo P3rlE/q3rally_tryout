@@ -24,6 +24,70 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "g_local.h"
 
 
+static int G_ReadBestValue( const char *mapname ) {
+       fileHandle_t    f;
+       char            filename[MAX_QPATH];
+       char            buffer[128];
+       int             len;
+       int             value = 0;
+
+       Com_sprintf( filename, sizeof( filename ), "records/%s.record", mapname );
+       len = trap_FS_FOpenFile( filename, &f, FS_READ );
+       if ( len <= 0 ) {
+               return 0;
+       }
+       if ( len >= sizeof( buffer ) ) {
+               len = sizeof( buffer ) - 1;
+       }
+       trap_FS_Read( buffer, len, f );
+       buffer[len] = '\0';
+       trap_FS_FCloseFile( f );
+
+       sscanf( buffer, "%*[^=]=%d", &value );
+       return value;
+}
+
+static void G_WriteRecord( const char *mapname, const char *key, int value, const char *player ) {
+       fileHandle_t    f;
+       char            filename[MAX_QPATH];
+       char            buffer[256];
+
+       Com_sprintf( filename, sizeof( filename ), "records/%s.record", mapname );
+       trap_FS_FOpenFile( filename, &f, FS_WRITE );
+       Com_sprintf( buffer, sizeof( buffer ), "%s=%d\nplayer=%s\n", key, value, player );
+       trap_FS_Write( buffer, strlen( buffer ), f );
+       trap_FS_FCloseFile( f );
+}
+
+void G_UpdateLapRecord( gentity_t *player, int lapTime ) {
+       char            serverinfo[MAX_INFO_STRING];
+       char            mapname[MAX_QPATH];
+       int             best;
+
+       trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
+       Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
+
+       best = G_ReadBestValue( mapname );
+       if ( !best || lapTime < best ) {
+               G_WriteRecord( mapname, "best_lap_time", lapTime, player->client->pers.netname );
+       }
+}
+
+void G_UpdateScoreRecord( gentity_t *player ) {
+       char            serverinfo[MAX_INFO_STRING];
+       char            mapname[MAX_QPATH];
+       int             best;
+       int             score = player->client->ps.persistant[PERS_SCORE];
+
+       trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
+       Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
+
+       best = G_ReadBestValue( mapname );
+       if ( !best || score > best ) {
+               G_WriteRecord( mapname, "best_score", score, player->client->pers.netname );
+       }
+}
+
 int GetTeamAtRank( int rank ){
 	int		i, j, count;
 	int		ranks[4];
@@ -371,15 +435,22 @@ void RallyStarter_Think( gentity_t *ent ){
 	if (isRallyRace()){
 		t = NULL;
 		t = G_Find (t, FOFS(classname), "rally_checkpoint");
-		if (t == NULL){
-			// start race right away
-			level.startRaceTime = level.time;
-			trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
-			CenterPrint_All("GO..");
+               if (t == NULL){
+                       // start race right away
+                       level.startRaceTime = level.time;
+                       trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
+                       CenterPrint_All("GO..");
 
-			G_FreeEntity( ent );
-			return;
-		}
+                       for ( i = 0; i < level.maxclients; i++ ) {
+                               player = &g_entities[i];
+                               if ( !player->inuse || !player->client ) continue;
+                               player->client->startLapTime = level.startRaceTime;
+                               player->client->bestLapTime = 0;
+                       }
+
+                       G_FreeEntity( ent );
+                       return;
+               }
 	}
 	ent->nextthink = level.time + 1000;
 	t = NULL;
@@ -428,17 +499,24 @@ void RallyStarter_Think( gentity_t *ent ){
 	if ( ent->pain_debounce_time == 0 )
 		ent->pain_debounce_time = level.time;
 
-	if ( level.time > ent->pain_debounce_time + 5000 ){
-		level.startRaceTime = level.time;
+       if ( level.time > ent->pain_debounce_time + 5000 ){
+               level.startRaceTime = level.time;
 
-		trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
-		RaceCountdown("GO!", 0);
+               for ( i = 0; i < level.maxclients; i++ ) {
+                       player = &g_entities[i];
+                       if ( !player->inuse || !player->client ) continue;
+                       player->client->startLapTime = level.startRaceTime;
+                       player->client->bestLapTime = 0;
+               }
 
-		Rally_Sound( ent, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/go.wav") );
+               trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
+               RaceCountdown("GO!", 0);
 
-		if (g_gametype.integer != GT_DERBY)
-			ent->think = RallyRace_Think;
-	}
+               Rally_Sound( ent, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/go.wav") );
+
+               if (g_gametype.integer != GT_DERBY)
+                       ent->think = RallyRace_Think;
+       }
 	else if ( level.time > ent->pain_debounce_time + 4000 ){
 		RaceCountdown("1", 1);
 

@@ -6,6 +6,13 @@ Q3Rally is a standalone game based on ioquake3.
 
 For compiling, see [engine/README.md](engine/README.md).
 
+## Records
+
+Per-map records are stored under `baseq3r/records/`.
+Each map's file is named `<mapname>.record` and contains either
+`best_lap_time=<milliseconds>` or `best_score=<value>` followed by the
+player name.  Remove the file to reset the record.
+
 ## Resources
 
 * [Q3Rally Website](http://www.q3rally.com)
