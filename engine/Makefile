@@ -3343,6 +3343,9 @@ endif
 dist:
 	git archive --format zip --output $(CLIENTBIN)-$(VERSION).zip HEAD
 
+test:
+	$(MAKE) -C code/game/tests run
+
 #############################################################################
 # DEPENDENCIES
 #############################################################################
@@ -3359,10 +3362,10 @@ ifneq ($(B),)
 endif
 
 .PHONY: all clean clean2 clean-debug clean-release copyfiles \
-	debug default dist distclean installer makedirs \
-	release targets \
-	toolsclean toolsclean2 toolsclean-debug toolsclean-release \
-	$(OBJ_D_FILES) $(TOOLSOBJ_D_FILES)
+        debug default dist distclean installer makedirs \
+        release targets test \
+        toolsclean toolsclean2 toolsclean-debug toolsclean-release \
+        $(OBJ_D_FILES) $(TOOLSOBJ_D_FILES)
 
 # If the target name contains "clean", don't do a parallel build
 ifneq ($(findstring clean, $(MAKECMDGOALS)),)
