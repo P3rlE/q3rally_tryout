@@ -135,21 +135,17 @@ void G_UpdateLapRecord( gentity_t *player, int lapTime ) {
        char            serverinfo[MAX_INFO_STRING];
        char            mapname[MAX_QPATH];
        int             best;
-       const char      *key;
 
        trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
        Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
 
-
-       key = ( player->r.svFlags & SVF_BOT ) ? "best_lap_time_bot" : "best_lap_time_player";
-
-       best = G_ReadBestValue( mapname, key );
+       best = G_ReadBestValue( mapname, "best_lap_time" );
        if ( player->r.svFlags & SVF_BOT ) {
                return;
        }
 
        if ( !best || lapTime < best ) {
-               G_WriteRecord( mapname, key, lapTime, player->client->pers.netname );
+               G_WriteRecord( mapname, "best_lap_time", lapTime, player->client->pers.netname );
        }
 }
 
