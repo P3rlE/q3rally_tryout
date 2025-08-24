@@ -23,6 +23,43 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "cg_local.h"
 
+static int      cg_mapBestLapTime;
+static int      cg_mapBestScore;
+static char     cg_mapBestPlayer[64];
+
+static void CG_LoadMapRecord( void ) {
+       fileHandle_t    f;
+       char            filename[MAX_QPATH];
+       char            buffer[128];
+       int             len;
+       char            mapname[MAX_QPATH];
+
+       cg_mapBestLapTime = 0;
+       cg_mapBestScore = 0;
+       Q_strncpyz( cg_mapBestPlayer, "Unknown", sizeof( cg_mapBestPlayer ) );
+
+       COM_StripExtension( cgs.mapname, mapname, sizeof( mapname ) );
+       Com_sprintf( filename, sizeof( filename ), "records/%s.record", mapname );
+
+       len = trap_FS_FOpenFile( filename, &f, FS_READ );
+       if ( len <= 0 ) {
+               return;
+       }
+       if ( len >= sizeof( buffer ) ) {
+               len = sizeof( buffer ) - 1;
+       }
+       trap_FS_Read( buffer, len, f );
+       buffer[len] = '\0';
+       trap_FS_FCloseFile( f );
+
+       if ( sscanf( buffer, "best_lap_time=%d\nplayer=%63s", &cg_mapBestLapTime, cg_mapBestPlayer ) != 2 ) {
+               if ( sscanf( buffer, "best_score=%d\nplayer=%63s", &cg_mapBestScore, cg_mapBestPlayer ) != 2 ) {
+                       cg_mapBestLapTime = 0;
+                       cg_mapBestScore = 0;
+                       Q_strncpyz( cg_mapBestPlayer, "Unknown", sizeof( cg_mapBestPlayer ) );
+               }
+       }
+}
 
 void CG_NewLapTime( int client, int lap, int time ) {
 	centity_t	*cent;
@@ -72,6 +109,8 @@ void CG_StartRace( int time ) {
 	int			i;
 	centity_t	*player;
 
+	CG_LoadMapRecord();
+
 	for (i = 0; i < MAX_CLIENTS; i++){
 		player = &cg_entities[i];
 		if (!player) continue;
@@ -105,9 +144,19 @@ void CG_DrawRaceCountDown( void ){
 	scale = cg.countDownEnd < cg.time ? 0.8f : ((cg.countDownEnd - cg.time) % 1000) / 1000.0f;
 	w = 3*GIANTCHAR_WIDTH * scale;
 	h = 3*GIANTCHAR_HEIGHT * scale;
-	x = 320 - (strlen(cg.countDownPrint) * w) / 2;
-	y = 240 - h/2;
-	CG_DrawStringExt( x, y, cg.countDownPrint, color, qfalse, qtrue, w, h, 0 );
+       x = 320 - (strlen(cg.countDownPrint) * w) / 2;
+       y = 240 - h/2;
+       CG_DrawStringExt( x, y, cg.countDownPrint, color, qfalse, qtrue, w, h, 0 );
+
+       if ( cg_mapBestLapTime || cg_mapBestScore ) {
+               char    line[128];
+               if ( cg_mapBestLapTime ) {
+                       Com_sprintf( line, sizeof( line ), "Best Lap: %s by %s", getStringForTime( cg_mapBestLapTime ), cg_mapBestPlayer );
+               } else {
+                       Com_sprintf( line, sizeof( line ), "Best Score: %d by %s", cg_mapBestScore, cg_mapBestPlayer );
+               }
+               CG_DrawStringExt( 5, 5, line, colorWhite, qfalse, qtrue, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT, 0 );
+       }
 }
 
 void CG_RaceCountDown( const char *str, int secondsLeft ){

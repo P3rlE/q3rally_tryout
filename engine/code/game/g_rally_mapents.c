@@ -51,14 +51,23 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
 		return;
 	}
 
-	if (self->number == other->number){
-		other->client->lastCheckpointTime = level.time;
-		other->currentLap++;
-		// increment lap
-		if ( other->currentLap > level.numberOfLaps && level.numberOfLaps ){
-			other->client->finishRaceTime = level.time;
-			other->s.weapon = WP_NONE;
-			other->takedamage = qfalse;
+       if (self->number == other->number){
+               int lapTime = 0;
+               if ( other->client->startLapTime ) {
+                       lapTime = level.time - other->client->startLapTime;
+                       if ( lapTime < other->client->bestLapTime || other->client->bestLapTime == 0 ) {
+                               other->client->bestLapTime = lapTime;
+                       }
+                       G_UpdateLapRecord( other, lapTime );
+               }
+               other->client->startLapTime = level.time;
+               other->client->lastCheckpointTime = level.time;
+               other->currentLap++;
+               // increment lap
+               if ( other->currentLap > level.numberOfLaps && level.numberOfLaps ){
+                       other->client->finishRaceTime = level.time;
+                       other->s.weapon = WP_NONE;
+                       other->takedamage = qfalse;
 
 			trap_SendServerCommand( -1, va("raceFinishTime %i %i", other->s.clientNum, other->client->finishRaceTime) );
 
