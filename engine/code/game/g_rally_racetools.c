@@ -68,6 +68,9 @@ void G_UpdateLapRecord( gentity_t *player, int lapTime ) {
        Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
 
        best = G_ReadBestValue( mapname );
+       if ( player->r.svFlags & SVF_BOT ) {
+               return;
+       }
        if ( !best || lapTime < best ) {
                G_WriteRecord( mapname, "best_lap_time", lapTime, player->client->pers.netname );
        }
