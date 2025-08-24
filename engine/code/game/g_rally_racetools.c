@@ -144,8 +144,6 @@ void G_UpdateLapRecord( gentity_t *player, int lapTime ) {
        key = ( player->r.svFlags & SVF_BOT ) ? "best_lap_time_bot" : "best_lap_time_player";
 
        best = G_ReadBestValue( mapname, key );
-
-       best = G_ReadBestValue( mapname );
        if ( player->r.svFlags & SVF_BOT ) {
                return;
        }
