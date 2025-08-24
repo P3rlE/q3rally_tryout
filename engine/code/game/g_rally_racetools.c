@@ -187,14 +187,21 @@ static void G_WriteRecord( const char *mapname, const char *key, int value, cons
 }
 
 void G_UpdateLapRecord( gentity_t *player, int lapTime ) {
+<<<<<<< HEAD
     char serverinfo[MAX_INFO_STRING];
     char mapname[MAX_QPATH];
     int best;
     const char *key;
+=======
+       char            serverinfo[MAX_INFO_STRING];
+       char            mapname[MAX_QPATH];
+       int             best;
+>>>>>>> 07bc630e2028aa09ae8fb99358c49af09eb55ce2
 
     trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
     Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
 
+<<<<<<< HEAD
     key = ( player->r.svFlags & SVF_BOT ) ? "best_lap_time_bot" : "best_lap_time_player";
 
     best = G_ReadBestValue( mapname, key );
@@ -205,6 +212,16 @@ void G_UpdateLapRecord( gentity_t *player, int lapTime ) {
     if ( !best || lapTime < best ) {
         G_WriteRecord( mapname, key, lapTime, player->client->pers.netname );
     }
+=======
+       best = G_ReadBestValue( mapname, "best_lap_time" );
+       if ( player->r.svFlags & SVF_BOT ) {
+               return;
+       }
+
+       if ( !best || lapTime < best ) {
+               G_WriteRecord( mapname, "best_lap_time", lapTime, player->client->pers.netname );
+       }
+>>>>>>> 07bc630e2028aa09ae8fb99358c49af09eb55ce2
 }
 
 void G_UpdateScoreRecord( gentity_t *player ) {
