@@ -23,684 +23,641 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
+/*
+ * NOTE: The Q3 VM (lcc) environment doesn't provide standard C headers like
+ * <string.h>/<stdlib.h>. We therefore avoid strtok/strchr/strlen/atoi and use
+ * local minimal helpers + existing Q3 string utilities (Q_stricmp, Q_strncmp,
+ * Q_strncpyz, Com_sprintf, va, etc.). Everything below is C89-friendly.
+ */
 
-static int G_ReadBestValue( const char *mapname, const char *key ) {
-       fileHandle_t    f;
-       char            filename[MAX_QPATH];
-       char            buffer[1024];
-       int             len;
-       int             value = 0;
-       char            *line;
-
-       Com_sprintf( filename, sizeof( filename ), "records/%s.record", mapname );
-       len = trap_FS_FOpenFile( filename, &f, FS_READ );
-       if ( len <= 0 ) {
-               return 0;
-       }
-       if ( len >= sizeof( buffer ) ) {
-               len = sizeof( buffer ) - 1;
-       }
-       trap_FS_Read( buffer, len, f );
-       buffer[len] = '\0';
-       trap_FS_FCloseFile( f );
-
-       for ( line = strtok( buffer, "\n" ); line; line = strtok( NULL, "\n" ) ) {
-               if ( !Q_strncmp( line, key, strlen( key ) ) && line[strlen( key )] == '=' ) {
-                       value = atoi( line + strlen( key ) + 1 );
-                       break;
-               }
-       }
-       return value;
+/* ---- minimal local helpers (C89, no libc) ---- */
+static int q_len( const char *s ) {
+    int n;
+    if ( !s ) return 0;
+    n = 0;
+    while ( s[n] ) n++;
+    return n;
 }
 
+static int q_atoi( const char *s ) {
+    int sign, v, c;
+    if ( !s ) return 0;
+    sign = 1; v = 0;
+    if ( *s == '-' ) { sign = -1; s++; }
+    while ( (c = *s) >= '0' && c <= '9' ) { v = v*10 + (c - '0'); s++; }
+    return sign * v;
+}
+
+static char *q_find_char( char *s, char ch ) {
+    if ( !s ) return NULL;
+    while ( *s ) { if ( *s == ch ) return s; s++; }
+    return NULL;
+}
+
+/* Iterate over lines in a mutable buffer. Replaces line breaks with  . */
+static char *q_next_line( char **cursor ) {
+    char *p, *start;
+    if ( !cursor || !*cursor ) return NULL;
+    p = *cursor;
+    if ( !*p ) return NULL;
+    start = p;
+    /* find end of line: LF(10) or CR(13) */
+    while ( *p && *p != (char)10 && *p != (char)13 ) p++;
+    if ( *p ) { *p = (char)0; p++; }
+    /* skip subsequent CR/LF */
+    while ( *p == (char)10 || *p == (char)13 ) p++;
+    *cursor = p;
+    return start;
+}
+
+/* ----------------------------------------------------------------------------
+   Records I/O (best lap/score per map)
+   ---------------------------------------------------------------------------- */
+static int G_ReadBestValue( const char *mapname, const char *key ) {
+    fileHandle_t f;
+    char filename[MAX_QPATH];
+    char buffer[1024];
+    int len, klen, value;
+    char *cur, *line;
+
+    value = 0;
+    klen = q_len( key );
+
+    Com_sprintf( filename, sizeof( filename ), "records/%s.record", mapname );
+    len = trap_FS_FOpenFile( filename, &f, FS_READ );
+    if ( len <= 0 ) {
+        return 0;
+    }
+    if ( len >= (int)sizeof( buffer ) ) {
+        len = (int)sizeof( buffer ) - 1;
+    }
+    trap_FS_Read( buffer, len, f );
+    buffer[len] = ' ';
+    trap_FS_FCloseFile( f );
+
+    cur = buffer;
+    while ( (line = q_next_line( &cur )) != NULL ) {
+        if ( !Q_strncmp( line, key, klen ) && line[klen] == '=' ) {
+            value = q_atoi( line + klen + 1 );
+            break;
+        }
+    }
+    return value;
+}
+
+typedef struct {
+    char key[64];
+    char value[128];
+} record_t;
+
 static void G_WriteRecord( const char *mapname, const char *key, int value, const char *player ) {
-       fileHandle_t    f;
-       char            filename[MAX_QPATH];
-       char            buffer[1024];
-       int             len;
-       typedef struct {
-               char    key[64];
-               char    value[128];
-       } record_t;
-       record_t       records[16];
-       int             count = 0;
-       int             i;
-       char            *line;
-       char            val[64];
-       char            playerKey[64];
+    fileHandle_t f;
+    char filename[MAX_QPATH];
+    char buffer[1024];
+    int len, count, i;
+    char *cur, *line, *eq;
+    record_t records[16];
+    char val[64];
+    char playerKey[64];
 
-       Com_sprintf( filename, sizeof( filename ), "records/%s.record", mapname );
+    Com_sprintf( filename, sizeof( filename ), "records/%s.record", mapname );
 
-       len = trap_FS_FOpenFile( filename, &f, FS_READ );
-       if ( len > 0 ) {
-               if ( len >= sizeof( buffer ) ) {
-                       len = sizeof( buffer ) - 1;
-               }
-               trap_FS_Read( buffer, len, f );
-               buffer[len] = '\0';
-               trap_FS_FCloseFile( f );
+    /* Read existing */
+    count = 0;
+    len = trap_FS_FOpenFile( filename, &f, FS_READ );
+    if ( len > 0 ) {
+        if ( len >= (int)sizeof( buffer ) ) {
+            len = (int)sizeof( buffer ) - 1;
+        }
+        trap_FS_Read( buffer, len, f );
+        buffer[len] = ' ';
+        trap_FS_FCloseFile( f );
 
-               for ( line = strtok( buffer, "\n" ); line && count < ARRAY_LEN( records ); line = strtok( NULL, "\n" ) ) {
-                       char *eq = strchr( line, '=' );
-                       if ( !eq ) {
-                               continue;
-                       }
-                       *eq = '\0';
-                       Q_strncpyz( records[count].key, line, sizeof( records[count].key ) );
-                       Q_strncpyz( records[count].value, eq + 1, sizeof( records[count].value ) );
-                       count++;
-               }
-       } else {
-               buffer[0] = '\0';
-       }
+        cur = buffer;
+        while ( (line = q_next_line( &cur )) != NULL && count < (int)ARRAY_LEN( records ) ) {
+            eq = q_find_char( line, '=' );
+            if ( !eq ) {
+                continue;
+            }
+            *eq = ' ';
+            Q_strncpyz( records[count].key, line, sizeof( records[count].key ) );
+            Q_strncpyz( records[count].value, eq + 1, sizeof( records[count].value ) );
+            count++;
+        }
+    }
 
-       // update or add the value
-       Com_sprintf( val, sizeof( val ), "%d", value );
-       for ( i = 0; i < count; i++ ) {
-               if ( !Q_stricmp( records[i].key, key ) ) {
-                       Q_strncpyz( records[i].value, val, sizeof( records[i].value ) );
-                       break;
-               }
-       }
-       if ( i == count && count < ARRAY_LEN( records ) ) {
-               Q_strncpyz( records[count].key, key, sizeof( records[count].key ) );
-               Q_strncpyz( records[count].value, val, sizeof( records[count].value ) );
-               count++;
-       }
+    /* update or add the value */
+    Com_sprintf( val, sizeof( val ), "%d", value );
+    for ( i = 0; i < count; i++ ) {
+        if ( !Q_stricmp( records[i].key, key ) ) {
+            Q_strncpyz( records[i].value, val, sizeof( records[i].value ) );
+            break;
+        }
+    }
+    if ( i == count && count < (int)ARRAY_LEN( records ) ) {
+        Q_strncpyz( records[count].key, key, sizeof( records[count].key ) );
+        Q_strncpyz( records[count].value, val, sizeof( records[count].value ) );
+        count++;
+    }
 
-       // update or add the player name for this key
-       Com_sprintf( playerKey, sizeof( playerKey ), "player_%s", key );
-       for ( i = 0; i < count; i++ ) {
-               if ( !Q_stricmp( records[i].key, playerKey ) ) {
-                       Q_strncpyz( records[i].value, player, sizeof( records[i].value ) );
-                       break;
-               }
-       }
-       if ( i == count && count < ARRAY_LEN( records ) ) {
-               Q_strncpyz( records[count].key, playerKey, sizeof( records[count].key ) );
-               Q_strncpyz( records[count].value, player, sizeof( records[count].value ) );
-               count++;
-       }
+    /* update or add the player name for this key */
+    Com_sprintf( playerKey, sizeof( playerKey ), "player_%s", key );
+    for ( i = 0; i < count; i++ ) {
+        if ( !Q_stricmp( records[i].key, playerKey ) ) {
+            Q_strncpyz( records[i].value, player, sizeof( records[i].value ) );
+            break;
+        }
+    }
+    if ( i == count && count < (int)ARRAY_LEN( records ) ) {
+        Q_strncpyz( records[count].key, playerKey, sizeof( records[count].key ) );
+        Q_strncpyz( records[count].value, player, sizeof( records[count].value ) );
+        count++;
+    }
 
-       trap_FS_FOpenFile( filename, &f, FS_WRITE );
-       for ( i = 0; i < count; i++ ) {
-               char out[256];
-               Com_sprintf( out, sizeof( out ), "%s=%s\n", records[i].key, records[i].value );
-               trap_FS_Write( out, strlen( out ), f );
-       }
-       trap_FS_FCloseFile( f );
+    trap_FS_FOpenFile( filename, &f, FS_WRITE );
+    for ( i = 0; i < count; i++ ) {
+        char out[256];
+        char nl = (char)10; /* 
+ */
+        Com_sprintf( out, sizeof( out ), "%s=%s", records[i].key, records[i].value );
+        trap_FS_Write( out, q_len( out ), f );
+        trap_FS_Write( &nl, 1, f );
+    }
+    trap_FS_FCloseFile( f );
 }
 
 void G_UpdateLapRecord( gentity_t *player, int lapTime ) {
-       char            serverinfo[MAX_INFO_STRING];
-       char            mapname[MAX_QPATH];
-       int             best;
-       const char      *key;
+    char serverinfo[MAX_INFO_STRING];
+    char mapname[MAX_QPATH];
+    int best;
+    const char *key;
 
-       trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
-       Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
+    trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
+    Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
 
+    key = ( player->r.svFlags & SVF_BOT ) ? "best_lap_time_bot" : "best_lap_time_player";
 
-       key = ( player->r.svFlags & SVF_BOT ) ? "best_lap_time_bot" : "best_lap_time_player";
+    best = G_ReadBestValue( mapname, key );
+    if ( player->r.svFlags & SVF_BOT ) {
+        return;
+    }
 
-       best = G_ReadBestValue( mapname, key );
-       if ( player->r.svFlags & SVF_BOT ) {
-               return;
-       }
-
-       if ( !best || lapTime < best ) {
-               G_WriteRecord( mapname, key, lapTime, player->client->pers.netname );
-       }
+    if ( !best || lapTime < best ) {
+        G_WriteRecord( mapname, key, lapTime, player->client->pers.netname );
+    }
 }
 
 void G_UpdateScoreRecord( gentity_t *player ) {
-       char            serverinfo[MAX_INFO_STRING];
-       char            mapname[MAX_QPATH];
-       int             best;
-       int             score = player->client->ps.persistant[PERS_SCORE];
+    char serverinfo[MAX_INFO_STRING];
+    char mapname[MAX_QPATH];
+    int best, score;
 
-       trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
-       Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
+    score = player->client->ps.persistant[PERS_SCORE];
 
-       best = G_ReadBestValue( mapname, "best_score" );
-       if ( !best || score > best ) {
-               G_WriteRecord( mapname, "best_score", score, player->client->pers.netname );
-       }
+    trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
+    Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
+
+    best = G_ReadBestValue( mapname, "best_score" );
+    if ( !best || score > best ) {
+        G_WriteRecord( mapname, "best_score", score, player->client->pers.netname );
+    }
 }
 
 int GetTeamAtRank( int rank ){
-	int		i, j, count;
-	int		ranks[4];
-	int		counts[4];
+    int i, j, count;
+    int ranks[4];
+    int counts[4];
 
-	for (i = 0; i < 4; i++){
-		counts[i] = TeamCount( -1, TEAM_RED + i );
-		ranks[i] = 0;
-	}
+    for (i = 0; i < 4; i++){
+        counts[i] = TeamCount( -1, TEAM_RED + i );
+        ranks[i] = 0;
+    }
 
-	for (i = 0; i < 4; i++){
-		if (!counts[i]) continue;
+    for (i = 0; i < 4; i++){
+        if (!counts[i]) continue;
 
-		count = 0;
-		for (j = 0; j < 4; j++){
-			if (!counts[j]) continue;
+        count = 0;
+        for (j = 0; j < 4; j++){
+            if (!counts[j]) continue;
 
-			if (isRallyRace()){
-				if (level.teamTimes[i + TEAM_RED] > level.teamTimes[j + TEAM_RED]) count++;
-			}
-			else if (level.teamScores[i + TEAM_RED] < level.teamScores[j + TEAM_RED]) count++;
-		}
+            if (isRallyRace()){
+                if (level.teamTimes[i + TEAM_RED] > level.teamTimes[j + TEAM_RED]) count++;
+            }
+            else if (level.teamScores[i + TEAM_RED] < level.teamScores[j + TEAM_RED]) count++;
+        }
 
-		while( count < 4 && ranks[count] ) count++; // rank is taken so move to the next one
-		if (count < 4)
-			ranks[count] = TEAM_RED + i;
-	}
+        while( count < 4 && ranks[count] ) count++; /* rank is taken so move to the next one */
+        if (count < 4)
+            ranks[count] = TEAM_RED + i;
+    }
 
-	if (g_gametype.integer == GT_CTF && rank > 2){
-		return -1;
-	}
-	else {
-		return ranks[rank-1];
-	}
+    if (g_gametype.integer == GT_CTF && rank > 2){
+        return -1;
+    }
+    else {
+        return ranks[rank-1];
+    }
 }
 
-
-// UPDATE - send as command string instead?
+/* UPDATE - send as command string instead? */
 void Cmd_RacePositions_f( void ) {
-	char			entry[1024];
-	char			string[1400];
-	gentity_t		*player;
-	int				i, count, j, stringlength;
+    char entry[1024];
+    char string[1400];
+    gentity_t *player;
+    int i, count, j, stringlength;
 
-	string[0] = 0;
-	stringlength = 0;
+    string[0] = 0;
+    stringlength = 0;
 
-	for(i = 0, count = 0; i < level.maxclients; i++){
-		player = &g_entities[i];
-		if (!player->inuse) continue;
-		if (!player->client) continue;
+    for(i = 0, count = 0; i < level.maxclients; i++){
+        player = &g_entities[i];
+        if (!player->inuse) continue;
+        if (!player->client) continue;
 
-		Com_sprintf (entry, sizeof(entry)," %i %i", player->s.clientNum, player->client->ps.stats[STAT_POSITION]);
-		j = strlen(entry);
-		if (stringlength + j > 1024)
-			break;
-		strcpy (string + stringlength, entry);
-		stringlength += j;
+        Com_sprintf (entry, sizeof(entry)," %i %i", player->s.clientNum, player->client->ps.stats[STAT_POSITION]);
+        j = q_len(entry);
+        if (stringlength + j > 1024)
+            break;
+        strcpy (string + stringlength, entry);
+        stringlength += j;
 
-		count++;
-	}
+        count++;
+    }
 
-	G_LogPrintf("%s\n", va("positions %i%s", count, string));
-	trap_SendServerCommand( -1, va("positions %i%s\n", count, string) );
+    G_LogPrintf("%s", va("positions %i%s", count, string));
+    trap_SendServerCommand( -1, va("positions %i%s", count, string) );
 }
-
 
 void Cmd_Times_f( gentity_t *ent ) {
-/*
-	gentity_t		*player;
-	int				times[4];
-	int				i, count;
-
-	for(i = 0; i < 4; i++){
-		times[i] = 0;
-	}
-
-	for(i = 0; i < MAX_CLIENTS; i++){
-		player = &g_entities[i];
-		if (!player->inuse) continue;
-		if (!player->client) continue;
-		if (player->client->sess.sessionTeam == TEAM_SPECTATOR) continue;
-		if (player->client->sess.sessionTeam == TEAM_FREE) continue;
-		if (!level.startRaceTime) continue;
-
-		if (player->client->finishRaceTime){
-			times[player->client->sess.sessionTeam - TEAM_RED] +=
-				(player->client->finishRaceTime - level.startRaceTime);
-		}
-		else {
-			times[player->client->sess.sessionTeam - TEAM_RED] +=
-				(level.time - level.startRaceTime);
-		}
-	}
-
-	if (g_gametype.integer == GT_TEAM_RACING_DM){
-		for(i = 0; i < 4; i++){
-			if (level.teamScores[i + TEAM_RED] > 0){
-				times[i] -= level.teamScores[i + TEAM_RED] * TIME_BONUS_PER_FRAG;
-			}
-
-			if (times[i] < 0)
-				times[i] = 0;
-
-			count = TeamCount( -1, TEAM_RED+i );
-			if (count){
-				times[i] /= count;
-			}
-		}
-	}
-	else {
-		for(i = 0; i < 4; i++){
-			if (times[i] < 0)
-				times[i] = 0;
-
-			count = TeamCount( -1, TEAM_RED+i );
-			if (count){
-				times[i] /= count;
-			}
-		}
-	}
-
-	trap_SendServerCommand( ent-g_entities, va("times %i %i %i %i\n",
-		times[0], times[1], times[2], times[3]) );
-*/
+/* original code intentionally disabled here */
 }
 
-
-/*
-================================================================================
-GetDistanceToMarker
-
- Used to calculate how far a player is from the marker.
- Called to find out race positions of players.
-================================================================================
-*/
+/* --------------------------------------------------------------------------
+   GetDistanceToMarker
+   -------------------------------------------------------------------------- */
 float GetDistanceToMarker( gentity_t *player, float markerNumber )
 {
-	gentity_t		*ent = NULL;
-	vec3_t			dist;
+    gentity_t *ent;
+    vec3_t dist;
 
-	if ( !markerNumber )
-		return 1<<30;
+    ent = NULL;
 
-	while ( (ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL )
-	{
-		if( ent->number == markerNumber )
-			break;
-	}
+    if ( !markerNumber )
+        return 1<<30;
 
-	if ( ent )
-	{
-		VectorSubtract(player->r.currentOrigin, ent->s.origin, dist);
-		return VectorLength(dist);
-	}
-	else
-		return 1<<30;
+    while ( (ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL )
+    {
+        if( ent->number == markerNumber )
+            break;
+    }
+
+    if ( ent )
+    {
+        VectorSubtract(player->r.currentOrigin, ent->s.origin, dist);
+        return VectorLength(dist);
+    }
+    else
+        return 1<<30;
 }
 
-/*
-================================================================================
-IsCarAhead
-
- Returns true if player one is ahead of two.
-================================================================================
-*/
+/* --------------------------------------------------------------------------
+   IsCarAhead
+   -------------------------------------------------------------------------- */
 qboolean IsCarAhead(gentity_t *one, gentity_t *two){
-	float		dist1, dist2;
-	int			time1, time2;
+    float dist1, dist2;
+    int time1, time2;
 
-	if (one->client->finishRaceTime && two->client->finishRaceTime){
-		time1 = one->client->finishRaceTime - level.startRaceTime;
-		if (one->client->ps.persistant[PERS_SCORE] > 0 && !isRallyNonDMRace()){
-			time1 -= (one->client->ps.persistant[PERS_SCORE] * TIME_BONUS_PER_FRAG);
-		}
+    if (one->client->finishRaceTime && two->client->finishRaceTime){
+        time1 = one->client->finishRaceTime - level.startRaceTime;
+        if (one->client->ps.persistant[PERS_SCORE] > 0 && !isRallyNonDMRace()){
+            time1 -= (one->client->ps.persistant[PERS_SCORE] * TIME_BONUS_PER_FRAG);
+        }
 
-		time2 = two->client->finishRaceTime - level.startRaceTime;
-		if (two->client->ps.persistant[PERS_SCORE] > 0 && !isRallyNonDMRace()){
-			time2 -= (two->client->ps.persistant[PERS_SCORE] * TIME_BONUS_PER_FRAG);
-		}
+        time2 = two->client->finishRaceTime - level.startRaceTime;
+        if (two->client->ps.persistant[PERS_SCORE] > 0 && !isRallyNonDMRace()){
+            time2 -= (two->client->ps.persistant[PERS_SCORE] * TIME_BONUS_PER_FRAG);
+        }
 
-		if (time1 < time2){ // use frag modified times
-//			Com_Printf("Car 1 finished the race with less time than car 2\n");
-			return qtrue;
-		}
-		else {
-//			Com_Printf("Car 2 finished the race with less time than car 1\n");
-			return qfalse;
-		}
-	}
-	else if (one->client->finishRaceTime){
-//		Com_Printf("Car 1 finished the race, car 2 hasn't\n");
-		return qtrue;
-	}
-	else if (two->client->finishRaceTime){
-//		Com_Printf("Car 2 finished the race, car 1 hasn't\n");
-		return qfalse;
-	}
-	else if (one->currentLap < two->currentLap){
-//		Com_Printf("Car 1 is a lap behind car 2\n");
-		return qfalse;
-	}
-	else if (one->currentLap == two->currentLap && one->number < two->number){
-//		Com_Printf("Car 1 hat a target marker that is behind car 2's\n");
-		return qfalse;
-	}
-	else if (one->currentLap == two->currentLap && one->number == two->number){
-		dist1 = GetDistanceToMarker( one, one->number );
-		dist2 = GetDistanceToMarker( two, two->number );
+        if (time1 < time2){
+            return qtrue;
+        }
+        else {
+            return qfalse;
+        }
+    }
+    else if (one->client->finishRaceTime){
+        return qtrue;
+    }
+    else if (two->client->finishRaceTime){
+        return qfalse;
+    }
+    else if (one->currentLap < two->currentLap){
+        return qfalse;
+    }
+    else if (one->currentLap == two->currentLap && one->number < two->number){
+        return qfalse;
+    }
+    else if (one->currentLap == two->currentLap && one->number == two->number){
+        dist1 = GetDistanceToMarker( one, one->number );
+        dist2 = GetDistanceToMarker( two, two->number );
 
-		if (dist1 > dist2){
-//			Com_Printf("Car 1 is %f to marker %i and car 2 is %f\n", dist1, one->number, dist2);
-			return qfalse;
-		}
-	}
+        if (dist1 > dist2){
+            return qfalse;
+        }
+    }
 
-	return qtrue;
+    return qtrue;
 }
 
-
-/*
-================================================================================
-CalculatePlayerPositions
-
- Calculates the order of all racers
-================================================================================
-*/
+/* --------------------------------------------------------------------------
+   CalculatePlayerPositions
+   -------------------------------------------------------------------------- */
 void CalculatePlayerPositions( void )
 {
-	gentity_t	*ent, *leader, *cur, *last;
-	int			position;
-	qboolean	positionChanged;
+    gentity_t *ent, *leader, *cur, *last;
+    int position;
+    qboolean positionChanged;
 
-//	if (level.startRaceTime + FRAMETIME > level.time || level.startRaceTime == 0){
-//		return;
-//	}
-	if (!isRallyRace()){
-		return;
-	}
+    if (!isRallyRace()){
+        return;
+    }
 
-	positionChanged = qfalse;
-	leader = ent = last = NULL;
-	while ( (ent = G_Find (ent, FOFS(classname), "player")) != NULL )
-	{
-		if ( ent->client->sess.sessionTeam == TEAM_SPECTATOR ) continue;
-//		if ( isRaceObserver(ent->s.number) ) continue;
+    positionChanged = qfalse;
+    leader = NULL;
+    ent = NULL;
+    last = NULL;
+    while ( (ent = G_Find (ent, FOFS(classname), "player")) != NULL )
+    {
+        if ( ent->client->sess.sessionTeam == TEAM_SPECTATOR ) continue;
 
-		ent->carBehind = NULL;
+        ent->carBehind = NULL;
 
-		if ( leader == NULL )
-		{
-			leader = ent;
-			continue;
-		}
+        if ( leader == NULL )
+        {
+            leader = ent;
+            continue;
+        }
 
-		cur = leader;
-		if ( IsCarAhead( ent, cur ) )
-		{
-			ent->carBehind = cur;
-			leader = ent;
-			continue;
-		}
+        cur = leader;
+        if ( IsCarAhead( ent, cur ) )
+        {
+            ent->carBehind = cur;
+            leader = ent;
+            continue;
+        }
 
-		while ( cur->carBehind != NULL )
-		{
-			if ( IsCarAhead( ent, cur->carBehind ) )
-			{
-//				ent->carBehind = cur->carBehind;
-//				cur->carBehind = ent;
-				last = cur;
-				cur = cur->carBehind;
-				break;
-			}
+        while ( cur->carBehind != NULL )
+        {
+            if ( IsCarAhead( ent, cur->carBehind ) )
+            {
+                last = cur;
+                cur = cur->carBehind;
+                break;
+            }
 
-			last = cur;
-			cur = cur->carBehind;
-		}
+            last = cur;
+            cur = cur->carBehind;
+        }
 
-		if ( IsCarAhead( ent, cur ) )
-		{
-//			cur->carBehind = NULL;
-			ent->carBehind = cur;
-			if (last) {
-				last->carBehind = ent;
-			}
-		}
-		else {
-			cur->carBehind = ent;
-			ent->carBehind = NULL;
-		}
-	}
+        if ( IsCarAhead( ent, cur ) )
+        {
+            ent->carBehind = cur;
+            if (last) {
+                last->carBehind = ent;
+            }
+        }
+        else {
+            cur->carBehind = ent;
+            ent->carBehind = NULL;
+        }
+    }
 
-	if ( leader == NULL )
-		return;
+    if ( leader == NULL )
+        return;
 
-	cur = leader;
-	position = 1;
+    cur = leader;
+    position = 1;
 
-	while( cur->carBehind != NULL )
-	{
-		if ( position != cur->client->ps.stats[STAT_POSITION] && cur->client ){
-			cur->client->ps.stats[STAT_POSITION] = position;
+    while( cur->carBehind != NULL )
+    {
+        if ( position != cur->client->ps.stats[STAT_POSITION] && cur->client ){
+            cur->client->ps.stats[STAT_POSITION] = position;
+            positionChanged = qtrue;
+        }
 
-			positionChanged = qtrue;
-		}
+        cur = cur->carBehind;
+        position++;
+    }
 
-		cur = cur->carBehind;
-		position++;
-	}
+    if ( position != cur->client->ps.stats[STAT_POSITION] && cur->client ){
+        cur->client->ps.stats[STAT_POSITION] = position;
+        positionChanged = qtrue;
+    }
 
-	if ( position != cur->client->ps.stats[STAT_POSITION] && cur->client ){
-		cur->client->ps.stats[STAT_POSITION] = position;
-
-		positionChanged = qtrue;
-	}
-
-	if ( positionChanged )
-	{
-		Cmd_RacePositions_f();
-		CalculateRanks();
-	}
+    if ( positionChanged )
+    {
+        Cmd_RacePositions_f();
+        CalculateRanks();
+    }
 }
 
-
 void RallyRace_Think( gentity_t *ent ){
-	ent->nextthink = level.time + 200;
-
-	CalculatePlayerPositions();
+    ent->nextthink = level.time + 200;
+    CalculatePlayerPositions();
 }
 
 void RaceCountdown( char *s, int secondsLeft ){
-	trap_SendServerCommand( -1, va("rc \"%s\" %d", s, secondsLeft) );
+    trap_SendServerCommand( -1, va("rc \"%s\" %d", s, secondsLeft) );
 }
 
 void RallyStarter_Think( gentity_t *ent ){
-	gentity_t		*player, *t;
-	int				i, count;
-	qboolean	start;
+    gentity_t *player, *t;
+    int i, count;
+    qboolean start;
 
-	if (level.startRaceTime){
-		return;
-	}
+    if (level.startRaceTime){
+        return;
+    }
 
-	// if no checkpoints dont do start sequence
-	if (isRallyRace()){
-		t = NULL;
-		t = G_Find (t, FOFS(classname), "rally_checkpoint");
-               if (t == NULL){
-                       // start race right away
-                       level.startRaceTime = level.time;
-                       trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
-                       CenterPrint_All("GO..");
+    /* if no checkpoints dont do start sequence */
+    if (isRallyRace()){
+        t = NULL;
+        t = G_Find (t, FOFS(classname), "rally_checkpoint");
+        if (t == NULL){
+            /* start race right away */
+            level.startRaceTime = level.time;
+            trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
+            CenterPrint_All("GO..");
 
-                       for ( i = 0; i < level.maxclients; i++ ) {
-                               player = &g_entities[i];
-                               if ( !player->inuse || !player->client ) continue;
-                               player->client->startLapTime = level.startRaceTime;
-                               player->client->bestLapTime = 0;
-                       }
+            for ( i = 0; i < level.maxclients; i++ ) {
+                player = &g_entities[i];
+                if ( !player->inuse || !player->client ) continue;
+                player->client->startLapTime = level.startRaceTime;
+                player->client->bestLapTime = 0;
+            }
 
-                       G_FreeEntity( ent );
-                       return;
-               }
-	}
-	ent->nextthink = level.time + 1000;
-	t = NULL;
+            G_FreeEntity( ent );
+            return;
+        }
+    }
+    ent->nextthink = level.time + 1000;
+    t = NULL;
 
-	if ( ent->number == 0 ){
+    if ( ent->number == 0 ){
 
-		if( level.time - level.startTime < 7500 )
-			return;
+        if( level.time - level.startTime < 7500 )
+            return;
 
-		start = qtrue;
-		for (i = 0, count = 0; i < MAX_CLIENTS; i++){
-			player = &g_entities[i];
-			if (!player->inuse) continue;
-			if (!player->client) continue;
-			if (player->client->sess.sessionTeam == TEAM_SPECTATOR) continue;
-			// bots are always ready
+        start = qtrue;
+        for (i = 0, count = 0; i < MAX_CLIENTS; i++){
+            player = &g_entities[i];
+            if (!player->inuse) continue;
+            if (!player->client) continue;
+            if (player->client->sess.sessionTeam == TEAM_SPECTATOR) continue;
+            /* bots are always ready */
 
-			count++;
+            count++;
 
-			if (player->r.svFlags & SVF_BOT) continue;
+            if (player->r.svFlags & SVF_BOT) continue;
 
-			if ( !player->ready ){
-				start = qfalse;
-				break;
-			}
-		}
+            if ( !player->ready ){
+                start = qfalse;
+                break;
+            }
+        }
 
-		if ( !count ){
-			return;
-		}
-		else if ( start && count ){
-			ent->number = 3;
-		}
-		else if ( level.time >= level.startTime + (g_forceEngineStart.integer * 1000) ) {
-			ent->number = 3; // force race start
-		}
-		else if (ent->number == 0 && level.time > level.startTime + (g_forceEngineStart.integer * 1000) - 10000){
-			CenterPrint_All( va("Forced engine start in %i...", 10 - ((level.time - (level.startTime + (g_forceEngineStart.integer * 1000) - 10000)) / 1000)) );
-			return;
-		}
-		else {
-			return;
-		}
-	}
+        if ( !count ){
+            return;
+        }
+        else if ( start && count ){
+            ent->number = 3;
+        }
+        else if ( level.time >= level.startTime + (g_forceEngineStart.integer * 1000) ) {
+            ent->number = 3; /* force race start */
+        }
+        else if (ent->number == 0 && level.time > level.startTime + (g_forceEngineStart.integer * 1000) - 10000){
+            CenterPrint_All( va("Forced engine start in %i...", 10 - ((level.time - (level.startTime + (g_forceEngineStart.integer * 1000) - 10000)) / 1000)) );
+            return;
+        }
+        else {
+            return;
+        }
+    }
 
-	if ( ent->pain_debounce_time == 0 )
-		ent->pain_debounce_time = level.time;
+    if ( ent->pain_debounce_time == 0 )
+        ent->pain_debounce_time = level.time;
 
-       if ( level.time > ent->pain_debounce_time + 5000 ){
-               level.startRaceTime = level.time;
+    if ( level.time > ent->pain_debounce_time + 5000 ){
+            level.startRaceTime = level.time;
 
-               for ( i = 0; i < level.maxclients; i++ ) {
-                       player = &g_entities[i];
-                       if ( !player->inuse || !player->client ) continue;
-                       player->client->startLapTime = level.startRaceTime;
-                       player->client->bestLapTime = 0;
-               }
+            for ( i = 0; i < level.maxclients; i++ ) {
+                    player = &g_entities[i];
+                    if ( !player->inuse || !player->client ) continue;
+                    player->client->startLapTime = level.startRaceTime;
+                    player->client->bestLapTime = 0;
+            }
 
-               trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
-               RaceCountdown("GO!", 0);
+            trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
+            RaceCountdown("GO!", 0);
 
-               Rally_Sound( ent, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/go.wav") );
+            Rally_Sound( ent, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/go.wav") );
 
-               if (g_gametype.integer != GT_DERBY)
-                       ent->think = RallyRace_Think;
-       }
-	else if ( level.time > ent->pain_debounce_time + 4000 ){
-		RaceCountdown("1", 1);
+            if (g_gametype.integer != GT_DERBY)
+                    ent->think = RallyRace_Think;
+    }
+    else if ( level.time > ent->pain_debounce_time + 4000 ){
+        RaceCountdown("1", 1);
 
-		Rally_Sound( ent, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/one.wav") );
-		ent->number = -1;
-	}
-	else if ( level.time > ent->pain_debounce_time + 3000 ){
-		RaceCountdown("2", 2);
+        Rally_Sound( ent, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/one.wav") );
+        ent->number = -1;
+    }
+    else if ( level.time > ent->pain_debounce_time + 3000 ){
+        RaceCountdown("2", 2);
 
-		Rally_Sound( ent, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/two.wav") );
-		ent->number = 1;
-	}
-	else if ( level.time > ent->pain_debounce_time + 2000 ){
-		RaceCountdown("3", 3);
+        Rally_Sound( ent, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/two.wav") );
+        ent->number = 1;
+    }
+    else if ( level.time > ent->pain_debounce_time + 2000 ){
+        RaceCountdown("3", 3);
 
-		Rally_Sound( ent, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/three.wav") );
-		ent->number = 2;
-	}
-	else {
-		CenterPrint_All("Starting Race...");
-	}
+        Rally_Sound( ent, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/three.wav") );
+        ent->number = 2;
+    }
+    else {
+        CenterPrint_All("Starting Race...");
+    }
 }
 
 void CreateRallyStarter( void ) {
-	gentity_t		*ent;
+    gentity_t *ent;
 
-	ent = G_Spawn();
+    ent = G_Spawn();
 
-	ent->think = RallyStarter_Think;
-	ent->nextthink = level.time + 2000;
-	ent->number = 0;
-	ent->classname = "rally_starter";
+    ent->think = RallyStarter_Think;
+    ent->nextthink = level.time + 2000;
+    ent->number = 0;
+    ent->classname = "rally_starter";
 }
 
-
-/*
-===========
-SelectLastMarkerForSpawn
-
-  Places cars at the last marker they visited during a race
-
-============
-*/
+/* --------------------------------------------------------------------------
+   SelectLastMarkerForSpawn
+   -------------------------------------------------------------------------- */
 gentity_t *SelectLastMarkerForSpawn( gentity_t *ent, vec3_t origin, vec3_t angles, qboolean isbot ) {
-	gentity_t	*spot;
-	int			lastMarker;
+    gentity_t *spot;
+    int lastMarker;
 
-	spot = NULL;
-	lastMarker = ent->number - 1;
-	if (lastMarker <= 0){
-		lastMarker = level.numCheckpoints;
-	}
+    spot = NULL;
+    lastMarker = ent->number - 1;
+    if (lastMarker <= 0){
+        lastMarker = level.numCheckpoints;
+    }
 
-	while ((spot = G_Find (spot, FOFS(classname), "rally_checkpoint")) != NULL) {
-		if ( spot->number == lastMarker) {
-			break;
-		}
-	}
+    while ((spot = G_Find (spot, FOFS(classname), "rally_checkpoint")) != NULL) {
+        if ( spot->number == lastMarker) {
+            break;
+        }
+    }
 
-	if ( !spot ) {
-		return SelectSpawnPoint( vec3_origin, origin, angles, isbot );
-	}
+    if ( !spot ) {
+        return SelectSpawnPoint( vec3_origin, origin, angles, isbot );
+    }
 
-	// spawn at last checkpoint
-	VectorCopy (spot->s.origin, origin);
-	VectorCopy (spot->s.angles, angles);
+    /* spawn at last checkpoint */
+    VectorCopy (spot->s.origin, origin);
+    VectorCopy (spot->s.angles, angles);
 
-	return spot;
+    return spot;
 }
 
-/*
-===========
-SelectGridPositionSpawn
-
-  Places cars at the start line in order, so that no one is telefragged
-
-============
-*/
+/* --------------------------------------------------------------------------
+   SelectGridPositionSpawn
+   -------------------------------------------------------------------------- */
 gentity_t *SelectGridPositionSpawn( gentity_t *ent, vec3_t origin, vec3_t angles, qboolean isbot ) {
-	gentity_t	*spot;
-	int			gridPosition;
+    gentity_t *spot;
+    int gridPosition;
 
-	spot = NULL;
-	gridPosition = 1;
-	while ((spot = G_Find (spot, FOFS(classname), "info_player_start")) != NULL) {
-		if ( (spot->number == gridPosition || !spot->number) && !SpotWouldTelefrag( spot )) {
-			break;
-		}
-		else if (spot->number == gridPosition){
-			spot = NULL; // found spawn but someone is already there so restart search
-			gridPosition++;
-		}
-	}
+    spot = NULL;
+    gridPosition = 1;
+    while ((spot = G_Find (spot, FOFS(classname), "info_player_start")) != NULL) {
+        if ( (spot->number == gridPosition || !spot->number) && !SpotWouldTelefrag( spot )) {
+            break;
+        }
+        else if (spot->number == gridPosition){
+            spot = NULL; /* found spawn but someone is already there so restart search */
+            gridPosition++;
+        }
+    }
 
-	if ( !spot || SpotWouldTelefrag( spot ) ) {
-		// FIXME: put into spectator mode instead?
-		G_Printf("Warning: No info_player_start found for race spawn, trying info_player_deathmatch\n");
-		return SelectSpawnPoint( vec3_origin, origin, angles, isbot );
-	}
+    if ( !spot || SpotWouldTelefrag( spot ) ) {
+        /* FIXME: put into spectator mode instead? */
+        G_Printf("Warning: No info_player_start found for race spawn, trying info_player_deathmatch");
+        return SelectSpawnPoint( vec3_origin, origin, angles, isbot );
+    }
 
-	VectorCopy (spot->s.origin, origin);
-	origin[2] += 9;
-	VectorCopy (spot->s.angles, angles);
+    VectorCopy (spot->s.origin, origin);
+    origin[2] += 9;
+    VectorCopy (spot->s.angles, angles);
 
-	return spot;
+    return spot;
 }
 
