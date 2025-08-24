@@ -115,7 +115,17 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
 			other->client->ps.stats[STAT_NEXT_CHECKPOINT] = other->number;
 			other->client->ps.stats[STAT_FRAC_TO_NEXT_CHECKPOINT] = FLOAT2SHORT(0.1f);
 //			Com_Printf( "resetting frac, sf\n" );
-			trap_SendServerCommand( other->client->ps.clientNum, va("newLapTime %i %i\n", other->currentLap, level.time));
+
+			// server calculates the lap times now
+			int lapDuration = level.time - other->startLapTime;
+			if (lapDuration < other->client->ps.persistant[PERS_BEST_LAP_TIME] || other->client->ps.persistant[PERS_BEST_LAP_TIME] == 0) {
+				other->client->ps.persistant[PERS_BEST_LAP_TIME] = lapDuration;
+				// let the client know for the personal record message
+				if (!(other->r.svFlags & SVF_BOT)) {
+					trap_SendServerCommand( other->s.number, va("prl %i", other->client->ps.persistant[PERS_BEST_LAP_TIME]));
+				}
+			}
+			other->startLapTime = level.time;
 		}
 
 		

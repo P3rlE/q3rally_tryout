@@ -41,10 +41,6 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 	gclient_t	*cl;
 	int			numSorted, scoreFlags, accuracy, perfect;
 
-	// don't send scores to bots, they don't parse it
-	if ( ent->r.svFlags & SVF_BOT ) {
-		return;
-	}
 
 	// send the latest information on all clients
 	string[0] = 0;
@@ -85,7 +81,7 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 
 		Com_sprintf (entry, sizeof(entry),
 
-			" %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i", level.sortedClients[i],
+			" %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i", level.sortedClients[i],
 			cl->ps.persistant[PERS_SCORE], ping, time,
 			scoreFlags, g_entities[level.sortedClients[i]].s.powerups, accuracy, 
 			cl->ps.persistant[PERS_IMPRESSIVE_COUNT],
@@ -98,7 +94,8 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 			cl->ps.persistant[PERS_CAPTURES],
 			cl->ps.stats[STAT_DAMAGE_DEALT],
 			cl->ps.stats[STAT_DAMAGE_TAKEN],
-			cl->ps.stats[STAT_POSITION]
+			cl->ps.stats[STAT_POSITION],
+			cl->ps.persistant[PERS_BEST_LAP_TIME]
 			);
 
 

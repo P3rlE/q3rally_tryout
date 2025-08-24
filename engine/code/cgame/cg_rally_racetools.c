@@ -24,25 +24,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "cg_local.h"
 
 
-void CG_NewLapTime( int lap, int time ) {
-	centity_t	*cent;
+void CG_PersonalRecordLap( int time ) {
 	char		*t;
 
-	cent = &cg_entities[cg.snap->ps.clientNum];
+	t = getStringForTime( time );
 
-	if ((time - cent->startLapTime) < cent->bestLapTime || cent->bestLapTime == 0){
-		// New bestlap
-		cent->bestLapTime = (time - cent->startLapTime);
-		cent->bestLap = cent->currentLap;
-
-		t = getStringForTime( cent->bestLapTime );
-
-		Com_Printf("You got a personal record lap time of %s!\n", t);
-	}
-
-	cent->currentLap = lap;
-	cent->lastStartLapTime = cent->startLapTime;
-	cent->startLapTime = time;
+	Com_Printf("You got a personal record lap time of %s!\n", t);
 }
 
 void CG_FinishedRace( int client, int time ) {
