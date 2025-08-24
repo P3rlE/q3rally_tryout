@@ -30,9 +30,18 @@ static char     cg_mapBestPlayer[64];
 static void CG_LoadMapRecord( void ) {
        fileHandle_t    f;
        char            filename[MAX_QPATH];
-       char            buffer[128];
+       char            buffer[256];
        int             len;
        char            mapname[MAX_QPATH];
+       typedef struct {
+               char    key[64];
+               char    value[128];
+       } record_t;
+       record_t       records[16];
+       int             count = 0;
+       char            *line;
+       int             i;
+       const char      *val;
 
        cg_mapBestLapTime = 0;
        cg_mapBestScore = 0;
@@ -52,11 +61,70 @@ static void CG_LoadMapRecord( void ) {
        buffer[len] = '\0';
        trap_FS_FCloseFile( f );
 
-       if ( sscanf( buffer, "best_lap_time=%d\nplayer=%63s", &cg_mapBestLapTime, cg_mapBestPlayer ) != 2 ) {
-               if ( sscanf( buffer, "best_score=%d\nplayer=%63s", &cg_mapBestScore, cg_mapBestPlayer ) != 2 ) {
-                       cg_mapBestLapTime = 0;
-                       cg_mapBestScore = 0;
-                       Q_strncpyz( cg_mapBestPlayer, "Unknown", sizeof( cg_mapBestPlayer ) );
+       for ( line = strtok( buffer, "\n" ); line && count < ARRAY_LEN( records ); line = strtok( NULL, "\n" ) ) {
+               char *eq = strchr( line, '=' );
+               if ( !eq ) {
+                       continue;
+               }
+               *eq = '\0';
+               Q_strncpyz( records[count].key, line, sizeof( records[count].key ) );
+               Q_strncpyz( records[count].value, eq + 1, sizeof( records[count].value ) );
+               count++;
+       }
+
+       // new format: prefer player lap time, then score
+       val = NULL;
+       for ( i = 0; i < count; i++ ) {
+               if ( !strcmp( records[i].key, "best_lap_time_player" ) ) {
+                       cg_mapBestLapTime = atoi( records[i].value );
+               } else if ( !strcmp( records[i].key, "player_best_lap_time_player" ) ) {
+                       Q_strncpyz( cg_mapBestPlayer, records[i].value, sizeof( cg_mapBestPlayer ) );
+               } else if ( !strcmp( records[i].key, "best_score" ) ) {
+                       cg_mapBestScore = atoi( records[i].value );
+               } else if ( !strcmp( records[i].key, "player_best_score" ) ) {
+                       if ( !cg_mapBestLapTime ) {
+                               Q_strncpyz( cg_mapBestPlayer, records[i].value, sizeof( cg_mapBestPlayer ) );
+                       }
+               }
+       }
+
+       if ( cg_mapBestLapTime ) {
+               // ensure we have player name for lap time
+               val = NULL;
+               for ( i = 0; i < count; i++ ) {
+                       if ( !strcmp( records[i].key, "player_best_lap_time_player" ) ) {
+                               val = records[i].value;
+                               break;
+                       }
+               }
+               if ( val ) {
+                       Q_strncpyz( cg_mapBestPlayer, val, sizeof( cg_mapBestPlayer ) );
+               }
+       } else if ( cg_mapBestScore ) {
+               val = NULL;
+               for ( i = 0; i < count; i++ ) {
+                       if ( !strcmp( records[i].key, "player_best_score" ) ) {
+                               val = records[i].value;
+                               break;
+                       }
+               }
+               if ( val ) {
+                       Q_strncpyz( cg_mapBestPlayer, val, sizeof( cg_mapBestPlayer ) );
+               }
+       } else {
+               // old format fallback
+               const char *player = NULL;
+               for ( i = 0; i < count; i++ ) {
+                       if ( !strcmp( records[i].key, "best_lap_time" ) ) {
+                               cg_mapBestLapTime = atoi( records[i].value );
+                       } else if ( !strcmp( records[i].key, "best_score" ) ) {
+                               cg_mapBestScore = atoi( records[i].value );
+                       } else if ( !strcmp( records[i].key, "player" ) ) {
+                               player = records[i].value;
+                       }
+               }
+               if ( player ) {
+                       Q_strncpyz( cg_mapBestPlayer, player, sizeof( cg_mapBestPlayer ) );
                }
        }
 }
