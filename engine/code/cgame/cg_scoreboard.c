@@ -588,7 +588,7 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
             if (ci->team == TEAM_SPECTATOR) {
                 CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
             } else {
-                lapTime = score->bestLapTime;
+                lapTime = cg_entities[score->client].bestLapTime;
                 if (lapTime > 0) {
                     lapTimeStr = getStringForTime(lapTime);
                     CG_DrawModernText(x, y, lapTimeStr, 1, width, textColor, qfalse);
