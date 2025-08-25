@@ -425,21 +425,6 @@ models/powerups/armor/greenshard
                 rgbGen identity
         }
 }
-
-models/powerups/armor/energy_grn1
-{
-   deformVertexes wave 100 sin 2 0 0 0
-	{
-		map textures/effects/envmaprail.tga
-		blendFunc GL_ONE GL_ONE
-                tcGen environment
-                tcmod rotate 30
-		tcMod scroll 1 1
-                rgbGen wave triangle -.3 1.3 0 .3
-	}
-
-}
-
 models/powerups/armor/yellowshard
 {
         {
@@ -484,17 +469,17 @@ models/powerups/armor/redshard
         }
 }
 
-models/powerups/armor/energy_red1
+models/powerups/armor/energy_red1_fx
 {
    deformVertexes wave 100 sin 2 0 0 0
-	{
-		map textures/effects/regenmap2.tga
-		blendFunc GL_ONE GL_ONE
+        {
+                map textures/effects/regenmap2.tga
+                blendFunc GL_ONE GL_ONE
                 tcGen environment
                 tcmod rotate 30
-		tcMod scroll 1 1
+                tcMod scroll 1 1
                 rgbGen wave triangle -.3 1.3 0 .3
-	}
+        }
 
 }
 
@@ -560,34 +545,22 @@ models/powerups/health/smallbox
 //HEALTHBOX EFFECTS
 
 models/powerups/health/red2
-{	
-	
-	{
-		map textures/effects/envmapred.jpg
-                tcGen environment
-		blendfunc GL_ONE GL_ZERO
-		
-	}
+{
 
-}
-
-models/powerups/health/red
-{	
-	
-	{
-		map textures/effects/envmapred.jpg
+        {
+                map textures/effects/envmapred.jpg
                 tcGen environment
-		blendfunc GL_ONE GL_ZERO
-		
-	}
+                blendfunc GL_ONE GL_ZERO
+
+        }
 
 }
 
 models/powerups/health/red_sphere2
 {
-	{
-		map textures/effects/tinfx2b.tga
-		tcGen environment
+        {
+                map textures/effects/tinfx2b.tga
+                tcGen environment
 		blendfunc GL_ONE GL_ONE
 	}
 }
@@ -727,36 +700,18 @@ models/powerups/health/green
 
 models/powerups/health/green_sphere
 {
-	{
-		map textures/reflect/reflect.jpg
-		tcGen environment
-		blendfunc GL_ONE GL_ONE
-	}
-}
-
-models/powerups/health/blue
-{
-	{
-		map textures/effects/envmapbfg.tga
-		tcGen environment
-		
-	}
-}
-
-models/powerups/health/blue_sphere
-{
-	{
-		map textures/reflect/reflect.jpg
-		tcGen environment
-		blendfunc GL_ONE GL_ONE
-	}
+        {
+                map textures/reflect/reflect.jpg
+                tcGen environment
+                blendfunc GL_ONE GL_ONE
+        }
 }
 
 smallCross
 {
-	{
-		map textures/oafx/greenchrm.tga
-		tcMod rotate -76
+        {
+                map textures/oafx/greenchrm.tga
+                tcMod rotate -76
 		tcGen environment 
 	}
 	{
