@@ -1336,18 +1336,7 @@ sprites/balloon3
 	}
 }
 
-waterBubble
-{
-	sort	underwater
-	cull none
-	entityMergable		
-	{
-		map sprites/bubble.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbGen		vertex
-		alphaGen	vertex
-	}
-}
+// waterBubble defined in sprites.shader
 
 
 Grareflaader
@@ -1368,14 +1357,8 @@ boens
 		rgbGen vertex
 	}
 }
-gfx/misc/tracer
-{
-	cull none
-	{
-		map	gfx/misc/tracer2.tga
-		blendFunc GL_ONE GL_ONE
-	}
-}
+// gfx/misc/tracer defined in sprites.shader
+
 
 gfx/2d/select
 {

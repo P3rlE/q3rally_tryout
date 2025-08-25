@@ -340,18 +340,7 @@ viewBloodBlend
 	}
 }
 
-waterBubble
-{
-	sort	underwater
-	cull none
-	entityMergable		// allow all the sprites to be merged together
-	{
-		map sprites/bubble.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbGen		vertex
-		alphaGen	vertex
-	}
-}
+// waterBubble shader defined in sprites.shader
 
 smokePuff
 {
@@ -478,15 +467,7 @@ lightningBolt
 }
 
 // shader used on the occasional machinegun bullet tracers
-
-gfx/misc/tracer
-{
-	cull none
-	{
-		map	gfx/misc/tracer2.tga
-		blendFunc GL_ONE GL_ONE
-	}
-}
+// gfx/misc/tracer defined in sprites.shader
 
 //
 // wall marks
