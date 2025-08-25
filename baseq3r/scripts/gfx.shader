@@ -519,7 +519,7 @@ bloodTrail
 		alphaGen	vertex
 	}
 }
-
+// Damage mark shaders
 gfx/damage/bullet_mrk
 {
 	polygonOffset
@@ -552,18 +552,38 @@ gfx/damage/hole_lg_mrk
 
 gfx/damage/plasma_mrk
 {
-	polygonOffset
-	{
-		map gfx/damage/plasma_mrk.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbGen vertex
-		alphaGen vertex
-	}
+        polygonOffset
+        {
+                map gfx/damage/plasma_mrk.tga
+                blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+                rgbGen vertex
+                alphaGen vertex
+        }
+}
+
+gfx/damage/oil_mark
+{
+        polygonOffset
+        {
+                map gfx/damage/oil_mark.tga
+                blendFunc GL_ZERO GL_ONE_MINUS_SRC_COLOR
+                rgbGen exactVertex
+        }
+        {
+              map textures/reflect/oilreflect.tga
+                blendFunc add
+              rgbGen exactVertex
+        }
+        {
+                map gfx/damage/oil_mark_reflect.tga
+                blendFunc GL_ZERO GL_ONE_MINUS_SRC_COLOR
+                rgbGen exactVertex
+        }
 }
 
 railDic
 {
-	cull disable
+        cull disable
 	deformVertexes autosprite
 	{
 		clampmap textures/oafx/plastrail.tga
@@ -1782,44 +1802,22 @@ gfx/damage/spark
 	}
 }
 
-gfx/damage/oil_mark
-{
-	polygonOffset
-
-
-	{
-		map gfx/damage/oil_mark.tga
-		blendFunc GL_ZERO GL_ONE_MINUS_SRC_COLOR
-		rgbGen exactVertex
-	}
-	{	
-	      map textures/reflect/oilreflect.tga
-		blendFunc add
-	      rgbGen exactVertex
-	}
-	{
-		map gfx/damage/oil_mark_reflect.tga
-		blendFunc GL_ZERO GL_ONE_MINUS_SRC_COLOR
-		rgbGen exactVertex
-	}
-}
-
 // ------------------------------------------------------------
 // 20.goal gfx
 // ------------------------------------------------------------
 
 textures/sfx2/redgoal2
 {
-	surfaceparm nolightmap
-	surfaceparm trans
-	cull none
-	{
-		map textures/sfx2/redgoal2.tga
-		tcgen environment
-		blendfunc add
-		tcmod turb .1 .3 .5 .4
-		tcmod scale .5 .5
-	}
+        surfaceparm nolightmap
+        surfaceparm trans
+        cull none
+        {
+                map textures/sfx2/redgoal2.tga
+                tcgen environment
+                blendfunc add
+                tcmod turb .1 .3 .5 .4
+                tcmod scale .5 .5
+        }
 }
 
 textures/sfx2/bluegoal2
