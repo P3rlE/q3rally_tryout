@@ -29,7 +29,7 @@ Compiler-only entity that specifies a decal to be projected. Should contain 1 or
 -------- SPAWNFLAGS --------
 (none)
 -------- NOTES --------
-Compiler-only entity that specifies a the origin of a skybox (a wholly contained, seperate area of the map), similar to some games' portal skies. When compiled with Q3Map2, the skybox surfaces will be visible from any place where sky is normally visible. It will cast shadows on the normal parts of the map, and can be used with cloud layers and other effects.
+Compiler-only entity that specifies a the origin of a skybox (a wholly contained, separate area of the map), similar to some games' portal skies. When compiled with Q3Map2, the skybox surfaces will be visible from any place where sky is normally visible. It will cast shadows on the normal parts of the map, and can be used with cloud layers and other effects.
 */
 
 
