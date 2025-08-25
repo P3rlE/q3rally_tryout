@@ -14,7 +14,7 @@
 
 /*QUAKED _decal (0 1.0 0) ?
 -------- KEYS --------
-"target" : the name of the entity targetted at for projection
+"target" : the name of the entity targeted at for projection
 -------- SPAWNFLAGS --------
 (none)
 -------- NOTES --------
