@@ -1701,14 +1701,13 @@ void CheckExitRules( void ) {
 			winner = cl;
 		}
 
-               if (winner && count == 1) {
-                       level.winnerNumber = winner->ps.clientNum;
-                       level.finishRaceTime = level.time;
+		if (winner && count == 1) {
+			level.winnerNumber = winner->ps.clientNum;
+			level.finishRaceTime = level.time;
 
-                       trap_SendServerCommand( -1, va("print \"%s won the demolition derby!\n\"", winner->pers.netname ));
-                       trap_SendServerCommand( level.winnerNumber, "cp \"You won the demolition derby!\n\"");
-                       G_UpdateScoreRecord( &g_entities[level.winnerNumber] );
-               }
+			trap_SendServerCommand( -1, va("print \"%s won the demolition derby!\n\"", winner->pers.netname ));
+			trap_SendServerCommand( level.winnerNumber, "cp \"You won the demolition derby!\n\"");
+		}
 
 		return;
 	}
@@ -1727,14 +1726,13 @@ void CheckExitRules( void ) {
 			winner = cl;
 		}
 
-               if (winner && count == 1) {
-                       level.winnerNumber = winner->ps.clientNum;
-                       level.finishRaceTime = level.time;
+		if (winner && count == 1) {
+			level.winnerNumber = winner->ps.clientNum;
+			level.finishRaceTime = level.time;
 
-                       trap_SendServerCommand( -1, va("print \"%s won the last car standing!\n\"", winner->pers.netname ));
-                       trap_SendServerCommand( level.winnerNumber, "cp \"You won the last car standing!\n\"");
-                       G_UpdateScoreRecord( &g_entities[level.winnerNumber] );
-               }
+			trap_SendServerCommand( -1, va("print \"%s won the last car standing!\n\"", winner->pers.netname ));
+			trap_SendServerCommand( level.winnerNumber, "cp \"You won the last car standing!\n\"");
+		}
 
 		return;
 	}
