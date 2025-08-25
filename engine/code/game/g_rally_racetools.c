@@ -23,286 +23,211 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
-/*
- * NOTE: The Q3 VM (lcc) environment doesn't provide standard C headers like
- * <string.h>/<stdlib.h>. We therefore avoid strtok/strchr/strlen/atoi and use
- * local minimal helpers + existing Q3 string utilities (Q_stricmp, Q_strncmp,
- * Q_strncpyz, Com_sprintf, va, etc.). Everything below is C89-friendly.
- */
 
-/* ---- minimal local helpers (C89, no libc) ---- */
-static int q_len( const char *s ) {
-    int n;
-    if ( !s ) return 0;
-    n = 0;
-    while ( s[n] ) n++;
-    return n;
+static int G_ReadBestValue( const char *mapname, const char *key, int gametype ) {
+       fileHandle_t    f;
+       char            filename[MAX_QPATH];
+       char            buffer[1024];
+       int             len;
+       int             value = 0;
+       char            *line;
+
+       Com_sprintf( filename, sizeof( filename ), "records/%s_%i.records", mapname, gametype );
+       len = trap_FS_FOpenFile( filename, &f, FS_READ );
+       if ( len <= 0 ) {
+               return 0;
+       }
+       if ( len >= sizeof( buffer ) ) {
+               len = sizeof( buffer ) - 1;
+       }
+       trap_FS_Read( buffer, len, f );
+       buffer[len] = '\0';
+       trap_FS_FCloseFile( f );
+
+       for ( line = strtok( buffer, "\n" ); line; line = strtok( NULL, "\n" ) ) {
+               if ( !Q_strncmp( line, key, strlen( key ) ) && line[strlen( key )] == '=' ) {
+                       value = atoi( line + strlen( key ) + 1 );
+                       break;
+               }
+       }
+       return value;
 }
 
-static int q_atoi( const char *s ) {
-    int sign, v, c;
-    if ( !s ) return 0;
-    sign = 1; v = 0;
-    if ( *s == '-' ) { sign = -1; s++; }
-    while ( (c = *s) >= '0' && c <= '9' ) { v = v*10 + (c - '0'); s++; }
-    return sign * v;
-}
+static void G_WriteRecord( const char *mapname, const char *key, int value, const char *player, int gametype ) {
+       fileHandle_t    f;
+       char            filename[MAX_QPATH];
+       char            buffer[1024];
+       int             len;
+       typedef struct {
+               char    key[64];
+               char    value[128];
+       } record_t;
+       record_t       records[16];
+       int             count = 0;
+       int             i;
+       char            *line;
+       char            val[64];
+       char            playerKey[64];
 
-static char *q_find_char( char *s, char ch ) {
-    if ( !s ) return NULL;
-    while ( *s ) { if ( *s == ch ) return s; s++; }
-    return NULL;
-}
+       Com_sprintf( filename, sizeof( filename ), "records/%s_%i.records", mapname, gametype );
 
-/* Iterate over lines in a mutable buffer. Replaces line breaks with  . */
-static char *q_next_line( char **cursor ) {
-    char *p, *start;
-    if ( !cursor || !*cursor ) return NULL;
-    p = *cursor;
-    if ( !*p ) return NULL;
-    start = p;
-    /* find end of line: LF(10) or CR(13) */
-    while ( *p && *p != (char)10 && *p != (char)13 ) p++;
-    if ( *p ) { *p = (char)0; p++; }
-    /* skip subsequent CR/LF */
-    while ( *p == (char)10 || *p == (char)13 ) p++;
-    *cursor = p;
-    return start;
-}
+       len = trap_FS_FOpenFile( filename, &f, FS_READ );
+       if ( len > 0 ) {
+               if ( len >= sizeof( buffer ) ) {
+                       len = sizeof( buffer ) - 1;
+               }
+               trap_FS_Read( buffer, len, f );
+               buffer[len] = '\0';
+               trap_FS_FCloseFile( f );
 
-/* ----------------------------------------------------------------------------
-   Records I/O (best lap/score per map)
-   ---------------------------------------------------------------------------- */
-static int G_ReadBestValue( const char *mapname, const char *key ) {
-    fileHandle_t f;
-    char filename[MAX_QPATH];
-    char buffer[1024];
-    int len, klen, value;
-    char *cur, *line;
+               for ( line = strtok( buffer, "\n" ); line && count < ARRAY_LEN( records ); line = strtok( NULL, "\n" ) ) {
+                       char *eq = strchr( line, '=' );
+                       if ( !eq ) {
+                               continue;
+                       }
+                       *eq = '\0';
+                       Q_strncpyz( records[count].key, line, sizeof( records[count].key ) );
+                       Q_strncpyz( records[count].value, eq + 1, sizeof( records[count].value ) );
+                       count++;
+               }
+       } else {
+               buffer[0] = '\0';
+       }
 
-    value = 0;
-    klen = q_len( key );
+       // update or add the value
+       Com_sprintf( val, sizeof( val ), "%d", value );
+       for ( i = 0; i < count; i++ ) {
+               if ( !Q_stricmp( records[i].key, key ) ) {
+                       Q_strncpyz( records[i].value, val, sizeof( records[i].value ) );
+                       break;
+               }
+       }
+       if ( i == count && count < ARRAY_LEN( records ) ) {
+               Q_strncpyz( records[count].key, key, sizeof( records[count].key ) );
+               Q_strncpyz( records[count].value, val, sizeof( records[count].value ) );
+               count++;
+       }
 
-    Com_sprintf( filename, sizeof( filename ), "records/%s.record", mapname );
-    len = trap_FS_FOpenFile( filename, &f, FS_READ );
-    if ( len <= 0 ) {
-        return 0;
-    }
-    if ( len >= (int)sizeof( buffer ) ) {
-        len = (int)sizeof( buffer ) - 1;
-    }
-    trap_FS_Read( buffer, len, f );
-    buffer[len] = ' ';
-    trap_FS_FCloseFile( f );
+       // update or add the player name for this key
+       Com_sprintf( playerKey, sizeof( playerKey ), "player_%s", key );
+       for ( i = 0; i < count; i++ ) {
+               if ( !Q_stricmp( records[i].key, playerKey ) ) {
+                       Q_strncpyz( records[i].value, player, sizeof( records[i].value ) );
+                       break;
+               }
+       }
+       if ( i == count && count < ARRAY_LEN( records ) ) {
+               Q_strncpyz( records[count].key, playerKey, sizeof( records[count].key ) );
+               Q_strncpyz( records[count].value, player, sizeof( records[count].value ) );
+               count++;
+       }
 
-    cur = buffer;
-    while ( (line = q_next_line( &cur )) != NULL ) {
-        if ( !Q_strncmp( line, key, klen ) && line[klen] == '=' ) {
-            value = q_atoi( line + klen + 1 );
-            break;
-        }
-    }
-    return value;
-}
-
-typedef struct {
-    char key[64];
-    char value[128];
-} record_t;
-
-static void G_WriteRecord( const char *mapname, const char *key, int value, const char *player ) {
-    fileHandle_t f;
-    char filename[MAX_QPATH];
-    char buffer[1024];
-    int len, count, i;
-    char *cur, *line, *eq;
-    record_t records[16];
-    char val[64];
-    char playerKey[64];
-
-    Com_sprintf( filename, sizeof( filename ), "records/%s.record", mapname );
-
-    /* Read existing */
-    count = 0;
-    len = trap_FS_FOpenFile( filename, &f, FS_READ );
-    if ( len > 0 ) {
-        if ( len >= (int)sizeof( buffer ) ) {
-            len = (int)sizeof( buffer ) - 1;
-        }
-        trap_FS_Read( buffer, len, f );
-        buffer[len] = ' ';
-        trap_FS_FCloseFile( f );
-
-        cur = buffer;
-        while ( (line = q_next_line( &cur )) != NULL && count < (int)ARRAY_LEN( records ) ) {
-            eq = q_find_char( line, '=' );
-            if ( !eq ) {
-                continue;
-            }
-            *eq = ' ';
-            Q_strncpyz( records[count].key, line, sizeof( records[count].key ) );
-            Q_strncpyz( records[count].value, eq + 1, sizeof( records[count].value ) );
-            count++;
-        }
-    }
-
-    /* update or add the value */
-    Com_sprintf( val, sizeof( val ), "%d", value );
-    for ( i = 0; i < count; i++ ) {
-        if ( !Q_stricmp( records[i].key, key ) ) {
-            Q_strncpyz( records[i].value, val, sizeof( records[i].value ) );
-            break;
-        }
-    }
-    if ( i == count && count < (int)ARRAY_LEN( records ) ) {
-        Q_strncpyz( records[count].key, key, sizeof( records[count].key ) );
-        Q_strncpyz( records[count].value, val, sizeof( records[count].value ) );
-        count++;
-    }
-
-    /* update or add the player name for this key */
-    Com_sprintf( playerKey, sizeof( playerKey ), "player_%s", key );
-    for ( i = 0; i < count; i++ ) {
-        if ( !Q_stricmp( records[i].key, playerKey ) ) {
-            Q_strncpyz( records[i].value, player, sizeof( records[i].value ) );
-            break;
-        }
-    }
-    if ( i == count && count < (int)ARRAY_LEN( records ) ) {
-        Q_strncpyz( records[count].key, playerKey, sizeof( records[count].key ) );
-        Q_strncpyz( records[count].value, player, sizeof( records[count].value ) );
-        count++;
-    }
-
-    trap_FS_FOpenFile( filename, &f, FS_WRITE );
-    for ( i = 0; i < count; i++ ) {
-        char out[256];
-        char nl = (char)10; /* 
- */
-        Com_sprintf( out, sizeof( out ), "%s=%s", records[i].key, records[i].value );
-        trap_FS_Write( out, q_len( out ), f );
-        trap_FS_Write( &nl, 1, f );
-    }
-    trap_FS_FCloseFile( f );
+       trap_FS_FOpenFile( filename, &f, FS_WRITE );
+       for ( i = 0; i < count; i++ ) {
+               char out[256];
+               Com_sprintf( out, sizeof( out ), "%s=%s\n", records[i].key, records[i].value );
+               trap_FS_Write( out, strlen( out ), f );
+       }
+       trap_FS_FCloseFile( f );
 }
 
 void G_UpdateLapRecord( gentity_t *player, int lapTime ) {
-<<<<<<< HEAD
-    char serverinfo[MAX_INFO_STRING];
-    char mapname[MAX_QPATH];
-    int best;
-    const char *key;
-=======
        char            serverinfo[MAX_INFO_STRING];
        char            mapname[MAX_QPATH];
        int             best;
->>>>>>> 07bc630e2028aa09ae8fb99358c49af09eb55ce2
 
-    trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
-    Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
+       trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
+       Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
 
-<<<<<<< HEAD
-    key = ( player->r.svFlags & SVF_BOT ) ? "best_lap_time_bot" : "best_lap_time_player";
-
-    best = G_ReadBestValue( mapname, key );
-    if ( player->r.svFlags & SVF_BOT ) {
-        return;
-    }
-
-    if ( !best || lapTime < best ) {
-        G_WriteRecord( mapname, key, lapTime, player->client->pers.netname );
-    }
-=======
-       best = G_ReadBestValue( mapname, "best_lap_time" );
+       best = G_ReadBestValue( mapname, "best_lap_time", g_gametype.integer );
        if ( player->r.svFlags & SVF_BOT ) {
                return;
        }
 
        if ( !best || lapTime < best ) {
-               G_WriteRecord( mapname, "best_lap_time", lapTime, player->client->pers.netname );
+               G_WriteRecord( mapname, "best_lap_time", lapTime, player->client->pers.netname, g_gametype.integer );
        }
->>>>>>> 07bc630e2028aa09ae8fb99358c49af09eb55ce2
 }
 
 void G_UpdateScoreRecord( gentity_t *player ) {
-    char serverinfo[MAX_INFO_STRING];
-    char mapname[MAX_QPATH];
-    int best, score;
+       char            serverinfo[MAX_INFO_STRING];
+       char            mapname[MAX_QPATH];
+       int             best;
+       int             score = player->client->ps.persistant[PERS_SCORE];
 
-    score = player->client->ps.persistant[PERS_SCORE];
+       trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
+       Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
 
-    trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
-    Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
-
-    best = G_ReadBestValue( mapname, "best_score" );
-    if ( !best || score > best ) {
-        G_WriteRecord( mapname, "best_score", score, player->client->pers.netname );
-    }
+       best = G_ReadBestValue( mapname, "best_score", g_gametype.integer );
+       if ( !best || score > best ) {
+               G_WriteRecord( mapname, "best_score", score, player->client->pers.netname, g_gametype.integer );
+       }
 }
 
 int GetTeamAtRank( int rank ){
-    int i, j, count;
-    int ranks[4];
-    int counts[4];
+	int		i, j, count;
+	int		ranks[4];
+	int		counts[4];
 
-    for (i = 0; i < 4; i++){
-        counts[i] = TeamCount( -1, TEAM_RED + i );
-        ranks[i] = 0;
-    }
+	for (i = 0; i < 4; i++){
+		counts[i] = TeamCount( -1, TEAM_RED + i );
+		ranks[i] = 0;
+	}
 
-    for (i = 0; i < 4; i++){
-        if (!counts[i]) continue;
+	for (i = 0; i < 4; i++){
+		if (!counts[i]) continue;
 
-        count = 0;
-        for (j = 0; j < 4; j++){
-            if (!counts[j]) continue;
+		count = 0;
+		for (j = 0; j < 4; j++){
+			if (!counts[j]) continue;
 
-            if (isRallyRace()){
-                if (level.teamTimes[i + TEAM_RED] > level.teamTimes[j + TEAM_RED]) count++;
-            }
-            else if (level.teamScores[i + TEAM_RED] < level.teamScores[j + TEAM_RED]) count++;
-        }
+			if (isRallyRace()){
+				if (level.teamTimes[i + TEAM_RED] > level.teamTimes[j + TEAM_RED]) count++;
+			}
+			else if (level.teamScores[i + TEAM_RED] < level.teamScores[j + TEAM_RED]) count++;
+		}
 
-        while( count < 4 && ranks[count] ) count++; /* rank is taken so move to the next one */
-        if (count < 4)
-            ranks[count] = TEAM_RED + i;
-    }
+		while( count < 4 && ranks[count] ) count++; // rank is taken so move to the next one
+		if (count < 4)
+			ranks[count] = TEAM_RED + i;
+	}
 
-    if (g_gametype.integer == GT_CTF && rank > 2){
-        return -1;
-    }
-    else {
-        return ranks[rank-1];
-    }
+	if (g_gametype.integer == GT_CTF && rank > 2){
+		return -1;
+	}
+	else {
+		return ranks[rank-1];
+	}
 }
 
-/* UPDATE - send as command string instead? */
+
+// UPDATE - send as command string instead?
 void Cmd_RacePositions_f( void ) {
-    char entry[1024];
-    char string[1400];
-    gentity_t *player;
-    int i, count, j, stringlength;
+	char			entry[1024];
+	char			string[1400];
+	gentity_t		*player;
+	int				i, count, j, stringlength;
 
-    string[0] = 0;
-    stringlength = 0;
+	string[0] = 0;
+	stringlength = 0;
 
-    for(i = 0, count = 0; i < level.maxclients; i++){
-        player = &g_entities[i];
-        if (!player->inuse) continue;
-        if (!player->client) continue;
+	for(i = 0, count = 0; i < level.maxclients; i++){
+		player = &g_entities[i];
+		if (!player->inuse) continue;
+		if (!player->client) continue;
 
-        Com_sprintf (entry, sizeof(entry)," %i %i", player->s.clientNum, player->client->ps.stats[STAT_POSITION]);
-        j = q_len(entry);
-        if (stringlength + j > 1024)
-            break;
-        strcpy (string + stringlength, entry);
-        stringlength += j;
+		Com_sprintf (entry, sizeof(entry)," %i %i", player->s.clientNum, player->client->ps.stats[STAT_POSITION]);
+		j = strlen(entry);
+		if (stringlength + j > 1024)
+			break;
+		strcpy (string + stringlength, entry);
+		stringlength += j;
 
-        count++;
-    }
+		count++;
+	}
 
-    G_LogPrintf("%s", va("positions %i%s", count, string));
-    trap_SendServerCommand( -1, va("positions %i%s", count, string) );
+	G_LogPrintf("%s\n", va("positions %i%s", count, string));
+	trap_SendServerCommand( -1, va("positions %i%s\n", count, string) );
 }
 
 void Cmd_Times_f( gentity_t *ent ) {

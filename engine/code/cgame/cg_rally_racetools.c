@@ -27,7 +27,7 @@ static int      cg_mapBestLapTime;
 static int      cg_mapBestScore;
 static char     cg_mapBestPlayer[64];
 
-static void CG_LoadMapRecord( void ) {
+static void CG_LoadMapRecord( int gametype ) {
        fileHandle_t    f;
        char            filename[MAX_QPATH];
        char            buffer[256];
@@ -48,7 +48,7 @@ static void CG_LoadMapRecord( void ) {
        Q_strncpyz( cg_mapBestPlayer, "Unknown", sizeof( cg_mapBestPlayer ) );
 
        COM_StripExtension( cgs.mapname, mapname, sizeof( mapname ) );
-       Com_sprintf( filename, sizeof( filename ), "records/%s.record", mapname );
+       Com_sprintf( filename, sizeof( filename ), "records/%s_%i.records", mapname, gametype );
 
        len = trap_FS_FOpenFile( filename, &f, FS_READ );
        if ( len <= 0 ) {
@@ -177,7 +177,7 @@ void CG_StartRace( int time ) {
 	int			i;
 	centity_t	*player;
 
-	CG_LoadMapRecord();
+       CG_LoadMapRecord( cgs.gametype );
 
 	for (i = 0; i < MAX_CLIENTS; i++){
 		player = &cg_entities[i];
