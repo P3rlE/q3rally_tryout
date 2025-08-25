@@ -1319,21 +1319,14 @@ medal_defend
 
 medal_capture
 {
-	nopicmip
-	{
-		clampmap menu/medals/medal_capture.tga
-		blendFunc blend
-	}
+        nopicmip
+        {
+                clampmap menu/medals/medal_capture.tga
+                blendFunc blend
+        }
 }
 
-gfx/2d/cursor
-{
-    nopicmip
-	nomipmaps
-    {
-        map gfx/2d/cursor.tga
-    }
-}
+// gfx/2d/cursor defined in gfx.shader
 
 sprites/balloon3
 {
@@ -1386,180 +1379,15 @@ gfx/misc/tracer
 
 gfx/2d/select
 {
-	nopicmip
-	{
-		map gfx/2d/select.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbGen identity
-		rgbgen vertex
-	}
+        nopicmip
+        {
+                map gfx/2d/select.tga
+                blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+                rgbGen identity
+                rgbgen vertex
+        }
 }
-
-// ------------------------------------------------------------
-// FONT
-// ------------------------------------------------------------
-
-gfx/2d/bigchars
-{
-	nopicmip
-	nomipmaps
-	{
-		map gfx/2d/bigchars.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbgen vertex
-	}
-}
-
-gfx/2d/bigchars_plates
-{
-	nopicmip
-	nomipmaps
-	{
-		map gfx/2d/bigchars_plates.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbgen vertex
-	}
-}
-
-gfx/2d/numbers/zero_32b
-{
-	nopicmip
-	{
-		map gfx/2d/numbers/zero_32b.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbgen vertex
-	}
-}
-gfx/2d/numbers/one_32b
-{
-	nopicmip
-	{
-		map gfx/2d/numbers/one_32b.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbgen vertex
-	}
-}
-gfx/2d/numbers/two_32b
-{
-	nopicmip
-	{
-		map gfx/2d/numbers/two_32b.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbgen vertex
-	}
-}
-gfx/2d/numbers/three_32b
-{
-	nopicmip
-	{
-		map gfx/2d/numbers/three_32b.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbgen vertex
-	}
-}
-gfx/2d/numbers/four_32b
-{
-	nopicmip
-	{
-		map gfx/2d/numbers/four_32b.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbgen vertex
-	}
-}
-gfx/2d/numbers/five_32b
-{
-	nopicmip
-	{
-		map gfx/2d/numbers/five_32b.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbgen vertex
-	}
-}
-gfx/2d/numbers/six_32b
-{
-	nopicmip
-	{
-		map gfx/2d/numbers/six_32b.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbgen vertex
-	}
-}
-gfx/2d/numbers/seven_32b
-{
-	nopicmip
-	{
-		map gfx/2d/numbers/seven_32b.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbgen vertex
-	}
-}
-gfx/2d/numbers/eight_32b
-{
-	nopicmip
-	{
-		map gfx/2d/numbers/eight_32b.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbgen vertex
-	}
-}
-gfx/2d/numbers/nine_32b
-{
-	nopicmip
-	{
-		map gfx/2d/numbers/nine_32b.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbgen vertex
-	}
-}
-gfx/2d/numbers/minus_32b
-{
-	nopicmip
-	{
-		map gfx/2d/numbers/minus_32b.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-		rgbgen vertex
-	}
-}
-
-scoreboardName
-{
-	nopicmip
-	nomipmaps
-	{
-		clampmap menu/tab/name.tga
-		blendfunc blend
-	}
-}
-
-scoreboardScore
-{
-	nopicmip
-	nomipmaps
-	{
-		clampmap menu/tab/score.tga
-		blendfunc blend
-	}
-}
-
-scoreboardTime
-{
-	nopicmip
-	nomipmaps
-	{
-		clampmap menu/tab/time.tga
-		blendfunc blend
-	}
-}
-
-scoreboardPing
-{
-	nopicmip
-	nomipmaps
-	{
-		clampmap menu/tab/ping.tga
-		blendfunc blend
-	}
-}
+// Font, number and scoreboard UI shaders are defined in gfx.shader
 
 // ------------------------------------------------------------
 // CTF FLAGS
