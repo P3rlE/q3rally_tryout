@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "g_local.h"
 
 
-static int G_ReadBestValue( const char *mapname, const char *key ) {
+static int G_ReadBestValue( const char *mapname, const char *key, int gametype ) {
        fileHandle_t    f;
        char            filename[MAX_QPATH];
        char            buffer[1024];
@@ -32,7 +32,7 @@ static int G_ReadBestValue( const char *mapname, const char *key ) {
        int             value = 0;
        char            *line;
 
-       Com_sprintf( filename, sizeof( filename ), "records/%s.record", mapname );
+       Com_sprintf( filename, sizeof( filename ), "records/%s_%i.records", mapname, gametype );
        len = trap_FS_FOpenFile( filename, &f, FS_READ );
        if ( len <= 0 ) {
                return 0;
@@ -53,7 +53,7 @@ static int G_ReadBestValue( const char *mapname, const char *key ) {
        return value;
 }
 
-static void G_WriteRecord( const char *mapname, const char *key, int value, const char *player ) {
+static void G_WriteRecord( const char *mapname, const char *key, int value, const char *player, int gametype ) {
        fileHandle_t    f;
        char            filename[MAX_QPATH];
        char            buffer[1024];
@@ -69,7 +69,7 @@ static void G_WriteRecord( const char *mapname, const char *key, int value, cons
        char            val[64];
        char            playerKey[64];
 
-       Com_sprintf( filename, sizeof( filename ), "records/%s.record", mapname );
+       Com_sprintf( filename, sizeof( filename ), "records/%s_%i.records", mapname, gametype );
 
        len = trap_FS_FOpenFile( filename, &f, FS_READ );
        if ( len > 0 ) {
@@ -139,13 +139,13 @@ void G_UpdateLapRecord( gentity_t *player, int lapTime ) {
        trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
        Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
 
-       best = G_ReadBestValue( mapname, "best_lap_time" );
+       best = G_ReadBestValue( mapname, "best_lap_time", g_gametype.integer );
        if ( player->r.svFlags & SVF_BOT ) {
                return;
        }
 
        if ( !best || lapTime < best ) {
-               G_WriteRecord( mapname, "best_lap_time", lapTime, player->client->pers.netname );
+               G_WriteRecord( mapname, "best_lap_time", lapTime, player->client->pers.netname, g_gametype.integer );
        }
 }
 
@@ -158,9 +158,9 @@ void G_UpdateScoreRecord( gentity_t *player ) {
        trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
        Q_strncpyz( mapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( mapname ) );
 
-       best = G_ReadBestValue( mapname, "best_score" );
+       best = G_ReadBestValue( mapname, "best_score", g_gametype.integer );
        if ( !best || score > best ) {
-               G_WriteRecord( mapname, "best_score", score, player->client->pers.netname );
+               G_WriteRecord( mapname, "best_score", score, player->client->pers.netname, g_gametype.integer );
        }
 }
 
