@@ -299,6 +299,12 @@ void Think_StartFinish( gentity_t *self ){
                 level.trackLength = level.cpDist[level.numCheckpoints-1] + VectorLength( delta );
         }
 
+        if ( g_developer.integer ) {
+                G_Printf("[DEBUG:] Track length = %i qu (%.1f m)\n",
+                        level.trackLength,
+                        (float)level.trackLength / CP_M_2_QU);
+        }
+
         trap_SetConfigstring( CS_TRACKLENGTH, va( "%i", (int)( level.trackLength / CP_M_2_QU ) ) );
 
         self->number = level.numCheckpoints;
