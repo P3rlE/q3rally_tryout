@@ -462,7 +462,10 @@ static float CG_DrawLaps( float y ) {
 	curLap = cent->currentLap;
 	numLaps = cgs.laplimit;
 
-	Com_sprintf(s, sizeof(s), "LAP: %i/%i", curLap, numLaps);
+        if ( numLaps > 1 )
+                Com_sprintf(s, sizeof(s), "LAP: %i/%i", curLap, numLaps);
+        else
+                Com_sprintf(s, sizeof(s), "LAP: %i", curLap);
 
 	x = 636 - 80;
 	CG_FillRect( x, y, 90, 18, bgColor );

@@ -198,7 +198,10 @@ void CG_DrawHUD_Laps(float x, float y){
 	// draw heading
 	CG_FillRect(x, y, 170, 18, bgColor);
 	CG_DrawSmallDigitalStringColor(x + 12, y, "LAP:", colorWhite);
-	CG_DrawSmallDigitalStringColor(x + 102, y, va("%i/%i", cg_entities[cg.snap->ps.clientNum].currentLap, cgs.laplimit), colorWhite);
+        if ( cgs.laplimit > 1 )
+                CG_DrawSmallDigitalStringColor(x + 102, y, va("%i/%i", cg_entities[cg.snap->ps.clientNum].currentLap, cgs.laplimit), colorWhite);
+        else
+                CG_DrawSmallDigitalStringColor(x + 102, y, va("%i", cg_entities[cg.snap->ps.clientNum].currentLap), colorWhite);
 }
 
 /*
