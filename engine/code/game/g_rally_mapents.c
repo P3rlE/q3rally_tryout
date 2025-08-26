@@ -263,18 +263,46 @@ void Think_StartFinish( gentity_t *self ){
 
 	checkpoints = 0;
 
-	ent = NULL;
-	while ((ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL) checkpoints++;
-	level.numCheckpoints = checkpoints;
-	if (g_trackReversed.integer && level.trackIsReversable){
-		ent = NULL;
-		while ((ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL) {
-			ent->number = level.numCheckpoints - ent->number;
-		}
-	}
+        ent = NULL;
+        while ((ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL) checkpoints++;
+        level.numCheckpoints = checkpoints;
+        if (g_trackReversed.integer && level.trackIsReversable){
+                ent = NULL;
+                while ((ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL) {
+                        ent->number = level.numCheckpoints - ent->number;
+                }
+        }
 
-	self->number = level.numCheckpoints;
-	self->s.weapon = self->number;
+        memset( level.checkpoints, 0, sizeof( level.checkpoints ) );
+        memset( level.cpDist, 0, sizeof( level.cpDist ) );
+        ent = NULL;
+        while ( ( ent = G_Find( ent, FOFS(classname), "rally_checkpoint" ) ) != NULL ) {
+                if ( ent->number > 0 && ent->number <= level.numCheckpoints ) {
+                        level.checkpoints[ ent->number - 1 ] = ent;
+                }
+        }
+
+        level.trackLength = 0.0f;
+        if ( level.numCheckpoints > 0 ) {
+                vec3_t last, first, delta;
+                int i;
+
+                VectorCopy( level.checkpoints[0]->s.origin, first );
+                VectorCopy( first, last );
+                level.cpDist[0] = 0.0f;
+                for ( i = 1; i < level.numCheckpoints; i++ ) {
+                        VectorSubtract( last, level.checkpoints[i]->s.origin, delta );
+                        level.cpDist[i] = level.cpDist[i-1] + VectorLength( delta );
+                        VectorCopy( level.checkpoints[i]->s.origin, last );
+                }
+                VectorSubtract( last, first, delta );
+                level.trackLength = level.cpDist[level.numCheckpoints-1] + VectorLength( delta );
+        }
+
+        trap_SetConfigstring( CS_TRACKLENGTH, va( "%i", (int)( level.trackLength / CP_M_2_QU ) ) );
+
+        self->number = level.numCheckpoints;
+        self->s.weapon = self->number;
 }
 
 void Think_Finish( gentity_t *self ){
