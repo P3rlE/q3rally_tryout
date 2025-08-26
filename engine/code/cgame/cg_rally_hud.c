@@ -480,6 +480,35 @@ static float CG_DrawLaps( float y ) {
 
 /*
 ======================
+CG_DrawDistanceToFinish
+======================
+*/
+static float CG_DrawDistanceToFinish( float y ) {
+        char            s[64];
+        int             x;
+        float           dist;
+
+        dist = cg.snap->ps.stats[STAT_DISTANCE_REMAIN];
+
+        if ( cg_distanceFormat.integer == 1 && cgs.trackLength > 0.0f ) {
+                float percent = dist / cgs.trackLength * 100.0f;
+                Com_sprintf( s, sizeof( s ), "DIST: %.1f%%", percent );
+        } else {
+                Com_sprintf( s, sizeof( s ), "DIST: %dm", (int)dist );
+        }
+
+        x = 636 - 80;
+        CG_FillRect( x, y, 90, 18, bgColor );
+        x += 10;
+        y += 4;
+        CG_DrawTinyDigitalStringColor( x, y, s, colorWhite );
+        y += TINYCHAR_HEIGHT + 4;
+
+        return y;
+}
+
+/*
+======================
 CG_DrawCurrentPosition
 ======================
 */
@@ -863,7 +892,8 @@ float CG_DrawUpperRightHUD( float y ) {
 			y = CG_DrawArrowToCheckpoint( y );
 			y = CG_DrawTimes( y );
 			y = CG_DrawLaps( y );
-			y = CG_DrawCurrentPosition( y );
+			y = CG_DrawDistanceToFinish( y );
+                        y = CG_DrawCurrentPosition( y );
 			y = CG_DrawCarAheadAndBehind( y );
 		}
 		else if (cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS )
