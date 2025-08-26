@@ -115,8 +115,7 @@ place = "eighth";
 break;
 default:
 place = NULL;
-Com_Printf( "Unknown placing: %i
-", other->client->ps.stats[STAT_POSITION] );
+Com_Printf( "Unknown placing: %i\n", other->client->ps.stats[STAT_POSITION] );
 break;
 }
 
