@@ -2507,7 +2507,25 @@ Q3Rally Entities
 
 */
 
+/*QUAKED rally_start (0 .9 .1) ?
+
+Single lap start line. Sets the race to one lap and begins timing when crossed.
+"origin"        position of the player when they respawn
+"angle"         angle of player when they respawn after death
+
+*/
+
+/*QUAKED rally_finish (0 .9 .1) ?
+
+Race finish line for single lap tracks. Place after the last checkpoint.
+"origin"        position of the player when they respawn
+"angle"         angle of player when they respawn after death
+
+*/
+
 /*QUAKED rally_checkpoint (0 .9 .1) ?
+
+Used between rally_start and rally_finish to mark progress.
 
 "number"	number of the checkpoint, default is 1
 "origin"	position of the player when they respawn
