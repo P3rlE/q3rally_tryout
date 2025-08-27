@@ -331,7 +331,7 @@ qboolean CG_ParseScriptedObject( centity_t *cent, const char *scriptName ){
 		if ( !SeekToSection( &text_p, model ) ){
 //			Com_Printf( "'%s' section not found in script file, assuming it was an actual filename\n", model );
 
-			cent->modelHandle = trap_R_RegisterModel( model );
+			cent->modelHandle = trap_R_RegisterModel( deadmodel );
 		}
 		else {
 			Com_Printf( "Loading model info for '%s'\n", model );
@@ -346,7 +346,7 @@ qboolean CG_ParseScriptedObject( centity_t *cent, const char *scriptName ){
 		if ( !SeekToSection( &text_p, deadmodel ) ){
 //			Com_Printf( "'%s' section not found in script file, assuming it was an actual filename\n", model );
 
-			cent->deadModelHandle = trap_R_RegisterModel( model );
+			cent->deadModelHandle = trap_R_RegisterModel( deadmodel );
 		}
 		else {
 			Com_Printf( "Loading deadmodel info for '%s'\n", deadmodel );
