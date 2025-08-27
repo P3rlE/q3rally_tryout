@@ -713,6 +713,7 @@ static float CG_DrawSpeed( float y ) {
                char    gearStr[16];
                char    gearLabel[4];
                int             maxLen, len;
+               float bgColor[4] = {0.0f, 0.0f, 0.0f, 0.25f};
 
                Com_sprintf( speedStr, sizeof( speedStr ), "%i %s", vel_speed, cg_metricUnits.integer ? "KPH" : "MPH" );
                Com_sprintf( rpmStr,   sizeof( rpmStr ),   "%d RPM", cg.predictedPlayerState.stats[STAT_RPM] );
@@ -736,9 +737,15 @@ static float CG_DrawSpeed( float y ) {
                        maxLen = len;
                }
 
-               x -= 48 + ( maxLen * SMALLCHAR_WIDTH ) / 2;
+               x -= 38 + ( maxLen * SMALLCHAR_WIDTH ) / 2;
 
-               y -= 35;
+               y -= 40;
+               {
+                       float rectX = x - 4, rectY = y - 4;
+                       float rectW = maxLen * SMALLCHAR_WIDTH + 8;
+                       float rectH = 3 * SMALLCHAR_HEIGHT + 8;
+                       UI_FillRect( rectX, rectY, rectW, rectH, bgColor );
+               }
                CG_DrawSmallDigitalStringColor( x, y, speedStr, colorWhite );
                y += SMALLCHAR_HEIGHT;
                CG_DrawSmallDigitalStringColor( x, y, rpmStr, colorWhite );
@@ -746,7 +753,7 @@ static float CG_DrawSpeed( float y ) {
                CG_DrawSmallDigitalStringColor( x, y, gearStr, colorWhite );
 
                y = yorg;
-               y -= 39;
+               y -= 44;
                y -= 3 * SMALLCHAR_HEIGHT;
                return y;
        }
