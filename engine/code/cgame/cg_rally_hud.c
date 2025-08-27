@@ -704,8 +704,18 @@ static float CG_DrawSpeed( float y ) {
 
 	AngleVectors( ps->viewangles, forward, NULL, NULL );
 
-	// use actual speed
-	vel_speed = (int)fabs( Q3VelocityToRL( DotProduct(ps->velocity, forward) ) );
+        // use actual speed
+        vel_speed = (int)fabs( Q3VelocityToRL( DotProduct(ps->velocity, forward) ) );
+
+        if ( cg_speedometerMode.integer ) {
+                x -= 48 + (CG_DrawStrlen(va("%i", vel_speed)) * SMALLCHAR_WIDTH) / 2;
+                y -= 35;
+                CG_DrawSmallDigitalStringColor( x, y, va("%i", vel_speed), colorWhite);
+                y = yorg;
+                y -= 39;
+                y -= SMALLCHAR_HEIGHT;
+                return y;
+        }
 /*
 #ifdef Q3_VM
 	if (ps->stats[STAT_GEAR] == -1)
