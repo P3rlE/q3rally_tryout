@@ -708,9 +708,15 @@ static float CG_DrawSpeed( float y ) {
         vel_speed = (int)fabs( Q3VelocityToRL( DotProduct(ps->velocity, forward) ) );
 
         if ( cg_speedometerMode.integer ) {
-                x -= 48 + (CG_DrawStrlen(va("%i", vel_speed)) * SMALLCHAR_WIDTH) / 2;
+                const char      *unit;
+                const char      *speedStr;
+
+                unit = cg_metricUnits.integer ? "KPH" : "MPH";
+                speedStr = va("%i %s", vel_speed, unit);
+
+                x -= 48 + (CG_DrawStrlen(speedStr) * SMALLCHAR_WIDTH) / 2;
                 y -= 35;
-                CG_DrawSmallDigitalStringColor( x, y, va("%i", vel_speed), colorWhite);
+                CG_DrawSmallDigitalStringColor( x, y, speedStr, colorWhite);
                 y = yorg;
                 y -= 39;
                 y -= SMALLCHAR_HEIGHT;
