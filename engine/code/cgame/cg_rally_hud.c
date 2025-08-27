@@ -708,39 +708,42 @@ static float CG_DrawSpeed( float y ) {
         vel_speed = (int)fabs( Q3VelocityToRL( DotProduct(ps->velocity, forward) ) );
 
        if ( cg_speedometerMode.integer ) {
-               const char      *speedStr;
-               const char      *rpmStr;
-               const char      *gearStr;
-               const char      *gearLabel;
-               int                             maxLen, len;
+               char    speedStr[32];
+               char    rpmStr[32];
+               char    gearStr[16];
+               char    gearLabel[4];
+               int             maxLen, len;
 
-               speedStr = va("%i %s", vel_speed, cg_metricUnits.integer ? "KPH" : "MPH");
-               rpmStr   = va("%d RPM", cg.predictedPlayerState.stats[STAT_RPM]);
+               Com_sprintf( speedStr, sizeof( speedStr ), "%i %s", vel_speed, cg_metricUnits.integer ? "KPH" : "MPH" );
+               Com_sprintf( rpmStr,   sizeof( rpmStr ),   "%d RPM", cg.predictedPlayerState.stats[STAT_RPM] );
 
-               if ( cg.predictedPlayerState.stats[STAT_GEAR] == -1 )
-                       gearLabel = "R";
-               else if ( cg.predictedPlayerState.stats[STAT_GEAR] == 0 )
-                       gearLabel = "N";
-               else
-                       gearLabel = va("%i", cg.predictedPlayerState.stats[STAT_GEAR]);
-               gearStr  = va("GEAR %s", gearLabel);
+               if ( cg.predictedPlayerState.stats[STAT_GEAR] == -1 ) {
+                       Q_strncpyz( gearLabel, "R", sizeof( gearLabel ) );
+               } else if ( cg.predictedPlayerState.stats[STAT_GEAR] == 0 ) {
+                       Q_strncpyz( gearLabel, "N", sizeof( gearLabel ) );
+               } else {
+                       Com_sprintf( gearLabel, sizeof( gearLabel ), "%i", cg.predictedPlayerState.stats[STAT_GEAR] );
+               }
+               Com_sprintf( gearStr, sizeof( gearStr ), "GEAR %s", gearLabel );
 
-               maxLen = CG_DrawStrlen(speedStr);
-               len = CG_DrawStrlen(rpmStr);
-               if ( len > maxLen )
+               maxLen = CG_DrawStrlen( speedStr );
+               len = CG_DrawStrlen( rpmStr );
+               if ( len > maxLen ) {
                        maxLen = len;
-               len = CG_DrawStrlen(gearStr);
-               if ( len > maxLen )
+               }
+               len = CG_DrawStrlen( gearStr );
+               if ( len > maxLen ) {
                        maxLen = len;
+               }
 
-               x -= 48 + (maxLen * SMALLCHAR_WIDTH) / 2;
+               x -= 48 + ( maxLen * SMALLCHAR_WIDTH ) / 2;
 
                y -= 35;
-               CG_DrawSmallDigitalStringColor( x, y, speedStr, colorWhite);
+               CG_DrawSmallDigitalStringColor( x, y, speedStr, colorWhite );
                y += SMALLCHAR_HEIGHT;
-               CG_DrawSmallDigitalStringColor( x, y, rpmStr, colorWhite);
+               CG_DrawSmallDigitalStringColor( x, y, rpmStr, colorWhite );
                y += SMALLCHAR_HEIGHT;
-               CG_DrawSmallDigitalStringColor( x, y, gearStr, colorWhite);
+               CG_DrawSmallDigitalStringColor( x, y, gearStr, colorWhite );
 
                y = yorg;
                y -= 39;
