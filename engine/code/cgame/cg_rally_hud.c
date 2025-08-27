@@ -744,7 +744,7 @@ static float CG_DrawSpeed( float y ) {
                        float rectX = x - 4, rectY = y - 4;
                        float rectW = maxLen * SMALLCHAR_WIDTH + 8;
                        float rectH = 3 * SMALLCHAR_HEIGHT + 8;
-                       UI_FillRect( rectX, rectY, rectW, rectH, bgColor );
+                       CG_FillRect( rectX, rectY, rectW, rectH, bgColor );
                }
                CG_DrawSmallDigitalStringColor( x, y, speedStr, colorWhite );
                y += SMALLCHAR_HEIGHT;
