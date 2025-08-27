@@ -2809,6 +2809,7 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/game/g_rally_mapents.o \
   $(B)/$(BASEGAME)/game/g_rally_mapobjects.o \
   $(B)/$(BASEGAME)/game/g_rally_observer_cams.o \
+  $(B)/$(BASEGAME)/game/g_rally_object_physics.o \
   $(B)/$(BASEGAME)/game/g_rally_racetools.o \
   $(B)/$(BASEGAME)/game/g_rally_rearweapon.o \
   $(B)/$(BASEGAME)/game/g_rally_scripted_objects.o \
