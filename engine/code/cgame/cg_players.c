@@ -3931,44 +3931,51 @@ void CG_Player( centity_t *cent ) {
 		trap_R_AddRefEntityToScene( &plate );
 	}
 
-	//
-	// add the headlights
-	//
-       if (cent->currentState.eFlags & EF_HEADLIGHTS &&
-               !(cent->currentState.powerups & ( 1 << PW_INVIS ))) {
+/* Add the headlights (Variant A: tag provides only position; beam uses vehicle forward axis) */
+if ( (cent->currentState.eFlags & EF_HEADLIGHTS) &&
+     !(cent->currentState.powerups & (1 << PW_INVIS)) ) {
 
-		headlight.hModel = cgs.media.headLightGlow;
-		if (!headlight.hModel) {
-			return;
-		}
+    vec3_t fwd;      /* vehicle forward direction from body axis */
+    int    i;
 
-		VectorCopy( cent->lerpOrigin, headlight.lightingOrigin );
-		headlight.shadowPlane = shadowPlane;
-		headlight.renderfx = renderfx;
+    headlight.hModel = cgs.media.headLightGlow;
+    if ( !headlight.hModel ) {
+        return;
+    }
 
-               for (i = 0; i < 4; i++){
-                       vec3_t beamPos;
+    VectorCopy( cent->lerpOrigin, headlight.lightingOrigin );
+    headlight.shadowPlane = shadowPlane;
+    headlight.renderfx    = renderfx;
 
-                       Com_sprintf(filename, sizeof(filename), "tag_hlite%d", i+1);
-                       if (!CG_TagExists(ci->bodyModel, filename)) continue;
+    /* body.axis was built earlier from the car angles via AnglesToAxis, so axis[0] is forward */
+    VectorCopy( body.axis[0], fwd );
 
-                       CG_PositionEntityOnTag( &headlight, &body, ci->bodyModel, filename);
+    for ( i = 0; i < 4; i++ ) {
+        vec3_t beamPos;
+        char   tagname[32];
 
-                       // place stronger light slightly in front of the tag
-                       VectorMA( headlight.origin, 100, headlight.axis[0], beamPos );
-                       trap_R_AddAdditiveLightToScene( beamPos, 400, 1.0f, 1.0f, 1.0f );
+        Com_sprintf( tagname, sizeof(tagname), "tag_hlite%d", i + 1 );
+        if ( !CG_TagExists( ci->bodyModel, tagname ) ) {
+            continue;
+        }
 
-                       // additional lights further ahead with decreasing intensity
-                       VectorMA( headlight.origin, 200, headlight.axis[0], beamPos );
-                       trap_R_AddAdditiveLightToScene( beamPos, 250, 0.7f, 0.7f, 0.7f );
-                       VectorMA( headlight.origin, 300, headlight.axis[0], beamPos );
-                       trap_R_AddAdditiveLightToScene( beamPos, 150, 0.5f, 0.5f, 0.5f );
+        /* Position the glow model on the tag (we ignore the tag's local forward axis for the beam) */
+        CG_PositionEntityOnTag( &headlight, &body, ci->bodyModel, tagname );
 
-                       trap_R_AddAdditiveLightToScene( headlight.origin, 200, 0.3f, 0.3f, 0.3f );
+        /* Three additive lights cast strictly along the vehicle forward axis */
+        VectorMA( headlight.origin,  50, fwd, beamPos );
+        trap_R_AddAdditiveLightToScene( beamPos, 100, 0.8f, 0.8f, 0.8f );
 
-                       trap_R_AddRefEntityToScene( &headlight );
-               }
-       }
+        VectorMA( headlight.origin, 150, fwd, beamPos );
+        trap_R_AddAdditiveLightToScene( beamPos, 200, 0.5f, 0.5f, 0.5f );
+
+        VectorMA( headlight.origin, 250, fwd, beamPos );
+        trap_R_AddAdditiveLightToScene( beamPos, 300, 0.3f, 0.3f, 0.3f );
+
+        /* Render the headlight glow model itself at the tag */
+        trap_R_AddRefEntityToScene( &headlight );
+    }
+}
 
 	//
 	// add the red and blue lights for emergency vehicles
