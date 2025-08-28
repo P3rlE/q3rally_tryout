@@ -3934,13 +3934,8 @@ void CG_Player( centity_t *cent ) {
 	//
 	// add the headlights
 	//
-        VectorMA(body.origin, 200, body.axis[0], dir);
-        VectorMA(dir, 75, body.axis[1], dir);
-        trap_R_AddAdditiveLightToScene( dir, 200, 0.3f, 0.3f, 0.3f );
-        VectorMA(dir, -150, body.axis[1], dir);
-        trap_R_AddAdditiveLightToScene( dir, 200, 0.3f, 0.3f, 0.3f );
-        if (cent->currentState.eFlags & EF_HEADLIGHTS &&
-                !(cent->currentState.powerups & ( 1 << PW_INVIS ))) {
+       if (cent->currentState.eFlags & EF_HEADLIGHTS &&
+               !(cent->currentState.powerups & ( 1 << PW_INVIS ))) {
 
 		headlight.hModel = cgs.media.headLightGlow;
 		if (!headlight.hModel) {
@@ -3951,15 +3946,26 @@ void CG_Player( centity_t *cent ) {
 		headlight.shadowPlane = shadowPlane;
 		headlight.renderfx = renderfx;
 
-		for (i = 0; i < 4; i++){
-			Com_sprintf(filename, sizeof(filename), "tag_hlite%d", i+1);
-			if (!CG_TagExists(ci->bodyModel, filename)) continue;
+               for (i = 0; i < 4; i++){
+                       vec3_t beamPos;
 
-                        CG_PositionEntityOnTag( &headlight, &body, ci->bodyModel, filename);
-                        trap_R_AddAdditiveLightToScene( headlight.origin, 200, 0.3f, 0.3f, 0.3f );
-                        trap_R_AddRefEntityToScene( &headlight );
-		}
-	}
+                       Com_sprintf(filename, sizeof(filename), "tag_hlite%d", i+1);
+                       if (!CG_TagExists(ci->bodyModel, filename)) continue;
+
+                       CG_PositionEntityOnTag( &headlight, &body, ci->bodyModel, filename);
+
+                       // series of forward lights with decreasing intensity
+                       VectorMA( headlight.origin, 150, headlight.axis[0], beamPos );
+                       trap_R_AddAdditiveLightToScene( beamPos, 300, 0.8f, 0.8f, 0.8f );
+
+                       VectorMA( headlight.origin, 300, headlight.axis[0], beamPos );
+                       trap_R_AddAdditiveLightToScene( beamPos, 180, 0.5f, 0.5f, 0.5f );
+                       VectorMA( headlight.origin, 450, headlight.axis[0], beamPos );
+                       trap_R_AddAdditiveLightToScene( beamPos, 100, 0.3f, 0.3f, 0.3f );
+
+                       trap_R_AddRefEntityToScene( &headlight );
+               }
+       }
 
 	//
 	// add the red and blue lights for emergency vehicles
