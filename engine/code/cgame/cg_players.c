@@ -3434,6 +3434,7 @@ void CG_Player( centity_t *cent ) {
 	refEntity_t		plate;
 	refEntity_t		turbo;
 	refEntity_t		headlight;
+	refEntity_t		backlight;
 	refEntity_t		brakelight;
 	refEntity_t		reverselight;
 	refEntity_t		emergencylight;
@@ -3498,6 +3499,7 @@ void CG_Player( centity_t *cent ) {
 	memset( &head, 0, sizeof(head) );
 	memset( &plate, 0, sizeof(plate) );
 	memset( &headlight, 0, sizeof(headlight) );
+        memset( &backlight, 0, sizeof(backlight) );
 	memset( &brakelight, 0, sizeof(brakelight) );
 	memset( &reverselight, 0, sizeof(reverselight) );
 	memset( &emergencylight, 0, sizeof(emergencylight) );
@@ -3974,6 +3976,46 @@ if ( (cent->currentState.eFlags & EF_HEADLIGHTS) &&
 
         /* Render the headlight glow model itself at the tag */
         trap_R_AddRefEntityToScene( &headlight );
+    }
+}
+
+/* Add the backlights (tag provides only position; beam uses vehicle backward axis) */
+if ( (cent->currentState.eFlags & EF_HEADLIGHTS) &&
+     !(cent->currentState.powerups & (1 << PW_INVIS)) ) {
+
+vec3_t back;     /* vehicle backward direction from body axis */
+int    i;
+
+backlight.hModel = cgs.media.brakeLightGlow;
+if ( !backlight.hModel ) {
+    return;
+}
+
+VectorCopy( cent->lerpOrigin, backlight.lightingOrigin );
+    backlight.shadowPlane = shadowPlane;
+    backlight.renderfx    = renderfx;
+
+    /* body.axis[0] points forward, so use the opposite for backlights */
+    VectorScale( body.axis[0], -1, back );
+
+    for ( i = 0; i < 3; i++ ) {
+        vec3_t beamPos;
+        char   tagname[32];
+
+        Com_sprintf( tagname, sizeof(tagname), "tag_blite%d", i + 1 );
+        if ( !CG_TagExists( ci->bodyModel, tagname ) ) {
+            continue;
+        }
+
+        /* Position the glow model on the tag (ignoring tag orientation) */
+        CG_PositionEntityOnTag( &backlight, &body, ci->bodyModel, tagname );
+
+        /* Single additive red light cast along the vehicle backward axis */
+        VectorMA( backlight.origin, 50, back, beamPos );
+        trap_R_AddAdditiveLightToScene( beamPos, 100, 1.0f, 0.0f, 0.0f );
+
+        /* Render the backlight glow model itself at the tag */
+        trap_R_AddRefEntityToScene( &backlight );
     }
 }
 
