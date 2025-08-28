@@ -3934,15 +3934,13 @@ void CG_Player( centity_t *cent ) {
 	//
 	// add the headlights
 	//
-/*
-	VectorMA(body.origin, 200, body.axis[0], dir);
-	VectorMA(dir, 75, body.axis[1], dir);
-	trap_R_AddAdditiveLightToScene( dir, 200, 0.3f, 0.3f, 0.3f );
-	VectorMA(dir, -150, body.axis[1], dir);
-	trap_R_AddAdditiveLightToScene( dir, 200, 0.3f, 0.3f, 0.3f );
-*/
-	if (/*cg_entities[cent->currentState.clientNum].hl_left->light &&*/
-		!(cent->currentState.powerups & ( 1 << PW_INVIS ))){
+        VectorMA(body.origin, 200, body.axis[0], dir);
+        VectorMA(dir, 75, body.axis[1], dir);
+        trap_R_AddAdditiveLightToScene( dir, 200, 0.3f, 0.3f, 0.3f );
+        VectorMA(dir, -150, body.axis[1], dir);
+        trap_R_AddAdditiveLightToScene( dir, 200, 0.3f, 0.3f, 0.3f );
+        if (cent->currentState.eFlags & EF_HEADLIGHTS &&
+                !(cent->currentState.powerups & ( 1 << PW_INVIS ))) {
 
 		headlight.hModel = cgs.media.headLightGlow;
 		if (!headlight.hModel) {
@@ -3957,16 +3955,17 @@ void CG_Player( centity_t *cent ) {
 			Com_sprintf(filename, sizeof(filename), "tag_hlite%d", i+1);
 			if (!CG_TagExists(ci->bodyModel, filename)) continue;
 
-			CG_PositionEntityOnTag( &headlight, &body, ci->bodyModel, filename);
-			trap_R_AddRefEntityToScene( &headlight );
+                        CG_PositionEntityOnTag( &headlight, &body, ci->bodyModel, filename);
+                        trap_R_AddAdditiveLightToScene( headlight.origin, 200, 0.3f, 0.3f, 0.3f );
+                        trap_R_AddRefEntityToScene( &headlight );
 		}
 	}
 
 	//
 	// add the red and blue lights for emergency vehicles
 	//
-	if (/*cg_entities[cent->currentState.clientNum].hl_left->light &&*/
-		!(cent->currentState.powerups & ( 1 << PW_INVIS ))){
+        if (cent->currentState.eFlags & EF_HEADLIGHTS &&
+                !(cent->currentState.powerups & ( 1 << PW_INVIS ))) {
 
 		VectorCopy( cent->lerpOrigin, emergencylight.lightingOrigin );
 		emergencylight.shadowPlane = shadowPlane;
