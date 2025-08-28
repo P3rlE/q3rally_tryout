@@ -4012,7 +4012,7 @@ VectorCopy( cent->lerpOrigin, backlight.lightingOrigin );
 
         /* Single additive red light cast along the vehicle backward axis */
         VectorMA( backlight.origin, 50, back, beamPos );
-        trap_R_AddAdditiveLightToScene( beamPos, 100, 1.0f, 0.0f, 0.0f );
+        trap_R_AddAdditiveLightToScene( beamPos, 80, 0.6f, 0.0f, 0.0f );
 
         /* Render the backlight glow model itself at the tag */
         trap_R_AddRefEntityToScene( &backlight );
