@@ -157,6 +157,7 @@ extern	float CP_GEAR_RATIOS[];
 
 #define CF_REVERSE			1
 #define CF_BRAKE			2
+#define CF_HEADLIGHTS                   4
 
 // assign sign bit of b to a, floats only
 // #define SetSign(a,b)		(*(DWORD *)&(a)) = ((*(DWORD *)&(b)) & 0x80000000) | ((*(DWORD *)&(a)) & 0x7FFFFFFF)

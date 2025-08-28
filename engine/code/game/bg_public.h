@@ -390,6 +390,7 @@ typedef enum {
 #define EF_BOUNCE_HALF                  0x00800000              // for missiles
 #define EF_BOUNCE_NONE                  0x01000000              // for mines
 #define EF_MOVER_STOP                   0x02000000              // will push otherwise
+#define EF_HEADLIGHTS                   0x04000000
 
 // NOTE: may not have more than 16
 typedef enum {
