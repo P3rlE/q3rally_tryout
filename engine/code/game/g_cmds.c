@@ -2047,6 +2047,7 @@ void Cmd_Headlight_Toggle_f( gentity_t *ent ) {
        } else {
                ent->s.eFlags &= ~EF_HEADLIGHTS;
        }
+       ent->client->sess.headlights = (ent->client->ps.extra_eFlags & CF_HEADLIGHTS) ? qtrue : qfalse;
 }
 // END
 
