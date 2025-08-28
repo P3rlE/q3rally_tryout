@@ -3954,14 +3954,17 @@ void CG_Player( centity_t *cent ) {
 
                        CG_PositionEntityOnTag( &headlight, &body, ci->bodyModel, filename);
 
-                       // series of forward lights with decreasing intensity
-                       VectorMA( headlight.origin, 150, headlight.axis[0], beamPos );
-                       trap_R_AddAdditiveLightToScene( beamPos, 300, 0.8f, 0.8f, 0.8f );
+                       // place stronger light slightly in front of the tag
+                       VectorMA( headlight.origin, 100, headlight.axis[0], beamPos );
+                       trap_R_AddAdditiveLightToScene( beamPos, 400, 1.0f, 1.0f, 1.0f );
 
+                       // additional lights further ahead with decreasing intensity
+                       VectorMA( headlight.origin, 200, headlight.axis[0], beamPos );
+                       trap_R_AddAdditiveLightToScene( beamPos, 250, 0.7f, 0.7f, 0.7f );
                        VectorMA( headlight.origin, 300, headlight.axis[0], beamPos );
-                       trap_R_AddAdditiveLightToScene( beamPos, 180, 0.5f, 0.5f, 0.5f );
-                       VectorMA( headlight.origin, 450, headlight.axis[0], beamPos );
-                       trap_R_AddAdditiveLightToScene( beamPos, 100, 0.3f, 0.3f, 0.3f );
+                       trap_R_AddAdditiveLightToScene( beamPos, 150, 0.5f, 0.5f, 0.5f );
+
+                       trap_R_AddAdditiveLightToScene( headlight.origin, 200, 0.3f, 0.3f, 0.3f );
 
                        trap_R_AddRefEntityToScene( &headlight );
                }
