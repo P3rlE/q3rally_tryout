@@ -3965,6 +3965,7 @@ void CG_Player( centity_t *cent ) {
                        trap_R_AddAdditiveLightToScene( beamPos, 150, 0.5f, 0.5f, 0.5f );
 
                        trap_R_AddAdditiveLightToScene( headlight.origin, 200, 0.3f, 0.3f, 0.3f );
+
                        trap_R_AddRefEntityToScene( &headlight );
                }
        }
