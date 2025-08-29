@@ -127,12 +127,10 @@ static void MainMenu_BuildList( void )
         // choose one from list randomly
         if (numItems){
                car = UI_RandomInt( numItems );
-                strncpy(carName, cars[car], sizeof(carName) - 1);
-                carName[sizeof(carName) - 1] = '\0';
+                Q_strncpyz(carName, cars[car], sizeof(carName));
         }
         else {
-                strncpy(carName, DEFAULT_MODEL, sizeof(carName) - 1);
-                carName[sizeof(carName) - 1] = '\0';
+                Q_strncpyz(carName, DEFAULT_MODEL, sizeof(carName));
         }
 
         // get skins for the choosen car
@@ -141,12 +139,10 @@ static void MainMenu_BuildList( void )
         // choose a skin from the list randomly
         if (numItems){
                skin = UI_RandomInt( numItems );
-                strncpy(skinName, cars[skin], sizeof(skinName) - 1);
-                skinName[sizeof(skinName) - 1] = '\0';
+                Q_strncpyz(skinName, cars[skin], sizeof(skinName));
         }
         else {
-                strncpy(skinName, DEFAULT_SKIN, sizeof(skinName) - 1);
-                skinName[sizeof(skinName) - 1] = '\0';
+                Q_strncpyz(skinName, DEFAULT_SKIN, sizeof(skinName));
         }
 
         // FIXME: choose rim randomly?

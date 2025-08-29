@@ -80,7 +80,7 @@ int UI_BuildFileList( const char *directory, const char *extension, const char *
 		prefix++;
 	}
 
-	strncpy(p, prefix, sizeof(p));
+        Q_strncpyz(p, prefix, sizeof(p));
 	for (sizeofPrefix = 0; sizeofPrefix < sizeof(p); sizeofPrefix++){
 		if (p[sizeofPrefix] == 0)
 			break;
