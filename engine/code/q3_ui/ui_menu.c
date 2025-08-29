@@ -347,7 +347,9 @@ static qboolean UI_TeamArenaExists( void ) {
 InitMenuText
 =================
 */
+
 static void InitMenuText(menutext_s *item, int id, char *label, int x, int y) {
+
         item->generic.type = MTYPE_PTEXT;
         item->generic.flags = QMF_RIGHT_JUSTIFY|QMF_PULSEIFFOCUS;
         item->generic.id = id;
