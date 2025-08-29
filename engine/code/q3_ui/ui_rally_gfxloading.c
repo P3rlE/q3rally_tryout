@@ -36,7 +36,6 @@ static const int MIN_STAGE_TIME = 450;      /* minimum milliseconds per stage */
 static const int FINAL_DISPLAY_TIME = 1200; /* time to display 100% before transition */
 
 typedef struct {
-    const char *name;
     void (*exec)(void);
 } gfx_stage_t;
 
@@ -79,15 +78,27 @@ static void GFXStage_PlayerData(void) {
 }
 static void GFXStage_StartServer(void) { StartServer_Cache(); }
 
+static const char * const stageNames[] = {
+    "Initializing System...",
+    "Loading Setup Menu...",
+    "Caching Player Models...",
+    "Applying Player Settings...",
+    "Loading Control Bindings...",
+    "Building Arena Server List...",
+    "Configuring Player Data...",
+    "Finalizing User Interface...",
+    "Ready to Start!"
+};
+
 static const gfx_stage_t stages[] = {
-    {"Initializing System...", GFXStage_Init},
-    {"Loading Setup Menu...", GFXStage_SetupMenu},
-    {"Caching Player Models...", GFXStage_PlayerModel},
-    {"Applying Player Settings...", GFXStage_PlayerSettings},
-    {"Loading Control Bindings...", GFXStage_Controls},
-    {"Building Arena Server List...", GFXStage_ArenaServers},
-    {"Configuring Player Data...", GFXStage_PlayerData},
-    {"Finalizing User Interface...", GFXStage_StartServer},
+    {GFXStage_Init},
+    {GFXStage_SetupMenu},
+    {GFXStage_PlayerModel},
+    {GFXStage_PlayerSettings},
+    {GFXStage_Controls},
+    {GFXStage_ArenaServers},
+    {GFXStage_PlayerData},
+    {GFXStage_StartServer},
 };
 
 /*
@@ -188,9 +199,9 @@ static void UI_GFX_Loading_MenuDraw(void) {
     /* Draw current stage message */
     stage_index = s_gfxloading.currentCache;
     if (stage_index >= totalStages) {
-        stageName = "Ready to Start!";
+        stageName = stageNames[totalStages];
     } else {
-        stageName = stages[stage_index].name;
+        stageName = stageNames[stage_index];
     }
     UI_DrawString(320, 200, stageName, UI_CENTER | UI_SMALLFONT, text_color_highlight);
 
