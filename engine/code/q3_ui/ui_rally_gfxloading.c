@@ -47,6 +47,7 @@ typedef struct {
     float smoothProgress;        /* smoothly interpolated value for visuals */
     int stageStartTime;          /* when current stage started */
     int finalDisplayStartTime;   /* when 100% display phase started */
+    qhandle_t carShader;         /* icon for progress indicator */
     qboolean cacheExecuted;      /* whether current stage's cache has been executed */
     qboolean finalPhase;         /* whether we're in the final display phase */
 } gfxloading_t;
@@ -223,6 +224,21 @@ static void UI_GFX_Loading_MenuDraw(void) {
         UI_FillRect(bar_x, bar_y, (int)(bar_w * s_gfxloading.smoothProgress), bar_h, text_color_highlight);
     }
 
+    /* Moving car icon */
+    {
+        const int iconWidth = 32;
+        const int iconHeight = 32;
+        float progress = s_gfxloading.smoothProgress;
+        int car_x;
+
+        /* Clamp progress to [0,1] to keep icon on bar */
+        if (progress < 0.0f) progress = 0.0f;
+        if (progress > 1.0f) progress = 1.0f;
+
+        car_x = bar_x + (int)(bar_w * progress) - iconWidth / 2;
+        UI_DrawHandlePic(car_x, bar_y - iconHeight, iconWidth, iconHeight, s_gfxloading.carShader);
+    }
+
     /* Progress bar border */
     UI_DrawRect(bar_x, bar_y, bar_w, bar_h, colorWhite);
 
@@ -257,6 +273,9 @@ Initializes and shows the enhanced graphics loading screen.
 void UI_GFX_Loading(void) {
     /* Clear all fields */
     memset(&s_gfxloading, 0, sizeof(gfxloading_t));
+
+    /* Load progress icon */
+    s_gfxloading.carShader = trap_R_RegisterShaderNoMip("menu/art/loading_car");
 
     /* Setup menu structure */
     s_gfxloading.menu.draw = UI_GFX_Loading_MenuDraw;
