@@ -269,6 +269,7 @@ void MainMenu_RunTransition( float frac ) {
         s_main.singleplayer.color = uis.text_color;
         s_main.multiplayer.color = uis.text_color;
         s_main.setup.color = uis.text_color;
+        s_main.garage.color = uis.text_color;
         s_main.cinematics.color = uis.text_color;
         s_main.demos.color = uis.text_color;
         s_main.mods.color = uis.text_color;
