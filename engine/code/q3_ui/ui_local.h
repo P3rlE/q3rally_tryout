@@ -958,9 +958,10 @@ void UI_SoundOptionsMenu( void );
 #define BL_ONLY			2
 
 float UI_Random( void );
+int UI_RandomInt( int max );
 int UI_BuildFileList( const char *directory, const char *extension, const char *prefix,
-					 qboolean excludeDirectory, qboolean excludeFileNames,
-					 int specialCases, int startIndex, char list[256][64]);
+                                         qboolean excludeDirectory, qboolean excludeFileNames,
+                                         int specialCases, int startIndex, char list[256][64]);
 
 //
 // ui_rally_favorites.c
