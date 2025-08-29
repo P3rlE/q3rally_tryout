@@ -315,6 +315,6 @@ void UI_GFX_Loading(void) {
     s_gfxloading.cacheExecuted = qfalse;
     s_gfxloading.finalPhase = qfalse;
     s_gfxloading.finalDisplayStartTime = 0;
-    s_gfxloading.tipIndex = rand() % ARRAY_LEN(loadingTips);
+    s_gfxloading.tipIndex = UI_RandomInt( ARRAY_LEN(loadingTips) );
 }
 
