@@ -279,10 +279,10 @@ void MainMenu_RunTransition( float frac ) {
 
 /*
 ===============
-MainMenu_Cache
+MainMenu_Prepare
 ===============
 */
-void MainMenu_Cache( void ) {
+void MainMenu_Prepare( void ) {
 
         MainMenu_Update();
 
@@ -404,7 +404,7 @@ void UI_MainMenu( void ) {
 
 	memset( &s_main, 0 ,sizeof(mainmenu_t) );
 
-	MainMenu_Cache();
+        MainMenu_Prepare();
 
         s_main.menu.draw = Main_MenuDraw;
         s_main.menu.fullscreen = qtrue;
