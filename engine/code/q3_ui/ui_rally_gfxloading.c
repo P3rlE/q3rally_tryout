@@ -32,8 +32,8 @@ for improved user experience and better visual feedback.
 
 #include "ui_local.h"
 
-#define MIN_STAGE_TIME 450      /* minimum milliseconds per stage */
-#define FINAL_DISPLAY_TIME 1200 /* time to display 100% before transition */
+static const int MIN_STAGE_TIME = 450;      /* minimum milliseconds per stage */
+static const int FINAL_DISPLAY_TIME = 1200; /* time to display 100% before transition */
 
 typedef struct {
     const char *name;
