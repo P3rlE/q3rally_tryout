@@ -34,7 +34,8 @@ float UI_Random( void ){
 //	return random();
 }
 int UI_RandomInt( int max ){
-	return Q_rand( &ui_randSeed ) % max;
+	// Q_rand may return negative values, cast to unsigned to guarantee non-negative
+	return (unsigned)Q_rand( &ui_randSeed ) % max;
 }
 
 
