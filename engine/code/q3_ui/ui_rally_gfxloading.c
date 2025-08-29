@@ -221,7 +221,18 @@ static void UI_GFX_Loading_MenuDraw(void) {
     
     /* Actual progress fill */
     if (s_gfxloading.smoothProgress > 0.0f) {
-        UI_FillRect(bar_x, bar_y, (int)(bar_w * s_gfxloading.smoothProgress), bar_h, text_color_highlight);
+        vec4_t startColor = {1.0f, 0.0f, 0.0f, 1.0f};
+        vec4_t endColor = {0.0f, 1.0f, 0.0f, 1.0f};
+        vec4_t progressColor;
+        int    i;
+
+        for (i = 0; i < 4; i++) {
+            progressColor[i] = startColor[i] + (endColor[i] - startColor[i]) * s_gfxloading.smoothProgress;
+        }
+
+        trap_R_SetColor(progressColor);
+        UI_FillRect(bar_x, bar_y, (int)(bar_w * s_gfxloading.smoothProgress), bar_h, progressColor);
+        trap_R_SetColor(NULL);
     }
 
     /* Moving car icon */
