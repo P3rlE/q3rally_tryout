@@ -208,7 +208,7 @@ static void UI_GFX_Loading_MenuDraw(void) {
 
     /* Draw progress bar with enhanced visuals */
     bar_x = 200;
-    bar_y = 240;
+    bar_y = 240 + 50;
     bar_w = 240;
     bar_h = 24;
 
