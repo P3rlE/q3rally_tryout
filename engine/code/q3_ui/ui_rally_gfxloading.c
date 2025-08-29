@@ -269,7 +269,7 @@ static void UI_GFX_Loading_MenuDraw(void) {
                   UI_CENTER | UI_SMALLFONT, text_color_normal);
 
     /* Draw random driving tip */
-    UI_DrawString(320, bar_y + bar_h + 36, loadingTips[s_gfxloading.tipIndex],
+    UI_DrawString(320, bar_y + bar_h + 46, loadingTips[s_gfxloading.tipIndex],
                   UI_CENTER | UI_SMALLFONT, text_color_normal);
 
     /* Handle transition when loading is complete */
