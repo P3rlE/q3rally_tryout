@@ -226,8 +226,8 @@ static void UI_GFX_Loading_MenuDraw(void) {
 
     /* Moving car icon */
     {
-        const int iconWidth = 32;
-        const int iconHeight = 32;
+        const int iconWidth = 64;
+        const int iconHeight = 64;
         float progress = s_gfxloading.smoothProgress;
         int car_x;
 
