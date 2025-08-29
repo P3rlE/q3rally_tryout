@@ -41,6 +41,11 @@ float UI_Random( void ){
 	return Q_random( &seed );
 //	return random();
 }
+int UI_RandomInt( int max ){
+	int seed = trap_Milliseconds();
+	return Q_rand( &seed ) % max;
+}
+
 
 
 int UI_BuildFileList( const char *directory, const char *extension, const char *prefix,

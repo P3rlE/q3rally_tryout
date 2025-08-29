@@ -126,7 +126,7 @@ static void MainMenu_BuildList( void )
 
         // choose one from list randomly
         if (numItems){
-                car = (int)(UI_Random() * numItems);
+               car = UI_RandomInt( numItems );
                 strncpy(carName, cars[car], sizeof(carName) - 1);
                 carName[sizeof(carName) - 1] = '\0';
         }
@@ -140,7 +140,7 @@ static void MainMenu_BuildList( void )
 
         // choose a skin from the list randomly
         if (numItems){
-                skin = UI_Random() * numItems;
+               skin = UI_RandomInt( numItems );
                 strncpy(skinName, cars[skin], sizeof(skinName) - 1);
                 skinName[sizeof(skinName) - 1] = '\0';
         }
