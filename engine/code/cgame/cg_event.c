@@ -456,10 +456,10 @@ static void CG_Obituary( entityState_t *ent ) {
 			message = "got too close to";
 			message2 = "'s mine";
 			break;
-		case MOD_CAR_COLLISION:
-			message = "got rammed by";
-			message2 = "'s vehicle";
-			break;
+                case MOD_VEHICLE_COLLISION:
+                        message = "got rammed by";
+                        message2 = "'s vehicle";
+                        break;
 // Q3Rally Code END
 		default:
 			message = "was killed by";
