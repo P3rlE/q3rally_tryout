@@ -288,7 +288,7 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
                 }
                 closing = vSelf + vHit;
                 if( closing > 0.0f ) {
-                    totalDamage = closing * g_vehicleDamageScale.value;
+                    totalDamage = ( closing + g_vehicleDamageOffset.value ) * g_vehicleDamageScale.value;
                     damageSelf = (int)max( 1.0f, totalDamage * ( vHit / closing ) );
                     damageHit = (int)max( 1.0f, totalDamage * ( vSelf / closing ) );
 
