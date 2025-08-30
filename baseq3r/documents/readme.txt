@@ -62,3 +62,11 @@ We wish you much fun trying out this beta of Q3Rally.
 
 Thanks.
 
+
+** Derby Cvars **
+
+The following server cvars adjust vehicle collision damage in Demolition Derby mode:
+
+* `g_derbyDamageFactor` – scales the total damage dealt on impact (default `1.0`).
+* `g_derbyRammerDamageRatio` – controls how damage is split between the rammer and the vehicle hit. `1.0` deals equal damage to both, values above `1.0` favor the target, below `1.0` favor the rammer.
+
