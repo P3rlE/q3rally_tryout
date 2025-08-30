@@ -208,19 +208,25 @@ void SnapVectorTowards( vec3_t v, vec3_t to ) {
 #define DERBYRAM_MAX_ENTITIES MAX_GENTITIES
 
 void Weapon_DerbyRam( gentity_t *ent ) {
-	float radius;
+        float radius;
+        float speed;
+        float damage;
 
-	if ( !ent->client ) {
-		return;
-	}
+        if ( !ent->client ) {
+                return;
+        }
 
-	if ( g_derbyRamRadius.value > 0 ) {
-		radius = g_derbyRamRadius.value;
-	} else {
-		radius = CAR_WIDTH;
-	}
+        if ( g_derbyRamRadius.value > 0 ) {
+                radius = g_derbyRamRadius.value;
+        } else {
+                radius = CAR_WIDTH;
+        }
 
-	G_RadiusDamage( ent->r.currentOrigin, ent, g_derbyRamDamage.integer, radius, ent, MOD_VEHICLE_COLLISION );
+        speed = VectorLength( ent->s.pos.trDelta );
+        damage = speed * g_derbyRamDamageScale.value;
+        damage = Com_Clamp( 1.0f, g_derbyRamDamageMax.value, damage );
+
+        G_RadiusDamage( ent->r.currentOrigin, ent, damage, radius, ent, MOD_VEHICLE_COLLISION );
 }
 
 
