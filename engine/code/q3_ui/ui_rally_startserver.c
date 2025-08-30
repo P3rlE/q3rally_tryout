@@ -80,7 +80,7 @@ typedef struct {
 	char*			statitems[MAX_SERVERMAPS];
 	int				numstats;
 	int				mapGamebits[MAX_SERVERMAPS];
-} startserver_t;
+        } startserver_t;
 
 static startserver_t s_startserver;
 
@@ -479,27 +479,31 @@ static void StartServer_GametypeEvent( void* ptr, int event ) {
 	s_startserver.nummaps = 0;
 	matchbits = 1 << gametype_remap[s_startserver.gametype.curvalue];
 
-	for( i = 0; i < count; i++ ) {
-		info = UI_GetArenaInfoByNumber( i );
+        for( i = 0; i < count; i++ ) {
+                info = UI_GetArenaInfoByNumber( i );
 
-		gamebits = GametypeBits( Info_ValueForKey( info, "type") );
-		if( !( gamebits & matchbits ) ) {
-			continue;
-		}
+                gamebits = GametypeBits( Info_ValueForKey( info, "type") );
+                if( !( gamebits & matchbits ) ) {
+                        continue;
+                }
 
-		Q_strncpyz(s_startserver.mapinfo[s_startserver.nummaps], info, sizeof(s_startserver.mapinfo[i]));
+                if( s_startserver.nummaps >= MAX_SERVERMAPS ) {
+                        break;
+                }
 
-		Q_strncpyz( s_startserver.maplist[s_startserver.nummaps], Info_ValueForKey( info, "map"), MAX_NAMELENGTH );
+                Q_strncpyz(s_startserver.mapinfo[s_startserver.nummaps], info, sizeof(s_startserver.mapinfo[i]));
 
-		Q_strncpyz( s_startserver.maplistname[s_startserver.nummaps], Info_ValueForKey( info, "longname"), MAX_NAMELENGTH );
-		if (s_startserver.maplistname[s_startserver.nummaps][0] == 0)
-			Q_strncpyz( s_startserver.maplistname[s_startserver.nummaps], s_startserver.maplist[s_startserver.nummaps], MAX_NAMELENGTH );
-		else
-			Q_strupr( s_startserver.maplistname[s_startserver.nummaps] );
+                Q_strncpyz( s_startserver.maplist[s_startserver.nummaps], Info_ValueForKey( info, "map"), MAX_NAMELENGTH );
 
-		s_startserver.mapGamebits[s_startserver.nummaps] = gamebits;
-		s_startserver.nummaps++;
-	}
+                Q_strncpyz( s_startserver.maplistname[s_startserver.nummaps], Info_ValueForKey( info, "longname"), MAX_NAMELENGTH );
+                if (s_startserver.maplistname[s_startserver.nummaps][0] == 0)
+                        Q_strncpyz( s_startserver.maplistname[s_startserver.nummaps], s_startserver.maplist[s_startserver.nummaps], MAX_NAMELENGTH );
+                else
+                        Q_strupr( s_startserver.maplistname[s_startserver.nummaps] );
+
+                s_startserver.mapGamebits[s_startserver.nummaps] = gamebits;
+                s_startserver.nummaps++;
+        }
 
 	s_startserver.currentmap = 0;
 	s_startserver.top = 0;
@@ -680,7 +684,7 @@ static void StartServer_MenuInit( void ) {
 	s_startserver.list.height				= MAX_MAPSPERPAGE;
 	s_startserver.list.itemnames			= (const char **)s_startserver.items;
 	s_startserver.list.numitems				= s_startserver.nummaps;
-	for( i = 0; i < s_startserver.nummaps; i++ ) {
+	                for( i = 0; i < s_startserver.nummaps; i++ ) {
 		s_startserver.items[i] = s_startserver.maplistname[i];
 	}
 
@@ -774,9 +778,12 @@ void StartServer_Cache( void )
 
 	precache = trap_Cvar_VariableValue("com_buildscript");
 
-	s_startserver.nummaps = UI_GetNumArenas();
+        s_startserver.nummaps = UI_GetNumArenas();
+        if( s_startserver.nummaps > MAX_SERVERMAPS ) {
+                s_startserver.nummaps = MAX_SERVERMAPS;
+        }
 
-	for( i = 0; i < s_startserver.nummaps; i++ ) {
+        for( i = 0; i < s_startserver.nummaps; i++ ) {
 		info = UI_GetArenaInfoByNumber( i );
 
 		Q_strncpyz( s_startserver.maplist[i], Info_ValueForKey( info, "map"), MAX_NAMELENGTH );
