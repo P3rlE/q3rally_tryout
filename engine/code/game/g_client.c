@@ -1534,9 +1534,9 @@ void ClientSpawn(gentity_t *ent) {
 		}
 	}
 
-	if (!isRallyNonDMRace()/* TEMP DERBY && g_gametype.integer != GT_DERBY*/){
-		client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_GAUNTLET );
-	}
+        if (!isRallyNonDMRace() && g_gametype.integer != GT_DERBY){
+                client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_GAUNTLET );
+        }
 	else {
 		client->ps.stats[STAT_WEAPONS] &= ~( 1 << WP_GAUNTLET );
 	}
@@ -1677,9 +1677,9 @@ void ClientSpawn(gentity_t *ent) {
 			if (!isRallyRace() && g_gametype.integer != GT_DERBY ){
 				client->ps.weapon = WP_MACHINEGUN;
 			}
-			else if (!isRallyNonDMRace()/*TEMP DERBY && g_gametype.integer != GT_DERBY*/){
-				client->ps.weapon = WP_GAUNTLET;
-			}
+                        else if (!isRallyNonDMRace() && g_gametype.integer != GT_DERBY){
+                                client->ps.weapon = WP_GAUNTLET;
+                        }
 			else {
 				client->ps.weapon = WP_NONE;
 			}
