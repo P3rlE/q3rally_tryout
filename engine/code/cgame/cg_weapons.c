@@ -1175,9 +1175,9 @@ void CG_AddPlayerWeapon( refEntity_t *parent, playerState_t *ps, centity_t *cent
 
 	weaponNum = cent->currentState.weapon;
 
-	if (!isRallyNonDMRace()/* TEMP DERBY && cgs.gametype != GT_DERBY*/){
-		CG_RegisterWeapon( weaponNum );
-	}
+       if (!isRallyNonDMRace() && cgs.gametype != GT_DERBY){
+               CG_RegisterWeapon( weaponNum );
+       }
 
 	weapon = &cg_weapons[weaponNum];
 
