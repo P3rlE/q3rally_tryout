@@ -263,6 +263,22 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
     VectorMA( self->s.pos.trBase, time * ( dist + moveDist ), dir, end );
 
     trap_Trace( &tr, start, NULL, NULL, end, self->s.number, MASK_PLAYERSOLID );
+
+    if( tr.fraction < 1.0f && tr.entityNum < ENTITYNUM_MAX_NORMAL ) {
+        gentity_t *hit = &g_entities[ tr.entityNum ];
+
+        if( hit->client != NULL || ( hit->r.svFlags & SVF_BOT ) ) {
+            vec3_t invNormal;
+
+            if( G_RallyObject_ApplyCollision( self, tr.endpos, tr.plane.normal, self->elasticity ) ) {
+                VectorScale( tr.plane.normal, -1.0f, invNormal );
+                G_RallyObject_ApplyCollision( hit, tr.endpos, invNormal, self->elasticity );
+            }
+
+            return;
+        }
+    }
+
     if( tr.startsolid || tr.allsolid )
     {
         trap_Trace( &tr, start, NULL, NULL, end, self->s.number, MASK_PLAYERSOLID & ~CONTENTS_BODY );
