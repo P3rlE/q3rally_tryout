@@ -295,13 +295,13 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
                         if( !self->takedamage ) {
                             self->takedamage = qtrue;
                             if( self->health <= 0 ) {
-                                self->health = 1000;
+                                self->health = g_vehicleHealth.integer;
                             }
                         }
                         if( !hit->takedamage ) {
                             hit->takedamage = qtrue;
                             if( hit->health <= 0 ) {
-                                hit->health = 1000;
+                                hit->health = g_vehicleHealth.integer;
                             }
                         }
 
