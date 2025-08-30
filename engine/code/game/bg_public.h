@@ -428,6 +428,7 @@ typedef enum {
         WP_PLASMAGUN,
         WP_BFG,
         WP_FLAME_THROWER,
+        WP_DERBY_RAM,
 
 #ifdef MISSIONPACK
         WP_NAILGUN,
