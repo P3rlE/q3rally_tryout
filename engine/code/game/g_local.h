@@ -1004,6 +1004,7 @@ extern	vmCvar_t	g_trackLength;
 extern	vmCvar_t	g_developer;
 extern	vmCvar_t	g_damageScale;
 extern	vmCvar_t	g_vehicleDamageScale;
+extern  vmCvar_t        g_vehicleDamageOffset;
 extern	vmCvar_t	g_vehicleHealth;
 
 // car variables
