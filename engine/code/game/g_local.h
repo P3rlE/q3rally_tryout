@@ -1008,6 +1008,7 @@ extern  vmCvar_t        g_vehicleDamageOffset;
 extern	vmCvar_t	g_vehicleHealth;
 extern  vmCvar_t        g_derbyDamageFactor;
 extern  vmCvar_t        g_derbyRammerDamageRatio;
+extern  vmCvar_t        g_derbyIgnoreDamageScale;
 
 // car variables
 extern	vmCvar_t	car_spring;
