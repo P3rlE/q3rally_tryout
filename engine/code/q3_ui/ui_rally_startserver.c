@@ -416,7 +416,7 @@ static void StartServer_Update( void ) {
 	if( !s_startserver.nummaps ) {
 
 		// set the map name
-		strcpy( s_startserver.mapname.string, "NO MAPS FOUND" );
+                Q_strncpyz( s_startserver.mapname.string, "NO MAPS FOUND", sizeof( s_startserver.mapname.string ) );
 
 		UI_SetupMapStatsForArena(-1);
 
@@ -424,7 +424,7 @@ static void StartServer_Update( void ) {
 	else {
 
 		// set the map name
-		strcpy( s_startserver.mapname.string, s_startserver.maplist[s_startserver.currentmap] );
+                Q_strncpyz( s_startserver.mapname.string, s_startserver.maplist[s_startserver.currentmap], sizeof( s_startserver.mapname.string ) );
 
 		UI_SetupMapStatsForArena(s_startserver.currentmap);
 	}
