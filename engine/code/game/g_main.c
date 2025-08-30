@@ -119,6 +119,8 @@ vmCvar_t        g_derbyRammerDamageRatio;
 vmCvar_t        g_derbyIgnoreDamageScale;
 vmCvar_t        g_derbyRamRadius;
 vmCvar_t        g_derbyRamDamage;
+vmCvar_t        g_derbyRamDamageScale;
+vmCvar_t        g_derbyRamDamageMax;
 vmCvar_t  g_humanplayers;
 
 // car variables
@@ -271,10 +273,12 @@ static cvarTable_t		gameCvarTable[] = {
         { &g_vehicleHealth, "g_vehicleHealth", "100", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyDamageFactor, "g_derbyDamageFactor", "1.0", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyRammerDamageRatio, "g_derbyRammerDamageRatio", "1.0", CVAR_ARCHIVE, 0, qfalse },
-       { &g_derbyIgnoreDamageScale, "g_derbyIgnoreDamageScale", "0", CVAR_ARCHIVE, 0, qfalse },
-       { &g_derbyRamRadius, "g_derbyRamRadius", "0", CVAR_ARCHIVE, 0, qfalse },
-       { &g_derbyRamDamage, "g_derbyRamDamage", "100", CVAR_ARCHIVE, 0, qfalse },
-// END
+        { &g_derbyIgnoreDamageScale, "g_derbyIgnoreDamageScale", "0", CVAR_ARCHIVE, 0, qfalse },
+        { &g_derbyRamRadius, "g_derbyRamRadius", "0", CVAR_ARCHIVE, 0, qfalse },
+        { &g_derbyRamDamage, "g_derbyRamDamage", "100", CVAR_ARCHIVE, 0, qfalse },
+        { &g_derbyRamDamageScale, "g_derbyRamDamageScale", "0.05", CVAR_ARCHIVE, 0, qfalse },
+        { &g_derbyRamDamageMax, "g_derbyRamDamageMax", "50", CVAR_ARCHIVE, 0, qfalse },
+        // END
 
 	{ &g_rankings, "g_rankings", "0", 0, 0, qfalse},
 	{ &g_localTeamPref, "g_localTeamPref", "", 0, 0, qfalse },
