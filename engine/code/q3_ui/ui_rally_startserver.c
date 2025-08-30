@@ -317,85 +317,51 @@ static void UI_SetupMapStatsForArena( int arena ){
 }
 // END
 
+static const struct {
+        const char* name;
+        int bit;
+} gametype_bitnames[] = {
+        { "q3r_racing", GT_RACING },
+        { "q3r_racing_dm", GT_RACING_DM },
+        { "q3r_derby", GT_DERBY },
+        { "q3r_lcs", GT_LCS },
+        { "q3r_dm", GT_DEATHMATCH },
+        { "q3r_single", GT_SINGLE_PLAYER },
+        { "q3r_team_racing", GT_TEAM_RACING },
+        { "q3r_team_racing_dm", GT_TEAM_RACING_DM },
+        { "q3r_team_dm", GT_TEAM },
+        { "q3r_ctf", GT_CTF },
+        { "q3r_ctf4", GT_CTF4 },
+        { "q3r_dom", GT_DOMINATION },
+};
+
 /*
 =================
 GametypeBits
 =================
 */
 static int GametypeBits( char *string ) {
-	int		bits;
-	char	*p;
-	char	*token;
+        int             bits;
+        char    *p;
+        char    *token;
+        int             i;
 
-	bits = 0;
-	p = string;
-	while( 1 ) {
-		token = COM_ParseExt( &p, qfalse );
-		if( token[0] == 0 ) {
-			break;
-		}
+        bits = 0;
+        p = string;
+        while( 1 ) {
+                token = COM_ParseExt( &p, qfalse );
+                if( token[0] == 0 ) {
+                        break;
+                }
 
-		if( Q_stricmp( token, "q3r_racing" ) == 0 ) {
-			bits |= 1 << GT_RACING;
-			continue;
-		}
-
-		if( Q_stricmp( token, "q3r_racing_dm" ) == 0 ) {
-			bits |= 1 << GT_RACING_DM;
-			continue;
-		}
-
-		if( Q_stricmp( token, "q3r_derby" ) == 0 ) {
-			bits |= 1 << GT_DERBY;
-			continue;
-		}
-		
-		if( Q_stricmp( token, "q3r_lcs" ) == 0 ) {
-			bits |= 1 << GT_LCS;
-			continue;
-		}
-
-		if( Q_stricmp( token, "q3r_dm" ) == 0 ) {
-			bits |= 1 << GT_DEATHMATCH;
-			continue;
-		}
-
-		if( Q_stricmp( token, "q3r_single" ) == 0 ) {
-			bits |= 1 << GT_SINGLE_PLAYER;
-			continue;
-		}
-
-		if( Q_stricmp( token, "q3r_team_racing" ) == 0 ) {
-			bits |= 1 << GT_TEAM_RACING;
-			continue;
-		}
-
-		if( Q_stricmp( token, "q3r_team_racing_dm" ) == 0 ) {
-			bits |= 1 << GT_TEAM_RACING_DM;
-			continue;
-		}
-
-		if( Q_stricmp( token, "q3r_team_dm" ) == 0 ) {
-			bits |= 1 << GT_TEAM;
-			continue;
-		}
-
-		if( Q_stricmp( token, "q3r_ctf" ) == 0 ) {
-			bits |= 1 << GT_CTF;
-			continue;
-		}
-
-		if( Q_stricmp( token, "q3r_ctf4" ) == 0 ) {
-			bits |= 1 << GT_CTF4;
-			continue;
-		}
-
-    if( Q_stricmp( token, "q3r_dom" ) == 0 ) {
-			bits |= 1 << GT_DOMINATION;
-			continue;
-		}
-   	}
-	return bits;
+                for( i = 0; i < sizeof( gametype_bitnames ) / sizeof( gametype_bitnames[0] ); i++ ) {
+                        if( Q_stricmp( token, gametype_bitnames[i].name ) == 0 ) {
+                                bits |= 1 << gametype_bitnames[i].bit;
+                                break;
+                        }
+                }
+        }
+        return bits;
 }
 
 
