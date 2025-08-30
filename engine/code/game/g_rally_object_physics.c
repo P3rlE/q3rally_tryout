@@ -269,45 +269,44 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
 
         if( hit->client != NULL || ( hit->r.svFlags & SVF_BOT ) ) {
             vec3_t invNormal;
+            float vSelf, vHit, closing, totalDamage;
+            int damageSelf, damageHit;
+
+            /* store normal velocities before collision response */
+            vSelf = DotProduct( self->s.pos.trDelta, tr.plane.normal );
+            vHit = -DotProduct( hit->s.pos.trDelta, tr.plane.normal );
 
             if( G_RallyObject_ApplyCollision( self, tr.endpos, tr.plane.normal, self->elasticity ) ) {
                 VectorScale( tr.plane.normal, -1.0f, invNormal );
                 G_RallyObject_ApplyCollision( hit, tr.endpos, invNormal, self->elasticity );
 
-                {
-                    float vSelf, vHit, closing, totalDamage;
-                    int damageSelf, damageHit;
+                if( vSelf < 0.0f ) {
+                    vSelf = 0.0f;
+                }
+                if( vHit < 0.0f ) {
+                    vHit = 0.0f;
+                }
+                closing = vSelf + vHit;
+                if( closing > 0.0f ) {
+                    totalDamage = closing * g_vehicleDamageScale.value;
+                    damageSelf = (int)( totalDamage * ( vHit / closing ) );
+                    damageHit = (int)( totalDamage * ( vSelf / closing ) );
 
-                    vSelf = DotProduct( self->s.pos.trDelta, tr.plane.normal );
-                    vHit = -DotProduct( hit->s.pos.trDelta, tr.plane.normal );
-                    if( vSelf < 0.0f ) {
-                        vSelf = 0.0f;
-                    }
-                    if( vHit < 0.0f ) {
-                        vHit = 0.0f;
-                    }
-                    closing = vSelf + vHit;
-                    if( closing > 0.0f ) {
-                        totalDamage = closing * g_vehicleDamageScale.value;
-                        damageSelf = (int)( totalDamage * ( vHit / closing ) );
-                        damageHit = (int)( totalDamage * ( vSelf / closing ) );
-
-                        if( !self->takedamage ) {
-                            self->takedamage = qtrue;
-                            if( self->health <= 0 ) {
-                                self->health = g_vehicleHealth.integer;
-                            }
+                    if( !self->takedamage ) {
+                        self->takedamage = qtrue;
+                        if( self->health <= 0 ) {
+                            self->health = g_vehicleHealth.integer;
                         }
-                        if( !hit->takedamage ) {
-                            hit->takedamage = qtrue;
-                            if( hit->health <= 0 ) {
-                                hit->health = g_vehicleHealth.integer;
-                            }
-                        }
-
-                        G_Damage( self, hit, hit, tr.plane.normal, tr.endpos, damageSelf, 0, MOD_VEHICLE_COLLISION );
-                        G_Damage( hit, self, self, invNormal, tr.endpos, damageHit, 0, MOD_VEHICLE_COLLISION );
                     }
+                    if( !hit->takedamage ) {
+                        hit->takedamage = qtrue;
+                        if( hit->health <= 0 ) {
+                            hit->health = g_vehicleHealth.integer;
+                        }
+                    }
+
+                    G_Damage( self, hit, hit, tr.plane.normal, tr.endpos, damageSelf, 0, MOD_VEHICLE_COLLISION );
+                    G_Damage( hit, self, self, invNormal, tr.endpos, damageHit, 0, MOD_VEHICLE_COLLISION );
                 }
             }
 
