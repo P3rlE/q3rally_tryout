@@ -208,11 +208,7 @@ void SnapVectorTowards( vec3_t v, vec3_t to ) {
 #define DERBYRAM_MAX_ENTITIES MAX_GENTITIES
 
 void Weapon_DerbyRam( gentity_t *ent ) {
-	int		touch[DERBYRAM_MAX_ENTITIES];
-	int		num, i;
-	gentity_t	*other;
-	vec3_t		mins, maxs;
-	float		radius;
+	float radius;
 
 	if ( !ent->client ) {
 		return;
@@ -221,33 +217,12 @@ void Weapon_DerbyRam( gentity_t *ent ) {
 	if ( g_derbyRamRadius.value > 0 ) {
 		radius = g_derbyRamRadius.value;
 	} else {
-		radius = ent->r.maxs[0];
+		radius = CAR_WIDTH;
 	}
 
-	for ( i = 0; i < 3; i++ ) {
-		mins[i] = ent->r.currentOrigin[i] - radius;
-		maxs[i] = ent->r.currentOrigin[i] + radius;
-	}
-
-	num = trap_EntitiesInBox( mins, maxs, touch, DERBYRAM_MAX_ENTITIES );
-
-	for ( i = 0; i < num; i++ ) {
-		other = &g_entities[touch[i]];
-
-		if ( other == ent ) {
-			continue;
-		}
-		if ( !other->takedamage || !other->client ) {
-			continue;
-		}
-		if ( OnSameTeam( ent, other ) ) {
-			continue;
-		}
-
-		G_Damage( other, ent, ent, NULL, other->r.currentOrigin,
-			g_derbyRamDamage.integer, DAMAGE_NO_ARMOR, MOD_VEHICLE_COLLISION );
-	}
+	G_RadiusDamage( ent->r.currentOrigin, ent, g_derbyRamDamage.integer, radius, ent, MOD_VEHICLE_COLLISION );
 }
+
 
 #ifdef MISSIONPACK
 #define CHAINGUN_SPREAD		600
