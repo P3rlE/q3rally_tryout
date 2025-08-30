@@ -273,6 +273,42 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
             if( G_RallyObject_ApplyCollision( self, tr.endpos, tr.plane.normal, self->elasticity ) ) {
                 VectorScale( tr.plane.normal, -1.0f, invNormal );
                 G_RallyObject_ApplyCollision( hit, tr.endpos, invNormal, self->elasticity );
+
+                {
+                    float vSelf, vHit, closing, totalDamage;
+                    int damageSelf, damageHit;
+
+                    vSelf = DotProduct( self->s.pos.trDelta, tr.plane.normal );
+                    vHit = -DotProduct( hit->s.pos.trDelta, tr.plane.normal );
+                    if( vSelf < 0.0f ) {
+                        vSelf = 0.0f;
+                    }
+                    if( vHit < 0.0f ) {
+                        vHit = 0.0f;
+                    }
+                    closing = vSelf + vHit;
+                    if( closing > 0.0f ) {
+                        totalDamage = closing * g_vehicleDamageScale.value;
+                        damageSelf = (int)( totalDamage * ( vHit / closing ) );
+                        damageHit = (int)( totalDamage * ( vSelf / closing ) );
+
+                        if( !self->takedamage ) {
+                            self->takedamage = qtrue;
+                            if( self->health <= 0 ) {
+                                self->health = 1000;
+                            }
+                        }
+                        if( !hit->takedamage ) {
+                            hit->takedamage = qtrue;
+                            if( hit->health <= 0 ) {
+                                hit->health = 1000;
+                            }
+                        }
+
+                        G_Damage( self, hit, hit, tr.plane.normal, tr.endpos, damageSelf, 0, MOD_VEHICLE_COLLISION );
+                        G_Damage( hit, self, self, invNormal, tr.endpos, damageHit, 0, MOD_VEHICLE_COLLISION );
+                    }
+                }
             }
 
             return;

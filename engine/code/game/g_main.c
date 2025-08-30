@@ -111,6 +111,7 @@ vmCvar_t	g_trackLength;
 vmCvar_t	g_developer;
 
 vmCvar_t	g_damageScale;
+vmCvar_t	g_vehicleDamageScale;
 vmCvar_t  g_humanplayers;
 
 // car variables
@@ -258,6 +259,7 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &car_friction_scale, "car_friction_scale", "1.1", 0, 0, qfalse },
 
 	{ &g_damageScale, "g_damageScale", "0.3", CVAR_ARCHIVE, 0, qfalse },
+	{ &g_vehicleDamageScale, "g_vehicleDamageScale", "0.1", CVAR_ARCHIVE, 0, qfalse },
 // END
 
 	{ &g_rankings, "g_rankings", "0", 0, 0, qfalse},
