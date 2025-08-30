@@ -305,8 +305,8 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
                         }
                     }
 
-                    G_Damage( self, hit, hit, tr.plane.normal, tr.endpos, damageSelf, 0, MOD_VEHICLE_COLLISION );
-                    G_Damage( hit, self, self, invNormal, tr.endpos, damageHit, 0, MOD_VEHICLE_COLLISION );
+                    G_Damage( self, hit, hit, tr.plane.normal, tr.endpos, damageSelf, DAMAGE_NO_ARMOR, MOD_VEHICLE_COLLISION );
+                    G_Damage( hit, self, self, invNormal, tr.endpos, damageHit, DAMAGE_NO_ARMOR, MOD_VEHICLE_COLLISION );
                 }
             }
 
