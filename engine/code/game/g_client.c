@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "g_local.h"
+#include "../botlib/be_aas.h"
 
 extern vmCvar_t g_dominationSpawnStyle;
 
@@ -1513,10 +1514,11 @@ void ClientSpawn(gentity_t *ent) {
 	ent->watertype = 0;
 	ent->flags = 0;
 	
-	VectorCopy (playerMins, ent->r.mins);
-	VectorCopy (playerMaxs, ent->r.maxs);
+       VectorCopy (playerMins, ent->r.mins);
+       VectorCopy (playerMaxs, ent->r.maxs);
+       ent->s.solid = SOLID_BBOX;
 
-	client->ps.pm_flags |= SVF_CAPSULE;
+       client->ps.pm_flags |= SVF_CAPSULE;
 
 
 	client->ps.clientNum = index;
@@ -1570,22 +1572,24 @@ void ClientSpawn(gentity_t *ent) {
 
 //	ent->r.ownerNum = client->ps.clientNum;
 
-	VectorCopy (playerMins, ent->frontBounds->r.mins);
-	VectorCopy (playerMaxs, ent->frontBounds->r.maxs);
-	if ( client->sess.sessionTeam != TEAM_SPECTATOR && !isRaceObserver( ent->s.number ) ) 
-		ent->frontBounds->r.contents = CONTENTS_BODY;
-	else
-		ent->frontBounds->r.contents = 0;
+       VectorCopy (playerMins, ent->frontBounds->r.mins);
+       VectorCopy (playerMaxs, ent->frontBounds->r.maxs);
+       ent->frontBounds->s.solid = SOLID_BBOX;
+       if ( client->sess.sessionTeam != TEAM_SPECTATOR && !isRaceObserver( ent->s.number ) )
+               ent->frontBounds->r.contents = CONTENTS_BODY;
+       else
+               ent->frontBounds->r.contents = 0;
 	ent->frontBounds->r.svFlags = SVF_NOCLIENT;
 	ent->frontBounds->flags = FL_EXTRA_BBOX;
 	ent->frontBounds->r.ownerNum = client->ps.clientNum;
 
-	VectorCopy (playerMins, ent->rearBounds->r.mins);
-	VectorCopy (playerMaxs, ent->rearBounds->r.maxs);
-	if ( client->sess.sessionTeam != TEAM_SPECTATOR && !isRaceObserver( ent->s.number ) ) 
-		ent->rearBounds->r.contents = CONTENTS_BODY;
-	else
-		ent->rearBounds->r.contents = 0;
+       VectorCopy (playerMins, ent->rearBounds->r.mins);
+       VectorCopy (playerMaxs, ent->rearBounds->r.maxs);
+       ent->rearBounds->s.solid = SOLID_BBOX;
+       if ( client->sess.sessionTeam != TEAM_SPECTATOR && !isRaceObserver( ent->s.number ) )
+               ent->rearBounds->r.contents = CONTENTS_BODY;
+       else
+               ent->rearBounds->r.contents = 0;
 	ent->rearBounds->r.svFlags = SVF_NOCLIENT;
 	ent->rearBounds->flags = FL_EXTRA_BBOX;
 	ent->rearBounds->r.ownerNum = client->ps.clientNum;
