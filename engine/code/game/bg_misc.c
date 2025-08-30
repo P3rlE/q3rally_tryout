@@ -1273,7 +1273,7 @@ Only in One Flag CTF games
                NULL,
        { NULL,
                NULL, NULL, NULL},
-               "", // icon
+               "gfx/2d/derbyram", // icon
                "Derby Ram",
                0,
                IT_WEAPON,
