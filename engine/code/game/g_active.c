@@ -1171,10 +1171,10 @@ void ClientThink_real( gentity_t *ent ) {
 	}
 */
 
-	if (isRallyNonDMRace()/* TEMP DERBY || g_gametype.integer == GT_DERBY*/){
-		ent->s.weapon = WP_NONE;
-		ucmd->weapon = ent->s.weapon;
-	}
+       if (isRallyNonDMRace() || g_gametype.integer == GT_DERBY){
+               ent->s.weapon = WP_NONE;
+               ucmd->weapon = ent->s.weapon;
+       }
 
 // UPDATE - enable this
 	// sound horn
