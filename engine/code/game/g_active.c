@@ -1615,8 +1615,12 @@ void ClientThink_real( gentity_t *ent ) {
 		return;
 	}
 
-	// perform once-a-second actions
-	ClientTimerActions( ent, msec );
+        // perform once-a-second actions
+        ClientTimerActions( ent, msec );
+
+       if ( g_gametype.integer == GT_DERBY ) {
+               Weapon_DerbyRam( ent );
+       }
 
 // STONELANCE - UPDATE: enable this (use flags instead?)
 /*

@@ -613,9 +613,9 @@ void CG_RegisterWeapon( int weaponNum ) {
 
 	weaponInfo = &cg_weapons[weaponNum];
 
-	if ( weaponNum == 0 ) {
-		return;
-	}
+       if ( weaponNum == 0 || weaponNum == WP_DERBY_RAM ) {
+               return;
+       }
 
 	if ( weaponInfo->registered ) {
 		return;
@@ -1173,11 +1173,15 @@ void CG_AddPlayerWeapon( refEntity_t *parent, playerState_t *ps, centity_t *cent
 	weaponInfo_t	*weapon;
 	centity_t	*nonPredictedCent;
 
-	weaponNum = cent->currentState.weapon;
+        weaponNum = cent->currentState.weapon;
 
-       if (!isRallyNonDMRace() && cgs.gametype != GT_DERBY){
-               CG_RegisterWeapon( weaponNum );
-       }
+        if ( weaponNum == WP_DERBY_RAM ) {
+                return;
+        }
+
+        if (!isRallyNonDMRace() && cgs.gametype != GT_DERBY){
+                CG_RegisterWeapon( weaponNum );
+        }
 
 	weapon = &cg_weapons[weaponNum];
 

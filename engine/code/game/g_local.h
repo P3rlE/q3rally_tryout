@@ -751,6 +751,7 @@ qboolean G_FilterPacket (char *from);
 //
 // g_weapon.c
 //
+void Weapon_DerbyRam( gentity_t *ent );
 void FireWeapon( gentity_t *ent );
 void FireAltWeapon( gentity_t *ent );
 #ifdef MISSIONPACK
@@ -1009,6 +1010,8 @@ extern	vmCvar_t	g_vehicleHealth;
 extern  vmCvar_t        g_derbyDamageFactor;
 extern  vmCvar_t        g_derbyRammerDamageRatio;
 extern  vmCvar_t        g_derbyIgnoreDamageScale;
+extern  vmCvar_t        g_derbyRamRadius;
+extern  vmCvar_t        g_derbyRamDamage;
 
 // car variables
 extern	vmCvar_t	car_spring;
