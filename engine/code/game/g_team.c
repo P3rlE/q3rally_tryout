@@ -1348,7 +1348,7 @@ gentity_t *SelectRandomTeamSpawnPoint( int teamstate, team_t team ) {
 	char		*classname;
 
         if (teamstate == TEAM_BEGIN) {
-                if (level.gametype == GT_RALLYBALL) {
+               if (g_gametype.integer == GT_RALLYBALL) {
                         if (team == TEAM_RED)
                                 classname = "rallyball_redplayer";
                         else if (team == TEAM_BLUE)
@@ -1372,7 +1372,7 @@ gentity_t *SelectRandomTeamSpawnPoint( int teamstate, team_t team ) {
                                 return NULL;
                 }
         } else {
-                if (level.gametype == GT_RALLYBALL) {
+               if (g_gametype.integer == GT_RALLYBALL) {
                         if (team == TEAM_RED)
                                 classname = "rallyball_redspawn";
                         else if (team == TEAM_BLUE)
