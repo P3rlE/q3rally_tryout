@@ -95,18 +95,19 @@ typedef struct {
 static startserver_t s_startserver;
 
 static const char *gametype_items[] = {
-	"Free For All",
-	"Team Deathmatch",
-	"Tournament",
-	"Capture the Flag",
-	0
+        "Free For All",
+        "Team Deathmatch",
+        "Tournament",
+        "Capture the Flag",
+        "Rally Ball",
+        0
 };
 
 // STONELANCE - removed gametype
 // static int gametype_remap[] = {GT_FFA, GT_TEAM, GT_TOURNAMENT, GT_CTF};
-static int gametype_remap[] = {GT_RACING, GT_TEAM, GT_DERBY, GT_CTF};
+static int gametype_remap[] = {GT_RACING, GT_TEAM, GT_DERBY, GT_CTF, GT_RALLYBALL};
 // END
-static int gametype_remap2[] = {0, 2, 0, 1, 3};
+static int gametype_remap2[] = {0, 2, 0, 1, 3, 4};
 
 
 static void UI_ServerOptionsMenu( qboolean multiplayer );
