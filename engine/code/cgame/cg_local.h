@@ -307,8 +307,8 @@ typedef enum {
 	LE_KAMIKAZE,
 	LE_INVULIMPACT,
 	LE_INVULJUICED,
-	LE_SHOWREFENTITY
 #endif
+	LE_SHOWREFENTITY
 } leType_t;
 
 typedef enum {
