@@ -2321,10 +2321,10 @@ void G_RunFrame( int levelTime ) {
 			continue;
 		}
 
-		if ( ent->s.eType == ET_ITEM || ent->physicsObject ) {
-			G_RunItem( ent );
-			continue;
-		}
+               if ( ent->s.eType == ET_ITEM || ent->physicsObject || ent->s.eType == ET_RALLYBALL ) {
+                       G_RunItem( ent );
+                       continue;
+               }
 
 		if ( ent->s.eType == ET_MOVER ) {
 			G_RunMover( ent );
