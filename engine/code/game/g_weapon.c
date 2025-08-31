@@ -351,6 +351,8 @@ SHOTGUN
 // DEFAULT_SHOTGUN_SPREAD and DEFAULT_SHOTGUN_COUNT	are in bg_public.h, because
 // client predicts same spreads
 #define	DEFAULT_SHOTGUN_DAMAGE	10
+#define SHOTGUN_SLUG_SPREAD     0
+#define SHOTGUN_SLUG_DAMAGE     50
 
 qboolean ShotgunPellet( vec3_t start, vec3_t end, gentity_t *ent ) {
 	trace_t		tr;
@@ -448,6 +450,11 @@ void weapon_supershotgun_fire (gentity_t *ent) {
 
 	ShotgunPattern( tent->s.pos.trBase, tent->s.origin2, tent->s.eventParm, ent );
 }
+
+void weapon_shotgun_slug_fire (gentity_t *ent) {
+	Bullet_Fire( ent, SHOTGUN_SLUG_SPREAD, SHOTGUN_SLUG_DAMAGE, MOD_SHOTGUN );
+}
+
 
 
 /*
@@ -1393,7 +1400,7 @@ void FireAltWeapon( gentity_t *ent ) {
 		Weapon_LightningFire( ent );
 		break;
 	case WP_SHOTGUN:
-		weapon_supershotgun_fire( ent );
+		weapon_shotgun_slug_fire( ent );
 		break;
 	case WP_MACHINEGUN:
 		if ( g_gametype.integer != GT_TEAM ) {
