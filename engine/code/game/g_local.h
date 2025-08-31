@@ -528,6 +528,11 @@ typedef struct {
 
         int                     testModelID;
 // END
+
+	// rallyball state
+	gentity_t	*rallyball;
+	vec3_t	rallyballSpawn;
+	int	rallyballEndTime;
 } level_locals_t;
 
 
@@ -556,6 +561,11 @@ extern void SP_team_CTF_redflag( gentity_t *ent );
 extern void SP_team_CTF_blueflag( gentity_t *ent );
 extern void SP_team_CTF_greenflag( gentity_t *ent );
 extern void SP_team_CTF_yellowflag( gentity_t *ent );
+
+extern void SP_trigger_rallyball_goal( gentity_t *ent );
+extern void SP_rallyball_spawn( gentity_t *ent );
+void G_RallyBall_Init( void );
+void G_RallyBall_RunFrame( void );
 
 
 //

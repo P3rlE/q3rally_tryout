@@ -628,6 +628,11 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	// parse the key/value pairs and spawn gentities
 	G_SpawnEntitiesFromString();
 
+
+        if ( g_gametype.integer == GT_RALLYBALL ) {
+                G_RallyBall_Init();
+        }
+
 	// general initialization
 	G_FindTeams();
 
@@ -2345,6 +2350,10 @@ void G_RunFrame( int levelTime ) {
 	// check team votes
 	CheckTeamVote( TEAM_RED );
 	CheckTeamVote( TEAM_BLUE );
+
+        if ( g_gametype.integer == GT_RALLYBALL ) {
+                G_RallyBall_RunFrame();
+        }
 
 	// for tracking changes
 	CheckCvars();
