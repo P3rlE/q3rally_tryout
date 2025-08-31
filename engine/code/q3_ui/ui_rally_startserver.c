@@ -334,6 +334,7 @@ static const struct {
         { "q3r_ctf", GT_CTF },
         { "q3r_ctf4", GT_CTF4 },
         { "q3r_dom", GT_DOMINATION },
+        { "q3r_ball", GT_RALLYBALL },
 };
 
 /*
