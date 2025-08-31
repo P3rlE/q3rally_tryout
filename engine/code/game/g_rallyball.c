@@ -43,8 +43,7 @@ Called when the level is initialized for the rallyball gametype.
 =================
 */
 void G_RallyBall_Init( void ) {
-    // default spawn origin at world origin; maps can override via rallyball_spawn entity
-    VectorClear( level.rallyballSpawn );
+    // level.rallyballSpawn defaults to vec3_origin; maps can override via rallyball_spawn entity
     level.rallyball = NULL;
     rbRoundActive = qfalse;
     rbLastCountdown = -1;
