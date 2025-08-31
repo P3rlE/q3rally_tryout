@@ -165,6 +165,17 @@ static void G_RallyBall_GoalTouch( gentity_t *self, gentity_t *other, trace_t *t
                 trap_SetConfigstring( CS_SCORES4, va("%i", level.teamScores[TEAM_YELLOW]) );
                 break;
         }
+
+        {
+            gentity_t *te = G_TempEntity(other->s.pos.trBase, EV_GLOBAL_TEAM_SOUND);
+            te->r.svFlags |= SVF_BROADCAST;
+            te->s.otherEntityNum = team;
+            if (team == TEAM_RED || team == TEAM_GREEN) {
+                te->s.eventParm = GTS_REDTEAM_SCORED;
+            } else {
+                te->s.eventParm = GTS_BLUETEAM_SCORED;
+            }
+        }
     }
 
     // remove old ball and spawn a new one
