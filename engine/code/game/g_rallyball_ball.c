@@ -34,9 +34,10 @@ static void G_RallyBall_Think( gentity_t *ent ) {
 gentity_t *G_SpawnRallyBall( vec3_t origin ) {
 	gentity_t *ball;
 
-	ball = G_Spawn();
-	ball->classname = "rallyball";
-	ball->s.eType = ET_RALLYBALL;
+	    ball = G_Spawn();
+        G_SetModel( ball, "models/mapobjects/rallyball/ball.md3" );
+        ball->classname = "rallyball";
+        ball->s.eType = ET_RALLYBALL;
 
         ball->physicsObject = qtrue;
         ball->physicsBounce = 0.6f;
