@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // active (after loading) gameplay
 
 #include "cg_local.h"
-#include <math.h>
 
 #ifdef MISSIONPACK
 #include "../ui/ui_shared.h"
