@@ -168,7 +168,6 @@ extern vmCvar_t	ui_mmap_fov;
 #define	MAX_EDIT_LINE			256
 
 #define MAX_MENUDEPTH			8
-#define MAX_MENUITEMS			128
 
 
 #define MTYPE_NULL				0
