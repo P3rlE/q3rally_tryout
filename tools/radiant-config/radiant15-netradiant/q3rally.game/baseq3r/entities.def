@@ -2162,6 +2162,26 @@ target2 : this can point at a target_give entity for respawn freebies.
 count : number of times this spawnpoint can be used to spawn a player. Omit or set to 0 to set no limit.*/
 
 //=============================================================================
+/*QUAKED rallyball_spawn (0 0.5 0.5) (-8 -8 -8) (8 8 8)
+Defines the spawn location for the rallyball.
+*/
+
+//=============================================================================
+
+/*QUAKED rallyball_ball_spawn (0 0.5 0.5) (-8 -8 -8) (8 8 8)
+Defines where the rallyball initially appears. Only one entity is needed.
+The optional "model" key sets a different model.
+*/
+
+//=============================================================================
+
+/*QUAKED rallyball_goal (0 0.5 0.5) (-16 -16 -16) (16 16 16)
+A static model marking a rallyball goal. Use in combination with a
+trigger_rallyball_goal brush. The optional "model" key specifies a
+different model.
+*/
+
+//=============================================================================
 
 TRIGGER_* ENTITIES
 
@@ -2292,6 +2312,17 @@ notteam : when set to 1, entity will not spawn in "Teamplay" and "CTF" modes.
 notsingle : when set to 1, entity will not spawn in Single Player mode.
 -------- NOTES --------
 To make a jump pad or launch ramp, place the target_position/info_notnull entity at the highest point of the jump and target it with this entity.*/
+
+//=============================================================================
+
+/*QUAKED trigger_rallyball_goal (.5 .5 .5) ? RED_GOAL BLUE_GOAL GREEN_GOAL YELLOW_GOAL
+A trigger volume that scores for the specified team when the rallyball touches it.
+-------- SPAWNFLAGS --------
+RED_GOAL : scores for the red team
+BLUE_GOAL : scores for the blue team
+GREEN_GOAL : scores for the green team
+YELLOW_GOAL : scores for the yellow team
+*/
 
 //=============================================================================
 
