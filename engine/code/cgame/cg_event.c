@@ -1363,12 +1363,20 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 					break;
 #endif
 
-				case GTS_REDTEAM_SCORED:
-					CG_AddBufferedSound(cgs.media.redScoredSound);
-					break;
-				case GTS_BLUETEAM_SCORED:
-					CG_AddBufferedSound(cgs.media.blueScoredSound);
-					break;
+                                case GTS_REDTEAM_SCORED:
+                                        CG_AddBufferedSound(cgs.media.redScoredSound);
+                                        cg.rallyballGoalTime = cg.time;
+                                        cg.rallyballLastGoalTeam = es->otherEntityNum;
+                                        CG_CenterPrint(va("%s scores!", CG_GetTeamNameWithColor(es->otherEntityNum)),
+                                                       BIGCHAR_WIDTH * 2);
+                                        break;
+                                case GTS_BLUETEAM_SCORED:
+                                        CG_AddBufferedSound(cgs.media.blueScoredSound);
+                                        cg.rallyballGoalTime = cg.time;
+                                        cg.rallyballLastGoalTeam = es->otherEntityNum;
+                                        CG_CenterPrint(va("%s scores!", CG_GetTeamNameWithColor(es->otherEntityNum)),
+                                                       BIGCHAR_WIDTH * 2);
+                                        break;
 				case GTS_REDTEAM_TOOK_LEAD:
 					CG_AddBufferedSound(cgs.media.redLeadsSound);
 					break;
