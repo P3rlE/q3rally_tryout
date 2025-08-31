@@ -557,6 +557,16 @@ extern void SP_team_CTF_bluespawn( gentity_t *ent );
 extern void SP_team_CTF_greenspawn( gentity_t *ent );
 extern void SP_team_CTF_yellowspawn( gentity_t *ent );
 
+extern void SP_rallyball_redplayer( gentity_t *ent );
+extern void SP_rallyball_blueplayer( gentity_t *ent );
+extern void SP_rallyball_greenplayer( gentity_t *ent );
+extern void SP_rallyball_yellowplayer( gentity_t *ent );
+
+extern void SP_rallyball_redspawn( gentity_t *ent );
+extern void SP_rallyball_bluespawn( gentity_t *ent );
+extern void SP_rallyball_greenspawn( gentity_t *ent );
+extern void SP_rallyball_yellowspawn( gentity_t *ent );
+
 extern void SP_team_CTF_redflag( gentity_t *ent );
 extern void SP_team_CTF_blueflag( gentity_t *ent );
 extern void SP_team_CTF_greenflag( gentity_t *ent );

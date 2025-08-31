@@ -12,3 +12,24 @@
 "classname" "rallyball_goal"
 "origin" "128 0 24"
 }
+
+// entity 3
+{
+"classname" "rallyball_redplayer"
+"origin" "-128 0 24"
+}
+// entity 4
+{
+"classname" "rallyball_redspawn"
+"origin" "-128 0 24"
+}
+// entity 5
+{
+"classname" "rallyball_blueplayer"
+"origin" "128 0 24"
+}
+// entity 6
+{
+"classname" "rallyball_bluespawn"
+"origin" "128 0 24"
+}
