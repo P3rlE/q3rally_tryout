@@ -1091,7 +1091,6 @@ static void CG_LightningBolt( centity_t *cent, vec3_t origin ) {
         }
 }
 
-#ifdef MISSIONPACK
 /*
 ================
 CG_LightningArc
@@ -1117,7 +1116,6 @@ void CG_LightningArc( vec3_t start, vec3_t end ) {
 
         trap_S_StartSound( end, ENTITYNUM_WORLD, CHAN_AUTO, sfx );
 }
-#endif
 
 /*
 ======================
