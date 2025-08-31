@@ -27,7 +27,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // It also handles local physics interaction, like fragments bouncing off walls
 
 #include "cg_local.h"
-#include <stdlib.h>
 
 static	pmove_t		cg_pmove;
 
