@@ -1089,26 +1089,27 @@ void CalculateRanks( void ) {
 		}
 	}
 
-	// set the CS_SCORES1/2 configstrings, which will be visible to everyone
-	if ( g_gametype.integer >= GT_TEAM ) {
-		trap_SetConfigstring( CS_SCORES1, va("%i", level.teamScores[TEAM_RED] ) );
-		trap_SetConfigstring( CS_SCORES2, va("%i", level.teamScores[TEAM_BLUE] ) );
-// STONELANCE
-		trap_SetConfigstring( CS_SCORES3, va("%i", level.teamScores[TEAM_GREEN] ) );
-		trap_SetConfigstring( CS_SCORES4, va("%i", level.teamScores[TEAM_YELLOW] ) );
-// END
-	} else {
-		if ( level.numConnectedClients == 0 ) {
-			trap_SetConfigstring( CS_SCORES1, va("%i", SCORE_NOT_PRESENT) );
-			trap_SetConfigstring( CS_SCORES2, va("%i", SCORE_NOT_PRESENT) );
-		} else if ( level.numConnectedClients == 1 ) {
-			trap_SetConfigstring( CS_SCORES1, va("%i", level.clients[ level.sortedClients[0] ].ps.persistant[PERS_SCORE] ) );
-			trap_SetConfigstring( CS_SCORES2, va("%i", SCORE_NOT_PRESENT) );
-		} else {
-			trap_SetConfigstring( CS_SCORES1, va("%i", level.clients[ level.sortedClients[0] ].ps.persistant[PERS_SCORE] ) );
-			trap_SetConfigstring( CS_SCORES2, va("%i", level.clients[ level.sortedClients[1] ].ps.persistant[PERS_SCORE] ) );
-		}
-	}
+        // set the CS_SCORES configstrings, which will be visible to everyone
+        if ( g_gametype.integer == GT_RALLYBALL ) {
+                trap_SetConfigstring( CS_SCORES1, va("%i", level.teamScores[TEAM_RED] ) );
+                trap_SetConfigstring( CS_SCORES2, va("%i", level.teamScores[TEAM_BLUE] ) );
+                trap_SetConfigstring( CS_SCORES3, va("%i", level.teamScores[TEAM_GREEN] ) );
+                trap_SetConfigstring( CS_SCORES4, va("%i", level.teamScores[TEAM_YELLOW] ) );
+        } else if ( g_gametype.integer >= GT_TEAM ) {
+                trap_SetConfigstring( CS_SCORES1, va("%i", level.teamScores[TEAM_RED] ) );
+                trap_SetConfigstring( CS_SCORES2, va("%i", level.teamScores[TEAM_BLUE] ) );
+        } else {
+                if ( level.numConnectedClients == 0 ) {
+                        trap_SetConfigstring( CS_SCORES1, va("%i", SCORE_NOT_PRESENT) );
+                        trap_SetConfigstring( CS_SCORES2, va("%i", SCORE_NOT_PRESENT) );
+                } else if ( level.numConnectedClients == 1 ) {
+                        trap_SetConfigstring( CS_SCORES1, va("%i", level.clients[ level.sortedClients[0] ].ps.persistant[PERS_SCORE] ) );
+                        trap_SetConfigstring( CS_SCORES2, va("%i", SCORE_NOT_PRESENT) );
+                } else {
+                        trap_SetConfigstring( CS_SCORES1, va("%i", level.clients[ level.sortedClients[0] ].ps.persistant[PERS_SCORE] ) );
+                        trap_SetConfigstring( CS_SCORES2, va("%i", level.clients[ level.sortedClients[1] ].ps.persistant[PERS_SCORE] ) );
+                }
+        }
 
 	// see if it is time to end the level
 	CheckExitRules();
@@ -1524,11 +1525,18 @@ void CheckIntermissionExit( void ) {
 	gclient_t	*cl;
 	int			readyMask;
 
-	if ( g_gametype.integer == GT_SINGLE_PLAYER ) {
-		return;
-	}
+        if ( g_gametype.integer == GT_SINGLE_PLAYER ) {
+                return;
+        }
 
-	// see which players are ready
+        if ( g_gametype.integer == GT_RALLYBALL ) {
+                if ( level.time >= level.intermissiontime + 5000 ) {
+                        ExitLevel();
+                }
+                return;
+        }
+
+        // see which players are ready
 	ready = 0;
 	notReady = 0;
 	readyMask = 0;
