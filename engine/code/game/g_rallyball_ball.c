@@ -47,17 +47,18 @@ gentity_t *G_SpawnRallyBall( vec3_t origin ) {
         ball->mass = ball_mass.integer;
         ball->s.modelindex = G_ModelIndex("models/rallyball/rallyball.md3");
 
-        ball->s.pos.trType = TR_GRAVITY;
         ball->s.pos.trTime = level.time;
         VectorCopy( origin, ball->s.pos.trBase );
+        VectorCopy( origin, ball->r.currentOrigin );
+        ball->s.groundEntityNum = ENTITYNUM_NONE;
         VectorClear( ball->s.pos.trDelta );
+        ball->s.pos.trType = TR_GRAVITY;
 
         ball->think = G_RallyBall_Think;
         ball->nextthink = level.time + FRAMETIME;
 
         VectorSet( ball->r.mins, -RALLYBALL_RADIUS, -RALLYBALL_RADIUS, -RALLYBALL_RADIUS );
         VectorSet( ball->r.maxs,  RALLYBALL_RADIUS,  RALLYBALL_RADIUS,  RALLYBALL_RADIUS );
-        G_SetOrigin( ball, origin );
 
         trap_LinkEntity( ball );
         return ball;
