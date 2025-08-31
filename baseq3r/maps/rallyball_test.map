@@ -1,0 +1,14 @@
+// entity 0
+{
+"classname" "worldspawn"
+}
+// entity 1
+{
+"classname" "rallyball_ball_spawn"
+"origin" "0 0 24"
+}
+// entity 2
+{
+"classname" "rallyball_goal"
+"origin" "128 0 24"
+}

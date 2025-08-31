@@ -334,8 +334,40 @@ void SP_rally_misc_barreloil( gentity_t *ent ){
 //	ent->health = 1000;
 //	ent->takedamage = qtrue;
 
-	ent->s.origin[2] += 1;
-	DropToFloor(ent);
+        ent->s.origin[2] += 1;
+        DropToFloor(ent);
 
-	trap_LinkEntity (ent);
+        trap_LinkEntity (ent);
+}
+
+/*QUAKED rallyball_goal (0 0.5 0.5) (-16 -16 -16) (16 16 16)
+A static model marking a rallyball goal. Use in combination with a
+trigger_rallyball_goal brush. The optional "model" key specifies a
+different model.
+*/
+void SP_rallyball_goal( gentity_t *ent ) {
+    if ( !ent->model || !*ent->model ) {
+        ent->s.modelindex = G_ModelIndex( "models/mapobjects/rallyball/goal.md3" );
+    } else {
+        ent->s.modelindex = G_ModelIndex( ent->model );
+    }
+    ent->s.eType = ET_GENERAL;
+    trap_LinkEntity( ent );
+}
+
+/*QUAKED rallyball_ball_spawn (0 0.5 0.5) (-8 -8 -8) (8 8 8)
+Defines where the rallyball initially appears. Only one entity is needed.
+The optional "model" key sets a different model.
+*/
+void SP_rallyball_ball_spawn( gentity_t *ent ) {
+    // store spawn origin for rallyball game logic
+    VectorCopy( ent->s.origin, level.rallyballSpawn );
+
+    if ( !ent->model || !*ent->model ) {
+        ent->s.modelindex = G_ModelIndex( "models/mapobjects/rallyball/ball_spawn.md3" );
+    } else {
+        ent->s.modelindex = G_ModelIndex( ent->model );
+    }
+    ent->s.eType = ET_GENERAL;
+    trap_LinkEntity( ent );
 }
