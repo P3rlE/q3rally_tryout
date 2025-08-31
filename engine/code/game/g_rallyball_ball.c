@@ -35,7 +35,6 @@ gentity_t *G_SpawnRallyBall( vec3_t origin ) {
 	gentity_t *ball;
 
 	    ball = G_Spawn();
-        G_SetModel( ball, "models/mapobjects/rallyball/ball.md3" );
         ball->classname = "rallyball";
         ball->s.eType = ET_RALLYBALL;
 
@@ -44,7 +43,7 @@ gentity_t *G_SpawnRallyBall( vec3_t origin ) {
         ball->clipmask = MASK_SOLID;
         ball->r.contents = CONTENTS_BODY;
         ball->mass = ball_mass.integer;
-        ball->s.modelindex = G_ModelIndex("models/mapobjects/rallyball/ball.md3");
+        ball->s.modelindex = G_ModelIndex("models/rallyball/rallyball.md3");
 
         ball->s.pos.trType = TR_GRAVITY;
         ball->s.pos.trTime = level.time;
