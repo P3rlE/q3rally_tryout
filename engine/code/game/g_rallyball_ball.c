@@ -29,28 +29,38 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  * Basic rally ball entity implementation. The ball uses the
  * generic item physics to move and bounce through the world.
  */
+static void G_RallyBall_Touch( gentity_t *self, gentity_t *other, trace_t *trace ) {
+        if ( !other->client ) {
+                return;
+        }
+
+        VectorCopy( other->client->ps.velocity, self->s.pos.trDelta );
+        self->s.pos.trType = TR_GRAVITY;
+        self->s.pos.trTime = level.time;
+}
+
 static void G_RallyBall_Think( gentity_t *ent ) {
-	ent->nextthink = level.time + FRAMETIME;
+        ent->nextthink = level.time + FRAMETIME;
 }
 
 gentity_t *G_SpawnRallyBall( vec3_t origin ) {
-	gentity_t *ball;
+        gentity_t *ball;
 
-	    ball = G_Spawn();
+            ball = G_Spawn();
         ball->classname = "rallyball";
         ball->s.eType = ET_RALLYBALL;
 
         ball->physicsObject = qtrue;
         ball->physicsBounce = 0.6f;
-        ball->clipmask = MASK_SOLID;
+        ball->clipmask = MASK_PLAYERSOLID;
         ball->r.contents = CONTENTS_BODY;
+        ball->r.contents |= CONTENTS_TRIGGER;
         ball->mass = ball_mass.integer;
         ball->s.modelindex = G_ModelIndex("models/rallyball/rallyball.md3");
 
         ball->s.pos.trTime = level.time;
         VectorCopy( origin, ball->s.pos.trBase );
         VectorCopy( origin, ball->r.currentOrigin );
-        ball->s.groundEntityNum = ENTITYNUM_NONE;
         VectorClear( ball->s.pos.trDelta );
         ball->s.pos.trType = TR_GRAVITY;
 
@@ -61,5 +71,8 @@ gentity_t *G_SpawnRallyBall( vec3_t origin ) {
         VectorSet( ball->r.maxs,  RALLYBALL_RADIUS,  RALLYBALL_RADIUS,  RALLYBALL_RADIUS );
 
         trap_LinkEntity( ball );
+        ball->touch = G_RallyBall_Touch;
+        ball->s.groundEntityNum = ENTITYNUM_NONE;
+
         return ball;
 }
