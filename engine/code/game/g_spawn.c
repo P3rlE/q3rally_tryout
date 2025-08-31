@@ -211,6 +211,8 @@ void SP_rally_weather_snow( gentity_t *ent );
 
 // scripted map object
 void SP_rally_scripted_object( gentity_t *ent );
+void SP_rallyball_goal( gentity_t *ent );
+void SP_rallyball_ball_spawn( gentity_t *ent );
 // END
 
 spawn_t	spawns[] = {
@@ -312,10 +314,12 @@ spawn_t	spawns[] = {
 
 	{"rally_sun", SP_rally_sun},
 
-	{"rally_weather_rain", SP_rally_weather_rain},
-	{"rally_weather_snow", SP_rally_weather_snow},
+        {"rally_weather_rain", SP_rally_weather_rain},
+        {"rally_weather_snow", SP_rally_weather_snow},
 
-	{"rally_scripted_object", SP_rally_scripted_object},
+        {"rallyball_goal", SP_rallyball_goal},
+        {"rallyball_ball_spawn", SP_rallyball_ball_spawn},
+        {"rally_scripted_object", SP_rally_scripted_object},
 // END
 
 	{NULL, 0}
