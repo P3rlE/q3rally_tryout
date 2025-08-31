@@ -1740,6 +1740,7 @@ void CG_ObeliskPain( vec3_t org );
 void CG_InvulnerabilityImpact( vec3_t org, vec3_t angles );
 void CG_InvulnerabilityJuiced( vec3_t org );
 void CG_LightningBoltBeam( vec3_t start, vec3_t end );
+void CG_LightningArc( vec3_t start, vec3_t end );
 #endif
 void CG_ScorePlum( int client, vec3_t org, int score );
 void CG_ShowDebris( vec3_t srcOrigin, int count, int evType );
