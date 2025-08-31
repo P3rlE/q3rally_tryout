@@ -399,6 +399,11 @@ extern void UI_TeamMainMenu( void );
 extern void TeamMain_Cache( void );
 
 //
+// ui_common.c
+//
+int UI_FetchDemoList( char *buffer, int bufSize, const char **list, int maxList, const char *(*copyFunc)(const char *) );
+
+//
 // ui_connect.c
 //
 extern void UI_DrawConnectScreen( qboolean overlay );
