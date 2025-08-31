@@ -2814,6 +2814,7 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/game/g_rally_rearweapon.o \
   $(B)/$(BASEGAME)/game/g_rally_scripted_objects.o \
   $(B)/$(BASEGAME)/game/g_rally_tools.o \
+  $(B)/$(BASEGAME)/game/g_rallyball_ball.o \
   $(B)/$(BASEGAME)/game/g_session.o \
   $(B)/$(BASEGAME)/game/g_spawn.o \
   $(B)/$(BASEGAME)/game/g_svcmds.o \

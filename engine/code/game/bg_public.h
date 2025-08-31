@@ -888,9 +888,10 @@ typedef enum {
         ET_WEATHER,                             // used to specify per area weather
         ET_CHECKPOINT,
         ET_SCRIPTED,                    // used for our new scripted map objects
-        ET_AUXENT,                              // extra ent for passing car info to client
+	ET_AUXENT,                              // extra ent for passing car info to client
+	ET_RALLYBALL,                   // rally ball entity
 // END
-        ET_EVENTS                               // any of the EV_* events can be added freestanding
+	ET_EVENTS                               // any of the EV_* events can be added freestanding
                                                         // by setting eType to ET_EVENTS + eventNum
                                                         // this avoids having to set eFlags and eventNum
 } entityType_t;
