@@ -85,10 +85,13 @@ static void Demos_MenuEvent( void *ptr, int event ) {
 
 	switch( ((menucommon_s*)ptr)->id ) {
 	case ID_GO:
-		UI_ForceMenuOff ();
-		trap_Cmd_ExecuteText( EXEC_APPEND, va( "demo %s\n",
-								s_demos.list.itemnames[s_demos.list.curvalue]) );
-		break;
+               UI_ForceMenuOff ();
+               {
+                       char cleanName[MAX_QPATH];
+                       COM_SanitizeFileName(s_demos.list.itemnames[s_demos.list.curvalue], cleanName, sizeof(cleanName));
+                       trap_Cmd_ExecuteText( EXEC_APPEND, va( "demo \"%s\"\n", cleanName) );
+               }
+               break;
 
 	case ID_BACK:
 		UI_PopMenu();

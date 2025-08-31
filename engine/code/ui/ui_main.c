@@ -3251,7 +3251,11 @@ static void UI_RunMenuScript(char **args) {
 			UI_BuildServerDisplayList(qtrue);
 		} else if (Q_stricmp(name, "RunSPDemo") == 0) {
 			if (uiInfo.demoAvailable) {
-			  trap_Cmd_ExecuteText( EXEC_APPEND, va("demo %s_%i\n", uiInfo.mapList[ui_currentMap.integer].mapLoadName, uiInfo.gameTypes[ui_gameType.integer].gtEnum));
+			  char rawName[MAX_QPATH];
+			  char cleanName[MAX_QPATH];
+			  Com_sprintf(rawName, sizeof(rawName), "%s_%i", uiInfo.mapList[ui_currentMap.integer].mapLoadName, uiInfo.gameTypes[ui_gameType.integer].gtEnum);
+			  COM_SanitizeFileName(rawName, cleanName, sizeof(cleanName));
+			  trap_Cmd_ExecuteText( EXEC_APPEND, va("demo \"%s\"\n", cleanName));
 			}
 		} else if (Q_stricmp(name, "LoadDemos") == 0) {
 			UI_LoadDemos();
@@ -3268,7 +3272,9 @@ static void UI_RunMenuScript(char **args) {
 			trap_Cvar_Set( "fs_game", uiInfo.modList[uiInfo.modIndex].modName);
 			trap_Cmd_ExecuteText( EXEC_APPEND, "vid_restart;" );
 		} else if (Q_stricmp(name, "RunDemo") == 0) {
-			trap_Cmd_ExecuteText( EXEC_APPEND, va("demo %s\n", uiInfo.demoList[uiInfo.demoIndex]));
+			char cleanName[MAX_QPATH];
+			COM_SanitizeFileName(uiInfo.demoList[uiInfo.demoIndex], cleanName, sizeof(cleanName));
+			trap_Cmd_ExecuteText( EXEC_APPEND, va("demo \"%s\"\n", cleanName));
 		} else if (Q_stricmp(name, "Quake3") == 0) {
 			trap_Cvar_Set( "fs_game", "");
 			trap_Cmd_ExecuteText( EXEC_APPEND, "vid_restart;" );
