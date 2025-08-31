@@ -359,6 +359,32 @@ void BFG_Fire ( gentity_t *ent ) {
 //	VectorAdd( m->s.pos.trDelta, ent->client->ps.velocity, m->s.pos.trDelta );	// "real" physics
 }
 
+/*
+======================================================================
+
+BFG - Altfire
+
+======================================================================
+*/
+
+void weapon_bfg_alt_fire( gentity_t *ent ) {
+	gentity_t	*m;
+
+	m = fire_bfg( ent, muzzle, forward );
+
+	/* scale damage for powerups */
+	m->damage *= s_quadFactor;
+	m->splashDamage *= s_quadFactor;
+
+	/* make the projectile travel slower to allow avoidance */
+	VectorScale( forward, 1000, m->s.pos.trDelta );
+	SnapVector( m->s.pos.trDelta );
+
+	/* expand the splash radius to create an energy dome effect */
+	m->splashRadius *= 2;
+}
+
+
 
 /*
 ======================================================================
@@ -1294,12 +1320,12 @@ void FireWeapon( gentity_t *ent ) {
 	case WP_PLASMAGUN:
 		Weapon_Plasmagun_Fire( ent );
 		break;
-	case WP_RAILGUN:
-		weapon_railgun_fire( ent );
-		break;
-	case WP_BFG:
-		BFG_Fire( ent );
-		break;
+        case WP_RAILGUN:
+                weapon_railgun_fire( ent );
+                break;
+        case WP_BFG:
+               BFG_Fire( ent );
+               break;
     case WP_FLAME_THROWER:
         Weapon_fire_flame( ent );
         break;
@@ -1437,9 +1463,9 @@ void FireAltWeapon( gentity_t *ent ) {
 	case WP_RAILGUN:
 		weapon_telefrag_fire( ent,muzzle,forward,right,up );
 		break;
-	case WP_BFG:
-		BFG_Fire( ent );
-		break;
+        case WP_BFG:
+               weapon_bfg_alt_fire( ent );
+               break;
     case WP_FLAME_THROWER:
         Weapon_cluster_fire_flame( ent );
         break;
