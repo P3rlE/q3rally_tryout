@@ -1079,6 +1079,144 @@ void Weapon_superLightningFire( gentity_t *ent ) {
 	}
 }
 
+/*
+======================================================================
+
+CHAIN LIGHTNING GUN (ALT FIRE)
+
+======================================================================
+*/
+
+#define LIGHTNING_CHAIN_RADIUS  256
+#define LIGHTNING_CHAIN_MAX     4
+
+/*
+================
+Weapon_LightningChainFire
+
+Fires a lightning beam and chains to nearby additional targets.
+Each additional target must be visible and within a fixed radius of
+the previous strike.  A temporary EV_LIGHTNINGBOLT entity is sent for
+each chained segment so clients can render the arc.
+================
+*/
+void Weapon_LightningChainFire( gentity_t *ent ) {
+        trace_t         tr;
+        vec3_t          end;
+        gentity_t       *traceEnt;
+        gentity_t       *tent;
+        vec3_t          start;
+        vec3_t          dir;
+        int                     damage;
+        gentity_t       *hit[LIGHTNING_CHAIN_MAX];
+        int                     numHit = 0;
+
+        damage = 8 * s_quadFactor;
+
+        // first strike straight out from the muzzle
+        VectorCopy( muzzle, start );
+        VectorMA( start, LIGHTNING_RANGE, forward, end );
+        trap_Trace( &tr, start, NULL, NULL, end, ent->s.number, MASK_SHOT );
+        if ( tr.entityNum == ENTITYNUM_NONE ) {
+                return;
+        }
+
+        if ( g_entities[ tr.entityNum ].flags & FL_EXTRA_BBOX ) {
+                traceEnt = &g_entities[ g_entities[ tr.entityNum ].r.ownerNum ];
+        } else {
+                traceEnt = &g_entities[ tr.entityNum ];
+        }
+
+        if ( !traceEnt->takedamage ) {
+                return;
+        }
+
+        VectorSubtract( traceEnt->r.currentOrigin, start, dir );
+        VectorNormalize( dir );
+
+        if ( LogAccuracyHit( traceEnt, ent ) ) {
+                ent->client->accuracy_hits++;
+        }
+
+        G_Damage( traceEnt, ent, ent, dir, tr.endpos,
+                  damage, DAMAGE_WEAPON, MOD_LIGHTNING );
+
+        hit[numHit++] = traceEnt;
+        VectorCopy( traceEnt->r.currentOrigin, start );
+
+        // chain to additional targets
+        for ( int chain = 1 ; chain < LIGHTNING_CHAIN_MAX ; chain++ ) {
+                int             entityList[MAX_GENTITIES];
+                int             numEnts;
+                vec3_t          mins, maxs;
+                gentity_t       *best = NULL;
+                float           bestDist = LIGHTNING_CHAIN_RADIUS * LIGHTNING_CHAIN_RADIUS;
+
+                for ( int i = 0 ; i < 3 ; i++ ) {
+                        mins[i] = start[i] - LIGHTNING_CHAIN_RADIUS;
+                        maxs[i] = start[i] + LIGHTNING_CHAIN_RADIUS;
+                }
+
+                numEnts = trap_EntitiesInBox( mins, maxs, entityList, MAX_GENTITIES );
+                for ( int e = 0 ; e < numEnts ; e++ ) {
+                        gentity_t *cand = &g_entities[ entityList[e] ];
+                        vec3_t      distVec;
+                        float       distSq;
+                        qboolean    already = qfalse;
+
+                        if ( !cand->takedamage || cand == ent ) {
+                                continue;
+                        }
+
+                        for ( int k = 0 ; k < numHit ; k++ ) {
+                                if ( hit[k] == cand ) {
+                                        already = qtrue;
+                                        break;
+                                }
+                        }
+                        if ( already ) {
+                                continue;
+                        }
+
+                        // verify line of sight
+                        trap_Trace( &tr, start, NULL, NULL, cand->r.currentOrigin,
+                                    ent->s.number, MASK_SHOT );
+                        if ( tr.entityNum != cand->s.number ) {
+                                continue;
+                        }
+
+                        VectorSubtract( cand->r.currentOrigin, start, distVec );
+                        distSq = VectorLengthSquared( distVec );
+                        if ( distSq < bestDist ) {
+                                bestDist = distSq;
+                                best = cand;
+                        }
+                }
+
+                if ( !best ) {
+                        break;
+                }
+
+                // notify clients of the arc
+                tent = G_TempEntity( start, EV_LIGHTNINGBOLT );
+                VectorCopy( best->r.currentOrigin, tent->s.origin2 );
+                SnapVector( tent->s.origin2 );
+
+                // apply damage
+                VectorSubtract( best->r.currentOrigin, start, dir );
+                VectorNormalize( dir );
+                G_Damage( best, ent, ent, dir, best->r.currentOrigin,
+                          damage, DAMAGE_WEAPON, MOD_LIGHTNING );
+
+                if ( LogAccuracyHit( best, ent ) ) {
+                        ent->client->accuracy_hits++;
+                }
+
+                hit[numHit++] = best;
+                VectorCopy( best->r.currentOrigin, start );
+        }
+}
+
 #ifdef MISSIONPACK
 /*
 ======================================================================
@@ -1442,9 +1580,9 @@ void FireAltWeapon( gentity_t *ent ) {
 	case WP_GAUNTLET:
 		Weapon_Gauntlet( ent );
 		break;
-	case WP_LIGHTNING:
-		Weapon_LightningFire( ent );
-		break;
+        case WP_LIGHTNING:
+                Weapon_LightningChainFire( ent );
+                break;
        case WP_SHOTGUN:
                weapon_shotgun_slug_fire( ent );
                break;
