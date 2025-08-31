@@ -51,9 +51,13 @@ void CG_FireRearWeapon( centity_t *cent, int weapon ) {
 		CG_Error( "CG_FireRearWeapon: weapon >= WP_NUM_WEAPONS" );
 		return;
 	}
-	weap = &cg_weapons[ weapon ];
+        weap = &cg_weapons[ weapon ];
 
-	// play a sound
+        // Mines, smoke, flame, oil and bio visuals are ultimately handled by
+        // EV_HAZARD events (see CG_Hazard in cg_rally_tools.c); this switch
+        // simply initiates those effects.
+
+        // play a sound
 	for ( c = 0 ; c < 4 ; c++ ) {
 		if ( !weap->flashSound[c] ) {
 			break;
@@ -94,6 +98,7 @@ Sets up the centity to spit out smoke for 600 milliseconds after this is called.
 ================
 */
 void CG_StartSmokeScreen( centity_t *cent ){
+        // Visual handled via EV_HAZARD events -> CG_Hazard in cg_rally_tools.c
 }
 
 /*
@@ -104,6 +109,7 @@ Sets up the centity to spit out flame for 600 milliseconds after this is called.
 ================
 */
 void CG_StartFlameTrail( centity_t *cent ){
+        // Visual handled via EV_HAZARD events -> CG_Hazard in cg_rally_tools.c
 }
 
 /*
@@ -115,6 +121,7 @@ nearby it will add to that one instead.
 ================
 */
 void CG_DropOil( centity_t *cent ){
+        // Visual handled via EV_HAZARD events -> CG_Hazard in cg_rally_tools.c
 }
 
 /*
@@ -126,4 +133,5 @@ nearby it will add to that one instead.
 ================
 */
 void CG_DropBio( centity_t *cent ){
+        // Visual handled via EV_HAZARD events -> CG_Hazard in cg_rally_tools.c
 }
