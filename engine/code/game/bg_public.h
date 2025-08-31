@@ -23,6 +23,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 // bg_public.h -- definitions shared by both the server game and client game modules
 
+#ifndef BG_PUBLIC_H
+#define BG_PUBLIC_H
+
 // STONELANCE
 #include "bg_physics.h"
 // END
@@ -947,4 +950,6 @@ qboolean        BG_PlayerTouchesItem( playerState_t *ps, entityState_t *item, in
 #define KAMI_SHOCKWAVE_MAXRADIUS                1320
 #define KAMI_BOOMSPHERE_MAXRADIUS               720
 #define KAMI_SHOCKWAVE2_MAXRADIUS               704
+
+#endif // BG_PUBLIC_H
 
