@@ -1110,6 +1110,7 @@ void Weapon_LightningChainFire( gentity_t *ent ) {
         int                     damage;
         gentity_t       *hit[LIGHTNING_CHAIN_MAX];
         int                     numHit = 0;
+        int                     chain;
 
         damage = 8 * s_quadFactor;
 
@@ -1145,20 +1146,23 @@ void Weapon_LightningChainFire( gentity_t *ent ) {
         VectorCopy( traceEnt->r.currentOrigin, start );
 
         // chain to additional targets
-        for ( int chain = 1 ; chain < LIGHTNING_CHAIN_MAX ; chain++ ) {
+        for ( chain = 1 ; chain < LIGHTNING_CHAIN_MAX ; chain++ ) {
                 int             entityList[MAX_GENTITIES];
                 int             numEnts;
                 vec3_t          mins, maxs;
                 gentity_t       *best = NULL;
                 float           bestDist = LIGHTNING_CHAIN_RADIUS * LIGHTNING_CHAIN_RADIUS;
+                int             i;
+                int             e;
+                int             k;
 
-                for ( int i = 0 ; i < 3 ; i++ ) {
+                for ( i = 0 ; i < 3 ; i++ ) {
                         mins[i] = start[i] - LIGHTNING_CHAIN_RADIUS;
                         maxs[i] = start[i] + LIGHTNING_CHAIN_RADIUS;
                 }
 
                 numEnts = trap_EntitiesInBox( mins, maxs, entityList, MAX_GENTITIES );
-                for ( int e = 0 ; e < numEnts ; e++ ) {
+                for ( e = 0 ; e < numEnts ; e++ ) {
                         gentity_t *cand = &g_entities[ entityList[e] ];
                         vec3_t      distVec;
                         float       distSq;
@@ -1168,7 +1172,7 @@ void Weapon_LightningChainFire( gentity_t *ent ) {
                                 continue;
                         }
 
-                        for ( int k = 0 ; k < numHit ; k++ ) {
+                        for ( k = 0 ; k < numHit ; k++ ) {
                                 if ( hit[k] == cand ) {
                                         already = qtrue;
                                         break;
