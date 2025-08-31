@@ -43,11 +43,12 @@ gentity_t *G_SpawnRallyBall( vec3_t origin ) {
         ball->clipmask = MASK_SOLID;
         ball->r.contents = CONTENTS_BODY;
         ball->mass = ball_mass.integer;
+        ball->s.modelindex = G_ModelIndex("models/mapobjects/rallyball/ball.md3");
 
-	ball->s.pos.trType = TR_GRAVITY;
-	ball->s.pos.trTime = level.time;
-	VectorCopy( origin, ball->s.pos.trBase );
-	VectorClear( ball->s.pos.trDelta );
+        ball->s.pos.trType = TR_GRAVITY;
+        ball->s.pos.trTime = level.time;
+        VectorCopy( origin, ball->s.pos.trBase );
+        VectorClear( ball->s.pos.trDelta );
 
 	ball->think = G_RallyBall_Think;
 	ball->nextthink = level.time + FRAMETIME;
