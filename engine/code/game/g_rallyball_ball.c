@@ -23,6 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
+#define RALLYBALL_RADIUS 8
+
 /*
  * Basic rally ball entity implementation. The ball uses the
  * generic item physics to move and bounce through the world.
@@ -50,9 +52,13 @@ gentity_t *G_SpawnRallyBall( vec3_t origin ) {
         VectorCopy( origin, ball->s.pos.trBase );
         VectorClear( ball->s.pos.trDelta );
 
-	ball->think = G_RallyBall_Think;
-	ball->nextthink = level.time + FRAMETIME;
+        ball->think = G_RallyBall_Think;
+        ball->nextthink = level.time + FRAMETIME;
 
-	trap_LinkEntity( ball );
-	return ball;
+        VectorSet( ball->r.mins, -RALLYBALL_RADIUS, -RALLYBALL_RADIUS, -RALLYBALL_RADIUS );
+        VectorSet( ball->r.maxs,  RALLYBALL_RADIUS,  RALLYBALL_RADIUS,  RALLYBALL_RADIUS );
+        G_SetOrigin( ball, origin );
+
+        trap_LinkEntity( ball );
+        return ball;
 }
