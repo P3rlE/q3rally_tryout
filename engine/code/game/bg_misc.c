@@ -24,11 +24,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // bg_misc.c -- both games misc functions, all completely stateless
 
 #include "../qcommon/q_shared.h"
-#include "bg_public.h"
-#if defined(QAGAME)
-#include "g_local.h"
-#elif defined(CGAME)
+
+#ifdef CGAME
 #include "../cgame/cg_local.h"
+#else
+#include "bg_public.h"
+#endif
+
+#ifdef QAGAME
+#include "g_local.h"
 #endif
 
 /*QUAKED item_***** ( 0 0 0 ) (-16 -16 -16) (16 16 16) suspended
