@@ -460,9 +460,6 @@ void *UI_Alloc( int size );
 void UI_InitMemory( void );
 qboolean UI_OutOfMemory( void );
 
-void Controls_GetConfig( void );
-void Controls_SetConfig(qboolean restart);
-void Controls_SetDefaults( void );
 
 int			trap_PC_AddGlobalDefine( char *define );
 int			trap_PC_LoadSource( const char *filename );
