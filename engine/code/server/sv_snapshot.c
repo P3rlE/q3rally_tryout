@@ -357,15 +357,21 @@ static void SV_AddEntitiesVisibleFromPoint( vec3_t origin, clientSnapshot_t *fra
 		svEnt = SV_SvEntityForGentity( ent );
 
 		// don't double add an entity through portals
-		if ( svEnt->snapshotCounter == sv.snapshotCounter ) {
-			continue;
-		}
+                if ( svEnt->snapshotCounter == sv.snapshotCounter ) {
+                        continue;
+                }
 
-		// broadcast entities are always sent
-		if ( ent->r.svFlags & SVF_BROADCAST ) {
-			SV_AddEntToSnapshot( svEnt, ent, eNums );
-			continue;
-		}
+                // broadcast entities are always sent
+                if ( ent->r.svFlags & SVF_BROADCAST ) {
+                        SV_AddEntToSnapshot( svEnt, ent, eNums );
+                        continue;
+                }
+
+                // rallyball must always be sent so clients can track the ball
+                if ( ent->s.eType == ET_RALLYBALL ) {
+                        SV_AddEntToSnapshot( svEnt, ent, eNums );
+                        continue;
+                }
 
 		// ignore if not touching a PV leaf
 		// check area
