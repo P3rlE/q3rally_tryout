@@ -25,6 +25,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../qcommon/q_shared.h"
 #include "bg_public.h"
+#if defined(QAGAME)
+#include "g_local.h"
+#elif defined(CGAME)
+#include "../cgame/cg_local.h"
+#endif
 
 /*QUAKED item_***** ( 0 0 0 ) (-16 -16 -16) (16 16 16) suspended
 DO NOT USE THIS CLASS, IT JUST HOLDS GENERAL INFORMATION.
@@ -1680,7 +1685,17 @@ void BG_EvaluateTrajectory( const trajectory_t *tr, int atTime, vec3_t result ) 
 	case TR_GRAVITY:
 		deltaTime = ( atTime - tr->trTime ) * 0.001;	// milliseconds to seconds
 		VectorMA( tr->trBase, deltaTime, tr->trDelta, result );
-		result[2] -= 0.5 * DEFAULT_GRAVITY * deltaTime * deltaTime;		// FIXME: local gravity...
+		{
+                float gravity = DEFAULT_GRAVITY;
+#ifdef QAGAME
+                gravity = g_gravity.value;
+#elif defined(CGAME)
+                if ( cg.snap ) {
+                        gravity = cg.snap->ps.gravity;
+                }
+#endif
+                result[2] -= 0.5f * gravity * deltaTime * deltaTime;	// use configured gravity
+        }
 		break;
 	case TR_ROTATING:
 		if ( tr->trTime > 0 )
@@ -1733,7 +1748,17 @@ void BG_EvaluateTrajectoryDelta( const trajectory_t *tr, int atTime, vec3_t resu
 	case TR_GRAVITY:
 		deltaTime = ( atTime - tr->trTime ) * 0.001;	// milliseconds to seconds
 		VectorCopy( tr->trDelta, result );
-		result[2] -= DEFAULT_GRAVITY * deltaTime;		// FIXME: local gravity...
+		{
+                float gravity = DEFAULT_GRAVITY;
+#ifdef QAGAME
+                gravity = g_gravity.value;
+#elif defined(CGAME)
+                if ( cg.snap ) {
+                        gravity = cg.snap->ps.gravity;
+                }
+#endif
+                result[2] -= gravity * deltaTime;	// use configured gravity
+        }
 		break;
 	default:
 		Com_Error( ERR_DROP, "BG_EvaluateTrajectoryDelta: unknown trType: %i", tr->trType );
