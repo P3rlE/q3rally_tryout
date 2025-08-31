@@ -42,7 +42,6 @@ DEMOS MENU
 #define ART_RIGHT0      "menu/art/arrow_r0"
 #define ART_RIGHT1      "menu/art/arrow_r1"
 
-#define MAX_DEMOS			1024
 #define NAMEBUFSIZE			(MAX_DEMOS * 32)
 
 #define ID_BACK				10
