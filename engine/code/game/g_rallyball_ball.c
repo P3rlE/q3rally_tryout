@@ -38,10 +38,11 @@ gentity_t *G_SpawnRallyBall( vec3_t origin ) {
 	ball->classname = "rallyball";
 	ball->s.eType = ET_RALLYBALL;
 
-	ball->physicsObject = qtrue;
-	ball->physicsBounce = 0.6f;
-	ball->clipmask = MASK_SOLID;
-	ball->r.contents = CONTENTS_BODY;
+        ball->physicsObject = qtrue;
+        ball->physicsBounce = 0.6f;
+        ball->clipmask = MASK_SOLID;
+        ball->r.contents = CONTENTS_BODY;
+        ball->mass = ball_mass.integer;
 
 	ball->s.pos.trType = TR_GRAVITY;
 	ball->s.pos.trTime = level.time;

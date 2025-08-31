@@ -299,6 +299,7 @@ typedef struct {
         float           car_air_cof;
         float           car_air_frac_to_df;
         float           car_friction_scale;
+        float           boost_speed;
 // END
 } pmove_t;
 
