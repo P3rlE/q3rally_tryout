@@ -286,14 +286,24 @@ spawn_t	spawns[] = {
 	{"team_CTF_greenplayer", SP_team_CTF_greenplayer},
 	{"team_CTF_yellowplayer", SP_team_CTF_yellowplayer},
 
-	{"team_CTF_redspawn", SP_team_CTF_redspawn},
-	{"team_CTF_bluespawn", SP_team_CTF_bluespawn},
-	{"team_CTF_greenspawn", SP_team_CTF_greenspawn},
-	{"team_CTF_yellowspawn", SP_team_CTF_yellowspawn},
+        {"team_CTF_redspawn", SP_team_CTF_redspawn},
+        {"team_CTF_bluespawn", SP_team_CTF_bluespawn},
+        {"team_CTF_greenspawn", SP_team_CTF_greenspawn},
+        {"team_CTF_yellowspawn", SP_team_CTF_yellowspawn},
+
+        {"rallyball_redplayer", SP_rallyball_redplayer},
+        {"rallyball_blueplayer", SP_rallyball_blueplayer},
+        {"rallyball_greenplayer", SP_rallyball_greenplayer},
+        {"rallyball_yellowplayer", SP_rallyball_yellowplayer},
+
+        {"rallyball_redspawn", SP_rallyball_redspawn},
+        {"rallyball_bluespawn", SP_rallyball_bluespawn},
+        {"rallyball_greenspawn", SP_rallyball_greenspawn},
+        {"rallyball_yellowspawn", SP_rallyball_yellowspawn},
 
     {"team_CTF_redflag", SP_team_CTF_redflag},
     {"team_CTF_blueflag", SP_team_CTF_blueflag},
-	{"team_CTF_greenflag", SP_team_CTF_greenflag},
+        {"team_CTF_greenflag", SP_team_CTF_greenflag},
 	{"team_CTF_yellowflag", SP_team_CTF_yellowflag},
 
 	{"func_door_rotating", SP_func_door_rotating},	// Rotating Doors
