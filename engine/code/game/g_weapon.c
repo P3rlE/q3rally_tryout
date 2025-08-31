@@ -321,6 +321,26 @@ void Bullet_Fire (gentity_t *ent, float spread, int damage, int mod ) {
 }
 
 
+void weapon_machinegun_burst_fire( gentity_t *ent ) {
+        int damage;
+        int spread;
+
+        if ( g_gametype.integer != GT_TEAM ) {
+                damage = MACHINEGUN_DAMAGE;
+        } else {
+                damage = MACHINEGUN_TEAM_DAMAGE;
+        }
+
+        spread = MACHINEGUN_SPREAD / 2;
+
+        Bullet_Fire( ent, spread, damage, MOD_MACHINEGUN );
+        Bullet_Fire( ent, spread, damage, MOD_MACHINEGUN );
+        Bullet_Fire( ent, spread, damage, MOD_MACHINEGUN );
+
+        ent->client->ps.weaponTime += (300 & NORMAL_WEAPON_TIME_MASK);
+}
+
+
 /*
 ======================================================================
 
@@ -351,6 +371,8 @@ SHOTGUN
 // DEFAULT_SHOTGUN_SPREAD and DEFAULT_SHOTGUN_COUNT	are in bg_public.h, because
 // client predicts same spreads
 #define	DEFAULT_SHOTGUN_DAMAGE	10
+#define SHOTGUN_SLUG_SPREAD     0
+#define SHOTGUN_SLUG_DAMAGE     50
 
 qboolean ShotgunPellet( vec3_t start, vec3_t end, gentity_t *ent ) {
 	trace_t		tr;
@@ -448,6 +470,11 @@ void weapon_supershotgun_fire (gentity_t *ent) {
 
 	ShotgunPattern( tent->s.pos.trBase, tent->s.origin2, tent->s.eventParm, ent );
 }
+
+void weapon_shotgun_slug_fire (gentity_t *ent) {
+	Bullet_Fire( ent, SHOTGUN_SLUG_SPREAD, SHOTGUN_SLUG_DAMAGE, MOD_SHOTGUN );
+}
+
 
 
 /*
@@ -1248,19 +1275,19 @@ void FireWeapon( gentity_t *ent ) {
 	case WP_LIGHTNING:
 		Weapon_superLightningFire( ent );
 		break;
-	case WP_SHOTGUN:
-		weapon_supershotgun_fire( ent );
-		break;
-	case WP_MACHINEGUN:
-		if ( g_gametype.integer != GT_TEAM ) {
-			Bullet_Fire( ent, MACHINEGUN_SPREAD, MACHINEGUN_DAMAGE, MOD_MACHINEGUN );
-		} else {
-			Bullet_Fire( ent, MACHINEGUN_SPREAD, MACHINEGUN_TEAM_DAMAGE, MOD_MACHINEGUN );
-		}
-		break;
-	case WP_GRENADE_LAUNCHER:
-		weapon_grenadelauncher_fire( ent );
-		break;
+       case WP_SHOTGUN:
+               weapon_supershotgun_fire( ent );
+               break;
+       case WP_MACHINEGUN:
+               if ( g_gametype.integer != GT_TEAM ) {
+                       Bullet_Fire( ent, MACHINEGUN_SPREAD, MACHINEGUN_DAMAGE, MOD_MACHINEGUN );
+               } else {
+                       Bullet_Fire( ent, MACHINEGUN_SPREAD, MACHINEGUN_TEAM_DAMAGE, MOD_MACHINEGUN );
+               }
+               break;
+       case WP_GRENADE_LAUNCHER:
+               weapon_grenadelauncher_fire( ent );
+               break;
 	case WP_ROCKET_LAUNCHER:
 		Weapon_RocketLauncher_Fire( ent );
 		break;
@@ -1392,19 +1419,15 @@ void FireAltWeapon( gentity_t *ent ) {
 	case WP_LIGHTNING:
 		Weapon_LightningFire( ent );
 		break;
-	case WP_SHOTGUN:
-		weapon_supershotgun_fire( ent );
-		break;
-	case WP_MACHINEGUN:
-		if ( g_gametype.integer != GT_TEAM ) {
-			Bullet_Fire( ent, MACHINEGUN_SPREAD, MACHINEGUN_DAMAGE, MOD_MACHINEGUN );
-		} else {
-			Bullet_Fire( ent, MACHINEGUN_SPREAD, MACHINEGUN_TEAM_DAMAGE, MOD_MACHINEGUN );
-		}
-		break;
-	case WP_GRENADE_LAUNCHER:
-		weapon_cluster_grenadelauncher_fire( ent );
-		break;
+       case WP_SHOTGUN:
+               weapon_shotgun_slug_fire( ent );
+               break;
+       case WP_MACHINEGUN:
+               weapon_machinegun_burst_fire( ent );
+               break;
+       case WP_GRENADE_LAUNCHER:
+               weapon_cluster_grenadelauncher_fire( ent );
+               break;
 	case WP_ROCKET_LAUNCHER:
 		Weapon_Homing_RocketLauncher_Fire( ent );
 		break;
