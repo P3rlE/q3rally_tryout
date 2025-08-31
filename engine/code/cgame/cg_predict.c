@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // It also handles local physics interaction, like fragments bouncing off walls
 
 #include "cg_local.h"
+#include <stdlib.h>
 
 static	pmove_t		cg_pmove;
 
@@ -924,7 +925,9 @@ void CG_PredictPlayerState( void ) {
 	cg_pmove.car_air_cof = CP_AIR_COF;
 	cg_pmove.car_air_frac_to_df = CP_FRAC_TO_DF;
 	cg_pmove.car_friction_scale = 1.1f;
-	cg_pmove.boost_speed = trap_Cvar_VariableValue("boost_speed");
+	char boostBuf[MAX_CVAR_VALUE_STRING];
+	trap_Cvar_VariableStringBuffer("boost_speed", boostBuf, sizeof(boostBuf));
+	cg_pmove.boost_speed = atof(boostBuf);
 
 //	for ( cmdNum = current - CMD_BACKUP + 1 ; cmdNum <= current ; cmdNum++ ) {
 	count = 0;
