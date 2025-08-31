@@ -1607,7 +1607,7 @@ qboolean ScoreIsTied( void ) {
 	
 // STONELANCE
 	// races or rallys can never be tied, otherwise then the level will not end
-	if ( g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS || isRallyRace() )
+        if ( g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS || g_gametype.integer == GT_RALLYBALL || isRallyRace() )
 	{
 /*
 		a = level.clients[level.sortedClients[0]].finishRaceTime;
@@ -1804,9 +1804,9 @@ void CheckExitRules( void ) {
 
 // STONELANCE
 	// dont check frags or captures during a race or derby
-	if ( isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS ){
-		return;
-	}
+        if ( isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS || g_gametype.integer == GT_RALLYBALL ){
+                return;
+        }
 // END
 
 	if ( g_fraglimit.integer < 0 ) {

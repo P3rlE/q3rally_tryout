@@ -152,6 +152,7 @@ typedef enum {
         GT_CTF,                         // capture the flag
         GT_CTF4,                        // 4 team capture the flag
         GT_DOMINATION,              // domination
+        GT_RALLYBALL,               // rally ball
 // Q3Rally Code END
         GT_MAX_GAME_TYPE
 } gametype_t;
