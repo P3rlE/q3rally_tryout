@@ -30,12 +30,13 @@ char *svc_strings[256] = {
 	"svc_gamestate",
 	"svc_configstring",
 	"svc_baseline",	
-	"svc_serverCommand",
-	"svc_download",
-	"svc_snapshot",
-	"svc_EOF",
-	"svc_voipSpeex",
-	"svc_voipOpus",
+        "svc_serverCommand",
+        "svc_download",
+        "svc_snapshot",
+        "svc_rallyballEvent",
+        "svc_EOF",
+        "svc_voipSpeex",
+        "svc_voipOpus",
 };
 
 void SHOWNET( msg_t *msg, char *s) {
@@ -651,6 +652,28 @@ void CL_ParseDownload ( msg_t *msg ) {
 	}
 }
 
+/*
+=====================
+CL_ParseRallyballEvent
+
+Parse rallyball specific events from the server.
+=====================
+*/
+static void CL_ParseRallyballEvent( msg_t *msg ) {
+        int ev = MSG_ReadByte( msg );
+        switch ( ev ) {
+        case 0:
+                Com_Printf( "Rallyball: round start\n" );
+                break;
+        case 1:
+                Com_Printf( "Rallyball: goal scored\n" );
+                break;
+        default:
+                Com_Printf( "Rallyball: unknown event %d\n", ev );
+                break;
+        }
+}
+
 #ifdef USE_VOIP
 static
 qboolean CL_ShouldIgnoreVoipSender(int sender)
@@ -910,12 +933,15 @@ void CL_ParseServerMessage( msg_t *msg ) {
 		case svc_gamestate:
 			CL_ParseGamestate( msg );
 			break;
-		case svc_snapshot:
-			CL_ParseSnapshot( msg );
-			break;
-		case svc_download:
-			CL_ParseDownload( msg );
-			break;
+                case svc_snapshot:
+                        CL_ParseSnapshot( msg );
+                        break;
+                case svc_rallyballEvent:
+                        CL_ParseRallyballEvent( msg );
+                        break;
+                case svc_download:
+                        CL_ParseDownload( msg );
+                        break;
 		case svc_voipSpeex:
 #ifdef USE_VOIP
 			CL_ParseVoip( msg, qtrue );
