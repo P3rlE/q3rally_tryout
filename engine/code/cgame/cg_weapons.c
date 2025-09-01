@@ -1129,6 +1129,11 @@ void CG_FlameStream( centity_t *cent, vec3_t origin ) {
        beam.reType = RT_LIGHTNING;
        beam.customShader = cgs.media.flameStreamShader;
 
+       beam.shaderRGBA[0] = 0xff;
+       beam.shaderRGBA[1] = 0xff;
+       beam.shaderRGBA[2] = 0xff;
+       beam.shaderRGBA[3] = 0xff;
+
        trap_R_AddRefEntityToScene( &beam );
 }
 
