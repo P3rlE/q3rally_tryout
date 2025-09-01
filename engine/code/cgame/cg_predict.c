@@ -679,7 +679,6 @@ void CG_PredictPlayerState( void ) {
 	centity_t	*cent;
 	int			i;
 	int			count, skipcount;
-	char			boostBuf[MAX_CVAR_VALUE_STRING];
 // END
 
 	cg.hyperspace = qfalse;	// will be set if touching a trigger_teleport
@@ -925,8 +924,6 @@ void CG_PredictPlayerState( void ) {
 	cg_pmove.car_air_cof = CP_AIR_COF;
 	cg_pmove.car_air_frac_to_df = CP_FRAC_TO_DF;
 	cg_pmove.car_friction_scale = 1.1f;
-	trap_Cvar_VariableStringBuffer("boost_speed", boostBuf, sizeof(boostBuf));
-	cg_pmove.boost_speed = atof(boostBuf);
 
 //	for ( cmdNum = current - CMD_BACKUP + 1 ; cmdNum <= current ; cmdNum++ ) {
 	count = 0;

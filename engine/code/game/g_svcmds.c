@@ -460,37 +460,6 @@ void	Svcmd_ForceTeam_f( void ) {
 char	*ConcatArgs( int start );
 
 /*
-===================
-Svcmd_SpawnRallyBall_f
-
-spawnrallyball <x> <y> <z>
-
-Allows spawning a rallyball entity from the server console for
-testing snapshot visibility.
-===================
-*/
-static void Svcmd_SpawnRallyBall_f( void ) {
-	vec3_t origin;
-	char   arg[MAX_TOKEN_CHARS];
-	int    i;
-
-	// default to predefined spawn location
-	VectorCopy( level.rallyballSpawn, origin );
-
-	if ( trap_Argc() >= 4 ) {
-		for ( i = 0; i < 3; i++ ) {
-			trap_Argv( i + 1, arg, sizeof( arg ) );
-			origin[i] = atof( arg );
-		}
-	}
-
-	if ( level.rallyball ) {
-		G_FreeEntity( level.rallyball );
-	}
-	level.rallyball = G_SpawnRallyBall( origin );
-}
-
-/*
 =================
 ConsoleCommand
 
@@ -521,20 +490,15 @@ qboolean	ConsoleCommand( void ) {
 		return qtrue;
 	}
 
-        if (Q_stricmp (cmd, "botlist") == 0) {
-                Svcmd_BotList_f();
-                return qtrue;
-        }
+	if (Q_stricmp (cmd, "botlist") == 0) {
+		Svcmd_BotList_f();
+		return qtrue;
+	}
 
-        if (Q_stricmp (cmd, "spawnrallyball") == 0) {
-                Svcmd_SpawnRallyBall_f();
-                return qtrue;
-        }
-
-        if (Q_stricmp (cmd, "abort_podium") == 0) {
-                Svcmd_AbortPodium_f();
-                return qtrue;
-        }
+	if (Q_stricmp (cmd, "abort_podium") == 0) {
+		Svcmd_AbortPodium_f();
+		return qtrue;
+	}
 
 	if (Q_stricmp (cmd, "addip") == 0) {
 		Svcmd_AddIP_f();

@@ -57,11 +57,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // for the voice chats
 #include "../../ui/menudef.h"
 
-// Rallyball support
-qboolean BotGetRallyBallGoal(bot_state_t *bs, bot_goal_t *goal);
-qboolean BotRallyBallShot(bot_state_t *bs);
-void BotSteerToRallyBall(bot_state_t *bs);
-
 //goal flag, see ../botlib/be_ai_goal.h for the other GFL_*
 #define GFL_AIR			128
 
@@ -195,15 +190,10 @@ BotNearbyGoal
 ==================
 */
 int BotNearbyGoal(bot_state_t *bs, int tfl, bot_goal_t *ltg, float range) {
-        int ret;
+	int ret;
 
-        // rallyball has priority
-        if (BotGetRallyBallGoal(bs, ltg)) {
-                return qtrue;
-        }
-
-        //check if the bot should go for air
-        if (BotGoForAir(bs, tfl, ltg, range)) return qtrue;
+	//check if the bot should go for air
+	if (BotGoForAir(bs, tfl, ltg, range)) return qtrue;
 	// if the bot is carrying a flag or cubes
 	if (BotCTFCarryingFlag(bs)
 #ifdef MISSIONPACK
@@ -3155,75 +3145,4 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 }
 // END
 
-/*
-==================
-BotGetRallyBallGoal
-==================
-*/
-qboolean BotGetRallyBallGoal(bot_state_t *bs, bot_goal_t *goal) {
-    if (g_gametype.integer != GT_RALLYBALL) {
-        return qfalse;
-    }
-    if (!level.rallyball) {
-        return qfalse;
-    }
-
-    VectorCopy(level.rallyball->r.currentOrigin, goal->origin);
-    goal->entitynum = level.rallyball->s.number;
-    goal->number = goal->entitynum;
-    goal->areanum = BotPointAreaNum(goal->origin);
-    if (!goal->areanum) {
-        return qfalse;
-    }
-    VectorSet(goal->mins, -8, -8, -8);
-    VectorSet(goal->maxs, 8, 8, 8);
-    goal->flags = 0;
-    return qtrue;
-}
-
-/*
-==================
-BotRallyBallShot
-==================
-*/
-qboolean BotRallyBallShot(bot_state_t *bs) {
-    gentity_t *goal = NULL;
-    vec3_t ballorg;
-
-    if (g_gametype.integer != GT_RALLYBALL || !level.rallyball) {
-        return qfalse;
-    }
-
-    VectorCopy(level.rallyball->r.currentOrigin, ballorg);
-    while ((goal = G_Find(goal, FOFS(classname), "trigger_rallyball_goal")) != NULL) {
-        vec3_t dir;
-        VectorSubtract(goal->s.origin, ballorg, dir);
-        if (VectorLength(dir) < 128) {
-            return qtrue;
-        }
-    }
-    return qfalse;
-}
-
-/*
-==================
-BotSteerToRallyBall
-==================
-*/
-void BotSteerToRallyBall(bot_state_t *bs) {
-    vec3_t dir;
-
-    if (g_gametype.integer != GT_RALLYBALL || !level.rallyball) {
-        return;
-    }
-
-    VectorSubtract(level.rallyball->r.currentOrigin, bs->origin, dir);
-    vectoangles(dir, bs->ideal_viewangles);
-    if (VectorLengthSquared(dir) > 1.0f) {
-        trap_EA_MoveForward(bs->client);
-    }
-    if (BotRallyBallShot(bs)) {
-        trap_EA_Attack(bs->client);
-    }
-}
 

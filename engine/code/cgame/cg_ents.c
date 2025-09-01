@@ -1258,20 +1258,17 @@ void CG_AddCEntity( centity_t *cent ) {
 	case ET_AUXENT:
 		CG_Auxent( cent );
 		break;
-        case ET_WEATHER:
-                CG_Weather( cent );
-                break;
-        case ET_SCRIPTED:
-                CG_Scripted_Object( cent );
-                break;
-        case ET_RALLYBALL:
-                CG_General( cent );
-                break;
+	case ET_WEATHER:
+		CG_Weather( cent );
+		break;
+	case ET_SCRIPTED:
+		CG_Scripted_Object( cent );
+		break;
 // Q3Rally Code END
-        case ET_TEAM:
-                CG_TeamBase( cent );
-                break;
-        }
+	case ET_TEAM:
+		CG_TeamBase( cent );
+		break;
+	}
 }
 
 /*

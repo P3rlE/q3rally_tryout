@@ -741,40 +741,6 @@ static void CG_DrawModernGameInfo(int y, float fade) {
     CG_DrawBigStringColor(x, y, gameInfo, titleColor);
 }
 
-static void CG_DrawRallyballTeamScores(int y) {
-    int xLeft, xRight, yTop, yBottom;
-    vec4_t color;
-
-    xLeft = SCREEN_WIDTH / 2 - 160;
-    xRight = SCREEN_WIDTH / 2 + 20;
-    yTop = y;
-    yBottom = y + BIGCHAR_HEIGHT + 4;
-
-    CG_GetModernTeamColor(TEAM_RED, color);
-    if (cg.rallyballLastGoalTeam == TEAM_RED && cg.time - cg.rallyballGoalTime < 2000) {
-        color[3] = 0.5f + 0.5f * sin((cg.time - cg.rallyballGoalTime) / 100.0f);
-    }
-    CG_DrawBigStringColor(xLeft, yTop, va("Red: %i", cg.teamScores[TEAM_RED - TEAM_RED]), color);
-
-    CG_GetModernTeamColor(TEAM_BLUE, color);
-    if (cg.rallyballLastGoalTeam == TEAM_BLUE && cg.time - cg.rallyballGoalTime < 2000) {
-        color[3] = 0.5f + 0.5f * sin((cg.time - cg.rallyballGoalTime) / 100.0f);
-    }
-    CG_DrawBigStringColor(xRight, yTop, va("Blue: %i", cg.teamScores[TEAM_BLUE - TEAM_RED]), color);
-
-    CG_GetModernTeamColor(TEAM_GREEN, color);
-    if (cg.rallyballLastGoalTeam == TEAM_GREEN && cg.time - cg.rallyballGoalTime < 2000) {
-        color[3] = 0.5f + 0.5f * sin((cg.time - cg.rallyballGoalTime) / 100.0f);
-    }
-    CG_DrawBigStringColor(xLeft, yBottom, va("Green: %i", cg.teamScores[TEAM_GREEN - TEAM_RED]), color);
-
-    CG_GetModernTeamColor(TEAM_YELLOW, color);
-    if (cg.rallyballLastGoalTeam == TEAM_YELLOW && cg.time - cg.rallyballGoalTime < 2000) {
-        color[3] = 0.5f + 0.5f * sin((cg.time - cg.rallyballGoalTime) / 100.0f);
-    }
-    CG_DrawBigStringColor(xRight, yBottom, va("Yellow: %i", cg.teamScores[TEAM_YELLOW - TEAM_RED]), color);
-}
-
 /*
 =================
 CG_DrawModernScoreboard
@@ -859,12 +825,7 @@ qboolean CG_DrawModernScoreboard(void) {
         CG_DrawBigStringColor(x, y, fragMsg, fragColor);
         y += BIGCHAR_HEIGHT + 16;
     }
-
-    if (cgs.gametype == GT_RALLYBALL) {
-        CG_DrawRallyballTeamScores(y);
-        y += BIGCHAR_HEIGHT * 2 + 24;
-    }
-
+    
     /* Draw game info */
     CG_DrawModernGameInfo(y, fade);
     y += BIGCHAR_HEIGHT + 24;

@@ -140,8 +140,6 @@ vmCvar_t	car_body_elasticity;
 vmCvar_t	car_air_cof;
 vmCvar_t	car_air_frac_to_df;
 vmCvar_t	car_friction_scale;
-vmCvar_t	ball_mass;
-vmCvar_t	boost_speed;
 // END
 
 // bk001129 - made static to avoid aliasing
@@ -268,10 +266,8 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &car_air_cof, "car_air_cof", "0.31", 0, 0, qfalse },
 	{ &car_air_frac_to_df, "car_air_frac_to_df", "0.5", 0, 0, qfalse },
 	{ &car_friction_scale, "car_friction_scale", "1.1", 0, 0, qfalse },
-	{ &ball_mass, "ball_mass", "50", 0, 0, qfalse },
-	{ &boost_speed, "boost_speed", "4.5", 0, 0, qfalse },
 
-	{ &g_damageScale, "g_damageScale", "0.3", CVAR_ARCHIVE, 0, qfalse },
+        { &g_damageScale, "g_damageScale", "0.3", CVAR_ARCHIVE, 0, qfalse },
         { &g_vehicleDamageScale, "g_vehicleDamageScale", "5.0", CVAR_ARCHIVE, 0, qfalse },
         { &g_vehicleDamageOffset, "g_vehicleDamageOffset", "0", CVAR_ARCHIVE, 0, qfalse },
         { &g_vehicleHealth, "g_vehicleHealth", "100", CVAR_ARCHIVE, 0, qfalse },
@@ -631,11 +627,6 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 
 	// parse the key/value pairs and spawn gentities
 	G_SpawnEntitiesFromString();
-
-
-        if ( g_gametype.integer == GT_RALLYBALL ) {
-                G_RallyBall_Init();
-        }
 
 	// general initialization
 	G_FindTeams();
@@ -1093,27 +1084,26 @@ void CalculateRanks( void ) {
 		}
 	}
 
-        // set the CS_SCORES configstrings, which will be visible to everyone
-        if ( g_gametype.integer == GT_RALLYBALL ) {
-                trap_SetConfigstring( CS_SCORES1, va("%i", level.teamScores[TEAM_RED] ) );
-                trap_SetConfigstring( CS_SCORES2, va("%i", level.teamScores[TEAM_BLUE] ) );
-                trap_SetConfigstring( CS_SCORES3, va("%i", level.teamScores[TEAM_GREEN] ) );
-                trap_SetConfigstring( CS_SCORES4, va("%i", level.teamScores[TEAM_YELLOW] ) );
-        } else if ( g_gametype.integer >= GT_TEAM ) {
-                trap_SetConfigstring( CS_SCORES1, va("%i", level.teamScores[TEAM_RED] ) );
-                trap_SetConfigstring( CS_SCORES2, va("%i", level.teamScores[TEAM_BLUE] ) );
-        } else {
-                if ( level.numConnectedClients == 0 ) {
-                        trap_SetConfigstring( CS_SCORES1, va("%i", SCORE_NOT_PRESENT) );
-                        trap_SetConfigstring( CS_SCORES2, va("%i", SCORE_NOT_PRESENT) );
-                } else if ( level.numConnectedClients == 1 ) {
-                        trap_SetConfigstring( CS_SCORES1, va("%i", level.clients[ level.sortedClients[0] ].ps.persistant[PERS_SCORE] ) );
-                        trap_SetConfigstring( CS_SCORES2, va("%i", SCORE_NOT_PRESENT) );
-                } else {
-                        trap_SetConfigstring( CS_SCORES1, va("%i", level.clients[ level.sortedClients[0] ].ps.persistant[PERS_SCORE] ) );
-                        trap_SetConfigstring( CS_SCORES2, va("%i", level.clients[ level.sortedClients[1] ].ps.persistant[PERS_SCORE] ) );
-                }
-        }
+	// set the CS_SCORES1/2 configstrings, which will be visible to everyone
+	if ( g_gametype.integer >= GT_TEAM ) {
+		trap_SetConfigstring( CS_SCORES1, va("%i", level.teamScores[TEAM_RED] ) );
+		trap_SetConfigstring( CS_SCORES2, va("%i", level.teamScores[TEAM_BLUE] ) );
+// STONELANCE
+		trap_SetConfigstring( CS_SCORES3, va("%i", level.teamScores[TEAM_GREEN] ) );
+		trap_SetConfigstring( CS_SCORES4, va("%i", level.teamScores[TEAM_YELLOW] ) );
+// END
+	} else {
+		if ( level.numConnectedClients == 0 ) {
+			trap_SetConfigstring( CS_SCORES1, va("%i", SCORE_NOT_PRESENT) );
+			trap_SetConfigstring( CS_SCORES2, va("%i", SCORE_NOT_PRESENT) );
+		} else if ( level.numConnectedClients == 1 ) {
+			trap_SetConfigstring( CS_SCORES1, va("%i", level.clients[ level.sortedClients[0] ].ps.persistant[PERS_SCORE] ) );
+			trap_SetConfigstring( CS_SCORES2, va("%i", SCORE_NOT_PRESENT) );
+		} else {
+			trap_SetConfigstring( CS_SCORES1, va("%i", level.clients[ level.sortedClients[0] ].ps.persistant[PERS_SCORE] ) );
+			trap_SetConfigstring( CS_SCORES2, va("%i", level.clients[ level.sortedClients[1] ].ps.persistant[PERS_SCORE] ) );
+		}
+	}
 
 	// see if it is time to end the level
 	CheckExitRules();
@@ -1529,18 +1519,11 @@ void CheckIntermissionExit( void ) {
 	gclient_t	*cl;
 	int			readyMask;
 
-        if ( g_gametype.integer == GT_SINGLE_PLAYER ) {
-                return;
-        }
+	if ( g_gametype.integer == GT_SINGLE_PLAYER ) {
+		return;
+	}
 
-        if ( g_gametype.integer == GT_RALLYBALL ) {
-                if ( level.time >= level.intermissiontime + 5000 ) {
-                        ExitLevel();
-                }
-                return;
-        }
-
-        // see which players are ready
+	// see which players are ready
 	ready = 0;
 	notReady = 0;
 	readyMask = 0;
@@ -1624,7 +1607,7 @@ qboolean ScoreIsTied( void ) {
 	
 // STONELANCE
 	// races or rallys can never be tied, otherwise then the level will not end
-        if ( g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS || g_gametype.integer == GT_RALLYBALL || isRallyRace() )
+	if ( g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS || isRallyRace() )
 	{
 /*
 		a = level.clients[level.sortedClients[0]].finishRaceTime;
@@ -1821,9 +1804,9 @@ void CheckExitRules( void ) {
 
 // STONELANCE
 	// dont check frags or captures during a race or derby
-        if ( isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS || g_gametype.integer == GT_RALLYBALL ){
-                return;
-        }
+	if ( isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS ){
+		return;
+	}
 // END
 
 	if ( g_fraglimit.integer < 0 ) {
@@ -2321,10 +2304,10 @@ void G_RunFrame( int levelTime ) {
 			continue;
 		}
 
-               if ( ent->s.eType == ET_ITEM || ent->physicsObject || ent->s.eType == ET_RALLYBALL ) {
-                       G_RunItem( ent );
-                       continue;
-               }
+		if ( ent->s.eType == ET_ITEM || ent->physicsObject ) {
+			G_RunItem( ent );
+			continue;
+		}
 
 		if ( ent->s.eType == ET_MOVER ) {
 			G_RunMover( ent );
@@ -2362,10 +2345,6 @@ void G_RunFrame( int levelTime ) {
 	// check team votes
 	CheckTeamVote( TEAM_RED );
 	CheckTeamVote( TEAM_BLUE );
-
-        if ( g_gametype.integer == GT_RALLYBALL ) {
-                G_RallyBall_RunFrame();
-        }
 
 	// for tracking changes
 	CheckCvars();

@@ -65,8 +65,3 @@ int AINode_MoveToNextCheckpoint(bot_state_t *bs);
 void BotResetNodeSwitches(void);
 void BotDumpNodeSwitches(bot_state_t *bs);
 
-// Rallyball helpers
-qboolean BotGetRallyBallGoal(bot_state_t *bs, bot_goal_t *goal);
-qboolean BotRallyBallShot(bot_state_t *bs);
-void BotSteerToRallyBall(bot_state_t *bs);
-

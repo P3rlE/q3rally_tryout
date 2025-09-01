@@ -89,15 +89,14 @@ static const int numServerFilters = ARRAY_LEN( serverFilters );
 
 
 static const char *teamArenaGameTypes[] = {
-        "FFA",
-        "TOURNAMENT",
-        "SP",
-        "TEAM DM",
-        "CTF",
-        "1FCTF",
-        "OVERLOAD",
-        "HARVESTER",
-        "RALLY BALL"
+	"FFA",
+	"TOURNAMENT",
+	"SP",
+	"TEAM DM",
+	"CTF",
+	"1FCTF",
+	"OVERLOAD",
+	"HARVESTER"
 };
 
 static int const numTeamArenaGameTypes = ARRAY_LEN( teamArenaGameTypes );

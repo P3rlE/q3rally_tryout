@@ -23,9 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 // bg_public.h -- definitions shared by both the server game and client game modules
 
-#ifndef BG_PUBLIC_H
-#define BG_PUBLIC_H
-
 // STONELANCE
 #include "bg_physics.h"
 // END
@@ -155,7 +152,6 @@ typedef enum {
         GT_CTF,                         // capture the flag
         GT_CTF4,                        // 4 team capture the flag
         GT_DOMINATION,              // domination
-        GT_RALLYBALL,               // rally ball
 // Q3Rally Code END
         GT_MAX_GAME_TYPE
 } gametype_t;
@@ -302,7 +298,6 @@ typedef struct {
         float           car_air_cof;
         float           car_air_frac_to_df;
         float           car_friction_scale;
-        float           boost_speed;
 // END
 } pmove_t;
 
@@ -892,10 +887,9 @@ typedef enum {
         ET_WEATHER,                             // used to specify per area weather
         ET_CHECKPOINT,
         ET_SCRIPTED,                    // used for our new scripted map objects
-	ET_AUXENT,                              // extra ent for passing car info to client
-	ET_RALLYBALL,                   // rally ball entity
+        ET_AUXENT,                              // extra ent for passing car info to client
 // END
-	ET_EVENTS                               // any of the EV_* events can be added freestanding
+        ET_EVENTS                               // any of the EV_* events can be added freestanding
                                                         // by setting eType to ET_EVENTS + eventNum
                                                         // this avoids having to set eFlags and eventNum
 } entityType_t;
@@ -950,6 +944,4 @@ qboolean        BG_PlayerTouchesItem( playerState_t *ps, entityState_t *item, in
 #define KAMI_SHOCKWAVE_MAXRADIUS                1320
 #define KAMI_BOOMSPHERE_MAXRADIUS               720
 #define KAMI_SHOCKWAVE2_MAXRADIUS               704
-
-#endif // BG_PUBLIC_H
 

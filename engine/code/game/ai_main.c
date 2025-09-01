@@ -1085,13 +1085,9 @@ int BotAI(int client, float thinktime) {
 	bs->eye[2] += bs->cur_ps.viewheight;
 	//get the area the bot is in
 	bs->areanum = BotPointAreaNum(bs->origin);
-        //the real AI
-        BotDeathmatchAI(bs, thinktime);
-
-        // rallyball steering adjustment
-        BotSteerToRallyBall(bs);
-
-        //set the weapon selection every AI frame
+	//the real AI
+	BotDeathmatchAI(bs, thinktime);
+	//set the weapon selection every AI frame
 	trap_EA_SelectWeapon(bs->client, bs->weaponnum);
 	//subtract the delta angles
 	for (j = 0; j < 3; j++) {

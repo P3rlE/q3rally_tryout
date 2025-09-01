@@ -528,11 +528,6 @@ typedef struct {
 
         int                     testModelID;
 // END
-
-	// rallyball state
-	gentity_t	*rallyball;
-	vec3_t	rallyballSpawn;
-	int	rallyballEndTime;
 } level_locals_t;
 
 
@@ -557,25 +552,10 @@ extern void SP_team_CTF_bluespawn( gentity_t *ent );
 extern void SP_team_CTF_greenspawn( gentity_t *ent );
 extern void SP_team_CTF_yellowspawn( gentity_t *ent );
 
-extern void SP_rallyball_redplayer( gentity_t *ent );
-extern void SP_rallyball_blueplayer( gentity_t *ent );
-extern void SP_rallyball_greenplayer( gentity_t *ent );
-extern void SP_rallyball_yellowplayer( gentity_t *ent );
-
-extern void SP_rallyball_redspawn( gentity_t *ent );
-extern void SP_rallyball_bluespawn( gentity_t *ent );
-extern void SP_rallyball_greenspawn( gentity_t *ent );
-extern void SP_rallyball_yellowspawn( gentity_t *ent );
-
 extern void SP_team_CTF_redflag( gentity_t *ent );
 extern void SP_team_CTF_blueflag( gentity_t *ent );
 extern void SP_team_CTF_greenflag( gentity_t *ent );
 extern void SP_team_CTF_yellowflag( gentity_t *ent );
-
-extern void SP_trigger_rallyball_goal( gentity_t *ent );
-extern void SP_rallyball_spawn( gentity_t *ent );
-void G_RallyBall_Init( void );
-void G_RallyBall_RunFrame( void );
 
 
 //
@@ -848,8 +828,6 @@ void G_RallyObject_ApplyForce( gentity_t *self, vec3_t force, vec3_t at );
 qboolean G_RallyObject_ApplyCollision( gentity_t *self, vec3_t at, vec3_t normal, float elasticity );
 void G_RallyObject_TracePhysics( gentity_t *self, float time );
 void G_RallyObject_IntegratePhysics( gentity_t *self, float time );
-// g_rallyball_ball.c
-gentity_t *G_SpawnRallyBall( vec3_t origin );
 // END
 
 
@@ -1054,8 +1032,6 @@ extern	vmCvar_t	car_body_elasticity;
 extern	vmCvar_t	car_air_cof;
 extern	vmCvar_t	car_air_frac_to_df;
 extern	vmCvar_t	car_friction_scale;
-extern  vmCvar_t        ball_mass;
-extern  vmCvar_t        boost_speed;
 // END
 
 void	trap_Print( const char *text );

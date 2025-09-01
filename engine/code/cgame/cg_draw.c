@@ -3151,47 +3151,6 @@ static void CG_DrawSigilLocations( void ) {
     }
   }
 //==================================================================================
-
-static void CG_DrawRallyBallIndicator(void) {
-    int i;
-    centity_t *cent = NULL;
-    entityState_t *es;
-    vec3_t dir;
-    float yaw, relYaw, angle, x, y;
-    vec4_t color = {1,1,0,1};
-
-    if (!cg.snap) {
-        return;
-    }
-
-    for (i = 0; i < cg.snap->numEntities; i++) {
-        es = &cg.snap->entities[i];
-        if (es->eType == ET_RALLYBALL) {
-            cent = &cg_entities[es->number];
-            break;
-        }
-    }
-
-    if (!cent) {
-        return;
-    }
-
-    VectorSubtract(cent->lerpOrigin, cg.refdef.vieworg, dir);
-    if (VectorNormalize(dir) <= 0) {
-        return;
-    }
-
-    yaw = atan2(dir[1], dir[0]) * 180.0f / M_PI;
-    relYaw = AngleSubtract(yaw, cg.refdefViewAngles[YAW]);
-    angle = relYaw * (M_PI / 180.0f);
-    x = SCREEN_WIDTH / 2 + sin(angle) * 100.0f;
-    y = SCREEN_HEIGHT / 2 - cos(angle) * 100.0f;
-
-    trap_R_SetColor(color);
-    CG_DrawPic(x - 8, y - 8, 16, 16, cgs.media.whiteShader);
-    trap_R_SetColor(NULL);
-}
-
 #ifdef MISSIONPACK
 /* 
 =================
@@ -3276,12 +3235,9 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 #else
 	
 #endif
-                        CG_DrawReward();
-                        if (cgs.gametype == GT_RALLYBALL) {
-                                CG_DrawRallyBallIndicator();
-                        }
-                }
-        }
+			CG_DrawReward();
+		}
+	}
 
 	if ( cgs.gametype >= GT_TEAM ) {
 #ifndef MISSIONPACK

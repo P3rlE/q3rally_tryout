@@ -97,13 +97,12 @@ static const char *gametype_items[] = {
 	"Capture the Flag",
 	"4-Team CTF",
     "Domination",
-    "Rally Ball",
-        0
+	0
 };
 
 // gametype_items[gametype_remap2[s_serveroptions.gametype]]
-static int gametype_remap[] = {GT_RACING, GT_RACING_DM, GT_DERBY, GT_LCS, GT_DEATHMATCH, GT_TEAM, GT_TEAM_RACING, GT_TEAM_RACING_DM, GT_CTF, GT_CTF4, GT_DOMINATION, GT_RALLYBALL};
-static int gametype_remap2[] = {0, 1, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+static int gametype_remap[] = {GT_RACING, GT_RACING_DM, GT_DERBY, GT_LCS, GT_DEATHMATCH, GT_TEAM, GT_TEAM_RACING, GT_TEAM_RACING_DM, GT_CTF, GT_CTF4, GT_DOMINATION};
+static int gametype_remap2[] = {0, 1, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
 int		allowLength[3];
 int		reversable;
@@ -334,7 +333,6 @@ static const struct {
         { "q3r_ctf", GT_CTF },
         { "q3r_ctf4", GT_CTF4 },
         { "q3r_dom", GT_DOMINATION },
-        { "q3r_ball", GT_RALLYBALL },
 };
 
 /*

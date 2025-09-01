@@ -205,15 +205,12 @@ void UI_LoadArenasIntoMapList( void ) {
 			if( strstr( type, "overload" ) ) {
 				uiInfo.mapList[uiInfo.mapCount].typeBits |= (1 << GT_OBELISK);
 			}
-                        if( strstr( type, "harvester" ) ) {
-                                uiInfo.mapList[uiInfo.mapCount].typeBits |= (1 << GT_HARVESTER);
-                        }
-                        if( strstr( type, "rallyball" ) ) {
-                                uiInfo.mapList[uiInfo.mapCount].typeBits |= (1 << GT_RALLYBALL);
-                        }
-                } else {
-                        uiInfo.mapList[uiInfo.mapCount].typeBits |= (1 << GT_FFA);
-                }
+			if( strstr( type, "harvester" ) ) {
+				uiInfo.mapList[uiInfo.mapCount].typeBits |= (1 << GT_HARVESTER);
+			}
+		} else {
+			uiInfo.mapList[uiInfo.mapCount].typeBits |= (1 << GT_FFA);
+		}
 
 		uiInfo.mapCount++;
 		if (uiInfo.mapCount >= MAX_MAPS) {

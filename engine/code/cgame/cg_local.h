@@ -690,8 +690,6 @@ typedef struct {
 	int			selectedScore;
 	int			teamScores[4];
 	int			teamTimes[4];
-        int     rallyballGoalTime;
-        team_t  rallyballLastGoalTeam;
 	score_t		scores[MAX_CLIENTS];
 	qboolean	showScores;
 	qboolean	scoreBoardShowing;

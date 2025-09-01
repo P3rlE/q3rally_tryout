@@ -1347,55 +1347,29 @@ gentity_t *SelectRandomTeamSpawnPoint( int teamstate, team_t team ) {
 	gentity_t	*spots[MAX_TEAM_SPAWN_POINTS];
 	char		*classname;
 
-        if (teamstate == TEAM_BEGIN) {
-               if (g_gametype.integer == GT_RALLYBALL) {
-                        if (team == TEAM_RED)
-                                classname = "rallyball_redplayer";
-                        else if (team == TEAM_BLUE)
-                                classname = "rallyball_blueplayer";
-                        else if (team == TEAM_GREEN)
-                                classname = "rallyball_greenplayer";
-                        else if (team == TEAM_YELLOW)
-                                classname = "rallyball_yellowplayer";
-                        else
-                                return NULL;
-                } else {
-                        if (team == TEAM_RED)
-                                classname = "team_CTF_redplayer";
-                        else if (team == TEAM_BLUE)
-                                classname = "team_CTF_blueplayer";
-                        else if (team == TEAM_GREEN)
-                                classname = "team_CTF_greenplayer";
-                        else if (team == TEAM_YELLOW)
-                                classname = "team_CTF_yellowplayer";
-                        else
-                                return NULL;
-                }
-        } else {
-               if (g_gametype.integer == GT_RALLYBALL) {
-                        if (team == TEAM_RED)
-                                classname = "rallyball_redspawn";
-                        else if (team == TEAM_BLUE)
-                                classname = "rallyball_bluespawn";
-                        else if (team == TEAM_GREEN)
-                                classname = "rallyball_greenspawn";
-                        else if (team == TEAM_YELLOW)
-                                classname = "rallyball_yellowspawn";
-                        else
-                                return NULL;
-                } else {
-                        if (team == TEAM_RED)
-                                classname = "team_CTF_redspawn";
-                        else if (team == TEAM_BLUE)
-                                classname = "team_CTF_bluespawn";
-                        else if (team == TEAM_GREEN)
-                                classname = "team_CTF_greenspawn";
-                        else if (team == TEAM_YELLOW)
-                                classname = "team_CTF_yellowspawn";
-                        else
-                                return NULL;
-                }
-        }
+	if (teamstate == TEAM_BEGIN) {
+		if (team == TEAM_RED)
+			classname = "team_CTF_redplayer";
+		else if (team == TEAM_BLUE)
+			classname = "team_CTF_blueplayer";
+		else if (team == TEAM_GREEN)
+			classname = "team_CTF_greenplayer";
+		else if (team == TEAM_YELLOW)
+			classname = "team_CTF_yellowplayer";
+		else
+			return NULL;
+	} else {
+		if (team == TEAM_RED)
+			classname = "team_CTF_redspawn";
+		else if (team == TEAM_BLUE)
+			classname = "team_CTF_bluespawn";
+		else if (team == TEAM_GREEN)
+			classname = "team_CTF_greenspawn";
+		else if (team == TEAM_YELLOW)
+			classname = "team_CTF_yellowspawn";
+		else
+			return NULL;
+	}
 	count = 0;
 
 	spot = NULL;
@@ -1636,67 +1610,7 @@ potential spawning position for yellow team in CTF games.
 Targets will be fired when someone spawns in on them.
 */
 void SP_team_CTF_yellowspawn(gentity_t *ent) {
-        (void)ent;
-}
-
-/*QUAKED rallyball_redplayer (1 0 0) (-16 -16 -16) (16 16 32)
-Only in Rallyball games.  Red players spawn here at game start.
-*/
-void SP_rallyball_redplayer( gentity_t *ent ) {
-        SP_team_CTF_redplayer( ent );
-}
-
-/*QUAKED rallyball_blueplayer (0 0 1) (-16 -16 -16) (16 16 32)
-Only in Rallyball games.  Blue players spawn here at game start.
-*/
-void SP_rallyball_blueplayer( gentity_t *ent ) {
-        SP_team_CTF_blueplayer( ent );
-}
-
-/*QUAKED rallyball_greenplayer (0 1 0) (-16 -16 -16) (16 16 32)
-Only in Rallyball games.  Green players spawn here at game start.
-*/
-void SP_rallyball_greenplayer( gentity_t *ent ) {
-        SP_team_CTF_greenplayer( ent );
-}
-
-/*QUAKED rallyball_yellowplayer (1 1 0) (-16 -16 -16) (16 16 32)
-Only in Rallyball games.  Yellow players spawn here at game start.
-*/
-void SP_rallyball_yellowplayer( gentity_t *ent ) {
-        SP_team_CTF_yellowplayer( ent );
-}
-
-/*QUAKED rallyball_redspawn (1 0 0) (-16 -16 -24) (16 16 32)
-potential spawning position for red team in Rallyball games.
-Targets will be fired when someone spawns in on them.
-*/
-void SP_rallyball_redspawn(gentity_t *ent) {
-        SP_team_CTF_redspawn( ent );
-}
-
-/*QUAKED rallyball_bluespawn (0 0 1) (-16 -16 -24) (16 16 32)
-potential spawning position for blue team in Rallyball games.
-Targets will be fired when someone spawns in on them.
-*/
-void SP_rallyball_bluespawn(gentity_t *ent) {
-        SP_team_CTF_bluespawn( ent );
-}
-
-/*QUAKED rallyball_greenspawn (0 1 0) (-16 -16 -24) (16 16 32)
-potential spawning position for green team in Rallyball games.
-Targets will be fired when someone spawns in on them.
-*/
-void SP_rallyball_greenspawn(gentity_t *ent) {
-        SP_team_CTF_greenspawn( ent );
-}
-
-/*QUAKED rallyball_yellowspawn (1 1 0) (-16 -16 -24) (16 16 32)
-potential spawning position for yellow team in Rallyball games.
-Targets will be fired when someone spawns in on them.
-*/
-void SP_rallyball_yellowspawn(gentity_t *ent) {
-        SP_team_CTF_yellowspawn( ent );
+	(void)ent;
 }
 
 /*QUAKED team_CTF_redflag (1 0 0) (-16 -16 -16) (16 16 16)
