@@ -520,19 +520,23 @@ static void CG_Missile( centity_t *cent ) {
 	VectorCopy( cent->lerpOrigin, ent.origin);
 	VectorCopy( cent->lerpOrigin, ent.oldorigin);
 
-       if ( cent->currentState.weapon == WP_PLASMAGUN ) {
-               ent.reType = RT_SPRITE;
-               ent.radius = 16;
-               ent.rotation = 0;
-               ent.customShader = cgs.media.plasmaBallShader;
-               trap_R_AddRefEntityToScene( &ent );
-               return;
-       }
+	if ( cent->currentState.weapon == WP_PLASMAGUN ) {
+		ent.reType = RT_SPRITE;
+		ent.radius = 16;
+		ent.rotation = 0;
+		ent.customShader = cgs.media.plasmaBallShader;
+		trap_R_AddRefEntityToScene( &ent );
+		return;
+	}
 
-       if ( cent->currentState.weapon == WP_FLAME_THROWER ) {
-               CG_FlameStream( cent, cent->lerpOrigin );
-               return;
-       }
+	if ( cent->currentState.weapon == WP_FLAME_THROWER ) {
+		ent.reType = RT_SPRITE;
+		ent.radius = 32;
+		ent.rotation = 0;
+		ent.customShader = cgs.media.flameBallShader;
+		trap_R_AddRefEntityToScene( &ent );
+		return;
+	}
 
 // Q3Rally Code Start
 	if (cent->currentState.weapon == RWP_MINE){

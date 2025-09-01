@@ -1096,47 +1096,6 @@ static void CG_LightningBolt( centity_t *cent, vec3_t origin ) {
         }
 }
 
-void CG_FlameStream( centity_t *cent, vec3_t origin ) {
-       trace_t  trace;
-       refEntity_t  beam;
-       vec3_t   forward;
-       vec3_t   muzzlePoint, endPoint;
-       vec3_t   up;
-
-       if (cent->currentState.weapon != WP_FLAME_THROWER) {
-               return;
-       }
-
-       memset( &beam, 0, sizeof( beam ) );
-
-       AngleVectors( cent->lerpAngles, forward, NULL, up );
-
-       VectorCopy( cent->lerpOrigin, muzzlePoint );
-
-       VectorMA( muzzlePoint, CAR_HEIGHT/2, up, muzzlePoint );
-
-       VectorMA( muzzlePoint, 14, forward, muzzlePoint );
-
-       VectorMA( muzzlePoint, FLAME_STREAM_RANGE, forward, endPoint );
-
-       CG_Trace( &trace, muzzlePoint, vec3_origin, vec3_origin, endPoint,
-               cent->currentState.number, MASK_SHOT );
-
-       VectorCopy( trace.endpos, beam.oldorigin );
-
-       VectorCopy( origin, beam.origin );
-
-       beam.reType = RT_LIGHTNING;
-       beam.customShader = cgs.media.flameStreamShader;
-
-       beam.shaderRGBA[0] = 0xff;
-       beam.shaderRGBA[1] = 0xff;
-       beam.shaderRGBA[2] = 0xff;
-       beam.shaderRGBA[3] = 0xff;
-
-       trap_R_AddRefEntityToScene( &beam );
-}
-
 /*
 ================
 CG_LightningArc
@@ -1367,19 +1326,16 @@ void CG_AddPlayerWeapon( refEntity_t *parent, playerState_t *ps, centity_t *cent
 	CG_PositionRotatedEntityOnTag( &flash, &gun, weapon->weaponModel, "tag_flash");
 	trap_R_AddRefEntityToScene( &flash );
 
-       if ( ps || cg.renderingThirdPerson ||
-               cent->currentState.number != cg.predictedPlayerState.clientNum ) {
-               if ( weaponNum == WP_LIGHTNING ) {
-                       CG_LightningBolt( nonPredictedCent, flash.origin );
-               } else if ( weaponNum == WP_FLAME_THROWER ) {
-                       CG_FlameStream( nonPredictedCent, flash.origin );
-               }
+	if ( ps || cg.renderingThirdPerson ||
+		cent->currentState.number != cg.predictedPlayerState.clientNum ) {
+		// add lightning bolt
+		CG_LightningBolt( nonPredictedCent, flash.origin );
 
-               if ( weapon->flashDlightColor[0] || weapon->flashDlightColor[1] || weapon->flashDlightColor[2] ) {
-                       trap_R_AddLightToScene( flash.origin, 300 + (rand()&31), weapon->flashDlightColor[0],
-                               weapon->flashDlightColor[1], weapon->flashDlightColor[2] );
-               }
-       }
+		if ( weapon->flashDlightColor[0] || weapon->flashDlightColor[1] || weapon->flashDlightColor[2] ) {
+			trap_R_AddLightToScene( flash.origin, 300 + (rand()&31), weapon->flashDlightColor[0],
+				weapon->flashDlightColor[1], weapon->flashDlightColor[2] );
+		}
+	}
 }
 
 /*

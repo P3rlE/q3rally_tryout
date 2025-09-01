@@ -675,7 +675,6 @@ gentity_t *fire_bfg (gentity_t *self, vec3_t start, vec3_t dir);
 // Q3Rally Code Start
 // gentity_t *fire_grapple (gentity_t *self, vec3_t start, vec3_t dir);
 gentity_t *fire_flame (gentity_t *self, vec3_t start, vec3_t aimdir);
-void fire_flame_stream (gentity_t *self, vec3_t start, vec3_t dir, int damage);
 gentity_t *fire_cluster_flame (gentity_t *self, vec3_t start, vec3_t aimdir); //TBB - just an idea atm
 //gentity_t *fire_cluster_flame2 (gentity_t *self, vec3_t start, vec3_t aimdir); //TBB - just an idea atm
 gentity_t *fire_mine( gentity_t *self, vec3_t start, vec3_t dir);
