@@ -210,6 +210,42 @@ gentity_t *fire_flame (gentity_t *self, vec3_t start, vec3_t dir) {
 	return bolt;
 }
 
+/*
+=================
+fire_flame_stream
+=================
+*/
+void fire_flame_stream (gentity_t *self, vec3_t start, vec3_t dir, int damage) {
+        trace_t         tr;
+        vec3_t          end;
+        gentity_t       *traceEnt, *tent;
+
+        VectorNormalize(dir);
+        VectorMA(start, FLAME_STREAM_RANGE, dir, end);
+
+        trap_Trace(&tr, start, NULL, NULL, end, self->s.number, MASK_SHOT);
+
+        if (tr.entityNum == ENTITYNUM_NONE) {
+                return;
+        }
+
+        if (g_entities[ tr.entityNum ].flags & FL_EXTRA_BBOX)
+                traceEnt = &g_entities[ g_entities[ tr.entityNum ].r.ownerNum ];
+        else
+                traceEnt = &g_entities[ tr.entityNum ];
+
+        if ( traceEnt->takedamage ) {
+                G_Damage(traceEnt, self, self, dir, tr.endpos, damage, DAMAGE_WEAPON, MOD_FLAME_THROWER);
+                tent = G_TempEntity( tr.endpos, EV_MISSILE_HIT );
+                tent->s.otherEntityNum = traceEnt->s.number;
+                tent->s.eventParm = DirToByte( tr.plane.normal );
+                tent->s.weapon = self->s.weapon;
+        } else if ( !( tr.surfaceFlags & SURF_NOIMPACT ) ) {
+                tent = G_TempEntity( tr.endpos, EV_MISSILE_MISS );
+                tent->s.eventParm = DirToByte( tr.plane.normal );
+        }
+}
+
 //TBB
 
 /*

@@ -810,6 +810,7 @@ typedef struct {
 	qhandle_t	whiteShader;
 	qhandle_t	flameBallShader;
 	qhandle_t	flameExplosionShader;
+	qhandle_t	flameStreamShader;
 
 	qhandle_t	redFlagModel;
 	qhandle_t	blueFlagModel;
@@ -1742,6 +1743,7 @@ void CG_InvulnerabilityJuiced( vec3_t org );
 #endif
 void CG_LightningBoltBeam( vec3_t start, vec3_t end );
 void CG_LightningArc( vec3_t start, vec3_t end );
+void CG_FlameStream( centity_t *cent, vec3_t origin );
 void CG_ScorePlum( int client, vec3_t org, int score );
 void CG_ShowDebris( vec3_t srcOrigin, int count, int evType );
 void CG_StartEarthquake(int intensity, int duration);

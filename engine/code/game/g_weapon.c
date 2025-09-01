@@ -138,11 +138,10 @@ FLAME THROWER
 =======================================================================
 */
 void Weapon_fire_flame (gentity_t *ent ) {
-	gentity_t *m;
+        int damage;
 
-	m = fire_flame(ent, muzzle, forward);
-	m->damage *= s_quadFactor;
-	m->splashDamage *= s_quadFactor;
+        damage = 30 * s_quadFactor;
+        fire_flame_stream(ent, muzzle, forward, damage);
 }
 
 /*
