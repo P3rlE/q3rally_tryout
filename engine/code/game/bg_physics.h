@@ -322,6 +322,9 @@ typedef struct {
 	int		gear; // -1 reverse, 0 neutral, 1+ forward gears
 	float	rpm;
 
+    float	fuel;
+	float	maxFuel;
+
 	qboolean	initializeOnNextMove;
 
 //	float	aCOF;
