@@ -245,9 +245,10 @@ spawn_t	spawns[] = {
 	// could not be client side predicted (push and teleport).
 	{"trigger_always", SP_trigger_always},
 	{"trigger_multiple", SP_trigger_multiple},
-	{"trigger_push", SP_trigger_push},
-	{"trigger_teleport", SP_trigger_teleport},
-	{"trigger_hurt", SP_trigger_hurt},
+        {"trigger_push", SP_trigger_push},
+        {"trigger_teleport", SP_trigger_teleport},
+        {"trigger_hurt", SP_trigger_hurt},
+        {"trigger_fuel", SP_trigger_fuel},
 
 	// targets perform no action by themselves, but must be triggered
 	// by another entity
