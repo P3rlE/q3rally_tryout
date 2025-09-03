@@ -792,7 +792,8 @@ typedef enum {
         IT_TEAM,
 // Q3Rally Code Start
         IT_RFWEAPON,
-        IT_SIGIL
+        IT_SIGIL,
+        IT_FUEL
 // Q3Rally Code END
 } itemType_t;
 

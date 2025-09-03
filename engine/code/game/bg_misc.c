@@ -239,12 +239,28 @@ Only in CTF games
 		0,
 /* precache */ "",
 /* sounds */ ""
-	},
+        },
+
+/*QUAKED item_fuelcan (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
+Refills vehicle fuel.
+*/
+        {
+                "item_fuelcan",
+                "sound/items/n_health.wav",
+        { "models/items/fuelcan.md3", NULL, NULL, NULL },
+/* icon */              "icons/fuelcan",
+/* pickup */    "Fuel Can",
+                25,
+                IT_FUEL,
+                0,
+/* precache */ "",
+/* sounds */ ""
+        },
 
 
-	//
-	// WEAPONS 
-	//
+        //
+        // WEAPONS
+        //
 
 /*QUAKED weapon_gauntlet (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 */
