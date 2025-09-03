@@ -352,12 +352,32 @@ int Pickup_Armor( gentity_t *ent, gentity_t *other ) {
 	}
 #else
 	other->client->ps.stats[STAT_ARMOR] += ent->item->quantity;
-	if ( other->client->ps.stats[STAT_ARMOR] > other->client->ps.stats[STAT_MAX_HEALTH] * 2 ) {
-		other->client->ps.stats[STAT_ARMOR] = other->client->ps.stats[STAT_MAX_HEALTH] * 2;
-	}
+        if ( other->client->ps.stats[STAT_ARMOR] > other->client->ps.stats[STAT_MAX_HEALTH] * 2 ) {
+                other->client->ps.stats[STAT_ARMOR] = other->client->ps.stats[STAT_MAX_HEALTH] * 2;
+        }
 #endif
 
-	return RESPAWN_ARMOR;
+        return RESPAWN_ARMOR;
+}
+
+int Pickup_FuelCan( gentity_t *ent, gentity_t *other ) {
+        float amount;
+        float max;
+
+        if ( ent->count ) {
+                amount = ent->count;
+        } else {
+                amount = ent->item->quantity;
+        }
+
+        max = other->client->car.maxFuel;
+        other->client->car.fuel += amount;
+        if ( other->client->car.fuel > max ) {
+                other->client->car.fuel = max;
+        }
+        other->client->ps.stats[STAT_FUEL] = (int)other->client->car.fuel;
+
+        return RESPAWN_HEALTH;
 }
 
 //======================================================================
@@ -501,13 +521,16 @@ void Touch_Item (gentity_t *ent, gentity_t *other, trace_t *trace) {
 	case IT_ARMOR:
 		respawn = Pickup_Armor(ent, other);
 		break;
-	case IT_HEALTH:
-		respawn = Pickup_Health(ent, other);
-		break;
-	case IT_POWERUP:
-		respawn = Pickup_Powerup(ent, other);
-		predict = qfalse;
-		break;
+        case IT_HEALTH:
+                respawn = Pickup_Health(ent, other);
+                break;
+       case IT_FUEL:
+               respawn = Pickup_FuelCan(ent, other);
+               break;
+        case IT_POWERUP:
+                respawn = Pickup_Powerup(ent, other);
+                predict = qfalse;
+                break;
 #ifdef MISSIONPACK
 	case IT_PERSISTANT_POWERUP:
 		respawn = Pickup_PersistantPowerup(ent, other);
@@ -714,7 +737,12 @@ Respawn the item
 ================
 */
 void Use_Item( gentity_t *ent, gentity_t *other, gentity_t *activator ) {
-	RespawnItem( ent );
+        if ( ent->item->giType == IT_FUEL ) {
+                RespawnItem( ent );
+                return;
+        }
+
+        RespawnItem( ent );
 }
 
 //======================================================================
