@@ -61,7 +61,7 @@ extern	float CP_M_2_QU;
 #define	CP_WHEEL_MASS		50.0f // 100
 #define	CP_CAR_MASS			( CP_FRAME_MASS * 4 + CP_WHEEL_MASS * 4 )
 #define CP_MAX_FUEL             100.0f
-#define CP_FUEL_CONSUMPTION     0.5f
+#define CP_FUEL_CONSUMPTION     1.0f
 
 #define	CP_BODY_ELASTICITY	0.05f
 #define	CP_WHEEL_ELASTICITY	0.05f
