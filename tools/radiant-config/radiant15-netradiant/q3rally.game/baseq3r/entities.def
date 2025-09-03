@@ -2720,6 +2720,11 @@ disable_splash turns off splashes, improving framerates since there is not as mu
 /*QUAKED rally_item_quad (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 */
 
+/*QUAKED item_fuelcan (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
+Refills vehicle fuel.
+model="models/items/fuelcan.md3"
+*/
+
 
 //ROADSIDE OBJECTS
 
