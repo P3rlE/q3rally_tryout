@@ -312,7 +312,7 @@ void Pmove (pmove_t *pmove);
 
 
 // player_state->stats[] indexes
-// NOTE: may not have more than 32
+// NOTE: may not have more than 18
 typedef enum {
         STAT_HEALTH,
         STAT_HOLDABLE_ITEM,
