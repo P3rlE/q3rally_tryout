@@ -2315,6 +2315,17 @@ To make a jump pad or launch ramp, place the target_position/info_notnull entity
 
 //=============================================================================
 
+/*QUAKED trigger_fuel (.5 .5 .5) ?
+Brush trigger that continuously refuels vehicles that touch it.
+-------- KEYS --------
+rate : fuel units added per second (default 10)
+max : maximum fuel level to fill to (default vehicle maximum)
+-------- NOTES --------
+Place this around pit stops or areas where cars should be refueled.
+*/
+
+//=============================================================================
+
 /*QUAKED trigger_rallyball_goal (.5 .5 .5) ? RED_GOAL BLUE_GOAL GREEN_GOAL YELLOW_GOAL
 A trigger volume that scores for the specified team when the rallyball touches it.
 -------- SPAWNFLAGS --------
