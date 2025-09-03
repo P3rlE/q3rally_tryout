@@ -1891,6 +1891,7 @@ float CG_DrawLowerRightHUD( float y );
 float CG_DrawLowerLeftHUD( float y );
 void CG_DrawMMap( float x, float y, float w, float h );
 void CG_DrawHUD_DerbyList(float x, float y);
+void CG_DrawFuelGauge( float x, float y, float w, float h );
 
 
 //

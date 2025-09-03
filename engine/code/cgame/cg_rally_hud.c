@@ -174,6 +174,45 @@ void CG_DrawMMap(float x, float y, float w, float h) {
 }
 
 /*
+====================
+CG_DrawFuelGauge
+====================
+*/
+void CG_DrawFuelGauge( float x, float y, float w, float h ) {
+       int     fuel;
+       float   frac;
+       vec4_t  backColor = {0.0f, 0.0f, 0.0f, 0.25f};
+       vec4_t  fuelColor = {0.0f, 0.8f, 0.0f, 0.8f};
+       vec4_t  warnColor = {1.0f, 0.0f, 0.0f, 0.8f};
+
+       if ( !cg.snap ) {
+               return;
+       }
+
+       fuel = cg.snap->ps.stats[STAT_FUEL];
+
+       if ( fuel < 0 ) {
+               fuel = 0;
+       }
+       if ( fuel > 100 ) {
+               fuel = 100;
+       }
+
+       frac = fuel / 100.0f;
+
+       CG_DrawRect( x, y, w, h, 1, colorWhite );
+       CG_FillRect( x + 1, y + 1, w - 2, h - 2, backColor );
+
+       if ( frac < 0.10f ) {
+               if ( (cg.time >> 8) & 1 ) {
+                       CG_FillRect( x + 1, y + 1, (w - 2) * frac, h - 2, warnColor );
+               }
+       } else {
+               CG_FillRect( x + 1, y + 1, (w - 2) * frac, h - 2, fuelColor );
+       }
+}
+
+/*
 ========================
 CG_DrawArrowToCheckpoint
 ========================
