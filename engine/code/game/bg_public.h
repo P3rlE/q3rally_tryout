@@ -412,6 +412,7 @@ typedef enum {
 // STONELANCE
         HI_TURBO,
 // END
+        HI_FUELCAN,
         HI_NUM_HOLDABLE
 } holdable_t;
 
@@ -793,7 +794,6 @@ typedef enum {
 // Q3Rally Code Start
         IT_RFWEAPON,
         IT_SIGIL,
-        IT_FUEL
 // Q3Rally Code END
 } itemType_t;
 

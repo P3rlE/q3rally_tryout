@@ -250,9 +250,9 @@ Refills vehicle fuel.
         { "models/items/fuelcan.md3", NULL, NULL, NULL },
 /* icon */              "icons/fuelcan",
 /* pickup */    "Fuel Can",
-                25,
-                IT_FUEL,
-                0,
+               25,
+               IT_HOLDABLE,
+               HI_FUELCAN,
 /* precache */ "",
 /* sounds */ ""
         },
@@ -1509,13 +1509,7 @@ qboolean BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const play
                 }
                 return qtrue;
 
-        case IT_FUEL:
-                if ( ps->stats[STAT_FUEL] < maxFuel ) {
-                        return qtrue;
-                }
-                return qfalse;
-
-        case IT_POWERUP:
+       case IT_POWERUP:
 // STONELANCE
 //		return qtrue;	// powerups are always picked up
 
@@ -1642,12 +1636,18 @@ qboolean BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const play
 	     return qtrue;
 // Q3Rally Code END
 
-	case IT_HOLDABLE:
-		// can only hold one item at a time
-		if ( ps->stats[STAT_HOLDABLE_ITEM] ) {
-			return qfalse;
-		}
-		return qtrue;
+       case IT_HOLDABLE:
+               if ( item->giTag == HI_FUELCAN ) {
+                       if ( ps->stats[STAT_HOLDABLE_ITEM] ) {
+                               return qfalse;
+                       }
+                       return qtrue;
+               }
+               // can only hold one item at a time
+               if ( ps->stats[STAT_HOLDABLE_ITEM] ) {
+                       return qfalse;
+               }
+               return qtrue;
 
         case IT_BAD:
             Com_Error( ERR_DROP, "BG_CanItemBeGrabbed: IT_BAD" );
