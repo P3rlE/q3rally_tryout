@@ -607,12 +607,18 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 				attacker->client->ps.eFlags |= EF_AWARD_EXCELLENT;
 				attacker->client->rewardTime = level.time + REWARD_SPRITE_TIME;
 			}
-			attacker->client->lastKillTime = level.time;
+                        attacker->client->lastKillTime = level.time;
 
-		}
-	} else {
-		AddScore( self, self->r.currentOrigin, -1 );
-	}
+                        attacker->client->car.fuel += g_fuelKillReward.value;
+                        if ( attacker->client->car.fuel > attacker->client->car.maxFuel ) {
+                                attacker->client->car.fuel = attacker->client->car.maxFuel;
+                        }
+                        attacker->client->ps.stats[STAT_FUEL] = (int)attacker->client->car.fuel;
+
+                }
+        } else {
+                AddScore( self, self->r.currentOrigin, -1 );
+        }
 
 	// Add team bonuses
 	Team_FragBonuses(self, inflictor, attacker);
