@@ -2199,11 +2199,11 @@ void ClientCommand( int clientNum ) {
 	}
 	else if (Q_stricmp (cmd, "drop") == 0){
 		trap_Argv( 1, buffer, sizeof( buffer ) );
-		if ( !Q_stricmp( buffer, "fuelcan" ) ) {
-			if ( ent->client->ps.stats[STAT_HOLDABLE_ITEM] == HI_FUELCAN ) {
-				G_DropFuelCan( ent );
-			}
-		}
+                if ( !Q_stricmp( buffer, "fuelcan" ) ) {
+                        if ( ent->client->ps.stats[STAT_HOLDABLE_ITEM] == BG_FindItemForHoldable( HI_FUELCAN ) - bg_itemlist ) {
+                                G_DropFuelCan( ent );
+                        }
+                }
 	}
 	else if (Q_stricmp (cmd, "mapstats") == 0){
 		trap_Argv( 1, buffer, sizeof( buffer ) );

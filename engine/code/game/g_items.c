@@ -374,8 +374,8 @@ int Pickup_Armor( gentity_t *ent, gentity_t *other ) {
 }
 
 int Pickup_FuelCan( gentity_t *ent, gentity_t *other ) {
-       other->client->ps.stats[STAT_HOLDABLE_ITEM] = HI_FUELCAN;
-       return RESPAWN_HOLDABLE;
+    other->client->ps.stats[STAT_HOLDABLE_ITEM] = ent->item - bg_itemlist;
+    return RESPAWN_HOLDABLE;
 }
 
 //======================================================================
