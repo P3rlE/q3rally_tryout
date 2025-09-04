@@ -1014,6 +1014,7 @@ extern  vmCvar_t        g_derbyRamRadius;
 extern  vmCvar_t        g_derbyRamDamage;
 extern  vmCvar_t        g_derbyRamDamageScale;
 extern  vmCvar_t        g_derbyRamDamageMax;
+extern  vmCvar_t        g_fuelKillReward;
 
 // car variables
 extern	vmCvar_t	car_spring;
