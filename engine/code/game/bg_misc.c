@@ -1422,7 +1422,7 @@ Returns false if the item should not be picked up.
 This needs to be the same for client side prediction and server use.
 ================
 */
-qboolean BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const playerState_t *ps ) {
+qboolean BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const playerState_t *ps, float maxFuel ) {
 	gitem_t	*item;
 #ifdef MISSIONPACK
 	int		upperBound;
@@ -1504,12 +1504,18 @@ qboolean BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const play
 			return qtrue;
 		}
 
-		if ( ps->stats[STAT_HEALTH] >= ps->stats[STAT_MAX_HEALTH] ) {
-			return qfalse;
-		}
-		return qtrue;
+                if ( ps->stats[STAT_HEALTH] >= ps->stats[STAT_MAX_HEALTH] ) {
+                        return qfalse;
+                }
+                return qtrue;
 
-	case IT_POWERUP:
+        case IT_FUEL:
+                if ( ps->stats[STAT_FUEL] < maxFuel ) {
+                        return qtrue;
+                }
+                return qfalse;
+
+        case IT_POWERUP:
 // STONELANCE
 //		return qtrue;	// powerups are always picked up
 
