@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   all items should pop when dropped in lava or slime
 
   Respawnable items don't actually go away when picked up, they are
-  just made invisible and untouchable.  This allows them to ride
+  just made invisible and untouchable.	This allows them to ride
   movers and respawn appropriately.
 */
 
@@ -96,7 +96,7 @@ int Pickup_Powerup( gentity_t *ent, gentity_t *other ) {
 
     // if same team in team game, no sound
     // cannot use OnSameTeam as it expects to g_entities, not clients
-  	if ( g_gametype.integer >= GT_TEAM && other->client->sess.sessionTeam == client->sess.sessionTeam  ) {
+	if ( g_gametype.integer >= GT_TEAM && other->client->sess.sessionTeam == client->sess.sessionTeam  ) {
       continue;
     }
 
@@ -145,7 +145,7 @@ int Pickup_PersistantPowerup( gentity_t *ent, gentity_t *other ) {
 		if( handicap<=0.0f || handicap>100.0f) {
 			handicap = 100.0f;
 		}
-		max = (int)(2 *  handicap);
+		max = (int)(2 *	 handicap);
 
 		other->health = max;
 		other->client->ps.stats[STAT_HEALTH] = max;
@@ -211,6 +211,14 @@ int Pickup_Holdable( gentity_t *ent, gentity_t *other ) {
 	}
 
 	return RESPAWN_HOLDABLE;
+}
+
+
+void G_DropFuelCan( gentity_t *ent ) {
+
+	Drop_Item( ent, BG_FindItemForHoldable( HI_FUELCAN ), 0 );
+
+	ent->client->ps.stats[STAT_HOLDABLE_ITEM] = 0;
 }
 
 
@@ -318,16 +326,16 @@ int Pickup_Health (gentity_t *ent, gentity_t *other) {
 		quantity = ent->item->quantity;
 	}
 
-        other->health += quantity;
+	other->health += quantity;
 
-        if (other->health > max ) {
-                other->health = max;
-        }
-        other->client->ps.stats[STAT_HEALTH] = other->health;
-        if ( other->client->car.fuelLeak &&
-                other->health > g_vehicleHealth.integer / 2 ) {
-                other->client->car.fuelLeak = qfalse;
-        }
+	if (other->health > max ) {
+		other->health = max;
+	}
+	other->client->ps.stats[STAT_HEALTH] = other->health;
+	if ( other->client->car.fuelLeak &&
+		other->health > g_vehicleHealth.integer / 2 ) {
+		other->client->car.fuelLeak = qfalse;
+	}
 
 
 	if ( ent->item->quantity == 100 ) {		// mega health respawns slow
@@ -357,12 +365,12 @@ int Pickup_Armor( gentity_t *ent, gentity_t *other ) {
 	}
 #else
 	other->client->ps.stats[STAT_ARMOR] += ent->item->quantity;
-        if ( other->client->ps.stats[STAT_ARMOR] > other->client->ps.stats[STAT_MAX_HEALTH] * 2 ) {
-                other->client->ps.stats[STAT_ARMOR] = other->client->ps.stats[STAT_MAX_HEALTH] * 2;
-        }
+	if ( other->client->ps.stats[STAT_ARMOR] > other->client->ps.stats[STAT_MAX_HEALTH] * 2 ) {
+		other->client->ps.stats[STAT_ARMOR] = other->client->ps.stats[STAT_MAX_HEALTH] * 2;
+	}
 #endif
 
-        return RESPAWN_ARMOR;
+	return RESPAWN_ARMOR;
 }
 
 int Pickup_FuelCan( gentity_t *ent, gentity_t *other ) {
@@ -488,7 +496,7 @@ void Touch_Item (gentity_t *ent, gentity_t *other, trace_t *trace) {
 
 	// the same pickup rules are used for client side and server side
        if ( !BG_CanItemBeGrabbed( g_gametype.integer, &ent->s, &other->client->ps, other->client->car.maxFuel ) ) {
-               return;
+	       return;
        }
 
 	G_LogPrintf( "Item: %i %s\n", other->s.number, ent->item->classname );
@@ -511,13 +519,13 @@ void Touch_Item (gentity_t *ent, gentity_t *other, trace_t *trace) {
 	case IT_ARMOR:
 		respawn = Pickup_Armor(ent, other);
 		break;
-        case IT_HEALTH:
-                respawn = Pickup_Health(ent, other);
-                break;
+	case IT_HEALTH:
+		respawn = Pickup_Health(ent, other);
+		break;
        case IT_POWERUP:
-               respawn = Pickup_Powerup(ent, other);
-               predict = qfalse;
-               break;
+	       respawn = Pickup_Powerup(ent, other);
+	       predict = qfalse;
+	       break;
 #ifdef MISSIONPACK
 	case IT_PERSISTANT_POWERUP:
 		respawn = Pickup_PersistantPowerup(ent, other);
@@ -528,16 +536,16 @@ void Touch_Item (gentity_t *ent, gentity_t *other, trace_t *trace) {
 		break;
 // Q3Rally Code Start
     case IT_SIGIL:
-        respawn = Sigil_Touch(ent, other);
-        break;
+	respawn = Sigil_Touch(ent, other);
+	break;
 // Q3Rally Code END
        case IT_HOLDABLE:
-               if ( ent->item->giTag == HI_FUELCAN ) {
-                       respawn = Pickup_FuelCan(ent, other);
-               } else {
-                       respawn = Pickup_Holdable(ent, other);
-               }
-               break;
+	       if ( ent->item->giTag == HI_FUELCAN ) {
+		       respawn = Pickup_FuelCan(ent, other);
+	       } else {
+		       respawn = Pickup_Holdable(ent, other);
+	       }
+	       break;
 	default:
 		return;
 	}
@@ -612,7 +620,7 @@ void Touch_Item (gentity_t *ent, gentity_t *other, trace_t *trace) {
 
 	// ZOID
 	// A negative respawn times means to never respawn this item (but don't 
-	// delete it).  This is used by items that are respawned by third party 
+	// delete it).	This is used by items that are respawned by third party 
 	// events such as ctf flags
 	if ( respawn <= 0 ) {
 		ent->nextthink = 0;
@@ -796,8 +804,8 @@ void FinishSpawningItem( gentity_t *ent ) {
        }
 
        if ( g_gametype.integer == GT_DERBY && ent->item->giType == IT_WEAPON ) {
-               G_FreeEntity( ent );
-               return;
+	       G_FreeEntity( ent );
+	       return;
        }
 
        trap_LinkEntity (ent);
@@ -913,12 +921,12 @@ void ClearRegisteredItems( void ) {
 
 	// players always start with the base weapon
 // STONELANCE dont start with machinegun in race
-        if (!isRallyRace() && g_gametype.integer != GT_DERBY){
-                RegisterItem( BG_FindItemForWeapon( WP_MACHINEGUN ) );
-        }
-        if (!isRallyNonDMRace() && g_gametype.integer != GT_DERBY){
-                RegisterItem( BG_FindItemForWeapon( WP_GAUNTLET ) );
-        }
+	if (!isRallyRace() && g_gametype.integer != GT_DERBY){
+		RegisterItem( BG_FindItemForWeapon( WP_MACHINEGUN ) );
+	}
+	if (!isRallyNonDMRace() && g_gametype.integer != GT_DERBY){
+		RegisterItem( BG_FindItemForWeapon( WP_GAUNTLET ) );
+	}
 //	RegisterItem( BG_FindItemForWeapon( WP_MACHINEGUN ) );
 //	RegisterItem( BG_FindItemForWeapon( WP_GAUNTLET ) );
 // END
