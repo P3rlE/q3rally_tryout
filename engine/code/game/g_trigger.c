@@ -427,16 +427,9 @@ void Touch_Fuel( gentity_t *self, gentity_t *other, trace_t *trace ) {
 
 	max = ( self->count > 0 ) ? self->count : ( other->client->car.maxFuel > 0 ? other->client->car.maxFuel : CP_MAX_FUEL );
 
-	if ( other->client->car.fuel >= max ) {
-		if ( other->client->car.fuelLeak ) {
-			other->client->car.fuelLeak = qfalse;
-		}
-		return;
-	}
-
-	if ( other->client->car.fuelLeak ) {
-		other->client->car.fuelLeak = qfalse;
-	}
+        if ( other->client->car.fuel >= max ) {
+                return;
+        }
 
 	if ( self->speed <= 0 ) {
 		self->speed = 10;
