@@ -497,9 +497,9 @@ void Touch_Item (gentity_t *ent, gentity_t *other, trace_t *trace) {
 // END
 
 	// the same pickup rules are used for client side and server side
-	if ( !BG_CanItemBeGrabbed( g_gametype.integer, &ent->s, &other->client->ps ) ) {
-		return;
-	}
+       if ( !BG_CanItemBeGrabbed( g_gametype.integer, &ent->s, &other->client->ps, other->client->car.maxFuel ) ) {
+               return;
+       }
 
 	G_LogPrintf( "Item: %i %s\n", other->s.number, ent->item->classname );
 
