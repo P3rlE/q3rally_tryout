@@ -62,6 +62,7 @@ extern	float CP_M_2_QU;
 #define	CP_CAR_MASS			( CP_FRAME_MASS * 4 + CP_WHEEL_MASS * 4 )
 #define CP_MAX_FUEL             100.0f
 #define CP_FUEL_CONSUMPTION     1.0f
+#define CP_FUEL_LEAK_RATE       1.0f
 
 #define	CP_BODY_ELASTICITY	0.05f
 #define	CP_WHEEL_ELASTICITY	0.05f
@@ -326,6 +327,7 @@ typedef struct {
 
     float	fuel;
 	float	maxFuel;
+	qboolean	fuelLeak;
 
 	qboolean	initializeOnNextMove;
 

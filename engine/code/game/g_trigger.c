@@ -419,29 +419,36 @@ trigger_fuel
 */
 
 void Touch_Fuel( gentity_t *self, gentity_t *other, trace_t *trace ) {
-    float max;
+	float max;
 
-    if ( !other->client ) {
-	return;
-    }
+	if ( !other->client ) {
+		return;
+	}
 
-   max = ( self->count > 0 ) ? self->count : ( other->client->car.maxFuel > 0 ? other->client->car.maxFuel : CP_MAX_FUEL );
+	max = ( self->count > 0 ) ? self->count : ( other->client->car.maxFuel > 0 ? other->client->car.maxFuel : CP_MAX_FUEL );
 
-    if ( other->client->car.fuel >= max ) {
-	return;
-    }
+	if ( other->client->car.fuel >= max ) {
+		if ( other->client->car.fuelLeak ) {
+			other->client->car.fuelLeak = qfalse;
+		}
+		return;
+	}
 
-    if ( self->speed <= 0 ) {
-	self->speed = 10;
-    }
+	if ( other->client->car.fuelLeak ) {
+		other->client->car.fuelLeak = qfalse;
+	}
 
-    other->client->car.fuel += self->speed * FRAMETIME / 1000.0f;
+	if ( self->speed <= 0 ) {
+		self->speed = 10;
+	}
 
-    if ( other->client->car.fuel > max ) {
-	other->client->car.fuel = max;
-    }
+	other->client->car.fuel += self->speed * FRAMETIME / 1000.0f;
 
-    other->client->ps.stats[STAT_FUEL] = (int)other->client->car.fuel;
+	if ( other->client->car.fuel > max ) {
+		other->client->car.fuel = max;
+	}
+
+	other->client->ps.stats[STAT_FUEL] = (int)other->client->car.fuel;
 }
 
 /*QUAKED trigger_fuel (.5 .5 .5) ?
