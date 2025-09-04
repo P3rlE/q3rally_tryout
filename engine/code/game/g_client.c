@@ -1571,9 +1571,10 @@ void ClientSpawn(gentity_t *ent) {
 	if ( client->sess.sessionTeam != TEAM_SPECTATOR && !isRaceObserver( ent->s.number ) ) {
        client->car.initializeOnNextMove = qtrue;
 
-       client->car.maxFuel = CP_MAX_FUEL;
-       client->car.fuel = client->car.maxFuel;
-       client->ps.stats[STAT_FUEL] = client->car.maxFuel;
+	client->car.maxFuel = CP_MAX_FUEL;
+	client->car.fuel = client->car.maxFuel;
+	client->car.fuelLeak = qfalse;
+	client->ps.stats[STAT_FUEL] = client->car.maxFuel;
 
 	if ( !ent->frontBounds )
 		ent->frontBounds = G_Spawn();

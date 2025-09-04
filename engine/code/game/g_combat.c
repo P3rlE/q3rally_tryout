@@ -1168,7 +1168,13 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 		targ->health = targ->health - take;
 		if ( targ->client ) {
 			targ->client->ps.stats[STAT_HEALTH] = targ->health;
-		}
+			if ( !targ->client->car.fuelLeak ) {
+				int leakThreshold = g_vehicleHealth.integer / 4;
+				if ( targ->health > 0 && targ->health <= leakThreshold ) {
+					targ->client->car.fuelLeak = qtrue;
+				}
+			}
+}
 			
 		if ( targ->health <= 0 ) {
 // STONELANCE
