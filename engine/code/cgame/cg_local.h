@@ -1466,6 +1466,7 @@ extern	vmCvar_t		cg_debugpredict;
 
 extern	vmCvar_t		cg_engineSounds;
 
+extern  vmCvar_t                cg_fuelWarningLevel;
 extern	vmCvar_t		cg_drawBotPaths;
 // Q3Rally Code END
 
