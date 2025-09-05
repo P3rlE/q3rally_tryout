@@ -433,6 +433,10 @@ void PM_InitializeVehicle( car_t *car, vec3_t origin, vec3_t angles, vec3_t velo
 	float	halfWidth, halfLength, halfHeight;
 	float	forwardScale, rightScale, upScale;
 
+	qboolean keep = car->preserveFuel;
+	float fuel = car->fuel;
+	qboolean leak = car->fuelLeak;
+
 	// UPDATE: use memset?
 
 	VectorCopy(origin, car->sBody.r);
@@ -544,11 +548,10 @@ void PM_InitializeVehicle( car_t *car, vec3_t origin, vec3_t angles, vec3_t velo
 
 	car->gear = 1;
 	car->rpm = CP_RPM_MIN;
-	car->fuel = CP_MAX_FUEL;
-	car->fuelLeak = qfalse;
-	if ( pm->ps ) {
-		pm->ps->stats[STAT_FUEL] = (int)car->fuel;
-	}
+	car->fuel = keep ? fuel : CP_MAX_FUEL;
+	car->fuelLeak = keep ? leak : qfalse;
+	if ( pm->ps ) pm->ps->stats[STAT_FUEL] = (int)car->fuel;
+	car->preserveFuel = qfalse;
 
 //	car->aCOF = CP_AIR_COF;
 //	car->dfCOF = CP_FRAC_TO_DF;
