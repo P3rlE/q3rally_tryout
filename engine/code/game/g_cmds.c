@@ -2197,14 +2197,12 @@ void ClientCommand( int clientNum ) {
 	else if (Q_stricmp (cmd, "dropWeapon") == 0){
 		G_DropRearWeapon( ent );
 	}
-	else if (Q_stricmp (cmd, "drop") == 0){
-		trap_Argv( 1, buffer, sizeof( buffer ) );
-                if ( !Q_stricmp( buffer, "fuelcan" ) ) {
-                        if ( ent->client->ps.stats[STAT_HOLDABLE_ITEM] == BG_FindItemForHoldable( HI_FUELCAN ) - bg_itemlist ) {
-                                G_DropFuelCan( ent );
-                        }
-                }
-	}
+       else if (Q_stricmp (cmd, "drop") == 0){
+               if ( ent->client->ps.stats[STAT_HOLDABLE_ITEM] != 0 ) {
+                       gitem_t *item = &bg_itemlist[ ent->client->ps.stats[STAT_HOLDABLE_ITEM] ];
+                       G_DropHoldable( ent, item );
+               }
+       }
 	else if (Q_stricmp (cmd, "mapstats") == 0){
 		trap_Argv( 1, buffer, sizeof( buffer ) );
 		trap_Argv( 2, name, sizeof( name ) );

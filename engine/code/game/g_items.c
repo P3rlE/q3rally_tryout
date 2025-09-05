@@ -214,11 +214,17 @@ int Pickup_Holdable( gentity_t *ent, gentity_t *other ) {
 }
 
 
+void G_DropHoldable( gentity_t *ent, gitem_t *item ) {
+
+       Drop_Item( ent, item, 0 );
+
+       ent->client->ps.stats[STAT_HOLDABLE_ITEM] = 0;
+}
+
+
 void G_DropFuelCan( gentity_t *ent ) {
 
-	Drop_Item( ent, BG_FindItemForHoldable( HI_FUELCAN ), 0 );
-
-	ent->client->ps.stats[STAT_HOLDABLE_ITEM] = 0;
+       G_DropHoldable( ent, BG_FindItemForHoldable( HI_FUELCAN ) );
 }
 
 
