@@ -718,10 +718,7 @@ gentity_t *Drop_Item( gentity_t *ent, gitem_t *item, float angle ) {
 	AngleVectors( angles, velocity, NULL, NULL );
 
 // STONELANCE
-	if (item->giType == IT_RFWEAPON)
-		VectorMA(ent->s.pos.trBase, 64, velocity, origin);
-	else
-		VectorCopy(ent->s.pos.trBase, origin);
+	VectorMA(ent->s.pos.trBase, 64, velocity, origin);
 // END
 
 	VectorScale( velocity, 150, velocity );
