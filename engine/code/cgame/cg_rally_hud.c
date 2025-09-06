@@ -780,7 +780,8 @@ static float CG_DrawSpeed( float y ) {
 		const float segmentGap = 4.0f;
 		const float gaugeHeight = 12.0f;
 		float   iconOffset = gaugeHeight * 2 + 4;
-		int		i;
+                float   blockWidth, blockHeight;
+                int             i;
 
 		Com_sprintf( speedStr, sizeof( speedStr ), "%i %s", vel_speed, cg_metricUnits.integer ? "KPH" : "MPH" );
 
@@ -799,18 +800,23 @@ static float CG_DrawSpeed( float y ) {
 			maxLen = len;
 		}
 
-                rpm = cg.predictedPlayerState.stats[STAT_RPM];
-                segments = (CP_RPM_MAX + 999) / 1000;
+               rpm = cg.predictedPlayerState.stats[STAT_RPM];
+               segments = (CP_RPM_MAX + 999) / 1000;
 
-		x -= 60 + ( maxLen * GIANTCHAR_WIDTH ) / 2;
+               // determine total block dimensions
+               blockWidth = iconOffset + maxLen * GIANTCHAR_WIDTH;
+               blockHeight = segmentHeight + 2 * GIANTCHAR_HEIGHT + gaugeHeight;
 
-		y -= 60;
-		{
-			float rectX = x - 4, rectY = y - 4;
-			float rectW = iconOffset + maxLen * GIANTCHAR_WIDTH + 8;
-			float rectH = segmentHeight + 2 * GIANTCHAR_HEIGHT + gaugeHeight + 8;
-			CG_FillRect( rectX, rectY, rectW, rectH, bgColor );
-		}
+               // anchor to bottom-right reference
+               x -= blockWidth;
+               y -= blockHeight;
+
+               {
+                       float rectX = x - 4, rectY = y - 4;
+                       float rectW = blockWidth + 8;
+                       float rectH = blockHeight + 8;
+                       CG_FillRect( rectX, rectY, rectW, rectH, bgColor );
+               }
 
 		segmentWidth = (maxLen * GIANTCHAR_WIDTH - (segments - 1) * segmentGap) / segments;
 		for ( i = 0; i < segments; i++ ) {
@@ -827,12 +833,12 @@ static float CG_DrawSpeed( float y ) {
 		y += GIANTCHAR_HEIGHT;
 		CG_DrawGiantDigitalStringColor( x, y, gearStr, colorWhite );
 
-		y += GIANTCHAR_HEIGHT;
-		CG_DrawFuelGauge( x + iconOffset, y, maxLen * GIANTCHAR_WIDTH, gaugeHeight );
-		y = yorg;
-		y -= 44;
-		y -= segmentHeight + 2 * GIANTCHAR_HEIGHT + gaugeHeight;
-		return y;
+               y += GIANTCHAR_HEIGHT;
+               CG_DrawFuelGauge( x + iconOffset, y, maxLen * GIANTCHAR_WIDTH, gaugeHeight );
+               y = yorg;
+               y -= 44;
+               y -= blockHeight;
+               return y;
 	}
 /*
 #ifdef Q3_VM
