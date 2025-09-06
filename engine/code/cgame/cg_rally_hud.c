@@ -778,6 +778,7 @@ static float CG_DrawSpeed( float y ) {
 		float	segmentWidth;
 		const float segmentHeight = 4.0f;
 		const float segmentGap = 2.0f;
+		const float gaugeHeight = 8.0f;
 		int		i;
 
 		Com_sprintf( speedStr, sizeof( speedStr ), "%i %s", vel_speed, cg_metricUnits.integer ? "KPH" : "MPH" );
@@ -806,7 +807,7 @@ static float CG_DrawSpeed( float y ) {
 		{
 			float rectX = x - 4, rectY = y - 4;
 			float rectW = maxLen * SMALLCHAR_WIDTH + 8;
-			float rectH = segmentHeight + 2 * SMALLCHAR_HEIGHT + 8;
+			float rectH = segmentHeight + 2 * SMALLCHAR_HEIGHT + gaugeHeight + 8;
 			CG_FillRect( rectX, rectY, rectW, rectH, bgColor );
 		}
 
@@ -825,9 +826,11 @@ static float CG_DrawSpeed( float y ) {
 		y += SMALLCHAR_HEIGHT;
 		CG_DrawSmallDigitalStringColor( x, y, gearStr, colorWhite );
 
+		y += SMALLCHAR_HEIGHT;
+		CG_DrawFuelGauge( x, y, maxLen * SMALLCHAR_WIDTH, gaugeHeight );
 		y = yorg;
 		y -= 44;
-		y -= segmentHeight + 2 * SMALLCHAR_HEIGHT;
+		y -= segmentHeight + 2 * SMALLCHAR_HEIGHT + gaugeHeight;
 		return y;
 	}
 /*
