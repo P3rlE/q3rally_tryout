@@ -194,7 +194,7 @@ void CG_DrawFuelGauge( float x, float y, float w, float h ) {
        }
 
        if ( !icon ) {
-               icon = trap_R_RegisterShaderNoMip( "icons/fuelcan" );
+               icon = trap_R_RegisterShaderNoMip( "icons/fuelcan2" );
        }
 
        fuel = cg.snap->ps.stats[STAT_FUEL];
