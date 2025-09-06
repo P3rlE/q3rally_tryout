@@ -776,9 +776,10 @@ static float CG_DrawSpeed( float y ) {
 		int		rpm;
 		int		segments;
 		float	segmentWidth;
-		const float segmentHeight = 4.0f;
-		const float segmentGap = 2.0f;
-		const float gaugeHeight = 8.0f;
+		const float segmentHeight = 8.0f;
+		const float segmentGap = 4.0f;
+		const float gaugeHeight = 12.0f;
+		float   iconOffset = gaugeHeight * 2 + 4;
 		int		i;
 
 		Com_sprintf( speedStr, sizeof( speedStr ), "%i %s", vel_speed, cg_metricUnits.integer ? "KPH" : "MPH" );
@@ -801,17 +802,17 @@ static float CG_DrawSpeed( float y ) {
                 rpm = cg.predictedPlayerState.stats[STAT_RPM];
                 segments = (CP_RPM_MAX + 999) / 1000;
 
-		x -= 38 + ( maxLen * SMALLCHAR_WIDTH ) / 2;
+		x -= 60 + ( maxLen * GIANTCHAR_WIDTH ) / 2;
 
-		y -= 40;
+		y -= 60;
 		{
 			float rectX = x - 4, rectY = y - 4;
-			float rectW = maxLen * SMALLCHAR_WIDTH + 8;
-			float rectH = segmentHeight + 2 * SMALLCHAR_HEIGHT + gaugeHeight + 8;
+			float rectW = iconOffset + maxLen * GIANTCHAR_WIDTH + 8;
+			float rectH = segmentHeight + 2 * GIANTCHAR_HEIGHT + gaugeHeight + 8;
 			CG_FillRect( rectX, rectY, rectW, rectH, bgColor );
 		}
 
-		segmentWidth = (maxLen * SMALLCHAR_WIDTH - (segments - 1) * segmentGap) / segments;
+		segmentWidth = (maxLen * GIANTCHAR_WIDTH - (segments - 1) * segmentGap) / segments;
 		for ( i = 0; i < segments; i++ ) {
 			float segX = x + i * (segmentWidth + segmentGap);
 			if ( rpm >= (i + 1) * 1000 ) {
@@ -822,15 +823,15 @@ static float CG_DrawSpeed( float y ) {
 		}
 
 		y += segmentHeight;
-		CG_DrawSmallDigitalStringColor( x, y, speedStr, colorWhite );
-		y += SMALLCHAR_HEIGHT;
-		CG_DrawSmallDigitalStringColor( x, y, gearStr, colorWhite );
+		CG_DrawGiantDigitalStringColor( x, y, speedStr, colorWhite );
+		y += GIANTCHAR_HEIGHT;
+		CG_DrawGiantDigitalStringColor( x, y, gearStr, colorWhite );
 
-		y += SMALLCHAR_HEIGHT;
-		CG_DrawFuelGauge( x, y, maxLen * SMALLCHAR_WIDTH, gaugeHeight );
+		y += GIANTCHAR_HEIGHT;
+		CG_DrawFuelGauge( x + iconOffset, y, maxLen * GIANTCHAR_WIDTH, gaugeHeight );
 		y = yorg;
 		y -= 44;
-		y -= segmentHeight + 2 * SMALLCHAR_HEIGHT + gaugeHeight;
+		y -= segmentHeight + 2 * GIANTCHAR_HEIGHT + gaugeHeight;
 		return y;
 	}
 /*
