@@ -805,7 +805,7 @@ static float CG_DrawSpeed( float y ) {
                segments = (CP_RPM_MAX + 999) / 1000;
 
                 // determine total block dimensions
-                barWidth = maxLen * GIANTCHAR_WIDTH;
+                barWidth = maxLen * GIANTCHAR_WIDTH -15;
                 blockWidth = iconOffset + barWidth;
                 blockHeight = segmentHeight + 2 * GIANTCHAR_HEIGHT + gaugeHeight;
 
