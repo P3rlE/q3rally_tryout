@@ -208,6 +208,7 @@ void CG_DrawFuelGauge( float x, float y, float w, float h ) {
 
        frac = fuel / 100.0f;
        warnFrac = cg_fuelWarningLevel.value / 100.0f;
+       size = h * 2.0f;
 
        CG_DrawRect( x, y, w, h, 1, colorWhite );
        CG_FillRect( x + 1, y + 1, w - 2, h - 2, backColor );
@@ -224,12 +225,12 @@ void CG_DrawFuelGauge( float x, float y, float w, float h ) {
 
                // blink the low fuel icon
                if ( ( cg.time >> 8 ) & 1 ) {
-                       size = h * 2.0f;
                        CG_DrawPic( x - size - 4, y + ( h - size ) * 0.5f, size, size, icon );
                }
        } else {
                warned = qfalse;
                CG_FillRect( x + 1, y + 1, (w - 2) * frac, h - 2, fuelColor );
+               CG_DrawPic( x - size - 4, y + ( h - size ) * 0.5f, size, size, icon );
        }
 }
 
@@ -776,12 +777,12 @@ static float CG_DrawSpeed( float y ) {
 		int		rpm;
 		int		segments;
 		float	segmentWidth;
-		const float segmentHeight = 8.0f;
-		const float segmentGap = 4.0f;
-		const float gaugeHeight = 12.0f;
-		float   iconOffset = gaugeHeight * 2 + 4;
-                float   blockWidth, blockHeight;
-                int             i;
+                 const float segmentHeight = 8.0f;
+                 const float segmentGap = 4.0f;
+                 const float gaugeHeight = 12.0f;
+                 float   iconOffset = gaugeHeight * 2 + 4;
+                 float   blockWidth, blockHeight, barWidth;
+                 int             i;
 
 		Com_sprintf( speedStr, sizeof( speedStr ), "%i %s", vel_speed, cg_metricUnits.integer ? "KPH" : "MPH" );
 
@@ -803,9 +804,10 @@ static float CG_DrawSpeed( float y ) {
                rpm = cg.predictedPlayerState.stats[STAT_RPM];
                segments = (CP_RPM_MAX + 999) / 1000;
 
-               // determine total block dimensions and shrink width by 15px
-               blockWidth = iconOffset + maxLen * GIANTCHAR_WIDTH - 15;
-               blockHeight = segmentHeight + 2 * GIANTCHAR_HEIGHT + gaugeHeight;
+                // determine total block dimensions
+                barWidth = maxLen * GIANTCHAR_WIDTH;
+                blockWidth = iconOffset + barWidth;
+                blockHeight = segmentHeight + 2 * GIANTCHAR_HEIGHT + gaugeHeight;
 
                // anchor to bottom-right reference
 
@@ -835,9 +837,9 @@ static float CG_DrawSpeed( float y ) {
 		y += GIANTCHAR_HEIGHT;
 		CG_DrawGiantDigitalStringColor( x, y, gearStr, colorWhite );
 
-               y += GIANTCHAR_HEIGHT;
-               CG_DrawFuelGauge( x + iconOffset, y, blockWidth - iconOffset, gaugeHeight );
-               y = yorg;
+                y += GIANTCHAR_HEIGHT;
+                CG_DrawFuelGauge( x + iconOffset, y, barWidth, gaugeHeight );
+                y = yorg;
                y -= 44;
                y -= blockHeight;
                return y;
