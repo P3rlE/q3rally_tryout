@@ -22,7 +22,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "cg_local.h"
-#include <math.h>
 
 float colors[4][4] = { 
 //		{ 0.2, 1.0, 0.2, 1.0 } , { 1.0, 0.2, 0.2, 1.0 }, {0.5, 0.5, 0.5, 1} };
@@ -798,8 +797,8 @@ static float CG_DrawSpeed( float y ) {
 			maxLen = len;
 		}
 
-		rpm = cg.predictedPlayerState.stats[STAT_RPM];
-		segments = (int)ceil( CP_RPM_MAX / 1000.0f );
+                rpm = cg.predictedPlayerState.stats[STAT_RPM];
+                segments = (CP_RPM_MAX + 999) / 1000;
 
 		x -= 38 + ( maxLen * SMALLCHAR_WIDTH ) / 2;
 
