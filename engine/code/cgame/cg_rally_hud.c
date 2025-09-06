@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "cg_local.h"
+#include <math.h>
 
 float colors[4][4] = { 
 //		{ 0.2, 1.0, 0.2, 1.0 } , { 1.0, 0.2, 0.2, 1.0 }, {0.5, 0.5, 0.5, 1} };
@@ -767,56 +768,69 @@ static float CG_DrawSpeed( float y ) {
         // use actual speed
         vel_speed = (int)fabs( Q3VelocityToRL( DotProduct(ps->velocity, forward) ) );
 
-       if ( cg_speedometerMode.integer ) {
-               char    speedStr[32];
-               char    rpmStr[32];
-               char    gearStr[16];
-               char    gearLabel[4];
-               int             maxLen, len;
-               float bgColor[4] = {0.0f, 0.0f, 0.0f, 0.25f};
+	if ( cg_speedometerMode.integer ) {
+		char		speedStr[32];
+		char		gearStr[16];
+		char		gearLabel[4];
+		int		maxLen, len;
+		float	bgColor[4] = {0.0f, 0.0f, 0.0f, 0.25f};
+		int		rpm;
+		int		segments;
+		float	segmentWidth;
+		const float segmentHeight = 4.0f;
+		const float segmentGap = 2.0f;
+		int		i;
 
-               Com_sprintf( speedStr, sizeof( speedStr ), "%i %s", vel_speed, cg_metricUnits.integer ? "KPH" : "MPH" );
-               Com_sprintf( rpmStr,   sizeof( rpmStr ),   "%d RPM", cg.predictedPlayerState.stats[STAT_RPM] );
+		Com_sprintf( speedStr, sizeof( speedStr ), "%i %s", vel_speed, cg_metricUnits.integer ? "KPH" : "MPH" );
 
-               if ( cg.predictedPlayerState.stats[STAT_GEAR] == -1 ) {
-                       Q_strncpyz( gearLabel, "R", sizeof( gearLabel ) );
-               } else if ( cg.predictedPlayerState.stats[STAT_GEAR] == 0 ) {
-                       Q_strncpyz( gearLabel, "N", sizeof( gearLabel ) );
-               } else {
-                       Com_sprintf( gearLabel, sizeof( gearLabel ), "%i", cg.predictedPlayerState.stats[STAT_GEAR] );
-               }
-               Com_sprintf( gearStr, sizeof( gearStr ), "GEAR %s", gearLabel );
+		if ( cg.predictedPlayerState.stats[STAT_GEAR] == -1 ) {
+			Q_strncpyz( gearLabel, "R", sizeof( gearLabel ) );
+		} else if ( cg.predictedPlayerState.stats[STAT_GEAR] == 0 ) {
+			Q_strncpyz( gearLabel, "N", sizeof( gearLabel ) );
+		} else {
+			Com_sprintf( gearLabel, sizeof( gearLabel ), "%i", cg.predictedPlayerState.stats[STAT_GEAR] );
+		}
+		Com_sprintf( gearStr, sizeof( gearStr ), "GEAR %s", gearLabel );
 
-               maxLen = CG_DrawStrlen( speedStr );
-               len = CG_DrawStrlen( rpmStr );
-               if ( len > maxLen ) {
-                       maxLen = len;
-               }
-               len = CG_DrawStrlen( gearStr );
-               if ( len > maxLen ) {
-                       maxLen = len;
-               }
+		maxLen = CG_DrawStrlen( speedStr );
+		len = CG_DrawStrlen( gearStr );
+		if ( len > maxLen ) {
+			maxLen = len;
+		}
 
-               x -= 38 + ( maxLen * SMALLCHAR_WIDTH ) / 2;
+		rpm = cg.predictedPlayerState.stats[STAT_RPM];
+		segments = (int)ceil( CP_RPM_MAX / 1000.0f );
 
-               y -= 40;
-               {
-                       float rectX = x - 4, rectY = y - 4;
-                       float rectW = maxLen * SMALLCHAR_WIDTH + 8;
-                       float rectH = 3 * SMALLCHAR_HEIGHT + 8;
-                       CG_FillRect( rectX, rectY, rectW, rectH, bgColor );
-               }
-               CG_DrawSmallDigitalStringColor( x, y, speedStr, colorWhite );
-               y += SMALLCHAR_HEIGHT;
-               CG_DrawSmallDigitalStringColor( x, y, rpmStr, colorWhite );
-               y += SMALLCHAR_HEIGHT;
-               CG_DrawSmallDigitalStringColor( x, y, gearStr, colorWhite );
+		x -= 38 + ( maxLen * SMALLCHAR_WIDTH ) / 2;
 
-               y = yorg;
-               y -= 44;
-               y -= 3 * SMALLCHAR_HEIGHT;
-               return y;
-       }
+		y -= 40;
+		{
+			float rectX = x - 4, rectY = y - 4;
+			float rectW = maxLen * SMALLCHAR_WIDTH + 8;
+			float rectH = segmentHeight + 2 * SMALLCHAR_HEIGHT + 8;
+			CG_FillRect( rectX, rectY, rectW, rectH, bgColor );
+		}
+
+		segmentWidth = (maxLen * SMALLCHAR_WIDTH - (segments - 1) * segmentGap) / segments;
+		for ( i = 0; i < segments; i++ ) {
+			float segX = x + i * (segmentWidth + segmentGap);
+			if ( rpm >= (i + 1) * 1000 ) {
+				CG_FillRect( segX, y, segmentWidth, segmentHeight, colorWhite );
+			} else {
+				CG_DrawRect( segX, y, segmentWidth, segmentHeight, 1, colorWhite );
+			}
+		}
+
+		y += segmentHeight;
+		CG_DrawSmallDigitalStringColor( x, y, speedStr, colorWhite );
+		y += SMALLCHAR_HEIGHT;
+		CG_DrawSmallDigitalStringColor( x, y, gearStr, colorWhite );
+
+		y = yorg;
+		y -= 44;
+		y -= segmentHeight + 2 * SMALLCHAR_HEIGHT;
+		return y;
+	}
 /*
 #ifdef Q3_VM
 	if (ps->stats[STAT_GEAR] == -1)
