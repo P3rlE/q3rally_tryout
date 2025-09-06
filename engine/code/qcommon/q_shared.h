@@ -166,7 +166,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../game/bg_lib.h"
 
 typedef int intptr_t;
-
+typedef unsigned int uint32_t;
 #else
 
 #include <assert.h>
