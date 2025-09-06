@@ -803,12 +803,14 @@ static float CG_DrawSpeed( float y ) {
                rpm = cg.predictedPlayerState.stats[STAT_RPM];
                segments = (CP_RPM_MAX + 999) / 1000;
 
-               // determine total block dimensions
-               blockWidth = iconOffset + maxLen * GIANTCHAR_WIDTH;
+               // determine total block dimensions and shrink width by 15px
+               blockWidth = iconOffset + maxLen * GIANTCHAR_WIDTH - 15;
                blockHeight = segmentHeight + 2 * GIANTCHAR_HEIGHT + gaugeHeight;
 
                // anchor to bottom-right reference
-               x = 640 - blockWidth + 8;
+
+               x = 640 - blockWidth - 8;
+
                y -= blockHeight;
 
                {
