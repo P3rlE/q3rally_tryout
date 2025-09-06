@@ -808,7 +808,9 @@ static float CG_DrawSpeed( float y ) {
                blockHeight = segmentHeight + 2 * GIANTCHAR_HEIGHT + gaugeHeight;
 
                // anchor to bottom-right reference
+
                x = 640 - blockWidth - 8;
+
                y -= blockHeight;
 
                {
