@@ -233,11 +233,11 @@ void CG_DrawFuelGauge( float x, float y, float w, float h ) {
                        int textWidth;
                        float textX;
 
-                       textWidth = BIGCHAR_WIDTH * CG_DrawStrlen( "Fuel Critical \xE2\x80\x93 Refuel Now!" );
+                       textWidth = BIGCHAR_WIDTH * CG_DrawStrlen( "Fuel Critical - Refuel Now!" );
                        textX = ( SCREEN_WIDTH - textWidth ) / 2;
 
                        CG_SetScreenPlacement( PLACE_CENTER, PLACE_CENTER );
-                       CG_DrawStringExt( textX, SCREEN_HEIGHT * 0.30f, "Fuel Critical \xE2\x80\x93 Refuel Now!", warnColor, qfalse, qtrue, BIGCHAR_WIDTH, (int)(BIGCHAR_WIDTH * 1.5f), 0 );
+                       CG_DrawStringExt( textX, SCREEN_HEIGHT * 0.30f, "Fuel Critical - Refuel Now!", warnColor, qfalse, qtrue, BIGCHAR_WIDTH, (int)(BIGCHAR_WIDTH * 1.5f), 0 );
                        CG_PopScreenPlacement();
                }
        } else {
