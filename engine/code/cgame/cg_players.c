@@ -3046,14 +3046,14 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 			length = VectorLength(delta) / 2;
 
 			// create smoke even if we arent moving because the car is being stopped from moving
-			if (cent->smokeTime[tireNum] < cg.time){
-			if (tr.surfaceFlags & SURF_DUST)
-				CreateSmokeCloudEntity(tr.endpos, up, 20, 48, 2000, surfaceColors[colorIndex][0], surfaceColors[colorIndex][1], surfaceColors[colorIndex][2], surfaceColors[colorIndex][3], cgs.media.smokePuffShader);
-			else if (tr.surfaceFlags & SURF_ICE)
-				CreateSmokeCloudEntity(tr.endpos, up, 10, 8, 500, surfaceColors[colorIndex][0], surfaceColors[colorIndex][1], surfaceColors[colorIndex][2], 0.6f, cgs.media.snowPuffShader);
-			else
-				CreateSmokeCloudEntity(tr.endpos, up, 20, 12, 1000, surfaceColors[colorIndex][0], surfaceColors[colorIndex][1], surfaceColors[colorIndex][2], surfaceColors[colorIndex][3], cgs.media.smokePuffShader);
-
+			if ( cent->smokeTime[tireNum] < cg.time ) {
+				if ( tr.surfaceFlags & SURF_DUST ) {
+					CreateSmokeCloudEntity(tr.endpos, up, 20, 48, 2000, surfaceColors[colorIndex][0], surfaceColors[colorIndex][1], surfaceColors[colorIndex][2], surfaceColors[colorIndex][3], cgs.media.smokePuffShader);
+				} else if ( tr.surfaceFlags & SURF_ICE ) {
+					CreateSmokeCloudEntity(tr.endpos, up, 10, 8, 500, surfaceColors[colorIndex][0], surfaceColors[colorIndex][1], surfaceColors[colorIndex][2], 0.6f, cgs.media.snowPuffShader);
+				} else {
+					CreateSmokeCloudEntity(tr.endpos, up, 20, 12, 1000, surfaceColors[colorIndex][0], surfaceColors[colorIndex][1], surfaceColors[colorIndex][2], surfaceColors[colorIndex][3], cgs.media.smokePuffShader);
+				}
 				cent->smokeTime[tireNum] = cg.time + 100;
 			}
 
