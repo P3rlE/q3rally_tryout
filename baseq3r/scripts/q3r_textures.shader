@@ -7021,8 +7021,9 @@ textures/jim/bigscreen
 
 textures/q3r_dirt_grass/sand
 {
-	surfaceparm SURF_WET
-	surfaceparm dust
+        surfaceparm SURF_WET
+        surfaceparm SURF_SAND
+        surfaceparm dust
 
 	{
         	map $lightmap
