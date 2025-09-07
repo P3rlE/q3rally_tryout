@@ -63,7 +63,6 @@ CG_CustomSound
 */
 sfxHandle_t	CG_CustomSound( int clientNum, const char *soundName ) {
 	clientInfo_t *ci;
-	int			i;
 
         if ( !soundName ) {
                 return 0;
@@ -110,7 +109,6 @@ models/players/visor/animation.cfg, etc
 // Q3Rally Code Start (change function to do q3rally related stuff)
 static qboolean	CG_ParseAnimationFile( const char *filename, clientInfo_t *ci ) {
 	char		*text_p, *prev;
-	int			len;
 	char		*token;
 	char		text[20000];
 	fileHandle_t	f;
@@ -2013,9 +2011,10 @@ static void CG_BreathPuffs( centity_t *cent, refEntity_t *head) {
 	VectorSet( up, 0, 0, 8 );
 	VectorMA(head->origin, 8, head->axis[0], origin);
 	VectorMA(origin, -4, head->axis[2], origin);
-	CG_SmokePuff( origin, up, 16, 1, 1, 1, 0.66f, 1500, cg.time, cg.time + 400, LEF_PUFF_DONT_SCALE, cgs.media.shotgunSmokePuffShader );
-	ci->breathPuffTime = cg.time + 2000;
+       CG_SmokePuff( origin, up, 16, 1, 1, 1, 0.66f, 1500, cg.time, cg.time + 400, LEF_PUFF_DONT_SCALE, cgs.media.shotgunSmokePuffShader );
+       ci->breathPuffTime = cg.time + 2000;
 }
+#endif
 
 /*
 ===============
@@ -2023,7 +2022,6 @@ CG_DustTrail
 ===============
 */
 static void CG_DustTrail( centity_t *cent ) {
-	int				anim;
 	vec3_t end, vel;
 	trace_t tr;
 
@@ -2054,13 +2052,11 @@ static void CG_DustTrail( centity_t *cent ) {
 				  24,
 				  .8f, .8f, 0.7f, 0.33f,
 				  500,
-				  cg.time,
-				  0,
-				  0,
-				  cgs.media.dustPuffShader );
+                                  cg.time,
+                                  0,
+                                  0,
+                                  cgs.media.dustPuffShader );
 }
-
-// #endif
 
 /*
 ===============
@@ -2150,7 +2146,6 @@ static void CG_SandTrail( centity_t *cent ) {
                                   cgs.media.sandPuffShader );
 }
 
- #endif
 
 /*
 ===============
@@ -4169,6 +4164,9 @@ VectorCopy( cent->lerpOrigin, backlight.lightingOrigin );
 	}
     
  
+        if ( cg_enableDust.integer ) {
+                CG_DustTrail( cent );
+        }
         if ( cg_enableSnow.integer ) {
                 CG_SnowTrail( cent );
         }
