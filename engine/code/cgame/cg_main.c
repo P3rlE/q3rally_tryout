@@ -1183,7 +1183,7 @@ static void CG_RegisterGraphics( void ) {
 #endif
 	cgs.media.dustPuffShader = trap_R_RegisterShader("hasteSmokePuff" );
     cgs.media.snowPuffShader = trap_R_RegisterShader("snowPuff" );
-// FIX THIS !!!    cgs.media.sandPuffShader = trap_R_RegisterShader("sandPuff" );
+    cgs.media.sandPuffShader = trap_R_RegisterShader("sandPuff" );
 //#endif
 // Q3Rally Code END
 
