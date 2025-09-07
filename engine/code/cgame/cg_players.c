@@ -2140,15 +2140,14 @@ static void CG_SandTrail( centity_t *cent ) {
 	end[2] -= 16;
 
 	VectorSet(vel, 0, 0, -30);
-	CG_SmokePuff( end, vel,
-				  24,
-				  .8f, .8f, 0.7f, 0.33f,
-				  500,
-				  cg.time,
-				  0,
-				  0,
-// FIX THIS !!!   cgs.media.sandPuffShader );
-				  cgs.media.snowPuffShader );
+        CG_SmokePuff( end, vel,
+                                  24,
+                                  .8f, .8f, 0.7f, 0.33f,
+                                  500,
+                                  cg.time,
+                                  0,
+                                  0,
+                                  cgs.media.sandPuffShader );
 }
 
  #endif
@@ -4170,13 +4169,12 @@ VectorCopy( cent->lerpOrigin, backlight.lightingOrigin );
 	}
     
  
-/*
-#ifdef MISSIONPACK
-	CG_BreathPuffs(cent, &head);
-
-	CG_DustTrail(cent);
-#endif
-*/
+        if ( cg_enableSnow.integer ) {
+                CG_SnowTrail( cent );
+        }
+        if ( cg_enableSand.integer ) {
+                CG_SandTrail( cent );
+        }
 // END
 
 	//

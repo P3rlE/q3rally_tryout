@@ -1025,6 +1025,7 @@ typedef struct {
 	qhandle_t	teleportEffectShader;
     qhandle_t	dustPuffShader;
     qhandle_t   snowPuffShader;
+    qhandle_t   sandPuffShader;
 
 
 	// scoreboard headers
