@@ -63,6 +63,7 @@ CG_CustomSound
 */
 sfxHandle_t	CG_CustomSound( int clientNum, const char *soundName ) {
 	clientInfo_t *ci;
+	int i;
 
         if ( !soundName ) {
                 return 0;
