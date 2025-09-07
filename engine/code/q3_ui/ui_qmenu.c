@@ -248,7 +248,7 @@ static void PText_Draw( menutext_s *t )
 	style = t->style;
 	if( t->generic.flags & QMF_PULSEIFFOCUS ) {
 		if( Menu_ItemAtCursor( t->generic.parent ) == t ) {
-			style |= UI_PULSE;
+		style |= UI_PULSE;
 		}
 // STONELANCE
 /*
@@ -473,7 +473,7 @@ static void RadioButton_Init( menuradiobutton_s *rb )
 	rb->generic.left   = LABEL_COLUMN_X - SMALLCHAR_WIDTH - len * SMALLCHAR_WIDTH;
 // STONELANCE
 //	rb->generic.right  = VALUE_COLUMN_X + 6*SMALLCHAR_WIDTH;
-	rb->generic.right  = VALUE_COLUMN_X + 4*SMALLCHAR_WIDTH + 16;
+		rb->generic.right  = VALUE_COLUMN_X + 3*SMALLCHAR_WIDTH + 16;
 // END
 	rb->generic.top    = rb->generic.y;
 	rb->generic.bottom = rb->generic.y + SMALLCHAR_HEIGHT;
