@@ -32,7 +32,6 @@ void CG_DrawHUD_Times(float x, float y){
 	centity_t	*cent;
 	int			lapTime, lastTime, totalTime, teamTime;
 	//int		bestTime;
-	char		*time;
 	int			i, count = 0;
 
 	cent = &cg_entities[cg.snap->ps.clientNum];
@@ -353,8 +352,6 @@ void CG_DrawHUD_DerbyList(float x, float y){
 	int			i;
 	vec4_t		color;
 	centity_t	*cent;
-	char		*time;
-	float		playTime;
 
 	// draw heading
     x = 636 - 120;
@@ -363,8 +360,6 @@ void CG_DrawHUD_DerbyList(float x, float y){
 	// name
 	CG_DrawTinyDigitalStringColor( x + 16, y, "P:", colorWhite);
 
-	// time
-//	CG_DrawTinyStringColor( x + 70, y, "TIME:", colorWhite);
 
 	// dmg dealt
 	CG_DrawTinyDigitalStringColor( x + 70, y, "DD:", colorWhite);
@@ -392,14 +387,6 @@ void CG_DrawHUD_DerbyList(float x, float y){
 			Vector4Copy(colorMdGrey, color);
 		}
 
-		playTime = 0;
-		if (cent->finishRaceTime){
-			playTime = cent->finishRaceTime - cent->startLapTime;
-		}
-		else if (cent->startRaceTime){
-			playTime = cg.time - cent->startLapTime;
-		}
-		time = getStringForTime(playTime);
 
 		// num
 		CG_DrawTinyDigitalStringColor( x + 2, y, va("%i", (i+1)), color);
@@ -407,8 +394,6 @@ void CG_DrawHUD_DerbyList(float x, float y){
 		// name
 		CG_DrawTinyDigitalStringColor( x + 16, y, cgs.clientinfo[cg.scores[i].client].name, color);
 
-		// time
-//		CG_DrawTinyStringColor( x + 70, y, time, color);
 
 		// dmg dealt
 		CG_DrawTinyDigitalStringColor( x + 75, y, va("%i", cg.scores[i].damageDealt), color);
