@@ -239,4 +239,4 @@ typedef enum {
 
 //----------------------------------------------
 
-void CG_DrawParcFerme( void );
+qboolean CG_DrawParcFerme( void );

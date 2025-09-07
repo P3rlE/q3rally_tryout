@@ -9,7 +9,7 @@
 
 void CG_ParcFerme_Begin( void );
 void CG_ParcFerme_End( void );
-void CG_DrawParcFerme( void );
+qboolean CG_DrawParcFerme( void );
 
 #endif // CG_PARCFERME_H
 
