@@ -482,7 +482,7 @@ static void Controls_UpdateModel( int anim ) {
 		break;
 
 	case ANIM_WEAPON1:
-		s_controls.playerWeapon = WP_FLAME_THROWER;
+		s_controls.playerWeapon = WP_GAUNTLET;
 		break;
 
 	case ANIM_WEAPON2:
@@ -518,7 +518,7 @@ static void Controls_UpdateModel( int anim ) {
 		break;
 
 	case ANIM_WEAPON10:
-		s_controls.playerWeapon = WP_GRAPPLING_HOOK;
+		s_controls.playerWeapon = WP_FLAME_THROWER;
 		break;
 
 	case ANIM_ATTACK:
