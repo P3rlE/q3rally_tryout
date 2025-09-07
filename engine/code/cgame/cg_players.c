@@ -3135,7 +3135,7 @@ Adds the wheels to the car body.
 // Q3Rally Code Start
 // FIXME: could increase the speed by only looking for components that
 // need to be drawn once when the model is loaded
-static void CG_AddWheels( centity_t *cent, refEntity_t *body, float angle )
+void CG_AddWheels( centity_t *cent, refEntity_t *body, float angle )
 {
 	clientInfo_t	*ci;
 	centity_t		*cent2;
