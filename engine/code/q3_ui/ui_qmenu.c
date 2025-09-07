@@ -526,8 +526,8 @@ static void RadioButton_Draw( menuradiobutton_s *rb )
 	int	style;
 	qboolean focus;
 
-	x = rb->generic.x;
-	y = rb->generic.y;
+	x = rb->generic.x - SMALLCHAR_WIDTH;
+        y = rb->generic.y;
 
 	focus = (rb->generic.parent->cursor == rb->generic.menuPosition);
 
@@ -555,17 +555,17 @@ static void RadioButton_Draw( menuradiobutton_s *rb )
 	}
 
 	if ( rb->generic.name )
-		UI_DrawString( x - SMALLCHAR_WIDTH, y, rb->generic.name, UI_RIGHT|UI_SMALLFONT, color );
+		UI_DrawString( LABEL_COLUMN_X, y, rb->generic.name, UI_RIGHT|UI_SMALLFONT, color );
 
 	if ( !rb->curvalue )
 	{
-		UI_DrawHandlePic( x + SMALLCHAR_WIDTH, y + 2, 16, 16, uis.rb_off);
-		UI_DrawString( x + SMALLCHAR_WIDTH + 16, y, "off", style, color );
+                UI_DrawHandlePic( VALUE_COLUMN_X - 16, y + 2, 16, 16, uis.rb_off );
+                UI_DrawString( VALUE_COLUMN_X, y, "off", style, color );
 	}
 	else
 	{
-		UI_DrawHandlePic( x + SMALLCHAR_WIDTH, y + 2, 16, 16, uis.rb_on );
-		UI_DrawString( x + SMALLCHAR_WIDTH + 16, y, "on", style, color );
+                UI_DrawHandlePic( VALUE_COLUMN_X - 16, y + 2, 16, 16, uis.rb_on );
+                UI_DrawString( VALUE_COLUMN_X, y, "on", style, color );
 	}
 }
 
@@ -666,8 +666,8 @@ static void Slider_Draw( menuslider_s *s ) {
 	int			button;
 	qboolean	focus;
 	
-	x =	s->generic.x;
-	y = s->generic.y;
+	x = s->generic.x - SMALLCHAR_WIDTH;
+        y = s->generic.y;
 	focus = (s->generic.parent->cursor == s->generic.menuPosition);
 
 	if( s->generic.flags & QMF_GRAYED ) {
@@ -684,11 +684,11 @@ static void Slider_Draw( menuslider_s *s ) {
 	}
 
 	// draw label
-	UI_DrawString( x - SMALLCHAR_WIDTH, y, s->generic.name, UI_RIGHT|style, color );
+	UI_DrawString( LABEL_COLUMN_X, y, s->generic.name, UI_RIGHT|style, color );
 
 	// draw slider
 	UI_SetColor( color );
-	UI_DrawHandlePic( x + SMALLCHAR_WIDTH, y, 96, 16, sliderBar );
+        UI_DrawHandlePic( VALUE_COLUMN_X, y, 96, 16, sliderBar );
 	UI_SetColor( NULL );
 
 	// clamp thumb
@@ -713,7 +713,7 @@ static void Slider_Draw( menuslider_s *s ) {
 		button = sliderButton_0;
 	}
 
-	UI_DrawHandlePic( (int)( x + 2*SMALLCHAR_WIDTH + (SLIDER_RANGE-1)*SMALLCHAR_WIDTH* s->range ) - 2, y - 2, 12, 20, button );
+	UI_DrawHandlePic( (int)( x + SMALLCHAR_WIDTH + (SLIDER_RANGE-1)*SMALLCHAR_WIDTH* s->range ) - 2, y - 2, 12, 20, button );
 }
 #else
 /*
@@ -730,8 +730,8 @@ static void Slider_Draw( menuslider_s *s )
 	int y;
 	qboolean focus;
 	
-	x =	s->generic.x;
-	y = s->generic.y;
+	x = s->generic.x - SMALLCHAR_WIDTH;
+        y = s->generic.y;
 	focus = (s->generic.parent->cursor == s->generic.menuPosition);
 
 	style = UI_SMALLFONT;
@@ -757,13 +757,13 @@ static void Slider_Draw( menuslider_s *s )
 	}
 
 	// draw label
-	UI_DrawString( x - SMALLCHAR_WIDTH, y, s->generic.name, UI_RIGHT|style, color );
+	UI_DrawString( LABEL_COLUMN_X, y, s->generic.name, UI_RIGHT|style, color );
 
 	// draw slider
-	UI_DrawChar( x + SMALLCHAR_WIDTH, y, 128, UI_LEFT|style, color);
+	UI_DrawChar( VALUE_COLUMN_X, y, 128, UI_LEFT|style, color);
 	for ( i = 0; i < SLIDER_RANGE; i++ )
-		UI_DrawChar( x + (i+2)*SMALLCHAR_WIDTH, y, 129, UI_LEFT|style, color);
-	UI_DrawChar( x + (i+2)*SMALLCHAR_WIDTH, y, 130, UI_LEFT|style, color);
+		UI_DrawChar( VALUE_COLUMN_X + (i+1)*SMALLCHAR_WIDTH, y, 129, UI_LEFT|style, color);
+	UI_DrawChar( VALUE_COLUMN_X + (i+1)*SMALLCHAR_WIDTH, y, 130, UI_LEFT|style, color);
 
 	// clamp thumb
 	if (s->maxvalue > s->minvalue)
@@ -782,7 +782,7 @@ static void Slider_Draw( menuslider_s *s )
 		style &= ~UI_PULSE;
 		style |= UI_BLINK;
 	}
-	UI_DrawChar( (int)( x + 2*SMALLCHAR_WIDTH + (SLIDER_RANGE-1)*SMALLCHAR_WIDTH* s->range ), y, 131, UI_LEFT|style, color);
+	UI_DrawChar( (int)( VALUE_COLUMN_X + (SLIDER_RANGE-1)*SMALLCHAR_WIDTH* s->range ), y, 131, UI_LEFT|style, color);
 }
 #endif
 

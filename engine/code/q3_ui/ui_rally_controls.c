@@ -616,21 +616,13 @@ static void Controls_Update( void ) {
 
 	// position controls
 	y = ( SCREEN_HEIGHT - j * SMALLCHAR_HEIGHT ) / 2;
-	for( j = 0;	(control = controls[j]); j++, y += SMALLCHAR_HEIGHT ) {
-// STONELANCE
-/*
-		control->x      = 320;
-		control->y      = y;
-		control->left   = 320 - 19*SMALLCHAR_WIDTH;
-		control->right  = 320 + 21*SMALLCHAR_WIDTH;
-*/
-		control->x      = 300 + (int)(((y - 240) / 14.0F) * ((y - 240) / 14.0F));
-		control->y      = y;
-		control->left   = control->x - 19*SMALLCHAR_WIDTH;
-		control->right  = control->x + 21*SMALLCHAR_WIDTH;
-// END
-		control->top    = y;
-		control->bottom = y + SMALLCHAR_HEIGHT;
+	for( j = 0;	(control = controls[j]); j++, y += SMALLCHAR_HEIGHT ) {		control->x      = VALUE_COLUMN_X;                control->x      = VALUE_COLUMN_X;
+                control->x      = VALUE_COLUMN_X;
+                control->y      = y;
+                control->left   = VALUE_COLUMN_X - 19*SMALLCHAR_WIDTH;
+                control->right  = VALUE_COLUMN_X + 21*SMALLCHAR_WIDTH;
+                control->top    = y;
+                control->bottom = y + SMALLCHAR_HEIGHT;
 	}
 
 	if( s_controls.waitingforkey ) {
@@ -707,7 +699,8 @@ static void Controls_DrawKeyBinding( void *self )
 
 	a = (menuaction_s*) self;
 
-	x =	a->generic.x;
+	// position cursor at column center
+	x = a->generic.x - SMALLCHAR_WIDTH;
 	y = a->generic.y;
 
 	c = (Menu_ItemAtCursor( a->generic.parent ) == a);
@@ -743,8 +736,8 @@ static void Controls_DrawKeyBinding( void *self )
 	{
 		UI_FillRect( a->generic.left, a->generic.top, a->generic.right-a->generic.left+1, a->generic.bottom-a->generic.top+1, listbar_color ); 
 
-		UI_DrawString( x - SMALLCHAR_WIDTH, y, g_bindings[b1].label, UI_RIGHT|UI_SMALLFONT, text_color_highlight );
-		UI_DrawString( x + SMALLCHAR_WIDTH, y, name, UI_LEFT|UI_SMALLFONT|UI_PULSE, text_color_highlight );
+		UI_DrawString( LABEL_COLUMN_X, y, g_bindings[b1].label, UI_RIGHT|UI_SMALLFONT, text_color_highlight );
+                UI_DrawString( VALUE_COLUMN_X, y, name, UI_LEFT|UI_SMALLFONT|UI_PULSE, text_color_highlight );
 
 		if (s_controls.waitingforkey)
 		{
@@ -762,17 +755,13 @@ static void Controls_DrawKeyBinding( void *self )
 	{
 		if (a->generic.flags & QMF_GRAYED)
 		{
-			UI_DrawString( x - SMALLCHAR_WIDTH, y, g_bindings[b1].label, UI_RIGHT|UI_SMALLFONT, text_color_disabled );
-			UI_DrawString( x + SMALLCHAR_WIDTH, y, name, UI_LEFT|UI_SMALLFONT, text_color_disabled );
+			UI_DrawString( LABEL_COLUMN_X, y, g_bindings[b1].label, UI_RIGHT|UI_SMALLFONT, text_color_disabled );
+                        UI_DrawString( VALUE_COLUMN_X, y, name, UI_LEFT|UI_SMALLFONT, text_color_disabled );
 		}
 		else
 		{
-// STONELANCE
-//			UI_DrawString( x - SMALLCHAR_WIDTH, y, g_bindings[b1].label, UI_RIGHT|UI_SMALLFONT, controls_binding_color );
-//			UI_DrawString( x + SMALLCHAR_WIDTH, y, name, UI_LEFT|UI_SMALLFONT, controls_binding_color );
-			UI_DrawString( x - SMALLCHAR_WIDTH, y, g_bindings[b1].label, UI_RIGHT|UI_SMALLFONT, text_color_normal );
-			UI_DrawString( x + SMALLCHAR_WIDTH, y, name, UI_LEFT|UI_SMALLFONT, text_color_normal );
-// END
+                        UI_DrawString( LABEL_COLUMN_X, y, g_bindings[b1].label, UI_RIGHT|UI_SMALLFONT, text_color_normal );
+                        UI_DrawString( VALUE_COLUMN_X, y, name, UI_LEFT|UI_SMALLFONT, text_color_normal );
 		}
 	}
 }
