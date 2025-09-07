@@ -473,7 +473,7 @@ static void RadioButton_Init( menuradiobutton_s *rb )
 	rb->generic.left   = LABEL_COLUMN_X - SMALLCHAR_WIDTH - len * SMALLCHAR_WIDTH;
 // STONELANCE
 //	rb->generic.right  = VALUE_COLUMN_X + 6*SMALLCHAR_WIDTH;
-		rb->generic.right  = VALUE_COLUMN_X + 2*SMALLCHAR_WIDTH;
+		rb->generic.right  = rb->generic.x + 2*SMALLCHAR_WIDTH;
 // END
 	rb->generic.top    = rb->generic.y;
 	rb->generic.bottom = rb->generic.y + SMALLCHAR_HEIGHT;
@@ -585,7 +585,7 @@ static void Slider_Init( menuslider_s *s )
 		len = 0;
 
 	s->generic.left   = LABEL_COLUMN_X - SMALLCHAR_WIDTH - len*SMALLCHAR_WIDTH; 
-	s->generic.right  = VALUE_COLUMN_X + (SLIDER_RANGE+2)*SMALLCHAR_WIDTH;
+	s->generic.right  = s->generic.x + (SLIDER_RANGE+2)*SMALLCHAR_WIDTH;
 	s->generic.top    = s->generic.y;
 	s->generic.bottom = s->generic.y + SMALLCHAR_HEIGHT;
 }
@@ -814,7 +814,7 @@ static void SpinControl_Init( menulist_s *s ) {
 	}
 
 	s->generic.top	  =	s->generic.y;
-	s->generic.right  =     VALUE_COLUMN_X + len*SMALLCHAR_WIDTH;
+	s->generic.right  =     s->generic.x + len*SMALLCHAR_WIDTH;
 	s->generic.bottom =	s->generic.y + SMALLCHAR_HEIGHT;
 }
 
