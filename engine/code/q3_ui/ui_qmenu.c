@@ -470,10 +470,10 @@ static void RadioButton_Init( menuradiobutton_s *rb )
 	else
 		len = 0;
 
-	rb->generic.left   = rb->generic.x - (len+1)*SMALLCHAR_WIDTH;
+	rb->generic.left   = LABEL_COLUMN_X - SMALLCHAR_WIDTH - len * SMALLCHAR_WIDTH;
 // STONELANCE
-//	rb->generic.right  = rb->generic.x + 6*SMALLCHAR_WIDTH;
-	rb->generic.right  = rb->generic.x + 4*SMALLCHAR_WIDTH + 16;
+//	rb->generic.right  = VALUE_COLUMN_X + 6*SMALLCHAR_WIDTH;
+	rb->generic.right  = VALUE_COLUMN_X + 4*SMALLCHAR_WIDTH + 16;
 // END
 	rb->generic.top    = rb->generic.y;
 	rb->generic.bottom = rb->generic.y + SMALLCHAR_HEIGHT;
@@ -584,8 +584,8 @@ static void Slider_Init( menuslider_s *s )
 	else
 		len = 0;
 
-	s->generic.left   = s->generic.x - (len+1)*SMALLCHAR_WIDTH; 
-	s->generic.right  = s->generic.x + (SLIDER_RANGE+2+1)*SMALLCHAR_WIDTH;
+	s->generic.left   = LABEL_COLUMN_X - SMALLCHAR_WIDTH - len*SMALLCHAR_WIDTH; 
+	s->generic.right  = VALUE_COLUMN_X + (SLIDER_RANGE+2+1)*SMALLCHAR_WIDTH;
 	s->generic.top    = s->generic.y;
 	s->generic.bottom = s->generic.y + SMALLCHAR_HEIGHT;
 }
@@ -797,11 +797,11 @@ static void SpinControl_Init( menulist_s *s ) {
 	const char* str;
 
 	if (s->generic.name)
-		len = strlen(s->generic.name) * SMALLCHAR_WIDTH;
+		len = strlen(s->generic.name);
 	else
 		len = 0;
 
-	s->generic.left	= s->generic.x - SMALLCHAR_WIDTH - len;
+	s->generic.left = LABEL_COLUMN_X - SMALLCHAR_WIDTH - len*SMALLCHAR_WIDTH;
 
 	len = s->numitems = 0;
 	while ( (str = s->itemnames[s->numitems]) != 0 )
@@ -814,7 +814,7 @@ static void SpinControl_Init( menulist_s *s ) {
 	}
 
 	s->generic.top	  =	s->generic.y;
-	s->generic.right  =	s->generic.x + (len+1)*SMALLCHAR_WIDTH;
+	s->generic.right  =     VALUE_COLUMN_X + (len+1)*SMALLCHAR_WIDTH;
 	s->generic.bottom =	s->generic.y + SMALLCHAR_HEIGHT;
 }
 
