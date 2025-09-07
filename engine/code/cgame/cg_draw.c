@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // active (after loading) gameplay
 
 #include "cg_local.h"
+#include "cg_parcferme.h"
 
 #ifdef MISSIONPACK
 #include "../ui/ui_shared.h"
@@ -2943,6 +2944,17 @@ static void CG_DrawIntermission( void ) {
 	}
 #endif
 	cg.scoreFadeTime = cg.time;
+
+        if ( cg.intermissionStarted ) {
+                CG_DrawParcFerme();
+                if ( cg.time >= cg.parcFermeEndTime ) {
+                        cg.scoreBoardShowing = CG_DrawModernScoreboard();
+                }
+                return;
+        }
+
+
+
 
 // Q3Rally Code Start
 	cg.scoreBoardShowing = CG_DrawHUD();
