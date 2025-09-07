@@ -164,8 +164,8 @@ extern vmCvar_t	ui_mmap_fov;
 #define RCOLUMN_OFFSET			( BIGCHAR_WIDTH )
 #define LCOLUMN_OFFSET                  (-BIGCHAR_WIDTH )
 
-#define LABEL_COLUMN_X                  396
-#define VALUE_COLUMN_X                  412
+#define LABEL_COLUMN_X                  320
+#define VALUE_COLUMN_X                  360
 
 #define SLIDER_RANGE			10
 #define	MAX_EDIT_LINE			256
