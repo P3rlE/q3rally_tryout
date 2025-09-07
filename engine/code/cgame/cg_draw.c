@@ -2948,9 +2948,12 @@ static void CG_DrawIntermission( void ) {
 	cg.scoreFadeTime = cg.time;
 
         if ( cg.intermissionStarted ) {
-                CG_DrawParcFerme();
-                if ( cg.time >= cg.parcFermeEndTime ) {
+                if ( !CG_DrawParcFerme() ) {
                         cg.scoreBoardShowing = CG_DrawModernScoreboard();
+                        cg.showScores = cg.scoreBoardShowing;
+                } else {
+                        cg.scoreBoardShowing = qfalse;
+                        cg.showScores = qfalse;
                 }
                 return;
         }

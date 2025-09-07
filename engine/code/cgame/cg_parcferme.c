@@ -29,13 +29,17 @@ CG_DrawParcFerme
 Draw top three vehicles and player names during intermission
 =================
 */
-void CG_DrawParcFerme( void ) {
+qboolean CG_DrawParcFerme( void ) {
     int i;
     vec3_t origin = { 0, 0, 0 };
     vec3_t angles = { 0, 0, 0 };
     float size = 120.0f;
     float spacing = 20.0f;
     float baseX;
+
+    if ( cg.time >= cg.parcFermeEndTime ) {
+        return qfalse;
+    }
 
     CG_SetScreenPlacement( PLACE_CENTER, PLACE_TOP );
 
@@ -112,5 +116,7 @@ void CG_DrawParcFerme( void ) {
 
         CG_DrawBigStringColor( x, y + size + 10, va( "%i. %s", i + 1, ci->name ), colorWhite );
     }
+
+    return qtrue;
 }
 
