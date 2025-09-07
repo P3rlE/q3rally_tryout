@@ -515,45 +515,18 @@ static void Controls_UpdateModel( int anim ) {
 		s_controls.playerViewangles[PITCH] = 45;
 		break;
 
-	case ANIM_WEAPON1:
-		s_controls.playerWeapon = WP_GAUNTLET;
-		break;
-
-	case ANIM_WEAPON2:
-		s_controls.playerWeapon = WP_MACHINEGUN;
-		break;
-
-	case ANIM_WEAPON3:
-		s_controls.playerWeapon = WP_SHOTGUN;
-		break;
-
-	case ANIM_WEAPON4:
-		s_controls.playerWeapon = WP_GRENADE_LAUNCHER;
-		break;
-
-	case ANIM_WEAPON5:
-		s_controls.playerWeapon = WP_ROCKET_LAUNCHER;
-		break;
-
-	case ANIM_WEAPON6:
-		s_controls.playerWeapon = WP_LIGHTNING;
-		break;
-
-	case ANIM_WEAPON7:
-		s_controls.playerWeapon = WP_RAILGUN;
-		break;
-
-	case ANIM_WEAPON8:
-		s_controls.playerWeapon = WP_PLASMAGUN;
-		break;
-
-	case ANIM_WEAPON9:
-		s_controls.playerWeapon = WP_BFG;
-		break;
-
-	case ANIM_WEAPON10:
-	   s_controls.playerWeapon = WP_FLAME_THROWER;
-	   break;
+       case ANIM_WEAPON1:
+       case ANIM_WEAPON2:
+       case ANIM_WEAPON3:
+       case ANIM_WEAPON4:
+       case ANIM_WEAPON5:
+       case ANIM_WEAPON6:
+       case ANIM_WEAPON7:
+       case ANIM_WEAPON8:
+       case ANIM_WEAPON9:
+       case ANIM_WEAPON10:
+               s_controls.playerWeapon = WP_GAUNTLET + ( anim - ANIM_WEAPON1 );
+               break;
 
 	case ANIM_ATTACK:
 		s_controls.playerTorso = TORSO_ATTACK;
