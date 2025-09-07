@@ -1079,6 +1079,9 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.SMDirtShader = trap_R_RegisterShader("gfx/skidmarks/dirt" );
 	cgs.media.SMGrassShader = trap_R_RegisterShader("gfx/skidmarks/grass" );
 	cgs.media.SMFleshShader = trap_R_RegisterShader("gfx/skidmarks/flesh" );
+	cgs.media.SMSandShader = trap_R_RegisterShader("gfx/skidmarks/sand" );
+	cgs.media.SMSnowShader = trap_R_RegisterShader("gfx/skidmarks/snow" );
+	cgs.media.SMIceShader = trap_R_RegisterShader("gfx/skidmarks/ice" );
 
 	cgs.media.checkpointArrow = trap_R_RegisterModel("gfx/hud/arrow.md3");
     cgs.media.gaugeImperial = trap_R_RegisterShaderNoMip("gfx/hud/gauge01" );
