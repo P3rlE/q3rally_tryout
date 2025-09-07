@@ -526,7 +526,7 @@ static void RadioButton_Draw( menuradiobutton_s *rb )
 	int	style;
 	qboolean focus;
 
-	x = rb->generic.x - SMALLCHAR_WIDTH;
+	x = rb->generic.x - 3*SMALLCHAR_WIDTH;
         y = rb->generic.y;
 
 	focus = (rb->generic.parent->cursor == rb->generic.menuPosition);
