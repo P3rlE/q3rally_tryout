@@ -1000,6 +1000,9 @@ typedef struct {
 	qhandle_t	SMDirtShader;
 	qhandle_t	SMGrassShader;
 	qhandle_t	SMFleshShader;
+	qhandle_t	SMSandShader;
+	qhandle_t	SMSnowShader;
+	qhandle_t	SMIceShader;
 	qhandle_t	checkpointArrow;
 
 
