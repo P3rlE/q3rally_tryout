@@ -63,7 +63,6 @@ CG_CustomSound
 */
 sfxHandle_t	CG_CustomSound( int clientNum, const char *soundName ) {
 	clientInfo_t *ci;
-	int			i;
 
         if ( !soundName ) {
                 return 0;
@@ -110,7 +109,6 @@ models/players/visor/animation.cfg, etc
 // Q3Rally Code Start (change function to do q3rally related stuff)
 static qboolean	CG_ParseAnimationFile( const char *filename, clientInfo_t *ci ) {
 	char		*text_p, *prev;
-	int			len;
 	char		*token;
 	char		text[20000];
 	fileHandle_t	f;
@@ -2024,7 +2022,6 @@ CG_DustTrail
 ===============
 */
 static void CG_DustTrail( centity_t *cent ) {
-	int				anim;
 	vec3_t end, vel;
 	trace_t tr;
 
@@ -4167,6 +4164,9 @@ VectorCopy( cent->lerpOrigin, backlight.lightingOrigin );
 	}
     
  
+        if ( cg_enableDust.integer ) {
+                CG_DustTrail( cent );
+        }
         if ( cg_enableSnow.integer ) {
                 CG_SnowTrail( cent );
         }
