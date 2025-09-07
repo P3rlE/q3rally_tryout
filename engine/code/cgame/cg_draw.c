@@ -44,6 +44,8 @@ char systemChat[256];
 char teamChat1[256];
 char teamChat2[256];
 
+static qboolean parcFermeActive = qfalse;
+
 static float CG_DrawRallyPowerups( float y );
 
 #ifdef MISSIONPACK
@@ -3193,14 +3195,24 @@ CG_Draw2D
 static void CG_Draw2D(stereoFrame_t stereoFrame)
 {
 #ifdef MISSIONPACK
-	if (cgs.orderPending && cg.time > cgs.orderTime) {
-		CG_CheckOrderPending();
-	}
+        if (cgs.orderPending && cg.time > cgs.orderTime) {
+                CG_CheckOrderPending();
+        }
 #endif
-	// if we are taking a levelshot for the menu, don't draw anything
-	if ( cg.levelShot ) {
-		return;
-	}
+       // handle parc ferme initialization and cleanup
+       if ( cg.intermissionStarted ) {
+               if ( !parcFermeActive ) {
+                       CG_ParcFerme_Begin();
+                       parcFermeActive = qtrue;
+               }
+       } else if ( parcFermeActive ) {
+               CG_ParcFerme_End();
+               parcFermeActive = qfalse;
+       }
+        // if we are taking a levelshot for the menu, don't draw anything
+        if ( cg.levelShot ) {
+                return;
+        }
 
 	if ( cg_draw2D.integer == 0 ) {
 		return;

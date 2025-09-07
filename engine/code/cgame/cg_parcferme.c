@@ -9,6 +9,22 @@
 
 /*
 =================
+CG_ParcFerme_Begin
+=================
+*/
+void CG_ParcFerme_Begin( void ) {
+}
+
+/*
+=================
+CG_ParcFerme_End
+=================
+*/
+void CG_ParcFerme_End( void ) {
+}
+
+/*
+=================
 CG_DrawParcFerme
 Draw top three vehicles and player names during intermission
 =================
