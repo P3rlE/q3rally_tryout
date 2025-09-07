@@ -64,21 +64,35 @@ void CG_DrawParcFerme( void ) {
         memset( &body, 0, sizeof( body ) );
         body.hModel = ci->bodyModel;
         body.customSkin = ci->bodySkin;
-        VectorCopy( origin, body.origin );
-        AnglesToAxis( angles, body.axis );
-        body.renderfx = RF_NOSHADOW;
 
-        if ( ci->controlMode == CT_MOUSE ) {
-            wheelAngle = WheelAngle( cent->currentState.apos.trBase[YAW],
-                                    cent->currentState.angles2[YAW] );
+        if ( body.hModel ) {
+            VectorCopy( origin, body.origin );
+            AnglesToAxis( angles, body.axis );
+            body.renderfx = RF_NOSHADOW;
+
+            if ( ci->controlMode == CT_MOUSE ) {
+                wheelAngle = WheelAngle( cent->currentState.apos.trBase[YAW],
+                                        cent->currentState.angles2[YAW] );
+            } else {
+                wheelAngle = cent->currentState.angles2[YAW];
+            }
+
+            trap_R_ClearScene();
+            CG_AddRefEntityWithPowerups( &body, &cent->currentState, ci->team );
+            CG_AddWheels( cent, &body, wheelAngle );
+            trap_R_RenderScene( &refdef );
         } else {
-            wheelAngle = cent->currentState.angles2[YAW];
-        }
+            qhandle_t icon;
 
-        trap_R_ClearScene();
-        CG_AddRefEntityWithPowerups( &body, &cent->currentState, ci->team );
-        CG_AddWheels( cent, &body, wheelAngle );
-        trap_R_RenderScene( &refdef );
+            icon = ci->modelIcon;
+            if ( !icon ) {
+                icon = cgs.media.deferShader;
+            }
+
+            if ( icon ) {
+                CG_DrawPic( x, y, size, size, icon );
+            }
+        }
 
         CG_DrawBigStringColor( x, y + size + 10, va( "%i. %s", i + 1, ci->name ), colorWhite );
     }
