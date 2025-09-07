@@ -28,13 +28,15 @@ void CG_DrawParcFerme( void ) {
     for ( i = 0; i < 3 && i < cg.numScores; i++ ) {
         score_t *score = &cg.scores[i];
         clientInfo_t *ci = &cgs.clientinfo[ score->client ];
+        float x;
+        float y;
 
         if ( !ci->infoValid ) {
             continue;
         }
 
-        float x = baseX + i * (size + spacing);
-        float y = 100.0f;
+        x = baseX + i * (size + spacing);
+        y = 100.0f;
 
         CG_Draw3DModel( x, y, size, size, ci->bodyModel, ci->bodySkin, origin, angles );
         CG_DrawBigStringColor( x, y + size + 10, va( "%i. %s", i + 1, ci->name ), colorWhite );
