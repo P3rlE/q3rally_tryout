@@ -238,3 +238,5 @@ typedef enum {
 } cgameExport_t;
 
 //----------------------------------------------
+
+void CG_DrawParcFerme( void );

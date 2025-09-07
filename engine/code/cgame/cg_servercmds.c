@@ -415,6 +415,10 @@ static void CG_ConfigStringModified( void ) {
 #endif
 	} else if ( num == CS_INTERMISSION ) {
 		cg.intermissionStarted = atoi( str );
+		if ( cg.intermissionStarted ) {
+			int duration = cg_parcFermeTime.integer ? cg_parcFermeTime.integer : 7000;
+			cg.parcFermeEndTime = cg.time + duration;
+		}
 	} else if ( num >= CS_MODELS && num < CS_MODELS+MAX_MODELS ) {
 		cgs.gameModels[ num-CS_MODELS ] = trap_R_RegisterModel( str );
 	} else if ( num >= CS_SOUNDS && num < CS_SOUNDS+MAX_SOUNDS ) {
