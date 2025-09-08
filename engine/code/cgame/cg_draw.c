@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // active (after loading) gameplay
 
 #include "cg_local.h"
-#include "cg_parcferme.h"
 
 #ifdef MISSIONPACK
 #include "../ui/ui_shared.h"
@@ -43,8 +42,6 @@ int	numSortedTeamPlayers;
 char systemChat[256];
 char teamChat1[256];
 char teamChat2[256];
-
-static qboolean parcFermeActive = qfalse;
 
 static float CG_DrawRallyPowerups( float y );
 
@@ -2947,20 +2944,6 @@ static void CG_DrawIntermission( void ) {
 #endif
 	cg.scoreFadeTime = cg.time;
 
-        if ( cg.intermissionStarted ) {
-                if ( !CG_DrawParcFerme() ) {
-                        cg.scoreBoardShowing = CG_DrawModernScoreboard();
-                        cg.showScores = cg.scoreBoardShowing;
-                } else {
-                        cg.scoreBoardShowing = qfalse;
-                        cg.showScores = qfalse;
-                }
-                return;
-        }
-
-
-
-
 // Q3Rally Code Start
 	cg.scoreBoardShowing = CG_DrawHUD();
 
@@ -3198,24 +3181,14 @@ CG_Draw2D
 static void CG_Draw2D(stereoFrame_t stereoFrame)
 {
 #ifdef MISSIONPACK
-        if (cgs.orderPending && cg.time > cgs.orderTime) {
-                CG_CheckOrderPending();
-        }
+	if (cgs.orderPending && cg.time > cgs.orderTime) {
+		CG_CheckOrderPending();
+	}
 #endif
-       // handle parc ferme initialization and cleanup
-       if ( cg.intermissionStarted ) {
-               if ( !parcFermeActive ) {
-                       CG_ParcFerme_Begin();
-                       parcFermeActive = qtrue;
-               }
-       } else if ( parcFermeActive ) {
-               CG_ParcFerme_End();
-               parcFermeActive = qfalse;
-       }
-        // if we are taking a levelshot for the menu, don't draw anything
-        if ( cg.levelShot ) {
-                return;
-        }
+	// if we are taking a levelshot for the menu, don't draw anything
+	if ( cg.levelShot ) {
+		return;
+	}
 
 	if ( cg_draw2D.integer == 0 ) {
 		return;

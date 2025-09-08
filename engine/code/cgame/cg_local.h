@@ -611,7 +611,6 @@ typedef struct {
 	int			deferredPlayerLoading;
 	qboolean	loading;			// don't defer players at initial startup
 	qboolean	intermissionStarted;	// don't play voice rewards, because game will end shortly
-	int			parcFermeEndTime;		// time when parc ferme view ends
 
 	// there are only one or two snapshot_t that are relevant at a time
 	int			latestSnapshotNum;	// the number of snapshots the client system has received
@@ -1473,7 +1472,6 @@ extern	vmCvar_t		cg_engineSounds;
 
 extern  vmCvar_t                cg_fuelWarningLevel;
 extern	vmCvar_t		cg_drawBotPaths;
-extern	vmCvar_t		cg_parcFermeTime;
 // Q3Rally Code END
 
 //
@@ -1616,7 +1614,6 @@ qhandle_t CG_StatusHandle(int task);
 void CG_Player( centity_t *cent );
 void CG_ResetPlayerEntity( centity_t *cent );
 void CG_AddRefEntityWithPowerups( refEntity_t *ent, entityState_t *state, int team );
-void CG_AddWheels( centity_t *cent, refEntity_t *body, float angle );
 void CG_NewClientInfo( int clientNum );
 sfxHandle_t	CG_CustomSound( int clientNum, const char *soundName );
 
@@ -1791,7 +1788,6 @@ void CG_DrawInformation( void );
 // cg_scoreboard.c
 //
 qboolean CG_DrawOldScoreboard( void );
-qboolean CG_DrawModernScoreboard( void );
 // Q3Rally Code Start - removed
 // void CG_DrawTourneyScoreboard( void );
 // Q3Rally Code END

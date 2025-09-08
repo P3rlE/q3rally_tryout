@@ -2710,7 +2710,6 @@ Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_rally_tools.o \
   $(B)/$(BASEGAME)/cgame/cg_scoreboard.o \
   $(B)/$(BASEGAME)/cgame/cg_servercmds.o \
-  $(B)/$(BASEGAME)/cgame/cg_parcferme.o \
   $(B)/$(BASEGAME)/cgame/cg_snapshot.o \
   $(B)/$(BASEGAME)/cgame/cg_view.o \
   $(B)/$(BASEGAME)/cgame/cg_weapons.o \
@@ -2742,7 +2741,6 @@ MPCGOBJ_ = \
   $(B)/$(MISSIONPACK)/cgame/cg_consolecmds.o \
   $(B)/$(MISSIONPACK)/cgame/cg_newdraw.o \
   $(B)/$(MISSIONPACK)/cgame/cg_draw.o \
-  $(B)/$(MISSIONPACK)/cgame/cg_parcferme.o \
   $(B)/$(MISSIONPACK)/cgame/cg_drawtools.o \
   $(B)/$(MISSIONPACK)/cgame/cg_effects.o \
   $(B)/$(MISSIONPACK)/cgame/cg_ents.o \
