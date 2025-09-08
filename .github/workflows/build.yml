@@ -19,6 +19,19 @@ jobs:
       with:
         name: Linux
         path: engine/build/*.zip
+  linux-arm64:
+    name: Linux ARM64
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install gcc-aarch64-linux-gnu
+    - name: Compile
+      run: make release -j$(nproc) ARCH=arm64 BUILD_CLIENT=0 BUILD_RENDERER_OPENGL1=0 BUILD_RENDERER_OPENGL2=0 CC=aarch64-linux-gnu-gcc -C engine
+      env:
+        ARCHIVE: 1
   windows:
     name: Windows
     runs-on: windows-2022
