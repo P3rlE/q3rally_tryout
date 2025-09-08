@@ -100,12 +100,17 @@ cvar_t	*com_busyWait;
 cvar_t  *con_autochat;
 #endif
 
-#if idx64
-	int (*Q_VMftol)(void);
-#elif id386
-	long (QDECL *Q_ftol)(float f);
-	int (QDECL *Q_VMftol)(void);
-	void (QDECL *Q_SnapVector)(vec3_t vec);
+#if defined(__i386__) || defined(__x86_64__)
+#if defined(__x86_64__)
+int (*Q_VMftol)(void);
+#else
+long (QDECL *Q_ftol)(float f);
+int (QDECL *Q_VMftol)(void);
+void (QDECL *Q_SnapVector)(vec3_t vec);
+#endif
+#elif defined(__aarch64__)
+#define Q_SnapVector SnapVector
+#define Q_ftol lrintf
 #endif
 
 // com_speeds times
@@ -2598,37 +2603,37 @@ Find out whether we have SSE support for Q_ftol function
 =================
 */
 
-#if id386 || idx64
+#if defined(__i386__) || defined(__x86_64__)
 
 static void Com_DetectSSE(void)
 {
-#if !idx64
-	cpuFeatures_t feat;
-	
-	feat = Sys_GetProcessorFeatures();
+#if !defined(__x86_64__)
+        cpuFeatures_t feat;
 
-	if(feat & CF_SSE)
-	{
-		if(feat & CF_SSE2)
-			Q_SnapVector = qsnapvectorsse;
-		else
-			Q_SnapVector = qsnapvectorx87;
+        feat = Sys_GetProcessorFeatures();
 
-		Q_ftol = qftolsse;
+        if(feat & CF_SSE)
+        {
+                if(feat & CF_SSE2)
+                        Q_SnapVector = qsnapvectorsse;
+                else
+                        Q_SnapVector = qsnapvectorx87;
+
+                Q_ftol = qftolsse;
 #endif
-		Q_VMftol = qvmftolsse;
+                Q_VMftol = qvmftolsse;
 
-		Com_Printf("SSE instruction set enabled\n");
-#if !idx64
-	}
-	else
-	{
-		Q_ftol = qftolx87;
-		Q_VMftol = qvmftolx87;
-		Q_SnapVector = qsnapvectorx87;
+                Com_Printf("SSE instruction set enabled\n");
+#if !defined(__x86_64__)
+        }
+        else
+        {
+                Q_ftol = qftolx87;
+                Q_VMftol = qvmftolx87;
+                Q_SnapVector = qsnapvectorx87;
 
-		Com_Printf("SSE instruction set not available\n");
-	}
+                Com_Printf("SSE instruction set not available\n");
+        }
 #endif
 }
 
