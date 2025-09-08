@@ -140,39 +140,36 @@ void CG_Sparks( const vec3_t origin, const vec3_t normal, const vec3_t direction
 
 qboolean CG_FrictionCalc( const carPoint_t *point, float *sCOF, float *kCOF )
 {
-	centity_t	*cent;
-	int			entityList[MAX_GENTITIES];
-	int			numListedEntities;
-	vec3_t		mins, maxs;
-	float		radius;
-	int			i;
+        centity_t       *cent;
+        entityState_t   *es;
+        float           radius;
+        int                     i;
 
-	radius = point->radius + SPLASH_RADIUS_SCALE * MAX_SPLASH_RADIUS;
+        for ( i = 0 ; i < cg.snap->numEntities ; i++ ) {
+                es = &cg.snap->entities[ i ];
 
-	for ( i = 0 ; i < 3 ; i++ ) {
-		mins[i] = point->r[i] - radius;
-		maxs[i] = point->r[i] + radius;
-	}
+                if ( es->eType != ET_EVENTS + EV_HAZARD ) {
+                        continue;
+                }
+                if ( es->weapon != HT_OIL ) {
+                        continue;
+                }
 
-	numListedEntities = trap_EntitiesInBox( mins, maxs, entityList, MAX_GENTITIES );
+                cent = &cg_entities[ es->number ];
 
-	for ( i = 0 ; i < numListedEntities ; i++ ) {
-		cent = &cg_entities[entityList[ i ]];
+                radius = ( es->eventParm * SPLASH_RADIUS_SCALE ) + point->radius;
+                radius *= radius;
+                if ( DistanceSquared( cent->lerpOrigin, point->r ) > radius ) {
+                        continue;
+                }
 
-		if( cent->currentState.eType != ET_EVENTS + EV_HAZARD ) continue;
-		if( cent->currentState.weapon != HT_OIL ) continue;
+                *sCOF = CP_OIL_SCOF;
+                *kCOF = CP_OIL_KCOF;
 
-		radius = ( cent->currentState.eventParm * SPLASH_RADIUS_SCALE ) + point->radius;
-		radius *= radius;
-		if( DistanceSquared( cent->lerpOrigin, point->r ) > radius ) continue;
+                return qtrue;
+        }
 
-		*sCOF = CP_OIL_SCOF;
-		*kCOF = CP_OIL_KCOF;
-
-		return qtrue;
-	}
-
-	return qfalse;
+        return qfalse;
 }
 
 
