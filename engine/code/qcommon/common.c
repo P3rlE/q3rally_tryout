@@ -108,7 +108,9 @@ long (QDECL *Q_ftol)(float f);
 int (QDECL *Q_VMftol)(void);
 void (QDECL *Q_SnapVector)(vec3_t vec);
 #endif
-#elif defined(__aarch64__)
+#endif
+
+#if defined(__aarch64__)
 #define Q_SnapVector SnapVector
 #define Q_ftol lrintf
 #endif
