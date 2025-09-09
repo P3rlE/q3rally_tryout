@@ -24,6 +24,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "tr_dsa.h"
 
+#include <stdlib.h>
+
 static byte			 s_intensitytable[256];
 static unsigned char s_gammatable[256];
 
@@ -2963,10 +2965,23 @@ void R_CreateBuiltinImages( void ) {
 			tr.quarterImage[x] = R_CreateImage(va("*quarter%d", x), NULL, width / 2, height / 2, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RGBA8);
 		}
 
-		if (r_ssao->integer)
-		{
-			tr.screenSsaoImage = R_CreateImage("*screenSsao", NULL, width / 2, height / 2, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RGBA8);
-		}
+               if (r_ssao->integer)
+               {
+                       byte noiseData[4 * 4 * 4];
+                       int i;
+
+                       tr.screenSsaoImage = R_CreateImage("*screenSsao", NULL, width / 2, height / 2, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RGBA8);
+
+                       for (i = 0; i < 16; i++)
+                       {
+                               noiseData[i*4+0] = rand() & 255;
+                               noiseData[i*4+1] = rand() & 255;
+                               noiseData[i*4+2] = 0;
+                               noiseData[i*4+3] = 255;
+                       }
+
+                       tr.ssaoNoiseImage = R_CreateImage("*ssaoNoise", noiseData, 4, 4, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION, GL_RGBA8);
+               }
 
 		for( x = 0; x < MAX_DRAWN_PSHADOWS; x++)
 		{

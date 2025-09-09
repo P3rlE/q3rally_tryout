@@ -1549,7 +1549,8 @@ typedef struct {
 	image_t					*fixedLevelsImage;
 	image_t					*sunShadowDepthImage[4];
 	image_t                 *screenShadowImage;
-	image_t                 *screenSsaoImage;
+       image_t                 *screenSsaoImage;
+       image_t                 *ssaoNoiseImage;
 	image_t					*hdrDepthImage;
 	image_t                 *renderCubeImage;
 	image_t			*defaultReflectImage;
