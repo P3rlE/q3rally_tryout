@@ -114,8 +114,9 @@ void RB_SSAO(void)
        FBO_t *dst = tr.screenSsaoFbo;
        FBO_t *oldFbo;
        int width, height;
+       int samples;
 
-       if (!dst)
+       if (!dst || r_ssao->integer <= 0)
                return;
 
        width = dst->width;
@@ -147,6 +148,8 @@ void RB_SSAO(void)
        VectorSet4(viewInfo, backEnd.viewParms.zFar / r_znear->value, backEnd.viewParms.zFar,
                        1.0f / width, 1.0f / height);
        GLSL_SetUniformVec4(&tr.ssaoShader, UNIFORM_VIEWINFO, viewInfo);
+       samples = (r_ssao->integer >= 2) ? 16 : 8;
+       GLSL_SetUniformInt(&tr.ssaoShader, UNIFORM_SSAOSAMPLES, samples);
 
        RB_InstantQuad2(quadVerts, texCoords);
 
