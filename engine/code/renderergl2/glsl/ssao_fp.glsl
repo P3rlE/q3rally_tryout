@@ -1,6 +1,7 @@
 uniform sampler2D u_ScreenDepthMap;
 uniform sampler2D u_LevelsMap;
 uniform vec4   u_ViewInfo; // zfar / znear, zfar, 1/width, 1/height
+uniform int    u_SSAOSamples;
 
 varying vec2   var_ScreenTex;
 
@@ -34,11 +35,12 @@ void main()
     vec3 randomVec = texture2D(u_LevelsMap, var_ScreenTex * 4.0).xyz * 2.0 - 1.0;
     float occ = 0.0;
     for (int i = 0; i < NUM_SAMPLES; i++) {
+        if (i >= u_SSAOSamples) break;
         vec3 sampleDir = reflect(sampleKernel[i], randomVec);
         vec2 offset = sampleDir.xy * 4.0 * u_ViewInfo.zw;
         float sampleDepth = getDepth(var_ScreenTex + offset);
         occ += sampleDepth >= depth + sampleDir.z ? 1.0 : 0.0;
     }
-    occ = 1.0 - (occ / float(NUM_SAMPLES));
+    occ = 1.0 - (occ / float(u_SSAOSamples));
     gl_FragColor = vec4(vec3(occ), 1.0);
 }
