@@ -116,8 +116,10 @@ void RB_SSAO(void)
        int width, height;
        int samples;
 
-       if (!dst || r_ssao->integer <= 0)
-               return;
+	if (!dst || r_ssao->integer <= 0) {
+		ri.Printf(PRINT_DEVELOPER, "SSAO disabled (r_ssao=%d or FBO missing)\n", r_ssao->integer);
+		return;
+	}
 
        width = dst->width;
        height = dst->height;
