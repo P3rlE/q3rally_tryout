@@ -702,13 +702,11 @@ typedef enum
 	UNIFORM_PRIMARYLIGHTAMBIENT,
 	UNIFORM_PRIMARYLIGHTRADIUS,
 
-        UNIFORM_CUBEMAPINFO,
+	UNIFORM_CUBEMAPINFO,
 
-        UNIFORM_ALPHATEST,
+	UNIFORM_ALPHATEST,
 
-        UNIFORM_SSAOSAMPLES,
-
-        UNIFORM_BONEMATRIX,
+	UNIFORM_BONEMATRIX,
 
 	UNIFORM_COUNT
 } uniform_t;
@@ -1551,8 +1549,7 @@ typedef struct {
 	image_t					*fixedLevelsImage;
 	image_t					*sunShadowDepthImage[4];
 	image_t                 *screenShadowImage;
-       image_t                 *screenSsaoImage;
-       image_t                 *ssaoNoiseImage;
+	image_t                 *screenSsaoImage;
 	image_t					*hdrDepthImage;
 	image_t                 *renderCubeImage;
 	image_t			*defaultReflectImage;

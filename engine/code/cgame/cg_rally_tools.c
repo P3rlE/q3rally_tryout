@@ -23,9 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "cg_local.h"
 
-#define SPLASH_RADIUS_SCALE 16.0f
-#define MAX_SPLASH_RADIUS 14.0f
-
 
 void CG_DrawCheckpointLinks(void)
 {
@@ -140,36 +137,34 @@ void CG_Sparks( const vec3_t origin, const vec3_t normal, const vec3_t direction
 
 qboolean CG_FrictionCalc( const carPoint_t *point, float *sCOF, float *kCOF )
 {
-        centity_t       *cent;
-        entityState_t   *es;
-        float           radius;
-        int                     i;
+	// TODO
+/*
+	gentity_t	*ent;
+	int			entityList[MAX_GENTITIES];
+	int			numListedEntities;
+	vec3_t		mins, maxs;
+	int			i;
 
-        for ( i = 0 ; i < cg.snap->numEntities ; i++ ) {
-                es = &cg.snap->entities[ i ];
+	for ( i = 0 ; i < 3 ; i++ ) {
+		mins[i] = point->r[i] - point->radius;
+		maxs[i] = point->r[i] + point->radius;
+	}
 
-                if ( es->eType != ET_EVENTS + EV_HAZARD ) {
-                        continue;
-                }
-                if ( es->weapon != HT_OIL ) {
-                        continue;
-                }
+	numListedEntities = trap_EntitiesInBox( mins, maxs, entityList, MAX_GENTITIES );
 
-                cent = &cg_entities[ es->number ];
+	for ( i = 0 ; i < numListedEntities ; i++ ) {
+		ent = &g_entities[entityList[ i ]];
 
-                radius = ( es->eventParm * SPLASH_RADIUS_SCALE ) + point->radius;
-                radius *= radius;
-                if ( DistanceSquared( cent->lerpOrigin, point->r ) > radius ) {
-                        continue;
-                }
+		if( ent->s.eType != ET_EVENTS + EV_HAZARD ) continue;
+		if( ent->s.weapon != HT_OIL ) continue;
 
-                *sCOF = CP_OIL_SCOF;
-                *kCOF = CP_OIL_KCOF;
+		*sCOF = CP_OIL_SCOF;
+		*kCOF = CP_OIL_KCOF;
 
-                return qtrue;
-        }
-
-        return qfalse;
+		return qtrue;
+	}
+*/
+	return qfalse;
 }
 
 

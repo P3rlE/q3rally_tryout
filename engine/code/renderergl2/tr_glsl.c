@@ -151,13 +151,11 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_PrimaryLightAmbient", GLSL_VEC3  },
 	{ "u_PrimaryLightRadius",  GLSL_FLOAT },
 
-        { "u_CubeMapInfo", GLSL_VEC4 },
+	{ "u_CubeMapInfo", GLSL_VEC4 },
 
-        { "u_AlphaTest", GLSL_INT },
+	{ "u_AlphaTest", GLSL_INT },
 
-        { "u_SSAOSamples", GLSL_INT },
-
-        { "u_BoneMatrix", GLSL_MAT16_BONEMATRIX },
+	{ "u_BoneMatrix", GLSL_MAT16_BONEMATRIX },
 };
 
 typedef enum
@@ -1470,13 +1468,11 @@ void GLSL_InitGPUShaders(void)
 			ri.Error(ERR_FATAL, "Could not load ssao shader!");
 		}
 
-               GLSL_InitUniforms(&tr.ssaoShader);
+		GLSL_InitUniforms(&tr.ssaoShader);
 
-               GLSL_SetUniformInt(&tr.ssaoShader, UNIFORM_SCREENDEPTHMAP, TB_COLORMAP);
-               GLSL_SetUniformInt(&tr.ssaoShader, UNIFORM_LEVELSMAP, TB_LEVELSMAP);
-               GLSL_SetUniformInt(&tr.ssaoShader, UNIFORM_SSAOSAMPLES, 16);
+		GLSL_SetUniformInt(&tr.ssaoShader, UNIFORM_SCREENDEPTHMAP, TB_COLORMAP);
 
-                GLSL_FinishGPUShader(&tr.ssaoShader);
+		GLSL_FinishGPUShader(&tr.ssaoShader);
 
 		numEtcShaders++;
 

@@ -409,9 +409,6 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
   ifeq ($(ARCH),armv7l)
     HAVE_VM_COMPILED=true
   endif
-  ifeq ($(ARCH),arm64)
-    HAVE_VM_COMPILED=true
-  endif
   ifeq ($(ARCH),alpha)
     # According to http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=410555
     # -ffast-math will cause the client to die with SIGFPE on Alpha
@@ -545,7 +542,7 @@ ifeq ($(PLATFORM),darwin)
     BASE_CFLAGS += -arch x86_64
   endif
   ifeq ($(ARCH),arm64)
-    HAVE_VM_COMPILED=true
+    # HAVE_VM_COMPILED=false # TODO: implement compiled vm
     BASE_CFLAGS += -arch arm64
   endif
 
@@ -2476,9 +2473,6 @@ ifeq ($(HAVE_VM_COMPILED),true)
   ifeq ($(ARCH),armv7l)
     Q3OBJ += $(B)/client/vm_armv7l.o
   endif
-  ifeq ($(ARCH),arm64)
-    Q3OBJ += $(B)/client/vm_arm64.o
-  endif
 endif
 
 ifdef MINGW
@@ -2654,9 +2648,6 @@ ifeq ($(HAVE_VM_COMPILED),true)
   endif
   ifeq ($(ARCH),armv7l)
     Q3DOBJ += $(B)/client/vm_armv7l.o
-  endif
-  ifeq ($(ARCH),arm64)
-    Q3DOBJ += $(B)/client/vm_arm64.o
   endif
 endif
 
