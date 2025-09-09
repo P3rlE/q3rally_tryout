@@ -1470,7 +1470,8 @@ void GLSL_InitGPUShaders(void)
 
 		GLSL_InitUniforms(&tr.ssaoShader);
 
-		GLSL_SetUniformInt(&tr.ssaoShader, UNIFORM_SCREENDEPTHMAP, TB_COLORMAP);
+               GLSL_SetUniformInt(&tr.ssaoShader, UNIFORM_SCREENDEPTHMAP, TB_COLORMAP);
+               GLSL_SetUniformInt(&tr.ssaoShader, UNIFORM_LEVELSMAP, TB_LEVELSMAP);
 
 		GLSL_FinishGPUShader(&tr.ssaoShader);
 

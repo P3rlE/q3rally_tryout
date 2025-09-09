@@ -90,7 +90,67 @@ void RB_ToneMap(FBO_t *hdrFbo, ivec4_t hdrBox, FBO_t *ldrFbo, ivec4_t ldrBox, in
 	else
 		GL_BindToTMU(tr.fixedLevelsImage, TB_LEVELSMAP);
 
-	FBO_Blit(hdrFbo, hdrBox, NULL, ldrFbo, ldrBox, &tr.tonemapShader, color, 0);
+       FBO_Blit(hdrFbo, hdrBox, NULL, ldrFbo, ldrBox, &tr.tonemapShader, color, 0);
+
+       if (r_ssao->integer)
+       {
+               ivec4_t srcBox;
+
+               srcBox[0] = hdrBox[0] * tr.screenSsaoImage->width  / (float)hdrFbo->width;
+               srcBox[1] = hdrBox[1] * tr.screenSsaoImage->height / (float)hdrFbo->height;
+               srcBox[2] = hdrBox[2] * tr.screenSsaoImage->width  / (float)hdrFbo->width;
+               srcBox[3] = hdrBox[3] * tr.screenSsaoImage->height / (float)hdrFbo->height;
+
+               FBO_Blit(tr.screenSsaoFbo, srcBox, NULL, ldrFbo, ldrBox, NULL, NULL,
+                        GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO);
+       }
+}
+
+void RB_SSAO(void)
+{
+       vec4_t quadVerts[4];
+       vec2_t texCoords[4];
+       vec4_t viewInfo;
+       FBO_t *dst = tr.screenSsaoFbo;
+       FBO_t *oldFbo;
+       int width, height;
+
+       if (!dst)
+               return;
+
+       width = dst->width;
+       height = dst->height;
+
+       oldFbo = glState.currentFBO;
+       FBO_Bind(dst);
+
+       qglViewport(0, 0, width, height);
+       qglScissor(0, 0, width, height);
+
+       VectorSet4(quadVerts[0], -1,  1, 0, 1);
+       VectorSet4(quadVerts[1],  1,  1, 0, 1);
+       VectorSet4(quadVerts[2],  1, -1, 0, 1);
+       VectorSet4(quadVerts[3], -1, -1, 0, 1);
+
+       texCoords[0][0] = 0; texCoords[0][1] = 1;
+       texCoords[1][0] = 1; texCoords[1][1] = 1;
+       texCoords[2][0] = 1; texCoords[2][1] = 0;
+       texCoords[3][0] = 0; texCoords[3][1] = 0;
+
+       GL_State(GLS_DEPTHTEST_DISABLE);
+
+       GLSL_BindProgram(&tr.ssaoShader);
+
+       GL_BindToTMU(tr.hdrDepthImage, TB_COLORMAP);
+       GL_BindToTMU(tr.ssaoNoiseImage, TB_LEVELSMAP);
+
+       VectorSet4(viewInfo, backEnd.viewParms.zFar / r_znear->value, backEnd.viewParms.zFar,
+                       1.0f / width, 1.0f / height);
+       GLSL_SetUniformVec4(&tr.ssaoShader, UNIFORM_VIEWINFO, viewInfo);
+
+       RB_InstantQuad2(quadVerts, texCoords);
+
+       FBO_Bind(oldFbo);
 }
 
 /*
