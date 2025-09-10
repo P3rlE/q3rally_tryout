@@ -653,6 +653,7 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	}
 
 	G_RemapTeamShaders();
+        G_LoadBestLapTimes();
 
 	trap_SetConfigstring( CS_INTERMISSION, "" );
 
@@ -1437,6 +1438,10 @@ void LogExit( const char *string ) {
 	team_t team = TEAM_RED;
 #endif
 	G_LogPrintf( "Exit: %s\n", string );
+        if ( isRallyRace() ) {
+                G_SaveBestLapTimes();
+        }
+
 
 	level.intermissionQueued = level.time;
 

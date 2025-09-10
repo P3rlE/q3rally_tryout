@@ -407,7 +407,8 @@ struct gclient_s {
 	float		pmoveTime;
 
 	// race variables
-	int			finishRaceTime;
+	int                     startLapTime;
+        int                     finishRaceTime;
 
 	int			horn_sound_time;
 
@@ -416,6 +417,13 @@ struct gclient_s {
 
 	char		*areabits;
 };
+typedef struct {
+    char name[MAX_NETNAME];
+    int time;
+} lapRecord_t;
+
+#define MAX_BEST_LAP_TIMES 10
+
 
 
 //
@@ -525,6 +533,9 @@ typedef struct {
         float                   cpDist[MAX_GENTITIES];
         gentity_t       *checkpoints[MAX_GENTITIES];
         float                   trackLength;
+        lapRecord_t     bestLapTimes[MAX_BEST_LAP_TIMES];
+        int                     numBestLapTimes;
+
 
         int                     testModelID;
 // END
@@ -805,6 +816,10 @@ void CreateRallyStarter( void );
 void CalculatePlayerPositions( void );
 void Cmd_RacePositions_f( void );
 void Cmd_Times_f( gentity_t *ent );
+void G_LoadBestLapTimes( void );
+void G_SaveBestLapTimes( void );
+void G_UpdateBestLapTimes( const char *name, int time );
+
 gentity_t *SelectLastMarkerForSpawn( gentity_t *ent, vec3_t origin, vec3_t angles, qboolean isbot );
 gentity_t *SelectGridPositionSpawn( gentity_t *ent, vec3_t origin, vec3_t angles, qboolean isbot );
 
