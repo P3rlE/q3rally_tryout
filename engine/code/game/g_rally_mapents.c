@@ -149,15 +149,16 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
 	}
 
 	if (self->number == other->number){
-                int lapTime;
-                if ( other->client->startLapTime ) {
-                        lapTime = level.time - other->client->startLapTime;
-                        char userinfo[MAX_INFO_STRING];
-                        trap_GetUserinfo(other->s.clientNum, userinfo, sizeof(userinfo));
-                        const char *vehicle = Info_ValueForKey(userinfo, "model");
-                        G_UpdateBestLapTimes( other->client->pers.netname, lapTime, vehicle );
-                }
-                other->client->startLapTime = level.time;
+               int lapTime;
+               if ( other->client->startLapTime ) {
+                       char userinfo[MAX_INFO_STRING];
+                       const char *vehicle;
+                       lapTime = level.time - other->client->startLapTime;
+                       trap_GetUserinfo(other->s.clientNum, userinfo, sizeof(userinfo));
+                       vehicle = Info_ValueForKey(userinfo, "model");
+                       G_UpdateBestLapTimes( other->client->pers.netname, lapTime, vehicle );
+               }
+               other->client->startLapTime = level.time;
                 other->client->lastCheckpointTime = level.time;
 		other->currentLap++;
 		// increment lap
