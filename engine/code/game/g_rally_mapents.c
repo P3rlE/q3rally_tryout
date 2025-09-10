@@ -152,7 +152,10 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
                 int lapTime;
                 if ( other->client->startLapTime ) {
                         lapTime = level.time - other->client->startLapTime;
-                        G_UpdateBestLapTimes( other->client->pers.netname, lapTime );
+                        char userinfo[MAX_INFO_STRING];
+                        trap_GetUserinfo(other->s.clientNum, userinfo, sizeof(userinfo));
+                        const char *vehicle = Info_ValueForKey(userinfo, "model");
+                        G_UpdateBestLapTimes( other->client->pers.netname, lapTime, vehicle );
                 }
                 other->client->startLapTime = level.time;
                 other->client->lastCheckpointTime = level.time;
@@ -513,7 +516,7 @@ void SP_rally_weather_snow( gentity_t *ent ){
 }
 
 
-void G_UpdateBestLapTimes( const char *name, int time ) {
+void G_UpdateBestLapTimes( const char *name, int time, const char *vehicle ) {
     int i, j;
 
     for ( i = 0; i < level.numBestLapTimes && i < MAX_BEST_LAP_TIMES; i++ ) {
@@ -532,6 +535,7 @@ void G_UpdateBestLapTimes( const char *name, int time ) {
     }
     Q_strncpyz( level.bestLapTimes[i].name, name, sizeof( level.bestLapTimes[i].name ) );
     level.bestLapTimes[i].time = time;
+    Q_strncpyz( level.bestLapTimes[i].vehicle, vehicle, sizeof( level.bestLapTimes[i].vehicle ) );
 }
 
 void G_LoadBestLapTimes( void ) {
@@ -563,16 +567,18 @@ void G_LoadBestLapTimes( void ) {
         char *eol;
         int time;
         char name[MAX_NETNAME];
+        char vehicle[MAX_QPATH];
 
         eol = strchr( ptr, '\n' );
         if ( eol ) {
             *eol = '\0';
         }
 
-        if ( sscanf( ptr, "%i %31[^\n]", &time, name ) == 2 ) {
+        if ( sscanf( ptr, "%i %31s %63s", &time, name, vehicle ) == 3 ) {
 
             level.bestLapTimes[level.numBestLapTimes].time = time;
             Q_strncpyz( level.bestLapTimes[level.numBestLapTimes].name, name, sizeof( level.bestLapTimes[0].name ) );
+            Q_strncpyz( level.bestLapTimes[level.numBestLapTimes].vehicle, vehicle, sizeof( level.bestLapTimes[0].vehicle ) );
             level.numBestLapTimes++;
         }
 
@@ -596,8 +602,8 @@ void G_SaveBestLapTimes( void ) {
         return;
     }
     for ( i = 0; i < level.numBestLapTimes && i < MAX_BEST_LAP_TIMES; i++ ) {
-        char line[64 + MAX_NETNAME];
-        Com_sprintf( line, sizeof( line ), "%i %s\n", level.bestLapTimes[i].time, level.bestLapTimes[i].name );
+        char line[64 + MAX_NETNAME + MAX_QPATH];
+        Com_sprintf( line, sizeof( line ), "%i %s %s\n", level.bestLapTimes[i].time, level.bestLapTimes[i].name, level.bestLapTimes[i].vehicle );
         trap_FS_Write( line, strlen( line ), f );
     }
     trap_FS_FCloseFile( f );
