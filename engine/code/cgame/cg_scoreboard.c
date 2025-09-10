@@ -993,7 +993,10 @@ static void CG_DrawLapRecords(void) {
     CG_DrawBigStringColor(vehicleX, y, "Vehicle", color);
     y += BIGCHAR_HEIGHT + 4;
 
-    activeTrack = 0;
+    activeTrack = cg.activeTrack;
+    if ( activeTrack < 0 || activeTrack >= cgs.numTracks ) {
+        activeTrack = 0;
+    }
     for (i = 0; i < MAX_BEST_LAP_TIMES; i++) {
         rec = &cgs.lapRecords[activeTrack][i];
         if (rec->time <= 0) {
@@ -1041,6 +1044,30 @@ static void CG_DrawScoreboardTabs(void) {
     }
 
     CG_FillRect(0, y + BIGCHAR_HEIGHT + 4, SCREEN_WIDTH, 2, lineColor);
+
+    if ( cg.activeScoreTab == SB_TAB_LAPRECORDS && cgs.numTracks > 0 ) {
+        int j, w2, x2, y2, total2;
+
+        total2 = 0;
+        for ( j = 0; j < cgs.numTracks; j++ ) {
+            total2 += CG_DrawStrlen( cgs.trackNames[j] ) * BIGCHAR_WIDTH + spacing;
+        }
+        if ( total2 > 0 ) {
+            total2 -= spacing;
+        }
+
+        x2 = ( SCREEN_WIDTH - total2 ) / 2;
+        y2 = y + BIGCHAR_HEIGHT + 8;
+
+        for ( j = 0; j < cgs.numTracks; j++ ) {
+            w2 = CG_DrawStrlen( cgs.trackNames[j] ) * BIGCHAR_WIDTH;
+            CG_DrawBigStringColor( x2, y2, cgs.trackNames[j],
+                                   ( j == cg.activeTrack ) ? activeColor : inactiveColor );
+            x2 += w2 + spacing;
+        }
+
+        CG_FillRect( 0, y2 + BIGCHAR_HEIGHT + 4, SCREEN_WIDTH, 2, lineColor );
+    }
 }
 
 /*

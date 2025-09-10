@@ -282,6 +282,7 @@ cgs.scores4 = atoi( CG_ConfigString( CS_SCORES4 ) );
 // END
 cgs.levelStartTime = atoi( CG_ConfigString( CS_LEVEL_START_TIME ) );
 cgs.trackLength = atof( CG_ConfigString( CS_TRACKLENGTH ) );
+CG_ParseTrackList( CG_ConfigString( CS_TRACKLIST ) );
 if( cgs.gametype == GT_CTF ) {
 		s = CG_ConfigString( CS_FLAGSTATUS );
 		cgs.redflag = s[0] - '0';
@@ -381,11 +382,13 @@ static void CG_ConfigStringModified( void ) {
 	} else if ( num == CS_SCORES4 ) {
 		cgs.scores4 = atoi( str );
 // END
-	} else if ( num == CS_TRACKLENGTH ) {
-		cgs.trackLength = atof( str );
-	} else if ( num == CS_LEVEL_START_TIME ) {
-		cgs.levelStartTime = atoi( str );
-	} else if ( num == CS_VOTE_TIME ) {
+       } else if ( num == CS_TRACKLENGTH ) {
+               cgs.trackLength = atof( str );
+       } else if ( num == CS_TRACKLIST ) {
+               CG_ParseTrackList( str );
+       } else if ( num == CS_LEVEL_START_TIME ) {
+               cgs.levelStartTime = atoi( str );
+       } else if ( num == CS_VOTE_TIME ) {
 		cgs.voteTime = atoi( str );
 		cgs.voteModified = qtrue;
 	} else if ( num == CS_VOTE_YES ) {
