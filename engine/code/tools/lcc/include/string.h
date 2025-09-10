@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /*
  * Q3Rally / Q3LCC-friendly string.h
  * ----------------------------------
@@ -327,3 +328,27 @@ Q3_INLINE int q3_strnicmp(const char *a, const char *b, size_t n) {
 #endif /* Q3_STRING_NO_HELPERS */
 
 #endif /* Q3_STRING_H_ */
+=======
+#ifndef LCC_STRING_H
+#define LCC_STRING_H
+
+#include "stddef.h"
+
+void *memcpy(void *dest, const void *src, size_t n);
+void *memmove(void *dest, const void *src, size_t n);
+void *memset(void *s, int c, size_t n);
+int memcmp(const void *s1, const void *s2, size_t n);
+
+char *strcpy(char *dest, const char *src);
+char *strncpy(char *dest, const char *src, size_t n);
+char *strcat(char *dest, const char *src);
+char *strncat(char *dest, const char *src, size_t n);
+size_t strlen(const char *s);
+int strcmp(const char *s1, const char *s2);
+int strncmp(const char *s1, const char *s2, size_t n);
+char *strchr(const char *s, int c);
+char *strrchr(const char *s, int c);
+char *strdup(const char *s);
+
+#endif /* LCC_STRING_H */
+>>>>>>> f579d462df8c1c10415ab04d2b0858a969ca36a2
