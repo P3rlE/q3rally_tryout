@@ -540,7 +540,9 @@ void G_LoadBestLapTimes( void ) {
     char mapname[MAX_QPATH];
     int len;
     char buffer[1024];
-    char *line;
+
+    char *ptr;
+
 
     trap_Cvar_VariableStringBuffer( "mapname", mapname, sizeof( mapname ) );
     Com_sprintf( filename, sizeof( filename ), "records/%s.txt", mapname );
@@ -556,16 +558,29 @@ void G_LoadBestLapTimes( void ) {
     buffer[len] = '\0';
     trap_FS_FCloseFile( f );
 
-    line = strtok( buffer, "\n" );
-    while ( line && level.numBestLapTimes < MAX_BEST_LAP_TIMES ) {
+    ptr = buffer;
+    while ( *ptr && level.numBestLapTimes < MAX_BEST_LAP_TIMES ) {
+        char *eol;
         int time;
         char name[MAX_NETNAME];
-        if ( sscanf( line, "%i %31[^\n]", &time, name ) == 2 ) {
+
+        eol = strchr( ptr, '\n' );
+        if ( eol ) {
+            *eol = '\0';
+        }
+
+        if ( sscanf( ptr, "%i %31[^\n]", &time, name ) == 2 ) {
+
             level.bestLapTimes[level.numBestLapTimes].time = time;
             Q_strncpyz( level.bestLapTimes[level.numBestLapTimes].name, name, sizeof( level.bestLapTimes[0].name ) );
             level.numBestLapTimes++;
         }
-        line = strtok( NULL, "\n" );
+
+        if ( !eol ) {
+            break;
+        }
+        ptr = eol + 1;
+
     }
 }
 
