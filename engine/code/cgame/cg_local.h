@@ -64,13 +64,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	MAX_STEP_CHANGE		32
 
 #define	MAX_VERTS_ON_POLY	10
-// Q3Rally Code Start
-	int				numRacers;
-	float			trackLength;
-	int				numTracks;
-	char			trackNames[MAX_TRACKS][MAX_QPATH];
-	lapRecord_t		lapRecords[MAX_TRACKS][MAX_BEST_LAP_TIMES];
-// Q3Rally Code END
+#define MAX_MARK_POLYS          2048
 
 #define STAT_MINUS			10	// num frame for '-' stats digit
 
