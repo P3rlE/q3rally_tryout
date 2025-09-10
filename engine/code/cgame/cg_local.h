@@ -1809,7 +1809,7 @@ void CG_DrawInformation( void );
 //
 // cg_scoreboard.c
 //
-qboolean CG_DrawOldScoreboard( void );
+qboolean CG_DrawTabbedScoreboard( void );
 // Q3Rally Code Start - removed
 // void CG_DrawTourneyScoreboard( void );
 // Q3Rally Code END

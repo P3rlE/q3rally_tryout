@@ -2920,7 +2920,7 @@ static qboolean CG_DrawScoreboard( void ) {
 
 	return qtrue;
 #else
-	return CG_DrawOldScoreboard();
+        return CG_DrawTabbedScoreboard();
 #endif
 }
 
