@@ -27,7 +27,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "cg_local.h"
 #ifdef MISSIONPACK
 #include "../ui/ui_shared.h"
-extern menuDef_t *menuScoreboard;
 #endif
 
 
@@ -117,7 +116,6 @@ static void CG_ScoresUp_f( void ) {
 }
 
 #ifdef MISSIONPACK
-extern menuDef_t *menuScoreboard;
 void Menu_Reset( void );			// FIXME: add to right include file
 
 static void CG_LoadHud_f( void) {
@@ -134,27 +132,9 @@ static void CG_LoadHud_f( void) {
 		hudSet = "ui/hud.txt";
 	}
 
-	CG_LoadMenus(hudSet);
-  menuScoreboard = NULL;
+        CG_LoadMenus(hudSet);
 }
 
-
-static void CG_scrollScoresDown_f( void) {
-	if (menuScoreboard && cg.scoreBoardShowing) {
-		Menu_ScrollFeeder(menuScoreboard, FEEDER_SCOREBOARD, qtrue);
-		Menu_ScrollFeeder(menuScoreboard, FEEDER_REDTEAM_LIST, qtrue);
-		Menu_ScrollFeeder(menuScoreboard, FEEDER_BLUETEAM_LIST, qtrue);
-	}
-}
-
-
-static void CG_scrollScoresUp_f( void) {
-	if (menuScoreboard && cg.scoreBoardShowing) {
-		Menu_ScrollFeeder(menuScoreboard, FEEDER_SCOREBOARD, qfalse);
-		Menu_ScrollFeeder(menuScoreboard, FEEDER_REDTEAM_LIST, qfalse);
-		Menu_ScrollFeeder(menuScoreboard, FEEDER_BLUETEAM_LIST, qfalse);
-	}
-}
 
 
 static void CG_spWin_f( void) {
@@ -704,8 +684,6 @@ static consoleCommand_t	commands[] = {
 	{ "tauntGauntlet", CG_TauntGauntlet_f },
 	{ "spWin", CG_spWin_f },
 	{ "spLose", CG_spLose_f },
-	{ "scoresDown", CG_scrollScoresDown_f },
-	{ "scoresUp", CG_scrollScoresUp_f },
 #endif
 // Q3Rally Code Start
 	{ "+hud", CG_HUDDown_f },
