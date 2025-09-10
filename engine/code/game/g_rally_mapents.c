@@ -149,7 +149,13 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
 	}
 
 	if (self->number == other->number){
-		other->client->lastCheckpointTime = level.time;
+                int lapTime;
+                if ( other->client->startLapTime ) {
+                        lapTime = level.time - other->client->startLapTime;
+                        G_UpdateBestLapTimes( other->client->pers.netname, lapTime );
+                }
+                other->client->startLapTime = level.time;
+                other->client->lastCheckpointTime = level.time;
 		other->currentLap++;
 		// increment lap
 		if ( other->currentLap > level.numberOfLaps && level.numberOfLaps ){
@@ -504,5 +510,81 @@ void SP_rally_weather_snow( gentity_t *ent ){
 	ent->s.legsAnim = 0;
 
 	trap_LinkEntity (ent);
+}
+
+
+void G_UpdateBestLapTimes( const char *name, int time ) {
+    int i, j;
+
+    for ( i = 0; i < level.numBestLapTimes && i < MAX_BEST_LAP_TIMES; i++ ) {
+        if ( time < level.bestLapTimes[i].time ) {
+            break;
+        }
+    }
+    if ( i >= MAX_BEST_LAP_TIMES ) {
+        return;
+    }
+    if ( level.numBestLapTimes < MAX_BEST_LAP_TIMES ) {
+        level.numBestLapTimes++;
+    }
+    for ( j = level.numBestLapTimes - 1; j > i; j-- ) {
+        level.bestLapTimes[j] = level.bestLapTimes[j-1];
+    }
+    Q_strncpyz( level.bestLapTimes[i].name, name, sizeof( level.bestLapTimes[i].name ) );
+    level.bestLapTimes[i].time = time;
+}
+
+void G_LoadBestLapTimes( void ) {
+    fileHandle_t f;
+    char filename[MAX_QPATH];
+    char mapname[MAX_QPATH];
+    int len;
+    char buffer[1024];
+    char *line;
+
+    trap_Cvar_VariableStringBuffer( "mapname", mapname, sizeof( mapname ) );
+    Com_sprintf( filename, sizeof( filename ), "records/%s.txt", mapname );
+    len = trap_FS_FOpenFile( filename, &f, FS_READ );
+    level.numBestLapTimes = 0;
+    if ( !f ) {
+        return;
+    }
+    if ( len >= sizeof( buffer ) ) {
+        len = sizeof( buffer ) - 1;
+    }
+    trap_FS_Read( buffer, len, f );
+    buffer[len] = '\0';
+    trap_FS_FCloseFile( f );
+
+    line = strtok( buffer, "\n" );
+    while ( line && level.numBestLapTimes < MAX_BEST_LAP_TIMES ) {
+        int time;
+        char name[MAX_NETNAME];
+        if ( sscanf( line, "%i %31[^\n]", &time, name ) == 2 ) {
+            level.bestLapTimes[level.numBestLapTimes].time = time;
+            Q_strncpyz( level.bestLapTimes[level.numBestLapTimes].name, name, sizeof( level.bestLapTimes[0].name ) );
+            level.numBestLapTimes++;
+        }
+        line = strtok( NULL, "\n" );
+    }
+}
+
+void G_SaveBestLapTimes( void ) {
+    fileHandle_t f;
+    char filename[MAX_QPATH];
+    char mapname[MAX_QPATH];
+    int i;
+
+    trap_Cvar_VariableStringBuffer( "mapname", mapname, sizeof( mapname ) );
+    Com_sprintf( filename, sizeof( filename ), "records/%s.txt", mapname );
+    if ( trap_FS_FOpenFile( filename, &f, FS_WRITE ) < 0 ) {
+        return;
+    }
+    for ( i = 0; i < level.numBestLapTimes && i < MAX_BEST_LAP_TIMES; i++ ) {
+        char line[64 + MAX_NETNAME];
+        Com_sprintf( line, sizeof( line ), "%i %s\n", level.bestLapTimes[i].time, level.bestLapTimes[i].name );
+        trap_FS_Write( line, strlen( line ), f );
+    }
+    trap_FS_FCloseFile( f );
 }
 
