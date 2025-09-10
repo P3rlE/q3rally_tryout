@@ -25,6 +25,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../renderercommon/tr_types.h"
 #include "../game/bg_public.h"
 #include "cg_public.h"
+#define CS_LAPRECORDS_BASE      CS_PARTICLES
+#define MAX_BEST_LAP_TIMES      10
+#define MAX_TRACKS              1
+#define MAX_NETNAME              36
+
 
 
 // The entire cgame module is unloaded and reloaded on each level change,
@@ -408,6 +413,12 @@ typedef struct {
 	int				damageTaken;
 	int				position;
 } score_t;
+typedef struct {
+    char name[MAX_NETNAME];
+    int time;
+    char vehicle[MAX_QPATH];
+} lapRecord_t;
+
 
 // each client has an associated clientInfo_t
 // that contains media references necessary to present the
@@ -1307,6 +1318,7 @@ typedef struct {
 // Q3Rally Code Start
 	int				numRacers;
         float                   trackLength;
+        lapRecord_t             lapRecords[MAX_TRACKS][MAX_BEST_LAP_TIMES];
 // Q3Rally Code END
 
 } cgs_t;

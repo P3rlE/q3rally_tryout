@@ -441,14 +441,26 @@ static void CG_ConfigStringModified( void ) {
 		}
 #endif
 	}
-	else if ( num == CS_SIGILSTATUS ) {
-		if( cgs.gametype == GT_DOMINATION ) {
-			CG_ParseSigilStatus();
-		}
-	}
-	else if ( num == CS_SHADERSTATE ) {
-		CG_ShaderStateChanged();
-	}
+       else if ( num == CS_SIGILSTATUS ) {
+               if( cgs.gametype == GT_DOMINATION ) {
+                       CG_ParseSigilStatus();
+               }
+       }
+       else if ( num >= CS_LAPRECORDS_BASE && num < CS_LAPRECORDS_BASE + MAX_TRACKS * MAX_BEST_LAP_TIMES ) {
+               int track = (num - CS_LAPRECORDS_BASE) / MAX_BEST_LAP_TIMES;
+               int index = (num - CS_LAPRECORDS_BASE) % MAX_BEST_LAP_TIMES;
+               lapRecord_t *rec = &cgs.lapRecords[track][index];
+               if ( *str ) {
+                       sscanf( str, "%i %31s %63s", &rec->time, rec->name, rec->vehicle );
+               } else {
+                       rec->time = 0;
+                       rec->name[0] = '\0';
+                       rec->vehicle[0] = '\0';
+               }
+       }
+       else if ( num == CS_SHADERSTATE ) {
+               CG_ShaderStateChanged();
+       }
 		
 }
 
