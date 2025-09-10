@@ -420,6 +420,7 @@ struct gclient_s {
 typedef struct {
     char name[MAX_NETNAME];
     int time;
+    char vehicle[MAX_QPATH];
 } lapRecord_t;
 
 #define MAX_BEST_LAP_TIMES 10
@@ -818,7 +819,7 @@ void Cmd_RacePositions_f( void );
 void Cmd_Times_f( gentity_t *ent );
 void G_LoadBestLapTimes( void );
 void G_SaveBestLapTimes( void );
-void G_UpdateBestLapTimes( const char *name, int time );
+void G_UpdateBestLapTimes( const char *name, int time, const char *vehicle );
 
 gentity_t *SelectLastMarkerForSpawn( gentity_t *ent, vec3_t origin, vec3_t angles, qboolean isbot );
 gentity_t *SelectGridPositionSpawn( gentity_t *ent, vec3_t origin, vec3_t angles, qboolean isbot );
