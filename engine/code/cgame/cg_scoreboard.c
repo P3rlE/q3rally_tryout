@@ -1045,11 +1045,11 @@ static void CG_DrawScoreboardTabs(void) {
 
 /*
 =================
-CG_DrawScoreboard
+CG_DrawTabbedScoreboard
 Entry point that selects tab content
 =================
 */
-static qboolean CG_DrawScoreboard(void) {
+qboolean CG_DrawTabbedScoreboard(void) {
     CG_DrawScoreboardTabs();
 
     if (cg.activeScoreTab == SB_TAB_LAPRECORDS) {
@@ -1058,16 +1058,6 @@ static qboolean CG_DrawScoreboard(void) {
     }
 
     return CG_DrawModernScoreboard();
-}
-
-/*
-=================
-CG_DrawOldScoreboard
-Wrapper function to maintain compatibility
-=================
-*/
-qboolean CG_DrawOldScoreboard(void) {
-    return CG_DrawScoreboard();
 }
 
 /*
