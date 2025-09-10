@@ -309,10 +309,13 @@ void Think_StartFinish( gentity_t *self ){
                 level.trackLength = level.cpDist[level.numCheckpoints-1] + VectorLength( delta );
         }
 
-        trap_SetConfigstring( CS_TRACKLENGTH, va( "%i", (int)( level.trackLength / CP_M_2_QU ) ) );
+       trap_SetConfigstring( CS_TRACKLENGTH, va( "%i", (int)( level.trackLength / CP_M_2_QU ) ) );
 
-        self->number = level.numCheckpoints;
-        self->s.weapon = self->number;
+       // send track list to clients
+       trap_SetConfigstring( CS_TRACKLIST, "0:Default" );
+
+       self->number = level.numCheckpoints;
+       self->s.weapon = self->number;
 }
 
 void Think_Finish( gentity_t *self ){
