@@ -540,7 +540,9 @@ void G_LoadBestLapTimes( void ) {
     char mapname[MAX_QPATH];
     int len;
     char buffer[1024];
+
     char *ptr;
+
 
     trap_Cvar_VariableStringBuffer( "mapname", mapname, sizeof( mapname ) );
     Com_sprintf( filename, sizeof( filename ), "records/%s.txt", mapname );
@@ -568,6 +570,7 @@ void G_LoadBestLapTimes( void ) {
         }
 
         if ( sscanf( ptr, "%i %31[^\n]", &time, name ) == 2 ) {
+
             level.bestLapTimes[level.numBestLapTimes].time = time;
             Q_strncpyz( level.bestLapTimes[level.numBestLapTimes].name, name, sizeof( level.bestLapTimes[0].name ) );
             level.numBestLapTimes++;
@@ -577,6 +580,7 @@ void G_LoadBestLapTimes( void ) {
             break;
         }
         ptr = eol + 1;
+
     }
 }
 
