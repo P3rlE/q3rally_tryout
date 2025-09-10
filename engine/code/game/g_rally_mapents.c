@@ -537,6 +537,16 @@ void G_UpdateBestLapTimes( const char *name, int time, const char *vehicle ) {
     Q_strncpyz( level.bestLapTimes[i].name, name, sizeof( level.bestLapTimes[i].name ) );
     level.bestLapTimes[i].time = time;
     Q_strncpyz( level.bestLapTimes[i].vehicle, vehicle, sizeof( level.bestLapTimes[i].vehicle ) );
+
+    // broadcast updated records to clients
+    for ( i = 0; i < MAX_BEST_LAP_TIMES; i++ ) {
+        if ( i < level.numBestLapTimes ) {
+            trap_SetConfigstring( CS_LAPRECORDS_BASE + i, va( "%i %s %s", level.bestLapTimes[i].time,
+                    level.bestLapTimes[i].name, level.bestLapTimes[i].vehicle ) );
+        } else {
+            trap_SetConfigstring( CS_LAPRECORDS_BASE + i, "" );
+        }
+    }
 }
 
 void G_LoadBestLapTimes( void ) {
@@ -545,6 +555,7 @@ void G_LoadBestLapTimes( void ) {
     char mapname[MAX_QPATH];
     int len;
     char buffer[1024];
+    int i;
 
     char *ptr;
 
@@ -589,6 +600,16 @@ void G_LoadBestLapTimes( void ) {
         ptr = eol + 1;
 
     }
+
+    // send loaded records to clients
+    for ( i = 0; i < MAX_BEST_LAP_TIMES; i++ ) {
+        if ( i < level.numBestLapTimes ) {
+            trap_SetConfigstring( CS_LAPRECORDS_BASE + i, va( "%i %s %s", level.bestLapTimes[i].time,
+                    level.bestLapTimes[i].name, level.bestLapTimes[i].vehicle ) );
+        } else {
+            trap_SetConfigstring( CS_LAPRECORDS_BASE + i, "" );
+        }
+    }
 }
 
 void G_SaveBestLapTimes( void ) {
@@ -608,5 +629,15 @@ void G_SaveBestLapTimes( void ) {
         trap_FS_Write( line, strlen( line ), f );
     }
     trap_FS_FCloseFile( f );
+
+    // ensure clients have the latest records
+    for ( i = 0; i < MAX_BEST_LAP_TIMES; i++ ) {
+        if ( i < level.numBestLapTimes ) {
+            trap_SetConfigstring( CS_LAPRECORDS_BASE + i, va( "%i %s %s", level.bestLapTimes[i].time,
+                    level.bestLapTimes[i].name, level.bestLapTimes[i].vehicle ) );
+        } else {
+            trap_SetConfigstring( CS_LAPRECORDS_BASE + i, "" );
+        }
+    }
 }
 

@@ -42,6 +42,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define REWARD_SPRITE_TIME	2500
 
 #define	INTERMISSION_DELAY_TIME	1000
+#define CS_LAPRECORDS_BASE      CS_PARTICLES
+#define MAX_BEST_LAP_TIMES      10
+
 #define	SP_INTERMISSION_DELAY_TIME	5000
 
 // gentity->flags
@@ -422,10 +425,6 @@ typedef struct {
     int time;
     char vehicle[MAX_QPATH];
 } lapRecord_t;
-
-#define MAX_BEST_LAP_TIMES 10
-
-
 
 //
 // this structure is cleared as each map is entered
