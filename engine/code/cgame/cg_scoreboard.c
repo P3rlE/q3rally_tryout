@@ -935,12 +935,139 @@ qboolean CG_DrawModernScoreboard(void) {
 
 /*
 =================
+CG_DrawLapRecords
+Draws best lap record list
+=================
+*/
+static void CG_DrawLapRecords(void) {
+    int i, y;
+    int activeTrack;
+    vec4_t color;
+    char *timeStr;
+    int baseX, rankX, nameX, timeX, vehicleX;
+    lapRecord_t *rec;
+    float fade;
+    float *fadeColor;
+
+    CG_SetScreenPlacement(PLACE_CENTER, PLACE_CENTER);
+
+    if (cg_paused.integer) {
+        cg.deferredPlayerLoading = 0;
+        return;
+    }
+
+    if (cgs.gametype == GT_SINGLE_PLAYER &&
+        cg.predictedPlayerState.pm_type == PM_INTERMISSION) {
+        cg.deferredPlayerLoading = 0;
+        return;
+    }
+
+    if (cg.warmup && !cg.showScores) {
+        return;
+    }
+
+    if (cg.showScores || cg.predictedPlayerState.pm_type == PM_DEAD ||
+        cg.predictedPlayerState.pm_type == PM_INTERMISSION) {
+        fade = 1.0f;
+        fadeColor = colorWhite;
+    } else {
+        fadeColor = CG_FadeColor(cg.scoreFadeTime, FADE_TIME);
+        if (!fadeColor) {
+            return;
+        }
+        fade = *fadeColor;
+    }
+
+    color[0] = 1.0f; color[1] = 1.0f; color[2] = 1.0f; color[3] = fade;
+
+    y = MODERN_SB_Y;
+    baseX = (SCREEN_WIDTH - 600) / 2;
+    rankX = baseX;
+    nameX = baseX + 80;
+    timeX = baseX + 280;
+    vehicleX = baseX + 400;
+
+    CG_DrawBigStringColor(rankX, y, "Rank", color);
+    CG_DrawBigStringColor(nameX, y, "Name", color);
+    CG_DrawBigStringColor(timeX, y, "Time", color);
+    CG_DrawBigStringColor(vehicleX, y, "Vehicle", color);
+    y += BIGCHAR_HEIGHT + 4;
+
+    activeTrack = 0;
+    for (i = 0; i < MAX_BEST_LAP_TIMES; i++) {
+        rec = &cgs.lapRecords[activeTrack][i];
+        if (rec->time <= 0) {
+            continue;
+        }
+        CG_DrawBigStringColor(rankX, y, va("%i", i + 1), color);
+        CG_DrawBigStringColor(nameX, y, rec->name, color);
+        timeStr = getStringForTime(rec->time);
+        CG_DrawBigStringColor(timeX, y, timeStr, color);
+        CG_DrawBigStringColor(vehicleX, y, rec->vehicle, color);
+        y += BIGCHAR_HEIGHT + 4;
+    }
+}
+
+/*
+=================
+CG_DrawScoreboardTabs
+Draws tab bar for scoreboard views
+=================
+*/
+static void CG_DrawScoreboardTabs(void) {
+    const char *tabNames[SB_TAB_MAX] = { "Scoreboard", "Lap Records" };
+    vec4_t activeColor = {1, 1, 0, 1};
+    vec4_t inactiveColor = {1, 1, 1, 0.7f};
+    vec4_t lineColor = {1, 1, 1, 0.25f};
+    int i, w, x, y, total, spacing;
+
+    CG_SetScreenPlacement(PLACE_CENTER, PLACE_TOP);
+
+    spacing = 20;
+    total = 0;
+    for (i = 0; i < SB_TAB_MAX; i++) {
+        total += CG_DrawStrlen(tabNames[i]) * BIGCHAR_WIDTH + spacing;
+    }
+    total -= spacing;
+
+    x = (SCREEN_WIDTH - total) / 2;
+    y = 40;
+
+    for (i = 0; i < SB_TAB_MAX; i++) {
+        w = CG_DrawStrlen(tabNames[i]) * BIGCHAR_WIDTH;
+        CG_DrawBigStringColor(x, y, tabNames[i],
+                              (i == cg.activeScoreTab) ? activeColor : inactiveColor);
+        x += w + spacing;
+    }
+
+    CG_FillRect(0, y + BIGCHAR_HEIGHT + 4, SCREEN_WIDTH, 2, lineColor);
+}
+
+/*
+=================
+CG_DrawScoreboard
+Entry point that selects tab content
+=================
+*/
+static qboolean CG_DrawScoreboard(void) {
+    CG_DrawScoreboardTabs();
+
+    if (cg.activeScoreTab == SB_TAB_LAPRECORDS) {
+        CG_DrawLapRecords();
+        return qtrue;
+    }
+
+    return CG_DrawModernScoreboard();
+}
+
+/*
+=================
 CG_DrawOldScoreboard
 Wrapper function to maintain compatibility
 =================
 */
 qboolean CG_DrawOldScoreboard(void) {
-    return CG_DrawModernScoreboard();
+    return CG_DrawScoreboard();
 }
 
 /*

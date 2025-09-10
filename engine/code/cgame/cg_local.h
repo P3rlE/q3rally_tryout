@@ -419,6 +419,15 @@ typedef struct {
     char vehicle[MAX_QPATH];
 } lapRecord_t;
 
+/*
+ * Scoreboard tab identifiers
+ */
+typedef enum {
+    SB_TAB_SCOREBOARD,   /* default player scoreboard */
+    SB_TAB_LAPRECORDS,   /* best lap records */
+    SB_TAB_MAX
+} sbTab_t;
+
 
 // each client has an associated clientInfo_t
 // that contains media references necessary to present the
@@ -704,6 +713,7 @@ typedef struct {
 	score_t		scores[MAX_CLIENTS];
 	qboolean	showScores;
 	qboolean	scoreBoardShowing;
+		sbTab_t		activeScoreTab;
 	int			scoreFadeTime;
 	char		killerName[MAX_NAME_LENGTH];
 	char			spectatorList[MAX_STRING_CHARS];		// list of names
