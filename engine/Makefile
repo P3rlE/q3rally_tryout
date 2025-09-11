@@ -1857,42 +1857,42 @@ $(STRINGIFY): $(TOOLSDIR)/stringify.c
 
 define DO_Q3LCC
 $(echo_cmd) "Q3LCC $<"
-$(Q)$(Q3LCC) $(BASEGAME_CFLAGS) $(QVM_CFLAGS) -o $@ $<
+$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(BASEGAME_CFLAGS) $(QVM_CFLAGS) -o $@ $<
 endef
 
 define DO_CGAME_Q3LCC
 $(echo_cmd) "CGAME_Q3LCC $<"
-$(Q)$(Q3LCC) $(BASEGAME_CFLAGS) -DCGAME $(QVM_CFLAGS) -o $@ $<
+$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(BASEGAME_CFLAGS) -DCGAME $(QVM_CFLAGS) -o $@ $<
 endef
 
 define DO_GAME_Q3LCC
 $(echo_cmd) "GAME_Q3LCC $<"
-$(Q)$(Q3LCC) $(BASEGAME_CFLAGS) -DQAGAME $(QVM_CFLAGS) -o $@ $<
+$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(BASEGAME_CFLAGS) -DQAGAME $(QVM_CFLAGS) -o $@ $<
 endef
 
 define DO_UI_Q3LCC
 $(echo_cmd) "UI_Q3LCC $<"
-$(Q)$(Q3LCC) $(BASEGAME_CFLAGS) -DUI $(QVM_CFLAGS) -o $@ $<
+$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(BASEGAME_CFLAGS) -DUI $(QVM_CFLAGS) -o $@ $<
 endef
 
 define DO_Q3LCC_MISSIONPACK
 $(echo_cmd) "Q3LCC_MISSIONPACK $<"
-$(Q)$(Q3LCC) $(MISSIONPACK_CFLAGS) $(QVM_CFLAGS) -o $@ $<
+$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(MISSIONPACK_CFLAGS) $(QVM_CFLAGS) -o $@ $<
 endef
 
 define DO_CGAME_Q3LCC_MISSIONPACK
 $(echo_cmd) "CGAME_Q3LCC_MISSIONPACK $<"
-$(Q)$(Q3LCC) $(MISSIONPACK_CFLAGS) -DCGAME $(QVM_CFLAGS) -o $@ $<
+$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(MISSIONPACK_CFLAGS) -DCGAME $(QVM_CFLAGS) -o $@ $<
 endef
 
 define DO_GAME_Q3LCC_MISSIONPACK
 $(echo_cmd) "GAME_Q3LCC_MISSIONPACK $<"
-$(Q)$(Q3LCC) $(MISSIONPACK_CFLAGS) -DQAGAME $(QVM_CFLAGS) -o $@ $<
+$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(MISSIONPACK_CFLAGS) -DQAGAME $(QVM_CFLAGS) -o $@ $<
 endef
 
 define DO_UI_Q3LCC_MISSIONPACK
 $(echo_cmd) "UI_Q3LCC_MISSIONPACK $<"
-$(Q)$(Q3LCC) $(MISSIONPACK_CFLAGS) -DUI $(QVM_CFLAGS) -o $@ $<
+$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(MISSIONPACK_CFLAGS) -DUI $(QVM_CFLAGS) -o $@ $<
 endef
 
 
