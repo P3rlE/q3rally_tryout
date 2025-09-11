@@ -46,6 +46,7 @@ if ( g_developer.integer )
 G_Printf( "Client %i touched the start line.\n", other->s.clientNum );
 
 other->client->lastCheckpointTime = level.time;
+other->client->startLapTime = level.time;
 other->number = 1;
 other->client->ps.stats[STAT_NEXT_CHECKPOINT] = other->number;
 other->client->ps.stats[STAT_FRAC_TO_NEXT_CHECKPOINT] = FLOAT2SHORT(0.1f);

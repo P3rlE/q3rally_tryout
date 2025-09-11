@@ -1254,6 +1254,8 @@ void ClientBegin( int clientNum ) {
 	client->buttons = 0;
 	client->oldbuttons = 0;
 	client->lastCheckpointTime = 0;
+	client->startLapTime = 0;
+	client->bestLapTime = 0;
 // END
 
 	if ( ent->r.linked ) {
