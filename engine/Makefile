@@ -298,6 +298,7 @@ LBURGDIR=$(MOUNT_DIR)/tools/lcc/lburg
 Q3CPPDIR=$(MOUNT_DIR)/tools/lcc/cpp
 Q3LCCETCDIR=$(MOUNT_DIR)/tools/lcc/etc
 Q3LCCSRCDIR=$(MOUNT_DIR)/tools/lcc/src
+Q3LCCINCLUDEDIR=$(MOUNT_DIR)/tools/lcc/include
 AUTOUPDATERSRCDIR=$(MOUNT_DIR)/autoupdater
 LIBTOMCRYPTSRCDIR=$(AUTOUPDATERSRCDIR)/rsa_tools/libtomcrypt-1.17
 TOMSFASTMATHSRCDIR=$(AUTOUPDATERSRCDIR)/rsa_tools/tomsfastmath-0.13.1
@@ -1709,6 +1710,8 @@ makedirs:
 	@$(MKDIR) $(B)/tools/rcc
 	@$(MKDIR) $(B)/tools/cpp
 	@$(MKDIR) $(B)/tools/lburg
+	@$(MKDIR) $(B)/tools/include
+	@cp $(Q3LCCINCLUDEDIR)/*.h $(B)/tools/include/
 
 #############################################################################
 # QVM BUILD TOOLS
@@ -3325,6 +3328,7 @@ toolsclean2:
 	@rm -f $(TOOLSOBJ)
 	@rm -f $(TOOLSOBJ_D_FILES)
 	@rm -f $(LBURG) $(DAGCHECK_C) $(Q3RCC) $(Q3CPP) $(Q3LCC) $(Q3ASM) $(STRINGIFY)
+	@rm -rf $(B)/tools/include
 
 distclean: clean toolsclean
 	@rm -rf $(BUILD_DIR)
