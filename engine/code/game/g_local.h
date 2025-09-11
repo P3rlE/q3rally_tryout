@@ -42,9 +42,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define REWARD_SPRITE_TIME	2500
 
 #define	INTERMISSION_DELAY_TIME	1000
-#define CS_LAPRECORDS_BASE      CS_PARTICLES
-#define MAX_BEST_LAP_TIMES      10
-
 #define	SP_INTERMISSION_DELAY_TIME	5000
 
 // gentity->flags
@@ -410,8 +407,7 @@ struct gclient_s {
 	float		pmoveTime;
 
 	// race variables
-	int                     startLapTime;
-        int                     finishRaceTime;
+	int			finishRaceTime;
 
 	int			horn_sound_time;
 
@@ -420,11 +416,7 @@ struct gclient_s {
 
 	char		*areabits;
 };
-typedef struct {
-    char name[MAX_NETNAME];
-    int time;
-    char vehicle[MAX_QPATH];
-} lapRecord_t;
+
 
 //
 // this structure is cleared as each map is entered
@@ -533,9 +525,6 @@ typedef struct {
         float                   cpDist[MAX_GENTITIES];
         gentity_t       *checkpoints[MAX_GENTITIES];
         float                   trackLength;
-        lapRecord_t     bestLapTimes[MAX_BEST_LAP_TIMES];
-        int                     numBestLapTimes;
-
 
         int                     testModelID;
 // END
@@ -816,10 +805,6 @@ void CreateRallyStarter( void );
 void CalculatePlayerPositions( void );
 void Cmd_RacePositions_f( void );
 void Cmd_Times_f( gentity_t *ent );
-void G_LoadBestLapTimes( void );
-void G_SaveBestLapTimes( void );
-void G_UpdateBestLapTimes( const char *name, int time, const char *vehicle );
-
 gentity_t *SelectLastMarkerForSpawn( gentity_t *ent, vec3_t origin, vec3_t angles, qboolean isbot );
 gentity_t *SelectGridPositionSpawn( gentity_t *ent, vec3_t origin, vec3_t angles, qboolean isbot );
 

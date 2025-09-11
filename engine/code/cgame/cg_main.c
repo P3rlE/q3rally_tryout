@@ -1,4 +1,4 @@
-d/*
+/*
 ===========================================================================
 Copyright (C) 1999-2005 Id Software, Inc.
 Copyright (C) 2002-2025 Q3Rally Team (Per Thormann - perle@q3rally.com)
@@ -23,8 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 // cg_main.c -- initialization and primary entry point for cgame
 #include "cg_local.h"
-#include "../client/keycodes.h"
-#include <string.h>
 
 #ifdef MISSIONPACK
 #include "../ui/ui_shared.h"
@@ -1458,43 +1456,6 @@ void CG_BuildSpectatorString(void) {
 }
 
 
-/*
-==================
-CG_ParseTrackList
-==================
-*/
-void CG_ParseTrackList( const char *list ) {
-    char buffer[MAX_STRING_CHARS];
-    char *token;
-    int id;
-    char name[MAX_QPATH];
-
-    cgs.numTracks = 0;
-
-    if ( !list || !list[0] ) {
-        return;
-    }
-
-    Q_strncpyz( buffer, list, sizeof( buffer ) );
-    token = strtok( buffer, "," );
-    while ( token && cgs.numTracks < MAX_TRACKS ) {
-        if ( sscanf( token, "%i:%63s", &id, name ) == 2 ) {
-            if ( id >= 0 && id < MAX_TRACKS ) {
-                Q_strncpyz( cgs.trackNames[id], name, sizeof( cgs.trackNames[0] ) );
-                if ( id >= cgs.numTracks ) {
-                    cgs.numTracks = id + 1;
-                }
-            }
-        }
-        token = strtok( NULL, "," );
-    }
-
-    if ( cg.activeTrack >= cgs.numTracks ) {
-        cg.activeTrack = 0;
-    }
-}
-
-
 /*																																			
 ===================
 CG_RegisterClients
@@ -2428,19 +2389,6 @@ void CG_EventHandling(int type) {
 
 
 void CG_KeyEvent(int key, qboolean down) {
-    if ( !down ) {
-        return;
-    }
-
-    if ( cg.showScores && cg.activeScoreTab == SB_TAB_LAPRECORDS && cgs.numTracks > 0 ) {
-        if ( key == K_RIGHTARROW || key == ']' ) {
-            cg.activeTrack = ( cg.activeTrack + 1 ) % cgs.numTracks;
-            return;
-        } else if ( key == K_LEFTARROW || key == '[' ) {
-            cg.activeTrack = ( cg.activeTrack + cgs.numTracks - 1 ) % cgs.numTracks;
-            return;
-        }
-    }
 }
 
 void CG_MouseEvent(int x, int y) {

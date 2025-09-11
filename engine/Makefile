@@ -298,7 +298,6 @@ LBURGDIR=$(MOUNT_DIR)/tools/lcc/lburg
 Q3CPPDIR=$(MOUNT_DIR)/tools/lcc/cpp
 Q3LCCETCDIR=$(MOUNT_DIR)/tools/lcc/etc
 Q3LCCSRCDIR=$(MOUNT_DIR)/tools/lcc/src
-Q3LCCINCLUDEDIR=$(MOUNT_DIR)/tools/lcc/include
 AUTOUPDATERSRCDIR=$(MOUNT_DIR)/autoupdater
 LIBTOMCRYPTSRCDIR=$(AUTOUPDATERSRCDIR)/rsa_tools/libtomcrypt-1.17
 TOMSFASTMATHSRCDIR=$(AUTOUPDATERSRCDIR)/rsa_tools/tomsfastmath-0.13.1
@@ -1710,8 +1709,6 @@ makedirs:
 	@$(MKDIR) $(B)/tools/rcc
 	@$(MKDIR) $(B)/tools/cpp
 	@$(MKDIR) $(B)/tools/lburg
-	@$(MKDIR) $(B)/tools/include
-	@cp $(Q3LCCINCLUDEDIR)/*.h $(B)/tools/include/
 
 #############################################################################
 # QVM BUILD TOOLS
@@ -1860,42 +1857,42 @@ $(STRINGIFY): $(TOOLSDIR)/stringify.c
 
 define DO_Q3LCC
 $(echo_cmd) "Q3LCC $<"
-$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(BASEGAME_CFLAGS) $(QVM_CFLAGS) -o $@ $<
+$(Q)$(Q3LCC) $(BASEGAME_CFLAGS) $(QVM_CFLAGS) -o $@ $<
 endef
 
 define DO_CGAME_Q3LCC
 $(echo_cmd) "CGAME_Q3LCC $<"
-$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(BASEGAME_CFLAGS) -DCGAME $(QVM_CFLAGS) -o $@ $<
+$(Q)$(Q3LCC) $(BASEGAME_CFLAGS) -DCGAME $(QVM_CFLAGS) -o $@ $<
 endef
 
 define DO_GAME_Q3LCC
 $(echo_cmd) "GAME_Q3LCC $<"
-$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(BASEGAME_CFLAGS) -DQAGAME $(QVM_CFLAGS) -o $@ $<
+$(Q)$(Q3LCC) $(BASEGAME_CFLAGS) -DQAGAME $(QVM_CFLAGS) -o $@ $<
 endef
 
 define DO_UI_Q3LCC
 $(echo_cmd) "UI_Q3LCC $<"
-$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(BASEGAME_CFLAGS) -DUI $(QVM_CFLAGS) -o $@ $<
+$(Q)$(Q3LCC) $(BASEGAME_CFLAGS) -DUI $(QVM_CFLAGS) -o $@ $<
 endef
 
 define DO_Q3LCC_MISSIONPACK
 $(echo_cmd) "Q3LCC_MISSIONPACK $<"
-$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(MISSIONPACK_CFLAGS) $(QVM_CFLAGS) -o $@ $<
+$(Q)$(Q3LCC) $(MISSIONPACK_CFLAGS) $(QVM_CFLAGS) -o $@ $<
 endef
 
 define DO_CGAME_Q3LCC_MISSIONPACK
 $(echo_cmd) "CGAME_Q3LCC_MISSIONPACK $<"
-$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(MISSIONPACK_CFLAGS) -DCGAME $(QVM_CFLAGS) -o $@ $<
+$(Q)$(Q3LCC) $(MISSIONPACK_CFLAGS) -DCGAME $(QVM_CFLAGS) -o $@ $<
 endef
 
 define DO_GAME_Q3LCC_MISSIONPACK
 $(echo_cmd) "GAME_Q3LCC_MISSIONPACK $<"
-$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(MISSIONPACK_CFLAGS) -DQAGAME $(QVM_CFLAGS) -o $@ $<
+$(Q)$(Q3LCC) $(MISSIONPACK_CFLAGS) -DQAGAME $(QVM_CFLAGS) -o $@ $<
 endef
 
 define DO_UI_Q3LCC_MISSIONPACK
 $(echo_cmd) "UI_Q3LCC_MISSIONPACK $<"
-$(Q)LCCDIR=$(B)/tools $(Q3LCC) $(MISSIONPACK_CFLAGS) -DUI $(QVM_CFLAGS) -o $@ $<
+$(Q)$(Q3LCC) $(MISSIONPACK_CFLAGS) -DUI $(QVM_CFLAGS) -o $@ $<
 endef
 
 
@@ -3328,7 +3325,6 @@ toolsclean2:
 	@rm -f $(TOOLSOBJ)
 	@rm -f $(TOOLSOBJ_D_FILES)
 	@rm -f $(LBURG) $(DAGCHECK_C) $(Q3RCC) $(Q3CPP) $(Q3LCC) $(Q3ASM) $(STRINGIFY)
-	@rm -rf $(B)/tools/include
 
 distclean: clean toolsclean
 	@rm -rf $(BUILD_DIR)

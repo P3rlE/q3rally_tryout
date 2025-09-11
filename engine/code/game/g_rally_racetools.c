@@ -431,13 +431,7 @@ void RallyStarter_Think( gentity_t *ent ){
 	if ( level.time > ent->pain_debounce_time + 5000 ){
 		level.startRaceTime = level.time;
 
-                for ( i = 0; i < level.maxclients; i++ ) {
-                        player = &g_entities[i];
-                        if ( !player->inuse || !player->client ) continue;
-                        player->client->startLapTime = level.startRaceTime;
-                }
-
-                trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
+		trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
 		RaceCountdown("GO!", 0);
 
 		Rally_Sound( ent, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/go.wav") );

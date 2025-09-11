@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // used for scoreboard
 extern displayContextDef_t cgDC;
+menuDef_t *menuScoreboard = NULL;
 #else
 int drawTeamOverlayModificationCount = -1;
 #endif
@@ -2858,6 +2859,71 @@ static void CG_DrawTeamVote(void) {
 }
 
 
+static qboolean CG_DrawScoreboard( void ) {
+#ifdef MISSIONPACK
+	static qboolean firstTime = qtrue;
+
+    CG_SetScreenPlacement(PLACE_CENTER, PLACE_CENTER);
+
+	if (menuScoreboard) {
+		menuScoreboard->window.flags &= ~WINDOW_FORCED;
+	}
+	if (cg_paused.integer) {
+		cg.deferredPlayerLoading = 0;
+		firstTime = qtrue;
+		return qfalse;
+	}
+
+	// should never happen in Team Arena
+	if (cgs.gametype == GT_SINGLE_PLAYER && cg.predictedPlayerState.pm_type == PM_INTERMISSION ) {
+		cg.deferredPlayerLoading = 0;
+		firstTime = qtrue;
+		return qfalse;
+	}
+
+	// don't draw scoreboard during death while warmup up
+	if ( cg.warmup && !cg.showScores ) {
+		return qfalse;
+	}
+
+	if ( cg.showScores || cg.predictedPlayerState.pm_type == PM_DEAD || cg.predictedPlayerState.pm_type == PM_INTERMISSION ) {
+	} else {
+		if ( !CG_FadeColor( cg.scoreFadeTime, FADE_TIME ) ) {
+			// next time scoreboard comes up, don't print killer
+			cg.deferredPlayerLoading = 0;
+			cg.killerName[0] = 0;
+			firstTime = qtrue;
+			return qfalse;
+		}
+	}
+
+	if (menuScoreboard == NULL) {
+		if ( cgs.gametype >= GT_TEAM ) {
+			menuScoreboard = Menus_FindByName("teamscore_menu");
+		} else {
+			menuScoreboard = Menus_FindByName("score_menu");
+		}
+	}
+
+	if (menuScoreboard) {
+		if (firstTime) {
+			CG_SetScoreSelection(menuScoreboard);
+			firstTime = qfalse;
+		}
+		Menu_Paint(menuScoreboard, qtrue);
+	}
+
+	// load any models that have been deferred
+	if ( ++cg.deferredPlayerLoading > 10 ) {
+		CG_LoadDeferredPlayers();
+	}
+
+	return qtrue;
+#else
+	return CG_DrawOldScoreboard();
+#endif
+}
+
 /*
 ===================
 CG_DrawIntermission
@@ -2883,7 +2949,7 @@ static void CG_DrawIntermission( void ) {
 
 	if (!cg.scoreBoardShowing)
 // Q3Rally Code END
-               cg.scoreBoardShowing = CG_DrawTabbedScoreboard();
+		cg.scoreBoardShowing = CG_DrawScoreboard();
 }
 
 /*
@@ -3214,7 +3280,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 
 	if (!cg.scoreBoardShowing)
 
-               cg.scoreBoardShowing = CG_DrawTabbedScoreboard();
+		cg.scoreBoardShowing = CG_DrawScoreboard();
 
 	if ( !cg.scoreBoardShowing) {
 		CG_DrawCenterString();

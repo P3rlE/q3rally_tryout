@@ -25,11 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../renderercommon/tr_types.h"
 #include "../game/bg_public.h"
 #include "cg_public.h"
-#define CS_LAPRECORDS_BASE      CS_PARTICLES
-#define MAX_BEST_LAP_TIMES      10
-#define MAX_TRACKS              8
-#define MAX_NETNAME              36
-
 
 
 // The entire cgame module is unloaded and reloaded on each level change,
@@ -64,7 +59,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	MAX_STEP_CHANGE		32
 
 #define	MAX_VERTS_ON_POLY	10
-#define MAX_MARK_POLYS          2048
+// Q3Rally Code Start
+//#define	MAX_MARK_POLYS		256
+#define	MAX_MARK_POLYS		2048
+// Q3Rally Code END
 
 #define STAT_MINUS			10	// num frame for '-' stats digit
 
@@ -410,21 +408,6 @@ typedef struct {
 	int				damageTaken;
 	int				position;
 } score_t;
-typedef struct {
-    char name[MAX_NETNAME];
-    int time;
-    char vehicle[MAX_QPATH];
-} lapRecord_t;
-
-/*
- * Scoreboard tab identifiers
- */
-typedef enum {
-    SB_TAB_SCOREBOARD,   /* default player scoreboard */
-    SB_TAB_LAPRECORDS,   /* best lap records */
-    SB_TAB_MAX
-} sbTab_t;
-
 
 // each client has an associated clientInfo_t
 // that contains media references necessary to present the
@@ -710,8 +693,6 @@ typedef struct {
 	score_t		scores[MAX_CLIENTS];
 	qboolean	showScores;
 	qboolean	scoreBoardShowing;
-		sbTab_t		activeScoreTab;
-	int			activeTrack;
 	int			scoreFadeTime;
 	char		killerName[MAX_NAME_LENGTH];
 	char			spectatorList[MAX_STRING_CHARS];		// list of names
@@ -1324,11 +1305,8 @@ typedef struct {
 	cgMedia_t		media;
 
 // Q3Rally Code Start
-        int                             numRacers;
+	int				numRacers;
         float                   trackLength;
-        int                             numTracks;
-        char                    trackNames[MAX_TRACKS][MAX_QPATH];
-        lapRecord_t             lapRecords[MAX_TRACKS][MAX_BEST_LAP_TIMES];
 // Q3Rally Code END
 
 } cgs_t;
@@ -1509,7 +1487,6 @@ void QDECL CG_DebugLogPrintf( const char *fmt, ... ) __attribute__ ((format (pri
 // Q3Rally Code END
 
 void CG_StartMusic( void );
-void CG_ParseTrackList( const char *list );
 
 void CG_UpdateCvars( void );
 
@@ -1810,7 +1787,7 @@ void CG_DrawInformation( void );
 //
 // cg_scoreboard.c
 //
-qboolean CG_DrawTabbedScoreboard( void );
+qboolean CG_DrawOldScoreboard( void );
 // Q3Rally Code Start - removed
 // void CG_DrawTourneyScoreboard( void );
 // Q3Rally Code END

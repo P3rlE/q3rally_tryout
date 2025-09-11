@@ -282,7 +282,6 @@ cgs.scores4 = atoi( CG_ConfigString( CS_SCORES4 ) );
 // END
 cgs.levelStartTime = atoi( CG_ConfigString( CS_LEVEL_START_TIME ) );
 cgs.trackLength = atof( CG_ConfigString( CS_TRACKLENGTH ) );
-CG_ParseTrackList( CG_ConfigString( CS_TRACKLIST ) );
 if( cgs.gametype == GT_CTF ) {
 		s = CG_ConfigString( CS_FLAGSTATUS );
 		cgs.redflag = s[0] - '0';
@@ -382,13 +381,11 @@ static void CG_ConfigStringModified( void ) {
 	} else if ( num == CS_SCORES4 ) {
 		cgs.scores4 = atoi( str );
 // END
-       } else if ( num == CS_TRACKLENGTH ) {
-               cgs.trackLength = atof( str );
-       } else if ( num == CS_TRACKLIST ) {
-               CG_ParseTrackList( str );
-       } else if ( num == CS_LEVEL_START_TIME ) {
-               cgs.levelStartTime = atoi( str );
-       } else if ( num == CS_VOTE_TIME ) {
+	} else if ( num == CS_TRACKLENGTH ) {
+		cgs.trackLength = atof( str );
+	} else if ( num == CS_LEVEL_START_TIME ) {
+		cgs.levelStartTime = atoi( str );
+	} else if ( num == CS_VOTE_TIME ) {
 		cgs.voteTime = atoi( str );
 		cgs.voteModified = qtrue;
 	} else if ( num == CS_VOTE_YES ) {
@@ -444,26 +441,14 @@ static void CG_ConfigStringModified( void ) {
 		}
 #endif
 	}
-       else if ( num == CS_SIGILSTATUS ) {
-               if( cgs.gametype == GT_DOMINATION ) {
-                       CG_ParseSigilStatus();
-               }
-       }
-       else if ( num >= CS_LAPRECORDS_BASE && num < CS_LAPRECORDS_BASE + MAX_TRACKS * MAX_BEST_LAP_TIMES ) {
-               int track = (num - CS_LAPRECORDS_BASE) / MAX_BEST_LAP_TIMES;
-               int index = (num - CS_LAPRECORDS_BASE) % MAX_BEST_LAP_TIMES;
-               lapRecord_t *rec = &cgs.lapRecords[track][index];
-               if ( *str ) {
-                       sscanf( str, "%i %31s %63s", &rec->time, rec->name, rec->vehicle );
-               } else {
-                       rec->time = 0;
-                       rec->name[0] = '\0';
-                       rec->vehicle[0] = '\0';
-               }
-       }
-       else if ( num == CS_SHADERSTATE ) {
-               CG_ShaderStateChanged();
-       }
+	else if ( num == CS_SIGILSTATUS ) {
+		if( cgs.gametype == GT_DOMINATION ) {
+			CG_ParseSigilStatus();
+		}
+	}
+	else if ( num == CS_SHADERSTATE ) {
+		CG_ShaderStateChanged();
+	}
 		
 }
 
