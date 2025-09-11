@@ -33,6 +33,99 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define CHECKPOINT_MESSAGES		2
 
 
+/*
+=================
+G_SaveLapRecord
+=================
+*/
+static void G_SaveLapRecord( gentity_t *ent, int lapTime ) {
+    char userinfo[MAX_INFO_STRING];
+    char vehicle[MAX_QPATH];
+    char mapname[MAX_QPATH];
+    char filename[MAX_QPATH];
+    fileHandle_t f;
+    int len;
+    char buffer[1024];
+    char *p;
+
+    struct {
+        char name[MAX_NETNAME];
+        int time;
+        char vehicle[MAX_QPATH];
+    } records[11], tmp;
+    int num, i, j;
+
+    // player info
+    Q_strncpyz( records[0].name, ent->client->pers.netname, sizeof( records[0].name ) );
+    trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof( userinfo ) );
+    Q_strncpyz( vehicle, Info_ValueForKey( userinfo, "model" ), sizeof( vehicle ) );
+
+    // build filename
+    trap_Cvar_VariableStringBuffer( "mapname", mapname, sizeof( mapname ) );
+    Com_sprintf( filename, sizeof( filename ), "Records/%s.rec", mapname );
+
+    num = 0;
+    len = trap_FS_FOpenFile( filename, &f, FS_READ );
+    if ( f ) {
+        if ( len >= sizeof( buffer ) )
+            len = sizeof( buffer ) - 1;
+        trap_FS_Read( buffer, len, f );
+        buffer[len] = '\0';
+        trap_FS_FCloseFile( f );
+
+        p = buffer;
+        while ( num < 10 ) {
+            char *tok;
+            tok = COM_Parse( &p );
+            if ( !tok[0] )
+                break;
+            Q_strncpyz( records[num].name, tok, sizeof( records[num].name ) );
+
+            tok = COM_Parse( &p );
+            if ( !tok[0] )
+                break;
+            records[num].time = atoi( tok );
+
+            tok = COM_Parse( &p );
+            if ( !tok[0] )
+                break;
+            Q_strncpyz( records[num].vehicle, tok, sizeof( records[num].vehicle ) );
+
+            num++;
+        }
+    }
+
+    // add new record
+    Q_strncpyz( records[num].name, ent->client->pers.netname, sizeof( records[num].name ) );
+    records[num].time = lapTime;
+    Q_strncpyz( records[num].vehicle, vehicle, sizeof( records[num].vehicle ) );
+    num++;
+
+    // sort records by time
+    for ( i = 0; i < num; i++ ) {
+        for ( j = i + 1; j < num; j++ ) {
+            if ( records[j].time < records[i].time ) {
+                tmp = records[i];
+                records[i] = records[j];
+                records[j] = tmp;
+            }
+        }
+    }
+
+    if ( num > 10 )
+        num = 10;
+
+    // write back to file
+    trap_FS_FOpenFile( filename, &f, FS_WRITE );
+    if ( !f )
+        return;
+    for ( i = 0; i < num; i++ ) {
+        Com_sprintf( buffer, sizeof( buffer ), "\"%s\" %i %s\n", records[i].name, records[i].time, records[i].vehicle );
+        trap_FS_Write( buffer, strlen( buffer ), f );
+    }
+    trap_FS_FCloseFile( f );
+}
+
 void Touch_Start (gentity_t *self, gentity_t *other, trace_t *trace ){
 if ( !other->client ) {
 return;
