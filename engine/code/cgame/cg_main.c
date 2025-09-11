@@ -1,4 +1,4 @@
-/*
+d/*
 ===========================================================================
 Copyright (C) 1999-2005 Id Software, Inc.
 Copyright (C) 2002-2025 Q3Rally Team (Per Thormann - perle@q3rally.com)
