@@ -167,6 +167,15 @@ if ( self->number != other->number ) {
 return;
 }
 
+{
+int lapTime = level.time - other->client->startLapTime;
+if ( other->client->bestLapTime == 0 || lapTime < other->client->bestLapTime ) {
+other->client->bestLapTime = lapTime;
+G_SaveLapRecord( other, lapTime );
+}
+other->client->startLapTime = level.time;
+}
+
 other->client->lastCheckpointTime = level.time;
 other->client->finishRaceTime = level.time;
 other->s.weapon = WP_NONE;
@@ -242,11 +251,19 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
 		return;
 	}
 
-	if (self->number == other->number){
-		other->client->lastCheckpointTime = level.time;
-		other->currentLap++;
-		// increment lap
-		if ( other->currentLap > level.numberOfLaps && level.numberOfLaps ){
+        if (self->number == other->number){
+                other->client->lastCheckpointTime = level.time;
+                other->currentLap++;
+                {
+                        int lapTime = level.time - other->client->startLapTime;
+                        if ( other->client->bestLapTime == 0 || lapTime < other->client->bestLapTime ) {
+                                other->client->bestLapTime = lapTime;
+                                G_SaveLapRecord( other, lapTime );
+                        }
+                        other->client->startLapTime = level.time;
+                }
+                // increment lap
+                if ( other->currentLap > level.numberOfLaps && level.numberOfLaps ){
 			other->client->finishRaceTime = level.time;
 			other->s.weapon = WP_NONE;
 			other->takedamage = qfalse;
