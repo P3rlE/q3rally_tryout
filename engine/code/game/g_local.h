@@ -412,7 +412,6 @@ struct gclient_s {
 	int			horn_sound_time;
 
 	int			lastCheckpointTime;
-	int                     startLapTime;
 // END
 
 	char		*areabits;
