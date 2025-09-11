@@ -1254,6 +1254,7 @@ void ClientBegin( int clientNum ) {
 	client->buttons = 0;
 	client->oldbuttons = 0;
 	client->lastCheckpointTime = 0;
+	client->startLapTime = level.startRaceTime;
 // END
 
 	if ( ent->r.linked ) {

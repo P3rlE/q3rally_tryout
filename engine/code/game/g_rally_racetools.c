@@ -374,6 +374,9 @@ void RallyStarter_Think( gentity_t *ent ){
 		if (t == NULL){
 			// start race right away
 			level.startRaceTime = level.time;
+	for (i = 0; i < level.maxclients; i++) {
+		level.clients[i].startLapTime = level.startRaceTime;
+	}
 			trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
 			CenterPrint_All("GO..");
 
@@ -431,6 +434,9 @@ void RallyStarter_Think( gentity_t *ent ){
 	if ( level.time > ent->pain_debounce_time + 5000 ){
 		level.startRaceTime = level.time;
 
+	for (i = 0; i < level.maxclients; i++) {
+		level.clients[i].startLapTime = level.startRaceTime;
+	}
 		trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
 		RaceCountdown("GO!", 0);
 
