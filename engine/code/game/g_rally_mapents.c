@@ -52,6 +52,7 @@ static void G_SaveLapRecord( gentity_t *ent, int lapTime ) {
         char name[MAX_NETNAME];
         int time;
         char vehicle[MAX_QPATH];
+        int speed;
     } records[11], tmp;
     int num, i, j;
 
@@ -91,6 +92,18 @@ static void G_SaveLapRecord( gentity_t *ent, int lapTime ) {
                 break;
             Q_strncpyz( records[num].vehicle, tok, sizeof( records[num].vehicle ) );
 
+            // optional speed (legacy files may omit this value)
+            records[num].speed = 0;
+            while ( *p == ' ' || *p == '\t' ) {
+                p++;
+            }
+            if ( *p && *p != '\n' && *p != '\r' ) {
+                tok = COM_Parse( &p );
+                if ( tok[0] ) {
+                    records[num].speed = atoi( tok );
+                }
+            }
+
             num++;
         }
     }
@@ -99,6 +112,7 @@ static void G_SaveLapRecord( gentity_t *ent, int lapTime ) {
     Q_strncpyz( records[num].name, ent->client->pers.netname, sizeof( records[num].name ) );
     records[num].time = lapTime;
     Q_strncpyz( records[num].vehicle, vehicle, sizeof( records[num].vehicle ) );
+    records[num].speed = ent->client->maxSpeed;
     num++;
 
     // sort records by time
@@ -120,7 +134,7 @@ static void G_SaveLapRecord( gentity_t *ent, int lapTime ) {
     if ( !f )
         return;
     for ( i = 0; i < num; i++ ) {
-        Com_sprintf( buffer, sizeof( buffer ), "\"%s\" %i %s\n", records[i].name, records[i].time, records[i].vehicle );
+        Com_sprintf( buffer, sizeof( buffer ), "\"%s\" %i %s %i\n", records[i].name, records[i].time, records[i].vehicle, records[i].speed );
         trap_FS_Write( buffer, strlen( buffer ), f );
     }
     trap_FS_FCloseFile( f );
