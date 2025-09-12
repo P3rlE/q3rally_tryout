@@ -16,12 +16,13 @@ static void UI_LoadLeaderboards(void) {
     fileptr = filelist;
     for (i = 0; i < numFiles && leaderboardCount < MAX_LEADERBOARD_MAPS; i++) {
         int len = strlen(fileptr);
+        leaderboardEntry_t *entry;
         if (len < 4) {
             fileptr += len + 1;
             continue;
         }
 
-        leaderboardEntry_t *entry = &leaderboardList[leaderboardCount];
+        entry = &leaderboardList[leaderboardCount];
         Q_strncpyz(entry->map, fileptr, sizeof(entry->map));
         if (len > 4)
             entry->map[len - 4] = '\0';
@@ -29,8 +30,9 @@ static void UI_LoadLeaderboards(void) {
         {
             fileHandle_t f;
             char path[MAX_QPATH];
+            int size;
             Com_sprintf(path, sizeof(path), "Records/%s", fileptr);
-            int size = trap_FS_FOpenFile(path, &f, FS_READ);
+            size = trap_FS_FOpenFile(path, &f, FS_READ);
             if (size >= 0) {
                 char buffer[1024];
                 if (size > sizeof(buffer) - 1) {
@@ -61,9 +63,10 @@ static void UI_LoadLeaderboards(void) {
 }
 
 void UI_Leaderboards_MenuInit(void) {
+    int i;
     UI_LoadLeaderboards();
     uiInfo.leaderboardCount = leaderboardCount;
-    for (int i = 0; i < leaderboardCount; i++) {
+    for (i = 0; i < leaderboardCount; i++) {
         uiInfo.leaderboards[i] = leaderboardList[i];
     }
 }
@@ -73,9 +76,10 @@ int UI_Leaderboards_FeederCount(void) {
 }
 
 const char *UI_Leaderboards_FeederItemText(int index, int column) {
+    leaderboardEntry_t *e;
     if (index < 0 || index >= uiInfo.leaderboardCount)
         return "";
-    leaderboardEntry_t *e = &uiInfo.leaderboards[index];
+    e = &uiInfo.leaderboards[index];
     switch (column) {
     case 0:
         return e->map;
