@@ -414,6 +414,7 @@ struct gclient_s {
 	int			lastCheckpointTime;
 	int			startLapTime;
 	int			bestLapTime;
+	int			maxSpeed;
 // END
 
 	char		*areabits;
