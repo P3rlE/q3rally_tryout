@@ -3182,6 +3182,9 @@ $(B)/$(BASEGAME)/ui/bg_%.o: $(GDIR)/bg_%.c
 $(B)/$(BASEGAME)/ui/%.o: $(Q3UIDIR)/%.c
 	$(DO_UI_CC)
 
+$(B)/$(BASEGAME)/ui/ui_shared.o: $(UIDIR)/ui_shared.c
+	$(DO_UI_CC)
+
 $(B)/$(BASEGAME)/ui/bg_%.asm: $(GDIR)/bg_%.c $(Q3LCC)
 	$(DO_UI_Q3LCC)
 
