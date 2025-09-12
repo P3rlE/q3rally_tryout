@@ -2948,6 +2948,7 @@ Q3UIOBJ_ = \
   $(B)/$(BASEGAME)/ui/ui_teamorders.o \
   $(B)/$(BASEGAME)/ui/ui_video.o \
   $(B)/$(BASEGAME)/ui/ui_rally_bots.o \
+  $(B)/$(BASEGAME)/ui/ui_shared.o \
   \
   $(B)/$(BASEGAME)/qcommon/q_math.o \
   $(B)/$(BASEGAME)/qcommon/q_shared.o
