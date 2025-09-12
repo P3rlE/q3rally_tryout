@@ -32,6 +32,8 @@ USER INTERFACE MAIN
 
 #include "ui_local.h"
 
+uiInfo_t uiInfo;
+
 
 /*
 ================
