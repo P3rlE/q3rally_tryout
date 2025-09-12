@@ -1256,6 +1256,7 @@ void ClientBegin( int clientNum ) {
 	client->lastCheckpointTime = 0;
 	client->startLapTime = 0;
 	client->bestLapTime = 0;
+	client->maxSpeed = 0;
 // END
 
 	if ( ent->r.linked ) {

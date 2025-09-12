@@ -986,6 +986,7 @@ void ClientThink_real( gentity_t *ent ) {
 	int			start;
 	vec3_t		oldAngles;
 	int			oldTime;
+	float			speed;
 // END
 
 	client = ent->client;
@@ -1352,6 +1353,11 @@ void ClientThink_real( gentity_t *ent ) {
 #else
 		Pmove (&pm);
 #endif
+
+	speed = VectorLength( ent->client->ps.velocity );
+	if ( speed > ent->client->maxSpeed ) {
+		ent->client->maxSpeed = speed;
+	}
 
 // STONELANCE
 	AnglesSubtract( client->ps.viewangles, oldAngles, ent->s.apos.trDelta );
