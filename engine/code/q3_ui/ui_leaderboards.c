@@ -30,9 +30,13 @@ static void UI_LoadLeaderboards(void) {
             fileHandle_t f;
             char path[MAX_QPATH];
             Com_sprintf(path, sizeof(path), "Records/%s", fileptr);
-            if (trap_FS_FOpenFile(path, &f, FS_READ) >= 0) {
+            int size = trap_FS_FOpenFile(path, &f, FS_READ);
+            if (size >= 0) {
                 char buffer[1024];
-                int size = trap_FS_Read(buffer, sizeof(buffer) - 1, f);
+                if (size > sizeof(buffer) - 1) {
+                    size = sizeof(buffer) - 1;
+                }
+                trap_FS_Read(buffer, size, f);
                 trap_FS_FCloseFile(f);
                 buffer[size] = '\0';
                 // parse first line
