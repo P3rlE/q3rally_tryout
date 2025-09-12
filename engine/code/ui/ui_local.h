@@ -638,7 +638,6 @@ typedef struct {
 #define MAPS_PER_TIER 3
 #define MAX_TIERS 16
 #define MAX_MODS 64
-#define MAX_LEADERBOARD_ENTRIES 128
 #define MAX_MOVIES 256
 #define MAX_PLAYERMODELS 256
 
@@ -761,17 +760,7 @@ typedef struct {
 } modInfo_t;
 
 typedef struct {
-        char    map[MAX_QPATH];
-        char    name[64];
-        char    vehicle[64];
-        float   time;
-        float   speed;
-        qboolean hasSpeed;
-} leaderboardEntry_t;
-
-
-typedef struct {
-	displayContextDef_t uiDC;
+        displayContextDef_t uiDC;
 	int newHighScoreTime;
 	int newBestTime;
 	int showPostGameTime;
@@ -854,20 +843,13 @@ typedef struct {
 	qhandle_t	q3HeadIcons[MAX_PLAYERMODELS];
 	int				q3SelectedHead;
 
-        leaderboardEntry_t leaderboards[MAX_LEADERBOARD_ENTRIES];
-        int leaderboardCount;
-	int effectsColor;
+        int effectsColor;
 
 	qboolean inGameLoad;
 
 }	uiInfo_t;
 
 extern uiInfo_t uiInfo;
-
-void UI_Leaderboards_MenuInit(void);
-int UI_Leaderboards_FeederCount(void);
-const char *UI_Leaderboards_FeederItemText(int index, int column);
-
 
 extern void			UI_Init( void );
 extern void			UI_Shutdown( void );

@@ -97,7 +97,3 @@ const char *UI_Leaderboards_FeederItemText(int index, int column) {
     }
     return "";
 }
-
-void UI_LeaderboardsMenu( void ) {
-    Menus_OpenByName("leaderboards");
-}
