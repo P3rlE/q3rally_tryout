@@ -3263,8 +3263,6 @@ static void UI_RunMenuScript(char **args) {
 			UI_LoadMovies();
                } else if (Q_stricmp(name, "LoadMods") == 0) {
                        UI_LoadMods();
-               } else if (Q_stricmp(name, "Leaderboards_MenuInit") == 0) {
-                       UI_Leaderboards_MenuInit();
                } else if (Q_stricmp(name, "playMovie") == 0) {
                        if (uiInfo.previewMovie >= 0) {
                           trap_CIN_StopCinematic(uiInfo.previewMovie);
@@ -4216,8 +4214,6 @@ static int UI_FeederCount(float feederID) {
 		return uiInfo.modCount;
        } else if (feederID == FEEDER_DEMOS) {
                return uiInfo.demoCount;
-       } else if (feederID == FEEDER_LEADERBOARDS) {
-               return UI_Leaderboards_FeederCount();
        }
        return 0;
 }
@@ -4390,8 +4386,6 @@ static const char *UI_FeederItemText(float feederID, int index, int column, qhan
                if (index >= 0 && index < uiInfo.demoCount) {
                        return uiInfo.demoList[index];
                }
-       } else if (feederID == FEEDER_LEADERBOARDS) {
-               return UI_Leaderboards_FeederItemText(index, column);
        }
        return "";
 }

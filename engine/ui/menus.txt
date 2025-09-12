@@ -36,5 +36,4 @@
 	loadMenu { "ui/quitcredit.menu" }
 	loadMenu { "ui/resetscore.menu" }
 	loadMenu { "ui/createfavorite.menu" }
-	loadMenu { "ui/leaderboards.menu" }
 }

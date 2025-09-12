@@ -2757,8 +2757,7 @@ MPCGOBJ_ = \
   $(B)/$(MISSIONPACK)/cgame/cg_snapshot.o \
   $(B)/$(MISSIONPACK)/cgame/cg_view.o \
   $(B)/$(MISSIONPACK)/cgame/cg_weapons.o \
-  $(B)/$(MISSIONPACK)/ui/ui_shared.o \
-  \
+\
   $(B)/$(MISSIONPACK)/qcommon/q_math.o \
   $(B)/$(MISSIONPACK)/qcommon/q_shared.o
 
@@ -2948,7 +2947,6 @@ Q3UIOBJ_ = \
   $(B)/$(BASEGAME)/ui/ui_teamorders.o \
   $(B)/$(BASEGAME)/ui/ui_video.o \
   $(B)/$(BASEGAME)/ui/ui_rally_bots.o \
-  $(B)/$(BASEGAME)/ui/ui_shared.o \
   \
   $(B)/$(BASEGAME)/qcommon/q_math.o \
   $(B)/$(BASEGAME)/qcommon/q_shared.o
@@ -2973,7 +2971,6 @@ MPUIOBJ_ = \
   $(B)/$(MISSIONPACK)/ui/ui_atoms.o \
   $(B)/$(MISSIONPACK)/ui/ui_gameinfo.o \
   $(B)/$(MISSIONPACK)/ui/ui_players.o \
-  $(B)/$(MISSIONPACK)/ui/ui_shared.o \
   $(B)/$(MISSIONPACK)/ui/ui_common.o \
   \
   $(B)/$(MISSIONPACK)/ui/bg_misc.o \
@@ -3180,9 +3177,6 @@ $(B)/$(BASEGAME)/ui/bg_%.o: $(GDIR)/bg_%.c
 	$(DO_UI_CC)
 
 $(B)/$(BASEGAME)/ui/%.o: $(Q3UIDIR)/%.c
-	$(DO_UI_CC)
-
-$(B)/$(BASEGAME)/ui/ui_shared.o: $(UIDIR)/ui_shared.c
 	$(DO_UI_CC)
 
 $(B)/$(BASEGAME)/ui/bg_%.asm: $(GDIR)/bg_%.c $(Q3LCC)
