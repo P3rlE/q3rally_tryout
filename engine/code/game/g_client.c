@@ -1114,6 +1114,10 @@ char *ClientConnect( int clientNum, qboolean firstTime, qboolean isBot ) {
 	char		userinfo[MAX_INFO_STRING];
 	gentity_t	*ent;
 
+	if ( clientNum < 0 || clientNum >= level.maxclients ) {
+		return "Invalid client number";
+	}
+
 	ent = &g_entities[ clientNum ];
 
 	trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
