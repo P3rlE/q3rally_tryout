@@ -38,6 +38,7 @@ MAIN MENU
 #define ID_SETUP                        12
 #define ID_DEMOS                        13
 #define ID_CINEMATICS                   14
+#define ID_LEADERBOARDS                 15
 
 #define ID_MODS                         16
 #define ID_GARAGE                       17
@@ -57,6 +58,7 @@ typedef struct {
         menutext_s              setup;
         menutext_s              demos;
         menutext_s              cinematics;
+       menutext_s              leaderboards;
         menutext_s              mods;
         menutext_s              garage;
         menutext_s              exit;
@@ -199,8 +201,9 @@ void Main_MenuEvent (void* ptr, int event) {
         case ID_SINGLEPLAYER:
         case ID_MULTIPLAYER:
         case ID_SETUP:
-        case ID_GARAGE:
-        case ID_DEMOS:
+       case ID_GARAGE:
+       case ID_LEADERBOARDS:
+       case ID_DEMOS:
         case ID_CINEMATICS:
         case ID_MODS:
                 s_main.menu.transitionMenu = ((menucommon_s*)ptr)->id;
@@ -238,6 +241,10 @@ void MainMenu_ChangeMenu( int menuId ){
                 UI_BotsMenu();
                 break;
 
+       case ID_LEADERBOARDS:
+               UI_LeaderboardsMenu();
+               break;
+
         case ID_DEMOS:
                 UI_DemosMenu();
                 break;
@@ -271,6 +278,7 @@ void MainMenu_RunTransition( float frac ) {
         s_main.setup.color = uis.text_color;
         s_main.garage.color = uis.text_color;
         s_main.cinematics.color = uis.text_color;
+       s_main.leaderboards.color = uis.text_color;
         s_main.demos.color = uis.text_color;
         s_main.mods.color = uis.text_color;
         s_main.exit.color = uis.text_color;
@@ -434,12 +442,15 @@ void UI_MainMenu( void ) {
 	InitMenuText(&s_main.setup, ID_SETUP, "CONFIG", x - 10, y + 12);
 
 
-	y += MAIN_MENU_VERTICAL_SPACING;
-	InitMenuText(&s_main.garage, ID_GARAGE, "THE GARAGE", x - 10, y + 12);
-        
-        
-	y += MAIN_MENU_VERTICAL_SPACING;
-	InitMenuText(&s_main.demos, ID_DEMOS, "DEMOS", x - 10, y + 12);
+        y += MAIN_MENU_VERTICAL_SPACING;
+        InitMenuText(&s_main.garage, ID_GARAGE, "THE GARAGE", x - 10, y + 12);
+
+
+        y += MAIN_MENU_VERTICAL_SPACING;
+       InitMenuText(&s_main.leaderboards, ID_LEADERBOARDS, "LEADERBOARDS", x - 10, y + 12);
+
+       y += MAIN_MENU_VERTICAL_SPACING;
+        InitMenuText(&s_main.demos, ID_DEMOS, "DEMOS", x - 10, y + 12);
 
 
         s_main.carlogo.generic.type                     = MTYPE_BITMAP;
@@ -460,8 +471,9 @@ void UI_MainMenu( void ) {
         Menu_AddItem( &s_main.menu,     &s_main.multiplayer );
         Menu_AddItem( &s_main.menu,     &s_main.setup );
         Menu_AddItem( &s_main.menu,     &s_main.garage );
+       Menu_AddItem( &s_main.menu,     &s_main.leaderboards );
         Menu_AddItem( &s_main.menu,     &s_main.demos );
-        Menu_AddItem( &s_main.menu,     &s_main.exit );            
+        Menu_AddItem( &s_main.menu,     &s_main.exit );
 
         trap_Key_SetCatcher( KEYCATCH_UI );
         uis.menusp = 0;
