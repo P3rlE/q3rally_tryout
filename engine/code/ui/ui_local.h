@@ -755,12 +755,13 @@ typedef struct {
 } serverStatusInfo_t;
 
 typedef struct {
-        const char *modName;
-        const char *modDescr;
+	const char *modName;
+	const char *modDescr;
 } modInfo_t;
 
+
 typedef struct {
-        displayContextDef_t uiDC;
+	displayContextDef_t uiDC;
 	int newHighScoreTime;
 	int newBestTime;
 	int showPostGameTime;
@@ -843,13 +844,14 @@ typedef struct {
 	qhandle_t	q3HeadIcons[MAX_PLAYERMODELS];
 	int				q3SelectedHead;
 
-        int effectsColor;
+	int effectsColor;
 
 	qboolean inGameLoad;
 
 }	uiInfo_t;
 
 extern uiInfo_t uiInfo;
+
 
 extern void			UI_Init( void );
 extern void			UI_Shutdown( void );

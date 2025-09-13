@@ -48,7 +48,6 @@ typedef void (*voidfunc_f)(void);
 #define	DEFAULT_RIM				"svt_cobra"
 #define	DEFAULT_PLATE			"plate_usa"
 #define	DEFAULT_PLATE_SKIN		"default"
-#define MAX_LEADERBOARD_ENTRIES 128
 // END
 
 // STONELANCE
@@ -697,28 +696,6 @@ typedef struct {
 	char			plateName[MAX_QPATH];
 // END
 } playerInfo_t;
-
-typedef struct {
-        char    map[MAX_QPATH];
-        char    name[64];
-        char    vehicle[64];
-        float   time;
-        float   speed;
-        qboolean hasSpeed;
-} leaderboardEntry_t;
-
-typedef struct {
-        displayContextDef_t uiDC;
-        leaderboardEntry_t leaderboards[MAX_LEADERBOARD_ENTRIES];
-        int leaderboardCount;
-} uiInfo_t;
-
-extern uiInfo_t uiInfo;
-
-void UI_Leaderboards_MenuInit(void);
-int UI_Leaderboards_FeederCount(void);
-const char *UI_Leaderboards_FeederItemText(int index, int column);
-void UI_LeaderboardsMenu( void );
 
 void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int time );
 // STONELANCE

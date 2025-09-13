@@ -3261,12 +3261,12 @@ static void UI_RunMenuScript(char **args) {
 			UI_LoadDemos();
 		} else if (Q_stricmp(name, "LoadMovies") == 0) {
 			UI_LoadMovies();
-               } else if (Q_stricmp(name, "LoadMods") == 0) {
-                       UI_LoadMods();
-               } else if (Q_stricmp(name, "playMovie") == 0) {
-                       if (uiInfo.previewMovie >= 0) {
-                          trap_CIN_StopCinematic(uiInfo.previewMovie);
-                       }
+		} else if (Q_stricmp(name, "LoadMods") == 0) {
+			UI_LoadMods();
+		} else if (Q_stricmp(name, "playMovie") == 0) {
+			if (uiInfo.previewMovie >= 0) {
+			  trap_CIN_StopCinematic(uiInfo.previewMovie);
+			}
 			trap_Cmd_ExecuteText( EXEC_APPEND, va("cinematic %s.roq 2\n", uiInfo.movieList[uiInfo.movieIndex]));
 		} else if (Q_stricmp(name, "RunMod") == 0) {
 			trap_Cvar_Set( "fs_game", uiInfo.modList[uiInfo.modIndex].modName);
@@ -4212,10 +4212,10 @@ static int UI_FeederCount(float feederID) {
 		return uiInfo.myTeamCount;
 	} else if (feederID == FEEDER_MODS) {
 		return uiInfo.modCount;
-       } else if (feederID == FEEDER_DEMOS) {
-               return uiInfo.demoCount;
-       }
-       return 0;
+	} else if (feederID == FEEDER_DEMOS) {
+		return uiInfo.demoCount;
+	}
+	return 0;
 }
 
 static const char *UI_SelectedMap(int index, int *actual) {
@@ -4382,12 +4382,12 @@ static const char *UI_FeederItemText(float feederID, int index, int column, qhan
 		if (index >= 0 && index < uiInfo.movieCount) {
 			return uiInfo.movieList[index];
 		}
-       } else if (feederID == FEEDER_DEMOS) {
-               if (index >= 0 && index < uiInfo.demoCount) {
-                       return uiInfo.demoList[index];
-               }
-       }
-       return "";
+	} else if (feederID == FEEDER_DEMOS) {
+		if (index >= 0 && index < uiInfo.demoCount) {
+			return uiInfo.demoList[index];
+		}
+	}
+	return "";
 }
 
 

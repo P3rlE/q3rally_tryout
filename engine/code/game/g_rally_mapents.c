@@ -33,113 +33,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define CHECKPOINT_MESSAGES		2
 
 
-/*
-=================
-G_SaveLapRecord
-=================
-*/
-static void G_SaveLapRecord( gentity_t *ent, int lapTime ) {
-    char userinfo[MAX_INFO_STRING];
-    char vehicle[MAX_QPATH];
-    char mapname[MAX_QPATH];
-    char filename[MAX_QPATH];
-    fileHandle_t f;
-    int len;
-    char buffer[1024];
-    char *p;
-
-    struct {
-        char name[MAX_NETNAME];
-        int time;
-        char vehicle[MAX_QPATH];
-        int speed;
-    } records[11], tmp;
-    int num, i, j;
-
-    // player info
-    Q_strncpyz( records[0].name, ent->client->pers.netname, sizeof( records[0].name ) );
-    trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof( userinfo ) );
-    Q_strncpyz( vehicle, Info_ValueForKey( userinfo, "model" ), sizeof( vehicle ) );
-
-    // build filename
-    trap_Cvar_VariableStringBuffer( "mapname", mapname, sizeof( mapname ) );
-    Com_sprintf( filename, sizeof( filename ), "Records/%s.rec", mapname );
-
-    num = 0;
-    len = trap_FS_FOpenFile( filename, &f, FS_READ );
-    if ( f ) {
-        if ( len >= sizeof( buffer ) )
-            len = sizeof( buffer ) - 1;
-        trap_FS_Read( buffer, len, f );
-        buffer[len] = '\0';
-        trap_FS_FCloseFile( f );
-
-        p = buffer;
-        while ( num < 10 ) {
-            char *tok;
-            tok = COM_Parse( &p );
-            if ( !tok[0] )
-                break;
-            Q_strncpyz( records[num].name, tok, sizeof( records[num].name ) );
-
-            tok = COM_Parse( &p );
-            if ( !tok[0] )
-                break;
-            records[num].time = atoi( tok );
-
-            tok = COM_Parse( &p );
-            if ( !tok[0] )
-                break;
-            Q_strncpyz( records[num].vehicle, tok, sizeof( records[num].vehicle ) );
-
-            // optional speed (legacy files may omit this value)
-            records[num].speed = 0;
-            while ( *p == ' ' || *p == '\t' ) {
-                p++;
-            }
-            if ( *p && *p != '\n' && *p != '\r' ) {
-                tok = COM_Parse( &p );
-                if ( tok[0] ) {
-                    records[num].speed = atoi( tok );
-                }
-            }
-
-            num++;
-        }
-    }
-
-    // add new record
-    Q_strncpyz( records[num].name, ent->client->pers.netname, sizeof( records[num].name ) );
-    records[num].time = lapTime;
-    Q_strncpyz( records[num].vehicle, vehicle, sizeof( records[num].vehicle ) );
-    records[num].speed = ent->client->maxSpeed;
-    num++;
-
-    // sort records by time
-    for ( i = 0; i < num; i++ ) {
-        for ( j = i + 1; j < num; j++ ) {
-            if ( records[j].time < records[i].time ) {
-                tmp = records[i];
-                records[i] = records[j];
-                records[j] = tmp;
-            }
-        }
-    }
-
-    if ( num > 10 )
-        num = 10;
-
-    // write back to file
-    trap_FS_FOpenFile( filename, &f, FS_WRITE );
-    if ( !f )
-        return;
-    for ( i = 0; i < num; i++ ) {
-        Com_sprintf( buffer, sizeof( buffer ), "\"%s\" %i %s %i\n", records[i].name, records[i].time, records[i].vehicle, records[i].speed );
-        trap_FS_Write( buffer, strlen( buffer ), f );
-    }
-    trap_FS_FCloseFile( f );
-}
-
 void Touch_Start (gentity_t *self, gentity_t *other, trace_t *trace ){
 if ( !other->client ) {
 return;
@@ -153,8 +46,6 @@ if ( g_developer.integer )
 G_Printf( "Client %i touched the start line.\n", other->s.clientNum );
 
 other->client->lastCheckpointTime = level.time;
-other->client->startLapTime = level.time;
-other->client->maxSpeed = 0;
 other->number = 1;
 other->client->ps.stats[STAT_NEXT_CHECKPOINT] = other->number;
 other->client->ps.stats[STAT_FRAC_TO_NEXT_CHECKPOINT] = FLOAT2SHORT(0.1f);
@@ -180,15 +71,6 @@ G_Printf( "Client %i touched the finish line.\n", other->s.clientNum );
 
 if ( self->number != other->number ) {
 return;
-}
-
-{
-int lapTime = level.time - other->client->startLapTime;
-if ( other->client->bestLapTime == 0 || lapTime < other->client->bestLapTime ) {
-other->client->bestLapTime = lapTime;
-G_SaveLapRecord( other, lapTime );
-}
-other->client->startLapTime = level.time;
 }
 
 other->client->lastCheckpointTime = level.time;
@@ -266,20 +148,11 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
 		return;
 	}
 
-        if (self->number == other->number){
-                other->client->lastCheckpointTime = level.time;
-                other->currentLap++;
-                {
-                        int lapTime = level.time - other->client->startLapTime;
-                        if ( other->client->bestLapTime == 0 || lapTime < other->client->bestLapTime ) {
-                                other->client->bestLapTime = lapTime;
-                                G_SaveLapRecord( other, lapTime );
-                        }
-                        other->client->startLapTime = level.time;
-                        other->client->maxSpeed = 0;
-                }
-                // increment lap
-                if ( other->currentLap > level.numberOfLaps && level.numberOfLaps ){
+	if (self->number == other->number){
+		other->client->lastCheckpointTime = level.time;
+		other->currentLap++;
+		// increment lap
+		if ( other->currentLap > level.numberOfLaps && level.numberOfLaps ){
 			other->client->finishRaceTime = level.time;
 			other->s.weapon = WP_NONE;
 			other->takedamage = qfalse;

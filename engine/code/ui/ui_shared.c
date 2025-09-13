@@ -24,10 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "ui_shared.h"
 
-void UI_DrawBackground( qhandle_t shader );
-
-static void Controls_GetConfig(void);
-
 #define SCROLL_TIME_START					500
 #define SCROLL_TIME_ADJUST				150
 #define SCROLL_TIME_ADJUSTOFFSET	40
@@ -3294,6 +3290,20 @@ static bind_t g_bindings[] =
 
 static const int g_bindCount = ARRAY_LEN(g_bindings);
 
+#ifndef MISSIONPACK
+static configcvar_t g_configcvars[] =
+{
+	{"cl_run",			0,					0},
+	{"m_pitch",			0,					0},
+	{"cg_autoswitch",	0,					0},
+	{"sensitivity",		0,					0},
+	{"in_joystick",		0,					0},
+	{"joy_threshold",	0,					0},
+	{"m_filter",		0,					0},
+	{"cl_freelook",		0,					0},
+	{NULL,				0,					0}
+};
+#endif
 
 /*
 =================
@@ -3330,7 +3340,7 @@ static void Controls_GetKeyAssignment (char *command, int *twokeys)
 Controls_GetConfig
 =================
 */
-static void Controls_GetConfig( void )
+void Controls_GetConfig( void )
 {
 	int		i;
 	int		twokeys[2];
@@ -5903,6 +5913,11 @@ void Menu_Reset(void) {
 displayContextDef_t *Display_GetContext(void) {
 	return DC;
 }
+ 
+#ifndef MISSIONPACK
+static float captureX;
+static float captureY;
+#endif
 
 void *Display_CaptureItem(int x, int y) {
 	int i;
