@@ -384,13 +384,14 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 	case G_SET_USERINFO:
 		SV_SetUserinfo( args[1], VMA(2) );
 		return 0;
-	case G_GET_USERINFO:
-		if ( args[1] < 0 || args[1] >= sv_maxclients->integer ) {
-			Com_Printf( "G_GET_USERINFO: bad index %i\n", args[1] );
-			return 0;
-		}
-		SV_GetUserinfo( args[1], VMA(2), args[3] );
-		return 0;
+        case G_GET_USERINFO:
+                if ( args[1] < 0 || args[1] >= sv_maxclients->integer ) {
+                        Com_Error( ERR_DROP,
+                                "%s: G_GET_USERINFO: bad index %d (maxclients %d)",
+                                __func__, (int)args[1], sv_maxclients->integer );
+                }
+                SV_GetUserinfo( args[1], VMA(2), args[3] );
+                return 0;
 	case G_GET_SERVERINFO:
 		SV_GetServerinfo( VMA(1), args[2] );
 		return 0;
