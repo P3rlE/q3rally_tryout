@@ -361,11 +361,7 @@ void G_LoadBestTimes( const char *mapname, besttime_t *bestTimes ) {
 		return;
 	}
 
-	for (i = 0; i < 10; i++) {
-		if (trap_FS_Read(&bestTimes[i], sizeof(besttime_t), f) != sizeof(besttime_t)) {
-			break;
-		}
-	}
+	trap_FS_Read( bestTimes, sizeof(besttime_t) * 10, f );
 
 	trap_FS_FCloseFile(f);
 }
@@ -625,6 +621,7 @@ G_InitGame
 */
 void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	int					i;
+	char	serverinfo[MAX_INFO_STRING];
 
 	G_Printf ("------- Game Initialization -------\n");
 	G_Printf ("gamename: %s\n", GAMEVERSION);
@@ -665,7 +662,6 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 		G_Printf( "Not logging to disk.\n" );
 	}
 
-	char	serverinfo[MAX_INFO_STRING];
 	trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
 	Q_strncpyz( level.rawmapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( level.rawmapname ) );
 

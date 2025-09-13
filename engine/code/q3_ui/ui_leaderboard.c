@@ -64,7 +64,7 @@ static void UI_Leaderboard_Draw( void ) {
 	int y;
 	char buffer[1024];
 
-	UI_DrawNamedPic( 0, 0, 640, 480, uis.menuBackShader );
+	UI_DrawHandlePic( 0, 0, 640, 480, uis.menuBackShader );
 	UI_DrawNamedPic( 320-233, 10, 466, 80, "menu/art/banner_q3r" );
 
 	UI_DrawString( 320, 100, "LEADERBOARDS", UI_CENTER|UI_BIGFONT, text_color_normal );
@@ -141,14 +141,14 @@ void UI_LeaderboardMenu( void ) {
 	s_leaderboard.maplist.generic.callback = UI_Leaderboard_Event;
 	s_leaderboard.maplist.generic.x = 400;
 	s_leaderboard.maplist.generic.y = 160;
-	s_leaderboard.maplist.numitems = trap_FS_GetFileList( "maps", ".bsp", mapinfos, 256 * MAX_INFO_STRING );
+	s_leaderboard.maplist.numitems = trap_FS_GetFileList( "maps", ".bsp", (char *)mapinfos, 256 * MAX_INFO_STRING );
 	s_leaderboard.maplist.itemnames = (const char **)mapnames;
 	s_leaderboard.maplist.width = 16;
 	s_leaderboard.maplist.height = 10;
 
 	for (i = 0; i < s_leaderboard.maplist.numitems; i++) {
 		mapnames[i] = mapinfos[i];
-		Q_StripExtension(mapnames[i], mapnames[i]);
+		COM_StripExtension(mapnames[i], mapnames[i], MAX_QPATH);
 	}
 
 	Menu_AddItem( &s_leaderboard.menu, &s_leaderboard.banner );

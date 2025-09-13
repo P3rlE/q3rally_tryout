@@ -44,13 +44,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	INTERMISSION_DELAY_TIME	1000
 #define	SP_INTERMISSION_DELAY_TIME	5000
 
-// a single best time entry
-typedef struct {
-	char		name[MAX_NETNAME];
-	int			time;
-	char		car[64];
-} besttime_t;
-
 // gentity->flags
 #define	FL_GODMODE				0x00000010
 #define	FL_NOTARGET				0x00000020
@@ -313,6 +306,13 @@ typedef struct {
 #define MAX_NETNAME			36
 #define	MAX_VOTE_COUNT		3
 
+// a single best time entry
+typedef struct {
+	char		name[MAX_NETNAME];
+	int			time;
+	char		car[64];
+} besttime_t;
+
 // client data that stays across multiple respawns, but is cleared
 // on each level change or team change at ClientBegin()
 typedef struct {
@@ -572,6 +572,7 @@ extern void SP_team_CTF_yellowflag( gentity_t *ent );
 //
 // g_cmds.c
 //
+void Cmd_GetBestTimes_f( gentity_t *ent );
 void Cmd_Score_f (gentity_t *ent);
 void StopFollowing( gentity_t *ent );
 void BroadcastTeamChange( gclient_t *client, int oldTeam );
