@@ -43,6 +43,21 @@ typedef struct {
 
 static leaderboardmenu_t s_leaderboard;
 
+static void UI_Leaderboard_GetBestTimes( void ) {
+        uiClientState_t cs;
+        char cleanname[MAX_QPATH];
+
+        trap_GetClientState( &cs );
+        if ( cs.connState < CA_CONNECTED ) {
+                return;
+        }
+
+        Q_strncpyz( cleanname, s_leaderboard.maplist.itemnames[s_leaderboard.maplist.curvalue], sizeof( cleanname ) );
+        Q_CleanStr( cleanname );
+
+        trap_Cmd_ExecuteText( EXEC_APPEND, va( "getbesttimes %s", cleanname ) );
+}
+
 static void UI_Leaderboard_Event( void* ptr, int event ) {
 	if( event != QM_ACTIVATED ) {
 		return;
@@ -53,10 +68,10 @@ static void UI_Leaderboard_Event( void* ptr, int event ) {
 		UI_PopMenu();
 		break;
 
-	case ID_MAPLIST:
-		trap_Cmd_ExecuteText( EXEC_APPEND, va( "getbesttimes %s", s_leaderboard.maplist.itemnames[s_leaderboard.maplist.curvalue] ) );
-		break;
-	}
+        case ID_MAPLIST:
+                UI_Leaderboard_GetBestTimes();
+                break;
+        }
 }
 
 static void UI_Leaderboard_Draw( void ) {
@@ -107,8 +122,10 @@ void UI_LeaderboardMenu_f( void ) {
 
 void UI_LeaderboardMenu( void ) {
 	int i;
-	static char *mapnames[256];
-	static char mapinfos[256][MAX_INFO_STRING];
+        static char *mapnames[256];
+        static char mapnamesbuf[256][MAX_QPATH];
+        static char mapinfos[256*MAX_QPATH];
+        char *ptr;
 
 	memset( &s_leaderboard, 0, sizeof(s_leaderboard) );
 
@@ -140,22 +157,26 @@ void UI_LeaderboardMenu( void ) {
 	s_leaderboard.maplist.generic.id = ID_MAPLIST;
 	s_leaderboard.maplist.generic.callback = UI_Leaderboard_Event;
 	s_leaderboard.maplist.generic.x = 400;
-	s_leaderboard.maplist.generic.y = 160;
-	s_leaderboard.maplist.numitems = trap_FS_GetFileList( "maps", ".bsp", (char *)mapinfos, 256 * MAX_INFO_STRING );
-	s_leaderboard.maplist.itemnames = (const char **)mapnames;
-	s_leaderboard.maplist.width = 16;
-	s_leaderboard.maplist.height = 10;
+        s_leaderboard.maplist.generic.y = 160;
+        s_leaderboard.maplist.numitems = trap_FS_GetFileList( "maps", ".bsp", mapinfos, sizeof( mapinfos ) );
+        s_leaderboard.maplist.itemnames = (const char **)mapnames;
+        s_leaderboard.maplist.width = 16;
+        s_leaderboard.maplist.height = 10;
 
-	for (i = 0; i < s_leaderboard.maplist.numitems; i++) {
-		mapnames[i] = mapinfos[i];
-		COM_StripExtension(mapnames[i], mapnames[i], MAX_QPATH);
-	}
+        ptr = mapinfos;
+        for ( i = 0; i < s_leaderboard.maplist.numitems && i < 256 && *ptr; i++ ) {
+                Q_strncpyz( mapnamesbuf[i], ptr, sizeof( mapnamesbuf[i] ) );
+                COM_StripExtension( mapnamesbuf[i], mapnamesbuf[i], sizeof( mapnamesbuf[i] ) );
+                mapnames[i] = mapnamesbuf[i];
+                ptr += strlen( ptr ) + 1;
+        }
+        s_leaderboard.maplist.numitems = i;
 
 	Menu_AddItem( &s_leaderboard.menu, &s_leaderboard.banner );
 	Menu_AddItem( &s_leaderboard.menu, &s_leaderboard.back );
 	Menu_AddItem( &s_leaderboard.menu, &s_leaderboard.maplist );
 
-	trap_Cmd_ExecuteText( EXEC_APPEND, va( "getbesttimes %s", s_leaderboard.maplist.itemnames[s_leaderboard.maplist.curvalue] ) );
+        UI_Leaderboard_GetBestTimes();
 
-	UI_PushMenu( &s_leaderboard.menu );
+        UI_PushMenu( &s_leaderboard.menu );
 }
