@@ -76,10 +76,6 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
 	case UI_CONSOLE_COMMAND:
 		return UI_ConsoleCommand(arg0);
 
-	case UI_RALLY_BESTTIMES:
-		UI_LeaderboardMenu_f();
-		return 0;
-
 	case UI_DRAW_CONNECT_SCREEN:
 		UI_DrawConnectScreen( arg0 );
 		return 0;

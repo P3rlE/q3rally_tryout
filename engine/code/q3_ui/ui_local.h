@@ -40,6 +40,8 @@ typedef void (*voidfunc_f)(void);
 // STONELANCE
 #define MENU_TRANSITION_TIME	665
 
+#define MAX_NETNAME			36
+
 #define	DEFAULT_MODEL			"sidepipe"
 #define	DEFAULT_SKIN			"red"
 #define	DEFAULT_TEAM_MODEL		"sidepipe"
@@ -1050,6 +1052,7 @@ void UI_LoginMenu( void );
 // ui_leaderboard.c
 //
 void UI_LeaderboardMenu( void );
+void UI_LeaderboardMenu_f( void );
 
 //
 // ui_signup.c
