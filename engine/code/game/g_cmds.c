@@ -2243,7 +2243,17 @@ void Cmd_GetBestTimes_f( gentity_t *ent ) {
 	char		string[MAX_STRING_CHARS];
 	char		entry[1024];
 	int			i;
+	int		clientNum;
 	besttime_t	bestTimes[10];
+
+	if ( !ent || !ent->client ) {
+		return;
+	}
+
+	clientNum = ent - g_entities;
+	if ( clientNum < 0 || clientNum >= level.maxclients ) {
+		return;
+	}
 
 	if ( trap_Argc() < 2 ) {
 		return;
@@ -2263,5 +2273,5 @@ void Cmd_GetBestTimes_f( gentity_t *ent ) {
 		Q_strcat(string, sizeof(string), entry);
 	}
 
-	trap_SendServerCommand( ent-g_entities, va("besttimes%s", string) );
+	trap_SendServerCommand( clientNum, va("besttimes%s", string) );
 }
