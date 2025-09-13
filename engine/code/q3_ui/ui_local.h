@@ -718,6 +718,7 @@ extern uiInfo_t uiInfo;
 void UI_Leaderboards_MenuInit(void);
 int UI_Leaderboards_FeederCount(void);
 const char *UI_Leaderboards_FeederItemText(int index, int column);
+void UI_LeaderboardsMenu( void );
 
 void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int time );
 // STONELANCE

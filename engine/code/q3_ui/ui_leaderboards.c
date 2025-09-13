@@ -97,3 +97,9 @@ const char *UI_Leaderboards_FeederItemText(int index, int column) {
     }
     return "";
 }
+
+void UI_LeaderboardsMenu( void ) {
+    trap_Key_SetCatcher( KEYCATCH_UI );
+    Menus_CloseAll();
+    Menus_ActivateByName( "leaderboards" );
+}
