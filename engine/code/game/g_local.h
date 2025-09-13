@@ -44,6 +44,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	INTERMISSION_DELAY_TIME	1000
 #define	SP_INTERMISSION_DELAY_TIME	5000
 
+// a single best time entry
+typedef struct {
+	char		name[MAX_NETNAME];
+	int			time;
+	char		car[64];
+} besttime_t;
+
 // gentity->flags
 #define	FL_GODMODE				0x00000010
 #define	FL_NOTARGET				0x00000020
@@ -499,6 +506,7 @@ typedef struct {
 	qboolean	readyToExit;			// at least one client wants to exit
 	int			exitTime;
 	vec3_t		intermission_origin;	// also used for spectator spawns
+	char		rawmapname[MAX_STRING_CHARS];
 	vec3_t		intermission_angle;
 
 	qboolean	locationLinked;			// target_locations get linked
@@ -518,6 +526,9 @@ typedef struct {
 	int			winnerNumber;
 	qboolean	trackIsReversable;
 	int			numberOfLaps;
+
+	// best times
+	besttime_t	bestTimes[10];
 
 	// map variables
 	int			numCheckpoints;
@@ -841,6 +852,9 @@ void DeathmatchScoreboardMessage( gentity_t *ent );
 //
 // g_main.c
 //
+void G_LoadBestTimes( const char *mapname, besttime_t *bestTimes );
+void G_SaveBestTimes( void );
+void G_CheckBestTime( gentity_t *ent );
 void MoveClientToIntermission( gentity_t *ent );
 void FindIntermissionPoint( void );
 void SetLeader(int team, int client);
