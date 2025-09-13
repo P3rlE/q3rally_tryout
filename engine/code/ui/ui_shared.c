@@ -24,6 +24,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "ui_shared.h"
 
+static void Controls_GetConfig(void);
+
 #define SCROLL_TIME_START					500
 #define SCROLL_TIME_ADJUST				150
 #define SCROLL_TIME_ADJUSTOFFSET	40
@@ -3340,7 +3342,7 @@ static void Controls_GetKeyAssignment (char *command, int *twokeys)
 Controls_GetConfig
 =================
 */
-void Controls_GetConfig( void )
+static void Controls_GetConfig( void )
 {
 	int		i;
 	int		twokeys[2];
