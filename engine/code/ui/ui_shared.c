@@ -24,6 +24,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "ui_shared.h"
 
+void UI_DrawBackground( qhandle_t shader );
+
 static void Controls_GetConfig(void);
 
 #define SCROLL_TIME_START					500
