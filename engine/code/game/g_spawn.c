@@ -705,6 +705,7 @@ Every map should have exactly one worldspawn.
 */
 void SP_worldspawn( void ) {
 	char	*s;
+	char	versionBuf[MAX_STRING_CHARS];
 // STONELANCE
 	char	*pstr;
 	char	image[MAX_QPATH];
@@ -719,6 +720,10 @@ void SP_worldspawn( void ) {
 
 	// make some data visible to connecting client
 	trap_SetConfigstring( CS_GAME_VERSION, GAME_VERSION );
+	trap_GetConfigstring( CS_GAME_VERSION, versionBuf, sizeof( versionBuf ) );
+	if ( !versionBuf[0] ) {
+		G_Printf( S_COLOR_YELLOW "WARNING: CS_GAME_VERSION is empty\n" );
+	}
 
 	trap_SetConfigstring( CS_LEVEL_START_TIME, va("%i", level.startTime ) );
 
