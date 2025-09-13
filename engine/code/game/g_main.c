@@ -318,7 +318,7 @@ void G_CheckBestTime( gentity_t *ent ) {
 			level.bestTimes[i].time = time;
 			Q_strncpyz( level.bestTimes[i].name, ent->client->pers.netname, sizeof( level.bestTimes[i].name ) );
 
-			trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof( userinfo ) );
+			trap_GetUserinfo( ent - g_entities, userinfo, sizeof( userinfo ) );
 			Q_strncpyz( level.bestTimes[i].car, Info_ValueForKey( userinfo, "model" ), sizeof( level.bestTimes[i].car ) );
 
 			G_SaveBestTimes();
