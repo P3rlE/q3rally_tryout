@@ -483,6 +483,7 @@ extern void TeamMain_Cache( void );
 //
 // ui_common.c
 //
+const char *UI_TimeString( int msec );
 int UI_FetchDemoList( char *buffer, int bufSize, const char **list, int maxList, const char *(*copyFunc)(const char *) );
 
 //
@@ -1044,6 +1045,11 @@ void UI_RankingsMenu( void );
 //
 void Login_Cache( void );
 void UI_LoginMenu( void );
+
+//
+// ui_leaderboard.c
+//
+void UI_LeaderboardMenu( void );
 
 //
 // ui_signup.c

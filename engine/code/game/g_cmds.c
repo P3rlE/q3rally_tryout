@@ -2229,8 +2229,39 @@ void ClientCommand( int clientNum ) {
 		Cmd_MoveBHandle_f (ent);
 		return;
 	}
+	else if (Q_stricmp (cmd, "getbesttimes") == 0) {
+		Cmd_GetBestTimes_f (ent);
+		return;
+	}
 // END
 	else
 		trap_SendServerCommand( clientNum, va("print \"unknown cmd %s\n\"", cmd ) );
 }
 
+void Cmd_GetBestTimes_f( gentity_t *ent ) {
+	char		mapname[MAX_QPATH];
+	char		string[MAX_STRING_CHARS];
+	char		entry[1024];
+	int			i;
+	besttime_t	bestTimes[10];
+
+	if ( trap_Argc() < 2 ) {
+		return;
+	}
+
+	trap_Argv( 1, mapname, sizeof( mapname ) );
+
+	G_LoadBestTimes( mapname, bestTimes );
+
+	string[0] = 0;
+
+	for (i = 0; i < 10; i++) {
+		if (bestTimes[i].time == 0) {
+			break;
+		}
+		Com_sprintf(entry, sizeof(entry), " \"%s\" %i \"%s\"", bestTimes[i].name, bestTimes[i].time, bestTimes[i].car);
+		Q_strcat(string, sizeof(string), entry);
+	}
+
+	trap_SendServerCommand( ent-g_entities, va("besttimes%s", string) );
+}

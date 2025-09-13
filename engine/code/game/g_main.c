@@ -298,6 +298,78 @@ void G_RunFrame( int levelTime );
 void G_ShutdownGame( int restart );
 void CheckExitRules( void );
 
+void G_CheckBestTime( gentity_t *ent ) {
+	int			i, j;
+	int			time;
+	char		userinfo[MAX_INFO_STRING];
+
+	if ( !ent->client ) {
+		return;
+	}
+
+	time = ent->client->finishRaceTime - level.startRaceTime;
+
+	for ( i = 0; i < 10; i++ ) {
+		if ( level.bestTimes[i].time == 0 || time < level.bestTimes[i].time ) {
+			// new high score, insert it here
+			for ( j = 9; j > i; j-- ) {
+				level.bestTimes[j] = level.bestTimes[j-1];
+			}
+			level.bestTimes[i].time = time;
+			Q_strncpyz( level.bestTimes[i].name, ent->client->pers.netname, sizeof( level.bestTimes[i].name ) );
+
+			trap_GetUserinfo( ent->s.number, userinfo, sizeof( userinfo ) );
+			Q_strncpyz( level.bestTimes[i].car, Info_ValueForKey( userinfo, "model" ), sizeof( level.bestTimes[i].car ) );
+
+			G_SaveBestTimes();
+			break;
+		}
+	}
+}
+
+void G_SaveBestTimes( void ) {
+	fileHandle_t	f;
+	char			filename[MAX_STRING_CHARS];
+	int				i;
+
+	Com_sprintf(filename, sizeof(filename), "records/%s.times", level.rawmapname);
+
+	if (trap_FS_FOpenFile(filename, &f, FS_WRITE) < 0) {
+		return;
+	}
+
+	for (i = 0; i < 10; i++) {
+		if (level.bestTimes[i].time == 0) {
+			break;
+		}
+		trap_FS_Write(&level.bestTimes[i], sizeof(besttime_t), f);
+	}
+
+	trap_FS_FCloseFile(f);
+}
+
+void G_LoadBestTimes( const char *mapname, besttime_t *bestTimes ) {
+	fileHandle_t	f;
+	char			filename[MAX_STRING_CHARS];
+	int				i;
+
+	memset(bestTimes, 0, sizeof(besttime_t) * 10);
+
+	Com_sprintf(filename, sizeof(filename), "records/%s.times", mapname);
+
+	if (trap_FS_FOpenFile(filename, &f, FS_READ) < 0) {
+		return;
+	}
+
+	for (i = 0; i < 10; i++) {
+		if (trap_FS_Read(&bestTimes[i], sizeof(besttime_t), f) != sizeof(besttime_t)) {
+			break;
+		}
+	}
+
+	trap_FS_FCloseFile(f);
+}
+
 
 /*
 ================
@@ -593,7 +665,14 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 		G_Printf( "Not logging to disk.\n" );
 	}
 
+	char	serverinfo[MAX_INFO_STRING];
+	trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
+	Q_strncpyz( level.rawmapname, Info_ValueForKey( serverinfo, "mapname" ), sizeof( level.rawmapname ) );
+
 	G_InitWorldSession();
+
+	// load best times for this map
+	G_LoadBestTimes(level.rawmapname, level.bestTimes);
 
 	// initialize all entities for this game
 	memset( g_entities, 0, MAX_GENTITIES * sizeof(g_entities[0]) );
