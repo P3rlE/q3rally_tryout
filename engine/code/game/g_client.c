@@ -875,6 +875,7 @@ void ClientUserinfoChanged( int clientNum ) {
 	char	*s;
 	char	model[MAX_QPATH];
 	char	headModel[MAX_QPATH];
+	char	userinfo[MAX_INFO_STRING];
 // STONELANCE
 	char	rim[MAX_QPATH];
 	char	plate[MAX_QPATH];
