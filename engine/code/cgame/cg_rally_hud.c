@@ -873,16 +873,19 @@ static float CG_DrawSpeed( float y ) {
 
 	
         {
-                const float gaugeSize = 96.0f;
-                const float fuelWidth = 90.0f;
-                const float fuelHeight = 8.0f;
-                const float gaugeSpacing = 4.0f;
-                float blockWidth = gaugeSize;
-                float blockHeight = gaugeSize + gaugeSpacing + fuelHeight;
-                float left, top;
-                int speedWidth;
-                float speedX, speedY;
-                float centerX, centerY;
+               const float gaugeSize = 96.0f;
+               const float fuelWidth = 90.0f;
+               const float fuelHeight = 8.0f;
+               const float gaugeSpacing = 4.0f;
+               const float rpmHeight = 8.0f;
+               const float rpmSpacing = 4.0f;
+               float blockWidth = gaugeSize;
+               float blockHeight = gaugeSize + gaugeSpacing + fuelHeight + rpmSpacing + rpmHeight;
+               float left, top;
+               int speedWidth;
+               float speedX, speedY;
+               float centerX, centerY;
+               int i;
 
                 left = 640 - blockWidth - 8;
                 top = y - blockHeight;
@@ -946,13 +949,30 @@ static float CG_DrawSpeed( float y ) {
                         CG_DrawSmallDigitalStringColor( centerX + 10, centerY + 4,
                                                         va("%i", cg.predictedPlayerState.stats[STAT_GEAR]), colorWhite );
 
-                CG_DrawFuelGauge( left + (blockWidth - fuelWidth) * 0.5f,
-                                  top + gaugeSize + gaugeSpacing,
-                                  fuelWidth, fuelHeight );
+               CG_DrawFuelGauge( left + (blockWidth - fuelWidth) * 0.5f,
+                                 top + gaugeSize + gaugeSpacing,
+                                 fuelWidth, fuelHeight );
 
-                y = yorg - 44 - blockHeight;
-                return y;
-        }
+               {
+                       int rpm = cg.predictedPlayerState.stats[STAT_RPM];
+                       int segments = (CP_RPM_MAX + 999) / 1000;
+                       float segGap = 2.0f;
+                       float segWidth = (fuelWidth - (segments - 1) * segGap) / segments;
+                       float segX = left + (blockWidth - fuelWidth) * 0.5f;
+                       float segY = top + gaugeSize + gaugeSpacing + fuelHeight + rpmSpacing;
+                       for ( i = 0 ; i < segments ; i++ ) {
+                               float xPos = segX + i * (segWidth + segGap);
+                               if ( rpm >= (i + 1) * 1000 ) {
+                                       CG_FillRect( xPos, segY, segWidth, rpmHeight, colorWhite );
+                               } else {
+                                       CG_DrawRect( xPos, segY, segWidth, rpmHeight, 1, colorWhite );
+                               }
+                       }
+               }
+
+               y = yorg - 44 - blockHeight;
+               return y;
+       }
 }
 
 /*
