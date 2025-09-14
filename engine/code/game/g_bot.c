@@ -491,17 +491,21 @@ void G_CheckBotSpawn( void ) {
                 clientNum = botSpawnQueue[n].clientNum;
                 if ( clientNum < 0 || clientNum >= level.maxclients ) {
                         G_Printf( "G_CheckBotSpawn: client %i out of range (max %i)\n", clientNum, level.maxclients );
-                        botSpawnQueue[n].spawnTime = 0;
-                        continue;
+			botSpawnQueue[n].spawnTime = 0;
+			botSpawnQueue[n].clientNum = 0;
+			continue;
                 }
 
                 ClientBegin( clientNum );
-                botSpawnQueue[n].spawnTime = 0;
+		botSpawnQueue[n].spawnTime = 0;
+		botSpawnQueue[n].clientNum = 0;
 
                 if( g_gametype.integer == GT_SINGLE_PLAYER ) {
-                        trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
-                        PlayerIntroSound( Info_ValueForKey (userinfo, "model") );
-                }
+			if ( clientNum >= 0 && clientNum < level.maxclients ) {
+				trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
+				PlayerIntroSound( Info_ValueForKey (userinfo, "model") );
+			}
+		}
 	}
 }
 
@@ -1015,6 +1019,8 @@ void G_InitBots( qboolean restart ) {
 	int			basedelay;
 	char		map[MAX_QPATH];
 	char		serverinfo[MAX_INFO_STRING];
+
+	Com_Memset( botSpawnQueue, 0, sizeof( botSpawnQueue ) );
 
 	G_LoadBots();
 	G_LoadArenas();
