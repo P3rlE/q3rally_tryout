@@ -261,6 +261,7 @@ vmCvar_t        cg_vehicleMass;
 vmCvar_t        cg_wheelMass;
 vmCvar_t        cg_fuelConsumption;
 vmCvar_t        cg_torque;
+vmCvar_t        cg_damageTolerance;
 vmCvar_t        cg_drawMMap;	//TBB - minimap cvar
 vmCvar_t	cg_mmap_fov;
 vmCvar_t	cg_mmap_size;
@@ -379,6 +380,7 @@ static cvarTable_t cvarTable[] = {
         { &cg_wheelMass, "cg_wheelMass", "0", CVAR_USERINFO | CVAR_ROM },
         { &cg_fuelConsumption, "cg_fuelConsumption", "0", CVAR_USERINFO | CVAR_ROM },
         { &cg_torque, "cg_torque", "0", CVAR_USERINFO | CVAR_ROM },
+        { &cg_damageTolerance, "cg_damageTolerance", "1", CVAR_USERINFO | CVAR_ROM },
 
         { &cg_developer, "developer", "0", 0 },
 

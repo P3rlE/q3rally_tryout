@@ -452,6 +452,7 @@ void PM_InitializeVehicle( car_t *car, vec3_t origin, vec3_t angles, vec3_t velo
         if (!car->hpPeak) car->hpPeak = 320.0f;
         if (!car->rpmHpPeak) car->rpmHpPeak = 5000.0f;
         if (!car->fuelConsumption) car->fuelConsumption = 1.0f;
+        if (!car->damageTolerance) car->damageTolerance = 1.0f;
 
 	VectorCopy(origin, car->sBody.r);
 	AnglesToOrientation(angles, car->sBody.t);

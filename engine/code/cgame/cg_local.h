@@ -529,6 +529,7 @@ typedef struct {
 	float			 wheelMass;
 	float			 fuelConsumption;
 	float			 torque;
+        float                    damageTolerance;
 // Q3Rally Code END
 } clientInfo_t;
 
@@ -1464,6 +1465,7 @@ extern  vmCvar_t                cg_vehicleMass;
 extern  vmCvar_t                cg_wheelMass;
 extern  vmCvar_t                cg_fuelConsumption;
 extern  vmCvar_t                cg_torque;
+extern	vmCvar_t		cg_damageTolerance;
 
 
 extern	vmCvar_t		cg_atmosphericLevel;
