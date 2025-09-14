@@ -140,11 +140,7 @@ int Pickup_PersistantPowerup( gentity_t *ent, gentity_t *other ) {
 	switch( ent->item->giTag ) {
 	case PW_GUARD:
 		clientNum = other->client->ps.clientNum;
-                if ( clientNum < 0 || clientNum >= level.maxclients ) {
-                        G_Printf( "Pickup_PersistantPowerup: client %i out of range (max %i)\n", clientNum, level.maxclients );
-                        return RESPAWN_POWERUP;
-                }
-                trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
+		trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
 		handicap = atof( Info_ValueForKey( userinfo, "handicap" ) );
 		if( handicap<=0.0f || handicap>100.0f) {
 			handicap = 100.0f;
@@ -161,11 +157,7 @@ int Pickup_PersistantPowerup( gentity_t *ent, gentity_t *other ) {
 
 	case PW_SCOUT:
 		clientNum = other->client->ps.clientNum;
-                if ( clientNum < 0 || clientNum >= level.maxclients ) {
-                        G_Printf( "Pickup_PersistantPowerup: client %i out of range (max %i)\n", clientNum, level.maxclients );
-                        return RESPAWN_POWERUP;
-                }
-                trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
+		trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
 		handicap = atof( Info_ValueForKey( userinfo, "handicap" ) );
 		if( handicap<=0.0f || handicap>100.0f) {
 			handicap = 100.0f;
@@ -176,11 +168,7 @@ int Pickup_PersistantPowerup( gentity_t *ent, gentity_t *other ) {
 
 	case PW_DOUBLER:
 		clientNum = other->client->ps.clientNum;
-                if ( clientNum < 0 || clientNum >= level.maxclients ) {
-                        G_Printf( "Pickup_PersistantPowerup: client %i out of range (max %i)\n", clientNum, level.maxclients );
-                        return RESPAWN_POWERUP;
-                }
-                trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
+		trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
 		handicap = atof( Info_ValueForKey( userinfo, "handicap" ) );
 		if( handicap<=0.0f || handicap>100.0f) {
 			handicap = 100.0f;
@@ -189,11 +177,7 @@ int Pickup_PersistantPowerup( gentity_t *ent, gentity_t *other ) {
 		break;
 	case PW_AMMOREGEN:
 		clientNum = other->client->ps.clientNum;
-                if ( clientNum < 0 || clientNum >= level.maxclients ) {
-                        G_Printf( "Pickup_PersistantPowerup: client %i out of range (max %i)\n", clientNum, level.maxclients );
-                        return RESPAWN_POWERUP;
-                }
-                trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
+		trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
 		handicap = atof( Info_ValueForKey( userinfo, "handicap" ) );
 		if( handicap<=0.0f || handicap>100.0f) {
 			handicap = 100.0f;
@@ -203,11 +187,7 @@ int Pickup_PersistantPowerup( gentity_t *ent, gentity_t *other ) {
 		break;
 	default:
 		clientNum = other->client->ps.clientNum;
-                if ( clientNum < 0 || clientNum >= level.maxclients ) {
-                        G_Printf( "Pickup_PersistantPowerup: client %i out of range (max %i)\n", clientNum, level.maxclients );
-                        return RESPAWN_POWERUP;
-                }
-                trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
+		trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
 		handicap = atof( Info_ValueForKey( userinfo, "handicap" ) );
 		if( handicap<=0.0f || handicap>100.0f) {
 			handicap = 100.0f;

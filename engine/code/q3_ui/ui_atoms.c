@@ -1297,11 +1297,6 @@ qboolean UI_ConsoleCommand( int realTime ) {
 		return qtrue;
 	}
 
-	if ( Q_stricmp (cmd, "besttimes") == 0 ) {
-		UI_LeaderboardMenu_f();
-		return qtrue;
-	}
-
 	return qfalse;
 }
 

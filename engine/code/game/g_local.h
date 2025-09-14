@@ -306,13 +306,6 @@ typedef struct {
 #define MAX_NETNAME			36
 #define	MAX_VOTE_COUNT		3
 
-// a single best time entry
-typedef struct {
-	char		name[MAX_NETNAME];
-	int			time;
-	char		car[64];
-} besttime_t;
-
 // client data that stays across multiple respawns, but is cleared
 // on each level change or team change at ClientBegin()
 typedef struct {
@@ -506,7 +499,6 @@ typedef struct {
 	qboolean	readyToExit;			// at least one client wants to exit
 	int			exitTime;
 	vec3_t		intermission_origin;	// also used for spectator spawns
-	char		rawmapname[MAX_STRING_CHARS];
 	vec3_t		intermission_angle;
 
 	qboolean	locationLinked;			// target_locations get linked
@@ -526,9 +518,6 @@ typedef struct {
 	int			winnerNumber;
 	qboolean	trackIsReversable;
 	int			numberOfLaps;
-
-	// best times
-	besttime_t	bestTimes[10];
 
 	// map variables
 	int			numCheckpoints;
@@ -572,7 +561,6 @@ extern void SP_team_CTF_yellowflag( gentity_t *ent );
 //
 // g_cmds.c
 //
-void Cmd_GetBestTimes_f( gentity_t *ent );
 void Cmd_Score_f (gentity_t *ent);
 void StopFollowing( gentity_t *ent );
 void BroadcastTeamChange( gclient_t *client, int oldTeam );
@@ -853,9 +841,6 @@ void DeathmatchScoreboardMessage( gentity_t *ent );
 //
 // g_main.c
 //
-void G_LoadBestTimes( const char *mapname, besttime_t *bestTimes );
-void G_SaveBestTimes( void );
-void G_CheckBestTime( gentity_t *ent );
 void MoveClientToIntermission( gentity_t *ent );
 void FindIntermissionPoint( void );
 void SetLeader(int team, int client);

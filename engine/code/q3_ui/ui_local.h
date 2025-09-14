@@ -40,8 +40,6 @@ typedef void (*voidfunc_f)(void);
 // STONELANCE
 #define MENU_TRANSITION_TIME	665
 
-#define MAX_NETNAME			36
-
 #define	DEFAULT_MODEL			"sidepipe"
 #define	DEFAULT_SKIN			"red"
 #define	DEFAULT_TEAM_MODEL		"sidepipe"
@@ -485,7 +483,6 @@ extern void TeamMain_Cache( void );
 //
 // ui_common.c
 //
-const char *UI_TimeString( int msec );
 int UI_FetchDemoList( char *buffer, int bufSize, const char **list, int maxList, const char *(*copyFunc)(const char *) );
 
 //
@@ -1047,12 +1044,6 @@ void UI_RankingsMenu( void );
 //
 void Login_Cache( void );
 void UI_LoginMenu( void );
-
-//
-// ui_leaderboard.c
-//
-void UI_LeaderboardMenu( void );
-void UI_LeaderboardMenu_f( void );
 
 //
 // ui_signup.c

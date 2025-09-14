@@ -52,19 +52,3 @@ int UI_FetchDemoList( char *buffer, int bufSize, const char **list, int maxList,
     return numDemos;
 }
 
-const char *UI_TimeString( int msec ) {
-	static char	buffer[32];
-	int			minutes, seconds, tens;
-
-	if ( msec == 0 ) {
-		return "";
-	}
-
-	seconds = msec / 1000;
-	minutes = seconds / 60;
-	seconds -= minutes * 60;
-	tens = ( msec / 10 ) % 100;
-
-	Com_sprintf( buffer, sizeof( buffer ), "%i:%02i.%02i", minutes, seconds, tens );
-	return buffer;
-}

@@ -78,8 +78,6 @@ other->client->finishRaceTime = level.time;
 other->s.weapon = WP_NONE;
 other->takedamage = qfalse;
 
-G_CheckBestTime( other );
-
 trap_SendServerCommand( -1, va("raceFinishTime %i %i", other->s.clientNum, other->client->finishRaceTime) );
 
 if ( !level.finishRaceTime ){
@@ -158,8 +156,6 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
 			other->client->finishRaceTime = level.time;
 			other->s.weapon = WP_NONE;
 			other->takedamage = qfalse;
-
-			G_CheckBestTime( other );
 
 			trap_SendServerCommand( -1, va("raceFinishTime %i %i", other->s.clientNum, other->client->finishRaceTime) );
 

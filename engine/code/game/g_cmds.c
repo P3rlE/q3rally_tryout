@@ -529,11 +529,7 @@ void Cmd_TeamTask_f( gentity_t *ent ) {
 	trap_Argv( 1, arg, sizeof( arg ) );
 	task = atoi( arg );
 
-        if ( client < 0 || client >= level.maxclients ) {
-                G_Printf( "Cmd_TeamTask_f: client %i out of range (max %i)\n", client, level.maxclients );
-                return;
-        }
-        trap_GetUserinfo(client, userinfo, sizeof(userinfo));
+	trap_GetUserinfo(client, userinfo, sizeof(userinfo));
 	Info_SetValueForKey(userinfo, "teamtask", va("%d", task));
 	trap_SetUserinfo(client, userinfo);
 	ClientUserinfoChanged(client);
@@ -2233,49 +2229,8 @@ void ClientCommand( int clientNum ) {
 		Cmd_MoveBHandle_f (ent);
 		return;
 	}
-	else if (Q_stricmp (cmd, "getbesttimes") == 0) {
-		Cmd_GetBestTimes_f (ent);
-		return;
-	}
 // END
 	else
 		trap_SendServerCommand( clientNum, va("print \"unknown cmd %s\n\"", cmd ) );
 }
 
-void Cmd_GetBestTimes_f( gentity_t *ent ) {
-	char		mapname[MAX_QPATH];
-	char		string[MAX_STRING_CHARS];
-	char		entry[1024];
-	int			i;
-	int		clientNum;
-	besttime_t	bestTimes[10];
-
-	if ( !ent || !ent->client ) {
-		return;
-	}
-
-	clientNum = ent - g_entities;
-	if ( clientNum < 0 || clientNum >= level.maxclients ) {
-		return;
-	}
-
-	if ( trap_Argc() < 2 ) {
-		return;
-	}
-
-	trap_Argv( 1, mapname, sizeof( mapname ) );
-
-	G_LoadBestTimes( mapname, bestTimes );
-
-	string[0] = 0;
-
-	for (i = 0; i < 10; i++) {
-		if (bestTimes[i].time == 0) {
-			break;
-		}
-		Com_sprintf(entry, sizeof(entry), " \"%s\" %i \"%s\"", bestTimes[i].name, bestTimes[i].time, bestTimes[i].car);
-		Q_strcat(string, sizeof(string), entry);
-	}
-
-	trap_SendServerCommand( clientNum, va("besttimes%s", string) );
-}

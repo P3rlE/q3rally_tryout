@@ -475,9 +475,8 @@ G_CheckBotSpawn
 ===============
 */
 void G_CheckBotSpawn( void ) {
-        int             n;
-        char    userinfo[MAX_INFO_VALUE];
-        int             clientNum;
+	int		n;
+	char	userinfo[MAX_INFO_VALUE];
 
 	G_CheckMinimumPlayers();
 
@@ -488,23 +487,12 @@ void G_CheckBotSpawn( void ) {
 		if ( botSpawnQueue[n].spawnTime > level.time ) {
 			continue;
 		}
-                clientNum = botSpawnQueue[n].clientNum;
-                if ( clientNum < 0 || clientNum >= level.maxclients ) {
-                        G_Printf( "G_CheckBotSpawn: client %i out of range (max %i)\n", clientNum, level.maxclients );
-			botSpawnQueue[n].spawnTime = 0;
-			botSpawnQueue[n].clientNum = 0;
-			continue;
-                }
-
-                ClientBegin( clientNum );
+		ClientBegin( botSpawnQueue[n].clientNum );
 		botSpawnQueue[n].spawnTime = 0;
-		botSpawnQueue[n].clientNum = 0;
 
-                if( g_gametype.integer == GT_SINGLE_PLAYER ) {
-			if ( clientNum >= 0 && clientNum < level.maxclients ) {
-				trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
-				PlayerIntroSound( Info_ValueForKey (userinfo, "model") );
-			}
+		if( g_gametype.integer == GT_SINGLE_PLAYER ) {
+			trap_GetUserinfo( botSpawnQueue[n].clientNum, userinfo, sizeof(userinfo) );
+			PlayerIntroSound( Info_ValueForKey (userinfo, "model") );
 		}
 	}
 }
@@ -559,11 +547,6 @@ G_BotConnect
 qboolean G_BotConnect( int clientNum, qboolean restart ) {
 	bot_settings_t	settings;
 	char			userinfo[MAX_INFO_STRING];
-
-	if ( clientNum < 0 || clientNum >= level.maxclients ) {
-		G_Printf( "G_BotConnect: client %i out of range (max %i)\n", clientNum, level.maxclients );
-		return qfalse;
-	}
 
 	trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
 
@@ -1019,8 +1002,6 @@ void G_InitBots( qboolean restart ) {
 	int			basedelay;
 	char		map[MAX_QPATH];
 	char		serverinfo[MAX_INFO_STRING];
-
-	Com_Memset( botSpawnQueue, 0, sizeof( botSpawnQueue ) );
 
 	G_LoadBots();
 	G_LoadArenas();
