@@ -793,7 +793,9 @@ static float CG_DrawSpeed( float y ) {
                  const float segmentHeight = 8.0f;
                  const float segmentGap = 4.0f;
                  const float gaugeHeight = 12.0f;
-                 float   iconOffset = gaugeHeight * 2 + 4;
+                 const float rpmIconSize = gaugeHeight * 2;
+                const float rpmIconOffset = rpmIconSize + 4;
+                float   iconOffset = gaugeHeight * 2 + 4;
                  float   blockWidth, blockHeight, barWidth;
                  int             i;
 
@@ -819,7 +821,7 @@ static float CG_DrawSpeed( float y ) {
 
                 // determine total block dimensions
                 barWidth = maxLen * GIANTCHAR_WIDTH -15;
-                blockWidth = iconOffset + barWidth;
+                blockWidth = max( iconOffset + barWidth, rpmIconOffset + maxLen * GIANTCHAR_WIDTH );
                 blockHeight = segmentHeight + 2 * GIANTCHAR_HEIGHT + gaugeHeight;
 
                // anchor to bottom-right reference
@@ -836,8 +838,15 @@ static float CG_DrawSpeed( float y ) {
                }
 
 		segmentWidth = (maxLen * GIANTCHAR_WIDTH - (segments - 1) * segmentGap) / segments;
+		{
+			static qhandle_t rpmIcon;
+			if ( !rpmIcon ) {
+				rpmIcon = trap_R_RegisterShaderNoMip( "icons/rpm" );
+			}
+			CG_DrawPic( x, y, rpmIconSize, rpmIconSize, rpmIcon );
+		}
 		for ( i = 0; i < segments; i++ ) {
-			float segX = x + i * (segmentWidth + segmentGap);
+			float segX = x + rpmIconOffset + i * (segmentWidth + segmentGap);
 			if ( rpm >= (i + 1) * 1000 ) {
 				CG_FillRect( segX, y, segmentWidth, segmentHeight, colorWhite );
 			} else {
