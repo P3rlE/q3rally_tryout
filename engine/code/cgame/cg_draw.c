@@ -80,7 +80,7 @@ int CG_Text_Width(const char *text, float scale, int limit) {
     }
   }
   return out * useScale;
-}
+	}
 
 int CG_Text_Height(const char *text, float scale, int limit) {
   int len, count;
@@ -117,7 +117,7 @@ int CG_Text_Height(const char *text, float scale, int limit) {
     }
   }
   return max * useScale;
-}
+	}
 
 void CG_Text_PaintChar(float x, float y, float width, float height, float scale, float s, float t, float s2, float t2, qhandle_t hShader) {
   float w, h;
@@ -1417,7 +1417,7 @@ static float CG_DrawFPS( float y ) {
 		s = va( "%ifps", fps );
 		w = CG_DrawStrlen( s ) * BIGCHAR_WIDTH;
 
-		CG_DrawBigString( 621 - w, 355 + 2, s, 1.0F);
+		CG_DrawBigString( 621 - w, 355 - 25 + 2, s, 1.0F );
 	}
 
 	return y + BIGCHAR_HEIGHT + 4;
@@ -3014,7 +3014,7 @@ static void CG_DrawAmmoWarning( void ) {
 	}
 	w = CG_DrawStrlen( s ) * BIGCHAR_WIDTH;
 	CG_DrawBigString(320 - w / 2, 98, s, 1.0F);
-}
+	}
 
 
 #ifdef MISSIONPACK
