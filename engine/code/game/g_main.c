@@ -318,8 +318,12 @@ void G_CheckBestTime( gentity_t *ent ) {
 			level.bestTimes[i].time = time;
 			Q_strncpyz( level.bestTimes[i].name, ent->client->pers.netname, sizeof( level.bestTimes[i].name ) );
 
-			trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof( userinfo ) );
-			Q_strncpyz( level.bestTimes[i].car, Info_ValueForKey( userinfo, "model" ), sizeof( level.bestTimes[i].car ) );
+                        if ( ent->s.clientNum < 0 || ent->s.clientNum >= level.maxclients ) {
+                                G_Printf( "G_CheckBestTime: client %i out of range (max %i)\n", ent->s.clientNum, level.maxclients );
+                                return;
+                        }
+                        trap_GetUserinfo( ent->s.clientNum, userinfo, sizeof( userinfo ) );
+                        Q_strncpyz( level.bestTimes[i].car, Info_ValueForKey( userinfo, "model" ), sizeof( level.bestTimes[i].car ) );
 
 			G_SaveBestTimes();
 			break;

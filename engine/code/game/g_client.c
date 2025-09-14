@@ -870,7 +870,7 @@ if desired.
 ============
 */
 void ClientUserinfoChanged( int clientNum ) {
-	gentity_t *ent;
+        gentity_t *ent;
 	int		teamTask, teamLeader, health;
 	char	*s;
 	char	model[MAX_QPATH];
@@ -891,10 +891,15 @@ void ClientUserinfoChanged( int clientNum ) {
     char    yellowTeam[MAX_INFO_STRING];
 	char	userinfo[MAX_INFO_STRING];
 
-	ent = g_entities + clientNum;
-	client = ent->client;
+        if ( clientNum < 0 || clientNum >= level.maxclients ) {
+                G_Printf( "ClientUserinfoChanged: client %i out of range (max %i)\n", clientNum, level.maxclients );
+                return;
+        }
 
-	trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
+        ent = g_entities + clientNum;
+        client = ent->client;
+
+        trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
 
 	// check for malformed or illegal info strings
 	if ( !Info_Validate(userinfo) ) {
@@ -1489,9 +1494,13 @@ void ClientSpawn(gentity_t *ent) {
 	client->ps.persistant[PERS_SPAWN_COUNT]++;
 	client->ps.persistant[PERS_TEAM] = client->sess.sessionTeam;
 
-	client->airOutTime = level.time + 12000;
+        client->airOutTime = level.time + 12000;
 
-	trap_GetUserinfo( index, userinfo, sizeof(userinfo) );
+        if ( index < 0 || index >= level.maxclients ) {
+                G_Printf( "ClientSpawn: client %i out of range (max %i)\n", index, level.maxclients );
+                return;
+        }
+        trap_GetUserinfo( index, userinfo, sizeof(userinfo) );
 	// set max health
 	client->pers.maxHealth = atoi( Info_ValueForKey( userinfo, "handicap" ) );
 	if ( client->pers.maxHealth < 1 || client->pers.maxHealth > 100 ) {

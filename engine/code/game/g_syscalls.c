@@ -135,7 +135,14 @@ void trap_GetConfigstring( int num, char *buffer, int bufferSize ) {
 }
 
 void trap_GetUserinfo( int num, char *buffer, int bufferSize ) {
-	syscall( G_GET_USERINFO, num, buffer, bufferSize );
+        if ( num < 0 || num >= level.maxclients ) {
+                G_Printf( "trap_GetUserinfo: client %i out of range (max %i)\n", num, level.maxclients );
+                if ( bufferSize > 0 && buffer ) {
+                        buffer[0] = '\0';
+                }
+                return;
+        }
+        syscall( G_GET_USERINFO, num, buffer, bufferSize );
 }
 
 void trap_SetUserinfo( int num, const char *buffer ) {
