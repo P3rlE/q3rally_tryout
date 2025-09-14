@@ -1100,6 +1100,7 @@ void ClientUserinfoChanged( int clientNum ) {
 
 	// this is not the userinfo, more like the configstring actually
 	G_LogPrintf( "ClientUserinfoChanged: %i %s\n", clientNum, s );
+	G_BalanceVehicleStats();
 }
 
 
@@ -1740,12 +1741,14 @@ if (client->ps.stats[STAT_WEAPONS] & (1u << i)) {
 	ClientThink( ent-g_entities );
 	// run the presend to set anything else, follow spectators wait
 	// until all clients have been reconnected after map_restart
-	if ( ent->client->sess.spectatorState != SPECTATOR_FOLLOW ) {
-		ClientEndFrame( ent );
-	}
+        if ( ent->client->sess.spectatorState != SPECTATOR_FOLLOW ) {
+                ClientEndFrame( ent );
+        }
 
-	// clear entity state values
-	BG_PlayerStateToEntityState( &client->ps, &ent->s, qtrue );
+        G_BalanceVehicleStats();
+
+        // clear entity state values
+        BG_PlayerStateToEntityState( &client->ps, &ent->s, qtrue );
 }
 
 
