@@ -977,7 +977,7 @@ static float CG_DrawSpeed( float y ) {
                                rpmIcon = trap_R_RegisterShaderNoMip( "icons/rpm" );
                        }
 
-                       rpmIconSize = rpmHeight * 2;
+                       rpmIconSize = rpmHeight * (4.0f / 3.0f);
                        rpmIconX = segX - rpmIconSize - 4;
                        rpmIconY = segY + (rpmHeight - rpmIconSize) * 0.5f;
 
