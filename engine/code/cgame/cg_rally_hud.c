@@ -798,6 +798,7 @@ static float CG_DrawSpeed( float y ) {
                 float   iconOffset = gaugeHeight * 2 + 4;
                  float   blockWidth, blockHeight, barWidth;
                  int             i;
+                int             speedWidth, gearWidth;
 
 		Com_sprintf( speedStr, sizeof( speedStr ), "%i %s", vel_speed, cg_metricUnits.integer ? "KPH" : "MPH" );
 
@@ -845,22 +846,25 @@ static float CG_DrawSpeed( float y ) {
 			}
 			CG_DrawPic( x, y, rpmIconSize, rpmIconSize, rpmIcon );
 		}
-		for ( i = 0; i < segments; i++ ) {
-			float segX = x + rpmIconOffset + i * (segmentWidth + segmentGap);
-			if ( rpm >= (i + 1) * 1000 ) {
-				CG_FillRect( segX, y, segmentWidth, segmentHeight, colorWhite );
-			} else {
-				CG_DrawRect( segX, y, segmentWidth, segmentHeight, 1, colorWhite );
-			}
-		}
+               for ( i = 0; i < segments; i++ ) {
+                       float segX = x + rpmIconOffset + i * (segmentWidth + segmentGap);
+                       if ( rpm >= (i + 1) * 1000 ) {
+                               CG_FillRect( segX, y, segmentWidth, segmentHeight, colorWhite );
+                       } else {
+                               CG_DrawRect( segX, y, segmentWidth, segmentHeight, 1, colorWhite );
+                       }
+               }
 
-		y += segmentHeight;
-		CG_DrawGiantDigitalStringColor( x, y, speedStr, colorWhite );
-		y += GIANTCHAR_HEIGHT;
-		CG_DrawGiantDigitalStringColor( x, y, gearStr, colorWhite );
+               speedWidth = CG_DrawStrlen( speedStr ) * GIANTCHAR_WIDTH;
+               gearWidth  = CG_DrawStrlen( gearStr )  * GIANTCHAR_WIDTH;
 
-                y += GIANTCHAR_HEIGHT;
-                CG_DrawFuelGauge( x + iconOffset, y, barWidth, gaugeHeight );
+               y += segmentHeight;
+               CG_DrawGiantDigitalStringColor( x + blockWidth - speedWidth, y, speedStr, colorWhite );
+               y += GIANTCHAR_HEIGHT;
+               CG_DrawGiantDigitalStringColor( x + blockWidth - gearWidth, y, gearStr, colorWhite );
+
+               y += GIANTCHAR_HEIGHT;
+               CG_DrawFuelGauge( x + iconOffset, y, barWidth, gaugeHeight );
                 y = yorg;
                y -= 44;
                y -= blockHeight;
