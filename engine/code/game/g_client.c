@@ -1054,6 +1054,10 @@ void ClientUserinfoChanged( int clientNum ) {
         if ( *s ) {
                 client->car.torquePeak = atof( s );
         }
+        s = Info_ValueForKey( userinfo, "cg_damageTolerance" );
+        if ( *s ) {
+                client->car.damageTolerance = atof( s );
+        }
 
         // team task (0 = none, 1 = offence, 2 = defence)
         teamTask = atoi(Info_ValueForKey(userinfo, "teamtask"));

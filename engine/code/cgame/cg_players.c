@@ -196,6 +196,7 @@ static void CG_ParseVehicleFile( const char *filename, clientInfo_t *ci ) {
     ci->wheelMass = 50.0f;
     ci->fuelConsumption = 1.0f;
     ci->torque = 400.0f;
+    ci->damageTolerance = 1.0f;
 
     len = trap_FS_FOpenFile( filename, &f, FS_READ );
     if ( len <= 0 ) {
@@ -235,6 +236,11 @@ static void CG_ParseVehicleFile( const char *filename, clientInfo_t *ci ) {
             if ( token && token[0] ) {
                 ci->torque = atof( token );
             }
+        } else if ( !Q_stricmp( token, "damageTolerance" ) ) {
+            token = COM_Parse( &text_p );
+            if ( token && token[0] ) {
+                ci->damageTolerance = atof( token );
+            }
         }
     }
 
@@ -244,10 +250,12 @@ static void CG_ParseVehicleFile( const char *filename, clientInfo_t *ci ) {
         trap_Cvar_Set( "cg_fuelConsumption", va( "%f", ci->fuelConsumption ) );
         trap_SendConsoleCommand( va( "setu cg_fuelConsumption %f\n", ci->fuelConsumption ) );
         trap_Cvar_Set( "cg_torque", va( "%f", ci->torque ) );
+        trap_Cvar_Set( "cg_damageTolerance", va( "%f", ci->damageTolerance ) );
         cg.car.frameMass = ci->frameMass;
         cg.car.wheelMass = ci->wheelMass;
         cg.car.fuelConsumption = ci->fuelConsumption;
         cg.car.torquePeak = ci->torque;
+        cg.car.damageTolerance = ci->damageTolerance;
     }
 }
 

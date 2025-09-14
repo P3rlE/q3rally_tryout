@@ -280,6 +280,7 @@ typedef struct {
         float   hpPeak;
         float   rpmHpPeak;
         float   fuelConsumption;
+        float   damageTolerance;
 
         // FIXME: remove these to save memory if i can
 
