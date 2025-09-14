@@ -1032,13 +1032,30 @@ void ClientUserinfoChanged( int clientNum ) {
 		client->pers.controlMode = atoi( s );
 	}
 
-	s = Info_ValueForKey( userinfo, "cg_manualShift" );
-	if ( *s ) {
-		client->pers.manualShift = atoi( s );
-	}
+        s = Info_ValueForKey( userinfo, "cg_manualShift" );
+        if ( *s ) {
+                client->pers.manualShift = atoi( s );
+        }
 
-	// team task (0 = none, 1 = offence, 2 = defence)
-	teamTask = atoi(Info_ValueForKey(userinfo, "teamtask"));
+        s = Info_ValueForKey( userinfo, "cg_vehicleMass" );
+        if ( *s ) {
+                client->car.frameMass = atof( s );
+        }
+        s = Info_ValueForKey( userinfo, "cg_wheelMass" );
+        if ( *s ) {
+                client->car.wheelMass = atof( s );
+        }
+        s = Info_ValueForKey( userinfo, "cg_fuelConsumption" );
+        if ( *s ) {
+                client->car.fuelConsumption = atof( s );
+        }
+        s = Info_ValueForKey( userinfo, "cg_torque" );
+        if ( *s ) {
+                client->car.torquePeak = atof( s );
+        }
+
+        // team task (0 = none, 1 = offence, 2 = defence)
+        teamTask = atoi(Info_ValueForKey(userinfo, "teamtask"));
 	// team Leader (1 = leader, 0 is normal player)
 	teamLeader = client->sess.teamLeader;
 
