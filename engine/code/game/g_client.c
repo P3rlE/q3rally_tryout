@@ -1497,8 +1497,9 @@ void ClientSpawn(gentity_t *ent) {
 	for ( i = 0 ; i < MAX_PERSISTANT ; i++ ) {
 		client->ps.persistant[i] = persistant[i];
 	}
-	client->ps.eventSequence = eventSequence;
-	// increment the spawncount so the client will detect the respawn
+        client->ps.eventSequence = eventSequence;
+        ClientUserinfoChanged( index );
+        // increment the spawncount so the client will detect the respawn
 	client->ps.persistant[PERS_SPAWN_COUNT]++;
 	client->ps.persistant[PERS_TEAM] = client->sess.sessionTeam;
 

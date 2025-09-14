@@ -242,6 +242,7 @@ static void CG_ParseVehicleFile( const char *filename, clientInfo_t *ci ) {
         trap_Cvar_Set( "cg_vehicleMass", va( "%f", ci->frameMass ) );
         trap_Cvar_Set( "cg_wheelMass", va( "%f", ci->wheelMass ) );
         trap_Cvar_Set( "cg_fuelConsumption", va( "%f", ci->fuelConsumption ) );
+        trap_SendConsoleCommand( va( "setu cg_fuelConsumption %f\n", ci->fuelConsumption ) );
         trap_Cvar_Set( "cg_torque", va( "%f", ci->torque ) );
         cg.car.frameMass = ci->frameMass;
         cg.car.wheelMass = ci->wheelMass;
