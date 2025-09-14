@@ -303,6 +303,7 @@ typedef struct {
 
     float	fuel;
 	float	maxFuel;
+	int		maxHealth;
 	qboolean	fuelLeak;
 
 	qboolean	preserveFuel;

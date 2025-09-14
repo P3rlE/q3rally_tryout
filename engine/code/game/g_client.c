@@ -889,7 +889,6 @@ void ClientUserinfoChanged( int clientNum ) {
 	char	blueTeam[MAX_INFO_STRING];
     char    greenTeam[MAX_INFO_STRING];
     char    yellowTeam[MAX_INFO_STRING];
-	char	userinfo[MAX_INFO_STRING];
 
 	ent = g_entities + clientNum;
 	client = ent->client;
@@ -1335,7 +1334,6 @@ void ClientSpawn(gentity_t *ent) {
 //	char	*savedAreaBits;
 	int		accuracy_hits, accuracy_shots;
 	int		eventSequence;
-	char	userinfo[MAX_INFO_STRING];
 // STONELANCE
 	int		savedFinishRaceTime;
 	int		savedDamageTaken;
@@ -1485,17 +1483,14 @@ void ClientSpawn(gentity_t *ent) {
 	client->ps.persistant[PERS_SPAWN_COUNT]++;
 	client->ps.persistant[PERS_TEAM] = client->sess.sessionTeam;
 
-	client->airOutTime = level.time + 12000;
+       client->airOutTime = level.time + 12000;
 
-	trap_GetUserinfo( index, userinfo, sizeof(userinfo) );
-	// set max health
-	client->pers.maxHealth = atoi( Info_ValueForKey( userinfo, "handicap" ) );
-	if ( client->pers.maxHealth < 1 || client->pers.maxHealth > 100 ) {
-		client->pers.maxHealth = 100;
-	}
-	// clear entity values
-       client->ps.stats[STAT_MAX_HEALTH] = client->pers.maxHealth;
-       client->ps.eFlags = flags;
+       // set max health from vehicle setup
+       client->car.maxHealth = g_vehicleHealth.integer;
+       client->pers.maxHealth = client->car.maxHealth;
+       // clear entity values
+      client->ps.stats[STAT_MAX_HEALTH] = client->pers.maxHealth;
+      client->ps.eFlags = flags;
        ent->s.eFlags &= ~EF_HEADLIGHTS;
        if ( client->sess.headlights ) {
                client->ps.extra_eFlags |= CF_HEADLIGHTS;
@@ -1550,7 +1545,7 @@ client->ps.stats[STAT_WEAPONS] = ( 1u << WP_DERBY_RAM );
         }
 
 	// health will count down towards max_health
-	ent->health = client->ps.stats[STAT_HEALTH] = client->ps.stats[STAT_MAX_HEALTH] + 25;
+       ent->health = client->ps.stats[STAT_HEALTH] = client->car.maxHealth + 25;
 
 	G_SetOrigin( ent, spawn_origin );
 	VectorCopy( spawn_origin, client->ps.origin );
