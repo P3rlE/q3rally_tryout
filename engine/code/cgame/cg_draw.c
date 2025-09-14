@@ -856,11 +856,6 @@ static void CG_DrawRallyStatusBar( void ) {
 
        CG_FillRect( 305, 476 - 30, 90, 24, bg_color );
 
-       // fuel gauge
-	if ( !cg_speedometerMode.integer ) {
-		CG_DrawFuelGauge( 20, 476 - 42, 90, 8 );
-	}
-
        // rearammo background
        weapon = 0;
 for (i = RWP_SMOKE; i < WP_NUM_WEAPONS; i++){
