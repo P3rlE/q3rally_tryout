@@ -871,81 +871,88 @@ static float CG_DrawSpeed( float y ) {
 #endif
 */
 
-	// draw speedometer here
-	x2 = x - 96;
-	y2 = y - 96;
-	CG_DrawPic( x2, y2, 96, 96, cg_metricUnits.integer ? cgs.media.gaugeMetric : cgs.media.gaugeImperial );
 	
+        {
+                const float gaugeSize = 96.0f;
+                const float fuelWidth = 90.0f;
+                const float fuelHeight = 8.0f;
+                const float gaugeSpacing = 4.0f;
+                float blockWidth = gaugeSize;
+                float blockHeight = gaugeSize + gaugeSpacing + fuelHeight;
+                float left, top;
+                int speedWidth;
+                float speedX, speedY;
+                float centerX, centerY;
 
-	// draw digital speed
-	x -= 48 + (CG_DrawStrlen(va("%i", vel_speed)) * SMALLCHAR_WIDTH) / 2;
-	y -= 35;
-	CG_DrawSmallDigitalStringColor( x, y, va("%i", vel_speed), colorWhite);
+                left = 640 - blockWidth - 8;
+                top = y - blockHeight;
 
-	// draw needle
+                CG_DrawPic( left, top, gaugeSize, gaugeSize,
+                            cg_metricUnits.integer ? cgs.media.gaugeMetric : cgs.media.gaugeImperial );
 
-	w = h = 96;
-	CG_AdjustFrom640( &x2, &y2, &w, &h );
+                speedWidth = CG_DrawStrlen( va("%i", vel_speed) ) * SMALLCHAR_WIDTH;
+                speedX = left + (gaugeSize - speedWidth) * 0.5f;
+                speedY = top + gaugeSize - 35;
+                CG_DrawSmallDigitalStringColor( speedX, speedY, va("%i", vel_speed), colorWhite );
 
-	memset( &refdef, 0, sizeof( refdef ) );
-	memset( &ent, 0, sizeof( ent ) );
+                x2 = left;
+                y2 = top;
+                w = h = gaugeSize;
+                CG_AdjustFrom640( &x2, &y2, &w, &h );
 
-	ent.hModel = trap_R_RegisterModel("gfx/hud/needle.md3");
-	ent.customShader = trap_R_RegisterShader("gfx/hud/needle01");
-	ent.renderfx = RF_NOSHADOW;		// no stencil shadows
+                memset( &refdef, 0, sizeof( refdef ) );
+                memset( &ent, 0, sizeof( ent ) );
 
-	trap_R_ModelBounds(ent.hModel, mins, maxs);
+                ent.hModel = trap_R_RegisterModel("gfx/hud/needle.md3");
+                ent.customShader = trap_R_RegisterShader("gfx/hud/needle01");
+                ent.renderfx = RF_NOSHADOW;
 
-	// origin[2] = -0.5 * ( mins[2] + maxs[2] );
-	origin[2] = 0;
-	origin[1] = 0.5 * ( mins[1] + maxs[1] );
-	origin[0] = ( maxs[2] - mins[2] ) / 0.268;
+                trap_R_ModelBounds( ent.hModel, mins, maxs );
 
-	VectorClear(angles);
-	angles[YAW] -= 90;
-	angles[PITCH] = -150.0f + (300.0f * vel_speed / 200.0f);
-	AnglesToAxis( angles, ent.axis );
-	VectorCopy(origin, ent.origin);
+                origin[2] = 0;
+                origin[1] = 0.5f * ( mins[1] + maxs[1] );
+                origin[0] = ( maxs[2] - mins[2] ) / 0.268f;
 
-	refdef.rdflags = RDF_NOWORLDMODEL;
+                VectorClear( angles );
+                angles[YAW] -= 90;
+                angles[PITCH] = -150.0f + (300.0f * vel_speed / 200.0f);
+                AnglesToAxis( angles, ent.axis );
+                VectorCopy( origin, ent.origin );
 
-	AxisClear( refdef.viewaxis );
+                refdef.rdflags = RDF_NOWORLDMODEL;
+                AxisClear( refdef.viewaxis );
+                refdef.fov_x = 30;
+                refdef.fov_y = 30;
+                refdef.x = x2;
+                refdef.y = y2;
+                refdef.width = w;
+                refdef.height = h;
+                refdef.time = cg.time;
 
-	refdef.fov_x = 30;
-	refdef.fov_y = 30;
+                trap_R_ClearScene();
+                trap_R_AddRefEntityToScene( &ent );
+                trap_R_RenderScene( &refdef );
 
-	refdef.x = x2;
-	refdef.y = y2;
-	refdef.width = w;
-	refdef.height = h;
+                centerX = left + gaugeSize * 0.5f - 12.0f;
+                centerY = top + gaugeSize * 0.5f - 12.0f;
+                CG_DrawPic( centerX, centerY, 24, 24,
+                            trap_R_RegisterShaderNoMip("gfx/hud/center01") );
 
-	refdef.time = cg.time;
+                if ( cg.predictedPlayerState.stats[STAT_GEAR] == -1 )
+                        CG_DrawSmallDigitalStringColor( centerX + 10, centerY + 4, "R", colorWhite );
+                else if ( cg.predictedPlayerState.stats[STAT_GEAR] == 0 )
+                        CG_DrawSmallDigitalStringColor( centerX + 10, centerY + 4, "N", colorWhite );
+                else
+                        CG_DrawSmallDigitalStringColor( centerX + 10, centerY + 4,
+                                                        va("%i", cg.predictedPlayerState.stats[STAT_GEAR]), colorWhite );
 
-	trap_R_ClearScene();
-	trap_R_AddRefEntityToScene( &ent );
-	trap_R_RenderScene( &refdef );
+                CG_DrawFuelGauge( left + (blockWidth - fuelWidth) * 0.5f,
+                                  top + gaugeSize + gaugeSpacing,
+                                  fuelWidth, fuelHeight );
 
-	// draw center here
-	x = 630;
-	y = yorg;
-
-	x -= 60;
-	y -= 60;
-	CG_DrawPic( x, y, 24, 24, trap_R_RegisterShaderNoMip("gfx/hud/center01"));
-
-	// draw gear over center of gauge
-	if ( cg.predictedPlayerState.stats[STAT_GEAR] == -1 )
-		CG_DrawSmallDigitalStringColor( x+10, y+4, "R", colorWhite);
-	else if ( cg.predictedPlayerState.stats[STAT_GEAR] == 0 )
-		CG_DrawSmallDigitalStringColor( x+10, y+4, "N", colorWhite);
-	else
-		CG_DrawSmallDigitalStringColor( x+10, y+4, va("%i", cg.predictedPlayerState.stats[STAT_GEAR]), colorWhite);
-
-	y -= 39;
-
-	y -= SMALLCHAR_HEIGHT;
-
-	return y;
+                y = yorg - 44 - blockHeight;
+                return y;
+        }
 }
 
 /*
