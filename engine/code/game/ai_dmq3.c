@@ -117,12 +117,15 @@ BotSetUserInfo
 ==================
 */
 void BotSetUserInfo(bot_state_t *bs, char *key, char *value) {
-	char userinfo[MAX_INFO_STRING];
-
-	trap_GetUserinfo(bs->client, userinfo, sizeof(userinfo));
-	Info_SetValueForKey(userinfo, key, value);
-	trap_SetUserinfo(bs->client, userinfo);
-	ClientUserinfoChanged( bs->client );
+        char userinfo[MAX_INFO_STRING];
+        if ( bs->client < 0 || bs->client >= level.maxclients ) {
+                G_Printf( "BotSetUserInfo: client %i out of range (max %i)\n", bs->client, level.maxclients );
+                return;
+        }
+        trap_GetUserinfo(bs->client, userinfo, sizeof(userinfo));
+        Info_SetValueForKey(userinfo, key, value);
+        trap_SetUserinfo(bs->client, userinfo);
+        ClientUserinfoChanged( bs->client );
 }
 
 /*
@@ -5325,9 +5328,13 @@ void BotDeathmatchAI(bot_state_t *bs, float thinktime) {
 		//get the gender characteristic
 		trap_Characteristic_String(bs->character, CHARACTERISTIC_GENDER, gender, sizeof(gender));
 		//set the bot gender
-		trap_GetUserinfo(bs->client, userinfo, sizeof(userinfo));
-		Info_SetValueForKey(userinfo, "sex", gender);
-		trap_SetUserinfo(bs->client, userinfo);
+                if ( bs->client < 0 || bs->client >= level.maxclients ) {
+                        G_Printf( "BotDeathmatchAI: client %i out of range (max %i)\n", bs->client, level.maxclients );
+                        return;
+                }
+                trap_GetUserinfo(bs->client, userinfo, sizeof(userinfo));
+                Info_SetValueForKey(userinfo, "sex", gender);
+                trap_SetUserinfo(bs->client, userinfo);
 		//set the chat gender
 		if (gender[0] == 'm') trap_BotSetChatGender(bs->cs, CHAT_GENDERMALE);
 		else if (gender[0] == 'f')  trap_BotSetChatGender(bs->cs, CHAT_GENDERFEMALE);

@@ -529,7 +529,11 @@ void Cmd_TeamTask_f( gentity_t *ent ) {
 	trap_Argv( 1, arg, sizeof( arg ) );
 	task = atoi( arg );
 
-	trap_GetUserinfo(client, userinfo, sizeof(userinfo));
+        if ( client < 0 || client >= level.maxclients ) {
+                G_Printf( "Cmd_TeamTask_f: client %i out of range (max %i)\n", client, level.maxclients );
+                return;
+        }
+        trap_GetUserinfo(client, userinfo, sizeof(userinfo));
 	Info_SetValueForKey(userinfo, "teamtask", va("%d", task));
 	trap_SetUserinfo(client, userinfo);
 	ClientUserinfoChanged(client);
