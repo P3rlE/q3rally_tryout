@@ -970,13 +970,17 @@ static float CG_DrawSpeed( float y ) {
                        float segX = left + (blockWidth - fuelWidth) * 0.5f;
                        float segY = top + gaugeSize + gaugeSpacing + fuelHeight + rpmSpacing;
 
+                       float rpmIconSize, rpmIconX, rpmIconY;
+
                        static qhandle_t rpmIcon;
                        if ( !rpmIcon ) {
                                rpmIcon = trap_R_RegisterShaderNoMip( "icons/rpm" );
                        }
-                       float rpmIconSize = rpmHeight * 2;
-                       float rpmIconX = segX - rpmIconSize - 4;
-                       float rpmIconY = segY + (rpmHeight - rpmIconSize) * 0.5f;
+
+                       rpmIconSize = rpmHeight * 2;
+                       rpmIconX = segX - rpmIconSize - 4;
+                       rpmIconY = segY + (rpmHeight - rpmIconSize) * 0.5f;
+
                        CG_DrawPic( rpmIconX, rpmIconY, rpmIconSize, rpmIconSize, rpmIcon );
 
                        for ( i = 0 ; i < segments ; i++ ) {
