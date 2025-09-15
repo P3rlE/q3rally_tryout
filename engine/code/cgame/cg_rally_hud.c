@@ -558,27 +558,44 @@ CG_DrawDistanceToFinish
 ======================
 */
 static float CG_DrawDistanceToFinish( float y ) {
-        char            s[64];
-        int             x;
-        float           dist;
+       char            s[64];
+       int             x;
+       float           dist;
 
-        dist = cg.snap->ps.stats[STAT_DISTANCE_REMAIN];
+       // for multi-lap races show distance to next checkpoint instead of finish
+       if ( cgs.laplimit > 1 ) {
+               int     nextCP;
+               vec3_t  diff;
 
-        if ( cg_distanceFormat.integer == 1 && cgs.trackLength > 0.0f ) {
-                float percent = dist / cgs.trackLength * 100.0f;
-                Com_sprintf( s, sizeof( s ), "DIST: %.1f%%", percent );
-        } else {
-                Com_sprintf( s, sizeof( s ), "DIST: %dm", (int)dist );
-        }
+               nextCP = cg.snap->ps.stats[STAT_NEXT_CHECKPOINT];
+               if ( nextCP <= 0 ) {
+                       return y;
+               }
 
-        x = 636 - 80;
-        CG_FillRect( x, y, 90, 18, bgColor );
-        x += 10;
-        y += 4;
-        CG_DrawTinyDigitalStringColor( x, y, s, colorWhite );
-        y += TINYCHAR_HEIGHT + 4;
+               // checkpoints are stored 0-based in cgs.checkpoints
+               VectorSubtract( cgs.checkpoints[nextCP - 1], cg.snap->ps.origin, diff );
+               dist = VectorLength( diff );
+               Com_sprintf( s, sizeof( s ), "CP: %dm", (int)dist );
+       }
+       else {
+               dist = cg.snap->ps.stats[STAT_DISTANCE_REMAIN];
 
-        return y;
+               if ( cg_distanceFormat.integer == 1 && cgs.trackLength > 0.0f ) {
+                       float percent = dist / cgs.trackLength * 100.0f;
+                       Com_sprintf( s, sizeof( s ), "DIST: %.1f%%", percent );
+               } else {
+                       Com_sprintf( s, sizeof( s ), "DIST: %dm", (int)dist );
+               }
+       }
+
+       x = 636 - 80;
+       CG_FillRect( x, y, 90, 18, bgColor );
+       x += 10;
+       y += 4;
+       CG_DrawTinyDigitalStringColor( x, y, s, colorWhite );
+       y += TINYCHAR_HEIGHT + 4;
+
+       return y;
 }
 
 /*
