@@ -564,16 +564,48 @@ static float CG_DrawDistanceToFinish( float y ) {
 
        // for multi-lap races show distance to next checkpoint instead of finish
        if ( cgs.laplimit > 1 ) {
-               int     nextCP;
-               vec3_t  diff;
+               int             nextCP;
+               centity_t       *checkpoint = NULL;
+               vec3_t          diff;
+               vec3_t          checkpointOrigin;
+               int             i;
 
                nextCP = cg.snap->ps.stats[STAT_NEXT_CHECKPOINT];
                if ( nextCP <= 0 ) {
                        return y;
                }
 
-               // checkpoints are stored 0-based in cgs.checkpoints
-               VectorSubtract( cgs.checkpoints[nextCP - 1], cg.snap->ps.origin, diff );
+               for ( i = 0; i < MAX_GENTITIES; i++ ) {
+                       centity_t *cent = &cg_entities[i];
+
+                       if ( cent->currentState.eType != ET_CHECKPOINT ) {
+                               continue;
+                       }
+
+                       if ( cent->currentState.weapon != nextCP ) {
+                               continue;
+                       }
+
+                       checkpoint = cent;
+                       break;
+               }
+
+               if ( !checkpoint ) {
+                       return y;
+               }
+
+               VectorCopy( checkpoint->lerpOrigin, checkpointOrigin );
+
+               if ( checkpoint->currentState.solid == SOLID_BMODEL &&
+                        checkpoint->currentState.modelindex > 0 &&
+                        checkpoint->currentState.modelindex < MAX_MODELS ) {
+                       VectorAdd( checkpointOrigin,
+                               cgs.inlineModelMidpoints[ checkpoint->currentState.modelindex ],
+                               checkpointOrigin );
+               }
+
+               VectorSubtract( checkpointOrigin, cg.snap->ps.origin, diff );
+
                dist = VectorLength( diff );
                Com_sprintf( s, sizeof( s ), "CP: %dm", (int)dist );
        }
