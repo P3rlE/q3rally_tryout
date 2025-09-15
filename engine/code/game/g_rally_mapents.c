@@ -317,6 +317,17 @@ void Think_StartFinish( gentity_t *self ){
                }
        }
 
+       if ( level.hasFinish ) {
+               if ( level.numCheckpoints > 0 ) {
+                       gentity_t *last = level.checkpoints[level.numCheckpoints - 1];
+                       if ( last ) {
+                               level.trackLength += Distance( last->s.origin, level.finishOrigin );
+                       }
+               } else {
+                       level.trackLength = Distance( level.startOrigin, level.finishOrigin );
+               }
+       }
+
        trap_SetConfigstring( CS_TRACKLENGTH, va( "%i", (int)( level.trackLength / CP_M_2_QU ) ) );
 
        self->number = level.numCheckpoints;
@@ -368,6 +379,9 @@ ent->think = Think_StartFinish;
 ent->nextthink = level.time + 100;
 ent->s.frame = 0;
 
+VectorCopy( ent->s.origin, level.startOrigin );
+level.hasStart = qtrue;
+
 trap_LinkEntity (ent);
 }
 
@@ -381,6 +395,9 @@ ent->touch = Touch_Finish;
 ent->think = Think_Finish;
 ent->nextthink = level.time + 100;
 ent->s.frame = 0;
+
+VectorCopy( ent->s.origin, level.finishOrigin );
+level.hasFinish = qtrue;
 
 trap_LinkEntity (ent);
 }
