@@ -1602,7 +1602,9 @@ void ClientThink_real( gentity_t *ent ) {
                        client->ps.stats[STAT_DISTANCE_REMAIN] = 0;
                }
        } else if ( level.hasFinish ) {
+
                float dist = Distance( level.finishOrigin, client->ps.origin );
+
                client->ps.stats[STAT_DISTANCE_REMAIN] = (int)( dist / CP_M_2_QU );
        } else {
                client->ps.stats[STAT_DISTANCE_REMAIN] = 0;

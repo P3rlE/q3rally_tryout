@@ -321,10 +321,12 @@ void Think_StartFinish( gentity_t *self ){
                if ( level.numCheckpoints > 0 ) {
                        gentity_t *last = level.checkpoints[level.numCheckpoints - 1];
                        if ( last ) {
+
                                level.trackLength += Distance( last->s.origin, level.finishOrigin );
                        }
                } else {
                        level.trackLength = Distance( level.startOrigin, level.finishOrigin );
+
                }
        }
 
