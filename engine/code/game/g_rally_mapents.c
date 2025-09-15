@@ -334,6 +334,21 @@ void Think_StartFinish( gentity_t *self ){
 
        self->number = level.numCheckpoints;
        self->s.weapon = self->number;
+
+       if ( self->touch == Touch_Start ) {
+               VectorCopy( self->s.origin, level.startOrigin );
+               level.hasStart = qtrue;
+       }
+       else if ( self->touch == Touch_Finish ) {
+               VectorCopy( self->s.origin, level.finishOrigin );
+               level.hasFinish = qtrue;
+       }
+       else if ( self->touch == Touch_StartFinish ) {
+               VectorCopy( self->s.origin, level.startOrigin );
+               VectorCopy( self->s.origin, level.finishOrigin );
+               level.hasStart = qtrue;
+               level.hasFinish = qtrue;
+       }
 }
 
 void Think_Finish( gentity_t *self ){
@@ -381,9 +396,6 @@ ent->think = Think_StartFinish;
 ent->nextthink = level.time + 100;
 ent->s.frame = 0;
 
-VectorCopy( ent->s.origin, level.startOrigin );
-level.hasStart = qtrue;
-
 trap_LinkEntity (ent);
 }
 
@@ -397,9 +409,6 @@ ent->touch = Touch_Finish;
 ent->think = Think_Finish;
 ent->nextthink = level.time + 100;
 ent->s.frame = 0;
-
-VectorCopy( ent->s.origin, level.finishOrigin );
-level.hasFinish = qtrue;
 
 trap_LinkEntity (ent);
 }
