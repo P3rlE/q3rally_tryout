@@ -495,6 +495,7 @@ void Think_Checkpoint( gentity_t *self ){
 //	spawnflag 1 enable messages, spawn flag 2 enable sound, 3 is enable both
 void SP_rally_checkpoint( gentity_t *ent ) {
 	trap_SetBrushModel( ent, ent->model );
+	G_SetOrigin( ent, ent->s.origin );
 
 // STONELANCE - April 23, 2002 temp for testing bezier curve stuff
 	ent->r.svFlags |= SVF_BROADCAST;
