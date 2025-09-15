@@ -298,35 +298,47 @@ void Think_StartFinish( gentity_t *self ){
                level.trackLength = 0.0f;
                if ( !missing && level.numCheckpoints > 0 ) {
                        vec3_t last, first, delta;
+                       float startDist;
+                       qboolean loopTrack;
 
                        VectorCopy( level.checkpoints[0]->s.origin, first );
                        VectorCopy( first, last );
-                       level.cpDist[0] = 0.0f;
+
+                       startDist = 0.0f;
+                       if ( level.hasStart ) {
+                               startDist = Distance( level.startOrigin, first );
+                               level.trackLength += startDist;
+                       }
+                       level.cpDist[0] = startDist;
                        for ( i = 1; i < level.numCheckpoints; i++ ) {
+                               float segmentLength;
+
                                VectorSubtract( last, level.checkpoints[i]->s.origin, delta );
-                               level.cpDist[i] = level.cpDist[i-1] + VectorLength( delta );
+                               segmentLength = VectorLength( delta );
+                               level.trackLength += segmentLength;
+                               level.cpDist[i] = level.cpDist[i-1] + segmentLength;
                                if ( g_developer.integer && level.cpDist[i] <= level.cpDist[i-1] ) {
                                        Com_Printf( "Checkpoint distance %d is non-increasing\n", i + 1 );
                                }
                                VectorCopy( level.checkpoints[i]->s.origin, last );
                        }
-                       VectorSubtract( last, first, delta );
-                       level.trackLength = level.cpDist[level.numCheckpoints-1] + VectorLength( delta );
+
+                       loopTrack = ( !level.hasFinish ||
+                               ( level.hasStart && VectorCompare( level.startOrigin, level.finishOrigin ) ) );
+                       if ( level.hasFinish && !loopTrack ) {
+                               level.trackLength += Distance( last, level.finishOrigin );
+                       } else {
+                               VectorSubtract( last, first, delta );
+                               level.trackLength += VectorLength( delta );
+                       }
                } else if ( g_developer.integer ) {
                        Com_Printf( "Track length not calculated due to missing checkpoints\n" );
                }
        }
 
        if ( level.hasFinish ) {
-               if ( level.numCheckpoints > 0 ) {
-                       gentity_t *last = level.checkpoints[level.numCheckpoints - 1];
-                       if ( last ) {
-
-                               level.trackLength += Distance( last->s.origin, level.finishOrigin );
-                       }
-               } else {
+               if ( level.numCheckpoints == 0 ) {
                        level.trackLength = Distance( level.startOrigin, level.finishOrigin );
-
                }
        }
 
