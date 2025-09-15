@@ -606,7 +606,7 @@ static float CG_DrawDistanceToFinish( float y ) {
 
                VectorSubtract( checkpointOrigin, cg.snap->ps.origin, diff );
 
-               dist = VectorLength( diff );
+               dist = VectorLength( diff ) / CP_M_2_QU;
                Com_sprintf( s, sizeof( s ), "CP: %dm", (int)dist );
        }
        else {
