@@ -255,11 +255,26 @@ void Think_StartFinish( gentity_t *self ){
 
 	if( self->s.origin2[0] == 0.0f &&
 		self->s.origin2[1] == 0.0f &&
-		self->s.origin2[2] == 0.0f && 
-		( self->s.origin[0] != 0.0f || 
-		self->s.origin[1] != 0.0f || 
+		self->s.origin2[2] == 0.0f &&
+		( self->s.origin[0] != 0.0f ||
+		self->s.origin[1] != 0.0f ||
 		self->s.origin[2] != 0.0f ) )
 		VectorCopy( self->s.origin, self->s.origin2 );
+
+	if ( self->touch == Touch_Start ) {
+		VectorCopy( self->s.origin, level.startOrigin );
+		level.hasStart = qtrue;
+	}
+	else if ( self->touch == Touch_Finish ) {
+		VectorCopy( self->s.origin, level.finishOrigin );
+		level.hasFinish = qtrue;
+	}
+	else if ( self->touch == Touch_StartFinish ) {
+		VectorCopy( self->s.origin, level.startOrigin );
+		VectorCopy( self->s.origin, level.finishOrigin );
+		level.hasStart = qtrue;
+		level.hasFinish = qtrue;
+	}
 
 	checkpoints = 0;
 
@@ -344,23 +359,8 @@ void Think_StartFinish( gentity_t *self ){
 
        trap_SetConfigstring( CS_TRACKLENGTH, va( "%i", (int)( level.trackLength / CP_M_2_QU ) ) );
 
-       self->number = level.numCheckpoints;
-       self->s.weapon = self->number;
-
-       if ( self->touch == Touch_Start ) {
-               VectorCopy( self->s.origin, level.startOrigin );
-               level.hasStart = qtrue;
-       }
-       else if ( self->touch == Touch_Finish ) {
-               VectorCopy( self->s.origin, level.finishOrigin );
-               level.hasFinish = qtrue;
-       }
-       else if ( self->touch == Touch_StartFinish ) {
-               VectorCopy( self->s.origin, level.startOrigin );
-               VectorCopy( self->s.origin, level.finishOrigin );
-               level.hasStart = qtrue;
-               level.hasFinish = qtrue;
-       }
+	self->number = level.numCheckpoints;
+	self->s.weapon = self->number;
 }
 
 void Think_Finish( gentity_t *self ){
@@ -388,7 +388,7 @@ void SP_rally_startfinish( gentity_t *ent ) {
 
 	ent->touch = Touch_StartFinish;
 	ent->think = Think_StartFinish;
-	ent->nextthink = level.time + 100;
+	ent->nextthink = level.time + 300;
 	ent->s.frame = 0;
 
 	trap_LinkEntity (ent);
@@ -405,7 +405,7 @@ ent->s.eType = ET_CHECKPOINT;
 
 ent->touch = Touch_Start;
 ent->think = Think_StartFinish;
-ent->nextthink = level.time + 100;
+ent->nextthink = level.time + 300;
 ent->s.frame = 0;
 
 trap_LinkEntity (ent);
@@ -419,7 +419,7 @@ ent->s.eType = ET_CHECKPOINT;
 
 ent->touch = Touch_Finish;
 ent->think = Think_Finish;
-ent->nextthink = level.time + 100;
+ent->nextthink = level.time + 300;
 ent->s.frame = 0;
 
 trap_LinkEntity (ent);
