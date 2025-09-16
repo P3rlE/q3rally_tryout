@@ -538,6 +538,10 @@ static float CG_DrawLaps( float y ) {
 	//ps = &cg.snap->ps;
 	cent = &cg_entities[cg.snap->ps.clientNum];
 
+	if ( cgs.laplimit <= 1 ) {
+		return y;
+	}
+
 	curLap = cent->currentLap;
 	numLaps = cgs.laplimit;
 
