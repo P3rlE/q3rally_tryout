@@ -971,7 +971,7 @@ int QDECL SortRanks( const void *a, const void *b ) {
 		else if ( cb->finishRaceTime ) {
 			return -1;
 		}
-		else {
+			else {
 			// if still alive sort by health
 			if ( ca->ps.stats[STAT_HEALTH] > cb->ps.stats[STAT_HEALTH] ) {
 				return -1;
@@ -1706,7 +1706,7 @@ void CheckExitRules( void ) {
 
 	if ( g_timelimit.integer && !level.warmupTime ) {
 		if ( level.time - level.startTime >= g_timelimit.integer*60000 ) {
-			trap_SendServerCommand( -1, "print \"Timelimit hit.\n\"");
+				trap_SendServerCommand( -1, "print \"Timelimit hit.\n\"");
 			LogExit( "Timelimit hit." );
 			return;
 		}
@@ -1731,14 +1731,14 @@ void CheckExitRules( void ) {
 			level.winnerNumber = winner->ps.clientNum;
 			level.finishRaceTime = level.time;
 
-			trap_SendServerCommand( -1, va("print \"%s won the demolition derby!\n\"", winner->pers.netname ));
-			trap_SendServerCommand( level.winnerNumber, "cp \"You won the demolition derby!\n\"");
+				trap_SendServerCommand( -1, va("print \"%s won the demolition derby!\n\"", winner->pers.netname ));
+				trap_SendServerCommand( level.winnerNumber, "cp \"You won the demolition derby!\n\"");
 		}
 
 		return;
 	}
 
-	if (g_gametype.integer == GT_LCS && level.startRaceTime && !level.finishRaceTime) {
+	if ((g_gametype.integer == GT_LCS || g_gametype.integer == GT_ELIMINATION) && level.startRaceTime && !level.finishRaceTime) {
 		gclient_t	*winner = NULL;
 
 		for ( i=0, count = 0 ; i< g_maxclients.integer ; i++ ) {
@@ -1756,8 +1756,14 @@ void CheckExitRules( void ) {
 			level.winnerNumber = winner->ps.clientNum;
 			level.finishRaceTime = level.time;
 
-			trap_SendServerCommand( -1, va("print \"%s won the last car standing!\n\"", winner->pers.netname ));
-			trap_SendServerCommand( level.winnerNumber, "cp \"You won the last car standing!\n\"");
+			if ( g_gametype.integer == GT_LCS ) {
+				trap_SendServerCommand( -1, va("print \"%s won the last car standing!\n\"", winner->pers.netname ));
+				trap_SendServerCommand( level.winnerNumber, "cp \"You won the last car standing!\n\"");
+			}
+			else {
+				trap_SendServerCommand( -1, va("print \"%s won the elimination race!\n\"", winner->pers.netname ));
+				trap_SendServerCommand( level.winnerNumber, "cp \"You won the elimination race!\n\"");
+			}
 		}
 
 		return;
@@ -1799,11 +1805,16 @@ void CheckExitRules( void ) {
 		return;
 	}
 	
-	if ( level.finishRaceTime && g_gametype.integer == GT_LCS
+	if ( level.finishRaceTime && (g_gametype.integer == GT_LCS || g_gametype.integer == GT_ELIMINATION)
 		&& level.finishRaceTime + 10000 < level.time ){
 		g_entities[ level.winnerNumber ].client->finishRaceTime = level.time;
 		trap_SendServerCommand( -1, va("raceFinishTime %i %i", level.winnerNumber, level.time) );
-		LogExit( "Last car standing finished." );
+		if ( g_gametype.integer == GT_LCS ) {
+			LogExit( "Last car standing finished." );
+		}
+		else {
+			LogExit( "Elimination finished." );
+		}
 		return;
 	}
 // END
@@ -1823,26 +1834,26 @@ void CheckExitRules( void ) {
 
 	if ( g_gametype.integer < GT_CTF && g_fraglimit.integer ) {
 		if ( level.teamScores[TEAM_RED] >= g_fraglimit.integer ) {
-			trap_SendServerCommand( -1, "print \"Red hit the fraglimit.\n\"" );
+				trap_SendServerCommand( -1, "print \"Red hit the fraglimit.\n\"" );
 			LogExit( "Fraglimit hit." );
 			return;
 		}
 
 		if ( level.teamScores[TEAM_BLUE] >= g_fraglimit.integer ) {
-			trap_SendServerCommand( -1, "print \"Blue hit the fraglimit.\n\"" );
+				trap_SendServerCommand( -1, "print \"Blue hit the fraglimit.\n\"" );
 			LogExit( "Fraglimit hit." );
 			return;
 		}
 
 // STONELANCE
 		if ( level.teamScores[TEAM_GREEN] >= g_fraglimit.integer ) {
-			trap_SendServerCommand( -1, "print \"Green hit the fraglimit.\n\"" );
+				trap_SendServerCommand( -1, "print \"Green hit the fraglimit.\n\"" );
 			LogExit( "Fraglimit hit." );
 			return;
 		}
 
 		if ( level.teamScores[TEAM_YELLOW] >= g_fraglimit.integer ) {
-			trap_SendServerCommand( -1, "print \"Yellow hit the fraglimit.\n\"" );
+				trap_SendServerCommand( -1, "print \"Yellow hit the fraglimit.\n\"" );
 			LogExit( "Fraglimit hit." );
 			return;
 		}
@@ -1875,13 +1886,13 @@ void CheckExitRules( void ) {
 	if ( g_gametype.integer >= GT_CTF && g_capturelimit.integer ) {
 
 		if ( level.teamScores[TEAM_RED] >= g_capturelimit.integer ) {
-			trap_SendServerCommand( -1, "print \"Red hit the capturelimit.\n\"" );
+				trap_SendServerCommand( -1, "print \"Red hit the capturelimit.\n\"" );
 			LogExit( "Capturelimit hit." );
 			return;
 		}
 
 		if ( level.teamScores[TEAM_BLUE] >= g_capturelimit.integer ) {
-			trap_SendServerCommand( -1, "print \"Blue hit the capturelimit.\n\"" );
+				trap_SendServerCommand( -1, "print \"Blue hit the capturelimit.\n\"" );
 			LogExit( "Capturelimit hit." );
 			return;
 		}
@@ -2046,11 +2057,11 @@ void CheckVote( void ) {
 		// ATVI Q3 1.32 Patch #9, WNF
 		if ( level.voteYes > level.numVotingClients/2 ) {
 			// execute the command, then remove the vote
-			trap_SendServerCommand( -1, "print \"Vote passed.\n\"" );
+				trap_SendServerCommand( -1, "print \"Vote passed.\n\"" );
 			level.voteExecuteTime = level.time + 3000;
 		} else if ( level.voteNo >= level.numVotingClients/2 ) {
 			// same behavior as a timeout
-			trap_SendServerCommand( -1, "print \"Vote failed.\n\"" );
+				trap_SendServerCommand( -1, "print \"Vote failed.\n\"" );
 		} else {
 			// still waiting for a majority
 			return;
@@ -2163,7 +2174,7 @@ void CheckTeamVote( int team ) {
 	} else {
 		if ( level.teamVoteYes[cs_offset] > level.numteamVotingClients[cs_offset]/2 ) {
 			// execute the command, then remove the vote
-			trap_SendServerCommand( -1, "print \"Team vote passed.\n\"" );
+				trap_SendServerCommand( -1, "print \"Team vote passed.\n\"" );
 			//
 			if ( !Q_strncmp( "leader", level.teamVoteString[cs_offset], 6) ) {
 				//set the team leader
@@ -2174,7 +2185,7 @@ void CheckTeamVote( int team ) {
 			}
 		} else if ( level.teamVoteNo[cs_offset] >= level.numteamVotingClients[cs_offset]/2 ) {
 			// same behavior as a timeout
-			trap_SendServerCommand( -1, "print \"Team vote failed.\n\"" );
+				trap_SendServerCommand( -1, "print \"Team vote failed.\n\"" );
 		} else {
 			// still waiting for a majority
 			return;

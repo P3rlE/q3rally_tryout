@@ -89,23 +89,24 @@ static startserver_t s_startserver;
 
 static const char *gametype_items[] = {
 
-	"Racing",
-	"Racing Deathmatch",
-	"Demolition Derby",
-	"Last Car Standing",
-	"Deathmatch",
-	"Team Deathmatch",
-	"Team Racing",
-	"Team Racing Deathmatch",
-	"Capture the Flag",
-	"4-Team CTF",
+        "Racing",
+        "Racing Deathmatch",
+        "Elimination",
+        "Demolition Derby",
+        "Last Car Standing",
+        "Deathmatch",
+        "Team Deathmatch",
+        "Team Racing",
+        "Team Racing Deathmatch",
+        "Capture the Flag",
+        "4-Team CTF",
     "Domination",
-	0
+        0
 };
 
 // gametype_items[gametype_remap2[s_serveroptions.gametype]]
-static int gametype_remap[] = {GT_RACING, GT_RACING_DM, GT_DERBY, GT_LCS, GT_DEATHMATCH, GT_TEAM, GT_TEAM_RACING, GT_TEAM_RACING_DM, GT_CTF, GT_CTF4, GT_DOMINATION};
-static int gametype_remap2[] = {0, 1, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+static int gametype_remap[] = {GT_RACING, GT_RACING_DM, GT_ELIMINATION, GT_DERBY, GT_LCS, GT_DEATHMATCH, GT_TEAM, GT_TEAM_RACING, GT_TEAM_RACING_DM, GT_CTF, GT_CTF4, GT_DOMINATION};
+static int gametype_remap2[] = {0, 1, 0, 3, 4, 2, 5, 6, 7, 8, 9, 10, 11};
 
 int		allowLength[3];
 int		reversable;
@@ -353,6 +354,7 @@ static const struct {
 } gametype_bitnames[] = {
         { "q3r_racing", GT_RACING },
         { "q3r_racing_dm", GT_RACING_DM },
+        { "q3r_elimination", GT_ELIMINATION },
         { "q3r_derby", GT_DERBY },
         { "q3r_lcs", GT_LCS },
         { "q3r_dm", GT_DEATHMATCH },
@@ -1004,12 +1006,13 @@ static void ServerOptions_Start( void ) {
 
 	switch( s_serveroptions.gametype ) {
 
-	case GT_RACING:
-	case GT_RACING_DM:
-	default:
-		trap_Cvar_SetValue( "ui_racing_laplimit", fraglimit );
-		trap_Cvar_SetValue( "ui_racing_timelimit", timelimit );
-		break;
+        case GT_RACING:
+        case GT_RACING_DM:
+        case GT_ELIMINATION:
+        default:
+                trap_Cvar_SetValue( "ui_racing_laplimit", fraglimit );
+                trap_Cvar_SetValue( "ui_racing_timelimit", timelimit );
+                break;
 
 	case GT_TEAM_RACING:
 	case GT_TEAM_RACING_DM:
@@ -1452,13 +1455,14 @@ static void ServerOptions_SetMenuItems( void ) {
 
 	switch( s_serveroptions.gametype ) {
 
-	case GT_RACING:
-		
-	case GT_RACING_DM:
-	default:
-		if( !s_serveroptions.pointToPoint ) {
-			Com_sprintf( s_serveroptions.fraglimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_racing_laplimit" ) ) );
-		}
+        case GT_RACING:
+
+        case GT_RACING_DM:
+        case GT_ELIMINATION:
+        default:
+                if( !s_serveroptions.pointToPoint ) {
+                        Com_sprintf( s_serveroptions.fraglimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_racing_laplimit" ) ) );
+                }
 		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_racing_timelimit" ) ) );
 		break;
 
@@ -1620,7 +1624,7 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 
 	y = 272;
 
-	isRacing = ( s_serveroptions.gametype == GT_RACING || s_serveroptions.gametype == GT_RACING_DM || s_serveroptions.gametype == GT_TEAM_RACING || s_serveroptions.gametype == GT_TEAM_RACING_DM );
+   isRacing = ( s_serveroptions.gametype == GT_RACING || s_serveroptions.gametype == GT_RACING_DM || s_serveroptions.gametype == GT_ELIMINATION || s_serveroptions.gametype == GT_TEAM_RACING || s_serveroptions.gametype == GT_TEAM_RACING_DM );
 	s_serveroptions.pointToPoint = ( isRacing && s_startserver.hasDefaultLaps && s_startserver.defaultLaps <= 1 );
 	s_serveroptions.hasFraglimitField = qfalse;
 
@@ -1873,7 +1877,7 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 	if( s_serveroptions.gametype == GT_CTF || s_serveroptions.gametype == GT_CTF4 || s_serveroptions.gametype == GT_DOMINATION ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.flaglimit );
 	}
-	else if( s_serveroptions.hasFraglimitField && s_serveroptions.gametype != GT_DERBY && s_serveroptions.gametype != GT_LCS ) {
+   else if( s_serveroptions.hasFraglimitField && s_serveroptions.gametype != GT_DERBY && s_serveroptions.gametype != GT_LCS && s_serveroptions.gametype != GT_ELIMINATION ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.fraglimit );
 	}
 
@@ -1885,8 +1889,9 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.pure );
 
-	if( s_serveroptions.gametype == GT_RACING || s_serveroptions.gametype == GT_RACING_DM
-		|| s_serveroptions.gametype == GT_TEAM_RACING || s_serveroptions.gametype == GT_TEAM_RACING_DM) {
+   if( s_serveroptions.gametype == GT_RACING || s_serveroptions.gametype == GT_RACING_DM
+           || s_serveroptions.gametype == GT_ELIMINATION
+           || s_serveroptions.gametype == GT_TEAM_RACING || s_serveroptions.gametype == GT_TEAM_RACING_DM) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.trackLength );
 
 		if ( reversable )
