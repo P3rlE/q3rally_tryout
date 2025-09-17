@@ -1648,7 +1648,7 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 			s_serveroptions.laplimitNotice.generic.y		= y;
 			s_serveroptions.laplimitNotice.string		= s_serveroptions.laplimitNoticeBuffer;
 			s_serveroptions.laplimitNotice.style		= UI_LEFT|UI_SMALLFONT;
-			s_serveroptions.laplimitNotice.color		= text_color_dim;
+			s_serveroptions.laplimitNotice.color		= text_color_disabled;
 			if ( s_startserver.hasDefaultLaps && s_startserver.defaultLaps > 0 ) {
 				Com_sprintf( s_serveroptions.laplimitNoticeBuffer, sizeof( s_serveroptions.laplimitNoticeBuffer ), "Laps: automatic (map default: %i)", s_startserver.defaultLaps );
 			} else {
