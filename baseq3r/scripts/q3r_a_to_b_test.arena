@@ -21,7 +21,7 @@ starts "4"
 laps "1"
 
 //LAPTIME
-laptime " "
+laptime ""
 
 //CHECKPOINTS
 checkpoints "2"
@@ -36,10 +36,10 @@ weapons "0"
 powerups "0"
 
 //REVERSABLE
-reversable " "
+reversable ""
 
 //TRACK LENGTHS
-tracklengths " "
+tracklengths ""
 
 //BOT SUPPORTS
 botsupport "Bad"
