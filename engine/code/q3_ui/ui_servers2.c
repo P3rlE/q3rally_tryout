@@ -110,14 +110,15 @@ MULTIPLAYER MENU (SERVER BROWSER)
 */
 #define GAMES_RACING			1
 #define GAMES_RACING_DM			2
-#define GAMES_DERBY				3
-#define GAMES_LCS				4
-#define GAMES_DEATHMATCH		5
-#define GAMES_TEAM_RACING		6
-#define GAMES_TEAM_RACING_DM	7
-#define GAMES_TEAMPLAY			8
-#define GAMES_CTF				9
-#define GAMES_DOMINATION        10
+#define GAMES_ELIMINATION		3
+#define GAMES_DERBY				4
+#define GAMES_LCS				5
+#define GAMES_DEATHMATCH		6
+#define GAMES_TEAM_RACING		7
+#define GAMES_TEAM_RACING_DM	8
+#define GAMES_TEAMPLAY			9
+#define GAMES_CTF				10
+#define GAMES_DOMINATION        11
 // END
 
 static const char *master_items[] = {
@@ -151,6 +152,8 @@ static const char *servertype_items[] = {
 // END
 	0
 };
+
+#define GAMES_NUM_GAMES			(ARRAY_LEN( servertype_items ) - 1)
 
 static const char *sortkey_items[] = {
 	"Server Name",
@@ -1797,7 +1800,7 @@ static void ArenaServers_MenuInit( void ) {
 
 // STONELANCE
 //	g_gametype = Com_Clamp( 0, 4, ui_browserGameType.integer );
-	g_gametype = Com_Clamp( 0, GT_MAX_GAME_TYPE, ui_browserGameType.integer );
+	g_gametype = Com_Clamp( 0, GAMES_NUM_GAMES - 1, ui_browserGameType.integer );
 // END
 	g_arenaservers.gametype.curvalue = g_gametype;
 
