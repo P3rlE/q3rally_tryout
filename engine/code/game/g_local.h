@@ -518,6 +518,9 @@ typedef struct {
 	int			winnerNumber;
 	qboolean	trackIsReversable;
 	int			numberOfLaps;
+	int			eliminationStartDelay;
+	int			eliminationInterval;
+	int			eliminationWarning;
 
 	// map variables
 	int			numCheckpoints;
@@ -1007,6 +1010,9 @@ extern  vmCvar_t	g_humanplayers;
 // STONELANCE
 extern	vmCvar_t	g_forceEngineStart;
 extern	vmCvar_t	g_finishRaceDelay;
+extern	vmCvar_t	g_eliminationStartDelay;
+extern	vmCvar_t	g_eliminationInterval;
+extern	vmCvar_t	g_eliminationWarning;
 extern	vmCvar_t	g_trackReversed;
 extern	vmCvar_t	g_trackLength;
 extern	vmCvar_t	g_developer;
