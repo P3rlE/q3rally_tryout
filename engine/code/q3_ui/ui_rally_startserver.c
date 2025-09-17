@@ -844,6 +844,7 @@ typedef struct {
 	menufield_s			timelimit;
 	menufield_s			fraglimit;
 	menufield_s			flaglimit;
+	menutext_s			laplimitNotice;
 	menuradiobutton_s	friendlyfire;
 	menufield_s			hostname;
     menulist_s          dominationSpawnStyle;
@@ -864,6 +865,7 @@ typedef struct {
 	qboolean			multiplayer;
 	int					gametype;
 	char				mapnamebuffer[32];
+	char				laplimitNoticeBuffer[64];
 	char				playerNameBuffers[PLAYER_SLOTS][16];
 
 	qboolean			newBot;
@@ -871,6 +873,7 @@ typedef struct {
 	char				newBotName[16];
 	qboolean			hasFraglimitField;
 	qboolean			pointToPoint;
+	qboolean			showLaplimitNotice;
 } serveroptions_t;
 
 static serveroptions_t s_serveroptions;
@@ -975,7 +978,15 @@ static void ServerOptions_Start( void ) {
 	char	buf[64];
 
 	timelimit	 = atoi( s_serveroptions.timelimit.field.buffer );
-	if( s_serveroptions.pointToPoint ) {
+	if( s_serveroptions.gametype == GT_ELIMINATION ) {
+		if( s_startserver.hasDefaultLaps && s_startserver.defaultLaps > 0 ) {
+			fraglimit = s_startserver.defaultLaps;
+		}
+		else {
+			fraglimit = 0;
+		}
+	}
+	else if( s_serveroptions.pointToPoint ) {
 		fraglimit = 1;
 	}
 	else {
@@ -1627,20 +1638,37 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
    isRacing = ( s_serveroptions.gametype == GT_RACING || s_serveroptions.gametype == GT_RACING_DM || s_serveroptions.gametype == GT_ELIMINATION || s_serveroptions.gametype == GT_TEAM_RACING || s_serveroptions.gametype == GT_TEAM_RACING_DM );
 	s_serveroptions.pointToPoint = ( isRacing && s_startserver.hasDefaultLaps && s_startserver.defaultLaps <= 1 );
 	s_serveroptions.hasFraglimitField = qfalse;
+	s_serveroptions.showLaplimitNotice = qfalse;
 
 	if( isRacing ) {
-		if( !s_serveroptions.pointToPoint ) {
-			s_serveroptions.fraglimit.generic.type		= MTYPE_FIELD;
-			s_serveroptions.fraglimit.generic.name		= "Laps:";
-			s_serveroptions.fraglimit.generic.flags		= QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-			s_serveroptions.fraglimit.generic.x		= OPTIONS_X;
-			s_serveroptions.fraglimit.generic.y		= y;
-			s_serveroptions.fraglimit.generic.statusbar	= ServerOptions_StatusBar;
+		if( s_serveroptions.gametype == GT_ELIMINATION && !s_serveroptions.pointToPoint ) {
+			s_serveroptions.laplimitNotice.generic.type		= MTYPE_TEXT;
+			s_serveroptions.laplimitNotice.generic.flags	 = QMF_INACTIVE|QMF_SMALLFONT;
+			s_serveroptions.laplimitNotice.generic.x		= OPTIONS_X;
+			s_serveroptions.laplimitNotice.generic.y		= y;
+			s_serveroptions.laplimitNotice.string		= s_serveroptions.laplimitNoticeBuffer;
+			s_serveroptions.laplimitNotice.style		= UI_LEFT|UI_SMALLFONT;
+			s_serveroptions.laplimitNotice.color		= text_color_dim;
+			if ( s_startserver.hasDefaultLaps && s_startserver.defaultLaps > 0 ) {
+				Com_sprintf( s_serveroptions.laplimitNoticeBuffer, sizeof( s_serveroptions.laplimitNoticeBuffer ), "Laps: automatic (map default: %i)", s_startserver.defaultLaps );
+			} else {
+				Q_strncpyz( s_serveroptions.laplimitNoticeBuffer, "Laps: automatically calculated", sizeof( s_serveroptions.laplimitNoticeBuffer ) );
+			}
+			s_serveroptions.showLaplimitNotice		= qtrue;
+		}
+		else if( !s_serveroptions.pointToPoint ) {
+			s_serveroptions.fraglimit.generic.type		  = MTYPE_FIELD;
+			s_serveroptions.fraglimit.generic.name		  = "Laps:";
+			s_serveroptions.fraglimit.generic.flags		 = QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+			s_serveroptions.fraglimit.generic.x		  = OPTIONS_X;
+			s_serveroptions.fraglimit.generic.y		  = y;
+			s_serveroptions.fraglimit.generic.statusbar	 = ServerOptions_StatusBar;
 			s_serveroptions.fraglimit.field.widthInChars = 3;
 			s_serveroptions.fraglimit.field.maxchars	 = 3;
-			s_serveroptions.hasFraglimitField		= qtrue;
+			s_serveroptions.hasFraglimitField		 = qtrue;
 		}
 	}
+
 	else if( s_serveroptions.gametype != GT_CTF && s_serveroptions.gametype != GT_CTF4 && s_serveroptions.gametype != GT_DOMINATION ) {
 
 		s_serveroptions.fraglimit.generic.type		= MTYPE_FIELD;
@@ -1879,6 +1907,9 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 	}
    else if( s_serveroptions.hasFraglimitField && s_serveroptions.gametype != GT_DERBY && s_serveroptions.gametype != GT_LCS && s_serveroptions.gametype != GT_ELIMINATION ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.fraglimit );
+	}
+   else if( s_serveroptions.showLaplimitNotice ) {
+		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.laplimitNotice );
 	}
 
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.timelimit );
