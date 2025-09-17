@@ -1,30 +1,30 @@
 {
 //MAP FILE NAME
-map "q3r_downtown"
+map "Race_Bot_Test"
 
 //IN-GAME MAP NAME
-longname "DownTown"
+longname "Race Bot Test"
 
 //AUTHOR OF THE MAP
-author "OliverV"
+author "P3rlE"
 
 //GAME TYPE SUPPORTS
 type "q3r_racing q3r_team_racing"
 
 //CUSTOM BOTS
-bots "Tobias Josh Bee Paul Ivan"
+bots "Samuel"
 
 //PLAYER STARTS
-starts "8"
+starts "4"
 
 //LAPS
 laps "3"
 
 //LAPTIME
-laptime "1 min 04 sec"
+laptime "34 sec"
 
 //CHECKPOINTS
-checkpoints "25"
+checkpoints "14"
 
 //OBSERVER SPOTS
 observerspots "0"
