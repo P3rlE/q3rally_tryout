@@ -106,6 +106,9 @@ vmCvar_t	g_proxMineTimeout;
 // STONELANCE
 vmCvar_t	g_forceEngineStart;
 vmCvar_t	g_finishRaceDelay;
+vmCvar_t	g_eliminationStartDelay;
+vmCvar_t	g_eliminationInterval;
+vmCvar_t	g_eliminationWarning;
 vmCvar_t	g_trackReversed;
 vmCvar_t	g_trackLength;
 vmCvar_t	g_developer;
@@ -247,6 +250,9 @@ static cvarTable_t		gameCvarTable[] = {
 
 	{ &g_forceEngineStart, "g_forceEngineStart", "60", CVAR_ARCHIVE, 0, qfalse },
 	{ &g_finishRaceDelay, "g_finishRaceDelay", "30", CVAR_ARCHIVE, 0, qfalse },
+	{ &g_eliminationStartDelay, "g_eliminationStartDelay", "30000", CVAR_ARCHIVE, 0, qfalse },
+	{ &g_eliminationInterval, "g_eliminationInterval", "15000", CVAR_ARCHIVE, 0, qfalse },
+	{ &g_eliminationWarning, "g_eliminationWarning", "5000", CVAR_ARCHIVE, 0, qfalse },
 
 	{ &g_developer, "developer", "0", 0, 0, qfalse },
 	{ &g_humanplayers, "g_humanplayers", "0", CVAR_ROM | CVAR_NORESTART, 0, qfalse },
@@ -574,6 +580,13 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	memset( &level, 0, sizeof( level ) );
 	level.time = levelTime;
 	level.startTime = levelTime;
+
+	trap_Cvar_Update( &g_eliminationStartDelay );
+	trap_Cvar_Update( &g_eliminationInterval );
+	trap_Cvar_Update( &g_eliminationWarning );
+	level.eliminationStartDelay = trap_Cvar_VariableIntegerValue( "g_eliminationStartDelay" );
+	level.eliminationInterval = trap_Cvar_VariableIntegerValue( "g_eliminationInterval" );
+	level.eliminationWarning = trap_Cvar_VariableIntegerValue( "g_eliminationWarning" );
 
 	level.snd_fry = G_SoundIndex("sound/player/fry.wav");	// FIXME standing in lava / slime
 

@@ -851,6 +851,9 @@ typedef struct {
 	menuradiobutton_s   sigillocator;
 	menufield_s			dominationScoreInterval;
 	menufield_s			dominationCaptureDelay;
+	menufield_s			eliminationStartDelay;
+	menufield_s			eliminationInterval;
+	menufield_s			eliminationWarning;
 	menulist_s			trackLength;
 	menulist_s			reversed;
 	menuradiobutton_s	pure;
@@ -965,6 +968,9 @@ static void ServerOptions_Start( void ) {
     int     dominationSpawnStyle;
 	int		dominationScoreInterval;
 	int		dominationCaptureDelay;
+	int		eliminationStartDelay;
+	int		eliminationInterval;
+	int		eliminationWarning;
 	int     sigillocator;
 	int		maxclients;
 	int		dedicated;
@@ -995,6 +1001,9 @@ static void ServerOptions_Start( void ) {
 	flaglimit	 = atoi( s_serveroptions.flaglimit.field.buffer );
 	dominationScoreInterval = atoi( s_serveroptions.dominationScoreInterval.field.buffer );
 	dominationCaptureDelay = atoi( s_serveroptions.dominationCaptureDelay.field.buffer );
+	eliminationStartDelay = atoi( s_serveroptions.eliminationStartDelay.field.buffer );
+	eliminationInterval = atoi( s_serveroptions.eliminationInterval.field.buffer );
+	eliminationWarning = atoi( s_serveroptions.eliminationWarning.field.buffer );
 	dedicated	 = s_serveroptions.dedicated.curvalue;
 	friendlyfire = s_serveroptions.friendlyfire.curvalue;
 	pure		 = s_serveroptions.pure.curvalue;
@@ -1017,9 +1026,16 @@ static void ServerOptions_Start( void ) {
 
 	switch( s_serveroptions.gametype ) {
 
+        case GT_ELIMINATION:
+                trap_Cvar_SetValue( "g_eliminationStartDelay", Com_Clamp( 0, 99999, eliminationStartDelay ) * 1000 );
+                trap_Cvar_SetValue( "g_eliminationInterval", Com_Clamp( 0, 99999, eliminationInterval ) * 1000 );
+                trap_Cvar_SetValue( "g_eliminationWarning", Com_Clamp( 0, 99999, eliminationWarning ) * 1000 );
+                trap_Cvar_SetValue( "ui_racing_laplimit", fraglimit );
+                trap_Cvar_SetValue( "ui_racing_timelimit", timelimit );
+                break;
+
         case GT_RACING:
         case GT_RACING_DM:
-        case GT_ELIMINATION:
         default:
                 trap_Cvar_SetValue( "ui_racing_laplimit", fraglimit );
                 trap_Cvar_SetValue( "ui_racing_timelimit", timelimit );
@@ -1466,16 +1482,25 @@ static void ServerOptions_SetMenuItems( void ) {
 
 	switch( s_serveroptions.gametype ) {
 
+        case GT_ELIMINATION:
+                Com_sprintf( s_serveroptions.eliminationStartDelay.field.buffer, 6, "%i", (int)Com_Clamp( 0, 99999, trap_Cvar_VariableValue( "g_eliminationStartDelay" ) ) / 1000 );
+                Com_sprintf( s_serveroptions.eliminationInterval.field.buffer, 6, "%i", (int)Com_Clamp( 0, 99999, trap_Cvar_VariableValue( "g_eliminationInterval" ) ) / 1000 );
+                Com_sprintf( s_serveroptions.eliminationWarning.field.buffer, 5, "%i", (int)Com_Clamp( 0, 99999, trap_Cvar_VariableValue( "g_eliminationWarning" ) ) / 1000 );
+                if( !s_serveroptions.pointToPoint ) {
+                        Com_sprintf( s_serveroptions.fraglimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_racing_laplimit" ) ) );
+                }
+                Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_racing_timelimit" ) ) );
+                break;
+
         case GT_RACING:
 
         case GT_RACING_DM:
-        case GT_ELIMINATION:
         default:
                 if( !s_serveroptions.pointToPoint ) {
                         Com_sprintf( s_serveroptions.fraglimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_racing_laplimit" ) ) );
                 }
-		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_racing_timelimit" ) ) );
-		break;
+                Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_racing_timelimit" ) ) );
+                break;
 
 	case GT_TEAM_RACING:
 	case GT_TEAM_RACING_DM:
@@ -1780,6 +1805,36 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 		s_serveroptions.hostname.field.maxchars     = 64;
 	}
 
+	if (s_serveroptions.gametype == GT_ELIMINATION) {
+		y += BIGCHAR_HEIGHT+2;
+		s_serveroptions.eliminationStartDelay.generic.type       = MTYPE_FIELD;
+		s_serveroptions.eliminationStartDelay.generic.name       = "Start Delay (s):";
+		s_serveroptions.eliminationStartDelay.generic.flags      = QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+		s_serveroptions.eliminationStartDelay.generic.x          = OPTIONS_X;
+		s_serveroptions.eliminationStartDelay.generic.y          = y;
+		s_serveroptions.eliminationStartDelay.field.widthInChars = 5;
+		s_serveroptions.eliminationStartDelay.field.maxchars     = 5;
+
+		y += BIGCHAR_HEIGHT+2;
+		s_serveroptions.eliminationInterval.generic.type       = MTYPE_FIELD;
+		s_serveroptions.eliminationInterval.generic.name       = "Elimination Interval (s):";
+		s_serveroptions.eliminationInterval.generic.flags      = QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+		s_serveroptions.eliminationInterval.generic.x          = OPTIONS_X;
+		s_serveroptions.eliminationInterval.generic.y          = y;
+		s_serveroptions.eliminationInterval.field.widthInChars = 5;
+		s_serveroptions.eliminationInterval.field.maxchars     = 5;
+
+		y += BIGCHAR_HEIGHT+2;
+		s_serveroptions.eliminationWarning.generic.type       = MTYPE_FIELD;
+		s_serveroptions.eliminationWarning.generic.name       = "Warning Time (s):";
+		s_serveroptions.eliminationWarning.generic.flags      = QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+		s_serveroptions.eliminationWarning.generic.x          = OPTIONS_X;
+		s_serveroptions.eliminationWarning.generic.y          = y;
+		s_serveroptions.eliminationWarning.field.widthInChars = 5;
+		s_serveroptions.eliminationWarning.field.maxchars     = 5;
+
+	}
+
 if (s_serveroptions.gametype == GT_DOMINATION) {
     s_serveroptions.dominationScoreInterval.generic.type       = MTYPE_FIELD;
     s_serveroptions.dominationScoreInterval.generic.name       = "Score Interval (s):";
@@ -1936,6 +1991,12 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 
 	if( s_serveroptions.multiplayer ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.hostname );
+	}
+
+	if (s_serveroptions.gametype == GT_ELIMINATION) {
+		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.eliminationStartDelay );
+		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.eliminationInterval );
+		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.eliminationWarning );
 	}
 
 	if (s_serveroptions.gametype == GT_DOMINATION) {
