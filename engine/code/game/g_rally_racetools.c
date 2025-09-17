@@ -376,6 +376,7 @@ void RallyStarter_Think( gentity_t *ent ){
 			level.startRaceTime = level.time;
 			trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
 			CenterPrint_All("GO..");
+			G_StartEliminationMode();
 
 			G_FreeEntity( ent );
 			return;
@@ -435,6 +436,7 @@ void RallyStarter_Think( gentity_t *ent ){
 		RaceCountdown("GO!", 0);
 
 		Rally_Sound( ent, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/go.wav") );
+		G_StartEliminationMode();
 
 		if (g_gametype.integer != GT_DERBY)
 			ent->think = RallyRace_Think;

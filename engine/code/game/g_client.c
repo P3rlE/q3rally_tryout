@@ -1331,6 +1331,7 @@ void ClientBegin( int clientNum ) {
 
 	// count current clients and rank for scoreboard
 	CalculateRanks();
+	G_UpdateEliminationPlayerCount();
 }
 
 /*
@@ -1862,6 +1863,7 @@ void ClientDisconnect( int clientNum ) {
 	trap_SetConfigstring( CS_PLAYERS + clientNum, "");
 
 	CalculateRanks();
+	G_UpdateEliminationPlayerCount();
 
 	if ( ent->r.svFlags & SVF_BOT ) {
 		BotAIShutdownClient( clientNum, qfalse );

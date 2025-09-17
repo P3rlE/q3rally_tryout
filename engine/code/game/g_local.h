@@ -521,6 +521,11 @@ typedef struct {
 	int			eliminationStartDelay;
 	int			eliminationInterval;
 	int			eliminationWarning;
+	int			eliminationNextTriggerTime;
+	int			eliminationWarningTime;
+	int			eliminationActive;
+	int			eliminationRemainingPlayers;
+	int			eliminationRound;
 
 	// map variables
 	int			numCheckpoints;
@@ -862,6 +867,11 @@ void QDECL G_DebugLogPrintf( const char *fmt, ... ) __attribute__ ((format (prin
 void SendScoreboardMessageToAllClients( void );
 void QDECL G_Printf( const char *fmt, ... ) __attribute__ ((format (printf, 1, 2)));
 void QDECL G_Error( const char *fmt, ... ) __attribute__ ((noreturn, format (printf, 1, 2)));
+void G_ResetEliminationState( void );
+void G_StartEliminationMode( void );
+void G_UpdateEliminationPlayerCount( void );
+void G_RegisterEliminationDeath( gentity_t *victim );
+
 
 //
 // g_client.c
