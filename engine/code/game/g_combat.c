@@ -536,6 +536,10 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 	}
 // END
 
+	if ( g_gametype.integer == GT_ELIMINATION && level.startRaceTime ) {
+		G_RegisterEliminationDeath( self );
+	}
+
 	if ( attacker ) {
 		killer = attacker->s.number;
 		if ( attacker->client ) {

@@ -587,6 +587,7 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	level.eliminationStartDelay = trap_Cvar_VariableIntegerValue( "g_eliminationStartDelay" );
 	level.eliminationInterval = trap_Cvar_VariableIntegerValue( "g_eliminationInterval" );
 	level.eliminationWarning = trap_Cvar_VariableIntegerValue( "g_eliminationWarning" );
+	G_ResetEliminationState();
 
 	level.snd_fry = G_SoundIndex("sound/player/fry.wav");	// FIXME standing in lava / slime
 
@@ -1754,6 +1755,10 @@ void CheckExitRules( void ) {
 	if ((g_gametype.integer == GT_LCS || g_gametype.integer == GT_ELIMINATION) && level.startRaceTime && !level.finishRaceTime) {
 		gclient_t	*winner = NULL;
 
+		if ( g_gametype.integer == GT_ELIMINATION ) {
+			G_UpdateEliminationPlayerCount();
+		}
+
 		for ( i=0, count = 0 ; i< g_maxclients.integer ; i++ ) {
 			cl = level.clients + i;
 			if ( cl->pers.connected != CON_CONNECTED ) continue;
@@ -1774,6 +1779,10 @@ void CheckExitRules( void ) {
 				trap_SendServerCommand( level.winnerNumber, "cp \"You won the last car standing!\n\"");
 			}
 			else {
+				level.eliminationActive = 0;
+				level.eliminationNextTriggerTime = 0;
+				level.eliminationWarningTime = 0;
+				G_UpdateEliminationPlayerCount();
 				trap_SendServerCommand( -1, va("print \"%s won the elimination race!\n\"", winner->pers.netname ));
 				trap_SendServerCommand( level.winnerNumber, "cp \"You won the elimination race!\n\"");
 			}
@@ -1912,6 +1921,127 @@ void CheckExitRules( void ) {
 	}
 }
 
+
+
+static void G_SetEliminationSchedule( int referenceTime, int interval ) {
+        int nextTime;
+        int warningTime;
+
+        if ( interval < 0 ) {
+                interval = 0;
+        }
+
+        nextTime = referenceTime + interval;
+        level.eliminationNextTriggerTime = nextTime;
+
+        if ( level.eliminationWarning <= 0 ) {
+                level.eliminationWarningTime = referenceTime;
+                return;
+        }
+
+        warningTime = nextTime - level.eliminationWarning;
+        if ( warningTime < referenceTime ) {
+                warningTime = referenceTime;
+        }
+        if ( warningTime > nextTime ) {
+                warningTime = nextTime;
+        }
+
+        level.eliminationWarningTime = warningTime;
+}
+
+void G_ResetEliminationState( void ) {
+        level.eliminationActive = 0;
+        level.eliminationRound = 0;
+        level.eliminationRemainingPlayers = 0;
+        level.eliminationNextTriggerTime = 0;
+        level.eliminationWarningTime = 0;
+
+        if ( g_gametype.integer == GT_ELIMINATION ) {
+                G_SetEliminationSchedule( level.time, level.eliminationStartDelay );
+        }
+}
+
+void G_StartEliminationMode( void ) {
+        if ( g_gametype.integer != GT_ELIMINATION ) {
+                return;
+        }
+
+        level.eliminationActive = 1;
+        level.eliminationRound = 0;
+        G_UpdateEliminationPlayerCount();
+        G_SetEliminationSchedule( level.startRaceTime ? level.startRaceTime : level.time, level.eliminationStartDelay );
+}
+
+void G_UpdateEliminationPlayerCount( void ) {
+        int i;
+        int count;
+
+        if ( g_gametype.integer != GT_ELIMINATION ) {
+                level.eliminationRemainingPlayers = 0;
+                return;
+        }
+
+        count = 0;
+        for ( i = 0 ; i < level.maxclients ; i++ ) {
+                gclient_t *cl = level.clients + i;
+
+                if ( cl->pers.connected != CON_CONNECTED ) {
+                        continue;
+                }
+                if ( cl->sess.sessionTeam == TEAM_SPECTATOR ) {
+                        continue;
+                }
+                if ( isRaceObserver( i ) ) {
+                        continue;
+                }
+                if ( level.startRaceTime ) {
+                        if ( cl->finishRaceTime ) {
+                                continue;
+                        }
+                        if ( cl->ps.stats[STAT_HEALTH] <= 0 ) {
+                                continue;
+                        }
+                }
+
+                count++;
+        }
+
+        level.eliminationRemainingPlayers = count;
+}
+
+void G_RegisterEliminationDeath( gentity_t *victim ) {
+        if ( g_gametype.integer != GT_ELIMINATION ) {
+                return;
+        }
+
+        if ( !level.eliminationActive || !level.startRaceTime ) {
+                return;
+        }
+
+        if ( !victim || !victim->client ) {
+                return;
+        }
+
+        if ( victim->client->sess.sessionTeam == TEAM_SPECTATOR ) {
+                return;
+        }
+
+        if ( isRaceObserver( victim->s.number ) ) {
+                return;
+        }
+
+        level.eliminationRound++;
+        G_UpdateEliminationPlayerCount();
+
+        if ( level.eliminationRemainingPlayers > 1 ) {
+                G_SetEliminationSchedule( level.time, level.eliminationInterval );
+        } else {
+                level.eliminationActive = 0;
+                level.eliminationNextTriggerTime = 0;
+                level.eliminationWarningTime = 0;
+        }
+}
 
 
 /*
