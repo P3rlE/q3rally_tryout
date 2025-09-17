@@ -139,6 +139,7 @@ static const char *servertype_items[] = {
 */
 	"Racing",
 	"Racing Deathmatch",
+	"Elimination",
 	"Demolition Derby",
 	"Last Car Standing",
 	"Deathmatch",
@@ -162,33 +163,22 @@ static const char *sortkey_items[] = {
 
 static char* gamenames[] = {
 // STONELANCE
-/*
-	"DM ",	// deathmatch
-	"1v1",	// tournament
-	"SP ",	// single player
-	"Team DM",	// team deathmatch
-	"CTF",	// capture the flag
-	"One Flag CTF",		// one flag ctf
-	"OverLoad",				// Overload
-	"Harvester",			// Harvester
-	"Rocket Arena 3",	// Rocket Arena 3
-	"Q3F",						// Q3F
-	"Urban Terror",		// Urban Terror
-	"OSP",						// Orange Smoothie Productions
-*/
-	"Race",
-	"Race DM",
-	"Derby",
-	"LCS",
-	"DM ",
-	"TRace",
-	"TRace DM",
-	"Team DM",	// team deathmatch
-	"CTF",	// capture the flag
+        "Race",
+        "Race DM",
+        "Time Trial",
+        "Derby",
+        "LCS",
+        "Elimination",
+        "DM ",
+        "Team DM",      // team deathmatch
+        "TRace",
+        "TRace DM",
+        "CTF",  // capture the flag
+    "CTF4",
     "Domination", // domination
 // END
-	"???",			// unknown
-	0
+        "???",                  // unknown
+        0
 };
 
 static char* netnames[] = {
@@ -565,23 +555,29 @@ static void ArenaServers_UpdateMenu( void ) {
 			}
 			break;
 */
-		case GAMES_RACING:
-			if( servernodeptr->gametype != GT_RACING ) {
-				continue;
-			}
-			break;
+                case GAMES_RACING:
+                        if( servernodeptr->gametype != GT_RACING ) {
+                                continue;
+                        }
+                        break;
 
-		case GAMES_RACING_DM:
-			if( servernodeptr->gametype != GT_RACING_DM ) {
-				continue;
-			}
-			break;
+                case GAMES_RACING_DM:
+                        if( servernodeptr->gametype != GT_RACING_DM ) {
+                                continue;
+                        }
+                        break;
 
-		case GAMES_DERBY:
-			if( servernodeptr->gametype != GT_DERBY ) {
-				continue;
-			}
-			break;
+                case GAMES_ELIMINATION:
+                        if( servernodeptr->gametype != GT_ELIMINATION ) {
+                                continue;
+                        }
+                        break;
+
+                case GAMES_DERBY:
+                        if( servernodeptr->gametype != GT_DERBY ) {
+                                continue;
+                        }
+                        break;
 			
 		case GAMES_LCS:
 			if( servernodeptr->gametype != GT_LCS ) {
@@ -1172,19 +1168,23 @@ static void ArenaServers_StartRefresh( void )
 			strcpy( myargs, " tourney" );
 			break;
 */
-		case GAMES_RACING:
-			strcpy( myargs, " racing" );
-			break;
+                case GAMES_RACING:
+                        strcpy( myargs, " racing" );
+                        break;
 
-		case GAMES_RACING_DM:
-			strcpy( myargs, " racing_dm" );
-			break;
+                case GAMES_RACING_DM:
+                        strcpy( myargs, " racing_dm" );
+                        break;
 
-		case GAMES_DERBY:
-			strcpy( myargs, " derby" );
-			break;
-			
-		case GAMES_LCS:
+                case GAMES_ELIMINATION:
+                        strcpy( myargs, " elimination" );
+                        break;
+
+                case GAMES_DERBY:
+                        strcpy( myargs, " derby" );
+                        break;
+
+                case GAMES_LCS:
 			strcpy( myargs, " lcs" );
 			break;
 
