@@ -134,7 +134,6 @@ MULTIPLAYER MENU (SERVER BROWSER)
 #define GAMES_TEAMPLAY                  9
 #define GAMES_CTF                               10
 #define GAMES_DOMINATION                11
-#define GAMES_NUM_GAMES                 12
 // END
 
 static const char *master_items[] = {
@@ -172,6 +171,8 @@ static const char *servertype_items[] = {
 // END
         0
 };
+
+#define GAMES_NUM_GAMES                 (ARRAY_LEN( servertype_items ) - 1)
 
 static const char *sortkey_items[] = {
         "Server Name",
