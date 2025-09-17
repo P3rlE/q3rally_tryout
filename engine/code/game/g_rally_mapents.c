@@ -366,6 +366,7 @@ void Think_StartFinish( gentity_t *self ){
 void Think_Finish( gentity_t *self ){
 Think_StartFinish( self );
 self->number++;
+self->s.weapon = self->number;
 }
 
 
