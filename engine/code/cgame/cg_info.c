@@ -288,7 +288,7 @@ void CG_DrawInformation( void ) {
                 s = "Racing Deathmatch";
                 break;
         case GT_ELIMINATION:
-                s = "Elimination";
+                s = "Elimination Race - stay ahead to survive";
                 break;
         case GT_DERBY:
                 s = "Demolition Derby";

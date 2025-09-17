@@ -1183,16 +1183,16 @@ float CG_DrawUpperRightHUD( float y ) {
                         y = CG_DrawCurrentPosition( y );
 			y = CG_DrawCarAheadAndBehind( y );
 		}
-		else if (cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS )
-			y = CG_DrawTimes( y );
+                else if (cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS || cgs.gametype == GT_ELIMINATION )
+                        y = CG_DrawTimes( y );
 // 0.5
 //			CG_DrawHUD_DerbyList(44, 130);
 			
 	}
 
-	if (!isRallyNonDMRace() && cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS){
-		y = CG_DrawScores( 636, y );
-	}
+        if (!isRallyNonDMRace() && cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS && cgs.gametype != GT_ELIMINATION){
+                y = CG_DrawScores( 636, y );
+        }
 
 	return y;
 }

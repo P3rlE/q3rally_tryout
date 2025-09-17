@@ -143,9 +143,11 @@ static void CG_InitScoreboardColumns(void) {
     
     switch (cgs.gametype) {
         case GT_RACING:
-        case GT_ELIMINATION:
         case GT_TEAM_RACING:
-            /* Pure racing - only times matter */
+        case GT_ELIMINATION:
+            /* Pure racing - only positions and times matter */
+            showScore = qfalse;
+            showDeaths = qfalse;
             showTimes = qtrue;
             showLapTimes = qtrue;
             break;
