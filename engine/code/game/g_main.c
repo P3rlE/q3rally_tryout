@@ -2088,28 +2088,6 @@ static qboolean G_IsEliminationClientActive( gentity_t *ent ) {
         return qtrue;
 }
 
-static gentity_t *G_GetEliminationDriverByPosition( int position ) {
-        int i;
-
-        if ( position <= 0 ) {
-                return NULL;
-        }
-
-        for ( i = 0 ; i < level.maxclients ; i++ ) {
-                gentity_t *ent = &g_entities[i];
-
-                if ( !G_IsEliminationClientActive( ent ) ) {
-                        continue;
-                }
-
-                if ( ent->client->ps.stats[STAT_POSITION] == position ) {
-                        return ent;
-                }
-        }
-
-        return NULL;
-}
-
 static gentity_t *G_GetLastEliminationDriver( void ) {
         gentity_t *last = NULL;
         int lastPosition = -1;
