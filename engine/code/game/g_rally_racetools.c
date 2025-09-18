@@ -274,6 +274,42 @@ qboolean IsCarAhead(gentity_t *one, gentity_t *two){
 //			Com_Printf("Car 1 is %f to marker %i and car 2 is %f\n", dist1, one->number, dist2);
 			return qfalse;
 		}
+
+		if ( dist1 == dist2 || ( dist1 == (float)( 1 << 30 ) && dist2 == (float)( 1 << 30 ) ) ) {
+			int last1 = one->client->lastCheckpointTime;
+			int last2 = two->client->lastCheckpointTime;
+
+			if ( last1 != last2 ) {
+				return ( last1 < last2 );
+			}
+
+			if ( last1 == 0 && last2 == 0 ) {
+				int remain1 = one->client->ps.stats[STAT_DISTANCE_REMAIN];
+				int remain2 = two->client->ps.stats[STAT_DISTANCE_REMAIN];
+
+				if ( remain1 != remain2 ) {
+					return ( remain1 < remain2 );
+				}
+
+				if ( level.hasFinish ) {
+					vec3_t delta1, delta2;
+					float finishDist1, finishDist2;
+
+					VectorSubtract( level.finishOrigin, one->r.currentOrigin, delta1 );
+					VectorSubtract( level.finishOrigin, two->r.currentOrigin, delta2 );
+					finishDist1 = VectorLength( delta1 );
+					finishDist2 = VectorLength( delta2 );
+
+					if ( finishDist1 > finishDist2 ) {
+						return qfalse;
+					}
+
+					if ( finishDist1 < finishDist2 ) {
+						return qtrue;
+					}
+				}
+			}
+		}
 	}
 
 	return qtrue;
