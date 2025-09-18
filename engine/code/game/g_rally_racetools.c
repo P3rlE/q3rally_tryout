@@ -164,23 +164,59 @@ float GetDistanceToMarker( gentity_t *player, float markerNumber )
 {
 	gentity_t		*ent = NULL;
 	vec3_t			dist;
+	vec3_t			targetOrigin;
+	qboolean			haveTarget = qfalse;
+	int			markerId;
 
-	if ( !markerNumber )
+	if ( markerNumber <= 0.0f )
 		return 1<<30;
 
-	while ( (ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL )
-	{
-		if( ent->number == markerNumber )
-			break;
+	markerId = (int)markerNumber;
+
+	if ( markerId > level.numCheckpoints ) {
+		if ( level.finishLine && level.finishLine->inuse ) {
+			VectorCopy( level.finishLine->s.origin, targetOrigin );
+			haveTarget = qtrue;
+		} else if ( level.hasFinish ) {
+			VectorCopy( level.finishOrigin, targetOrigin );
+			haveTarget = qtrue;
+		}
+
+		if ( !haveTarget ) {
+			while ( ( ent = G_Find (ent, FOFS(classname), "rally_finish" ) ) != NULL ) {
+				if ( ent->number == markerId || ent->number == 0 ) {
+					level.finishLine = ent;
+					VectorCopy( ent->s.origin, level.finishOrigin );
+					level.hasFinish = qtrue;
+					VectorCopy( ent->s.origin, targetOrigin );
+					haveTarget = qtrue;
+					break;
+				}
+			}
+		}
+	} else if ( markerId > 0 && markerId <= level.numCheckpoints ) {
+		if ( level.checkpoints[ markerId - 1 ] && level.checkpoints[ markerId - 1 ]->inuse ) {
+			VectorCopy( level.checkpoints[ markerId - 1 ]->s.origin, targetOrigin );
+			haveTarget = qtrue;
+		}
+
+		if ( !haveTarget ) {
+			while ( ( ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL ) {
+				if ( ent->number == markerId ) {
+					VectorCopy( ent->s.origin, targetOrigin );
+					haveTarget = qtrue;
+					break;
+				}
+			}
+		}
 	}
 
-	if ( ent )
-	{
-		VectorSubtract(player->r.currentOrigin, ent->s.origin, dist);
-		return VectorLength(dist);
+	if ( haveTarget ) {
+		VectorSubtract( player->r.currentOrigin, targetOrigin, dist );
+		return VectorLength( dist );
 	}
-	else
-		return 1<<30;
+
+	return 1<<30;
 }
 
 /*
