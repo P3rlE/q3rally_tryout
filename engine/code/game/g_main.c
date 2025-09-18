@@ -480,6 +480,7 @@ void G_RemapTeamShaders( void ) {
 #endif
 }
 
+/*
 =================
 G_RegisterCvars
 =================
