@@ -48,8 +48,6 @@ static const orderTask_t validOrders[] = {
 
 static const int numValidOrders = ARRAY_LEN(validOrders);
 
-static void CG_ParseEliminationInfo( void );
-
 static int CG_ValidOrder(const char *p) {
 	int i;
 	for (i = 0; i < numValidOrders; i++) {
@@ -60,6 +58,8 @@ static int CG_ValidOrder(const char *p) {
 	return -1;
 }
 #endif
+
+static void CG_ParseEliminationInfo( void );
 
 /*
 =================
