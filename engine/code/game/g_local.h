@@ -535,6 +535,7 @@ typedef struct {
         float                   trackLength;
         vec3_t                  startOrigin;
         vec3_t                  finishOrigin;
+        gentity_t       *finishLine;
         qboolean                hasStart;
         qboolean                hasFinish;
 
