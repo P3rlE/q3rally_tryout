@@ -2179,10 +2179,7 @@ static void G_RunEliminationTimers( void ) {
         }
 
         if ( level.eliminationWarning > 0 && !level.eliminationWarningSent && level.eliminationWarningTime > 0 && level.time >= level.eliminationWarningTime ) {
-                target = G_GetEliminationDriverByPosition( level.eliminationRemainingPlayers );
-                if ( !target ) {
-                        target = G_GetLastEliminationDriver();
-                }
+                target = G_GetLastEliminationDriver();
 
                 if ( target ) {
                         msLeft = level.eliminationNextTriggerTime - level.time;
@@ -2206,10 +2203,7 @@ static void G_RunEliminationTimers( void ) {
                 return;
         }
 
-        target = G_GetEliminationDriverByPosition( level.eliminationRemainingPlayers );
-        if ( !target ) {
-                target = G_GetLastEliminationDriver();
-        }
+        target = G_GetLastEliminationDriver();
 
         if ( !target ) {
                 level.eliminationActive = 0;
