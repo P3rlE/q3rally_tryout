@@ -1161,6 +1161,74 @@ CG_DrawGear
 	VectorMA(pointOnPlane, -(planedist / viewdist) * DotProduct(dir, cg.refdef.viewaxis[2]), cg.refdef.viewaxis[2], pointOnPlane);
 */
 
+static float CG_DrawEliminationStatus( float y ) {
+        float x;
+        char text[64];
+        vec4_t countdownColor;
+        int drivers;
+        int displayRound;
+        int msLeft;
+        int secondsLeft;
+        qboolean showCountdown;
+
+        if ( cgs.gametype != GT_ELIMINATION ) {
+                return y;
+        }
+
+        drivers = cgs.eliminationRemainingPlayers;
+        if ( drivers < 0 ) {
+                drivers = 0;
+        }
+
+        x = 636 - 176;
+
+        CG_FillRect( x, y, 176, 18, bgColor );
+        if ( drivers > 0 ) {
+                Com_sprintf( text, sizeof( text ), "Drivers left: %i", drivers );
+        } else {
+                Q_strncpyz( text, "Drivers left: --", sizeof( text ) );
+        }
+        CG_DrawSmallDigitalStringColor( x + 10, y + 4, text, colorWhite );
+        y += TINYCHAR_HEIGHT + 4;
+
+        CG_FillRect( x, y, 176, 18, bgColor );
+        displayRound = CG_EliminationDisplayRound();
+        if ( displayRound > 0 ) {
+                Com_sprintf( text, sizeof( text ), "Round: %i", displayRound );
+        } else {
+                Q_strncpyz( text, "Round: --", sizeof( text ) );
+        }
+        CG_DrawSmallDigitalStringColor( x + 10, y + 4, text, colorWhite );
+        y += TINYCHAR_HEIGHT + 4;
+
+        CG_FillRect( x, y, 176, 18, bgColor );
+        showCountdown = ( cgs.eliminationActive && drivers > 1 );
+        if ( showCountdown ) {
+                msLeft = CG_EliminationMsLeft();
+                secondsLeft = ( msLeft + 999 ) / 1000;
+                if ( secondsLeft < 0 ) {
+                        secondsLeft = 0;
+                }
+
+                Vector4Copy( colorWhite, countdownColor );
+                if ( secondsLeft <= 5 ) {
+                        Vector4Copy( colorRed, countdownColor );
+                } else if ( secondsLeft <= 10 ) {
+                        Vector4Copy( colorYellow, countdownColor );
+                }
+
+                Com_sprintf( text, sizeof( text ), "Elimination in %is", secondsLeft );
+                CG_DrawSmallDigitalStringColor( x + 10, y + 4, text, countdownColor );
+        } else if ( cgs.eliminationActive && drivers <= 1 ) {
+                CG_DrawSmallDigitalStringColor( x + 10, y + 4, "Final driver!", colorWhite );
+        } else {
+                CG_DrawSmallDigitalStringColor( x + 10, y + 4, "Elimination in -- s", colorWhite );
+        }
+        y += TINYCHAR_HEIGHT + 4;
+
+        return y;
+}
+
 float CG_DrawUpperRightHUD( float y ) {
 	int		i;
 
@@ -1172,6 +1240,10 @@ float CG_DrawUpperRightHUD( float y ) {
 		if (cg.scores[i].ping == -1) continue;
 
 		cgs.numRacers++;
+	}
+
+	if ( cgs.gametype == GT_ELIMINATION ) {
+		y = CG_DrawEliminationStatus( y );
 	}
 
 	if (cgs.clientinfo[cg.snap->ps.clientNum].team != TEAM_SPECTATOR){

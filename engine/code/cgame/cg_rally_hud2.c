@@ -190,6 +190,71 @@ void CG_DrawHUD_Positions(float x, float y){
 	}
 }
 
+static void CG_DrawHUD_EliminationStatus(float x, float y)
+{
+	char text[64];
+	vec4_t countdownColor;
+	int drivers;
+	int displayRound;
+	int msLeft;
+	int secondsLeft;
+	qboolean showCountdown;
+
+	if ( cgs.gametype != GT_ELIMINATION ) {
+		return;
+	}
+
+	drivers = cgs.eliminationRemainingPlayers;
+	if ( drivers < 0 ) {
+		drivers = 0;
+	}
+
+	CG_FillRect(x, y, 196, 18, bgColor);
+	if ( drivers > 0 ) {
+		Com_sprintf(text, sizeof(text), "Drivers left: %i", drivers);
+	} else {
+		Q_strncpyz(text, "Drivers left: --", sizeof(text));
+	}
+	CG_DrawSmallDigitalStringColor(x + 10, y + 4, text, colorWhite);
+
+	y += 20;
+
+	CG_FillRect(x, y, 196, 18, bgColor);
+	displayRound = CG_EliminationDisplayRound();
+	if ( displayRound > 0 ) {
+		Com_sprintf(text, sizeof(text), "Round: %i", displayRound);
+	} else {
+		Q_strncpyz(text, "Round: --", sizeof(text));
+	}
+	CG_DrawSmallDigitalStringColor(x + 10, y + 4, text, colorWhite);
+
+	y += 20;
+
+	CG_FillRect(x, y, 196, 18, bgColor);
+	showCountdown = ( cgs.eliminationActive && drivers > 1 );
+	if ( showCountdown ) {
+		msLeft = CG_EliminationMsLeft();
+		secondsLeft = ( msLeft + 999 ) / 1000;
+		if ( secondsLeft < 0 ) {
+			secondsLeft = 0;
+		}
+
+		Vector4Copy(colorWhite, countdownColor);
+		if ( secondsLeft <= 5 ) {
+			Vector4Copy(colorRed, countdownColor);
+		} else if ( secondsLeft <= 10 ) {
+			Vector4Copy(colorYellow, countdownColor);
+		}
+
+		Com_sprintf(text, sizeof(text), "Elimination in %is", secondsLeft);
+		CG_DrawSmallDigitalStringColor(x + 10, y + 4, text, countdownColor);
+	} else if ( cgs.eliminationActive && drivers <= 1 ) {
+		CG_DrawSmallDigitalStringColor(x + 10, y + 4, "Final driver!", colorWhite);
+	} else {
+		CG_DrawSmallDigitalStringColor(x + 10, y + 4, "Elimination in -- s", colorWhite);
+	}
+}
+
 /*
 ===============
 CG_DrawHUD_Laps
@@ -450,9 +515,12 @@ qboolean CG_DrawHUD( void ) {
                 CG_DrawHUD_Times(0, 112);
                 CG_DrawHUD_Positions(0, 228);
                 CG_DrawHUD_Laps(0, 304);
+                if (cgs.gametype == GT_ELIMINATION) {
+                        CG_DrawHUD_EliminationStatus(440, 72);
+                }
                 CG_DrawHUD_OpponentList(440, 130);
 
-		break;
+                break;
 
 	case GT_RACING_DM:
 	case GT_TEAM_RACING_DM:
