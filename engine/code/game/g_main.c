@@ -307,6 +307,7 @@ void G_InitGame( int levelTime, int randomSeed, int restart );
 void G_RunFrame( int levelTime );
 void G_ShutdownGame( int restart );
 void CheckExitRules( void );
+static void G_RunEliminationTimers( void );
 
 
 /*
@@ -479,8 +480,6 @@ void G_RemapTeamShaders( void ) {
 #endif
 }
 
-
-/*
 =================
 G_RegisterCvars
 =================
@@ -1782,6 +1781,7 @@ void CheckExitRules( void ) {
 				level.eliminationActive = 0;
 				level.eliminationNextTriggerTime = 0;
 				level.eliminationWarningTime = 0;
+				level.eliminationWarningSent = qfalse;
 				G_UpdateEliminationPlayerCount();
 				trap_SendServerCommand( -1, va("print \"%s won the elimination race!\n\"", winner->pers.netname ));
 				trap_SendServerCommand( level.winnerNumber, "cp \"You won the elimination race!\n\"");
@@ -1933,6 +1933,7 @@ static void G_SetEliminationSchedule( int referenceTime, int interval ) {
 
         nextTime = referenceTime + interval;
         level.eliminationNextTriggerTime = nextTime;
+        level.eliminationWarningSent = qfalse;
 
         if ( level.eliminationWarning <= 0 ) {
                 level.eliminationWarningTime = referenceTime;
@@ -1956,6 +1957,7 @@ void G_ResetEliminationState( void ) {
         level.eliminationRemainingPlayers = 0;
         level.eliminationNextTriggerTime = 0;
         level.eliminationWarningTime = 0;
+        level.eliminationWarningSent = qfalse;
 
         if ( g_gametype.integer == GT_ELIMINATION ) {
                 G_SetEliminationSchedule( level.time, level.eliminationStartDelay );
@@ -2040,6 +2042,191 @@ void G_RegisterEliminationDeath( gentity_t *victim ) {
                 level.eliminationActive = 0;
                 level.eliminationNextTriggerTime = 0;
                 level.eliminationWarningTime = 0;
+                level.eliminationWarningSent = qfalse;
+        }
+}
+
+static qboolean G_IsEliminationClientActive( gentity_t *ent ) {
+        gclient_t *cl;
+
+        if ( !ent ) {
+                return qfalse;
+        }
+
+        if ( !ent->inuse ) {
+                return qfalse;
+        }
+
+        if ( !ent->client ) {
+                return qfalse;
+        }
+
+        cl = ent->client;
+
+        if ( cl->pers.connected != CON_CONNECTED ) {
+                return qfalse;
+        }
+
+        if ( cl->sess.sessionTeam == TEAM_SPECTATOR ) {
+                return qfalse;
+        }
+
+        if ( isRaceObserver( ent->s.number ) ) {
+                return qfalse;
+        }
+
+        if ( level.startRaceTime ) {
+                if ( cl->finishRaceTime ) {
+                        return qfalse;
+                }
+                if ( cl->ps.stats[STAT_HEALTH] <= 0 ) {
+                        return qfalse;
+                }
+        }
+
+        return qtrue;
+}
+
+static gentity_t *G_GetEliminationDriverByPosition( int position ) {
+        int i;
+
+        if ( position <= 0 ) {
+                return NULL;
+        }
+
+        for ( i = 0 ; i < level.maxclients ; i++ ) {
+                gentity_t *ent = &g_entities[i];
+
+                if ( !G_IsEliminationClientActive( ent ) ) {
+                        continue;
+                }
+
+                if ( ent->client->ps.stats[STAT_POSITION] == position ) {
+                        return ent;
+                }
+        }
+
+        return NULL;
+}
+
+static gentity_t *G_GetLastEliminationDriver( void ) {
+        gentity_t *last = NULL;
+        int lastPosition = -1;
+        int i;
+
+        for ( i = 0 ; i < level.maxclients ; i++ ) {
+                gentity_t *ent = &g_entities[i];
+                int position;
+
+                if ( !G_IsEliminationClientActive( ent ) ) {
+                        continue;
+                }
+
+                position = ent->client->ps.stats[STAT_POSITION];
+                if ( position <= 0 ) {
+                        continue;
+                }
+
+                if ( position > lastPosition ) {
+                        lastPosition = position;
+                        last = ent;
+                }
+        }
+
+        return last;
+}
+
+static void G_ForceEliminationDeath( gentity_t *victim ) {
+        if ( !victim || !victim->client ) {
+                return;
+        }
+
+        if ( victim->client->ps.pm_type == PM_DEAD ) {
+                return;
+        }
+
+        victim->flags &= ~FL_GODMODE;
+        victim->client->ps.stats[STAT_HEALTH] = victim->health = -999;
+        player_die( victim, NULL, NULL, 100000, MOD_SUICIDE );
+}
+
+static void G_RunEliminationTimers( void ) {
+        gentity_t *target;
+        int msLeft;
+        int secondsLeft;
+
+        if ( g_gametype.integer != GT_ELIMINATION ) {
+                return;
+        }
+
+        if ( !level.eliminationActive ) {
+                return;
+        }
+
+        if ( !level.startRaceTime || level.finishRaceTime ) {
+                return;
+        }
+
+        if ( level.eliminationNextTriggerTime <= 0 ) {
+                return;
+        }
+
+        G_UpdateEliminationPlayerCount();
+
+        if ( level.eliminationRemainingPlayers <= 1 ) {
+                return;
+        }
+
+        if ( level.eliminationWarning > 0 && !level.eliminationWarningSent && level.eliminationWarningTime > 0 && level.time >= level.eliminationWarningTime ) {
+                target = G_GetEliminationDriverByPosition( level.eliminationRemainingPlayers );
+                if ( !target ) {
+                        target = G_GetLastEliminationDriver();
+                }
+
+                if ( target ) {
+                        msLeft = level.eliminationNextTriggerTime - level.time;
+                        if ( msLeft < 0 ) {
+                                msLeft = 0;
+                        }
+                        secondsLeft = ( msLeft + 999 ) / 1000;
+                        trap_SendServerCommand( target->s.number,
+                                va( "cp \"You are last!\nElimination in %i %s!\n\"",
+                                        secondsLeft,
+                                        ( secondsLeft == 1 ) ? "second" : "seconds" ) );
+                        trap_SendServerCommand( target->s.number,
+                                va( "print \"You are last! Elimination in %i %s!\n\"",
+                                        secondsLeft,
+                                        ( secondsLeft == 1 ) ? "second" : "seconds" ) );
+                        level.eliminationWarningSent = qtrue;
+                }
+        }
+
+        if ( level.time < level.eliminationNextTriggerTime ) {
+                return;
+        }
+
+        target = G_GetEliminationDriverByPosition( level.eliminationRemainingPlayers );
+        if ( !target ) {
+                target = G_GetLastEliminationDriver();
+        }
+
+        if ( !target ) {
+                level.eliminationActive = 0;
+                level.eliminationNextTriggerTime = 0;
+                level.eliminationWarningTime = 0;
+                level.eliminationWarningSent = qfalse;
+                return;
+        }
+
+        trap_SendServerCommand( -1,
+                va( "print \"%s was eliminated!\n\"", target->client->pers.netname ) );
+        trap_SendServerCommand( target->s.number, "cp \"You have been eliminated!\n\"" );
+        trap_SendServerCommand( target->s.number, "print \"You have been eliminated!\n\"" );
+
+        G_ForceEliminationDeath( target );
+
+        if ( level.eliminationActive && level.eliminationRemainingPlayers > 1 ) {
+                G_SetEliminationSchedule( level.time, level.eliminationInterval );
         }
 }
 
@@ -2490,8 +2677,11 @@ void G_RunFrame( int levelTime ) {
 		}
 	}
 
-	// see if it is time to do a tournement restart
-	CheckTournament();
+        // update elimination scheduling
+        G_RunEliminationTimers();
+
+        // see if it is time to do a tournement restart
+        CheckTournament();
 
 	// see if it is time to end the level
 	CheckExitRules();

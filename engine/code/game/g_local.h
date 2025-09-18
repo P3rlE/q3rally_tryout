@@ -523,6 +523,7 @@ typedef struct {
 	int			eliminationWarning;
 	int			eliminationNextTriggerTime;
 	int			eliminationWarningTime;
+	qboolean		eliminationWarningSent;
 	int			eliminationActive;
 	int			eliminationRemainingPlayers;
 	int			eliminationRound;
