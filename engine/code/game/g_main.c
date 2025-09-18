@@ -308,6 +308,7 @@ void G_RunFrame( int levelTime );
 void G_ShutdownGame( int restart );
 void CheckExitRules( void );
 static void G_RunEliminationTimers( void );
+static void G_UpdateEliminationInfoConfigString( void );
 
 
 /*
@@ -1924,6 +1925,53 @@ void CheckExitRules( void ) {
 
 
 
+static void G_UpdateEliminationInfoConfigString( void ) {
+        static int lastActive = -1;
+        static int lastRemaining = -1;
+        static int lastRound = -1;
+        static int lastMsLeft = -1;
+        int active;
+        int remaining;
+        int round;
+        int msLeft;
+
+        if ( g_gametype.integer != GT_ELIMINATION ) {
+                active = 0;
+                remaining = 0;
+                round = 0;
+                msLeft = 0;
+        } else {
+                active = ( level.eliminationActive && level.startRaceTime && !level.finishRaceTime ) ? 1 : 0;
+                remaining = level.eliminationRemainingPlayers;
+                if ( remaining < 0 ) {
+                        remaining = 0;
+                }
+                round = level.eliminationRound;
+                if ( round < 0 ) {
+                        round = 0;
+                }
+
+                if ( active && level.eliminationNextTriggerTime > level.time && remaining > 1 ) {
+                        msLeft = level.eliminationNextTriggerTime - level.time;
+                } else {
+                        msLeft = 0;
+                }
+
+                if ( msLeft < 0 ) {
+                        msLeft = 0;
+                }
+        }
+
+        if ( lastActive != active || lastRemaining != remaining || lastRound != round || lastMsLeft != msLeft ) {
+                trap_SetConfigstring( CS_ELIMINATION_INFO,
+                        va( "%i %i %i %i", active, remaining, round, msLeft ) );
+                lastActive = active;
+                lastRemaining = remaining;
+                lastRound = round;
+                lastMsLeft = msLeft;
+        }
+}
+
 static void G_SetEliminationSchedule( int referenceTime, int interval ) {
         int nextTime;
         int warningTime;
@@ -1950,6 +1998,8 @@ static void G_SetEliminationSchedule( int referenceTime, int interval ) {
         }
 
         level.eliminationWarningTime = warningTime;
+
+        G_UpdateEliminationInfoConfigString();
 }
 
 void G_ResetEliminationState( void ) {
@@ -1963,6 +2013,8 @@ void G_ResetEliminationState( void ) {
         if ( g_gametype.integer == GT_ELIMINATION ) {
                 G_SetEliminationSchedule( level.time, level.eliminationStartDelay );
         }
+
+        G_UpdateEliminationInfoConfigString();
 }
 
 void G_StartEliminationMode( void ) {
@@ -1982,6 +2034,7 @@ void G_UpdateEliminationPlayerCount( void ) {
 
         if ( g_gametype.integer != GT_ELIMINATION ) {
                 level.eliminationRemainingPlayers = 0;
+                G_UpdateEliminationInfoConfigString();
                 return;
         }
 
@@ -2011,6 +2064,8 @@ void G_UpdateEliminationPlayerCount( void ) {
         }
 
         level.eliminationRemainingPlayers = count;
+
+        G_UpdateEliminationInfoConfigString();
 }
 
 void G_RegisterEliminationDeath( gentity_t *victim ) {
@@ -2044,6 +2099,8 @@ void G_RegisterEliminationDeath( gentity_t *victim ) {
                 level.eliminationNextTriggerTime = 0;
                 level.eliminationWarningTime = 0;
                 level.eliminationWarningSent = qfalse;
+
+                G_UpdateEliminationInfoConfigString();
         }
 }
 
@@ -2188,6 +2245,7 @@ static void G_RunEliminationTimers( void ) {
                 level.eliminationNextTriggerTime = 0;
                 level.eliminationWarningTime = 0;
                 level.eliminationWarningSent = qfalse;
+                G_UpdateEliminationInfoConfigString();
                 return;
         }
 
