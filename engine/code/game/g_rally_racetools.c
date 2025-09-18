@@ -229,32 +229,70 @@ IsCarAhead
 qboolean IsCarAhead(gentity_t *one, gentity_t *two){
 	float		dist1, dist2;
 	int			time1, time2;
+	qboolean	eliminationMode;
+	qboolean	oneEliminated, twoEliminated;
+	qboolean	oneFinished, twoFinished;
 
-	if (one->client->finishRaceTime && two->client->finishRaceTime){
-		time1 = one->client->finishRaceTime - level.startRaceTime;
-		if (one->client->ps.persistant[PERS_SCORE] > 0 && !isRallyNonDMRace()){
-			time1 -= (one->client->ps.persistant[PERS_SCORE] * TIME_BONUS_PER_FRAG);
+	eliminationMode = ( g_gametype.integer == GT_ELIMINATION || g_gametype.integer == GT_LCS );
+	oneEliminated = qfalse;
+	twoEliminated = qfalse;
+
+	if ( eliminationMode ) {
+		if ( one->client->finishRaceTime && one->client->ps.stats[STAT_HEALTH] <= 0 ) {
+			oneEliminated = qtrue;
 		}
 
-		time2 = two->client->finishRaceTime - level.startRaceTime;
-		if (two->client->ps.persistant[PERS_SCORE] > 0 && !isRallyNonDMRace()){
-			time2 -= (two->client->ps.persistant[PERS_SCORE] * TIME_BONUS_PER_FRAG);
+		if ( two->client->finishRaceTime && two->client->ps.stats[STAT_HEALTH] <= 0 ) {
+			twoEliminated = qtrue;
 		}
 
-		if (time1 < time2){ // use frag modified times
-//			Com_Printf("Car 1 finished the race with less time than car 2\n");
-			return qtrue;
-		}
-		else {
-//			Com_Printf("Car 2 finished the race with less time than car 1\n");
+		if ( oneEliminated && !twoEliminated ) {
 			return qfalse;
 		}
+
+		if ( twoEliminated && !oneEliminated ) {
+			return qtrue;
+		}
+
+		if ( oneEliminated && twoEliminated ) {
+			if ( one->client->finishRaceTime > two->client->finishRaceTime ) {
+				return qtrue;
+			}
+
+			if ( two->client->finishRaceTime > one->client->finishRaceTime ) {
+				return qfalse;
+			}
+		}
 	}
-	else if (one->client->finishRaceTime){
+
+	oneFinished = ( one->client->finishRaceTime && ( !eliminationMode || !oneEliminated ) );
+	twoFinished = ( two->client->finishRaceTime && ( !eliminationMode || !twoEliminated ) );
+
+	if (oneFinished && twoFinished){
+			time1 = one->client->finishRaceTime - level.startRaceTime;
+			if (one->client->ps.persistant[PERS_SCORE] > 0 && !isRallyNonDMRace()){
+					time1 -= (one->client->ps.persistant[PERS_SCORE] * TIME_BONUS_PER_FRAG);
+			}
+
+			time2 = two->client->finishRaceTime - level.startRaceTime;
+			if (two->client->ps.persistant[PERS_SCORE] > 0 && !isRallyNonDMRace()){
+					time2 -= (two->client->ps.persistant[PERS_SCORE] * TIME_BONUS_PER_FRAG);
+			}
+
+			if (time1 < time2){ // use frag modified times
+//				Com_Printf("Car 1 finished the race with less time than car 2\n");
+				return qtrue;
+			}
+			else {
+//				Com_Printf("Car 2 finished the race with less time than car 1\n");
+				return qfalse;
+			}
+	}
+	else if (oneFinished){
 //		Com_Printf("Car 1 finished the race, car 2 hasn't\n");
 		return qtrue;
 	}
-	else if (two->client->finishRaceTime){
+	else if (twoFinished){
 //		Com_Printf("Car 2 finished the race, car 1 hasn't\n");
 		return qfalse;
 	}
