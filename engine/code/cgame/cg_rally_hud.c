@@ -1171,6 +1171,7 @@ static float CG_DrawEliminationStatus( float y ) {
         int secondsLeft;
         qboolean showCountdown;
         const float lineAdvance = TINYCHAR_HEIGHT + 8.0f;
+        const float tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
 
         if ( cgs.gametype != GT_ELIMINATION ) {
                 return y;
@@ -1184,22 +1185,36 @@ static float CG_DrawEliminationStatus( float y ) {
         x = 636 - 176;
 
         CG_FillRect( x, y, 176, 18, bgColor );
-        if ( drivers > 0 ) {
-                Com_sprintf( text, sizeof( text ), "DRIVERS LEFT: %i", drivers );
-        } else {
-                Q_strncpyz( text, "DRIVERS LEFT: --", sizeof( text ) );
+        {
+                const char *label = "DRIVERS LEFT:";
+                const float labelX = x + 10.0f;
+                const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+
+                CG_DrawTinyStringColor( labelX, y + 4, label, colorWhite );
+                if ( drivers > 0 ) {
+                        Com_sprintf( text, sizeof( text ), "%i", drivers );
+                } else {
+                        Q_strncpyz( text, "--", sizeof( text ) );
+                }
+                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, colorWhite );
         }
-        CG_DrawTinyDigitalStringColor( x + 10, y + 4, text, colorWhite );
         y += lineAdvance;
 
         CG_FillRect( x, y, 176, 18, bgColor );
         displayRound = CG_EliminationDisplayRound();
-        if ( displayRound > 0 ) {
-                Com_sprintf( text, sizeof( text ), "ROUND: %i", displayRound );
-        } else {
-                Q_strncpyz( text, "ROUND: --", sizeof( text ) );
+        {
+                const char *label = "ROUND:";
+                const float labelX = x + 10.0f;
+                const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+
+                CG_DrawTinyStringColor( labelX, y + 4, label, colorWhite );
+                if ( displayRound > 0 ) {
+                        Com_sprintf( text, sizeof( text ), "%i", displayRound );
+                } else {
+                        Q_strncpyz( text, "--", sizeof( text ) );
+                }
+                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, colorWhite );
         }
-        CG_DrawTinyDigitalStringColor( x + 10, y + 4, text, colorWhite );
         y += lineAdvance;
 
         CG_FillRect( x, y, 176, 18, bgColor );
@@ -1211,6 +1226,10 @@ static float CG_DrawEliminationStatus( float y ) {
                         secondsLeft = 0;
                 }
 
+                const char *label = "ELIMINATION IN";
+                const float labelX = x + 10.0f;
+                const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+
                 Vector4Copy( colorWhite, countdownColor );
                 if ( secondsLeft <= 5 ) {
                         Vector4Copy( colorRed, countdownColor );
@@ -1218,12 +1237,21 @@ static float CG_DrawEliminationStatus( float y ) {
                         Vector4Copy( colorYellow, countdownColor );
                 }
 
-                Com_sprintf( text, sizeof( text ), "ELIMINATION IN %iS", secondsLeft );
-                CG_DrawTinyDigitalStringColor( x + 10, y + 4, text, countdownColor );
+                Com_sprintf( text, sizeof( text ), "%i", secondsLeft );
+                CG_DrawTinyStringColor( labelX, y + 4, label, countdownColor );
+                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, countdownColor );
+                CG_DrawTinyStringColor( valueX + CG_DrawStrlen( text ) * tinyCharWidth, y + 4, "S", countdownColor );
         } else if ( cgs.eliminationActive && drivers <= 1 ) {
-                CG_DrawTinyDigitalStringColor( x + 10, y + 4, "FINAL DRIVER!", colorWhite );
+                CG_DrawTinyStringColor( x + 10.0f, y + 4, "FINAL DRIVER!", colorWhite );
         } else {
-                CG_DrawTinyDigitalStringColor( x + 10, y + 4, "ELIMINATION IN -- S", colorWhite );
+                const char *label = "ELIMINATION IN";
+                const float labelX = x + 10.0f;
+                const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+
+                CG_DrawTinyStringColor( labelX, y + 4, label, colorWhite );
+                Q_strncpyz( text, "--", sizeof( text ) );
+                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, colorWhite );
+                CG_DrawTinyStringColor( valueX + CG_DrawStrlen( text ) * tinyCharWidth, y + 4, " S", colorWhite );
         }
         y += lineAdvance;
 
