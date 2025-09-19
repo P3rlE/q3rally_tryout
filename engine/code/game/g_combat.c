@@ -366,9 +366,10 @@ char	*modNames[] = {
 	"MOD_MINE",
 	"MOD_POISON",
 	"MOD_FIRE",
-	"MOD_FLAME_THROWER",
+	"MOD_GRAPPLE",
+	"MOD_ELIMINATION",
+	"MOD_BREAKABLE_SPLASH"
 // Q3Rally Code END
-	"MOD_GRAPPLE"
 };
 
 #ifdef MISSIONPACK
@@ -582,7 +583,9 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 		attacker->client->lastkilled_client = self->s.number;
 
 		if ( attacker == self || OnSameTeam (self, attacker ) ) {
-			AddScore( attacker, self->r.currentOrigin, -1 );
+			if ( meansOfDeath != MOD_ELIMINATION ) {
+				AddScore( attacker, self->r.currentOrigin, -1 );
+			}
 		} else {
 			AddScore( attacker, self->r.currentOrigin, 1 );
 
@@ -620,9 +623,9 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
                         attacker->client->ps.stats[STAT_FUEL] = (int)attacker->client->car.fuel;
 
                 }
-        } else {
-                AddScore( self, self->r.currentOrigin, -1 );
-        }
+	} else if ( meansOfDeath != MOD_ELIMINATION ) {
+		AddScore( self, self->r.currentOrigin, -1 );
+	}
 
 	// Add team bonuses
 	Team_FragBonuses(self, inflictor, attacker);

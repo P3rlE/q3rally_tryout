@@ -2183,7 +2183,7 @@ static void G_ForceEliminationDeath( gentity_t *victim ) {
 
         victim->flags &= ~FL_GODMODE;
         victim->client->ps.stats[STAT_HEALTH] = victim->health = -999;
-        player_die( victim, NULL, NULL, 100000, MOD_SUICIDE );
+	player_die( victim, NULL, NULL, 100000, MOD_ELIMINATION );
 }
 
 static void G_RunEliminationTimers( void ) {
