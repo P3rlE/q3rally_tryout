@@ -709,16 +709,17 @@ static float CG_DrawCurrentPosition( float y ) {
 	centity_t		*cent;
 	//playerState_t	*ps;
 	int			pos;
-	char		s[64];
 	float		x, width, height;
 	//float		foreground[4] = { 0, 0, 0.75, 1.0 };
+	const char	*label = "POS:";
+	const float	labelOffsetX = 10.0f;
+	const float	labelOffsetY = 4.0f;
+	const float	tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
 
 	//ps = &cg.snap->ps;
 	cent = &cg_entities[cg.snap->ps.clientNum];
 
 	pos = cent->currentPosition;
-
-	Com_sprintf(s, sizeof(s), "POS: ");
 
 	x = 636 - 80;
 	width = 90;
@@ -726,14 +727,14 @@ static float CG_DrawCurrentPosition( float y ) {
 
 	CG_FillRect( x, y, width, height, bgColor );
 
-	x += 10;
-	y += 4;
+	{
+		const float	labelX = x + labelOffsetX;
+		const float	drawY = y + labelOffsetY;
+		const float	valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
 
-	CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
-
-	x += TINYCHAR_WIDTH * 5;
-
-	CG_DrawTinyDigitalStringColor( x, y, va("%i/%i", pos, cgs.numRacers), colorWhite);
+		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
+		CG_DrawTinyDigitalStringColor( valueX, drawY, va( "%i/%i", pos, cgs.numRacers ), colorWhite );
+	}
 
 	y += 20;
 
