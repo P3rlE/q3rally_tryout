@@ -192,14 +192,15 @@ void CG_DrawHUD_Positions(float x, float y){
 
 static void CG_DrawHUD_EliminationStatus(float x, float y)
 {
-	char text[64];
-	vec4_t countdownColor;
-	int drivers;
-	int displayRound;
-	int msLeft;
-	int secondsLeft;
-	qboolean showCountdown;
-	const float lineAdvance = TINYCHAR_HEIGHT + 8.0f;
+        char text[64];
+        vec4_t countdownColor;
+        int drivers;
+        int displayRound;
+        int msLeft;
+        int secondsLeft;
+        qboolean showCountdown;
+        const float lineAdvance = TINYCHAR_HEIGHT + 8.0f;
+        const float tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
 
 	if ( cgs.gametype != GT_ELIMINATION ) {
 		return;
@@ -210,49 +211,76 @@ static void CG_DrawHUD_EliminationStatus(float x, float y)
 		drivers = 0;
 	}
 
-	CG_FillRect(x, y, 196, 18, bgColor);
-        if ( drivers > 0 ) {
-                Com_sprintf(text, sizeof(text), "DRIVERS LEFT: %i", drivers);
-        } else {
-                Q_strncpyz(text, "DRIVERS LEFT: --", sizeof(text));
+        CG_FillRect(x, y, 196, 18, bgColor);
+        {
+                const char *label = "DRIVERS LEFT:";
+                const float labelX = x + 10.0f;
+                const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+
+                CG_DrawTinyStringColor( labelX, y + 4, label, colorWhite );
+                if ( drivers > 0 ) {
+                        Com_sprintf( text, sizeof( text ), "%i", drivers );
+                } else {
+                        Q_strncpyz( text, "--", sizeof( text ) );
+                }
+                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, colorWhite );
         }
-        CG_DrawTinyDigitalStringColor(x + 10, y + 4, text, colorWhite);
 
         y += lineAdvance;
 
         CG_FillRect(x, y, 196, 18, bgColor);
         displayRound = CG_EliminationDisplayRound();
-        if ( displayRound > 0 ) {
-                Com_sprintf(text, sizeof(text), "ROUND: %i", displayRound);
-        } else {
-                Q_strncpyz(text, "ROUND: --", sizeof(text));
+        {
+                const char *label = "ROUND:";
+                const float labelX = x + 10.0f;
+                const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+
+                CG_DrawTinyStringColor( labelX, y + 4, label, colorWhite );
+                if ( displayRound > 0 ) {
+                        Com_sprintf( text, sizeof( text ), "%i", displayRound );
+                } else {
+                        Q_strncpyz( text, "--", sizeof( text ) );
+                }
+                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, colorWhite );
         }
-        CG_DrawTinyDigitalStringColor(x + 10, y + 4, text, colorWhite);
 
         y += lineAdvance;
 
-	CG_FillRect(x, y, 196, 18, bgColor);
-	showCountdown = ( cgs.eliminationActive && drivers > 1 );
-	if ( showCountdown ) {
-		msLeft = CG_EliminationMsLeft();
-		secondsLeft = ( msLeft + 999 ) / 1000;
-		if ( secondsLeft < 0 ) {
-			secondsLeft = 0;
-		}
+        CG_FillRect(x, y, 196, 18, bgColor);
+        showCountdown = ( cgs.eliminationActive && drivers > 1 );
+        if ( showCountdown ) {
+                msLeft = CG_EliminationMsLeft();
+                secondsLeft = ( msLeft + 999 ) / 1000;
+                if ( secondsLeft < 0 ) {
+                        secondsLeft = 0;
+                }
 
-		Vector4Copy(colorWhite, countdownColor);
-		if ( secondsLeft <= 5 ) {
-			Vector4Copy(colorRed, countdownColor);
-		} else if ( secondsLeft <= 10 ) {
-			Vector4Copy(colorYellow, countdownColor);
-		}
+                const char *label = "ELIMINATION IN";
+                const float labelX = x + 10.0f;
+                const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
 
-                Com_sprintf(text, sizeof(text), "ELIMINATION IN %iS", secondsLeft);
-                CG_DrawTinyDigitalStringColor(x + 10, y + 4, text, countdownColor);
+                Vector4Copy(colorWhite, countdownColor);
+                if ( secondsLeft <= 5 ) {
+                        Vector4Copy(colorRed, countdownColor);
+                } else if ( secondsLeft <= 10 ) {
+                        Vector4Copy(colorYellow, countdownColor);
+                }
+
+                Com_sprintf( text, sizeof( text ), "%i", secondsLeft );
+                CG_DrawTinyStringColor( labelX, y + 4, label, countdownColor );
+                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, countdownColor );
+                CG_DrawTinyStringColor( valueX + CG_DrawStrlen( text ) * tinyCharWidth, y + 4, "S", countdownColor );
         } else if ( cgs.eliminationActive && drivers <= 1 ) {
-                CG_DrawTinyDigitalStringColor(x + 10, y + 4, "FINAL DRIVER!", colorWhite);
+                CG_DrawTinyStringColor( x + 10.0f, y + 4, "FINAL DRIVER!", colorWhite );
         } else {
-                CG_DrawTinyDigitalStringColor(x + 10, y + 4, "ELIMINATION IN -- S", colorWhite);
+                const char *label = "ELIMINATION IN";
+                const float labelX = x + 10.0f;
+                const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+
+                CG_DrawTinyStringColor( labelX, y + 4, label, colorWhite );
+                Q_strncpyz( text, "--", sizeof( text ) );
+                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, colorWhite );
+                CG_DrawTinyStringColor( valueX + CG_DrawStrlen( text ) * tinyCharWidth, y + 4, " S", colorWhite );
         }
 }
 
