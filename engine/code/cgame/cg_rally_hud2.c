@@ -317,13 +317,17 @@ CG_DrawHUD_OpponentList
 =======================
 */
 void CG_DrawHUD_OpponentList(float x, float y){
-	centity_t	*cent, *other;
+	centity_t		*cent, *other;
 	char		player[64];
-	int			i, j, num;
+	int				i, j, num;
 	float		width, height;
 	int			startPos, endPos;
-	char		s[64];
+	int			maxPositions;
 	vec4_t		color;
+	const float	labelX = x + 12.0f;
+	const float	smallCharWidth = SMALLCHAR_WIDTH + 2.0f;
+	int			digits;
+	float		nameX;
 
 	//ps = &cg.snap->ps;
 	cent = &cg_entities[cg.snap->ps.clientNum];
@@ -335,10 +339,31 @@ void CG_DrawHUD_OpponentList(float x, float y){
 	width = 198;
 	height = 18;
 
+	maxPositions = cgs.numRacers > 0 ? cgs.numRacers : 1;
+
+	digits = 0;
+	while (maxPositions > 0) {
+		digits++;
+		maxPositions /= 10;
+	}
+
+	if (!digits) {
+		digits = 1;
+	}
+
+	nameX = labelX + (digits + 2) * smallCharWidth;
+
 	// draw your position
 	CG_FillRect(x, y, width, height, bgColor);
-	CG_DrawSmallDigitalStringColor(x, y, "POS:", colorWhite);
-	CG_DrawSmallDigitalStringColor(x + 82, y, va("%i/%i", cent->currentPosition, cgs.numRacers), colorWhite);
+	{
+		const char *label = "POS:";
+		char valueText[32];
+		const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * smallCharWidth;
+
+		CG_DrawSmallStringColor(labelX, y, label, colorWhite);
+		Com_sprintf(valueText, sizeof(valueText), "%i/%i", cent->currentPosition, cgs.numRacers);
+		CG_DrawSmallDigitalStringColor(valueX, y, valueText, colorWhite);
+	}
 
 	y += 20;
 
@@ -389,12 +414,18 @@ void CG_DrawHUD_OpponentList(float x, float y){
 		CG_FillRect(x, y, width, height, color);
 
 		Q_strncpyz(player, cgs.clientinfo[num].name, 16 );
-		Com_sprintf(s, sizeof(s), " %i: %s", cgs.clientinfo[num].position, player);
-		CG_DrawSmallDigitalStringColor( x, y, s, colorWhite);
+		{
+			char prefix[16];
+
+			Com_sprintf(prefix, sizeof(prefix), "%*i:", digits, cgs.clientinfo[num].position);
+			CG_DrawSmallDigitalStringColor(labelX, y, prefix, colorWhite);
+			CG_DrawSmallStringColor(nameX, y, player, colorWhite);
+		}
 
 		y += 20;
 	}
 }
+
 
 /*
 =================
