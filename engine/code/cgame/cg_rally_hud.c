@@ -433,13 +433,18 @@ static float CG_DrawTimes( float y ) {
 	centity_t		*cent;
 	int			lapTime;
 	int			totalTime;
-	int			x;
-	char		s[128];
-	char		*time;
+	const char		*time;
+	const float	boxX = 636.0f - 80.0f;
+	const float	boxWidth = 90.0f;
+	const float	boxHeight = 18.0f;
+	const float	labelOffsetX = 10.0f;
+	const float	labelOffsetY = 4.0f;
+	const float	lineAdvance = TINYCHAR_HEIGHT + 8.0f;
+	const float	tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
 
 	//ps = &cg.snap->ps;
 	cent = &cg_entities[cg.snap->ps.clientNum];
-	
+
 	if ( cent->finishRaceTime ){
 		lapTime = cent->finishRaceTime - cent->startLapTime;
 		totalTime = cent->finishRaceTime - cent->startRaceTime;
@@ -452,46 +457,44 @@ static float CG_DrawTimes( float y ) {
 	else {
 		lapTime = 0;
 		totalTime = 0;
-		
+
 	}
 
 //
 // Best Time
 //
-  
-        if ( cgs.laplimit > 1 && cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS ){
+
+	if ( cgs.laplimit > 1 && cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS ){
+		const char *label = "B:";
+		const float labelX = boxX + labelOffsetX;
+		const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+		const float drawY = y + labelOffsetY;
+
 		time = getStringForTime( cent->bestLapTime );
-		
-		Com_sprintf(s, sizeof(s), "B: %s", time);
-//		x = 600 - CG_DrawStrlen(s) * TINYCHAR_WIDTH;
-        x = 636 - 80;
-		CG_FillRect ( x, y, 90, 18, bgColor );
-		x+= 10;		
-		y+= 4;
-		CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
-		y += TINYCHAR_HEIGHT + 4;
+
+		CG_FillRect( boxX, y, boxWidth, boxHeight, bgColor );
+		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
+		CG_DrawTinyDigitalStringColor( valueX, drawY, time, colorWhite );
+		y += lineAdvance;
 	}
 
 //
 // Lap Time
 //
 
-	
+	if ( cgs.laplimit > 1 && cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS ){
+		const char *label = "L:";
+		const float labelX = boxX + labelOffsetX;
+		const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+		const float drawY = y + labelOffsetY;
 
-        if ( cgs.laplimit > 1 && cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS ){
-		time = getStringForTime(lapTime);
+		time = getStringForTime( lapTime );
 
-		Com_sprintf(s, sizeof(s), "L: %s", time);
-//		x = 600 - CG_DrawStrlen(s) * TINYCHAR_WIDTH;
-        x = 636 - 80;
-        CG_FillRect( x, y, 90, 18, bgColor );
-        x+= 10;
-        y+= 4;
-		CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
-		y += TINYCHAR_HEIGHT + 4;
+		CG_FillRect( boxX, y, boxWidth, boxHeight, bgColor );
+		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
+		CG_DrawTinyDigitalStringColor( valueX, drawY, time, colorWhite );
+		y += lineAdvance;
 	}
-
-	
 
 	//
 	// Total Time
@@ -499,25 +502,21 @@ static float CG_DrawTimes( float y ) {
 
 	time = getStringForTime(totalTime);
 
-	/*
-	Com_sprintf(s, sizeof(s), "TOTAL TIME: %s", time);
-	x = 630 - CG_DrawStrlen(s) * SMALLCHAR_WIDTH;
+	{
+		const char *label = "T:";
+		const float labelX = boxX + labelOffsetX;
+		const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+		const float drawY = y + labelOffsetY;
 
-	CG_DrawSmallStringColor( x, y, s, colors[0]);
-	y += SMALLCHAR_HEIGHT;
-	*/
-
-	Com_sprintf(s, sizeof(s), "T: %s", time);
-
-	x = 636 - 80;
-	CG_FillRect( x, y, 90, 18, bgColor );
-	x += 10;
-	y += 4;
-	CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
-	y += TINYCHAR_HEIGHT + 4;
+		CG_FillRect( boxX, y, boxWidth, boxHeight, bgColor );
+		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
+		CG_DrawTinyDigitalStringColor( valueX, drawY, time, colorWhite );
+		y += lineAdvance;
+	}
 
 	return y;
 }
+
 
 
 
@@ -529,11 +528,17 @@ CG_DrawLaps
 */
 static float CG_DrawLaps( float y ) {
 	centity_t		*cent;
-	//playerState_t	*ps;
+	//playerState_t *ps;
 	int			curLap;
 	int			numLaps;
-	char		s[64];
-	int			x;
+	char			value[32];
+	const float	boxX = 636.0f - 80.0f;
+	const float	boxWidth = 90.0f;
+	const float	boxHeight = 18.0f;
+	const float	labelOffsetX = 10.0f;
+	const float	labelOffsetY = 4.0f;
+	const float	lineAdvance = TINYCHAR_HEIGHT + 8.0f;
+	const float	tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
 
 	//ps = &cg.snap->ps;
 	cent = &cg_entities[cg.snap->ps.clientNum];
@@ -545,20 +550,26 @@ static float CG_DrawLaps( float y ) {
 	curLap = cent->currentLap;
 	numLaps = cgs.laplimit;
 
-        if ( numLaps > 1 )
-                Com_sprintf(s, sizeof(s), "LAP: %i/%i", curLap, numLaps);
-        else
-                Com_sprintf(s, sizeof(s), "LAP: %i", curLap);
+	if ( numLaps > 1 )
+		Com_sprintf(value, sizeof(value), "%i/%i", curLap, numLaps);
+	else
+		Com_sprintf(value, sizeof(value), "%i", curLap);
 
-	x = 636 - 80;
-	CG_FillRect( x, y, 90, 18, bgColor );
-	x += 10;
-	y += 4;
-	CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
-	y += TINYCHAR_HEIGHT + 4;
+	CG_FillRect( boxX, y, boxWidth, boxHeight, bgColor );
+	{
+		const char *label = "LAP:";
+		const float labelX = boxX + labelOffsetX;
+		const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+		const float drawY = y + labelOffsetY;
+
+		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
+		CG_DrawTinyDigitalStringColor( valueX, drawY, value, colorWhite );
+	}
+	y += lineAdvance;
 
 	return y;
 }
+
 
 
 /*
