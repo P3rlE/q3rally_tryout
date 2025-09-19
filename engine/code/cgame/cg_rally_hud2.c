@@ -293,12 +293,23 @@ void CG_DrawHUD_Laps(float x, float y){
 
 	// draw heading
 	CG_FillRect(x, y, 170, 18, bgColor);
-	CG_DrawSmallDigitalStringColor(x + 12, y, "LAP:", colorWhite);
-        if ( cgs.laplimit > 1 )
-                CG_DrawSmallDigitalStringColor(x + 102, y, va("%i/%i", cg_entities[cg.snap->ps.clientNum].currentLap, cgs.laplimit), colorWhite);
-        else
-                CG_DrawSmallDigitalStringColor(x + 102, y, va("%i", cg_entities[cg.snap->ps.clientNum].currentLap), colorWhite);
+	{
+		const char *label = "LAP:";
+		char value[32];
+		const float labelX = x + 12.0f;
+		const float smallCharWidth = SMALLCHAR_WIDTH + 2.0f;
+		const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * smallCharWidth;
+
+		CG_DrawSmallStringColor(labelX, y, label, colorWhite);
+		if ( cgs.laplimit > 1 )
+			Com_sprintf(value, sizeof(value), "%i/%i", cg_entities[cg.snap->ps.clientNum].currentLap, cgs.laplimit);
+		else
+			Com_sprintf(value, sizeof(value), "%i", cg_entities[cg.snap->ps.clientNum].currentLap);
+
+		CG_DrawSmallDigitalStringColor(valueX, y, value, colorWhite);
+	}
 }
+
 
 /*
 =======================
