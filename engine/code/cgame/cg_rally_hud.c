@@ -578,101 +578,127 @@ CG_DrawDistanceToFinish
 ======================
 */
 static float CG_DrawDistanceToFinish( float y ) {
-       char            s[64];
-       int             x;
-       float           dist;
-       const float     feetPerMile = 5280.0f;
+	float           dist;
+	const float     feetPerMile = 5280.0f;
+	const float     boxX = 636.0f - 80.0f;
+	const float     boxWidth = 90.0f;
+	const float     boxHeight = 18.0f;
+	const float     labelOffsetX = 10.0f;
+	const float     labelOffsetY = 4.0f;
+	const float     lineAdvance = TINYCHAR_HEIGHT + 8.0f;
+	const float     tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
+	char            numericValue[32];
+	const char      *unit = "";
+	const char      *label = "DIST:";
 
-       // for multi-lap races show distance to next checkpoint instead of finish
-       if ( cgs.laplimit > 1 ) {
-               int             nextCP;
-               centity_t       *checkpoint = NULL;
-               vec3_t          diff;
-               vec3_t          checkpointOrigin;
-               int             i;
+	// for multi-lap races show distance to next checkpoint instead of finish
+	if ( cgs.laplimit > 1 ) {
+		int             nextCP;
+		centity_t       *checkpoint = NULL;
+		vec3_t          diff;
+		vec3_t          checkpointOrigin;
+		int             i;
 
-               nextCP = cg.snap->ps.stats[STAT_NEXT_CHECKPOINT];
-               if ( nextCP <= 0 ) {
-                       return y;
-               }
+		nextCP = cg.snap->ps.stats[STAT_NEXT_CHECKPOINT];
+		if ( nextCP <= 0 ) {
+			return y;
+		}
 
-               for ( i = 0; i < MAX_GENTITIES; i++ ) {
-                       centity_t *cent = &cg_entities[i];
+		for ( i = 0; i < MAX_GENTITIES; i++ ) {
+			centity_t *cent = &cg_entities[i];
 
-                       if ( cent->currentState.eType != ET_CHECKPOINT ) {
-                               continue;
-                       }
+			if ( cent->currentState.eType != ET_CHECKPOINT ) {
+				continue;
+			}
 
-                       if ( cent->currentState.weapon != nextCP ) {
-                               continue;
-                       }
+			if ( cent->currentState.weapon != nextCP ) {
+				continue;
+			}
 
-                       checkpoint = cent;
-                       break;
-               }
+			checkpoint = cent;
+			break;
+		}
 
-               if ( !checkpoint ) {
-                       return y;
-               }
+		if ( !checkpoint ) {
+			return y;
+		}
 
-               VectorCopy( checkpoint->lerpOrigin, checkpointOrigin );
+		VectorCopy( checkpoint->lerpOrigin, checkpointOrigin );
 
-               if ( checkpoint->currentState.solid == SOLID_BMODEL &&
-                        checkpoint->currentState.modelindex > 0 &&
-                        checkpoint->currentState.modelindex < MAX_MODELS ) {
-                       VectorAdd( checkpointOrigin,
-                               cgs.inlineModelMidpoints[ checkpoint->currentState.modelindex ],
-                               checkpointOrigin );
-               }
+		if ( checkpoint->currentState.solid == SOLID_BMODEL &&
+				checkpoint->currentState.modelindex > 0 &&
+				checkpoint->currentState.modelindex < MAX_MODELS ) {
+			VectorAdd( checkpointOrigin,
+					cgs.inlineModelMidpoints[ checkpoint->currentState.modelindex ],
+					checkpointOrigin );
+		}
 
-               VectorSubtract( checkpointOrigin, cg.snap->ps.origin, diff );
+		VectorSubtract( checkpointOrigin, cg.snap->ps.origin, diff );
 
-               dist = VectorLength( diff );
+		dist = VectorLength( diff );
+		label = "CP:";
 
-               if ( cg_metricUnits.integer ) {
-                       dist /= CP_M_2_QU;
-                       Com_sprintf( s, sizeof( s ), "CP: %dm", (int)dist );
-               } else {
-                       dist /= CP_FT_2_QU;
-                       if ( dist >= feetPerMile ) {
-                               float miles = dist / feetPerMile;
-                               Com_sprintf( s, sizeof( s ), "CP: %.1fmi", miles );
-                       } else {
-                               Com_sprintf( s, sizeof( s ), "CP: %dft", (int)dist );
-                       }
-               }
-       }
-       else {
-               dist = cg.snap->ps.stats[STAT_DISTANCE_REMAIN];
+		if ( cg_metricUnits.integer ) {
+			dist /= CP_M_2_QU;
+			Com_sprintf( numericValue, sizeof( numericValue ), "%d", (int)dist );
+			unit = "m";
+		} else {
+			dist /= CP_FT_2_QU;
+			if ( dist >= feetPerMile ) {
+				float miles = dist / feetPerMile;
+				Com_sprintf( numericValue, sizeof( numericValue ), "%.1f", miles );
+				unit = "mi";
+			} else {
+				Com_sprintf( numericValue, sizeof( numericValue ), "%d", (int)dist );
+				unit = "ft";
+			}
+		}
+	}
+	else {
+		dist = cg.snap->ps.stats[STAT_DISTANCE_REMAIN];
+		label = "DIST:";
 
-               if ( cg_distanceFormat.integer == 1 && cgs.trackLength > 0.0f ) {
-                       float percent = dist / cgs.trackLength * 100.0f;
-                       Com_sprintf( s, sizeof( s ), "DIST: %.1f%%", percent );
-               } else {
-                       if ( cg_metricUnits.integer ) {
-                               Com_sprintf( s, sizeof( s ), "DIST: %dm", (int)dist );
-                       } else {
-                               float distFeet = dist * 3.28084f;
+		if ( cg_distanceFormat.integer == 1 && cgs.trackLength > 0.0f ) {
+			float percent = dist / cgs.trackLength * 100.0f;
+			Com_sprintf( numericValue, sizeof( numericValue ), "%.1f", percent );
+			unit = "%";
+		} else {
+			if ( cg_metricUnits.integer ) {
+				Com_sprintf( numericValue, sizeof( numericValue ), "%d", (int)dist );
+				unit = "m";
+			} else {
+				float distFeet = dist * 3.28084f;
 
-                               if ( distFeet >= feetPerMile ) {
-                                       float miles = distFeet / feetPerMile;
-                                       Com_sprintf( s, sizeof( s ), "DIST: %.1fmi", miles );
-                               } else {
-                                       Com_sprintf( s, sizeof( s ), "DIST: %dft", (int)distFeet );
-                               }
-                       }
-               }
-       }
+				if ( distFeet >= feetPerMile ) {
+					float miles = distFeet / feetPerMile;
+					Com_sprintf( numericValue, sizeof( numericValue ), "%.1f", miles );
+					unit = "mi";
+				} else {
+					Com_sprintf( numericValue, sizeof( numericValue ), "%d", (int)distFeet );
+					unit = "ft";
+				}
+			}
+		}
+	}
 
-       x = 636 - 80;
-       CG_FillRect( x, y, 90, 18, bgColor );
-       x += 10;
-       y += 4;
-       CG_DrawTinyDigitalStringColor( x, y, s, colorWhite );
-       y += TINYCHAR_HEIGHT + 4;
+	{
+		const float     labelX = boxX + labelOffsetX;
+		const float     valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+		const float     drawY = y + labelOffsetY;
 
-       return y;
+		CG_FillRect( boxX, y, boxWidth, boxHeight, bgColor );
+		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
+		CG_DrawTinyDigitalStringColor( valueX, drawY, numericValue, colorWhite );
+		if ( unit[0] != '\0' ) {
+			const float unitX = valueX + CG_DrawStrlen( numericValue ) * tinyCharWidth;
+			CG_DrawTinyStringColor( unitX, drawY, unit, colorWhite );
+		}
+		y += lineAdvance;
+	}
+
+	return y;
 }
+
 
 /*
 ======================
