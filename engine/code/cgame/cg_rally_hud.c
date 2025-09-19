@@ -753,9 +753,15 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	int			i, j, num;
 	float		x, width, height;
 	int			startPos, endPos;
-	char		s[64];
+	char		positionLabel[16];
 	float		background[4] = { 0, 0, 0, 0.5 };
 	float		selected[4] = { 0.75, 0.0, 0.0, 0.5 };
+	const float	numberOffsetX = 4.0f;
+	const float	columnSpacing = 4.0f;
+	const float	tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
+	float		numberX;
+	float		nameX;
+	char		maxPositionLabel[16];
 
 	//ps = &cg.snap->ps;
 	cent = &cg_entities[cg.snap->ps.clientNum];
@@ -767,6 +773,10 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	x = 636 - 80;
 	width = 90;
 	height = TINYCHAR_HEIGHT;
+
+	numberX = x + numberOffsetX;
+	Com_sprintf( maxPositionLabel, sizeof( maxPositionLabel ), "%i-", cgs.numRacers );
+	nameX = numberX + CG_DrawStrlen( maxPositionLabel ) * tinyCharWidth + columnSpacing;
 
 	for (i = startPos; i <= endPos; i++){
 		num = -1;
@@ -789,8 +799,18 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 		}
 
 		Q_strncpyz(player, cgs.clientinfo[num].name, 16 );
-		Com_sprintf(s, sizeof(s), "%i-%s", cg_entities[num].currentPosition, player);
-		CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
+		if ( player[0] != '\0' ) {
+			Com_sprintf( positionLabel, sizeof( positionLabel ), "%i-", cg_entities[num].currentPosition );
+		}
+		else {
+			Com_sprintf( positionLabel, sizeof( positionLabel ), "%i", cg_entities[num].currentPosition );
+		}
+
+		CG_DrawTinyDigitalStringColor( numberX, y, positionLabel, colorWhite );
+
+		if ( player[0] != '\0' ) {
+			CG_DrawTinyStringColor( nameX, y, player, colorWhite );
+		}
 
 		y += TINYCHAR_HEIGHT;
 
