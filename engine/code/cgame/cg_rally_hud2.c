@@ -199,6 +199,7 @@ static void CG_DrawHUD_EliminationStatus(float x, float y)
 	int msLeft;
 	int secondsLeft;
 	qboolean showCountdown;
+	const float lineAdvance = TINYCHAR_HEIGHT + 8.0f;
 
 	if ( cgs.gametype != GT_ELIMINATION ) {
 		return;
@@ -215,9 +216,9 @@ static void CG_DrawHUD_EliminationStatus(float x, float y)
         } else {
                 Q_strncpyz(text, "DRIVERS LEFT: --", sizeof(text));
         }
-        CG_DrawSmallDigitalStringColor(x + 10, y + 4, text, colorWhite);
+        CG_DrawTinyDigitalStringColor(x + 10, y + 4, text, colorWhite);
 
-        y += 20;
+        y += lineAdvance;
 
         CG_FillRect(x, y, 196, 18, bgColor);
         displayRound = CG_EliminationDisplayRound();
@@ -226,9 +227,9 @@ static void CG_DrawHUD_EliminationStatus(float x, float y)
         } else {
                 Q_strncpyz(text, "ROUND: --", sizeof(text));
         }
-        CG_DrawSmallDigitalStringColor(x + 10, y + 4, text, colorWhite);
+        CG_DrawTinyDigitalStringColor(x + 10, y + 4, text, colorWhite);
 
-        y += 20;
+        y += lineAdvance;
 
 	CG_FillRect(x, y, 196, 18, bgColor);
 	showCountdown = ( cgs.eliminationActive && drivers > 1 );
@@ -247,11 +248,11 @@ static void CG_DrawHUD_EliminationStatus(float x, float y)
 		}
 
                 Com_sprintf(text, sizeof(text), "ELIMINATION IN %iS", secondsLeft);
-                CG_DrawSmallDigitalStringColor(x + 10, y + 4, text, countdownColor);
+                CG_DrawTinyDigitalStringColor(x + 10, y + 4, text, countdownColor);
         } else if ( cgs.eliminationActive && drivers <= 1 ) {
-                CG_DrawSmallDigitalStringColor(x + 10, y + 4, "FINAL DRIVER!", colorWhite);
+                CG_DrawTinyDigitalStringColor(x + 10, y + 4, "FINAL DRIVER!", colorWhite);
         } else {
-                CG_DrawSmallDigitalStringColor(x + 10, y + 4, "ELIMINATION IN -- S", colorWhite);
+                CG_DrawTinyDigitalStringColor(x + 10, y + 4, "ELIMINATION IN -- S", colorWhite);
         }
 }
 
