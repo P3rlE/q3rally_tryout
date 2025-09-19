@@ -249,15 +249,15 @@ static void CG_DrawHUD_EliminationStatus(float x, float y)
         CG_FillRect(x, y, 196, 18, bgColor);
         showCountdown = ( cgs.eliminationActive && drivers > 1 );
         if ( showCountdown ) {
+                const char *label = "ELIMINATION IN";
+                const float labelX = x + 10.0f;
+                const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+
                 msLeft = CG_EliminationMsLeft();
                 secondsLeft = ( msLeft + 999 ) / 1000;
                 if ( secondsLeft < 0 ) {
                         secondsLeft = 0;
                 }
-
-                const char *label = "ELIMINATION IN";
-                const float labelX = x + 10.0f;
-                const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
 
                 Vector4Copy(colorWhite, countdownColor);
                 if ( secondsLeft <= 5 ) {
