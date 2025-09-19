@@ -26,6 +26,43 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // be a valid snapshot this frame
 
 #include "cg_local.h"
+
+#ifdef Q3_VM
+int CG_EliminationMsLeft( void ) {
+    int msLeft;
+
+    if ( cgs.eliminationMsRemaining <= 0 ) {
+        return 0;
+    }
+
+    if ( cgs.eliminationLastUpdateTime <= 0 ) {
+        return cgs.eliminationMsRemaining;
+    }
+
+    msLeft = cgs.eliminationMsRemaining - ( cg.time - cgs.eliminationLastUpdateTime );
+    if ( msLeft < 0 ) {
+        msLeft = 0;
+    }
+
+    return msLeft;
+}
+
+int CG_EliminationDisplayRound( void ) {
+    int round;
+
+    round = cgs.eliminationRound;
+    if ( round < 0 ) {
+        round = 0;
+    }
+
+    if ( cgs.eliminationActive && cgs.eliminationRemainingPlayers > 1 ) {
+        round++;
+    }
+
+    return round;
+}
+#endif
+
 #ifdef MISSIONPACK
 #include "../../ui/menudef.h"
 

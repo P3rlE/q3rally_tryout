@@ -1491,6 +1491,10 @@ extern  vmCvar_t                cg_fuelWarningLevel;
 extern	vmCvar_t		cg_drawBotPaths;
 // Q3Rally Code END
 
+#ifdef Q3_VM
+int CG_EliminationMsLeft( void );
+int CG_EliminationDisplayRound( void );
+#else
 static ID_INLINE int CG_EliminationMsLeft( void ) {
     int msLeft;
 
@@ -1524,6 +1528,7 @@ static ID_INLINE int CG_EliminationDisplayRound( void ) {
 
     return round;
 }
+#endif
 
 //
 // cg_main.c
