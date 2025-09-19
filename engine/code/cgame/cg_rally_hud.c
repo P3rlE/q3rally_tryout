@@ -1184,9 +1184,9 @@ static float CG_DrawEliminationStatus( float y ) {
 
         CG_FillRect( x, y, 176, 18, bgColor );
         if ( drivers > 0 ) {
-                Com_sprintf( text, sizeof( text ), "Drivers left: %i", drivers );
+                Com_sprintf( text, sizeof( text ), "DRIVERS LEFT: %i", drivers );
         } else {
-                Q_strncpyz( text, "Drivers left: --", sizeof( text ) );
+                Q_strncpyz( text, "DRIVERS LEFT: --", sizeof( text ) );
         }
         CG_DrawSmallDigitalStringColor( x + 10, y + 4, text, colorWhite );
         y += TINYCHAR_HEIGHT + 4;
@@ -1194,9 +1194,9 @@ static float CG_DrawEliminationStatus( float y ) {
         CG_FillRect( x, y, 176, 18, bgColor );
         displayRound = CG_EliminationDisplayRound();
         if ( displayRound > 0 ) {
-                Com_sprintf( text, sizeof( text ), "Round: %i", displayRound );
+                Com_sprintf( text, sizeof( text ), "ROUND: %i", displayRound );
         } else {
-                Q_strncpyz( text, "Round: --", sizeof( text ) );
+                Q_strncpyz( text, "ROUND: --", sizeof( text ) );
         }
         CG_DrawSmallDigitalStringColor( x + 10, y + 4, text, colorWhite );
         y += TINYCHAR_HEIGHT + 4;
@@ -1217,12 +1217,12 @@ static float CG_DrawEliminationStatus( float y ) {
                         Vector4Copy( colorYellow, countdownColor );
                 }
 
-                Com_sprintf( text, sizeof( text ), "Elimination in %is", secondsLeft );
+                Com_sprintf( text, sizeof( text ), "ELIMINATION IN %iS", secondsLeft );
                 CG_DrawSmallDigitalStringColor( x + 10, y + 4, text, countdownColor );
         } else if ( cgs.eliminationActive && drivers <= 1 ) {
-                CG_DrawSmallDigitalStringColor( x + 10, y + 4, "Final driver!", colorWhite );
+                CG_DrawSmallDigitalStringColor( x + 10, y + 4, "FINAL DRIVER!", colorWhite );
         } else {
-                CG_DrawSmallDigitalStringColor( x + 10, y + 4, "Elimination in -- s", colorWhite );
+                CG_DrawSmallDigitalStringColor( x + 10, y + 4, "ELIMINATION IN -- S", colorWhite );
         }
         y += TINYCHAR_HEIGHT + 4;
 
