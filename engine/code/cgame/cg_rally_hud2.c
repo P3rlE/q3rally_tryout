@@ -210,25 +210,25 @@ static void CG_DrawHUD_EliminationStatus(float x, float y)
 	}
 
 	CG_FillRect(x, y, 196, 18, bgColor);
-	if ( drivers > 0 ) {
-		Com_sprintf(text, sizeof(text), "Drivers left: %i", drivers);
-	} else {
-		Q_strncpyz(text, "Drivers left: --", sizeof(text));
-	}
-	CG_DrawSmallDigitalStringColor(x + 10, y + 4, text, colorWhite);
+        if ( drivers > 0 ) {
+                Com_sprintf(text, sizeof(text), "DRIVERS LEFT: %i", drivers);
+        } else {
+                Q_strncpyz(text, "DRIVERS LEFT: --", sizeof(text));
+        }
+        CG_DrawSmallDigitalStringColor(x + 10, y + 4, text, colorWhite);
 
-	y += 20;
+        y += 20;
 
-	CG_FillRect(x, y, 196, 18, bgColor);
-	displayRound = CG_EliminationDisplayRound();
-	if ( displayRound > 0 ) {
-		Com_sprintf(text, sizeof(text), "Round: %i", displayRound);
-	} else {
-		Q_strncpyz(text, "Round: --", sizeof(text));
-	}
-	CG_DrawSmallDigitalStringColor(x + 10, y + 4, text, colorWhite);
+        CG_FillRect(x, y, 196, 18, bgColor);
+        displayRound = CG_EliminationDisplayRound();
+        if ( displayRound > 0 ) {
+                Com_sprintf(text, sizeof(text), "ROUND: %i", displayRound);
+        } else {
+                Q_strncpyz(text, "ROUND: --", sizeof(text));
+        }
+        CG_DrawSmallDigitalStringColor(x + 10, y + 4, text, colorWhite);
 
-	y += 20;
+        y += 20;
 
 	CG_FillRect(x, y, 196, 18, bgColor);
 	showCountdown = ( cgs.eliminationActive && drivers > 1 );
@@ -246,13 +246,13 @@ static void CG_DrawHUD_EliminationStatus(float x, float y)
 			Vector4Copy(colorYellow, countdownColor);
 		}
 
-		Com_sprintf(text, sizeof(text), "Elimination in %is", secondsLeft);
-		CG_DrawSmallDigitalStringColor(x + 10, y + 4, text, countdownColor);
-	} else if ( cgs.eliminationActive && drivers <= 1 ) {
-		CG_DrawSmallDigitalStringColor(x + 10, y + 4, "Final driver!", colorWhite);
-	} else {
-		CG_DrawSmallDigitalStringColor(x + 10, y + 4, "Elimination in -- s", colorWhite);
-	}
+                Com_sprintf(text, sizeof(text), "ELIMINATION IN %iS", secondsLeft);
+                CG_DrawSmallDigitalStringColor(x + 10, y + 4, text, countdownColor);
+        } else if ( cgs.eliminationActive && drivers <= 1 ) {
+                CG_DrawSmallDigitalStringColor(x + 10, y + 4, "FINAL DRIVER!", colorWhite);
+        } else {
+                CG_DrawSmallDigitalStringColor(x + 10, y + 4, "ELIMINATION IN -- S", colorWhite);
+        }
 }
 
 /*
