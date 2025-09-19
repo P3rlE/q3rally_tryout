@@ -772,6 +772,7 @@ typedef enum {
         MOD_POISON,
         MOD_FIRE,
         MOD_GRAPPLE,
+        MOD_ELIMINATION,
         MOD_BREAKABLE_SPLASH
 } meansOfDeath_t;
 
