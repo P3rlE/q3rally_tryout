@@ -1986,18 +1986,17 @@ static void G_SetEliminationSchedule( int referenceTime, int interval ) {
 
         if ( level.eliminationWarning <= 0 ) {
                 level.eliminationWarningTime = referenceTime;
-                return;
-        }
+        } else {
+                warningTime = nextTime - level.eliminationWarning;
+                if ( warningTime < referenceTime ) {
+                        warningTime = referenceTime;
+                }
+                if ( warningTime > nextTime ) {
+                        warningTime = nextTime;
+                }
 
-        warningTime = nextTime - level.eliminationWarning;
-        if ( warningTime < referenceTime ) {
-                warningTime = referenceTime;
+                level.eliminationWarningTime = warningTime;
         }
-        if ( warningTime > nextTime ) {
-                warningTime = nextTime;
-        }
-
-        level.eliminationWarningTime = warningTime;
 
         G_UpdateEliminationInfoConfigString();
 }
