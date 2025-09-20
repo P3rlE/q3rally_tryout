@@ -2163,6 +2163,10 @@ void G_RegisterEliminationDeath( gentity_t *victim ) {
         level.eliminationRound++;
         G_UpdateEliminationPlayerCount();
 
+        victim->client->ps.stats[STAT_POSITION] = level.eliminationRemainingPlayers + 1;
+        Cmd_RacePositions_f();
+        CalculateRanks();
+
         if ( level.eliminationRemainingPlayers > 1 ) {
                 G_SetEliminationSchedule( level.time, level.eliminationInterval );
         } else {
