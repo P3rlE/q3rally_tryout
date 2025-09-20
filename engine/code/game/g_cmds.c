@@ -83,26 +83,45 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 		}
 		perfect = ( cl->ps.persistant[PERS_RANK] == 0 && cl->ps.persistant[PERS_KILLED] == 0 ) ? 1 : 0;
 
-		Com_sprintf (entry, sizeof(entry),
+                {
+                        int positionValue;
+                        int totalDrivers;
 
-			" %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i", level.sortedClients[i],
-			cl->ps.persistant[PERS_SCORE], ping, time,
-			scoreFlags, g_entities[level.sortedClients[i]].s.powerups, accuracy, 
-			cl->ps.persistant[PERS_IMPRESSIVE_COUNT],
-	    cl->ps.persistant[PERS_IMPRESSIVETELEFRAG_COUNT],
-			cl->ps.persistant[PERS_EXCELLENT_COUNT],
-			cl->ps.persistant[PERS_GAUNTLET_FRAG_COUNT], 
-			cl->ps.persistant[PERS_DEFEND_COUNT], 
-			cl->ps.persistant[PERS_ASSIST_COUNT], 
-			perfect,
-			cl->ps.persistant[PERS_CAPTURES],
-			cl->ps.stats[STAT_DAMAGE_DEALT],
-			cl->ps.stats[STAT_DAMAGE_TAKEN],
-			cl->ps.stats[STAT_POSITION]
-			);
+                        positionValue = cl->ps.stats[STAT_POSITION];
+                        if ( g_gametype.integer == GT_ELIMINATION ) {
+                                if ( positionValue <= 0 ) {
+                                        totalDrivers = level.eliminationRound + level.eliminationRemainingPlayers;
+                                        if ( totalDrivers <= 0 ) {
+                                                totalDrivers = level.numNonSpectatorClients;
+                                        }
+                                        if ( totalDrivers <= 0 ) {
+                                                totalDrivers = 1;
+                                        }
+                                        positionValue = totalDrivers;
+                                }
+                        }
+
+                        Com_sprintf (entry, sizeof(entry),
+
+                                " %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i", level.sortedClients[i],
+                                cl->ps.persistant[PERS_SCORE], ping, time,
+                                scoreFlags, g_entities[level.sortedClients[i]].s.powerups, accuracy,
+                                cl->ps.persistant[PERS_IMPRESSIVE_COUNT],
+                cl->ps.persistant[PERS_IMPRESSIVETELEFRAG_COUNT],
+                                cl->ps.persistant[PERS_EXCELLENT_COUNT],
+                                cl->ps.persistant[PERS_GAUNTLET_FRAG_COUNT],
+                                cl->ps.persistant[PERS_DEFEND_COUNT],
+                                cl->ps.persistant[PERS_ASSIST_COUNT],
+                                perfect,
+                                cl->ps.persistant[PERS_CAPTURES],
+                                cl->ps.stats[STAT_DAMAGE_DEALT],
+                                cl->ps.stats[STAT_DAMAGE_TAKEN],
+                                positionValue
+                                );
+                }
 
 
-		j = strlen(entry);
+                j = strlen(entry);
 		if (stringlength + j >= sizeof(string))
 			break;
 		strcpy (string + stringlength, entry);
