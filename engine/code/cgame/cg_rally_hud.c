@@ -1220,7 +1220,8 @@ CG_DrawGear
 */
 
 static float CG_DrawEliminationStatus( float y ) {
-        float x;
+        const float boxWidth = 176.0f;
+        const float x = 640.0f - boxWidth;
         char text[64];
         vec4_t countdownColor;
         int drivers;
@@ -1240,9 +1241,7 @@ static float CG_DrawEliminationStatus( float y ) {
                 drivers = 0;
         }
 
-        x = 636 - 176;
-
-        CG_FillRect( x, y, 176, 18, bgColor );
+        CG_FillRect( x, y, boxWidth, 18, bgColor );
         {
                 const char *label = "DRIVERS LEFT:";
                 const float labelX = x + 10.0f;
@@ -1258,7 +1257,7 @@ static float CG_DrawEliminationStatus( float y ) {
         }
         y += lineAdvance;
 
-        CG_FillRect( x, y, 176, 18, bgColor );
+        CG_FillRect( x, y, boxWidth, 18, bgColor );
         displayRound = CG_EliminationDisplayRound();
         {
                 const char *label = "ROUND:";
@@ -1275,7 +1274,7 @@ static float CG_DrawEliminationStatus( float y ) {
         }
         y += lineAdvance;
 
-        CG_FillRect( x, y, 176, 18, bgColor );
+        CG_FillRect( x, y, boxWidth, 18, bgColor );
         showCountdown = ( cgs.eliminationActive && drivers > 1 );
         if ( showCountdown ) {
                 const char *label = "ELIMINATION IN";
