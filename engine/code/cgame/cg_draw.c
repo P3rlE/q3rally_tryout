@@ -3173,6 +3173,122 @@ void CG_DrawTimedMenus( void ) {
 CG_Draw2D
 =========
 */
+#define CG_MUSIC_BANNER_TIME 5000
+
+static void CG_DrawMusicBanner( void )
+{
+	cgameMusicState_t state;
+	int titleMaxChars;
+	int elapsedSamples;
+	int totalSamples;
+	int sampleRate;
+	int elapsedMs;
+	int totalMs;
+	float progress;
+	char timeBuffer[64];
+	const char *title;
+	int elapsedSec;
+	int totalSec;
+	int percent;
+	float x = 8.0f;
+	float y = 8.0f;
+	float width = 360.0f;
+	float height = SMALLCHAR_HEIGHT * 2 + 14.0f;
+	float barX;
+	float barY;
+	float barWidth;
+	const float bgColor[4] = { 0.0f, 0.0f, 0.0f, 0.6f };
+	const float borderColor[4] = { 1.0f, 1.0f, 1.0f, 0.25f };
+	const float barBg[4] = { 1.0f, 1.0f, 1.0f, 0.2f };
+	const float barFill[4] = { 0.2f, 0.6f, 1.0f, 0.8f };
+
+	Com_Memset( &state, 0, sizeof( state ) );
+	trap_S_GetMusicState( &state );
+
+	if( !state.valid ) {
+		cg.musicBannerExpire = 0;
+		return;
+	}
+
+	if( !cg.musicTitle[0] || state.startSample != cg.musicStartSample ||
+		state.totalSamples != cg.musicTotalSamples || state.sampleRate != cg.musicSampleRate ) {
+		title = state.title[0] ? state.title : state.trackPath;
+		Q_strncpyz( cg.musicTitle, title, sizeof( cg.musicTitle ) );
+		cg.musicStartSample = state.startSample;
+		cg.musicSampleRate = state.sampleRate;
+		cg.musicTotalSamples = state.totalSamples;
+		cg.musicDurationMs = ( state.sampleRate > 0 && state.totalSamples > 0 ) ?
+			(int)((int64_t)state.totalSamples * 1000 / state.sampleRate) : 0;
+		cg.musicBannerExpire = cg.time + CG_MUSIC_BANNER_TIME;
+	}
+
+	if( cg.time >= cg.musicBannerExpire ) {
+		return;
+	}
+
+	title = cg.musicTitle[0] ? cg.musicTitle : ( state.title[0] ? state.title : state.trackPath );
+	sampleRate = cg.musicSampleRate > 0 ? cg.musicSampleRate : state.sampleRate;
+	totalSamples = cg.musicTotalSamples > 0 ? cg.musicTotalSamples : state.totalSamples;
+	elapsedSamples = state.currentSample - cg.musicStartSample;
+	if( elapsedSamples < 0 ) {
+		elapsedSamples = 0;
+	}
+	if( totalSamples > 0 && elapsedSamples > totalSamples ) {
+		elapsedSamples = totalSamples;
+	}
+
+	progress = 0.0f;
+	if( totalSamples > 0 ) {
+		progress = (float)elapsedSamples / (float)totalSamples;
+		if( progress > 1.0f ) {
+			progress = 1.0f;
+		}
+	}
+
+	elapsedMs = 0;
+	if( sampleRate > 0 ) {
+		elapsedMs = (int)((int64_t)elapsedSamples * 1000 / sampleRate);
+	}
+	totalMs = cg.musicDurationMs;
+	if( totalMs <= 0 && totalSamples > 0 && sampleRate > 0 ) {
+		totalMs = (int)((int64_t)totalSamples * 1000 / sampleRate);
+	}
+	if( totalMs > 0 && elapsedMs > totalMs ) {
+		elapsedMs = totalMs;
+	}
+	if( totalMs < 0 ) {
+		totalMs = 0;
+	}
+
+	elapsedSec = elapsedMs / 1000;
+	totalSec = totalMs / 1000;
+	percent = (int)(progress * 100.0f + 0.5f);
+	if( percent < 0 ) {
+		percent = 0;
+	} else if( percent > 100 ) {
+		percent = 100;
+	}
+
+	Com_sprintf( timeBuffer, sizeof( timeBuffer ), "%02d:%02d / %02d:%02d (%d%%)",
+		elapsedSec / 60, elapsedSec % 60, totalSec / 60, totalSec % 60, percent );
+
+	CG_FillRect( x, y, width, height, bgColor );
+	CG_DrawRect( x, y, width, height, 1.0f, borderColor );
+
+	titleMaxChars = (int)((width - 16.0f) / (SMALLCHAR_WIDTH + 2));
+	if( titleMaxChars < 0 ) {
+		titleMaxChars = 0;
+	}
+	CG_DrawStringExt( (int)(x + 8.0f), (int)(y + 4.0f), title, colorWhite, qfalse, qtrue, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT, titleMaxChars );
+	CG_DrawStringExt( (int)(x + 8.0f), (int)(y + SMALLCHAR_HEIGHT + 6.0f), timeBuffer, colorWhite, qfalse, qtrue, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT, 0 );
+
+	barX = x + 8.0f;
+	barWidth = width - 16.0f;
+	barY = y + height - 8.0f;
+	CG_FillRect( barX, barY, barWidth, 4.0f, barBg );
+	CG_FillRect( barX, barY, barWidth * progress, 4.0f, barFill );
+}
+
 static void CG_Draw2D(stereoFrame_t stereoFrame)
 {
 #ifdef MISSIONPACK
@@ -3193,6 +3309,8 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 		CG_DrawIntermission();
 		return;
 	}
+
+	CG_DrawMusicBanner();
 
 	if ( cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR 
 		|| isRaceObserver( cg.snap->ps.clientNum ) ) {

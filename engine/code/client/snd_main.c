@@ -134,6 +134,19 @@ void S_StopBackgroundTrack( void )
 	}
 }
 
+void S_GetMusicState( cgameMusicState_t *state )
+{
+	if( !state ) {
+		return;
+	}
+
+	if( si.GetMusicState ) {
+		si.GetMusicState( state );
+	} else {
+		Com_Memset( state, 0, sizeof( *state ) );
+	}
+}
+
 /*
 =================
 S_RawSamples
