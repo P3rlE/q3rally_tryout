@@ -443,14 +443,14 @@ void CG_DrawHUD_OpponentList(float x, float y){
 		{
 			int positionValue;
 			qboolean entryEliminated;
-			const float *numberColor;
-			const float *nameColor;
+			vec4_t numberColor;
+			vec4_t nameColor;
 			char prefix[16];
 
 			positionValue = cgs.clientinfo[num].position;
 			entryEliminated = qfalse;
-			numberColor = colorWhite;
-			nameColor = colorWhite;
+			Vector4Copy( colorWhite, numberColor );
+			Vector4Copy( colorWhite, nameColor );
 
 			if ( isEliminationMode && positionValue > 0 && cgs.eliminationRemainingPlayers > 0 &&
 				positionValue > cgs.eliminationRemainingPlayers ) {
@@ -459,8 +459,8 @@ void CG_DrawHUD_OpponentList(float x, float y){
 
 			if ( entryEliminated ) {
 				Vector4Copy( eliminatedBackground, color );
-				numberColor = eliminatedTextColor;
-				nameColor = eliminatedTextColor;
+				Vector4Copy( eliminatedTextColor, numberColor );
+				Vector4Copy( eliminatedTextColor, nameColor );
 			}
 
 			CG_FillRect(x, y, width, height, color);
