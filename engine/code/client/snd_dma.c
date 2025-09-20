@@ -60,6 +60,8 @@ typedef struct {
 static jukeboxState_t s_jukeboxState;
 static cgameMusicState_t s_musicState;
 
+extern int s_soundtime;
+
 static void S_MusicInfoReset( void );
 static void S_UpdateMusicStateForStream( const char *filename );
 static void S_BuildMusicTitleFromPath( const char *filePath, char *out, size_t outSize );
@@ -242,8 +244,6 @@ static qboolean Jukebox_Begin( const char *currentTrack )
 
 	return qtrue;
 }
-
-extern int s_soundtime;
 
 static void Jukebox_UpdateTrackInfo( void )
 {
