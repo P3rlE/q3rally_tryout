@@ -94,7 +94,7 @@ static void S_BuildMusicTitleFromPath( const char *filePath, char *out, size_t o
 	}
 
 	slash = strrchr( filePath, '/' );
-	backslash = strrchr( filePath, '\' );
+	backslash = strrchr( filePath, '\\' );
 	if( backslash && ( !slash || backslash > slash ) ) {
 		slash = backslash;
 	}
@@ -153,7 +153,7 @@ static qboolean Jukebox_PathIsUnderBase( const char *path )
 		return qfalse;
 	}
 
-	if( path[baseLen] && path[baseLen] != '/' && path[baseLen] != '\' ) {
+	if( path[baseLen] && path[baseLen] != '/' && path[baseLen] != '\\' ) {
 		return qfalse;
 	}
 
