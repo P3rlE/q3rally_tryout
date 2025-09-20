@@ -309,6 +309,8 @@ void G_ShutdownGame( int restart );
 void CheckExitRules( void );
 static void G_RunEliminationTimers( void );
 static void G_UpdateEliminationInfoConfigString( void );
+static void G_SetEliminationSchedule( int referenceTime, int interval );
+static void G_HandleEliminationCvarChanges( int oldStartDelay, int oldInterval, qboolean startDelayChanged, qboolean intervalChanged, qboolean warningChanged );
 
 
 /*
@@ -522,6 +524,56 @@ void G_RegisterCvars( void ) {
 	level.warmupModificationCount = g_warmup.modificationCount;
 }
 
+static void G_HandleEliminationCvarChanges( int oldStartDelay, int oldInterval, qboolean startDelayChanged, qboolean intervalChanged, qboolean warningChanged ) {
+	qboolean scheduleActive;
+	qboolean waitingForFirstElimination;
+	qboolean rescheduled = qfalse;
+	int referenceTime;
+	int effectiveOldStartDelay;
+	int effectiveOldInterval;
+
+	if ( !startDelayChanged && !intervalChanged && !warningChanged ) {
+		return;
+	}
+
+	scheduleActive = ( level.eliminationNextTriggerTime > 0 );
+
+	if ( !scheduleActive ) {
+		G_UpdateEliminationInfoConfigString();
+		return;
+	}
+
+	waitingForFirstElimination = ( !level.eliminationActive || level.eliminationRound <= 0 );
+	effectiveOldStartDelay = ( oldStartDelay < 0 ) ? 0 : oldStartDelay;
+	effectiveOldInterval = ( oldInterval < 0 ) ? 0 : oldInterval;
+
+	if ( waitingForFirstElimination ) {
+		if ( startDelayChanged || warningChanged ) {
+			referenceTime = level.eliminationNextTriggerTime - effectiveOldStartDelay;
+			if ( level.eliminationNextTriggerTime <= 0 ) {
+				referenceTime = level.time;
+			}
+
+			G_SetEliminationSchedule( referenceTime, level.eliminationStartDelay );
+			rescheduled = qtrue;
+		}
+	} else {
+		if ( intervalChanged || warningChanged ) {
+			referenceTime = level.eliminationNextTriggerTime - effectiveOldInterval;
+			if ( level.eliminationNextTriggerTime <= 0 ) {
+				referenceTime = level.time;
+			}
+
+			G_SetEliminationSchedule( referenceTime, level.eliminationInterval );
+			rescheduled = qtrue;
+		}
+	}
+
+	if ( !rescheduled ) {
+		G_UpdateEliminationInfoConfigString();
+	}
+}
+
 /*
 =================
 G_UpdateCvars
@@ -531,6 +583,11 @@ void G_UpdateCvars( void ) {
 	int			i;
 	cvarTable_t	*cv;
 	qboolean remapped = qfalse;
+	int oldStartDelay = level.eliminationStartDelay;
+	int oldInterval = level.eliminationInterval;
+	qboolean startDelayChanged = qfalse;
+	qboolean intervalChanged = qfalse;
+	qboolean warningChanged = qfalse;
 
 	for ( i = 0, cv = gameCvarTable ; i < gameCvarTableSize ; i++, cv++ ) {
 		if ( cv->vmCvar ) {
@@ -540,8 +597,19 @@ void G_UpdateCvars( void ) {
 				cv->modificationCount = cv->vmCvar->modificationCount;
 
 				if ( cv->trackChange ) {
-					trap_SendServerCommand( -1, va("print \"Server: %s changed to %s\n\"", 
-						cv->cvarName, cv->vmCvar->string ) );
+					trap_SendServerCommand( -1, va("print \"Server: %s changed to %s\n\"",
+							cv->cvarName, cv->vmCvar->string ) );
+				}
+
+				if ( cv->vmCvar == &g_eliminationStartDelay ) {
+					level.eliminationStartDelay = cv->vmCvar->integer;
+					startDelayChanged = qtrue;
+				} else if ( cv->vmCvar == &g_eliminationInterval ) {
+					level.eliminationInterval = cv->vmCvar->integer;
+					intervalChanged = qtrue;
+				} else if ( cv->vmCvar == &g_eliminationWarning ) {
+					level.eliminationWarning = cv->vmCvar->integer;
+					warningChanged = qtrue;
 				}
 
 				if (cv->teamShader) {
@@ -549,6 +617,10 @@ void G_UpdateCvars( void ) {
 				}
 			}
 		}
+		}
+
+	if ( startDelayChanged || intervalChanged || warningChanged ) {
+		G_HandleEliminationCvarChanges( oldStartDelay, oldInterval, startDelayChanged, intervalChanged, warningChanged );
 	}
 
 	if (remapped) {
