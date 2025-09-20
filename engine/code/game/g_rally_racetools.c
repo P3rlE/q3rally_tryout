@@ -366,6 +366,7 @@ void CalculatePlayerPositions( void )
 	gentity_t	*ent, *leader, *cur, *last;
 	int			position;
 	qboolean	positionChanged;
+	qboolean	eliminationMode;
 
 //	if (level.startRaceTime + FRAMETIME > level.time || level.startRaceTime == 0){
 //		return;
@@ -375,6 +376,7 @@ void CalculatePlayerPositions( void )
 	}
 
 	positionChanged = qfalse;
+	eliminationMode = ( g_gametype.integer == GT_ELIMINATION || g_gametype.integer == GT_LCS );
 	leader = ent = last = NULL;
 	while ( (ent = G_Find (ent, FOFS(classname), "player")) != NULL )
 	{
@@ -382,6 +384,11 @@ void CalculatePlayerPositions( void )
 //		if ( isRaceObserver(ent->s.number) ) continue;
 
 		ent->carBehind = NULL;
+
+		if ( eliminationMode && ent->client->finishRaceTime ) {
+			// eliminated drivers already have their knockout slot locked in
+			continue;
+		}
 
 		if ( leader == NULL )
 		{
