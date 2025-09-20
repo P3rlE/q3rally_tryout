@@ -2023,7 +2023,7 @@ static void G_UpdateEliminationInfoConfigString( void ) {
                         round = 0;
                 }
 
-                if ( active && level.eliminationNextTriggerTime > level.time && remaining > 1 ) {
+                if ( level.eliminationNextTriggerTime > level.time && ( remaining > 1 || !level.startRaceTime ) ) {
                         msLeft = level.eliminationNextTriggerTime - level.time;
                 } else {
                         msLeft = 0;
