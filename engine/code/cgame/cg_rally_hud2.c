@@ -190,8 +190,10 @@ void CG_DrawHUD_Positions(float x, float y){
 	}
 }
 
-static void CG_DrawHUD_EliminationStatus(float x, float y)
+static void CG_DrawHUD_EliminationStatus(float y)
 {
+        const float boxWidth = 196.0f;
+        const float baseX = 640.0f - boxWidth;
         char text[64];
         vec4_t countdownColor;
         int drivers;
@@ -211,10 +213,10 @@ static void CG_DrawHUD_EliminationStatus(float x, float y)
 		drivers = 0;
 	}
 
-        CG_FillRect(x, y, 196, 18, bgColor);
+        CG_FillRect(baseX, y, boxWidth, 18, bgColor);
         {
                 const char *label = "DRIVERS LEFT:";
-                const float labelX = x + 10.0f;
+                const float labelX = baseX + 10.0f;
                 const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
 
                 CG_DrawTinyStringColor( labelX, y + 4, label, colorWhite );
@@ -228,11 +230,11 @@ static void CG_DrawHUD_EliminationStatus(float x, float y)
 
         y += lineAdvance;
 
-        CG_FillRect(x, y, 196, 18, bgColor);
+        CG_FillRect(baseX, y, boxWidth, 18, bgColor);
         displayRound = CG_EliminationDisplayRound();
         {
                 const char *label = "ROUND:";
-                const float labelX = x + 10.0f;
+                const float labelX = baseX + 10.0f;
                 const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
 
                 CG_DrawTinyStringColor( labelX, y + 4, label, colorWhite );
@@ -246,11 +248,11 @@ static void CG_DrawHUD_EliminationStatus(float x, float y)
 
         y += lineAdvance;
 
-        CG_FillRect(x, y, 196, 18, bgColor);
+        CG_FillRect(baseX, y, boxWidth, 18, bgColor);
         showCountdown = ( cgs.eliminationActive && drivers > 1 );
         if ( showCountdown ) {
                 const char *label = "ELIMINATION IN";
-                const float labelX = x + 10.0f;
+                const float labelX = baseX + 10.0f;
                 const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
 
                 msLeft = CG_EliminationMsLeft();
@@ -271,10 +273,10 @@ static void CG_DrawHUD_EliminationStatus(float x, float y)
                 CG_DrawTinyDigitalStringColor( valueX, y + 4, text, countdownColor );
                 CG_DrawTinyStringColor( valueX + CG_DrawStrlen( text ) * tinyCharWidth, y + 4, "S", countdownColor );
         } else if ( cgs.eliminationActive && drivers <= 1 ) {
-                CG_DrawTinyStringColor( x + 10.0f, y + 4, "FINAL DRIVER!", colorWhite );
+                CG_DrawTinyStringColor( baseX + 10.0f, y + 4, "FINAL DRIVER!", colorWhite );
         } else {
                 const char *label = "ELIMINATION IN";
-                const float labelX = x + 10.0f;
+                const float labelX = baseX + 10.0f;
                 const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
 
                 CG_DrawTinyStringColor( labelX, y + 4, label, colorWhite );
@@ -587,7 +589,7 @@ qboolean CG_DrawHUD( void ) {
                 CG_DrawHUD_Positions(0, 228);
                 CG_DrawHUD_Laps(0, 304);
                 if (cgs.gametype == GT_ELIMINATION) {
-                        CG_DrawHUD_EliminationStatus(440, 72);
+                        CG_DrawHUD_EliminationStatus(72);
                 }
                 CG_DrawHUD_OpponentList(440, 130);
 
