@@ -2163,6 +2163,31 @@ void G_RegisterEliminationDeath( gentity_t *victim ) {
         level.eliminationRound++;
         G_UpdateEliminationPlayerCount();
 
+        {
+                int totalDrivers;
+                int knockoutRank;
+
+                if ( level.eliminationRemainingPlayers < 0 ) {
+                        level.eliminationRemainingPlayers = 0;
+                }
+
+                totalDrivers = level.eliminationRound + level.eliminationRemainingPlayers;
+                if ( totalDrivers < 1 ) {
+                        totalDrivers = ( level.eliminationRound > 0 ) ? level.eliminationRound : 1;
+                }
+
+                knockoutRank = totalDrivers - level.eliminationRound + 1;
+                if ( knockoutRank < 1 ) {
+                        knockoutRank = 1;
+                }
+
+                if ( victim->client->ps.stats[STAT_POSITION] != knockoutRank ) {
+                        victim->client->ps.stats[STAT_POSITION] = knockoutRank;
+                        Cmd_RacePositions_f();
+                        CalculateRanks();
+                }
+        }
+
         if ( level.eliminationRemainingPlayers > 1 ) {
                 G_SetEliminationSchedule( level.time, level.eliminationInterval );
         } else {

@@ -731,9 +731,43 @@ static float CG_DrawCurrentPosition( float y ) {
 		const float	labelX = x + labelOffsetX;
 		const float	drawY = y + labelOffsetY;
 		const float	valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+		vec4_t	 posColor;
+		char	 valueText[32];
+		qboolean	 isEliminationMode;
+		qboolean	 isEliminated;
+
+		isEliminationMode = ( cgs.gametype == GT_ELIMINATION );
+		isEliminated = qfalse;
+
+		Vector4Copy( colorWhite, posColor );
+
+		if ( isEliminationMode ) {
+			if ( pos > 0 ) {
+				Com_sprintf( valueText, sizeof( valueText ), "%i/%i", pos, cgs.numRacers );
+			} else {
+				Q_strncpyz( valueText, "--", sizeof( valueText ) );
+			}
+
+			if ( pos > 0 && cgs.eliminationRemainingPlayers > 0 &&
+				pos > cgs.eliminationRemainingPlayers ) {
+				isEliminated = qtrue;
+			}
+
+			if ( isEliminated ) {
+				posColor[0] = 0.6f;
+				posColor[1] = 0.6f;
+				posColor[2] = 0.6f;
+			}
+		} else {
+			if ( pos > 0 ) {
+				Com_sprintf( valueText, sizeof( valueText ), "%i/%i", pos, cgs.numRacers );
+			} else {
+				Q_strncpyz( valueText, "--", sizeof( valueText ) );
+			}
+		}
 
 		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
-		CG_DrawTinyStringColor( valueX, drawY, va( "%i/%i", pos, cgs.numRacers ), colorWhite );
+		CG_DrawTinyStringColor( valueX, drawY, valueText, posColor );
 	}
 
 	y += 20;
@@ -756,15 +790,19 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	char		positionLabel[16];
 	float		background[4] = { 0, 0, 0, 0.5 };
 	float		selected[4] = { 0.75, 0.0, 0.0, 0.5 };
+	float		eliminatedBackground[4] = { 0.25f, 0.25f, 0.25f, 0.5f };
+	vec4_t	eliminatedTextColor = { 0.7f, 0.7f, 0.7f, 1.0f };
 	const float	numberOffsetX = 4.0f;
 	const float	columnSpacing = 4.0f;
 	const float	tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
 	float		numberX;
 	float		nameX;
 	char		maxPositionLabel[16];
+	qboolean	isEliminationMode;
 
 	//ps = &cg.snap->ps;
 	cent = &cg_entities[cg.snap->ps.clientNum];
+	isEliminationMode = ( cgs.gametype == GT_ELIMINATION );
 
 	startPos = cent->currentPosition - 4 < 1 ? 1 : cent->currentPosition - 4;
 	endPos = startPos + 8 > cgs.numRacers ? cgs.numRacers : startPos + 8;
@@ -791,28 +829,54 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 
 		if (num < 0 || num > cgs.maxclients) continue;
 
-		if (num == cent->currentState.clientNum){
-			CG_FillRect( x, y, width, height, selected );
-		}
-		else {
-			CG_FillRect( x, y, width, height, background );
-		}
+		{
+			int otherPos;
+			qboolean entryEliminated;
+			const float *numberColor;
+			const float *nameColor;
 
-		Q_strncpyz(player, cgs.clientinfo[num].name, 16 );
-		if ( player[0] != '\0' ) {
-			Com_sprintf( positionLabel, sizeof( positionLabel ), "%i-", cg_entities[num].currentPosition );
-		}
-		else {
-			Com_sprintf( positionLabel, sizeof( positionLabel ), "%i", cg_entities[num].currentPosition );
-		}
+			otherPos = cg_entities[num].currentPosition;
+			entryEliminated = qfalse;
+			numberColor = colorWhite;
+			nameColor = colorWhite;
 
-		CG_DrawTinyStringColor( numberX, y, positionLabel, colorWhite );
+			if ( isEliminationMode && otherPos > 0 && cgs.eliminationRemainingPlayers > 0 &&
+				otherPos > cgs.eliminationRemainingPlayers ) {
+				entryEliminated = qtrue;
+			}
 
-		if ( player[0] != '\0' ) {
-			CG_DrawTinyStringColor( nameX, y, player, colorWhite );
+			if ( num == cent->currentState.clientNum ) {
+				CG_FillRect( x, y, width, height, selected );
+			} else if ( entryEliminated ) {
+				CG_FillRect( x, y, width, height, eliminatedBackground );
+			} else {
+				CG_FillRect( x, y, width, height, background );
+			}
+
+			if ( entryEliminated ) {
+				numberColor = eliminatedTextColor;
+				nameColor = eliminatedTextColor;
+			}
+
+			Q_strncpyz(player, cgs.clientinfo[num].name, 16 );
+			if ( otherPos > 0 ) {
+				if ( player[0] != '\0' ) {
+					Com_sprintf( positionLabel, sizeof( positionLabel ), "%i-", otherPos );
+				} else {
+					Com_sprintf( positionLabel, sizeof( positionLabel ), "%i", otherPos );
+				}
+			} else {
+				Q_strncpyz( positionLabel, "--", sizeof( positionLabel ) );
+			}
+
+			CG_DrawTinyStringColor( numberX, y, positionLabel, numberColor );
+
+			if ( player[0] != '\0' ) {
+				CG_DrawTinyStringColor( nameX, y, player, nameColor );
+			}
+
+			y += TINYCHAR_HEIGHT;
 		}
-
-		y += TINYCHAR_HEIGHT;
 
 	}
 

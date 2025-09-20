@@ -514,6 +514,7 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
     vec4_t botColor;
     vec4_t readyColor;
     qboolean isRacingMode;
+    qboolean isEliminationMode;
     
     if (score->client < 0 || score->client >= cgs.maxclients) {
         return;
@@ -531,17 +532,47 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
     rowHeight = isCompact ? MODERN_SB_COMPACT_HEIGHT : MODERN_SB_ROW_HEIGHT;
     avatarSize = rowHeight - 8;
     isRacingMode = CG_IsRacingGametype();
+    isEliminationMode = (cgs.gametype == GT_ELIMINATION);
     
     switch (colType) {
         case SBCOL_RANK:
             if (ci->team == TEAM_SPECTATOR) {
                 Com_sprintf(buffer, sizeof(buffer), "SPEC");
                 CG_DrawModernText(x, y, buffer, 1, width, textColor, qfalse);
+            } else if (isEliminationMode) {
+                if (score->position > 0) {
+                    qboolean isEliminated = qfalse;
+
+                    if (cgs.eliminationActive || cgs.eliminationRemainingPlayers > 0) {
+                        if (cgs.eliminationRemainingPlayers > 0 &&
+                            score->position > cgs.eliminationRemainingPlayers) {
+                            isEliminated = qtrue;
+                        }
+                    }
+
+                    Com_sprintf(buffer, sizeof(buffer), "%d", score->position);
+                    if (isEliminated) {
+                        vec4_t eliminatedColor;
+
+                        eliminatedColor[0] = 0.6f;
+                        eliminatedColor[1] = 0.6f;
+                        eliminatedColor[2] = 0.6f;
+                        eliminatedColor[3] = fade;
+                        CG_DrawModernText(x, y, buffer, 1, width, eliminatedColor, qfalse);
+                    } else {
+                        CG_GetRankColor(score->position, rankColor);
+                        rankColor[3] = fade;
+                        CG_DrawModernText(x, y, buffer, 1, width, rankColor,
+                                         (score->position <= 3) ? qtrue : qfalse);
+                    }
+                } else {
+                    CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
+                }
             } else if (isRacingMode && score->position > 0) {
                 Com_sprintf(buffer, sizeof(buffer), "%d", score->position);
                 CG_GetRankColor(score->position, rankColor);
                 rankColor[3] = fade;
-                CG_DrawModernText(x, y, buffer, 1, width, rankColor, 
+                CG_DrawModernText(x, y, buffer, 1, width, rankColor,
                                  (score->position <= 3) ? qtrue : qfalse);
             } else if (!isRacingMode && rank > 0) {
                 Com_sprintf(buffer, sizeof(buffer), "%d", rank);

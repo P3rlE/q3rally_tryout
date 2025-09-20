@@ -381,6 +381,16 @@ void CalculatePlayerPositions( void )
 		if ( ent->client->sess.sessionTeam == TEAM_SPECTATOR ) continue;
 //		if ( isRaceObserver(ent->s.number) ) continue;
 
+		if ( g_gametype.integer == GT_ELIMINATION && level.startRaceTime ) {
+			if ( ent->client->finishRaceTime && ent->client->ps.stats[STAT_HEALTH] <= 0 ) {
+				continue;
+			}
+
+			if ( ent->client->ps.stats[STAT_HEALTH] <= 0 ) {
+				continue;
+			}
+		}
+
 		ent->carBehind = NULL;
 
 		if ( leader == NULL )
