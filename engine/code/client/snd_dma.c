@@ -78,7 +78,7 @@ static qboolean Jukebox_PathIsUnderBase( const char *path )
 		return qfalse;
 	}
 
-	if( path[baseLen] && path[baseLen] != '/' && path[baseLen] != '\' ) {
+		if( path[baseLen] && path[baseLen] != '/' && path[baseLen] != '\\' ) {
 		return qfalse;
 	}
 
