@@ -832,13 +832,13 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 		{
 			int otherPos;
 			qboolean entryEliminated;
-			const float *numberColor;
-			const float *nameColor;
+			vec4_t numberColor;
+			vec4_t nameColor;
 
 			otherPos = cg_entities[num].currentPosition;
 			entryEliminated = qfalse;
-			numberColor = colorWhite;
-			nameColor = colorWhite;
+			Vector4Copy( colorWhite, numberColor );
+			Vector4Copy( colorWhite, nameColor );
 
 			if ( isEliminationMode && otherPos > 0 && cgs.eliminationRemainingPlayers > 0 &&
 				otherPos > cgs.eliminationRemainingPlayers ) {
@@ -854,8 +854,8 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 			}
 
 			if ( entryEliminated ) {
-				numberColor = eliminatedTextColor;
-				nameColor = eliminatedTextColor;
+				Vector4Copy( eliminatedTextColor, numberColor );
+				Vector4Copy( eliminatedTextColor, nameColor );
 			}
 
 			Q_strncpyz(player, cgs.clientinfo[num].name, 16 );
