@@ -1275,7 +1275,7 @@ static float CG_DrawEliminationStatus( float y ) {
         y += lineAdvance;
 
         CG_FillRect( x, y, boxWidth, 18, bgColor );
-        showCountdown = ( cgs.eliminationActive && drivers > 1 );
+        showCountdown = ( cgs.eliminationActive && drivers > 1 ) || ( !cgs.eliminationActive && drivers > 0 && CG_EliminationMsLeft() > 0 );
         if ( showCountdown ) {
                 const char *label = "ELIMINATION IN";
                 const float labelX = x + 10.0f;
