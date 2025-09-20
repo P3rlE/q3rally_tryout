@@ -179,7 +179,7 @@ void CG_DrawHUD_Positions(float x, float y){
 
 	// draw your position
 	CG_DrawSmallDigitalStringColor(x + 12, y, "YOU:", colorWhite);
-	CG_DrawSmallDigitalStringColor(x + 102, y, va("%i/%i", cg_entities[cg.snap->ps.clientNum].currentPosition, cgs.numRacers), colorWhite);
+	CG_DrawSmallDigitalStringColor(x + 102, y, va("%i/%i", cgs.clientinfo[cg.snap->ps.clientNum].position, cgs.numRacers), colorWhite);
 
 	y += 20;
 
@@ -319,7 +319,8 @@ CG_DrawHUD_OpponentList
 =======================
 */
 void CG_DrawHUD_OpponentList(float x, float y){
-	centity_t		*cent, *other;
+	const int	clientNum = cg.snap->ps.clientNum;
+	const clientInfo_t	*clientInfo;
 	char		player[64];
 	int				i, j, num;
 	float		width, height;
@@ -335,10 +336,11 @@ void CG_DrawHUD_OpponentList(float x, float y){
 	qboolean	isEliminationMode;
 
 	//ps = &cg.snap->ps;
-	cent = &cg_entities[cg.snap->ps.clientNum];
+	clientInfo = &cgs.clientinfo[clientNum];
 	isEliminationMode = ( cgs.gametype == GT_ELIMINATION );
 
-	startPos = cent->currentPosition - 4 < 1 ? 1 : cent->currentPosition - 4;
+	startPos = clientInfo->infoValid ? clientInfo->position - 4 : 1;
+	startPos = startPos < 1 ? 1 : startPos;
 	endPos = startPos + 8 > cgs.numRacers ? cgs.numRacers : startPos + 8;
 	startPos = endPos - 8 < 1 ? 1 : endPos - 8;
 
@@ -371,7 +373,7 @@ void CG_DrawHUD_OpponentList(float x, float y){
 
 		CG_DrawSmallStringColor(labelX, y, label, colorWhite);
 
-		positionValue = cent->currentPosition;
+		positionValue = clientInfo->infoValid ? clientInfo->position : 0;
 		Vector4Copy( colorWhite, valueColor );
 
 		if ( positionValue > 0 ) {
@@ -399,13 +401,14 @@ void CG_DrawHUD_OpponentList(float x, float y){
 	for (i = startPos; i <= endPos; i++){
 		num = -1;
 		for (j = 0; j < cgs.maxclients; j++){
-			other = &cg_entities[j];
-			if ( !other ) continue;
-//			if ( isRaceObserver(other->currentState.clientNum) ) continue;
-			if ( cgs.clientinfo[other->currentState.clientNum].team == TEAM_SPECTATOR ) continue;
+			const clientInfo_t *otherInfo = &cgs.clientinfo[j];
 
-			if ( cgs.clientinfo[other->currentState.clientNum].position == i ) {
-				num = other->currentState.clientNum;
+			if ( !otherInfo->infoValid ) continue;
+//			if ( isRaceObserver(j) ) continue;
+			if ( otherInfo->team == TEAM_SPECTATOR ) continue;
+
+			if ( otherInfo->position == i ) {
+				num = j;
 				break;
 			}
 		}
