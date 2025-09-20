@@ -225,7 +225,7 @@ static void CG_DrawHUD_EliminationStatus(float y)
                 } else {
                         Q_strncpyz( text, "--", sizeof( text ) );
                 }
-                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, colorWhite );
+                CG_DrawTinyStringColor( valueX, y + 4, text, colorWhite );
         }
 
         y += lineAdvance;
@@ -243,7 +243,7 @@ static void CG_DrawHUD_EliminationStatus(float y)
                 } else {
                         Q_strncpyz( text, "--", sizeof( text ) );
                 }
-                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, colorWhite );
+                CG_DrawTinyStringColor( valueX, y + 4, text, colorWhite );
         }
 
         y += lineAdvance;
@@ -270,7 +270,7 @@ static void CG_DrawHUD_EliminationStatus(float y)
 
                 Com_sprintf( text, sizeof( text ), "%i", secondsLeft );
                 CG_DrawTinyStringColor( labelX, y + 4, label, countdownColor );
-                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, countdownColor );
+                CG_DrawTinyStringColor( valueX, y + 4, text, countdownColor );
                 CG_DrawTinyStringColor( valueX + CG_DrawStrlen( text ) * tinyCharWidth, y + 4, "S", countdownColor );
         } else if ( cgs.eliminationActive && drivers <= 1 ) {
                 CG_DrawTinyStringColor( baseX + 10.0f, y + 4, "FINAL DRIVER!", colorWhite );
@@ -281,7 +281,7 @@ static void CG_DrawHUD_EliminationStatus(float y)
 
                 CG_DrawTinyStringColor( labelX, y + 4, label, colorWhite );
                 Q_strncpyz( text, "--", sizeof( text ) );
-                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, colorWhite );
+                CG_DrawTinyStringColor( valueX, y + 4, text, colorWhite );
                 CG_DrawTinyStringColor( valueX + CG_DrawStrlen( text ) * tinyCharWidth, y + 4, " S", colorWhite );
         }
 }
@@ -499,16 +499,16 @@ void CG_DrawHUD_DerbyList(float x, float y){
 	CG_FillRect(x, y, 120, 18, bgColor);
 
 	// name
-	CG_DrawTinyDigitalStringColor( x + 16, y, "P:", colorWhite);
+	CG_DrawTinyStringColor( x + 16, y, "P:", colorWhite);
 
 	// time
 //	CG_DrawTinyStringColor( x + 70, y, "TIME:", colorWhite);
 
 	// dmg dealt
-	CG_DrawTinyDigitalStringColor( x + 70, y, "DD:", colorWhite);
+	CG_DrawTinyStringColor( x + 70, y, "DD:", colorWhite);
 
 	// dmg taken
-	CG_DrawTinyDigitalStringColor( x + 100, y, "DT:", colorWhite);
+	CG_DrawTinyStringColor( x + 100, y, "DT:", colorWhite);
 
 	y += 20;
 
@@ -540,19 +540,19 @@ void CG_DrawHUD_DerbyList(float x, float y){
 		time = getStringForTime(playTime);
 
 		// num
-		CG_DrawTinyDigitalStringColor( x + 2, y, va("%i", (i+1)), color);
+		CG_DrawTinyStringColor( x + 2, y, va("%i", (i+1)), color);
 
 		// name
-		CG_DrawTinyDigitalStringColor( x + 16, y, cgs.clientinfo[cg.scores[i].client].name, color);
+		CG_DrawTinyStringColor( x + 16, y, cgs.clientinfo[cg.scores[i].client].name, color);
 
 		// time
 //		CG_DrawTinyStringColor( x + 70, y, time, color);
 
 		// dmg dealt
-		CG_DrawTinyDigitalStringColor( x + 75, y, va("%i", cg.scores[i].damageDealt), color);
+		CG_DrawTinyStringColor( x + 75, y, va("%i", cg.scores[i].damageDealt), color);
 
 		// dmg taken
-		CG_DrawTinyDigitalStringColor( x + 105, y, va("%i", cg.scores[i].damageTaken), color);
+		CG_DrawTinyStringColor( x + 105, y, va("%i", cg.scores[i].damageTaken), color);
 
 		y += 20;
 	}
