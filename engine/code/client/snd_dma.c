@@ -58,10 +58,85 @@ typedef struct {
 } jukeboxState_t;
 
 static jukeboxState_t s_jukeboxState;
+static cgameMusicState_t s_musicState;
+
+static void S_MusicInfoReset( void );
+static void S_UpdateMusicStateForStream( const char *filename );
+static void S_BuildMusicTitleFromPath( const char *filePath, char *out, size_t outSize );
 
 static void Jukebox_Reset( void )
 {
 	Com_Memset( &s_jukeboxState, 0, sizeof( s_jukeboxState ) );
+	S_MusicInfoReset();
+}
+
+static void S_MusicInfoReset( void )
+{
+	Com_Memset( &s_musicState, 0, sizeof( s_musicState ) );
+}
+
+static void S_BuildMusicTitleFromPath( const char *filePath, char *out, size_t outSize )
+{
+	char temp[MAX_QPATH];
+	const char *base = filePath;
+	const char *slash;
+	const char *backslash;
+	char *p;
+
+	if( !out || !outSize ) {
+		return;
+	}
+
+	out[0] = '\0';
+
+	if( !filePath || !filePath[0] ) {
+		return;
+	}
+
+	slash = strrchr( filePath, '/' );
+	backslash = strrchr( filePath, '\' );
+	if( backslash && ( !slash || backslash > slash ) ) {
+		slash = backslash;
+	}
+	if( slash && slash[1] ) {
+		base = slash + 1;
+	}
+
+	Q_strncpyz( temp, base, sizeof( temp ) );
+	COM_StripExtension( temp, temp, sizeof( temp ) );
+	for( p = temp; *p; ++p ) {
+		if( *p == '_' || *p == '-' ) {
+			*p = ' ';
+		}
+	}
+
+	Q_strncpyz( out, temp, outSize );
+	if( !out[0] ) {
+		Q_strncpyz( out, base, outSize );
+	}
+}
+
+static void S_UpdateMusicStateForStream( const char *filename )
+{
+	char sanitized[MAX_QPATH];
+
+	if( !filename || !filename[0] || !s_backgroundStream ) {
+		return;
+	}
+
+	s_musicState.valid = qtrue;
+	Q_strncpyz( s_musicState.trackPath, filename, sizeof( s_musicState.trackPath ) );
+
+	if( s_backgroundStream->commentTitle[0] ) {
+		Q_strncpyz( s_musicState.title, s_backgroundStream->commentTitle, sizeof( s_musicState.title ) );
+	} else {
+		S_BuildMusicTitleFromPath( filename, sanitized, sizeof( sanitized ) );
+		Q_strncpyz( s_musicState.title, sanitized, sizeof( s_musicState.title ) );
+	}
+
+	s_musicState.totalSamples = s_backgroundStream->info.samples;
+	s_musicState.sampleRate = s_backgroundStream->info.rate;
+	s_musicState.startSample = s_soundtime;
 }
 
 static qboolean Jukebox_PathIsUnderBase( const char *path )
@@ -78,7 +153,7 @@ static qboolean Jukebox_PathIsUnderBase( const char *path )
 		return qfalse;
 	}
 
-		if( path[baseLen] && path[baseLen] != '/' && path[baseLen] != '\\' ) {
+	if( path[baseLen] && path[baseLen] != '/' && path[baseLen] != '\' ) {
 		return qfalse;
 	}
 
@@ -177,13 +252,18 @@ static void Jukebox_UpdateTrackInfo( void )
 	}
 
 	s_jukeboxState.startSample = s_soundtime;
+	s_musicState.startSample = s_jukeboxState.startSample;
 
 	if( s_backgroundStream ) {
 		s_jukeboxState.trackSamples = s_backgroundStream->info.samples;
 		s_jukeboxState.trackRate = s_backgroundStream->info.rate;
+		s_musicState.totalSamples = s_jukeboxState.trackSamples;
+		s_musicState.sampleRate = s_jukeboxState.trackRate;
 	} else {
 		s_jukeboxState.trackSamples = 0;
 		s_jukeboxState.trackRate = 0;
+		s_musicState.totalSamples = 0;
+		s_musicState.sampleRate = 0;
 	}
 }
 
@@ -1519,6 +1599,16 @@ background music functions
 S_StopBackgroundTrack
 ======================
 */
+void S_Base_GetMusicState( cgameMusicState_t *state )
+{
+	if( !state ) {
+		return;
+	}
+
+	Com_Memcpy( state, &s_musicState, sizeof( *state ) );
+	state->currentSample = s_soundtime;
+}
+
 void S_Base_StopBackgroundTrack( void ) {
 	Jukebox_Reset();
 
@@ -1543,12 +1633,16 @@ static void S_OpenBackgroundStream( const char *filename ) {
 		s_backgroundStream = NULL;
 	}
 
+	S_MusicInfoReset();
+
 	// Open stream
 	s_backgroundStream = S_CodecOpenStream(filename);
 	if(!s_backgroundStream) {
 		Com_Printf( S_COLOR_YELLOW "WARNING: couldn't open music file %s\n", filename );
 		return;
 	}
+
+	S_UpdateMusicStateForStream( filename );
 
 	if(s_backgroundStream->info.channels != 2 || s_backgroundStream->info.rate != 22050) {
 		Com_Printf(S_COLOR_YELLOW "WARNING: music file %s is not 22k stereo\n", filename );
@@ -1816,6 +1910,7 @@ qboolean S_Base_Init( soundInterface_t *si ) {
 	si->StartLocalSound = S_Base_StartLocalSound;
 	si->StartBackgroundTrack = S_Base_StartBackgroundTrack;
 	si->StopBackgroundTrack = S_Base_StopBackgroundTrack;
+	si->GetMusicState = S_Base_GetMusicState;
 	si->RawSamples = S_Base_RawSamples;
 	si->StopAllSounds = S_Base_StopAllSounds;
 	si->ClearLoopingSounds = S_Base_ClearLoopingSounds;
