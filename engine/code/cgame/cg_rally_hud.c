@@ -706,7 +706,8 @@ CG_DrawCurrentPosition
 ======================
 */
 static float CG_DrawCurrentPosition( float y ) {
-	centity_t		*cent;
+	const int		clientNum = cg.snap->ps.clientNum;
+	const clientInfo_t	*clientInfo;
 	//playerState_t	*ps;
 	int			pos;
 	float		x, width, height;
@@ -717,9 +718,9 @@ static float CG_DrawCurrentPosition( float y ) {
 	const float	tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
 
 	//ps = &cg.snap->ps;
-	cent = &cg_entities[cg.snap->ps.clientNum];
+	clientInfo = &cgs.clientinfo[clientNum];
 
-	pos = cent->currentPosition;
+	pos = clientInfo->infoValid ? clientInfo->position : 0;
 
 	x = 636 - 80;
 	width = 90;
@@ -782,7 +783,8 @@ CG_DrawCarAheadAndBehind
 ========================
 */
 static float CG_DrawCarAheadAndBehind( float y ) {
-	centity_t	*cent, *other;
+	const int	clientNum = cg.snap->ps.clientNum;
+	const clientInfo_t	*clientInfo;
 	char		player[64];
 	int			i, j, num;
 	float		x, width, height;
@@ -801,10 +803,11 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	qboolean	isEliminationMode;
 
 	//ps = &cg.snap->ps;
-	cent = &cg_entities[cg.snap->ps.clientNum];
+	clientInfo = &cgs.clientinfo[clientNum];
 	isEliminationMode = ( cgs.gametype == GT_ELIMINATION );
 
-	startPos = cent->currentPosition - 4 < 1 ? 1 : cent->currentPosition - 4;
+	startPos = clientInfo->infoValid ? clientInfo->position - 4 : 1;
+	startPos = startPos < 1 ? 1 : startPos;
 	endPos = startPos + 8 > cgs.numRacers ? cgs.numRacers : startPos + 8;
 	startPos = endPos - 8 < 1 ? 1 : endPos - 8;
 
@@ -819,11 +822,15 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	for (i = startPos; i <= endPos; i++){
 		num = -1;
 		for (j = 0; j < cgs.maxclients; j++){
-			other = &cg_entities[j];
-			if (!other) continue;
+			const clientInfo_t *otherInfo = &cgs.clientinfo[j];
 
-			if (other->currentPosition == i){
-				num = other->currentState.clientNum;
+			if ( !otherInfo->infoValid ) {
+				continue;
+			}
+
+			if ( otherInfo->position == i ){
+				num = j;
+				break;
 			}
 		}
 
@@ -835,7 +842,7 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 			vec4_t numberColor;
 			vec4_t nameColor;
 
-			otherPos = cg_entities[num].currentPosition;
+			otherPos = cgs.clientinfo[num].position;
 			entryEliminated = qfalse;
 			Vector4Copy( colorWhite, numberColor );
 			Vector4Copy( colorWhite, nameColor );
@@ -845,7 +852,7 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 				entryEliminated = qtrue;
 			}
 
-			if ( num == cent->currentState.clientNum ) {
+			if ( num == clientNum ) {
 				CG_FillRect( x, y, width, height, selected );
 			} else if ( entryEliminated ) {
 				CG_FillRect( x, y, width, height, eliminatedBackground );
