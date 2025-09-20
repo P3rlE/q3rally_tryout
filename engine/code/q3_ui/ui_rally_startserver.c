@@ -1669,7 +1669,7 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 		if( s_serveroptions.gametype == GT_ELIMINATION && !s_serveroptions.pointToPoint ) {
 			s_serveroptions.laplimitNotice.generic.type		= MTYPE_TEXT;
 			s_serveroptions.laplimitNotice.generic.flags	 = QMF_INACTIVE|QMF_SMALLFONT;
-			s_serveroptions.laplimitNotice.generic.x		= OPTIONS_X - SMALLCHAR_WIDTH;
+			s_serveroptions.laplimitNotice.generic.x		= OPTIONS_X - 5 * SMALLCHAR_WIDTH;
 			s_serveroptions.laplimitNotice.generic.y		= y;
 			s_serveroptions.laplimitNotice.string		= s_serveroptions.laplimitNoticeBuffer;
 			s_serveroptions.laplimitNotice.style		= UI_LEFT|UI_SMALLFONT;
