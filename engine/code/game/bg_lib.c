@@ -2248,53 +2248,132 @@ int Q_vsnprintf(char *str, size_t length, const char *fmt, va_list args)
 
 /* this is really crappy */
 int sscanf( const char *buffer, const char *fmt, ... ) {
-	int		cmd;
 	va_list		ap;
 	int		count;
-	size_t		len;
 
 	va_start (ap, fmt);
 	count = 0;
 
 	while ( *fmt ) {
-		if ( fmt[0] != '%' ) {
+		if ( *fmt == '%' ) {
+			size_t		width;
+			size_t		len;
+			int		cmd;
+
 			fmt++;
-			continue;
-		}
 
-		fmt++;
-		cmd = *fmt;
-
-		if (isdigit (cmd)) {
-			len = (size_t)_atoi (&fmt);
-			cmd = *(fmt - 1);
-		} else {
-			len = MAX_STRING_CHARS - 1;
-			fmt++;
-		}
-
-		switch ( cmd ) {
-		case 'i':
-		case 'd':
-		case 'u':
-			*(va_arg (ap, int *)) = _atoi( &buffer );
-			break;
-		case 'f':
-			*(va_arg (ap, float *)) = _atof( &buffer );
-			break;
-		case 's':
-			{
-			char *s = va_arg (ap, char *);
-			while (isspace (*buffer))
+			if ( *fmt == '%' ) {
+				if ( *buffer != '%' ) {
+					goto done;
+				}
 				buffer++;
-			while (*buffer && !isspace (*buffer) && len-- > 0 )
-				*s++ = *buffer++;
-			*s++ = '\0';
-			break;
+				fmt++;
+				continue;
 			}
+
+			width = 0;
+			while ( isdigit( (unsigned char)*fmt ) ) {
+				width = width * 10 + ( *fmt - '0' );
+				fmt++;
+			}
+
+			if ( !*fmt ) {
+				break;
+			}
+
+			len = width ? width : ( MAX_STRING_CHARS - 1 );
+			cmd = *fmt++;
+
+			switch ( cmd ) {
+			case 'i':
+			case 'd':
+			case 'u':
+				{
+					char	*end;
+					long	value;
+					int	base;
+
+					if ( *buffer == '\0' ) {
+						goto done;
+					}
+
+					base = ( cmd == 'i' ) ? 0 : 10;
+					value = strtol( buffer, &end, base );
+					if ( end == buffer ) {
+						goto done;
+					}
+
+					buffer = (const char *)end;
+					*(va_arg( ap, int * )) = (int)value;
+					count++;
+					break;
+				}
+
+			case 'f':
+				{
+					char	*end;
+					double	value;
+
+					if ( *buffer == '\0' ) {
+						goto done;
+					}
+
+					value = strtod( buffer, &end );
+					if ( end == buffer ) {
+						goto done;
+					}
+
+					buffer = (const char *)end;
+					*(va_arg( ap, float * )) = (float)value;
+					count++;
+					break;
+				}
+
+			case 's':
+				{
+					char	*s;
+					size_t	copied;
+
+					s = va_arg( ap, char * );
+					copied = 0;
+
+					while ( isspace( (unsigned char)*buffer ) ) {
+						buffer++;
+					}
+
+					while ( *buffer && !isspace( (unsigned char)*buffer ) && copied < len ) {
+						s[copied++] = *buffer++;
+					}
+					s[copied] = '\0';
+
+					if ( copied == 0 ) {
+						goto done;
+					}
+
+					count++;
+					break;
+				}
+
+			default:
+				goto done;
+			}
+		} else if ( isspace( (unsigned char)*fmt ) ) {
+			while ( isspace( (unsigned char)*fmt ) ) {
+				fmt++;
+			}
+			while ( isspace( (unsigned char)*buffer ) ) {
+				buffer++;
+			}
+		} else {
+			if ( *fmt != *buffer ) {
+				goto done;
+			}
+			fmt++;
+			buffer++;
 		}
 	}
 
+done:
 	va_end (ap);
 	return count;
 }
