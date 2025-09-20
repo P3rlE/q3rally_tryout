@@ -474,7 +474,7 @@ static float CG_DrawTimes( float y ) {
 
 		CG_FillRect( boxX, y, boxWidth, boxHeight, bgColor );
 		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
-		CG_DrawTinyDigitalStringColor( valueX, drawY, time, colorWhite );
+		CG_DrawTinyStringColor( valueX, drawY, time, colorWhite );
 		y += lineAdvance;
 	}
 
@@ -492,7 +492,7 @@ static float CG_DrawTimes( float y ) {
 
 		CG_FillRect( boxX, y, boxWidth, boxHeight, bgColor );
 		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
-		CG_DrawTinyDigitalStringColor( valueX, drawY, time, colorWhite );
+		CG_DrawTinyStringColor( valueX, drawY, time, colorWhite );
 		y += lineAdvance;
 	}
 
@@ -510,7 +510,7 @@ static float CG_DrawTimes( float y ) {
 
 		CG_FillRect( boxX, y, boxWidth, boxHeight, bgColor );
 		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
-		CG_DrawTinyDigitalStringColor( valueX, drawY, time, colorWhite );
+		CG_DrawTinyStringColor( valueX, drawY, time, colorWhite );
 		y += lineAdvance;
 	}
 
@@ -563,7 +563,7 @@ static float CG_DrawLaps( float y ) {
 		const float drawY = y + labelOffsetY;
 
 		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
-		CG_DrawTinyDigitalStringColor( valueX, drawY, value, colorWhite );
+		CG_DrawTinyStringColor( valueX, drawY, value, colorWhite );
 	}
 	y += lineAdvance;
 
@@ -688,7 +688,7 @@ static float CG_DrawDistanceToFinish( float y ) {
 
 		CG_FillRect( boxX, y, boxWidth, boxHeight, bgColor );
 		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
-		CG_DrawTinyDigitalStringColor( valueX, drawY, numericValue, colorWhite );
+		CG_DrawTinyStringColor( valueX, drawY, numericValue, colorWhite );
 		if ( unit[0] != '\0' ) {
 			const float unitX = valueX + CG_DrawStrlen( numericValue ) * tinyCharWidth;
 			CG_DrawTinyStringColor( unitX, drawY, unit, colorWhite );
@@ -733,7 +733,7 @@ static float CG_DrawCurrentPosition( float y ) {
 		const float	valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
 
 		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
-		CG_DrawTinyDigitalStringColor( valueX, drawY, va( "%i/%i", pos, cgs.numRacers ), colorWhite );
+		CG_DrawTinyStringColor( valueX, drawY, va( "%i/%i", pos, cgs.numRacers ), colorWhite );
 	}
 
 	y += 20;
@@ -806,7 +806,7 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 			Com_sprintf( positionLabel, sizeof( positionLabel ), "%i", cg_entities[num].currentPosition );
 		}
 
-		CG_DrawTinyDigitalStringColor( numberX, y, positionLabel, colorWhite );
+		CG_DrawTinyStringColor( numberX, y, positionLabel, colorWhite );
 
 		if ( player[0] != '\0' ) {
 			CG_DrawTinyStringColor( nameX, y, player, colorWhite );
@@ -1201,7 +1201,7 @@ CG_DrawGear
  static float CG_DrawGear( float y ) {
 	CG_DrawSmallDigitalStringColor( 560, y, va("Gear: %d", cg.predictedPlayerState.stats[STAT_GEAR]), colors[0]);
 	y -= SMALLCHAR_HEIGHT;
-	CG_DrawTinyDigitalStringColor( 560, y, va("RPM: %d", cg.predictedPlayerState.stats[STAT_RPM]), colorWhite);
+	CG_DrawTinyStringColor( 560, y, va("RPM: %d", cg.predictedPlayerState.stats[STAT_RPM]), colorWhite);
 	y -= SMALLCHAR_HEIGHT;
 	return y;
 }
@@ -1253,7 +1253,7 @@ static float CG_DrawEliminationStatus( float y ) {
                 } else {
                         Q_strncpyz( text, "--", sizeof( text ) );
                 }
-                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, colorWhite );
+                CG_DrawTinyStringColor( valueX, y + 4, text, colorWhite );
         }
         y += lineAdvance;
 
@@ -1270,7 +1270,7 @@ static float CG_DrawEliminationStatus( float y ) {
                 } else {
                         Q_strncpyz( text, "--", sizeof( text ) );
                 }
-                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, colorWhite );
+                CG_DrawTinyStringColor( valueX, y + 4, text, colorWhite );
         }
         y += lineAdvance;
 
@@ -1296,7 +1296,7 @@ static float CG_DrawEliminationStatus( float y ) {
 
                 Com_sprintf( text, sizeof( text ), "%i", secondsLeft );
                 CG_DrawTinyStringColor( labelX, y + 4, label, countdownColor );
-                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, countdownColor );
+                CG_DrawTinyStringColor( valueX, y + 4, text, countdownColor );
                 CG_DrawTinyStringColor( valueX + CG_DrawStrlen( text ) * tinyCharWidth, y + 4, "S", countdownColor );
         } else if ( cgs.eliminationActive && drivers <= 1 ) {
                 CG_DrawTinyStringColor( x + 10.0f, y + 4, "FINAL DRIVER!", colorWhite );
@@ -1307,7 +1307,7 @@ static float CG_DrawEliminationStatus( float y ) {
 
                 CG_DrawTinyStringColor( labelX, y + 4, label, colorWhite );
                 Q_strncpyz( text, "--", sizeof( text ) );
-                CG_DrawTinyDigitalStringColor( valueX, y + 4, text, colorWhite );
+                CG_DrawTinyStringColor( valueX, y + 4, text, colorWhite );
                 CG_DrawTinyStringColor( valueX + CG_DrawStrlen( text ) * tinyCharWidth, y + 4, " S", colorWhite );
         }
         y += lineAdvance;
