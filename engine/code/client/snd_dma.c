@@ -168,6 +168,8 @@ static qboolean Jukebox_Begin( const char *currentTrack )
 	return qtrue;
 }
 
+extern int s_soundtime;
+
 static void Jukebox_UpdateTrackInfo( void )
 {
 	if( !s_jukeboxState.active ) {
