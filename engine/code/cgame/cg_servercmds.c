@@ -346,7 +346,7 @@ static void CG_ParseEliminationInfo( void ) {
 	cgs.eliminationRemainingPlayers = remaining;
 	cgs.eliminationRound = round;
 	cgs.eliminationMsRemaining = msLeft;
-	cgs.eliminationLastUpdateTime = ( active || msLeft > 0 ) ? cg.time : 0;
+	cgs.eliminationLastUpdateTime = active ? cg.time : 0;
 }
 
 /*

@@ -706,8 +706,7 @@ CG_DrawCurrentPosition
 ======================
 */
 static float CG_DrawCurrentPosition( float y ) {
-	const int		clientNum = cg.snap->ps.clientNum;
-	const clientInfo_t	*clientInfo;
+	centity_t		*cent;
 	//playerState_t	*ps;
 	int			pos;
 	float		x, width, height;
@@ -718,9 +717,9 @@ static float CG_DrawCurrentPosition( float y ) {
 	const float	tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
 
 	//ps = &cg.snap->ps;
-	clientInfo = &cgs.clientinfo[clientNum];
+	cent = &cg_entities[cg.snap->ps.clientNum];
 
-	pos = clientInfo->infoValid ? clientInfo->position : 0;
+	pos = cent->currentPosition;
 
 	x = 636 - 80;
 	width = 90;
@@ -732,43 +731,9 @@ static float CG_DrawCurrentPosition( float y ) {
 		const float	labelX = x + labelOffsetX;
 		const float	drawY = y + labelOffsetY;
 		const float	valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
-		vec4_t	 posColor;
-		char	 valueText[32];
-		qboolean	 isEliminationMode;
-		qboolean	 isEliminated;
-
-		isEliminationMode = ( cgs.gametype == GT_ELIMINATION );
-		isEliminated = qfalse;
-
-		Vector4Copy( colorWhite, posColor );
-
-		if ( isEliminationMode ) {
-			if ( pos > 0 ) {
-				Com_sprintf( valueText, sizeof( valueText ), "%i/%i", pos, cgs.numRacers );
-			} else {
-				Q_strncpyz( valueText, "--", sizeof( valueText ) );
-			}
-
-			if ( pos > 0 && cgs.eliminationRemainingPlayers > 0 &&
-				pos > cgs.eliminationRemainingPlayers ) {
-				isEliminated = qtrue;
-			}
-
-			if ( isEliminated ) {
-				posColor[0] = 0.6f;
-				posColor[1] = 0.6f;
-				posColor[2] = 0.6f;
-			}
-		} else {
-			if ( pos > 0 ) {
-				Com_sprintf( valueText, sizeof( valueText ), "%i/%i", pos, cgs.numRacers );
-			} else {
-				Q_strncpyz( valueText, "--", sizeof( valueText ) );
-			}
-		}
 
 		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
-		CG_DrawTinyStringColor( valueX, drawY, valueText, posColor );
+		CG_DrawTinyStringColor( valueX, drawY, va( "%i/%i", pos, cgs.numRacers ), colorWhite );
 	}
 
 	y += 20;
@@ -783,8 +748,7 @@ CG_DrawCarAheadAndBehind
 ========================
 */
 static float CG_DrawCarAheadAndBehind( float y ) {
-	const int	clientNum = cg.snap->ps.clientNum;
-	const clientInfo_t	*clientInfo;
+	centity_t	*cent, *other;
 	char		player[64];
 	int			i, j, num;
 	float		x, width, height;
@@ -792,22 +756,17 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	char		positionLabel[16];
 	float		background[4] = { 0, 0, 0, 0.5 };
 	float		selected[4] = { 0.75, 0.0, 0.0, 0.5 };
-	float		eliminatedBackground[4] = { 0.25f, 0.25f, 0.25f, 0.5f };
-	vec4_t	eliminatedTextColor = { 0.7f, 0.7f, 0.7f, 1.0f };
 	const float	numberOffsetX = 4.0f;
 	const float	columnSpacing = 4.0f;
 	const float	tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
 	float		numberX;
 	float		nameX;
 	char		maxPositionLabel[16];
-	qboolean	isEliminationMode;
 
 	//ps = &cg.snap->ps;
-	clientInfo = &cgs.clientinfo[clientNum];
-	isEliminationMode = ( cgs.gametype == GT_ELIMINATION );
+	cent = &cg_entities[cg.snap->ps.clientNum];
 
-	startPos = clientInfo->infoValid ? clientInfo->position - 4 : 1;
-	startPos = startPos < 1 ? 1 : startPos;
+	startPos = cent->currentPosition - 4 < 1 ? 1 : cent->currentPosition - 4;
 	endPos = startPos + 8 > cgs.numRacers ? cgs.numRacers : startPos + 8;
 	startPos = endPos - 8 < 1 ? 1 : endPos - 8;
 
@@ -822,68 +781,38 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	for (i = startPos; i <= endPos; i++){
 		num = -1;
 		for (j = 0; j < cgs.maxclients; j++){
-			const clientInfo_t *otherInfo = &cgs.clientinfo[j];
+			other = &cg_entities[j];
+			if (!other) continue;
 
-			if ( !otherInfo->infoValid ) {
-				continue;
-			}
-
-			if ( otherInfo->position == i ){
-				num = j;
-				break;
+			if (other->currentPosition == i){
+				num = other->currentState.clientNum;
 			}
 		}
 
 		if (num < 0 || num > cgs.maxclients) continue;
 
-		{
-			int otherPos;
-			qboolean entryEliminated;
-			vec4_t numberColor;
-			vec4_t nameColor;
-
-			otherPos = cgs.clientinfo[num].position;
-			entryEliminated = qfalse;
-			Vector4Copy( colorWhite, numberColor );
-			Vector4Copy( colorWhite, nameColor );
-
-			if ( isEliminationMode && otherPos > 0 && cgs.eliminationRemainingPlayers > 0 &&
-				otherPos > cgs.eliminationRemainingPlayers ) {
-				entryEliminated = qtrue;
-			}
-
-			if ( num == clientNum ) {
-				CG_FillRect( x, y, width, height, selected );
-			} else if ( entryEliminated ) {
-				CG_FillRect( x, y, width, height, eliminatedBackground );
-			} else {
-				CG_FillRect( x, y, width, height, background );
-			}
-
-			if ( entryEliminated ) {
-				Vector4Copy( eliminatedTextColor, numberColor );
-				Vector4Copy( eliminatedTextColor, nameColor );
-			}
-
-			Q_strncpyz(player, cgs.clientinfo[num].name, 16 );
-			if ( otherPos > 0 ) {
-				if ( player[0] != '\0' ) {
-					Com_sprintf( positionLabel, sizeof( positionLabel ), "%i-", otherPos );
-				} else {
-					Com_sprintf( positionLabel, sizeof( positionLabel ), "%i", otherPos );
-				}
-			} else {
-				Q_strncpyz( positionLabel, "--", sizeof( positionLabel ) );
-			}
-
-			CG_DrawTinyStringColor( numberX, y, positionLabel, numberColor );
-
-			if ( player[0] != '\0' ) {
-				CG_DrawTinyStringColor( nameX, y, player, nameColor );
-			}
-
-			y += TINYCHAR_HEIGHT;
+		if (num == cent->currentState.clientNum){
+			CG_FillRect( x, y, width, height, selected );
 		}
+		else {
+			CG_FillRect( x, y, width, height, background );
+		}
+
+		Q_strncpyz(player, cgs.clientinfo[num].name, 16 );
+		if ( player[0] != '\0' ) {
+			Com_sprintf( positionLabel, sizeof( positionLabel ), "%i-", cg_entities[num].currentPosition );
+		}
+		else {
+			Com_sprintf( positionLabel, sizeof( positionLabel ), "%i", cg_entities[num].currentPosition );
+		}
+
+		CG_DrawTinyStringColor( numberX, y, positionLabel, colorWhite );
+
+		if ( player[0] != '\0' ) {
+			CG_DrawTinyStringColor( nameX, y, player, colorWhite );
+		}
+
+		y += TINYCHAR_HEIGHT;
 
 	}
 
@@ -1346,7 +1275,7 @@ static float CG_DrawEliminationStatus( float y ) {
         y += lineAdvance;
 
         CG_FillRect( x, y, boxWidth, 18, bgColor );
-        showCountdown = ( cgs.eliminationActive && drivers > 1 ) || ( !cgs.eliminationActive && drivers > 0 && CG_EliminationMsLeft() > 0 );
+        showCountdown = ( cgs.eliminationActive && drivers > 1 );
         if ( showCountdown ) {
                 const char *label = "ELIMINATION IN";
                 const float labelX = x + 10.0f;

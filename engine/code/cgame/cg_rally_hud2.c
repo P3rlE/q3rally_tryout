@@ -179,7 +179,7 @@ void CG_DrawHUD_Positions(float x, float y){
 
 	// draw your position
 	CG_DrawSmallDigitalStringColor(x + 12, y, "YOU:", colorWhite);
-	CG_DrawSmallDigitalStringColor(x + 102, y, va("%i/%i", cgs.clientinfo[cg.snap->ps.clientNum].position, cgs.numRacers), colorWhite);
+	CG_DrawSmallDigitalStringColor(x + 102, y, va("%i/%i", cg_entities[cg.snap->ps.clientNum].currentPosition, cgs.numRacers), colorWhite);
 
 	y += 20;
 
@@ -319,28 +319,22 @@ CG_DrawHUD_OpponentList
 =======================
 */
 void CG_DrawHUD_OpponentList(float x, float y){
-	const int	clientNum = cg.snap->ps.clientNum;
-	const clientInfo_t	*clientInfo;
+	centity_t		*cent, *other;
 	char		player[64];
 	int				i, j, num;
 	float		width, height;
 	int			startPos, endPos;
 	int			maxPositions;
 	vec4_t		color;
-	float		eliminatedBackground[4] = { 0.25f, 0.25f, 0.25f, 0.5f };
-	vec4_t		eliminatedTextColor = { 0.7f, 0.7f, 0.7f, 1.0f };
 	const float	labelX = x + 12.0f;
 	const float	smallCharWidth = SMALLCHAR_WIDTH + 2.0f;
 	int			digits;
 	float		nameX;
-	qboolean	isEliminationMode;
 
 	//ps = &cg.snap->ps;
-	clientInfo = &cgs.clientinfo[clientNum];
-	isEliminationMode = ( cgs.gametype == GT_ELIMINATION );
+	cent = &cg_entities[cg.snap->ps.clientNum];
 
-	startPos = clientInfo->infoValid ? clientInfo->position - 4 : 1;
-	startPos = startPos < 1 ? 1 : startPos;
+	startPos = cent->currentPosition - 4 < 1 ? 1 : cent->currentPosition - 4;
 	endPos = startPos + 8 > cgs.numRacers ? cgs.numRacers : startPos + 8;
 	startPos = endPos - 8 < 1 ? 1 : endPos - 8;
 
@@ -366,34 +360,11 @@ void CG_DrawHUD_OpponentList(float x, float y){
 	{
 		const char *label = "POS:";
 		char valueText[32];
-		vec4_t valueColor;
 		const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * smallCharWidth;
-		int positionValue;
-		qboolean isEliminated = qfalse;
 
 		CG_DrawSmallStringColor(labelX, y, label, colorWhite);
-
-		positionValue = clientInfo->infoValid ? clientInfo->position : 0;
-		Vector4Copy( colorWhite, valueColor );
-
-		if ( positionValue > 0 ) {
-			Com_sprintf(valueText, sizeof(valueText), "%i/%i", positionValue, cgs.numRacers);
-		} else {
-			Q_strncpyz(valueText, "--", sizeof(valueText));
-		}
-
-		if ( isEliminationMode && positionValue > 0 && cgs.eliminationRemainingPlayers > 0 &&
-			positionValue > cgs.eliminationRemainingPlayers ) {
-			isEliminated = qtrue;
-		}
-
-		if ( isEliminated ) {
-			valueColor[0] = 0.6f;
-			valueColor[1] = 0.6f;
-			valueColor[2] = 0.6f;
-		}
-
-		CG_DrawSmallDigitalStringColor(valueX, y, valueText, valueColor);
+		Com_sprintf(valueText, sizeof(valueText), "%i/%i", cent->currentPosition, cgs.numRacers);
+		CG_DrawSmallDigitalStringColor(valueX, y, valueText, colorWhite);
 	}
 
 	y += 20;
@@ -401,14 +372,13 @@ void CG_DrawHUD_OpponentList(float x, float y){
 	for (i = startPos; i <= endPos; i++){
 		num = -1;
 		for (j = 0; j < cgs.maxclients; j++){
-			const clientInfo_t *otherInfo = &cgs.clientinfo[j];
+			other = &cg_entities[j];
+			if ( !other ) continue;
+//			if ( isRaceObserver(other->currentState.clientNum) ) continue;
+			if ( cgs.clientinfo[other->currentState.clientNum].team == TEAM_SPECTATOR ) continue;
 
-			if ( !otherInfo->infoValid ) continue;
-//			if ( isRaceObserver(j) ) continue;
-			if ( otherInfo->team == TEAM_SPECTATOR ) continue;
-
-			if ( otherInfo->position == i ) {
-				num = j;
+			if ( cgs.clientinfo[other->currentState.clientNum].position == i ) {
+				num = other->currentState.clientNum;
 				break;
 			}
 		}
@@ -443,43 +413,15 @@ void CG_DrawHUD_OpponentList(float x, float y){
 			Vector4Copy(bgColor, color);
 		}
 
+		CG_FillRect(x, y, width, height, color);
+
+		Q_strncpyz(player, cgs.clientinfo[num].name, 16 );
 		{
-			int positionValue;
-			qboolean entryEliminated;
-			vec4_t numberColor;
-			vec4_t nameColor;
 			char prefix[16];
 
-			positionValue = cgs.clientinfo[num].position;
-			entryEliminated = qfalse;
-			Vector4Copy( colorWhite, numberColor );
-			Vector4Copy( colorWhite, nameColor );
-
-			if ( isEliminationMode && positionValue > 0 && cgs.eliminationRemainingPlayers > 0 &&
-				positionValue > cgs.eliminationRemainingPlayers ) {
-				entryEliminated = qtrue;
-			}
-
-			if ( entryEliminated ) {
-				Vector4Copy( eliminatedBackground, color );
-				Vector4Copy( eliminatedTextColor, numberColor );
-				Vector4Copy( eliminatedTextColor, nameColor );
-			}
-
-			CG_FillRect(x, y, width, height, color);
-
-			Q_strncpyz(player, cgs.clientinfo[num].name, 16 );
-
-			if ( positionValue > 0 ) {
-				Com_sprintf(prefix, sizeof(prefix), "%*i:", digits, positionValue);
-			} else {
-				char placeholder[8];
-				Q_strncpyz( placeholder, "--", sizeof( placeholder ) );
-				Com_sprintf(prefix, sizeof(prefix), "%*s:", digits, placeholder);
-			}
-
-			CG_DrawSmallDigitalStringColor(labelX, y, prefix, numberColor);
-			CG_DrawSmallStringColor(nameX, y, player, nameColor);
+			Com_sprintf(prefix, sizeof(prefix), "%*i:", digits, cgs.clientinfo[num].position);
+			CG_DrawSmallDigitalStringColor(labelX, y, prefix, colorWhite);
+			CG_DrawSmallStringColor(nameX, y, player, colorWhite);
 		}
 
 		y += 20;
