@@ -3175,6 +3175,34 @@ CG_Draw2D
 */
 #define CG_MUSIC_BANNER_TIME 5000
 
+static int CG_SamplesToMilliseconds( int samples, int sampleRate )
+{
+	int seconds;
+	int remainder;
+	int milliseconds;
+	int remainderMs;
+
+	if( sampleRate <= 0 || samples <= 0 ) {
+		return 0;
+	}
+
+	seconds = samples / sampleRate;
+	remainder = samples % sampleRate;
+
+	if( seconds > INT_MAX / 1000 ) {
+		return INT_MAX;
+	}
+
+	milliseconds = seconds * 1000;
+	remainderMs = ( remainder * 1000 ) / sampleRate;
+
+	if( milliseconds > INT_MAX - remainderMs ) {
+		return INT_MAX;
+	}
+
+	return milliseconds + remainderMs;
+}
+
 static void CG_DrawMusicBanner( void )
 {
 	cgameMusicState_t state;
@@ -3217,8 +3245,7 @@ static void CG_DrawMusicBanner( void )
 		cg.musicStartSample = state.startSample;
 		cg.musicSampleRate = state.sampleRate;
 		cg.musicTotalSamples = state.totalSamples;
-		cg.musicDurationMs = ( state.sampleRate > 0 && state.totalSamples > 0 ) ?
-			(int)((int64_t)state.totalSamples * 1000 / state.sampleRate) : 0;
+		cg.musicDurationMs = CG_SamplesToMilliseconds( state.totalSamples, state.sampleRate );
 		cg.musicBannerExpire = cg.time + CG_MUSIC_BANNER_TIME;
 	}
 
@@ -3245,13 +3272,10 @@ static void CG_DrawMusicBanner( void )
 		}
 	}
 
-	elapsedMs = 0;
-	if( sampleRate > 0 ) {
-		elapsedMs = (int)((int64_t)elapsedSamples * 1000 / sampleRate);
-	}
+	elapsedMs = CG_SamplesToMilliseconds( elapsedSamples, sampleRate );
 	totalMs = cg.musicDurationMs;
-	if( totalMs <= 0 && totalSamples > 0 && sampleRate > 0 ) {
-		totalMs = (int)((int64_t)totalSamples * 1000 / sampleRate);
+	if( totalMs <= 0 ) {
+		totalMs = CG_SamplesToMilliseconds( totalSamples, sampleRate );
 	}
 	if( totalMs > 0 && elapsedMs > totalMs ) {
 		elapsedMs = totalMs;
