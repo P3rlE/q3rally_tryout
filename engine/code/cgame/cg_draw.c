@@ -3175,6 +3175,12 @@ CG_Draw2D
 */
 #define CG_MUSIC_BANNER_TIME 5000
 
+#define CG_REARVIEW_MIRROR_X             170.0f
+#define CG_REARVIEW_MIRROR_Y             10.0f
+#define CG_REARVIEW_MIRROR_WIDTH         300.0f
+#define CG_REARVIEW_MIRROR_HEIGHT        75.0f
+#define CG_REARVIEW_BANNER_GAP             8.0f
+
 static int CG_SamplesToMilliseconds( int samples, int sampleRate )
 {
 	int seconds;
@@ -3218,9 +3224,9 @@ static void CG_DrawMusicBanner( void )
 	int elapsedSec;
 	int totalSec;
 	int percent;
-	float x = 8.0f;
-	float y = 8.0f;
-	float width = 360.0f;
+	float x = CG_REARVIEW_MIRROR_X;
+	float y = CG_REARVIEW_MIRROR_Y + CG_REARVIEW_MIRROR_HEIGHT + CG_REARVIEW_BANNER_GAP;
+	float width = CG_REARVIEW_MIRROR_WIDTH;
 	float height = SMALLCHAR_HEIGHT * 2 + 14.0f;
 	float barX;
 	float barY;
@@ -3453,7 +3459,7 @@ void CG_DrawActive( stereoFrame_t stereoView ) {
 
 // Q3Rally Code Start
 	if ( !cg.scoreBoardShowing )
-		CG_DrawRearviewMirror( 170, 10, 300, 75);
+		CG_DrawRearviewMirror( CG_REARVIEW_MIRROR_X, CG_REARVIEW_MIRROR_Y, CG_REARVIEW_MIRROR_WIDTH, CG_REARVIEW_MIRROR_HEIGHT );
 	
 	CG_DrawMMap( 0, 10, 160, 120); //TBB draw minimap function
 		
