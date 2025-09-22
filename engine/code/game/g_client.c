@@ -1368,6 +1368,11 @@ void ClientSpawn(gentity_t *ent) {
 	int		savedDamageTaken;
 	int		savedDamageDealt;
 	int		savedPosition;
+	int		savedLadderBestLap;
+	int		savedLadderTotalRace;
+	int		savedLadderLastLapStart;
+	int		savedLadderLapCount;
+	int		savedLadderLapTimes[RACE_MAX_RECORDED_LAPS];
 	gentity_t	*savedCarPoints[4];
 	vec3_t	origin, forward;
 // END
@@ -1462,11 +1467,10 @@ void ClientSpawn(gentity_t *ent) {
 	savedDamageDealt = client->ps.stats[STAT_DAMAGE_DEALT];
 	savedDamageTaken = client->ps.stats[STAT_DAMAGE_TAKEN];
 	savedPosition = client->ps.stats[STAT_POSITION];
-	int savedLadderBestLap = client->ladderBestLapMs;
-	int savedLadderTotalRace = client->ladderTotalRaceMs;
-	int savedLadderLastLapStart = client->ladderLastLapStartMs;
-	int savedLadderLapCount = client->ladderLapCount;
-	int savedLadderLapTimes[RACE_MAX_RECORDED_LAPS];
+	savedLadderBestLap = client->ladderBestLapMs;
+	savedLadderTotalRace = client->ladderTotalRaceMs;
+	savedLadderLastLapStart = client->ladderLastLapStartMs;
+	savedLadderLapCount = client->ladderLapCount;
 	Com_Memcpy( savedLadderLapTimes, client->ladderLapTimes, sizeof( savedLadderLapTimes ) );
 // END
 //	savedAreaBits = client->areabits;
