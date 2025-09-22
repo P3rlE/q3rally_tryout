@@ -679,6 +679,10 @@ void SV_Init (void)
 	Cvar_Get ("nextmap", "", CVAR_TEMP );
 
 	sv_allowDownload = Cvar_Get ("sv_allowDownload", "0", CVAR_SERVERINFO);
+	sv_ladderEnabled = Cvar_Get ("sv_ladderEnabled", "0", CVAR_ARCHIVE);
+	Cvar_CheckRange( sv_ladderEnabled, 0, 1, qtrue );
+	sv_ladderUrl = Cvar_Get ("sv_ladderUrl", "", CVAR_ARCHIVE);
+	sv_ladderApiKey = Cvar_Get ("sv_ladderApiKey", "", CVAR_TEMP | CVAR_PROTECTED);
 	Cvar_Get ("sv_dlURL", "", CVAR_SERVERINFO | CVAR_ARCHIVE);
 	
 	sv_master[0] = Cvar_Get("sv_master1", MASTER_SERVER_NAME, 0);
