@@ -44,6 +44,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	INTERMISSION_DELAY_TIME	1000
 #define	SP_INTERMISSION_DELAY_TIME	5000
 
+#define RACE_MAX_RECORDED_LAPS  64
+
 // gentity->flags
 #define	FL_GODMODE				0x00000010
 #define	FL_NOTARGET				0x00000020
@@ -408,6 +410,11 @@ struct gclient_s {
 
 	// race variables
 	int			finishRaceTime;
+	int			ladderBestLapMs;
+	int			ladderTotalRaceMs;
+	int			ladderLastLapStartMs;
+	int			ladderLapCount;
+	int			ladderLapTimes[RACE_MAX_RECORDED_LAPS];
 
 	int			horn_sound_time;
 
@@ -814,6 +821,17 @@ void G_PrintMapStats( gentity_t *player, qboolean generateArenaFile, char *longn
 //
 // g_rally_racetools.c
 //
+typedef struct {
+	int			clientNum;
+	int			position;
+	int			bestLapMs;
+	int			totalRaceMs;
+	int			lapsCompleted;
+	qboolean	finished;
+} raceResult_t;
+
+int G_GatherRaceResults( raceResult_t *results, int maxResults );
+
 int GetTeamAtRank( int rank );
 void CreateRallyStarter( void );
 void CalculatePlayerPositions( void );
