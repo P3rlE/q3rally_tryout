@@ -75,18 +75,6 @@ static void Sigil_RecordOwnerClient( domination_sigil_t *sigil, int clientNum ) 
   }
 }
 
-static int Sigil_IndexForEntity( gentity_t *ent ) {
-  int sigilNum;
-
-  for ( sigilNum = 0; sigilNum < MAX_SIGILS; sigilNum++ ) {
-    if ( teamgame.sigil[sigilNum].entity == ent ) {
-      return sigilNum;
-    }
-  }
-
-  return -1;
-}
-
 static team_t Sigil_TeamFromPowerup( powerup_t powerup ) {
   switch ( powerup ) {
     case PW_SIGILRED:
@@ -179,6 +167,18 @@ typedef struct teamgame_s {
 } teamgame_t;
 
 teamgame_t teamgame;
+
+static int Sigil_IndexForEntity( gentity_t *ent ) {
+  int sigilNum;
+
+  for ( sigilNum = 0; sigilNum < MAX_SIGILS; sigilNum++ ) {
+    if ( teamgame.sigil[sigilNum].entity == ent ) {
+      return sigilNum;
+    }
+  }
+
+  return -1;
+}
 
 gentity_t	*neutralObelisk;
 
