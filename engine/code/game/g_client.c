@@ -1313,6 +1313,11 @@ void ClientBegin( int clientNum ) {
 		ent->client->ps.stats[STAT_DAMAGE_DEALT] = 0;
 		ent->client->ps.stats[STAT_DAMAGE_TAKEN] = 0;
 		ent->client->ps.stats[STAT_NEXT_CHECKPOINT] = ent->number;
+		ent->client->ladderBestLapMs = 0;
+		ent->client->ladderTotalRaceMs = 0;
+		ent->client->ladderLastLapStartMs = 0;
+		ent->client->ladderLapCount = 0;
+		Com_Memset( ent->client->ladderLapTimes, 0, sizeof( ent->client->ladderLapTimes ) );
 	}
 
 	ent->raceObserver = qfalse;
@@ -1457,6 +1462,12 @@ void ClientSpawn(gentity_t *ent) {
 	savedDamageDealt = client->ps.stats[STAT_DAMAGE_DEALT];
 	savedDamageTaken = client->ps.stats[STAT_DAMAGE_TAKEN];
 	savedPosition = client->ps.stats[STAT_POSITION];
+	int savedLadderBestLap = client->ladderBestLapMs;
+	int savedLadderTotalRace = client->ladderTotalRaceMs;
+	int savedLadderLastLapStart = client->ladderLastLapStartMs;
+	int savedLadderLapCount = client->ladderLapCount;
+	int savedLadderLapTimes[RACE_MAX_RECORDED_LAPS];
+	Com_Memcpy( savedLadderLapTimes, client->ladderLapTimes, sizeof( savedLadderLapTimes ) );
 // END
 //	savedAreaBits = client->areabits;
 	accuracy_hits = client->accuracy_hits;
@@ -1496,6 +1507,11 @@ void ClientSpawn(gentity_t *ent) {
 	client->ps.stats[STAT_DAMAGE_TAKEN] = savedDamageTaken;
 	client->ps.stats[STAT_NEXT_CHECKPOINT] = ent->number;
 	client->ps.stats[STAT_POSITION] = savedPosition;
+	client->ladderBestLapMs = savedLadderBestLap;
+	client->ladderTotalRaceMs = savedLadderTotalRace;
+	client->ladderLastLapStartMs = savedLadderLastLapStart;
+	client->ladderLapCount = savedLadderLapCount;
+	Com_Memcpy( client->ladderLapTimes, savedLadderLapTimes, sizeof( client->ladderLapTimes ) );
 // END
 //	client->areabits = savedAreaBits;
 	client->accuracy_hits = accuracy_hits;
