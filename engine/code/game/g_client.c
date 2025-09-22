@@ -1291,6 +1291,9 @@ void ClientBegin( int clientNum ) {
 	client->pers.teamState.state = TEAM_BEGIN;
 	client->ladderKills = 0;
 	client->ladderDeaths = 0;
+	client->ladderZoneHoldMs = 0;
+	client->ladderZoneLastUpdateMs = 0;
+	client->ladderZoneActiveSigil = -1;
 
 	// save eflags around this, because changing teams will
 	// cause this to happen with a valid entity, and we
@@ -1379,6 +1382,7 @@ void ClientSpawn(gentity_t *ent) {
 	int		savedLadderLapTimes[RACE_MAX_RECORDED_LAPS];
 	int		savedLadderKills;
 	int		savedLadderDeaths;
+	int		savedLadderZoneHold;
 	gentity_t	*savedCarPoints[4];
 	vec3_t	origin, forward;
 // END
@@ -1479,6 +1483,7 @@ void ClientSpawn(gentity_t *ent) {
 	savedLadderLapCount = client->ladderLapCount;
 	savedLadderKills = client->ladderKills;
 	savedLadderDeaths = client->ladderDeaths;
+	savedLadderZoneHold = client->ladderZoneHoldMs;
 	Com_Memcpy( savedLadderLapTimes, client->ladderLapTimes, sizeof( savedLadderLapTimes ) );
 // END
 //	savedAreaBits = client->areabits;
@@ -1525,6 +1530,9 @@ void ClientSpawn(gentity_t *ent) {
 	client->ladderLapCount = savedLadderLapCount;
 	client->ladderKills = savedLadderKills;
 	client->ladderDeaths = savedLadderDeaths;
+	client->ladderZoneHoldMs = savedLadderZoneHold;
+	client->ladderZoneLastUpdateMs = 0;
+	client->ladderZoneActiveSigil = -1;
 	Com_Memcpy( client->ladderLapTimes, savedLadderLapTimes, sizeof( client->ladderLapTimes ) );
 // END
 //	client->areabits = savedAreaBits;
@@ -1537,10 +1545,13 @@ void ClientSpawn(gentity_t *ent) {
 	}
         client->ps.eventSequence = eventSequence;
         ClientUserinfoChanged( index );
-        if ( client->ps.persistant[PERS_SPAWN_COUNT] == 0 ) {
+	if ( client->ps.persistant[PERS_SPAWN_COUNT] == 0 ) {
 		client->ladderKills = 0;
 		client->ladderDeaths = 0;
-        }
+		client->ladderZoneHoldMs = 0;
+		client->ladderZoneLastUpdateMs = 0;
+		client->ladderZoneActiveSigil = -1;
+	}
         // increment the spawncount so the client will detect the respawn
 	client->ps.persistant[PERS_SPAWN_COUNT]++;
 	client->ps.persistant[PERS_TEAM] = client->sess.sessionTeam;

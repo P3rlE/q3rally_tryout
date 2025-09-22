@@ -417,6 +417,9 @@ struct gclient_s {
 	int			ladderLapTimes[RACE_MAX_RECORDED_LAPS];
 	int			ladderKills;
 	int			ladderDeaths;
+	int			ladderZoneHoldMs;
+	int			ladderZoneLastUpdateMs;
+	int			ladderZoneActiveSigil;
 
 	int			horn_sound_time;
 
