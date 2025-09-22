@@ -33,11 +33,15 @@ static void G_ResetRaceTimingForClients( int raceStartTime ) {
 			continue;
 		}
 
-		cl->ladderBestLapMs = 0;
-		cl->ladderTotalRaceMs = 0;
-		cl->ladderLapCount = 0;
-		cl->ladderLastLapStartMs = raceStartTime;
-		Com_Memset( cl->ladderLapTimes, 0, sizeof( cl->ladderLapTimes ) );
+                cl->ladderBestLapMs = 0;
+                cl->ladderTotalRaceMs = 0;
+                cl->ladderLapCount = 0;
+                cl->ladderLastLapStartMs = raceStartTime;
+                Com_Memset( cl->ladderLapTimes, 0, sizeof( cl->ladderLapTimes ) );
+                cl->ladderSurvivalMs = 0;
+                cl->ladderEliminationRound = 0;
+                cl->ladderEliminationPlayersRemaining = 0;
+                cl->ladderEliminationMetric = 0.0f;
 	}
 }
 

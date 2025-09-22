@@ -420,6 +420,10 @@ struct gclient_s {
 	int			ladderZoneHoldMs;
 	int			ladderZoneLastUpdateMs;
 	int			ladderZoneActiveSigil;
+	int			ladderSurvivalMs;
+	int			ladderEliminationRound;
+	int			ladderEliminationPlayersRemaining;
+	float			ladderEliminationMetric;
 
 	int			horn_sound_time;
 
@@ -441,6 +445,10 @@ typedef struct {
 	int			kills;
 	int			deaths;
 	float			kdRatio;
+	int			survivalMs;
+	int			eliminationRound;
+	int			eliminationPlayersRemaining;
+	float			eliminationMetric;
 } ladderPlayerPayload_t;
 
 typedef struct {

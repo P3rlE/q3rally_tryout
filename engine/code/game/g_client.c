@@ -1294,6 +1294,10 @@ void ClientBegin( int clientNum ) {
 	client->ladderZoneHoldMs = 0;
 	client->ladderZoneLastUpdateMs = 0;
 	client->ladderZoneActiveSigil = -1;
+	client->ladderSurvivalMs = 0;
+	client->ladderEliminationRound = 0;
+	client->ladderEliminationPlayersRemaining = 0;
+	client->ladderEliminationMetric = 0.0f;
 
 	// save eflags around this, because changing teams will
 	// cause this to happen with a valid entity, and we
@@ -1324,6 +1328,10 @@ void ClientBegin( int clientNum ) {
 		ent->client->ladderLapCount = 0;
 		ent->client->ladderKills = 0;
 		ent->client->ladderDeaths = 0;
+		ent->client->ladderSurvivalMs = 0;
+		ent->client->ladderEliminationRound = 0;
+		ent->client->ladderEliminationPlayersRemaining = 0;
+		ent->client->ladderEliminationMetric = 0.0f;
 		Com_Memset( ent->client->ladderLapTimes, 0, sizeof( ent->client->ladderLapTimes ) );
 	}
 
@@ -1383,6 +1391,10 @@ void ClientSpawn(gentity_t *ent) {
 	int		savedLadderKills;
 	int		savedLadderDeaths;
 	int		savedLadderZoneHold;
+	int		savedLadderSurvival;
+	int		savedLadderEliminationRound;
+	int		savedLadderEliminationPlayersRemaining;
+	float		savedLadderEliminationMetric;
 	gentity_t	*savedCarPoints[4];
 	vec3_t	origin, forward;
 // END
@@ -1484,6 +1496,10 @@ void ClientSpawn(gentity_t *ent) {
 	savedLadderKills = client->ladderKills;
 	savedLadderDeaths = client->ladderDeaths;
 	savedLadderZoneHold = client->ladderZoneHoldMs;
+	savedLadderSurvival = client->ladderSurvivalMs;
+	savedLadderEliminationRound = client->ladderEliminationRound;
+	savedLadderEliminationPlayersRemaining = client->ladderEliminationPlayersRemaining;
+	savedLadderEliminationMetric = client->ladderEliminationMetric;
 	Com_Memcpy( savedLadderLapTimes, client->ladderLapTimes, sizeof( savedLadderLapTimes ) );
 // END
 //	savedAreaBits = client->areabits;
@@ -1531,6 +1547,10 @@ void ClientSpawn(gentity_t *ent) {
 	client->ladderKills = savedLadderKills;
 	client->ladderDeaths = savedLadderDeaths;
 	client->ladderZoneHoldMs = savedLadderZoneHold;
+	client->ladderSurvivalMs = savedLadderSurvival;
+	client->ladderEliminationRound = savedLadderEliminationRound;
+	client->ladderEliminationPlayersRemaining = savedLadderEliminationPlayersRemaining;
+	client->ladderEliminationMetric = savedLadderEliminationMetric;
 	client->ladderZoneLastUpdateMs = 0;
 	client->ladderZoneActiveSigil = -1;
 	Com_Memcpy( client->ladderLapTimes, savedLadderLapTimes, sizeof( client->ladderLapTimes ) );
@@ -1551,6 +1571,10 @@ void ClientSpawn(gentity_t *ent) {
 		client->ladderZoneHoldMs = 0;
 		client->ladderZoneLastUpdateMs = 0;
 		client->ladderZoneActiveSigil = -1;
+		client->ladderSurvivalMs = 0;
+		client->ladderEliminationRound = 0;
+		client->ladderEliminationPlayersRemaining = 0;
+		client->ladderEliminationMetric = 0.0f;
 	}
         // increment the spawncount so the client will detect the respawn
 	client->ps.persistant[PERS_SPAWN_COUNT]++;

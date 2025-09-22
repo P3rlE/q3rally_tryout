@@ -1571,6 +1571,10 @@ void LogExit( const char *string ) {
 			payloadEntry->kills = cl->ladderKills;
 			payloadEntry->deaths = cl->ladderDeaths;
 			payloadEntry->kdRatio = (float)cl->ladderKills / (float)((cl->ladderDeaths > 0) ? cl->ladderDeaths : 1);
+			payloadEntry->survivalMs = cl->ladderSurvivalMs;
+			payloadEntry->eliminationRound = cl->ladderEliminationRound;
+			payloadEntry->eliminationPlayersRemaining = cl->ladderEliminationPlayersRemaining;
+			payloadEntry->eliminationMetric = cl->ladderEliminationMetric;
 		}
 
 		ping = cl->ps.ping < 999 ? cl->ps.ping : 999;
@@ -2173,7 +2177,26 @@ void G_RegisterEliminationDeath( gentity_t *victim ) {
         level.eliminationRound++;
         G_UpdateEliminationPlayerCount();
 
-        victim->client->ps.stats[STAT_POSITION] = level.eliminationRemainingPlayers + 1;
+        {
+                int placement;
+
+                victim->client->ladderEliminationRound = level.eliminationRound;
+                victim->client->ladderEliminationPlayersRemaining = level.eliminationRemainingPlayers;
+
+                placement = level.eliminationRemainingPlayers + 1;
+                if ( placement < 1 ) {
+                        placement = 1;
+                }
+
+                victim->client->ps.stats[STAT_POSITION] = placement;
+
+                victim->client->ladderEliminationMetric = (float)placement;
+                if ( victim->client->ladderSurvivalMs > 0 ) {
+                        // use survival time as a fractional tie breaker so that identical
+                        // placements can still be ordered by longevity within the round
+                        victim->client->ladderEliminationMetric += (float)victim->client->ladderSurvivalMs / 1000000.0f;
+                }
+        }
         Cmd_RacePositions_f();
         CalculateRanks();
 
