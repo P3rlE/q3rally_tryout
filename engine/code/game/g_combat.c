@@ -578,6 +578,9 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 	self->enemy = attacker;
 
 	self->client->ps.persistant[PERS_KILLED]++;
+	if ( self->client ) {
+		self->client->ladderDeaths++;
+	}
 
 	if (attacker && attacker->client) {
 		attacker->client->lastkilled_client = self->s.number;
@@ -588,6 +591,7 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 			}
 		} else {
 			AddScore( attacker, self->r.currentOrigin, 1 );
+			attacker->client->ladderKills++;
 
 			if( meansOfDeath == MOD_GAUNTLET ) {
 				

@@ -1289,6 +1289,8 @@ void ClientBegin( int clientNum ) {
 	client->pers.connected = CON_CONNECTED;
 	client->pers.enterTime = level.time;
 	client->pers.teamState.state = TEAM_BEGIN;
+	client->ladderKills = 0;
+	client->ladderDeaths = 0;
 
 	// save eflags around this, because changing teams will
 	// cause this to happen with a valid entity, and we
@@ -1317,6 +1319,8 @@ void ClientBegin( int clientNum ) {
 		ent->client->ladderTotalRaceMs = 0;
 		ent->client->ladderLastLapStartMs = 0;
 		ent->client->ladderLapCount = 0;
+		ent->client->ladderKills = 0;
+		ent->client->ladderDeaths = 0;
 		Com_Memset( ent->client->ladderLapTimes, 0, sizeof( ent->client->ladderLapTimes ) );
 	}
 
@@ -1373,6 +1377,8 @@ void ClientSpawn(gentity_t *ent) {
 	int		savedLadderLastLapStart;
 	int		savedLadderLapCount;
 	int		savedLadderLapTimes[RACE_MAX_RECORDED_LAPS];
+	int		savedLadderKills;
+	int		savedLadderDeaths;
 	gentity_t	*savedCarPoints[4];
 	vec3_t	origin, forward;
 // END
@@ -1471,6 +1477,8 @@ void ClientSpawn(gentity_t *ent) {
 	savedLadderTotalRace = client->ladderTotalRaceMs;
 	savedLadderLastLapStart = client->ladderLastLapStartMs;
 	savedLadderLapCount = client->ladderLapCount;
+	savedLadderKills = client->ladderKills;
+	savedLadderDeaths = client->ladderDeaths;
 	Com_Memcpy( savedLadderLapTimes, client->ladderLapTimes, sizeof( savedLadderLapTimes ) );
 // END
 //	savedAreaBits = client->areabits;
@@ -1515,6 +1523,8 @@ void ClientSpawn(gentity_t *ent) {
 	client->ladderTotalRaceMs = savedLadderTotalRace;
 	client->ladderLastLapStartMs = savedLadderLastLapStart;
 	client->ladderLapCount = savedLadderLapCount;
+	client->ladderKills = savedLadderKills;
+	client->ladderDeaths = savedLadderDeaths;
 	Com_Memcpy( client->ladderLapTimes, savedLadderLapTimes, sizeof( client->ladderLapTimes ) );
 // END
 //	client->areabits = savedAreaBits;
@@ -1527,6 +1537,10 @@ void ClientSpawn(gentity_t *ent) {
 	}
         client->ps.eventSequence = eventSequence;
         ClientUserinfoChanged( index );
+        if ( client->ps.persistant[PERS_SPAWN_COUNT] == 0 ) {
+		client->ladderKills = 0;
+		client->ladderDeaths = 0;
+        }
         // increment the spawncount so the client will detect the respawn
 	client->ps.persistant[PERS_SPAWN_COUNT]++;
 	client->ps.persistant[PERS_TEAM] = client->sess.sessionTeam;
