@@ -415,6 +415,8 @@ struct gclient_s {
 	int			ladderLastLapStartMs;
 	int			ladderLapCount;
 	int			ladderLapTimes[RACE_MAX_RECORDED_LAPS];
+	int			ladderKills;
+	int			ladderDeaths;
 
 	int			horn_sound_time;
 
@@ -430,6 +432,18 @@ struct gclient_s {
 //
 #define	MAX_SPAWN_VARS			64
 #define	MAX_SPAWN_VARS_CHARS	4096
+
+typedef struct {
+	int			clientNum;
+	int			kills;
+	int			deaths;
+	float			kdRatio;
+} ladderPlayerPayload_t;
+
+typedef struct {
+	int			count;
+	ladderPlayerPayload_t players[MAX_CLIENTS];
+} ladderMatchPayload_t;
 
 typedef struct {
 	struct gclient_s	*clients;		// [maxclients]
@@ -548,6 +562,7 @@ typedef struct {
         qboolean                hasFinish;
 
         int                     testModelID;
+        ladderMatchPayload_t    ladderPayload;
 // END
 } level_locals_t;
 

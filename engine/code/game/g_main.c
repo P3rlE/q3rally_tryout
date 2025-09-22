@@ -1551,6 +1551,8 @@ void LogExit( const char *string ) {
 // END
 	}
 
+	level.ladderPayload.count = 0;
+
 	for (i=0 ; i < numSorted ; i++) {
 		int		ping;
 
@@ -1561,6 +1563,14 @@ void LogExit( const char *string ) {
 		}
 		if ( cl->pers.connected == CON_CONNECTING ) {
 			continue;
+		}
+
+		if ( level.ladderPayload.count < MAX_CLIENTS ) {
+			ladderPlayerPayload_t *payloadEntry = &level.ladderPayload.players[level.ladderPayload.count++];
+			payloadEntry->clientNum = level.sortedClients[i];
+			payloadEntry->kills = cl->ladderKills;
+			payloadEntry->deaths = cl->ladderDeaths;
+			payloadEntry->kdRatio = (float)cl->ladderKills / (float)((cl->ladderDeaths > 0) ? cl->ladderDeaths : 1);
 		}
 
 		ping = cl->ps.ping < 999 ? cl->ps.ping : 999;
