@@ -416,6 +416,10 @@ void		SV_InitGameProgs ( void );
 void		SV_ShutdownGameProgs ( void );
 void		SV_RestartGameProgs( void );
 qboolean	SV_inPVS (const vec3_t p1, const vec3_t p2);
+void	SV_LadderInit( void );
+void	SV_LadderShutdown( void );
+void	SV_LadderSubmit( const ladderMatchPayload_t *payload );
+void	SV_LadderFrame( void );
 
 //
 // sv_bot.c
