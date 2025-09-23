@@ -134,6 +134,10 @@ ifndef SERVERBIN
 SERVERBIN=q3rally-server
 endif
 
+ifndef SERVER_LIBS
+SERVER_LIBS=
+endif
+
 ifndef BASEGAME
 BASEGAME=baseq3r
 endif
@@ -427,6 +431,7 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
 
   CLIENT_LIBS=$(SDL_LIBS)
   RENDERER_LIBS = $(SDL_LIBS)
+  SERVER_LIBS =
 
   ifeq ($(USE_PORTABLE_RPATH),1)
     # $ is escaped using two, so this is literally $ORIGIN
@@ -444,6 +449,7 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
     CLIENT_CFLAGS += $(CURL_CFLAGS)
     ifneq ($(USE_CURL_DLOPEN),1)
       CLIENT_LIBS += $(CURL_LIBS)
+      SERVER_LIBS += $(CURL_LIBS)
     endif
   endif
 
@@ -1990,7 +1996,8 @@ Q3OBJ = \
   $(B)/client/sv_net_chan.o \
   $(B)/client/sv_snapshot.o \
   $(B)/client/sv_world.o \
-  \
+  $(B)/client/sv_ladder.o \
+\
   $(B)/client/q_math.o \
   $(B)/client/q_shared.o \
   \
@@ -2552,6 +2559,7 @@ Q3DOBJ = \
   $(B)/ded/sv_net_chan.o \
   $(B)/ded/sv_snapshot.o \
   $(B)/ded/sv_world.o \
+  $(B)/ded/sv_ladder.o \
   \
   $(B)/ded/cm_load.o \
   $(B)/ded/cm_patch.o \
@@ -2669,7 +2677,7 @@ endif
 
 $(B)/$(SERVERBIN)$(FULLBINEXT): $(Q3DOBJ)
 	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) -o $@ $(Q3DOBJ) $(LIBS)
+	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) -o $@ $(Q3DOBJ) $(LIBS) $(SERVER_LIBS)
 
 
 

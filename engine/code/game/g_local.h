@@ -44,7 +44,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	INTERMISSION_DELAY_TIME	1000
 #define	SP_INTERMISSION_DELAY_TIME	5000
 
-#define RACE_MAX_RECORDED_LAPS  64
 
 // gentity->flags
 #define	FL_GODMODE				0x00000010
@@ -440,21 +439,7 @@ struct gclient_s {
 #define	MAX_SPAWN_VARS			64
 #define	MAX_SPAWN_VARS_CHARS	4096
 
-typedef struct {
-	int			clientNum;
-	int			kills;
-	int			deaths;
-	float			kdRatio;
-	int			survivalMs;
-	int			eliminationRound;
-	int			eliminationPlayersRemaining;
-	float			eliminationMetric;
-} ladderPlayerPayload_t;
 
-typedef struct {
-	int			count;
-	ladderPlayerPayload_t players[MAX_CLIENTS];
-} ladderMatchPayload_t;
 
 typedef struct {
 	struct gclient_s	*clients;		// [maxclients]
@@ -475,6 +460,9 @@ typedef struct {
 	int			previousTime;			// so movers can back up when blocked
 
 	int			startTime;				// level.time the map was started
+	qtime_t		matchStartTime;
+	int			matchStartEpoch;
+
 
 	int			teamScores[TEAM_NUM_TEAMS];
 // STONELANCE
@@ -1126,6 +1114,7 @@ void	trap_Cvar_Set( const char *var_name, const char *value );
 int		trap_Cvar_VariableIntegerValue( const char *var_name );
 float	trap_Cvar_VariableValue( const char *var_name );
 void	trap_Cvar_VariableStringBuffer( const char *var_name, char *buffer, int bufsize );
+void	trap_LadderSubmit( const ladderMatchPayload_t *payload );
 void	trap_LocateGameData( gentity_t *gEnts, int numGEntities, int sizeofGEntity_t, playerState_t *gameClients, int sizeofGameClient );
 void	trap_DropClient( int clientNum, const char *reason );
 void	trap_SendServerCommand( int clientNum, const char *text );

@@ -704,11 +704,13 @@ void SV_Init (void)
 	// initialize bot cvars so they are listed and can be set before loading the botlib
 	SV_BotInitCvars();
 
-	// init the botlib here because we need the pre-compiler in the UI
-	SV_BotInitBotLib();
-	
-	// Load saved bans
-	Cbuf_AddText("rehashbans\n");
+        // init the botlib here because we need the pre-compiler in the UI
+        SV_BotInitBotLib();
+
+        // Load saved bans
+        Cbuf_AddText("rehashbans\n");
+
+        SV_LadderInit();
 }
 
 
@@ -765,12 +767,13 @@ void SV_Shutdown( char *finalmsg ) {
 		SV_FinalMessage( finalmsg );
 	}
 
-	SV_RemoveOperatorCommands();
-	SV_MasterShutdown();
-	SV_ShutdownGameProgs();
+        SV_RemoveOperatorCommands();
+        SV_MasterShutdown();
+        SV_ShutdownGameProgs();
+        SV_LadderShutdown();
 
-	// free current level
-	SV_ClearServer();
+        // free current level
+        SV_ClearServer();
 
 	// free server static data
 	if(svs.clients)
