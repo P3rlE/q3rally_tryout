@@ -1575,6 +1575,9 @@ static void G_LadderFormatIso8601( const qtime_t *qt, char *out, size_t outSize 
 }
 
 static void G_LadderFormatDurationIso( int seconds, char *out, size_t outSize ) {
+	int hours;
+	int minutes;
+
 	if ( !out || outSize < 2 ) {
 		return;
 	}
@@ -1583,9 +1586,9 @@ static void G_LadderFormatDurationIso( int seconds, char *out, size_t outSize ) 
 		seconds = 0;
 	}
 
-	int hours = seconds / 3600;
+	hours = seconds / 3600;
 	seconds %= 3600;
-	int minutes = seconds / 60;
+	minutes = seconds / 60;
 	seconds %= 60;
 
 	if ( hours > 0 ) {
@@ -1616,6 +1619,7 @@ static void G_LadderBuildMatchId( char *out, size_t outSize, int serverId, const
 
 static void G_LadderComputePlayerId( const char *guid, const char *cleanName, char *out, size_t outSize ) {
 	char combined[128];
+	unsigned int hash;
 
 	combined[0] = '\0';
 	if ( guid && guid[0] ) {
@@ -1629,7 +1633,7 @@ static void G_LadderComputePlayerId( const char *guid, const char *cleanName, ch
 		Q_strncpyz( combined, "anonymous", sizeof( combined ) );
 	}
 
-	unsigned int hash = Com_BlockChecksum( combined, strlen( combined ) );
+	hash = Com_BlockChecksum( combined, strlen( combined ) );
 	Com_sprintf( out, outSize, "cksum:%08x", hash );
 }
 
