@@ -2832,7 +2832,8 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/game/g_weapon.o \
   \
   $(B)/$(BASEGAME)/qcommon/q_math.o \
-  $(B)/$(BASEGAME)/qcommon/q_shared.o
+  $(B)/$(BASEGAME)/qcommon/q_shared.o \
+  $(B)/$(BASEGAME)/qcommon/md4.o
 
 Q3GOBJ = $(Q3GOBJ_) $(B)/$(BASEGAME)/game/g_syscalls.o
 Q3GVMOBJ = $(Q3GOBJ_:%.o=%.asm)
@@ -2883,7 +2884,8 @@ MPGOBJ_ = \
   $(B)/$(MISSIONPACK)/game/g_weapon.o \
   \
   $(B)/$(MISSIONPACK)/qcommon/q_math.o \
-  $(B)/$(MISSIONPACK)/qcommon/q_shared.o
+  $(B)/$(MISSIONPACK)/qcommon/q_shared.o \
+  $(B)/$(MISSIONPACK)/qcommon/md4.o
 
 MPGOBJ = $(MPGOBJ_) $(B)/$(MISSIONPACK)/game/g_syscalls.o
 MPGVMOBJ = $(MPGOBJ_:%.o=%.asm)
