@@ -43,7 +43,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define LADDER_MATCH_ID_FALLBACK        "pending"
 
 #ifdef USE_CURL
+#ifdef USE_LOCAL_HEADERS
+#include "../curl-7.54.0/include/curl/curl.h"
+#else
 #include <curl/curl.h>
+#endif
 #ifdef USE_CURL_DLOPEN
 #include "../sys/sys_loadlib.h"
 #endif
