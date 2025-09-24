@@ -1338,6 +1338,77 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
+	if ( !strcmp( cmd, "ladder_begin" ) ) {
+		CG_LadderBeginLoad();
+		return;
+	}
+
+	if ( !strcmp( cmd, "ladder_entry" ) ) {
+		int argc = trap_Argc();
+
+		if ( argc >= 2 ) {
+			int sequence = atoi( CG_Argv( 1 ) );
+			const char *identifier = "";
+			int payloadStart = 2;
+			char payload[MAX_STRING_CHARS];
+
+			if ( argc >= 3 ) {
+				identifier = CG_Argv( 2 );
+				payloadStart = 3;
+			}
+
+			payload[0] = '\0';
+			if ( payloadStart < argc ) {
+				int i;
+
+				for ( i = payloadStart ; i < argc ; i++ ) {
+					const char *arg = CG_Argv( i );
+
+					if ( payload[0] ) {
+						Q_strcat( payload, sizeof( payload ), " " );
+					}
+
+					Q_strcat( payload, sizeof( payload ), arg );
+				}
+			}
+
+			CG_LadderHandleServerCommand( sequence,
+					identifier,
+					payload,
+					( cg.snap ) ? cg.snap->serverTime : 0 );
+		}
+
+		return;
+	}
+
+	if ( !strcmp( cmd, "ladder_complete" ) ) {
+		CG_LadderMarkReady();
+		return;
+	}
+
+	if ( !strcmp( cmd, "ladder_error" ) ) {
+		char message[MAX_STRING_CHARS];
+		int argc = trap_Argc();
+
+		message[0] = '\0';
+		if ( argc >= 2 ) {
+			int i;
+
+			for ( i = 1 ; i < argc ; i++ ) {
+				const char *arg = CG_Argv( i );
+
+				if ( message[0] ) {
+					Q_strcat( message, sizeof( message ), " " );
+				}
+
+				Q_strcat( message, sizeof( message ), arg );
+			}
+		}
+
+		CG_LadderSetError( message );
+		return;
+	}
+
 	if ( !strcmp( cmd, "map_restart" ) ) {
 		CG_MapRestart();
 		return;
