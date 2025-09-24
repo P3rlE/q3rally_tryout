@@ -817,32 +817,6 @@ extern void			UI_StartDemoLoop( void );
 extern qboolean		m_entersound;
 extern uiStatic_t	uis;
 
-#define UI_MAX_LADDER_ENTRIES			64
-#define UI_MAX_LADDER_TEXT			64
-
-typedef enum {
-	UI_LADDER_STATUS_EMPTY = 0,
-	UI_LADDER_STATUS_LOADING,
-	UI_LADDER_STATUS_READY,
-	UI_LADDER_STATUS_ERROR
-} uiLadderStatusCode_t;
-
-typedef struct {
-	int			rank;
-	char			player[UI_MAX_LADDER_TEXT];
-	char			mode[UI_MAX_LADDER_TEXT];
-	char			vehicle[UI_MAX_LADDER_TEXT];
-	char			region[UI_MAX_LADDER_TEXT];
-	char			metric[UI_MAX_LADDER_TEXT];
-} uiLadderEntry_t;
-
-typedef struct {
-	uiLadderStatusCode_t	status;
-	int			entryCount;
-	char			errorMessage[MAX_STRING_CHARS];
-	uiLadderEntry_t entries[UI_MAX_LADDER_ENTRIES];
-} uiLadderStatus_t;
-
 //
 // ui_spLevel.c
 //
