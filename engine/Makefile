@@ -2717,6 +2717,7 @@ Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_rally_scripted_objects.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_tools.o \
   $(B)/$(BASEGAME)/cgame/cg_scoreboard.o \
+  $(B)/$(BASEGAME)/cgame/cg_ladder.o \
   $(B)/$(BASEGAME)/cgame/cg_servercmds.o \
   $(B)/$(BASEGAME)/cgame/cg_snapshot.o \
   $(B)/$(BASEGAME)/cgame/cg_view.o \
@@ -2943,6 +2944,7 @@ Q3UIOBJ_ = \
   $(B)/$(BASEGAME)/ui/ui_rally_servers.o \
   $(B)/$(BASEGAME)/ui/ui_rally_startserver.o \
   $(B)/$(BASEGAME)/ui/ui_rally_tools.o \
+  $(B)/$(BASEGAME)/ui/ui_ladder.o \
   $(B)/$(BASEGAME)/ui/ui_removebots.o \
   $(B)/$(BASEGAME)/ui/ui_saveconfig.o \
   $(B)/$(BASEGAME)/ui/ui_serverinfo.o \
