@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "cg_local.h"
 #include <ctype.h>
 #include <stdlib.h>
+#include <limits.h>
 
 /* Modern scoreboard layout constants */
 #define MODERN_SB_Y             120
@@ -60,6 +61,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define MAX_LADDER_TABS         6
 #define MAX_LADDER_COLUMNS      8
 #define MAX_LADDER_DISPLAY_ROWS 16
+#define MAX_LOCAL_FALLBACK_ENTRIES 8
 
 /* Scoreboard column types */
 typedef enum {
@@ -95,6 +97,7 @@ static qboolean localClientDrawn;
 static int scoreboardActiveTab = 0;
 static qboolean scoreboardLeftHeld = qfalse;
 static qboolean scoreboardRightHeld = qfalse;
+static qboolean scoreboardRetryHeld = qfalse;
 
 /* Ladder column handling */
 typedef enum {
@@ -131,6 +134,17 @@ typedef struct {
     char identifier[MAX_LADDER_IDENTIFIER];
     char label[32];
 } ladderTabInfo_t;
+
+typedef struct {
+    int clientNum;
+    int position;
+    int bestLapTime;
+    int totalTime;
+    int score;
+    int deaths;
+    team_t team;
+    char name[MAX_NAME_LENGTH];
+} localFallbackEntry_t;
 
 /*
 =================
@@ -636,8 +650,18 @@ static void CG_HandleScoreboardTabInput(int tabCount) {
         return;
     }
 
-    leftDown = trap_Key_IsDown(K_LEFTARROW) || trap_Key_IsDown(K_KP_LEFTARROW);
-    rightDown = trap_Key_IsDown(K_RIGHTARROW) || trap_Key_IsDown(K_KP_RIGHTARROW);
+    leftDown = trap_Key_IsDown(K_LEFTARROW) || trap_Key_IsDown(K_KP_LEFTARROW) ||
+               trap_Key_IsDown(K_PGUP) || trap_Key_IsDown(K_HOME) ||
+               trap_Key_IsDown(K_PAD0_DPAD_LEFT) ||
+               trap_Key_IsDown(K_PAD0_LEFTSTICK_LEFT) ||
+               trap_Key_IsDown(K_PAD0_RIGHTSTICK_LEFT) ||
+               trap_Key_IsDown(K_PAD0_LEFTSHOULDER);
+    rightDown = trap_Key_IsDown(K_RIGHTARROW) || trap_Key_IsDown(K_KP_RIGHTARROW) ||
+                trap_Key_IsDown(K_PGDN) || trap_Key_IsDown(K_END) ||
+                trap_Key_IsDown(K_PAD0_DPAD_RIGHT) ||
+                trap_Key_IsDown(K_PAD0_LEFTSTICK_RIGHT) ||
+                trap_Key_IsDown(K_PAD0_RIGHTSTICK_RIGHT) ||
+                trap_Key_IsDown(K_PAD0_RIGHTSHOULDER);
 
     if (leftDown && !scoreboardLeftHeld) {
         scoreboardActiveTab--;
@@ -1224,6 +1248,440 @@ static int CG_GetLadderColumns(ladderColumnDef_t *columns, int maxColumns) {
     return count;
 }
 
+static void CG_RequestLadderRetry(const char *identifier) {
+    char cleanId[MAX_LADDER_IDENTIFIER];
+    char command[MAX_STRING_CHARS];
+
+    cleanId[0] = '\0';
+
+    if (identifier && identifier[0]) {
+        Q_strncpyz(cleanId, identifier, sizeof(cleanId));
+        Q_CleanStr(cleanId);
+    }
+
+    if (cleanId[0]) {
+        Com_sprintf(command, sizeof(command), "ladder_request \"%s\"", cleanId);
+    } else {
+        Q_strncpyz(command, "ladder_request", sizeof(command));
+    }
+
+    trap_SendClientCommand(command);
+
+    if (cleanId[0]) {
+        CG_Printf("Requesting ladder data for %s\n", cleanId);
+    } else {
+        CG_Printf("Requesting ladder data\n");
+    }
+}
+
+static qboolean CG_HandleLadderRetryInput(qboolean *isActiveOut) {
+    qboolean down;
+
+    down = trap_Key_IsDown(K_ENTER) ||
+           trap_Key_IsDown(K_KP_ENTER) ||
+           trap_Key_IsDown(K_SPACE) ||
+           trap_Key_IsDown(K_MOUSE1) ||
+           trap_Key_IsDown(K_PAD0_A) ||
+           trap_Key_IsDown(K_PAD0_X) ||
+           trap_Key_IsDown(K_PAD0_Y) ||
+           trap_Key_IsDown(K_PAD0_START);
+
+    if (isActiveOut) {
+        *isActiveOut = down;
+    }
+
+    if (down) {
+        if (!scoreboardRetryHeld) {
+            scoreboardRetryHeld = qtrue;
+            return qtrue;
+        }
+    } else if (scoreboardRetryHeld) {
+        scoreboardRetryHeld = qfalse;
+    }
+
+    return qfalse;
+}
+
+static void CG_DrawModernButton(int x, int y, int width, int height,
+                                const char *label, float fade, qboolean active) {
+    vec4_t baseColor;
+    vec4_t borderColor;
+    vec4_t textColor;
+
+    if (active) {
+        baseColor[0] = 0.24f; baseColor[1] = 0.30f; baseColor[2] = 0.36f; baseColor[3] = fade;
+        borderColor[0] = 0.45f; borderColor[1] = 0.60f; borderColor[2] = 0.75f; borderColor[3] = fade;
+    } else {
+        baseColor[0] = 0.16f; baseColor[1] = 0.20f; baseColor[2] = 0.24f; baseColor[3] = fade * 0.85f;
+        borderColor[0] = 0.32f; borderColor[1] = 0.40f; borderColor[2] = 0.48f; borderColor[3] = fade * 0.85f;
+    }
+
+    textColor[0] = 0.95f; textColor[1] = 0.95f; textColor[2] = 0.95f; textColor[3] = fade;
+
+    CG_FillRect(x, y, width, height, baseColor);
+    CG_FillRect(x, y, width, MODERN_SB_BORDER_SIZE, borderColor);
+    CG_FillRect(x, y + height - MODERN_SB_BORDER_SIZE, width, MODERN_SB_BORDER_SIZE, borderColor);
+    CG_FillRect(x, y, MODERN_SB_BORDER_SIZE, height, borderColor);
+    CG_FillRect(x + width - MODERN_SB_BORDER_SIZE, y, MODERN_SB_BORDER_SIZE, height, borderColor);
+
+    CG_DrawModernText(x, y + (height - BIGCHAR_HEIGHT) / 2, label, 1, width, textColor, qtrue);
+}
+
+static int CG_CalculateScoreTotalTime(const score_t *score, qboolean isRacingMode) {
+    centity_t *cent;
+
+    if (!score) {
+        return 0;
+    }
+
+    if (score->client < 0 || score->client >= cgs.maxclients) {
+        return 0;
+    }
+
+    cent = &cg_entities[score->client];
+
+    if (cent->finishRaceTime) {
+        if (isRacingMode && cgs.laplimit <= 1 && cent->startLapTime > 0) {
+            return cent->finishRaceTime - cent->startLapTime;
+        }
+        if (score->time) {
+            return cent->finishRaceTime - score->time;
+        }
+        if (cent->startRaceTime > 0) {
+            return cent->finishRaceTime - cent->startRaceTime;
+        }
+    }
+
+    if (isRacingMode && cgs.laplimit <= 1 && cent->startLapTime > 0) {
+        return cg.time - cent->startLapTime;
+    }
+
+    if (score->time) {
+        return cg.time - score->time;
+    }
+
+    return 0;
+}
+
+static qboolean CG_ShouldSwapLocalEntries(const localFallbackEntry_t *current,
+                                          const localFallbackEntry_t *candidate,
+                                          qboolean isRacingMode) {
+    int currentPos;
+    int candidatePos;
+
+    if (!current || !candidate) {
+        return qfalse;
+    }
+
+    currentPos = (current->position > 0) ? current->position : INT_MAX;
+    candidatePos = (candidate->position > 0) ? candidate->position : INT_MAX;
+
+    if (candidatePos < currentPos) {
+        return qtrue;
+    }
+    if (candidatePos > currentPos) {
+        return qfalse;
+    }
+
+    if (isRacingMode) {
+        int currentBest = (current->bestLapTime > 0) ? current->bestLapTime : INT_MAX;
+        int candidateBest = (candidate->bestLapTime > 0) ? candidate->bestLapTime : INT_MAX;
+
+        if (candidateBest < currentBest) {
+            return qtrue;
+        }
+        if (candidateBest > currentBest) {
+            return qfalse;
+        }
+
+        {
+            int currentTotal = (current->totalTime > 0) ? current->totalTime : INT_MAX;
+            int candidateTotal = (candidate->totalTime > 0) ? candidate->totalTime : INT_MAX;
+
+            if (candidateTotal < currentTotal) {
+                return qtrue;
+            }
+            if (candidateTotal > currentTotal) {
+                return qfalse;
+            }
+        }
+    } else {
+        if (candidate->score > current->score) {
+            return qtrue;
+        }
+        if (candidate->score < current->score) {
+            return qfalse;
+        }
+
+        if (candidate->deaths < current->deaths) {
+            return qtrue;
+        }
+        if (candidate->deaths > current->deaths) {
+            return qfalse;
+        }
+    }
+
+    if (candidate->name[0] || current->name[0]) {
+        if (Q_stricmp(candidate->name, current->name) < 0) {
+            return qtrue;
+        }
+    }
+
+    return qfalse;
+}
+
+static int CG_BuildLocalFallbackEntries(localFallbackEntry_t *entries, int maxEntries,
+                                        qboolean isRacingMode) {
+    int count;
+    int i;
+
+    if (!entries || maxEntries <= 0) {
+        return 0;
+    }
+
+    count = 0;
+
+    for (i = 0; i < cg.numScores && count < maxEntries; i++) {
+        const score_t *score = &cg.scores[i];
+        clientInfo_t *ci;
+
+        if (score->client < 0 || score->client >= cgs.maxclients) {
+            continue;
+        }
+
+        ci = &cgs.clientinfo[score->client];
+        if (!ci->infoValid) {
+            continue;
+        }
+
+        if (ci->team == TEAM_SPECTATOR) {
+            continue;
+        }
+
+        entries[count].clientNum = score->client;
+        entries[count].position = score->position;
+        entries[count].bestLapTime = cg_entities[score->client].bestLapTime;
+        entries[count].totalTime = CG_CalculateScoreTotalTime(score, isRacingMode);
+        entries[count].score = score->score;
+        entries[count].deaths = score->deaths;
+        entries[count].team = ci->team;
+        Q_strncpyz(entries[count].name, ci->name, sizeof(entries[count].name));
+        count++;
+    }
+
+    for (i = 0; i < count; i++) {
+        int j;
+        int bestIndex = i;
+
+        for (j = i + 1; j < count; j++) {
+            if (CG_ShouldSwapLocalEntries(&entries[bestIndex], &entries[j], isRacingMode)) {
+                bestIndex = j;
+            }
+        }
+
+        if (bestIndex != i) {
+            localFallbackEntry_t temp = entries[i];
+            entries[i] = entries[bestIndex];
+            entries[bestIndex] = temp;
+        }
+    }
+
+    return count;
+}
+
+static void CG_DrawLadderOfflineFallback(int y, float fade, const cg_ladder_t *ladder,
+                                         const char *tabLabel, const char *tabIdentifier,
+                                         const char *overrideMessage) {
+    vec4_t textColor;
+    vec4_t hintColor;
+    vec4_t rowHighlight;
+    char cleanLabel[64];
+    char cleanError[MAX_STRING_CHARS];
+    char header[256];
+    char infoLine[256];
+    qboolean isRacing;
+    qboolean retryActive = qfalse;
+    qboolean retryTriggered;
+    localFallbackEntry_t entries[MAX_LOCAL_FALLBACK_ENTRIES];
+    int entryCount;
+    int rowHeight;
+    int posWidth;
+    int bestWidth;
+    int totalWidth;
+    int nameWidth;
+    int posX;
+    int nameX;
+    int bestX;
+    int totalX;
+    int localClient;
+    int i;
+
+    textColor[0] = 0.90f; textColor[1] = 0.90f; textColor[2] = 0.90f; textColor[3] = fade;
+    hintColor[0] = 0.75f; hintColor[1] = 0.75f; hintColor[2] = 0.75f; hintColor[3] = fade;
+    rowHighlight[0] = 0.20f; rowHighlight[1] = 0.40f; rowHighlight[2] = 0.80f; rowHighlight[3] = 0.25f * fade;
+
+    Q_strncpyz(cleanLabel, (tabLabel && tabLabel[0]) ? tabLabel : "Ladder", sizeof(cleanLabel));
+    Q_CleanStr(cleanLabel);
+    if (!cleanLabel[0]) {
+        Q_strncpyz(cleanLabel, "Ladder", sizeof(cleanLabel));
+    }
+
+    if (overrideMessage && overrideMessage[0]) {
+        Q_strncpyz(header, overrideMessage, sizeof(header));
+    } else if (ladder && ladder->status == LADDER_STATUS_ERROR) {
+        if (ladder->errorMessage[0]) {
+            Q_strncpyz(cleanError, ladder->errorMessage, sizeof(cleanError));
+            Q_CleanStr(cleanError);
+            Com_sprintf(header, sizeof(header), "%s ladder offline: %s", cleanLabel, cleanError);
+        } else {
+            Com_sprintf(header, sizeof(header), "%s ladder offline", cleanLabel);
+        }
+    } else if (ladder && ladder->status == LADDER_STATUS_EMPTY) {
+        Com_sprintf(header, sizeof(header), "%s ladder currently unreachable", cleanLabel);
+    } else {
+        Com_sprintf(header, sizeof(header), "%s ladder data unavailable", cleanLabel);
+    }
+
+    CG_DrawModernBackground(scoreboardX, y, currentScoreboardWidth, MODERN_SB_HEADER_HEIGHT,
+                            MODERN_SB_ALPHA * fade, qfalse);
+    CG_DrawModernText(scoreboardX, y + (MODERN_SB_HEADER_HEIGHT - BIGCHAR_HEIGHT) / 2,
+                      header, 1, currentScoreboardWidth, textColor, qtrue);
+
+    y += MODERN_SB_HEADER_HEIGHT + 6;
+
+    Com_sprintf(infoLine, sizeof(infoLine),
+                "Showing local session results while online data is unavailable.");
+    CG_DrawModernText(scoreboardX, y, infoLine, 1, currentScoreboardWidth, hintColor, qfalse);
+    y += SMALLCHAR_HEIGHT + 6;
+
+    retryTriggered = CG_HandleLadderRetryInput(&retryActive);
+    CG_DrawModernButton(scoreboardX + (currentScoreboardWidth - 200) / 2, y, 200, 32,
+                        "RETRY", fade, retryActive);
+    if (retryTriggered) {
+        CG_RequestLadderRetry((tabIdentifier) ? tabIdentifier : "");
+    }
+    y += 32 + 6;
+
+    Com_sprintf(infoLine, sizeof(infoLine),
+                "Press Enter, Space or A on your gamepad to retry loading online results.");
+    CG_DrawModernText(scoreboardX, y, infoLine, 1, currentScoreboardWidth, hintColor, qfalse);
+    y += SMALLCHAR_HEIGHT + 10;
+
+    Com_sprintf(infoLine, sizeof(infoLine), "Local session leaderboard:");
+    CG_DrawModernText(scoreboardX, y, infoLine, 0, currentScoreboardWidth, hintColor, qfalse);
+    y += SMALLCHAR_HEIGHT + 4;
+
+    isRacing = CG_IsRacingGametype();
+    entryCount = CG_BuildLocalFallbackEntries(entries, MAX_LOCAL_FALLBACK_ENTRIES, isRacing);
+
+    posWidth = 70;
+    bestWidth = isRacing ? 140 : 120;
+    totalWidth = 140;
+    nameWidth = currentScoreboardWidth - (posWidth + bestWidth + totalWidth);
+    if (nameWidth < 180) {
+        nameWidth = 180;
+    }
+    if (posWidth + bestWidth + totalWidth + nameWidth > currentScoreboardWidth) {
+        totalWidth = currentScoreboardWidth - (posWidth + bestWidth + nameWidth);
+        if (totalWidth < 100) {
+            totalWidth = 100;
+        }
+    }
+    if (posWidth + bestWidth + totalWidth + nameWidth > currentScoreboardWidth) {
+        bestWidth = currentScoreboardWidth - (posWidth + totalWidth + nameWidth);
+        if (bestWidth < 100) {
+            bestWidth = 100;
+        }
+    }
+    if (posWidth + bestWidth + totalWidth + nameWidth > currentScoreboardWidth) {
+        nameWidth = currentScoreboardWidth - (posWidth + bestWidth + totalWidth);
+        if (nameWidth < 140) {
+            nameWidth = 140;
+        }
+    }
+
+    posX = scoreboardX;
+    nameX = posX + posWidth;
+    bestX = nameX + nameWidth;
+    totalX = bestX + bestWidth;
+
+    localClient = (cg.snap) ? cg.snap->ps.clientNum : -1;
+
+    if (entryCount > 0) {
+        const char *bestHeader;
+        const char *totalHeader;
+
+        bestHeader = isRacing ? "BEST LAP" : "SCORE";
+        if (isRacing) {
+            totalHeader = (cgs.laplimit <= 1) ? "RUN TIME" : "TOTAL TIME";
+        } else {
+            totalHeader = "DEATHS";
+        }
+
+        CG_DrawModernBackground(scoreboardX, y, currentScoreboardWidth, MODERN_SB_HEADER_HEIGHT,
+                                MODERN_SB_ALPHA, qtrue);
+        CG_DrawModernText(posX, y + 8, "POS", 1, posWidth, textColor, qtrue);
+        CG_DrawModernText(nameX, y + 8, "DRIVER", 0, nameWidth, textColor, qtrue);
+        CG_DrawModernText(bestX, y + 8, bestHeader, 1, bestWidth, textColor, qtrue);
+        CG_DrawModernText(totalX, y + 8, totalHeader, 1, totalWidth, textColor, qtrue);
+
+        y += MODERN_SB_HEADER_HEIGHT + 4;
+        rowHeight = MODERN_SB_ROW_HEIGHT;
+
+        for (i = 0; i < entryCount; i++) {
+            int rowY = y + i * rowHeight;
+            int textY = rowY + (rowHeight - SMALLCHAR_HEIGHT) / 2;
+            char posText[32];
+            char bestText[64];
+            char totalText[64];
+            const localFallbackEntry_t *entry = &entries[i];
+
+            if (localClient >= 0 && entry->clientNum == localClient) {
+                CG_FillRect(scoreboardX, rowY, currentScoreboardWidth, rowHeight, rowHighlight);
+            }
+
+            CG_DrawModernBackground(scoreboardX, rowY, currentScoreboardWidth, rowHeight,
+                                    MODERN_SB_ALPHA * fade, qfalse);
+
+            if (entry->position > 0) {
+                Com_sprintf(posText, sizeof(posText), "%d", entry->position);
+            } else {
+                Com_sprintf(posText, sizeof(posText), "%d", i + 1);
+            }
+
+            if (isRacing) {
+                if (entry->bestLapTime > 0) {
+                    const char *lap = getStringForTime(entry->bestLapTime);
+                    Q_strncpyz(bestText, lap, sizeof(bestText));
+                } else {
+                    Q_strncpyz(bestText, "--", sizeof(bestText));
+                }
+
+                if (entry->totalTime > 0) {
+                    const char *total = getStringForTime(entry->totalTime);
+                    Q_strncpyz(totalText, total, sizeof(totalText));
+                } else {
+                    Q_strncpyz(totalText, "--", sizeof(totalText));
+                }
+            } else {
+                Com_sprintf(bestText, sizeof(bestText), "%d", entry->score);
+                Com_sprintf(totalText, sizeof(totalText), "%d", entry->deaths);
+            }
+
+            CG_DrawModernText(posX, textY, posText, 1, posWidth, textColor, qfalse);
+            CG_DrawModernText(nameX, textY, entry->name, 0, nameWidth, textColor, qfalse);
+            CG_DrawModernText(bestX, textY, bestText, 1, bestWidth, textColor, qfalse);
+            CG_DrawModernText(totalX, textY, totalText, 1, totalWidth, textColor, qfalse);
+        }
+    } else {
+        CG_DrawModernBackground(scoreboardX, y, currentScoreboardWidth, MODERN_SB_HEADER_HEIGHT,
+                                MODERN_SB_ALPHA * fade, qfalse);
+        CG_DrawModernText(scoreboardX, y + (MODERN_SB_HEADER_HEIGHT - SMALLCHAR_HEIGHT) / 2,
+                          "No local session data recorded yet.", 1, currentScoreboardWidth,
+                          hintColor, qfalse);
+    }
+}
+
 static void CG_DrawLadderStatusMessage(int x, int y, int width, float fade, const char *message) {
     vec4_t textColor;
     char buffer[128];
@@ -1261,19 +1719,22 @@ static void CG_DrawLadderView(int y, float fade, const cg_ladder_t *ladder,
     vec4_t textColor;
     vec4_t rowHighlight;
     char identifier[MAX_LADDER_IDENTIFIER];
+    const char *activeLabel;
     char localName[MAX_NAME_LENGTH];
     char localClean[MAX_NAME_LENGTH];
     qboolean haveLocal;
 
-    if (!ladder) {
-        CG_DrawLadderStatusMessage(scoreboardX, y, currentScoreboardWidth, fade, "No ladder data");
-        return;
+    identifier[0] = '\0';
+    activeLabel = "Ladder";
+
+    if (tabs && tabCount > 0 && selectedTab >= 0 && selectedTab < tabCount) {
+        activeLabel = tabs[selectedTab].label;
+        Q_strncpyz(identifier, tabs[selectedTab].identifier, sizeof(identifier));
     }
 
-    if (selectedTab >= 0 && selectedTab < tabCount) {
-        Q_strncpyz(identifier, tabs[selectedTab].identifier, sizeof(identifier));
-    } else {
-        identifier[0] = '\0';
+    if (!ladder) {
+        CG_DrawLadderOfflineFallback(y, fade, ladder, activeLabel, identifier, NULL);
+        return;
     }
 
     if (ladder->status == LADDER_STATUS_LOADING) {
@@ -1281,13 +1742,8 @@ static void CG_DrawLadderView(int y, float fade, const cg_ladder_t *ladder,
         return;
     }
 
-    if (ladder->status == LADDER_STATUS_ERROR) {
-        if (ladder->errorMessage[0]) {
-            CG_DrawLadderStatusMessage(scoreboardX, y, currentScoreboardWidth, fade,
-                                       va("Ladder error: %s", ladder->errorMessage));
-        } else {
-            CG_DrawLadderStatusMessage(scoreboardX, y, currentScoreboardWidth, fade, "Ladder error");
-        }
+    if (ladder->status == LADDER_STATUS_ERROR || ladder->status == LADDER_STATUS_EMPTY) {
+        CG_DrawLadderOfflineFallback(y, fade, ladder, activeLabel, identifier, NULL);
         return;
     }
 
@@ -1309,11 +1765,16 @@ static void CG_DrawLadderView(int y, float fade, const cg_ladder_t *ladder,
     }
 
     if (entryCount <= 0) {
-        if (ladder->status == LADDER_STATUS_READY) {
-            CG_DrawLadderStatusMessage(scoreboardX, y, currentScoreboardWidth, fade, "No results for this tab");
-        } else {
-            CG_DrawLadderStatusMessage(scoreboardX, y, currentScoreboardWidth, fade, "No ladder results yet");
+        char cleanLabel[64];
+
+        Q_strncpyz(cleanLabel, activeLabel, sizeof(cleanLabel));
+        Q_CleanStr(cleanLabel);
+        if (!cleanLabel[0]) {
+            Q_strncpyz(cleanLabel, "Ladder", sizeof(cleanLabel));
         }
+
+        CG_DrawLadderOfflineFallback(y, fade, ladder, activeLabel, identifier,
+                                     va("No online %s results yet.", cleanLabel));
         return;
     }
 
