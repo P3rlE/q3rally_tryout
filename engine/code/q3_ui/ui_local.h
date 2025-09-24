@@ -817,6 +817,32 @@ extern void			UI_StartDemoLoop( void );
 extern qboolean		m_entersound;
 extern uiStatic_t	uis;
 
+#define UI_MAX_LADDER_ENTRIES			64
+#define UI_MAX_LADDER_TEXT			64
+
+typedef enum {
+	UI_LADDER_STATUS_EMPTY = 0,
+	UI_LADDER_STATUS_LOADING,
+	UI_LADDER_STATUS_READY,
+	UI_LADDER_STATUS_ERROR
+} uiLadderStatusCode_t;
+
+typedef struct {
+	int			rank;
+	char			player[UI_MAX_LADDER_TEXT];
+	char			mode[UI_MAX_LADDER_TEXT];
+	char			vehicle[UI_MAX_LADDER_TEXT];
+	char			region[UI_MAX_LADDER_TEXT];
+	char			metric[UI_MAX_LADDER_TEXT];
+} uiLadderEntry_t;
+
+typedef struct {
+	uiLadderStatusCode_t	status;
+	int			entryCount;
+	char			errorMessage[MAX_STRING_CHARS];
+	uiLadderEntry_t entries[UI_MAX_LADDER_ENTRIES];
+} uiLadderStatus_t;
+
 //
 // ui_spLevel.c
 //
@@ -906,6 +932,9 @@ int				trap_MemoryRemaining( void );
 void			trap_GetCDKey( char *buf, int buflen );
 void			trap_SetCDKey( char *buf );
 
+void			trap_RequestLadderData( const char *mode, const char *timeframe, const char *region );
+void			trap_GetLadderStatus( uiLadderStatus_t *status );
+
 qboolean               trap_VerifyCDKey( const char *key, const char *chksum);
 
 void			trap_SetPbClStatus( int status );
@@ -953,6 +982,8 @@ void UI_DisplayOptionsMenu( void );
 void UI_SoundOptionsMenu_Cache( void );
 void UI_SoundOptionsMenu( void );
 
+void UI_LadderMenu_Cache( void );
+void UI_LadderMenu( void );
 
 // STONELANCE
 //
