@@ -24,9 +24,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 /* cg_scoreboard.c -- Adaptive scoreboard design for Q3Rally */
 #include "cg_local.h"
 #include "../client/keycodes.h"
+#ifdef Q3_VM
+#include "../game/bg_lib.h"
+#else
 #include <ctype.h>
 #include <stdlib.h>
 #include <limits.h>
+#endif
 
 /* Modern scoreboard layout constants */
 #define MODERN_SB_Y             120
