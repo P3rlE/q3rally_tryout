@@ -28,6 +28,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define LADDER_FRAME                            "menu/art/cut_frame"
 
+static const vec4_t ladderBackdropColor = { 0.f, 0.f, 0.f, 0.6f };
+
 #define ID_MODE                                 100
 #define ID_TIMEFRAME                            101
 #define ID_REGION                               102
@@ -296,6 +298,7 @@ static void LadderMenu_MenuEvent( void *ptr, int event ) {
 }
 
 static void LadderMenu_MenuDraw( void ) {
+        UI_FillRect( -uis.bias, 0, SCREEN_WIDTH + 2 * uis.bias, SCREEN_HEIGHT, ladderBackdropColor );
         LadderMenu_UpdateFromBackend();
         Menu_Draw( &s_ladderMenu.menu );
 }
