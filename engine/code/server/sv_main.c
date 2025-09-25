@@ -40,6 +40,7 @@ cvar_t	*sv_allowDownload;
 cvar_t	*sv_ladderEnabled;
 cvar_t	*sv_ladderUrl;
 cvar_t	*sv_ladderApiKey;
+cvar_t	*sv_telemetryMaxBatch;
 cvar_t	*sv_maxclients;
 
 cvar_t	*sv_privateClients;		// number of clients reserved for password
