@@ -13,6 +13,72 @@ if (!is_dir(DATA_DIR)) {
 }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+// --- Minimal frontend for Q3Rally Ladder (HTML landing page) ---
+try {
+    $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+    $uri    = $_SERVER['REQUEST_URI'] ?? '/';
+    $script = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+    $path   = parse_url($uri, PHP_URL_PATH) ?? '/';
+    $path   = rtrim($path, '/');
+    $isRoot = ($path === '' || $path === '/' || $path === $script);
+
+    if ($method === 'GET' && ($isRoot) && (strpos($accept, 'application/json') === false)) {
+        header('Content-Type: text/html; charset=UTF-8');
+        ?>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Q3Rally Ladder — Coming Soon</title>
+  <style>
+    :root { --card-bg: rgba(20,20,24,0.55); --border: rgba(255,255,255,0.12); --text: #EAEAF0; --muted: #C9CAD3; }
+    html,body { height: 100%; }
+    body { margin:0; background: radial-gradient(1200px 800px at 50% 0%, rgba(255,255,255,0.06), #0a0a0f 60%); 
+           color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial; }
+    .wrap { min-height:100%; display:grid; place-items:center; padding:24px; }
+    .card { max-width:680px; width:100%; background: var(--card-bg); border:1px solid var(--border); 
+            border-radius: 20px; padding: 28px; backdrop-filter: blur(14px) saturate(120%); -webkit-backdrop-filter: blur(14px) saturate(120%);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08); }
+    .row { display:flex; gap:16px; align-items:center; }
+    .logo { width:64px; height:64px; border-radius:14px; object-fit:contain; background: rgba(255,255,255,0.06); padding:8px; border:1px solid rgba(255,255,255,0.1); }
+    h1 { margin:0 0 6px 0; font-size:24px; letter-spacing:.2px; }
+    p { margin:0; color: var(--muted); line-height:1.6; }
+    .actions { margin-top:18px; display:flex; gap:10px; }
+    .btn { display:inline-block; padding:10px 14px; border-radius:12px; border:1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.06); color: var(--text); text-decoration:none; }
+    .btn:hover { background: rgba(255,255,255,0.1); }
+    .small { font-size:12px; color:#AEB2C6; text-decoration:none; }
+    .small:hover { text-decoration:underline; color:#D5D9EE; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <div class="row">
+        <img class="logo" src="logo.png" alt="Q3Rally logo" onerror="this.style.visibility='hidden'">
+        <div>
+          <h1>Q3Rally Ladder — coming soon</h1>
+          <p>This endpoint currently serves the upcoming public leaderboard. The API remains available in the background.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="?health=1">API Health</a>
+        <a class="small" href="#" onclick="document.querySelector('.card').style.display='none'; return false;">Hide this notice</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
+<?php
+        exit;
+    }
+} catch (Throwable $e) {
+    // if the frontend fails for any reason, continue with API logic
+}
+// --- End frontend ---
+
+
 $pathInfo = $_SERVER['PATH_INFO'] ?? '';
 $path = trim($pathInfo, '/');
 $segments = $path === '' ? [] : explode('/', $path);
