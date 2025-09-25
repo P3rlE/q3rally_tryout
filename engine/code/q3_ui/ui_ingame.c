@@ -278,8 +278,8 @@ void InGame_MenuInit( void ) {
 	s_ingame.ladder.generic.id			= ID_LADDER;
 	s_ingame.ladder.generic.callback	= InGame_Event;
 	s_ingame.ladder.string				= "LADDER";
-	s_ingame.ladder.color				= color_white;
-	s_ingame.ladder.style				= UI_CENTER|UI_SMALLFONT|UI_DROPSHADOW;
+	s_ingame.ladder.color				= color_red;
+	s_ingame.ladder.style				= UI_CENTER|UI_SMALLFONT;
 
 	y += INGAME_MENU_VERTICAL_SPACING;
 	s_ingame.restart.generic.type		= MTYPE_PTEXT;
