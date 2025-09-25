@@ -34,7 +34,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <float.h>
 #endif
 
-#define LADDER_SPOOL_LIMIT                      8
+#define LADDER_SPOOL_LIMIT_DEFAULT       8
+#define LADDER_SPOOL_LIMIT_MIN           1
+#define LADDER_SPOOL_LIMIT_MAX           64
 #define LADDER_JSON_INITIAL_CAPACITY    (16 * 1024)
 #define LADDER_BACKOFF_BASE_MS          5000
 #define LADDER_BACKOFF_MAX_MS           300000
@@ -132,6 +134,26 @@ static void (*sv_curl_slist_free_all)(struct curl_slist *list);
 #define sv_curl_slist_free_all curl_slist_free_all
 #endif
 #endif
+
+static int SV_LadderClampQueueLimit( int value ) {
+        if ( value < LADDER_SPOOL_LIMIT_MIN ) {
+                return LADDER_SPOOL_LIMIT_MIN;
+        }
+        if ( value > LADDER_SPOOL_LIMIT_MAX ) {
+                return LADDER_SPOOL_LIMIT_MAX;
+        }
+        return value;
+}
+
+static void SV_LadderRefreshQueueLimit( void ) {
+        int requested = LADDER_SPOOL_LIMIT_DEFAULT;
+
+        if ( sv_telemetryMaxBatch ) {
+                requested = sv_telemetryMaxBatch->integer;
+        }
+
+        sv_ladder.maxQueue = SV_LadderClampQueueLimit( requested );
+}
 
 static qboolean SV_LadderJsonInit( ladderJsonBuilder_t *builder, size_t capacity ) {
         builder->length = 0;
@@ -657,6 +679,11 @@ static char *SV_LadderSerializeMatch( const ladderMatchPayload_t *payload, size_
         }
         {
                 qboolean settingsFirst = qtrue;
+                if ( !SV_LadderJsonAppendKey( &builder, "g_gametype", &settingsFirst ) ||
+                     !SV_LadderJsonAppendInt( &builder, payload->gametype ) ) {
+                        Z_Free( builder.data );
+                        return NULL;
+                }
                 if ( !SV_LadderJsonAppendKey( &builder, "levelStartTime", &settingsFirst ) ||
                      !SV_LadderJsonAppendInt( &builder, payload->levelStartTime ) ) {
                         Z_Free( builder.data );
@@ -986,6 +1013,8 @@ static void SV_LadderLoadSpool( void ) {
         if ( !sv_ladder.spoolReady ) {
                 return;
         }
+
+        SV_LadderRefreshQueueLimit();
 
         files = Sys_ListFiles( sv_ladder.spoolDirectory, ".json", NULL, &count, qfalse );
         if ( !files || count <= 0 ) {
@@ -1522,6 +1551,7 @@ static void SV_LadderResetState( void ) {
         sv_ladder.warnedNoCurl = qfalse;
         sv_ladder.warnedNoUrl = qfalse;
         sv_ladder.nextFileId = 1;
+        SV_LadderRefreshQueueLimit();
 }
 
 void SV_LadderInit( void ) {
@@ -1530,7 +1560,7 @@ void SV_LadderInit( void ) {
         }
 
         Com_Memset( &sv_ladder, 0, sizeof( sv_ladder ) );
-        sv_ladder.maxQueue = LADDER_SPOOL_LIMIT;
+        SV_LadderRefreshQueueLimit();
         sv_ladder.initialized = qtrue;
 
         if ( SV_LadderEnsureSpoolDirectory() ) {
@@ -1588,6 +1618,8 @@ void SV_LadderSubmit( const ladderMatchPayload_t *payload ) {
                 }
                 return;
         }
+
+        SV_LadderRefreshQueueLimit();
 
         total = sv_ladder.queueSize + ( sv_ladder.active ? 1 : 0 );
         if ( total >= sv_ladder.maxQueue ) {

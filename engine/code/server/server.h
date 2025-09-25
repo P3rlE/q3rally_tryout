@@ -273,6 +273,7 @@ extern	cvar_t	*sv_allowDownload;
 extern	cvar_t	*sv_ladderEnabled;
 extern	cvar_t	*sv_ladderUrl;
 extern	cvar_t	*sv_ladderApiKey;
+extern	cvar_t	*sv_telemetryMaxBatch;
 extern	cvar_t	*sv_maxclients;
 
 extern	cvar_t	*sv_privateClients;
