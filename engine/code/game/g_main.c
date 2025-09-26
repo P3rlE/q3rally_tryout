@@ -326,7 +326,7 @@ static void G_HandleBotEnable( int botEnable, qboolean restart ) {
 
 	trap_Cvar_Update( &g_dedicated );
 
-	if ( g_botsInitialized && g_dedicated.integer ) {
+	if ( g_botsInitialized && g_dedicated.integer && !restart ) {
 		return;
 	}
 
