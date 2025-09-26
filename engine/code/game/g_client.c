@@ -1081,18 +1081,18 @@ void ClientUserinfoChanged( int clientNum ) {
 	if (ent->r.svFlags & SVF_BOT)
 	{
 // STONELANCE - UPDATE: change the userinfo string for bots?
-		s = va("n\\%s\\t\\%i\\model\\%s\\hmodel\\%s\\c1\\%s\\c2\\%s\\hc\\%i\\w\\%i\\l\\%i\\skill\\%s\\tt\\%d\\tl\\%d",
+		s = va("n\\%s\\t\\%i\\model\\%s\\hmodel\\%s\\c1\\%s\\c2\\%s\\hc\\%i\\w\\%i\\l\\%i\\skill\\%s\\pending\\%i\\tt\\%d\\tl\\%d",
 			client->pers.netname, client->sess.sessionTeam, model, headModel, c1, c2,
 			client->pers.maxHealth, client->sess.wins, client->sess.losses,
-			Info_ValueForKey( userinfo, "skill" ), teamTask, teamLeader );
+			Info_ValueForKey( userinfo, "skill" ), client->sess.pendingParticipant ? 1 : 0, teamTask, teamLeader );
 	}
 	else
 	{
 // STONELANCE
-		s = va("n\\%s\\t\\%i\\model\\%s\\hmodel\\%s\\rim\\%s\\plate\\%s\\g_redteam\\%s\\g_blueteam\\%s\\c1\\%s\\c2\\%s\\hc\\%i\\w\\%i\\l\\%i\\cm\\%i\\ms\\%i\\tt\\%d\\tl\\%d",
+		s = va("n\\%s\\t\\%i\\model\\%s\\hmodel\\%s\\rim\\%s\\plate\\%s\\g_redteam\\%s\\g_blueteam\\%s\\c1\\%s\\c2\\%s\\hc\\%i\\w\\%i\\l\\%i\\cm\\%i\\ms\\%i\\pending\\%i\\tt\\%d\\tl\\%d",
 			client->pers.netname, client->sess.sessionTeam, model, headModel, rim, plate, redTeam, blueTeam, c1, c2, 
 			client->pers.maxHealth, client->sess.wins, client->sess.losses, 
-			client->pers.controlMode, client->pers.manualShift, teamTask, teamLeader);
+			client->pers.controlMode, client->pers.manualShift, client->sess.pendingParticipant ? 1 : 0, teamTask, teamLeader);
 /*
 		s = va("n\\%s\\t\\%i\\model\\%s\\hmodel\\%s\\g_redteam\\%s\\g_blueteam\\%s\\c1\\%s\\c2\\%s\\hc\\%i\\w\\%i\\l\\%i\\tt\\%d\\tl\\%d",
 			client->pers.netname, client->sess.sessionTeam, model, headModel, redTeam, blueTeam, c1, c2, 
@@ -1135,6 +1135,7 @@ char *ClientConnect( int clientNum, qboolean firstTime, qboolean isBot ) {
 	gclient_t	*client;
 	char		userinfo[MAX_INFO_STRING];
 	gentity_t	*ent;
+	qboolean        raceLocked;
 
 	ent = &g_entities[ clientNum ];
 
@@ -1175,6 +1176,8 @@ char *ClientConnect( int clientNum, qboolean firstTime, qboolean isBot ) {
 	memset( client, 0, sizeof(*client) );
 
 	client->pers.connected = CON_CONNECTING;
+	raceLocked = ( (isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS) &&
+		level.startRaceTime && level.time >= level.startRaceTime );
 
 	// check for local client
 	value = Info_ValueForKey( userinfo, "ip" );
@@ -1221,6 +1224,9 @@ char *ClientConnect( int clientNum, qboolean firstTime, qboolean isBot ) {
 	// get and distribute relevant parameters
 	G_LogPrintf( "ClientConnect: %i\n", clientNum );
 	ClientUserinfoChanged( clientNum );
+	if ( client->sess.pendingParticipant && isBot && raceLocked ) {
+		CenterPrint_All( va("%s will join on the next restart.", client->pers.netname) );
+	}
 
 	// don't do the "xxx connected" messages if they were caried over from previous level
 	if ( firstTime ) {

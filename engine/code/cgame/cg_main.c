@@ -1982,6 +1982,9 @@ static const char *CG_FeederItemText(float feederID, int index, int column, qhan
 				if ( cg.snap->ps.stats[ STAT_CLIENTS_READY ] & ( 1 << sp->client ) ) {
 					return "Ready";
 				}
+				if ( info->pendingParticipant ) {
+					return "Queued";
+				}
 				if (team == -1) {
 					if (cgs.gametype == GT_TOURNAMENT) {
 						return va("%i/%i", info->wins, info->losses);

@@ -45,7 +45,7 @@ void G_WriteClientSessionData( gclient_t *client ) {
 	const char	*s;
 	const char	*var;
 
-	s = va("%i %i %i %i %i %i %i %i", 
+	s = va("%i %i %i %i %i %i %i %i %i", 
 		client->sess.sessionTeam,
 		client->sess.spectatorNum,
 		client->sess.spectatorState,
@@ -53,7 +53,8 @@ void G_WriteClientSessionData( gclient_t *client ) {
 		client->sess.wins,
 		client->sess.losses,
 		client->sess.teamLeader,
-			client->sess.headlights
+			client->sess.headlights,
+			client->sess.pendingParticipant
 			);
 
 	var = va( "session%i", (int)(client - level.clients) );
@@ -75,11 +76,15 @@ void G_ReadSessionData( gclient_t *client ) {
 	int spectatorState;
 	int sessionTeam;
 	int headlights = 0;
+	int pendingParticipant = 0;
+	int parsed;
 
 	var = va( "session%i", (int)(client - level.clients) );
 	trap_Cvar_VariableStringBuffer( var, s, sizeof(s) );
 
-	sscanf( s, "%i %i %i %i %i %i %i %i",
+	client->sess.pendingParticipant = qfalse;
+
+	parsed = sscanf( s, "%i %i %i %i %i %i %i %i %i",
 		&sessionTeam,
 		&client->sess.spectatorNum,
 		&spectatorState,
@@ -87,13 +92,17 @@ void G_ReadSessionData( gclient_t *client ) {
 		&client->sess.wins,
 		&client->sess.losses,
 		&teamLeader,
-			&headlights
+			&headlights,
+			&pendingParticipant,
 			);
 
 	client->sess.sessionTeam = (team_t)sessionTeam;
 	client->sess.spectatorState = (spectatorState_t)spectatorState;
 	client->sess.teamLeader = (qboolean)teamLeader;
 	client->sess.headlights = (qboolean)headlights;
+	if ( parsed >= 9 ) {
+		client->sess.pendingParticipant = (qboolean)pendingParticipant;
+	}
 }
 
 
@@ -107,10 +116,18 @@ Called on a first-time connect
 void G_InitSessionData( gclient_t *client, char *userinfo ) {
 	clientSession_t	*sess;
 	const char		*value;
+	qboolean	raceLocked;
+	qboolean	isBot;
+	gentity_t	*ent;
 
 	sess = &client->sess;
+	ent = &g_entities[client - level.clients];
+	isBot = (ent->r.svFlags & SVF_BOT) ? qtrue : qfalse;
+	raceLocked = ( (isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS) &&
+		level.startRaceTime && level.time >= level.startRaceTime );
 
 	sess->headlights = qfalse;
+	sess->pendingParticipant = qfalse;
 	// check for team preference, mainly for bots
 	value = Info_ValueForKey( userinfo, "teampref" );
 
@@ -131,9 +148,11 @@ void G_InitSessionData( gclient_t *client, char *userinfo ) {
 // STONELANCE
 		// can only spawn as spectator after race starts
 //		if ( value[0] || g_teamAutoJoin.integer ) {
-		if ( ( value[0] || g_teamAutoJoin.integer ) && !( isRallyRace() && level.startRaceTime ) ) {
+		if ( ( value[0] || g_teamAutoJoin.integer ) && !raceLocked ) {
 // END
 			SetTeam( &g_entities[client - level.clients], value );
+		} else if ( raceLocked && isBot ) {
+			sess->pendingParticipant = qtrue;
 		}
 	} else {
 // STONELANCE
@@ -157,6 +176,9 @@ void G_InitSessionData( gclient_t *client, char *userinfo ) {
                                 }
 				else if (level.startRaceTime){
 					sess->sessionTeam = TEAM_SPECTATOR;
+					if ( raceLocked && isBot ) {
+						sess->pendingParticipant = qtrue;
+					}
 				} else {
 					sess->sessionTeam = TEAM_FREE;
 				}
@@ -169,6 +191,9 @@ void G_InitSessionData( gclient_t *client, char *userinfo ) {
 				}
 				else if (level.startRaceTime){
 					sess->sessionTeam = TEAM_SPECTATOR;
+					if ( raceLocked && isBot ) {
+						sess->pendingParticipant = qtrue;
+					}
 				} else {
 					sess->sessionTeam = TEAM_FREE;
 				}

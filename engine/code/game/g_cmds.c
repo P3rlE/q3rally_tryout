@@ -780,6 +780,9 @@ void SetTeam( gentity_t *ent, const char *s ) {
 		AddTournamentQueue(client);
 
 	client->sess.sessionTeam = team;
+	if ( team != TEAM_SPECTATOR ) {
+		client->sess.pendingParticipant = qfalse;
+	}
 	client->sess.spectatorState = specState;
 	client->sess.spectatorClient = specClient;
 // STONELANCE
