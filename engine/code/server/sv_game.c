@@ -952,6 +952,8 @@ void SV_InitGameProgs( void ) {
 void SV_GameCheckBotInit( void ) {
 	cvar_t	*var;
 	int			desiredValue;
+	int			previousValue;
+	qboolean			forceRestart;
 	char	latchedValue[MAX_CVAR_VALUE_STRING];
 
 	if ( !gvm ) {
@@ -967,7 +969,9 @@ void SV_GameCheckBotInit( void ) {
 		return;
 	}
 
+	previousValue = bot_enable;
 	desiredValue = var->integer;
+	forceRestart = qfalse;
 
 	if ( var->latchedString ) {
 		Q_strncpyz( latchedValue, var->latchedString, sizeof( latchedValue ) );
@@ -981,7 +985,11 @@ void SV_GameCheckBotInit( void ) {
 
 	bot_enable = desiredValue;
 
-	VM_Call( gvm, GAME_ENABLE_BOTS, bot_enable, qfalse );
+	if ( bot_enable && !previousValue ) {
+		forceRestart = qtrue;
+	}
+
+	VM_Call( gvm, GAME_ENABLE_BOTS, bot_enable, forceRestart );
 
 	if ( !bot_enable ) {
 		return;
