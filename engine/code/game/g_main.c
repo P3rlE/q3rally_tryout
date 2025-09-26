@@ -40,6 +40,8 @@ typedef struct {
 gentity_t		g_entities[MAX_GENTITIES];
 gclient_t		g_clients[MAX_CLIENTS];
 
+static qboolean		g_botsInitialized = qfalse;
+
 vmCvar_t	g_gametype;
 vmCvar_t	g_dmflags;
 vmCvar_t	g_fraglimit;
@@ -314,6 +316,27 @@ static void G_SetEliminationSchedule( int referenceTime, int interval );
 static void G_HandleEliminationCvarChanges( int oldStartDelay, int oldInterval, qboolean startDelayChanged, qboolean intervalChanged, qboolean warningChanged );
 
 
+static void G_HandleBotEnable( int botEnable, qboolean restart ) {
+	trap_Cvar_Register( &bot_minplayers, "bot_minplayers", "0", CVAR_SERVERINFO );
+
+	if ( !botEnable ) {
+		g_botsInitialized = qfalse;
+		return;
+	}
+
+	trap_Cvar_Update( &g_dedicated );
+
+	if ( g_botsInitialized && g_dedicated.integer ) {
+		return;
+	}
+
+	BotAISetup( restart );
+	BotAILoadMap( restart );
+	G_InitBots( restart );
+
+	g_botsInitialized = qtrue;
+}
+
 /*
 ================
 vmMain
@@ -380,6 +403,9 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
 //		G_DebugLogPrintf("CONSOLE COMMAND\n");
 // END
 		return ConsoleCommand();
+	case GAME_ENABLE_BOTS:
+		G_HandleBotEnable( arg0, arg1 );
+		return 0;
 	case BOTAI_START_FRAME:
 // STONELANCE
 //		if (level.intermissiontime)
@@ -740,11 +766,7 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 		G_ModelIndex( SP_PODIUM_MODEL );
 	}
 
-	if ( trap_Cvar_VariableIntegerValue( "bot_enable" ) ) {
-		BotAISetup( restart );
-		BotAILoadMap( restart );
-		G_InitBots( restart );
-	}
+	G_HandleBotEnable( trap_Cvar_VariableIntegerValue( "bot_enable" ), restart );
 
 	G_RemapTeamShaders();
 
@@ -781,6 +803,8 @@ G_ShutdownGame
 */
 void G_ShutdownGame( int restart ) {
 	G_Printf ("==== ShutdownGame ====\n");
+
+	g_botsInitialized = qfalse;
 
 	if ( level.logFile ) {
 		G_LogPrintf("ShutdownGame:\n" );
