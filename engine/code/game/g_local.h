@@ -1051,6 +1051,7 @@ extern	vmCvar_t	g_singlePlayer;
 extern	vmCvar_t	g_proxMineTimeout;
 extern	vmCvar_t	g_localTeamPref;
 extern  vmCvar_t	g_humanplayers;
+extern  vmCvar_t	bot_minplayers;
 // STONELANCE
 extern	vmCvar_t	g_forceEngineStart;
 extern	vmCvar_t	g_finishRaceDelay;

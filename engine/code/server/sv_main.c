@@ -1098,6 +1098,8 @@ void SV_Frame( int msec ) {
 
 	sv.timeResidual += msec;
 
+	SV_GameCheckBotInit();
+
 	if (!com_dedicated->integer) SV_BotFrame (sv.time + sv.timeResidual);
 
 	// if time is about to hit the 32nd bit, kick all clients

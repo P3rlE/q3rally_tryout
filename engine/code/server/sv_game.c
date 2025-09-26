@@ -948,6 +948,46 @@ void SV_InitGameProgs( void ) {
 	SV_InitGameVM( qfalse );
 }
 
+void SV_GameCheckBotInit( void ) {
+	cvar_t	*var;
+	int			desiredValue;
+	char	latchedValue[MAX_CVAR_VALUE_STRING];
+
+	if ( !gvm ) {
+		return;
+	}
+
+	if ( sv.state != SS_GAME ) {
+		return;
+	}
+
+	var = Cvar_Get( "bot_enable", "1", CVAR_LATCH );
+	if ( !var ) {
+		return;
+	}
+
+	desiredValue = var->integer;
+
+	if ( var->latchedString ) {
+		Q_strncpyz( latchedValue, var->latchedString, sizeof( latchedValue ) );
+		desiredValue = atoi( latchedValue );
+		Cvar_Set( "bot_enable", latchedValue );
+	}
+
+	if ( desiredValue == bot_enable ) {
+		return;
+	}
+
+	bot_enable = desiredValue;
+
+	VM_Call( gvm, GAME_ENABLE_BOTS, bot_enable, qfalse );
+
+	if ( !bot_enable ) {
+		return;
+	}
+}
+
+
 
 /*
 ====================
