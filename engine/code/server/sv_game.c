@@ -27,6 +27,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 botlib_export_t	*botlib_export;
 
+extern int	bot_enable;
+
 // these functions must be used instead of pointer arithmetic, because
 // the game allocates gentities with private information after the server shared part
 int	SV_NumForGentity( sharedEntity_t *ent ) {
@@ -929,7 +931,6 @@ Called on a normal map change, not on a map_restart
 void SV_InitGameProgs( void ) {
 	cvar_t	*var;
 	//FIXME these are temp while I make bots run in vm
-	extern int	bot_enable;
 
 	var = Cvar_Get( "bot_enable", "1", CVAR_LATCH );
 	if ( var ) {
