@@ -93,7 +93,7 @@ void G_ReadSessionData( gclient_t *client ) {
 		&client->sess.losses,
 		&teamLeader,
 			&headlights,
-			&pendingParticipant,
+			&pendingParticipant
 			);
 
 	client->sess.sessionTeam = (team_t)sessionTeam;
