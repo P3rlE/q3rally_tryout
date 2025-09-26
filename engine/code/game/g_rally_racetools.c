@@ -636,6 +636,43 @@ void RaceCountdown( char *s, int secondsLeft ){
 	trap_SendServerCommand( -1, va("rc \"%s\" %d", s, secondsLeft) );
 }
 
+static void G_PromotePendingBots( void ) {
+	int	i;
+
+	for ( i = 0; i < level.maxclients; i++ ) {
+		gclient_t *cl = &level.clients[i];
+		gentity_t *bot;
+
+		if ( !cl->sess.pendingParticipant ) {
+			continue;
+		}
+
+		bot = &g_entities[i];
+		if ( !bot->inuse || !bot->client ) {
+			cl->sess.pendingParticipant = qfalse;
+			continue;
+		}
+
+		if ( !( bot->r.svFlags & SVF_BOT ) ) {
+			cl->sess.pendingParticipant = qfalse;
+			continue;
+		}
+
+		if ( bot->client->pers.connected != CON_CONNECTED ) {
+			continue;
+		}
+
+		if ( bot->client->sess.sessionTeam != TEAM_SPECTATOR ) {
+			cl->sess.pendingParticipant = qfalse;
+			continue;
+		}
+
+		cl->sess.pendingParticipant = qfalse;
+		SetTeam( bot, "free" );
+		bot->ready = qtrue;
+	}
+}
+
 void RallyStarter_Think( gentity_t *ent ){
 	gentity_t		*player, *t;
 	int				i, count;
@@ -644,6 +681,8 @@ void RallyStarter_Think( gentity_t *ent ){
 	if (level.startRaceTime){
 		return;
 	}
+
+	G_PromotePendingBots();
 
 	// if no checkpoints dont do start sequence
 	if (isRallyRace()){
