@@ -23,6 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
+static void G_PromotePendingBots( void );
+
 static void G_ResetRaceTimingForClients( int raceStartTime ) {
 	int i;
 
@@ -629,6 +631,16 @@ void CalculatePlayerPositions( void )
 void RallyRace_Think( gentity_t *ent ){
 	ent->nextthink = level.time + 200;
 
+	if ( !level.startRaceTime ) {
+		ent->think = RallyStarter_Think;
+		ent->nextthink = level.time + 200;
+		ent->pain_debounce_time = 0;
+		ent->number = 0;
+
+		G_PromotePendingBots();
+		return;
+	}
+
 	CalculatePlayerPositions();
 }
 
@@ -649,7 +661,6 @@ static void G_PromotePendingBots( void ) {
 
 		bot = &g_entities[i];
 		if ( !bot->inuse || !bot->client ) {
-			cl->sess.pendingParticipant = qfalse;
 			continue;
 		}
 
@@ -662,14 +673,22 @@ static void G_PromotePendingBots( void ) {
 			continue;
 		}
 
-		if ( bot->client->sess.sessionTeam != TEAM_SPECTATOR ) {
+		if ( bot->client->sess.sessionTeam == TEAM_FREE ) {
 			cl->sess.pendingParticipant = qfalse;
+			bot->ready = qtrue;
 			continue;
 		}
 
-		cl->sess.pendingParticipant = qfalse;
+		if ( bot->client->sess.sessionTeam != TEAM_SPECTATOR ) {
+			continue;
+		}
+
 		SetTeam( bot, "free" );
-		bot->ready = qtrue;
+
+		if ( bot->client->sess.sessionTeam == TEAM_FREE ) {
+			cl->sess.pendingParticipant = qfalse;
+			bot->ready = qtrue;
+		}
 	}
 }
 
