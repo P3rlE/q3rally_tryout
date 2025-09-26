@@ -308,8 +308,13 @@ int G_SelectRandomBotInfo( int team ) {
 	}
 
 	if ( num > 0 ) {
-		num = random() * ( num - 1 );
-		return selection[num];
+		int index;
+
+		index = (int)( random() * num );
+		if ( index >= num ) {
+			index = num - 1;
+		}
+		return selection[index];
 	}
 
 	return -1;
