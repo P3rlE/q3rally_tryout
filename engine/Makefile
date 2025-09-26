@@ -447,6 +447,7 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
+    SERVER_CFLAGS += $(CURL_CFLAGS)
     ifneq ($(USE_CURL_DLOPEN),1)
       CLIENT_LIBS += $(CURL_LIBS)
       SERVER_LIBS += $(CURL_LIBS)
@@ -607,6 +608,7 @@ ifeq ($(PLATFORM),darwin)
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
+    SERVER_CFLAGS += $(CURL_CFLAGS)
     ifneq ($(USE_CURL_DLOPEN),1)
       CLIENT_LIBS += $(CURL_LIBS)
     endif
@@ -785,9 +787,11 @@ ifdef MINGW
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
+    SERVER_CFLAGS += $(CURL_CFLAGS)
     ifneq ($(USE_CURL_DLOPEN),1)
       ifeq ($(USE_LOCAL_HEADERS),1)
         CLIENT_CFLAGS += -DCURL_STATICLIB
+        SERVER_CFLAGS += -DCURL_STATICLIB
         ifeq ($(ARCH),x86_64)
           CLIENT_LIBS += $(LIBSDIR)/win64/libcurl.a -lcrypt32
         else
@@ -876,6 +880,7 @@ ifeq ($(PLATFORM),freebsd)
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
+    SERVER_CFLAGS += $(CURL_CFLAGS)
     ifeq ($(USE_CURL_DLOPEN),1)
       CLIENT_LIBS += $(CURL_LIBS)
     endif
@@ -940,6 +945,7 @@ ifeq ($(PLATFORM),openbsd)
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
+    SERVER_CFLAGS += $(CURL_CFLAGS)
     USE_CURL_DLOPEN=0
   endif
 
@@ -1297,8 +1303,10 @@ endif
 
 ifeq ($(USE_CURL),1)
   CLIENT_CFLAGS += -DUSE_CURL
+  SERVER_CFLAGS += -DUSE_CURL
   ifeq ($(USE_CURL_DLOPEN),1)
     CLIENT_CFLAGS += -DUSE_CURL_DLOPEN
+    SERVER_CFLAGS += -DUSE_CURL_DLOPEN
   endif
 endif
 
