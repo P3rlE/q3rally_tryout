@@ -228,7 +228,9 @@ int AAS_LoadFiles(const char *mapname)
 	// AAS file and BSP file are loaded
 	AAS_ResetEntityLinks();
 	// load bsp info
-	AAS_LoadBSPFile();
+	errnum = AAS_LoadBSPFile();
+	if (errnum != BLERR_NOERROR)
+		return errnum;
 
 	//load the aas file
 	Com_sprintf(aasfile, sizeof(aasfile), "maps/%s.aas", mapname);
