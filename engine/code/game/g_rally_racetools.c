@@ -23,9 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
-static void G_PromotePendingBots( void );
-void RallyStarter_Think( gentity_t *ent );
-
 static void G_ResetRaceTimingForClients( int raceStartTime ) {
 	int i;
 
@@ -632,65 +629,11 @@ void CalculatePlayerPositions( void )
 void RallyRace_Think( gentity_t *ent ){
 	ent->nextthink = level.time + 200;
 
-	if ( !level.startRaceTime ) {
-		ent->think = RallyStarter_Think;
-		ent->nextthink = level.time + 200;
-		ent->pain_debounce_time = 0;
-		ent->number = 0;
-
-		G_PromotePendingBots();
-		return;
-	}
-
 	CalculatePlayerPositions();
 }
 
 void RaceCountdown( char *s, int secondsLeft ){
 	trap_SendServerCommand( -1, va("rc \"%s\" %d", s, secondsLeft) );
-}
-
-static void G_PromotePendingBots( void ) {
-	int	i;
-
-	for ( i = 0; i < level.maxclients; i++ ) {
-		gclient_t *cl = &level.clients[i];
-		gentity_t *bot;
-
-		if ( !cl->sess.pendingParticipant ) {
-			continue;
-		}
-
-		bot = &g_entities[i];
-		if ( !bot->inuse || !bot->client ) {
-			continue;
-		}
-
-		if ( !( bot->r.svFlags & SVF_BOT ) ) {
-			cl->sess.pendingParticipant = qfalse;
-			continue;
-		}
-
-		if ( bot->client->pers.connected != CON_CONNECTED ) {
-			continue;
-		}
-
-		if ( bot->client->sess.sessionTeam == TEAM_FREE ) {
-			cl->sess.pendingParticipant = qfalse;
-			bot->ready = qtrue;
-			continue;
-		}
-
-		if ( bot->client->sess.sessionTeam != TEAM_SPECTATOR ) {
-			continue;
-		}
-
-		SetTeam( bot, "free" );
-
-		if ( bot->client->sess.sessionTeam == TEAM_FREE ) {
-			cl->sess.pendingParticipant = qfalse;
-			bot->ready = qtrue;
-		}
-	}
 }
 
 void RallyStarter_Think( gentity_t *ent ){
@@ -701,8 +644,6 @@ void RallyStarter_Think( gentity_t *ent ){
 	if (level.startRaceTime){
 		return;
 	}
-
-	G_PromotePendingBots();
 
 	// if no checkpoints dont do start sequence
 	if (isRallyRace()){

@@ -1386,8 +1386,6 @@ void CG_NewClientInfo( int clientNum ) {
 	// team leader
 	v = Info_ValueForKey( configstring, "tl" );
 	newInfo.teamLeader = atoi(v);
-	v = Info_ValueForKey( configstring, "pending" );
-	newInfo.pendingParticipant = atoi( v ) ? qtrue : qfalse;
 
 	v = Info_ValueForKey( configstring, "g_redteam" );
 	Q_strncpyz(newInfo.redTeam, v, MAX_TEAMNAME);

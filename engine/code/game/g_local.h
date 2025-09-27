@@ -301,7 +301,6 @@ typedef struct {
 	int			wins, losses;		// tournament stats
 	qboolean	teamLeader;			// true when this client is a team leader
 	qboolean	headlights;			// headlight state persists across restarts
-	qboolean	pendingParticipant;	// queued to join once the next race grid is formed
 } clientSession_t;
 
 //
@@ -1052,7 +1051,6 @@ extern	vmCvar_t	g_singlePlayer;
 extern	vmCvar_t	g_proxMineTimeout;
 extern	vmCvar_t	g_localTeamPref;
 extern  vmCvar_t	g_humanplayers;
-extern  vmCvar_t	bot_minplayers;
 // STONELANCE
 extern	vmCvar_t	g_forceEngineStart;
 extern	vmCvar_t	g_finishRaceDelay;

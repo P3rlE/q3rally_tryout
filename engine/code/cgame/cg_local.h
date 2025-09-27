@@ -523,7 +523,6 @@ typedef struct {
 	int				clientNum;
 	qboolean		manualShift;
 	qboolean		oppositeRoll;
-	qboolean		pendingParticipant;
 
 	int				position;
 	// vehicle attributes

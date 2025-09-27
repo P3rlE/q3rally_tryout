@@ -27,8 +27,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 botlib_export_t	*botlib_export;
 
-extern int	bot_enable;
-
 // these functions must be used instead of pointer arithmetic, because
 // the game allocates gentities with private information after the server shared part
 int	SV_NumForGentity( sharedEntity_t *ent ) {
@@ -931,6 +929,7 @@ Called on a normal map change, not on a map_restart
 void SV_InitGameProgs( void ) {
 	cvar_t	*var;
 	//FIXME these are temp while I make bots run in vm
+	extern int	bot_enable;
 
 	var = Cvar_Get( "bot_enable", "1", CVAR_LATCH );
 	if ( var ) {
@@ -948,54 +947,6 @@ void SV_InitGameProgs( void ) {
 
 	SV_InitGameVM( qfalse );
 }
-
-void SV_GameCheckBotInit( void ) {
-	cvar_t	*var;
-	int			desiredValue;
-	int			previousValue;
-	qboolean			forceRestart;
-	char	latchedValue[MAX_CVAR_VALUE_STRING];
-
-	if ( !gvm ) {
-		return;
-	}
-
-	if ( sv.state != SS_GAME ) {
-		return;
-	}
-
-	var = Cvar_Get( "bot_enable", "1", CVAR_LATCH );
-	if ( !var ) {
-		return;
-	}
-
-	previousValue = bot_enable;
-	desiredValue = var->integer;
-	forceRestart = qfalse;
-
-	if ( var->latchedString ) {
-		Q_strncpyz( latchedValue, var->latchedString, sizeof( latchedValue ) );
-		desiredValue = atoi( latchedValue );
-		Cvar_Set( "bot_enable", latchedValue );
-	}
-
-	if ( desiredValue == bot_enable ) {
-		return;
-	}
-
-	bot_enable = desiredValue;
-
-	if ( bot_enable && !previousValue ) {
-		forceRestart = qtrue;
-	}
-
-	VM_Call( gvm, GAME_ENABLE_BOTS, bot_enable, forceRestart );
-
-	if ( !bot_enable ) {
-		return;
-	}
-}
-
 
 
 /*
