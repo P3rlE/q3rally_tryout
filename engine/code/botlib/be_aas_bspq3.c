@@ -376,7 +376,7 @@ void AAS_FreeBSPEntities(void)
 // Returns:				-
 // Changes Globals:		-
 //===========================================================================
-qboolean AAS_ParseBSPEntities(void)
+void AAS_ParseBSPEntities(void)
 {
 	script_t *script;
 	token_t token;
@@ -395,7 +395,7 @@ qboolean AAS_ParseBSPEntities(void)
 			ScriptError(script, "invalid %s", token.string);
 			AAS_FreeBSPEntities();
 			FreeScript(script);
-			return qfalse;
+			return;
 		} //end if
 		if (bspworld.numentities >= MAX_BSPENTITIES)
 		{
@@ -416,7 +416,7 @@ qboolean AAS_ParseBSPEntities(void)
 				ScriptError(script, "invalid %s", token.string);
 				AAS_FreeBSPEntities();
 				FreeScript(script);
-				return qfalse;
+				return;
 			} //end if
 			StripDoubleQuotes(token.string);
 			epair->key = (char *) GetHunkMemory(strlen(token.string) + 1);
@@ -425,7 +425,7 @@ qboolean AAS_ParseBSPEntities(void)
 			{
 				AAS_FreeBSPEntities();
 				FreeScript(script);
-				return qfalse;
+				return;
 			} //end if
 			StripDoubleQuotes(token.string);
 			epair->value = (char *) GetHunkMemory(strlen(token.string) + 1);
@@ -436,11 +436,10 @@ qboolean AAS_ParseBSPEntities(void)
 			ScriptError(script, "missing }");
 			AAS_FreeBSPEntities();
 			FreeScript(script);
-			return qfalse;
+			return;
 		} //end if
 	} //end while
 	FreeScript(script);
-	return qtrue;
 } //end of the function AAS_ParseBSPEntities
 //===========================================================================
 //
@@ -481,18 +480,8 @@ int AAS_LoadBSPFile(void)
 	AAS_DumpBSPData();
 	bspworld.entdatasize = strlen(botimport.BSPEntityData()) + 1;
 	bspworld.dentdata = (char *) GetClearedHunkMemory(bspworld.entdatasize);
-<<<<<<< HEAD
 	Com_Memcpy(bspworld.dentdata, botimport.BSPEntityData(), bspworld.entdatasize);
 	AAS_ParseBSPEntities();
-=======
-	Com_Memcpy(bspworld.dentdata, entdata, bspworld.entdatasize);
-	if (!AAS_ParseBSPEntities())
-	{
-		botimport.Print(PRT_ERROR, "AAS_LoadBSPFile: failed to parse BSP entity data\n");
-		AAS_DumpBSPData();
-		return BLERR_MISSINGENTITYDATA;
-	}
->>>>>>> 9626437a602aa582d5e932c8f626bb5d05a300df
 	bspworld.loaded = qtrue;
 	return BLERR_NOERROR;
 } //end of the function AAS_LoadBSPFile
