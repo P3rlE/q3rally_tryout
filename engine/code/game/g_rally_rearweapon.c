@@ -143,15 +143,23 @@ REAR WEAPON - Flame
 ======================================================================
 */
 void FlameThink(gentity_t *ent){
-	gentity_t	*owner;
+	gentity_t	*owner = NULL;
 	gentity_t	*smoke;
 
 	ent->nextthink = level.time + 200;
+
+	if (ent->r.ownerNum >= 0 && ent->r.ownerNum < level.num_entities) {
+		owner = &g_entities[ent->r.ownerNum];
+	}
 
 	if (ent->freeAfterTime < level.time){
 		// puff of smoke when flame dies
 		smoke = G_TempEntity(ent->r.currentOrigin, EV_HAZARD);
 		smoke->s.weapon = HT_FLAME_SMOKE;
+
+		if (owner && owner->client && owner->client->rearFlameHelper == ent) {
+			owner->client->rearFlameHelper = NULL;
+		}
 
 		ent->think = G_FreeEntity;
 		return;
@@ -165,33 +173,57 @@ void FlameThink(gentity_t *ent){
 		ent->timestamp = level.time + 3000;
 	}
 
-	owner = &g_entities[ent->r.ownerNum];
-
-	CreateFireHazard(owner, ent->r.currentOrigin);
+	if (owner && owner->inuse) {
+		CreateFireHazard(owner, ent->r.currentOrigin);
+	}
 }
 
 void RFWeapon_FlameFire( gentity_t *ent ) {
 	trace_t		tr;
 	vec3_t		end;
-	gentity_t	*tent;
+	gentity_t	*flameHelper;
+
+	if ( !ent->client ) {
+		return;
+	}
 
 	VectorMA( ent->r.currentOrigin, -80, forward, end );
 
 	trap_Trace( &tr, ent->r.currentOrigin, NULL, NULL, end, ent->s.number, MASK_SHOT );
 
-	tent = G_Spawn();
-	G_SetOrigin(tent, tr.endpos);
-	tent->r.ownerNum = ent->s.number;
-	tent->parent = ent;
-	tent->think = FlameThink;
-	tent->nextthink = level.time;
-	tent->freeAfterTime = level.time + 10000;
+	flameHelper = ent->client->rearFlameHelper;
+
+	if ( flameHelper ) {
+		if ( !flameHelper->inuse || flameHelper->think != FlameThink || flameHelper->freeAfterTime <= level.time || flameHelper->r.ownerNum != ent->s.number ) {
+			ent->client->rearFlameHelper = NULL;
+			flameHelper = NULL;
+		}
+	}
+
+	if ( flameHelper ) {
+		G_SetOrigin( flameHelper, tr.endpos );
+		flameHelper->nextthink = level.time;
+		flameHelper->freeAfterTime = level.time + 10000;
+		flameHelper->count = 3;
+		flameHelper->timestamp = level.time + 3000;
+		ent->client->rearFlameHelper = flameHelper;
+		return;
+	}
+
+	flameHelper = G_Spawn();
+	flameHelper->classname = "rear_flame_helper";
+	G_SetOrigin( flameHelper, tr.endpos );
+	flameHelper->r.ownerNum = ent->s.number;
+	flameHelper->parent = ent;
+	flameHelper->think = FlameThink;
+	flameHelper->nextthink = level.time;
+	flameHelper->freeAfterTime = level.time + 10000;
 
 	// setup for bright smoke
-	tent->count = 3;
-	tent->timestamp = level.time + 3000;
+	flameHelper->count = 3;
+	flameHelper->timestamp = level.time + 3000;
 
-//	CreateFireHazard(tent);
+	ent->client->rearFlameHelper = flameHelper;
 }
 
 
