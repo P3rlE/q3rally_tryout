@@ -671,9 +671,15 @@ team_t PickTeam( int ignoreClientNum ) {
 	int i;
 	int min_players;
 	int counts[TEAM_NUM_TEAMS];
-	int num_teams = Team_GetCount();
-	int num_ties = 0;
+	int num_teams;
+	int num_ties;
 	int tied_teams[TEAM_NUM_TEAMS];
+	int min_score;
+	int num_score_ties;
+	int score_tied_teams[TEAM_NUM_TEAMS];
+
+	num_teams = Team_GetCount();
+	num_ties = 0;
 
 	if ( num_teams == 0 ) {
 		return TEAM_FREE;
@@ -706,7 +712,7 @@ team_t PickTeam( int ignoreClientNum ) {
 	}
 
 	// multiple teams have the same low player count, so check scores
-	int min_score = level.teamScores[tied_teams[0]];
+	min_score = level.teamScores[tied_teams[0]];
 	for ( i = 1; i < num_ties; i++ ) {
 		if ( level.teamScores[tied_teams[i]] < min_score ) {
 			min_score = level.teamScores[tied_teams[i]];
@@ -714,8 +720,7 @@ team_t PickTeam( int ignoreClientNum ) {
 	}
 
 	// find all teams with the lowest score among the tied teams
-	int num_score_ties = 0;
-	int score_tied_teams[TEAM_NUM_TEAMS];
+	num_score_ties = 0;
 	for ( i = 0; i < num_ties; i++ ) {
 		if ( level.teamScores[tied_teams[i]] == min_score ) {
 			score_tied_teams[num_score_ties] = tied_teams[i];
