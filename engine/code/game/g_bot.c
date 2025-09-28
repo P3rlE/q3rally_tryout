@@ -248,7 +248,7 @@ int G_CountBotPlayersByName( const char *name, int team ) {
 	num = 0;
 	for ( i=0 ; i< g_maxclients.integer ; i++ ) {
 		cl = level.clients + i;
-		if ( cl->pers.connected == CON_DISCONNECTED ) {
+		if ( cl->pers.connected != CON_CONNECTED ) {
 			continue;
 		}
 		if ( !(g_entities[i].r.svFlags & SVF_BOT) ) {
@@ -397,7 +397,7 @@ int G_CountBotPlayers( int team ) {
 	num = 0;
 	for ( i=0 ; i< g_maxclients.integer ; i++ ) {
 		cl = level.clients + i;
-		if ( cl->pers.connected == CON_DISCONNECTED ) {
+		if ( cl->pers.connected != CON_CONNECTED ) {
 			continue;
 		}
 		if ( !(g_entities[i].r.svFlags & SVF_BOT) ) {
