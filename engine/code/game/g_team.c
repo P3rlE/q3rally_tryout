@@ -292,9 +292,15 @@ team_t G_PickTeamToKickFrom( void ) {
 	int max_players;
 	int player_counts[TEAM_NUM_TEAMS];
 	int bot_counts[TEAM_NUM_TEAMS];
-	int num_teams = Team_GetCount();
-	int num_ties = 0;
+	int num_teams;
+	int num_ties;
 	int tied_teams[TEAM_NUM_TEAMS];
+	int max_score;
+	int num_score_ties;
+	int score_tied_teams[TEAM_NUM_TEAMS];
+
+	num_teams = Team_GetCount();
+	num_ties = 0;
 
 	if ( num_teams == 0 ) {
 		return TEAM_FREE;
@@ -335,7 +341,7 @@ team_t G_PickTeamToKickFrom( void ) {
 	}
 
 	// multiple teams have the same high player count, so check scores
-	int max_score = -1;
+	max_score = -1;
 	for ( i = 0; i < num_ties; i++ ) {
 		if ( level.teamScores[tied_teams[i]] > max_score ) {
 			max_score = level.teamScores[tied_teams[i]];
@@ -343,8 +349,7 @@ team_t G_PickTeamToKickFrom( void ) {
 	}
 
 	// find all teams with the highest score among the tied teams
-	int num_score_ties = 0;
-	int score_tied_teams[TEAM_NUM_TEAMS];
+	num_score_ties = 0;
 	for ( i = 0; i < num_ties; i++ ) {
 		if ( level.teamScores[tied_teams[i]] == max_score ) {
 			score_tied_teams[num_score_ties] = tied_teams[i];
