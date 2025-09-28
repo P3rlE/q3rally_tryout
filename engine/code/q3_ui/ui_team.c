@@ -204,8 +204,7 @@ void TeamMain_MenuInit( void ) {
 	switch( gametype ) {
 	case GT_SINGLE_PLAYER:
 // STONELANCE - removed gametype
-//	case GT_FFA:
-//	case GT_TOURNAMENT:
+
         case GT_RACING:
         case GT_RACING_DM:
         case GT_ELIMINATION:
@@ -217,15 +216,17 @@ void TeamMain_MenuInit( void ) {
 		s_teammain.joingreen.generic.flags  |= QMF_GRAYED;
 		s_teammain.joinyellow.generic.flags |= QMF_GRAYED;
 		break;
-// END
-	case GT_TEAM:
-	case GT_CTF:
+        
+	    case GT_TEAM:
+        case GT_CTF:
 		s_teammain.joingreen.generic.flags |= QMF_GRAYED;
 		s_teammain.joinyellow.generic.flags |= QMF_GRAYED;
 		s_teammain.joingame.generic.flags |= QMF_GRAYED;
 		break;
-	case GT_CTF4:
-	default:
+	
+        case GT_CTF4:
+        
+        default:
 		s_teammain.joingame.generic.flags |= QMF_GRAYED;
 		break;
 	}
@@ -233,10 +234,8 @@ void TeamMain_MenuInit( void ) {
 	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.frame );
 	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.joinred );
 	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.joinblue );
-// STONELANCE
 	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.joingreen );
 	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.joinyellow );
-// END
 	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.joingame );
 	Menu_AddItem( &s_teammain.menu, (void*) &s_teammain.spectate );
 }

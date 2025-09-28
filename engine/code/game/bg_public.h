@@ -126,37 +126,23 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 typedef enum {
-// Q3Rally Code Start - UPDATE fix this and remove non q3rally gametypes
-        /*
-        GT_FFA,                         // free for all
-        GT_TOURNAMENT,          // one on one tournament
-        GT_SINGLE_PLAYER,       // single player tournament
 
-        //-- team games go after this --
-
-        GT_TEAM,                        // team deathmatch
-        GT_CTF,                         // capture the flag
-        GT_1FCTF,
-        GT_OBELISK,
-        GT_HARVESTER,
-*/
         GT_RACING,                      // racing
-        GT_RACING_DM,           // racing with weapons
-        GT_SINGLE_PLAYER,       // single player tournament
+        GT_RACING_DM,                   // racing with weapons
+        GT_SINGLE_PLAYER,               // single player tournament
         GT_DERBY,                       // demolition derby
         GT_LCS,                         // last car standing
-        GT_ELIMINATION,         // elimination race
-        GT_DEATHMATCH,          // random destruction
+        GT_ELIMINATION,                 // elimination race
+        GT_DEATHMATCH,                  // random destruction
 
         //-- team games go after this --
 
         GT_TEAM,                        // team deathmatch
-        GT_TEAM_RACING,         // team racing
-        GT_TEAM_RACING_DM,      // team racing with weapons
+        GT_TEAM_RACING,                 // team racing
+        GT_TEAM_RACING_DM,              // team racing with weapons
         GT_CTF,                         // capture the flag
         GT_CTF4,                        // 4 team capture the flag
-        GT_DOMINATION,              // domination
-// Q3Rally Code END
+        GT_DOMINATION,                  // domination
         GT_MAX_GAME_TYPE
 } gametype_t;
 
