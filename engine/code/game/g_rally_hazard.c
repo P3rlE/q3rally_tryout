@@ -49,7 +49,7 @@ qboolean G_FrictionCalc( const carPoint_t *point, float *sCOF, float *kCOF )
 	for ( i = 0 ; i < numListedEntities ; i++ ) {
 		ent = &g_entities[entityList[ i ]];
 
-		if( ent->s.eType != ET_EVENTS + EV_HAZARD ) continue;
+		if ( !ent->classname || Q_stricmp( ent->classname, "oil" ) ) continue;
 		if( ent->s.weapon != HT_OIL ) continue;
 
 		radius = ( ent->splashRadius * SPLASH_RADIUS_SCALE ) + point->radius;
@@ -96,8 +96,10 @@ CreateFireHazard
 
 void CreateFireHazard (gentity_t *owner, vec3_t origin){
 	gentity_t		*ent;
+	gentity_t		*eventEnt;
 	gentity_t		*other;
 	vec3_t			dist;
+	int				splashRadius;
 
 	other = NULL;
 	while ((other = G_Find(other, FOFS(classname), "fire")) != NULL){
@@ -109,10 +111,19 @@ void CreateFireHazard (gentity_t *owner, vec3_t origin){
 		}
 	}
 
-	ent = G_TempRallyEntity( origin, EV_HAZARD );
+	splashRadius = 1;
 
-	ent->splashRadius = 1;
+	eventEnt = G_TempEntity( origin, EV_HAZARD );
+	eventEnt->splashRadius = splashRadius;
+	eventEnt->s.weapon = HT_FIRE;
+	eventEnt->s.otherEntityNum = owner->s.number;
+	eventEnt->s.eventParm = splashRadius;
 
+	ent = G_Spawn();
+	ent->s.eType = ET_GENERAL;
+	ent->r.svFlags |= SVF_NOCLIENT;
+	ent->splashRadius = splashRadius;
+	ent->s.eventParm = splashRadius;
 	ent->s.weapon = HT_FIRE;
 	ent->s.otherEntityNum = owner->s.number;
 	ent->parent = owner;
@@ -121,6 +132,8 @@ void CreateFireHazard (gentity_t *owner, vec3_t origin){
 	ent->damage = 15;
 	ent->nextthink = level.time;
 	ent->freeAfterTime = level.time + 10000;
+	G_SetOrigin( ent, origin );
+	trap_LinkEntity( ent );
 }
 
 /*
@@ -153,9 +166,11 @@ CreateBioHazard
 
 void CreateBioHazard (gentity_t *owner, vec3_t origin){
 	gentity_t		*ent;
+	gentity_t		*eventEnt;
 	gentity_t		*other;
 	vec3_t			dist;
 	int				highest;
+	int				splashRadius;
 
 	other = NULL;
 	highest = 0;
@@ -169,20 +184,27 @@ void CreateBioHazard (gentity_t *owner, vec3_t origin){
 		}
 	}
 
-	ent = G_TempRallyEntity( origin, EV_HAZARD );
-
 	if (highest){
-		ent->splashRadius = highest + 1;
+		splashRadius = highest + 1;
 
-		if (ent->splashRadius > MAX_SPLASH_RADIUS)
-			ent->splashRadius = MAX_SPLASH_RADIUS;
+		if (splashRadius > MAX_SPLASH_RADIUS)
+			splashRadius = MAX_SPLASH_RADIUS;
 	}
 	else {
-		ent->splashRadius = 4;
+		splashRadius = 4;
 	}
 
-	ent->s.eventParm = ent->splashRadius;
+	eventEnt = G_TempEntity( origin, EV_HAZARD );
+	eventEnt->splashRadius = splashRadius;
+	eventEnt->s.weapon = HT_BIO;
+	eventEnt->s.otherEntityNum = owner->s.number;
+	eventEnt->s.eventParm = splashRadius;
 
+	ent = G_Spawn();
+	ent->s.eType = ET_GENERAL;
+	ent->r.svFlags |= SVF_NOCLIENT;
+	ent->splashRadius = splashRadius;
+	ent->s.eventParm = splashRadius;
 	ent->s.weapon = HT_BIO;
 	ent->s.otherEntityNum = owner->s.number;
 	ent->parent = owner;
@@ -191,6 +213,8 @@ void CreateBioHazard (gentity_t *owner, vec3_t origin){
 	ent->damage = 10;
 	ent->nextthink = level.time;
 	ent->freeAfterTime = level.time + 10000;
+	G_SetOrigin( ent, origin );
+	trap_LinkEntity( ent );
 }
 
 /*
@@ -254,14 +278,14 @@ CreateOilHazard
 
 void CreateOilHazard (gentity_t *owner, vec3_t origin){
 	gentity_t		*ent;
+	gentity_t		*eventEnt;
 	gentity_t		*other;
 	vec3_t			dist;
 	int				highest;
+	int				splashRadius;
 
 	other = NULL;
 	highest = 0;
-
-	ent = G_TempRallyEntity( origin, EV_HAZARD );
 
 	while ((other = G_Find(other, FOFS(classname), "oil")) != NULL){
 		VectorSubtract(other->r.currentOrigin, origin, dist);
@@ -276,17 +300,26 @@ void CreateOilHazard (gentity_t *owner, vec3_t origin){
 	}
 
 	if (highest){
-		ent->splashRadius = highest + 1;
+		splashRadius = highest + 1;
 
-		if (ent->splashRadius > MAX_SPLASH_RADIUS)
-			ent->splashRadius = MAX_SPLASH_RADIUS;
+		if (splashRadius > MAX_SPLASH_RADIUS)
+			splashRadius = MAX_SPLASH_RADIUS;
 	}
 	else {
-		ent->splashRadius = 4;
+		splashRadius = 4;
 	}
 
-	ent->s.eventParm = ent->splashRadius;
+	eventEnt = G_TempEntity( origin, EV_HAZARD );
+	eventEnt->splashRadius = splashRadius;
+	eventEnt->s.weapon = HT_OIL;
+	eventEnt->s.otherEntityNum = owner->s.number;
+	eventEnt->s.eventParm = splashRadius;
 
+	ent = G_Spawn();
+	ent->s.eType = ET_GENERAL;
+	ent->r.svFlags |= SVF_NOCLIENT;
+	ent->splashRadius = splashRadius;
+	ent->s.eventParm = splashRadius;
 	ent->s.weapon = HT_OIL;
 	ent->s.otherEntityNum = owner->s.number;
 	ent->parent = owner;
@@ -294,6 +327,8 @@ void CreateOilHazard (gentity_t *owner, vec3_t origin){
 	ent->think = OilHazard_Think;
 	ent->nextthink = level.time;
 	ent->freeAfterTime = level.time + 10000;
+	G_SetOrigin( ent, origin );
+	trap_LinkEntity( ent );
 }
 
 /*
@@ -328,10 +363,22 @@ CreatePoisonHazard
 
 void CreatePoisonHazard (gentity_t *owner, vec3_t origin){
 	gentity_t		*ent;
+	gentity_t		*eventEnt;
+	int				splashRadius;
 
-	ent = G_TempRallyEntity( origin, EV_HAZARD );
+	splashRadius = 3;
 
-	ent->splashRadius = 3;
+	eventEnt = G_TempEntity( origin, EV_HAZARD );
+	eventEnt->splashRadius = splashRadius;
+	eventEnt->s.weapon = HT_POISON;
+	eventEnt->s.otherEntityNum = owner->s.number;
+	eventEnt->s.eventParm = splashRadius;
+
+	ent = G_Spawn();
+	ent->s.eType = ET_GENERAL;
+	ent->r.svFlags |= SVF_NOCLIENT;
+	ent->splashRadius = splashRadius;
+	ent->s.eventParm = splashRadius;
 	ent->s.weapon = HT_POISON;
 	ent->s.otherEntityNum = owner->s.number;
 	ent->parent = owner;
@@ -340,6 +387,8 @@ void CreatePoisonHazard (gentity_t *owner, vec3_t origin){
 	ent->damage = 2;
 	ent->nextthink = level.time;
 	ent->freeAfterTime = level.time + 10000;
+	G_SetOrigin( ent, origin );
+	trap_LinkEntity( ent );
 }
 
 /*

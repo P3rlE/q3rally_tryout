@@ -114,7 +114,7 @@ gentity_t *G_TempRallyEntity( vec3_t origin, int event ) {
 
 	e->classname = "tempEntity";
 	e->eventTime = level.time;
-//	e->freeAfterEvent = qtrue;
+	e->freeAfterEvent = qtrue;
 
 	VectorCopy( origin, snapped );
 	SnapVector( snapped );		// save network bandwidth

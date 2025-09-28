@@ -60,20 +60,29 @@ void SmokerThink(gentity_t *ent){
 void RFWeapon_SmokeFire( gentity_t *ent ) {
 	trace_t		tr;
 	vec3_t		end;
-	gentity_t	*tent;
+	gentity_t		*eventEnt;
+	gentity_t		*thinker;
 
 	VectorMA( ent->r.currentOrigin, -40, forward, end );
 
 	trap_Trace( &tr, ent->r.currentOrigin, NULL, NULL, end, ent->s.number, MASK_SHOT );
 
-	tent = G_TempRallyEntity( tr.endpos, EV_HAZARD );
-	tent->s.eventParm = 0;
-	tent->s.weapon = HT_SMOKE;
-	tent->r.ownerNum = ent->s.number;
-	tent->parent = ent;
-	tent->think = SmokerThink;
-	tent->nextthink = level.time;
-	tent->freeAfterTime = level.time + 1000;
+	eventEnt = G_TempEntity( tr.endpos, EV_HAZARD );
+	eventEnt->s.eventParm = 0;
+	eventEnt->s.weapon = HT_SMOKE;
+	eventEnt->r.ownerNum = ent->s.number;
+	eventEnt->parent = ent;
+
+	thinker = G_Spawn();
+	thinker->s.eType = ET_GENERAL;
+	thinker->r.svFlags |= SVF_NOCLIENT;
+	G_SetOrigin( thinker, tr.endpos );
+	thinker->r.ownerNum = ent->s.number;
+	thinker->parent = ent;
+	thinker->think = SmokerThink;
+	thinker->nextthink = level.time;
+	thinker->freeAfterTime = level.time + 1000;
+	trap_LinkEntity( thinker );
 }
 
 
