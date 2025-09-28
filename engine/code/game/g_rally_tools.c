@@ -114,7 +114,7 @@ gentity_t *G_TempRallyEntity( vec3_t origin, int event ) {
 
 	e->classname = "tempEntity";
 	e->eventTime = level.time;
-	e->freeAfterEvent = qtrue;
+//	e->freeAfterEvent = qtrue;
 
 	VectorCopy( origin, snapped );
 	SnapVector( snapped );		// save network bandwidth
@@ -241,9 +241,7 @@ void G_ResetCar( gentity_t *ent ) {
 	VectorCopy(angles, ent->client->ps.viewangles);
 
 //	PM_InitializeVehicle(&ent->client->car, ent->client->ps.origin, ent->client->ps.viewangles, vec3_origin, car_frontweight_dist.value );
-        // Preserve the car's current fuel level when respawning after a flip.
-        ent->client->car.preserveFuel = qtrue;
-        ent->client->car.initializeOnNextMove = qtrue;
+	ent->client->car.initializeOnNextMove = qtrue;
 
 	ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
 

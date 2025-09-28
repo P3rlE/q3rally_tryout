@@ -22,7 +22,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "g_local.h"
-#include "g_client_userinfo.h"
 #include "../botlib/be_aas.h"
 
 extern vmCvar_t g_dominationSpawnStyle;
@@ -1102,10 +1101,10 @@ void ClientUserinfoChanged( int clientNum ) {
 // END
 	}
 
-        if ( G_SetClientConfigstringIfChanged( clientNum, s ) ) {
-                // this is not the userinfo, more like the configstring actually
-                G_LogPrintf( "ClientUserinfoChanged: %i %s\n", clientNum, s );
-        }
+	trap_SetConfigstring( CS_PLAYERS+clientNum, s );
+
+	// this is not the userinfo, more like the configstring actually
+	G_LogPrintf( "ClientUserinfoChanged: %i %s\n", clientNum, s );
 	G_BalanceVehicleStats();
 }
 

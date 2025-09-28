@@ -2818,7 +2818,6 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/game/g_arenas.o \
   $(B)/$(BASEGAME)/game/g_bot.o \
   $(B)/$(BASEGAME)/game/g_client.o \
-  $(B)/$(BASEGAME)/game/g_client_userinfo.o \
   $(B)/$(BASEGAME)/game/g_cmds.o \
   $(B)/$(BASEGAME)/game/g_combat.o \
   $(B)/$(BASEGAME)/game/g_items.o \
@@ -2880,7 +2879,6 @@ MPGOBJ_ = \
   $(B)/$(MISSIONPACK)/game/g_arenas.o \
   $(B)/$(MISSIONPACK)/game/g_bot.o \
   $(B)/$(MISSIONPACK)/game/g_client.o \
-  $(B)/$(MISSIONPACK)/game/g_client_userinfo.o \
   $(B)/$(MISSIONPACK)/game/g_cmds.o \
   $(B)/$(MISSIONPACK)/game/g_combat.o \
   $(B)/$(MISSIONPACK)/game/g_items.o \

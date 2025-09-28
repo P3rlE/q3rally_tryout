@@ -49,7 +49,7 @@ static void test_oil_hazard(void) {
     float kCOF = 0.4f;
 
     memset(&g_entities[0], 0, sizeof(g_entities[0]));
-    g_entities[0].classname = "oil";
+    g_entities[0].s.eType = ET_EVENTS + EV_HAZARD;
     g_entities[0].s.weapon = HT_OIL;
     g_entities[0].splashRadius = 1;
     g_entities[0].r.currentOrigin[0] = g_entities[0].r.currentOrigin[1] = g_entities[0].r.currentOrigin[2] = 0.0f;
