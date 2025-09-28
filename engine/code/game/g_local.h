@@ -385,6 +385,7 @@ struct gclient_s {
 
 	qboolean	fireHeld;			     // used for hook
 	gentity_t	*hook;				     // grapple hook if out
+	gentity_t	*rearFlameHelper;				     // active rear flame effect helper
 
 	int			switchTeamTime;		     // time the player switched teams
 
