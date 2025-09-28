@@ -30,6 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *****************************************************************************/
 
 #include "../qcommon/q_shared.h"
+#include "../game/bg_public.h"
 #include "l_libvar.h"
 #include "l_log.h"
 #include "l_memory.h"
@@ -130,11 +131,6 @@ static weaponconfig_t *weaponconfig;
 
 // global gametype variable declared in be_ai_goal.c
 extern int g_gametype;
-
-// Q3Rally specific game type not defined in botlib headers
-#ifndef GT_DERBY
-#define GT_DERBY 3
-#endif
 
 //========================================================================
 //
