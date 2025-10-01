@@ -35,6 +35,7 @@ static void G_ResetRaceTimingForClients( int raceStartTime ) {
 
                 cl->ladderBestLapMs = 0;
                 cl->ladderTotalRaceMs = 0;
+                cl->didNotFinish = qfalse;
                 cl->ladderLapCount = 0;
                 cl->ladderLastLapStartMs = raceStartTime;
                 Com_Memset( cl->ladderLapTimes, 0, sizeof( cl->ladderLapTimes ) );

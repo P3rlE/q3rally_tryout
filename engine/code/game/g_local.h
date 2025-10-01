@@ -409,6 +409,7 @@ struct gclient_s {
 
 	// race variables
 	int			finishRaceTime;
+	qboolean		didNotFinish;
 	int			ladderBestLapMs;
 	int			ladderTotalRaceMs;
 	int			ladderLastLapStartMs;

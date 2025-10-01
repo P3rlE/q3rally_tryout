@@ -1262,6 +1262,7 @@ void ClientBegin( int clientNum ) {
 	client->ladderEliminationRound = 0;
 	client->ladderEliminationPlayersRemaining = 0;
 	client->ladderEliminationMetric = 0.0f;
+	client->didNotFinish = qfalse;
 
 	// save eflags around this, because changing teams will
 	// cause this to happen with a valid entity, and we
