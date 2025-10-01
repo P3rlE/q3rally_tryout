@@ -873,6 +873,7 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 
 		case EV_USE_ITEM7:		      // fuel can
 			ent->client->car.fuel = ent->client->car.maxFuel;
+			ent->client->car.outOfFuel = qfalse;
 			ent->client->ps.stats[STAT_FUEL] = (int)ent->client->car.fuel;
 			break;
 
