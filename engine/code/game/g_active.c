@@ -877,6 +877,23 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 			ent->client->ps.stats[STAT_FUEL] = (int)ent->client->car.fuel;
 			break;
 
+		case EV_FUEL_EMPTY:
+			if ( isRallyRace()
+				&& level.startRaceTime
+				&& !level.finishRaceTime
+				&& ent->client->sess.sessionTeam != TEAM_SPECTATOR
+				&& !isRaceObserver( ent->s.number )
+				&& !ent->client->finishRaceTime
+				&& !ent->client->didNotFinish ) {
+				trap_SendServerCommand( ent->s.number, "cp \"Out of fuel! Did not finish.\n\"" );
+				trap_SendServerCommand( -1, va( "print \"%s" S_COLOR_WHITE " ran out of fuel and is out of the race!\n\"",
+					ent->client->pers.netname ) );
+				SetTeam( ent, "racerSpectator" );
+				ent->client->didNotFinish = qtrue;
+				SendScoreboardMessageToAllClients();
+			}
+			break;
+
 		default:
 			break;
 		}
