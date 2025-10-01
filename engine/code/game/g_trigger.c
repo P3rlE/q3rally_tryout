@@ -441,6 +441,10 @@ void Touch_Fuel( gentity_t *self, gentity_t *other, trace_t *trace ) {
 		other->client->car.fuel = max;
 	}
 
+	if ( other->client->car.fuel > 0.0f ) {
+		other->client->car.outOfFuel = qfalse;
+	}
+
 	other->client->ps.stats[STAT_FUEL] = (int)other->client->car.fuel;
 }
 
