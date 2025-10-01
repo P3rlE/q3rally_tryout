@@ -23,6 +23,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "cg_local.h"
 
+static qboolean CG_ClientIsDNF(int clientNum) {
+        int i;
+
+        for (i = 0; i < cg.numScores; i++) {
+                if (cg.scores[i].client == clientNum) {
+                        return (cg.scores[i].scoreFlags & SCORE_FLAG_DNF) ? qtrue : qfalse;
+                }
+        }
+
+        return qfalse;
+}
+
 /*
 =================
 CG_DrawHUD_Times
@@ -86,7 +98,11 @@ void CG_DrawHUD_Times(float x, float y){
 
 	// draw total time
 	CG_DrawSmallDigitalStringColor(x + 12, y, "TOTAL:", colorWhite);
-	time = getStringForTime( totalTime );
+	if (CG_ClientIsDNF(cg.snap->ps.clientNum)) {
+		time = "DNF";
+	} else {
+		time = getStringForTime( totalTime );
+	}
 	CG_DrawSmallDigitalStringColor(x + 102, y, time, colorWhite);
 
 	y += 20;
@@ -537,7 +553,11 @@ void CG_DrawHUD_DerbyList(float x, float y){
 		else if (cent->startRaceTime){
 			playTime = cg.time - cent->startLapTime;
 		}
-		time = getStringForTime(playTime);
+		if (cg.scores[i].scoreFlags & SCORE_FLAG_DNF) {
+			time = "DNF";
+		} else {
+			time = getStringForTime(playTime);
+		}
 
 		// num
 		CG_DrawTinyStringColor( x + 2, y, va("%i", (i+1)), color);
