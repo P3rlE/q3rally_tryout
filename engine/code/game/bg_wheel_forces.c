@@ -499,27 +499,54 @@ void PM_AddRoadForces(car_t *car, carBody_t *body, carPoint_t *points, float sec
 
 	v = DotProduct(body->v, body->forward);
 
-	if (pm->ps->stats[STAT_HEALTH] > 0){
-		car->throttle = pm->cmd.forwardmove / 127.0F;
+        if (pm->ps->stats[STAT_HEALTH] > 0){
+                float   rawThrottle;
+                int             originalGear;
+                qboolean        outOfFuel;
 
-		if (!pm->manualShift){
-			if (car->gear < 0)
-				car->throttle *= -1.0f;
+                rawThrottle = pm->cmd.forwardmove / 127.0F;
+                originalGear = car->gear;
+                outOfFuel = (car->fuel <= 0.0f);
+                car->throttle = rawThrottle;
 
-			if (car->throttle < 0){
-				if (car->gear > 0 && v < 40.0f){
-					car->gear = -1;
-					car->throttle *= -1.0f;
-				}
-				else if (car->gear < 0 && v > -40.0f){
-					car->gear = 1;
-					car->throttle *= -1.0f;
-				}
-			}
-		}
+                if (!pm->manualShift && !outOfFuel){
+                        if (car->gear < 0)
+                                car->throttle *= -1.0f;
 
-		if (pm->controlMode == CT_MOUSE){
-			car->wheelAngle = WheelAngle(pm->ps->viewangles[YAW], pm->ps->damageAngles[YAW]);
+                        if (car->throttle < 0){
+                                if (car->gear > 0 && v < 40.0f){
+                                        car->gear = -1;
+                                        car->throttle *= -1.0f;
+                                }
+                                else if (car->gear < 0 && v > -40.0f){
+                                        car->gear = 1;
+                                        car->throttle *= -1.0f;
+                                }
+                        }
+                }
+
+                if ( outOfFuel ) {
+                        car->gear = originalGear;
+
+                        if ( rawThrottle > 0.0f ) {
+                                if ( v < -1.0f ) {
+                                        car->throttle = -fabs( rawThrottle );
+                                } else {
+                                        car->throttle = 0.0f;
+                                }
+                        } else if ( rawThrottle < 0.0f ) {
+                                if ( v > 1.0f ) {
+                                        car->throttle = rawThrottle;
+                                } else {
+                                        car->throttle = 0.0f;
+                                }
+                        } else {
+                                car->throttle = 0.0f;
+                        }
+                }
+
+                if (pm->controlMode == CT_MOUSE){
+                        car->wheelAngle = WheelAngle(pm->ps->viewangles[YAW], pm->ps->damageAngles[YAW]);
 
 			if (v < 0.5f && v > -0.5f)
 				car->wheelAngle = 0.0;
