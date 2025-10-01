@@ -919,7 +919,9 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 				trap_SendServerCommand( -1, va( "print \"%s" S_COLOR_WHITE " ran out of fuel and is out of the race!\n\"",
 					ent->client->pers.netname ) );
 				SetTeam( ent, "racerSpectator" );
+
 				StopFollowing( ent );
+
 				ent->client->didNotFinish = qtrue;
 				SendScoreboardMessageToAllClients();
 			}
