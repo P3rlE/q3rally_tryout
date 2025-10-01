@@ -23,19 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "cg_local.h"
 
-static qboolean CG_ClientIsDNF(int clientNum) {
-        int i;
-
-        for (i = 0; i < cg.numScores; i++) {
-                if (cg.scores[i].client == clientNum) {
-                        return (cg.scores[i].scoreFlags & SCORE_FLAG_DNF) ? qtrue : qfalse;
-                }
-        }
-
-        return qfalse;
-}
-
-float colors[4][4] = { 
+float colors[4][4] = {
 //		{ 0.2, 1.0, 0.2, 1.0 } , { 1.0, 0.2, 0.2, 1.0 }, {0.5, 0.5, 0.5, 1} };
 		{ 1.0f, 0.69f, 0.0f, 1.0f } ,	  // normal
 		{ 1.0f, 0.2f, 0.2f, 1.0f },	      // low health

@@ -24,6 +24,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "cg_local.h"
 
 
+qboolean CG_ClientIsDNF( int clientNum ) {
+        int i;
+
+        for ( i = 0; i < cg.numScores; i++ ) {
+                if ( cg.scores[i].client == clientNum ) {
+                        return ( cg.scores[i].scoreFlags & SCORE_FLAG_DNF ) ? qtrue : qfalse;
+                }
+        }
+
+        return qfalse;
+}
+
+
 void CG_DrawCheckpointLinks(void)
 {
 	int			i, j;
