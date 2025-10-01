@@ -441,6 +441,33 @@ void	G_TouchTriggers( gentity_t *ent ) {
 	}
 }
 
+static qboolean G_HasFollowableRacer( int skipClient ) {
+        int i;
+
+        for ( i = 0; i < level.maxclients; i++ ) {
+                gclient_t *client;
+
+                if ( i == skipClient ) {
+                        continue;
+                }
+
+                client = &level.clients[i];
+                if ( client->pers.connected != CON_CONNECTED ) {
+                        continue;
+                }
+                if ( client->sess.sessionTeam == TEAM_SPECTATOR ) {
+                        continue;
+                }
+                if ( isRaceObserver( i ) ) {
+                        continue;
+                }
+
+                return qtrue;
+        }
+
+        return qfalse;
+}
+
 /*
 =================
 SpectatorThink
@@ -501,8 +528,11 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 	if ( ( client->buttons & BUTTON_ATTACK ) && ! ( client->oldbuttons & BUTTON_ATTACK ) 
 		&& !(ent->r.svFlags & SVF_BOT) ) {
 // END
-		Cmd_FollowCycle_f( ent, 1 );
+		if ( G_HasFollowableRacer( ent->s.number ) ) {
+			Cmd_FollowCycle_f( ent, 1 );
+		}
 	}
+
 
 // STONELANCE
 	if ( ( client->buttons & BUTTON_REARATTACK ) && ! ( client->oldbuttons & BUTTON_REARATTACK ) ) {
@@ -873,7 +903,26 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 
 		case EV_USE_ITEM7:		      // fuel can
 			ent->client->car.fuel = ent->client->car.maxFuel;
+			ent->client->car.outOfFuel = qfalse;
 			ent->client->ps.stats[STAT_FUEL] = (int)ent->client->car.fuel;
+			break;
+
+		case EV_FUEL_EMPTY:
+			if ( isRallyRace()
+				&& level.startRaceTime
+				&& !level.finishRaceTime
+				&& ent->client->sess.sessionTeam != TEAM_SPECTATOR
+				&& !isRaceObserver( ent->s.number )
+				&& !ent->client->finishRaceTime
+				&& !ent->client->didNotFinish ) {
+				trap_SendServerCommand( ent->s.number, "cp \"Out of fuel! Did not finish.\n\"" );
+				trap_SendServerCommand( -1, va( "print \"%s" S_COLOR_WHITE " ran out of fuel and is out of the race!\n\"",
+					ent->client->pers.netname ) );
+				SetTeam( ent, "racerSpectator" );
+				StopFollowing( ent );
+				ent->client->didNotFinish = qtrue;
+				SendScoreboardMessageToAllClients();
+			}
 			break;
 
 		default:

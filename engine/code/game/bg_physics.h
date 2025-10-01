@@ -309,6 +309,8 @@ typedef struct {
 
 	qboolean	preserveFuel;
 
+	qboolean	outOfFuel;
+
 	qboolean	initializeOnNextMove;
 
 //	float	aCOF;

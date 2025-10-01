@@ -1671,7 +1671,9 @@ void LogExit( const char *string ) {
 			}
 
 			if ( client->sess.sessionTeam == TEAM_SPECTATOR || isRaceObserver( i ) ) {
-				client->didNotFinish = qfalse;
+				if ( !client->didNotFinish ) {
+					client->didNotFinish = qfalse;
+				}
 				continue;
 			}
 

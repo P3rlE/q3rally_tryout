@@ -513,10 +513,10 @@ static void CG_UseItem( centity_t *cent ) {
 	// print a message if the local player
 	if ( es->number == cg.snap->ps.clientNum ) {
 		if ( !itemNum ) {
-			CG_CenterPrint( "No item in your trunk", SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
+			CG_CenterPrint( "No item in your trunk", SCREEN_HEIGHT * 0.42f, BIGCHAR_WIDTH );
 		} else {
 			item = BG_FindItemForHoldable( itemNum );
-			CG_CenterPrint( va("Use %s", item->pickup_name), SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
+			CG_CenterPrint( va("Use %s", item->pickup_name), SCREEN_HEIGHT * 0.42f, BIGCHAR_WIDTH );
 		}
 	}
 
@@ -1111,6 +1111,14 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 	case EV_USE_ITEM15:
 		DEBUGNAME("EV_USE_ITEM15");
 		CG_UseItem( cent );
+		break;
+
+	case EV_FUEL_EMPTY:
+		DEBUGNAME("EV_FUEL_EMPTY");
+		if ( es->number == cg.snap->ps.clientNum ) {
+			CG_CenterPrint( "Out of fuel! Did not finish.", SCREEN_HEIGHT * 0.36f, BIGCHAR_WIDTH );
+			trap_S_StartLocalSound( cgs.media.talkSound, CHAN_LOCAL_SOUND );
+		}
 		break;
 
 	//=================================================================
