@@ -49,7 +49,6 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 	// send the latest information on all clients
 	string[0] = 0;
 	stringlength = 0;
-	scoreFlags = 0;
 
 	numSorted = level.numConnectedClients;
 	
@@ -60,6 +59,11 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 // END
 
 		cl = &level.clients[level.sortedClients[i]];
+
+		scoreFlags = 0;
+		if ( cl->didNotFinish ) {
+			scoreFlags |= SCORE_FLAG_DNF;
+		}
 
 // STONELANCE
 		if ( isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS ) {
