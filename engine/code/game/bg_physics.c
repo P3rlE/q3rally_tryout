@@ -565,7 +565,6 @@ void PM_InitializeVehicle( car_t *car, vec3_t origin, vec3_t angles, vec3_t velo
 	car->rpm = CP_RPM_MIN;
 	car->fuel = keep ? fuel : CP_MAX_FUEL;
 	car->fuelLeak = keep ? leak : qfalse;
-	car->outOfFuel = (car->fuel <= 0.0f);
 	if ( pm->ps ) pm->ps->stats[STAT_FUEL] = (int)car->fuel;
 	car->preserveFuel = qfalse;
 
@@ -2358,15 +2357,9 @@ void PM_DriveMove( car_t *car, float time, qboolean includeBodies )
 		if ( car->fuelLeak ) {
 			car->fuel -= CP_FUEL_LEAK_RATE * time;
 		}
-	}
-	if ( car->fuel <= 0.0f ) {
-		if ( !car->outOfFuel ) {
-			car->outOfFuel = qtrue;
-			PM_AddEvent( EV_FUEL_EMPTY );
+		if (car->fuel < 0.0f) {
+			car->fuel = 0.0f;
 		}
-		car->fuel = 0.0f;
-	} else {
-		car->outOfFuel = qfalse;
 	}
 	pm->ps->stats[STAT_FUEL] = (int)car->fuel;
 

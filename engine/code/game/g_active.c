@@ -24,10 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
-#define FUEL_DNF_STOP_SPEED_KPH 5.0f
-
-static void G_CompleteFuelDNF( gentity_t *ent );
-static qboolean G_VehicleBelowFuelDNFThreshold( const gentity_t *ent );
 
 // STONELANCE
 /*
@@ -445,94 +441,6 @@ void	G_TouchTriggers( gentity_t *ent ) {
 	}
 }
 
-static qboolean G_HasFollowableRacer( int skipClient ) {
-        int i;
-
-        for ( i = 0; i < level.maxclients; i++ ) {
-                gclient_t *client;
-
-                if ( i == skipClient ) {
-                        continue;
-                }
-
-                client = &level.clients[i];
-                if ( client->pers.connected != CON_CONNECTED ) {
-                        continue;
-                }
-                if ( client->sess.sessionTeam == TEAM_SPECTATOR ) {
-                        continue;
-                }
-                if ( isRaceObserver( i ) ) {
-                        continue;
-                }
-
-                return qtrue;
-        }
-
-        return qfalse;
-}
-
-static qboolean G_VehicleBelowFuelDNFThreshold( const gentity_t *ent ) {
-        float speedQu;
-        float stopSpeedQu;
-
-        if ( !ent || !ent->client ) {
-                return qtrue;
-        }
-
-        speedQu = VectorLength( ent->client->ps.velocity );
-        stopSpeedQu = (FUEL_DNF_STOP_SPEED_KPH / 3.6f) * CP_M_2_QU;
-
-        return speedQu <= stopSpeedQu;
-}
-
-static void G_CompleteFuelDNF( gentity_t *ent ) {
-        gclient_t *client;
-
-        if ( !ent || !ent->client ) {
-                return;
-        }
-
-        client = ent->client;
-        client->pendingFuelDNF = qfalse;
-        client->fuelEmptyTime = 0;
-
-        if ( client->didNotFinish ) {
-                return;
-        }
-
-        if ( !client->car.outOfFuel ) {
-                return;
-        }
-
-        if ( !isRallyRace() || !level.startRaceTime || level.finishRaceTime ) {
-                return;
-        }
-
-        if ( client->sess.sessionTeam == TEAM_SPECTATOR || isRaceObserver( ent->s.number ) ) {
-                return;
-        }
-
-        if ( client->finishRaceTime ) {
-                return;
-        }
-
-        trap_SendServerCommand( ent->s.number, "cp \"Out of fuel! Did not finish.\n\"" );
-        trap_SendServerCommand( -1, va( "print \"%s" S_COLOR_WHITE " ran out of fuel and is out of the race!\n\"",
-                        client->pers.netname ) );
-        SetTeam( ent, "racerSpectator" );
-        StopFollowing( ent );
-
-        if ( G_HasFollowableRacer( ent - g_entities ) ) {
-                Cmd_FollowCycle_f( ent, 1 );
-        } else if ( client->sess.sessionTeam == TEAM_SPECTATOR ) {
-                client->sess.spectatorState = SPECTATOR_SCOREBOARD;
-                client->sess.spectatorClient = -1;
-        }
-        client->didNotFinish = qtrue;
-        SendScoreboardMessageToAllClients();
-}
-
 /*
 =================
 SpectatorThink
@@ -593,19 +501,8 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 	if ( ( client->buttons & BUTTON_ATTACK ) && ! ( client->oldbuttons & BUTTON_ATTACK ) 
 		&& !(ent->r.svFlags & SVF_BOT) ) {
 // END
-		if ( client->sess.spectatorClient >= 0 ) {
-			if ( client->sess.spectatorClient >= level.maxclients
-				|| level.clients[ client->sess.spectatorClient ].pers.connected != CON_CONNECTED ) {
-				Cmd_FollowCycle_f( ent, 1 );
-				return;
-			}
-		}
-
-		if ( G_HasFollowableRacer( ent->s.number ) ) {
-			Cmd_FollowCycle_f( ent, 1 );
-		}
+		Cmd_FollowCycle_f( ent, 1 );
 	}
-
 
 // STONELANCE
 	if ( ( client->buttons & BUTTON_REARATTACK ) && ! ( client->oldbuttons & BUTTON_REARATTACK ) ) {
@@ -974,20 +871,9 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 			break;
 #endif
 
-		case EV_USE_ITEM7:			// fuel can
+		case EV_USE_ITEM7:		      // fuel can
 			ent->client->car.fuel = ent->client->car.maxFuel;
-			ent->client->car.outOfFuel = qfalse;
-			ent->client->pendingFuelDNF = qfalse;
-			ent->client->fuelEmptyTime = 0;
-
 			ent->client->ps.stats[STAT_FUEL] = (int)ent->client->car.fuel;
-			break;
-
-		case EV_FUEL_EMPTY:
-
-			ent->client->pendingFuelDNF = qtrue;
-			ent->client->fuelEmptyTime = level.time;
-
 			break;
 
 		default:
@@ -1306,10 +1192,6 @@ void ClientThink_real( gentity_t *ent ) {
 		client->horn_sound_time = level.time + 100;
 	}
 
-	if ( client->car.outOfFuel || client->pendingFuelDNF ) {
-		ucmd->buttons &= ~BUTTON_TURBO;
-	}
-
 	// use turbo
 	if ((ucmd->buttons & BUTTON_TURBO) && !(client->oldbuttons & BUTTON_TURBO)
 		&& client->ps.powerups[ PW_TURBO ] < 0){
@@ -1376,14 +1258,6 @@ void ClientThink_real( gentity_t *ent ) {
 
 	pm.ps = &client->ps;
 	pm.cmd = *ucmd;
-
-	if ( client->car.outOfFuel || client->pendingFuelDNF ) {
-		if ( pm.cmd.forwardmove > 0 ) {
-			pm.cmd.forwardmove = 0;
-		}
-
-		pm.cmd.buttons &= ~BUTTON_TURBO;
-	}
 // STONELANCE - dead cars can still hit things
 /*
 	if ( pm.ps->pm_type == PM_DEAD ) {
@@ -1749,15 +1623,6 @@ void ClientThink_real( gentity_t *ent ) {
 	client->oldbuttons = client->buttons;
 	client->buttons = ucmd->buttons;
 	client->latched_buttons |= client->buttons & ~client->oldbuttons;
-
-	if ( client->pendingFuelDNF ) {
-		if ( !client->car.outOfFuel ) {
-			client->pendingFuelDNF = qfalse;
-			client->fuelEmptyTime = 0;
-		} else if ( G_VehicleBelowFuelDNFThreshold( ent ) ) {
-			G_CompleteFuelDNF( ent );
-		}
-	}
 
 	// check for respawning
 	if ( client->ps.stats[STAT_HEALTH] <= 0 ) {

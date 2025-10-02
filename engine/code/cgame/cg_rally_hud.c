@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "cg_local.h"
 
-float colors[4][4] = {
+float colors[4][4] = { 
 //		{ 0.2, 1.0, 0.2, 1.0 } , { 1.0, 0.2, 0.2, 1.0 }, {0.5, 0.5, 0.5, 1} };
 		{ 1.0f, 0.69f, 0.0f, 1.0f } ,	  // normal
 		{ 1.0f, 0.2f, 0.2f, 1.0f },	      // low health
@@ -500,11 +500,7 @@ static float CG_DrawTimes( float y ) {
 	// Total Time
 	//
 
-	if (CG_ClientIsDNF(cg.snap->ps.clientNum)) {
-		time = "DNF";
-	} else {
-		time = getStringForTime(totalTime);
-	}
+	time = getStringForTime(totalTime);
 
 	{
 		const char *label = "T:";
@@ -878,11 +874,7 @@ void CG_DrawHUD_DerbyList(float x, float y){
 		else if (cent->startRaceTime){
 			playTime = cg.time - cent->startLapTime;
 		}
-		if (cg.scores[i].scoreFlags & SCORE_FLAG_DNF) {
-			time = "DNF";
-		} else {
-			time = getStringForTime(playTime);
-		}
+		time = getStringForTime(playTime);
 
 		// num
 		CG_DrawTinyStringColor( x + 6, y, va("0%i", (i+1)), color);

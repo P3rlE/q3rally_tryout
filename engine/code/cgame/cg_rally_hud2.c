@@ -86,11 +86,7 @@ void CG_DrawHUD_Times(float x, float y){
 
 	// draw total time
 	CG_DrawSmallDigitalStringColor(x + 12, y, "TOTAL:", colorWhite);
-	if (CG_ClientIsDNF(cg.snap->ps.clientNum)) {
-		time = "DNF";
-	} else {
-		time = getStringForTime( totalTime );
-	}
+	time = getStringForTime( totalTime );
 	CG_DrawSmallDigitalStringColor(x + 102, y, time, colorWhite);
 
 	y += 20;
@@ -541,11 +537,7 @@ void CG_DrawHUD_DerbyList(float x, float y){
 		else if (cent->startRaceTime){
 			playTime = cg.time - cent->startLapTime;
 		}
-		if (cg.scores[i].scoreFlags & SCORE_FLAG_DNF) {
-			time = "DNF";
-		} else {
-			time = getStringForTime(playTime);
-		}
+		time = getStringForTime(playTime);
 
 		// num
 		CG_DrawTinyStringColor( x + 2, y, va("%i", (i+1)), color);

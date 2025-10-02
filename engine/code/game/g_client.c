@@ -1262,9 +1262,6 @@ void ClientBegin( int clientNum ) {
 	client->ladderEliminationRound = 0;
 	client->ladderEliminationPlayersRemaining = 0;
 	client->ladderEliminationMetric = 0.0f;
-	client->pendingFuelDNF = qfalse;
-	client->fuelEmptyTime = 0;
-	client->didNotFinish = qfalse;
 
 	// save eflags around this, because changing teams will
 	// cause this to happen with a valid entity, and we
@@ -1633,10 +1630,6 @@ client->ps.stats[STAT_WEAPONS] = ( 1u << WP_DERBY_RAM );
 	client->car.maxFuel = CP_MAX_FUEL;
 	client->car.fuel = client->car.maxFuel;
 	client->car.fuelLeak = qfalse;
-	client->car.outOfFuel = qfalse;
-	client->pendingFuelDNF = qfalse;
-	client->fuelEmptyTime = 0;
-
 	client->ps.stats[STAT_FUEL] = client->car.maxFuel;
 
 	if ( !ent->frontBounds )

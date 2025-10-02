@@ -1343,10 +1343,6 @@ static int CG_CalculateScoreTotalTime(const score_t *score, qboolean isRacingMod
         return 0;
     }
 
-    if (score->scoreFlags & SCORE_FLAG_DNF) {
-        return INT_MAX;
-    }
-
     cent = &cg_entities[score->client];
 
     if (cent->finishRaceTime) {
@@ -2016,16 +2012,24 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
             break;
             
         case SBCOL_TOTALTIME:
-            if (score->scoreFlags & SCORE_FLAG_DNF) {
-                CG_DrawModernText(x, y, "DNF", 1, width, textColor, qfalse);
-            } else if (ci->team == TEAM_SPECTATOR) {
+            if (ci->team == TEAM_SPECTATOR) {
                 CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
             } else {
-                totalTime = CG_CalculateScoreTotalTime(score, isRacingMode);
-
-                if (totalTime == INT_MAX) {
-                    CG_DrawModernText(x, y, "DNF", 1, width, textColor, qfalse);
-                } else if (totalTime > 0) {
+                if (cent->finishRaceTime) {
+                    if (isRacingMode && cgs.laplimit <= 1 && cent->startLapTime > 0) {
+                        totalTime = cent->finishRaceTime - cent->startLapTime;
+                    } else {
+                        totalTime = cent->finishRaceTime - score->time;
+                    }
+                } else if (isRacingMode && cgs.laplimit <= 1 && cent->startLapTime > 0) {
+                    totalTime = cg.time - cent->startLapTime;
+                } else if (score->time) {
+                    totalTime = cg.time - score->time;
+                } else {
+                    totalTime = 0;
+                }
+                
+                if (totalTime > 0) {
                     timeStr = getStringForTime(totalTime);
                     CG_DrawModernText(x, y, timeStr, 1, width, textColor, qfalse);
                 } else {

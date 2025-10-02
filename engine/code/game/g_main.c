@@ -1662,29 +1662,6 @@ void LogExit( const char *string ) {
 
 	trap_SetConfigstring( CS_INTERMISSION, "1" );
 
-	if ( isRallyRace() && level.startRaceTime ) {
-		for ( i = 0; i < level.maxclients; i++ ) {
-			gclient_t *client = &level.clients[i];
-
-			if ( client->pers.connected != CON_CONNECTED ) {
-				continue;
-			}
-
-			if ( client->sess.sessionTeam == TEAM_SPECTATOR || isRaceObserver( i ) ) {
-				if ( !client->didNotFinish ) {
-					client->didNotFinish = qfalse;
-				}
-				continue;
-			}
-
-			if ( client->finishRaceTime > 0 ) {
-				client->didNotFinish = qfalse;
-			} else {
-				client->didNotFinish = qtrue;
-			}
-		}
-	}
-
 	numSorted = level.numConnectedClients;
 	if ( numSorted > 32 ) {
 		numSorted = 32;
@@ -1801,7 +1778,6 @@ void LogExit( const char *string ) {
 			entry->isBot = ( g_entities[level.sortedClients[i]].r.svFlags & SVF_BOT ) ? qtrue : qfalse;
 			entry->score = cl->ps.persistant[PERS_SCORE];
 			entry->ping = ping;
-			entry->scoreFlags = cl->didNotFinish ? SCORE_FLAG_DNF : 0;
 			entry->time = timePlayed;
 			entry->powerUps = g_entities[level.sortedClients[i]].s.powerups;
 			entry->accuracy = cl->accuracy_shots ? ( cl->accuracy_hits * 100 / cl->accuracy_shots ) : 0;
