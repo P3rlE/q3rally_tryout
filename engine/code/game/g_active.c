@@ -1291,6 +1291,10 @@ void ClientThink_real( gentity_t *ent ) {
 		client->horn_sound_time = level.time + 100;
 	}
 
+	if ( client->car.outOfFuel || client->pendingFuelDNF ) {
+		ucmd->buttons &= ~BUTTON_TURBO;
+	}
+
 	// use turbo
 	if ((ucmd->buttons & BUTTON_TURBO) && !(client->oldbuttons & BUTTON_TURBO)
 		&& client->ps.powerups[ PW_TURBO ] < 0){
@@ -1357,6 +1361,14 @@ void ClientThink_real( gentity_t *ent ) {
 
 	pm.ps = &client->ps;
 	pm.cmd = *ucmd;
+
+	if ( client->car.outOfFuel || client->pendingFuelDNF ) {
+		if ( pm.cmd.forwardmove > 0 ) {
+			pm.cmd.forwardmove = 0;
+		}
+
+		pm.cmd.buttons &= ~BUTTON_TURBO;
+	}
 // STONELANCE - dead cars can still hit things
 /*
 	if ( pm.ps->pm_type == PM_DEAD ) {
