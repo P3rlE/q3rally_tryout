@@ -1491,12 +1491,19 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
-	if ( !strcmp( cmd, "raceFinishTime" ) ) {
-		i1 = atoi(CG_Argv(1));
-		i2 = atoi(CG_Argv(2));
-		CG_FinishedRace( i1, i2 );
-		return;
-	}
+        if ( !strcmp( cmd, "raceFinishTime" ) ) {
+                int fuelDepleted = 0;
+
+                i1 = atoi(CG_Argv(1));
+                i2 = atoi(CG_Argv(2));
+
+                if ( trap_Argc() >= 4 ) {
+                        fuelDepleted = atoi( CG_Argv(3) );
+                }
+
+                CG_FinishedRace( i1, i2, fuelDepleted ? qtrue : qfalse );
+                return;
+        }
 // END
 
 	CG_Printf( "Unknown client game command: %s\n", cmd );
