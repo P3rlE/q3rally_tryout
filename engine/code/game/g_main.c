@@ -2172,7 +2172,7 @@ void CheckExitRules( void ) {
                 soleActiveClient->ps.stats[STAT_POSITION] = 1;
                 level.winnerNumber = soleActiveClient->ps.clientNum;
                 level.finishRaceTime = finishTime;
-                trap_SendServerCommand( -1, va( "raceFinishTime %i %i", soleActiveClient->ps.clientNum, finishTime ) );
+                trap_SendServerCommand( -1, va( "raceFinishTime %i %i %i", soleActiveClient->ps.clientNum, finishTime, 1 ) );
                 return;
         }
 
@@ -2188,7 +2188,7 @@ void CheckExitRules( void ) {
 	if ( level.finishRaceTime && g_gametype.integer == GT_DERBY
 		&& level.finishRaceTime + 10000 < level.time ){
 		g_entities[ level.winnerNumber ].client->finishRaceTime = level.time;
-		trap_SendServerCommand( -1, va("raceFinishTime %i %i", level.winnerNumber, level.time) );
+                trap_SendServerCommand( -1, va("raceFinishTime %i %i %i", level.winnerNumber, level.time, 0) );
 		LogExit( "Derby finished." );
 		return;
 	}
@@ -2196,7 +2196,7 @@ void CheckExitRules( void ) {
 	if ( level.finishRaceTime && (g_gametype.integer == GT_LCS || g_gametype.integer == GT_ELIMINATION)
 		&& level.finishRaceTime + 10000 < level.time ){
 		g_entities[ level.winnerNumber ].client->finishRaceTime = level.time;
-		trap_SendServerCommand( -1, va("raceFinishTime %i %i", level.winnerNumber, level.time) );
+                trap_SendServerCommand( -1, va("raceFinishTime %i %i %i", level.winnerNumber, level.time, 0) );
 		if ( g_gametype.integer == GT_LCS ) {
 			LogExit( "Last car standing finished." );
 		}

@@ -53,7 +53,7 @@ void CG_NewLapTime( int client, int lap, int time ) {
 	cent->startLapTime = time;
 }
 
-void CG_FinishedRace( int client, int time ) {
+void CG_FinishedRace( int client, int time, qboolean fuelDepleted ) {
 	centity_t	*cent;
 	char		*t;
 
@@ -65,7 +65,7 @@ void CG_FinishedRace( int client, int time ) {
 		cg.raceFinishCountdownEnd = time + ( cgs.finishRaceDelay * 1000 );
 	}
 
-	if ( client == cg.snap->ps.clientNum
+	if ( !fuelDepleted && client == cg.snap->ps.clientNum
 		&& ((time - cent->startLapTime) < cent->bestLapTime || cent->bestLapTime == 0) ){
 		// New bestlap
 		cent->bestLapTime = (time - cent->startLapTime);
