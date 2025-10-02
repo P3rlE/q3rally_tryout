@@ -1144,7 +1144,10 @@ void ClientThink_real( gentity_t *ent ) {
 		ucmd->upmove = 0;
 	}
 
-	if ( ent->client->finishRaceTime && ent->client->finishRaceTime + RACE_OBSERVER_DELAY < level.time ){
+	if ( ent->client->finishRaceTime
+		&& ent->client->finishRaceTime + RACE_OBSERVER_DELAY < level.time
+		&& level.finishRaceTime
+		&& level.time >= level.finishRaceTime + ( g_finishRaceDelay.integer * 1000 ) ){
 		gentity_t	*tent;
 		tent = G_TempEntity( ent->client->ps.origin, EV_PLAYER_TELEPORT_OUT );
 		tent->s.clientNum = ent->s.clientNum;
