@@ -522,6 +522,13 @@ static void G_CompleteFuelDNF( gentity_t *ent ) {
                         client->pers.netname ) );
         SetTeam( ent, "racerSpectator" );
         StopFollowing( ent );
+
+        if ( G_HasFollowableRacer( ent - g_entities ) ) {
+                Cmd_FollowCycle_f( ent, 1 );
+        } else if ( client->sess.sessionTeam == TEAM_SPECTATOR ) {
+                client->sess.spectatorState = SPECTATOR_SCOREBOARD;
+                client->sess.spectatorClient = -1;
+        }
         client->didNotFinish = qtrue;
         SendScoreboardMessageToAllClients();
 }
