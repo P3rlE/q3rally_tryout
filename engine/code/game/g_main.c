@@ -2166,17 +2166,16 @@ void CheckExitRules( void ) {
 		return;
 	}
 
-	if ( isRallyRace() && level.startRaceTime && !level.finishRaceTime
-			&& count == 1 && soleActiveClient && soleActiveClient->fuelEmptySince
-			&& level.time - soleActiveClient->fuelEmptySince >= FUEL_EMPTY_RACE_FINISH_DELAY ) {
-		soleActiveClient->finishRaceTime = level.time;
-		soleActiveClient->ps.stats[STAT_POSITION] = 1;
-		level.winnerNumber = soleActiveClient->ps.clientNum;
-		level.finishRaceTime = level.time;
-		trap_SendServerCommand( -1, va( "raceFinishTime %i %i", soleActiveClient->ps.clientNum, level.time ) );
-		LogExit( "Race finished." );
-		return;
-	}
+        if ( isRallyRace() && level.startRaceTime && !level.finishRaceTime
+                        && count == 1 && soleActiveClient && soleActiveClient->fuelEmptySince
+                        && level.time - soleActiveClient->fuelEmptySince >= FUEL_EMPTY_RACE_FINISH_DELAY ) {
+                soleActiveClient->finishRaceTime = level.time;
+                soleActiveClient->ps.stats[STAT_POSITION] = 1;
+                level.winnerNumber = soleActiveClient->ps.clientNum;
+                level.finishRaceTime = level.time;
+                trap_SendServerCommand( -1, va( "raceFinishTime %i %i", soleActiveClient->ps.clientNum, level.time ) );
+                return;
+        }
 
 	if ( level.finishRaceTime && isRallyRace() ){
 		// if everyone has finished the race, or the finishRaceDelay time is up, then exit
