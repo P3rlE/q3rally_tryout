@@ -25,6 +25,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "g_local.h"
 #include "../qcommon/qcommon.h"
 
+#define FUEL_EMPTY_RACE_FINISH_DELAY   30000
+
 level_locals_t	level;
 
 typedef struct {
@@ -2029,6 +2031,7 @@ void CheckExitRules( void ) {
 	gclient_t	*cl;
 // STONELANCE
 	int			count;
+	gclient_t	*soleActiveClient = NULL;
 // END
 	// if at the intermission, wait for all non-bots to
 	// signal ready, then go to next level
@@ -2148,12 +2151,29 @@ void CheckExitRules( void ) {
 //		if ( cl->ps.stats[STAT_HEALTH] <= 0 ) continue;
 
 		count++;
-		break;
+		if ( count == 1 ) {
+			soleActiveClient = cl;
+		} else {
+			soleActiveClient = NULL;
+			break;
+		}
 	}
 
 	// if its a race and the race has started if no players left playing 
 	//			or everyone is a spectator then end the race.
 	if ( isRallyRace() && level.startRaceTime && !count ){
+		LogExit( "Race finished." );
+		return;
+	}
+
+	if ( isRallyRace() && level.startRaceTime && !level.finishRaceTime
+			&& count == 1 && soleActiveClient && soleActiveClient->fuelEmptySince
+			&& level.time - soleActiveClient->fuelEmptySince >= FUEL_EMPTY_RACE_FINISH_DELAY ) {
+		soleActiveClient->finishRaceTime = level.time;
+		soleActiveClient->ps.stats[STAT_POSITION] = 1;
+		level.winnerNumber = soleActiveClient->ps.clientNum;
+		level.finishRaceTime = level.time;
+		trap_SendServerCommand( -1, va( "raceFinishTime %i %i", soleActiveClient->ps.clientNum, level.time ) );
 		LogExit( "Race finished." );
 		return;
 	}
