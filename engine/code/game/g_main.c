@@ -252,7 +252,7 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &g_trackLength, "g_trackLength", "0", CVAR_LATCH, 0, qfalse  },
 
 	{ &g_forceEngineStart, "g_forceEngineStart", "60", CVAR_ARCHIVE, 0, qfalse },
-	{ &g_finishRaceDelay, "g_finishRaceDelay", "30", CVAR_ARCHIVE, 0, qfalse },
+	{ &g_finishRaceDelay, "g_finishRaceDelay", "30", CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qfalse },
 	{ &g_eliminationStartDelay, "g_eliminationStartDelay", "30000", CVAR_ARCHIVE, 0, qfalse },
 	{ &g_eliminationInterval, "g_eliminationInterval", "15000", CVAR_ARCHIVE, 0, qfalse },
 	{ &g_eliminationWarning, "g_eliminationWarning", "5000", CVAR_ARCHIVE, 0, qfalse },
