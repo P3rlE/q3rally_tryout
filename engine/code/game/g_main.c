@@ -25,8 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "g_local.h"
 #include "../qcommon/qcommon.h"
 
-#define FUEL_EMPTY_RACE_FINISH_DELAY   30000
-
 level_locals_t	level;
 
 typedef struct {
@@ -2167,13 +2165,14 @@ void CheckExitRules( void ) {
 	}
 
         if ( isRallyRace() && level.startRaceTime && !level.finishRaceTime
-                        && count == 1 && soleActiveClient && soleActiveClient->fuelEmptySince
-                        && level.time - soleActiveClient->fuelEmptySince >= FUEL_EMPTY_RACE_FINISH_DELAY ) {
-                soleActiveClient->finishRaceTime = level.time;
+                        && count == 1 && soleActiveClient && soleActiveClient->fuelEmptySince ) {
+                int finishTime = level.time;
+
+                soleActiveClient->finishRaceTime = finishTime;
                 soleActiveClient->ps.stats[STAT_POSITION] = 1;
                 level.winnerNumber = soleActiveClient->ps.clientNum;
-                level.finishRaceTime = level.time;
-                trap_SendServerCommand( -1, va( "raceFinishTime %i %i", soleActiveClient->ps.clientNum, level.time ) );
+                level.finishRaceTime = finishTime;
+                trap_SendServerCommand( -1, va( "raceFinishTime %i %i", soleActiveClient->ps.clientNum, finishTime ) );
                 return;
         }
 
