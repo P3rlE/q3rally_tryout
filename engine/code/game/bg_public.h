@@ -527,6 +527,7 @@ typedef enum {
         EV_USE_ITEM13,
         EV_USE_ITEM14, // 40
         EV_USE_ITEM15,
+        EV_FUEL_EMPTY,
 
         EV_ITEM_RESPAWN,
         EV_ITEM_POP,

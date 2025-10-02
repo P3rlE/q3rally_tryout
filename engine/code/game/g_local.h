@@ -408,6 +408,8 @@ struct gclient_s {
 	float		pmoveTime;
 
 	// race variables
+	qboolean		pendingFuelDNF;
+	int			fuelEmptyTime;
 	int			finishRaceTime;
 	qboolean		didNotFinish;
 	int			ladderBestLapMs;

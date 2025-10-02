@@ -2016,7 +2016,9 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
             break;
             
         case SBCOL_TOTALTIME:
-            if (ci->team == TEAM_SPECTATOR) {
+            if (score->scoreFlags & SCORE_FLAG_DNF) {
+                CG_DrawModernText(x, y, "DNF", 1, width, textColor, qfalse);
+            } else if (ci->team == TEAM_SPECTATOR) {
                 CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
             } else {
                 totalTime = CG_CalculateScoreTotalTime(score, isRacingMode);
