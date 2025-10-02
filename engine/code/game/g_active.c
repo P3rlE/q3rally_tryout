@@ -964,12 +964,15 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 			ent->client->car.outOfFuel = qfalse;
 			ent->client->pendingFuelDNF = qfalse;
 			ent->client->fuelEmptyTime = 0;
+
 			ent->client->ps.stats[STAT_FUEL] = (int)ent->client->car.fuel;
 			break;
 
 		case EV_FUEL_EMPTY:
+
 			ent->client->pendingFuelDNF = qtrue;
 			ent->client->fuelEmptyTime = level.time;
+
 			break;
 
 		default:

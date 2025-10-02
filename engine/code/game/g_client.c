@@ -1636,6 +1636,7 @@ client->ps.stats[STAT_WEAPONS] = ( 1u << WP_DERBY_RAM );
 	client->car.outOfFuel = qfalse;
 	client->pendingFuelDNF = qfalse;
 	client->fuelEmptyTime = 0;
+
 	client->ps.stats[STAT_FUEL] = client->car.maxFuel;
 
 	if ( !ent->frontBounds )

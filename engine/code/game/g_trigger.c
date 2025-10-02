@@ -445,6 +445,7 @@ void Touch_Fuel( gentity_t *self, gentity_t *other, trace_t *trace ) {
 		other->client->car.outOfFuel = qfalse;
 		other->client->pendingFuelDNF = qfalse;
 		other->client->fuelEmptyTime = 0;
+
 	}
 
 	other->client->ps.stats[STAT_FUEL] = (int)other->client->car.fuel;
