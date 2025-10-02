@@ -593,6 +593,14 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 	if ( ( client->buttons & BUTTON_ATTACK ) && ! ( client->oldbuttons & BUTTON_ATTACK ) 
 		&& !(ent->r.svFlags & SVF_BOT) ) {
 // END
+		if ( client->sess.spectatorClient >= 0 ) {
+			if ( client->sess.spectatorClient >= level.maxclients
+				|| level.clients[ client->sess.spectatorClient ].pers.connected != CON_CONNECTED ) {
+				Cmd_FollowCycle_f( ent, 1 );
+				return;
+			}
+		}
+
 		if ( G_HasFollowableRacer( ent->s.number ) ) {
 			Cmd_FollowCycle_f( ent, 1 );
 		}

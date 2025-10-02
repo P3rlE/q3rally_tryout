@@ -1047,6 +1047,11 @@ void Cmd_FollowCycle_f( gentity_t *ent, int dir ) {
 		return;
 	} while ( clientnum != original );
 
+	if ( ent->client->sess.spectatorClient == original ) {
+		StopFollowing( ent );
+		trap_SendServerCommand( ent - g_entities, "print \"No valid clients to follow.\n\"" );
+	}
+
 	// leave it where it was
 }
 
