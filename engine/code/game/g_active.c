@@ -24,6 +24,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
+#define FUEL_DNF_STOP_SPEED_KPH 5.0f
+
+static void G_CompleteFuelDNF( gentity_t *ent );
+static qboolean G_VehicleBelowFuelDNFThreshold( const gentity_t *ent );
 
 // STONELANCE
 /*
@@ -468,6 +472,60 @@ static qboolean G_HasFollowableRacer( int skipClient ) {
         return qfalse;
 }
 
+static qboolean G_VehicleBelowFuelDNFThreshold( const gentity_t *ent ) {
+        float speedQu;
+        float stopSpeedQu;
+
+        if ( !ent || !ent->client ) {
+                return qtrue;
+        }
+
+        speedQu = VectorLength( ent->client->ps.velocity );
+        stopSpeedQu = (FUEL_DNF_STOP_SPEED_KPH / 3.6f) * CP_M_2_QU;
+
+        return speedQu <= stopSpeedQu;
+}
+
+static void G_CompleteFuelDNF( gentity_t *ent ) {
+        gclient_t *client;
+
+        if ( !ent || !ent->client ) {
+                return;
+        }
+
+        client = ent->client;
+        client->pendingFuelDNF = qfalse;
+        client->fuelEmptyTime = 0;
+
+        if ( client->didNotFinish ) {
+                return;
+        }
+
+        if ( !client->car.outOfFuel ) {
+                return;
+        }
+
+        if ( !isRallyRace() || !level.startRaceTime || level.finishRaceTime ) {
+                return;
+        }
+
+        if ( client->sess.sessionTeam == TEAM_SPECTATOR || isRaceObserver( ent->s.number ) ) {
+                return;
+        }
+
+        if ( client->finishRaceTime ) {
+                return;
+        }
+
+        trap_SendServerCommand( ent->s.number, "cp \"Out of fuel! Did not finish.\n\"" );
+        trap_SendServerCommand( -1, va( "print \"%s" S_COLOR_WHITE " ran out of fuel and is out of the race!\n\"",
+                        client->pers.netname ) );
+        SetTeam( ent, "racerSpectator" );
+        StopFollowing( ent );
+        client->didNotFinish = qtrue;
+        SendScoreboardMessageToAllClients();
+}
+
 /*
 =================
 SpectatorThink
@@ -901,30 +959,20 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 			break;
 #endif
 
-		case EV_USE_ITEM7:		      // fuel can
+		case EV_USE_ITEM7:			// fuel can
 			ent->client->car.fuel = ent->client->car.maxFuel;
 			ent->client->car.outOfFuel = qfalse;
+			ent->client->pendingFuelDNF = qfalse;
+			ent->client->fuelEmptyTime = 0;
+
 			ent->client->ps.stats[STAT_FUEL] = (int)ent->client->car.fuel;
 			break;
 
 		case EV_FUEL_EMPTY:
-			if ( isRallyRace()
-				&& level.startRaceTime
-				&& !level.finishRaceTime
-				&& ent->client->sess.sessionTeam != TEAM_SPECTATOR
-				&& !isRaceObserver( ent->s.number )
-				&& !ent->client->finishRaceTime
-				&& !ent->client->didNotFinish ) {
-				trap_SendServerCommand( ent->s.number, "cp \"Out of fuel! Did not finish.\n\"" );
-				trap_SendServerCommand( -1, va( "print \"%s" S_COLOR_WHITE " ran out of fuel and is out of the race!\n\"",
-					ent->client->pers.netname ) );
-				SetTeam( ent, "racerSpectator" );
 
-				StopFollowing( ent );
+			ent->client->pendingFuelDNF = qtrue;
+			ent->client->fuelEmptyTime = level.time;
 
-				ent->client->didNotFinish = qtrue;
-				SendScoreboardMessageToAllClients();
-			}
 			break;
 
 		default:
@@ -1674,6 +1722,15 @@ void ClientThink_real( gentity_t *ent ) {
 	client->oldbuttons = client->buttons;
 	client->buttons = ucmd->buttons;
 	client->latched_buttons |= client->buttons & ~client->oldbuttons;
+
+	if ( client->pendingFuelDNF ) {
+		if ( !client->car.outOfFuel ) {
+			client->pendingFuelDNF = qfalse;
+			client->fuelEmptyTime = 0;
+		} else if ( G_VehicleBelowFuelDNFThreshold( ent ) ) {
+			G_CompleteFuelDNF( ent );
+		}
+	}
 
 	// check for respawning
 	if ( client->ps.stats[STAT_HEALTH] <= 0 ) {

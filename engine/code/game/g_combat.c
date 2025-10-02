@@ -638,6 +638,8 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
                         }
                         if ( attacker->client->car.fuel > 0.0f ) {
                                 attacker->client->car.outOfFuel = qfalse;
+                                attacker->client->pendingFuelDNF = qfalse;
+                                attacker->client->fuelEmptyTime = 0;
                         }
                         attacker->client->ps.stats[STAT_FUEL] = (int)attacker->client->car.fuel;
 

@@ -1117,7 +1117,7 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 		DEBUGNAME("EV_FUEL_EMPTY");
 		if ( es->number == cg.snap->ps.clientNum ) {
 
-			CG_CenterPrint( "Out of fuel! Did not finish.", SCREEN_HEIGHT * 0.36f, BIGCHAR_WIDTH );
+			CG_CenterPrint( "Out of fuel! Coast to a stop.", SCREEN_HEIGHT * 0.36f, BIGCHAR_WIDTH );
 
 			trap_S_StartLocalSound( cgs.media.talkSound, CHAN_LOCAL_SOUND );
 		}
