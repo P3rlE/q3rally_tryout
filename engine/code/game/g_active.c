@@ -1145,7 +1145,6 @@ void ClientThink_real( gentity_t *ent ) {
 	}
 
 	if ( ent->client->finishRaceTime
-		&& ent->client->finishRaceTime + RACE_OBSERVER_DELAY < level.time
 		&& level.finishRaceTime
 		&& level.time >= level.finishRaceTime + ( g_finishRaceDelay.integer * 1000 ) ){
 		gentity_t	*tent;
