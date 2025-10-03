@@ -23,12 +23,179 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "client.h"
 
 #include "../botlib/botlib.h"
+#include "../qcommon/json.h"
 
 extern	botlib_export_t	*botlib_export;
 
 vm_t *uivm;
 
 static uiLadderStatus_t cl_ladderStatus;
+#ifdef USE_CURL
+static cvar_t *cl_ladderEndpoint = NULL;
+
+typedef struct {
+        char    *data;
+        size_t  length;
+        size_t  capacity;
+} ladderDownloadBuffer_t;
+
+static qboolean CL_LadderBufferEnsureCapacity( ladderDownloadBuffer_t *buffer, size_t required ) {
+        char    *newData;
+        size_t  newCapacity;
+
+        if ( required <= buffer->capacity ) {
+                return qtrue;
+        }
+
+        newCapacity = buffer->capacity ? buffer->capacity : 1024;
+        while ( newCapacity < required ) {
+                newCapacity *= 2;
+        }
+
+        newData = (char *)Z_Malloc( newCapacity );
+        if ( !newData ) {
+                return qfalse;
+        }
+
+        if ( buffer->data && buffer->length > 0 ) {
+                Com_Memcpy( newData, buffer->data, buffer->length );
+        }
+
+        if ( buffer->data ) {
+                Z_Free( buffer->data );
+        }
+
+        buffer->data = newData;
+        buffer->capacity = newCapacity;
+        return qtrue;
+}
+
+static size_t CL_LadderCurlWrite( void *contents, size_t size, size_t nmemb, void *userp ) {
+        ladderDownloadBuffer_t  *buffer;
+        size_t                  bytes;
+
+        buffer = (ladderDownloadBuffer_t *)userp;
+        bytes = size * nmemb;
+
+        if ( !buffer || !bytes ) {
+                return bytes;
+        }
+
+        if ( !CL_LadderBufferEnsureCapacity( buffer, buffer->length + bytes + 1 ) ) {
+                return 0;
+        }
+
+        Com_Memcpy( buffer->data + buffer->length, contents, bytes );
+        buffer->length += bytes;
+        buffer->data[buffer->length] = '\0';
+
+        return bytes;
+}
+
+static const char *CL_LadderResolveEntriesNode( const char *json, const char *jsonEnd, const char **errorNode ) {
+        const char      *entries;
+        const char      *dataNode;
+
+        entries = JSON_ObjectGetNamedValue( json, jsonEnd, "entries" );
+        if ( entries ) {
+                if ( errorNode ) {
+                        *errorNode = JSON_ObjectGetNamedValue( json, jsonEnd, "error" );
+                }
+                return entries;
+        }
+
+        dataNode = JSON_ObjectGetNamedValue( json, jsonEnd, "data" );
+        if ( dataNode ) {
+                entries = JSON_ObjectGetNamedValue( dataNode, jsonEnd, "entries" );
+                if ( entries && errorNode ) {
+                        *errorNode = JSON_ObjectGetNamedValue( dataNode, jsonEnd, "error" );
+                }
+                return entries;
+        }
+
+        if ( errorNode ) {
+                *errorNode = JSON_ObjectGetNamedValue( json, jsonEnd, "error" );
+        }
+
+        return NULL;
+}
+
+static void CL_LadderParseResponse( const char *json, size_t length ) {
+        const char      *jsonEnd;
+        const char      *entriesNode;
+        const char      *errorNode;
+        const char      *cursor;
+        int                     count;
+
+        if ( !json || !length ) {
+                CL_LadderSetError( "Empty ladder response." );
+                return;
+        }
+
+        jsonEnd = json + length;
+        errorNode = NULL;
+        entriesNode = CL_LadderResolveEntriesNode( json, jsonEnd, &errorNode );
+
+        if ( !entriesNode ) {
+                char errorMessage[MAX_STRING_CHARS];
+
+                if ( errorNode && JSON_ValueGetString( errorNode, jsonEnd, errorMessage, sizeof( errorMessage ) ) ) {
+                        CL_LadderSetError( errorMessage );
+                } else {
+                        CL_LadderSetError( "Ladder service returned an unexpected response." );
+                }
+                return;
+        }
+
+        cursor = JSON_ArrayGetFirstValue( entriesNode, jsonEnd );
+        count = 0;
+
+        while ( cursor && count < UI_MAX_LADDER_ENTRIES ) {
+                uiLadderEntry_t        *entry;
+                const char              *value;
+
+                entry = &cl_ladderStatus.entries[count];
+                Com_Memset( entry, 0, sizeof( *entry ) );
+
+                value = JSON_ObjectGetNamedValue( cursor, jsonEnd, "rank" );
+                if ( value ) {
+                        entry->rank = JSON_ValueGetInt( value, jsonEnd );
+                }
+
+                value = JSON_ObjectGetNamedValue( cursor, jsonEnd, "player" );
+                if ( value ) {
+                        JSON_ValueGetString( value, jsonEnd, entry->player, sizeof( entry->player ) );
+                }
+
+                value = JSON_ObjectGetNamedValue( cursor, jsonEnd, "mode" );
+                if ( value ) {
+                        JSON_ValueGetString( value, jsonEnd, entry->mode, sizeof( entry->mode ) );
+                }
+
+                value = JSON_ObjectGetNamedValue( cursor, jsonEnd, "vehicle" );
+                if ( value ) {
+                        JSON_ValueGetString( value, jsonEnd, entry->vehicle, sizeof( entry->vehicle ) );
+                }
+
+                value = JSON_ObjectGetNamedValue( cursor, jsonEnd, "region" );
+                if ( value ) {
+                        JSON_ValueGetString( value, jsonEnd, entry->region, sizeof( entry->region ) );
+                }
+
+                value = JSON_ObjectGetNamedValue( cursor, jsonEnd, "metric" );
+                if ( value ) {
+                        JSON_ValueGetString( value, jsonEnd, entry->metric, sizeof( entry->metric ) );
+                }
+
+                count++;
+                cursor = JSON_ArrayGetNextValue( cursor, jsonEnd );
+        }
+
+        cl_ladderStatus.entryCount = count;
+        cl_ladderStatus.status = UI_LADDER_STATUS_READY;
+        cl_ladderStatus.errorMessage[0] = '\0';
+}
+#endif // USE_CURL
 
 static void CL_LadderResetStatus( void ) {
 	Com_Memset( &cl_ladderStatus, 0, sizeof( cl_ladderStatus ) );
@@ -47,12 +214,99 @@ static void CL_LadderSetError( const char *message ) {
 }
 
 static void CL_LadderRequestData( const char *mode, const char *timeframe, const char *region ) {
-	(void)mode;
-	(void)timeframe;
-	(void)region;
+#ifdef USE_CURL
+        ladderDownloadBuffer_t  buffer;
+        CURL                    *curlHandle;
+        CURLcode                code;
+        long                    responseCode;
+        char                    url[MAX_STRING_CHARS];
+        const char              *endpoint;
+        qboolean                hasQuery;
 
-	CL_LadderBeginRequest();
-	CL_LadderSetError( "Ladder data is not available in this build." );
+        CL_LadderBeginRequest();
+
+        if ( !cl_ladderEndpoint ) {
+                cl_ladderEndpoint = Cvar_Get( "cl_ladderEndpoint", "https://ladder.q3rally.com/api/v1/leaderboard", CVAR_ARCHIVE );
+        }
+
+        if ( !CL_cURL_Init() ) {
+                CL_LadderSetError( "cURL support is not available." );
+                return;
+        }
+
+        Com_Memset( &buffer, 0, sizeof( buffer ) );
+
+        endpoint = cl_ladderEndpoint ? cl_ladderEndpoint->string : "https://ladder.q3rally.com/api/v1/leaderboard";
+        hasQuery = (strchr( endpoint, '?' ) != NULL);
+
+        Com_sprintf( url, sizeof( url ), "%s%c%s=%s&%s=%s&%s=%s",
+                endpoint,
+                hasQuery ? '&' : '?',
+                "mode", mode && mode[0] ? mode : "all",
+                "timeframe", timeframe && timeframe[0] ? timeframe : "all_time",
+                "region", region && region[0] ? region : "global" );
+
+        curlHandle = qcurl_easy_init();
+        if ( !curlHandle ) {
+                CL_LadderSetError( "Failed to initialize HTTP client." );
+                return;
+        }
+
+        qcurl_easy_setopt( curlHandle, CURLOPT_URL, url );
+        qcurl_easy_setopt( curlHandle, CURLOPT_FOLLOWLOCATION, 1L );
+        qcurl_easy_setopt( curlHandle, CURLOPT_FAILONERROR, 1L );
+        qcurl_easy_setopt( curlHandle, CURLOPT_WRITEFUNCTION, CL_LadderCurlWrite );
+        qcurl_easy_setopt( curlHandle, CURLOPT_WRITEDATA, &buffer );
+        qcurl_easy_setopt( curlHandle, CURLOPT_USERAGENT, va( "%s %s", Q3_VERSION, qcurl_version() ) );
+        qcurl_easy_setopt( curlHandle, CURLOPT_NOSIGNAL, 1L );
+        qcurl_easy_setopt( curlHandle, CURLOPT_TIMEOUT, 10L );
+        qcurl_easy_setopt( curlHandle, CURLOPT_CONNECTTIMEOUT, 5L );
+
+        code = qcurl_easy_perform( curlHandle );
+        if ( code != CURLE_OK ) {
+                const char *message;
+
+                message = qcurl_easy_strerror( code );
+                CL_LadderSetError( message ? message : "Unable to fetch ladder data." );
+                qcurl_easy_cleanup( curlHandle );
+                if ( buffer.data ) {
+                        Z_Free( buffer.data );
+                }
+                return;
+        }
+
+        responseCode = 0;
+        qcurl_easy_getinfo( curlHandle, CURLINFO_RESPONSE_CODE, &responseCode );
+        qcurl_easy_cleanup( curlHandle );
+
+        if ( responseCode != 200 ) {
+                if ( buffer.data ) {
+                        Z_Free( buffer.data );
+                }
+                CL_LadderSetError( va( "Ladder service returned %ld", responseCode ) );
+                return;
+        }
+
+        CL_LadderParseResponse( buffer.data, buffer.length );
+
+        if ( buffer.data ) {
+                Z_Free( buffer.data );
+        }
+
+        if ( cl_ladderStatus.status != UI_LADDER_STATUS_READY ) {
+                // Parser reported an error, ensure status reflects it
+                if ( cl_ladderStatus.status != UI_LADDER_STATUS_ERROR ) {
+                        CL_LadderSetError( "Failed to parse ladder response." );
+                }
+        }
+#else
+        (void)mode;
+        (void)timeframe;
+        (void)region;
+
+        CL_LadderBeginRequest();
+        CL_LadderSetError( "Ladder data requires a build with cURL support." );
+#endif
 }
 
 /*
