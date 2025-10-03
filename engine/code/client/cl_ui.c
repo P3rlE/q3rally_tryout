@@ -263,7 +263,11 @@ void CL_LadderPumpRequest( void ) {
         if ( multiCode != CURLM_OK ) {
                 const char *message;
 
+#ifdef USE_CURL_DLOPEN
                 message = qcurl_multi_strerror ? qcurl_multi_strerror( multiCode ) : NULL;
+#else
+                message = qcurl_multi_strerror( multiCode );
+#endif
                 CL_LadderSetError( message ? message : "Unable to fetch ladder data." );
                 CL_LadderCleanupRequest( qfalse );
                 return;
@@ -279,7 +283,11 @@ void CL_LadderPumpRequest( void ) {
                 if ( msg->data.result != CURLE_OK ) {
                         const char *message;
 
+#ifdef USE_CURL_DLOPEN
                         message = qcurl_easy_strerror ? qcurl_easy_strerror( msg->data.result ) : NULL;
+#else
+                        message = qcurl_easy_strerror( msg->data.result );
+#endif
                         CL_LadderSetError( message ? message : "Unable to fetch ladder data." );
                         CL_LadderCleanupRequest( qfalse );
                         return;
@@ -390,7 +398,11 @@ static void CL_LadderRequestData( const char *mode, const char *timeframe, const
         if ( multiResult != CURLM_OK ) {
                 const char      *message;
 
+#ifdef USE_CURL_DLOPEN
                 message = qcurl_multi_strerror ? qcurl_multi_strerror( multiResult ) : NULL;
+#else
+                message = qcurl_multi_strerror( multiResult );
+#endif
                 CL_LadderSetError( message ? message : "Unable to queue ladder transfer." );
                 CL_LadderCleanupRequest( qfalse );
                 return;
