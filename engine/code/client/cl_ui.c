@@ -30,6 +30,8 @@ extern	botlib_export_t	*botlib_export;
 vm_t *uivm;
 
 static uiLadderStatus_t cl_ladderStatus;
+static void CL_LadderResetStatus( void );
+static void CL_LadderBeginRequest( void );
 #ifdef USE_CURL
 static cvar_t *cl_ladderEndpoint = NULL;
 
@@ -39,6 +41,12 @@ typedef struct {
         size_t  capacity;
 } ladderDownloadBuffer_t;
 
+static CURLM                  *cl_ladderCurlMulti = NULL;
+static CURL                   *cl_ladderCurlEasy = NULL;
+static ladderDownloadBuffer_t cl_ladderBuffer;
+
+static void CL_LadderCleanupRequest( qboolean releaseBuffer );
+static void CL_LadderCancelRequest( void );
 static void CL_LadderSetError( const char *message );
 
 static qboolean CL_LadderBufferEnsureCapacity( ladderDownloadBuffer_t *buffer, size_t required ) {
@@ -197,7 +205,105 @@ static void CL_LadderParseResponse( const char *json, size_t length ) {
         cl_ladderStatus.status = UI_LADDER_STATUS_READY;
         cl_ladderStatus.errorMessage[0] = '\0';
 }
+
+static void CL_LadderCleanupRequest( qboolean releaseBuffer ) {
+        if ( cl_ladderCurlEasy ) {
+                if ( cl_ladderCurlMulti ) {
+                        qcurl_multi_remove_handle( cl_ladderCurlMulti, cl_ladderCurlEasy );
+                }
+                qcurl_easy_cleanup( cl_ladderCurlEasy );
+                cl_ladderCurlEasy = NULL;
+        }
+
+        if ( cl_ladderCurlMulti ) {
+                qcurl_multi_cleanup( cl_ladderCurlMulti );
+                cl_ladderCurlMulti = NULL;
+        }
+
+        cl_ladderBuffer.length = 0;
+        if ( cl_ladderBuffer.data ) {
+                cl_ladderBuffer.data[0] = '\0';
+        }
+
+        if ( releaseBuffer && cl_ladderBuffer.data ) {
+                Z_Free( cl_ladderBuffer.data );
+                cl_ladderBuffer.data = NULL;
+                cl_ladderBuffer.capacity = 0;
+        }
+}
+
+static void CL_LadderCancelRequest( void ) {
+        CL_LadderCleanupRequest( qfalse );
+        CL_LadderResetStatus();
+}
+#else
+static void CL_LadderCancelRequest( void ) {
+        CL_LadderResetStatus();
+}
 #endif // USE_CURL
+
+void CL_LadderPumpRequest( void ) {
+#ifdef USE_CURL
+        CURLMcode       multiCode;
+        CURLMsg         *msg;
+        int             queued;
+        int             running;
+
+        if ( !cl_ladderCurlMulti || !cl_ladderCurlEasy ) {
+                return;
+        }
+
+        running = 0;
+        multiCode = qcurl_multi_perform( cl_ladderCurlMulti, &running );
+        if ( multiCode != CURLM_OK ) {
+                const char *message;
+
+                message = qcurl_multi_strerror ? qcurl_multi_strerror( multiCode ) : NULL;
+                CL_LadderSetError( message ? message : "Unable to fetch ladder data." );
+                CL_LadderCleanupRequest( qfalse );
+                return;
+        }
+
+        while ( ( msg = qcurl_multi_info_read( cl_ladderCurlMulti, &queued ) ) != NULL ) {
+                long            responseCode;
+
+                if ( msg->easy_handle != cl_ladderCurlEasy || msg->msg != CURLMSG_DONE ) {
+                        continue;
+                }
+
+                if ( msg->data.result != CURLE_OK ) {
+                        const char *message;
+
+                        message = qcurl_easy_strerror ? qcurl_easy_strerror( msg->data.result ) : NULL;
+                        CL_LadderSetError( message ? message : "Unable to fetch ladder data." );
+                        CL_LadderCleanupRequest( qfalse );
+                        return;
+                }
+
+                responseCode = 0;
+                qcurl_easy_getinfo( cl_ladderCurlEasy, CURLINFO_RESPONSE_CODE, &responseCode );
+
+                if ( responseCode != 200 ) {
+                        CL_LadderSetError( va( "Ladder service returned %ld", responseCode ) );
+                        CL_LadderCleanupRequest( qfalse );
+                        return;
+                }
+
+                CL_LadderParseResponse( cl_ladderBuffer.data, cl_ladderBuffer.length );
+                CL_LadderCleanupRequest( qfalse );
+
+                if ( cl_ladderStatus.status != UI_LADDER_STATUS_READY ) {
+                        if ( cl_ladderStatus.status != UI_LADDER_STATUS_ERROR ) {
+                                CL_LadderSetError( "Failed to parse ladder response." );
+                        }
+                }
+
+                break;
+        }
+#else
+        (void)0;
+#endif
+}
 
 static void CL_LadderResetStatus( void ) {
 	Com_Memset( &cl_ladderStatus, 0, sizeof( cl_ladderStatus ) );
@@ -217,10 +323,7 @@ static void CL_LadderSetError( const char *message ) {
 
 static void CL_LadderRequestData( const char *mode, const char *timeframe, const char *region ) {
 #ifdef USE_CURL
-        ladderDownloadBuffer_t  buffer;
-        CURL                    *curlHandle;
-        CURLcode                code;
-        long                    responseCode;
+        CURLMcode               multiResult;
         char                    url[MAX_STRING_CHARS];
         const char              *endpoint;
         qboolean                hasQuery;
@@ -236,7 +339,7 @@ static void CL_LadderRequestData( const char *mode, const char *timeframe, const
                 return;
         }
 
-        Com_Memset( &buffer, 0, sizeof( buffer ) );
+        CL_LadderCleanupRequest( qfalse );
 
         endpoint = cl_ladderEndpoint ? cl_ladderEndpoint->string : "https://ladder.q3rally.com/api/v1/leaderboard";
         hasQuery = (strchr( endpoint, '?' ) != NULL);
@@ -248,59 +351,46 @@ static void CL_LadderRequestData( const char *mode, const char *timeframe, const
                 "timeframe", timeframe && timeframe[0] ? timeframe : "all_time",
                 "region", region && region[0] ? region : "global" );
 
-        curlHandle = qcurl_easy_init();
-        if ( !curlHandle ) {
+        cl_ladderCurlEasy = qcurl_easy_init();
+        if ( !cl_ladderCurlEasy ) {
                 CL_LadderSetError( "Failed to initialize HTTP client." );
                 return;
         }
 
-        qcurl_easy_setopt( curlHandle, CURLOPT_URL, url );
-        qcurl_easy_setopt( curlHandle, CURLOPT_FOLLOWLOCATION, 1L );
-        qcurl_easy_setopt( curlHandle, CURLOPT_FAILONERROR, 1L );
-        qcurl_easy_setopt( curlHandle, CURLOPT_WRITEFUNCTION, CL_LadderCurlWrite );
-        qcurl_easy_setopt( curlHandle, CURLOPT_WRITEDATA, &buffer );
-        qcurl_easy_setopt( curlHandle, CURLOPT_USERAGENT, va( "%s %s", Q3_VERSION, qcurl_version() ) );
-        qcurl_easy_setopt( curlHandle, CURLOPT_NOSIGNAL, 1L );
-        qcurl_easy_setopt( curlHandle, CURLOPT_TIMEOUT, 10L );
-        qcurl_easy_setopt( curlHandle, CURLOPT_CONNECTTIMEOUT, 5L );
+        cl_ladderBuffer.length = 0;
+        if ( cl_ladderBuffer.data ) {
+                cl_ladderBuffer.data[0] = '\0';
+        }
 
-        code = qcurl_easy_perform( curlHandle );
-        if ( code != CURLE_OK ) {
-                const char *message;
+        qcurl_easy_setopt( cl_ladderCurlEasy, CURLOPT_URL, url );
+        qcurl_easy_setopt( cl_ladderCurlEasy, CURLOPT_FOLLOWLOCATION, 1L );
+        qcurl_easy_setopt( cl_ladderCurlEasy, CURLOPT_FAILONERROR, 1L );
+        qcurl_easy_setopt( cl_ladderCurlEasy, CURLOPT_WRITEFUNCTION, CL_LadderCurlWrite );
+        qcurl_easy_setopt( cl_ladderCurlEasy, CURLOPT_WRITEDATA, &cl_ladderBuffer );
+        qcurl_easy_setopt( cl_ladderCurlEasy, CURLOPT_USERAGENT, va( "%s %s", Q3_VERSION, qcurl_version() ) );
+        qcurl_easy_setopt( cl_ladderCurlEasy, CURLOPT_NOSIGNAL, 1L );
+        qcurl_easy_setopt( cl_ladderCurlEasy, CURLOPT_TIMEOUT, 10L );
+        qcurl_easy_setopt( cl_ladderCurlEasy, CURLOPT_CONNECTTIMEOUT, 5L );
 
-                message = qcurl_easy_strerror( code );
-                CL_LadderSetError( message ? message : "Unable to fetch ladder data." );
-                qcurl_easy_cleanup( curlHandle );
-                if ( buffer.data ) {
-                        Z_Free( buffer.data );
-                }
+        cl_ladderCurlMulti = qcurl_multi_init();
+        if ( !cl_ladderCurlMulti ) {
+                CL_LadderSetError( "Failed to create HTTP transfer context." );
+                CL_LadderCleanupRequest( qfalse );
                 return;
         }
 
-        responseCode = 0;
-        qcurl_easy_getinfo( curlHandle, CURLINFO_RESPONSE_CODE, &responseCode );
-        qcurl_easy_cleanup( curlHandle );
+        multiResult = qcurl_multi_add_handle( cl_ladderCurlMulti, cl_ladderCurlEasy );
+        if ( multiResult != CURLM_OK ) {
+                const char      *message;
 
-        if ( responseCode != 200 ) {
-                if ( buffer.data ) {
-                        Z_Free( buffer.data );
-                }
-                CL_LadderSetError( va( "Ladder service returned %ld", responseCode ) );
+                message = qcurl_multi_strerror ? qcurl_multi_strerror( multiResult ) : NULL;
+                CL_LadderSetError( message ? message : "Unable to queue ladder transfer." );
+                CL_LadderCleanupRequest( qfalse );
                 return;
         }
 
-        CL_LadderParseResponse( buffer.data, buffer.length );
-
-        if ( buffer.data ) {
-                Z_Free( buffer.data );
-        }
-
-        if ( cl_ladderStatus.status != UI_LADDER_STATUS_READY ) {
-                // Parser reported an error, ensure status reflects it
-                if ( cl_ladderStatus.status != UI_LADDER_STATUS_ERROR ) {
-                        CL_LadderSetError( "Failed to parse ladder response." );
-                }
-        }
+        // Kick the transfer so it can begin without stalling the frame loop.
+        CL_LadderPumpRequest();
 #else
         (void)mode;
         (void)timeframe;
@@ -1275,14 +1365,18 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 	case UI_SET_PBCLSTATUS:
 		return 0;	
 
-	case UI_REQUEST_LADDERDATA:
-		CL_LadderRequestData( (const char *)VMA(1), (const char *)VMA(2), (const char *)VMA(3) );
-		return 0;
+        case UI_REQUEST_LADDERDATA:
+                CL_LadderRequestData( (const char *)VMA(1), (const char *)VMA(2), (const char *)VMA(3) );
+                return 0;
 
-	case UI_GET_LADDERSTATUS:
-		if ( VMA(1) ) {
-			Com_Memcpy( VMA(1), &cl_ladderStatus, sizeof( cl_ladderStatus ) );
-		}
+        case UI_CANCEL_LADDERREQUEST:
+                CL_LadderCancelRequest();
+                return 0;
+
+        case UI_GET_LADDERSTATUS:
+                if ( VMA(1) ) {
+                        Com_Memcpy( VMA(1), &cl_ladderStatus, sizeof( cl_ladderStatus ) );
+                }
 		return 0;
 
 	case UI_R_REGISTERFONT:
@@ -1379,12 +1473,15 @@ CL_ShutdownUI
 ====================
 */
 void CL_ShutdownUI( void ) {
-	Key_SetCatcher( Key_GetCatcher( ) & ~KEYCATCH_UI );
-	cls.uiStarted = qfalse;
-	CL_LadderResetStatus();
-	if ( !uivm ) {
-		return;
-	}
+        Key_SetCatcher( Key_GetCatcher( ) & ~KEYCATCH_UI );
+        cls.uiStarted = qfalse;
+#ifdef USE_CURL
+        CL_LadderCleanupRequest( qtrue );
+#endif
+        CL_LadderResetStatus();
+        if ( !uivm ) {
+                return;
+        }
 	VM_Call( uivm, UI_SHUTDOWN );
 	VM_Free( uivm );
 	uivm = NULL;
