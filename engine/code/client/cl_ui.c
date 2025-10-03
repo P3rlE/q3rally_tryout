@@ -45,7 +45,7 @@ static CURLM                  *cl_ladderCurlMulti = NULL;
 static CURL                   *cl_ladderCurlEasy = NULL;
 static ladderDownloadBuffer_t cl_ladderBuffer;
 
-static void CL_LadderCleanupRequest( qboolean releaseBuffer );
+static void CL_LadderCleanupRequest( qboolean releaseResources );
 static void CL_LadderCancelRequest( void );
 static void CL_LadderSetError( const char *message );
 
@@ -206,7 +206,7 @@ static void CL_LadderParseResponse( const char *json, size_t length ) {
         cl_ladderStatus.errorMessage[0] = '\0';
 }
 
-static void CL_LadderCleanupRequest( qboolean releaseBuffer ) {
+static void CL_LadderCleanupRequest( qboolean releaseResources ) {
         if ( cl_ladderCurlEasy ) {
                 if ( cl_ladderCurlMulti ) {
                         qcurl_multi_remove_handle( cl_ladderCurlMulti, cl_ladderCurlEasy );
@@ -215,20 +215,22 @@ static void CL_LadderCleanupRequest( qboolean releaseBuffer ) {
                 cl_ladderCurlEasy = NULL;
         }
 
-        if ( cl_ladderCurlMulti ) {
-                qcurl_multi_cleanup( cl_ladderCurlMulti );
-                cl_ladderCurlMulti = NULL;
-        }
-
         cl_ladderBuffer.length = 0;
         if ( cl_ladderBuffer.data ) {
                 cl_ladderBuffer.data[0] = '\0';
         }
 
-        if ( releaseBuffer && cl_ladderBuffer.data ) {
-                Z_Free( cl_ladderBuffer.data );
-                cl_ladderBuffer.data = NULL;
-                cl_ladderBuffer.capacity = 0;
+        if ( releaseResources ) {
+                if ( cl_ladderCurlMulti ) {
+                        qcurl_multi_cleanup( cl_ladderCurlMulti );
+                        cl_ladderCurlMulti = NULL;
+                }
+
+                if ( cl_ladderBuffer.data ) {
+                        Z_Free( cl_ladderBuffer.data );
+                        cl_ladderBuffer.data = NULL;
+                        cl_ladderBuffer.capacity = 0;
+                }
         }
 }
 
@@ -254,7 +256,10 @@ void CL_LadderPumpRequest( void ) {
         }
 
         running = 0;
-        multiCode = qcurl_multi_perform( cl_ladderCurlMulti, &running );
+        do {
+                multiCode = qcurl_multi_perform( cl_ladderCurlMulti, &running );
+        } while ( multiCode == CURLM_CALL_MULTI_PERFORM );
+
         if ( multiCode != CURLM_OK ) {
                 const char *message;
 
@@ -316,9 +321,9 @@ static void CL_LadderBeginRequest( void ) {
 }
 
 static void CL_LadderSetError( const char *message ) {
-	cl_ladderStatus.status = UI_LADDER_STATUS_ERROR;
-	cl_ladderStatus.entryCount = 0;
-	Q_strncpyz( cl_ladderStatus.errorMessage, ( message && message[0] ) ? message : "Ladder service unavailable.", sizeof( cl_ladderStatus.errorMessage ) );
+        cl_ladderStatus.status = UI_LADDER_STATUS_ERROR;
+        cl_ladderStatus.entryCount = 0;
+        Q_strncpyz( cl_ladderStatus.errorMessage, ( message && message[0] ) ? message : "Ladder service unavailable.", sizeof( cl_ladderStatus.errorMessage ) );
 }
 
 static void CL_LadderRequestData( const char *mode, const char *timeframe, const char *region ) {
@@ -340,6 +345,15 @@ static void CL_LadderRequestData( const char *mode, const char *timeframe, const
         }
 
         CL_LadderCleanupRequest( qfalse );
+
+        if ( !cl_ladderCurlMulti ) {
+                cl_ladderCurlMulti = qcurl_multi_init();
+                if ( !cl_ladderCurlMulti ) {
+                        CL_LadderSetError( "Failed to create HTTP transfer context." );
+                        CL_LadderCleanupRequest( qfalse );
+                        return;
+                }
+        }
 
         endpoint = cl_ladderEndpoint ? cl_ladderEndpoint->string : "https://ladder.q3rally.com/api/v1/leaderboard";
         hasQuery = (strchr( endpoint, '?' ) != NULL);
@@ -372,13 +386,6 @@ static void CL_LadderRequestData( const char *mode, const char *timeframe, const
         qcurl_easy_setopt( cl_ladderCurlEasy, CURLOPT_TIMEOUT, 10L );
         qcurl_easy_setopt( cl_ladderCurlEasy, CURLOPT_CONNECTTIMEOUT, 5L );
 
-        cl_ladderCurlMulti = qcurl_multi_init();
-        if ( !cl_ladderCurlMulti ) {
-                CL_LadderSetError( "Failed to create HTTP transfer context." );
-                CL_LadderCleanupRequest( qfalse );
-                return;
-        }
-
         multiResult = qcurl_multi_add_handle( cl_ladderCurlMulti, cl_ladderCurlEasy );
         if ( multiResult != CURLM_OK ) {
                 const char      *message;
@@ -388,9 +395,6 @@ static void CL_LadderRequestData( const char *mode, const char *timeframe, const
                 CL_LadderCleanupRequest( qfalse );
                 return;
         }
-
-        // Kick the transfer so it can begin without stalling the frame loop.
-        CL_LadderPumpRequest();
 #else
         (void)mode;
         (void)timeframe;
