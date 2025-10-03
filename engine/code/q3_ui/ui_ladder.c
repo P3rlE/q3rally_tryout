@@ -221,6 +221,7 @@ static void LadderMenu_RequestData( void ) {
         LadderMenu_ClearResults();
         LadderMenu_SetStatusText( "Loading ladder data...", text_color_normal );
 
+        trap_CancelLadderRequest();
         trap_RequestLadderData( LadderMenu_CurrentModeKey(),
                 LadderMenu_CurrentTimeframeKey(),
                 LadderMenu_CurrentRegionKey() );
