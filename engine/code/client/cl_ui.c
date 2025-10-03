@@ -39,6 +39,8 @@ typedef struct {
         size_t  capacity;
 } ladderDownloadBuffer_t;
 
+static void CL_LadderSetError( const char *message );
+
 static qboolean CL_LadderBufferEnsureCapacity( ladderDownloadBuffer_t *buffer, size_t required ) {
         char    *newData;
         size_t  newCapacity;
