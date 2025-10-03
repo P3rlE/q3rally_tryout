@@ -219,6 +219,8 @@ static void LadderMenu_BuildResults( const uiLadderStatus_t *status ) {
 
 static void LadderMenu_RequestData( void ) {
         trap_CancelLadderRequest();
+        LadderMenu_ClearResults();
+        LadderMenu_SetStatusText( "Loading ladder data...", text_color_normal );
         trap_RequestLadderData( LadderMenu_CurrentModeKey(),
                 LadderMenu_CurrentTimeframeKey(),
                 LadderMenu_CurrentRegionKey() );

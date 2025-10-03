@@ -44,6 +44,7 @@ typedef struct {
 static CURLM                  *cl_ladderCurlMulti = NULL;
 static CURL                   *cl_ladderCurlEasy = NULL;
 static ladderDownloadBuffer_t cl_ladderBuffer;
+static qboolean               cl_ladderRequestQueued = qfalse;
 
 static void CL_LadderCleanupRequest( qboolean releaseResources );
 static void CL_LadderCancelRequest( void );
@@ -207,12 +208,28 @@ static void CL_LadderParseResponse( const char *json, size_t length ) {
 }
 
 static void CL_LadderCleanupRequest( qboolean releaseResources ) {
+        if ( cl_ladderCurlMulti && cl_ladderCurlEasy && cl_ladderRequestQueued ) {
+                qcurl_multi_remove_handle( cl_ladderCurlMulti, cl_ladderCurlEasy );
+        }
+
+        cl_ladderRequestQueued = qfalse;
+
         if ( cl_ladderCurlEasy ) {
-                if ( cl_ladderCurlMulti ) {
-                        qcurl_multi_remove_handle( cl_ladderCurlMulti, cl_ladderCurlEasy );
+                if ( releaseResources ) {
+                        qcurl_easy_cleanup( cl_ladderCurlEasy );
+                        cl_ladderCurlEasy = NULL;
+                } else {
+#ifdef USE_CURL_DLOPEN
+                        if ( qcurl_easy_reset ) {
+                                qcurl_easy_reset( cl_ladderCurlEasy );
+                        } else {
+                                qcurl_easy_cleanup( cl_ladderCurlEasy );
+                                cl_ladderCurlEasy = NULL;
+                        }
+#else
+                        qcurl_easy_reset( cl_ladderCurlEasy );
+#endif
                 }
-                qcurl_easy_cleanup( cl_ladderCurlEasy );
-                cl_ladderCurlEasy = NULL;
         }
 
         cl_ladderBuffer.length = 0;
@@ -251,7 +268,7 @@ void CL_LadderPumpRequest( void ) {
         int             queued;
         int             running;
 
-        if ( !cl_ladderCurlMulti || !cl_ladderCurlEasy ) {
+        if ( !cl_ladderCurlMulti || !cl_ladderCurlEasy || !cl_ladderRequestQueued ) {
                 return;
         }
 
@@ -373,7 +390,10 @@ static void CL_LadderRequestData( const char *mode, const char *timeframe, const
                 "timeframe", timeframe && timeframe[0] ? timeframe : "all_time",
                 "region", region && region[0] ? region : "global" );
 
-        cl_ladderCurlEasy = qcurl_easy_init();
+        if ( !cl_ladderCurlEasy ) {
+                cl_ladderCurlEasy = qcurl_easy_init();
+        }
+
         if ( !cl_ladderCurlEasy ) {
                 CL_LadderSetError( "Failed to initialize HTTP client." );
                 return;
@@ -407,6 +427,8 @@ static void CL_LadderRequestData( const char *mode, const char *timeframe, const
                 CL_LadderCleanupRequest( qfalse );
                 return;
         }
+
+        cl_ladderRequestQueued = qtrue;
 #else
         (void)mode;
         (void)timeframe;
