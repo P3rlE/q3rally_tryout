@@ -22,7 +22,7 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 import tkinter as tk
 from tkinter import filedialog
@@ -46,6 +46,23 @@ GAMETYPES: List[Tuple[str, str]] = [
     ("11", "Four-Team Capture the Flag"),
     ("12", "Domination"),
 ]
+
+
+GAMETYPE_TOKENS: Dict[str, Set[str]] = {
+    "0": {"q3r_racing"},
+    "1": {"q3r_racing_dm"},
+    "2": {"q3r_single", "q3r_racing"},
+    "3": {"q3r_derby"},
+    "4": {"q3r_lcs"},
+    "5": {"q3r_elimination"},
+    "6": {"q3r_dm"},
+    "7": {"q3r_team_dm"},
+    "8": {"q3r_team_racing"},
+    "9": {"q3r_team_racing_dm"},
+    "10": {"q3r_ctf"},
+    "11": {"q3r_ctf4"},
+    "12": {"q3r_dom"},
+}
 
 
 def default_homepath(system_name: str) -> Path:
@@ -138,6 +155,7 @@ class ServerLauncher(tk.Tk):
         self.enable_ladder = tk.BooleanVar(value=True)
 
         self.process: Optional[subprocess.Popen[str]] = None
+        self.map_catalog: Dict[str, Set[str]] = {}
 
         self._build_ui()
         self._populate_maps()
@@ -244,26 +262,36 @@ class ServerLauncher(tk.Tk):
         label = self.gametype_combo.get()
         value = label.split("\u2013", 1)[0].strip()
         self.selected_gametype.set(value)
+        self._update_map_options()
 
     def _populate_maps(self) -> None:
         base_dir = Path(self.base_path.get()).expanduser()
         map_dir = base_dir / "baseq3r" / "maps"
+        self.map_catalog = {}
+
         if not map_dir.is_dir():
-            self.map_combo["values"] = []
-            self.map_combo.set("")
+            self._update_map_options()
             return
 
-        maps = sorted({bsp.stem for bsp in map_dir.glob("*.bsp")})
-        self.map_combo["values"] = maps
+        map_names = sorted({bsp.stem for bsp in map_dir.glob("*.bsp")})
+        lookup: Dict[str, str] = {}
+        for name in map_names:
+            self.map_catalog[name] = set()
+            lookup[name.lower()] = name
 
-        if maps:
-            current = self.selected_map.get()
-            if current in maps:
-                self.map_combo.set(current)
-            else:
-                self.map_combo.set(maps[0])
-        else:
-            self.map_combo.set("")
+        arena_dir = base_dir / "baseq3r" / "scripts"
+        if arena_dir.is_dir():
+            for arena_file in arena_dir.glob("*.arena"):
+                try:
+                    content = arena_file.read_text(encoding="utf-8")
+                except UnicodeDecodeError:
+                    content = arena_file.read_text(encoding="latin-1", errors="ignore")
+                for map_name, tokens in self._parse_arena_blocks(content):
+                    key = lookup.get(map_name.lower())
+                    if key is not None:
+                        self.map_catalog[key].update(tokens)
+
+        self._update_map_options()
 
     def _select_base_path(self) -> None:
         current = Path(self.base_path.get()).expanduser()
@@ -276,6 +304,58 @@ class ServerLauncher(tk.Tk):
         if selection:
             self.base_path.set(selection)
             self._populate_maps()
+
+    def _update_map_options(self) -> None:
+        tokens = GAMETYPE_TOKENS.get(self.selected_gametype.get(), set())
+        if tokens:
+            available = sorted(
+                map_name
+                for map_name, map_tokens in self.map_catalog.items()
+                if map_tokens & tokens
+            )
+        else:
+            available = sorted(self.map_catalog)
+
+        current = self.selected_map.get()
+        if available:
+            if current not in available:
+                self.selected_map.set(available[0])
+        else:
+            self.selected_map.set("")
+
+        self.map_combo["values"] = available
+
+    @staticmethod
+    def _parse_arena_blocks(text: str) -> Iterable[Tuple[str, Set[str]]]:
+        for section in text.split("{"):
+            if "}" not in section:
+                continue
+            block = section.split("}", 1)[0]
+            map_name: Optional[str] = None
+            tokens: Set[str] = set()
+            for raw_line in block.splitlines():
+                line = raw_line.strip()
+                if not line or line.startswith("//"):
+                    continue
+                if line.startswith("map"):
+                    value = ServerLauncher._extract_quoted_value(line)
+                    if value:
+                        map_name = value
+                elif line.startswith("type"):
+                    value = ServerLauncher._extract_quoted_value(line)
+                    if value:
+                        tokens.update(value.split())
+            if map_name:
+                yield map_name, tokens
+
+    @staticmethod
+    def _extract_quoted_value(line: str) -> Optional[str]:
+        if "\"" not in line:
+            return None
+        parts = line.split("\"")
+        if len(parts) >= 3:
+            return parts[1].strip()
+        return None
 
 
     # ----------------------------------------------------------- utilities --
