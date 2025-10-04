@@ -48,6 +48,40 @@ GAMETYPES: List[Tuple[str, str]] = [
 ]
 
 
+GAMETYPE_HOME_SUFFIX: Dict[str, str] = {
+    "0": "Q3Rally-Racing",
+    "1": "Q3Rally-RacingDM",
+    "2": "Q3Rally-SP",
+    "3": "Q3Rally-DemolitionDerby",
+    "4": "Q3Rally-LCS",
+    "5": "Q3Rally-Elimination",
+    "6": "Q3Rally-DM",
+    "7": "Q3Rally-TDM",
+    "8": "Q3Rally-TeamRacing",
+    "9": "Q3Rally-TRDM",
+    "10": "Q3Rally-CTF",
+    "11": "Q3Rally-CTF4",
+    "12": "Q3Rally-Domination",
+}
+
+
+GAMETYPE_CONFIG_SLUG: Dict[str, str] = {
+    "0": "racing",
+    "1": "racing-dm",
+    "2": "sp",
+    "3": "derby",
+    "4": "lcs",
+    "5": "elimination",
+    "6": "dm",
+    "7": "tdm",
+    "8": "teamracing",
+    "9": "trdm",
+    "10": "ctf",
+    "11": "ctf4",
+    "12": "domination",
+}
+
+
 GAMETYPE_TOKENS: Dict[str, Set[str]] = {
     "0": {"q3r_racing"},
     "1": {"q3r_racing_dm"},
@@ -139,7 +173,7 @@ class ServerLauncher(tk.Tk):
         self.home_path = tk.StringVar(
             value=str(default_homepath(self.system_name))
         )
-        self.config_name = tk.StringVar(value="server_auto.cfg")
+        self.config_name = tk.StringVar()
         self.hostname = tk.StringVar(value="My Q3Rally Server")
         self.motd = tk.StringVar(value="Welcome to Q3Rally!")
         self.rcon_password = tk.StringVar()
@@ -157,8 +191,14 @@ class ServerLauncher(tk.Tk):
         self.process: Optional[subprocess.Popen[str]] = None
         self.map_catalog: Dict[str, Set[str]] = {}
 
+        self.home_path_overridden = False
+        self.config_name_overridden = False
+        self._last_auto_home: Optional[str] = None
+        self._last_auto_config: Optional[str] = None
+
         self._build_ui()
         self._populate_maps()
+        self._update_gametype_defaults()
 
     # ------------------------------------------------------------------ UI --
     def _build_ui(self) -> None:
@@ -190,8 +230,21 @@ class ServerLauncher(tk.Tk):
             width=12,
         ).grid(row=row, column=2, sticky="ew", padx=(5, 0), pady=2)
         row += 1
-        add_labeled_entry("Spieler-Datenpfad (fs_homepath):", self.home_path)
-        add_labeled_entry("Konfigurationsname:", self.config_name)
+        ttk.Label(
+            frame, text="Spieler-Datenpfad (fs_homepath):"
+        ).grid(row=row, column=0, sticky="w", pady=2)
+        home_entry = ttk.Entry(frame, textvariable=self.home_path, width=40)
+        home_entry.grid(row=row, column=1, sticky="ew", pady=2)
+        home_entry.bind("<Key>", self._mark_home_override)
+        row += 1
+
+        ttk.Label(frame, text="Konfigurationsname:").grid(
+            row=row, column=0, sticky="w", pady=2
+        )
+        config_entry = ttk.Entry(frame, textvariable=self.config_name, width=40)
+        config_entry.grid(row=row, column=1, sticky="ew", pady=2)
+        config_entry.bind("<Key>", self._mark_config_override)
+        row += 1
         add_labeled_entry("Servername:", self.hostname)
         add_labeled_entry("MOTD:", self.motd)
         add_labeled_entry("RCon Passwort:", self.rcon_password)
@@ -262,6 +315,7 @@ class ServerLauncher(tk.Tk):
         label = self.gametype_combo.get()
         value = label.split("\u2013", 1)[0].strip()
         self.selected_gametype.set(value)
+        self._update_gametype_defaults()
         self._update_map_options()
 
     def _populate_maps(self) -> None:
@@ -292,6 +346,7 @@ class ServerLauncher(tk.Tk):
                         self.map_catalog[key].update(tokens)
 
         self._update_map_options()
+        self._update_gametype_defaults()
 
     def _select_base_path(self) -> None:
         current = Path(self.base_path.get()).expanduser()
@@ -324,6 +379,42 @@ class ServerLauncher(tk.Tk):
             self.selected_map.set("")
 
         self.map_combo["values"] = available
+
+    def _update_gametype_defaults(self) -> None:
+        gametype = self.selected_gametype.get()
+        base_dir = Path(self.base_path.get()).expanduser()
+
+        suffix = GAMETYPE_HOME_SUFFIX.get(gametype)
+        if suffix:
+            proposed_home = str((base_dir / suffix).resolve())
+        else:
+            proposed_home = str(default_homepath(self.system_name))
+
+        if (
+            not self.home_path_overridden
+            or self.home_path.get() == (self._last_auto_home or "")
+        ):
+            self.home_path.set(proposed_home)
+            self._last_auto_home = proposed_home
+
+        slug = GAMETYPE_CONFIG_SLUG.get(gametype)
+        if slug:
+            proposed_config = f"{slug}-serverconfig.cfg"
+        else:
+            proposed_config = "server_auto.cfg"
+
+        if (
+            not self.config_name_overridden
+            or self.config_name.get() == (self._last_auto_config or "")
+        ):
+            self.config_name.set(proposed_config)
+            self._last_auto_config = proposed_config
+
+    def _mark_home_override(self, _event: tk.Event) -> None:
+        self.home_path_overridden = True
+
+    def _mark_config_override(self, _event: tk.Event) -> None:
+        self.config_name_overridden = True
 
     @staticmethod
     def _parse_arena_blocks(text: str) -> Iterable[Tuple[str, Set[str]]]:
