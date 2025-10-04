@@ -74,6 +74,27 @@ def test_list_matches() -> None:
     assert len(data["matches"]) >= 1
 
 
+def test_list_matches_filter_mode() -> None:
+    alt_match = {
+        **MATCH_TEMPLATE,
+        "matchId": "srv-20240405-183011-43",
+        "mode": "ARCADE_RACING",
+    }
+    created = client.post("/api/v1/matches", json=alt_match)
+    assert created.status_code == 201, created.text
+
+    response = client.get("/api/v1/matches?mode=GT_RACING")
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["matches"], "Expected at least one GT_RACING match in response"
+    for match in data["matches"]:
+        assert match["mode"] == "GT_RACING"
+        assert match["matchId"] != alt_match["matchId"]
+
+    cleanup = client.delete(f"/api/v1/matches/{alt_match['matchId']}")
+    assert cleanup.status_code == 204
+
+
 def test_delete_match() -> None:
     response = client.delete(f"/api/v1/matches/{MATCH_TEMPLATE['matchId']}")
     assert response.status_code == 204
