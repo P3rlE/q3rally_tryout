@@ -643,7 +643,7 @@ class ServerLauncher(tk.Tk):
             str(binary),
             "+set",
             "dedicated",
-            "1",
+            "2",
             "+set",
             "fs_basepath",
             str(base_path),
