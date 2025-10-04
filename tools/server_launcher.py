@@ -179,6 +179,7 @@ class ServerLauncher(tk.Tk):
         self.rcon_password = tk.StringVar()
         self.selected_gametype = tk.StringVar(value=GAMETYPES[0][0])
         self.selected_map = tk.StringVar()
+        self.map_playlist: List[str] = []
         self.max_clients = tk.StringVar(value="16")
         self.time_limit = tk.StringVar(value="0")
         self.frag_limit = tk.StringVar(value="0")
@@ -272,6 +273,43 @@ class ServerLauncher(tk.Tk):
             width=38,
         )
         self.map_combo.grid(row=row, column=1, sticky="ew", pady=2)
+        ttk.Button(
+            frame,
+            text="Zur Liste hinzufügen",
+            command=self._add_map_to_playlist,
+            width=18,
+        ).grid(row=row, column=2, sticky="ew", padx=(5, 0), pady=2)
+        row += 1
+
+        ttk.Label(frame, text="Mapliste:").grid(row=row, column=0, sticky="nw", pady=2)
+        playlist_frame = ttk.Frame(frame)
+        playlist_frame.grid(row=row, column=1, columnspan=2, sticky="ew", pady=2)
+        playlist_frame.columnconfigure(0, weight=1)
+
+        self.map_listbox = tk.Listbox(
+            playlist_frame,
+            height=6,
+            selectmode=tk.EXTENDED,
+            exportselection=False,
+        )
+        self.map_listbox.grid(row=0, column=0, sticky="nsew")
+        list_scroll = ttk.Scrollbar(
+            playlist_frame, orient="vertical", command=self.map_listbox.yview
+        )
+        list_scroll.grid(row=0, column=1, sticky="ns")
+        self.map_listbox.configure(yscrollcommand=list_scroll.set)
+
+        button_box = ttk.Frame(playlist_frame)
+        button_box.grid(row=0, column=2, padx=(5, 0), sticky="n")
+        ttk.Button(
+            button_box, text="Entfernen", command=self._remove_selected_maps, width=14
+        ).grid(row=0, column=0, pady=(0, 2))
+        ttk.Button(
+            button_box, text="Nach oben", command=self._move_selected_up, width=14
+        ).grid(row=1, column=0, pady=2)
+        ttk.Button(
+            button_box, text="Nach unten", command=self._move_selected_down, width=14
+        ).grid(row=2, column=0, pady=2)
         row += 1
 
         add_labeled_entry("Max. Spieler:", self.max_clients)
@@ -379,6 +417,7 @@ class ServerLauncher(tk.Tk):
             self.selected_map.set("")
 
         self.map_combo["values"] = available
+        self._sync_playlist_with_available(available)
 
     def _update_gametype_defaults(self) -> None:
         gametype = self.selected_gametype.get()
@@ -456,6 +495,79 @@ class ServerLauncher(tk.Tk):
         self.log.see("end")
         self.log.configure(state="disabled")
 
+    def _refresh_map_listbox(self) -> None:
+        self.map_listbox.delete(0, tk.END)
+        for entry in self.map_playlist:
+            self.map_listbox.insert(tk.END, entry)
+
+    def _add_map_to_playlist(self) -> None:
+        candidate = self.selected_map.get().strip()
+        if not candidate:
+            return
+        if candidate not in self.map_combo["values"]:
+            return
+        if candidate in self.map_playlist:
+            return
+        self.map_playlist.append(candidate)
+        self._refresh_map_listbox()
+
+    def _remove_selected_maps(self) -> None:
+        selection = sorted(self.map_listbox.curselection(), reverse=True)
+        if not selection:
+            return
+        for index in selection:
+            try:
+                del self.map_playlist[index]
+            except IndexError:
+                continue
+        self._refresh_map_listbox()
+
+    def _move_selected_up(self) -> None:
+        selection = self.map_listbox.curselection()
+        if not selection:
+            return
+        indices = list(selection)
+        if 0 in indices:
+            return
+        for index in indices:
+            self.map_playlist[index - 1], self.map_playlist[index] = (
+                self.map_playlist[index],
+                self.map_playlist[index - 1],
+            )
+        self._refresh_map_listbox()
+        self._reselect_indices([i - 1 for i in indices])
+
+    def _move_selected_down(self) -> None:
+        selection = self.map_listbox.curselection()
+        if not selection:
+            return
+        indices = list(selection)
+        if len(self.map_playlist) - 1 in indices:
+            return
+        for index in reversed(indices):
+            self.map_playlist[index + 1], self.map_playlist[index] = (
+                self.map_playlist[index],
+                self.map_playlist[index + 1],
+            )
+        self._refresh_map_listbox()
+        self._reselect_indices([i + 1 for i in indices])
+
+    def _reselect_indices(self, indices: List[int]) -> None:
+        self.map_listbox.selection_clear(0, tk.END)
+        for index in indices:
+            self.map_listbox.selection_set(index)
+        if indices:
+            self.map_listbox.see(indices[0])
+
+    def _sync_playlist_with_available(self, available: Iterable[str]) -> None:
+        allowed = set(available)
+        if not allowed and not self.map_playlist:
+            return
+        filtered = [entry for entry in self.map_playlist if entry in allowed]
+        if filtered != self.map_playlist:
+            self.map_playlist = filtered
+            self._refresh_map_listbox()
+
     def build_config(self) -> List[str]:
         config = [
             f'set sv_hostname "{self.hostname.get()}"',
@@ -481,9 +593,18 @@ class ServerLauncher(tk.Tk):
         config.append(
             f'set sv_ladderEnabled "{int(self.enable_ladder.get())}"'
         )
-        selected_map = self.selected_map.get().strip()
-        if selected_map:
-            config.append(f'map {selected_map}')
+        if self.map_playlist:
+            total = len(self.map_playlist)
+            for idx, map_name in enumerate(self.map_playlist, start=1):
+                next_idx = idx + 1 if idx < total else 1
+                config.append(
+                    f'set d{idx} "map {map_name}; set nextmap vstr d{next_idx}"'
+                )
+            config.append("vstr d1")
+        else:
+            selected_map = self.selected_map.get().strip()
+            if selected_map:
+                config.append(f'map {selected_map}')
         return config
 
     def start_server(self) -> None:
