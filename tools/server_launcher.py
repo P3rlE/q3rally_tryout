@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 
 import tkinter as tk
+from tkinter import filedialog
 from tkinter import messagebox
 from tkinter import scrolledtext
 from tkinter import ttk
@@ -135,7 +136,6 @@ class ServerLauncher(tk.Tk):
         self.enable_bots = tk.BooleanVar(value=False)
         self.allow_downloads = tk.BooleanVar(value=False)
         self.enable_ladder = tk.BooleanVar(value=True)
-        self.pure_server = tk.BooleanVar(value=False)
 
         self.process: Optional[subprocess.Popen[str]] = None
 
@@ -149,6 +149,7 @@ class ServerLauncher(tk.Tk):
 
         row = 0
         frame.columnconfigure(1, weight=1)
+        frame.columnconfigure(2, weight=0)
 
         def add_labeled_entry(label: str, text_var: tk.StringVar) -> None:
             nonlocal row
@@ -157,7 +158,20 @@ class ServerLauncher(tk.Tk):
             entry.grid(row=row, column=1, sticky="ew", pady=2)
             row += 1
 
-        add_labeled_entry("Installationspfad (fs_basepath):", self.base_path)
+        ttk.Label(
+            frame, text="Installationspfad (fs_basepath):"
+        ).grid(row=row, column=0, sticky="w", pady=2)
+        base_entry = ttk.Entry(frame, textvariable=self.base_path, width=40)
+        base_entry.grid(row=row, column=1, sticky="ew", pady=2)
+        base_entry.bind("<FocusOut>", lambda _event: self._populate_maps())
+        base_entry.bind("<Return>", lambda _event: self._populate_maps())
+        ttk.Button(
+            frame,
+            text="Auswählen…",
+            command=self._select_base_path,
+            width=12,
+        ).grid(row=row, column=2, sticky="ew", padx=(5, 0), pady=2)
+        row += 1
         add_labeled_entry("Spieler-Datenpfad (fs_homepath):", self.home_path)
         add_labeled_entry("Konfigurationsname:", self.config_name)
         add_labeled_entry("Servername:", self.hostname)
@@ -196,29 +210,22 @@ class ServerLauncher(tk.Tk):
 
         ttk.Checkbutton(
             frame, text="Bots aktivieren", variable=self.enable_bots
-        ).grid(row=row, column=0, columnspan=2, sticky="w", pady=2)
+        ).grid(row=row, column=0, columnspan=3, sticky="w", pady=2)
         row += 1
         ttk.Checkbutton(
             frame,
             text="Downloads erlauben",
             variable=self.allow_downloads,
-        ).grid(row=row, column=0, columnspan=2, sticky="w", pady=2)
+        ).grid(row=row, column=0, columnspan=3, sticky="w", pady=2)
         row += 1
         ttk.Checkbutton(
             frame,
             text="Ladder-Integration aktivieren",
             variable=self.enable_ladder,
-        ).grid(row=row, column=0, columnspan=2, sticky="w", pady=2)
+        ).grid(row=row, column=0, columnspan=3, sticky="w", pady=2)
         row += 1
-        ttk.Checkbutton(
-            frame,
-            text="Reiner Server (sv_pure)",
-            variable=self.pure_server,
-        ).grid(row=row, column=0, columnspan=2, sticky="w", pady=2)
-        row += 1
-
         button_frame = ttk.Frame(frame)
-        button_frame.grid(row=row, column=0, columnspan=2, pady=(8, 4), sticky="ew")
+        button_frame.grid(row=row, column=0, columnspan=3, pady=(8, 4), sticky="ew")
         ttk.Button(button_frame, text="Server starten", command=self.start_server).grid(
             row=0, column=0, padx=(0, 5)
         )
@@ -230,7 +237,7 @@ class ServerLauncher(tk.Tk):
         self.log = scrolledtext.ScrolledText(
             frame, width=60, height=12, state="disabled"
         )
-        self.log.grid(row=row, column=0, columnspan=2, sticky="nsew", pady=(4, 0))
+        self.log.grid(row=row, column=0, columnspan=3, sticky="nsew", pady=(4, 0))
 
     # ------------------------------------------------------------- callbacks --
     def _on_gametype_selected(self, _event: tk.Event) -> None:
@@ -239,17 +246,37 @@ class ServerLauncher(tk.Tk):
         self.selected_gametype.set(value)
 
     def _populate_maps(self) -> None:
-        base_dir = Path(self.base_path.get())
+        base_dir = Path(self.base_path.get()).expanduser()
         map_dir = base_dir / "baseq3r" / "maps"
-        maps = sorted(
-            {
-                bsp.stem
-                for bsp in map_dir.glob("*.bsp")
-            }
-        )
+        if not map_dir.is_dir():
+            self.map_combo["values"] = []
+            self.map_combo.set("")
+            return
+
+        maps = sorted({bsp.stem for bsp in map_dir.glob("*.bsp")})
+        self.map_combo["values"] = maps
+
         if maps:
-            self.map_combo["values"] = maps
-            self.map_combo.set(maps[0])
+            current = self.selected_map.get()
+            if current in maps:
+                self.map_combo.set(current)
+            else:
+                self.map_combo.set(maps[0])
+        else:
+            self.map_combo.set("")
+
+    def _select_base_path(self) -> None:
+        current = Path(self.base_path.get()).expanduser()
+        initial = current if current.is_dir() else Path.home()
+        selection = filedialog.askdirectory(
+            parent=self,
+            title="Installationspfad auswählen",
+            initialdir=str(initial),
+        )
+        if selection:
+            self.base_path.set(selection)
+            self._populate_maps()
+
 
     # ----------------------------------------------------------- utilities --
     def append_log(self, text: str) -> None:
@@ -283,7 +310,6 @@ class ServerLauncher(tk.Tk):
         config.append(
             f'set sv_ladderEnabled "{int(self.enable_ladder.get())}"'
         )
-        config.append(f'set sv_pure "{int(self.pure_server.get())}"')
         selected_map = self.selected_map.get().strip()
         if selected_map:
             config.append(f'map {selected_map}')
