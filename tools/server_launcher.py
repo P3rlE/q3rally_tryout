@@ -382,13 +382,13 @@ class ServerLauncher(tk.Tk):
 
     def _update_gametype_defaults(self) -> None:
         gametype = self.selected_gametype.get()
-        base_dir = Path(self.base_path.get()).expanduser()
 
         suffix = GAMETYPE_HOME_SUFFIX.get(gametype)
+        base_home = default_homepath(self.system_name)
         if suffix:
-            proposed_home = str((base_dir / suffix).resolve())
+            proposed_home = str((base_home.parent / suffix).resolve())
         else:
-            proposed_home = str(default_homepath(self.system_name))
+            proposed_home = str(base_home)
 
         if (
             not self.home_path_overridden
