@@ -241,6 +241,19 @@ static qboolean Q3R_SaveTGA( plateTexture_t *texture, const char *filename ) {
     return qtrue;
 }
 
+qhandle_t Q3R_RegisterGeneratedPlateShader( const char *shaderName ) {
+#if defined( CGAME ) || defined( UI )
+    if ( !shaderName || !*shaderName ) {
+        return 0;
+    }
+
+    return trap_R_RegisterShaderLightMap( shaderName, -1 );
+#else
+    (void)shaderName;
+    return 0;
+#endif
+}
+
 qboolean Q3R_CreateLicensePlateImage( const char *templateImage,
                                       const char *outputImage,
                                       const char *name,

@@ -1224,6 +1224,9 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 	case UI_R_REGISTERSKIN:
 		return re.RegisterSkin( VMA(1) );
 
+	case UI_R_REGISTERSHADERLIGHTMAP:
+		return re.RegisterShaderLightMap( VMA(1), args[2] );
+
 	case UI_R_REGISTERSHADERNOMIP:
 		return re.RegisterShaderNoMip( VMA(1) );
 
