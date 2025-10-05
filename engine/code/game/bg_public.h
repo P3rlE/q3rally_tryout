@@ -65,6 +65,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define TIME_BONUS_PER_FRAG     500
 #define RACE_OBSERVER_DELAY     5000
 
+#define RACE_FINISH_FLAG_FUEL_DEPLETED         1
+#define RACE_FINISH_FLAG_ELIMINATION_UPDATE    2
+
 #define NORMAL_WEAPON_TIME_MASK 0x0000ffff
 #define REAR_WEAPON_TIME_MASK 0xffff0000
 // END

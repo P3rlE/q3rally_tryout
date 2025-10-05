@@ -53,19 +53,24 @@ void CG_NewLapTime( int client, int lap, int time ) {
 	cent->startLapTime = time;
 }
 
-void CG_FinishedRace( int client, int time, qboolean fuelDepleted ) {
+void CG_FinishedRace( int client, int time, int finishFlags ) {
 	centity_t	*cent;
 	char		*t;
+	qboolean	eliminationUpdate;
+	qboolean	fuelDepleted;
 
 	cent = &cg_entities[client];
 
-	if ( !cg.raceFinishCountdownActive ) {
+	eliminationUpdate = ( finishFlags & RACE_FINISH_FLAG_ELIMINATION_UPDATE ) ? qtrue : qfalse;
+	fuelDepleted = ( finishFlags & RACE_FINISH_FLAG_FUEL_DEPLETED ) ? qtrue : qfalse;
+
+	if ( !eliminationUpdate && !cg.raceFinishCountdownActive ) {
 		cg.raceFinishCountdownActive = qtrue;
 		cg.raceFinishCountdownStart = time;
 		cg.raceFinishCountdownEnd = time + ( cgs.finishRaceDelay * 1000 );
 	}
 
-	if ( !fuelDepleted && client == cg.snap->ps.clientNum
+	if ( !fuelDepleted && !eliminationUpdate && client == cg.snap->ps.clientNum
 		&& ((time - cent->startLapTime) < cent->bestLapTime || cent->bestLapTime == 0) ){
 		// New bestlap
 		cent->bestLapTime = (time - cent->startLapTime);
