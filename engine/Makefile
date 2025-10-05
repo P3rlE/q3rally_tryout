@@ -2739,7 +2739,7 @@ Q3CGOBJ_ = \
   \
   $(B)/$(BASEGAME)/qcommon/q_math.o \
   $(B)/$(BASEGAME)/qcommon/q_shared.o \
-  $(B)/$(BASEGAME)/qcommon/q_shared_plates.o
+  $(B)/$(BASEGAME)/cgame/q_shared_plates.o
 
 Q3CGOBJ = $(Q3CGOBJ_) $(B)/$(BASEGAME)/cgame/cg_syscalls.o
 Q3CGVMOBJ = $(Q3CGOBJ_:%.o=%.asm)
@@ -2785,7 +2785,7 @@ MPCGOBJ_ = \
   \
   $(B)/$(MISSIONPACK)/qcommon/q_math.o \
   $(B)/$(MISSIONPACK)/qcommon/q_shared.o \
-  $(B)/$(MISSIONPACK)/qcommon/q_shared_plates.o
+  $(B)/$(MISSIONPACK)/cgame/q_shared_plates.o
 
 MPCGOBJ = $(MPCGOBJ_) $(B)/$(MISSIONPACK)/cgame/cg_syscalls.o
 MPCGVMOBJ = $(MPCGOBJ_:%.o=%.asm)
@@ -2978,7 +2978,7 @@ Q3UIOBJ_ = \
   \
   $(B)/$(BASEGAME)/qcommon/q_math.o \
   $(B)/$(BASEGAME)/qcommon/q_shared.o \
-  $(B)/$(BASEGAME)/qcommon/q_shared_plates.o
+  $(B)/$(BASEGAME)/ui/q_shared_plates.o
 
 Q3UIOBJ = $(Q3UIOBJ_) $(B)/$(MISSIONPACK)/ui/ui_syscalls.o
 Q3UIVMOBJ = $(Q3UIOBJ_:%.o=%.asm)
@@ -3008,7 +3008,7 @@ MPUIOBJ_ = \
   \
   $(B)/$(MISSIONPACK)/qcommon/q_math.o \
   $(B)/$(MISSIONPACK)/qcommon/q_shared.o \
-  $(B)/$(MISSIONPACK)/qcommon/q_shared_plates.o
+  $(B)/$(MISSIONPACK)/ui/q_shared_plates.o
 
 MPUIOBJ = $(MPUIOBJ_) $(B)/$(MISSIONPACK)/ui/ui_syscalls.o
 MPUIVMOBJ = $(MPUIOBJ_:%.o=%.asm)
@@ -3175,10 +3175,16 @@ $(B)/$(BASEGAME)/cgame/bg_%.o: $(GDIR)/bg_%.c
 $(B)/$(BASEGAME)/cgame/%.o: $(CGDIR)/%.c
 	$(DO_CGAME_CC)
 
+$(B)/$(BASEGAME)/cgame/q_shared_plates.o: $(CMDIR)/q_shared_plates.c
+	$(DO_CGAME_CC)
+
 $(B)/$(BASEGAME)/cgame/bg_%.asm: $(GDIR)/bg_%.c $(Q3LCC)
 	$(DO_CGAME_Q3LCC)
 
 $(B)/$(BASEGAME)/cgame/%.asm: $(CGDIR)/%.c $(Q3LCC)
+	$(DO_CGAME_Q3LCC)
+
+$(B)/$(BASEGAME)/cgame/q_shared_plates.asm: $(CMDIR)/q_shared_plates.c $(Q3LCC)
 	$(DO_CGAME_Q3LCC)
 
 $(B)/$(MISSIONPACK)/cgame/bg_%.o: $(GDIR)/bg_%.c
@@ -3187,10 +3193,16 @@ $(B)/$(MISSIONPACK)/cgame/bg_%.o: $(GDIR)/bg_%.c
 $(B)/$(MISSIONPACK)/cgame/%.o: $(CGDIR)/%.c
 	$(DO_CGAME_CC_MISSIONPACK)
 
+$(B)/$(MISSIONPACK)/cgame/q_shared_plates.o: $(CMDIR)/q_shared_plates.c
+	$(DO_CGAME_CC_MISSIONPACK)
+
 $(B)/$(MISSIONPACK)/cgame/bg_%.asm: $(GDIR)/bg_%.c $(Q3LCC)
 	$(DO_CGAME_Q3LCC_MISSIONPACK)
 
 $(B)/$(MISSIONPACK)/cgame/%.asm: $(CGDIR)/%.c $(Q3LCC)
+	$(DO_CGAME_Q3LCC_MISSIONPACK)
+
+$(B)/$(MISSIONPACK)/cgame/q_shared_plates.asm: $(CMDIR)/q_shared_plates.c $(Q3LCC)
 	$(DO_CGAME_Q3LCC_MISSIONPACK)
 
 
@@ -3213,10 +3225,16 @@ $(B)/$(BASEGAME)/ui/bg_%.o: $(GDIR)/bg_%.c
 $(B)/$(BASEGAME)/ui/%.o: $(Q3UIDIR)/%.c
 	$(DO_UI_CC)
 
+$(B)/$(BASEGAME)/ui/q_shared_plates.o: $(CMDIR)/q_shared_plates.c
+	$(DO_UI_CC)
+
 $(B)/$(BASEGAME)/ui/bg_%.asm: $(GDIR)/bg_%.c $(Q3LCC)
 	$(DO_UI_Q3LCC)
 
 $(B)/$(BASEGAME)/ui/%.asm: $(Q3UIDIR)/%.c $(Q3LCC)
+	$(DO_UI_Q3LCC)
+
+$(B)/$(BASEGAME)/ui/q_shared_plates.asm: $(CMDIR)/q_shared_plates.c $(Q3LCC)
 	$(DO_UI_Q3LCC)
 
 $(B)/$(MISSIONPACK)/ui/bg_%.o: $(GDIR)/bg_%.c
@@ -3225,10 +3243,16 @@ $(B)/$(MISSIONPACK)/ui/bg_%.o: $(GDIR)/bg_%.c
 $(B)/$(MISSIONPACK)/ui/%.o: $(UIDIR)/%.c
 	$(DO_UI_CC_MISSIONPACK)
 
+$(B)/$(MISSIONPACK)/ui/q_shared_plates.o: $(CMDIR)/q_shared_plates.c
+	$(DO_UI_CC_MISSIONPACK)
+
 $(B)/$(MISSIONPACK)/ui/bg_%.asm: $(GDIR)/bg_%.c $(Q3LCC)
 	$(DO_UI_Q3LCC_MISSIONPACK)
 
 $(B)/$(MISSIONPACK)/ui/%.asm: $(UIDIR)/%.c $(Q3LCC)
+	$(DO_UI_Q3LCC_MISSIONPACK)
+
+$(B)/$(MISSIONPACK)/ui/q_shared_plates.asm: $(CMDIR)/q_shared_plates.c $(Q3LCC)
 	$(DO_UI_Q3LCC_MISSIONPACK)
 
 
