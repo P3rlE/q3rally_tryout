@@ -2171,6 +2171,7 @@ void		trap_R_LoadWorldMap( const char *mapname );
 qhandle_t	trap_R_RegisterModel( const char *name );			// returns rgb axis if not found
 qhandle_t	trap_R_RegisterSkin( const char *name );			// returns all white if not found
 qhandle_t	trap_R_RegisterShader( const char *name );			// returns all white if not found
+qhandle_t	trap_R_RegisterShaderLightMap( const char *name, int lightmapIndex );
 qhandle_t	trap_R_RegisterShaderNoMip( const char *name );			// returns all white if not found
 
 // a scene is built up by calls to R_ClearScene and the various R_Add functions.

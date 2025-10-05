@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // ui_players.c
 
 #include "ui_local.h"
+#include "../qcommon/q_shared_plates.h"
 
 
 #define UI_TIMER_GESTURE		2300
@@ -1596,11 +1597,20 @@ static qboolean	UI_RegisterClientSkin( playerInfo_t *pi, const char *modelName, 
 		}
 	}
 
-	Com_sprintf( filename, sizeof( filename ), "models/players/plates/%s", plateName );
-	pi->plateShader = trap_R_RegisterShaderNoMip(filename);
-	if( !pi->plateShader ) {
-		Com_Printf( S_COLOR_YELLOW "Q3R Warning: Failed to load plate shader: %s\n", filename );
-	}
+        Com_sprintf( filename, sizeof( filename ), "models/players/plates/%s", plateName );
+
+        if ( plateName && !Q_stricmpn( plateName, "usa_garage_", 11 ) ) {
+                pi->plateShader = Q3R_RegisterGeneratedPlateShader( filename );
+                if ( !pi->plateShader ) {
+                        pi->plateShader = trap_R_RegisterShaderNoMip( filename );
+                }
+        } else {
+                pi->plateShader = trap_R_RegisterShaderNoMip( filename );
+        }
+
+        if( !pi->plateShader ) {
+                Com_Printf( S_COLOR_YELLOW "Q3R Warning: Failed to load plate shader: %s\n", filename );
+        }
 // END
 
 	return qtrue;
