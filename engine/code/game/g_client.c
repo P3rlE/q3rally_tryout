@@ -36,6 +36,88 @@ static vec3_t	playerMaxs = {15, 15, 32};
 static vec3_t	playerMins = {-CAR_WIDTH/2, -CAR_WIDTH/2, -CAR_WIDTH/2};
 static vec3_t	playerMaxs = {CAR_WIDTH/2, CAR_WIDTH/2, CAR_WIDTH/2};
 
+typedef qboolean (*customValidator_t)( const char *value );
+
+static qboolean G_FileExists( const char *path ) {
+    fileHandle_t    f;
+    int             len;
+
+    len = trap_FS_FOpenFile( path, &f, FS_READ );
+    if ( len < 0 ) {
+        return qfalse;
+    }
+
+    trap_FS_FCloseFile( f );
+    return qtrue;
+}
+
+static qboolean G_CustomizationAssetExists( const char *format, const char *name ) {
+    char            path[MAX_QPATH];
+
+    if ( !name[0] || !Q_stricmp( name, "0" ) ) {
+        return qfalse;
+    }
+
+    Com_sprintf( path, sizeof( path ), format, name );
+    return G_FileExists( path );
+}
+
+static qboolean G_IsKnownCarModel( const char *model ) {
+    char            baseModel[MAX_QPATH];
+    const char      *slash;
+    int             len;
+
+    if ( !model[0] || !Q_stricmp( model, "0" ) ) {
+        return qfalse;
+    }
+
+    slash = strchr( model, '/' );
+    if ( slash ) {
+        len = slash - model;
+        if ( len <= 0 || len >= sizeof( baseModel ) ) {
+            return qfalse;
+        }
+        Q_strncpyz( baseModel, model, len + 1 );
+    } else {
+        Q_strncpyz( baseModel, model, sizeof( baseModel ) );
+    }
+
+    return G_CustomizationAssetExists( "models/players/%s/body.md3", baseModel );
+}
+
+static qboolean G_HeadAssetExists( const char *head ) {
+    return G_CustomizationAssetExists( "models/players/heads/%s.md3", head );
+}
+
+static qboolean G_RimAssetExists( const char *rim ) {
+    return G_CustomizationAssetExists( "models/players/wheels/%s.skin", rim );
+}
+
+static qboolean G_PlateAssetExists( const char *plate ) {
+    if ( !plate[0] || !Q_stricmp( plate, "0" ) ) {
+        return qfalse;
+    }
+
+    if ( G_CustomizationAssetExists( "models/players/plates/%s.md3", plate ) ) {
+        return qtrue;
+    }
+    if ( G_CustomizationAssetExists( "models/players/plates/%s.tga", plate ) ) {
+        return qtrue;
+    }
+    if ( G_CustomizationAssetExists( "models/players/plates/%s.jpg", plate ) ) {
+        return qtrue;
+    }
+
+    return qfalse;
+}
+
+static void G_SanitizeCustomizationValue( char *value, int valueSize, const char *defaultValue, customValidator_t validator ) {
+    if ( !validator( value ) ) {
+        Q_strncpyz( value, defaultValue, valueSize );
+    }
+}
+
+
 //static vec3_t	playerMins = {-CAR_LENGTH/2, -CAR_WIDTH/2, -CAR_HEIGHT/2};
 //static vec3_t	playerMaxs = {CAR_LENGTH/2, CAR_WIDTH/2, CAR_HEIGHT/2};
 // END
@@ -960,6 +1042,13 @@ void ClientUserinfoChanged( int clientNum ) {
 	// plate
 	Q_strncpyz( plate, Info_ValueForKey (userinfo, "plate"), sizeof( plate ) );
 // END
+
+	if ( !G_IsKnownCarModel( model ) ) {
+		Q_strncpyz( model, DEFAULT_MODEL, sizeof( model ) );
+	}
+	G_SanitizeCustomizationValue( headModel, sizeof( headModel ), DEFAULT_HEAD, G_HeadAssetExists );
+	G_SanitizeCustomizationValue( rim, sizeof( rim ), DEFAULT_RIM, G_RimAssetExists );
+	G_SanitizeCustomizationValue( plate, sizeof( plate ), DEFAULT_PLATE, G_PlateAssetExists );
 
 #ifdef MISSIONPACK
 	if (g_gametype.integer >= GT_TEAM && !(ent->r.svFlags & SVF_BOT)) {

@@ -90,8 +90,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // Q3Rally Code Start - update to sidepipe
 // #define	DEFAULT_MODEL			"sarge"
-#define	DEFAULT_MODEL			"sidepipe"
-#define	DEFAULT_SKIN			"red"
+#ifndef DEFAULT_MODEL
+#define DEFAULT_MODEL                   "sidepipe"
+#endif
+#define DEFAULT_SKIN                    "red"
 // Q3Rally Code END
 #ifdef MISSIONPACK
 #define	DEFAULT_TEAM_MODEL		"doom"
@@ -103,9 +105,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	DEFAULT_TEAM_MODEL		"sidepipe"
 #define	DEFAULT_TEAM_HEAD		"doom"
 #endif
-#define	DEFAULT_HEAD			"doom"
-#define	DEFAULT_RIM				"svt_cobra"
-#define	DEFAULT_PLATE			"plate_usa"
+#ifndef DEFAULT_HEAD
+#define DEFAULT_HEAD                    "doom"
+#endif
+#ifndef DEFAULT_RIM
+#define DEFAULT_RIM                             "svt_cobra"
+#endif
+#ifndef DEFAULT_PLATE
+#define DEFAULT_PLATE                   "plate_usa"
+#endif
 #define	DEFAULT_PLATE_SKIN		"player0"
 
 extern	vec4_t				bgColor; // Q3Rally Code - UPDATE change variable name?
