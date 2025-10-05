@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../renderercommon/tr_types.h"
 #include "../game/bg_public.h"
 #include "cg_public.h"
+#include "../qcommon/q_shared_plates.h"
 
 
 // The entire cgame module is unloaded and reloaded on each level change,
@@ -2037,7 +2038,6 @@ qboolean CG_DrawHUD( void );
 // cg_rally_platetools.c
 //
 extern int	propMap[128][3];
-void CreateLicensePlateImage(const char *input, const char *output, const char *name, int maxChars);
 
 //
 // cg_rally_rearweapons.c
