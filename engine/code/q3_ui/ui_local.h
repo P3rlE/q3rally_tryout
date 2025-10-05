@@ -40,14 +40,22 @@ typedef void (*voidfunc_f)(void);
 // STONELANCE
 #define MENU_TRANSITION_TIME	665
 
-#define	DEFAULT_MODEL			"sidepipe"
-#define	DEFAULT_SKIN			"red"
-#define	DEFAULT_TEAM_MODEL		"sidepipe"
-#define	DEFAULT_TEAM_HEAD		"doom"
-#define	DEFAULT_HEAD			"doom"
-#define	DEFAULT_RIM				"svt_cobra"
-#define	DEFAULT_PLATE			"plate_usa"
-#define	DEFAULT_PLATE_SKIN		"default"
+#ifndef DEFAULT_MODEL
+#define DEFAULT_MODEL                   "sidepipe"
+#endif
+#define DEFAULT_SKIN                    "red"
+#define DEFAULT_TEAM_MODEL              "sidepipe"
+#define DEFAULT_TEAM_HEAD               "doom"
+#ifndef DEFAULT_HEAD
+#define DEFAULT_HEAD                    "doom"
+#endif
+#ifndef DEFAULT_RIM
+#define DEFAULT_RIM                             "svt_cobra"
+#endif
+#ifndef DEFAULT_PLATE
+#define DEFAULT_PLATE                   "plate_usa"
+#endif
+#define DEFAULT_PLATE_SKIN              "default"
 // END
 
 // STONELANCE
