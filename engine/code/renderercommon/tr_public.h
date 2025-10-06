@@ -47,8 +47,9 @@ typedef struct {
 	void	(*BeginRegistration)( glconfig_t *config );
 	qhandle_t (*RegisterModel)( const char *name );
 	qhandle_t (*RegisterSkin)( const char *name );
-	qhandle_t (*RegisterShader)( const char *name );
-	qhandle_t (*RegisterShaderNoMip)( const char *name );
+        qhandle_t (*RegisterShader)( const char *name );
+        qhandle_t (*RegisterShaderNoMip)( const char *name );
+        qhandle_t (*RegisterShaderLightMap)( const char *name, int lightmapIndex, qboolean implicitBlend );
 	void	(*LoadWorld)( const char *name );
 
 	// the vis data is a large enough block of data that we go to the trouble

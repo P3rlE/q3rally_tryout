@@ -759,7 +759,14 @@ static qboolean	CG_RegisterClientSkin( clientInfo_t *ci, const char *modelName, 
 		Com_sprintf( filename, sizeof( filename ), "models/players/plates/default.tga" );
 	}
 
-	ci->plateShader = trap_R_RegisterShader(filename);
+        if ( Q3R_IsGeneratedPlateShaderName( filename ) ) {
+                ci->plateShader = Q3R_RegisterGeneratedPlateShader( filename );
+                if ( !ci->plateShader ) {
+                        ci->plateShader = trap_R_RegisterShader( filename );
+                }
+        } else {
+                ci->plateShader = trap_R_RegisterShader( filename );
+        }
 	if( !ci->plateShader ) {
 		Com_Printf( S_COLOR_YELLOW "Q3R Warning: Failed to load plate shader: %s\n", filename );
 /*

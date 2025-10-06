@@ -33,6 +33,30 @@ int		gl_filter_max = GL_LINEAR;
 #define FILE_HASH_SIZE		1024
 static	image_t*		hashTable[FILE_HASH_SIZE];
 
+static qboolean R_ImageHasAlpha( const byte *pixels, int width, int height, imgType_t type, GLenum picFormat ) {
+	int i;
+
+	if ( !pixels || width <= 0 || height <= 0 ) {
+		return qfalse;
+	}
+
+	if ( type != IMGTYPE_COLORALPHA ) {
+		return qfalse;
+	}
+
+	if ( picFormat != GL_RGBA8 && picFormat != GL_SRGB8_ALPHA8_EXT && picFormat != GL_RGBA ) {
+		return qfalse;
+	}
+
+	for ( i = 0; i < width * height; i++ ) {
+		if ( pixels[i * 4 + 3] != 255 ) {
+			return qtrue;
+		}
+	}
+
+	return qfalse;
+}
+
 /*
 ** R_GammaCorrect
 */
@@ -2236,7 +2260,7 @@ image_t *R_CreateImage2( const char *name, byte *pic, int width, int height, GLe
 	tr.numImages++;
 
 	image->type = type;
-	image->flags = flags;
+	image->flags = flags & ~IMGFLAG_HAS_ALPHA;
 
 	strcpy (image->imgName, name);
 
@@ -2319,6 +2343,9 @@ image_t *R_CreateImage2( const char *name, byte *pic, int width, int height, GLe
 
 	image->uploadWidth = width;
 	image->uploadHeight = height;
+	if ( R_ImageHasAlpha( pic, width, height, type, picFormat ) ) {
+		image->flags |= IMGFLAG_HAS_ALPHA;
+	}
 
 	// Allocate texture storage so we don't have to worry about it later.
 	mipWidth = width;
@@ -2573,7 +2600,9 @@ image_t	*R_FindImageFile( const char *name, imgType_t type, imgFlags_t flags )
 		if ( !strcmp( name, image->imgName ) ) {
 			// the white image can be used with any set of parms, but other mismatches are errors
 			if ( strcmp( name, "*white" ) ) {
-				if ( image->flags != flags ) {
+				imgFlags_t existingFlags = image->flags & ~IMGFLAG_HAS_ALPHA;
+				imgFlags_t requestedFlags = flags & ~IMGFLAG_HAS_ALPHA;
+				if ( existingFlags != requestedFlags ) {
 					ri.Printf( PRINT_DEVELOPER, "WARNING: reused image %s with mixed flags (%i vs %i)\n", name, image->flags, flags );
 				}
 			}
