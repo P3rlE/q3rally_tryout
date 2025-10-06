@@ -2174,6 +2174,8 @@ qhandle_t	trap_R_RegisterShader( const char *name );			// returns all white if n
 qhandle_t	trap_R_RegisterShaderLightMap( const char *name, int lightmapIndex );
 qhandle_t	trap_R_RegisterShaderNoMip( const char *name );			// returns all white if not found
 
+qhandle_t       trap_R_RegisterShaderLightMap( const char *name, int lightmapIndex, qboolean implicitBlend );
+
 // a scene is built up by calls to R_ClearScene and the various R_Add functions.
 // Nothing is drawn until R_RenderScene is called.
 void		trap_R_ClearScene( void );

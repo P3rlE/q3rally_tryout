@@ -1598,8 +1598,7 @@ static qboolean	UI_RegisterClientSkin( playerInfo_t *pi, const char *modelName, 
 	}
 
         Com_sprintf( filename, sizeof( filename ), "models/players/plates/%s", plateName );
-
-        if ( plateName && !Q_stricmpn( plateName, "usa_garage_", 11 ) ) {
+        if ( Q3R_IsGeneratedPlateShaderName( filename ) ) {
                 pi->plateShader = Q3R_RegisterGeneratedPlateShader( filename );
                 if ( !pi->plateShader ) {
                         pi->plateShader = trap_R_RegisterShaderNoMip( filename );
@@ -1607,7 +1606,6 @@ static qboolean	UI_RegisterClientSkin( playerInfo_t *pi, const char *modelName, 
         } else {
                 pi->plateShader = trap_R_RegisterShaderNoMip( filename );
         }
-
         if( !pi->plateShader ) {
                 Com_Printf( S_COLOR_YELLOW "Q3R Warning: Failed to load plate shader: %s\n", filename );
         }

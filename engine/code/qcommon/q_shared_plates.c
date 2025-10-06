@@ -247,18 +247,38 @@ static qboolean Q3R_SaveTGA( plateTexture_t *texture, const char *filename ) {
     return qtrue;
 }
 
-qhandle_t Q3R_RegisterGeneratedPlateShader( const char *shaderName ) {
 #if defined( CGAME ) || defined( UI )
+
+#ifndef LIGHTMAP_NONE
+#define LIGHTMAP_NONE       -1
+#endif
+
+#define Q3R_GENERATED_PLATE_PREFIX "usa_garage_"
+
+qboolean Q3R_IsGeneratedPlateShaderName( const char *shaderName ) {
+    char token[MAX_QPATH];
+    const char *base;
+
+    if ( !shaderName || !*shaderName ) {
+        return qfalse;
+    }
+
+    base = COM_SkipPath( shaderName );
+    Q_strncpyz( token, base, sizeof( token ) );
+    COM_StripExtension( token, token );
+
+    return ( Q_stricmpn( token, Q3R_GENERATED_PLATE_PREFIX, sizeof( Q3R_GENERATED_PLATE_PREFIX ) - 1 ) == 0 );
+}
+
+qhandle_t Q3R_RegisterGeneratedPlateShader( const char *shaderName ) {
     if ( !shaderName || !*shaderName ) {
         return 0;
     }
 
-    return trap_R_RegisterShaderLightMap( shaderName, LIGHTMAP_NONE );
-#else
-    (void)shaderName;
-    return 0;
-#endif
+    return trap_R_RegisterShaderLightMap( shaderName, LIGHTMAP_NONE, qtrue );
 }
+
+#endif /* CGAME || UI */
 
 qboolean Q3R_CreateLicensePlateImage( const char *templateImage,
                                       const char *outputImage,

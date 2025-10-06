@@ -149,6 +149,10 @@ qhandle_t trap_R_RegisterShaderNoMip( const char *name ) {
 	return syscall( UI_R_REGISTERSHADERNOMIP, name );
 }
 
+qhandle_t trap_R_RegisterShaderLightMap( const char *name, int lightmapIndex, qboolean implicitBlend ) {
+        return syscall( UI_R_REGISTERSHADERLIGHTMAP, name, lightmapIndex, implicitBlend );
+}
+
 void trap_R_ClearScene( void ) {
 	syscall( UI_R_CLEARSCENE );
 }
