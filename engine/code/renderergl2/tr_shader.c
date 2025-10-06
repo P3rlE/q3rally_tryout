@@ -73,20 +73,20 @@ void R_RemapShader(const char *shaderName, const char *newShaderName, const char
 	qhandle_t	h;
 
 	sh = R_FindShaderByName( shaderName );
-        if (sh == NULL || sh == tr.defaultShader) {
-                h = RE_RegisterShaderLightMap(shaderName, 0, qfalse);
-                sh = R_GetShaderByHandle(h);
-        }
+	if (sh == NULL || sh == tr.defaultShader) {
+		h = RE_RegisterShaderLightMap(shaderName, 0);
+		sh = R_GetShaderByHandle(h);
+	}
 	if (sh == NULL || sh == tr.defaultShader) {
 		ri.Printf( PRINT_WARNING, "WARNING: R_RemapShader: shader %s not found\n", shaderName );
 		return;
 	}
 
 	sh2 = R_FindShaderByName( newShaderName );
-        if (sh2 == NULL || sh2 == tr.defaultShader) {
-                h = RE_RegisterShaderLightMap(newShaderName, 0, qfalse);
-                sh2 = R_GetShaderByHandle(h);
-        }
+	if (sh2 == NULL || sh2 == tr.defaultShader) {
+		h = RE_RegisterShaderLightMap(newShaderName, 0);
+		sh2 = R_GetShaderByHandle(h);
+	}
 
 	if (sh2 == NULL || sh2 == tr.defaultShader) {
 		ri.Printf( PRINT_WARNING, "WARNING: R_RemapShader: new shader %s not found\n", newShaderName );
@@ -3474,10 +3474,6 @@ shader_t *R_FindShaderEx( const char *name, int lightmapIndex, qboolean mipRawIm
 		stages[0].active = qtrue;
 		stages[0].rgbGen = CGEN_LIGHTING_DIFFUSE;
 		stages[0].stateBits = GLS_DEFAULT;
-		if ( image->hasAlpha ) {
-			stages[0].stateBits &= ~( GLS_DEPTHMASK_TRUE | GLS_DSTBLEND_BITS | GLS_SRCBLEND_BITS );
-			stages[0].stateBits |= GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
-		}
 	} else if ( shader.lightmapIndex == LIGHTMAP_BY_VERTEX ) {
 		// explicit colors at vertexes
 		stages[0].bundle[0].image[0] = image;
@@ -3564,10 +3560,6 @@ qhandle_t RE_RegisterShaderFromImage(const char *name, int lightmapIndex, image_
 		stages[0].active = qtrue;
 		stages[0].rgbGen = CGEN_LIGHTING_DIFFUSE;
 		stages[0].stateBits = GLS_DEFAULT;
-		if ( image->hasAlpha ) {
-			stages[0].stateBits &= ~( GLS_DEPTHMASK_TRUE | GLS_DSTBLEND_BITS | GLS_SRCBLEND_BITS );
-			stages[0].stateBits |= GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
-		}
 	} else if ( shader.lightmapIndex == LIGHTMAP_BY_VERTEX ) {
 		// explicit colors at vertexes
 		stages[0].bundle[0].image[0] = image;
@@ -3626,7 +3618,7 @@ This should really only be used for explicit shaders, because there is no
 way to ask for different implicit lighting modes (vertex, lightmap, etc)
 ====================
 */
-qhandle_t RE_RegisterShaderLightMap( const char *name, int lightmapIndex, qboolean implicitBlend ) {
+qhandle_t RE_RegisterShaderLightMap( const char *name, int lightmapIndex ) {
 	shader_t	*sh;
 
 	if ( strlen( name ) >= MAX_QPATH ) {
@@ -3643,24 +3635,6 @@ qhandle_t RE_RegisterShaderLightMap( const char *name, int lightmapIndex, qboole
 	// the same name, we don't try looking for it again
 	if ( sh->defaultShader ) {
 		return 0;
-	}
-
-	if ( implicitBlend && !sh->explicitlyDefined && lightmapIndex == LIGHTMAP_NONE && sh->numUnfoggedPasses > 0 ) {
-		shaderStage_t *stage = sh->stages[0];
-		image_t *stageImage = NULL;
-
-		if ( stage ) {
-			stageImage = stage->bundle[0].image[0];
-                }
-
-                if ( stageImage && ( stageImage->flags & IMGFLAG_HAS_ALPHA ) && !stage->bundle[0].isLightmap ) {
-			stage->stateBits &= ~( GLS_DEPTHMASK_TRUE | GLS_DSTBLEND_BITS | GLS_SRCBLEND_BITS );
-			stage->stateBits |= GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
-
-			if ( sh->sort <= SS_OPAQUE ) {
-				sh->sort = SS_SEE_THROUGH;
-			}
-		}
 	}
 
 	return sh->index;

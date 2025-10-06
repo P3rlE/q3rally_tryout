@@ -1492,16 +1492,16 @@ static void CG_ServerCommand( void ) {
 	}
 
         if ( !strcmp( cmd, "raceFinishTime" ) ) {
-                int finishFlags = 0;
+                int fuelDepleted = 0;
 
                 i1 = atoi(CG_Argv(1));
                 i2 = atoi(CG_Argv(2));
 
                 if ( trap_Argc() >= 4 ) {
-                        finishFlags = atoi( CG_Argv(3) );
+                        fuelDepleted = atoi( CG_Argv(3) );
                 }
 
-                CG_FinishedRace( i1, i2, finishFlags );
+                CG_FinishedRace( i1, i2, fuelDepleted ? qtrue : qfalse );
                 return;
         }
 // END

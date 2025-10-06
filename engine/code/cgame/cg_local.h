@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../renderercommon/tr_types.h"
 #include "../game/bg_public.h"
 #include "cg_public.h"
-#include "../qcommon/q_shared_plates.h"
 
 
 // The entire cgame module is unloaded and reloaded on each level change,
@@ -91,10 +90,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // Q3Rally Code Start - update to sidepipe
 // #define	DEFAULT_MODEL			"sarge"
-#ifndef DEFAULT_MODEL
-#define DEFAULT_MODEL                   "sidepipe"
-#endif
-#define DEFAULT_SKIN                    "red"
+#define	DEFAULT_MODEL			"sidepipe"
+#define	DEFAULT_SKIN			"red"
 // Q3Rally Code END
 #ifdef MISSIONPACK
 #define	DEFAULT_TEAM_MODEL		"doom"
@@ -106,15 +103,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	DEFAULT_TEAM_MODEL		"sidepipe"
 #define	DEFAULT_TEAM_HEAD		"doom"
 #endif
-#ifndef DEFAULT_HEAD
-#define DEFAULT_HEAD                    "doom"
-#endif
-#ifndef DEFAULT_RIM
-#define DEFAULT_RIM                             "svt_cobra"
-#endif
-#ifndef DEFAULT_PLATE
-#define DEFAULT_PLATE                   "plate_usa"
-#endif
+#define	DEFAULT_HEAD			"doom"
+#define	DEFAULT_RIM				"svt_cobra"
+#define	DEFAULT_PLATE			"plate_usa"
 #define	DEFAULT_PLATE_SKIN		"player0"
 
 extern	vec4_t				bgColor; // Q3Rally Code - UPDATE change variable name?
@@ -2009,7 +2000,7 @@ qboolean CG_InsideBox( vec3_t mins, vec3_t maxs, vec3_t pos );
 // cg_rally_race_tools.c
 //
 void CG_NewLapTime( int client, int lap, int time );
-void CG_FinishedRace( int client, int time, int finishFlags );
+void CG_FinishedRace( int client, int time, qboolean fuelDepleted );
 void CG_StartRace( int time );
 void CG_DrawRaceCountDown( void );
 void CG_DrawRaceFinishCountdown( void );
@@ -2038,6 +2029,7 @@ qboolean CG_DrawHUD( void );
 // cg_rally_platetools.c
 //
 extern int	propMap[128][3];
+void CreateLicensePlateImage(const char *input, const char *output, const char *name, int maxChars);
 
 //
 // cg_rally_rearweapons.c
@@ -2171,10 +2163,7 @@ void		trap_R_LoadWorldMap( const char *mapname );
 qhandle_t	trap_R_RegisterModel( const char *name );			// returns rgb axis if not found
 qhandle_t	trap_R_RegisterSkin( const char *name );			// returns all white if not found
 qhandle_t	trap_R_RegisterShader( const char *name );			// returns all white if not found
-qhandle_t	trap_R_RegisterShaderLightMap( const char *name, int lightmapIndex );
 qhandle_t	trap_R_RegisterShaderNoMip( const char *name );			// returns all white if not found
-
-qhandle_t       trap_R_RegisterShaderLightMap( const char *name, int lightmapIndex, qboolean implicitBlend );
 
 // a scene is built up by calls to R_ClearScene and the various R_Add functions.
 // Nothing is drawn until R_RenderScene is called.

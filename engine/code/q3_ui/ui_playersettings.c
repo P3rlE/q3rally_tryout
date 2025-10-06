@@ -22,7 +22,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "ui_local.h"
-#include "../qcommon/q_shared_plates.h"
 
 // STONELANCE
 /*
@@ -1310,8 +1309,6 @@ static void PlateSelection_DrawMenu( void ) {
 	refEntity_t		ent;
 	vec3_t			origin;
 	vec3_t			angles;
-	char			plateShaderName[MAX_QPATH];
-	qhandle_t		plateShader;
 	float			x, y, w, h;
 
 	// setup the refdef
@@ -1341,22 +1338,11 @@ static void PlateSelection_DrawMenu( void ) {
 	origin[1] = 0;
 	origin[2] = 0;
 
-        trap_R_ClearScene();
+	trap_R_ClearScene();
 
-        // draw license plate with selected skin
+	// draw license plate with selected skin
 
-        Com_sprintf( plateShaderName, sizeof( plateShaderName ), "models/players/plates/%s", s_plateSelection.plateSkin );
-
-        if ( s_plateSelection.plateSkin[0] && !Q_stricmpn( s_plateSelection.plateSkin, "usa_garage_", 11 ) ) {
-                plateShader = Q3R_RegisterGeneratedPlateShader( plateShaderName );
-                if ( !plateShader ) {
-                        plateShader = trap_R_RegisterShaderNoMip( plateShaderName );
-                }
-        } else {
-                plateShader = trap_R_RegisterShaderNoMip( plateShaderName );
-        }
-
-        memset( &ent, 0, sizeof(ent) );
+	memset( &ent, 0, sizeof(ent) );
 
 	VectorSet( angles, 45, 45, 45 );
 	AnglesToAxis( angles, ent.axis );
@@ -1365,17 +1351,7 @@ static void PlateSelection_DrawMenu( void ) {
 		ent.hModel = trap_R_RegisterModel("models/players/plates/plate_usa.md3");
 	else
 		ent.hModel = trap_R_RegisterModel("models/players/plates/plate_eu.md3");
-        {
-                const char *shaderName = va("models/players/plates/%s", s_plateSelection.plateSkin);
-                if ( Q3R_IsGeneratedPlateShaderName( shaderName ) ) {
-                        ent.customShader = Q3R_RegisterGeneratedPlateShader( shaderName );
-                        if ( !ent.customShader ) {
-                                ent.customShader = trap_R_RegisterShaderNoMip( shaderName );
-                        }
-                } else {
-                        ent.customShader = trap_R_RegisterShaderNoMip( shaderName );
-                }
-        }
+	ent.customShader = trap_R_RegisterShaderNoMip( va("models/players/plates/%s", s_plateSelection.plateSkin) );
 
 	VectorCopy( origin, ent.origin );
 	VectorCopy( origin, ent.lightingOrigin );
@@ -1388,17 +1364,7 @@ static void PlateSelection_DrawMenu( void ) {
 
 /*
 	qhandle_t	plate;
-        {
-                const char *shaderName = va("models/players/plates/%s", s_plateSelection.plateSkin);
-                if ( Q3R_IsGeneratedPlateShaderName( shaderName ) ) {
-                        plate = Q3R_RegisterGeneratedPlateShader( shaderName );
-                        if ( !plate ) {
-                                plate = trap_R_RegisterShaderNoMip( shaderName );
-                        }
-                } else {
-                        plate = trap_R_RegisterShaderNoMip( shaderName );
-                }
-        }
+	plate = trap_R_RegisterShaderNoMip( va("models/players/plates/%s", s_plateSelection.plateSkin) );
 
 	if (strstr(s_plateSelection.plateSkin, "usa_"))
 		UI_DrawHandlePic(250+32, 215, 64, 32, plate);

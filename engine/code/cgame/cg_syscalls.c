@@ -258,23 +258,15 @@ qhandle_t trap_R_RegisterSkin( const char *name ) {
 }
 
 qhandle_t trap_R_RegisterShader( const char *name ) {
-    return syscall( CG_R_REGISTERSHADER, name );
-}
-
-qhandle_t trap_R_RegisterShaderLightMap( const char *name, int lightmapIndex ) {
-    return syscall( CG_R_REGISTERSHADERLIGHTMAP, name, lightmapIndex );
+	return syscall( CG_R_REGISTERSHADER, name );
 }
 
 qhandle_t trap_R_RegisterShaderNoMip( const char *name ) {
-        return syscall( CG_R_REGISTERSHADERNOMIP, name );
-}
-
-qhandle_t trap_R_RegisterShaderLightMap( const char *name, int lightmapIndex, qboolean implicitBlend ) {
-        return syscall( CG_R_REGISTERSHADERLIGHTMAP, name, lightmapIndex, implicitBlend );
+	return syscall( CG_R_REGISTERSHADERNOMIP, name );
 }
 
 void trap_R_RegisterFont(const char *fontName, int pointSize, fontInfo_t *font) {
-        syscall(CG_R_REGISTERFONT, fontName, pointSize, font );
+	syscall(CG_R_REGISTERFONT, fontName, pointSize, font );
 }
 
 void	trap_R_ClearScene( void ) {

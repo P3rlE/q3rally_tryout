@@ -22,7 +22,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "ui_local.h"
-#include "../qcommon/q_shared_plates.h"
 
 /* ---------------------------------------------------------
    Icon helper: models/players/<model>/icon_<skin>
@@ -212,18 +211,6 @@ static void UI_DrawWrappedProportional( int x, int y, int maxWidth, int lineHeig
 /* semi-transparent background color */
 static vec4_t garage_background = { 0.0f, 0.0f, 0.0f, 0.25f };
 
-static char botNames[MAX_BOTS][NAME_BUFSIZE];
-static char botModels[MAX_BOTS][NAME_BUFSIZE];
-static char botAIFiles[MAX_BOTS][NAME_BUFSIZE];
-static char botDescriptions[MAX_BOTS][DESC_BUFSIZE];
-static char botPersonalities[MAX_BOTS][DESC_BUFSIZE];
-static char botFavWeapon[MAX_BOTS][DESC_BUFSIZE];
-static char botPlateSkins[MAX_BOTS][MAX_QPATH];
-static qhandle_t botIcons[MAX_BOTS];
-static int botCount = 0;
-static int botPage = 0;
-static int botSelected = -1;
-
 /* Draw weapon icon to the right of the car icon; derives position from given rect (no layout change) */
 static void UI_DrawWeaponIconNextTo( int x, int y, int w, int h, const char *favoriteText ) {
     qhandle_t wi;
@@ -238,73 +225,16 @@ static void UI_DrawWeaponIconNextTo( int x, int y, int w, int h, const char *fav
     }
 }
 
-static void UI_SanitizePlateToken( const char *botName, char *out, int outSize ) {
-    int i;
-    int j = 0;
-    char c;
-
-    if ( !out || outSize <= 0 ) {
-        return;
-    }
-
-    out[0] = '\0';
-    if ( !botName ) {
-        botName = "";
-    }
-
-    for ( i = 0; botName[i] != '\0' && j < outSize - 1; i++ ) {
-        c = botName[i];
-        if ( c >= 'a' && c <= 'z' ) {
-            out[j++] = c;
-        } else if ( c >= 'A' && c <= 'Z' ) {
-            out[j++] = (char)( c - 'A' + 'a' );
-        } else if ( c >= '0' && c <= '9' ) {
-            out[j++] = c;
-        }
-    }
-
-    if ( j == 0 ) {
-        Q_strncpyz( out, "anon", outSize );
-    } else {
-        out[j] = '\0';
-    }
-}
-
-static void UI_BuildPlateSkinForBot( const char *botName, int uniqueIndex, char *skinOut, int skinOutSize ) {
-    char token[NAME_BUFSIZE];
-    char platePath[MAX_QPATH];
-    fileHandle_t fh;
-    int length;
-
-    if ( !skinOut || skinOutSize <= 0 ) {
-        return;
-    }
-
-    UI_SanitizePlateToken( botName, token, sizeof( token ) );
-    Com_sprintf( skinOut, skinOutSize, "usa_garage_%s_%02d", token, uniqueIndex );
-    Com_sprintf( platePath, sizeof( platePath ), "models/players/plates/%s.tga", skinOut );
-
-    length = trap_FS_FOpenFile( platePath, &fh, FS_READ );
-    if ( fh ) {
-        trap_FS_FCloseFile( fh );
-    }
-
-    if ( length <= 0 ) {
-        if ( !Q3R_CreateLicensePlateImage( "models/players/plates/usa_california.tga", platePath, botName, 10 ) ) {
-            Q_strncpyz( skinOut, DEFAULT_PLATE, skinOutSize );
-        }
-    }
-}
-
-static const char *UI_BotPlateSkinForIndex( int index ) {
-    if ( index < 0 || index >= botCount ) {
-        return DEFAULT_PLATE;
-    }
-    if ( !botPlateSkins[index][0] ) {
-        return DEFAULT_PLATE;
-    }
-    return botPlateSkins[index];
-}
+static char botNames[MAX_BOTS][NAME_BUFSIZE];
+static char botModels[MAX_BOTS][NAME_BUFSIZE];
+static char botAIFiles[MAX_BOTS][NAME_BUFSIZE];
+static char botDescriptions[MAX_BOTS][DESC_BUFSIZE];
+static char botPersonalities[MAX_BOTS][DESC_BUFSIZE];
+static char botFavWeapon[MAX_BOTS][DESC_BUFSIZE];
+static qhandle_t botIcons[MAX_BOTS];
+static int botCount = 0;
+static int botPage = 0;
+static int botSelected = -1;
 
 static menutext_s botItems[MAX_VISIBLE_BOTS];
 static menutext_s nextButton;
@@ -338,7 +268,7 @@ static void UI_BotsMenu_BotSelectEvent(void *ptr, int event) {
             index = botPage * MAX_VISIBLE_BOTS + i;
             if (index >= 0 && index < botCount) {
                 botSelected = index;
-                UI_PlayerInfo_SetModel(&s_garagePlayerInfo, botModels[botSelected], NULL, NULL, UI_BotPlateSkinForIndex( botSelected ));
+                UI_PlayerInfo_SetModel(&s_garagePlayerInfo, botModels[botSelected], NULL, NULL, NULL);
                 UI_BotsMenu_DrawBotPage();
             }
             break;
@@ -356,7 +286,7 @@ static void UI_BotsMenu_NextPage(void *ptr, int event) {
         if (botSelected < start || botSelected >= start + MAX_VISIBLE_BOTS) {
             botSelected = (start < botCount) ? start : botCount - 1;
             if (botSelected >= 0) {
-                UI_PlayerInfo_SetModel(&s_garagePlayerInfo, botModels[botSelected], NULL, NULL, UI_BotPlateSkinForIndex( botSelected ));
+                UI_PlayerInfo_SetModel(&s_garagePlayerInfo, botModels[botSelected], NULL, NULL, NULL);
             }
         }
         UI_BotsMenu_DrawBotPage();
@@ -372,7 +302,7 @@ static void UI_BotsMenu_PrevPage(void *ptr, int event) {
         if (botSelected < start || botSelected >= start + MAX_VISIBLE_BOTS) {
             botSelected = (start < botCount) ? start : botCount - 1;
             if (botSelected >= 0) {
-                UI_PlayerInfo_SetModel(&s_garagePlayerInfo, botModels[botSelected], NULL, NULL, UI_BotPlateSkinForIndex( botSelected ));
+                UI_PlayerInfo_SetModel(&s_garagePlayerInfo, botModels[botSelected], NULL, NULL, NULL);
             }
         }
         UI_BotsMenu_DrawBotPage();
@@ -426,7 +356,6 @@ static void UI_BotsMenu_ParseBots(void) {
 
     text_p = buffer;
     botCount = 0;
-    memset( botPlateSkins, 0, sizeof( botPlateSkins ) );
 
     while (1) {
         token = COM_ParseExt(&text_p, qtrue);
@@ -475,9 +404,8 @@ static void UI_BotsMenu_ParseBots(void) {
             Q_strncpyz(botDescriptions[botCount], description, DESC_BUFSIZE);
             Q_strncpyz(botPersonalities[botCount], personality, DESC_BUFSIZE);
             Q_strncpyz(botFavWeapon[botCount], favoriteweapon, DESC_BUFSIZE);
-            UI_BuildPlateSkinForBot( botNames[botCount], botCount + 1, botPlateSkins[botCount], sizeof( botPlateSkins[botCount] ) );
             botIcons[botCount] = UI_LoadModelIconFor(model);
-
+            
             botCount++;
         }
     }
@@ -536,7 +464,7 @@ static void UI_BotsMenu_Init(void) {
     s_bots.banner.style         = UI_CENTER;
 
     UI_BotsMenu_ParseBots();
-    UI_PlayerInfo_SetModel(&s_garagePlayerInfo, "roadster/blue", NULL, NULL, DEFAULT_PLATE);
+    UI_PlayerInfo_SetModel(&s_garagePlayerInfo, "roadster/blue", NULL, NULL, NULL);
 
     Menu_AddItem(&s_bots.menu, &s_bots.banner);
 
@@ -588,7 +516,7 @@ static void UI_BotsMenu_Init(void) {
 
     if (botCount > 0) {
         botSelected = 0;
-        UI_PlayerInfo_SetModel(&s_garagePlayerInfo, botModels[0], NULL, NULL, UI_BotPlateSkinForIndex( 0 ));
+        UI_PlayerInfo_SetModel(&s_garagePlayerInfo, botModels[0], NULL, NULL, NULL);
     }
     UI_BotsMenu_DrawBotPage();
 }

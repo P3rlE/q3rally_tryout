@@ -40,22 +40,14 @@ typedef void (*voidfunc_f)(void);
 // STONELANCE
 #define MENU_TRANSITION_TIME	665
 
-#ifndef DEFAULT_MODEL
-#define DEFAULT_MODEL                   "sidepipe"
-#endif
-#define DEFAULT_SKIN                    "red"
-#define DEFAULT_TEAM_MODEL              "sidepipe"
-#define DEFAULT_TEAM_HEAD               "doom"
-#ifndef DEFAULT_HEAD
-#define DEFAULT_HEAD                    "doom"
-#endif
-#ifndef DEFAULT_RIM
-#define DEFAULT_RIM                             "svt_cobra"
-#endif
-#ifndef DEFAULT_PLATE
-#define DEFAULT_PLATE                   "plate_usa"
-#endif
-#define DEFAULT_PLATE_SKIN              "default"
+#define	DEFAULT_MODEL			"sidepipe"
+#define	DEFAULT_SKIN			"red"
+#define	DEFAULT_TEAM_MODEL		"sidepipe"
+#define	DEFAULT_TEAM_HEAD		"doom"
+#define	DEFAULT_HEAD			"doom"
+#define	DEFAULT_RIM				"svt_cobra"
+#define	DEFAULT_PLATE			"plate_usa"
+#define	DEFAULT_PLATE_SKIN		"default"
 // END
 
 // STONELANCE
@@ -877,7 +869,6 @@ int				trap_FS_GetFileList(  const char *path, const char *extension, char *list
 int				trap_FS_Seek( fileHandle_t f, long offset, int origin ); // fsOrigin_t
 qhandle_t		trap_R_RegisterModel( const char *name );
 qhandle_t		trap_R_RegisterSkin( const char *name );
-qhandle_t		trap_R_RegisterShaderLightMap( const char *name, int lightmapIndex );
 qhandle_t		trap_R_RegisterShaderNoMip( const char *name );
 void			trap_R_ClearScene( void );
 void			trap_R_AddRefEntityToScene( const refEntity_t *re );

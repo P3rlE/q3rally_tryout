@@ -285,7 +285,6 @@ ASMDIR=$(MOUNT_DIR)/asm
 SYSDIR=$(MOUNT_DIR)/sys
 GDIR=$(MOUNT_DIR)/game
 CGDIR=$(MOUNT_DIR)/cgame
-SHAREDDIR=$(MOUNT_DIR)/shared
 BLIBDIR=$(MOUNT_DIR)/botlib
 NDIR=$(MOUNT_DIR)/null
 UIDIR=$(MOUNT_DIR)/ui
@@ -2730,7 +2729,6 @@ Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_rally_racetools.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_rearweapons.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_scripted_objects.o \
-  $(B)/$(BASEGAME)/cgame/rally_script_parser.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_tools.o \
   $(B)/$(BASEGAME)/cgame/cg_scoreboard.o \
   $(B)/$(BASEGAME)/cgame/cg_ladder.o \
@@ -2740,8 +2738,7 @@ Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_weapons.o \
   \
   $(B)/$(BASEGAME)/qcommon/q_math.o \
-  $(B)/$(BASEGAME)/qcommon/q_shared.o \
-  $(B)/$(BASEGAME)/cgame/q_shared_plates.o
+  $(B)/$(BASEGAME)/qcommon/q_shared.o
 
 Q3CGOBJ = $(Q3CGOBJ_) $(B)/$(BASEGAME)/cgame/cg_syscalls.o
 Q3CGVMOBJ = $(Q3CGOBJ_:%.o=%.asm)
@@ -2786,8 +2783,7 @@ MPCGOBJ_ = \
   $(B)/$(MISSIONPACK)/ui/ui_shared.o \
   \
   $(B)/$(MISSIONPACK)/qcommon/q_math.o \
-  $(B)/$(MISSIONPACK)/qcommon/q_shared.o \
-  $(B)/$(MISSIONPACK)/cgame/q_shared_plates.o
+  $(B)/$(MISSIONPACK)/qcommon/q_shared.o
 
 MPCGOBJ = $(MPCGOBJ_) $(B)/$(MISSIONPACK)/cgame/cg_syscalls.o
 MPCGVMOBJ = $(MPCGOBJ_:%.o=%.asm)
@@ -2840,7 +2836,6 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/game/g_rally_racetools.o \
   $(B)/$(BASEGAME)/game/g_rally_rearweapon.o \
   $(B)/$(BASEGAME)/game/g_rally_scripted_objects.o \
-  $(B)/$(BASEGAME)/game/rally_script_parser.o \
   $(B)/$(BASEGAME)/game/g_rally_tools.o \
   $(B)/$(BASEGAME)/game/g_session.o \
   $(B)/$(BASEGAME)/game/g_spawn.o \
@@ -2980,8 +2975,7 @@ Q3UIOBJ_ = \
   $(B)/$(BASEGAME)/ui/ui_rally_bots.o \
   \
   $(B)/$(BASEGAME)/qcommon/q_math.o \
-  $(B)/$(BASEGAME)/qcommon/q_shared.o \
-  $(B)/$(BASEGAME)/ui/q_shared_plates.o
+  $(B)/$(BASEGAME)/qcommon/q_shared.o
 
 Q3UIOBJ = $(Q3UIOBJ_) $(B)/$(MISSIONPACK)/ui/ui_syscalls.o
 Q3UIVMOBJ = $(Q3UIOBJ_:%.o=%.asm)
@@ -3010,8 +3004,7 @@ MPUIOBJ_ = \
   $(B)/$(MISSIONPACK)/ui/bg_lib.o \
   \
   $(B)/$(MISSIONPACK)/qcommon/q_math.o \
-  $(B)/$(MISSIONPACK)/qcommon/q_shared.o \
-  $(B)/$(MISSIONPACK)/ui/q_shared_plates.o
+  $(B)/$(MISSIONPACK)/qcommon/q_shared.o
 
 MPUIOBJ = $(MPUIOBJ_) $(B)/$(MISSIONPACK)/ui/ui_syscalls.o
 MPUIVMOBJ = $(MPUIOBJ_:%.o=%.asm)
@@ -3178,22 +3171,10 @@ $(B)/$(BASEGAME)/cgame/bg_%.o: $(GDIR)/bg_%.c
 $(B)/$(BASEGAME)/cgame/%.o: $(CGDIR)/%.c
 	$(DO_CGAME_CC)
 
-$(B)/$(BASEGAME)/cgame/q_shared_plates.o: $(CMDIR)/q_shared_plates.c
-	$(DO_CGAME_CC)
-
-$(B)/$(BASEGAME)/cgame/rally_script_parser.o: $(SHAREDDIR)/rally_script_parser.c
-	$(DO_CGAME_CC)
-
-$(B)/$(BASEGAME)/cgame/rally_script_parser.asm: $(SHAREDDIR)/rally_script_parser.c $(Q3LCC)
-	$(DO_CGAME_Q3LCC)
-
 $(B)/$(BASEGAME)/cgame/bg_%.asm: $(GDIR)/bg_%.c $(Q3LCC)
 	$(DO_CGAME_Q3LCC)
 
 $(B)/$(BASEGAME)/cgame/%.asm: $(CGDIR)/%.c $(Q3LCC)
-	$(DO_CGAME_Q3LCC)
-
-$(B)/$(BASEGAME)/cgame/q_shared_plates.asm: $(CMDIR)/q_shared_plates.c $(Q3LCC)
 	$(DO_CGAME_Q3LCC)
 
 $(B)/$(MISSIONPACK)/cgame/bg_%.o: $(GDIR)/bg_%.c
@@ -3202,27 +3183,15 @@ $(B)/$(MISSIONPACK)/cgame/bg_%.o: $(GDIR)/bg_%.c
 $(B)/$(MISSIONPACK)/cgame/%.o: $(CGDIR)/%.c
 	$(DO_CGAME_CC_MISSIONPACK)
 
-$(B)/$(MISSIONPACK)/cgame/q_shared_plates.o: $(CMDIR)/q_shared_plates.c
-	$(DO_CGAME_CC_MISSIONPACK)
-
 $(B)/$(MISSIONPACK)/cgame/bg_%.asm: $(GDIR)/bg_%.c $(Q3LCC)
 	$(DO_CGAME_Q3LCC_MISSIONPACK)
 
 $(B)/$(MISSIONPACK)/cgame/%.asm: $(CGDIR)/%.c $(Q3LCC)
 	$(DO_CGAME_Q3LCC_MISSIONPACK)
 
-$(B)/$(MISSIONPACK)/cgame/q_shared_plates.asm: $(CMDIR)/q_shared_plates.c $(Q3LCC)
-	$(DO_CGAME_Q3LCC_MISSIONPACK)
-
 
 $(B)/$(BASEGAME)/game/%.o: $(GDIR)/%.c
 	$(DO_GAME_CC)
-
-$(B)/$(BASEGAME)/game/rally_script_parser.o: $(SHAREDDIR)/rally_script_parser.c
-	$(DO_GAME_CC)
-
-$(B)/$(BASEGAME)/game/rally_script_parser.asm: $(SHAREDDIR)/rally_script_parser.c $(Q3LCC)
-	$(DO_GAME_Q3LCC)
 
 $(B)/$(BASEGAME)/game/%.asm: $(GDIR)/%.c $(Q3LCC)
 	$(DO_GAME_Q3LCC)
@@ -3240,16 +3209,10 @@ $(B)/$(BASEGAME)/ui/bg_%.o: $(GDIR)/bg_%.c
 $(B)/$(BASEGAME)/ui/%.o: $(Q3UIDIR)/%.c
 	$(DO_UI_CC)
 
-$(B)/$(BASEGAME)/ui/q_shared_plates.o: $(CMDIR)/q_shared_plates.c
-	$(DO_UI_CC)
-
 $(B)/$(BASEGAME)/ui/bg_%.asm: $(GDIR)/bg_%.c $(Q3LCC)
 	$(DO_UI_Q3LCC)
 
 $(B)/$(BASEGAME)/ui/%.asm: $(Q3UIDIR)/%.c $(Q3LCC)
-	$(DO_UI_Q3LCC)
-
-$(B)/$(BASEGAME)/ui/q_shared_plates.asm: $(CMDIR)/q_shared_plates.c $(Q3LCC)
 	$(DO_UI_Q3LCC)
 
 $(B)/$(MISSIONPACK)/ui/bg_%.o: $(GDIR)/bg_%.c
@@ -3258,16 +3221,10 @@ $(B)/$(MISSIONPACK)/ui/bg_%.o: $(GDIR)/bg_%.c
 $(B)/$(MISSIONPACK)/ui/%.o: $(UIDIR)/%.c
 	$(DO_UI_CC_MISSIONPACK)
 
-$(B)/$(MISSIONPACK)/ui/q_shared_plates.o: $(CMDIR)/q_shared_plates.c
-	$(DO_UI_CC_MISSIONPACK)
-
 $(B)/$(MISSIONPACK)/ui/bg_%.asm: $(GDIR)/bg_%.c $(Q3LCC)
 	$(DO_UI_Q3LCC_MISSIONPACK)
 
 $(B)/$(MISSIONPACK)/ui/%.asm: $(UIDIR)/%.c $(Q3LCC)
-	$(DO_UI_Q3LCC_MISSIONPACK)
-
-$(B)/$(MISSIONPACK)/ui/q_shared_plates.asm: $(CMDIR)/q_shared_plates.c $(Q3LCC)
 	$(DO_UI_Q3LCC_MISSIONPACK)
 
 

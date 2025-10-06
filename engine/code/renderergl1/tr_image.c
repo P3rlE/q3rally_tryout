@@ -31,26 +31,6 @@ int		gl_filter_max = GL_LINEAR;
 #define FILE_HASH_SIZE		1024
 static	image_t*		hashTable[FILE_HASH_SIZE];
 
-static qboolean R_ImageHasAlpha( const byte *pixels, int width, int height, imgType_t type ) {
-	int i;
-
-	if ( !pixels || width <= 0 || height <= 0 ) {
-		return qfalse;
-	}
-
-	if ( type != IMGTYPE_COLORALPHA ) {
-		return qfalse;
-	}
-
-	for ( i = 0; i < width * height; i++ ) {
-		if ( pixels[i * 4 + 3] != 255 ) {
-			return qtrue;
-		}
-	}
-
-	return qfalse;
-}
-
 /*
 ** R_GammaCorrect
 */
@@ -849,24 +829,6 @@ done:
 }
 
 
-static qboolean ImageHasAlpha( const byte *pic, int width, int height ) {
-	int count;
-	int i;
-
-	if ( !pic ) {
-		return qfalse;
-	}
-
-	count = width * height;
-	for ( i = 0; i < count; i++, pic += 4 ) {
-		if ( pic[3] != 255 ) {
-			return qtrue;
-		}
-	}
-
-	return qfalse;
-}
-
 /*
 ================
 R_CreateImage
@@ -897,10 +859,7 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height,
 	tr.numImages++;
 
 	image->type = type;
-	image->flags = flags & ~IMGFLAG_HAS_ALPHA;
-	if ( R_ImageHasAlpha( pic, width, height, type ) ) {
-		image->flags |= IMGFLAG_HAS_ALPHA;
-	}
+	image->flags = flags;
 
 	strcpy (image->imgName, name);
 
@@ -1083,9 +1042,7 @@ image_t	*R_FindImageFile( const char *name, imgType_t type, imgFlags_t flags )
 		if ( !strcmp( name, image->imgName ) ) {
 			// the white image can be used with any set of parms, but other mismatches are errors
 			if ( strcmp( name, "*white" ) ) {
-				imgFlags_t existingFlags = image->flags & ~IMGFLAG_HAS_ALPHA;
-				imgFlags_t requestedFlags = flags & ~IMGFLAG_HAS_ALPHA;
-				if ( existingFlags != requestedFlags ) {
+				if ( image->flags != flags ) {
 					ri.Printf( PRINT_DEVELOPER, "WARNING: reused image %s with mixed flags (%i vs %i)\n", name, image->flags, flags );
 				}
 			}
