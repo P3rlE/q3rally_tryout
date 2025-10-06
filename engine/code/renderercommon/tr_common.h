@@ -60,6 +60,8 @@ typedef struct image_s {
 	imgType_t   type;
 	imgFlags_t  flags;
 
+	qboolean    hasAlpha;
+
 	struct image_s*	next;
 } image_t;
 

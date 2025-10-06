@@ -1310,6 +1310,8 @@ static void PlateSelection_DrawMenu( void ) {
 	refEntity_t		ent;
 	vec3_t			origin;
 	vec3_t			angles;
+	char			plateShaderName[MAX_QPATH];
+	qhandle_t		plateShader;
 	float			x, y, w, h;
 
 	// setup the refdef
@@ -1339,11 +1341,22 @@ static void PlateSelection_DrawMenu( void ) {
 	origin[1] = 0;
 	origin[2] = 0;
 
-	trap_R_ClearScene();
+        trap_R_ClearScene();
 
-	// draw license plate with selected skin
+        // draw license plate with selected skin
 
-	memset( &ent, 0, sizeof(ent) );
+        Com_sprintf( plateShaderName, sizeof( plateShaderName ), "models/players/plates/%s", s_plateSelection.plateSkin );
+
+        if ( s_plateSelection.plateSkin[0] && !Q_stricmpn( s_plateSelection.plateSkin, "usa_garage_", 11 ) ) {
+                plateShader = Q3R_RegisterGeneratedPlateShader( plateShaderName );
+                if ( !plateShader ) {
+                        plateShader = trap_R_RegisterShaderNoMip( plateShaderName );
+                }
+        } else {
+                plateShader = trap_R_RegisterShaderNoMip( plateShaderName );
+        }
+
+        memset( &ent, 0, sizeof(ent) );
 
 	VectorSet( angles, 45, 45, 45 );
 	AnglesToAxis( angles, ent.axis );
