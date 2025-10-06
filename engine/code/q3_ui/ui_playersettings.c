@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "ui_local.h"
+#include "../qcommon/q_shared_plates.h"
 
 // STONELANCE
 /*
@@ -1351,7 +1352,17 @@ static void PlateSelection_DrawMenu( void ) {
 		ent.hModel = trap_R_RegisterModel("models/players/plates/plate_usa.md3");
 	else
 		ent.hModel = trap_R_RegisterModel("models/players/plates/plate_eu.md3");
-	ent.customShader = trap_R_RegisterShaderNoMip( va("models/players/plates/%s", s_plateSelection.plateSkin) );
+        {
+                const char *shaderName = va("models/players/plates/%s", s_plateSelection.plateSkin);
+                if ( Q3R_IsGeneratedPlateShaderName( shaderName ) ) {
+                        ent.customShader = Q3R_RegisterGeneratedPlateShader( shaderName );
+                        if ( !ent.customShader ) {
+                                ent.customShader = trap_R_RegisterShaderNoMip( shaderName );
+                        }
+                } else {
+                        ent.customShader = trap_R_RegisterShaderNoMip( shaderName );
+                }
+        }
 
 	VectorCopy( origin, ent.origin );
 	VectorCopy( origin, ent.lightingOrigin );
@@ -1364,7 +1375,17 @@ static void PlateSelection_DrawMenu( void ) {
 
 /*
 	qhandle_t	plate;
-	plate = trap_R_RegisterShaderNoMip( va("models/players/plates/%s", s_plateSelection.plateSkin) );
+        {
+                const char *shaderName = va("models/players/plates/%s", s_plateSelection.plateSkin);
+                if ( Q3R_IsGeneratedPlateShaderName( shaderName ) ) {
+                        plate = Q3R_RegisterGeneratedPlateShader( shaderName );
+                        if ( !plate ) {
+                                plate = trap_R_RegisterShaderNoMip( shaderName );
+                        }
+                } else {
+                        plate = trap_R_RegisterShaderNoMip( shaderName );
+                }
+        }
 
 	if (strstr(s_plateSelection.plateSkin, "usa_"))
 		UI_DrawHandlePic(250+32, 215, 64, 32, plate);
