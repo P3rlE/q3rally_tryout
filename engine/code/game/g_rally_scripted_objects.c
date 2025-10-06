@@ -22,8 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "g_local.h"
-
-#define		MAX_SCRIPT_TEXT		8192
+#include "../shared/rally_script_parser.h"
 
 /* collision types */
 #define		CT_BOX			0
@@ -33,49 +32,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 /* Global temporary force vector for testing */
 vec3_t		tempForce;
 
-qboolean SeekToSection( char **pointer, char *str ){
-	char		*token;
-
-	/* UPDATE: using strstr instead? */
-	/* UPDATE: check if end of file is inside of a bracket (ie bad brackets in script file) */
-
-	/* seek to 'str {' */
-	while ( 1 ) {
-		token = COM_Parse( pointer );
-
-		if( !token || token[0] == 0 )
-			return qfalse;
-
-		if ( !Q_stricmp( token, "{" ) ){
-			/* loop through this */
-			while ( 1 ) {
-				token = COM_Parse( pointer );
-
-				if( !token || token[0] == 0 )
-					return qfalse;
-
-				if ( !Q_stricmp( token, "}" ) )
-					break;
-			}
-		}
-
-		if ( !Q_stricmp( token, str ) )
-			break;
-	}
-
-	if( !token || token[0] == 0 ) /* model not found */
-		return qfalse;
-
-	return qtrue;
-}
-
 qboolean G_ParseScriptedObject( gentity_t *ent ){
-	char		*text_p;
-	int			len, i;
-	char		*token;
-	char		text[MAX_SCRIPT_TEXT];
-	char		filename[MAX_QPATH];
-	fileHandle_t	f;
+	rallyScriptObjectDef_t config;
+	char			text[RSP_MAX_SCRIPT_TEXT];
+	char			filename[MAX_QPATH];
 
 	/* setup defaults */
 	ent->takedamage = qfalse;
@@ -95,37 +55,12 @@ qboolean G_ParseScriptedObject( gentity_t *ent ){
 	/* if( Q_stricmp( ent->script, "models/mapobjects/barrels/barrel01" ) ) */
 	/*	return qfalse; */
 
-	Q_strncpyz(filename, ent->script, sizeof(filename));
-	token = strchr(filename, '.');
-	if (!token)
-		Q_strcat(filename, sizeof(filename), ".script");
-
-	if (g_developer.integer)
-		Com_Printf("Attempting to load script %s\n", filename);
-
-	/* load the file */
-	len = trap_FS_FOpenFile( filename, &f, FS_READ );
-
-	if ( !f ){
-		Com_Printf("Could not find script %s\n", filename);
+	if ( !RSP_LoadScriptText( ent->script, text, sizeof( text ), filename, sizeof( filename ),
+			trap_FS_FOpenFile, trap_FS_Read, trap_FS_FCloseFile, Com_Printf, g_developer.integer ) ) {
 		return qfalse;
 	}
 
-	if ( len >= MAX_SCRIPT_TEXT ) {
-		len = MAX_SCRIPT_TEXT - 1;
-	}
-
-	trap_FS_Read( text, len, f );
-	text[len] = 0;
-
-	trap_FS_FCloseFile( f );
-
-	/* parse the text */
-	text_p = text;
-
-	/* seek to "rally_scripted_object {" */
-	if ( !SeekToSection( &text_p, "rally_scripted_object" ) ){
-		Com_Printf( "Script file '%s' did not contain rally_scripted_object\n", filename );
+	if ( !RSP_ParseScriptedObject( text, filename, &config, Com_Printf ) ) {
 		return qfalse;
 	}
 
@@ -133,152 +68,43 @@ qboolean G_ParseScriptedObject( gentity_t *ent ){
 	/* to do all of the drawing and stuff server side. */
 	ent->s.modelindex = G_ScriptIndex( ent->script );
 
-	/* read optional parameters */
-	while ( 1 ) {
-		token = COM_Parse( &text_p );
-
-		if( !token || token[0] == 0 || !Q_stricmp( token, "}" ) ) {
-			break;
-		}
-
-		if ( !Q_stricmp( token, "{" ) )
-			continue;
-
-		if (g_developer.integer)
-			Com_Printf("Found token: %s\n", token);
-
-		if ( !Q_stricmp( token, "type" ) ){
-			token = COM_Parse( &text_p );
-			if ( !token ) {
-				break;
-			}
-
-			ent->s.weapon = atoi(token);
-
-			continue;
-		}
-		else if ( !Q_stricmp( token, "model" ) ){
-			COM_Parse( &text_p );
-		}
-		else if ( !Q_stricmp( token, "deadmodel" ) ){
-			COM_Parse( &text_p );
-		}
-		else if ( !Q_stricmp( token, "moveable" ) ){
-			token = COM_Parse( &text_p );
-			if ( !token ) {
-				break;
-			}
-
-			ent->moveable = atoi(token);
-
-			continue;
-		}
-		else if ( !Q_stricmp( token, "elasticity" ) ){
-			token = COM_Parse( &text_p );
-			if ( !token ) {
-				break;
-			}
-
-			ent->elasticity = atof(token);
-
-			continue;
-		}
-		else if ( !Q_stricmp( token, "mass" ) ){
-			token = COM_Parse( &text_p );
-			if ( !token ) {
-				break;
-			}
-
-			ent->mass = atoi(token);
-			if (ent->mass <= 0)
-				ent->mass = 100;
-
-			continue;
-		}
-		else if ( !Q_stricmp( token, "frames" ) ){
-			COM_Parse( &text_p );
-			COM_Parse( &text_p );
-			COM_Parse( &text_p );
-			COM_Parse( &text_p );
-		}
-		else if ( !Q_stricmp( token, "health" ) ){
-			token = COM_Parse( &text_p );
-			if ( !token ) {
-				break;
-			}
-
-			ent->maxHealth = ent->health = atoi(token);
-			if (ent->health >= 0)
-				ent->takedamage = qtrue;
-
-			continue;
-		}
-		else if ( !Q_stricmp( token, "mins" ) ){
-			for (i = 0; i < 3; i++){
-				token = COM_Parse( &text_p );
-				if ( !token ) break;
-
-				ent->r.mins[i] = atof(token);
-			}
-
-			continue;
-		}
-		else if ( !Q_stricmp( token, "maxs" ) ){
-			for (i = 0; i < 3; i++){
-				token = COM_Parse( &text_p );
-				if ( !token ) break;
-
-				ent->r.maxs[i] = atof(token);
-			}
-
-			continue;
-		}
-		else if ( !Q_stricmp( token, "hitsound" ) ){
-			COM_Parse( &text_p );
-		}
-		else if ( !Q_stricmp( token, "presound" ) ){
-			COM_Parse( &text_p );
-		}
-		else if ( !Q_stricmp( token, "postsound" ) ){
-			COM_Parse( &text_p );
-		}
-		else if ( !Q_stricmp( token, "destroysound" ) ){
-			COM_Parse( &text_p );
-		}
-		else if ( !Q_stricmp( token, "gibs" ) ) {
-			/* skip gibs part of script (it is only used client side) */
-			token = COM_Parse( &text_p );
-			if ( !token ) {
-				break;
-			}
-
-			if ( !Q_stricmp( token, "{" ) ){
-				/* loop through this */
-				while ( 1 ) {
-					token = COM_Parse( &text_p );
-
-					if( !token || token[0] == 0 )
-						return qfalse;
-
-					if ( !Q_stricmp( token, "}" ) )
-						break;
-				}
-			}
-
-			continue;
-		}
-		else {
-			Com_Printf("Warning: Skipping unknown token %s in %s\n", token, filename);
-			continue;
-		}
+	if ( config.hasType ) {
+		ent->s.weapon = config.type;
 	}
 
-	if (g_developer.integer)
+	if ( config.hasMoveable ) {
+		ent->moveable = config.moveable;
+	}
+
+	if ( config.hasElasticity ) {
+		ent->elasticity = config.elasticity;
+	}
+
+	if ( config.hasMass ) {
+		ent->mass = config.mass;
+		if ( ent->mass <= 0 )
+			ent->mass = 100;
+	}
+
+	if ( config.hasHealth ) {
+		ent->maxHealth = ent->health = config.health;
+		if ( ent->health >= 0 )
+			ent->takedamage = qtrue;
+	}
+
+	if ( config.hasMins ) {
+		VectorCopy( config.mins, ent->r.mins );
+	}
+
+	if ( config.hasMaxs ) {
+		VectorCopy( config.maxs, ent->r.maxs );
+	}
+
+	if ( g_developer.integer )
 		Com_Printf("Successfully parsed script file\n");
 
 	return qtrue;
 }
-
 void G_ScriptedObject_Destroy( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int damage, int mod ){
 	Com_Printf("Destroying scripted map object %s\n", self->classname);
 

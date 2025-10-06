@@ -285,6 +285,7 @@ ASMDIR=$(MOUNT_DIR)/asm
 SYSDIR=$(MOUNT_DIR)/sys
 GDIR=$(MOUNT_DIR)/game
 CGDIR=$(MOUNT_DIR)/cgame
+SHAREDDIR=$(MOUNT_DIR)/shared
 BLIBDIR=$(MOUNT_DIR)/botlib
 NDIR=$(MOUNT_DIR)/null
 UIDIR=$(MOUNT_DIR)/ui
@@ -2729,6 +2730,7 @@ Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_rally_racetools.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_rearweapons.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_scripted_objects.o \
+  $(B)/$(BASEGAME)/cgame/rally_script_parser.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_tools.o \
   $(B)/$(BASEGAME)/cgame/cg_scoreboard.o \
   $(B)/$(BASEGAME)/cgame/cg_ladder.o \
@@ -2838,6 +2840,7 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/game/g_rally_racetools.o \
   $(B)/$(BASEGAME)/game/g_rally_rearweapon.o \
   $(B)/$(BASEGAME)/game/g_rally_scripted_objects.o \
+  $(B)/$(BASEGAME)/game/rally_script_parser.o \
   $(B)/$(BASEGAME)/game/g_rally_tools.o \
   $(B)/$(BASEGAME)/game/g_session.o \
   $(B)/$(BASEGAME)/game/g_spawn.o \
@@ -3178,6 +3181,12 @@ $(B)/$(BASEGAME)/cgame/%.o: $(CGDIR)/%.c
 $(B)/$(BASEGAME)/cgame/q_shared_plates.o: $(CMDIR)/q_shared_plates.c
 	$(DO_CGAME_CC)
 
+$(B)/$(BASEGAME)/cgame/rally_script_parser.o: $(SHAREDDIR)/rally_script_parser.c
+	$(DO_CGAME_CC)
+
+$(B)/$(BASEGAME)/cgame/rally_script_parser.asm: $(SHAREDDIR)/rally_script_parser.c $(Q3LCC)
+	$(DO_CGAME_Q3LCC)
+
 $(B)/$(BASEGAME)/cgame/bg_%.asm: $(GDIR)/bg_%.c $(Q3LCC)
 	$(DO_CGAME_Q3LCC)
 
@@ -3208,6 +3217,12 @@ $(B)/$(MISSIONPACK)/cgame/q_shared_plates.asm: $(CMDIR)/q_shared_plates.c $(Q3LC
 
 $(B)/$(BASEGAME)/game/%.o: $(GDIR)/%.c
 	$(DO_GAME_CC)
+
+$(B)/$(BASEGAME)/game/rally_script_parser.o: $(SHAREDDIR)/rally_script_parser.c
+	$(DO_GAME_CC)
+
+$(B)/$(BASEGAME)/game/rally_script_parser.asm: $(SHAREDDIR)/rally_script_parser.c $(Q3LCC)
+	$(DO_GAME_Q3LCC)
 
 $(B)/$(BASEGAME)/game/%.asm: $(GDIR)/%.c $(Q3LCC)
 	$(DO_GAME_Q3LCC)
