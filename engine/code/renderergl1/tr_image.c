@@ -31,6 +31,26 @@ int		gl_filter_max = GL_LINEAR;
 #define FILE_HASH_SIZE		1024
 static	image_t*		hashTable[FILE_HASH_SIZE];
 
+static qboolean R_ImageHasAlpha( const byte *pixels, int width, int height, imgType_t type ) {
+	int i;
+
+	if ( !pixels || width <= 0 || height <= 0 ) {
+		return qfalse;
+	}
+
+	if ( type != IMGTYPE_COLORALPHA ) {
+		return qfalse;
+	}
+
+	for ( i = 0; i < width * height; i++ ) {
+		if ( pixels[i * 4 + 3] != 255 ) {
+			return qtrue;
+		}
+	}
+
+	return qfalse;
+}
+
 /*
 ** R_GammaCorrect
 */
@@ -860,6 +880,7 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height,
 
 	image->type = type;
 	image->flags = flags;
+	image->hasAlpha = R_ImageHasAlpha( pic, width, height, type );
 
 	strcpy (image->imgName, name);
 
