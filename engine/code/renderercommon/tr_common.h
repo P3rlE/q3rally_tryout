@@ -43,7 +43,8 @@ typedef enum
 	IMGFLAG_NO_COMPRESSION = 0x0010,
 	IMGFLAG_NOLIGHTSCALE   = 0x0020,
 	IMGFLAG_CLAMPTOEDGE    = 0x0040,
-	IMGFLAG_GENNORMALMAP   = 0x0080,
+       IMGFLAG_GENNORMALMAP   = 0x0080,
+       IMGFLAG_HAS_ALPHA      = 0x0100,
 } imgFlags_t;
 
 typedef struct image_s {
@@ -58,10 +59,7 @@ typedef struct image_s {
 	int			TMU;				// only needed for voodoo2
 
 	imgType_t   type;
-	imgFlags_t  flags;
-	qboolean    hasAlpha;
-
-	qboolean    hasAlpha;
+       imgFlags_t  flags;
 
 	struct image_s*	next;
 } image_t;

@@ -2278,8 +2278,7 @@ image_t *R_CreateImage2( const char *name, byte *pic, int width, int height, GLe
 	tr.numImages++;
 
 	image->type = type;
-	image->flags = flags;
-	image->hasAlpha = qfalse;
+	image->flags = flags & ~IMGFLAG_HAS_ALPHA;
 
 	strcpy (image->imgName, name);
 
@@ -2362,7 +2361,9 @@ image_t *R_CreateImage2( const char *name, byte *pic, int width, int height, GLe
 
 	image->uploadWidth = width;
 	image->uploadHeight = height;
-	image->hasAlpha = R_ImageHasAlpha( pic, width, height, type, picFormat );
+	if ( R_ImageHasAlpha( pic, width, height, type, picFormat ) ) {
+		image->flags |= IMGFLAG_HAS_ALPHA;
+	}
 
 	// Allocate texture storage so we don't have to worry about it later.
 	mipWidth = width;
@@ -2617,7 +2618,9 @@ image_t	*R_FindImageFile( const char *name, imgType_t type, imgFlags_t flags )
 		if ( !strcmp( name, image->imgName ) ) {
 			// the white image can be used with any set of parms, but other mismatches are errors
 			if ( strcmp( name, "*white" ) ) {
-				if ( image->flags != flags ) {
+				imgFlags_t existingFlags = image->flags & ~IMGFLAG_HAS_ALPHA;
+				imgFlags_t requestedFlags = flags & ~IMGFLAG_HAS_ALPHA;
+				if ( existingFlags != requestedFlags ) {
 					ri.Printf( PRINT_DEVELOPER, "WARNING: reused image %s with mixed flags (%i vs %i)\n", name, image->flags, flags );
 				}
 			}

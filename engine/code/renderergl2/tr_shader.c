@@ -3653,7 +3653,7 @@ qhandle_t RE_RegisterShaderLightMap( const char *name, int lightmapIndex, qboole
 			stageImage = stage->bundle[0].image[0];
                 }
 
-		if ( stageImage && stageImage->hasAlpha && !stage->bundle[0].isLightmap ) {
+                if ( stageImage && ( stageImage->flags & IMGFLAG_HAS_ALPHA ) && !stage->bundle[0].isLightmap ) {
 			stage->stateBits &= ~( GLS_DEPTHMASK_TRUE | GLS_DSTBLEND_BITS | GLS_SRCBLEND_BITS );
 			stage->stateBits |= GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
 
