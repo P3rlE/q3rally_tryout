@@ -13,4 +13,6 @@ qboolean Q3R_CreateLicensePlateImage( const char *templateImage,
                                       const char *name,
                                       int maxChars );
 
+qhandle_t Q3R_RegisterGeneratedPlateShader( const char *shaderName );
+
 #endif /* Q_SHARED_PLATES_H */
