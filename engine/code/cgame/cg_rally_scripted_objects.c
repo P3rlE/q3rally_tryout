@@ -120,10 +120,14 @@ qboolean CG_ParseScriptedObject( centity_t *cent, const char *scriptName ){
 		return qfalse;
 	}
 
-       model[0] = 0;
-       deadmodel[0] = 0;
+	model[0] = 0;
+	deadmodel[0] = 0;
 
-       cent->numGibModels = 0;
+	// Models can be referenced directly by path or via a section that contains a "model" token.
+	cent->modelHandle = 0;
+	cent->deadModelHandle = 0;
+
+	cent->numGibModels = 0;
        cent->gibsSpawned = qfalse;
        memset( cent->gibModels, 0, sizeof( cent->gibModels ) );
        memset( cent->gibSounds, 0, sizeof( cent->gibSounds ) );
@@ -325,21 +329,51 @@ qboolean CG_ParseScriptedObject( centity_t *cent, const char *scriptName ){
 	}
 
 	if ( model[0] ){
+		qboolean foundModelPath = qfalse;
+
 		// reset the pointer
 		text_p = text;
 
 		if ( !SeekToSection( &text_p, model ) ){
 //			Com_Printf( "'%s' section not found in script file, assuming it was an actual filename\n", model );
 
-			cent->modelHandle = trap_R_RegisterModel( deadmodel );
+			cent->modelHandle = trap_R_RegisterModel( model );
 		}
 		else {
-			Com_Printf( "Loading model info for '%s'\n", model );
-			// load model info
+			while ( 1 ) {
+				token = COM_Parse( &text_p );
+
+				if ( !token || token[0] == 0 ) {
+					break;
+				}
+
+				if ( !Q_stricmp( token, "{" ) ) {
+					continue;
+				}
+
+				if ( !Q_stricmp( token, "}" ) ) {
+					break;
+				}
+
+				if ( !Q_stricmp( token, "model" ) ) {
+					token = COM_Parse( &text_p );
+					if ( token && token[0] ) {
+						cent->modelHandle = trap_R_RegisterModel( token );
+						foundModelPath = qtrue;
+					}
+					break;
+				}
+			}
+
+			if ( !foundModelPath ) {
+				cent->modelHandle = trap_R_RegisterModel( model );
+			}
 		}
 	}
 
 	if ( deadmodel[0] ){
+		qboolean foundDeadModelPath = qfalse;
+
 		// reset the pointer
 		text_p = text;
 
@@ -349,8 +383,34 @@ qboolean CG_ParseScriptedObject( centity_t *cent, const char *scriptName ){
 			cent->deadModelHandle = trap_R_RegisterModel( deadmodel );
 		}
 		else {
-			Com_Printf( "Loading deadmodel info for '%s'\n", deadmodel );
-			// load deadmodel info
+			while ( 1 ) {
+				token = COM_Parse( &text_p );
+
+				if ( !token || token[0] == 0 ) {
+					break;
+				}
+
+				if ( !Q_stricmp( token, "{" ) ) {
+					continue;
+				}
+
+				if ( !Q_stricmp( token, "}" ) ) {
+					break;
+				}
+
+				if ( !Q_stricmp( token, "model" ) ) {
+					token = COM_Parse( &text_p );
+					if ( token && token[0] ) {
+						cent->deadModelHandle = trap_R_RegisterModel( token );
+						foundDeadModelPath = qtrue;
+					}
+					break;
+				}
+			}
+
+			if ( !foundDeadModelPath ) {
+				cent->deadModelHandle = trap_R_RegisterModel( deadmodel );
+			}
 		}
 	}
 
