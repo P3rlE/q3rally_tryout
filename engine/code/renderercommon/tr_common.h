@@ -59,6 +59,7 @@ typedef struct image_s {
 
 	imgType_t   type;
 	imgFlags_t  flags;
+	qboolean    hasAlpha;
 
 	qboolean    hasAlpha;
 

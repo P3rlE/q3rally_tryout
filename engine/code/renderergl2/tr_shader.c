@@ -3647,8 +3647,13 @@ qhandle_t RE_RegisterShaderLightMap( const char *name, int lightmapIndex, qboole
 
 	if ( implicitBlend && !sh->explicitlyDefined && lightmapIndex == LIGHTMAP_NONE && sh->numUnfoggedPasses > 0 ) {
 		shaderStage_t *stage = sh->stages[0];
+		image_t *stageImage = NULL;
 
-		if ( stage && stage->bundle[0].image[0] && !stage->bundle[0].isLightmap ) {
+		if ( stage ) {
+			stageImage = stage->bundle[0].image[0];
+                }
+
+		if ( stageImage && stageImage->hasAlpha && !stage->bundle[0].isLightmap ) {
 			stage->stateBits &= ~( GLS_DEPTHMASK_TRUE | GLS_DSTBLEND_BITS | GLS_SRCBLEND_BITS );
 			stage->stateBits |= GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
 
