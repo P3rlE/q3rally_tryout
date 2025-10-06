@@ -849,6 +849,24 @@ done:
 }
 
 
+static qboolean ImageHasAlpha( const byte *pic, int width, int height ) {
+	int count;
+	int i;
+
+	if ( !pic ) {
+		return qfalse;
+	}
+
+	count = width * height;
+	for ( i = 0; i < count; i++, pic += 4 ) {
+		if ( pic[3] != 255 ) {
+			return qtrue;
+		}
+	}
+
+	return qfalse;
+}
+
 /*
 ================
 R_CreateImage
