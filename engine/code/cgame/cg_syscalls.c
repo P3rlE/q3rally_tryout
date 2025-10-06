@@ -258,11 +258,15 @@ qhandle_t trap_R_RegisterSkin( const char *name ) {
 }
 
 qhandle_t trap_R_RegisterShader( const char *name ) {
-	return syscall( CG_R_REGISTERSHADER, name );
+    return syscall( CG_R_REGISTERSHADER, name );
+}
+
+qhandle_t trap_R_RegisterShaderLightMap( const char *name, int lightmapIndex ) {
+    return syscall( CG_R_REGISTERSHADERLIGHTMAP, name, lightmapIndex );
 }
 
 qhandle_t trap_R_RegisterShaderNoMip( const char *name ) {
-	return syscall( CG_R_REGISTERSHADERNOMIP, name );
+    return syscall( CG_R_REGISTERSHADERNOMIP, name );
 }
 
 void trap_R_RegisterFont(const char *fontName, int pointSize, fontInfo_t *font) {

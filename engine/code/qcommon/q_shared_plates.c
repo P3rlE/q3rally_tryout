@@ -18,6 +18,12 @@ Shared license plate utilities for cgame and UI modules.
 #include "q_shared.h"
 #endif
 
+#if defined( CGAME ) || defined( UI )
+#ifndef LIGHTMAP_NONE
+#define LIGHTMAP_NONE -1
+#endif
+#endif
+
 #define PLATE_POOLSIZE   (512 * 1024)
 
 static byte    plateMemoryPool[PLATE_POOLSIZE];
@@ -231,7 +237,7 @@ static qboolean Q3R_SaveTGA( plateTexture_t *texture, const char *filename ) {
     header[2] = texture->height % 256;
     header[3] = texture->height / 256;
     header[4] = texture->bpp;
-    header[5] = 0;
+    header[5] = 8;
 
     trap_FS_Write( TGAheader, sizeof( TGAheader ), imageFile );
     trap_FS_Write( header, sizeof( header ), imageFile );
@@ -239,6 +245,19 @@ static qboolean Q3R_SaveTGA( plateTexture_t *texture, const char *filename ) {
     trap_FS_FCloseFile( imageFile );
 
     return qtrue;
+}
+
+qhandle_t Q3R_RegisterGeneratedPlateShader( const char *shaderName ) {
+#if defined( CGAME ) || defined( UI )
+    if ( !shaderName || !*shaderName ) {
+        return 0;
+    }
+
+    return trap_R_RegisterShaderLightMap( shaderName, LIGHTMAP_NONE );
+#else
+    (void)shaderName;
+    return 0;
+#endif
 }
 
 qboolean Q3R_CreateLicensePlateImage( const char *templateImage,
