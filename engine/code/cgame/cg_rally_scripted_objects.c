@@ -94,6 +94,18 @@ qboolean CG_ParseScriptedObject( centity_t *cent, const char *scriptName ){
 
 //	Com_Printf("Attempting to load script %s\n", filename);
 
+	cent->hitSound = 0;
+	cent->preSoundLoop = 0;
+	cent->postSoundLoop = 0;
+	cent->destroySound = 0;
+	cent->activeScriptLoop = 0;
+	cent->scriptDestroyPending = qfalse;
+	cent->scriptLastEvent = cent->currentState.event;
+	cent->hitSoundName[0] = '\0';
+	cent->preSoundLoopName[0] = '\0';
+	cent->postSoundLoopName[0] = '\0';
+	cent->destroySoundName[0] = '\0';
+
 	// load the file
 	len = trap_FS_FOpenFile( filename, &f, FS_READ );
 
@@ -458,10 +470,54 @@ void CG_Scripted_Object( centity_t *cent ){
                         return;
                 }
 
-		if ( CG_ParseScriptedObject( cent, scriptName ) )
-			cent->scriptLoadTime = cg.time;
-		else
-			return;
+                if ( CG_ParseScriptedObject( cent, scriptName ) )
+                        cent->scriptLoadTime = cg.time;
+                else
+                        return;
+        }
+
+        if ( cent->scriptLastEvent != s1->event ) {
+                int eventType = s1->event & ~EV_EVENT_BITS;
+
+                if ( eventType == EV_GENERAL_SOUND ) {
+                        const char *eventSound = CG_ConfigString( CS_SOUNDS + s1->eventParm );
+
+                        if ( eventSound && eventSound[0] ) {
+                                if ( cent->destroySoundName[0] && !Q_stricmp( eventSound, cent->destroySoundName ) ) {
+                                        cent->scriptDestroyPending = qtrue;
+                                } else if ( cent->hitSoundName[0] && !Q_stricmp( eventSound, cent->hitSoundName ) ) {
+                                        cent->scriptDestroyPending = qfalse;
+                                }
+                        }
+                }
+
+                cent->scriptLastEvent = s1->event;
+        }
+
+        if ( s1->eFlags & EF_DEAD ) {
+                cent->scriptDestroyPending = qfalse;
+        }
+
+        {
+                qhandle_t desiredLoop = 0;
+
+                if ( ( s1->eFlags & EF_DEAD ) || cent->scriptDestroyPending ) {
+                        if ( cent->postSoundLoop ) {
+                                desiredLoop = cent->postSoundLoop;
+                        }
+                } else if ( cent->preSoundLoop ) {
+                        desiredLoop = cent->preSoundLoop;
+                }
+
+                if ( desiredLoop != cent->activeScriptLoop ) {
+                        if ( desiredLoop ) {
+                                trap_S_AddLoopingSound( s1->number, cent->lerpOrigin, vec3_origin, desiredLoop );
+                        } else if ( cent->activeScriptLoop ) {
+                                trap_S_StopLoopingSound( s1->number );
+                        }
+
+                        cent->activeScriptLoop = desiredLoop;
+                }
         }
 
        if ( (cent->currentState.eFlags & EF_DEAD) && !cent->gibsSpawned ) {
