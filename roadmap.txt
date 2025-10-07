@@ -1,4 +1,8 @@
-New features planned for 0.5
+# Q3Rally Roadmap
+
+## English
+
+### New features planned for 0.5
 
 - switch between analog and digital gauge
 - optical effects for sand and snow (and others?)
@@ -13,8 +17,33 @@ New features planned for 0.5
 - Porting the Flamethrower from Return to Castle Wolfenstein
 - rotating weapons (maybe, for now only a thought)
 
-Finished features
+### Finished features
 
 - Make unique logos for 4 teams (Like UT99)
 - finishing the flag status hud for domination
 - finished 4 Teams Domination
+
+---
+
+## Deutsch
+
+### Neue Features geplant für Version 0.5
+
+- Umschaltmöglichkeit zwischen analogem und digitalem Tachometer
+- Optische Effekte für Sand und Schnee (und eventuell weitere Untergründe)
+- Online-Bestzeitenliste für Rennstrecken (ähnlich einer Ladder)
+- Discord-Schaltfläche im Hauptmenü mit direktem Link zum Discord-Server
+- Neuer Spielmodus Last Man Standing (mit allen Waffen)
+- Neuer Spielmodus Drag Race
+- Spielmodus Demolition Derby auf ausschließliche Nutzung der Kettensäge umstellen
+- Rotation der Menü-Musik
+- Geheime Autolackierungen (ähnlich Krusade aus Q3A)
+- Fertigstellung des 4-Teams-CTF-Modus
+- Port des Flammenwerfers aus Return to Castle Wolfenstein
+- Rotierende Waffen (eventuell, derzeit nur eine Idee)
+
+### Abgeschlossene Features
+
+- Individuelle Logos für 4 Teams (ähnlich UT99)
+- Fertigstellung des Flaggenstatus-HUDs für Domination
+- 4-Teams-Domination abgeschlossen
