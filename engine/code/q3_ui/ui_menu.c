@@ -73,7 +73,7 @@ typedef struct {
 
 
 static mainmenu_t s_main;
-static qboolean s_updatePopupShown = qfalse;
+static char     s_updateLastStatus[32];
 static char     s_updateLineVersion[128];
 static char     s_updateLineMessage[MAX_STRING_CHARS];
 static char     s_updateLineUrl[MAX_STRING_CHARS];
@@ -181,24 +181,48 @@ static void UI_MaybeShowUpdateDialog( void ) {
 
         trap_Cvar_VariableStringBuffer( "cl_updateStatus", status, sizeof( status ) );
 
-        if ( Q_stricmp( status, "outdated" ) != 0 ) {
-                s_updatePopupShown = qfalse;
+        if ( Q_stricmp( status, s_updateLastStatus ) == 0 ) {
                 return;
         }
 
-        if ( s_updatePopupShown ) {
+        Q_strncpyz( s_updateLastStatus, status, sizeof( s_updateLastStatus ) );
+
+        if ( Q_stricmp( status, "outdated" ) != 0 && Q_stricmp( status, "error" ) != 0 ) {
                 return;
         }
 
-        s_updatePopupShown = qtrue;
+        trap_Cvar_VariableStringBuffer( "cl_updateMessage", message, sizeof( message ) );
+        trap_Cvar_VariableStringBuffer( "cl_updateUrl", url, sizeof( url ) );
+
+        lineCount = 0;
+
+        if ( Q_stricmp( status, "error" ) == 0 ) {
+                const char *heading;
+
+                heading = "Update-Prüfung fehlgeschlagen";
+                s_updateDialogLines[lineCount++] = heading;
+
+                if ( message[0] ) {
+                        Q_strncpyz( s_updateLineMessage, message, sizeof( s_updateLineMessage ) );
+                } else {
+                        Q_strncpyz( s_updateLineMessage, "Der Update-Server hat eine ungültige Antwort geliefert.", sizeof( s_updateLineMessage ) );
+                }
+                s_updateDialogLines[lineCount++] = s_updateLineMessage;
+
+                if ( url[0] ) {
+                        Com_sprintf( s_updateLineUrl, sizeof( s_updateLineUrl ), "Details: %s", url );
+                        s_updateDialogLines[lineCount++] = s_updateLineUrl;
+                }
+
+                s_updateDialogLines[lineCount] = NULL;
+                UI_Message( s_updateDialogLines );
+                return;
+        }
 
         trap_Cvar_VariableStringBuffer( "cl_updateLatest", latest, sizeof( latest ) );
-        trap_Cvar_VariableStringBuffer( "cl_updateUrl", url, sizeof( url ) );
-        trap_Cvar_VariableStringBuffer( "cl_updateMessage", message, sizeof( message ) );
 
         Com_sprintf( s_updateLineVersion, sizeof( s_updateLineVersion ), "Neue Version verfügbar: %s", latest[0] ? latest : "unbekannt" );
 
-        lineCount = 0;
         s_updateDialogLines[lineCount++] = s_updateLineVersion;
 
         if ( message[0] ) {
