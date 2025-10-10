@@ -444,6 +444,7 @@ AddTeamScore
  for gametype GT_TEAM the level.teamScores is updated in AddScore in g_combat.c
 ==============
 */
+/*
 static int G_TeamLeadSoundForTeam( team_t team ) {
 	switch ( team ) {
 	case TEAM_RED:
