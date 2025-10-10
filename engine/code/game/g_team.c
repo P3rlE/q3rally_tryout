@@ -445,14 +445,6 @@ AddTeamScore
 ==============
 */
 /*
-================
-G_TeamLeadSoundForTeam
-================
-
-Map a four-team roster to the existing announcer cues. We reuse the
-classic red/blue samples for their adjacent colours (green/yellow), so
-no additional sound assets are required for CTF4.
-*/
 static int G_TeamLeadSoundForTeam( team_t team ) {
 	switch ( team ) {
 	case TEAM_RED:
