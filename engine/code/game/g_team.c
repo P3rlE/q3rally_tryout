@@ -23,7 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 
 #include "g_local.h"
-#include <limits.h>
 
 #ifndef INT_MAX
 #define INT_MAX 0x7fffffff
@@ -452,7 +451,7 @@ AddTeamScore
  for gametype GT_TEAM the level.teamScores is updated in AddScore in g_combat.c
 ==============
 */
-/*
+
 static int G_TeamLeadSoundForTeam( team_t team ) {
 	switch ( team ) {
 	case TEAM_RED:
