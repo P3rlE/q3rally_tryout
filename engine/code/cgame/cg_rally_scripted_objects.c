@@ -245,46 +245,50 @@ qboolean CG_ParseScriptedObject( centity_t *cent, const char *scriptName ){
 
 			continue;
 		}
-		else if ( !Q_stricmp( token, "hitsound" ) ){
-			token = COM_Parse( &text_p );
+                else if ( !Q_stricmp( token, "hitsound" ) ){
+                        token = COM_Parse( &text_p );
+                        if ( !token ) {
+                                break;
+                        }
+
+                        cent->hitSound = trap_S_RegisterSound( token, qfalse );
+                        Q_strncpyz( cent->hitSoundName, token, sizeof( cent->hitSoundName ) );
+
+                        continue;
+                }
+                else if ( !Q_stricmp( token, "presound" ) ){
+                        token = COM_Parse( &text_p );
+                        if ( !token ) {
+                                break;
+                        }
+
+                        cent->preSoundLoop = trap_S_RegisterSound( token, qfalse );
+                        Q_strncpyz( cent->preSoundLoopName, token, sizeof( cent->preSoundLoopName ) );
+
+                        continue;
+                }
+                else if ( !Q_stricmp( token, "postsound" ) ){
+                        token = COM_Parse( &text_p );
 			if ( !token ) {
 				break;
-			}
+                        }
 
-			cent->hitSound = trap_S_RegisterSound( token, qfalse );
+                        cent->postSoundLoop = trap_S_RegisterSound( token, qfalse );
+                        Q_strncpyz( cent->postSoundLoopName, token, sizeof( cent->postSoundLoopName ) );
 
-			continue;
-		}
-		else if ( !Q_stricmp( token, "presound" ) ){
-			token = COM_Parse( &text_p );
+                        continue;
+                }
+                else if ( !Q_stricmp( token, "destroysound" ) ){
+                        token = COM_Parse( &text_p );
 			if ( !token ) {
 				break;
-			}
+                        }
 
-			cent->preSoundLoop = trap_S_RegisterSound( token, qfalse );
+                        cent->destroySound = trap_S_RegisterSound( token, qfalse );
+                        Q_strncpyz( cent->destroySoundName, token, sizeof( cent->destroySoundName ) );
 
-			continue;
-		}
-		else if ( !Q_stricmp( token, "postsound" ) ){
-			token = COM_Parse( &text_p );
-			if ( !token ) {
-				break;
-			}
-
-			cent->postSoundLoop = trap_S_RegisterSound( token, qfalse );
-
-			continue;
-		}
-		else if ( !Q_stricmp( token, "destroysound" ) ){
-			token = COM_Parse( &text_p );
-			if ( !token ) {
-				break;
-			}
-
-			cent->destroySound = trap_S_RegisterSound( token, qfalse );
-
-			continue;
-		}
+                        continue;
+                }
                else if ( !Q_stricmp( token, "gibs" ) ) {
                        token = COM_Parse( &text_p );
                        if ( !token ) {
