@@ -25,6 +25,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../botlib/botlib.h"
 #include "../qcommon/json.h"
 
+#include <ctype.h>
+
 extern	botlib_export_t	*botlib_export;
 
 vm_t *uivm;
@@ -49,6 +51,7 @@ static qboolean               cl_ladderRequestQueued = qfalse;
 static void CL_LadderCleanupRequest( qboolean releaseResources );
 static void CL_LadderCancelRequest( void );
 static void CL_LadderSetError( const char *message );
+
 
 static qboolean CL_LadderBufferEnsureCapacity( ladderDownloadBuffer_t *buffer, size_t required ) {
         char    *newData;
@@ -253,13 +256,48 @@ static void CL_LadderCleanupRequest( qboolean releaseResources ) {
 
 static void CL_LadderCancelRequest( void ) {
         CL_LadderCleanupRequest( qfalse );
-        CL_LadderResetStatus();
+	CL_LadderResetStatus();
 }
 #else
 static void CL_LadderCancelRequest( void ) {
-        CL_LadderResetStatus();
+	CL_LadderCleanupRequest( qfalse );
+	CL_LadderResetStatus();
 }
 #endif // USE_CURL
+
+static void CL_UpdateEnsureCvars( void );
+static void CL_UpdateResetStatus( void );
+static void CL_UpdateSetStatus( const char *status, const char *latest, const char *url, const char *message );
+static void CL_UpdateHandleResponse( void );
+static qboolean CL_UpdateParseResponse( const char *data, size_t length, char *latestOut, size_t latestSize, char *urlOut, size_t urlSize, char *messageOut, size_t messageSize );
+static int CL_UpdateCompareVersions( const char *localVersion, const char *remoteVersion );
+static void CL_UpdateNormalizeMessage( char *text );
+
+static cvar_t *cl_updateEndpoint = NULL;
+static cvar_t *cl_updateCheck = NULL;
+static cvar_t *cl_updateStatusCvar = NULL;
+static cvar_t *cl_updateLatestCvar = NULL;
+static cvar_t *cl_updateUrlCvar = NULL;
+static cvar_t *cl_updateMessageCvar = NULL;
+
+#ifdef USE_CURL
+typedef struct {
+        char    *data;
+        size_t  length;
+        size_t  capacity;
+} updateDownloadBuffer_t;
+
+static CURLM                  *cl_updateCurlMulti = NULL;
+static CURL                   *cl_updateCurlEasy = NULL;
+static updateDownloadBuffer_t cl_updateBuffer;
+static qboolean               cl_updateRequestQueued = qfalse;
+
+static qboolean CL_UpdateBufferEnsureCapacity( updateDownloadBuffer_t *buffer, size_t required );
+static void CL_UpdateCleanupRequest( qboolean releaseResources );
+static size_t CL_UpdateCurlWrite( void *contents, size_t size, size_t nmemb, void *userp );
+#else
+static void CL_UpdateCleanupRequest( qboolean releaseResources ) { (void)releaseResources; }
+#endif
 
 void CL_LadderPumpRequest( void ) {
 #ifdef USE_CURL
@@ -438,6 +476,579 @@ static void CL_LadderRequestData( const char *mode, const char *timeframe, const
         CL_LadderSetError( "Ladder data requires a build with cURL support." );
 #endif
 }
+
+static void CL_UpdateEnsureCvars( void ) {
+        if ( !cl_updateStatusCvar ) {
+                cl_updateStatusCvar = Cvar_Get( "cl_updateStatus", "idle", CVAR_ROM | CVAR_NORESTART );
+        }
+
+        if ( !cl_updateLatestCvar ) {
+                cl_updateLatestCvar = Cvar_Get( "cl_updateLatest", "", CVAR_ROM | CVAR_NORESTART );
+        }
+
+        if ( !cl_updateUrlCvar ) {
+                cl_updateUrlCvar = Cvar_Get( "cl_updateUrl", "", CVAR_ROM | CVAR_NORESTART );
+        }
+
+        if ( !cl_updateMessageCvar ) {
+                cl_updateMessageCvar = Cvar_Get( "cl_updateMessage", "", CVAR_ROM | CVAR_NORESTART );
+        }
+
+        if ( !cl_updateEndpoint ) {
+                cl_updateEndpoint = Cvar_Get( "cl_updateEndpoint", "https://ladder.q3rally.com/api/v1/version", CVAR_ARCHIVE );
+        }
+
+        if ( !cl_updateCheck ) {
+                cl_updateCheck = Cvar_Get( "cl_updateCheck", "1", CVAR_ARCHIVE );
+        }
+}
+
+static void CL_UpdateSetStatus( const char *status, const char *latest, const char *url, const char *message ) {
+        CL_UpdateEnsureCvars();
+
+        Cvar_Set( cl_updateStatusCvar->name, status ? status : "" );
+        Cvar_Set( cl_updateLatestCvar->name, latest ? latest : "" );
+        Cvar_Set( cl_updateUrlCvar->name, url ? url : "" );
+        Cvar_Set( cl_updateMessageCvar->name, message ? message : "" );
+}
+
+static void CL_UpdateTrim( char *text ) {
+        char    *start;
+        char    *end;
+        size_t  length;
+
+        if ( !text ) {
+                return;
+        }
+
+        start = text;
+        while ( *start && (unsigned char)*start <= ' ' ) {
+                start++;
+        }
+
+        end = start + strlen( start );
+        while ( end > start && (unsigned char)end[-1] <= ' ' ) {
+                end--;
+        }
+
+        length = end - start;
+        if ( start != text && length > 0 ) {
+                memmove( text, start, length );
+        }
+        text[length] = '\0';
+}
+
+static void CL_UpdateNormalizeMessage( char *text ) {
+        char            *src;
+        char            *dst;
+        qboolean        inSpace;
+
+        if ( !text ) {
+                return;
+        }
+
+        src = text;
+        dst = text;
+        inSpace = qtrue;
+
+        while ( *src ) {
+                char ch = *src++;
+
+                if ( ch == '\r' || ch == '\n' || ch == '\t' ) {
+                        ch = ' ';
+                }
+
+                if ( ch == ' ' ) {
+                        if ( inSpace ) {
+                                continue;
+                        }
+                        inSpace = qtrue;
+                } else {
+                        inSpace = qfalse;
+                }
+
+                *dst++ = ch;
+        }
+
+        if ( dst > text && dst[-1] == ' ' ) {
+                dst--;
+        }
+
+        *dst = '\0';
+}
+
+static void CL_UpdateResetStatus( void ) {
+        CL_UpdateSetStatus( "idle", "", "", "" );
+}
+
+static int CL_UpdateCompareVersions( const char *localVersion, const char *remoteVersion ) {
+        int localParts[6] = {0};
+        int remoteParts[6] = {0};
+        int i;
+
+        if ( !remoteVersion || !remoteVersion[0] ) {
+                return 0;
+        }
+
+        if ( !localVersion || !localVersion[0] ) {
+                return -1;
+        }
+
+        {
+                const char *cursor;
+                int         index;
+
+                cursor = localVersion;
+                index = 0;
+                while ( *cursor && index < 6 ) {
+                        while ( *cursor && !isdigit( (unsigned char)*cursor ) ) {
+                                cursor++;
+                        }
+
+                        if ( !*cursor ) {
+                                break;
+                        }
+
+                        while ( *cursor && isdigit( (unsigned char)*cursor ) ) {
+                                localParts[index] = localParts[index] * 10 + ( *cursor - '0' );
+                                cursor++;
+                        }
+
+                        index++;
+                }
+
+                cursor = remoteVersion;
+                index = 0;
+                while ( *cursor && index < 6 ) {
+                        while ( *cursor && !isdigit( (unsigned char)*cursor ) ) {
+                                cursor++;
+                        }
+
+                        if ( !*cursor ) {
+                                break;
+                        }
+
+                        while ( *cursor && isdigit( (unsigned char)*cursor ) ) {
+                                remoteParts[index] = remoteParts[index] * 10 + ( *cursor - '0' );
+                                cursor++;
+                        }
+
+                        index++;
+                }
+        }
+
+        for ( i = 0; i < 6; i++ ) {
+                if ( localParts[i] < remoteParts[i] ) {
+                        return -1;
+                }
+
+                if ( localParts[i] > remoteParts[i] ) {
+                        return 1;
+                }
+        }
+
+        return Q_stricmp( localVersion, remoteVersion );
+}
+
+static qboolean CL_UpdateParseResponse( const char *data, size_t length, char *latestOut, size_t latestSize, char *urlOut, size_t urlSize, char *messageOut, size_t messageSize ) {
+        const char      *jsonEnd;
+        const char      *node;
+        const char      *root;
+
+        if ( !data || !length ) {
+                return qfalse;
+        }
+
+        latestOut[0] = '\0';
+        urlOut[0] = '\0';
+        messageOut[0] = '\0';
+
+        jsonEnd = data + length;
+        root = data;
+
+        node = JSON_ObjectGetNamedValue( root, jsonEnd, "data" );
+        if ( node ) {
+                root = node;
+        }
+
+        node = JSON_ObjectGetNamedValue( root, jsonEnd, "latest" );
+        if ( !node ) {
+                node = JSON_ObjectGetNamedValue( root, jsonEnd, "latestVersion" );
+        }
+        if ( !node ) {
+                node = JSON_ObjectGetNamedValue( root, jsonEnd, "version" );
+        }
+
+        if ( node ) {
+                JSON_ValueGetString( node, jsonEnd, latestOut, latestSize );
+        }
+
+        node = JSON_ObjectGetNamedValue( root, jsonEnd, "downloadUrl" );
+        if ( !node ) {
+                node = JSON_ObjectGetNamedValue( root, jsonEnd, "url" );
+        }
+        if ( node ) {
+                JSON_ValueGetString( node, jsonEnd, urlOut, urlSize );
+        }
+
+        node = JSON_ObjectGetNamedValue( root, jsonEnd, "message" );
+        if ( !node ) {
+                node = JSON_ObjectGetNamedValue( root, jsonEnd, "notes" );
+        }
+        if ( node ) {
+                JSON_ValueGetString( node, jsonEnd, messageOut, messageSize );
+        }
+
+        if ( latestOut[0] ) {
+                CL_UpdateTrim( latestOut );
+                CL_UpdateTrim( urlOut );
+                CL_UpdateNormalizeMessage( messageOut );
+                return qtrue;
+        }
+
+        {
+                const char *cursor;
+                const char *end;
+                size_t      index;
+
+                cursor = data;
+                end = data + length;
+
+                while ( cursor < end && ( *cursor == '\n' || *cursor == '\r' || *cursor == '\t' || *cursor == ' ' ) ) {
+                        cursor++;
+                }
+
+                index = 0;
+                while ( cursor < end && *cursor != '\n' && *cursor != '\r' && index + 1 < latestSize ) {
+                        latestOut[index++] = *cursor++;
+                }
+                latestOut[index] = '\0';
+
+                while ( cursor < end && ( *cursor == '\n' || *cursor == '\r' ) ) {
+                        cursor++;
+                }
+
+                index = 0;
+                while ( cursor < end && *cursor != '\n' && *cursor != '\r' && index + 1 < urlSize ) {
+                        urlOut[index++] = *cursor++;
+                }
+                urlOut[index] = '\0';
+
+                while ( cursor < end && ( *cursor == '\n' || *cursor == '\r' ) ) {
+                        cursor++;
+                }
+
+                index = 0;
+                while ( cursor < end && index + 1 < messageSize ) {
+                        char ch = *cursor++;
+                        if ( ch == '\r' || ch == '\n' ) {
+                                if ( index > 0 && messageOut[index - 1] != ' ' ) {
+                                        messageOut[index++] = ' ';
+                                }
+                                continue;
+                        }
+                        messageOut[index++] = ch;
+                }
+                messageOut[index] = '\0';
+
+                CL_UpdateTrim( latestOut );
+                CL_UpdateTrim( urlOut );
+                CL_UpdateNormalizeMessage( messageOut );
+        }
+
+        return latestOut[0] != '\0';
+}
+
+static void CL_UpdateHandleResponse( void ) {
+#ifdef USE_CURL
+        char    latest[64];
+        char    url[MAX_STRING_CHARS];
+        char    message[MAX_STRING_CHARS];
+        int     comparison;
+
+        if ( !cl_updateBuffer.data || cl_updateBuffer.length == 0 ) {
+                CL_UpdateSetStatus( "error", "", "", "Leere Antwort vom Update-Server." );
+                return;
+        }
+
+        if ( !CL_UpdateParseResponse( cl_updateBuffer.data, cl_updateBuffer.length, latest, sizeof( latest ), url, sizeof( url ), message, sizeof( message ) ) ) {
+                        CL_UpdateSetStatus( "error", "", "", "Ungültige Antwort vom Update-Server." );
+                        return;
+        }
+
+        comparison = CL_UpdateCompareVersions( PRODUCT_VERSION, latest );
+
+        if ( !message[0] && comparison < 0 ) {
+                Q_strncpyz( message, "Eine neue Q3Rally-Version ist verfügbar.", sizeof( message ) );
+        }
+
+        if ( comparison < 0 ) {
+                CL_UpdateSetStatus( "outdated", latest, url, message );
+                Com_Printf( S_COLOR_YELLOW "Update verfügbar:" S_COLOR_WHITE " Installiert %s, neu %s\n", PRODUCT_VERSION, latest );
+        } else {
+                CL_UpdateSetStatus( "up_to_date", latest, url, message );
+        }
+#else
+        CL_UpdateSetStatus( "error", "", "", "Update-Prüfung erfordert eine Build mit cURL-Unterstützung." );
+#endif
+}
+
+#ifdef USE_CURL
+static qboolean CL_UpdateBufferEnsureCapacity( updateDownloadBuffer_t *buffer, size_t required ) {
+        char    *newData;
+        size_t  newCapacity;
+
+        if ( required <= buffer->capacity ) {
+                return qtrue;
+        }
+
+        newCapacity = buffer->capacity ? buffer->capacity : 1024;
+        while ( newCapacity < required ) {
+                newCapacity *= 2;
+        }
+
+        newData = (char *)Z_Malloc( newCapacity );
+        if ( !newData ) {
+                return qfalse;
+        }
+
+        if ( buffer->data && buffer->length > 0 ) {
+                Com_Memcpy( newData, buffer->data, buffer->length );
+        }
+
+        if ( buffer->data ) {
+                Z_Free( buffer->data );
+        }
+
+        buffer->data = newData;
+        buffer->capacity = newCapacity;
+        return qtrue;
+}
+
+static size_t CL_UpdateCurlWrite( void *contents, size_t size, size_t nmemb, void *userp ) {
+        updateDownloadBuffer_t  *buffer;
+        size_t                  bytes;
+
+        buffer = (updateDownloadBuffer_t *)userp;
+        bytes = size * nmemb;
+
+        if ( !buffer || !bytes ) {
+                return bytes;
+        }
+
+        if ( !CL_UpdateBufferEnsureCapacity( buffer, buffer->length + bytes + 1 ) ) {
+                return 0;
+        }
+
+        Com_Memcpy( buffer->data + buffer->length, contents, bytes );
+        buffer->length += bytes;
+        buffer->data[buffer->length] = '\0';
+
+        return bytes;
+}
+
+static void CL_UpdateCleanupRequest( qboolean releaseResources ) {
+        if ( cl_updateCurlMulti && cl_updateCurlEasy && cl_updateRequestQueued ) {
+                qcurl_multi_remove_handle( cl_updateCurlMulti, cl_updateCurlEasy );
+        }
+
+        cl_updateRequestQueued = qfalse;
+
+        if ( cl_updateCurlEasy ) {
+                if ( releaseResources ) {
+                        qcurl_easy_cleanup( cl_updateCurlEasy );
+                        cl_updateCurlEasy = NULL;
+                } else {
+#ifdef USE_CURL_DLOPEN
+                        if ( qcurl_easy_reset ) {
+                                qcurl_easy_reset( cl_updateCurlEasy );
+                        } else {
+                                qcurl_easy_cleanup( cl_updateCurlEasy );
+                                cl_updateCurlEasy = NULL;
+                        }
+#else
+                        qcurl_easy_reset( cl_updateCurlEasy );
+#endif
+                }
+        }
+
+        cl_updateBuffer.length = 0;
+        if ( cl_updateBuffer.data ) {
+                cl_updateBuffer.data[0] = '\0';
+        }
+
+        if ( releaseResources ) {
+                if ( cl_updateCurlMulti ) {
+                        qcurl_multi_cleanup( cl_updateCurlMulti );
+                        cl_updateCurlMulti = NULL;
+                }
+
+                if ( cl_updateBuffer.data ) {
+                        Z_Free( cl_updateBuffer.data );
+                        cl_updateBuffer.data = NULL;
+                        cl_updateBuffer.capacity = 0;
+                }
+        }
+}
+
+void CL_UpdatePumpRequest( void ) {
+        CURLMcode       multiCode;
+        CURLMsg         *msg;
+        int             queued;
+        int             running;
+
+        if ( !cl_updateCurlMulti || !cl_updateCurlEasy || !cl_updateRequestQueued ) {
+                return;
+        }
+
+        running = 0;
+        do {
+                multiCode = qcurl_multi_perform( cl_updateCurlMulti, &running );
+        } while ( multiCode == CURLM_CALL_MULTI_PERFORM );
+
+        if ( multiCode != CURLM_OK ) {
+                const char *message;
+
+#ifdef USE_CURL_DLOPEN
+                message = qcurl_multi_strerror ? qcurl_multi_strerror( multiCode ) : NULL;
+#else
+                message = qcurl_multi_strerror( multiCode );
+#endif
+                CL_UpdateSetStatus( "error", "", "", message ? message : "Update-Dienst nicht erreichbar." );
+                CL_UpdateCleanupRequest( qfalse );
+                return;
+        }
+
+        while ( ( msg = qcurl_multi_info_read( cl_updateCurlMulti, &queued ) ) != NULL ) {
+                long responseCode = 0;
+
+                if ( msg->easy_handle != cl_updateCurlEasy || msg->msg != CURLMSG_DONE ) {
+                        continue;
+                }
+
+                if ( msg->data.result != CURLE_OK ) {
+                        const char *message;
+
+#ifdef USE_CURL_DLOPEN
+                        message = qcurl_easy_strerror ? qcurl_easy_strerror( msg->data.result ) : NULL;
+#else
+                        message = qcurl_easy_strerror( msg->data.result );
+#endif
+                        CL_UpdateSetStatus( "error", "", "", message ? message : "Update-Dienst nicht erreichbar." );
+                        CL_UpdateCleanupRequest( qfalse );
+                        return;
+                }
+
+                qcurl_easy_getinfo( cl_updateCurlEasy, CURLINFO_RESPONSE_CODE, &responseCode );
+
+                if ( responseCode != 200 ) {
+                        CL_UpdateSetStatus( "error", "", "", va( "Update-Server antwortete mit %ld", responseCode ) );
+                        CL_UpdateCleanupRequest( qfalse );
+                        return;
+                }
+
+                CL_UpdateHandleResponse();
+                CL_UpdateCleanupRequest( qfalse );
+                break;
+        }
+}
+
+void CL_UpdateRequestLatest( void ) {
+        const char      *endpoint;
+        CURLMcode       multiResult;
+
+        CL_UpdateEnsureCvars();
+
+        if ( cl_updateCheck && !cl_updateCheck->integer ) {
+                CL_UpdateSetStatus( "disabled", "", "", "" );
+                return;
+        }
+
+        if ( cl_updateRequestQueued ) {
+                return;
+        }
+
+        if ( !CL_cURL_Init() ) {
+                CL_UpdateSetStatus( "error", "", "", "cURL-Unterstützung nicht verfügbar." );
+                return;
+        }
+
+        CL_UpdateCleanupRequest( qfalse );
+
+        if ( !cl_updateCurlMulti ) {
+                cl_updateCurlMulti = qcurl_multi_init();
+                if ( !cl_updateCurlMulti ) {
+                        CL_UpdateSetStatus( "error", "", "", "Konnte HTTP-Kontext nicht erstellen." );
+                        return;
+                }
+        }
+
+        if ( !cl_updateCurlEasy ) {
+                cl_updateCurlEasy = qcurl_easy_init();
+        }
+
+        if ( !cl_updateCurlEasy ) {
+                CL_UpdateSetStatus( "error", "", "", "Konnte HTTP-Client nicht initialisieren." );
+                return;
+        }
+
+        endpoint = cl_updateEndpoint ? cl_updateEndpoint->string : "";
+        if ( !endpoint || !endpoint[0] ) {
+                CL_UpdateSetStatus( "error", "", "", "cl_updateEndpoint ist nicht gesetzt." );
+                return;
+        }
+
+        cl_updateBuffer.length = 0;
+        if ( cl_updateBuffer.data ) {
+                cl_updateBuffer.data[0] = '\0';
+        }
+
+        qcurl_easy_setopt( cl_updateCurlEasy, CURLOPT_URL, endpoint );
+        qcurl_easy_setopt( cl_updateCurlEasy, CURLOPT_FOLLOWLOCATION, 1L );
+        qcurl_easy_setopt( cl_updateCurlEasy, CURLOPT_FAILONERROR, 0L );
+        qcurl_easy_setopt( cl_updateCurlEasy, CURLOPT_WRITEFUNCTION, CL_UpdateCurlWrite );
+        qcurl_easy_setopt( cl_updateCurlEasy, CURLOPT_WRITEDATA, &cl_updateBuffer );
+        qcurl_easy_setopt( cl_updateCurlEasy, CURLOPT_USERAGENT, Q3_VERSION );
+        qcurl_easy_setopt( cl_updateCurlEasy, CURLOPT_NOSIGNAL, 1L );
+        qcurl_easy_setopt( cl_updateCurlEasy, CURLOPT_TIMEOUT, 10L );
+        qcurl_easy_setopt( cl_updateCurlEasy, CURLOPT_CONNECTTIMEOUT, 5L );
+
+        multiResult = qcurl_multi_add_handle( cl_updateCurlMulti, cl_updateCurlEasy );
+        if ( multiResult != CURLM_OK ) {
+                const char *message;
+
+#ifdef USE_CURL_DLOPEN
+                message = qcurl_multi_strerror ? qcurl_multi_strerror( multiResult ) : NULL;
+#else
+                message = qcurl_multi_strerror( multiResult );
+#endif
+                CL_UpdateSetStatus( "error", "", "", message ? message : "Update-Anfrage konnte nicht gestartet werden." );
+                CL_UpdateCleanupRequest( qfalse );
+                return;
+        }
+
+        cl_updateRequestQueued = qtrue;
+        CL_UpdateSetStatus( "checking", "", "", "" );
+}
+
+void CL_UpdateShutdown( void ) {
+        CL_UpdateCleanupRequest( qtrue );
+        CL_UpdateResetStatus();
+}
+#else
+void CL_UpdatePumpRequest( void ) {
+        (void)0;
+}
+
+void CL_UpdateRequestLatest( void ) {
+        CL_UpdateEnsureCvars();
+        CL_UpdateSetStatus( "error", "", "", "Update-Prüfung erfordert eine Build mit cURL-Unterstützung." );
+}
+
+void CL_UpdateShutdown( void ) {
+        CL_UpdateResetStatus();
+}
+#endif
 
 /*
 ====================
@@ -1516,6 +2127,7 @@ void CL_ShutdownUI( void ) {
 #ifdef USE_CURL
         CL_LadderCleanupRequest( qtrue );
 #endif
+        CL_UpdateShutdown();
         CL_LadderResetStatus();
         if ( !uivm ) {
                 return;
@@ -1536,6 +2148,7 @@ void CL_InitUI( void ) {
 	int		v;
 	vmInterpret_t		interpret;
 
+	CL_UpdateResetStatus();
 	CL_LadderResetStatus();
 
 	// load the dll or bytecode
@@ -1571,6 +2184,8 @@ void CL_InitUI( void ) {
 		// init for this gamestate
 		VM_Call( uivm, UI_INIT, (clc.state >= CA_AUTHORIZING && clc.state < CA_ACTIVE) );
 	}
+
+	CL_UpdateRequestLatest();
 }
 
 #ifndef STANDALONE
