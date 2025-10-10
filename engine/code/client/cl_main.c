@@ -2991,6 +2991,7 @@ void CL_Frame ( int msec ) {
 
 	CL_LadderPumpRequest();
 #endif
+	CL_UpdatePumpRequest();
 
 	if ( cls.cddialog ) {
 		// bring up the cd error dialog if needed
