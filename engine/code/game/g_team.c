@@ -25,6 +25,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "g_local.h"
 #include <limits.h>
 
+#ifndef INT_MAX
+#define INT_MAX 0x7fffffff
+#endif
+
+#ifndef INT_MIN
+#define INT_MIN (-0x7fffffff - 1)
+#endif
+
 extern vmCvar_t g_dominationScoreInterval;
 extern vmCvar_t g_dominationCaptureDelay;
 
