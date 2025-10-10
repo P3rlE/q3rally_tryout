@@ -73,13 +73,156 @@ typedef struct {
 
 
 static mainmenu_t s_main;
-static qboolean s_updatePopupShown = qfalse;
-static char     s_updateLineVersion[128];
-static char     s_updateLineMessage[MAX_STRING_CHARS];
-static char     s_updateLineUrl[MAX_STRING_CHARS];
-static const char *s_updateDialogLines[5];
+static char     s_updateLastStatus[32];
+#define UPDATE_DIALOG_MAX_LINES   10
+#define UPDATE_DIALOG_MAX_WIDTH   440
+#define UPDATE_DIALOG_STYLE       (UI_CENTER|UI_INVERSE|UI_SMALLFONT)
+
+static char     s_updateDialogLineBuffer[UPDATE_DIALOG_MAX_LINES][MAX_STRING_CHARS];
+static const char *s_updateDialogLines[UPDATE_DIALOG_MAX_LINES + 1];
+static int      s_updateDialogLineCount;
 
 static void UI_MaybeShowUpdateDialog( void );
+static void UI_UpdateDialogReset( void );
+static void UI_UpdateDialogAddLine( const char *text );
+static void UI_UpdateDialogAddWrappedText( const char *text );
+
+static void UI_UpdateDialogReset( void ) {
+        int i;
+
+        s_updateDialogLineCount = 0;
+        for ( i = 0; i < UPDATE_DIALOG_MAX_LINES + 1; ++i ) {
+                s_updateDialogLines[i] = NULL;
+        }
+}
+
+static qboolean UI_UpdateDialogPushLine( const char *text ) {
+        if ( s_updateDialogLineCount >= UPDATE_DIALOG_MAX_LINES ) {
+                return qfalse;
+        }
+
+        Q_strncpyz( s_updateDialogLineBuffer[s_updateDialogLineCount], text, sizeof( s_updateDialogLineBuffer[0] ) );
+        s_updateDialogLines[s_updateDialogLineCount] = s_updateDialogLineBuffer[s_updateDialogLineCount];
+        s_updateDialogLineCount++;
+        s_updateDialogLines[s_updateDialogLineCount] = NULL;
+
+        return qtrue;
+}
+
+static void UI_UpdateDialogAddLine( const char *text ) {
+        (void)UI_UpdateDialogPushLine( text );
+}
+
+static void UI_UpdateDialogWrapSegment( const char *segment, float sizeScale, int maxWidth ) {
+        char            current[MAX_STRING_CHARS];
+        const char      *cursor;
+
+        current[0] = '\0';
+        cursor = segment;
+
+        while ( *cursor ) {
+                const char *wordEnd;
+                int         wordLen;
+                char        word[MAX_STRING_CHARS];
+                char        candidate[MAX_STRING_CHARS];
+                int         width;
+
+                while ( *cursor == ' ' ) {
+                        cursor++;
+                }
+
+                if ( !*cursor ) {
+                        break;
+                }
+
+                wordEnd = cursor;
+                while ( *wordEnd && *wordEnd != ' ' ) {
+                        wordEnd++;
+                }
+
+                wordLen = wordEnd - cursor;
+                if ( wordLen >= (int)sizeof( word ) ) {
+                        wordLen = sizeof( word ) - 1;
+                }
+
+                Com_Memcpy( word, cursor, wordLen );
+                word[wordLen] = '\0';
+
+                if ( current[0] ) {
+                        Com_sprintf( candidate, sizeof( candidate ), "%s %s", current, word );
+                } else {
+                        Q_strncpyz( candidate, word, sizeof( candidate ) );
+                }
+
+                width = UI_ProportionalStringWidth( candidate ) * sizeScale;
+
+                if ( width > maxWidth && current[0] ) {
+                        if ( !UI_UpdateDialogPushLine( current ) ) {
+                                return;
+                        }
+                        Q_strncpyz( current, word, sizeof( current ) );
+                } else if ( width > maxWidth ) {
+                        if ( !UI_UpdateDialogPushLine( word ) ) {
+                                return;
+                        }
+                        current[0] = '\0';
+                } else {
+                        Q_strncpyz( current, candidate, sizeof( current ) );
+                }
+
+                cursor = wordEnd;
+        }
+
+        if ( current[0] ) {
+                (void)UI_UpdateDialogPushLine( current );
+        }
+}
+
+static void UI_UpdateDialogAddWrappedText( const char *text ) {
+        const float     sizeScale = UI_ProportionalSizeScale( UPDATE_DIALOG_STYLE );
+        const int       maxWidth = UPDATE_DIALOG_MAX_WIDTH;
+        const char      *segmentStart;
+
+        if ( !text || !text[0] ) {
+                return;
+        }
+
+        segmentStart = text;
+        while ( *segmentStart && s_updateDialogLineCount < UPDATE_DIALOG_MAX_LINES ) {
+                const char *newline = strchr( segmentStart, '\n' );
+                int         segmentLen;
+                char        segment[MAX_STRING_CHARS];
+
+                if ( newline ) {
+                        segmentLen = newline - segmentStart;
+                } else {
+                        segmentLen = strlen( segmentStart );
+                }
+
+                if ( segmentLen <= 0 ) {
+                        if ( !UI_UpdateDialogPushLine( "" ) ) {
+                                break;
+                        }
+                } else {
+                        if ( segmentLen >= (int)sizeof( segment ) ) {
+                                segmentLen = sizeof( segment ) - 1;
+                        }
+
+                        Com_Memcpy( segment, segmentStart, segmentLen );
+                        segment[segmentLen] = '\0';
+                        UI_UpdateDialogWrapSegment( segment, sizeScale, maxWidth );
+                        if ( s_updateDialogLineCount >= UPDATE_DIALOG_MAX_LINES ) {
+                                break;
+                        }
+                }
+
+                if ( !newline ) {
+                        break;
+                }
+
+                segmentStart = newline + 1;
+        }
+}
 
 /*
 =================
@@ -177,42 +320,58 @@ static void UI_MaybeShowUpdateDialog( void ) {
         char latest[64];
         char url[MAX_STRING_CHARS];
         char message[MAX_STRING_CHARS];
-        int  lineCount;
+        char lineBuffer[MAX_STRING_CHARS];
 
         trap_Cvar_VariableStringBuffer( "cl_updateStatus", status, sizeof( status ) );
 
-        if ( Q_stricmp( status, "outdated" ) != 0 ) {
-                s_updatePopupShown = qfalse;
+        if ( Q_stricmp( status, s_updateLastStatus ) == 0 ) {
                 return;
         }
 
-        if ( s_updatePopupShown ) {
+        Q_strncpyz( s_updateLastStatus, status, sizeof( s_updateLastStatus ) );
+
+        if ( Q_stricmp( status, "outdated" ) != 0 && Q_stricmp( status, "error" ) != 0 ) {
                 return;
         }
 
-        s_updatePopupShown = qtrue;
+        UI_UpdateDialogReset();
+
+        trap_Cvar_VariableStringBuffer( "cl_updateMessage", message, sizeof( message ) );
+        trap_Cvar_VariableStringBuffer( "cl_updateUrl", url, sizeof( url ) );
+
+        if ( Q_stricmp( status, "error" ) == 0 ) {
+                UI_UpdateDialogAddLine( "Update check failed" );
+
+                if ( message[0] ) {
+                        UI_UpdateDialogAddWrappedText( message );
+                } else {
+                        UI_UpdateDialogAddWrappedText( "The update service returned an invalid response." );
+                }
+
+                if ( url[0] ) {
+                        Com_sprintf( lineBuffer, sizeof( lineBuffer ), "Details: %s", url );
+                        UI_UpdateDialogAddWrappedText( lineBuffer );
+                }
+
+                UI_Message( s_updateDialogLines );
+                return;
+        }
 
         trap_Cvar_VariableStringBuffer( "cl_updateLatest", latest, sizeof( latest ) );
-        trap_Cvar_VariableStringBuffer( "cl_updateUrl", url, sizeof( url ) );
-        trap_Cvar_VariableStringBuffer( "cl_updateMessage", message, sizeof( message ) );
 
-        Com_sprintf( s_updateLineVersion, sizeof( s_updateLineVersion ), "Neue Version verfügbar: %s", latest[0] ? latest : "unbekannt" );
-
-        lineCount = 0;
-        s_updateDialogLines[lineCount++] = s_updateLineVersion;
+        Com_sprintf( lineBuffer, sizeof( lineBuffer ), "New version available: %s", latest[0] ? latest : "unknown" );
+        UI_UpdateDialogAddLine( lineBuffer );
 
         if ( message[0] ) {
-                Q_strncpyz( s_updateLineMessage, message, sizeof( s_updateLineMessage ) );
-                s_updateDialogLines[lineCount++] = s_updateLineMessage;
+                UI_UpdateDialogAddWrappedText( message );
         }
 
         if ( url[0] ) {
-                Com_sprintf( s_updateLineUrl, sizeof( s_updateLineUrl ), "Download: %s", url );
-                s_updateDialogLines[lineCount++] = s_updateLineUrl;
+                Com_sprintf( lineBuffer, sizeof( lineBuffer ), "Download: %s", url );
+                UI_UpdateDialogAddWrappedText( lineBuffer );
         }
 
-        s_updateDialogLines[lineCount++] = "Bitte aktualisiere, um die neuesten Verbesserungen zu erhalten!";
-        s_updateDialogLines[lineCount] = NULL;
+        UI_UpdateDialogAddWrappedText( "Please update to get the latest improvements!" );
 
         UI_Message( s_updateDialogLines );
 }
