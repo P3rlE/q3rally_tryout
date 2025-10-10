@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 
 #include "g_local.h"
+#include <limits.h>
 
 #ifndef INT_MAX
 #define INT_MAX 0x7fffffff
@@ -452,14 +453,6 @@ AddTeamScore
 ==============
 */
 /*
-================
-G_TeamLeadSoundForTeam
-================
-
-Map a four-team roster to the existing announcer cues. We reuse the
-classic red/blue samples for their adjacent colours (green/yellow), so
-no additional sound assets are required for CTF4.
-*/
 static int G_TeamLeadSoundForTeam( team_t team ) {
 	switch ( team ) {
 	case TEAM_RED:
