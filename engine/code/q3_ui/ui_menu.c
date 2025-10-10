@@ -73,6 +73,13 @@ typedef struct {
 
 
 static mainmenu_t s_main;
+static qboolean s_updatePopupShown = qfalse;
+static char     s_updateLineVersion[128];
+static char     s_updateLineMessage[MAX_STRING_CHARS];
+static char     s_updateLineUrl[MAX_STRING_CHARS];
+static const char *s_updateDialogLines[5];
+
+static void UI_MaybeShowUpdateDialog( void );
 
 /*
 =================
@@ -161,8 +168,53 @@ void MainMenu_Update( void ){
 
         trap_Cvar_VariableStringBuffer( "rim", s_main.rimskin, sizeof( s_main.rimskin ) );
         trap_Cvar_VariableStringBuffer( "head", s_main.headskin, sizeof( s_main.headskin ) );
-       
+
         MainMenu_UpdateModel();
+}
+
+static void UI_MaybeShowUpdateDialog( void ) {
+        char status[32];
+        char latest[64];
+        char url[MAX_STRING_CHARS];
+        char message[MAX_STRING_CHARS];
+        int  lineCount;
+
+        trap_Cvar_VariableStringBuffer( "cl_updateStatus", status, sizeof( status ) );
+
+        if ( Q_stricmp( status, "outdated" ) != 0 ) {
+                s_updatePopupShown = qfalse;
+                return;
+        }
+
+        if ( s_updatePopupShown ) {
+                return;
+        }
+
+        s_updatePopupShown = qtrue;
+
+        trap_Cvar_VariableStringBuffer( "cl_updateLatest", latest, sizeof( latest ) );
+        trap_Cvar_VariableStringBuffer( "cl_updateUrl", url, sizeof( url ) );
+        trap_Cvar_VariableStringBuffer( "cl_updateMessage", message, sizeof( message ) );
+
+        Com_sprintf( s_updateLineVersion, sizeof( s_updateLineVersion ), "Neue Version verfügbar: %s", latest[0] ? latest : "unbekannt" );
+
+        lineCount = 0;
+        s_updateDialogLines[lineCount++] = s_updateLineVersion;
+
+        if ( message[0] ) {
+                Q_strncpyz( s_updateLineMessage, message, sizeof( s_updateLineMessage ) );
+                s_updateDialogLines[lineCount++] = s_updateLineMessage;
+        }
+
+        if ( url[0] ) {
+                Com_sprintf( s_updateLineUrl, sizeof( s_updateLineUrl ), "Download: %s", url );
+                s_updateDialogLines[lineCount++] = s_updateLineUrl;
+        }
+
+        s_updateDialogLines[lineCount++] = "Bitte aktualisiere, um die neuesten Verbesserungen zu erhalten!";
+        s_updateDialogLines[lineCount] = NULL;
+
+        UI_Message( s_updateDialogLines );
 }
 
 /*
@@ -468,6 +520,7 @@ void UI_MainMenu( void ) {
 
         UI_PushMenu ( &s_main.menu );
 
+        UI_MaybeShowUpdateDialog();
 
         uis.transitionIn = uis.realtime;
 
