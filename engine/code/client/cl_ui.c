@@ -495,7 +495,7 @@ static void CL_UpdateEnsureCvars( void ) {
         }
 
         if ( !cl_updateEndpoint ) {
-                cl_updateEndpoint = Cvar_Get( "cl_updateEndpoint", "https://ladder.q3rally.com/api/v1/version", CVAR_ARCHIVE );
+                cl_updateEndpoint = Cvar_Get( "cl_updateEndpoint", "https://ladder.q3rally.com/index.php/version", CVAR_ARCHIVE );
         }
 
         if ( !cl_updateCheck ) {

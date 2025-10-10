@@ -10,7 +10,7 @@ Sobald die UI initialisiert wird (`CL_InitUI`), wird `CL_UpdateRequestLatest` au
 
 Die Funktion `CL_UpdateRequestLatest` sorgt dafür, dass die benötigten Cvars existieren und prüft zunächst, ob `cl_updateCheck` aktiviert ist. Anschließend initialisiert sie (falls notwendig) die cURL-Handles, setzt das Ziel (`cl_updateEndpoint`) sowie weitere Optionen und reiht den Request in den Multi-Handle ein. Gleichzeitig wird der Status auf `checking` gesetzt.【F:engine/code/client/cl_ui.c†L480-L503】【F:engine/code/client/cl_ui.c†L956-L1032】
 
-Standardmäßig verweist `cl_updateEndpoint` auf `https://ladder.q3rally.com/api/v1/version`. Der Wert lässt sich aber per Cvar oder über die `q3config.cfg` überschreiben, falls ein eigener Server genutzt werden soll.【F:engine/code/client/cl_ui.c†L493-L503】
+Standardmäßig verweist `cl_updateEndpoint` auf `https://ladder.q3rally.com/index.php/version`. Der Wert lässt sich aber per Cvar oder über die `q3config.cfg` überschreiben, falls ein eigener Server genutzt werden soll.【F:engine/code/client/cl_ui.c†L493-L503】
 
 ### Erwartete Serverantwort
 
