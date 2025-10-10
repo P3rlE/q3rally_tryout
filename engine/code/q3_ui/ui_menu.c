@@ -353,6 +353,8 @@ static void Main_MenuDraw( void ) {
 
         Menu_Draw( &s_main.menu );
 
+        UI_MaybeShowUpdateDialog();
+
         if (uis.demoversion) {
 
                 UI_DrawProportionalString( 320, 432, "DEMO      FOR MATURE AUDIENCES      DEMO", UI_CENTER|UI_SMALLFONT, text_color_normal );
