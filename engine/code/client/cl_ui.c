@@ -272,6 +272,7 @@ static void CL_UpdateHandleResponse( void );
 static qboolean CL_UpdateParseResponse( const char *data, size_t length, char *latestOut, size_t latestSize, char *urlOut, size_t urlSize, char *messageOut, size_t messageSize );
 static int CL_UpdateCompareVersions( const char *localVersion, const char *remoteVersion );
 static void CL_UpdateNormalizeMessage( char *text );
+static qboolean CL_UpdateIsValidVersionString( const char *text );
 
 static cvar_t *cl_updateEndpoint = NULL;
 static cvar_t *cl_updateCheck = NULL;
@@ -577,6 +578,21 @@ static void CL_UpdateNormalizeMessage( char *text ) {
         *dst = '\0';
 }
 
+static qboolean CL_UpdateIsValidVersionString( const char *text ) {
+	if ( !text ) {
+		return qfalse;
+	}
+
+	while ( *text ) {
+		if ( isdigit( (unsigned char)*text ) ) {
+			return qtrue;
+		}
+		text++;
+	}
+
+	return qfalse;
+}
+
 static void CL_UpdateResetStatus( void ) {
         CL_UpdateSetStatus( "idle", "", "", "" );
 }
@@ -699,12 +715,18 @@ static qboolean CL_UpdateParseResponse( const char *data, size_t length, char *l
                 JSON_ValueGetString( node, jsonEnd, messageOut, messageSize );
         }
 
-        if ( latestOut[0] ) {
-                CL_UpdateTrim( latestOut );
-                CL_UpdateTrim( urlOut );
-                CL_UpdateNormalizeMessage( messageOut );
-                return qtrue;
-        }
+	if ( latestOut[0] ) {
+		CL_UpdateTrim( latestOut );
+		CL_UpdateTrim( urlOut );
+		CL_UpdateNormalizeMessage( messageOut );
+
+		if ( !CL_UpdateIsValidVersionString( latestOut ) ) {
+			latestOut[0] = '\0';
+			return qfalse;
+		}
+
+		return qtrue;
+	}
 
         {
                 const char *cursor;
@@ -751,12 +773,17 @@ static qboolean CL_UpdateParseResponse( const char *data, size_t length, char *l
                 }
                 messageOut[index] = '\0';
 
-                CL_UpdateTrim( latestOut );
-                CL_UpdateTrim( urlOut );
-                CL_UpdateNormalizeMessage( messageOut );
-        }
+		CL_UpdateTrim( latestOut );
+		CL_UpdateTrim( urlOut );
+		CL_UpdateNormalizeMessage( messageOut );
 
-        return latestOut[0] != '\0';
+		if ( !CL_UpdateIsValidVersionString( latestOut ) ) {
+			latestOut[0] = '\0';
+			return qfalse;
+		}
+	}
+
+	return latestOut[0] != '\0';
 }
 
 static void CL_UpdateHandleResponse( void ) {
