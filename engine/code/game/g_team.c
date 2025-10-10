@@ -727,6 +727,7 @@ void ValidateSigilsInMap( gentity_t *ent )
             Sigil_ResetOwnerClients( sigil );
           }
           teamgame.numSigils++;
+          Team_SetSigilStatus( teamgame.numSigils - 1, SIGIL_ISWHITE );
       }
       // kill the entity that does the spawn conversions
       G_FreeEntity(ent);
