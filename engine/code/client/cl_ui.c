@@ -794,29 +794,29 @@ static void CL_UpdateHandleResponse( void ) {
         int     comparison;
 
         if ( !cl_updateBuffer.data || cl_updateBuffer.length == 0 ) {
-                CL_UpdateSetStatus( "error", "", "", "Leere Antwort vom Update-Server." );
+                CL_UpdateSetStatus( "error", "", "", "Empty response from the update server." );
                 return;
         }
 
         if ( !CL_UpdateParseResponse( cl_updateBuffer.data, cl_updateBuffer.length, latest, sizeof( latest ), url, sizeof( url ), message, sizeof( message ) ) ) {
-                        CL_UpdateSetStatus( "error", "", "", "Ungültige Antwort vom Update-Server." );
+                        CL_UpdateSetStatus( "error", "", "", "Invalid response from the update server." );
                         return;
         }
 
         comparison = CL_UpdateCompareVersions( PRODUCT_VERSION, latest );
 
         if ( !message[0] && comparison < 0 ) {
-                Q_strncpyz( message, "Eine neue Q3Rally-Version ist verfügbar.", sizeof( message ) );
+                Q_strncpyz( message, "A new Q3Rally version is available.", sizeof( message ) );
         }
 
         if ( comparison < 0 ) {
                 CL_UpdateSetStatus( "outdated", latest, url, message );
-                Com_Printf( S_COLOR_YELLOW "Update verfügbar:" S_COLOR_WHITE " Installiert %s, neu %s\n", PRODUCT_VERSION, latest );
+                Com_Printf( S_COLOR_YELLOW "Update available:" S_COLOR_WHITE " Installed %s, latest %s\n", PRODUCT_VERSION, latest );
         } else {
                 CL_UpdateSetStatus( "up_to_date", latest, url, message );
         }
 #else
-        CL_UpdateSetStatus( "error", "", "", "Update-Prüfung erfordert eine Build mit cURL-Unterstützung." );
+        CL_UpdateSetStatus( "error", "", "", "Update check requires a build with cURL support." );
 #endif
 }
 
@@ -941,7 +941,7 @@ void CL_UpdatePumpRequest( void ) {
 #else
                 message = qcurl_multi_strerror( multiCode );
 #endif
-                CL_UpdateSetStatus( "error", "", "", message ? message : "Update-Dienst nicht erreichbar." );
+                CL_UpdateSetStatus( "error", "", "", message ? message : "Update service is not reachable." );
                 CL_UpdateCleanupRequest( qfalse );
                 return;
         }
@@ -961,7 +961,7 @@ void CL_UpdatePumpRequest( void ) {
 #else
                         message = qcurl_easy_strerror( msg->data.result );
 #endif
-                        CL_UpdateSetStatus( "error", "", "", message ? message : "Update-Dienst nicht erreichbar." );
+                        CL_UpdateSetStatus( "error", "", "", message ? message : "Update service is not reachable." );
                         CL_UpdateCleanupRequest( qfalse );
                         return;
                 }
@@ -969,7 +969,7 @@ void CL_UpdatePumpRequest( void ) {
                 qcurl_easy_getinfo( cl_updateCurlEasy, CURLINFO_RESPONSE_CODE, &responseCode );
 
                 if ( responseCode != 200 ) {
-                        CL_UpdateSetStatus( "error", "", "", va( "Update-Server antwortete mit %ld", responseCode ) );
+                        CL_UpdateSetStatus( "error", "", "", va( "Update server responded with HTTP %ld", responseCode ) );
                         CL_UpdateCleanupRequest( qfalse );
                         return;
                 }
@@ -996,7 +996,7 @@ void CL_UpdateRequestLatest( void ) {
         }
 
         if ( !CL_cURL_Init() ) {
-                CL_UpdateSetStatus( "error", "", "", "cURL-Unterstützung nicht verfügbar." );
+                CL_UpdateSetStatus( "error", "", "", "cURL support is not available." );
                 return;
         }
 
@@ -1005,7 +1005,7 @@ void CL_UpdateRequestLatest( void ) {
         if ( !cl_updateCurlMulti ) {
                 cl_updateCurlMulti = qcurl_multi_init();
                 if ( !cl_updateCurlMulti ) {
-                        CL_UpdateSetStatus( "error", "", "", "Konnte HTTP-Kontext nicht erstellen." );
+                        CL_UpdateSetStatus( "error", "", "", "Failed to create HTTP context." );
                         return;
                 }
         }
@@ -1015,13 +1015,13 @@ void CL_UpdateRequestLatest( void ) {
         }
 
         if ( !cl_updateCurlEasy ) {
-                CL_UpdateSetStatus( "error", "", "", "Konnte HTTP-Client nicht initialisieren." );
+                CL_UpdateSetStatus( "error", "", "", "Failed to initialise HTTP client." );
                 return;
         }
 
         endpoint = cl_updateEndpoint ? cl_updateEndpoint->string : "";
         if ( !endpoint || !endpoint[0] ) {
-                CL_UpdateSetStatus( "error", "", "", "cl_updateEndpoint ist nicht gesetzt." );
+                CL_UpdateSetStatus( "error", "", "", "cl_updateEndpoint is not set." );
                 return;
         }
 
@@ -1049,7 +1049,7 @@ void CL_UpdateRequestLatest( void ) {
 #else
                 message = qcurl_multi_strerror( multiResult );
 #endif
-                CL_UpdateSetStatus( "error", "", "", message ? message : "Update-Anfrage konnte nicht gestartet werden." );
+                CL_UpdateSetStatus( "error", "", "", message ? message : "Failed to start update request." );
                 CL_UpdateCleanupRequest( qfalse );
                 return;
         }
@@ -1069,7 +1069,7 @@ void CL_UpdatePumpRequest( void ) {
 
 void CL_UpdateRequestLatest( void ) {
         CL_UpdateEnsureCvars();
-        CL_UpdateSetStatus( "error", "", "", "Update-Prüfung erfordert eine Build mit cURL-Unterstützung." );
+        CL_UpdateSetStatus( "error", "", "", "Update check requires a build with cURL support." );
 }
 
 void CL_UpdateShutdown( void ) {
