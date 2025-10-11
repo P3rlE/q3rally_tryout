@@ -135,9 +135,9 @@ static void MessageMenu_Draw( void ) {
         int i;
 
         frameX = s_confirm.frameX ? s_confirm.frameX : 142;
-        frameY = s_confirm.frameY ? s_confirm.frameY : 66;
+        frameY = s_confirm.frameY ? s_confirm.frameY : 56;
         frameWidth = s_confirm.frameWidth ? s_confirm.frameWidth : 359;
-        frameHeight = s_confirm.frameHeight ? s_confirm.frameHeight : 256;
+        frameHeight = s_confirm.frameHeight ? s_confirm.frameHeight : 270;
         lineHeight = s_confirm.lineHeight ? s_confirm.lineHeight : 18;
 
         UI_DrawNamedPic( frameX, frameY, frameWidth, frameHeight, ART_CONFIRM_FRAME );
@@ -347,7 +347,7 @@ void UI_Message( const char **lines ) {
 		lineHeight = 18;
 	}
 
-        frameY = 66;
+        frameY = 56;
 	{
 		const int minFrameWidth = 420;
 		const int frameSidePadding = 180;
