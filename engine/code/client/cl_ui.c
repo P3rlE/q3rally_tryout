@@ -271,7 +271,6 @@ static void CL_UpdateSetStatus( const char *status, const char *latest, const ch
 static void CL_UpdateHandleResponse( void );
 static qboolean CL_UpdateParseResponse( const char *data, size_t length, char *latestOut, size_t latestSize, char *urlOut, size_t urlSize, char *messageOut, size_t messageSize );
 static int CL_UpdateCompareVersions( const char *localVersion, const char *remoteVersion );
-static void CL_UpdateNormalizeMessage( char *text );
 static void CL_UpdateStripWrappingQuotes( char *text );
 static qboolean CL_UpdateIsValidVersionString( const char *text );
 
@@ -547,43 +546,33 @@ static void CL_UpdateTrim( char *text ) {
         text[length] = '\0';
 }
 
-static void CL_UpdateNormalizeMessage( char *text ) {
-        char            *src;
-        char            *dst;
-        qboolean        inSpace;
+static void CL_UpdateStripWrappingQuotes( char *text ) {
+        size_t length;
 
         if ( !text ) {
                 return;
         }
 
-        src = text;
-        dst = text;
-        inSpace = qtrue;
+        length = strlen( text );
 
-        while ( *src ) {
-                char ch = *src++;
+        if ( length >= 2 ) {
+                char first = text[0];
+                char last = text[length - 1];
 
-                if ( ch == '\r' || ch == '\n' || ch == '\t' ) {
-                        ch = ' ';
+                if ( ( first == '"' && last == '"' ) || ( first == '\'' && last == '\'' ) ) {
+                        memmove( text, text + 1, length - 1 );
+                        text[length - 2] = '\0';
                 }
-
-                if ( ch == ' ' ) {
-                        if ( inSpace ) {
-                                continue;
-                        }
-                        inSpace = qtrue;
-                } else {
-                        inSpace = qfalse;
-                }
-
-                *dst++ = ch;
         }
 
-        if ( dst > text && dst[-1] == ' ' ) {
-                dst--;
+        if ( text[0] == '"' || text[0] == '\'' ) {
+                memmove( text, text + 1, strlen( text ) );
         }
 
-        *dst = '\0';
+        length = strlen( text );
+        if ( length > 0 && ( text[length - 1] == '"' || text[length - 1] == '\'' ) ) {
+                text[length - 1] = '\0';
+        }
 }
 
 static void CL_UpdateStripWrappingQuotes( char *text ) {
