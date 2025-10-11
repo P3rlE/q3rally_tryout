@@ -575,6 +575,35 @@ static void CL_UpdateStripWrappingQuotes( char *text ) {
         }
 }
 
+static void CL_UpdateStripWrappingQuotes( char *text ) {
+        size_t length;
+
+        if ( !text ) {
+                return;
+        }
+
+        length = strlen( text );
+
+        if ( length >= 2 ) {
+                char first = text[0];
+                char last = text[length - 1];
+
+                if ( ( first == '"' && last == '"' ) || ( first == '\'' && last == '\'' ) ) {
+                        memmove( text, text + 1, length - 1 );
+                        text[length - 2] = '\0';
+                }
+        }
+
+        if ( text[0] == '"' || text[0] == '\'' ) {
+                memmove( text, text + 1, strlen( text ) );
+        }
+
+        length = strlen( text );
+        if ( length > 0 && ( text[length - 1] == '"' || text[length - 1] == '\'' ) ) {
+                text[length - 1] = '\0';
+        }
+}
+
 static qboolean CL_UpdateIsValidVersionString( const char *text ) {
         if ( !text ) {
                 return qfalse;
