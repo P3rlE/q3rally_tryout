@@ -616,11 +616,17 @@ static int CL_UpdateCompareVersions( const char *localVersion, const char *remot
         int remoteParts[6] = {0};
         int i;
 
+        Com_Printf("=== CL_UpdateCompareVersions ===\n");
+        Com_Printf("Local version: '%s'\n", localVersion ? localVersion : "NULL");
+        Com_Printf("Remote version: '%s'\n", remoteVersion ? remoteVersion : "NULL");
+
         if ( !remoteVersion || !remoteVersion[0] ) {
+                Com_Printf("Remote version is empty, returning 0\n");
                 return 0;
         }
 
         if ( !localVersion || !localVersion[0] ) {
+                Com_Printf("Local version is empty, returning -1\n");
                 return -1;
         }
 
@@ -667,21 +673,31 @@ static int CL_UpdateCompareVersions( const char *localVersion, const char *remot
                 }
         }
 
+        Com_Printf("Local parts: [%d, %d, %d, %d, %d, %d]\n",
+                   localParts[0], localParts[1], localParts[2], localParts[3], localParts[4], localParts[5]);
+        Com_Printf("Remote parts: [%d, %d, %d, %d, %d, %d]\n",
+                   remoteParts[0], remoteParts[1], remoteParts[2], remoteParts[3], remoteParts[4], remoteParts[5]);
+
         for ( i = 0; i < 6; i++ ) {
                 if ( localParts[i] < remoteParts[i] ) {
+                        Com_Printf("Local < Remote at index %d, returning -1\n", i);
                         return -1;
                 }
 
                 if ( localParts[i] > remoteParts[i] ) {
+                        Com_Printf("Local > Remote at index %d, returning 1\n", i);
                         return 1;
                 }
         }
+
+        Com_Printf("Numeric parts are equal, doing string comparison\n");
 
         {
                 const char *localComparable;
                 const char *remoteComparable;
                 size_t      localLen;
                 size_t      remoteLen;
+                int         cmpResult;  /* HIER DEKLARIERT */
 
                 localComparable = CL_UpdateSkipVersionPrefix( localVersion );
                 remoteComparable = CL_UpdateSkipVersionPrefix( remoteVersion );
@@ -689,15 +705,32 @@ static int CL_UpdateCompareVersions( const char *localVersion, const char *remot
                 localLen = strlen( localComparable );
                 remoteLen = strlen( remoteComparable );
 
-                if ( remoteLen > localLen && !Q_stricmpn( localComparable, remoteComparable, localLen ) ) {
-                        return -1;
+                Com_Printf("After prefix skip:\n");
+                Com_Printf("  Local: '%s' (length %d)\n", localComparable, (int)localLen);
+                Com_Printf("  Remote: '%s' (length %d)\n", remoteComparable, (int)remoteLen);
+
+                if ( remoteLen > localLen ) {
+                        cmpResult = Q_stricmpn( localComparable, remoteComparable, localLen );
+                        Com_Printf("Remote is longer. Q_stricmpn(first %d chars) = %d\n", (int)localLen, cmpResult);
+                        if ( cmpResult == 0 ) {
+                                Com_Printf("Remote starts with local and is longer -> Remote is newer, returning -1\n");
+                                return -1;
+                        }
                 }
 
-                if ( localLen > remoteLen && !Q_stricmpn( localComparable, remoteComparable, remoteLen ) ) {
-                        return 1;
+                if ( localLen > remoteLen ) {
+                        cmpResult = Q_stricmpn( localComparable, remoteComparable, remoteLen );
+                        Com_Printf("Local is longer. Q_stricmpn(first %d chars) = %d\n", (int)remoteLen, cmpResult);
+                        if ( cmpResult == 0 ) {
+                                Com_Printf("Local starts with remote and is longer -> Local is newer, returning 1\n");
+                                return 1;
+                        }
                 }
 
-                return Q_stricmp( localComparable, remoteComparable );
+                cmpResult = Q_stricmp( localComparable, remoteComparable );
+                Com_Printf("Final Q_stricmp result: %d\n", cmpResult);
+                Com_Printf("================================\n");
+                return cmpResult;
         }
 }
 
@@ -750,6 +783,8 @@ static qboolean CL_UpdateParseResponse( const char *data, size_t length, char *l
 static void CL_UpdateHandleResponse( void ) {
 #ifdef USE_CURL
         char    latest[64];
+        char    cleanVersion[64];
+        char    *underscore;
         int     comparison;
 
         if ( !cl_updateBuffer.data || cl_updateBuffer.length == 0 ) {
@@ -758,11 +793,18 @@ static void CL_UpdateHandleResponse( void ) {
         }
 
         if ( !CL_UpdateParseResponse( cl_updateBuffer.data, cl_updateBuffer.length, latest, sizeof( latest ), NULL, 0, NULL, 0 ) ) {
-                        CL_UpdateSetStatus( "error", "", "", "Invalid response from the update server." );
-                        return;
+                CL_UpdateSetStatus( "error", "", "", "Invalid response from the update server." );
+                return;
         }
 
-        comparison = CL_UpdateCompareVersions( PRODUCT_VERSION, latest );
+        /* NEU: Bereinige PRODUCT_VERSION - entferne alles ab dem ersten Unterstrich */
+        Q_strncpyz( cleanVersion, PRODUCT_VERSION, sizeof( cleanVersion ) );
+        underscore = strchr( cleanVersion, '_' );
+        if ( underscore ) {
+                *underscore = '\0';
+        }
+
+        comparison = CL_UpdateCompareVersions( cleanVersion, latest );
 
         if ( comparison < 0 ) {
                 const char *updateUrl = "https://www.q3rally.com";
@@ -2132,7 +2174,8 @@ CL_InitUI
 void CL_InitUI( void ) {
 	int		v;
 	vmInterpret_t		interpret;
-
+    
+    CL_UpdateEnsureCvars();
 	CL_UpdateResetStatus();
 	CL_LadderResetStatus();
 

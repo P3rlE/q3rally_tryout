@@ -593,6 +593,12 @@ void UI_MainMenu( void ) {
         char musicFiles[256][MAX_QPATH];
         char musicCommand[MAX_QPATH];
 
+        trap_Cvar_Register( NULL, "cl_updateStatus", "idle", CVAR_ROM );
+        trap_Cvar_Register( NULL, "cl_updateLatest", "", CVAR_ROM );
+        trap_Cvar_Register( NULL, "cl_updateUrl", "", CVAR_ROM );
+        trap_Cvar_Register( NULL, "cl_updateMessage", "", CVAR_ROM );
+
+        s_updateLastStatus[0] = '\0';
 
         numMusicFiles = UI_BuildFileList("music", "ogg", "menumusic", qtrue, qfalse, qfalse, 0, musicFiles);
 
