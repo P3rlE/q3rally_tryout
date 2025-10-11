@@ -16,18 +16,19 @@ if (!is_dir(DATA_DIR)) {
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
+$uri    = $_SERVER['REQUEST_URI'] ?? '/';
+$script = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+$path   = parse_url($uri, PHP_URL_PATH) ?? '/';
+$path   = rtrim($path, '/');
+$normalized = $path;
+if ($script !== '' && strpos($normalized, $script) === 0) {
+    $normalized = substr($normalized, strlen($script));
+}
+$normalized = trim($normalized, '/');
+
 // --- Minimal frontend for Q3Rally Ladder (HTML landing page) ---
 try {
     $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
-    $uri    = $_SERVER['REQUEST_URI'] ?? '/';
-    $script = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
-    $path   = parse_url($uri, PHP_URL_PATH) ?? '/';
-    $path   = rtrim($path, '/');
-    $normalized = $path;
-    if ($script !== '' && strpos($normalized, $script) === 0) {
-        $normalized = substr($normalized, strlen($script));
-    }
-    $normalized = trim($normalized, '/');
     $isFrontendRoute = ($normalized === '' && ($path === '' || $path === '/' || $path === $script));
 
     if ($method === 'GET' && $isFrontendRoute && (strpos($accept, 'application/json') === false)) {
@@ -3619,11 +3620,10 @@ loadMatches();
 // --- End frontend ---
 
 
-$pathInfo = $_SERVER['PATH_INFO'] ?? '';
-$path = trim($pathInfo, '/');
-$segments = $path === '' ? [] : explode('/', $path);
+    $pathInfo = $normalized;
+    $path = trim($pathInfo, '/');
+    $segments = $path === '' ? [] : explode('/', $path);
 
-try {
     switch ($method) {
         case 'POST':
             handle_post($segments);
@@ -3639,6 +3639,8 @@ try {
     }
 } catch (RuntimeException $e) {
     send_error(400, $e->getMessage());
+} catch (Throwable $e) {
+    // if the frontend fails for any reason, continue with API logic
 }
 
 function handle_post(array $segments): void
