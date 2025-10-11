@@ -33,7 +33,7 @@ CONFIRMATION MENU
 #include "ui_local.h"
 
 
-#define ART_CONFIRM_FRAME	"menu/art/cut_frame"
+#define ART_CONFIRM_FRAME	"menu/art/cut_frame_2"
 
 #define ID_CONFIRM_NO		10
 #define ID_CONFIRM_YES		11
@@ -137,7 +137,7 @@ static void MessageMenu_Draw( void ) {
         frameX = s_confirm.frameX ? s_confirm.frameX : 142;
         frameY = s_confirm.frameY ? s_confirm.frameY : 66;
         frameWidth = s_confirm.frameWidth ? s_confirm.frameWidth : 359;
-        frameHeight = s_confirm.frameHeight ? s_confirm.frameHeight : 256;
+        frameHeight = s_confirm.frameHeight ? s_confirm.frameHeight : 270;
         lineHeight = s_confirm.lineHeight ? s_confirm.lineHeight : 18;
 
         {
