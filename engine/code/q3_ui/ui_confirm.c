@@ -135,7 +135,7 @@ static void MessageMenu_Draw( void ) {
         int i;
 
         frameX = s_confirm.frameX ? s_confirm.frameX : 142;
-        frameY = s_confirm.frameY ? s_confirm.frameY : 56;
+        frameY = s_confirm.frameY ? s_confirm.frameY : 66;
         frameWidth = s_confirm.frameWidth ? s_confirm.frameWidth : 359;
         frameHeight = s_confirm.frameHeight ? s_confirm.frameHeight : 270;
         lineHeight = s_confirm.lineHeight ? s_confirm.lineHeight : 18;
@@ -162,7 +162,7 @@ static void MessageMenu_Draw( void ) {
         if ( s_confirm.contentTop ) {
                 y = s_confirm.contentTop;
         } else {
-                y = frameY + 30 - ( lineHeight / 2 );
+                y = frameY + 30 - ( lineHeight / 2 ) + 7;
                 if ( y < frameY + 16 ) {
                         y = frameY + 16;
                 }
@@ -364,7 +364,7 @@ void UI_Message( const char **lines ) {
 		lineHeight = 18;
 	}
 
-        frameY = 56;
+        frameY = 66;
 	{
 		const int minFrameWidth = 420;
 		const int frameSidePadding = 180;
@@ -390,12 +390,12 @@ void UI_Message( const char **lines ) {
 		}
 
 		frameX = (SCREEN_WIDTH - frameWidth) / 2;
-                contentTop = frameY + frameTopPadding - ( lineHeight / 2 ) - 40;
+                contentTop = frameY + frameTopPadding - ( lineHeight / 2 ) - 40 + 7;
                 if ( contentTop < frameY + 16 ) {
                         contentTop = frameY + 16;
                 }
-		buttonY = frameY + frameHeight - 68;
-	}
+                buttonY = frameY + frameHeight - 68 - 7;
+        }
 
 	if ( buttonY > SCREEN_HEIGHT - 48 ) {
 		buttonY = SCREEN_HEIGHT - 48;
