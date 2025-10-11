@@ -140,7 +140,24 @@ static void MessageMenu_Draw( void ) {
         frameHeight = s_confirm.frameHeight ? s_confirm.frameHeight : 256;
         lineHeight = s_confirm.lineHeight ? s_confirm.lineHeight : 18;
 
-        UI_DrawNamedPic( frameX, frameY, frameWidth, frameHeight, ART_CONFIRM_FRAME );
+        {
+                const int extraTop = 10;
+                const int extraBottom = 10;
+                int topExtension = extraTop;
+                int drawFrameY;
+                int drawFrameHeight;
+
+                if ( frameY < topExtension ) {
+                        topExtension = frameY;
+                }
+
+                drawFrameY = frameY - topExtension;
+                drawFrameHeight = frameHeight + topExtension + extraBottom;
+
+                UI_DrawNamedPic( frameX, drawFrameY, frameWidth, drawFrameHeight, ART_CONFIRM_FRAME );
+        }
+
+        // keep the logical frame metrics unchanged so text/button placement stays put
 
         if ( s_confirm.contentTop ) {
                 y = s_confirm.contentTop;
