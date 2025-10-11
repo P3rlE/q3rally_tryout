@@ -274,6 +274,9 @@ static int CL_UpdateCompareVersions( const char *localVersion, const char *remot
 static void CL_UpdateNormalizeMessage( char *text );
 static qboolean CL_UpdateIsValidVersionString( const char *text );
 
+static const char *const CL_UPDATE_ENDPOINT_DEFAULT = "https://ladder.q3rally.com/version.txt";
+static const char *const CL_UPDATE_ENDPOINT_LEGACY = "https://ladder.q3rally.com/index.php/version";
+
 static cvar_t *cl_updateEndpoint = NULL;
 static cvar_t *cl_updateCheck = NULL;
 static cvar_t *cl_updateStatusCvar = NULL;
@@ -496,7 +499,11 @@ static void CL_UpdateEnsureCvars( void ) {
         }
 
         if ( !cl_updateEndpoint ) {
-                cl_updateEndpoint = Cvar_Get( "cl_updateEndpoint", "https://ladder.q3rally.com/index.php/version", CVAR_ARCHIVE );
+                cl_updateEndpoint = Cvar_Get( "cl_updateEndpoint", CL_UPDATE_ENDPOINT_DEFAULT, CVAR_ARCHIVE );
+
+                if ( cl_updateEndpoint && !Q_stricmp( cl_updateEndpoint->string, CL_UPDATE_ENDPOINT_LEGACY ) ) {
+                        Cvar_Set( cl_updateEndpoint->name, CL_UPDATE_ENDPOINT_DEFAULT );
+                }
         }
 
         if ( !cl_updateCheck ) {
@@ -667,130 +674,52 @@ static int CL_UpdateCompareVersions( const char *localVersion, const char *remot
 }
 
 static qboolean CL_UpdateParseResponse( const char *data, size_t length, char *latestOut, size_t latestSize, char *urlOut, size_t urlSize, char *messageOut, size_t messageSize ) {
-        const char      *jsonEnd;
-        const char      *node;
-        const char      *root;
+        const char      *cursor;
+        const char      *end;
+        size_t          index;
 
-        if ( !data || !length ) {
+        if ( !data || !latestOut || !latestSize ) {
                 return qfalse;
         }
 
-        latestOut[0] = '\0';
-        urlOut[0] = '\0';
-        messageOut[0] = '\0';
-
-        jsonEnd = data + length;
-        root = data;
-
-        node = JSON_ObjectGetNamedValue( root, jsonEnd, "data" );
-        if ( node ) {
-                root = node;
+        if ( !length ) {
+                return qfalse;
         }
 
-        node = JSON_ObjectGetNamedValue( root, jsonEnd, "latest" );
-        if ( !node ) {
-                node = JSON_ObjectGetNamedValue( root, jsonEnd, "latestVersion" );
-        }
-        if ( !node ) {
-                node = JSON_ObjectGetNamedValue( root, jsonEnd, "version" );
-        }
+        cursor = data;
+        end = data + length;
 
-        if ( node ) {
-                JSON_ValueGetString( node, jsonEnd, latestOut, latestSize );
+        while ( cursor < end && ( *cursor == '\n' || *cursor == '\r' || *cursor == '\t' || *cursor == ' ' ) ) {
+                cursor++;
         }
 
-        node = JSON_ObjectGetNamedValue( root, jsonEnd, "downloadUrl" );
-        if ( !node ) {
-                node = JSON_ObjectGetNamedValue( root, jsonEnd, "url" );
+        index = 0;
+        while ( cursor < end && *cursor != '\n' && *cursor != '\r' && index + 1 < latestSize ) {
+                latestOut[index++] = *cursor++;
         }
-        if ( node ) {
-                JSON_ValueGetString( node, jsonEnd, urlOut, urlSize );
-        }
+        latestOut[index] = '\0';
 
-        node = JSON_ObjectGetNamedValue( root, jsonEnd, "message" );
-        if ( !node ) {
-                node = JSON_ObjectGetNamedValue( root, jsonEnd, "notes" );
-        }
-        if ( node ) {
-                JSON_ValueGetString( node, jsonEnd, messageOut, messageSize );
+        CL_UpdateTrim( latestOut );
+
+        if ( !CL_UpdateIsValidVersionString( latestOut ) ) {
+                latestOut[0] = '\0';
+                return qfalse;
         }
 
-	if ( latestOut[0] ) {
-		CL_UpdateTrim( latestOut );
-		CL_UpdateTrim( urlOut );
-		CL_UpdateNormalizeMessage( messageOut );
+        if ( urlOut && urlSize > 0 ) {
+                urlOut[0] = '\0';
+        }
 
-		if ( !CL_UpdateIsValidVersionString( latestOut ) ) {
-			latestOut[0] = '\0';
-			return qfalse;
-		}
+        if ( messageOut && messageSize > 0 ) {
+                messageOut[0] = '\0';
+        }
 
-		return qtrue;
-	}
-
-        {
-                const char *cursor;
-                const char *end;
-                size_t      index;
-
-                cursor = data;
-                end = data + length;
-
-                while ( cursor < end && ( *cursor == '\n' || *cursor == '\r' || *cursor == '\t' || *cursor == ' ' ) ) {
-                        cursor++;
-                }
-
-                index = 0;
-                while ( cursor < end && *cursor != '\n' && *cursor != '\r' && index + 1 < latestSize ) {
-                        latestOut[index++] = *cursor++;
-                }
-                latestOut[index] = '\0';
-
-                while ( cursor < end && ( *cursor == '\n' || *cursor == '\r' ) ) {
-                        cursor++;
-                }
-
-                index = 0;
-                while ( cursor < end && *cursor != '\n' && *cursor != '\r' && index + 1 < urlSize ) {
-                        urlOut[index++] = *cursor++;
-                }
-                urlOut[index] = '\0';
-
-                while ( cursor < end && ( *cursor == '\n' || *cursor == '\r' ) ) {
-                        cursor++;
-                }
-
-                index = 0;
-                while ( cursor < end && index + 1 < messageSize ) {
-                        char ch = *cursor++;
-                        if ( ch == '\r' || ch == '\n' ) {
-                                if ( index > 0 && messageOut[index - 1] != ' ' ) {
-                                        messageOut[index++] = ' ';
-                                }
-                                continue;
-                        }
-                        messageOut[index++] = ch;
-                }
-                messageOut[index] = '\0';
-
-		CL_UpdateTrim( latestOut );
-		CL_UpdateTrim( urlOut );
-		CL_UpdateNormalizeMessage( messageOut );
-
-		if ( !CL_UpdateIsValidVersionString( latestOut ) ) {
-			latestOut[0] = '\0';
-			return qfalse;
-		}
-	}
-
-	return latestOut[0] != '\0';
+        return qtrue;
 }
 
 static void CL_UpdateHandleResponse( void ) {
 #ifdef USE_CURL
         char    latest[64];
-        char    url[MAX_STRING_CHARS];
-        char    message[MAX_STRING_CHARS];
         int     comparison;
 
         if ( !cl_updateBuffer.data || cl_updateBuffer.length == 0 ) {
@@ -798,22 +727,21 @@ static void CL_UpdateHandleResponse( void ) {
                 return;
         }
 
-        if ( !CL_UpdateParseResponse( cl_updateBuffer.data, cl_updateBuffer.length, latest, sizeof( latest ), url, sizeof( url ), message, sizeof( message ) ) ) {
+        if ( !CL_UpdateParseResponse( cl_updateBuffer.data, cl_updateBuffer.length, latest, sizeof( latest ), NULL, 0, NULL, 0 ) ) {
                         CL_UpdateSetStatus( "error", "", "", "Invalid response from the update server." );
                         return;
         }
 
         comparison = CL_UpdateCompareVersions( PRODUCT_VERSION, latest );
 
-        if ( !message[0] && comparison < 0 ) {
-                Q_strncpyz( message, "A new Q3Rally version is available.", sizeof( message ) );
-        }
-
         if ( comparison < 0 ) {
-                CL_UpdateSetStatus( "outdated", latest, url, message );
+                const char *updateUrl = "https://www.q3rally.com";
+                const char *updateMessage = "Visit www.q3rally.com to download the latest version.";
+
+                CL_UpdateSetStatus( "outdated", latest, updateUrl, updateMessage );
                 Com_Printf( S_COLOR_YELLOW "Update available:" S_COLOR_WHITE " Installed %s, latest %s\n", PRODUCT_VERSION, latest );
         } else {
-                CL_UpdateSetStatus( "up_to_date", latest, url, message );
+                CL_UpdateSetStatus( "up_to_date", latest, "", "" );
         }
 #else
         CL_UpdateSetStatus( "error", "", "", "Update check requires a build with cURL support." );
