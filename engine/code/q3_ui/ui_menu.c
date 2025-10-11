@@ -74,7 +74,7 @@ typedef struct {
 
 static mainmenu_t s_main;
 static char     s_updateLastStatus[32];
-#define UPDATE_DIALOG_MAX_LINES   10
+#define UPDATE_DIALOG_MAX_LINES   20
 #define UPDATE_DIALOG_MAX_WIDTH   440
 #define UPDATE_DIALOG_STYLE       (UI_CENTER|UI_INVERSE|UI_SMALLFONT)
 
@@ -105,6 +105,13 @@ static qboolean UI_UpdateDialogPushLine( const char *text ) {
         s_updateDialogLines[s_updateDialogLineCount] = s_updateDialogLineBuffer[s_updateDialogLineCount];
         s_updateDialogLineCount++;
         s_updateDialogLines[s_updateDialogLineCount] = NULL;
+
+        if ( text[0] && s_updateDialogLineCount < UPDATE_DIALOG_MAX_LINES ) {
+                s_updateDialogLineBuffer[s_updateDialogLineCount][0] = '\0';
+                s_updateDialogLines[s_updateDialogLineCount] = s_updateDialogLineBuffer[s_updateDialogLineCount];
+                s_updateDialogLineCount++;
+                s_updateDialogLines[s_updateDialogLineCount] = NULL;
+        }
 
         return qtrue;
 }
