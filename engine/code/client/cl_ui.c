@@ -278,9 +278,6 @@ static const char *CL_UpdateSkipVersionPrefix( const char *text );
 static const char *const CL_UPDATE_ENDPOINT_DEFAULT = "https://ladder.q3rally.com/version.txt";
 static const char *const CL_UPDATE_ENDPOINT_LEGACY = "https://ladder.q3rally.com/index.php/version";
 
-static const char *const CL_UPDATE_ENDPOINT_DEFAULT = "https://ladder.q3rally.com/version.txt";
-static const char *const CL_UPDATE_ENDPOINT_LEGACY = "https://ladder.q3rally.com/index.php/version";
-
 static cvar_t *cl_updateEndpoint = NULL;
 static cvar_t *cl_updateCheck = NULL;
 static cvar_t *cl_updateStatusCvar = NULL;
