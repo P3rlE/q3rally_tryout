@@ -11,10 +11,29 @@ Dieses Verzeichnis enthält einen minimalen Ladder-Endpunkt, der sich auf typisc
 
 ## API-Übersicht
 
+* **GET `/version`** – Liefert Informationen für den im Spiel integrierten Update-Check. Die Daten stammen aus `data/version.json` (oder optional `data/version.txt`).
 * **POST `/matches`** – Speichert ein Match. Erwartet das JSON, das der Q3Rally-Server erzeugt (inklusive `matchId`). Bereits vorhandene IDs werden ignoriert und mit HTTP 200 quittiert.
 * **GET `/matches`** – Liefert eine Liste aller gespeicherten Matches (neueste zuerst). Optional können `mode`, `limit` und `offset` als Query-Parameter gesetzt werden.
 * **GET `/matches/{matchId}`** – Gibt das vollständige JSON zu einer Match-ID zurück.
 * **DELETE `/matches/{matchId}`** – Löscht ein Match dauerhaft.
+
+### Update-Informationen pflegen
+
+Die Update-Prüfung des Spiels erwartet mindestens eine Versionsnummer, optional ergänzt um Download-Link und Hinweistext. Die Daten lassen sich auf zwei Arten hinterlegen:
+
+1. **JSON (`data/version.json`)** – Standardweg. Beispiel:
+   ```json
+   {
+     "latest": "v0.7",
+     "downloadUrl": "https://downloads.example.com/q3rally-v0.7.zip",
+     "message": "Bugfix-Release mit verbesserten Streckenzeiten."
+   }
+   ```
+2. **Plaintext (`data/version.txt`)** – Für sehr einfache Setups. Zeile 1 = Version, Zeile 2 (optional) = Download-Link, restliche Zeilen = Nachricht.
+
+> **Hinweis zu den Pfaden:** Alle Dateien, die den Versionsendpunkt konfigurieren, müssen im Unterordner `data/` neben `index.php` liegen. Das betrifft insbesondere `version.json` bzw. `version.txt`. Eine Datei `version.password` wird vom aktuellen PHP-Endpoint nicht ausgewertet – sollte später einmal eine Authentifizierung nötig sein, müsste sie separat in der API implementiert werden.
+
+Fehlen beide Dateien, liefert der Endpunkt automatisch einen Platzhalter (`0.0.0`), sodass der Client zumindest mit "up to date" antwortet.
 
 ### Beispiel-Aufrufe
 ```bash
