@@ -135,7 +135,7 @@ static void MessageMenu_Draw( void ) {
         int i;
 
         frameX = s_confirm.frameX ? s_confirm.frameX : 142;
-        frameY = s_confirm.frameY ? s_confirm.frameY : 96;
+        frameY = s_confirm.frameY ? s_confirm.frameY : 88;
         frameWidth = s_confirm.frameWidth ? s_confirm.frameWidth : 359;
         frameHeight = s_confirm.frameHeight ? s_confirm.frameHeight : 256;
         lineHeight = s_confirm.lineHeight ? s_confirm.lineHeight : 18;
@@ -340,7 +340,7 @@ void UI_Message( const char **lines ) {
 		lineHeight = 18;
 	}
 
-        frameY = 96;
+        frameY = 88;
 	{
 		const int minFrameWidth = 420;
 		const int frameSidePadding = 180;
