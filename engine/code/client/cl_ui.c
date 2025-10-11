@@ -689,11 +689,11 @@ static int CL_UpdateCompareVersions( const char *localVersion, const char *remot
                 localLen = strlen( localComparable );
                 remoteLen = strlen( remoteComparable );
 
-                if ( remoteLen > localLen && !Q_strnicmp( localComparable, remoteComparable, localLen ) ) {
+                if ( remoteLen > localLen && !Q_stricmpn( localComparable, remoteComparable, localLen ) ) {
                         return -1;
                 }
 
-                if ( localLen > remoteLen && !Q_strnicmp( localComparable, remoteComparable, remoteLen ) ) {
+                if ( localLen > remoteLen && !Q_stricmpn( localComparable, remoteComparable, remoteLen ) ) {
                         return 1;
                 }
 
