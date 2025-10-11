@@ -1359,7 +1359,7 @@ void ClientSpawn(gentity_t *ent) {
 	int		savedLadderEliminationRound;
 	int		savedLadderEliminationPlayersRemaining;
 	float		savedLadderEliminationMetric;
-	gentity_t	*savedCarPoints[4];
+	gentity_t	*savedCarPoints[FIRST_FRAME_POINT];
 	vec3_t	origin, forward;
 // END
 
@@ -1475,10 +1475,9 @@ void ClientSpawn(gentity_t *ent) {
 	eventSequence = client->ps.eventSequence;
 
 // STONELANCE
-	savedCarPoints[0] = client->carPoints[0];
-	savedCarPoints[1] = client->carPoints[1];
-	savedCarPoints[2] = client->carPoints[2];
-	savedCarPoints[3] = client->carPoints[3];
+	for (i = 0; i < FIRST_FRAME_POINT; i++){
+		savedCarPoints[i] = client->carPoints[i];
+	}
 /*
 	for (i = 0; i < FIRST_FRAME_POINT; i++){
 		if ( client->carPoints[i] ){
@@ -1495,10 +1494,9 @@ void ClientSpawn(gentity_t *ent) {
 	client->sess = savedSess;
 	client->ps.ping = savedPing;
 // STONELANCE
-	client->carPoints[0] = savedCarPoints[0];
-	client->carPoints[1] = savedCarPoints[1];
-	client->carPoints[2] = savedCarPoints[2];
-	client->carPoints[3] = savedCarPoints[3];
+	for (i = 0; i < FIRST_FRAME_POINT; i++){
+		client->carPoints[i] = savedCarPoints[i];
+	}
 	client->finishRaceTime = savedFinishRaceTime;
 	client->ps.stats[STAT_DAMAGE_DEALT] = savedDamageDealt;
 	client->ps.stats[STAT_DAMAGE_TAKEN] = savedDamageTaken;
@@ -1880,7 +1878,7 @@ void ClientDisconnect( int clientNum ) {
 		ent->rearBounds = NULL;
 	}
 
-	for (i = 0; i < 4; i++){
+	for (i = 0; i < FIRST_FRAME_POINT; i++){
 		if ( ent->client->carPoints[i] ){
 			G_FreeEntity( ent->client->carPoints[i] );
 			ent->client->carPoints[i] = NULL;
