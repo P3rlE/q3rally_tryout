@@ -135,14 +135,21 @@ static void MessageMenu_Draw( void ) {
         int i;
 
         frameX = s_confirm.frameX ? s_confirm.frameX : 142;
-        frameY = s_confirm.frameY ? s_confirm.frameY : 118;
+        frameY = s_confirm.frameY ? s_confirm.frameY : 66;
         frameWidth = s_confirm.frameWidth ? s_confirm.frameWidth : 359;
         frameHeight = s_confirm.frameHeight ? s_confirm.frameHeight : 256;
         lineHeight = s_confirm.lineHeight ? s_confirm.lineHeight : 18;
 
         UI_DrawNamedPic( frameX, frameY, frameWidth, frameHeight, ART_CONFIRM_FRAME );
 
-        y = s_confirm.contentTop ? s_confirm.contentTop : (frameY + 70);
+        if ( s_confirm.contentTop ) {
+                y = s_confirm.contentTop;
+        } else {
+                y = frameY + 30 - ( lineHeight / 2 );
+                if ( y < frameY + 16 ) {
+                        y = frameY + 16;
+                }
+        }
 
         if ( s_confirm.lines ) {
                 for ( i = 0; s_confirm.lines[i]; i++ ) {
@@ -340,14 +347,14 @@ void UI_Message( const char **lines ) {
 		lineHeight = 18;
 	}
 
-	frameY = 118;
+        frameY = 66;
 	{
 		const int minFrameWidth = 420;
 		const int frameSidePadding = 180;
 		const int minFrameHeight = 300;
-		const int frameTopPadding = 96;
-		const int frameBottomPadding = 132;
-		int contentHeight = lineCount * lineHeight;
+                const int frameTopPadding = 96;
+                const int frameBottomPadding = 132;
+                int contentHeight = lineCount * lineHeight;
 
 		frameWidth = maxWidth + frameSidePadding;
 		if ( frameWidth < minFrameWidth ) {
@@ -366,7 +373,10 @@ void UI_Message( const char **lines ) {
 		}
 
 		frameX = (SCREEN_WIDTH - frameWidth) / 2;
-		contentTop = frameY + frameTopPadding;
+                contentTop = frameY + frameTopPadding - ( lineHeight / 2 ) - 40;
+                if ( contentTop < frameY + 16 ) {
+                        contentTop = frameY + 16;
+                }
 		buttonY = frameY + frameHeight - 68;
 	}
 
