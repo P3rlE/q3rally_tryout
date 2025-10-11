@@ -143,6 +143,12 @@ function handle_post(array $segments): void
 
 function handle_get(array $segments): void
 {
+    if ($segments === ['version']) {
+        $payload = load_version_payload();
+        send_json($payload, 200);
+        return;
+    }
+
     if ($segments === ['matches']) {
         $matches = load_all_matches();
         $mode = $_GET['mode'] ?? null;
@@ -218,6 +224,10 @@ function load_all_matches(): array
 
     $matches = [];
     foreach ($files as $file) {
+        if (basename($file) === 'version.json') {
+            continue;
+        }
+
         $json = file_get_contents($file);
         if ($json === false) {
             continue;
@@ -235,6 +245,87 @@ function normalize_match_id(string $raw): string
 {
     $normalized = preg_replace('/[^A-Za-z0-9._-]/', '_', $raw);
     return trim((string) $normalized);
+}
+
+function load_version_payload(): array
+{
+    $default = [
+        'latest' => '0.0.0',
+        'downloadUrl' => '',
+        'message' => '',
+    ];
+
+    $jsonPath = DATA_DIR . '/version.json';
+    if (is_readable($jsonPath)) {
+        $json = file_get_contents($jsonPath);
+        if ($json === false) {
+            throw new RuntimeException('Failed to read version.json.');
+        }
+
+        $decoded = json_decode($json, true);
+        if (!is_array($decoded)) {
+            throw new RuntimeException('version.json contains invalid JSON.');
+        }
+
+        return normalize_version_payload($decoded + $default);
+    }
+
+    $textPath = DATA_DIR . '/version.txt';
+    if (is_readable($textPath)) {
+        $contents = file_get_contents($textPath);
+        if ($contents === false) {
+            throw new RuntimeException('Failed to read version.txt.');
+        }
+
+        $lines = preg_split('/\r?\n/', trim($contents));
+        $lines = $lines === false ? [] : $lines;
+
+        $payload = [
+            'latest' => $lines[0] ?? $default['latest'],
+            'downloadUrl' => $lines[1] ?? $default['downloadUrl'],
+            'message' => implode(' ', array_slice($lines, 2)),
+        ];
+
+        return normalize_version_payload($payload + $default);
+    }
+
+    return normalize_version_payload($default);
+}
+
+function normalize_version_payload(array $payload): array
+{
+    $latest = extract_string($payload, ['latest', 'latestVersion', 'version']);
+    $download = extract_string($payload, ['downloadUrl', 'url']);
+    $message = extract_string($payload, ['message', 'notes']);
+
+    $latest = trim($latest);
+    if ($latest === '' || !preg_match('/\d/', $latest)) {
+        throw new RuntimeException('Version payload must include a "latest" value containing at least one digit.');
+    }
+
+    $download = trim($download);
+    $message = preg_replace('/\s+/', ' ', trim($message));
+
+    $normalized = ['latest' => $latest];
+    if ($download !== '') {
+        $normalized['downloadUrl'] = $download;
+    }
+    if ($message !== '') {
+        $normalized['message'] = $message;
+    }
+
+    return $normalized;
+}
+
+function extract_string(array $payload, array $keys): string
+{
+    foreach ($keys as $key) {
+        if (array_key_exists($key, $payload) && is_scalar($payload[$key])) {
+            return (string) $payload[$key];
+        }
+    }
+
+    return '';
 }
 
 function send_json(array $payload, int $statusCode): void

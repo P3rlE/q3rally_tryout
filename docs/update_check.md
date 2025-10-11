@@ -35,13 +35,13 @@ Statische Hosting-Varianten (z. B. eine kleine JSON-Datei auf einem CDN) sind 
 
 In jedem Frame ruft `CL_Frame` die Pump-Funktion `CL_UpdatePumpRequest` auf. Diese kümmert sich darum, den cURL-Transfer voranzutreiben und reagiert auf Fehler (z. B. fehlende Verbindung oder HTTP-Status ungleich 200). Sobald der Download abgeschlossen ist, wird `CL_UpdateHandleResponse` ausgeführt.【F:engine/code/client/cl_main.c†L2974-L2995】【F:engine/code/client/cl_ui.c†L894-L952】
 
-`CL_UpdateHandleResponse` wertet den Inhalt aus: `CL_UpdateParseResponse` extrahiert Version, Download-Link und optional eine Nachricht entweder aus JSON (Felder `latest`, `url`, `message`) oder aus einem Fallback-Textformat. Danach vergleicht `CL_UpdateCompareVersions` die Remote-Version mit der lokalen `PRODUCT_VERSION`. Ist die entfernte Version neuer, wird der Status `outdated` gesetzt, ansonsten `up_to_date`. Fehlende oder ungültige Antworten führen zu `error` mitsamt Meldung.【F:engine/code/client/cl_ui.c†L653-L790】
+`CL_UpdateHandleResponse` wertet den Inhalt aus: `CL_UpdateParseResponse` extrahiert Version, Download-Link und optional eine Nachricht entweder aus JSON (Felder `latest`, `url`, `message`) oder aus einem Fallback-Textformat. Seit dem jüngsten Fix wird zusätzlich geprüft, ob die Versionszeichenkette überhaupt Ziffern enthält – anderenfalls gilt die Antwort als ungültig. Danach vergleicht `CL_UpdateCompareVersions` die Remote-Version mit der lokalen `PRODUCT_VERSION`. Ist die entfernte Version neuer, wird der Status `outdated` gesetzt, ansonsten `up_to_date`. Fehlende oder ungültige Antworten führen zu `error` mitsamt Meldung.【F:engine/code/client/cl_ui.c†L653-L790】
 
 Die aktuelle lokale Versionsnummer ist in `q_shared.h` als `PRODUCT_VERSION` definiert; sie wird gegen den vom Server gelieferten Wert geprüft.【F:engine/code/qcommon/q_shared.h†L57-L74】
 
 ## Darstellung im UI
 
-Das UI fragt regelmäßig die Status- und Detail-Cvars (`cl_updateStatus`, `cl_updateLatest`, `cl_updateUrl`, `cl_updateMessage`) ab. Sobald der Status `outdated` lautet, baut `UI_MaybeShowUpdateDialog` ein Popup mit Version, Nachricht und Download-Link und zeigt es im Hauptmenü an. Das Popup erscheint nur einmal pro Sitzungsstart, bis der Status wieder einen anderen Wert annimmt.【F:engine/code/q3_ui/ui_menu.c†L175-L217】【F:engine/code/q3_ui/ui_menu.c†L500-L527】
+Das UI fragt regelmäßig die Status- und Detail-Cvars (`cl_updateStatus`, `cl_updateLatest`, `cl_updateUrl`, `cl_updateMessage`) ab. Sobald der Status `outdated` lautet, baut `UI_MaybeShowUpdateDialog` ein Popup mit Version, Nachricht und Download-Link und zeigt es im Hauptmenü an. Für den Status `error` wird nun ebenfalls ein Hinweis eingeblendet, der die Fehlermeldung aus `cl_updateMessage` übernimmt. Jeder Dialog erscheint nur einmal pro Statuswechsel.【F:engine/code/q3_ui/ui_menu.c†L175-L236】【F:engine/code/q3_ui/ui_menu.c†L500-L527】
 
 ## Zusammenfassung des Entscheidungsweges
 
