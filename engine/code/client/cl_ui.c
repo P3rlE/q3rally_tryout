@@ -273,6 +273,10 @@ static qboolean CL_UpdateParseResponse( const char *data, size_t length, char *l
 static int CL_UpdateCompareVersions( const char *localVersion, const char *remoteVersion );
 static void CL_UpdateStripWrappingQuotes( char *text );
 static qboolean CL_UpdateIsValidVersionString( const char *text );
+static const char *CL_UpdateSkipVersionPrefix( const char *text );
+
+static const char *const CL_UPDATE_ENDPOINT_DEFAULT = "https://ladder.q3rally.com/version.txt";
+static const char *const CL_UPDATE_ENDPOINT_LEGACY = "https://ladder.q3rally.com/index.php/version";
 
 static const char *const CL_UPDATE_ENDPOINT_DEFAULT = "https://ladder.q3rally.com/version.txt";
 static const char *const CL_UPDATE_ENDPOINT_LEGACY = "https://ladder.q3rally.com/index.php/version";
@@ -575,35 +579,6 @@ static void CL_UpdateStripWrappingQuotes( char *text ) {
         }
 }
 
-static void CL_UpdateStripWrappingQuotes( char *text ) {
-        size_t length;
-
-        if ( !text ) {
-                return;
-        }
-
-        length = strlen( text );
-
-        if ( length >= 2 ) {
-                char first = text[0];
-                char last = text[length - 1];
-
-                if ( ( first == '"' && last == '"' ) || ( first == '\'' && last == '\'' ) ) {
-                        memmove( text, text + 1, length - 1 );
-                        text[length - 2] = '\0';
-                }
-        }
-
-        if ( text[0] == '"' || text[0] == '\'' ) {
-                memmove( text, text + 1, strlen( text ) );
-        }
-
-        length = strlen( text );
-        if ( length > 0 && ( text[length - 1] == '"' || text[length - 1] == '\'' ) ) {
-                text[length - 1] = '\0';
-        }
-}
-
 static qboolean CL_UpdateIsValidVersionString( const char *text ) {
         if ( !text ) {
                 return qfalse;
@@ -617,6 +592,22 @@ static qboolean CL_UpdateIsValidVersionString( const char *text ) {
 	}
 
 	return qfalse;
+}
+
+static const char *CL_UpdateSkipVersionPrefix( const char *text ) {
+        if ( !text ) {
+                return "";
+        }
+
+        while ( *text && (unsigned char)*text <= ' ' ) {
+                text++;
+        }
+
+        if ( ( text[0] == 'v' || text[0] == 'V' ) && ( isdigit( (unsigned char)text[1] ) || text[1] == '.' ) ) {
+                text++;
+        }
+
+        return text;
 }
 
 static void CL_UpdateResetStatus( void ) {
@@ -686,6 +677,20 @@ static int CL_UpdateCompareVersions( const char *localVersion, const char *remot
 
                 if ( localParts[i] > remoteParts[i] ) {
                         return 1;
+                }
+        }
+
+        {
+                const char *localComparable;
+                const char *remoteComparable;
+                int         lexical;
+
+                localComparable = CL_UpdateSkipVersionPrefix( localVersion );
+                remoteComparable = CL_UpdateSkipVersionPrefix( remoteVersion );
+
+                lexical = Q_stricmp( localComparable, remoteComparable );
+                if ( lexical != 0 ) {
+                        return lexical;
                 }
         }
 
