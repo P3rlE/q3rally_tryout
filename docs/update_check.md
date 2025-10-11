@@ -10,32 +10,21 @@ Sobald die UI initialisiert wird (`CL_InitUI`), wird `CL_UpdateRequestLatest` au
 
 Die Funktion `CL_UpdateRequestLatest` sorgt dafür, dass die benötigten Cvars existieren und prüft zunächst, ob `cl_updateCheck` aktiviert ist. Anschließend initialisiert sie (falls notwendig) die cURL-Handles, setzt das Ziel (`cl_updateEndpoint`) sowie weitere Optionen und reiht den Request in den Multi-Handle ein. Gleichzeitig wird der Status auf `checking` gesetzt.【F:engine/code/client/cl_ui.c†L480-L503】【F:engine/code/client/cl_ui.c†L956-L1032】
 
-Standardmäßig verweist `cl_updateEndpoint` auf `https://ladder.q3rally.com/index.php/version`. Der Wert lässt sich aber per Cvar oder über die `q3config.cfg` überschreiben, falls ein eigener Server genutzt werden soll.【F:engine/code/client/cl_ui.c†L493-L503】
+Standardmäßig verweist `cl_updateEndpoint` auf `https://ladder.q3rally.com/version.txt`. Der Wert lässt sich aber per Cvar oder über die `q3config.cfg` überschreiben, falls ein eigener Server genutzt werden soll.【F:engine/code/client/cl_ui.c†L493-L503】
 
 ### Erwartete Serverantwort
 
-Der Client akzeptiert zwei Formate:
+Der Client erwartet eine Textdatei, deren erste Zeile die Versionsnummer enthält (z. B. `v0.6`). Vor- und nachgelagerte Leerzeichen sowie Leerzeilen werden entfernt. Weitere Inhalte der Datei werden ignoriert.【F:engine/code/client/cl_ui.c†L660-L718】
 
-* **JSON** – bevorzugt. Der Service kann die Felder `latest`, `latestVersion` oder `version` für die Versionsnummer setzen. Optional lassen sich `downloadUrl` bzw. `url` sowie `message` oder `notes` übermitteln.【F:engine/code/client/cl_ui.c†L680-L714】
-* **Plaintext-Fallback** – Zeile 1 enthält die Versionsnummer, Zeile 2 (optional) einen Download-Link, alle folgenden Zeilen bilden die Nachricht, wobei Zeilenumbrüche automatisch zu Leerzeichen normalisiert werden.【F:engine/code/client/cl_ui.c†L716-L756】
-
-Damit der Check funktioniert, muss der Server einen per HTTPS erreichbaren GET-Endpunkt bereitstellen, der eines der oben genannten Formate liefert. Ein Minimalbeispiel für eine JSON-Antwort könnte folgendermaßen aussehen:
-
-```json
-{
-  "latest": "v0.7",
-  "downloadUrl": "https://downloads.example.com/q3rally-v0.7.zip",
-  "message": "Bugfix-Release mit verbesserten Streckenzeiten."
-}
-```
-
-Statische Hosting-Varianten (z. B. eine kleine JSON-Datei auf einem CDN) sind ausreichend – serverseitige Logik ist nicht erforderlich, solange die Datei aktualisiert wird, sobald eine neue Version veröffentlicht ist. Wer zusätzliche Metadaten bereitstellen möchte, kann weitere Felder hinzufügen; sie werden vom Client ignoriert.【F:engine/code/client/cl_ui.c†L653-L790】
+Damit der Check funktioniert, muss der Server einen per HTTPS erreichbaren GET-Endpunkt bereitstellen, der diese Textdatei ausliefert. Eine statische Datei reicht völlig aus – sie muss lediglich aktualisiert werden, sobald eine neue Version veröffentlicht wird.
 
 ## Verarbeitung der Antwort
 
 In jedem Frame ruft `CL_Frame` die Pump-Funktion `CL_UpdatePumpRequest` auf. Diese kümmert sich darum, den cURL-Transfer voranzutreiben und reagiert auf Fehler (z. B. fehlende Verbindung oder HTTP-Status ungleich 200). Sobald der Download abgeschlossen ist, wird `CL_UpdateHandleResponse` ausgeführt.【F:engine/code/client/cl_main.c†L2974-L2995】【F:engine/code/client/cl_ui.c†L894-L952】
 
-`CL_UpdateHandleResponse` wertet den Inhalt aus: `CL_UpdateParseResponse` extrahiert Version, Download-Link und optional eine Nachricht entweder aus JSON (Felder `latest`, `url`, `message`) oder aus einem Fallback-Textformat. Seit dem jüngsten Fix wird zusätzlich geprüft, ob die Versionszeichenkette überhaupt Ziffern enthält – anderenfalls gilt die Antwort als ungültig. Danach vergleicht `CL_UpdateCompareVersions` die Remote-Version mit der lokalen `PRODUCT_VERSION`. Ist die entfernte Version neuer, wird der Status `outdated` gesetzt, ansonsten `up_to_date`. Fehlende oder ungültige Antworten führen zu `error` mitsamt Meldung.【F:engine/code/client/cl_ui.c†L653-L790】
+`CL_UpdateHandleResponse` wertet den Inhalt aus: `CL_UpdateParseResponse` liest die Versionszeichenkette aus der Textdatei und stellt sicher, dass sie mindestens eine Ziffer enthält. Danach vergleicht `CL_UpdateCompareVersions` die Remote-Version mit der lokalen `PRODUCT_VERSION`. Ist die entfernte Version neuer, wird der Status `outdated` gesetzt; andernfalls `up_to_date`. Fehlende oder ungültige Antworten führen zu `error` mitsamt Meldung.【F:engine/code/client/cl_ui.c†L653-L818】
+
+Bei einem Mismatch setzt der Client eine Standardnachricht („Visit www.q3rally.com to download the latest version.“) sowie die Website-URL, damit das Hauptmenü einen Hinweis auf die Download-Seite anzeigen kann.【F:engine/code/client/cl_ui.c†L791-L808】【F:engine/code/q3_ui/ui_menu.c†L200-L233】
 
 Die aktuelle lokale Versionsnummer ist in `q_shared.h` als `PRODUCT_VERSION` definiert; sie wird gegen den vom Server gelieferten Wert geprüft.【F:engine/code/qcommon/q_shared.h†L57-L74】
 
