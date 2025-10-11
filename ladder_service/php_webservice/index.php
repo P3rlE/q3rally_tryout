@@ -3619,26 +3619,8 @@ loadMatches();
 // --- End frontend ---
 
 
-// Robust API path detection
-$requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
-$scriptName = $_SERVER['SCRIPT_NAME'];
-$path = '';
-
-if ($requestUri !== null) {
-    if (strpos($requestUri, $scriptName) === 0) {
-        $path = substr($requestUri, strlen($scriptName));
-    } else {
-        $scriptDir = dirname($scriptName);
-        // If the script is not in the root directory, remove the directory from the path
-        if ($scriptDir !== '/' && $scriptDir !== '.' && strpos($requestUri, $scriptDir) === 0) {
-            $path = substr($requestUri, strlen($scriptDir));
-        } else {
-            $path = $requestUri;
-        }
-    }
-}
-
-$path = trim($path, '/');
+$pathInfo = $_SERVER['PATH_INFO'] ?? '';
+$path = trim($pathInfo, '/');
 $segments = $path === '' ? [] : explode('/', $path);
 
 try {
