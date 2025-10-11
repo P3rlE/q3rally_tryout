@@ -25,6 +25,9 @@ if ($script !== '' && strpos($normalized, $script) === 0) {
     $normalized = substr($normalized, strlen($script));
 }
 $normalized = trim($normalized, '/');
+if (substr($normalized, -5) === '.json') {
+    $normalized = substr($normalized, 0, -5);
+}
 
 // --- Minimal frontend for Q3Rally Ladder (HTML landing page) ---
 try {
@@ -3620,6 +3623,7 @@ loadMatches();
 // --- End frontend ---
 
 
+try {
     $pathInfo = $normalized;
     $path = trim($pathInfo, '/');
     $segments = $path === '' ? [] : explode('/', $path);
@@ -3640,7 +3644,9 @@ loadMatches();
 } catch (RuntimeException $e) {
     send_error(400, $e->getMessage());
 } catch (Throwable $e) {
-    // if the frontend fails for any reason, continue with API logic
+    // Fallback for any other error
+    error_log((string)$e);
+    send_error(500, 'Internal Server Error');
 }
 
 function handle_post(array $segments): void
