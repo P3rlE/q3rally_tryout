@@ -274,6 +274,9 @@ static int CL_UpdateCompareVersions( const char *localVersion, const char *remot
 static void CL_UpdateNormalizeMessage( char *text );
 static qboolean CL_UpdateIsValidVersionString( const char *text );
 
+static const char *const CL_UPDATE_ENDPOINT_DEFAULT = "https://ladder.q3rally.com/version.txt";
+static const char *const CL_UPDATE_ENDPOINT_LEGACY = "https://ladder.q3rally.com/index.php/version";
+
 static cvar_t *cl_updateEndpoint = NULL;
 static cvar_t *cl_updateCheck = NULL;
 static cvar_t *cl_updateStatusCvar = NULL;
@@ -496,7 +499,11 @@ static void CL_UpdateEnsureCvars( void ) {
         }
 
         if ( !cl_updateEndpoint ) {
-                cl_updateEndpoint = Cvar_Get( "cl_updateEndpoint", "https://ladder.q3rally.com/version.txt", CVAR_ARCHIVE );
+                cl_updateEndpoint = Cvar_Get( "cl_updateEndpoint", CL_UPDATE_ENDPOINT_DEFAULT, CVAR_ARCHIVE );
+
+                if ( cl_updateEndpoint && !Q_stricmp( cl_updateEndpoint->string, CL_UPDATE_ENDPOINT_LEGACY ) ) {
+                        Cvar_Set( cl_updateEndpoint->name, CL_UPDATE_ENDPOINT_DEFAULT );
+                }
         }
 
         if ( !cl_updateCheck ) {
