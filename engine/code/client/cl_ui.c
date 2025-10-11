@@ -680,18 +680,25 @@ static int CL_UpdateCompareVersions( const char *localVersion, const char *remot
         {
                 const char *localComparable;
                 const char *remoteComparable;
-                int         lexical;
+                size_t      localLen;
+                size_t      remoteLen;
 
                 localComparable = CL_UpdateSkipVersionPrefix( localVersion );
                 remoteComparable = CL_UpdateSkipVersionPrefix( remoteVersion );
 
-                lexical = Q_stricmp( localComparable, remoteComparable );
-                if ( lexical != 0 ) {
-                        return lexical;
-                }
-        }
+                localLen = strlen( localComparable );
+                remoteLen = strlen( remoteComparable );
 
-        return Q_stricmp( localVersion, remoteVersion );
+                if ( remoteLen > localLen && !Q_strnicmp( localComparable, remoteComparable, localLen ) ) {
+                        return -1;
+                }
+
+                if ( localLen > remoteLen && !Q_strnicmp( localComparable, remoteComparable, remoteLen ) ) {
+                        return 1;
+                }
+
+                return Q_stricmp( localComparable, remoteComparable );
+        }
 }
 
 static qboolean CL_UpdateParseResponse( const char *data, size_t length, char *latestOut, size_t latestSize, char *urlOut, size_t urlSize, char *messageOut, size_t messageSize ) {
