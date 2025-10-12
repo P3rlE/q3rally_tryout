@@ -100,9 +100,11 @@ void loadBezierPathFile(char *filename) {
 =================
 G_TempRallyEntity
 
-Spawns an event entity that will not be auto-removed
-The origin will be snapped to save net bandwidth, so care
-must be taken if the origin is right on a surface (snap towards start vector first)
+Spawns an event entity that callers are expected to manage explicitly. To guard
+against leaks when a caller forgets to schedule any follow-up work, the helper
+now defaults to freeing the entity shortly after creation. The origin will be
+snapped to save net bandwidth, so care must be taken if the origin is right on
+a surface (snap towards start vector first)
 =================
 */
 gentity_t *G_TempRallyEntity( vec3_t origin, int event ) {
@@ -114,7 +116,9 @@ gentity_t *G_TempRallyEntity( vec3_t origin, int event ) {
 
 	e->classname = "tempEntity";
 	e->eventTime = level.time;
-//	e->freeAfterEvent = qtrue;
+	// Provide a safety net so forgotten rally temp entities clean themselves up.
+	e->think = G_FreeEntity;
+	e->nextthink = level.time + EVENT_VALID_MSEC;
 
 	VectorCopy( origin, snapped );
 	SnapVector( snapped );		// save network bandwidth
