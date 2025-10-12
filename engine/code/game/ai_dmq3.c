@@ -118,13 +118,8 @@ BotSetUserInfo
 */
 void BotSetUserInfo(bot_state_t *bs, char *key, char *value) {
 	char userinfo[MAX_INFO_STRING];
-	const char *current;
 
 	trap_GetUserinfo(bs->client, userinfo, sizeof(userinfo));
-	current = Info_ValueForKey(userinfo, key);
-	if (!Q_stricmp(current, value)) {
-		return;
-	}
 	Info_SetValueForKey(userinfo, key, value);
 	trap_SetUserinfo(bs->client, userinfo);
 	ClientUserinfoChanged( bs->client );

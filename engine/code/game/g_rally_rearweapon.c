@@ -67,7 +67,6 @@ void RFWeapon_SmokeFire( gentity_t *ent ) {
 	trap_Trace( &tr, ent->r.currentOrigin, NULL, NULL, end, ent->s.number, MASK_SHOT );
 
 	tent = G_TempRallyEntity( tr.endpos, EV_HAZARD );
-	tent->freeAfterEvent = qfalse;
 	tent->s.eventParm = 0;
 	tent->s.weapon = HT_SMOKE;
 	tent->r.ownerNum = ent->s.number;

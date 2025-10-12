@@ -560,7 +560,6 @@ typedef struct {
         gentity_t       *finishLine;
         qboolean                hasStart;
         qboolean                hasFinish;
-        qboolean vehicleStatsNeedBalancing;
 
         int                     testModelID;
         ladderMatchPayload_t    ladderPayload;

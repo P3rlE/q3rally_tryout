@@ -1928,7 +1928,6 @@ BotTeamAI
 void BotTeamAI(bot_state_t *bs) {
 	int numteammates;
 	char netname[MAX_NETNAME];
-	static float teamleader_time;
 
 	//
 	if ( gametype < GT_TEAM  )
@@ -1954,17 +1953,12 @@ void BotTeamAI(bot_state_t *bs) {
 				bs->becometeamleader_time = FloatTime() + 8 + random() * 10;
 			}
 			if (bs->becometeamleader_time && bs->becometeamleader_time < FloatTime()) {
-				if (teamleader_time > FloatTime() - 5) {
-					bs->becometeamleader_time = 0;
-					return;
-				}
 				BotAI_BotInitialChat(bs, "iamteamleader", NULL);
 				trap_BotEnterChat(bs->cs, 0, CHAT_TEAM);
 				BotSayVoiceTeamOrder(bs, -1, VOICECHAT_STARTLEADER);
 				ClientName(bs->client, netname, sizeof(netname));
-				Q_strncpyz(bs->teamleader, netname, sizeof(bs->teamleader));
+                                Q_strncpyz(bs->teamleader, netname, sizeof(bs->teamleader));
 				bs->becometeamleader_time = 0;
-				teamleader_time = FloatTime();
 			}
 			return;
 		}

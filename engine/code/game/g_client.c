@@ -848,30 +848,12 @@ void ClientUserinfoChanged( int clientNum ) {
 	gclient_t	*client;
 	char	c1[MAX_INFO_STRING];
 	char	c2[MAX_INFO_STRING];
-	char    c3[MAX_INFO_STRING];
-	char    c4[MAX_INFO_STRING];
+    char    c3[MAX_INFO_STRING];
+    char    c4[MAX_INFO_STRING];
 	char	redTeam[MAX_INFO_STRING];
 	char	blueTeam[MAX_INFO_STRING];
-	char    greenTeam[MAX_INFO_STRING];
-	char    yellowTeam[MAX_INFO_STRING];
-	
-	// ===== GLOBALER RE-ENTRY GUARD =====
-	static qboolean inClientUserinfoChanged = qfalse;
-	static int callCount[MAX_CLIENTS] = {0};
-	
-	// Verhindere Re-Entry komplett - GLOBAL für ALLE Clients
-	if (inClientUserinfoChanged) {
-		G_Printf("^3WARNING: ClientUserinfoChanged re-entry for client %d (GLOBAL GUARD) - SKIPPING!\n", clientNum);
-		return;
-	}
-	
-	inClientUserinfoChanged = qtrue;
-	
-	// Debug Counter
-	callCount[clientNum]++;
-	G_Printf("DEBUG: ClientUserinfoChanged #%d for client %d\n", 
-			 callCount[clientNum], clientNum);
-	// ===== END RE-ENTRY GUARD =====
+    char    greenTeam[MAX_INFO_STRING];
+    char    yellowTeam[MAX_INFO_STRING];
 
 	ent = g_entities + clientNum;
 	client = ent->client;
@@ -1015,54 +997,48 @@ void ClientUserinfoChanged( int clientNum ) {
 		client->pers.controlMode = atoi( s );
 	}
 
-	s = Info_ValueForKey( userinfo, "cg_manualShift" );
-	if ( *s ) {
-		client->pers.manualShift = atoi( s );
-	}
+        s = Info_ValueForKey( userinfo, "cg_manualShift" );
+        if ( *s ) {
+                client->pers.manualShift = atoi( s );
+        }
 
-	s = Info_ValueForKey( userinfo, "cg_vehicleMass" );
-	if ( *s ) {
-		client->car.frameMass = atof( s );
-	}
-	s = Info_ValueForKey( userinfo, "cg_wheelMass" );
-	if ( *s ) {
-		client->car.wheelMass = atof( s );
-	}
-	s = Info_ValueForKey( userinfo, "cg_fuelConsumption" );
-	if ( *s ) {
-		client->car.fuelConsumption = atof( s );
-	}
-	s = Info_ValueForKey( userinfo, "cg_torque" );
-	if ( *s ) {
-		client->car.torquePeak = atof( s );
-	}
-	s = Info_ValueForKey( userinfo, "cg_damageTolerance" );
-	if ( *s ) {
-		client->car.damageTolerance = atof( s );
-	}
+        s = Info_ValueForKey( userinfo, "cg_vehicleMass" );
+        if ( *s ) {
+                client->car.frameMass = atof( s );
+        }
+        s = Info_ValueForKey( userinfo, "cg_wheelMass" );
+        if ( *s ) {
+                client->car.wheelMass = atof( s );
+        }
+        s = Info_ValueForKey( userinfo, "cg_fuelConsumption" );
+        if ( *s ) {
+                client->car.fuelConsumption = atof( s );
+        }
+        s = Info_ValueForKey( userinfo, "cg_torque" );
+        if ( *s ) {
+                client->car.torquePeak = atof( s );
+        }
+        s = Info_ValueForKey( userinfo, "cg_damageTolerance" );
+        if ( *s ) {
+                client->car.damageTolerance = atof( s );
+        }
 
-	// team task (0 = none, 1 = offence, 2 = defence)
-	teamTask = atoi(Info_ValueForKey(userinfo, "teamtask"));
+        // team task (0 = none, 1 = offence, 2 = defence)
+        teamTask = atoi(Info_ValueForKey(userinfo, "teamtask"));
 	// team Leader (1 = leader, 0 is normal player)
 	teamLeader = client->sess.teamLeader;
 
 	// colors
 	Q_strncpyz(c1, Info_ValueForKey( userinfo, "color1" ), sizeof( c1 ));
 	Q_strncpyz(c2, Info_ValueForKey( userinfo, "color2" ), sizeof( c2 ));
-	Q_strncpyz(c3, Info_ValueForKey( userinfo, "color3" ), sizeof( c3 ));
-	Q_strncpyz(c4, Info_ValueForKey( userinfo, "color4" ), sizeof( c4 ));
+    Q_strncpyz(c3, Info_ValueForKey( userinfo, "color3" ), sizeof( c3 ));
+    Q_strncpyz(c4, Info_ValueForKey( userinfo, "color4" ), sizeof( c4 ));
 
 	Q_strncpyz(redTeam, Info_ValueForKey( userinfo, "g_redteam" ), sizeof( redTeam ));
 	Q_strncpyz(blueTeam, Info_ValueForKey( userinfo, "g_blueteam" ), sizeof( blueTeam ));
-	Q_strncpyz(greenTeam, Info_ValueForKey( userinfo, "g_greenteam" ), sizeof( greenTeam ));
-	Q_strncpyz(yellowTeam, Info_ValueForKey( userinfo, "g_yellowteam" ), sizeof( yellowTeam ));
+    Q_strncpyz(greenTeam, Info_ValueForKey( userinfo, "g_greenteam" ), sizeof( greenTeam ));
+    Q_strncpyz(yellowTeam, Info_ValueForKey( userinfo, "g_yellowteam" ), sizeof( yellowTeam ));
 // STONELANCE - UPDATE: need to add names for green and yellow teams?
-
-	// ===== BALANCE STATS VOR dem ConfigString setzen! =====
-	// So sind die Stats bereits korrekt wenn wir die Engine informieren
-	// und es gibt keine weiteren userinfo-Change Events
-	G_BalanceVehicleStats();
-	// ===== ENDE =====
 	
 	// send over a subset of the userinfo keys so other clients can
 	// print scoreboards, display models, and play custom sounds
@@ -1093,9 +1069,7 @@ void ClientUserinfoChanged( int clientNum ) {
 
 	// this is not the userinfo, more like the configstring actually
 	G_LogPrintf( "ClientUserinfoChanged: %i %s\n", clientNum, s );
-	
-	// ===== RESET GLOBALER GUARD =====
-	inClientUserinfoChanged = qfalse;
+	G_BalanceVehicleStats();
 }
 
 
@@ -1385,7 +1359,7 @@ void ClientSpawn(gentity_t *ent) {
 	int		savedLadderEliminationRound;
 	int		savedLadderEliminationPlayersRemaining;
 	float		savedLadderEliminationMetric;
-	gentity_t	*savedCarPoints[FIRST_FRAME_POINT];
+	gentity_t	*savedCarPoints[4];
 	vec3_t	origin, forward;
 // END
 
@@ -1501,9 +1475,10 @@ void ClientSpawn(gentity_t *ent) {
 	eventSequence = client->ps.eventSequence;
 
 // STONELANCE
-	for (i = 0; i < FIRST_FRAME_POINT; i++){
-		savedCarPoints[i] = client->carPoints[i];
-	}
+	savedCarPoints[0] = client->carPoints[0];
+	savedCarPoints[1] = client->carPoints[1];
+	savedCarPoints[2] = client->carPoints[2];
+	savedCarPoints[3] = client->carPoints[3];
 /*
 	for (i = 0; i < FIRST_FRAME_POINT; i++){
 		if ( client->carPoints[i] ){
@@ -1520,9 +1495,10 @@ void ClientSpawn(gentity_t *ent) {
 	client->sess = savedSess;
 	client->ps.ping = savedPing;
 // STONELANCE
-	for (i = 0; i < FIRST_FRAME_POINT; i++){
-		client->carPoints[i] = savedCarPoints[i];
-	}
+	client->carPoints[0] = savedCarPoints[0];
+	client->carPoints[1] = savedCarPoints[1];
+	client->carPoints[2] = savedCarPoints[2];
+	client->carPoints[3] = savedCarPoints[3];
 	client->finishRaceTime = savedFinishRaceTime;
 	client->ps.stats[STAT_DAMAGE_DEALT] = savedDamageDealt;
 	client->ps.stats[STAT_DAMAGE_TAKEN] = savedDamageTaken;
@@ -1904,7 +1880,7 @@ void ClientDisconnect( int clientNum ) {
 		ent->rearBounds = NULL;
 	}
 
-	for (i = 0; i < FIRST_FRAME_POINT; i++){
+	for (i = 0; i < 4; i++){
 		if ( ent->client->carPoints[i] ){
 			G_FreeEntity( ent->client->carPoints[i] );
 			ent->client->carPoints[i] = NULL;

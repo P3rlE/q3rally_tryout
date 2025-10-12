@@ -2990,6 +2990,7 @@ void G_RunThink (gentity_t *ent) {
 /*
 ================
 G_RunFrame
+
 Advances the non-player objects in the world
 ================
 */
@@ -3016,6 +3017,7 @@ void G_RunFrame( int levelTime ) {
 
 // STONELANCE
 //	RunRallyPhysics(); // map object physics
+
 	if ( !level.startRaceTime ){ // UPDATE: should this be done even before the race starts?
 		CalculatePlayerPositions();
 	}
@@ -3081,7 +3083,6 @@ void G_RunFrame( int levelTime ) {
 			continue;
 		}
 
-		// ENTFERNT: G_BalanceVehicleStats(); war hier - FALSCH!
 		G_RunThink( ent );
 	}
 
@@ -3093,11 +3094,11 @@ void G_RunFrame( int levelTime ) {
 		}
 	}
 
-	// update elimination scheduling
-	G_RunEliminationTimers();
+        // update elimination scheduling
+        G_RunEliminationTimers();
 
-	// see if it is time to do a tournement restart
-	CheckTournament();
+        // see if it is time to do a tournement restart
+        CheckTournament();
 
 	// see if it is time to end the level
 	CheckExitRules();

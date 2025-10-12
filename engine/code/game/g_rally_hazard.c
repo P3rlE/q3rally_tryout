@@ -110,7 +110,6 @@ void CreateFireHazard (gentity_t *owner, vec3_t origin){
 	}
 
 	ent = G_TempRallyEntity( origin, EV_HAZARD );
-	ent->freeAfterEvent = qfalse;
 
 	ent->splashRadius = 1;
 
@@ -171,7 +170,6 @@ void CreateBioHazard (gentity_t *owner, vec3_t origin){
 	}
 
 	ent = G_TempRallyEntity( origin, EV_HAZARD );
-	ent->freeAfterEvent = qfalse;
 
 	if (highest){
 		ent->splashRadius = highest + 1;
@@ -264,7 +262,6 @@ void CreateOilHazard (gentity_t *owner, vec3_t origin){
 	highest = 0;
 
 	ent = G_TempRallyEntity( origin, EV_HAZARD );
-	ent->freeAfterEvent = qfalse;
 
 	while ((other = G_Find(other, FOFS(classname), "oil")) != NULL){
 		VectorSubtract(other->r.currentOrigin, origin, dist);
@@ -333,7 +330,6 @@ void CreatePoisonHazard (gentity_t *owner, vec3_t origin){
 	gentity_t		*ent;
 
 	ent = G_TempRallyEntity( origin, EV_HAZARD );
-	ent->freeAfterEvent = qfalse;
 
 	ent->splashRadius = 3;
 	ent->s.weapon = HT_POISON;
