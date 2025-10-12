@@ -714,6 +714,42 @@ static void G_AddBot( const char *name, float skill, const char *team, int delay
 
 	if( delay == 0 ) {
 		ClientBegin( clientNum );
+		
+		// OPTION 1 FIX: Assign team leader to prevent bot chat loop
+		if ( g_gametype.integer >= GT_TEAM ) {
+			gclient_t *client = &level.clients[clientNum];
+			int botTeam = client->sess.sessionTeam;
+			qboolean hasLeader = qfalse;
+			int i;
+			char netname[MAX_NETNAME];
+			
+			// Only assign leader if bot is on an actual team (not spectator)
+			if ( botTeam == TEAM_RED || botTeam == TEAM_BLUE || 
+			     botTeam == TEAM_GREEN || botTeam == TEAM_YELLOW ) {
+				
+				// Check if this team already has a leader
+				for ( i = 0; i < level.maxclients; i++ ) {
+					if ( level.clients[i].pers.connected == CON_CONNECTED &&
+					     level.clients[i].sess.sessionTeam == botTeam && 
+					     level.clients[i].sess.teamLeader ) {
+						hasLeader = qtrue;
+						break;
+					}
+				}
+				
+				// If no leader exists, make this bot the leader
+				if ( !hasLeader ) {
+					client->sess.teamLeader = qtrue;
+					ClientUserinfoChanged( clientNum );
+					
+					// Get bot name for debug output
+					trap_GetUserinfo( clientNum, netname, sizeof(netname) );
+					G_Printf( "Bot %s^7 assigned as %s team leader\n", 
+						Info_ValueForKey(netname, "name"), TeamName(botTeam) );
+				}
+			}
+		}
+		
 		return;
 	}
 

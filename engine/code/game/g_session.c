@@ -211,22 +211,26 @@ void G_InitSessionData( gclient_t *client, char *userinfo ) {
 /*
 ==================
 G_InitWorldSession
-
 ==================
 */
 void G_InitWorldSession( void ) {
-	char	s[MAX_STRING_CHARS];
-	int			gt;
-
-	trap_Cvar_VariableStringBuffer( "session", s, sizeof(s) );
-	gt = atoi( s );
-	
-	// if the gametype changed since the last session, don't use any
-	// client sessions
-	if ( g_gametype.integer != gt ) {
-		level.newSession = qtrue;
-		G_Printf( "Gametype changed, clearing session data.\n" );
-	}
+    char	s[MAX_STRING_CHARS];
+    int		gt;
+    
+    trap_Cvar_VariableStringBuffer( "session", s, sizeof(s) );
+    gt = atoi( s );
+    
+    // Nur als "changed" markieren wenn der session Cvar gesetzt war UND unterschiedlich ist
+    if ( s[0] != '\0' && g_gametype.integer != gt ) {
+        level.newSession = qtrue;
+        G_Printf( "Gametype changed, clearing session data.\n" );
+    } else {
+        // Kein Gametype-Wechsel oder erster Start
+        level.newSession = qfalse;
+    }
+    
+    // Session Cvar für nächsten Start setzen
+    trap_Cvar_Set( "session", va( "%i", g_gametype.integer ) );
 }
 
 /*

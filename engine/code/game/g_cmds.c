@@ -611,6 +611,12 @@ void SetTeam( gentity_t *ent, const char *s ) {
 	client = ent->client;
 
 	clientNum = client - level.clients;
+    
+        // ===== DEBUG CODE HIER EINFÜGEN =====
+    G_Printf("DEBUG: SetTeam called for client %d, requesting team: %s\n", 
+             ent->client - level.clients, s);
+    // ===== DEBUG CODE ENDE =====
+    
 	specClient = 0;
 	specState = SPECTATOR_NOT;
 // STONELANCE
