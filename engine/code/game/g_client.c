@@ -407,17 +407,6 @@ After sitting around for five seconds, fall into the ground and disappear
 */
 void BodySink( gentity_t *ent ) {
 	if ( level.time - ent->timestamp > 6500 ) {
-// STONELANCE
-		if ( ent->frontBounds ){
-			G_FreeEntity( ent->frontBounds );
-			ent->frontBounds = NULL;
-		}
-		if ( ent->rearBounds ){
-			G_FreeEntity( ent->rearBounds );
-			ent->rearBounds = NULL;
-		}
-// END
-
 		// the body ques are never actually freed, they are just unlinked
 		trap_UnlinkEntity( ent );
 		ent->physicsObject = qfalse;
@@ -497,29 +486,6 @@ void CopyToBodyQue( gentity_t *ent ) {
 	body->s.event = 0;
 
 // STONELANCE
-	if ( ent->frontBounds ){ // there should always be an ent->frontBounds, but just in case
-		body->frontBounds = G_Spawn();
-		VectorCopy (ent->frontBounds->r.mins, body->frontBounds->r.mins);
-		VectorCopy (ent->frontBounds->r.maxs, body->frontBounds->r.maxs);
-		body->frontBounds->r.svFlags = SVF_NOCLIENT;
-		body->frontBounds->flags = FL_EXTRA_BBOX;
-		G_SetOrigin( body->frontBounds, ent->frontBounds->r.currentOrigin );
-		body->frontBounds->r.ownerNum = body->s.number;
-		body->frontBounds->r.contents = CONTENTS_CORPSE;
-		trap_LinkEntity ( body->frontBounds );
-	}
-
-	if ( ent->rearBounds ){ // there should always be an ent->rearBounds, but just in case
-		body->rearBounds = G_Spawn();
-		VectorCopy (ent->rearBounds->r.mins, body->rearBounds->r.mins);
-		VectorCopy (ent->rearBounds->r.maxs, body->rearBounds->r.maxs);
-		body->rearBounds->r.svFlags = SVF_NOCLIENT;
-		body->rearBounds->flags = FL_EXTRA_BBOX;
-		G_SetOrigin( body->rearBounds, ent->rearBounds->r.currentOrigin );
-		body->rearBounds->r.ownerNum = body->s.number;
-		body->rearBounds->r.contents = CONTENTS_CORPSE;
-		trap_LinkEntity ( body->rearBounds );
-	}
 // END
 
 	// change the animation to the last-frame only, so the sequence
