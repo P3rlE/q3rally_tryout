@@ -29,9 +29,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  *****************************************************************************/
 
-#ifndef BOTLIB_H
-#define BOTLIB_H
-
 #define	BOTLIB_API_VERSION		2
 
 struct aas_clientmove_s;
@@ -80,7 +77,8 @@ struct weaponinfo_s;
 #define BLERR_CANNOTLOADITEMCONFIG		10	//cannot load item config
 #define BLERR_CANNOTLOADWEAPONWEIGHTS	11	//cannot load weapon weights
 #define BLERR_CANNOTLOADWEAPONCONFIG	12	//cannot load weapon config
-#define BLERR_MISSINGENTITYDATA		13
+#define BLERR_MISSINGENTITYDATA			13
+
 //action flags
 #define ACTION_ATTACK			0x00000001
 #define ACTION_USE			0x00000002
@@ -519,4 +517,3 @@ name:						default:			module(s):			description:
 
 */
 
-#endif // BOTLIB_H
