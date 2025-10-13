@@ -1743,6 +1743,7 @@ client->ps.stats[STAT_WEAPONS] = ( 1u << WP_DERBY_RAM );
 	if ( level.intermissiontime && ( g_gametype.integer != GT_SINGLE_PLAYER && level.warmupTime != 0 ) ) {
 		// ignore the bogus flag while warmup is running
 		level.intermissiontime = 0;
+		level.intermissionQueued = 0;
 		trap_SetConfigstring( CS_INTERMISSION, "" );
 	}
 
