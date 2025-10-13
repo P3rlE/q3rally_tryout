@@ -1734,6 +1734,19 @@ client->ps.stats[STAT_WEAPONS] = ( 1u << WP_DERBY_RAM );
 */
 // END
 
+	// When the level is still in warmup we may see a stale intermission
+	// flag left over from a previous restart. In that situation players
+	// should still be spawned normally; otherwise they end up stuck at
+	// the intermission screen and repeatedly respawn (eventually
+	// exhausting the entity pool). Treat the intermission as active only
+	// when the real match end screen is showing.
+	if ( level.intermissiontime && ( g_gametype.integer != GT_SINGLE_PLAYER && level.warmupTime != 0 ) ) {
+		// ignore the bogus flag while warmup is running
+		level.intermissiontime = 0;
+		level.intermissionQueued = 0;
+		trap_SetConfigstring( CS_INTERMISSION, "" );
+	}
+
 	if (!level.intermissiontime) {
 		if (ent->client->sess.sessionTeam != TEAM_SPECTATOR) {
 			G_KillBox(ent);
