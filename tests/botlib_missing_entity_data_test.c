@@ -5,7 +5,6 @@
 #include <string.h>
 
 #include "q_shared.h"
-#include "botlib.h"
 #include "l_script.h"
 
 static int g_print_error_count;
@@ -20,6 +19,8 @@ static void TestPrint(int type, char *fmt, ...) {
 static char *TestBSPEntityData(void) {
     return (char *)g_entity_data;
 }
+
+#include "botlib.h"
 
 void *GetClearedHunkMemory(int size) {
     return calloc(1, (size_t)size);
