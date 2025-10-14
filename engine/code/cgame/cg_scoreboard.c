@@ -295,6 +295,8 @@ static void CG_InitScoreboardColumns(void) {
             columns[SBCOL_SCORE].header = "CAPS";
         } else if (cgs.gametype == GT_DOMINATION) {
             columns[SBCOL_SCORE].header = "POINTS";
+        } else if (cgs.gametype == GT_DERBY) {
+            columns[SBCOL_SCORE].header = "WRECKS";
         } else if (isTeam && !isRacing) {
             columns[SBCOL_SCORE].header = "SCORE";
         } else {
@@ -306,14 +308,14 @@ static void CG_InitScoreboardColumns(void) {
     if (showDamageDealt) {
         columns[SBCOL_DAMAGE_DEALT].type = SBCOL_DAMAGE_DEALT;
         columns[SBCOL_DAMAGE_DEALT].width = COL_DAMAGE_WIDTH;
-        columns[SBCOL_DAMAGE_DEALT].header = "DMG";
+        columns[SBCOL_DAMAGE_DEALT].header = "DMG DEALT";
         columns[SBCOL_DAMAGE_DEALT].visible = qtrue;
     }
 
     if (showDamageTaken) {
         columns[SBCOL_DAMAGE_TAKEN].type = SBCOL_DAMAGE_TAKEN;
         columns[SBCOL_DAMAGE_TAKEN].width = COL_DAMAGE_WIDTH;
-        columns[SBCOL_DAMAGE_TAKEN].header = "TAKEN";
+        columns[SBCOL_DAMAGE_TAKEN].header = "DMG TAKEN";
         columns[SBCOL_DAMAGE_TAKEN].visible = qtrue;
     }
 
@@ -490,6 +492,8 @@ static void CG_DrawModernHeader(int y) {
         switch (columns[i].type) {
             case SBCOL_RANK:
             case SBCOL_SCORE:
+            case SBCOL_DAMAGE_DEALT:
+            case SBCOL_DAMAGE_TAKEN:
             case SBCOL_DEATHS:
             case SBCOL_LAPTIME:
             case SBCOL_TOTALTIME:
