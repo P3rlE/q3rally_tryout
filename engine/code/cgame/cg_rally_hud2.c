@@ -491,7 +491,6 @@ void CG_DrawHUD_DerbyList(float x, float y){
 	int			i;
 	vec4_t		color;
 	centity_t	*cent;
-	char		*time;
 	float		playTime;
 
 	// draw heading
@@ -537,8 +536,7 @@ void CG_DrawHUD_DerbyList(float x, float y){
 		else if (cent->startRaceTime){
 			playTime = cg.time - cent->startLapTime;
 		}
-		time = getStringForTime(playTime);
-
+	
 		// num
 		CG_DrawTinyStringColor( x + 2, y, va("%i", (i+1)), color);
 
@@ -546,7 +544,7 @@ void CG_DrawHUD_DerbyList(float x, float y){
 		CG_DrawTinyStringColor( x + 16, y, cgs.clientinfo[cg.scores[i].client].name, color);
 
 		// time
-//		CG_DrawTinyStringColor( x + 70, y, time, color);
+//		CG_DrawTinyStringColor( x + 70, y, getStringForTime(playTime), color);
 
 		// dmg dealt
 		CG_DrawTinyStringColor( x + 75, y, va("%i", cg.scores[i].damageDealt), color);
@@ -591,7 +589,10 @@ static void CG_DrawHUD_DerbyDamageFlash( void ) {
 		progress = 1.0f;
 	}
 
-	Vector4Set( flashColor, 1.0f, 0.35f, 0.0f, cg.derbyHUDFlashStrength * progress );
+	flashColor[0] = 1.0f;
+	flashColor[1] = 0.35f;
+	flashColor[2] = 0.0f;
+	flashColor[3] = cg.derbyHUDFlashStrength * progress;
 
 	CG_FillRect( 0.0f, 0.0f, 640.0f, 480.0f, flashColor );
 }
