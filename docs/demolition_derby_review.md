@@ -19,6 +19,6 @@
 - [x] Scoreboard zeigt im Derby "wrecks" an und trennt verursachten von erlittenem Schaden in eigenen Spalten.【F:engine/code/cgame/cg_scoreboard.c†L2174-L2187】【F:engine/code/cgame/cg_scoreboard.c†L289-L324】【F:engine/code/cgame/cg_scoreboard.c†L2016-L2040】
 - [x] Der "Race ends"-Countdown bleibt im Derby aus und erscheint nur noch bei echten Renn-Enden.【F:engine/code/cgame/cg_rally_racetools.c†L58-L82】
 - [x] Ladder-Uploads behalten das bestehende Schema bei: Der Server packt weiterhin `damageDealt`/`damageTaken` aus den Derby-Scoreboards in den Payload, der HTTP-Reporter serialisiert sie unverändert. Die HUD-Kürzel "DD"/"DT" sind daher rein kosmetisch.【F:engine/code/game/g_main.c†L1768-L1806】【F:engine/code/server/sv_ladder.c†L468-L510】
-- [ ] Verbesserte Treffer-Visualisierung steht weiterhin aus.
+- [ ] Verbesserte Treffer-Visualisierung steht weiterhin aus: Effekte für starke Einschläge (z. B. Kamera-Rütteln, verstärktes Schadens-HUD, progressive Rauch-/Funken-Emitter) sind bislang nur Ideen und müssten noch konzipiert, abgestimmt und mit passenden Assets versehen werden.
 
 Diese Punkte liefern einen schnellen Einstieg, um den Modus sowohl technisch zu härten als auch spielerisch verständlicher zu machen.
