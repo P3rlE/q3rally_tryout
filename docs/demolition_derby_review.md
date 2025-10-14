@@ -5,6 +5,7 @@
 - **`g_derbyRamDamage` wirkte bislang nicht.** Die Ram-Logik nutzte ausschließlich den Geschwindigkeitsfaktor (`g_derbyRamDamageScale`) und die Maximalbegrenzung (`g_derbyRamDamageMax`). Der eigentliche Basiswert blieb wirkungslos und lag mit 100 zudem über dem Maximalwert. Inzwischen fließt der Basiswert additiv ein und die Standardwerte sind abgestimmt.【F:engine/code/game/g_weapon.c†L210-L247】【F:engine/code/game/g_main.c†L291-L293】
 - **Scoreboard-Status sprach von "frags".** Im modernen Scoreboard lautete der Platzierungs-String für alle Nicht-Renn-Modi „place with %d frags“, auch im Demolition Derby, obwohl der Score dort aus Kollisionen stammt. Der Status meldet jetzt "wrecks" für GT_DERBY.【F:engine/code/cgame/cg_scoreboard.c†L2174-L2187】
 - **Schadensspalte war missverständlich.** Die Spalte mit dem Header "DMG" zeigte im Scoreboard tatsächlich den erlittenen Schaden (`damageTaken`) an. Gerade im Derby erwartet man dort eher den verursachten Schaden oder eine explizite Kennzeichnung. Der Modus besitzt nun getrennte Spalten für verursachten und erlittenen Schaden sowie eine korrekte Todesanzeige für andere Modi.【F:engine/code/cgame/cg_scoreboard.c†L289-L324】【F:engine/code/cgame/cg_scoreboard.c†L2016-L2040】
+- **Countdown meldete "Race ends" nach jeder Derby-Kollision.** Das Client-HUD startete den Renn-Abspann, sobald der Server einen `raceFinishTime`-Event versandte – auch wenn lediglich ein Fahrer eliminiert wurde. Der Countdown wird jetzt nur noch in echten Renn-Modi gesetzt.【F:engine/code/cgame/cg_rally_racetools.c†L58-L82】
 
 ## Konkrete Verbesserungsvorschläge
 
@@ -16,6 +17,7 @@
 
 - [x] Ram-Schaden berücksichtigt jetzt den Basiswert `g_derbyRamDamage`; Standardwerte wurden auf einen sinnvollen Wertebereich abgestimmt.【F:engine/code/game/g_weapon.c†L210-L247】【F:engine/code/game/g_main.c†L291-L293】
 - [x] Scoreboard zeigt im Derby "wrecks" an und trennt verursachten von erlittenem Schaden in eigenen Spalten.【F:engine/code/cgame/cg_scoreboard.c†L2174-L2187】【F:engine/code/cgame/cg_scoreboard.c†L289-L324】【F:engine/code/cgame/cg_scoreboard.c†L2016-L2040】
+- [x] Der "Race ends"-Countdown bleibt im Derby aus und erscheint nur noch bei echten Renn-Enden.【F:engine/code/cgame/cg_rally_racetools.c†L58-L82】
 - [x] Ladder-Uploads behalten das bestehende Schema bei: Der Server packt weiterhin `damageDealt`/`damageTaken` aus den Derby-Scoreboards in den Payload, der HTTP-Reporter serialisiert sie unverändert. Die HUD-Kürzel "DD"/"DT" sind daher rein kosmetisch.【F:engine/code/game/g_main.c†L1768-L1806】【F:engine/code/server/sv_ladder.c†L468-L510】
 - [ ] Verbesserte Treffer-Visualisierung steht weiterhin aus.
 
