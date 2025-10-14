@@ -308,14 +308,14 @@ static void CG_InitScoreboardColumns(void) {
     if (showDamageDealt) {
         columns[SBCOL_DAMAGE_DEALT].type = SBCOL_DAMAGE_DEALT;
         columns[SBCOL_DAMAGE_DEALT].width = COL_DAMAGE_WIDTH;
-        columns[SBCOL_DAMAGE_DEALT].header = "DMG DEALT";
+        columns[SBCOL_DAMAGE_DEALT].header = "DD";
         columns[SBCOL_DAMAGE_DEALT].visible = qtrue;
     }
 
     if (showDamageTaken) {
         columns[SBCOL_DAMAGE_TAKEN].type = SBCOL_DAMAGE_TAKEN;
         columns[SBCOL_DAMAGE_TAKEN].width = COL_DAMAGE_WIDTH;
-        columns[SBCOL_DAMAGE_TAKEN].header = "DMG TAKEN";
+        columns[SBCOL_DAMAGE_TAKEN].header = "DT";
         columns[SBCOL_DAMAGE_TAKEN].visible = qtrue;
     }
 
