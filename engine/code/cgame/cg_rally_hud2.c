@@ -491,7 +491,6 @@ void CG_DrawHUD_DerbyList(float x, float y){
 	int			i;
 	vec4_t		color;
 	centity_t	*cent;
-	char		*time;
 	float		playTime;
 
 	// draw heading
@@ -537,8 +536,7 @@ void CG_DrawHUD_DerbyList(float x, float y){
 		else if (cent->startRaceTime){
 			playTime = cg.time - cent->startLapTime;
 		}
-		time = getStringForTime(playTime);
-
+	
 		// num
 		CG_DrawTinyStringColor( x + 2, y, va("%i", (i+1)), color);
 
@@ -546,7 +544,7 @@ void CG_DrawHUD_DerbyList(float x, float y){
 		CG_DrawTinyStringColor( x + 16, y, cgs.clientinfo[cg.scores[i].client].name, color);
 
 		// time
-//		CG_DrawTinyStringColor( x + 70, y, time, color);
+//		CG_DrawTinyStringColor( x + 70, y, getStringForTime(playTime), color);
 
 		// dmg dealt
 		CG_DrawTinyStringColor( x + 75, y, va("%i", cg.scores[i].damageDealt), color);
@@ -564,6 +562,41 @@ void CG_DrawHUD_DerbyList(float x, float y){
 CG_DrawHUD - Draws the extra HUD
 ================================
 */
+static void CG_DrawHUD_DerbyDamageFlash( void ) {
+	int		remaining;
+	float		progress;
+	vec4_t		flashColor;
+
+	if ( cgs.gametype != GT_DERBY ) {
+		return;
+	}
+
+	remaining = cg.derbyHUDFlashEndTime - cg.time;
+	if ( remaining <= 0 ) {
+		cg.derbyHUDFlashStrength = 0.0f;
+		cg.derbyHUDFlashEndTime = 0;
+		return;
+	}
+
+	if ( cg.derbyHUDFlashStrength <= 0.0f ) {
+		return;
+	}
+
+	progress = (float)remaining / (float)DERBY_HUD_FLASH_DURATION;
+	if ( progress < 0.0f ) {
+		progress = 0.0f;
+	} else if ( progress > 1.0f ) {
+		progress = 1.0f;
+	}
+
+	flashColor[0] = 1.0f;
+	flashColor[1] = 0.35f;
+	flashColor[2] = 0.0f;
+	flashColor[3] = cg.derbyHUDFlashStrength * progress;
+
+	CG_FillRect( 0.0f, 0.0f, 640.0f, 480.0f, flashColor );
+}
+
 qboolean CG_DrawHUD( void ) {
 	// don't draw anything if the menu or console is up
 	if ( cg_paused.integer ) {
@@ -619,6 +652,8 @@ qboolean CG_DrawHUD( void ) {
 
 		break;
 	}
+
+	CG_DrawHUD_DerbyDamageFlash();
 
 	return qtrue;
 }
