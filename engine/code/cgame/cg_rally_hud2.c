@@ -491,7 +491,9 @@ void CG_DrawHUD_DerbyList(float x, float y){
 	int			i;
 	vec4_t		color;
 	centity_t	*cent;
-	float		playTime;
+
+	// NOTE: the optional play time column stays disabled. When re-enabling it,
+	// compute the elapsed time inline so Derby builds avoid unused local warnings.
 
 	// draw heading
     x = 636 - 120;
@@ -529,14 +531,6 @@ void CG_DrawHUD_DerbyList(float x, float y){
 			Vector4Copy(colorMdGrey, color);
 		}
 
-		playTime = 0;
-		if (cent->finishRaceTime){
-			playTime = cent->finishRaceTime - cent->startLapTime;
-		}
-		else if (cent->startRaceTime){
-			playTime = cg.time - cent->startLapTime;
-		}
-	
 		// num
 		CG_DrawTinyStringColor( x + 2, y, va("%i", (i+1)), color);
 
@@ -544,7 +538,9 @@ void CG_DrawHUD_DerbyList(float x, float y){
 		CG_DrawTinyStringColor( x + 16, y, cgs.clientinfo[cg.scores[i].client].name, color);
 
 		// time
-//		CG_DrawTinyStringColor( x + 70, y, getStringForTime(playTime), color);
+//		CG_DrawTinyStringColor( x + 70, y, getStringForTime( cent->finishRaceTime ?
+//				cent->finishRaceTime - cent->startLapTime :
+//				( cent->startRaceTime ? cg.time - cent->startLapTime : 0 ) ), color);
 
 		// dmg dealt
 		CG_DrawTinyStringColor( x + 75, y, va("%i", cg.scores[i].damageDealt), color);
