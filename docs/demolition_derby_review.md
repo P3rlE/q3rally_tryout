@@ -16,6 +16,7 @@
 
 - [x] Ram-Schaden berücksichtigt jetzt den Basiswert `g_derbyRamDamage`; Standardwerte wurden auf einen sinnvollen Wertebereich abgestimmt.【F:engine/code/game/g_weapon.c†L210-L247】【F:engine/code/game/g_main.c†L291-L293】
 - [x] Scoreboard zeigt im Derby "wrecks" an und trennt verursachten von erlittenem Schaden in eigenen Spalten.【F:engine/code/cgame/cg_scoreboard.c†L2174-L2187】【F:engine/code/cgame/cg_scoreboard.c†L289-L324】【F:engine/code/cgame/cg_scoreboard.c†L2016-L2040】
+- [x] Ladder-Uploads behalten das bestehende Schema bei: Der Server packt weiterhin `damageDealt`/`damageTaken` aus den Derby-Scoreboards in den Payload, der HTTP-Reporter serialisiert sie unverändert. Die HUD-Kürzel "DD"/"DT" sind daher rein kosmetisch.【F:engine/code/game/g_main.c†L1768-L1806】【F:engine/code/server/sv_ladder.c†L468-L510】
 - [ ] Verbesserte Treffer-Visualisierung steht weiterhin aus.
 
 Diese Punkte liefern einen schnellen Einstieg, um den Modus sowohl technisch zu härten als auch spielerisch verständlicher zu machen.
