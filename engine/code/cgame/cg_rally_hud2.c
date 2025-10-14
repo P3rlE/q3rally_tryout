@@ -564,6 +564,38 @@ void CG_DrawHUD_DerbyList(float x, float y){
 CG_DrawHUD - Draws the extra HUD
 ================================
 */
+static void CG_DrawHUD_DerbyDamageFlash( void ) {
+	int		remaining;
+	float		progress;
+	vec4_t		flashColor;
+
+	if ( cgs.gametype != GT_DERBY ) {
+		return;
+	}
+
+	remaining = cg.derbyHUDFlashEndTime - cg.time;
+	if ( remaining <= 0 ) {
+		cg.derbyHUDFlashStrength = 0.0f;
+		cg.derbyHUDFlashEndTime = 0;
+		return;
+	}
+
+	if ( cg.derbyHUDFlashStrength <= 0.0f ) {
+		return;
+	}
+
+	progress = (float)remaining / (float)DERBY_HUD_FLASH_DURATION;
+	if ( progress < 0.0f ) {
+		progress = 0.0f;
+	} else if ( progress > 1.0f ) {
+		progress = 1.0f;
+	}
+
+	Vector4Set( flashColor, 1.0f, 0.35f, 0.0f, cg.derbyHUDFlashStrength * progress );
+
+	CG_FillRect( 0.0f, 0.0f, 640.0f, 480.0f, flashColor );
+}
+
 qboolean CG_DrawHUD( void ) {
 	// don't draw anything if the menu or console is up
 	if ( cg_paused.integer ) {
@@ -619,6 +651,8 @@ qboolean CG_DrawHUD( void ) {
 
 		break;
 	}
+
+	CG_DrawHUD_DerbyDamageFlash();
 
 	return qtrue;
 }
