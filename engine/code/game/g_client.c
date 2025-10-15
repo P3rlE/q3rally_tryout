@@ -394,6 +394,27 @@ void InitBodyQue (void) {
 		ent = G_Spawn();
 		ent->classname = "bodyque";
 		ent->neverFree = qtrue;
+
+		// Pre-allocate the extra collision bounds so each slot can be recycled
+		// without spawning fresh helpers during gameplay.
+                ent->frontBounds = G_Spawn();
+                if ( ent->frontBounds ) {
+                        ent->frontBounds->classname = "bodyque_front";
+                        ent->frontBounds->neverFree = qtrue;
+                        ent->frontBounds->r.svFlags = SVF_NOCLIENT;
+                        ent->frontBounds->flags = FL_EXTRA_BBOX;
+                        G_ResetExtraBBox( ent->frontBounds );
+                }
+
+                ent->rearBounds = G_Spawn();
+                if ( ent->rearBounds ) {
+                        ent->rearBounds->classname = "bodyque_rear";
+                        ent->rearBounds->neverFree = qtrue;
+                        ent->rearBounds->r.svFlags = SVF_NOCLIENT;
+                        ent->rearBounds->flags = FL_EXTRA_BBOX;
+                        G_ResetExtraBBox( ent->rearBounds );
+                }
+
 		level.bodyQue[i] = ent;
 	}
 }
@@ -406,21 +427,13 @@ After sitting around for five seconds, fall into the ground and disappear
 =============
 */
 void BodySink( gentity_t *ent ) {
-	if (ent->frontBounds)
-	{
-		G_FreeEntity(ent->frontBounds);
-		ent->frontBounds = NULL;
-	}
-	if (ent->rearBounds)
-	{
-		G_FreeEntity(ent->rearBounds);
-		ent->rearBounds = NULL;
-	}
-	if ( level.time - ent->timestamp > 6500 ) {
-		// the body ques are never actually freed, they are just unlinked
-		trap_UnlinkEntity( ent );
-		ent->physicsObject = qfalse;
-		return;
+        G_ResetExtraBBox( ent->frontBounds );
+        G_ResetExtraBBox( ent->rearBounds );
+        if ( level.time - ent->timestamp > 6500 ) {
+                // the body ques are never actually freed, they are just unlinked
+                trap_UnlinkEntity( ent );
+                ent->physicsObject = qfalse;
+                return;
 	}
 	ent->nextthink = level.time + 100;
 	ent->s.pos.trBase[2] -= 1;
@@ -496,29 +509,53 @@ void CopyToBodyQue( gentity_t *ent ) {
 	body->s.event = 0;
 
 // STONELANCE
-	if ( ent->frontBounds ){ // there should always be an ent->frontBounds, but just in case
-		body->frontBounds = G_Spawn();
-		VectorCopy (ent->frontBounds->r.mins, body->frontBounds->r.mins);
-		VectorCopy (ent->frontBounds->r.maxs, body->frontBounds->r.maxs);
-		body->frontBounds->r.svFlags = SVF_NOCLIENT;
-		body->frontBounds->flags = FL_EXTRA_BBOX;
-		G_SetOrigin( body->frontBounds, ent->frontBounds->r.currentOrigin );
-		body->frontBounds->r.ownerNum = body->s.number;
-		body->frontBounds->r.contents = CONTENTS_CORPSE;
-		trap_LinkEntity ( body->frontBounds );
-	}
+       if ( ent->frontBounds ) {
+               if ( !body->frontBounds ) {
+                       body->frontBounds = G_Spawn();
+                       if ( body->frontBounds ) {
+                               body->frontBounds->classname = "bodyque_front";
+                               body->frontBounds->neverFree = qtrue;
+                               body->frontBounds->r.svFlags = SVF_NOCLIENT;
+                               body->frontBounds->flags = FL_EXTRA_BBOX;
+                       }
+               }
 
-	if ( ent->rearBounds ){ // there should always be an ent->rearBounds, but just in case
-		body->rearBounds = G_Spawn();
-		VectorCopy (ent->rearBounds->r.mins, body->rearBounds->r.mins);
-		VectorCopy (ent->rearBounds->r.maxs, body->rearBounds->r.maxs);
-		body->rearBounds->r.svFlags = SVF_NOCLIENT;
-		body->rearBounds->flags = FL_EXTRA_BBOX;
-		G_SetOrigin( body->rearBounds, ent->rearBounds->r.currentOrigin );
-		body->rearBounds->r.ownerNum = body->s.number;
-		body->rearBounds->r.contents = CONTENTS_CORPSE;
-		trap_LinkEntity ( body->rearBounds );
-	}
+               if ( body->frontBounds ) {
+                       trap_UnlinkEntity( body->frontBounds );
+                       VectorCopy( ent->frontBounds->r.mins, body->frontBounds->r.mins );
+                       VectorCopy( ent->frontBounds->r.maxs, body->frontBounds->r.maxs );
+                       G_SetOrigin( body->frontBounds, ent->frontBounds->r.currentOrigin );
+                       body->frontBounds->r.ownerNum = body->s.number;
+                       body->frontBounds->r.contents = CONTENTS_CORPSE;
+                       trap_LinkEntity( body->frontBounds );
+               }
+       } else if ( body->frontBounds ) {
+               G_ResetExtraBBox( body->frontBounds );
+       }
+
+       if ( ent->rearBounds ) {
+               if ( !body->rearBounds ) {
+                       body->rearBounds = G_Spawn();
+                       if ( body->rearBounds ) {
+                               body->rearBounds->classname = "bodyque_rear";
+                               body->rearBounds->neverFree = qtrue;
+                               body->rearBounds->r.svFlags = SVF_NOCLIENT;
+                               body->rearBounds->flags = FL_EXTRA_BBOX;
+                       }
+               }
+
+               if ( body->rearBounds ) {
+                       trap_UnlinkEntity( body->rearBounds );
+                       VectorCopy( ent->rearBounds->r.mins, body->rearBounds->r.mins );
+                       VectorCopy( ent->rearBounds->r.maxs, body->rearBounds->r.maxs );
+                       G_SetOrigin( body->rearBounds, ent->rearBounds->r.currentOrigin );
+                       body->rearBounds->r.ownerNum = body->s.number;
+                       body->rearBounds->r.contents = CONTENTS_CORPSE;
+                       trap_LinkEntity( body->rearBounds );
+               }
+       } else if ( body->rearBounds ) {
+               G_ResetExtraBBox( body->rearBounds );
+       }
 // END
 
 	// change the animation to the last-frame only, so the sequence

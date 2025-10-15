@@ -664,6 +664,7 @@ void G_AddEvent( gentity_t *ent, int event, int eventParm );
 void G_SetOrigin( gentity_t *ent, vec3_t origin );
 void AddRemap(const char *oldShader, const char *newShader, float timeOffset);
 const char *BuildShaderStateConfig( void );
+void G_ResetExtraBBox( gentity_t *ent );
 
 int PickDebrisType( int spawnflags );
 
