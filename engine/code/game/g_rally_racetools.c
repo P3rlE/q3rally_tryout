@@ -831,11 +831,15 @@ gentity_t *SelectGridPositionSpawn( gentity_t *ent, vec3_t origin, vec3_t angles
 		}
 	}
 
-	if ( !spot || SpotWouldTelefrag( spot ) ) {
-		// FIXME: put into spectator mode instead?
-		G_Printf("Warning: No info_player_start found for race spawn, trying info_player_deathmatch\n");
-		return SelectSpawnPoint( vec3_origin, origin, angles, isbot );
-	}
+        if ( !spot || SpotWouldTelefrag( spot ) ) {
+                // FIXME: put into spectator mode instead?
+                if ( ent && ent->client && !( ent->r.svFlags & SVF_BOT ) ) {
+                        trap_SendServerCommand( ent - g_entities, "cp \"All grid slots are occupied!\n\"" );
+                        trap_SendServerCommand( ent - g_entities, "print \"All grid slots are occupied!\n\"" );
+                }
+                G_Printf("Warning: No info_player_start found for race spawn, trying info_player_deathmatch\n");
+                return SelectSpawnPoint( vec3_origin, origin, angles, isbot );
+        }
 
 	VectorCopy (spot->s.origin, origin);
 	origin[2] += 9;
