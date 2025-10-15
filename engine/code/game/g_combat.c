@@ -278,14 +278,12 @@ void GibEntity( gentity_t *self, int killer ) {
 	self->r.contents = 0;
 
 // STONELANCE
-	if ( self->frontBounds ){
-		G_FreeEntity( self->frontBounds );
-		self->frontBounds = NULL;
-	}
-	if ( self->rearBounds ){
-		G_FreeEntity( self->rearBounds );
-		self->rearBounds = NULL;
-	}
+        if ( self->frontBounds ){
+                G_ResetExtraBBox( self->frontBounds );
+        }
+        if ( self->rearBounds ){
+                G_ResetExtraBBox( self->rearBounds );
+        }
 
 /*
 	if ( self->client ){
