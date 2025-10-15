@@ -101,19 +101,34 @@ void CG_DrawHUD_Times(float x, float y){
 
 		// add up times for team members
 		teamTime = 0;
+		count = 0;
 		for ( i = 0 ; i < cgs.maxclients ; i++ ) {
+			int startBaseline;
+
 			if ( !cgs.clientinfo[i].infoValid )	continue;
 
-			if ( cgs.clientinfo[i].team == cgs.clientinfo[cg.snap->ps.clientNum].team ) {
-				count++;
+			if ( cgs.clientinfo[i].team != cgs.clientinfo[cg.snap->ps.clientNum].team ) continue;
 
-				cent = &cg_entities[i];
+			cent = &cg_entities[i];
 
-				if (cent->finishRaceTime)
-					teamTime += cent->finishRaceTime - cent->startLapTime;
-				else if (cent->startRaceTime)
-					teamTime += cg.time - cent->startRaceTime;
+			if ( cgs.laplimit > 1 ) {
+				startBaseline = cent->startRaceTime;
+			} else if ( cent->startLapTime ) {
+				startBaseline = cent->startLapTime;
+			} else {
+				startBaseline = cent->startRaceTime;
 			}
+
+			if ( startBaseline <= 0 ) {
+				continue;
+			}
+
+			count++;
+
+			if (cent->finishRaceTime > 0)
+				teamTime += cent->finishRaceTime - startBaseline;
+			else
+				teamTime += cg.time - startBaseline;
 		}
 
 		// subtract team frag times
@@ -141,7 +156,8 @@ void CG_DrawHUD_Times(float x, float y){
 		}
 
 		// average team time
-		teamTime /= count;
+		if (count > 0)
+			teamTime /= count;
 
 		CG_DrawSmallDigitalStringColor(x + 12, y, "TEAM:", colorWhite);
 		time = getStringForTime(teamTime);
