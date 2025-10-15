@@ -961,13 +961,8 @@ static void PM_NoclipMove( void ) {
 	VectorMA (pm->ps->origin, pml.frametime, pm->ps->velocity, pm->ps->origin);
 
 // STONELANCE
-       pm->ps->viewangles[YAW] = pm->ps->damageAngles[YAW];
-       // PM_InitializeVehicle resets the entire car state, including fuel.
-       // Calling it every frame while noclipping prevented fuel usage from
-       // persisting between frames. The vehicle should only be fully
-       // reinitialized when a reset is explicitly requested, so avoid calling
-       // it here.
-       // PM_InitializeVehicle(pm->car, pm->ps->origin, pm->ps->viewangles, pm->ps->velocity);
+	pm->ps->viewangles[YAW] = pm->ps->damageAngles[YAW];
+	PM_InitializeVehicle(pm->car, pm->ps->origin, pm->ps->viewangles, pm->ps->velocity /* , pm->car_frontweight_dist */ );
 // END
 }
 
@@ -1587,7 +1582,7 @@ static void PM_BeginWeaponChange( int weapon ) {
 		return;
 	}
 
-if ( !( pm->ps->stats[STAT_WEAPONS] & ( 1u << weapon ) ) ) {
+	if ( !( pm->ps->stats[STAT_WEAPONS] & ( 1 << weapon ) ) ) {
 		return;
 	}
 	
@@ -1615,7 +1610,7 @@ static void PM_FinishWeaponChange( void ) {
 		weapon = WP_NONE;
 	}
 
-if ( !( pm->ps->stats[STAT_WEAPONS] & ( 1u << weapon ) ) ) {
+	if ( !( pm->ps->stats[STAT_WEAPONS] & ( 1 << weapon ) ) ) {
 		weapon = WP_NONE;
 	}
 
@@ -2193,14 +2188,14 @@ void PM_RearWeapon( void ) {
 		return;
 	}
 
-for (i = RWP_SMOKE; i < WP_NUM_WEAPONS; i++){
-if (pm->ps->stats[STAT_WEAPONS] & ( 1u << i ) && !pm->ps->ammo[ i ]){
-pm->ps->stats[STAT_WEAPONS] &= ~( 1u << i );
-}
+	for (i = RWP_SMOKE; i < WP_NUM_WEAPONS; i++){
+		if (pm->ps->stats[STAT_WEAPONS] & ( 1 << i ) && !pm->ps->ammo[ i ]){
+			pm->ps->stats[STAT_WEAPONS] &= ~( 1 << i );
+		}
 
-if (pm->ps->stats[STAT_WEAPONS] & ( 1u << i ) && pm->ps->ammo[ i ])
-break;
-}
+		if (pm->ps->stats[STAT_WEAPONS] & ( 1 << i ) && pm->ps->ammo[ i ])
+			break;
+	}
 
 	if (i < WP_NUM_WEAPONS){
 		weapon = i;

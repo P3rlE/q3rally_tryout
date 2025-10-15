@@ -376,16 +376,12 @@ void	*VM_ArgPtr( intptr_t intValue );
 void	*VM_ExplicitArgPtr( vm_t *vm, intptr_t intValue );
 
 #define	VMA(x) VM_ArgPtr(args[x])
-#ifndef Q3_VM
 static ID_INLINE float _vmf(intptr_t x)
 {
 	floatint_t fi;
 	fi.i = (int) x;
 	return fi.f;
 }
-#else
-#define	_vmf(x)	(*(const float *)&(x))
-#endif
 #define	VMF(x)	_vmf(args[x])
 
 
@@ -851,9 +847,7 @@ void		Com_StartupVariable( const char *match );
 // if match is NULL, all set commands will be executed, otherwise
 // only a set with the exact name.  Only used during startup.
 
-void            Com_WriteConfiguration( void );
-
-qboolean                Com_PlayerNameToFieldString( char *str, int length, const char *name );
+qboolean		Com_PlayerNameToFieldString( char *str, int length, const char *name );
 qboolean		Com_FieldStringToPlayerName( char *name, int length, const char *rawname );
 int QDECL	Com_strCompare( const void *a, const void *b );
 

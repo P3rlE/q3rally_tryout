@@ -394,27 +394,6 @@ void InitBodyQue (void) {
 		ent = G_Spawn();
 		ent->classname = "bodyque";
 		ent->neverFree = qtrue;
-
-		// Pre-allocate the extra collision bounds so each slot can be recycled
-		// without spawning fresh helpers during gameplay.
-                ent->frontBounds = G_Spawn();
-                if ( ent->frontBounds ) {
-                        ent->frontBounds->classname = "bodyque_front";
-                        ent->frontBounds->neverFree = qtrue;
-                        ent->frontBounds->r.svFlags = SVF_NOCLIENT;
-                        ent->frontBounds->flags = FL_EXTRA_BBOX;
-                        G_ResetExtraBBox( ent->frontBounds );
-                }
-
-                ent->rearBounds = G_Spawn();
-                if ( ent->rearBounds ) {
-                        ent->rearBounds->classname = "bodyque_rear";
-                        ent->rearBounds->neverFree = qtrue;
-                        ent->rearBounds->r.svFlags = SVF_NOCLIENT;
-                        ent->rearBounds->flags = FL_EXTRA_BBOX;
-                        G_ResetExtraBBox( ent->rearBounds );
-                }
-
 		level.bodyQue[i] = ent;
 	}
 }
@@ -427,13 +406,22 @@ After sitting around for five seconds, fall into the ground and disappear
 =============
 */
 void BodySink( gentity_t *ent ) {
-        G_ResetExtraBBox( ent->frontBounds );
-        G_ResetExtraBBox( ent->rearBounds );
-        if ( level.time - ent->timestamp > 6500 ) {
-                // the body ques are never actually freed, they are just unlinked
-                trap_UnlinkEntity( ent );
-                ent->physicsObject = qfalse;
-                return;
+	if ( level.time - ent->timestamp > 6500 ) {
+// STONELANCE
+		if ( ent->frontBounds ){
+			G_FreeEntity( ent->frontBounds );
+			ent->frontBounds = NULL;
+		}
+		if ( ent->rearBounds ){
+			G_FreeEntity( ent->rearBounds );
+			ent->rearBounds = NULL;
+		}
+// END
+
+		// the body ques are never actually freed, they are just unlinked
+		trap_UnlinkEntity( ent );
+		ent->physicsObject = qfalse;
+		return;	
 	}
 	ent->nextthink = level.time + 100;
 	ent->s.pos.trBase[2] -= 1;
@@ -509,53 +497,29 @@ void CopyToBodyQue( gentity_t *ent ) {
 	body->s.event = 0;
 
 // STONELANCE
-       if ( ent->frontBounds ) {
-               if ( !body->frontBounds ) {
-                       body->frontBounds = G_Spawn();
-                       if ( body->frontBounds ) {
-                               body->frontBounds->classname = "bodyque_front";
-                               body->frontBounds->neverFree = qtrue;
-                               body->frontBounds->r.svFlags = SVF_NOCLIENT;
-                               body->frontBounds->flags = FL_EXTRA_BBOX;
-                       }
-               }
+	if ( ent->frontBounds ){ // there should always be an ent->frontBounds, but just in case
+		body->frontBounds = G_Spawn();
+		VectorCopy (ent->frontBounds->r.mins, body->frontBounds->r.mins);
+		VectorCopy (ent->frontBounds->r.maxs, body->frontBounds->r.maxs);
+		body->frontBounds->r.svFlags = SVF_NOCLIENT;
+		body->frontBounds->flags = FL_EXTRA_BBOX;
+		G_SetOrigin( body->frontBounds, ent->frontBounds->r.currentOrigin );
+		body->frontBounds->r.ownerNum = body->s.number;
+		body->frontBounds->r.contents = CONTENTS_CORPSE;
+		trap_LinkEntity ( body->frontBounds );
+	}
 
-               if ( body->frontBounds ) {
-                       trap_UnlinkEntity( body->frontBounds );
-                       VectorCopy( ent->frontBounds->r.mins, body->frontBounds->r.mins );
-                       VectorCopy( ent->frontBounds->r.maxs, body->frontBounds->r.maxs );
-                       G_SetOrigin( body->frontBounds, ent->frontBounds->r.currentOrigin );
-                       body->frontBounds->r.ownerNum = body->s.number;
-                       body->frontBounds->r.contents = CONTENTS_CORPSE;
-                       trap_LinkEntity( body->frontBounds );
-               }
-       } else if ( body->frontBounds ) {
-               G_ResetExtraBBox( body->frontBounds );
-       }
-
-       if ( ent->rearBounds ) {
-               if ( !body->rearBounds ) {
-                       body->rearBounds = G_Spawn();
-                       if ( body->rearBounds ) {
-                               body->rearBounds->classname = "bodyque_rear";
-                               body->rearBounds->neverFree = qtrue;
-                               body->rearBounds->r.svFlags = SVF_NOCLIENT;
-                               body->rearBounds->flags = FL_EXTRA_BBOX;
-                       }
-               }
-
-               if ( body->rearBounds ) {
-                       trap_UnlinkEntity( body->rearBounds );
-                       VectorCopy( ent->rearBounds->r.mins, body->rearBounds->r.mins );
-                       VectorCopy( ent->rearBounds->r.maxs, body->rearBounds->r.maxs );
-                       G_SetOrigin( body->rearBounds, ent->rearBounds->r.currentOrigin );
-                       body->rearBounds->r.ownerNum = body->s.number;
-                       body->rearBounds->r.contents = CONTENTS_CORPSE;
-                       trap_LinkEntity( body->rearBounds );
-               }
-       } else if ( body->rearBounds ) {
-               G_ResetExtraBBox( body->rearBounds );
-       }
+	if ( ent->rearBounds ){ // there should always be an ent->rearBounds, but just in case
+		body->rearBounds = G_Spawn();
+		VectorCopy (ent->rearBounds->r.mins, body->rearBounds->r.mins);
+		VectorCopy (ent->rearBounds->r.maxs, body->rearBounds->r.maxs);
+		body->rearBounds->r.svFlags = SVF_NOCLIENT;
+		body->rearBounds->flags = FL_EXTRA_BBOX;
+		G_SetOrigin( body->rearBounds, ent->rearBounds->r.currentOrigin );
+		body->rearBounds->r.ownerNum = body->s.number;
+		body->rearBounds->r.contents = CONTENTS_CORPSE;
+		trap_LinkEntity ( body->rearBounds );
+	}
 // END
 
 	// change the animation to the last-frame only, so the sequence
@@ -697,6 +661,78 @@ int TeamLeader( int team ) {
 }
 
 
+// STONELANCE
+team_t LowestTeamCount( int ignoreClientNum ){
+	int		counts[TEAM_NUM_TEAMS];
+
+	counts[TEAM_BLUE] = TeamCount( ignoreClientNum, TEAM_BLUE );
+	counts[TEAM_RED] = TeamCount( ignoreClientNum, TEAM_RED );
+	counts[TEAM_GREEN] = TeamCount( ignoreClientNum, TEAM_GREEN );
+	counts[TEAM_YELLOW] = TeamCount( ignoreClientNum, TEAM_YELLOW );
+
+	if ( counts[TEAM_BLUE] == counts[TEAM_RED]
+		&& counts[TEAM_BLUE] == counts[TEAM_GREEN]
+		&& counts[TEAM_BLUE] == counts[TEAM_YELLOW]) {
+		return 0;
+	}
+
+	if ( counts[TEAM_BLUE] <= counts[TEAM_RED]
+		&& counts[TEAM_BLUE] <= counts[TEAM_GREEN]
+		&& counts[TEAM_BLUE] <= counts[TEAM_YELLOW]) {
+		return TEAM_BLUE;
+	}
+	if ( counts[TEAM_RED] <= counts[TEAM_BLUE]
+		&& counts[TEAM_RED] <= counts[TEAM_GREEN]
+		&& counts[TEAM_RED] <= counts[TEAM_YELLOW]) {
+		return TEAM_RED;
+	}
+	if ( counts[TEAM_GREEN] <= counts[TEAM_RED]
+		&& counts[TEAM_GREEN] <= counts[TEAM_BLUE]
+		&& counts[TEAM_GREEN] <= counts[TEAM_YELLOW]) {
+		return TEAM_GREEN;
+	}
+	if ( counts[TEAM_YELLOW] <= counts[TEAM_RED]
+		&& counts[TEAM_YELLOW] <= counts[TEAM_GREEN]
+		&& counts[TEAM_YELLOW] <= counts[TEAM_YELLOW]) {
+		return TEAM_YELLOW;
+	}
+
+	return 0;
+}
+
+team_t LowestTeamScore( void ){
+	if ( level.teamScores[TEAM_BLUE] == level.teamScores[TEAM_RED]
+		&& level.teamScores[TEAM_BLUE] == level.teamScores[TEAM_GREEN]
+		&& level.teamScores[TEAM_BLUE] == level.teamScores[TEAM_YELLOW]) {
+		return 0;
+	}
+
+	if ( level.teamScores[TEAM_BLUE] <= level.teamScores[TEAM_RED]
+		&& level.teamScores[TEAM_BLUE] <= level.teamScores[TEAM_GREEN]
+		&& level.teamScores[TEAM_BLUE] <= level.teamScores[TEAM_YELLOW]) {
+		return TEAM_BLUE;
+	}
+	if ( level.teamScores[TEAM_RED] <= level.teamScores[TEAM_BLUE]
+		&& level.teamScores[TEAM_RED] <= level.teamScores[TEAM_GREEN]
+		&& level.teamScores[TEAM_RED] <= level.teamScores[TEAM_YELLOW]) {
+		return TEAM_RED;
+	}
+	if ( level.teamScores[TEAM_GREEN] <= level.teamScores[TEAM_RED]
+		&& level.teamScores[TEAM_GREEN] <= level.teamScores[TEAM_BLUE]
+		&& level.teamScores[TEAM_GREEN] <= level.teamScores[TEAM_YELLOW]) {
+		return TEAM_GREEN;
+	}
+	if ( level.teamScores[TEAM_YELLOW] <= level.teamScores[TEAM_RED]
+		&& level.teamScores[TEAM_YELLOW] <= level.teamScores[TEAM_GREEN]
+		&& level.teamScores[TEAM_YELLOW] <= level.teamScores[TEAM_YELLOW]) {
+		return TEAM_YELLOW;
+	}
+
+	return 0;
+}
+// END
+
+
 /*
 ================
 PickTeam
@@ -704,73 +740,37 @@ PickTeam
 ================
 */
 team_t PickTeam( int ignoreClientNum ) {
-	int i;
-	int min_players;
-	int counts[TEAM_NUM_TEAMS];
-	int num_teams;
-	int num_ties;
-	int tied_teams[TEAM_NUM_TEAMS];
-	int min_score;
-	int num_score_ties;
-	int score_tied_teams[TEAM_NUM_TEAMS];
+// STONELANCE
+/*
+	int		counts[TEAM_NUM_TEAMS];
 
-	num_teams = Team_GetCount();
-	num_ties = 0;
+	counts[TEAM_BLUE] = TeamCount( ignoreClientNum, TEAM_BLUE );
+	counts[TEAM_RED] = TeamCount( ignoreClientNum, TEAM_RED );
 
-	if ( num_teams == 0 ) {
-		return TEAM_FREE;
+	if ( counts[TEAM_BLUE] > counts[TEAM_RED] ) {
+		return TEAM_RED;
+	}
+	if ( counts[TEAM_RED] > counts[TEAM_BLUE] ) {
+		return TEAM_BLUE;
+	}
+	// equal team count, so join the team with the lowest score
+	if ( level.teamScores[TEAM_BLUE] > level.teamScores[TEAM_RED] ) {
+		return TEAM_RED;
+	}
+*/
+	int		team;
+
+	if ( (team = LowestTeamCount(ignoreClientNum)) ){
+		return team;
 	}
 
-	// get the counts for each team
-	for ( i = TEAM_RED; i < TEAM_RED + num_teams; i++ ) {
-		counts[i] = TeamCount( ignoreClientNum, i );
+	// equal team count, so join the team with the lowest score
+	if ( (team = LowestTeamScore()) ){
+		return team;
 	}
+// END
 
-	// find the minimum player count
-	min_players = counts[TEAM_RED];
-	for ( i = TEAM_RED + 1; i < TEAM_RED + num_teams; i++ ) {
-		if ( counts[i] < min_players ) {
-			min_players = counts[i];
-		}
-	}
-
-	// find all teams with the minimum player count
-	for ( i = TEAM_RED; i < TEAM_RED + num_teams; i++ ) {
-		if ( counts[i] == min_players ) {
-			tied_teams[num_ties] = i;
-			num_ties++;
-		}
-	}
-
-	// if there's only one, we're done
-	if ( num_ties == 1 ) {
-		return tied_teams[0];
-	}
-
-	// multiple teams have the same low player count, so check scores
-	min_score = level.teamScores[tied_teams[0]];
-	for ( i = 1; i < num_ties; i++ ) {
-		if ( level.teamScores[tied_teams[i]] < min_score ) {
-			min_score = level.teamScores[tied_teams[i]];
-		}
-	}
-
-	// find all teams with the lowest score among the tied teams
-	num_score_ties = 0;
-	for ( i = 0; i < num_ties; i++ ) {
-		if ( level.teamScores[tied_teams[i]] == min_score ) {
-			score_tied_teams[num_score_ties] = tied_teams[i];
-			num_score_ties++;
-		}
-	}
-
-	// if there is only one, we're done
-	if ( num_score_ties == 1 ) {
-		return score_tied_teams[0];
-	}
-
-	// if we are still tied, pick one of the score-tied teams randomly
-	return score_tied_teams[rand() % num_score_ties];
+	return TEAM_BLUE;
 }
 
 /*
@@ -875,7 +875,6 @@ void ClientUserinfoChanged( int clientNum ) {
 	char	*s;
 	char	model[MAX_QPATH];
 	char	headModel[MAX_QPATH];
-	char	userinfo[MAX_INFO_STRING];
 // STONELANCE
 	char	rim[MAX_QPATH];
 	char	plate[MAX_QPATH];
@@ -890,6 +889,7 @@ void ClientUserinfoChanged( int clientNum ) {
 	char	blueTeam[MAX_INFO_STRING];
     char    greenTeam[MAX_INFO_STRING];
     char    yellowTeam[MAX_INFO_STRING];
+	char	userinfo[MAX_INFO_STRING];
 
 	ent = g_entities + clientNum;
 	client = ent->client;
@@ -989,6 +989,7 @@ void ClientUserinfoChanged( int clientNum ) {
 	}
 */
 
+// STONELANCE
 	// rim
 	Q_strncpyz( rim, Info_ValueForKey (userinfo, "rim"), sizeof( rim ) );
 
@@ -1032,34 +1033,13 @@ void ClientUserinfoChanged( int clientNum ) {
 		client->pers.controlMode = atoi( s );
 	}
 
-        s = Info_ValueForKey( userinfo, "cg_manualShift" );
-        if ( *s ) {
-                client->pers.manualShift = atoi( s );
-        }
+	s = Info_ValueForKey( userinfo, "cg_manualShift" );
+	if ( *s ) {
+		client->pers.manualShift = atoi( s );
+	}
 
-        s = Info_ValueForKey( userinfo, "cg_vehicleMass" );
-        if ( *s ) {
-                client->car.frameMass = atof( s );
-        }
-        s = Info_ValueForKey( userinfo, "cg_wheelMass" );
-        if ( *s ) {
-                client->car.wheelMass = atof( s );
-        }
-        s = Info_ValueForKey( userinfo, "cg_fuelConsumption" );
-        if ( *s ) {
-                client->car.fuelConsumption = atof( s );
-        }
-        s = Info_ValueForKey( userinfo, "cg_torque" );
-        if ( *s ) {
-                client->car.torquePeak = atof( s );
-        }
-        s = Info_ValueForKey( userinfo, "cg_damageTolerance" );
-        if ( *s ) {
-                client->car.damageTolerance = atof( s );
-        }
-
-        // team task (0 = none, 1 = offence, 2 = defence)
-        teamTask = atoi(Info_ValueForKey(userinfo, "teamtask"));
+	// team task (0 = none, 1 = offence, 2 = defence)
+	teamTask = atoi(Info_ValueForKey(userinfo, "teamtask"));
 	// team Leader (1 = leader, 0 is normal player)
 	teamLeader = client->sess.teamLeader;
 
@@ -1104,7 +1084,6 @@ void ClientUserinfoChanged( int clientNum ) {
 
 	// this is not the userinfo, more like the configstring actually
 	G_LogPrintf( "ClientUserinfoChanged: %i %s\n", clientNum, s );
-	G_BalanceVehicleStats();
 }
 
 
@@ -1288,15 +1267,6 @@ void ClientBegin( int clientNum ) {
 	client->pers.connected = CON_CONNECTED;
 	client->pers.enterTime = level.time;
 	client->pers.teamState.state = TEAM_BEGIN;
-	client->ladderKills = 0;
-	client->ladderDeaths = 0;
-	client->ladderZoneHoldMs = 0;
-	client->ladderZoneLastUpdateMs = 0;
-	client->ladderZoneActiveSigil = -1;
-	client->ladderSurvivalMs = 0;
-	client->ladderEliminationRound = 0;
-	client->ladderEliminationPlayersRemaining = 0;
-	client->ladderEliminationMetric = 0.0f;
 
 	// save eflags around this, because changing teams will
 	// cause this to happen with a valid entity, and we
@@ -1321,17 +1291,6 @@ void ClientBegin( int clientNum ) {
 		ent->client->ps.stats[STAT_DAMAGE_DEALT] = 0;
 		ent->client->ps.stats[STAT_DAMAGE_TAKEN] = 0;
 		ent->client->ps.stats[STAT_NEXT_CHECKPOINT] = ent->number;
-		ent->client->ladderBestLapMs = 0;
-		ent->client->ladderTotalRaceMs = 0;
-		ent->client->ladderLastLapStartMs = 0;
-		ent->client->ladderLapCount = 0;
-		ent->client->ladderKills = 0;
-		ent->client->ladderDeaths = 0;
-		ent->client->ladderSurvivalMs = 0;
-		ent->client->ladderEliminationRound = 0;
-		ent->client->ladderEliminationPlayersRemaining = 0;
-		ent->client->ladderEliminationMetric = 0.0f;
-		Com_Memset( ent->client->ladderLapTimes, 0, sizeof( ent->client->ladderLapTimes ) );
 	}
 
 	ent->raceObserver = qfalse;
@@ -1350,7 +1309,6 @@ void ClientBegin( int clientNum ) {
 
 	// count current clients and rank for scoreboard
 	CalculateRanks();
-	G_UpdateEliminationPlayerCount();
 }
 
 /*
@@ -1377,23 +1335,11 @@ void ClientSpawn(gentity_t *ent) {
 //	char	*savedAreaBits;
 	int		accuracy_hits, accuracy_shots;
 	int		eventSequence;
+	char	userinfo[MAX_INFO_STRING];
 // STONELANCE
 	int		savedFinishRaceTime;
 	int		savedDamageTaken;
 	int		savedDamageDealt;
-	int		savedPosition;
-	int		savedLadderBestLap;
-	int		savedLadderTotalRace;
-	int		savedLadderLastLapStart;
-	int		savedLadderLapCount;
-	int		savedLadderLapTimes[RACE_MAX_RECORDED_LAPS];
-	int		savedLadderKills;
-	int		savedLadderDeaths;
-	int		savedLadderZoneHold;
-	int		savedLadderSurvival;
-	int		savedLadderEliminationRound;
-	int		savedLadderEliminationPlayersRemaining;
-	float		savedLadderEliminationMetric;
 	gentity_t	*savedCarPoints[4];
 	vec3_t	origin, forward;
 // END
@@ -1487,19 +1433,6 @@ void ClientSpawn(gentity_t *ent) {
 	savedFinishRaceTime = client->finishRaceTime;
 	savedDamageDealt = client->ps.stats[STAT_DAMAGE_DEALT];
 	savedDamageTaken = client->ps.stats[STAT_DAMAGE_TAKEN];
-	savedPosition = client->ps.stats[STAT_POSITION];
-	savedLadderBestLap = client->ladderBestLapMs;
-	savedLadderTotalRace = client->ladderTotalRaceMs;
-	savedLadderLastLapStart = client->ladderLastLapStartMs;
-	savedLadderLapCount = client->ladderLapCount;
-	savedLadderKills = client->ladderKills;
-	savedLadderDeaths = client->ladderDeaths;
-	savedLadderZoneHold = client->ladderZoneHoldMs;
-	savedLadderSurvival = client->ladderSurvivalMs;
-	savedLadderEliminationRound = client->ladderEliminationRound;
-	savedLadderEliminationPlayersRemaining = client->ladderEliminationPlayersRemaining;
-	savedLadderEliminationMetric = client->ladderEliminationMetric;
-	Com_Memcpy( savedLadderLapTimes, client->ladderLapTimes, sizeof( savedLadderLapTimes ) );
 // END
 //	savedAreaBits = client->areabits;
 	accuracy_hits = client->accuracy_hits;
@@ -1538,21 +1471,6 @@ void ClientSpawn(gentity_t *ent) {
 	client->ps.stats[STAT_DAMAGE_DEALT] = savedDamageDealt;
 	client->ps.stats[STAT_DAMAGE_TAKEN] = savedDamageTaken;
 	client->ps.stats[STAT_NEXT_CHECKPOINT] = ent->number;
-	client->ps.stats[STAT_POSITION] = savedPosition;
-	client->ladderBestLapMs = savedLadderBestLap;
-	client->ladderTotalRaceMs = savedLadderTotalRace;
-	client->ladderLastLapStartMs = savedLadderLastLapStart;
-	client->ladderLapCount = savedLadderLapCount;
-	client->ladderKills = savedLadderKills;
-	client->ladderDeaths = savedLadderDeaths;
-	client->ladderZoneHoldMs = savedLadderZoneHold;
-	client->ladderSurvivalMs = savedLadderSurvival;
-	client->ladderEliminationRound = savedLadderEliminationRound;
-	client->ladderEliminationPlayersRemaining = savedLadderEliminationPlayersRemaining;
-	client->ladderEliminationMetric = savedLadderEliminationMetric;
-	client->ladderZoneLastUpdateMs = 0;
-	client->ladderZoneActiveSigil = -1;
-	Com_Memcpy( client->ladderLapTimes, savedLadderLapTimes, sizeof( client->ladderLapTimes ) );
 // END
 //	client->areabits = savedAreaBits;
 	client->accuracy_hits = accuracy_hits;
@@ -1562,31 +1480,22 @@ void ClientSpawn(gentity_t *ent) {
 	for ( i = 0 ; i < MAX_PERSISTANT ; i++ ) {
 		client->ps.persistant[i] = persistant[i];
 	}
-        client->ps.eventSequence = eventSequence;
-        ClientUserinfoChanged( index );
-	if ( client->ps.persistant[PERS_SPAWN_COUNT] == 0 ) {
-		client->ladderKills = 0;
-		client->ladderDeaths = 0;
-		client->ladderZoneHoldMs = 0;
-		client->ladderZoneLastUpdateMs = 0;
-		client->ladderZoneActiveSigil = -1;
-		client->ladderSurvivalMs = 0;
-		client->ladderEliminationRound = 0;
-		client->ladderEliminationPlayersRemaining = 0;
-		client->ladderEliminationMetric = 0.0f;
-	}
-        // increment the spawncount so the client will detect the respawn
+	client->ps.eventSequence = eventSequence;
+	// increment the spawncount so the client will detect the respawn
 	client->ps.persistant[PERS_SPAWN_COUNT]++;
 	client->ps.persistant[PERS_TEAM] = client->sess.sessionTeam;
 
-       client->airOutTime = level.time + 12000;
+	client->airOutTime = level.time + 12000;
 
-       // set max health from vehicle setup
-       client->car.maxHealth = g_vehicleHealth.integer;
-       client->pers.maxHealth = client->car.maxHealth;
-       // clear entity values
-      client->ps.stats[STAT_MAX_HEALTH] = client->pers.maxHealth;
-      client->ps.eFlags = flags;
+	trap_GetUserinfo( index, userinfo, sizeof(userinfo) );
+	// set max health
+	client->pers.maxHealth = atoi( Info_ValueForKey( userinfo, "handicap" ) );
+	if ( client->pers.maxHealth < 1 || client->pers.maxHealth > 100 ) {
+		client->pers.maxHealth = 100;
+	}
+	// clear entity values
+       client->ps.stats[STAT_MAX_HEALTH] = client->pers.maxHealth;
+       client->ps.eFlags = flags;
        ent->s.eFlags &= ~EF_HEADLIGHTS;
        if ( client->sess.headlights ) {
                client->ps.extra_eFlags |= CF_HEADLIGHTS;
@@ -1616,7 +1525,7 @@ void ClientSpawn(gentity_t *ent) {
 
 // dont give machinegun on spawn in races
 	if (!isRallyRace() && g_gametype.integer != GT_DERBY ){
-client->ps.stats[STAT_WEAPONS] = ( 1u << WP_MACHINEGUN );
+		client->ps.stats[STAT_WEAPONS] = ( 1 << WP_MACHINEGUN );
 
 		if ( g_gametype.integer == GT_TEAM ) {
 			client->ps.ammo[WP_MACHINEGUN] = 50;
@@ -1626,22 +1535,22 @@ client->ps.stats[STAT_WEAPONS] = ( 1u << WP_MACHINEGUN );
 	}
 
         if (!isRallyNonDMRace() && g_gametype.integer != GT_DERBY){
-client->ps.stats[STAT_WEAPONS] |= ( 1u << WP_GAUNTLET );
+                client->ps.stats[STAT_WEAPONS] |= ( 1 << WP_GAUNTLET );
         }
 	else {
-client->ps.stats[STAT_WEAPONS] &= ~( 1u << WP_GAUNTLET );
+		client->ps.stats[STAT_WEAPONS] &= ~( 1 << WP_GAUNTLET );
 	}
 
         client->ps.ammo[WP_GAUNTLET] = -1;
 
         if ( g_gametype.integer == GT_DERBY ) {
-client->ps.stats[STAT_WEAPONS] = ( 1u << WP_DERBY_RAM );
+                client->ps.stats[STAT_WEAPONS] = ( 1 << WP_DERBY_RAM );
                 client->ps.weapon = WP_DERBY_RAM;
                 client->ps.ammo[WP_DERBY_RAM] = -1;
         }
 
 	// health will count down towards max_health
-       ent->health = client->ps.stats[STAT_HEALTH] = client->car.maxHealth + 25;
+	ent->health = client->ps.stats[STAT_HEALTH] = client->ps.stats[STAT_MAX_HEALTH] + 25;
 
 	G_SetOrigin( ent, spawn_origin );
 	VectorCopy( spawn_origin, client->ps.origin );
@@ -1660,12 +1569,7 @@ client->ps.stats[STAT_WEAPONS] = ( 1u << WP_DERBY_RAM );
 
 //	PM_InitializeVehicle(&client->car, client->ps.origin, spawn_angles /*client->ps.viewangles*/, vec3_origin, car_frontweight_dist.value );
 	if ( client->sess.sessionTeam != TEAM_SPECTATOR && !isRaceObserver( ent->s.number ) ) {
-       client->car.initializeOnNextMove = qtrue;
-
-	client->car.maxFuel = CP_MAX_FUEL;
-	client->car.fuel = client->car.maxFuel;
-	client->car.fuelLeak = qfalse;
-	client->ps.stats[STAT_FUEL] = client->car.maxFuel;
+	client->car.initializeOnNextMove = qtrue;
 
 	if ( !ent->frontBounds )
 		ent->frontBounds = G_Spawn();
@@ -1771,32 +1675,6 @@ client->ps.stats[STAT_WEAPONS] = ( 1u << WP_DERBY_RAM );
 */
 // END
 
-	// During map restarts (warmup countdown or freshly loaded match) we can
-	// inherit an intermission state from the previous run. Clients that spawn
-	// while this flag is set never leave the intermission view and will keep
-	// re-triggering respawns, gradually exhausting the entity pool.  Treat the
-	// intermission as stale when we're early in a non-single-player match or
-	// when the warmup timer is still active.
-	if ( level.intermissiontime && g_gametype.integer != GT_SINGLE_PLAYER ) {
-		qboolean staleIntermission = qfalse;
-
-		if ( level.warmupTime != 0 ) {
-			staleIntermission = qtrue;
-		} else if ( level.time - level.startTime < 5000 && level.intermissionQueued == 0 ) {
-			// The match has only just (re)started and there is no queued exit,
-			// so treat the lingering flag as bogus.
-			staleIntermission = qtrue;
-		}
-
-		if ( staleIntermission ) {
-			level.intermissiontime = 0;
-			level.intermissionQueued = 0;
-			level.readyToExit = qfalse;
-			level.exitTime = 0;
-			trap_SetConfigstring( CS_INTERMISSION, "" );
-		}
-	}
-
 	if (!level.intermissiontime) {
 		if (ent->client->sess.sessionTeam != TEAM_SPECTATOR) {
 			G_KillBox(ent);
@@ -1820,8 +1698,8 @@ client->ps.stats[STAT_WEAPONS] = ( 1u << WP_DERBY_RAM );
 			// select the highest weapon number available, after any spawn given items have fired
 			client->ps.weapon = WP_NONE;
 
-for (i = WP_NUM_WEAPONS - 1 ; i > 0 ; i--) {
-if (client->ps.stats[STAT_WEAPONS] & (1u << i)) {
+			for (i = WP_NUM_WEAPONS - 1 ; i > 0 ; i--) {
+				if (client->ps.stats[STAT_WEAPONS] & (1 << i)) {
 					client->ps.weapon = i;
 					break;
 				}
@@ -1845,14 +1723,12 @@ if (client->ps.stats[STAT_WEAPONS] & (1u << i)) {
 	ClientThink( ent-g_entities );
 	// run the presend to set anything else, follow spectators wait
 	// until all clients have been reconnected after map_restart
-        if ( ent->client->sess.spectatorState != SPECTATOR_FOLLOW ) {
-                ClientEndFrame( ent );
-        }
+	if ( ent->client->sess.spectatorState != SPECTATOR_FOLLOW ) {
+		ClientEndFrame( ent );
+	}
 
-        G_BalanceVehicleStats();
-
-        // clear entity state values
-        BG_PlayerStateToEntityState( &client->ps, &ent->s, qtrue );
+	// clear entity state values
+	BG_PlayerStateToEntityState( &client->ps, &ent->s, qtrue );
 }
 
 
@@ -1960,7 +1836,6 @@ void ClientDisconnect( int clientNum ) {
 	trap_SetConfigstring( CS_PLAYERS + clientNum, "");
 
 	CalculateRanks();
-	G_UpdateEliminationPlayerCount();
 
 	if ( ent->r.svFlags & SVF_BOT ) {
 		BotAIShutdownClient( clientNum, qfalse );

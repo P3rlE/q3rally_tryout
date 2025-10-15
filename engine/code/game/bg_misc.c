@@ -239,28 +239,12 @@ Only in CTF games
 		0,
 /* precache */ "",
 /* sounds */ ""
-        },
-
-/*QUAKED item_fuelcan (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
-Refills vehicle fuel.
-*/
-        {
-                "item_fuelcan",
-                "sound/items/n_health.wav",
-        { "models/items/fuelcan.md3", NULL, NULL, NULL },
-/* icon */              "icons/fuelcan",
-/* pickup */    "Fuel Can",
-               25,
-               IT_HOLDABLE,
-               HI_FUELCAN,
-/* precache */ "",
-/* sounds */ ""
-        },
+	},
 
 
-        //
-        // WEAPONS
-        //
+	//
+	// WEAPONS 
+	//
 
 /*QUAKED weapon_gauntlet (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 */
@@ -1422,7 +1406,7 @@ Returns false if the item should not be picked up.
 This needs to be the same for client side prediction and server use.
 ================
 */
-qboolean BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const playerState_t *ps, float maxFuel ) {
+qboolean BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const playerState_t *ps ) {
 	gitem_t	*item;
 #ifdef MISSIONPACK
 	int		upperBound;
@@ -1448,13 +1432,13 @@ qboolean BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const play
 
 			// FIXME: need this?
 /*
-if (ps->stats[STAT_WEAPONS] & ( 1u << i ) && !ps->ammo[ i ]){
-ps->stats[STAT_WEAPONS] &= ~( 1u << i );
-}
+			if (ps->stats[STAT_WEAPONS] & ( 1 << i ) && !ps->ammo[ i ]){
+				ps->stats[STAT_WEAPONS] &= ~( 1 << i );
+			}
 */
 
-if (ps->stats[STAT_WEAPONS] & ( 1u << i ))
-return qfalse;
+			if (ps->stats[STAT_WEAPONS] & ( 1 << i ))
+				return qfalse;
 		}
 		return qtrue;
 // END
@@ -1504,12 +1488,12 @@ return qfalse;
 			return qtrue;
 		}
 
-                if ( ps->stats[STAT_HEALTH] >= ps->stats[STAT_MAX_HEALTH] ) {
-                        return qfalse;
-                }
-                return qtrue;
+		if ( ps->stats[STAT_HEALTH] >= ps->stats[STAT_MAX_HEALTH] ) {
+			return qfalse;
+		}
+		return qtrue;
 
-       case IT_POWERUP:
+	case IT_POWERUP:
 // STONELANCE
 //		return qtrue;	// powerups are always picked up
 
@@ -1636,18 +1620,12 @@ return qfalse;
 	     return qtrue;
 // Q3Rally Code END
 
-       case IT_HOLDABLE:
-               if ( item->giTag == HI_FUELCAN ) {
-                       if ( ps->stats[STAT_HOLDABLE_ITEM] ) {
-                               return qfalse;
-                       }
-                       return qtrue;
-               }
-               // can only hold one item at a time
-               if ( ps->stats[STAT_HOLDABLE_ITEM] ) {
-                       return qfalse;
-               }
-               return qtrue;
+	case IT_HOLDABLE:
+		// can only hold one item at a time
+		if ( ps->stats[STAT_HOLDABLE_ITEM] ) {
+			return qfalse;
+		}
+		return qtrue;
 
         case IT_BAD:
             Com_Error( ERR_DROP, "BG_CanItemBeGrabbed: IT_BAD" );

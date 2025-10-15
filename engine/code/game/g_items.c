@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   all items should pop when dropped in lava or slime
 
   Respawnable items don't actually go away when picked up, they are
-  just made invisible and untouchable.	This allows them to ride
+  just made invisible and untouchable.  This allows them to ride
   movers and respawn appropriately.
 */
 
@@ -96,7 +96,7 @@ int Pickup_Powerup( gentity_t *ent, gentity_t *other ) {
 
     // if same team in team game, no sound
     // cannot use OnSameTeam as it expects to g_entities, not clients
-	if ( g_gametype.integer >= GT_TEAM && other->client->sess.sessionTeam == client->sess.sessionTeam  ) {
+  	if ( g_gametype.integer >= GT_TEAM && other->client->sess.sessionTeam == client->sess.sessionTeam  ) {
       continue;
     }
 
@@ -129,47 +129,74 @@ int Pickup_Powerup( gentity_t *ent, gentity_t *other ) {
 
 #ifdef MISSIONPACK
 int Pickup_PersistantPowerup( gentity_t *ent, gentity_t *other ) {
-
+	int		clientNum;
+	char	userinfo[MAX_INFO_STRING];
+	float	handicap;
 	int		max;
 
 	other->client->ps.stats[STAT_PERSISTANT_POWERUP] = ent->item - bg_itemlist;
-        other->client->persistantPowerup = ent;
+	other->client->persistantPowerup = ent;
 
-        switch( ent->item->giTag ) {
-        case PW_GUARD:
-                max = 2 * other->client->car.maxHealth;
+	switch( ent->item->giTag ) {
+	case PW_GUARD:
+		clientNum = other->client->ps.clientNum;
+		trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
+		handicap = atof( Info_ValueForKey( userinfo, "handicap" ) );
+		if( handicap<=0.0f || handicap>100.0f) {
+			handicap = 100.0f;
+		}
+		max = (int)(2 *  handicap);
 
-                other->health = max;
-                other->client->ps.stats[STAT_HEALTH] = max;
-                other->client->car.maxHealth = max;
-                other->client->ps.stats[STAT_MAX_HEALTH] = max;
-                other->client->ps.stats[STAT_ARMOR] = max;
-                other->client->pers.maxHealth = other->client->car.maxHealth;
+		other->health = max;
+		other->client->ps.stats[STAT_HEALTH] = max;
+		other->client->ps.stats[STAT_MAX_HEALTH] = max;
+		other->client->ps.stats[STAT_ARMOR] = max;
+		other->client->pers.maxHealth = max;
 
-                break;
+		break;
 
-        case PW_SCOUT:
-                other->client->pers.maxHealth = other->client->car.maxHealth;
-                other->client->ps.stats[STAT_MAX_HEALTH] = other->client->pers.maxHealth;
-                other->client->ps.stats[STAT_ARMOR] = 0;
-                break;
+	case PW_SCOUT:
+		clientNum = other->client->ps.clientNum;
+		trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
+		handicap = atof( Info_ValueForKey( userinfo, "handicap" ) );
+		if( handicap<=0.0f || handicap>100.0f) {
+			handicap = 100.0f;
+		}
+		other->client->pers.maxHealth = handicap;
+		other->client->ps.stats[STAT_ARMOR] = 0;
+		break;
 
-        case PW_DOUBLER:
-                other->client->pers.maxHealth = other->client->car.maxHealth;
-                other->client->ps.stats[STAT_MAX_HEALTH] = other->client->pers.maxHealth;
-                break;
-        case PW_AMMOREGEN:
-                other->client->pers.maxHealth = other->client->car.maxHealth;
-                other->client->ps.stats[STAT_MAX_HEALTH] = other->client->pers.maxHealth;
-                memset(other->client->ammoTimes, 0, sizeof(other->client->ammoTimes));
-                break;
-        default:
-                other->client->pers.maxHealth = other->client->car.maxHealth;
-                other->client->ps.stats[STAT_MAX_HEALTH] = other->client->pers.maxHealth;
-                break;
-        }
+	case PW_DOUBLER:
+		clientNum = other->client->ps.clientNum;
+		trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
+		handicap = atof( Info_ValueForKey( userinfo, "handicap" ) );
+		if( handicap<=0.0f || handicap>100.0f) {
+			handicap = 100.0f;
+		}
+		other->client->pers.maxHealth = handicap;
+		break;
+	case PW_AMMOREGEN:
+		clientNum = other->client->ps.clientNum;
+		trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
+		handicap = atof( Info_ValueForKey( userinfo, "handicap" ) );
+		if( handicap<=0.0f || handicap>100.0f) {
+			handicap = 100.0f;
+		}
+		other->client->pers.maxHealth = handicap;
+		memset(other->client->ammoTimes, 0, sizeof(other->client->ammoTimes));
+		break;
+	default:
+		clientNum = other->client->ps.clientNum;
+		trap_GetUserinfo( clientNum, userinfo, sizeof(userinfo) );
+		handicap = atof( Info_ValueForKey( userinfo, "handicap" ) );
+		if( handicap<=0.0f || handicap>100.0f) {
+			handicap = 100.0f;
+		}
+		other->client->pers.maxHealth = handicap;
+		break;
+	}
 
-        return -1;
+	return -1;
 }
 
 //======================================================================
@@ -184,20 +211,6 @@ int Pickup_Holdable( gentity_t *ent, gentity_t *other ) {
 	}
 
 	return RESPAWN_HOLDABLE;
-}
-
-
-void G_DropHoldable( gentity_t *ent, gitem_t *item ) {
-
-       Drop_Item( ent, item, 0 );
-
-       ent->client->ps.stats[STAT_HOLDABLE_ITEM] = 0;
-}
-
-
-void G_DropFuelCan( gentity_t *ent ) {
-
-       G_DropHoldable( ent, BG_FindItemForHoldable( HI_FUELCAN ) );
 }
 
 
@@ -260,7 +273,7 @@ int Pickup_Weapon (gentity_t *ent, gentity_t *other) {
 	}
 
 	// add the weapon
-other->client->ps.stats[STAT_WEAPONS] |= ( 1u << ent->item->giTag );
+	other->client->ps.stats[STAT_WEAPONS] |= ( 1 << ent->item->giTag );
 
 	Add_Ammo( other, ent->item->giTag, quantity );
 
@@ -288,16 +301,16 @@ int Pickup_Health (gentity_t *ent, gentity_t *other) {
 
 	// small and mega healths will go over the max
 #ifdef MISSIONPACK
-        if( bg_itemlist[other->client->ps.stats[STAT_PERSISTANT_POWERUP]].giTag == PW_GUARD ) {
-                max = other->client->car.maxHealth;
-        }
-        else
+	if( bg_itemlist[other->client->ps.stats[STAT_PERSISTANT_POWERUP]].giTag == PW_GUARD ) {
+		max = other->client->ps.stats[STAT_MAX_HEALTH];
+	}
+	else
 #endif
-        if ( ent->item->quantity != 5 && ent->item->quantity != 100 ) {
-                max = other->client->car.maxHealth;
-        } else {
-                max = other->client->car.maxHealth * 2;
-        }
+	if ( ent->item->quantity != 5 && ent->item->quantity != 100 ) {
+		max = other->client->ps.stats[STAT_MAX_HEALTH];
+	} else {
+		max = other->client->ps.stats[STAT_MAX_HEALTH] * 2;
+	}
 
 	if ( ent->count ) {
 		quantity = ent->count;
@@ -311,11 +324,6 @@ int Pickup_Health (gentity_t *ent, gentity_t *other) {
 		other->health = max;
 	}
 	other->client->ps.stats[STAT_HEALTH] = other->health;
-        if ( other->client->car.fuelLeak &&
-                other->health > other->client->car.maxHealth / 2 ) {
-                other->client->car.fuelLeak = qfalse;
-        }
-
 
 	if ( ent->item->quantity == 100 ) {		// mega health respawns slow
 		return RESPAWN_MEGAHEALTH;
@@ -332,29 +340,24 @@ int Pickup_Armor( gentity_t *ent, gentity_t *other ) {
 
 	other->client->ps.stats[STAT_ARMOR] += ent->item->quantity;
 
-        if( other->client && bg_itemlist[other->client->ps.stats[STAT_PERSISTANT_POWERUP]].giTag == PW_GUARD ) {
-                upperBound = other->client->car.maxHealth;
-        }
-        else {
-                upperBound = other->client->car.maxHealth * 2;
-        }
+	if( other->client && bg_itemlist[other->client->ps.stats[STAT_PERSISTANT_POWERUP]].giTag == PW_GUARD ) {
+		upperBound = other->client->ps.stats[STAT_MAX_HEALTH];
+	}
+	else {
+		upperBound = other->client->ps.stats[STAT_MAX_HEALTH] * 2;
+	}
 
 	if ( other->client->ps.stats[STAT_ARMOR] > upperBound ) {
 		other->client->ps.stats[STAT_ARMOR] = upperBound;
 	}
 #else
-        other->client->ps.stats[STAT_ARMOR] += ent->item->quantity;
-        if ( other->client->ps.stats[STAT_ARMOR] > other->client->car.maxHealth * 2 ) {
-                other->client->ps.stats[STAT_ARMOR] = other->client->car.maxHealth * 2;
-        }
+	other->client->ps.stats[STAT_ARMOR] += ent->item->quantity;
+	if ( other->client->ps.stats[STAT_ARMOR] > other->client->ps.stats[STAT_MAX_HEALTH] * 2 ) {
+		other->client->ps.stats[STAT_ARMOR] = other->client->ps.stats[STAT_MAX_HEALTH] * 2;
+	}
 #endif
 
 	return RESPAWN_ARMOR;
-}
-
-int Pickup_FuelCan( gentity_t *ent, gentity_t *other ) {
-    other->client->ps.stats[STAT_HOLDABLE_ITEM] = ent->item - bg_itemlist;
-    return RESPAWN_HOLDABLE;
 }
 
 //======================================================================
@@ -457,26 +460,26 @@ void Touch_Item (gentity_t *ent, gentity_t *other, trace_t *trace) {
 	// autoDrop old weapon
 
 	if ( ent->item->giType == IT_RFWEAPON && other->client->pers.autoDrop ){
-for (i = RWP_SMOKE; i < WP_NUM_WEAPONS; i++){
-if (ent->item->giTag == i) continue;
+		for (i = RWP_SMOKE; i < WP_NUM_WEAPONS; i++){
+			if (ent->item->giTag == i) continue;
 
-if (other->client->ps.stats[STAT_WEAPONS] & ( 1u << i ) && !other->client->ps.ammo[ i ]){
-other->client->ps.stats[STAT_WEAPONS] &= ~( 1u << i );
-}
+			if (other->client->ps.stats[STAT_WEAPONS] & ( 1 << i ) && !other->client->ps.ammo[ i ]){
+				other->client->ps.stats[STAT_WEAPONS] &= ~( 1 << i );
+			}
 
-if (other->client->ps.stats[STAT_WEAPONS] & ( 1u << i )){
-G_DropRearWeapon( other );
-break;
-}
-}
+			if (other->client->ps.stats[STAT_WEAPONS] & ( 1 << i )){
+				G_DropRearWeapon( other );
+				break;
+			}
+		}
 	}
 
 // END
 
 	// the same pickup rules are used for client side and server side
-       if ( !BG_CanItemBeGrabbed( g_gametype.integer, &ent->s, &other->client->ps, other->client->car.maxFuel ) ) {
-	       return;
-       }
+	if ( !BG_CanItemBeGrabbed( g_gametype.integer, &ent->s, &other->client->ps ) ) {
+		return;
+	}
 
 	G_LogPrintf( "Item: %i %s\n", other->s.number, ent->item->classname );
 
@@ -501,10 +504,10 @@ break;
 	case IT_HEALTH:
 		respawn = Pickup_Health(ent, other);
 		break;
-       case IT_POWERUP:
-	       respawn = Pickup_Powerup(ent, other);
-	       predict = qfalse;
-	       break;
+	case IT_POWERUP:
+		respawn = Pickup_Powerup(ent, other);
+		predict = qfalse;
+		break;
 #ifdef MISSIONPACK
 	case IT_PERSISTANT_POWERUP:
 		respawn = Pickup_PersistantPowerup(ent, other);
@@ -515,16 +518,12 @@ break;
 		break;
 // Q3Rally Code Start
     case IT_SIGIL:
-	respawn = Sigil_Touch(ent, other);
-	break;
+        respawn = Sigil_Touch(ent, other);
+        break;
 // Q3Rally Code END
-       case IT_HOLDABLE:
-	       if ( ent->item->giTag == HI_FUELCAN ) {
-		       respawn = Pickup_FuelCan(ent, other);
-	       } else {
-		       respawn = Pickup_Holdable(ent, other);
-	       }
-	       break;
+	case IT_HOLDABLE:
+		respawn = Pickup_Holdable(ent, other);
+		break;
 	default:
 		return;
 	}
@@ -599,7 +598,7 @@ break;
 
 	// ZOID
 	// A negative respawn times means to never respawn this item (but don't 
-	// delete it).	This is used by items that are respawned by third party 
+	// delete it).  This is used by items that are respawned by third party 
 	// events such as ctf flags
 	if ( respawn <= 0 ) {
 		ent->nextthink = 0;
@@ -691,12 +690,10 @@ gentity_t *Drop_Item( gentity_t *ent, gitem_t *item, float angle ) {
 	AngleVectors( angles, velocity, NULL, NULL );
 
 // STONELANCE
-
-	if ( item->giType != IT_RFWEAPON ) {
-		VectorScale( velocity, -1, velocity );
-	}
-	VectorMA( ent->s.pos.trBase, 64, velocity, origin );
-
+	if (item->giType == IT_RFWEAPON)
+		VectorMA(ent->s.pos.trBase, 64, velocity, origin);
+	else
+		VectorCopy(ent->s.pos.trBase, origin);
 // END
 
 	VectorScale( velocity, 150, velocity );
@@ -717,7 +714,7 @@ Respawn the item
 ================
 */
 void Use_Item( gentity_t *ent, gentity_t *other, gentity_t *activator ) {
-       RespawnItem( ent );
+	RespawnItem( ent );
 }
 
 //======================================================================
@@ -785,8 +782,8 @@ void FinishSpawningItem( gentity_t *ent ) {
        }
 
        if ( g_gametype.integer == GT_DERBY && ent->item->giType == IT_WEAPON ) {
-	       G_FreeEntity( ent );
-	       return;
+               G_FreeEntity( ent );
+               return;
        }
 
        trap_LinkEntity (ent);
@@ -902,12 +899,12 @@ void ClearRegisteredItems( void ) {
 
 	// players always start with the base weapon
 // STONELANCE dont start with machinegun in race
-	if (!isRallyRace() && g_gametype.integer != GT_DERBY){
-		RegisterItem( BG_FindItemForWeapon( WP_MACHINEGUN ) );
-	}
-	if (!isRallyNonDMRace() && g_gametype.integer != GT_DERBY){
-		RegisterItem( BG_FindItemForWeapon( WP_GAUNTLET ) );
-	}
+        if (!isRallyRace() && g_gametype.integer != GT_DERBY){
+                RegisterItem( BG_FindItemForWeapon( WP_MACHINEGUN ) );
+        }
+        if (!isRallyNonDMRace() && g_gametype.integer != GT_DERBY){
+                RegisterItem( BG_FindItemForWeapon( WP_GAUNTLET ) );
+        }
 //	RegisterItem( BG_FindItemForWeapon( WP_MACHINEGUN ) );
 //	RegisterItem( BG_FindItemForWeapon( WP_GAUNTLET ) );
 // END

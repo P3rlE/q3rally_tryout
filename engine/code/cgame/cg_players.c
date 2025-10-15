@@ -63,7 +63,7 @@ CG_CustomSound
 */
 sfxHandle_t	CG_CustomSound( int clientNum, const char *soundName ) {
 	clientInfo_t *ci;
-	int i;
+	int			i;
 
         if ( !soundName ) {
                 return 0;
@@ -110,6 +110,7 @@ models/players/visor/animation.cfg, etc
 // Q3Rally Code Start (change function to do q3rally related stuff)
 static qboolean	CG_ParseAnimationFile( const char *filename, clientInfo_t *ci ) {
 	char		*text_p, *prev;
+	int			len;
 	char		*token;
 	char		text[20000];
 	fileHandle_t	f;
@@ -183,81 +184,6 @@ static qboolean	CG_ParseAnimationFile( const char *filename, clientInfo_t *ci ) 
 }
 // END
 #endif
-
-static void CG_ParseVehicleFile( const char *filename, clientInfo_t *ci ) {
-    char    *text_p;
-    char    *token;
-    char    text[20000];
-    fileHandle_t f;
-    int     len;
-
-    // defaults
-    ci->frameMass = 300.0f;
-    ci->wheelMass = 50.0f;
-    ci->fuelConsumption = 1.0f;
-    ci->torque = 400.0f;
-    ci->damageTolerance = 1.0f;
-
-    len = trap_FS_FOpenFile( filename, &f, FS_READ );
-    if ( len <= 0 ) {
-        return;
-    }
-    if ( len >= sizeof( text ) - 1 ) {
-        trap_FS_FCloseFile( f );
-        return;
-    }
-    trap_FS_Read( text, len, f );
-    text[len] = 0;
-    trap_FS_FCloseFile( f );
-
-    text_p = text;
-    while ( 1 ) {
-        token = COM_Parse( &text_p );
-        if ( !token || !token[0] ) {
-            break;
-        }
-        if ( !Q_stricmp( token, "frameMass" ) ) {
-            token = COM_Parse( &text_p );
-            if ( token && token[0] ) {
-                ci->frameMass = atof( token );
-            }
-        } else if ( !Q_stricmp( token, "wheelMass" ) ) {
-            token = COM_Parse( &text_p );
-            if ( token && token[0] ) {
-                ci->wheelMass = atof( token );
-            }
-        } else if ( !Q_stricmp( token, "fuelConsumption" ) ) {
-            token = COM_Parse( &text_p );
-            if ( token && token[0] ) {
-                ci->fuelConsumption = atof( token );
-            }
-        } else if ( !Q_stricmp( token, "torque" ) ) {
-            token = COM_Parse( &text_p );
-            if ( token && token[0] ) {
-                ci->torque = atof( token );
-            }
-        } else if ( !Q_stricmp( token, "damageTolerance" ) ) {
-            token = COM_Parse( &text_p );
-            if ( token && token[0] ) {
-                ci->damageTolerance = atof( token );
-            }
-        }
-    }
-
-    if ( ci->clientNum == cg.clientNum ) {
-        trap_Cvar_Set( "cg_vehicleMass", va( "%f", ci->frameMass ) );
-        trap_Cvar_Set( "cg_wheelMass", va( "%f", ci->wheelMass ) );
-        trap_Cvar_Set( "cg_fuelConsumption", va( "%f", ci->fuelConsumption ) );
-        trap_SendConsoleCommand( va( "setu cg_fuelConsumption %f\n", ci->fuelConsumption ) );
-        trap_Cvar_Set( "cg_torque", va( "%f", ci->torque ) );
-        trap_Cvar_Set( "cg_damageTolerance", va( "%f", ci->damageTolerance ) );
-        cg.car.frameMass = ci->frameMass;
-        cg.car.wheelMass = ci->wheelMass;
-        cg.car.fuelConsumption = ci->fuelConsumption;
-        cg.car.torquePeak = ci->torque;
-        cg.car.damageTolerance = ci->damageTolerance;
-    }
-}
 
 // SKWID( removed function )
 /*
@@ -980,8 +906,6 @@ static qboolean CG_RegisterClientModelname( clientInfo_t *ci, const char *modelN
 	}
 // END
 
-	Com_sprintf( filename, sizeof( filename ), "models/players/%s/vehicle.cfg", modelName );
-	CG_ParseVehicleFile( filename, ci );
 	return qtrue;
 }
 
@@ -2089,10 +2013,9 @@ static void CG_BreathPuffs( centity_t *cent, refEntity_t *head) {
 	VectorSet( up, 0, 0, 8 );
 	VectorMA(head->origin, 8, head->axis[0], origin);
 	VectorMA(origin, -4, head->axis[2], origin);
-       CG_SmokePuff( origin, up, 16, 1, 1, 1, 0.66f, 1500, cg.time, cg.time + 400, LEF_PUFF_DONT_SCALE, cgs.media.shotgunSmokePuffShader );
-       ci->breathPuffTime = cg.time + 2000;
+	CG_SmokePuff( origin, up, 16, 1, 1, 1, 0.66f, 1500, cg.time, cg.time + 400, LEF_PUFF_DONT_SCALE, cgs.media.shotgunSmokePuffShader );
+	ci->breathPuffTime = cg.time + 2000;
 }
-#endif
 
 /*
 ===============
@@ -2100,6 +2023,7 @@ CG_DustTrail
 ===============
 */
 static void CG_DustTrail( centity_t *cent ) {
+	int				anim;
 	vec3_t end, vel;
 	trace_t tr;
 
@@ -2130,11 +2054,13 @@ static void CG_DustTrail( centity_t *cent ) {
 				  24,
 				  .8f, .8f, 0.7f, 0.33f,
 				  500,
-                                  cg.time,
-                                  0,
-                                  0,
-                                  cgs.media.dustPuffShader );
+				  cg.time,
+				  0,
+				  0,
+				  cgs.media.dustPuffShader );
 }
+
+// #endif
 
 /*
 ===============
@@ -2214,16 +2140,18 @@ static void CG_SandTrail( centity_t *cent ) {
 	end[2] -= 16;
 
 	VectorSet(vel, 0, 0, -30);
-        CG_SmokePuff( end, vel,
-                                  24,
-                                  .8f, .8f, 0.7f, 0.33f,
-                                  500,
-                                  cg.time,
-                                  0,
-                                  0,
-                                  cgs.media.sandPuffShader );
+	CG_SmokePuff( end, vel,
+				  24,
+				  .8f, .8f, 0.7f, 0.33f,
+				  500,
+				  cg.time,
+				  0,
+				  0,
+// FIX THIS !!!   cgs.media.sandPuffShader );
+				  cgs.media.snowPuffShader );
 }
 
+ #endif
 
 /*
 ===============
@@ -3085,21 +3013,13 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 			shader = cgs.media.SMGrassShader;
 			colorIndex = 0;
 		}
-		else if (tr.surfaceFlags & SURF_SAND){
-			shader = cgs.media.SMSandShader;
-			colorIndex = 1;
-		}
 		else if (tr.surfaceFlags & SURF_DUST){
 			shader = cgs.media.SMDirtShader;
 			colorIndex = 1;
 		}
-		else if (tr.surfaceFlags & SURF_SNOW){
-			shader = cgs.media.SMSnowShader;
-			colorIndex = 2;
-		}
-		else if (tr.surfaceFlags & SURF_ICE){
-			shader = cgs.media.SMIceShader;
-			colorIndex = 2;
+        else if (tr.surfaceFlags & SURF_SNOW){
+			shader = cgs.media.SMDirtShader;
+			colorIndex = 1;
 		}
 		else if (tr.surfaceFlags & SURF_DIRT) {
 			shader = cgs.media.SMDirtShader;
@@ -3123,14 +3043,12 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 			length = VectorLength(delta) / 2;
 
 			// create smoke even if we arent moving because the car is being stopped from moving
-			if ( cent->smokeTime[tireNum] < cg.time ) {
-				if ( tr.surfaceFlags & SURF_DUST ) {
+			if (cent->smokeTime[tireNum] < cg.time){
+				if (tr.surfaceFlags & SURF_DUST)
 					CreateSmokeCloudEntity(tr.endpos, up, 20, 48, 2000, surfaceColors[colorIndex][0], surfaceColors[colorIndex][1], surfaceColors[colorIndex][2], surfaceColors[colorIndex][3], cgs.media.smokePuffShader);
-				} else if ( tr.surfaceFlags & SURF_ICE ) {
-					CreateSmokeCloudEntity(tr.endpos, up, 10, 8, 500, surfaceColors[colorIndex][0], surfaceColors[colorIndex][1], surfaceColors[colorIndex][2], 0.6f, cgs.media.snowPuffShader);
-				} else {
+				else
 					CreateSmokeCloudEntity(tr.endpos, up, 20, 12, 1000, surfaceColors[colorIndex][0], surfaceColors[colorIndex][1], surfaceColors[colorIndex][2], surfaceColors[colorIndex][3], cgs.media.smokePuffShader);
-				}
+
 				cent->smokeTime[tireNum] = cg.time + 100;
 			}
 
@@ -3154,12 +3072,6 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 		else if ( tr.surfaceFlags & SURF_DUST ){
 			if ( VectorLength(delta) > 5 && cent->smokeTime[tireNum] < cg.time ){
 				CreateSmokeCloudEntity( tr.endpos, up, 20, 36, 1500, surfaceColors[colorIndex][0] * 1.3f, surfaceColors[colorIndex][1] * 1.3f, surfaceColors[colorIndex][2] * 1.3f, 0.8f, cgs.media.dustPuffShader);
-				cent->smokeTime[tireNum] = cg.time + 100;
-			}
-		}
-		else if ( tr.surfaceFlags & SURF_ICE ){
-			if ( VectorLength(delta) > 5 && cent->smokeTime[tireNum] < cg.time ){
-				CreateSmokeCloudEntity( tr.endpos, up, 10, 8, 500, surfaceColors[colorIndex][0], surfaceColors[colorIndex][1], surfaceColors[colorIndex][2], 0.6f, cgs.media.snowPuffShader);
 				cent->smokeTime[tireNum] = cg.time + 100;
 			}
 		}
@@ -4258,15 +4170,13 @@ VectorCopy( cent->lerpOrigin, backlight.lightingOrigin );
 	}
     
  
-        if ( cg_enableDust.integer ) {
-                CG_DustTrail( cent );
-        }
-        if ( cg_enableSnow.integer ) {
-                CG_SnowTrail( cent );
-        }
-        if ( cg_enableSand.integer ) {
-                CG_SandTrail( cent );
-        }
+/*
+#ifdef MISSIONPACK
+	CG_BreathPuffs(cent, &head);
+
+	CG_DustTrail(cent);
+#endif
+*/
 // END
 
 	//

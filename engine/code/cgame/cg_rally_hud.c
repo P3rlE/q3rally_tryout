@@ -174,82 +174,6 @@ void CG_DrawMMap(float x, float y, float w, float h) {
 }
 
 /*
-====================
-CG_DrawFuelGauge
-====================
-*/
-void CG_DrawFuelGauge( float x, float y, float w, float h ) {
-       static qhandle_t      icon = 0;
-       static qboolean       warned = qfalse;
-       int                   fuel;
-       float                 frac;
-       float                 warnFrac;
-       float                 size;
-       vec4_t                backColor = {0.0f, 0.0f, 0.0f, 0.25f};
-       vec4_t                fuelColor = {0.0f, 0.8f, 0.0f, 0.8f};
-       vec4_t                warnColor = {1.0f, 0.0f, 0.0f, 0.8f};
-
-       if ( !cg.snap ) {
-               return;
-       }
-
-       if ( !icon ) {
-               icon = trap_R_RegisterShaderNoMip( "icons/fuelcan2" );
-       }
-
-       fuel = cg.snap->ps.stats[STAT_FUEL];
-
-       if ( fuel < 0 ) {
-               fuel = 0;
-       }
-       if ( fuel > 100 ) {
-               fuel = 100;
-       }
-
-       frac = fuel / 100.0f;
-       warnFrac = cg_fuelWarningLevel.value / 100.0f;
-       size = h * 2.0f;
-
-       CG_DrawRect( x, y, w, h, 1, colorWhite );
-       CG_FillRect( x + 1, y + 1, w - 2, h - 2, backColor );
-
-       if ( frac < warnFrac ) {
-               // draw warning fuel level in red
-               CG_FillRect( x + 1, y + 1, (w - 2) * frac, h - 2, warnColor );
-
-               // play a warning beep once when entering the low fuel state
-               if ( !warned ) {
-                       trap_S_StartLocalSound( cgs.media.talkSound, CHAN_LOCAL_SOUND );
-                       warned = qtrue;
-               }
-
-               // blink the low fuel icon
-               if ( ( cg.time >> 8 ) & 1 ) {
-                       CG_DrawPic( x - size - 4, y + ( h - size ) * 0.5f, size, size, icon );
-               }
-
-               // draw centered critical fuel warning text
-               {
-                       const char *warning;
-                       int textWidth;
-                       float textX;
-
-                       warning = ( fuel <= 0 ) ? "Fuel Empty" : "Fuel Critical - Refuel Now!";
-                       textWidth = BIGCHAR_WIDTH * CG_DrawStrlen( warning );
-                       textX = ( SCREEN_WIDTH - textWidth ) / 2;
-
-                       CG_SetScreenPlacement( PLACE_CENTER, PLACE_CENTER );
-                       CG_DrawStringExt( textX, SCREEN_HEIGHT * 0.30f, warning, warnColor, qfalse, qtrue, BIGCHAR_WIDTH, (int)(BIGCHAR_WIDTH * 1.5f), 0 );
-                       CG_PopScreenPlacement();
-               }
-       } else {
-               warned = qfalse;
-               CG_FillRect( x + 1, y + 1, (w - 2) * frac, h - 2, fuelColor );
-               CG_DrawPic( x - size - 4, y + ( h - size ) * 0.5f, size, size, icon );
-       }
-}
-
-/*
 ========================
 CG_DrawArrowToCheckpoint
 ========================
@@ -284,34 +208,29 @@ static float CG_DrawArrowToCheckpoint( float y ) {
 //	VectorSubtract(cent->currentState.origin, cg.predictedPlayerState.origin, dir);
 //	angle2 = vectoyaw(dir);
 
-	if ( cent->currentState.modelindex == 0 ) {
-		VectorSubtract( cent->currentState.origin2, cg.predictedPlayerState.origin, v );
-		angle2 = vectoyaw( v );
-	} else {
-		// find the distance from the edge of the bounding box
-		trap_R_ModelBounds( cgs.inlineDrawModel[cent->currentState.modelindex], mins, maxs );
+	// find the distance from the edge of the bounding box
+	trap_R_ModelBounds( cgs.inlineDrawModel[cent->currentState.modelindex], mins, maxs );
 
-		// if the checkpoint was one with no target then mins and maxs are relative to the origin
-		if( cent->currentState.frame == 0 )
-		{
-			VectorAdd( mins, cent->currentState.origin, mins );
-			VectorAdd( maxs, cent->currentState.origin, maxs );
-		}
-
-		for ( i = 0 ; i < 3 ; i++ ) {
-			if ( cg.predictedPlayerState.origin[i] < mins[i] ) {
-				v[i] = mins[i] - cg.predictedPlayerState.origin[i];
-			} else if ( cg.predictedPlayerState.origin[i] > maxs[i] ) {
-				v[i] = maxs[i] - cg.predictedPlayerState.origin[i];
-			} else {
-				v[i] = 0;
-			}
-		}
-		if( v[0] == 0 && v[1] == 0 && v[2] == 0 )
-			angle2 = cg.predictedPlayerState.viewangles[YAW];
-		else
-			angle2 = vectoyaw(v);
+	// if the checkpoint was one with no target then mins and maxs are relative to the origin
+	if( cent->currentState.frame == 0 )
+	{
+		VectorAdd( mins, cent->currentState.origin, mins );
+		VectorAdd( maxs, cent->currentState.origin, maxs );
 	}
+
+	for ( i = 0 ; i < 3 ; i++ ) {
+		if ( cg.predictedPlayerState.origin[i] < mins[i] ) {
+			v[i] = mins[i] - cg.predictedPlayerState.origin[i];
+		} else if ( cg.predictedPlayerState.origin[i] > maxs[i] ) {
+			v[i] = maxs[i] - cg.predictedPlayerState.origin[i];
+		} else {
+			v[i] = 0;
+		}
+	}
+	if( v[0] == 0 && v[1] == 0 && v[2] == 0 )
+		angle2 = cg.predictedPlayerState.viewangles[YAW];
+	else
+		angle2 = vectoyaw(v);
 
 	if (cg_checkpointArrowMode.integer == 1){
 		AngleVectors(cg.refdefViewAngles, forward, NULL, NULL);
@@ -435,18 +354,13 @@ static float CG_DrawTimes( float y ) {
 	centity_t		*cent;
 	int			lapTime;
 	int			totalTime;
-	const char		*time;
-	const float	boxX = 636.0f - 80.0f;
-	const float	boxWidth = 90.0f;
-	const float	boxHeight = 18.0f;
-	const float	labelOffsetX = 10.0f;
-	const float	labelOffsetY = 4.0f;
-	const float	lineAdvance = TINYCHAR_HEIGHT + 8.0f;
-	const float	tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
+	int			x;
+	char		s[128];
+	char		*time;
 
 	//ps = &cg.snap->ps;
 	cent = &cg_entities[cg.snap->ps.clientNum];
-
+	
 	if ( cent->finishRaceTime ){
 		lapTime = cent->finishRaceTime - cent->startLapTime;
 		totalTime = cent->finishRaceTime - cent->startRaceTime;
@@ -459,44 +373,46 @@ static float CG_DrawTimes( float y ) {
 	else {
 		lapTime = 0;
 		totalTime = 0;
-
+		
 	}
 
 //
 // Best Time
 //
-
-	if ( cgs.laplimit > 1 && cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS ){
-		const char *label = "B:";
-		const float labelX = boxX + labelOffsetX;
-		const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
-		const float drawY = y + labelOffsetY;
-
+  
+        if ( cgs.laplimit > 1 && cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS ){
 		time = getStringForTime( cent->bestLapTime );
-
-		CG_FillRect( boxX, y, boxWidth, boxHeight, bgColor );
-		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
-		CG_DrawTinyStringColor( valueX, drawY, time, colorWhite );
-		y += lineAdvance;
+		
+		Com_sprintf(s, sizeof(s), "B: %s", time);
+//		x = 600 - CG_DrawStrlen(s) * TINYCHAR_WIDTH;
+        x = 636 - 80;
+		CG_FillRect ( x, y, 90, 18, bgColor );
+		x+= 10;		
+		y+= 4;
+		CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
+		y += TINYCHAR_HEIGHT + 4;
 	}
 
 //
 // Lap Time
 //
 
-	if ( cgs.laplimit > 1 && cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS ){
-		const char *label = "L:";
-		const float labelX = boxX + labelOffsetX;
-		const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
-		const float drawY = y + labelOffsetY;
+	
 
-		time = getStringForTime( lapTime );
+        if ( cgs.laplimit > 1 && cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS ){
+		time = getStringForTime(lapTime);
 
-		CG_FillRect( boxX, y, boxWidth, boxHeight, bgColor );
-		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
-		CG_DrawTinyStringColor( valueX, drawY, time, colorWhite );
-		y += lineAdvance;
+		Com_sprintf(s, sizeof(s), "L: %s", time);
+//		x = 600 - CG_DrawStrlen(s) * TINYCHAR_WIDTH;
+        x = 636 - 80;
+        CG_FillRect( x, y, 90, 18, bgColor );
+        x+= 10;
+        y+= 4;
+		CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
+		y += TINYCHAR_HEIGHT + 4;
 	}
+
+	
 
 	//
 	// Total Time
@@ -504,21 +420,25 @@ static float CG_DrawTimes( float y ) {
 
 	time = getStringForTime(totalTime);
 
-	{
-		const char *label = "T:";
-		const float labelX = boxX + labelOffsetX;
-		const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
-		const float drawY = y + labelOffsetY;
+	/*
+	Com_sprintf(s, sizeof(s), "TOTAL TIME: %s", time);
+	x = 630 - CG_DrawStrlen(s) * SMALLCHAR_WIDTH;
 
-		CG_FillRect( boxX, y, boxWidth, boxHeight, bgColor );
-		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
-		CG_DrawTinyStringColor( valueX, drawY, time, colorWhite );
-		y += lineAdvance;
-	}
+	CG_DrawSmallStringColor( x, y, s, colors[0]);
+	y += SMALLCHAR_HEIGHT;
+	*/
+
+	Com_sprintf(s, sizeof(s), "T: %s", time);
+
+	x = 636 - 80;
+	CG_FillRect( x, y, 90, 18, bgColor );
+	x += 10;
+	y += 4;
+	CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
+	y += TINYCHAR_HEIGHT + 4;
 
 	return y;
 }
-
 
 
 
@@ -530,48 +450,32 @@ CG_DrawLaps
 */
 static float CG_DrawLaps( float y ) {
 	centity_t		*cent;
-	//playerState_t *ps;
+	//playerState_t	*ps;
 	int			curLap;
 	int			numLaps;
-	char			value[32];
-	const float	boxX = 636.0f - 80.0f;
-	const float	boxWidth = 90.0f;
-	const float	boxHeight = 18.0f;
-	const float	labelOffsetX = 10.0f;
-	const float	labelOffsetY = 4.0f;
-	const float	lineAdvance = TINYCHAR_HEIGHT + 8.0f;
-	const float	tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
+	char		s[64];
+	int			x;
 
 	//ps = &cg.snap->ps;
 	cent = &cg_entities[cg.snap->ps.clientNum];
 
-	if ( cgs.laplimit <= 1 ) {
-		return y;
-	}
-
 	curLap = cent->currentLap;
 	numLaps = cgs.laplimit;
 
-	if ( numLaps > 1 )
-		Com_sprintf(value, sizeof(value), "%i/%i", curLap, numLaps);
-	else
-		Com_sprintf(value, sizeof(value), "%i", curLap);
+        if ( numLaps > 1 )
+                Com_sprintf(s, sizeof(s), "LAP: %i/%i", curLap, numLaps);
+        else
+                Com_sprintf(s, sizeof(s), "LAP: %i", curLap);
 
-	CG_FillRect( boxX, y, boxWidth, boxHeight, bgColor );
-	{
-		const char *label = "LAP:";
-		const float labelX = boxX + labelOffsetX;
-		const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
-		const float drawY = y + labelOffsetY;
-
-		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
-		CG_DrawTinyStringColor( valueX, drawY, value, colorWhite );
-	}
-	y += lineAdvance;
+	x = 636 - 80;
+	CG_FillRect( x, y, 90, 18, bgColor );
+	x += 10;
+	y += 4;
+	CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
+	y += TINYCHAR_HEIGHT + 4;
 
 	return y;
 }
-
 
 
 /*
@@ -580,127 +484,28 @@ CG_DrawDistanceToFinish
 ======================
 */
 static float CG_DrawDistanceToFinish( float y ) {
-	float           dist;
-	const float     feetPerMile = 5280.0f;
-	const float     boxX = 636.0f - 80.0f;
-	const float     boxWidth = 90.0f;
-	const float     boxHeight = 18.0f;
-	const float     labelOffsetX = 10.0f;
-	const float     labelOffsetY = 4.0f;
-	const float     lineAdvance = TINYCHAR_HEIGHT + 8.0f;
-	const float     tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
-	char            numericValue[32];
-	const char      *unit = "";
-	const char      *label = "DIST:";
+        char            s[64];
+        int             x;
+        float           dist;
 
-	// for multi-lap races show distance to next checkpoint instead of finish
-	if ( cgs.laplimit > 1 ) {
-		int             nextCP;
-		centity_t       *checkpoint = NULL;
-		vec3_t          diff;
-		vec3_t          checkpointOrigin;
-		int             i;
+        dist = cg.snap->ps.stats[STAT_DISTANCE_REMAIN];
 
-		nextCP = cg.snap->ps.stats[STAT_NEXT_CHECKPOINT];
-		if ( nextCP <= 0 ) {
-			return y;
-		}
+        if ( cg_distanceFormat.integer == 1 && cgs.trackLength > 0.0f ) {
+                float percent = dist / cgs.trackLength * 100.0f;
+                Com_sprintf( s, sizeof( s ), "DIST: %.1f%%", percent );
+        } else {
+                Com_sprintf( s, sizeof( s ), "DIST: %dm", (int)dist );
+        }
 
-		for ( i = 0; i < MAX_GENTITIES; i++ ) {
-			centity_t *cent = &cg_entities[i];
+        x = 636 - 80;
+        CG_FillRect( x, y, 90, 18, bgColor );
+        x += 10;
+        y += 4;
+        CG_DrawTinyDigitalStringColor( x, y, s, colorWhite );
+        y += TINYCHAR_HEIGHT + 4;
 
-			if ( cent->currentState.eType != ET_CHECKPOINT ) {
-				continue;
-			}
-
-			if ( cent->currentState.weapon != nextCP ) {
-				continue;
-			}
-
-			checkpoint = cent;
-			break;
-		}
-
-		if ( !checkpoint ) {
-			return y;
-		}
-
-		VectorCopy( checkpoint->lerpOrigin, checkpointOrigin );
-
-		if ( checkpoint->currentState.solid == SOLID_BMODEL &&
-				checkpoint->currentState.modelindex > 0 &&
-				checkpoint->currentState.modelindex < MAX_MODELS ) {
-			VectorAdd( checkpointOrigin,
-					cgs.inlineModelMidpoints[ checkpoint->currentState.modelindex ],
-					checkpointOrigin );
-		}
-
-		VectorSubtract( checkpointOrigin, cg.snap->ps.origin, diff );
-
-		dist = VectorLength( diff );
-		label = "CP:";
-
-		if ( cg_metricUnits.integer ) {
-			dist /= CP_M_2_QU;
-			Com_sprintf( numericValue, sizeof( numericValue ), "%d", (int)dist );
-			unit = "m";
-		} else {
-			dist /= CP_FT_2_QU;
-			if ( dist >= feetPerMile ) {
-				float miles = dist / feetPerMile;
-				Com_sprintf( numericValue, sizeof( numericValue ), "%.1f", miles );
-				unit = "mi";
-			} else {
-				Com_sprintf( numericValue, sizeof( numericValue ), "%d", (int)dist );
-				unit = "ft";
-			}
-		}
-	}
-	else {
-		dist = cg.snap->ps.stats[STAT_DISTANCE_REMAIN];
-		label = "DIST:";
-
-		if ( cg_distanceFormat.integer == 1 && cgs.trackLength > 0.0f ) {
-			float percent = dist / cgs.trackLength * 100.0f;
-			Com_sprintf( numericValue, sizeof( numericValue ), "%.1f", percent );
-			unit = "%";
-		} else {
-			if ( cg_metricUnits.integer ) {
-				Com_sprintf( numericValue, sizeof( numericValue ), "%d", (int)dist );
-				unit = "m";
-			} else {
-				float distFeet = dist * 3.28084f;
-
-				if ( distFeet >= feetPerMile ) {
-					float miles = distFeet / feetPerMile;
-					Com_sprintf( numericValue, sizeof( numericValue ), "%.1f", miles );
-					unit = "mi";
-				} else {
-					Com_sprintf( numericValue, sizeof( numericValue ), "%d", (int)distFeet );
-					unit = "ft";
-				}
-			}
-		}
-	}
-
-	{
-		const float     labelX = boxX + labelOffsetX;
-		const float     valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
-		const float     drawY = y + labelOffsetY;
-
-		CG_FillRect( boxX, y, boxWidth, boxHeight, bgColor );
-		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
-		CG_DrawTinyStringColor( valueX, drawY, numericValue, colorWhite );
-		if ( unit[0] != '\0' ) {
-			const float unitX = valueX + CG_DrawStrlen( numericValue ) * tinyCharWidth;
-			CG_DrawTinyStringColor( unitX, drawY, unit, colorWhite );
-		}
-		y += lineAdvance;
-	}
-
-	return y;
+        return y;
 }
-
 
 /*
 ======================
@@ -711,17 +516,16 @@ static float CG_DrawCurrentPosition( float y ) {
 	centity_t		*cent;
 	//playerState_t	*ps;
 	int			pos;
+	char		s[64];
 	float		x, width, height;
 	//float		foreground[4] = { 0, 0, 0.75, 1.0 };
-	const char	*label = "POS:";
-	const float	labelOffsetX = 10.0f;
-	const float	labelOffsetY = 4.0f;
-	const float	tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
 
 	//ps = &cg.snap->ps;
 	cent = &cg_entities[cg.snap->ps.clientNum];
 
 	pos = cent->currentPosition;
+
+	Com_sprintf(s, sizeof(s), "POS: ");
 
 	x = 636 - 80;
 	width = 90;
@@ -729,14 +533,14 @@ static float CG_DrawCurrentPosition( float y ) {
 
 	CG_FillRect( x, y, width, height, bgColor );
 
-	{
-		const float	labelX = x + labelOffsetX;
-		const float	drawY = y + labelOffsetY;
-		const float	valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
+	x += 10;
+	y += 4;
 
-		CG_DrawTinyStringColor( labelX, drawY, label, colorWhite );
-		CG_DrawTinyStringColor( valueX, drawY, va( "%i/%i", pos, cgs.numRacers ), colorWhite );
-	}
+	CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
+
+	x += TINYCHAR_WIDTH * 5;
+
+	CG_DrawTinyDigitalStringColor( x, y, va("%i/%i", pos, cgs.numRacers), colorWhite);
 
 	y += 20;
 
@@ -755,15 +559,9 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	int			i, j, num;
 	float		x, width, height;
 	int			startPos, endPos;
-	char		positionLabel[16];
+	char		s[64];
 	float		background[4] = { 0, 0, 0, 0.5 };
 	float		selected[4] = { 0.75, 0.0, 0.0, 0.5 };
-	const float	numberOffsetX = 4.0f;
-	const float	columnSpacing = 4.0f;
-	const float	tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
-	float		numberX;
-	float		nameX;
-	char		maxPositionLabel[16];
 
 	//ps = &cg.snap->ps;
 	cent = &cg_entities[cg.snap->ps.clientNum];
@@ -775,10 +573,6 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	x = 636 - 80;
 	width = 90;
 	height = TINYCHAR_HEIGHT;
-
-	numberX = x + numberOffsetX;
-	Com_sprintf( maxPositionLabel, sizeof( maxPositionLabel ), "%i-", cgs.numRacers );
-	nameX = numberX + CG_DrawStrlen( maxPositionLabel ) * tinyCharWidth + columnSpacing;
 
 	for (i = startPos; i <= endPos; i++){
 		num = -1;
@@ -801,18 +595,8 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 		}
 
 		Q_strncpyz(player, cgs.clientinfo[num].name, 16 );
-		if ( player[0] != '\0' ) {
-			Com_sprintf( positionLabel, sizeof( positionLabel ), "%i-", cg_entities[num].currentPosition );
-		}
-		else {
-			Com_sprintf( positionLabel, sizeof( positionLabel ), "%i", cg_entities[num].currentPosition );
-		}
-
-		CG_DrawTinyStringColor( numberX, y, positionLabel, colorWhite );
-
-		if ( player[0] != '\0' ) {
-			CG_DrawTinyStringColor( nameX, y, player, colorWhite );
-		}
+		Com_sprintf(s, sizeof(s), "%i-%s", cg_entities[num].currentPosition, player);
+		CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
 
 		y += TINYCHAR_HEIGHT;
 
@@ -923,95 +707,56 @@ static float CG_DrawSpeed( float y ) {
         // use actual speed
         vel_speed = (int)fabs( Q3VelocityToRL( DotProduct(ps->velocity, forward) ) );
 
-	if ( cg_speedometerMode.integer ) {
-		char		speedStr[32];
-		char		gearStr[16];
-		char		gearLabel[4];
-		int		maxLen, len;
-		float	bgColor[4] = {0.0f, 0.0f, 0.0f, 0.25f};
-		int		rpm;
-		int		segments;
-		float	segmentWidth;
-                 const float segmentHeight = 8.0f;
-                 const float segmentGap = 4.0f;
-                 const float gaugeHeight = 12.0f;
-                 const float rpmIconSize = gaugeHeight * 2;
-                const float rpmIconOffset = rpmIconSize + 4;
-                float   iconOffset = gaugeHeight * 2 + 4;
-                 float   blockWidth, blockHeight, barWidth;
-                 int             i;
-                int             speedWidth, gearWidth;
+       if ( cg_speedometerMode.integer ) {
+               char    speedStr[32];
+               char    rpmStr[32];
+               char    gearStr[16];
+               char    gearLabel[4];
+               int             maxLen, len;
+               float bgColor[4] = {0.0f, 0.0f, 0.0f, 0.25f};
 
-		Com_sprintf( speedStr, sizeof( speedStr ), "%i %s", vel_speed, cg_metricUnits.integer ? "KPH" : "MPH" );
+               Com_sprintf( speedStr, sizeof( speedStr ), "%i %s", vel_speed, cg_metricUnits.integer ? "KPH" : "MPH" );
+               Com_sprintf( rpmStr,   sizeof( rpmStr ),   "%d RPM", cg.predictedPlayerState.stats[STAT_RPM] );
 
-		if ( cg.predictedPlayerState.stats[STAT_GEAR] == -1 ) {
-			Q_strncpyz( gearLabel, "R", sizeof( gearLabel ) );
-		} else if ( cg.predictedPlayerState.stats[STAT_GEAR] == 0 ) {
-			Q_strncpyz( gearLabel, "N", sizeof( gearLabel ) );
-		} else {
-			Com_sprintf( gearLabel, sizeof( gearLabel ), "%i", cg.predictedPlayerState.stats[STAT_GEAR] );
-		}
-		Com_sprintf( gearStr, sizeof( gearStr ), "GEAR %s", gearLabel );
+               if ( cg.predictedPlayerState.stats[STAT_GEAR] == -1 ) {
+                       Q_strncpyz( gearLabel, "R", sizeof( gearLabel ) );
+               } else if ( cg.predictedPlayerState.stats[STAT_GEAR] == 0 ) {
+                       Q_strncpyz( gearLabel, "N", sizeof( gearLabel ) );
+               } else {
+                       Com_sprintf( gearLabel, sizeof( gearLabel ), "%i", cg.predictedPlayerState.stats[STAT_GEAR] );
+               }
+               Com_sprintf( gearStr, sizeof( gearStr ), "GEAR %s", gearLabel );
 
-		maxLen = CG_DrawStrlen( speedStr );
-		len = CG_DrawStrlen( gearStr );
-		if ( len > maxLen ) {
-			maxLen = len;
-		}
+               maxLen = CG_DrawStrlen( speedStr );
+               len = CG_DrawStrlen( rpmStr );
+               if ( len > maxLen ) {
+                       maxLen = len;
+               }
+               len = CG_DrawStrlen( gearStr );
+               if ( len > maxLen ) {
+                       maxLen = len;
+               }
 
-               rpm = cg.predictedPlayerState.stats[STAT_RPM];
-               segments = (CP_RPM_MAX + 999) / 1000;
+               x -= 38 + ( maxLen * SMALLCHAR_WIDTH ) / 2;
 
-                // determine total block dimensions
-                barWidth = maxLen * GIANTCHAR_WIDTH -15;
-                blockWidth = max( iconOffset + barWidth, rpmIconOffset + maxLen * GIANTCHAR_WIDTH );
-                blockHeight = segmentHeight + 2 * GIANTCHAR_HEIGHT + gaugeHeight;
-
-               // anchor to bottom-right reference
-
-               x = 640 - blockWidth - 8;
-
-               y -= blockHeight;
-
+               y -= 40;
                {
                        float rectX = x - 4, rectY = y - 4;
-                       float rectW = blockWidth + 8;
-                       float rectH = blockHeight + 8;
+                       float rectW = maxLen * SMALLCHAR_WIDTH + 8;
+                       float rectH = 3 * SMALLCHAR_HEIGHT + 8;
                        CG_FillRect( rectX, rectY, rectW, rectH, bgColor );
                }
+               CG_DrawSmallDigitalStringColor( x, y, speedStr, colorWhite );
+               y += SMALLCHAR_HEIGHT;
+               CG_DrawSmallDigitalStringColor( x, y, rpmStr, colorWhite );
+               y += SMALLCHAR_HEIGHT;
+               CG_DrawSmallDigitalStringColor( x, y, gearStr, colorWhite );
 
-		segmentWidth = (maxLen * GIANTCHAR_WIDTH - (segments - 1) * segmentGap) / segments;
-		{
-			static qhandle_t rpmIcon;
-			if ( !rpmIcon ) {
-				rpmIcon = trap_R_RegisterShaderNoMip( "icons/rpm" );
-			}
-			CG_DrawPic( x, y, rpmIconSize, rpmIconSize, rpmIcon );
-		}
-               for ( i = 0; i < segments; i++ ) {
-                       float segX = x + rpmIconOffset + i * (segmentWidth + segmentGap);
-                       if ( rpm >= (i + 1) * 1000 ) {
-                               CG_FillRect( segX, y, segmentWidth, segmentHeight, colorWhite );
-                       } else {
-                               CG_DrawRect( segX, y, segmentWidth, segmentHeight, 1, colorWhite );
-                       }
-               }
-
-               speedWidth = CG_DrawStrlen( speedStr ) * GIANTCHAR_WIDTH;
-               gearWidth  = CG_DrawStrlen( gearStr )  * GIANTCHAR_WIDTH;
-
-               y += segmentHeight;
-               CG_DrawGiantDigitalStringColor( x + blockWidth - speedWidth, y, speedStr, colorWhite );
-               y += GIANTCHAR_HEIGHT;
-               CG_DrawGiantDigitalStringColor( x + blockWidth - gearWidth, y, gearStr, colorWhite );
-
-               y += GIANTCHAR_HEIGHT;
-               CG_DrawFuelGauge( x + iconOffset, y, barWidth, gaugeHeight );
-                y = yorg;
+               y = yorg;
                y -= 44;
-               y -= blockHeight;
+               y -= 3 * SMALLCHAR_HEIGHT;
                return y;
-	}
+       }
 /*
 #ifdef Q3_VM
 	if (ps->stats[STAT_GEAR] == -1)
@@ -1026,122 +771,81 @@ static float CG_DrawSpeed( float y ) {
 #endif
 */
 
+	// draw speedometer here
+	x2 = x - 96;
+	y2 = y - 96;
+	CG_DrawPic( x2, y2, 96, 96, cg_metricUnits.integer ? cgs.media.gaugeMetric : cgs.media.gaugeImperial );
 	
-        {
-               const float gaugeSize = 96.0f;
-               const float fuelWidth = 90.0f;
-               const float fuelHeight = 8.0f;
-               const float gaugeSpacing = 4.0f;
-               const float rpmHeight = 8.0f;
-               const float rpmSpacing = 4.0f;
-               float blockWidth = gaugeSize;
-               float blockHeight = gaugeSize + gaugeSpacing + fuelHeight + rpmSpacing + rpmHeight;
-               float left, top;
-               int speedWidth;
-               float speedX, speedY;
-               float centerX, centerY;
-               int i;
 
-                left = 640 - blockWidth - 8;
-                top = y - blockHeight;
+	// draw digital speed
+	x -= 48 + (CG_DrawStrlen(va("%i", vel_speed)) * SMALLCHAR_WIDTH) / 2;
+	y -= 35;
+	CG_DrawSmallDigitalStringColor( x, y, va("%i", vel_speed), colorWhite);
 
-                CG_DrawPic( left, top, gaugeSize, gaugeSize,
-                            cg_metricUnits.integer ? cgs.media.gaugeMetric : cgs.media.gaugeImperial );
+	// draw needle
 
-                speedWidth = CG_DrawStrlen( va("%i", vel_speed) ) * SMALLCHAR_WIDTH;
-                speedX = left + (gaugeSize - speedWidth) * 0.5f;
-                speedY = top + gaugeSize - 35;
-                CG_DrawSmallDigitalStringColor( speedX, speedY, va("%i", vel_speed), colorWhite );
+	w = h = 96;
+	CG_AdjustFrom640( &x2, &y2, &w, &h );
 
-                x2 = left;
-                y2 = top;
-                w = h = gaugeSize;
-                CG_AdjustFrom640( &x2, &y2, &w, &h );
+	memset( &refdef, 0, sizeof( refdef ) );
+	memset( &ent, 0, sizeof( ent ) );
 
-                memset( &refdef, 0, sizeof( refdef ) );
-                memset( &ent, 0, sizeof( ent ) );
+	ent.hModel = trap_R_RegisterModel("gfx/hud/needle.md3");
+	ent.customShader = trap_R_RegisterShader("gfx/hud/needle01");
+	ent.renderfx = RF_NOSHADOW;		// no stencil shadows
 
-                ent.hModel = trap_R_RegisterModel("gfx/hud/needle.md3");
-                ent.customShader = trap_R_RegisterShader("gfx/hud/needle01");
-                ent.renderfx = RF_NOSHADOW;
+	trap_R_ModelBounds(ent.hModel, mins, maxs);
 
-                trap_R_ModelBounds( ent.hModel, mins, maxs );
+	// origin[2] = -0.5 * ( mins[2] + maxs[2] );
+	origin[2] = 0;
+	origin[1] = 0.5 * ( mins[1] + maxs[1] );
+	origin[0] = ( maxs[2] - mins[2] ) / 0.268;
 
-                origin[2] = 0;
-                origin[1] = 0.5f * ( mins[1] + maxs[1] );
-                origin[0] = ( maxs[2] - mins[2] ) / 0.268f;
+	VectorClear(angles);
+	angles[YAW] -= 90;
+	angles[PITCH] = -150.0f + (300.0f * vel_speed / 200.0f);
+	AnglesToAxis( angles, ent.axis );
+	VectorCopy(origin, ent.origin);
 
-                VectorClear( angles );
-                angles[YAW] -= 90;
-                angles[PITCH] = -150.0f + (300.0f * vel_speed / 200.0f);
-                AnglesToAxis( angles, ent.axis );
-                VectorCopy( origin, ent.origin );
+	refdef.rdflags = RDF_NOWORLDMODEL;
 
-                refdef.rdflags = RDF_NOWORLDMODEL;
-                AxisClear( refdef.viewaxis );
-                refdef.fov_x = 30;
-                refdef.fov_y = 30;
-                refdef.x = x2;
-                refdef.y = y2;
-                refdef.width = w;
-                refdef.height = h;
-                refdef.time = cg.time;
+	AxisClear( refdef.viewaxis );
 
-                trap_R_ClearScene();
-                trap_R_AddRefEntityToScene( &ent );
-                trap_R_RenderScene( &refdef );
+	refdef.fov_x = 30;
+	refdef.fov_y = 30;
 
-                centerX = left + gaugeSize * 0.5f - 12.0f;
-                centerY = top + gaugeSize * 0.5f - 12.0f;
-                CG_DrawPic( centerX, centerY, 24, 24,
-                            trap_R_RegisterShaderNoMip("gfx/hud/center01") );
+	refdef.x = x2;
+	refdef.y = y2;
+	refdef.width = w;
+	refdef.height = h;
 
-                if ( cg.predictedPlayerState.stats[STAT_GEAR] == -1 )
-                        CG_DrawSmallDigitalStringColor( centerX + 10, centerY + 4, "R", colorWhite );
-                else if ( cg.predictedPlayerState.stats[STAT_GEAR] == 0 )
-                        CG_DrawSmallDigitalStringColor( centerX + 10, centerY + 4, "N", colorWhite );
-                else
-                        CG_DrawSmallDigitalStringColor( centerX + 10, centerY + 4,
-                                                        va("%i", cg.predictedPlayerState.stats[STAT_GEAR]), colorWhite );
+	refdef.time = cg.time;
 
-               CG_DrawFuelGauge( left + (blockWidth - fuelWidth) * 0.5f,
-                                 top + gaugeSize + gaugeSpacing,
-                                 fuelWidth, fuelHeight );
+	trap_R_ClearScene();
+	trap_R_AddRefEntityToScene( &ent );
+	trap_R_RenderScene( &refdef );
 
-               {
-                       int rpm = cg.predictedPlayerState.stats[STAT_RPM];
-                       int segments = (CP_RPM_MAX + 999) / 1000;
-                       float segGap = 2.0f;
-                       float segWidth = (fuelWidth - (segments - 1) * segGap) / segments;
-                       float segX = left + (blockWidth - fuelWidth) * 0.5f;
-                       float segY = top + gaugeSize + gaugeSpacing + fuelHeight + rpmSpacing;
+	// draw center here
+	x = 630;
+	y = yorg;
 
-                       float rpmIconSize, rpmIconX, rpmIconY;
+	x -= 60;
+	y -= 60;
+	CG_DrawPic( x, y, 24, 24, trap_R_RegisterShaderNoMip("gfx/hud/center01"));
 
-                       static qhandle_t rpmIcon;
-                       if ( !rpmIcon ) {
-                               rpmIcon = trap_R_RegisterShaderNoMip( "icons/rpm" );
-                       }
+	// draw gear over center of gauge
+	if ( cg.predictedPlayerState.stats[STAT_GEAR] == -1 )
+		CG_DrawSmallDigitalStringColor( x+10, y+4, "R", colorWhite);
+	else if ( cg.predictedPlayerState.stats[STAT_GEAR] == 0 )
+		CG_DrawSmallDigitalStringColor( x+10, y+4, "N", colorWhite);
+	else
+		CG_DrawSmallDigitalStringColor( x+10, y+4, va("%i", cg.predictedPlayerState.stats[STAT_GEAR]), colorWhite);
 
-                       rpmIconSize = rpmHeight * (4.0f / 3.0f);
-                       rpmIconX = segX - rpmIconSize - 4;
-                       rpmIconY = segY + (rpmHeight - rpmIconSize) * 0.5f;
+	y -= 39;
 
-                       CG_DrawPic( rpmIconX, rpmIconY, rpmIconSize, rpmIconSize, rpmIcon );
+	y -= SMALLCHAR_HEIGHT;
 
-                       for ( i = 0 ; i < segments ; i++ ) {
-                               float xPos = segX + i * (segWidth + segGap);
-                               if ( rpm >= (i + 1) * 1000 ) {
-                                       CG_FillRect( xPos, segY, segWidth, rpmHeight, colorWhite );
-                               } else {
-                                       CG_DrawRect( xPos, segY, segWidth, rpmHeight, 1, colorWhite );
-                               }
-                       }
-               }
-
-               y = yorg - 44 - blockHeight;
-               return y;
-       }
+	return y;
 }
 
 /*
@@ -1203,7 +907,7 @@ CG_DrawGear
  static float CG_DrawGear( float y ) {
 	CG_DrawSmallDigitalStringColor( 560, y, va("Gear: %d", cg.predictedPlayerState.stats[STAT_GEAR]), colors[0]);
 	y -= SMALLCHAR_HEIGHT;
-	CG_DrawTinyStringColor( 560, y, va("RPM: %d", cg.predictedPlayerState.stats[STAT_RPM]), colorWhite);
+	CG_DrawTinyDigitalStringColor( 560, y, va("RPM: %d", cg.predictedPlayerState.stats[STAT_RPM]), colorWhite);
 	y -= SMALLCHAR_HEIGHT;
 	return y;
 }
@@ -1221,102 +925,6 @@ CG_DrawGear
 	VectorMA(pointOnPlane, -(planedist / viewdist) * DotProduct(dir, cg.refdef.viewaxis[2]), cg.refdef.viewaxis[2], pointOnPlane);
 */
 
-static float CG_DrawEliminationStatus( float y ) {
-        const float boxWidth = 176.0f;
-        const float x = 640.0f - boxWidth;
-        char text[64];
-        vec4_t countdownColor;
-        int drivers;
-        int displayRound;
-        int msLeft;
-        int secondsLeft;
-        qboolean showCountdown;
-        const float lineAdvance = TINYCHAR_HEIGHT + 8.0f;
-        const float tinyCharWidth = TINYCHAR_WIDTH + 2.0f;
-
-        if ( cgs.gametype != GT_ELIMINATION ) {
-                return y;
-        }
-
-        drivers = cgs.eliminationRemainingPlayers;
-        if ( drivers < 0 ) {
-                drivers = 0;
-        }
-
-        CG_FillRect( x, y, boxWidth, 18, bgColor );
-        {
-                const char *label = "DRIVERS LEFT:";
-                const float labelX = x + 10.0f;
-                const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
-
-                CG_DrawTinyStringColor( labelX, y + 4, label, colorWhite );
-                if ( drivers > 0 ) {
-                        Com_sprintf( text, sizeof( text ), "%i", drivers );
-                } else {
-                        Q_strncpyz( text, "--", sizeof( text ) );
-                }
-                CG_DrawTinyStringColor( valueX, y + 4, text, colorWhite );
-        }
-        y += lineAdvance;
-
-        CG_FillRect( x, y, boxWidth, 18, bgColor );
-        displayRound = CG_EliminationDisplayRound();
-        {
-                const char *label = "ROUND:";
-                const float labelX = x + 10.0f;
-                const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
-
-                CG_DrawTinyStringColor( labelX, y + 4, label, colorWhite );
-                if ( displayRound > 0 ) {
-                        Com_sprintf( text, sizeof( text ), "%i", displayRound );
-                } else {
-                        Q_strncpyz( text, "--", sizeof( text ) );
-                }
-                CG_DrawTinyStringColor( valueX, y + 4, text, colorWhite );
-        }
-        y += lineAdvance;
-
-        CG_FillRect( x, y, boxWidth, 18, bgColor );
-        showCountdown = ( cgs.eliminationActive && drivers > 1 );
-        if ( showCountdown ) {
-                const char *label = "ELIMINATION IN";
-                const float labelX = x + 10.0f;
-                const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
-
-                msLeft = CG_EliminationMsLeft();
-                secondsLeft = ( msLeft + 999 ) / 1000;
-                if ( secondsLeft < 0 ) {
-                        secondsLeft = 0;
-                }
-
-                Vector4Copy( colorWhite, countdownColor );
-                if ( secondsLeft <= 5 ) {
-                        Vector4Copy( colorRed, countdownColor );
-                } else if ( secondsLeft <= 10 ) {
-                        Vector4Copy( colorYellow, countdownColor );
-                }
-
-                Com_sprintf( text, sizeof( text ), "%i", secondsLeft );
-                CG_DrawTinyStringColor( labelX, y + 4, label, countdownColor );
-                CG_DrawTinyStringColor( valueX, y + 4, text, countdownColor );
-                CG_DrawTinyStringColor( valueX + CG_DrawStrlen( text ) * tinyCharWidth, y + 4, "S", countdownColor );
-        } else if ( cgs.eliminationActive && drivers <= 1 ) {
-                CG_DrawTinyStringColor( x + 10.0f, y + 4, "FINAL DRIVER!", colorWhite );
-        } else {
-                const char *label = "ELIMINATION IN";
-                const float labelX = x + 10.0f;
-                const float valueX = labelX + ( CG_DrawStrlen( label ) + 1 ) * tinyCharWidth;
-
-                CG_DrawTinyStringColor( labelX, y + 4, label, colorWhite );
-                Q_strncpyz( text, "--", sizeof( text ) );
-                CG_DrawTinyStringColor( valueX, y + 4, text, colorWhite );
-                CG_DrawTinyStringColor( valueX + CG_DrawStrlen( text ) * tinyCharWidth, y + 4, " S", colorWhite );
-        }
-        y += lineAdvance;
-
-        return y;
-}
-
 float CG_DrawUpperRightHUD( float y ) {
 	int		i;
 
@@ -1330,10 +938,6 @@ float CG_DrawUpperRightHUD( float y ) {
 		cgs.numRacers++;
 	}
 
-	if ( cgs.gametype == GT_ELIMINATION ) {
-		y = CG_DrawEliminationStatus( y );
-	}
-
 	if (cgs.clientinfo[cg.snap->ps.clientNum].team != TEAM_SPECTATOR){
 		if (isRallyRace()){
 			y = CG_DrawArrowToCheckpoint( y );
@@ -1343,16 +947,16 @@ float CG_DrawUpperRightHUD( float y ) {
                         y = CG_DrawCurrentPosition( y );
 			y = CG_DrawCarAheadAndBehind( y );
 		}
-                else if (cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS || cgs.gametype == GT_ELIMINATION )
-                        y = CG_DrawTimes( y );
+		else if (cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS )
+			y = CG_DrawTimes( y );
 // 0.5
 //			CG_DrawHUD_DerbyList(44, 130);
 			
 	}
 
-        if (!isRallyNonDMRace() && cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS && cgs.gametype != GT_ELIMINATION){
-                y = CG_DrawScores( 636, y );
-        }
+	if (!isRallyNonDMRace() && cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS){
+		y = CG_DrawScores( 636, y );
+	}
 
 	return y;
 }
@@ -1373,8 +977,8 @@ float CG_DrawLowerLeftHUD( float y ) {
 	int		i;
 
 	y += 36;
-for (i = RWP_SMOKE; i < WP_NUM_WEAPONS; i++){
-if (cg.snap->ps.stats[STAT_WEAPONS] & ( 1u << i )){
+	for (i = RWP_SMOKE; i < WP_NUM_WEAPONS; i++){
+		if (cg.snap->ps.stats[STAT_WEAPONS] & ( 1 << i )){
 			if (cg.snap->ps.ammo[ i ]){
 				y -= 36;
 				break;

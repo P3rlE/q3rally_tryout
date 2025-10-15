@@ -22,8 +22,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 // bg_public.h -- definitions shared by both the server game and client game modules
-#ifndef BG_PUBLIC_H
-#define BG_PUBLIC_H
 
 // STONELANCE
 #include "bg_physics.h"
@@ -107,10 +105,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define CS_REFLECTION_IMAGE             29
 #define CS_SIGILSTATUS                  30
 #define CS_TRACKLENGTH                  31
-#define CS_ELIMINATION_INFO             32
 // Q3Rally Code END
 
-#define CS_MODELS                               (CS_ELIMINATION_INFO+1)
+#define CS_MODELS                               32
 #define CS_SOUNDS                               (CS_MODELS+MAX_MODELS)
 // STONELANCE
 //#define       CS_PLAYERS                              (CS_SOUNDS+MAX_SOUNDS)
@@ -144,8 +141,7 @@ typedef enum {
         GT_RACING_DM,           // racing with weapons
         GT_SINGLE_PLAYER,       // single player tournament
         GT_DERBY,                       // demolition derby
-        GT_LCS,                         // last car standing
-        GT_ELIMINATION,         // elimination race
+        GT_LCS,                       // last car standing
         GT_DEATHMATCH,          // random destruction
 
         //-- team games go after this --
@@ -316,14 +312,14 @@ void Pmove (pmove_t *pmove);
 
 
 // player_state->stats[] indexes
-// NOTE: may not have more than 18
+// NOTE: may not have more than 16
 typedef enum {
         STAT_HEALTH,
         STAT_HOLDABLE_ITEM,
 #ifdef MISSIONPACK
         STAT_PERSISTANT_POWERUP,
 #endif
-        STAT_WEAPONS,                                   // 32 bit field
+        STAT_WEAPONS,                                   // 16 bit fields
         STAT_ARMOR,                            
         STAT_DEAD_YAW,                                  // look this direction when dead (FIXME: get rid of?)
         STAT_CLIENTS_READY,                             // bit mask of clients wishing to exit the intermission (FIXME: configstring?)
@@ -337,8 +333,7 @@ typedef enum {
         STAT_NEXT_CHECKPOINT,
         STAT_POSITION,
         STAT_FRAC_TO_NEXT_CHECKPOINT,
-        STAT_DISTANCE_REMAIN,
-        STAT_FUEL
+        STAT_DISTANCE_REMAIN
 // END
 } statIndex_t;
 
@@ -416,7 +411,6 @@ typedef enum {
 // STONELANCE
         HI_TURBO,
 // END
-        HI_FUELCAN,
         HI_NUM_HOLDABLE
 } holdable_t;
 
@@ -774,7 +768,6 @@ typedef enum {
         MOD_POISON,
         MOD_FIRE,
         MOD_GRAPPLE,
-        MOD_ELIMINATION,
         MOD_BREAKABLE_SPLASH
 } meansOfDeath_t;
 
@@ -798,7 +791,7 @@ typedef enum {
         IT_TEAM,
 // Q3Rally Code Start
         IT_RFWEAPON,
-        IT_SIGIL,
+        IT_SIGIL
 // Q3Rally Code END
 } itemType_t;
 
@@ -849,7 +842,7 @@ gitem_t *BG_FindItemForPowerup( powerup_t pw );
 gitem_t *BG_FindItemForHoldable( holdable_t pw );
 #define ITEM_INDEX(x) ((x)-bg_itemlist)
 
-qboolean        BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const playerState_t *ps, float maxFuel );
+qboolean        BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const playerState_t *ps );
 
 
 // g_dmflags->integer flags
@@ -952,4 +945,3 @@ qboolean        BG_PlayerTouchesItem( playerState_t *ps, entityState_t *item, in
 #define KAMI_BOOMSPHERE_MAXRADIUS               720
 #define KAMI_SHOCKWAVE2_MAXRADIUS               704
 
-#endif /* BG_PUBLIC_H */

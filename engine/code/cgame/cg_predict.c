@@ -472,7 +472,7 @@ static void CG_TouchItem( centity_t *cent ) {
 		return;
 	}
 
-	if ( !BG_CanItemBeGrabbed( cgs.gametype, &cent->currentState, &cg.predictedPlayerState, cg.car.maxFuel ) ) {
+	if ( !BG_CanItemBeGrabbed( cgs.gametype, &cent->currentState, &cg.predictedPlayerState ) ) {
 		return;		// can't hold it
 	}
 
@@ -507,7 +507,7 @@ static void CG_TouchItem( centity_t *cent ) {
 
 	// if it's a weapon, give them some predicted ammo so the autoswitch will work
 	if ( item->giType == IT_WEAPON ) {
-cg.predictedPlayerState.stats[ STAT_WEAPONS ] |= 1u << item->giTag;
+		cg.predictedPlayerState.stats[ STAT_WEAPONS ] |= 1 << item->giTag;
 		if ( !cg.predictedPlayerState.ammo[ item->giTag ] ) {
 			cg.predictedPlayerState.ammo[ item->giTag ] = 1;
 		}
@@ -591,8 +591,7 @@ void CG_UpdateCarFromPS ( playerState_t *ps ) {
 		Com_Printf( "CG_UpdateCarFromPS\n" );
 
 	cg.car.rpm = ps->stats[STAT_RPM];
-    cg.car.gear = ps->stats[STAT_GEAR];
-    cg.car.fuel = ps->stats[STAT_FUEL];
+	cg.car.gear = ps->stats[STAT_GEAR];
 
 	VectorCopy(ps->origin, cg.car.sBody.r);
 	VectorCopy(ps->velocity, cg.car.sBody.v);
@@ -983,7 +982,7 @@ void CG_PredictPlayerState( void ) {
 
 
 // Q3Rally Code Start
-		if ((isRallyRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS || cgs.gametype == GT_ELIMINATION) && !cg_entities[cg.snap->ps.clientNum].startRaceTime){
+		if ((isRallyRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS) && !cg_entities[cg.snap->ps.clientNum].startRaceTime){
 			cg_pmove.cmd.buttons = BUTTON_HANDBRAKE;
 
 			cg_pmove.cmd.forwardmove = 0;
@@ -1005,7 +1004,7 @@ void CG_PredictPlayerState( void ) {
 			cg_pmove.cmd.upmove = 0;
 		}
 
-		if (isRallyNonDMRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_ELIMINATION){
+               if (isRallyNonDMRace() || cgs.gametype == GT_DERBY){
                        cg_pmove.cmd.weapon = cg.predictedPlayerState.weapon = WP_NONE;
                }
 // END

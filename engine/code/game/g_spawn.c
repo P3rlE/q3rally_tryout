@@ -148,7 +148,6 @@ void SP_trigger_multiple (gentity_t *ent);
 void SP_trigger_push (gentity_t *ent);
 void SP_trigger_teleport (gentity_t *ent);
 void SP_trigger_hurt (gentity_t *ent);
-void SP_trigger_fuel (gentity_t *ent);
 
 void SP_target_remove_powerups( gentity_t *ent );
 void SP_target_give (gentity_t *ent);
@@ -246,10 +245,9 @@ spawn_t	spawns[] = {
 	// could not be client side predicted (push and teleport).
 	{"trigger_always", SP_trigger_always},
 	{"trigger_multiple", SP_trigger_multiple},
-        {"trigger_push", SP_trigger_push},
-        {"trigger_teleport", SP_trigger_teleport},
-        {"trigger_hurt", SP_trigger_hurt},
-        {"trigger_fuel", SP_trigger_fuel},
+	{"trigger_push", SP_trigger_push},
+	{"trigger_teleport", SP_trigger_teleport},
+	{"trigger_hurt", SP_trigger_hurt},
 
 	// targets perform no action by themselves, but must be triggered
 	// by another entity
@@ -495,7 +493,7 @@ void G_SpawnGEntityFromSpawnVars( void ) {
 	// UPDATE : change these
 // STONELANCE
 //	static char *gametypeNames[] = {"ffa", "tournament", "single", "team", "ctf", "oneflag", "obelisk", "harvester"};
-static char *gametypeNames[] = {"racing", "racing_dm", "single", "derby", "lcs", "elimination", "dm", "team", "team_racing", "team_racing_dm", "ctf", "ctf4", "domination"};
+	static char *gametypeNames[] = {"racing", "racing_dm", "single", "derby", "lcs", "dm", "team", "team_racing", "team_racing_dm", "ctf", "ctf4", "domination"};
 // END
 
 	// get the next free entity
@@ -812,6 +810,7 @@ void SP_worldspawn( void ) {
 // END
 }
 
+
 /*
 ================
 G_ValidateSigils
@@ -851,7 +850,11 @@ void G_SpawnEntitiesFromString( void ) {
 		G_SpawnGEntityFromSpawnVars();
 	}	
 
-	// Q3Rally: auto-sigil helper disabled while testing entity exhaustion regressions
+// make sure Domination maps have a 3rd sigil
+if (g_gametype.integer == GT_DOMINATION)
+    G_ValidateSigils();
+    
+    
 	level.spawning = qfalse;			// any future calls to G_Spawn*() will be errors
 }
 

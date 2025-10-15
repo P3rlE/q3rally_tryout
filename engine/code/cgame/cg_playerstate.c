@@ -34,13 +34,13 @@ void CG_CheckAmmo( void ) {
 	int		i;
 	int		total;
 	int		previous;
-	uint32_t	weapons;
+	int		weapons;
 
 	// see about how many seconds of ammo we have remaining
 	weapons = cg.snap->ps.stats[ STAT_WEAPONS ];
 	total = 0;
 	for ( i = WP_MACHINEGUN ; i < WP_NUM_WEAPONS ; i++ ) {
-		if ( ! ( weapons & ( 1u << i ) ) ) {
+		if ( ! ( weapons & ( 1 << i ) ) ) {
 			continue;
 		}
 		if ( cg.snap->ps.ammo[i] < 0 ) {
@@ -173,33 +173,6 @@ void CG_DamageFeedback( int yawByte, int pitchByte, int damage ) {
 		kick = 10;
 	}
 	cg.damageValue = kick;
-
-	if ( cgs.gametype == GT_DERBY && damage >= DERBY_HUD_FLASH_THRESHOLD ) {
-		int clampedDamage = damage;
-		const int range = DERBY_HUD_FLASH_MAX_DAMAGE - DERBY_HUD_FLASH_THRESHOLD;
-
-		if ( clampedDamage > DERBY_HUD_FLASH_MAX_DAMAGE ) {
-			clampedDamage = DERBY_HUD_FLASH_MAX_DAMAGE;
-		}
-		if ( clampedDamage < DERBY_HUD_FLASH_THRESHOLD ) {
-			clampedDamage = DERBY_HUD_FLASH_THRESHOLD;
-		}
-
-		if ( range > 0 ) {
-			float normalized = (float)( clampedDamage - DERBY_HUD_FLASH_THRESHOLD ) / (float)range;
-
-			cg.derbyHUDFlashStrength = 0.35f + 0.35f * normalized;
-		} else {
-			cg.derbyHUDFlashStrength = 0.35f;
-		}
-
-		if ( cg.derbyHUDFlashStrength > 1.0f ) {
-			cg.derbyHUDFlashStrength = 1.0f;
-		}
-
-		cg.derbyHUDFlashEndTime = cg.time + DERBY_HUD_FLASH_DURATION;
-	}
-
 	cg.v_dmg_time = cg.time + DAMAGE_TIME;
 	cg.damageTime = cg.snap->serverTime;
 }
@@ -539,13 +512,10 @@ CG_TransitionPlayerState
 void CG_TransitionPlayerState( playerState_t *ps, playerState_t *ops ) {
 	// check for changing follow mode
 	if ( ps->clientNum != ops->clientNum ) {
-               cg.thisFrameTeleport = qtrue;
-               // make sure we don't get any unwanted transition effects
-               *ops = *ps;
-       }
-
-       cg.predictedPlayerState.stats[STAT_FUEL] = ps->stats[STAT_FUEL];
-       cg.car.fuel = ps->stats[STAT_FUEL];
+		cg.thisFrameTeleport = qtrue;
+		// make sure we don't get any unwanted transition effects
+		*ops = *ps;
+	}
 
 	// damage events (player is getting wounded)
 // STONELANCE using damagePitch and Yaw for view

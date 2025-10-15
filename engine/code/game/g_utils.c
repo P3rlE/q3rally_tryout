@@ -491,26 +491,6 @@ void G_FreeEntity( gentity_t *ed ) {
 	ed->inuse = qfalse;
 }
 
-
-/*
-=================
-G_ResetExtraBBox
-
-Utility helper for the vehicle corpse extra bounding boxes. They are marked
-neverFree so this routine just unlinks them and clears ownership/contents so
-the helper can be recycled.
-=================
-*/
-void G_ResetExtraBBox( gentity_t *ent ) {
-	if ( !ent ) {
-		return;
-	}
-
-	trap_UnlinkEntity( ent );
-	ent->r.ownerNum = ENTITYNUM_NONE;
-	ent->r.contents = 0;
-}
-
 /*
 =================
 G_TempEntity
@@ -650,7 +630,6 @@ void Rally_Sound( gentity_t *ent, int event, int channel, int soundIndex ) {
 	gentity_t	*te;
 
 	te = G_TempEntity( ent->r.currentOrigin, event );
-	te->r.svFlags |= SVF_BROADCAST;
 	te->s.eventParm = soundIndex;
 }
 // END

@@ -57,8 +57,9 @@ extern float CP_CURRENT_GRAVITY;
 extern	float CP_M_2_QU;
 //static	float CP_M_2_QU = CP_FT_2_QU / 0.3048f; // 35.66
 
-#define CP_MAX_FUEL             100.0f
-#define CP_FUEL_LEAK_RATE       1.0f
+#define	CP_FRAME_MASS		300.0f // 350
+#define	CP_WHEEL_MASS		50.0f // 100
+#define	CP_CAR_MASS			( CP_FRAME_MASS * 4 + CP_WHEEL_MASS * 4 )
 
 #define	CP_BODY_ELASTICITY	0.05f
 #define	CP_WHEEL_ELASTICITY	0.05f
@@ -76,8 +77,14 @@ extern	float CP_M_2_QU;
 
 
 // strength of the fake spring that returns the wheel to perpendicular
+extern	float CP_WR_STRENGTH;
+extern	float CP_SPRING_STRENGTH;
 extern	float CP_SHOCK_STRENGTH;
 extern	float CP_SWAYBAR_STRENGTH;
+/*
+extern	float CP_TORQUE_SLOPE;
+extern	float CP_GEAR_RATIOS[];
+*/
 
 #define	CP_AIR_COF			0.31f
 #define	CP_FRAC_TO_DF		0.50f
@@ -109,15 +116,40 @@ extern	float CP_SWAYBAR_STRENGTH;
 #define	CP_LAVA_DENSITY		60000.0f
 #define	CP_SLIME_DENSITY	20000.0f
 
+#define	CP_AXLEGEAR			3.07f
 #define	CP_GEARR			-2.80f
 #define	CP_GEARN			0.00f
+/*
+#define	CP_GEAR1			2.82f
+#define	CP_GEAR2			1.78f
+#define	CP_GEAR3			1.27f
+#define	CP_GEAR4			0.92f
+#define	CP_GEAR5			0.60f
 
-// Six speed transmission gear ratios
+#define	CP_GEAR1			3.02f
+#define	CP_GEAR2			2.01f
+#define	CP_GEAR3			1.34f
+#define	CP_GEAR4			0.89f
+#define	CP_GEAR5			0.60f
+*/
+#define	CP_GEAR1			2.75f
+#define	CP_GEAR2			1.67f
+#define	CP_GEAR3			1.19f
+#define	CP_GEAR4			0.82f
+#define	CP_GEAR5			0.49f
 
 
 #define	CP_RPM_MAX	      6250
-#define	CP_RPM_MIN			  750
+#define	CP_RPM_MIN			  1000
 
+// #define	CP_HP_PEAK			191.0f
+// #define	CP_RPM_HP_PEAK		4600.0f
+#define	CP_HP_PEAK			320.0f
+#define	CP_RPM_HP_PEAK		5000.0f
+// #define	CP_TORQUE_PEAK		230.0f
+// #define	CP_RPM_TORQUE_PEAK	3800.0f
+#define	CP_TORQUE_PEAK		400.0f
+#define	CP_RPM_TORQUE_PEAK	2800.0f
 
 #define HTYPE_NO_HIT		0
 #define HTYPE_BOTTOMED_OUT	1
@@ -269,24 +301,12 @@ typedef struct {
 
 //	pointHistory_t	oldPoints[3][LAST_RW_POINT];
 //	bodyHistory_t	oldBodies[3];
-        // vehicle configuration
-        float   frameMass;
-        float   wheelMass;
-        float   gearRatios[6];
-        float   axleGear;
-        float   rpmMax;
-        float   torquePeak;
-        float   rpmTorquePeak;
-        float   hpPeak;
-        float   rpmHpPeak;
-        float   fuelConsumption;
-        float   damageTolerance;
 
-        // FIXME: remove these to save memory if i can
+	// FIXME: remove these to save memory if i can
 
-        float   springStrength;
-        float   springMaxLength;
-        float   springMinLength;
+	float	springStrength;
+	float	springMaxLength;
+	float	springMinLength;
 //	float	shockStrength;
 //	float	swayBarStrength;
 
@@ -301,13 +321,6 @@ typedef struct {
 
 	int		gear; // -1 reverse, 0 neutral, 1+ forward gears
 	float	rpm;
-
-    float	fuel;
-	float	maxFuel;
-	int		maxHealth;
-	qboolean	fuelLeak;
-
-	qboolean	preserveFuel;
 
 	qboolean	initializeOnNextMove;
 

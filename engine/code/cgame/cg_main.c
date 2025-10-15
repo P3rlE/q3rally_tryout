@@ -257,11 +257,6 @@ vmCvar_t	cg_minSkidLength;
 vmCvar_t	cg_drawRearView;
 vmCvar_t        cg_checkpointArrowMode;
 vmCvar_t        cg_distanceFormat;
-vmCvar_t        cg_vehicleMass;
-vmCvar_t        cg_wheelMass;
-vmCvar_t        cg_fuelConsumption;
-vmCvar_t        cg_torque;
-vmCvar_t        cg_damageTolerance;
 vmCvar_t        cg_drawMMap;	//TBB - minimap cvar
 vmCvar_t	cg_mmap_fov;
 vmCvar_t	cg_mmap_size;
@@ -282,7 +277,6 @@ vmCvar_t	cg_debugpredict;
 
 vmCvar_t	cg_engineSounds;
 
-vmCvar_t        cg_fuelWarningLevel;
 vmCvar_t	cg_drawBotPaths;
 
 
@@ -376,11 +370,6 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_manualShift, "cg_manualShift", "0", CVAR_ARCHIVE | CVAR_USERINFO },
 	{ &cg_checkpointArrowMode, "cg_checkpointArrowMode", "1", CVAR_ARCHIVE },
         { &cg_distanceFormat, "cg_distanceFormat", "0", CVAR_ARCHIVE },
-        { &cg_vehicleMass, "cg_vehicleMass", "0", CVAR_USERINFO | CVAR_ROM },
-        { &cg_wheelMass, "cg_wheelMass", "0", CVAR_USERINFO | CVAR_ROM },
-        { &cg_fuelConsumption, "cg_fuelConsumption", "0", CVAR_USERINFO | CVAR_ROM },
-        { &cg_torque, "cg_torque", "0", CVAR_USERINFO | CVAR_ROM },
-        { &cg_damageTolerance, "cg_damageTolerance", "1", CVAR_USERINFO | CVAR_ROM },
 
         { &cg_developer, "developer", "0", 0 },
 
@@ -400,7 +389,6 @@ static cvarTable_t cvarTable[] = {
 
        { &cg_engineSounds, "cg_engineSounds", "0", CVAR_ARCHIVE },
 
-        { &cg_fuelWarningLevel, "cg_fuelWarningLevel", "10", CVAR_ARCHIVE },
 	{ &cg_drawBotPaths, "cg_drawBotPaths", "0", 0 },
 // END
 	{ &cg_teamChatTime, "cg_teamChatTime", "3000", CVAR_ARCHIVE  },
@@ -1089,9 +1077,6 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.SMDirtShader = trap_R_RegisterShader("gfx/skidmarks/dirt" );
 	cgs.media.SMGrassShader = trap_R_RegisterShader("gfx/skidmarks/grass" );
 	cgs.media.SMFleshShader = trap_R_RegisterShader("gfx/skidmarks/flesh" );
-	cgs.media.SMSandShader = trap_R_RegisterShader("gfx/skidmarks/sand" );
-	cgs.media.SMSnowShader = trap_R_RegisterShader("gfx/skidmarks/snow" );
-	cgs.media.SMIceShader = trap_R_RegisterShader("gfx/skidmarks/ice" );
 
 	cgs.media.checkpointArrow = trap_R_RegisterModel("gfx/hud/arrow.md3");
     cgs.media.gaugeImperial = trap_R_RegisterShaderNoMip("gfx/hud/gauge01" );
@@ -1196,7 +1181,7 @@ static void CG_RegisterGraphics( void ) {
 #endif
 	cgs.media.dustPuffShader = trap_R_RegisterShader("hasteSmokePuff" );
     cgs.media.snowPuffShader = trap_R_RegisterShader("snowPuff" );
-    cgs.media.sandPuffShader = trap_R_RegisterShader("sandPuff" );
+// FIX THIS !!!    cgs.media.sandPuffShader = trap_R_RegisterShader("sandPuff" );
 //#endif
 // Q3Rally Code END
 
@@ -1524,13 +1509,6 @@ void CG_StartMusic( void ) {
 	s = (char *)CG_ConfigString( CS_MUSIC );
 	Q_strncpyz( parm1, COM_Parse( &s ), sizeof( parm1 ) );
 	Q_strncpyz( parm2, COM_Parse( &s ), sizeof( parm2 ) );
-
-	cg.musicTitle[0] = '\0';
-	cg.musicDurationMs = 0;
-	cg.musicBannerExpire = 0;
-	cg.musicStartSample = -1;
-	cg.musicSampleRate = 0;
-	cg.musicTotalSamples = 0;
 
 	trap_S_StartBackgroundTrack( parm1, parm2 );
 }
@@ -2226,8 +2204,6 @@ void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum ) {
 	CG_RegisterCvars();
 
 	CG_InitConsoleCommands();
-
-	CG_LadderInit();
 
 	cg.weaponSelect = WP_MACHINEGUN;
 

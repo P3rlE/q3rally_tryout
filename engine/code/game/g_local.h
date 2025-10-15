@@ -44,7 +44,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	INTERMISSION_DELAY_TIME	1000
 #define	SP_INTERMISSION_DELAY_TIME	5000
 
-
 // gentity->flags
 #define	FL_GODMODE				0x00000010
 #define	FL_NOTARGET				0x00000020
@@ -409,25 +408,10 @@ struct gclient_s {
 
 	// race variables
 	int			finishRaceTime;
-	int			ladderBestLapMs;
-	int			ladderTotalRaceMs;
-	int			ladderLastLapStartMs;
-	int			ladderLapCount;
-	int			ladderLapTimes[RACE_MAX_RECORDED_LAPS];
-	int			ladderKills;
-	int			ladderDeaths;
-	int			ladderZoneHoldMs;
-	int			ladderZoneLastUpdateMs;
-	int			ladderZoneActiveSigil;
-	int			ladderSurvivalMs;
-	int			ladderEliminationRound;
-	int			ladderEliminationPlayersRemaining;
-	float			ladderEliminationMetric;
 
 	int			horn_sound_time;
 
 	int			lastCheckpointTime;
-	int			fuelEmptySince;
 // END
 
 	char		*areabits;
@@ -439,8 +423,6 @@ struct gclient_s {
 //
 #define	MAX_SPAWN_VARS			64
 #define	MAX_SPAWN_VARS_CHARS	4096
-
-
 
 typedef struct {
 	struct gclient_s	*clients;		// [maxclients]
@@ -461,16 +443,13 @@ typedef struct {
 	int			previousTime;			// so movers can back up when blocked
 
 	int			startTime;				// level.time the map was started
-	qtime_t		matchStartTime;
-	int			matchStartEpoch;
-
 
 	int			teamScores[TEAM_NUM_TEAMS];
 // STONELANCE
 	int			teamTimes[TEAM_NUM_TEAMS];
 // END
 	int			lastTeamLocationTime;		// last time of client team location update
-    int			lastTeamLeaderElection;		// last time a team leader was requested
+
 	qboolean	newSession;				// don't use any old session data, because
 										// we changed gametype
 
@@ -539,15 +518,6 @@ typedef struct {
 	int			winnerNumber;
 	qboolean	trackIsReversable;
 	int			numberOfLaps;
-	int			eliminationStartDelay;
-	int			eliminationInterval;
-	int			eliminationWarning;
-	int			eliminationNextTriggerTime;
-	int			eliminationWarningTime;
-	qboolean		eliminationWarningSent;
-	int			eliminationActive;
-	int			eliminationRemainingPlayers;
-	int			eliminationRound;
 
 	// map variables
 	int			numCheckpoints;
@@ -555,14 +525,8 @@ typedef struct {
         float                   cpDist[MAX_GENTITIES];
         gentity_t       *checkpoints[MAX_GENTITIES];
         float                   trackLength;
-        vec3_t                  startOrigin;
-        vec3_t                  finishOrigin;
-        gentity_t       *finishLine;
-        qboolean                hasStart;
-        qboolean                hasFinish;
 
         int                     testModelID;
-        ladderMatchPayload_t    ladderPayload;
 // END
 } level_locals_t;
 
@@ -613,8 +577,6 @@ void RespawnItem( gentity_t *ent );
 void UseHoldableItem( gentity_t *ent );
 void PrecacheItem (gitem_t *it);
 gentity_t *Drop_Item( gentity_t *ent, gitem_t *item, float angle );
-void G_DropHoldable( gentity_t *ent, gitem_t *item );
-void G_DropFuelCan( gentity_t *ent );
 gentity_t *LaunchItem( gitem_t *item, vec3_t origin, vec3_t velocity );
 void SetRespawn (gentity_t *ent, float delay);
 void G_SpawnItem (gentity_t *ent, gitem_t *item);
@@ -664,7 +626,6 @@ void G_AddEvent( gentity_t *ent, int event, int eventParm );
 void G_SetOrigin( gentity_t *ent, vec3_t origin );
 void AddRemap(const char *oldShader, const char *newShader, float timeOffset);
 const char *BuildShaderStateConfig( void );
-void G_ResetExtraBBox( gentity_t *ent );
 
 int PickDebrisType( int spawnflags );
 
@@ -837,17 +798,6 @@ void G_PrintMapStats( gentity_t *player, qboolean generateArenaFile, char *longn
 //
 // g_rally_racetools.c
 //
-typedef struct {
-	int			clientNum;
-	int			position;
-	int			bestLapMs;
-	int			totalRaceMs;
-	int			lapsCompleted;
-	qboolean	finished;
-} raceResult_t;
-
-int G_GatherRaceResults( raceResult_t *results, int maxResults );
-
 int GetTeamAtRank( int rank );
 void CreateRallyStarter( void );
 void CalculatePlayerPositions( void );
@@ -855,7 +805,6 @@ void Cmd_RacePositions_f( void );
 void Cmd_Times_f( gentity_t *ent );
 gentity_t *SelectLastMarkerForSpawn( gentity_t *ent, vec3_t origin, vec3_t angles, qboolean isbot );
 gentity_t *SelectGridPositionSpawn( gentity_t *ent, vec3_t origin, vec3_t angles, qboolean isbot );
-void G_BalanceVehicleStats( void );
 
 //
 // g_rally_rearweapon.c
@@ -903,11 +852,6 @@ void QDECL G_DebugLogPrintf( const char *fmt, ... ) __attribute__ ((format (prin
 void SendScoreboardMessageToAllClients( void );
 void QDECL G_Printf( const char *fmt, ... ) __attribute__ ((format (printf, 1, 2)));
 void QDECL G_Error( const char *fmt, ... ) __attribute__ ((noreturn, format (printf, 1, 2)));
-void G_ResetEliminationState( void );
-void G_StartEliminationMode( void );
-void G_UpdateEliminationPlayerCount( void );
-void G_RegisterEliminationDeath( gentity_t *victim );
-
 
 //
 // g_client.c
@@ -970,7 +914,6 @@ qboolean G_BotConnect( int clientNum, qboolean restart );
 void Svcmd_AddBot_f( void );
 void Svcmd_BotList_f( void );
 void BotInterbreedEndMatch( void );
-int G_CountBotPlayers( int team );
 
 // ai_main.c
 #define MAX_FILEPATH			144
@@ -1057,9 +1000,6 @@ extern  vmCvar_t	g_humanplayers;
 // STONELANCE
 extern	vmCvar_t	g_forceEngineStart;
 extern	vmCvar_t	g_finishRaceDelay;
-extern	vmCvar_t	g_eliminationStartDelay;
-extern	vmCvar_t	g_eliminationInterval;
-extern	vmCvar_t	g_eliminationWarning;
 extern	vmCvar_t	g_trackReversed;
 extern	vmCvar_t	g_trackLength;
 extern	vmCvar_t	g_developer;
@@ -1067,8 +1007,6 @@ extern	vmCvar_t	g_damageScale;
 extern	vmCvar_t	g_vehicleDamageScale;
 extern  vmCvar_t        g_vehicleDamageOffset;
 extern	vmCvar_t	g_vehicleHealth;
-extern	vmCvar_t	g_vehicleHpMaxRatio;
-extern	vmCvar_t	g_vehicleHealthMaxRatio;
 extern  vmCvar_t        g_derbyDamageFactor;
 extern  vmCvar_t        g_derbyRammerDamageRatio;
 extern  vmCvar_t        g_derbyIgnoreDamageScale;
@@ -1076,7 +1014,6 @@ extern  vmCvar_t        g_derbyRamRadius;
 extern  vmCvar_t        g_derbyRamDamage;
 extern  vmCvar_t        g_derbyRamDamageScale;
 extern  vmCvar_t        g_derbyRamDamageMax;
-extern  vmCvar_t        g_fuelKillReward;
 
 // car variables
 extern	vmCvar_t	car_spring;
@@ -1117,7 +1054,6 @@ void	trap_Cvar_Set( const char *var_name, const char *value );
 int		trap_Cvar_VariableIntegerValue( const char *var_name );
 float	trap_Cvar_VariableValue( const char *var_name );
 void	trap_Cvar_VariableStringBuffer( const char *var_name, char *buffer, int bufsize );
-void	trap_LadderSubmit( const ladderMatchPayload_t *payload );
 void	trap_LocateGameData( gentity_t *gEnts, int numGEntities, int sizeofGEntity_t, playerState_t *gameClients, int sizeofGameClient );
 void	trap_DropClient( int clientNum, const char *reason );
 void	trap_SendServerCommand( int clientNum, const char *text );

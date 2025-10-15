@@ -1,12 +1,9 @@
-# Q3Rally Changelog
+!!! --- Q3Rally Changelog --- !!!
 
-## English
+new in v0.5
 
-### New and fixed since we are standalone (0.0.1.2)
+Fixed:
 
-#### Fixed
-
-- Bots now honour runtime `bot_enable` changes by initializing AI support without requiring a map restart.
 - Telefrag Gun doesn't work correctly
 - Flattened numbers & "Wrong way" is not on center
 - Gone is the Machinegun as a starting weapon
@@ -15,11 +12,29 @@
 - If you die quickly, you win the race.
 - Fix gametype: Time Trial
 - Empty square in Racing / Team Racing
-- Wrong HUD position of power-ups & flag in various screen aspect ratios
-- `cg_autodrop in` not working
+- Wrong hud position of power-ups & flag in various screen aspect ratio
+- cg_autodrop in not working
 - minimap fits better in UI
-- A bug in racing mode was fixed where it could be that after the race you lost your position in the ranking to a player who crossed the finish line after you
-- The power of the homing rockets has been reduced and the amount of ammunition used has been increased from 1 to 3
+
+Added:
+
+- codebase synced with ioq3
+- individual car horns for all cars
+- Usable server map rotation configs
+- New intro
+- Make unique logos for 4 teams (Like UT99)
+- finished the flag status hud for domination
+- finished 4 Teams Domination
+- main menu music rotation
+
+new since v0.3b
+
+Fixed:
+
+- A bug in racing mode was fixed where it could be that after the race you lost your position
+  in the ranking to a player who crossed the finish line after you
+- The power of the homing rockets has been reduced and the amount of ammunition
+  used has been increased from 1 to 3
 - fixed Viper icons
 - 1 car moved from AddOn to Official - Gravelord
 - replaced some q3 textures with their remakes
@@ -33,183 +48,70 @@
 - updated dirtyfun.jpg reflect file
 - fixed plasmagun alt fire
 - fixed q3r_babel map
-- sync the code with ioquake3
-- some tweaks on Domination
-- change console background to something more readable
-- revised all shaders
-- minor changes on q3r_david4
-- get surfaceparms to work
-- fix bug where the game freeze at 161 mph
-- bug fixed where blue cannot win a ctf game (thx zturtleman)
-- fixed bug where q3rally crashed by selecting eu_greatbritain plate
-- fixed splash screen overlay in HUD
-- tweaked the overpowered railgun
-- fixed the menu transitions, now they are a bit faster
-- fixed serverinfo menu from q3a style to q3rally style
-- tweaked flags from insellium
-- code changes for chainsaw
-- fixed q3r_david4 map
-- tweaked flag models again
-- removed useless files
-- changed sounds from .wav to .ogg
-- fixed startserver screen (on and offline)
-- fixed torch shader
-- updated q3r_banner texture
-- tweaked/merged scripts
-- fixed tree shader
-- updated file headers
-- polished the speedometer
-- polished menu buttons, etc…
-- q3r_ctf_01 updated
-- shotgun bullet bug fixed
-- fixed bug in bot path creation system
-- reworked readme files
 
-#### Added
+new since v0.3
 
-- codebase synced with ioq3
-- individual car horns for all cars
-- Usable server map rotation configs
-- Races now auto-finish if the sole remaining driver has been out of fuel and stationary for 30 seconds, preventing stalled sessions.
-- New intro
-- Make unique logos for 4 teams (Like UT99)
-- finished the flag status hud for domination
-- finished 4 Teams Domination
-- main menu music rotation
-- Jukebox background music rotation toggled with `/jukebox`, including random playlist support
-- New Gamemode: Elimination
-  - Countdown-driven rounds decide when racers get knocked out
-  - Fresh HUD cues highlight elimination status and timer warnings
-  - Server-configurable elimination and grace timers keep matches flexible
-  - Includes fixes for scoreboard sorting and anti-respawn exploits
+Added:
+
 - 2 Racing Maps moved from AddOn to Official
 - 1 Deathmatch Map moved from AddOn to Official
 - added the ability to play Domination with 4 Teams
 - codebase synced with latest ioq3
-- new Domination game type
-- new car model
-- added new skins from Bloody Rally (thx insellium)
-- changed gauntlet to chainsaw
-- new unknownmap image
-- new icon for q3rally.exe files
-- different icons for client and server
-- widescreen preview in offline and online mode
-- new widescreen map images
-- new ammoboxes and ammosprites
-- new shotgun sound
-- new console background
-- minimap can now switched on/off in the q3roptions menu
-- start/stop demo recording key binding via menu
-- added more skins (PS2)
-- new skins for the camaro
-- two new domination maps
-- added discord button to main menu
-- added alt fire mode for railgun (telefrag gun)
 
----
+new since v0.0.1.2
 
-## Deutsch
+Added:
 
-### Neu und behoben seit dem Standalone-Release (0.0.1.2)
+– new Domination game type
+– new car model
+– added new skins from Bloody Rally (thx insellium)
+– changed gauntlet to chainsaw
+– new unknownmap image
+– new icon for q3rally.exe files
+– different icons for client and server
+– widescreen preview in offline and online mode
+– new widesreen map images
+– new ammoboxes and ammosprites
+– new shotgun sound
+– new console background
+– minimap can now switched on/off in the q3roptions menu
+– start/stop demo recording key binding via menu
+– added more skins (PS2)
+– new skins for the camaro
+– two new domination maps
+– added discord button to main menu
+– added alt fire mode for railgun (telefrag gun)
 
-#### Behoben
+Fixed:
 
-- Bots berücksichtigen nun Laufzeitänderungen von `bot_enable`, indem die KI-Unterstützung ohne Map-Neustart initialisiert wird.
-- Telefrag-Gun funktioniert nicht korrekt
-- Abgeflachte Zahlen & „Wrong way“ sind nicht mehr mittig ausgerichtet
-- Das Maschinengewehr ist als Startwaffe entfernt
-- Fehler beim Kamerawinkel von "info_player_intermission"
-- Wiedereinstieg in Derby & Last Car Standing war nicht möglich
-- Wenn man sofort stirbt, gewinnt man das Rennen
-- Gametype Time Trial korrigiert
-- Leeres Quadrat in Racing / Team Racing entfernt
-- Falsche HUD-Position von Power-ups und Flagge bei verschiedenen Bildschirm-Seitenverhältnissen
-- `cg_autodrop in` funktionierte nicht
-- Minimap passt nun besser ins UI
-- Fehler im Rennmodus behoben, durch den man die Platzierung an Spieler verlieren konnte, die später die Ziellinie überquerten
-- Leistung der suchenden Raketen reduziert und Munitionsbedarf von 1 auf 3 erhöht
-- Viper-Icons repariert
-- Ein Auto von AddOn zu Official verschoben – Gravelord
-- Einige Q3-Texturen durch Remakes ersetzt
-- Überflüssige Icons entfernt
-- CTF-Texturen und -Icons aktualisiert
-- Vorschau von q3r_david5 repariert
-- Neue Sigils und Icons für Domination hinzugefügt
-- Neue Texte in den Map-Informationen
-- Neue Map – Battle Canyon
-- .arena-Dateien aktualisiert
-- dirtyfun.jpg-Reflexionsdatei aktualisiert
-- Alternativer Plasmagun-Feuermodus repariert
-- Map q3r_babel gefixt
-- Code mit ioquake3 synchronisiert
-- Diverse Feinanpassungen an Domination
-- Konsolenhintergrund lesbarer gestaltet
-- Sämtliche Shader überarbeitet
-- Kleine Anpassungen an q3r_david4
-- Surfaceparms zum Laufen gebracht
-- Fehler behoben, bei dem das Spiel bei 161 mph einfrieren konnte
-- Fehler behoben, durch den Team Blau kein CTF-Spiel gewinnen konnte (Danke zturtleman)
-- Absturz beim Auswählen des Kennzeichens eu_greatbritain behoben
-- HUD-Overlay beim Splash-Screen gefixt
-- Übermächtige Railgun angepasst
-- Menüübergänge repariert und beschleunigt
-- Serverinfo-Menü vom Q3A-Stil auf Q3Rally-Stil umgestellt
-- Flaggen von insellium angepasst
-- Codeänderungen für die Kettensäge
-- Map q3r_david4 repariert
-- Flaggenmodelle erneut überarbeitet
-- Nutzlose Dateien entfernt
-- Sounds von .wav auf .ogg umgestellt
-- Startserver-Bildschirm (online/offline) repariert
-- Fackel-Shader repariert
-- Textur q3r_banner aktualisiert
-- Skripte nachjustiert und zusammengeführt
-- Baum-Shader repariert
-- Datei-Header aktualisiert
-- Tacho überarbeitet
-- Menü-Buttons und mehr poliert
-- q3r_ctf_01 aktualisiert
-- Bug mit Schrotkugeln behoben
-- Fehler im Bot-Pfad-Erstellungssystem gefixt
-- Readme-Dateien überarbeitet
-
-#### Hinzugefügt
-
-- Codebasis mit ioq3 synchronisiert
-- Individuelle Hupen für alle Fahrzeuge
-- Nutzbare Server-Map-Rotationskonfigurationen
-- Rennen enden nun automatisch, wenn der letzte Fahrer seit 30 Sekunden ohne Treibstoff stillsteht, um blockierte Sessions zu verhindern
-- Neues Intro
-- Individuelle Logos für vier Teams (wie UT99)
-- Flaggenstatus-HUD für Domination fertiggestellt
-- 4-Teams-Domination abgeschlossen
-- Rotation der Hauptmenü-Musik
-- Jukebox-Hintergrundmusik mit `/jukebox` umschaltbar, inklusive zufälliger Playlist
-- Neuer Spielmodus: Elimination
-  - Countdown-gesteuerte Runden bestimmen, wann Fahrer ausscheiden
-  - Neue HUD-Hinweise zeigen Eliminierungsstatus und Timerwarnungen
-  - Serverseitig konfigurierbare Eliminierungs- und Schonfristen halten Matches flexibel
-  - Beinhaltet Fixes für Scoreboard-Sortierung und Anti-Respawn-Exploits
-- Zwei Rennstrecken von AddOn zu Official verschoben
-- Eine Deathmatch-Map von AddOn zu Official verschoben
-- Möglichkeit hinzugefügt, Domination mit vier Teams zu spielen
-- Codebasis mit der neuesten ioq3-Version synchronisiert
-- Neuer Domination-Spieltyp
-- Neues Fahrzeugmodell
-- Neue Skins aus Bloody Rally hinzugefügt (Danke insellium)
-- Gauntlet durch Kettensäge ersetzt
-- Neues unbekannte-Map-Bild
-- Neues Icon für q3rally.exe-Dateien
-- Unterschiedliche Icons für Client und Server
-- Breitbild-Vorschau für Offline- und Online-Modus
-- Neue Breitbild-Map-Bilder
-- Neue Munitionskisten und Munitions-Sprites
-- Neuer Schrotflinten-Sound
-- Neuer Konsolenhintergrund
-- Minimap kann jetzt im q3roptions-Menü ein- oder ausgeschaltet werden
-- Start/Stop-Demoaufnahme per Menü belegbar
-- Weitere Skins (PS2) hinzugefügt
-- Neue Skins für den Camaro
-- Zwei neue Domination-Maps
-- Discord-Schaltfläche im Hauptmenü ergänzt
-- Alternativer Railgun-Feuermodus (Telefrag-Gun) hinzugefügt
+– sync the code with ioquake3
+– some tweaks on Domination
+– change console background to something more readable
+– revised all shaders
+– minor changes on q3r_david4
+– get surfaceparms to work
+– fix bug where the game freeze at 161 mph
+– bug fixed where blue cannot win a ctf game (thx zturtleman)
+– fixed bug where q3rally crashed by selecting eu_greatbritain plate
+– fixed splash screen overlay in HUD
+– tweaked the overpowered railgun
+– fixed the menu transitions, now they are a bit faster
+– fixed serverinfo menu from q3a style to q3rally style
+– tweaked flags from insellium
+– code changes for chainsaw
+– fixed q3r_david4 map
+– tweaked flag models again
+– removed useless files
+– changed sounds from .wav to .ogg
+– fixed startserver screen (on and offline)
+– fixed torch shader
+– updated q3r_banner texture
+– tweaked/merged scripts
+– fixed tree shader
+– updated file headers
+– polished the speedometer
+– polished menu buttons, etc…
+– q3r_ctf_01 updated
+– shotgun bullet bug fixed
+– fixed bug in bot path creation system
+– reworked readme files
