@@ -812,7 +812,6 @@ void SP_worldspawn( void ) {
 // END
 }
 
-
 /*
 ================
 G_ValidateSigils
@@ -852,11 +851,7 @@ void G_SpawnEntitiesFromString( void ) {
 		G_SpawnGEntityFromSpawnVars();
 	}	
 
-// make sure Domination maps have a 3rd sigil
-if (g_gametype.integer == GT_DOMINATION)
-    G_ValidateSigils();
-    
-    
+	// Q3Rally: auto-sigil helper disabled while testing entity exhaustion regressions
 	level.spawning = qfalse;			// any future calls to G_Spawn*() will be errors
 }
 
