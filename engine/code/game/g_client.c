@@ -496,29 +496,47 @@ void CopyToBodyQue( gentity_t *ent ) {
 	body->s.event = 0;
 
 // STONELANCE
-	if ( ent->frontBounds ){ // there should always be an ent->frontBounds, but just in case
-		body->frontBounds = G_Spawn();
-		VectorCopy (ent->frontBounds->r.mins, body->frontBounds->r.mins);
-		VectorCopy (ent->frontBounds->r.maxs, body->frontBounds->r.maxs);
-		body->frontBounds->r.svFlags = SVF_NOCLIENT;
-		body->frontBounds->flags = FL_EXTRA_BBOX;
-		G_SetOrigin( body->frontBounds, ent->frontBounds->r.currentOrigin );
-		body->frontBounds->r.ownerNum = body->s.number;
-		body->frontBounds->r.contents = CONTENTS_CORPSE;
-		trap_LinkEntity ( body->frontBounds );
-	}
+       if ( ent->frontBounds ){ // there should always be an ent->frontBounds, but just in case
+               if ( body->frontBounds ) {
+                       // Reuse the helper from the previous corpse occupying this slot.
+                       trap_UnlinkEntity( body->frontBounds );
+               } else {
+                       body->frontBounds = G_Spawn();
+               }
 
-	if ( ent->rearBounds ){ // there should always be an ent->rearBounds, but just in case
-		body->rearBounds = G_Spawn();
-		VectorCopy (ent->rearBounds->r.mins, body->rearBounds->r.mins);
-		VectorCopy (ent->rearBounds->r.maxs, body->rearBounds->r.maxs);
-		body->rearBounds->r.svFlags = SVF_NOCLIENT;
-		body->rearBounds->flags = FL_EXTRA_BBOX;
-		G_SetOrigin( body->rearBounds, ent->rearBounds->r.currentOrigin );
-		body->rearBounds->r.ownerNum = body->s.number;
-		body->rearBounds->r.contents = CONTENTS_CORPSE;
-		trap_LinkEntity ( body->rearBounds );
-	}
+               VectorCopy (ent->frontBounds->r.mins, body->frontBounds->r.mins);
+               VectorCopy (ent->frontBounds->r.maxs, body->frontBounds->r.maxs);
+               body->frontBounds->r.svFlags = SVF_NOCLIENT;
+               body->frontBounds->flags = FL_EXTRA_BBOX;
+               G_SetOrigin( body->frontBounds, ent->frontBounds->r.currentOrigin );
+               body->frontBounds->r.ownerNum = body->s.number;
+               body->frontBounds->r.contents = CONTENTS_CORPSE;
+               trap_LinkEntity ( body->frontBounds );
+       } else if ( body->frontBounds ) {
+               // Nothing to mirror, so drop the lingering helper.
+               G_FreeEntity( body->frontBounds );
+               body->frontBounds = NULL;
+       }
+
+       if ( ent->rearBounds ){ // there should always be an ent->rearBounds, but just in case
+               if ( body->rearBounds ) {
+                       trap_UnlinkEntity( body->rearBounds );
+               } else {
+                       body->rearBounds = G_Spawn();
+               }
+
+               VectorCopy (ent->rearBounds->r.mins, body->rearBounds->r.mins);
+               VectorCopy (ent->rearBounds->r.maxs, body->rearBounds->r.maxs);
+               body->rearBounds->r.svFlags = SVF_NOCLIENT;
+               body->rearBounds->flags = FL_EXTRA_BBOX;
+               G_SetOrigin( body->rearBounds, ent->rearBounds->r.currentOrigin );
+               body->rearBounds->r.ownerNum = body->s.number;
+               body->rearBounds->r.contents = CONTENTS_CORPSE;
+               trap_LinkEntity ( body->rearBounds );
+       } else if ( body->rearBounds ) {
+               G_FreeEntity( body->rearBounds );
+               body->rearBounds = NULL;
+       }
 // END
 
 	// change the animation to the last-frame only, so the sequence
