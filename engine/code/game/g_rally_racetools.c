@@ -23,6 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
+#define RALLY_POSITION_DIST_EPSILON    1.0f
+
 static void G_ResetRaceTimingForClients( int raceStartTime ) {
 	int i;
 
@@ -466,15 +468,29 @@ qboolean IsCarAhead(gentity_t *one, gentity_t *two){
 		return qfalse;
 	}
 	else if (one->currentLap == two->currentLap && one->number == two->number){
+		const float markerMissingDist = (float)( 1 << 30 );
+		qboolean dist1Missing, dist2Missing;
+
 		dist1 = GetDistanceToMarker( one, one->number );
 		dist2 = GetDistanceToMarker( two, two->number );
 
-		if (dist1 > dist2){
-//			Com_Printf("Car 1 is %f to marker %i and car 2 is %f\n", dist1, one->number, dist2);
-			return qfalse;
+		dist1Missing = ( dist1 == markerMissingDist );
+		dist2Missing = ( dist2 == markerMissingDist );
+
+		if ( !dist1Missing && !dist2Missing ) {
+			if ( dist1 > dist2 + RALLY_POSITION_DIST_EPSILON ) {
+//				Com_Printf("Car 1 is %f to marker %i and car 2 is %f\n", dist1, one->number, dist2);
+				return qfalse;
+			}
+
+			if ( dist2 > dist1 + RALLY_POSITION_DIST_EPSILON ) {
+				return qtrue;
+			}
+		} else if ( dist1Missing != dist2Missing ) {
+			return !dist1Missing;
 		}
 
-		if ( dist1 == dist2 || ( dist1 == (float)( 1 << 30 ) && dist2 == (float)( 1 << 30 ) ) ) {
+		if ( dist1Missing || dist2Missing || Q_fabs( dist1 - dist2 ) <= RALLY_POSITION_DIST_EPSILON ) {
 			int last1 = one->client->lastCheckpointTime;
 			int last2 = two->client->lastCheckpointTime;
 
