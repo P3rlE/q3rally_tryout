@@ -791,6 +791,7 @@ ifdef MINGW
     ifneq ($(USE_CURL_DLOPEN),1)
       ifeq ($(USE_LOCAL_HEADERS),1)
         CLIENT_CFLAGS += -DCURL_STATICLIB
+        SERVER_CFLAGS += -DCURL_STATICLIB
         ifeq ($(ARCH),x86_64)
           CLIENT_LIBS += $(LIBSDIR)/win64/libcurl.a -lcrypt32
           SERVER_LIBS += $(LIBSDIR)/win64/libcurl.a -lcrypt32
