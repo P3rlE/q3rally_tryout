@@ -44,6 +44,7 @@ static const char *G_LadderModeForGametype( int gametype );
 static void G_LadderFormatIsoTime( const qtime_t *qt, char *buffer, size_t size );
 static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clientNum );
 static void G_LadderSubmitMatchReport( const char *reason );
+static ladderMatchPayload_t s_ladderMatchPayload;
 
 vmCvar_t	g_gametype;
 vmCvar_t	g_dmflags;
@@ -734,7 +735,7 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
 
         player->scoreFlags = client->ps.persistant[PERS_PLAYEREVENTS];
 
-        for ( i = 0; i < PW_NUM_POWERUPS; ++i ) {
+        for ( i = 0; i < MIN( PW_NUM_POWERUPS, MAX_POWERUPS ); ++i ) {
                 if ( client->ps.powerups[i] > level.time ) {
                         player->powerUps |= ( 1 << i );
                 }
@@ -783,7 +784,7 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
 }
 
 static void G_LadderSubmitMatchReport( const char *reason ) {
-        ladderMatchPayload_t payload;
+        ladderMatchPayload_t *payload = &s_ladderMatchPayload;
         qtime_t endTime;
         int endEpoch;
         char serverinfo[MAX_INFO_STRING];
@@ -795,78 +796,78 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
                 return;
         }
 
-        Com_Memset( &payload, 0, sizeof( payload ) );
+        Com_Memset( payload, 0, sizeof( *payload ) );
 
         if ( level.ladderMatchId[0] ) {
-                Q_strncpyz( payload.matchId, level.ladderMatchId, sizeof( payload.matchId ) );
+                Q_strncpyz( payload->matchId, level.ladderMatchId, sizeof( payload->matchId ) );
         }
 
-        payload.valid = qtrue;
-        payload.gametype = g_gametype.integer;
-        Q_strncpyz( payload.mode, G_LadderModeForGametype( g_gametype.integer ), sizeof( payload.mode ) );
+        payload->valid = qtrue;
+        payload->gametype = g_gametype.integer;
+        Q_strncpyz( payload->mode, G_LadderModeForGametype( g_gametype.integer ), sizeof( payload->mode ) );
 
         trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
         value = Info_ValueForKey( serverinfo, "mapname" );
         if ( value && value[0] ) {
-                Q_strncpyz( payload.mapName, value, sizeof( payload.mapName ) );
+                Q_strncpyz( payload->mapName, value, sizeof( payload->mapName ) );
         }
 
-        G_LadderFormatIsoTime( &level.ladderStartTime, payload.startTimeIso, sizeof( payload.startTimeIso ) );
-        payload.startEpoch = level.ladderStartEpoch;
+        G_LadderFormatIsoTime( &level.ladderStartTime, payload->startTimeIso, sizeof( payload->startTimeIso ) );
+        payload->startEpoch = level.ladderStartEpoch;
 
         endEpoch = trap_RealTime( &endTime );
-        G_LadderFormatIsoTime( &endTime, payload.endTimeIso, sizeof( payload.endTimeIso ) );
-        payload.endEpoch = endEpoch;
+        G_LadderFormatIsoTime( &endTime, payload->endTimeIso, sizeof( payload->endTimeIso ) );
+        payload->endEpoch = endEpoch;
 
-        if ( payload.startEpoch > 0 && payload.endEpoch >= payload.startEpoch ) {
-                        payload.durationSeconds = payload.endEpoch - payload.startEpoch;
+        if ( payload->startEpoch > 0 && payload->endEpoch >= payload->startEpoch ) {
+                payload->durationSeconds = payload->endEpoch - payload->startEpoch;
         }
-        Com_sprintf( payload.durationIso, sizeof( payload.durationIso ), "PT%iS", payload.durationSeconds );
+        Com_sprintf( payload->durationIso, sizeof( payload->durationIso ), "PT%iS", payload->durationSeconds );
 
-        trap_Cvar_VariableStringBuffer( "sv_hostname", payload.serverName, sizeof( payload.serverName ) );
-        trap_Cvar_VariableStringBuffer( "net_ip", payload.serverHost, sizeof( payload.serverHost ) );
-        if ( payload.serverHost[0] ) {
+        trap_Cvar_VariableStringBuffer( "sv_hostname", payload->serverName, sizeof( payload->serverName ) );
+        trap_Cvar_VariableStringBuffer( "net_ip", payload->serverHost, sizeof( payload->serverHost ) );
+        if ( payload->serverHost[0] ) {
                 trap_Cvar_VariableStringBuffer( "net_port", buffer, sizeof( buffer ) );
                 if ( buffer[0] ) {
-                        Q_strcat( payload.serverHost, sizeof( payload.serverHost ), ":" );
-                        Q_strcat( payload.serverHost, sizeof( payload.serverHost ), buffer );
+                        Q_strcat( payload->serverHost, sizeof( payload->serverHost ), ":" );
+                        Q_strcat( payload->serverHost, sizeof( payload->serverHost ), buffer );
                 }
         } else {
-                trap_Cvar_VariableStringBuffer( "sv_fqdn", payload.serverHost, sizeof( payload.serverHost ) );
-                if ( !payload.serverHost[0] ) {
-                        Q_strncpyz( payload.serverHost, payload.serverName, sizeof( payload.serverHost ) );
+                trap_Cvar_VariableStringBuffer( "sv_fqdn", payload->serverHost, sizeof( payload->serverHost ) );
+                if ( !payload->serverHost[0] ) {
+                        Q_strncpyz( payload->serverHost, payload->serverName, sizeof( payload->serverHost ) );
                 }
         }
-        trap_Cvar_VariableStringBuffer( "version", payload.serverBuild, sizeof( payload.serverBuild ) );
+        trap_Cvar_VariableStringBuffer( "version", payload->serverBuild, sizeof( payload->serverBuild ) );
 
-        payload.levelStartTime = level.startTime;
-        payload.levelEndTime = level.time;
-        payload.raceStartTime = level.startRaceTime;
-        payload.raceEndTime = level.finishRaceTime;
-        payload.finishRaceTime = level.finishRaceTime;
-        payload.winnerClientNum = level.winnerNumber;
-        payload.numberOfLaps = level.numberOfLaps;
-        payload.trackReversed = g_trackReversed.integer ? qtrue : qfalse;
+        payload->levelStartTime = level.startTime;
+        payload->levelEndTime = level.time;
+        payload->raceStartTime = level.startRaceTime;
+        payload->raceEndTime = level.finishRaceTime;
+        payload->finishRaceTime = level.finishRaceTime;
+        payload->winnerClientNum = level.winnerNumber;
+        payload->numberOfLaps = level.numberOfLaps;
+        payload->trackReversed = g_trackReversed.integer ? qtrue : qfalse;
 
         for ( i = 0; i < TEAM_NUM_TEAMS; ++i ) {
-                payload.teamScores[i] = level.teamScores[i];
-                payload.teamTimes[i] = level.teamTimes[i];
+                payload->teamScores[i] = level.teamScores[i];
+                payload->teamTimes[i] = level.teamTimes[i];
         }
 
         for ( i = 0; i < level.maxclients; ++i ) {
-                G_LadderPopulatePlayer( &payload, i );
+                G_LadderPopulatePlayer( payload, i );
         }
 
         if ( reason && reason[0] ) {
                 Com_Printf( "Ladder: submitting '%s' with reason '%s' (%d players)\n",
-                        payload.matchId[0] ? payload.matchId : "<unknown>", reason, payload.playerCount );
+                        payload->matchId[0] ? payload->matchId : "<unknown>", reason, payload->playerCount );
         } else {
                 Com_Printf( "Ladder: submitting '%s' (%d players)\n",
-                        payload.matchId[0] ? payload.matchId : "<unknown>", payload.playerCount );
+                        payload->matchId[0] ? payload->matchId : "<unknown>", payload->playerCount );
         }
 
-        if ( payload.playerCount > 0 || reason ) {
-                trap_LadderSubmit( &payload );
+        if ( payload->playerCount > 0 || reason ) {
+                trap_LadderSubmit( payload );
         }
 }
 
