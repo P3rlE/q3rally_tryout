@@ -306,6 +306,7 @@ NSISDIR=misc/nsis
 WEBDIR=$(MOUNT_DIR)/web
 SDLHDIR=$(MOUNT_DIR)/SDL2
 LIBSDIR=$(MOUNT_DIR)/libs
+SERVER_LIBS =
 
 bin_path=$(shell which $(1) 2> /dev/null)
 
@@ -426,6 +427,7 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
   AUTOUPDATER_LIBS += -ldl
 
   CLIENT_LIBS=$(SDL_LIBS)
+  SERVER_LIBS =
   RENDERER_LIBS = $(SDL_LIBS)
 
   ifeq ($(USE_PORTABLE_RPATH),1)
@@ -442,8 +444,10 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
+    SERVER_CFLAGS += $(CURL_CFLAGS)
     ifneq ($(USE_CURL_DLOPEN),1)
       CLIENT_LIBS += $(CURL_LIBS)
+      SERVER_LIBS += $(CURL_LIBS)
     endif
   endif
 
@@ -468,6 +472,7 @@ else # ifeq Linux
 ifeq ($(PLATFORM),darwin)
   HAVE_VM_COMPILED=true
   LIBS = -framework Cocoa
+  SERVER_LIBS =
   CLIENT_LIBS=
   RENDERER_LIBS=
   OPTIMIZEVM = -O3
@@ -601,8 +606,10 @@ ifeq ($(PLATFORM),darwin)
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
+    SERVER_CFLAGS += $(CURL_CFLAGS)
     ifneq ($(USE_CURL_DLOPEN),1)
       CLIENT_LIBS += $(CURL_LIBS)
+      SERVER_LIBS += $(CURL_LIBS)
     endif
   endif
 
@@ -771,6 +778,7 @@ ifdef MINGW
     CLIENT_LDFLAGS += -mwindows
   endif
   CLIENT_LIBS = -lgdi32 -lole32
+  SERVER_LIBS =
   RENDERER_LIBS = -lgdi32 -lole32 -static-libgcc
 
   ifeq ($(USE_FREETYPE),1)
@@ -779,16 +787,20 @@ ifdef MINGW
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
+    SERVER_CFLAGS += $(CURL_CFLAGS)
     ifneq ($(USE_CURL_DLOPEN),1)
       ifeq ($(USE_LOCAL_HEADERS),1)
         CLIENT_CFLAGS += -DCURL_STATICLIB
         ifeq ($(ARCH),x86_64)
           CLIENT_LIBS += $(LIBSDIR)/win64/libcurl.a -lcrypt32
+          SERVER_LIBS += $(LIBSDIR)/win64/libcurl.a -lcrypt32
         else
           CLIENT_LIBS += $(LIBSDIR)/win32/libcurl.a -lcrypt32
+          SERVER_LIBS += $(LIBSDIR)/win32/libcurl.a -lcrypt32
         endif
       else
         CLIENT_LIBS += $(CURL_LIBS)
+        SERVER_LIBS += $(CURL_LIBS)
       endif
     endif
   endif
@@ -857,6 +869,7 @@ ifeq ($(PLATFORM),freebsd)
   LIBS=-lm
 
   CLIENT_LIBS =
+  SERVER_LIBS =
 
   CLIENT_LIBS += $(SDL_LIBS)
   RENDERER_LIBS = $(SDL_LIBS)
@@ -870,8 +883,10 @@ ifeq ($(PLATFORM),freebsd)
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
+    SERVER_CFLAGS += $(CURL_CFLAGS)
     ifeq ($(USE_CURL_DLOPEN),1)
       CLIENT_LIBS += $(CURL_LIBS)
+      SERVER_LIBS += $(CURL_LIBS)
     endif
   endif
 
@@ -934,6 +949,7 @@ ifeq ($(PLATFORM),openbsd)
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
+    SERVER_CFLAGS += $(CURL_CFLAGS)
     USE_CURL_DLOPEN=0
   endif
 
@@ -948,6 +964,7 @@ ifeq ($(PLATFORM),openbsd)
   LIBS=-lm
 
   CLIENT_LIBS =
+  SERVER_LIBS =
 
   CLIENT_LIBS += $(SDL_LIBS)
   RENDERER_LIBS = $(SDL_LIBS)
@@ -961,6 +978,7 @@ ifeq ($(PLATFORM),openbsd)
   ifeq ($(USE_CURL),1)
     ifneq ($(USE_CURL_DLOPEN),1)
       CLIENT_LIBS += $(CURL_LIBS)
+      SERVER_LIBS += $(CURL_LIBS)
     endif
   endif
 else # ifeq openbsd
@@ -1291,8 +1309,10 @@ endif
 
 ifeq ($(USE_CURL),1)
   CLIENT_CFLAGS += -DUSE_CURL
+  SERVER_CFLAGS += -DUSE_CURL
   ifeq ($(USE_CURL_DLOPEN),1)
     CLIENT_CFLAGS += -DUSE_CURL_DLOPEN
+    SERVER_CFLAGS += -DUSE_CURL_DLOPEN
   endif
 endif
 
@@ -1986,6 +2006,7 @@ Q3OBJ = \
   $(B)/client/sv_client.o \
   $(B)/client/sv_game.o \
   $(B)/client/sv_init.o \
+  $(B)/client/sv_ladder.o \
   $(B)/client/sv_main.o \
   $(B)/client/sv_net_chan.o \
   $(B)/client/sv_snapshot.o \
@@ -2548,6 +2569,7 @@ Q3DOBJ = \
   $(B)/ded/sv_ccmds.o \
   $(B)/ded/sv_game.o \
   $(B)/ded/sv_init.o \
+  $(B)/ded/sv_ladder.o \
   $(B)/ded/sv_main.o \
   $(B)/ded/sv_net_chan.o \
   $(B)/ded/sv_snapshot.o \
@@ -2669,7 +2691,7 @@ endif
 
 $(B)/$(SERVERBIN)$(FULLBINEXT): $(Q3DOBJ)
 	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) -o $@ $(Q3DOBJ) $(LIBS)
+	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) -o $@ $(Q3DOBJ) $(SERVER_LIBS) $(LIBS)
 
 
 

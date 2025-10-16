@@ -88,6 +88,10 @@ int trap_FS_Seek( fileHandle_t f, long offset, int origin ) {
 	return syscall( G_FS_SEEK, f, offset, origin );
 }
 
+void trap_LadderSubmit( const ladderMatchPayload_t *payload ) {
+        syscall( G_LADDER_SUBMIT, payload );
+}
+
 void	trap_SendConsoleCommand( int exec_when, const char *text ) {
 	syscall( G_SEND_CONSOLE_COMMAND, exec_when, text );
 }
