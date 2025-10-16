@@ -1484,17 +1484,17 @@ void ClientSpawn(gentity_t *ent) {
 	}
 
         client->ps.eventSequence = eventSequence;
-	if ( client->ps.persistant[PERS_SPAWN_COUNT] == 0 ) {
-		client->ladderKills = 0;
-		client->ladderDeaths = 0;
-		client->ladderZoneHoldMs = 0;
-		client->ladderZoneLastUpdateMs = 0;
-		client->ladderZoneActiveSigil = -1;
-		client->ladderSurvivalMs = 0;
-		client->ladderEliminationRound = 0;
-		client->ladderEliminationPlayersRemaining = 0;
-		client->ladderEliminationMetric = 0.0f;
-	}
+//	if ( client->ps.persistant[PERS_SPAWN_COUNT] == 0 ) {
+//		client->ladderKills = 0;
+//		client->ladderDeaths = 0;
+//		client->ladderZoneHoldMs = 0;
+//		client->ladderZoneLastUpdateMs = 0;
+//		client->ladderZoneActiveSigil = -1;
+//		client->ladderSurvivalMs = 0;
+//		client->ladderEliminationRound = 0;
+//		client->ladderEliminationPlayersRemaining = 0;
+//		client->ladderEliminationMetric = 0.0f;
+//	}
         // increment the spawncount so the client will detect the respawn
 
 	client->ps.persistant[PERS_SPAWN_COUNT]++;
