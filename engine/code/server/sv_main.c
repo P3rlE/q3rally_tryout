@@ -62,6 +62,10 @@ cvar_t	*sv_lanForceRate; // dedicated 1 (LAN) server forces local client rates t
 cvar_t	*sv_strictAuth;
 #endif
 cvar_t	*sv_banFile;
+cvar_t  *sv_ladderEnabled;
+cvar_t  *sv_ladderUrl;
+cvar_t  *sv_ladderApiKey;
+cvar_t  *sv_telemetryMaxBatch;
 
 serverBan_t serverBans[SERVER_MAXBANS];
 int serverBansCount = 0;
@@ -1158,6 +1162,7 @@ void SV_Frame( int msec ) {
 
 	// send messages back to the clients
 	SV_SendClientMessages();
+	SV_LadderFrame();
 
 	// send a heartbeat to the master if needed
 	SV_MasterHeartbeat(HEARTBEAT_FOR_MASTER);

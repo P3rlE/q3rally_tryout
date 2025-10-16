@@ -1680,12 +1680,15 @@ void SV_LadderSubmit( const ladderMatchPayload_t *payload ) {
 }
 
 void SV_LadderFrame( void ) {
-        if ( !sv_ladder.initialized ) {
+        if ( !sv_ladderEnabled || !sv_ladderEnabled->integer ) {
                 return;
         }
 
-        if ( !sv_ladderEnabled || !sv_ladderEnabled->integer ) {
-                return;
+        if ( !sv_ladder.initialized ) {
+                SV_LadderInit();
+                if ( !sv_ladder.initialized ) {
+                        return;
+                }
         }
 
 #ifdef USE_CURL

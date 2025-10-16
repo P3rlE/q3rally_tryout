@@ -1986,6 +1986,7 @@ Q3OBJ = \
   $(B)/client/sv_client.o \
   $(B)/client/sv_game.o \
   $(B)/client/sv_init.o \
+  $(B)/client/sv_ladder.o \
   $(B)/client/sv_main.o \
   $(B)/client/sv_net_chan.o \
   $(B)/client/sv_snapshot.o \
@@ -2548,6 +2549,7 @@ Q3DOBJ = \
   $(B)/ded/sv_ccmds.o \
   $(B)/ded/sv_game.o \
   $(B)/ded/sv_init.o \
+  $(B)/ded/sv_ladder.o \
   $(B)/ded/sv_main.o \
   $(B)/ded/sv_net_chan.o \
   $(B)/ded/sv_snapshot.o \
