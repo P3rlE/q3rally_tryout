@@ -122,7 +122,9 @@ void PM_SetCoM( carBody_t *body, carPoint_t *points ){
 	int		i;
 
 	VectorClear(temp);
+
         totalMass = CP_CAR_MASS;
+
 
 	for (i = FIRST_FRAME_POINT; i < LAST_FRAME_POINT; i++){
 		VectorMA(temp, points[i].mass, points[i].r, temp);
@@ -2311,9 +2313,11 @@ void PM_DriveMove( car_t *car, float time, qboolean includeBodies )
 	// set spring strengths for "jump" and "crouch"
 // FIXME: change this so it works in cgame and game
 #if GAME
+
         car->springStrength = pm->car_spring * (CP_FRAME_MASS / 350.0f) * CP_GRAVITY;
 #else
         car->springStrength = CP_SPRING_STRENGTH;
+
 #endif
 //	car->shockStrength = CP_SHOCK_STRENGTH;
 

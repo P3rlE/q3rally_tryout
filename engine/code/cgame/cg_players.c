@@ -184,7 +184,6 @@ static qboolean	CG_ParseAnimationFile( const char *filename, clientInfo_t *ci ) 
 // END
 #endif
 
-
 // SKWID( removed function )
 /*
 static qboolean	CG_ParseAnimationFile( const char *filename, clientInfo_t *ci ) {

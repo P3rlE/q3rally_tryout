@@ -961,8 +961,10 @@ static void PM_NoclipMove( void ) {
 	VectorMA (pm->ps->origin, pml.frametime, pm->ps->velocity, pm->ps->origin);
 
 // STONELANCE
+
        pm->ps->viewangles[YAW] = pm->ps->damageAngles[YAW];
 	   PM_InitializeVehicle(pm->car, pm->ps->origin, pm->ps->viewangles, pm->ps->velocity /* , pm->car_frontweight_dist */ );
+
 // END
 }
 

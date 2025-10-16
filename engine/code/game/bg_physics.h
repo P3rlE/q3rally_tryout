@@ -293,7 +293,6 @@ typedef struct {
 
 //	pointHistory_t	oldPoints[3][LAST_RW_POINT];
 //	bodyHistory_t	oldBodies[3];
-// FIXME: remove these to save memory if i can
 
 	float	springStrength;
 	float	springMaxLength;

@@ -129,14 +129,16 @@ int Pickup_Powerup( gentity_t *ent, gentity_t *other ) {
 
 #ifdef MISSIONPACK
 int Pickup_PersistantPowerup( gentity_t *ent, gentity_t *other ) {
+
 int		clientNum;
 	char	userinfo[MAX_INFO_STRING];
 	float	handicap;
 
+
 	int		max;
 
 	other->client->ps.stats[STAT_PERSISTANT_POWERUP] = ent->item - bg_itemlist;
-        other->client->persistantPowerup = ent;
+	other->client->persistantPowerup = ent;
 
 	switch( ent->item->giTag ) {
 	case PW_GUARD:
@@ -316,12 +318,16 @@ int Pickup_Health (gentity_t *ent, gentity_t *other) {
 
 	// small and mega healths will go over the max
 #ifdef MISSIONPACK
+
         if( bg_itemlist[other->client->ps.stats[STAT_PERSISTANT_POWERUP]].giTag == PW_GUARD ) {
+
 		max = other->client->ps.stats[STAT_MAX_HEALTH];
 	}
 	else
 #endif
+
         if ( ent->item->quantity != 5 && ent->item->quantity != 100 ) {
+
 		max = other->client->ps.stats[STAT_MAX_HEALTH];
 	} else {
 		max = other->client->ps.stats[STAT_MAX_HEALTH] * 2;
@@ -339,7 +345,9 @@ int Pickup_Health (gentity_t *ent, gentity_t *other) {
 		other->health = max;
 	}
 	other->client->ps.stats[STAT_HEALTH] = other->health;
+
         if ( other->client->car.fuelLeak &&
+
 		other->health > g_vehicleHealth.integer / 2 ) {
 		other->client->car.fuelLeak = qfalse;
 	}
@@ -360,7 +368,9 @@ int Pickup_Armor( gentity_t *ent, gentity_t *other ) {
 
 	other->client->ps.stats[STAT_ARMOR] += ent->item->quantity;
 
+
         if( other->client && bg_itemlist[other->client->ps.stats[STAT_PERSISTANT_POWERUP]].giTag == PW_GUARD ) {
+
 		upperBound = other->client->ps.stats[STAT_MAX_HEALTH];
 	}
 	else {
@@ -371,7 +381,9 @@ int Pickup_Armor( gentity_t *ent, gentity_t *other ) {
 		other->client->ps.stats[STAT_ARMOR] = upperBound;
 	}
 #else
+
         other->client->ps.stats[STAT_ARMOR] += ent->item->quantity;
+
 	if ( other->client->ps.stats[STAT_ARMOR] > other->client->ps.stats[STAT_MAX_HEALTH] * 2 ) {
 		other->client->ps.stats[STAT_ARMOR] = other->client->ps.stats[STAT_MAX_HEALTH] * 2;
 	}

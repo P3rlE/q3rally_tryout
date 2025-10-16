@@ -123,7 +123,7 @@ endif
 export CROSS_COMPILING
 
 ifndef VERSION
-VERSION=v0.6
+VERSION=v0.5
 endif
 
 ifndef CLIENTBIN
@@ -132,10 +132,6 @@ endif
 
 ifndef SERVERBIN
 SERVERBIN=q3rally-server
-endif
-
-ifndef SERVER_LIBS
-SERVER_LIBS=
 endif
 
 ifndef BASEGAME
@@ -431,7 +427,6 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
 
   CLIENT_LIBS=$(SDL_LIBS)
   RENDERER_LIBS = $(SDL_LIBS)
-  SERVER_LIBS =
 
   ifeq ($(USE_PORTABLE_RPATH),1)
     # $ is escaped using two, so this is literally $ORIGIN
@@ -447,10 +442,8 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu" "gnu")
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
-    SERVER_CFLAGS += $(CURL_CFLAGS)
     ifneq ($(USE_CURL_DLOPEN),1)
       CLIENT_LIBS += $(CURL_LIBS)
-      SERVER_LIBS += $(CURL_LIBS)
     endif
   endif
 
@@ -608,7 +601,6 @@ ifeq ($(PLATFORM),darwin)
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
-    SERVER_CFLAGS += $(CURL_CFLAGS)
     ifneq ($(USE_CURL_DLOPEN),1)
       CLIENT_LIBS += $(CURL_LIBS)
     endif
@@ -787,21 +779,16 @@ ifdef MINGW
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
-    SERVER_CFLAGS += $(CURL_CFLAGS)
     ifneq ($(USE_CURL_DLOPEN),1)
       ifeq ($(USE_LOCAL_HEADERS),1)
         CLIENT_CFLAGS += -DCURL_STATICLIB
-        SERVER_CFLAGS += -DCURL_STATICLIB
         ifeq ($(ARCH),x86_64)
           CLIENT_LIBS += $(LIBSDIR)/win64/libcurl.a -lcrypt32
-          SERVER_LIBS += $(LIBSDIR)/win64/libcurl.a -lcrypt32
         else
           CLIENT_LIBS += $(LIBSDIR)/win32/libcurl.a -lcrypt32
-          SERVER_LIBS += $(LIBSDIR)/win32/libcurl.a -lcrypt32
         endif
       else
         CLIENT_LIBS += $(CURL_LIBS)
-        SERVER_LIBS += $(CURL_LIBS)
       endif
     endif
   endif
@@ -883,7 +870,6 @@ ifeq ($(PLATFORM),freebsd)
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
-    SERVER_CFLAGS += $(CURL_CFLAGS)
     ifeq ($(USE_CURL_DLOPEN),1)
       CLIENT_LIBS += $(CURL_LIBS)
     endif
@@ -948,7 +934,6 @@ ifeq ($(PLATFORM),openbsd)
 
   ifeq ($(USE_CURL),1)
     CLIENT_CFLAGS += $(CURL_CFLAGS)
-    SERVER_CFLAGS += $(CURL_CFLAGS)
     USE_CURL_DLOPEN=0
   endif
 
@@ -1306,10 +1291,8 @@ endif
 
 ifeq ($(USE_CURL),1)
   CLIENT_CFLAGS += -DUSE_CURL
-  SERVER_CFLAGS += -DUSE_CURL
   ifeq ($(USE_CURL_DLOPEN),1)
     CLIENT_CFLAGS += -DUSE_CURL_DLOPEN
-    SERVER_CFLAGS += -DUSE_CURL_DLOPEN
   endif
 endif
 
@@ -2007,12 +1990,10 @@ Q3OBJ = \
   $(B)/client/sv_net_chan.o \
   $(B)/client/sv_snapshot.o \
   $(B)/client/sv_world.o \
-  $(B)/client/sv_ladder.o \
-\
+  \
   $(B)/client/q_math.o \
   $(B)/client/q_shared.o \
-  $(B)/client/json_shared.o \
-\
+  \
   $(B)/client/unzip.o \
   $(B)/client/ioapi.o \
   $(B)/client/puff.o \
@@ -2106,8 +2087,7 @@ Q3R2OBJ = \
   $(B)/renderergl2/tr_surface.o \
   $(B)/renderergl2/tr_vbo.o \
   $(B)/renderergl2/tr_world.o \
-  $(B)/renderergl2/json_shared.o \
-\
+  \
   $(B)/renderergl1/sdl_gamma.o \
   $(B)/renderergl1/sdl_glimp.o
 
@@ -2572,7 +2552,6 @@ Q3DOBJ = \
   $(B)/ded/sv_net_chan.o \
   $(B)/ded/sv_snapshot.o \
   $(B)/ded/sv_world.o \
-  $(B)/ded/sv_ladder.o \
   \
   $(B)/ded/cm_load.o \
   $(B)/ded/cm_patch.o \
@@ -2591,8 +2570,7 @@ Q3DOBJ = \
   \
   $(B)/ded/q_math.o \
   $(B)/ded/q_shared.o \
-  $(B)/ded/json_shared.o \
-\
+  \
   $(B)/ded/unzip.o \
   $(B)/ded/ioapi.o \
   $(B)/ded/vm.o \
@@ -2691,7 +2669,7 @@ endif
 
 $(B)/$(SERVERBIN)$(FULLBINEXT): $(Q3DOBJ)
 	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) -o $@ $(Q3DOBJ) $(SERVER_LIBS) $(LIBS)
+	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) -o $@ $(Q3DOBJ) $(LIBS)
 
 
 
@@ -2731,7 +2709,6 @@ Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_rally_scripted_objects.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_tools.o \
   $(B)/$(BASEGAME)/cgame/cg_scoreboard.o \
-  $(B)/$(BASEGAME)/cgame/cg_ladder.o \
   $(B)/$(BASEGAME)/cgame/cg_servercmds.o \
   $(B)/$(BASEGAME)/cgame/cg_snapshot.o \
   $(B)/$(BASEGAME)/cgame/cg_view.o \
@@ -2847,8 +2824,7 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/game/g_weapon.o \
   \
   $(B)/$(BASEGAME)/qcommon/q_math.o \
-  $(B)/$(BASEGAME)/qcommon/q_shared.o \
-  $(B)/$(BASEGAME)/qcommon/md4.o
+  $(B)/$(BASEGAME)/qcommon/q_shared.o
 
 Q3GOBJ = $(Q3GOBJ_) $(B)/$(BASEGAME)/game/g_syscalls.o
 Q3GVMOBJ = $(Q3GOBJ_:%.o=%.asm)
@@ -2899,8 +2875,7 @@ MPGOBJ_ = \
   $(B)/$(MISSIONPACK)/game/g_weapon.o \
   \
   $(B)/$(MISSIONPACK)/qcommon/q_math.o \
-  $(B)/$(MISSIONPACK)/qcommon/q_shared.o \
-  $(B)/$(MISSIONPACK)/qcommon/md4.o
+  $(B)/$(MISSIONPACK)/qcommon/q_shared.o
 
 MPGOBJ = $(MPGOBJ_) $(B)/$(MISSIONPACK)/game/g_syscalls.o
 MPGVMOBJ = $(MPGOBJ_:%.o=%.asm)
@@ -2958,7 +2933,6 @@ Q3UIOBJ_ = \
   $(B)/$(BASEGAME)/ui/ui_rally_servers.o \
   $(B)/$(BASEGAME)/ui/ui_rally_startserver.o \
   $(B)/$(BASEGAME)/ui/ui_rally_tools.o \
-  $(B)/$(BASEGAME)/ui/ui_ladder.o \
   $(B)/$(BASEGAME)/ui/ui_removebots.o \
   $(B)/$(BASEGAME)/ui/ui_saveconfig.o \
   $(B)/$(BASEGAME)/ui/ui_serverinfo.o \
@@ -3110,9 +3084,6 @@ $(B)/renderergl2/glsl/%.c: $(RGL2DIR)/glsl/%.glsl $(STRINGIFY)
 	$(DO_REF_STR)
 
 $(B)/renderergl2/glsl/%.o: $(B)/renderergl2/glsl/%.c
-	$(DO_REF_CC)
-
-$(B)/renderergl2/%.o: $(CMDIR)/%.c
 	$(DO_REF_CC)
 
 $(B)/renderergl2/%.o: $(RCOMMONDIR)/%.c
