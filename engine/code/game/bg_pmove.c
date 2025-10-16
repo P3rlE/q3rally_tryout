@@ -962,12 +962,7 @@ static void PM_NoclipMove( void ) {
 
 // STONELANCE
        pm->ps->viewangles[YAW] = pm->ps->damageAngles[YAW];
-       // PM_InitializeVehicle resets the entire car state, including fuel.
-       // Calling it every frame while noclipping prevented fuel usage from
-       // persisting between frames. The vehicle should only be fully
-       // reinitialized when a reset is explicitly requested, so avoid calling
-       // it here.
-       // PM_InitializeVehicle(pm->car, pm->ps->origin, pm->ps->viewangles, pm->ps->velocity);
+	   PM_InitializeVehicle(pm->car, pm->ps->origin, pm->ps->viewangles, pm->ps->velocity /* , pm->car_frontweight_dist */ );
 // END
 }
 
