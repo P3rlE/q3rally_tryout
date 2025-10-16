@@ -169,6 +169,7 @@ static void CG_InitScoreboardColumns(void) {
             
         case GT_DERBY:
         case GT_LCS:
+        case GT_ELIMINATION:
             /* Destruction modes - score and survival matter */
             showScore = qtrue;
             showDeaths = qtrue;
@@ -211,6 +212,8 @@ static void CG_InitScoreboardColumns(void) {
             columns[SBCOL_SCORE].header = "CAPS";
         } else if (cgs.gametype == GT_DOMINATION) {
             columns[SBCOL_SCORE].header = "POINTS";
+        } else if (cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS || cgs.gametype == GT_ELIMINATION) {
+            columns[SBCOL_SCORE].header = "SCORE";
         } else if (isTeam && !isRacing) {
             columns[SBCOL_SCORE].header = "SCORE";
         } else {
@@ -965,6 +968,7 @@ void CG_DrawScoreboardGameModeInfo(void) {
         case GT_DERBY:            gametypeName = "Demolition Derby"; break;
         case GT_DEATHMATCH:       gametypeName = "Deathmatch"; break;
         case GT_LCS:              gametypeName = "Last Car Standing"; break;
+        case GT_ELIMINATION:      gametypeName = "Elimination"; break;
         case GT_TEAM:             gametypeName = "Team Deathmatch"; break;
         case GT_TEAM_RACING:      gametypeName = "Team Racing"; break;
         case GT_TEAM_RACING_DM:   gametypeName = "Team Racing DM"; break;
@@ -1009,6 +1013,7 @@ const char* CG_GetGametypeScoreLabel(void) {
             return "POINTS";
         case GT_DERBY:
         case GT_LCS:
+        case GT_ELIMINATION:
             return "SCORE";
         case GT_RACING:
         case GT_TEAM_RACING:

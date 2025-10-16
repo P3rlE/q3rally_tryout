@@ -444,11 +444,12 @@ qboolean CG_DrawHUD( void ) {
 
 	switch(cgs.gametype){
 	default:
-	case GT_RACING:
-	case GT_TEAM_RACING:
-		CG_DrawHUD_Times(0, 112);
-		CG_DrawHUD_Positions(0, 228);
-		CG_DrawHUD_Laps(0, 304);
+        case GT_RACING:
+        case GT_TEAM_RACING:
+        case GT_ELIMINATION:
+                CG_DrawHUD_Times(0, 112);
+                CG_DrawHUD_Positions(0, 228);
+                CG_DrawHUD_Laps(0, 304);
 		CG_DrawHUD_OpponentList(440, 130);
 
 		break;

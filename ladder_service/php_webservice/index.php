@@ -2867,27 +2867,37 @@ function escapeHtml(value) {
 
 function canonicalMode(mode) {
   if (typeof mode !== 'string') {
-    return '__unknown__';
+    return 'gt_elimination';
   }
   const trimmed = mode.trim();
   if (!trimmed) {
-    return '__unknown__';
+    return 'gt_elimination';
   }
-  return trimmed.toLowerCase();
+  let normalized = trimmed.toLowerCase().replace(/[\s-]+/g, '_');
+  if (!normalized.startsWith('gt_')) {
+    normalized = `gt_${normalized}`;
+  }
+  if (MODE_CONFIG_MAP.has(normalized)) {
+    return normalized;
+  }
+  return 'gt_elimination';
 }
 
 function humanizeMode(mode) {
+  const translations = MODE_TRANSLATIONS[state.language] || {};
   if (typeof mode !== 'string') {
-    return t('mode.unknown');
+    return translations.gt_elimination || 'Elimination';
   }
   const trimmed = mode.trim();
   if (!trimmed) {
-    return t('mode.unknown');
+    return translations.gt_elimination || 'Elimination';
   }
-  const key = trimmed.toLowerCase();
-  const translations = MODE_TRANSLATIONS[state.language] || {};
-  if (Object.prototype.hasOwnProperty.call(translations, key)) {
-    return translations[key];
+  const canonical = canonicalMode(trimmed);
+  if (Object.prototype.hasOwnProperty.call(translations, canonical)) {
+    return translations[canonical];
+  }
+  if (canonical === 'gt_elimination') {
+    return translations.gt_elimination || 'Elimination';
   }
   const withoutPrefix = trimmed.replace(/^GT[_\-\s]?/i, '');
   const normalized = withoutPrefix.replace(/[_\-]+/g, ' ').toLowerCase();
