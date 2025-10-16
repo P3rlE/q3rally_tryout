@@ -37,7 +37,13 @@ typedef struct {
 } cvarTable_t;
 
 gentity_t		g_entities[MAX_GENTITIES];
-gclient_t		g_clients[MAX_CLIENTS];
+gclient_t               g_clients[MAX_CLIENTS];
+
+static void G_LadderBuildMatchId( int randomSeed );
+static const char *G_LadderModeForGametype( int gametype );
+static void G_LadderFormatIsoTime( const qtime_t *qt, char *buffer, size_t size );
+static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clientNum );
+static void G_LadderSubmitMatchReport( const char *reason );
 
 vmCvar_t	g_gametype;
 vmCvar_t	g_dmflags;
@@ -545,6 +551,326 @@ void G_UpdateCvars( void ) {
 	}
 }
 
+static void G_LadderBuildMatchId( int randomSeed ) {
+        unsigned int seed = (unsigned int)randomSeed;
+        unsigned int hash = 0;
+        char serverinfo[MAX_INFO_STRING];
+        const char *value;
+
+        trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
+
+        value = Info_ValueForKey( serverinfo, "mapname" );
+        if ( value && value[0] ) {
+                const unsigned char *cursor = (const unsigned char *)value;
+                while ( *cursor ) {
+                        hash = ( hash * 33u ) ^ *cursor++;
+                }
+        }
+
+        value = Info_ValueForKey( serverinfo, "sv_hostname" );
+        if ( value && value[0] ) {
+                const unsigned char *cursor = (const unsigned char *)value;
+                while ( *cursor ) {
+                        hash = ( hash * 33u ) ^ *cursor++;
+                }
+        }
+
+        if ( !level.ladderStartEpoch ) {
+                qtime_t qt;
+                level.ladderStartEpoch = trap_RealTime( &qt );
+                level.ladderStartTime = qt;
+        }
+
+        if ( !hash ) {
+                hash = seed ^ (unsigned int)level.time ^ (unsigned int)level.startTime;
+        }
+
+        Com_sprintf( level.ladderMatchId, sizeof( level.ladderMatchId ),
+                "%08X-%08X-%08X", (unsigned int)level.ladderStartEpoch, seed, hash );
+}
+
+static void G_LadderFormatIsoTime( const qtime_t *qt, char *buffer, size_t size ) {
+        if ( !buffer || size <= 0 ) {
+                return;
+        }
+
+        if ( !qt ) {
+                buffer[0] = '\0';
+                return;
+        }
+
+        Com_sprintf( buffer, size, "%04i-%02i-%02iT%02i:%02i:%02i",
+                qt->tm_year + 1900, qt->tm_mon + 1, qt->tm_mday,
+                qt->tm_hour, qt->tm_min, qt->tm_sec );
+}
+
+static const char *G_LadderModeForGametype( int gametype ) {
+	switch ( gametype ) {
+	case GT_RACING:
+		return "racing";
+	case GT_RACING_DM:
+		return "racing_dm";
+	case GT_SINGLE_PLAYER:
+		return "single_player";
+	case GT_DERBY:
+		return "derby";
+	case GT_LCS:
+		return "last_car_standing";
+	case GT_DEATHMATCH:
+		return "deathmatch";
+	case GT_TEAM:
+		return "team_deathmatch";
+	case GT_TEAM_RACING:
+		return "team_racing";
+	case GT_TEAM_RACING_DM:
+		return "team_racing_dm";
+	case GT_CTF:
+		return "ctf";
+	case GT_CTF4:
+		return "ctf4";
+	case GT_DOMINATION:
+		return "domination";
+	default:
+		break;
+	}
+
+        return "unknown";
+}
+
+static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clientNum ) {
+        gclient_t *client;
+        gentity_t *ent;
+        ladderPlayerPayload_t *player;
+        char userinfo[MAX_INFO_STRING];
+        const char *value;
+        int slot;
+        int i;
+        int deaths;
+
+        if ( !payload ) {
+                return qfalse;
+        }
+
+        if ( clientNum < 0 || clientNum >= level.maxclients ) {
+                return qfalse;
+        }
+
+        client = &level.clients[ clientNum ];
+        ent = &g_entities[ clientNum ];
+
+        if ( client->pers.connected != CON_CONNECTED ) {
+                return qfalse;
+        }
+
+        if ( client->sess.sessionTeam == TEAM_SPECTATOR ) {
+                return qfalse;
+        }
+
+        if ( payload->playerCount < 0 || payload->playerCount >= MAX_CLIENTS ) {
+                return qfalse;
+        }
+
+        slot = payload->playerCount;
+        player = &payload->players[ slot ];
+        Com_Memset( player, 0, sizeof( *player ) );
+
+        player->clientNum = clientNum;
+
+        trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
+
+        value = Info_ValueForKey( userinfo, "cl_guid" );
+        if ( value && value[0] ) {
+                Q_strncpyz( player->guid, value, sizeof( player->guid ) );
+        }
+
+        value = Info_ValueForKey( userinfo, "ip" );
+        if ( value && value[0] ) {
+                Q_strncpyz( player->playerId, value, sizeof( player->playerId ) );
+                if ( !player->guid[0] ) {
+                        Q_strncpyz( player->guid, value, sizeof( player->guid ) );
+                }
+        }
+
+        value = Info_ValueForKey( userinfo, "name" );
+        if ( !value || !value[0] ) {
+                value = client->pers.netname;
+        }
+        if ( value && value[0] ) {
+                Q_strncpyz( player->name, value, sizeof( player->name ) );
+        }
+        Q_strncpyz( player->cleanName, player->name, sizeof( player->cleanName ) );
+        Q_CleanStr( player->cleanName );
+
+        if ( !player->playerId[0] ) {
+                Q_strncpyz( player->playerId, player->cleanName, sizeof( player->playerId ) );
+        }
+        if ( !player->playerId[0] ) {
+                Com_sprintf( player->playerId, sizeof( player->playerId ), "client-%i", clientNum );
+        }
+
+        value = Info_ValueForKey( userinfo, "model" );
+        if ( value && value[0] ) {
+                Q_strncpyz( player->model, value, sizeof( player->model ) );
+        }
+
+        value = Info_ValueForKey( userinfo, "chassis" );
+        if ( value && value[0] ) {
+                Q_strncpyz( player->vehicle, value, sizeof( player->vehicle ) );
+        } else {
+                value = Info_ValueForKey( userinfo, "vehicle" );
+                if ( value && value[0] ) {
+                        Q_strncpyz( player->vehicle, value, sizeof( player->vehicle ) );
+                }
+        }
+
+        player->team = client->sess.sessionTeam;
+        player->isBot = ( ent->r.svFlags & SVF_BOT ) ? qtrue : qfalse;
+        player->score = client->ps.persistant[PERS_SCORE];
+        player->ping = client->ps.ping;
+        player->time = level.time - client->pers.enterTime;
+        if ( player->time < 0 ) {
+                player->time = 0;
+        }
+
+        player->scoreFlags = client->ps.persistant[PERS_PLAYEREVENTS];
+
+        for ( i = 0; i < PW_NUM_POWERUPS; ++i ) {
+                if ( client->ps.powerups[i] > level.time ) {
+                        player->powerUps |= ( 1 << i );
+                }
+        }
+
+        if ( client->accuracy_shots > 0 ) {
+                player->accuracy = ( client->accuracy_hits * 100 ) / client->accuracy_shots;
+        }
+
+        player->impressiveCount = client->ps.persistant[PERS_IMPRESSIVE_COUNT];
+        player->impressiveTelefragCount = client->ps.persistant[PERS_IMPRESSIVETELEFRAG_COUNT];
+        player->excellentCount = client->ps.persistant[PERS_EXCELLENT_COUNT];
+        player->gauntletCount = client->ps.persistant[PERS_GAUNTLET_FRAG_COUNT];
+        player->defendCount = client->ps.persistant[PERS_DEFEND_COUNT];
+        player->assistCount = client->ps.persistant[PERS_ASSIST_COUNT];
+        player->captures = client->ps.persistant[PERS_CAPTURES];
+
+        player->damageDealt = client->ps.stats[STAT_DAMAGE_DEALT];
+        player->damageTaken = client->ps.stats[STAT_DAMAGE_TAKEN];
+        player->position = client->ps.stats[STAT_POSITION];
+
+        if ( level.startRaceTime > 0 && client->finishRaceTime > level.startRaceTime ) {
+                player->totalRaceMs = client->finishRaceTime - level.startRaceTime;
+        } else if ( level.startRaceTime > 0 && level.time > level.startRaceTime ) {
+                player->totalRaceMs = level.time - level.startRaceTime;
+        }
+        player->finishRaceTime = client->finishRaceTime;
+        player->lapCount = ent->currentLap;
+
+        player->kills = client->ps.persistant[PERS_SCORE];
+        deaths = client->ps.persistant[PERS_KILLED];
+        player->deaths = deaths;
+        if ( player->kills > 0 && deaths == 0 ) {
+                player->perfect = qtrue;
+        }
+        if ( deaths > 0 ) {
+                player->kdRatio = (float)player->kills / (float)deaths;
+        } else if ( player->kills > 0 ) {
+                player->kdRatio = (float)player->kills;
+        }
+
+        player->zoneActiveSigil = -1;
+
+        payload->playerCount++;
+        return qtrue;
+}
+
+static void G_LadderSubmitMatchReport( const char *reason ) {
+        ladderMatchPayload_t payload;
+        qtime_t endTime;
+        int endEpoch;
+        char serverinfo[MAX_INFO_STRING];
+        const char *value;
+        char buffer[MAX_INFO_STRING];
+        int i;
+
+        if ( trap_Cvar_VariableIntegerValue( "sv_ladderEnabled" ) == 0 ) {
+                return;
+        }
+
+        Com_Memset( &payload, 0, sizeof( payload ) );
+
+        if ( level.ladderMatchId[0] ) {
+                Q_strncpyz( payload.matchId, level.ladderMatchId, sizeof( payload.matchId ) );
+        }
+
+        payload.valid = qtrue;
+        payload.gametype = g_gametype.integer;
+        Q_strncpyz( payload.mode, G_LadderModeForGametype( g_gametype.integer ), sizeof( payload.mode ) );
+
+        trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
+        value = Info_ValueForKey( serverinfo, "mapname" );
+        if ( value && value[0] ) {
+                Q_strncpyz( payload.mapName, value, sizeof( payload.mapName ) );
+        }
+
+        G_LadderFormatIsoTime( &level.ladderStartTime, payload.startTimeIso, sizeof( payload.startTimeIso ) );
+        payload.startEpoch = level.ladderStartEpoch;
+
+        endEpoch = trap_RealTime( &endTime );
+        G_LadderFormatIsoTime( &endTime, payload.endTimeIso, sizeof( payload.endTimeIso ) );
+        payload.endEpoch = endEpoch;
+
+        if ( payload.startEpoch > 0 && payload.endEpoch >= payload.startEpoch ) {
+                        payload.durationSeconds = payload.endEpoch - payload.startEpoch;
+        }
+        Com_sprintf( payload.durationIso, sizeof( payload.durationIso ), "PT%iS", payload.durationSeconds );
+
+        trap_Cvar_VariableStringBuffer( "sv_hostname", payload.serverName, sizeof( payload.serverName ) );
+        trap_Cvar_VariableStringBuffer( "net_ip", payload.serverHost, sizeof( payload.serverHost ) );
+        if ( payload.serverHost[0] ) {
+                trap_Cvar_VariableStringBuffer( "net_port", buffer, sizeof( buffer ) );
+                if ( buffer[0] ) {
+                        Q_strcat( payload.serverHost, sizeof( payload.serverHost ), ":" );
+                        Q_strcat( payload.serverHost, sizeof( payload.serverHost ), buffer );
+                }
+        } else {
+                trap_Cvar_VariableStringBuffer( "sv_fqdn", payload.serverHost, sizeof( payload.serverHost ) );
+                if ( !payload.serverHost[0] ) {
+                        Q_strncpyz( payload.serverHost, payload.serverName, sizeof( payload.serverHost ) );
+                }
+        }
+        trap_Cvar_VariableStringBuffer( "version", payload.serverBuild, sizeof( payload.serverBuild ) );
+
+        payload.levelStartTime = level.startTime;
+        payload.levelEndTime = level.time;
+        payload.raceStartTime = level.startRaceTime;
+        payload.raceEndTime = level.finishRaceTime;
+        payload.finishRaceTime = level.finishRaceTime;
+        payload.winnerClientNum = level.winnerNumber;
+        payload.numberOfLaps = level.numberOfLaps;
+        payload.trackReversed = g_trackReversed.integer ? qtrue : qfalse;
+
+        for ( i = 0; i < TEAM_NUM_TEAMS; ++i ) {
+                payload.teamScores[i] = level.teamScores[i];
+                payload.teamTimes[i] = level.teamTimes[i];
+        }
+
+        for ( i = 0; i < level.maxclients; ++i ) {
+                G_LadderPopulatePlayer( &payload, i );
+        }
+
+        if ( reason && reason[0] ) {
+                Com_Printf( "Ladder: submitting '%s' with reason '%s' (%d players)\n",
+                        payload.matchId[0] ? payload.matchId : "<unknown>", reason, payload.playerCount );
+        } else {
+                Com_Printf( "Ladder: submitting '%s' (%d players)\n",
+                        payload.matchId[0] ? payload.matchId : "<unknown>", payload.playerCount );
+        }
+
+        if ( payload.playerCount > 0 || reason ) {
+                trap_LadderSubmit( &payload );
+        }
+}
+
+
 /*
 ============
 G_InitGame
@@ -568,8 +894,10 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 
 	// set some level globals
 	memset( &level, 0, sizeof( level ) );
-	level.time = levelTime;
-	level.startTime = levelTime;
+        level.time = levelTime;
+        level.startTime = levelTime;
+        level.ladderStartEpoch = trap_RealTime( &level.ladderStartTime );
+        G_LadderBuildMatchId( randomSeed );
 
 	level.snd_fry = G_SoundIndex("sound/player/fry.wav");	// FIXME standing in lava / slime
 
@@ -1486,11 +1814,13 @@ void LogExit( const char *string ) {
 		}
 #endif
 
-	}
+        }
+
+        G_LadderSubmitMatchReport( string );
 
 #ifdef MISSIONPACK
-	if (g_singlePlayer.integer) {
-		if (g_gametype.integer >= GT_TEAM) {
+        if (g_singlePlayer.integer) {
+                if (g_gametype.integer >= GT_TEAM) {
 			if (team == TEAM_BLUE) {
 				won = level.teamScores[TEAM_BLUE] > level.teamScores[TEAM_RED];
 			} else {

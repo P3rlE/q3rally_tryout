@@ -697,6 +697,11 @@ void SV_Init (void)
 #endif
 	sv_banFile = Cvar_Get("sv_banFile", "serverbans.dat", CVAR_ARCHIVE);
 
+	sv_ladderEnabled = Cvar_Get ("sv_ladderEnabled", "0", CVAR_ARCHIVE );
+	sv_ladderUrl = Cvar_Get ("sv_ladderUrl", "", CVAR_ARCHIVE );
+	sv_ladderApiKey = Cvar_Get ("sv_ladderApiKey", "", CVAR_TEMP | CVAR_PROTECTED );
+	sv_telemetryMaxBatch = Cvar_Get ("sv_telemetryMaxBatch", "8", CVAR_ARCHIVE );
+
 	// initialize bot cvars so they are listed and can be set before loading the botlib
 	SV_BotInitCvars();
 
@@ -705,6 +710,8 @@ void SV_Init (void)
 	
 	// Load saved bans
 	Cbuf_AddText("rehashbans\n");
+
+        SV_LadderInit();
 }
 
 
@@ -764,6 +771,7 @@ void SV_Shutdown( char *finalmsg ) {
 	SV_RemoveOperatorCommands();
 	SV_MasterShutdown();
 	SV_ShutdownGameProgs();
+	SV_LadderShutdown();
 
 	// free current level
 	SV_ClearServer();
