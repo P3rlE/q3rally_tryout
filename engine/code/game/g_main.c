@@ -617,6 +617,8 @@ static const char *G_LadderModeForGametype( int gametype ) {
                 return "GT_DERBY";
         case GT_LCS:
                 return "GT_LCS";
+        case GT_ELIMINATION:
+                return "GT_ELIMINATION";
         case GT_DEATHMATCH:
                 return "GT_DEATHMATCH";
         case GT_TEAM:
@@ -635,7 +637,7 @@ static const char *G_LadderModeForGametype( int gametype ) {
                 break;
         }
 
-        return "GT_UNKNOWN";
+        return "GT_ELIMINATION";
 }
 
 static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clientNum ) {
