@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field, HttpUrl, validator
+from pydantic import BaseModel, Field, HttpUrl, root_validator, validator
 
 
 Gametype = Literal[
@@ -42,8 +42,9 @@ class Settings(BaseModel):
 class Player(BaseModel):
     playerId: str
     displayName: Optional[str]
-    team: Optional[str]
-    rawScore: int
+    team: Optional[str | int]
+    rawScore: Optional[int]
+    score: Optional[int]
     totalTime: Optional[str]
     position: Optional[int]
     damageDealt: Optional[int]
@@ -51,6 +52,18 @@ class Player(BaseModel):
 
     class Config:
         extra = "allow"
+
+    @root_validator(pre=True)
+    def ensure_scores(cls, values: dict[str, Any]) -> dict[str, Any]:
+        raw = values.get("rawScore")
+        score = values.get("score")
+        if raw is None and score is None:
+            raise ValueError("Player payload must provide rawScore or score")
+        if raw is None:
+            values["rawScore"] = score
+        elif score is None:
+            values["score"] = raw
+        return values
 
 
 class Team(BaseModel):
@@ -92,6 +105,9 @@ class MatchCreate(BaseModel):
         if missing_id:
             raise ValueError("All players must provide a playerId")
         return value
+
+    class Config:
+        extra = "allow"
 
 
 class MatchRead(MatchCreate):
