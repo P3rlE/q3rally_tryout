@@ -605,36 +605,36 @@ static void G_LadderFormatIsoTime( const qtime_t *qt, char *buffer, size_t size 
 }
 
 static const char *G_LadderModeForGametype( int gametype ) {
-	switch ( gametype ) {
-	case GT_RACING:
-		return "racing";
-	case GT_RACING_DM:
-		return "racing_dm";
-	case GT_SINGLE_PLAYER:
-		return "single_player";
-	case GT_DERBY:
-		return "derby";
-	case GT_LCS:
-		return "last_car_standing";
-	case GT_DEATHMATCH:
-		return "deathmatch";
-	case GT_TEAM:
-		return "team_deathmatch";
-	case GT_TEAM_RACING:
-		return "team_racing";
-	case GT_TEAM_RACING_DM:
-		return "team_racing_dm";
-	case GT_CTF:
-		return "ctf";
-	case GT_CTF4:
-		return "ctf4";
-	case GT_DOMINATION:
-		return "domination";
-	default:
-		break;
-	}
+        switch ( gametype ) {
+        case GT_RACING:
+                return "GT_RACING";
+        case GT_RACING_DM:
+                return "GT_RACING_DM";
+        case GT_SINGLE_PLAYER:
+                return "GT_SINGLE_PLAYER";
+        case GT_DERBY:
+                return "GT_DERBY";
+        case GT_LCS:
+                return "GT_LCS";
+        case GT_DEATHMATCH:
+                return "GT_DEATHMATCH";
+        case GT_TEAM:
+                return "GT_TEAM";
+        case GT_TEAM_RACING:
+                return "GT_TEAM_RACING";
+        case GT_TEAM_RACING_DM:
+                return "GT_TEAM_RACING_DM";
+        case GT_CTF:
+                return "GT_CTF";
+        case GT_CTF4:
+                return "GT_CTF4";
+        case GT_DOMINATION:
+                return "GT_DOMINATION";
+        default:
+                break;
+        }
 
-        return "unknown";
+        return "GT_UNKNOWN";
 }
 
 static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clientNum ) {

@@ -39,6 +39,7 @@ MATCH_TEMPLATE = {
     "startTime": datetime(2024, 4, 5, 18, 30, 11, tzinfo=timezone.utc).isoformat(),
     "endTime": datetime(2024, 4, 5, 18, 42, 39, tzinfo=timezone.utc).isoformat(),
     "duration": "PT12M28S",
+    "startEpoch": 1712332211,
     "map": "q3r_country01",
     "server": {"name": "Q3Rally EU #1", "host": "203.0.113.10:27960", "build": "1.3.0"},
     "settings": {"g_gametype": 141},
@@ -47,7 +48,7 @@ MATCH_TEMPLATE = {
             "playerId": "sha256:abc",
             "displayName": "PlayerOne",
             "team": "red",
-            "rawScore": 123,
+            "score": 123,
         }
     ],
 }
@@ -65,6 +66,9 @@ def test_get_match() -> None:
     data = response.json()
     assert data["matchId"] == MATCH_TEMPLATE["matchId"]
     assert "createdAt" in data
+    assert data["startEpoch"] == MATCH_TEMPLATE["startEpoch"]
+    assert data["players"][0]["rawScore"] == MATCH_TEMPLATE["players"][0]["score"]
+    assert data["players"][0]["score"] == MATCH_TEMPLATE["players"][0]["score"]
 
 
 def test_list_matches() -> None:
