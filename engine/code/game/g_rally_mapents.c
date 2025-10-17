@@ -120,7 +120,7 @@ static void G_EliminationScheduleDeadline( gentity_t *candidate, int completedLa
 
 static void G_EliminationEliminatePlayer( gentity_t *victim, int completedLap, int activeCount, gentity_t *trigger ) {
     gentity_t   *ent;
-    gentity_t   *winner;
+    gentity_t   *winner = NULL;
     int         i;
 
     if ( !victim || !victim->client ) {
@@ -241,6 +241,7 @@ static void G_EliminationEliminatePlayer( gentity_t *victim, int completedLap, i
             }
         }
     }
+}
 
 static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
     gentity_t   *ent;
