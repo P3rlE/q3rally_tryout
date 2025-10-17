@@ -579,13 +579,19 @@ void BroadcastTeamChange( gclient_t *client, int oldTeam )
 		client->pers.netname));
 	}
 // END
-	else if ( client->sess.sessionTeam == TEAM_SPECTATOR && oldTeam != TEAM_SPECTATOR ) {
-		trap_SendServerCommand( -1, va("cp \"%s" S_COLOR_WHITE " joined the spectators.\n\"",
-		client->pers.netname));
-	} else if ( client->sess.sessionTeam == TEAM_FREE ) {
-		trap_SendServerCommand( -1, va("cp \"%s" S_COLOR_WHITE " joined the battle.\n\"",
-		client->pers.netname));
-	}
+        else if ( client->sess.sessionTeam == TEAM_SPECTATOR && oldTeam != TEAM_SPECTATOR ) {
+                if ( client->eliminationSpectator ) {
+                        trap_SendServerCommand( -1, va("print \"%s" S_COLOR_WHITE " was eliminated.\n\"",
+                                client->pers.netname ) );
+                        client->eliminationSpectator = qfalse;
+                } else {
+                        trap_SendServerCommand( -1, va("cp \"%s" S_COLOR_WHITE " joined the spectators.\n\"",
+                                client->pers.netname));
+                }
+        } else if ( client->sess.sessionTeam == TEAM_FREE ) {
+                trap_SendServerCommand( -1, va("cp \"%s" S_COLOR_WHITE " joined the battle.\n\"",
+                client->pers.netname));
+        }
 }
 
 /*
