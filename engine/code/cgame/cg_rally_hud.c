@@ -581,6 +581,32 @@ static float CG_DrawDistanceToFinish( float y ) {
         return y;
 }
 
+static void CG_GetEliminationColumnBounds( float *columnLeft, float *columnRight, float *textLeft, float *textRight ) {
+        float   base;
+        float   right;
+        float   left;
+
+        base = 636 - 80;
+        right = base + 90;
+        left = right - 140;
+
+        if ( columnLeft ) {
+                *columnLeft = left;
+        }
+
+        if ( columnRight ) {
+                *columnRight = right;
+        }
+
+        if ( textLeft ) {
+                *textLeft = left + 10;
+        }
+
+        if ( textRight ) {
+                *textRight = right - 10;
+        }
+}
+
 /*
 ======================
 CG_DrawCurrentPosition
@@ -593,7 +619,7 @@ static float CG_DrawCurrentPosition( float y ) {
 	char		s[64];
 	float		baseX, textX, textY;
 	float		width, height;
-	float		columnBase, columnRight, textLeft, textRight;
+	float		columnLeft, columnRight, textLeft, textRight;
 	int			labelWidth, valueWidth, remainingWidth;
 	char		posValue[32];
 
@@ -602,14 +628,11 @@ static float CG_DrawCurrentPosition( float y ) {
 	pos = cent->currentPosition;
 	remaining = CG_GetPlayersRemaining( NULL );
 
+	CG_GetEliminationColumnBounds( &columnLeft, &columnRight, &textLeft, &textRight );
 
-	columnBase = 636 - 80;
-	columnRight = columnBase + 90;
-	width = 140;
+	width = columnRight - columnLeft;
 	height = 36;
-	baseX = columnRight - width;
-	textLeft = baseX + 10;
-	textRight = columnRight - 10;
+	baseX = columnLeft;
 
 	CG_FillRect( baseX, y, width, height, bgColor );
 
@@ -655,6 +678,7 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	int			i, j, num;
 	float		x, width, height;
 	float		textLeft, textRight;
+	float		columnLeft, columnRight;
 	int			startPos, endPos;
 	char		s[64];
 	float		background[4] = { 0, 0, 0, 0.5 };
@@ -679,8 +703,11 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	endPos = startPos + 8 > cgs.numRacers ? cgs.numRacers : startPos + 8;
 	startPos = endPos - 8 < 1 ? 1 : endPos - 8;
 
-	width = 140;
+	CG_GetEliminationColumnBounds( &columnLeft, &columnRight, &textLeft, &textRight );
+
+	width = columnRight - columnLeft;
 	height = TINYCHAR_HEIGHT;
+	x = columnLeft;
 
 	{
 		float columnBase = 636 - 80;
@@ -729,10 +756,14 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 		}
 		{
 			int textWidth = CG_DrawStrlen( s ) * ( TINYCHAR_WIDTH + 2 );
-			float drawX = textRight - textWidth;
-			if ( drawX < textLeft ) {
+			float drawX;
+
+			if ( textWidth >= ( textRight - textLeft ) ) {
 				drawX = textLeft;
+			} else {
+				drawX = textRight - textWidth;
 			}
+
 			CG_DrawTinyDigitalStringColor( drawX, y, s, colorWhite);
 		}
 

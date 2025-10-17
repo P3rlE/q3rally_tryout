@@ -55,14 +55,16 @@ static qboolean G_EliminationIsActiveRacer( gentity_t *ent, int clientNum ) {
 
 static int G_EliminationCollectActive( gentity_t **lastOut ) {
     gentity_t   *last;
+    gentity_t   *ent;
     int         activeCount;
     int         i;
 
     last = NULL;
     activeCount = 0;
+    ent = NULL;
 
     for ( i = 0; i < level.maxclients; ++i ) {
-        gentity_t *ent = &g_entities[i];
+        ent = &g_entities[i];
 
         if ( !G_EliminationIsActiveRacer( ent, i ) ) {
             continue;
@@ -245,8 +247,15 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
     gentity_t   *ent;
     gentity_t   *last;
     int         activeCount;
+    int         clientNum;
     qboolean    finisherIsActive;
     int         i;
+
+    ent = NULL;
+    last = NULL;
+    activeCount = 0;
+    clientNum = -1;
+    finisherIsActive = qfalse;
 
     if ( g_gametype.integer != GT_ELIMINATION ) {
         return;
@@ -287,9 +296,8 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
 
     activeCount = G_EliminationCollectActive( &last );
 
-    finisherIsActive = qfalse;
     if ( finisher && finisher->client ) {
-        int clientNum = finisher->s.clientNum;
+        clientNum = finisher->s.clientNum;
         if ( clientNum >= 0 && clientNum < level.maxclients ) {
             finisherIsActive = G_EliminationIsActiveRacer( finisher, clientNum );
         }
@@ -329,7 +337,17 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
 void G_EliminationCheckDeadline( void ) {
     gentity_t   *target;
     gentity_t   *last;
+    gentity_t   *nextLast;
     int         activeCount;
+    int         nextCount;
+    int         deadlineLap;
+
+    target = NULL;
+    last = NULL;
+    nextLast = NULL;
+    activeCount = 0;
+    nextCount = 0;
+    deadlineLap = 0;
 
     if ( g_gametype.integer != GT_ELIMINATION ) {
         return;
@@ -378,22 +396,17 @@ void G_EliminationCheckDeadline( void ) {
         return;
     }
 
-    {
-        int deadlineLap = level.eliminationDeadlineLap;
+    deadlineLap = level.eliminationDeadlineLap;
 
-        G_EliminationEliminatePlayer( target, deadlineLap, activeCount, NULL );
+    G_EliminationEliminatePlayer( target, deadlineLap, activeCount, NULL );
 
-        if ( deadlineLap >= 1 && level.eliminationPlayersRemaining > 1 ) {
-            gentity_t *nextLast = NULL;
-            int nextCount;
+    if ( deadlineLap >= 1 && level.eliminationPlayersRemaining > 1 ) {
+        CalculatePlayerPositions();
+        nextCount = G_EliminationCollectActive( &nextLast );
+        level.eliminationPlayersRemaining = nextCount;
 
-            CalculatePlayerPositions();
-            nextCount = G_EliminationCollectActive( &nextLast );
-            level.eliminationPlayersRemaining = nextCount;
-
-            if ( nextCount > 1 && nextLast ) {
-                G_EliminationScheduleDeadline( nextLast, deadlineLap );
-            }
+        if ( nextCount > 1 && nextLast ) {
+            G_EliminationScheduleDeadline( nextLast, deadlineLap );
         }
     }
 }
