@@ -210,6 +210,10 @@ static void G_EliminationEliminatePlayer( gentity_t *victim, int completedLap, i
                 break;
             }
         }
+        level.eliminationInitialPlayers = level.eliminationPlayersRemaining;
+        level.eliminationRound = 0;
+        level.eliminationSetupComplete = qtrue;
+    }
 
         if ( winner ) {
             if ( !winner->client->finishRaceTime ) {
@@ -299,6 +303,14 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
 
     if ( activeCount <= 1 || !last ) {
         G_EliminationClearDeadline();
+        return;
+    }
+
+    if ( level.eliminationDeadlineClient == finisher->s.clientNum &&
+         level.eliminationDeadlineLap > 0 &&
+         completedLap >= level.eliminationDeadlineLap &&
+         level.eliminationDeadlineTime > 0 ) {
+        G_EliminationEliminatePlayer( finisher, completedLap, activeCount, finisher );
         return;
     }
 
