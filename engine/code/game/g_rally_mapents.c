@@ -23,6 +23,31 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
+static void G_TriggerEliminationExplosion( gentity_t *ent ) {
+        gentity_t       *tent;
+
+        if ( !ent ) {
+                return;
+        }
+
+        tent = G_TempEntity( ent->r.currentOrigin, EV_EXPLOSION );
+        if ( tent ) {
+                tent->r.svFlags |= SVF_BROADCAST;
+        }
+
+        tent = G_TempEntity( ent->r.currentOrigin, EV_OBELISKEXPLODE );
+        if ( tent ) {
+                tent->s.eventParm = ent->s.number;
+                tent->r.svFlags |= SVF_BROADCAST;
+        }
+
+        tent = G_TempEntity( ent->r.currentOrigin, EV_GENERAL_SOUND );
+        if ( tent ) {
+                tent->s.eventParm = G_SoundIndex( "sound/world/explode1.wav" );
+                tent->r.svFlags |= SVF_BROADCAST;
+        }
+}
+
 static void G_CompleteElimination( gentity_t *ent ) {
         if ( !ent || !ent->client || !ent->inuse ) {
                 return;
@@ -150,6 +175,9 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
 
         // Trigger a big explosion before moving the player to the scoreboard.
         G_TempEntity( last->client->ps.origin, EV_EXPLOSION );
+
+        // Trigger a big explosion before moving the player to the scoreboard.
+        G_TriggerEliminationExplosion( last );
 
         // Keep the player frozen until they are moved to the scoreboard.
         VectorClear( last->client->ps.velocity );
