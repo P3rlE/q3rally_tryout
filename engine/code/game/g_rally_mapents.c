@@ -38,6 +38,7 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
         gentity_t       *last;
         gentity_t       *winner;
         int                     activeCount;
+        qboolean        finisherIsActive;
         int                     i;
 
         if ( g_gametype.integer != GT_ELIMINATION ) {
@@ -79,6 +80,7 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
 
         last = NULL;
         activeCount = 0;
+        finisherIsActive = qfalse;
         for ( i = 0; i < level.maxclients; ++i ) {
                 ent = &g_entities[i];
                 if ( !ent->inuse || !ent->client ) {
@@ -96,6 +98,10 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
 
                 activeCount++;
 
+                if ( ent == finisher ) {
+                        finisherIsActive = qtrue;
+                }
+
                 if ( !last ) {
                         last = ent;
                         continue;
@@ -112,12 +118,21 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
                 }
         }
 
-        level.eliminationRound = completedLap;
+        if ( !finisherIsActive ) {
+                return;
+        }
+
         level.eliminationPlayersRemaining = activeCount;
 
         if ( activeCount <= 1 || !last ) {
                 return;
         }
+
+        if ( last != finisher ) {
+                return;
+        }
+
+        level.eliminationRound = completedLap;
 
         last->client->eliminationRound = level.eliminationRound;
         last->client->eliminationPlayersRemaining = activeCount;
@@ -126,10 +141,11 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
         last->client->finishRaceTime = level.time;
         trap_SendServerCommand( -1, va( "raceFinishTime %i %i", last->s.clientNum, last->client->finishRaceTime ) );
         last->client->ps.stats[STAT_POSITION] = activeCount;
-        trap_SendServerCommand( -1, va( "print \"%s has been eliminated! (%i drivers left)\n\"",
+        trap_SendServerCommand( -1, va( "print \"%s was eliminated! (%i drivers left)\n\"",
                 last->client->pers.netname, activeCount - 1 ) );
         trap_SendServerCommand( last->s.clientNum, "cp \"You have been eliminated!\n\"" );
 
+        last->client->eliminationSpectator = qtrue;
         SetTeam( last, "racerSpectator" );
 
         level.eliminationPlayersRemaining = activeCount - 1;

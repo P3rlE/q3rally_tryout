@@ -1213,7 +1213,10 @@ static void CG_ServerCommand( void ) {
 		if ( message && ( cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS ) ) {
 			const char *elimText;
 
-			elimText = strstr( message, "has been eliminated!" );
+                        elimText = strstr( message, "was eliminated!" );
+                        if ( !elimText ) {
+                                elimText = strstr( message, "has been eliminated!" );
+                        }
 			if ( elimText ) {
 				const char *remainingText;
 				int remaining;
