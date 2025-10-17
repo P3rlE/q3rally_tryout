@@ -709,6 +709,14 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	height = TINYCHAR_HEIGHT;
 	x = columnLeft;
 
+	{
+		float columnBase = 636 - 80;
+		float columnRight = columnBase + 90;
+		x = columnRight - width;
+		textLeft = x + 10;
+		textRight = columnRight - 10;
+	}
+
 	for (i = startPos; i <= endPos; i++){
 		num = -1;
 		for (j = 0; j < cgs.maxclients; j++){
