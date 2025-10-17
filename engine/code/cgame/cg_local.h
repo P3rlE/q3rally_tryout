@@ -1878,6 +1878,7 @@ float Q3VelocityToRL(float length);
 float Q3DistanceToRL(float length);
 qboolean isRallyRace( void );
 qboolean isRallyNonDMRace( void );
+qboolean isRaceObserver( int clientNum );
 int CG_GetPlayersRemaining( int *lastClientNum );
 void CG_CheckEliminationWarning( int playersRemaining );
 qboolean CG_IsActiveCompetitor( int clientNum );
