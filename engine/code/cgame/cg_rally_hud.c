@@ -25,14 +25,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define HUD_RIGHT_EDGE                 636.0f
 #define HUD_COLUMN_SPACING             4.0f
-#define HUD_TEXT_INSET                 10.0f
+#define HUD_TEXT_INSET                 6.0f
 #define HUD_ROW_HEIGHT                 ((float)TINYCHAR_HEIGHT + 4.0f)
 
 static float CG_GetEliminationColumnWidth( void ) {
     static float columnWidth = 0.0f;
 
     if ( columnWidth <= 0.0f ) {
-        const float charWidth = (float)(TINYCHAR_WIDTH + 2);
+        const float charWidth = (float)TINYCHAR_WIDTH;
         const float insetWidth = HUD_TEXT_INSET * 2.0f;
         float maxWidth = insetWidth + charWidth * CG_DrawStrlen( "T: 00:00.000" );
         float candidate;
