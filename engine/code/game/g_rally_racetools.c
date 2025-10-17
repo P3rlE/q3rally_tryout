@@ -358,6 +358,10 @@ void RallyRace_Think( gentity_t *ent ){
 	ent->nextthink = level.time + 200;
 
 	CalculatePlayerPositions();
+
+	if ( g_gametype.integer == GT_ELIMINATION ) {
+		G_EliminationCheckDeadline();
+	}
 }
 
 void RaceCountdown( char *s, int secondsLeft ){
@@ -372,6 +376,10 @@ TESTABLE_STATIC void G_RallyConfigureElimination( int participantCount ) {
 	if ( participantCount < 1 ) {
 		participantCount = 1;
 	}
+
+	level.eliminationDeadlineTime = 0;
+	level.eliminationDeadlineClient = -1;
+	level.eliminationDeadlineLap = 0;
 
 	if ( level.eliminationSetupComplete ) {
 		level.eliminationPlayersRemaining = participantCount;
@@ -423,10 +431,31 @@ void RallyStarter_Think( gentity_t *ent ){
 	ent->nextthink = level.time + 1000;
 	t = NULL;
 
-	if ( ent->number == 0 ){
+        if ( ent->number == 0 ){
 
-		if( level.time - level.startTime < 7500 )
-			return;
+                for ( i = 0; i < level.maxclients; ++i ) {
+                        player = &g_entities[i];
+                        if ( !player->inuse || !player->client ) {
+                                continue;
+                        }
+                        if ( player->client->pers.connected != CON_CONNECTED ) {
+                                continue;
+                        }
+                        if ( player->client->sess.sessionTeam != TEAM_SPECTATOR ) {
+                                continue;
+                        }
+                        if ( player->client->sess.spectatorWilling ) {
+                                continue;
+                        }
+                        if ( isRaceObserver( i ) ) {
+                                continue;
+                        }
+
+                        SetTeam( player, "free" );
+                }
+
+                if( level.time - level.startTime < 7500 )
+                        return;
 
 		start = qtrue;
 		for (i = 0, count = 0; i < MAX_CLIENTS; i++){
