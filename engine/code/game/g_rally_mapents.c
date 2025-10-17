@@ -210,6 +210,10 @@ static void G_EliminationEliminatePlayer( gentity_t *victim, int completedLap, i
                 break;
             }
         }
+        level.eliminationInitialPlayers = level.eliminationPlayersRemaining;
+        level.eliminationRound = 0;
+        level.eliminationSetupComplete = qtrue;
+    }
 
         if ( winner ) {
             if ( !winner->client->finishRaceTime ) {
