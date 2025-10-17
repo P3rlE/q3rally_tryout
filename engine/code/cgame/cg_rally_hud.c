@@ -23,6 +23,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "cg_local.h"
 
+#define HUD_RIGHT_EDGE                 636.0f
+#define HUD_COLUMN_SPACING             4.0f
+#define HUD_TIMES_COLUMN_WIDTH         120.0f
+#define HUD_PLAYER_COLUMN_WIDTH        120.0f
+#define HUD_TEXT_INSET                 10.0f
+
 float colors[4][4] = { 
 //		{ 0.2, 1.0, 0.2, 1.0 } , { 1.0, 0.2, 0.2, 1.0 }, {0.5, 0.5, 0.5, 1} };
 		{ 1.0f, 0.69f, 0.0f, 1.0f } ,	  // normal
@@ -428,7 +434,7 @@ static float CG_DrawTimes( float y ) {
 	centity_t		*cent;
 	int			lapTime;
 	int			totalTime;
-	int			x;
+	float			x;
 	char		s[128];
 	char		*time;
 
@@ -459,11 +465,9 @@ static float CG_DrawTimes( float y ) {
 		
 		Com_sprintf(s, sizeof(s), "B: %s", time);
 //		x = 600 - CG_DrawStrlen(s) * TINYCHAR_WIDTH;
-        x = 636 - 80;
-		CG_FillRect ( x, y, 90, 18, bgColor );
-		x+= 10;		
-		y+= 4;
-		CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
+        x = HUD_RIGHT_EDGE - HUD_TIMES_COLUMN_WIDTH;
+		CG_FillRect( x, y, HUD_TIMES_COLUMN_WIDTH, 18, bgColor );
+		CG_DrawTinyDigitalStringColor( x + HUD_TEXT_INSET, y + 4, s, colorWhite );
 		y += TINYCHAR_HEIGHT + 4;
 	}
 
@@ -478,11 +482,9 @@ static float CG_DrawTimes( float y ) {
 
 		Com_sprintf(s, sizeof(s), "L: %s", time);
 //		x = 600 - CG_DrawStrlen(s) * TINYCHAR_WIDTH;
-        x = 636 - 80;
-        CG_FillRect( x, y, 90, 18, bgColor );
-        x+= 10;
-        y+= 4;
-		CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
+        x = HUD_RIGHT_EDGE - HUD_TIMES_COLUMN_WIDTH;
+        CG_FillRect( x, y, HUD_TIMES_COLUMN_WIDTH, 18, bgColor );
+        CG_DrawTinyDigitalStringColor( x + HUD_TEXT_INSET, y + 4, s, colorWhite );
 		y += TINYCHAR_HEIGHT + 4;
 	}
 
@@ -504,11 +506,9 @@ static float CG_DrawTimes( float y ) {
 
 	Com_sprintf(s, sizeof(s), "T: %s", time);
 
-	x = 636 - 80;
-	CG_FillRect( x, y, 90, 18, bgColor );
-	x += 10;
-	y += 4;
-	CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
+	x = HUD_RIGHT_EDGE - HUD_TIMES_COLUMN_WIDTH;
+	CG_FillRect( x, y, HUD_TIMES_COLUMN_WIDTH, 18, bgColor );
+	CG_DrawTinyDigitalStringColor( x + HUD_TEXT_INSET, y + 4, s, colorWhite );
 	y += TINYCHAR_HEIGHT + 4;
 
 	return y;
@@ -528,7 +528,7 @@ static float CG_DrawLaps( float y ) {
 	int			curLap;
 	int			numLaps;
 	char		s[64];
-	int			x;
+	float			x;
 
 	//ps = &cg.snap->ps;
 	cent = &cg_entities[cg.snap->ps.clientNum];
@@ -541,11 +541,9 @@ static float CG_DrawLaps( float y ) {
         else
                 Com_sprintf(s, sizeof(s), "LAP: %i", curLap);
 
-	x = 636 - 80;
-	CG_FillRect( x, y, 90, 18, bgColor );
-	x += 10;
-	y += 4;
-	CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
+	x = HUD_RIGHT_EDGE - HUD_TIMES_COLUMN_WIDTH;
+	CG_FillRect( x, y, HUD_TIMES_COLUMN_WIDTH, 18, bgColor );
+	CG_DrawTinyDigitalStringColor( x + HUD_TEXT_INSET, y + 4, s, colorWhite );
 	y += TINYCHAR_HEIGHT + 4;
 
 	return y;
@@ -559,7 +557,7 @@ CG_DrawDistanceToFinish
 */
 static float CG_DrawDistanceToFinish( float y ) {
         char            s[64];
-        int             x;
+        float           x;
         float           dist;
 
         dist = cg.snap->ps.stats[STAT_DISTANCE_REMAIN];
@@ -571,11 +569,9 @@ static float CG_DrawDistanceToFinish( float y ) {
                 Com_sprintf( s, sizeof( s ), "DIST: %dm", (int)dist );
         }
 
-        x = 636 - 80;
-        CG_FillRect( x, y, 90, 18, bgColor );
-        x += 10;
-        y += 4;
-        CG_DrawTinyDigitalStringColor( x, y, s, colorWhite );
+        x = HUD_RIGHT_EDGE - HUD_TIMES_COLUMN_WIDTH;
+        CG_FillRect( x, y, HUD_TIMES_COLUMN_WIDTH, 18, bgColor );
+        CG_DrawTinyDigitalStringColor( x + HUD_TEXT_INSET, y + 4, s, colorWhite );
         y += TINYCHAR_HEIGHT + 4;
 
         return y;
@@ -586,7 +582,7 @@ static float CG_DrawDistanceToFinish( float y ) {
 CG_DrawCurrentPosition
 ======================
 */
-static float CG_DrawCurrentPosition( float y ) {
+static void CG_DrawCurrentPosition( float y ) {
 	centity_t		*cent;
 	int			pos;
 	int			remaining;
@@ -600,13 +596,13 @@ static float CG_DrawCurrentPosition( float y ) {
 	remaining = CG_GetPlayersRemaining( NULL );
 
 
-	baseX = 636 - 140;
-	width = 140;
+        baseX = (HUD_RIGHT_EDGE - HUD_TIMES_COLUMN_WIDTH) - HUD_COLUMN_SPACING - HUD_PLAYER_COLUMN_WIDTH;
+        width = HUD_PLAYER_COLUMN_WIDTH;
 	height = 36;
 
 	CG_FillRect( baseX, y, width, height, bgColor );
 
-	textX = baseX + 10;
+        textX = baseX + HUD_TEXT_INSET;
 	textY = y + 4;
 
 	CG_DrawTinyDigitalStringColor( textX, textY, "POS:", colorWhite );
@@ -618,9 +614,7 @@ static float CG_DrawCurrentPosition( float y ) {
 	} else {
 		Com_sprintf( s, sizeof( s ), "PLAYERS REMAINING: --" );
 	}
-	CG_DrawTinyDigitalStringColor( textX, textY, s, colorWhite );
-
-	return y + height + 2;
+        CG_DrawTinyDigitalStringColor( textX, textY, s, colorWhite );
 }
 
 
@@ -658,9 +652,9 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	endPos = startPos + 8 > cgs.numRacers ? cgs.numRacers : startPos + 8;
 	startPos = endPos - 8 < 1 ? 1 : endPos - 8;
 
-	x = 636 - 140;
-	width = 140;
-	height = TINYCHAR_HEIGHT;
+        x = HUD_RIGHT_EDGE - HUD_TIMES_COLUMN_WIDTH;
+        width = HUD_TIMES_COLUMN_WIDTH;
+        height = TINYCHAR_HEIGHT;
 
 	for (i = startPos; i <= endPos; i++){
 		num = -1;
@@ -699,7 +693,7 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 			}
 			Com_sprintf(s, sizeof(s), "%i-%s", rowPosition, player);
 		}
-		CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
+                CG_DrawTinyDigitalStringColor( x + HUD_TEXT_INSET, y, s, colorWhite);
 
 		y += TINYCHAR_HEIGHT;
 
@@ -1122,14 +1116,22 @@ float CG_DrawUpperRightHUD( float y ) {
 	}
 
 	if (cgs.clientinfo[cg.snap->ps.clientNum].team != TEAM_SPECTATOR){
-		if (isRallyRace()){
-			y = CG_DrawArrowToCheckpoint( y );
-			y = CG_DrawTimes( y );
-			y = CG_DrawLaps( y );
-			y = CG_DrawDistanceToFinish( y );
-                        y = CG_DrawCurrentPosition( y );
-			y = CG_DrawCarAheadAndBehind( y );
-		}
+                if (isRallyRace()){
+                        float timesStart;
+                        float timesY;
+
+                        y = CG_DrawArrowToCheckpoint( y );
+                        timesStart = y;
+                        timesY = y;
+
+                        timesY = CG_DrawTimes( timesY );
+                        timesY = CG_DrawLaps( timesY );
+                        timesY = CG_DrawDistanceToFinish( timesY );
+
+                        CG_DrawCurrentPosition( timesStart );
+
+                        y = CG_DrawCarAheadAndBehind( timesY );
+                }
 		else if (cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS )
 			y = CG_DrawTimes( y );
 // 0.5
