@@ -141,9 +141,12 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
         last->client->finishRaceTime = level.time;
         trap_SendServerCommand( -1, va( "raceFinishTime %i %i", last->s.clientNum, last->client->finishRaceTime ) );
         last->client->ps.stats[STAT_POSITION] = activeCount;
-        trap_SendServerCommand( -1, va( "print \"%s has been eliminated! (%i drivers left)\n\"",
+        trap_SendServerCommand( -1, va( "print \"%s was eliminated (%i drivers left)\n\"",
                 last->client->pers.netname, activeCount - 1 ) );
-        trap_SendServerCommand( last->s.clientNum, "cp \"You have been eliminated!\n\"" );
+        trap_SendServerCommand( last->s.clientNum, "cp \"You were eliminated\n\"" );
+
+        // Trigger a big explosion before moving the player to the scoreboard.
+        G_TempEntity( last->client->ps.origin, EV_EXPLOSION );
 
         // Trigger a big explosion before moving the player to the scoreboard.
         G_TempEntity( last->client->ps.origin, EV_EXPLOSION );
