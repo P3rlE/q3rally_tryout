@@ -67,7 +67,7 @@ static float CG_GetEliminationColumnWidth( void ) {
             maxWidth = candidate;
         }
 
-        candidate = insetWidth + charWidth * CG_DrawStrlen( "PLAYERS REMAINING: 000" );
+        candidate = insetWidth + charWidth * CG_DrawStrlen( "PLAYERS LEFT: 000" );
         if ( candidate > maxWidth ) {
             maxWidth = candidate;
         }
@@ -657,12 +657,12 @@ static void CG_DrawCurrentPosition( float y ) {
 	CG_DrawTinyDigitalStringColor( textX + TINYCHAR_WIDTH * 5, textY, va("%i/%i", pos, cgs.numRacers), colorWhite );
 
 	textY += rowHeight;
-	if ( remaining > 0 ) {
-		Com_sprintf( s, sizeof( s ), "PLAYERS REMAINING: %i", remaining );
-	} else {
-		Com_sprintf( s, sizeof( s ), "PLAYERS REMAINING: --" );
-	}
-	CG_DrawTinyDigitalStringColor( textX, textY, s, colorWhite );
+        if ( remaining > 0 ) {
+                Com_sprintf( s, sizeof( s ), "PLAYERS LEFT: %02i", remaining );
+        } else {
+                Com_sprintf( s, sizeof( s ), "PLAYERS LEFT: --" );
+        }
+        CG_DrawTinyDigitalStringColor( textX, textY, s, colorWhite );
 }
 
 /*
@@ -704,7 +704,11 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	width = columnWidth;
 	height = TINYCHAR_HEIGHT;
 
-	for (i = startPos; i <= endPos; i++){
+        if ( endPos >= startPos ) {
+                y += HUD_ROW_HEIGHT - (float)TINYCHAR_HEIGHT;
+        }
+
+        for (i = startPos; i <= endPos; i++){
 		num = -1;
 		for (j = 0; j < cgs.maxclients; j++){
 			other = &cg_entities[j];
