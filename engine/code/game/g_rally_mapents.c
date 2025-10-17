@@ -35,11 +35,13 @@ static void G_TriggerEliminationExplosion( gentity_t *ent ) {
                 tent->r.svFlags |= SVF_BROADCAST;
         }
 
+#ifdef MISSIONPACK
         tent = G_TempEntity( ent->r.currentOrigin, EV_OBELISKEXPLODE );
         if ( tent ) {
                 tent->s.eventParm = ent->s.number;
                 tent->r.svFlags |= SVF_BROADCAST;
         }
+#endif
 
         tent = G_TempEntity( ent->r.currentOrigin, EV_GENERAL_SOUND );
         if ( tent ) {
@@ -175,6 +177,9 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
 
         // Trigger a big explosion before moving the player to the scoreboard.
         G_TempEntity( last->client->ps.origin, EV_EXPLOSION );
+
+        // Trigger a big explosion before moving the player to the scoreboard.
+        G_TriggerEliminationExplosion( last );
 
         // Trigger a big explosion before moving the player to the scoreboard.
         G_TriggerEliminationExplosion( last );
