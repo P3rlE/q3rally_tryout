@@ -241,7 +241,6 @@ static void G_EliminationEliminatePlayer( gentity_t *victim, int completedLap, i
             }
         }
     }
-}
 
 static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
     gentity_t   *ent;
