@@ -23,6 +23,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
+#ifdef UNIT_TEST
+#define TESTABLE_STATIC
+#else
+#define TESTABLE_STATIC static
+#endif
+
 
 int GetTeamAtRank( int rank ){
 	int		i, j, count;
@@ -358,7 +364,7 @@ void RaceCountdown( char *s, int secondsLeft ){
 	trap_SendServerCommand( -1, va("rc \"%s\" %d", s, secondsLeft) );
 }
 
-static void G_RallyConfigureElimination( int participantCount ) {
+TESTABLE_STATIC void G_RallyConfigureElimination( int participantCount ) {
 	if ( g_gametype.integer != GT_ELIMINATION ) {
 		return;
 	}
