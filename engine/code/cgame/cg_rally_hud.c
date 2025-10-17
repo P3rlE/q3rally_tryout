@@ -593,6 +593,9 @@ static float CG_DrawCurrentPosition( float y ) {
 	char		s[64];
 	float		baseX, textX, textY;
 	float		width, height;
+	float		columnBase, columnRight, textLeft, textRight;
+	int			labelWidth, valueWidth, remainingWidth;
+	char		posValue[32];
 
 	cent = &cg_entities[cg.snap->ps.clientNum];
 
@@ -600,23 +603,40 @@ static float CG_DrawCurrentPosition( float y ) {
 	remaining = CG_GetPlayersRemaining( NULL );
 
 
-	baseX = 636 - 140;
+	columnBase = 636 - 80;
+	columnRight = columnBase + 90;
 	width = 140;
 	height = 36;
+	baseX = columnRight - width;
+	textLeft = baseX + 10;
+	textRight = columnRight - 10;
 
 	CG_FillRect( baseX, y, width, height, bgColor );
 
-	textX = baseX + 10;
 	textY = y + 4;
 
-	CG_DrawTinyDigitalStringColor( textX, textY, "POS:", colorWhite );
-	CG_DrawTinyDigitalStringColor( textX + TINYCHAR_WIDTH * 5, textY, va("%i/%i", pos, cgs.numRacers), colorWhite );
+	CG_DrawTinyDigitalStringColor( textLeft, textY, "POS:", colorWhite );
+
+	labelWidth = CG_DrawStrlen( "POS:" ) * ( TINYCHAR_WIDTH + 2 );
+	Com_sprintf( posValue, sizeof( posValue ), "%i/%i", pos, cgs.numRacers );
+	valueWidth = CG_DrawStrlen( posValue ) * ( TINYCHAR_WIDTH + 2 );
+	textX = textRight - valueWidth;
+	if ( textX < textLeft + labelWidth + ( TINYCHAR_WIDTH + 2 ) ) {
+		textX = textLeft + labelWidth + ( TINYCHAR_WIDTH + 2 );
+	}
+	CG_DrawTinyDigitalStringColor( textX, textY, posValue, colorWhite );
 
 	textY += TINYCHAR_HEIGHT + 4;
 	if ( remaining > 0 ) {
 		Com_sprintf( s, sizeof( s ), "PLAYERS REMAINING: %i", remaining );
 	} else {
 		Com_sprintf( s, sizeof( s ), "PLAYERS REMAINING: --" );
+	}
+
+	remainingWidth = CG_DrawStrlen( s ) * ( TINYCHAR_WIDTH + 2 );
+	textX = textRight - remainingWidth;
+	if ( textX < textLeft ) {
+		textX = textLeft;
 	}
 	CG_DrawTinyDigitalStringColor( textX, textY, s, colorWhite );
 

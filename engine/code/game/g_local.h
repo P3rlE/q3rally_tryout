@@ -412,6 +412,7 @@ struct gclient_s {
 	int			eliminationRound;
 	int			eliminationPlayersRemaining;
 	float		eliminationMetric;
+	qboolean	eliminationSpectator;
 
 	int			horn_sound_time;
 
