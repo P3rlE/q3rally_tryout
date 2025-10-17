@@ -358,6 +358,10 @@ void RallyRace_Think( gentity_t *ent ){
 	ent->nextthink = level.time + 200;
 
 	CalculatePlayerPositions();
+
+	if ( g_gametype.integer == GT_ELIMINATION ) {
+		G_EliminationCheckDeadline();
+	}
 }
 
 void RaceCountdown( char *s, int secondsLeft ){
@@ -372,6 +376,10 @@ TESTABLE_STATIC void G_RallyConfigureElimination( int participantCount ) {
 	if ( participantCount < 1 ) {
 		participantCount = 1;
 	}
+
+	level.eliminationDeadlineTime = 0;
+	level.eliminationDeadlineClient = -1;
+	level.eliminationDeadlineLap = 0;
 
 	if ( level.eliminationSetupComplete ) {
 		level.eliminationPlayersRemaining = participantCount;

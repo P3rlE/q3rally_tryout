@@ -33,173 +33,357 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define CHECKPOINT_MESSAGES		2
 
 
-static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
-        gentity_t       *ent;
-        gentity_t       *last;
-        gentity_t       *winner;
-        int                     activeCount;
-        qboolean        finisherIsActive;
-        int                     i;
+static qboolean G_EliminationIsActiveRacer( gentity_t *ent, int clientNum ) {
+    if ( !ent || !ent->inuse || !ent->client ) {
+        return qfalse;
+    }
 
-        if ( g_gametype.integer != GT_ELIMINATION ) {
-                return;
+    if ( ent->client->sess.sessionTeam == TEAM_SPECTATOR ) {
+        return qfalse;
+    }
+
+    if ( isRaceObserver( clientNum ) ) {
+        return qfalse;
+    }
+
+    if ( ent->client->finishRaceTime ) {
+        return qfalse;
+    }
+
+    return qtrue;
+}
+
+static int G_EliminationCollectActive( gentity_t **lastOut ) {
+    gentity_t   *last;
+    int         activeCount;
+    int         i;
+
+    last = NULL;
+    activeCount = 0;
+
+    for ( i = 0; i < level.maxclients; ++i ) {
+        gentity_t *ent = &g_entities[i];
+
+        if ( !G_EliminationIsActiveRacer( ent, i ) ) {
+            continue;
         }
 
-        if ( !level.startRaceTime || level.finishRaceTime ) {
-                return;
+        activeCount++;
+
+        if ( !last ) {
+            last = ent;
+            continue;
         }
 
-        if ( completedLap <= 0 || completedLap <= level.eliminationRound ) {
-                return;
+        if ( ent->client->ps.stats[STAT_POSITION] > last->client->ps.stats[STAT_POSITION] ||
+             ( ent->client->ps.stats[STAT_POSITION] == last->client->ps.stats[STAT_POSITION] &&
+               ent->s.clientNum > last->s.clientNum ) ) {
+            last = ent;
         }
+    }
 
-        if ( !level.eliminationSetupComplete ) {
-                level.eliminationPlayersRemaining = 0;
-                for ( i = 0; i < level.maxclients; ++i ) {
-                        ent = &g_entities[i];
-                        if ( !ent->inuse || !ent->client ) {
-                                continue;
-                        }
-                        if ( ent->client->sess.sessionTeam == TEAM_SPECTATOR ) {
-                                continue;
-                        }
-                        if ( isRaceObserver( i ) ) {
-                                continue;
-                        }
-                        if ( ent->client->finishRaceTime ) {
-                                continue;
-                        }
-                        level.eliminationPlayersRemaining++;
-                }
-                level.eliminationInitialPlayers = level.eliminationPlayersRemaining;
-                level.eliminationRound = 0;
-                level.eliminationSetupComplete = qtrue;
-        }
+    if ( lastOut ) {
+        *lastOut = last;
+    }
 
-        CalculatePlayerPositions();
+    return activeCount;
+}
 
-        last = NULL;
-        activeCount = 0;
-        finisherIsActive = qfalse;
+static void G_EliminationClearDeadline( void ) {
+    level.eliminationDeadlineTime = 0;
+    level.eliminationDeadlineClient = -1;
+    level.eliminationDeadlineLap = 0;
+}
+
+static void G_EliminationScheduleDeadline( gentity_t *candidate, int completedLap ) {
+    int interval;
+
+    if ( !candidate || !candidate->client ) {
+        G_EliminationClearDeadline();
+        return;
+    }
+
+    interval = g_eliminationInterval.integer;
+    if ( interval < 0 ) {
+        interval = 0;
+    }
+
+    level.eliminationDeadlineClient = candidate->s.clientNum;
+    level.eliminationDeadlineLap = completedLap;
+    level.eliminationDeadlineTime = level.time + interval;
+    if ( interval == 0 ) {
+        level.eliminationDeadlineTime = level.time;
+    }
+}
+
+static void G_EliminationEliminatePlayer( gentity_t *victim, int completedLap, int activeCount, gentity_t *trigger ) {
+    gentity_t   *ent;
+    gentity_t   *winner;
+    int         i;
+
+    if ( !victim || !victim->client ) {
+        return;
+    }
+
+    if ( activeCount < 1 ) {
+        activeCount = 1;
+    }
+
+    level.eliminationRound = completedLap;
+
+    victim->client->eliminationRound = level.eliminationRound;
+    victim->client->eliminationPlayersRemaining = activeCount;
+    victim->client->eliminationMetric = ( level.startRaceTime > 0 ) ?
+        ( float )( level.time - level.startRaceTime ) : 0.0f;
+    victim->client->finishRaceTime = level.time;
+    trap_SendServerCommand( -1, va( "raceFinishTime %i %i", victim->s.clientNum, victim->client->finishRaceTime ) );
+    victim->client->ps.stats[STAT_POSITION] = activeCount;
+    trap_SendServerCommand( -1, va( "print \"%s was eliminated! (%i drivers left)\\n\"",
+        victim->client->pers.netname, activeCount - 1 ) );
+    trap_SendServerCommand( victim->s.clientNum, "cp \"You have been eliminated!\\n\"" );
+
+    victim->client->eliminationSpectator = qtrue;
+    SetTeam( victim, "racerSpectator" );
+
+    level.eliminationPlayersRemaining = activeCount - 1;
+    if ( level.eliminationPlayersRemaining < 0 ) {
+        level.eliminationPlayersRemaining = 0;
+    }
+
+    G_EliminationClearDeadline();
+
+    CalculatePlayerPositions();
+
+    if ( level.eliminationPlayersRemaining <= 1 ) {
+        winner = NULL;
         for ( i = 0; i < level.maxclients; ++i ) {
+            ent = &g_entities[i];
+
+            if ( !ent->inuse || !ent->client ) {
+                continue;
+            }
+
+            if ( ent->client->sess.sessionTeam == TEAM_SPECTATOR ) {
+                continue;
+            }
+
+            if ( isRaceObserver( i ) ) {
+                continue;
+            }
+
+            if ( ent == victim ) {
+                continue;
+            }
+
+            if ( ent->client->finishRaceTime && ent != trigger ) {
+                if ( !winner ) {
+                    winner = ent;
+                }
+                continue;
+            }
+
+            winner = ent;
+            break;
+        }
+
+        if ( !winner ) {
+            for ( i = 0; i < level.maxclients; ++i ) {
                 ent = &g_entities[i];
+
                 if ( !ent->inuse || !ent->client ) {
-                        continue;
+                    continue;
                 }
+
                 if ( ent->client->sess.sessionTeam == TEAM_SPECTATOR ) {
-                        continue;
+                    continue;
                 }
+
                 if ( isRaceObserver( i ) ) {
-                        continue;
-                }
-                if ( ent->client->finishRaceTime ) {
-                        continue;
+                    continue;
                 }
 
-                activeCount++;
-
-                if ( ent == finisher ) {
-                        finisherIsActive = qtrue;
+                if ( ent == victim ) {
+                    continue;
                 }
 
-                if ( !last ) {
-                        last = ent;
-                        continue;
-                }
-
-                if ( ent->client->ps.stats[STAT_POSITION] > last->client->ps.stats[STAT_POSITION] ) {
-                        last = ent;
-                        continue;
-                }
-
-                if ( ent->client->ps.stats[STAT_POSITION] == last->client->ps.stats[STAT_POSITION]
-                        && ent->s.clientNum > last->s.clientNum ) {
-                        last = ent;
-                }
+                winner = ent;
+                break;
+            }
         }
 
-        if ( !finisherIsActive ) {
-                return;
+        if ( winner ) {
+            if ( !winner->client->finishRaceTime ) {
+                winner->client->finishRaceTime = level.time;
+                trap_SendServerCommand( -1, va( "raceFinishTime %i %i",
+                    winner->s.clientNum, winner->client->finishRaceTime ) );
+            }
+
+            winner->client->eliminationRound = level.eliminationRound + 1;
+            winner->client->eliminationPlayersRemaining = 1;
+            winner->client->eliminationMetric = ( level.startRaceTime > 0 ) ?
+                ( float )( level.time - level.startRaceTime ) : 0.0f;
+            winner->client->ps.stats[STAT_POSITION] = 1;
+
+            level.eliminationPlayersRemaining = 1;
+            level.winnerNumber = winner->s.clientNum;
+
+            if ( !level.finishRaceTime ) {
+                level.finishRaceTime = level.time;
+                trap_SendServerCommand( -1, va( "print \"%s won the elimination!\\n\"",
+                    winner->client->pers.netname ) );
+                trap_SendServerCommand( winner->s.clientNum, "cp \"You won the elimination!\\n\"" );
+            }
         }
+    }
+}
 
-        level.eliminationPlayersRemaining = activeCount;
+static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
+    gentity_t   *ent;
+    gentity_t   *last;
+    int         activeCount;
+    qboolean    finisherIsActive;
+    int         i;
 
-        if ( activeCount <= 1 || !last ) {
-                return;
+    if ( g_gametype.integer != GT_ELIMINATION ) {
+        return;
+    }
+
+    if ( !level.startRaceTime || level.finishRaceTime ) {
+        return;
+    }
+
+    if ( completedLap <= 0 || completedLap <= level.eliminationRound ) {
+        return;
+    }
+
+    if ( !level.eliminationSetupComplete ) {
+        level.eliminationPlayersRemaining = 0;
+        for ( i = 0; i < level.maxclients; ++i ) {
+            ent = &g_entities[i];
+            if ( !ent->inuse || !ent->client ) {
+                continue;
+            }
+            if ( ent->client->sess.sessionTeam == TEAM_SPECTATOR ) {
+                continue;
+            }
+            if ( isRaceObserver( i ) ) {
+                continue;
+            }
+            if ( ent->client->finishRaceTime ) {
+                continue;
+            }
+            level.eliminationPlayersRemaining++;
         }
+        level.eliminationInitialPlayers = level.eliminationPlayersRemaining;
+        level.eliminationRound = 0;
+        level.eliminationSetupComplete = qtrue;
+    }
 
-        if ( last != finisher ) {
-                return;
+    CalculatePlayerPositions();
+
+    activeCount = G_EliminationCollectActive( &last );
+
+    finisherIsActive = qfalse;
+    if ( finisher && finisher->client ) {
+        int clientNum = finisher->s.clientNum;
+        if ( clientNum >= 0 && clientNum < level.maxclients ) {
+            finisherIsActive = G_EliminationIsActiveRacer( finisher, clientNum );
         }
+    }
 
-        level.eliminationRound = completedLap;
+    if ( !finisherIsActive ) {
+        return;
+    }
 
-        last->client->eliminationRound = level.eliminationRound;
-        last->client->eliminationPlayersRemaining = activeCount;
-        last->client->eliminationMetric = ( level.startRaceTime > 0 ) ?
-                (float)( level.time - level.startRaceTime ) : 0.0f;
-        last->client->finishRaceTime = level.time;
-        trap_SendServerCommand( -1, va( "raceFinishTime %i %i", last->s.clientNum, last->client->finishRaceTime ) );
-        last->client->ps.stats[STAT_POSITION] = activeCount;
-        trap_SendServerCommand( -1, va( "print \"%s was eliminated! (%i drivers left)\n\"",
-                last->client->pers.netname, activeCount - 1 ) );
-        trap_SendServerCommand( last->s.clientNum, "cp \"You have been eliminated!\n\"" );
+    level.eliminationPlayersRemaining = activeCount;
 
-        last->client->eliminationSpectator = qtrue;
-        SetTeam( last, "racerSpectator" );
+    if ( activeCount <= 1 || !last ) {
+        G_EliminationClearDeadline();
+        return;
+    }
 
-        level.eliminationPlayersRemaining = activeCount - 1;
-        if ( level.eliminationPlayersRemaining < 0 ) {
-                level.eliminationPlayersRemaining = 0;
+    if ( last != finisher ) {
+        if ( level.eliminationDeadlineClient != last->s.clientNum ||
+             level.eliminationDeadlineLap != completedLap ||
+             level.eliminationDeadlineTime <= level.time ) {
+            G_EliminationScheduleDeadline( last, completedLap );
         }
+        return;
+    }
 
-        CalculatePlayerPositions();
+    G_EliminationEliminatePlayer( last, completedLap, activeCount, finisher );
+}
 
-        if ( level.eliminationPlayersRemaining <= 1 ) {
-                winner = NULL;
-                for ( i = 0; i < level.maxclients; ++i ) {
-                        ent = &g_entities[i];
-                        if ( !ent->inuse || !ent->client ) {
-                                continue;
-                        }
-                        if ( ent->client->sess.sessionTeam == TEAM_SPECTATOR ) {
-                                continue;
-                        }
-                        if ( isRaceObserver( i ) ) {
-                                continue;
-                        }
-                        if ( ent->client->finishRaceTime && ent != finisher ) {
-                                continue;
-                        }
+void G_EliminationCheckDeadline( void ) {
+    gentity_t   *target;
+    gentity_t   *last;
+    int         activeCount;
 
-                        winner = ent;
-                        break;
-                }
+    if ( g_gametype.integer != GT_ELIMINATION ) {
+        return;
+    }
 
-                if ( winner ) {
-                        if ( !winner->client->finishRaceTime ) {
-                                winner->client->finishRaceTime = level.time;
-                                trap_SendServerCommand( -1, va( "raceFinishTime %i %i",
-                                        winner->s.clientNum, winner->client->finishRaceTime ) );
-                        }
+    if ( level.eliminationDeadlineTime <= 0 ) {
+        return;
+    }
 
-                        winner->client->eliminationRound = level.eliminationRound + 1;
-                        winner->client->eliminationPlayersRemaining = 1;
-                        winner->client->eliminationMetric = ( level.startRaceTime > 0 ) ?
-                                (float)( level.time - level.startRaceTime ) : 0.0f;
-                        winner->client->ps.stats[STAT_POSITION] = 1;
+    if ( level.eliminationDeadlineLap <= 0 || level.eliminationDeadlineLap < level.eliminationRound ) {
+        G_EliminationClearDeadline();
+        return;
+    }
 
-                        level.eliminationPlayersRemaining = 1;
-                        level.winnerNumber = winner->s.clientNum;
+    if ( level.eliminationDeadlineClient < 0 || level.eliminationDeadlineClient >= level.maxclients ) {
+        G_EliminationClearDeadline();
+        return;
+    }
 
-                        if ( !level.finishRaceTime ) {
-                                level.finishRaceTime = level.time;
-                                trap_SendServerCommand( -1, va( "print \"%s won the elimination!\n\"",
-                                        winner->client->pers.netname ) );
-                                trap_SendServerCommand( winner->s.clientNum, "cp \"You won the elimination!\n\"" );
-                        }
-                }
+    target = &g_entities[level.eliminationDeadlineClient];
+    if ( !G_EliminationIsActiveRacer( target, level.eliminationDeadlineClient ) ) {
+        G_EliminationClearDeadline();
+        return;
+    }
+
+    CalculatePlayerPositions();
+    activeCount = G_EliminationCollectActive( &last );
+    level.eliminationPlayersRemaining = activeCount;
+
+    if ( activeCount <= 1 || !last ) {
+        G_EliminationClearDeadline();
+        return;
+    }
+
+    if ( last != target ) {
+        G_EliminationScheduleDeadline( last, level.eliminationDeadlineLap );
+        return;
+    }
+
+    if ( target->currentLap - 1 >= level.eliminationDeadlineLap ) {
+        G_EliminationClearDeadline();
+        return;
+    }
+
+    if ( level.time < level.eliminationDeadlineTime ) {
+        return;
+    }
+
+    {
+        int deadlineLap = level.eliminationDeadlineLap;
+
+        G_EliminationEliminatePlayer( target, deadlineLap, activeCount, NULL );
+
+        if ( deadlineLap >= 1 && level.eliminationPlayersRemaining > 1 ) {
+            gentity_t *nextLast = NULL;
+            int nextCount;
+
+            CalculatePlayerPositions();
+            nextCount = G_EliminationCollectActive( &nextLast );
+            level.eliminationPlayersRemaining = nextCount;
+
+            if ( nextCount > 1 && nextLast ) {
+                G_EliminationScheduleDeadline( nextLast, deadlineLap );
+            }
         }
+    }
 }
 
 void Touch_Start (gentity_t *self, gentity_t *other, trace_t *trace ){

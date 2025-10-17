@@ -654,6 +654,7 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	char		player[64];
 	int			i, j, num;
 	float		x, width, height;
+	float		textLeft, textRight;
 	int			startPos, endPos;
 	char		s[64];
 	float		background[4] = { 0, 0, 0, 0.5 };
@@ -678,9 +679,16 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	endPos = startPos + 8 > cgs.numRacers ? cgs.numRacers : startPos + 8;
 	startPos = endPos - 8 < 1 ? 1 : endPos - 8;
 
-	x = 636 - 140;
 	width = 140;
 	height = TINYCHAR_HEIGHT;
+
+	{
+		float columnBase = 636 - 80;
+		float columnRight = columnBase + 90;
+		x = columnRight - width;
+		textLeft = x + 10;
+		textRight = columnRight - 10;
+	}
 
 	for (i = startPos; i <= endPos; i++){
 		num = -1;
@@ -719,7 +727,14 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 			}
 			Com_sprintf(s, sizeof(s), "%i-%s", rowPosition, player);
 		}
-		CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
+		{
+			int textWidth = CG_DrawStrlen( s ) * ( TINYCHAR_WIDTH + 2 );
+			float drawX = textRight - textWidth;
+			if ( drawX < textLeft ) {
+				drawX = textLeft;
+			}
+			CG_DrawTinyDigitalStringColor( drawX, y, s, colorWhite);
+		}
 
 		y += TINYCHAR_HEIGHT;
 
