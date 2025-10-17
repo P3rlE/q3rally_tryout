@@ -1563,50 +1563,29 @@ void ClientThink_real( gentity_t *ent ) {
 	// touch other objects
 	ClientImpacts( ent, &pm );
 
-	if ( level.trackLength > 0.0f && level.numCheckpoints > 0 ) {
-		int next = client->ps.stats[STAT_NEXT_CHECKPOINT];
-		qboolean updated = qfalse;
-
-		if ( next > 0 ) {
-			int cpIndex = next;
-			gentity_t *cp;
-			vec3_t v;
-			float dist, segs;
-
-			if ( cpIndex > level.numCheckpoints ) {
-				cpIndex = level.numCheckpoints;
-			}
-
-			if ( cpIndex >= 1 && cpIndex <= level.numCheckpoints ) {
-				cp = level.checkpoints[cpIndex - 1];
-				if ( cp ) {
-					VectorSubtract( cp->s.origin, client->ps.origin, v );
-					dist = VectorLength( v );
-					segs = level.cpDist[level.numCheckpoints - 1] - level.cpDist[cpIndex - 1];
-					if ( segs < 0.0f ) {
-						segs = 0.0f;
-					}
-					dist += segs;
-
-					if ( level.numberOfLaps && ent->currentLap < level.numberOfLaps ) {
-						int lapsRemaining = level.numberOfLaps - ent->currentLap;
-						if ( lapsRemaining > 0 ) {
-							dist += lapsRemaining * level.trackLength;
-						}
-					}
-
-					client->ps.stats[STAT_DISTANCE_REMAIN] = (int)( dist / CP_M_2_QU );
-					updated = qtrue;
-				}
-			}
-		}
-
-		if ( !updated ) {
-			client->ps.stats[STAT_DISTANCE_REMAIN] = 0;
-		}
-	} else {
-		client->ps.stats[STAT_DISTANCE_REMAIN] = 0;
-	}
+        if ( level.trackLength > 0.0f && level.numCheckpoints > 0 ) {
+                int next = client->ps.stats[STAT_NEXT_CHECKPOINT];
+                if ( next > 0 && next <= level.numCheckpoints ) {
+                        gentity_t *cp = level.checkpoints[next-1];
+                        if ( cp ) {
+                                vec3_t v;
+                                float dist, segs;
+                                VectorSubtract( cp->s.origin, client->ps.origin, v );
+                                dist = VectorLength( v );
+                                segs = level.cpDist[level.numCheckpoints-1] - level.cpDist[next-1];
+                                dist += segs;
+                                if ( level.numberOfLaps && ent->currentLap < level.numberOfLaps ) {
+                                        int lapsRemaining = level.numberOfLaps - ent->currentLap;
+                                        dist += lapsRemaining * level.trackLength;
+                                }
+                                client->ps.stats[STAT_DISTANCE_REMAIN] = (int)( dist / CP_M_2_QU );
+                        }
+                } else {
+                        client->ps.stats[STAT_DISTANCE_REMAIN] = 0;
+                }
+        } else {
+                client->ps.stats[STAT_DISTANCE_REMAIN] = 0;
+        }
 
 	// save results of triggers and client events
 	if (ent->client->ps.eventSequence != oldEventSequence) {

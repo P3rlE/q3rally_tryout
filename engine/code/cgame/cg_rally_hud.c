@@ -581,32 +581,6 @@ static float CG_DrawDistanceToFinish( float y ) {
         return y;
 }
 
-static void CG_GetEliminationColumnBounds( float *columnLeft, float *columnRight, float *textLeft, float *textRight ) {
-        float   base;
-        float   right;
-        float   left;
-
-        base = 636 - 80;
-        right = base + 90;
-        left = right - 140;
-
-        if ( columnLeft ) {
-                *columnLeft = left;
-        }
-
-        if ( columnRight ) {
-                *columnRight = right;
-        }
-
-        if ( textLeft ) {
-                *textLeft = left + 10;
-        }
-
-        if ( textRight ) {
-                *textRight = right - 10;
-        }
-}
-
 /*
 ======================
 CG_DrawCurrentPosition
@@ -619,47 +593,30 @@ static float CG_DrawCurrentPosition( float y ) {
 	char		s[64];
 	float		baseX, textX, textY;
 	float		width, height;
-	float		columnLeft, columnRight, textLeft, textRight;
-	int			labelWidth, valueWidth, remainingWidth;
-	char		posValue[32];
 
 	cent = &cg_entities[cg.snap->ps.clientNum];
 
 	pos = cent->currentPosition;
 	remaining = CG_GetPlayersRemaining( NULL );
 
-	CG_GetEliminationColumnBounds( &columnLeft, &columnRight, &textLeft, &textRight );
 
-	width = columnRight - columnLeft;
+	baseX = 636 - 140;
+	width = 140;
 	height = 36;
-	baseX = columnLeft;
 
 	CG_FillRect( baseX, y, width, height, bgColor );
 
+	textX = baseX + 10;
 	textY = y + 4;
 
-	CG_DrawTinyDigitalStringColor( textLeft, textY, "POS:", colorWhite );
-
-	labelWidth = CG_DrawStrlen( "POS:" ) * ( TINYCHAR_WIDTH + 2 );
-	Com_sprintf( posValue, sizeof( posValue ), "%i/%i", pos, cgs.numRacers );
-	valueWidth = CG_DrawStrlen( posValue ) * ( TINYCHAR_WIDTH + 2 );
-	textX = textRight - valueWidth;
-	if ( textX < textLeft + labelWidth + ( TINYCHAR_WIDTH + 2 ) ) {
-		textX = textLeft + labelWidth + ( TINYCHAR_WIDTH + 2 );
-	}
-	CG_DrawTinyDigitalStringColor( textX, textY, posValue, colorWhite );
+	CG_DrawTinyDigitalStringColor( textX, textY, "POS:", colorWhite );
+	CG_DrawTinyDigitalStringColor( textX + TINYCHAR_WIDTH * 5, textY, va("%i/%i", pos, cgs.numRacers), colorWhite );
 
 	textY += TINYCHAR_HEIGHT + 4;
 	if ( remaining > 0 ) {
 		Com_sprintf( s, sizeof( s ), "PLAYERS REMAINING: %i", remaining );
 	} else {
 		Com_sprintf( s, sizeof( s ), "PLAYERS REMAINING: --" );
-	}
-
-	remainingWidth = CG_DrawStrlen( s ) * ( TINYCHAR_WIDTH + 2 );
-	textX = textRight - remainingWidth;
-	if ( textX < textLeft ) {
-		textX = textLeft;
 	}
 	CG_DrawTinyDigitalStringColor( textX, textY, s, colorWhite );
 
@@ -677,8 +634,6 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	char		player[64];
 	int			i, j, num;
 	float		x, width, height;
-	float		textLeft, textRight;
-	float		columnLeft, columnRight;
 	int			startPos, endPos;
 	char		s[64];
 	float		background[4] = { 0, 0, 0, 0.5 };
@@ -703,11 +658,9 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 	endPos = startPos + 8 > cgs.numRacers ? cgs.numRacers : startPos + 8;
 	startPos = endPos - 8 < 1 ? 1 : endPos - 8;
 
-	CG_GetEliminationColumnBounds( &columnLeft, &columnRight, &textLeft, &textRight );
-
-	width = columnRight - columnLeft;
+	x = 636 - 140;
+	width = 140;
 	height = TINYCHAR_HEIGHT;
-	x = columnLeft;
 
 	for (i = startPos; i <= endPos; i++){
 		num = -1;
@@ -738,55 +691,15 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 			CG_FillRect( x, y, width, height, selected );
 		}
 
-                Q_strncpyz(player, cgs.clientinfo[num].name, sizeof(player) );
-                Q_CleanStr( player );
-                {
-                        int rowPosition = cg_entities[num].currentPosition;
-                        int availableChars;
-                        int maxNameChars;
-                        int charWidth;
-                        char posPrefix[16];
-                        int posChars;
-
-                        if ( rowPosition <= 0 ) {
-                                rowPosition = cgs.clientinfo[num].position;
-                        }
-
-                        Com_sprintf( posPrefix, sizeof( posPrefix ), "%i-", rowPosition );
-
-                        charWidth = TINYCHAR_WIDTH + 2;
-                        availableChars = 0;
-                        if ( charWidth > 0 ) {
-                                availableChars = (int)(( textRight - textLeft ) / charWidth);
-                        }
-
-                        posChars = CG_DrawStrlen( posPrefix );
-                        maxNameChars = availableChars - posChars;
-                        if ( maxNameChars < 0 ) {
-                                maxNameChars = 0;
-                        }
-
-                        if ( CG_DrawStrlen( player ) > maxNameChars ) {
-                                if ( maxNameChars < (int)sizeof( player ) ) {
-                                        player[maxNameChars] = '\0';
-                                } else if ( (int)sizeof( player ) > 0 ) {
-                                        player[sizeof( player ) - 1] = '\0';
-                                }
-                        }
-
-                        Com_sprintf( s, sizeof( s ), "%s%s", posPrefix, player );
-                }
-                {
-                        int textWidth = CG_DrawStrlen( s ) * ( TINYCHAR_WIDTH + 2 );
-                        float drawX;
-
-                        drawX = textRight - textWidth;
-                        if ( drawX < textLeft ) {
-                                drawX = textLeft;
-                        }
-
-                        CG_DrawTinyDigitalStringColor( drawX, y, s, colorWhite);
-                }
+		Q_strncpyz(player, cgs.clientinfo[num].name, 16 );
+		{
+			int rowPosition = cg_entities[num].currentPosition;
+			if ( rowPosition <= 0 ) {
+				rowPosition = cgs.clientinfo[num].position;
+			}
+			Com_sprintf(s, sizeof(s), "%i-%s", rowPosition, player);
+		}
+		CG_DrawTinyDigitalStringColor( x, y, s, colorWhite);
 
 		y += TINYCHAR_HEIGHT;
 

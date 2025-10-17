@@ -412,7 +412,6 @@ struct gclient_s {
 	int			eliminationRound;
 	int			eliminationPlayersRemaining;
 	float		eliminationMetric;
-	qboolean	eliminationSpectator;
 
 	int			horn_sound_time;
 
@@ -526,9 +525,6 @@ typedef struct {
 	int			eliminationPlayersRemaining;
 	int			eliminationInitialPlayers;
 	qboolean	eliminationSetupComplete;
-	int			eliminationDeadlineTime;
-	int			eliminationDeadlineClient;
-	int			eliminationDeadlineLap;
 	int			numberOfLaps;
 
 	// map variables
@@ -1264,8 +1260,6 @@ void	trap_BotResetWeaponState(int weaponstate);
 int		trap_GeneticParentsAndChildSelection(int numranks, float *ranks, int *parent1, int *parent2, int *child);
 
 void	trap_SnapVector( float *v );
-
-void	G_EliminationCheckDeadline( void );
 
 gentity_t *findradius (gentity_t *from, vec3_t org, float rad);
 qboolean visible( gentity_t *ent1, gentity_t *ent2 );
