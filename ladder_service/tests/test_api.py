@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
+import sys
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT))
 
 from ladder_service.ladder_service import main
 from ladder_service.ladder_service.db import session_scope
@@ -96,6 +101,24 @@ def test_list_matches_filter_mode() -> None:
         assert match["matchId"] != alt_match["matchId"]
 
     cleanup = client.delete(f"/api/v1/matches/{alt_match['matchId']}")
+    assert cleanup.status_code == 204
+
+
+def test_list_matches_supports_team_race_dm_mode() -> None:
+    match = {
+        **MATCH_TEMPLATE,
+        "matchId": "srv-20240405-183011-44",
+        "mode": "GT_TEAM_RACING_DM",
+    }
+    created = client.post("/api/v1/matches", json=match)
+    assert created.status_code == 201, created.text
+
+    response = client.get("/api/v1/matches?mode=GT_TEAM_RACING_DM")
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert any(entry["matchId"] == match["matchId"] for entry in data["matches"])
+
+    cleanup = client.delete(f"/api/v1/matches/{match['matchId']}")
     assert cleanup.status_code == 204
 
 
