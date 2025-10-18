@@ -550,7 +550,7 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.skidlength.generic.type		= MTYPE_SLIDER;
 	s_q3roptions.skidlength.generic.flags		= QMF_SMALLFONT;
 	s_q3roptions.skidlength.generic.x			= 200;
-	s_q3roptions.skidlength.generic.y			= 220;
+	s_q3roptions.skidlength.generic.y			= 90 + 140;
 	s_q3roptions.skidlength.generic.name		= "Skid Segment Length:";
 	s_q3roptions.skidlength.generic.id			= ID_SKID_LENGTH;
 	s_q3roptions.skidlength.minvalue			= 4;
@@ -561,7 +561,7 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.camtracking.generic.type		= MTYPE_SLIDER;
 	s_q3roptions.camtracking.generic.flags		= QMF_SMALLFONT;
 	s_q3roptions.camtracking.generic.x			= 500;
-	s_q3roptions.camtracking.generic.y			= 220;
+	s_q3roptions.camtracking.generic.y			= 90 + 140;
 	s_q3roptions.camtracking.generic.name		= "Camera Tracking Scale:";
 	s_q3roptions.camtracking.generic.id			= ID_CAM_TRACKING;
 	s_q3roptions.camtracking.minvalue			= 0;
@@ -572,7 +572,7 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.mmap_size.generic.type		= MTYPE_SLIDER;
 	s_q3roptions.mmap_size.generic.flags		= QMF_SMALLFONT;
 	s_q3roptions.mmap_size.generic.x			= 200;
-	s_q3roptions.mmap_size.generic.y			= 200;
+	s_q3roptions.mmap_size.generic.y			= 90 + 160;
 	s_q3roptions.mmap_size.generic.name		= "Minimap Size:";
 	s_q3roptions.mmap_size.generic.id			= ID_MMAP_SIZE;
 	s_q3roptions.mmap_size.minvalue			= 0.5;
@@ -583,7 +583,7 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.mmap_fov.generic.type		= MTYPE_SLIDER;
 	s_q3roptions.mmap_fov.generic.flags		= QMF_SMALLFONT;
 	s_q3roptions.mmap_fov.generic.x			= 500;
-	s_q3roptions.mmap_fov.generic.y			= 200;
+	s_q3roptions.mmap_fov.generic.y			= 90 + 160;
 	s_q3roptions.mmap_fov.generic.name		= "Minimap Zoom:";
 	s_q3roptions.mmap_fov.generic.id			= ID_MMAP_FOV;
 	s_q3roptions.mmap_fov.minvalue			= 10;
