@@ -2944,7 +2944,7 @@ static void CG_DrawIntermission( stereoFrame_t stereoFrame ) {
 
 	if ( stereoFrame == STEREO_CENTER ) {
 		CG_JukeboxFrame();
-		CG_JukeboxDraw( 170.0f, 90.0f, 300.0f, 36.0f );
+		CG_JukeboxDraw( 170.0f, 90.0f, 300.0f, 54.0f );
 	}
 
 	if (!cg.scoreBoardShowing)
@@ -3260,7 +3260,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 
 	if ( stereoFrame == STEREO_CENTER ) {
 		CG_JukeboxFrame();
-		CG_JukeboxDraw( 170.0f, 90.0f, 300.0f, 36.0f );
+		CG_JukeboxDraw( 170.0f, 90.0f, 300.0f, 54.0f );
 	}
 
 #ifdef MISSIONPACK

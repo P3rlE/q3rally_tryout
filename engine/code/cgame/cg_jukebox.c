@@ -28,6 +28,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define CG_JUKEBOX_DIRECTORY           "music/jukebox"
 #define CG_JUKEBOX_PROGRESS_MARGIN     8.0f
 #define CG_JUKEBOX_PROGRESS_HEIGHT     6.0f
+#define CG_JUKEBOX_TEXT_MARGIN         8.0f
+#define CG_JUKEBOX_FOOTER_SPACING      6.0f
 
 typedef struct {
     qboolean    scanned;
@@ -269,12 +271,13 @@ void CG_JukeboxDraw( float x, float y, float w, float h ) {
     vec4_t progressHighlightColor = { 0.8f, 0.92f, 1.0f, 0.6f };
     vec4_t progressBorderColor = { 1.0f, 1.0f, 1.0f, 0.35f };
     int textX;
-    int textY;
+    int headerY;
+    int infoY;
     qboolean showProgress = qfalse;
     float progress = 0.0f;
     char timeLine[32];
     qboolean haveTimeLine = qfalse;
-    int timeLineY = 0;
+    float progressY;
 
     if ( cg_jukebox.displayExpireTime <= cg.time || !cg_jukebox.statusLine[0] ) {
         return;
@@ -283,8 +286,19 @@ void CG_JukeboxDraw( float x, float y, float w, float h ) {
     CG_FillRect( x, y, w, h, backgroundColor );
     CG_DrawRect( x, y, w, h, 1.0f, borderColor );
 
-    textX = (int)( x + 8.0f );
-    textY = (int)( y + 6.0f );
+    textX = (int)( x + CG_JUKEBOX_TEXT_MARGIN );
+    headerY = (int)( y + CG_JUKEBOX_TEXT_MARGIN );
+    infoY = (int)( y + h - CG_JUKEBOX_FOOTER_SPACING - SMALLCHAR_HEIGHT );
+
+    if ( infoY < headerY + SMALLCHAR_HEIGHT + 2 ) {
+        infoY = headerY + SMALLCHAR_HEIGHT + 2;
+    }
+
+    progressY = infoY - CG_JUKEBOX_FOOTER_SPACING - CG_JUKEBOX_PROGRESS_HEIGHT;
+
+    if ( progressY < headerY + SMALLCHAR_HEIGHT + 2.0f ) {
+        progressY = headerY + SMALLCHAR_HEIGHT + 2.0f;
+    }
 
     if ( cg_jukebox.active && cg_jukebox.trackCount > 0 ) {
         int duration = cg_jukebox.trackDurations[cg_jukebox.currentTrack];
@@ -312,37 +326,39 @@ void CG_JukeboxDraw( float x, float y, float w, float h ) {
         }
     }
 
-    CG_DrawSmallStringColor( textX, textY, cg_jukebox.statusLine, colorWhite );
-
-    if ( cg_jukebox.subtitleLine[0] ) {
-        CG_DrawSmallStringColor( textX, textY + 12, cg_jukebox.subtitleLine, subtitleColor );
-    }
+    CG_DrawSmallStringColor( textX, headerY, cg_jukebox.statusLine, colorWhite );
 
     if ( haveTimeLine ) {
-        int statusWidth = CG_DrawStrlen( cg_jukebox.statusLine ) * SMALLCHAR_WIDTH;
         int timeWidth = CG_DrawStrlen( timeLine ) * SMALLCHAR_WIDTH;
-        int timeX = (int)( x + w - 8.0f - timeWidth );
+        int timeX = (int)( x + w - CG_JUKEBOX_TEXT_MARGIN - timeWidth );
+        int timeY = infoY;
+        int subtitleWidth = 0;
+
+        if ( cg_jukebox.subtitleLine[0] ) {
+            subtitleWidth = CG_DrawStrlen( cg_jukebox.subtitleLine ) * SMALLCHAR_WIDTH;
+        }
 
         if ( timeX < textX ) {
             timeX = textX;
         }
 
-        timeLineY = textY;
+        if ( cg_jukebox.subtitleLine[0] && timeX <= textX + subtitleWidth + 4 ) {
+            timeY = infoY - SMALLCHAR_HEIGHT - 2;
 
-        if ( timeX <= textX + statusWidth + 4 ) {
-            timeLineY = textY + 12;
-
-            if ( timeX < textX ) {
-                timeX = textX;
+            if ( timeY < headerY + SMALLCHAR_HEIGHT ) {
+                timeY = headerY + SMALLCHAR_HEIGHT;
             }
         }
 
-        CG_DrawSmallStringColor( timeX, timeLineY, timeLine, subtitleColor );
+        CG_DrawSmallStringColor( timeX, timeY, timeLine, subtitleColor );
+    }
+
+    if ( cg_jukebox.subtitleLine[0] ) {
+        CG_DrawSmallStringColor( textX, infoY, cg_jukebox.subtitleLine, subtitleColor );
     }
 
     if ( showProgress ) {
         float progressX = x + CG_JUKEBOX_PROGRESS_MARGIN;
-        float progressY = y + h - CG_JUKEBOX_PROGRESS_MARGIN - CG_JUKEBOX_PROGRESS_HEIGHT;
         float progressW = w - ( CG_JUKEBOX_PROGRESS_MARGIN * 2.0f );
         float progressH = CG_JUKEBOX_PROGRESS_HEIGHT;
 
