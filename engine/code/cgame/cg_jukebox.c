@@ -29,7 +29,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define CG_JUKEBOX_PROGRESS_MARGIN     8.0f
 #define CG_JUKEBOX_PROGRESS_HEIGHT     6.0f
 #define CG_JUKEBOX_TEXT_MARGIN         8.0f
-#define CG_JUKEBOX_FOOTER_SPACING      6.0f
+#define CG_JUKEBOX_FOOTER_MARGIN       3.0f
+#define CG_JUKEBOX_FOOTER_GAP          12.0f
 
 typedef struct {
     qboolean    scanned;
@@ -288,13 +289,13 @@ void CG_JukeboxDraw( float x, float y, float w, float h ) {
 
     textX = (int)( x + CG_JUKEBOX_TEXT_MARGIN );
     headerY = (int)( y + CG_JUKEBOX_TEXT_MARGIN );
-    infoY = (int)( y + h - CG_JUKEBOX_FOOTER_SPACING - SMALLCHAR_HEIGHT );
+    infoY = (int)( y + h - CG_JUKEBOX_FOOTER_MARGIN - SMALLCHAR_HEIGHT );
 
     if ( infoY < headerY + SMALLCHAR_HEIGHT + 2 ) {
         infoY = headerY + SMALLCHAR_HEIGHT + 2;
     }
 
-    progressY = infoY - CG_JUKEBOX_FOOTER_SPACING - CG_JUKEBOX_PROGRESS_HEIGHT;
+    progressY = infoY - CG_JUKEBOX_FOOTER_GAP - CG_JUKEBOX_PROGRESS_HEIGHT;
 
     if ( progressY < headerY + SMALLCHAR_HEIGHT + 2.0f ) {
         progressY = headerY + SMALLCHAR_HEIGHT + 2.0f;
