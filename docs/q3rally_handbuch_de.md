@@ -176,3 +176,10 @@
 2. Garage showroom with bot quotes – Surface bot descriptions alongside rotating `.skin` variants to highlight vehicle character.【F:baseq3r/scripts/bots.txt†L1-L24】【F:baseq3r/models/players/macdaddy/red.skin†L1-L19】
 3. Elimination telemetry HUD – Extend HUD to expose lap, remaining drivers, and warning countdown as described in the elimination docs.【F:docs/elimination_mode.md†L30-L38】
 
+## 8. Menu Music Player / Menü-Musikplayer
+
+**DE:** Das Hauptmenü startet beim Laden automatisch einen zufälligen Track aus `music/menumusic*.ogg`. Die UI sammelt alle passenden Dateien, zieht per Zufall eine Auswahl und spielt sie über den `music`-Konsolenbefehl ab – so rotiert das Menü eigenständig durch eure Playlist.【F:engine/code/q3_ui/ui_menu.c†L368-L390】
+**EN:** On load, the main menu now autoplays a random `music/menumusic*.ogg` track. The UI gathers every matching file, picks one at random, and fires the `music` console command so the lobby cycles through your curated playlist without extra setup.【F:engine/code/q3_ui/ui_menu.c†L368-L390】
+
+**Tip / Hinweis:** Legt zusätzliche `.ogg`-Dateien mit dem Präfix `menumusic` im Ordner `baseq3r/music/` ab, um die Rotation um eigene Songs zu erweitern.【F:engine/code/q3_ui/ui_menu.c†L368-L390】
+
