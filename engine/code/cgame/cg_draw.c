@@ -2942,6 +2942,11 @@ static void CG_DrawIntermission( void ) {
 // Q3Rally Code Start
 	cg.scoreBoardShowing = CG_DrawHUD();
 
+	if ( stereoFrame == STEREO_CENTER ) {
+		CG_JukeboxFrame();
+		CG_JukeboxDraw( 170.0f, 90.0f, 300.0f, 36.0f );
+	}
+
 	if (!cg.scoreBoardShowing)
 // Q3Rally Code END
 		cg.scoreBoardShowing = CG_DrawScoreboard();
