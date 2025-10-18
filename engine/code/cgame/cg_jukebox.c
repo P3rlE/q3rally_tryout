@@ -22,10 +22,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "cg_local.h"
 
-#define CG_JUKEBOX_MAX_TRACKS      64
-#define CG_JUKEBOX_FILELIST_SIZE   8192
-#define CG_JUKEBOX_DISPLAY_TIME    15000
-#define CG_JUKEBOX_DIRECTORY       "music/jukebox"
+#define CG_JUKEBOX_MAX_TRACKS          64
+#define CG_JUKEBOX_FILELIST_SIZE       8192
+#define CG_JUKEBOX_DISPLAY_TIME        15000
+#define CG_JUKEBOX_DIRECTORY           "music/jukebox"
+#define CG_JUKEBOX_PROGRESS_MARGIN     8.0f
+#define CG_JUKEBOX_PROGRESS_HEIGHT     6.0f
 
 typedef struct {
     qboolean    scanned;
@@ -262,8 +264,17 @@ void CG_JukeboxDraw( float x, float y, float w, float h ) {
     vec4_t backgroundColor = { 0.05f, 0.05f, 0.05f, 0.75f };
     vec4_t borderColor = { 1.0f, 1.0f, 1.0f, 0.25f };
     vec4_t subtitleColor = { 0.8f, 0.8f, 0.8f, 1.0f };
+    vec4_t progressBackgroundColor = { 0.0f, 0.0f, 0.0f, 0.45f };
+    vec4_t progressFillColor = { 0.23f, 0.68f, 0.95f, 0.9f };
+    vec4_t progressHighlightColor = { 0.8f, 0.92f, 1.0f, 0.6f };
+    vec4_t progressBorderColor = { 1.0f, 1.0f, 1.0f, 0.35f };
     int textX;
     int textY;
+    qboolean showProgress = qfalse;
+    float progress = 0.0f;
+    char timeLine[32];
+    qboolean haveTimeLine = qfalse;
+    int timeLineY = 0;
 
     if ( cg_jukebox.displayExpireTime <= cg.time || !cg_jukebox.statusLine[0] ) {
         return;
@@ -275,10 +286,84 @@ void CG_JukeboxDraw( float x, float y, float w, float h ) {
     textX = (int)( x + 8.0f );
     textY = (int)( y + 6.0f );
 
+    if ( cg_jukebox.active && cg_jukebox.trackCount > 0 ) {
+        int duration = cg_jukebox.trackDurations[cg_jukebox.currentTrack];
+
+        if ( duration > 0 ) {
+            int elapsed = cg.time - cg_jukebox.trackStartTime;
+            char elapsedBuffer[16];
+            char durationBuffer[16];
+
+            if ( elapsed < 0 ) {
+                elapsed = 0;
+            }
+
+            if ( elapsed > duration ) {
+                elapsed = duration;
+            }
+
+            progress = (float)elapsed / (float)duration;
+            showProgress = qtrue;
+
+            CG_JukeboxFormatDuration( elapsed, elapsedBuffer, sizeof( elapsedBuffer ) );
+            CG_JukeboxFormatDuration( duration, durationBuffer, sizeof( durationBuffer ) );
+            Com_sprintf( timeLine, sizeof( timeLine ), "%s / %s", elapsedBuffer, durationBuffer );
+            haveTimeLine = qtrue;
+        }
+    }
+
     CG_DrawSmallStringColor( textX, textY, cg_jukebox.statusLine, colorWhite );
 
     if ( cg_jukebox.subtitleLine[0] ) {
         CG_DrawSmallStringColor( textX, textY + 12, cg_jukebox.subtitleLine, subtitleColor );
+    }
+
+    if ( haveTimeLine ) {
+        int statusWidth = CG_DrawStrlen( cg_jukebox.statusLine ) * SMALLCHAR_WIDTH;
+        int timeWidth = CG_DrawStrlen( timeLine ) * SMALLCHAR_WIDTH;
+        int timeX = (int)( x + w - 8.0f - timeWidth );
+
+        if ( timeX < textX ) {
+            timeX = textX;
+        }
+
+        timeLineY = textY;
+
+        if ( timeX <= textX + statusWidth + 4 ) {
+            timeLineY = textY + 12;
+
+            if ( timeX < textX ) {
+                timeX = textX;
+            }
+        }
+
+        CG_DrawSmallStringColor( timeX, timeLineY, timeLine, subtitleColor );
+    }
+
+    if ( showProgress ) {
+        float progressX = x + CG_JUKEBOX_PROGRESS_MARGIN;
+        float progressY = y + h - CG_JUKEBOX_PROGRESS_MARGIN - CG_JUKEBOX_PROGRESS_HEIGHT;
+        float progressW = w - ( CG_JUKEBOX_PROGRESS_MARGIN * 2.0f );
+        float progressH = CG_JUKEBOX_PROGRESS_HEIGHT;
+
+        if ( progressW < 0.0f ) {
+            progressW = 0.0f;
+        }
+
+        CG_FillRect( progressX, progressY, progressW, progressH, progressBackgroundColor );
+
+        if ( progress > 0.0f ) {
+            float filledWidth = progressW * progress;
+
+            if ( filledWidth > progressW ) {
+                filledWidth = progressW;
+            }
+
+            CG_FillRect( progressX, progressY, filledWidth, progressH, progressFillColor );
+            CG_FillRect( progressX, progressY, filledWidth, progressH * 0.5f, progressHighlightColor );
+        }
+
+        CG_DrawRect( progressX, progressY, progressW, progressH, 1.0f, progressBorderColor );
     }
 }
 
