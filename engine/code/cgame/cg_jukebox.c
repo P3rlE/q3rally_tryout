@@ -145,7 +145,7 @@ static qboolean CG_JukeboxEnsureTracks( void ) {
 
     if ( cg_jukebox.trackCount <= 0 ) {
         CG_JukeboxSetDisplay( "Jukebox: no Titles found", "Drop .ogg-Files in baseq3r/music/jukebox" );
-        CG_Printf( "Jukebox: keine .ogg-Dateien in %s\n", CG_JUKEBOX_DIRECTORY );
+        CG_Printf( "Jukebox: No .ogg-Dateien in %s\n", CG_JUKEBOX_DIRECTORY );
         return qfalse;
     }
 
