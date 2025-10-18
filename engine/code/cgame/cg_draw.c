@@ -2924,7 +2924,7 @@ static qboolean CG_DrawScoreboard( void ) {
 CG_DrawIntermission
 ===================
 */
-static void CG_DrawIntermission( void ) {
+static void CG_DrawIntermission( stereoFrame_t stereoFrame ) {
 //	int key;
 #ifdef MISSIONPACK
 	//if (cg_singlePlayer.integer) {
@@ -3195,7 +3195,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 	}
 
 	if ( cg.snap->ps.pm_type == PM_INTERMISSION ) {
-		CG_DrawIntermission();
+		CG_DrawIntermission( stereoFrame );
 		return;
 	}
 
