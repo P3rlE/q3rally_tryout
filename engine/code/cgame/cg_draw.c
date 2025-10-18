@@ -3254,10 +3254,15 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 	CG_DrawTeamVote();
 
 	CG_DrawLagometer();
-	
+
 	if (cg_sigilLocator.integer == 1)
-      CG_DrawSigilLocations();
-      
+		CG_DrawSigilLocations();
+
+	if ( stereoFrame == STEREO_CENTER ) {
+		CG_JukeboxFrame();
+		CG_JukeboxDraw( 170.0f, 90.0f, 300.0f, 36.0f );
+	}
+
 #ifdef MISSIONPACK
 	if (!cg_paused.integer) {
 		CG_DrawUpperRight(stereoFrame);
