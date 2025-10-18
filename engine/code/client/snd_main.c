@@ -124,6 +124,32 @@ void S_StopBackgroundTrack( void )
 	}
 }
 
+int S_GetStreamLength( const char *filename )
+{
+	snd_stream_t *stream;
+	int length = 0;
+
+	if ( !filename || !*filename ) {
+		return 0;
+	}
+
+	stream = S_CodecOpenStream( filename );
+	if ( !stream ) {
+		return 0;
+	}
+
+	if ( stream->info.rate > 0 && stream->info.samples > 0 ) {
+		double totalSeconds = (double)stream->info.samples / (double)stream->info.rate;
+		if ( totalSeconds > 0.0 ) {
+			length = (int)( totalSeconds * 1000.0 + 0.5 );
+		}
+	}
+
+	S_CodecCloseStream( stream );
+
+	return length;
+}
+
 /*
 =================
 S_RawSamples

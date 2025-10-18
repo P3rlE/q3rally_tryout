@@ -2924,7 +2924,7 @@ static qboolean CG_DrawScoreboard( void ) {
 CG_DrawIntermission
 ===================
 */
-static void CG_DrawIntermission( void ) {
+static void CG_DrawIntermission( stereoFrame_t stereoFrame ) {
 //	int key;
 #ifdef MISSIONPACK
 	//if (cg_singlePlayer.integer) {
@@ -2941,6 +2941,11 @@ static void CG_DrawIntermission( void ) {
 
 // Q3Rally Code Start
 	cg.scoreBoardShowing = CG_DrawHUD();
+
+	if ( stereoFrame == STEREO_CENTER ) {
+		CG_JukeboxFrame();
+		CG_JukeboxDraw( 170.0f, 90.0f, 300.0f, 36.0f );
+	}
 
 	if (!cg.scoreBoardShowing)
 // Q3Rally Code END
@@ -3190,7 +3195,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 	}
 
 	if ( cg.snap->ps.pm_type == PM_INTERMISSION ) {
-		CG_DrawIntermission();
+		CG_DrawIntermission( stereoFrame );
 		return;
 	}
 
