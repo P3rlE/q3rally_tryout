@@ -49,6 +49,7 @@ qboolean isRaceObserver( int clientNum )
 #define ID_MMAP_SIZE            26
 #define ID_MMAP_FOV             27
 #define ID_SPEEDOMETER_MODE     28
+#define ID_FUEL_CONSUMPTION     29
 
 #define ID_MVRL_PLAYERS         30
 #define ID_MVRL_OBJECTS         31
@@ -93,7 +94,8 @@ typedef struct {
 	menutext_s		mvrl_heading;
 
 	menuradiobutton_s	engineSounds;
-    menuradiobutton_s   drawMinimap;
+	menuradiobutton_s	fuelConsumption;
+        menuradiobutton_s       drawMinimap;
 
 	menutext_s		back;
 } q3roptionsmenu_t;
@@ -209,9 +211,13 @@ static void Q3ROptions_MenuEvent( void* ptr, int event ) {
 		trap_Cvar_SetValue( "cg_engineSounds", s_q3roptions.engineSounds.curvalue );
 		break;
 
-    case ID_DRAW_MINIMAP:
-        trap_Cvar_SetValue( "cg_drawMMap", s_q3roptions.drawMinimap.curvalue );
-        break;
+	case ID_FUEL_CONSUMPTION:
+		trap_Cvar_SetValue( "g_useFuel", s_q3roptions.fuelConsumption.curvalue );
+		break;
+
+	case ID_DRAW_MINIMAP:
+		trap_Cvar_SetValue( "cg_drawMMap", s_q3roptions.drawMinimap.curvalue );
+		break;
 
 	case ID_RVRL_PLAYERS:
 	case ID_RVRL_OBJECTS:
@@ -328,9 +334,13 @@ static void Q3ROptions_StatusBar( void *self )
 		text = "Turns on engine sounds in game.";
 		break;
 
-    case ID_DRAW_MINIMAP:
-        text = "Turns on the Minimap in game.";
-        break;
+	case ID_FUEL_CONSUMPTION:
+		text = "Toggle fuel consumption for vehicles.";
+		break;
+
+	case ID_DRAW_MINIMAP:
+		text = "Turns on the Minimap in game.";
+		break;
 
 	case ID_RVRL_PLAYERS:
 		text = "Show other players in the rear view mirror.";
@@ -401,8 +411,8 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.mmap_fov.curvalue = ui_mmap_fov.value;
 
 	s_q3roptions.engineSounds.curvalue = ui_engineSounds.integer;
-    
-    s_q3roptions.drawMinimap.curvalue = ui_drawMinimap.integer;
+	s_q3roptions.fuelConsumption.curvalue = ui_useFuel.integer;
+	s_q3roptions.drawMinimap.curvalue = ui_drawMinimap.integer;
 
 	s_q3roptions.rvrl_players.curvalue = ( ui_rearViewRenderLevel.integer & RL_PLAYERS ) ? 1 : 0;
 	s_q3roptions.rvrl_objects.curvalue = ( ui_rearViewRenderLevel.integer & RL_OBJECTS ) ? 1 : 0;
@@ -481,8 +491,14 @@ void Q3ROptions_MenuInit( void ) {
         s_q3roptions.speedometer.generic.y              = 90 + 80;
         s_q3roptions.speedometer.itemnames              = q3roptions_speedometer_mode;
 
-
-
+        s_q3roptions.fuelConsumption.generic.type       = MTYPE_RADIOBUTTON;
+        s_q3roptions.fuelConsumption.generic.flags      = QMF_SMALLFONT;
+        s_q3roptions.fuelConsumption.generic.x          = 200;
+        s_q3roptions.fuelConsumption.generic.y          = 90 + 100;
+        s_q3roptions.fuelConsumption.generic.name       = "Fuel Consumption:";
+        s_q3roptions.fuelConsumption.generic.id         = ID_FUEL_CONSUMPTION;
+        s_q3roptions.fuelConsumption.generic.callback   = Q3ROptions_MenuEvent;
+        s_q3roptions.fuelConsumption.generic.statusbar  = Q3ROptions_StatusBar;
 
 	// radio buttons
 	s_q3roptions.manualShift.generic.type			= MTYPE_RADIOBUTTON;
@@ -521,14 +537,14 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.engineSounds.generic.callback		= Q3ROptions_MenuEvent;
 	s_q3roptions.engineSounds.generic.statusbar		= Q3ROptions_StatusBar;
 
-    s_q3roptions.drawMinimap.generic.type           = MTYPE_RADIOBUTTON;
-    s_q3roptions.drawMinimap.generic.flags          = QMF_SMALLFONT;
-    s_q3roptions.drawMinimap.generic.x              = 500;
-    s_q3roptions.drawMinimap.generic.y              = 90 + 80;
-    s_q3roptions.drawMinimap.generic.name           = "Minimap:";
-    s_q3roptions.drawMinimap.generic.id             = ID_DRAW_MINIMAP;
-    s_q3roptions.drawMinimap.generic.callback       = Q3ROptions_MenuEvent;
-    s_q3roptions.drawMinimap.generic.statusbar      = Q3ROptions_StatusBar;
+	s_q3roptions.drawMinimap.generic.type           = MTYPE_RADIOBUTTON;
+	s_q3roptions.drawMinimap.generic.flags          = QMF_SMALLFONT;
+	s_q3roptions.drawMinimap.generic.x              = 500;
+	s_q3roptions.drawMinimap.generic.y              = 90 + 80;
+	s_q3roptions.drawMinimap.generic.name           = "Minimap:";
+	s_q3roptions.drawMinimap.generic.id             = ID_DRAW_MINIMAP;
+	s_q3roptions.drawMinimap.generic.callback       = Q3ROptions_MenuEvent;
+	s_q3roptions.drawMinimap.generic.statusbar      = Q3ROptions_StatusBar;
     
 	// sliders
 	s_q3roptions.skidlength.generic.type		= MTYPE_SLIDER;
@@ -711,12 +727,13 @@ void Q3ROptions_MenuInit( void ) {
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.controlMode );
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.atomspheric );
         Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.speedometer );
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.fuelConsumption );
 
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.manualShift );
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.rearView );
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.positionSprites );
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.engineSounds );
-    Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.drawMinimap );
+        Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.drawMinimap );
 
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.skidlength );
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.camtracking );
