@@ -114,7 +114,7 @@ static void CG_JukeboxScan( void ) {
             int totalLen = strlen( CG_JUKEBOX_DIRECTORY ) + 1 + len;
 
             if ( totalLen >= MAX_QPATH ) {
-                CG_Printf( "Jukebox: Titelpfad zu lang: %s/%s\n", CG_JUKEBOX_DIRECTORY, entry );
+                CG_Printf( "Jukebox: Title path too long: %s/%s\n", CG_JUKEBOX_DIRECTORY, entry );
             } else {
                 char *path = cg_jukebox.trackPaths[cg_jukebox.trackCount];
                 char *name = cg_jukebox.trackNames[cg_jukebox.trackCount];
@@ -130,7 +130,7 @@ static void CG_JukeboxScan( void ) {
     }
 
     if ( listed > CG_JUKEBOX_MAX_TRACKS ) {
-        CG_Printf( "Jukebox: Nur die ersten %i Titel werden verwendet\n", CG_JUKEBOX_MAX_TRACKS );
+        CG_Printf( "Jukebox: Only the first %i Titles will be used\n", CG_JUKEBOX_MAX_TRACKS );
     }
 
     if ( cg_jukebox.trackCount <= 0 ) {
@@ -146,8 +146,8 @@ static qboolean CG_JukeboxEnsureTracks( void ) {
     }
 
     if ( cg_jukebox.trackCount <= 0 ) {
-        CG_JukeboxSetDisplay( "Jukebox: keine Titel gefunden", "Lege .ogg-Dateien in baseq3r/music/jukebox ab" );
-        CG_Printf( "Jukebox: keine .ogg-Dateien in %s\n", CG_JUKEBOX_DIRECTORY );
+        CG_JukeboxSetDisplay( "Jukebox: no Titles found", "Drop .ogg-Files in baseq3r/music/jukebox" );
+        CG_Printf( "Jukebox: No .ogg-Dateien in %s\n", CG_JUKEBOX_DIRECTORY );
         return qfalse;
     }
 
@@ -208,10 +208,10 @@ static void CG_JukeboxStopInternal( qboolean showOverlay ) {
         if ( showOverlay ) {
             if ( cg_jukebox.trackCount > 0 ) {
                 char subtitle[32];
-                Com_sprintf( subtitle, sizeof( subtitle ), "Bereit: %i Titel", cg_jukebox.trackCount );
-                CG_JukeboxSetDisplay( "Jukebox angehalten", subtitle );
+                Com_sprintf( subtitle, sizeof( subtitle ), "Ready: %i Title", cg_jukebox.trackCount );
+                CG_JukeboxSetDisplay( "Jukebox paused", subtitle );
             } else {
-                CG_JukeboxSetDisplay( "Jukebox angehalten", NULL );
+                CG_JukeboxSetDisplay( "Jukebox paused", NULL );
             }
         }
         return;
@@ -226,14 +226,14 @@ static void CG_JukeboxStopInternal( qboolean showOverlay ) {
     if ( showOverlay ) {
         char subtitle[32];
         if ( cg_jukebox.trackCount > 0 ) {
-            Com_sprintf( subtitle, sizeof( subtitle ), "Bereit: %i Titel", cg_jukebox.trackCount );
-            CG_JukeboxSetDisplay( "Jukebox gestoppt", subtitle );
+            Com_sprintf( subtitle, sizeof( subtitle ), "Ready: %i Title", cg_jukebox.trackCount );
+            CG_JukeboxSetDisplay( "Jukebox stopped", subtitle );
         } else {
-            CG_JukeboxSetDisplay( "Jukebox gestoppt", NULL );
+            CG_JukeboxSetDisplay( "Jukebox stopped", NULL );
         }
     }
 
-    CG_Printf( "Jukebox gestoppt\n" );
+    CG_Printf( "Jukebox stopped\n" );
 }
 
 void CG_JukeboxInit( void ) {
