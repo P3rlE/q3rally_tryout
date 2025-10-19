@@ -355,17 +355,18 @@ static void UI_GFX_Loading_MenuDraw(void) {
     }
 }
 
-static void UI_GFX_Loading_Key(int key) {
+static sfxHandle_t UI_GFX_Loading_Key(int key) {
     if (s_gfxloading.requireUpdateAck && !s_gfxloading.updateAcked) {
         if (key == K_MOUSE1 || key == K_MOUSE2 || key == K_MOUSE3 ||
             key == K_ENTER || key == K_KP_ENTER) {
             s_gfxloading.updateAcked = qtrue;
             trap_S_StartLocalSound(menu_out_sound, CHAN_LOCAL_SOUND);
+            return menu_out_sound;
         }
-        return;
+        return 0;
     }
 
-    Menu_DefaultKey(&s_gfxloading.menu, key);
+    return Menu_DefaultKey(&s_gfxloading.menu, key);
 }
 
 /*
