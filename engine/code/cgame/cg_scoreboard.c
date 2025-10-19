@@ -736,7 +736,8 @@ static void CG_DrawModernGameInfo(int y, float fade,
     titleColor[0] = 1.0f; titleColor[1] = 1.0f; titleColor[2] = 1.0f; titleColor[3] = fade;
     
     isRacing = CG_IsRacingGametype();
-    isEliminationMode = (cgs.gametype == GT_ELIMINATION);
+    isEliminationMode = (cgs.gametype == GT_ELIMINATION ||
+                         cgs.gametype == GT_LCS);
     
     /* Draw current rank/status */
     if (!CG_IsTeamGametype()) {
