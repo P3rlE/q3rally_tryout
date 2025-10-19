@@ -1367,9 +1367,22 @@ try {
       value: 'ctf.metric.value'
     };
 
+    function createEmptyAggregation() {
+      return {
+        totalMatches: 0,
+        lastDate: null,
+        modeCounts: new Map(),
+        playerNames: new Set(),
+        raceBest: new Map(),
+        deathmatchBest: new Map(),
+        objectiveBest: new Map(),
+        eliminationBest: new Map()
+      };
+    }
+
 
 const state = {
-  allMatches: [],
+  aggregation: createEmptyAggregation(),
   leaderboard: [],
   deathmatchLeaderboard: [],
   objectiveLeaderboard: [],
@@ -1685,6 +1698,10 @@ function applyLanguage(lang) {
   applyStaticTranslations();
   updateLanguageButtons();
   updateModeTabsLanguage();
+  buildRaceLeaderboard();
+  buildDeathmatchLeaderboard();
+  buildObjectiveLeaderboard();
+  prepareModeData();
   updateSummary();
   updateModeOptions();
   MODE_CONFIG.forEach(({ key }) => {
@@ -2461,56 +2478,16 @@ function prepareModeData() {
 }
 
 function buildRaceLeaderboard() {
-  const bestByKey = new Map();
-  for (const match of state.allMatches) {
-    const rawMode = extractMode(match);
-    const modeKey = canonicalMode(rawMode);
-    if (!RACE_MODE_KEYS.has(modeKey)) {
-      continue;
-    }
-    const entries = extractScoreboardEntries(match);
-    if (!entries.length) {
-      continue;
-    }
-    const modeLabel = humanizeMode(rawMode);
-    const map = extractMap(match);
-    const mapKey = map.toLowerCase();
-    const matchId = extractMatchId(match);
-    const startedAt = extractStart(match);
-    const recordedAt = extractRecordedAtFromMatchId(matchId);
-    for (const entry of entries) {
-      const player = extractLeaderboardPlayer(entry);
-      if (!player) {
-        continue;
-      }
-      const seconds = findBestTime(entry);
-      if (seconds === null || !isReasonableRaceTime(seconds)) {
-        continue;
-      }
-      const key = `${modeKey}||${mapKey}||${player.toLowerCase()}`;
-      const vehicle = extractVehicle(entry);
-      const isBot = extractIsBot(entry);
-      const current = bestByKey.get(key);
-      if (!current || seconds < current.time) {
-        bestByKey.set(key, {
-          player,
-          playerLower: player.toLowerCase(),
-          time: seconds,
-          map,
-          mapKey,
-          mode: modeLabel,
-          modeKey,
-          matchId,
-          startedAt,
-          recordedAt,
-          vehicle,
-          isBot
-        });
-      }
-    }
+  if (!state.aggregation) {
+    state.leaderboard = [];
+    return;
   }
   const locale = getLocale();
-  state.leaderboard = Array.from(bestByKey.values()).sort((a, b) => {
+  const entries = Array.from(state.aggregation.raceBest.values());
+  entries.forEach((entry) => {
+    entry.mode = humanizeMode(entry.modeKey);
+  });
+  entries.sort((a, b) => {
     if (a.time !== b.time) {
       return a.time - b.time;
     }
@@ -2520,70 +2497,20 @@ function buildRaceLeaderboard() {
     }
     return a.player.localeCompare(b.player, locale);
   });
+  state.leaderboard = entries;
 }
 
 function buildDeathmatchLeaderboard() {
-  const bestByKey = new Map();
-  for (const match of state.allMatches) {
-    const rawMode = extractMode(match);
-    const modeKey = canonicalMode(rawMode);
-    if (!DEATHMATCH_MODE_KEYS.has(modeKey)) {
-      continue;
-    }
-    const entries = extractScoreboardEntries(match);
-    if (!entries.length) {
-      continue;
-    }
-    const modeLabel = humanizeMode(rawMode);
-    const map = extractMap(match);
-    const mapKey = map.toLowerCase();
-    const matchId = extractMatchId(match);
-    const startedAt = extractStart(match);
-    const recordedAt = extractRecordedAtFromMatchId(matchId);
-    for (const entry of entries) {
-      const player = extractLeaderboardPlayer(entry);
-      if (!player) {
-        continue;
-      }
-      const { kills, deaths } = extractKillDeath(entry);
-      if (kills === null && deaths === null) {
-        continue;
-      }
-      const safeKills = kills ?? 0;
-      const safeDeaths = deaths ?? 0;
-      const ratio = safeKills / Math.max(1, safeDeaths);
-      if (!Number.isFinite(ratio)) {
-        continue;
-      }
-      const key = `${modeKey}||${mapKey}||${player.toLowerCase()}`;
-      const current = bestByKey.get(key);
-      const shouldUpdate =
-        !current ||
-        ratio > current.ratio ||
-        (ratio === current.ratio && safeKills > current.kills) ||
-        (ratio === current.ratio && safeKills === current.kills && safeDeaths < current.deaths);
-      if (shouldUpdate) {
-        const isBot = extractIsBot(entry);
-        bestByKey.set(key, {
-          player,
-          playerLower: player.toLowerCase(),
-          ratio,
-          kills: safeKills,
-          deaths: safeDeaths,
-          map,
-          mapKey,
-          mode: modeLabel,
-          modeKey,
-          matchId,
-          startedAt,
-          recordedAt,
-          isBot
-        });
-      }
-    }
+  if (!state.aggregation) {
+    state.deathmatchLeaderboard = [];
+    return;
   }
   const locale = getLocale();
-  state.deathmatchLeaderboard = Array.from(bestByKey.values()).sort((a, b) => {
+  const entries = Array.from(state.aggregation.deathmatchBest.values());
+  entries.forEach((entry) => {
+    entry.mode = humanizeMode(entry.modeKey);
+  });
+  entries.sort((a, b) => {
     if (b.ratio !== a.ratio) {
       return b.ratio - a.ratio;
     }
@@ -2595,104 +2522,32 @@ function buildDeathmatchLeaderboard() {
     }
     return a.player.localeCompare(b.player, locale);
   });
+  state.deathmatchLeaderboard = entries;
 }
 
 function buildObjectiveLeaderboard() {
-  const bestByKey = new Map();
-  const eliminationBestByKey = new Map();
-  for (const match of state.allMatches) {
-    const rawMode = extractMode(match);
-    const modeKey = canonicalMode(rawMode);
-    if (!OBJECTIVE_MODE_KEYS.has(modeKey)) {
-      continue;
-    }
-    const entries = extractScoreboardEntries(match);
-    if (!entries.length) {
-      continue;
-    }
-    const modeLabel = humanizeMode(rawMode);
-    const map = extractMap(match);
-    const mapKey = map.toLowerCase();
-    const matchId = extractMatchId(match);
-    const startedAt = extractStart(match);
-    const recordedAt = extractRecordedAtFromMatchId(matchId);
-    const priority = OBJECTIVE_MODE_PRIORITY[modeKey] || OBJECTIVE_DEFAULT_PRIORITY;
-    const isElimination = modeKey === 'gt_elimination';
-    const targetMap = isElimination ? eliminationBestByKey : bestByKey;
-    const eliminationContext = isElimination ? prepareEliminationMetricContext(entries) : null;
-    for (let entryIndex = 0; entryIndex < entries.length; entryIndex += 1) {
-      const entry = entries[entryIndex];
-      const player = extractLeaderboardPlayer(entry);
-      if (!player) {
-        continue;
-      }
-      const eliminationInfo =
-        isElimination && eliminationContext ? eliminationContext.positions.get(entryIndex) : null;
-      const metricContext = isElimination
-        ? {
-            rosterSize: eliminationContext ? eliminationContext.rosterSize : null,
-            position: eliminationInfo ? eliminationInfo.explicitPosition : null,
-            ordinalPosition: eliminationInfo ? eliminationInfo.ordinalPosition : null
-          }
-        : undefined;
-      const metric = extractObjectiveMetric(entry, modeKey, metricContext);
-      if (metric.value === null) {
-        continue;
-      }
-      const playerLower = player.toLowerCase();
-      const key = `${modeKey}||${mapKey}||${playerLower}`;
-      const current = targetMap.get(key);
-      const metricPriority = priorityIndex(metric.type, priority);
-      const recordDate = recordedAt || startedAt;
-      const recordTime = recordDate instanceof Date ? recordDate.getTime() : 0;
-      let shouldUpdate = false;
-      if (!current) {
-        shouldUpdate = true;
-      } else if (metric.value > current.value) {
-        shouldUpdate = true;
-      } else if (metric.value === current.value) {
-        const currentPriority = priorityIndex(current.metricType, priority);
-        if (metricPriority < currentPriority) {
-          shouldUpdate = true;
-        } else if (metricPriority === currentPriority) {
-          const currentDate = current.recordedAt || current.startedAt;
-          const currentTime = currentDate instanceof Date ? currentDate.getTime() : 0;
-          if (recordTime > currentTime) {
-            shouldUpdate = true;
-          } else if (recordTime === currentTime && playerLower < current.playerLower) {
-            shouldUpdate = true;
-          }
-        }
-      }
-      if (shouldUpdate) {
-        const isBot = extractIsBot(entry);
-        targetMap.set(key, {
-          player,
-          playerLower,
-          value: metric.value,
-          metricType: metric.type || 'value',
-          map,
-          mapKey,
-          mode: modeLabel,
-          modeKey,
-          matchId,
-          startedAt,
-          recordedAt,
-          isBot
-        });
-      }
-    }
+  if (!state.aggregation) {
+    state.objectiveLeaderboard = [];
+    state.eliminationLeaderboard = [];
+    return;
   }
   const locale = getLocale();
+
   function sortObjectiveEntries(map) {
     return Array.from(map.values()).sort((a, b) => {
       if (b.value !== a.value) {
         return b.value - a.value;
       }
-      const metricPriorityA = priorityIndex(a.metricType, OBJECTIVE_MODE_PRIORITY[a.modeKey] || OBJECTIVE_DEFAULT_PRIORITY);
-      const metricPriorityB = priorityIndex(b.metricType, OBJECTIVE_MODE_PRIORITY[b.modeKey] || OBJECTIVE_DEFAULT_PRIORITY);
-      if (metricPriorityA !== metricPriorityB) {
-        return metricPriorityA - metricPriorityB;
+      const priorityA = priorityIndex(
+        a.metricType,
+        OBJECTIVE_MODE_PRIORITY[a.modeKey] || OBJECTIVE_DEFAULT_PRIORITY
+      );
+      const priorityB = priorityIndex(
+        b.metricType,
+        OBJECTIVE_MODE_PRIORITY[b.modeKey] || OBJECTIVE_DEFAULT_PRIORITY
+      );
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
       }
       const dateA = a.recordedAt || a.startedAt;
       const dateB = b.recordedAt || b.startedAt;
@@ -2704,8 +2559,18 @@ function buildObjectiveLeaderboard() {
       return a.player.localeCompare(b.player, locale);
     });
   }
-  state.objectiveLeaderboard = sortObjectiveEntries(bestByKey);
-  state.eliminationLeaderboard = sortObjectiveEntries(eliminationBestByKey);
+
+  const objectiveEntries = sortObjectiveEntries(state.aggregation.objectiveBest);
+  objectiveEntries.forEach((entry) => {
+    entry.mode = humanizeMode(entry.modeKey);
+  });
+  state.objectiveLeaderboard = objectiveEntries;
+
+  const eliminationEntries = sortObjectiveEntries(state.aggregation.eliminationBest);
+  eliminationEntries.forEach((entry) => {
+    entry.mode = humanizeMode(entry.modeKey);
+  });
+  state.eliminationLeaderboard = eliminationEntries;
 }
 
 function prepareEliminationMetricContext(entries) {
@@ -2730,31 +2595,24 @@ function prepareEliminationMetricContext(entries) {
 }
 
 function updateSummary() {
-  const total = state.allMatches.length;
+  const aggregation = state.aggregation || createEmptyAggregation();
+  const total = aggregation.totalMatches;
   elements.statTotal.textContent = total ? total.toString() : '–';
-  const modes = new Set(state.allMatches.map((match) => canonicalMode(extractMode(match))));
-  elements.statModes.textContent = modes.size ? modes.size.toString() : '–';
-  const lastDate = state.allMatches
-    .map((match) => extractStart(match))
-    .filter((date) => date instanceof Date && !Number.isNaN(date.getTime()))
-    .sort((a, b) => b.getTime() - a.getTime())[0];
-  elements.statLast.textContent = lastDate ? formatter.format(lastDate) : '–';
-  const playerSet = new Set();
-  state.allMatches.forEach((match) => {
-    extractPlayers(match).forEach((name) => playerSet.add(name));
-  });
-  elements.statPlayers.textContent = playerSet.size ? playerSet.size.toString() : '–';
-  const breakdown = new Map();
-  state.allMatches.forEach((match) => {
-    const mode = extractMode(match);
-    const key = canonicalMode(mode);
-    const label = humanizeMode(mode);
-    const current = breakdown.get(key) || { label, count: 0 };
-    current.label = label;
-    current.count += 1;
-    breakdown.set(key, current);
-  });
-  const items = Array.from(breakdown.values()).sort((a, b) => b.count - a.count);
+
+  const modeCount = aggregation.modeCounts.size;
+  elements.statModes.textContent = modeCount ? modeCount.toString() : '–';
+
+  const lastDate = aggregation.lastDate;
+  elements.statLast.textContent =
+    lastDate instanceof Date && !Number.isNaN(lastDate.getTime()) ? formatter.format(lastDate) : '–';
+
+  const playerCount = aggregation.playerNames.size;
+  elements.statPlayers.textContent = playerCount ? playerCount.toString() : '–';
+
+  const items = Array.from(aggregation.modeCounts.entries())
+    .map(([modeKey, count]) => ({ label: humanizeMode(modeKey), count }))
+    .sort((a, b) => b.count - a.count);
+
   if (!items.length) {
     elements.modeBreakdown.innerHTML = `<li>${escapeHtml(t('breakdown.empty'))}</li>`;
   } else {
@@ -2809,6 +2667,13 @@ async function loadMatches() {
   setModeStatus('mode.status.loading');
   try {
     state.mapMetadata = new Map();
+    state.aggregation = createEmptyAggregation();
+    state.leaderboard = [];
+    state.deathmatchLeaderboard = [];
+    state.objectiveLeaderboard = [];
+    state.eliminationLeaderboard = [];
+    state.modeData = new Map();
+
     const response = await fetch(`${API_BASE}/matches?limit=all`);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -2817,12 +2682,14 @@ async function loadMatches() {
     if (!payload || !Array.isArray(payload.matches)) {
       throw new Error(t('errors.unexpectedResponse'));
     }
-    state.allMatches = payload.matches;
-    if (!state.allMatches.length) {
-      state.leaderboard = [];
-      state.deathmatchLeaderboard = [];
-      state.objectiveLeaderboard = [];
-      state.eliminationLeaderboard = [];
+
+    for (const match of payload.matches) {
+      ingestMatch(match);
+    }
+
+    payload.matches = undefined;
+
+    if (!state.aggregation.totalMatches) {
       state.modeData = new Map();
       state.mapMetadata = new Map();
       updateSummary();
@@ -2831,6 +2698,7 @@ async function loadMatches() {
       setModeStatus('mode.status.empty');
       return;
     }
+
     state.mapMetadata = await fetchMapMetadata();
     buildRaceLeaderboard();
     buildDeathmatchLeaderboard();
@@ -2839,10 +2707,10 @@ async function loadMatches() {
     updateSummary();
     updateModeOptions();
     MODE_CONFIG.forEach(({ key }) => renderModeTable(key));
-    setModeStatus('mode.status.ready', { count: state.allMatches.length });
+    setModeStatus('mode.status.ready', { count: state.aggregation.totalMatches });
   } catch (error) {
     console.error(error);
-    state.allMatches = [];
+    state.aggregation = createEmptyAggregation();
     state.leaderboard = [];
     state.deathmatchLeaderboard = [];
     state.objectiveLeaderboard = [];
@@ -2853,6 +2721,211 @@ async function loadMatches() {
     updateModeOptions();
     MODE_CONFIG.forEach(({ key }) => renderModeTable(key));
     setModeStatus('mode.status.error', { message: error.message }, true);
+  }
+}
+
+function ingestMatch(match) {
+  const aggregation = state.aggregation;
+  if (!aggregation) {
+    return;
+  }
+
+  aggregation.totalMatches += 1;
+
+  const matchId = extractMatchId(match);
+  const startedAt = extractStart(match);
+  const recordedAt = extractRecordedAtFromMatchId(matchId);
+  const effectiveDate = startedAt || recordedAt || null;
+  if (effectiveDate instanceof Date && !Number.isNaN(effectiveDate.getTime())) {
+    if (!aggregation.lastDate || aggregation.lastDate.getTime() < effectiveDate.getTime()) {
+      aggregation.lastDate = effectiveDate;
+    }
+  }
+
+  const players = extractPlayers(match);
+  players.forEach((name) => {
+    if (name) {
+      aggregation.playerNames.add(name);
+    }
+  });
+
+  const rawMode = extractMode(match);
+  const modeKey = canonicalMode(rawMode);
+  aggregation.modeCounts.set(modeKey, (aggregation.modeCounts.get(modeKey) || 0) + 1);
+
+  const entries = extractScoreboardEntries(match);
+  if (!entries.length) {
+    return;
+  }
+
+  const map = extractMap(match);
+  const mapKey = map.toLowerCase();
+  const context = {
+    map,
+    mapKey,
+    modeKey,
+    matchId,
+    startedAt,
+    recordedAt
+  };
+
+  if (RACE_MODE_KEYS.has(modeKey)) {
+    ingestRaceEntries(aggregation, entries, context);
+  } else if (DEATHMATCH_MODE_KEYS.has(modeKey)) {
+    ingestDeathmatchEntries(aggregation, entries, context);
+  } else if (OBJECTIVE_MODE_KEYS.has(modeKey)) {
+    ingestObjectiveEntries(aggregation, entries, context);
+  }
+}
+
+function ingestRaceEntries(aggregation, entries, context) {
+  const { map, mapKey, modeKey, matchId, startedAt, recordedAt } = context;
+  for (const entry of entries) {
+    const player = extractLeaderboardPlayer(entry);
+    if (!player) {
+      continue;
+    }
+    const seconds = findBestTime(entry);
+    if (seconds === null || !isReasonableRaceTime(seconds)) {
+      continue;
+    }
+    const playerLower = player.toLowerCase();
+    const key = `${modeKey}||${mapKey}||${playerLower}`;
+    const current = aggregation.raceBest.get(key);
+    if (!current || seconds < current.time) {
+      const vehicle = extractVehicle(entry);
+      const isBot = extractIsBot(entry);
+      aggregation.raceBest.set(key, {
+        player,
+        playerLower,
+        time: seconds,
+        map,
+        mapKey,
+        modeKey,
+        matchId,
+        startedAt,
+        recordedAt,
+        vehicle,
+        isBot
+      });
+    }
+  }
+}
+
+function ingestDeathmatchEntries(aggregation, entries, context) {
+  const { map, mapKey, modeKey, matchId, startedAt, recordedAt } = context;
+  for (const entry of entries) {
+    const player = extractLeaderboardPlayer(entry);
+    if (!player) {
+      continue;
+    }
+    const { kills, deaths } = extractKillDeath(entry);
+    if (kills === null && deaths === null) {
+      continue;
+    }
+    const safeKills = kills ?? 0;
+    const safeDeaths = deaths ?? 0;
+    const ratio = safeKills / Math.max(1, safeDeaths);
+    if (!Number.isFinite(ratio)) {
+      continue;
+    }
+    const playerLower = player.toLowerCase();
+    const key = `${modeKey}||${mapKey}||${playerLower}`;
+    const current = aggregation.deathmatchBest.get(key);
+    const shouldUpdate =
+      !current ||
+      ratio > current.ratio ||
+      (ratio === current.ratio && safeKills > current.kills) ||
+      (ratio === current.ratio && safeKills === current.kills && safeDeaths < current.deaths);
+    if (shouldUpdate) {
+      const isBot = extractIsBot(entry);
+      aggregation.deathmatchBest.set(key, {
+        player,
+        playerLower,
+        ratio,
+        kills: safeKills,
+        deaths: safeDeaths,
+        map,
+        mapKey,
+        modeKey,
+        matchId,
+        startedAt,
+        recordedAt,
+        isBot
+      });
+    }
+  }
+}
+
+function ingestObjectiveEntries(aggregation, entries, context) {
+  const { map, mapKey, modeKey, matchId, startedAt, recordedAt } = context;
+  const priority = OBJECTIVE_MODE_PRIORITY[modeKey] || OBJECTIVE_DEFAULT_PRIORITY;
+  const isElimination = modeKey === 'gt_elimination';
+  const targetMap = isElimination ? aggregation.eliminationBest : aggregation.objectiveBest;
+  const eliminationContext = isElimination ? prepareEliminationMetricContext(entries) : null;
+
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    const player = extractLeaderboardPlayer(entry);
+    if (!player) {
+      continue;
+    }
+    const eliminationInfo =
+      isElimination && eliminationContext ? eliminationContext.positions.get(index) : null;
+    const metricContext = isElimination
+      ? {
+          rosterSize: eliminationContext ? eliminationContext.rosterSize : null,
+          position: eliminationInfo ? eliminationInfo.explicitPosition : null,
+          ordinalPosition: eliminationInfo ? eliminationInfo.ordinalPosition : null
+        }
+      : undefined;
+    const metric = extractObjectiveMetric(entry, modeKey, metricContext);
+    if (metric.value === null) {
+      continue;
+    }
+
+    const playerLower = player.toLowerCase();
+    const key = `${modeKey}||${mapKey}||${playerLower}`;
+    const current = targetMap.get(key);
+    const metricPriority = priorityIndex(metric.type, priority);
+    const recordDate = recordedAt || startedAt;
+    const recordTime = recordDate instanceof Date ? recordDate.getTime() : 0;
+    let shouldUpdate = false;
+    if (!current) {
+      shouldUpdate = true;
+    } else if (metric.value > current.value) {
+      shouldUpdate = true;
+    } else if (metric.value === current.value) {
+      const currentPriority = priorityIndex(current.metricType, priority);
+      if (metricPriority < currentPriority) {
+        shouldUpdate = true;
+      } else if (metricPriority === currentPriority) {
+        const currentDate = current.recordedAt || current.startedAt;
+        const currentTime = currentDate instanceof Date ? currentDate.getTime() : 0;
+        if (recordTime > currentTime) {
+          shouldUpdate = true;
+        } else if (recordTime === currentTime && playerLower < current.playerLower) {
+          shouldUpdate = true;
+        }
+      }
+    }
+
+    if (shouldUpdate) {
+      const isBot = extractIsBot(entry);
+      targetMap.set(key, {
+        player,
+        playerLower,
+        value: metric.value,
+        metricType: metric.type || 'value',
+        map,
+        mapKey,
+        modeKey,
+        matchId,
+        startedAt,
+        recordedAt,
+        isBot
+      });
+    }
   }
 }
 
@@ -3716,30 +3789,27 @@ function handle_get(array $segments): void
     }
 
     if ($segments === ['matches']) {
-        $matches = load_all_matches();
         $mode = $_GET['mode'] ?? null;
-        if (is_string($mode) && $mode !== '') {
-            $matches = array_filter($matches, static function ($match) use ($mode) {
-                return isset($match['mode']) && strcasecmp((string) $match['mode'], $mode) === 0;
-            });
-        }
-
-        usort($matches, static function ($a, $b) {
-            $aTime = strtotime($a['receivedAt'] ?? 'now');
-            $bTime = strtotime($b['receivedAt'] ?? 'now');
-            return $bTime <=> $aTime;
-        });
+        $modeFilter = is_string($mode) && $mode !== '' ? $mode : null;
 
         $offset = isset($_GET['offset']) ? max(0, (int) $_GET['offset']) : 0;
         $limitParam = $_GET['limit'] ?? null;
+        $limit = null;
+        $shouldStreamAll = false;
         if (is_string($limitParam) && strcasecmp($limitParam, 'all') === 0) {
-            $slice = array_slice($matches, $offset);
+            $shouldStreamAll = true;
         } else {
             $limit = $limitParam !== null ? max(1, (int) $limitParam) : 100;
-            $slice = array_slice($matches, $offset, $limit);
         }
 
-        send_json(['matches' => array_values($slice)], 200);
+        if ($shouldStreamAll) {
+            stream_all_matches($offset, $modeFilter);
+            return;
+        }
+
+        $matches = load_matches($offset, $limit, $modeFilter);
+
+        send_json(['matches' => array_values($matches)], 200);
         return;
     }
 
@@ -3915,26 +3985,160 @@ function extract_arena_value(string $block, string $key): ?string
     return null;
 }
 
-function load_all_matches(): array
+function stream_all_matches(int $offset, ?string $modeFilter): void
+{
+    http_response_code(200);
+    header('Content-Type: application/json');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+
+    $out = fopen('php://output', 'wb');
+    if ($out === false) {
+        throw new RuntimeException('Failed to open output stream.');
+    }
+
+    fwrite($out, '{"matches":[');
+
+    $first = true;
+    $skipped = 0;
+    $normalizedMode = $modeFilter !== null ? $modeFilter : null;
+
+    foreach (list_match_files() as $file) {
+        $payload = decode_match_file($file);
+        if ($payload === null) {
+            continue;
+        }
+
+        if ($normalizedMode !== null) {
+            $payloadMode = isset($payload['mode']) ? (string) $payload['mode'] : '';
+            if ($payloadMode === '' || strcasecmp($payloadMode, $normalizedMode) !== 0) {
+                continue;
+            }
+        }
+
+        if ($skipped < $offset) {
+            $skipped++;
+            continue;
+        }
+
+        $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            continue;
+        }
+
+        if ($first) {
+            $first = false;
+        } else {
+            fwrite($out, ',');
+        }
+
+        fwrite($out, $json);
+    }
+
+    fwrite($out, ']}');
+    fflush($out);
+    fclose($out);
+    exit;
+}
+
+function load_matches(int $offset, ?int $limit, ?string $modeFilter): array
+{
+    $files = list_match_files();
+    if ($modeFilter === null) {
+        $slice = $limit === null ? array_slice($files, $offset) : array_slice($files, $offset, $limit);
+        return decode_match_files($slice);
+    }
+
+    $matches = [];
+    $skipped = 0;
+    $normalizedMode = $modeFilter;
+    $collected = 0;
+
+    foreach ($files as $file) {
+        $payload = decode_match_file($file);
+        if ($payload === null) {
+            continue;
+        }
+
+        $payloadMode = isset($payload['mode']) ? (string) $payload['mode'] : '';
+        if ($payloadMode === '' || strcasecmp($payloadMode, $normalizedMode) !== 0) {
+            continue;
+        }
+
+        if ($skipped < $offset) {
+            $skipped++;
+            continue;
+        }
+
+        $matches[] = $payload;
+        $collected++;
+
+        if ($limit !== null && $collected >= $limit) {
+            break;
+        }
+    }
+
+    return $matches;
+}
+
+function list_match_files(): array
 {
     $files = glob(DATA_DIR . '/*.json');
     if ($files === false) {
         return [];
     }
 
+    $filtered = array_filter($files, static function ($file) {
+        if (!is_string($file) || $file === '') {
+            return false;
+        }
+        if (!is_file($file)) {
+            return false;
+        }
+        $basename = basename($file);
+        return $basename !== 'version.json';
+    });
+
+    usort($filtered, static function ($a, $b) {
+        $timeA = @filemtime($a);
+        $timeB = @filemtime($b);
+        $timeA = $timeA === false ? 0 : $timeA;
+        $timeB = $timeB === false ? 0 : $timeB;
+        if ($timeA === $timeB) {
+            return strcmp($b, $a);
+        }
+
+        return $timeB <=> $timeA;
+    });
+
+    return array_values($filtered);
+}
+
+function decode_match_files(array $files): array
+{
     $matches = [];
     foreach ($files as $file) {
-        $json = file_get_contents($file);
-        if ($json === false) {
-            continue;
-        }
-        $payload = json_decode($json, true);
-        if (is_array($payload)) {
+        $payload = decode_match_file($file);
+        if ($payload !== null) {
             $matches[] = $payload;
         }
     }
 
     return $matches;
+}
+
+function decode_match_file(string $file): ?array
+{
+    $json = file_get_contents($file);
+    if ($json === false) {
+        return null;
+    }
+
+    $payload = json_decode($json, true);
+    if (!is_array($payload)) {
+        return null;
+    }
+
+    return $payload;
 }
 
 function normalize_match_id(string $raw): string
