@@ -35,6 +35,7 @@ typedef enum {
     RALLY_IMPACT_REAR
 } rallyImpactType_t;
 
+/*
 static rallyImpactType_t G_RallyObject_ClassifyImpact( const vec3_t normal, const vec3_t forward, const vec3_t right ) {
     float forwardDot, absForward, rightDot, absRight;
 
@@ -53,14 +54,16 @@ static rallyImpactType_t G_RallyObject_ClassifyImpact( const vec3_t normal, cons
         return RALLY_IMPACT_SIDE;
     }
 
-    /* default to the shallowest classification */
+    // default to the shallowest classification 
     if( forwardDot > 0.0f ) {
         return RALLY_IMPACT_REAR;
     }
 
     return RALLY_IMPACT_FRONT;
 }
+*/
 
+/*
 static const char *G_RallyObject_ImpactName( rallyImpactType_t impact ) {
     switch( impact ) {
     case RALLY_IMPACT_FRONT:
@@ -73,7 +76,9 @@ static const char *G_RallyObject_ImpactName( rallyImpactType_t impact ) {
 
     return "unknown";
 }
+*/
 
+/*
 static float G_RallyObject_ImpactWeight( rallyImpactType_t impact ) {
     switch( impact ) {
     case RALLY_IMPACT_FRONT:
@@ -86,7 +91,9 @@ static float G_RallyObject_ImpactWeight( rallyImpactType_t impact ) {
 
     return 1.0f;
 }
+*/
 
+/*
 static void G_RallyObject_DeriveImpactWeight( float forwardDot, float rightDot,
         float frontWeight, float sideWeight, float rearWeight,
         float *outWeight, const char **outName ) {
@@ -121,6 +128,8 @@ static void G_RallyObject_DeriveImpactWeight( float forwardDot, float rightDot,
         *outName = "front";
     }
 }
+*/
+
 
 static float G_RallyObject_SelectImpactWeight( float forwardDot, float rightDot,
         float frontWeight, float sideWeight, float rearWeight, const char **outName ) {
