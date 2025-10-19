@@ -192,11 +192,11 @@ void CG_DrawInformation( void ) {
 			UI_CENTER|UI_SMALLFONT|UI_DROPSHADOW, colorWhite );
 	}
 
-	// draw info string information
+        // draw info string information
 
-	y = 180-32;
+        y = 180-32;
 
-	// don't print server lines if playing a local game
+        // don't print server lines if playing a local game
 	trap_Cvar_VariableStringBuffer( "sv_running", buf, sizeof( buf ) );
 	if ( !atoi( buf ) ) {
 		// server hostname
@@ -223,13 +223,60 @@ void CG_DrawInformation( void ) {
 		}
 
 		// some extra space after hostname and motd
-		y += 10;
-	}
+                y += 10;
+        }
 
-	// map-specific message (long map name)
-	s = CG_ConfigString( CS_MESSAGE );
-	if ( s[0] ) {
-		UI_DrawProportionalString( 320, y, s,
+        {
+                char updateState[32];
+
+                trap_Cvar_VariableStringBuffer("cl_updateState", updateState, sizeof(updateState));
+
+                if ( !Q_stricmp( updateState, "outdated" ) ) {
+                        char remoteVersion[64];
+                        char remoteDate[64];
+
+                        trap_Cvar_VariableStringBuffer( "cl_updateRemote", remoteVersion, sizeof( remoteVersion ) );
+                        trap_Cvar_VariableStringBuffer( "cl_updateDate", remoteDate, sizeof( remoteDate ) );
+
+                        UI_DrawProportionalString( 320, y, "A new Q3Rally version is available!",
+                                UI_CENTER|UI_SMALLFONT|UI_DROPSHADOW, colorRed );
+                        y += PROP_HEIGHT;
+
+                        if ( remoteVersion[0] ) {
+                                if ( remoteDate[0] ) {
+                                        Com_sprintf( buf, sizeof( buf ), "Installed: %s   Latest: %s (%s)",
+                                                PRODUCT_VERSION, remoteVersion, remoteDate );
+                                } else {
+                                        Com_sprintf( buf, sizeof( buf ), "Installed: %s   Latest: %s",
+                                                PRODUCT_VERSION, remoteVersion );
+                                }
+                        } else {
+                                Com_sprintf( buf, sizeof( buf ), "Installed: %s   Latest: unknown",
+                                        PRODUCT_VERSION );
+                        }
+
+                        UI_DrawProportionalString( 320, y, buf,
+                                UI_CENTER|UI_SMALLFONT|UI_DROPSHADOW, colorYellow );
+                        y += PROP_HEIGHT;
+                } else if ( !Q_stricmp( updateState, "failed" ) ) {
+                        char errorMsg[128];
+
+                        trap_Cvar_VariableStringBuffer( "cl_updateError", errorMsg, sizeof( errorMsg ) );
+
+                        if ( !errorMsg[0] ) {
+                                Q_strncpyz( errorMsg, "Unable to check for updates", sizeof( errorMsg ) );
+                        }
+
+                        UI_DrawProportionalString( 320, y, errorMsg,
+                                UI_CENTER|UI_SMALLFONT|UI_DROPSHADOW, colorYellow );
+                        y += PROP_HEIGHT;
+                }
+        }
+
+        // map-specific message (long map name)
+        s = CG_ConfigString( CS_MESSAGE );
+        if ( s[0] ) {
+                UI_DrawProportionalString( 320, y, s,
 			UI_CENTER|UI_SMALLFONT|UI_DROPSHADOW, colorWhite );
 		y += PROP_HEIGHT;
 	}
