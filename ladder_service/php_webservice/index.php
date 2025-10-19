@@ -2674,34 +2674,20 @@ async function loadMatches() {
     state.eliminationLeaderboard = [];
     state.modeData = new Map();
 
-    const pageSize = 200;
-    let offset = 0;
-    // Fetch matches in manageable chunks to avoid exhausting server resources.
-    while (true) {
-      const params = new URLSearchParams({ offset: String(offset), limit: String(pageSize) });
-      const response = await fetch(`${API_BASE}/matches?${params.toString()}`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      const payload = await response.json();
-      if (!payload || !Array.isArray(payload.matches)) {
-        throw new Error(t('errors.unexpectedResponse'));
-      }
-
-      if (!payload.matches.length) {
-        break;
-      }
-
-      for (const match of payload.matches) {
-        ingestMatch(match);
-      }
-
-      if (payload.matches.length < pageSize) {
-        break;
-      }
-
-      offset += payload.matches.length;
+    const response = await fetch(`${API_BASE}/matches?limit=all`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
+    const payload = await response.json();
+    if (!payload || !Array.isArray(payload.matches)) {
+      throw new Error(t('errors.unexpectedResponse'));
+    }
+
+    for (const match of payload.matches) {
+      ingestMatch(match);
+    }
+
+    payload.matches = undefined;
 
     if (!state.aggregation.totalMatches) {
       state.modeData = new Map();
@@ -3809,8 +3795,16 @@ function handle_get(array $segments): void
         $offset = isset($_GET['offset']) ? max(0, (int) $_GET['offset']) : 0;
         $limitParam = $_GET['limit'] ?? null;
         $limit = null;
-        if (!is_string($limitParam) || strcasecmp($limitParam, 'all') !== 0) {
+        $shouldStreamAll = false;
+        if (is_string($limitParam) && strcasecmp($limitParam, 'all') === 0) {
+            $shouldStreamAll = true;
+        } else {
             $limit = $limitParam !== null ? max(1, (int) $limitParam) : 100;
+        }
+
+        if ($shouldStreamAll) {
+            stream_all_matches($offset, $modeFilter);
+            return;
         }
 
         $matches = load_matches($offset, $limit, $modeFilter);
@@ -3989,6 +3983,61 @@ function extract_arena_value(string $block, string $key): ?string
     }
 
     return null;
+}
+
+function stream_all_matches(int $offset, ?string $modeFilter): void
+{
+    http_response_code(200);
+    header('Content-Type: application/json');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+
+    $out = fopen('php://output', 'wb');
+    if ($out === false) {
+        throw new RuntimeException('Failed to open output stream.');
+    }
+
+    fwrite($out, '{"matches":[');
+
+    $first = true;
+    $skipped = 0;
+    $normalizedMode = $modeFilter !== null ? $modeFilter : null;
+
+    foreach (list_match_files() as $file) {
+        $payload = decode_match_file($file);
+        if ($payload === null) {
+            continue;
+        }
+
+        if ($normalizedMode !== null) {
+            $payloadMode = isset($payload['mode']) ? (string) $payload['mode'] : '';
+            if ($payloadMode === '' || strcasecmp($payloadMode, $normalizedMode) !== 0) {
+                continue;
+            }
+        }
+
+        if ($skipped < $offset) {
+            $skipped++;
+            continue;
+        }
+
+        $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            continue;
+        }
+
+        if ($first) {
+            $first = false;
+        } else {
+            fwrite($out, ',');
+        }
+
+        fwrite($out, $json);
+    }
+
+    fwrite($out, ']}');
+    fflush($out);
+    fclose($out);
+    exit;
 }
 
 function load_matches(int $offset, ?int $limit, ?string $modeFilter): array
