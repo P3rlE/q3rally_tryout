@@ -22,6 +22,69 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "g_local.h"
+#include <math.h>
+
+/* thresholds for the absolute dot products when categorising collision faces */
+#define RALLY_IMPACT_FRONT_THRESHOLD   0.75f
+#define RALLY_IMPACT_SIDE_THRESHOLD    0.35f
+
+typedef enum {
+    RALLY_IMPACT_FRONT,
+    RALLY_IMPACT_SIDE,
+    RALLY_IMPACT_REAR
+} rallyImpactType_t;
+
+static rallyImpactType_t G_RallyObject_ClassifyImpact( const vec3_t normal, const vec3_t forward, const vec3_t right ) {
+    float forwardDot, absForward, rightDot, absRight;
+
+    forwardDot = DotProduct( normal, forward );
+    absForward = fabs( forwardDot );
+    if( absForward >= RALLY_IMPACT_FRONT_THRESHOLD ) {
+        if( forwardDot <= 0.0f ) {
+            return RALLY_IMPACT_FRONT;
+        }
+        return RALLY_IMPACT_REAR;
+    }
+
+    rightDot = DotProduct( normal, right );
+    absRight = fabs( rightDot );
+    if( absRight >= RALLY_IMPACT_SIDE_THRESHOLD ) {
+        return RALLY_IMPACT_SIDE;
+    }
+
+    /* default to the shallowest classification */
+    if( forwardDot > 0.0f ) {
+        return RALLY_IMPACT_REAR;
+    }
+
+    return RALLY_IMPACT_FRONT;
+}
+
+static const char *G_RallyObject_ImpactName( rallyImpactType_t impact ) {
+    switch( impact ) {
+    case RALLY_IMPACT_FRONT:
+        return "front";
+    case RALLY_IMPACT_SIDE:
+        return "side";
+    case RALLY_IMPACT_REAR:
+        return "rear";
+    }
+
+    return "unknown";
+}
+
+static float G_RallyObject_ImpactWeight( rallyImpactType_t impact ) {
+    switch( impact ) {
+    case RALLY_IMPACT_FRONT:
+        return g_derbyCollisionFrontWeight.value;
+    case RALLY_IMPACT_SIDE:
+        return g_derbyCollisionSideWeight.value;
+    case RALLY_IMPACT_REAR:
+        return g_derbyCollisionRearWeight.value;
+    }
+
+    return 1.0f;
+}
 
 /*
  * Generic physics routines for moveable rally objects.
@@ -269,8 +332,16 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
 
         if( hit->client != NULL || ( hit->r.svFlags & SVF_BOT ) ) {
             vec3_t invNormal;
+            vec3_t forwardSelf, rightSelf;
+            vec3_t forwardHit, rightHit;
+            rallyImpactType_t impactSelf, impactHit;
+            float weightSelf, weightHit;
+            float weightedSelf, weightedHit;
             float vSelf, vHit, closing, totalDamage, damageSelfF, damageHitF;
             int damageSelf, damageHit;
+
+            AngleVectors( self->s.apos.trBase, forwardSelf, rightSelf, NULL );
+            AngleVectors( hit->s.apos.trBase, forwardHit, rightHit, NULL );
 
             /* store normal velocities before collision response */
             vSelf = DotProduct( self->s.pos.trDelta, tr.plane.normal );
@@ -290,6 +361,11 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
                 VectorScale( tr.plane.normal, -1.0f, invNormal );
                 G_RallyObject_ApplyCollision( hit, tr.endpos, invNormal, self->elasticity );
 
+                impactSelf = G_RallyObject_ClassifyImpact( tr.plane.normal, forwardSelf, rightSelf );
+                impactHit = G_RallyObject_ClassifyImpact( invNormal, forwardHit, rightHit );
+                weightSelf = G_RallyObject_ImpactWeight( impactSelf );
+                weightHit = G_RallyObject_ImpactWeight( impactHit );
+
                 closing = vSelf + vHit;
                 if( closing > 0.0f ) {
                     totalDamage = ( closing + g_vehicleDamageOffset.value ) * g_vehicleDamageScale.value;
@@ -299,6 +375,12 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
 
                     damageHitF  *= g_derbyRammerDamageRatio.value;
                     damageSelfF *= 2.0f - g_derbyRammerDamageRatio.value;
+
+                    damageSelfF *= weightSelf;
+                    damageHitF  *= weightHit;
+
+                    weightedSelf = damageSelfF;
+                    weightedHit  = damageHitF;
 
                     {
                         float scaledTotal;
@@ -311,6 +393,24 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
                             damageSelfF *= rescale;
                             damageHitF  *= rescale;
                         }
+                    }
+
+                    if( g_derbyCollisionLog.integer ) {
+                        G_LogPrintf( "derby collision: self=%i(%s) hit=%i(%s) nF=%.2f/%.2f nS=%.2f/%.2f weights=%.2f/%.2f base=%.1f/%.1f final=%.1f/%.1f\n",
+                            self->s.number,
+                            G_RallyObject_ImpactName( impactSelf ),
+                            hit->s.number,
+                            G_RallyObject_ImpactName( impactHit ),
+                            DotProduct( tr.plane.normal, forwardSelf ),
+                            DotProduct( invNormal, forwardHit ),
+                            DotProduct( tr.plane.normal, rightSelf ),
+                            DotProduct( invNormal, rightHit ),
+                            weightSelf,
+                            weightHit,
+                            weightedSelf,
+                            weightedHit,
+                            damageSelfF,
+                            damageHitF );
                     }
                     damageSelf = (int)max( 1.0f, damageSelfF );
                     damageHit = (int)max( 1.0f, damageHitF );
