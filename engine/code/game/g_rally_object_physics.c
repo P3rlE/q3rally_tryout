@@ -86,6 +86,68 @@ static float G_RallyObject_ImpactWeight( rallyImpactType_t impact ) {
     return 1.0f;
 }
 
+/* thresholds for the absolute dot products when categorising collision faces */
+#define RALLY_IMPACT_FRONT_THRESHOLD   0.75f
+#define RALLY_IMPACT_SIDE_THRESHOLD    0.35f
+
+typedef enum {
+    RALLY_IMPACT_FRONT,
+    RALLY_IMPACT_SIDE,
+    RALLY_IMPACT_REAR
+} rallyImpactType_t;
+
+static rallyImpactType_t G_RallyObject_ClassifyImpact( const vec3_t normal, const vec3_t forward, const vec3_t right ) {
+    float forwardDot, absForward, rightDot, absRight;
+
+    forwardDot = DotProduct( normal, forward );
+    absForward = Q_fabs( forwardDot );
+    if( absForward >= RALLY_IMPACT_FRONT_THRESHOLD ) {
+        if( forwardDot <= 0.0f ) {
+            return RALLY_IMPACT_FRONT;
+        }
+        return RALLY_IMPACT_REAR;
+    }
+
+    rightDot = DotProduct( normal, right );
+    absRight = Q_fabs( rightDot );
+    if( absRight >= RALLY_IMPACT_SIDE_THRESHOLD ) {
+        return RALLY_IMPACT_SIDE;
+    }
+
+    /* default to the shallowest classification */
+    if( forwardDot > 0.0f ) {
+        return RALLY_IMPACT_REAR;
+    }
+
+    return RALLY_IMPACT_FRONT;
+}
+
+static const char *G_RallyObject_ImpactName( rallyImpactType_t impact ) {
+    switch( impact ) {
+    case RALLY_IMPACT_FRONT:
+        return "front";
+    case RALLY_IMPACT_SIDE:
+        return "side";
+    case RALLY_IMPACT_REAR:
+        return "rear";
+    }
+
+    return "unknown";
+}
+
+static float G_RallyObject_ImpactWeight( rallyImpactType_t impact ) {
+    switch( impact ) {
+    case RALLY_IMPACT_FRONT:
+        return g_derbyCollisionFrontWeight.value;
+    case RALLY_IMPACT_SIDE:
+        return g_derbyCollisionSideWeight.value;
+    case RALLY_IMPACT_REAR:
+        return g_derbyCollisionRearWeight.value;
+    }
+
+    return 1.0f;
+}
+
 /*
  * Generic physics routines for moveable rally objects.
  * These routines originally lived in g_rally_scripted_objects.c but are
