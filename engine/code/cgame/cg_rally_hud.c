@@ -657,12 +657,14 @@ static void CG_DrawCurrentPosition( float y ) {
 	CG_DrawTinyStringColor( textX + TINYCHAR_WIDTH * 5, textY, va("%i/%i", pos, cgs.numRacers), colorWhite );
 
 	textY += rowHeight;
-        if ( remaining > 0 ) {
-                Com_sprintf( s, sizeof( s ), "PLAYERS LEFT: %02i", remaining );
-        } else {
-                Com_sprintf( s, sizeof( s ), "PLAYERS LEFT: --" );
-        }
-        CG_DrawTinyStringColor( textX, textY, s, colorWhite );
+	if ( cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS ) {
+		if ( remaining > 0 ) {
+			Com_sprintf( s, sizeof( s ), "PLAYERS LEFT: %02i", remaining );
+		} else {
+			Com_sprintf( s, sizeof( s ), "PLAYERS LEFT: --" );
+		}
+		CG_DrawTinyStringColor( textX, textY, s, colorWhite );
+	}
 }
 
 /*
@@ -723,7 +725,8 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 
 		CG_FillRect( x, y, width, height, background );
 
-		if ( playersRemaining > 1 && lastPosition > 0 ) {
+		if ( (cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS)
+				&& playersRemaining > 1 && lastPosition > 0 ) {
 			int rowPosition = cg_entities[num].currentPosition;
 			if ( rowPosition <= 0 ) {
 				rowPosition = cgs.clientinfo[num].position;
@@ -745,7 +748,7 @@ static float CG_DrawCarAheadAndBehind( float y ) {
 			}
 			Com_sprintf(s, sizeof(s), "%i-%s", rowPosition, player);
 		}
-                CG_DrawTinyStringColor( x + HUD_TEXT_INSET, y, s, colorWhite);
+		CG_DrawTinyStringColor( x + HUD_TEXT_INSET, y, s, colorWhite);
 
 		y += TINYCHAR_HEIGHT;
 
