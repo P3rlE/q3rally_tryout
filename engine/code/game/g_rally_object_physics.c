@@ -215,6 +215,10 @@ static float G_RallyObject_ImpactWeight( rallyImpactType_t impact ) {
 
 #endif /* G_RALLY_OBJECT_IMPACT_HELPERS_DEFINED */
 
+/* thresholds for the absolute dot products when categorising collision faces */
+#define RALLY_IMPACT_FRONT_THRESHOLD   0.75f
+#define RALLY_IMPACT_SIDE_THRESHOLD    0.35f
+
 /*
  * Generic physics routines for moveable rally objects.
  * These routines originally lived in g_rally_scripted_objects.c but are
@@ -463,8 +467,10 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
             vec3_t invNormal;
             vec3_t forwardSelf, rightSelf;
             vec3_t forwardHit, rightHit;
-            rallyImpactType_t impactSelf, impactHit;
+            float forwardSelfDot, rightSelfDot;
+            float forwardHitDot, rightHitDot;
             float weightSelf, weightHit;
+            const char *impactSelfName, *impactHitName;
             float weightedSelf, weightedHit;
             float vSelf, vHit, closing, totalDamage, damageSelfF, damageHitF;
             int damageSelf, damageHit;
@@ -490,10 +496,56 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
                 VectorScale( tr.plane.normal, -1.0f, invNormal );
                 G_RallyObject_ApplyCollision( hit, tr.endpos, invNormal, self->elasticity );
 
-                impactSelf = G_RallyObject_ClassifyImpact( tr.plane.normal, forwardSelf, rightSelf );
-                impactHit = G_RallyObject_ClassifyImpact( invNormal, forwardHit, rightHit );
-                weightSelf = G_RallyObject_ImpactWeight( impactSelf );
-                weightHit = G_RallyObject_ImpactWeight( impactHit );
+                forwardSelfDot = DotProduct( tr.plane.normal, forwardSelf );
+                rightSelfDot = DotProduct( tr.plane.normal, rightSelf );
+                forwardHitDot = DotProduct( invNormal, forwardHit );
+                rightHitDot = DotProduct( invNormal, rightHit );
+
+                if( Q_fabs( forwardSelfDot ) >= RALLY_IMPACT_FRONT_THRESHOLD ) {
+                    if( forwardSelfDot <= 0.0f ) {
+                        weightSelf = g_derbyCollisionFrontWeight.value;
+                        impactSelfName = "front";
+                    }
+                    else {
+                        weightSelf = g_derbyCollisionRearWeight.value;
+                        impactSelfName = "rear";
+                    }
+                }
+                else if( Q_fabs( rightSelfDot ) >= RALLY_IMPACT_SIDE_THRESHOLD ) {
+                    weightSelf = g_derbyCollisionSideWeight.value;
+                    impactSelfName = "side";
+                }
+                else if( forwardSelfDot > 0.0f ) {
+                    weightSelf = g_derbyCollisionRearWeight.value;
+                    impactSelfName = "rear";
+                }
+                else {
+                    weightSelf = g_derbyCollisionFrontWeight.value;
+                    impactSelfName = "front";
+                }
+
+                if( Q_fabs( forwardHitDot ) >= RALLY_IMPACT_FRONT_THRESHOLD ) {
+                    if( forwardHitDot <= 0.0f ) {
+                        weightHit = g_derbyCollisionFrontWeight.value;
+                        impactHitName = "front";
+                    }
+                    else {
+                        weightHit = g_derbyCollisionRearWeight.value;
+                        impactHitName = "rear";
+                    }
+                }
+                else if( Q_fabs( rightHitDot ) >= RALLY_IMPACT_SIDE_THRESHOLD ) {
+                    weightHit = g_derbyCollisionSideWeight.value;
+                    impactHitName = "side";
+                }
+                else if( forwardHitDot > 0.0f ) {
+                    weightHit = g_derbyCollisionRearWeight.value;
+                    impactHitName = "rear";
+                }
+                else {
+                    weightHit = g_derbyCollisionFrontWeight.value;
+                    impactHitName = "front";
+                }
 
                 closing = vSelf + vHit;
                 if( closing > 0.0f ) {
@@ -527,13 +579,13 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
                     if( g_derbyCollisionLog.integer ) {
                         G_LogPrintf( "derby collision: self=%i(%s) hit=%i(%s) nF=%.2f/%.2f nS=%.2f/%.2f weights=%.2f/%.2f base=%.1f/%.1f final=%.1f/%.1f\n",
                             self->s.number,
-                            G_RallyObject_ImpactName( impactSelf ),
+                            impactSelfName,
                             hit->s.number,
-                            G_RallyObject_ImpactName( impactHit ),
-                            DotProduct( tr.plane.normal, forwardSelf ),
-                            DotProduct( invNormal, forwardHit ),
-                            DotProduct( tr.plane.normal, rightSelf ),
-                            DotProduct( invNormal, rightHit ),
+                            impactHitName,
+                            forwardSelfDot,
+                            forwardHitDot,
+                            rightSelfDot,
+                            rightHitDot,
                             weightSelf,
                             weightHit,
                             weightedSelf,
