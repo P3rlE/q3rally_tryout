@@ -1187,8 +1187,15 @@ float CG_DrawUpperRightHUD( float y ) {
 
                         y = CG_DrawCarAheadAndBehind( timesY );
                 }
-		else if (cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS )
+		else if (cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ) {
+			float timesStart = y;
+
 			y = CG_DrawTimes( y );
+
+			if ( cgs.gametype == GT_LCS ) {
+				CG_DrawCurrentPosition( timesStart );
+			}
+		}
 // 0.5
 //			CG_DrawHUD_DerbyList(44, 130);
 			
