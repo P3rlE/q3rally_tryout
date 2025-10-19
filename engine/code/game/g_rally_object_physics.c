@@ -274,26 +274,44 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
 
             /* store normal velocities before collision response */
             vSelf = DotProduct( self->s.pos.trDelta, tr.plane.normal );
-            vHit = -DotProduct( hit->s.pos.trDelta, tr.plane.normal );
+            if( vSelf < 0.0f ) {
+                vSelf = -vSelf;
+            }
+            else {
+                vSelf = 0.0f;
+            }
+
+            vHit = DotProduct( hit->s.pos.trDelta, tr.plane.normal );
+            if( vHit < 0.0f ) {
+                vHit = 0.0f;
+            }
 
             if( G_RallyObject_ApplyCollision( self, tr.endpos, tr.plane.normal, self->elasticity ) ) {
                 VectorScale( tr.plane.normal, -1.0f, invNormal );
                 G_RallyObject_ApplyCollision( hit, tr.endpos, invNormal, self->elasticity );
 
-                if( vSelf < 0.0f ) {
-                    vSelf = 0.0f;
-                }
-                if( vHit < 0.0f ) {
-                    vHit = 0.0f;
-                }
                 closing = vSelf + vHit;
                 if( closing > 0.0f ) {
                     totalDamage = ( closing + g_vehicleDamageOffset.value ) * g_vehicleDamageScale.value;
                     totalDamage *= g_derbyDamageFactor.value;
                     damageSelfF = totalDamage * ( vHit / closing );
-                    damageHitF  = totalDamage * ( vSelf / closing );
+                    damageHitF  = totalDamage - damageSelfF;
+
                     damageHitF  *= g_derbyRammerDamageRatio.value;
                     damageSelfF *= 2.0f - g_derbyRammerDamageRatio.value;
+
+                    {
+                        float scaledTotal;
+
+                        scaledTotal = damageSelfF + damageHitF;
+                        if( scaledTotal > 0.0f ) {
+                            float rescale;
+
+                            rescale = totalDamage / scaledTotal;
+                            damageSelfF *= rescale;
+                            damageHitF  *= rescale;
+                        }
+                    }
                     damageSelf = (int)max( 1.0f, damageSelfF );
                     damageHit = (int)max( 1.0f, damageHitF );
 
