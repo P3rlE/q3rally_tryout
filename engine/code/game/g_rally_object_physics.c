@@ -22,69 +22,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "g_local.h"
-#include <math.h>
-
-/* thresholds for the absolute dot products when categorising collision faces */
-#define RALLY_IMPACT_FRONT_THRESHOLD   0.75f
-#define RALLY_IMPACT_SIDE_THRESHOLD    0.35f
-
-typedef enum {
-    RALLY_IMPACT_FRONT,
-    RALLY_IMPACT_SIDE,
-    RALLY_IMPACT_REAR
-} rallyImpactType_t;
-
-static rallyImpactType_t G_RallyObject_ClassifyImpact( const vec3_t normal, const vec3_t forward, const vec3_t right ) {
-    float forwardDot, absForward, rightDot, absRight;
-
-    forwardDot = DotProduct( normal, forward );
-    absForward = fabs( forwardDot );
-    if( absForward >= RALLY_IMPACT_FRONT_THRESHOLD ) {
-        if( forwardDot <= 0.0f ) {
-            return RALLY_IMPACT_FRONT;
-        }
-        return RALLY_IMPACT_REAR;
-    }
-
-    rightDot = DotProduct( normal, right );
-    absRight = fabs( rightDot );
-    if( absRight >= RALLY_IMPACT_SIDE_THRESHOLD ) {
-        return RALLY_IMPACT_SIDE;
-    }
-
-    /* default to the shallowest classification */
-    if( forwardDot > 0.0f ) {
-        return RALLY_IMPACT_REAR;
-    }
-
-    return RALLY_IMPACT_FRONT;
-}
-
-static const char *G_RallyObject_ImpactName( rallyImpactType_t impact ) {
-    switch( impact ) {
-    case RALLY_IMPACT_FRONT:
-        return "front";
-    case RALLY_IMPACT_SIDE:
-        return "side";
-    case RALLY_IMPACT_REAR:
-        return "rear";
-    }
-
-    return "unknown";
-}
-
-static float G_RallyObject_ImpactWeight( rallyImpactType_t impact ) {
-    switch( impact ) {
-    case RALLY_IMPACT_FRONT:
-        return g_derbyCollisionFrontWeight.value;
-    case RALLY_IMPACT_SIDE:
-        return g_derbyCollisionSideWeight.value;
-    case RALLY_IMPACT_REAR:
-        return g_derbyCollisionRearWeight.value;
-    }
-
-    return 1.0f;
-}
 
 /* thresholds for the absolute dot products when categorising collision faces */
 #define RALLY_IMPACT_FRONT_THRESHOLD   0.75f
@@ -147,81 +84,6 @@ static float G_RallyObject_ImpactWeight( rallyImpactType_t impact ) {
 
     return 1.0f;
 }
-
-/* thresholds for the absolute dot products when categorising collision faces */
-#define RALLY_IMPACT_FRONT_THRESHOLD   0.75f
-#define RALLY_IMPACT_SIDE_THRESHOLD    0.35f
-
-#ifndef G_RALLY_OBJECT_IMPACT_HELPERS_DEFINED
-#define G_RALLY_OBJECT_IMPACT_HELPERS_DEFINED
-
-typedef enum {
-    RALLY_IMPACT_FRONT,
-    RALLY_IMPACT_SIDE,
-    RALLY_IMPACT_REAR
-} rallyImpactType_t;
-
-static rallyImpactType_t G_RallyObject_ClassifyImpact( const vec3_t normal, const vec3_t forward, const vec3_t right ) {
-    float forwardDot, absForward, rightDot, absRight;
-
-    forwardDot = DotProduct( normal, forward );
-    absForward = Q_fabs( forwardDot );
-    if( absForward >= RALLY_IMPACT_FRONT_THRESHOLD ) {
-        if( forwardDot <= 0.0f ) {
-            return RALLY_IMPACT_FRONT;
-        }
-        return RALLY_IMPACT_REAR;
-    }
-
-    rightDot = DotProduct( normal, right );
-    absRight = Q_fabs( rightDot );
-    if( absRight >= RALLY_IMPACT_SIDE_THRESHOLD ) {
-        return RALLY_IMPACT_SIDE;
-    }
-
-    /* default to the shallowest classification */
-    if( forwardDot > 0.0f ) {
-        return RALLY_IMPACT_REAR;
-    }
-
-    return RALLY_IMPACT_FRONT;
-}
-
-static const char *G_RallyObject_ImpactName( rallyImpactType_t impact ) {
-    switch( impact ) {
-    case RALLY_IMPACT_FRONT:
-        return "front";
-    case RALLY_IMPACT_SIDE:
-        return "side";
-    case RALLY_IMPACT_REAR:
-        return "rear";
-    }
-
-    return "unknown";
-}
-
-static float G_RallyObject_ImpactWeight( rallyImpactType_t impact ) {
-    switch( impact ) {
-    case RALLY_IMPACT_FRONT:
-        return g_derbyCollisionFrontWeight.value;
-    case RALLY_IMPACT_SIDE:
-        return g_derbyCollisionSideWeight.value;
-    case RALLY_IMPACT_REAR:
-        return g_derbyCollisionRearWeight.value;
-    }
-
-    return 1.0f;
-}
-
-#endif /* G_RALLY_OBJECT_IMPACT_HELPERS_DEFINED */
-
-/* thresholds for the absolute dot products when categorising collision faces */
-#define RALLY_IMPACT_FRONT_THRESHOLD   0.75f
-#define RALLY_IMPACT_SIDE_THRESHOLD    0.35f
-
-/* thresholds for the absolute dot products when categorising collision faces */
-#define RALLY_IMPACT_FRONT_THRESHOLD   0.75f
-#define RALLY_IMPACT_SIDE_THRESHOLD    0.35f
 
 static void G_RallyObject_DeriveImpactWeight( float forwardDot, float rightDot,
         float frontWeight, float sideWeight, float rearWeight,
@@ -258,22 +120,18 @@ static void G_RallyObject_DeriveImpactWeight( float forwardDot, float rightDot,
     }
 }
 
-/* thresholds for the absolute dot products when categorising collision faces */
-#define DERBY_IMPACT_FORWARD_THRESHOLD 0.75f
-#define DERBY_IMPACT_SIDE_THRESHOLD    0.35f
-
 static float G_RallyObject_SelectImpactWeight( float forwardDot, float rightDot,
         float frontWeight, float sideWeight, float rearWeight, const char **outName ) {
     const char *label = "front";
     float weight = frontWeight;
 
-    if( Q_fabs( forwardDot ) >= DERBY_IMPACT_FORWARD_THRESHOLD ) {
+    if( Q_fabs( forwardDot ) >= RALLY_IMPACT_FRONT_THRESHOLD ) {
         if( forwardDot > 0.0f ) {
             label = "rear";
             weight = rearWeight;
         }
     }
-    else if( Q_fabs( rightDot ) >= DERBY_IMPACT_SIDE_THRESHOLD ) {
+    else if( Q_fabs( rightDot ) >= RALLY_IMPACT_SIDE_THRESHOLD ) {
         label = "side";
         weight = sideWeight;
     }
