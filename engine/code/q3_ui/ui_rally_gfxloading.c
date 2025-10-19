@@ -193,6 +193,9 @@ static void UI_GFX_Loading_MenuDraw(void) {
     int currentTime;
     int totalStages = ARRAY_LEN(stages);
     const char *stageName;
+    int textY;
+    char buf[256];
+    char updateState[32];
 
     /* Draw base menu (background, etc.) */
     Menu_Draw(&s_gfxloading.menu);
@@ -264,12 +267,58 @@ static void UI_GFX_Loading_MenuDraw(void) {
     UI_DrawRect(bar_x, bar_y, bar_w, bar_h, colorWhite);
 
     /* Draw percentage text with better formatting */
-    UI_DrawString(320, bar_y + bar_h + 16,
+    textY = bar_y + bar_h + 16;
+    UI_DrawString(320, textY,
                   va("Loading Progress: %.1f%%", s_gfxloading.smoothProgress * 100.0f),
                   UI_CENTER | UI_SMALLFONT, text_color_normal);
+    textY += 24;
+
+    /* Display version check status if available */
+    trap_Cvar_VariableStringBuffer("cl_updateState", updateState, sizeof(updateState));
+
+    if (!Q_stricmp(updateState, "outdated")) {
+        char remoteVersion[64];
+        char remoteDate[64];
+
+        trap_Cvar_VariableStringBuffer("cl_updateRemote", remoteVersion, sizeof(remoteVersion));
+        trap_Cvar_VariableStringBuffer("cl_updateDate", remoteDate, sizeof(remoteDate));
+
+        UI_DrawString(320, textY,
+                      "A new Q3Rally version is available!",
+                      UI_CENTER | UI_SMALLFONT, colorRed);
+        textY += 20;
+
+        if (remoteVersion[0]) {
+            if (remoteDate[0]) {
+                Com_sprintf(buf, sizeof(buf), "Installed: %s   Latest: %s (%s)",
+                            PRODUCT_VERSION, remoteVersion, remoteDate);
+            } else {
+                Com_sprintf(buf, sizeof(buf), "Installed: %s   Latest: %s",
+                            PRODUCT_VERSION, remoteVersion);
+            }
+        } else {
+            Com_sprintf(buf, sizeof(buf), "Installed: %s   Latest: unknown",
+                        PRODUCT_VERSION);
+        }
+
+        UI_DrawString(320, textY, buf,
+                      UI_CENTER | UI_SMALLFONT, colorYellow);
+        textY += 24;
+    } else if (!Q_stricmp(updateState, "failed")) {
+        char errorMsg[128];
+
+        trap_Cvar_VariableStringBuffer("cl_updateError", errorMsg, sizeof(errorMsg));
+        if (!errorMsg[0]) {
+            Q_strncpyz(errorMsg, "Unable to check for updates", sizeof(errorMsg));
+        }
+
+        UI_DrawString(320, textY, errorMsg,
+                      UI_CENTER | UI_SMALLFONT, colorYellow);
+        textY += 24;
+    }
 
     /* Draw random driving tip */
-    UI_DrawString(320, bar_y + bar_h + 46, loadingTips[s_gfxloading.tipIndex],
+    UI_DrawString(320, textY, loadingTips[s_gfxloading.tipIndex],
                   UI_CENTER | UI_SMALLFONT, text_color_normal);
 
     /* Handle transition when loading is complete */
