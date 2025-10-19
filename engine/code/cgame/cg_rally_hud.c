@@ -630,41 +630,45 @@ CG_DrawCurrentPosition
 ======================
 */
 static void CG_DrawCurrentPosition( float y ) {
-	centity_t		*cent;
-	int			pos;
-	int			remaining;
-	char		s[64];
-	float		baseX, textX, textY;
-	float		width, height;
-	const float		columnWidth = CG_GetEliminationColumnWidth();
-	const float		rowHeight = HUD_ROW_HEIGHT;
+        centity_t               *cent;
+        int                     pos;
+        int                     remaining;
+        char            s[64];
+        float           baseX, textX, textY;
+        float           width, height;
+        qboolean                showPosition;
+        const float             columnWidth = CG_GetEliminationColumnWidth();
+        const float             rowHeight = HUD_ROW_HEIGHT;
 
-	cent = &cg_entities[cg.snap->ps.clientNum];
+        cent = &cg_entities[cg.snap->ps.clientNum];
 
-	pos = cent->currentPosition;
-	remaining = CG_GetPlayersRemaining( NULL );
+        pos = cent->currentPosition;
+        remaining = CG_GetPlayersRemaining( NULL );
 
-	baseX = (HUD_RIGHT_EDGE - columnWidth) - HUD_COLUMN_SPACING - columnWidth;
-	width = columnWidth;
-	height = 36;
+        baseX = (HUD_RIGHT_EDGE - columnWidth) - HUD_COLUMN_SPACING - columnWidth;
+        width = columnWidth;
+        showPosition = ( cgs.gametype != GT_LCS );
+        height = showPosition ? 36.0f : rowHeight;
 
-	CG_FillRect( baseX, y, width, height, bgColor );
+        CG_FillRect( baseX, y, width, height, bgColor );
 
-	textX = baseX + HUD_TEXT_INSET;
-	textY = y + 4;
+        textX = baseX + HUD_TEXT_INSET;
+        textY = y + 4;
 
-	CG_DrawTinyStringColor( textX, textY, "POS:", colorWhite );
-	CG_DrawTinyStringColor( textX + TINYCHAR_WIDTH * 5, textY, va("%i/%i", pos, cgs.numRacers), colorWhite );
+        if ( showPosition ) {
+                CG_DrawTinyStringColor( textX, textY, "POS:", colorWhite );
+                CG_DrawTinyStringColor( textX + TINYCHAR_WIDTH * 5, textY, va("%i/%i", pos, cgs.numRacers), colorWhite );
+                textY += rowHeight;
+        }
 
-	textY += rowHeight;
-	if ( cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS ) {
-		if ( remaining > 0 ) {
-			Com_sprintf( s, sizeof( s ), "PLAYERS LEFT: %02i", remaining );
-		} else {
-			Com_sprintf( s, sizeof( s ), "PLAYERS LEFT: --" );
-		}
-		CG_DrawTinyStringColor( textX, textY, s, colorWhite );
-	}
+        if ( cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS ) {
+                if ( remaining > 0 ) {
+                        Com_sprintf( s, sizeof( s ), "PLAYERS LEFT: %02i", remaining );
+                } else {
+                        Com_sprintf( s, sizeof( s ), "PLAYERS LEFT: --" );
+                }
+                CG_DrawTinyStringColor( textX, textY, s, colorWhite );
+        }
 }
 
 /*
