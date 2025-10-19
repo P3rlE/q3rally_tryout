@@ -258,6 +258,37 @@ static void G_RallyObject_DeriveImpactWeight( float forwardDot, float rightDot,
     }
 }
 
+/* thresholds for the absolute dot products when categorising collision faces */
+#define DERBY_IMPACT_FORWARD_THRESHOLD 0.75f
+#define DERBY_IMPACT_SIDE_THRESHOLD    0.35f
+
+static float G_RallyObject_SelectImpactWeight( float forwardDot, float rightDot,
+        float frontWeight, float sideWeight, float rearWeight, const char **outName ) {
+    const char *label = "front";
+    float weight = frontWeight;
+
+    if( Q_fabs( forwardDot ) >= DERBY_IMPACT_FORWARD_THRESHOLD ) {
+        if( forwardDot > 0.0f ) {
+            label = "rear";
+            weight = rearWeight;
+        }
+    }
+    else if( Q_fabs( rightDot ) >= DERBY_IMPACT_SIDE_THRESHOLD ) {
+        label = "side";
+        weight = sideWeight;
+    }
+    else if( forwardDot > 0.0f ) {
+        label = "rear";
+        weight = rearWeight;
+    }
+
+    if( outName != NULL ) {
+        *outName = label;
+    }
+
+    return weight;
+}
+
 /*
  * Generic physics routines for moveable rally objects.
  * These routines originally lived in g_rally_scripted_objects.c but are
@@ -540,17 +571,17 @@ void G_RallyObject_TracePhysics( gentity_t *self, float time )
                 forwardHitDot = DotProduct( invNormal, forwardHit );
                 rightHitDot = DotProduct( invNormal, rightHit );
 
-                G_RallyObject_DeriveImpactWeight( forwardSelfDot, rightSelfDot,
+                weightSelf = G_RallyObject_SelectImpactWeight( forwardSelfDot, rightSelfDot,
                     g_derbyCollisionFrontWeight.value,
                     g_derbyCollisionSideWeight.value,
                     g_derbyCollisionRearWeight.value,
-                    &weightSelf, &impactSelfName );
+                    &impactSelfName );
 
-                G_RallyObject_DeriveImpactWeight( forwardHitDot, rightHitDot,
+                weightHit = G_RallyObject_SelectImpactWeight( forwardHitDot, rightHitDot,
                     g_derbyCollisionFrontWeight.value,
                     g_derbyCollisionSideWeight.value,
                     g_derbyCollisionRearWeight.value,
-                    &weightHit, &impactHitName );
+                    &impactHitName );
 
                 closing = vSelf + vHit;
                 if( closing > 0.0f ) {
