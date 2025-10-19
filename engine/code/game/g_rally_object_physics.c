@@ -127,13 +127,13 @@ static float G_RallyObject_SelectImpactWeight( float forwardDot, float rightDot,
     const char *label = "front";
     float weight = frontWeight;
 
-    if( Q_fabs( forwardDot ) >= DERBY_IMPACT_FORWARD_THRESHOLD ) {
+    if( Q_fabs( forwardDot ) >= RALLY_IMPACT_FRONT_THRESHOLD ) {
         if( forwardDot > 0.0f ) {
             label = "rear";
             weight = rearWeight;
         }
     }
-    else if( Q_fabs( rightDot ) >= DERBY_IMPACT_SIDE_THRESHOLD ) {
+    else if( Q_fabs( rightDot ) >= RALLY_IMPACT_SIDE_THRESHOLD ) {
         label = "side";
         weight = sideWeight;
     }
