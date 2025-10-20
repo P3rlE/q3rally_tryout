@@ -132,9 +132,17 @@ static void CL_UpdateVersionCheck_ParseBuffer(void) {
 
     if (versionLine && *versionLine) {
         size_t len;
+
+        if ((unsigned char)versionLine[0] == 0xEF &&
+            (unsigned char)versionLine[1] == 0xBB &&
+            (unsigned char)versionLine[2] == 0xBF) {
+            versionLine += 3;
+        }
+
         while (*versionLine && isspace((unsigned char)*versionLine)) {
             versionLine++;
         }
+
         len = strlen(versionLine);
         while (len > 0 && isspace((unsigned char)versionLine[len - 1])) {
             versionLine[--len] = '\0';
