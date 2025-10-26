@@ -416,6 +416,10 @@ struct gclient_s {
 	int			horn_sound_time;
 
 	int			lastCheckpointTime;
+	int			currentLapStartTime;
+	int			bestLapMs;
+	int			lapTimes[LADDER_MAX_LAP_TIMES];
+	int			lapTimeCount;
 // END
 
 	char		*areabits;
@@ -874,6 +878,7 @@ char *ClientConnect( int clientNum, qboolean firstTime, qboolean isBot );
 void ClientUserinfoChanged( int clientNum );
 void ClientDisconnect( int clientNum );
 void ClientBegin( int clientNum );
+void G_ResetClientLapData( gclient_t *client );
 void ClientCommand( int clientNum );
 // STONELANCE
 gentity_t *SelectSpectatorSpawnPoint( vec3_t origin, vec3_t angles );
