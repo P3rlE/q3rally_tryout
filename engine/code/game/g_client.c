@@ -45,10 +45,12 @@ void G_ResetClientLapData( gclient_t *client ) {
                 return;
         }
 
-        client->currentLapStartTime = 0;
+        client->lapStartTime = 0;
         client->bestLapMs = 0;
         client->lapTimeCount = 0;
+        client->recordedLapCount = 0;
         Com_Memset( client->lapTimes, 0, sizeof( client->lapTimes ) );
+        Com_Memset( client->recordedLaps, 0, sizeof( client->recordedLaps ) );
 }
 
 /*QUAKED info_player_deathmatch (1 0 1) (-16 -16 -24) (16 16 32) initial
