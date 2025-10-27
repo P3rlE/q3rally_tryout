@@ -23,9 +23,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
-static void G_RallyRecordLapTime( gentity_t *ent, int timestamp ) {
+static void G_RallyRecordSplitTime( gentity_t *ent, int timestamp ) {
 	gclient_t *client;
-	int lapDuration;
+	int splitDuration;
+	int i;
 
 	if ( !ent ) {
 		return;
@@ -36,21 +37,62 @@ static void G_RallyRecordLapTime( gentity_t *ent, int timestamp ) {
 		return;
 	}
 
-	if ( client->currentLapStartTime > 0 && timestamp > client->currentLapStartTime ) {
-		lapDuration = timestamp - client->currentLapStartTime;
+	if ( client->lastCheckpointTime <= 0 || timestamp <= client->lastCheckpointTime ) {
+		return;
+	}
+
+	splitDuration = timestamp - client->lastCheckpointTime;
+	if ( splitDuration < 0 ) {
+		splitDuration = 0;
+	}
+
+	if ( client->lapTimeCount >= LADDER_MAX_LAP_TIMES ) {
+		for ( i = 1; i < LADDER_MAX_LAP_TIMES; ++i ) {
+			client->lapTimes[i - 1] = client->lapTimes[i];
+		}
+		client->lapTimeCount = LADDER_MAX_LAP_TIMES - 1;
+	}
+
+	client->lapTimes[ client->lapTimeCount ] = splitDuration;
+	client->lapTimeCount++;
+}
+
+static void G_RallyCompleteLap( gentity_t *ent, int timestamp ) {
+	gclient_t *client;
+	int lapDuration;
+	int i;
+
+	if ( !ent ) {
+		return;
+	}
+
+	client = ent->client;
+	if ( !client ) {
+		return;
+	}
+
+	if ( client->lapStartTime > 0 && timestamp > client->lapStartTime ) {
+		lapDuration = timestamp - client->lapStartTime;
 		if ( lapDuration < 0 ) {
 			lapDuration = 0;
 		}
-		if ( client->lapTimeCount < LADDER_MAX_LAP_TIMES ) {
-			client->lapTimes[ client->lapTimeCount ] = lapDuration;
-			client->lapTimeCount++;
+
+		if ( client->recordedLapCount >= LADDER_MAX_LAP_TIMES ) {
+			for ( i = 1; i < LADDER_MAX_LAP_TIMES; ++i ) {
+				client->recordedLaps[i - 1] = client->recordedLaps[i];
+			}
+			client->recordedLapCount = LADDER_MAX_LAP_TIMES - 1;
 		}
+
+		client->recordedLaps[ client->recordedLapCount ] = lapDuration;
+		client->recordedLapCount++;
+
 		if ( client->bestLapMs == 0 || lapDuration < client->bestLapMs ) {
 			client->bestLapMs = lapDuration;
 		}
 	}
 
-	client->currentLapStartTime = timestamp;
+	client->lapStartTime = timestamp;
 }
 
 static void G_TriggerEliminationExplosion( gentity_t *ent ) {
@@ -297,7 +339,8 @@ void Touch_Start (gentity_t *self, gentity_t *other, trace_t *trace ){
         if ( g_developer.integer )
                 G_Printf( "Client %i touched the start line.\n", other->s.clientNum );
 
-        G_RallyRecordLapTime( other, level.time );
+        G_RallyRecordSplitTime( other, level.time );
+        other->client->lapStartTime = level.time;
         other->client->lastCheckpointTime = level.time;
         other->number = 1;
         other->client->ps.stats[STAT_NEXT_CHECKPOINT] = other->number;
@@ -326,7 +369,8 @@ void Touch_Finish (gentity_t *self, gentity_t *other, trace_t *trace ){
                 return;
         }
 
-        G_RallyRecordLapTime( other, level.time );
+        G_RallyRecordSplitTime( other, level.time );
+        G_RallyCompleteLap( other, level.time );
         other->client->lastCheckpointTime = level.time;
         other->client->finishRaceTime = level.time;
         other->s.weapon = WP_NONE;
@@ -403,7 +447,8 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
 	}
 
 	if (self->number == other->number){
-		G_RallyRecordLapTime( other, level.time );
+		G_RallyRecordSplitTime( other, level.time );
+		G_RallyCompleteLap( other, level.time );
 		other->client->lastCheckpointTime = level.time;
 		other->currentLap++;
 		if ( g_gametype.integer == GT_ELIMINATION ) {
@@ -648,7 +693,7 @@ void Touch_Checkpoint (gentity_t *self, gentity_t *other, trace_t *trace ){
 		G_Printf( "Client %i touched checkpoint number %i\n", other->s.clientNum, self->number );
 
 	if (self->number == other->number){
-		G_RallyRecordLapTime( other, level.time );
+		G_RallyRecordSplitTime( other, level.time );
 		other->client->lastCheckpointTime = level.time;
 		other->number++;	// FIXME: get rid of number? use s.weapon instead?
 		other->client->ps.stats[STAT_NEXT_CHECKPOINT] = other->number;
