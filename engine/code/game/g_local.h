@@ -416,10 +416,12 @@ struct gclient_s {
 	int			horn_sound_time;
 
 	int			lastCheckpointTime;
-	int			currentLapStartTime;
+	int			lapStartTime;
 	int			bestLapMs;
 	int			lapTimes[LADDER_MAX_LAP_TIMES];
 	int			lapTimeCount;
+	int			recordedLaps[LADDER_MAX_LAP_TIMES];
+	int			recordedLapCount;
 // END
 
 	char		*areabits;

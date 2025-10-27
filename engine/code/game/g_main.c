@@ -797,7 +797,7 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
         player->bestLapMs = client->bestLapMs;
 
         {
-                int lapCount = client->lapTimeCount;
+                int lapCount = client->recordedLapCount;
                 if ( lapCount < 0 ) {
                         lapCount = 0;
                 }
@@ -805,7 +805,7 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
                         lapCount = LADDER_MAX_LAP_TIMES;
                 }
                 for ( i = 0; i < lapCount; ++i ) {
-                        player->lapTimes[i] = client->lapTimes[i];
+                        player->lapTimes[i] = client->recordedLaps[i];
                 }
                 player->lapCount = lapCount;
         }
