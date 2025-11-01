@@ -260,6 +260,10 @@ void AddTeamScore(vec3_t origin, int team, int score) {
                                                 te->s.eventParm = GTS_REDTEAM_TOOK_LEAD;
                                         } else if (team == TEAM_BLUE) {
                                                 te->s.eventParm = GTS_BLUETEAM_TOOK_LEAD;
+                                        } else if (team == TEAM_GREEN) {
+                                                te->s.eventParm = GTS_GREENTEAM_TOOK_LEAD;
+                                        } else if (team == TEAM_YELLOW) {
+                                                te->s.eventParm = GTS_YELLOWTEAM_TOOK_LEAD;
                                         } else {
                                                 te->s.eventParm = scoreEvent;
                                         }

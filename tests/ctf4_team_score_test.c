@@ -203,14 +203,14 @@ gentity_t *SelectSpawnPoint( vec3_t avoidPoint, vec3_t origin, vec3_t angles, qb
 void test_green_scoring_uses_new_event(void) {
     reset_environment();
     g_gametype.integer = GT_CTF4;
-    level.teamScores[TEAM_RED] = 0;
-    level.teamScores[TEAM_BLUE] = 1;
-    level.teamScores[TEAM_GREEN] = 1;
+    level.teamScores[TEAM_RED] = 1;
+    level.teamScores[TEAM_BLUE] = 0;
+    level.teamScores[TEAM_GREEN] = 3;
     level.teamScores[TEAM_YELLOW] = 0;
 
     AddTeamScore(vec3_origin, TEAM_GREEN, 1);
 
-    assert(level.teamScores[TEAM_GREEN] == 2);
+    assert(level.teamScores[TEAM_GREEN] == 4);
     assert(tempEntity.s.eventParm == GTS_GREENTEAM_SCORED);
     assert(strstr(lastCenterPrint, "GREEN") != NULL);
     assert(strstr(lastServerCommand, "scores!") != NULL);
@@ -227,7 +227,7 @@ void test_green_lead_change_emits_text(void) {
     AddTeamScore(vec3_origin, TEAM_GREEN, 1);
 
     assert(level.teamScores[TEAM_GREEN] == 4);
-    assert(tempEntity.s.eventParm == GTS_GREENTEAM_SCORED);
+    assert(tempEntity.s.eventParm == GTS_GREENTEAM_TOOK_LEAD);
     assert(strstr(lastCenterPrint, "takes the lead") != NULL);
 }
 
@@ -246,10 +246,26 @@ void test_yellow_tie_triggers_tied_sound(void) {
     assert(strstr(lastServerCommand, "tie for the lead") != NULL);
 }
 
+void test_yellow_lead_event_and_audio(void) {
+    reset_environment();
+    g_gametype.integer = GT_CTF4;
+    level.teamScores[TEAM_RED] = 4;
+    level.teamScores[TEAM_BLUE] = 4;
+    level.teamScores[TEAM_GREEN] = 2;
+    level.teamScores[TEAM_YELLOW] = 4;
+
+    AddTeamScore(vec3_origin, TEAM_YELLOW, 1);
+
+    assert(level.teamScores[TEAM_YELLOW] == 5);
+    assert(tempEntity.s.eventParm == GTS_YELLOWTEAM_TOOK_LEAD);
+    assert(strstr(lastCenterPrint, "YELLOW") != NULL);
+}
+
 int main(void) {
     test_green_scoring_uses_new_event();
     test_green_lead_change_emits_text();
     test_yellow_tie_triggers_tied_sound();
+    test_yellow_lead_event_and_audio();
     printf("ok\n");
     return 0;
 }

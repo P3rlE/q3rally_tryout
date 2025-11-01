@@ -625,6 +625,8 @@ typedef enum {
         GTS_YELLOWTEAM_SCORED,
         GTS_REDTEAM_TOOK_LEAD,
         GTS_BLUETEAM_TOOK_LEAD,
+        GTS_GREENTEAM_TOOK_LEAD,
+        GTS_YELLOWTEAM_TOOK_LEAD,
         GTS_TEAMS_ARE_TIED,
         GTS_KAMIKAZE
 } global_team_sound_t;
