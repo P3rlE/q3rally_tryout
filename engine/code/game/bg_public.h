@@ -23,6 +23,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 // bg_public.h -- definitions shared by both the server game and client game modules
 
+#ifndef BG_PUBLIC_H
+#define BG_PUBLIC_H
+
 // STONELANCE
 #include "bg_physics.h"
 // END
@@ -618,8 +621,12 @@ typedef enum {
         GTS_BLUEOBELISK_ATTACKED,
         GTS_REDTEAM_SCORED,
         GTS_BLUETEAM_SCORED,
+        GTS_GREENTEAM_SCORED,
+        GTS_YELLOWTEAM_SCORED,
         GTS_REDTEAM_TOOK_LEAD,
         GTS_BLUETEAM_TOOK_LEAD,
+        GTS_GREENTEAM_TOOK_LEAD,
+        GTS_YELLOWTEAM_TOOK_LEAD,
         GTS_TEAMS_ARE_TIED,
         GTS_KAMIKAZE
 } global_team_sound_t;
@@ -950,3 +957,4 @@ qboolean        BG_PlayerTouchesItem( playerState_t *ps, entityState_t *item, in
 #define KAMI_BOOMSPHERE_MAXRADIUS               720
 #define KAMI_SHOCKWAVE2_MAXRADIUS               704
 
+#endif // BG_PUBLIC_H

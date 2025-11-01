@@ -1365,21 +1365,33 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 					break;
 #endif
 
-				case GTS_REDTEAM_SCORED:
-					CG_AddBufferedSound(cgs.media.redScoredSound);
-					break;
-				case GTS_BLUETEAM_SCORED:
-					CG_AddBufferedSound(cgs.media.blueScoredSound);
-					break;
-				case GTS_REDTEAM_TOOK_LEAD:
-					CG_AddBufferedSound(cgs.media.redLeadsSound);
-					break;
-				case GTS_BLUETEAM_TOOK_LEAD:
-					CG_AddBufferedSound(cgs.media.blueLeadsSound);
-					break;
-				case GTS_TEAMS_ARE_TIED:
-					CG_AddBufferedSound( cgs.media.teamsTiedSound );
-					break;
+                                case GTS_REDTEAM_SCORED:
+                                        CG_AddBufferedSound(cgs.media.redScoredSound);
+                                        break;
+                                case GTS_BLUETEAM_SCORED:
+                                        CG_AddBufferedSound(cgs.media.blueScoredSound);
+                                        break;
+                                case GTS_GREENTEAM_SCORED:
+                                        CG_AddBufferedSound(cgs.media.greenScoredSound);
+                                        break;
+                                case GTS_YELLOWTEAM_SCORED:
+                                        CG_AddBufferedSound(cgs.media.yellowScoredSound);
+                                        break;
+                                case GTS_REDTEAM_TOOK_LEAD:
+                                        CG_AddBufferedSound(cgs.media.redLeadsSound);
+                                        break;
+                                case GTS_BLUETEAM_TOOK_LEAD:
+                                        CG_AddBufferedSound(cgs.media.blueLeadsSound);
+                                        break;
+                                case GTS_GREENTEAM_TOOK_LEAD:
+                                        CG_AddBufferedSound(cgs.media.greenLeadsSound);
+                                        break;
+                                case GTS_YELLOWTEAM_TOOK_LEAD:
+                                        CG_AddBufferedSound(cgs.media.yellowLeadsSound);
+                                        break;
+                                case GTS_TEAMS_ARE_TIED:
+                                        CG_AddBufferedSound( cgs.media.teamsTiedSound );
+                                        break;
 #ifdef MISSIONPACK
 				case GTS_KAMIKAZE:
 					trap_S_StartLocalSound(cgs.media.kamikazeFarSound, CHAN_ANNOUNCER);
