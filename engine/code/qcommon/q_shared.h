@@ -972,6 +972,7 @@ void	QDECL Com_Printf( const char *msg, ... ) __attribute__ ((format (printf, 1,
 
 // STONELANCE
 char *getStringForTime( int time );
+char *getStringForTimePrecise( int time );
 char *getStringForTimeDuration( int startTime, int finishTime);
 // END
 
