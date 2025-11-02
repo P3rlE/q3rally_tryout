@@ -515,6 +515,12 @@ void Team_CheckDroppedItem( gentity_t *dropped ) {
 	else if( dropped->item->giTag == PW_BLUEFLAG ) {
 		Team_SetFlagStatus( TEAM_BLUE, FLAG_DROPPED );
 	}
+	else if( dropped->item->giTag == PW_GREENFLAG ) {
+		Team_SetFlagStatus( TEAM_GREEN, FLAG_DROPPED );
+	}
+	else if( dropped->item->giTag == PW_YELLOWFLAG ) {
+		Team_SetFlagStatus( TEAM_YELLOW, FLAG_DROPPED );
+	}
 	else if( dropped->item->giTag == PW_NEUTRALFLAG ) {
 		Team_SetFlagStatus( TEAM_FREE, FLAG_DROPPED );
 	}
