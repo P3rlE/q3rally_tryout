@@ -296,6 +296,47 @@ void test_yellow_flag_drop_sets_status(void) {
     assert(teamgame.flagStatus[TEAM_YELLOW] == FLAG_DROPPED);
 }
 
+void test_green_return_event_emits_new_id(void) {
+    reset_environment();
+    g_gametype.integer = GT_CTF4;
+
+    gentity_t base;
+    memset(&base, 0, sizeof(base));
+
+    Team_ReturnFlagSound(&base, TEAM_GREEN);
+
+    assert(tempEntity.s.eventParm == GTS_GREEN_RETURN);
+}
+
+void test_yellow_capture_event_emits_new_id(void) {
+    reset_environment();
+    g_gametype.integer = GT_CTF4;
+
+    gentity_t base;
+    memset(&base, 0, sizeof(base));
+
+    Team_CaptureFlagSound(&base, TEAM_YELLOW);
+
+    assert(tempEntity.s.eventParm == GTS_YELLOW_CAPTURE);
+}
+
+void test_green_taken_event_emits_new_id(void) {
+    reset_environment();
+    g_gametype.integer = GT_CTF4;
+    Team_InitGame();
+
+    gentity_t base;
+    memset(&base, 0, sizeof(base));
+
+    Team_SetFlagStatus(TEAM_GREEN, FLAG_ATBASE);
+    teamgame.flagTakenTime[TEAM_GREEN] = 0;
+    level.time = 0;
+
+    Team_TakeFlagSound(&base, TEAM_GREEN);
+
+    assert(tempEntity.s.eventParm == GTS_GREEN_TAKEN);
+}
+
 int main(void) {
     test_green_scoring_uses_new_event();
     test_green_lead_change_emits_text();
@@ -303,6 +344,9 @@ int main(void) {
     test_yellow_lead_event_and_audio();
     test_green_flag_drop_sets_status();
     test_yellow_flag_drop_sets_status();
+    test_green_return_event_emits_new_id();
+    test_yellow_capture_event_emits_new_id();
+    test_green_taken_event_emits_new_id();
     printf("ok\n");
     return 0;
 }

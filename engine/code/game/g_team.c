@@ -889,14 +889,25 @@ void Team_ReturnFlagSound( gentity_t *ent, int team ) {
 		return;
 	}
 
-	te = G_TempEntity( ent->s.pos.trBase, EV_GLOBAL_TEAM_SOUND );
-	if( team == TEAM_BLUE ) {
-		te->s.eventParm = GTS_RED_RETURN;
-	}
-	else {
-		te->s.eventParm = GTS_BLUE_RETURN;
-	}
-	te->r.svFlags |= SVF_BROADCAST;
+        te = G_TempEntity( ent->s.pos.trBase, EV_GLOBAL_TEAM_SOUND );
+        switch ( team ) {
+        case TEAM_BLUE:
+                te->s.eventParm = GTS_RED_RETURN;
+                break;
+        case TEAM_RED:
+                te->s.eventParm = GTS_BLUE_RETURN;
+                break;
+        case TEAM_GREEN:
+                te->s.eventParm = GTS_GREEN_RETURN;
+                break;
+        case TEAM_YELLOW:
+                te->s.eventParm = GTS_YELLOW_RETURN;
+                break;
+        default:
+                te->s.eventParm = GTS_BLUE_RETURN;
+                break;
+        }
+        te->r.svFlags |= SVF_BROADCAST;
 }
 
 void Team_TakeFlagSound( gentity_t *ent, int team ) {
@@ -916,14 +927,25 @@ void Team_TakeFlagSound( gentity_t *ent, int team ) {
 	}
 	teamgame.flagTakenTime[team] = level.time;
 
-	te = G_TempEntity( ent->s.pos.trBase, EV_GLOBAL_TEAM_SOUND );
-	if( team == TEAM_BLUE ) {
-		te->s.eventParm = GTS_RED_TAKEN;
-	}
-	else {
-		te->s.eventParm = GTS_BLUE_TAKEN;
-	}
-	te->r.svFlags |= SVF_BROADCAST;
+        te = G_TempEntity( ent->s.pos.trBase, EV_GLOBAL_TEAM_SOUND );
+        switch ( team ) {
+        case TEAM_BLUE:
+                te->s.eventParm = GTS_RED_TAKEN;
+                break;
+        case TEAM_RED:
+                te->s.eventParm = GTS_BLUE_TAKEN;
+                break;
+        case TEAM_GREEN:
+                te->s.eventParm = GTS_GREEN_TAKEN;
+                break;
+        case TEAM_YELLOW:
+                te->s.eventParm = GTS_YELLOW_TAKEN;
+                break;
+        default:
+                te->s.eventParm = GTS_BLUE_TAKEN;
+                break;
+        }
+        te->r.svFlags |= SVF_BROADCAST;
 }
 
 void Team_CaptureFlagSound( gentity_t *ent, int team ) {
@@ -934,14 +956,25 @@ void Team_CaptureFlagSound( gentity_t *ent, int team ) {
 		return;
 	}
 
-	te = G_TempEntity( ent->s.pos.trBase, EV_GLOBAL_TEAM_SOUND );
-	if( team == TEAM_BLUE ) {
-		te->s.eventParm = GTS_BLUE_CAPTURE;
-	}
-	else {
-		te->s.eventParm = GTS_RED_CAPTURE;
-	}
-	te->r.svFlags |= SVF_BROADCAST;
+        te = G_TempEntity( ent->s.pos.trBase, EV_GLOBAL_TEAM_SOUND );
+        switch ( team ) {
+        case TEAM_BLUE:
+                te->s.eventParm = GTS_BLUE_CAPTURE;
+                break;
+        case TEAM_RED:
+                te->s.eventParm = GTS_RED_CAPTURE;
+                break;
+        case TEAM_GREEN:
+                te->s.eventParm = GTS_GREEN_CAPTURE;
+                break;
+        case TEAM_YELLOW:
+                te->s.eventParm = GTS_YELLOW_CAPTURE;
+                break;
+        default:
+                te->s.eventParm = GTS_RED_CAPTURE;
+                break;
+        }
+        te->r.svFlags |= SVF_BROADCAST;
 }
 
 void Team_ReturnFlag( int team ) {
