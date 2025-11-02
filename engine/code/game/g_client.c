@@ -1555,7 +1555,7 @@ trap_GetUserinfo( index, userinfo, sizeof(userinfo) );
        VectorCopy (playerMaxs, ent->r.maxs);
        ent->s.solid = SOLID_BBOX;
 
-       client->ps.pm_flags |= SVF_CAPSULE;
+ent->r.svFlags |= SVF_CAPSULE;
 
 
 	client->ps.clientNum = index;
