@@ -41,6 +41,7 @@ void reset_environment(void) {
     memset(&tempEntity, 0, sizeof(tempEntity));
     memset(lastServerCommand, 0, sizeof(lastServerCommand));
     memset(lastCenterPrint, 0, sizeof(lastCenterPrint));
+    memset(&teamgame, 0, sizeof(teamgame));
     level.gentities = g_entities;
     level.maxclients = MAX_CLIENTS;
     level.clients = levelClients;
@@ -261,11 +262,47 @@ void test_yellow_lead_event_and_audio(void) {
     assert(strstr(lastCenterPrint, "YELLOW") != NULL);
 }
 
+void test_green_flag_drop_sets_status(void) {
+    reset_environment();
+    g_gametype.integer = GT_CTF4;
+    Team_InitGame();
+
+    gentity_t dropped;
+    memset(&dropped, 0, sizeof(dropped));
+    gitem_t item;
+    memset(&item, 0, sizeof(item));
+    item.giTag = PW_GREENFLAG;
+    dropped.item = &item;
+
+    Team_CheckDroppedItem(&dropped);
+
+    assert(teamgame.flagStatus[TEAM_GREEN] == FLAG_DROPPED);
+}
+
+void test_yellow_flag_drop_sets_status(void) {
+    reset_environment();
+    g_gametype.integer = GT_CTF4;
+    Team_InitGame();
+
+    gentity_t dropped;
+    memset(&dropped, 0, sizeof(dropped));
+    gitem_t item;
+    memset(&item, 0, sizeof(item));
+    item.giTag = PW_YELLOWFLAG;
+    dropped.item = &item;
+
+    Team_CheckDroppedItem(&dropped);
+
+    assert(teamgame.flagStatus[TEAM_YELLOW] == FLAG_DROPPED);
+}
+
 int main(void) {
     test_green_scoring_uses_new_event();
     test_green_lead_change_emits_text();
     test_yellow_tie_triggers_tied_sound();
     test_yellow_lead_event_and_audio();
+    test_green_flag_drop_sets_status();
+    test_yellow_flag_drop_sets_status();
     printf("ok\n");
     return 0;
 }
