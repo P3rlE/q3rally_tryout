@@ -1867,6 +1867,15 @@ void LogExit( const char *string ) {
 
         G_LadderSubmitMatchReport( string );
 
+        for ( i = 0; i < level.maxclients; ++i ) {
+                gclient_t *client = &level.clients[i];
+
+                if ( client->pers.connected != CON_CONNECTED ) {
+                        continue;
+                }
+                G_ProfileUpdateForClient( client );
+        }
+
 #ifdef MISSIONPACK
         if (g_singlePlayer.integer) {
                 if (g_gametype.integer >= GT_TEAM) {

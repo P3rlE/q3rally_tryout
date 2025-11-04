@@ -2830,6 +2830,7 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/game/g_misc.o \
   $(B)/$(BASEGAME)/game/g_missile.o \
   $(B)/$(BASEGAME)/game/g_mover.o \
+  $(B)/$(BASEGAME)/game/g_profile.o \
   $(B)/$(BASEGAME)/game/g_rally_hazard.o \
   $(B)/$(BASEGAME)/game/g_rally_mapents.o \
   $(B)/$(BASEGAME)/game/g_rally_mapobjects.o \
@@ -2890,6 +2891,7 @@ MPGOBJ_ = \
   $(B)/$(MISSIONPACK)/game/g_misc.o \
   $(B)/$(MISSIONPACK)/game/g_missile.o \
   $(B)/$(MISSIONPACK)/game/g_mover.o \
+  $(B)/$(MISSIONPACK)/game/g_profile.o \
   $(B)/$(MISSIONPACK)/game/g_session.o \
   $(B)/$(MISSIONPACK)/game/g_spawn.o \
   $(B)/$(MISSIONPACK)/game/g_svcmds.o \
