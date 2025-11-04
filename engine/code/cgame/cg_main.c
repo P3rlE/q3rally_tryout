@@ -144,6 +144,8 @@ vmCvar_t	cg_drawCrosshair;
 vmCvar_t	cg_drawCrosshairNames;
 vmCvar_t	cg_drawRewards;
 vmCvar_t	cg_drawScores;
+vmCvar_t	cg_scoreboardTab;
+vmCvar_t	cg_scoreboardMockData;
 vmCvar_t	cg_drawPickups;
 vmCvar_t	cg_drawWeaponBar;
 vmCvar_t	cg_drawStatusHead;
@@ -316,6 +318,8 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_drawCrosshairNames, "cg_drawCrosshairNames", "1", CVAR_ARCHIVE },
 	{ &cg_drawRewards, "cg_drawRewards", "1", CVAR_ARCHIVE },
     { &cg_drawScores, "cg_drawScores", "1", CVAR_ARCHIVE },
+    { &cg_scoreboardTab, "cg_scoreboardTab", "0", CVAR_ARCHIVE },
+    { &cg_scoreboardMockData, "cg_scoreboardMockData", "0", 0 },
 	{ &cg_drawPickups, "cg_drawPickups", "1", CVAR_ARCHIVE },
 	{ &cg_drawWeaponBar, "cg_drawWeaponBar", "1", CVAR_ARCHIVE },
 	{ &cg_drawStatusHead, "cg_drawStatusHead", "1", CVAR_ARCHIVE },
