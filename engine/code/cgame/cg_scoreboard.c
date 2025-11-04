@@ -102,7 +102,7 @@ static void CG_FormatStatTime(int timeMs, char *buffer, int bufferSize);
 static void CG_ApplyMockScoreboardData(void);
 static void CG_ClearPlayerStatsState(void);
 static void CG_DrawModernText(int x, int y, const char *text, int align,
-    int maxWidth, const float *color, qboolean emboss);
+    int maxWidth, float *color, qboolean emboss);
 
 /*
 =================
@@ -675,7 +675,7 @@ Draw text with modern styling and proper alignment
 =================
 */
 static void CG_DrawModernText(int x, int y, const char *text, int align,
-                             int columnWidth, const float *color, qboolean isBold) {
+                             int columnWidth, float *color, qboolean isBold) {
     int textWidth, drawX;
     
     if (!text) {
