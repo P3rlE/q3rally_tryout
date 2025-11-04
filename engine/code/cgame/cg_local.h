@@ -409,6 +409,29 @@ typedef struct {
 	int				position;
 } score_t;
 
+typedef enum {
+	SB_TAB_OVERVIEW = 0,
+	SB_TAB_RACE = 1,
+	SB_TAB_COMBAT = 2,
+	SB_TAB_STATS = 3,
+	SB_TAB_MAX
+} scoreboardTab_t;
+
+typedef struct {
+	int				bestLapMs;
+	int				lastLapMs;
+	int				totalTimeMs;
+	int				checkpointsHit;
+	int				damageDealt;
+	int				damageTaken;
+	int				itemsCollected;
+	int				boostPads;
+	int				accuracy;
+	int				topSpeed;
+	int				eliminations;
+	int				assists;
+} playerStats_t;
+
 // each client has an associated clientInfo_t
 // that contains media references necessary to present the
 // client model and other color coded effects
@@ -695,6 +718,11 @@ typedef struct {
 	qboolean	showScores;
 	qboolean	scoreBoardShowing;
 	int			scoreFadeTime;
+	scoreboardTab_t	activeScoreboardTab;
+	scoreboardTab_t	lastActiveScoreboardTab;
+	qboolean		mockStatsInitialized;
+	playerStats_t	playerStats[MAX_CLIENTS];
+	qboolean		playerStatsValid[MAX_CLIENTS];
 	int			eliminationPlayersRemaining;
 	int			eliminationWarningTime;
 	qboolean	eliminationWarningActive;
@@ -1354,6 +1382,8 @@ extern	vmCvar_t		cg_drawCrosshairNames;
 extern	vmCvar_t		cg_drawRewards;
 extern	vmCvar_t		cg_drawTeamOverlay;
 extern	vmCvar_t		cg_drawScores;
+extern	vmCvar_t		cg_scoreboardTab;
+extern	vmCvar_t		cg_scoreboardMockData;
 extern	vmCvar_t		cg_drawPickups;
 extern	vmCvar_t		cg_drawWeaponBar;
 extern	vmCvar_t		cg_drawStatusHead;
