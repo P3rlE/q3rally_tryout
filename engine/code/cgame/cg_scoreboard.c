@@ -674,8 +674,8 @@ CG_DrawModernText
 Draw text with modern styling and proper alignment
 =================
 */
-static void CG_DrawModernText(int x, int y, const char *text, int align, 
-                             int columnWidth, float *color, qboolean isBold) {
+static void CG_DrawModernText(int x, int y, const char *text, int align,
+                             int columnWidth, const float *color, qboolean isBold) {
     int textWidth, drawX;
     
     if (!text) {
