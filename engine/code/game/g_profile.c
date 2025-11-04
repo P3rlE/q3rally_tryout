@@ -506,11 +506,13 @@ static void G_ProfileApplyMatchStats( gclient_t *client, int clientNum, const sc
                 distanceMeters = G_ProfileComputeDistance( client );
                 fuelConsumed = G_ProfileComputeFuelConsumed( client );
 
-                totalRaceMs = G_ProfileComputeRaceTime( client );
-                if ( totalRaceMs > 0 ) {
-                        profile->totalRaceTimeMs += totalRaceMs;
-                        if ( profile->bestTotalRaceMs == 0 || totalRaceMs < profile->bestTotalRaceMs ) {
-                                profile->bestTotalRaceMs = totalRaceMs;
+                if ( finished ) {
+                        totalRaceMs = G_ProfileComputeRaceTime( client );
+                        if ( totalRaceMs > 0 ) {
+                                profile->totalRaceTimeMs += totalRaceMs;
+                                if ( profile->bestTotalRaceMs == 0 || totalRaceMs < profile->bestTotalRaceMs ) {
+                                        profile->bestTotalRaceMs = totalRaceMs;
+                                }
                         }
                 }
 
