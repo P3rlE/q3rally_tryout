@@ -1359,6 +1359,8 @@ void ClientSpawn(gentity_t *ent) {
 	int		savedFinishRaceTime;
 	int		savedDamageTaken;
 	int		savedDamageDealt;
+	float		savedProfileDistanceAccum;
+	float		savedProfileFuelUsedAccum;
 	gentity_t	*savedCarPoints[4];
 	vec3_t	origin, forward;
 // END
@@ -1456,6 +1458,8 @@ void ClientSpawn(gentity_t *ent) {
 	savedFinishRaceTime = client->finishRaceTime;
 	savedDamageDealt = client->ps.stats[STAT_DAMAGE_DEALT];
 	savedDamageTaken = client->ps.stats[STAT_DAMAGE_TAKEN];
+	savedProfileDistanceAccum = client->profileDistanceAccum;
+	savedProfileFuelUsedAccum = client->profileFuelUsedAccum;
 // END
 //	savedAreaBits = client->areabits;
 	accuracy_hits = client->accuracy_hits;
@@ -1494,6 +1498,11 @@ void ClientSpawn(gentity_t *ent) {
 	client->ps.stats[STAT_DAMAGE_DEALT] = savedDamageDealt;
 	client->ps.stats[STAT_DAMAGE_TAKEN] = savedDamageTaken;
 	client->ps.stats[STAT_NEXT_CHECKPOINT] = ent->number;
+	client->profileDistanceAccum = savedProfileDistanceAccum;
+	client->profileFuelUsedAccum = savedProfileFuelUsedAccum;
+	client->profileTrackValid = qfalse;
+	VectorClear( client->profileLastOrigin );
+	client->profileLastFuel = 0.0f;
 // END
 //	client->areabits = savedAreaBits;
 	client->accuracy_hits = accuracy_hits;

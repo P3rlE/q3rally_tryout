@@ -365,6 +365,10 @@ static float G_ProfileComputeDistance( gclient_t *client ) {
                 return 0.0f;
         }
 
+        if ( client->profileDistanceAccum > 0.0f ) {
+                return client->profileDistanceAccum;
+        }
+
         if ( level.trackLength <= 0.0f ) {
                 return 0.0f;
         }
@@ -394,6 +398,10 @@ static float G_ProfileComputeFuelConsumed( gclient_t *client ) {
 
         if ( !client ) {
                 return 0.0f;
+        }
+
+        if ( client->profileFuelUsedAccum > 0.0f ) {
+                return client->profileFuelUsedAccum;
         }
 
         consumed = client->car.maxFuel - client->car.fuel;
