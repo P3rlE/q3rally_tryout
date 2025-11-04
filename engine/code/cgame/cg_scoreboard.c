@@ -101,6 +101,8 @@ static void CG_DrawPlayerStatsPanel(int y, float fade);
 static void CG_FormatStatTime(int timeMs, char *buffer, int bufferSize);
 static void CG_ApplyMockScoreboardData(void);
 static void CG_ClearPlayerStatsState(void);
+static void CG_DrawModernText(int x, int y, const char *text, int align,
+    int maxWidth, const float *color, qboolean emboss);
 
 /*
 =================
