@@ -422,6 +422,11 @@ struct gclient_s {
 	int			lapTimeCount;
 	int			recordedLaps[LADDER_MAX_LAP_TIMES];
 	int			recordedLapCount;
+	float		profileDistanceAccum;
+	float		profileFuelUsedAccum;
+	vec3_t	profileLastOrigin;
+	float		profileLastFuel;
+	qboolean	profileTrackValid;
 // END
 
 	char		*areabits;

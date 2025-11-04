@@ -1874,6 +1874,11 @@ void LogExit( const char *string ) {
                         continue;
                 }
                 G_ProfileUpdateForClient( client );
+                client->profileDistanceAccum = 0.0f;
+                client->profileFuelUsedAccum = 0.0f;
+                client->profileTrackValid = qfalse;
+                VectorClear( client->profileLastOrigin );
+                client->profileLastFuel = 0.0f;
         }
 
 #ifdef MISSIONPACK
