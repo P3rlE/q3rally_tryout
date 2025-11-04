@@ -1388,15 +1388,23 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
-	if ( !strcmp( cmd, "raceFinishTime" ) ) {
-		i1 = atoi(CG_Argv(1));
-		i2 = atoi(CG_Argv(2));
-		CG_FinishedRace( i1, i2 );
-		return;
-	}
+        if ( !strcmp( cmd, "raceFinishTime" ) ) {
+                i1 = atoi(CG_Argv(1));
+                i2 = atoi(CG_Argv(2));
+                CG_FinishedRace( i1, i2 );
+                return;
+        }
+
+        if ( !strcmp( cmd, "notify" ) ) {
+                const char *identifier;
+
+                identifier = CG_Argv( 1 );
+                CG_HandleServerNotification( identifier );
+                return;
+        }
 // END
 
-	CG_Printf( "Unknown client game command: %s\n", cmd );
+        CG_Printf( "Unknown client game command: %s\n", cmd );
 }
 
 

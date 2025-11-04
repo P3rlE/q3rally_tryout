@@ -79,6 +79,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define	TEAMCHAT_WIDTH		80
 #define TEAMCHAT_HEIGHT		8
 
+#define CG_MAX_NOTIFICATIONS            4
+#define CG_NOTIFICATION_DISPLAY_TIME    5000
+#define CG_NOTIFICATION_FADE_TIME       500
+
+typedef struct {
+        qboolean        active;
+        int                     startTime;
+        char            text[MAX_STRING_CHARS];
+} cgNotification_t;
+
 // very large characters
 #define	GIANT_WIDTH			22
 #define	GIANT_HEIGHT		33
@@ -718,6 +728,7 @@ typedef struct {
 	qboolean	showScores;
 	qboolean	scoreBoardShowing;
 	int			scoreFadeTime;
+	cgNotification_t notifications[CG_MAX_NOTIFICATIONS];
 	scoreboardTab_t	activeScoreboardTab;
 	scoreboardTab_t	lastActiveScoreboardTab;
 	qboolean		mockStatsInitialized;
@@ -1941,6 +1952,8 @@ void CG_NewLapTime( int client, int lap, int time );
 void CG_FinishedRace( int client, int time );
 void CG_StartRace( int time );
 void CG_DrawRaceCountDown( void );
+void CG_HandleServerNotification( const char *identifier );
+
 void CG_RaceCountDown( const char *str, int secondsLeft );
 
 //

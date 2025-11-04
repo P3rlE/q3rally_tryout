@@ -22,9 +22,27 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
-#define PROFILE_FILE_VERSION            1
+#define PROFILE_FILE_VERSION            2
 #define PROFILE_DIRECTORY               "profiles"
 #define PROFILE_EXTENSION               ".profile"
+
+#define PROFILE_DISTANCE_100KM_METERS   100000.0f
+#define PROFILE_DISTANCE_500KM_METERS   500000.0f
+#define PROFILE_MATCHES_10              10
+#define PROFILE_MATCHES_50              50
+
+#define PROFILE_NOTIFY_DISTANCE_100KM   "achv_distance_100km"
+#define PROFILE_NOTIFY_DISTANCE_500KM   "achv_distance_500km"
+#define PROFILE_NOTIFY_MATCHES_10       "achv_races_10"
+#define PROFILE_NOTIFY_MATCHES_50       "achv_races_50"
+
+
+typedef enum {
+        PROFILE_ACHIEVEMENT_DISTANCE_100KM        = 1 << 0,
+        PROFILE_ACHIEVEMENT_DISTANCE_500KM        = 1 << 1,
+        PROFILE_ACHIEVEMENT_MATCHES_10            = 1 << 2,
+        PROFILE_ACHIEVEMENT_MATCHES_50            = 1 << 3
+} profileAchievementBits_t;
 
 
 typedef struct {
@@ -67,6 +85,7 @@ typedef struct {
         int                     totalDamageTaken;
         float           totalDistanceMeters;
         float           totalFuelConsumed;
+        int                     achievements;
 } profileData_t;
 
 typedef struct {
@@ -87,7 +106,28 @@ typedef struct {
         int                     totalDamageTaken;
         float           totalDistanceMeters;
         float           totalFuelConsumed;
+        int                     achievements;
 } profileDisk_t;
+
+typedef struct {
+        int                     version;
+        int                     matchesPlayed;
+        int                     wins;
+        int                     losses;
+        int                     finishes;
+        int                     dnfs;
+        int                     bestPosition;
+        int                     bestLapMs;
+        int                     bestTotalRaceMs;
+        int                     totalRaceTimeMs;
+        int                     totalScore;
+        int                     totalKills;
+        int                     totalDeaths;
+        int                     totalDamageDealt;
+        int                     totalDamageTaken;
+        float           totalDistanceMeters;
+        float           totalFuelConsumed;
+} profileDiskV1_t;
 
 static void G_ProfileSetDefaults( profileData_t *profile ) {
         if ( !profile ) {
@@ -188,6 +228,7 @@ static void G_ProfileSerialize( const profileData_t *profile, profileDisk_t *dis
         disk->totalDamageTaken = LittleLong( profile->totalDamageTaken );
         disk->totalDistanceMeters = LittleFloat( profile->totalDistanceMeters );
         disk->totalFuelConsumed = LittleFloat( profile->totalFuelConsumed );
+        disk->achievements = LittleLong( profile->achievements );
 }
 
 static void G_ProfileDeserialize( profileData_t *profile, const profileDisk_t *disk ) {
@@ -212,6 +253,83 @@ static void G_ProfileDeserialize( profileData_t *profile, const profileDisk_t *d
         profile->totalDamageTaken = LittleLong( disk->totalDamageTaken );
         profile->totalDistanceMeters = LittleFloat( disk->totalDistanceMeters );
         profile->totalFuelConsumed = LittleFloat( disk->totalFuelConsumed );
+        profile->achievements = LittleLong( disk->achievements );
+}
+
+static void G_ProfileDeserializeV1( profileData_t *profile, const profileDiskV1_t *disk ) {
+        if ( !profile || !disk ) {
+                return;
+        }
+
+        profile->version = LittleLong( disk->version );
+        profile->matchesPlayed = LittleLong( disk->matchesPlayed );
+        profile->wins = LittleLong( disk->wins );
+        profile->losses = LittleLong( disk->losses );
+        profile->finishes = LittleLong( disk->finishes );
+        profile->dnfs = LittleLong( disk->dnfs );
+        profile->bestPosition = LittleLong( disk->bestPosition );
+        profile->bestLapMs = LittleLong( disk->bestLapMs );
+        profile->bestTotalRaceMs = LittleLong( disk->bestTotalRaceMs );
+        profile->totalRaceTimeMs = LittleLong( disk->totalRaceTimeMs );
+        profile->totalScore = LittleLong( disk->totalScore );
+        profile->totalKills = LittleLong( disk->totalKills );
+        profile->totalDeaths = LittleLong( disk->totalDeaths );
+        profile->totalDamageDealt = LittleLong( disk->totalDamageDealt );
+        profile->totalDamageTaken = LittleLong( disk->totalDamageTaken );
+        profile->totalDistanceMeters = LittleFloat( disk->totalDistanceMeters );
+        profile->totalFuelConsumed = LittleFloat( disk->totalFuelConsumed );
+        profile->achievements = 0;
+}
+
+static void G_ProfileSendAchievementEvent( int clientNum, const char *identifier ) {
+        if ( !identifier || !identifier[0] ) {
+                return;
+        }
+
+        if ( clientNum < 0 || clientNum >= level.maxclients ) {
+                return;
+        }
+
+        trap_SendServerCommand( clientNum, va( "notify \"%s\"", identifier ) );
+}
+
+static void G_ProfileProcessAchievements( gclient_t *client, int clientNum, profileData_t *profile, int previousAchievements ) {
+        int unlocked;
+
+        if ( !client || !profile ) {
+                return;
+        }
+
+        if ( profile->totalDistanceMeters >= PROFILE_DISTANCE_500KM_METERS ) {
+                profile->achievements |= PROFILE_ACHIEVEMENT_DISTANCE_500KM;
+        }
+        if ( profile->totalDistanceMeters >= PROFILE_DISTANCE_100KM_METERS ) {
+                profile->achievements |= PROFILE_ACHIEVEMENT_DISTANCE_100KM;
+        }
+        if ( profile->matchesPlayed >= PROFILE_MATCHES_50 ) {
+                profile->achievements |= PROFILE_ACHIEVEMENT_MATCHES_50;
+        }
+        if ( profile->matchesPlayed >= PROFILE_MATCHES_10 ) {
+                profile->achievements |= PROFILE_ACHIEVEMENT_MATCHES_10;
+        }
+
+        unlocked = profile->achievements & ~previousAchievements;
+        if ( !unlocked ) {
+                return;
+        }
+
+        if ( unlocked & PROFILE_ACHIEVEMENT_DISTANCE_100KM ) {
+                G_ProfileSendAchievementEvent( clientNum, PROFILE_NOTIFY_DISTANCE_100KM );
+        }
+        if ( unlocked & PROFILE_ACHIEVEMENT_DISTANCE_500KM ) {
+                G_ProfileSendAchievementEvent( clientNum, PROFILE_NOTIFY_DISTANCE_500KM );
+        }
+        if ( unlocked & PROFILE_ACHIEVEMENT_MATCHES_10 ) {
+                G_ProfileSendAchievementEvent( clientNum, PROFILE_NOTIFY_MATCHES_10 );
+        }
+        if ( unlocked & PROFILE_ACHIEVEMENT_MATCHES_50 ) {
+                G_ProfileSendAchievementEvent( clientNum, PROFILE_NOTIFY_MATCHES_50 );
+        }
 }
 
 static void G_ProfileBuildPath( const char *identifier, char *path, size_t size ) {
@@ -229,9 +347,9 @@ static void G_ProfileBuildPath( const char *identifier, char *path, size_t size 
 
 static qboolean G_ProfileLoad( const char *identifier, profileData_t *profile ) {
         fileHandle_t file;
-        profileDisk_t disk;
         int length;
         char path[MAX_QPATH];
+        qboolean loaded = qfalse;
 
         if ( !profile ) {
                 return qfalse;
@@ -250,26 +368,43 @@ static qboolean G_ProfileLoad( const char *identifier, profileData_t *profile ) 
                 return qfalse;
         }
 
-        if ( length != sizeof( disk ) ) {
+        if ( length == sizeof( profileDisk_t ) ) {
+                profileDisk_t disk;
+
+                Com_Memset( &disk, 0, sizeof( disk ) );
+                trap_FS_Read( &disk, sizeof( disk ), file );
+                G_ProfileDeserialize( profile, &disk );
+                loaded = qtrue;
+        } else if ( length == sizeof( profileDiskV1_t ) ) {
+                profileDiskV1_t diskV1;
+
+                Com_Memset( &diskV1, 0, sizeof( diskV1 ) );
+                trap_FS_Read( &diskV1, sizeof( diskV1 ), file );
+                G_ProfileDeserializeV1( profile, &diskV1 );
+                loaded = qtrue;
+        } else {
                 trap_FS_FCloseFile( file );
-                Com_Printf( "Profile: ignoring '%s' with unexpected size (%i, expected %i)\n",
-                        path, length, (int)sizeof( disk ) );
+                Com_Printf( "Profile: ignoring '%s' with unexpected size (%i)\n", path, length );
                 return qfalse;
         }
 
-        Com_Memset( &disk, 0, sizeof( disk ) );
-        trap_FS_Read( &disk, sizeof( disk ), file );
         trap_FS_FCloseFile( file );
 
-        G_ProfileDeserialize( profile, &disk );
         if ( profile->version != PROFILE_FILE_VERSION ) {
-                Com_Printf( "Profile: ignoring '%s' with unsupported version %i\n", path, profile->version );
-                G_ProfileSetDefaults( profile );
-                return qfalse;
+                if ( profile->version == 1 ) {
+                        profile->version = PROFILE_FILE_VERSION;
+                } else {
+                        Com_Printf( "Profile: ignoring '%s' with unsupported version %i\n", path, profile->version );
+                        G_ProfileSetDefaults( profile );
+                        return qfalse;
+                }
         }
 
-        profile->version = PROFILE_FILE_VERSION;
-        return qtrue;
+        if ( loaded ) {
+                profile->version = PROFILE_FILE_VERSION;
+        }
+
+        return loaded;
 }
 
 static qboolean G_ProfileSave( const char *identifier, const profileData_t *profile ) {
@@ -562,6 +697,7 @@ void G_ProfileUpdateForClient( gclient_t *client ) {
         char identifier[MAX_QPATH];
         int clientNum;
         gentity_t *ent;
+        int previousAchievements;
 
         if ( !client ) {
                 return;
@@ -582,8 +718,10 @@ void G_ProfileUpdateForClient( gclient_t *client ) {
         }
 
         G_ProfileLoad( identifier, &profile );
+        previousAchievements = profile.achievements;
         G_ProfileBuildScore( clientNum, &score );
         G_ProfileApplyMatchStats( client, clientNum, &score, &profile );
+        G_ProfileProcessAchievements( client, clientNum, &profile, previousAchievements );
 
         if ( !G_ProfileSave( identifier, &profile ) ) {
                 Com_Printf( "Profile: failed to persist statistics for '%s'\n", identifier );
