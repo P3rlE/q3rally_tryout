@@ -1100,6 +1100,7 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.checkpointArrow = trap_R_RegisterModel("gfx/hud/arrow.md3");
     cgs.media.gaugeImperial = trap_R_RegisterShaderNoMip("gfx/hud/gauge01" );
     cgs.media.gaugeMetric = trap_R_RegisterShaderNoMip("gfx/hud/gauge_metric" );
+    cgs.media.scoreboardCursor = trap_R_RegisterShaderNoMip("ui/assets/selectcursor.tga" );
 // Q3Rally Code END
 
 	// powerup shaders

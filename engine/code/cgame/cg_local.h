@@ -1243,6 +1243,7 @@ sfxHandle_t neutralFlagReturnedSound;
 
     qhandle_t       gaugeImperial;
     qhandle_t       gaugeMetric;
+    qhandle_t       scoreboardCursor;
 	// car sounds
 	sfxHandle_t	damage100[2];
 	sfxHandle_t	damage75[2];
