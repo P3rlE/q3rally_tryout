@@ -1243,6 +1243,7 @@ sfxHandle_t neutralFlagReturnedSound;
 
     qhandle_t       gaugeImperial;
     qhandle_t       gaugeMetric;
+    qhandle_t       scoreboardCursor;
 	// car sounds
 	sfxHandle_t	damage100[2];
 	sfxHandle_t	damage75[2];
@@ -1854,6 +1855,13 @@ void CG_DrawInformation( void );
 // cg_scoreboard.c
 //
 qboolean CG_DrawOldScoreboard( void );
+void CG_ScoreboardSetTab( int tab );
+void CG_ScoreboardCycleTab( int direction );
+qboolean CG_ScoreboardKeyEvent( int key, qboolean down );
+void CG_ScoreboardMouseMove( int dx, int dy );
+void CG_ScoreboardEnableMouse( void );
+void CG_ScoreboardDisableMouse( void );
+qboolean CG_ScoreboardMouseActive( void );
 // Q3Rally Code Start - removed
 // void CG_DrawTourneyScoreboard( void );
 // Q3Rally Code END
