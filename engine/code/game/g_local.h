@@ -772,7 +772,6 @@ qboolean SpotWouldTelefrag( gentity_t *spot );
 void G_ProfileSendLifetimeCommand( int clientNum, const profileLifetime_t *lifetime );
 void G_ProfileUpdateForClient( gclient_t *client );
 qboolean G_ProfileGetLifetimeForClient( gclient_t *client, profileLifetime_t *lifetime );
-void G_ProfileSendLifetimeCommand( int clientNum, const profileLifetime_t *lifetime );
 
 //
 // g_svcmds.c
