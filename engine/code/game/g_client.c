@@ -40,6 +40,37 @@ static vec3_t	playerMaxs = {CAR_WIDTH/2, CAR_WIDTH/2, CAR_WIDTH/2};
 //static vec3_t	playerMaxs = {CAR_LENGTH/2, CAR_WIDTH/2, CAR_HEIGHT/2};
 // END
 
+static void G_ClientRefreshProfileLifetime( int clientNum, qboolean sendCommand ) {
+        profileLifetime_t lifetime;
+        gclient_t *client;
+        gentity_t *ent;
+
+        if ( clientNum < 0 || clientNum >= level.maxclients ) {
+                return;
+        }
+
+        client = &level.clients[clientNum];
+        ent = &g_entities[clientNum];
+
+        if ( !client || !ent ) {
+                return;
+        }
+
+        if ( ent->r.svFlags & SVF_BOT ) {
+                return;
+        }
+
+        if ( !G_ProfileGetLifetimeForClient( client, &lifetime ) ) {
+                // defaults were already written into lifetime
+        }
+
+        client->profileLifetime = lifetime;
+
+        if ( sendCommand ) {
+                G_ProfileSendLifetimeCommand( clientNum, &client->profileLifetime );
+        }
+}
+
 void G_ResetClientLapData( gclient_t *client ) {
         if ( !client ) {
                 return;
@@ -933,9 +964,13 @@ void ClientUserinfoChanged( int clientNum ) {
     char    yellowTeam[MAX_INFO_STRING];
 	char	userinfo[MAX_INFO_STRING];
 	char	profileSlot[MAX_QPATH];
+	char	previousProfileId[MAX_QPATH];
+	qboolean	profileChanged = qfalse;
 
 	ent = g_entities + clientNum;
 	client = ent->client;
+
+	Q_strncpyz( previousProfileId, client->profileId, sizeof( previousProfileId ) );
 
 	trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
 
@@ -951,7 +986,14 @@ void ClientUserinfoChanged( int clientNum ) {
 	if ( !profileSlot[0] ) {
 		Q_strncpyz( profileSlot, PROFILE_DEFAULT_SLOT, sizeof( profileSlot ) );
 	}
+	if ( Q_stricmp( previousProfileId, profileSlot ) ) {
+		profileChanged = qtrue;
+	}
 	Q_strncpyz( client->profileId, profileSlot, sizeof( client->profileId ) );
+
+	if ( profileChanged ) {
+		G_ClientRefreshProfileLifetime( clientNum, client->pers.connected == CON_CONNECTED ? qtrue : qfalse );
+	}
 
 	// check the item prediction
 	s = Info_ValueForKey( userinfo, "cg_predictItems" );
@@ -1364,6 +1406,8 @@ void ClientBegin( int clientNum ) {
 
 	// count current clients and rank for scoreboard
 	CalculateRanks();
+
+	G_ClientRefreshProfileLifetime( clientNum, qtrue );
 }
 
 /*
