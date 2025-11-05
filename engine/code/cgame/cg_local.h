@@ -89,6 +89,28 @@ typedef struct {
         char            text[MAX_STRING_CHARS];
 } cgNotification_t;
 
+typedef struct {
+	qboolean	valid;
+	char			identifier[MAX_QPATH];
+	int			matchesPlayed;
+	int			wins;
+	int			losses;
+	int			finishes;
+	int			dnfs;
+	int			bestPosition;
+	int			bestLapMs;
+	int			bestTotalRaceMs;
+	int			totalRaceTimeMs;
+	int			totalScore;
+	int			totalKills;
+	int			totalDeaths;
+	int			totalDamageDealt;
+	int			totalDamageTaken;
+	int			totalDistanceMeters;
+	int			totalFuelConsumed;
+	int			achievements;
+} profileLifetimeClient_t;
+
 // very large characters
 #define	GIANT_WIDTH			22
 #define	GIANT_HEIGHT		33
@@ -734,6 +756,7 @@ typedef struct {
 	qboolean		mockStatsInitialized;
 	playerStats_t	playerStats[MAX_CLIENTS];
 	qboolean		playerStatsValid[MAX_CLIENTS];
+	profileLifetimeClient_t	profileLifetime;
 	int			eliminationPlayersRemaining;
 	int			eliminationWarningTime;
 	qboolean	eliminationWarningActive;
@@ -1243,6 +1266,7 @@ sfxHandle_t neutralFlagReturnedSound;
 
     qhandle_t       gaugeImperial;
     qhandle_t       gaugeMetric;
+    qhandle_t       scoreboardCursor;
 	// car sounds
 	sfxHandle_t	damage100[2];
 	sfxHandle_t	damage75[2];
@@ -1854,6 +1878,13 @@ void CG_DrawInformation( void );
 // cg_scoreboard.c
 //
 qboolean CG_DrawOldScoreboard( void );
+void CG_ScoreboardSetTab( int tab );
+void CG_ScoreboardCycleTab( int direction );
+qboolean CG_ScoreboardKeyEvent( int key, qboolean down );
+void CG_ScoreboardMouseMove( int dx, int dy );
+void CG_ScoreboardEnableMouse( void );
+void CG_ScoreboardDisableMouse( void );
+qboolean CG_ScoreboardMouseActive( void );
 // Q3Rally Code Start - removed
 // void CG_DrawTourneyScoreboard( void );
 // Q3Rally Code END

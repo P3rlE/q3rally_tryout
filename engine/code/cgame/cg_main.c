@@ -495,6 +495,7 @@ void CG_RegisterCvars( void ) {
 	trap_Cvar_Register(NULL, "head", DEFAULT_HEAD, CVAR_USERINFO | CVAR_ARCHIVE );
 	trap_Cvar_Register(NULL, "rim", DEFAULT_RIM, CVAR_USERINFO | CVAR_ARCHIVE );
 	trap_Cvar_Register(NULL, "plate", DEFAULT_PLATE_SKIN, CVAR_USERINFO | CVAR_ARCHIVE );
+	trap_Cvar_Register(NULL, "profile", "", CVAR_USERINFO | CVAR_ARCHIVE );
 	// UPDATE: remove team versions?
 // Q3Rally Code END
 	trap_Cvar_Register(NULL, "team_model", DEFAULT_TEAM_MODEL, CVAR_USERINFO | CVAR_ARCHIVE );
@@ -1100,6 +1101,7 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.checkpointArrow = trap_R_RegisterModel("gfx/hud/arrow.md3");
     cgs.media.gaugeImperial = trap_R_RegisterShaderNoMip("gfx/hud/gauge01" );
     cgs.media.gaugeMetric = trap_R_RegisterShaderNoMip("gfx/hud/gauge_metric" );
+    cgs.media.scoreboardCursor = trap_R_RegisterShaderNoMip("menu/art/3_cursor2" );
 // Q3Rally Code END
 
 	// powerup shaders
@@ -2404,9 +2406,13 @@ void CG_EventHandling(int type) {
 
 
 void CG_KeyEvent(int key, qboolean down) {
+    if (CG_ScoreboardKeyEvent(key, down)) {
+        return;
+    }
 }
 
 void CG_MouseEvent(int x, int y) {
+    CG_ScoreboardMouseMove(x, y);
 }
 #endif
 

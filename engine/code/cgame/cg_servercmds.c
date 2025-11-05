@@ -143,6 +143,37 @@ static void CG_ParseScores( void ) {
 
 }
 
+static void CG_ParseProfileLifetime( void ) {
+	int argc;
+
+	argc = trap_Argc();
+	if ( argc < 19 ) {
+		CG_Printf( "profileLifetime: expected 18 args, got %i\n", argc - 1 );
+		cg.profileLifetime.valid = qfalse;
+		return;
+	}
+
+	trap_Argv( 1, cg.profileLifetime.identifier, sizeof( cg.profileLifetime.identifier ) );
+	cg.profileLifetime.matchesPlayed = atoi( CG_Argv( 2 ) );
+	cg.profileLifetime.wins = atoi( CG_Argv( 3 ) );
+	cg.profileLifetime.losses = atoi( CG_Argv( 4 ) );
+	cg.profileLifetime.finishes = atoi( CG_Argv( 5 ) );
+	cg.profileLifetime.dnfs = atoi( CG_Argv( 6 ) );
+	cg.profileLifetime.bestPosition = atoi( CG_Argv( 7 ) );
+	cg.profileLifetime.bestLapMs = atoi( CG_Argv( 8 ) );
+	cg.profileLifetime.bestTotalRaceMs = atoi( CG_Argv( 9 ) );
+	cg.profileLifetime.totalRaceTimeMs = atoi( CG_Argv( 10 ) );
+	cg.profileLifetime.totalScore = atoi( CG_Argv( 11 ) );
+	cg.profileLifetime.totalKills = atoi( CG_Argv( 12 ) );
+	cg.profileLifetime.totalDeaths = atoi( CG_Argv( 13 ) );
+	cg.profileLifetime.totalDamageDealt = atoi( CG_Argv( 14 ) );
+	cg.profileLifetime.totalDamageTaken = atoi( CG_Argv( 15 ) );
+	cg.profileLifetime.totalDistanceMeters = atoi( CG_Argv( 16 ) );
+	cg.profileLifetime.totalFuelConsumed = atoi( CG_Argv( 17 ) );
+	cg.profileLifetime.achievements = atoi( CG_Argv( 18 ) );
+	cg.profileLifetime.valid = qtrue;
+}
+
 /*
 =================
 CG_ParseTeamInfo
@@ -1178,6 +1209,11 @@ static void CG_ServerCommand( void ) {
 		// server claimed the command
 		return;
 	}
+
+        if ( !strcmp( cmd, "profileLifetime" ) ) {
+                CG_ParseProfileLifetime();
+                return;
+        }
 
         if ( !strcmp( cmd, "cp" ) ) {
                 const char *message;
