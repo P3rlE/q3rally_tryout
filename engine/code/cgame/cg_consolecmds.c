@@ -30,6 +30,65 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 extern menuDef_t *menuScoreboard;
 #endif
 
+static void CG_SanitizeProfileSlot( const char *input, char *output, size_t size ) {
+	size_t length = 0;
+
+	if ( !output || size == 0 ) {
+		return;
+	}
+
+	output[0] = '\0';
+
+	if ( !input ) {
+		return;
+	}
+
+	while ( *input && length + 1 < size ) {
+		char c = *input++;
+
+		if ( ( c >= 'a' && c <= 'z' ) ||
+		     ( c >= 'A' && c <= 'Z' ) ||
+		     ( c >= '0' && c <= '9' ) ) {
+			output[length++] = c;
+		} else if ( c == '-' || c == '_' || c == '.' ) {
+			output[length++] = c;
+		}
+	}
+
+	output[length] = '\0';
+}
+
+static void CG_ApplyProfileValue( const char *value ) {
+	char sanitized[MAX_QPATH];
+
+	CG_SanitizeProfileSlot( value, sanitized, sizeof( sanitized ) );
+	if ( !sanitized[0] ) {
+		Q_strncpyz( sanitized, PROFILE_DEFAULT_SLOT, sizeof( sanitized ) );
+	}
+
+	trap_Cvar_Set( "cg_profile", sanitized );
+	trap_Cvar_Set( "profile", sanitized );
+	trap_Cvar_Update( &cg_profile );
+}
+
+void CG_UpdateProfileUserinfo( void ) {
+	char value[MAX_QPATH];
+
+	trap_Cvar_VariableStringBuffer( "cg_profile", value, sizeof( value ) );
+	CG_ApplyProfileValue( value );
+}
+
+static void CG_ProfileCommand_f( void ) {
+	char value[MAX_QPATH];
+
+	if ( trap_Argc() > 1 ) {
+		trap_Argv( 1, value, sizeof( value ) );
+	} else {
+		trap_Cvar_VariableStringBuffer( "cg_profile", value, sizeof( value ) );
+	}
+
+	CG_ApplyProfileValue( value );
+}
 
 
 void CG_TargetCommand_f( void ) {
@@ -841,4 +900,6 @@ void CG_InitConsoleCommands( void ) {
 	trap_AddCommand ("stats");
 	trap_AddCommand ("teamtask");
 	trap_AddCommand ("loaddefered");	// spelled wrong, but not changing for demo
+
+	CG_UpdateProfileUserinfo();
 }
