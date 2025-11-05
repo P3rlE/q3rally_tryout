@@ -467,7 +467,7 @@ void UI_MainMenu( void ) {
         uis.menusp = 0;
 
         UI_PushMenu ( &s_main.menu );
-
+        UI_ProfileOverlay_MaybeShow();
 
         uis.transitionIn = uis.realtime;
 
