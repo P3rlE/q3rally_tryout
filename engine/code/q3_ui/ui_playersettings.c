@@ -24,8 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "ui_local.h"
 #include "../game/g_profile.h"
 
-#include <string.h>
-
 // STONELANCE
 /*
 #define ART_FRAMEL			"menu/art/frame2_l"
@@ -361,8 +359,44 @@ static void PlayerSettings_SaveProfileSlots( void ) {
         trap_Cvar_Set( PROFILE_SLOTS_CVAR, buffer );
 }
 
+static char *PlayerSettings_NextProfileToken( char **cursor ) {
+        char *c;
+        char *token;
+
+        if ( !cursor || !*cursor ) {
+                return NULL;
+        }
+
+        c = *cursor;
+
+        while ( *c == ' ' ) {
+                c++;
+        }
+
+        if ( !*c ) {
+                *cursor = c;
+                return NULL;
+        }
+
+        token = c;
+
+        while ( *c && *c != ' ' ) {
+                c++;
+        }
+
+        if ( *c ) {
+                *c = '\0';
+                c++;
+        }
+
+        *cursor = c;
+
+        return token;
+}
+
 static void PlayerSettings_LoadProfileSlots( void ) {
         char buffer[MAX_STRING_CHARS];
+        char *cursor;
         char *token;
         char currentProfileRaw[MAX_STRING_CHARS];
         char sanitizedCurrent[MAX_PROFILE_NAME_LENGTH];
@@ -370,13 +404,14 @@ static void PlayerSettings_LoadProfileSlots( void ) {
         s_playersettings.profileCount = 0;
 
         trap_Cvar_VariableStringBuffer( PROFILE_SLOTS_CVAR, buffer, sizeof( buffer ) );
-        token = strtok( buffer, " " );
+        cursor = buffer;
+        token = PlayerSettings_NextProfileToken( &cursor );
         while ( token ) {
                 PlayerSettings_AddProfileSlot( token );
                 if ( s_playersettings.profileCount >= MAX_PROFILE_SLOTS ) {
                         break;
                 }
-                token = strtok( NULL, " " );
+                token = PlayerSettings_NextProfileToken( &cursor );
         }
 
         PlayerSettings_AddProfileSlot( PROFILE_DEFAULT_SLOT );
