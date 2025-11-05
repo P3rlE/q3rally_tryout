@@ -497,6 +497,7 @@ void CG_RegisterCvars( void ) {
 	trap_Cvar_Register(NULL, "head", DEFAULT_HEAD, CVAR_USERINFO | CVAR_ARCHIVE );
 	trap_Cvar_Register(NULL, "rim", DEFAULT_RIM, CVAR_USERINFO | CVAR_ARCHIVE );
 	trap_Cvar_Register(NULL, "plate", DEFAULT_PLATE_SKIN, CVAR_USERINFO | CVAR_ARCHIVE );
+	trap_Cvar_Register(NULL, "profile", "", CVAR_USERINFO | CVAR_ARCHIVE );
 	// UPDATE: remove team versions?
 // Q3Rally Code END
 	trap_Cvar_Register(NULL, "profile", PROFILE_DEFAULT_SLOT, CVAR_USERINFO );

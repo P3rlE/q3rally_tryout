@@ -765,7 +765,6 @@ static consoleCommand_t	commands[] = {
 	{ "scoreboardNextTab", CG_ScoreboardNextTab_f },
 	{ "scoreboardPrevTab", CG_ScoreboardPrevTab_f },
 	{ "scoreboardSetTab", CG_ScoreboardSelectTab_f },
-	{ "cg_profile", CG_ProfileCommand_f },
 	{ "+zoom", CG_ZoomDown_f },
 	{ "-zoom", CG_ZoomUp_f },
 	{ "sizeup", CG_SizeUp_f },

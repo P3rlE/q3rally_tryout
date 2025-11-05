@@ -38,6 +38,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 typedef void (*voidfunc_f)(void);
 
 // STONELANCE
+#define UI_MAX_PROFILE_SLOTS	8
 #define MENU_TRANSITION_TIME	665
 
 #define	DEFAULT_MODEL			"sidepipe"
@@ -75,6 +76,10 @@ extern vmCvar_t	ui_dm_timelimit;
 extern vmCvar_t	ui_racing_tracklength;
 extern vmCvar_t	ui_racing_trackreversed;
 // END
+
+extern vmCvar_t	ui_profile;
+extern vmCvar_t	ui_profileSelected;
+extern vmCvar_t	ui_profileSlot[UI_MAX_PROFILE_SLOTS];
 
 extern vmCvar_t	ui_team_fraglimit;
 extern vmCvar_t	ui_team_timelimit;
@@ -1058,5 +1063,8 @@ void UI_SignupMenu( void );
 //
 void RankStatus_Cache( void );
 void UI_RankStatusMenu( void );
+
+void UI_ProfileOverlay_ResetSession( void );
+void UI_ProfileOverlay_MaybeShow( void );
 
 #endif

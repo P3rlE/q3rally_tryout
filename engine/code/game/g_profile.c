@@ -322,8 +322,18 @@ void G_ProfileSendLifetimeCommand( int clientNum, const profileLifetime_t *lifet
         gentity_t *ent;
         gclient_t *client;
 
-        if ( !lifetime ) {
-                return;
+        value = Info_ValueForKey( userinfo, "profile" );
+        if ( value && value[0] ) {
+                G_ProfileSanitizeComponent( value, sanitized, sizeof( sanitized ) );
+                if ( sanitized[0] ) {
+                        Q_strncpyz( buffer, sanitized, size );
+                        return qtrue;
+                }
+        }
+
+        value = Info_ValueForKey( userinfo, "cl_guid" );
+        if ( !value || !value[0] ) {
+                value = Info_ValueForKey( userinfo, "ip" );
         }
 
         if ( clientNum < 0 || clientNum >= level.maxclients ) {
