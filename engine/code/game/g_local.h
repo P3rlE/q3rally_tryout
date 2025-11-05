@@ -89,6 +89,7 @@ typedef enum {
 
 typedef struct gentity_s gentity_t;
 typedef struct gclient_s gclient_t;
+typedef struct profileLifetime_s profileLifetime_t;
 
 struct gentity_s {
 	entityState_t	s;				// communicated by server to clients
@@ -768,6 +769,7 @@ void player_die (gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 void AddScore( gentity_t *ent, vec3_t origin, int score );
 void CalculateRanks( void );
 qboolean SpotWouldTelefrag( gentity_t *spot );
+void G_ProfileSendLifetimeCommand( int clientNum, const profileLifetime_t *lifetime );
 void G_ProfileUpdateForClient( gclient_t *client );
 qboolean G_ProfileGetLifetimeForClient( gclient_t *client, profileLifetime_t *lifetime );
 void G_ProfileSendLifetimeCommand( int clientNum, const profileLifetime_t *lifetime );

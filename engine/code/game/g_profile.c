@@ -117,6 +117,27 @@ typedef struct {
         int                     achievements;
 } profileData_t;
 
+typedef struct profileLifetime_s {
+        char            identifier[MAX_QPATH];
+        int                     matchesPlayed;
+        int                     wins;
+        int                     losses;
+        int                     finishes;
+        int                     dnfs;
+        int                     bestPosition;
+        int                     bestLapMs;
+        int                     bestTotalRaceMs;
+        int                     totalRaceTimeMs;
+        int                     totalScore;
+        int                     totalKills;
+        int                     totalDeaths;
+        int                     totalDamageDealt;
+        int                     totalDamageTaken;
+        int                     totalDistanceMeters;
+        int                     totalFuelConsumed;
+        int                     achievements;
+} profileLifetime_t;
+
 typedef struct {
         int                     version;
         int                     matchesPlayed;
@@ -170,53 +191,40 @@ static int G_ProfileRoundPositiveFloat( float value ) {
         return (int)( value + 0.5f );
 }
 
-static void G_ProfileSendLifetimeCommand( int clientNum, const profileData_t *profile ) {
+static void G_ProfileFillLifetime( const profileData_t *profile, const char *identifier, profileLifetime_t *lifetime );
+static qboolean G_ProfileBuildIdentifier( gclient_t *client, char *buffer, size_t size );
+
+void G_ProfileSendLifetimeCommand( int clientNum, const profileLifetime_t *lifetime ) {
         char command[MAX_STRING_CHARS];
-        char identifier[MAX_QPATH];
-        gclient_t *client;
-        int distanceMeters;
-        int fuelUnits;
 
         if ( clientNum < 0 || clientNum >= level.maxclients ) {
                 return;
         }
 
-        if ( !profile ) {
+        if ( !lifetime ) {
                 return;
         }
-
-        client = &level.clients[clientNum];
-        if ( !client ) {
-                return;
-        }
-
-        if ( !G_ProfileBuildIdentifier( client, identifier, sizeof( identifier ) ) ) {
-                identifier[0] = '\0';
-        }
-
-        distanceMeters = G_ProfileRoundPositiveFloat( profile->totalDistanceMeters );
-        fuelUnits = G_ProfileRoundPositiveFloat( profile->totalFuelConsumed );
 
         Com_sprintf( command, sizeof( command ),
                 "profileLifetime \"%s\" %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i",
-                identifier,
-                profile->matchesPlayed,
-                profile->wins,
-                profile->losses,
-                profile->finishes,
-                profile->dnfs,
-                profile->bestPosition,
-                profile->bestLapMs,
-                profile->bestTotalRaceMs,
-                profile->totalRaceTimeMs,
-                profile->totalScore,
-                profile->totalKills,
-                profile->totalDeaths,
-                profile->totalDamageDealt,
-                profile->totalDamageTaken,
-                distanceMeters,
-                fuelUnits,
-                profile->achievements );
+                lifetime->identifier,
+                lifetime->matchesPlayed,
+                lifetime->wins,
+                lifetime->losses,
+                lifetime->finishes,
+                lifetime->dnfs,
+                lifetime->bestPosition,
+                lifetime->bestLapMs,
+                lifetime->bestTotalRaceMs,
+                lifetime->totalRaceTimeMs,
+                lifetime->totalScore,
+                lifetime->totalKills,
+                lifetime->totalDeaths,
+                lifetime->totalDamageDealt,
+                lifetime->totalDamageTaken,
+                lifetime->totalDistanceMeters,
+                lifetime->totalFuelConsumed,
+                lifetime->achievements );
 
         trap_SendServerCommand( clientNum, command );
 }
@@ -373,6 +381,15 @@ static void G_ProfileFillLifetime( const profileData_t *profile, profileLifetime
                 }
         }
 
+        value = Info_ValueForKey( userinfo, "profile" );
+        if ( value && value[0] ) {
+                G_ProfileSanitizeComponent( value, sanitized, sizeof( sanitized ) );
+                if ( sanitized[0] ) {
+                        Q_strncpyz( buffer, sanitized, size );
+                        return qtrue;
+                }
+        }
+
         value = Info_ValueForKey( userinfo, "cl_guid" );
         if ( !value || !value[0] ) {
                 value = Info_ValueForKey( userinfo, "ip" );
@@ -454,6 +471,40 @@ void G_ProfileSendLifetimeCommand( int clientNum, const profileLifetime_t *lifet
                      lifetime->totalFuelConsumedScaled,
                      lifetime->achievements );
         trap_SendServerCommand( clientNum, command );
+}
+
+static void G_ProfileFillLifetime( const profileData_t *profile, const char *identifier, profileLifetime_t *lifetime ) {
+        if ( !lifetime ) {
+                return;
+        }
+
+        Com_Memset( lifetime, 0, sizeof( *lifetime ) );
+
+        if ( identifier && identifier[0] ) {
+                Q_strncpyz( lifetime->identifier, identifier, sizeof( lifetime->identifier ) );
+        }
+
+        if ( !profile ) {
+                return;
+        }
+
+        lifetime->matchesPlayed = profile->matchesPlayed;
+        lifetime->wins = profile->wins;
+        lifetime->losses = profile->losses;
+        lifetime->finishes = profile->finishes;
+        lifetime->dnfs = profile->dnfs;
+        lifetime->bestPosition = profile->bestPosition;
+        lifetime->bestLapMs = profile->bestLapMs;
+        lifetime->bestTotalRaceMs = profile->bestTotalRaceMs;
+        lifetime->totalRaceTimeMs = profile->totalRaceTimeMs;
+        lifetime->totalScore = profile->totalScore;
+        lifetime->totalKills = profile->totalKills;
+        lifetime->totalDeaths = profile->totalDeaths;
+        lifetime->totalDamageDealt = profile->totalDamageDealt;
+        lifetime->totalDamageTaken = profile->totalDamageTaken;
+        lifetime->totalDistanceMeters = G_ProfileRoundPositiveFloat( profile->totalDistanceMeters );
+        lifetime->totalFuelConsumed = G_ProfileRoundPositiveFloat( profile->totalFuelConsumed );
+        lifetime->achievements = profile->achievements;
 }
 
 static void G_ProfileSerialize( const profileData_t *profile, profileDisk_t *disk ) {
@@ -975,6 +1026,13 @@ void G_ProfileUpdateForClient( gclient_t *client ) {
         G_ProfileFillLifetime( &profile, &client->profileLifetime );
         G_ProfileProcessAchievements( client, clientNum, &profile, previousAchievements );
         G_ProfileSendLifetimeCommand( clientNum, &profile );
+
+        {
+                profileLifetime_t lifetime;
+
+                G_ProfileFillLifetime( &profile, identifier, &lifetime );
+                G_ProfileSendLifetimeCommand( clientNum, &lifetime );
+        }
 
         if ( !G_ProfileSave( identifier, &profile ) ) {
                 Com_Printf( "Profile: failed to persist statistics for '%s'\n", identifier );
