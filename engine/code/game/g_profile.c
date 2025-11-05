@@ -167,43 +167,57 @@ static void G_ProfileSanitizeComponent( const char *input, char *output, size_t 
 }
 
 static qboolean G_ProfileBuildIdentifier( gclient_t *client, char *buffer, size_t size ) {
-        char userinfo[MAX_INFO_STRING];
-        const char *value;
-        char sanitized[MAX_QPATH];
-        int clientNum;
+	char userinfo[MAX_INFO_STRING];
+	const char *value;
+	char prefix[MAX_QPATH];
+	char slot[MAX_QPATH];
+	char keepPath[MAX_QPATH];
+	int clientNum;
+	fileHandle_t file;
 
-        if ( !client || !buffer || size == 0 ) {
-                return qfalse;
-        }
+	if ( !client || !buffer || size == 0 ) {
+		return qfalse;
+	}
 
-        clientNum = client - level.clients;
-        if ( clientNum < 0 || clientNum >= level.maxclients ) {
-                return qfalse;
-        }
+	clientNum = client - level.clients;
+	if ( clientNum < 0 || clientNum >= level.maxclients ) {
+		return qfalse;
+	}
 
-        trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
+	trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
 
-        value = Info_ValueForKey( userinfo, "cl_guid" );
-        if ( !value || !value[0] ) {
-                value = Info_ValueForKey( userinfo, "ip" );
-        }
-        if ( !value || !value[0] ) {
-                value = Info_ValueForKey( userinfo, "name" );
-        }
-        if ( !value || !value[0] ) {
-                value = client->pers.netname;
-        }
+	value = Info_ValueForKey( userinfo, "cl_guid" );
+	if ( !value || !value[0] ) {
+		value = Info_ValueForKey( userinfo, "ip" );
+	}
+	if ( !value || !value[0] ) {
+		value = Info_ValueForKey( userinfo, "name" );
+	}
+	if ( !value || !value[0] ) {
+		value = client->pers.netname;
+	}
 
-        if ( value && value[0] ) {
-                G_ProfileSanitizeComponent( value, sanitized, sizeof( sanitized ) );
-                if ( sanitized[0] ) {
-                        Q_strncpyz( buffer, sanitized, size );
-                        return qtrue;
-                }
-        }
+	G_ProfileSanitizeComponent( value, prefix, sizeof( prefix ) );
+	if ( !prefix[0] ) {
+		Com_sprintf( prefix, sizeof( prefix ), "client-%i", clientNum );
+	}
 
-        Com_sprintf( buffer, size, "client-%i", clientNum );
-        return qtrue;
+	G_ProfileSanitizeComponent( client->profileId, slot, sizeof( slot ) );
+	if ( !slot[0] ) {
+		Q_strncpyz( slot, PROFILE_DEFAULT_SLOT, sizeof( slot ) );
+	}
+
+	if ( prefix[0] ) {
+		file = 0;
+		Com_sprintf( keepPath, sizeof( keepPath ), "%s/%s/.keep", PROFILE_DIRECTORY, prefix );
+		trap_FS_FOpenFile( keepPath, &file, FS_APPEND );
+		if ( file ) {
+			trap_FS_FCloseFile( file );
+		}
+	}
+
+	Com_sprintf( buffer, size, "%s/%s", prefix, slot );
+	return qtrue;
 }
 
 static void G_ProfileSerialize( const profileData_t *profile, profileDisk_t *disk ) {

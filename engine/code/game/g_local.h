@@ -427,6 +427,7 @@ struct gclient_s {
 	vec3_t	profileLastOrigin;
 	float		profileLastFuel;
 	qboolean	profileTrackValid;
+	char		profileId[MAX_QPATH];
 // END
 
 	char		*areabits;

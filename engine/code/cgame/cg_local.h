@@ -1517,6 +1517,7 @@ extern	vmCvar_t		cg_developer;
 
 extern	vmCvar_t		cg_fpsLimit;
 extern	vmCvar_t		cg_autodrop;
+extern	vmCvar_t		cg_profile;
 extern	vmCvar_t		cg_drawPositionSprites;
 extern	vmCvar_t		cg_tightCamTracking;
 extern	vmCvar_t		cg_rearViewRenderLevel;
@@ -1871,6 +1872,7 @@ qboolean CG_ScoreboardMouseActive( void );
 //
 qboolean CG_ConsoleCommand( void );
 void CG_InitConsoleCommands( void );
+void CG_UpdateProfileUserinfo( void );
 
 //
 // cg_servercmds.c
