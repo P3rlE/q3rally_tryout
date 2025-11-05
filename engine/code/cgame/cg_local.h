@@ -90,6 +90,28 @@ typedef struct {
         char            text[MAX_STRING_CHARS];
 } cgNotification_t;
 
+typedef struct {
+	qboolean	valid;
+	char			identifier[MAX_QPATH];
+	int			matchesPlayed;
+	int			wins;
+	int			losses;
+	int			finishes;
+	int			dnfs;
+	int			bestPosition;
+	int			bestLapMs;
+	int			bestTotalRaceMs;
+	int			totalRaceTimeMs;
+	int			totalScore;
+	int			totalKills;
+	int			totalDeaths;
+	int			totalDamageDealt;
+	int			totalDamageTaken;
+	int			totalDistanceMeters;
+	int			totalFuelConsumed;
+	int			achievements;
+} profileLifetimeClient_t;
+
 // very large characters
 #define	GIANT_WIDTH			22
 #define	GIANT_HEIGHT		33
@@ -735,6 +757,7 @@ typedef struct {
 	qboolean		mockStatsInitialized;
 	playerStats_t	playerStats[MAX_CLIENTS];
 	qboolean		playerStatsValid[MAX_CLIENTS];
+	profileLifetimeClient_t	profileLifetime;
 	int			eliminationPlayersRemaining;
 	int			eliminationWarningTime;
 	qboolean	eliminationWarningActive;
