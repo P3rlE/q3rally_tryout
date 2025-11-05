@@ -31,6 +31,26 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define INT_MIN (-INT_MAX - 1)
 #endif
 
+#ifdef Q3_VM
+#include "bg_lib.h"
+#else
+#if defined(__has_include)
+#if __has_include(<limits.h>)
+#include <limits.h>
+#endif
+#else
+#include <limits.h>
+#endif
+#endif
+
+#ifndef INT_MAX
+#define INT_MAX 0x7fffffff
+#endif
+
+#ifndef INT_MIN
+#define INT_MIN (-INT_MAX - 1)
+#endif
+
 #define PROFILE_FILE_VERSION            2
 #define PROFILE_DIRECTORY               "profiles"
 #define PROFILE_EXTENSION               ".profile"
