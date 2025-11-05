@@ -40,6 +40,37 @@ static vec3_t	playerMaxs = {CAR_WIDTH/2, CAR_WIDTH/2, CAR_WIDTH/2};
 //static vec3_t	playerMaxs = {CAR_LENGTH/2, CAR_WIDTH/2, CAR_HEIGHT/2};
 // END
 
+static void G_ClientRefreshProfileLifetime( int clientNum, qboolean sendCommand ) {
+        profileLifetime_t lifetime;
+        gclient_t *client;
+        gentity_t *ent;
+
+        if ( clientNum < 0 || clientNum >= level.maxclients ) {
+                return;
+        }
+
+        client = &level.clients[clientNum];
+        ent = &g_entities[clientNum];
+
+        if ( !client || !ent ) {
+                return;
+        }
+
+        if ( ent->r.svFlags & SVF_BOT ) {
+                return;
+        }
+
+        if ( !G_ProfileGetLifetimeForClient( client, &lifetime ) ) {
+                // defaults were already written into lifetime
+        }
+
+        client->profileLifetime = lifetime;
+
+        if ( sendCommand ) {
+                G_ProfileSendLifetimeCommand( clientNum, &client->profileLifetime );
+        }
+}
+
 void G_ResetClientLapData( gclient_t *client ) {
         if ( !client ) {
                 return;
@@ -882,10 +913,39 @@ The game can override any of the settings and call trap_SetUserinfo
 if desired.
 ============
 */
+static void G_SanitizeProfileId( const char *input, char *output, size_t size ) {
+	size_t length = 0;
+
+	if ( !output || size == 0 ) {
+		return;
+	}
+
+	output[0] = '\0';
+
+	if ( !input ) {
+		return;
+	}
+
+	while ( *input && length + 1 < size ) {
+		char c = *input++;
+
+		if ( ( c >= 'a' && c <= 'z' ) ||
+		     ( c >= 'A' && c <= 'Z' ) ||
+		     ( c >= '0' && c <= '9' ) ) {
+			output[length++] = c;
+		} else if ( c == '-' || c == '_' || c == '.' ) {
+			output[length++] = c;
+		}
+	}
+
+	output[length] = '\0';
+}
+
 void ClientUserinfoChanged( int clientNum ) {
 	gentity_t *ent;
 	int		teamTask, teamLeader, health;
 	char	*s;
+	const char		*profileValue;
 	char	model[MAX_QPATH];
 	char	headModel[MAX_QPATH];
 // STONELANCE
@@ -903,9 +963,14 @@ void ClientUserinfoChanged( int clientNum ) {
     char    greenTeam[MAX_INFO_STRING];
     char    yellowTeam[MAX_INFO_STRING];
 	char	userinfo[MAX_INFO_STRING];
+	char	profileSlot[MAX_QPATH];
+	char	previousProfileId[MAX_QPATH];
+	qboolean	profileChanged = qfalse;
 
 	ent = g_entities + clientNum;
 	client = ent->client;
+
+	Q_strncpyz( previousProfileId, client->profileId, sizeof( previousProfileId ) );
 
 	trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
 
@@ -914,6 +979,20 @@ void ClientUserinfoChanged( int clientNum ) {
 		strcpy (userinfo, "\\name\\badinfo");
 		// don't keep those clients and userinfo
 		trap_DropClient(clientNum, "Invalid userinfo");
+	}
+
+	profileValue = Info_ValueForKey( userinfo, "profile" );
+	G_SanitizeProfileId( profileValue, profileSlot, sizeof( profileSlot ) );
+	if ( !profileSlot[0] ) {
+		Q_strncpyz( profileSlot, PROFILE_DEFAULT_SLOT, sizeof( profileSlot ) );
+	}
+	if ( Q_stricmp( previousProfileId, profileSlot ) ) {
+		profileChanged = qtrue;
+	}
+	Q_strncpyz( client->profileId, profileSlot, sizeof( client->profileId ) );
+
+	if ( profileChanged ) {
+		G_ClientRefreshProfileLifetime( clientNum, client->pers.connected == CON_CONNECTED ? qtrue : qfalse );
 	}
 
 	// check the item prediction
@@ -1327,6 +1406,8 @@ void ClientBegin( int clientNum ) {
 
 	// count current clients and rank for scoreboard
 	CalculateRanks();
+
+	G_ClientRefreshProfileLifetime( clientNum, qtrue );
 }
 
 /*

@@ -541,6 +541,7 @@ extern void PlayerModel_Cache( void );
 // ui_playersettings.c
 //
 extern void UI_PlayerSettingsMenu( void );
+extern void UI_PlayerProfileMenu( void );
 extern void PlayerSettings_Cache( void );
 // STONELANCE
 extern void PlayerSettings_Update( void );

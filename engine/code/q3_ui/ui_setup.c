@@ -48,6 +48,7 @@ SETUP MENU
 #define ID_BACK					18
 // STONELANCE
 #define ID_Q3ROPTIONS			19
+#define ID_PROFILE			20
 // END
 
 
@@ -56,6 +57,7 @@ typedef struct {
 
 	menutext_s		banner;
 	menutext_s		setupplayer;
+	menutext_s		profile;
 	menutext_s		setupcontrols;
 	menutext_s		setupsystem;
 	menutext_s		game;
@@ -109,6 +111,10 @@ static void UI_SetupMenu_Event( void *ptr, int event ) {
 /*
 	case ID_CUSTOMIZEPLAYER:
 		UI_PlayerSettingsMenu();
+		break;
+
+	case ID_PROFILE:
+		UI_PlayerProfileMenu();
 		break;
 
 	case ID_CUSTOMIZECONTROLS:
@@ -165,6 +171,10 @@ void UI_SetupMenu_ChangeMenu( int menuID ){
 		UI_PlayerSettingsMenu();
 		break;
 
+	case ID_PROFILE:
+		UI_PlayerProfileMenu();
+		break;
+
 	case ID_CUSTOMIZECONTROLS:
 		UI_ControlsMenu();
 		break;
@@ -216,6 +226,7 @@ void UI_SetupMenu_RunTransition(float frac){
 	setupMenuInfo.q3rOptions.color = uis.text_color;
 	setupMenuInfo.setupcontrols.color = uis.text_color;
 	setupMenuInfo.setupplayer.color = uis.text_color;
+	setupMenuInfo.profile.color = uis.text_color;
 	setupMenuInfo.setupsystem.color = uis.text_color;
 }
 
@@ -254,6 +265,17 @@ static void UI_SetupMenu_Init( void ) {
 	setupMenuInfo.setupplayer.string				= "PLAYER";
 	setupMenuInfo.setupplayer.color					= text_color_normal;
 	setupMenuInfo.setupplayer.style					= UI_CENTER;
+
+	y += SETUP_MENU_VERTICAL_SPACING;
+	setupMenuInfo.profile.generic.type		 = MTYPE_PTEXT;
+	setupMenuInfo.profile.generic.flags		 = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
+	setupMenuInfo.profile.generic.x		 = 320;
+	setupMenuInfo.profile.generic.y		 = y;
+	setupMenuInfo.profile.generic.id		 = ID_PROFILE;
+	setupMenuInfo.profile.generic.callback	 = UI_SetupMenu_Event;
+	setupMenuInfo.profile.string			= "PROFILE";
+	setupMenuInfo.profile.color			= text_color_normal;
+	setupMenuInfo.profile.style			= UI_CENTER;
 
 	y += SETUP_MENU_VERTICAL_SPACING;
 	setupMenuInfo.setupcontrols.generic.type		= MTYPE_PTEXT;
@@ -350,6 +372,7 @@ static void UI_SetupMenu_Init( void ) {
 
 	Menu_AddItem( &setupMenuInfo.menu, &setupMenuInfo.banner );
 	Menu_AddItem( &setupMenuInfo.menu, &setupMenuInfo.setupplayer );
+	Menu_AddItem( &setupMenuInfo.menu, &setupMenuInfo.profile );
 	Menu_AddItem( &setupMenuInfo.menu, &setupMenuInfo.setupcontrols );
 	Menu_AddItem( &setupMenuInfo.menu, &setupMenuInfo.setupsystem );
 	Menu_AddItem( &setupMenuInfo.menu, &setupMenuInfo.game );

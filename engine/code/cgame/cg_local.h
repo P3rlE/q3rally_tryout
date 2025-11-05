@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/q_shared.h"
 #include "../renderercommon/tr_types.h"
 #include "../game/bg_public.h"
+#include "../game/g_profile.h"
 #include "cg_public.h"
 
 
@@ -861,6 +862,9 @@ typedef struct {
 	qboolean	newSnap;
 //	int			lastPhysicsCommand;
 	int			currentBezierPoint;
+	qboolean	profileLifetimeValid;
+	int			profileLifetimeSequence;
+	profileLifetime_t	profileLifetime;
 } cg_t;
 
 
@@ -1540,6 +1544,7 @@ extern	vmCvar_t		cg_developer;
 
 extern	vmCvar_t		cg_fpsLimit;
 extern	vmCvar_t		cg_autodrop;
+extern	vmCvar_t		cg_profile;
 extern	vmCvar_t		cg_drawPositionSprites;
 extern	vmCvar_t		cg_tightCamTracking;
 extern	vmCvar_t		cg_rearViewRenderLevel;
@@ -1894,6 +1899,7 @@ qboolean CG_ScoreboardMouseActive( void );
 //
 qboolean CG_ConsoleCommand( void );
 void CG_InitConsoleCommands( void );
+void CG_UpdateProfileUserinfo( void );
 
 //
 // cg_servercmds.c
