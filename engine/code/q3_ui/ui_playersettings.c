@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "ui_local.h"
+#include "../game/g_profile.h"
 
 // STONELANCE
 /*
@@ -686,7 +687,7 @@ static void PlayerSettings_DrawAchievementsPanel( void *self ) {
         }
 
         for ( i = 0; i < ARRAY_LEN( achievementMap ); i++ ) {
-                const float *color;
+                float *color;
                 if ( display->raw.achievements & achievementMap[i].bit ) {
                         color = text_color_highlight;
                 } else {
@@ -1496,7 +1497,7 @@ static void PlayerSettings_MenuInit( void ) {
 
 	{
 		static const int tabIds[PLAYERSETTINGS_NUM_TABS] = { ID_TAB_CAR, ID_TAB_STATS, ID_TAB_ACHIEVEMENTS };
-		static const char *tabTexts[PLAYERSETTINGS_NUM_TABS] = { "CAR", "STATS", "ACHIEVEMENTS" };
+		static char tabTexts[PLAYERSETTINGS_NUM_TABS][16] = { "CAR", "STATS", "ACHIEVEMENTS" };
 		int tab;
 		int tabX = 64;
 		int tabY = 64;
