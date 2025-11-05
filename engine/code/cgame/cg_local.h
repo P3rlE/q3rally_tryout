@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/q_shared.h"
 #include "../renderercommon/tr_types.h"
 #include "../game/bg_public.h"
+#include "../game/g_profile.h"
 #include "cg_public.h"
 
 
@@ -838,6 +839,9 @@ typedef struct {
 	qboolean	newSnap;
 //	int			lastPhysicsCommand;
 	int			currentBezierPoint;
+	qboolean	profileLifetimeValid;
+	int			profileLifetimeSequence;
+	profileLifetime_t	profileLifetime;
 } cg_t;
 
 
