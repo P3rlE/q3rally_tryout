@@ -149,29 +149,29 @@ static void CG_ParseProfileLifetime( void ) {
 	argc = trap_Argc();
 	if ( argc < 19 ) {
 		CG_Printf( "profileLifetime: expected 18 args, got %i\n", argc - 1 );
-		cg.profileLifetime.valid = qfalse;
+		cg.profileLifetimeStats.valid = qfalse;
 		return;
 	}
 
-	trap_Argv( 1, cg.profileLifetime.identifier, sizeof( cg.profileLifetime.identifier ) );
-	cg.profileLifetime.matchesPlayed = atoi( CG_Argv( 2 ) );
-	cg.profileLifetime.wins = atoi( CG_Argv( 3 ) );
-	cg.profileLifetime.losses = atoi( CG_Argv( 4 ) );
-	cg.profileLifetime.finishes = atoi( CG_Argv( 5 ) );
-	cg.profileLifetime.dnfs = atoi( CG_Argv( 6 ) );
-	cg.profileLifetime.bestPosition = atoi( CG_Argv( 7 ) );
-	cg.profileLifetime.bestLapMs = atoi( CG_Argv( 8 ) );
-	cg.profileLifetime.bestTotalRaceMs = atoi( CG_Argv( 9 ) );
-	cg.profileLifetime.totalRaceTimeMs = atoi( CG_Argv( 10 ) );
-	cg.profileLifetime.totalScore = atoi( CG_Argv( 11 ) );
-	cg.profileLifetime.totalKills = atoi( CG_Argv( 12 ) );
-	cg.profileLifetime.totalDeaths = atoi( CG_Argv( 13 ) );
-	cg.profileLifetime.totalDamageDealt = atoi( CG_Argv( 14 ) );
-	cg.profileLifetime.totalDamageTaken = atoi( CG_Argv( 15 ) );
-	cg.profileLifetime.totalDistanceMeters = atoi( CG_Argv( 16 ) );
-	cg.profileLifetime.totalFuelConsumed = atoi( CG_Argv( 17 ) );
-	cg.profileLifetime.achievements = atoi( CG_Argv( 18 ) );
-	cg.profileLifetime.valid = qtrue;
+	trap_Argv( 1, cg.profileLifetimeStats.identifier, sizeof( cg.profileLifetimeStats.identifier ) );
+	cg.profileLifetimeStats.matchesPlayed = atoi( CG_Argv( 2 ) );
+	cg.profileLifetimeStats.wins = atoi( CG_Argv( 3 ) );
+	cg.profileLifetimeStats.losses = atoi( CG_Argv( 4 ) );
+	cg.profileLifetimeStats.finishes = atoi( CG_Argv( 5 ) );
+	cg.profileLifetimeStats.dnfs = atoi( CG_Argv( 6 ) );
+	cg.profileLifetimeStats.bestPosition = atoi( CG_Argv( 7 ) );
+	cg.profileLifetimeStats.bestLapMs = atoi( CG_Argv( 8 ) );
+	cg.profileLifetimeStats.bestTotalRaceMs = atoi( CG_Argv( 9 ) );
+	cg.profileLifetimeStats.totalRaceTimeMs = atoi( CG_Argv( 10 ) );
+	cg.profileLifetimeStats.totalScore = atoi( CG_Argv( 11 ) );
+	cg.profileLifetimeStats.totalKills = atoi( CG_Argv( 12 ) );
+	cg.profileLifetimeStats.totalDeaths = atoi( CG_Argv( 13 ) );
+	cg.profileLifetimeStats.totalDamageDealt = atoi( CG_Argv( 14 ) );
+	cg.profileLifetimeStats.totalDamageTaken = atoi( CG_Argv( 15 ) );
+	cg.profileLifetimeStats.totalDistanceMeters = atoi( CG_Argv( 16 ) );
+	cg.profileLifetimeStats.totalFuelConsumed = atoi( CG_Argv( 17 ) );
+	cg.profileLifetimeStats.achievements = atoi( CG_Argv( 18 ) );
+	cg.profileLifetimeStats.valid = qtrue;
 }
 
 /*

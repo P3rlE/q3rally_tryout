@@ -757,7 +757,7 @@ typedef struct {
 	qboolean		mockStatsInitialized;
 	playerStats_t	playerStats[MAX_CLIENTS];
 	qboolean		playerStatsValid[MAX_CLIENTS];
-	profileLifetimeClient_t	profileLifetime;
+	profileLifetimeClient_t	profileLifetimeStats;
 	int			eliminationPlayersRemaining;
 	int			eliminationWarningTime;
 	qboolean	eliminationWarningActive;
