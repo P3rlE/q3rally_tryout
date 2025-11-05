@@ -129,6 +129,69 @@ typedef struct {
         float           totalFuelConsumed;
 } profileDiskV1_t;
 
+static int G_ProfileRoundPositiveFloat( float value ) {
+        if ( value <= 0.0f ) {
+                return 0;
+        }
+
+        if ( value >= (float)0x7fffffff ) {
+                return 0x7fffffff;
+        }
+
+        return (int)( value + 0.5f );
+}
+
+static void G_ProfileSendLifetimeCommand( int clientNum, const profileData_t *profile ) {
+        char command[MAX_STRING_CHARS];
+        char identifier[MAX_QPATH];
+        gclient_t *client;
+        int distanceMeters;
+        int fuelUnits;
+
+        if ( clientNum < 0 || clientNum >= level.maxclients ) {
+                return;
+        }
+
+        if ( !profile ) {
+                return;
+        }
+
+        client = &level.clients[clientNum];
+        if ( !client ) {
+                return;
+        }
+
+        if ( !G_ProfileBuildIdentifier( client, identifier, sizeof( identifier ) ) ) {
+                identifier[0] = '\0';
+        }
+
+        distanceMeters = G_ProfileRoundPositiveFloat( profile->totalDistanceMeters );
+        fuelUnits = G_ProfileRoundPositiveFloat( profile->totalFuelConsumed );
+
+        Com_sprintf( command, sizeof( command ),
+                "profileLifetime \"%s\" %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i",
+                identifier,
+                profile->matchesPlayed,
+                profile->wins,
+                profile->losses,
+                profile->finishes,
+                profile->dnfs,
+                profile->bestPosition,
+                profile->bestLapMs,
+                profile->bestTotalRaceMs,
+                profile->totalRaceTimeMs,
+                profile->totalScore,
+                profile->totalKills,
+                profile->totalDeaths,
+                profile->totalDamageDealt,
+                profile->totalDamageTaken,
+                distanceMeters,
+                fuelUnits,
+                profile->achievements );
+
+        trap_SendServerCommand( clientNum, command );
+}
+
 static void G_ProfileSetDefaults( profileData_t *profile ) {
         if ( !profile ) {
                 return;
@@ -182,6 +245,15 @@ static qboolean G_ProfileBuildIdentifier( gclient_t *client, char *buffer, size_
         }
 
         trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
+
+        value = Info_ValueForKey( userinfo, "profile" );
+        if ( value && value[0] ) {
+                G_ProfileSanitizeComponent( value, sanitized, sizeof( sanitized ) );
+                if ( sanitized[0] ) {
+                        Q_strncpyz( buffer, sanitized, size );
+                        return qtrue;
+                }
+        }
 
         value = Info_ValueForKey( userinfo, "cl_guid" );
         if ( !value || !value[0] ) {
@@ -722,6 +794,7 @@ void G_ProfileUpdateForClient( gclient_t *client ) {
         G_ProfileBuildScore( clientNum, &score );
         G_ProfileApplyMatchStats( client, clientNum, &score, &profile );
         G_ProfileProcessAchievements( client, clientNum, &profile, previousAchievements );
+        G_ProfileSendLifetimeCommand( clientNum, &profile );
 
         if ( !G_ProfileSave( identifier, &profile ) ) {
                 Com_Printf( "Profile: failed to persist statistics for '%s'\n", identifier );
