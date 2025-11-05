@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 /* cg_scoreboard.c -- Adaptive scoreboard design for Q3Rally */
 #include "cg_local.h"
+#include "../client/keycodes.h"
 
 /* Modern scoreboard layout constants */
 #define MODERN_SB_Y             120
@@ -57,6 +58,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define SCOREBOARD_TAB_SPACING   4
 #define SCOREBOARD_PANEL_MARGIN  16
 #define SCOREBOARD_PANEL_HEIGHT  156
+#define SCOREBOARD_CURSOR_SIZE   32
 
 /* Scoreboard column types */
 typedef enum {
@@ -88,6 +90,18 @@ static int scoreboardX = 0; /* Dynamic X position for centering */
 static int contentStartX = 0; /* Starting X position for centered content */
 static qboolean localClientDrawn;
 
+typedef struct {
+    int x;
+    int y;
+    int width;
+    int height;
+} scoreboardTabBounds_t;
+
+static scoreboardTabBounds_t scoreboardTabBounds[SB_TAB_MAX];
+static qboolean scoreboardTabBoundsValid = qfalse;
+static qboolean scoreboardMouseActive = qfalse;
+static qboolean scoreboardOwnsKeyCatcher = qfalse;
+
 static const char *scoreboardTabNames[SB_TAB_MAX] = {
     "Overview",
     "Lap Times",
@@ -103,6 +117,8 @@ static void CG_ApplyMockScoreboardData(void);
 static void CG_ClearPlayerStatsState(void);
 static void CG_DrawModernText(int x, int y, const char *text, int align,
     int maxWidth, float *color, qboolean emboss);
+static qboolean CG_PointInRect(int px, int py, int x, int y, int width, int height);
+static int CG_GetScoreboardTabFromPoint(int x, int y);
 
 /*
 =================
@@ -259,6 +275,7 @@ static int CG_DrawScoreboardTabs(int y, float fade) {
     vec4_t borderColor;
     vec4_t textColor;
     vec4_t inactiveTextColor;
+    vec4_t hoverColor;
     const char *label;
 
     tabHeight = SCOREBOARD_TAB_HEIGHT;
@@ -284,10 +301,12 @@ static int CG_DrawScoreboardTabs(int y, float fade) {
     borderColor[0] = 0.30f; borderColor[1] = 0.38f; borderColor[2] = 0.46f; borderColor[3] = 0.65f * fade;
     textColor[0] = 0.95f; textColor[1] = 0.95f; textColor[2] = 0.95f; textColor[3] = fade;
     inactiveTextColor[0] = 0.65f; inactiveTextColor[1] = 0.65f; inactiveTextColor[2] = 0.65f; inactiveTextColor[3] = fade;
+    hoverColor[0] = 0.16f; hoverColor[1] = 0.26f; hoverColor[2] = 0.46f; hoverColor[3] = 0.75f * fade;
 
     for (i = 0; i < SB_TAB_MAX; i++) {
         int drawWidth;
         const float *fillColor;
+        qboolean hovered;
 
         drawWidth = tabWidth;
         if (extraWidth > 0) {
@@ -295,8 +314,18 @@ static int CG_DrawScoreboardTabs(int y, float fade) {
             extraWidth--;
         }
 
+        scoreboardTabBounds[i].x = x;
+        scoreboardTabBounds[i].y = y;
+        scoreboardTabBounds[i].width = drawWidth;
+        scoreboardTabBounds[i].height = tabHeight;
+
+        hovered = scoreboardMouseActive &&
+                  CG_PointInRect(cgs.cursorX, cgs.cursorY, x, y, drawWidth, tabHeight);
+
         if (cg.activeScoreboardTab == i) {
             fillColor = activeColor;
+        } else if (hovered) {
+            fillColor = hoverColor;
         } else {
             fillColor = baseColor;
         }
@@ -306,10 +335,12 @@ static int CG_DrawScoreboardTabs(int y, float fade) {
 
         label = scoreboardTabNames[i];
         CG_DrawModernText(x, y + (tabHeight - SMALLCHAR_HEIGHT) / 2, label, 1, drawWidth,
-                         (cg.activeScoreboardTab == i) ? textColor : inactiveTextColor, qfalse);
+                         (cg.activeScoreboardTab == i || hovered) ? textColor : inactiveTextColor, qfalse);
 
         x += drawWidth + SCOREBOARD_TAB_SPACING;
     }
+
+    scoreboardTabBoundsValid = qtrue;
 
     return y + tabHeight + SCOREBOARD_PANEL_MARGIN;
 }
@@ -1181,8 +1212,13 @@ qboolean CG_DrawModernScoreboard(void) {
         return qfalse;
     }
     
+    if (!cg.showScores && scoreboardMouseActive) {
+        CG_ScoreboardDisableMouse();
+    }
+
     CG_ApplyMockScoreboardData();
     CG_UpdateScoreboardTabState();
+    scoreboardTabBoundsValid = qfalse;
 
     /* Initialize columns for current gametype */
     CG_InitScoreboardColumns();
@@ -1367,7 +1403,18 @@ qboolean CG_DrawModernScoreboard(void) {
     if (++cg.deferredPlayerLoading > 10) {
         CG_LoadDeferredPlayers();
     }
-    
+
+    if (scoreboardMouseActive) {
+        float cursorX;
+        float cursorY;
+
+        cursorX = cgs.cursorX - (SCOREBOARD_CURSOR_SIZE / 2);
+        cursorY = cgs.cursorY - (SCOREBOARD_CURSOR_SIZE / 2);
+
+        CG_DrawPic(cursorX, cursorY, SCOREBOARD_CURSOR_SIZE, SCOREBOARD_CURSOR_SIZE,
+                   cgs.media.scoreboardCursor);
+    }
+
     return qtrue;
 }
 
@@ -1474,4 +1521,229 @@ Get appropriate damage label for current gametype
 const char* CG_GetGametypeDeathLabel(void) {
     /* Always return DMG for consistency */
     return "DMG";
+}
+
+static qboolean CG_PointInRect(int px, int py, int x, int y, int width, int height) {
+    if (px < x) {
+        return qfalse;
+    }
+    if (py < y) {
+        return qfalse;
+    }
+    if (px >= x + width) {
+        return qfalse;
+    }
+    if (py >= y + height) {
+        return qfalse;
+    }
+
+    return qtrue;
+}
+
+static int CG_GetScoreboardTabFromPoint(int x, int y) {
+    int i;
+
+    if (!scoreboardTabBoundsValid) {
+        return -1;
+    }
+
+    for (i = 0; i < SB_TAB_MAX; i++) {
+        if (CG_PointInRect(x, y,
+                           scoreboardTabBounds[i].x,
+                           scoreboardTabBounds[i].y,
+                           scoreboardTabBounds[i].width,
+                           scoreboardTabBounds[i].height)) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+static void CG_ScoreboardApplyTab(int tab) {
+    char buffer[8];
+
+    if (tab < 0) {
+        tab = 0;
+    } else if (tab >= SB_TAB_MAX) {
+        tab = SB_TAB_MAX - 1;
+    }
+
+    if (cg.activeScoreboardTab == tab && cg_scoreboardTab.integer == tab) {
+        return;
+    }
+
+    Com_sprintf(buffer, sizeof(buffer), "%d", tab);
+    trap_Cvar_Set("cg_scoreboardTab", buffer);
+    CG_UpdateScoreboardTabState();
+}
+
+void CG_ScoreboardSetTab(int tab) {
+    CG_ScoreboardApplyTab(tab);
+}
+
+void CG_ScoreboardCycleTab(int direction) {
+    int tab;
+
+    if (SB_TAB_MAX <= 0) {
+        return;
+    }
+
+    tab = cg.activeScoreboardTab + direction;
+
+    while (tab < 0) {
+        tab += SB_TAB_MAX;
+    }
+
+    while (tab >= SB_TAB_MAX) {
+        tab -= SB_TAB_MAX;
+    }
+
+    CG_ScoreboardApplyTab(tab);
+}
+
+qboolean CG_ScoreboardHandleMouseClick(int x, int y) {
+    int tab;
+
+    if (!scoreboardMouseActive) {
+        return qfalse;
+    }
+
+    if (!scoreboardTabBoundsValid) {
+        return qfalse;
+    }
+
+    tab = CG_GetScoreboardTabFromPoint(x, y);
+    if (tab < 0) {
+        return qfalse;
+    }
+
+    if (tab != cg.activeScoreboardTab) {
+        CG_ScoreboardApplyTab(tab);
+    }
+
+    return qtrue;
+}
+
+qboolean CG_ScoreboardMouseActive(void) {
+    return scoreboardMouseActive;
+}
+
+void CG_ScoreboardMouseMove(int dx, int dy) {
+    if (!scoreboardMouseActive) {
+        return;
+    }
+
+    cgs.cursorX += dx;
+    if (cgs.cursorX < 0) {
+        cgs.cursorX = 0;
+    } else if (cgs.cursorX > SCREEN_WIDTH - 1) {
+        cgs.cursorX = SCREEN_WIDTH - 1;
+    }
+
+    cgs.cursorY += dy;
+    if (cgs.cursorY < 0) {
+        cgs.cursorY = 0;
+    } else if (cgs.cursorY > SCREEN_HEIGHT - 1) {
+        cgs.cursorY = SCREEN_HEIGHT - 1;
+    }
+}
+
+void CG_ScoreboardEnableMouse(void) {
+    if (scoreboardMouseActive) {
+        return;
+    }
+
+    scoreboardMouseActive = qtrue;
+    cgs.cursorX = SCREEN_WIDTH / 2;
+    cgs.cursorY = SCREEN_HEIGHT / 2;
+
+    if (!(trap_Key_GetCatcher() & KEYCATCH_CGAME)) {
+        trap_Key_SetCatcher(trap_Key_GetCatcher() | KEYCATCH_CGAME);
+        scoreboardOwnsKeyCatcher = qtrue;
+    } else {
+        scoreboardOwnsKeyCatcher = qfalse;
+    }
+    CG_EventHandling(CGAME_EVENT_SCOREBOARD);
+}
+
+void CG_ScoreboardDisableMouse(void) {
+    if (!scoreboardMouseActive) {
+        return;
+    }
+
+    scoreboardMouseActive = qfalse;
+
+    CG_EventHandling(CGAME_EVENT_NONE);
+    if (scoreboardOwnsKeyCatcher) {
+        trap_Key_SetCatcher(trap_Key_GetCatcher() & ~KEYCATCH_CGAME);
+    }
+    scoreboardOwnsKeyCatcher = qfalse;
+}
+
+qboolean CG_ScoreboardKeyEvent(int key, qboolean down) {
+    qboolean scoreboardVisible;
+
+    scoreboardVisible = cg.showScores || cg.scoreBoardShowing || scoreboardMouseActive;
+
+    if (!scoreboardVisible) {
+        return qfalse;
+    }
+
+    if (scoreboardMouseActive && key == K_TAB && down) {
+        cg.showScores = qfalse;
+        cg.scoreFadeTime = cg.time;
+        CG_ScoreboardDisableMouse();
+        return qtrue;
+    }
+
+    if (scoreboardMouseActive && key == K_ESCAPE && down) {
+        cg.showScores = qfalse;
+        cg.scoreFadeTime = cg.time;
+        CG_ScoreboardDisableMouse();
+        return qtrue;
+    }
+
+    if (!down) {
+        return qfalse;
+    }
+
+    switch (key) {
+        case K_LEFTARROW:
+        case K_KP_LEFTARROW:
+        case K_MWHEELUP:
+            CG_ScoreboardCycleTab(-1);
+            return qtrue;
+
+        case K_RIGHTARROW:
+        case K_KP_RIGHTARROW:
+        case K_MWHEELDOWN:
+            CG_ScoreboardCycleTab(1);
+            return qtrue;
+
+        case K_MOUSE1:
+            if (scoreboardMouseActive) {
+                return CG_ScoreboardHandleMouseClick(cgs.cursorX, cgs.cursorY);
+            }
+            break;
+
+        case K_MOUSE2:
+            if (scoreboardMouseActive) {
+                CG_ScoreboardCycleTab(-1);
+                return qtrue;
+            }
+            break;
+
+        case K_MOUSE3:
+            if (scoreboardMouseActive) {
+                CG_ScoreboardCycleTab(1);
+                return qtrue;
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    return qfalse;
 }
