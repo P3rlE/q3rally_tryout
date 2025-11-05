@@ -882,10 +882,39 @@ The game can override any of the settings and call trap_SetUserinfo
 if desired.
 ============
 */
+static void G_SanitizeProfileId( const char *input, char *output, size_t size ) {
+	size_t length = 0;
+
+	if ( !output || size == 0 ) {
+		return;
+	}
+
+	output[0] = '\0';
+
+	if ( !input ) {
+		return;
+	}
+
+	while ( *input && length + 1 < size ) {
+		char c = *input++;
+
+		if ( ( c >= 'a' && c <= 'z' ) ||
+		     ( c >= 'A' && c <= 'Z' ) ||
+		     ( c >= '0' && c <= '9' ) ) {
+			output[length++] = c;
+		} else if ( c == '-' || c == '_' || c == '.' ) {
+			output[length++] = c;
+		}
+	}
+
+	output[length] = '\0';
+}
+
 void ClientUserinfoChanged( int clientNum ) {
 	gentity_t *ent;
 	int		teamTask, teamLeader, health;
 	char	*s;
+	const char		*profileValue;
 	char	model[MAX_QPATH];
 	char	headModel[MAX_QPATH];
 // STONELANCE
@@ -903,6 +932,7 @@ void ClientUserinfoChanged( int clientNum ) {
     char    greenTeam[MAX_INFO_STRING];
     char    yellowTeam[MAX_INFO_STRING];
 	char	userinfo[MAX_INFO_STRING];
+	char	profileSlot[MAX_QPATH];
 
 	ent = g_entities + clientNum;
 	client = ent->client;
@@ -915,6 +945,13 @@ void ClientUserinfoChanged( int clientNum ) {
 		// don't keep those clients and userinfo
 		trap_DropClient(clientNum, "Invalid userinfo");
 	}
+
+	profileValue = Info_ValueForKey( userinfo, "profile" );
+	G_SanitizeProfileId( profileValue, profileSlot, sizeof( profileSlot ) );
+	if ( !profileSlot[0] ) {
+		Q_strncpyz( profileSlot, PROFILE_DEFAULT_SLOT, sizeof( profileSlot ) );
+	}
+	Q_strncpyz( client->profileId, profileSlot, sizeof( client->profileId ) );
 
 	// check the item prediction
 	s = Info_ValueForKey( userinfo, "cg_predictItems" );
