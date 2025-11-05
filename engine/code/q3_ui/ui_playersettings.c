@@ -24,6 +24,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "ui_local.h"
 #include "../game/g_profile.h"
 
+#include <string.h>
+
 // STONELANCE
 /*
 #define ART_FRAMEL			"menu/art/frame2_l"
