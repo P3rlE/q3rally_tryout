@@ -22,6 +22,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
+#ifndef INT_MAX
+#define INT_MAX 0x7fffffff
+#endif
+
+#ifndef INT_MIN
+#define INT_MIN (-INT_MAX - 1)
+#endif
+
 #define PROFILE_FILE_VERSION            2
 #define PROFILE_DIRECTORY               "profiles"
 #define PROFILE_EXTENSION               ".profile"
@@ -216,8 +224,127 @@ static qboolean G_ProfileBuildIdentifier( gclient_t *client, char *buffer, size_
 		}
 	}
 
-	Com_sprintf( buffer, size, "%s/%s", prefix, slot );
-	return qtrue;
+        Com_sprintf( buffer, size, "%s/%s", prefix, slot );
+        return qtrue;
+}
+
+static qboolean G_ProfileLoad( const char *identifier, profileData_t *profile );
+
+static int G_ProfileEncodeScaledFloat( float value, float scale ) {
+        double scaled;
+
+        scaled = (double)value * (double)scale;
+        if ( scaled > (double)INT_MAX ) {
+                return INT_MAX;
+        }
+        if ( scaled < (double)INT_MIN ) {
+                return INT_MIN;
+        }
+        if ( scaled >= 0.0 ) {
+                return (int)( scaled + 0.5 );
+        }
+        return (int)( scaled - 0.5 );
+}
+
+static void G_ProfileFillLifetime( const profileData_t *profile, profileLifetime_t *lifetime ) {
+        if ( !profile || !lifetime ) {
+                return;
+        }
+
+        lifetime->version = profile->version;
+        lifetime->matchesPlayed = profile->matchesPlayed;
+        lifetime->wins = profile->wins;
+        lifetime->losses = profile->losses;
+        lifetime->finishes = profile->finishes;
+        lifetime->dnfs = profile->dnfs;
+        lifetime->bestPosition = profile->bestPosition;
+        lifetime->bestLapMs = profile->bestLapMs;
+        lifetime->bestTotalRaceMs = profile->bestTotalRaceMs;
+        lifetime->totalRaceTimeMs = profile->totalRaceTimeMs;
+        lifetime->totalScore = profile->totalScore;
+        lifetime->totalKills = profile->totalKills;
+        lifetime->totalDeaths = profile->totalDeaths;
+        lifetime->totalDamageDealt = profile->totalDamageDealt;
+        lifetime->totalDamageTaken = profile->totalDamageTaken;
+        lifetime->totalDistanceScaled = G_ProfileEncodeScaledFloat( profile->totalDistanceMeters, PROFILE_LIFETIME_DISTANCE_SCALE );
+        lifetime->totalFuelConsumedScaled = G_ProfileEncodeScaledFloat( profile->totalFuelConsumed, PROFILE_LIFETIME_FUEL_SCALE );
+        lifetime->achievements = profile->achievements;
+}
+
+qboolean G_ProfileGetLifetimeForClient( gclient_t *client, profileLifetime_t *lifetime ) {
+        profileData_t profile;
+        char identifier[MAX_QPATH];
+
+        if ( !lifetime ) {
+                return qfalse;
+        }
+
+        Com_Memset( lifetime, 0, sizeof( *lifetime ) );
+
+        if ( !client ) {
+                return qfalse;
+        }
+
+        if ( !G_ProfileBuildIdentifier( client, identifier, sizeof( identifier ) ) ) {
+                lifetime->version = PROFILE_FILE_VERSION;
+                return qfalse;
+        }
+
+        Com_Memset( &profile, 0, sizeof( profile ) );
+        G_ProfileLoad( identifier, &profile );
+        G_ProfileFillLifetime( &profile, lifetime );
+        return qtrue;
+}
+
+void G_ProfileSendLifetimeCommand( int clientNum, const profileLifetime_t *lifetime ) {
+        char command[MAX_STRING_CHARS];
+        gentity_t *ent;
+        gclient_t *client;
+
+        if ( !lifetime ) {
+                return;
+        }
+
+        if ( clientNum < 0 || clientNum >= level.maxclients ) {
+                return;
+        }
+
+        ent = &g_entities[clientNum];
+        client = &level.clients[clientNum];
+
+        if ( !ent || !ent->inuse ) {
+                return;
+        }
+
+        if ( ent->r.svFlags & SVF_BOT ) {
+                return;
+        }
+
+        if ( client->pers.connected != CON_CONNECTED ) {
+                return;
+        }
+
+        Com_sprintf( command, sizeof( command ),
+                     "profileStats %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
+                     lifetime->version,
+                     lifetime->matchesPlayed,
+                     lifetime->wins,
+                     lifetime->losses,
+                     lifetime->finishes,
+                     lifetime->dnfs,
+                     lifetime->bestPosition,
+                     lifetime->bestLapMs,
+                     lifetime->bestTotalRaceMs,
+                     lifetime->totalRaceTimeMs,
+                     lifetime->totalScore,
+                     lifetime->totalKills,
+                     lifetime->totalDeaths,
+                     lifetime->totalDamageDealt,
+                     lifetime->totalDamageTaken,
+                     lifetime->totalDistanceScaled,
+                     lifetime->totalFuelConsumedScaled,
+                     lifetime->achievements );
+        trap_SendServerCommand( clientNum, command );
 }
 
 static void G_ProfileSerialize( const profileData_t *profile, profileDisk_t *disk ) {
@@ -732,12 +859,16 @@ void G_ProfileUpdateForClient( gclient_t *client ) {
         }
 
         G_ProfileLoad( identifier, &profile );
+        G_ProfileFillLifetime( &profile, &client->profileLifetime );
         previousAchievements = profile.achievements;
         G_ProfileBuildScore( clientNum, &score );
         G_ProfileApplyMatchStats( client, clientNum, &score, &profile );
+        G_ProfileFillLifetime( &profile, &client->profileLifetime );
         G_ProfileProcessAchievements( client, clientNum, &profile, previousAchievements );
 
         if ( !G_ProfileSave( identifier, &profile ) ) {
                 Com_Printf( "Profile: failed to persist statistics for '%s'\n", identifier );
         }
+
+        G_ProfileSendLifetimeCommand( clientNum, &client->profileLifetime );
 }

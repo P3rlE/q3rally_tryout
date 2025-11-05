@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "bg_public.h"
 #include "bg_ladder.h"
 #include "g_public.h"
+#include "g_profile.h"
 
 //==================================================================
 
@@ -428,6 +429,7 @@ struct gclient_s {
 	float		profileLastFuel;
 	qboolean	profileTrackValid;
 	char		profileId[MAX_QPATH];
+	profileLifetime_t	profileLifetime;
 // END
 
 	char		*areabits;
@@ -767,6 +769,8 @@ void AddScore( gentity_t *ent, vec3_t origin, int score );
 void CalculateRanks( void );
 qboolean SpotWouldTelefrag( gentity_t *spot );
 void G_ProfileUpdateForClient( gclient_t *client );
+qboolean G_ProfileGetLifetimeForClient( gclient_t *client, profileLifetime_t *lifetime );
+void G_ProfileSendLifetimeCommand( int clientNum, const profileLifetime_t *lifetime );
 
 //
 // g_svcmds.c
