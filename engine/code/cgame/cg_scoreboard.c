@@ -112,6 +112,7 @@ static const char *scoreboardTabNames[SB_TAB_MAX] = {
 static void CG_UpdateScoreboardTabState(void);
 static int CG_DrawScoreboardTabs(int y, float fade);
 static void CG_DrawPlayerStatsPanel(int y, float fade);
+static qboolean CG_BuildDerivedPlayerStats(const score_t *score, playerStats_t *outStats);
 static void CG_FormatStatTime(int timeMs, char *buffer, int bufferSize);
 static void CG_ApplyMockScoreboardData(void);
 static void CG_ClearPlayerStatsState(void);
@@ -133,6 +134,63 @@ static void CG_ClearPlayerStatsState(void) {
         cg.playerStatsValid[i] = qfalse;
         Com_Memset(&cg.playerStats[i], 0, sizeof(playerStats_t));
     }
+}
+
+static qboolean CG_BuildDerivedPlayerStats(const score_t *score, playerStats_t *outStats) {
+    centity_t *cent;
+    int lastLapDuration;
+    int totalTime;
+
+    if (!score || !outStats) {
+        return qfalse;
+    }
+
+    if (score->client < 0 || score->client >= MAX_CLIENTS) {
+        return qfalse;
+    }
+
+    Com_Memset(outStats, 0, sizeof(*outStats));
+
+    cent = &cg_entities[score->client];
+
+    outStats->bestLapMs = cent->bestLapTime;
+
+    lastLapDuration = 0;
+    if (cent->startLapTime > cent->lastStartLapTime && cent->lastStartLapTime > 0) {
+        lastLapDuration = cent->startLapTime - cent->lastStartLapTime;
+    }
+    if (lastLapDuration <= 0) {
+        lastLapDuration = cent->bestLapTime;
+    }
+    outStats->lastLapMs = lastLapDuration;
+
+    totalTime = 0;
+    if (score->time > 0) {
+        if (cent->finishRaceTime > 0) {
+            totalTime = cent->finishRaceTime - score->time;
+        } else {
+            totalTime = cg.time - score->time;
+        }
+
+        if (totalTime < 0) {
+            totalTime = 0;
+        }
+    }
+    outStats->totalTimeMs = totalTime;
+
+    outStats->checkpointsHit = cent->currentLap;
+
+    outStats->damageDealt = score->damageDealt;
+    outStats->damageTaken = score->damageTaken;
+    outStats->accuracy = score->accuracy;
+    outStats->eliminations = score->score;
+    outStats->assists = score->assistCount;
+
+    outStats->itemsCollected = -1;
+    outStats->boostPads = -1;
+    outStats->topSpeed = -1;
+
+    return qtrue;
 }
 
 static void CG_FormatStatTime(int timeMs, char *buffer, int bufferSize) {
@@ -349,7 +407,8 @@ static void CG_DrawPlayerStatsPanel(int y, float fade) {
     int selectedIndex;
     score_t *score;
     clientInfo_t *ci;
-    playerStats_t *stats;
+    playerStats_t fallbackStats;
+    const playerStats_t *stats;
     vec4_t panelColor;
     vec4_t borderColor;
     vec4_t headingColor;
@@ -392,12 +451,14 @@ static void CG_DrawPlayerStatsPanel(int y, float fade) {
     CG_DrawModernText(panelX, lineY, buffer, 0, panelWidth, headingColor, qtrue);
     lineY += BIGCHAR_HEIGHT + 4;
 
-    if (!cg.playerStatsValid[score->client]) {
+    if (cg.playerStatsValid[score->client]) {
+        stats = &cg.playerStats[score->client];
+    } else if (CG_BuildDerivedPlayerStats(score, &fallbackStats)) {
+        stats = &fallbackStats;
+    } else {
         CG_DrawModernText(panelX, lineY, "Detailed statistics unavailable", 1, panelWidth, subduedTextColor, qfalse);
         return;
     }
-
-    stats = &cg.playerStats[score->client];
     teamName = CG_GetTeamName(ci->team);
 
     switch (cg.activeScoreboardTab) {
@@ -448,13 +509,25 @@ static void CG_DrawPlayerStatsPanel(int y, float fade) {
 
         case SB_TAB_STATS:
         default:
-            Com_sprintf(buffer, sizeof(buffer), "Items Collected: %d", stats->itemsCollected);
+            if (stats->itemsCollected >= 0) {
+                Com_sprintf(buffer, sizeof(buffer), "Items Collected: %d", stats->itemsCollected);
+            } else {
+                Q_strncpyz(buffer, "Items Collected: --", sizeof(buffer));
+            }
             CG_DrawModernText(panelX, lineY, buffer, 0, panelWidth, textColor, qfalse);
             lineY += SMALLCHAR_HEIGHT + 4;
-            Com_sprintf(buffer, sizeof(buffer), "Boost Pads: %d", stats->boostPads);
+            if (stats->boostPads >= 0) {
+                Com_sprintf(buffer, sizeof(buffer), "Boost Pads: %d", stats->boostPads);
+            } else {
+                Q_strncpyz(buffer, "Boost Pads: --", sizeof(buffer));
+            }
             CG_DrawModernText(panelX, lineY, buffer, 0, panelWidth, textColor, qfalse);
             lineY += SMALLCHAR_HEIGHT + 4;
-            Com_sprintf(buffer, sizeof(buffer), "Top Speed: %d km/h", stats->topSpeed);
+            if (stats->topSpeed >= 0) {
+                Com_sprintf(buffer, sizeof(buffer), "Top Speed: %d km/h", stats->topSpeed);
+            } else {
+                Q_strncpyz(buffer, "Top Speed: --", sizeof(buffer));
+            }
             CG_DrawModernText(panelX, lineY, buffer, 0, panelWidth, textColor, qfalse);
             lineY += SMALLCHAR_HEIGHT + 4;
             Com_sprintf(buffer, sizeof(buffer), "Accuracy: %d%%", stats->accuracy);
