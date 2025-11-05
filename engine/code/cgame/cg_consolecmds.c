@@ -88,13 +88,20 @@ static void CG_Viewpos_f (void) {
 static void CG_ScoresDown_f( void ) {
 
 #ifdef MISSIONPACK
-		CG_BuildSpectatorString();
+                CG_BuildSpectatorString();
 #endif
-	if ( cg.scoresRequestTime + 2000 < cg.time ) {
-		// the scores are more than two seconds out of data,
-		// so request new ones
-		cg.scoresRequestTime = cg.time;
-		trap_SendClientCommand( "score" );
+        if ( cg.showScores ) {
+                cg.showScores = qfalse;
+                cg.scoreFadeTime = cg.time;
+                CG_ScoreboardDisableMouse();
+                return;
+        }
+
+        if ( cg.scoresRequestTime + 2000 < cg.time ) {
+                // the scores are more than two seconds out of data,
+                // so request new ones
+                cg.scoresRequestTime = cg.time;
+                trap_SendClientCommand( "score" );
 
 		// leave the current scores up if they were already
 		// displayed, but if this is the first hit, clear them out
@@ -102,18 +109,26 @@ static void CG_ScoresDown_f( void ) {
 			cg.showScores = qtrue;
 			cg.numScores = 0;
 		}
-	} else {
-		// show the cached contents even if they just pressed if it
-		// is within two seconds
-		cg.showScores = qtrue;
-	}
+        } else {
+                // show the cached contents even if they just pressed if it
+                // is within two seconds
+                cg.showScores = qtrue;
+        }
+
+        if ( cg.showScores ) {
+                CG_ScoreboardEnableMouse();
+        }
 }
 
 static void CG_ScoresUp_f( void ) {
-	if ( cg.showScores ) {
-		cg.showScores = qfalse;
-		cg.scoreFadeTime = cg.time;
-	}
+        if ( CG_ScoreboardMouseActive() ) {
+                return;
+        }
+
+        if ( cg.showScores ) {
+                cg.showScores = qfalse;
+                cg.scoreFadeTime = cg.time;
+        }
 }
 
 #ifdef MISSIONPACK
@@ -648,10 +663,29 @@ static void CG_SaveBezierPoints_f( void )
 			break;
 	}
 
-	trap_FS_FCloseFile( f );
+        trap_FS_FCloseFile( f );
 }
 
 // Q3Rally Code End
+
+static void CG_ScoreboardNextTab_f( void ) {
+        CG_ScoreboardCycleTab( 1 );
+}
+
+static void CG_ScoreboardPrevTab_f( void ) {
+        CG_ScoreboardCycleTab( -1 );
+}
+
+static void CG_ScoreboardSelectTab_f( void ) {
+        int tab;
+
+        if ( trap_Argc() < 2 ) {
+                return;
+        }
+
+        tab = atoi( CG_Argv( 1 ) );
+        CG_ScoreboardSetTab( tab );
+}
 
 
 typedef struct {
@@ -669,6 +703,9 @@ static consoleCommand_t	commands[] = {
 	{ "viewpos", CG_Viewpos_f },
 	{ "+scores", CG_ScoresDown_f },
 	{ "-scores", CG_ScoresUp_f },
+	{ "scoreboardNextTab", CG_ScoreboardNextTab_f },
+	{ "scoreboardPrevTab", CG_ScoreboardPrevTab_f },
+	{ "scoreboardSetTab", CG_ScoreboardSelectTab_f },
 	{ "+zoom", CG_ZoomDown_f },
 	{ "-zoom", CG_ZoomUp_f },
 	{ "sizeup", CG_SizeUp_f },
