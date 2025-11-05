@@ -2404,9 +2404,13 @@ void CG_EventHandling(int type) {
 
 
 void CG_KeyEvent(int key, qboolean down) {
+    if (CG_ScoreboardKeyEvent(key, down)) {
+        return;
+    }
 }
 
 void CG_MouseEvent(int x, int y) {
+    CG_ScoreboardMouseMove(x, y);
 }
 #endif
 
