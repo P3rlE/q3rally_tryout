@@ -183,6 +183,15 @@ static qboolean G_ProfileBuildIdentifier( gclient_t *client, char *buffer, size_
 
         trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
 
+        value = Info_ValueForKey( userinfo, "profile" );
+        if ( value && value[0] ) {
+                G_ProfileSanitizeComponent( value, sanitized, sizeof( sanitized ) );
+                if ( sanitized[0] ) {
+                        Q_strncpyz( buffer, sanitized, size );
+                        return qtrue;
+                }
+        }
+
         value = Info_ValueForKey( userinfo, "cl_guid" );
         if ( !value || !value[0] ) {
                 value = Info_ValueForKey( userinfo, "ip" );
