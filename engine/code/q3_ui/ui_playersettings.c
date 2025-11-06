@@ -1442,7 +1442,7 @@ static void PlayerSettings_MenuInit( void ) {
 		static char tabTexts[PLAYERSETTINGS_NUM_TABS][16] = { "CAR", "STATS", "ACHIEVEMENTS" };
 		int tab;
 		int tabX = 64;
-		int tabY = 44;
+                int tabY = 48;
 		int tabWidth = 160;
 		int tabHeight = 28;
 
