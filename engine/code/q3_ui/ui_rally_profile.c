@@ -446,7 +446,7 @@ static void UI_ProfileOverlay_Draw( void ) {
         UI_DrawRect( listLeft - 4, s_profileOverlay.list.generic.top - 4,
                      ( listRight - listLeft ) + 8,
                      ( s_profileOverlay.list.generic.bottom - s_profileOverlay.list.generic.top ) + 8,
-                     1, colorMdGrey );
+                     colorMdGrey );
     }
 
     UI_ProfileOverlay_UpdateCreateLabel();
