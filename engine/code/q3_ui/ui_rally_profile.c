@@ -445,6 +445,30 @@ static void UI_ProfileOverlay_Draw( void ) {
     UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 134,
                                "NEW PROFILE NAME",
                                UI_CENTER | UI_SMALLFONT, text_color_normal );
+    UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 134,
+                               "NEW PROFILE NAME",
+                               UI_CENTER | UI_SMALLFONT, text_color_normal );
+    UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 134,
+                               "NEW PROFILE NAME",
+                               UI_CENTER | UI_SMALLFONT, text_color_normal );
+
+    listLeft = s_profileOverlay.list.generic.left;
+    listRight = s_profileOverlay.list.generic.right;
+    if ( listRight > listLeft ) {
+        UI_DrawRect( listLeft - 4, s_profileOverlay.list.generic.top - 4,
+                     ( listRight - listLeft ) + 8,
+                     ( s_profileOverlay.list.generic.bottom - s_profileOverlay.list.generic.top ) + 8,
+                     colorMdGrey );
+    }
+
+    listLeft = s_profileOverlay.list.generic.left;
+    listRight = s_profileOverlay.list.generic.right;
+    if ( listRight > listLeft ) {
+        UI_DrawRect( listLeft - 4, s_profileOverlay.list.generic.top - 4,
+                     ( listRight - listLeft ) + 8,
+                     ( s_profileOverlay.list.generic.bottom - s_profileOverlay.list.generic.top ) + 8,
+                     colorMdGrey );
+    }
 
     listLeft = s_profileOverlay.list.generic.left;
     listRight = s_profileOverlay.list.generic.right;
