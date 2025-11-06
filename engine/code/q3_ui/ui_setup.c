@@ -37,7 +37,6 @@ SETUP MENU
 
 
 
-#define ID_CUSTOMIZEPLAYER		10
 #define ID_CUSTOMIZECONTROLS	11
 #define ID_SYSTEMCONFIG			12
 #define ID_GAME					13
@@ -56,7 +55,6 @@ typedef struct {
 	menuframework_s	menu;
 
 	menutext_s		banner;
-	menutext_s		setupplayer;
 	menutext_s		profile;
 	menutext_s		setupcontrols;
 	menutext_s		setupsystem;
@@ -109,10 +107,6 @@ static void UI_SetupMenu_Event( void *ptr, int event ) {
 
 	switch( ((menucommon_s*)ptr)->id ) {
 /*
-	case ID_CUSTOMIZEPLAYER:
-		UI_PlayerSettingsMenu();
-		break;
-
 	case ID_PROFILE:
 		UI_PlayerProfileMenu();
 		break;
@@ -167,10 +161,6 @@ UI_SetupMenu_ChangeMenu
 void UI_SetupMenu_ChangeMenu( int menuID ){
 
 	switch(menuID){
-	case ID_CUSTOMIZEPLAYER:
-		UI_PlayerSettingsMenu();
-		break;
-
 	case ID_PROFILE:
 		UI_PlayerProfileMenu();
 		break;
@@ -225,11 +215,9 @@ void UI_SetupMenu_RunTransition(float frac){
 	setupMenuInfo.game.color = uis.text_color;
 	setupMenuInfo.q3rOptions.color = uis.text_color;
 	setupMenuInfo.setupcontrols.color = uis.text_color;
-	setupMenuInfo.setupplayer.color = uis.text_color;
 	setupMenuInfo.profile.color = uis.text_color;
 	setupMenuInfo.setupsystem.color = uis.text_color;
 }
-
 
 /*
 ===============
@@ -256,17 +244,6 @@ static void UI_SetupMenu_Init( void ) {
 
 
 	y = 134;
-	setupMenuInfo.setupplayer.generic.type			= MTYPE_PTEXT;
-	setupMenuInfo.setupplayer.generic.flags			= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
-	setupMenuInfo.setupplayer.generic.x				= 320;
-	setupMenuInfo.setupplayer.generic.y				= y;
-	setupMenuInfo.setupplayer.generic.id			= ID_CUSTOMIZEPLAYER;
-	setupMenuInfo.setupplayer.generic.callback		= UI_SetupMenu_Event; 
-	setupMenuInfo.setupplayer.string				= "PLAYER";
-	setupMenuInfo.setupplayer.color					= text_color_normal;
-	setupMenuInfo.setupplayer.style					= UI_CENTER;
-
-	y += SETUP_MENU_VERTICAL_SPACING;
 	setupMenuInfo.profile.generic.type		 = MTYPE_PTEXT;
 	setupMenuInfo.profile.generic.flags		 = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
 	setupMenuInfo.profile.generic.x		 = 320;
@@ -371,13 +348,11 @@ static void UI_SetupMenu_Init( void ) {
 	setupMenuInfo.back.style				= UI_LEFT | UI_SMALLFONT;
 
 	Menu_AddItem( &setupMenuInfo.menu, &setupMenuInfo.banner );
-	Menu_AddItem( &setupMenuInfo.menu, &setupMenuInfo.setupplayer );
 	Menu_AddItem( &setupMenuInfo.menu, &setupMenuInfo.profile );
 	Menu_AddItem( &setupMenuInfo.menu, &setupMenuInfo.setupcontrols );
 	Menu_AddItem( &setupMenuInfo.menu, &setupMenuInfo.setupsystem );
 	Menu_AddItem( &setupMenuInfo.menu, &setupMenuInfo.game );
 	Menu_AddItem( &setupMenuInfo.menu, &setupMenuInfo.q3rOptions );
-	
 	if( !trap_Cvar_VariableValue( "cl_paused" ) ) {
 		Menu_AddItem( &setupMenuInfo.menu, &setupMenuInfo.defaults );
 	}
