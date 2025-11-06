@@ -29,15 +29,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ID_PROFILE_DELETE      112
 #define ID_PROFILE_CONTINUE    113
 
-#define PROFILE_PANEL_X        80
+#define PROFILE_PANEL_W        600
+#define PROFILE_PANEL_H        440
+#define PROFILE_PANEL_X        ( 320 - ( PROFILE_PANEL_W / 2 ) )
 #define PROFILE_PANEL_Y        60
-#define PROFILE_PANEL_W        480
-#define PROFILE_PANEL_H        400
 
-#define PROFILE_LIST_WIDTH     28
+#define PROFILE_LIST_WIDTH     30
 #define PROFILE_LIST_HEIGHT    9
 
-#define PROFILE_FIELD_WIDTH    24
+#define PROFILE_FIELD_WIDTH    18
 
 #define ID_PROFILE_NAME        114
 
@@ -439,6 +439,18 @@ static void UI_ProfileOverlay_Draw( void ) {
     UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 134,
                                "NEW PROFILE NAME",
                                UI_CENTER | UI_SMALLFONT, text_color_normal );
+    UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 134,
+                               "NEW PROFILE NAME",
+                               UI_CENTER | UI_SMALLFONT, text_color_normal );
+
+    listLeft = s_profileOverlay.list.generic.left;
+    listRight = s_profileOverlay.list.generic.right;
+    if ( listRight > listLeft ) {
+        UI_DrawRect( listLeft - 4, s_profileOverlay.list.generic.top - 4,
+                     ( listRight - listLeft ) + 8,
+                     ( s_profileOverlay.list.generic.bottom - s_profileOverlay.list.generic.top ) + 8,
+                     colorMdGrey );
+    }
 
     listLeft = s_profileOverlay.list.generic.left;
     listRight = s_profileOverlay.list.generic.right;
@@ -494,6 +506,7 @@ static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
 }
 
 static void UI_ProfileOverlay_InitMenu( void ) {
+    int listWidthPixels;
     if ( s_profileOverlayInitialized ) {
         return;
     }
@@ -506,11 +519,13 @@ static void UI_ProfileOverlay_InitMenu( void ) {
     s_profileOverlay.menu.draw = UI_ProfileOverlay_Draw;
     s_profileOverlay.menu.key = UI_ProfileOverlay_Key;
 
+    listWidthPixels = PROFILE_LIST_WIDTH * SMALLCHAR_WIDTH + SB_WIDTH;
+
     s_profileOverlay.list.generic.type = MTYPE_LISTBOX;
     s_profileOverlay.list.generic.flags = QMF_HIGHLIGHT_IF_FOCUS;
     s_profileOverlay.list.generic.id = ID_PROFILE_LIST;
     s_profileOverlay.list.generic.callback = UI_ProfileOverlay_Event;
-    s_profileOverlay.list.generic.x = PROFILE_PANEL_X + 60;
+    s_profileOverlay.list.generic.x = PROFILE_PANEL_X + ( PROFILE_PANEL_W / 2 ) - ( listWidthPixels / 2 );
     s_profileOverlay.list.generic.y = PROFILE_PANEL_Y + 176;
     s_profileOverlay.list.width = PROFILE_LIST_WIDTH;
     s_profileOverlay.list.height = PROFILE_LIST_HEIGHT;
@@ -518,7 +533,7 @@ static void UI_ProfileOverlay_InitMenu( void ) {
     s_profileOverlay.list.scrollbarAlignment = SB_RIGHT;
     s_profileOverlay.list.generic.left = s_profileOverlay.list.generic.x;
     s_profileOverlay.list.generic.top = s_profileOverlay.list.generic.y;
-    s_profileOverlay.list.generic.right = s_profileOverlay.list.generic.x + PROFILE_LIST_WIDTH * SMALLCHAR_WIDTH + SB_WIDTH;
+    s_profileOverlay.list.generic.right = s_profileOverlay.list.generic.x + listWidthPixels;
     s_profileOverlay.list.generic.bottom = s_profileOverlay.list.generic.y + PROFILE_LIST_HEIGHT * SMALLCHAR_HEIGHT;
 
     s_profileOverlay.nameField.generic.type = MTYPE_FIELD;
