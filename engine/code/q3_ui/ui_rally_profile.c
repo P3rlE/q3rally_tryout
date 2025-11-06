@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PROFILE_PANEL_W        600
 #define PROFILE_PANEL_H        440
 #define PROFILE_PANEL_X        ( 320 - ( PROFILE_PANEL_W / 2 ) )
-#define PROFILE_PANEL_Y        60
+#define PROFILE_PANEL_Y        20
 
 #define PROFILE_LIST_WIDTH     30
 #define PROFILE_LIST_HEIGHT    9
@@ -309,6 +309,12 @@ static void UI_ProfileOverlay_UpdateSelection( int index ) {
     trap_Cvar_Set( "cg_profile", s_profileOverlay.profileNames[index] );
     trap_Cvar_Set( "profile", s_profileOverlay.profileNames[index] );
     trap_Cvar_Set( "ui_profileSelected", s_profileOverlay.profileNames[index] );
+    trap_Cvar_Set( "name", s_profileOverlay.profileNames[index] );
+
+    Q_strncpyz( s_profileOverlay.nameField.field.buffer, s_profileOverlay.profileNames[index],
+                sizeof( s_profileOverlay.nameField.field.buffer ) );
+    s_profileOverlay.nameField.field.cursor = strlen( s_profileOverlay.nameField.field.buffer );
+    s_profileOverlay.nameField.field.scroll = 0;
 
     Com_sprintf( s_profileOverlay.continueLabel, sizeof( s_profileOverlay.continueLabel ),
                  "CONTINUE (%s)", s_profileOverlay.profileNames[index] );
@@ -442,6 +448,18 @@ static void UI_ProfileOverlay_Draw( void ) {
     UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 134,
                                "NEW PROFILE NAME",
                                UI_CENTER | UI_SMALLFONT, text_color_normal );
+    UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 134,
+                               "NEW PROFILE NAME",
+                               UI_CENTER | UI_SMALLFONT, text_color_normal );
+
+    listLeft = s_profileOverlay.list.generic.left;
+    listRight = s_profileOverlay.list.generic.right;
+    if ( listRight > listLeft ) {
+        UI_DrawRect( listLeft - 4, s_profileOverlay.list.generic.top - 4,
+                     ( listRight - listLeft ) + 8,
+                     ( s_profileOverlay.list.generic.bottom - s_profileOverlay.list.generic.top ) + 8,
+                     colorMdGrey );
+    }
 
     listLeft = s_profileOverlay.list.generic.left;
     listRight = s_profileOverlay.list.generic.right;
