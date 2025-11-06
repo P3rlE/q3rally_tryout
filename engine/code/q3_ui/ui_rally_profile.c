@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "ui_local.h"
+#include "../game/bg_public.h"
 
 #define ID_PROFILE_LIST        110
 #define ID_PROFILE_CREATE      111
@@ -37,6 +38,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PROFILE_LIST_HEIGHT    8
 
 #define PROFILE_MIN_SELECTIONS 1
+#define PROFILE_SLOTS_CVAR     "ui_profile_slots"
 
 typedef struct {
     menuframework_s menu;
@@ -143,22 +145,93 @@ static void UI_ProfileOverlay_UpdateButtonStates( void ) {
 
 static void UI_ProfileOverlay_SaveSlots( void ) {
     char varName[32];
+    char buffer[MAX_STRING_CHARS];
     int  i;
+
+    buffer[0] = '\0';
 
     for ( i = 0; i < UI_MAX_PROFILE_SLOTS; ++i ) {
         Com_sprintf( varName, sizeof( varName ), "ui_profileSlot%d", i );
         if ( i < s_profileOverlay.profileCount ) {
-            trap_Cvar_Set( varName, s_profileOverlay.profileNames[i] );
+            const char *name = s_profileOverlay.profileNames[i];
+
+            trap_Cvar_Set( varName, name );
+
+            if ( buffer[0] ) {
+                Q_strcat( buffer, sizeof( buffer ), " " );
+            }
+            Q_strcat( buffer, sizeof( buffer ), name );
         } else {
             trap_Cvar_Set( varName, "" );
         }
     }
+
+    trap_Cvar_Set( PROFILE_SLOTS_CVAR, buffer );
+}
+
+static void UI_ProfileOverlay_AddProfileName( const char *name ) {
+    char sanitized[MAX_QPATH];
+
+    if ( s_profileOverlay.profileCount >= UI_MAX_PROFILE_SLOTS ) {
+        return;
+    }
+
+    UI_ProfileOverlay_Sanitize( name, sanitized, sizeof( sanitized ) );
+    if ( !sanitized[0] ) {
+        return;
+    }
+
+    if ( UI_ProfileOverlay_FindIndex( sanitized ) >= 0 ) {
+        return;
+    }
+
+    Q_strncpyz( s_profileOverlay.profileNames[s_profileOverlay.profileCount], sanitized,
+                sizeof( s_profileOverlay.profileNames[0] ) );
+    s_profileOverlay.profileItems[s_profileOverlay.profileCount] =
+        s_profileOverlay.profileNames[s_profileOverlay.profileCount];
+    s_profileOverlay.profileCount++;
+}
+
+static char *UI_ProfileOverlay_NextToken( char **cursor ) {
+    char *c;
+    char *token;
+
+    if ( !cursor || !*cursor ) {
+        return NULL;
+    }
+
+    c = *cursor;
+
+    while ( *c == ' ' ) {
+        c++;
+    }
+
+    if ( !*c ) {
+        *cursor = c;
+        return NULL;
+    }
+
+    token = c;
+
+    while ( *c && *c != ' ' ) {
+        c++;
+    }
+
+    if ( *c ) {
+        *c = '\0';
+        c++;
+    }
+
+    *cursor = c;
+    return token;
 }
 
 static void UI_ProfileOverlay_RebuildList( void ) {
+    char buffer[MAX_STRING_CHARS];
     char varName[32];
     char value[MAX_QPATH];
-    char sanitized[MAX_QPATH];
+    char *cursor;
+    char *token;
     int  i;
 
     s_profileOverlay.profileCount = 0;
@@ -169,27 +242,27 @@ static void UI_ProfileOverlay_RebuildList( void ) {
         s_profileOverlay.profileItems[i] = NULL;
     }
 
+    trap_Cvar_VariableStringBuffer( PROFILE_SLOTS_CVAR, buffer, sizeof( buffer ) );
+    cursor = buffer;
+    token = UI_ProfileOverlay_NextToken( &cursor );
+    while ( token ) {
+        UI_ProfileOverlay_AddProfileName( token );
+        token = UI_ProfileOverlay_NextToken( &cursor );
+    }
+
     for ( i = 0; i < UI_MAX_PROFILE_SLOTS; ++i ) {
         Com_sprintf( varName, sizeof( varName ), "ui_profileSlot%d", i );
         trap_Cvar_VariableStringBuffer( varName, value, sizeof( value ) );
-        UI_ProfileOverlay_Sanitize( value, sanitized, sizeof( sanitized ) );
-
-        if ( sanitized[0] && UI_ProfileOverlay_FindIndex( sanitized ) < 0 ) {
-            Q_strncpyz( s_profileOverlay.profileNames[s_profileOverlay.profileCount], sanitized,
-                        sizeof( s_profileOverlay.profileNames[0] ) );
-            s_profileOverlay.profileItems[s_profileOverlay.profileCount] =
-                s_profileOverlay.profileNames[s_profileOverlay.profileCount];
-            if ( Q_stricmp( value, sanitized ) ) {
-                trap_Cvar_Set( varName, sanitized );
-            }
-            s_profileOverlay.profileCount++;
-            if ( s_profileOverlay.profileCount >= UI_MAX_PROFILE_SLOTS ) {
-                break;
-            }
-        } else if ( value[0] && !sanitized[0] ) {
-            trap_Cvar_Set( varName, "" );
-        }
+        UI_ProfileOverlay_AddProfileName( value );
     }
+
+    UI_ProfileOverlay_AddProfileName( PROFILE_DEFAULT_SLOT );
+
+    trap_Cvar_VariableStringBuffer( "cg_profile", value, sizeof( value ) );
+    UI_ProfileOverlay_AddProfileName( value );
+
+    trap_Cvar_VariableStringBuffer( "profile", value, sizeof( value ) );
+    UI_ProfileOverlay_AddProfileName( value );
 
     s_profileOverlay.list.numitems = s_profileOverlay.profileCount;
     if ( s_profileOverlay.list.curvalue >= s_profileOverlay.profileCount ) {
@@ -204,17 +277,19 @@ static void UI_ProfileOverlay_UpdateSelection( int index ) {
     if ( index < 0 || index >= s_profileOverlay.profileCount ) {
         s_profileOverlay.continueBtn.generic.flags |= QMF_GRAYED;
         s_profileOverlay.continueLabel[0] = '\0';
+        trap_Cvar_Set( "cg_profile", "" );
         trap_Cvar_Set( "profile", "" );
         trap_Cvar_Set( "ui_profileSelected", "" );
         return;
     }
 
     s_profileOverlay.list.curvalue = index;
+    trap_Cvar_Set( "cg_profile", s_profileOverlay.profileNames[index] );
     trap_Cvar_Set( "profile", s_profileOverlay.profileNames[index] );
     trap_Cvar_Set( "ui_profileSelected", s_profileOverlay.profileNames[index] );
 
     Com_sprintf( s_profileOverlay.continueLabel, sizeof( s_profileOverlay.continueLabel ),
-                 "WEITER (%s)", s_profileOverlay.profileNames[index] );
+                 "CONTINUE (%s)", s_profileOverlay.profileNames[index] );
     s_profileOverlay.continueBtn.generic.flags &= ~QMF_GRAYED;
 }
 
@@ -223,7 +298,7 @@ static void UI_ProfileOverlay_UpdateCreateLabel( void ) {
 
     UI_ProfileOverlay_BuildPlayerProfileName( sanitized, sizeof( sanitized ) );
     Com_sprintf( s_profileOverlay.createLabel, sizeof( s_profileOverlay.createLabel ),
-                 "PROFIL ANLEGEN (%s)", sanitized );
+                 "CREATE PROFILE (%s)", sanitized );
 }
 
 static void UI_ProfileOverlay_CreateFromPlayerName( void ) {
@@ -234,24 +309,11 @@ static void UI_ProfileOverlay_CreateFromPlayerName( void ) {
     index = UI_ProfileOverlay_FindIndex( sanitized );
 
     if ( index < 0 ) {
-        if ( s_profileOverlay.profileCount < UI_MAX_PROFILE_SLOTS ) {
-            index = s_profileOverlay.profileCount;
-            Q_strncpyz( s_profileOverlay.profileNames[index], sanitized,
-                        sizeof( s_profileOverlay.profileNames[index] ) );
-            s_profileOverlay.profileItems[index] = s_profileOverlay.profileNames[index];
-            s_profileOverlay.profileCount++;
-            s_profileOverlay.list.numitems = s_profileOverlay.profileCount;
-        } else {
-            index = s_profileOverlay.list.curvalue;
-            if ( index < 0 || index >= s_profileOverlay.profileCount ) {
-                index = s_profileOverlay.profileCount - 1;
-            }
-            Q_strncpyz( s_profileOverlay.profileNames[index], sanitized,
-                        sizeof( s_profileOverlay.profileNames[index] ) );
-            s_profileOverlay.profileItems[index] = s_profileOverlay.profileNames[index];
-        }
+        UI_ProfileOverlay_AddProfileName( sanitized );
+        index = UI_ProfileOverlay_FindIndex( sanitized );
         UI_ProfileOverlay_UpdateButtonStates();
         UI_ProfileOverlay_SaveSlots();
+        s_profileOverlay.list.numitems = s_profileOverlay.profileCount;
     }
 
     UI_ProfileOverlay_UpdateSelection( index );
@@ -315,11 +377,11 @@ static void UI_ProfileOverlay_Draw( void ) {
         Q_strncpyz( cleaned, "Player", sizeof( cleaned ) );
     }
 
-    UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 24, "PROFIL AUSWAHL", UI_CENTER | UI_BIGFONT, text_color_normal );
-    UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 74, va( "SPIELERNAME: %s", cleaned ),
+    UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 24, "PROFILE SELECTION", UI_CENTER | UI_BIGFONT, text_color_normal );
+    UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 74, va( "PLAYER NAME: %s", cleaned ),
                                UI_CENTER | UI_SMALLFONT, text_color_normal );
     UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 102,
-                               "WAEHLE EIN PROFIL ODER ERSTELLE EINES MIT DEINEM SPIELERNAMEN",
+                               "SELECT A PROFILE OR CREATE ONE FROM YOUR PLAYER NAME",
                                UI_CENTER | UI_SMALLFONT, text_color_normal );
 
     UI_ProfileOverlay_UpdateCreateLabel();
@@ -408,7 +470,7 @@ static void UI_ProfileOverlay_InitMenu( void ) {
     s_profileOverlay.deleteBtn.generic.y = PROFILE_PANEL_Y + PROFILE_PANEL_H - 64;
     s_profileOverlay.deleteBtn.style = UI_CENTER | UI_SMALLFONT;
     s_profileOverlay.deleteBtn.color = text_color_normal;
-    s_profileOverlay.deleteBtn.string = "PROFIL LOESCHEN";
+    s_profileOverlay.deleteBtn.string = "DELETE PROFILE";
 
     s_profileOverlay.continueBtn.generic.type = MTYPE_PTEXT;
     s_profileOverlay.continueBtn.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
