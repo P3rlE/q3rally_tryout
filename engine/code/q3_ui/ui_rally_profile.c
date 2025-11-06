@@ -56,6 +56,7 @@ typedef struct {
     char            profileNames[UI_MAX_PROFILE_SLOTS][MAX_QPATH];
     const char     *profileItems[UI_MAX_PROFILE_SLOTS];
     int             profileCount;
+    int             lastSelection;
 
     char            createLabel[64];
     char            continueLabel[64];
@@ -257,6 +258,7 @@ static void UI_ProfileOverlay_RebuildList( void ) {
     int  i;
 
     s_profileOverlay.profileCount = 0;
+    s_profileOverlay.lastSelection = -1;
     s_profileOverlay.list.top = 0;
 
     for ( i = 0; i < UI_MAX_PROFILE_SLOTS; ++i ) {
@@ -302,6 +304,7 @@ static void UI_ProfileOverlay_UpdateSelection( int index ) {
         trap_Cvar_Set( "cg_profile", "" );
         trap_Cvar_Set( "profile", "" );
         trap_Cvar_Set( "ui_profileSelected", "" );
+        s_profileOverlay.lastSelection = -1;
         return;
     }
 
@@ -319,6 +322,7 @@ static void UI_ProfileOverlay_UpdateSelection( int index ) {
     Com_sprintf( s_profileOverlay.continueLabel, sizeof( s_profileOverlay.continueLabel ),
                  "CONTINUE (%s)", s_profileOverlay.profileNames[index] );
     s_profileOverlay.continueBtn.generic.flags &= ~QMF_GRAYED;
+    s_profileOverlay.lastSelection = index;
 }
 
 static void UI_ProfileOverlay_UpdateCreateLabel( void ) {
@@ -445,30 +449,6 @@ static void UI_ProfileOverlay_Draw( void ) {
     UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 134,
                                "NEW PROFILE NAME",
                                UI_CENTER | UI_SMALLFONT, text_color_normal );
-    UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 134,
-                               "NEW PROFILE NAME",
-                               UI_CENTER | UI_SMALLFONT, text_color_normal );
-    UI_DrawProportionalString( 320, PROFILE_PANEL_Y + 134,
-                               "NEW PROFILE NAME",
-                               UI_CENTER | UI_SMALLFONT, text_color_normal );
-
-    listLeft = s_profileOverlay.list.generic.left;
-    listRight = s_profileOverlay.list.generic.right;
-    if ( listRight > listLeft ) {
-        UI_DrawRect( listLeft - 4, s_profileOverlay.list.generic.top - 4,
-                     ( listRight - listLeft ) + 8,
-                     ( s_profileOverlay.list.generic.bottom - s_profileOverlay.list.generic.top ) + 8,
-                     colorMdGrey );
-    }
-
-    listLeft = s_profileOverlay.list.generic.left;
-    listRight = s_profileOverlay.list.generic.right;
-    if ( listRight > listLeft ) {
-        UI_DrawRect( listLeft - 4, s_profileOverlay.list.generic.top - 4,
-                     ( listRight - listLeft ) + 8,
-                     ( s_profileOverlay.list.generic.bottom - s_profileOverlay.list.generic.top ) + 8,
-                     colorMdGrey );
-    }
 
     listLeft = s_profileOverlay.list.generic.left;
     listRight = s_profileOverlay.list.generic.right;
@@ -487,9 +467,15 @@ static void UI_ProfileOverlay_Event( void *ptr, int event ) {
     menucommon_s *item = (menucommon_s*)ptr;
 
     if ( item->id == ID_PROFILE_LIST ) {
-        if ( event == QM_GOTFOCUS || event == QM_ACTIVATED ) {
-            UI_ProfileOverlay_UpdateSelection( s_profileOverlay.list.curvalue );
-            if ( event == QM_ACTIVATED && s_profileOverlay.profileCount > 0 ) {
+        if ( event == QM_GOTFOCUS ) {
+            if ( s_profileOverlay.list.curvalue != s_profileOverlay.lastSelection ) {
+                UI_ProfileOverlay_UpdateSelection( s_profileOverlay.list.curvalue );
+            }
+        } else if ( event == QM_ACTIVATED ) {
+            if ( s_profileOverlay.list.curvalue != s_profileOverlay.lastSelection ) {
+                UI_ProfileOverlay_UpdateSelection( s_profileOverlay.list.curvalue );
+            }
+            if ( s_profileOverlay.profileCount > 0 ) {
                 UI_PopMenu();
             }
         }
@@ -530,6 +516,7 @@ static void UI_ProfileOverlay_InitMenu( void ) {
     }
 
     Com_Memset( &s_profileOverlay, 0, sizeof( s_profileOverlay ) );
+    s_profileOverlay.lastSelection = -1;
 
     s_profileOverlay.menu.wrapAround = qfalse;
     s_profileOverlay.menu.fullscreen = qtrue;
