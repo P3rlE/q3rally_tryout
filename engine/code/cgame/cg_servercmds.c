@@ -65,6 +65,9 @@ CG_ParseScores
 
 =================
 */
+static void CG_SetProfileCvarInt( const char *name, int value );
+static void CG_SetProfileCvarFloat( const char *name, int scaledValue, float scale );
+
 static void CG_ParseScores( void ) {
 	int		i, powerups;
 
