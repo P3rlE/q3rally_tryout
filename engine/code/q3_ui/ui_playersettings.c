@@ -456,8 +456,8 @@ static void PlayerSettings_UpdateTabVisibility( void ) {
         }
 
         PlayerSettings_SetMenuItemVisible( &s_playersettings.statsPanel.generic, showStats );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileList.generic, showStats );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileNameLabel.generic, showStats );
+        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileList.generic, qfalse );
+        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileNameLabel.generic, qfalse );
 
         PlayerSettings_SetMenuItemVisible( &s_playersettings.achievementsPanel.generic, showAchievements );
 }
@@ -709,7 +709,7 @@ static void PlayerSettings_DrawName( void *self ) {
 	f = (menufield_s*)self;
 	basex = f->generic.x;
 	y = f->generic.y;
-	focus = (f->generic.parent->cursor == f->generic.menuPosition);
+	focus = (f->generic.parent->cursor == f->generic.menuPosition) && !(f->generic.flags & QMF_INACTIVE);
 
 	style = UI_LEFT|UI_SMALLFONT;
 // STONELANCE
@@ -727,7 +727,7 @@ static void PlayerSettings_DrawName( void *self ) {
 		color = text_color_highlight;
 	}
 
-	UI_DrawProportionalString( basex + 16, y, "Name", style, color );
+	UI_DrawProportionalString( basex + 16, y, "AKTIVE PROFILE", style, color );
 // END
 
 	// draw the actual name
@@ -1442,7 +1442,7 @@ static void PlayerSettings_MenuInit( void ) {
 		static char tabTexts[PLAYERSETTINGS_NUM_TABS][16] = { "CAR", "STATS", "ACHIEVEMENTS" };
 		int tab;
 		int tabX = 64;
-		int tabY = 64;
+		int tabY = 44;
 		int tabWidth = 160;
 		int tabHeight = 28;
 
@@ -1499,7 +1499,7 @@ static void PlayerSettings_MenuInit( void ) {
 	y = 86;
 // END
 	s_playersettings.name.generic.type			= MTYPE_FIELD;
-	s_playersettings.name.generic.flags			= QMF_NODEFAULTINIT;
+	s_playersettings.name.generic.flags			= QMF_NODEFAULTINIT | QMF_INACTIVE;
 	s_playersettings.name.generic.ownerdraw		= PlayerSettings_DrawName;
 	s_playersettings.name.field.widthInChars	= MAX_NAMELENGTH;
 	s_playersettings.name.field.maxchars		= MAX_NAMELENGTH;
@@ -1621,19 +1621,19 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.achievementsPanel.style = UI_LEFT|UI_SMALLFONT;
 
 	s_playersettings.profileNameLabel.generic.type = MTYPE_PTEXT;
-	s_playersettings.profileNameLabel.generic.flags = QMF_LEFT_JUSTIFY|QMF_INACTIVE;
+	s_playersettings.profileNameLabel.generic.flags = QMF_LEFT_JUSTIFY|QMF_INACTIVE|QMF_HIDDEN;
 	s_playersettings.profileNameLabel.generic.x = 360;
 	s_playersettings.profileNameLabel.generic.y = 140;
 	s_playersettings.profileNameLabel.generic.left = 360;
 	s_playersettings.profileNameLabel.generic.top = 140;
 	s_playersettings.profileNameLabel.generic.right = 360 + 220;
 	s_playersettings.profileNameLabel.generic.bottom = 140 + SMALLCHAR_HEIGHT;
-        s_playersettings.profileNameLabel.string = "ACTIVE PROFILE";
+	s_playersettings.profileNameLabel.string = "AKTIVE PROFILE";
 	s_playersettings.profileNameLabel.style = UI_LEFT|UI_SMALLFONT;
 	s_playersettings.profileNameLabel.color = text_color_normal;
 
 	s_playersettings.profileList.generic.type = MTYPE_SPINCONTROL;
-	s_playersettings.profileList.generic.flags = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	s_playersettings.profileList.generic.flags = QMF_PULSEIFFOCUS|QMF_SMALLFONT|QMF_INACTIVE|QMF_HIDDEN;
 	s_playersettings.profileList.generic.id = ID_PROFILE_LIST;
 	s_playersettings.profileList.generic.callback = PlayerSettings_MenuEvent;
 	s_playersettings.profileList.generic.x = 360;
