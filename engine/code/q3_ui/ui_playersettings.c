@@ -70,10 +70,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ID_TAB_STATS            31
 #define ID_TAB_ACHIEVEMENTS     32
 #define ID_PROFILE_LIST         33
-#define ID_PROFILE_NEWNAME      34
-#define ID_PROFILE_CREATE       35
-#define ID_PROFILE_DELETE       36
-#define ID_PROFILE_SELECT       37
 
 #define MAX_NAMELENGTH	20
 // STONELANCE
@@ -137,11 +133,7 @@ typedef struct {
 	menutext_s			achievementsPanel;
 
 	menulist_s			profileList;
-	menufield_s		profileName;
 	menutext_s			profileNameLabel;
-	menutext_s			profileCreate;
-	menutext_s			profileDelete;
-	menutext_s			profileSelect;
 
 	const char				*profileItems[MAX_PROFILE_SLOTS + 1];
 	char				profileNames[MAX_PROFILE_SLOTS][MAX_PROFILE_NAME_LENGTH];
@@ -213,12 +205,10 @@ static void PlayerSettings_DrawTabButton( void *self );
 static void PlayerSettings_DrawStatsPanel( void *self );
 static void PlayerSettings_DrawAchievementsPanel( void *self );
 static void PlayerSettings_LoadProfileSlots( void );
-static void PlayerSettings_SaveProfileSlots( void );
 static void PlayerSettings_BuildProfileItems( void );
 static int PlayerSettings_FindProfileIndex( const char *name );
 static qboolean PlayerSettings_SanitizeProfileName( const char *input, char *output, size_t size );
 static void PlayerSettings_AddProfileSlot( const char *name );
-static void PlayerSettings_RemoveProfileSlot( int index );
 static void PlayerSettings_SetProfileCvars( const char *profile );
 static void PlayerSettings_SelectProfileByIndex( int index );
 static void PlayerSettings_UpdateLifetimeData( void );
@@ -321,44 +311,6 @@ static void PlayerSettings_AddProfileSlot( const char *name ) {
         s_playersettings.profileCount++;
 }
 
-static void PlayerSettings_RemoveProfileSlot( int index ) {
-        int i;
-
-        if ( index < 0 || index >= s_playersettings.profileCount ) {
-                return;
-        }
-
-        if ( !Q_stricmp( s_playersettings.profileNames[index], PROFILE_DEFAULT_SLOT ) ) {
-                return;
-        }
-
-        for ( i = index; i < s_playersettings.profileCount - 1; i++ ) {
-                Q_strncpyz( s_playersettings.profileNames[i], s_playersettings.profileNames[i + 1],
-                            sizeof( s_playersettings.profileNames[i] ) );
-        }
-
-        if ( s_playersettings.profileCount > 0 ) {
-                s_playersettings.profileCount--;
-                s_playersettings.profileNames[s_playersettings.profileCount][0] = '\0';
-        }
-}
-
-static void PlayerSettings_SaveProfileSlots( void ) {
-        char buffer[MAX_STRING_CHARS];
-        int i;
-
-        buffer[0] = '\0';
-
-        for ( i = 0; i < s_playersettings.profileCount; i++ ) {
-                if ( buffer[0] ) {
-                        Q_strcat( buffer, sizeof( buffer ), " " );
-                }
-                Q_strcat( buffer, sizeof( buffer ), s_playersettings.profileNames[i] );
-        }
-
-        trap_Cvar_Set( PROFILE_SLOTS_CVAR, buffer );
-}
-
 static char *PlayerSettings_NextProfileToken( char **cursor ) {
         char *c;
         char *token;
@@ -400,6 +352,9 @@ static void PlayerSettings_LoadProfileSlots( void ) {
         char *token;
         char currentProfileRaw[MAX_STRING_CHARS];
         char sanitizedCurrent[MAX_PROFILE_NAME_LENGTH];
+        char varName[32];
+        char value[MAX_QPATH];
+        int i;
 
         s_playersettings.profileCount = 0;
 
@@ -412,6 +367,12 @@ static void PlayerSettings_LoadProfileSlots( void ) {
                         break;
                 }
                 token = PlayerSettings_NextProfileToken( &cursor );
+        }
+
+        for ( i = 0; i < UI_MAX_PROFILE_SLOTS && s_playersettings.profileCount < MAX_PROFILE_SLOTS; ++i ) {
+                Com_sprintf( varName, sizeof( varName ), "ui_profileSlot%d", i );
+                trap_Cvar_VariableStringBuffer( varName, value, sizeof( value ) );
+                PlayerSettings_AddProfileSlot( value );
         }
 
         PlayerSettings_AddProfileSlot( PROFILE_DEFAULT_SLOT );
@@ -429,9 +390,6 @@ static void PlayerSettings_LoadProfileSlots( void ) {
                 s_playersettings.profileList.curvalue = 0;
         }
         s_playersettings.profileList.oldvalue = s_playersettings.profileList.curvalue;
-
-        Q_strncpyz( s_playersettings.profileName.field.buffer, sanitizedCurrent,
-                    sizeof( s_playersettings.profileName.field.buffer ) );
 }
 
 static void PlayerSettings_SetProfileCvars( const char *profile ) {
@@ -443,6 +401,7 @@ static void PlayerSettings_SetProfileCvars( const char *profile ) {
 
         trap_Cvar_Set( "cg_profile", sanitized );
         trap_Cvar_Set( "profile", sanitized );
+        trap_Cvar_Set( "ui_profileSelected", sanitized );
 
         s_playersettings.lifetimeDisplay.valid = qfalse;
         s_playersettings.lifetimeDisplay.sequence = -1;
@@ -456,9 +415,6 @@ static void PlayerSettings_SelectProfileByIndex( int index ) {
         PlayerSettings_SetProfileCvars( s_playersettings.profileNames[index] );
         s_playersettings.profileList.curvalue = index;
         s_playersettings.profileList.oldvalue = index;
-        Q_strncpyz( s_playersettings.profileName.field.buffer, s_playersettings.profileNames[index],
-                    sizeof( s_playersettings.profileName.field.buffer ) );
-        PlayerSettings_SaveProfileSlots();
 }
 
 static void PlayerSettings_UpdateTabHighlight( void ) {
@@ -500,12 +456,8 @@ static void PlayerSettings_UpdateTabVisibility( void ) {
         }
 
         PlayerSettings_SetMenuItemVisible( &s_playersettings.statsPanel.generic, showStats );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileList.generic, showStats );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileName.generic, showStats );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileNameLabel.generic, showStats );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileCreate.generic, showStats );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileDelete.generic, showStats );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileSelect.generic, showStats );
+        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileList.generic, qfalse );
+        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileNameLabel.generic, qfalse );
 
         PlayerSettings_SetMenuItemVisible( &s_playersettings.achievementsPanel.generic, showAchievements );
 }
@@ -757,7 +709,7 @@ static void PlayerSettings_DrawName( void *self ) {
 	f = (menufield_s*)self;
 	basex = f->generic.x;
 	y = f->generic.y;
-	focus = (f->generic.parent->cursor == f->generic.menuPosition);
+	focus = (f->generic.parent->cursor == f->generic.menuPosition) && !(f->generic.flags & QMF_INACTIVE);
 
 	style = UI_LEFT|UI_SMALLFONT;
 // STONELANCE
@@ -775,7 +727,7 @@ static void PlayerSettings_DrawName( void *self ) {
 		color = text_color_highlight;
 	}
 
-	UI_DrawProportionalString( basex + 16, y, "Name", style, color );
+	UI_DrawProportionalString( basex + 16, y, "AKTIVE PROFILE", style, color );
 // END
 
 	// draw the actual name
@@ -1321,56 +1273,9 @@ static void PlayerSettings_MenuEvent( void* ptr, int event ) {
 		PlayerSettings_SetActiveTab( PLAYERSETTINGS_TAB_ACHIEVEMENTS );
 		break;
 
-	case ID_PROFILE_LIST:
-		if ( s_playersettings.profileList.curvalue >= 0 &&
-		     s_playersettings.profileList.curvalue < s_playersettings.profileCount ) {
-			Q_strncpyz( s_playersettings.profileName.field.buffer,
-			        s_playersettings.profileNames[s_playersettings.profileList.curvalue],
-			        sizeof( s_playersettings.profileName.field.buffer ) );
-		}
-		break;
-
-	case ID_PROFILE_CREATE:
-	{
-		int newIndex;
-		char sanitized[MAX_PROFILE_NAME_LENGTH];
-
-		if ( PlayerSettings_SanitizeProfileName( s_playersettings.profileName.field.buffer,
-		        sanitized, sizeof( sanitized ) ) ) {
-			PlayerSettings_AddProfileSlot( sanitized );
-			PlayerSettings_BuildProfileItems();
-			PlayerSettings_SaveProfileSlots();
-			newIndex = PlayerSettings_FindProfileIndex( sanitized );
-			if ( newIndex >= 0 ) {
-				PlayerSettings_SelectProfileByIndex( newIndex );
-			}
-		}
-	}
-		break;
-
-	case ID_PROFILE_DELETE:
-	{
-		int index = s_playersettings.profileList.curvalue;
-		PlayerSettings_RemoveProfileSlot( index );
-		PlayerSettings_BuildProfileItems();
-		PlayerSettings_SaveProfileSlots();
-		if ( s_playersettings.profileCount <= 0 ) {
-			PlayerSettings_LoadProfileSlots();
-		} else {
-			if ( s_playersettings.profileList.curvalue >= s_playersettings.profileCount ) {
-				s_playersettings.profileList.curvalue = s_playersettings.profileCount - 1;
-			}
-			if ( s_playersettings.profileList.curvalue < 0 ) {
-				s_playersettings.profileList.curvalue = 0;
-			}
-			PlayerSettings_SelectProfileByIndex( s_playersettings.profileList.curvalue );
-		}
-	}
-		break;
-
-	case ID_PROFILE_SELECT:
-		PlayerSettings_SelectProfileByIndex( s_playersettings.profileList.curvalue );
-		break;
+        case ID_PROFILE_LIST:
+                PlayerSettings_SelectProfileByIndex( s_playersettings.profileList.curvalue );
+                break;
 
 	case ID_PLATE:
 		UI_PlateSelectionMenu();
@@ -1537,7 +1442,7 @@ static void PlayerSettings_MenuInit( void ) {
 		static char tabTexts[PLAYERSETTINGS_NUM_TABS][16] = { "CAR", "STATS", "ACHIEVEMENTS" };
 		int tab;
 		int tabX = 64;
-		int tabY = 64;
+                int tabY = 48;
 		int tabWidth = 160;
 		int tabHeight = 28;
 
@@ -1594,7 +1499,7 @@ static void PlayerSettings_MenuInit( void ) {
 	y = 86;
 // END
 	s_playersettings.name.generic.type			= MTYPE_FIELD;
-	s_playersettings.name.generic.flags			= QMF_NODEFAULTINIT;
+	s_playersettings.name.generic.flags			= QMF_NODEFAULTINIT | QMF_INACTIVE;
 	s_playersettings.name.generic.ownerdraw		= PlayerSettings_DrawName;
 	s_playersettings.name.field.widthInChars	= MAX_NAMELENGTH;
 	s_playersettings.name.field.maxchars		= MAX_NAMELENGTH;
@@ -1716,19 +1621,19 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.achievementsPanel.style = UI_LEFT|UI_SMALLFONT;
 
 	s_playersettings.profileNameLabel.generic.type = MTYPE_PTEXT;
-	s_playersettings.profileNameLabel.generic.flags = QMF_LEFT_JUSTIFY|QMF_INACTIVE;
+	s_playersettings.profileNameLabel.generic.flags = QMF_LEFT_JUSTIFY|QMF_INACTIVE|QMF_HIDDEN;
 	s_playersettings.profileNameLabel.generic.x = 360;
 	s_playersettings.profileNameLabel.generic.y = 140;
 	s_playersettings.profileNameLabel.generic.left = 360;
 	s_playersettings.profileNameLabel.generic.top = 140;
 	s_playersettings.profileNameLabel.generic.right = 360 + 220;
 	s_playersettings.profileNameLabel.generic.bottom = 140 + SMALLCHAR_HEIGHT;
-	s_playersettings.profileNameLabel.string = "PROFILE NAME";
+	s_playersettings.profileNameLabel.string = "AKTIVE PROFILE";
 	s_playersettings.profileNameLabel.style = UI_LEFT|UI_SMALLFONT;
 	s_playersettings.profileNameLabel.color = text_color_normal;
 
 	s_playersettings.profileList.generic.type = MTYPE_SPINCONTROL;
-	s_playersettings.profileList.generic.flags = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	s_playersettings.profileList.generic.flags = QMF_PULSEIFFOCUS|QMF_SMALLFONT|QMF_INACTIVE|QMF_HIDDEN;
 	s_playersettings.profileList.generic.id = ID_PROFILE_LIST;
 	s_playersettings.profileList.generic.callback = PlayerSettings_MenuEvent;
 	s_playersettings.profileList.generic.x = 360;
@@ -1741,60 +1646,6 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.profileList.height = SMALLCHAR_HEIGHT;
 	s_playersettings.profileList.columns = 1;
 	s_playersettings.profileList.separation = 0;
-
-	s_playersettings.profileName.generic.type = MTYPE_FIELD;
-	s_playersettings.profileName.generic.flags = QMF_NODEFAULTINIT|QMF_SMALLFONT;
-	s_playersettings.profileName.generic.id = ID_PROFILE_NEWNAME;
-	s_playersettings.profileName.generic.x = 360;
-	s_playersettings.profileName.generic.y = 210;
-	s_playersettings.profileName.generic.left = 360;
-	s_playersettings.profileName.generic.top = 210;
-	s_playersettings.profileName.generic.right = 360 + 220;
-	s_playersettings.profileName.generic.bottom = 210 + SMALLCHAR_HEIGHT;
-	s_playersettings.profileName.field.widthInChars = 20;
-	s_playersettings.profileName.field.maxchars = MAX_PROFILE_NAME_LENGTH - 1;
-
-	s_playersettings.profileCreate.generic.type = MTYPE_PTEXT;
-	s_playersettings.profileCreate.generic.flags = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
-	s_playersettings.profileCreate.generic.id = ID_PROFILE_CREATE;
-	s_playersettings.profileCreate.generic.callback = PlayerSettings_MenuEvent;
-	s_playersettings.profileCreate.generic.x = 360;
-	s_playersettings.profileCreate.generic.y = 244;
-	s_playersettings.profileCreate.generic.left = 360;
-	s_playersettings.profileCreate.generic.top = 244 - SMALLCHAR_HEIGHT;
-	s_playersettings.profileCreate.generic.right = 360 + 120;
-	s_playersettings.profileCreate.generic.bottom = 244 + SMALLCHAR_HEIGHT;
-	s_playersettings.profileCreate.string = "CREATE";
-	s_playersettings.profileCreate.style = UI_LEFT|UI_SMALLFONT;
-	s_playersettings.profileCreate.color = text_color_normal;
-
-	s_playersettings.profileDelete.generic.type = MTYPE_PTEXT;
-	s_playersettings.profileDelete.generic.flags = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
-	s_playersettings.profileDelete.generic.id = ID_PROFILE_DELETE;
-	s_playersettings.profileDelete.generic.callback = PlayerSettings_MenuEvent;
-	s_playersettings.profileDelete.generic.x = 360;
-	s_playersettings.profileDelete.generic.y = 268;
-	s_playersettings.profileDelete.generic.left = 360;
-	s_playersettings.profileDelete.generic.top = 268 - SMALLCHAR_HEIGHT;
-	s_playersettings.profileDelete.generic.right = 360 + 120;
-	s_playersettings.profileDelete.generic.bottom = 268 + SMALLCHAR_HEIGHT;
-	s_playersettings.profileDelete.string = "DELETE";
-	s_playersettings.profileDelete.style = UI_LEFT|UI_SMALLFONT;
-	s_playersettings.profileDelete.color = text_color_normal;
-
-	s_playersettings.profileSelect.generic.type = MTYPE_PTEXT;
-	s_playersettings.profileSelect.generic.flags = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
-	s_playersettings.profileSelect.generic.id = ID_PROFILE_SELECT;
-	s_playersettings.profileSelect.generic.callback = PlayerSettings_MenuEvent;
-	s_playersettings.profileSelect.generic.x = 360;
-	s_playersettings.profileSelect.generic.y = 292;
-	s_playersettings.profileSelect.generic.left = 360;
-	s_playersettings.profileSelect.generic.top = 292 - SMALLCHAR_HEIGHT;
-	s_playersettings.profileSelect.generic.right = 360 + 120;
-	s_playersettings.profileSelect.generic.bottom = 292 + SMALLCHAR_HEIGHT;
-	s_playersettings.profileSelect.string = "LOAD";
-	s_playersettings.profileSelect.style = UI_LEFT|UI_SMALLFONT;
-	s_playersettings.profileSelect.color = text_color_normal;
 
 	s_playersettings.player.generic.type		= MTYPE_BITMAP;
 	s_playersettings.player.generic.flags		= QMF_INACTIVE;
@@ -1950,10 +1801,6 @@ static void PlayerSettings_MenuInit( void ) {
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.statsPanel );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.profileNameLabel );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.profileList );
-	Menu_AddItem( &s_playersettings.menu, &s_playersettings.profileName );
-	Menu_AddItem( &s_playersettings.menu, &s_playersettings.profileCreate );
-	Menu_AddItem( &s_playersettings.menu, &s_playersettings.profileDelete );
-	Menu_AddItem( &s_playersettings.menu, &s_playersettings.profileSelect );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.achievementsPanel );
 
 // STONELANCE
@@ -2039,8 +1886,8 @@ void UI_PlayerSettingsMenu( void ) {
 }
 
 void UI_PlayerProfileMenu( void ) {
-	s_playersettingsInitialTab = PLAYERSETTINGS_TAB_STATS;
-	UI_PlayerSettingsMenu();
+        s_playersettingsInitialTab = PLAYERSETTINGS_TAB_CAR;
+        UI_PlayerSettingsMenu();
 }
 
 // STONELANCE
