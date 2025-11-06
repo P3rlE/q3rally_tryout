@@ -39,6 +39,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define PROFILE_FIELD_WIDTH    18
 
+#define PROFILE_BUTTON_WIDTH   260
+#define PROFILE_BUTTON_HEIGHT  24
+
 #define ID_PROFILE_NAME        114
 
 #define PROFILE_MIN_SELECTIONS 1
@@ -560,6 +563,10 @@ static void UI_ProfileOverlay_InitMenu( void ) {
     s_profileOverlay.create.generic.callback = UI_ProfileOverlay_Event;
     s_profileOverlay.create.generic.x = 320;
     s_profileOverlay.create.generic.y = PROFILE_PANEL_Y + PROFILE_PANEL_H - 96;
+    s_profileOverlay.create.generic.left = s_profileOverlay.create.generic.x - ( PROFILE_BUTTON_WIDTH / 2 );
+    s_profileOverlay.create.generic.top = s_profileOverlay.create.generic.y - 8;
+    s_profileOverlay.create.generic.right = s_profileOverlay.create.generic.x + ( PROFILE_BUTTON_WIDTH / 2 );
+    s_profileOverlay.create.generic.bottom = s_profileOverlay.create.generic.y + PROFILE_BUTTON_HEIGHT;
     s_profileOverlay.create.style = UI_CENTER | UI_SMALLFONT;
     s_profileOverlay.create.color = text_color_normal;
     s_profileOverlay.create.string = s_profileOverlay.createLabel;
@@ -570,6 +577,10 @@ static void UI_ProfileOverlay_InitMenu( void ) {
     s_profileOverlay.deleteBtn.generic.callback = UI_ProfileOverlay_Event;
     s_profileOverlay.deleteBtn.generic.x = 320;
     s_profileOverlay.deleteBtn.generic.y = PROFILE_PANEL_Y + PROFILE_PANEL_H - 64;
+    s_profileOverlay.deleteBtn.generic.left = s_profileOverlay.deleteBtn.generic.x - ( PROFILE_BUTTON_WIDTH / 2 );
+    s_profileOverlay.deleteBtn.generic.top = s_profileOverlay.deleteBtn.generic.y - 8;
+    s_profileOverlay.deleteBtn.generic.right = s_profileOverlay.deleteBtn.generic.x + ( PROFILE_BUTTON_WIDTH / 2 );
+    s_profileOverlay.deleteBtn.generic.bottom = s_profileOverlay.deleteBtn.generic.y + PROFILE_BUTTON_HEIGHT;
     s_profileOverlay.deleteBtn.style = UI_CENTER | UI_SMALLFONT;
     s_profileOverlay.deleteBtn.color = text_color_normal;
     s_profileOverlay.deleteBtn.string = "DELETE PROFILE";
@@ -580,6 +591,10 @@ static void UI_ProfileOverlay_InitMenu( void ) {
     s_profileOverlay.continueBtn.generic.callback = UI_ProfileOverlay_Event;
     s_profileOverlay.continueBtn.generic.x = 320;
     s_profileOverlay.continueBtn.generic.y = PROFILE_PANEL_Y + PROFILE_PANEL_H - 32;
+    s_profileOverlay.continueBtn.generic.left = s_profileOverlay.continueBtn.generic.x - ( PROFILE_BUTTON_WIDTH / 2 );
+    s_profileOverlay.continueBtn.generic.top = s_profileOverlay.continueBtn.generic.y - 8;
+    s_profileOverlay.continueBtn.generic.right = s_profileOverlay.continueBtn.generic.x + ( PROFILE_BUTTON_WIDTH / 2 );
+    s_profileOverlay.continueBtn.generic.bottom = s_profileOverlay.continueBtn.generic.y + PROFILE_BUTTON_HEIGHT;
     s_profileOverlay.continueBtn.style = UI_CENTER | UI_SMALLFONT;
     s_profileOverlay.continueBtn.color = text_color_normal;
     s_profileOverlay.continueBtn.string = s_profileOverlay.continueLabel;

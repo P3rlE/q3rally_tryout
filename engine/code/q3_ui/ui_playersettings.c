@@ -208,6 +208,7 @@ static void PlayerSettings_LoadProfileSlots( void );
 static void PlayerSettings_BuildProfileItems( void );
 static int PlayerSettings_FindProfileIndex( const char *name );
 static qboolean PlayerSettings_SanitizeProfileName( const char *input, char *output, size_t size );
+static void PlayerSettings_RegisterProfileCvars( void );
 static void PlayerSettings_AddProfileSlot( const char *name );
 static void PlayerSettings_SetProfileCvars( const char *profile );
 static void PlayerSettings_SelectProfileByIndex( int index );
@@ -252,6 +253,37 @@ static qboolean PlayerSettings_SanitizeProfileName( const char *input, char *out
 
         output[length] = '\0';
         return length > 0;
+}
+
+static void PlayerSettings_RegisterProfileCvars( void ) {
+        static qboolean registered = qfalse;
+        const int flags = CVAR_ARCHIVE;
+
+        if ( registered ) {
+                return;
+        }
+
+        registered = qtrue;
+
+        trap_Cvar_Register( NULL, "ui_profile_sequence", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_version", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_matches", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_wins", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_losses", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_finishes", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_dnfs", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_bestPosition", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_bestLapMs", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_bestTotalRaceMs", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_totalRaceTimeMs", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_totalScore", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_totalKills", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_totalDeaths", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_totalDamageDealt", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_totalDamageTaken", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_totalDistance", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_totalFuel", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_achievements", "0", flags );
 }
 
 static int PlayerSettings_FindProfileIndex( const char *name ) {
@@ -511,6 +543,8 @@ static void PlayerSettings_UpdateLifetimeData( void ) {
         char buffer[64];
         int sequence;
 
+        PlayerSettings_RegisterProfileCvars();
+
         display = &s_playersettings.lifetimeDisplay;
 
         sequence = (int)trap_Cvar_VariableValue( "ui_profile_sequence" );
@@ -544,7 +578,7 @@ static void PlayerSettings_UpdateLifetimeData( void ) {
         trap_Cvar_VariableStringBuffer( "ui_profile_totalFuel", buffer, sizeof( buffer ) );
         display->totalFuelConsumed = atof( buffer );
 
-        if ( display->raw.version > 0 ) {
+        if ( display->raw.version > 0 || sequence > 0 ) {
                 display->valid = qtrue;
         }
 }
