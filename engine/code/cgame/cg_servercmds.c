@@ -167,15 +167,17 @@ static void CG_ParseProfileLifetime( void ) {
 	int		achievements;
 
 	argc = trap_Argc();
-	if ( argc < 19 ) {
-		CG_Printf( "profileLifetime: expected 18 args, got %i\n", argc - 1 );
-		cg.profileLifetimeStats.valid = qfalse;
-		return;
-	}
+        if ( argc < 19 ) {
+                CG_Printf( "profileLifetime: expected 18 args, got %i\n", argc - 1 );
+                cg.profileLifetimeStats.valid = qfalse;
+                trap_Cvar_Set( "ui_profile_identifier", "" );
+                return;
+        }
 
-	trap_Argv( 1, cg.profileLifetimeStats.identifier, sizeof( cg.profileLifetimeStats.identifier ) );
-	matchesPlayed = atoi( CG_Argv( 2 ) );
-	wins = atoi( CG_Argv( 3 ) );
+        trap_Argv( 1, cg.profileLifetimeStats.identifier, sizeof( cg.profileLifetimeStats.identifier ) );
+        trap_Cvar_Set( "ui_profile_identifier", cg.profileLifetimeStats.identifier );
+        matchesPlayed = atoi( CG_Argv( 2 ) );
+        wins = atoi( CG_Argv( 3 ) );
 	losses = atoi( CG_Argv( 4 ) );
 	finishes = atoi( CG_Argv( 5 ) );
 	dnfs = atoi( CG_Argv( 6 ) );
