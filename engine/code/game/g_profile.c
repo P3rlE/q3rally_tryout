@@ -27,6 +27,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define INT_MAX 0x7fffffff
 #endif
 
+#define PROFILE_FUEL_STATS_L_PER_100KM  10.0f
+// 10 L / 100 km = 0.1 L per km = 0.0001 L per meter
+#define PROFILE_FUEL_STATS_L_PER_METER  (PROFILE_FUEL_STATS_L_PER_100KM / 100000.0f)
+
 #ifndef INT_MIN
 #define INT_MIN (-INT_MAX - 1)
 #endif
@@ -785,21 +789,27 @@ static float G_ProfileComputeDistance( gclient_t *client ) {
         return 0.0f;
 }
 
-static float G_ProfileComputeFuelConsumed( gclient_t *client ) {
+static float G_ProfileComputeFuelConsumed( gclient_t *client, float distanceMeters ) {
         float consumed;
 
         if ( !client ) {
                 return 0.0f;
         }
 
-        if ( client->profileFuelUsedAccum > 0.0f ) {
-                return client->profileFuelUsedAccum;
+        if ( distanceMeters > 0.0f ) {
+                return distanceMeters * PROFILE_FUEL_STATS_L_PER_METER;
         }
 
-        consumed = client->car.maxFuel - client->car.fuel;
+        consumed = client->profileFuelUsedAccum;
+        if ( consumed <= 0.0f ) {
+                consumed = client->car.maxFuel - client->car.fuel;
+        }
+
         if ( consumed < 0.0f ) {
                 consumed = 0.0f;
         }
+
+        // Fall back to the raw in-game units when we have no reliable distance data.
         return consumed;
 }
 
@@ -904,7 +914,7 @@ static void G_ProfileApplyMatchStats( gclient_t *client, int clientNum, const sc
                 }
 
                 distanceMeters = G_ProfileComputeDistance( client );
-                fuelConsumed = G_ProfileComputeFuelConsumed( client );
+                fuelConsumed = G_ProfileComputeFuelConsumed( client, distanceMeters );
 
                 if ( finished ) {
                         totalRaceMs = G_ProfileComputeRaceTime( client );

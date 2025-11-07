@@ -78,6 +78,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ID_TAB_STATS            31
 #define ID_TAB_ACHIEVEMENTS     32
 #define ID_PROFILE_LIST         33
+#define ID_PROFILE_REFRESH      34
 
 #define MAX_NAMELENGTH	20
 // STONELANCE
@@ -139,6 +140,7 @@ typedef struct {
 	menutext_s			tabLabels[PLAYERSETTINGS_NUM_TABS];
 
 	menutext_s			statsPanel;
+	menutext_s			profileRefresh;
 	menutext_s			achievementsPanel;
 
 	menulist_s			profileList;
@@ -679,6 +681,7 @@ static void PlayerSettings_UpdateTabVisibility( void ) {
         }
 
         PlayerSettings_SetMenuItemVisible( &s_playersettings.statsPanel.generic, showStats );
+        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileRefresh.generic, showStats );
         PlayerSettings_SetMenuItemVisible( &s_playersettings.profileList.generic, qfalse );
         PlayerSettings_SetMenuItemVisible( &s_playersettings.profileNameLabel.generic, qfalse );
 
@@ -1528,6 +1531,24 @@ static void PlayerSettings_MenuEvent( void* ptr, int event ) {
                 PlayerSettings_SelectProfileByIndex( s_playersettings.profileList.curvalue );
                 break;
 
+	case ID_PROFILE_REFRESH:
+                {
+                        uiClientState_t cs;
+                        char identifier[MAX_QPATH];
+
+                        s_playersettings.lifetimeDisplay.valid = qfalse;
+                        s_playersettings.lifetimeDisplay.sequence = -1;
+                        s_playersettings.lifetimeDisplay.identifier[0] = '\0';
+
+                        trap_GetClientState( &cs );
+                        if ( cs.connState >= CA_CONNECTED ) {
+                                trap_Cmd_ExecuteText( EXEC_APPEND, "profileRequest\n" );
+                        } else if ( PlayerSettings_BuildProfileIdentifier( identifier, sizeof( identifier ) ) ) {
+                                PlayerSettings_LoadLifetimeFromProfile( &s_playersettings.lifetimeDisplay, identifier );
+                        }
+                }
+                break;
+
 	case ID_PLATE:
 		UI_PlateSelectionMenu();
 		break;
@@ -1626,6 +1647,7 @@ void PlayerSettings_RunTransition(float frac){
 	s_playersettings.favorites.color = uis.text_color;
 	s_playersettings.modelname.color = uis.text_color;
 	s_playersettings.plate.color = uis.text_color;
+	s_playersettings.profileRefresh.color = uis.text_color;
 
 	if (s_playersettings.menu.transitionMenu != ID_CUSTOMIZE){
 		y = 403 + (int)(77 * (1 - frac));
@@ -1859,6 +1881,20 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.statsPanel.color = text_color_normal;
 	s_playersettings.statsPanel.style = UI_LEFT|UI_SMALLFONT;
 
+	s_playersettings.profileRefresh.generic.type = MTYPE_PTEXT;
+	s_playersettings.profileRefresh.generic.flags = QMF_RIGHT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	s_playersettings.profileRefresh.generic.x = s_playersettings.statsPanel.generic.x + 240;
+	s_playersettings.profileRefresh.generic.y = s_playersettings.statsPanel.generic.y - ( SMALLCHAR_HEIGHT + 4 );
+	s_playersettings.profileRefresh.generic.left = s_playersettings.statsPanel.generic.x;
+	s_playersettings.profileRefresh.generic.top = s_playersettings.profileRefresh.generic.y - 2;
+	s_playersettings.profileRefresh.generic.right = s_playersettings.statsPanel.generic.x + 240;
+	s_playersettings.profileRefresh.generic.bottom = s_playersettings.profileRefresh.generic.y + SMALLCHAR_HEIGHT + 2;
+	s_playersettings.profileRefresh.generic.id = ID_PROFILE_REFRESH;
+	s_playersettings.profileRefresh.generic.callback = PlayerSettings_MenuEvent;
+	s_playersettings.profileRefresh.string = "REFRESH STATS";
+	s_playersettings.profileRefresh.color = text_color_normal;
+	s_playersettings.profileRefresh.style = UI_RIGHT|UI_SMALLFONT;
+
 	s_playersettings.achievementsPanel.generic.type = MTYPE_PTEXT;
 	s_playersettings.achievementsPanel.generic.flags = QMF_LEFT_JUSTIFY|QMF_INACTIVE|QMF_SMALLFONT;
 	s_playersettings.achievementsPanel.generic.x = 72;
@@ -2049,6 +2085,7 @@ static void PlayerSettings_MenuInit( void ) {
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.name );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.handicap );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.effects );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.profileRefresh );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.statsPanel );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.profileNameLabel );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.profileList );
