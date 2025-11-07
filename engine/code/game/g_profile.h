@@ -1,8 +1,13 @@
 #ifndef G_PROFILE_H
 #define G_PROFILE_H
 
+#define PROFILE_FILE_VERSION            2
+
+#define PROFILE_DIRECTORY               "profiles"
+#define PROFILE_EXTENSION               ".profile"
+
 #define PROFILE_LIFETIME_DISTANCE_SCALE 100
-#define PROFILE_LIFETIME_FUEL_SCALE 100
+#define PROFILE_LIFETIME_FUEL_SCALE     100
 
 typedef struct profileLifetime_s {
         int version;
