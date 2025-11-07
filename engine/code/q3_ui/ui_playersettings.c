@@ -738,6 +738,8 @@ static void PlayerSettings_UpdateLifetimeData( void ) {
 
         PlayerSettings_RegisterProfileCvars();
 
+        PlayerSettings_RegisterProfileCvars();
+
         display = &s_playersettings.lifetimeDisplay;
 
         sequence = (int)trap_Cvar_VariableValue( "ui_profile_sequence" );
