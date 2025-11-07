@@ -80,6 +80,7 @@ extern vmCvar_t	ui_racing_trackreversed;
 extern vmCvar_t	ui_profile;
 extern vmCvar_t	ui_profileSelected;
 extern vmCvar_t	ui_profileSlot[UI_MAX_PROFILE_SLOTS];
+extern vmCvar_t	ui_profilePromptShown;
 
 extern vmCvar_t	ui_team_fraglimit;
 extern vmCvar_t	ui_team_timelimit;

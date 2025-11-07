@@ -85,6 +85,7 @@ static void UI_ProfileOverlay_EnsureSelection( void );
 static void UI_ProfileOverlay_Show( qboolean forceCreate );
 static void UI_ProfileOverlay_ResetNameField( void );
 static void UI_ProfileOverlay_GetSanitizedFieldText( char *output, size_t size );
+static void UI_ProfileOverlay_UpdateButtonBounds( menutext_s *text );
 
 static void UI_ProfileOverlay_Sanitize( const char *input, char *output, size_t size ) {
     size_t length = 0;
@@ -153,6 +154,20 @@ static void UI_ProfileOverlay_UpdateButtonStates( void ) {
     } else {
         s_profileOverlay.deleteBtn.generic.flags &= ~QMF_GRAYED;
     }
+}
+
+static void UI_ProfileOverlay_UpdateButtonBounds( menutext_s *text ) {
+    int halfWidth;
+
+    if ( !text ) {
+        return;
+    }
+
+    halfWidth = PROFILE_BUTTON_WIDTH / 2;
+    text->generic.left = text->generic.x - halfWidth;
+    text->generic.right = text->generic.x + halfWidth;
+    text->generic.top = text->generic.y - 8;
+    text->generic.bottom = text->generic.y + PROFILE_BUTTON_HEIGHT;
 }
 
 static void UI_ProfileOverlay_GetSanitizedFieldText( char *output, size_t size ) {
@@ -325,6 +340,7 @@ static void UI_ProfileOverlay_UpdateSelection( int index ) {
     Com_sprintf( s_profileOverlay.continueLabel, sizeof( s_profileOverlay.continueLabel ),
                  "CONTINUE (%s)", s_profileOverlay.profileNames[index] );
     s_profileOverlay.continueBtn.generic.flags &= ~QMF_GRAYED;
+    UI_ProfileOverlay_UpdateButtonBounds( &s_profileOverlay.continueBtn );
     s_profileOverlay.lastSelection = index;
 }
 
@@ -341,6 +357,8 @@ static void UI_ProfileOverlay_UpdateCreateLabel( void ) {
         Q_strncpyz( s_profileOverlay.createLabel, "ENTER A VALID PROFILE NAME", sizeof( s_profileOverlay.createLabel ) );
         s_profileOverlay.create.generic.flags |= QMF_GRAYED;
     }
+
+    UI_ProfileOverlay_UpdateButtonBounds( &s_profileOverlay.create );
 }
 
 static void UI_ProfileOverlay_CreateFromPlayerName( void ) {
@@ -614,6 +632,10 @@ static void UI_ProfileOverlay_InitMenu( void ) {
     Menu_AddItem( &s_profileOverlay.menu, &s_profileOverlay.deleteBtn );
     Menu_AddItem( &s_profileOverlay.menu, &s_profileOverlay.continueBtn );
 
+    UI_ProfileOverlay_UpdateButtonBounds( &s_profileOverlay.create );
+    UI_ProfileOverlay_UpdateButtonBounds( &s_profileOverlay.deleteBtn );
+    UI_ProfileOverlay_UpdateButtonBounds( &s_profileOverlay.continueBtn );
+
     s_profileOverlayInitialized = qtrue;
 }
 
@@ -683,6 +705,7 @@ static void UI_ProfileOverlay_Show( qboolean forceCreate ) {
     Menu_SetCursorToItem( &s_profileOverlay.menu, &s_profileOverlay.list );
     UI_PushMenu( &s_profileOverlay.menu );
     s_profileOverlayShownThisSession = qtrue;
+    trap_Cvar_SetValue( "ui_profilePromptShown", 1 );
 }
 
 void UI_ProfileOverlay_ResetSession( void ) {
@@ -700,8 +723,14 @@ static void UI_ProfileOverlay_ResetNameField( void ) {
 
 void UI_ProfileOverlay_MaybeShow( void ) {
     qboolean forcePrompt = UI_ProfileOverlay_ShouldForcePrompt();
+    qboolean promptShown = ( trap_Cvar_VariableValue( "ui_profilePromptShown" ) != 0.0f );
 
-    if ( !s_profileOverlayShownThisSession || forcePrompt ) {
-        UI_ProfileOverlay_Show( forcePrompt );
+    if ( forcePrompt ) {
+        UI_ProfileOverlay_Show( qtrue );
+        return;
+    }
+
+    if ( !s_profileOverlayShownThisSession && !promptShown ) {
+        UI_ProfileOverlay_Show( qfalse );
     }
 }
