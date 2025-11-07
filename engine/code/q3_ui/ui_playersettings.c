@@ -219,6 +219,8 @@ static void PlayerSettings_LoadProfileSlots( void );
 static void PlayerSettings_BuildProfileItems( void );
 static int PlayerSettings_FindProfileIndex( const char *name );
 static qboolean PlayerSettings_SanitizeProfileName( const char *input, char *output, size_t size );
+static qboolean PlayerSettings_ProfileFileExists( const char *prefix, const char *slot );
+static qboolean PlayerSettings_FindProfileIdentifierForSlot( const char *slot, char *identifier, size_t size );
 static void PlayerSettings_RegisterProfileCvars( void );
 static void PlayerSettings_AddProfileSlot( const char *name );
 static void PlayerSettings_SetProfileCvars( const char *profile );
@@ -264,6 +266,91 @@ static qboolean PlayerSettings_SanitizeProfileName( const char *input, char *out
 
         output[length] = '\0';
         return length > 0;
+}
+
+static qboolean PlayerSettings_ProfileFileExists( const char *prefix, const char *slot ) {
+        char path[MAX_QPATH];
+        fileHandle_t file;
+        int length;
+
+        if ( !prefix || !prefix[0] || !slot || !slot[0] ) {
+                return qfalse;
+        }
+
+        Com_sprintf( path, sizeof( path ), "%s/%s/%s%s", PROFILE_DIRECTORY, prefix, slot, PROFILE_EXTENSION );
+        length = trap_FS_FOpenFile( path, &file, FS_READ );
+        if ( length > 0 && file ) {
+                trap_FS_FCloseFile( file );
+                return qtrue;
+        }
+
+        if ( file ) {
+                trap_FS_FCloseFile( file );
+        }
+
+        return qfalse;
+}
+
+static qboolean PlayerSettings_FindProfileIdentifierForSlot( const char *slot, char *identifier, size_t size ) {
+        char dirList[2048];
+        char sanitized[MAX_QPATH];
+        char path[MAX_QPATH];
+        char *dirPtr;
+        int dirCount;
+        int dirLen;
+        int i;
+
+        if ( !slot || !slot[0] || !identifier || size == 0 ) {
+                return qfalse;
+        }
+
+        dirCount = trap_FS_GetFileList( PROFILE_DIRECTORY, "/", dirList, sizeof( dirList ) );
+        dirPtr = dirList;
+
+        for ( i = 0; i < dirCount && dirPtr && *dirPtr; i++ ) {
+                fileHandle_t file;
+                int length;
+                char *next;
+
+                dirLen = strlen( dirPtr );
+                next = dirPtr + dirLen + 1;
+
+                if ( dirLen <= 0 ) {
+                        dirPtr = next;
+                        continue;
+                }
+
+                if ( dirPtr[dirLen - 1] == '/' ) {
+                        dirPtr[dirLen - 1] = '\0';
+                        dirLen--;
+                        if ( dirLen <= 0 ) {
+                                dirPtr = next;
+                                continue;
+                        }
+                }
+
+                if ( !PlayerSettings_SanitizeProfileName( dirPtr, sanitized, sizeof( sanitized ) ) ) {
+                        dirPtr = next;
+                        continue;
+                }
+
+                Com_sprintf( path, sizeof( path ), "%s/%s/%s%s", PROFILE_DIRECTORY, sanitized, slot, PROFILE_EXTENSION );
+                length = trap_FS_FOpenFile( path, &file, FS_READ );
+                if ( length > 0 && file ) {
+                        trap_FS_FCloseFile( file );
+                        Com_sprintf( identifier, size, "%s/%s", sanitized, slot );
+                        trap_Cvar_Set( "ui_profile_identifier", identifier );
+                        return qtrue;
+                }
+
+                if ( file ) {
+                        trap_FS_FCloseFile( file );
+                }
+
+                dirPtr = next;
+        }
+
+        return qfalse;
 }
 
 typedef struct {
@@ -328,6 +415,7 @@ static qboolean PlayerSettings_BuildProfileIdentifier( char *identifier, size_t 
         char slot[MAX_QPATH];
         char buffer[MAX_CVAR_VALUE_STRING];
         char identifierBuffer[MAX_QPATH];
+        char identifierSlot[MAX_QPATH];
         const char *separator;
 
         if ( !identifier || size == 0 ) {
@@ -336,8 +424,31 @@ static qboolean PlayerSettings_BuildProfileIdentifier( char *identifier, size_t 
 
         identifier[0] = '\0';
 
-        prefix[0] = '\0';
-        slot[0] = '\0';
+        trap_Cvar_VariableStringBuffer( "cg_profile", buffer, sizeof( buffer ) );
+        if ( !PlayerSettings_SanitizeProfileName( buffer, slot, sizeof( slot ) ) ) {
+                Q_strncpyz( slot, PROFILE_DEFAULT_SLOT, sizeof( slot ) );
+        }
+
+        trap_Cvar_VariableStringBuffer( "ui_profile_identifier", identifierBuffer, sizeof( identifierBuffer ) );
+        separator = strchr( identifierBuffer, '/' );
+        if ( separator ) {
+                size_t prefixLength;
+
+                prefixLength = separator - identifierBuffer;
+                if ( prefixLength >= sizeof( buffer ) ) {
+                        prefixLength = sizeof( buffer ) - 1;
+                }
+
+                Q_strncpyz( buffer, identifierBuffer, prefixLength + 1 );
+
+                if ( PlayerSettings_SanitizeProfileName( buffer, prefix, sizeof( prefix ) ) &&
+                     PlayerSettings_SanitizeProfileName( separator + 1, identifierSlot, sizeof( identifierSlot ) ) ) {
+                        if ( !Q_stricmp( identifierSlot, slot ) ) {
+                                Com_sprintf( identifier, size, "%s/%s", prefix, identifierSlot );
+                                return qtrue;
+                        }
+                }
+        }
 
         trap_Cvar_VariableStringBuffer( "ui_profile_identifier", identifierBuffer, sizeof( identifierBuffer ) );
         separator = strchr( identifierBuffer, '/' );
@@ -371,9 +482,14 @@ static qboolean PlayerSettings_BuildProfileIdentifier( char *identifier, size_t 
                 Q_strncpyz( prefix, "client", sizeof( prefix ) );
         }
 
-        trap_Cvar_VariableStringBuffer( "cg_profile", buffer, sizeof( buffer ) );
-        if ( !PlayerSettings_SanitizeProfileName( buffer, slot, sizeof( slot ) ) ) {
-                Q_strncpyz( slot, PROFILE_DEFAULT_SLOT, sizeof( slot ) );
+        if ( PlayerSettings_ProfileFileExists( prefix, slot ) ) {
+                Com_sprintf( identifier, size, "%s/%s", prefix, slot );
+                trap_Cvar_Set( "ui_profile_identifier", identifier );
+                return qtrue;
+        }
+
+        if ( PlayerSettings_FindProfileIdentifierForSlot( slot, identifier, size ) ) {
+                return qtrue;
         }
 
         Com_sprintf( identifier, size, "%s/%s", prefix, slot );
