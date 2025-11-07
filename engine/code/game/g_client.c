@@ -40,7 +40,7 @@ static vec3_t	playerMaxs = {CAR_WIDTH/2, CAR_WIDTH/2, CAR_WIDTH/2};
 //static vec3_t	playerMaxs = {CAR_LENGTH/2, CAR_WIDTH/2, CAR_HEIGHT/2};
 // END
 
-static void G_ClientRefreshProfileLifetime( int clientNum, qboolean sendCommand ) {
+void G_ClientRefreshProfileLifetime( int clientNum, qboolean sendCommand ) {
         profileLifetime_t lifetime;
         gclient_t *client;
         gentity_t *ent;
