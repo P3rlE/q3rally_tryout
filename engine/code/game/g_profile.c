@@ -51,10 +51,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define INT_MIN (-INT_MAX - 1)
 #endif
 
-#define PROFILE_FILE_VERSION            2
-#define PROFILE_DIRECTORY               "profiles"
-#define PROFILE_EXTENSION               ".profile"
-
 #define PROFILE_DISTANCE_100KM_METERS   100000.0f
 #define PROFILE_DISTANCE_500KM_METERS   500000.0f
 #define PROFILE_MATCHES_10              10
