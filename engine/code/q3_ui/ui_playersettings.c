@@ -450,6 +450,27 @@ static qboolean PlayerSettings_BuildProfileIdentifier( char *identifier, size_t 
                 }
         }
 
+        trap_Cvar_VariableStringBuffer( "ui_profile_identifier", identifierBuffer, sizeof( identifierBuffer ) );
+        separator = strchr( identifierBuffer, '/' );
+        if ( separator ) {
+                size_t prefixLength;
+                char slotSource[MAX_QPATH];
+
+                prefixLength = separator - identifierBuffer;
+                if ( prefixLength >= sizeof( buffer ) ) {
+                        prefixLength = sizeof( buffer ) - 1;
+                }
+
+                Q_strncpyz( buffer, identifierBuffer, prefixLength + 1 );
+                Q_strncpyz( slotSource, separator + 1, sizeof( slotSource ) );
+
+                if ( PlayerSettings_SanitizeProfileName( buffer, prefix, sizeof( prefix ) ) &&
+                     PlayerSettings_SanitizeProfileName( slotSource, slot, sizeof( slot ) ) ) {
+                        Com_sprintf( identifier, size, "%s/%s", prefix, slot );
+                        return qtrue;
+                }
+        }
+
         trap_Cvar_VariableStringBuffer( "cl_guid", buffer, sizeof( buffer ) );
         if ( !PlayerSettings_SanitizeProfileName( buffer, prefix, sizeof( prefix ) ) ) {
                 trap_Cvar_VariableStringBuffer( "name", buffer, sizeof( buffer ) );
