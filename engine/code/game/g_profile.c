@@ -115,6 +115,10 @@ typedef struct {
         float           totalDistanceMeters;
         float           totalFuelConsumed;
         int                     achievements;
+        char            vehicleModel[MAX_QPATH];
+        char            vehicleHead[MAX_QPATH];
+        char            vehicleRim[MAX_QPATH];
+        char            vehiclePlate[MAX_QPATH];
 } profileData_t;
 
 typedef struct {
@@ -136,6 +140,10 @@ typedef struct {
         int                     totalDistanceMeters;
         int                     totalFuelConsumed;
         int                     achievements;
+        char            vehicleModel[MAX_QPATH];
+        char            vehicleHead[MAX_QPATH];
+        char            vehicleRim[MAX_QPATH];
+        char            vehiclePlate[MAX_QPATH];
 } profileLifetimeSummary_t;
 
 typedef struct {
@@ -157,7 +165,32 @@ typedef struct {
         float           totalDistanceMeters;
         float           totalFuelConsumed;
         int                     achievements;
+        char            vehicleModel[MAX_QPATH];
+        char            vehicleHead[MAX_QPATH];
+        char            vehicleRim[MAX_QPATH];
+        char            vehiclePlate[MAX_QPATH];
 } profileDisk_t;
+
+typedef struct {
+        int                     version;
+        int                     matchesPlayed;
+        int                     wins;
+        int                     losses;
+        int                     finishes;
+        int                     dnfs;
+        int                     bestPosition;
+        int                     bestLapMs;
+        int                     bestTotalRaceMs;
+        int                     totalRaceTimeMs;
+        int                     totalScore;
+        int                     totalKills;
+        int                     totalDeaths;
+        int                     totalDamageDealt;
+        int                     totalDamageTaken;
+        float           totalDistanceMeters;
+        float           totalFuelConsumed;
+        int                     achievements;
+} profileDiskV2_t;
 
 typedef struct {
         int                     version;
@@ -196,6 +229,11 @@ static void G_ProfileBuildSummary( const profileData_t *profile, const char *ide
 static void G_ProfileSendLifetimeSummary( int clientNum, const profileLifetimeSummary_t *summary );
 static qboolean G_ProfileBuildIdentifier( gclient_t *client, char *buffer, size_t size );
 static qboolean G_ProfileSave( const char *identifier, const profileData_t *profile );
+static void G_ProfileCaptureVehicleSetup( gclient_t *client, int clientNum, profileData_t *profile );
+static void G_ProfileSerialize( const profileData_t *profile, profileDisk_t *disk );
+static void G_ProfileDeserialize( profileData_t *profile, const profileDisk_t *disk );
+static void G_ProfileDeserializeV2( profileData_t *profile, const profileDiskV2_t *disk );
+static void G_ProfileDeserializeV1( profileData_t *profile, const profileDiskV1_t *disk );
 
 static void G_ProfileSetDefaults( profileData_t *profile ) {
         if ( !profile ) {
@@ -227,6 +265,34 @@ static void G_ProfileSanitizeComponent( const char *input, char *output, size_t 
                      ( c >= '0' && c <= '9' ) ) {
                         output[length++] = c;
                 } else if ( c == '-' || c == '_' || c == '.' ) {
+                        output[length++] = c;
+                }
+        }
+
+        output[length] = '\0';
+}
+
+static void G_ProfileSanitizeSetupComponent( const char *input, char *output, size_t size ) {
+        size_t length = 0;
+
+        if ( !output || size == 0 ) {
+                return;
+        }
+
+        output[0] = '\0';
+
+        if ( !input ) {
+                return;
+        }
+
+        while ( *input && length + 1 < size ) {
+                char c = *input++;
+
+                if ( ( c >= 'a' && c <= 'z' ) ||
+                     ( c >= 'A' && c <= 'Z' ) ||
+                     ( c >= '0' && c <= '9' ) ) {
+                        output[length++] = c;
+                } else if ( c == '-' || c == '_' || c == '.' || c == '/' ) {
                         output[length++] = c;
                 }
         }
@@ -272,10 +338,10 @@ static qboolean G_ProfileBuildIdentifier( gclient_t *client, char *buffer, size_
 		Com_sprintf( prefix, sizeof( prefix ), "client-%i", clientNum );
 	}
 
-	G_ProfileSanitizeComponent( client->profileId, slot, sizeof( slot ) );
-	if ( !slot[0] ) {
-		Q_strncpyz( slot, PROFILE_DEFAULT_SLOT, sizeof( slot ) );
-	}
+        G_ProfileSanitizeComponent( client->profileId, slot, sizeof( slot ) );
+        if ( !slot[0] ) {
+                return qfalse;
+        }
 
         if ( prefix[0] ) {
                 file = 0;
@@ -309,6 +375,38 @@ static int G_ProfileEncodeScaledFloat( float value, float scale ) {
         return (int)( scaled - 0.5 );
 }
 
+static void G_ProfileCaptureVehicleSetup( gclient_t *client, int clientNum, profileData_t *profile ) {
+        char userinfo[MAX_INFO_STRING];
+        const char *value;
+        char sanitized[MAX_QPATH];
+
+        if ( !client || !profile ) {
+                return;
+        }
+
+        if ( clientNum < 0 || clientNum >= level.maxclients ) {
+                return;
+        }
+
+        trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
+
+        value = Info_ValueForKey( userinfo, "model" );
+        G_ProfileSanitizeSetupComponent( value, sanitized, sizeof( sanitized ) );
+        Q_strncpyz( profile->vehicleModel, sanitized, sizeof( profile->vehicleModel ) );
+
+        value = Info_ValueForKey( userinfo, "head" );
+        G_ProfileSanitizeSetupComponent( value, sanitized, sizeof( sanitized ) );
+        Q_strncpyz( profile->vehicleHead, sanitized, sizeof( profile->vehicleHead ) );
+
+        value = Info_ValueForKey( userinfo, "rim" );
+        G_ProfileSanitizeSetupComponent( value, sanitized, sizeof( sanitized ) );
+        Q_strncpyz( profile->vehicleRim, sanitized, sizeof( profile->vehicleRim ) );
+
+        value = Info_ValueForKey( userinfo, "plate" );
+        G_ProfileSanitizeSetupComponent( value, sanitized, sizeof( sanitized ) );
+        Q_strncpyz( profile->vehiclePlate, sanitized, sizeof( profile->vehiclePlate ) );
+}
+
 static void G_ProfileFillLifetime( const profileData_t *profile, profileLifetime_t *lifetime ) {
         if ( !profile || !lifetime ) {
                 return;
@@ -332,6 +430,10 @@ static void G_ProfileFillLifetime( const profileData_t *profile, profileLifetime
         lifetime->totalDistanceScaled = G_ProfileEncodeScaledFloat( profile->totalDistanceMeters, PROFILE_LIFETIME_DISTANCE_SCALE );
         lifetime->totalFuelConsumedScaled = G_ProfileEncodeScaledFloat( profile->totalFuelConsumed, PROFILE_LIFETIME_FUEL_SCALE );
         lifetime->achievements = profile->achievements;
+        Q_strncpyz( lifetime->vehicleModel, profile->vehicleModel, sizeof( lifetime->vehicleModel ) );
+        Q_strncpyz( lifetime->vehicleHead, profile->vehicleHead, sizeof( lifetime->vehicleHead ) );
+        Q_strncpyz( lifetime->vehicleRim, profile->vehicleRim, sizeof( lifetime->vehicleRim ) );
+        Q_strncpyz( lifetime->vehiclePlate, profile->vehiclePlate, sizeof( lifetime->vehiclePlate ) );
 }
 
 qboolean G_ProfileGetLifetimeForClient( gclient_t *client, profileLifetime_t *lifetime ) {
@@ -350,16 +452,7 @@ qboolean G_ProfileGetLifetimeForClient( gclient_t *client, profileLifetime_t *li
         }
 
         Com_Memset( &profile, 0, sizeof( profile ) );
-        if ( !G_ProfileLoad( identifier, &profile ) ) {
-                /*
-                 * Ensure that a backing profile file exists for newly created
-                 * profiles or when legacy data cannot be read.  Persisting the
-                 * default structure here guarantees that subsequent statistic
-                 * updates have a place to write to and that the profile becomes
-                 * visible on disk immediately after selection.
-                 */
-                G_ProfileSave( identifier, &profile );
-        }
+        G_ProfileLoad( identifier, &profile );
         G_ProfileFillLifetime( &profile, lifetime );
         return qtrue;
 }
@@ -389,7 +482,7 @@ void G_ProfileSendLifetimeCommand( int clientNum, const profileLifetime_t *lifet
         }
 
         Com_sprintf( command, sizeof( command ),
-                     "profileStats %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
+                     "profileStats %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d \"%s\" \"%s\" \"%s\" \"%s\"",
                      lifetime->version,
                      lifetime->matchesPlayed,
                      lifetime->wins,
@@ -407,7 +500,11 @@ void G_ProfileSendLifetimeCommand( int clientNum, const profileLifetime_t *lifet
                      lifetime->totalDamageTaken,
                      lifetime->totalDistanceScaled,
                      lifetime->totalFuelConsumedScaled,
-                     lifetime->achievements );
+                     lifetime->achievements,
+                     lifetime->vehicleModel,
+                     lifetime->vehicleHead,
+                     lifetime->vehicleRim,
+                     lifetime->vehiclePlate );
         trap_SendServerCommand( clientNum, command );
 }
 
@@ -443,6 +540,10 @@ static void G_ProfileBuildSummary( const profileData_t *profile, const char *ide
         summary->totalDistanceMeters = G_ProfileRoundPositiveFloat( profile->totalDistanceMeters );
         summary->totalFuelConsumed = G_ProfileRoundPositiveFloat( profile->totalFuelConsumed );
         summary->achievements = profile->achievements;
+        Q_strncpyz( summary->vehicleModel, profile->vehicleModel, sizeof( summary->vehicleModel ) );
+        Q_strncpyz( summary->vehicleHead, profile->vehicleHead, sizeof( summary->vehicleHead ) );
+        Q_strncpyz( summary->vehicleRim, profile->vehicleRim, sizeof( summary->vehicleRim ) );
+        Q_strncpyz( summary->vehiclePlate, profile->vehiclePlate, sizeof( summary->vehiclePlate ) );
 }
 
 static void G_ProfileSendLifetimeSummary( int clientNum, const profileLifetimeSummary_t *summary ) {
@@ -457,7 +558,7 @@ static void G_ProfileSendLifetimeSummary( int clientNum, const profileLifetimeSu
         }
 
         Com_sprintf( command, sizeof( command ),
-                "profileLifetime \"%s\" %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i",
+                "profileLifetime \"%s\" %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i \"%s\" \"%s\" \"%s\" \"%s\"",
                 summary->identifier,
                 summary->matchesPlayed,
                 summary->wins,
@@ -475,7 +576,11 @@ static void G_ProfileSendLifetimeSummary( int clientNum, const profileLifetimeSu
                 summary->totalDamageTaken,
                 summary->totalDistanceMeters,
                 summary->totalFuelConsumed,
-                summary->achievements );
+                summary->achievements,
+                summary->vehicleModel,
+                summary->vehicleHead,
+                summary->vehicleRim,
+                summary->vehiclePlate );
 
         trap_SendServerCommand( clientNum, command );
 }
@@ -503,6 +608,10 @@ static void G_ProfileSerialize( const profileData_t *profile, profileDisk_t *dis
         disk->totalDistanceMeters = LittleFloat( profile->totalDistanceMeters );
         disk->totalFuelConsumed = LittleFloat( profile->totalFuelConsumed );
         disk->achievements = LittleLong( profile->achievements );
+        Q_strncpyz( disk->vehicleModel, profile->vehicleModel, sizeof( disk->vehicleModel ) );
+        Q_strncpyz( disk->vehicleHead, profile->vehicleHead, sizeof( disk->vehicleHead ) );
+        Q_strncpyz( disk->vehicleRim, profile->vehicleRim, sizeof( disk->vehicleRim ) );
+        Q_strncpyz( disk->vehiclePlate, profile->vehiclePlate, sizeof( disk->vehiclePlate ) );
 }
 
 static void G_ProfileDeserialize( profileData_t *profile, const profileDisk_t *disk ) {
@@ -528,6 +637,39 @@ static void G_ProfileDeserialize( profileData_t *profile, const profileDisk_t *d
         profile->totalDistanceMeters = LittleFloat( disk->totalDistanceMeters );
         profile->totalFuelConsumed = LittleFloat( disk->totalFuelConsumed );
         profile->achievements = LittleLong( disk->achievements );
+        Q_strncpyz( profile->vehicleModel, disk->vehicleModel, sizeof( profile->vehicleModel ) );
+        Q_strncpyz( profile->vehicleHead, disk->vehicleHead, sizeof( profile->vehicleHead ) );
+        Q_strncpyz( profile->vehicleRim, disk->vehicleRim, sizeof( profile->vehicleRim ) );
+        Q_strncpyz( profile->vehiclePlate, disk->vehiclePlate, sizeof( profile->vehiclePlate ) );
+}
+
+static void G_ProfileDeserializeV2( profileData_t *profile, const profileDiskV2_t *disk ) {
+        if ( !profile || !disk ) {
+                return;
+        }
+
+        profile->version = LittleLong( disk->version );
+        profile->matchesPlayed = LittleLong( disk->matchesPlayed );
+        profile->wins = LittleLong( disk->wins );
+        profile->losses = LittleLong( disk->losses );
+        profile->finishes = LittleLong( disk->finishes );
+        profile->dnfs = LittleLong( disk->dnfs );
+        profile->bestPosition = LittleLong( disk->bestPosition );
+        profile->bestLapMs = LittleLong( disk->bestLapMs );
+        profile->bestTotalRaceMs = LittleLong( disk->bestTotalRaceMs );
+        profile->totalRaceTimeMs = LittleLong( disk->totalRaceTimeMs );
+        profile->totalScore = LittleLong( disk->totalScore );
+        profile->totalKills = LittleLong( disk->totalKills );
+        profile->totalDeaths = LittleLong( disk->totalDeaths );
+        profile->totalDamageDealt = LittleLong( disk->totalDamageDealt );
+        profile->totalDamageTaken = LittleLong( disk->totalDamageTaken );
+        profile->totalDistanceMeters = LittleFloat( disk->totalDistanceMeters );
+        profile->totalFuelConsumed = LittleFloat( disk->totalFuelConsumed );
+        profile->achievements = LittleLong( disk->achievements );
+        profile->vehicleModel[0] = '\0';
+        profile->vehicleHead[0] = '\0';
+        profile->vehicleRim[0] = '\0';
+        profile->vehiclePlate[0] = '\0';
 }
 
 static void G_ProfileDeserializeV1( profileData_t *profile, const profileDiskV1_t *disk ) {
@@ -553,6 +695,10 @@ static void G_ProfileDeserializeV1( profileData_t *profile, const profileDiskV1_
         profile->totalDistanceMeters = LittleFloat( disk->totalDistanceMeters );
         profile->totalFuelConsumed = LittleFloat( disk->totalFuelConsumed );
         profile->achievements = 0;
+        profile->vehicleModel[0] = '\0';
+        profile->vehicleHead[0] = '\0';
+        profile->vehicleRim[0] = '\0';
+        profile->vehiclePlate[0] = '\0';
 }
 
 static void G_ProfileSendAchievementEvent( int clientNum, const char *identifier ) {
@@ -649,6 +795,13 @@ static qboolean G_ProfileLoad( const char *identifier, profileData_t *profile ) 
                 trap_FS_Read( &disk, sizeof( disk ), file );
                 G_ProfileDeserialize( profile, &disk );
                 loaded = qtrue;
+        } else if ( length == sizeof( profileDiskV2_t ) ) {
+                profileDiskV2_t diskV2;
+
+                Com_Memset( &diskV2, 0, sizeof( diskV2 ) );
+                trap_FS_Read( &diskV2, sizeof( diskV2 ), file );
+                G_ProfileDeserializeV2( profile, &diskV2 );
+                loaded = qtrue;
         } else if ( length == sizeof( profileDiskV1_t ) ) {
                 profileDiskV1_t diskV1;
 
@@ -665,7 +818,7 @@ static qboolean G_ProfileLoad( const char *identifier, profileData_t *profile ) 
         trap_FS_FCloseFile( file );
 
         if ( profile->version != PROFILE_FILE_VERSION ) {
-                if ( profile->version == 1 ) {
+                if ( profile->version == 1 || profile->version == 2 ) {
                         profile->version = PROFILE_FILE_VERSION;
                 } else {
                         Com_Printf( "Profile: ignoring '%s' with unsupported version %i\n", path, profile->version );
@@ -1006,10 +1159,12 @@ void G_ProfileUpdateForClient( gclient_t *client ) {
         }
 
         G_ProfileLoad( identifier, &profile );
+        G_ProfileCaptureVehicleSetup( client, clientNum, &profile );
         G_ProfileFillLifetime( &profile, &client->profileLifetime );
         previousAchievements = profile.achievements;
         G_ProfileBuildScore( clientNum, &score );
         G_ProfileApplyMatchStats( client, clientNum, &score, &profile );
+        G_ProfileCaptureVehicleSetup( client, clientNum, &profile );
         G_ProfileFillLifetime( &profile, &client->profileLifetime );
         G_ProfileProcessAchievements( client, clientNum, &profile, previousAchievements );
         G_ProfileSendLifetimeCommand( clientNum, &client->profileLifetime );

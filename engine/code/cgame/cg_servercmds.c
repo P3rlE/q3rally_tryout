@@ -67,6 +67,7 @@ CG_ParseScores
 */
 static void CG_SetProfileCvarInt( const char *name, int value );
 static void CG_SetProfileCvarFloat( const char *name, int scaledValue, float scale );
+static void CG_SetProfileCvarString( const char *name, const char *value );
 
 static void CG_ParseScores( void ) {
 	int		i, powerups;
@@ -147,37 +148,45 @@ static void CG_ParseScores( void ) {
 }
 
 static void CG_ParseProfileLifetime( void ) {
-	int		argc;
-	int		matchesPlayed;
-	int		wins;
-	int		losses;
-	int		finishes;
-	int		dnfs;
-	int		bestPosition;
-	int		bestLapMs;
-	int		bestTotalRaceMs;
-	int		totalRaceTimeMs;
-	int		totalScore;
-	int		totalKills;
-	int		totalDeaths;
-	int		totalDamageDealt;
-	int		totalDamageTaken;
-	int		totalDistanceMeters;
-	int		totalFuelConsumed;
-	int		achievements;
+	int			argc;
+	int			matchesPlayed;
+	int			wins;
+	int			losses;
+	int			finishes;
+	int			dnfs;
+	int			bestPosition;
+	int			bestLapMs;
+	int			bestTotalRaceMs;
+	int			totalRaceTimeMs;
+	int			totalScore;
+	int			totalKills;
+	int			totalDeaths;
+	int			totalDamageDealt;
+	int			totalDamageTaken;
+	int			totalDistanceMeters;
+	int			totalFuelConsumed;
+	int			achievements;
+	char			model[MAX_QPATH];
+	char			head[MAX_QPATH];
+	char			rim[MAX_QPATH];
+	char			plate[MAX_QPATH];
 
 	argc = trap_Argc();
-        if ( argc < 19 ) {
-                CG_Printf( "profileLifetime: expected 18 args, got %i\n", argc - 1 );
-                cg.profileLifetimeStats.valid = qfalse;
-                trap_Cvar_Set( "ui_profile_identifier", "" );
-                return;
-        }
+	if ( argc < 23 ) {
+		CG_Printf( "profileLifetime: expected 22 args, got %i\n", argc - 1 );
+		cg.profileLifetimeStats.valid = qfalse;
+		trap_Cvar_Set( "ui_profile_identifier", "" );
+		return;
+	}
 
-        trap_Argv( 1, cg.profileLifetimeStats.identifier, sizeof( cg.profileLifetimeStats.identifier ) );
-        trap_Cvar_Set( "ui_profile_identifier", cg.profileLifetimeStats.identifier );
-        matchesPlayed = atoi( CG_Argv( 2 ) );
-        wins = atoi( CG_Argv( 3 ) );
+	trap_Argv( 1, cg.profileLifetimeStats.identifier, sizeof( cg.profileLifetimeStats.identifier ) );
+	trap_Argv( 19, model, sizeof( model ) );
+	trap_Argv( 20, head, sizeof( head ) );
+	trap_Argv( 21, rim, sizeof( rim ) );
+	trap_Argv( 22, plate, sizeof( plate ) );
+	trap_Cvar_Set( "ui_profile_identifier", cg.profileLifetimeStats.identifier );
+	matchesPlayed = atoi( CG_Argv( 2 ) );
+	wins = atoi( CG_Argv( 3 ) );
 	losses = atoi( CG_Argv( 4 ) );
 	finishes = atoi( CG_Argv( 5 ) );
 	dnfs = atoi( CG_Argv( 6 ) );
@@ -211,6 +220,10 @@ static void CG_ParseProfileLifetime( void ) {
 	cg.profileLifetimeStats.totalDistanceMeters = totalDistanceMeters;
 	cg.profileLifetimeStats.totalFuelConsumed = totalFuelConsumed;
 	cg.profileLifetimeStats.achievements = achievements;
+	Q_strncpyz( cg.profileLifetimeStats.vehicleModel, model, sizeof( cg.profileLifetimeStats.vehicleModel ) );
+	Q_strncpyz( cg.profileLifetimeStats.vehicleHead, head, sizeof( cg.profileLifetimeStats.vehicleHead ) );
+	Q_strncpyz( cg.profileLifetimeStats.vehicleRim, rim, sizeof( cg.profileLifetimeStats.vehicleRim ) );
+	Q_strncpyz( cg.profileLifetimeStats.vehiclePlate, plate, sizeof( cg.profileLifetimeStats.vehiclePlate ) );
 	cg.profileLifetimeStats.valid = qtrue;
 
 	cg.profileLifetimeSequence++;
@@ -242,8 +255,17 @@ static void CG_ParseProfileLifetime( void ) {
 	}
 
 	CG_SetProfileCvarInt( "ui_profile_achievements", achievements );
+	CG_SetProfileCvarString( "ui_profile_model", model );
+	CG_SetProfileCvarString( "ui_profile_head", head );
+	CG_SetProfileCvarString( "ui_profile_rim", rim );
+	CG_SetProfileCvarString( "ui_profile_plate", plate );
+	trap_Cvar_Set( "model", model );
+	trap_Cvar_Set( "head", head );
+	trap_Cvar_Set( "rim", rim );
+	trap_Cvar_Set( "plate", plate );
 	CG_SetProfileCvarInt( "ui_profile_sequence", cg.profileLifetimeSequence );
 }
+
 
 /*
 =================
@@ -1278,12 +1300,25 @@ static void CG_SetProfileCvarFloat( const char *name, int scaledValue, float sca
         trap_Cvar_Set( name, buffer );
 }
 
+static void CG_SetProfileCvarString( const char *name, const char *value ) {
+        if ( !value ) {
+                trap_Cvar_Set( name, "" );
+                return;
+        }
+
+        trap_Cvar_Set( name, value );
+}
+
 static void CG_ParseProfileStats( void ) {
         profileLifetime_t lifetime;
+        char model[MAX_QPATH];
+        char head[MAX_QPATH];
+        char rim[MAX_QPATH];
+        char plate[MAX_QPATH];
         int argc;
 
         argc = trap_Argc();
-        if ( argc < 19 ) {
+        if ( argc < 23 ) {
                 return;
         }
 
@@ -1307,6 +1342,16 @@ static void CG_ParseProfileStats( void ) {
         lifetime.totalFuelConsumedScaled = atoi( CG_Argv( 17 ) );
         lifetime.achievements = atoi( CG_Argv( 18 ) );
 
+        trap_Argv( 19, model, sizeof( model ) );
+        trap_Argv( 20, head, sizeof( head ) );
+        trap_Argv( 21, rim, sizeof( rim ) );
+        trap_Argv( 22, plate, sizeof( plate ) );
+
+        Q_strncpyz( lifetime.vehicleModel, model, sizeof( lifetime.vehicleModel ) );
+        Q_strncpyz( lifetime.vehicleHead, head, sizeof( lifetime.vehicleHead ) );
+        Q_strncpyz( lifetime.vehicleRim, rim, sizeof( lifetime.vehicleRim ) );
+        Q_strncpyz( lifetime.vehiclePlate, plate, sizeof( lifetime.vehiclePlate ) );
+
         cg.profileLifetime = lifetime;
         cg.profileLifetimeValid = qtrue;
         cg.profileLifetimeSequence++;
@@ -1329,7 +1374,16 @@ static void CG_ParseProfileStats( void ) {
         CG_SetProfileCvarFloat( "ui_profile_totalDistance", lifetime.totalDistanceScaled, PROFILE_LIFETIME_DISTANCE_SCALE );
         CG_SetProfileCvarFloat( "ui_profile_totalFuel", lifetime.totalFuelConsumedScaled, PROFILE_LIFETIME_FUEL_SCALE );
         CG_SetProfileCvarInt( "ui_profile_achievements", lifetime.achievements );
+        CG_SetProfileCvarString( "ui_profile_model", model );
+        CG_SetProfileCvarString( "ui_profile_head", head );
+        CG_SetProfileCvarString( "ui_profile_rim", rim );
+        CG_SetProfileCvarString( "ui_profile_plate", plate );
         CG_SetProfileCvarInt( "ui_profile_sequence", cg.profileLifetimeSequence );
+
+        trap_Cvar_Set( "model", model );
+        trap_Cvar_Set( "head", head );
+        trap_Cvar_Set( "rim", rim );
+        trap_Cvar_Set( "plate", plate );
 }
 
 /*

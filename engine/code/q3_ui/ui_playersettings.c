@@ -221,6 +221,35 @@ static int PlayerSettings_FindProfileIndex( const char *name );
 static qboolean PlayerSettings_SanitizeProfileName( const char *input, char *output, size_t size );
 static qboolean PlayerSettings_ProfileFileExists( const char *prefix, const char *slot );
 static qboolean PlayerSettings_FindProfileIdentifierForSlot( const char *slot, char *identifier, size_t size );
+
+static void PlayerSettings_UpdateVehicleCvarsFromLifetime( const profileLifetime_t *lifetime ) {
+	if ( !lifetime ) {
+		trap_Cvar_Set( "ui_profile_model", "" );
+		trap_Cvar_Set( "ui_profile_head", "" );
+		trap_Cvar_Set( "ui_profile_rim", "" );
+		trap_Cvar_Set( "ui_profile_plate", "" );
+		return;
+	}
+
+	trap_Cvar_Set( "ui_profile_model", lifetime->vehicleModel );
+	trap_Cvar_Set( "ui_profile_head", lifetime->vehicleHead );
+	trap_Cvar_Set( "ui_profile_rim", lifetime->vehicleRim );
+	trap_Cvar_Set( "ui_profile_plate", lifetime->vehiclePlate );
+
+	if ( lifetime->vehicleModel[0] ) {
+		trap_Cvar_Set( "model", lifetime->vehicleModel );
+	}
+	if ( lifetime->vehicleHead[0] ) {
+		trap_Cvar_Set( "head", lifetime->vehicleHead );
+	}
+	if ( lifetime->vehicleRim[0] ) {
+		trap_Cvar_Set( "rim", lifetime->vehicleRim );
+	}
+	if ( lifetime->vehiclePlate[0] ) {
+		trap_Cvar_Set( "plate", lifetime->vehiclePlate );
+	}
+}
+
 static void PlayerSettings_RegisterProfileCvars( void );
 static void PlayerSettings_AddProfileSlot( const char *name );
 static void PlayerSettings_SetProfileCvars( const char *profile );
@@ -372,7 +401,32 @@ typedef struct {
         float   totalDistanceMeters;
         float   totalFuelConsumed;
         int     achievements;
+        char    vehicleModel[MAX_QPATH];
+        char    vehicleHead[MAX_QPATH];
+        char    vehicleRim[MAX_QPATH];
+        char    vehiclePlate[MAX_QPATH];
 } playerSettingsProfileDisk_t;
+
+typedef struct {
+        int     version;
+        int     matchesPlayed;
+        int     wins;
+        int     losses;
+        int     finishes;
+        int     dnfs;
+        int     bestPosition;
+        int     bestLapMs;
+        int     bestTotalRaceMs;
+        int     totalRaceTimeMs;
+        int     totalScore;
+        int     totalKills;
+        int     totalDeaths;
+        int     totalDamageDealt;
+        int     totalDamageTaken;
+        float   totalDistanceMeters;
+        float   totalFuelConsumed;
+        int     achievements;
+} playerSettingsProfileDiskV2_t;
 
 typedef struct {
         int     version;
@@ -426,7 +480,7 @@ static qboolean PlayerSettings_BuildProfileIdentifier( char *identifier, size_t 
 
         trap_Cvar_VariableStringBuffer( "cg_profile", buffer, sizeof( buffer ) );
         if ( !PlayerSettings_SanitizeProfileName( buffer, slot, sizeof( slot ) ) ) {
-                Q_strncpyz( slot, PROFILE_DEFAULT_SLOT, sizeof( slot ) );
+                slot[0] = '\0';
         }
 
         trap_Cvar_VariableStringBuffer( "ui_profile_identifier", identifierBuffer, sizeof( identifierBuffer ) );
@@ -443,7 +497,7 @@ static qboolean PlayerSettings_BuildProfileIdentifier( char *identifier, size_t 
 
                 if ( PlayerSettings_SanitizeProfileName( buffer, prefix, sizeof( prefix ) ) &&
                      PlayerSettings_SanitizeProfileName( separator + 1, identifierSlot, sizeof( identifierSlot ) ) ) {
-                        if ( !Q_stricmp( identifierSlot, slot ) ) {
+                        if ( !slot[0] || !Q_stricmp( identifierSlot, slot ) ) {
                                 Com_sprintf( identifier, size, "%s/%s", prefix, identifierSlot );
                                 return qtrue;
                         }
@@ -482,14 +536,18 @@ static qboolean PlayerSettings_BuildProfileIdentifier( char *identifier, size_t 
                 Q_strncpyz( prefix, "client", sizeof( prefix ) );
         }
 
-        if ( PlayerSettings_ProfileFileExists( prefix, slot ) ) {
+        if ( slot[0] && PlayerSettings_ProfileFileExists( prefix, slot ) ) {
                 Com_sprintf( identifier, size, "%s/%s", prefix, slot );
                 trap_Cvar_Set( "ui_profile_identifier", identifier );
                 return qtrue;
         }
 
-        if ( PlayerSettings_FindProfileIdentifierForSlot( slot, identifier, size ) ) {
+        if ( slot[0] && PlayerSettings_FindProfileIdentifierForSlot( slot, identifier, size ) ) {
                 return qtrue;
+        }
+
+        if ( !slot[0] ) {
+                return qfalse;
         }
 
         Com_sprintf( identifier, size, "%s/%s", prefix, slot );
@@ -497,95 +555,132 @@ static qboolean PlayerSettings_BuildProfileIdentifier( char *identifier, size_t 
 }
 
 static qboolean PlayerSettings_LoadLifetimeFromProfile( playerLifetimeDisplay_t *display, const char *identifier ) {
-        char path[MAX_QPATH];
-        fileHandle_t file;
-        int length;
-        playerSettingsProfileDisk_t disk;
-        playerSettingsProfileDiskV1_t diskV1;
-        float distanceMeters;
-        float fuelConsumed;
+	char path[MAX_QPATH];
+	fileHandle_t file;
+	int length;
+	playerSettingsProfileDisk_t disk;
+	playerSettingsProfileDiskV2_t diskV2;
+	playerSettingsProfileDiskV1_t diskV1;
+	float distanceMeters;
+	float fuelConsumed;
 
-        if ( !display || !identifier || !identifier[0] ) {
-                return qfalse;
-        }
+	if ( !display || !identifier || !identifier[0] ) {
+		return qfalse;
+	}
 
-        if ( display->valid && display->sequence == 0 && !Q_stricmp( display->identifier, identifier ) ) {
-                return qtrue;
-        }
+	if ( display->valid && display->sequence == 0 && !Q_stricmp( display->identifier, identifier ) ) {
+		return qtrue;
+	}
 
-        Com_sprintf( path, sizeof( path ), "%s/%s%s", PROFILE_DIRECTORY, identifier, PROFILE_EXTENSION );
+	Com_sprintf( path, sizeof( path ), "%s/%s%s", PROFILE_DIRECTORY, identifier, PROFILE_EXTENSION );
 
-        length = trap_FS_FOpenFile( path, &file, FS_READ );
-        if ( length <= 0 || !file ) {
-                return qfalse;
-        }
+	length = trap_FS_FOpenFile( path, &file, FS_READ );
+	if ( length <= 0 || !file ) {
+		return qfalse;
+	}
 
-        if ( length == sizeof( disk ) ) {
-                trap_FS_Read( &disk, sizeof( disk ), file );
-                trap_FS_FCloseFile( file );
+	display->raw.vehicleModel[0] = '\0';
+	display->raw.vehicleHead[0] = '\0';
+	display->raw.vehicleRim[0] = '\0';
+	display->raw.vehiclePlate[0] = '\0';
+	distanceMeters = 0.0f;
+	fuelConsumed = 0.0f;
 
-                display->raw.version = LittleLong( disk.version );
-                display->raw.matchesPlayed = LittleLong( disk.matchesPlayed );
-                display->raw.wins = LittleLong( disk.wins );
-                display->raw.losses = LittleLong( disk.losses );
-                display->raw.finishes = LittleLong( disk.finishes );
-                display->raw.dnfs = LittleLong( disk.dnfs );
-                display->raw.bestPosition = LittleLong( disk.bestPosition );
-                display->raw.bestLapMs = LittleLong( disk.bestLapMs );
-                display->raw.bestTotalRaceMs = LittleLong( disk.bestTotalRaceMs );
-                display->raw.totalRaceTimeMs = LittleLong( disk.totalRaceTimeMs );
-                display->raw.totalScore = LittleLong( disk.totalScore );
-                display->raw.totalKills = LittleLong( disk.totalKills );
-                display->raw.totalDeaths = LittleLong( disk.totalDeaths );
-                display->raw.totalDamageDealt = LittleLong( disk.totalDamageDealt );
-                display->raw.totalDamageTaken = LittleLong( disk.totalDamageTaken );
-                distanceMeters = LittleFloat( disk.totalDistanceMeters );
-                fuelConsumed = LittleFloat( disk.totalFuelConsumed );
-                display->raw.totalDistanceScaled = PlayerSettings_EncodeScaledFloat( distanceMeters, PROFILE_LIFETIME_DISTANCE_SCALE );
-                display->raw.totalFuelConsumedScaled = PlayerSettings_EncodeScaledFloat( fuelConsumed, PROFILE_LIFETIME_FUEL_SCALE );
-                display->raw.achievements = LittleLong( disk.achievements );
-        } else if ( length == sizeof( diskV1 ) ) {
-                trap_FS_Read( &diskV1, sizeof( diskV1 ), file );
-                trap_FS_FCloseFile( file );
+	if ( length == sizeof( disk ) ) {
+		trap_FS_Read( &disk, sizeof( disk ), file );
+		trap_FS_FCloseFile( file );
 
-                display->raw.version = LittleLong( diskV1.version );
-                display->raw.matchesPlayed = LittleLong( diskV1.matchesPlayed );
-                display->raw.wins = LittleLong( diskV1.wins );
-                display->raw.losses = LittleLong( diskV1.losses );
-                display->raw.finishes = LittleLong( diskV1.finishes );
-                display->raw.dnfs = LittleLong( diskV1.dnfs );
-                display->raw.bestPosition = LittleLong( diskV1.bestPosition );
-                display->raw.bestLapMs = LittleLong( diskV1.bestLapMs );
-                display->raw.bestTotalRaceMs = LittleLong( diskV1.bestTotalRaceMs );
-                display->raw.totalRaceTimeMs = LittleLong( diskV1.totalRaceTimeMs );
-                display->raw.totalScore = LittleLong( diskV1.totalScore );
-                display->raw.totalKills = LittleLong( diskV1.totalKills );
-                display->raw.totalDeaths = LittleLong( diskV1.totalDeaths );
-                display->raw.totalDamageDealt = LittleLong( diskV1.totalDamageDealt );
-                display->raw.totalDamageTaken = LittleLong( diskV1.totalDamageTaken );
-                distanceMeters = LittleFloat( diskV1.totalDistanceMeters );
-                fuelConsumed = LittleFloat( diskV1.totalFuelConsumed );
-                display->raw.totalDistanceScaled = PlayerSettings_EncodeScaledFloat( distanceMeters, PROFILE_LIFETIME_DISTANCE_SCALE );
-                display->raw.totalFuelConsumedScaled = PlayerSettings_EncodeScaledFloat( fuelConsumed, PROFILE_LIFETIME_FUEL_SCALE );
-                display->raw.achievements = 0;
-        } else {
-                trap_FS_FCloseFile( file );
-                return qfalse;
-        }
+		display->raw.version = LittleLong( disk.version );
+		display->raw.matchesPlayed = LittleLong( disk.matchesPlayed );
+		display->raw.wins = LittleLong( disk.wins );
+		display->raw.losses = LittleLong( disk.losses );
+		display->raw.finishes = LittleLong( disk.finishes );
+		display->raw.dnfs = LittleLong( disk.dnfs );
+		display->raw.bestPosition = LittleLong( disk.bestPosition );
+		display->raw.bestLapMs = LittleLong( disk.bestLapMs );
+		display->raw.bestTotalRaceMs = LittleLong( disk.bestTotalRaceMs );
+		display->raw.totalRaceTimeMs = LittleLong( disk.totalRaceTimeMs );
+		display->raw.totalScore = LittleLong( disk.totalScore );
+		display->raw.totalKills = LittleLong( disk.totalKills );
+		display->raw.totalDeaths = LittleLong( disk.totalDeaths );
+		display->raw.totalDamageDealt = LittleLong( disk.totalDamageDealt );
+		display->raw.totalDamageTaken = LittleLong( disk.totalDamageTaken );
+		distanceMeters = LittleFloat( disk.totalDistanceMeters );
+		fuelConsumed = LittleFloat( disk.totalFuelConsumed );
+		display->raw.totalDistanceScaled = PlayerSettings_EncodeScaledFloat( distanceMeters, PROFILE_LIFETIME_DISTANCE_SCALE );
+		display->raw.totalFuelConsumedScaled = PlayerSettings_EncodeScaledFloat( fuelConsumed, PROFILE_LIFETIME_FUEL_SCALE );
+		display->raw.achievements = LittleLong( disk.achievements );
+		Q_strncpyz( display->raw.vehicleModel, disk.vehicleModel, sizeof( display->raw.vehicleModel ) );
+		Q_strncpyz( display->raw.vehicleHead, disk.vehicleHead, sizeof( display->raw.vehicleHead ) );
+		Q_strncpyz( display->raw.vehicleRim, disk.vehicleRim, sizeof( display->raw.vehicleRim ) );
+		Q_strncpyz( display->raw.vehiclePlate, disk.vehiclePlate, sizeof( display->raw.vehiclePlate ) );
+	} else if ( length == sizeof( diskV2 ) ) {
+		trap_FS_Read( &diskV2, sizeof( diskV2 ), file );
+		trap_FS_FCloseFile( file );
 
-        if ( display->raw.version != PROFILE_FILE_VERSION && display->raw.version != 1 ) {
-                display->identifier[0] = '\0';
-                return qfalse;
-        }
+		display->raw.version = LittleLong( diskV2.version );
+		display->raw.matchesPlayed = LittleLong( diskV2.matchesPlayed );
+		display->raw.wins = LittleLong( diskV2.wins );
+		display->raw.losses = LittleLong( diskV2.losses );
+		display->raw.finishes = LittleLong( diskV2.finishes );
+		display->raw.dnfs = LittleLong( diskV2.dnfs );
+		display->raw.bestPosition = LittleLong( diskV2.bestPosition );
+		display->raw.bestLapMs = LittleLong( diskV2.bestLapMs );
+		display->raw.bestTotalRaceMs = LittleLong( diskV2.bestTotalRaceMs );
+		display->raw.totalRaceTimeMs = LittleLong( diskV2.totalRaceTimeMs );
+		display->raw.totalScore = LittleLong( diskV2.totalScore );
+		display->raw.totalKills = LittleLong( diskV2.totalKills );
+		display->raw.totalDeaths = LittleLong( diskV2.totalDeaths );
+		display->raw.totalDamageDealt = LittleLong( diskV2.totalDamageDealt );
+		display->raw.totalDamageTaken = LittleLong( diskV2.totalDamageTaken );
+		distanceMeters = LittleFloat( diskV2.totalDistanceMeters );
+		fuelConsumed = LittleFloat( diskV2.totalFuelConsumed );
+		display->raw.totalDistanceScaled = PlayerSettings_EncodeScaledFloat( distanceMeters, PROFILE_LIFETIME_DISTANCE_SCALE );
+		display->raw.totalFuelConsumedScaled = PlayerSettings_EncodeScaledFloat( fuelConsumed, PROFILE_LIFETIME_FUEL_SCALE );
+		display->raw.achievements = LittleLong( diskV2.achievements );
+	} else if ( length == sizeof( diskV1 ) ) {
+		trap_FS_Read( &diskV1, sizeof( diskV1 ), file );
+		trap_FS_FCloseFile( file );
 
-        display->raw.version = PROFILE_FILE_VERSION;
-        display->totalDistanceMeters = distanceMeters;
-        display->totalFuelConsumed = fuelConsumed;
-        display->sequence = 0;
-        display->valid = qtrue;
-        Q_strncpyz( display->identifier, identifier, sizeof( display->identifier ) );
-        return qtrue;
+		display->raw.version = LittleLong( diskV1.version );
+		display->raw.matchesPlayed = LittleLong( diskV1.matchesPlayed );
+		display->raw.wins = LittleLong( diskV1.wins );
+		display->raw.losses = LittleLong( diskV1.losses );
+		display->raw.finishes = LittleLong( diskV1.finishes );
+		display->raw.dnfs = LittleLong( diskV1.dnfs );
+		display->raw.bestPosition = LittleLong( diskV1.bestPosition );
+		display->raw.bestLapMs = LittleLong( diskV1.bestLapMs );
+		display->raw.bestTotalRaceMs = LittleLong( diskV1.bestTotalRaceMs );
+		display->raw.totalRaceTimeMs = LittleLong( diskV1.totalRaceTimeMs );
+		display->raw.totalScore = LittleLong( diskV1.totalScore );
+		display->raw.totalKills = LittleLong( diskV1.totalKills );
+		display->raw.totalDeaths = LittleLong( diskV1.totalDeaths );
+		display->raw.totalDamageDealt = LittleLong( diskV1.totalDamageDealt );
+		display->raw.totalDamageTaken = LittleLong( diskV1.totalDamageTaken );
+		distanceMeters = LittleFloat( diskV1.totalDistanceMeters );
+		fuelConsumed = LittleFloat( diskV1.totalFuelConsumed );
+		display->raw.totalDistanceScaled = PlayerSettings_EncodeScaledFloat( distanceMeters, PROFILE_LIFETIME_DISTANCE_SCALE );
+		display->raw.totalFuelConsumedScaled = PlayerSettings_EncodeScaledFloat( fuelConsumed, PROFILE_LIFETIME_FUEL_SCALE );
+		display->raw.achievements = 0;
+	} else {
+		trap_FS_FCloseFile( file );
+		return qfalse;
+	}
+
+	if ( display->raw.version != PROFILE_FILE_VERSION && display->raw.version != 2 && display->raw.version != 1 ) {
+		display->identifier[0] = '\0';
+		return qfalse;
+	}
+
+	display->raw.version = PROFILE_FILE_VERSION;
+	display->totalDistanceMeters = distanceMeters;
+	display->totalFuelConsumed = fuelConsumed;
+	display->sequence = 0;
+	display->valid = qtrue;
+	Q_strncpyz( display->identifier, identifier, sizeof( display->identifier ) );
+	return qtrue;
 }
+
 
 static void PlayerSettings_RegisterProfileCvars( void ) {
         static qboolean registered = qfalse;
@@ -617,6 +712,10 @@ static void PlayerSettings_RegisterProfileCvars( void ) {
         trap_Cvar_Register( NULL, "ui_profile_totalDistance", "0", flags );
         trap_Cvar_Register( NULL, "ui_profile_totalFuel", "0", flags );
         trap_Cvar_Register( NULL, "ui_profile_achievements", "0", flags );
+        trap_Cvar_Register( NULL, "ui_profile_model", "", flags );
+        trap_Cvar_Register( NULL, "ui_profile_head", "", flags );
+        trap_Cvar_Register( NULL, "ui_profile_rim", "", flags );
+        trap_Cvar_Register( NULL, "ui_profile_plate", "", flags );
 }
 
 static int PlayerSettings_FindProfileIndex( const char *name ) {
@@ -740,11 +839,9 @@ static void PlayerSettings_LoadProfileSlots( void ) {
                 PlayerSettings_AddProfileSlot( value );
         }
 
-        PlayerSettings_AddProfileSlot( PROFILE_DEFAULT_SLOT );
-
         trap_Cvar_VariableStringBuffer( "cg_profile", currentProfileRaw, sizeof( currentProfileRaw ) );
         if ( !PlayerSettings_SanitizeProfileName( currentProfileRaw, sanitizedCurrent, sizeof( sanitizedCurrent ) ) ) {
-                Q_strncpyz( sanitizedCurrent, PROFILE_DEFAULT_SLOT, sizeof( sanitizedCurrent ) );
+                sanitizedCurrent[0] = '\0';
         }
         PlayerSettings_AddProfileSlot( sanitizedCurrent );
 
@@ -760,13 +857,15 @@ static void PlayerSettings_LoadProfileSlots( void ) {
 static void PlayerSettings_SetProfileCvars( const char *profile ) {
         char sanitized[MAX_PROFILE_NAME_LENGTH];
 
-        if ( !PlayerSettings_SanitizeProfileName( profile, sanitized, sizeof( sanitized ) ) ) {
-                Q_strncpyz( sanitized, PROFILE_DEFAULT_SLOT, sizeof( sanitized ) );
+        if ( PlayerSettings_SanitizeProfileName( profile, sanitized, sizeof( sanitized ) ) ) {
+                trap_Cvar_Set( "cg_profile", sanitized );
+                trap_Cvar_Set( "profile", sanitized );
+                trap_Cvar_Set( "ui_profileSelected", sanitized );
+        } else {
+                trap_Cvar_Set( "cg_profile", "" );
+                trap_Cvar_Set( "profile", "" );
+                trap_Cvar_Set( "ui_profileSelected", "" );
         }
-
-        trap_Cvar_Set( "cg_profile", sanitized );
-        trap_Cvar_Set( "profile", sanitized );
-        trap_Cvar_Set( "ui_profileSelected", sanitized );
 
         s_playersettings.lifetimeDisplay.valid = qfalse;
         s_playersettings.lifetimeDisplay.sequence = -1;
@@ -898,6 +997,7 @@ static void PlayerSettings_UpdateLifetimeData( void ) {
 
         display->sequence = sequence;
         display->valid = qfalse;
+        PlayerSettings_UpdateVehicleCvarsFromLifetime( NULL );
 
         if ( sequence > 0 ) {
                 display->raw.version = (int)trap_Cvar_VariableValue( "ui_profile_version" );
@@ -917,6 +1017,11 @@ static void PlayerSettings_UpdateLifetimeData( void ) {
                 display->raw.totalDamageTaken = (int)trap_Cvar_VariableValue( "ui_profile_totalDamageTaken" );
                 display->raw.achievements = (int)trap_Cvar_VariableValue( "ui_profile_achievements" );
 
+                trap_Cvar_VariableStringBuffer( "ui_profile_model", display->raw.vehicleModel, sizeof( display->raw.vehicleModel ) );
+                trap_Cvar_VariableStringBuffer( "ui_profile_head", display->raw.vehicleHead, sizeof( display->raw.vehicleHead ) );
+                trap_Cvar_VariableStringBuffer( "ui_profile_rim", display->raw.vehicleRim, sizeof( display->raw.vehicleRim ) );
+                trap_Cvar_VariableStringBuffer( "ui_profile_plate", display->raw.vehiclePlate, sizeof( display->raw.vehiclePlate ) );
+
                 trap_Cvar_VariableStringBuffer( "ui_profile_totalDistance", buffer, sizeof( buffer ) );
                 display->totalDistanceMeters = atof( buffer );
 
@@ -926,11 +1031,13 @@ static void PlayerSettings_UpdateLifetimeData( void ) {
                 if ( display->raw.version > 0 || sequence > 0 ) {
                         display->valid = qtrue;
                         display->identifier[0] = '\0';
+                        PlayerSettings_UpdateVehicleCvarsFromLifetime( &display->raw );
                         return;
                 }
         }
 
         if ( haveIdentifier && PlayerSettings_LoadLifetimeFromProfile( display, identifier ) ) {
+                PlayerSettings_UpdateVehicleCvarsFromLifetime( &display->raw );
                 return;
         }
 

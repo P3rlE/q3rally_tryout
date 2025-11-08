@@ -59,16 +59,13 @@ static void CG_SanitizeProfileSlot( const char *input, char *output, size_t size
 }
 
 static void CG_ApplyProfileValue( const char *value ) {
-	char sanitized[MAX_QPATH];
+        char sanitized[MAX_QPATH];
 
-	CG_SanitizeProfileSlot( value, sanitized, sizeof( sanitized ) );
-	if ( !sanitized[0] ) {
-		Q_strncpyz( sanitized, PROFILE_DEFAULT_SLOT, sizeof( sanitized ) );
-	}
+        CG_SanitizeProfileSlot( value, sanitized, sizeof( sanitized ) );
 
-	trap_Cvar_Set( "cg_profile", sanitized );
-	trap_Cvar_Set( "profile", sanitized );
-	trap_Cvar_Update( &cg_profile );
+        trap_Cvar_Set( "cg_profile", sanitized );
+        trap_Cvar_Set( "profile", sanitized );
+        trap_Cvar_Update( &cg_profile );
 }
 
 void CG_UpdateProfileUserinfo( void ) {

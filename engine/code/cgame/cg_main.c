@@ -388,7 +388,7 @@ static cvarTable_t cvarTable[] = {
 
 	{ &cg_fpsLimit, "cg_fpsLimit", "60", CVAR_ARCHIVE },
 	{ &cg_autodrop, "cg_autodrop", "0", CVAR_ARCHIVE | CVAR_USERINFO },
-	{ &cg_profile, "cg_profile", PROFILE_DEFAULT_SLOT, CVAR_ARCHIVE },
+    { &cg_profile, "cg_profile", "", CVAR_ARCHIVE },
 	{ &cg_drawPositionSprites, "cg_drawPositionSprites", "1", CVAR_ARCHIVE },
 
 	{ &cg_tightCamTracking, "cg_tightCamTracking", "0", CVAR_ARCHIVE },
@@ -500,7 +500,7 @@ void CG_RegisterCvars( void ) {
 	trap_Cvar_Register(NULL, "profile", "", CVAR_USERINFO | CVAR_ARCHIVE );
 	// UPDATE: remove team versions?
 // Q3Rally Code END
-	trap_Cvar_Register(NULL, "profile", PROFILE_DEFAULT_SLOT, CVAR_USERINFO );
+    trap_Cvar_Register(NULL, "profile", "", CVAR_USERINFO );
 	trap_Cvar_Register(NULL, "team_model", DEFAULT_TEAM_MODEL, CVAR_USERINFO | CVAR_ARCHIVE );
 	trap_Cvar_Register(NULL, "team_headmodel", DEFAULT_TEAM_HEAD, CVAR_USERINFO | CVAR_ARCHIVE );
 

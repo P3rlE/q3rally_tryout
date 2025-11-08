@@ -44,7 +44,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define ID_PROFILE_NAME        114
 
-#define PROFILE_MIN_SELECTIONS 1
+#define PROFILE_MIN_SELECTIONS 0
 #define PROFILE_SLOTS_CVAR     "ui_profile_slots"
 
 typedef struct {
@@ -74,7 +74,6 @@ static const vec4_t profileOverlayPanel    = { 0.08f, 0.08f, 0.08f, 0.92f };
 
 static void UI_ProfileOverlay_InitMenu( void );
 static void UI_ProfileOverlay_RebuildList( void );
-static void UI_ProfileOverlay_CreateFromPlayerName( void );
 static void UI_ProfileOverlay_CreateFromField( void );
 static void UI_ProfileOverlay_UpdateSelection( int index );
 static void UI_ProfileOverlay_UpdateButtonStates( void );
@@ -298,8 +297,6 @@ static void UI_ProfileOverlay_RebuildList( void ) {
         UI_ProfileOverlay_AddProfileName( value );
     }
 
-    UI_ProfileOverlay_AddProfileName( PROFILE_DEFAULT_SLOT );
-
     trap_Cvar_VariableStringBuffer( "cg_profile", value, sizeof( value ) );
     UI_ProfileOverlay_AddProfileName( value );
 
@@ -318,7 +315,8 @@ static void UI_ProfileOverlay_RebuildList( void ) {
 static void UI_ProfileOverlay_UpdateSelection( int index ) {
     if ( index < 0 || index >= s_profileOverlay.profileCount ) {
         s_profileOverlay.continueBtn.generic.flags |= QMF_GRAYED;
-        s_profileOverlay.continueLabel[0] = '\0';
+        Q_strncpyz( s_profileOverlay.continueLabel, "CONTINUE", sizeof( s_profileOverlay.continueLabel ) );
+        UI_ProfileOverlay_UpdateButtonBounds( &s_profileOverlay.continueBtn );
         trap_Cvar_Set( "cg_profile", "" );
         trap_Cvar_Set( "profile", "" );
         trap_Cvar_Set( "ui_profileSelected", "" );
@@ -361,23 +359,7 @@ static void UI_ProfileOverlay_UpdateCreateLabel( void ) {
     UI_ProfileOverlay_UpdateButtonBounds( &s_profileOverlay.create );
 }
 
-static void UI_ProfileOverlay_CreateFromPlayerName( void ) {
-    char sanitized[MAX_QPATH];
-    int  index;
 
-    UI_ProfileOverlay_BuildPlayerProfileName( sanitized, sizeof( sanitized ) );
-    index = UI_ProfileOverlay_FindIndex( sanitized );
-
-    if ( index < 0 ) {
-        UI_ProfileOverlay_AddProfileName( sanitized );
-        index = UI_ProfileOverlay_FindIndex( sanitized );
-        UI_ProfileOverlay_UpdateButtonStates();
-        UI_ProfileOverlay_SaveSlots();
-        s_profileOverlay.list.numitems = s_profileOverlay.profileCount;
-    }
-
-    UI_ProfileOverlay_UpdateSelection( index );
-}
 
 static void UI_ProfileOverlay_CreateFromField( void ) {
     char sanitized[MAX_QPATH];
@@ -432,7 +414,8 @@ static void UI_ProfileOverlay_DeleteSelected( void ) {
         s_profileOverlay.list.curvalue = 0;
         UI_ProfileOverlay_UpdateButtonStates();
         UI_ProfileOverlay_SaveSlots();
-        UI_ProfileOverlay_CreateFromPlayerName();
+        UI_ProfileOverlay_UpdateSelection( -1 );
+        UI_ProfileOverlay_ResetNameField();
         return;
     }
 
@@ -655,7 +638,7 @@ static void UI_ProfileOverlay_EnsureSelection( void ) {
     }
 
     if ( s_profileOverlay.profileCount == 0 ) {
-        UI_ProfileOverlay_CreateFromPlayerName();
+        UI_ProfileOverlay_UpdateSelection( -1 );
         return;
     }
 
@@ -685,10 +668,10 @@ static void UI_ProfileOverlay_Show( qboolean forceCreate ) {
 
     hadSelection = ( s_profileOverlay.profileCount > 0 );
 
-    if ( forceCreate || s_profileOverlay.profileCount == 0 ) {
-        UI_ProfileOverlay_CreateFromPlayerName();
-    } else {
+    if ( s_profileOverlay.profileCount > 0 ) {
         UI_ProfileOverlay_EnsureSelection();
+    } else {
+        UI_ProfileOverlay_UpdateSelection( -1 );
     }
 
     if ( forceCreate || !s_profileOverlay.nameField.field.buffer[0] ) {

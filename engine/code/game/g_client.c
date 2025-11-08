@@ -982,14 +982,11 @@ void ClientUserinfoChanged( int clientNum ) {
 	}
 
 	profileValue = Info_ValueForKey( userinfo, "profile" );
-	G_SanitizeProfileId( profileValue, profileSlot, sizeof( profileSlot ) );
-	if ( !profileSlot[0] ) {
-		Q_strncpyz( profileSlot, PROFILE_DEFAULT_SLOT, sizeof( profileSlot ) );
-	}
-	if ( Q_stricmp( previousProfileId, profileSlot ) ) {
-		profileChanged = qtrue;
-	}
-	Q_strncpyz( client->profileId, profileSlot, sizeof( client->profileId ) );
+        G_SanitizeProfileId( profileValue, profileSlot, sizeof( profileSlot ) );
+        if ( Q_stricmp( previousProfileId, profileSlot ) ) {
+                profileChanged = qtrue;
+        }
+        Q_strncpyz( client->profileId, profileSlot, sizeof( client->profileId ) );
 
         if ( profileChanged ) {
                 client->profileIdentifier[0] = '\0';
