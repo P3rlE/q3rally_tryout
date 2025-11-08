@@ -195,6 +195,7 @@ static void G_ProfileFillLifetime( const profileData_t *profile, profileLifetime
 static void G_ProfileBuildSummary( const profileData_t *profile, const char *identifier, profileLifetimeSummary_t *summary );
 static void G_ProfileSendLifetimeSummary( int clientNum, const profileLifetimeSummary_t *summary );
 static qboolean G_ProfileBuildIdentifier( gclient_t *client, char *buffer, size_t size );
+static qboolean G_ProfileSave( const char *identifier, const profileData_t *profile );
 
 static void G_ProfileSetDefaults( profileData_t *profile ) {
         if ( !profile ) {
@@ -346,7 +347,16 @@ qboolean G_ProfileGetLifetimeForClient( gclient_t *client, profileLifetime_t *li
         }
 
         Com_Memset( &profile, 0, sizeof( profile ) );
-        G_ProfileLoad( identifier, &profile );
+        if ( !G_ProfileLoad( identifier, &profile ) ) {
+                /*
+                 * Ensure that a backing profile file exists for newly created
+                 * profiles or when legacy data cannot be read.  Persisting the
+                 * default structure here guarantees that subsequent statistic
+                 * updates have a place to write to and that the profile becomes
+                 * visible on disk immediately after selection.
+                 */
+                G_ProfileSave( identifier, &profile );
+        }
         G_ProfileFillLifetime( &profile, lifetime );
         return qtrue;
 }
