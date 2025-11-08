@@ -110,6 +110,10 @@ typedef struct {
 	int			totalDistanceMeters;
 	int			totalFuelConsumed;
 	int			achievements;
+	char			vehicleModel[MAX_QPATH];
+	char			vehicleHead[MAX_QPATH];
+	char			vehicleRim[MAX_QPATH];
+	char			vehiclePlate[MAX_QPATH];
 } profileLifetimeClient_t;
 
 // very large characters

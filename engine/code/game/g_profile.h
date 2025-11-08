@@ -1,7 +1,7 @@
 #ifndef G_PROFILE_H
 #define G_PROFILE_H
 
-#define PROFILE_FILE_VERSION            2
+#define PROFILE_FILE_VERSION            3
 
 #define PROFILE_DIRECTORY               "profiles"
 #define PROFILE_EXTENSION               ".profile"
@@ -28,6 +28,10 @@ typedef struct profileLifetime_s {
         int totalDistanceScaled;
         int totalFuelConsumedScaled;
         int achievements;
+        char vehicleModel[MAX_QPATH];
+        char vehicleHead[MAX_QPATH];
+        char vehicleRim[MAX_QPATH];
+        char vehiclePlate[MAX_QPATH];
 } profileLifetime_t;
 
 #endif // G_PROFILE_H
