@@ -428,6 +428,7 @@ struct gclient_s {
 	float		profileLastFuel;
 	qboolean	profileTrackValid;
 	char		profileId[MAX_QPATH];
+	char		profileIdentifier[MAX_QPATH];
 	profileLifetime_t	profileLifetime;
 // END
 

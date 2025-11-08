@@ -991,9 +991,10 @@ void ClientUserinfoChanged( int clientNum ) {
 	}
 	Q_strncpyz( client->profileId, profileSlot, sizeof( client->profileId ) );
 
-	if ( profileChanged ) {
-		G_ClientRefreshProfileLifetime( clientNum, client->pers.connected == CON_CONNECTED ? qtrue : qfalse );
-	}
+        if ( profileChanged ) {
+                client->profileIdentifier[0] = '\0';
+                G_ClientRefreshProfileLifetime( clientNum, client->pers.connected == CON_CONNECTED ? qtrue : qfalse );
+        }
 
 	// check the item prediction
 	s = Info_ValueForKey( userinfo, "cg_predictItems" );
