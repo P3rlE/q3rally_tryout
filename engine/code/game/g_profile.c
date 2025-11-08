@@ -839,12 +839,32 @@ static qboolean G_ProfileSave( const char *identifier, const profileData_t *prof
         profileData_t temp;
         fileHandle_t file;
         char path[MAX_QPATH];
+        char keepPath[MAX_QPATH];
+        char directory[MAX_QPATH];
+        int i;
 
         if ( !profile || !identifier || !identifier[0] ) {
                 return qfalse;
         }
 
         G_ProfileBuildPath( identifier, path, sizeof( path ) );
+
+        Q_strncpyz( directory, path, sizeof( directory ) );
+        for ( i = strlen( directory ) - 1; i > 0; i-- ) {
+                if ( directory[i] == '/' ) {
+                        directory[i] = '\0';
+                        break;
+                }
+        }
+
+        if ( i > 0 ) {
+                Com_sprintf( keepPath, sizeof( keepPath ), "%s/.keep", directory );
+                file = 0;
+                trap_FS_FOpenFile( keepPath, &file, FS_APPEND );
+                if ( file ) {
+                        trap_FS_FCloseFile( file );
+                }
+        }
 
         file = 0;
         trap_FS_FOpenFile( path, &file, FS_WRITE );
