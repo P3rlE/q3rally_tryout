@@ -24,7 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/q_shared.h"
 #include "../renderercommon/tr_types.h"
 #include "../game/bg_public.h"
-#include "../game/g_profile.h"
 #include "cg_public.h"
 
 
@@ -79,42 +78,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define	TEAMCHAT_WIDTH		80
 #define TEAMCHAT_HEIGHT		8
-
-#define CG_MAX_NOTIFICATIONS            4
-#define CG_NOTIFICATION_DISPLAY_TIME    5000
-#define CG_NOTIFICATION_FADE_TIME       500
-
-typedef struct {
-        qboolean        active;
-        int                     startTime;
-        char            text[MAX_STRING_CHARS];
-} cgNotification_t;
-
-typedef struct {
-	qboolean	valid;
-	char			identifier[MAX_QPATH];
-	int			matchesPlayed;
-	int			wins;
-	int			losses;
-	int			finishes;
-	int			dnfs;
-	int			bestPosition;
-	int			bestLapMs;
-	int			bestTotalRaceMs;
-	int			totalRaceTimeMs;
-	int			totalScore;
-	int			totalKills;
-	int			totalDeaths;
-	int			totalDamageDealt;
-	int			totalDamageTaken;
-	int			totalDistanceMeters;
-	int			totalFuelConsumed;
-	int			achievements;
-	char			vehicleModel[MAX_QPATH];
-	char			vehicleHead[MAX_QPATH];
-	char			vehicleRim[MAX_QPATH];
-	char			vehiclePlate[MAX_QPATH];
-} profileLifetimeClient_t;
 
 // very large characters
 #define	GIANT_WIDTH			22
@@ -446,29 +409,6 @@ typedef struct {
 	int				position;
 } score_t;
 
-typedef enum {
-	SB_TAB_OVERVIEW = 0,
-	SB_TAB_RACE = 1,
-	SB_TAB_COMBAT = 2,
-	SB_TAB_STATS = 3,
-	SB_TAB_MAX
-} scoreboardTab_t;
-
-typedef struct {
-	int				bestLapMs;
-	int				lastLapMs;
-	int				totalTimeMs;
-	int				checkpointsHit;
-	int				damageDealt;
-	int				damageTaken;
-	int				itemsCollected;
-	int				boostPads;
-	int				accuracy;
-	int				topSpeed;
-	int				eliminations;
-	int				assists;
-} playerStats_t;
-
 // each client has an associated clientInfo_t
 // that contains media references necessary to present the
 // client model and other color coded effects
@@ -755,13 +695,6 @@ typedef struct {
 	qboolean	showScores;
 	qboolean	scoreBoardShowing;
 	int			scoreFadeTime;
-	cgNotification_t notifications[CG_MAX_NOTIFICATIONS];
-	scoreboardTab_t	activeScoreboardTab;
-	scoreboardTab_t	lastActiveScoreboardTab;
-	qboolean		mockStatsInitialized;
-	playerStats_t	playerStats[MAX_CLIENTS];
-	qboolean		playerStatsValid[MAX_CLIENTS];
-	profileLifetimeClient_t	profileLifetimeStats;
 	int			eliminationPlayersRemaining;
 	int			eliminationWarningTime;
 	qboolean	eliminationWarningActive;
@@ -866,9 +799,6 @@ typedef struct {
 	qboolean	newSnap;
 //	int			lastPhysicsCommand;
 	int			currentBezierPoint;
-	qboolean	profileLifetimeValid;
-	int			profileLifetimeSequence;
-	profileLifetime_t	profileLifetime;
 } cg_t;
 
 
@@ -1274,7 +1204,6 @@ sfxHandle_t neutralFlagReturnedSound;
 
     qhandle_t       gaugeImperial;
     qhandle_t       gaugeMetric;
-    qhandle_t       scoreboardCursor;
 	// car sounds
 	sfxHandle_t	damage100[2];
 	sfxHandle_t	damage75[2];
@@ -1425,8 +1354,6 @@ extern	vmCvar_t		cg_drawCrosshairNames;
 extern	vmCvar_t		cg_drawRewards;
 extern	vmCvar_t		cg_drawTeamOverlay;
 extern	vmCvar_t		cg_drawScores;
-extern	vmCvar_t		cg_scoreboardTab;
-extern	vmCvar_t		cg_scoreboardMockData;
 extern	vmCvar_t		cg_drawPickups;
 extern	vmCvar_t		cg_drawWeaponBar;
 extern	vmCvar_t		cg_drawStatusHead;
@@ -1548,7 +1475,6 @@ extern	vmCvar_t		cg_developer;
 
 extern	vmCvar_t		cg_fpsLimit;
 extern	vmCvar_t		cg_autodrop;
-extern	vmCvar_t		cg_profile;
 extern	vmCvar_t		cg_drawPositionSprites;
 extern	vmCvar_t		cg_tightCamTracking;
 extern	vmCvar_t		cg_rearViewRenderLevel;
@@ -1887,13 +1813,6 @@ void CG_DrawInformation( void );
 // cg_scoreboard.c
 //
 qboolean CG_DrawOldScoreboard( void );
-void CG_ScoreboardSetTab( int tab );
-void CG_ScoreboardCycleTab( int direction );
-qboolean CG_ScoreboardKeyEvent( int key, qboolean down );
-void CG_ScoreboardMouseMove( int dx, int dy );
-void CG_ScoreboardEnableMouse( void );
-void CG_ScoreboardDisableMouse( void );
-qboolean CG_ScoreboardMouseActive( void );
 // Q3Rally Code Start - removed
 // void CG_DrawTourneyScoreboard( void );
 // Q3Rally Code END
@@ -1903,7 +1822,6 @@ qboolean CG_ScoreboardMouseActive( void );
 //
 qboolean CG_ConsoleCommand( void );
 void CG_InitConsoleCommands( void );
-void CG_UpdateProfileUserinfo( void );
 
 //
 // cg_servercmds.c
@@ -1993,8 +1911,6 @@ void CG_NewLapTime( int client, int lap, int time );
 void CG_FinishedRace( int client, int time );
 void CG_StartRace( int time );
 void CG_DrawRaceCountDown( void );
-void CG_HandleServerNotification( const char *identifier );
-
 void CG_RaceCountDown( const char *str, int secondsLeft );
 
 //

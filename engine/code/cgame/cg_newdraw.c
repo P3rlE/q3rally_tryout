@@ -1715,17 +1715,12 @@ void CG_OwnerDraw(float x, float y, float w, float h, float text_x, float text_y
 }
 
 void CG_MouseEvent(int x, int y) {
-        int n;
+	int n;
 
-        if (CG_ScoreboardMouseActive()) {
-                CG_ScoreboardMouseMove(x, y);
-                return;
-        }
-
-        if ( (cg.predictedPlayerState.pm_type == PM_NORMAL || cg.predictedPlayerState.pm_type == PM_SPECTATOR) && cg.showScores == qfalse) {
+	if ( (cg.predictedPlayerState.pm_type == PM_NORMAL || cg.predictedPlayerState.pm_type == PM_SPECTATOR) && cg.showScores == qfalse) {
     trap_Key_SetCatcher(0);
-                return;
-        }
+		return;
+	}
 
 	cgs.cursorX+= x;
 	if (cgs.cursorX < 0)
@@ -1803,13 +1798,9 @@ void CG_EventHandling(int type) {
 
 void CG_KeyEvent(int key, qboolean down) {
 
-        if (CG_ScoreboardKeyEvent(key, down)) {
-                return;
-        }
-
-        if (!down) {
-                return;
-        }
+	if (!down) {
+		return;
+	}
 
 	if ( cg.predictedPlayerState.pm_type == PM_NORMAL || (cg.predictedPlayerState.pm_type == PM_SPECTATOR && cg.showScores == qfalse)) {
 		CG_EventHandling(CGAME_EVENT_NONE);

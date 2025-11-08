@@ -43,35 +43,6 @@ char systemChat[256];
 char teamChat1[256];
 char teamChat2[256];
 
-#define CG_NOTIFY_DISTANCE_100KM   "achv_distance_100km"
-#define CG_NOTIFY_DISTANCE_500KM   "achv_distance_500km"
-#define CG_NOTIFY_MATCHES_10       "achv_races_10"
-#define CG_NOTIFY_MATCHES_50       "achv_races_50"
-
-typedef struct {
-        const char      *id;
-        const char      *messageEn;
-        const char      *messageDe;
-} cgNotificationMessageDef_t;
-
-static const cgNotificationMessageDef_t cg_notificationMessages[] = {
-        /* ACHV_MSG_DISTANCE_100KM */
-        { CG_NOTIFY_DISTANCE_100KM, "Achievement unlocked: Road Trip – Drive 100 km total.",
-          "Erfolg freigeschaltet: Road Trip – Fahre insgesamt 100 km." },
-        /* ACHV_MSG_DISTANCE_500KM */
-        { CG_NOTIFY_DISTANCE_500KM, "Achievement unlocked: Long Haul – Drive 500 km total.",
-          "Erfolg freigeschaltet: Langstrecke – Fahre insgesamt 500 km." },
-        /* ACHV_MSG_RACES_10 */
-        { CG_NOTIFY_MATCHES_10, "Achievement unlocked: Rookie Driver – Complete 10 races.",
-          "Erfolg freigeschaltet: Rookie Driver – Schließe 10 Rennen ab." },
-        /* ACHV_MSG_RACES_50 */
-        { CG_NOTIFY_MATCHES_50, "Achievement unlocked: Endurance Racer – Complete 50 races.",
-          "Erfolg freigeschaltet: Ausdauerfahrer – Schließe 50 Rennen ab." }
-};
-
-static void CG_AddNotification( const char *message );
-static void CG_DrawNotifications( void );
-
 static float CG_DrawRallyPowerups( float y );
 
 #ifdef MISSIONPACK
@@ -3202,159 +3173,6 @@ void CG_DrawTimedMenus( void ) {
 	}
 }
 #endif
-static const cgNotificationMessageDef_t *CG_FindNotificationDef( const char *identifier ) {
-        int i;
-
-        if ( !identifier || !identifier[0] ) {
-                return NULL;
-        }
-
-        for ( i = 0; i < ARRAY_LEN( cg_notificationMessages ); i++ ) {
-                if ( !Q_stricmp( identifier, cg_notificationMessages[i].id ) ) {
-                        return &cg_notificationMessages[i];
-                }
-        }
-
-        return NULL;
-}
-
-static const char *CG_GetLocalizedNotificationText( const cgNotificationMessageDef_t *def ) {
-        static const char *fallback = "";
-        char language[8];
-
-        if ( !def ) {
-                return fallback;
-        }
-
-        language[0] = '\0';
-        trap_Cvar_VariableStringBuffer( "ui_language", language, sizeof( language ) );
-        if ( !language[0] ) {
-                trap_Cvar_VariableStringBuffer( "cl_language", language, sizeof( language ) );
-        }
-
-        if ( language[0] && !Q_stricmpn( language, "de", 2 ) && def->messageDe && def->messageDe[0] ) {
-                return def->messageDe;
-        }
-
-        return def->messageEn ? def->messageEn : fallback;
-}
-
-static void CG_AddNotification( const char *message ) {
-        cgNotification_t *slot = NULL;
-        int i;
-        int oldestIndex = -1;
-        int oldestTime = 0;
-
-        if ( !message || !message[0] ) {
-                return;
-        }
-
-        for ( i = 0; i < CG_MAX_NOTIFICATIONS; i++ ) {
-                cgNotification_t *note = &cg.notifications[i];
-
-                if ( !note->active ) {
-                        slot = note;
-                        break;
-                }
-
-                if ( oldestIndex < 0 || note->startTime < oldestTime ) {
-                        oldestIndex = i;
-                        oldestTime = note->startTime;
-                }
-        }
-
-        if ( !slot ) {
-                if ( oldestIndex < 0 ) {
-                        return;
-                }
-                slot = &cg.notifications[oldestIndex];
-        }
-
-        Com_Memset( slot, 0, sizeof( *slot ) );
-        slot->active = qtrue;
-        slot->startTime = cg.time;
-        Q_strncpyz( slot->text, message, sizeof( slot->text ) );
-}
-
-void CG_HandleServerNotification( const char *identifier ) {
-        const cgNotificationMessageDef_t *def;
-        const char *text;
-
-        def = CG_FindNotificationDef( identifier );
-        if ( def ) {
-                text = CG_GetLocalizedNotificationText( def );
-                CG_AddNotification( text );
-                return;
-        }
-
-        if ( identifier && identifier[0] ) {
-                CG_AddNotification( identifier );
-                CG_Printf( "Unknown notification id '%s'\n", identifier );
-        }
-}
-
-static void CG_DrawNotifications( void ) {
-        cgNotification_t *ordered[CG_MAX_NOTIFICATIONS];
-        int count = 0;
-        int i;
-
-        for ( i = 0; i < CG_MAX_NOTIFICATIONS; i++ ) {
-                cgNotification_t *note = &cg.notifications[i];
-                int elapsed;
-                int insert;
-
-                if ( !note->active ) {
-                        continue;
-                }
-
-                elapsed = cg.time - note->startTime;
-                if ( elapsed >= CG_NOTIFICATION_DISPLAY_TIME ) {
-                        note->active = qfalse;
-                        continue;
-                }
-
-                insert = count;
-                while ( insert > 0 && ordered[insert - 1]->startTime > note->startTime ) {
-                        ordered[insert] = ordered[insert - 1];
-                        insert--;
-                }
-                ordered[insert] = note;
-                count++;
-        }
-
-        if ( count <= 0 ) {
-                return;
-        }
-
-        {
-                float y = 120.0f;
-                for ( i = 0; i < count; i++ ) {
-                        cgNotification_t *note = ordered[i];
-                        int elapsed = cg.time - note->startTime;
-                        float color[4] = { 1.0f, 0.84f, 0.0f, 1.0f };
-                        int width;
-                        float x;
-
-                        if ( elapsed > CG_NOTIFICATION_DISPLAY_TIME - CG_NOTIFICATION_FADE_TIME ) {
-                                int remaining = CG_NOTIFICATION_DISPLAY_TIME - elapsed;
-                                if ( remaining < 0 ) {
-                                        remaining = 0;
-                                }
-                                color[3] = (float)remaining / (float)CG_NOTIFICATION_FADE_TIME;
-                        }
-
-                        width = CG_DrawStrlen( note->text ) * SMALLCHAR_WIDTH;
-                        x = ( SCREEN_WIDTH - width ) * 0.5f;
-                        if ( x < 0.0f ) {
-                                x = 0.0f;
-                        }
-
-                        CG_DrawStringExt( (int)x, (int)y, note->text, color, qfalse, qtrue, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT, 0 );
-                        y += (float)SMALLCHAR_HEIGHT + 6.0f;
-                }
-        }
-}
-
 /*
 =========
 CG_Draw2D
@@ -3440,19 +3258,15 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 	if (cg_sigilLocator.integer == 1)
 		CG_DrawSigilLocations();
 
-        if ( stereoFrame == STEREO_CENTER ) {
-                CG_JukeboxFrame();
-                CG_JukeboxDraw( 170.0f, 90.0f, 300.0f, 54.0f );
-        }
-
-        if ( stereoFrame == STEREO_CENTER ) {
-                CG_DrawNotifications();
-        }
+	if ( stereoFrame == STEREO_CENTER ) {
+		CG_JukeboxFrame();
+		CG_JukeboxDraw( 170.0f, 90.0f, 300.0f, 54.0f );
+	}
 
 #ifdef MISSIONPACK
-        if (!cg_paused.integer) {
-                CG_DrawUpperRight(stereoFrame);
-        }
+	if (!cg_paused.integer) {
+		CG_DrawUpperRight(stereoFrame);
+	}
 #else
 	CG_DrawUpperRight(stereoFrame);
 #endif

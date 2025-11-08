@@ -130,11 +130,6 @@ vmCvar_t	ui_racing_tracklength;
 vmCvar_t	ui_racing_trackreversed;
 // END
 
-vmCvar_t	ui_profile;
-vmCvar_t	ui_profileSelected;
-vmCvar_t	ui_profileSlot[UI_MAX_PROFILE_SLOTS];
-vmCvar_t	ui_profilePromptShown;
-
 vmCvar_t	ui_team_fraglimit;
 vmCvar_t	ui_team_timelimit;
 vmCvar_t	ui_team_friendly;
@@ -257,17 +252,6 @@ static cvarTable_t		cvarTable[] = {
 
 	{ &ui_racing_tracklength, "ui_racing_tracklength", "1", CVAR_ARCHIVE },
 	{ &ui_racing_trackreversed, "ui_racing_trackreversed",  "0", CVAR_ARCHIVE },
-	{ &ui_profile, "profile", "", CVAR_USERINFO|CVAR_ARCHIVE },
-	{ &ui_profileSelected, "ui_profileSelected", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[0], "ui_profileSlot0", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[1], "ui_profileSlot1", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[2], "ui_profileSlot2", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[3], "ui_profileSlot3", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[4], "ui_profileSlot4", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[5], "ui_profileSlot5", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[6], "ui_profileSlot6", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[7], "ui_profileSlot7", "", CVAR_ARCHIVE },
-	{ &ui_profilePromptShown, "ui_profilePromptShown", "0", CVAR_TEMP },
 
 	{ &ui_arenasFile, "g_arenasFile", "", CVAR_INIT|CVAR_ROM },
 	{ &ui_botsFile, "g_botsFile", "", CVAR_INIT|CVAR_ROM },
