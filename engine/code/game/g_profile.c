@@ -235,22 +235,24 @@ static void G_ProfileSanitizeComponent( const char *input, char *output, size_t 
 }
 
 static qboolean G_ProfileBuildIdentifier( gclient_t *client, char *buffer, size_t size ) {
-	char userinfo[MAX_INFO_STRING];
-	const char *value;
-	char prefix[MAX_QPATH];
-	char slot[MAX_QPATH];
-	char keepPath[MAX_QPATH];
-	int clientNum;
-	fileHandle_t file;
+        char userinfo[MAX_INFO_STRING];
+        const char *value;
+        char prefix[MAX_QPATH];
+        char slot[MAX_QPATH];
+        char keepPath[MAX_QPATH];
+        int clientNum;
+        fileHandle_t file;
 
-	if ( !client || !buffer || size == 0 ) {
-		return qfalse;
-	}
+        if ( !client || !buffer || size == 0 ) {
+                return qfalse;
+        }
 
-	clientNum = client - level.clients;
-	if ( clientNum < 0 || clientNum >= level.maxclients ) {
-		return qfalse;
-	}
+        client->profileIdentifier[0] = '\0';
+
+        clientNum = client - level.clients;
+        if ( clientNum < 0 || clientNum >= level.maxclients ) {
+                return qfalse;
+        }
 
 	trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
 
@@ -275,16 +277,17 @@ static qboolean G_ProfileBuildIdentifier( gclient_t *client, char *buffer, size_
 		Q_strncpyz( slot, PROFILE_DEFAULT_SLOT, sizeof( slot ) );
 	}
 
-	if ( prefix[0] ) {
-		file = 0;
-		Com_sprintf( keepPath, sizeof( keepPath ), "%s/%s/.keep", PROFILE_DIRECTORY, prefix );
-		trap_FS_FOpenFile( keepPath, &file, FS_APPEND );
-		if ( file ) {
-			trap_FS_FCloseFile( file );
-		}
-	}
+        if ( prefix[0] ) {
+                file = 0;
+                Com_sprintf( keepPath, sizeof( keepPath ), "%s/%s/.keep", PROFILE_DIRECTORY, prefix );
+                trap_FS_FOpenFile( keepPath, &file, FS_APPEND );
+                if ( file ) {
+                        trap_FS_FCloseFile( file );
+                }
+        }
 
         Com_sprintf( buffer, size, "%s/%s", prefix, slot );
+        Q_strncpyz( client->profileIdentifier, buffer, sizeof( client->profileIdentifier ) );
         return qtrue;
 }
 
@@ -990,7 +993,15 @@ void G_ProfileUpdateForClient( gclient_t *client ) {
                 return;
         }
 
-        if ( !G_ProfileBuildIdentifier( client, identifier, sizeof( identifier ) ) ) {
+        if ( client->profileIdentifier[0] ) {
+                Q_strncpyz( identifier, client->profileIdentifier, sizeof( identifier ) );
+        } else {
+                if ( !G_ProfileBuildIdentifier( client, identifier, sizeof( identifier ) ) ) {
+                        return;
+                }
+        }
+
+        if ( !identifier[0] ) {
                 return;
         }
 
