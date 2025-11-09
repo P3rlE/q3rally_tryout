@@ -1551,15 +1551,37 @@ static void PlayerSettings_DrawPlayer( void *self ) {
 
 // STONELANCE (new function)
 
+static int PlayerSettings_BuildPaintList( const char *carModel, char paintList[MAX_PLAYERMODELS][MAX_QPATH] ) {
+    if ( !carModel || !carModel[0] ) {
+        return 0;
+    }
+
+    return UI_BuildFileList( va( "models/players/%s", carModel ), "skin", "", qtrue, qfalse, qtrue, 0, paintList );
+}
+
 static int PlayerSettings_FindPaintId(const char* paintName) {
     char cleanPaintName[MAX_QPATH];
+    char paintList[MAX_PLAYERMODELS][MAX_QPATH];
+    const char* carModel;
+    int numPaints;
     int i;
+
+    if (!paintName || !paintName[0]) {
+        return -1;
+    }
+
+    if (s_playersettings.selectedModel < 0 || s_playersettings.selectedModel >= s_playersettings.allModels) {
+        return -1;
+    }
+
+    carModel = s_playersettings.modelList[s_playersettings.selectedModel];
+    numPaints = PlayerSettings_BuildPaintList(carModel, paintList);
 
     Q_strncpyz(cleanPaintName, paintName, sizeof(cleanPaintName));
     COM_StripExtension(cleanPaintName, cleanPaintName, sizeof(cleanPaintName));
 
-    for (i = 0; i < s_playersettings.numModels; i++) {
-        if (Q_stricmp(s_playersettings.modelList[i], cleanPaintName) == 0) {
+    for (i = 0; i < numPaints; i++) {
+        if (Q_stricmp(paintList[i], cleanPaintName) == 0) {
             return i;
         }
     }
@@ -1612,6 +1634,10 @@ static void PlayerSettings_SaveFavorite(int favoriteIndex) {
 
 static void PlayerSettings_LoadFavorite(int favoriteIndex) {
     q3r_favorite_slot_t* slot;
+    char paintList[MAX_PLAYERMODELS][MAX_QPATH];
+    const char* carModel;
+    const char* paintName;
+    int numPaints;
 
     if (favoriteIndex < 0 || favoriteIndex >= Q3R_NUM_FAVORITE_SLOTS) {
         return;
@@ -1625,11 +1651,15 @@ static void PlayerSettings_LoadFavorite(int favoriteIndex) {
     s_playersettings.selectedModel = slot->carId;
     s_playersettings.modelname.string = s_playersettings.modelList[s_playersettings.selectedModel];
 
-    if (slot->paintId >= 0 && slot->paintId < s_playersettings.numModels) {
-        Com_sprintf(s_playersettings.modelskin, sizeof(s_playersettings.modelskin), "%s/%s", s_playersettings.modelList[s_playersettings.selectedModel], s_playersettings.modelList[slot->paintId]);
-    } else {
-        Com_sprintf(s_playersettings.modelskin, sizeof(s_playersettings.modelskin), "%s/%s", s_playersettings.modelList[s_playersettings.selectedModel], DEFAULT_SKIN);
+    carModel = s_playersettings.modelList[s_playersettings.selectedModel];
+    numPaints = PlayerSettings_BuildPaintList(carModel, paintList);
+    paintName = DEFAULT_SKIN;
+
+    if (slot->paintId >= 0 && slot->paintId < numPaints) {
+        paintName = paintList[slot->paintId];
     }
+
+    Com_sprintf(s_playersettings.modelskin, sizeof(s_playersettings.modelskin), "%s/%s", carModel, paintName);
 
     if (slot->wheelId >= 0 && slot->wheelId < s_playersettings.numRims) {
         trap_Cvar_Set("rim", s_playersettings.rimList[slot->wheelId]);
@@ -1652,6 +1682,7 @@ static void PlayerSettings_UpdateFavorites( void ) {
     const char* carModel;
     int numPaints;
     const char* paintName;
+    char paintList[MAX_PLAYERMODELS][MAX_QPATH];
 
     for (i = 0; i < Q3R_NUM_FAVORITE_SLOTS; i++) {
         slot = &cg_profile.favoriteSlots[i];
@@ -1663,10 +1694,10 @@ static void PlayerSettings_UpdateFavorites( void ) {
             carModel = s_playersettings.modelList[slot->carId];
 
             // Re-build the paint list for the specific car model of the favorite slot
-            numPaints = UI_BuildFileList(va("models/players/%s", carModel), "skin", "", qtrue, qfalse, qtrue, 0, s_playersettings.modelList);
+            numPaints = PlayerSettings_BuildPaintList(carModel, paintList);
 
             if (slot->paintId >= 0 && slot->paintId < numPaints) {
-                paintName = s_playersettings.modelList[slot->paintId];
+                paintName = paintList[slot->paintId];
             }
 
             Com_sprintf(s_playersettings.favIcons[i], sizeof(s_playersettings.favIcons[i]),
