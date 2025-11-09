@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "ui_local.h"
 #include "../game/q3r_profile.h"
 #include "../game/g_profile.h"
+#include <stddef.h>
 
 #ifndef INT_MAX
 #define INT_MAX 0x7fffffff
@@ -824,28 +825,31 @@ static void PlayerSettings_ReadLifetimeFromCvars( playerLifetimeDisplay_t *displ
 
 	static const struct {
 		const char *name;
-		int *target;
+		size_t offset;
 	} intBindings[] = {
-		{ "ui_profile_version", &display->raw.version },
-		{ "ui_profile_matches", &display->raw.matchesPlayed },
-		{ "ui_profile_wins", &display->raw.wins },
-		{ "ui_profile_losses", &display->raw.losses },
-		{ "ui_profile_finishes", &display->raw.finishes },
-		{ "ui_profile_dnfs", &display->raw.dnfs },
-		{ "ui_profile_bestPosition", &display->raw.bestPosition },
-		{ "ui_profile_bestLapMs", &display->raw.bestLapMs },
-		{ "ui_profile_bestTotalRaceMs", &display->raw.bestTotalRaceMs },
-		{ "ui_profile_totalRaceTimeMs", &display->raw.totalRaceTimeMs },
-		{ "ui_profile_totalScore", &display->raw.totalScore },
-		{ "ui_profile_totalKills", &display->raw.totalKills },
-		{ "ui_profile_totalDeaths", &display->raw.totalDeaths },
-		{ "ui_profile_totalDamageDealt", &display->raw.totalDamageDealt },
-		{ "ui_profile_totalDamageTaken", &display->raw.totalDamageTaken },
-		{ "ui_profile_achievements", &display->raw.achievements },
+		{ "ui_profile_version", offsetof( profileLifetime_t, version ) },
+		{ "ui_profile_matches", offsetof( profileLifetime_t, matchesPlayed ) },
+		{ "ui_profile_wins", offsetof( profileLifetime_t, wins ) },
+		{ "ui_profile_losses", offsetof( profileLifetime_t, losses ) },
+		{ "ui_profile_finishes", offsetof( profileLifetime_t, finishes ) },
+		{ "ui_profile_dnfs", offsetof( profileLifetime_t, dnfs ) },
+		{ "ui_profile_bestPosition", offsetof( profileLifetime_t, bestPosition ) },
+		{ "ui_profile_bestLapMs", offsetof( profileLifetime_t, bestLapMs ) },
+		{ "ui_profile_bestTotalRaceMs", offsetof( profileLifetime_t, bestTotalRaceMs ) },
+		{ "ui_profile_totalRaceTimeMs", offsetof( profileLifetime_t, totalRaceTimeMs ) },
+		{ "ui_profile_totalScore", offsetof( profileLifetime_t, totalScore ) },
+		{ "ui_profile_totalKills", offsetof( profileLifetime_t, totalKills ) },
+		{ "ui_profile_totalDeaths", offsetof( profileLifetime_t, totalDeaths ) },
+		{ "ui_profile_totalDamageDealt", offsetof( profileLifetime_t, totalDamageDealt ) },
+		{ "ui_profile_totalDamageTaken", offsetof( profileLifetime_t, totalDamageTaken ) },
+		{ "ui_profile_achievements", offsetof( profileLifetime_t, achievements ) },
 	};
 
 	for ( i = 0; i < ARRAY_LEN( intBindings ); i++ ) {
-		*intBindings[i].target = PlayerSettings_GetCvarInt( intBindings[i].name );
+		int *target;
+
+		target = (int *)((byte *)&display->raw + intBindings[i].offset);
+		*target = PlayerSettings_GetCvarInt( intBindings[i].name );
 	}
 
 	trap_Cvar_VariableStringBuffer( "ui_profile_model", display->raw.vehicleModel, sizeof( display->raw.vehicleModel ) );
@@ -1119,7 +1123,7 @@ static void PlayerSettings_UpdateLifetimeData( void ) {
 
 
 static float PlayerSettings_DrawStatsLine( float x, float y, const char *text, const float *color, qboolean sectionBreak ) {
-        UI_DrawString( x, y, text, UI_LEFT | UI_SMALLFONT, color );
+        UI_DrawString( x, y, text, UI_LEFT | UI_SMALLFONT, (float *)color );
         return y + SMALLCHAR_HEIGHT + ( sectionBreak ? 8 : 2 );
 }
 
