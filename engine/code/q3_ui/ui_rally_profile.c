@@ -101,7 +101,6 @@ static void UI_ProfileOverlay_RebuildList( void );
 static void UI_ProfileOverlay_CreateFromField( void );
 static void UI_ProfileOverlay_UpdateSelection( int index );
 static void UI_ProfileOverlay_UpdateButtonStates( void );
-static void UI_ProfileOverlay_SaveSlots( void );
 static void UI_ProfileOverlay_UpdateCreateLabel( void );
 static qboolean UI_ProfileOverlay_ShouldForcePrompt( void );
 static void UI_ProfileOverlay_EnsureSelection( void );
@@ -162,7 +161,7 @@ void Q3R_AchievementNotify_Update(void) {
 void Q3R_AchievementNotify_Draw(void) {
     Q3R_AchievementNotify_Update();
     for (int i = 0; i < notification_count; i++) {
-        achievement_def_t *def = &achievement_defs[achievement_notifications[i].id];
+        const achievement_def_t *def = &achievement_defs[achievement_notifications[i].id];
         UI_DrawProportionalString(320, 100 + i * 40, va("Achievement Unlocked: %s", def->title), UI_CENTER | UI_SMALLFONT, colorWhite);
     }
 }
@@ -170,13 +169,11 @@ void Q3R_AchievementNotify_Draw(void) {
 qboolean Q3R_Profile_Save(const q3r_profile_t *profile) {
     fileHandle_t f;
     char path[MAX_QPATH];
-    int len;
 
     if (!profile) return qfalse;
 
     Com_sprintf(path, sizeof(path), "%s/%s%s", PROFILES_PATH, profile->playerName, PROFILE_EXTENSION);
-    len = trap_FS_FOpenFile(path, &f, FS_WRITE);
-    if (!f) {
+    if (trap_FS_FOpenFile(path, &f, FS_WRITE) < 0 || !f) {
         Com_Printf("Failed to open profile for writing: %s\n", path);
         return qfalse;
     }
@@ -391,6 +388,11 @@ qboolean Q3R_Profile_Load(const char *name) {
     Com_sprintf(path, sizeof(path), "%s/%s%s", PROFILES_PATH, name, PROFILE_EXTENSION);
     len = trap_FS_FOpenFile(path, &f, FS_READ);
     if (!f) {
+        return qfalse;
+    }
+
+    if (len < (int)(strlen(Q3R_PROFILE_HEADER) + sizeof(q3r_profile_t))) {
+        trap_FS_FCloseFile(f);
         return qfalse;
     }
 
@@ -713,16 +715,12 @@ static qboolean UI_ProfileOverlay_ShouldForcePrompt( void ) {
 }
 
 static void UI_ProfileOverlay_Show( qboolean forceCreate ) {
-    qboolean hadSelection;
-
     if ( uis.activemenu == &s_profileOverlay.menu ) {
         return;
     }
 
     UI_ProfileOverlay_InitMenu();
     UI_ProfileOverlay_RebuildList();
-
-    hadSelection = ( s_profileOverlay.profileCount > 0 );
 
     if ( s_profileOverlay.profileCount > 0 ) {
         UI_ProfileOverlay_EnsureSelection();
