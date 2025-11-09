@@ -1388,12 +1388,36 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
+<<<<<<< HEAD
 	if ( !strcmp( cmd, "raceFinishTime" ) ) {
 		i1 = atoi(CG_Argv(1));
 		i2 = atoi(CG_Argv(2));
 		CG_FinishedRace( i1, i2 );
 		return;
 	}
+=======
+        if ( !strcmp( cmd, "raceFinishTime" ) ) {
+                i1 = atoi(CG_Argv(1));
+                i2 = atoi(CG_Argv(2));
+                CG_FinishedRace( i1, i2 );
+                return;
+        }
+
+        if ( !strcmp( cmd, "notify" ) ) {
+                const char *identifier;
+
+                identifier = CG_Argv( 1 );
+                CG_HandleServerNotification( identifier );
+                return;
+        }
+
+    if ( !strcmp( cmd, "ach_prog" ) ) {
+        int id = atoi(CG_Argv(1));
+        float progress = atof(CG_Argv(2));
+        Q3R_Achievements_UpdateProgress_Cmd(id, progress);
+        return;
+    }
+>>>>>>> 72dbed79c5ebf4f3f87ade54d1fcfe83ba2938ed
 // END
 
 	CG_Printf( "Unknown client game command: %s\n", cmd );

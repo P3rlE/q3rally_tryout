@@ -73,8 +73,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // END
 
 
+typedef enum {
+    TAB_VEHICLE,
+    TAB_STATS,
+    TAB_ACHIEVEMENTS,
+    NUM_TABS
+} profile_tab_t;
+
 typedef struct {
 	menuframework_s		menu;
+    profile_tab_t   current_tab;
+
+    menutext_s      tabs[NUM_TABS];
 
 	menutext_s			banner;
 // STONELANCE
@@ -122,12 +132,61 @@ typedef struct {
 	playerInfo_t		playerinfo;
 	int					current_fx;
 	char				playerModel[MAX_QPATH];
+
+    // Stats
+    menutext_s      stats_races_started;
+    menutext_s      stats_races_finished;
+    menutext_s      stats_races_won;
+    menutext_s      stats_derby_matches;
+    menutext_s      stats_derby_wins;
+    menutext_s      stats_play_time;
+    menutext_s      stats_distance_driven;
+
+    // Achievements
+    menutext_s      achievements_list[MAX_ACHIEVEMENTS];
+
+    // Vehicle & Player
+    menutext_s      player_name;
 } playersettings_t;
 
 static playersettings_t	s_playersettings;
 
 static int gamecodetoui[] = {4,2,3,0,5,1,6};
 static int uitogamecode[] = {4,6,2,3,1,5,7};
+
+static void PlayerSettings_SetTab(profile_tab_t tab) {
+    s_playersettings.current_tab = tab;
+    for (int i = 0; i < NUM_TABS; i++) {
+        s_playersettings.tabs[i].color = (i == tab) ? text_color_highlight : text_color_normal;
+    }
+
+    // Vehicle & Player
+    s_playersettings.name.generic.flags = (tab == TAB_VEHICLE) ? QMF_NODEFAULTINIT | QMF_INACTIVE : QMF_HIDDEN;
+    s_playersettings.handicap.generic.flags = (tab == TAB_VEHICLE) ? QMF_NODEFAULTINIT : QMF_HIDDEN;
+    s_playersettings.effects.generic.flags = (tab == TAB_VEHICLE) ? QMF_NODEFAULTINIT : QMF_HIDDEN;
+    s_playersettings.player_name.generic.flags = (tab == TAB_VEHICLE) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
+    // ... hide/show other controls for this tab
+
+    // Stats
+    s_playersettings.stats_races_started.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
+    s_playersettings.stats_races_finished.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
+    s_playersettings.stats_races_won.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
+    s_playersettings.stats_derby_matches.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
+    s_playersettings.stats_derby_wins.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
+    s_playersettings.stats_play_time.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
+    s_playersettings.stats_distance_driven.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
+
+    // Achievements
+    for (int i = 0; i < ACH_MAX; i++) {
+        s_playersettings.achievements_list[i].generic.flags = (tab == TAB_ACHIEVEMENTS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
+    }
+}
+
+static void PlayerSettings_TabEvent(void* ptr, int event) {
+    if (event == QM_ACTIVATED) {
+        PlayerSettings_SetTab((profile_tab_t)(((menucommon_s*)ptr)->id - ID_TAB_CAR));
+    }
+}
 
 static const char *handicap_items[] = {
 	"None",
@@ -432,55 +491,20 @@ LoadFavorite
 
 =================
 */
-static void LoadFavorite( const char *favorite ) {
-	char		modelName[MAX_QPATH];
-	char		skinName[MAX_QPATH];
-	char		rimName[MAX_QPATH];
-	char		headName[MAX_QPATH];
-	int			i;
-	qboolean	carFound;
+static void LoadFavorite(int favoriteIndex, int carId) {
+    if (favoriteIndex < 0 || favoriteIndex >= Q3R_NUM_FAVORITE_SLOTS) {
+        return;
+    }
 
-	GetValuesFromFavorite(favorite, modelName, skinName, rimName, headName);
+    // For now, we'll just store the car ID. A full implementation would
+    // also handle paint, wheels, and tuning.
+    cg_profile.favoriteSlots[favoriteIndex].carId = carId;
 
-	// find model in our list
-	carFound = qfalse;
-	for (i = 0; i < s_playersettings.allModels; i++)
-	{
-		if (!Q_stricmp( modelName, s_playersettings.modelList[i] ))
-		{
-			// found pic, set selection here
-			s_playersettings.selectedModel = i;
-			s_playersettings.modelname.string = s_playersettings.modelList[s_playersettings.selectedModel];
-			carFound = qtrue;
-			break;
-		}
-	}
+    // In a real scenario, you would look up the car's default model and skin
+    // from the carId and update the cvars.
+    // e.g., trap_Cvar_Set("model", "some_model/some_skin");
 
-	if (!carFound){
-		s_playersettings.selectedModel = 0;
-
-		// get model
-		Com_sprintf(s_playersettings.modelskin, sizeof(s_playersettings.modelskin), "%s/%s", s_playersettings.modelList[s_playersettings.selectedModel], DEFAULT_SKIN);
-
-		s_playersettings.modelname.string = s_playersettings.modelList[s_playersettings.selectedModel];
-
-		// FIXME: check to see if these exist
-		Q_strncpyz(s_playersettings.rimskin, DEFAULT_RIM, sizeof(s_playersettings.rimskin));
-		Q_strncpyz(s_playersettings.headskin, DEFAULT_HEAD, sizeof(s_playersettings.headskin));
-
-		s_playersettings.modelChanged = qtrue;
-	}
-	else {
-		Com_sprintf(s_playersettings.modelskin, sizeof(s_playersettings.modelskin), "%s/%s", modelName, skinName);
-		Q_strncpyz(s_playersettings.rimskin, rimName, sizeof(s_playersettings.rimskin));
-		Q_strncpyz(s_playersettings.headskin, headName, sizeof(s_playersettings.headskin));
-
-		trap_Cvar_Set( "model", s_playersettings.modelskin );
-		trap_Cvar_Set( "rim", rimName );
-		trap_Cvar_Set( "head", headName );
-
-		s_playersettings.modelChanged = qtrue;
-	}
+    s_playersettings.modelChanged = qtrue;
 }
 
 /*
@@ -490,28 +514,21 @@ PlayerSettings_UpdateFavorites
 =================
 */
 static void PlayerSettings_UpdateFavorites( void ) {
-	int			i;
-	char		buf[MAX_QPATH];
-	char		modelName[MAX_QPATH];
-	char		skinName[MAX_QPATH];
-	qboolean	error;
-	
-	for (i=0; i < NUM_FAVORITES; i++){
-		Com_sprintf(buf, sizeof(buf), "favoritecar%i", (i+1));
-		error = GetValuesFromFavorite(buf, modelName, skinName, NULL, NULL);
-
-		if (!error){
-			Com_sprintf(s_playersettings.favIcons[i], sizeof(s_playersettings.favIcons[i]), "models/players/%s/icon_%s", modelName, skinName);
-			s_playersettings.favpics[i].generic.name = s_playersettings.favIcons[i];
-			s_playersettings.favpicbuttons[i].generic.flags &= ~QMF_INACTIVE;
-		}
-		else{
-			s_playersettings.favpics[i].generic.name = NULL;
-			s_playersettings.favpicbuttons[i].generic.flags |= QMF_INACTIVE;
-		}
-
-		s_playersettings.favpics[i].shader = 0;
-	}
+    for (int i = 0; i < Q3R_NUM_FAVORITE_SLOTS; i++) {
+        if (cg_profile.favoriteSlots[i].carId != 0) { // Assuming 0 is an invalid/empty carId
+            // This is a placeholder. A real implementation would look up the car's model/skin
+            // from its ID. For now, we'll just construct a dummy path.
+            // A more robust solution would involve a data structure that maps car IDs to assets.
+            Com_sprintf(s_playersettings.favIcons[i], sizeof(s_playersettings.favIcons[i]),
+                        "models/players/car%d/icon_default", cg_profile.favoriteSlots[i].carId);
+            s_playersettings.favpics[i].generic.name = s_playersettings.favIcons[i];
+            s_playersettings.favpicbuttons[i].generic.flags &= ~QMF_INACTIVE;
+        } else {
+            s_playersettings.favpics[i].generic.name = NULL;
+            s_playersettings.favpicbuttons[i].generic.flags |= QMF_INACTIVE;
+        }
+        s_playersettings.favpics[i].shader = 0;
+    }
 }
 
 /*
@@ -550,6 +567,10 @@ static void PlayerSettings_SaveChanges( void ) {
 
 	// effects color
 	trap_Cvar_SetValue( "color1", uitogamecode[s_playersettings.effects.curvalue] );
+
+	// All changes to favorite cars are stored directly in the cg_profile struct,
+	// so we just need to save it to disk.
+	Q3R_Profile_Save(&cg_profile);
 }
 
 
@@ -652,6 +673,16 @@ static void PlayerSettings_SetMenuItems( void ) {
 	// handicap
 	h = Com_Clamp( 5, 100, trap_Cvar_VariableValue("handicap") );
 	s_playersettings.handicap.curvalue = 20 - h / 5;
+<<<<<<< HEAD
+=======
+
+	// The favorite car data is already in cg_profile, which is loaded when the profile is.
+	// No extra loading is needed here. The UI will read from it directly.
+
+	PlayerSettings_LoadProfileSlots();
+	PlayerSettings_UpdateTabHighlight();
+	PlayerSettings_UpdateTabVisibility();
+>>>>>>> 72dbed79c5ebf4f3f87ade54d1fcfe83ba2938ed
 }
 
 
@@ -663,28 +694,20 @@ PlayerSettings_PicEvent
 */
 static void PlayerSettings_PicEvent( void* ptr, int event )
 {
-	if (event != QM_ACTIVATED)
-		return;
+    if (event != QM_ACTIVATED)
+        return;
 
-	switch(((menucommon_s*)ptr)->id){
-	case ID_FAVORITE1:
-		LoadFavorite("favoritecar1");
-		break;
+    int favoriteIndex = ((menucommon_s*)ptr)->id - ID_FAVORITE1;
+    if (favoriteIndex >= 0 && favoriteIndex < Q3R_NUM_FAVORITE_SLOTS) {
+        // This is a placeholder. A real implementation would open a car selection
+        // menu and then call LoadFavorite with the selected car's ID.
+        // For now, we'll just cycle through some dummy car IDs.
+        int dummyCarId = (cg_profile.favoriteSlots[favoriteIndex].carId + 1) % 5;
+        if (dummyCarId == 0) dummyCarId = 1; // Car IDs are typically > 0
+        LoadFavorite(favoriteIndex, dummyCarId);
+    }
 
-	case ID_FAVORITE2:
-		LoadFavorite("favoritecar2");
-		break;
-
-	case ID_FAVORITE3:
-		LoadFavorite("favoritecar3");
-		break;
-
-	case ID_FAVORITE4:
-		LoadFavorite("favoritecar4");
-		break;
-	}
-
-	PlayerSettings_UpdateModel();
+    PlayerSettings_UpdateModel();
 }
 // END
 
@@ -876,12 +899,155 @@ static void PlayerSettings_MenuInit( void ) {
 // STONELANCE
 	s_playersettings.banner.generic.y     = 17;
 // END
-	s_playersettings.banner.string        = "PLAYER SETTINGS";
+	s_playersettings.banner.string        = "PLAYER PROFILE";
 // STONELANCE
 	s_playersettings.banner.color         = text_color_normal;
 // END
 	s_playersettings.banner.style         = UI_CENTER;
 
+<<<<<<< HEAD
+=======
+    s_playersettings.stats_races_started.generic.type = MTYPE_PTEXT;
+    s_playersettings.stats_races_started.generic.flags = QMF_LEFT_JUSTIFY;
+    s_playersettings.stats_races_started.generic.x = 100;
+    s_playersettings.stats_races_started.generic.y = 100;
+    s_playersettings.stats_races_started.string = va("Races Started: %d", cg_profile.totalRacesStarted);
+    s_playersettings.stats_races_started.style = UI_LEFT | UI_SMALLFONT;
+    s_playersettings.stats_races_started.color = color_white;
+
+    s_playersettings.stats_races_finished.generic.type = MTYPE_PTEXT;
+    s_playersettings.stats_races_finished.generic.flags = QMF_LEFT_JUSTIFY;
+    s_playersettings.stats_races_finished.generic.x = 100;
+    s_playersettings.stats_races_finished.generic.y = 120;
+    s_playersettings.stats_races_finished.string = va("Races Finished: %d", cg_profile.totalRacesFinished);
+    s_playersettings.stats_races_finished.style = UI_LEFT | UI_SMALLFONT;
+    s_playersettings.stats_races_finished.color = color_white;
+
+    s_playersettings.stats_races_won.generic.type = MTYPE_PTEXT;
+    s_playersettings.stats_races_won.generic.flags = QMF_LEFT_JUSTIFY;
+    s_playersettings.stats_races_won.generic.x = 100;
+    s_playersettings.stats_races_won.generic.y = 140;
+    s_playersettings.stats_races_won.string = va("Races Won: %d", cg_profile.totalRacesWon);
+    s_playersettings.stats_races_won.style = UI_LEFT | UI_SMALLFONT;
+    s_playersettings.stats_races_won.color = color_white;
+
+    s_playersettings.stats_derby_matches.generic.type = MTYPE_PTEXT;
+    s_playersettings.stats_derby_matches.generic.flags = QMF_LEFT_JUSTIFY;
+    s_playersettings.stats_derby_matches.generic.x = 100;
+    s_playersettings.stats_derby_matches.generic.y = 160;
+    s_playersettings.stats_derby_matches.string = va("Derby Matches: %d", cg_profile.totalDerbyMatches);
+    s_playersettings.stats_derby_matches.style = UI_LEFT | UI_SMALLFONT;
+    s_playersettings.stats_derby_matches.color = color_white;
+
+    s_playersettings.stats_derby_wins.generic.type = MTYPE_PTEXT;
+    s_playersettings.stats_derby_wins.generic.flags = QMF_LEFT_JUSTIFY;
+    s_playersettings.stats_derby_wins.generic.x = 100;
+    s_playersettings.stats_derby_wins.generic.y = 180;
+    s_playersettings.stats_derby_wins.string = va("Derby Wins: %d", cg_profile.totalDerbyWins);
+    s_playersettings.stats_derby_wins.style = UI_LEFT | UI_SMALLFONT;
+    s_playersettings.stats_derby_wins.color = color_white;
+
+    s_playersettings.stats_play_time.generic.type = MTYPE_PTEXT;
+    s_playersettings.stats_play_time.generic.flags = QMF_LEFT_JUSTIFY;
+    s_playersettings.stats_play_time.generic.x = 100;
+    s_playersettings.stats_play_time.generic.y = 200;
+    s_playersettings.stats_play_time.string = va("Play Time: %d hours", cg_profile.totalPlayTimeSeconds / 3600);
+    s_playersettings.stats_play_time.style = UI_LEFT | UI_SMALLFONT;
+    s_playersettings.stats_play_time.color = color_white;
+
+    s_playersettings.stats_distance_driven.generic.type = MTYPE_PTEXT;
+    s_playersettings.stats_distance_driven.generic.flags = QMF_LEFT_JUSTIFY;
+    s_playersettings.stats_distance_driven.generic.x = 100;
+    s_playersettings.stats_distance_driven.generic.y = 220;
+    s_playersettings.stats_distance_driven.string = va("Distance Driven: %.2f km", cg_profile.totalDistanceMeters / 1000.0);
+    s_playersettings.stats_distance_driven.style = UI_LEFT | UI_SMALLFONT;
+    s_playersettings.stats_distance_driven.color = color_white;
+
+    for (int i = 0; i < ACH_MAX; i++) {
+        s_playersettings.achievements_list[i].generic.type = MTYPE_PTEXT;
+        s_playersettings.achievements_list[i].generic.flags = QMF_LEFT_JUSTIFY;
+        s_playersettings.achievements_list[i].generic.x = 100;
+        s_playersettings.achievements_list[i].generic.y = 100 + i * 20;
+        s_playersettings.achievements_list[i].string = va("%s: %s", achievement_defs[i].title, cg_profile.achievements[i].unlocked ? "Unlocked" : "Locked");
+        s_playersettings.achievements_list[i].style = UI_LEFT | UI_SMALLFONT;
+        s_playersettings.achievements_list[i].color = color_white;
+    }
+
+    s_playersettings.player_name.generic.type = MTYPE_PTEXT;
+    s_playersettings.player_name.generic.flags = QMF_LEFT_JUSTIFY;
+    s_playersettings.player_name.generic.x = 100;
+    s_playersettings.player_name.generic.y = 80;
+    s_playersettings.player_name.string = va("Player Name: %s", cg_profile.playerName);
+    s_playersettings.player_name.style = UI_LEFT | UI_SMALLFONT;
+    s_playersettings.player_name.color = color_white;
+
+    s_playersettings.tabs[0].generic.type = MTYPE_PTEXT;
+    s_playersettings.tabs[0].generic.flags = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
+    s_playersettings.tabs[0].generic.x = 100;
+    s_playersettings.tabs[0].generic.y = 60;
+    s_playersettings.tabs[0].generic.id = ID_TAB_CAR;
+    s_playersettings.tabs[0].generic.callback = PlayerSettings_TabEvent;
+    s_playersettings.tabs[0].string = "Vehicle & Player";
+    s_playersettings.tabs[0].style = UI_LEFT | UI_SMALLFONT;
+
+    s_playersettings.tabs[1].generic.type = MTYPE_PTEXT;
+    s_playersettings.tabs[1].generic.flags = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
+    s_playersettings.tabs[1].generic.x = 250;
+    s_playersettings.tabs[1].generic.y = 60;
+    s_playersettings.tabs[1].generic.id = ID_TAB_STATS;
+    s_playersettings.tabs[1].generic.callback = PlayerSettings_TabEvent;
+    s_playersettings.tabs[1].string = "Stats";
+    s_playersettings.tabs[1].style = UI_LEFT | UI_SMALLFONT;
+
+    s_playersettings.tabs[2].generic.type = MTYPE_PTEXT;
+    s_playersettings.tabs[2].generic.flags = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
+    s_playersettings.tabs[2].generic.x = 350;
+    s_playersettings.tabs[2].generic.y = 60;
+    s_playersettings.tabs[2].generic.id = ID_TAB_ACHIEVEMENTS;
+    s_playersettings.tabs[2].generic.callback = PlayerSettings_TabEvent;
+    s_playersettings.tabs[2].string = "Achievements";
+    s_playersettings.tabs[2].style = UI_LEFT | UI_SMALLFONT;
+
+	{
+		static const int tabIds[PLAYERSETTINGS_NUM_TABS] = { ID_TAB_CAR, ID_TAB_STATS, ID_TAB_ACHIEVEMENTS };
+		static char tabTexts[PLAYERSETTINGS_NUM_TABS][16] = { "CAR", "STATS", "ACHIEVEMENTS" };
+		int tab;
+		int tabX = 64;
+                int tabY = 48;
+		int tabWidth = 160;
+		int tabHeight = 28;
+
+		for ( tab = 0; tab < PLAYERSETTINGS_NUM_TABS; tab++ ) {
+			menubitmap_s *button = &s_playersettings.tabButtons[tab];
+			menutext_s *label = &s_playersettings.tabLabels[tab];
+			int x = tabX + tab * ( tabWidth + 8 );
+
+			button->generic.type = MTYPE_BITMAP;
+			button->generic.flags = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
+			button->generic.id = tabIds[tab];
+			button->generic.callback = PlayerSettings_MenuEvent;
+			button->generic.ownerdraw = PlayerSettings_DrawTabButton;
+			button->generic.x = x;
+			button->generic.y = tabY;
+			button->generic.left = x;
+			button->generic.top = tabY;
+			button->generic.right = x + tabWidth;
+			button->generic.bottom = tabY + tabHeight;
+			button->width = tabWidth;
+			button->height = tabHeight;
+
+			label->generic.type = MTYPE_PTEXT;
+			label->generic.flags = QMF_CENTER_JUSTIFY|QMF_INACTIVE;
+			label->generic.x = x + tabWidth / 2;
+			label->generic.y = tabY + 6;
+			label->generic.id = tabIds[tab];
+			label->string = tabTexts[tab];
+			label->style = UI_CENTER|UI_SMALLFONT;
+			label->color = uis.text_color;
+		}
+	}
+
+>>>>>>> 72dbed79c5ebf4f3f87ade54d1fcfe83ba2938ed
 // STONELANCE
 /*
 	s_playersettings.framel.generic.type  = MTYPE_BITMAP;
@@ -1139,6 +1305,14 @@ static void PlayerSettings_MenuInit( void ) {
 // END
 
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.banner );
+<<<<<<< HEAD
+=======
+    for (int i = 0; i < NUM_TABS; i++) {
+        Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.tabs[i]);
+    }
+
+    PlayerSettings_SetTab(TAB_VEHICLE);
+>>>>>>> 72dbed79c5ebf4f3f87ade54d1fcfe83ba2938ed
 // STONELANCE
 /*
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.framel );
@@ -1149,6 +1323,20 @@ static void PlayerSettings_MenuInit( void ) {
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.name );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.handicap );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.effects );
+
+    Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.stats_races_started);
+    Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.stats_races_finished);
+    Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.stats_races_won);
+    Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.stats_derby_matches);
+    Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.stats_derby_wins);
+    Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.stats_play_time);
+    Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.stats_distance_driven);
+
+    for (int i = 0; i < ACH_MAX; i++) {
+        Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.achievements_list[i]);
+    }
+
+    Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.player_name);
 
 // STONELANCE
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.favorites );

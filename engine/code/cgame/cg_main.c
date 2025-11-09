@@ -2185,6 +2185,17 @@ void CG_AssetCache( void ) {
 #endif
 /*
 =================
+Q3R_Achievements_UpdateProgress_Cmd
+
+Receives an achievement progress update from the server and forwards it to the UI module.
+=================
+*/
+void Q3R_Achievements_UpdateProgress_Cmd(int id, float progress) {
+    trap_SendConsoleCommand(va("ui_ach_prog %d %f", id, progress));
+}
+
+/*
+=================
 CG_Init
 
 Called after every level change or subsystem restart

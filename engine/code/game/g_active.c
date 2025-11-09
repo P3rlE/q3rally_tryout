@@ -963,6 +963,70 @@ void SendPendingPredictableEvents( playerState_t *ps ) {
 	}
 }
 
+<<<<<<< HEAD
+=======
+static void G_ProfileAccumulatePhysics( gentity_t *ent ) {
+	gclient_t *client;
+	vec3_t delta;
+	float distanceQu;
+	float currentFuel;
+	float fuelDelta;
+
+	if ( !ent ) {
+		return;
+	}
+
+	client = ent->client;
+	if ( !client ) {
+		return;
+	}
+
+	if ( client->pers.connected != CON_CONNECTED ) {
+		return;
+	}
+
+	if ( client->sess.sessionTeam == TEAM_SPECTATOR ) {
+		client->profileTrackValid = qfalse;
+		return;
+	}
+
+	if ( client->ps.pm_type != PM_NORMAL ) {
+		client->profileTrackValid = qfalse;
+		return;
+	}
+
+	if ( client->car.initializeOnNextMove ) {
+		client->profileTrackValid = qfalse;
+		return;
+	}
+
+	if ( !client->profileTrackValid ) {
+		VectorCopy( client->ps.origin, client->profileLastOrigin );
+		client->profileLastFuel = client->car.fuel;
+		client->profileTrackValid = qtrue;
+		return;
+	}
+
+	VectorSubtract( client->ps.origin, client->profileLastOrigin, delta );
+	distanceQu = VectorLength( delta );
+	if ( distanceQu > 0.0f ) {
+		float distanceMeters = distanceQu / CP_M_2_QU;
+		client->profileDistanceAccum += distanceMeters;
+		if (G_IsEntityClient(ent - g_entities)) {
+			G_UpdatePlayerAchievementProgress(ent - g_entities, ACH_100KM_DRIVEN, distanceMeters);
+		}
+	}
+	VectorCopy( client->ps.origin, client->profileLastOrigin );
+
+	currentFuel = client->car.fuel;
+	fuelDelta = client->profileLastFuel - currentFuel;
+	if ( fuelDelta > 0.0f ) {
+		client->profileFuelUsedAccum += fuelDelta;
+	}
+	client->profileLastFuel = currentFuel;
+}
+
+>>>>>>> 72dbed79c5ebf4f3f87ade54d1fcfe83ba2938ed
 /*
 ==============
 ClientThink

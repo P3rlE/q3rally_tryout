@@ -34,6 +34,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define UI_API_VERSION	4
 #include "../client/keycodes.h"
 #include "../game/bg_public.h"
+#include "q3r_profile.h"
+
+extern q3r_profile_t cg_profile;
 
 typedef void (*voidfunc_f)(void);
 
@@ -1058,4 +1061,11 @@ void UI_SignupMenu( void );
 void RankStatus_Cache( void );
 void UI_RankStatusMenu( void );
 
+<<<<<<< HEAD
+=======
+void UI_ProfileOverlay_ResetSession( void );
+void UI_ProfileOverlay_MaybeShow( void );
+void Q3R_AchievementNotify_Draw(void);
+
+>>>>>>> 72dbed79c5ebf4f3f87ade54d1fcfe83ba2938ed
 #endif
