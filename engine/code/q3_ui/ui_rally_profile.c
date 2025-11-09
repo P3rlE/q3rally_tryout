@@ -401,7 +401,7 @@ qboolean Q3R_Profile_Load(const char *name) {
     }
 
     trap_FS_Read(header, strlen(Q3R_PROFILE_HEADER), f);
-    if (strncmp(header, Q3R_PROFILE_HEADER, strlen(Q3R_PROFILE_HEADER)) != 0) {
+    if (Q_strncmp(header, Q3R_PROFILE_HEADER, strlen(Q3R_PROFILE_HEADER)) != 0) {
         trap_FS_FCloseFile(f);
         return qfalse;
     }
