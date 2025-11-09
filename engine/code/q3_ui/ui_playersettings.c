@@ -823,33 +823,45 @@ static float PlayerSettings_GetCvarFloat( const char *name ) {
 static void PlayerSettings_ReadLifetimeFromCvars( playerLifetimeDisplay_t *display ) {
 	int i;
 
-	static const struct {
-		const char *name;
-		size_t offset;
-	} intBindings[] = {
-		{ "ui_profile_version", offsetof( profileLifetime_t, version ) },
-		{ "ui_profile_matches", offsetof( profileLifetime_t, matchesPlayed ) },
-		{ "ui_profile_wins", offsetof( profileLifetime_t, wins ) },
-		{ "ui_profile_losses", offsetof( profileLifetime_t, losses ) },
-		{ "ui_profile_finishes", offsetof( profileLifetime_t, finishes ) },
-		{ "ui_profile_dnfs", offsetof( profileLifetime_t, dnfs ) },
-		{ "ui_profile_bestPosition", offsetof( profileLifetime_t, bestPosition ) },
-		{ "ui_profile_bestLapMs", offsetof( profileLifetime_t, bestLapMs ) },
-		{ "ui_profile_bestTotalRaceMs", offsetof( profileLifetime_t, bestTotalRaceMs ) },
-		{ "ui_profile_totalRaceTimeMs", offsetof( profileLifetime_t, totalRaceTimeMs ) },
-		{ "ui_profile_totalScore", offsetof( profileLifetime_t, totalScore ) },
-		{ "ui_profile_totalKills", offsetof( profileLifetime_t, totalKills ) },
-		{ "ui_profile_totalDeaths", offsetof( profileLifetime_t, totalDeaths ) },
-		{ "ui_profile_totalDamageDealt", offsetof( profileLifetime_t, totalDamageDealt ) },
-		{ "ui_profile_totalDamageTaken", offsetof( profileLifetime_t, totalDamageTaken ) },
-		{ "ui_profile_achievements", offsetof( profileLifetime_t, achievements ) },
+	static const char *const intCvarNames[] = {
+		"ui_profile_version",
+		"ui_profile_matches",
+		"ui_profile_wins",
+		"ui_profile_losses",
+		"ui_profile_finishes",
+		"ui_profile_dnfs",
+		"ui_profile_bestPosition",
+		"ui_profile_bestLapMs",
+		"ui_profile_bestTotalRaceMs",
+		"ui_profile_totalRaceTimeMs",
+		"ui_profile_totalScore",
+		"ui_profile_totalKills",
+		"ui_profile_totalDeaths",
+		"ui_profile_totalDamageDealt",
+		"ui_profile_totalDamageTaken",
+		"ui_profile_achievements",
+	};
+	int *intTargets[] = {
+		&display->raw.version,
+		&display->raw.matchesPlayed,
+		&display->raw.wins,
+		&display->raw.losses,
+		&display->raw.finishes,
+		&display->raw.dnfs,
+		&display->raw.bestPosition,
+		&display->raw.bestLapMs,
+		&display->raw.bestTotalRaceMs,
+		&display->raw.totalRaceTimeMs,
+		&display->raw.totalScore,
+		&display->raw.totalKills,
+		&display->raw.totalDeaths,
+		&display->raw.totalDamageDealt,
+		&display->raw.totalDamageTaken,
+		&display->raw.achievements,
 	};
 
-	for ( i = 0; i < ARRAY_LEN( intBindings ); i++ ) {
-		int *target;
-
-		target = (int *)((byte *)&display->raw + intBindings[i].offset);
-		*target = PlayerSettings_GetCvarInt( intBindings[i].name );
+	for ( i = 0; i < ARRAY_LEN( intCvarNames ); i++ ) {
+		*intTargets[i] = PlayerSettings_GetCvarInt( intCvarNames[i] );
 	}
 
 	trap_Cvar_VariableStringBuffer( "ui_profile_model", display->raw.vehicleModel, sizeof( display->raw.vehicleModel ) );
