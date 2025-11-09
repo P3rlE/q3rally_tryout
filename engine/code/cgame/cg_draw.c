@@ -3203,23 +3203,6 @@ void CG_DrawTimedMenus( void ) {
 }
 #endif
 
-void CG_HandleServerNotification( const char *identifier ) {
-        const cgNotificationMessageDef_t *def;
-        const char *text;
-
-        def = CG_FindNotificationDef( identifier );
-        if ( def ) {
-                text = CG_GetLocalizedNotificationText( def );
-                CG_AddNotification( text );
-                return;
-        }
-
-        if ( identifier && identifier[0] ) {
-                CG_AddNotification( identifier );
-                CG_Printf( "Unknown notification id '%s'\n", identifier );
-        }
-}
-
 static const cgNotificationMessageDef_t *CG_FindNotificationDef( const char *identifier ) {
         int i;
 
@@ -3292,6 +3275,23 @@ static void CG_AddNotification( const char *message ) {
         slot->active = qtrue;
         slot->startTime = cg.time;
         Q_strncpyz( slot->text, message, sizeof( slot->text ) );
+}
+
+void CG_HandleServerNotification( const char *identifier ) {
+        const cgNotificationMessageDef_t *def;
+        const char *text;
+
+        def = CG_FindNotificationDef( identifier );
+        if ( def ) {
+                text = CG_GetLocalizedNotificationText( def );
+                CG_AddNotification( text );
+                return;
+        }
+
+        if ( identifier && identifier[0] ) {
+                CG_AddNotification( identifier );
+                CG_Printf( "Unknown notification id '%s'\n", identifier );
+        }
 }
 static void CG_DrawNotifications( void ) {
         cgNotification_t *ordered[CG_MAX_NOTIFICATIONS];

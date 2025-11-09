@@ -75,18 +75,6 @@ void CG_UpdateProfileUserinfo( void ) {
 	CG_ApplyProfileValue( value );
 }
 
-static void CG_ProfileCommand_f( void ) {
-	char value[MAX_QPATH];
-
-	if ( trap_Argc() > 1 ) {
-		trap_Argv( 1, value, sizeof( value ) );
-	} else {
-		trap_Cvar_VariableStringBuffer( "cg_profile", value, sizeof( value ) );
-	}
-
-	CG_ApplyProfileValue( value );
-}
-
 
 void CG_TargetCommand_f( void ) {
 	int		targetNum;
