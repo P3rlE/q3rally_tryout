@@ -306,32 +306,113 @@ static qboolean PlayerSettings_FormatStatBestLap( const playerLifetimeDisplay_t 
 static qboolean PlayerSettings_FormatStatBestRace( const playerLifetimeDisplay_t *display, char *buffer, size_t size );
 static qboolean PlayerSettings_FormatStatTotalRaceTime( const playerLifetimeDisplay_t *display, char *buffer, size_t size );
 
+typedef enum {
+        PLAYERSETTINGS_COMPONENT_MODEL = 0,
+        PLAYERSETTINGS_COMPONENT_HEAD,
+        PLAYERSETTINGS_COMPONENT_RIM,
+        PLAYERSETTINGS_COMPONENT_PLATE
+} playerSettingsComponent_t;
+
+static const char *PlayerSettings_StripPrefix( const char *value, const char *prefix ) {
+        size_t length;
+        int compareLength;
+
+        if ( !value || !prefix ) {
+                return value;
+        }
+
+        length = strlen( prefix );
+        compareLength = (int)length;
+        if ( compareLength > 0 && !Q_stricmpn( value, prefix, compareLength ) ) {
+                return value + length;
+        }
+
+        return value;
+}
+
+static void PlayerSettings_CopyNormalizedComponent( const char *input, char *output, size_t size, playerSettingsComponent_t component ) {
+        const char *base;
+
+        if ( !output || size == 0 ) {
+                return;
+        }
+
+        output[0] = '\0';
+
+        if ( !input || !*input ) {
+                return;
+        }
+
+        base = PlayerSettings_StripPrefix( input, "models/players/" );
+
+        switch ( component ) {
+        case PLAYERSETTINGS_COMPONENT_HEAD:
+                base = PlayerSettings_StripPrefix( base, "heads/" );
+                break;
+        case PLAYERSETTINGS_COMPONENT_RIM:
+                base = PlayerSettings_StripPrefix( base, "wheels/" );
+                break;
+        case PLAYERSETTINGS_COMPONENT_PLATE:
+                base = PlayerSettings_StripPrefix( base, "plates/" );
+                break;
+        default:
+                break;
+        }
+
+        while ( *base == '/' ) {
+                base++;
+        }
+
+        Q_strncpyz( output, base, size );
+}
+
+static void PlayerSettings_NormalizeComponent( char *buffer, size_t size, playerSettingsComponent_t component ) {
+        char cleaned[MAX_QPATH];
+
+        if ( !buffer || size == 0 ) {
+                return;
+        }
+
+        PlayerSettings_CopyNormalizedComponent( buffer, cleaned, sizeof( cleaned ), component );
+        Q_strncpyz( buffer, cleaned, size );
+}
+
 static void PlayerSettings_UpdateVehicleCvarsFromLifetime( const profileLifetime_t *lifetime ) {
-	if ( !lifetime ) {
-		trap_Cvar_Set( "ui_profile_model", "" );
-		trap_Cvar_Set( "ui_profile_head", "" );
-		trap_Cvar_Set( "ui_profile_rim", "" );
-		trap_Cvar_Set( "ui_profile_plate", "" );
-		return;
-	}
+        char model[MAX_QPATH];
+        char head[MAX_QPATH];
+        char rim[MAX_QPATH];
+        char plate[MAX_QPATH];
 
-	trap_Cvar_Set( "ui_profile_model", lifetime->vehicleModel );
-	trap_Cvar_Set( "ui_profile_head", lifetime->vehicleHead );
-	trap_Cvar_Set( "ui_profile_rim", lifetime->vehicleRim );
-	trap_Cvar_Set( "ui_profile_plate", lifetime->vehiclePlate );
+        if ( !lifetime ) {
+                trap_Cvar_Set( "ui_profile_model", "" );
+                trap_Cvar_Set( "ui_profile_head", "" );
+                trap_Cvar_Set( "ui_profile_rim", "" );
+                trap_Cvar_Set( "ui_profile_plate", "" );
+                return;
+        }
 
-	if ( lifetime->vehicleModel[0] ) {
-		trap_Cvar_Set( "model", lifetime->vehicleModel );
-	}
-	if ( lifetime->vehicleHead[0] ) {
-		trap_Cvar_Set( "head", lifetime->vehicleHead );
-	}
-	if ( lifetime->vehicleRim[0] ) {
-		trap_Cvar_Set( "rim", lifetime->vehicleRim );
-	}
-	if ( lifetime->vehiclePlate[0] ) {
-		trap_Cvar_Set( "plate", lifetime->vehiclePlate );
-	}
+        PlayerSettings_CopyNormalizedComponent( lifetime->vehicleModel, model, sizeof( model ), PLAYERSETTINGS_COMPONENT_MODEL );
+        PlayerSettings_CopyNormalizedComponent( lifetime->vehicleHead, head, sizeof( head ), PLAYERSETTINGS_COMPONENT_HEAD );
+        PlayerSettings_CopyNormalizedComponent( lifetime->vehicleRim, rim, sizeof( rim ), PLAYERSETTINGS_COMPONENT_RIM );
+        PlayerSettings_CopyNormalizedComponent( lifetime->vehiclePlate, plate, sizeof( plate ), PLAYERSETTINGS_COMPONENT_PLATE );
+
+        trap_Cvar_Set( "ui_profile_model", model );
+        trap_Cvar_Set( "ui_profile_head", head );
+        trap_Cvar_Set( "ui_profile_rim", rim );
+        trap_Cvar_Set( "ui_profile_plate", plate );
+
+        if ( model[0] ) {
+                trap_Cvar_Set( "model", model );
+        }
+        if ( head[0] ) {
+                trap_Cvar_Set( "head", head );
+        }
+        if ( rim[0] ) {
+                trap_Cvar_Set( "rim", rim );
+        }
+        if ( plate[0] ) {
+                trap_Cvar_Set( "plate", plate );
+        }
 }
 
 static void PlayerSettings_RegisterProfileCvars( void );
@@ -778,10 +859,15 @@ static qboolean PlayerSettings_LoadLifetimeFromProfile( playerLifetimeDisplay_t 
 		return qfalse;
 	}
 
-	if ( display->raw.version != PROFILE_FILE_VERSION && display->raw.version != 2 && display->raw.version != 1 ) {
-		display->identifier[0] = '\0';
-		return qfalse;
-	}
+        PlayerSettings_NormalizeComponent( display->raw.vehicleModel, sizeof( display->raw.vehicleModel ), PLAYERSETTINGS_COMPONENT_MODEL );
+        PlayerSettings_NormalizeComponent( display->raw.vehicleHead, sizeof( display->raw.vehicleHead ), PLAYERSETTINGS_COMPONENT_HEAD );
+        PlayerSettings_NormalizeComponent( display->raw.vehicleRim, sizeof( display->raw.vehicleRim ), PLAYERSETTINGS_COMPONENT_RIM );
+        PlayerSettings_NormalizeComponent( display->raw.vehiclePlate, sizeof( display->raw.vehiclePlate ), PLAYERSETTINGS_COMPONENT_PLATE );
+
+        if ( display->raw.version != PROFILE_FILE_VERSION && display->raw.version != 2 && display->raw.version != 1 ) {
+                display->identifier[0] = '\0';
+                return qfalse;
+        }
 
 	display->raw.version = PROFILE_FILE_VERSION;
 	display->totalDistanceMeters = distanceMeters;
@@ -838,10 +924,14 @@ static void PlayerSettings_ReadLifetimeFromCvars( playerLifetimeDisplay_t *displ
         display->raw.totalDamageTaken = PlayerSettings_GetCvarInt( "ui_profile_totalDamageTaken" );
         display->raw.achievements = PlayerSettings_GetCvarInt( "ui_profile_achievements" );
 
-	trap_Cvar_VariableStringBuffer( "ui_profile_model", display->raw.vehicleModel, sizeof( display->raw.vehicleModel ) );
-	trap_Cvar_VariableStringBuffer( "ui_profile_head", display->raw.vehicleHead, sizeof( display->raw.vehicleHead ) );
-	trap_Cvar_VariableStringBuffer( "ui_profile_rim", display->raw.vehicleRim, sizeof( display->raw.vehicleRim ) );
-	trap_Cvar_VariableStringBuffer( "ui_profile_plate", display->raw.vehiclePlate, sizeof( display->raw.vehiclePlate ) );
+        trap_Cvar_VariableStringBuffer( "ui_profile_model", display->raw.vehicleModel, sizeof( display->raw.vehicleModel ) );
+        PlayerSettings_NormalizeComponent( display->raw.vehicleModel, sizeof( display->raw.vehicleModel ), PLAYERSETTINGS_COMPONENT_MODEL );
+        trap_Cvar_VariableStringBuffer( "ui_profile_head", display->raw.vehicleHead, sizeof( display->raw.vehicleHead ) );
+        PlayerSettings_NormalizeComponent( display->raw.vehicleHead, sizeof( display->raw.vehicleHead ), PLAYERSETTINGS_COMPONENT_HEAD );
+        trap_Cvar_VariableStringBuffer( "ui_profile_rim", display->raw.vehicleRim, sizeof( display->raw.vehicleRim ) );
+        PlayerSettings_NormalizeComponent( display->raw.vehicleRim, sizeof( display->raw.vehicleRim ), PLAYERSETTINGS_COMPONENT_RIM );
+        trap_Cvar_VariableStringBuffer( "ui_profile_plate", display->raw.vehiclePlate, sizeof( display->raw.vehiclePlate ) );
+        PlayerSettings_NormalizeComponent( display->raw.vehiclePlate, sizeof( display->raw.vehiclePlate ), PLAYERSETTINGS_COMPONENT_PLATE );
 
 	display->totalDistanceMeters = PlayerSettings_GetCvarFloat( "ui_profile_totalDistance" );
 	display->totalFuelConsumed = PlayerSettings_GetCvarFloat( "ui_profile_totalFuel" );
@@ -1514,8 +1604,9 @@ static void PlayerSettings_UpdateModel( void )
 	VectorClear( viewangles );
 	VectorClear( moveangles );
 
-	trap_Cvar_VariableStringBuffer( "plate", plate, sizeof( plate ) );
-	UI_PlayerInfo_SetModel( &s_playersettings.playerinfo, s_playersettings.modelskin, s_playersettings.rimskin, s_playersettings.headskin, plate);
+        trap_Cvar_VariableStringBuffer( "plate", plate, sizeof( plate ) );
+        PlayerSettings_NormalizeComponent( plate, sizeof( plate ), PLAYERSETTINGS_COMPONENT_PLATE );
+        UI_PlayerInfo_SetModel( &s_playersettings.playerinfo, s_playersettings.modelskin, s_playersettings.rimskin, s_playersettings.headskin, plate);
 	UI_PlayerInfo_SetInfo( &s_playersettings.playerinfo, LEGS_IDLE, TORSO_STAND, viewangles, moveangles, WP_NONE, qfalse );
 }
 // END
@@ -1645,6 +1736,7 @@ static void PlayerSettings_SaveFavorite(int favoriteIndex) {
     }
 
     trap_Cvar_VariableStringBuffer("rim", currentRim, sizeof(currentRim));
+    PlayerSettings_NormalizeComponent( currentRim, sizeof( currentRim ), PLAYERSETTINGS_COMPONENT_RIM );
     slot->wheelId = PlayerSettings_FindRimId(currentRim);
     slot->tuningId = 0;
 
@@ -1739,12 +1831,15 @@ PlayerSettings_Update
 =================
 */
 void PlayerSettings_Update( void ){
-	trap_Cvar_VariableStringBuffer( "rim", s_playersettings.rimskin, sizeof( s_playersettings.rimskin ) );
-	trap_Cvar_VariableStringBuffer( "head", s_playersettings.headskin, sizeof( s_playersettings.headskin ) );
-	trap_Cvar_VariableStringBuffer( "model", s_playersettings.modelskin, sizeof( s_playersettings.modelskin ) );
-	
-	PlayerSettings_UpdateFavorites();
-	PlayerSettings_UpdateModel();
+        trap_Cvar_VariableStringBuffer( "rim", s_playersettings.rimskin, sizeof( s_playersettings.rimskin ) );
+        PlayerSettings_NormalizeComponent( s_playersettings.rimskin, sizeof( s_playersettings.rimskin ), PLAYERSETTINGS_COMPONENT_RIM );
+        trap_Cvar_VariableStringBuffer( "head", s_playersettings.headskin, sizeof( s_playersettings.headskin ) );
+        PlayerSettings_NormalizeComponent( s_playersettings.headskin, sizeof( s_playersettings.headskin ), PLAYERSETTINGS_COMPONENT_HEAD );
+        trap_Cvar_VariableStringBuffer( "model", s_playersettings.modelskin, sizeof( s_playersettings.modelskin ) );
+        PlayerSettings_NormalizeComponent( s_playersettings.modelskin, sizeof( s_playersettings.modelskin ), PLAYERSETTINGS_COMPONENT_MODEL );
+
+        PlayerSettings_UpdateFavorites();
+        PlayerSettings_UpdateModel();
 }
 // END
 
@@ -1810,9 +1905,12 @@ static void PlayerSettings_SetMenuItems( void ) {
 	char		*slash;
 	qboolean	carFound;
 
-	trap_Cvar_VariableStringBuffer( "rim", s_playersettings.rimskin, sizeof( s_playersettings.rimskin ) );
-	trap_Cvar_VariableStringBuffer( "head", s_playersettings.headskin, sizeof( s_playersettings.headskin ) );
-	trap_Cvar_VariableStringBuffer( "model", s_playersettings.modelskin, sizeof( s_playersettings.modelskin ) );
+        trap_Cvar_VariableStringBuffer( "rim", s_playersettings.rimskin, sizeof( s_playersettings.rimskin ) );
+        PlayerSettings_NormalizeComponent( s_playersettings.rimskin, sizeof( s_playersettings.rimskin ), PLAYERSETTINGS_COMPONENT_RIM );
+        trap_Cvar_VariableStringBuffer( "head", s_playersettings.headskin, sizeof( s_playersettings.headskin ) );
+        PlayerSettings_NormalizeComponent( s_playersettings.headskin, sizeof( s_playersettings.headskin ), PLAYERSETTINGS_COMPONENT_HEAD );
+        trap_Cvar_VariableStringBuffer( "model", s_playersettings.modelskin, sizeof( s_playersettings.modelskin ) );
+        PlayerSettings_NormalizeComponent( s_playersettings.modelskin, sizeof( s_playersettings.modelskin ), PLAYERSETTINGS_COMPONENT_MODEL );
 // END
 
 	// name
