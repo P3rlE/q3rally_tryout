@@ -1813,10 +1813,12 @@ PlayerSettings_PicEvent
 */
 static void PlayerSettings_PicEvent( void* ptr, int event )
 {
+    int favoriteIndex;
+
     if (event != QM_ACTIVATED)
         return;
 
-    int favoriteIndex = ((menucommon_s*)ptr)->id - ID_FAVORITE1;
+    favoriteIndex = ((menucommon_s*)ptr)->id - ID_FAVORITE1;
     if (favoriteIndex < 0 || favoriteIndex >= Q3R_NUM_FAVORITE_SLOTS) {
         return;
     }
@@ -2028,6 +2030,8 @@ static void PlayerSettings_BuildList( void ){
 PlayerSettings_MenuInit
 =================
 */
+static const char *playerSettingsAchievementFilterItems[] = {"All", "Unlocked", "Locked", 0};
+
 static void PlayerSettings_MenuInit( void ) {
 	int		y;
 // STONELANCE
@@ -2116,12 +2120,11 @@ static void PlayerSettings_MenuInit( void ) {
     s_playersettings.stats_distance_driven.style = UI_LEFT | UI_SMALLFONT;
     s_playersettings.stats_distance_driven.color = color_white;
 
-    static const char *achievement_filter_items[] = {"All", "Unlocked", "Locked", 0};
     s_playersettings.achievements_filter.generic.type = MTYPE_SPINCONTROL;
     s_playersettings.achievements_filter.generic.flags = QMF_NODEFAULTINIT;
     s_playersettings.achievements_filter.generic.x = 100;
     s_playersettings.achievements_filter.generic.y = 80;
-    s_playersettings.achievements_filter.itemnames = achievement_filter_items;
+    s_playersettings.achievements_filter.itemnames = playerSettingsAchievementFilterItems;
     s_playersettings.achievements_filter.numitems = 3;
 
     for (i = 0; i < ACH_MAX; i++) {
