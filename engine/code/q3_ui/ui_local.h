@@ -34,7 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define UI_API_VERSION	4
 #include "../client/keycodes.h"
 #include "../game/bg_public.h"
-#include "q3r_profile.h"
+#include "../game/q3r_profile.h"
 
 extern q3r_profile_t cg_profile;
 
@@ -877,6 +877,7 @@ void			trap_FS_Read( void *buffer, int len, fileHandle_t f );
 void			trap_FS_Write( const void *buffer, int len, fileHandle_t f );
 void			trap_FS_FCloseFile( fileHandle_t f );
 int				trap_FS_GetFileList(  const char *path, const char *extension, char *listbuf, int bufsize );
+void				trap_FS_Delete( const char *path );
 int				trap_FS_Seek( fileHandle_t f, long offset, int origin ); // fsOrigin_t
 qhandle_t		trap_R_RegisterModel( const char *name );
 qhandle_t		trap_R_RegisterSkin( const char *name );

@@ -51,6 +51,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PROFILE_MIN_SELECTIONS 0
 #define PROFILE_SLOTS_CVAR     "ui_profile_slots"
 
+const achievement_def_t achievement_defs[ACH_MAX] = {
+    { ACH_FIRST_RACE_FINISHED, "first_race", "First Finish!", "Finish your first race.", ACH_TYPE_ONE_SHOT, 1.0f },
+    { ACH_10_RACES_FINISHED, "10_races", "Veteran Racer", "Finish 10 races.", ACH_TYPE_PROGRESS, 10.0f },
+    { ACH_100KM_DRIVEN, "100km_driven", "Long Distance Driver", "Drive 100 km total.", ACH_TYPE_PROGRESS, 100000.0f },
+    { ACH_10_WINS, "10_wins", "Champion", "Win 10 races.", ACH_TYPE_PROGRESS, 10.0f },
+    { ACH_DERBY_SPECIALIST, "derby_specialist", "Derby Specialist", "Win 5 Derby matches.", ACH_TYPE_PROGRESS, 5.0f }
+};
+
 typedef struct {
     menuframework_s menu;
     menulist_s      list;
@@ -93,7 +101,6 @@ static void UI_ProfileOverlay_RebuildList( void );
 static void UI_ProfileOverlay_CreateFromField( void );
 static void UI_ProfileOverlay_UpdateSelection( int index );
 static void UI_ProfileOverlay_UpdateButtonStates( void );
-static void UI_ProfileOverlay_SaveSlots( void );
 static void UI_ProfileOverlay_UpdateCreateLabel( void );
 static qboolean UI_ProfileOverlay_ShouldForcePrompt( void );
 static void UI_ProfileOverlay_EnsureSelection( void );
@@ -154,7 +161,7 @@ void Q3R_AchievementNotify_Update(void) {
 void Q3R_AchievementNotify_Draw(void) {
     Q3R_AchievementNotify_Update();
     for (int i = 0; i < notification_count; i++) {
-        achievement_def_t *def = &achievement_defs[achievement_notifications[i].id];
+        const achievement_def_t *def = &achievement_defs[achievement_notifications[i].id];
         UI_DrawProportionalString(320, 100 + i * 40, va("Achievement Unlocked: %s", def->title), UI_CENTER | UI_SMALLFONT, colorWhite);
     }
 }
@@ -162,13 +169,11 @@ void Q3R_AchievementNotify_Draw(void) {
 qboolean Q3R_Profile_Save(const q3r_profile_t *profile) {
     fileHandle_t f;
     char path[MAX_QPATH];
-    int len;
 
     if (!profile) return qfalse;
 
     Com_sprintf(path, sizeof(path), "%s/%s%s", PROFILES_PATH, profile->playerName, PROFILE_EXTENSION);
-    len = trap_FS_FOpenFile(path, &f, FS_WRITE);
-    if (!f) {
+    if (trap_FS_FOpenFile(path, &f, FS_WRITE) < 0 || !f) {
         Com_Printf("Failed to open profile for writing: %s\n", path);
         return qfalse;
     }
@@ -383,6 +388,11 @@ qboolean Q3R_Profile_Load(const char *name) {
     Com_sprintf(path, sizeof(path), "%s/%s%s", PROFILES_PATH, name, PROFILE_EXTENSION);
     len = trap_FS_FOpenFile(path, &f, FS_READ);
     if (!f) {
+        return qfalse;
+    }
+
+    if (len < (int)(strlen(Q3R_PROFILE_HEADER) + sizeof(q3r_profile_t))) {
+        trap_FS_FCloseFile(f);
         return qfalse;
     }
 
@@ -705,16 +715,12 @@ static qboolean UI_ProfileOverlay_ShouldForcePrompt( void ) {
 }
 
 static void UI_ProfileOverlay_Show( qboolean forceCreate ) {
-    qboolean hadSelection;
-
     if ( uis.activemenu == &s_profileOverlay.menu ) {
         return;
     }
 
     UI_ProfileOverlay_InitMenu();
     UI_ProfileOverlay_RebuildList();
-
-    hadSelection = ( s_profileOverlay.profileCount > 0 );
 
     if ( s_profileOverlay.profileCount > 0 ) {
         UI_ProfileOverlay_EnsureSelection();
