@@ -1641,6 +1641,13 @@ static void CG_ServerCommand( void ) {
                 CG_HandleServerNotification( identifier );
                 return;
         }
+
+    if ( !strcmp( cmd, "ach_prog" ) ) {
+        int id = atoi(CG_Argv(1));
+        float progress = atof(CG_Argv(2));
+        Q3R_Achievements_UpdateProgress_Cmd(id, progress);
+        return;
+    }
 // END
 
         CG_Printf( "Unknown client game command: %s\n", cmd );

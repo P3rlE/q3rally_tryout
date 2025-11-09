@@ -1008,7 +1008,11 @@ static void G_ProfileAccumulatePhysics( gentity_t *ent ) {
 	VectorSubtract( client->ps.origin, client->profileLastOrigin, delta );
 	distanceQu = VectorLength( delta );
 	if ( distanceQu > 0.0f ) {
-		client->profileDistanceAccum += distanceQu / CP_M_2_QU;
+		float distanceMeters = distanceQu / CP_M_2_QU;
+		client->profileDistanceAccum += distanceMeters;
+		if (G_IsEntityClient(ent - g_entities)) {
+			G_UpdatePlayerAchievementProgress(ent - g_entities, ACH_100KM_DRIVEN, distanceMeters);
+		}
 	}
 	VectorCopy( client->ps.origin, client->profileLastOrigin );
 

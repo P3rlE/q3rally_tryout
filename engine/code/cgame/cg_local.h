@@ -1571,6 +1571,7 @@ const char *CG_Argv( int arg );
 
 void QDECL CG_Printf( const char *msg, ... ) __attribute__ ((format (printf, 1, 2)));
 void QDECL CG_Error( const char *msg, ... ) __attribute__ ((noreturn, format (printf, 1, 2)));
+void Q3R_Achievements_UpdateProgress_Cmd(int id, float progress);
 // Q3Rally Code Start
 void QDECL CG_DebugLogPrintf( const char *fmt, ... ) __attribute__ ((format (printf, 1, 2)));
 // Q3Rally Code END
