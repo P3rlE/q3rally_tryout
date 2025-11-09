@@ -64,7 +64,6 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
 
 	case UI_REFRESH:
 		UI_Refresh( arg0 );
-		Q3R_AchievementNotify_Draw();
 		return 0;
 
 	case UI_IS_FULLSCREEN:
@@ -75,23 +74,6 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
 		return 0;
 
 	case UI_CONSOLE_COMMAND:
-		{
-			char buffer[1024];
-			trap_Argv(0, buffer, sizeof(buffer));
-			if (Q_stricmp(buffer, "name") == 0 && cg_profile.playerName[0] != '\0') {
-				trap_Print("Cannot change name when a profile is active.\n");
-				return qtrue;
-			}
-
-			if (Q_stricmp(buffer, "ui_ach_prog") == 0) {
-				char id_str[16];
-				char progress_str[16];
-				trap_Argv(1, id_str, sizeof(id_str));
-				trap_Argv(2, progress_str, sizeof(progress_str));
-				Q3R_Achievements_UpdateProgress(atoi(id_str), atof(progress_str));
-				return qtrue; // Command was handled
-			}
-		}
 		return UI_ConsoleCommand(arg0);
 
 	case UI_DRAW_CONNECT_SCREEN:
@@ -147,11 +129,6 @@ vmCvar_t	ui_dm_timelimit;
 vmCvar_t	ui_racing_tracklength;
 vmCvar_t	ui_racing_trackreversed;
 // END
-
-vmCvar_t	ui_profile;
-vmCvar_t	ui_profileSelected;
-vmCvar_t	ui_profileSlot[UI_MAX_PROFILE_SLOTS];
-vmCvar_t	ui_profilePromptShown;
 
 vmCvar_t	ui_team_fraglimit;
 vmCvar_t	ui_team_timelimit;
@@ -275,17 +252,6 @@ static cvarTable_t		cvarTable[] = {
 
 	{ &ui_racing_tracklength, "ui_racing_tracklength", "1", CVAR_ARCHIVE },
 	{ &ui_racing_trackreversed, "ui_racing_trackreversed",  "0", CVAR_ARCHIVE },
-	{ &ui_profile, "profile", "", CVAR_USERINFO|CVAR_ARCHIVE },
-	{ &ui_profileSelected, "ui_profileSelected", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[0], "ui_profileSlot0", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[1], "ui_profileSlot1", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[2], "ui_profileSlot2", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[3], "ui_profileSlot3", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[4], "ui_profileSlot4", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[5], "ui_profileSlot5", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[6], "ui_profileSlot6", "", CVAR_ARCHIVE },
-	{ &ui_profileSlot[7], "ui_profileSlot7", "", CVAR_ARCHIVE },
-	{ &ui_profilePromptShown, "ui_profilePromptShown", "0", CVAR_TEMP },
 
 	{ &ui_arenasFile, "g_arenasFile", "", CVAR_INIT|CVAR_ROM },
 	{ &ui_botsFile, "g_botsFile", "", CVAR_INIT|CVAR_ROM },

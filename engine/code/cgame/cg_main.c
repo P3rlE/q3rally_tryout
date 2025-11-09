@@ -144,8 +144,6 @@ vmCvar_t	cg_drawCrosshair;
 vmCvar_t	cg_drawCrosshairNames;
 vmCvar_t	cg_drawRewards;
 vmCvar_t	cg_drawScores;
-vmCvar_t	cg_scoreboardTab;
-vmCvar_t	cg_scoreboardMockData;
 vmCvar_t	cg_drawPickups;
 vmCvar_t	cg_drawWeaponBar;
 vmCvar_t	cg_drawStatusHead;
@@ -271,7 +269,6 @@ vmCvar_t	cg_atmosphericLevel;
 
 vmCvar_t	cg_fpsLimit;
 vmCvar_t	cg_autodrop;
-vmCvar_t	cg_profile;
 vmCvar_t	cg_drawPositionSprites;
 vmCvar_t	cg_tightCamTracking;
 vmCvar_t	cg_rearViewRenderLevel;
@@ -319,8 +316,6 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_drawCrosshairNames, "cg_drawCrosshairNames", "1", CVAR_ARCHIVE },
 	{ &cg_drawRewards, "cg_drawRewards", "1", CVAR_ARCHIVE },
     { &cg_drawScores, "cg_drawScores", "1", CVAR_ARCHIVE },
-    { &cg_scoreboardTab, "cg_scoreboardTab", "0", CVAR_ARCHIVE },
-    { &cg_scoreboardMockData, "cg_scoreboardMockData", "0", 0 },
 	{ &cg_drawPickups, "cg_drawPickups", "1", CVAR_ARCHIVE },
 	{ &cg_drawWeaponBar, "cg_drawWeaponBar", "1", CVAR_ARCHIVE },
 	{ &cg_drawStatusHead, "cg_drawStatusHead", "1", CVAR_ARCHIVE },
@@ -388,7 +383,6 @@ static cvarTable_t cvarTable[] = {
 
 	{ &cg_fpsLimit, "cg_fpsLimit", "60", CVAR_ARCHIVE },
 	{ &cg_autodrop, "cg_autodrop", "0", CVAR_ARCHIVE | CVAR_USERINFO },
-    { &cg_profile, "cg_profile", "", CVAR_ARCHIVE },
 	{ &cg_drawPositionSprites, "cg_drawPositionSprites", "1", CVAR_ARCHIVE },
 
 	{ &cg_tightCamTracking, "cg_tightCamTracking", "0", CVAR_ARCHIVE },
@@ -497,14 +491,10 @@ void CG_RegisterCvars( void ) {
 	trap_Cvar_Register(NULL, "head", DEFAULT_HEAD, CVAR_USERINFO | CVAR_ARCHIVE );
 	trap_Cvar_Register(NULL, "rim", DEFAULT_RIM, CVAR_USERINFO | CVAR_ARCHIVE );
 	trap_Cvar_Register(NULL, "plate", DEFAULT_PLATE_SKIN, CVAR_USERINFO | CVAR_ARCHIVE );
-	trap_Cvar_Register(NULL, "profile", "", CVAR_USERINFO | CVAR_ARCHIVE );
 	// UPDATE: remove team versions?
 // Q3Rally Code END
-    trap_Cvar_Register(NULL, "profile", "", CVAR_USERINFO );
 	trap_Cvar_Register(NULL, "team_model", DEFAULT_TEAM_MODEL, CVAR_USERINFO | CVAR_ARCHIVE );
 	trap_Cvar_Register(NULL, "team_headmodel", DEFAULT_TEAM_HEAD, CVAR_USERINFO | CVAR_ARCHIVE );
-
-	CG_UpdateProfileUserinfo();
 }
 
 /*																																			
@@ -1106,7 +1096,6 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.checkpointArrow = trap_R_RegisterModel("gfx/hud/arrow.md3");
     cgs.media.gaugeImperial = trap_R_RegisterShaderNoMip("gfx/hud/gauge01" );
     cgs.media.gaugeMetric = trap_R_RegisterShaderNoMip("gfx/hud/gauge_metric" );
-    cgs.media.scoreboardCursor = trap_R_RegisterShaderNoMip("menu/art/3_cursor2" );
 // Q3Rally Code END
 
 	// powerup shaders
@@ -2196,17 +2185,6 @@ void CG_AssetCache( void ) {
 #endif
 /*
 =================
-Q3R_Achievements_UpdateProgress_Cmd
-
-Receives an achievement progress update from the server and forwards it to the UI module.
-=================
-*/
-void Q3R_Achievements_UpdateProgress_Cmd(int id, float progress) {
-    trap_SendConsoleCommand(va("ui_ach_prog %d %f", id, progress));
-}
-
-/*
-=================
 CG_Init
 
 Called after every level change or subsystem restart
@@ -2422,13 +2400,9 @@ void CG_EventHandling(int type) {
 
 
 void CG_KeyEvent(int key, qboolean down) {
-    if (CG_ScoreboardKeyEvent(key, down)) {
-        return;
-    }
 }
 
 void CG_MouseEvent(int x, int y) {
-    CG_ScoreboardMouseMove(x, y);
 }
 #endif
 

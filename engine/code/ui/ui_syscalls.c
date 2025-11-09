@@ -106,31 +106,27 @@ void trap_Cmd_ExecuteText( int exec_when, const char *text ) {
 }
 
 int trap_FS_FOpenFile( const char *qpath, fileHandle_t *f, fsMode_t mode ) {
-        return syscall( UI_FS_FOPENFILE, qpath, f, mode );
+	return syscall( UI_FS_FOPENFILE, qpath, f, mode );
 }
 
 void trap_FS_Read( void *buffer, int len, fileHandle_t f ) {
-        syscall( UI_FS_READ, buffer, len, f );
+	syscall( UI_FS_READ, buffer, len, f );
 }
 
 void trap_FS_Write( const void *buffer, int len, fileHandle_t f ) {
-        syscall( UI_FS_WRITE, buffer, len, f );
+	syscall( UI_FS_WRITE, buffer, len, f );
 }
 
 void trap_FS_FCloseFile( fileHandle_t f ) {
-        syscall( UI_FS_FCLOSEFILE, f );
+	syscall( UI_FS_FCLOSEFILE, f );
 }
 
 int trap_FS_GetFileList(  const char *path, const char *extension, char *listbuf, int bufsize ) {
-        return syscall( UI_FS_GETFILELIST, path, extension, listbuf, bufsize );
-}
-
-void trap_FS_Delete( const char *path ) {
-        syscall( UI_FS_DELETE, path );
+	return syscall( UI_FS_GETFILELIST, path, extension, listbuf, bufsize );
 }
 
 int trap_FS_Seek( fileHandle_t f, long offset, int origin ) {
-        return syscall( UI_FS_SEEK, f, offset, origin );
+	return syscall( UI_FS_SEEK, f, offset, origin );
 }
 
 qhandle_t trap_R_RegisterModel( const char *name ) {

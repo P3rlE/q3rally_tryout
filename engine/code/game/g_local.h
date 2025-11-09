@@ -27,7 +27,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "bg_public.h"
 #include "bg_ladder.h"
 #include "g_public.h"
-#include "g_profile.h"
 
 //==================================================================
 
@@ -89,6 +88,7 @@ typedef enum {
 
 typedef struct gentity_s gentity_t;
 typedef struct gclient_s gclient_t;
+
 struct gentity_s {
 	entityState_t	s;				// communicated by server to clients
 	entityShared_t	r;				// shared by both the server system and game
@@ -422,14 +422,6 @@ struct gclient_s {
 	int			lapTimeCount;
 	int			recordedLaps[LADDER_MAX_LAP_TIMES];
 	int			recordedLapCount;
-	float		profileDistanceAccum;
-	float		profileFuelUsedAccum;
-	vec3_t	profileLastOrigin;
-	float		profileLastFuel;
-	qboolean	profileTrackValid;
-	char		profileId[MAX_QPATH];
-	char		profileIdentifier[MAX_QPATH];
-	profileLifetime_t	profileLifetime;
 // END
 
 	char		*areabits;
@@ -540,7 +532,6 @@ typedef struct {
 	int			eliminationInitialPlayers;
 	qboolean	eliminationSetupComplete;
 	int			numberOfLaps;
-	qboolean	derbyWinner;
 
 	// map variables
 	int			numCheckpoints;
@@ -622,7 +613,6 @@ void SaveRegisteredItems( void );
 //
 // g_utils.c
 //
-qboolean G_IsEntityClient( int entityNum );
 // STONELANCE
 int		G_ScriptIndex( char *name );
 void	Rally_Sound( gentity_t *ent, int event, int channel, int soundIndex );
@@ -770,10 +760,6 @@ void player_die (gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 void AddScore( gentity_t *ent, vec3_t origin, int score );
 void CalculateRanks( void );
 qboolean SpotWouldTelefrag( gentity_t *spot );
-void G_ClientRefreshProfileLifetime( int clientNum, qboolean sendCommand );
-void G_ProfileSendLifetimeCommand( int clientNum, const profileLifetime_t *lifetime );
-void G_ProfileUpdateForClient( gclient_t *client );
-qboolean G_ProfileGetLifetimeForClient( gclient_t *client, profileLifetime_t *lifetime );
 
 //
 // g_svcmds.c
@@ -873,7 +859,6 @@ void DeathmatchScoreboardMessage( gentity_t *ent );
 //
 // g_main.c
 //
-void G_UpdatePlayerAchievementProgress(int clientNum, int id, float progress);
 void MoveClientToIntermission( gentity_t *ent );
 void FindIntermissionPoint( void );
 void SetLeader(int team, int client);

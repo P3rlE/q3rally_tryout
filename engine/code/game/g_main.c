@@ -23,7 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 
 #include "g_local.h"
-#include "q3r_profile.h"
 
 level_locals_t	level;
 
@@ -1801,21 +1800,6 @@ void QDECL G_DebugLogPrintf( const char *fmt, ... ) {
 
 
 /*
-=================
-G_UpdatePlayerAchievementProgress
-
-Tell the client that an achievement has made progress.
-=================
-*/
-void G_UpdatePlayerAchievementProgress(int clientNum, int id, float progress) {
-    // The game module can't directly modify the profile, which lives in the UI module.
-    // Instead, we send a command to the client. The client's cgame module should
-    // receive this and forward it to the UI module to handle the update.
-    trap_SendServerCommand(clientNum, va("ach_prog %d %.2f", id, progress));
-}
-
-
-/*
 ================
 LogExit
 
@@ -1882,20 +1866,6 @@ void LogExit( const char *string ) {
         }
 
         G_LadderSubmitMatchReport( string );
-
-        for ( i = 0; i < level.maxclients; ++i ) {
-                gclient_t *client = &level.clients[i];
-
-                if ( client->pers.connected != CON_CONNECTED ) {
-                        continue;
-                }
-                G_ProfileUpdateForClient( client );
-                client->profileDistanceAccum = 0.0f;
-                client->profileFuelUsedAccum = 0.0f;
-                client->profileTrackValid = qfalse;
-                VectorClear( client->profileLastOrigin );
-                client->profileLastFuel = 0.0f;
-        }
 
 #ifdef MISSIONPACK
         if (g_singlePlayer.integer) {
@@ -2138,11 +2108,6 @@ void CheckExitRules( void ) {
 
 			trap_SendServerCommand( -1, va("print \"%s won the demolition derby!\n\"", winner->pers.netname ));
 			trap_SendServerCommand( level.winnerNumber, "cp \"You won the demolition derby!\n\"");
-
-            if (!level.derbyWinner) {
-                level.derbyWinner = qtrue;
-                G_UpdatePlayerAchievementProgress(level.winnerNumber, ACH_DERBY_SPECIALIST, 1);
-            }
 		}
 
 		return;

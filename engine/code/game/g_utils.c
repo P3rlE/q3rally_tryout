@@ -765,7 +765,3 @@ qboolean visible( gentity_t *ent1, gentity_t *ent2 ) {
 
 	return qtrue;
 }
-
-qboolean G_IsEntityClient( int entityNum ) {
-    return entityNum >= 0 && entityNum < MAX_CLIENTS;
-}
