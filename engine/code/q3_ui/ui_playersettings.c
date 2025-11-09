@@ -216,6 +216,7 @@ typedef struct {
 	char				modelskin[MAX_QPATH];
 	char				rimskin[MAX_QPATH];
 	char				headskin[MAX_QPATH];
+	char				modelDisplayName[MAX_QPATH];
 
 	char				favIcons[NUM_FAVORITES][MAX_QPATH];
 	qboolean			modelChanged;
@@ -1559,6 +1560,25 @@ static int PlayerSettings_BuildPaintList( const char *carModel, char paintList[M
     return UI_BuildFileList( va( "models/players/%s", carModel ), "skin", "", qtrue, qfalse, qtrue, 0, paintList );
 }
 
+
+static void PlayerSettings_SetDisplayedModelName( const char *modelPath ) {
+    const char *base;
+
+    if ( !modelPath || !*modelPath ) {
+        s_playersettings.modelDisplayName[0] = '\0';
+    } else {
+        base = strrchr( modelPath, '/' );
+        if ( base ) {
+            base++;
+        } else {
+            base = modelPath;
+        }
+        Q_strncpyz( s_playersettings.modelDisplayName, base, sizeof( s_playersettings.modelDisplayName ) );
+    }
+
+    s_playersettings.modelname.string = s_playersettings.modelDisplayName;
+}
+
 static int PlayerSettings_FindPaintId(const char* paintName) {
     char cleanPaintName[MAX_QPATH];
     char paintList[MAX_PLAYERMODELS][MAX_QPATH];
@@ -1649,7 +1669,7 @@ static void PlayerSettings_LoadFavorite(int favoriteIndex) {
     }
 
     s_playersettings.selectedModel = slot->carId;
-    s_playersettings.modelname.string = s_playersettings.modelList[s_playersettings.selectedModel];
+    PlayerSettings_SetDisplayedModelName( s_playersettings.modelList[s_playersettings.selectedModel] );
 
     carModel = s_playersettings.modelList[s_playersettings.selectedModel];
     numPaints = PlayerSettings_BuildPaintList(carModel, paintList);
@@ -1828,7 +1848,7 @@ static void PlayerSettings_SetMenuItems( void ) {
 		if (!Q_stricmp( modelName, s_playersettings.modelList[i] )){
 			// found pic, set selection here
 			s_playersettings.selectedModel = i;
-			s_playersettings.modelname.string = s_playersettings.modelList[s_playersettings.selectedModel];
+			PlayerSettings_SetDisplayedModelName( s_playersettings.modelList[s_playersettings.selectedModel] );
 			carFound = qtrue;
 			break;
 		}
@@ -1839,7 +1859,7 @@ static void PlayerSettings_SetMenuItems( void ) {
 
 		// get model
 		Com_sprintf( s_playersettings.modelskin, sizeof(s_playersettings.modelskin), "%s/%s", s_playersettings.modelList[s_playersettings.selectedModel], DEFAULT_SKIN);
-		s_playersettings.modelname.string = s_playersettings.modelList[s_playersettings.selectedModel];
+		PlayerSettings_SetDisplayedModelName( s_playersettings.modelList[s_playersettings.selectedModel] );
 		s_playersettings.modelChanged = qtrue;
 	}
 
@@ -1977,7 +1997,7 @@ static void PlayerSettings_MenuEvent( void* ptr, int event ) {
 
 			//Com_Printf("PS: modelskin set to: %s\n", s_playersettings.modelskin);
 
-			s_playersettings.modelname.string = s_playersettings.modelList[s_playersettings.selectedModel];
+			PlayerSettings_SetDisplayedModelName( s_playersettings.modelList[s_playersettings.selectedModel] );
 
 			//Com_Printf("PS: modelname set to: %s\n", s_playersettings.modelname.string);
 
@@ -2000,7 +2020,7 @@ static void PlayerSettings_MenuEvent( void* ptr, int event ) {
 
 			//Com_Printf("PS: modelskin set to: %s\n", s_playersettings.modelskin);
 
-			s_playersettings.modelname.string = s_playersettings.modelList[s_playersettings.selectedModel];
+			PlayerSettings_SetDisplayedModelName( s_playersettings.modelList[s_playersettings.selectedModel] );
 
 			//Com_Printf("PS: modelname set to: %s\n", s_playersettings.modelname.string);
 
@@ -2096,7 +2116,6 @@ static void PlayerSettings_MenuInit( void ) {
 	int		y;
 // STONELANCE
 	int		i, j, x;
-	static char	modelname[32];
 // END
 
 	memset(&s_playersettings,0,sizeof(playersettings_t));
@@ -2479,7 +2498,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.modelname.generic.flags  = QMF_CENTER_JUSTIFY|QMF_INACTIVE;
 	s_playersettings.modelname.generic.x	  = 320;
 	s_playersettings.modelname.generic.y	  = y + 4;
-	s_playersettings.modelname.string	      = modelname;
+	PlayerSettings_SetDisplayedModelName( NULL );
 	s_playersettings.modelname.style		  = UI_CENTER;
 	s_playersettings.modelname.color          = text_color_normal;
 
