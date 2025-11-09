@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "ui_local.h"
 #include "../game/q3r_profile.h"
 #include "../game/g_profile.h"
+#include <stddef.h>
 
 #ifndef INT_MAX
 #define INT_MAX 0x7fffffff
