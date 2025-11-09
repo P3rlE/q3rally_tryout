@@ -1322,6 +1322,7 @@ void UI_Init( void ) {
 
         UI_RegisterCvars();
 
+        UI_ProfileOverlay_ResetSession();
         UI_InitRand();
         UI_InitGameinfo();
 
