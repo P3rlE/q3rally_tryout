@@ -215,8 +215,10 @@ static int gamecodetoui[] = {4,2,3,0,5,1,6};
 static int uitogamecode[] = {4,6,2,3,1,5,7};
 
 static void PlayerSettings_SetTab(profile_tab_t tab) {
+    int i;
+
     s_playersettings.current_tab = tab;
-    for (int i = 0; i < NUM_TABS; i++) {
+    for (i = 0; i < NUM_TABS; i++) {
         s_playersettings.tabs[i].color = (i == tab) ? text_color_highlight : text_color_normal;
     }
 
@@ -238,7 +240,7 @@ static void PlayerSettings_SetTab(profile_tab_t tab) {
 
     // Achievements
     s_playersettings.achievements_filter.generic.flags = (tab == TAB_ACHIEVEMENTS) ? QMF_NODEFAULTINIT : QMF_HIDDEN;
-    for (int i = 0; i < ACH_MAX; i++) {
+    for (i = 0; i < ACH_MAX; i++) {
         s_playersettings.achievements_list[i].generic.flags = (tab == TAB_ACHIEVEMENTS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
     }
 }
@@ -1520,10 +1522,12 @@ static void PlayerSettings_DrawPlayer( void *self ) {
 
 static int PlayerSettings_FindPaintId(const char* paintName) {
     char cleanPaintName[MAX_QPATH];
+    int i;
+
     Q_strncpyz(cleanPaintName, paintName, sizeof(cleanPaintName));
     COM_StripExtension(cleanPaintName, cleanPaintName, sizeof(cleanPaintName));
 
-    for (int i = 0; i < s_playersettings.numModels; i++) {
+    for (i = 0; i < s_playersettings.numModels; i++) {
         if (Q_stricmp(s_playersettings.modelList[i], cleanPaintName) == 0) {
             return i;
         }
@@ -1533,10 +1537,12 @@ static int PlayerSettings_FindPaintId(const char* paintName) {
 
 static int PlayerSettings_FindRimId(const char* rimName) {
     char cleanRimName[MAX_QPATH];
+    int i;
+
     Q_strncpyz(cleanRimName, rimName, sizeof(cleanRimName));
     COM_StripExtension(cleanRimName, cleanRimName, sizeof(cleanRimName));
 
-    for (int i = 0; i < s_playersettings.numRims; i++) {
+    for (i = 0; i < s_playersettings.numRims; i++) {
         if (Q_stricmp(s_playersettings.rimList[i], cleanRimName) == 0) {
             return i;
         }
@@ -1607,7 +1613,9 @@ PlayerSettings_UpdateFavorites
 =================
 */
 static void PlayerSettings_UpdateFavorites( void ) {
-    for (int i = 0; i < Q3R_NUM_FAVORITE_SLOTS; i++) {
+    int i;
+
+    for (i = 0; i < Q3R_NUM_FAVORITE_SLOTS; i++) {
         q3r_favorite_slot_t* slot = &cg_profile.favoriteSlots[i];
         if (slot->carId >= 0 && slot->carId < s_playersettings.allModels) {
             const char* carModel = s_playersettings.modelList[slot->carId];
@@ -2101,7 +2109,7 @@ static void PlayerSettings_MenuInit( void ) {
     s_playersettings.achievements_filter.itemnames = achievement_filter_items;
     s_playersettings.achievements_filter.numitems = 3;
 
-    for (int i = 0; i < ACH_MAX; i++) {
+    for (i = 0; i < ACH_MAX; i++) {
         s_playersettings.achievements_list[i].generic.type = MTYPE_PTEXT;
         s_playersettings.achievements_list[i].generic.flags = QMF_LEFT_JUSTIFY;
         s_playersettings.achievements_list[i].generic.x = 100;
@@ -2513,7 +2521,7 @@ static void PlayerSettings_MenuInit( void ) {
 // END
 
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.banner );
-    for (int i = 0; i < NUM_TABS; i++) {
+    for (i = 0; i < NUM_TABS; i++) {
         Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.tabs[i]);
     }
 
@@ -2543,7 +2551,7 @@ static void PlayerSettings_MenuInit( void ) {
     Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.stats_distance_driven);
 
     Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.achievements_filter);
-    for (int i = 0; i < ACH_MAX; i++) {
+    for (i = 0; i < ACH_MAX; i++) {
         Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.achievements_list[i]);
     }
 
