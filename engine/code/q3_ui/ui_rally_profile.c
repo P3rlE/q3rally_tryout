@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "ui_local.h"
 #include "../game/bg_public.h"
-#include "q3r_profile.h"
+#include "../game/q3r_profile.h"
 
 #define PROFILES_PATH          "profiles"
 #define PROFILE_EXTENSION      ".dat"
