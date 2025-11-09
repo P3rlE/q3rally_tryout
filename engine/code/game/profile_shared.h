@@ -1,7 +1,7 @@
 #ifndef PROFILE_SHARED_H
 #define PROFILE_SHARED_H
 
-#include "q_shared.h"
+#include "../qcommon/q_shared.h"
 
 #define PROFILE_MAX_NAME 32
 
