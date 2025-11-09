@@ -1800,6 +1800,21 @@ void QDECL G_DebugLogPrintf( const char *fmt, ... ) {
 
 
 /*
+=================
+G_UpdatePlayerAchievementProgress
+
+Tell the client that an achievement has made progress.
+=================
+*/
+void G_UpdatePlayerAchievementProgress(int clientNum, int id, float progress) {
+    // The game module can't directly modify the profile, which lives in the UI module.
+    // Instead, we send a command to the client. The client's cgame module should
+    // receive this and forward it to the UI module to handle the update.
+    trap_SendServerCommand(clientNum, va("ach_prog %d %.2f", id, progress));
+}
+
+
+/*
 ================
 LogExit
 
@@ -2122,6 +2137,11 @@ void CheckExitRules( void ) {
 
 			trap_SendServerCommand( -1, va("print \"%s won the demolition derby!\n\"", winner->pers.netname ));
 			trap_SendServerCommand( level.winnerNumber, "cp \"You won the demolition derby!\n\"");
+
+            if (!level.derbyWinner) {
+                level.derbyWinner = qtrue;
+                G_UpdatePlayerAchievementProgress(level.winnerNumber, ACH_DERBY_SPECIALIST, 1);
+            }
 		}
 
 		return;

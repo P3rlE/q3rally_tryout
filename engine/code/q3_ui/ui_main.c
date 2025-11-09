@@ -64,6 +64,7 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
 
 	case UI_REFRESH:
 		UI_Refresh( arg0 );
+		Q3R_AchievementNotify_Draw();
 		return 0;
 
 	case UI_IS_FULLSCREEN:
@@ -74,6 +75,23 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
 		return 0;
 
 	case UI_CONSOLE_COMMAND:
+		{
+			char buffer[1024];
+			trap_Argv(0, buffer, sizeof(buffer));
+			if (Q_stricmp(buffer, "name") == 0 && cg_profile.playerName[0] != '\0') {
+				trap_Print("Cannot change name when a profile is active.\n");
+				return qtrue;
+			}
+
+			if (Q_stricmp(buffer, "ui_ach_prog") == 0) {
+				char id_str[16];
+				char progress_str[16];
+				trap_Argv(1, id_str, sizeof(id_str));
+				trap_Argv(2, progress_str, sizeof(progress_str));
+				Q3R_Achievements_UpdateProgress(atoi(id_str), atof(progress_str));
+				return qtrue; // Command was handled
+			}
+		}
 		return UI_ConsoleCommand(arg0);
 
 	case UI_DRAW_CONNECT_SCREEN:

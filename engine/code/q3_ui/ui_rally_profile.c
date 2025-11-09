@@ -23,6 +23,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "ui_local.h"
 #include "../game/bg_public.h"
+#include "q3r_profile.h"
+
+#define PROFILES_PATH          "profiles"
+#define PROFILE_EXTENSION      ".dat"
 
 #define ID_PROFILE_LIST        110
 #define ID_PROFILE_CREATE      111
@@ -68,6 +72,26 @@ typedef struct {
 static profileOverlay_t s_profileOverlay;
 static qboolean         s_profileOverlayInitialized;
 static qboolean         s_profileOverlayShownThisSession;
+q3r_profile_t    cg_profile;
+
+static achievement_def_t achievement_defs[ACH_MAX] = {
+    { ACH_FIRST_RACE_FINISHED, "first_race", "First Finish!", "Finish your first race.", ACH_TYPE_ONE_SHOT, 1.0f },
+    { ACH_10_RACES_FINISHED, "10_races", "Veteran Racer", "Finish 10 races.", ACH_TYPE_PROGRESS, 10.0f },
+    { ACH_100KM_DRIVEN, "100km_driven", "Long Distance Driver", "Drive 100 km total.", ACH_TYPE_PROGRESS, 100000.0f },
+    { ACH_10_WINS, "10_wins", "Champion", "Win 10 races.", ACH_TYPE_PROGRESS, 10.0f },
+    { ACH_DERBY_SPECIALIST, "derby_specialist", "Derby Specialist", "Win 5 Derby matches.", ACH_TYPE_PROGRESS, 5.0f }
+};
+
+#define MAX_NOTIFICATIONS 4
+#define NOTIFICATION_DURATION 4000
+
+typedef struct {
+    achievement_id_t id;
+    int startTime;
+} achievement_notification_t;
+
+static achievement_notification_t achievement_notifications[MAX_NOTIFICATIONS];
+static int notification_count = 0;
 
 static const vec4_t profileOverlayBackdrop = { 0.0f, 0.0f, 0.0f, 0.75f };
 static const vec4_t profileOverlayPanel    = { 0.08f, 0.08f, 0.08f, 0.92f };
@@ -85,6 +109,83 @@ static void UI_ProfileOverlay_Show( qboolean forceCreate );
 static void UI_ProfileOverlay_ResetNameField( void );
 static void UI_ProfileOverlay_GetSanitizedFieldText( char *output, size_t size );
 static void UI_ProfileOverlay_UpdateButtonBounds( menutext_s *text );
+static qboolean Q3R_Profile_Load( const char *name );
+void Q3R_AchievementNotify_Push(achievement_id_t id);
+
+void Q3R_Achievements_Unlock(achievement_id_t id) {
+    if (cg_profile.achievements[id].unlocked) return;
+    cg_profile.achievements[id].unlocked = qtrue;
+    cg_profile.achievements[id].unlockTime = trap_Milliseconds();
+    Q3R_Profile_Save(&cg_profile);
+    Q3R_AchievementNotify_Push(id);
+}
+
+void Q3R_Achievements_UpdateProgress(achievement_id_t id, float progress) {
+    if (cg_profile.achievements[id].unlocked) return;
+    cg_profile.achievements[id].progress += progress;
+    if (cg_profile.achievements[id].progress >= achievement_defs[id].target) {
+        Q3R_Achievements_Unlock(id);
+    }
+}
+
+void Q3R_Profile_InitDefaults(q3r_profile_t *profile, const char *name) {
+    if (!profile) return;
+    Com_Memset(profile, 0, sizeof(q3r_profile_t));
+    profile->version = Q3R_PROFILE_VERSION;
+    Q_strncpyz(profile->playerName, name, sizeof(profile->playerName));
+    // Initialize other fields to default values
+}
+
+void Q3R_AchievementNotify_Push(achievement_id_t id) {
+    if (notification_count < MAX_NOTIFICATIONS) {
+        achievement_notifications[notification_count].id = id;
+        achievement_notifications[notification_count].startTime = trap_Milliseconds();
+        notification_count++;
+    }
+}
+
+void Q3R_AchievementNotify_Update(void) {
+    int i = 0;
+    while (i < notification_count) {
+        if (trap_Milliseconds() - achievement_notifications[i].startTime > NOTIFICATION_DURATION) {
+            // Remove notification
+            notification_count--;
+            for (int j = i; j < notification_count; j++) {
+                achievement_notifications[j] = achievement_notifications[j+1];
+            }
+        } else {
+            i++;
+        }
+    }
+}
+
+void Q3R_AchievementNotify_Draw(void) {
+    Q3R_AchievementNotify_Update();
+    for (int i = 0; i < notification_count; i++) {
+        achievement_def_t *def = &achievement_defs[achievement_notifications[i].id];
+        UI_DrawProportionalString(320, 100 + i * 40, va("Achievement Unlocked: %s", def->title), UI_CENTER | UI_SMALLFONT, colorWhite);
+    }
+}
+
+qboolean Q3R_Profile_Save(const q3r_profile_t *profile) {
+    fileHandle_t f;
+    char path[MAX_QPATH];
+    int len;
+
+    if (!profile) return qfalse;
+
+    Com_sprintf(path, sizeof(path), "%s/%s%s", PROFILES_PATH, profile->playerName, PROFILE_EXTENSION);
+    len = trap_FS_FOpenFile(path, &f, FS_WRITE);
+    if (!f) {
+        Com_Printf("Failed to open profile for writing: %s\n", path);
+        return qfalse;
+    }
+
+    trap_FS_Write(Q3R_PROFILE_HEADER, strlen(Q3R_PROFILE_HEADER), f);
+    trap_FS_Write(profile, sizeof(q3r_profile_t), f);
+    trap_FS_FCloseFile(f);
+    return qtrue;
+}
 
 static void UI_ProfileOverlay_Sanitize( const char *input, char *output, size_t size ) {
     size_t length = 0;
@@ -183,32 +284,6 @@ static void UI_ProfileOverlay_GetSanitizedFieldText( char *output, size_t size )
     UI_ProfileOverlay_Sanitize( cleaned, output, size );
 }
 
-static void UI_ProfileOverlay_SaveSlots( void ) {
-    char varName[32];
-    char buffer[MAX_STRING_CHARS];
-    int  i;
-
-    buffer[0] = '\0';
-
-    for ( i = 0; i < UI_MAX_PROFILE_SLOTS; ++i ) {
-        Com_sprintf( varName, sizeof( varName ), "ui_profileSlot%d", i );
-        if ( i < s_profileOverlay.profileCount ) {
-            const char *name = s_profileOverlay.profileNames[i];
-
-            trap_Cvar_Set( varName, name );
-
-            if ( buffer[0] ) {
-                Q_strcat( buffer, sizeof( buffer ), " " );
-            }
-            Q_strcat( buffer, sizeof( buffer ), name );
-        } else {
-            trap_Cvar_Set( varName, "" );
-        }
-    }
-
-    trap_Cvar_Set( PROFILE_SLOTS_CVAR, buffer );
-}
-
 static void UI_ProfileOverlay_AddProfileName( const char *name ) {
     char sanitized[MAX_QPATH];
 
@@ -232,84 +307,32 @@ static void UI_ProfileOverlay_AddProfileName( const char *name ) {
     s_profileOverlay.profileCount++;
 }
 
-static char *UI_ProfileOverlay_NextToken( char **cursor ) {
-    char *c;
-    char *token;
-
-    if ( !cursor || !*cursor ) {
-        return NULL;
-    }
-
-    c = *cursor;
-
-    while ( *c == ' ' ) {
-        c++;
-    }
-
-    if ( !*c ) {
-        *cursor = c;
-        return NULL;
-    }
-
-    token = c;
-
-    while ( *c && *c != ' ' ) {
-        c++;
-    }
-
-    if ( *c ) {
-        *c = '\0';
-        c++;
-    }
-
-    *cursor = c;
-    return token;
-}
-
 static void UI_ProfileOverlay_RebuildList( void ) {
-    char buffer[MAX_STRING_CHARS];
-    char varName[32];
-    char value[MAX_QPATH];
-    char *cursor;
-    char *token;
-    int  i;
+    char file_list[4096];
+    char *filename;
+    int num_files, i;
 
     s_profileOverlay.profileCount = 0;
-    s_profileOverlay.lastSelection = -1;
-    s_profileOverlay.list.top = 0;
+    num_files = trap_FS_GetFileList(PROFILES_PATH, PROFILE_EXTENSION, file_list, sizeof(file_list));
+    filename = file_list;
 
-    for ( i = 0; i < UI_MAX_PROFILE_SLOTS; ++i ) {
-        s_profileOverlay.profileNames[i][0] = '\0';
-        s_profileOverlay.profileItems[i] = NULL;
+    for (i = 0; i < num_files; i++) {
+        int len = strlen(filename);
+        if (len > 0) {
+            char name[MAX_QPATH];
+            Q_strncpyz(name, filename, sizeof(name));
+            name[len - strlen(PROFILE_EXTENSION)] = '\0'; // Strip extension
+            UI_ProfileOverlay_AddProfileName(name);
+            filename += len + 1;
+        }
     }
-
-    trap_Cvar_VariableStringBuffer( PROFILE_SLOTS_CVAR, buffer, sizeof( buffer ) );
-    cursor = buffer;
-    token = UI_ProfileOverlay_NextToken( &cursor );
-    while ( token ) {
-        UI_ProfileOverlay_AddProfileName( token );
-        token = UI_ProfileOverlay_NextToken( &cursor );
-    }
-
-    for ( i = 0; i < UI_MAX_PROFILE_SLOTS; ++i ) {
-        Com_sprintf( varName, sizeof( varName ), "ui_profileSlot%d", i );
-        trap_Cvar_VariableStringBuffer( varName, value, sizeof( value ) );
-        UI_ProfileOverlay_AddProfileName( value );
-    }
-
-    trap_Cvar_VariableStringBuffer( "cg_profile", value, sizeof( value ) );
-    UI_ProfileOverlay_AddProfileName( value );
-
-    trap_Cvar_VariableStringBuffer( "profile", value, sizeof( value ) );
-    UI_ProfileOverlay_AddProfileName( value );
 
     s_profileOverlay.list.numitems = s_profileOverlay.profileCount;
-    if ( s_profileOverlay.list.curvalue >= s_profileOverlay.profileCount ) {
-        s_profileOverlay.list.curvalue = s_profileOverlay.profileCount ? s_profileOverlay.profileCount - 1 : 0;
+    if (s_profileOverlay.list.curvalue >= s_profileOverlay.profileCount) {
+        s_profileOverlay.list.curvalue = s_profileOverlay.profileCount > 0 ? s_profileOverlay.profileCount - 1 : 0;
     }
 
     UI_ProfileOverlay_UpdateButtonStates();
-    UI_ProfileOverlay_SaveSlots();
 }
 
 static void UI_ProfileOverlay_UpdateSelection( int index ) {
@@ -325,10 +348,10 @@ static void UI_ProfileOverlay_UpdateSelection( int index ) {
     }
 
     s_profileOverlay.list.curvalue = index;
-    trap_Cvar_Set( "cg_profile", s_profileOverlay.profileNames[index] );
-    trap_Cvar_Set( "profile", s_profileOverlay.profileNames[index] );
-    trap_Cvar_Set( "ui_profileSelected", s_profileOverlay.profileNames[index] );
-    trap_Cvar_Set( "name", s_profileOverlay.profileNames[index] );
+
+    if (Q3R_Profile_Load(s_profileOverlay.profileNames[index])) {
+        trap_Cvar_Set("name", cg_profile.playerName);
+    }
 
     Q_strncpyz( s_profileOverlay.nameField.field.buffer, s_profileOverlay.profileNames[index],
                 sizeof( s_profileOverlay.nameField.field.buffer ) );
@@ -359,7 +382,28 @@ static void UI_ProfileOverlay_UpdateCreateLabel( void ) {
     UI_ProfileOverlay_UpdateButtonBounds( &s_profileOverlay.create );
 }
 
+qboolean Q3R_Profile_Load(const char *name) {
+    fileHandle_t f;
+    char path[MAX_QPATH];
+    char header[10];
+    int len;
 
+    Com_sprintf(path, sizeof(path), "%s/%s%s", PROFILES_PATH, name, PROFILE_EXTENSION);
+    len = trap_FS_FOpenFile(path, &f, FS_READ);
+    if (!f) {
+        return qfalse;
+    }
+
+    trap_FS_Read(header, strlen(Q3R_PROFILE_HEADER), f);
+    if (strncmp(header, Q3R_PROFILE_HEADER, strlen(Q3R_PROFILE_HEADER)) != 0) {
+        trap_FS_FCloseFile(f);
+        return qfalse;
+    }
+
+    trap_FS_Read(&cg_profile, sizeof(q3r_profile_t), f);
+    trap_FS_FCloseFile(f);
+    return qtrue;
+}
 
 static void UI_ProfileOverlay_CreateFromField( void ) {
     char sanitized[MAX_QPATH];
@@ -373,11 +417,14 @@ static void UI_ProfileOverlay_CreateFromField( void ) {
     index = UI_ProfileOverlay_FindIndex( sanitized );
 
     if ( index < 0 ) {
-        UI_ProfileOverlay_AddProfileName( sanitized );
-        index = UI_ProfileOverlay_FindIndex( sanitized );
-        UI_ProfileOverlay_UpdateButtonStates();
-        UI_ProfileOverlay_SaveSlots();
-        s_profileOverlay.list.numitems = s_profileOverlay.profileCount;
+        q3r_profile_t new_profile;
+        Q3R_Profile_InitDefaults(&new_profile, sanitized);
+        if (Q3R_Profile_Save(&new_profile)) {
+            UI_ProfileOverlay_AddProfileName(sanitized);
+            index = UI_ProfileOverlay_FindIndex(sanitized);
+            s_profileOverlay.list.numitems = s_profileOverlay.profileCount;
+            UI_ProfileOverlay_UpdateButtonStates();
+        }
     }
 
     UI_ProfileOverlay_UpdateSelection( index );
@@ -396,6 +443,10 @@ static void UI_ProfileOverlay_DeleteSelected( void ) {
         return;
     }
 
+    char path[MAX_QPATH];
+    Com_sprintf(path, sizeof(path), "%s/%s%s", PROFILES_PATH, s_profileOverlay.profileNames[index], PROFILE_EXTENSION);
+    trap_FS_Delete(path);
+
     for ( i = index; i < s_profileOverlay.profileCount - 1; ++i ) {
         Q_strncpyz( s_profileOverlay.profileNames[i], s_profileOverlay.profileNames[i + 1],
                     sizeof( s_profileOverlay.profileNames[i] ) );
@@ -413,7 +464,6 @@ static void UI_ProfileOverlay_DeleteSelected( void ) {
     if ( s_profileOverlay.profileCount <= 0 ) {
         s_profileOverlay.list.curvalue = 0;
         UI_ProfileOverlay_UpdateButtonStates();
-        UI_ProfileOverlay_SaveSlots();
         UI_ProfileOverlay_UpdateSelection( -1 );
         UI_ProfileOverlay_ResetNameField();
         return;
@@ -424,8 +474,16 @@ static void UI_ProfileOverlay_DeleteSelected( void ) {
     }
 
     UI_ProfileOverlay_UpdateButtonStates();
-    UI_ProfileOverlay_SaveSlots();
     UI_ProfileOverlay_UpdateSelection( index );
+}
+
+static void UI_ProfileManager_DrawInfo(void) {
+    int y = PROFILE_PANEL_Y + 180;
+    UI_DrawProportionalString(480, y, va("Races: %d", cg_profile.totalRacesStarted), UI_LEFT | UI_SMALLFONT, colorWhite);
+    y += 20;
+    UI_DrawProportionalString(480, y, va("Wins: %d", cg_profile.totalRacesWon), UI_LEFT | UI_SMALLFONT, colorWhite);
+    y += 20;
+    UI_DrawProportionalString(480, y, va("Play Time: %d hours", cg_profile.totalPlayTimeSeconds / 3600), UI_LEFT | UI_SMALLFONT, colorWhite);
 }
 
 static void UI_ProfileOverlay_Draw( void ) {
@@ -465,6 +523,7 @@ static void UI_ProfileOverlay_Draw( void ) {
 
     UI_ProfileOverlay_UpdateCreateLabel();
     Menu_Draw( &s_profileOverlay.menu );
+	UI_ProfileManager_DrawInfo();
 }
 
 static void UI_ProfileOverlay_Event( void *ptr, int event ) {
@@ -650,10 +709,7 @@ static void UI_ProfileOverlay_EnsureSelection( void ) {
 }
 
 static qboolean UI_ProfileOverlay_ShouldForcePrompt( void ) {
-    char buffer[MAX_QPATH];
-
-    trap_Cvar_VariableStringBuffer( "profile", buffer, sizeof( buffer ) );
-    return ( buffer[0] == '\0' );
+    return s_profileOverlay.profileCount == 0;
 }
 
 static void UI_ProfileOverlay_Show( qboolean forceCreate ) {
@@ -676,10 +732,6 @@ static void UI_ProfileOverlay_Show( qboolean forceCreate ) {
 
     if ( forceCreate || !s_profileOverlay.nameField.field.buffer[0] ) {
         UI_ProfileOverlay_ResetNameField();
-    }
-
-    if ( !hadSelection ) {
-        UI_ProfileOverlay_SaveSlots();
     }
 
     UI_ProfileOverlay_UpdateButtonStates();
@@ -705,15 +757,17 @@ static void UI_ProfileOverlay_ResetNameField( void ) {
 }
 
 void UI_ProfileOverlay_MaybeShow( void ) {
-    qboolean forcePrompt = UI_ProfileOverlay_ShouldForcePrompt();
-    qboolean promptShown = ( trap_Cvar_VariableValue( "ui_profilePromptShown" ) != 0.0f );
+    qboolean forcePrompt;
+
+    UI_ProfileOverlay_RebuildList();
+    forcePrompt = UI_ProfileOverlay_ShouldForcePrompt();
 
     if ( forcePrompt ) {
         UI_ProfileOverlay_Show( qtrue );
         return;
     }
 
-    if ( !s_profileOverlayShownThisSession && !promptShown ) {
+    if ( !s_profileOverlayShownThisSession ) {
         UI_ProfileOverlay_Show( qfalse );
     }
 }

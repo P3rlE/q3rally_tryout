@@ -20,8 +20,8 @@ along with q3rally; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
-
 #include "g_local.h"
+#include "q3r_profile.h"
 
 #ifdef UNIT_TEST
 #define TESTABLE_STATIC
@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define TESTABLE_STATIC static
 #endif
 
+void G_UpdatePlayerAchievementProgress(int clientNum, int achievementId, float progress);
 
 int GetTeamAtRank( int rank ){
 	int		i, j, count;
@@ -349,6 +350,14 @@ void CalculatePlayerPositions( void )
 		cur->client->ps.stats[STAT_POSITION] = position;
 
 		positionChanged = qtrue;
+
+        if (cur->client->finishRaceTime) {
+            G_UpdatePlayerAchievementProgress(cur->s.number, ACH_FIRST_RACE_FINISHED, 1);
+            G_UpdatePlayerAchievementProgress(cur->s.number, ACH_10_RACES_FINISHED, 1);
+            if (position == 1) {
+                G_UpdatePlayerAchievementProgress(cur->s.number, ACH_10_WINS, 1);
+            }
+        }
 	}
 
 	if ( positionChanged )

@@ -249,3 +249,7 @@ gentity_t *G_Spawn(void) {
     memset(&dummy, 0, sizeof(dummy));
     return &dummy;
 }
+
+void G_UpdatePlayerAchievementProgress(int clientNum, int achievementId, float progress) {
+    // Mock implementation for testing
+}
