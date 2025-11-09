@@ -65,10 +65,6 @@ CG_ParseScores
 
 =================
 */
-static void CG_SetProfileCvarInt( const char *name, int value );
-static void CG_SetProfileCvarFloat( const char *name, int scaledValue, float scale );
-static void CG_SetProfileCvarString( const char *name, const char *value );
-
 static void CG_ParseScores( void ) {
 	int		i, powerups;
 
@@ -146,126 +142,6 @@ static void CG_ParseScores( void ) {
 #endif
 
 }
-
-static void CG_ParseProfileLifetime( void ) {
-	int			argc;
-	int			matchesPlayed;
-	int			wins;
-	int			losses;
-	int			finishes;
-	int			dnfs;
-	int			bestPosition;
-	int			bestLapMs;
-	int			bestTotalRaceMs;
-	int			totalRaceTimeMs;
-	int			totalScore;
-	int			totalKills;
-	int			totalDeaths;
-	int			totalDamageDealt;
-	int			totalDamageTaken;
-	int			totalDistanceMeters;
-	int			totalFuelConsumed;
-	int			achievements;
-	char			model[MAX_QPATH];
-	char			head[MAX_QPATH];
-	char			rim[MAX_QPATH];
-	char			plate[MAX_QPATH];
-
-	argc = trap_Argc();
-	if ( argc < 23 ) {
-		CG_Printf( "profileLifetime: expected 22 args, got %i\n", argc - 1 );
-		cg.profileLifetimeStats.valid = qfalse;
-		trap_Cvar_Set( "ui_profile_identifier", "" );
-		return;
-	}
-
-	trap_Argv( 1, cg.profileLifetimeStats.identifier, sizeof( cg.profileLifetimeStats.identifier ) );
-	trap_Argv( 19, model, sizeof( model ) );
-	trap_Argv( 20, head, sizeof( head ) );
-	trap_Argv( 21, rim, sizeof( rim ) );
-	trap_Argv( 22, plate, sizeof( plate ) );
-	trap_Cvar_Set( "ui_profile_identifier", cg.profileLifetimeStats.identifier );
-	matchesPlayed = atoi( CG_Argv( 2 ) );
-	wins = atoi( CG_Argv( 3 ) );
-	losses = atoi( CG_Argv( 4 ) );
-	finishes = atoi( CG_Argv( 5 ) );
-	dnfs = atoi( CG_Argv( 6 ) );
-	bestPosition = atoi( CG_Argv( 7 ) );
-	bestLapMs = atoi( CG_Argv( 8 ) );
-	bestTotalRaceMs = atoi( CG_Argv( 9 ) );
-	totalRaceTimeMs = atoi( CG_Argv( 10 ) );
-	totalScore = atoi( CG_Argv( 11 ) );
-	totalKills = atoi( CG_Argv( 12 ) );
-	totalDeaths = atoi( CG_Argv( 13 ) );
-	totalDamageDealt = atoi( CG_Argv( 14 ) );
-	totalDamageTaken = atoi( CG_Argv( 15 ) );
-	totalDistanceMeters = atoi( CG_Argv( 16 ) );
-	totalFuelConsumed = atoi( CG_Argv( 17 ) );
-	achievements = atoi( CG_Argv( 18 ) );
-
-	cg.profileLifetimeStats.matchesPlayed = matchesPlayed;
-	cg.profileLifetimeStats.wins = wins;
-	cg.profileLifetimeStats.losses = losses;
-	cg.profileLifetimeStats.finishes = finishes;
-	cg.profileLifetimeStats.dnfs = dnfs;
-	cg.profileLifetimeStats.bestPosition = bestPosition;
-	cg.profileLifetimeStats.bestLapMs = bestLapMs;
-	cg.profileLifetimeStats.bestTotalRaceMs = bestTotalRaceMs;
-	cg.profileLifetimeStats.totalRaceTimeMs = totalRaceTimeMs;
-	cg.profileLifetimeStats.totalScore = totalScore;
-	cg.profileLifetimeStats.totalKills = totalKills;
-	cg.profileLifetimeStats.totalDeaths = totalDeaths;
-	cg.profileLifetimeStats.totalDamageDealt = totalDamageDealt;
-	cg.profileLifetimeStats.totalDamageTaken = totalDamageTaken;
-	cg.profileLifetimeStats.totalDistanceMeters = totalDistanceMeters;
-	cg.profileLifetimeStats.totalFuelConsumed = totalFuelConsumed;
-	cg.profileLifetimeStats.achievements = achievements;
-	Q_strncpyz( cg.profileLifetimeStats.vehicleModel, model, sizeof( cg.profileLifetimeStats.vehicleModel ) );
-	Q_strncpyz( cg.profileLifetimeStats.vehicleHead, head, sizeof( cg.profileLifetimeStats.vehicleHead ) );
-	Q_strncpyz( cg.profileLifetimeStats.vehicleRim, rim, sizeof( cg.profileLifetimeStats.vehicleRim ) );
-	Q_strncpyz( cg.profileLifetimeStats.vehiclePlate, plate, sizeof( cg.profileLifetimeStats.vehiclePlate ) );
-	cg.profileLifetimeStats.valid = qtrue;
-
-	cg.profileLifetimeSequence++;
-
-	CG_SetProfileCvarInt( "ui_profile_version", 1 );
-	CG_SetProfileCvarInt( "ui_profile_matches", matchesPlayed );
-	CG_SetProfileCvarInt( "ui_profile_wins", wins );
-	CG_SetProfileCvarInt( "ui_profile_losses", losses );
-	CG_SetProfileCvarInt( "ui_profile_finishes", finishes );
-	CG_SetProfileCvarInt( "ui_profile_dnfs", dnfs );
-	CG_SetProfileCvarInt( "ui_profile_bestPosition", bestPosition );
-	CG_SetProfileCvarInt( "ui_profile_bestLapMs", bestLapMs );
-	CG_SetProfileCvarInt( "ui_profile_bestTotalRaceMs", bestTotalRaceMs );
-	CG_SetProfileCvarInt( "ui_profile_totalRaceTimeMs", totalRaceTimeMs );
-	CG_SetProfileCvarInt( "ui_profile_totalScore", totalScore );
-	CG_SetProfileCvarInt( "ui_profile_totalKills", totalKills );
-	CG_SetProfileCvarInt( "ui_profile_totalDeaths", totalDeaths );
-	CG_SetProfileCvarInt( "ui_profile_totalDamageDealt", totalDamageDealt );
-	CG_SetProfileCvarInt( "ui_profile_totalDamageTaken", totalDamageTaken );
-
-	{
-		char buffer[64];
-
-		Com_sprintf( buffer, sizeof( buffer ), "%.2f", (float)totalDistanceMeters );
-		trap_Cvar_Set( "ui_profile_totalDistance", buffer );
-
-		Com_sprintf( buffer, sizeof( buffer ), "%.2f", (float)totalFuelConsumed );
-		trap_Cvar_Set( "ui_profile_totalFuel", buffer );
-	}
-
-	CG_SetProfileCvarInt( "ui_profile_achievements", achievements );
-	CG_SetProfileCvarString( "ui_profile_model", model );
-	CG_SetProfileCvarString( "ui_profile_head", head );
-	CG_SetProfileCvarString( "ui_profile_rim", rim );
-	CG_SetProfileCvarString( "ui_profile_plate", plate );
-	trap_Cvar_Set( "model", model );
-	trap_Cvar_Set( "head", head );
-	trap_Cvar_Set( "rim", rim );
-	trap_Cvar_Set( "plate", plate );
-	CG_SetProfileCvarInt( "ui_profile_sequence", cg.profileLifetimeSequence );
-}
-
 
 /*
 =================
@@ -1281,111 +1157,6 @@ static void CG_ParsePositions( void ) {
 // END
 
 
-
-static void CG_SetProfileCvarInt( const char *name, int value ) {
-        trap_Cvar_Set( name, va( "%d", value ) );
-}
-
-static void CG_SetProfileCvarFloat( const char *name, int scaledValue, float scale ) {
-        char buffer[64];
-        float decoded;
-
-        if ( scale <= 0.0f ) {
-                trap_Cvar_Set( name, "0" );
-                return;
-        }
-
-        decoded = (float)scaledValue / scale;
-        Com_sprintf( buffer, sizeof( buffer ), "%.2f", decoded );
-        trap_Cvar_Set( name, buffer );
-}
-
-static void CG_SetProfileCvarString( const char *name, const char *value ) {
-        if ( !value ) {
-                trap_Cvar_Set( name, "" );
-                return;
-        }
-
-        trap_Cvar_Set( name, value );
-}
-
-static void CG_ParseProfileStats( void ) {
-        profileLifetime_t lifetime;
-        char model[MAX_QPATH];
-        char head[MAX_QPATH];
-        char rim[MAX_QPATH];
-        char plate[MAX_QPATH];
-        int argc;
-
-        argc = trap_Argc();
-        if ( argc < 23 ) {
-                return;
-        }
-
-        Com_Memset( &lifetime, 0, sizeof( lifetime ) );
-        lifetime.version = atoi( CG_Argv( 1 ) );
-        lifetime.matchesPlayed = atoi( CG_Argv( 2 ) );
-        lifetime.wins = atoi( CG_Argv( 3 ) );
-        lifetime.losses = atoi( CG_Argv( 4 ) );
-        lifetime.finishes = atoi( CG_Argv( 5 ) );
-        lifetime.dnfs = atoi( CG_Argv( 6 ) );
-        lifetime.bestPosition = atoi( CG_Argv( 7 ) );
-        lifetime.bestLapMs = atoi( CG_Argv( 8 ) );
-        lifetime.bestTotalRaceMs = atoi( CG_Argv( 9 ) );
-        lifetime.totalRaceTimeMs = atoi( CG_Argv( 10 ) );
-        lifetime.totalScore = atoi( CG_Argv( 11 ) );
-        lifetime.totalKills = atoi( CG_Argv( 12 ) );
-        lifetime.totalDeaths = atoi( CG_Argv( 13 ) );
-        lifetime.totalDamageDealt = atoi( CG_Argv( 14 ) );
-        lifetime.totalDamageTaken = atoi( CG_Argv( 15 ) );
-        lifetime.totalDistanceScaled = atoi( CG_Argv( 16 ) );
-        lifetime.totalFuelConsumedScaled = atoi( CG_Argv( 17 ) );
-        lifetime.achievements = atoi( CG_Argv( 18 ) );
-
-        trap_Argv( 19, model, sizeof( model ) );
-        trap_Argv( 20, head, sizeof( head ) );
-        trap_Argv( 21, rim, sizeof( rim ) );
-        trap_Argv( 22, plate, sizeof( plate ) );
-
-        Q_strncpyz( lifetime.vehicleModel, model, sizeof( lifetime.vehicleModel ) );
-        Q_strncpyz( lifetime.vehicleHead, head, sizeof( lifetime.vehicleHead ) );
-        Q_strncpyz( lifetime.vehicleRim, rim, sizeof( lifetime.vehicleRim ) );
-        Q_strncpyz( lifetime.vehiclePlate, plate, sizeof( lifetime.vehiclePlate ) );
-
-        cg.profileLifetime = lifetime;
-        cg.profileLifetimeValid = qtrue;
-        cg.profileLifetimeSequence++;
-
-        CG_SetProfileCvarInt( "ui_profile_version", lifetime.version );
-        CG_SetProfileCvarInt( "ui_profile_matches", lifetime.matchesPlayed );
-        CG_SetProfileCvarInt( "ui_profile_wins", lifetime.wins );
-        CG_SetProfileCvarInt( "ui_profile_losses", lifetime.losses );
-        CG_SetProfileCvarInt( "ui_profile_finishes", lifetime.finishes );
-        CG_SetProfileCvarInt( "ui_profile_dnfs", lifetime.dnfs );
-        CG_SetProfileCvarInt( "ui_profile_bestPosition", lifetime.bestPosition );
-        CG_SetProfileCvarInt( "ui_profile_bestLapMs", lifetime.bestLapMs );
-        CG_SetProfileCvarInt( "ui_profile_bestTotalRaceMs", lifetime.bestTotalRaceMs );
-        CG_SetProfileCvarInt( "ui_profile_totalRaceTimeMs", lifetime.totalRaceTimeMs );
-        CG_SetProfileCvarInt( "ui_profile_totalScore", lifetime.totalScore );
-        CG_SetProfileCvarInt( "ui_profile_totalKills", lifetime.totalKills );
-        CG_SetProfileCvarInt( "ui_profile_totalDeaths", lifetime.totalDeaths );
-        CG_SetProfileCvarInt( "ui_profile_totalDamageDealt", lifetime.totalDamageDealt );
-        CG_SetProfileCvarInt( "ui_profile_totalDamageTaken", lifetime.totalDamageTaken );
-        CG_SetProfileCvarFloat( "ui_profile_totalDistance", lifetime.totalDistanceScaled, PROFILE_LIFETIME_DISTANCE_SCALE );
-        CG_SetProfileCvarFloat( "ui_profile_totalFuel", lifetime.totalFuelConsumedScaled, PROFILE_LIFETIME_FUEL_SCALE );
-        CG_SetProfileCvarInt( "ui_profile_achievements", lifetime.achievements );
-        CG_SetProfileCvarString( "ui_profile_model", model );
-        CG_SetProfileCvarString( "ui_profile_head", head );
-        CG_SetProfileCvarString( "ui_profile_rim", rim );
-        CG_SetProfileCvarString( "ui_profile_plate", plate );
-        CG_SetProfileCvarInt( "ui_profile_sequence", cg.profileLifetimeSequence );
-
-        trap_Cvar_Set( "model", model );
-        trap_Cvar_Set( "head", head );
-        trap_Cvar_Set( "rim", rim );
-        trap_Cvar_Set( "plate", plate );
-}
-
 /*
 =================
 CG_ServerCommand
@@ -1407,11 +1178,6 @@ static void CG_ServerCommand( void ) {
 		// server claimed the command
 		return;
 	}
-
-        if ( !strcmp( cmd, "profileLifetime" ) ) {
-                CG_ParseProfileLifetime();
-                return;
-        }
 
         if ( !strcmp( cmd, "cp" ) ) {
                 const char *message;
@@ -1545,11 +1311,6 @@ static void CG_ServerCommand( void ) {
 	}
 #endif
 
-	if ( !strcmp( cmd, "profileStats" ) ) {
-		CG_ParseProfileStats();
-		return;
-	}
-
 	if ( !strcmp( cmd, "scores" ) ) {
 		CG_ParseScores();
 		return;
@@ -1627,6 +1388,14 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
+<<<<<<< HEAD
+	if ( !strcmp( cmd, "raceFinishTime" ) ) {
+		i1 = atoi(CG_Argv(1));
+		i2 = atoi(CG_Argv(2));
+		CG_FinishedRace( i1, i2 );
+		return;
+	}
+=======
         if ( !strcmp( cmd, "raceFinishTime" ) ) {
                 i1 = atoi(CG_Argv(1));
                 i2 = atoi(CG_Argv(2));
@@ -1648,9 +1417,10 @@ static void CG_ServerCommand( void ) {
         Q3R_Achievements_UpdateProgress_Cmd(id, progress);
         return;
     }
+>>>>>>> 72dbed79c5ebf4f3f87ade54d1fcfe83ba2938ed
 // END
 
-        CG_Printf( "Unknown client game command: %s\n", cmd );
+	CG_Printf( "Unknown client game command: %s\n", cmd );
 }
 
 
