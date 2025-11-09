@@ -281,6 +281,7 @@ static void PlayerSettings_UpdateTabHighlight( void );
 static void PlayerSettings_DrawTabButton( void *self );
 static void PlayerSettings_DrawStatsPanel( void *self );
 static void PlayerSettings_DrawAchievementsPanel( void *self );
+static void PlayerSettings_UpdateFavorites( void );
 static void PlayerSettings_LoadProfileSlots( void );
 static void PlayerSettings_BuildProfileItems( void );
 static int PlayerSettings_FindProfileIndex( const char *name );
@@ -1210,16 +1211,6 @@ static void PlayerSettings_DrawAchievementsPanel( void *self ) {
         float y;
         int i;
         qboolean unlockedAny = qfalse;
-        static const struct {
-                int bit;
-                const char *label;
-        } achievementMap[] = {
-                { PROFILE_ACHIEVEMENT_DISTANCE_100KM, "Road Trip (100 km)" },
-                { PROFILE_ACHIEVEMENT_DISTANCE_500KM, "Long Haul (500 km)" },
-                { PROFILE_ACHIEVEMENT_MATCHES_10,     "Rookie Driver (10 races)" },
-                { PROFILE_ACHIEVEMENT_MATCHES_50,     "Endurance Racer (50 races)" }
-        };
-
         if ( s_playersettings.activeTab != PLAYERSETTINGS_TAB_ACHIEVEMENTS ) {
                 return;
         }
@@ -1242,7 +1233,7 @@ static void PlayerSettings_DrawAchievementsPanel( void *self ) {
             if (s_playersettings.achievements_filter.curvalue == 1 && !unlocked) continue;
             if (s_playersettings.achievements_filter.curvalue == 2 && unlocked) continue;
 
-            float *color = unlocked ? color_white : color_gray;
+            float *color = unlocked ? color_white : text_color_disabled;
             UI_DrawString( x, y, s_playersettings.achievements_list[i].string, UI_LEFT | UI_SMALLFONT, color );
             y += SMALLCHAR_HEIGHT + 4;
             unlockedAny = unlockedAny || unlocked;
@@ -1530,7 +1521,7 @@ static void PlayerSettings_DrawPlayer( void *self ) {
 static int PlayerSettings_FindPaintId(const char* paintName) {
     char cleanPaintName[MAX_QPATH];
     Q_strncpyz(cleanPaintName, paintName, sizeof(cleanPaintName));
-    COM_StripExtension(cleanPaintName, cleanPaintName);
+    COM_StripExtension(cleanPaintName, cleanPaintName, sizeof(cleanPaintName));
 
     for (int i = 0; i < s_playersettings.numModels; i++) {
         if (Q_stricmp(s_playersettings.modelList[i], cleanPaintName) == 0) {
@@ -1543,7 +1534,7 @@ static int PlayerSettings_FindPaintId(const char* paintName) {
 static int PlayerSettings_FindRimId(const char* rimName) {
     char cleanRimName[MAX_QPATH];
     Q_strncpyz(cleanRimName, rimName, sizeof(cleanRimName));
-    COM_StripExtension(cleanRimName, cleanRimName);
+    COM_StripExtension(cleanRimName, cleanRimName, sizeof(cleanRimName));
 
     for (int i = 0; i < s_playersettings.numRims; i++) {
         if (Q_stricmp(s_playersettings.rimList[i], cleanRimName) == 0) {
@@ -1807,7 +1798,7 @@ static void PlayerSettings_PicEvent( void* ptr, int event )
         return;
     }
 
-    if (uis.shift_down) {
+    if (trap_Key_IsDown( K_SHIFT )) {
         PlayerSettings_SaveFavorite(favoriteIndex);
     } else {
         PlayerSettings_LoadFavorite(favoriteIndex);
@@ -2123,7 +2114,7 @@ static void PlayerSettings_MenuInit( void ) {
         }
 
         s_playersettings.achievements_list[i].style = UI_LEFT | UI_SMALLFONT;
-        s_playersettings.achievements_list[i].color = cg_profile.achievements[i].unlocked ? color_white : color_gray;
+        s_playersettings.achievements_list[i].color = cg_profile.achievements[i].unlocked ? color_white : text_color_disabled;
     }
 
     s_playersettings.player_name.generic.type = MTYPE_PTEXT;
