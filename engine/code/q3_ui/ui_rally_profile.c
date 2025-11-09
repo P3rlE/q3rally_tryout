@@ -146,10 +146,11 @@ void Q3R_AchievementNotify_Push(achievement_id_t id) {
 void Q3R_AchievementNotify_Update(void) {
     int i = 0;
     while (i < notification_count) {
+        int j;
         if (trap_Milliseconds() - achievement_notifications[i].startTime > NOTIFICATION_DURATION) {
             // Remove notification
             notification_count--;
-            for (int j = i; j < notification_count; j++) {
+            for (j = i; j < notification_count; j++) {
                 achievement_notifications[j] = achievement_notifications[j+1];
             }
         } else {
@@ -160,9 +161,12 @@ void Q3R_AchievementNotify_Update(void) {
 
 void Q3R_AchievementNotify_Draw(void) {
     Q3R_AchievementNotify_Update();
-    for (int i = 0; i < notification_count; i++) {
-        const achievement_def_t *def = &achievement_defs[achievement_notifications[i].id];
-        UI_DrawProportionalString(320, 100 + i * 40, va("Achievement Unlocked: %s", def->title), UI_CENTER | UI_SMALLFONT, colorWhite);
+    {
+        int i;
+        for (i = 0; i < notification_count; i++) {
+            const achievement_def_t *def = &achievement_defs[achievement_notifications[i].id];
+            UI_DrawProportionalString(320, 100 + i * 40, va("Achievement Unlocked: %s", def->title), UI_CENTER | UI_SMALLFONT, colorWhite);
+        }
     }
 }
 
@@ -435,6 +439,7 @@ static void UI_ProfileOverlay_CreateFromField( void ) {
 static void UI_ProfileOverlay_DeleteSelected( void ) {
     int i;
     int index;
+    char path[MAX_QPATH];
 
     if ( s_profileOverlay.profileCount <= 0 ) {
         return;
@@ -445,7 +450,6 @@ static void UI_ProfileOverlay_DeleteSelected( void ) {
         return;
     }
 
-    char path[MAX_QPATH];
     Com_sprintf(path, sizeof(path), "%s/%s%s", PROFILES_PATH, s_profileOverlay.profileNames[index], PROFILE_EXTENSION);
     trap_FS_Delete(path);
 
