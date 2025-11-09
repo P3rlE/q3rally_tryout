@@ -820,48 +820,22 @@ static float PlayerSettings_GetCvarFloat( const char *name ) {
 }
 
 static void PlayerSettings_ReadLifetimeFromCvars( playerLifetimeDisplay_t *display ) {
-	int i;
-
-	static const char *const intCvarNames[] = {
-		"ui_profile_version",
-		"ui_profile_matches",
-		"ui_profile_wins",
-		"ui_profile_losses",
-		"ui_profile_finishes",
-		"ui_profile_dnfs",
-		"ui_profile_bestPosition",
-		"ui_profile_bestLapMs",
-		"ui_profile_bestTotalRaceMs",
-		"ui_profile_totalRaceTimeMs",
-		"ui_profile_totalScore",
-		"ui_profile_totalKills",
-		"ui_profile_totalDeaths",
-		"ui_profile_totalDamageDealt",
-		"ui_profile_totalDamageTaken",
-		"ui_profile_achievements",
-	};
-	int *intTargets[] = {
-		&display->raw.version,
-		&display->raw.matchesPlayed,
-		&display->raw.wins,
-		&display->raw.losses,
-		&display->raw.finishes,
-		&display->raw.dnfs,
-		&display->raw.bestPosition,
-		&display->raw.bestLapMs,
-		&display->raw.bestTotalRaceMs,
-		&display->raw.totalRaceTimeMs,
-		&display->raw.totalScore,
-		&display->raw.totalKills,
-		&display->raw.totalDeaths,
-		&display->raw.totalDamageDealt,
-		&display->raw.totalDamageTaken,
-		&display->raw.achievements,
-	};
-
-	for ( i = 0; i < ARRAY_LEN( intCvarNames ); i++ ) {
-		*intTargets[i] = PlayerSettings_GetCvarInt( intCvarNames[i] );
-	}
+        display->raw.version = PlayerSettings_GetCvarInt( "ui_profile_version" );
+        display->raw.matchesPlayed = PlayerSettings_GetCvarInt( "ui_profile_matches" );
+        display->raw.wins = PlayerSettings_GetCvarInt( "ui_profile_wins" );
+        display->raw.losses = PlayerSettings_GetCvarInt( "ui_profile_losses" );
+        display->raw.finishes = PlayerSettings_GetCvarInt( "ui_profile_finishes" );
+        display->raw.dnfs = PlayerSettings_GetCvarInt( "ui_profile_dnfs" );
+        display->raw.bestPosition = PlayerSettings_GetCvarInt( "ui_profile_bestPosition" );
+        display->raw.bestLapMs = PlayerSettings_GetCvarInt( "ui_profile_bestLapMs" );
+        display->raw.bestTotalRaceMs = PlayerSettings_GetCvarInt( "ui_profile_bestTotalRaceMs" );
+        display->raw.totalRaceTimeMs = PlayerSettings_GetCvarInt( "ui_profile_totalRaceTimeMs" );
+        display->raw.totalScore = PlayerSettings_GetCvarInt( "ui_profile_totalScore" );
+        display->raw.totalKills = PlayerSettings_GetCvarInt( "ui_profile_totalKills" );
+        display->raw.totalDeaths = PlayerSettings_GetCvarInt( "ui_profile_totalDeaths" );
+        display->raw.totalDamageDealt = PlayerSettings_GetCvarInt( "ui_profile_totalDamageDealt" );
+        display->raw.totalDamageTaken = PlayerSettings_GetCvarInt( "ui_profile_totalDamageTaken" );
+        display->raw.achievements = PlayerSettings_GetCvarInt( "ui_profile_achievements" );
 
 	trap_Cvar_VariableStringBuffer( "ui_profile_model", display->raw.vehicleModel, sizeof( display->raw.vehicleModel ) );
 	trap_Cvar_VariableStringBuffer( "ui_profile_head", display->raw.vehicleHead, sizeof( display->raw.vehicleHead ) );
