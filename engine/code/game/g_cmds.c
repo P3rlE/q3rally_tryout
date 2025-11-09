@@ -2171,11 +2171,13 @@ void ClientCommand( int clientNum ) {
 	else if (Q_stricmp (cmd, "setviewpos") == 0)
 		Cmd_SetViewpos_f( ent );
 	else if (Q_stricmp (cmd, "stats") == 0)
-		Cmd_Stats_f( ent );
+                Cmd_Stats_f( ent );
+	else if (Q_stricmp (cmd, "profileRequest") == 0)
+                G_ClientRefreshProfileLifetime( clientNum, qtrue );
 // STONELANCE
-	else if (Q_stricmp (cmd, "gearUp") == 0){
-		if (!ent->client->pers.manualShift) 
-			return;
+        else if (Q_stricmp (cmd, "gearUp") == 0){
+                if (!ent->client->pers.manualShift)
+                        return;
 
 		if (ent->client->car.gear < 1)
 			ent->client->car.gear++;

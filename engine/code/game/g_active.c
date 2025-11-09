@@ -963,8 +963,6 @@ void SendPendingPredictableEvents( playerState_t *ps ) {
 	}
 }
 
-<<<<<<< HEAD
-=======
 static void G_ProfileAccumulatePhysics( gentity_t *ent ) {
 	gclient_t *client;
 	vec3_t delta;
@@ -1026,7 +1024,6 @@ static void G_ProfileAccumulatePhysics( gentity_t *ent ) {
 	client->profileLastFuel = currentFuel;
 }
 
->>>>>>> 72dbed79c5ebf4f3f87ade54d1fcfe83ba2938ed
 /*
 ==============
 ClientThink
@@ -1056,6 +1053,7 @@ void ClientThink_real( gentity_t *ent ) {
 
 	// don't think if the client is not yet connected (and thus not yet spawned in)
 	if (client->pers.connected != CON_CONNECTED) {
+		client->profileTrackValid = qfalse;
 		return;
 	}
 	// mark the time, so the connection sprite can be removed
@@ -1100,12 +1098,14 @@ void ClientThink_real( gentity_t *ent ) {
 	// check for exiting intermission
 	//
 	if ( level.intermissiontime ) {
+		client->profileTrackValid = qfalse;
 		ClientIntermissionThink( client );
 		return;
 	}
 
 	// spectators don't do much
 	if ( client->sess.sessionTeam == TEAM_SPECTATOR ) {
+		client->profileTrackValid = qfalse;
 		if ( client->sess.spectatorState == SPECTATOR_SCOREBOARD ) {
 			return;
 		}
@@ -1114,6 +1114,7 @@ void ClientThink_real( gentity_t *ent ) {
 	}
 // STONELANCE
 	else if ( isRaceObserver( ent->s.number ) ){
+		client->profileTrackValid = qfalse;
 		if ( client->sess.spectatorState == SPECTATOR_NOT ) {
 			client->sess.spectatorState = SPECTATOR_OBSERVE;
 			UpdateObserverSpot( ent, qtrue );
@@ -1621,6 +1622,8 @@ void ClientThink_real( gentity_t *ent ) {
 
 	// NOTE: now copy the exact origin over otherwise clients can be snapped into solid
 	VectorCopy( ent->client->ps.origin, ent->r.currentOrigin );
+
+	G_ProfileAccumulatePhysics( ent );
 
 	//test for solid areas in the AAS file
 	BotTestAAS(ent->r.currentOrigin);

@@ -30,6 +30,62 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 extern menuDef_t *menuScoreboard;
 #endif
 
+static void CG_SanitizeProfileSlot( const char *input, char *output, size_t size ) {
+	size_t length = 0;
+
+	if ( !output || size == 0 ) {
+		return;
+	}
+
+	output[0] = '\0';
+
+	if ( !input ) {
+		return;
+	}
+
+	while ( *input && length + 1 < size ) {
+		char c = *input++;
+
+		if ( ( c >= 'a' && c <= 'z' ) ||
+		     ( c >= 'A' && c <= 'Z' ) ||
+		     ( c >= '0' && c <= '9' ) ) {
+			output[length++] = c;
+		} else if ( c == '-' || c == '_' || c == '.' ) {
+			output[length++] = c;
+		}
+	}
+
+	output[length] = '\0';
+}
+
+static void CG_ApplyProfileValue( const char *value ) {
+        char sanitized[MAX_QPATH];
+
+        CG_SanitizeProfileSlot( value, sanitized, sizeof( sanitized ) );
+
+        trap_Cvar_Set( "cg_profile", sanitized );
+        trap_Cvar_Set( "profile", sanitized );
+        trap_Cvar_Update( &cg_profile );
+}
+
+void CG_UpdateProfileUserinfo( void ) {
+	char value[MAX_QPATH];
+
+	trap_Cvar_VariableStringBuffer( "cg_profile", value, sizeof( value ) );
+	CG_ApplyProfileValue( value );
+}
+
+static void CG_ProfileCommand_f( void ) {
+	char value[MAX_QPATH];
+
+	if ( trap_Argc() > 1 ) {
+		trap_Argv( 1, value, sizeof( value ) );
+	} else {
+		trap_Cvar_VariableStringBuffer( "cg_profile", value, sizeof( value ) );
+	}
+
+	CG_ApplyProfileValue( value );
+}
 
 
 void CG_TargetCommand_f( void ) {
@@ -88,13 +144,20 @@ static void CG_Viewpos_f (void) {
 static void CG_ScoresDown_f( void ) {
 
 #ifdef MISSIONPACK
-		CG_BuildSpectatorString();
+                CG_BuildSpectatorString();
 #endif
-	if ( cg.scoresRequestTime + 2000 < cg.time ) {
-		// the scores are more than two seconds out of data,
-		// so request new ones
-		cg.scoresRequestTime = cg.time;
-		trap_SendClientCommand( "score" );
+        if ( cg.showScores ) {
+                cg.showScores = qfalse;
+                cg.scoreFadeTime = cg.time;
+                CG_ScoreboardDisableMouse();
+                return;
+        }
+
+        if ( cg.scoresRequestTime + 2000 < cg.time ) {
+                // the scores are more than two seconds out of data,
+                // so request new ones
+                cg.scoresRequestTime = cg.time;
+                trap_SendClientCommand( "score" );
 
 		// leave the current scores up if they were already
 		// displayed, but if this is the first hit, clear them out
@@ -102,18 +165,26 @@ static void CG_ScoresDown_f( void ) {
 			cg.showScores = qtrue;
 			cg.numScores = 0;
 		}
-	} else {
-		// show the cached contents even if they just pressed if it
-		// is within two seconds
-		cg.showScores = qtrue;
-	}
+        } else {
+                // show the cached contents even if they just pressed if it
+                // is within two seconds
+                cg.showScores = qtrue;
+        }
+
+        if ( cg.showScores ) {
+                CG_ScoreboardEnableMouse();
+        }
 }
 
 static void CG_ScoresUp_f( void ) {
-	if ( cg.showScores ) {
-		cg.showScores = qfalse;
-		cg.scoreFadeTime = cg.time;
-	}
+        if ( CG_ScoreboardMouseActive() ) {
+                return;
+        }
+
+        if ( cg.showScores ) {
+                cg.showScores = qfalse;
+                cg.scoreFadeTime = cg.time;
+        }
 }
 
 #ifdef MISSIONPACK
@@ -648,10 +719,29 @@ static void CG_SaveBezierPoints_f( void )
 			break;
 	}
 
-	trap_FS_FCloseFile( f );
+        trap_FS_FCloseFile( f );
 }
 
 // Q3Rally Code End
+
+static void CG_ScoreboardNextTab_f( void ) {
+        CG_ScoreboardCycleTab( 1 );
+}
+
+static void CG_ScoreboardPrevTab_f( void ) {
+        CG_ScoreboardCycleTab( -1 );
+}
+
+static void CG_ScoreboardSelectTab_f( void ) {
+        int tab;
+
+        if ( trap_Argc() < 2 ) {
+                return;
+        }
+
+        tab = atoi( CG_Argv( 1 ) );
+        CG_ScoreboardSetTab( tab );
+}
 
 
 typedef struct {
@@ -669,6 +759,9 @@ static consoleCommand_t	commands[] = {
 	{ "viewpos", CG_Viewpos_f },
 	{ "+scores", CG_ScoresDown_f },
 	{ "-scores", CG_ScoresUp_f },
+	{ "scoreboardNextTab", CG_ScoreboardNextTab_f },
+	{ "scoreboardPrevTab", CG_ScoreboardPrevTab_f },
+	{ "scoreboardSetTab", CG_ScoreboardSelectTab_f },
 	{ "+zoom", CG_ZoomDown_f },
 	{ "-zoom", CG_ZoomUp_f },
 	{ "sizeup", CG_SizeUp_f },
@@ -804,4 +897,6 @@ void CG_InitConsoleCommands( void ) {
 	trap_AddCommand ("stats");
 	trap_AddCommand ("teamtask");
 	trap_AddCommand ("loaddefered");	// spelled wrong, but not changing for demo
+
+	CG_UpdateProfileUserinfo();
 }
