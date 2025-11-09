@@ -622,6 +622,7 @@ void SaveRegisteredItems( void );
 //
 // g_utils.c
 //
+qboolean G_IsEntityClient( int entityNum );
 // STONELANCE
 int		G_ScriptIndex( char *name );
 void	Rally_Sound( gentity_t *ent, int event, int channel, int soundIndex );
@@ -872,6 +873,7 @@ void DeathmatchScoreboardMessage( gentity_t *ent );
 //
 // g_main.c
 //
+void G_UpdatePlayerAchievementProgress(int clientNum, int id, float progress);
 void MoveClientToIntermission( gentity_t *ent );
 void FindIntermissionPoint( void );
 void SetLeader(int team, int client);
