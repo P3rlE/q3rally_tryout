@@ -88,10 +88,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define MAX_RIMMODELS		256
 // END
 
-#define PLAYERSETTINGS_NUM_TABS         3
-#define PLAYERSETTINGS_TAB_CAR          0
-#define PLAYERSETTINGS_TAB_STATS        1
-#define PLAYERSETTINGS_TAB_ACHIEVEMENTS 2
+#define PLAYERSETTINGS_MAX_TAB_ITEMS    64
+
+typedef enum {
+PLAYERSETTINGS_TAB_CAR = 0,
+PLAYERSETTINGS_TAB_STATS,
+PLAYERSETTINGS_TAB_ACHIEVEMENTS,
+PLAYERSETTINGS_NUM_TABS
+} playerSettingsTab_t;
 
 #define MAX_PROFILE_SLOTS               8
 #define MAX_PROFILE_NAME_LENGTH         32
@@ -112,19 +116,52 @@ typedef struct {
         char                    identifier[MAX_QPATH];
 } playerLifetimeDisplay_t;
 
-typedef enum {
-    TAB_VEHICLE,
-    TAB_STATS,
-    TAB_ACHIEVEMENTS,
-    NUM_TABS
-} profile_tab_t;
+typedef struct {
+	menucommon_s	*items[PLAYERSETTINGS_MAX_TAB_ITEMS];
+	int		count;
+} playerTabControlList_t;
+
+typedef qboolean (*playerStatFormatter)( const playerLifetimeDisplay_t *display, char *buffer, size_t size );
+
+typedef struct {
+        playerStatFormatter    format;
+        qboolean               sectionBreak;
+} playerStatLineDef_t;
+
+typedef struct {
+	const char	*name;
+	const char	*defaultValue;
+} profileCvarDef_t;
+
+static const profileCvarDef_t playerProfileCvars[] = {
+	{ "ui_profile_identifier", "" },
+	{ "ui_profile_sequence", "0" },
+	{ "ui_profile_version", "0" },
+	{ "ui_profile_matches", "0" },
+	{ "ui_profile_wins", "0" },
+	{ "ui_profile_losses", "0" },
+	{ "ui_profile_finishes", "0" },
+	{ "ui_profile_dnfs", "0" },
+	{ "ui_profile_bestPosition", "0" },
+	{ "ui_profile_bestLapMs", "0" },
+	{ "ui_profile_bestTotalRaceMs", "0" },
+	{ "ui_profile_totalRaceTimeMs", "0" },
+	{ "ui_profile_totalScore", "0" },
+	{ "ui_profile_totalKills", "0" },
+	{ "ui_profile_totalDeaths", "0" },
+	{ "ui_profile_totalDamageDealt", "0" },
+	{ "ui_profile_totalDamageTaken", "0" },
+	{ "ui_profile_totalDistance", "0" },
+	{ "ui_profile_totalFuel", "0" },
+	{ "ui_profile_achievements", "0" },
+	{ "ui_profile_model", "" },
+	{ "ui_profile_head", "" },
+	{ "ui_profile_rim", "" },
+	{ "ui_profile_plate", "" }
+};
 
 typedef struct {
 	menuframework_s		menu;
-    profile_tab_t   current_tab;
-
-    menutext_s      tabs[NUM_TABS];
-
 	menutext_s			banner;
 // STONELANCE
 /*
@@ -150,6 +187,8 @@ typedef struct {
 
 	menubitmap_s		tabButtons[PLAYERSETTINGS_NUM_TABS];
 	menutext_s			tabLabels[PLAYERSETTINGS_NUM_TABS];
+
+	playerTabControlList_t tabControls[PLAYERSETTINGS_NUM_TABS];
 
 	menutext_s			statsPanel;
 	menutext_s			profileRefresh;
@@ -209,47 +248,10 @@ typedef struct {
 } playersettings_t;
 
 static playersettings_t	s_playersettings;
-static int s_playersettingsInitialTab = PLAYERSETTINGS_TAB_CAR;
+static playerSettingsTab_t s_playersettingsInitialTab = PLAYERSETTINGS_TAB_CAR;
 
 static int gamecodetoui[] = {4,2,3,0,5,1,6};
 static int uitogamecode[] = {4,6,2,3,1,5,7};
-
-static void PlayerSettings_SetTab(profile_tab_t tab) {
-    int i;
-
-    s_playersettings.current_tab = tab;
-    for (i = 0; i < NUM_TABS; i++) {
-        s_playersettings.tabs[i].color = (i == tab) ? text_color_highlight : text_color_normal;
-    }
-
-    // Vehicle & Player
-    s_playersettings.name.generic.flags = (tab == TAB_VEHICLE) ? QMF_NODEFAULTINIT | QMF_INACTIVE : QMF_HIDDEN;
-    s_playersettings.handicap.generic.flags = (tab == TAB_VEHICLE) ? QMF_NODEFAULTINIT : QMF_HIDDEN;
-    s_playersettings.effects.generic.flags = (tab == TAB_VEHICLE) ? QMF_NODEFAULTINIT : QMF_HIDDEN;
-    s_playersettings.player_name.generic.flags = (tab == TAB_VEHICLE) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
-    // ... hide/show other controls for this tab
-
-    // Stats
-    s_playersettings.stats_races_started.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
-    s_playersettings.stats_races_finished.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
-    s_playersettings.stats_races_won.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
-    s_playersettings.stats_derby_matches.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
-    s_playersettings.stats_derby_wins.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
-    s_playersettings.stats_play_time.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
-    s_playersettings.stats_distance_driven.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
-
-    // Achievements
-    s_playersettings.achievements_filter.generic.flags = (tab == TAB_ACHIEVEMENTS) ? QMF_NODEFAULTINIT : QMF_HIDDEN;
-    for (i = 0; i < ACH_MAX; i++) {
-        s_playersettings.achievements_list[i].generic.flags = (tab == TAB_ACHIEVEMENTS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
-    }
-}
-
-static void PlayerSettings_TabEvent(void* ptr, int event) {
-    if (event == QM_ACTIVATED) {
-        PlayerSettings_SetTab((profile_tab_t)(((menucommon_s*)ptr)->id - ID_TAB_CAR));
-    }
-}
 
 static const char *handicap_items[] = {
         "None",
@@ -276,8 +278,10 @@ static const char *handicap_items[] = {
 };
 
 
+static void PlayerSettings_ResetTabControls( void );
+static void PlayerSettings_RegisterTabControl( playerSettingsTab_t tab, menucommon_s *item );
 static void PlayerSettings_SetMenuItemVisible( menucommon_s *item, qboolean visible );
-static void PlayerSettings_SetActiveTab( int tab );
+static void PlayerSettings_SetActiveTab( playerSettingsTab_t tab );
 static void PlayerSettings_UpdateTabVisibility( void );
 static void PlayerSettings_UpdateTabHighlight( void );
 static void PlayerSettings_DrawTabButton( void *self );
@@ -290,6 +294,16 @@ static int PlayerSettings_FindProfileIndex( const char *name );
 static qboolean PlayerSettings_SanitizeProfileName( const char *input, char *output, size_t size );
 static qboolean PlayerSettings_ProfileFileExists( const char *prefix, const char *slot );
 static qboolean PlayerSettings_FindProfileIdentifierForSlot( const char *slot, char *identifier, size_t size );
+static void PlayerSettings_ParseProfileSlotList( const char *text, const char *sessionName );
+static qboolean PlayerSettings_FormatStatTotalDistance( const playerLifetimeDisplay_t *display, char *buffer, size_t size );
+static qboolean PlayerSettings_FormatStatTotalFuel( const playerLifetimeDisplay_t *display, char *buffer, size_t size );
+static qboolean PlayerSettings_FormatStatMatchesPlayed( const playerLifetimeDisplay_t *display, char *buffer, size_t size );
+static qboolean PlayerSettings_FormatStatWinLoss( const playerLifetimeDisplay_t *display, char *buffer, size_t size );
+static qboolean PlayerSettings_FormatStatFinishes( const playerLifetimeDisplay_t *display, char *buffer, size_t size );
+static qboolean PlayerSettings_FormatStatBestPosition( const playerLifetimeDisplay_t *display, char *buffer, size_t size );
+static qboolean PlayerSettings_FormatStatBestLap( const playerLifetimeDisplay_t *display, char *buffer, size_t size );
+static qboolean PlayerSettings_FormatStatBestRace( const playerLifetimeDisplay_t *display, char *buffer, size_t size );
+static qboolean PlayerSettings_FormatStatTotalRaceTime( const playerLifetimeDisplay_t *display, char *buffer, size_t size );
 
 static void PlayerSettings_UpdateVehicleCvarsFromLifetime( const profileLifetime_t *lifetime ) {
 	if ( !lifetime ) {
@@ -324,6 +338,33 @@ static void PlayerSettings_AddProfileSlot( const char *name );
 static void PlayerSettings_SetProfileCvars( const char *profile );
 static void PlayerSettings_SelectProfileByIndex( int index );
 static void PlayerSettings_UpdateLifetimeData( void );
+
+static void PlayerSettings_ResetTabControls( void ) {
+	int tab;
+
+	for ( tab = 0; tab < PLAYERSETTINGS_NUM_TABS; tab++ ) {
+		playerTabControlList_t *list = &s_playersettings.tabControls[tab];
+
+		list->count = 0;
+		memset( list->items, 0, sizeof( list->items ) );
+	}
+}
+
+static void PlayerSettings_RegisterTabControl( playerSettingsTab_t tab, menucommon_s *item ) {
+	playerTabControlList_t *list;
+
+	if ( tab < 0 || tab >= PLAYERSETTINGS_NUM_TABS || !item ) {
+		return;
+	}
+
+	list = &s_playersettings.tabControls[tab];
+	if ( list->count >= PLAYERSETTINGS_MAX_TAB_ITEMS ) {
+		return;
+	}
+
+	list->items[list->count++] = item;
+	PlayerSettings_SetMenuItemVisible( item, qfalse );
+}
 
 static void PlayerSettings_SetMenuItemVisible( menucommon_s *item, qboolean visible ) {
         if ( !item ) {
@@ -754,6 +795,7 @@ static qboolean PlayerSettings_LoadLifetimeFromProfile( playerLifetimeDisplay_t 
 static void PlayerSettings_RegisterProfileCvars( void ) {
         static qboolean registered = qfalse;
         const int flags = CVAR_ARCHIVE;
+        int i;
 
         if ( registered ) {
                 return;
@@ -761,30 +803,58 @@ static void PlayerSettings_RegisterProfileCvars( void ) {
 
         registered = qtrue;
 
-        trap_Cvar_Register( NULL, "ui_profile_identifier", "", flags );
-        trap_Cvar_Register( NULL, "ui_profile_sequence", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_version", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_matches", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_wins", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_losses", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_finishes", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_dnfs", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_bestPosition", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_bestLapMs", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_bestTotalRaceMs", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_totalRaceTimeMs", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_totalScore", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_totalKills", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_totalDeaths", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_totalDamageDealt", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_totalDamageTaken", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_totalDistance", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_totalFuel", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_achievements", "0", flags );
-        trap_Cvar_Register( NULL, "ui_profile_model", "", flags );
-        trap_Cvar_Register( NULL, "ui_profile_head", "", flags );
-        trap_Cvar_Register( NULL, "ui_profile_rim", "", flags );
-        trap_Cvar_Register( NULL, "ui_profile_plate", "", flags );
+        for ( i = 0; i < ARRAY_LEN( playerProfileCvars ); i++ ) {
+                trap_Cvar_Register( NULL, playerProfileCvars[i].name, playerProfileCvars[i].defaultValue, flags );
+        }
+}
+
+static int PlayerSettings_GetCvarInt( const char *name ) {
+	return (int)trap_Cvar_VariableValue( name );
+}
+
+static float PlayerSettings_GetCvarFloat( const char *name ) {
+	char buffer[64];
+
+	trap_Cvar_VariableStringBuffer( name, buffer, sizeof( buffer ) );
+	return atof( buffer );
+}
+
+static void PlayerSettings_ReadLifetimeFromCvars( playerLifetimeDisplay_t *display ) {
+	int i;
+
+	static const struct {
+		const char *name;
+		int *target;
+	} intBindings[] = {
+		{ "ui_profile_version", &display->raw.version },
+		{ "ui_profile_matches", &display->raw.matchesPlayed },
+		{ "ui_profile_wins", &display->raw.wins },
+		{ "ui_profile_losses", &display->raw.losses },
+		{ "ui_profile_finishes", &display->raw.finishes },
+		{ "ui_profile_dnfs", &display->raw.dnfs },
+		{ "ui_profile_bestPosition", &display->raw.bestPosition },
+		{ "ui_profile_bestLapMs", &display->raw.bestLapMs },
+		{ "ui_profile_bestTotalRaceMs", &display->raw.bestTotalRaceMs },
+		{ "ui_profile_totalRaceTimeMs", &display->raw.totalRaceTimeMs },
+		{ "ui_profile_totalScore", &display->raw.totalScore },
+		{ "ui_profile_totalKills", &display->raw.totalKills },
+		{ "ui_profile_totalDeaths", &display->raw.totalDeaths },
+		{ "ui_profile_totalDamageDealt", &display->raw.totalDamageDealt },
+		{ "ui_profile_totalDamageTaken", &display->raw.totalDamageTaken },
+		{ "ui_profile_achievements", &display->raw.achievements },
+	};
+
+	for ( i = 0; i < ARRAY_LEN( intBindings ); i++ ) {
+		*intBindings[i].target = PlayerSettings_GetCvarInt( intBindings[i].name );
+	}
+
+	trap_Cvar_VariableStringBuffer( "ui_profile_model", display->raw.vehicleModel, sizeof( display->raw.vehicleModel ) );
+	trap_Cvar_VariableStringBuffer( "ui_profile_head", display->raw.vehicleHead, sizeof( display->raw.vehicleHead ) );
+	trap_Cvar_VariableStringBuffer( "ui_profile_rim", display->raw.vehicleRim, sizeof( display->raw.vehicleRim ) );
+	trap_Cvar_VariableStringBuffer( "ui_profile_plate", display->raw.vehiclePlate, sizeof( display->raw.vehiclePlate ) );
+
+	display->totalDistanceMeters = PlayerSettings_GetCvarFloat( "ui_profile_totalDistance" );
+	display->totalFuelConsumed = PlayerSettings_GetCvarFloat( "ui_profile_totalFuel" );
 }
 
 static int PlayerSettings_FindProfileIndex( const char *name ) {
@@ -844,45 +914,34 @@ static void PlayerSettings_AddProfileSlot( const char *name ) {
         s_playersettings.profileCount++;
 }
 
-static char *PlayerSettings_NextProfileToken( char **cursor ) {
-        char *c;
+static void PlayerSettings_ParseProfileSlotList( const char *text, const char *sessionName ) {
+        char buffer[MAX_STRING_CHARS];
+        char *cursor;
         char *token;
+        const char *parseName;
 
-        if ( !cursor || !*cursor ) {
-                return NULL;
+        if ( !text || !*text ) {
+                return;
         }
 
-        c = *cursor;
+        Q_strncpyz( buffer, text, sizeof( buffer ) );
+        cursor = buffer;
 
-        while ( *c == ' ' ) {
-                c++;
+        parseName = ( sessionName && sessionName[0] ) ? sessionName : "player_profile_slots";
+        COM_BeginParseSession( parseName );
+
+        while ( s_playersettings.profileCount < MAX_PROFILE_SLOTS ) {
+                token = COM_ParseExt( &cursor, qtrue );
+                if ( !token[0] ) {
+                        break;
+                }
+
+                PlayerSettings_AddProfileSlot( token );
         }
-
-        if ( !*c ) {
-                *cursor = c;
-                return NULL;
-        }
-
-        token = c;
-
-        while ( *c && *c != ' ' ) {
-                c++;
-        }
-
-        if ( *c ) {
-                *c = '\0';
-                c++;
-        }
-
-        *cursor = c;
-
-        return token;
 }
 
 static void PlayerSettings_LoadProfileSlots( void ) {
         char buffer[MAX_STRING_CHARS];
-        char *cursor;
-        char *token;
         char currentProfileRaw[MAX_STRING_CHARS];
         char sanitizedCurrent[MAX_PROFILE_NAME_LENGTH];
         char varName[32];
@@ -892,20 +951,12 @@ static void PlayerSettings_LoadProfileSlots( void ) {
         s_playersettings.profileCount = 0;
 
         trap_Cvar_VariableStringBuffer( PROFILE_SLOTS_CVAR, buffer, sizeof( buffer ) );
-        cursor = buffer;
-        token = PlayerSettings_NextProfileToken( &cursor );
-        while ( token ) {
-                PlayerSettings_AddProfileSlot( token );
-                if ( s_playersettings.profileCount >= MAX_PROFILE_SLOTS ) {
-                        break;
-                }
-                token = PlayerSettings_NextProfileToken( &cursor );
-        }
+        PlayerSettings_ParseProfileSlotList( buffer, PROFILE_SLOTS_CVAR );
 
         for ( i = 0; i < UI_MAX_PROFILE_SLOTS && s_playersettings.profileCount < MAX_PROFILE_SLOTS; ++i ) {
                 Com_sprintf( varName, sizeof( varName ), "ui_profileSlot%d", i );
                 trap_Cvar_VariableStringBuffer( varName, value, sizeof( value ) );
-                PlayerSettings_AddProfileSlot( value );
+                PlayerSettings_ParseProfileSlotList( value, varName );
         }
 
         trap_Cvar_VariableStringBuffer( "cg_profile", currentProfileRaw, sizeof( currentProfileRaw ) );
@@ -963,40 +1014,22 @@ static void PlayerSettings_UpdateTabHighlight( void ) {
 }
 
 static void PlayerSettings_UpdateTabVisibility( void ) {
+        int tab;
         int i;
-        qboolean showCar;
-        qboolean showStats;
-        qboolean showAchievements;
 
-        showCar = ( s_playersettings.activeTab == PLAYERSETTINGS_TAB_CAR );
-        showStats = ( s_playersettings.activeTab == PLAYERSETTINGS_TAB_STATS );
-        showAchievements = ( s_playersettings.activeTab == PLAYERSETTINGS_TAB_ACHIEVEMENTS );
+        for ( tab = 0; tab < PLAYERSETTINGS_NUM_TABS; tab++ ) {
+                playerTabControlList_t *list = &s_playersettings.tabControls[tab];
+                qboolean visible = ( tab == s_playersettings.activeTab );
 
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.name.generic, showCar );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.handicap.generic, showCar );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.effects.generic, showCar );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.customize.generic, showCar );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.plate.generic, showCar );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.left.generic, showCar );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.modelname.generic, showCar );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.right.generic, showCar );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.player.generic, showCar );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.favorites.generic, showCar );
-        for ( i = 0; i < NUM_FAVORITES; i++ ) {
-                PlayerSettings_SetMenuItemVisible( &s_playersettings.favpics[i].generic, showCar );
-                PlayerSettings_SetMenuItemVisible( &s_playersettings.favpicbuttons[i].generic, showCar );
-                PlayerSettings_SetMenuItemVisible( &s_playersettings.ports[i].generic, showCar );
+                for ( i = 0; i < list->count; i++ ) {
+                        if ( list->items[i] ) {
+                                PlayerSettings_SetMenuItemVisible( list->items[i], visible );
+                        }
+                }
         }
-
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.statsPanel.generic, showStats );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileRefresh.generic, showStats );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileList.generic, qfalse );
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.profileNameLabel.generic, qfalse );
-
-        PlayerSettings_SetMenuItemVisible( &s_playersettings.achievementsPanel.generic, showAchievements );
 }
 
-static void PlayerSettings_SetActiveTab( int tab ) {
+static void PlayerSettings_SetActiveTab( playerSettingsTab_t tab ) {
         if ( tab < 0 || tab >= PLAYERSETTINGS_NUM_TABS ) {
                 tab = PLAYERSETTINGS_TAB_CAR;
         }
@@ -1012,7 +1045,7 @@ static void PlayerSettings_SetActiveTab( int tab ) {
 
 static void PlayerSettings_DrawTabButton( void *self ) {
         menubitmap_s *b;
-        int tabIndex;
+        playerSettingsTab_t tabIndex;
         vec4_t activeColor = { 0.18f, 0.18f, 0.18f, 0.85f };
         vec4_t inactiveColor = { 0.05f, 0.05f, 0.05f, 0.65f };
         vec4_t borderColor = { 0.3f, 0.3f, 0.3f, 0.9f };
@@ -1041,89 +1074,151 @@ static void PlayerSettings_DrawTabButton( void *self ) {
 }
 
 static void PlayerSettings_UpdateLifetimeData( void ) {
-        playerLifetimeDisplay_t *display;
-        char buffer[64];
-        char identifier[MAX_QPATH];
-        int sequence;
-        qboolean haveIdentifier;
+	playerLifetimeDisplay_t *display;
+	char identifier[MAX_QPATH];
+	int sequence;
+	qboolean haveIdentifier;
 
-        PlayerSettings_RegisterProfileCvars();
+	PlayerSettings_RegisterProfileCvars();
 
-        PlayerSettings_RegisterProfileCvars();
+	display = &s_playersettings.lifetimeDisplay;
 
-        display = &s_playersettings.lifetimeDisplay;
+	sequence = PlayerSettings_GetCvarInt( "ui_profile_sequence" );
+	haveIdentifier = PlayerSettings_BuildProfileIdentifier( identifier, sizeof( identifier ) );
 
-        sequence = (int)trap_Cvar_VariableValue( "ui_profile_sequence" );
-        haveIdentifier = PlayerSettings_BuildProfileIdentifier( identifier, sizeof( identifier ) );
+	if ( sequence > 0 ) {
+		if ( display->valid && display->sequence == sequence ) {
+			return;
+		}
+	} else if ( display->valid && haveIdentifier && !Q_stricmp( display->identifier, identifier ) ) {
+		return;
+	}
 
-        if ( sequence > 0 ) {
-                if ( display->valid && display->sequence == sequence ) {
-                        return;
-                }
-        } else if ( display->valid && haveIdentifier && !Q_stricmp( display->identifier, identifier ) ) {
-                return;
+	display->sequence = sequence;
+	display->valid = qfalse;
+	PlayerSettings_UpdateVehicleCvarsFromLifetime( NULL );
+
+	if ( sequence > 0 ) {
+		PlayerSettings_ReadLifetimeFromCvars( display );
+
+		if ( display->raw.version > 0 || sequence > 0 ) {
+			display->valid = qtrue;
+			display->identifier[0] = '\0';
+			PlayerSettings_UpdateVehicleCvarsFromLifetime( &display->raw );
+			return;
+		}
+	}
+
+	if ( haveIdentifier && PlayerSettings_LoadLifetimeFromProfile( display, identifier ) ) {
+		PlayerSettings_UpdateVehicleCvarsFromLifetime( &display->raw );
+		return;
+	}
+
+	display->identifier[0] = '\0';
+}
+
+
+static float PlayerSettings_DrawStatsLine( float x, float y, const char *text, const float *color, qboolean sectionBreak ) {
+        UI_DrawString( x, y, text, UI_LEFT | UI_SMALLFONT, color );
+        return y + SMALLCHAR_HEIGHT + ( sectionBreak ? 8 : 2 );
+}
+
+static qboolean PlayerSettings_FormatStatTotalDistance( const playerLifetimeDisplay_t *display, char *buffer, size_t size ) {
+        float distanceKm = display->totalDistanceMeters / 1000.0f;
+
+        Com_sprintf( buffer, size, "Total distance: %.2f km", distanceKm );
+        return qtrue;
+}
+
+static qboolean PlayerSettings_FormatStatTotalFuel( const playerLifetimeDisplay_t *display, char *buffer, size_t size ) {
+        Com_sprintf( buffer, size, "Total fuel used: %.2f L", display->totalFuelConsumed );
+        return qtrue;
+}
+
+static qboolean PlayerSettings_FormatStatMatchesPlayed( const playerLifetimeDisplay_t *display, char *buffer, size_t size ) {
+        Com_sprintf( buffer, size, "Matches played: %d", display->raw.matchesPlayed );
+        return qtrue;
+}
+
+static qboolean PlayerSettings_FormatStatWinLoss( const playerLifetimeDisplay_t *display, char *buffer, size_t size ) {
+        Com_sprintf( buffer, size, "Wins / Losses: %d / %d", display->raw.wins, display->raw.losses );
+        return qtrue;
+}
+
+static qboolean PlayerSettings_FormatStatFinishes( const playerLifetimeDisplay_t *display, char *buffer, size_t size ) {
+        Com_sprintf( buffer, size, "Finishes / DNFs: %d / %d", display->raw.finishes, display->raw.dnfs );
+        return qtrue;
+}
+
+static qboolean PlayerSettings_FormatStatBestPosition( const playerLifetimeDisplay_t *display, char *buffer, size_t size ) {
+        if ( display->raw.bestPosition > 0 ) {
+                Com_sprintf( buffer, size, "Best position: #%d", display->raw.bestPosition );
+        } else {
+                Q_strncpyz( buffer, "Best position: --", size );
         }
 
-        display->sequence = sequence;
-        display->valid = qfalse;
-        PlayerSettings_UpdateVehicleCvarsFromLifetime( NULL );
+        return qtrue;
+}
 
-        if ( sequence > 0 ) {
-                display->raw.version = (int)trap_Cvar_VariableValue( "ui_profile_version" );
-                display->raw.matchesPlayed = (int)trap_Cvar_VariableValue( "ui_profile_matches" );
-                display->raw.wins = (int)trap_Cvar_VariableValue( "ui_profile_wins" );
-                display->raw.losses = (int)trap_Cvar_VariableValue( "ui_profile_losses" );
-                display->raw.finishes = (int)trap_Cvar_VariableValue( "ui_profile_finishes" );
-                display->raw.dnfs = (int)trap_Cvar_VariableValue( "ui_profile_dnfs" );
-                display->raw.bestPosition = (int)trap_Cvar_VariableValue( "ui_profile_bestPosition" );
-                display->raw.bestLapMs = (int)trap_Cvar_VariableValue( "ui_profile_bestLapMs" );
-                display->raw.bestTotalRaceMs = (int)trap_Cvar_VariableValue( "ui_profile_bestTotalRaceMs" );
-                display->raw.totalRaceTimeMs = (int)trap_Cvar_VariableValue( "ui_profile_totalRaceTimeMs" );
-                display->raw.totalScore = (int)trap_Cvar_VariableValue( "ui_profile_totalScore" );
-                display->raw.totalKills = (int)trap_Cvar_VariableValue( "ui_profile_totalKills" );
-                display->raw.totalDeaths = (int)trap_Cvar_VariableValue( "ui_profile_totalDeaths" );
-                display->raw.totalDamageDealt = (int)trap_Cvar_VariableValue( "ui_profile_totalDamageDealt" );
-                display->raw.totalDamageTaken = (int)trap_Cvar_VariableValue( "ui_profile_totalDamageTaken" );
-                display->raw.achievements = (int)trap_Cvar_VariableValue( "ui_profile_achievements" );
+static qboolean PlayerSettings_FormatRaceTimeMs( int timeMs, const char *label, char *buffer, size_t size ) {
+        int minutes;
+        int seconds;
+        int millis;
 
-                trap_Cvar_VariableStringBuffer( "ui_profile_model", display->raw.vehicleModel, sizeof( display->raw.vehicleModel ) );
-                trap_Cvar_VariableStringBuffer( "ui_profile_head", display->raw.vehicleHead, sizeof( display->raw.vehicleHead ) );
-                trap_Cvar_VariableStringBuffer( "ui_profile_rim", display->raw.vehicleRim, sizeof( display->raw.vehicleRim ) );
-                trap_Cvar_VariableStringBuffer( "ui_profile_plate", display->raw.vehiclePlate, sizeof( display->raw.vehiclePlate ) );
-
-                trap_Cvar_VariableStringBuffer( "ui_profile_totalDistance", buffer, sizeof( buffer ) );
-                display->totalDistanceMeters = atof( buffer );
-
-                trap_Cvar_VariableStringBuffer( "ui_profile_totalFuel", buffer, sizeof( buffer ) );
-                display->totalFuelConsumed = atof( buffer );
-
-                if ( display->raw.version > 0 || sequence > 0 ) {
-                        display->valid = qtrue;
-                        display->identifier[0] = '\0';
-                        PlayerSettings_UpdateVehicleCvarsFromLifetime( &display->raw );
-                        return;
-                }
+        if ( timeMs <= 0 ) {
+                Com_sprintf( buffer, size, "%s --", label );
+                return qtrue;
         }
 
-        if ( haveIdentifier && PlayerSettings_LoadLifetimeFromProfile( display, identifier ) ) {
-                PlayerSettings_UpdateVehicleCvarsFromLifetime( &display->raw );
-                return;
+        minutes = timeMs / 60000;
+        seconds = ( timeMs % 60000 ) / 1000;
+        millis = timeMs % 1000;
+        Com_sprintf( buffer, size, "%s %02d:%02d.%03d", label, minutes, seconds, millis );
+        return qtrue;
+}
+
+static qboolean PlayerSettings_FormatStatBestLap( const playerLifetimeDisplay_t *display, char *buffer, size_t size ) {
+        return PlayerSettings_FormatRaceTimeMs( display->raw.bestLapMs, "Best lap:", buffer, size );
+}
+
+static qboolean PlayerSettings_FormatStatBestRace( const playerLifetimeDisplay_t *display, char *buffer, size_t size ) {
+        return PlayerSettings_FormatRaceTimeMs( display->raw.bestTotalRaceMs, "Best race:", buffer, size );
+}
+
+static qboolean PlayerSettings_FormatStatTotalRaceTime( const playerLifetimeDisplay_t *display, char *buffer, size_t size ) {
+        int hours;
+        int minutes;
+        int seconds;
+
+        if ( display->raw.totalRaceTimeMs <= 0 ) {
+                Q_strncpyz( buffer, "Total race time: --", size );
+                return qtrue;
         }
 
-        display->identifier[0] = '\0';
+        hours = display->raw.totalRaceTimeMs / 3600000;
+        minutes = ( display->raw.totalRaceTimeMs % 3600000 ) / 60000;
+        seconds = ( display->raw.totalRaceTimeMs % 60000 ) / 1000;
+        Com_sprintf( buffer, size, "Total race time: %d:%02d:%02d", hours, minutes, seconds );
+        return qtrue;
 }
 
 static void PlayerSettings_DrawStatsPanel( void *self ) {
+        static const playerStatLineDef_t statLines[] = {
+                { PlayerSettings_FormatStatTotalDistance, qfalse },
+                { PlayerSettings_FormatStatTotalFuel, qtrue },
+                { PlayerSettings_FormatStatMatchesPlayed, qfalse },
+                { PlayerSettings_FormatStatWinLoss, qfalse },
+                { PlayerSettings_FormatStatFinishes, qtrue },
+                { PlayerSettings_FormatStatBestPosition, qfalse },
+                { PlayerSettings_FormatStatBestLap, qfalse },
+                { PlayerSettings_FormatStatBestRace, qfalse },
+                { PlayerSettings_FormatStatTotalRaceTime, qfalse }
+        };
         menucommon_s *item;
         playerLifetimeDisplay_t *display;
         float x;
         float y;
-        char buffer[64];
-        float distanceKm;
-        float fuelConsumed;
-        int minutes;
-        int seconds;
-        int millis;
+        size_t i;
 
         if ( s_playersettings.activeTab != PLAYERSETTINGS_TAB_STATS ) {
                 return;
@@ -1138,72 +1233,17 @@ static void PlayerSettings_DrawStatsPanel( void *self ) {
         y = item->y;
 
         if ( !display->valid ) {
-                UI_DrawString( x, y, "Lifetime profile data unavailable", UI_LEFT | UI_SMALLFONT, text_color_disabled );
+                PlayerSettings_DrawStatsLine( x, y, "Lifetime profile data unavailable", text_color_disabled, qfalse );
                 return;
         }
 
-        distanceKm = display->totalDistanceMeters / 1000.0f;
-        fuelConsumed = display->totalFuelConsumed;
+        for ( i = 0; i < ARRAY_LEN( statLines ); ++i ) {
+                char buffer[64];
 
-        Com_sprintf( buffer, sizeof( buffer ), "Total distance: %.2f km", distanceKm );
-        UI_DrawString( x, y, buffer, UI_LEFT | UI_SMALLFONT, uis.text_color );
-        y += SMALLCHAR_HEIGHT + 2;
-
-        Com_sprintf( buffer, sizeof( buffer ), "Total fuel used: %.2f L", fuelConsumed );
-        UI_DrawString( x, y, buffer, UI_LEFT | UI_SMALLFONT, uis.text_color );
-        y += SMALLCHAR_HEIGHT + 8;
-
-        Com_sprintf( buffer, sizeof( buffer ), "Matches played: %d", display->raw.matchesPlayed );
-        UI_DrawString( x, y, buffer, UI_LEFT | UI_SMALLFONT, uis.text_color );
-        y += SMALLCHAR_HEIGHT + 2;
-
-        Com_sprintf( buffer, sizeof( buffer ), "Wins / Losses: %d / %d", display->raw.wins, display->raw.losses );
-        UI_DrawString( x, y, buffer, UI_LEFT | UI_SMALLFONT, uis.text_color );
-        y += SMALLCHAR_HEIGHT + 2;
-
-        Com_sprintf( buffer, sizeof( buffer ), "Finishes / DNFs: %d / %d", display->raw.finishes, display->raw.dnfs );
-        UI_DrawString( x, y, buffer, UI_LEFT | UI_SMALLFONT, uis.text_color );
-        y += SMALLCHAR_HEIGHT + 8;
-
-        if ( display->raw.bestPosition > 0 ) {
-                Com_sprintf( buffer, sizeof( buffer ), "Best position: #%d", display->raw.bestPosition );
-        } else {
-                Q_strncpyz( buffer, "Best position: --", sizeof( buffer ) );
+                if ( statLines[i].format( display, buffer, sizeof( buffer ) ) ) {
+                        y = PlayerSettings_DrawStatsLine( x, y, buffer, uis.text_color, statLines[i].sectionBreak );
+                }
         }
-        UI_DrawString( x, y, buffer, UI_LEFT | UI_SMALLFONT, uis.text_color );
-        y += SMALLCHAR_HEIGHT + 2;
-
-        if ( display->raw.bestLapMs > 0 ) {
-                minutes = display->raw.bestLapMs / 60000;
-                seconds = ( display->raw.bestLapMs % 60000 ) / 1000;
-                millis = display->raw.bestLapMs % 1000;
-                Com_sprintf( buffer, sizeof( buffer ), "Best lap: %02d:%02d.%03d", minutes, seconds, millis );
-        } else {
-                Q_strncpyz( buffer, "Best lap: --", sizeof( buffer ) );
-        }
-        UI_DrawString( x, y, buffer, UI_LEFT | UI_SMALLFONT, uis.text_color );
-        y += SMALLCHAR_HEIGHT + 2;
-
-        if ( display->raw.bestTotalRaceMs > 0 ) {
-                minutes = display->raw.bestTotalRaceMs / 60000;
-                seconds = ( display->raw.bestTotalRaceMs % 60000 ) / 1000;
-                millis = display->raw.bestTotalRaceMs % 1000;
-                Com_sprintf( buffer, sizeof( buffer ), "Best race: %02d:%02d.%03d", minutes, seconds, millis );
-        } else {
-                Q_strncpyz( buffer, "Best race: --", sizeof( buffer ) );
-        }
-        UI_DrawString( x, y, buffer, UI_LEFT | UI_SMALLFONT, uis.text_color );
-        y += SMALLCHAR_HEIGHT + 2;
-
-        if ( display->raw.totalRaceTimeMs > 0 ) {
-                int hours = display->raw.totalRaceTimeMs / 3600000;
-                minutes = ( display->raw.totalRaceTimeMs % 3600000 ) / 60000;
-                seconds = ( display->raw.totalRaceTimeMs % 60000 ) / 1000;
-                Com_sprintf( buffer, sizeof( buffer ), "Total race time: %d:%02d:%02d", hours, minutes, seconds );
-        } else {
-                Q_strncpyz( buffer, "Total race time: --", sizeof( buffer ) );
-        }
-        UI_DrawString( x, y, buffer, UI_LEFT | UI_SMALLFONT, uis.text_color );
 }
 
 static void PlayerSettings_DrawAchievementsPanel( void *self ) {
@@ -2040,6 +2080,7 @@ static void PlayerSettings_MenuInit( void ) {
 // END
 
 	memset(&s_playersettings,0,sizeof(playersettings_t));
+	PlayerSettings_ResetTabControls();
 	s_playersettings.activeTab = -1;
 
 	PlayerSettings_Cache();
@@ -2072,6 +2113,7 @@ static void PlayerSettings_MenuInit( void ) {
     s_playersettings.stats_races_started.style = UI_LEFT | UI_SMALLFONT;
     s_playersettings.stats_races_started.color = color_white;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_STATS, &s_playersettings.stats_races_started.generic );
     s_playersettings.stats_races_finished.generic.type = MTYPE_PTEXT;
     s_playersettings.stats_races_finished.generic.flags = QMF_LEFT_JUSTIFY;
     s_playersettings.stats_races_finished.generic.x = 100;
@@ -2080,6 +2122,7 @@ static void PlayerSettings_MenuInit( void ) {
     s_playersettings.stats_races_finished.style = UI_LEFT | UI_SMALLFONT;
     s_playersettings.stats_races_finished.color = color_white;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_STATS, &s_playersettings.stats_races_finished.generic );
     s_playersettings.stats_races_won.generic.type = MTYPE_PTEXT;
     s_playersettings.stats_races_won.generic.flags = QMF_LEFT_JUSTIFY;
     s_playersettings.stats_races_won.generic.x = 100;
@@ -2088,6 +2131,7 @@ static void PlayerSettings_MenuInit( void ) {
     s_playersettings.stats_races_won.style = UI_LEFT | UI_SMALLFONT;
     s_playersettings.stats_races_won.color = color_white;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_STATS, &s_playersettings.stats_races_won.generic );
     s_playersettings.stats_derby_matches.generic.type = MTYPE_PTEXT;
     s_playersettings.stats_derby_matches.generic.flags = QMF_LEFT_JUSTIFY;
     s_playersettings.stats_derby_matches.generic.x = 100;
@@ -2096,6 +2140,7 @@ static void PlayerSettings_MenuInit( void ) {
     s_playersettings.stats_derby_matches.style = UI_LEFT | UI_SMALLFONT;
     s_playersettings.stats_derby_matches.color = color_white;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_STATS, &s_playersettings.stats_derby_matches.generic );
     s_playersettings.stats_derby_wins.generic.type = MTYPE_PTEXT;
     s_playersettings.stats_derby_wins.generic.flags = QMF_LEFT_JUSTIFY;
     s_playersettings.stats_derby_wins.generic.x = 100;
@@ -2104,6 +2149,7 @@ static void PlayerSettings_MenuInit( void ) {
     s_playersettings.stats_derby_wins.style = UI_LEFT | UI_SMALLFONT;
     s_playersettings.stats_derby_wins.color = color_white;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_STATS, &s_playersettings.stats_derby_wins.generic );
     s_playersettings.stats_play_time.generic.type = MTYPE_PTEXT;
     s_playersettings.stats_play_time.generic.flags = QMF_LEFT_JUSTIFY;
     s_playersettings.stats_play_time.generic.x = 100;
@@ -2112,6 +2158,7 @@ static void PlayerSettings_MenuInit( void ) {
     s_playersettings.stats_play_time.style = UI_LEFT | UI_SMALLFONT;
     s_playersettings.stats_play_time.color = color_white;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_STATS, &s_playersettings.stats_play_time.generic );
     s_playersettings.stats_distance_driven.generic.type = MTYPE_PTEXT;
     s_playersettings.stats_distance_driven.generic.flags = QMF_LEFT_JUSTIFY;
     s_playersettings.stats_distance_driven.generic.x = 100;
@@ -2120,6 +2167,7 @@ static void PlayerSettings_MenuInit( void ) {
     s_playersettings.stats_distance_driven.style = UI_LEFT | UI_SMALLFONT;
     s_playersettings.stats_distance_driven.color = color_white;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_STATS, &s_playersettings.stats_distance_driven.generic );
     s_playersettings.achievements_filter.generic.type = MTYPE_SPINCONTROL;
     s_playersettings.achievements_filter.generic.flags = QMF_NODEFAULTINIT;
     s_playersettings.achievements_filter.generic.x = 100;
@@ -2127,6 +2175,7 @@ static void PlayerSettings_MenuInit( void ) {
     s_playersettings.achievements_filter.itemnames = playerSettingsAchievementFilterItems;
     s_playersettings.achievements_filter.numitems = 3;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_ACHIEVEMENTS, &s_playersettings.achievements_filter.generic );
     for (i = 0; i < ACH_MAX; i++) {
         s_playersettings.achievements_list[i].generic.type = MTYPE_PTEXT;
         s_playersettings.achievements_list[i].generic.flags = QMF_LEFT_JUSTIFY;
@@ -2141,6 +2190,8 @@ static void PlayerSettings_MenuInit( void ) {
 
         s_playersettings.achievements_list[i].style = UI_LEFT | UI_SMALLFONT;
         s_playersettings.achievements_list[i].color = cg_profile.achievements[i].unlocked ? color_white : text_color_disabled;
+
+		PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_ACHIEVEMENTS, &s_playersettings.achievements_list[i].generic );
     }
 
     s_playersettings.player_name.generic.type = MTYPE_PTEXT;
@@ -2151,33 +2202,7 @@ static void PlayerSettings_MenuInit( void ) {
     s_playersettings.player_name.style = UI_LEFT | UI_SMALLFONT;
     s_playersettings.player_name.color = color_white;
 
-    s_playersettings.tabs[0].generic.type = MTYPE_PTEXT;
-    s_playersettings.tabs[0].generic.flags = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
-    s_playersettings.tabs[0].generic.x = 100;
-    s_playersettings.tabs[0].generic.y = 60;
-    s_playersettings.tabs[0].generic.id = ID_TAB_CAR;
-    s_playersettings.tabs[0].generic.callback = PlayerSettings_TabEvent;
-    s_playersettings.tabs[0].string = "Vehicle & Player";
-    s_playersettings.tabs[0].style = UI_LEFT | UI_SMALLFONT;
-
-    s_playersettings.tabs[1].generic.type = MTYPE_PTEXT;
-    s_playersettings.tabs[1].generic.flags = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
-    s_playersettings.tabs[1].generic.x = 250;
-    s_playersettings.tabs[1].generic.y = 60;
-    s_playersettings.tabs[1].generic.id = ID_TAB_STATS;
-    s_playersettings.tabs[1].generic.callback = PlayerSettings_TabEvent;
-    s_playersettings.tabs[1].string = "Stats";
-    s_playersettings.tabs[1].style = UI_LEFT | UI_SMALLFONT;
-
-    s_playersettings.tabs[2].generic.type = MTYPE_PTEXT;
-    s_playersettings.tabs[2].generic.flags = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
-    s_playersettings.tabs[2].generic.x = 350;
-    s_playersettings.tabs[2].generic.y = 60;
-    s_playersettings.tabs[2].generic.id = ID_TAB_ACHIEVEMENTS;
-    s_playersettings.tabs[2].generic.callback = PlayerSettings_TabEvent;
-    s_playersettings.tabs[2].string = "Achievements";
-    s_playersettings.tabs[2].style = UI_LEFT | UI_SMALLFONT;
-
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_CAR, &s_playersettings.player_name.generic );
 	{
 		static const int tabIds[PLAYERSETTINGS_NUM_TABS] = { ID_TAB_CAR, ID_TAB_STATS, ID_TAB_ACHIEVEMENTS };
 		static char tabTexts[PLAYERSETTINGS_NUM_TABS][16] = { "CAR", "STATS", "ACHIEVEMENTS" };
@@ -2252,7 +2277,8 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.name.generic.top			= y - 8;
 	s_playersettings.name.generic.right			= 192 + 200;
 	s_playersettings.name.generic.bottom		= y + 2 * PROP_HEIGHT;
-*/
+
+	*/
 	s_playersettings.name.generic.x				= 30;
 	s_playersettings.name.generic.y				= y;
 	s_playersettings.name.generic.left			= 30;
@@ -2260,6 +2286,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.name.generic.right			= 30 + 203;
 	s_playersettings.name.generic.bottom		= y + 36;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_CAR, &s_playersettings.name.generic );
 //	y += 3 * PROP_HEIGHT;
 // END
 	s_playersettings.handicap.generic.type		= MTYPE_SPINCONTROL;
@@ -2284,6 +2311,7 @@ static void PlayerSettings_MenuInit( void ) {
 // END
 	s_playersettings.handicap.numitems			= 20;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_CAR, &s_playersettings.handicap.generic );
 // STONELANCE
 //	y += 3 * PROP_HEIGHT;
 // END
@@ -2309,6 +2337,7 @@ static void PlayerSettings_MenuInit( void ) {
 // END
 	s_playersettings.effects.numitems			= 7;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_CAR, &s_playersettings.effects.generic );
 // STONELANCE
 /*
 	s_playersettings.model.generic.type			= MTYPE_BITMAP;
@@ -2335,6 +2364,8 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.customize.generic.callback	= PlayerSettings_MenuEvent; 
 	s_playersettings.customize.color			= text_color_normal;
 	s_playersettings.customize.style			= UI_RIGHT;
+
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_CAR, &s_playersettings.customize.generic );
 // END
 
 	s_playersettings.statsPanel.generic.type = MTYPE_PTEXT;
@@ -2349,6 +2380,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.statsPanel.color = text_color_normal;
 	s_playersettings.statsPanel.style = UI_LEFT|UI_SMALLFONT;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_STATS, &s_playersettings.statsPanel.generic );
 	s_playersettings.profileRefresh.generic.type = MTYPE_PTEXT;
 	s_playersettings.profileRefresh.generic.flags = QMF_RIGHT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
 	s_playersettings.profileRefresh.generic.x = s_playersettings.statsPanel.generic.x + 240;
@@ -2363,6 +2395,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.profileRefresh.color = text_color_normal;
 	s_playersettings.profileRefresh.style = UI_RIGHT|UI_SMALLFONT;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_STATS, &s_playersettings.profileRefresh.generic );
 	s_playersettings.achievementsPanel.generic.type = MTYPE_PTEXT;
 	s_playersettings.achievementsPanel.generic.flags = QMF_LEFT_JUSTIFY|QMF_INACTIVE|QMF_SMALLFONT;
 	s_playersettings.achievementsPanel.generic.x = 72;
@@ -2375,6 +2408,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.achievementsPanel.color = text_color_normal;
 	s_playersettings.achievementsPanel.style = UI_LEFT|UI_SMALLFONT;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_ACHIEVEMENTS, &s_playersettings.achievementsPanel.generic );
 	s_playersettings.profileNameLabel.generic.type = MTYPE_PTEXT;
 	s_playersettings.profileNameLabel.generic.flags = QMF_LEFT_JUSTIFY|QMF_INACTIVE|QMF_HIDDEN;
 	s_playersettings.profileNameLabel.generic.x = 360;
@@ -2411,12 +2445,14 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.player.generic.y			= -40;
 	s_playersettings.player.width				= 32*10;
 	s_playersettings.player.height				= 56*10;
-*/
+
+	*/
 	s_playersettings.player.generic.x	       = 40;
 	s_playersettings.player.generic.y	       = 0;
 	s_playersettings.player.width	           = 560;
 	s_playersettings.player.height             = 480;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_CAR, &s_playersettings.player.generic );
 
 	y = 138;
 	s_playersettings.modelname.generic.type   = MTYPE_PTEXT;
@@ -2427,6 +2463,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.modelname.style		  = UI_CENTER;
 	s_playersettings.modelname.color          = text_color_normal;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_CAR, &s_playersettings.modelname.generic );
 	s_playersettings.left.generic.type			= MTYPE_BITMAP;
 	s_playersettings.left.generic.name			= ART_LEFT0;
 	s_playersettings.left.generic.flags			= QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
@@ -2437,7 +2474,8 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.left.width  				= 32;
 	s_playersettings.left.height  				= 32;
 	s_playersettings.left.focuspic				= ART_LEFT1;
-	
+
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_CAR, &s_playersettings.left.generic );	
 	s_playersettings.right.generic.type			= MTYPE_BITMAP;
 	s_playersettings.right.generic.name			= ART_RIGHT0;
 	s_playersettings.right.generic.flags		= QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
@@ -2449,6 +2487,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.right.height  				= 32;
 	s_playersettings.right.focuspic				= ART_RIGHT1;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_CAR, &s_playersettings.right.generic );
 	s_playersettings.favorites.generic.type   = MTYPE_PTEXT;
 	s_playersettings.favorites.generic.flags  = QMF_CENTER_JUSTIFY|QMF_INACTIVE;
 	s_playersettings.favorites.generic.x	  = 320;
@@ -2457,6 +2496,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.favorites.style		  = UI_CENTER|UI_SMALLFONT;
 	s_playersettings.favorites.color          = text_color_normal;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_CAR, &s_playersettings.favorites.generic );
 	x =	183;
 	y = 403;
 	for (j=0; j<NUM_FAVORITES; j++)
@@ -2493,6 +2533,9 @@ static void PlayerSettings_MenuInit( void ) {
 		s_playersettings.favpicbuttons[j].focuspic  		= ART_SELECT;
 		s_playersettings.favpicbuttons[j].focuscolor  		= text_color_highlight;
 
+		PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_CAR, &s_playersettings.ports[j].generic );
+		PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_CAR, &s_playersettings.favpics[j].generic );
+		PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_CAR, &s_playersettings.favpicbuttons[j].generic );
 		x += 64+6;
 	}
 
@@ -2506,6 +2549,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.plate.color					= text_color_normal;
 	s_playersettings.plate.style					= UI_LEFT | UI_SMALLFONT;
 
+	PlayerSettings_RegisterTabControl( PLAYERSETTINGS_TAB_CAR, &s_playersettings.plate.generic );
 
 	s_playersettings.back.generic.type				= MTYPE_PTEXT;
 	s_playersettings.back.generic.flags				= QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
@@ -2539,11 +2583,10 @@ static void PlayerSettings_MenuInit( void ) {
 // END
 
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.banner );
-    for (i = 0; i < NUM_TABS; i++) {
-        Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.tabs[i]);
-    }
-
-    PlayerSettings_SetTab(TAB_VEHICLE);
+	for ( i = 0; i < PLAYERSETTINGS_NUM_TABS; i++ ) {
+		Menu_AddItem( &s_playersettings.menu, &s_playersettings.tabButtons[i] );
+		Menu_AddItem( &s_playersettings.menu, &s_playersettings.tabLabels[i] );
+	}
 // STONELANCE
 /*
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.framel );
