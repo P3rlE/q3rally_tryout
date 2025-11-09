@@ -34,7 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define UI_API_VERSION	4
 #include "../client/keycodes.h"
 #include "../game/bg_public.h"
-#include "q3r_profile.h"
+#include "../game/q3r_profile.h"
 
 extern q3r_profile_t cg_profile;
 
