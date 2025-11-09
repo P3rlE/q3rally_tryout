@@ -963,8 +963,6 @@ void SendPendingPredictableEvents( playerState_t *ps ) {
 	}
 }
 
-<<<<<<< HEAD
-=======
 static void G_ProfileAccumulatePhysics( gentity_t *ent ) {
 	gclient_t *client;
 	vec3_t delta;
@@ -1026,7 +1024,6 @@ static void G_ProfileAccumulatePhysics( gentity_t *ent ) {
 	client->profileLastFuel = currentFuel;
 }
 
->>>>>>> 72dbed79c5ebf4f3f87ade54d1fcfe83ba2938ed
 /*
 ==============
 ClientThink

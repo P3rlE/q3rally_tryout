@@ -1388,14 +1388,6 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
-<<<<<<< HEAD
-	if ( !strcmp( cmd, "raceFinishTime" ) ) {
-		i1 = atoi(CG_Argv(1));
-		i2 = atoi(CG_Argv(2));
-		CG_FinishedRace( i1, i2 );
-		return;
-	}
-=======
         if ( !strcmp( cmd, "raceFinishTime" ) ) {
                 i1 = atoi(CG_Argv(1));
                 i2 = atoi(CG_Argv(2));
@@ -1417,7 +1409,7 @@ static void CG_ServerCommand( void ) {
         Q3R_Achievements_UpdateProgress_Cmd(id, progress);
         return;
     }
->>>>>>> 72dbed79c5ebf4f3f87ade54d1fcfe83ba2938ed
+
 // END
 
 	CG_Printf( "Unknown client game command: %s\n", cmd );

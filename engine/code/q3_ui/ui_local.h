@@ -1061,11 +1061,8 @@ void UI_SignupMenu( void );
 void RankStatus_Cache( void );
 void UI_RankStatusMenu( void );
 
-<<<<<<< HEAD
-=======
 void UI_ProfileOverlay_ResetSession( void );
 void UI_ProfileOverlay_MaybeShow( void );
 void Q3R_AchievementNotify_Draw(void);
 
->>>>>>> 72dbed79c5ebf4f3f87ade54d1fcfe83ba2938ed
 #endif

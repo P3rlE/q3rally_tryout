@@ -673,8 +673,6 @@ static void PlayerSettings_SetMenuItems( void ) {
 	// handicap
 	h = Com_Clamp( 5, 100, trap_Cvar_VariableValue("handicap") );
 	s_playersettings.handicap.curvalue = 20 - h / 5;
-<<<<<<< HEAD
-=======
 
 	// The favorite car data is already in cg_profile, which is loaded when the profile is.
 	// No extra loading is needed here. The UI will read from it directly.
@@ -682,7 +680,7 @@ static void PlayerSettings_SetMenuItems( void ) {
 	PlayerSettings_LoadProfileSlots();
 	PlayerSettings_UpdateTabHighlight();
 	PlayerSettings_UpdateTabVisibility();
->>>>>>> 72dbed79c5ebf4f3f87ade54d1fcfe83ba2938ed
+
 }
 
 
@@ -905,8 +903,6 @@ static void PlayerSettings_MenuInit( void ) {
 // END
 	s_playersettings.banner.style         = UI_CENTER;
 
-<<<<<<< HEAD
-=======
     s_playersettings.stats_races_started.generic.type = MTYPE_PTEXT;
     s_playersettings.stats_races_started.generic.flags = QMF_LEFT_JUSTIFY;
     s_playersettings.stats_races_started.generic.x = 100;
@@ -1047,7 +1043,6 @@ static void PlayerSettings_MenuInit( void ) {
 		}
 	}
 
->>>>>>> 72dbed79c5ebf4f3f87ade54d1fcfe83ba2938ed
 // STONELANCE
 /*
 	s_playersettings.framel.generic.type  = MTYPE_BITMAP;
@@ -1305,14 +1300,13 @@ static void PlayerSettings_MenuInit( void ) {
 // END
 
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.banner );
-<<<<<<< HEAD
-=======
+
     for (int i = 0; i < NUM_TABS; i++) {
         Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.tabs[i]);
     }
 
     PlayerSettings_SetTab(TAB_VEHICLE);
->>>>>>> 72dbed79c5ebf4f3f87ade54d1fcfe83ba2938ed
+
 // STONELANCE
 /*
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.framel );
