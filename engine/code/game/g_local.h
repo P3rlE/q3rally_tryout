@@ -540,6 +540,7 @@ typedef struct {
 	int			eliminationInitialPlayers;
 	qboolean	eliminationSetupComplete;
 	int			numberOfLaps;
+	qboolean	derbyWinner;
 
 	// map variables
 	int			numCheckpoints;

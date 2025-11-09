@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "ui_local.h"
+#include "q3r_profile.h"
 #include "../game/g_profile.h"
 
 #ifndef INT_MAX
@@ -84,6 +85,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // STONELANCE
 #define NUM_FAVORITES		4
 #define MAX_PLAYERMODELS	256
+#define MAX_RIMMODELS		256
 // END
 
 #define PLAYERSETTINGS_NUM_TABS         3
@@ -178,6 +180,9 @@ typedef struct {
 
 	char				favIcons[NUM_FAVORITES][MAX_QPATH];
 	qboolean			modelChanged;
+
+	int					numRims;
+	char				rimList[MAX_RIMMODELS][MAX_QPATH];
 // END
 
 	qhandle_t			fxBasePic;
@@ -196,6 +201,7 @@ typedef struct {
     menutext_s      stats_distance_driven;
 
     // Achievements
+    menulist_s      achievements_filter;
     menutext_s      achievements_list[MAX_ACHIEVEMENTS];
 
     // Vehicle & Player
@@ -231,6 +237,7 @@ static void PlayerSettings_SetTab(profile_tab_t tab) {
     s_playersettings.stats_distance_driven.generic.flags = (tab == TAB_STATS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
 
     // Achievements
+    s_playersettings.achievements_filter.generic.flags = (tab == TAB_ACHIEVEMENTS) ? QMF_NODEFAULTINIT : QMF_HIDDEN;
     for (int i = 0; i < ACH_MAX; i++) {
         s_playersettings.achievements_list[i].generic.flags = (tab == TAB_ACHIEVEMENTS) ? QMF_LEFT_JUSTIFY : QMF_HIDDEN;
     }
@@ -1230,16 +1237,15 @@ static void PlayerSettings_DrawAchievementsPanel( void *self ) {
                 return;
         }
 
-        for ( i = 0; i < ARRAY_LEN( achievementMap ); i++ ) {
-                float *color;
-                if ( display->raw.achievements & achievementMap[i].bit ) {
-                        color = text_color_highlight;
-                        unlockedAny = qtrue;
-                } else {
-                        color = text_color_disabled;
-                }
-                UI_DrawString( x, y, achievementMap[i].label, UI_LEFT | UI_SMALLFONT, color );
-                y += SMALLCHAR_HEIGHT + 4;
+        for ( i = 0; i < ACH_MAX; i++ ) {
+            qboolean unlocked = cg_profile.achievements[i].unlocked;
+            if (s_playersettings.achievements_filter.curvalue == 1 && !unlocked) continue;
+            if (s_playersettings.achievements_filter.curvalue == 2 && unlocked) continue;
+
+            float *color = unlocked ? color_white : color_gray;
+            UI_DrawString( x, y, s_playersettings.achievements_list[i].string, UI_LEFT | UI_SMALLFONT, color );
+            y += SMALLCHAR_HEIGHT + 4;
+            unlockedAny = unlockedAny || unlocked;
         }
 
         if ( !unlockedAny ) {
@@ -1520,27 +1526,88 @@ static void PlayerSettings_DrawPlayer( void *self ) {
 
 
 // STONELANCE (new function)
-/*
-=================
-LoadFavorite
 
-=================
-*/
-static void LoadFavorite(int favoriteIndex, int carId) {
+static int PlayerSettings_FindPaintId(const char* paintName) {
+    char cleanPaintName[MAX_QPATH];
+    Q_strncpyz(cleanPaintName, paintName, sizeof(cleanPaintName));
+    COM_StripExtension(cleanPaintName, cleanPaintName);
+
+    for (int i = 0; i < s_playersettings.numModels; i++) {
+        if (Q_stricmp(s_playersettings.modelList[i], cleanPaintName) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static int PlayerSettings_FindRimId(const char* rimName) {
+    char cleanRimName[MAX_QPATH];
+    Q_strncpyz(cleanRimName, rimName, sizeof(cleanRimName));
+    COM_StripExtension(cleanRimName, cleanRimName);
+
+    for (int i = 0; i < s_playersettings.numRims; i++) {
+        if (Q_stricmp(s_playersettings.rimList[i], cleanRimName) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static void PlayerSettings_SaveFavorite(int favoriteIndex) {
     if (favoriteIndex < 0 || favoriteIndex >= Q3R_NUM_FAVORITE_SLOTS) {
         return;
     }
 
-    // For now, we'll just store the car ID. A full implementation would
-    // also handle paint, wheels, and tuning.
-    cg_profile.favoriteSlots[favoriteIndex].carId = carId;
+    q3r_favorite_slot_t* slot = &cg_profile.favoriteSlots[favoriteIndex];
+    char currentPaint[MAX_QPATH];
+    char currentRim[MAX_QPATH];
+    char* slash;
 
-    // In a real scenario, you would look up the car's default model and skin
-    // from the carId and update the cvars.
-    // e.g., trap_Cvar_Set("model", "some_model/some_skin");
+    slot->carId = s_playersettings.selectedModel;
+
+    trap_Cvar_VariableStringBuffer("model", currentPaint, sizeof(currentPaint));
+    slash = strrchr(currentPaint, '/');
+    if (slash) {
+        slot->paintId = PlayerSettings_FindPaintId(slash + 1);
+    } else {
+        slot->paintId = -1;
+    }
+
+    trap_Cvar_VariableStringBuffer("rim", currentRim, sizeof(currentRim));
+    slot->wheelId = PlayerSettings_FindRimId(currentRim);
+    slot->tuningId = 0;
+
+    Q3R_Profile_Save(&cg_profile);
+    PlayerSettings_UpdateFavorites();
+}
+
+static void PlayerSettings_LoadFavorite(int favoriteIndex) {
+    if (favoriteIndex < 0 || favoriteIndex >= Q3R_NUM_FAVORITE_SLOTS) {
+        return;
+    }
+
+    q3r_favorite_slot_t* slot = &cg_profile.favoriteSlots[favoriteIndex];
+    if (slot->carId < 0 || slot->carId >= s_playersettings.allModels) {
+        return;
+    }
+
+    s_playersettings.selectedModel = slot->carId;
+    s_playersettings.modelname.string = s_playersettings.modelList[s_playersettings.selectedModel];
+
+    if (slot->paintId >= 0 && slot->paintId < s_playersettings.numModels) {
+        Com_sprintf(s_playersettings.modelskin, sizeof(s_playersettings.modelskin), "%s/%s", s_playersettings.modelList[s_playersettings.selectedModel], s_playersettings.modelList[slot->paintId]);
+    } else {
+        Com_sprintf(s_playersettings.modelskin, sizeof(s_playersettings.modelskin), "%s/%s", s_playersettings.modelList[s_playersettings.selectedModel], DEFAULT_SKIN);
+    }
+
+    if (slot->wheelId >= 0 && slot->wheelId < s_playersettings.numRims) {
+        trap_Cvar_Set("rim", s_playersettings.rimList[slot->wheelId]);
+    }
 
     s_playersettings.modelChanged = qtrue;
+    PlayerSettings_UpdateModel();
 }
+
 
 /*
 =================
@@ -1550,12 +1617,18 @@ PlayerSettings_UpdateFavorites
 */
 static void PlayerSettings_UpdateFavorites( void ) {
     for (int i = 0; i < Q3R_NUM_FAVORITE_SLOTS; i++) {
-        if (cg_profile.favoriteSlots[i].carId != 0) { // Assuming 0 is an invalid/empty carId
-            // This is a placeholder. A real implementation would look up the car's model/skin
-            // from its ID. For now, we'll just construct a dummy path.
-            // A more robust solution would involve a data structure that maps car IDs to assets.
+        q3r_favorite_slot_t* slot = &cg_profile.favoriteSlots[i];
+        if (slot->carId >= 0 && slot->carId < s_playersettings.allModels) {
+            const char* carModel = s_playersettings.modelList[slot->carId];
+
+            // Re-build the paint list for the specific car model of the favorite slot
+            int numPaints = UI_BuildFileList(va("models/players/%s", carModel), "skin", "", qtrue, qfalse, qtrue, 0, s_playersettings.modelList);
+
+            const char* paintName = (slot->paintId >= 0 && slot->paintId < numPaints) ? s_playersettings.modelList[slot->paintId] : DEFAULT_SKIN;
+
             Com_sprintf(s_playersettings.favIcons[i], sizeof(s_playersettings.favIcons[i]),
-                        "models/players/car%d/icon_default", cg_profile.favoriteSlots[i].carId);
+                        "models/players/%s/icon_%s", carModel, paintName);
+
             s_playersettings.favpics[i].generic.name = s_playersettings.favIcons[i];
             s_playersettings.favpicbuttons[i].generic.flags &= ~QMF_INACTIVE;
         } else {
@@ -1730,16 +1803,15 @@ static void PlayerSettings_PicEvent( void* ptr, int event )
         return;
 
     int favoriteIndex = ((menucommon_s*)ptr)->id - ID_FAVORITE1;
-    if (favoriteIndex >= 0 && favoriteIndex < Q3R_NUM_FAVORITE_SLOTS) {
-        // This is a placeholder. A real implementation would open a car selection
-        // menu and then call LoadFavorite with the selected car's ID.
-        // For now, we'll just cycle through some dummy car IDs.
-        int dummyCarId = (cg_profile.favoriteSlots[favoriteIndex].carId + 1) % 5;
-        if (dummyCarId == 0) dummyCarId = 1; // Car IDs are typically > 0
-        LoadFavorite(favoriteIndex, dummyCarId);
+    if (favoriteIndex < 0 || favoriteIndex >= Q3R_NUM_FAVORITE_SLOTS) {
+        return;
     }
 
-    PlayerSettings_UpdateModel();
+    if (uis.shift_down) {
+        PlayerSettings_SaveFavorite(favoriteIndex);
+    } else {
+        PlayerSettings_LoadFavorite(favoriteIndex);
+    }
 }
 // END
 
@@ -1932,6 +2004,7 @@ static void PlayerSettings_BuildList( void ){
 	// get car list
 	s_playersettings.numModels = UI_BuildFileList("models/players", "md3", "body", qtrue, qtrue, BL_EXCLUDE, 0, s_playersettings.modelList);
 	s_playersettings.allModels = UI_BuildFileList("models/players", "md3", "body", qtrue, qtrue, BL_ONLY, s_playersettings.numModels, s_playersettings.modelList);
+	s_playersettings.numRims = UI_BuildFileList("models/players/wheels", "skin", "", qtrue, qfalse, qtrue, 0, s_playersettings.rimList);
 }
 // END
 
@@ -2029,14 +2102,28 @@ static void PlayerSettings_MenuInit( void ) {
     s_playersettings.stats_distance_driven.style = UI_LEFT | UI_SMALLFONT;
     s_playersettings.stats_distance_driven.color = color_white;
 
+    static const char *achievement_filter_items[] = {"All", "Unlocked", "Locked", 0};
+    s_playersettings.achievements_filter.generic.type = MTYPE_SPINCONTROL;
+    s_playersettings.achievements_filter.generic.flags = QMF_NODEFAULTINIT;
+    s_playersettings.achievements_filter.generic.x = 100;
+    s_playersettings.achievements_filter.generic.y = 80;
+    s_playersettings.achievements_filter.itemnames = achievement_filter_items;
+    s_playersettings.achievements_filter.numitems = 3;
+
     for (int i = 0; i < ACH_MAX; i++) {
         s_playersettings.achievements_list[i].generic.type = MTYPE_PTEXT;
         s_playersettings.achievements_list[i].generic.flags = QMF_LEFT_JUSTIFY;
         s_playersettings.achievements_list[i].generic.x = 100;
         s_playersettings.achievements_list[i].generic.y = 100 + i * 20;
-        s_playersettings.achievements_list[i].string = va("%s: %s", achievement_defs[i].title, cg_profile.achievements[i].unlocked ? "Unlocked" : "Locked");
+
+        if (achievement_defs[i].type == ACH_TYPE_PROGRESS) {
+            s_playersettings.achievements_list[i].string = va("%s: %.0f/%.0f", achievement_defs[i].title, cg_profile.achievements[i].progress, achievement_defs[i].target);
+        } else {
+            s_playersettings.achievements_list[i].string = va("%s: %s", achievement_defs[i].title, cg_profile.achievements[i].unlocked ? "Unlocked" : "Locked");
+        }
+
         s_playersettings.achievements_list[i].style = UI_LEFT | UI_SMALLFONT;
-        s_playersettings.achievements_list[i].color = color_white;
+        s_playersettings.achievements_list[i].color = cg_profile.achievements[i].unlocked ? color_white : color_gray;
     }
 
     s_playersettings.player_name.generic.type = MTYPE_PTEXT;
@@ -2349,7 +2436,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.favorites.generic.flags  = QMF_CENTER_JUSTIFY|QMF_INACTIVE;
 	s_playersettings.favorites.generic.x	  = 320;
 	s_playersettings.favorites.generic.y	  = 378;
-	s_playersettings.favorites.string	      = "LOAD FAVORITE";
+	s_playersettings.favorites.string	      = "FAVORITES (SHIFT+CLICK TO SAVE)";
 	s_playersettings.favorites.style		  = UI_CENTER|UI_SMALLFONT;
 	s_playersettings.favorites.color          = text_color_normal;
 
@@ -2464,6 +2551,7 @@ static void PlayerSettings_MenuInit( void ) {
     Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.stats_play_time);
     Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.stats_distance_driven);
 
+    Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.achievements_filter);
     for (int i = 0; i < ACH_MAX; i++) {
         Menu_AddItem(&s_playersettings.menu, (void*)&s_playersettings.achievements_list[i]);
     }
