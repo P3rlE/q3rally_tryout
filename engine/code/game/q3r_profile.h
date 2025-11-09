@@ -87,12 +87,15 @@ typedef struct {
     float target;
 } achievement_def_t;
 
-static achievement_def_t achievement_defs[ACH_MAX] = {
-    { ACH_FIRST_RACE_FINISHED, "first_race", "First Finish!", "Finish your first race.", ACH_TYPE_ONE_SHOT, 1.0f },
-    { ACH_10_RACES_FINISHED, "10_races", "Veteran Racer", "Finish 10 races.", ACH_TYPE_PROGRESS, 10.0f },
-    { ACH_100KM_DRIVEN, "100km_driven", "Long Distance Driver", "Drive 100 km total.", ACH_TYPE_PROGRESS, 100000.0f },
-    { ACH_10_WINS, "10_wins", "Champion", "Win 10 races.", ACH_TYPE_PROGRESS, 10.0f },
-    { ACH_DERBY_SPECIALIST, "derby_specialist", "Derby Specialist", "Win 5 Derby matches.", ACH_TYPE_PROGRESS, 5.0f }
-};
+extern const achievement_def_t achievement_defs[ACH_MAX];
+
+// Achievement/profile helpers provided by the UI module
+void Q3R_Achievements_Unlock(achievement_id_t id);
+void Q3R_Achievements_UpdateProgress(achievement_id_t id, float progress);
+void Q3R_AchievementNotify_Push(achievement_id_t id);
+void Q3R_AchievementNotify_Update(void);
+void Q3R_AchievementNotify_Draw(void);
+void Q3R_Profile_InitDefaults(q3r_profile_t *profile, const char *name);
+qboolean Q3R_Profile_Save(const q3r_profile_t *profile);
 
 #endif // Q3R_PROFILE_H
