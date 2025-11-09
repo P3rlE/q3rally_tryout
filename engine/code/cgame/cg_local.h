@@ -1621,6 +1621,7 @@ const char *CG_GameTypeString( void );
 qboolean CG_YourTeamHasFlag( void );
 qboolean CG_OtherTeamHasFlag( void );
 qhandle_t CG_StatusHandle(int task);
+void CG_HandleServerNotification( const char *identifier );
 
 
 
@@ -1912,6 +1913,7 @@ void CG_NewLapTime( int client, int lap, int time );
 void CG_FinishedRace( int client, int time );
 void CG_StartRace( int time );
 void CG_DrawRaceCountDown( void );
+
 void CG_RaceCountDown( const char *str, int secondsLeft );
 
 //
