@@ -44,6 +44,7 @@ static void UI_ProfileOverlay_Draw( void );
 static sfxHandle_t UI_ProfileOverlay_Key( int key );
 static void UI_ProfileOverlay_DrawNameField( void *self );
 static void UI_ProfileOverlay_FocusNameField( void );
+static qboolean UI_ProfileOverlay_NameFieldKey( int key, sfxHandle_t *outSound );
 
 static void UI_ProfileOverlay_SetStatus( const char *text, const vec4_t color ) {
     if ( text ) {
@@ -613,25 +614,28 @@ static qboolean UI_ProfileOverlay_CanDismiss( void ) {
     return UI_Profile_HasActiveProfile();
 }
 
-static qboolean UI_ProfileOverlay_NameFieldKey( int key ) {
-    qboolean onField = ( Menu_ItemAtCursor( &s_profileOverlay.menu ) == (void *)&s_profileOverlay.nameField );
+static qboolean UI_ProfileOverlay_NameFieldKey( int key, sfxHandle_t *outSound ) {
+    menucommon_s *item;
+    qboolean onField;
 
-    // Handle printable characters by focusing the field if necessary and sending the char.
+    item = Menu_ItemAtCursor( &s_profileOverlay.menu );
+    onField = ( item == (menucommon_s *)&s_profileOverlay.nameField );
+
     if ( key & K_CHAR_FLAG ) {
-        int ch = key & ~K_CHAR_FLAG;
-        if (ch >= 32 && ch <= 126) {
-            if (!onField) {
-                UI_ProfileOverlay_FocusNameField();
-            }
-            MField_CharEvent(&s_profileOverlay.nameField.field, ch);
-            return qtrue; // Handled
+        if ( !onField ) {
+            UI_ProfileOverlay_FocusNameField();
         }
+
+        if ( outSound ) {
+            *outSound = menu_move_sound;
+        }
+
+        Menu_DefaultKey( &s_profileOverlay.menu, key );
+        return qtrue;
     }
 
-    // For non-printable keys, only handle them if the field is already focused.
-    if (onField) {
-        switch (key) {
-            // These are the keys handled by MField_KeyDownEvent
+    if ( onField ) {
+        switch ( key ) {
             case K_DEL:
             case K_KP_DEL:
             case K_RIGHTARROW:
@@ -644,17 +648,21 @@ static qboolean UI_ProfileOverlay_NameFieldKey( int key ) {
             case K_KP_END:
             case K_INS:
             case K_KP_INS:
-                MField_KeyDownEvent(&s_profileOverlay.nameField.field, key);
-                return qtrue; // Handled
+                if ( outSound ) {
+                    *outSound = menu_move_sound;
+                }
+
+                Menu_DefaultKey( &s_profileOverlay.menu, key );
+                return qtrue;
         }
     }
 
-    // All other keys (like ENTER, TAB, etc.) are not handled here.
     return qfalse;
 }
 
 static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
     menucommon_s *item;
+    sfxHandle_t fieldSound = menu_move_sound;
 
     if ( key == K_ESCAPE ) {
         if ( UI_ProfileOverlay_CanDismiss() ) {
@@ -665,8 +673,8 @@ static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
         return menu_buzz_sound;
     }
 
-    if ( UI_ProfileOverlay_NameFieldKey( key ) ) {
-        return menu_move_sound;
+    if ( UI_ProfileOverlay_NameFieldKey( key, &fieldSound ) ) {
+        return fieldSound;
     }
 
     item = Menu_ItemAtCursor( &s_profileOverlay.menu );
