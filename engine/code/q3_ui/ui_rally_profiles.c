@@ -372,9 +372,9 @@ static void UI_ProfileOverlay_LoadProfiles( void ) {
 }
 
 static void UI_ProfileOverlay_MenuEvent( void *ptr, int event );
-static void UI_ProfileOverlay_HandleCreate( void );
-static void UI_ProfileOverlay_HandleDelete( void );
-static void UI_ProfileOverlay_HandleSelect( void );
+static qboolean UI_ProfileOverlay_HandleCreate( void );
+static qboolean UI_ProfileOverlay_HandleDelete( void );
+static qboolean UI_ProfileOverlay_HandleSelect( void );
 
 static void UI_ProfileOverlay_SetupMenu( void ) {
     profileOverlay_t *overlay = &s_profileOverlay;
@@ -486,7 +486,7 @@ static void UI_ProfileOverlay_MenuEvent( void *ptr, int event ) {
     }
 }
 
-static void UI_ProfileOverlay_HandleCreate( void ) {
+static qboolean UI_ProfileOverlay_HandleCreate( void ) {
     char name[PROFILE_MAX_NAME];
     char error[64];
     int i;
@@ -496,19 +496,19 @@ static void UI_ProfileOverlay_HandleCreate( void ) {
 
     if ( !UI_Profile_NameIsValid( name, error, sizeof( error ) ) ) {
         UI_ProfileOverlay_SetStatus( error, statusErrorColor );
-        return;
+        return qfalse;
     }
 
     for ( i = 0; i < s_profileOverlay.profileCount; ++i ) {
         if ( !Q_stricmp( s_profileOverlay.profileNames[i], name ) ) {
             UI_ProfileOverlay_SetStatus( "Profile already exists", statusErrorColor );
-            return;
+            return qfalse;
         }
     }
 
     if ( !UI_Profile_WriteDefaultFile( name ) ) {
         UI_ProfileOverlay_SetStatus( "Failed to create profile", statusErrorColor );
-        return;
+        return qfalse;
     }
 
     s_profileOverlay.nameField.field.buffer[0] = '\0';
@@ -528,29 +528,30 @@ static void UI_ProfileOverlay_HandleCreate( void ) {
     }
 
     UI_ProfileOverlay_SetStatus( "Profile created", statusInfoColor );
+    return qtrue;
 }
 
-static void UI_ProfileOverlay_HandleDelete( void ) {
+static qboolean UI_ProfileOverlay_HandleDelete( void ) {
     const char *name;
     char path[MAX_QPATH];
     fileHandle_t file;
 
     if ( s_profileOverlay.profileCount <= 0 ) {
         UI_ProfileOverlay_SetStatus( "Nothing to delete", statusErrorColor );
-        return;
+        return qfalse;
     }
 
     name = s_profileOverlay.profileNames[ s_profileOverlay.list.curvalue ];
     if ( !name || !name[0] ) {
         UI_ProfileOverlay_SetStatus( "Invalid selection", statusErrorColor );
-        return;
+        return qfalse;
     }
 
     Com_sprintf( path, sizeof( path ), "profiles/%s.json", name );
     trap_FS_FOpenFile( path, &file, FS_WRITE );
     if ( file < 0 ) {
         UI_ProfileOverlay_SetStatus( "Unable to remove profile", statusErrorColor );
-        return;
+        return qfalse;
     }
     trap_FS_FCloseFile( file );
 
@@ -563,20 +564,21 @@ static void UI_ProfileOverlay_HandleDelete( void ) {
 
     UI_ProfileOverlay_LoadProfiles();
     UI_ProfileOverlay_SetStatus( "Profile deleted", statusInfoColor );
+    return qtrue;
 }
 
-static void UI_ProfileOverlay_HandleSelect( void ) {
+static qboolean UI_ProfileOverlay_HandleSelect( void ) {
     const char *name;
 
     if ( s_profileOverlay.profileCount <= 0 ) {
         UI_ProfileOverlay_SetStatus( "Create a profile first", statusErrorColor );
-        return;
+        return qfalse;
     }
 
     name = s_profileOverlay.profileNames[ s_profileOverlay.list.curvalue ];
     if ( !name || !name[0] ) {
         UI_ProfileOverlay_SetStatus( "Invalid profile", statusErrorColor );
-        return;
+        return qfalse;
     }
 
     trap_Cvar_Set( "profile_active", name );
@@ -586,6 +588,7 @@ static void UI_ProfileOverlay_HandleSelect( void ) {
     UI_Profile_MarkStatsDirty();
 
     UI_PopMenu();
+    return qtrue;
 }
 
 static void UI_ProfileOverlay_Draw( void ) {
@@ -602,10 +605,62 @@ static void UI_ProfileOverlay_Draw( void ) {
     UI_DrawProportionalString( 320, 410, "Enter a new name and press CREATE", UI_CENTER | UI_SMALLFONT, text_color_normal );
 }
 
-static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
-    if ( key == K_ESCAPE ) {
-        return 0;
+static qboolean UI_ProfileOverlay_CanDismiss( void ) {
+    if ( s_profileOverlay.forcingSelection ) {
+        return qfalse;
     }
+
+    return UI_Profile_HasActiveProfile();
+}
+
+static void UI_ProfileOverlay_HandlePrintable( int key ) {
+    if ( !( key & K_CHAR_FLAG ) ) {
+        return;
+    }
+
+    key &= ~K_CHAR_FLAG;
+    if ( key < 32 || key > 126 ) {
+        return;
+    }
+
+    if ( Menu_ItemAtCursor( &s_profileOverlay.menu ) != (void *)&s_profileOverlay.nameField ) {
+        UI_ProfileOverlay_FocusNameField();
+    }
+}
+
+static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
+    menucommon_s *item;
+
+    if ( key == K_ESCAPE ) {
+        if ( UI_ProfileOverlay_CanDismiss() ) {
+            uis.profileOverlayShown = qtrue;
+            UI_PopMenu();
+            return menu_out_sound;
+        }
+        return menu_buzz_sound;
+    }
+
+    UI_ProfileOverlay_HandlePrintable( key );
+
+    item = Menu_ItemAtCursor( &s_profileOverlay.menu );
+
+    if ( key == K_MOUSE1 && item == (menucommon_s *)&s_profileOverlay.nameField ) {
+        UI_ProfileOverlay_FocusNameField();
+        return Menu_DefaultKey( &s_profileOverlay.menu, key );
+    }
+
+    if ( ( key == K_ENTER || key == K_KP_ENTER ) && item == (menucommon_s *)&s_profileOverlay.nameField ) {
+        return UI_ProfileOverlay_HandleCreate() ? menu_move_sound : menu_buzz_sound;
+    }
+
+    if ( ( key == K_ENTER || key == K_KP_ENTER ) && item == (menucommon_s *)&s_profileOverlay.list ) {
+        return UI_ProfileOverlay_HandleSelect() ? menu_move_sound : menu_buzz_sound;
+    }
+
+    if ( ( key == K_DEL || key == K_KP_DEL ) && item == (menucommon_s *)&s_profileOverlay.list ) {
+        return UI_ProfileOverlay_HandleDelete() ? menu_move_sound : menu_buzz_sound;
+    }
+
     return Menu_DefaultKey( &s_profileOverlay.menu, key );
 }
 
