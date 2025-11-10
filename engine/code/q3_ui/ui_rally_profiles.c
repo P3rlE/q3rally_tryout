@@ -252,6 +252,7 @@ static void UI_ProfileOverlay_LoadProfiles( void ) {
     char *ptr;
     int total;
     int index;
+    int i;
 
     s_profileOverlay.profileCount = 0;
     trap_Cvar_VariableStringBuffer( "profile_active", activeName, sizeof( activeName ) );
@@ -259,7 +260,7 @@ static void UI_ProfileOverlay_LoadProfiles( void ) {
     total = trap_FS_GetFileList( "profiles", ".json", fileBuffer, sizeof( fileBuffer ) );
     ptr = fileBuffer;
 
-    for ( int i = 0; i < total && s_profileOverlay.profileCount < MAX_PROFILE_FILES; ++i ) {
+    for ( i = 0; i < total && s_profileOverlay.profileCount < MAX_PROFILE_FILES; ++i ) {
         char name[MAX_QPATH];
         int len = strlen( ptr );
         int fileLen;
@@ -316,7 +317,7 @@ static void UI_ProfileOverlay_LoadProfiles( void ) {
 
     index = 0;
     if ( activeName[0] ) {
-        for ( int i = 0; i < s_profileOverlay.profileCount; ++i ) {
+        for ( i = 0; i < s_profileOverlay.profileCount; ++i ) {
             if ( !Q_stricmp( s_profileOverlay.profileNames[i], activeName ) ) {
                 index = i;
                 break;
