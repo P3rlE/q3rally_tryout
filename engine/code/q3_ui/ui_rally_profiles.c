@@ -13,6 +13,8 @@ static vec4_t overlayBackgroundColor = { 0.0f, 0.0f, 0.0f, 0.85f };
 static vec4_t statusNormalColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 static vec4_t statusErrorColor  = { 1.0f, 0.3f, 0.3f, 1.0f };
 static vec4_t statusInfoColor   = { 1.0f, 0.8f, 0.3f, 1.0f };
+static vec4_t inputBackgroundColor = { 0.05f, 0.05f, 0.05f, 0.85f };
+static vec4_t inputBorderColor     = { 1.0f, 1.0f, 1.0f, 0.25f };
 
 static const char *emptyProfileList[] = { "No profiles", NULL };
 
@@ -40,6 +42,7 @@ static profileOverlay_t s_profileOverlay;
 
 static void UI_ProfileOverlay_Draw( void );
 static sfxHandle_t UI_ProfileOverlay_Key( int key );
+static void UI_ProfileOverlay_DrawNameField( void *self );
 
 static void UI_ProfileOverlay_SetStatus( const char *text, const vec4_t color ) {
     if ( text ) {
@@ -52,6 +55,41 @@ static void UI_ProfileOverlay_SetStatus( const char *text, const vec4_t color ) 
     } else {
         Vector4Copy( statusNormalColor, s_profileOverlay.statusColor );
     }
+}
+
+static void UI_ProfileOverlay_DrawNameField( void *self ) {
+    menufield_s *field;
+    qboolean focus;
+    float *textColor;
+    int style;
+    int fieldWidth;
+    int fieldX;
+    int fieldY;
+
+    field = (menufield_s *)self;
+
+    fieldWidth = field->field.widthInChars * SMALLCHAR_WIDTH;
+    fieldX = 320 - fieldWidth / 2;
+    fieldY = field->generic.y;
+
+    field->generic.left = fieldX - 6;
+    field->generic.right = fieldX + fieldWidth + 6;
+    field->generic.top = fieldY - 6;
+    field->generic.bottom = fieldY + SMALLCHAR_HEIGHT + 6;
+
+    focus = ( Menu_ItemAtCursor( field->generic.parent ) == (void *)field );
+    textColor = focus ? text_color_highlight : text_color_normal;
+    style = UI_SMALLFONT;
+    if ( focus ) {
+        style |= UI_PULSE;
+    }
+
+    UI_DrawProportionalString( 320, fieldY - 28, "ENTER PROFILE NAME", UI_CENTER | UI_SMALLFONT, statusInfoColor );
+
+    UI_FillRect( field->generic.left, field->generic.top, field->generic.right - field->generic.left, field->generic.bottom - field->generic.top, inputBackgroundColor );
+    UI_DrawRect( field->generic.left, field->generic.top, field->generic.right - field->generic.left, field->generic.bottom - field->generic.top, focus ? text_color_highlight : inputBorderColor );
+
+    MField_Draw( &field->field, fieldX, fieldY, style, textColor );
 }
 
 static void UI_ProfileOverlay_TrimName( char *name ) {
@@ -371,14 +409,16 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
 
     overlay->nameField.generic.type = MTYPE_FIELD;
     overlay->nameField.generic.id = ID_PROFILE_NAME;
-    overlay->nameField.generic.flags = QMF_CENTER_JUSTIFY;
+    overlay->nameField.generic.flags = QMF_NODEFAULTINIT | QMF_SMALLFONT;
     overlay->nameField.generic.x = 320;
     overlay->nameField.generic.y = 228;
+    overlay->nameField.generic.ownerdraw = UI_ProfileOverlay_DrawNameField;
     overlay->nameField.field.cursor = 0;
     overlay->nameField.field.scroll = 0;
     overlay->nameField.field.widthInChars = 20;
     overlay->nameField.field.maxchars = PROFILE_MAX_NAME - 1;
     overlay->nameField.field.buffer[0] = '\0';
+    MenuField_Init( &overlay->nameField );
 
     overlay->createButton.generic.type = MTYPE_PTEXT;
     overlay->createButton.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
@@ -420,7 +460,11 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     Menu_AddItem( &overlay->menu, &overlay->deleteButton );
     Menu_AddItem( &overlay->menu, &overlay->selectButton );
 
-    Menu_SetCursorToItem( &overlay->menu, &overlay->selectButton );
+    if ( s_profileOverlay.profileCount <= 0 ) {
+        Menu_SetCursorToItem( &overlay->menu, &overlay->nameField );
+    } else {
+        Menu_SetCursorToItem( &overlay->menu, &overlay->selectButton );
+    }
 }
 
 static void UI_ProfileOverlay_MenuEvent( void *ptr, int event ) {
