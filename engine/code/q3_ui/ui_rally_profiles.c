@@ -43,6 +43,7 @@ static profileOverlay_t s_profileOverlay;
 static void UI_ProfileOverlay_Draw( void );
 static sfxHandle_t UI_ProfileOverlay_Key( int key );
 static void UI_ProfileOverlay_DrawNameField( void *self );
+static void UI_ProfileOverlay_FocusNameField( void );
 
 static void UI_ProfileOverlay_SetStatus( const char *text, const vec4_t color ) {
     if ( text ) {
@@ -347,6 +348,9 @@ static void UI_ProfileOverlay_LoadProfiles( void ) {
         s_profileOverlay.selectButton.generic.flags |= QMF_GRAYED;
         s_profileOverlay.forcingSelection = qtrue;
         UI_ProfileOverlay_SetStatus( "Create a new profile to continue", statusInfoColor );
+        if ( uis.profileOverlayShown ) {
+            UI_ProfileOverlay_FocusNameField();
+        }
         return;
     }
 
@@ -459,12 +463,6 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     Menu_AddItem( &overlay->menu, &overlay->createButton );
     Menu_AddItem( &overlay->menu, &overlay->deleteButton );
     Menu_AddItem( &overlay->menu, &overlay->selectButton );
-
-    if ( s_profileOverlay.profileCount <= 0 ) {
-        Menu_SetCursorToItem( &overlay->menu, &overlay->nameField );
-    } else {
-        Menu_SetCursorToItem( &overlay->menu, &overlay->selectButton );
-    }
 }
 
 static void UI_ProfileOverlay_MenuEvent( void *ptr, int event ) {
@@ -517,6 +515,10 @@ static void UI_ProfileOverlay_HandleCreate( void ) {
     s_profileOverlay.nameField.field.cursor = 0;
     s_profileOverlay.nameField.field.scroll = 0;
     UI_ProfileOverlay_LoadProfiles();
+
+    if ( uis.profileOverlayShown ) {
+        UI_ProfileOverlay_FocusNameField();
+    }
 
     for ( i = 0; i < s_profileOverlay.profileCount; ++i ) {
         if ( !Q_stricmp( s_profileOverlay.profileNames[i], name ) ) {
@@ -633,6 +635,12 @@ void UI_ProfileOverlay_MaybeShow( void ) {
     UI_ProfileOverlay_SetupMenu();
     uis.profileOverlayShown = qtrue;
     UI_PushMenu( &s_profileOverlay.menu );
+
+    UI_ProfileOverlay_FocusNameField();
+}
+
+static void UI_ProfileOverlay_FocusNameField( void ) {
+    Menu_SetCursorToItem( &s_profileOverlay.menu, &s_profileOverlay.nameField );
 }
 
 void UI_Profile_MarkStatsDirty( void ) {
