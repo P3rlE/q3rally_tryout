@@ -14,7 +14,7 @@ static vec4_t statusNormalColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 static vec4_t statusErrorColor  = { 1.0f, 0.3f, 0.3f, 1.0f };
 static vec4_t statusInfoColor   = { 1.0f, 0.8f, 0.3f, 1.0f };
 
-static const char *const emptyProfileList[] = { "No profiles", NULL };
+static const char *emptyProfileList[] = { "No profiles", NULL };
 
 typedef struct {
     menuframework_s menu;
@@ -30,7 +30,6 @@ typedef struct {
     const char     *listItems[MAX_PROFILE_FILES + 1];
     int             profileCount;
 
-    char            newNameBuffer[PROFILE_MAX_NAME];
     char            statusLine[128];
     vec4_t          statusColor;
 
@@ -374,13 +373,11 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->nameField.generic.flags = QMF_CENTER_JUSTIFY;
     overlay->nameField.generic.x = 320;
     overlay->nameField.generic.y = 228;
+    overlay->nameField.field.cursor = 0;
+    overlay->nameField.field.scroll = 0;
     overlay->nameField.field.widthInChars = 20;
     overlay->nameField.field.maxchars = PROFILE_MAX_NAME - 1;
-    overlay->nameField.field.maxpaintchars = 20;
-    overlay->nameField.field.style = UI_CENTER | UI_SMALLFONT;
-    overlay->nameField.field.cursor = 0;
-    overlay->nameField.field.length = 0;
-    overlay->nameField.field.buffer = overlay->newNameBuffer;
+    overlay->nameField.field.buffer[0] = '\0';
 
     overlay->createButton.generic.type = MTYPE_PTEXT;
     overlay->createButton.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
@@ -451,7 +448,7 @@ static void UI_ProfileOverlay_HandleCreate( void ) {
     char error[64];
     int i;
 
-    Q_strncpyz( name, s_profileOverlay.newNameBuffer, sizeof( name ) );
+    Q_strncpyz( name, s_profileOverlay.nameField.field.buffer, sizeof( name ) );
     UI_ProfileOverlay_TrimName( name );
 
     if ( !UI_Profile_NameIsValid( name, error, sizeof( error ) ) ) {
@@ -471,7 +468,9 @@ static void UI_ProfileOverlay_HandleCreate( void ) {
         return;
     }
 
-    s_profileOverlay.newNameBuffer[0] = '\0';
+    s_profileOverlay.nameField.field.buffer[0] = '\0';
+    s_profileOverlay.nameField.field.cursor = 0;
+    s_profileOverlay.nameField.field.scroll = 0;
     UI_ProfileOverlay_LoadProfiles();
 
     for ( i = 0; i < s_profileOverlay.profileCount; ++i ) {
