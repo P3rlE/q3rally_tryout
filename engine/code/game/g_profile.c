@@ -1,6 +1,5 @@
 #include "g_local.h"
 #include "g_profile.h"
-#include "bg_physics.h"
 
 #define PROFILE_AUTOSAVE_INTERVAL 30000
 
