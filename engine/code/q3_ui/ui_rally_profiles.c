@@ -38,6 +38,7 @@ static profileOverlay_t s_profileOverlay;
 static void UI_ProfileOverlay_Draw( void );
 static sfxHandle_t UI_ProfileOverlay_Key( int key );
 static void UI_ProfileOverlay_FocusNameField( void );
+static void UI_ProfileOverlay_DrawNameField( void *self );
 
 static void UI_ProfileOverlay_SetStatus( const char *text, const vec4_t color ) {
     if ( text ) {
@@ -369,6 +370,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->nameField.generic.y = 210;
     overlay->nameField.generic.name = "NEW PROFILE";
     overlay->nameField.generic.callback = NULL;
+    overlay->nameField.generic.ownerdraw = UI_ProfileOverlay_DrawNameField;
     overlay->nameField.generic.statusbar = NULL;
     overlay->nameField.field.widthInChars = 20;
     overlay->nameField.field.maxchars = PROFILE_MAX_NAME - 1;
@@ -555,8 +557,37 @@ static void UI_ProfileOverlay_Draw( void ) {
     if ( s_profileOverlay.statusLine[0] ) {
         UI_DrawProportionalString( 320, 370, s_profileOverlay.statusLine, UI_CENTER | UI_SMALLFONT, s_profileOverlay.statusColor );
     }
+}
 
-    UI_DrawProportionalString( 320, 410, "Enter a name and press CREATE", UI_CENTER | UI_SMALLFONT, text_color_normal );
+static void UI_ProfileOverlay_DrawNameField( void *self ) {
+	menufield_s *f = (menufield_s *)self;
+	qboolean focus = (f->generic.parent->cursor == f->generic.menuPosition);
+	int style = UI_LEFT | UI_SMALLFONT;
+	float *color = text_color_normal;
+	char buffer[MAX_EDIT_LINE + 1];
+	int i;
+
+	if ( focus ) {
+		style |= UI_PULSE;
+		color = text_color_highlight;
+	}
+
+	UI_DrawProportionalString( f->generic.x, f->generic.y - 18, f->generic.name, style, color );
+
+	for ( i = 0; i < f->field.widthInChars; ++i ) {
+		buffer[i] = '_';
+	}
+	buffer[f->field.widthInChars] = '\0';
+
+	UI_DrawProportionalString( f->generic.x, f->generic.y, buffer, style, color );
+	UI_DrawProportionalString( f->generic.x, f->generic.y, f->field.buffer, style, color );
+
+	if ( focus ) {
+		char cursor = 11;
+		style &= ~UI_PULSE;
+		style |= UI_BLINK;
+		UI_DrawChar( f->generic.x + f->field.cursor * SMALLCHAR_WIDTH, f->generic.y, cursor, style, color );
+	}
 }
 
 static qboolean UI_ProfileOverlay_CanDismiss( void ) {
