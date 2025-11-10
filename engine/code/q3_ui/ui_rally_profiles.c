@@ -45,6 +45,7 @@ static sfxHandle_t UI_ProfileOverlay_Key( int key );
 static qboolean UI_ProfileOverlay_NameFieldKey( menucommon_s *item, int key, sfxHandle_t *outSound );
 static void UI_ProfileOverlay_DrawNameField( void *self );
 static void UI_ProfileOverlay_FocusNameField( void );
+static qboolean UI_ProfileOverlay_NameFieldKey( int key, sfxHandle_t *outSound );
 
 static void UI_ProfileOverlay_SetStatus( const char *text, const vec4_t color ) {
     if ( text ) {
@@ -412,18 +413,23 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->hint.style = UI_CENTER | UI_SMALLFONT;
     overlay->hint.color = text_color_normal;
 
+    // WICHTIGE ÄNDERUNGEN HIER:
     overlay->nameField.generic.type = MTYPE_FIELD;
     overlay->nameField.generic.id = ID_PROFILE_NAME;
-    overlay->nameField.generic.flags = QMF_NODEFAULTINIT | QMF_SMALLFONT;
+    overlay->nameField.generic.flags = QMF_SMALLFONT | QMF_PULSEIFFOCUS;  // QMF_NODEFAULTINIT entfernt!
     overlay->nameField.generic.x = 320;
     overlay->nameField.generic.y = 228;
-    overlay->nameField.generic.ownerdraw = UI_ProfileOverlay_DrawNameField;
-    overlay->nameField.field.cursor = 0;
-    overlay->nameField.field.scroll = 0;
+    overlay->nameField.generic.callback = NULL;
+    overlay->nameField.generic.statusbar = NULL;
+    overlay->nameField.generic.ownerdraw = UI_ProfileOverlay_DrawNameField;  // Verwende custom draw
     overlay->nameField.field.widthInChars = 20;
     overlay->nameField.field.maxchars = PROFILE_MAX_NAME - 1;
+    
+    MenuField_Init( &overlay->nameField );  // Init VOR den buffer-Zuweisungen!
+    
+    overlay->nameField.field.cursor = 0;
+    overlay->nameField.field.scroll = 0;
     overlay->nameField.field.buffer[0] = '\0';
-    MenuField_Init( &overlay->nameField );
 
     overlay->createButton.generic.type = MTYPE_PTEXT;
     overlay->createButton.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
@@ -651,14 +657,17 @@ static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
         return fieldSound;
     }
 
+    // Spezial-Handling für ENTER auf der Liste
     if ( ( key == K_ENTER || key == K_KP_ENTER ) && item == (menucommon_s *)&s_profileOverlay.list ) {
         return UI_ProfileOverlay_HandleSelect() ? menu_move_sound : menu_buzz_sound;
     }
 
+    // Spezial-Handling für DEL auf der Liste
     if ( ( key == K_DEL || key == K_KP_DEL ) && item == (menucommon_s *)&s_profileOverlay.list ) {
         return UI_ProfileOverlay_HandleDelete() ? menu_move_sound : menu_buzz_sound;
     }
 
+    // Alle anderen Keys an das Standard-Menu-System übergeben
     return Menu_DefaultKey( &s_profileOverlay.menu, key );
 }
 
@@ -724,3 +733,4 @@ const profile_stats_t *UI_Profile_GetActiveStats( void ) {
 
     return &uis.activeProfileStats;
 }
+
