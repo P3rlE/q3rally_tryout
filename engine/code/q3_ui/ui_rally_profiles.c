@@ -412,7 +412,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->hint.style = UI_CENTER | UI_SMALLFONT;
     overlay->hint.color = text_color_normal;
 
-    // WICHTIGE ÄNDERUNGEN HIER:
+    // WICHTIGE Ã„NDERUNGEN HIER:
     overlay->nameField.generic.type = MTYPE_FIELD;
     overlay->nameField.generic.id = ID_PROFILE_NAME;
     overlay->nameField.generic.flags = QMF_SMALLFONT | QMF_PULSEIFFOCUS;  // QMF_NODEFAULTINIT entfernt!
@@ -619,52 +619,6 @@ static qboolean UI_ProfileOverlay_CanDismiss( void ) {
     return UI_Profile_HasActiveProfile();
 }
 
-static qboolean UI_ProfileOverlay_NameFieldKey( int key, sfxHandle_t *outSound ) {
-    menucommon_s *item;
-    qboolean onField;
-
-    item = Menu_ItemAtCursor( &s_profileOverlay.menu );
-    onField = ( item == (menucommon_s *)&s_profileOverlay.nameField );
-
-    if ( key & K_CHAR_FLAG ) {
-        if ( !onField ) {
-            UI_ProfileOverlay_FocusNameField();
-        }
-
-        if ( outSound ) {
-            *outSound = menu_move_sound;
-        }
-
-        Menu_DefaultKey( &s_profileOverlay.menu, key );
-        return qtrue;
-    }
-
-    if ( onField ) {
-        switch ( key ) {
-            case K_DEL:
-            case K_KP_DEL:
-            case K_RIGHTARROW:
-            case K_KP_RIGHTARROW:
-            case K_LEFTARROW:
-            case K_KP_LEFTARROW:
-            case K_HOME:
-            case K_KP_HOME:
-            case K_END:
-            case K_KP_END:
-            case K_INS:
-            case K_KP_INS:
-                if ( outSound ) {
-                    *outSound = menu_move_sound;
-                }
-
-                Menu_DefaultKey( &s_profileOverlay.menu, key );
-                return qtrue;
-        }
-    }
-
-    return qfalse;
-}
-
 static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
     menucommon_s *item;
     sfxHandle_t fieldSound = menu_move_sound;
@@ -678,27 +632,29 @@ static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
         return menu_buzz_sound;
     }
 
-    if ( UI_ProfileOverlay_NameFieldKey( key, &fieldSound ) ) {
-        return fieldSound;
+    item = Menu_ItemAtCursor( &s_profileOverlay.menu );
 
+    if ( key == K_MOUSE1 && item == (menucommon_s *)&s_profileOverlay.nameField ) {
+        UI_ProfileOverlay_FocusNameField();
+        return Menu_DefaultKey( &s_profileOverlay.menu, key );
     }
 
-    // Spezial-Handling für ENTER auf dem nameField
+    // Spezial-Handling fÃ¼r ENTER auf dem nameField
     if ( ( key == K_ENTER || key == K_KP_ENTER ) && item == (menucommon_s *)&s_profileOverlay.nameField ) {
         return UI_ProfileOverlay_HandleCreate() ? menu_move_sound : menu_buzz_sound;
     }
 
-    // Spezial-Handling für ENTER auf der Liste
+    // Spezial-Handling fÃ¼r ENTER auf der Liste
     if ( ( key == K_ENTER || key == K_KP_ENTER ) && item == (menucommon_s *)&s_profileOverlay.list ) {
         return UI_ProfileOverlay_HandleSelect() ? menu_move_sound : menu_buzz_sound;
     }
 
-    // Spezial-Handling für DEL auf der Liste
+    // Spezial-Handling fÃ¼r DEL auf der Liste
     if ( ( key == K_DEL || key == K_KP_DEL ) && item == (menucommon_s *)&s_profileOverlay.list ) {
         return UI_ProfileOverlay_HandleDelete() ? menu_move_sound : menu_buzz_sound;
     }
 
-    // Alle anderen Keys an das Standard-Menu-System übergeben
+    // Alle anderen Keys an das Standard-Menu-System Ã¼bergeben
     return Menu_DefaultKey( &s_profileOverlay.menu, key );
 }
 
