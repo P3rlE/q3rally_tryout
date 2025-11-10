@@ -646,6 +646,14 @@ void UI_ProfileOverlay_MaybeShow( void ) {
     uis.profileOverlayShown = qtrue;
     UI_PushMenu( &s_profileOverlay.menu );
 
+    // The overlay does not use the regular menu transition system. When it is
+    // shown while another menu is still transitioning in, the global
+    // transition timer stays active and blocks all key input (see
+    // UI_KeyEvent). Clear the timers explicitly so text input becomes
+    // available immediately.
+    uis.transitionIn = 0;
+    uis.transitionOut = 0;
+
     UI_ProfileOverlay_FocusNameField();
 }
 
