@@ -42,6 +42,7 @@ static profileOverlay_t s_profileOverlay;
 
 static void UI_ProfileOverlay_Draw( void );
 static sfxHandle_t UI_ProfileOverlay_Key( int key );
+static qboolean UI_ProfileOverlay_NameFieldKey( menucommon_s *item, int key, sfxHandle_t *outSound );
 static void UI_ProfileOverlay_DrawNameField( void *self );
 static void UI_ProfileOverlay_FocusNameField( void );
 static qboolean UI_ProfileOverlay_NameFieldKey( int key, sfxHandle_t *outSound );
@@ -619,9 +620,27 @@ static qboolean UI_ProfileOverlay_CanDismiss( void ) {
     return UI_Profile_HasActiveProfile();
 }
 
+static qboolean UI_ProfileOverlay_NameFieldKey( menucommon_s *item, int key, sfxHandle_t *outSound ) {
+    if ( item != (menucommon_s *)&s_profileOverlay.nameField ) {
+        return qfalse;
+    }
+
+    if ( key == K_ENTER || key == K_KP_ENTER ) {
+        *outSound = UI_ProfileOverlay_HandleCreate() ? menu_move_sound : menu_buzz_sound;
+        return qtrue;
+    }
+
+    if ( key == K_MOUSE1 ) {
+        UI_ProfileOverlay_FocusNameField();
+    }
+
+    *outSound = Menu_DefaultKey( &s_profileOverlay.menu, key );
+    return qtrue;
+}
+
 static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
     menucommon_s *item;
-    sfxHandle_t fieldSound = menu_move_sound;
+    sfxHandle_t fieldSound;
 
     if ( key == K_ESCAPE ) {
         if ( UI_ProfileOverlay_CanDismiss() ) {
@@ -634,14 +653,8 @@ static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
 
     item = Menu_ItemAtCursor( &s_profileOverlay.menu );
 
-    if ( key == K_MOUSE1 && item == (menucommon_s *)&s_profileOverlay.nameField ) {
-        UI_ProfileOverlay_FocusNameField();
-        return Menu_DefaultKey( &s_profileOverlay.menu, key );
-    }
-
-    // Spezial-Handling für ENTER auf dem nameField
-    if ( ( key == K_ENTER || key == K_KP_ENTER ) && item == (menucommon_s *)&s_profileOverlay.nameField ) {
-        return UI_ProfileOverlay_HandleCreate() ? menu_move_sound : menu_buzz_sound;
+    if ( UI_ProfileOverlay_NameFieldKey( item, key, &fieldSound ) ) {
+        return fieldSound;
     }
 
     // Spezial-Handling für ENTER auf der Liste
