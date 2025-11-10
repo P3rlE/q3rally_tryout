@@ -13,8 +13,6 @@ static vec4_t overlayBackgroundColor = { 0.0f, 0.0f, 0.0f, 0.85f };
 static vec4_t statusNormalColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 static vec4_t statusErrorColor  = { 1.0f, 0.3f, 0.3f, 1.0f };
 static vec4_t statusInfoColor   = { 1.0f, 0.8f, 0.3f, 1.0f };
-static vec4_t inputBackgroundColor = { 0.05f, 0.05f, 0.05f, 0.85f };
-static vec4_t inputBorderColor     = { 1.0f, 1.0f, 1.0f, 0.25f };
 
 static const char *emptyProfileList[] = { "No profiles", NULL };
 
@@ -26,15 +24,12 @@ typedef struct {
     menutext_s      createButton;
     menutext_s      deleteButton;
     menutext_s      selectButton;
-    menutext_s      hint;
-
     char            profileNames[MAX_PROFILE_FILES][PROFILE_MAX_NAME];
     const char     *listItems[MAX_PROFILE_FILES + 1];
     int             profileCount;
 
     char            statusLine[128];
     vec4_t          statusColor;
-
     qboolean        forcingSelection;
 } profileOverlay_t;
 
@@ -42,10 +37,7 @@ static profileOverlay_t s_profileOverlay;
 
 static void UI_ProfileOverlay_Draw( void );
 static sfxHandle_t UI_ProfileOverlay_Key( int key );
-static qboolean UI_ProfileOverlay_NameFieldKey( menucommon_s *item, int key, sfxHandle_t *outSound );
-static void UI_ProfileOverlay_DrawNameField( void *self );
 static void UI_ProfileOverlay_FocusNameField( void );
-static qboolean UI_ProfileOverlay_NameFieldKey( int key, sfxHandle_t *outSound );
 
 static void UI_ProfileOverlay_SetStatus( const char *text, const vec4_t color ) {
     if ( text ) {
@@ -58,41 +50,6 @@ static void UI_ProfileOverlay_SetStatus( const char *text, const vec4_t color ) 
     } else {
         Vector4Copy( statusNormalColor, s_profileOverlay.statusColor );
     }
-}
-
-static void UI_ProfileOverlay_DrawNameField( void *self ) {
-    menufield_s *field;
-    qboolean focus;
-    float *textColor;
-    int style;
-    int fieldWidth;
-    int fieldX;
-    int fieldY;
-
-    field = (menufield_s *)self;
-
-    fieldWidth = field->field.widthInChars * SMALLCHAR_WIDTH;
-    fieldX = 320 - fieldWidth / 2;
-    fieldY = field->generic.y;
-
-    field->generic.left = fieldX - 6;
-    field->generic.right = fieldX + fieldWidth + 6;
-    field->generic.top = fieldY - 6;
-    field->generic.bottom = fieldY + SMALLCHAR_HEIGHT + 6;
-
-    focus = ( Menu_ItemAtCursor( field->generic.parent ) == (void *)field );
-    textColor = focus ? text_color_highlight : text_color_normal;
-    style = UI_SMALLFONT;
-    if ( focus ) {
-        style |= UI_PULSE;
-    }
-
-    UI_DrawProportionalString( 320, fieldY - 28, "ENTER PROFILE NAME", UI_CENTER | UI_SMALLFONT, statusInfoColor );
-
-    UI_FillRect( field->generic.left, field->generic.top, field->generic.right - field->generic.left, field->generic.bottom - field->generic.top, inputBackgroundColor );
-    UI_DrawRect( field->generic.left, field->generic.top, field->generic.right - field->generic.left, field->generic.bottom - field->generic.top, focus ? text_color_highlight : inputBorderColor );
-
-    MField_Draw( &field->field, fieldX, fieldY, style, textColor );
 }
 
 static void UI_ProfileOverlay_TrimName( char *name ) {
@@ -405,28 +362,19 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->list.curvalue = 0;
     overlay->list.itemnames = overlay->listItems;
 
-    overlay->hint.generic.type = MTYPE_PTEXT;
-    overlay->hint.generic.flags = QMF_INACTIVE | QMF_CENTER_JUSTIFY;
-    overlay->hint.generic.x = 320;
-    overlay->hint.generic.y = 196;
-    overlay->hint.string = "Left/Right to browse existing profiles";
-    overlay->hint.style = UI_CENTER | UI_SMALLFONT;
-    overlay->hint.color = text_color_normal;
-
-    // WICHTIGE ÄNDERUNGEN HIER:
     overlay->nameField.generic.type = MTYPE_FIELD;
     overlay->nameField.generic.id = ID_PROFILE_NAME;
-    overlay->nameField.generic.flags = QMF_SMALLFONT | QMF_PULSEIFFOCUS;  // QMF_NODEFAULTINIT entfernt!
+    overlay->nameField.generic.flags = QMF_SMALLFONT | QMF_PULSEIFFOCUS;
     overlay->nameField.generic.x = 320;
-    overlay->nameField.generic.y = 228;
+    overlay->nameField.generic.y = 210;
+    overlay->nameField.generic.name = "NEW PROFILE";
     overlay->nameField.generic.callback = NULL;
     overlay->nameField.generic.statusbar = NULL;
-    overlay->nameField.generic.ownerdraw = UI_ProfileOverlay_DrawNameField;  // Verwende custom draw
     overlay->nameField.field.widthInChars = 20;
     overlay->nameField.field.maxchars = PROFILE_MAX_NAME - 1;
-    
-    MenuField_Init( &overlay->nameField );  // Init VOR den buffer-Zuweisungen!
-    
+
+    MenuField_Init( &overlay->nameField );
+
     overlay->nameField.field.cursor = 0;
     overlay->nameField.field.scroll = 0;
     overlay->nameField.field.buffer[0] = '\0';
@@ -436,7 +384,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->createButton.generic.id = ID_PROFILE_CREATE;
     overlay->createButton.generic.callback = UI_ProfileOverlay_MenuEvent;
     overlay->createButton.generic.x = 320;
-    overlay->createButton.generic.y = 266;
+    overlay->createButton.generic.y = 250;
     overlay->createButton.string = "CREATE";
     overlay->createButton.style = UI_CENTER | UI_SMALLFONT;
     overlay->createButton.color = text_color_normal;
@@ -446,7 +394,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->deleteButton.generic.id = ID_PROFILE_DELETE;
     overlay->deleteButton.generic.callback = UI_ProfileOverlay_MenuEvent;
     overlay->deleteButton.generic.x = 320;
-    overlay->deleteButton.generic.y = 296;
+    overlay->deleteButton.generic.y = 280;
     overlay->deleteButton.string = "DELETE";
     overlay->deleteButton.style = UI_CENTER | UI_SMALLFONT;
     overlay->deleteButton.color = text_color_normal;
@@ -456,7 +404,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->selectButton.generic.id = ID_PROFILE_SELECT;
     overlay->selectButton.generic.callback = UI_ProfileOverlay_MenuEvent;
     overlay->selectButton.generic.x = 320;
-    overlay->selectButton.generic.y = 328;
+    overlay->selectButton.generic.y = 310;
     overlay->selectButton.string = "SELECT";
     overlay->selectButton.style = UI_CENTER | UI_SMALLFONT;
     overlay->selectButton.color = text_color_normal;
@@ -465,7 +413,6 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
 
     Menu_AddItem( &overlay->menu, &overlay->title );
     Menu_AddItem( &overlay->menu, &overlay->list );
-    Menu_AddItem( &overlay->menu, &overlay->hint );
     Menu_AddItem( &overlay->menu, &overlay->nameField );
     Menu_AddItem( &overlay->menu, &overlay->createButton );
     Menu_AddItem( &overlay->menu, &overlay->deleteButton );
@@ -609,7 +556,7 @@ static void UI_ProfileOverlay_Draw( void ) {
         UI_DrawProportionalString( 320, 370, s_profileOverlay.statusLine, UI_CENTER | UI_SMALLFONT, s_profileOverlay.statusColor );
     }
 
-    UI_DrawProportionalString( 320, 410, "Enter a new name and press CREATE", UI_CENTER | UI_SMALLFONT, text_color_normal );
+    UI_DrawProportionalString( 320, 410, "Enter a name and press CREATE", UI_CENTER | UI_SMALLFONT, text_color_normal );
 }
 
 static qboolean UI_ProfileOverlay_CanDismiss( void ) {
@@ -620,27 +567,8 @@ static qboolean UI_ProfileOverlay_CanDismiss( void ) {
     return UI_Profile_HasActiveProfile();
 }
 
-static qboolean UI_ProfileOverlay_NameFieldKey( menucommon_s *item, int key, sfxHandle_t *outSound ) {
-    if ( item != (menucommon_s *)&s_profileOverlay.nameField ) {
-        return qfalse;
-    }
-
-    if ( key == K_ENTER || key == K_KP_ENTER ) {
-        *outSound = UI_ProfileOverlay_HandleCreate() ? menu_move_sound : menu_buzz_sound;
-        return qtrue;
-    }
-
-    if ( key == K_MOUSE1 ) {
-        UI_ProfileOverlay_FocusNameField();
-    }
-
-    *outSound = Menu_DefaultKey( &s_profileOverlay.menu, key );
-    return qtrue;
-}
-
 static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
     menucommon_s *item;
-    sfxHandle_t fieldSound;
 
     if ( key == K_ESCAPE ) {
         if ( UI_ProfileOverlay_CanDismiss() ) {
@@ -653,8 +581,10 @@ static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
 
     item = Menu_ItemAtCursor( &s_profileOverlay.menu );
 
-    if ( UI_ProfileOverlay_NameFieldKey( item, key, &fieldSound ) ) {
-        return fieldSound;
+    if ( item == (menucommon_s *)&s_profileOverlay.nameField ) {
+        if ( key == K_ENTER || key == K_KP_ENTER ) {
+            return UI_ProfileOverlay_HandleCreate() ? menu_move_sound : menu_buzz_sound;
+        }
     }
 
     // Spezial-Handling für ENTER auf der Liste
