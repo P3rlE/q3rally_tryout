@@ -1173,6 +1173,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.name.generic.top			= y;
 	s_playersettings.name.generic.right			= 30 + 203;
 	s_playersettings.name.generic.bottom		= y + 36;
+	s_playersettings.name.generic.flags |= QMF_INACTIVE | QMF_GRAYED;
 
 //	y += 3 * PROP_HEIGHT;
 // END
