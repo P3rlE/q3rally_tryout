@@ -678,17 +678,9 @@ static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
         return menu_buzz_sound;
     }
 
-<<<<<<< HEAD
-    // Prüfe zuerst das aktuelle Item
-    item = Menu_ItemAtCursor( &s_profileOverlay.menu );
-
-    // Handle custom name field keys (druckbare Zeichen + Editing-Keys)
-    if ( UI_ProfileOverlay_NameFieldKey( key ) ) {
-        return menu_move_sound;
-=======
     if ( UI_ProfileOverlay_NameFieldKey( key, &fieldSound ) ) {
         return fieldSound;
->>>>>>> 09514ef6c78614b6797a36a30c34cef3383cb0f7
+
     }
 
     // Spezial-Handling für ENTER auf dem nameField
