@@ -392,6 +392,9 @@ static void PlayerSettings_SetWidgetVisible( menucommon_s *item, qboolean visibl
 PlayerSettings_DrawBackShaders
 =================
 */
+static void PlayerSettings_DrawStatsTab( void );
+static void PlayerSettings_DrawAchievementsTab( void );
+
 static void PlayerSettings_DrawBackShaders( void ) {
 	vec4_t	color;
 
@@ -527,8 +530,9 @@ static void PlayerSettings_DrawAchievementsTab( void ) {
 
 	PlayerSettings_DrawAchievementSectionDouble( &y, "Distance Driven", s_distanceAchievements, ARRAY_LEN( s_distanceAchievements ), stats->distanceKm, "km" );
 	PlayerSettings_DrawAchievementSectionInt( &y, "Kills", s_killAchievements, ARRAY_LEN( s_killAchievements ), stats->kills, "kills" );
-	PlayerSettings_DrawAchievementSectionInt( &y, "Races Won", s_winAchievements, ARRAY_LEN( s_winAchievements ), stats->wins, "wins" );
-	PlayerSettings_DrawAchievementSectionInt( &y, "Flags Captured", s_flagAchievements, ARRAY_LEN( s_flagAchievements ), stats->flagCaptures, "flags" );
+        PlayerSettings_DrawAchievementSectionInt( &y, "Races Won", s_winAchievements, ARRAY_LEN( s_winAchievements ), stats->wins, "wins" );
+        PlayerSettings_DrawAchievementSectionInt( &y, "Flags Captured", s_flagAchievements, ARRAY_LEN( s_flagAchievements ), stats->flagCaptures, "flags" );
+}
 
 static void PlayerSettings_SetTab( int tab ) {
 	int i;
