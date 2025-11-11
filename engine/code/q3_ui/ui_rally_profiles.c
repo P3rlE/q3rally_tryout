@@ -431,7 +431,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->nameField.generic.id = ID_PROFILE_NAME;
     overlay->nameField.generic.flags = QMF_SMALLFONT | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
     overlay->nameField.generic.x = 320;
-    overlay->nameField.generic.y = 300;
+    overlay->nameField.generic.y = 296;
     overlay->nameField.generic.name = "NEW PROFILE";
     overlay->nameField.generic.callback = NULL;
     overlay->nameField.generic.ownerdraw = UI_ProfileOverlay_DrawNameField;
@@ -449,8 +449,8 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->createButton.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
     overlay->createButton.generic.id = ID_PROFILE_CREATE;
     overlay->createButton.generic.callback = UI_ProfileOverlay_MenuEvent;
-    overlay->createButton.generic.x = 320;
-    overlay->createButton.generic.y = 340;
+    overlay->createButton.generic.x = 200;
+    overlay->createButton.generic.y = 344;
     overlay->createButton.string = "CREATE";
     overlay->createButton.style = UI_CENTER | UI_SMALLFONT;
     overlay->createButton.color = text_color_normal;
@@ -460,7 +460,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->deleteButton.generic.id = ID_PROFILE_DELETE;
     overlay->deleteButton.generic.callback = UI_ProfileOverlay_MenuEvent;
     overlay->deleteButton.generic.x = 320;
-    overlay->deleteButton.generic.y = 370;
+    overlay->deleteButton.generic.y = 344;
     overlay->deleteButton.string = "DELETE";
     overlay->deleteButton.style = UI_CENTER | UI_SMALLFONT;
     overlay->deleteButton.color = text_color_normal;
@@ -469,8 +469,8 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->selectButton.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
     overlay->selectButton.generic.id = ID_PROFILE_SELECT;
     overlay->selectButton.generic.callback = UI_ProfileOverlay_MenuEvent;
-    overlay->selectButton.generic.x = 320;
-    overlay->selectButton.generic.y = 400;
+    overlay->selectButton.generic.x = 440;
+    overlay->selectButton.generic.y = 344;
     overlay->selectButton.string = "SELECT";
     overlay->selectButton.style = UI_CENTER | UI_SMALLFONT;
     overlay->selectButton.color = text_color_normal;
@@ -623,14 +623,14 @@ static void UI_ProfileOverlay_Draw( void ) {
     Menu_Draw( &s_profileOverlay.menu );
 
     if ( s_profileOverlay.statusLine[0] ) {
-        UI_DrawProportionalString( 320, 420, s_profileOverlay.statusLine, UI_CENTER | UI_SMALLFONT, s_profileOverlay.statusColor );
+        UI_DrawProportionalString( 320, 408, s_profileOverlay.statusLine, UI_CENTER | UI_SMALLFONT, s_profileOverlay.statusColor );
     }
 
     if ( s_profileOverlay.profileCount > 0 ) {
-        UI_DrawProportionalString( 320, 444, "Highlight a profile and press ENTER or SELECT", UI_CENTER | UI_SMALLFONT, text_color_normal );
-        UI_DrawProportionalString( 320, 464, "Enter a name and press CREATE to add another", UI_CENTER | UI_SMALLFONT, text_color_normal );
+        UI_DrawProportionalString( 320, 432, "Highlight a profile and press ENTER or SELECT", UI_CENTER | UI_SMALLFONT, text_color_normal );
+        UI_DrawProportionalString( 320, 452, "Enter a name and press CREATE below to add another", UI_CENTER | UI_SMALLFONT, text_color_normal );
     } else {
-        UI_DrawProportionalString( 320, 450, "Enter a name and press CREATE", UI_CENTER | UI_SMALLFONT, text_color_normal );
+        UI_DrawProportionalString( 320, 438, "Enter a name and press CREATE below", UI_CENTER | UI_SMALLFONT, text_color_normal );
     }
 }
 
