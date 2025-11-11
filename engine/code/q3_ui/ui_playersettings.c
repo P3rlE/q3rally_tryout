@@ -121,6 +121,10 @@ typedef struct {
 	menubitmap_s		player;
 
 	menufield_s			name;
+	menufield_s			gender;
+	menufield_s			birthDate;
+	menufield_s			avatar;
+	menufield_s			country;
 	menulist_s			handicap;
 	menulist_s			effects;
 
@@ -158,6 +162,7 @@ typedef struct {
 	int					current_fx;
 	char				playerModel[MAX_QPATH];
 	int					currentTab;
+	profile_info_t	profileInfo;
 } playersettings_t;
 
 static playersettings_t	s_playersettings;
@@ -280,6 +285,67 @@ static void PlayerSettings_DrawName( void *self ) {
 	UI_DrawProportionalString( 320, 440, name, UI_CENTER|UI_BIGFONT, text_color_normal );
 */
 // END
+}
+
+
+static void PlayerSettings_DrawProfileField( void *self ) {
+	menufield_s *f = (menufield_s *)self;
+	qboolean disabled;
+	qboolean focus;
+	int style;
+	char *txt;
+	char c;
+	float *color;
+	int n;
+	int basex, x, y;
+
+	basex = f->generic.x;
+	y = f->generic.y;
+	disabled = ( qboolean )( f->generic.flags & ( QMF_GRAYED | QMF_INACTIVE ) );
+	focus = !disabled && ( f->generic.parent->cursor == f->generic.menuPosition );
+
+	style = UI_LEFT | UI_SMALLFONT;
+	color = disabled ? text_color_disabled : uis.text_color;
+	if ( focus ) {
+		style |= UI_PULSE;
+		color = text_color_highlight;
+	}
+
+	UI_DrawProportionalString( basex + 16, y, f->generic.name ? f->generic.name : "", style, color );
+
+	basex += 64;
+	y += 18;
+	txt = f->field.buffer;
+	color = disabled ? text_color_disabled : g_color_table[ColorIndex( COLOR_WHITE )];
+	x = basex;
+
+	while ( ( c = *txt ) != 0 ) {
+		if ( !disabled && !focus && Q_IsColorString( txt ) ) {
+			n = ColorIndex( *( txt + 1 ) );
+			if ( n == 0 ) {
+				n = 7;
+			}
+			color = g_color_table[n];
+			txt += 2;
+			continue;
+		}
+		UI_DrawChar( x, y, c, style, color );
+		txt++;
+		x += SMALLCHAR_WIDTH;
+	}
+
+	if ( focus ) {
+		if ( trap_Key_GetOverstrikeMode() ) {
+			c = 11;
+		} else {
+			c = 10;
+		}
+
+		style &= ~UI_PULSE;
+		style |= UI_BLINK;
+
+		UI_DrawChar( basex + f->field.cursor * SMALLCHAR_WIDTH, y, c, style, color_white );
+	}
 }
 
 
@@ -655,6 +721,10 @@ static void PlayerSettings_SetTab( int tab ) {
 	showVehicle = ( tab == TAB_VEHICLE );
 
 	PlayerSettings_SetWidgetVisible( &s_playersettings.name.generic, showProfile );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.gender.generic, showProfile );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.birthDate.generic, showProfile );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.avatar.generic, showProfile );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.country.generic, showProfile );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.handicap.generic, showProfile );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.effects.generic, showProfile );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.favorites.generic, showVehicle );
@@ -864,6 +934,16 @@ static void PlayerSettings_SaveChanges( void ) {
 	}
 // END
 
+	if ( UI_Profile_HasActiveProfile() ) {
+		profile_info_t info;
+
+		Q_strncpyz( info.gender, s_playersettings.gender.field.buffer, sizeof( info.gender ) );
+		Q_strncpyz( info.birthDate, s_playersettings.birthDate.field.buffer, sizeof( info.birthDate ) );
+		Q_strncpyz( info.avatar, s_playersettings.avatar.field.buffer, sizeof( info.avatar ) );
+		Q_strncpyz( info.country, s_playersettings.country.field.buffer, sizeof( info.country ) );
+		UI_Profile_SaveActiveInfo( &info );
+	}
+
 	// handicap
 	trap_Cvar_SetValue( "handicap", 100 - s_playersettings.handicap.curvalue * 5 );
 
@@ -913,6 +993,36 @@ static void PlayerSettings_SetMenuItems( void ) {
 
 	// name
 	Q_strncpyz( s_playersettings.name.field.buffer, UI_Cvar_VariableString("name"), sizeof(s_playersettings.name.field.buffer) );
+
+	if ( UI_Profile_HasActiveProfile() ) {
+		const profile_info_t *info = UI_Profile_GetActiveInfo();
+		if ( info ) {
+			s_playersettings.profileInfo = *info;
+		} else {
+			Com_Memset( &s_playersettings.profileInfo, 0, sizeof( s_playersettings.profileInfo ) );
+		}
+
+		Q_strncpyz( s_playersettings.gender.field.buffer, s_playersettings.profileInfo.gender, sizeof( s_playersettings.gender.field.buffer ) );
+		Q_strncpyz( s_playersettings.birthDate.field.buffer, s_playersettings.profileInfo.birthDate, sizeof( s_playersettings.birthDate.field.buffer ) );
+		Q_strncpyz( s_playersettings.avatar.field.buffer, s_playersettings.profileInfo.avatar, sizeof( s_playersettings.avatar.field.buffer ) );
+		Q_strncpyz( s_playersettings.country.field.buffer, s_playersettings.profileInfo.country, sizeof( s_playersettings.country.field.buffer ) );
+
+		s_playersettings.gender.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
+		s_playersettings.birthDate.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
+		s_playersettings.avatar.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
+		s_playersettings.country.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
+	} else {
+		Com_Memset( &s_playersettings.profileInfo, 0, sizeof( s_playersettings.profileInfo ) );
+		s_playersettings.gender.field.buffer[0] = '\0';
+		s_playersettings.birthDate.field.buffer[0] = '\0';
+		s_playersettings.avatar.field.buffer[0] = '\0';
+		s_playersettings.country.field.buffer[0] = '\0';
+
+		s_playersettings.gender.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
+		s_playersettings.birthDate.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
+		s_playersettings.avatar.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
+		s_playersettings.country.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
+	}
 
 	// effects color
 	c = trap_Cvar_VariableValue( "color1" ) - 1;
@@ -1303,6 +1413,66 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.name.generic.bottom		= profileY + 36;
 	s_playersettings.name.generic.flags |= QMF_INACTIVE | QMF_GRAYED;
 
+	profileY += 44;
+
+	s_playersettings.gender.generic.type = MTYPE_FIELD;
+	s_playersettings.gender.generic.flags = QMF_NODEFAULTINIT;
+	s_playersettings.gender.generic.ownerdraw = PlayerSettings_DrawProfileField;
+	s_playersettings.gender.generic.name = "Gender";
+	s_playersettings.gender.field.widthInChars = PROFILE_MAX_GENDER - 1;
+	s_playersettings.gender.field.maxchars = PROFILE_MAX_GENDER - 1;
+	s_playersettings.gender.generic.x = 30;
+	s_playersettings.gender.generic.y = profileY;
+	s_playersettings.gender.generic.left = 30;
+	s_playersettings.gender.generic.top = profileY;
+	s_playersettings.gender.generic.right = 30 + 203;
+	s_playersettings.gender.generic.bottom = profileY + 36;
+
+	profileY += 44;
+
+	s_playersettings.birthDate.generic.type = MTYPE_FIELD;
+	s_playersettings.birthDate.generic.flags = QMF_NODEFAULTINIT;
+	s_playersettings.birthDate.generic.ownerdraw = PlayerSettings_DrawProfileField;
+	s_playersettings.birthDate.generic.name = "Birth date";
+	s_playersettings.birthDate.field.widthInChars = PROFILE_MAX_BIRTHDATE - 1;
+	s_playersettings.birthDate.field.maxchars = PROFILE_MAX_BIRTHDATE - 1;
+	s_playersettings.birthDate.generic.x = 30;
+	s_playersettings.birthDate.generic.y = profileY;
+	s_playersettings.birthDate.generic.left = 30;
+	s_playersettings.birthDate.generic.top = profileY;
+	s_playersettings.birthDate.generic.right = 30 + 203;
+	s_playersettings.birthDate.generic.bottom = profileY + 36;
+
+	profileY += 44;
+
+	s_playersettings.avatar.generic.type = MTYPE_FIELD;
+	s_playersettings.avatar.generic.flags = QMF_NODEFAULTINIT;
+	s_playersettings.avatar.generic.ownerdraw = PlayerSettings_DrawProfileField;
+	s_playersettings.avatar.generic.name = "Avatar";
+	s_playersettings.avatar.field.widthInChars = PROFILE_MAX_AVATAR - 1;
+	s_playersettings.avatar.field.maxchars = PROFILE_MAX_AVATAR - 1;
+	s_playersettings.avatar.generic.x = 30;
+	s_playersettings.avatar.generic.y = profileY;
+	s_playersettings.avatar.generic.left = 30;
+	s_playersettings.avatar.generic.top = profileY;
+	s_playersettings.avatar.generic.right = 30 + 203;
+	s_playersettings.avatar.generic.bottom = profileY + 36;
+
+	profileY += 44;
+
+	s_playersettings.country.generic.type = MTYPE_FIELD;
+	s_playersettings.country.generic.flags = QMF_NODEFAULTINIT;
+	s_playersettings.country.generic.ownerdraw = PlayerSettings_DrawProfileField;
+	s_playersettings.country.generic.name = "Country";
+	s_playersettings.country.field.widthInChars = PROFILE_MAX_COUNTRY - 1;
+	s_playersettings.country.field.maxchars = PROFILE_MAX_COUNTRY - 1;
+	s_playersettings.country.generic.x = 30;
+	s_playersettings.country.generic.y = profileY;
+	s_playersettings.country.generic.left = 30;
+	s_playersettings.country.generic.top = profileY;
+	s_playersettings.country.generic.right = 30 + 203;
+	s_playersettings.country.generic.bottom = profileY + 36;
+
 //	y += 3 * PROP_HEIGHT;
 // END
 	s_playersettings.handicap.generic.type		= MTYPE_SPINCONTROL;
@@ -1529,6 +1699,10 @@ static void PlayerSettings_MenuInit( void ) {
 // END
 
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.name );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.gender );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.birthDate );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.avatar );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.country );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.handicap );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.effects );
 
