@@ -8,6 +8,7 @@ static struct {
     qboolean        dirty;
     char            name[PROFILE_MAX_NAME];
     profile_stats_t stats;
+    profile_info_t  info;
     int             nextAutosaveTime;
 } s_profileState;
 
@@ -88,6 +89,108 @@ static int G_Profile_ParseInt( const char *buffer, const char *key, int defaultV
     return atoi( cursor );
 }
 
+static void G_Profile_ParseString( const char *buffer, const char *key, char *out, int outSize, const char *defaultValue ) {
+    char pattern[64];
+    const char *cursor;
+    const char *start;
+    int length;
+
+    if ( !out || outSize <= 0 ) {
+        return;
+    }
+
+    out[0] = '\0';
+    if ( defaultValue ) {
+        Q_strncpyz( out, defaultValue, outSize );
+    }
+
+    if ( !buffer || !key ) {
+        return;
+    }
+
+    Com_sprintf( pattern, sizeof( pattern ), "\"%s\"", key );
+    cursor = strstr( buffer, pattern );
+    if ( !cursor ) {
+        return;
+    }
+
+    cursor = strchr( cursor, ':' );
+    if ( !cursor ) {
+        return;
+    }
+    cursor++;
+
+    while ( *cursor == ' ' || *cursor == '\t' ) {
+        cursor++;
+    }
+
+    if ( *cursor != '"' ) {
+        return;
+    }
+    cursor++;
+    start = cursor;
+
+    while ( *cursor && *cursor != '"' ) {
+        if ( *cursor == '\\' && cursor[1] != '\0' ) {
+            cursor += 2;
+            continue;
+        }
+        cursor++;
+    }
+
+    length = cursor - start;
+    if ( length >= outSize ) {
+        length = outSize - 1;
+    }
+
+    Com_Memcpy( out, start, length );
+    out[length] = '\0';
+
+    // unescape quotes and backslashes in-place
+    {
+        char *dst = out;
+        char *src = out;
+
+        while ( *src ) {
+            if ( *src == '\\' && src[1] ) {
+                src++;
+            }
+            *dst++ = *src++;
+        }
+        *dst = '\0';
+    }
+}
+
+static void G_Profile_FormatJsonString( char *out, int outSize, const char *value ) {
+    const char *src;
+    char *dst;
+
+    if ( !out || outSize <= 0 ) {
+        return;
+    }
+
+    if ( !value ) {
+        value = "";
+    }
+
+    dst = out;
+    src = value;
+
+    while ( *src && ( dst - out ) < outSize - 1 ) {
+        if ( (*src == '"' || *src == '\\') && ( dst - out ) < outSize - 2 ) {
+            *dst++ = '\\';
+        }
+
+        if ( ( dst - out ) >= outSize - 1 ) {
+            break;
+        }
+
+        *dst++ = *src++;
+    }
+
+    *dst = '\0';
+}
+
 static qboolean G_Profile_LoadFromDisk( void ) {
     fileHandle_t file;
     char path[MAX_QPATH];
@@ -116,6 +219,9 @@ static qboolean G_Profile_LoadFromDisk( void ) {
     buffer[length] = '\0';
     trap_FS_FCloseFile( file );
 
+    Com_Memset( &s_profileState.stats, 0, sizeof( s_profileState.stats ) );
+    Com_Memset( &s_profileState.info, 0, sizeof( s_profileState.info ) );
+
     s_profileState.stats.distanceKm = G_Profile_ParseDouble( buffer, "distanceKm", 0.0 );
     s_profileState.stats.fuelUsed = G_Profile_ParseDouble( buffer, "fuelUsed", 0.0 );
     s_profileState.stats.bestLapMs = G_Profile_ParseInt( buffer, "bestLapMs", 0 );
@@ -125,13 +231,25 @@ static qboolean G_Profile_LoadFromDisk( void ) {
     s_profileState.stats.losses = G_Profile_ParseInt( buffer, "losses", 0 );
     s_profileState.stats.flagCaptures = G_Profile_ParseInt( buffer, "flagCaptures", 0 );
 
+    G_Profile_ParseString( buffer, "gender", s_profileState.info.gender, sizeof( s_profileState.info.gender ), "" );
+    G_Profile_ParseString( buffer, "birthDate", s_profileState.info.birthDate, sizeof( s_profileState.info.birthDate ), "" );
+    G_Profile_ParseString( buffer, "avatar", s_profileState.info.avatar, sizeof( s_profileState.info.avatar ), "" );
+    G_Profile_ParseString( buffer, "country", s_profileState.info.country, sizeof( s_profileState.info.country ), "" );
+
     return qtrue;
 }
 
 static void G_Profile_WriteToDisk( void ) {
     fileHandle_t file;
     char path[MAX_QPATH];
-    char buffer[512];
+    char buffer[768];
+    char gender[PROFILE_MAX_GENDER * 2];
+    char birthDate[PROFILE_MAX_BIRTHDATE * 2];
+    char avatar[PROFILE_MAX_AVATAR * 2];
+    char country[PROFILE_MAX_COUNTRY * 2];
+    fileHandle_t readFile;
+    char readBuffer[1024];
+    int readLength;
     int length;
 
     if ( !s_profileState.loaded || !s_profileState.name[0] ) {
@@ -140,9 +258,38 @@ static void G_Profile_WriteToDisk( void ) {
 
     G_Profile_BuildPath( s_profileState.name, path, sizeof( path ) );
 
+    readLength = trap_FS_FOpenFile( path, &readFile, FS_READ );
+    if ( readLength > 0 ) {
+        if ( readLength >= (int)sizeof( readBuffer ) ) {
+            readLength = sizeof( readBuffer ) - 1;
+        }
+
+        trap_FS_Read( readBuffer, readLength, readFile );
+        readBuffer[readLength] = '\0';
+        trap_FS_FCloseFile( readFile );
+
+        G_Profile_ParseString( readBuffer, "gender", s_profileState.info.gender, sizeof( s_profileState.info.gender ), s_profileState.info.gender );
+        G_Profile_ParseString( readBuffer, "birthDate", s_profileState.info.birthDate, sizeof( s_profileState.info.birthDate ), s_profileState.info.birthDate );
+        G_Profile_ParseString( readBuffer, "avatar", s_profileState.info.avatar, sizeof( s_profileState.info.avatar ), s_profileState.info.avatar );
+        G_Profile_ParseString( readBuffer, "country", s_profileState.info.country, sizeof( s_profileState.info.country ), s_profileState.info.country );
+    } else if ( readFile ) {
+        trap_FS_FCloseFile( readFile );
+    }
+
+    G_Profile_FormatJsonString( gender, sizeof( gender ), s_profileState.info.gender );
+    G_Profile_FormatJsonString( birthDate, sizeof( birthDate ), s_profileState.info.birthDate );
+    G_Profile_FormatJsonString( avatar, sizeof( avatar ), s_profileState.info.avatar );
+    G_Profile_FormatJsonString( country, sizeof( country ), s_profileState.info.country );
+
     length = Com_sprintf( buffer, sizeof( buffer ),
         "{\n"
         "\t\"name\": \"%s\",\n"
+        "\t\"info\": {\n"
+        "\t\t\"gender\": \"%s\",\n"
+        "\t\t\"birthDate\": \"%s\",\n"
+        "\t\t\"avatar\": \"%s\",\n"
+        "\t\t\"country\": \"%s\"\n"
+        "\t\},\n"
         "\t\"stats\": {\n"
         "\t\t\"distanceKm\": %.6f,\n"
         "\t\t\"fuelUsed\": %.3f,\n"
@@ -155,6 +302,10 @@ static void G_Profile_WriteToDisk( void ) {
         "\t}\n"
         "}\n",
         s_profileState.name,
+        gender,
+        birthDate,
+        avatar,
+        country,
         s_profileState.stats.distanceKm,
         s_profileState.stats.fuelUsed,
         s_profileState.stats.bestLapMs,
@@ -203,6 +354,7 @@ void G_Profile_Init( void ) {
     Q_strncpyz( s_profileState.name, activeName, sizeof( s_profileState.name ) );
     if ( !G_Profile_LoadFromDisk() ) {
         Com_Memset( &s_profileState.stats, 0, sizeof( s_profileState.stats ) );
+        Com_Memset( &s_profileState.info, 0, sizeof( s_profileState.info ) );
         s_profileState.dirty = qtrue;
         G_Profile_WriteToDisk();
     }
