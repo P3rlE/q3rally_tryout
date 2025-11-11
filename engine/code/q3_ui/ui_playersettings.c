@@ -82,6 +82,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_TAB_TOP		64
 #define PLAYERSETTINGS_TAB_HEIGHT	32
 #define PLAYERSETTINGS_TAB_TEXT_OFFSET	8
+#define PLAYERSETTINGS_CONTENT_TOP	( PLAYERSETTINGS_TAB_TOP + PLAYERSETTINGS_TAB_HEIGHT + 18 )
 
 #define MAX_NAMELENGTH	20
 // STONELANCE
@@ -645,7 +646,7 @@ static void PlayerSettings_SetTab( int tab ) {
 	qboolean showVehicle;
 
 	if ( tab < TAB_PROFILE || tab > TAB_ACHIEVEMENTS ) {
-		tab = TAB_VEHICLE;
+		tab = TAB_PROFILE;
 	}
 
 	s_playersettings.currentTab = tab;
@@ -1253,7 +1254,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.tabAchievements.generic.callback = PlayerSettings_MenuEvent;
 	s_playersettings.tabAchievements.generic.ownerdraw = PlayerSettings_DrawTabItem;
 	PlayerSettings_ConfigureTab( &s_playersettings.tabAchievements, TAB_ACHIEVEMENTS );
-	s_playersettings.tabAchievements.string = "ACHIEVEMENTS";
+	s_playersettings.tabAchievements.string = "ACHIEV.";
 	s_playersettings.tabAchievements.style = UI_CENTER | UI_SMALLFONT;
 	s_playersettings.tabAchievements.color = uis.text_color;
 
@@ -1277,8 +1278,8 @@ static void PlayerSettings_MenuInit( void ) {
 */
 
 //	y = 144;
-	y = 86;
-	profileY = PLAYERSETTINGS_TAB_TOP + PLAYERSETTINGS_TAB_HEIGHT + 18;
+	y = PLAYERSETTINGS_CONTENT_TOP;
+	profileY = PLAYERSETTINGS_CONTENT_TOP;
 // END
 	s_playersettings.name.generic.type			= MTYPE_FIELD;
 	s_playersettings.name.generic.flags			= QMF_NODEFAULTINIT;
@@ -1561,7 +1562,7 @@ static void PlayerSettings_MenuInit( void ) {
 //	Menu_AddItem( &s_playersettings.menu, &s_playersettings.item_null );
 // END
 
-	PlayerSettings_SetTab( TAB_VEHICLE );
+	PlayerSettings_SetTab( TAB_PROFILE );
 	PlayerSettings_SetMenuItems();
 
 // STONELANCE
