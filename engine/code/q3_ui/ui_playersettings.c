@@ -66,13 +66,23 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ID_PLATE		21
 // END
 
-#define ID_TAB_VEHICLE		30
-#define ID_TAB_STATS		31
-#define ID_TAB_ACHIEVEMENTS	32
+#define ID_TAB_PROFILE		30
+#define ID_TAB_VEHICLE		31
+#define ID_TAB_STATS		32
+#define ID_TAB_ACHIEVEMENTS	33
 
-#define TAB_VEHICLE		0
-#define TAB_STATS		1
-#define TAB_ACHIEVEMENTS	2
+#define TAB_PROFILE		0
+#define TAB_VEHICLE		1
+#define TAB_STATS		2
+#define TAB_ACHIEVEMENTS	3
+
+#define PLAYERSETTINGS_TAB_COUNT		4
+#define PLAYERSETTINGS_TAB_WIDTH		120
+#define PLAYERSETTINGS_TAB_GAP		12
+#define PLAYERSETTINGS_TAB_TOP		64
+#define PLAYERSETTINGS_TAB_HEIGHT	32
+#define PLAYERSETTINGS_TAB_TEXT_OFFSET	8
+#define PLAYERSETTINGS_CONTENT_TOP	( PLAYERSETTINGS_TAB_TOP + PLAYERSETTINGS_TAB_HEIGHT + 18 )
 
 #define MAX_NAMELENGTH	20
 // STONELANCE
@@ -83,6 +93,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 static vec4_t achievementUnlockedColor = { 0.6f, 1.0f, 0.6f, 1.0f };
 static vec4_t achievementLockedColor = { 0.7f, 0.7f, 0.7f, 1.0f };
+static vec4_t tabBackgroundColor = { 0.05f, 0.05f, 0.05f, 0.85f };
+static vec4_t tabSelectedBackgroundColor = { 0.16f, 0.16f, 0.16f, 0.95f };
+static vec4_t tabBorderColor = { 0.45f, 0.45f, 0.45f, 1.0f };
+static vec4_t tabSelectedBorderColor = { 1.0f, 0.8f, 0.3f, 1.0f };
+static vec4_t tabFocusBorderColor = { 0.8f, 0.8f, 0.8f, 1.0f };
 
 static const double s_distanceAchievements[] = { 10.0, 100.0, 1000.0 };
 static const int s_killAchievements[] = { 10, 100, 1000 };
@@ -93,6 +108,7 @@ typedef struct {
 	menuframework_s		menu;
 
 	menutext_s			banner;
+	menutext_s			tabProfile;
 	menutext_s			tabVehicle;
 	menutext_s			tabStats;
 	menutext_s			tabAchievements;
@@ -375,15 +391,96 @@ static void PlayerSettings_DrawCustomize( void *self ) {
 }
 
 static void PlayerSettings_SetWidgetVisible( menucommon_s *item, qboolean visible ) {
-	if ( !item ) {
-		return;
-	}
+        if ( !item ) {
+                return;
+        }
 
-	if ( visible ) {
-		item->flags &= ~QMF_HIDDEN;
-	} else {
-		item->flags |= QMF_HIDDEN;
-	}
+        if ( visible ) {
+                item->flags &= ~QMF_HIDDEN;
+        } else {
+                item->flags |= QMF_HIDDEN;
+        }
+}
+
+static int PlayerSettings_GetTabCenter( int index ) {
+        int totalWidth;
+        int start;
+
+        totalWidth = PLAYERSETTINGS_TAB_COUNT * PLAYERSETTINGS_TAB_WIDTH + (PLAYERSETTINGS_TAB_COUNT - 1) * PLAYERSETTINGS_TAB_GAP;
+        start = 320 - totalWidth / 2 + PLAYERSETTINGS_TAB_WIDTH / 2;
+
+        return start + index * (PLAYERSETTINGS_TAB_WIDTH + PLAYERSETTINGS_TAB_GAP);
+}
+
+static void PlayerSettings_ConfigureTab( menutext_s *tab, int index ) {
+        int center;
+
+        if ( !tab ) {
+                return;
+        }
+
+        center = PlayerSettings_GetTabCenter( index );
+
+        tab->generic.x = center;
+        tab->generic.y = PLAYERSETTINGS_TAB_TOP + PLAYERSETTINGS_TAB_TEXT_OFFSET;
+        tab->generic.left = center - PLAYERSETTINGS_TAB_WIDTH / 2;
+        tab->generic.right = center + PLAYERSETTINGS_TAB_WIDTH / 2;
+        tab->generic.top = PLAYERSETTINGS_TAB_TOP;
+        tab->generic.bottom = PLAYERSETTINGS_TAB_TOP + PLAYERSETTINGS_TAB_HEIGHT;
+}
+
+static int PlayerSettings_TabFromId( int id ) {
+        switch ( id ) {
+        case ID_TAB_PROFILE:
+                return TAB_PROFILE;
+        case ID_TAB_VEHICLE:
+                return TAB_VEHICLE;
+        case ID_TAB_STATS:
+                return TAB_STATS;
+        case ID_TAB_ACHIEVEMENTS:
+                return TAB_ACHIEVEMENTS;
+        default:
+                break;
+        }
+
+        return TAB_PROFILE;
+}
+
+static void PlayerSettings_DrawTabItem( void *self ) {
+        menutext_s *tab;
+        qboolean focus;
+        qboolean selected;
+        vec4_t background;
+        vec4_t border;
+        int style;
+
+        tab = (menutext_s *)self;
+        focus = ( tab->generic.parent->cursor == tab->generic.menuPosition );
+        selected = ( s_playersettings.currentTab == PlayerSettings_TabFromId( tab->generic.id ) );
+
+        Vector4Copy( selected ? tabSelectedBackgroundColor : tabBackgroundColor, background );
+        Vector4Copy( selected ? tabSelectedBorderColor : tabBorderColor, border );
+
+        background[3] *= uis.tFrac;
+        border[3] *= uis.tFrac;
+
+        UI_FillRect( tab->generic.left, tab->generic.top, PLAYERSETTINGS_TAB_WIDTH, PLAYERSETTINGS_TAB_HEIGHT, background );
+        UI_DrawRect( tab->generic.left, tab->generic.top, PLAYERSETTINGS_TAB_WIDTH, PLAYERSETTINGS_TAB_HEIGHT, border );
+
+        if ( focus && !selected ) {
+                vec4_t focusBorder;
+
+                Vector4Copy( tabFocusBorderColor, focusBorder );
+                focusBorder[3] *= uis.tFrac;
+                UI_DrawRect( tab->generic.left + 1, tab->generic.top + 1, PLAYERSETTINGS_TAB_WIDTH - 2, PLAYERSETTINGS_TAB_HEIGHT - 2, focusBorder );
+        }
+
+        style = UI_CENTER | UI_SMALLFONT;
+        if ( focus ) {
+                style |= UI_PULSE;
+        }
+
+        UI_DrawProportionalString( tab->generic.x, tab->generic.y, tab->string, style, tab->color );
 }
 
 
@@ -396,13 +493,22 @@ static void PlayerSettings_DrawStatsTab( void );
 static void PlayerSettings_DrawAchievementsTab( void );
 
 static void PlayerSettings_DrawBackShaders( void ) {
-	vec4_t	color;
+	vec4_t color;
+	vec4_t panelColor;
 
-	Vector4Copy(menu_back_color, color);
+	Vector4Copy( menu_back_color, color );
 	color[3] *= uis.tFrac;
 
-	UI_FillRect( 24, 80, 592, 48, color);
-	UI_FillRect( 124, 138, 392, 32, menu_back_color);
+	UI_FillRect( 24, PLAYERSETTINGS_TAB_TOP - 12, 592, PLAYERSETTINGS_TAB_HEIGHT + 24, color );
+
+	Vector4Copy( menu_back_color, panelColor );
+	panelColor[3] *= uis.tFrac;
+
+	if ( s_playersettings.currentTab == TAB_PROFILE ) {
+		UI_FillRect( 24, 112, 592, 64, panelColor );
+	} else if ( s_playersettings.currentTab == TAB_VEHICLE ) {
+		UI_FillRect( 124, 138, 392, 32, panelColor );
+	}
 
 	Menu_Draw( &s_playersettings.menu );
 
@@ -536,19 +642,21 @@ static void PlayerSettings_DrawAchievementsTab( void ) {
 
 static void PlayerSettings_SetTab( int tab ) {
 	int i;
+	qboolean showProfile;
 	qboolean showVehicle;
 
-	if ( tab < TAB_VEHICLE || tab > TAB_ACHIEVEMENTS ) {
-		tab = TAB_VEHICLE;
+	if ( tab < TAB_PROFILE || tab > TAB_ACHIEVEMENTS ) {
+		tab = TAB_PROFILE;
 	}
 
 	s_playersettings.currentTab = tab;
 
+	showProfile = ( tab == TAB_PROFILE );
 	showVehicle = ( tab == TAB_VEHICLE );
 
-	PlayerSettings_SetWidgetVisible( &s_playersettings.name.generic, showVehicle );
-	PlayerSettings_SetWidgetVisible( &s_playersettings.handicap.generic, showVehicle );
-	PlayerSettings_SetWidgetVisible( &s_playersettings.effects.generic, showVehicle );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.name.generic, showProfile );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.handicap.generic, showProfile );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.effects.generic, showProfile );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.favorites.generic, showVehicle );
 
 	for ( i = 0; i < NUM_FAVORITES; ++i ) {
@@ -564,11 +672,15 @@ static void PlayerSettings_SetTab( int tab ) {
 	PlayerSettings_SetWidgetVisible( &s_playersettings.customize.generic, showVehicle );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.plate.generic, showVehicle );
 
+	s_playersettings.tabProfile.color = ( tab == TAB_PROFILE ) ? text_color_highlight : uis.text_color;
 	s_playersettings.tabVehicle.color = ( tab == TAB_VEHICLE ) ? text_color_highlight : uis.text_color;
 	s_playersettings.tabStats.color = ( tab == TAB_STATS ) ? text_color_highlight : uis.text_color;
 	s_playersettings.tabAchievements.color = ( tab == TAB_ACHIEVEMENTS ) ? text_color_highlight : uis.text_color;
 
 	switch ( tab ) {
+	case TAB_PROFILE:
+		Menu_SetCursorToItem( &s_playersettings.menu, &s_playersettings.tabProfile );
+		break;
 	case TAB_STATS:
 		Menu_SetCursorToItem( &s_playersettings.menu, &s_playersettings.tabStats );
 		break;
@@ -907,6 +1019,10 @@ static void PlayerSettings_MenuEvent( void* ptr, int event ) {
 	}
 
 	switch( ((menucommon_s*)ptr)->id ) {
+	case ID_TAB_PROFILE:
+		PlayerSettings_SetTab( TAB_PROFILE );
+		break;
+
 	case ID_TAB_VEHICLE:
 		PlayerSettings_SetTab( TAB_VEHICLE );
 		break;
@@ -1072,6 +1188,7 @@ PlayerSettings_MenuInit
 */
 static void PlayerSettings_MenuInit( void ) {
 	int		y;
+	int		profileY;
 // STONELANCE
 	int		i, j, x;
 	static char	modelname[32];
@@ -1101,35 +1218,45 @@ static void PlayerSettings_MenuInit( void ) {
 // END
 	s_playersettings.banner.style         = UI_CENTER;
 
+	s_playersettings.tabProfile.generic.type = MTYPE_PTEXT;
+	s_playersettings.tabProfile.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
+	s_playersettings.tabProfile.generic.id = ID_TAB_PROFILE;
+	s_playersettings.tabProfile.generic.callback = PlayerSettings_MenuEvent;
+	s_playersettings.tabProfile.generic.ownerdraw = PlayerSettings_DrawTabItem;
+	PlayerSettings_ConfigureTab( &s_playersettings.tabProfile, TAB_PROFILE );
+	s_playersettings.tabProfile.string = "PROFILE";
+	s_playersettings.tabProfile.style = UI_CENTER | UI_SMALLFONT;
+	s_playersettings.tabProfile.color = uis.text_color;
+
 	s_playersettings.tabVehicle.generic.type = MTYPE_PTEXT;
-	s_playersettings.tabVehicle.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
+	s_playersettings.tabVehicle.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
 	s_playersettings.tabVehicle.generic.id = ID_TAB_VEHICLE;
 	s_playersettings.tabVehicle.generic.callback = PlayerSettings_MenuEvent;
-	s_playersettings.tabVehicle.generic.x = 200;
-	s_playersettings.tabVehicle.generic.y = 104;
-	s_playersettings.tabVehicle.string = "VEHICLE";
+	s_playersettings.tabVehicle.generic.ownerdraw = PlayerSettings_DrawTabItem;
+	PlayerSettings_ConfigureTab( &s_playersettings.tabVehicle, TAB_VEHICLE );
+	s_playersettings.tabVehicle.string = "CAR";
 	s_playersettings.tabVehicle.style = UI_CENTER | UI_SMALLFONT;
-	s_playersettings.tabVehicle.color = text_color_normal;
+	s_playersettings.tabVehicle.color = uis.text_color;
 
 	s_playersettings.tabStats.generic.type = MTYPE_PTEXT;
-	s_playersettings.tabStats.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
+	s_playersettings.tabStats.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
 	s_playersettings.tabStats.generic.id = ID_TAB_STATS;
 	s_playersettings.tabStats.generic.callback = PlayerSettings_MenuEvent;
-	s_playersettings.tabStats.generic.x = 320;
-	s_playersettings.tabStats.generic.y = 104;
+	s_playersettings.tabStats.generic.ownerdraw = PlayerSettings_DrawTabItem;
+	PlayerSettings_ConfigureTab( &s_playersettings.tabStats, TAB_STATS );
 	s_playersettings.tabStats.string = "STATS";
 	s_playersettings.tabStats.style = UI_CENTER | UI_SMALLFONT;
-	s_playersettings.tabStats.color = text_color_normal;
+	s_playersettings.tabStats.color = uis.text_color;
 
 	s_playersettings.tabAchievements.generic.type = MTYPE_PTEXT;
-	s_playersettings.tabAchievements.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
+	s_playersettings.tabAchievements.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
 	s_playersettings.tabAchievements.generic.id = ID_TAB_ACHIEVEMENTS;
 	s_playersettings.tabAchievements.generic.callback = PlayerSettings_MenuEvent;
-	s_playersettings.tabAchievements.generic.x = 440;
-	s_playersettings.tabAchievements.generic.y = 104;
-	s_playersettings.tabAchievements.string = "ACHIEVEMENTS";
+	s_playersettings.tabAchievements.generic.ownerdraw = PlayerSettings_DrawTabItem;
+	PlayerSettings_ConfigureTab( &s_playersettings.tabAchievements, TAB_ACHIEVEMENTS );
+	s_playersettings.tabAchievements.string = "ACHIEV.";
 	s_playersettings.tabAchievements.style = UI_CENTER | UI_SMALLFONT;
-	s_playersettings.tabAchievements.color = text_color_normal;
+	s_playersettings.tabAchievements.color = uis.text_color;
 
 // STONELANCE
 /*
@@ -1151,7 +1278,8 @@ static void PlayerSettings_MenuInit( void ) {
 */
 
 //	y = 144;
-	y = 86;
+	y = PLAYERSETTINGS_CONTENT_TOP;
+	profileY = PLAYERSETTINGS_CONTENT_TOP;
 // END
 	s_playersettings.name.generic.type			= MTYPE_FIELD;
 	s_playersettings.name.generic.flags			= QMF_NODEFAULTINIT;
@@ -1168,11 +1296,11 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.name.generic.bottom		= y + 2 * PROP_HEIGHT;
 */
 	s_playersettings.name.generic.x				= 30;
-	s_playersettings.name.generic.y				= y;
+	s_playersettings.name.generic.y				= profileY;
 	s_playersettings.name.generic.left			= 30;
-	s_playersettings.name.generic.top			= y;
+	s_playersettings.name.generic.top			= profileY;
 	s_playersettings.name.generic.right			= 30 + 203;
-	s_playersettings.name.generic.bottom		= y + 36;
+	s_playersettings.name.generic.bottom		= profileY + 36;
 	s_playersettings.name.generic.flags |= QMF_INACTIVE | QMF_GRAYED;
 
 //	y += 3 * PROP_HEIGHT;
@@ -1389,6 +1517,7 @@ static void PlayerSettings_MenuInit( void ) {
 // END
 
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.banner );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.tabProfile );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.tabVehicle );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.tabStats );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.tabAchievements );
@@ -1433,7 +1562,7 @@ static void PlayerSettings_MenuInit( void ) {
 //	Menu_AddItem( &s_playersettings.menu, &s_playersettings.item_null );
 // END
 
-	PlayerSettings_SetTab( TAB_VEHICLE );
+	PlayerSettings_SetTab( TAB_PROFILE );
 	PlayerSettings_SetMenuItems();
 
 // STONELANCE
