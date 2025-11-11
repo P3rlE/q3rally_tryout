@@ -655,8 +655,8 @@ static void PlayerSettings_SetTab( int tab ) {
 	showVehicle = ( tab == TAB_VEHICLE );
 
 	PlayerSettings_SetWidgetVisible( &s_playersettings.name.generic, showProfile );
-	PlayerSettings_SetWidgetVisible( &s_playersettings.handicap.generic, showVehicle );
-	PlayerSettings_SetWidgetVisible( &s_playersettings.effects.generic, showVehicle );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.handicap.generic, showProfile );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.effects.generic, showProfile );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.favorites.generic, showVehicle );
 
 	for ( i = 0; i < NUM_FAVORITES; ++i ) {
