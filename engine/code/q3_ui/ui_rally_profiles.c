@@ -381,7 +381,7 @@ static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *in
         "\t\t\"birthDate\": \"%s\",\n"
         "\t\t\"avatar\": \"%s\",\n"
         "\t\t\"country\": \"%s\"\n"
-        "\t\},\n"
+        "\t},\n"
         "\t\"stats\": {\n"
         "\t\t\"distanceKm\": %.6f,\n"
         "\t\t\"fuelUsed\": %.3f,\n"
