@@ -18,6 +18,7 @@ typedef struct {
     int wins;
     int losses;
     int flagCaptures;
+    int flagAssists;
 } profile_stats_t;
 
 typedef struct {
