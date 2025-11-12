@@ -1103,37 +1103,49 @@ static void PlayerSettings_DrawStatsTab( void ) {
 }
 
 static void PlayerSettings_DrawAchievementSectionDouble( int *y, const char *title, const double *thresholds, int count, double progress, const char *unit ) {
-	int i;
-	char buffer[64];
+        int i;
+        int spacing;
+        char buffer[64];
 
-	UI_DrawProportionalString( 140, *y, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
-	*y += 20;
+        UI_DrawProportionalString( 140, *y, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
+        *y += 20;
 
-	for ( i = 0; i < count; ++i ) {
-		qboolean unlocked = ( progress >= thresholds[i] );
-		Com_sprintf( buffer, sizeof( buffer ), "%s %.0f %s", unlocked ? "[X]" : "[ ]", thresholds[i], unit );
-		UI_DrawProportionalString( 160, *y, buffer, UI_LEFT | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
-		*y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
-	}
+        spacing = ( count > 1 ) ? ( ( 640 - 160 - 40 ) / ( count - 1 ) ) : 0;
 
-	*y += 10;
+        for ( i = 0; i < count; ++i ) {
+                int x;
+                qboolean unlocked;
+
+                x = 160 + ( spacing * i );
+                unlocked = ( progress >= thresholds[i] );
+                Com_sprintf( buffer, sizeof( buffer ), "%s %.0f %s", unlocked ? "[X]" : "[ ]", thresholds[i], unit );
+                UI_DrawProportionalString( x, *y, buffer, UI_LEFT | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
+        }
+
+        *y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE + 10;
 }
 
 static void PlayerSettings_DrawAchievementSectionInt( int *y, const char *title, const int *thresholds, int count, int progress, const char *suffix ) {
-	int i;
-	char buffer[64];
+        int i;
+        int spacing;
+        char buffer[64];
 
-	UI_DrawProportionalString( 140, *y, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
-	*y += 20;
+        UI_DrawProportionalString( 140, *y, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
+        *y += 20;
 
-	for ( i = 0; i < count; ++i ) {
-		qboolean unlocked = ( progress >= thresholds[i] );
-		Com_sprintf( buffer, sizeof( buffer ), "%s %d %s", unlocked ? "[X]" : "[ ]", thresholds[i], suffix );
-		UI_DrawProportionalString( 160, *y, buffer, UI_LEFT | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
-		*y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
-	}
+        spacing = ( count > 1 ) ? ( ( 640 - 160 - 40 ) / ( count - 1 ) ) : 0;
 
-	*y += 10;
+        for ( i = 0; i < count; ++i ) {
+                int x;
+                qboolean unlocked;
+
+                x = 160 + ( spacing * i );
+                unlocked = ( progress >= thresholds[i] );
+                Com_sprintf( buffer, sizeof( buffer ), "%s %d %s", unlocked ? "[X]" : "[ ]", thresholds[i], suffix );
+                UI_DrawProportionalString( x, *y, buffer, UI_LEFT | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
+        }
+
+        *y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE + 10;
 }
 
 static void PlayerSettings_DrawAchievementsTab( void ) {
