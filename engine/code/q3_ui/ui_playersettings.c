@@ -1106,27 +1106,29 @@ static void PlayerSettings_DrawStatsTab( void ) {
 
 static int PlayerSettings_DrawAchievementSectionDouble( int *y, const char *title, const double *thresholds, int count, double progress, const char *unit ) {
         int i;
-        int spacing;
+        float spacing;
+        float startX;
         int unlockedCount;
         char buffer[64];
 
         UI_DrawProportionalString( 140, *y, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
         *y += 20;
 
-        spacing = ( count > 1 ) ? ( ( 640 - 160 - 40 ) / ( count - 1 ) ) : 0;
+        spacing = ( count > 1 ) ? ( 440.0f / ( count - 1 ) ) : 0.0f;
+        startX = 320.0f - ( ( count - 1 ) * spacing * 0.5f );
         unlockedCount = 0;
 
         for ( i = 0; i < count; ++i ) {
-                int x;
+                float x;
                 qboolean unlocked;
 
-                x = 160 + ( spacing * i );
+                x = startX + ( spacing * i );
                 unlocked = ( progress >= thresholds[i] );
                 if ( unlocked ) {
                         ++unlockedCount;
                 }
                 Com_sprintf( buffer, sizeof( buffer ), "%s %.0f %s", unlocked ? "[X]" : "[ ]", thresholds[i], unit );
-                UI_DrawProportionalString( x, *y, buffer, UI_LEFT | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
+                UI_DrawProportionalString( (int)x, *y, buffer, UI_CENTER | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
         }
 
         *y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE + 10;
@@ -1136,27 +1138,29 @@ static int PlayerSettings_DrawAchievementSectionDouble( int *y, const char *titl
 
 static int PlayerSettings_DrawAchievementSectionInt( int *y, const char *title, const int *thresholds, int count, int progress, const char *suffix ) {
         int i;
-        int spacing;
+        float spacing;
+        float startX;
         int unlockedCount;
         char buffer[64];
 
         UI_DrawProportionalString( 140, *y, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
         *y += 20;
 
-        spacing = ( count > 1 ) ? ( ( 640 - 160 - 40 ) / ( count - 1 ) ) : 0;
+        spacing = ( count > 1 ) ? ( 440.0f / ( count - 1 ) ) : 0.0f;
+        startX = 320.0f - ( ( count - 1 ) * spacing * 0.5f );
         unlockedCount = 0;
 
         for ( i = 0; i < count; ++i ) {
-                int x;
+                float x;
                 qboolean unlocked;
 
-                x = 160 + ( spacing * i );
+                x = startX + ( spacing * i );
                 unlocked = ( progress >= thresholds[i] );
                 if ( unlocked ) {
                         ++unlockedCount;
                 }
                 Com_sprintf( buffer, sizeof( buffer ), "%s %d %s", unlocked ? "[X]" : "[ ]", thresholds[i], suffix );
-                UI_DrawProportionalString( x, *y, buffer, UI_LEFT | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
+                UI_DrawProportionalString( (int)x, *y, buffer, UI_CENTER | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
         }
 
         *y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE + 10;
