@@ -70,6 +70,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ID_TAB_VEHICLE		31
 #define ID_TAB_STATS		32
 #define ID_TAB_ACHIEVEMENTS	33
+#define ID_GENDER		40
+#define ID_BIRTH_DAY		41
+#define ID_BIRTH_MONTH		42
+#define ID_BIRTH_YEAR		43
 
 #define TAB_PROFILE		0
 #define TAB_VEHICLE		1
@@ -88,6 +92,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // STONELANCE
 #define NUM_FAVORITES		4
 #define MAX_PLAYERMODELS	256
+#define BIRTH_YEAR_START	1950
+#define BIRTH_YEAR_END	2100
+#define BIRTH_YEAR_COUNT	( ( BIRTH_YEAR_END ) - ( BIRTH_YEAR_START ) + 1 )
+#define BIRTH_DAY_MAX	31
 // END
 
 
@@ -103,6 +111,40 @@ static const double s_distanceAchievements[] = { 10.0, 100.0, 1000.0 };
 static const int s_killAchievements[] = { 10, 100, 1000 };
 static const int s_winAchievements[] = { 1, 10, 25 };
 static const int s_flagAchievements[] = { 1, 10, 50 };
+
+static const char *const s_genderItems[] = {
+        "Unspecified",
+        "Female",
+        "Male",
+        "Non-binary",
+        "Other",
+        NULL
+};
+
+static const char *const s_birthMonthItems[] = {
+        "-",
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+        NULL
+};
+
+static const char *s_birthDayItems[BIRTH_DAY_MAX + 2];
+static char s_birthDayStrings[BIRTH_DAY_MAX + 1][3];
+
+static const char *s_birthYearItems[BIRTH_YEAR_COUNT + 2];
+static char s_birthYearStrings[BIRTH_YEAR_COUNT][5];
+
+static qboolean s_birthDateListsInitialized;
 
 typedef struct {
 	menuframework_s		menu;
@@ -121,6 +163,13 @@ typedef struct {
 	menubitmap_s		player;
 
 	menufield_s			name;
+	menulist_s			gender;
+	menutext_s			birthDateLabel;
+	menulist_s			birthDay;
+	menulist_s			birthMonth;
+	menulist_s			birthYear;
+	menufield_s			avatar;
+	menufield_s			country;
 	menulist_s			handicap;
 	menulist_s			effects;
 
@@ -158,6 +207,7 @@ typedef struct {
 	int					current_fx;
 	char				playerModel[MAX_QPATH];
 	int					currentTab;
+	profile_info_t	profileInfo;
 } playersettings_t;
 
 static playersettings_t	s_playersettings;
@@ -166,10 +216,10 @@ static int gamecodetoui[] = {4,2,3,0,5,1,6};
 static int uitogamecode[] = {4,6,2,3,1,5,7};
 
 static const char *handicap_items[] = {
-	"None",
-	"95",
-	"90",
-	"85",
+"None",
+"95",
+"90",
+"85",
 	"80",
 	"75",
 	"70",
@@ -185,10 +235,182 @@ static const char *handicap_items[] = {
 	"20",
 	"15",
 	"10",
-	"5",
-	0
+"5",
+0
 };
 
+static void PlayerSettings_InitBirthDateLists( void ) {
+	int i;
+
+	if ( s_birthDateListsInitialized ) {
+		return;
+	}
+
+	s_birthDayItems[0] = "-";
+	for ( i = 1; i <= BIRTH_DAY_MAX; ++i ) {
+		Com_sprintf( s_birthDayStrings[i], sizeof( s_birthDayStrings[i] ), "%d", i );
+		s_birthDayItems[i] = s_birthDayStrings[i];
+	}
+	s_birthDayItems[BIRTH_DAY_MAX + 1] = NULL;
+
+	s_birthYearItems[0] = "-";
+	for ( i = 0; i < BIRTH_YEAR_COUNT; ++i ) {
+		Com_sprintf( s_birthYearStrings[i], sizeof( s_birthYearStrings[i] ), "%d", BIRTH_YEAR_START + i );
+		s_birthYearItems[i + 1] = s_birthYearStrings[i];
+	}
+	s_birthYearItems[BIRTH_YEAR_COUNT + 1] = NULL;
+
+	s_birthDateListsInitialized = qtrue;
+}
+
+static int PlayerSettings_GetBirthYearFromIndex( int index ) {
+	if ( index <= 0 || index > BIRTH_YEAR_COUNT ) {
+		return 0;
+	}
+
+	return BIRTH_YEAR_START + index - 1;
+}
+
+static int PlayerSettings_GetBirthYearIndex( int year ) {
+	if ( year < BIRTH_YEAR_START || year > BIRTH_YEAR_END ) {
+		return 0;
+	}
+
+	return ( year - BIRTH_YEAR_START ) + 1;
+}
+
+static int PlayerSettings_GetDaysInMonth( int year, int month ) {
+	static const int daysPerMonth[] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+	int days;
+
+	if ( month < 1 || month > 12 ) {
+		return BIRTH_DAY_MAX;
+	}
+
+	days = daysPerMonth[month];
+
+	if ( month == 2 ) {
+		qboolean leap;
+
+		leap = ( ( year % 4 ) == 0 && ( year % 100 ) != 0 ) || ( ( year % 400 ) == 0 );
+		if ( leap ) {
+			days = 29;
+		}
+	}
+
+	return days;
+}
+
+static void PlayerSettings_UpdateBirthDateDayItems( void ) {
+        int maxDay;
+        int monthIndex;
+        int yearIndex;
+
+        maxDay = BIRTH_DAY_MAX;
+        monthIndex = s_playersettings.birthMonth.curvalue;
+        yearIndex = s_playersettings.birthYear.curvalue;
+
+        if ( monthIndex > 0 && monthIndex <= 12 && yearIndex > 0 && yearIndex <= BIRTH_YEAR_COUNT ) {
+                int year;
+
+                year = PlayerSettings_GetBirthYearFromIndex( yearIndex );
+                maxDay = PlayerSettings_GetDaysInMonth( year, monthIndex );
+        }
+
+        s_playersettings.birthDay.numitems = maxDay + 1;
+
+        if ( s_playersettings.birthDay.curvalue >= s_playersettings.birthDay.numitems ) {
+                s_playersettings.birthDay.curvalue = s_playersettings.birthDay.numitems - 1;
+        }
+}
+
+static int PlayerSettings_FindGenderIndex( const char *value ) {
+	int i;
+
+	if ( !value || !value[0] ) {
+		return 0;
+	}
+
+	for ( i = 1; s_genderItems[i]; ++i ) {
+		if ( !Q_stricmp( value, s_genderItems[i] ) ) {
+			return i;
+		}
+	}
+
+	return 0;
+}
+
+static const char *PlayerSettings_GetGenderValue( int index ) {
+	if ( index <= 0 || !s_genderItems[index] ) {
+		return "";
+	}
+
+	return s_genderItems[index];
+}
+
+static qboolean PlayerSettings_ParseBirthDate( const char *value, int *outYear, int *outMonth, int *outDay ) {
+	int year;
+	int month;
+	int day;
+	int i;
+
+	if ( !value ) {
+		return qfalse;
+	}
+
+	if ( value[0] == '\0' ) {
+		return qfalse;
+	}
+
+	for ( i = 0; i < 10; ++i ) {
+		char c = value[i];
+
+		if ( i == 4 || i == 7 ) {
+			if ( c != '-' ) {
+				return qfalse;
+			}
+			continue;
+		}
+
+		if ( c < '0' || c > '9' ) {
+			return qfalse;
+		}
+	}
+
+	if ( value[10] != '\0' ) {
+		return qfalse;
+	}
+
+	year = ( value[0] - '0' ) * 1000 + ( value[1] - '0' ) * 100 + ( value[2] - '0' ) * 10 + ( value[3] - '0' );
+	month = ( value[5] - '0' ) * 10 + ( value[6] - '0' );
+	day = ( value[8] - '0' ) * 10 + ( value[9] - '0' );
+
+	if ( year < BIRTH_YEAR_START || year > BIRTH_YEAR_END ) {
+		return qfalse;
+	}
+
+	if ( month < 1 || month > 12 ) {
+		return qfalse;
+	}
+
+	if ( day < 1 || day > PlayerSettings_GetDaysInMonth( year, month ) ) {
+		return qfalse;
+	}
+
+	if ( outYear ) {
+		*outYear = year;
+	}
+
+	if ( outMonth ) {
+		*outMonth = month;
+	}
+
+	if ( outDay ) {
+		*outDay = day;
+	}
+
+	return qtrue;
+}
 
 /*
 =================
@@ -280,6 +502,67 @@ static void PlayerSettings_DrawName( void *self ) {
 	UI_DrawProportionalString( 320, 440, name, UI_CENTER|UI_BIGFONT, text_color_normal );
 */
 // END
+}
+
+
+static void PlayerSettings_DrawProfileField( void *self ) {
+        menufield_s *f = (menufield_s *)self;
+        qboolean disabled;
+        qboolean focus;
+        int style;
+	char *txt;
+	char c;
+	float *color;
+	int n;
+	int basex, x, y;
+
+	basex = f->generic.x;
+	y = f->generic.y;
+	disabled = ( qboolean )( f->generic.flags & ( QMF_GRAYED | QMF_INACTIVE ) );
+	focus = !disabled && ( f->generic.parent->cursor == f->generic.menuPosition );
+
+	style = UI_LEFT | UI_SMALLFONT;
+	color = disabled ? text_color_disabled : uis.text_color;
+	if ( focus ) {
+		style |= UI_PULSE;
+		color = text_color_highlight;
+	}
+
+	UI_DrawProportionalString( basex + 16, y, f->generic.name ? f->generic.name : "", style, color );
+
+	basex += 64;
+	y += 18;
+	txt = f->field.buffer;
+	color = disabled ? text_color_disabled : g_color_table[ColorIndex( COLOR_WHITE )];
+	x = basex;
+
+	while ( ( c = *txt ) != 0 ) {
+		if ( !disabled && !focus && Q_IsColorString( txt ) ) {
+			n = ColorIndex( *( txt + 1 ) );
+			if ( n == 0 ) {
+				n = 7;
+			}
+			color = g_color_table[n];
+			txt += 2;
+			continue;
+		}
+		UI_DrawChar( x, y, c, style, color );
+		txt++;
+		x += SMALLCHAR_WIDTH;
+	}
+
+	if ( focus ) {
+		if ( trap_Key_GetOverstrikeMode() ) {
+			c = 11;
+		} else {
+			c = 10;
+		}
+
+		style &= ~UI_PULSE;
+		style |= UI_BLINK;
+
+		UI_DrawChar( basex + f->field.cursor * SMALLCHAR_WIDTH, y, c, style, color_white );
+	}
 }
 
 
@@ -393,13 +676,92 @@ static void PlayerSettings_DrawCustomize( void *self ) {
 static void PlayerSettings_SetWidgetVisible( menucommon_s *item, qboolean visible ) {
         if ( !item ) {
                 return;
-        }
+	}
 
         if ( visible ) {
                 item->flags &= ~QMF_HIDDEN;
-        } else {
+	} else {
                 item->flags |= QMF_HIDDEN;
-        }
+	}
+}
+
+
+static void PlayerSettings_DrawProfileList( void *self ) {
+        menulist_s *item = (menulist_s *)self;
+        qboolean disabled;
+        qboolean focus;
+        int style;
+        float *color;
+        const char *value;
+        char buffer[64];
+
+        disabled = (qboolean)( item->generic.flags & ( QMF_GRAYED | QMF_INACTIVE ) );
+        focus = !disabled && ( item->generic.parent->cursor == item->generic.menuPosition );
+
+        style = UI_LEFT | UI_SMALLFONT;
+        color = disabled ? text_color_disabled : uis.text_color;
+        if ( focus ) {
+                style |= UI_PULSE;
+                color = text_color_highlight;
+	}
+
+        if ( item->generic.name && item->generic.name[0] ) {
+                UI_DrawProportionalString( item->generic.x + 16, item->generic.y, item->generic.name, style, color );
+	}
+
+        value = "";
+        if ( item->itemnames && item->curvalue >= 0 && item->curvalue < item->numitems ) {
+                value = item->itemnames[item->curvalue];
+	}
+
+        Com_sprintf( buffer, sizeof( buffer ), "< %s >", value );
+        UI_DrawString( item->generic.x + 64, item->generic.y + 18, buffer, style, color );
+}
+
+
+static void PlayerSettings_DrawBirthDateComponent( void *self ) {
+        menulist_s *item = (menulist_s *)self;
+        qboolean disabled;
+        qboolean focus;
+        int style;
+        float *color;
+        const char *value;
+        char buffer[32];
+
+        disabled = (qboolean)( item->generic.flags & ( QMF_GRAYED | QMF_INACTIVE ) );
+        focus = !disabled && ( item->generic.parent->cursor == item->generic.menuPosition );
+
+        style = UI_LEFT | UI_SMALLFONT;
+        color = disabled ? text_color_disabled : uis.text_color;
+        if ( focus ) {
+                style |= UI_PULSE;
+                color = text_color_highlight;
+	}
+
+        if ( item->generic.name && item->generic.name[0] ) {
+                UI_DrawString( item->generic.x, item->generic.y - 14, item->generic.name, style, color );
+	}
+
+        value = "";
+        if ( item->itemnames && item->curvalue >= 0 && item->curvalue < item->numitems ) {
+                value = item->itemnames[item->curvalue];
+	}
+
+        Com_sprintf( buffer, sizeof( buffer ), "< %s >", value );
+        UI_DrawString( item->generic.x, item->generic.y, buffer, style, color );
+}
+
+static void PlayerSettings_BirthDateChanged( void *ptr, int event ) {
+        menucommon_s *item;
+
+        if ( event != QM_ACTIVATED ) {
+                return;
+	}
+
+        item = (menucommon_s *)ptr;
+        if ( item->id == ID_BIRTH_MONTH || item->id == ID_BIRTH_YEAR ) {
+                PlayerSettings_UpdateBirthDateDayItems();
+	}
 }
 
 static int PlayerSettings_GetTabCenter( int index ) {
@@ -417,7 +779,7 @@ static void PlayerSettings_ConfigureTab( menutext_s *tab, int index ) {
 
         if ( !tab ) {
                 return;
-        }
+	}
 
         center = PlayerSettings_GetTabCenter( index );
 
@@ -441,7 +803,7 @@ static int PlayerSettings_TabFromId( int id ) {
                 return TAB_ACHIEVEMENTS;
         default:
                 break;
-        }
+	}
 
         return TAB_PROFILE;
 }
@@ -473,12 +835,12 @@ static void PlayerSettings_DrawTabItem( void *self ) {
                 Vector4Copy( tabFocusBorderColor, focusBorder );
                 focusBorder[3] *= uis.tFrac;
                 UI_DrawRect( tab->generic.left + 1, tab->generic.top + 1, PLAYERSETTINGS_TAB_WIDTH - 2, PLAYERSETTINGS_TAB_HEIGHT - 2, focusBorder );
-        }
+	}
 
         style = UI_CENTER | UI_SMALLFONT;
         if ( focus ) {
                 style |= UI_PULSE;
-        }
+	}
 
         UI_DrawProportionalString( tab->generic.x, tab->generic.y, tab->string, style, tab->color );
 }
@@ -655,6 +1017,13 @@ static void PlayerSettings_SetTab( int tab ) {
 	showVehicle = ( tab == TAB_VEHICLE );
 
 	PlayerSettings_SetWidgetVisible( &s_playersettings.name.generic, showProfile );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.gender.generic, showProfile );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.birthDateLabel.generic, showProfile );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.birthDay.generic, showProfile );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.birthMonth.generic, showProfile );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.birthYear.generic, showProfile );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.avatar.generic, showProfile );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.country.generic, showProfile );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.handicap.generic, showProfile );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.effects.generic, showProfile );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.favorites.generic, showVehicle );
@@ -864,6 +1233,35 @@ static void PlayerSettings_SaveChanges( void ) {
 	}
 // END
 
+	if ( UI_Profile_HasActiveProfile() ) {
+		profile_info_t info;
+		int birthYear;
+		int birthMonth;
+		int birthDay;
+		int maxDay;
+		const char *genderValue;
+
+		Com_Memset( &info, 0, sizeof( info ) );
+
+		genderValue = PlayerSettings_GetGenderValue( s_playersettings.gender.curvalue );
+		Q_strncpyz( info.gender, genderValue, sizeof( info.gender ) );
+
+		birthYear = PlayerSettings_GetBirthYearFromIndex( s_playersettings.birthYear.curvalue );
+		birthMonth = s_playersettings.birthMonth.curvalue;
+		birthDay = s_playersettings.birthDay.curvalue;
+		if ( birthYear > 0 && birthMonth > 0 && birthDay > 0 ) {
+			maxDay = PlayerSettings_GetDaysInMonth( birthYear, birthMonth );
+			if ( birthDay > maxDay ) {
+				birthDay = maxDay;
+			}
+			Com_sprintf( info.birthDate, sizeof( info.birthDate ), "%04d-%02d-%02d", birthYear, birthMonth, birthDay );
+		}
+
+		Q_strncpyz( info.avatar, s_playersettings.avatar.field.buffer, sizeof( info.avatar ) );
+		Q_strncpyz( info.country, s_playersettings.country.field.buffer, sizeof( info.country ) );
+		UI_Profile_SaveActiveInfo( &info );
+	}
+
 	// handicap
 	trap_Cvar_SetValue( "handicap", 100 - s_playersettings.handicap.curvalue * 5 );
 
@@ -913,6 +1311,61 @@ static void PlayerSettings_SetMenuItems( void ) {
 
 	// name
 	Q_strncpyz( s_playersettings.name.field.buffer, UI_Cvar_VariableString("name"), sizeof(s_playersettings.name.field.buffer) );
+
+	if ( UI_Profile_HasActiveProfile() ) {
+		const profile_info_t *info = UI_Profile_GetActiveInfo();
+		int parsedYear = 0;
+		int parsedMonth = 0;
+		int parsedDay = 0;
+
+		if ( info ) {
+			s_playersettings.profileInfo = *info;
+		} else {
+			Com_Memset( &s_playersettings.profileInfo, 0, sizeof( s_playersettings.profileInfo ) );
+		}
+
+		s_playersettings.gender.curvalue = PlayerSettings_FindGenderIndex( s_playersettings.profileInfo.gender );
+
+		if ( PlayerSettings_ParseBirthDate( s_playersettings.profileInfo.birthDate, &parsedYear, &parsedMonth, &parsedDay ) ) {
+			s_playersettings.birthYear.curvalue = PlayerSettings_GetBirthYearIndex( parsedYear );
+			s_playersettings.birthMonth.curvalue = parsedMonth;
+			s_playersettings.birthDay.curvalue = parsedDay;
+		} else {
+			s_playersettings.birthYear.curvalue = 0;
+			s_playersettings.birthMonth.curvalue = 0;
+			s_playersettings.birthDay.curvalue = 0;
+		}
+		PlayerSettings_UpdateBirthDateDayItems();
+
+		Q_strncpyz( s_playersettings.avatar.field.buffer, s_playersettings.profileInfo.avatar, sizeof( s_playersettings.avatar.field.buffer ) );
+		Q_strncpyz( s_playersettings.country.field.buffer, s_playersettings.profileInfo.country, sizeof( s_playersettings.country.field.buffer ) );
+
+		s_playersettings.gender.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
+		s_playersettings.birthDay.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
+		s_playersettings.birthMonth.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
+		s_playersettings.birthYear.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
+		s_playersettings.avatar.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
+		s_playersettings.country.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
+		s_playersettings.birthDateLabel.color = uis.text_color;
+	} else {
+		Com_Memset( &s_playersettings.profileInfo, 0, sizeof( s_playersettings.profileInfo ) );
+		s_playersettings.gender.curvalue = 0;
+		s_playersettings.birthYear.curvalue = 0;
+		s_playersettings.birthMonth.curvalue = 0;
+		s_playersettings.birthDay.curvalue = 0;
+		PlayerSettings_UpdateBirthDateDayItems();
+		s_playersettings.avatar.field.buffer[0] = '\0';
+		s_playersettings.country.field.buffer[0] = '\0';
+
+		s_playersettings.gender.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
+		s_playersettings.birthDay.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
+		s_playersettings.birthMonth.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
+		s_playersettings.birthYear.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
+		s_playersettings.avatar.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
+		s_playersettings.country.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
+		s_playersettings.birthDateLabel.color = text_color_disabled;
+	}
+
 
 	// effects color
 	c = trap_Cvar_VariableValue( "color1" ) - 1;
@@ -1197,6 +1650,7 @@ static void PlayerSettings_MenuInit( void ) {
 	memset(&s_playersettings,0,sizeof(playersettings_t));
 
 	PlayerSettings_Cache();
+	PlayerSettings_InitBirthDateLists();
 
 	s_playersettings.menu.key        = PlayerSettings_MenuKey;
 	s_playersettings.menu.wrapAround = qtrue;
@@ -1302,6 +1756,123 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.name.generic.right			= 30 + 203;
 	s_playersettings.name.generic.bottom		= profileY + 36;
 	s_playersettings.name.generic.flags |= QMF_INACTIVE | QMF_GRAYED;
+
+	profileY += 44;
+
+	s_playersettings.gender.generic.type = MTYPE_SPINCONTROL;
+	s_playersettings.gender.generic.flags = QMF_NODEFAULTINIT;
+	s_playersettings.gender.generic.ownerdraw = PlayerSettings_DrawProfileList;
+	s_playersettings.gender.generic.id = ID_GENDER;
+	s_playersettings.gender.generic.name = "Gender";
+	s_playersettings.gender.generic.x = 30;
+	s_playersettings.gender.generic.y = profileY;
+	s_playersettings.gender.generic.left = 30;
+	s_playersettings.gender.generic.top = profileY;
+	s_playersettings.gender.generic.right = 30 + 203;
+	s_playersettings.gender.generic.bottom = profileY + 36;
+        s_playersettings.gender.itemnames = (const char **)s_genderItems;
+	s_playersettings.gender.numitems = 0;
+	while ( s_genderItems[s_playersettings.gender.numitems] ) {
+		s_playersettings.gender.numitems++;
+	}
+
+	profileY += 44;
+
+        s_playersettings.birthDateLabel.generic.type = MTYPE_TEXT;
+        s_playersettings.birthDateLabel.generic.flags = QMF_INACTIVE | QMF_NODEFAULTINIT;
+        s_playersettings.birthDateLabel.generic.x = 46;
+        s_playersettings.birthDateLabel.generic.y = profileY;
+        s_playersettings.birthDateLabel.string = "Birth date";
+        s_playersettings.birthDateLabel.style = UI_LEFT | UI_SMALLFONT;
+        s_playersettings.birthDateLabel.color = uis.text_color;
+
+        {
+                const int birthDayWidth = 86;
+                const int birthMonthWidth = 168;
+                const int birthYearWidth = 110;
+                const int birthColumnGap = 24;
+                const int birthDayX = s_playersettings.birthDateLabel.generic.x;
+                const int birthMonthX = birthDayX + birthDayWidth + birthColumnGap;
+                const int birthYearX = birthMonthX + birthMonthWidth + birthColumnGap;
+                const int birthRowY = profileY + 28;
+
+                s_playersettings.birthDay.generic.type = MTYPE_SPINCONTROL;
+                s_playersettings.birthDay.generic.flags = QMF_NODEFAULTINIT;
+                s_playersettings.birthDay.generic.ownerdraw = PlayerSettings_DrawBirthDateComponent;
+                s_playersettings.birthDay.generic.id = ID_BIRTH_DAY;
+                s_playersettings.birthDay.generic.name = "Day";
+                s_playersettings.birthDay.generic.x = birthDayX;
+                s_playersettings.birthDay.generic.y = birthRowY;
+                s_playersettings.birthDay.generic.left = birthDayX;
+                s_playersettings.birthDay.generic.top = birthRowY - 18;
+                s_playersettings.birthDay.generic.right = birthDayX + birthDayWidth;
+                s_playersettings.birthDay.generic.bottom = birthRowY + 20;
+                s_playersettings.birthDay.generic.callback = PlayerSettings_BirthDateChanged;
+                s_playersettings.birthDay.itemnames = s_birthDayItems;
+                s_playersettings.birthDay.numitems = BIRTH_DAY_MAX + 1;
+
+                s_playersettings.birthMonth.generic.type = MTYPE_SPINCONTROL;
+                s_playersettings.birthMonth.generic.flags = QMF_NODEFAULTINIT;
+                s_playersettings.birthMonth.generic.ownerdraw = PlayerSettings_DrawBirthDateComponent;
+                s_playersettings.birthMonth.generic.id = ID_BIRTH_MONTH;
+                s_playersettings.birthMonth.generic.name = "Month";
+                s_playersettings.birthMonth.generic.x = birthMonthX;
+                s_playersettings.birthMonth.generic.y = birthRowY;
+                s_playersettings.birthMonth.generic.left = birthMonthX;
+                s_playersettings.birthMonth.generic.top = birthRowY - 18;
+                s_playersettings.birthMonth.generic.right = birthMonthX + birthMonthWidth;
+                s_playersettings.birthMonth.generic.bottom = birthRowY + 20;
+                s_playersettings.birthMonth.generic.callback = PlayerSettings_BirthDateChanged;
+                s_playersettings.birthMonth.itemnames = (const char **)s_birthMonthItems;
+                s_playersettings.birthMonth.numitems = 0;
+                for ( s_playersettings.birthMonth.numitems = 0; s_birthMonthItems[s_playersettings.birthMonth.numitems]; ++s_playersettings.birthMonth.numitems ) {
+                }
+
+                s_playersettings.birthYear.generic.type = MTYPE_SPINCONTROL;
+                s_playersettings.birthYear.generic.flags = QMF_NODEFAULTINIT;
+                s_playersettings.birthYear.generic.ownerdraw = PlayerSettings_DrawBirthDateComponent;
+                s_playersettings.birthYear.generic.id = ID_BIRTH_YEAR;
+                s_playersettings.birthYear.generic.name = "Year";
+                s_playersettings.birthYear.generic.x = birthYearX;
+                s_playersettings.birthYear.generic.y = birthRowY;
+                s_playersettings.birthYear.generic.left = birthYearX;
+                s_playersettings.birthYear.generic.top = birthRowY - 18;
+                s_playersettings.birthYear.generic.right = birthYearX + birthYearWidth;
+                s_playersettings.birthYear.generic.bottom = birthRowY + 20;
+                s_playersettings.birthYear.generic.callback = PlayerSettings_BirthDateChanged;
+                s_playersettings.birthYear.itemnames = s_birthYearItems;
+                s_playersettings.birthYear.numitems = BIRTH_YEAR_COUNT + 1;
+        }
+
+        profileY += 44;
+
+	s_playersettings.avatar.generic.type = MTYPE_FIELD;
+	s_playersettings.avatar.generic.flags = QMF_NODEFAULTINIT;
+	s_playersettings.avatar.generic.ownerdraw = PlayerSettings_DrawProfileField;
+	s_playersettings.avatar.generic.name = "Avatar";
+	s_playersettings.avatar.field.widthInChars = PROFILE_MAX_AVATAR - 1;
+	s_playersettings.avatar.field.maxchars = PROFILE_MAX_AVATAR - 1;
+	s_playersettings.avatar.generic.x = 30;
+	s_playersettings.avatar.generic.y = profileY;
+	s_playersettings.avatar.generic.left = 30;
+	s_playersettings.avatar.generic.top = profileY;
+	s_playersettings.avatar.generic.right = 30 + 203;
+	s_playersettings.avatar.generic.bottom = profileY + 36;
+
+	profileY += 44;
+
+	s_playersettings.country.generic.type = MTYPE_FIELD;
+	s_playersettings.country.generic.flags = QMF_NODEFAULTINIT;
+	s_playersettings.country.generic.ownerdraw = PlayerSettings_DrawProfileField;
+	s_playersettings.country.generic.name = "Country";
+	s_playersettings.country.field.widthInChars = PROFILE_MAX_COUNTRY - 1;
+	s_playersettings.country.field.maxchars = PROFILE_MAX_COUNTRY - 1;
+	s_playersettings.country.generic.x = 30;
+	s_playersettings.country.generic.y = profileY;
+	s_playersettings.country.generic.left = 30;
+	s_playersettings.country.generic.top = profileY;
+	s_playersettings.country.generic.right = 30 + 203;
+	s_playersettings.country.generic.bottom = profileY + 36;
 
 //	y += 3 * PROP_HEIGHT;
 // END
@@ -1529,6 +2100,13 @@ static void PlayerSettings_MenuInit( void ) {
 // END
 
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.name );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.gender );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.birthDateLabel );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.birthDay );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.birthMonth );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.birthYear );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.avatar );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.country );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.handicap );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.effects );
 
