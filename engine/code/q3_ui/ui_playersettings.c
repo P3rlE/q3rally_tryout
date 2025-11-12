@@ -97,6 +97,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_PROFILE_ROW_RIGHT		( PLAYERSETTINGS_PROFILE_PANEL_LEFT + PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN )
 #define PLAYERSETTINGS_PROFILE_LABEL_OFFSET	16
 #define PLAYERSETTINGS_PROFILE_VALUE_OFFSET	64
+#define PLAYERSETTINGS_PROFILE_VALUE_BASELINE	18
+#define PLAYERSETTINGS_PROFILE_FIELD_HEIGHT	36
 #define PLAYERSETTINGS_PROFILE_ROW_HEIGHT		44
 
 #define MAX_NAMELENGTH	20
@@ -484,7 +486,7 @@ static void PlayerSettings_DrawName( void *self ) {
 	basex += PLAYERSETTINGS_PROFILE_VALUE_OFFSET;
 // STONELANCE
 //	y += PROP_HEIGHT;
-	y += 18;
+	y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
 // END
 	txt = f->field.buffer;
 // STONELANCE
@@ -557,7 +559,7 @@ static void PlayerSettings_DrawProfileField( void *self ) {
 	UI_DrawProportionalString( basex + PLAYERSETTINGS_PROFILE_LABEL_OFFSET, y, f->generic.name ? f->generic.name : "", style, color );
 
 	basex += PLAYERSETTINGS_PROFILE_VALUE_OFFSET;
-	y += 18;
+	y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
 	txt = f->field.buffer;
 	color = disabled ? text_color_disabled : g_color_table[ColorIndex( COLOR_WHITE )];
 	x = basex;
@@ -625,7 +627,7 @@ static void PlayerSettings_DrawHandicap( void *self ) {
 	}
 
 	UI_DrawProportionalString( item->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET, item->generic.y, "Handicap", style, color );
-	UI_DrawString( item->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET, item->generic.y + 18, handicap_items[item->curvalue], style, color );
+	UI_DrawString( item->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET, item->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE, handicap_items[item->curvalue], style, color );
 // END
 }
 
@@ -669,7 +671,7 @@ static void PlayerSettings_DrawEffects( void *self ) {
 
 	{
 		const int sliderX = item->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET;
-		const int sliderY = item->generic.y + 18;
+		const int sliderY = item->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
 
 		UI_DrawHandlePic( sliderX, sliderY, 128, 16, s_playersettings.fxBasePic );
 		UI_DrawHandlePic( sliderX + 5 + item->curvalue * 17, sliderY, 16, 16, s_playersettings.fxPic[item->curvalue] );
@@ -746,7 +748,7 @@ static void PlayerSettings_DrawProfileList( void *self ) {
 	}
 
 	Com_sprintf( buffer, sizeof( buffer ), "< %s >", value );
-	UI_DrawString( item->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET, item->generic.y + 18, buffer, style, color );
+	UI_DrawString( item->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET, item->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE, buffer, style, color );
 }
 
 
@@ -770,7 +772,7 @@ static void PlayerSettings_DrawBirthDateComponent( void *self ) {
 	}
 
 	if ( item->generic.name && item->generic.name[0] ) {
-	UI_DrawString( item->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET, item->generic.y - 14, item->generic.name, style, color );
+	UI_DrawString( item->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET, item->generic.y - PLAYERSETTINGS_PROFILE_VALUE_BASELINE, item->generic.name, style, color );
 }
 
         value = "";
@@ -1106,7 +1108,7 @@ static void PlayerSettings_DrawAchievementSectionDouble( int *y, const char *tit
 		qboolean unlocked = ( progress >= thresholds[i] );
 		Com_sprintf( buffer, sizeof( buffer ), "%s %.0f %s", unlocked ? "[X]" : "[ ]", thresholds[i], unit );
 		UI_DrawProportionalString( 160, *y, buffer, UI_LEFT | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
-		*y += 18;
+		*y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
 	}
 
 	*y += 10;
@@ -1123,7 +1125,7 @@ static void PlayerSettings_DrawAchievementSectionInt( int *y, const char *title,
 		qboolean unlocked = ( progress >= thresholds[i] );
 		Com_sprintf( buffer, sizeof( buffer ), "%s %d %s", unlocked ? "[X]" : "[ ]", thresholds[i], suffix );
 		UI_DrawProportionalString( 160, *y, buffer, UI_LEFT | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
-		*y += 18;
+		*y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
 	}
 
 	*y += 10;
@@ -1898,7 +1900,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.name.generic.left			= PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.name.generic.top			= profileY;
 	s_playersettings.name.generic.right		= PLAYERSETTINGS_PROFILE_ROW_RIGHT;
-	s_playersettings.name.generic.bottom		= profileY + 36;
+	s_playersettings.name.generic.bottom		= profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 	s_playersettings.name.generic.flags |= QMF_INACTIVE | QMF_GRAYED;
 
 	profileY += PLAYERSETTINGS_PROFILE_ROW_HEIGHT;
@@ -1913,7 +1915,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.gender.generic.left = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.gender.generic.top = profileY;
 	s_playersettings.gender.generic.right = PLAYERSETTINGS_PROFILE_ROW_RIGHT;
-	s_playersettings.gender.generic.bottom = profileY + 36;
+	s_playersettings.gender.generic.bottom = profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 	s_playersettings.gender.itemnames = (const char **)s_genderItems;
 	s_playersettings.gender.numitems = 0;
 	while ( s_genderItems[s_playersettings.gender.numitems] ) {
@@ -1929,7 +1931,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.birthDateLabel.generic.left = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.birthDateLabel.generic.top = profileY;
 	s_playersettings.birthDateLabel.generic.right = PLAYERSETTINGS_PROFILE_ROW_RIGHT;
-	s_playersettings.birthDateLabel.generic.bottom = profileY + 36;
+	s_playersettings.birthDateLabel.generic.bottom = profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 	s_playersettings.birthDateLabel.string = "Birth date";
 	s_playersettings.birthDateLabel.style = UI_LEFT | UI_SMALLFONT;
 	s_playersettings.birthDateLabel.color = uis.text_color;
@@ -1942,7 +1944,7 @@ static void PlayerSettings_MenuInit( void ) {
 		const int birthDayX = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 		const int birthMonthX = birthDayX + birthDayWidth + birthColumnGap;
 		const int birthYearX = birthMonthX + birthMonthWidth + birthColumnGap;
-		const int birthRowY = profileY + 28;
+		const int birthRowY = profileY + PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
 
 		s_playersettings.birthDay.generic.type = MTYPE_SPINCONTROL;
 		s_playersettings.birthDay.generic.flags = QMF_NODEFAULTINIT;
@@ -1952,9 +1954,9 @@ static void PlayerSettings_MenuInit( void ) {
 		s_playersettings.birthDay.generic.x = birthDayX;
 		s_playersettings.birthDay.generic.y = birthRowY;
 		s_playersettings.birthDay.generic.left = birthDayX;
-		s_playersettings.birthDay.generic.top = birthRowY - 18;
+		s_playersettings.birthDay.generic.top = profileY;
 		s_playersettings.birthDay.generic.right = birthDayX + birthDayWidth;
-		s_playersettings.birthDay.generic.bottom = birthRowY + 20;
+		s_playersettings.birthDay.generic.bottom = profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 		s_playersettings.birthDay.generic.callback = PlayerSettings_BirthDateChanged;
 		s_playersettings.birthDay.itemnames = s_birthDayItems;
 		s_playersettings.birthDay.numitems = BIRTH_DAY_MAX + 1;
@@ -1967,9 +1969,9 @@ static void PlayerSettings_MenuInit( void ) {
 		s_playersettings.birthMonth.generic.x = birthMonthX;
 		s_playersettings.birthMonth.generic.y = birthRowY;
 		s_playersettings.birthMonth.generic.left = birthMonthX;
-		s_playersettings.birthMonth.generic.top = birthRowY - 18;
+		s_playersettings.birthMonth.generic.top = profileY;
 		s_playersettings.birthMonth.generic.right = birthMonthX + birthMonthWidth;
-		s_playersettings.birthMonth.generic.bottom = birthRowY + 20;
+		s_playersettings.birthMonth.generic.bottom = profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 		s_playersettings.birthMonth.generic.callback = PlayerSettings_BirthDateChanged;
 		s_playersettings.birthMonth.itemnames = (const char **)s_birthMonthItems;
 		s_playersettings.birthMonth.numitems = 0;
@@ -1984,9 +1986,9 @@ static void PlayerSettings_MenuInit( void ) {
 		s_playersettings.birthYear.generic.x = birthYearX;
 		s_playersettings.birthYear.generic.y = birthRowY;
 		s_playersettings.birthYear.generic.left = birthYearX;
-		s_playersettings.birthYear.generic.top = birthRowY - 18;
+		s_playersettings.birthYear.generic.top = profileY;
 		s_playersettings.birthYear.generic.right = birthYearX + birthYearWidth;
-		s_playersettings.birthYear.generic.bottom = birthRowY + 20;
+		s_playersettings.birthYear.generic.bottom = profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 		s_playersettings.birthYear.generic.callback = PlayerSettings_BirthDateChanged;
 		s_playersettings.birthYear.itemnames = s_birthYearItems;
 		s_playersettings.birthYear.numitems = BIRTH_YEAR_COUNT + 1;
@@ -2005,7 +2007,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.avatar.generic.left = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.avatar.generic.top = profileY;
 	s_playersettings.avatar.generic.right = PLAYERSETTINGS_PROFILE_ROW_RIGHT;
-	s_playersettings.avatar.generic.bottom = profileY + 36;
+	s_playersettings.avatar.generic.bottom = profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 
 	profileY += PLAYERSETTINGS_PROFILE_ROW_HEIGHT;
 
@@ -2020,7 +2022,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.country.generic.left = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.country.generic.top = profileY;
 	s_playersettings.country.generic.right = PLAYERSETTINGS_PROFILE_ROW_RIGHT;
-	s_playersettings.country.generic.bottom = profileY + 36;
+	s_playersettings.country.generic.bottom = profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 
 	profileY += PLAYERSETTINGS_PROFILE_ROW_HEIGHT;
 
@@ -2044,9 +2046,11 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.handicap.generic.left		= PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.handicap.generic.top		= profileY;
 	s_playersettings.handicap.generic.right		= PLAYERSETTINGS_PROFILE_ROW_RIGHT;
-	s_playersettings.handicap.generic.bottom	= profileY + 36;
+	s_playersettings.handicap.generic.bottom	= profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 // END
 	s_playersettings.handicap.numitems			= 20;
+
+	profileY += PLAYERSETTINGS_PROFILE_ROW_HEIGHT;
 
 // STONELANCE
 //	 y += 3 * PROP_HEIGHT;
@@ -2069,7 +2073,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.effects.generic.left		= PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.effects.generic.top		= profileY;
 	s_playersettings.effects.generic.right		= PLAYERSETTINGS_PROFILE_ROW_RIGHT;
-	s_playersettings.effects.generic.bottom	= profileY + 36;
+	s_playersettings.effects.generic.bottom	= profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 // END
 	s_playersettings.effects.numitems			= 7;
 
