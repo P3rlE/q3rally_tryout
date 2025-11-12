@@ -883,7 +883,7 @@ static void PlayerSettings_GetProfileRowBounds( int row, int *top, int *bottom )
 	int rowTop;
 	int rowBottom;
 
-	rowTop = PLAYERSETTINGS_CONTENT_TOP;
+	rowTop = PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 2;
 	rowBottom = rowTop + PLAYERSETTINGS_PROFILE_ROW_HEIGHT;
 
 	switch ( row ) {
@@ -1888,7 +1888,7 @@ static void PlayerSettings_MenuInit( void ) {
 
 //	y = 144;
 	y = PLAYERSETTINGS_CONTENT_TOP;
-	profileY = PLAYERSETTINGS_CONTENT_TOP;
+	profileY = PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 2;
 // END
 	s_playersettings.name.generic.type			= MTYPE_FIELD;
 	s_playersettings.name.generic.flags			= QMF_NODEFAULTINIT;
