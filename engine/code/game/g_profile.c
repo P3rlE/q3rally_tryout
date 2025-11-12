@@ -291,7 +291,7 @@ static void G_Profile_WriteToDisk( void ) {
         "\t\t\"birthDate\": \"%s\",\n"
         "\t\t\"avatar\": \"%s\",\n"
         "\t\t\"country\": \"%s\"\n"
-        "\t\},\n"
+        "\t},\n"
         "\t\"stats\": {\n"
         "\t\t\"distanceKm\": %.6f,\n"
         "\t\t\"fuelUsed\": %.3f,\n"
