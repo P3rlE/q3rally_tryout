@@ -2,6 +2,7 @@
 #include "g_profile.h"
 
 #define PROFILE_AUTOSAVE_INTERVAL 30000
+#define PROFILE_DISPLAY_L_PER_100KM 9.0f
 
 static struct {
     qboolean        loaded;
@@ -230,6 +231,7 @@ static qboolean G_Profile_LoadFromDisk( void ) {
     s_profileState.stats.wins = G_Profile_ParseInt( buffer, "wins", 0 );
     s_profileState.stats.losses = G_Profile_ParseInt( buffer, "losses", 0 );
     s_profileState.stats.flagCaptures = G_Profile_ParseInt( buffer, "flagCaptures", 0 );
+    s_profileState.stats.flagAssists = G_Profile_ParseInt( buffer, "flagAssists", 0 );
 
     G_Profile_ParseString( buffer, "gender", s_profileState.info.gender, sizeof( s_profileState.info.gender ), "" );
     G_Profile_ParseString( buffer, "birthDate", s_profileState.info.birthDate, sizeof( s_profileState.info.birthDate ), "" );
@@ -298,7 +300,8 @@ static void G_Profile_WriteToDisk( void ) {
         "\t\t\"deaths\": %d,\n"
         "\t\t\"wins\": %d,\n"
         "\t\t\"losses\": %d,\n"
-        "\t\t\"flagCaptures\": %d\n"
+        "\t\t\"flagCaptures\": %d,\n"
+        "\t\t\"flagAssists\": %d\n"
         "\t}\n"
         "}\n",
         s_profileState.name,
@@ -313,7 +316,8 @@ static void G_Profile_WriteToDisk( void ) {
         s_profileState.stats.deaths,
         s_profileState.stats.wins,
         s_profileState.stats.losses,
-        s_profileState.stats.flagCaptures );
+        s_profileState.stats.flagCaptures,
+        s_profileState.stats.flagAssists );
 
     if ( length < 0 ) {
         return;
@@ -381,13 +385,13 @@ void G_Profile_TrackClientSpawn( gclient_t *client ) {
     }
 
     client->profileHasLastOrigin = qfalse;
-    client->profileLastFuel = client->car.fuel;
 }
 
 void G_Profile_UpdateClientFrame( gentity_t *ent ) {
     gclient_t *client;
     vec3_t delta;
     double distanceQu;
+    double distanceKm;
 
     if ( !s_profileState.loaded || !s_profileState.name[0] ) {
         return;
@@ -412,21 +416,12 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
         VectorSubtract( ent->r.currentOrigin, client->profileLastOrigin, delta );
         distanceQu = VectorLength( delta );
         if ( distanceQu > 0.0 ) {
-            s_profileState.stats.distanceKm += distanceQu / CP_M_2_QU / 1000.0;
+            distanceKm = distanceQu / CP_M_2_QU / 1000.0;
+            s_profileState.stats.distanceKm += distanceKm;
+            s_profileState.stats.fuelUsed += distanceKm * ( PROFILE_DISPLAY_L_PER_100KM / 100.0f );
             s_profileState.dirty = qtrue;
         }
         VectorCopy( ent->r.currentOrigin, client->profileLastOrigin );
-    }
-
-    if ( client->profileLastFuel <= 0.0f ) {
-        client->profileLastFuel = client->car.fuel;
-    } else {
-        float diff = client->profileLastFuel - client->car.fuel;
-        if ( diff > 0.0f ) {
-            s_profileState.stats.fuelUsed += diff;
-            s_profileState.dirty = qtrue;
-        }
-        client->profileLastFuel = client->car.fuel;
     }
 
     if ( s_profileState.dirty && level.time >= s_profileState.nextAutosaveTime ) {
@@ -474,6 +469,19 @@ void G_Profile_RecordFlagCapture( gclient_t *client ) {
     }
 
     s_profileState.stats.flagCaptures++;
+    s_profileState.dirty = qtrue;
+}
+
+void G_Profile_RecordFlagAssist( gclient_t *client ) {
+    if ( !s_profileState.loaded ) {
+        return;
+    }
+
+    if ( !client || !client->pers.localClient ) {
+        return;
+    }
+
+    s_profileState.stats.flagAssists++;
     s_profileState.dirty = qtrue;
 }
 

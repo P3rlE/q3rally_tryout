@@ -128,6 +128,7 @@ static const double s_distanceAchievements[] = { 10.0, 100.0, 1000.0 };
 static const int s_killAchievements[] = { 10, 100, 1000 };
 static const int s_winAchievements[] = { 1, 10, 25 };
 static const int s_flagAchievements[] = { 1, 10, 50 };
+static const int s_flagAssistAchievements[] = { 1, 10, 50 };
 
 static const char *const s_genderItems[] = {
         "Unspecified",
@@ -1093,8 +1094,12 @@ static void PlayerSettings_DrawStatsTab( void ) {
 	UI_DrawProportionalString( 140, y, buffer, UI_LEFT | UI_SMALLFONT, text_color_normal );
 	y += 22;
 
-	Com_sprintf( buffer, sizeof( buffer ), "Flags captured: %d", stats->flagCaptures );
-	UI_DrawProportionalString( 140, y, buffer, UI_LEFT | UI_SMALLFONT, text_color_normal );
+        Com_sprintf( buffer, sizeof( buffer ), "Flags captured: %d", stats->flagCaptures );
+        UI_DrawProportionalString( 140, y, buffer, UI_LEFT | UI_SMALLFONT, text_color_normal );
+        y += 22;
+
+        Com_sprintf( buffer, sizeof( buffer ), "Flag assists: %d", stats->flagAssists );
+        UI_DrawProportionalString( 140, y, buffer, UI_LEFT | UI_SMALLFONT, text_color_normal );
 }
 
 static void PlayerSettings_DrawAchievementSectionDouble( int *y, const char *title, const double *thresholds, int count, double progress, const char *unit ) {
@@ -1155,6 +1160,7 @@ static void PlayerSettings_DrawAchievementsTab( void ) {
 	PlayerSettings_DrawAchievementSectionInt( &y, "Kills", s_killAchievements, ARRAY_LEN( s_killAchievements ), stats->kills, "kills" );
         PlayerSettings_DrawAchievementSectionInt( &y, "Races Won", s_winAchievements, ARRAY_LEN( s_winAchievements ), stats->wins, "wins" );
         PlayerSettings_DrawAchievementSectionInt( &y, "Flags Captured", s_flagAchievements, ARRAY_LEN( s_flagAchievements ), stats->flagCaptures, "flags" );
+        PlayerSettings_DrawAchievementSectionInt( &y, "Flag Assists", s_flagAssistAchievements, ARRAY_LEN( s_flagAssistAchievements ), stats->flagAssists, "assists" );
 }
 
 static void PlayerSettings_SetTab( int tab ) {

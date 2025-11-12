@@ -328,6 +328,7 @@ static qboolean UI_Profile_ReadData( const char *name, profile_info_t *outInfo, 
         outStats->wins = UI_Profile_ParseInt( buffer, "wins", 0 );
         outStats->losses = UI_Profile_ParseInt( buffer, "losses", 0 );
         outStats->flagCaptures = UI_Profile_ParseInt( buffer, "flagCaptures", 0 );
+        outStats->flagAssists = UI_Profile_ParseInt( buffer, "flagAssists", 0 );
     }
 
     if ( outInfo ) {
@@ -390,7 +391,8 @@ static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *in
         "\t\t\"deaths\": %d,\n"
         "\t\t\"wins\": %d,\n"
         "\t\t\"losses\": %d,\n"
-        "\t\t\"flagCaptures\": %d\n"
+        "\t\t\"flagCaptures\": %d,\n"
+        "\t\t\"flagAssists\": %d\n"
         "\t}\n"
         "}\n",
         name,
@@ -405,7 +407,8 @@ static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *in
         stats->deaths,
         stats->wins,
         stats->losses,
-        stats->flagCaptures );
+        stats->flagCaptures,
+        stats->flagAssists );
 
     trap_FS_FOpenFile( path, &file, FS_WRITE );
     if ( file < 0 ) {
