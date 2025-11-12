@@ -1253,12 +1253,12 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 	totalTextWidth = 0.0f;
 	unlockedCount = 0;
 
-	for ( i = 0; i < count; ++i ) {
-		qboolean unlocked;
+        for ( i = 0; i < count; ++i ) {
+                qboolean unlocked;
 
-		unlocked = ( progress >= thresholds[i] );
-		entryUnlocked[i] = unlocked;
-		if ( unlocked ) {
+                unlocked = ( progress >= thresholds[i] );
+                entryUnlocked[i] = unlocked;
+                if ( unlocked ) {
 			++unlockedCount;
 		}
 
@@ -1268,9 +1268,9 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 			Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%s %.0f", unlocked ? "[X]" : "[ ]", thresholds[i] );
 		}
 
-		entryWidths[i] = UI_ProportionalStringWidth( entryBuffers[i], UI_SMALLFONT );
-		totalTextWidth += entryWidths[i];
-	}
+                entryWidths[i] = UI_ProportionalStringWidth( entryBuffers[i] ) * UI_ProportionalSizeScale( UI_SMALLFONT );
+                totalTextWidth += entryWidths[i];
+        }
 
 	if ( count > 1 ) {
 		float maxGapWidth;
