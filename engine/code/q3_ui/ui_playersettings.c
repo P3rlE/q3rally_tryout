@@ -101,6 +101,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_PROFILE_FIELD_HEIGHT	36
 #define PLAYERSETTINGS_PROFILE_ROW_HEIGHT		44
 
+#define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT		44
+#define PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET		8
+#define PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE	26
+#define PLAYERSETTINGS_ACHIEVEMENT_TIER_GAP		16.0f
+
+#define PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS		8
+#define PLAYERSETTINGS_ACHIEVEMENT_HEADER_ROW		0
+#define PLAYERSETTINGS_ACHIEVEMENT_SPACER_ROW		1
+#define PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW	2
+#define PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT		5
+#define PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT		( PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW + PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT )
+#define PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN	12.0f
+
 #define MAX_NAMELENGTH	20
 // STONELANCE
 #define NUM_FAVORITES		4
@@ -124,11 +137,13 @@ static vec4_t profileRowEvenFillColor = { 0.10f, 0.10f, 0.10f, 0.60f };
 static vec4_t profileRowOddFillColor = { 0.14f, 0.14f, 0.14f, 0.60f };
 static vec4_t profileRowBorderColor = { 0.35f, 0.35f, 0.35f, 0.85f };
 
-static const double s_distanceAchievements[] = { 10.0, 100.0, 1000.0 };
-static const int s_killAchievements[] = { 10, 100, 1000 };
-static const int s_winAchievements[] = { 1, 10, 25 };
-static const int s_flagAchievements[] = { 1, 10, 50 };
-static const int s_flagAssistAchievements[] = { 1, 10, 50 };
+static const double s_distanceAchievements[] = { 10.0, 100.0, 1000.0, 10000.0 };
+static const int s_killAchievements[] = { 10, 100, 1000, 2500 };
+static const int s_winAchievements[] = { 1, 10, 25, 50 };
+static const int s_flagAchievements[] = { 1, 10, 50, 100 };
+static const int s_flagAssistAchievements[] = { 1, 10, 50, 100 };
+
+#define PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL 25
 
 static const char *const s_genderItems[] = {
         "Unspecified",
@@ -1009,6 +1024,7 @@ PlayerSettings_DrawBackShaders
 */
 static void PlayerSettings_DrawStatsTab( void );
 static void PlayerSettings_DrawAchievementsTab( void );
+static void PlayerSettings_DrawAchievementsPanelBackground( void );
 
 static void PlayerSettings_DrawBackShaders( void ) {
 	vec4_t color;
@@ -1026,6 +1042,8 @@ static void PlayerSettings_DrawBackShaders( void ) {
 		PlayerSettings_DrawProfilePanelBackground();
 	} else if ( s_playersettings.currentTab == TAB_VEHICLE ) {
 		UI_FillRect( 124, 138, 392, 32, panelColor );
+	} else if ( s_playersettings.currentTab == TAB_ACHIEVEMENTS ) {
+		PlayerSettings_DrawAchievementsPanelBackground();
 	}
 
 	Menu_Draw( &s_playersettings.menu );
@@ -1102,65 +1120,259 @@ static void PlayerSettings_DrawStatsTab( void ) {
         UI_DrawProportionalString( 140, y, buffer, UI_LEFT | UI_SMALLFONT, text_color_normal );
 }
 
-static void PlayerSettings_DrawAchievementSectionDouble( int *y, const char *title, const double *thresholds, int count, double progress, const char *unit ) {
-	int i;
-	char buffer[64];
+static void PlayerSettings_GetAchievementRowBounds( int row, int *top, int *bottom ) {
+	int rowTop;
+	int rowBottom;
 
-	UI_DrawProportionalString( 140, *y, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
-	*y += 20;
-
-	for ( i = 0; i < count; ++i ) {
-		qboolean unlocked = ( progress >= thresholds[i] );
-		Com_sprintf( buffer, sizeof( buffer ), "%s %.0f %s", unlocked ? "[X]" : "[ ]", thresholds[i], unit );
-		UI_DrawProportionalString( 160, *y, buffer, UI_LEFT | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
-		*y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
+	if ( row < 0 ) {
+		row = 0;
+	}
+	if ( row >= PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT ) {
+		row = PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT - 1;
 	}
 
-	*y += 10;
+	rowTop = PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 2 + row * PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT;
+	rowBottom = rowTop + PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT;
+
+	if ( top ) {
+		*top = rowTop;
+	}
+	if ( bottom ) {
+		*bottom = rowBottom;
+	}
 }
 
-static void PlayerSettings_DrawAchievementSectionInt( int *y, const char *title, const int *thresholds, int count, int progress, const char *suffix ) {
+static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
+	vec4_t panelColor;
+	vec4_t rowColor;
+	vec4_t borderColor;
+	int panelTop;
+	int panelBottom;
 	int i;
-	char buffer[64];
 
-	UI_DrawProportionalString( 140, *y, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
-	*y += 20;
-
-	for ( i = 0; i < count; ++i ) {
-		qboolean unlocked = ( progress >= thresholds[i] );
-		Com_sprintf( buffer, sizeof( buffer ), "%s %d %s", unlocked ? "[X]" : "[ ]", thresholds[i], suffix );
-		UI_DrawProportionalString( 160, *y, buffer, UI_LEFT | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
-		*y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
+	panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
+	PlayerSettings_GetAchievementRowBounds( PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT - 1, NULL, &panelBottom );
+	panelBottom += PLAYERSETTINGS_PROFILE_PANEL_BOTTOM_EXTRA;
+	if ( panelBottom <= panelTop ) {
+		panelBottom = panelTop + PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT * PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT;
+	}
+	if ( panelBottom > 440 ) {
+		panelBottom = 440;
 	}
 
-	*y += 10;
+	Vector4Copy( profilePanelFillColor, panelColor );
+	panelColor[3] *= uis.tFrac;
+	UI_FillRect( PLAYERSETTINGS_PROFILE_PANEL_LEFT, panelTop, PLAYERSETTINGS_PROFILE_PANEL_WIDTH, panelBottom - panelTop, panelColor );
+
+	Vector4Copy( profileRowBorderColor, borderColor );
+	borderColor[3] *= uis.tFrac;
+
+	for ( i = 0; i < PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT; ++i ) {
+		int rowTop;
+		int rowBottom;
+
+		if ( i == PLAYERSETTINGS_ACHIEVEMENT_SPACER_ROW ) {
+			continue;
+		}
+
+		PlayerSettings_GetAchievementRowBounds( i, &rowTop, &rowBottom );
+		rowTop -= 2;
+		rowBottom += 2;
+
+		if ( rowTop < panelTop + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN ) {
+			rowTop = panelTop + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
+		}
+		if ( rowBottom > panelBottom - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN ) {
+			rowBottom = panelBottom - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
+		}
+		if ( rowBottom <= rowTop ) {
+			continue;
+		}
+
+		Vector4Copy( ( i & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
+		rowColor[3] *= uis.tFrac;
+
+		UI_FillRect(
+			PLAYERSETTINGS_PROFILE_FIELD_LEFT,
+			rowTop,
+			PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
+			rowBottom - rowTop,
+			rowColor );
+
+		UI_DrawRect(
+			PLAYERSETTINGS_PROFILE_FIELD_LEFT,
+			rowTop,
+			PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
+			rowBottom - rowTop,
+			borderColor );
+	}
+}
+
+static int PlayerSettings_DrawAchievementSection( int row, const char *title, const double *thresholds, int count, double progress, const char *suffix ) {
+	int i;
+	int titleY;
+	int valueY;
+	int rowTop;
+	int rowBottom;
+	float areaLeft;
+	float areaRight;
+	float availableWidth;
+	float gap;
+	float totalTextWidth;
+	float totalWidth;
+	float startX;
+	int unlockedCount;
+	int titleX;
+	char entryBuffers[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS][64];
+	float entryWidths[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
+	qboolean entryUnlocked[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
+
+	if ( count > PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
+		count = PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS;
+	}
+	if ( count <= 0 ) {
+		return 0;
+	}
+
+	PlayerSettings_GetAchievementRowBounds( row, &rowTop, &rowBottom );
+
+	titleX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
+	titleY = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET;
+	valueY = rowTop + PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE;
+
+	UI_DrawProportionalString( titleX, titleY, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
+
+	areaLeft = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_VALUE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
+	areaRight = PLAYERSETTINGS_PROFILE_ROW_RIGHT - PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
+	if ( areaRight <= areaLeft ) {
+		areaRight = areaLeft + 1.0f;
+	}
+
+	availableWidth = areaRight - areaLeft;
+	gap = PLAYERSETTINGS_ACHIEVEMENT_TIER_GAP;
+	totalTextWidth = 0.0f;
+	unlockedCount = 0;
+
+        for ( i = 0; i < count; ++i ) {
+                qboolean unlocked;
+
+                unlocked = ( progress >= thresholds[i] );
+                entryUnlocked[i] = unlocked;
+                if ( unlocked ) {
+			++unlockedCount;
+		}
+
+		if ( suffix && suffix[0] ) {
+			Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%s %.0f %s", unlocked ? "[X]" : "[ ]", thresholds[i], suffix );
+		} else {
+			Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%s %.0f", unlocked ? "[X]" : "[ ]", thresholds[i] );
+		}
+
+                entryWidths[i] = UI_ProportionalStringWidth( entryBuffers[i] ) * UI_ProportionalSizeScale( UI_SMALLFONT );
+                totalTextWidth += entryWidths[i];
+        }
+
+	if ( count > 1 ) {
+		float maxGapWidth;
+
+		maxGapWidth = availableWidth - totalTextWidth;
+		if ( maxGapWidth < 0.0f ) {
+			gap = 0.0f;
+		} else {
+			float desiredSpacing = gap * ( count - 1 );
+
+			if ( totalTextWidth + desiredSpacing > availableWidth ) {
+				gap = maxGapWidth / (float)( count - 1 );
+			}
+		}
+	} else {
+		gap = 0.0f;
+	}
+
+	totalWidth = totalTextWidth + gap * ( ( count > 1 ) ? ( count - 1 ) : 0 );
+	if ( totalWidth > availableWidth ) {
+		totalWidth = availableWidth;
+	}
+
+	startX = areaLeft + ( availableWidth - totalWidth ) * 0.5f;
+	if ( startX < areaLeft ) {
+		startX = areaLeft;
+	}
+
+	for ( i = 0; i < count; ++i ) {
+		UI_DrawProportionalString( (int)startX, valueY, entryBuffers[i], UI_LEFT | UI_SMALLFONT, entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor );
+
+		startX += entryWidths[i];
+		if ( i < count - 1 ) {
+			startX += gap;
+		}
+	}
+
+	return unlockedCount;
+}
+
+static int PlayerSettings_DrawAchievementSectionDouble( int row, const char *title, const double *thresholds, int count, double progress, const char *unit ) {
+	return PlayerSettings_DrawAchievementSection( row, title, thresholds, count, progress, unit );
+}
+
+static int PlayerSettings_DrawAchievementSectionInt( int row, const char *title, const int *thresholds, int count, int progress, const char *suffix ) {
+	double thresholdsBuffer[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
+	int i;
+
+	if ( count > PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
+		count = PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS;
+	}
+
+	for ( i = 0; i < count; ++i ) {
+		thresholdsBuffer[i] = (double)thresholds[i];
+	}
+
+	return PlayerSettings_DrawAchievementSection( row, title, thresholdsBuffer, count, (double)progress, suffix );
 }
 
 static void PlayerSettings_DrawAchievementsTab( void ) {
-	const profile_stats_t *stats;
-	int y;
+        const profile_stats_t *stats;
+        int unlockedAchievements;
+        int displayTotalAchievements;
+        char progressBuffer[32];
+        char headerBuffer[64];
+        int headerTop;
+        int headerBottom;
+        int headerY;
+        int row;
 
-	UI_DrawProportionalString( 320, 150, "ACHIEVEMENTS", UI_CENTER | UI_SMALLFONT, text_color_highlight );
+        if ( !UI_Profile_HasActiveProfile() ) {
+                UI_DrawProportionalString( 320, 208, "No active profile selected.", UI_CENTER | UI_SMALLFONT, text_color_normal );
+                UI_DrawProportionalString( 320, 236, "Create or select a profile from the main menu.", UI_CENTER | UI_SMALLFONT, text_color_normal );
+                return;
+        }
 
-	if ( !UI_Profile_HasActiveProfile() ) {
-		UI_DrawProportionalString( 320, 208, "No active profile selected.", UI_CENTER | UI_SMALLFONT, text_color_normal );
-		UI_DrawProportionalString( 320, 236, "Create or select a profile from the main menu.", UI_CENTER | UI_SMALLFONT, text_color_normal );
-		return;
-	}
+        stats = UI_Profile_GetActiveStats();
+        if ( !stats ) {
+                UI_DrawProportionalString( 320, 220, "Unable to read profile statistics.", UI_CENTER | UI_SMALLFONT, text_color_normal );
+                return;
+        }
 
-	stats = UI_Profile_GetActiveStats();
-	if ( !stats ) {
-		UI_DrawProportionalString( 320, 220, "Unable to read profile statistics.", UI_CENTER | UI_SMALLFONT, text_color_normal );
-		return;
-	}
+        unlockedAchievements = 0;
+        displayTotalAchievements = PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL;
 
-	y = 190;
+        row = PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW;
+        unlockedAchievements += PlayerSettings_DrawAchievementSectionDouble( row++, "Distance Driven", s_distanceAchievements, ARRAY_LEN( s_distanceAchievements ), stats->distanceKm, "km" );
+        unlockedAchievements += PlayerSettings_DrawAchievementSectionInt( row++, "Kills", s_killAchievements, ARRAY_LEN( s_killAchievements ), stats->kills, "kills" );
+        unlockedAchievements += PlayerSettings_DrawAchievementSectionInt( row++, "Races Won", s_winAchievements, ARRAY_LEN( s_winAchievements ), stats->wins, "wins" );
+        unlockedAchievements += PlayerSettings_DrawAchievementSectionInt( row++, "Flags Captured", s_flagAchievements, ARRAY_LEN( s_flagAchievements ), stats->flagCaptures, "flags" );
+        unlockedAchievements += PlayerSettings_DrawAchievementSectionInt( row++, "Flag Assists", s_flagAssistAchievements, ARRAY_LEN( s_flagAssistAchievements ), stats->flagAssists, "assists" );
 
-	PlayerSettings_DrawAchievementSectionDouble( &y, "Distance Driven", s_distanceAchievements, ARRAY_LEN( s_distanceAchievements ), stats->distanceKm, "km" );
-	PlayerSettings_DrawAchievementSectionInt( &y, "Kills", s_killAchievements, ARRAY_LEN( s_killAchievements ), stats->kills, "kills" );
-        PlayerSettings_DrawAchievementSectionInt( &y, "Races Won", s_winAchievements, ARRAY_LEN( s_winAchievements ), stats->wins, "wins" );
-        PlayerSettings_DrawAchievementSectionInt( &y, "Flags Captured", s_flagAchievements, ARRAY_LEN( s_flagAchievements ), stats->flagCaptures, "flags" );
-        PlayerSettings_DrawAchievementSectionInt( &y, "Flag Assists", s_flagAssistAchievements, ARRAY_LEN( s_flagAssistAchievements ), stats->flagAssists, "assists" );
+        if ( unlockedAchievements > displayTotalAchievements ) {
+                unlockedAchievements = displayTotalAchievements;
+        }
+
+        Com_sprintf( progressBuffer, sizeof( progressBuffer ), "%d/%d", unlockedAchievements, displayTotalAchievements );
+        Com_sprintf( headerBuffer, sizeof( headerBuffer ), "Achievements %s", progressBuffer );
+
+        PlayerSettings_GetAchievementRowBounds( PLAYERSETTINGS_ACHIEVEMENT_HEADER_ROW, &headerTop, &headerBottom );
+        headerY = headerTop + PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE;
+        UI_DrawProportionalString( 320, headerY, headerBuffer, UI_CENTER | UI_SMALLFONT, text_color_highlight );
 }
 
 static void PlayerSettings_SetTab( int tab ) {
