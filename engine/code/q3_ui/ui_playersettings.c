@@ -1770,7 +1770,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.gender.generic.top = profileY;
 	s_playersettings.gender.generic.right = 30 + 203;
 	s_playersettings.gender.generic.bottom = profileY + 36;
-	s_playersettings.gender.itemnames = s_genderItems;
+        s_playersettings.gender.itemnames = (const char **)s_genderItems;
 	s_playersettings.gender.numitems = 0;
 	while ( s_genderItems[s_playersettings.gender.numitems] ) {
 		s_playersettings.gender.numitems++;
@@ -1823,7 +1823,7 @@ static void PlayerSettings_MenuInit( void ) {
                 s_playersettings.birthMonth.generic.right = birthMonthX + birthMonthWidth;
                 s_playersettings.birthMonth.generic.bottom = birthRowY + 20;
                 s_playersettings.birthMonth.generic.callback = PlayerSettings_BirthDateChanged;
-                s_playersettings.birthMonth.itemnames = s_birthMonthItems;
+                s_playersettings.birthMonth.itemnames = (const char **)s_birthMonthItems;
                 s_playersettings.birthMonth.numitems = 0;
                 for ( s_playersettings.birthMonth.numitems = 0; s_birthMonthItems[s_playersettings.birthMonth.numitems]; ++s_playersettings.birthMonth.numitems ) {
                 }
