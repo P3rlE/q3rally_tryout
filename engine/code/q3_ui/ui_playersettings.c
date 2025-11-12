@@ -124,11 +124,13 @@ static vec4_t profileRowEvenFillColor = { 0.10f, 0.10f, 0.10f, 0.60f };
 static vec4_t profileRowOddFillColor = { 0.14f, 0.14f, 0.14f, 0.60f };
 static vec4_t profileRowBorderColor = { 0.35f, 0.35f, 0.35f, 0.85f };
 
-static const double s_distanceAchievements[] = { 10.0, 100.0, 1000.0 };
-static const int s_killAchievements[] = { 10, 100, 1000 };
-static const int s_winAchievements[] = { 1, 10, 25 };
-static const int s_flagAchievements[] = { 1, 10, 50 };
-static const int s_flagAssistAchievements[] = { 1, 10, 50 };
+static const double s_distanceAchievements[] = { 10.0, 100.0, 1000.0, 10000.0 };
+static const int s_killAchievements[] = { 10, 100, 1000, 2500 };
+static const int s_winAchievements[] = { 1, 10, 25, 50 };
+static const int s_flagAchievements[] = { 1, 10, 50, 100 };
+static const int s_flagAssistAchievements[] = { 1, 10, 50, 100 };
+
+#define PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL 25
 
 static const char *const s_genderItems[] = {
         "Unspecified",
@@ -1102,48 +1104,80 @@ static void PlayerSettings_DrawStatsTab( void ) {
         UI_DrawProportionalString( 140, y, buffer, UI_LEFT | UI_SMALLFONT, text_color_normal );
 }
 
-static void PlayerSettings_DrawAchievementSectionDouble( int *y, const char *title, const double *thresholds, int count, double progress, const char *unit ) {
-	int i;
-	char buffer[64];
+static int PlayerSettings_DrawAchievementSectionDouble( int *y, const char *title, const double *thresholds, int count, double progress, const char *unit ) {
+        int i;
+        int spacing;
+        int unlockedCount;
+        char buffer[64];
 
-	UI_DrawProportionalString( 140, *y, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
-	*y += 20;
+        UI_DrawProportionalString( 140, *y, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
+        *y += 20;
 
-	for ( i = 0; i < count; ++i ) {
-		qboolean unlocked = ( progress >= thresholds[i] );
-		Com_sprintf( buffer, sizeof( buffer ), "%s %.0f %s", unlocked ? "[X]" : "[ ]", thresholds[i], unit );
-		UI_DrawProportionalString( 160, *y, buffer, UI_LEFT | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
-		*y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
-	}
+        spacing = ( count > 1 ) ? ( ( 640 - 160 - 40 ) / ( count - 1 ) ) : 0;
+        unlockedCount = 0;
 
-	*y += 10;
+        for ( i = 0; i < count; ++i ) {
+                int x;
+                qboolean unlocked;
+
+                x = 160 + ( spacing * i );
+                unlocked = ( progress >= thresholds[i] );
+                if ( unlocked ) {
+                        ++unlockedCount;
+                }
+                Com_sprintf( buffer, sizeof( buffer ), "%s %.0f %s", unlocked ? "[X]" : "[ ]", thresholds[i], unit );
+                UI_DrawProportionalString( x, *y, buffer, UI_LEFT | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
+        }
+
+        *y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE + 10;
+
+        return unlockedCount;
 }
 
-static void PlayerSettings_DrawAchievementSectionInt( int *y, const char *title, const int *thresholds, int count, int progress, const char *suffix ) {
-	int i;
-	char buffer[64];
+static int PlayerSettings_DrawAchievementSectionInt( int *y, const char *title, const int *thresholds, int count, int progress, const char *suffix ) {
+        int i;
+        int spacing;
+        int unlockedCount;
+        char buffer[64];
 
-	UI_DrawProportionalString( 140, *y, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
-	*y += 20;
+        UI_DrawProportionalString( 140, *y, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
+        *y += 20;
 
-	for ( i = 0; i < count; ++i ) {
-		qboolean unlocked = ( progress >= thresholds[i] );
-		Com_sprintf( buffer, sizeof( buffer ), "%s %d %s", unlocked ? "[X]" : "[ ]", thresholds[i], suffix );
-		UI_DrawProportionalString( 160, *y, buffer, UI_LEFT | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
-		*y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
-	}
+        spacing = ( count > 1 ) ? ( ( 640 - 160 - 40 ) / ( count - 1 ) ) : 0;
+        unlockedCount = 0;
 
-	*y += 10;
+        for ( i = 0; i < count; ++i ) {
+                int x;
+                qboolean unlocked;
+
+                x = 160 + ( spacing * i );
+                unlocked = ( progress >= thresholds[i] );
+                if ( unlocked ) {
+                        ++unlockedCount;
+                }
+                Com_sprintf( buffer, sizeof( buffer ), "%s %d %s", unlocked ? "[X]" : "[ ]", thresholds[i], suffix );
+                UI_DrawProportionalString( x, *y, buffer, UI_LEFT | UI_SMALLFONT, unlocked ? achievementUnlockedColor : achievementLockedColor );
+        }
+
+        *y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE + 10;
+
+        return unlockedCount;
 }
 
 static void PlayerSettings_DrawAchievementsTab( void ) {
-	const profile_stats_t *stats;
-	int y;
+        const profile_stats_t *stats;
+        int y;
+        int unlockedAchievements;
+        int displayTotalAchievements;
+        char progressBuffer[32];
+        float titleScale;
+        int achievementsWidth;
+        int progressX;
 
-	UI_DrawProportionalString( 320, 150, "ACHIEVEMENTS", UI_CENTER | UI_SMALLFONT, text_color_highlight );
+        UI_DrawProportionalString( 320, 150, "ACHIEVEMENTS", UI_CENTER | UI_SMALLFONT, text_color_highlight );
 
-	if ( !UI_Profile_HasActiveProfile() ) {
-		UI_DrawProportionalString( 320, 208, "No active profile selected.", UI_CENTER | UI_SMALLFONT, text_color_normal );
+        if ( !UI_Profile_HasActiveProfile() ) {
+                UI_DrawProportionalString( 320, 208, "No active profile selected.", UI_CENTER | UI_SMALLFONT, text_color_normal );
 		UI_DrawProportionalString( 320, 236, "Create or select a profile from the main menu.", UI_CENTER | UI_SMALLFONT, text_color_normal );
 		return;
 	}
@@ -1154,13 +1188,26 @@ static void PlayerSettings_DrawAchievementsTab( void ) {
 		return;
 	}
 
-	y = 190;
+        y = 190;
 
-	PlayerSettings_DrawAchievementSectionDouble( &y, "Distance Driven", s_distanceAchievements, ARRAY_LEN( s_distanceAchievements ), stats->distanceKm, "km" );
-	PlayerSettings_DrawAchievementSectionInt( &y, "Kills", s_killAchievements, ARRAY_LEN( s_killAchievements ), stats->kills, "kills" );
-        PlayerSettings_DrawAchievementSectionInt( &y, "Races Won", s_winAchievements, ARRAY_LEN( s_winAchievements ), stats->wins, "wins" );
-        PlayerSettings_DrawAchievementSectionInt( &y, "Flags Captured", s_flagAchievements, ARRAY_LEN( s_flagAchievements ), stats->flagCaptures, "flags" );
-        PlayerSettings_DrawAchievementSectionInt( &y, "Flag Assists", s_flagAssistAchievements, ARRAY_LEN( s_flagAssistAchievements ), stats->flagAssists, "assists" );
+        unlockedAchievements = 0;
+        displayTotalAchievements = PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL;
+
+        unlockedAchievements += PlayerSettings_DrawAchievementSectionDouble( &y, "Distance Driven", s_distanceAchievements, ARRAY_LEN( s_distanceAchievements ), stats->distanceKm, "km" );
+        unlockedAchievements += PlayerSettings_DrawAchievementSectionInt( &y, "Kills", s_killAchievements, ARRAY_LEN( s_killAchievements ), stats->kills, "kills" );
+        unlockedAchievements += PlayerSettings_DrawAchievementSectionInt( &y, "Races Won", s_winAchievements, ARRAY_LEN( s_winAchievements ), stats->wins, "wins" );
+        unlockedAchievements += PlayerSettings_DrawAchievementSectionInt( &y, "Flags Captured", s_flagAchievements, ARRAY_LEN( s_flagAchievements ), stats->flagCaptures, "flags" );
+        unlockedAchievements += PlayerSettings_DrawAchievementSectionInt( &y, "Flag Assists", s_flagAssistAchievements, ARRAY_LEN( s_flagAssistAchievements ), stats->flagAssists, "assists" );
+
+        if ( unlockedAchievements > displayTotalAchievements ) {
+                unlockedAchievements = displayTotalAchievements;
+        }
+
+        Com_sprintf( progressBuffer, sizeof( progressBuffer ), "%d/%d", unlockedAchievements, displayTotalAchievements );
+        titleScale = UI_ProportionalSizeScale( UI_SMALLFONT );
+        achievementsWidth = (int)( UI_ProportionalStringWidth( "ACHIEVEMENTS" ) * titleScale );
+        progressX = 320 + ( achievementsWidth / 2 ) + 16;
+        UI_DrawProportionalString( progressX, 150, progressBuffer, UI_LEFT | UI_SMALLFONT, text_color_highlight );
 }
 
 static void PlayerSettings_SetTab( int tab ) {
