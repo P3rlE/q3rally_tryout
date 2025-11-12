@@ -1015,6 +1015,7 @@ PlayerSettings_DrawBackShaders
 */
 static void PlayerSettings_DrawStatsTab( void );
 static void PlayerSettings_DrawAchievementsTab( void );
+static void PlayerSettings_DrawAchievementsPanelBackground( void );
 
 static void PlayerSettings_DrawBackShaders( void ) {
 	vec4_t color;
