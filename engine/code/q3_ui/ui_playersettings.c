@@ -110,7 +110,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_ACHIEVEMENT_HEADER_ROW		0
 #define PLAYERSETTINGS_ACHIEVEMENT_SPACER_ROW		1
 #define PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW	2
-#define PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT		5
+#define PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT		( PROFILE_ROW_COUNT - PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW )
 #define PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT		( PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW + PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT )
 #define PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN	0.0f
 
@@ -1143,13 +1143,12 @@ static void PlayerSettings_GetAchievementRowBounds( int row, int *top, int *bott
 }
 
 static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
-	vec4_t panelColor;
-	vec4_t rowColor;
-	vec4_t borderColor;
-	int panelTop;
-	int panelBottom;
-	int i;
-	int colorIndex;
+        vec4_t panelColor;
+        vec4_t rowColor;
+        vec4_t borderColor;
+        int panelTop;
+        int panelBottom;
+        int i;
 
 	panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
 	PlayerSettings_GetAchievementRowBounds( PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT - 1, NULL, &panelBottom );
@@ -1168,18 +1167,13 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 	Vector4Copy( profileRowBorderColor, borderColor );
 	borderColor[3] *= uis.tFrac;
 
-	colorIndex = 0;
-	for ( i = 0; i < PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT; ++i ) {
-		int rowTop;
-		int rowBottom;
+        for ( i = 0; i < PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT; ++i ) {
+                int rowTop;
+                int rowBottom;
 
-		if ( i == PLAYERSETTINGS_ACHIEVEMENT_SPACER_ROW ) {
-			continue;
-		}
-
-		PlayerSettings_GetAchievementRowBounds( i, &rowTop, &rowBottom );
-		rowTop -= 2;
-		rowBottom += 2;
+                PlayerSettings_GetAchievementRowBounds( i, &rowTop, &rowBottom );
+                rowTop -= 2;
+                rowBottom += 2;
 
 		if ( rowTop < panelTop + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN ) {
 			rowTop = panelTop + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
@@ -1187,14 +1181,14 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 		if ( rowBottom > panelBottom - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN ) {
 			rowBottom = panelBottom - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
 		}
-		if ( rowBottom <= rowTop ) {
-			continue;
-		}
+                if ( rowBottom <= rowTop ) {
+                        continue;
+                }
 
-		Vector4Copy( ( colorIndex & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
-		rowColor[3] *= uis.tFrac;
+                Vector4Copy( ( i & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
+                rowColor[3] *= uis.tFrac;
 
-		UI_FillRect(
+                UI_FillRect(
 			PLAYERSETTINGS_PROFILE_FIELD_LEFT,
 			rowTop,
 			PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
@@ -1204,12 +1198,10 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 		UI_DrawRect(
 			PLAYERSETTINGS_PROFILE_FIELD_LEFT,
 			rowTop,
-			PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-			rowBottom - rowTop,
-			borderColor );
-
-		++colorIndex;
-	}
+                        PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
+                        rowBottom - rowTop,
+                        borderColor );
+        }
 }
 
 static int PlayerSettings_DrawAchievementSection( int row, const char *title, const double *thresholds, int count, double progress, const char *suffix ) {
@@ -1337,14 +1329,20 @@ static void PlayerSettings_DrawAchievementsTab( void ) {
         int row;
 
         if ( !UI_Profile_HasActiveProfile() ) {
-                UI_DrawProportionalString( 320, 208, "No active profile selected.", UI_CENTER | UI_SMALLFONT, text_color_normal );
-                UI_DrawProportionalString( 320, 236, "Create or select a profile from the main menu.", UI_CENTER | UI_SMALLFONT, text_color_normal );
+                int messageX;
+
+                messageX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
+                UI_DrawProportionalString( messageX, 208, "No active profile selected.", UI_LEFT | UI_SMALLFONT, text_color_normal );
+                UI_DrawProportionalString( messageX, 236, "Create or select a profile from the main menu.", UI_LEFT | UI_SMALLFONT, text_color_normal );
                 return;
         }
 
         stats = UI_Profile_GetActiveStats();
         if ( !stats ) {
-                UI_DrawProportionalString( 320, 220, "Unable to read profile statistics.", UI_CENTER | UI_SMALLFONT, text_color_normal );
+                int messageX;
+
+                messageX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
+                UI_DrawProportionalString( messageX, 220, "Unable to read profile statistics.", UI_LEFT | UI_SMALLFONT, text_color_normal );
                 return;
         }
 
@@ -1367,7 +1365,12 @@ static void PlayerSettings_DrawAchievementsTab( void ) {
 
         PlayerSettings_GetAchievementRowBounds( PLAYERSETTINGS_ACHIEVEMENT_HEADER_ROW, &headerTop, &headerBottom );
         headerY = headerTop + PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE;
-        UI_DrawProportionalString( 320, headerY, headerBuffer, UI_CENTER | UI_SMALLFONT, text_color_highlight );
+        UI_DrawProportionalString(
+                PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+                headerY,
+                headerBuffer,
+                UI_LEFT | UI_SMALLFONT,
+                text_color_highlight );
 }
 
 static void PlayerSettings_SetTab( int tab ) {
