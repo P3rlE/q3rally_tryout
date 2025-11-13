@@ -910,17 +910,7 @@ static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
 }
 
 void UI_ProfileOverlay_InitSession( void ) {
-    char activeName[PROFILE_MAX_NAME];
-
     trap_Cvar_Update( &ui_profileOverlaySeen );
-
-    if ( ui_profileOverlaySeen.integer == 0 ) {
-        trap_Cvar_VariableStringBuffer( "profile_active", activeName, sizeof( activeName ) );
-        if ( activeName[0] ) {
-            trap_Cvar_Set( "ui_profileOverlaySeen", "1" );
-            trap_Cvar_Update( &ui_profileOverlaySeen );
-        }
-    }
 
     uis.profileOverlayShown = ( ui_profileOverlaySeen.integer != 0 );
     uis.activeProfile[0] = '\0';
