@@ -1125,6 +1125,8 @@ static void PlayerSettings_DrawStatsLabelValueWithColors( int row, const char *l
 	int y;
 	int labelX;
 	int valueX;
+	vec4_t mutableLabelColor;
+	vec4_t mutableValueColor;
 
 	labelX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
 	valueX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_VALUE_OFFSET;
@@ -1132,12 +1134,15 @@ static void PlayerSettings_DrawStatsLabelValueWithColors( int row, const char *l
 	PlayerSettings_GetStatsRowBounds( row, &rowTop, NULL );
 	y = rowTop + PLAYERSETTINGS_STATS_VALUE_BASELINE;
 
+	Vector4Copy( labelColor, mutableLabelColor );
+	Vector4Copy( valueColor, mutableValueColor );
+
 	if ( label && label[0] ) {
-		UI_DrawProportionalString( labelX, y, label, UI_LEFT | UI_SMALLFONT, labelColor );
+		UI_DrawProportionalString( labelX, y, label, UI_LEFT | UI_SMALLFONT, mutableLabelColor );
 	}
 
 	if ( value && value[0] ) {
-		UI_DrawProportionalString( valueX, y, value, UI_LEFT | UI_SMALLFONT, valueColor );
+		UI_DrawProportionalString( valueX, y, value, UI_LEFT | UI_SMALLFONT, mutableValueColor );
 	}
 }
 
