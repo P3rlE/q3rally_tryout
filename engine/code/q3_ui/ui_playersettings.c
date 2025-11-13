@@ -197,8 +197,7 @@ typedef enum {
 } profileRow_t;
 
 typedef enum {
-        STATS_ROW_HEADER = 0,
-        STATS_ROW_DISTANCE,
+        STATS_ROW_DISTANCE = 0,
         STATS_ROW_FUEL,
         STATS_ROW_BEST_LAP,
         STATS_ROW_KILLS,
@@ -1210,8 +1209,6 @@ static void PlayerSettings_DrawBackShaders( void ) {
 static void PlayerSettings_DrawStatsTab( void ) {
         const profile_stats_t *stats;
         char buffer[64];
-
-        PlayerSettings_DrawStatsLabelValue( STATS_ROW_HEADER, "Profile Stats", NULL );
 
         if ( !UI_Profile_HasActiveProfile() ) {
                 PlayerSettings_DrawStatsMessage( STATS_ROW_DISTANCE, "No active profile selected." );
