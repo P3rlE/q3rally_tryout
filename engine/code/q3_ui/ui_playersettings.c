@@ -101,9 +101,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_PROFILE_FIELD_HEIGHT	36
 #define PLAYERSETTINGS_PROFILE_ROW_HEIGHT		44
 
-#define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT		44
-#define PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET		8
-#define PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE	26
+#define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT		PLAYERSETTINGS_PROFILE_ROW_HEIGHT
+#define PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET		0
+#define PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE	PLAYERSETTINGS_PROFILE_VALUE_BASELINE
 #define PLAYERSETTINGS_ACHIEVEMENT_TIER_GAP		16.0f
 
 #define PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS		8
@@ -112,7 +112,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW	2
 #define PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT		5
 #define PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT		( PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW + PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT )
-#define PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN	12.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN	0.0f
 
 #define MAX_NAMELENGTH	20
 // STONELANCE
@@ -1149,6 +1149,7 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 	int panelTop;
 	int panelBottom;
 	int i;
+	int colorIndex;
 
 	panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
 	PlayerSettings_GetAchievementRowBounds( PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT - 1, NULL, &panelBottom );
@@ -1167,6 +1168,7 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 	Vector4Copy( profileRowBorderColor, borderColor );
 	borderColor[3] *= uis.tFrac;
 
+	colorIndex = 0;
 	for ( i = 0; i < PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT; ++i ) {
 		int rowTop;
 		int rowBottom;
@@ -1189,7 +1191,7 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 			continue;
 		}
 
-		Vector4Copy( ( i & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
+		Vector4Copy( ( colorIndex & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
 		rowColor[3] *= uis.tFrac;
 
 		UI_FillRect(
@@ -1205,6 +1207,8 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 			PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
 			rowBottom - rowTop,
 			borderColor );
+
+		++colorIndex;
 	}
 }
 
@@ -1219,7 +1223,6 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 	float availableWidth;
 	float gap;
 	float totalTextWidth;
-	float totalWidth;
 	float startX;
 	int unlockedCount;
 	int titleX;
@@ -1289,15 +1292,7 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 		gap = 0.0f;
 	}
 
-	totalWidth = totalTextWidth + gap * ( ( count > 1 ) ? ( count - 1 ) : 0 );
-	if ( totalWidth > availableWidth ) {
-		totalWidth = availableWidth;
-	}
-
-	startX = areaLeft + ( availableWidth - totalWidth ) * 0.5f;
-	if ( startX < areaLeft ) {
-		startX = areaLeft;
-	}
+	startX = areaLeft;
 
 	for ( i = 0; i < count; ++i ) {
 		UI_DrawProportionalString( (int)startX, valueY, entryBuffers[i], UI_LEFT | UI_SMALLFONT, entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor );
