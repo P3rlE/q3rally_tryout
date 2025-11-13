@@ -109,6 +109,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define PLAYERSETTINGS_STATS_ROW_HEIGHT		40
 #define PLAYERSETTINGS_STATS_ROW_GAP		4
+#define PLAYERSETTINGS_STATS_VALUE_OFFSET		260
 #define PLAYERSETTINGS_STATS_VALUE_BASELINE		PLAYERSETTINGS_PROFILE_VALUE_BASELINE
 
 #define PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS		8
@@ -197,7 +198,6 @@ typedef enum {
 
 typedef enum {
         STATS_ROW_HEADER = 0,
-        STATS_ROW_PROFILE,
         STATS_ROW_DISTANCE,
         STATS_ROW_FUEL,
         STATS_ROW_BEST_LAP,
@@ -1128,8 +1128,8 @@ static void PlayerSettings_DrawStatsLabelValueWithColors( int row, const char *l
 	vec4_t mutableLabelColor;
 	vec4_t mutableValueColor;
 
-	labelX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
-	valueX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_VALUE_OFFSET;
+        labelX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
+        valueX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_STATS_VALUE_OFFSET;
 
 	PlayerSettings_GetStatsRowBounds( row, &rowTop, NULL );
 	y = rowTop + PLAYERSETTINGS_STATS_VALUE_BASELINE;
@@ -1208,32 +1208,25 @@ static void PlayerSettings_DrawBackShaders( void ) {
 }
 
 static void PlayerSettings_DrawStatsTab( void ) {
-	const profile_stats_t *stats;
-	const char *profileName;
-	char buffer[64];
-	PlayerSettings_DrawStatsLabelValue( STATS_ROW_HEADER, "Profile Stats", NULL );
+        const profile_stats_t *stats;
+        char buffer[64];
 
-	if ( !UI_Profile_HasActiveProfile() ) {
-		PlayerSettings_DrawStatsMessage( STATS_ROW_PROFILE, "No active profile selected." );
-		PlayerSettings_DrawStatsMessage( STATS_ROW_DISTANCE, "Create or select a profile from the main menu." );
-		return;
-	}
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_HEADER, "Profile Stats", NULL );
 
-	stats = UI_Profile_GetActiveStats();
-	if ( !stats ) {
-		PlayerSettings_DrawStatsMessage( STATS_ROW_PROFILE, "Unable to read profile statistics." );
-		return;
-	}
+        if ( !UI_Profile_HasActiveProfile() ) {
+                PlayerSettings_DrawStatsMessage( STATS_ROW_DISTANCE, "No active profile selected." );
+                PlayerSettings_DrawStatsMessage( STATS_ROW_FUEL, "Create or select a profile from the main menu." );
+                return;
+        }
 
-	profileName = UI_Profile_GetActiveName();
-	if ( !profileName || !profileName[0] ) {
-		profileName = "Unnamed Profile";
-	}
+        stats = UI_Profile_GetActiveStats();
+        if ( !stats ) {
+                PlayerSettings_DrawStatsMessage( STATS_ROW_DISTANCE, "Unable to read profile statistics." );
+                return;
+        }
 
-	PlayerSettings_DrawStatsLabelValue( STATS_ROW_PROFILE, "Active Profile", profileName );
-
-	Com_sprintf( buffer, sizeof( buffer ), "%.2f km", stats->distanceKm );
-	PlayerSettings_DrawStatsLabelValue( STATS_ROW_DISTANCE, "Distance Driven", buffer );
+        Com_sprintf( buffer, sizeof( buffer ), "%.2f km", stats->distanceKm );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_DISTANCE, "Distance Driven", buffer );
 
 	Com_sprintf( buffer, sizeof( buffer ), "%.1f L", stats->fuelUsed );
 	PlayerSettings_DrawStatsLabelValue( STATS_ROW_FUEL, "Fuel Used", buffer );
