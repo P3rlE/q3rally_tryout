@@ -728,6 +728,7 @@ static void PlayerSettings_DrawAvatarImage( void *self ) {
 	const char *line1;
 	const char *line2;
 	char derivedPath[MAX_OSPATH];
+	char combinedLine[MAX_OSPATH + 64];
 
 	inactive = ( qboolean )( f->generic.flags & QMF_INACTIVE );
 	disabled = ( qboolean )( f->generic.flags & QMF_GRAYED );
@@ -813,23 +814,30 @@ static void PlayerSettings_DrawAvatarImage( void *self ) {
 
 	textLineY = y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
 	if ( s_playersettings.avatarProfileName[0] ) {
-		line1 = "Avatar file:";
+		const char *avatarPath;
 		if ( s_playersettings.avatarDisplayPath[0] ) {
-			line2 = s_playersettings.avatarDisplayPath;
+			avatarPath = s_playersettings.avatarDisplayPath;
 		} else {
 			Com_sprintf( derivedPath, sizeof( derivedPath ), "baseq3r/gfx/avatars/%s.tga", s_playersettings.avatarProfileName );
-			line2 = derivedPath;
+			avatarPath = derivedPath;
 		}
+
+		Com_sprintf( combinedLine, sizeof( combinedLine ), "Avatar file: %s", avatarPath );
+		line1 = combinedLine;
+		line2 = "";
 	} else {
-		line1 = "No active profile";
-		line2 = "Create or select a profile to display an avatar.";
+		Com_sprintf( combinedLine, sizeof( combinedLine ), "No active profile. Create or select a profile to display an avatar." );
+		line1 = combinedLine;
+		line2 = "";
 	}
 
 	PlayerSettings_DrawClippedSmallString( basex, textLineY, textRight, line1, style, color );
 
 	secondaryStyle = UI_LEFT | UI_SMALLFONT;
 	secondaryColor = disabled ? text_color_disabled : text_color_normal;
-	PlayerSettings_DrawClippedSmallString( basex, textLineY + SMALLCHAR_HEIGHT + 2, textRight, line2, secondaryStyle, secondaryColor );
+	if ( line2[0] ) {
+		PlayerSettings_DrawClippedSmallString( basex, textLineY + SMALLCHAR_HEIGHT + 2, textRight, line2, secondaryStyle, secondaryColor );
+	}
 }
 
 
