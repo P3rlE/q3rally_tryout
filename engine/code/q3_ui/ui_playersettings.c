@@ -101,6 +101,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_PROFILE_FIELD_HEIGHT	36
 #define PLAYERSETTINGS_PROFILE_ROW_HEIGHT		44
 
+#define PLAYERSETTINGS_BACK_BUTTON_LEFT			PLAYERSETTINGS_PROFILE_PANEL_LEFT
+#define PLAYERSETTINGS_BACK_BUTTON_Y			( PLAYERSETTINGS_TAB_TOP + PLAYERSETTINGS_TAB_HEIGHT + 14 )
+
 #define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT   40
 //#define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT		PLAYERSETTINGS_PROFILE_ROW_HEIGHT
 #define PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET		0
@@ -2777,8 +2780,8 @@ static void PlayerSettings_MenuInit( void ) {
 
 	s_playersettings.back.generic.type				= MTYPE_PTEXT;
 	s_playersettings.back.generic.flags				= QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
-	s_playersettings.back.generic.x					= 20;
-	s_playersettings.back.generic.y					= 480 - 50;
+	s_playersettings.back.generic.x					= PLAYERSETTINGS_BACK_BUTTON_LEFT;
+	s_playersettings.back.generic.y					= PLAYERSETTINGS_BACK_BUTTON_Y;
 	s_playersettings.back.generic.id				= ID_BACK;
 	s_playersettings.back.generic.callback			= PlayerSettings_MenuEvent; 
 	s_playersettings.back.string					= "< BACK";
