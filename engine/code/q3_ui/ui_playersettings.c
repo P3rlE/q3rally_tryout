@@ -178,6 +178,33 @@ static const char *const s_achievementMedalUnlockedPaths[PLAYERSETTINGS_ACHIEVEM
         ART_MEDAL_TIER4_UNLOCKED
 };
 
+static qhandle_t PlayerSettings_RegisterAchievementMedal( const char *basePath ) {
+        static const char *const s_extensions[] = { ".tga", ".jpg", ".png" };
+        char assetPath[MAX_QPATH];
+        int i;
+
+        for ( i = 0; i < ARRAY_LEN( s_extensions ); ++i ) {
+                fileHandle_t file;
+                int length;
+
+                Q_strncpyz( assetPath, basePath, sizeof( assetPath ) );
+                Q_strcat( assetPath, sizeof( assetPath ), s_extensions[i] );
+
+                file = 0;
+                length = trap_FS_FOpenFile( assetPath, &file, FS_READ );
+                if ( length > 0 ) {
+                        trap_FS_FCloseFile( file );
+                        return trap_R_RegisterShaderNoMip( assetPath );
+                }
+
+                if ( file ) {
+                        trap_FS_FCloseFile( file );
+                }
+        }
+
+        return 0;
+}
+
 #define PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL 25
 
 static const char *const s_genderItems[] = {
@@ -2972,14 +2999,14 @@ void PlayerSettings_Cache( void ) {
 	s_playersettings.fxPic[5] = trap_R_RegisterShaderNoMip( ART_FX_CYAN );
 	s_playersettings.fxPic[6] = trap_R_RegisterShaderNoMip( ART_FX_WHITE );
 
-	for ( i = 0; i < PLAYERSETTINGS_ACHIEVEMENT_MEDAL_COUNT; ++i ) {
-		s_playersettings.achievementMedalLocked[i] = trap_R_RegisterShaderNoMip( s_achievementMedalLockedPaths[i] );
-		s_playersettings.achievementMedalUnlocked[i] = trap_R_RegisterShaderNoMip( s_achievementMedalUnlockedPaths[i] );
-	}
-	for ( ; i < PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS; ++i ) {
-		s_playersettings.achievementMedalLocked[i] = 0;
-		s_playersettings.achievementMedalUnlocked[i] = 0;
-	}
+        for ( i = 0; i < PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS; ++i ) {
+                s_playersettings.achievementMedalLocked[i] = 0;
+                s_playersettings.achievementMedalUnlocked[i] = 0;
+        }
+        for ( i = 0; i < PLAYERSETTINGS_ACHIEVEMENT_MEDAL_COUNT; ++i ) {
+                s_playersettings.achievementMedalLocked[i] = PlayerSettings_RegisterAchievementMedal( s_achievementMedalLockedPaths[i] );
+                s_playersettings.achievementMedalUnlocked[i] = PlayerSettings_RegisterAchievementMedal( s_achievementMedalUnlockedPaths[i] );
+        }
 
 // STONELANCE
 	PlayerSettings_BuildList();
