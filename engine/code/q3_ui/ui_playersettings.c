@@ -274,6 +274,8 @@ typedef struct {
 	qhandle_t	avatarShader;
 	qboolean	avatarShaderInitialized;
 	char		avatarShaderName[MAX_QPATH];
+	char		avatarProfileName[PROFILE_MAX_NAME];
+	char		avatarDisplayPath[MAX_OSPATH];
 } playersettings_t;
 
 static playersettings_t	s_playersettings;
@@ -632,10 +634,37 @@ static void PlayerSettings_DrawProfileField( void *self ) {
 }
 
 
+static void PlayerSettings_SetAvatarProfileName( const char *profileName ) {
+	if ( !profileName ) {
+		profileName = "";
+	}
+
+	if ( !Q_stricmp( profileName, s_playersettings.avatarProfileName ) ) {
+		return;
+	}
+
+	Q_strncpyz( s_playersettings.avatarProfileName, profileName, sizeof( s_playersettings.avatarProfileName ) );
+
+	if ( profileName[0] ) {
+		Com_sprintf( s_playersettings.profileInfo.avatar, sizeof( s_playersettings.profileInfo.avatar ), "gfx/avatars/%s", profileName );
+		Com_sprintf( s_playersettings.avatarDisplayPath, sizeof( s_playersettings.avatarDisplayPath ), "baseq3r/gfx/avatars/%s.tga", profileName );
+	} else {
+		s_playersettings.profileInfo.avatar[0] = '\0';
+		s_playersettings.avatarDisplayPath[0] = '\0';
+	}
+
+	s_playersettings.avatarShader = 0;
+	s_playersettings.avatarShaderInitialized = qfalse;
+	s_playersettings.avatarShaderName[0] = '\0';
+}
+
+
 static void PlayerSettings_EnsureAvatarShader( void ) {
 	const char *shaderName;
 
-	shaderName = s_playersettings.avatar.field.buffer;
+	PlayerSettings_SetAvatarProfileName( UI_Profile_GetActiveName() );
+
+	shaderName = s_playersettings.profileInfo.avatar;
 
 	if ( !shaderName[0] ) {
 		if ( s_playersettings.avatarShaderInitialized || s_playersettings.avatarShaderName[0] || s_playersettings.avatarShader ) {
@@ -656,28 +685,53 @@ static void PlayerSettings_EnsureAvatarShader( void ) {
 }
 
 
+static void PlayerSettings_DrawClippedSmallString( int x, int y, int maxX, const char *text, int style, float *color ) {
+	int drawX;
+	char c;
+
+	if ( maxX <= x ) {
+		return;
+	}
+
+	drawX = x;
+	while ( ( c = *text ) != 0 ) {
+		if ( drawX + SMALLCHAR_WIDTH > maxX ) {
+			break;
+		}
+		UI_DrawChar( drawX, y, c, style, color );
+		++text;
+		drawX += SMALLCHAR_WIDTH;
+	}
+}
+
+
 static void PlayerSettings_DrawAvatarImage( void *self ) {
 	menufield_s *f = (menufield_s *)self;
+	qboolean inactive;
 	qboolean disabled;
 	qboolean focus;
 	int style;
 	float *color;
 	int basex;
 	int y;
+	int rowHeight;
 	int imageSize;
-	int availableWidth;
+	int rightEdge;
 	int imageX;
 	int imageY;
-	int textBase;
-	int textX;
+	int textRight;
+	int textLineY;
+	int secondaryStyle;
+	float *secondaryColor;
 	vec4_t background;
 	vec4_t border;
-	char *txt;
-	char c;
-	int n;
+	const char *line1;
+	const char *line2;
+	char derivedPath[MAX_OSPATH];
 
-	disabled = ( qboolean )( f->generic.flags & ( QMF_GRAYED | QMF_INACTIVE ) );
-	focus = !disabled && ( f->generic.parent->cursor == f->generic.menuPosition );
+	inactive = ( qboolean )( f->generic.flags & QMF_INACTIVE );
+	disabled = ( qboolean )( f->generic.flags & QMF_GRAYED );
+	focus = !inactive && ( f->generic.parent->cursor == f->generic.menuPosition );
 
 	style = UI_LEFT | UI_SMALLFONT;
 	color = disabled ? text_color_disabled : uis.text_color;
@@ -692,23 +746,39 @@ static void PlayerSettings_DrawAvatarImage( void *self ) {
 
 	basex = f->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET;
 	y = f->generic.y;
-	availableWidth = f->generic.right - basex;
-	if ( availableWidth < 0 ) {
-		availableWidth = 0;
+	rowHeight = f->generic.bottom - f->generic.top;
+	rightEdge = f->generic.right - 8;
+	if ( rightEdge < basex ) {
+		rightEdge = basex;
 	}
-	imageSize = f->generic.bottom - f->generic.top - 8;
+	imageSize = rowHeight - 8;
 	if ( imageSize < 0 ) {
 		imageSize = 0;
-	}
-	if ( imageSize > availableWidth / 2 ) {
-		imageSize = availableWidth / 2;
 	}
 	if ( imageSize > 96 ) {
 		imageSize = 96;
 	}
+	if ( imageSize > rightEdge - basex ) {
+		imageSize = rightEdge - basex;
+	}
+	if ( imageSize < 0 ) {
+		imageSize = 0;
+	}
 
-	imageX = basex;
-	imageY = f->generic.top + ( ( f->generic.bottom - f->generic.top ) - imageSize ) / 2;
+	if ( imageSize > 0 ) {
+		imageX = rightEdge - imageSize;
+		if ( imageX < basex ) {
+			imageX = basex;
+		}
+		textRight = imageX - 8;
+	} else {
+		imageX = rightEdge;
+		textRight = rightEdge;
+	}
+	if ( textRight < basex ) {
+		textRight = basex;
+	}
+	imageY = f->generic.top + ( rowHeight - imageSize ) / 2;
 
 	Vector4Copy( avatarImageBackgroundColor, background );
 	if ( disabled ) {
@@ -725,18 +795,13 @@ static void PlayerSettings_DrawAvatarImage( void *self ) {
 		if ( s_playersettings.avatarShader ) {
 			trap_R_SetColor( NULL );
 			UI_DrawHandlePic( imageX, imageY, imageSize, imageSize, s_playersettings.avatarShader );
-		} else if ( s_playersettings.avatar.field.buffer[0] ) {
+		} else if ( s_playersettings.profileInfo.avatar[0] ) {
 			UI_DrawProportionalString( imageX + imageSize / 2, imageY + imageSize / 2 - 6, "Missing", UI_CENTER | UI_SMALLFONT, avatarImageMissingColor );
 		} else {
 			UI_DrawProportionalString( imageX + imageSize / 2, imageY + imageSize / 2 - 6, "No Avatar", UI_CENTER | UI_SMALLFONT, text_color_disabled );
 		}
 
 		UI_DrawRect( imageX, imageY, imageSize, imageSize, border );
-	}
-
-	basex += imageSize + 8;
-	if ( basex > f->generic.right ) {
-		basex = f->generic.right;
 	}
 
 	style = UI_LEFT | UI_SMALLFONT;
@@ -746,42 +811,25 @@ static void PlayerSettings_DrawAvatarImage( void *self ) {
 		color = text_color_highlight;
 	}
 
-	y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
-	txt = f->field.buffer;
-
-	textBase = basex;
-	textX = textBase;
-
-	while ( ( c = *txt ) != 0 ) {
-		if ( textX >= f->generic.right ) {
-			break;
-		}
-		if ( !disabled && !focus && Q_IsColorString( txt ) ) {
-			n = ColorIndex( *( txt + 1 ) );
-			if ( n == 0 ) {
-				n = 7;
-			}
-			color = g_color_table[n];
-			txt += 2;
-			continue;
-		}
-		UI_DrawChar( textX, y, c, style, color );
-		txt++;
-		textX += SMALLCHAR_WIDTH;
-	}
-
-	if ( focus ) {
-		if ( trap_Key_GetOverstrikeMode() ) {
-			c = 11;
+	textLineY = y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
+	if ( s_playersettings.avatarProfileName[0] ) {
+		line1 = "Avatar file:";
+		if ( s_playersettings.avatarDisplayPath[0] ) {
+			line2 = s_playersettings.avatarDisplayPath;
 		} else {
-			c = 10;
+			Com_sprintf( derivedPath, sizeof( derivedPath ), "baseq3r/gfx/avatars/%s.tga", s_playersettings.avatarProfileName );
+			line2 = derivedPath;
 		}
-
-		style &= ~UI_PULSE;
-		style |= UI_BLINK;
-
-		UI_DrawChar( textBase + f->field.cursor * SMALLCHAR_WIDTH, y, c, style, color_white );
+	} else {
+		line1 = "No active profile";
+		line2 = "Create or select a profile to display an avatar.";
 	}
+
+	PlayerSettings_DrawClippedSmallString( basex, textLineY, textRight, line1, style, color );
+
+	secondaryStyle = UI_LEFT | UI_SMALLFONT;
+	secondaryColor = disabled ? text_color_disabled : text_color_normal;
+	PlayerSettings_DrawClippedSmallString( basex, textLineY + SMALLCHAR_HEIGHT + 2, textRight, line2, secondaryStyle, secondaryColor );
 }
 
 
@@ -1912,7 +1960,11 @@ static void PlayerSettings_SaveChanges( void ) {
 			Com_sprintf( info.birthDate, sizeof( info.birthDate ), "%04d-%02d-%02d", birthYear, birthMonth, birthDay );
 		}
 
-		Q_strncpyz( info.avatar, s_playersettings.avatar.field.buffer, sizeof( info.avatar ) );
+		if ( s_playersettings.avatarProfileName[0] ) {
+			Com_sprintf( info.avatar, sizeof( info.avatar ), "gfx/avatars/%s", s_playersettings.avatarProfileName );
+		} else {
+			info.avatar[0] = '\0';
+		}
 		Q_strncpyz( info.country, s_playersettings.country.field.buffer, sizeof( info.country ) );
 		UI_Profile_SaveActiveInfo( &info );
 	}
@@ -1992,7 +2044,8 @@ static void PlayerSettings_SetMenuItems( void ) {
 		}
 		PlayerSettings_UpdateBirthDateDayItems();
 
-		Q_strncpyz( s_playersettings.avatar.field.buffer, s_playersettings.profileInfo.avatar, sizeof( s_playersettings.avatar.field.buffer ) );
+		s_playersettings.avatar.field.buffer[0] = '\0';
+		PlayerSettings_SetAvatarProfileName( UI_Profile_GetActiveName() );
 		PlayerSettings_EnsureAvatarShader();
 		Q_strncpyz( s_playersettings.country.field.buffer, s_playersettings.profileInfo.country, sizeof( s_playersettings.country.field.buffer ) );
 
@@ -2000,7 +2053,8 @@ static void PlayerSettings_SetMenuItems( void ) {
 		s_playersettings.birthDay.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
 		s_playersettings.birthMonth.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
 		s_playersettings.birthYear.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
-		s_playersettings.avatar.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
+		s_playersettings.avatar.generic.flags &= ~QMF_GRAYED;
+		s_playersettings.avatar.generic.flags |= QMF_INACTIVE;
 		s_playersettings.country.generic.flags &= ~( QMF_GRAYED | QMF_INACTIVE );
 		s_playersettings.birthDateLabel.color = uis.text_color;
 	} else {
@@ -2011,6 +2065,7 @@ static void PlayerSettings_SetMenuItems( void ) {
 		s_playersettings.birthDay.curvalue = 0;
 		PlayerSettings_UpdateBirthDateDayItems();
 		s_playersettings.avatar.field.buffer[0] = '\0';
+		PlayerSettings_SetAvatarProfileName( "" );
 		PlayerSettings_EnsureAvatarShader();
 		s_playersettings.country.field.buffer[0] = '\0';
 
