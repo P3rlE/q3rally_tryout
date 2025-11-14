@@ -713,8 +713,8 @@ void Q3ROptions_MenuInit( void ) {
 
 	s_q3roptions.back.generic.type			= MTYPE_PTEXT;
 	s_q3roptions.back.generic.flags			= QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
-	s_q3roptions.back.generic.x				= Q3ROPTIONS_BACK_BUTTON_LEFT;
-	s_q3roptions.back.generic.y				= Q3ROPTIONS_BACK_BUTTON_Y;
+	s_q3roptions.back.generic.x				= 25;
+	s_q3roptions.back.generic.y				= 480 - 40;
 	s_q3roptions.back.generic.id			= ID_BACK;
 	s_q3roptions.back.generic.callback		= Q3ROptions_MenuEvent; 
 	s_q3roptions.back.string				= "< BACK";

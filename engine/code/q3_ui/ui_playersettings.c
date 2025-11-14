@@ -2780,8 +2780,8 @@ static void PlayerSettings_MenuInit( void ) {
 
 	s_playersettings.back.generic.type				= MTYPE_PTEXT;
 	s_playersettings.back.generic.flags				= QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
-	s_playersettings.back.generic.x					= PLAYERSETTINGS_BACK_BUTTON_LEFT;
-	s_playersettings.back.generic.y					= PLAYERSETTINGS_BACK_BUTTON_Y;
+	s_playersettings.back.generic.x					= 25;
+	s_playersettings.back.generic.y					= 480 - 40;
 	s_playersettings.back.generic.id				= ID_BACK;
 	s_playersettings.back.generic.callback			= PlayerSettings_MenuEvent; 
 	s_playersettings.back.string					= "< BACK";
