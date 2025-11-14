@@ -109,6 +109,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET		0
 #define PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE	PLAYERSETTINGS_PROFILE_VALUE_BASELINE
 #define PLAYERSETTINGS_ACHIEVEMENT_TIER_GAP		16.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE		28.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_MEDAL_TEXT_GAP	8.0f
 
 #define PLAYERSETTINGS_STATS_ROW_HEIGHT		40
 #define PLAYERSETTINGS_STATS_ROW_GAP		4
@@ -136,6 +138,75 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 static vec4_t achievementUnlockedColor = { 0.6f, 1.0f, 0.6f, 1.0f };
 static vec4_t achievementLockedColor = { 0.7f, 0.7f, 0.7f, 1.0f };
+static const char *const s_achievementMedalLockedShaders[] = {
+	"menu/achievements/medal_tier1_locked",
+	"menu/achievements/medal_tier2_locked",
+	"menu/achievements/medal_tier3_locked",
+	"menu/achievements/medal_tier4_locked",
+};
+static const char *const s_achievementMedalUnlockedShaders[] = {
+	"menu/achievements/medal_tier1_unlocked",
+	"menu/achievements/medal_tier2_unlocked",
+	"menu/achievements/medal_tier3_unlocked",
+	"menu/achievements/medal_tier4_unlocked",
+};
+#define PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SHADER_COUNT	( (int)ARRAY_LEN( s_achievementMedalLockedShaders ) )
+
+static qboolean s_achievementMedalShadersCached = qfalse;
+
+static qboolean PlayerSettings_FileExistsForShader( const char *shaderName ) {
+	static const char *const extensions[] = { ".tga", ".jpg", ".png" };
+	fileHandle_t file;
+	int len;
+	char path[MAX_QPATH];
+	int i;
+
+	if ( !shaderName || !shaderName[0] ) {
+		return qfalse;
+	}
+
+	for ( i = 0; i < ARRAY_LEN( extensions ); ++i ) {
+		Com_sprintf( path, sizeof( path ), "%s%s", shaderName, extensions[i] );
+		len = trap_FS_FOpenFile( path, &file, FS_READ );
+		if ( len >= 0 ) {
+			if ( file ) {
+				trap_FS_FCloseFile( file );
+			}
+			if ( len > 0 ) {
+				return qtrue;
+			}
+		}
+	}
+
+	return qfalse;
+}
+
+static qboolean PlayerSettings_RegisterOptionalMedalShader( const char *shaderName, qhandle_t *handleOut ) {
+	qhandle_t handle;
+
+	if ( !handleOut ) {
+		return qfalse;
+	}
+
+	*handleOut = 0;
+
+	if ( !shaderName || !shaderName[0] ) {
+		return qfalse;
+	}
+
+	if ( !PlayerSettings_FileExistsForShader( shaderName ) ) {
+		return qfalse;
+	}
+
+	handle = trap_R_RegisterShaderNoMip( shaderName );
+	if ( handle <= 0 ) {
+		return qfalse;
+	}
+
+	*handleOut = handle;
+	return qtrue;
+}
+
 static vec4_t tabBackgroundColor = { 0.05f, 0.05f, 0.05f, 0.85f };
 static vec4_t tabSelectedBackgroundColor = { 0.16f, 0.16f, 0.16f, 0.95f };
 static vec4_t tabBorderColor = { 0.45f, 0.45f, 0.45f, 1.0f };
@@ -269,6 +340,8 @@ typedef struct {
 
 	qhandle_t			fxBasePic;
 	qhandle_t			fxPic[7];
+	qhandle_t			achievementMedalLocked[PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SHADER_COUNT];
+	qhandle_t			achievementMedalUnlocked[PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SHADER_COUNT];
 	playerInfo_t		playerinfo;
 	int					current_fx;
 	char				playerModel[MAX_QPATH];
@@ -1559,11 +1632,17 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 	float gap;
 	float totalTextWidth;
 	float startX;
+	float iconY;
 	int unlockedCount;
 	int titleX;
 	char entryBuffers[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS][64];
 	float entryWidths[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
+	float entryTextWidths[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
 	qboolean entryUnlocked[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
+	qboolean medalsAvailable;
+	qboolean showStatusText;
+	float medalSize;
+	float medalTextGap;
 
 	if ( count > PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
 		count = PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS;
@@ -1590,9 +1669,36 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 	gap = PLAYERSETTINGS_ACHIEVEMENT_TIER_GAP;
 	totalTextWidth = 0.0f;
 	unlockedCount = 0;
+	medalSize = PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
+	medalTextGap = PLAYERSETTINGS_ACHIEVEMENT_MEDAL_TEXT_GAP;
+	medalsAvailable = ( PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SHADER_COUNT > 0 );
+	showStatusText = qfalse;
 
-        for ( i = 0; i < count; ++i ) {
+	if ( medalsAvailable ) {
+		int medalCheckIndex;
+
+		for ( medalCheckIndex = 0; medalCheckIndex < count; ++medalCheckIndex ) {
+			int medalIndex;
+
+			medalIndex = medalCheckIndex;
+			if ( medalIndex >= PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SHADER_COUNT ) {
+				medalIndex = PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SHADER_COUNT - 1;
+			}
+
+			if ( medalIndex < 0 || s_playersettings.achievementMedalLocked[medalIndex] <= 0 || s_playersettings.achievementMedalUnlocked[medalIndex] <= 0 ) {
+				medalsAvailable = qfalse;
+				break;
+                        }
+                }
+        }
+
+	if ( !medalsAvailable ) {
+		showStatusText = qtrue;
+        }
+
+	for ( i = 0; i < count; ++i ) {
                 qboolean unlocked;
+                float textWidth;
 
                 unlocked = ( progress >= thresholds[i] );
                 entryUnlocked[i] = unlocked;
@@ -1600,13 +1706,31 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 			++unlockedCount;
 		}
 
-		if ( suffix && suffix[0] ) {
-			Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%s %.0f %s", unlocked ? "[X]" : "[ ]", thresholds[i], suffix );
+		if ( showStatusText ) {
+			if ( suffix && suffix[0] ) {
+				Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%s %.0f %s", unlocked ? "[X]" : "[ ]", thresholds[i], suffix );
+			} else {
+				Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%s %.0f", unlocked ? "[X]" : "[ ]", thresholds[i] );
+			}
 		} else {
-			Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%s %.0f", unlocked ? "[X]" : "[ ]", thresholds[i] );
+			if ( suffix && suffix[0] ) {
+				Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%.0f %s", thresholds[i], suffix );
+			} else {
+				Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%.0f", thresholds[i] );
+			}
 		}
 
-                entryWidths[i] = UI_ProportionalStringWidth( entryBuffers[i] ) * UI_ProportionalSizeScale( UI_SMALLFONT );
+                textWidth = UI_ProportionalStringWidth( entryBuffers[i] ) * UI_ProportionalSizeScale( UI_SMALLFONT );
+                entryTextWidths[i] = textWidth;
+
+                entryWidths[i] = textWidth;
+                if ( medalsAvailable && medalSize > 0.0f ) {
+                        entryWidths[i] += medalSize;
+                        if ( textWidth > 0.0f ) {
+                                entryWidths[i] += medalTextGap;
+                        }
+                }
+
                 totalTextWidth += entryWidths[i];
         }
 
@@ -1628,9 +1752,45 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 	}
 
 	startX = areaLeft;
+	iconY = rowTop + ( PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT - medalSize ) * 0.5f;
+	if ( iconY < rowTop ) {
+		iconY = rowTop;
+	}
+	if ( iconY + medalSize > rowBottom ) {
+		iconY = rowBottom - medalSize;
+	}
 
 	for ( i = 0; i < count; ++i ) {
-		UI_DrawProportionalString( (int)startX, valueY, entryBuffers[i], UI_LEFT | UI_SMALLFONT, entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor );
+		float itemX;
+		int medalIndex;
+
+		itemX = startX;
+		medalIndex = -1;
+
+		if ( medalsAvailable && medalSize > 0.0f ) {
+			medalIndex = i;
+			if ( medalIndex >= PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SHADER_COUNT ) {
+				medalIndex = PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SHADER_COUNT - 1;
+			}
+			if ( medalIndex < 0 ) {
+				medalIndex = 0;
+			}
+
+			if ( medalIndex < PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SHADER_COUNT ) {
+				qhandle_t medalShader;
+
+				medalShader = entryUnlocked[i] ? s_playersettings.achievementMedalUnlocked[medalIndex] : s_playersettings.achievementMedalLocked[medalIndex];
+				if ( medalShader > 0 ) {
+					UI_DrawHandlePic( (int)itemX, (int)( iconY + 0.5f ), medalSize, medalSize, medalShader );
+					itemX += medalSize;
+					if ( entryTextWidths[i] > 0.0f ) {
+						itemX += medalTextGap;
+					}
+				}
+			}
+		}
+
+		UI_DrawProportionalString( (int)itemX, valueY, entryBuffers[i], UI_LEFT | UI_SMALLFONT, entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor );
 
 		startX += entryWidths[i];
 		if ( i < count - 1 ) {
@@ -2896,6 +3056,30 @@ void PlayerSettings_Cache( void ) {
 	s_playersettings.fxPic[4] = trap_R_RegisterShaderNoMip( ART_FX_BLUE );
 	s_playersettings.fxPic[5] = trap_R_RegisterShaderNoMip( ART_FX_CYAN );
 	s_playersettings.fxPic[6] = trap_R_RegisterShaderNoMip( ART_FX_WHITE );
+
+	if ( !s_achievementMedalShadersCached ) {
+		int i;
+
+		for ( i = 0; i < PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SHADER_COUNT; ++i ) {
+			qhandle_t lockedHandle;
+			qhandle_t unlockedHandle;
+			qboolean lockedAvailable;
+			qboolean unlockedAvailable;
+
+			lockedAvailable = PlayerSettings_RegisterOptionalMedalShader( s_achievementMedalLockedShaders[i], &lockedHandle );
+			unlockedAvailable = PlayerSettings_RegisterOptionalMedalShader( s_achievementMedalUnlockedShaders[i], &unlockedHandle );
+
+			if ( lockedAvailable && unlockedAvailable ) {
+				s_playersettings.achievementMedalLocked[i] = lockedHandle;
+				s_playersettings.achievementMedalUnlocked[i] = unlockedHandle;
+			} else {
+				s_playersettings.achievementMedalLocked[i] = 0;
+				s_playersettings.achievementMedalUnlocked[i] = 0;
+			}
+		}
+
+		s_achievementMedalShadersCached = qtrue;
+	}
 
 // STONELANCE
 	PlayerSettings_BuildList();
