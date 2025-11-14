@@ -48,6 +48,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ART_FX_TEAL			"menu/art/fx_teal"
 #define ART_FX_WHITE		"menu/art/fx_white"
 #define ART_FX_YELLOW		"menu/art/fx_yel"
+#define ART_MEDAL_TIER1_LOCKED          "menu/achievements/medal_tier1_locked"
+#define ART_MEDAL_TIER2_LOCKED          "menu/achievements/medal_tier2_locked"
+#define ART_MEDAL_TIER3_LOCKED          "menu/achievements/medal_tier3_locked"
+#define ART_MEDAL_TIER4_LOCKED          "menu/achievements/medal_tier4_locked"
+#define ART_MEDAL_TIER1_UNLOCKED        "menu/achievements/medal_tier1_unlocked"
+#define ART_MEDAL_TIER2_UNLOCKED        "menu/achievements/medal_tier2_unlocked"
+#define ART_MEDAL_TIER3_UNLOCKED        "menu/achievements/medal_tier3_unlocked"
+#define ART_MEDAL_TIER4_UNLOCKED        "menu/achievements/medal_tier4_unlocked"
 
 #define ID_NAME			10
 #define ID_HANDICAP		11
@@ -109,6 +117,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET		0
 #define PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE	PLAYERSETTINGS_PROFILE_VALUE_BASELINE
 #define PLAYERSETTINGS_ACHIEVEMENT_TIER_GAP		16.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_ICON_SIZE            24.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_ICON_TEXT_GAP        6.0f
 
 #define PLAYERSETTINGS_STATS_ROW_HEIGHT		40
 #define PLAYERSETTINGS_STATS_ROW_GAP		4
@@ -116,6 +126,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_STATS_VALUE_BASELINE		PLAYERSETTINGS_PROFILE_VALUE_BASELINE
 
 #define PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS		8
+#define PLAYERSETTINGS_ACHIEVEMENT_MEDAL_COUNT          4
 #define PLAYERSETTINGS_ACHIEVEMENT_HEADER_ROW		0
 #define PLAYERSETTINGS_ACHIEVEMENT_SPACER_ROW		1
 #define PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW	2
@@ -153,6 +164,46 @@ static const int s_killAchievements[] = { 10, 100, 1000, 2500 };
 static const int s_winAchievements[] = { 1, 10, 25, 50 };
 static const int s_flagAchievements[] = { 1, 10, 50, 100 };
 static const int s_flagAssistAchievements[] = { 1, 10, 50, 100 };
+
+static const char *const s_achievementMedalLockedPaths[PLAYERSETTINGS_ACHIEVEMENT_MEDAL_COUNT] = {
+        ART_MEDAL_TIER1_LOCKED,
+        ART_MEDAL_TIER2_LOCKED,
+        ART_MEDAL_TIER3_LOCKED,
+        ART_MEDAL_TIER4_LOCKED
+};
+static const char *const s_achievementMedalUnlockedPaths[PLAYERSETTINGS_ACHIEVEMENT_MEDAL_COUNT] = {
+        ART_MEDAL_TIER1_UNLOCKED,
+        ART_MEDAL_TIER2_UNLOCKED,
+        ART_MEDAL_TIER3_UNLOCKED,
+        ART_MEDAL_TIER4_UNLOCKED
+};
+
+static qhandle_t PlayerSettings_RegisterAchievementMedal( const char *basePath ) {
+        static const char *const s_extensions[] = { ".tga", ".jpg", ".png" };
+        char assetPath[MAX_QPATH];
+        int i;
+
+        for ( i = 0; i < ARRAY_LEN( s_extensions ); ++i ) {
+                fileHandle_t file;
+                int length;
+
+                Q_strncpyz( assetPath, basePath, sizeof( assetPath ) );
+                Q_strcat( assetPath, sizeof( assetPath ), s_extensions[i] );
+
+                file = 0;
+                length = trap_FS_FOpenFile( assetPath, &file, FS_READ );
+                if ( length > 0 ) {
+                        trap_FS_FCloseFile( file );
+                        return trap_R_RegisterShaderNoMip( assetPath );
+                }
+
+                if ( file ) {
+                        trap_FS_FCloseFile( file );
+                }
+        }
+
+        return 0;
+}
 
 #define PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL 25
 
@@ -269,6 +320,8 @@ typedef struct {
 
 	qhandle_t			fxBasePic;
 	qhandle_t			fxPic[7];
+        qhandle_t                       achievementMedalLocked[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
+        qhandle_t                       achievementMedalUnlocked[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
 	playerInfo_t		playerinfo;
 	int					current_fx;
 	char				playerModel[MAX_QPATH];
@@ -1548,97 +1601,145 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 }
 
 static int PlayerSettings_DrawAchievementSection( int row, const char *title, const double *thresholds, int count, double progress, const char *suffix ) {
-	int i;
-	int titleY;
-	int valueY;
-	int rowTop;
-	int rowBottom;
-	float areaLeft;
-	float areaRight;
-	float availableWidth;
-	float gap;
-	float totalTextWidth;
-	float startX;
-	int unlockedCount;
-	int titleX;
-	char entryBuffers[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS][64];
-	float entryWidths[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
-	qboolean entryUnlocked[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
+        int i;
+        int titleY;
+        int valueY;
+        int rowTop;
+        int rowBottom;
+        float areaLeft;
+        float areaRight;
+        float availableWidth;
+        float gap;
+        float totalEntryWidth;
+        float startX;
+        int unlockedCount;
+        int titleX;
+        float iconY;
+        char entryBuffers[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS][64];
+        float entryWidths[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
+        float entryTextWidths[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
+        qboolean entryUnlocked[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
 
-	if ( count > PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
-		count = PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS;
-	}
-	if ( count <= 0 ) {
-		return 0;
-	}
+        if ( count > PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
+                count = PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS;
+        }
+        if ( count <= 0 ) {
+                return 0;
+        }
 
-	PlayerSettings_GetAchievementRowBounds( row, &rowTop, &rowBottom );
+        PlayerSettings_GetAchievementRowBounds( row, &rowTop, &rowBottom );
 
-	titleX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
-	titleY = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET;
-	valueY = rowTop + PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE;
+        titleX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
+        titleY = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET;
+        valueY = rowTop + PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE;
+        iconY = rowTop + ( PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT - PLAYERSETTINGS_ACHIEVEMENT_ICON_SIZE ) * 0.5f;
 
-	UI_DrawProportionalString( titleX, titleY, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
+        UI_DrawProportionalString( titleX, titleY, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
 
-	areaLeft = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_VALUE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
-	areaRight = PLAYERSETTINGS_PROFILE_ROW_RIGHT - PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
-	if ( areaRight <= areaLeft ) {
-		areaRight = areaLeft + 1.0f;
-	}
+        areaLeft = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_VALUE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
+        areaRight = PLAYERSETTINGS_PROFILE_ROW_RIGHT - PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
+        if ( areaRight <= areaLeft ) {
+                areaRight = areaLeft + 1.0f;
+        }
 
-	availableWidth = areaRight - areaLeft;
-	gap = PLAYERSETTINGS_ACHIEVEMENT_TIER_GAP;
-	totalTextWidth = 0.0f;
-	unlockedCount = 0;
+        availableWidth = areaRight - areaLeft;
+        gap = PLAYERSETTINGS_ACHIEVEMENT_TIER_GAP;
+        totalEntryWidth = 0.0f;
+        unlockedCount = 0;
 
         for ( i = 0; i < count; ++i ) {
                 qboolean unlocked;
+                float textWidth;
+                float iconWidth;
+                float entryWidth;
+                qhandle_t iconHandle;
 
                 unlocked = ( progress >= thresholds[i] );
                 entryUnlocked[i] = unlocked;
                 if ( unlocked ) {
-			++unlockedCount;
-		}
+                        ++unlockedCount;
+                }
 
-		if ( suffix && suffix[0] ) {
-			Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%s %.0f %s", unlocked ? "[X]" : "[ ]", thresholds[i], suffix );
-		} else {
-			Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%s %.0f", unlocked ? "[X]" : "[ ]", thresholds[i] );
-		}
+                if ( suffix && suffix[0] ) {
+                        Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%.0f %s", thresholds[i], suffix );
+                } else {
+                        Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%.0f", thresholds[i] );
+                }
 
-                entryWidths[i] = UI_ProportionalStringWidth( entryBuffers[i] ) * UI_ProportionalSizeScale( UI_SMALLFONT );
-                totalTextWidth += entryWidths[i];
+                textWidth = UI_ProportionalStringWidth( entryBuffers[i] ) * UI_ProportionalSizeScale( UI_SMALLFONT );
+                entryTextWidths[i] = textWidth;
+
+                iconHandle = 0;
+                if ( i < PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
+                        iconHandle = unlocked ? s_playersettings.achievementMedalUnlocked[i] : s_playersettings.achievementMedalLocked[i];
+                }
+                iconWidth = ( iconHandle != 0 ) ? PLAYERSETTINGS_ACHIEVEMENT_ICON_SIZE : 0.0f;
+
+                entryWidth = textWidth;
+                if ( iconWidth > 0.0f ) {
+                        entryWidth += iconWidth;
+                        if ( textWidth > 0.0f ) {
+                                entryWidth += PLAYERSETTINGS_ACHIEVEMENT_ICON_TEXT_GAP;
+                        }
+                }
+
+                entryWidths[i] = entryWidth;
+                totalEntryWidth += entryWidth;
         }
 
-	if ( count > 1 ) {
-		float maxGapWidth;
+        if ( count > 1 ) {
+                float maxGapWidth;
 
-		maxGapWidth = availableWidth - totalTextWidth;
-		if ( maxGapWidth < 0.0f ) {
-			gap = 0.0f;
-		} else {
-			float desiredSpacing = gap * ( count - 1 );
+                maxGapWidth = availableWidth - totalEntryWidth;
+                if ( maxGapWidth < 0.0f ) {
+                        gap = 0.0f;
+                } else {
+                        float desiredSpacing = gap * ( count - 1 );
 
-			if ( totalTextWidth + desiredSpacing > availableWidth ) {
-				gap = maxGapWidth / (float)( count - 1 );
-			}
-		}
-	} else {
-		gap = 0.0f;
-	}
+                        if ( totalEntryWidth + desiredSpacing > availableWidth ) {
+                                gap = maxGapWidth / (float)( count - 1 );
+                        }
+                }
+        } else {
+                gap = 0.0f;
+        }
 
-	startX = areaLeft;
+        startX = areaLeft;
 
-	for ( i = 0; i < count; ++i ) {
-		UI_DrawProportionalString( (int)startX, valueY, entryBuffers[i], UI_LEFT | UI_SMALLFONT, entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor );
+        for ( i = 0; i < count; ++i ) {
+                qhandle_t iconHandle;
+                float iconWidth;
+                float textX;
 
-		startX += entryWidths[i];
-		if ( i < count - 1 ) {
-			startX += gap;
-		}
-	}
+                iconHandle = 0;
+                if ( i < PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
+                        iconHandle = entryUnlocked[i] ? s_playersettings.achievementMedalUnlocked[i] : s_playersettings.achievementMedalLocked[i];
+                }
+                iconWidth = ( iconHandle != 0 ) ? PLAYERSETTINGS_ACHIEVEMENT_ICON_SIZE : 0.0f;
 
-	return unlockedCount;
+                if ( iconWidth > 0.0f ) {
+                        UI_DrawHandlePic( (int)startX, (int)iconY, PLAYERSETTINGS_ACHIEVEMENT_ICON_SIZE, PLAYERSETTINGS_ACHIEVEMENT_ICON_SIZE, iconHandle );
+                }
+
+                textX = startX;
+                if ( iconWidth > 0.0f ) {
+                        textX += iconWidth;
+                        if ( entryTextWidths[i] > 0.0f ) {
+                                textX += PLAYERSETTINGS_ACHIEVEMENT_ICON_TEXT_GAP;
+                        }
+                }
+
+                if ( entryBuffers[i][0] ) {
+                        UI_DrawProportionalString( (int)textX, valueY, entryBuffers[i], UI_LEFT | UI_SMALLFONT, entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor );
+                }
+
+                startX += entryWidths[i];
+                if ( i < count - 1 ) {
+                        startX += gap;
+                }
+        }
+
+        return unlockedCount;
 }
 
 static int PlayerSettings_DrawAchievementSectionDouble( int row, const char *title, const double *thresholds, int count, double progress, const char *unit ) {
@@ -2877,6 +2978,7 @@ PlayerSettings_Cache
 =================
 */
 void PlayerSettings_Cache( void ) {
+        int i;
 // STONELANCE
 /*
 	trap_R_RegisterShaderNoMip( ART_FRAMEL );
@@ -2896,6 +2998,15 @@ void PlayerSettings_Cache( void ) {
 	s_playersettings.fxPic[4] = trap_R_RegisterShaderNoMip( ART_FX_BLUE );
 	s_playersettings.fxPic[5] = trap_R_RegisterShaderNoMip( ART_FX_CYAN );
 	s_playersettings.fxPic[6] = trap_R_RegisterShaderNoMip( ART_FX_WHITE );
+
+        for ( i = 0; i < PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS; ++i ) {
+                s_playersettings.achievementMedalLocked[i] = 0;
+                s_playersettings.achievementMedalUnlocked[i] = 0;
+        }
+        for ( i = 0; i < PLAYERSETTINGS_ACHIEVEMENT_MEDAL_COUNT; ++i ) {
+                s_playersettings.achievementMedalLocked[i] = PlayerSettings_RegisterAchievementMedal( s_achievementMedalLockedPaths[i] );
+                s_playersettings.achievementMedalUnlocked[i] = PlayerSettings_RegisterAchievementMedal( s_achievementMedalUnlockedPaths[i] );
+        }
 
 // STONELANCE
 	PlayerSettings_BuildList();
