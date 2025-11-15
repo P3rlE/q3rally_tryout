@@ -126,7 +126,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP   24.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP           32.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_TEXT_GAP             24.0f
-#define PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT     20.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT     12.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE           0.5f
 #define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS           (( PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS + PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE - 1 ) / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE )
 #define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT           ( PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + ( PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP )
 #define PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE       PLAYERSETTINGS_PROFILE_VALUE_BASELINE
@@ -2219,12 +2220,24 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
                         nameY = entryTop + 12.0f;
                         descriptionY = nameY + PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT;
 
-                        if ( name && name[0] ) {
-                                UI_DrawProportionalString( (int)textX, (int)nameY, name, UI_LEFT | UI_SMALLFONT, entryUnlocked[i] ? text_color_highlight : achievementLockedColor );
-                        }
-                        if ( description && description[0] ) {
-                                UI_DrawProportionalString( (int)textX, (int)descriptionY, description, UI_LEFT | UI_SMALLFONT, entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor );
-                        }
+				if ( name && name[0] ) {
+					UI_DrawScaledProportionalString(
+						( int )textX,
+						( int )nameY,
+						name,
+						UI_LEFT | UI_SMALLFONT,
+						entryUnlocked[i] ? text_color_highlight : achievementLockedColor,
+						PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE );
+				}
+				if ( description && description[0] ) {
+					UI_DrawScaledProportionalString(
+						( int )textX,
+						( int )descriptionY,
+						description,
+						UI_LEFT | UI_SMALLFONT,
+						entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor,
+						PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE );
+				}
                 }
         }
 
