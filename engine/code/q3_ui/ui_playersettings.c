@@ -182,6 +182,12 @@ typedef struct playersettings_scroll_state_s {
 	float	targetOffset;
 } playersettingsScrollState_t;
 
+static void PlayerSettings_DrawStatsLabelValue( int row, const char *label, const char *value );
+static void PlayerSettings_DrawStatsMessage( int row, const char *message );
+static void PlayerSettings_DrawAchievementsPanelBackground( void );
+static void PlayerSettings_DrawAchievementsTab( void );
+static void PlayerSettings_GetAchievementRowBounds( int row, int *top, int *bottom );
+
 static const char *const s_achievementMedalLockedPaths[PLAYERSETTINGS_ACHIEVEMENT_ICON_COUNT] = {
         ART_MEDAL_DRIVEN_LOCKED,
         ART_MEDAL_KILLS_LOCKED,
@@ -1935,6 +1941,32 @@ static void PlayerSettings_DrawBackShaders( void ) {
                 PlayerSettings_DrawAchievementsTab();
                 PlayerSettings_DrawScrollBar( &s_playersettings.achievementsScroll, PlayerSettings_GetAchievementsContentHeight() );
         }
+}
+
+static void PlayerSettings_GetAchievementRowBounds( int row, int *top, int *bottom ) {
+	float	rowTop;
+	float	rowBottom;
+	float	spacing;
+	float	contentTop;
+
+	if ( row < 0 ) {
+		row = 0;
+	}
+	if ( row >= PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT ) {
+		row = PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT - 1;
+	}
+
+	spacing = PlayerSettings_GetAchievementsRowSpacing();
+	contentTop = PlayerSettings_GetScrollContentTop();
+	rowTop = contentTop + row * spacing - s_playersettings.achievementsScroll.offset;
+	rowBottom = rowTop + PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT;
+
+	if ( top ) {
+		*top = (int)rowTop;
+	}
+	if ( bottom ) {
+		*bottom = (int)rowBottom;
+	}
 }
 
 static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
