@@ -58,6 +58,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ART_MEDAL_FLAGS_UNLOCKED        "menu/achievements/medal_flags_unlocked"
 #define ART_MEDAL_ASSISTS_LOCKED        "menu/achievements/medal_assists_locked"
 #define ART_MEDAL_ASSISTS_UNLOCKED      "menu/achievements/medal_assists_unlocked"
+#define ART_MEDAL_FUEL_LOCKED           ART_MEDAL_DRIVEN_LOCKED
+#define ART_MEDAL_FUEL_UNLOCKED         ART_MEDAL_DRIVEN_UNLOCKED
 
 #define ID_NAME			10
 #define ID_HANDICAP		11
@@ -114,27 +116,32 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_BACK_BUTTON_LEFT			PLAYERSETTINGS_PROFILE_FIELD_LEFT
 #define PLAYERSETTINGS_BACK_BUTTON_Y			( PLAYERSETTINGS_TAB_TOP + PLAYERSETTINGS_TAB_HEIGHT + 14 )
 
-#define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT   40
-//#define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT		PLAYERSETTINGS_PROFILE_ROW_HEIGHT
-#define PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP      4
-#define PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET		0
-#define PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE	PLAYERSETTINGS_PROFILE_VALUE_BASELINE
-#define PLAYERSETTINGS_ACHIEVEMENT_TIER_GAP		16.0f
-#define PLAYERSETTINGS_ACHIEVEMENT_ICON_SIZE            18.0f
-#define PLAYERSETTINGS_ACHIEVEMENT_ICON_TEXT_GAP        6.0f
-#define PLAYERSETTINGS_ACHIEVEMENT_ICON_Y_OFFSET        7.5f
+#define PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS            8
+#define PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE            2
+#define PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE           175.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP              16
+#define PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET         6
+#define PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT   32.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP           18.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP   24.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP           32.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_TEXT_GAP             24.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT     20.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS           (( PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS + PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE - 1 ) / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE )
+#define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT           ( PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + ( PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP )
+#define PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE       PLAYERSETTINGS_PROFILE_VALUE_BASELINE
 
 #define PLAYERSETTINGS_STATS_ROW_HEIGHT		40
 #define PLAYERSETTINGS_STATS_ROW_GAP		4
 #define PLAYERSETTINGS_STATS_VALUE_OFFSET		260
 #define PLAYERSETTINGS_STATS_VALUE_BASELINE		PLAYERSETTINGS_PROFILE_VALUE_BASELINE
 
-#define PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS		8
+#define PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT       6
 #define PLAYERSETTINGS_ACHIEVEMENT_HEADER_ROW           0
-#define PLAYERSETTINGS_ACHIEVEMENT_SPACER_ROW		1
-#define PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW	2
-#define PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT		( PROFILE_ROW_COUNT - PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW )
-#define PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT		( PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW + PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT )
+#define PLAYERSETTINGS_ACHIEVEMENT_SPACER_ROW           1
+#define PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW    2
+#define PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT        PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT
+#define PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT            ( PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW + PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT )
 #define PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN	0.0f
 
 #define MAX_NAMELENGTH	20
@@ -162,11 +169,77 @@ static vec4_t profileRowBorderColor = { 0.35f, 0.35f, 0.35f, 0.85f };
 static vec4_t avatarImageBackgroundColor = { 0.05f, 0.05f, 0.05f, 0.80f };
 static vec4_t avatarImageMissingColor = { 0.6f, 0.2f, 0.2f, 1.0f };
 
-static const double s_distanceAchievements[] = { 10.0, 100.0, 1000.0, 10000.0 };
-static const int s_killAchievements[] = { 10, 100, 1000, 2500 };
-static const int s_winAchievements[] = { 1, 10, 25, 50 };
-static const int s_flagAchievements[] = { 1, 10, 50, 100 };
-static const int s_flagAssistAchievements[] = { 1, 10, 50, 100 };
+typedef struct {
+	double		threshold;
+	const char		*name;
+	const char		*description;
+} playersettingsAchievementTierDef_t;
+
+static const playersettingsAchievementTierDef_t s_distanceAchievementTiers[] = {
+        { 10.0, "Sunday Driver", "Cover a relaxed 10 km overall." },
+        { 50.0, "Daily Commuter", "Cruise through a combined 50 km." },
+        { 150.0, "Road Tripper", "Accumulate 150 km behind the wheel." },
+        { 300.0, "Night Rider", "Push past 300 km of distance." },
+        { 600.0, "Highway Hero", "Rack up 600 km on the odometer." },
+        { 1500.0, "Endurance Ace", "Stay in the race for 1,500 km total." },
+        { 5000.0, "Globetrotter", "Log an epic 5,000 km journey." },
+        { 10000.0, "Legend of Asphalt", "Master the asphalt for 10,000 km." }
+};
+
+static const playersettingsAchievementTierDef_t s_killAchievementTiers[] = {
+        { 10.0, "Spark Starter", "Score 10 takedowns." },
+        { 25.0, "Arc Blazer", "Deliver 25 total kills." },
+        { 50.0, "Demolition Driver", "Knock rivals out 50 times." },
+        { 100.0, "Pit Boss", "Dominate the arena with 100 kills." },
+        { 250.0, "Arena Menace", "Send 250 opponents packing." },
+        { 500.0, "Road Reaper", "Leave 500 wrecks behind." },
+        { 1000.0, "Overdrive Executioner", "Achieve 1,000 eliminations." },
+        { 2500.0, "Apocalypse Engine", "Crush 2,500 opponents." }
+};
+
+static const playersettingsAchievementTierDef_t s_winAchievementTiers[] = {
+        { 1.0, "Checkered Debut", "Win your very first race." },
+        { 3.0, "Podium Regular", "Collect 3 total victories." },
+        { 5.0, "Sprint Specialist", "Take home 5 wins." },
+        { 10.0, "Championship Hopeful", "Secure 10 race wins." },
+        { 20.0, "Series Star", "Reach 20 gold finishes." },
+        { 30.0, "Circuit Royalty", "Earn 30 overall wins." },
+        { 40.0, "Dynasty Driver", "Stack up 40 victories." },
+        { 50.0, "Hall of Fame", "Celebrate 50 race wins." }
+};
+
+static const playersettingsAchievementTierDef_t s_flagCaptureAchievementTiers[] = {
+        { 1.0, "Flag Rookie", "Capture your first flag." },
+        { 5.0, "Fast Courier", "Deliver 5 flags to base." },
+        { 10.0, "Relay Racer", "Bank 10 successful captures." },
+        { 25.0, "Siege Runner", "Snatch 25 flags." },
+        { 50.0, "Banner Bandit", "Swipe 50 flags." },
+        { 75.0, "Frontline Phantom", "Steal 75 flags unnoticed." },
+        { 100.0, "Flagship", "Secure 100 captures." },
+        { 150.0, "Mythic Messenger", "Run home 150 flags." }
+};
+
+static const playersettingsAchievementTierDef_t s_flagAssistAchievementTiers[] = {
+        { 1.0, "Helping Hand", "Assist with 1 flag capture." },
+        { 5.0, "Wingman", "Support 5 flag scores." },
+        { 10.0, "Shield Mate", "Help with 10 captures." },
+        { 25.0, "Escort Elite", "Escort 25 flags safely." },
+        { 50.0, "Guardian Angel", "Guide 50 flags home." },
+        { 75.0, "Formation Leader", "Add 75 total assists." },
+        { 100.0, "Tactical Anchor", "Reach 100 flag assists." },
+        { 150.0, "Legendary Support", "Record 150 flag assists." }
+};
+
+static const playersettingsAchievementTierDef_t s_fuelAchievementTiers[] = {
+        { 10.0, "Fuel Sipper", "Burn through 10 L of fuel." },
+        { 50.0, "Tank Tipper", "Spend 50 L on the throttle." },
+        { 100.0, "Octane Addict", "Consume 100 L overall." },
+        { 250.0, "Combustion Captain", "Use 250 L chasing speed." },
+        { 500.0, "Turbo Baron", "Torch 500 L of fuel." },
+        { 1000.0, "Inferno Investor", "Pour 1,000 L into momentum." },
+        { 2500.0, "Petrol Pharaoh", "Spend 2,500 L keeping pace." },
+        { 5000.0, "Galaxy Guzzler", "Atomize 5,000 L in total." }
+};
 
 typedef enum {
         PLAYERSETTINGS_ACHIEVEMENT_ICON_DRIVEN = 0,
@@ -174,6 +247,7 @@ typedef enum {
         PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS,
         PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAGS,
         PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAG_ASSISTS,
+        PLAYERSETTINGS_ACHIEVEMENT_ICON_FUEL,
         PLAYERSETTINGS_ACHIEVEMENT_ICON_COUNT
 } playersettingsAchievementIcon_t;
 
@@ -193,14 +267,16 @@ static const char *const s_achievementMedalLockedPaths[PLAYERSETTINGS_ACHIEVEMEN
         ART_MEDAL_KILLS_LOCKED,
         ART_MEDAL_WINS_LOCKED,
         ART_MEDAL_FLAGS_LOCKED,
-        ART_MEDAL_ASSISTS_LOCKED
+        ART_MEDAL_ASSISTS_LOCKED,
+        ART_MEDAL_FUEL_LOCKED
 };
 static const char *const s_achievementMedalUnlockedPaths[PLAYERSETTINGS_ACHIEVEMENT_ICON_COUNT] = {
         ART_MEDAL_DRIVEN_UNLOCKED,
         ART_MEDAL_KILLS_UNLOCKED,
         ART_MEDAL_WINS_UNLOCKED,
         ART_MEDAL_FLAGS_UNLOCKED,
-        ART_MEDAL_ASSISTS_UNLOCKED
+        ART_MEDAL_ASSISTS_UNLOCKED,
+        ART_MEDAL_FUEL_UNLOCKED
 };
 
 static qhandle_t PlayerSettings_RegisterAchievementMedal( const char *basePath ) {
@@ -230,7 +306,7 @@ static qhandle_t PlayerSettings_RegisterAchievementMedal( const char *basePath )
         return 0;
 }
 
-#define PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL 25
+#define PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL 48
 
 static const char *const s_genderItems[] = {
         "Unspecified",
@@ -2037,24 +2113,19 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 	}
 }
 
-static int PlayerSettings_DrawAchievementSection( int row, const char *title, const double *thresholds, int count, double progress, const char *suffix, playersettingsAchievementIcon_t iconIndex ) {
+static int PlayerSettings_DrawAchievementSection( int row, const char *title, const playersettingsAchievementTierDef_t *tiers, int count, double progress, playersettingsAchievementIcon_t iconIndex ) {
         int i;
-        int titleY;
-        int valueY;
         int rowTop;
         int rowBottom;
+        int titleX;
+        int titleY;
         float areaLeft;
         float areaRight;
         float availableWidth;
-        float gap;
-        float totalEntryWidth;
-        float startX;
+        float columnWidth;
+        float columnGap;
+        float gridTop;
         int unlockedCount;
-        int titleX;
-        float iconY;
-        char entryBuffers[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS][64];
-        float entryWidths[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
-        float entryTextWidths[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
         qboolean entryUnlocked[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
         qhandle_t lockedIconHandle;
         qhandle_t unlockedIconHandle;
@@ -2065,7 +2136,7 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
         if ( count > PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
                 count = PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS;
         }
-        if ( count <= 0 ) {
+        if ( count <= 0 || !tiers ) {
                 return 0;
         }
 
@@ -2076,15 +2147,20 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
                 unlockedIconHandle = s_playersettings.achievementMedalUnlocked[iconIndex];
         }
 
+        unlockedCount = 0;
+        for ( i = 0; i < count; ++i ) {
+                entryUnlocked[i] = ( progress >= tiers[i].threshold );
+                if ( entryUnlocked[i] ) {
+                        ++unlockedCount;
+                }
+        }
+
         PlayerSettings_GetAchievementRowBounds( row, &rowTop, &rowBottom );
         PlayerSettings_GetScrollViewportBounds( PlayerSettings_GetAchievementsContentHeight(), &viewportTop, &viewportBottom );
         visible = ( rowBottom > (int)viewportTop && rowTop < (int)viewportBottom );
 
         titleX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
         titleY = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET;
-        valueY = rowTop + PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE;
-        iconY = rowTop + ( PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT - PLAYERSETTINGS_ACHIEVEMENT_ICON_SIZE ) * 0.5f
-                + PLAYERSETTINGS_ACHIEVEMENT_ICON_Y_OFFSET;
 
         if ( visible ) {
                 UI_DrawProportionalString( titleX, titleY, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
@@ -2097,117 +2173,62 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
         }
 
         availableWidth = areaRight - areaLeft;
-        gap = PLAYERSETTINGS_ACHIEVEMENT_TIER_GAP;
-        totalEntryWidth = 0.0f;
-        unlockedCount = 0;
-
-        for ( i = 0; i < count; ++i ) {
-                qboolean unlocked;
-                float textWidth;
-                float iconWidth;
-                float entryWidth;
-                qhandle_t iconHandle;
-
-                unlocked = ( progress >= thresholds[i] );
-                entryUnlocked[i] = unlocked;
-                if ( unlocked ) {
-                        ++unlockedCount;
-                }
-
-                if ( suffix && suffix[0] ) {
-                        Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%.0f %s", thresholds[i], suffix );
-                } else {
-                        Com_sprintf( entryBuffers[i], sizeof( entryBuffers[i] ), "%.0f", thresholds[i] );
-                }
-
-                textWidth = UI_ProportionalStringWidth( entryBuffers[i] ) * UI_ProportionalSizeScale( UI_SMALLFONT );
-                entryTextWidths[i] = textWidth;
-
-                iconHandle = entryUnlocked[i] ? unlockedIconHandle : lockedIconHandle;
-                iconWidth = ( iconHandle != 0 ) ? PLAYERSETTINGS_ACHIEVEMENT_ICON_SIZE : 0.0f;
-
-                entryWidth = textWidth;
-                if ( iconWidth > 0.0f ) {
-                        entryWidth += iconWidth;
-                        if ( textWidth > 0.0f ) {
-                                entryWidth += PLAYERSETTINGS_ACHIEVEMENT_ICON_TEXT_GAP;
-                        }
-                }
-
-                entryWidths[i] = entryWidth;
-                totalEntryWidth += entryWidth;
+        columnGap = ( PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE > 1 ) ? PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP : 0.0f;
+        columnWidth = availableWidth - columnGap * ( PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE - 1 );
+        if ( PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE > 0 ) {
+                columnWidth /= PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE;
+        }
+        if ( columnWidth < PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE ) {
+                columnWidth = PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
         }
 
-        if ( count > 1 ) {
-                float maxGapWidth;
-
-                maxGapWidth = availableWidth - totalEntryWidth;
-                if ( maxGapWidth < 0.0f ) {
-                        gap = 0.0f;
-                } else {
-                        float desiredSpacing = gap * ( count - 1 );
-
-                        if ( totalEntryWidth + desiredSpacing > availableWidth ) {
-                                gap = maxGapWidth / (float)( count - 1 );
-                        }
-                }
-        } else {
-                gap = 0.0f;
-        }
-
-        startX = areaLeft;
+        gridTop = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP;
 
         if ( visible ) {
                 for ( i = 0; i < count; ++i ) {
+                        int column;
+                        int tierRow;
+                        float entryLeft;
+                        float entryTop;
+                        float textX;
+                        float nameY;
+                        float descriptionY;
                         qhandle_t iconHandle;
                         float iconWidth;
-                        float textX;
+                        const char *name;
+                        const char *description;
+
+                        column = i % PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE;
+                        tierRow = i / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE;
+                        entryLeft = areaLeft + column * ( columnWidth + columnGap );
+                        entryTop = gridTop + tierRow * ( PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP );
 
                         iconHandle = entryUnlocked[i] ? unlockedIconHandle : lockedIconHandle;
-                        iconWidth = ( iconHandle != 0 ) ? PLAYERSETTINGS_ACHIEVEMENT_ICON_SIZE : 0.0f;
-
+                        iconWidth = ( iconHandle != 0 ) ? PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE : 0.0f;
                         if ( iconWidth > 0.0f ) {
-                                UI_DrawHandlePic( (int)startX, (int)iconY, PLAYERSETTINGS_ACHIEVEMENT_ICON_SIZE, PLAYERSETTINGS_ACHIEVEMENT_ICON_SIZE, iconHandle );
+                                UI_DrawHandlePic( (int)entryLeft, (int)entryTop, PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE, PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE, iconHandle );
                         }
 
-                        textX = startX;
+                        textX = entryLeft;
                         if ( iconWidth > 0.0f ) {
-                                textX += iconWidth;
-                                if ( entryTextWidths[i] > 0.0f ) {
-                                        textX += PLAYERSETTINGS_ACHIEVEMENT_ICON_TEXT_GAP;
-                                }
+                                textX += iconWidth + PLAYERSETTINGS_ACHIEVEMENT_TEXT_GAP;
                         }
 
-                        if ( entryBuffers[i][0] ) {
-                                UI_DrawProportionalString( (int)textX, valueY, entryBuffers[i], UI_LEFT | UI_SMALLFONT, entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor );
-                        }
+                        name = tiers[i].name;
+                        description = tiers[i].description;
+                        nameY = entryTop + 12.0f;
+                        descriptionY = nameY + PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT;
 
-                        startX += entryWidths[i];
-                        if ( i < count - 1 ) {
-                                startX += gap;
+                        if ( name && name[0] ) {
+                                UI_DrawProportionalString( (int)textX, (int)nameY, name, UI_LEFT | UI_SMALLFONT, entryUnlocked[i] ? text_color_highlight : achievementLockedColor );
+                        }
+                        if ( description && description[0] ) {
+                                UI_DrawProportionalString( (int)textX, (int)descriptionY, description, UI_LEFT | UI_SMALLFONT, entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor );
                         }
                 }
         }
 
         return unlockedCount;
-}
-static int PlayerSettings_DrawAchievementSectionDouble( int row, const char *title, const double *thresholds, int count, double progress, const char *unit, playersettingsAchievementIcon_t iconIndex ) {
-        return PlayerSettings_DrawAchievementSection( row, title, thresholds, count, progress, unit, iconIndex );
-}
-
-static int PlayerSettings_DrawAchievementSectionInt( int row, const char *title, const int *thresholds, int count, int progress, const char *suffix, playersettingsAchievementIcon_t iconIndex ) {
-        double thresholdsBuffer[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
-        int i;
-
-        if ( count > PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
-                count = PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS;
-        }
-
-        for ( i = 0; i < count; ++i ) {
-                thresholdsBuffer[i] = (double)thresholds[i];
-        }
-
-        return PlayerSettings_DrawAchievementSection( row, title, thresholdsBuffer, count, (double)progress, suffix, iconIndex );
 }
 
 static void PlayerSettings_DrawAchievementsTab( void ) {
@@ -2247,11 +2268,12 @@ static void PlayerSettings_DrawAchievementsTab( void ) {
         displayTotalAchievements = PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL;
 
         row = PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW;
-        unlockedAchievements += PlayerSettings_DrawAchievementSectionDouble( row++, "Distance Driven", s_distanceAchievements, ARRAY_LEN( s_distanceAchievements ), stats->distanceKm, "km", PLAYERSETTINGS_ACHIEVEMENT_ICON_DRIVEN );
-        unlockedAchievements += PlayerSettings_DrawAchievementSectionInt( row++, "Kills", s_killAchievements, ARRAY_LEN( s_killAchievements ), stats->kills, "kills", PLAYERSETTINGS_ACHIEVEMENT_ICON_KILLS );
-        unlockedAchievements += PlayerSettings_DrawAchievementSectionInt( row++, "Races Won", s_winAchievements, ARRAY_LEN( s_winAchievements ), stats->wins, "wins", PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS );
-        unlockedAchievements += PlayerSettings_DrawAchievementSectionInt( row++, "Flags Captured", s_flagAchievements, ARRAY_LEN( s_flagAchievements ), stats->flagCaptures, "flags", PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAGS );
-        unlockedAchievements += PlayerSettings_DrawAchievementSectionInt( row++, "Flag Assists", s_flagAssistAchievements, ARRAY_LEN( s_flagAssistAchievements ), stats->flagAssists, "assists", PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAG_ASSISTS );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Distance Driven", s_distanceAchievementTiers, ARRAY_LEN( s_distanceAchievementTiers ), stats->distanceKm, PLAYERSETTINGS_ACHIEVEMENT_ICON_DRIVEN );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Kills", s_killAchievementTiers, ARRAY_LEN( s_killAchievementTiers ), (double)stats->kills, PLAYERSETTINGS_ACHIEVEMENT_ICON_KILLS );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Races Won", s_winAchievementTiers, ARRAY_LEN( s_winAchievementTiers ), (double)stats->wins, PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flags Captured", s_flagCaptureAchievementTiers, ARRAY_LEN( s_flagCaptureAchievementTiers ), (double)stats->flagCaptures, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAGS );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flag Assists", s_flagAssistAchievementTiers, ARRAY_LEN( s_flagAssistAchievementTiers ), (double)stats->flagAssists, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAG_ASSISTS );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Fuel Consumed", s_fuelAchievementTiers, ARRAY_LEN( s_fuelAchievementTiers ), stats->fuelUsed, PLAYERSETTINGS_ACHIEVEMENT_ICON_FUEL );
 
         if ( unlockedAchievements > displayTotalAchievements ) {
                 unlockedAchievements = displayTotalAchievements;
