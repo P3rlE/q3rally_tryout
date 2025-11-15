@@ -126,7 +126,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP   24.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP           32.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_TEXT_GAP             24.0f
-#define PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT     20.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT     12.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER        0.5f
 #define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS           (( PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS + PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE - 1 ) / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE )
 #define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT           ( PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + ( PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP )
 #define PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE       PLAYERSETTINGS_PROFILE_VALUE_BASELINE
@@ -2185,6 +2186,8 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
         gridTop = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP;
 
         if ( visible ) {
+                const float textScale = UI_ProportionalSizeScale( UI_SMALLFONT ) * PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER;
+                const float textLineHeight = PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT * PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER;
                 for ( i = 0; i < count; ++i ) {
                         int column;
                         int tierRow;
@@ -2217,13 +2220,25 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
                         name = tiers[i].name;
                         description = tiers[i].description;
                         nameY = entryTop + 12.0f;
-                        descriptionY = nameY + PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT;
+                        descriptionY = nameY + textLineHeight;
 
                         if ( name && name[0] ) {
-                                UI_DrawProportionalString( (int)textX, (int)nameY, name, UI_LEFT | UI_SMALLFONT, entryUnlocked[i] ? text_color_highlight : achievementLockedColor );
+                                UI_DrawScaledProportionalString(
+                                        ( int )textX,
+                                        ( int )nameY,
+                                        name,
+                                        UI_LEFT | UI_SMALLFONT,
+                                        entryUnlocked[i] ? text_color_highlight : achievementLockedColor,
+                                        textScale );
                         }
                         if ( description && description[0] ) {
-                                UI_DrawProportionalString( (int)textX, (int)descriptionY, description, UI_LEFT | UI_SMALLFONT, entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor );
+                                UI_DrawScaledProportionalString(
+                                        ( int )textX,
+                                        ( int )descriptionY,
+                                        description,
+                                        UI_LEFT | UI_SMALLFONT,
+                                        entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor,
+                                        textScale );
                         }
                 }
         }
