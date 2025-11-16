@@ -543,15 +543,8 @@ static int PlayerSettings_GetBirthYearIndex( int year ) {
 		return 0;
 	}
 
-	return ( year - BIRTH_YEAR_START ) + 1;
-}
-
-static int PlayerSettings_GetDaysInMonth( int year, int month ) {
-	static const int daysPerMonth[] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-	int days;
-
-	if ( month < 1 || month > 12 ) {
-		return BIRTH_DAY_MAX;
+	if ( count > PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
+		count = PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS;
 	}
 
 	days = daysPerMonth[month];
@@ -564,907 +557,140 @@ static int PlayerSettings_GetDaysInMonth( int year, int month ) {
 			days = 29;
 		}
 
-	return days;
+	return count;
 }
 
-static void PlayerSettings_UpdateBirthDateDayItems( void ) {
-        int maxDay;
-        int monthIndex;
-        int yearIndex;
+static void PlayerSettings_GetAchievementContentArea( float *left, float *right ) {
+	float areaLeft;
+	float areaRight;
 
-        maxDay = BIRTH_DAY_MAX;
-        monthIndex = s_playersettings.birthMonth.curvalue;
-        yearIndex = s_playersettings.birthYear.curvalue;
+	areaLeft = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_VALUE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
+	areaRight = PLAYERSETTINGS_PROFILE_ROW_RIGHT - PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
+	if ( areaRight <= areaLeft ) {
+		areaRight = areaLeft + 1.0f;
+	}
 
-        if ( monthIndex > 0 && monthIndex <= 12 && yearIndex > 0 && yearIndex <= BIRTH_YEAR_COUNT ) {
-                int year;
-
-                year = PlayerSettings_GetBirthYearFromIndex( yearIndex );
-                maxDay = PlayerSettings_GetDaysInMonth( year, monthIndex );
-        }
-
-        s_playersettings.birthDay.numitems = maxDay + 1;
-
-        if ( s_playersettings.birthDay.curvalue >= s_playersettings.birthDay.numitems ) {
-                s_playersettings.birthDay.curvalue = s_playersettings.birthDay.numitems - 1;
-        }
+	if ( left ) {
+		*left = areaLeft;
+	}
+	if ( right ) {
+		*right = areaRight;
+	}
 }
 
-static int PlayerSettings_FindGenderIndex( const char *value ) {
+static void PlayerSettings_ComputeAchievementGridLayout( int tierCount, playersettingsAchievementGridLayout_t *layout ) {
+	float areaLeft;
+	float areaRight;
+	float availableWidth;
+	int maxColumns;
 	int i;
+	int bestColumns;
+	float bestGap;
+	float bestWidth;
 
-	if ( !value || !value[0] ) {
-		return 0;
-	}
-
-	for ( i = 1; s_genderItems[i]; ++i ) {
-		if ( !Q_stricmp( value, s_genderItems[i] ) ) {
-			return i;
-		}
-	}
-
-	return 0;
-}
-
-static const char *PlayerSettings_GetGenderValue( int index ) {
-	if ( index <= 0 || !s_genderItems[index] ) {
-		return "";
-	}
-
-	return s_genderItems[index];
-}
-
-static qboolean PlayerSettings_ParseBirthDate( const char *value, int *outYear, int *outMonth, int *outDay ) {
-	int year;
-	int month;
-	int day;
-	int i;
-
-	if ( !value ) {
-		return qfalse;
-	}
-
-	if ( value[0] == '\0' ) {
-		return qfalse;
-	}
-
-	for ( i = 0; i < 10; ++i ) {
-		char c = value[i];
-
-		if ( i == 4 || i == 7 ) {
-			if ( c != '-' ) {
-				return qfalse;
-			}
-			continue;
-		}
-
-		if ( c < '0' || c > '9' ) {
-			return qfalse;
-		}
-	}
-
-	if ( value[10] != '\0' ) {
-		return qfalse;
-	}
-
-	year = ( value[0] - '0' ) * 1000 + ( value[1] - '0' ) * 100 + ( value[2] - '0' ) * 10 + ( value[3] - '0' );
-	month = ( value[5] - '0' ) * 10 + ( value[6] - '0' );
-	day = ( value[8] - '0' ) * 10 + ( value[9] - '0' );
-
-	if ( year < BIRTH_YEAR_START || year > BIRTH_YEAR_END ) {
-		return qfalse;
-	}
-
-	if ( month < 1 || month > 12 ) {
-		return qfalse;
-	}
-
-	if ( day < 1 || day > PlayerSettings_GetDaysInMonth( year, month ) ) {
-		return qfalse;
-	}
-
-	if ( outYear ) {
-		*outYear = year;
-	}
-
-	if ( outMonth ) {
-		*outMonth = month;
-	}
-
-	if ( outDay ) {
-		*outDay = day;
-	}
-
-	return qtrue;
-}
-
-/*
-=================
-PlayerSettings_DrawName
-=================
-*/
-static void PlayerSettings_DrawName( void *self ) {
-	menufield_s		*f;
-	qboolean		focus;
-	int				style;
-	char			*txt;
-	char			c;
-	float			*color;
-	int				n;
-	int				basex, x, y;
-// STONELANCE
-//	char			name[32];
-// END
-
-	f = (menufield_s*)self;
-	basex = f->generic.x;
-	y = f->generic.y;
-	focus = (f->generic.parent->cursor == f->generic.menuPosition);
-
-	style = UI_LEFT|UI_SMALLFONT;
-// STONELANCE
-/*
-	color = text_color_normal;
-	if( focus ) {
-		style |= UI_PULSE;
-		color = text_color_highlight;
-	}
-	UI_DrawProportionalString( basex, y, "Name", style, color );
-*/
-	color = uis.text_color;
-	if( focus ) {
-		style |= UI_PULSE;
-		color = text_color_highlight;
-	}
-
-	UI_DrawProportionalString( basex + PLAYERSETTINGS_PROFILE_LABEL_OFFSET, y, "Name", style, color );
-// END
-
-	// draw the actual name
-	basex += PLAYERSETTINGS_PROFILE_VALUE_OFFSET;
-// STONELANCE
-//	y += PROP_HEIGHT;
-	y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
-// END
-	txt = f->field.buffer;
-// STONELANCE
-//	color = g_color_table[ColorIndex(COLOR_WHITE)];
-// END
-	x = basex;
-	while ( (c = *txt) != 0 ) {
-		if ( !focus && Q_IsColorString( txt ) ) {
-			n = ColorIndex( *(txt+1) );
-			if( n == 0 ) {
-				n = 7;
-			}
-			color = g_color_table[n];
-			txt += 2;
-			continue;
-		}
-		UI_DrawChar( x, y, c, style, color );
-		txt++;
-		x += SMALLCHAR_WIDTH;
-	}
-
-	// draw cursor if we have focus
-	if( focus ) {
-		if ( trap_Key_GetOverstrikeMode() ) {
-			c = 11;
-		} else {
-			c = 10;
-		}
-
-		style &= ~UI_PULSE;
-		style |= UI_BLINK;
-
-		UI_DrawChar( basex + f->field.cursor * SMALLCHAR_WIDTH, y, c, style, color_white );
-	}
-
-// STONELANCE
-/*
-	// draw at bottom also using proportional font
-	Q_strncpyz( name, f->field.buffer, sizeof(name) );
-	Q_CleanStr( name );
-	UI_DrawProportionalString( 320, 440, name, UI_CENTER|UI_BIGFONT, text_color_normal );
-*/
-// END
-}
-
-
-static void PlayerSettings_DrawProfileField( void *self ) {
-        menufield_s *f = (menufield_s *)self;
-        qboolean disabled;
-        qboolean focus;
-        int style;
-	char *txt;
-	char c;
-	float *color;
-	int n;
-	int basex, x, y;
-
-	basex = f->generic.x;
-	y = f->generic.y;
-	disabled = ( qboolean )( f->generic.flags & ( QMF_GRAYED | QMF_INACTIVE ) );
-	focus = !disabled && ( f->generic.parent->cursor == f->generic.menuPosition );
-
-	style = UI_LEFT | UI_SMALLFONT;
-	color = disabled ? text_color_disabled : uis.text_color;
-	if ( focus ) {
-		style |= UI_PULSE;
-		color = text_color_highlight;
-	}
-
-	UI_DrawProportionalString( basex + PLAYERSETTINGS_PROFILE_LABEL_OFFSET, y, f->generic.name ? f->generic.name : "", style, color );
-
-	basex += PLAYERSETTINGS_PROFILE_VALUE_OFFSET;
-	y += PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
-	txt = f->field.buffer;
-	color = disabled ? text_color_disabled : g_color_table[ColorIndex( COLOR_WHITE )];
-	x = basex;
-
-	while ( ( c = *txt ) != 0 ) {
-		if ( !disabled && !focus && Q_IsColorString( txt ) ) {
-			n = ColorIndex( *( txt + 1 ) );
-			if ( n == 0 ) {
-				n = 7;
-			}
-			color = g_color_table[n];
-			txt += 2;
-			continue;
-		}
-		UI_DrawChar( x, y, c, style, color );
-		txt++;
-		x += SMALLCHAR_WIDTH;
-	}
-
-	if ( focus ) {
-		if ( trap_Key_GetOverstrikeMode() ) {
-			c = 11;
-		} else {
-			c = 10;
-		}
-
-		style &= ~UI_PULSE;
-		style |= UI_BLINK;
-
-		UI_DrawChar( basex + f->field.cursor * SMALLCHAR_WIDTH, y, c, style, color_white );
-	}
-}
-
-
-static void PlayerSettings_SetAvatarProfileName( const char *profileName ) {
-	if ( !profileName ) {
-		profileName = "";
-	}
-
-	if ( !Q_stricmp( profileName, s_playersettings.avatarProfileName ) ) {
+	if ( !layout ) {
 		return;
 	}
 
-	Q_strncpyz( s_playersettings.avatarProfileName, profileName, sizeof( s_playersettings.avatarProfileName ) );
-
-	if ( profileName[0] ) {
-		Com_sprintf( s_playersettings.profileInfo.avatar, sizeof( s_playersettings.profileInfo.avatar ), "gfx/avatars/%s", profileName );
-		Com_sprintf( s_playersettings.avatarDisplayPath, sizeof( s_playersettings.avatarDisplayPath ), "baseq3r/gfx/avatars/%s.tga", profileName );
-	} else {
-		s_playersettings.profileInfo.avatar[0] = '\0';
-		s_playersettings.avatarDisplayPath[0] = '\0';
+	PlayerSettings_GetAchievementContentArea( &areaLeft, &areaRight );
+	availableWidth = areaRight - areaLeft;
+	if ( availableWidth <= 0.0f ) {
+		availableWidth = PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
 	}
 
-	s_playersettings.avatarShader = 0;
-	s_playersettings.avatarShaderInitialized = qfalse;
-	s_playersettings.avatarShaderName[0] = '\0';
-}
-
-
-static void PlayerSettings_EnsureAvatarShader( void ) {
-	const char *shaderName;
-
-	PlayerSettings_SetAvatarProfileName( UI_Profile_GetActiveName() );
-
-	shaderName = s_playersettings.profileInfo.avatar;
-
-	if ( !shaderName[0] ) {
-		if ( s_playersettings.avatarShaderInitialized || s_playersettings.avatarShaderName[0] || s_playersettings.avatarShader ) {
-			s_playersettings.avatarShader = 0;
-			s_playersettings.avatarShaderInitialized = qfalse;
-			s_playersettings.avatarShaderName[0] = '\0';
-		}
-		return;
+	if ( tierCount <= 0 ) {
+		tierCount = 1;
 	}
 
-	if ( s_playersettings.avatarShaderInitialized && !Q_stricmp( shaderName, s_playersettings.avatarShaderName ) ) {
-		return;
-	}
+	maxColumns = tierCount;
+	bestColumns = 1;
+	bestGap = 0.0f;
+	bestWidth = availableWidth;
 
-	Q_strncpyz( s_playersettings.avatarShaderName, shaderName, sizeof( s_playersettings.avatarShaderName ) );
-	s_playersettings.avatarShader = trap_R_RegisterShaderNoMip( shaderName );
-	s_playersettings.avatarShaderInitialized = qtrue;
-}
+	for ( i = maxColumns; i >= 1; --i ) {
+		float gap;
+		float width;
 
-
-static void PlayerSettings_DrawClippedSmallString( int x, int y, int maxX, const char *text, int style, float *color ) {
-	int drawX;
-	char c;
-
-	if ( maxX <= x ) {
-		return;
-	}
-
-	drawX = x;
-	while ( ( c = *text ) != 0 ) {
-		if ( drawX + SMALLCHAR_WIDTH > maxX ) {
+		gap = ( i > 1 ) ? PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP : 0.0f;
+		width = ( availableWidth - gap * ( i - 1 ) ) / i;
+		if ( width >= PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE ) {
+			bestColumns = i;
+			bestGap = gap;
+			bestWidth = width;
 			break;
 		}
-		UI_DrawChar( drawX, y, c, style, color );
-		++text;
-		drawX += SMALLCHAR_WIDTH;
-	}
-}
-
-
-static void PlayerSettings_DrawAvatarImage( void *self ) {
-	menufield_s *f = (menufield_s *)self;
-	qboolean inactive;
-	qboolean disabled;
-	qboolean focus;
-	int style;
-	float *color;
-	int basex;
-	int y;
-	int rowHeight;
-	int imageSize;
-	int rightEdge;
-	int imageX;
-	int imageY;
-	int textRight;
-	int textLineY;
-	int secondaryStyle;
-	float *secondaryColor;
-	vec4_t background;
-	vec4_t border;
-	const char *line1;
-	const char *line2;
-	char derivedPath[MAX_OSPATH];
-	char combinedLine[MAX_OSPATH + 64];
-
-	inactive = ( qboolean )( f->generic.flags & QMF_INACTIVE );
-	disabled = ( qboolean )( f->generic.flags & QMF_GRAYED );
-	focus = !inactive && ( f->generic.parent->cursor == f->generic.menuPosition );
-
-	style = UI_LEFT | UI_SMALLFONT;
-	color = disabled ? text_color_disabled : uis.text_color;
-	if ( focus ) {
-		style |= UI_PULSE;
-		color = text_color_highlight;
-	}
-
-	UI_DrawProportionalString( f->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET, f->generic.y, f->generic.name ? f->generic.name : "", style, color );
-
-	PlayerSettings_EnsureAvatarShader();
-
-	basex = f->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET;
-	y = f->generic.y;
-	rowHeight = f->generic.bottom - f->generic.top;
-	rightEdge = f->generic.right - 8;
-	if ( rightEdge < basex ) {
-		rightEdge = basex;
-	}
-	imageSize = rowHeight - 8;
-	if ( imageSize < 0 ) {
-		imageSize = 0;
-	}
-	if ( imageSize > 96 ) {
-		imageSize = 96;
-	}
-	if ( imageSize > rightEdge - basex ) {
-		imageSize = rightEdge - basex;
-	}
-	if ( imageSize < 0 ) {
-		imageSize = 0;
-	}
-
-	if ( imageSize > 0 ) {
-		imageX = rightEdge - imageSize;
-		if ( imageX < basex ) {
-			imageX = basex;
+		if ( i == 1 ) {
+			bestColumns = 1;
+			bestGap = 0.0f;
+			bestWidth = width;
 		}
-		textRight = imageX - 8;
-	} else {
-		imageX = rightEdge;
-		textRight = rightEdge;
 	}
-	if ( textRight < basex ) {
-		textRight = basex;
-	}
-	imageY = f->generic.top + ( rowHeight - imageSize ) / 2;
 
-	Vector4Copy( avatarImageBackgroundColor, background );
-	if ( disabled ) {
-		background[3] *= 0.6f;
-	}
-	background[3] *= uis.tFrac;
-
-	Vector4Copy( profileRowBorderColor, border );
-	border[3] *= uis.tFrac;
-
-	if ( imageSize > 0 ) {
-		UI_FillRect( imageX, imageY, imageSize, imageSize, background );
-
-		if ( s_playersettings.avatarShader ) {
-			trap_R_SetColor( NULL );
-			UI_DrawHandlePic( imageX, imageY, imageSize, imageSize, s_playersettings.avatarShader );
-		} else if ( s_playersettings.profileInfo.avatar[0] ) {
-			UI_DrawProportionalString( imageX + imageSize / 2, imageY + imageSize / 2 - 6, "Missing", UI_CENTER | UI_SMALLFONT, avatarImageMissingColor );
+	if ( bestWidth < PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE ) {
+		bestWidth = PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
+		if ( bestColumns > 1 ) {
+			bestGap = ( availableWidth - bestWidth * bestColumns ) / ( bestColumns - 1 );
+			if ( bestGap < 0.0f ) {
+				bestGap = 0.0f;
+			}
 		} else {
-			UI_DrawProportionalString( imageX + imageSize / 2, imageY + imageSize / 2 - 6, "No Avatar", UI_CENTER | UI_SMALLFONT, text_color_disabled );
+			bestGap = 0.0f;
 		}
-
-		UI_DrawRect( imageX, imageY, imageSize, imageSize, border );
 	}
 
-	style = UI_LEFT | UI_SMALLFONT;
-	color = disabled ? text_color_disabled : g_color_table[ColorIndex( COLOR_WHITE )];
-	if ( focus ) {
-		style |= UI_PULSE;
-		color = text_color_highlight;
-	}
-
-	textLineY = y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
-	if ( s_playersettings.avatarProfileName[0] ) {
-		const char *avatarPath;
-		if ( s_playersettings.avatarDisplayPath[0] ) {
-			avatarPath = s_playersettings.avatarDisplayPath;
-		} else {
-			Com_sprintf( derivedPath, sizeof( derivedPath ), "baseq3r/gfx/avatars/%s.tga", s_playersettings.avatarProfileName );
-			avatarPath = derivedPath;
-		}
-
-		Com_sprintf( combinedLine, sizeof( combinedLine ), "Avatar file: %s", avatarPath );
-		line1 = combinedLine;
-		line2 = "";
-	} else {
-		Com_sprintf( combinedLine, sizeof( combinedLine ), "No active profile. Create or select a profile to display an avatar." );
-		line1 = combinedLine;
-		line2 = "";
-	}
-
-	PlayerSettings_DrawClippedSmallString( basex, textLineY, textRight, line1, style, color );
-
-	secondaryStyle = UI_LEFT | UI_SMALLFONT;
-	secondaryColor = disabled ? text_color_disabled : text_color_normal;
-	if ( line2[0] ) {
-		PlayerSettings_DrawClippedSmallString( basex, textLineY + SMALLCHAR_HEIGHT + 2, textRight, line2, secondaryStyle, secondaryColor );
+	layout->columns = bestColumns;
+	layout->columnGap = bestGap;
+	layout->columnWidth = bestWidth;
+	layout->rows = ( tierCount + bestColumns - 1 ) / bestColumns;
+	if ( layout->rows < 1 ) {
+		layout->rows = 1;
 	}
 }
 
+static float PlayerSettings_GetAchievementRowHeight( int row ) {
+	playersettingsAchievementGridLayout_t layout;
+	float rowHeight;
+	int tierCount;
 
-static void PlayerSettings_DrawHandicap( void *self ) {
-	menulist_s		*item;
-	qboolean		focus;
-	int				style;
-	float			*color;
-
-	item = (menulist_s *)self;
-	focus = (item->generic.parent->cursor == item->generic.menuPosition);
-
-	style = UI_LEFT|UI_SMALLFONT;
-// STONELANCE
-/*
-	color = text_color_normal;
-	if( focus ) {
-		style |= UI_PULSE;
-		color = text_color_highlight;
+	if ( row < 0 || row >= PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT ) {
+		return 0.0f;
 	}
 
-	UI_DrawProportionalString( item->generic.x, item->generic.y, "Handicap", style, color );
-	UI_DrawProportionalString( item->generic.x + 64, item->generic.y + PROP_HEIGHT, handicap_items[item->curvalue], style, color );
-*/
-	color = uis.text_color;
-	if( focus && !(uis.transitionIn || uis.transitionOut)) {
-		style |= UI_PULSE;
-		color = text_color_highlight;
+	tierCount = PlayerSettings_GetAchievementSectionTierCount( row );
+	if ( tierCount <= 0 ) {
+		return 0.0f;
 	}
 
-	UI_DrawProportionalString( item->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET, item->generic.y, "Handicap", style, color );
-	UI_DrawString( item->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET, item->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE, handicap_items[item->curvalue], style, color );
-// END
+	PlayerSettings_ComputeAchievementGridLayout( tierCount, &layout );
+	rowHeight = PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP;
+	rowHeight += layout.rows * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
+	rowHeight += ( layout.rows - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP;
+
+	return rowHeight;
 }
 
-
-/*
-=================
-PlayerSettings_DrawEffects
-=================
-*/
-static void PlayerSettings_DrawEffects( void *self ) {
-	menulist_s		*item;
-	qboolean		focus;
-	int				style;
-	float			*color;
-
-	item = (menulist_s *)self;
-	focus = (item->generic.parent->cursor == item->generic.menuPosition);
-
-	style = UI_LEFT|UI_SMALLFONT;
-// STONELANCE
-/*
-	color = text_color_normal;
-	if( focus ) {
-		style |= UI_PULSE;
-		color = text_color_highlight;
-	}
-
-	UI_DrawProportionalString( item->generic.x, item->generic.y, "Effects", style, color );
-
-	UI_DrawHandlePic( item->generic.x + 64, item->generic.y + PROP_HEIGHT + 8, 128, 8, s_playersettings.fxBasePic );
-	UI_DrawHandlePic( item->generic.x + 64 + item->curvalue * 16 + 8, item->generic.y + PROP_HEIGHT + 6, 16, 12, s_playersettings.fxPic[item->curvalue] );
-*/
-
-	color = uis.text_color;
-	if( focus && !(uis.transitionIn || uis.transitionOut)) {
-		style |= UI_PULSE;
-		color = text_color_highlight;
-	}
-
-	UI_DrawProportionalString( item->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET, item->generic.y, "Effects", style, color );
-
-	{
-		const int sliderX = item->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET;
-		const int sliderY = item->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
-
-		UI_DrawHandlePic( sliderX, sliderY, 128, 16, s_playersettings.fxBasePic );
-		UI_DrawHandlePic( sliderX + 5 + item->curvalue * 17, sliderY, 16, 16, s_playersettings.fxPic[item->curvalue] );
-	}
-// END
-}
-
-
-// STONELANCE
-/*
-=================
-PlayerSettings_DrawCustomize
-=================
-*/
-static void PlayerSettings_DrawCustomize( void *self ) {
-	menulist_s		*item;
-	qboolean		focus;
-	int				style;
-	float			*color;
-
-	item = (menulist_s *)self;
-	focus = (item->generic.parent->cursor == item->generic.menuPosition);
-
-	style = UI_RIGHT | UI_SMALLFONT;
-	color = uis.text_color;
-	if( focus && !(uis.transitionIn || uis.transitionOut)) {
-		style |= UI_PULSE;
-		color = text_color_highlight;
-	}
-
-	UI_DrawProportionalString( item->generic.x, item->generic.y, "CUSTOMIZE", style, color );
-	UI_DrawProportionalString( item->generic.x, item->generic.y + 20, "THIS CAR >", style, color );
-}
-
-static void PlayerSettings_SetWidgetVisible( menucommon_s *item, qboolean visible ) {
-        if ( !item ) {
-                return;
-	}
-
-        if ( visible ) {
-                item->flags &= ~QMF_HIDDEN;
-	} else {
-                item->flags |= QMF_HIDDEN;
-	}
-}
-
-
-static void PlayerSettings_DrawProfileList( void *self ) {
-        menulist_s *item = (menulist_s *)self;
-        qboolean disabled;
-        qboolean focus;
-        int style;
-        float *color;
-        const char *value;
-        char buffer[64];
-
-        disabled = (qboolean)( item->generic.flags & ( QMF_GRAYED | QMF_INACTIVE ) );
-        focus = !disabled && ( item->generic.parent->cursor == item->generic.menuPosition );
-
-        style = UI_LEFT | UI_SMALLFONT;
-        color = disabled ? text_color_disabled : uis.text_color;
-        if ( focus ) {
-                style |= UI_PULSE;
-                color = text_color_highlight;
-	}
-
-        if ( item->generic.name && item->generic.name[0] ) {
-	UI_DrawProportionalString( item->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET, item->generic.y, item->generic.name, style, color );
-	}
-
-        value = "";
-        if ( item->itemnames && item->curvalue >= 0 && item->curvalue < item->numitems ) {
-                value = item->itemnames[item->curvalue];
-	}
-
-	Com_sprintf( buffer, sizeof( buffer ), "< %s >", value );
-	UI_DrawString( item->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET, item->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE, buffer, style, color );
-}
-
-
-static void PlayerSettings_DrawBirthDateComponent( void *self ) {
-        menulist_s *item = (menulist_s *)self;
-        qboolean disabled;
-        qboolean focus;
-        int style;
-        float *color;
-        const char *value;
-        char buffer[32];
-
-        disabled = (qboolean)( item->generic.flags & ( QMF_GRAYED | QMF_INACTIVE ) );
-        focus = !disabled && ( item->generic.parent->cursor == item->generic.menuPosition );
-
-        style = UI_LEFT | UI_SMALLFONT;
-        color = disabled ? text_color_disabled : uis.text_color;
-        if ( focus ) {
-                style |= UI_PULSE;
-                color = text_color_highlight;
-	}
-
-	if ( item->generic.name && item->generic.name[0] ) {
-	UI_DrawString( item->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET, item->generic.y - PLAYERSETTINGS_PROFILE_VALUE_BASELINE, item->generic.name, style, color );
-}
-
-        value = "";
-        if ( item->itemnames && item->curvalue >= 0 && item->curvalue < item->numitems ) {
-                value = item->itemnames[item->curvalue];
-	}
-
-	Com_sprintf( buffer, sizeof( buffer ), "< %s >", value );
-	UI_DrawString( item->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET, item->generic.y, buffer, style, color );
-}
-
-static void PlayerSettings_BirthDateChanged( void *ptr, int event ) {
-        menucommon_s *item;
-
-        if ( event != QM_ACTIVATED ) {
-                return;
-	}
-
-        item = (menucommon_s *)ptr;
-        if ( item->id == ID_BIRTH_MONTH || item->id == ID_BIRTH_YEAR ) {
-                PlayerSettings_UpdateBirthDateDayItems();
-	}
-}
-
-static int PlayerSettings_GetTabCenter( int index ) {
-        int totalWidth;
-        int start;
-
-        totalWidth = PLAYERSETTINGS_TAB_COUNT * PLAYERSETTINGS_TAB_WIDTH + (PLAYERSETTINGS_TAB_COUNT - 1) * PLAYERSETTINGS_TAB_GAP;
-        start = 320 - totalWidth / 2 + PLAYERSETTINGS_TAB_WIDTH / 2;
-
-        return start + index * (PLAYERSETTINGS_TAB_WIDTH + PLAYERSETTINGS_TAB_GAP);
-}
-
-static void PlayerSettings_ConfigureTab( menutext_s *tab, int index ) {
-        int center;
-
-        if ( !tab ) {
-                return;
-	}
-
-        center = PlayerSettings_GetTabCenter( index );
-
-        tab->generic.x = center;
-        tab->generic.y = PLAYERSETTINGS_TAB_TOP + PLAYERSETTINGS_TAB_TEXT_OFFSET;
-        tab->generic.left = center - PLAYERSETTINGS_TAB_WIDTH / 2;
-        tab->generic.right = center + PLAYERSETTINGS_TAB_WIDTH / 2;
-        tab->generic.top = PLAYERSETTINGS_TAB_TOP;
-        tab->generic.bottom = PLAYERSETTINGS_TAB_TOP + PLAYERSETTINGS_TAB_HEIGHT;
-}
-
-static int PlayerSettings_TabFromId( int id ) {
-        switch ( id ) {
-        case ID_TAB_PROFILE:
-                return TAB_PROFILE;
-        case ID_TAB_VEHICLE:
-                return TAB_VEHICLE;
-        case ID_TAB_STATS:
-                return TAB_STATS;
-        case ID_TAB_ACHIEVEMENTS:
-                return TAB_ACHIEVEMENTS;
-        default:
-                break;
-	}
-
-        return TAB_PROFILE;
-}
-
-static void PlayerSettings_DrawTabItem( void *self ) {
-        menutext_s *tab;
-        qboolean focus;
-        qboolean selected;
-        vec4_t background;
-        vec4_t border;
-        int style;
-
-        tab = (menutext_s *)self;
-        focus = ( tab->generic.parent->cursor == tab->generic.menuPosition );
-        selected = ( s_playersettings.currentTab == PlayerSettings_TabFromId( tab->generic.id ) );
-
-        Vector4Copy( selected ? tabSelectedBackgroundColor : tabBackgroundColor, background );
-        Vector4Copy( selected ? tabSelectedBorderColor : tabBorderColor, border );
-
-        background[3] *= uis.tFrac;
-        border[3] *= uis.tFrac;
-
-        UI_FillRect( tab->generic.left, tab->generic.top, PLAYERSETTINGS_TAB_WIDTH, PLAYERSETTINGS_TAB_HEIGHT, background );
-        UI_DrawRect( tab->generic.left, tab->generic.top, PLAYERSETTINGS_TAB_WIDTH, PLAYERSETTINGS_TAB_HEIGHT, border );
-
-        if ( focus && !selected ) {
-                vec4_t focusBorder;
-
-                Vector4Copy( tabFocusBorderColor, focusBorder );
-                focusBorder[3] *= uis.tFrac;
-                UI_DrawRect( tab->generic.left + 1, tab->generic.top + 1, PLAYERSETTINGS_TAB_WIDTH - 2, PLAYERSETTINGS_TAB_HEIGHT - 2, focusBorder );
-	}
-
-        style = UI_CENTER | UI_SMALLFONT;
-        if ( focus ) {
-                style |= UI_PULSE;
-	}
-
-        UI_DrawProportionalString( tab->generic.x, tab->generic.y, tab->string, style, tab->color );
-}
-
-
-static void PlayerSettings_GetProfileRowBounds( int row, int *top, int *bottom ) {
-	int rowTop;
-	int rowBottom;
-
-	rowTop = PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 2;
-	rowBottom = rowTop + PLAYERSETTINGS_PROFILE_ROW_HEIGHT;
-
-	switch ( row ) {
-	case PROFILE_ROW_NAME:
-		rowTop = s_playersettings.name.generic.top;
-		rowBottom = s_playersettings.name.generic.bottom;
-		break;
-	case PROFILE_ROW_GENDER:
-		rowTop = s_playersettings.gender.generic.top;
-		rowBottom = s_playersettings.gender.generic.bottom;
-		break;
-	case PROFILE_ROW_BIRTHDATE:
-		rowTop = s_playersettings.birthDateLabel.generic.top;
-		rowBottom = s_playersettings.birthDay.generic.bottom;
-		if ( s_playersettings.birthMonth.generic.bottom > rowBottom ) {
-			rowBottom = s_playersettings.birthMonth.generic.bottom;
-		}
-		if ( s_playersettings.birthYear.generic.bottom > rowBottom ) {
-			rowBottom = s_playersettings.birthYear.generic.bottom;
-		}
-		break;
-	case PROFILE_ROW_AVATAR:
-		rowTop = s_playersettings.avatar.generic.top;
-		rowBottom = s_playersettings.avatar.generic.bottom;
-		break;
-	case PROFILE_ROW_COUNTRY:
-		rowTop = s_playersettings.country.generic.top;
-		rowBottom = s_playersettings.country.generic.bottom;
-		break;
-	case PROFILE_ROW_HANDICAP:
-		rowTop = s_playersettings.handicap.generic.top;
-		rowBottom = s_playersettings.handicap.generic.bottom;
-		break;
-	case PROFILE_ROW_EFFECTS:
-		rowTop = s_playersettings.effects.generic.top;
-		rowBottom = s_playersettings.effects.generic.bottom;
-		break;
-	default:
-		break;
-	}
-
-	if ( rowBottom <= rowTop ) {
-		rowBottom = rowTop + PLAYERSETTINGS_PROFILE_ROW_HEIGHT;
-	}
-
-	if ( top ) {
-		*top = rowTop;
-	}
-	if ( bottom ) {
-		*bottom = rowBottom;
-	}
-}
-
-
-static void PlayerSettings_DrawProfilePanelBackground( void ) {
-	vec4_t panelColor;
-	vec4_t rowColor;
-	vec4_t borderColor;
-	int panelTop;
-	int panelBottom;
-	int i;
-
-	panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
-	PlayerSettings_GetProfileRowBounds( PROFILE_ROW_EFFECTS, NULL, &panelBottom );
-	panelBottom += PLAYERSETTINGS_PROFILE_PANEL_BOTTOM_EXTRA;
-	if ( panelBottom <= panelTop ) {
-		panelBottom = panelTop + PLAYERSETTINGS_PROFILE_ROW_HEIGHT * PROFILE_ROW_COUNT;
-	}
-	if ( panelBottom > 440 ) {
-		panelBottom = 440;
-	}
-
-	Vector4Copy( profilePanelFillColor, panelColor );
-	panelColor[3] *= uis.tFrac;
-	UI_FillRect( PLAYERSETTINGS_PROFILE_PANEL_LEFT, panelTop, PLAYERSETTINGS_PROFILE_PANEL_WIDTH, panelBottom - panelTop, panelColor );
-
-	Vector4Copy( profileRowBorderColor, borderColor );
-	borderColor[3] *= uis.tFrac;
-
-	for ( i = 0; i < PROFILE_ROW_COUNT; ++i ) {
-		int rowTop;
-		int rowBottom;
-
-		PlayerSettings_GetProfileRowBounds( i, &rowTop, &rowBottom );
-		rowTop -= 2;
-		rowBottom += 2;
-
-		if ( rowTop < panelTop + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN ) {
-			rowTop = panelTop + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
-		}
-		if ( rowBottom > panelBottom - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN ) {
-			rowBottom = panelBottom - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
-		}
-		if ( rowBottom <= rowTop ) {
+static float PlayerSettings_GetAchievementsScrollRowHeight( void ) {
+	float	totalHeight;
+	int	countedRows;
+	int	i;
+
+	totalHeight = 0.0f;
+	countedRows = 0;
+	for ( i = 0; i < PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT; ++i ) {
+		float rowHeight;
+
+		rowHeight = PlayerSettings_GetAchievementRowHeight( i );
+		if ( rowHeight <= 0.0f ) {
 			continue;
 		}
 
-		Vector4Copy( ( i & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
-		rowColor[3] *= uis.tFrac;
-
-		UI_FillRect(
-			PLAYERSETTINGS_PROFILE_FIELD_LEFT,
-			rowTop,
-			PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-			rowBottom - rowTop,
-			rowColor );
-
-		UI_DrawRect(
-			PLAYERSETTINGS_PROFILE_FIELD_LEFT,
-			rowTop,
-			PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-			rowBottom - rowTop,
-			borderColor );
-	}
-}
-
-
-
-static float PlayerSettings_GetScrollContentTop( void ) {
-	return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 2;
-}
-
-static float PlayerSettings_GetScrollViewportTop( void ) {
-	return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
-}
-
-static float PlayerSettings_GetPanelBottomForContent( float contentHeight ) {
-	float panelTop;
-	float panelBottom;
-
-	panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
-	panelBottom = panelTop + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 2 + contentHeight + PLAYERSETTINGS_PROFILE_PANEL_BOTTOM_EXTRA;
-	if ( panelBottom < panelTop ) {
-		panelBottom = panelTop;
-	}
-	if ( panelBottom > 440.0f ) {
-		panelBottom = 440.0f;
+		totalHeight += rowHeight;
+		++countedRows;
 	}
 
-	return panelBottom;
-}
+	if ( countedRows <= 0 ) {
+		return PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP + PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
+	}
 
 static float PlayerSettings_GetScrollViewportBottom( float contentHeight ) {
 	return PlayerSettings_GetPanelBottomForContent( contentHeight ) - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
