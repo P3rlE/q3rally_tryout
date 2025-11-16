@@ -117,7 +117,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_BACK_BUTTON_Y			( PLAYERSETTINGS_TAB_TOP + PLAYERSETTINGS_TAB_HEIGHT + 14 )
 
 #define PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS            8
-#define PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE            2
 #define PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE           48.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP              16
 #define PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET         6
@@ -129,8 +128,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_ACHIEVEMENT_TEXT_GAP             24.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT     12.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER        0.6f
-#define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS           (( PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS + PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE - 1 ) / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE )
-#define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT           ( PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + ( PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP )
 #define PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE       PLAYERSETTINGS_PROFILE_VALUE_BASELINE
 
 #define PLAYERSETTINGS_STATS_ROW_HEIGHT		40
@@ -138,9 +135,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_STATS_VALUE_OFFSET		260
 #define PLAYERSETTINGS_STATS_VALUE_BASELINE		PLAYERSETTINGS_PROFILE_VALUE_BASELINE
 
-#define PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT       6
-#define PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT        PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT
-#define PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT            PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT
 #define PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN	0.0f
 
 #define MAX_NAMELENGTH	20
@@ -240,6 +234,7 @@ static const playersettingsAchievementTierDef_t s_fuelAchievementTiers[] = {
         { 5000.0, "Galaxy Guzzler", "Atomize 5,000 L in total." }
 };
 
+
 typedef enum {
         PLAYERSETTINGS_ACHIEVEMENT_ICON_DRIVEN = 0,
         PLAYERSETTINGS_ACHIEVEMENT_ICON_KILLS,
@@ -249,6 +244,49 @@ typedef enum {
         PLAYERSETTINGS_ACHIEVEMENT_ICON_FUEL,
         PLAYERSETTINGS_ACHIEVEMENT_ICON_COUNT
 } playersettingsAchievementIcon_t;
+
+typedef double (*playersettingsAchievementProgressFunc_t)( const profile_stats_t *stats );
+
+typedef struct {
+        const char *title;
+        const playersettingsAchievementTierDef_t *tiers;
+        int tierCount;
+        playersettingsAchievementIcon_t iconIndex;
+        playersettingsAchievementProgressFunc_t progressFunc;
+} playersettingsAchievementSection_t;
+
+static double PlayerSettings_AchievementProgress_Distance( const profile_stats_t *stats ) {
+        return stats ? stats->distanceKm : 0.0;
+}
+
+static double PlayerSettings_AchievementProgress_Kills( const profile_stats_t *stats ) {
+        return stats ? (double)stats->kills : 0.0;
+}
+
+static double PlayerSettings_AchievementProgress_Wins( const profile_stats_t *stats ) {
+        return stats ? (double)stats->wins : 0.0;
+}
+
+static double PlayerSettings_AchievementProgress_FlagCaptures( const profile_stats_t *stats ) {
+        return stats ? (double)stats->flagCaptures : 0.0;
+}
+
+static double PlayerSettings_AchievementProgress_FlagAssists( const profile_stats_t *stats ) {
+        return stats ? (double)stats->flagAssists : 0.0;
+}
+
+static double PlayerSettings_AchievementProgress_Fuel( const profile_stats_t *stats ) {
+        return stats ? stats->fuelUsed : 0.0;
+}
+
+static const playersettingsAchievementSection_t s_achievementSections[] = {
+        { "Distance Driven", s_distanceAchievementTiers, ARRAY_LEN( s_distanceAchievementTiers ), PLAYERSETTINGS_ACHIEVEMENT_ICON_DRIVEN, PlayerSettings_AchievementProgress_Distance },
+        { "Kills", s_killAchievementTiers, ARRAY_LEN( s_killAchievementTiers ), PLAYERSETTINGS_ACHIEVEMENT_ICON_KILLS, PlayerSettings_AchievementProgress_Kills },
+        { "Races Won", s_winAchievementTiers, ARRAY_LEN( s_winAchievementTiers ), PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS, PlayerSettings_AchievementProgress_Wins },
+        { "Flags Captured", s_flagCaptureAchievementTiers, ARRAY_LEN( s_flagCaptureAchievementTiers ), PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAGS, PlayerSettings_AchievementProgress_FlagCaptures },
+        { "Flag Assists", s_flagAssistAchievementTiers, ARRAY_LEN( s_flagAssistAchievementTiers ), PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAG_ASSISTS, PlayerSettings_AchievementProgress_FlagAssists },
+        { "Fuel Consumed", s_fuelAchievementTiers, ARRAY_LEN( s_fuelAchievementTiers ), PLAYERSETTINGS_ACHIEVEMENT_ICON_FUEL, PlayerSettings_AchievementProgress_Fuel }
+};
 
 typedef struct playersettings_scroll_state_s {
 	float	offset;
@@ -264,14 +302,13 @@ static void PlayerSettings_DrawAchievementsTab( void );
 static void PlayerSettings_GetAchievementRowBounds( int row, int *top, int *bottom );
 static void PlayerSettings_GetAchievementsHeaderBounds( int *top, int *bottom );
 static void PlayerSettings_UpdateScrollDrag( playersettingsScrollState_t *state, float contentHeight );
-
 static const char *const s_achievementMedalLockedPaths[PLAYERSETTINGS_ACHIEVEMENT_ICON_COUNT] = {
-        ART_MEDAL_DRIVEN_LOCKED,
-        ART_MEDAL_KILLS_LOCKED,
-        ART_MEDAL_WINS_LOCKED,
-        ART_MEDAL_FLAGS_LOCKED,
-        ART_MEDAL_ASSISTS_LOCKED,
-        ART_MEDAL_FUEL_LOCKED
+	ART_MEDAL_DRIVEN_LOCKED,
+	ART_MEDAL_KILLS_LOCKED,
+	ART_MEDAL_WINS_LOCKED,
+	ART_MEDAL_FLAGS_LOCKED,
+	ART_MEDAL_ASSISTS_LOCKED,
+	ART_MEDAL_FUEL_LOCKED
 };
 static const char *const s_achievementMedalUnlockedPaths[PLAYERSETTINGS_ACHIEVEMENT_ICON_COUNT] = {
         ART_MEDAL_DRIVEN_UNLOCKED,
@@ -1453,38 +1490,177 @@ static void PlayerSettings_GetScrollViewportBounds( float contentHeight, float *
 }
 
 static float PlayerSettings_GetScrollViewportHeight( float contentHeight ) {
-	float viewportTop;
-	float viewportBottom;
+        float viewportTop;
+        float viewportBottom;
 
-	PlayerSettings_GetScrollViewportBounds( contentHeight, &viewportTop, &viewportBottom );
-	return viewportBottom - viewportTop;
+        PlayerSettings_GetScrollViewportBounds( contentHeight, &viewportTop, &viewportBottom );
+        return viewportBottom - viewportTop;
+}
+
+static int PlayerSettings_GetAchievementSectionCount( void ) {
+        return ARRAY_LEN( s_achievementSections );
+}
+
+static void PlayerSettings_GetAchievementContentArea( float *left, float *right ) {
+        float areaLeft;
+        float areaRight;
+
+        areaLeft = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_VALUE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
+        areaRight = PLAYERSETTINGS_PROFILE_ROW_RIGHT - PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
+        if ( areaRight <= areaLeft ) {
+                areaRight = areaLeft + 1.0f;
+        }
+
+        if ( left ) {
+                *left = areaLeft;
+        }
+        if ( right ) {
+                *right = areaRight;
+        }
+}
+
+static float PlayerSettings_GetAchievementsAvailableWidth( void ) {
+        float left;
+        float right;
+
+        PlayerSettings_GetAchievementContentArea( &left, &right );
+        return right - left;
+}
+
+static void PlayerSettings_CalcAchievementGrid( int tierCount, float availableWidth, int *outColumns, float *outColumnWidth ) {
+        int columns;
+        float columnWidth;
+        float usableWidth;
+
+        if ( tierCount <= 0 ) {
+                tierCount = 1;
+        }
+
+        columns = tierCount;
+        if ( columns > PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
+                columns = PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS;
+        }
+
+        usableWidth = availableWidth;
+        if ( usableWidth <= 0.0f ) {
+                usableWidth = PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
+        }
+
+        columnWidth = usableWidth;
+        if ( columns > 1 ) {
+                while ( columns > 1 ) {
+                        float width;
+
+                        width = ( usableWidth - PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP * ( columns - 1 ) ) / columns;
+                        if ( width >= PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE ) {
+                                columnWidth = width;
+                                break;
+                        }
+
+                        --columns;
+                }
+        }
+
+        if ( columnWidth < PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE ) {
+                        columnWidth = PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
+        }
+
+        if ( outColumns ) {
+                *outColumns = columns;
+        }
+        if ( outColumnWidth ) {
+                *outColumnWidth = columnWidth;
+        }
+}
+
+static float PlayerSettings_GetAchievementSectionHeight( int sectionIndex ) {
+        int count;
+        float availableWidth;
+        const playersettingsAchievementSection_t *section;
+        int columns;
+        float columnWidth;
+        int rows;
+        float entriesHeight;
+
+        count = PlayerSettings_GetAchievementSectionCount();
+        if ( count <= 0 ) {
+                return 0.0f;
+        }
+
+        if ( sectionIndex < 0 ) {
+                sectionIndex = 0;
+        }
+        if ( sectionIndex >= count ) {
+                sectionIndex = count - 1;
+        }
+
+        section = &s_achievementSections[sectionIndex];
+        availableWidth = PlayerSettings_GetAchievementsAvailableWidth();
+        PlayerSettings_CalcAchievementGrid( section->tierCount, availableWidth, &columns, &columnWidth );
+        if ( columns < 1 ) {
+                columns = 1;
+        }
+
+        rows = ( section->tierCount + columns - 1 ) / columns;
+        if ( rows < 1 ) {
+                rows = 1;
+        }
+
+        entriesHeight = rows * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
+        if ( rows > 1 ) {
+                entriesHeight += ( rows - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP;
+        }
+
+        return PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP + entriesHeight;
+}
+
+static float PlayerSettings_GetAchievementAverageRowHeight( void ) {
+        int count;
+        int i;
+        float total;
+
+        count = PlayerSettings_GetAchievementSectionCount();
+        if ( count <= 0 ) {
+                return PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
+        }
+
+        total = 0.0f;
+        for ( i = 0; i < count; ++i ) {
+                total += PlayerSettings_GetAchievementSectionHeight( i );
+        }
+
+        return total / count;
 }
 
 static float PlayerSettings_GetStatsRowSpacing( void ) {
 	return PLAYERSETTINGS_STATS_ROW_HEIGHT + PLAYERSETTINGS_STATS_ROW_GAP;
 }
 
-static float PlayerSettings_GetAchievementsRowSpacing( void ) {
-	return PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP;
-}
-
 static float PlayerSettings_GetStatsContentHeight( void ) {
-	if ( STATS_ROW_COUNT <= 0 ) {
-		return 0.0f;
-	}
+        if ( STATS_ROW_COUNT <= 0 ) {
+                return 0.0f;
+        }
 
 	return PLAYERSETTINGS_STATS_ROW_HEIGHT * STATS_ROW_COUNT
 			+ PLAYERSETTINGS_STATS_ROW_GAP * ( STATS_ROW_COUNT - 1 );
 }
 
 static float PlayerSettings_GetAchievementsContentHeight( void ) {
-	if ( PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT <= 0 ) {
-		return 0.0f;
-	}
+        float height;
+        int sectionCount;
+        int i;
 
-	return PLAYERSETTINGS_ACHIEVEMENT_HEADER_BLOCK_HEIGHT
-			+ PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT * PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT
-			+ PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP * ( PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT - 1 );
+        sectionCount = PlayerSettings_GetAchievementSectionCount();
+        height = PLAYERSETTINGS_ACHIEVEMENT_HEADER_BLOCK_HEIGHT;
+
+        for ( i = 0; i < sectionCount; ++i ) {
+                if ( i > 0 ) {
+                        height += PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP;
+                }
+                height += PlayerSettings_GetAchievementSectionHeight( i );
+        }
+
+        return height;
 }
 
 static float PlayerSettings_GetScrollMaxOffset( float contentHeight ) {
@@ -2144,29 +2320,45 @@ static void PlayerSettings_DrawBackShaders( void ) {
 }
 
 static void PlayerSettings_GetAchievementRowBounds( int row, int *top, int *bottom ) {
-	float	rowTop;
-	float	rowBottom;
-	float	spacing;
-	float	contentTop;
+	float rowTop;
+	float rowBottom;
+	float contentTop;
+	int i;
+	int sectionCount;
+
+	sectionCount = PlayerSettings_GetAchievementSectionCount();
+	if ( sectionCount <= 0 ) {
+		int fallback = (int)PlayerSettings_GetScrollContentTop();
+		if ( top ) {
+			*top = fallback;
+		}
+		if ( bottom ) {
+			*bottom = fallback;
+		}
+		return;
+	}
 
 	if ( row < 0 ) {
 		row = 0;
 	}
-	if ( row >= PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT ) {
-		row = PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT - 1;
+	if ( row >= sectionCount ) {
+		row = sectionCount - 1;
 	}
 
-        spacing = PlayerSettings_GetAchievementsRowSpacing();
-        contentTop = PlayerSettings_GetScrollContentTop();
-        rowTop = contentTop + PLAYERSETTINGS_ACHIEVEMENT_HEADER_BLOCK_HEIGHT + row * spacing - s_playersettings.achievementsScroll.offset;
-        rowBottom = rowTop + PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT;
+	contentTop = PlayerSettings_GetScrollContentTop();
+	rowTop = contentTop + PLAYERSETTINGS_ACHIEVEMENT_HEADER_BLOCK_HEIGHT - s_playersettings.achievementsScroll.offset;
+	for ( i = 0; i < row; ++i ) {
+		rowTop += PlayerSettings_GetAchievementSectionHeight( i ) + PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP;
+	}
 
-        if ( top ) {
-                *top = (int)rowTop;
-        }
-        if ( bottom ) {
-                *bottom = (int)rowBottom;
-        }
+	rowBottom = rowTop + PlayerSettings_GetAchievementSectionHeight( row );
+
+	if ( top ) {
+		*top = (int)rowTop;
+	}
+	if ( bottom ) {
+		*bottom = (int)rowBottom;
+	}
 }
 
 static void PlayerSettings_GetAchievementsHeaderBounds( int *top, int *bottom ) {
@@ -2193,9 +2385,9 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 	float viewportBottom;
 	int panelTop;
 	int panelBottom;
-	int firstRow;
-	int lastRow;
+	int sectionCount;
 	int i;
+	float rowTop;
 
 	contentHeight = PlayerSettings_GetAchievementsContentHeight();
 	PlayerSettings_UpdateScrollDrag( &s_playersettings.achievementsScroll, contentHeight );
@@ -2212,52 +2404,48 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 	borderColor[3] *= uis.tFrac;
 
 	PlayerSettings_GetScrollViewportBounds( contentHeight, &viewportTop, &viewportBottom );
-	PlayerSettings_GetVisibleRowRange(
-		PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT,
-		PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT,
-		PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP,
-		s_playersettings.achievementsScroll.offset,
-		contentHeight,
-		PLAYERSETTINGS_ACHIEVEMENT_HEADER_BLOCK_HEIGHT,
-		&firstRow,
-		&lastRow );
+	sectionCount = PlayerSettings_GetAchievementSectionCount();
+	rowTop = PlayerSettings_GetScrollContentTop() + PLAYERSETTINGS_ACHIEVEMENT_HEADER_BLOCK_HEIGHT - s_playersettings.achievementsScroll.offset;
 
-	if ( lastRow < firstRow ) {
-		return;
-	}
+	for ( i = 0; i < sectionCount; ++i ) {
+		float rowBottom;
+		float rowHeight;
+		int clippedTop;
+		int clippedBottom;
 
-	for ( i = firstRow; i <= lastRow; ++i ) {
-		int rowTop;
-		int rowBottom;
+		rowHeight = PlayerSettings_GetAchievementSectionHeight( i );
+		rowBottom = rowTop + rowHeight;
 
-		PlayerSettings_GetAchievementRowBounds( i, &rowTop, &rowBottom );
-
-		if ( rowTop < (int)viewportTop ) {
-			rowTop = (int)viewportTop;
-		}
-		if ( rowBottom > (int)viewportBottom ) {
-			rowBottom = (int)viewportBottom;
-		}
-		if ( rowBottom <= rowTop ) {
+		if ( rowBottom <= viewportTop ) {
+			rowTop = rowBottom + PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP;
 			continue;
 		}
+		if ( rowTop >= viewportBottom ) {
+			break;
+		}
 
-		Vector4Copy( ( i & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
-		rowColor[3] *= uis.tFrac;
+		clippedTop = ( rowTop < viewportTop ) ? (int)viewportTop : (int)rowTop;
+		clippedBottom = ( rowBottom > viewportBottom ) ? (int)viewportBottom : (int)rowBottom;
+		if ( clippedBottom > clippedTop ) {
+			Vector4Copy( ( i & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
+			rowColor[3] *= uis.tFrac;
 
-		UI_FillRect(
-			PLAYERSETTINGS_PROFILE_FIELD_LEFT,
-			rowTop,
-			PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-			rowBottom - rowTop,
-			rowColor );
+			UI_FillRect(
+				PLAYERSETTINGS_PROFILE_FIELD_LEFT,
+				clippedTop,
+				PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
+				clippedBottom - clippedTop,
+				rowColor );
 
-		UI_DrawRect(
-			PLAYERSETTINGS_PROFILE_FIELD_LEFT,
-			rowTop,
-			PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-			rowBottom - rowTop,
-			borderColor );
+			UI_DrawRect(
+				PLAYERSETTINGS_PROFILE_FIELD_LEFT,
+				clippedTop,
+				PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
+				clippedBottom - clippedTop,
+				borderColor );
+		}
+
+		rowTop = rowBottom + PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP;
 	}
 }
 
@@ -2344,208 +2532,209 @@ static int PlayerSettings_DrawScaledProportionalString_Wrapped(
 }
 
 static int PlayerSettings_DrawAchievementSection( int row, const char *title, const playersettingsAchievementTierDef_t *tiers, int count, double progress, playersettingsAchievementIcon_t iconIndex ) {
-        int i;
-        int rowTop;
-        int rowBottom;
-        int titleX;
-        int titleY;
-        float areaLeft;
-        float areaRight;
-        float availableWidth;
-        float columnWidth;
-        float columnGap;
-        float gridTop;
-        int unlockedCount;
-        qboolean entryUnlocked[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
-        qhandle_t lockedIconHandle;
-        qhandle_t unlockedIconHandle;
-        float viewportTop;
-        float viewportBottom;
-        qboolean visible;
+	int i;
+	int rowTop;
+	int rowBottom;
+	int titleX;
+	int titleY;
+	float areaLeft;
+	float areaRight;
+	float availableWidth;
+	float columnWidth;
+	float columnGap;
+	int columnCount;
+	float gridTop;
+	int unlockedCount;
+	qboolean entryUnlocked[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
+	qhandle_t lockedIconHandle;
+	qhandle_t unlockedIconHandle;
+	float viewportTop;
+	float viewportBottom;
+	qboolean visible;
 
-        if ( count > PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
-                count = PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS;
-        }
-        if ( count <= 0 || !tiers ) {
-                return 0;
-        }
+	if ( count > PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
+		count = PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS;
+	}
+	if ( count <= 0 || !tiers ) {
+		return 0;
+	}
 
-        lockedIconHandle = 0;
-        unlockedIconHandle = 0;
-        if ( iconIndex >= 0 && iconIndex < PLAYERSETTINGS_ACHIEVEMENT_ICON_COUNT ) {
-                lockedIconHandle = s_playersettings.achievementMedalLocked[iconIndex];
-                unlockedIconHandle = s_playersettings.achievementMedalUnlocked[iconIndex];
-        }
+	lockedIconHandle = 0;
+	unlockedIconHandle = 0;
+	if ( iconIndex >= 0 && iconIndex < PLAYERSETTINGS_ACHIEVEMENT_ICON_COUNT ) {
+		lockedIconHandle = s_playersettings.achievementMedalLocked[iconIndex];
+		unlockedIconHandle = s_playersettings.achievementMedalUnlocked[iconIndex];
+	}
 
-        unlockedCount = 0;
-        for ( i = 0; i < count; ++i ) {
-                entryUnlocked[i] = ( progress >= tiers[i].threshold );
-                if ( entryUnlocked[i] ) {
-                        ++unlockedCount;
-                }
-        }
+	unlockedCount = 0;
+	for ( i = 0; i < count; ++i ) {
+		entryUnlocked[i] = ( progress >= tiers[i].threshold );
+		if ( entryUnlocked[i] ) {
+			++unlockedCount;
+		}
+	}
 
-        PlayerSettings_GetAchievementRowBounds( row, &rowTop, &rowBottom );
-        PlayerSettings_GetScrollViewportBounds( PlayerSettings_GetAchievementsContentHeight(), &viewportTop, &viewportBottom );
-        visible = ( rowBottom > (int)viewportTop && rowTop < (int)viewportBottom );
+	PlayerSettings_GetAchievementRowBounds( row, &rowTop, &rowBottom );
+	PlayerSettings_GetScrollViewportBounds( PlayerSettings_GetAchievementsContentHeight(), &viewportTop, &viewportBottom );
+	visible = ( rowBottom > (int)viewportTop && rowTop < (int)viewportBottom );
 
-        titleX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
-        titleY = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET;
+	titleX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
+	titleY = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET;
 
-        if ( visible ) {
-                UI_DrawProportionalString( titleX, titleY, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
-        }
+	if ( visible ) {
+		UI_DrawProportionalString( titleX, titleY, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
+	}
 
-        areaLeft = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_VALUE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
-        areaRight = PLAYERSETTINGS_PROFILE_ROW_RIGHT - PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
-        if ( areaRight <= areaLeft ) {
-                areaRight = areaLeft + 1.0f;
-        }
+	areaLeft = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_VALUE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
+	areaRight = PLAYERSETTINGS_PROFILE_ROW_RIGHT - PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
+	if ( areaRight <= areaLeft ) {
+		areaRight = areaLeft + 1.0f;
+	}
 
-        availableWidth = areaRight - areaLeft;
-        columnGap = ( PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE > 1 ) ? PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP : 0.0f;
-        columnWidth = availableWidth - columnGap * ( PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE - 1 );
-        if ( PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE > 0 ) {
-                columnWidth /= PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE;
-        }
-        if ( columnWidth < PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE ) {
-                columnWidth = PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
-        }
+	availableWidth = areaRight - areaLeft;
+	PlayerSettings_CalcAchievementGrid( count, availableWidth, &columnCount, &columnWidth );
+	if ( columnCount < 1 ) {
+		columnCount = 1;
+	}
+	columnGap = ( columnCount > 1 ) ? PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP : 0.0f;
 
-        gridTop = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP;
+	gridTop = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP;
 
-        if ( visible ) {
-                const float textScale = UI_ProportionalSizeScale( UI_SMALLFONT ) * PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER;
-                const float textLineHeight = PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT * PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER;
-                for ( i = 0; i < count; ++i ) {
-                        int column;
-                        int tierRow;
-                        float entryLeft;
-                        float entryTop;
-                        float textX;
-                        float textMaxWidth;
-                        float nameY;
-                        float descriptionY;
-                        qhandle_t iconHandle;
-                        float iconWidth;
-                        const char *name;
-                        const char *description;
+	if ( visible ) {
+		const float textScale = UI_ProportionalSizeScale( UI_SMALLFONT ) * PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER;
+		const float textLineHeight = PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT * PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER;
 
-                        column = i % PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE;
-                        tierRow = i / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE;
-                        entryLeft = areaLeft + column * ( columnWidth + columnGap );
-                        entryTop = gridTop + tierRow * ( PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP );
+		for ( i = 0; i < count; ++i ) {
+			int column;
+			int tierRow;
+			float entryLeft;
+			float entryTop;
+			float textX;
+			float textMaxWidth;
+			float nameY;
+			float descriptionY;
+			qhandle_t iconHandle;
+			float iconWidth;
+			const char *name;
+			const char *description;
 
-                        iconHandle = entryUnlocked[i] ? unlockedIconHandle : lockedIconHandle;
-                        iconWidth = ( iconHandle != 0 ) ? PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE : 0.0f;
-                        if ( iconWidth > 0.0f ) {
-                                UI_DrawHandlePic( (int)entryLeft, (int)entryTop, PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE, PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE, iconHandle );
-                        }
+			column = i % columnCount;
+			tierRow = i / columnCount;
+			entryLeft = areaLeft + column * ( columnWidth + columnGap );
+			entryTop = gridTop + tierRow * ( PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP );
 
-                        textX = entryLeft;
-                        if ( iconWidth > 0.0f ) {
-                                textX += iconWidth + PLAYERSETTINGS_ACHIEVEMENT_TEXT_GAP;
-                        }
+			iconHandle = entryUnlocked[i] ? unlockedIconHandle : lockedIconHandle;
+			iconWidth = ( iconHandle != 0 ) ? PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE : 0.0f;
+			if ( iconWidth > 0.0f ) {
+				UI_DrawHandlePic( (int)entryLeft, (int)entryTop, PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE, PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE, iconHandle );
+			}
 
-                        textMaxWidth = entryLeft + columnWidth - textX;
-                        if ( textMaxWidth <= 0.0f ) {
-                                textMaxWidth = columnWidth;
-                        }
+			textX = entryLeft;
+			if ( iconWidth > 0.0f ) {
+				textX += iconWidth + PLAYERSETTINGS_ACHIEVEMENT_TEXT_GAP;
+			}
 
-                        name = tiers[i].name;
-                        description = tiers[i].description;
-                        nameY = entryTop + 12.0f;
-                        descriptionY = nameY + textLineHeight;
+			textMaxWidth = entryLeft + columnWidth - textX;
+			if ( textMaxWidth <= 0.0f ) {
+				textMaxWidth = columnWidth;
+			}
 
-                        if ( name && name[0] ) {
-                                UI_DrawScaledProportionalString(
-                                        ( int )textX,
-                                        ( int )nameY,
-                                        name,
-                                        UI_LEFT | UI_SMALLFONT,
-                                        entryUnlocked[i] ? text_color_highlight : achievementLockedColor,
-                                        textScale );
-                        }
-                        if ( description && description[0] ) {
-                                PlayerSettings_DrawScaledProportionalString_Wrapped(
-                                        ( int )textX,
-                                        ( int )descriptionY,
-                                        textMaxWidth,
-                                        textLineHeight,
-                                        description,
-                                        UI_LEFT | UI_SMALLFONT,
-                                        entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor,
-                                        textScale,
-                                        2 );
-                        }
-                }
-        }
+			name = tiers[i].name;
+			description = tiers[i].description;
+			nameY = entryTop + 12.0f;
+			descriptionY = nameY + textLineHeight;
 
-        return unlockedCount;
+			if ( name && name[0] ) {
+				UI_DrawScaledProportionalString(
+					( int )textX,
+					( int )nameY,
+					name,
+					UI_LEFT | UI_SMALLFONT,
+					entryUnlocked[i] ? text_color_highlight : achievementLockedColor,
+					textScale );
+			}
+			if ( description && description[0] ) {
+				PlayerSettings_DrawScaledProportionalString_Wrapped(
+					( int )textX,
+					( int )descriptionY,
+					textMaxWidth,
+					textLineHeight,
+					description,
+					UI_LEFT | UI_SMALLFONT,
+					entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor,
+					textScale,
+					2 );
+			}
+		}
+	}
+
+	return unlockedCount;
 }
 
 static void PlayerSettings_DrawAchievementsTab( void ) {
-        const profile_stats_t *stats;
-        int unlockedAchievements;
-        int displayTotalAchievements;
-        char progressBuffer[32];
-        char headerBuffer[64];
-        int headerTop;
-        int headerBottom;
-        int headerY;
-        int row;
-        float viewportTop;
-        float viewportBottom;
+	const profile_stats_t *stats;
+	int unlockedAchievements;
+	int displayTotalAchievements;
+	char progressBuffer[32];
+	char headerBuffer[64];
+	int headerTop;
+	int headerBottom;
+	int headerY;
+	int row;
+	int sectionCount;
+	const playersettingsAchievementSection_t *section;
+	double progress;
+	float viewportTop;
+	float viewportBottom;
 
-        PlayerSettings_SynchronizeScrollState( &s_playersettings.achievementsScroll, PlayerSettings_GetAchievementsContentHeight() );
+	PlayerSettings_SynchronizeScrollState( &s_playersettings.achievementsScroll, PlayerSettings_GetAchievementsContentHeight() );
 
-        if ( !UI_Profile_HasActiveProfile() ) {
-                int messageX;
+	if ( !UI_Profile_HasActiveProfile() ) {
+		int messageX;
 
-                messageX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
-                UI_DrawProportionalString( messageX, 208, "No active profile selected.", UI_LEFT | UI_SMALLFONT, text_color_normal );
-                UI_DrawProportionalString( messageX, 236, "Create or select a profile from the main menu.", UI_LEFT | UI_SMALLFONT, text_color_normal );
-                return;
-        }
+		messageX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
+		UI_DrawProportionalString( messageX, 208, "No active profile selected.", UI_LEFT | UI_SMALLFONT, text_color_normal );
+		UI_DrawProportionalString( messageX, 236, "Create or select a profile from the main menu.", UI_LEFT | UI_SMALLFONT, text_color_normal );
+		return;
+	}
 
-        stats = UI_Profile_GetActiveStats();
-        if ( !stats ) {
-                int messageX;
+	stats = UI_Profile_GetActiveStats();
+	if ( !stats ) {
+		int messageX;
 
-                messageX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
-                UI_DrawProportionalString( messageX, 220, "Unable to read profile statistics.", UI_LEFT | UI_SMALLFONT, text_color_normal );
-                return;
-        }
+		messageX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
+		UI_DrawProportionalString( messageX, 220, "Unable to read profile statistics.", UI_LEFT | UI_SMALLFONT, text_color_normal );
+		return;
+	}
 
-        unlockedAchievements = 0;
-        displayTotalAchievements = PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL;
+	unlockedAchievements = 0;
+	displayTotalAchievements = PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL;
 
-	row = 0;
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Distance Driven", s_distanceAchievementTiers, ARRAY_LEN( s_distanceAchievementTiers ), stats->distanceKm, PLAYERSETTINGS_ACHIEVEMENT_ICON_DRIVEN );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Kills", s_killAchievementTiers, ARRAY_LEN( s_killAchievementTiers ), (double)stats->kills, PLAYERSETTINGS_ACHIEVEMENT_ICON_KILLS );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Races Won", s_winAchievementTiers, ARRAY_LEN( s_winAchievementTiers ), (double)stats->wins, PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flags Captured", s_flagCaptureAchievementTiers, ARRAY_LEN( s_flagCaptureAchievementTiers ), (double)stats->flagCaptures, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAGS );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flag Assists", s_flagAssistAchievementTiers, ARRAY_LEN( s_flagAssistAchievementTiers ), (double)stats->flagAssists, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAG_ASSISTS );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Fuel Consumed", s_fuelAchievementTiers, ARRAY_LEN( s_fuelAchievementTiers ), stats->fuelUsed, PLAYERSETTINGS_ACHIEVEMENT_ICON_FUEL );
+	sectionCount = PlayerSettings_GetAchievementSectionCount();
+	for ( row = 0; row < sectionCount; ++row ) {
+		section = &s_achievementSections[row];
+		progress = section->progressFunc ? section->progressFunc( stats ) : 0.0;
+		unlockedAchievements += PlayerSettings_DrawAchievementSection( row, section->title, section->tiers, section->tierCount, progress, section->iconIndex );
+	}
 
-        if ( unlockedAchievements > displayTotalAchievements ) {
-                unlockedAchievements = displayTotalAchievements;
-        }
+	if ( unlockedAchievements > displayTotalAchievements ) {
+		unlockedAchievements = displayTotalAchievements;
+	}
 
-        Com_sprintf( progressBuffer, sizeof( progressBuffer ), "%d/%d", unlockedAchievements, displayTotalAchievements );
-        Com_sprintf( headerBuffer, sizeof( headerBuffer ), "Achievements %s", progressBuffer );
+	Com_sprintf( progressBuffer, sizeof( progressBuffer ), "%d/%d", unlockedAchievements, displayTotalAchievements );
+	Com_sprintf( headerBuffer, sizeof( headerBuffer ), "Achievements %s", progressBuffer );
 
 	PlayerSettings_GetAchievementsHeaderBounds( &headerTop, &headerBottom );
-        PlayerSettings_GetScrollViewportBounds( PlayerSettings_GetAchievementsContentHeight(), &viewportTop, &viewportBottom );
-        if ( headerBottom > (int)viewportTop && headerTop < (int)viewportBottom ) {
-                headerY = headerTop + PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE;
-                UI_DrawProportionalString(
-                        PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
-                        headerY,
-                        headerBuffer,
-                        UI_LEFT | UI_SMALLFONT,
-                        text_color_highlight );
-        }
+	PlayerSettings_GetScrollViewportBounds( PlayerSettings_GetAchievementsContentHeight(), &viewportTop, &viewportBottom );
+	if ( headerBottom > (int)viewportTop && headerTop < (int)viewportBottom ) {
+		headerY = headerTop + PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE;
+		UI_DrawProportionalString(
+			PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+			headerY,
+			headerBuffer,
+			UI_LEFT | UI_SMALLFONT,
+			text_color_highlight );
+	}
 }
 
 static void PlayerSettings_SetTab( int tab ) {
@@ -2858,13 +3047,15 @@ static sfxHandle_t PlayerSettings_MenuKey( int key ) {
 		}
 	} else if ( s_playersettings.currentTab == TAB_ACHIEVEMENTS ) {
 		float contentHeight;
+		float rowHeight;
 
 		contentHeight = PlayerSettings_GetAchievementsContentHeight();
+		rowHeight = PlayerSettings_GetAchievementAverageRowHeight();
 		if ( key == K_MOUSE1 ) {
-			if ( PlayerSettings_HandleScrollBarClick( &s_playersettings.achievementsScroll, contentHeight, PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT, PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP ) ) {
+			if ( PlayerSettings_HandleScrollBarClick( &s_playersettings.achievementsScroll, contentHeight, rowHeight, PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP ) ) {
 				return menu_move_sound;
 			}
-		} else if ( PlayerSettings_HandleScrollKey( &s_playersettings.achievementsScroll, contentHeight, PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT, PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP, key ) ) {
+		} else if ( PlayerSettings_HandleScrollKey( &s_playersettings.achievementsScroll, contentHeight, rowHeight, PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP, key ) ) {
 			return menu_move_sound;
 		}
 	}
