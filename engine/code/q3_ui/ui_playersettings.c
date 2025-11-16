@@ -266,6 +266,8 @@ typedef enum {
 typedef struct playersettings_scroll_state_s {
 	float	offset;
 	float	targetOffset;
+	qboolean	dragging;
+	float	dragStartOffset;
 } playersettingsScrollState_t;
 
 static void PlayerSettings_DrawStatsLabelValue( int row, const char *label, const char *value );
@@ -274,6 +276,7 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void );
 static void PlayerSettings_DrawAchievementsTab( void );
 static void PlayerSettings_GetAchievementRowBounds( int row, int *top, int *bottom );
 static void PlayerSettings_GetAchievementsHeaderBounds( int *top, int *bottom );
+static void PlayerSettings_UpdateScrollDrag( playersettingsScrollState_t *state, float contentHeight );
 
 static const char *const s_achievementMedalLockedPaths[PLAYERSETTINGS_ACHIEVEMENT_ICON_COUNT] = {
         ART_MEDAL_DRIVEN_LOCKED,
@@ -1765,6 +1768,14 @@ static qboolean PlayerSettings_HandleScrollBarClick( playersettingsScrollState_t
 	int h;
 	int mx;
 	int my;
+	float maxOffset;
+	float viewportHeight;
+	int thumbSize;
+	int thumbTrack;
+	int thumbPos;
+	int thumbTop;
+	int thumbBottom;
+	float step;
 
 	if ( PlayerSettings_GetScrollMaxOffset( contentHeight ) <= 0.0f ) {
 		return qfalse;
@@ -1779,16 +1790,126 @@ static qboolean PlayerSettings_HandleScrollBarClick( playersettingsScrollState_t
 	}
 
 	if ( my < y + SB_WIDTH ) {
+		state->dragging = qfalse;
 		return PlayerSettings_AdjustScrollOffset( state, contentHeight, -( rowHeight + rowGap ) );
 	}
 	if ( my > y + h - SB_WIDTH ) {
+		state->dragging = qfalse;
 		return PlayerSettings_AdjustScrollOffset( state, contentHeight, rowHeight + rowGap );
+	}
+
+	maxOffset = PlayerSettings_GetScrollMaxOffset( contentHeight );
+	viewportHeight = PlayerSettings_GetScrollViewportHeight( contentHeight );
+	if ( viewportHeight < 1.0f ) {
+		viewportHeight = 1.0f;
+	}
+
+	thumbTrack = h - 2 * SB_WIDTH;
+	if ( thumbTrack < 1 ) {
+		thumbTrack = 1;
+	}
+	thumbSize = (int)( thumbTrack * ( viewportHeight / ( viewportHeight + maxOffset ) ) );
+	if ( thumbSize < SB_WIDTH ) {
+		thumbSize = SB_WIDTH;
+	}
+	if ( thumbSize > thumbTrack ) {
+		thumbSize = thumbTrack;
+	}
+	thumbTrack -= thumbSize;
+	if ( thumbTrack < 0 ) {
+		thumbTrack = 0;
+	}
+
+	thumbPos = 0;
+	if ( maxOffset > 0.0f && thumbTrack > 0 ) {
+		thumbPos = (int)( thumbTrack * ( state->offset / maxOffset ) );
+	}
+
+	thumbTop = y + SB_WIDTH + thumbPos;
+	thumbBottom = thumbTop + thumbSize;
+
+	if ( my >= thumbTop && my <= thumbBottom ) {
+		state->dragging = qtrue;
+		state->dragStartOffset = my - thumbTop;
+		return qtrue;
+	}
+
+	state->dragging = qfalse;
+	step = PlayerSettings_GetScrollPageStep( contentHeight, rowHeight, rowGap );
+	if ( my < thumbTop ) {
+		return PlayerSettings_AdjustScrollOffset( state, contentHeight, -step );
+	}
+	if ( my > thumbBottom ) {
+		return PlayerSettings_AdjustScrollOffset( state, contentHeight, step );
 	}
 
 	return qfalse;
 }
 
+static void PlayerSettings_UpdateScrollDrag( playersettingsScrollState_t *state, float contentHeight ) {
+	int x;
+	int y;
+	int h;
+	float maxOffset;
+	float viewportHeight;
+	int thumbSize;
+	int thumbTrack;
+	float thumbPos;
+	float thumbOffset;
 
+	if ( !state || !state->dragging ) {
+		return;
+	}
+
+	if ( !trap_Key_IsDown( K_MOUSE1 ) ) {
+		state->dragging = qfalse;
+		return;
+	}
+
+	maxOffset = PlayerSettings_GetScrollMaxOffset( contentHeight );
+	if ( maxOffset <= 0.0f ) {
+		state->dragging = qfalse;
+		PlayerSettings_SynchronizeScrollState( state, contentHeight );
+		return;
+	}
+
+	PlayerSettings_GetScrollBarGeometry( contentHeight, &x, &y, &h );
+
+	viewportHeight = PlayerSettings_GetScrollViewportHeight( contentHeight );
+	if ( viewportHeight < 1.0f ) {
+		viewportHeight = 1.0f;
+	}
+
+	thumbTrack = h - 2 * SB_WIDTH;
+	if ( thumbTrack < 1 ) {
+		thumbTrack = 1;
+	}
+	thumbSize = (int)( thumbTrack * ( viewportHeight / ( viewportHeight + maxOffset ) ) );
+	if ( thumbSize < SB_WIDTH ) {
+		thumbSize = SB_WIDTH;
+	}
+	if ( thumbSize > thumbTrack ) {
+		thumbSize = thumbTrack;
+	}
+	thumbTrack -= thumbSize;
+	if ( thumbTrack <= 0 ) {
+		state->dragging = qfalse;
+		PlayerSettings_SynchronizeScrollState( state, contentHeight );
+		return;
+	}
+
+	thumbOffset = uis.cursory - ( y + SB_WIDTH ) - state->dragStartOffset;
+	if ( thumbOffset < 0.0f ) {
+		thumbOffset = 0.0f;
+	}
+	if ( thumbOffset > thumbTrack ) {
+		thumbOffset = (float)thumbTrack;
+	}
+
+	thumbPos = thumbOffset / thumbTrack;
+	state->targetOffset = PlayerSettings_ClampScrollOffset( thumbPos * maxOffset, contentHeight );
+	state->offset = state->targetOffset;
+}
 
 static void PlayerSettings_GetStatsRowBounds( int row, int *top, int *bottom ) {
 	float rowTop;
@@ -1831,6 +1952,7 @@ static void PlayerSettings_DrawStatsPanelBackground( void ) {
 	int i;
 
 	contentHeight = PlayerSettings_GetStatsContentHeight();
+	PlayerSettings_UpdateScrollDrag( &s_playersettings.statsScroll, contentHeight );
 	PlayerSettings_SynchronizeScrollState( &s_playersettings.statsScroll, contentHeight );
 
 	panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
@@ -2089,6 +2211,7 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 	int i;
 
 	contentHeight = PlayerSettings_GetAchievementsContentHeight();
+	PlayerSettings_UpdateScrollDrag( &s_playersettings.achievementsScroll, contentHeight );
 	PlayerSettings_SynchronizeScrollState( &s_playersettings.achievementsScroll, contentHeight );
 
 	panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
@@ -2449,6 +2572,9 @@ static void PlayerSettings_SetTab( int tab ) {
 
 	s_playersettings.currentTab = tab;
 
+	s_playersettings.statsScroll.dragging = qfalse;
+	s_playersettings.achievementsScroll.dragging = qfalse;
+
 	PlayerSettings_SynchronizeScrollState( &s_playersettings.statsScroll, PlayerSettings_GetStatsContentHeight() );
 	PlayerSettings_SynchronizeScrollState( &s_playersettings.achievementsScroll, PlayerSettings_GetAchievementsContentHeight() );
 
@@ -2719,6 +2845,11 @@ PlayerSettings_MenuKey
 =================
 */
 static sfxHandle_t PlayerSettings_MenuKey( int key ) {
+	if ( key == ( K_MOUSE1 | K_CHAR_FLAG ) ) {
+		s_playersettings.statsScroll.dragging = qfalse;
+		s_playersettings.achievementsScroll.dragging = qfalse;
+		return 0;
+	}
 	if( key == K_MOUSE2 || key == K_ESCAPE ) {
 // STONELANCE
 //		PlayerSettings_SaveChanges();
