@@ -2138,6 +2138,88 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 	}
 }
 
+static int PlayerSettings_DrawScaledProportionalString_Wrapped(
+        int x,
+        int y,
+        float maxWidth,
+        float lineHeight,
+        const char *text,
+        int style,
+        vec4_t color,
+        float textScale,
+        int maxLines ) {
+        char buffer[1024];
+        char *s1;
+        char *s2;
+        char *s3;
+        char c_bcp;
+        float width;
+        int linesDrawn;
+
+        if ( !text || !text[0] ) {
+                return 0;
+        }
+
+        if ( maxWidth <= 0.0f ) {
+                UI_DrawScaledProportionalString( x, y, text, style, color, textScale );
+                return 1;
+        }
+
+        Q_strncpyz( buffer, text, sizeof( buffer ) );
+        s1 = buffer;
+        s2 = buffer;
+        s3 = buffer;
+        linesDrawn = 0;
+
+        while ( qtrue ) {
+                do {
+                        s3++;
+                } while ( *s3 != ' ' && *s3 != '\0' );
+
+                c_bcp = *s3;
+                *s3 = '\0';
+                width = UI_ProportionalStringWidth( s1 ) * textScale;
+                *s3 = c_bcp;
+
+                if ( width > maxWidth ) {
+                        if ( s1 == s2 ) {
+                                s2 = s3;
+                        }
+
+                        *s2 = '\0';
+                        UI_DrawScaledProportionalString( x, y, s1, style, color, textScale );
+                        ++linesDrawn;
+                        if ( maxLines > 0 && linesDrawn >= maxLines ) {
+                                return linesDrawn;
+                        }
+
+                        y += lineHeight;
+
+                        if ( c_bcp == '\0' ) {
+                                s2++;
+                                if ( *s2 != '\0' ) {
+                                        UI_DrawScaledProportionalString( x, y, s2, style, color, textScale );
+                                        ++linesDrawn;
+                                }
+                                return linesDrawn;
+                        }
+
+                        s2++;
+                        s1 = s2;
+                        s3 = s2;
+                } else {
+                        s2 = s3;
+                        if ( c_bcp == '\0' ) {
+                                UI_DrawScaledProportionalString( x, y, s1, style, color, textScale );
+                                ++linesDrawn;
+                                return linesDrawn;
+                        }
+                }
+        }
+
+        return linesDrawn;
+}
+
 static int PlayerSettings_DrawAchievementSection( int row, const char *title, const playersettingsAchievementTierDef_t *tiers, int count, double progress, playersettingsAchievementIcon_t iconIndex ) {
         int i;
         int rowTop;
@@ -2218,6 +2300,7 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
                         float entryLeft;
                         float entryTop;
                         float textX;
+                        float textMaxWidth;
                         float nameY;
                         float descriptionY;
                         qhandle_t iconHandle;
@@ -2241,6 +2324,11 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
                                 textX += iconWidth + PLAYERSETTINGS_ACHIEVEMENT_TEXT_GAP;
                         }
 
+                        textMaxWidth = entryLeft + columnWidth - textX;
+                        if ( textMaxWidth <= 0.0f ) {
+                                textMaxWidth = columnWidth;
+                        }
+
                         name = tiers[i].name;
                         description = tiers[i].description;
                         nameY = entryTop + 12.0f;
@@ -2256,13 +2344,16 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
                                         textScale );
                         }
                         if ( description && description[0] ) {
-                                UI_DrawScaledProportionalString(
+                                PlayerSettings_DrawScaledProportionalString_Wrapped(
                                         ( int )textX,
                                         ( int )descriptionY,
+                                        textMaxWidth,
+                                        textLineHeight,
                                         description,
                                         UI_LEFT | UI_SMALLFONT,
                                         entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor,
-                                        textScale );
+                                        textScale,
+                                        2 );
                         }
                 }
         }
