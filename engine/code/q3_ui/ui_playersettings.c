@@ -118,6 +118,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS            8
 #define PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE            2
+#define PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE            4
 #define PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE           50.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP              16
 #define PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET         6
@@ -128,8 +129,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_ACHIEVEMENT_TEXT_GAP             24.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT     12.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER        0.5f
-#define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS           (( PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS + PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE - 1 ) / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE )
-#define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT           ( PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + ( PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP )
+#define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE  (( PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE + PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE - 1 ) / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE )
+#define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT           ( PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + ( PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP )
+#define PLAYERSETTINGS_ACHIEVEMENT_PAGE_COUNT           (( PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS + PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE - 1 ) / PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE )
 #define PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE       PLAYERSETTINGS_PROFILE_VALUE_BASELINE
 
 #define PLAYERSETTINGS_STATS_ROW_HEIGHT		40
@@ -1521,12 +1523,24 @@ static float PlayerSettings_GetStatsContentHeight( void ) {
 }
 
 static float PlayerSettings_GetAchievementsContentHeight( void ) {
-	if ( PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT <= 0 ) {
-		return 0.0f;
-	}
+        if ( PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT <= 0 ) {
+                return 0.0f;
+        }
 
-	return PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT * PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT
-			+ PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP * ( PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT - 1 );
+        return PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT * PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT
+                        + PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP * ( PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT - 1 );
+}
+
+static int PlayerSettings_GetAchievementTierPageCount( void ) {
+        if ( PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE <= 0 ) {
+                return 1;
+        }
+
+        if ( PLAYERSETTINGS_ACHIEVEMENT_PAGE_COUNT < 1 ) {
+                return 1;
+        }
+
+        return PLAYERSETTINGS_ACHIEVEMENT_PAGE_COUNT;
 }
 
 
@@ -1650,9 +1664,11 @@ static const playersettingsPaginationInfo_t *PlayerSettings_UpdateStatsPaginatio
 }
 
 static const playersettingsPaginationInfo_t *PlayerSettings_UpdateAchievementsPaginationInfo( void ) {
-	float contentHeight;
+        float contentHeight;
+        playersettingsPaginationInfo_t *info;
+        int tierPageCount;
 
-	contentHeight = PlayerSettings_GetAchievementsContentHeight();
+        contentHeight = PlayerSettings_GetAchievementsContentHeight();
                 PlayerSettings_BuildPaginationInfo(
                         &s_playersettings.achievementsPagination,
                         PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT,
@@ -1662,7 +1678,26 @@ static const playersettingsPaginationInfo_t *PlayerSettings_UpdateAchievementsPa
                         PLAYERSETTINGS_ACHIEVEMENTS_PAGINATION_RESERVED_HEIGHT,
                         &s_playersettings.achievementsPaginationInfo );
 
-	return &s_playersettings.achievementsPaginationInfo;
+        info = &s_playersettings.achievementsPaginationInfo;
+        tierPageCount = PlayerSettings_GetAchievementTierPageCount();
+        if ( tierPageCount < 1 ) {
+                tierPageCount = 1;
+        }
+
+        info->rowOffset = 0.0f;
+        info->rowsPerPage = PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT;
+        info->firstRow = 0;
+        info->lastRow = PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT - 1;
+        info->totalPages = tierPageCount;
+
+        if ( s_playersettings.achievementsPagination.currentPage >= info->totalPages ) {
+                s_playersettings.achievementsPagination.currentPage = info->totalPages - 1;
+        }
+        if ( s_playersettings.achievementsPagination.currentPage < 0 ) {
+                s_playersettings.achievementsPagination.currentPage = 0;
+        }
+
+        return info;
 }
 
 static qboolean PlayerSettings_HandlePaginationCommand(
@@ -1881,6 +1916,10 @@ static void PlayerSettings_GetStatsRowBounds( int row, int *top, int *bottom ) {
 	float spacing;
 	float contentTop;
 	float offset;
+
+	if ( s_playersettings.statsPaginationInfo.rowCount != STATS_ROW_COUNT ) {
+		PlayerSettings_UpdateStatsPaginationInfo();
+	}
 
 	if ( s_playersettings.statsPaginationInfo.rowCount != STATS_ROW_COUNT ) {
 		PlayerSettings_UpdateStatsPaginationInfo();
@@ -2294,6 +2333,11 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
         float viewportTop;
         float viewportBottom;
         qboolean visible;
+        int tierPageCount;
+        int tiersPerPage;
+        int pageIndex;
+        int startTier;
+        int endTier;
 
         if ( count > PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
                 count = PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS;
@@ -2353,10 +2397,34 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 
         gridTop = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP;
 
+        tiersPerPage = PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE;
+        if ( tiersPerPage <= 0 ) {
+                tiersPerPage = count;
+        }
+
+        tierPageCount = PlayerSettings_GetAchievementTierPageCount();
+        if ( tierPageCount < 1 ) {
+                tierPageCount = 1;
+        }
+
+        pageIndex = s_playersettings.achievementsPagination.currentPage;
+        if ( pageIndex < 0 ) {
+                pageIndex = 0;
+        }
+        if ( pageIndex >= tierPageCount ) {
+                pageIndex = tierPageCount - 1;
+        }
+
+        startTier = pageIndex * tiersPerPage;
+        if ( startTier >= count ) {
+                startTier = 0;
+        }
+        endTier = startTier + tiersPerPage;
+
         if ( visible ) {
                 const float textScale = UI_ProportionalSizeScale( UI_SMALLFONT ) * PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER;
                 const float textLineHeight = PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT * PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER;
-                for ( i = 0; i < count; ++i ) {
+                for ( i = startTier; i < count && i < endTier; ++i ) {
                         int column;
                         int tierRow;
                         float entryLeft;
@@ -2369,8 +2437,8 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
                         const char *name;
                         const char *description;
 
-                        column = i % PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE;
-                        tierRow = i / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE;
+                        column = ( i - startTier ) % PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE;
+                        tierRow = ( i - startTier ) / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE;
                         entryLeft = areaLeft + column * ( columnWidth + columnGap );
                         entryTop = gridTop + tierRow * ( PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP );
 
