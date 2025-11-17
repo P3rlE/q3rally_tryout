@@ -1481,12 +1481,44 @@ static void PlayerSettings_GetScrollViewportBounds( float contentHeight, float *
 	}
 }
 
-static float PlayerSettings_GetScrollViewportHeight( float contentHeight ) {
-	float viewportTop;
-	float viewportBottom;
+static float PlayerSettings_GetPaginatedViewportBottom( float contentHeight, float reservedHeight ) {
+float viewportTop;
+float viewportBottom;
 
-	PlayerSettings_GetScrollViewportBounds( contentHeight, &viewportTop, &viewportBottom );
-	return viewportBottom - viewportTop;
+        viewportTop = PlayerSettings_GetScrollViewportTop();
+        viewportBottom = PlayerSettings_GetScrollViewportBottom( contentHeight );
+        if ( reservedHeight > 0.0f ) {
+                viewportBottom -= reservedHeight;
+        }
+
+        if ( viewportBottom < viewportTop ) {
+                viewportBottom = viewportTop;
+        }
+
+        return viewportBottom;
+}
+
+static void PlayerSettings_GetPaginatedViewportBounds( float contentHeight, float reservedHeight, float *top, float *bottom ) {
+        float viewportTop;
+        float viewportBottom;
+
+        viewportTop = PlayerSettings_GetScrollViewportTop();
+        viewportBottom = PlayerSettings_GetPaginatedViewportBottom( contentHeight, reservedHeight );
+
+        if ( top ) {
+                *top = viewportTop;
+        }
+        if ( bottom ) {
+                *bottom = viewportBottom;
+        }
+}
+
+static float PlayerSettings_GetPaginatedViewportHeight( float contentHeight, float reservedHeight ) {
+        float viewportTop;
+        float viewportBottom;
+
+        PlayerSettings_GetPaginatedViewportBounds( contentHeight, reservedHeight, &viewportTop, &viewportBottom );
+        return viewportBottom - viewportTop;
 }
 
 static float PlayerSettings_GetPaginatedViewportBottom( float contentHeight, float reservedHeight ) {
