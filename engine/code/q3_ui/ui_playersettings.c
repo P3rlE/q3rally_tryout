@@ -252,16 +252,33 @@ typedef enum {
         PLAYERSETTINGS_ACHIEVEMENT_ICON_COUNT
 } playersettingsAchievementIcon_t;
 
-typedef struct playersettings_scroll_state_s {
-	float	offset;
-	float	targetOffset;
-} playersettingsScrollState_t;
+typedef struct playersettings_pagination_state_s {
+	int	currentPage;
+} playersettingsPaginationState_t;
+
+typedef struct playersettings_pagination_info_s {
+	int	rowCount;
+	int	rowsPerPage;
+	int	totalPages;
+	int	firstRow;
+	int	lastRow;
+	float	rowOffset;
+} playersettingsPaginationInfo_t;
+
+typedef struct playersettings_rect_s {
+	float	x;
+	float	y;
+	float	w;
+	float	h;
+} playersettingsRect_t;
 
 static void PlayerSettings_DrawStatsLabelValue( int row, const char *label, const char *value );
 static void PlayerSettings_DrawStatsMessage( int row, const char *message );
 static void PlayerSettings_DrawAchievementsPanelBackground( void );
 static void PlayerSettings_DrawAchievementsTab( void );
 static void PlayerSettings_GetAchievementRowBounds( int row, int *top, int *bottom );
+static const playersettingsPaginationInfo_t *PlayerSettings_UpdateStatsPaginationInfo( void );
+static const playersettingsPaginationInfo_t *PlayerSettings_UpdateAchievementsPaginationInfo( void );
 
 static const char *const s_achievementMedalLockedPaths[PLAYERSETTINGS_ACHIEVEMENT_ICON_COUNT] = {
         ART_MEDAL_DRIVEN_LOCKED,
@@ -307,7 +324,15 @@ static qhandle_t PlayerSettings_RegisterAchievementMedal( const char *basePath )
         return 0;
 }
 
-#define PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL 48
+#define PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL        48
+#define PLAYERSETTINGS_PAGINATION_BUTTON_WIDTH          96.0f
+#define PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT         24.0f
+#define PLAYERSETTINGS_PAGINATION_BUTTON_GAP            80.0f
+#define PLAYERSETTINGS_PAGINATION_BUTTON_MARGIN         4.0f
+#define PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT \
+        ( PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT + PLAYERSETTINGS_PAGINATION_BUTTON_MARGIN * 2 )
+#define PLAYERSETTINGS_ACHIEVEMENTS_PAGINATION_RESERVED_HEIGHT \
+        ( PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT + PLAYERSETTINGS_PAGINATION_BUTTON_MARGIN * 2 )
 
 static const char *const s_genderItems[] = {
         "Unspecified",
@@ -434,8 +459,14 @@ typedef struct {
 	char		avatarShaderName[MAX_QPATH];
 	char		avatarProfileName[PROFILE_MAX_NAME];
 	char		avatarDisplayPath[MAX_OSPATH];
-	playersettingsScrollState_t	statsScroll;
-	playersettingsScrollState_t	achievementsScroll;
+	playersettingsPaginationState_t	statsPagination;
+	playersettingsPaginationState_t	achievementsPagination;
+	playersettingsPaginationInfo_t	statsPaginationInfo;
+	playersettingsPaginationInfo_t	achievementsPaginationInfo;
+	playersettingsRect_t	statsPrevPageButton;
+	playersettingsRect_t	statsNextPageButton;
+	playersettingsRect_t	achievementsPrevPageButton;
+	playersettingsRect_t	achievementsNextPageButton;
 } playersettings_t;
 
 static playersettings_t	s_playersettings;
@@ -1432,15 +1463,29 @@ static float PlayerSettings_GetScrollViewportBottom( float contentHeight ) {
 	return PlayerSettings_GetPanelBottomForContent( contentHeight ) - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
 }
 
-static void PlayerSettings_GetScrollViewportBounds( float contentHeight, float *top, float *bottom ) {
+static float PlayerSettings_GetPaginatedViewportBottom( float contentHeight, float reservedHeight ) {
 	float viewportTop;
 	float viewportBottom;
 
 	viewportTop = PlayerSettings_GetScrollViewportTop();
 	viewportBottom = PlayerSettings_GetScrollViewportBottom( contentHeight );
+	if ( reservedHeight > 0.0f ) {
+		viewportBottom -= reservedHeight;
+	}
+
 	if ( viewportBottom < viewportTop ) {
 		viewportBottom = viewportTop;
 	}
+
+	return viewportBottom;
+}
+
+static void PlayerSettings_GetPaginatedViewportBounds( float contentHeight, float reservedHeight, float *top, float *bottom ) {
+	float viewportTop;
+	float viewportBottom;
+
+	viewportTop = PlayerSettings_GetScrollViewportTop();
+	viewportBottom = PlayerSettings_GetPaginatedViewportBottom( contentHeight, reservedHeight );
 
 	if ( top ) {
 		*top = viewportTop;
@@ -1450,11 +1495,11 @@ static void PlayerSettings_GetScrollViewportBounds( float contentHeight, float *
 	}
 }
 
-static float PlayerSettings_GetScrollViewportHeight( float contentHeight ) {
+static float PlayerSettings_GetPaginatedViewportHeight( float contentHeight, float reservedHeight ) {
 	float viewportTop;
 	float viewportBottom;
 
-	PlayerSettings_GetScrollViewportBounds( contentHeight, &viewportTop, &viewportBottom );
+	PlayerSettings_GetPaginatedViewportBounds( contentHeight, reservedHeight, &viewportTop, &viewportBottom );
 	return viewportBottom - viewportTop;
 }
 
@@ -1484,303 +1529,362 @@ static float PlayerSettings_GetAchievementsContentHeight( void ) {
 			+ PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP * ( PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT - 1 );
 }
 
-static float PlayerSettings_GetScrollMaxOffset( float contentHeight ) {
-	float contentTop;
-	float viewportBottom;
-	float maxOffset;
 
-	contentTop = PlayerSettings_GetScrollContentTop();
-	viewportBottom = PlayerSettings_GetScrollViewportBottom( contentHeight );
-	maxOffset = contentTop + contentHeight - viewportBottom;
-	if ( maxOffset < 0.0f ) {
-		maxOffset = 0.0f;
-	}
-
-	return maxOffset;
-}
-
-static float PlayerSettings_ClampScrollOffset( float offset, float contentHeight ) {
-	float maxOffset;
-
-	if ( offset < 0.0f ) {
-		offset = 0.0f;
-	}
-
-	maxOffset = PlayerSettings_GetScrollMaxOffset( contentHeight );
-	if ( offset > maxOffset ) {
-		offset = maxOffset;
-	}
-
-	return offset;
-}
-
-static void PlayerSettings_SynchronizeScrollState( playersettingsScrollState_t *state, float contentHeight ) {
-	if ( !state ) {
+static void PlayerSettings_ClearRect( playersettingsRect_t *rect ) {
+	if ( !rect ) {
 		return;
 	}
 
-	state->targetOffset = PlayerSettings_ClampScrollOffset( state->targetOffset, contentHeight );
-	state->offset = PlayerSettings_ClampScrollOffset( state->targetOffset, contentHeight );
+	rect->x = rect->y = rect->w = rect->h = 0.0f;
 }
 
-static qboolean PlayerSettings_AdjustScrollOffset( playersettingsScrollState_t *state, float contentHeight, float delta ) {
-	float newTarget;
+static qboolean PlayerSettings_RectContainsCursor( const playersettingsRect_t *rect ) {
+	if ( !rect || rect->w <= 0.0f || rect->h <= 0.0f ) {
+		return qfalse;
+	}
+
+	return UI_CursorInRect( (int)rect->x, (int)rect->y, (int)rect->w, (int)rect->h );
+}
+
+static void PlayerSettings_BuildPaginationInfo(
+        playersettingsPaginationState_t *state,
+        int rowCount,
+        float rowHeight,
+        float rowGap,
+        float contentHeight,
+        float reservedHeight,
+        playersettingsPaginationInfo_t *outInfo ) {
+	playersettingsPaginationInfo_t info;
+	float spacing;
+	float viewportHeight;
+	int rowsPerPage;
+	int totalPages;
+	int firstRow;
+	int lastRow;
+
+	Com_Memset( &info, 0, sizeof( info ) );
+	info.rowCount = rowCount;
+	info.lastRow = -1;
+	info.totalPages = 1;
+
+	if ( rowCount <= 0 || !outInfo ) {
+		if ( outInfo ) {
+			*outInfo = info;
+		}
+		return;
+	}
+
+	spacing = rowHeight + rowGap;
+	if ( spacing <= 0.0f ) {
+		spacing = ( rowHeight > 0.0f ) ? rowHeight : 1.0f;
+	}
+
+        viewportHeight = PlayerSettings_GetPaginatedViewportHeight( contentHeight, reservedHeight );
+	if ( viewportHeight < rowHeight ) {
+		viewportHeight = rowHeight;
+	}
+
+	rowsPerPage = (int)( ( viewportHeight + rowGap ) / spacing );
+	if ( rowsPerPage < 1 ) {
+		rowsPerPage = 1;
+	}
+	if ( rowsPerPage > rowCount ) {
+		rowsPerPage = rowCount;
+	}
+
+	totalPages = ( rowCount + rowsPerPage - 1 ) / rowsPerPage;
+	if ( totalPages < 1 ) {
+		totalPages = 1;
+	}
+
+	if ( state ) {
+		if ( state->currentPage < 0 ) {
+			state->currentPage = 0;
+		}
+		if ( state->currentPage >= totalPages ) {
+			state->currentPage = totalPages - 1;
+		}
+	}
 
 	if ( !state ) {
+		static playersettingsPaginationState_t dummyState;
+		state = &dummyState;
+	}
+
+	firstRow = state->currentPage * rowsPerPage;
+	if ( firstRow >= rowCount ) {
+		firstRow = rowCount - rowsPerPage;
+		if ( firstRow < 0 ) {
+			firstRow = 0;
+		}
+	}
+
+	lastRow = firstRow + rowsPerPage - 1;
+	if ( lastRow >= rowCount ) {
+		lastRow = rowCount - 1;
+	}
+
+	info.rowsPerPage = rowsPerPage;
+	info.totalPages = totalPages;
+	info.firstRow = firstRow;
+	info.lastRow = lastRow;
+	info.rowOffset = firstRow * spacing;
+
+	*outInfo = info;
+}
+
+static const playersettingsPaginationInfo_t *PlayerSettings_UpdateStatsPaginationInfo( void ) {
+	float contentHeight;
+
+	contentHeight = PlayerSettings_GetStatsContentHeight();
+                PlayerSettings_BuildPaginationInfo(
+                        &s_playersettings.statsPagination,
+                        STATS_ROW_COUNT,
+                        PLAYERSETTINGS_STATS_ROW_HEIGHT,
+                        PLAYERSETTINGS_STATS_ROW_GAP,
+                        contentHeight,
+                        PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT,
+                        &s_playersettings.statsPaginationInfo );
+
+	return &s_playersettings.statsPaginationInfo;
+}
+
+static const playersettingsPaginationInfo_t *PlayerSettings_UpdateAchievementsPaginationInfo( void ) {
+	float contentHeight;
+
+	contentHeight = PlayerSettings_GetAchievementsContentHeight();
+                PlayerSettings_BuildPaginationInfo(
+                        &s_playersettings.achievementsPagination,
+                        PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT,
+                        PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT,
+                        PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP,
+                        contentHeight,
+                        PLAYERSETTINGS_ACHIEVEMENTS_PAGINATION_RESERVED_HEIGHT,
+                        &s_playersettings.achievementsPaginationInfo );
+
+	return &s_playersettings.achievementsPaginationInfo;
+}
+
+static qboolean PlayerSettings_HandlePaginationCommand(
+	playersettingsPaginationState_t *state,
+	const playersettingsPaginationInfo_t *info,
+	int delta ) {
+	int newPage;
+
+	if ( !state || !info || info->totalPages <= 1 || delta == 0 ) {
 		return qfalse;
 	}
 
-	newTarget = PlayerSettings_ClampScrollOffset( state->targetOffset + delta, contentHeight );
-	if ( newTarget == state->targetOffset ) {
+	newPage = state->currentPage + delta;
+	if ( newPage < 0 ) {
+		newPage = 0;
+	}
+	if ( newPage >= info->totalPages ) {
+		newPage = info->totalPages - 1;
+	}
+
+	if ( newPage == state->currentPage ) {
 		return qfalse;
 	}
 
-	state->targetOffset = newTarget;
-	state->offset = newTarget;
-
+	state->currentPage = newPage;
 	return qtrue;
 }
 
-static float PlayerSettings_GetScrollPageStep( float contentHeight, float rowHeight, float rowGap ) {
-	float viewportHeight;
-	float rowSpacing;
-	float step;
+static qboolean PlayerSettings_HandlePaginationKey(
+	playersettingsPaginationState_t *state,
+	const playersettingsPaginationInfo_t *info,
+	int key ) {
+	int delta;
 
-	viewportHeight = PlayerSettings_GetScrollViewportHeight( contentHeight );
-	rowSpacing = rowHeight + rowGap;
-	if ( rowSpacing <= 0.0f ) {
-		return viewportHeight;
-	}
-
-	step = viewportHeight - rowSpacing;
-	if ( step < rowSpacing ) {
-		step = rowSpacing;
-	}
-
-	return step;
-}
-
-static void PlayerSettings_GetVisibleRowRange( int rowCount, float rowHeight, float rowGap, float scrollOffset, float contentHeight, int *firstRow, int *lastRow ) {
-	float viewportTop;
-	float viewportBottom;
-	float contentTop;
-	float localTop;
-	float localBottom;
-	float spacing;
-	int start;
-	int end;
-	int i;
-
-	if ( firstRow ) {
-		*firstRow = 0;
-	}
-	if ( lastRow ) {
-		*lastRow = -1;
-	}
-	if ( rowCount <= 0 ) {
-		return;
-	}
-
-	PlayerSettings_GetScrollViewportBounds( contentHeight, &viewportTop, &viewportBottom );
-	contentTop = PlayerSettings_GetScrollContentTop();
-	spacing = rowHeight + rowGap;
-	if ( spacing <= 0.0f ) {
-		if ( firstRow ) {
-			*firstRow = 0;
-		}
-		if ( lastRow ) {
-			*lastRow = rowCount - 1;
-		}
-		return;
-	}
-
-	localTop = scrollOffset + ( viewportTop - contentTop );
-	localBottom = scrollOffset + ( viewportBottom - contentTop );
-
-	start = rowCount;
-	for ( i = 0; i < rowCount; ++i ) {
-		float rowTop;
-		float rowBottom;
-
-		rowTop = i * spacing;
-		rowBottom = rowTop + rowHeight;
-		if ( rowBottom > localTop ) {
-			start = i;
-			break;
-		}
-	}
-	if ( start >= rowCount ) {
-		return;
-	}
-
-	end = start;
-	for ( i = start; i < rowCount; ++i ) {
-		float rowTop;
-
-		rowTop = i * spacing;
-		if ( rowTop >= localBottom ) {
-			break;
-		}
-		end = i;
-	}
-
-	if ( firstRow ) {
-		*firstRow = start;
-	}
-	if ( lastRow ) {
-		*lastRow = end;
-	}
-}
-static void PlayerSettings_GetScrollBarGeometry( float contentHeight, int *x, int *y, int *height ) {
-	float viewportTop;
-	float viewportBottom;
-	int barX;
-	int barY;
-	int barHeight;
-
-	PlayerSettings_GetScrollViewportBounds( contentHeight, &viewportTop, &viewportBottom );
-	barX = PLAYERSETTINGS_PROFILE_PANEL_LEFT + PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN - SB_WIDTH;
-	barY = (int)viewportTop;
-	barHeight = (int)( viewportBottom - viewportTop );
-	if ( barHeight < SB_WIDTH * 2 ) {
-		barHeight = SB_WIDTH * 2;
-	}
-
-	if ( x ) {
-		*x = barX;
-	}
-	if ( y ) {
-		*y = barY;
-	}
-	if ( height ) {
-		*height = barHeight;
-	}
-}
-
-static void PlayerSettings_DrawScrollBar( playersettingsScrollState_t *state, float contentHeight ) {
-	int x;
-	int y;
-	int h;
-	float viewportHeight;
-	float maxOffset;
-	int thumbSize;
-	int thumbTrack;
-	int thumbPos;
-
-	if ( !state ) {
-		return;
-	}
-
-	PlayerSettings_SynchronizeScrollState( state, contentHeight );
-	maxOffset = PlayerSettings_GetScrollMaxOffset( contentHeight );
-	if ( maxOffset <= 0.0f ) {
-		return;
-	}
-
-	PlayerSettings_GetScrollBarGeometry( contentHeight, &x, &y, &h );
-
-	UI_FillRect( x, y + SB_WIDTH / 2, SB_WIDTH, h - SB_WIDTH, menu_back_color );
-
-	UI_DrawHandlePic( x, y, SB_WIDTH, SB_WIDTH, uis.sb_u0 );
-	if ( UI_CursorInRect( x, y, SB_WIDTH, SB_WIDTH ) && state->offset > 0.0f ) {
-		UI_DrawHandlePic( x, y, SB_WIDTH, SB_WIDTH, uis.sb_u1 );
-	}
-
-	UI_DrawHandlePic( x, y + h - SB_WIDTH, SB_WIDTH, SB_WIDTH, uis.sb_d0 );
-	if ( UI_CursorInRect( x, y + h - SB_WIDTH, SB_WIDTH, SB_WIDTH ) && state->offset < maxOffset ) {
-		UI_DrawHandlePic( x, y + h - SB_WIDTH, SB_WIDTH, SB_WIDTH, uis.sb_d1 );
-	}
-
-	viewportHeight = PlayerSettings_GetScrollViewportHeight( contentHeight );	
-	if ( viewportHeight < 1.0f ) {
-		viewportHeight = 1.0f;
-	}
-
-	thumbTrack = h - 2 * SB_WIDTH;
-	if ( thumbTrack < 1 ) {
-		thumbTrack = 1;
-	}
-	thumbSize = (int)( thumbTrack * ( viewportHeight / ( viewportHeight + maxOffset ) ) );
-	if ( thumbSize < SB_WIDTH ) {
-		thumbSize = SB_WIDTH;
-	}
-	if ( thumbSize > thumbTrack ) {
-		thumbSize = thumbTrack;
-	}
-	thumbTrack -= thumbSize;
-	if ( thumbTrack < 0 ) {
-		thumbTrack = 0;
-	}
-
-	thumbPos = 0;
-	if ( maxOffset > 0.0f && thumbTrack > 0 ) {
-		thumbPos = (int)( thumbTrack * ( state->offset / maxOffset ) );
-	}
-
-	UI_DrawHandlePic( x, y + SB_WIDTH + thumbPos, SB_WIDTH, SB_WIDTH / 2, uis.sbtop );
-	if ( thumbSize > SB_WIDTH ) {
-		UI_DrawHandlePic( x, y + SB_WIDTH + thumbPos + 8, SB_WIDTH, thumbSize - SB_WIDTH, uis.sbmid );
-	}
-	UI_DrawHandlePic( x, y + SB_WIDTH + thumbPos + ( thumbSize - 8 ), SB_WIDTH, SB_WIDTH / 2, uis.sbbot );
-}
-
-static qboolean PlayerSettings_HandleScrollKey( playersettingsScrollState_t *state, float contentHeight, float rowHeight, float rowGap, int key ) {
-	float step;
-
+	delta = 0;
 	switch ( key ) {
-	case K_MWHEELUP:
-		return PlayerSettings_AdjustScrollOffset( state, contentHeight, -( rowHeight + rowGap ) );
-	case K_MWHEELDOWN:
-		return PlayerSettings_AdjustScrollOffset( state, contentHeight, rowHeight + rowGap );
+	case K_LEFTARROW:
+	case K_UPARROW:
+	case K_KP_LEFTARROW:
+	case K_KP_UPARROW:
 	case K_PGUP:
-		step = PlayerSettings_GetScrollPageStep( contentHeight, rowHeight, rowGap );
-		return PlayerSettings_AdjustScrollOffset( state, contentHeight, -step );
-	case K_PGDN:
-		step = PlayerSettings_GetScrollPageStep( contentHeight, rowHeight, rowGap );
-		return PlayerSettings_AdjustScrollOffset( state, contentHeight, step );
-	default:
+		delta = -1;
 		break;
-	}
-
-	return qfalse;
-}
-
-static qboolean PlayerSettings_HandleScrollBarClick( playersettingsScrollState_t *state, float contentHeight, float rowHeight, float rowGap ) {
-	int x;
-	int y;
-	int h;
-	int mx;
-	int my;
-
-	if ( PlayerSettings_GetScrollMaxOffset( contentHeight ) <= 0.0f ) {
+	case K_RIGHTARROW:
+	case K_DOWNARROW:
+	case K_KP_RIGHTARROW:
+	case K_KP_DOWNARROW:
+	case K_PGDN:
+		delta = 1;
+		break;
+	default:
 		return qfalse;
 	}
 
-	PlayerSettings_GetScrollBarGeometry( contentHeight, &x, &y, &h );
-	mx = uis.cursorx;
-	my = uis.cursory;
+	return PlayerSettings_HandlePaginationCommand( state, info, delta );
+}
 
-	if ( mx < x || mx > x + SB_WIDTH || my < y || my > y + h ) {
+static qboolean PlayerSettings_HandlePaginationClick(
+	playersettingsPaginationState_t *state,
+	const playersettingsPaginationInfo_t *info,
+	const playersettingsRect_t *prevRect,
+	const playersettingsRect_t *nextRect ) {
+	int delta;
+
+	if ( !state || !info || info->totalPages <= 1 ) {
 		return qfalse;
 	}
 
-	if ( my < y + SB_WIDTH ) {
-		return PlayerSettings_AdjustScrollOffset( state, contentHeight, -( rowHeight + rowGap ) );
-	}
-	if ( my > y + h - SB_WIDTH ) {
-		return PlayerSettings_AdjustScrollOffset( state, contentHeight, rowHeight + rowGap );
+	delta = 0;
+	if ( state->currentPage > 0 && PlayerSettings_RectContainsCursor( prevRect ) ) {
+		delta = -1;
+	} else if ( state->currentPage < info->totalPages - 1 && PlayerSettings_RectContainsCursor( nextRect ) ) {
+		delta = 1;
 	}
 
-	return qfalse;
+	if ( !delta ) {
+		return qfalse;
+	}
+
+	return PlayerSettings_HandlePaginationCommand( state, info, delta );
 }
 
+static void PlayerSettings_DrawPaginationButton( const char *label, const playersettingsRect_t *rect, qboolean enabled, qboolean hovered ) {
+	vec4_t fillColor;
+	vec4_t borderColor;
+	vec4_t textColor;
+	float textY;
 
+	if ( !rect || rect->w <= 0.0f || rect->h <= 0.0f ) {
+		return;
+	}
+
+	Vector4Copy( enabled ? profileRowEvenFillColor : profileRowOddFillColor, fillColor );
+	fillColor[3] = enabled ? 0.6f : 0.2f;
+	if ( hovered && enabled ) {
+		fillColor[3] = 0.85f;
+	}
+	UI_FillRect( rect->x, rect->y, rect->w, rect->h, fillColor );
+
+	Vector4Copy( profileRowBorderColor, borderColor );
+	borderColor[3] *= enabled ? 1.0f : 0.5f;
+	UI_DrawRect( rect->x, rect->y, rect->w, rect->h, borderColor );
+
+	if ( enabled ) {
+		Vector4Copy( hovered ? text_color_highlight : text_color_normal, textColor );
+	} else {
+		Vector4Copy( text_color_disabled, textColor );
+	}
+
+	textY = rect->y + ( rect->h - SMALLCHAR_HEIGHT ) * 0.5f;
+	UI_DrawString( (int)( rect->x + rect->w * 0.5f ), (int)textY, label, UI_CENTER | UI_SMALLFONT, textColor );
+}
+
+static void PlayerSettings_DrawPaginationControls(
+playersettingsPaginationState_t *state,
+const playersettingsPaginationInfo_t *info,
+float contentHeight,
+float reservedHeight,
+playersettingsRect_t *prevRect,
+playersettingsRect_t *nextRect ) {
+float viewportTop;
+	float viewportBottom;
+	float y;
+	float centerX;
+	float panelLeft;
+	float panelRight;
+	char pageBuffer[32];
+	qboolean prevHover;
+	qboolean nextHover;
+
+	PlayerSettings_ClearRect( prevRect );
+	PlayerSettings_ClearRect( nextRect );
+
+	if ( !state || !info || info->totalPages <= 1 ) {
+		return;
+	}
+
+	if ( reservedHeight < PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT + PLAYERSETTINGS_PAGINATION_BUTTON_MARGIN * 2.0f ) {
+		reservedHeight = PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT + PLAYERSETTINGS_PAGINATION_BUTTON_MARGIN * 2.0f;
+	}
+	PlayerSettings_GetPaginatedViewportBounds(
+		contentHeight,
+		reservedHeight,
+		&viewportTop,
+		&viewportBottom );
+	y = viewportBottom + reservedHeight - PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT - PLAYERSETTINGS_PAGINATION_BUTTON_MARGIN;
+        centerX = PLAYERSETTINGS_PROFILE_PANEL_LEFT + PLAYERSETTINGS_PROFILE_PANEL_WIDTH * 0.5f;
+	panelLeft = PLAYERSETTINGS_PROFILE_PANEL_LEFT + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
+	panelRight = PLAYERSETTINGS_PROFILE_PANEL_LEFT + PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
+
+	prevRect->x = centerX - PLAYERSETTINGS_PAGINATION_BUTTON_GAP * 0.5f - PLAYERSETTINGS_PAGINATION_BUTTON_WIDTH;
+	prevRect->y = y;
+	prevRect->w = PLAYERSETTINGS_PAGINATION_BUTTON_WIDTH;
+	prevRect->h = PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT;
+
+	nextRect->x = centerX + PLAYERSETTINGS_PAGINATION_BUTTON_GAP * 0.5f;
+	nextRect->y = y;
+	nextRect->w = PLAYERSETTINGS_PAGINATION_BUTTON_WIDTH;
+	nextRect->h = PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT;
+
+	if ( prevRect->x < panelLeft ) {
+		float shift = panelLeft - prevRect->x;
+		prevRect->x += shift;
+		nextRect->x += shift;
+	}
+	if ( nextRect->x + nextRect->w > panelRight ) {
+		float shift = ( nextRect->x + nextRect->w ) - panelRight;
+		prevRect->x -= shift;
+		nextRect->x -= shift;
+	}
+
+	prevHover = PlayerSettings_RectContainsCursor( prevRect );
+	nextHover = PlayerSettings_RectContainsCursor( nextRect );
+
+	PlayerSettings_DrawPaginationButton( "<< Prev", prevRect, ( state->currentPage > 0 ), prevHover );
+	PlayerSettings_DrawPaginationButton( "Next >>", nextRect, ( state->currentPage < info->totalPages - 1 ), nextHover );
+
+	Com_sprintf( pageBuffer, sizeof( pageBuffer ), "Page %d / %d", state->currentPage + 1, info->totalPages );
+	UI_DrawString(
+		(int)centerX,
+		(int)( y + ( PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT - SMALLCHAR_HEIGHT ) * 0.5f ),
+		pageBuffer,
+		UI_CENTER | UI_SMALLFONT,
+		text_color_highlight );
+}
+
+static void PlayerSettings_DrawStatsPaginationControls( void ) {
+	const playersettingsPaginationInfo_t *info;
+
+	info = PlayerSettings_UpdateStatsPaginationInfo();
+	PlayerSettings_DrawPaginationControls(
+		&s_playersettings.statsPagination,
+		info,
+		PlayerSettings_GetStatsContentHeight(),
+		PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT,
+		&s_playersettings.statsPrevPageButton,
+		&s_playersettings.statsNextPageButton );
+}
+
+static void PlayerSettings_DrawAchievementsPaginationControls( void ) {
+	const playersettingsPaginationInfo_t *info;
+
+	info = PlayerSettings_UpdateAchievementsPaginationInfo();
+	PlayerSettings_DrawPaginationControls(
+		&s_playersettings.achievementsPagination,
+		info,
+		PlayerSettings_GetAchievementsContentHeight(),
+		PLAYERSETTINGS_ACHIEVEMENTS_PAGINATION_RESERVED_HEIGHT,
+		&s_playersettings.achievementsPrevPageButton,
+		&s_playersettings.achievementsNextPageButton );
+}
 
 static void PlayerSettings_GetStatsRowBounds( int row, int *top, int *bottom ) {
 	float rowTop;
 	float rowBottom;
 	float spacing;
 	float contentTop;
+	float offset;
+
+	if ( s_playersettings.statsPaginationInfo.rowCount != STATS_ROW_COUNT ) {
+		PlayerSettings_UpdateStatsPaginationInfo();
+	}
 
 	if ( row < 0 ) {
 		row = 0;
@@ -1791,7 +1895,8 @@ static void PlayerSettings_GetStatsRowBounds( int row, int *top, int *bottom ) {
 
 	spacing = PlayerSettings_GetStatsRowSpacing();
 	contentTop = PlayerSettings_GetScrollContentTop();
-	rowTop = contentTop + row * spacing - s_playersettings.statsScroll.offset;
+	offset = s_playersettings.statsPaginationInfo.rowOffset;
+	rowTop = contentTop + row * spacing - offset;
 	rowBottom = rowTop + PLAYERSETTINGS_STATS_ROW_HEIGHT;
 
 	if ( top ) {
@@ -1803,78 +1908,81 @@ static void PlayerSettings_GetStatsRowBounds( int row, int *top, int *bottom ) {
 }
 
 
+
 static void PlayerSettings_DrawStatsPanelBackground( void ) {
-	vec4_t panelColor;
-	vec4_t rowColor;
-	vec4_t borderColor;
-	float contentHeight;
-	float viewportTop;
-	float viewportBottom;
-	int panelTop;
-	int panelBottom;
-	int firstRow;
-	int lastRow;
-	int i;
+vec4_t panelColor;
+vec4_t rowColor;
+vec4_t borderColor;
+float contentHeight;
+float viewportTop;
+float viewportBottom;
+int panelTop;
+int panelBottom;
+int i;
+const playersettingsPaginationInfo_t *info;
 
-	contentHeight = PlayerSettings_GetStatsContentHeight();
-	PlayerSettings_SynchronizeScrollState( &s_playersettings.statsScroll, contentHeight );
+contentHeight = PlayerSettings_GetStatsContentHeight();
+info = PlayerSettings_UpdateStatsPaginationInfo();
 
-	panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
-	panelBottom = (int)PlayerSettings_GetPanelBottomForContent( contentHeight );
+panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
+panelBottom = (int)PlayerSettings_GetPanelBottomForContent( contentHeight );
 
-	Vector4Copy( profilePanelFillColor, panelColor );
-	panelColor[3] *= uis.tFrac;
-	UI_FillRect( PLAYERSETTINGS_PROFILE_PANEL_LEFT, panelTop, PLAYERSETTINGS_PROFILE_PANEL_WIDTH, panelBottom - panelTop, panelColor );
+Vector4Copy( profilePanelFillColor, panelColor );
+panelColor[3] *= uis.tFrac;
+UI_FillRect( PLAYERSETTINGS_PROFILE_PANEL_LEFT, panelTop, PLAYERSETTINGS_PROFILE_PANEL_WIDTH, panelBottom - panelTop, panelColor );
 
-	Vector4Copy( profileRowBorderColor, borderColor );
-	borderColor[3] *= uis.tFrac;
+Vector4Copy( profileRowBorderColor, borderColor );
+borderColor[3] *= uis.tFrac;
 
-	PlayerSettings_GetScrollViewportBounds( contentHeight, &viewportTop, &viewportBottom );
-	PlayerSettings_GetVisibleRowRange( STATS_ROW_COUNT, PLAYERSETTINGS_STATS_ROW_HEIGHT, PLAYERSETTINGS_STATS_ROW_GAP, s_playersettings.statsScroll.offset, contentHeight, &firstRow, &lastRow );
+PlayerSettings_GetPaginatedViewportBounds(
+        contentHeight,
+        PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT,
+        &viewportTop,
+        &viewportBottom );
 
-	if ( lastRow < firstRow ) {
-		return;
-	}
+if ( !info || info->lastRow < info->firstRow ) {
+return;
+}
 
-	for ( i = firstRow; i <= lastRow; ++i ) {
-		int rowTop;
-		int rowBottom;
+for ( i = info->firstRow; i <= info->lastRow; ++i ) {
+int rowTop;
+int rowBottom;
 
-		PlayerSettings_GetStatsRowBounds( i, &rowTop, &rowBottom );
+PlayerSettings_GetStatsRowBounds( i, &rowTop, &rowBottom );
 
-		if ( rowTop < (int)viewportTop ) {
-			rowTop = (int)viewportTop;
-		}
-		if ( rowBottom > (int)viewportBottom ) {
-			rowBottom = (int)viewportBottom;
-		}
-		if ( rowBottom <= rowTop ) {
-			continue;
-		}
+if ( rowTop < (int)viewportTop ) {
+rowTop = (int)viewportTop;
+}
+if ( rowBottom > (int)viewportBottom ) {
+rowBottom = (int)viewportBottom;
+}
+if ( rowBottom <= rowTop ) {
+continue;
+}
 
-		Vector4Copy( ( i & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
-		rowColor[3] *= uis.tFrac;
+Vector4Copy( ( i & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
+rowColor[3] *= uis.tFrac;
 
-		UI_FillRect(
-			PLAYERSETTINGS_PROFILE_FIELD_LEFT,
-			rowTop,
-			PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-			rowBottom - rowTop,
-			rowColor );
+UI_FillRect(
+PLAYERSETTINGS_PROFILE_FIELD_LEFT,
+rowTop,
+PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
+rowBottom - rowTop,
+rowColor );
 
-		UI_DrawRect(
-			PLAYERSETTINGS_PROFILE_FIELD_LEFT,
-			rowTop,
-			PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-			rowBottom - rowTop,
-			borderColor );
-	}
+UI_DrawRect(
+PLAYERSETTINGS_PROFILE_FIELD_LEFT,
+rowTop,
+PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
+rowBottom - rowTop,
+borderColor );
+}
 }
 static void PlayerSettings_DrawStatsTab( void ) {
-	const profile_stats_t *stats;
-	char buffer[64];
+const profile_stats_t *stats;
+char buffer[64];
 
-	PlayerSettings_SynchronizeScrollState( &s_playersettings.statsScroll, PlayerSettings_GetStatsContentHeight() );
+PlayerSettings_UpdateStatsPaginationInfo();
 
 	if ( !UI_Profile_HasActiveProfile() ) {
 		PlayerSettings_DrawStatsMessage( STATS_ROW_DISTANCE, "No active profile selected." );
@@ -1933,8 +2041,12 @@ static void PlayerSettings_DrawStatsLabelValueWithColors( int row, const char *l
         labelX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
         valueX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_STATS_VALUE_OFFSET;
 
-	PlayerSettings_GetStatsRowBounds( row, &rowTop, &rowBottom );
-	PlayerSettings_GetScrollViewportBounds( PlayerSettings_GetStatsContentHeight(), &viewportTop, &viewportBottom );
+        PlayerSettings_GetStatsRowBounds( row, &rowTop, &rowBottom );
+        PlayerSettings_GetPaginatedViewportBounds(
+                PlayerSettings_GetStatsContentHeight(),
+                PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT,
+                &viewportTop,
+                &viewportBottom );
 	if ( rowBottom <= (int)viewportTop || rowTop >= (int)viewportBottom ) {
 		return;
 	}
@@ -1969,8 +2081,12 @@ static void PlayerSettings_DrawStatsMessage( int row, const char *message ) {
 
 	x = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
 
-	PlayerSettings_GetStatsRowBounds( row, &rowTop, &rowBottom );
-	PlayerSettings_GetScrollViewportBounds( PlayerSettings_GetStatsContentHeight(), &viewportTop, &viewportBottom );
+        PlayerSettings_GetStatsRowBounds( row, &rowTop, &rowBottom );
+        PlayerSettings_GetPaginatedViewportBounds(
+                PlayerSettings_GetStatsContentHeight(),
+                PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT,
+                &viewportTop,
+                &viewportBottom );
 	if ( rowBottom <= (int)viewportTop || rowTop >= (int)viewportBottom ) {
 		return;
 	}
@@ -2011,13 +2127,13 @@ static void PlayerSettings_DrawBackShaders( void ) {
 
         Menu_Draw( &s_playersettings.menu );
 
-        if ( s_playersettings.currentTab == TAB_STATS ) {
-                PlayerSettings_DrawStatsTab();
-                PlayerSettings_DrawScrollBar( &s_playersettings.statsScroll, PlayerSettings_GetStatsContentHeight() );
-        } else if ( s_playersettings.currentTab == TAB_ACHIEVEMENTS ) {
-                PlayerSettings_DrawAchievementsTab();
-                PlayerSettings_DrawScrollBar( &s_playersettings.achievementsScroll, PlayerSettings_GetAchievementsContentHeight() );
-        }
+if ( s_playersettings.currentTab == TAB_STATS ) {
+PlayerSettings_DrawStatsTab();
+PlayerSettings_DrawStatsPaginationControls();
+} else if ( s_playersettings.currentTab == TAB_ACHIEVEMENTS ) {
+PlayerSettings_DrawAchievementsTab();
+PlayerSettings_DrawAchievementsPaginationControls();
+}
 }
 
 static void PlayerSettings_GetAchievementRowBounds( int row, int *top, int *bottom ) {
@@ -2025,6 +2141,13 @@ static void PlayerSettings_GetAchievementRowBounds( int row, int *top, int *bott
 	float	rowBottom;
 	float	spacing;
 	float	contentTop;
+	float	offset;
+	const playersettingsPaginationInfo_t *paginationInfo;
+
+	paginationInfo = &s_playersettings.achievementsPaginationInfo;
+	if ( s_playersettings.achievementsPaginationInfo.rowCount != PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT ) {
+		paginationInfo = PlayerSettings_UpdateAchievementsPaginationInfo();
+	}
 
 	if ( row < 0 ) {
 		row = 0;
@@ -2035,7 +2158,8 @@ static void PlayerSettings_GetAchievementRowBounds( int row, int *top, int *bott
 
 	spacing = PlayerSettings_GetAchievementsRowSpacing();
 	contentTop = PlayerSettings_GetScrollContentTop();
-	rowTop = contentTop + row * spacing - s_playersettings.achievementsScroll.offset;
+	offset = paginationInfo ? paginationInfo->rowOffset : s_playersettings.achievementsPaginationInfo.rowOffset;
+	rowTop = contentTop + row * spacing - offset;
 	rowBottom = rowTop + PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT;
 
 	if ( top ) {
@@ -2047,74 +2171,76 @@ static void PlayerSettings_GetAchievementRowBounds( int row, int *top, int *bott
 }
 
 static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
-	vec4_t panelColor;
-	vec4_t rowColor;
-	vec4_t borderColor;
-	float contentHeight;
-	float viewportTop;
-	float viewportBottom;
-	int panelTop;
-	int panelBottom;
-	int firstRow;
-	int lastRow;
-	int i;
+vec4_t panelColor;
+vec4_t rowColor;
+vec4_t borderColor;
+float contentHeight;
+float viewportTop;
+float viewportBottom;
+int panelTop;
+int panelBottom;
+int i;
+const playersettingsPaginationInfo_t *info;
 
-	contentHeight = PlayerSettings_GetAchievementsContentHeight();
-	PlayerSettings_SynchronizeScrollState( &s_playersettings.achievementsScroll, contentHeight );
+contentHeight = PlayerSettings_GetAchievementsContentHeight();
+info = PlayerSettings_UpdateAchievementsPaginationInfo();
 
-	panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
-	panelBottom = (int)PlayerSettings_GetPanelBottomForContent( contentHeight );
+panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
+panelBottom = (int)PlayerSettings_GetPanelBottomForContent( contentHeight );
 
-	Vector4Copy( profilePanelFillColor, panelColor );
-	panelColor[3] *= uis.tFrac;
-	UI_FillRect( PLAYERSETTINGS_PROFILE_PANEL_LEFT, panelTop, PLAYERSETTINGS_PROFILE_PANEL_WIDTH, panelBottom - panelTop, panelColor );
+Vector4Copy( profilePanelFillColor, panelColor );
+panelColor[3] *= uis.tFrac;
+UI_FillRect( PLAYERSETTINGS_PROFILE_PANEL_LEFT, panelTop, PLAYERSETTINGS_PROFILE_PANEL_WIDTH, panelBottom - panelTop, panelColor );
 
-	Vector4Copy( profileRowBorderColor, borderColor );
-	borderColor[3] *= uis.tFrac;
+Vector4Copy( profileRowBorderColor, borderColor );
+borderColor[3] *= uis.tFrac;
 
-	PlayerSettings_GetScrollViewportBounds( contentHeight, &viewportTop, &viewportBottom );
-	PlayerSettings_GetVisibleRowRange( PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT, PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT, PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP, s_playersettings.achievementsScroll.offset, contentHeight, &firstRow, &lastRow );
+PlayerSettings_GetPaginatedViewportBounds(
+		contentHeight,
+		PLAYERSETTINGS_ACHIEVEMENTS_PAGINATION_RESERVED_HEIGHT,
+		&viewportTop,
+		&viewportBottom );
 
-	if ( lastRow < firstRow ) {
-		return;
-	}
-
-	for ( i = firstRow; i <= lastRow; ++i ) {
-		int rowTop;
-		int rowBottom;
-
-		PlayerSettings_GetAchievementRowBounds( i, &rowTop, &rowBottom );
-
-		if ( rowTop < (int)viewportTop ) {
-			rowTop = (int)viewportTop;
-		}
-		if ( rowBottom > (int)viewportBottom ) {
-			rowBottom = (int)viewportBottom;
-		}
-		if ( rowBottom <= rowTop ) {
-			continue;
-		}
-
-		Vector4Copy( ( i & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
-		rowColor[3] *= uis.tFrac;
-
-		UI_FillRect(
-			PLAYERSETTINGS_PROFILE_FIELD_LEFT,
-			rowTop,
-			PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-			rowBottom - rowTop,
-			rowColor );
-
-		UI_DrawRect(
-			PLAYERSETTINGS_PROFILE_FIELD_LEFT,
-			rowTop,
-			PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-			rowBottom - rowTop,
-			borderColor );
-	}
+if ( !info || info->lastRow < info->firstRow ) {
+return;
 }
 
-static int PlayerSettings_DrawAchievementSection( int row, const char *title, const playersettingsAchievementTierDef_t *tiers, int count, double progress, playersettingsAchievementIcon_t iconIndex ) {
+for ( i = info->firstRow; i <= info->lastRow; ++i ) {
+int rowTop;
+int rowBottom;
+
+PlayerSettings_GetAchievementRowBounds( i, &rowTop, &rowBottom );
+
+if ( rowTop < (int)viewportTop ) {
+rowTop = (int)viewportTop;
+}
+if ( rowBottom > (int)viewportBottom ) {
+rowBottom = (int)viewportBottom;
+}
+if ( rowBottom <= rowTop ) {
+continue;
+}
+
+Vector4Copy( ( i & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
+rowColor[3] *= uis.tFrac;
+
+UI_FillRect(
+PLAYERSETTINGS_PROFILE_FIELD_LEFT,
+rowTop,
+PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
+rowBottom - rowTop,
+rowColor );
+
+UI_DrawRect(
+PLAYERSETTINGS_PROFILE_FIELD_LEFT,
+rowTop,
+PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
+rowBottom - rowTop,
+borderColor );
+}
+}
+
+static int PlayerSettings_DrawAchievementSection( int row, const char *title, const playersettingsAchievementTierDef_t *tiers, int count, double progress, playersettingsAchievementIcon_t iconIndex, const playersettingsPaginationInfo_t *paginationInfo ) {
         int i;
         int rowTop;
         int rowBottom;
@@ -2157,8 +2283,15 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
         }
 
         PlayerSettings_GetAchievementRowBounds( row, &rowTop, &rowBottom );
-        PlayerSettings_GetScrollViewportBounds( PlayerSettings_GetAchievementsContentHeight(), &viewportTop, &viewportBottom );
+        PlayerSettings_GetPaginatedViewportBounds(
+                PlayerSettings_GetAchievementsContentHeight(),
+                PLAYERSETTINGS_ACHIEVEMENTS_PAGINATION_RESERVED_HEIGHT,
+                &viewportTop,
+                &viewportBottom );
         visible = ( rowBottom > (int)viewportTop && rowTop < (int)viewportBottom );
+        if ( paginationInfo && ( row < paginationInfo->firstRow || row > paginationInfo->lastRow ) ) {
+                visible = qfalse;
+        }
 
         titleX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
         titleY = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET;
@@ -2247,10 +2380,10 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 }
 
 static void PlayerSettings_DrawAchievementsTab( void ) {
-        const profile_stats_t *stats;
-        int unlockedAchievements;
-        int displayTotalAchievements;
-        char progressBuffer[32];
+const profile_stats_t *stats;
+int unlockedAchievements;
+int displayTotalAchievements;
+char progressBuffer[32];
         char headerBuffer[64];
         int headerTop;
         int headerBottom;
@@ -2258,8 +2391,9 @@ static void PlayerSettings_DrawAchievementsTab( void ) {
         int row;
         float viewportTop;
         float viewportBottom;
+        const playersettingsPaginationInfo_t *paginationInfo;
 
-        PlayerSettings_SynchronizeScrollState( &s_playersettings.achievementsScroll, PlayerSettings_GetAchievementsContentHeight() );
+paginationInfo = PlayerSettings_UpdateAchievementsPaginationInfo();
 
         if ( !UI_Profile_HasActiveProfile() ) {
                 int messageX;
@@ -2283,12 +2417,12 @@ static void PlayerSettings_DrawAchievementsTab( void ) {
         displayTotalAchievements = PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL;
 
         row = PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW;
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Distance Driven", s_distanceAchievementTiers, ARRAY_LEN( s_distanceAchievementTiers ), stats->distanceKm, PLAYERSETTINGS_ACHIEVEMENT_ICON_DRIVEN );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Kills", s_killAchievementTiers, ARRAY_LEN( s_killAchievementTiers ), (double)stats->kills, PLAYERSETTINGS_ACHIEVEMENT_ICON_KILLS );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Races Won", s_winAchievementTiers, ARRAY_LEN( s_winAchievementTiers ), (double)stats->wins, PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flags Captured", s_flagCaptureAchievementTiers, ARRAY_LEN( s_flagCaptureAchievementTiers ), (double)stats->flagCaptures, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAGS );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flag Assists", s_flagAssistAchievementTiers, ARRAY_LEN( s_flagAssistAchievementTiers ), (double)stats->flagAssists, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAG_ASSISTS );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Fuel Consumed", s_fuelAchievementTiers, ARRAY_LEN( s_fuelAchievementTiers ), stats->fuelUsed, PLAYERSETTINGS_ACHIEVEMENT_ICON_FUEL );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Distance Driven", s_distanceAchievementTiers, ARRAY_LEN( s_distanceAchievementTiers ), stats->distanceKm, PLAYERSETTINGS_ACHIEVEMENT_ICON_DRIVEN, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Kills", s_killAchievementTiers, ARRAY_LEN( s_killAchievementTiers ), (double)stats->kills, PLAYERSETTINGS_ACHIEVEMENT_ICON_KILLS, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Races Won", s_winAchievementTiers, ARRAY_LEN( s_winAchievementTiers ), (double)stats->wins, PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flags Captured", s_flagCaptureAchievementTiers, ARRAY_LEN( s_flagCaptureAchievementTiers ), (double)stats->flagCaptures, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAGS, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flag Assists", s_flagAssistAchievementTiers, ARRAY_LEN( s_flagAssistAchievementTiers ), (double)stats->flagAssists, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAG_ASSISTS, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Fuel Consumed", s_fuelAchievementTiers, ARRAY_LEN( s_fuelAchievementTiers ), stats->fuelUsed, PLAYERSETTINGS_ACHIEVEMENT_ICON_FUEL, paginationInfo );
 
         if ( unlockedAchievements > displayTotalAchievements ) {
                 unlockedAchievements = displayTotalAchievements;
@@ -2298,7 +2432,11 @@ static void PlayerSettings_DrawAchievementsTab( void ) {
         Com_sprintf( headerBuffer, sizeof( headerBuffer ), "Achievements %s", progressBuffer );
 
         PlayerSettings_GetAchievementRowBounds( PLAYERSETTINGS_ACHIEVEMENT_HEADER_ROW, &headerTop, &headerBottom );
-        PlayerSettings_GetScrollViewportBounds( PlayerSettings_GetAchievementsContentHeight(), &viewportTop, &viewportBottom );
+        PlayerSettings_GetPaginatedViewportBounds(
+                PlayerSettings_GetAchievementsContentHeight(),
+                PLAYERSETTINGS_ACHIEVEMENTS_PAGINATION_RESERVED_HEIGHT,
+                &viewportTop,
+                &viewportBottom );
         if ( headerBottom > (int)viewportTop && headerTop < (int)viewportBottom ) {
                 headerY = headerTop + PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE;
                 UI_DrawProportionalString(
@@ -2321,11 +2459,8 @@ static void PlayerSettings_SetTab( int tab ) {
 
 	s_playersettings.currentTab = tab;
 
-	PlayerSettings_SynchronizeScrollState( &s_playersettings.statsScroll, PlayerSettings_GetStatsContentHeight() );
-	PlayerSettings_SynchronizeScrollState( &s_playersettings.achievementsScroll, PlayerSettings_GetAchievementsContentHeight() );
-
-	showProfile = ( tab == TAB_PROFILE );
-	showVehicle = ( tab == TAB_VEHICLE );
+showProfile = ( tab == TAB_PROFILE );
+showVehicle = ( tab == TAB_VEHICLE );
 
 	PlayerSettings_SetWidgetVisible( &s_playersettings.name.generic, showProfile );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.gender.generic, showProfile );
@@ -2602,30 +2737,30 @@ static sfxHandle_t PlayerSettings_MenuKey( int key ) {
 		return 0;
 // END
 	}
-	if ( s_playersettings.currentTab == TAB_STATS ) {
-		float contentHeight;
+if ( s_playersettings.currentTab == TAB_STATS ) {
+const playersettingsPaginationInfo_t *info;
 
-		contentHeight = PlayerSettings_GetStatsContentHeight();
-		if ( key == K_MOUSE1 ) {
-			if ( PlayerSettings_HandleScrollBarClick( &s_playersettings.statsScroll, contentHeight, PLAYERSETTINGS_STATS_ROW_HEIGHT, PLAYERSETTINGS_STATS_ROW_GAP ) ) {
-				return menu_move_sound;
-			}
-		} else if ( PlayerSettings_HandleScrollKey( &s_playersettings.statsScroll, contentHeight, PLAYERSETTINGS_STATS_ROW_HEIGHT, PLAYERSETTINGS_STATS_ROW_GAP, key ) ) {
-			return menu_move_sound;
-		}
-	} else if ( s_playersettings.currentTab == TAB_ACHIEVEMENTS ) {
-		float contentHeight;
+info = PlayerSettings_UpdateStatsPaginationInfo();
+if ( key == K_MOUSE1 ) {
+if ( PlayerSettings_HandlePaginationClick( &s_playersettings.statsPagination, info, &s_playersettings.statsPrevPageButton, &s_playersettings.statsNextPageButton ) ) {
+return menu_move_sound;
+}
+} else if ( PlayerSettings_HandlePaginationKey( &s_playersettings.statsPagination, info, key ) ) {
+return menu_move_sound;
+}
+} else if ( s_playersettings.currentTab == TAB_ACHIEVEMENTS ) {
+const playersettingsPaginationInfo_t *info;
 
-		contentHeight = PlayerSettings_GetAchievementsContentHeight();
-		if ( key == K_MOUSE1 ) {
-			if ( PlayerSettings_HandleScrollBarClick( &s_playersettings.achievementsScroll, contentHeight, PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT, PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP ) ) {
-				return menu_move_sound;
-			}
-		} else if ( PlayerSettings_HandleScrollKey( &s_playersettings.achievementsScroll, contentHeight, PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT, PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP, key ) ) {
-			return menu_move_sound;
-		}
-	}
-	return Menu_DefaultKey( &s_playersettings.menu, key );
+info = PlayerSettings_UpdateAchievementsPaginationInfo();
+if ( key == K_MOUSE1 ) {
+if ( PlayerSettings_HandlePaginationClick( &s_playersettings.achievementsPagination, info, &s_playersettings.achievementsPrevPageButton, &s_playersettings.achievementsNextPageButton ) ) {
+return menu_move_sound;
+}
+} else if ( PlayerSettings_HandlePaginationKey( &s_playersettings.achievementsPagination, info, key ) ) {
+return menu_move_sound;
+}
+}
+return Menu_DefaultKey( &s_playersettings.menu, key );
 }
 
 
