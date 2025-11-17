@@ -58,8 +58,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ART_MEDAL_FLAGS_UNLOCKED        "menu/achievements/medal_flags_unlocked"
 #define ART_MEDAL_ASSISTS_LOCKED        "menu/achievements/medal_assists_locked"
 #define ART_MEDAL_ASSISTS_UNLOCKED      "menu/achievements/medal_assists_unlocked"
-#define ART_MEDAL_FUEL_LOCKED           ART_MEDAL_DRIVEN_LOCKED
-#define ART_MEDAL_FUEL_UNLOCKED         ART_MEDAL_DRIVEN_UNLOCKED
+#define ART_MEDAL_FUEL_LOCKED           "menu/achievements/medal_fuel_locked"
+#define ART_MEDAL_FUEL_UNLOCKED         "menu/achievements/medal_fuel_unlocked"
 
 #define ID_NAME			10
 #define ID_HANDICAP		11
