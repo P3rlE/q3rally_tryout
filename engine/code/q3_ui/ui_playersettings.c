@@ -1725,16 +1725,21 @@ static qboolean PlayerSettings_HandlePaginationClick(
 	const playersettingsPaginationInfo_t *info,
 	const playersettingsRect_t *prevRect,
 	const playersettingsRect_t *nextRect ) {
+	int delta;
+
 	if ( !state || !info || info->totalPages <= 1 ) {
 		return qfalse;
 	}
 
+	delta = 0;
 	if ( state->currentPage > 0 && PlayerSettings_RectContainsCursor( prevRect ) ) {
-		return PlayerSettings_HandlePaginationCommand( state, info, -1 );
+		delta = -1;
+	} else if ( state->currentPage < info->totalPages - 1 && PlayerSettings_RectContainsCursor( nextRect ) ) {
+		delta = 1;
 	}
 
-	if ( state->currentPage < info->totalPages - 1 && PlayerSettings_RectContainsCursor( nextRect ) ) {
-		return PlayerSettings_HandlePaginationCommand( state, info, 1 );
+	if ( !delta ) {
+		return qfalse;
 	}
 
 	return PlayerSettings_HandlePaginationCommand( state, info, delta );
@@ -1880,121 +1885,6 @@ static void PlayerSettings_GetStatsRowBounds( int row, int *top, int *bottom ) {
 	if ( s_playersettings.statsPaginationInfo.rowCount != STATS_ROW_COUNT ) {
 		PlayerSettings_UpdateStatsPaginationInfo();
 	}
-
-	if ( enabled ) {
-		Vector4Copy( hovered ? text_color_highlight : text_color_normal, textColor );
-	} else {
-		Vector4Copy( text_color_disabled, textColor );
-	}
-
-	textY = rect->y + ( rect->h - SMALLCHAR_HEIGHT ) * 0.5f;
-	UI_DrawString( (int)( rect->x + rect->w * 0.5f ), (int)textY, label, UI_CENTER | UI_SMALLFONT, textColor );
-}
-
-static void PlayerSettings_DrawPaginationControls(
-playersettingsPaginationState_t *state,
-const playersettingsPaginationInfo_t *info,
-float contentHeight,
-float reservedHeight,
-playersettingsRect_t *prevRect,
-playersettingsRect_t *nextRect ) {
-float viewportTop;
-	float viewportBottom;
-	float y;
-	float centerX;
-	float panelLeft;
-	float panelRight;
-	char pageBuffer[32];
-	qboolean prevHover;
-	qboolean nextHover;
-
-	PlayerSettings_ClearRect( prevRect );
-	PlayerSettings_ClearRect( nextRect );
-
-	if ( !state || !info || info->totalPages <= 1 ) {
-		return;
-	}
-
-	if ( reservedHeight < PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT + PLAYERSETTINGS_PAGINATION_BUTTON_MARGIN * 2.0f ) {
-		reservedHeight = PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT + PLAYERSETTINGS_PAGINATION_BUTTON_MARGIN * 2.0f;
-	}
-	PlayerSettings_GetPaginatedViewportBounds(
-		contentHeight,
-		reservedHeight,
-		&viewportTop,
-		&viewportBottom );
-	y = viewportBottom + reservedHeight - PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT - PLAYERSETTINGS_PAGINATION_BUTTON_MARGIN;
-        centerX = PLAYERSETTINGS_PROFILE_PANEL_LEFT + PLAYERSETTINGS_PROFILE_PANEL_WIDTH * 0.5f;
-	panelLeft = PLAYERSETTINGS_PROFILE_PANEL_LEFT + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
-	panelRight = PLAYERSETTINGS_PROFILE_PANEL_LEFT + PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
-
-	prevRect->x = centerX - PLAYERSETTINGS_PAGINATION_BUTTON_GAP * 0.5f - PLAYERSETTINGS_PAGINATION_BUTTON_WIDTH;
-	prevRect->y = y;
-	prevRect->w = PLAYERSETTINGS_PAGINATION_BUTTON_WIDTH;
-	prevRect->h = PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT;
-
-	nextRect->x = centerX + PLAYERSETTINGS_PAGINATION_BUTTON_GAP * 0.5f;
-	nextRect->y = y;
-	nextRect->w = PLAYERSETTINGS_PAGINATION_BUTTON_WIDTH;
-	nextRect->h = PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT;
-
-	if ( prevRect->x < panelLeft ) {
-		float shift = panelLeft - prevRect->x;
-		prevRect->x += shift;
-		nextRect->x += shift;
-	}
-	if ( nextRect->x + nextRect->w > panelRight ) {
-		float shift = ( nextRect->x + nextRect->w ) - panelRight;
-		prevRect->x -= shift;
-		nextRect->x -= shift;
-	}
-
-	prevHover = PlayerSettings_RectContainsCursor( prevRect );
-	nextHover = PlayerSettings_RectContainsCursor( nextRect );
-
-PlayerSettings_DrawPaginationButton( "<< Prev", prevRect, ( state->currentPage > 0 ), prevHover );
-PlayerSettings_DrawPaginationButton( "Next >>", nextRect, ( state->currentPage < info->totalPages - 1 ), nextHover );
-
-Com_sprintf( pageBuffer, sizeof( pageBuffer ), "Page %d / %d", state->currentPage + 1, info->totalPages );
-UI_DrawString(
-(int)centerX,
-(int)( y + ( PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT - SMALLCHAR_HEIGHT ) * 0.5f ),
-pageBuffer,
-UI_CENTER | UI_SMALLFONT,
-text_color_highlight );
-}
-
-static void PlayerSettings_DrawStatsPaginationControls( void ) {
-const playersettingsPaginationInfo_t *info;
-
-info = PlayerSettings_UpdateStatsPaginationInfo();
-PlayerSettings_DrawPaginationControls(
-&s_playersettings.statsPagination,
-info,
-PlayerSettings_GetStatsContentHeight(),
-PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT,
-&s_playersettings.statsPrevPageButton,
-&s_playersettings.statsNextPageButton );
-}
-
-static void PlayerSettings_DrawAchievementsPaginationControls( void ) {
-const playersettingsPaginationInfo_t *info;
-
-info = PlayerSettings_UpdateAchievementsPaginationInfo();
-PlayerSettings_DrawPaginationControls(
-&s_playersettings.achievementsPagination,
-info,
-PlayerSettings_GetAchievementsContentHeight(),
-PLAYERSETTINGS_ACHIEVEMENTS_PAGINATION_RESERVED_HEIGHT,
-&s_playersettings.achievementsPrevPageButton,
-&s_playersettings.achievementsNextPageButton );
-}
-static void PlayerSettings_GetStatsRowBounds( int row, int *top, int *bottom ) {
-float rowTop;
-float rowBottom;
-float spacing;
-float contentTop;
-float offset;
 
 if ( s_playersettings.statsPaginationInfo.rowCount != STATS_ROW_COUNT ) {
 PlayerSettings_UpdateStatsPaginationInfo();
