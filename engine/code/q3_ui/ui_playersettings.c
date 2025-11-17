@@ -320,30 +320,32 @@ static const char *const s_achievementMedalUnlockedPaths[PLAYERSETTINGS_ACHIEVEM
 };
 
 static qhandle_t PlayerSettings_RegisterAchievementMedal( const char *basePath ) {
-        static const char *const s_extensions[] = { ".tga", ".jpg", ".png" };
-        char assetPath[MAX_QPATH];
-        int i;
+	static const char *const s_extensions[] = { ".tga", ".jpg", ".png" };
+	char assetPath[MAX_QPATH];
+	int i;
+	int extensionCount;
 
-        for ( i = 0; i < ARRAY_LEN( s_extensions ); ++i ) {
-                fileHandle_t file;
-                int length;
+	extensionCount = ARRAY_LEN( s_extensions );
+	for ( i = 0; i < extensionCount; ++i ) {
+		fileHandle_t file;
+		int length;
 
-                Q_strncpyz( assetPath, basePath, sizeof( assetPath ) );
-                Q_strcat( assetPath, sizeof( assetPath ), s_extensions[i] );
+		Q_strncpyz( assetPath, basePath, sizeof( assetPath ) );
+		Q_strcat( assetPath, sizeof( assetPath ), s_extensions[i] );
 
-                file = 0;
-                length = trap_FS_FOpenFile( assetPath, &file, FS_READ );
-                if ( length > 0 ) {
-                        trap_FS_FCloseFile( file );
-                        return trap_R_RegisterShaderNoMip( assetPath );
-                }
+		file = 0;
+		length = trap_FS_FOpenFile( assetPath, &file, FS_READ );
+		if ( length > 0 ) {
+			trap_FS_FCloseFile( file );
+			return trap_R_RegisterShaderNoMip( assetPath );
+		}
 
-                if ( file ) {
-                        trap_FS_FCloseFile( file );
-                }
-        }
+		if ( file ) {
+			trap_FS_FCloseFile( file );
+		}
+	}
 
-        return 0;
+	return 0;
 }
 
 #define PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL 48
