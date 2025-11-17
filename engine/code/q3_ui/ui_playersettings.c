@@ -1886,6 +1886,10 @@ static void PlayerSettings_GetStatsRowBounds( int row, int *top, int *bottom ) {
 		PlayerSettings_UpdateStatsPaginationInfo();
 	}
 
+	if ( s_playersettings.statsPaginationInfo.rowCount != STATS_ROW_COUNT ) {
+		PlayerSettings_UpdateStatsPaginationInfo();
+	}
+
 if ( s_playersettings.statsPaginationInfo.rowCount != STATS_ROW_COUNT ) {
 PlayerSettings_UpdateStatsPaginationInfo();
 }
@@ -2031,16 +2035,39 @@ PlayerSettings_UpdateStatsPaginationInfo();
 
 
 
+static qboolean PlayerSettings_IsStatsRowVisible( int row ) {
+        const playersettingsPaginationInfo_t *info;
+
+        if ( row < 0 || row >= STATS_ROW_COUNT ) {
+                return qfalse;
+        }
+
+        info = &s_playersettings.statsPaginationInfo;
+        if ( info->rowCount != STATS_ROW_COUNT ) {
+                info = PlayerSettings_UpdateStatsPaginationInfo();
+        }
+
+        if ( !info || info->lastRow < info->firstRow ) {
+                return qfalse;
+        }
+
+        return ( row >= info->firstRow && row <= info->lastRow );
+}
+
 static void PlayerSettings_DrawStatsLabelValueWithColors( int row, const char *label, const vec4_t labelColor, const char *value, const vec4_t valueColor ) {
-	int rowTop;
-	int rowBottom;
-	int y;
-	int labelX;
-	int valueX;
-	vec4_t mutableLabelColor;
-	vec4_t mutableValueColor;
-	float viewportTop;
-	float viewportBottom;
+        int rowTop;
+        int rowBottom;
+        int y;
+        int labelX;
+        int valueX;
+        vec4_t mutableLabelColor;
+        vec4_t mutableValueColor;
+        float viewportTop;
+        float viewportBottom;
+
+        if ( !PlayerSettings_IsStatsRowVisible( row ) ) {
+                return;
+        }
 
         labelX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
         valueX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_STATS_VALUE_OFFSET;
@@ -2076,14 +2103,18 @@ static void PlayerSettings_DrawStatsLabelValue( int row, const char *label, cons
 
 
 static void PlayerSettings_DrawStatsMessage( int row, const char *message ) {
-	int rowTop;
-	int rowBottom;
-	int y;
-	int x;
-	float viewportTop;
-	float viewportBottom;
+        int rowTop;
+        int rowBottom;
+        int y;
+        int x;
+        float viewportTop;
+        float viewportBottom;
 
-	x = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
+        if ( !PlayerSettings_IsStatsRowVisible( row ) ) {
+                return;
+        }
+
+        x = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
 
         PlayerSettings_GetStatsRowBounds( row, &rowTop, &rowBottom );
         PlayerSettings_GetPaginatedViewportBounds(
