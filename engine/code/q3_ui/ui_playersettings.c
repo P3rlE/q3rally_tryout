@@ -255,6 +255,13 @@ typedef struct {
         playersettingsAchievementProgressFunc_t progressFunc;
 } playersettingsAchievementSection_t;
 
+typedef struct {
+        int columns;
+        int rows;
+        float columnWidth;
+        float availableWidth;
+} playersettingsAchievementGridLayout_t;
+
 static double PlayerSettings_AchievementProgress_Distance( const profile_stats_t *stats ) {
         return stats ? stats->distanceKm : 0.0;
 }
@@ -728,6 +735,14 @@ static int PlayerSettings_GetAchievementSectionCount( void ) {
         return ARRAY_LEN( s_achievementSections );
 }
 
+static int PlayerSettings_GetAchievementSectionTierCount( int sectionIndex ) {
+        if ( sectionIndex < 0 || sectionIndex >= PlayerSettings_GetAchievementSectionCount() ) {
+                return 0;
+        }
+
+        return s_achievementSections[sectionIndex].tierCount;
+}
+
 static void PlayerSettings_GetAchievementContentArea( float *left, float *right ) {
         float areaLeft;
         float areaRight;
@@ -754,10 +769,17 @@ static float PlayerSettings_GetAchievementsAvailableWidth( void ) {
         return right - left;
 }
 
-static void PlayerSettings_CalcAchievementGrid( int tierCount, float availableWidth, int *outColumns, float *outColumnWidth ) {
+static void PlayerSettings_ComputeAchievementGridLayout( int tierCount, float availableWidth, playersettingsAchievementGridLayout_t *layout ) {
         int columns;
         float columnWidth;
         float usableWidth;
+
+        if ( !layout ) {
+                return;
+        }
+
+        Com_Memset( layout, 0, sizeof( *layout ) );
+        layout->availableWidth = availableWidth;
 
         if ( tierCount <= 0 ) {
                 tierCount = 1;
@@ -789,24 +811,22 @@ static void PlayerSettings_CalcAchievementGrid( int tierCount, float availableWi
         }
 
         if ( columnWidth < PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE ) {
-                        columnWidth = PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
+                columnWidth = PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
         }
 
-        if ( outColumns ) {
-                *outColumns = columns;
+        layout->columns = columns > 0 ? columns : 1;
+        layout->rows = ( tierCount + layout->columns - 1 ) / layout->columns;
+        if ( layout->rows < 1 ) {
+                layout->rows = 1;
         }
-        if ( outColumnWidth ) {
-                *outColumnWidth = columnWidth;
-        }
+        layout->columnWidth = columnWidth;
 }
 
 static float PlayerSettings_GetAchievementSectionHeight( int sectionIndex ) {
         int count;
         float availableWidth;
-        const playersettingsAchievementSection_t *section;
-        int columns;
-        float columnWidth;
-        int rows;
+        int tierCount;
+        playersettingsAchievementGridLayout_t layout;
         float entriesHeight;
 
         count = PlayerSettings_GetAchievementSectionCount();
@@ -821,24 +841,20 @@ static float PlayerSettings_GetAchievementSectionHeight( int sectionIndex ) {
                 sectionIndex = count - 1;
         }
 
-        section = &s_achievementSections[sectionIndex];
+        tierCount = PlayerSettings_GetAchievementSectionTierCount( sectionIndex );
         availableWidth = PlayerSettings_GetAchievementsAvailableWidth();
-        PlayerSettings_CalcAchievementGrid( section->tierCount, availableWidth, &columns, &columnWidth );
-        if ( columns < 1 ) {
-                columns = 1;
-        }
+        PlayerSettings_ComputeAchievementGridLayout( tierCount, availableWidth, &layout );
 
-        rows = ( section->tierCount + columns - 1 ) / columns;
-        if ( rows < 1 ) {
-                rows = 1;
-        }
-
-        entriesHeight = rows * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
-        if ( rows > 1 ) {
-                entriesHeight += ( rows - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP;
+        entriesHeight = layout.rows * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
+        if ( layout.rows > 1 ) {
+                entriesHeight += ( layout.rows - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP;
         }
 
         return PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP + entriesHeight;
+}
+
+static float PlayerSettings_GetAchievementRowHeight( int row ) {
+        return PlayerSettings_GetAchievementSectionHeight( row );
 }
 
 static float PlayerSettings_GetAchievementAverageRowHeight( void ) {
@@ -853,7 +869,7 @@ static float PlayerSettings_GetAchievementAverageRowHeight( void ) {
 
         total = 0.0f;
         for ( i = 0; i < count; ++i ) {
-                total += PlayerSettings_GetAchievementSectionHeight( i );
+                total += PlayerSettings_GetAchievementRowHeight( i );
         }
 
         return total / count;
@@ -1767,9 +1783,10 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 	float areaLeft;
 	float areaRight;
 	float availableWidth;
-	float columnWidth;
-	float columnGap;
-	int columnCount;
+        float columnWidth;
+        float columnGap;
+        int columnCount;
+        playersettingsAchievementGridLayout_t layout;
 	float gridTop;
 	int unlockedCount;
 	qboolean entryUnlocked[PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS];
@@ -1818,12 +1835,14 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 		areaRight = areaLeft + 1.0f;
 	}
 
-	availableWidth = areaRight - areaLeft;
-	PlayerSettings_CalcAchievementGrid( count, availableWidth, &columnCount, &columnWidth );
-	if ( columnCount < 1 ) {
-		columnCount = 1;
-	}
-	columnGap = ( columnCount > 1 ) ? PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP : 0.0f;
+        availableWidth = areaRight - areaLeft;
+        PlayerSettings_ComputeAchievementGridLayout( count, availableWidth, &layout );
+        columnCount = layout.columns;
+        columnWidth = layout.columnWidth;
+        if ( columnCount < 1 ) {
+                columnCount = 1;
+        }
+        columnGap = ( columnCount > 1 ) ? PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP : 0.0f;
 
 	gridTop = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP;
 
