@@ -93,7 +93,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define TAB_VEHICLE		3
 
 #define PLAYERSETTINGS_TAB_COUNT		4
-#define PLAYERSETTINGS_TAB_WIDTH		140
+#define PLAYERSETTINGS_TAB_WIDTH		136
 #define PLAYERSETTINGS_TAB_GAP		12
 #define PLAYERSETTINGS_TAB_TOP		64
 #define PLAYERSETTINGS_TAB_HEIGHT	32
@@ -1886,10 +1886,18 @@ static void PlayerSettings_GetStatsRowBounds( int row, int *top, int *bottom ) {
 		PlayerSettings_UpdateStatsPaginationInfo();
 	}
 
-	if ( row < 0 ) {
-		row = 0;
+	if ( s_playersettings.statsPaginationInfo.rowCount != STATS_ROW_COUNT ) {
+		PlayerSettings_UpdateStatsPaginationInfo();
 	}
-	if ( row >= STATS_ROW_COUNT ) {
+
+if ( s_playersettings.statsPaginationInfo.rowCount != STATS_ROW_COUNT ) {
+PlayerSettings_UpdateStatsPaginationInfo();
+}
+
+if ( row < 0 ) {
+row = 0;
+}
+if ( row >= STATS_ROW_COUNT ) {
 		row = STATS_ROW_COUNT - 1;
 	}
 
