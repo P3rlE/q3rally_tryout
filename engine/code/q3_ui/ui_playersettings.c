@@ -131,7 +131,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER        0.5f
 #define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE  (( PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE + PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE - 1 ) / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE )
 #define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT           ( PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + ( PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP )
-#define PLAYERSETTINGS_ACHIEVEMENT_PAGE_COUNT           (( PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS + PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE - 1 ) / PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE )
 #define PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE       PLAYERSETTINGS_PROFILE_VALUE_BASELINE
 
 #define PLAYERSETTINGS_STATS_ROW_HEIGHT		40
@@ -1531,16 +1530,56 @@ static float PlayerSettings_GetAchievementsContentHeight( void ) {
                         + PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP * ( PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT - 1 );
 }
 
-static int PlayerSettings_GetAchievementTierPageCount( void ) {
-        if ( PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE <= 0 ) {
+static int PlayerSettings_GetAchievementTierPagesForCount( int tierCount ) {
+        int tiersPerPage;
+
+        tiersPerPage = PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE;
+        if ( tiersPerPage <= 0 ) {
                 return 1;
         }
 
-        if ( PLAYERSETTINGS_ACHIEVEMENT_PAGE_COUNT < 1 ) {
+        if ( tierCount <= 0 ) {
                 return 1;
         }
 
-        return PLAYERSETTINGS_ACHIEVEMENT_PAGE_COUNT;
+        return ( tierCount + tiersPerPage - 1 ) / tiersPerPage;
+}
+
+static int PlayerSettings_GetAchievementMaxTierCount( void ) {
+        static const int s_tierCounts[] = {
+                ARRAY_LEN( s_distanceAchievementTiers ),
+                ARRAY_LEN( s_killAchievementTiers ),
+                ARRAY_LEN( s_winAchievementTiers ),
+                ARRAY_LEN( s_flagCaptureAchievementTiers ),
+                ARRAY_LEN( s_flagAssistAchievementTiers ),
+                ARRAY_LEN( s_fuelAchievementTiers )
+        };
+        int maxCount;
+        int i;
+
+        maxCount = 0;
+        for ( i = 0; i < ARRAY_LEN( s_tierCounts ); ++i ) {
+                if ( s_tierCounts[i] > maxCount ) {
+                        maxCount = s_tierCounts[i];
+                }
+        }
+
+        if ( maxCount <= 0 ) {
+                maxCount = PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS;
+        }
+
+        return maxCount;
+}
+
+static int PlayerSettings_GetAchievementTotalPageCount( void ) {
+        int tierCount;
+
+        tierCount = PlayerSettings_GetAchievementMaxTierCount();
+        if ( tierCount <= 0 ) {
+                return 1;
+        }
+
+        return PlayerSettings_GetAchievementTierPagesForCount( tierCount );
 }
 
 
@@ -1679,7 +1718,7 @@ static const playersettingsPaginationInfo_t *PlayerSettings_UpdateAchievementsPa
                         &s_playersettings.achievementsPaginationInfo );
 
         info = &s_playersettings.achievementsPaginationInfo;
-        tierPageCount = PlayerSettings_GetAchievementTierPageCount();
+        tierPageCount = PlayerSettings_GetAchievementTotalPageCount();
         if ( tierPageCount < 1 ) {
                 tierPageCount = 1;
         }
@@ -2402,7 +2441,7 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
                 tiersPerPage = count;
         }
 
-        tierPageCount = PlayerSettings_GetAchievementTierPageCount();
+        tierPageCount = PlayerSettings_GetAchievementTierPagesForCount( count );
         if ( tierPageCount < 1 ) {
                 tierPageCount = 1;
         }
@@ -2410,16 +2449,21 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
         pageIndex = s_playersettings.achievementsPagination.currentPage;
         if ( pageIndex < 0 ) {
                 pageIndex = 0;
-        }
-        if ( pageIndex >= tierPageCount ) {
+        } else if ( pageIndex >= tierPageCount ) {
                 pageIndex = tierPageCount - 1;
         }
 
         startTier = pageIndex * tiersPerPage;
-        if ( startTier >= count ) {
+        if ( startTier < 0 ) {
                 startTier = 0;
+        } else if ( startTier > count ) {
+                startTier = count;
         }
+
         endTier = startTier + tiersPerPage;
+        if ( endTier > count ) {
+                endTier = count;
+        }
 
         if ( visible ) {
                 const float textScale = UI_ProportionalSizeScale( UI_SMALLFONT ) * PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER;
