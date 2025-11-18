@@ -1713,7 +1713,6 @@ static const playersettingsPaginationInfo_t *PlayerSettings_UpdateStatsPaginatio
 
 static const playersettingsPaginationInfo_t *PlayerSettings_UpdateAchievementsPaginationInfo( void ) {
 	float contentHeight;
-	playersettingsPaginationInfo_t *info;
 
 	contentHeight = PlayerSettings_GetAchievementsContentHeight();
 	PlayerSettings_BuildPaginationInfo(
@@ -1725,15 +1724,7 @@ static const playersettingsPaginationInfo_t *PlayerSettings_UpdateAchievementsPa
 		PLAYERSETTINGS_ACHIEVEMENTS_PAGINATION_RESERVED_HEIGHT,
 		&s_playersettings.achievementsPaginationInfo );
 
-	info = &s_playersettings.achievementsPaginationInfo;
-	info->rowOffset = 0.0f;
-	info->rowsPerPage = PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT;
-	info->firstRow = 0;
-	info->lastRow = PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT - 1;
-	info->totalPages = 1;
-	s_playersettings.achievementsPagination.currentPage = 0;
-
-	return info;
+	return &s_playersettings.achievementsPaginationInfo;
 }
 
 static void PlayerSettings_ClampAchievementTierPage( void ) {
