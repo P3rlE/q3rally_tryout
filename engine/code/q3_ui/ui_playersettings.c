@@ -1454,14 +1454,14 @@ static float PlayerSettings_GetPanelBottomForContent( float contentHeight ) {
 	float panelTop;
 	float panelBottom;
 
-	panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
-	panelBottom = panelTop + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 2 + contentHeight + PLAYERSETTINGS_PROFILE_PANEL_BOTTOM_EXTRA;
-	if ( panelBottom < panelTop ) {
-		panelBottom = panelTop;
-	}
-	if ( panelBottom > 440.0f ) {
-		panelBottom = 440.0f;
-	}
+panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
+panelBottom = panelTop + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 2 + contentHeight + PLAYERSETTINGS_PROFILE_PANEL_BOTTOM_EXTRA;
+if ( panelBottom < panelTop ) {
+panelBottom = panelTop;
+}
+if ( panelBottom > 460.0f ) {
+panelBottom = 460.0f;
+}
 
 	return panelBottom;
 }
