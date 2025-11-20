@@ -545,23 +545,11 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
         VectorCopy( ent->r.currentOrigin, client->profileLastOrigin );
     }
 
-    if ( !client->profileHasLastCmdTime ) {
-        client->profileHasLastCmdTime = qtrue;
-        client->profileLastCmdTime = client->pers.cmd.serverTime;
-    }
-
-    frameMsec = client->pers.cmd.serverTime - client->profileLastCmdTime;
-    if ( frameMsec < 0 ) {
-        frameMsec = 0;
-    }
-
     if ( frameMsec > 0 ) {
         s_profileState.stats.driveTimeMs += frameMsec;
         s_profileState.dirty = qtrue;
         G_Profile_UpdateVehicleUsage( ent, frameMsec );
     }
-
-    client->profileLastCmdTime = client->pers.cmd.serverTime;
 
     speedQu = VectorLength( client->ps.velocity );
     speedKph = ( speedQu / CP_M_2_QU ) * 3.6;
