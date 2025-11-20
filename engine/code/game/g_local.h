@@ -428,6 +428,9 @@ struct gclient_s {
 	vec3_t		profileLastOrigin;
 	qboolean	profileHasLastOrigin;
 
+	int			profileLastCmdTime;
+	qboolean	profileHasLastCmdTime;
+
 	char		*areabits;
 };
 
