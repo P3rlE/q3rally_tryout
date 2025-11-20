@@ -386,11 +386,16 @@ typedef enum {
 typedef enum {
         STATS_ROW_DISTANCE = 0,
         STATS_ROW_FUEL,
+        STATS_ROW_TOP_SPEED,
+        STATS_ROW_DRIVE_TIME,
         STATS_ROW_BEST_LAP,
         STATS_ROW_KILLS,
+        STATS_ROW_DAMAGE_DEALT,
+        STATS_ROW_DAMAGE_TAKEN,
         STATS_ROW_WINS,
         STATS_ROW_FLAGS_CAPTURED,
         STATS_ROW_FLAG_ASSISTS,
+        STATS_ROW_VEHICLE,
         STATS_ROW_COUNT
 } statsRow_t;
 
@@ -2068,6 +2073,7 @@ borderColor );
 static void PlayerSettings_DrawStatsTab( void ) {
 const profile_stats_t *stats;
 char buffer[64];
+int hours, minutes, seconds;
 
 PlayerSettings_UpdateStatsPaginationInfo();
 
@@ -2083,33 +2089,55 @@ PlayerSettings_UpdateStatsPaginationInfo();
 		return;
 	}
 
-	Com_sprintf( buffer, sizeof( buffer ), "%.2f km", stats->distanceKm );
-	PlayerSettings_DrawStatsLabelValue( STATS_ROW_DISTANCE, "Distance Driven", buffer );
+        Com_sprintf( buffer, sizeof( buffer ), "%.2f km", stats->distanceKm );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_DISTANCE, "Distance Driven", buffer );
 
-	Com_sprintf( buffer, sizeof( buffer ), "%.1f L", stats->fuelUsed );
-	PlayerSettings_DrawStatsLabelValue( STATS_ROW_FUEL, "Fuel Used", buffer );
+        Com_sprintf( buffer, sizeof( buffer ), "%.1f L", stats->fuelUsed );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_FUEL, "Fuel Used", buffer );
 
-	if ( stats->bestLapMs > 0 ) {
-		int minutes = stats->bestLapMs / 60000;
-		int seconds = ( stats->bestLapMs % 60000 ) / 1000;
-		int millis = stats->bestLapMs % 1000;
+        Com_sprintf( buffer, sizeof( buffer ), "%.1f km/h", stats->topSpeedKph );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_TOP_SPEED, "Top Speed", buffer );
+
+        hours = stats->driveTimeMs / 3600000;
+        minutes = ( stats->driveTimeMs % 3600000 ) / 60000;
+        seconds = ( stats->driveTimeMs % 60000 ) / 1000;
+        Com_sprintf( buffer, sizeof( buffer ), "%02d:%02d:%02d", hours, minutes, seconds );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_DRIVE_TIME, "Total Drive Time", buffer );
+
+        if ( stats->bestLapMs > 0 ) {
+                int minutes = stats->bestLapMs / 60000;
+                int seconds = ( stats->bestLapMs % 60000 ) / 1000;
+                int millis = stats->bestLapMs % 1000;
 		Com_sprintf( buffer, sizeof( buffer ), "%02d:%02d.%03d", minutes, seconds, millis );
 	} else {
 		Q_strncpyz( buffer, "--", sizeof( buffer ) );
-	}
-	PlayerSettings_DrawStatsLabelValue( STATS_ROW_BEST_LAP, "Best Lap", buffer );
+        }
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_BEST_LAP, "Best Lap", buffer );
 
-	Com_sprintf( buffer, sizeof( buffer ), "%d / %d", stats->kills, stats->deaths );
-	PlayerSettings_DrawStatsLabelValue( STATS_ROW_KILLS, "Kills / Deaths", buffer );
+        Com_sprintf( buffer, sizeof( buffer ), "%d / %d", stats->kills, stats->deaths );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_KILLS, "Kills / Deaths", buffer );
 
-	Com_sprintf( buffer, sizeof( buffer ), "%d / %d", stats->wins, stats->losses );
-	PlayerSettings_DrawStatsLabelValue( STATS_ROW_WINS, "Wins / Losses", buffer );
+        Com_sprintf( buffer, sizeof( buffer ), "%d", stats->damageDealt );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_DAMAGE_DEALT, "Damage Dealt", buffer );
 
-	Com_sprintf( buffer, sizeof( buffer ), "%d", stats->flagCaptures );
-	PlayerSettings_DrawStatsLabelValue( STATS_ROW_FLAGS_CAPTURED, "Flags Captured", buffer );
+        Com_sprintf( buffer, sizeof( buffer ), "%d", stats->damageTaken );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_DAMAGE_TAKEN, "Damage Taken", buffer );
 
-	Com_sprintf( buffer, sizeof( buffer ), "%d", stats->flagAssists );
-	PlayerSettings_DrawStatsLabelValue( STATS_ROW_FLAG_ASSISTS, "Flag Assists", buffer );
+        Com_sprintf( buffer, sizeof( buffer ), "%d / %d", stats->wins, stats->losses );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_WINS, "Wins / Losses", buffer );
+
+        Com_sprintf( buffer, sizeof( buffer ), "%d", stats->flagCaptures );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_FLAGS_CAPTURED, "Flags Captured", buffer );
+
+        Com_sprintf( buffer, sizeof( buffer ), "%d", stats->flagAssists );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_FLAG_ASSISTS, "Flag Assists", buffer );
+
+        if ( stats->mostUsedVehicle[0] ) {
+                Com_sprintf( buffer, sizeof( buffer ), "%s", stats->mostUsedVehicle );
+        } else {
+                Q_strncpyz( buffer, "--", sizeof( buffer ) );
+        }
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_VEHICLE, "Most Used Vehicle", buffer );
 }
 
 
