@@ -525,6 +525,11 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
         return;
     }
 
+    frameMsec = level.time - level.previousTime;
+    if ( frameMsec < 0 ) {
+        frameMsec = 0;
+    }
+
     if ( !client->profileHasLastOrigin ) {
         VectorCopy( ent->r.currentOrigin, client->profileLastOrigin );
         client->profileHasLastOrigin = qtrue;
