@@ -534,7 +534,7 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
         return;
     }
 
-    if ( !client->pers.localClient ) {
+    if ( ent->r.svFlags & SVF_BOT || client->pers.connected != CON_CONNECTED ) {
         return;
     }
 
@@ -542,10 +542,17 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
         return;
     }
 
-    frameMsec = level.time - level.previousTime;
-    if ( frameMsec < 0 ) {
+    if ( !client->profileHasLastCmdTime ) {
         frameMsec = 0;
+    } else {
+        frameMsec = client->pers.cmd.serverTime - client->profileLastCmdTime;
+        if ( frameMsec < 0 ) {
+            frameMsec = 0;
+        }
     }
+
+    client->profileLastCmdTime = client->pers.cmd.serverTime;
+    client->profileHasLastCmdTime = qtrue;
 
     if ( !client->profileHasLastOrigin ) {
         VectorCopy( ent->r.currentOrigin, client->profileLastOrigin );
