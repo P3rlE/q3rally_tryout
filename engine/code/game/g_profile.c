@@ -321,6 +321,10 @@ static qboolean G_Profile_LoadFromDisk( void ) {
     G_Profile_ParseString( buffer, "avatar", s_profileState.info.avatar, sizeof( s_profileState.info.avatar ), "" );
     G_Profile_ParseString( buffer, "country", s_profileState.info.country, sizeof( s_profileState.info.country ), "" );
 
+    if ( s_profileState.stats.mostUsedVehicle[0] ) {
+        G_Profile_AddVehicleTime( s_profileState.stats.mostUsedVehicle, s_profileState.stats.mostUsedVehicleTimeMs );
+    }
+
     return qtrue;
 }
 
@@ -413,6 +417,18 @@ static void G_Profile_WriteToDisk( void ) {
         s_profileState.stats.driveTimeMs,
         s_profileState.stats.mostUsedVehicle,
         s_profileState.stats.mostUsedVehicleTimeMs );
+
+    if ( s_profileState.stats.driveTimeMs > 0 ) {
+        s_profileState.stats.driveTimeMs += level.time;
+    }
+
+    if ( s_profileState.stats.damageDealt > 0 ) {
+        s_profileState.stats.damageDealt += level.time;
+    }
+
+    if ( s_profileState.stats.mostUsedVehicle[0] ) {
+        s_profileState.stats.mostUsedVehicleTimeMs += level.time;
+    }
 
     if ( length < 0 ) {
         return;
