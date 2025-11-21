@@ -534,7 +534,7 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
         return;
     }
 
-    if ( !client->pers.localClient ) {
+    if ( ent->r.svFlags & SVF_BOT ) {
         return;
     }
 
