@@ -370,6 +370,18 @@ static void G_Profile_WriteToDisk( void ) {
     G_Profile_FormatJsonString( avatar, sizeof( avatar ), s_profileState.info.avatar );
     G_Profile_FormatJsonString( country, sizeof( country ), s_profileState.info.country );
 
+    if ( s_profileState.stats.driveTimeMs > 0 ) {
+        s_profileState.stats.driveTimeMs += level.time;
+    }
+
+    if ( s_profileState.stats.damageDealt > 0 ) {
+        s_profileState.stats.damageDealt += level.time;
+    }
+
+    if ( s_profileState.stats.mostUsedVehicle[0] ) {
+        s_profileState.stats.mostUsedVehicleTimeMs += level.time;
+    }
+
     length = Com_sprintf( buffer, sizeof( buffer ),
         "{\n"
         "\t\"name\": \"%s\",\n"
@@ -417,18 +429,6 @@ static void G_Profile_WriteToDisk( void ) {
         s_profileState.stats.driveTimeMs,
         s_profileState.stats.mostUsedVehicle,
         s_profileState.stats.mostUsedVehicleTimeMs );
-
-    if ( s_profileState.stats.driveTimeMs > 0 ) {
-        s_profileState.stats.driveTimeMs += level.time;
-    }
-
-    if ( s_profileState.stats.damageDealt > 0 ) {
-        s_profileState.stats.damageDealt += level.time;
-    }
-
-    if ( s_profileState.stats.mostUsedVehicle[0] ) {
-        s_profileState.stats.mostUsedVehicleTimeMs += level.time;
-    }
 
     if ( length < 0 ) {
         return;
