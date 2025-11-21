@@ -418,18 +418,6 @@ static void G_Profile_WriteToDisk( void ) {
         s_profileState.stats.mostUsedVehicle,
         s_profileState.stats.mostUsedVehicleTimeMs );
 
-    if ( s_profileState.stats.driveTimeMs > 0 ) {
-        s_profileState.stats.driveTimeMs += level.time;
-    }
-
-    if ( s_profileState.stats.damageDealt > 0 ) {
-        s_profileState.stats.damageDealt += level.time;
-    }
-
-    if ( s_profileState.stats.mostUsedVehicle[0] ) {
-        s_profileState.stats.mostUsedVehicleTimeMs += level.time;
-    }
-
     if ( length < 0 ) {
         return;
     }
@@ -679,3 +667,4 @@ void G_Profile_RecordBestLap( gclient_t *client, int lapTime ) {
         s_profileState.dirty = qtrue;
     }
 }
+
