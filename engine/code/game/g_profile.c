@@ -340,6 +340,8 @@ static void G_Profile_WriteToDisk( void ) {
     char readBuffer[1024];
     int readLength;
     int length;
+    int frameDelta;
+    int driveTimeMs;
 
     if ( !s_profileState.loaded || !s_profileState.name[0] ) {
         return;
@@ -369,6 +371,17 @@ static void G_Profile_WriteToDisk( void ) {
     G_Profile_FormatJsonString( birthDate, sizeof( birthDate ), s_profileState.info.birthDate );
     G_Profile_FormatJsonString( avatar, sizeof( avatar ), s_profileState.info.avatar );
     G_Profile_FormatJsonString( country, sizeof( country ), s_profileState.info.country );
+
+    frameDelta = level.time - level.previousTime;
+    if ( frameDelta < 0 ) {
+        frameDelta = 0;
+    }
+
+    driveTimeMs = s_profileState.stats.driveTimeMs;
+    if ( frameDelta > 0 ) {
+        driveTimeMs += frameDelta;
+        s_profileState.stats.driveTimeMs = driveTimeMs;
+    }
 
     length = Com_sprintf( buffer, sizeof( buffer ),
         "{\n"
@@ -414,7 +427,7 @@ static void G_Profile_WriteToDisk( void ) {
         s_profileState.stats.topSpeedKph,
         s_profileState.stats.damageDealt,
         s_profileState.stats.damageTaken,
-        s_profileState.stats.driveTimeMs,
+        driveTimeMs,
         s_profileState.stats.mostUsedVehicle,
         s_profileState.stats.mostUsedVehicleTimeMs );
 
