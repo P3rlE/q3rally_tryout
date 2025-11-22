@@ -272,7 +272,7 @@ static void G_Profile_UpdateVehicleUsage( gentity_t *ent, int frameMsec ) {
 static qboolean G_Profile_LoadFromDisk( void ) {
     fileHandle_t file;
     char path[MAX_QPATH];
-    char buffer[1024];
+    char buffer[2048];
     int length;
 
     if ( !s_profileState.name[0] ) {
@@ -330,7 +330,7 @@ static qboolean G_Profile_LoadFromDisk( void ) {
 static void G_Profile_WriteToDisk( void ) {
     fileHandle_t file;
     char path[MAX_QPATH];
-    char buffer[1024];
+    char buffer[2048];
     char gender[PROFILE_MAX_GENDER * 2];
     char birthDate[PROFILE_MAX_BIRTHDATE * 2];
     char avatar[PROFILE_MAX_AVATAR * 2];
