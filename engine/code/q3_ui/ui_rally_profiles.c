@@ -53,7 +53,7 @@ typedef struct {
 } profileOverlay_t;
 
 static profileOverlay_t s_profileOverlay;
-static qboolean s_profileOverlaySessionInitialized = qfalse;
+//static qboolean s_profileOverlaySessionInitialized = qfalse;
 
 static void UI_ProfileOverlay_Draw( void );
 static sfxHandle_t UI_ProfileOverlay_Key( int key );

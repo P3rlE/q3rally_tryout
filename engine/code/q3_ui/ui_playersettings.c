@@ -2069,9 +2069,12 @@ rowBottom - rowTop,
 borderColor );
 }
 }
+
 static void PlayerSettings_DrawStatsTab( void ) {
 const profile_stats_t *stats;
 char buffer[64];
+char vehicleName[64];
+char *slash;
 
 PlayerSettings_UpdateStatsPaginationInfo();
 
@@ -2125,7 +2128,17 @@ PlayerSettings_UpdateStatsPaginationInfo();
         PlayerSettings_DrawStatsLabelValue( STATS_ROW_FLAG_ASSISTS, "Flag Assists", buffer );
 
         if ( stats->mostUsedVehicle[0] ) {
-                Com_sprintf( buffer, sizeof( buffer ), "%s", stats->mostUsedVehicle );
+                // Kopiere Fahrzeugname und entferne Skin (alles nach dem '/')
+                Q_strncpyz( vehicleName, stats->mostUsedVehicle, sizeof( vehicleName ) );
+                slash = strchr( vehicleName, '/' );
+                if ( slash ) {
+                        *slash = '\0';
+                }
+                // Großbuchstabe am Anfang
+                if ( vehicleName[0] >= 'a' && vehicleName[0] <= 'z' ) {
+                        vehicleName[0] = vehicleName[0] - 'a' + 'A';
+                }
+                Com_sprintf( buffer, sizeof( buffer ), "%s", vehicleName );
         } else {
                 Q_strncpyz( buffer, "--", sizeof( buffer ) );
         }
