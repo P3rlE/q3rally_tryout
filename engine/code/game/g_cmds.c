@@ -353,14 +353,16 @@ void Cmd_Give_f (gentity_t *ent)
 			return;
 	}
 
-	if (Q_stricmp(name, "excellent") == 0) {
-		ent->client->ps.persistant[PERS_EXCELLENT_COUNT]++;
-		return;
-	}
-	if (Q_stricmp(name, "impressive") == 0) {
-		ent->client->ps.persistant[PERS_IMPRESSIVE_COUNT]++;
-		return;
-	}
+        if (Q_stricmp(name, "excellent") == 0) {
+                ent->client->ps.persistant[PERS_EXCELLENT_COUNT]++;
+                G_Profile_RecordExcellent( ent->client );
+                return;
+        }
+        if (Q_stricmp(name, "impressive") == 0) {
+                ent->client->ps.persistant[PERS_IMPRESSIVE_COUNT]++;
+                G_Profile_RecordImpressive( ent->client );
+                return;
+        }
     if (Q_stricmp(name, "impressive telefrag") == 0) {
 		ent->client->ps.persistant[PERS_IMPRESSIVETELEFRAG_COUNT]++;
 		return;
