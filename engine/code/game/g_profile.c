@@ -312,7 +312,6 @@ static qboolean G_Profile_LoadFromDisk( void ) {
     s_profileState.stats.topSpeedKph = G_Profile_ParseDouble( buffer, "topSpeedKph", 0.0 );
     s_profileState.stats.damageDealt = G_Profile_ParseInt( buffer, "damageDealt", 0 );
     s_profileState.stats.damageTaken = G_Profile_ParseInt( buffer, "damageTaken", 0 );
-    s_profileState.stats.driveTimeMs = G_Profile_ParseInt( buffer, "driveTimeMs", 0 );
     G_Profile_ParseString( buffer, "mostUsedVehicle", s_profileState.stats.mostUsedVehicle, sizeof( s_profileState.stats.mostUsedVehicle ), "" );
     s_profileState.stats.mostUsedVehicleTimeMs = G_Profile_ParseInt( buffer, "mostUsedVehicleTimeMs", 0 );
 
@@ -397,7 +396,6 @@ static void G_Profile_WriteToDisk( void ) {
         "\t\t\"topSpeedKph\": %.2f,\n"
         "\t\t\"damageDealt\": %d,\n"
         "\t\t\"damageTaken\": %d,\n"
-        "\t\t\"driveTimeMs\": %d,\n"
         "\t\t\"mostUsedVehicle\": \"%s\",\n"
         "\t\t\"mostUsedVehicleTimeMs\": %d\n"
         "\t}\n"
@@ -419,7 +417,6 @@ static void G_Profile_WriteToDisk( void ) {
         s_profileState.stats.topSpeedKph,
         s_profileState.stats.damageDealt,
         s_profileState.stats.damageTaken,
-        s_profileState.stats.driveTimeMs,
         s_profileState.stats.mostUsedVehicle,
         s_profileState.stats.mostUsedVehicleTimeMs );
 
@@ -569,8 +566,6 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
         VectorCopy( ent->r.currentOrigin, client->profileLastOrigin );
     }
 
-    s_profileState.stats.driveTimeMs += frameMsec;
-    s_profileState.dirty = qtrue;
     G_Profile_UpdateVehicleUsage( ent, frameMsec );
 
     // Geschwindigkeits-Tracking
@@ -690,26 +685,3 @@ void G_Profile_RecordBestLap( gclient_t *client, int lapTime ) {
 
 
 
-void G_Profile_RecordRaceDuration( void ) {
-    int startTime;
-    int finishTime;
-
-    if ( !s_profileState.loaded ) {
-        return;
-    }
-
-    startTime = level.startRaceTime ? level.startRaceTime : level.startTime;
-    if ( !level.startRaceTime ) {
-        level.startRaceTime = startTime;
-    }
-
-    finishTime = level.finishRaceTime ? level.finishRaceTime : level.time;
-    if ( !level.finishRaceTime ) {
-        level.finishRaceTime = finishTime;
-    }
-
-    if ( finishTime > startTime ) {
-        s_profileState.stats.driveTimeMs += ( finishTime - startTime );
-        s_profileState.dirty = qtrue;
-    }
-}

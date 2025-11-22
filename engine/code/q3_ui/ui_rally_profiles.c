@@ -333,7 +333,6 @@ static qboolean UI_Profile_ReadData( const char *name, profile_info_t *outInfo, 
             outStats->topSpeedKph = UI_Profile_ParseDouble( buffer, "topSpeedKph", 0.0 );
             outStats->damageDealt = UI_Profile_ParseInt( buffer, "damageDealt", 0 );
             outStats->damageTaken = UI_Profile_ParseInt( buffer, "damageTaken", 0 );
-            outStats->driveTimeMs = UI_Profile_ParseInt( buffer, "driveTimeMs", 0 );
             UI_Profile_ParseString( buffer, "mostUsedVehicle", outStats->mostUsedVehicle, sizeof( outStats->mostUsedVehicle ), "" );
             outStats->mostUsedVehicleTimeMs = UI_Profile_ParseInt( buffer, "mostUsedVehicleTimeMs", 0 );
         }
@@ -403,7 +402,6 @@ static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *in
         "\t\t\"topSpeedKph\": %.2f,\n"
         "\t\t\"damageDealt\": %d,\n"
         "\t\t\"damageTaken\": %d,\n"
-        "\t\t\"driveTimeMs\": %d,\n"
         "\t\t\"mostUsedVehicle\": \"%s\",\n"
         "\t\t\"mostUsedVehicleTimeMs\": %d\n"
         "\t}\n"
@@ -425,7 +423,6 @@ static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *in
         stats->topSpeedKph,
         stats->damageDealt,
         stats->damageTaken,
-        stats->driveTimeMs,
         stats->mostUsedVehicle,
         stats->mostUsedVehicleTimeMs );
 

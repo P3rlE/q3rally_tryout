@@ -23,7 +23,6 @@ typedef struct {
     double topSpeedKph;
     int damageDealt;
     int damageTaken;
-    int driveTimeMs;
     char mostUsedVehicle[PROFILE_MAX_VEHICLE];
     int mostUsedVehicleTimeMs;
 } profile_stats_t;
