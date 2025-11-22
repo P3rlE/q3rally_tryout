@@ -783,12 +783,13 @@ void weapon_railgun_fire (gentity_t *ent) {
 	} else {
 		// check for "impressive" reward sound
 		ent->client->accurateCount += hits;
-		if ( ent->client->accurateCount >= 6 ) {
-			ent->client->accurateCount -= 6;
-			ent->client->ps.persistant[PERS_IMPRESSIVE_COUNT]++;
-			// add the sprite over the player's head
-			ent->client->ps.eFlags &= ~(EF_AWARD_IMPRESSIVE | EF_AWARD_IMPRESSIVETELEFRAG | EF_AWARD_EXCELLENT | EF_AWARD_GAUNTLET | EF_AWARD_ASSIST | EF_AWARD_DEFEND | EF_AWARD_CAP );
-			ent->client->ps.eFlags |= EF_AWARD_IMPRESSIVE;
+                if ( ent->client->accurateCount >= 6 ) {
+                        ent->client->accurateCount -= 6;
+                        ent->client->ps.persistant[PERS_IMPRESSIVE_COUNT]++;
+                        G_Profile_RecordImpressive( ent->client );
+                        // add the sprite over the player's head
+                        ent->client->ps.eFlags &= ~(EF_AWARD_IMPRESSIVE | EF_AWARD_IMPRESSIVETELEFRAG | EF_AWARD_EXCELLENT | EF_AWARD_GAUNTLET | EF_AWARD_ASSIST | EF_AWARD_DEFEND | EF_AWARD_CAP );
+                        ent->client->ps.eFlags |= EF_AWARD_IMPRESSIVE;
 			ent->client->rewardTime = level.time + REWARD_SPRITE_TIME;
 		}
 		ent->client->accuracy_hits++;
