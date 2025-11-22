@@ -387,7 +387,6 @@ typedef enum {
         STATS_ROW_DISTANCE = 0,
         STATS_ROW_FUEL,
         STATS_ROW_TOP_SPEED,
-        STATS_ROW_DRIVE_TIME,
         STATS_ROW_BEST_LAP,
         STATS_ROW_KILLS,
         STATS_ROW_DAMAGE_DEALT,
@@ -2073,7 +2072,6 @@ borderColor );
 static void PlayerSettings_DrawStatsTab( void ) {
 const profile_stats_t *stats;
 char buffer[64];
-int hours, minutes, seconds;
 
 PlayerSettings_UpdateStatsPaginationInfo();
 
@@ -2098,17 +2096,11 @@ PlayerSettings_UpdateStatsPaginationInfo();
         Com_sprintf( buffer, sizeof( buffer ), "%.1f km/h", stats->topSpeedKph );
         PlayerSettings_DrawStatsLabelValue( STATS_ROW_TOP_SPEED, "Top Speed", buffer );
 
-        hours = stats->driveTimeMs / 3600000;
-        minutes = ( stats->driveTimeMs % 3600000 ) / 60000;
-        seconds = ( stats->driveTimeMs % 60000 ) / 1000;
-        Com_sprintf( buffer, sizeof( buffer ), "%02d:%02d:%02d", hours, minutes, seconds );
-        PlayerSettings_DrawStatsLabelValue( STATS_ROW_DRIVE_TIME, "Total Drive Time", buffer );
-
         if ( stats->bestLapMs > 0 ) {
                 int minutes = stats->bestLapMs / 60000;
                 int seconds = ( stats->bestLapMs % 60000 ) / 1000;
                 int millis = stats->bestLapMs % 1000;
-		Com_sprintf( buffer, sizeof( buffer ), "%02d:%02d.%03d", minutes, seconds, millis );
+                Com_sprintf( buffer, sizeof( buffer ), "%02d:%02d.%03d", minutes, seconds, millis );
 	} else {
 		Q_strncpyz( buffer, "--", sizeof( buffer ) );
         }
