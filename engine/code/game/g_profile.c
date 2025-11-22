@@ -340,8 +340,6 @@ static void G_Profile_WriteToDisk( void ) {
     char readBuffer[1024];
     int readLength;
     int length;
-    int frameDelta;
-    int driveTimeMs;
 
     if ( !s_profileState.loaded || !s_profileState.name[0] ) {
         return;
@@ -349,6 +347,7 @@ static void G_Profile_WriteToDisk( void ) {
 
     G_Profile_BuildPath( s_profileState.name, path, sizeof( path ) );
 
+    // Lese bestehende Info-Felder aus der Datei
     readLength = trap_FS_FOpenFile( path, &readFile, FS_READ );
     if ( readLength > 0 ) {
         if ( readLength >= (int)sizeof( readBuffer ) ) {
@@ -367,21 +366,14 @@ static void G_Profile_WriteToDisk( void ) {
         trap_FS_FCloseFile( readFile );
     }
 
+    // Escape Sonderzeichen für JSON
     G_Profile_FormatJsonString( gender, sizeof( gender ), s_profileState.info.gender );
     G_Profile_FormatJsonString( birthDate, sizeof( birthDate ), s_profileState.info.birthDate );
     G_Profile_FormatJsonString( avatar, sizeof( avatar ), s_profileState.info.avatar );
     G_Profile_FormatJsonString( country, sizeof( country ), s_profileState.info.country );
 
-    frameDelta = level.time - level.previousTime;
-    if ( frameDelta < 0 ) {
-        frameDelta = 0;
-    }
-
-    driveTimeMs = s_profileState.stats.driveTimeMs;
-    if ( frameDelta > 0 ) {
-        driveTimeMs += frameDelta;
-        s_profileState.stats.driveTimeMs = driveTimeMs;
-    }
+    // Keine Frame-Delta-Berechnung mehr hier!
+    // Die Zeit wird bereits in G_Profile_UpdateClientFrame() akkumuliert.
 
     length = Com_sprintf( buffer, sizeof( buffer ),
         "{\n"
@@ -427,7 +419,7 @@ static void G_Profile_WriteToDisk( void ) {
         s_profileState.stats.topSpeedKph,
         s_profileState.stats.damageDealt,
         s_profileState.stats.damageTaken,
-        driveTimeMs,
+        s_profileState.stats.driveTimeMs,
         s_profileState.stats.mostUsedVehicle,
         s_profileState.stats.mostUsedVehicleTimeMs );
 
@@ -514,7 +506,7 @@ void G_Profile_TrackClientSpawn( gclient_t *client ) {
     }
 
     client->profileHasLastOrigin = qfalse;
-    client->profileHasLastCmdTime = qfalse;
+    client->profileLastTime = 0;
 }
 
 void G_Profile_UpdateClientFrame( gentity_t *ent ) {
@@ -525,6 +517,7 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
     double speedQu;
     double speedKph;
     int frameMsec;
+    int currentTime;
 
     if ( !s_profileState.loaded || !s_profileState.name[0] ) {
         return;
@@ -542,18 +535,25 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
         return;
     }
 
-    if ( !client->profileHasLastCmdTime ) {
+    // Zeit-Tracking: Messe tatsächlich vergangene Zeit seit letztem Frame
+    currentTime = level.time;
+    
+    if ( client->profileLastTime == 0 ) {
+        // Erster Frame nach Spawn - initialisiere nur, addiere keine Zeit
+        client->profileLastTime = currentTime;
         frameMsec = 0;
     } else {
-        frameMsec = client->pers.cmd.serverTime - client->profileLastCmdTime;
-        if ( frameMsec < 0 ) {
+        frameMsec = currentTime - client->profileLastTime;
+        
+        // Sicherheitscheck: Verhindere negative oder unrealistisch große Werte
+        if ( frameMsec < 0 || frameMsec > 1000 ) {
             frameMsec = 0;
         }
+        
+        client->profileLastTime = currentTime;
     }
 
-    client->profileLastCmdTime = client->pers.cmd.serverTime;
-    client->profileHasLastCmdTime = qtrue;
-
+    // Distanz-Tracking
     if ( !client->profileHasLastOrigin ) {
         VectorCopy( ent->r.currentOrigin, client->profileLastOrigin );
         client->profileHasLastOrigin = qtrue;
@@ -569,12 +569,14 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
         VectorCopy( ent->r.currentOrigin, client->profileLastOrigin );
     }
 
+    // Zeit-Tracking - akkumuliert die tatsächlich vergangene Zeit
     if ( frameMsec > 0 ) {
         s_profileState.stats.driveTimeMs += frameMsec;
         s_profileState.dirty = qtrue;
         G_Profile_UpdateVehicleUsage( ent, frameMsec );
     }
 
+    // Geschwindigkeits-Tracking
     speedQu = VectorLength( client->ps.velocity );
     speedKph = ( speedQu / CP_M_2_QU ) * 3.6;
     if ( speedKph > s_profileState.stats.topSpeedKph ) {
@@ -582,6 +584,7 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
         s_profileState.dirty = qtrue;
     }
 
+    // Auto-Save Check
     if ( s_profileState.dirty && level.time >= s_profileState.nextAutosaveTime ) {
         G_Profile_WriteToDisk();
     }

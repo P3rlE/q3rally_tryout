@@ -428,8 +428,11 @@ struct gclient_s {
 	vec3_t		profileLastOrigin;
 	qboolean	profileHasLastOrigin;
 
-	int			profileLastCmdTime;
-	qboolean	profileHasLastCmdTime;
+	int			profileLastTime;        // NEU: für Zeit-Tracking unabhängig von Framerate
+
+	// profileLastCmdTime wird nicht mehr benötigt - kann entfernt werden
+	// int		profileLastCmdTime;
+	// qboolean	profileHasLastCmdTime;
 
 	char		*areabits;
 };
