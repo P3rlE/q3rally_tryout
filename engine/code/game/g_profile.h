@@ -18,5 +18,6 @@ void G_Profile_RecordFlagAssist( struct gclient_s *client );
 void G_Profile_RecordWin( struct gclient_s *client );
 void G_Profile_RecordLoss( struct gclient_s *client );
 void G_Profile_RecordBestLap( struct gclient_s *client, int lapTime );
+void G_Profile_RecordRaceDuration( void );
 
 #endif /* G_PROFILE_H */

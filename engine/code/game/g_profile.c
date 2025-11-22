@@ -366,7 +366,7 @@ static void G_Profile_WriteToDisk( void ) {
         trap_FS_FCloseFile( readFile );
     }
 
-    // Escape Sonderzeichen f¸r JSON
+    // Escape Sonderzeichen f√ºr JSON
     G_Profile_FormatJsonString( gender, sizeof( gender ), s_profileState.info.gender );
     G_Profile_FormatJsonString( birthDate, sizeof( birthDate ), s_profileState.info.birthDate );
     G_Profile_FormatJsonString( avatar, sizeof( avatar ), s_profileState.info.avatar );
@@ -535,7 +535,7 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
         return;
     }
 
-    // Zeit-Tracking: Messe tats‰chlich vergangene Zeit seit letztem Frame
+    // Zeit-Tracking: Messe tats√§chlich vergangene Zeit seit letztem Frame
     currentTime = level.time;
     
     if ( client->profileLastTime == 0 ) {
@@ -545,7 +545,7 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
     } else {
         frameMsec = currentTime - client->profileLastTime;
         
-        // Sicherheitscheck: Verhindere negative oder unrealistisch groﬂe Werte
+        // Sicherheitscheck: Verhindere negative oder unrealistisch gro√üe Werte
         if ( frameMsec < 0 || frameMsec > 1000 ) {
             frameMsec = 0;
         }
@@ -569,8 +569,6 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
         VectorCopy( ent->r.currentOrigin, client->profileLastOrigin );
     }
 
-    // Zeit-Tracking - akkumuliert die tats‰chlich vergangene Zeit
-    if ( frameMsec > 0 ) {
         s_profileState.stats.driveTimeMs += frameMsec;
         s_profileState.dirty = qtrue;
         G_Profile_UpdateVehicleUsage( ent, frameMsec );
@@ -691,3 +689,28 @@ void G_Profile_RecordBestLap( gclient_t *client, int lapTime ) {
     }
 }
 
+
+
+void G_Profile_RecordRaceDuration( void ) {
+    int startTime;
+    int finishTime;
+
+    if ( !s_profileState.loaded ) {
+        return;
+    }
+
+    startTime = level.startRaceTime ? level.startRaceTime : level.startTime;
+    if ( !level.startRaceTime ) {
+        level.startRaceTime = startTime;
+    }
+
+    finishTime = level.finishRaceTime ? level.finishRaceTime : level.time;
+    if ( !level.finishRaceTime ) {
+        level.finishRaceTime = finishTime;
+    }
+
+    if ( finishTime > startTime ) {
+        s_profileState.stats.driveTimeMs += ( finishTime - startTime );
+        s_profileState.dirty = qtrue;
+    }
+}

@@ -1884,6 +1884,8 @@ void LogExit( const char *string ) {
 #endif
 	G_LogPrintf( "Exit: %s\n", string );
 
+	G_Profile_RecordRaceDuration();
+
 	level.intermissionQueued = level.time;
 
 	// this will keep the clients from playing any voice sounds
