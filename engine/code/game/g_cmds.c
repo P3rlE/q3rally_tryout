@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "g_local.h"
+#include "g_profile.h"
 
 #ifdef MISSIONPACK
 #include "../../ui/menudef.h"			// for the voice chats
