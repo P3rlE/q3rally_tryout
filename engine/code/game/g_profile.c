@@ -569,10 +569,9 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
         VectorCopy( ent->r.currentOrigin, client->profileLastOrigin );
     }
 
-        s_profileState.stats.driveTimeMs += frameMsec;
-        s_profileState.dirty = qtrue;
-        G_Profile_UpdateVehicleUsage( ent, frameMsec );
-    }
+    s_profileState.stats.driveTimeMs += frameMsec;
+    s_profileState.dirty = qtrue;
+    G_Profile_UpdateVehicleUsage( ent, frameMsec );
 
     // Geschwindigkeits-Tracking
     speedQu = VectorLength( client->ps.velocity );
