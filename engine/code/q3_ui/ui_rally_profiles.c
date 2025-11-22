@@ -296,7 +296,7 @@ static void UI_Profile_FormatJsonString( char *out, int outSize, const char *val
 static qboolean UI_Profile_ReadData( const char *name, profile_info_t *outInfo, profile_stats_t *outStats ) {
     fileHandle_t file;
     char path[MAX_QPATH];
-    char buffer[1024];
+    char buffer[2048];
     int length;
 
     if ( !name || !name[0] ) {
