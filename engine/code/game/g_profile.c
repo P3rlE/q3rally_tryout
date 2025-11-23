@@ -13,6 +13,8 @@ static struct {
     int             nextAutosaveTime;
 } s_profileState;
 
+static void G_Profile_ParseString( const char *buffer, const char *key, char *out, int outSize, const char *defaultValue );
+
 static qboolean G_Profile_ShouldTrackClient( const gclient_t *client ) {
     if ( !s_profileState.loaded ) {
         return qfalse;
