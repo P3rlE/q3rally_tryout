@@ -60,6 +60,7 @@ static sfxHandle_t UI_ProfileOverlay_Key( int key );
 static void UI_ProfileOverlay_FocusNameField( void );
 static void UI_ProfileOverlay_DrawNameField( void *self );
 static void UI_ProfileOverlay_EnsureSelectionVisible( void );
+static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *info, const profile_stats_t *stats );
 static void UI_Profile_ParseString( const char *buffer, const char *key, char *out, int outSize, const char *defaultValue );
 static qboolean UI_Profile_FavoritesEmpty( const profile_info_t *info ) {
     int i;
