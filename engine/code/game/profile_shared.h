@@ -9,16 +9,6 @@
 #define PROFILE_MAX_AVATAR 64
 #define PROFILE_MAX_COUNTRY 32
 #define PROFILE_MAX_VEHICLE 64
-#define PROFILE_MAX_GARAGE_SLOTS 4
-
-typedef struct {
-    char model[PROFILE_MAX_VEHICLE];
-    char skin[PROFILE_MAX_VEHICLE];
-    char setup[PROFILE_MAX_VEHICLE];
-    char paint[PROFILE_MAX_VEHICLE];
-    char tires[PROFILE_MAX_VEHICLE];
-    qboolean favoriteLoadout;
-} profile_garage_slot_t;
 
 typedef struct {
     double distanceKm;
@@ -46,8 +36,6 @@ typedef struct {
     char birthDate[PROFILE_MAX_BIRTHDATE];
     char avatar[PROFILE_MAX_AVATAR];
     char country[PROFILE_MAX_COUNTRY];
-    int  activeGarageSlot;
-    profile_garage_slot_t garageSlots[PROFILE_MAX_GARAGE_SLOTS];
 } profile_info_t;
 
 #endif /* PROFILE_SHARED_H */

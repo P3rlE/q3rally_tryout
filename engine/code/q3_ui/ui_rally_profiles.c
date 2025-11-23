@@ -167,33 +167,6 @@ static double UI_Profile_ParseDouble( const char *buffer, const char *key, doubl
     return atof( cursor );
 }
 
-static int UI_Profile_ParseBool( const char *buffer, const char *key, int defaultValue ) {
-    char pattern[64];
-    const char *cursor;
-
-    Com_sprintf( pattern, sizeof( pattern ), "\"%s\"", key );
-    cursor = strstr( buffer, pattern );
-    if ( !cursor ) {
-        return defaultValue;
-    }
-
-    cursor = strchr( cursor, ':' );
-    if ( !cursor ) {
-        return defaultValue;
-    }
-    cursor++;
-
-    while ( *cursor == ' ' || *cursor == '\t' ) {
-        cursor++;
-    }
-
-    if ( *cursor == 't' || *cursor == 'T' ) {
-        return 1;
-    }
-
-    return atoi( cursor );
-}
-
 static int UI_Profile_ParseInt( const char *buffer, const char *key, int defaultValue ) {
     char pattern[64];
     const char *cursor;
@@ -320,87 +293,6 @@ static void UI_Profile_FormatJsonString( char *out, int outSize, const char *val
     *dst = '\0';
 }
 
-static void UI_Profile_InitGarageSlots( profile_info_t *info ) {
-    int i;
-
-    if ( !info ) {
-        return;
-    }
-
-    for ( i = 0; i < PROFILE_MAX_GARAGE_SLOTS; ++i ) {
-        Com_Memset( &info->garageSlots[i], 0, sizeof( info->garageSlots[i] ) );
-    }
-
-    info->activeGarageSlot = 0;
-    Q_strncpyz( info->garageSlots[0].model, "roadster", sizeof( info->garageSlots[0].model ) );
-    Q_strncpyz( info->garageSlots[0].skin, "default", sizeof( info->garageSlots[0].skin ) );
-    Q_strncpyz( info->garageSlots[0].setup, "standard", sizeof( info->garageSlots[0].setup ) );
-    Q_strncpyz( info->garageSlots[0].paint, "default", sizeof( info->garageSlots[0].paint ) );
-    Q_strncpyz( info->garageSlots[0].tires, "allround", sizeof( info->garageSlots[0].tires ) );
-    info->garageSlots[0].favoriteLoadout = qtrue;
-}
-
-static void UI_Profile_ParseGarageSlotObject( const char *start, const char *end, profile_garage_slot_t *slot ) {
-    char buffer[256];
-    int length;
-
-    if ( !start || !end || !slot || end <= start ) {
-        return;
-    }
-
-    length = end - start;
-    if ( length >= (int)sizeof( buffer ) ) {
-        length = sizeof( buffer ) - 1;
-    }
-
-    Com_Memcpy( buffer, start, length );
-    buffer[length] = '\0';
-
-    UI_Profile_ParseString( buffer, "model", slot->model, sizeof( slot->model ), slot->model );
-    UI_Profile_ParseString( buffer, "skin", slot->skin, sizeof( slot->skin ), slot->skin );
-    UI_Profile_ParseString( buffer, "setup", slot->setup, sizeof( slot->setup ), slot->setup );
-    UI_Profile_ParseString( buffer, "paint", slot->paint, sizeof( slot->paint ), slot->paint );
-    UI_Profile_ParseString( buffer, "tires", slot->tires, sizeof( slot->tires ), slot->tires );
-    slot->favoriteLoadout = UI_Profile_ParseBool( buffer, "favorite", slot->favoriteLoadout );
-}
-
-static void UI_Profile_ParseGarageSlots( const char *buffer, profile_info_t *info ) {
-    const char *cursor;
-    int slotIndex = 0;
-
-    if ( !buffer || !info ) {
-        return;
-    }
-
-    cursor = strstr( buffer, "garageSlots" );
-    if ( !cursor ) {
-        return;
-    }
-
-    cursor = strchr( cursor, '[' );
-    if ( !cursor ) {
-        return;
-    }
-
-    while ( *cursor && slotIndex < PROFILE_MAX_GARAGE_SLOTS ) {
-        const char *objStart = strchr( cursor, '{' );
-        const char *objEnd;
-
-        if ( !objStart ) {
-            break;
-        }
-
-        objEnd = strchr( objStart, '}' );
-        if ( !objEnd ) {
-            break;
-        }
-
-        UI_Profile_ParseGarageSlotObject( objStart, objEnd + 1, &info->garageSlots[slotIndex] );
-        slotIndex++;
-        cursor = objEnd + 1;
-    }
-}
-
 static qboolean UI_Profile_ReadData( const char *name, profile_info_t *outInfo, profile_stats_t *outStats ) {
     fileHandle_t file;
     char path[MAX_QPATH];
@@ -450,13 +342,10 @@ static qboolean UI_Profile_ReadData( const char *name, profile_info_t *outInfo, 
         }
 
     if ( outInfo ) {
-        UI_Profile_InitGarageSlots( outInfo );
         UI_Profile_ParseString( buffer, "gender", outInfo->gender, sizeof( outInfo->gender ), "" );
         UI_Profile_ParseString( buffer, "birthDate", outInfo->birthDate, sizeof( outInfo->birthDate ), "" );
         UI_Profile_ParseString( buffer, "avatar", outInfo->avatar, sizeof( outInfo->avatar ), "" );
         UI_Profile_ParseString( buffer, "country", outInfo->country, sizeof( outInfo->country ), "" );
-        outInfo->activeGarageSlot = UI_Profile_ParseInt( buffer, "activeGarageSlot", outInfo->activeGarageSlot );
-        UI_Profile_ParseGarageSlots( buffer, outInfo );
     }
 
     return qtrue;
@@ -470,12 +359,9 @@ static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *in
     char birthDate[PROFILE_MAX_BIRTHDATE * 2];
     char avatar[PROFILE_MAX_AVATAR * 2];
     char country[PROFILE_MAX_COUNTRY * 2];
-    char garageJson[1024];
     profile_stats_t zeroStats;
     profile_info_t emptyInfo;
     int length;
-    int garageJsonPos;
-    int i;
 
     if ( !name || !name[0] ) {
         return qfalse;
@@ -485,7 +371,6 @@ static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *in
 
     if ( !info ) {
         Com_Memset( &emptyInfo, 0, sizeof( emptyInfo ) );
-        UI_Profile_InitGarageSlots( &emptyInfo );
         info = &emptyInfo;
     }
 
@@ -499,31 +384,6 @@ static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *in
     UI_Profile_FormatJsonString( avatar, sizeof( avatar ), info->avatar );
     UI_Profile_FormatJsonString( country, sizeof( country ), info->country );
 
-    garageJsonPos = 0;
-    garageJsonPos += Com_sprintf( garageJson + garageJsonPos, sizeof( garageJson ) - garageJsonPos, "[\n" );
-
-    for ( i = 0; i < PROFILE_MAX_GARAGE_SLOTS; ++i ) {
-        const profile_garage_slot_t *slot = &info->garageSlots[i];
-        if ( !slot->model[0] && !slot->skin[0] ) {
-            continue;
-        }
-
-        if ( garageJsonPos > 2 ) {
-            garageJsonPos += Com_sprintf( garageJson + garageJsonPos, sizeof( garageJson ) - garageJsonPos, ",\n" );
-        }
-
-        garageJsonPos += Com_sprintf( garageJson + garageJsonPos, sizeof( garageJson ) - garageJsonPos,
-            "\t\t\t{\"model\": \"%s\", \"skin\": \"%s\", \"setup\": \"%s\", \"paint\": \"%s\", \"tires\": \"%s\", \"favorite\": %s }",
-            slot->model,
-            slot->skin,
-            slot->setup,
-            slot->paint,
-            slot->tires,
-            slot->favoriteLoadout ? "true" : "false" );
-    }
-
-    Com_sprintf( garageJson + garageJsonPos, sizeof( garageJson ) - garageJsonPos, "\n\t\t]" );
-
     length = Com_sprintf( buffer, sizeof( buffer ),
         "{\n"
         "\t\"name\": \"%s\",\n"
@@ -531,9 +391,7 @@ static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *in
         "\t\t\"gender\": \"%s\",\n"
         "\t\t\"birthDate\": \"%s\",\n"
         "\t\t\"avatar\": \"%s\",\n"
-        "\t\t\"country\": \"%s\",\n"
-        "\t\t\"activeGarageSlot\": %d,\n"
-        "\t\t\"garageSlots\": %s\n"
+        "\t\t\"country\": \"%s\"\n"
         "\t},\n"
         "\t\"stats\": {\n"
         "\t\t\"distanceKm\": %.6f,\n"
@@ -561,8 +419,6 @@ static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *in
         birthDate,
         avatar,
         country,
-        info->activeGarageSlot,
-        garageJson,
         stats->distanceKm,
         stats->fuelUsed,
         stats->bestLapMs,
