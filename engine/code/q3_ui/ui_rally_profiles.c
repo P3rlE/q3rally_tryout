@@ -93,7 +93,7 @@ static int UI_Profile_ParseFavoriteCars( const char *buffer, profile_info_t *inf
         }
 
         objectEnd = strchr( objectStart, '}' );
-        if ( !objectEnd ) {
+        if ( !objectEnd || objectEnd <= objectStart ) {
             break;
         }
 
@@ -115,6 +115,33 @@ static int UI_Profile_ParseFavoriteCars( const char *buffer, profile_info_t *inf
     }
 
     return parsedFavorites;
+}
+
+static void UI_Profile_SetFavoriteCvars( const profile_info_t *info ) {
+    int i;
+
+    if ( !info ) {
+        return;
+    }
+
+    for ( i = 0; i < PROFILE_MAX_FAVORITE_CARS; ++i ) {
+        char cvarName[16];
+
+        Com_sprintf( cvarName, sizeof( cvarName ), "favoritecar%d", i + 1 );
+
+        if ( info->favoriteCars[i].model[0] && info->favoriteCars[i].skin[0] ) {
+            char favoriteValue[MAX_QPATH * 4];
+
+            Com_sprintf( favoriteValue, sizeof( favoriteValue ), "%s/%s/%s/%s",
+                         info->favoriteCars[i].model,
+                         info->favoriteCars[i].skin,
+                         info->favoriteCars[i].rim,
+                         info->favoriteCars[i].head );
+            trap_Cvar_Set( cvarName, favoriteValue );
+        } else {
+            trap_Cvar_Set( cvarName, "" );
+        }
+    }
 }
 
 static void UI_ProfileOverlay_SetStatus( const char *text, const vec4_t color ) {
@@ -1107,6 +1134,8 @@ static qboolean UI_Profile_EnsureDataFresh( void ) {
         uis.activeProfileInfoValid = qtrue;
         uis.activeProfileLastRead = uis.realtime;
         uis.activeProfileInfoLastRead = uis.realtime;
+
+        UI_Profile_SetFavoriteCvars( &uis.activeProfileInfo );
     }
 
     return qtrue;
