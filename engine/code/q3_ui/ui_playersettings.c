@@ -2901,25 +2901,55 @@ PlayerSettings_UpdateFavorites
 =================
 */
 static void PlayerSettings_UpdateFavorites( void ) {
-	int			i;
-	char		buf[MAX_QPATH];
-	char		modelName[MAX_QPATH];
-	char		skinName[MAX_QPATH];
+	int				i;
+	char			buf[MAX_QPATH];
+	char			modelName[MAX_QPATH];
+	char			skinName[MAX_QPATH];
+	char			rimName[MAX_QPATH];
+	char			headName[MAX_QPATH];
 	qboolean	error;
-	
-	for (i=0; i < NUM_FAVORITES; i++){
-		Com_sprintf(buf, sizeof(buf), "favoritecar%i", (i+1));
-		error = GetValuesFromFavorite(buf, modelName, skinName, NULL, NULL);
+	const profile_info_t *info = UI_Profile_GetActiveInfo();
+	const profile_info_t *profileInfo = info ? info : &s_playersettings.profileInfo;
 
-		if (!error){
-			Com_sprintf(s_playersettings.favIcons[i], sizeof(s_playersettings.favIcons[i]), "models/players/%s/icon_%s", modelName, skinName);
-			s_playersettings.favpics[i].generic.name = s_playersettings.favIcons[i];
-			s_playersettings.favpicbuttons[i].generic.flags &= ~QMF_INACTIVE;
+	for ( i = 0; i < NUM_FAVORITES; i++ ) {
+		const char *favoriteModel = NULL;
+		const char *favoriteSkin = NULL;
+		const char *favoriteRim = NULL;
+		const char *favoriteHead = NULL;
+		char favoriteValue[MAX_QPATH * 4];
+
+		if ( profileInfo && profileInfo->favoriteCars[i].model[0] && profileInfo->favoriteCars[i].skin[0] ) {
+			favoriteModel = profileInfo->favoriteCars[i].model;
+			favoriteSkin = profileInfo->favoriteCars[i].skin;
+			favoriteRim = profileInfo->favoriteCars[i].rim;
+			favoriteHead = profileInfo->favoriteCars[i].head;
+			Com_sprintf( favoriteValue, sizeof( favoriteValue ), "%s/%s/%s/%s",
+			            favoriteModel,
+			            favoriteSkin,
+			            favoriteRim ? favoriteRim : "",
+			            favoriteHead ? favoriteHead : "" );
+			Com_sprintf( buf, sizeof( buf ), "favoritecar%i", ( i + 1 ) );
+			trap_Cvar_Set( buf, favoriteValue );
+		} else {
+			Com_sprintf( buf, sizeof( buf ), "favoritecar%i", ( i + 1 ) );
+			error = GetValuesFromFavorite( buf, modelName, skinName, rimName, headName );
+			if ( !error ) {
+				favoriteModel = modelName;
+				favoriteSkin = skinName;
+				favoriteRim = rimName;
+				favoriteHead = headName;
+			}
 		}
-		else{
-			s_playersettings.favpics[i].generic.name = NULL;
-			s_playersettings.favpicbuttons[i].generic.flags |= QMF_INACTIVE;
-		}
+
+                if ( favoriteModel && favoriteSkin ) {
+                        Com_sprintf( s_playersettings.favIcons[i], sizeof( s_playersettings.favIcons[i] ), "models/players/%s/icon_%s", favoriteModel, favoriteSkin );
+                        s_playersettings.favpics[i].generic.name = s_playersettings.favIcons[i];
+                        s_playersettings.favpicbuttons[i].generic.flags &= ~QMF_INACTIVE;
+                } else {
+                        s_playersettings.favpics[i].generic.name = NULL;
+                        s_playersettings.favpicbuttons[i].generic.flags |= QMF_INACTIVE;
+                        trap_Cvar_Set( buf, "" );
+                }
 
 		s_playersettings.favpics[i].shader = 0;
 	}
@@ -2966,8 +2996,7 @@ static void PlayerSettings_ApplyProfileFavorites( const profile_info_t *info ) {
 
 		Com_sprintf( cvarName, sizeof( cvarName ), "favoritecar%d", i + 1 );
 
-		if ( info->favoriteCars[i].model[0] || info->favoriteCars[i].skin[0] ||
-		     info->favoriteCars[i].rim[0] || info->favoriteCars[i].head[0] ) {
+		if ( info->favoriteCars[i].model[0] && info->favoriteCars[i].skin[0] ) {
 			Com_sprintf( favoriteValue, sizeof( favoriteValue ), "%s/%s/%s/%s",
 			             info->favoriteCars[i].model,
 			             info->favoriteCars[i].skin,

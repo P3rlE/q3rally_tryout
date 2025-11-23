@@ -72,6 +72,9 @@ static int G_Profile_ParseFavoriteCars( const char *buffer, profile_info_t *info
         }
 
         objectEnd = G_Profile_FindSectionEnd( objectStart, '}' );
+        if ( !objectEnd || objectEnd <= objectStart ) {
+            break;
+        }
         objectLength = objectEnd - objectStart + 1;
         if ( objectLength >= (int)sizeof( objectBuffer ) ) {
             objectLength = sizeof( objectBuffer ) - 1;
