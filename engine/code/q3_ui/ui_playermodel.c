@@ -254,26 +254,48 @@ PlayerModel_UpdateFavorites
 =================
 */
 static void PlayerModel_UpdateFavorites( void ) {
-	int			i;
-	char		buf[MAX_QPATH];
-	char		modelName[MAX_QPATH];
-	char		skinName[MAX_QPATH];
-	qboolean	error;
-	
-	for (i=0; i < NUM_FAVORITES; i++){
-		Com_sprintf(buf, sizeof(buf), "favoritecar%i", (i+1));
+	int	i;
 
-		error = GetValuesFromFavorite(buf, modelName, skinName, NULL, NULL);
+        if ( UI_Profile_HasActiveProfile() ) {
+                const profile_info_t *info = UI_Profile_GetActiveInfo();
 
-		if (!error){
-			Com_sprintf(s_playermodel.favIcons[i], sizeof(s_playermodel.favIcons[i]), "models/players/%s/icon_%s", modelName, skinName);
-			s_playermodel.favpics[i].generic.name = s_playermodel.favIcons[i];
-		}
-		else {
-			s_playermodel.favpics[i].generic.name = NULL;
-		}
-		s_playermodel.favpics[i].shader = 0;
-	}
+                for ( i = 0; i < NUM_FAVORITES; i++ ) {
+                        const profile_garage_slot_t *slot = info ? &info->garageSlots[i] : NULL;
+
+                        if ( slot && slot->model[0] ) {
+                                const char *skin = slot->skin[0] ? slot->skin : "default";
+                                Com_sprintf( s_playermodel.favIcons[i], sizeof( s_playermodel.favIcons[i] ), "models/players/%s/icon_%s", slot->model, skin );
+                                s_playermodel.favpics[i].generic.name = s_playermodel.favIcons[i];
+                        } else {
+                                s_playermodel.favpics[i].generic.name = NULL;
+                        }
+
+                        s_playermodel.favpicbuttons[i].generic.flags &= ~QMF_INACTIVE;
+                        s_playermodel.favpics[i].shader = 0;
+                }
+
+                return;
+        }
+
+	for ( i = 0; i < NUM_FAVORITES; i++ ) {
+		char buf[MAX_QPATH];
+		char modelName[MAX_QPATH];
+		char skinName[MAX_QPATH];
+		qboolean error;
+
+		Com_sprintf( buf, sizeof( buf ), "favoritecar%i", ( i + 1 ) );
+
+                error = GetValuesFromFavorite( buf, modelName, skinName, NULL, NULL );
+
+                if ( !error ) {
+                        Com_sprintf( s_playermodel.favIcons[i], sizeof( s_playermodel.favIcons[i] ), "models/players/%s/icon_%s", modelName, skinName );
+                        s_playermodel.favpics[i].generic.name = s_playermodel.favIcons[i];
+                } else {
+                        s_playermodel.favpics[i].generic.name = NULL;
+                }
+                s_playermodel.favpicbuttons[i].generic.flags &= ~QMF_INACTIVE;
+                s_playermodel.favpics[i].shader = 0;
+        }
 }
 
 
@@ -776,12 +798,61 @@ SaveFavorite
 
 =================
 */
-static void SaveFavorite( const char *favorite ) {
-	char		buf[MAX_QPATH];
+static void SaveFavorite( int slotIndex ) {
+	profile_info_t info;
+	profile_garage_slot_t *slot;
+	const profile_info_t *activeInfo;
+	char modelCvar[MAX_QPATH];
+	char favoriteName[16];
+	const char *slash;
 
-	Com_sprintf(buf, sizeof(buf), "%s/%s/%s", s_playermodel.modelskin, s_playermodel.rimskin, s_playermodel.headskin);
-	trap_Cvar_Set( favorite, buf );
+	if ( slotIndex < 0 || slotIndex >= PROFILE_MAX_GARAGE_SLOTS ) {
+		return;
+	}
 
+	Com_sprintf( favoriteName, sizeof( favoriteName ), "favoritecar%d", slotIndex + 1 );
+
+	if ( !UI_Profile_HasActiveProfile() ) {
+		char buf[MAX_QPATH];
+
+		Com_sprintf( buf, sizeof( buf ), "%s/%s/%s", s_playermodel.modelskin, s_playermodel.rimskin, s_playermodel.headskin );
+		trap_Cvar_Set( favoriteName, buf );
+		PlayerModel_UpdateFavorites();
+		return;
+	}
+
+	activeInfo = UI_Profile_GetActiveInfo();
+	if ( activeInfo ) {
+		info = *activeInfo;
+	} else {
+		Com_Memset( &info, 0, sizeof( info ) );
+	}
+
+	slot = &info.garageSlots[slotIndex];
+
+	trap_Cvar_VariableStringBuffer( "model", modelCvar, sizeof( modelCvar ) );
+	slash = strchr( modelCvar, '/' );
+	if ( slash ) {
+		size_t len = slash - modelCvar;
+		if ( len >= sizeof( slot->model ) ) {
+			len = sizeof( slot->model ) - 1;
+		}
+		Com_Memcpy( slot->model, modelCvar, len );
+		slot->model[len] = '\0';
+		Q_strncpyz( slot->skin, slash + 1, sizeof( slot->skin ) );
+	} else {
+		Q_strncpyz( slot->model, modelCvar, sizeof( slot->model ) );
+		if ( !slot->skin[0] ) {
+			Q_strncpyz( slot->skin, "default", sizeof( slot->skin ) );
+		}
+	}
+
+	trap_Cvar_VariableStringBuffer( "setup", slot->setup, sizeof( slot->setup ) );
+	trap_Cvar_VariableStringBuffer( "paint", slot->paint, sizeof( slot->paint ) );
+	trap_Cvar_VariableStringBuffer( "tires", slot->tires, sizeof( slot->tires ) );
+	slot->favoriteLoadout = qtrue;
+
+	UI_Profile_SaveActiveInfo( &info );
 	PlayerModel_UpdateFavorites();
 }
 
@@ -815,19 +886,19 @@ static void PlayerModel_PicEvent( void* ptr, int event )
 // STONELANCE
 	switch(((menucommon_s*)ptr)->id){
 	case ID_FAVORITE1:
-		SaveFavorite("favoritecar1");
+		SaveFavorite( 0 );
 		return;
 
 	case ID_FAVORITE2:
-		SaveFavorite("favoritecar2");
+		SaveFavorite( 1 );
 		return;
 
 	case ID_FAVORITE3:
-		SaveFavorite("favoritecar3");
+		SaveFavorite( 2 );
 		return;
 
 	case ID_FAVORITE4:
-		SaveFavorite("favoritecar4");
+		SaveFavorite( 3 );
 		return;
 	}
 // END
