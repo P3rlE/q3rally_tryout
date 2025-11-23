@@ -60,6 +60,61 @@ static sfxHandle_t UI_ProfileOverlay_Key( int key );
 static void UI_ProfileOverlay_FocusNameField( void );
 static void UI_ProfileOverlay_DrawNameField( void *self );
 static void UI_ProfileOverlay_EnsureSelectionVisible( void );
+static int UI_Profile_ParseFavoriteCars( const char *buffer, profile_info_t *info ) {
+    const char *favoritesStart;
+    const char *cursor;
+    int parsedFavorites = 0;
+
+    if ( !buffer || !info ) {
+        return 0;
+    }
+
+    favoritesStart = strstr( buffer, "\"favoriteCars\"" );
+    if ( !favoritesStart ) {
+        return 0;
+    }
+
+    favoritesStart = strchr( favoritesStart, '[' );
+    if ( !favoritesStart ) {
+        return 0;
+    }
+
+    cursor = favoritesStart + 1;
+
+    while ( *cursor && *cursor != ']' && parsedFavorites < PROFILE_MAX_FAVORITE_CARS ) {
+        const char *objectStart = strchr( cursor, '{' );
+        const char *objectEnd;
+        char objectBuffer[512];
+        int objectLength;
+
+        if ( !objectStart ) {
+            break;
+        }
+
+        objectEnd = strchr( objectStart, '}' );
+        if ( !objectEnd ) {
+            break;
+        }
+
+        objectLength = objectEnd - objectStart + 1;
+        if ( objectLength >= (int)sizeof( objectBuffer ) ) {
+            objectLength = sizeof( objectBuffer ) - 1;
+        }
+
+        Com_Memcpy( objectBuffer, objectStart, objectLength );
+        objectBuffer[objectLength] = '\0';
+
+        UI_Profile_ParseString( objectBuffer, "model", info->favoriteCars[parsedFavorites].model, sizeof( info->favoriteCars[parsedFavorites].model ), "" );
+        UI_Profile_ParseString( objectBuffer, "skin", info->favoriteCars[parsedFavorites].skin, sizeof( info->favoriteCars[parsedFavorites].skin ), "" );
+        UI_Profile_ParseString( objectBuffer, "rim", info->favoriteCars[parsedFavorites].rim, sizeof( info->favoriteCars[parsedFavorites].rim ), "" );
+        UI_Profile_ParseString( objectBuffer, "head", info->favoriteCars[parsedFavorites].head, sizeof( info->favoriteCars[parsedFavorites].head ), "" );
+
+        parsedFavorites++;
+        cursor = objectEnd + 1;
+    }
+
+    return parsedFavorites;
+}
 
 static void UI_ProfileOverlay_SetStatus( const char *text, const vec4_t color ) {
     if ( text ) {
@@ -321,6 +376,7 @@ static qboolean UI_Profile_ReadData( const char *name, profile_info_t *outInfo, 
     trap_FS_FCloseFile( file );
 
         if ( outStats ) {
+        Com_Memset( outStats, 0, sizeof( *outStats ) );
             outStats->distanceKm = UI_Profile_ParseDouble( buffer, "distanceKm", 0.0 );
             outStats->fuelUsed = UI_Profile_ParseDouble( buffer, "fuelUsed", 0.0 );
             outStats->bestLapMs = UI_Profile_ParseInt( buffer, "bestLapMs", 0 );
@@ -342,10 +398,12 @@ static qboolean UI_Profile_ReadData( const char *name, profile_info_t *outInfo, 
         }
 
     if ( outInfo ) {
+        Com_Memset( outInfo, 0, sizeof( *outInfo ) );
         UI_Profile_ParseString( buffer, "gender", outInfo->gender, sizeof( outInfo->gender ), "" );
         UI_Profile_ParseString( buffer, "birthDate", outInfo->birthDate, sizeof( outInfo->birthDate ), "" );
         UI_Profile_ParseString( buffer, "avatar", outInfo->avatar, sizeof( outInfo->avatar ), "" );
         UI_Profile_ParseString( buffer, "country", outInfo->country, sizeof( outInfo->country ), "" );
+        UI_Profile_ParseFavoriteCars( buffer, outInfo );
     }
 
     return qtrue;
@@ -359,9 +417,12 @@ static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *in
     char birthDate[PROFILE_MAX_BIRTHDATE * 2];
     char avatar[PROFILE_MAX_AVATAR * 2];
     char country[PROFILE_MAX_COUNTRY * 2];
+    char favoriteCarsJson[1024];
+    char favoriteField[PROFILE_MAX_FAVORITE_FIELD * 2];
     profile_stats_t zeroStats;
     profile_info_t emptyInfo;
     int length;
+    int favoriteIndex;
 
     if ( !name || !name[0] ) {
         return qfalse;
@@ -384,6 +445,31 @@ static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *in
     UI_Profile_FormatJsonString( avatar, sizeof( avatar ), info->avatar );
     UI_Profile_FormatJsonString( country, sizeof( country ), info->country );
 
+    length = 0;
+    length += Com_sprintf( favoriteCarsJson + length, sizeof( favoriteCarsJson ) - length, "[\n" );
+    for ( favoriteIndex = 0; favoriteIndex < PROFILE_MAX_FAVORITE_CARS; ++favoriteIndex ) {
+        if ( favoriteIndex > 0 ) {
+            length += Com_sprintf( favoriteCarsJson + length, sizeof( favoriteCarsJson ) - length, ",\n" );
+        }
+
+        UI_Profile_FormatJsonString( favoriteField, sizeof( favoriteField ), info->favoriteCars[favoriteIndex].model );
+        length += Com_sprintf( favoriteCarsJson + length, sizeof( favoriteCarsJson ) - length,
+                               "\t\t\t{\"model\": \"%s\", ", favoriteField );
+
+        UI_Profile_FormatJsonString( favoriteField, sizeof( favoriteField ), info->favoriteCars[favoriteIndex].skin );
+        length += Com_sprintf( favoriteCarsJson + length, sizeof( favoriteCarsJson ) - length,
+                               "\"skin\": \"%s\", ", favoriteField );
+
+        UI_Profile_FormatJsonString( favoriteField, sizeof( favoriteField ), info->favoriteCars[favoriteIndex].rim );
+        length += Com_sprintf( favoriteCarsJson + length, sizeof( favoriteCarsJson ) - length,
+                               "\"rim\": \"%s\", ", favoriteField );
+
+        UI_Profile_FormatJsonString( favoriteField, sizeof( favoriteField ), info->favoriteCars[favoriteIndex].head );
+        length += Com_sprintf( favoriteCarsJson + length, sizeof( favoriteCarsJson ) - length,
+                               "\"head\": \"%s\"}", favoriteField );
+    }
+    Com_sprintf( favoriteCarsJson + length, sizeof( favoriteCarsJson ) - length, "\n\t\t]" );
+
     length = Com_sprintf( buffer, sizeof( buffer ),
         "{\n"
         "\t\"name\": \"%s\",\n"
@@ -391,7 +477,8 @@ static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *in
         "\t\t\"gender\": \"%s\",\n"
         "\t\t\"birthDate\": \"%s\",\n"
         "\t\t\"avatar\": \"%s\",\n"
-        "\t\t\"country\": \"%s\"\n"
+        "\t\t\"country\": \"%s\",\n"
+        "\t\t\"favoriteCars\": %s\n"
         "\t},\n"
         "\t\"stats\": {\n"
         "\t\t\"distanceKm\": %.6f,\n"
@@ -419,6 +506,7 @@ static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *in
         birthDate,
         avatar,
         country,
+        favoriteCarsJson,
         stats->distanceKm,
         stats->fuelUsed,
         stats->bestLapMs,
