@@ -2942,7 +2942,8 @@ static void PlayerSettings_SaveChanges( void ) {
 		int maxDay;
 		const char *genderValue;
 
-		Com_Memset( &info, 0, sizeof( info ) );
+//		Com_Memset( &info, 0, sizeof( info ) );
+        info = s_playersettings.profileInfo;
 
 		genderValue = PlayerSettings_GetGenderValue( s_playersettings.gender.curvalue );
 		Q_strncpyz( info.gender, genderValue, sizeof( info.gender ) );
