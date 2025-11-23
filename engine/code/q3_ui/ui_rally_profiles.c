@@ -61,6 +61,121 @@ static void UI_ProfileOverlay_FocusNameField( void );
 static void UI_ProfileOverlay_DrawNameField( void *self );
 static void UI_ProfileOverlay_EnsureSelectionVisible( void );
 static void UI_Profile_ParseString( const char *buffer, const char *key, char *out, int outSize, const char *defaultValue );
+static qboolean UI_Profile_FavoritesEmpty( const profile_info_t *info ) {
+    int i;
+
+    if ( !info ) {
+        return qtrue;
+    }
+
+    for ( i = 0; i < PROFILE_MAX_FAVORITE_CARS; ++i ) {
+        if ( info->favoriteCars[i].model[0] && info->favoriteCars[i].skin[0] ) {
+            return qfalse;
+        }
+    }
+
+    return qtrue;
+}
+
+static qboolean UI_Profile_ParseFavoriteCvar( int index, profile_favorite_car_t *outFavorite ) {
+    char cvarName[16];
+    char favoriteValue[MAX_CVAR_VALUE_STRING];
+    char *cursor;
+    char *slash;
+
+    if ( !outFavorite ) {
+        return qfalse;
+    }
+
+    Com_Memset( outFavorite, 0, sizeof( *outFavorite ) );
+
+    Com_sprintf( cvarName, sizeof( cvarName ), "favoritecar%d", index + 1 );
+    trap_Cvar_VariableStringBuffer( cvarName, favoriteValue, sizeof( favoriteValue ) );
+
+    if ( !favoriteValue[0] ) {
+        return qfalse;
+    }
+
+    cursor = favoriteValue;
+
+    slash = strchr( cursor, '/' );
+    if ( !slash ) {
+        return qfalse;
+    }
+    *slash = '\0';
+    Q_strncpyz( outFavorite->model, cursor, sizeof( outFavorite->model ) );
+    cursor = slash + 1;
+
+    slash = strchr( cursor, '/' );
+    if ( !slash ) {
+        return qfalse;
+    }
+    *slash = '\0';
+    Q_strncpyz( outFavorite->skin, cursor, sizeof( outFavorite->skin ) );
+    cursor = slash + 1;
+
+    slash = strchr( cursor, '/' );
+    if ( slash ) {
+        *slash = '\0';
+        Q_strncpyz( outFavorite->rim, cursor, sizeof( outFavorite->rim ) );
+        Q_strncpyz( outFavorite->head, slash + 1, sizeof( outFavorite->head ) );
+    } else {
+        Q_strncpyz( outFavorite->rim, cursor, sizeof( outFavorite->rim ) );
+    }
+
+    return (qboolean)( outFavorite->model[0] && outFavorite->skin[0] );
+}
+
+static qboolean UI_Profile_MigrateFavoriteCvars( const char *profileName, profile_info_t *info, const profile_stats_t *stats ) {
+    int i;
+    qboolean cvarFound = qfalse;
+    qboolean migrated = qfalse;
+
+    if ( !profileName || !profileName[0] || !info || UI_Profile_FavoritesEmpty( info ) == qfalse ) {
+        return qfalse;
+    }
+
+    for ( i = 0; i < PROFILE_MAX_FAVORITE_CARS; ++i ) {
+        char cvarName[16];
+        char favoriteValue[MAX_CVAR_VALUE_STRING];
+
+        Com_sprintf( cvarName, sizeof( cvarName ), "favoritecar%d", i + 1 );
+        trap_Cvar_VariableStringBuffer( cvarName, favoriteValue, sizeof( favoriteValue ) );
+
+        if ( favoriteValue[0] ) {
+            cvarFound = qtrue;
+            break;
+        }
+    }
+
+    if ( !cvarFound ) {
+        return qfalse;
+    }
+
+    for ( i = 0; i < PROFILE_MAX_FAVORITE_CARS; ++i ) {
+        profile_favorite_car_t migratedFavorite;
+
+        if ( UI_Profile_ParseFavoriteCvar( i, &migratedFavorite ) ) {
+            info->favoriteCars[i] = migratedFavorite;
+            migrated = qtrue;
+        } else {
+            Com_Memset( &info->favoriteCars[i], 0, sizeof( info->favoriteCars[i] ) );
+        }
+    }
+
+    if ( migrated ) {
+        UI_Profile_WriteFile( profileName, info, stats );
+
+        for ( i = 0; i < PROFILE_MAX_FAVORITE_CARS; ++i ) {
+            char cvarName[16];
+
+            Com_sprintf( cvarName, sizeof( cvarName ), "favoritecar%d", i + 1 );
+            trap_Cvar_Set( cvarName, "" );
+        }
+    }
+
+    return migrated;
+}
 static int UI_Profile_ParseFavoriteCars( const char *buffer, profile_info_t *info ) {
     const char *favoritesStart;
     const char *cursor;
@@ -1127,6 +1242,8 @@ static qboolean UI_Profile_EnsureDataFresh( void ) {
         if ( !UI_Profile_ReadData( uis.activeProfile, &info, &stats ) ) {
             return qfalse;
         }
+
+        UI_Profile_MigrateFavoriteCvars( uis.activeProfile, &info, &stats );
 
         uis.activeProfileStats = stats;
         uis.activeProfileInfo = info;
