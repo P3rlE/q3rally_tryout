@@ -2963,23 +2963,17 @@ static void PlayerSettings_UpdateFavorites( void ) {
 
 	for ( i = 0; i < NUM_FAVORITES; i++ ) {
 		const char *favoriteModel = NULL;
-		const char *favoriteSkin = NULL;
-		const char *favoriteRim = NULL;
-const char *favoriteHead = NULL;
+                const char *favoriteSkin = NULL;
 
 if ( profileInfo && profileInfo->favoriteCars[i].model[0] && profileInfo->favoriteCars[i].skin[0] ) {
 favoriteModel = profileInfo->favoriteCars[i].model;
 favoriteSkin = profileInfo->favoriteCars[i].skin;
-favoriteRim = profileInfo->favoriteCars[i].rim;
-favoriteHead = profileInfo->favoriteCars[i].head;
 } else {
 Com_sprintf( buf, sizeof( buf ), "favoritecar%i", ( i + 1 ) );
 error = PlayerSettings_GetFavoriteValues( buf, modelName, skinName, rimName, headName );
 if ( !error ) {
 favoriteModel = modelName;
 favoriteSkin = skinName;
-favoriteRim = rimName;
-favoriteHead = headName;
 }
 }
 

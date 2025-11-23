@@ -34,16 +34,18 @@ typedef struct {
 } profile_stats_t;
 
 typedef struct {
+    char model[PROFILE_MAX_FAVORITE_FIELD];
+    char skin[PROFILE_MAX_FAVORITE_FIELD];
+    char rim[PROFILE_MAX_FAVORITE_FIELD];
+    char head[PROFILE_MAX_FAVORITE_FIELD];
+} profile_favorite_car_t;
+
+typedef struct {
     char gender[PROFILE_MAX_GENDER];
     char birthDate[PROFILE_MAX_BIRTHDATE];
     char avatar[PROFILE_MAX_AVATAR];
     char country[PROFILE_MAX_COUNTRY];
-    struct {
-        char model[PROFILE_MAX_FAVORITE_FIELD];
-        char skin[PROFILE_MAX_FAVORITE_FIELD];
-        char rim[PROFILE_MAX_FAVORITE_FIELD];
-        char head[PROFILE_MAX_FAVORITE_FIELD];
-    } favoriteCars[PROFILE_MAX_FAVORITE_CARS];
+    profile_favorite_car_t favoriteCars[PROFILE_MAX_FAVORITE_CARS];
 } profile_info_t;
 
 #endif /* PROFILE_SHARED_H */
