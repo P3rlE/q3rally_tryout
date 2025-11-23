@@ -1685,19 +1685,19 @@ static void PlayerSettings_BuildPaginationInfo(
         float rowGap,
         float contentHeight,
         float reservedHeight,
-        playersettingsPaginationInfo_t *outInfo ) {
-	playersettingsPaginationInfo_t info;
-	float spacing;
-	float viewportHeight;
-	int rowsPerPage;
-	int totalPages;
-	int firstRow;
-	int lastRow;
+playersettingsPaginationInfo_t *outInfo ) {
+playersettingsPaginationInfo_t info;
+float spacing;
+float viewportHeight;
+int rowsPerPage;
+int totalPages;
+int firstRow;
+int lastRow;
 
-                info = s_playersettings.profileInfo;
-	info.rowCount = rowCount;
-	info.lastRow = -1;
-	info.totalPages = 1;
+Com_Memset( &info, 0, sizeof( info ) );
+info.rowCount = rowCount;
+info.lastRow = -1;
+info.totalPages = 1;
 
 	if ( rowCount <= 0 || !outInfo ) {
 		if ( outInfo ) {
@@ -2837,63 +2837,7 @@ static void PlayerSettings_DrawPlayer( void *self ) {
 }
 
 
-// STONELANCE (new function)
-/*
-=================
-LoadFavorite
 
-=================
-*/
-static void LoadFavorite( const char *favorite ) {
-	char		modelName[MAX_QPATH];
-	char		skinName[MAX_QPATH];
-	char		rimName[MAX_QPATH];
-	char		headName[MAX_QPATH];
-	int			i;
-	qboolean	carFound;
-
-	GetValuesFromFavorite(favorite, modelName, skinName, rimName, headName);
-
-	// find model in our list
-	carFound = qfalse;
-	for (i = 0; i < s_playersettings.allModels; i++)
-	{
-		if (!Q_stricmp( modelName, s_playersettings.modelList[i] ))
-		{
-			// found pic, set selection here
-			s_playersettings.selectedModel = i;
-			s_playersettings.modelname.string = s_playersettings.modelList[s_playersettings.selectedModel];
-			carFound = qtrue;
-			break;
-		}
-	}
-
-	if (!carFound){
-		s_playersettings.selectedModel = 0;
-
-		// get model
-		Com_sprintf(s_playersettings.modelskin, sizeof(s_playersettings.modelskin), "%s/%s", s_playersettings.modelList[s_playersettings.selectedModel], DEFAULT_SKIN);
-
-		s_playersettings.modelname.string = s_playersettings.modelList[s_playersettings.selectedModel];
-
-		// FIXME: check to see if these exist
-		Q_strncpyz(s_playersettings.rimskin, DEFAULT_RIM, sizeof(s_playersettings.rimskin));
-		Q_strncpyz(s_playersettings.headskin, DEFAULT_HEAD, sizeof(s_playersettings.headskin));
-
-		s_playersettings.modelChanged = qtrue;
-	}
-	else {
-		Com_sprintf(s_playersettings.modelskin, sizeof(s_playersettings.modelskin), "%s/%s", modelName, skinName);
-		Q_strncpyz(s_playersettings.rimskin, rimName, sizeof(s_playersettings.rimskin));
-		Q_strncpyz(s_playersettings.headskin, headName, sizeof(s_playersettings.headskin));
-
-		trap_Cvar_Set( "model", s_playersettings.modelskin );
-		trap_Cvar_Set( "rim", rimName );
-		trap_Cvar_Set( "head", headName );
-
-		s_playersettings.modelChanged = qtrue;
-	}
-}
 
 /*
 =================
