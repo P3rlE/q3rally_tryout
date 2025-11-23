@@ -2925,6 +2925,60 @@ static void PlayerSettings_UpdateFavorites( void ) {
 	}
 }
 
+
+
+static void PlayerSettings_CopyFavoritesToProfile( profile_info_t *info ) {
+	int i;
+
+	if ( !info ) {
+		return;
+	}
+
+	for ( i = 0; i < PROFILE_MAX_FAVORITE_CARS; ++i ) {
+		char cvarName[16];
+		char modelName[MAX_QPATH];
+		char skinName[MAX_QPATH];
+		char rimName[MAX_QPATH];
+		char headName[MAX_QPATH];
+
+		Com_sprintf( cvarName, sizeof( cvarName ), "favoritecar%d", i + 1 );
+		if ( !GetValuesFromFavorite( cvarName, modelName, skinName, rimName, headName ) ) {
+			Q_strncpyz( info->favoriteCars[i].model, modelName, sizeof( info->favoriteCars[i].model ) );
+			Q_strncpyz( info->favoriteCars[i].skin, skinName, sizeof( info->favoriteCars[i].skin ) );
+			Q_strncpyz( info->favoriteCars[i].rim, rimName, sizeof( info->favoriteCars[i].rim ) );
+			Q_strncpyz( info->favoriteCars[i].head, headName, sizeof( info->favoriteCars[i].head ) );
+		} else {
+			Com_Memset( &info->favoriteCars[i], 0, sizeof( info->favoriteCars[i] ) );
+		}
+	}
+}
+
+static void PlayerSettings_ApplyProfileFavorites( const profile_info_t *info ) {
+	int i;
+
+	if ( !info ) {
+		return;
+	}
+
+	for ( i = 0; i < PROFILE_MAX_FAVORITE_CARS; ++i ) {
+		char cvarName[16];
+		char favoriteValue[MAX_QPATH * 4];
+
+		Com_sprintf( cvarName, sizeof( cvarName ), "favoritecar%d", i + 1 );
+
+		if ( info->favoriteCars[i].model[0] || info->favoriteCars[i].skin[0] ||
+		     info->favoriteCars[i].rim[0] || info->favoriteCars[i].head[0] ) {
+			Com_sprintf( favoriteValue, sizeof( favoriteValue ), "%s/%s/%s/%s",
+			             info->favoriteCars[i].model,
+			             info->favoriteCars[i].skin,
+			             info->favoriteCars[i].rim,
+			             info->favoriteCars[i].head );
+			trap_Cvar_Set( cvarName, favoriteValue );
+		} else {
+			trap_Cvar_Set( cvarName, "" );
+		}
+	}
+}
 /*
 =================
 PlayerSettings_Update
@@ -2979,14 +3033,15 @@ static void PlayerSettings_SaveChanges( void ) {
 			Com_sprintf( info.birthDate, sizeof( info.birthDate ), "%04d-%02d-%02d", birthYear, birthMonth, birthDay );
 		}
 
-		if ( s_playersettings.avatarProfileName[0] ) {
-			Com_sprintf( info.avatar, sizeof( info.avatar ), "gfx/avatars/%s", s_playersettings.avatarProfileName );
-		} else {
-			info.avatar[0] = '\0';
-		}
-		Q_strncpyz( info.country, s_playersettings.country.field.buffer, sizeof( info.country ) );
-		UI_Profile_SaveActiveInfo( &info );
-	}
+                if ( s_playersettings.avatarProfileName[0] ) {
+                        Com_sprintf( info.avatar, sizeof( info.avatar ), "gfx/avatars/%s", s_playersettings.avatarProfileName );
+                } else {
+                        info.avatar[0] = '\0';
+                }
+                Q_strncpyz( info.country, s_playersettings.country.field.buffer, sizeof( info.country ) );
+                PlayerSettings_CopyFavoritesToProfile( &info );
+                UI_Profile_SaveActiveInfo( &info );
+        }
 
 	// handicap
 	trap_Cvar_SetValue( "handicap", 100 - s_playersettings.handicap.curvalue * 5 );
@@ -3115,14 +3170,16 @@ static void PlayerSettings_SetMenuItems( void ) {
 		s_playersettings.birthDay.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
 		s_playersettings.birthMonth.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
 		s_playersettings.birthYear.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
-		s_playersettings.avatar.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
-		s_playersettings.country.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
-		s_playersettings.birthDateLabel.color = text_color_disabled;
-	}
+                s_playersettings.avatar.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
+                s_playersettings.country.generic.flags |= QMF_GRAYED | QMF_INACTIVE;
+                s_playersettings.birthDateLabel.color = text_color_disabled;
+        }
+
+        PlayerSettings_ApplyProfileFavorites( &s_playersettings.profileInfo );
 
 
-	// effects color
-	c = trap_Cvar_VariableValue( "color1" ) - 1;
+        // effects color
+        c = trap_Cvar_VariableValue( "color1" ) - 1;
 	if( c < 0 || c > 6 ) {
 		c = 6;
 	}
