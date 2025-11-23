@@ -1694,6 +1694,7 @@ int totalPages;
 int firstRow;
 int lastRow;
 
+
 Com_Memset( &info, 0, sizeof( info ) );
 info.rowCount = rowCount;
 info.lastRow = -1;
