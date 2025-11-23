@@ -60,6 +60,7 @@ static sfxHandle_t UI_ProfileOverlay_Key( int key );
 static void UI_ProfileOverlay_FocusNameField( void );
 static void UI_ProfileOverlay_DrawNameField( void *self );
 static void UI_ProfileOverlay_EnsureSelectionVisible( void );
+static void UI_Profile_ParseString( const char *buffer, const char *key, char *out, int outSize, const char *defaultValue );
 static int UI_Profile_ParseFavoriteCars( const char *buffer, profile_info_t *info ) {
     const char *favoritesStart;
     const char *cursor;
