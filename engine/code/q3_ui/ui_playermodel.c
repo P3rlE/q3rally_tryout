@@ -256,27 +256,26 @@ PlayerModel_UpdateFavorites
 static void PlayerModel_UpdateFavorites( void ) {
 	int	i;
 
-	if ( UI_Profile_HasActiveProfile() ) {
-		const profile_info_t *info = UI_Profile_GetActiveInfo();
+        if ( UI_Profile_HasActiveProfile() ) {
+                const profile_info_t *info = UI_Profile_GetActiveInfo();
 
-		for ( i = 0; i < NUM_FAVORITES; i++ ) {
-			const profile_garage_slot_t *slot = info ? &info->garageSlots[i] : NULL;
+                for ( i = 0; i < NUM_FAVORITES; i++ ) {
+                        const profile_garage_slot_t *slot = info ? &info->garageSlots[i] : NULL;
 
-			if ( slot && slot->model[0] ) {
-				const char *skin = slot->skin[0] ? slot->skin : "default";
-				Com_sprintf( s_playermodel.favIcons[i], sizeof( s_playermodel.favIcons[i] ), "models/players/%s/icon_%s", slot->model, skin );
-				s_playermodel.favpics[i].generic.name = s_playermodel.favIcons[i];
-				s_playermodel.favpicbuttons[i].generic.flags &= ~QMF_INACTIVE;
-			} else {
-				s_playermodel.favpics[i].generic.name = NULL;
-				s_playermodel.favpicbuttons[i].generic.flags |= QMF_INACTIVE;
-			}
+                        if ( slot && slot->model[0] ) {
+                                const char *skin = slot->skin[0] ? slot->skin : "default";
+                                Com_sprintf( s_playermodel.favIcons[i], sizeof( s_playermodel.favIcons[i] ), "models/players/%s/icon_%s", slot->model, skin );
+                                s_playermodel.favpics[i].generic.name = s_playermodel.favIcons[i];
+                        } else {
+                                s_playermodel.favpics[i].generic.name = NULL;
+                        }
 
-			s_playermodel.favpics[i].shader = 0;
-		}
+                        s_playermodel.favpicbuttons[i].generic.flags &= ~QMF_INACTIVE;
+                        s_playermodel.favpics[i].shader = 0;
+                }
 
-		return;
-	}
+                return;
+        }
 
 	for ( i = 0; i < NUM_FAVORITES; i++ ) {
 		char buf[MAX_QPATH];
@@ -286,18 +285,17 @@ static void PlayerModel_UpdateFavorites( void ) {
 
 		Com_sprintf( buf, sizeof( buf ), "favoritecar%i", ( i + 1 ) );
 
-		error = GetValuesFromFavorite( buf, modelName, skinName, NULL, NULL );
+                error = GetValuesFromFavorite( buf, modelName, skinName, NULL, NULL );
 
-		if ( !error ) {
-			Com_sprintf( s_playermodel.favIcons[i], sizeof( s_playermodel.favIcons[i] ), "models/players/%s/icon_%s", modelName, skinName );
-			s_playermodel.favpics[i].generic.name = s_playermodel.favIcons[i];
-			s_playermodel.favpicbuttons[i].generic.flags &= ~QMF_INACTIVE;
-		} else {
-			s_playermodel.favpics[i].generic.name = NULL;
-			s_playermodel.favpicbuttons[i].generic.flags |= QMF_INACTIVE;
-		}
-		s_playermodel.favpics[i].shader = 0;
-	}
+                if ( !error ) {
+                        Com_sprintf( s_playermodel.favIcons[i], sizeof( s_playermodel.favIcons[i] ), "models/players/%s/icon_%s", modelName, skinName );
+                        s_playermodel.favpics[i].generic.name = s_playermodel.favIcons[i];
+                } else {
+                        s_playermodel.favpics[i].generic.name = NULL;
+                }
+                s_playermodel.favpicbuttons[i].generic.flags &= ~QMF_INACTIVE;
+                s_playermodel.favpics[i].shader = 0;
+        }
 }
 
 
