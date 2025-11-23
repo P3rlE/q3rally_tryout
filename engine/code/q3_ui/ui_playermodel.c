@@ -809,11 +809,63 @@ SaveFavorite
 
 =================
 */
-static void SaveFavorite( const char *favorite ) {
-	char		buf[MAX_QPATH];
+static int PlayerModel_FavoriteIndex( const char *favorite ) {
+	if ( !favorite || Q_strncmp( favorite, "favoritecar", 11 ) ) {
+		return -1;
+	}
 
-	Com_sprintf(buf, sizeof(buf), "%s/%s/%s", s_playermodel.modelskin, s_playermodel.rimskin, s_playermodel.headskin);
-	trap_Cvar_Set( favorite, buf );
+	return atoi( favorite + 11 ) - 1;
+}
+
+static void SaveFavorite( const char *favorite ) {
+	int favoriteIndex;
+	const char *slash;
+	char modelName[MAX_QPATH];
+	char skinName[MAX_QPATH];
+
+	favoriteIndex = PlayerModel_FavoriteIndex( favorite );
+	if ( favoriteIndex < 0 || favoriteIndex >= NUM_FAVORITES ) {
+		return;
+	}
+
+	slash = strchr( s_playermodel.modelskin, '/' );
+	if ( slash ) {
+		int modelLength = slash - s_playermodel.modelskin;
+		if ( modelLength >= MAX_QPATH ) {
+			modelLength = MAX_QPATH - 1;
+		}
+		Com_Memcpy( modelName, s_playermodel.modelskin, modelLength );
+		modelName[modelLength] = '\0';
+		Q_strncpyz( skinName, slash + 1, sizeof( skinName ) );
+	} else {
+		Q_strncpyz( modelName, s_playermodel.modelskin, sizeof( modelName ) );
+		skinName[0] = '\0';
+	}
+
+	if ( UI_Profile_HasActiveProfile() ) {
+		profile_info_t info;
+		const profile_info_t *activeInfo = UI_Profile_GetActiveInfo();
+
+		if ( activeInfo ) {
+			info = *activeInfo;
+		} else {
+			Com_Memset( &info, 0, sizeof( info ) );
+		}
+
+		Q_strncpyz( info.favoriteCars[favoriteIndex].model, modelName, sizeof( info.favoriteCars[favoriteIndex].model ) );
+		Q_strncpyz( info.favoriteCars[favoriteIndex].skin, skinName, sizeof( info.favoriteCars[favoriteIndex].skin ) );
+		Q_strncpyz( info.favoriteCars[favoriteIndex].rim, s_playermodel.rimskin, sizeof( info.favoriteCars[favoriteIndex].rim ) );
+		Q_strncpyz( info.favoriteCars[favoriteIndex].head, s_playermodel.headskin, sizeof( info.favoriteCars[favoriteIndex].head ) );
+
+		if ( UI_Profile_SaveActiveInfo( &info ) ) {
+			s_playermodel.profileInfo = info;
+		}
+	} else {
+		char buf[MAX_QPATH];
+
+		Com_sprintf( buf, sizeof( buf ), "%s/%s/%s", s_playermodel.modelskin, s_playermodel.rimskin, s_playermodel.headskin );
+		trap_Cvar_Set( favorite, buf );
+	}
 
 	PlayerModel_UpdateFavorites();
 }
