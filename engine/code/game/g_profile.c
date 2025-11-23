@@ -32,6 +32,7 @@ typedef struct {
 
 #define PROFILE_MAX_TRACKED_VEHICLES 8
 static profile_vehicle_usage_t s_profileVehicleUsage[PROFILE_MAX_TRACKED_VEHICLES];
+static const char *const s_profileGarageKey = "garageSlots";
 
 static qboolean G_Profile_IsValidName( const char *name ) {
     int i;
@@ -62,6 +63,33 @@ static qboolean G_Profile_IsValidName( const char *name ) {
 
 static void G_Profile_BuildPath( const char *name, char *buffer, int bufferSize ) {
     Com_sprintf( buffer, bufferSize, "profiles/%s.json", name );
+}
+
+static int G_Profile_ParseBool( const char *buffer, const char *key, int defaultValue ) {
+    char pattern[64];
+    const char *cursor;
+
+    Com_sprintf( pattern, sizeof( pattern ), "\"%s\"", key );
+    cursor = strstr( buffer, pattern );
+    if ( !cursor ) {
+        return defaultValue;
+    }
+
+    cursor = strchr( cursor, ':' );
+    if ( !cursor ) {
+        return defaultValue;
+    }
+    cursor++;
+
+    while ( *cursor == ' ' || *cursor == '\t' ) {
+        cursor++;
+    }
+
+    if ( *cursor == 't' || *cursor == 'T' ) {
+        return 1;
+    }
+
+    return atoi( cursor );
 }
 
 static double G_Profile_ParseDouble( const char *buffer, const char *key, double defaultValue ) {
@@ -212,6 +240,99 @@ static void G_Profile_FormatJsonString( char *out, int outSize, const char *valu
     *dst = '\0';
 }
 
+static void G_Profile_SetDefaultGarageSlot( profile_garage_slot_t *slot ) {
+    if ( !slot ) {
+        return;
+    }
+
+    trap_Cvar_VariableStringBuffer( "model", slot->model, sizeof( slot->model ) );
+    if ( !slot->model[0] ) {
+        Q_strncpyz( slot->model, "roadster", sizeof( slot->model ) );
+    }
+
+    Q_strncpyz( slot->skin, "default", sizeof( slot->skin ) );
+    Q_strncpyz( slot->setup, "standard", sizeof( slot->setup ) );
+    Q_strncpyz( slot->paint, "default", sizeof( slot->paint ) );
+    Q_strncpyz( slot->tires, "allround", sizeof( slot->tires ) );
+    slot->favoriteLoadout = qtrue;
+}
+
+static void G_Profile_InitGarageSlots( profile_info_t *info ) {
+    int i;
+
+    if ( !info ) {
+        return;
+    }
+
+    for ( i = 0; i < PROFILE_MAX_GARAGE_SLOTS; ++i ) {
+        Com_Memset( &info->garageSlots[i], 0, sizeof( info->garageSlots[i] ) );
+    }
+
+    info->activeGarageSlot = 0;
+    G_Profile_SetDefaultGarageSlot( &info->garageSlots[0] );
+}
+
+static void G_Profile_ParseGarageSlotObject( const char *start, const char *end, profile_garage_slot_t *slot ) {
+    char buffer[256];
+    int length;
+
+    if ( !start || !end || !slot || end <= start ) {
+        return;
+    }
+
+    length = end - start;
+    if ( length >= (int)sizeof( buffer ) ) {
+        length = sizeof( buffer ) - 1;
+    }
+
+    Com_Memcpy( buffer, start, length );
+    buffer[length] = '\0';
+
+    G_Profile_ParseString( buffer, "model", slot->model, sizeof( slot->model ), slot->model );
+    G_Profile_ParseString( buffer, "skin", slot->skin, sizeof( slot->skin ), slot->skin );
+    G_Profile_ParseString( buffer, "setup", slot->setup, sizeof( slot->setup ), slot->setup );
+    G_Profile_ParseString( buffer, "paint", slot->paint, sizeof( slot->paint ), slot->paint );
+    G_Profile_ParseString( buffer, "tires", slot->tires, sizeof( slot->tires ), slot->tires );
+    slot->favoriteLoadout = G_Profile_ParseBool( buffer, "favorite", slot->favoriteLoadout );
+}
+
+static void G_Profile_ParseGarageSlots( const char *buffer, profile_info_t *info ) {
+    const char *cursor;
+    int slotIndex = 0;
+
+    if ( !buffer || !info ) {
+        return;
+    }
+
+    cursor = strstr( buffer, s_profileGarageKey );
+    if ( !cursor ) {
+        return;
+    }
+
+    cursor = strchr( cursor, '[' );
+    if ( !cursor ) {
+        return;
+    }
+
+    while ( *cursor && slotIndex < PROFILE_MAX_GARAGE_SLOTS ) {
+        const char *objStart = strchr( cursor, '{' );
+        const char *objEnd;
+
+        if ( !objStart ) {
+            break;
+        }
+
+        objEnd = strchr( objStart, '}' );
+        if ( !objEnd ) {
+            break;
+        }
+
+        G_Profile_ParseGarageSlotObject( objStart, objEnd + 1, &info->garageSlots[slotIndex] );
+        slotIndex++;
+        cursor = objEnd + 1;
+    }
+}
+
 static profile_vehicle_usage_t *G_Profile_FindVehicleUsage( const char *vehicle, qboolean allowCreate ) {
     int i;
     profile_vehicle_usage_t *empty = NULL;
@@ -327,6 +448,7 @@ static qboolean G_Profile_LoadFromDisk( void ) {
 
     Com_Memset( &s_profileState.stats, 0, sizeof( s_profileState.stats ) );
     Com_Memset( &s_profileState.info, 0, sizeof( s_profileState.info ) );
+    G_Profile_InitGarageSlots( &s_profileState.info );
     Com_Memset( &s_profileVehicleUsage, 0, sizeof( s_profileVehicleUsage ) );
 
     s_profileState.stats.distanceKm = G_Profile_ParseDouble( buffer, "distanceKm", 0.0 );
@@ -352,6 +474,8 @@ static qboolean G_Profile_LoadFromDisk( void ) {
     G_Profile_ParseString( buffer, "birthDate", s_profileState.info.birthDate, sizeof( s_profileState.info.birthDate ), "" );
     G_Profile_ParseString( buffer, "avatar", s_profileState.info.avatar, sizeof( s_profileState.info.avatar ), "" );
     G_Profile_ParseString( buffer, "country", s_profileState.info.country, sizeof( s_profileState.info.country ), "" );
+    s_profileState.info.activeGarageSlot = G_Profile_ParseInt( buffer, "activeGarageSlot", s_profileState.info.activeGarageSlot );
+    G_Profile_ParseGarageSlots( buffer, &s_profileState.info );
 
     // Lade Vehicle-Array aus JSON
     vehiclesStart = strstr( buffer, "\"vehicles\"" );
@@ -434,12 +558,14 @@ static void G_Profile_WriteToDisk( void ) {
     char avatar[PROFILE_MAX_AVATAR * 2];
     char country[PROFILE_MAX_COUNTRY * 2];
     char vehicleJson[1024];
+    char garageJson[1024];
     fileHandle_t readFile;
     char readBuffer[1024];
     int readLength;
     int length;
     int i;
     int vehicleJsonPos;
+    int garageJsonPos;
 
     if ( !s_profileState.loaded || !s_profileState.name[0] ) {
         return;
@@ -491,8 +617,33 @@ static void G_Profile_WriteToDisk( void ) {
                                       s_profileVehicleUsage[i].name, 
                                       s_profileVehicleUsage[i].timeMs );
     }
-    
+
     Com_sprintf( vehicleJson + vehicleJsonPos, sizeof( vehicleJson ) - vehicleJsonPos, "\n\t\t]" );
+
+    garageJsonPos = 0;
+    garageJsonPos += Com_sprintf( garageJson + garageJsonPos, sizeof( garageJson ) - garageJsonPos, "[\n" );
+
+    for ( i = 0; i < PROFILE_MAX_GARAGE_SLOTS; ++i ) {
+        profile_garage_slot_t *slot = &s_profileState.info.garageSlots[i];
+        if ( !slot->model[0] && !slot->skin[0] ) {
+            continue;
+        }
+
+        if ( garageJsonPos > 2 ) {
+            garageJsonPos += Com_sprintf( garageJson + garageJsonPos, sizeof( garageJson ) - garageJsonPos, ",\n" );
+        }
+
+        garageJsonPos += Com_sprintf( garageJson + garageJsonPos, sizeof( garageJson ) - garageJsonPos,
+            "\t\t\t{\"model\": \"%s\", \"skin\": \"%s\", \"setup\": \"%s\", \"paint\": \"%s\", \"tires\": \"%s\", \"favorite\": %s }",
+            slot->model,
+            slot->skin,
+            slot->setup,
+            slot->paint,
+            slot->tires,
+            slot->favoriteLoadout ? "true" : "false" );
+    }
+
+    Com_sprintf( garageJson + garageJsonPos, sizeof( garageJson ) - garageJsonPos, "\n\t\t]" );
 
     // Debug-Ausgabe
     Com_Printf( "G_Profile: Writing vehicles array:\n%s\n", vehicleJson );
@@ -507,7 +658,9 @@ static void G_Profile_WriteToDisk( void ) {
         "\t\t\"gender\": \"%s\",\n"
         "\t\t\"birthDate\": \"%s\",\n"
         "\t\t\"avatar\": \"%s\",\n"
-        "\t\t\"country\": \"%s\"\n"
+        "\t\t\"country\": \"%s\",\n"
+        "\t\t\"activeGarageSlot\": %d,\n"
+        "\t\t\"garageSlots\": %s\n"
         "\t},\n"
         "\t\"stats\": {\n"
         "\t\t\"distanceKm\": %.6f,\n"
@@ -536,6 +689,8 @@ static void G_Profile_WriteToDisk( void ) {
         birthDate,
         avatar,
         country,
+        s_profileState.info.activeGarageSlot,
+        garageJson,
         s_profileState.stats.distanceKm,
         s_profileState.stats.fuelUsed,
         s_profileState.stats.bestLapMs,
@@ -584,6 +739,38 @@ static void G_Profile_ClearState( void ) {
     Com_Memset( &s_profileVehicleUsage, 0, sizeof( s_profileVehicleUsage ) );
 }
 
+static void G_Profile_ApplyActiveGarageSlot( void ) {
+    profile_garage_slot_t *slot;
+
+    if ( s_profileState.info.activeGarageSlot < 0 || s_profileState.info.activeGarageSlot >= PROFILE_MAX_GARAGE_SLOTS ) {
+        s_profileState.info.activeGarageSlot = 0;
+    }
+
+    slot = &s_profileState.info.garageSlots[s_profileState.info.activeGarageSlot];
+
+    if ( slot->model[0] ) {
+        char combined[MAX_QPATH];
+        if ( slot->skin[0] ) {
+            Com_sprintf( combined, sizeof( combined ), "%s/%s", slot->model, slot->skin );
+        } else {
+            Q_strncpyz( combined, slot->model, sizeof( combined ) );
+        }
+
+        trap_Cvar_Set( "model", combined );
+        trap_Cvar_Set( "chassis", slot->model );
+    }
+
+    if ( slot->paint[0] ) {
+        trap_Cvar_Set( "paint", slot->paint );
+    }
+    if ( slot->tires[0] ) {
+        trap_Cvar_Set( "tires", slot->tires );
+    }
+    if ( slot->setup[0] ) {
+        trap_Cvar_Set( "setup", slot->setup );
+    }
+}
+
 void G_Profile_Init( void ) {
     char activeName[PROFILE_MAX_NAME];
 
@@ -603,9 +790,12 @@ void G_Profile_Init( void ) {
     if ( !G_Profile_LoadFromDisk() ) {
         Com_Memset( &s_profileState.stats, 0, sizeof( s_profileState.stats ) );
         Com_Memset( &s_profileState.info, 0, sizeof( s_profileState.info ) );
+        G_Profile_InitGarageSlots( &s_profileState.info );
         s_profileState.dirty = qtrue;
         G_Profile_WriteToDisk();
     }
+
+    G_Profile_ApplyActiveGarageSlot();
 
     s_profileState.loaded = qtrue;
     s_profileState.nextAutosaveTime = level.time + PROFILE_AUTOSAVE_INTERVAL;
