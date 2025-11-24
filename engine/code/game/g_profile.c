@@ -854,6 +854,10 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
         return;
     }
 
+    if ( !G_Profile_ShouldTrackClient( client ) ) {
+        return;
+    }
+
     // Zeit-Tracking: Messe tatsächlich vergangene Zeit seit letztem Frame
     currentTime = level.time;
     
