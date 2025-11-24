@@ -64,45 +64,10 @@ extern const char *const bg_achievementMedalUnlockedPaths[BG_ACHIEVEMENT_ICON_CO
 
 extern const bgAchievementCategoryDef_t bg_achievementCategories[BG_ACHIEVEMENT_CATEGORY_COUNT];
 
-static ID_INLINE int BG_AchievementCategoryCount( void ) {
-    return BG_ACHIEVEMENT_CATEGORY_COUNT;
-}
-
-static ID_INLINE const bgAchievementCategoryDef_t *BG_AchievementGetCategory( int index ) {
-    if ( index < 0 || index >= BG_ACHIEVEMENT_CATEGORY_COUNT ) {
-        return NULL;
-    }
-    return &bg_achievementCategories[index];
-}
-
-static ID_INLINE int BG_AchievementTierCount( int categoryIndex ) {
-    const bgAchievementCategoryDef_t *category = BG_AchievementGetCategory( categoryIndex );
-    return category ? category->tierCount : 0;
-}
-
-static ID_INLINE const bgAchievementTierDef_t *BG_AchievementGetTier( int categoryIndex, int tierIndex ) {
-    const bgAchievementCategoryDef_t *category = BG_AchievementGetCategory( categoryIndex );
-    if ( !category || tierIndex < 0 || tierIndex >= category->tierCount ) {
-        return NULL;
-    }
-    return &category->tiers[tierIndex];
-}
-
-static ID_INLINE int BG_AchievementUnlockedTiers( const bgAchievementCategoryDef_t *category, double progress ) {
-    int unlocked = 0;
-    int i;
-
-    if ( !category ) {
-        return 0;
-    }
-
-    for ( i = 0; i < category->tierCount; ++i ) {
-        if ( progress >= category->tiers[i].threshold ) {
-            unlocked = i + 1;
-        }
-    }
-
-    return unlocked;
-}
+int BG_AchievementCategoryCount( void );
+const bgAchievementCategoryDef_t *BG_AchievementGetCategory( int index );
+int BG_AchievementTierCount( int categoryIndex );
+const bgAchievementTierDef_t *BG_AchievementGetTier( int categoryIndex, int tierIndex );
+int BG_AchievementUnlockedTiers( const bgAchievementCategoryDef_t *category, double progress );
 
 #endif // BG_ACHIEVEMENTS_H
