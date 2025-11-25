@@ -197,9 +197,15 @@ CG_DrawHUD_Laps
 */
 void CG_DrawHUD_Laps(float x, float y){
 
-	// draw heading
-	CG_FillRect(x, y, 170, 18, bgColor);
-	CG_DrawSmallStringColor(x + 12, y, "LAP:", colorWhite);
+        // draw heading
+        CG_FillRect(x, y, 170, 18, bgColor);
+        if ( cgs.gametype == GT_SPRINT ) {
+                CG_DrawSmallStringColor(x + 12, y, "SPRINT:", colorWhite);
+                CG_DrawSmallStringColor(x + 102, y, "POINT-TO-POINT", colorWhite);
+                return;
+        }
+
+        CG_DrawSmallStringColor(x + 12, y, "LAP:", colorWhite);
         if ( cgs.laplimit > 1 )
                 CG_DrawSmallStringColor(x + 102, y, va("%i/%i", cg_entities[cg.snap->ps.clientNum].currentLap, cgs.laplimit), colorWhite);
         else
