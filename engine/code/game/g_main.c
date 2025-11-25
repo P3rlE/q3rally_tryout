@@ -630,6 +630,8 @@ static const char *G_LadderModeForGametype( int gametype ) {
                 return "GT_RACING";
         case GT_RACING_DM:
                 return "GT_RACING_DM";
+        case GT_SPRINT:
+                return "GT_SPRINT";
         case GT_SINGLE_PLAYER:
                 return "GT_SINGLE_PLAYER";
         case GT_DERBY:
