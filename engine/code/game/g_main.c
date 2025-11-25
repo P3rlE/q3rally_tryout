@@ -624,6 +624,16 @@ static void G_LadderFormatIsoTime( const qtime_t *qt, char *buffer, size_t size 
                 qt->tm_hour, qt->tm_min, qt->tm_sec );
 }
 
+static void G_RallyApplySprintDefaults( void ) {
+        if ( g_gametype.integer != GT_SPRINT ) {
+                return;
+        }
+
+        level.numberOfLaps = 1;
+        trap_Cvar_Set( "laplimit", "1" );
+        trap_Cvar_Update( &g_laplimit );
+}
+
 static const char *G_LadderModeForGametype( int gametype ) {
         switch ( gametype ) {
         case GT_RACING:
@@ -1005,10 +1015,12 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	// reserve some spots for dead player bodies
 	InitBodyQue();
 
-	ClearRegisteredItems();
+        ClearRegisteredItems();
 
-	// parse the key/value pairs and spawn gentities
-	G_SpawnEntitiesFromString();
+        G_RallyApplySprintDefaults();
+
+        // parse the key/value pairs and spawn gentities
+        G_SpawnEntitiesFromString();
 
 	// general initialization
 	G_FindTeams();
