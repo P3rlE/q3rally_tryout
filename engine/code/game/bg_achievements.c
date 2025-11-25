@@ -29,11 +29,19 @@ const bgAchievementTierDef_t bg_winAchievementTiers[] = {
     { 20.0, "Series Star", "Reach 20 gold finishes." },
     { 30.0, "Circuit Royalty", "Earn 30 overall wins." },
     { 40.0, "Dynasty Driver", "Stack up 40 victories." },
-    { 50.0, "Hall of Fame", "Celebrate 50 race wins." }
+    { 50.0, "Hall of Fame", "Celebrate 50 race wins." },
+    { 100.0, "Centennial Champion", "Claim 100 career victories." }
 };
 
 const bgAchievementTierDef_t bg_sprintWinAchievementTiers[] = {
-    { 5.0, "Sprint Specialist", "Win 5 sprint races." },
+    { 1.0, "Sprint Rookie", "Win your first sprint race." },
+    { 3.0, "Quick Podiums", "Collect 3 sprint victories." },
+    { 10.0, "Sprint Specialist", "Win 10 sprint races." },
+    { 20.0, "Speed Series Star", "Reach 20 sprint wins." },
+    { 30.0, "Dash Dominator", "Earn 30 sprint victories." },
+    { 40.0, "Momentum Master", "Stack up 40 sprint wins." },
+    { 50.0, "Sprint Hall of Fame", "Celebrate 50 sprint wins." },
+    { 100.0, "Sprint Century", "Bring home 100 sprint victories." }
 };
 
 const bgAchievementTierDef_t bg_flagCaptureAchievementTiers[] = {
