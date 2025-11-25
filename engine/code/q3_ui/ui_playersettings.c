@@ -146,10 +146,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_STATS_VALUE_OFFSET		260
 #define PLAYERSETTINGS_STATS_VALUE_BASELINE		PLAYERSETTINGS_PROFILE_VALUE_BASELINE
 
-#define PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT       10
+#define PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT       BG_ACHIEVEMENT_CATEGORY_COUNT
 #define PLAYERSETTINGS_ACHIEVEMENT_HEADER_ROW           0
 #define PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW    1
-#define PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT        ( PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT * 2 )
+#define PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT        ( ( PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT - 1 ) * 2 + 1 )
 #define PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT            ( PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW + PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT )
 #define PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN	0.0f
 
@@ -207,14 +207,17 @@ static const playersettingsAchievementTierDef_t s_killAchievementTiers[] = {
 };
 
 static const playersettingsAchievementTierDef_t s_winAchievementTiers[] = {
-        { 1.0, "Checkered Debut", "Win your very first race." },
-        { 3.0, "Podium Regular", "Collect 3 total victories." },
-        { 5.0, "Sprint Specialist", "Take home 5 wins." },
-        { 10.0, "Championship Hopeful", "Secure 10 race wins." },
-        { 20.0, "Series Star", "Reach 20 gold finishes." },
-        { 30.0, "Circuit Royalty", "Earn 30 overall wins." },
-        { 40.0, "Dynasty Driver", "Stack up 40 victories." },
-        { 50.0, "Hall of Fame", "Celebrate 50 race wins." }
+    { 1.0, "Checkered Debut", "Win your very first race." },
+    { 3.0, "Podium Regular", "Collect 3 total victories." },
+    { 10.0, "Championship Hopeful", "Secure 10 race wins." },
+    { 20.0, "Series Star", "Reach 20 gold finishes." },
+    { 30.0, "Circuit Royalty", "Earn 30 overall wins." },
+    { 40.0, "Dynasty Driver", "Stack up 40 victories." },
+    { 50.0, "Hall of Fame", "Celebrate 50 race wins." }
+};
+
+static const playersettingsAchievementTierDef_t s_sprintWinAchievementTiers[] = {
+    { 5.0, "Sprint Specialist", "Win 5 sprint races." },
 };
 
 static const playersettingsAchievementTierDef_t s_flagCaptureAchievementTiers[] = {
@@ -1624,6 +1627,7 @@ static int PlayerSettings_GetAchievementMaxTierCount( void ) {
                 ARRAY_LEN( s_distanceAchievementTiers ),
                 ARRAY_LEN( s_killAchievementTiers ),
                 ARRAY_LEN( s_winAchievementTiers ),
+                ARRAY_LEN( s_sprintWinAchievementTiers ),
                 ARRAY_LEN( s_flagCaptureAchievementTiers ),
                 ARRAY_LEN( s_flagAssistAchievementTiers ),
                 ARRAY_LEN( s_fuelAchievementTiers ),
@@ -2634,14 +2638,17 @@ int unlockedAchievements;
 int displayTotalAchievements;
 char progressBuffer[32];
 char headerBuffer[64];
-int headerTop;
-int headerBottom;
-int headerY;
-int descriptionY;
-int row;
-float viewportTop;
-float viewportBottom;
-const playersettingsPaginationInfo_t *paginationInfo;
+    int headerTop;
+    int headerBottom;
+    int headerY;
+    int descriptionY;
+    int row;
+    int winTierCount;
+    int winFirstPageCount;
+    int winSecondPageCount;
+    float viewportTop;
+    float viewportBottom;
+    const playersettingsPaginationInfo_t *paginationInfo;
 
 paginationInfo = PlayerSettings_UpdateAchievementsPaginationInfo();
 PlayerSettings_ClampAchievementTierPage();
@@ -2667,13 +2674,18 @@ PlayerSettings_ClampAchievementTierPage();
         unlockedAchievements = 0;
         displayTotalAchievements = PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL;
 
+        winTierCount = ARRAY_LEN( s_winAchievementTiers );
+        winFirstPageCount = winTierCount < PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE ? winTierCount : PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE;
+        winSecondPageCount = winTierCount - winFirstPageCount;
+
         row = PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW;
         unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Distance Driven (1/2)", s_distanceAchievementTiers, 4, stats->distanceKm, PLAYERSETTINGS_ACHIEVEMENT_ICON_DRIVEN, paginationInfo );
         unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Distance Driven (2/2)", &s_distanceAchievementTiers[4], 4, stats->distanceKm, PLAYERSETTINGS_ACHIEVEMENT_ICON_DRIVEN, paginationInfo );
         unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Kills (1/2)", s_killAchievementTiers, 4, (double)stats->kills, PLAYERSETTINGS_ACHIEVEMENT_ICON_KILLS, paginationInfo );
         unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Kills (2/2)", &s_killAchievementTiers[4], 4, (double)stats->kills, PLAYERSETTINGS_ACHIEVEMENT_ICON_KILLS, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Races Won (1/2)", s_winAchievementTiers, 4, (double)stats->wins, PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Races Won (2/2)", &s_winAchievementTiers[4], 4, (double)stats->wins, PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Races Won (1/2)", s_winAchievementTiers, winFirstPageCount, (double)stats->wins, PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Races Won (2/2)", &s_winAchievementTiers[winFirstPageCount], winSecondPageCount, (double)stats->wins, PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Sprint Wins", s_sprintWinAchievementTiers, ARRAY_LEN( s_sprintWinAchievementTiers ), (double)stats->sprintWins, PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS, paginationInfo );
         unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flags Captured (1/2)", s_flagCaptureAchievementTiers, 4, (double)stats->flagCaptures, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAGS, paginationInfo );
         unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flags Captured (2/2)", &s_flagCaptureAchievementTiers[4], 4, (double)stats->flagCaptures, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAGS, paginationInfo );
         unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flag Assists (1/2)", s_flagAssistAchievementTiers, 4, (double)stats->flagAssists, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAG_ASSISTS, paginationInfo );
