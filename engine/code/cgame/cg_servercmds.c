@@ -563,7 +563,11 @@ static void CG_MapRestart( void ) {
 
 	cgs.voteTime = 0;
 
-	cg.mapRestart = qtrue;
+        cg.mapRestart = qtrue;
+
+        cg.ghostRecordingActive = qfalse;
+        cg.ghostRecording.valid = qfalse;
+        cg.ghostPlayback.valid = qfalse;
 
 	CG_StartMusic();
 
