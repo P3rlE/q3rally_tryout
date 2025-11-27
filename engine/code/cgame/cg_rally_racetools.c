@@ -23,39 +23,200 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "cg_local.h"
 
-static qboolean CG_SelectGhostFrames( int targetOffset, ghostFrame_t **previous, ghostFrame_t **next, float *lerp ) {
-	ghostRecording_t *recording = &cg.ghostPlayback;
-	int i;
+#define MAX_GHOST_FILE_SIZE ( 256 * 1024 )
 
-	if ( !recording->valid || recording->frameCount <= 0 ) {
-		return qfalse;
-	}
+static char cg_baseGhostFileBuffer[MAX_GHOST_FILE_SIZE + 1];
 
-	*previous = &recording->frames[recording->startIndex];
-	*next = *previous;
-	*lerp = 0.0f;
+static qboolean CG_SelectGhostFrames( ghostRecording_t *recording, int targetOffset, ghostFrame_t **previous, ghostFrame_t **next, float *lerp ) {
+        int i;
 
-	if ( targetOffset <= (*previous)->timeOffset ) {
-		return qtrue;
-	}
+        if ( !recording || !recording->valid || recording->frameCount <= 0 ) {
+                return qfalse;
+        }
 
-	for ( i = 1; i < recording->frameCount; i++ ) {
-		int index = ( recording->startIndex + i ) % MAX_GHOST_FRAMES;
-		ghostFrame_t *candidate = &recording->frames[index];
+        *previous = &recording->frames[recording->startIndex];
+        *next = *previous;
+        *lerp = 0.0f;
 
-		if ( targetOffset <= candidate->timeOffset ) {
-			*next = candidate;
-			if ( candidate->timeOffset != (*previous)->timeOffset ) {
-				*lerp = (float)( targetOffset - (*previous)->timeOffset ) /
-					(float)( candidate->timeOffset - (*previous)->timeOffset );
-			}
-			return qtrue;
-		}
+        if ( targetOffset <= (*previous)->timeOffset ) {
+                return qtrue;
+        }
 
-		*previous = candidate;
-	}
+        for ( i = 1; i < recording->frameCount; i++ ) {
+                int index = ( recording->startIndex + i ) % MAX_GHOST_FRAMES;
+                ghostFrame_t *candidate = &recording->frames[index];
 
-	return qtrue;
+                if ( targetOffset <= candidate->timeOffset ) {
+                        *next = candidate;
+                        if ( candidate->timeOffset != (*previous)->timeOffset ) {
+                                *lerp = (float)( targetOffset - (*previous)->timeOffset ) /
+                                        (float)( candidate->timeOffset - (*previous)->timeOffset );
+                        }
+                        return qtrue;
+                }
+
+                *previous = candidate;
+        }
+
+        return qtrue;
+}
+
+static ghostRecording_t *CG_GetActiveGhostRecording( void ) {
+        switch ( cg_ghostPlayback.integer ) {
+        case 1:
+                return cg.ghostPlayback.valid ? &cg.ghostPlayback : NULL;
+        case 2:
+                return cg.baseGhost.valid ? &cg.baseGhost : NULL;
+        default:
+                return NULL;
+        }
+}
+
+void CG_ResetBaseGhost( void ) {
+        memset( &cg.baseGhost, 0, sizeof( cg.baseGhost ) );
+        cg.baseGhostAvailable = qfalse;
+        cg.baseGhostBestTime = 0;
+        cg.baseGhostVehicle[0] = '\0';
+        cg.baseGhostPath[0] = '\0';
+}
+
+qboolean CG_LoadGhostFromFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime ) {
+        fileHandle_t file;
+        int length;
+        char *buffer;
+        char *line;
+        char *savePtr = NULL;
+        char mapName[MAX_QPATH] = "";
+        char vehicle[MAX_QPATH] = "";
+        int bestTimeMs = 0;
+        int expectedFrames = 0;
+        int frameCount = 0;
+        int lastOffset = 0;
+
+        CG_ResetBaseGhost();
+
+        if ( !path || !path[0] ) {
+                return qfalse;
+        }
+
+        length = trap_FS_FOpenFile( path, &file, FS_READ );
+        if ( length <= 0 ) {
+                CG_Printf( "CG_Ghost: could not open %s\n", path );
+                return qfalse;
+        }
+
+        if ( length > MAX_GHOST_FILE_SIZE ) {
+                trap_FS_FCloseFile( file );
+                CG_Printf( "CG_Ghost: %s too large (%d bytes)\n", path, length );
+                return qfalse;
+        }
+
+        buffer = cg_baseGhostFileBuffer;
+
+        trap_FS_Read( buffer, length, file );
+        buffer[length] = '\0';
+        trap_FS_FCloseFile( file );
+
+        for ( line = strtok_r( buffer, "\n", &savePtr ); line; line = strtok_r( NULL, "\n", &savePtr ) ) {
+                if ( line[0] == '#' ) {
+                        continue;
+                }
+
+                if ( !Q_stricmpn( line, "map", 3 ) ) {
+                        const char *value = line + 3;
+                        while ( *value == ' ' ) {
+                                ++value;
+                        }
+                        Q_strncpyz( mapName, value, sizeof( mapName ) );
+                        continue;
+                }
+
+                if ( !Q_stricmpn( line, "vehicle", 7 ) ) {
+                        const char *value = line + 7;
+                        while ( *value == ' ' ) {
+                                ++value;
+                        }
+                        Q_strncpyz( vehicle, value, sizeof( vehicle ) );
+                        continue;
+                }
+
+                if ( !Q_stricmpn( line, "best_time_ms", 12 ) ) {
+                        const char *value = line + 12;
+                        while ( *value == ' ' ) {
+                                ++value;
+                        }
+                        bestTimeMs = atoi( value );
+                        continue;
+                }
+
+                if ( !Q_stricmpn( line, "frames", 6 ) ) {
+                        const char *value = line + 6;
+                        while ( *value == ' ' ) {
+                                ++value;
+                        }
+                        expectedFrames = atoi( value );
+                        continue;
+                }
+
+                if ( expectedFrames > 0 ) {
+                        ghostFrame_t *frame;
+                        float ox, oy, oz;
+                        float ax, ay, az;
+                        float vx, vy, vz;
+                        int buttons, forwardmove, upmove;
+                        int parsed;
+
+                        if ( frameCount >= MAX_GHOST_FRAMES ) {
+                                continue;
+                        }
+
+                        frame = &cg.baseGhost.frames[frameCount];
+                        parsed = sscanf( line, "%d %f %f %f %f %f %f %f %f %f %d %d %d",
+                                &frame->timeOffset, &ox, &oy, &oz,
+                                &ax, &ay, &az,
+                                &vx, &vy, &vz,
+                                &buttons, &forwardmove, &upmove );
+
+                        if ( parsed == 13 ) {
+                                VectorSet( frame->origin, ox, oy, oz );
+                                VectorSet( frame->angles, ax, ay, az );
+                                VectorSet( frame->velocity, vx, vy, vz );
+                                frame->buttons = buttons;
+                                frame->forwardmove = forwardmove;
+                                frame->upmove = upmove;
+                                lastOffset = frame->timeOffset;
+                                frameCount++;
+                        }
+                }
+        }
+
+        if ( expectedMap && expectedMap[0] && mapName[0] && Q_stricmp( expectedMap, mapName ) ) {
+                        CG_Printf( "CG_Ghost: %s map '%s' does not match '%s'\n", path, mapName, expectedMap );
+                        return qfalse;
+        }
+
+        if ( expectedVehicle && expectedVehicle[0] && vehicle[0] && Q_stricmp( expectedVehicle, vehicle ) ) {
+                CG_Printf( "CG_Ghost: %s vehicle '%s' does not match '%s'\n", path, vehicle, expectedVehicle );
+                return qfalse;
+        }
+
+        if ( frameCount <= 1 ) {
+                CG_Printf( "CG_Ghost: %s has no usable frames\n", path );
+                return qfalse;
+        }
+
+        cg.baseGhost.frameCount = frameCount;
+        cg.baseGhost.startIndex = 0;
+        cg.baseGhost.writeIndex = frameCount % MAX_GHOST_FRAMES;
+        cg.baseGhost.duration = lastOffset;
+        cg.baseGhost.valid = qtrue;
+
+        cg.baseGhostAvailable = qtrue;
+        cg.baseGhostBestTime = declaredBestTime > 0 ? declaredBestTime : bestTimeMs;
+        Q_strncpyz( cg.baseGhostVehicle, vehicle[0] ? vehicle : expectedVehicle, sizeof( cg.baseGhostVehicle ) );
+        Q_strncpyz( cg.baseGhostPath, path, sizeof( cg.baseGhostPath ) );
+
+        return qtrue;
 }
 
 void CG_BeginGhostRecording( int startTime ) {
@@ -136,29 +297,31 @@ void CG_RecordGhostFrame( void ) {
 }
 
 void CG_AddGhostEntity( void ) {
-	ghostFrame_t *from, *to;
-	float lerp;
-	int offset;
-	refEntity_t ghost;
-	clientInfo_t *ci;
-	vec3_t origin;
-	vec3_t angles;
-	int i;
+        ghostFrame_t *from, *to;
+        ghostRecording_t *recording;
+        float lerp;
+        int offset;
+        refEntity_t ghost;
+        clientInfo_t *ci;
+        vec3_t origin;
+        vec3_t angles;
+        int i;
 
-	if ( !cg_ghostPlayback.integer ) {
-		return;
-	}
+        if ( cg_ghostPlayback.integer <= 0 ) {
+                return;
+        }
 
-	if ( !( isRallyRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ) ) {
-		return;
-	}
+        if ( !( isRallyRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ) ) {
+                return;
+        }
 
-	if ( !cg.ghostPlayback.valid || cg.ghostPlayback.frameCount <= 0 ) {
-		return;
-	}
+        recording = CG_GetActiveGhostRecording();
+        if ( !recording || recording->frameCount <= 0 ) {
+                return;
+        }
 
-	if ( !cg.snap || cg.snap->ps.clientNum >= MAX_CLIENTS ) {
-		return;
+        if ( !cg.snap || cg.snap->ps.clientNum >= MAX_CLIENTS ) {
+                return;
 	}
 
 	if ( !cg_entities[cg.snap->ps.clientNum].startRaceTime ) {
@@ -166,13 +329,13 @@ void CG_AddGhostEntity( void ) {
 	}
 
 	offset = cg.time - cg_entities[cg.snap->ps.clientNum].startRaceTime;
-	if ( offset < 0 ) {
-		return;
-	}
+        if ( offset < 0 ) {
+                return;
+        }
 
-	if ( !CG_SelectGhostFrames( offset, &from, &to, &lerp ) ) {
-		return;
-	}
+        if ( !CG_SelectGhostFrames( recording, offset, &from, &to, &lerp ) ) {
+                return;
+        }
 
 	ci = &cgs.clientinfo[cg.snap->ps.clientNum];
 	if ( !ci->bodyModel ) {

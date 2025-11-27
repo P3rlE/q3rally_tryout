@@ -839,8 +839,13 @@ typedef struct {
 	// ghost playback/recording
 	ghostRecording_t	ghostRecording;
 	ghostRecording_t	ghostPlayback;
+	ghostRecording_t	baseGhost;
 	qboolean	ghostRecordingActive;
 	int			ghostRecordingStartTime;
+	qboolean	baseGhostAvailable;
+	int			baseGhostBestTime;
+	char			baseGhostVehicle[MAX_QPATH];
+	char			baseGhostPath[MAX_QPATH];
 } cg_t;
 
 
@@ -1960,6 +1965,8 @@ void CG_BeginGhostRecording( int startTime );
 void CG_EndGhostRecording( int finishTime );
 void CG_RecordGhostFrame( void );
 void CG_AddGhostEntity( void );
+void CG_ResetBaseGhost( void );
+qboolean CG_LoadGhostFromFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime );
 void CG_DrawRaceCountDown( void );
 void CG_RaceCountDown( const char *str, int secondsLeft );
 
