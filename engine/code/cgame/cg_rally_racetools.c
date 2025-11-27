@@ -23,6 +23,182 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "cg_local.h"
 
+static qboolean CG_SelectGhostFrames( int targetOffset, ghostFrame_t **previous, ghostFrame_t **next, float *lerp ) {
+	ghostRecording_t *recording = &cg.ghostPlayback;
+	int i;
+
+	if ( !recording->valid || recording->frameCount <= 0 ) {
+		return qfalse;
+	}
+
+	*previous = &recording->frames[recording->startIndex];
+	*next = *previous;
+	*lerp = 0.0f;
+
+	if ( targetOffset <= (*previous)->timeOffset ) {
+		return qtrue;
+	}
+
+	for ( i = 1; i < recording->frameCount; i++ ) {
+		int index = ( recording->startIndex + i ) % MAX_GHOST_FRAMES;
+		ghostFrame_t *candidate = &recording->frames[index];
+
+		if ( targetOffset <= candidate->timeOffset ) {
+			*next = candidate;
+			if ( candidate->timeOffset != (*previous)->timeOffset ) {
+				*lerp = (float)( targetOffset - (*previous)->timeOffset ) /
+					(float)( candidate->timeOffset - (*previous)->timeOffset );
+			}
+			return qtrue;
+		}
+
+		*previous = candidate;
+	}
+
+	return qtrue;
+}
+
+void CG_BeginGhostRecording( int startTime ) {
+	memset( &cg.ghostRecording, 0, sizeof( cg.ghostRecording ) );
+	cg.ghostRecording.startIndex = 0;
+	cg.ghostRecording.writeIndex = 0;
+	cg.ghostRecording.frameCount = 0;
+	cg.ghostRecording.duration = 0;
+	cg.ghostRecording.valid = qfalse;
+
+	cg.ghostRecordingActive = qtrue;
+	cg.ghostRecordingStartTime = startTime;
+}
+
+void CG_EndGhostRecording( int finishTime ) {
+	if ( !cg.ghostRecordingActive ) {
+		return;
+	}
+
+	cg.ghostRecordingActive = qfalse;
+
+	if ( cg.ghostRecording.frameCount > 1 ) {
+		int duration = finishTime > cg.ghostRecordingStartTime
+			? finishTime - cg.ghostRecordingStartTime
+			: cg.ghostRecording.duration;
+
+		cg.ghostRecording.duration = duration;
+		cg.ghostRecording.valid = qtrue;
+		cg.ghostPlayback = cg.ghostRecording;
+	}
+}
+
+void CG_RecordGhostFrame( void ) {
+	usercmd_t cmd;
+	ghostFrame_t *frame;
+
+	if ( !cg.ghostRecordingActive ) {
+		return;
+	}
+
+	if ( !( isRallyRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ) ) {
+		return;
+	}
+
+	if ( !cg.snap || cg.snap->ps.clientNum >= MAX_CLIENTS ) {
+		return;
+	}
+
+	if ( cg_entities[cg.snap->ps.clientNum].finishRaceTime ) {
+		return;
+	}
+
+	if ( cg.time < cg.ghostRecordingStartTime ) {
+		return;
+	}
+
+	frame = &cg.ghostRecording.frames[cg.ghostRecording.writeIndex];
+
+	frame->timeOffset = cg.time - cg.ghostRecordingStartTime;
+	VectorCopy( cg.predictedPlayerState.origin, frame->origin );
+	VectorCopy( cg.predictedPlayerState.viewangles, frame->angles );
+	VectorCopy( cg.predictedPlayerState.velocity, frame->velocity );
+
+	trap_GetUserCmd( trap_GetCurrentCmdNumber(), &cmd );
+	frame->buttons = cmd.buttons;
+	frame->forwardmove = cmd.forwardmove;
+	frame->upmove = cmd.upmove;
+
+	cg.ghostRecording.writeIndex = ( cg.ghostRecording.writeIndex + 1 ) % MAX_GHOST_FRAMES;
+	if ( cg.ghostRecording.frameCount < MAX_GHOST_FRAMES ) {
+		cg.ghostRecording.frameCount++;
+	} else {
+		cg.ghostRecording.startIndex = cg.ghostRecording.writeIndex;
+	}
+
+	cg.ghostRecording.duration = frame->timeOffset;
+	cg.ghostRecording.valid = cg.ghostRecording.frameCount > 1;
+}
+
+void CG_AddGhostEntity( void ) {
+	ghostFrame_t *from, *to;
+	float lerp;
+	int offset;
+	refEntity_t ghost;
+	clientInfo_t *ci;
+	vec3_t origin;
+	vec3_t angles;
+	int i;
+
+	if ( !cg_ghostPlayback.integer ) {
+		return;
+	}
+
+	if ( !( isRallyRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ) ) {
+		return;
+	}
+
+	if ( !cg.ghostPlayback.valid || cg.ghostPlayback.frameCount <= 0 ) {
+		return;
+	}
+
+	if ( !cg.snap || cg.snap->ps.clientNum >= MAX_CLIENTS ) {
+		return;
+	}
+
+	if ( !cg_entities[cg.snap->ps.clientNum].startRaceTime ) {
+		return;
+	}
+
+	offset = cg.time - cg_entities[cg.snap->ps.clientNum].startRaceTime;
+	if ( offset < 0 ) {
+		return;
+	}
+
+	if ( !CG_SelectGhostFrames( offset, &from, &to, &lerp ) ) {
+		return;
+	}
+
+	ci = &cgs.clientinfo[cg.snap->ps.clientNum];
+	if ( !ci->bodyModel ) {
+		return;
+	}
+
+	for ( i = 0; i < 3; i++ ) {
+		origin[i] = from->origin[i] + lerp * ( to->origin[i] - from->origin[i] );
+		angles[i] = from->angles[i] + lerp * AngleSubtract( to->angles[i], from->angles[i] );
+	}
+
+	memset( &ghost, 0, sizeof( ghost ) );
+	ghost.hModel = ci->bodyModel;
+	ghost.customSkin = ci->bodySkin;
+	VectorCopy( origin, ghost.origin );
+	VectorCopy( origin, ghost.lightingOrigin );
+	ghost.renderfx = RF_LIGHTING_ORIGIN | RF_NOSHADOW;
+	AnglesToAxis( angles, ghost.axis );
+	ghost.shaderRGBA[0] = 255;
+	ghost.shaderRGBA[1] = 255;
+	ghost.shaderRGBA[2] = 255;
+	ghost.shaderRGBA[3] = 160;
+
+	trap_R_AddRefEntityToScene( &ghost );
+}
+
 
 void CG_NewLapTime( int client, int lap, int time ) {
 	centity_t	*cent;
@@ -64,9 +240,13 @@ void CG_FinishedRace( int client, int time ) {
 		Com_Printf("You got a personal record lap time of %s!\n", t);
 	}
 
-	cent->finishRaceTime = time;
+        cent->finishRaceTime = time;
 
-	if ( cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS ) {
+        if ( client == cg.snap->ps.clientNum ) {
+                CG_EndGhostRecording( time );
+        }
+
+        if ( cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS ) {
 		int lastClient;
 		int remaining;
 
@@ -79,9 +259,9 @@ void CG_StartRace( int time ) {
 	int			i;
 	centity_t	*player;
 
-	for (i = 0; i < MAX_CLIENTS; i++){
-		player = &cg_entities[i];
-		if (!player) continue;
+        for (i = 0; i < MAX_CLIENTS; i++){
+                player = &cg_entities[i];
+                if (!player) continue;
 
 		if (!player->startRaceTime){
 			player->startRaceTime = time;
@@ -90,12 +270,14 @@ void CG_StartRace( int time ) {
 			player->currentLap = 1;
 			player->bestLapTime = 0;
 			player->lastStartLapTime = 0;
-		}
-	}
+                }
+        }
 
-	cg.eliminationWarningActive = qfalse;
-	cg.eliminationWarningTime = 0;
-	cg.eliminationPlayersRemaining = CG_GetPlayersRemaining( NULL );
+        CG_BeginGhostRecording( time );
+
+        cg.eliminationWarningActive = qfalse;
+        cg.eliminationWarningTime = 0;
+        cg.eliminationPlayersRemaining = CG_GetPlayersRemaining( NULL );
 }
 
 void CG_DrawRaceCountDown( void ){
