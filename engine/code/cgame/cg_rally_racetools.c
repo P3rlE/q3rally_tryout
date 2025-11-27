@@ -117,78 +117,95 @@ qboolean CG_LoadGhostFromFile( const char *path, const char *expectedMap, const 
         buffer[length] = '\0';
         trap_FS_FCloseFile( file );
 
-        for ( line = strtok_r( buffer, "\n", &savePtr ); line; line = strtok_r( NULL, "\n", &savePtr ) ) {
-                if ( line[0] == '#' ) {
-                        continue;
-                }
+	line = buffer;
 
-                if ( !Q_stricmpn( line, "map", 3 ) ) {
-                        const char *value = line + 3;
-                        while ( *value == ' ' ) {
-                                ++value;
-                        }
-                        Q_strncpyz( mapName, value, sizeof( mapName ) );
-                        continue;
-                }
+	while ( line && *line ) {
+		if ( line[0] == '#' ) {
+			goto nextLine;
+		}
 
-                if ( !Q_stricmpn( line, "vehicle", 7 ) ) {
-                        const char *value = line + 7;
-                        while ( *value == ' ' ) {
-                                ++value;
-                        }
-                        Q_strncpyz( vehicle, value, sizeof( vehicle ) );
-                        continue;
-                }
+		if ( !Q_stricmpn( line, "map", 3 ) ) {
+			const char *value = line + 3;
+			while ( *value == ' ' ) {
+				++value;
+			}
+			Q_strncpyz( mapName, value, sizeof( mapName ) );
+			goto nextLine;
+		}
 
-                if ( !Q_stricmpn( line, "best_time_ms", 12 ) ) {
-                        const char *value = line + 12;
-                        while ( *value == ' ' ) {
-                                ++value;
-                        }
-                        bestTimeMs = atoi( value );
-                        continue;
-                }
+		if ( !Q_stricmpn( line, "vehicle", 7 ) ) {
+			const char *value = line + 7;
+			while ( *value == ' ' ) {
+				++value;
+			}
+			Q_strncpyz( vehicle, value, sizeof( vehicle ) );
+			goto nextLine;
+		}
 
-                if ( !Q_stricmpn( line, "frames", 6 ) ) {
-                        const char *value = line + 6;
-                        while ( *value == ' ' ) {
-                                ++value;
-                        }
-                        expectedFrames = atoi( value );
-                        continue;
-                }
+		if ( !Q_stricmpn( line, "best_time_ms", 12 ) ) {
+			const char *value = line + 12;
+			while ( *value == ' ' ) {
+				++value;
+			}
+			bestTimeMs = atoi( value );
+			goto nextLine;
+		}
 
-                if ( expectedFrames > 0 ) {
-                        ghostFrame_t *frame;
-                        float ox, oy, oz;
-                        float ax, ay, az;
-                        float vx, vy, vz;
-                        int buttons, forwardmove, upmove;
-                        int parsed;
+		if ( !Q_stricmpn( line, "frames", 6 ) ) {
+			const char *value = line + 6;
+			while ( *value == ' ' ) {
+				++value;
+			}
+			expectedFrames = atoi( value );
+			goto nextLine;
+		}
 
-                        if ( frameCount >= MAX_GHOST_FRAMES ) {
-                                continue;
-                        }
+		if ( expectedFrames > 0 ) {
+			ghostFrame_t *frame;
+			float ox, oy, oz;
+			float ax, ay, az;
+			float vx, vy, vz;
+			int buttons, forwardmove, upmove;
+			int parsed;
 
-                        frame = &cg.baseGhost.frames[frameCount];
-                        parsed = sscanf( line, "%d %f %f %f %f %f %f %f %f %f %d %d %d",
-                                &frame->timeOffset, &ox, &oy, &oz,
-                                &ax, &ay, &az,
-                                &vx, &vy, &vz,
-                                &buttons, &forwardmove, &upmove );
+			if ( frameCount >= MAX_GHOST_FRAMES ) {
+				goto nextLine;
+			}
 
-                        if ( parsed == 13 ) {
-                                VectorSet( frame->origin, ox, oy, oz );
-                                VectorSet( frame->angles, ax, ay, az );
-                                VectorSet( frame->velocity, vx, vy, vz );
-                                frame->buttons = buttons;
-                                frame->forwardmove = forwardmove;
-                                frame->upmove = upmove;
-                                lastOffset = frame->timeOffset;
-                                frameCount++;
-                        }
-                }
-        }
+			frame = &cg.baseGhost.frames[frameCount];
+			parsed = sscanf( line, "%d %f %f %f %f %f %f %f %f %f %d %d %d",
+				&frame->timeOffset, &ox, &oy, &oz,
+				&ax, &ay, &az,
+				&vx, &vy, &vz,
+				&buttons, &forwardmove, &upmove );
+
+			if ( parsed == 13 ) {
+				VectorSet( frame->origin, ox, oy, oz );
+				VectorSet( frame->angles, ax, ay, az );
+				VectorSet( frame->velocity, vx, vy, vz );
+				frame->buttons = buttons;
+				frame->forwardmove = forwardmove;
+				frame->upmove = upmove;
+				lastOffset = frame->timeOffset;
+				frameCount++;
+			}
+		}
+
+nextLine:
+		if ( !line ) {
+			break;
+		}
+
+		while ( *line && *line != '\n' && *line != '\r' ) {
+			line++;
+		}
+
+		while ( *line == '\n' || *line == '\r' ) {
+			*line = '\0';
+			line++;
+		}
+	}
+
 
         if ( expectedMap && expectedMap[0] && mapName[0] && Q_stricmp( expectedMap, mapName ) ) {
                         CG_Printf( "CG_Ghost: %s map '%s' does not match '%s'\n", path, mapName, expectedMap );
@@ -211,12 +228,12 @@ qboolean CG_LoadGhostFromFile( const char *path, const char *expectedMap, const 
         cg.baseGhost.duration = lastOffset;
         cg.baseGhost.valid = qtrue;
 
-        cg.baseGhostAvailable = qtrue;
-        cg.baseGhostBestTime = declaredBestTime > 0 ? declaredBestTime : bestTimeMs;
-        Q_strncpyz( cg.baseGhostVehicle, vehicle[0] ? vehicle : expectedVehicle, sizeof( cg.baseGhostVehicle ) );
-        Q_strncpyz( cg.baseGhostPath, path, sizeof( cg.baseGhostPath ) );
+	cg.baseGhostAvailable = qtrue;
+	cg.baseGhostBestTime = declaredBestTime > 0 ? declaredBestTime : bestTimeMs;
+	Q_strncpyz( cg.baseGhostVehicle, vehicle[0] ? vehicle : expectedVehicle, sizeof( cg.baseGhostVehicle ) );
+	Q_strncpyz( cg.baseGhostPath, path, sizeof( cg.baseGhostPath ) );
 
-        return qtrue;
+return qtrue;
 }
 
 void CG_BeginGhostRecording( int startTime ) {
