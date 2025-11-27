@@ -52,6 +52,7 @@ vmCvar_t	g_dmflags;
 vmCvar_t	g_fraglimit;
 // STONELANCE
 vmCvar_t	g_laplimit;
+vmCvar_t	g_timeTrialLaps;
 vmCvar_t	g_eliminationStartDelay;
 vmCvar_t	g_eliminationInterval;
 vmCvar_t	g_eliminationWarning;
@@ -118,6 +119,7 @@ vmCvar_t	g_proxMineTimeout;
 // STONELANCE
 vmCvar_t	g_forceEngineStart;
 vmCvar_t	g_finishRaceDelay;
+vmCvar_t	g_timeTrialFinishDelay;
 vmCvar_t	g_trackReversed;
 vmCvar_t	g_trackLength;
 vmCvar_t	g_developer;
@@ -184,6 +186,7 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &g_fraglimit, "fraglimit", "20", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
 // STONELANCE
 	{ &g_laplimit, "laplimit", "5", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
+	{ &g_timeTrialLaps, "g_timeTrialLaps", "3", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
         { &g_eliminationStartDelay, "g_eliminationStartDelay", "30000", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
         { &g_eliminationInterval, "g_eliminationInterval", "15000", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
         { &g_eliminationWarning, "g_eliminationWarning", "5000", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
@@ -266,6 +269,7 @@ static cvarTable_t		gameCvarTable[] = {
 
         { &g_forceEngineStart, "g_forceEngineStart", "60", CVAR_ARCHIVE, 0, qfalse },
         { &g_finishRaceDelay, "g_finishRaceDelay", "30", CVAR_ARCHIVE, 0, qfalse },
+	{ &g_timeTrialFinishDelay, "g_timeTrialFinishDelay", "10", CVAR_ARCHIVE, 0, qfalse },
 
         { &g_developer, "developer", "0", 0, 0, qfalse },
         { &g_humanplayers, "g_humanplayers", "0", CVAR_ROM | CVAR_NORESTART, 0, qfalse },
@@ -949,6 +953,18 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	srand( randomSeed );
 
 	G_RegisterCvars();
+
+	if ( g_gametype.integer == GT_SINGLE_PLAYER ) {
+		if ( g_timeTrialLaps.integer > 0 ) {
+			trap_Cvar_Set( "laplimit", va( "%i", g_timeTrialLaps.integer ) );
+			trap_Cvar_Update( &g_laplimit );
+		}
+
+		if ( g_timeTrialFinishDelay.integer > 0 ) {
+			trap_Cvar_Set( "g_finishRaceDelay", va( "%i", g_timeTrialFinishDelay.integer ) );
+			trap_Cvar_Update( &g_finishRaceDelay );
+		}
+	}
 
 	G_ProcessIPBans();
 

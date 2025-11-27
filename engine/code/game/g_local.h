@@ -428,9 +428,9 @@ struct gclient_s {
 	vec3_t		profileLastOrigin;
 	qboolean	profileHasLastOrigin;
 
-	int			profileLastTime;        // NEU: für Zeit-Tracking unabhängig von Framerate
+	int			profileLastTime;        // NEU: fÃ¼r Zeit-Tracking unabhÃ¤ngig von Framerate
 
-	// profileLastCmdTime wird nicht mehr benötigt - kann entfernt werden
+	// profileLastCmdTime wird nicht mehr benÃ¶tigt - kann entfernt werden
 	// int		profileLastCmdTime;
 	// qboolean	profileHasLastCmdTime;
 
@@ -983,6 +983,7 @@ extern	vmCvar_t	g_dmflags;
 extern	vmCvar_t	g_fraglimit;
 // STONELANCE
 extern	vmCvar_t	g_laplimit;
+extern	vmCvar_t	g_timeTrialLaps;
 extern	vmCvar_t	g_eliminationStartDelay;
 extern	vmCvar_t	g_eliminationInterval;
 extern	vmCvar_t	g_eliminationWarning;
@@ -1035,6 +1036,7 @@ extern  vmCvar_t	g_humanplayers;
 // STONELANCE
 extern	vmCvar_t	g_forceEngineStart;
 extern	vmCvar_t	g_finishRaceDelay;
+extern	vmCvar_t	g_timeTrialFinishDelay;
 extern	vmCvar_t	g_trackReversed;
 extern	vmCvar_t	g_trackLength;
 extern	vmCvar_t	g_developer;
