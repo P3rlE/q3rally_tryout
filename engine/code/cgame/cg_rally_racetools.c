@@ -25,6 +25,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <stdlib.h>
 #include <string.h>
 
+#define MAX_GHOST_FILE_SIZE ( 256 * 1024 )
+
+static char cg_baseGhostFileBuffer[MAX_GHOST_FILE_SIZE + 1];
+
 static qboolean CG_SelectGhostFrames( ghostRecording_t *recording, int targetOffset, ghostFrame_t **previous, ghostFrame_t **next, float *lerp ) {
         int i;
 
@@ -103,17 +107,13 @@ qboolean CG_LoadGhostFromFile( const char *path, const char *expectedMap, const 
                 return qfalse;
         }
 
-        if ( length > 256 * 1024 ) {
+        if ( length > MAX_GHOST_FILE_SIZE ) {
                 trap_FS_FCloseFile( file );
                 CG_Printf( "CG_Ghost: %s too large (%d bytes)\n", path, length );
                 return qfalse;
         }
 
-        buffer = malloc( length + 1 );
-        if ( !buffer ) {
-                trap_FS_FCloseFile( file );
-                return qfalse;
-        }
+        buffer = cg_baseGhostFileBuffer;
 
         trap_FS_Read( buffer, length, file );
         buffer[length] = '\0';
@@ -191,8 +191,6 @@ qboolean CG_LoadGhostFromFile( const char *path, const char *expectedMap, const 
                         }
                 }
         }
-
-        free( buffer );
 
         if ( expectedMap && expectedMap[0] && mapName[0] && Q_stricmp( expectedMap, mapName ) ) {
                         CG_Printf( "CG_Ghost: %s map '%s' does not match '%s'\n", path, mapName, expectedMap );
