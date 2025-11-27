@@ -2260,12 +2260,12 @@ void CheckExitRules( void ) {
 
 	// if its a race and the race has started if no players left playing 
 	//			or everyone is a spectator then end the race.
-	if ( isRallyRace() && level.startRaceTime && !count ){
+	if ( (isRallyRace() || g_gametype.integer == GT_SINGLE_PLAYER) && level.startRaceTime && !count ){
 		LogExit( "Race finished." );
 		return;
 	}
 
-	if ( level.finishRaceTime && isRallyRace() ){
+	if ( level.finishRaceTime && (isRallyRace() || g_gametype.integer == GT_SINGLE_PLAYER) ){
 		// if everyone has finished the race, or the finishRaceDelay time is up, then exit
 		if ( (level.finishRaceTime + (g_finishRaceDelay.integer * 1000) < level.time)
 			|| !count ) {
@@ -2293,7 +2293,7 @@ void CheckExitRules( void ) {
 
 // STONELANCE
 	// dont check frags or captures during a race or derby
-	if ( isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS ){
+	if ( isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS || g_gametype.integer == GT_SINGLE_PLAYER ){
 		return;
 	}
 // END
