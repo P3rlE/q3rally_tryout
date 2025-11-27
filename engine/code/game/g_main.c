@@ -1001,6 +1001,13 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 
 	G_InitWorldSession();
 
+	{
+		char mapname[MAX_QPATH];
+
+		trap_Cvar_VariableStringBuffer( "mapname", mapname, sizeof( mapname ) );
+		G_Ghost_InitForMap( mapname );
+	}
+
 	// initialize all entities for this game
 	memset( g_entities, 0, MAX_GENTITIES * sizeof(g_entities[0]) );
 	level.gentities = g_entities;
