@@ -11,6 +11,8 @@ gentity_t g_entities[MAX_GENTITIES];
 gclient_t levelClients[MAX_CLIENTS];
 vmCvar_t g_gametype;
 vmCvar_t g_forceEngineStart;
+vmCvar_t g_rallyReadyCheck;
+vmCvar_t g_rallyIgnoreBots;
 
 // Additional globals referenced elsewhere
 vmCvar_t g_eliminationStartDelay;
@@ -152,6 +154,8 @@ void reset_environment(void) {
     level.clients = levelClients;
     level.maxclients = MAX_CLIENTS;
     level.gentities = g_entities;
+    g_rallyReadyCheck.integer = 1;
+    g_rallyIgnoreBots.integer = 0;
 }
 
 void test_elimination_configuration_initial_setup(void) {
@@ -229,10 +233,65 @@ void test_race_countdown_sequence(void) {
     assert(lastSoundIndex != 0);
 }
 
+void test_single_player_skips_ready_check(void) {
+    reset_environment();
+    g_gametype.integer = GT_SINGLE_PLAYER;
+    g_forceEngineStart.integer = 30;
+    g_rallyReadyCheck.integer = 0;
+
+    gentity_t starter = {0};
+    starter.think = RallyStarter_Think;
+    starter.number = 0;
+    starter.classname = "rally_starter";
+
+    g_entities[0].inuse = qtrue;
+    g_entities[0].client = &levelClients[0];
+    g_entities[0].classname = "player";
+    g_entities[0].ready = qfalse;
+    g_entities[0].client->sess.sessionTeam = TEAM_RED;
+
+    level.time = 8000;
+    level.startTime = 0;
+
+    RallyStarter_Think(&starter);
+
+    assert(starter.number == 3);
+    assert(starter.pain_debounce_time == level.time);
+}
+
+void test_ignoring_bots_prevents_ready_count(void) {
+    reset_environment();
+    g_gametype.integer = GT_RACING;
+    g_forceEngineStart.integer = 30;
+    g_rallyIgnoreBots.integer = 1;
+
+    gentity_t starter = {0};
+    starter.think = RallyStarter_Think;
+    starter.number = 0;
+    starter.classname = "rally_starter";
+
+    g_entities[0].inuse = qtrue;
+    g_entities[0].client = &levelClients[0];
+    g_entities[0].classname = "player";
+    g_entities[0].ready = qtrue;
+    g_entities[0].r.svFlags |= SVF_BOT;
+    g_entities[0].client->sess.sessionTeam = TEAM_RED;
+
+    level.time = 8000;
+    level.startTime = 0;
+
+    RallyStarter_Think(&starter);
+
+    assert(starter.number == 0);
+    assert(starter.pain_debounce_time == 0);
+}
+
 int main(void) {
     test_elimination_configuration_initial_setup();
     test_elimination_configuration_minimum_laps();
     test_race_countdown_sequence();
+    test_single_player_skips_ready_check();
+    test_ignoring_bots_prevents_ready_count();
     printf("ok\n");
     return 0;
 }

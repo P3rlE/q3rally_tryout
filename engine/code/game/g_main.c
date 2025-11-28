@@ -123,6 +123,8 @@ vmCvar_t	g_timeTrialFinishDelay;
 vmCvar_t	g_trackReversed;
 vmCvar_t	g_trackLength;
 vmCvar_t	g_developer;
+vmCvar_t	g_rallyReadyCheck;
+vmCvar_t	g_rallyIgnoreBots;
 
 vmCvar_t	g_damageScale;
 vmCvar_t	g_vehicleDamageScale;
@@ -267,14 +269,16 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &g_trackReversed, "g_trackReversed", "0", CVAR_LATCH, 0, qfalse  },
 	{ &g_trackLength, "g_trackLength", "0", CVAR_LATCH, 0, qfalse  },
 
-        { &g_forceEngineStart, "g_forceEngineStart", "60", CVAR_ARCHIVE, 0, qfalse },
-        { &g_finishRaceDelay, "g_finishRaceDelay", "30", CVAR_ARCHIVE, 0, qfalse },
-	{ &g_timeTrialFinishDelay, "g_timeTrialFinishDelay", "10", CVAR_ARCHIVE, 0, qfalse },
+{ &g_forceEngineStart, "g_forceEngineStart", "60", CVAR_ARCHIVE, 0, qfalse },
+{ &g_finishRaceDelay, "g_finishRaceDelay", "30", CVAR_ARCHIVE, 0, qfalse },
+{ &g_timeTrialFinishDelay, "g_timeTrialFinishDelay", "10", CVAR_ARCHIVE, 0, qfalse },
 
-        { &g_developer, "developer", "0", 0, 0, qfalse },
-        { &g_humanplayers, "g_humanplayers", "0", CVAR_ROM | CVAR_NORESTART, 0, qfalse },
-        { &g_fuelKillReward, "g_fuelKillReward", "10", CVAR_ARCHIVE, 0, qfalse },
-        { &g_useFuel, "g_useFuel", "1", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse },
+{ &g_developer, "developer", "0", 0, 0, qfalse },
+{ &g_rallyReadyCheck, "g_rallyReadyCheck", "1", CVAR_ARCHIVE, 0, qfalse },
+{ &g_rallyIgnoreBots, "g_rallyIgnoreBots", "0", CVAR_ARCHIVE, 0, qfalse },
+{ &g_humanplayers, "g_humanplayers", "0", CVAR_ROM | CVAR_NORESTART, 0, qfalse },
+{ &g_fuelKillReward, "g_fuelKillReward", "10", CVAR_ARCHIVE, 0, qfalse },
+{ &g_useFuel, "g_useFuel", "1", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse },
 
         // car variables
 	// FIXME: should really be serverinfo so there are no client prediction problems
