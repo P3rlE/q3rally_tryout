@@ -1,0 +1,37 @@
+{
+  gametypes
+  {
+    { "Racing" 0 }
+    { "Racing Deathmatch" 1 }
+    { "Sprint" 2 }
+    { "Time Trial" 3 }
+    { "Demolition Derby" 4 }
+    { "Last Car Standing" 5 }
+    { "Elimination" 6 }
+    { "Deathmatch" 7 }
+    { "Team Deathmatch" 8 }
+    { "Team Racing" 9 }
+    { "Team Racing Deathmatch" 10 }
+    { "Capture The Flag" 11 }
+    { "4 Team Capture The Flag" 12 }
+    { "Domination" 13 }
+  }
+
+  joingametypes
+  {
+    { "Racing" 0 }
+    { "Racing Deathmatch" 1 }
+    { "Sprint" 2 }
+    { "Time Trial" 3 }
+    { "Demolition Derby" 4 }
+    { "Last Car Standing" 5 }
+    { "Elimination" 6 }
+    { "Deathmatch" 7 }
+    { "Team Deathmatch" 8 }
+    { "Team Racing" 9 }
+    { "Team Racing Deathmatch" 10 }
+    { "Capture The Flag" 11 }
+    { "4 Team Capture The Flag" 12 }
+    { "Domination" 13 }
+  }
+}
