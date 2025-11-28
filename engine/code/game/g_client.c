@@ -1282,6 +1282,11 @@ void ClientBegin( int clientNum ) {
 		SetTeam(ent, "racerSpectator");
 		return;
 	}
+
+	if ( (ent->r.svFlags & SVF_BOT) && g_rallyIgnoreBots.integer && isRallyRace() ) {
+		SetTeam(ent, "spectator");
+		return;
+	}
 //	trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
 
         client->buttons = 0;
