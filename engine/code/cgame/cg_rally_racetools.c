@@ -27,6 +27,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 static char cg_baseGhostFileBuffer[MAX_GHOST_FILE_SIZE + 1];
 
+static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime,
+                ghostRecording_t *target, int *bestTimeOut, char *vehicleOut, int vehicleOutSize, char *pathOut, int pathOutSize );
+
 static void CG_ResetPersonalGhost( void ) {
         memset( &cg.ghostPlayback, 0, sizeof( cg.ghostPlayback ) );
         cg.personalGhostAvailable = qfalse;
