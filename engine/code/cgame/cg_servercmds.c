@@ -565,14 +565,18 @@ static void CG_MapRestart( void ) {
 
         cg.mapRestart = qtrue;
 
-cg.ghostRecordingActive = qfalse;
-cg.ghostRecording.valid = qfalse;
-cg.ghostPlayback.valid = qfalse;
-cg.baseGhost.valid = qfalse;
-cg.baseGhostAvailable = qfalse;
-cg.baseGhostBestTime = 0;
-cg.baseGhostVehicle[0] = '\0';
-cg.baseGhostPath[0] = '\0';
+	cg.ghostRecordingActive = qfalse;
+	cg.ghostRecording.valid = qfalse;
+	cg.ghostPlayback.valid = qfalse;
+	cg.baseGhost.valid = qfalse;
+	cg.baseGhostAvailable = qfalse;
+	cg.baseGhostBestTime = 0;
+	cg.baseGhostVehicle[0] = '\\0';
+	cg.baseGhostPath[0] = '\\0';
+	cg.personalGhostAvailable = qfalse;
+	cg.personalGhostBestTime = 0;
+	cg.personalGhostVehicle[0] = '\\0';
+	cg.personalGhostPath[0] = '\\0';
 
 	CG_StartMusic();
 

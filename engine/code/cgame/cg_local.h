@@ -846,6 +846,10 @@ typedef struct {
 	int			baseGhostBestTime;
 	char			baseGhostVehicle[MAX_QPATH];
 	char			baseGhostPath[MAX_QPATH];
+	qboolean	personalGhostAvailable;
+	int			personalGhostBestTime;
+	char			personalGhostVehicle[MAX_QPATH];
+	char			personalGhostPath[MAX_QPATH];
 } cg_t;
 
 
@@ -1967,6 +1971,8 @@ void CG_RecordGhostFrame( void );
 void CG_AddGhostEntity( void );
 void CG_ResetBaseGhost( void );
 qboolean CG_LoadGhostFromFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime );
+void CG_LoadPersonalGhost( void );
+void CG_AttemptSavePersonalGhost( int finishTime );
 void CG_DrawRaceCountDown( void );
 void CG_RaceCountDown( const char *str, int secondsLeft );
 
