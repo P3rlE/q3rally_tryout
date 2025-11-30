@@ -111,6 +111,7 @@ int		allowLength[3];
 int		reversable;
 
 static void UI_ServerOptionsMenu( qboolean multiplayer );
+static void ServerOptions_InitBotNames( void );
 
 char *UI_GetStatKey(int num){
 	switch(num){
