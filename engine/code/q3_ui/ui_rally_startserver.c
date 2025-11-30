@@ -1909,6 +1909,7 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.mappic );
 
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.botSkill );
+	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.ghostOnly );
 
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.player0 );
 	for( n = 0; n < PLAYER_SLOTS; n++ ) {
