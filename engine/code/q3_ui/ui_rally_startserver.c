@@ -1723,20 +1723,29 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 		s_serveroptions.pure.generic.flags |= QMF_GRAYED;
 	}
 
-	if ( s_serveroptions.gametype == GT_ELIMINATION ) {
-		y += BIGCHAR_HEIGHT+2;
-		s_serveroptions.eliminationWeapons.generic.type = MTYPE_RADIOBUTTON;
-		s_serveroptions.eliminationWeapons.generic.flags = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-		s_serveroptions.eliminationWeapons.generic.x = OPTIONS_X;
-		s_serveroptions.eliminationWeapons.generic.y = y;
-		s_serveroptions.eliminationWeapons.generic.name = "Enable Weapons:";
-	}
+        if ( s_serveroptions.gametype == GT_ELIMINATION ) {
+                y += BIGCHAR_HEIGHT+2;
+                s_serveroptions.eliminationWeapons.generic.type = MTYPE_RADIOBUTTON;
+                s_serveroptions.eliminationWeapons.generic.flags = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+                s_serveroptions.eliminationWeapons.generic.x = OPTIONS_X;
+                s_serveroptions.eliminationWeapons.generic.y = y;
+                s_serveroptions.eliminationWeapons.generic.name = "Enable Weapons:";
+        }
 
-	n = 0;
-	if ( allowLength[0] ){
-		track_length_list[n] = "Short";
-		n++;
-	}
+        y += BIGCHAR_HEIGHT+2;
+        s_serveroptions.ghostOnly.generic.type                  = MTYPE_RADIOBUTTON;
+        s_serveroptions.ghostOnly.generic.flags         = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+        s_serveroptions.ghostOnly.generic.x                     = OPTIONS_X;
+        s_serveroptions.ghostOnly.generic.y                     = y;
+        s_serveroptions.ghostOnly.generic.name          = "Ghost Only:";
+        s_serveroptions.ghostOnly.generic.id                    = ID_GHOST_ONLY;
+        s_serveroptions.ghostOnly.generic.callback      = ServerOptions_Event;
+
+        n = 0;
+        if ( allowLength[0] ){
+                track_length_list[n] = "Short";
+                n++;
+        }
 	if ( allowLength[1] ){
 		track_length_list[n] = "Medium";
 		n++;
@@ -1832,13 +1841,6 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 	s_serveroptions.botSkill.curvalue				= 1;
 
 	y += SMALLCHAR_HEIGHT + 2;
-	s_serveroptions.ghostOnly.generic.type			= MTYPE_RADIOBUTTON;
-	s_serveroptions.ghostOnly.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	s_serveroptions.ghostOnly.generic.x			= 32;
-	s_serveroptions.ghostOnly.generic.y			= y;
-	s_serveroptions.ghostOnly.generic.name		= "Ghost Only:";
-	s_serveroptions.ghostOnly.generic.id			= ID_GHOST_ONLY;
-	s_serveroptions.ghostOnly.generic.callback	= ServerOptions_Event;
 
 	y += ( 2 * SMALLCHAR_HEIGHT );
 	s_serveroptions.player0.generic.type			= MTYPE_TEXT;
@@ -1935,18 +1937,19 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.pure );
 
+	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.ghostOnly );
+
 	if( s_serveroptions.gametype == GT_ELIMINATION ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.eliminationWeapons );
 	}
 
-if( s_serveroptions.gametype == GT_RACING || s_serveroptions.gametype == GT_RACING_DM
-|| s_serveroptions.gametype == GT_SPRINT || s_serveroptions.gametype == GT_TEAM_RACING || s_serveroptions.gametype == GT_TEAM_RACING_DM) {
+	if( s_serveroptions.gametype == GT_RACING || s_serveroptions.gametype == GT_RACING_DM
+	|| s_serveroptions.gametype == GT_SPRINT || s_serveroptions.gametype == GT_TEAM_RACING || s_serveroptions.gametype == GT_TEAM_RACING_DM) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.trackLength );
 
 		if ( reversable )
 			Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.reversed );
 	}
-
 
 	if( s_serveroptions.multiplayer ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.dedicated );
