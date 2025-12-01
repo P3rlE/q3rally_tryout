@@ -92,14 +92,15 @@ static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, ghos
             break; // header parsed
         }
 
+        *lineEnd = savedChar;
+
         if ( savedChar == '\0' ) {
             break;
         }
 
-        if ( savedChar == '\r' && lineEnd[1] == '\n' ) {
-            cursor = lineEnd + 2;
-        } else {
-            cursor = lineEnd + 1;
+        cursor = lineEnd + 1;
+        if ( savedChar == '\r' && *cursor == '\n' ) {
+            cursor++;
         }
     }
 
