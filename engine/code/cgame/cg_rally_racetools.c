@@ -25,8 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define MAX_GHOST_FILE_SIZE ( 256 * 1024 )
 
-static char cg_baseGhostFileBuffer[MAX_GHOST_FILE_SIZE + 1];
-
 static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime,
                 ghostRecording_t *target, int *bestTimeOut, char *vehicleOut, int vehicleOutSize, char *pathOut, int pathOutSize );
 
@@ -126,7 +124,7 @@ void CG_LoadPersonalGhost( void ) {
 static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime, ghostRecording_t *target, int *bestTimeOut, char *vehicleOut, int vehicleOutSize, char *pathOut, int pathOutSize ) {
         fileHandle_t file;
         int length;
-        char *buffer;
+        static char buffer[MAX_GHOST_FILE_SIZE+1];
         char *line;
         char mapName[MAX_QPATH] = "";
         char vehicle[MAX_QPATH] = "";
@@ -156,8 +154,6 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, con
                 CG_Printf( "CG_Ghost: %s too large (%d bytes)\n", path, length );
                 return qfalse;
         }
-
-        buffer = cg_baseGhostFileBuffer;
 
         trap_FS_Read( buffer, length, file );
         buffer[length] = '\0';
@@ -631,11 +627,11 @@ void CG_AddGhostEntity( void ) {
                 return;
 	}
 
-	if ( !cg_entities[cg.snap->ps.clientNum].startRaceTime ) {
+	if ( !cg_entities[cg.snap->ps.clientNum].startLapTime ) {
 		return;
 	}
 
-	offset = cg.time - cg_entities[cg.snap->ps.clientNum].startRaceTime;
+	offset = cg.time - cg_entities[cg.snap->ps.clientNum].startLapTime;
         if ( offset < 0 ) {
                 return;
         }
