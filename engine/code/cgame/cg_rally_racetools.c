@@ -28,6 +28,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime,
                 ghostRecording_t *target, int *bestTimeOut, char *vehicleOut, int vehicleOutSize, char *pathOut, int pathOutSize );
 
+static void CG_ChopNewline( char *value ) {
+	char *cursor;
+
+	if ( !value ) {
+		return;
+	}
+
+	for ( cursor = value; *cursor; cursor++ ) {
+		if ( *cursor == '\n' || *cursor == '\r' ) {
+			*cursor = '\0';
+			break;
+		}
+	}
+}
+
 static void CG_ResetPersonalGhost( void ) {
         memset( &cg.ghostPlayback, 0, sizeof( cg.ghostPlayback ) );
         cg.personalGhostAvailable = qfalse;
@@ -172,6 +187,7 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, con
                                 ++value;
                         }
                         Q_strncpyz( mapName, value, sizeof( mapName ) );
+                        CG_ChopNewline( mapName );
                         goto nextLine;
                 }
 
@@ -181,6 +197,7 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, con
                                 ++value;
                         }
                         Q_strncpyz( vehicle, value, sizeof( vehicle ) );
+                        CG_ChopNewline( vehicle );
                         goto nextLine;
                 }
 
