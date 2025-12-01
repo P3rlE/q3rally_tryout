@@ -1043,15 +1043,23 @@ default:
 	trap_Cvar_SetValue ("capturelimit", Com_Clamp( 0, flaglimit, flaglimit ) );
 	trap_Cvar_SetValue( "g_friendlyfire", friendlyfire );
 	trap_Cvar_SetValue( "sv_pure", pure );
-	trap_Cvar_SetValue( "g_trackLength", Com_Clamp( 0, trackLength, 2 ) );
-	trap_Cvar_SetValue( "g_trackReversed", Com_Clamp( 0, reversed, 1 ) );
-	trap_Cvar_SetValue( "ui_racing_tracklength", Com_Clamp( 0, trackLength, 2 ) );
-	trap_Cvar_SetValue( "ui_racing_trackreversed", Com_Clamp( 0, reversed, 1 ) );
-	trap_Cvar_SetValue( "ui_ghostonly", s_serveroptions.ghostOnly.curvalue );
-	if ( s_serveroptions.gametype == GT_ELIMINATION ) {
-		trap_Cvar_SetValue( "ui_elimination_weapons", eliminationWeapons );
-		trap_Cvar_SetValue( "g_eliminationWeapons", eliminationWeapons );
-	}
+        trap_Cvar_SetValue( "g_trackLength", Com_Clamp( 0, trackLength, 2 ) );
+        trap_Cvar_SetValue( "g_trackReversed", Com_Clamp( 0, reversed, 1 ) );
+        trap_Cvar_SetValue( "ui_racing_tracklength", Com_Clamp( 0, trackLength, 2 ) );
+        trap_Cvar_SetValue( "ui_racing_trackreversed", Com_Clamp( 0, reversed, 1 ) );
+        trap_Cvar_SetValue( "ui_ghostonly", s_serveroptions.ghostOnly.curvalue );
+        if ( s_serveroptions.ghostOnly.curvalue ) {
+                int playbackValue;
+
+                playbackValue = s_serveroptions.ghostPlaybackRestore > 0 ? s_serveroptions.ghostPlaybackRestore : 1;
+                trap_Cvar_SetValue( "ui_ghostPlayback", playbackValue );
+        } else if ( s_serveroptions.ghostPlaybackStored ) {
+                trap_Cvar_SetValue( "ui_ghostPlayback", s_serveroptions.ghostPlaybackRestore );
+        }
+        if ( s_serveroptions.gametype == GT_ELIMINATION ) {
+                trap_Cvar_SetValue( "ui_elimination_weapons", eliminationWeapons );
+                trap_Cvar_SetValue( "g_eliminationWeapons", eliminationWeapons );
+        }
 	trap_Cvar_Set( "sv_hostname", s_serveroptions.hostname.field.buffer );
 
 	// the wait commands will allow the dedicated to take effect
@@ -1225,17 +1233,17 @@ static void ServerOptions_Event( void* ptr, int event ) {
                 trap_Cvar_SetValue( "ui_ghostonly", s_serveroptions.ghostOnly.curvalue );
                 if( s_serveroptions.ghostOnly.curvalue ) {
                         if ( !s_serveroptions.ghostPlaybackStored ) {
-                                s_serveroptions.ghostPlaybackRestore = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "cg_ghostPlayback" ) );
+                                s_serveroptions.ghostPlaybackRestore = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "ui_ghostPlayback" ) );
                                 s_serveroptions.ghostPlaybackStored = qtrue;
                         }
-                        trap_Cvar_SetValue( "cg_ghostPlayback", s_serveroptions.ghostPlaybackRestore > 0 ? s_serveroptions.ghostPlaybackRestore : 1 );
+                        trap_Cvar_SetValue( "ui_ghostPlayback", s_serveroptions.ghostPlaybackRestore > 0 ? s_serveroptions.ghostPlaybackRestore : 1 );
                         ServerOptions_InitPlayerItems();
                 }
                 else {
                         int restorePlayback;
 
                         restorePlayback = s_serveroptions.ghostPlaybackStored ? s_serveroptions.ghostPlaybackRestore : 0;
-                        trap_Cvar_SetValue( "cg_ghostPlayback", restorePlayback );
+                        trap_Cvar_SetValue( "ui_ghostPlayback", restorePlayback );
                         s_serveroptions.ghostPlaybackStored = qfalse;
                         ServerOptions_InitPlayerItems();
                         ServerOptions_InitBotNames();
@@ -1552,8 +1560,8 @@ static void ServerOptions_SetMenuItems( void ) {
 	s_serveroptions.trackLength.curvalue = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "ui_racing_tracklength" ) );
 	s_serveroptions.reversed.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_racing_trackreversed" ) );
 	s_serveroptions.ghostOnly.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_ghostonly" ) );
-	s_serveroptions.ghostPlaybackRestore = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "cg_ghostPlayback" ) );
-	s_serveroptions.ghostPlaybackStored = qtrue;
+		s_serveroptions.ghostPlaybackRestore = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "ui_ghostPlayback" ) );
+		s_serveroptions.ghostPlaybackStored = qtrue;
 
 	// set the map pic
 	Com_sprintf( picname, 64, "levelshots/%s", s_startserver.maplist[s_startserver.currentmap] );
@@ -1924,7 +1932,6 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.mappic );
 
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.botSkill );
-	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.ghostOnly );
 
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.player0 );
 	for( n = 0; n < PLAYER_SLOTS; n++ ) {
