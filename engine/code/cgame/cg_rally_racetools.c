@@ -378,8 +378,12 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
         char mapname[MAX_QPATH];
         char vehicle[MAX_QPATH];
         char path[MAX_QPATH];
-        int totalTime;
+        int bestLapTime;
+        int lapStartOffset;
+        int lapEndOffset;
         int i;
+        static ghostRecording_t lapRecording;
+        ghostFrame_t *previousFrame;
 
         if ( !cg.snap || cg.snap->ps.clientNum >= MAX_CLIENTS ) {
                 return;
@@ -397,12 +401,19 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
                 return;
         }
 
-        totalTime = finishTime - cg_entities[cg.snap->ps.clientNum].startRaceTime;
-        if ( totalTime <= 0 ) {
+        bestLapTime = cg_entities[cg.snap->ps.clientNum].bestLapTime;
+        if ( bestLapTime <= 0 ) {
                 return;
         }
 
-        if ( cg.personalGhostBestTime > 0 && totalTime >= cg.personalGhostBestTime ) {
+        lapStartOffset = cg_entities[cg.snap->ps.clientNum].bestLapStartTime - cg_entities[cg.snap->ps.clientNum].startRaceTime;
+        lapEndOffset = lapStartOffset + bestLapTime;
+
+        if ( lapStartOffset < 0 || lapEndOffset > cg.ghostRecording.duration ) {
+                return;
+        }
+
+        if ( cg.personalGhostBestTime > 0 && bestLapTime >= cg.personalGhostBestTime ) {
                 return;
         }
 
@@ -412,6 +423,103 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
         if ( !mapname[0] || !vehicle[0] ) {
                 return;
         }
+
+        memset( &lapRecording, 0, sizeof( lapRecording ) );
+        previousFrame = NULL;
+
+        for ( i = 0; i < cg.ghostRecording.frameCount; i++ ) {
+                int index = ( cg.ghostRecording.startIndex + i ) % MAX_GHOST_FRAMES;
+                ghostFrame_t *frame = &cg.ghostRecording.frames[index];
+                qboolean addedStartFromCurrent = qfalse;
+                int j;
+
+                if ( frame->timeOffset < lapStartOffset ) {
+                        previousFrame = frame;
+                        continue;
+                }
+
+                if ( lapRecording.frameCount == 0 ) {
+                        if ( previousFrame && previousFrame->timeOffset < lapStartOffset && frame->timeOffset > lapStartOffset ) {
+                                float lerp = (float)( lapStartOffset - previousFrame->timeOffset ) /
+                                        (float)( frame->timeOffset - previousFrame->timeOffset );
+                                ghostFrame_t *target = &lapRecording.frames[lapRecording.frameCount++];
+
+                                target->timeOffset = 0;
+                                for ( j = 0; j < 3; j++ ) {
+                                        target->origin[j] = previousFrame->origin[j] + lerp * ( frame->origin[j] - previousFrame->origin[j] );
+                                        target->angles[j] = previousFrame->angles[j] + lerp * AngleSubtract( frame->angles[j], previousFrame->angles[j] );
+                                        target->velocity[j] = previousFrame->velocity[j] + lerp * ( frame->velocity[j] - previousFrame->velocity[j] );
+                                }
+                                target->buttons = previousFrame->buttons;
+                                target->forwardmove = previousFrame->forwardmove;
+                                target->upmove = previousFrame->upmove;
+                        } else {
+                                ghostFrame_t *target = &lapRecording.frames[lapRecording.frameCount++];
+                                *target = *frame;
+                                target->timeOffset = frame->timeOffset - lapStartOffset;
+                                addedStartFromCurrent = qtrue;
+                        }
+                }
+
+                if ( lapRecording.frameCount >= MAX_GHOST_FRAMES ) {
+                        break;
+                }
+
+                if ( lapRecording.frameCount > 0 ) {
+                        if ( addedStartFromCurrent && frame->timeOffset == lapStartOffset ) {
+                                previousFrame = frame;
+                                continue;
+                        }
+
+                        if ( frame->timeOffset > lapEndOffset ) {
+                                if ( previousFrame && lapRecording.frameCount < MAX_GHOST_FRAMES ) {
+                                        ghostFrame_t *target = &lapRecording.frames[lapRecording.frameCount++];
+                                        float lerp = 0.0f;
+
+                                        if ( frame->timeOffset != previousFrame->timeOffset ) {
+                                                lerp = (float)( lapEndOffset - previousFrame->timeOffset ) /
+                                                        (float)( frame->timeOffset - previousFrame->timeOffset );
+                                        }
+
+                                        target->timeOffset = bestLapTime;
+                                        for ( j = 0; j < 3; j++ ) {
+                                                target->origin[j] = previousFrame->origin[j] + lerp * ( frame->origin[j] - previousFrame->origin[j] );
+                                                target->angles[j] = previousFrame->angles[j] + lerp * AngleSubtract( frame->angles[j], previousFrame->angles[j] );
+                                                target->velocity[j] = previousFrame->velocity[j] + lerp * ( frame->velocity[j] - previousFrame->velocity[j] );
+                                        }
+                                        target->buttons = lerp >= 0.5f ? frame->buttons : previousFrame->buttons;
+                                        target->forwardmove = lerp >= 0.5f ? frame->forwardmove : previousFrame->forwardmove;
+                                        target->upmove = lerp >= 0.5f ? frame->upmove : previousFrame->upmove;
+                                }
+                                break;
+                        }
+
+                        {
+                                ghostFrame_t *target = &lapRecording.frames[lapRecording.frameCount++];
+                                *target = *frame;
+                                target->timeOffset = frame->timeOffset - lapStartOffset;
+                        }
+                }
+
+                previousFrame = frame;
+        }
+
+        if ( lapRecording.frameCount > 0 && lapRecording.frames[lapRecording.frameCount - 1].timeOffset < bestLapTime && lapRecording.frameCount < MAX_GHOST_FRAMES ) {
+                ghostFrame_t *source = previousFrame ? previousFrame : &cg.ghostRecording.frames[cg.ghostRecording.startIndex];
+                ghostFrame_t *target = &lapRecording.frames[lapRecording.frameCount++];
+
+                *target = *source;
+                target->timeOffset = bestLapTime;
+        }
+
+        if ( lapRecording.frameCount <= 1 ) {
+                return;
+        }
+
+        lapRecording.startIndex = 0;
+        lapRecording.writeIndex = lapRecording.frameCount % MAX_GHOST_FRAMES;
+        lapRecording.duration = lapRecording.frames[lapRecording.frameCount - 1].timeOffset;
+        lapRecording.valid = qtrue;
 
         Com_sprintf( path, sizeof( path ), "ghosts/%s_%s.ghost", mapname, vehicle );
 
@@ -429,16 +537,16 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
                 Com_sprintf( header, sizeof( header ), "vehicle %s\n", vehicle );
                 trap_FS_Write( header, strlen( header ), file );
 
-                Com_sprintf( header, sizeof( header ), "best_time_ms %d\n", totalTime );
+                Com_sprintf( header, sizeof( header ), "best_time_ms %d\n", bestLapTime );
                 trap_FS_Write( header, strlen( header ), file );
 
-                Com_sprintf( header, sizeof( header ), "frames %d\n", cg.ghostRecording.frameCount );
+                Com_sprintf( header, sizeof( header ), "frames %d\n", lapRecording.frameCount );
                 trap_FS_Write( header, strlen( header ), file );
         }
 
-        for ( i = 0; i < cg.ghostRecording.frameCount; i++ ) {
-                int index = ( cg.ghostRecording.startIndex + i ) % MAX_GHOST_FRAMES;
-                ghostFrame_t *frame = &cg.ghostRecording.frames[index];
+        for ( i = 0; i < lapRecording.frameCount; i++ ) {
+                int index = ( lapRecording.startIndex + i ) % MAX_GHOST_FRAMES;
+                ghostFrame_t *frame = &lapRecording.frames[index];
                 char line[256];
 
                 Com_sprintf( line, sizeof( line ), "%d %f %f %f %f %f %f %f %f %f %d %d %d\n",
@@ -452,11 +560,47 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
 
         trap_FS_FCloseFile( file );
 
-        cg.ghostPlayback = cg.ghostRecording;
+        cg.ghostPlayback = lapRecording;
         cg.personalGhostAvailable = qtrue;
-        cg.personalGhostBestTime = totalTime;
+        cg.personalGhostBestTime = bestLapTime;
         Q_strncpyz( cg.personalGhostVehicle, vehicle, sizeof( cg.personalGhostVehicle ) );
         Q_strncpyz( cg.personalGhostPath, path, sizeof( cg.personalGhostPath ) );
+}
+
+static void CG_AddGhostWheels( clientInfo_t *ci, refEntity_t *body ) {
+        int i;
+        char tags[4][12] = { "tag_wheelfl", "tag_wheelfr", "tag_wheelrl", "tag_wheelrr" };
+
+        if ( !ci || !body || !body->hModel || !ci->wheelModel ) {
+                return;
+        }
+
+        for ( i = 0; i < 4; i++ ) {
+                refEntity_t wheel;
+                vec3_t wheelAngles;
+
+                if ( !CG_TagExists( body->hModel, tags[i] ) ) {
+                        continue;
+                }
+
+                memset( &wheel, 0, sizeof( wheel ) );
+                VectorClear( wheelAngles );
+
+                wheel.hModel = ci->wheelModel;
+                wheel.customSkin = CG_TagExists( wheel.hModel, "tag_polygonwheel" ) ? 0 : ci->wheelSkin;
+                wheel.shadowPlane = body->shadowPlane;
+                wheel.renderfx = body->renderfx;
+                VectorCopy( body->lightingOrigin, wheel.lightingOrigin );
+                wheel.shaderRGBA[0] = 255;
+                wheel.shaderRGBA[1] = 255;
+                wheel.shaderRGBA[2] = 255;
+                wheel.shaderRGBA[3] = 160;
+
+                AnglesToAxis( wheelAngles, wheel.axis );
+                CG_PositionRotatedEntityOnTag( &wheel, body, body->hModel, tags[i] );
+
+                trap_R_AddRefEntityToScene( &wheel );
+        }
 }
 
 void CG_AddGhostEntity( void ) {
@@ -518,11 +662,13 @@ void CG_AddGhostEntity( void ) {
 	ghost.renderfx = RF_LIGHTING_ORIGIN | RF_NOSHADOW;
 	AnglesToAxis( angles, ghost.axis );
 	ghost.shaderRGBA[0] = 255;
-	ghost.shaderRGBA[1] = 255;
-	ghost.shaderRGBA[2] = 255;
-	ghost.shaderRGBA[3] = 160;
+        ghost.shaderRGBA[1] = 255;
+        ghost.shaderRGBA[2] = 255;
+        ghost.shaderRGBA[3] = 160;
 
-	trap_R_AddRefEntityToScene( &ghost );
+        trap_R_AddRefEntityToScene( &ghost );
+
+        CG_AddGhostWheels( ci, &ghost );
 }
 
 
@@ -532,10 +678,11 @@ void CG_NewLapTime( int client, int lap, int time ) {
 
 	cent = &cg_entities[client];
 
-	if ((time - cent->startLapTime) < cent->bestLapTime || cent->bestLapTime == 0){
-		// New bestlap
-		cent->bestLapTime = (time - cent->startLapTime);
-		cent->bestLap = cent->currentLap;
+        if ((time - cent->startLapTime) < cent->bestLapTime || cent->bestLapTime == 0){
+                // New bestlap
+                cent->bestLapTime = (time - cent->startLapTime);
+                cent->bestLap = cent->currentLap;
+                cent->bestLapStartTime = cent->startLapTime;
 
 		if ( client == cg.snap->ps.clientNum ) {
 			t = getStringForTime( cent->bestLapTime );
@@ -555,11 +702,12 @@ void CG_FinishedRace( int client, int time ) {
 
 	cent = &cg_entities[client];
 
-	if ( client == cg.snap->ps.clientNum
-		&& ((time - cent->startLapTime) < cent->bestLapTime || cent->bestLapTime == 0) ){
-		// New bestlap
-		cent->bestLapTime = (time - cent->startLapTime);
-		cent->bestLap = cent->currentLap;
+        if ( client == cg.snap->ps.clientNum
+                && ((time - cent->startLapTime) < cent->bestLapTime || cent->bestLapTime == 0) ){
+                // New bestlap
+                cent->bestLapTime = (time - cent->startLapTime);
+                cent->bestLap = cent->currentLap;
+                cent->bestLapStartTime = cent->startLapTime;
 
 		t = getStringForTime( cent->bestLapTime );
 
@@ -590,14 +738,13 @@ void CG_StartRace( int time ) {
                 player = &cg_entities[i];
                 if (!player) continue;
 
-		if (!player->startRaceTime){
-			player->startRaceTime = time;
-			player->finishRaceTime = 0;
-			player->startLapTime = time;
-			player->currentLap = 1;
-			player->bestLapTime = 0;
-			player->lastStartLapTime = 0;
-                }
+                player->startRaceTime = time;
+                player->finishRaceTime = 0;
+                player->startLapTime = time;
+                player->currentLap = 1;
+                player->bestLapTime = 0;
+                player->bestLapStartTime = 0;
+                player->lastStartLapTime = 0;
         }
 
         CG_LoadPersonalGhost();
