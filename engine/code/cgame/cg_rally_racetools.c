@@ -382,7 +382,7 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
         int lapStartOffset;
         int lapEndOffset;
         int i;
-        ghostRecording_t lapRecording;
+        static ghostRecording_t lapRecording;
         ghostFrame_t *previousFrame;
 
         if ( !cg.snap || cg.snap->ps.clientNum >= MAX_CLIENTS ) {
