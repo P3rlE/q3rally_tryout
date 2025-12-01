@@ -843,6 +843,9 @@ typedef struct {
 	char				mapnamebuffer[32];
 	char				playerNameBuffers[PLAYER_SLOTS][16];
 
+	int					ghostPlaybackRestore;
+	qboolean			ghostPlaybackStored;
+
 	qboolean			newBot;
 	int					newBotIndex;
 	char				newBotName[16];
@@ -1221,9 +1224,19 @@ static void ServerOptions_Event( void* ptr, int event ) {
 
                 trap_Cvar_SetValue( "ui_ghostonly", s_serveroptions.ghostOnly.curvalue );
                 if( s_serveroptions.ghostOnly.curvalue ) {
+                        if ( !s_serveroptions.ghostPlaybackStored ) {
+                                s_serveroptions.ghostPlaybackRestore = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "cg_ghostPlayback" ) );
+                                s_serveroptions.ghostPlaybackStored = qtrue;
+                        }
+                        trap_Cvar_SetValue( "cg_ghostPlayback", s_serveroptions.ghostPlaybackRestore > 0 ? s_serveroptions.ghostPlaybackRestore : 1 );
                         ServerOptions_InitPlayerItems();
                 }
                 else {
+                        int restorePlayback;
+
+                        restorePlayback = s_serveroptions.ghostPlaybackStored ? s_serveroptions.ghostPlaybackRestore : 0;
+                        trap_Cvar_SetValue( "cg_ghostPlayback", restorePlayback );
+                        s_serveroptions.ghostPlaybackStored = qfalse;
                         ServerOptions_InitPlayerItems();
                         ServerOptions_InitBotNames();
                 }
@@ -1539,6 +1552,8 @@ static void ServerOptions_SetMenuItems( void ) {
 	s_serveroptions.trackLength.curvalue = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "ui_racing_tracklength" ) );
 	s_serveroptions.reversed.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_racing_trackreversed" ) );
 	s_serveroptions.ghostOnly.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_ghostonly" ) );
+	s_serveroptions.ghostPlaybackRestore = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "cg_ghostPlayback" ) );
+	s_serveroptions.ghostPlaybackStored = qtrue;
 
 	// set the map pic
 	Com_sprintf( picname, 64, "levelshots/%s", s_startserver.maplist[s_startserver.currentmap] );
