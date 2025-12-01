@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "cg_local.h"
 
-#define MAX_GHOST_FILE_SIZE ( 256 * 1024 )
+#define MAX_GHOST_FILE_SIZE ( 2 * 1024 * 1024 )
 
 static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime,
                 ghostRecording_t *target, int *bestTimeOut, char *vehicleOut, int vehicleOutSize, char *pathOut, int pathOutSize );
