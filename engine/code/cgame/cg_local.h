@@ -247,6 +247,8 @@ typedef struct centity_s {
 	int				lastStartLapTime;
 	int				bestLapTime;
 
+	int				bestLapStartTime;
+
 	int				positionChangeTime;
 	int				currentPosition;
 	int				currentLap;
