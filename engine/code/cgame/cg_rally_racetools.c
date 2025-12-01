@@ -431,6 +431,7 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
                 int index = ( cg.ghostRecording.startIndex + i ) % MAX_GHOST_FRAMES;
                 ghostFrame_t *frame = &cg.ghostRecording.frames[index];
                 qboolean addedStartFromCurrent = qfalse;
+                int j;
 
                 if ( frame->timeOffset < lapStartOffset ) {
                         previousFrame = frame;
@@ -444,7 +445,7 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
                                 ghostFrame_t *target = &lapRecording.frames[lapRecording.frameCount++];
 
                                 target->timeOffset = 0;
-                                for ( int j = 0; j < 3; j++ ) {
+                                for ( j = 0; j < 3; j++ ) {
                                         target->origin[j] = previousFrame->origin[j] + lerp * ( frame->origin[j] - previousFrame->origin[j] );
                                         target->angles[j] = previousFrame->angles[j] + lerp * AngleSubtract( frame->angles[j], previousFrame->angles[j] );
                                         target->velocity[j] = previousFrame->velocity[j] + lerp * ( frame->velocity[j] - previousFrame->velocity[j] );
@@ -481,7 +482,7 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
                                         }
 
                                         target->timeOffset = bestLapTime;
-                                        for ( int j = 0; j < 3; j++ ) {
+                                        for ( j = 0; j < 3; j++ ) {
                                                 target->origin[j] = previousFrame->origin[j] + lerp * ( frame->origin[j] - previousFrame->origin[j] );
                                                 target->angles[j] = previousFrame->angles[j] + lerp * AngleSubtract( frame->angles[j], previousFrame->angles[j] );
                                                 target->velocity[j] = previousFrame->velocity[j] + lerp * ( frame->velocity[j] - previousFrame->velocity[j] );
@@ -568,7 +569,7 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
 
 static void CG_AddGhostWheels( clientInfo_t *ci, refEntity_t *body ) {
         int i;
-        const char *tags[4] = { "tag_wheelfl", "tag_wheelfr", "tag_wheelrl", "tag_wheelrr" };
+        char tags[4][12] = { "tag_wheelfl", "tag_wheelfr", "tag_wheelrl", "tag_wheelrr" };
 
         if ( !ci || !body || !body->hModel || !ci->wheelModel ) {
                 return;
