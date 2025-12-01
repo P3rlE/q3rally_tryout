@@ -738,15 +738,13 @@ void CG_StartRace( int time ) {
                 player = &cg_entities[i];
                 if (!player) continue;
 
-                if (!player->startRaceTime){
-                        player->startRaceTime = time;
-                        player->finishRaceTime = 0;
-                        player->startLapTime = time;
-                        player->currentLap = 1;
-                        player->bestLapTime = 0;
-                        player->bestLapStartTime = 0;
-                        player->lastStartLapTime = 0;
-                }
+                player->startRaceTime = time;
+                player->finishRaceTime = 0;
+                player->startLapTime = time;
+                player->currentLap = 1;
+                player->bestLapTime = 0;
+                player->bestLapStartTime = 0;
+                player->lastStartLapTime = 0;
         }
 
         CG_LoadPersonalGhost();
