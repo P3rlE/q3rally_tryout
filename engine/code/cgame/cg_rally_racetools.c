@@ -618,6 +618,10 @@ void CG_AddGhostEntity( void ) {
                 return;
         }
 
+        if ( cg_ghostPlayback.integer == 1 && !cg.personalGhostAvailable ) {
+                CG_LoadPersonalGhost();
+        }
+
         recording = CG_GetActiveGhostRecording();
         if ( !recording || recording->frameCount <= 0 ) {
                 return;
@@ -627,7 +631,7 @@ void CG_AddGhostEntity( void ) {
                 return;
 	}
 
-	if ( !cg_entities[cg.snap->ps.clientNum].startLapTime ) {
+	if ( !cg_entities[cg.snap->ps.clientNum].startLapTime || cg_entities[cg.snap->ps.clientNum].finishRaceTime ) {
 		return;
 	}
 
