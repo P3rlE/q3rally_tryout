@@ -177,13 +177,23 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, con
         line = buffer;
 
         while ( line && *line ) {
-                if ( line[0] == '#' ) {
+                char *cursor = line;
+
+                while ( *cursor == ' ' || *cursor == '\t' ) {
+                        ++cursor;
+                }
+
+                if ( cursor[0] == '\xEF' && cursor[1] == '\xBB' && cursor[2] == '\xBF' ) {
+                        cursor += 3;
+                }
+
+                if ( cursor[0] == '#' ) {
                         goto nextLine;
                 }
 
-                if ( !Q_stricmpn( line, "map", 3 ) ) {
-                        const char *value = line + 3;
-                        while ( *value == ' ' ) {
+                if ( !Q_stricmpn( cursor, "map", 3 ) ) {
+                        const char *value = cursor + 3;
+                        while ( *value == ' ' || *value == '\t' ) {
                                 ++value;
                         }
                         Q_strncpyz( mapName, value, sizeof( mapName ) );
@@ -191,9 +201,9 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, con
                         goto nextLine;
                 }
 
-                if ( !Q_stricmpn( line, "vehicle", 7 ) ) {
-                        const char *value = line + 7;
-                        while ( *value == ' ' ) {
+                if ( !Q_stricmpn( cursor, "vehicle", 7 ) ) {
+                        const char *value = cursor + 7;
+                        while ( *value == ' ' || *value == '\t' ) {
                                 ++value;
                         }
                         Q_strncpyz( vehicle, value, sizeof( vehicle ) );
@@ -201,25 +211,25 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, con
                         goto nextLine;
                 }
 
-                if ( !Q_stricmpn( line, "best_time_ms", 12 ) ) {
-                        const char *value = line + 12;
-                        while ( *value == ' ' ) {
+                if ( !Q_stricmpn( cursor, "best_time_ms", 12 ) ) {
+                        const char *value = cursor + 12;
+                        while ( *value == ' ' || *value == '\t' ) {
                                 ++value;
                         }
                         bestTimeMs = atoi( value );
                         goto nextLine;
                 }
 
-                if ( !Q_stricmpn( line, "frames", 6 ) ) {
-                        const char *value = line + 6;
-                        while ( *value == ' ' ) {
+                if ( !Q_stricmpn( cursor, "frames", 6 ) ) {
+                        const char *value = cursor + 6;
+                        while ( *value == ' ' || *value == '\t' ) {
                                 ++value;
                         }
                         expectedFrames = atoi( value );
                         goto nextLine;
                 }
 
-                if ( expectedFrames > 0 ) {
+                if ( expectedFrames > 0 || ( *cursor && ( ( cursor[0] >= '0' && cursor[0] <= '9' ) || cursor[0] == '-' ) ) ) {
                         ghostFrame_t *frame;
                         float ox, oy, oz;
                         float ax, ay, az;
