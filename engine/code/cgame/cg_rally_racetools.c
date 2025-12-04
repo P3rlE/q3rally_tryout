@@ -108,6 +108,7 @@ void CG_LoadPersonalGhost( void ) {
         char mapname[MAX_QPATH];
         char vehicle[MAX_QPATH];
         char path[MAX_QPATH];
+        char basepath[MAX_QPATH];
 
         if ( !cg.snap || cg.snap->ps.clientNum >= MAX_CLIENTS ) {
                 return;
@@ -129,7 +130,8 @@ void CG_LoadPersonalGhost( void ) {
                 return;
         }
 
-        Com_sprintf( path, sizeof( path ), "ghosts/%s_%s.ghost", mapname, vehicle );
+        trap_Cvar_VariableStringBuffer("fs_basepath", basepath, sizeof(basepath));
+        Com_sprintf( path, sizeof( path ), "%s/baseq3r/ghosts/%s_%s.ghost", basepath, mapname, vehicle );
 
         if ( CG_LoadGhostFile( path, mapname, vehicle, 0, &cg.ghostPlayback, &cg.personalGhostBestTime, cg.personalGhostVehicle, sizeof( cg.personalGhostVehicle ), cg.personalGhostPath, sizeof( cg.personalGhostPath ) ) ) {
                 cg.personalGhostAvailable = qtrue;

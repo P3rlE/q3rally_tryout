@@ -20,3 +20,5 @@ Cygwin64 Terminal.lnk
 __pycache__/
 .pytest_cache/
 build.log
+*.log
+test_parser3
