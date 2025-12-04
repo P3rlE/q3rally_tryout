@@ -144,7 +144,7 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, con
         char mapName[MAX_QPATH] = "";
         char vehicle[MAX_QPATH] = "";
         int bestTimeMs = 0;
-        int expectedFrames = 0;
+//        int expectedFrames = 0;
         int frameCount = 0;
         int lastOffset = 0;
 
@@ -221,15 +221,10 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, con
                 }
 
                 if ( !Q_stricmpn( cursor, "frames", 6 ) ) {
-                        const char *value = cursor + 6;
-                        while ( *value == ' ' || *value == '\t' ) {
-                                ++value;
-                        }
-                        expectedFrames = atoi( value );
                         goto nextLine;
                 }
 
-                if ( expectedFrames > 0 || ( *cursor && ( ( cursor[0] >= '0' && cursor[0] <= '9' ) || cursor[0] == '-' ) ) ) {
+                if ( *cursor && ( ( cursor[0] >= '0' && cursor[0] <= '9' ) || cursor[0] == '-' ) ) {
                         ghostFrame_t *frame;
                         float ox, oy, oz;
                         float ax, ay, az;
