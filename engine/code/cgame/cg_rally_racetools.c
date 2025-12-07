@@ -174,87 +174,86 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, con
         buffer[length] = '\0';
         trap_FS_FCloseFile( file );
 
-        line = buffer;
+		line = buffer;
 
-        while ( line && *line ) {
-                char *cursor = line;
+		while ( line && *line ) {
+			char *cursor = line;
 
-                while ( *cursor == ' ' || *cursor == '\t' ) {
-                        ++cursor;
-                }
+			while ( *cursor == ' ' || *cursor == '\t' ) {
+				++cursor;
+			}
 
-                if ( cursor[0] == '\xEF' && cursor[1] == '\xBB' && cursor[2] == '\xBF' ) {
-                        cursor += 3;
-                }
+			if ( cursor[0] == '\xEF' && cursor[1] == '\xBB' && cursor[2] == '\xBF' ) {
+				cursor += 3;
+			}
 
-                if ( cursor[0] == '#' ) {
-                        goto nextLine;
-                }
+			if ( cursor[0] == '\0' || cursor[0] == '#' ) {
+				goto nextLine;
+			}
 
-                if ( !Q_stricmpn( cursor, "map", 3 ) ) {
-                        const char *value = cursor + 3;
-                        while ( *value == ' ' || *value == '\t' ) {
-                                ++value;
-                        }
-                        Q_strncpyz( mapName, value, sizeof( mapName ) );
-                        CG_ChopNewline( mapName );
-                        goto nextLine;
-                }
+			if ( !Q_stricmpn( cursor, "map", 3 ) ) {
+				const char *value = cursor + 3;
+				while ( *value == ' ' || *value == '\t' ) {
+					++value;
+				}
+				Q_strncpyz( mapName, value, sizeof( mapName ) );
+				CG_ChopNewline( mapName );
+				goto nextLine;
+			}
 
-                if ( !Q_stricmpn( cursor, "vehicle", 7 ) ) {
-                        const char *value = cursor + 7;
-                        while ( *value == ' ' || *value == '\t' ) {
-                                ++value;
-                        }
-                        Q_strncpyz( vehicle, value, sizeof( vehicle ) );
-                        CG_ChopNewline( vehicle );
-                        goto nextLine;
-                }
+			if ( !Q_stricmpn( cursor, "vehicle", 7 ) ) {
+				const char *value = cursor + 7;
+				while ( *value == ' ' || *value == '\t' ) {
+					++value;
+				}
+				Q_strncpyz( vehicle, value, sizeof( vehicle ) );
+				CG_ChopNewline( vehicle );
+				goto nextLine;
+			}
 
-                if ( !Q_stricmpn( cursor, "best_time_ms", 12 ) ) {
-                        const char *value = cursor + 12;
-                        while ( *value == ' ' || *value == '\t' ) {
-                                ++value;
-                        }
-                        bestTimeMs = atoi( value );
-                        goto nextLine;
-                }
+			if ( !Q_stricmpn( cursor, "best_time_ms", 12 ) ) {
+				const char *value = cursor + 12;
+				while ( *value == ' ' || *value == '\t' ) {
+					++value;
+				}
+				bestTimeMs = atoi( value );
+				goto nextLine;
+			}
 
-                if ( !Q_stricmpn( cursor, "frames", 6 ) ) {
-                        goto nextLine;
-                }
+			if ( !Q_stricmpn( cursor, "frames", 6 ) ) {
+				goto nextLine;
+			}
 
-                if ( *cursor && ( ( cursor[0] >= '0' && cursor[0] <= '9' ) || cursor[0] == '-' ) ) {
-                        ghostFrame_t *frame;
-                        float ox, oy, oz;
-                        float ax, ay, az;
-                        float vx, vy, vz;
-                        int buttons, forwardmove, upmove;
-                        int parsed;
+			if ( ( cursor[0] >= '0' && cursor[0] <= '9' ) || cursor[0] == '-' ) {
+				ghostFrame_t *frame;
+				float ox, oy, oz;
+				float ax, ay, az;
+				float vx, vy, vz;
+				int buttons, forwardmove, upmove;
+				int parsed;
 
-                        if ( frameCount >= MAX_GHOST_FRAMES ) {
-                                goto nextLine;
-                        }
+				if ( frameCount >= MAX_GHOST_FRAMES ) {
+					goto nextLine;
+				}
 
-                        frame = &target->frames[frameCount];
-                        parsed = sscanf( line, "%d %f %f %f %f %f %f %f %f %f %d %d %d",
-                                &frame->timeOffset, &ox, &oy, &oz,
-                                &ax, &ay, &az,
-                                &vx, &vy, &vz,
-                                &buttons, &forwardmove, &upmove );
+				frame = &target->frames[frameCount];
+				parsed = sscanf( cursor, "%d %f %f %f %f %f %f %f %f %f %d %d %d",
+									&frame->timeOffset, &ox, &oy, &oz,
+									&ax, &ay, &az,
+									&vx, &vy, &vz,
+									&buttons, &forwardmove, &upmove );
 
-                        if ( parsed == 13 ) {
-                                VectorSet( frame->origin, ox, oy, oz );
-                                VectorSet( frame->angles, ax, ay, az );
-                                VectorSet( frame->velocity, vx, vy, vz );
-                                frame->buttons = buttons;
-                                frame->forwardmove = forwardmove;
-                                frame->upmove = upmove;
-                                lastOffset = frame->timeOffset;
-                                frameCount++;
-                        }
-                }
-
+				if ( parsed == 13 ) {
+					VectorSet( frame->origin, ox, oy, oz );
+					VectorSet( frame->angles, ax, ay, az );
+					VectorSet( frame->velocity, vx, vy, vz );
+					frame->buttons = buttons;
+					frame->forwardmove = forwardmove;
+					frame->upmove = upmove;
+					lastOffset = frame->timeOffset;
+					frameCount++;
+				}
+			}
 nextLine:
                 if ( !line ) {
                         break;
