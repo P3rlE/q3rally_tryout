@@ -791,7 +791,7 @@ void CG_AddGhostEntity( void ) {
         ghost.customSkin = ci->bodySkin;
         VectorCopy( origin, ghost.origin );
         VectorCopy( origin, ghost.lightingOrigin );
-        ghost.renderfx = RF_LIGHTING_ORIGIN | RF_NOSHADOW;
+        ghost.renderfx = RF_LIGHTING_ORIGIN | RF_NOSHADOW | RF_ALPHA_RENDER;
         AnglesToAxis( angles, ghost.axis );
         ghost.shaderRGBA[0] = 255;
         ghost.shaderRGBA[1] = 255;
