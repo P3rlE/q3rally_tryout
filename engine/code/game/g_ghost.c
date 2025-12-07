@@ -60,6 +60,14 @@ static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, ghos
         char *lineEnd = cursor;
         char savedChar;
 
+        while ( *cursor == ' ' || *cursor == '\t' ) {
+            ++cursor;
+        }
+
+        if ( cursor[0] == '\xEF' && cursor[1] == '\xBB' && cursor[2] == '\xBF' ) {
+            cursor += 3;
+        }
+
         while ( *lineEnd && *lineEnd != '\n' && *lineEnd != '\r' ) {
             ++lineEnd;
         }
@@ -67,22 +75,24 @@ static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, ghos
         savedChar = *lineEnd;
         *lineEnd = '\0';
 
-        if ( !Q_stricmpn( cursor, "map", 3 ) ) {
+        if ( cursor[0] == '#' || cursor[0] == '\0' ) {
+            // skip comments or empty lines
+        } else if ( !Q_stricmpn( cursor, "map", 3 ) ) {
             const char *value = cursor + 3;
-            while ( *value == ' ' ) {
+            while ( *value == ' ' || *value == '\t' ) {
                 ++value;
             }
             Q_strncpyz( mapName, value, sizeof( mapName ) );
         } else if ( !Q_stricmpn( cursor, "vehicle", 7 ) ) {
             const char *value = cursor + 7;
-            while ( *value == ' ' ) {
+            while ( *value == ' ' || *value == '\t' ) {
                 ++value;
             }
             Q_strncpyz( outRecord->vehicleClass, value, sizeof( outRecord->vehicleClass ) );
             hasVehicle = outRecord->vehicleClass[0] != '\0';
         } else if ( !Q_stricmpn( cursor, "best_time_ms", 12 ) ) {
             const char *value = cursor + 12;
-            while ( *value == ' ' ) {
+            while ( *value == ' ' || *value == '\t' ) {
                 ++value;
             }
             outRecord->bestTimeMs = G_Ghost_ParseInt( value );
