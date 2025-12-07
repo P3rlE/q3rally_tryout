@@ -28,6 +28,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime,
                 ghostRecording_t *target, int *bestTimeOut, char *vehicleOut, int vehicleOutSize, char *pathOut, int pathOutSize );
 
+static void QDECL CG_GhostDebugPrint( const char *fmt, ... ) {
+	va_list argptr;
+	char text[1024];
+
+	if ( !cg_ghostDebug.integer ) {
+		return;
+	}
+
+	va_start( argptr, fmt );
+	Q_vsnprintf( text, sizeof( text ), fmt, argptr );
+	va_end( argptr );
+
+	CG_Printf( "CG_GhostDebug: %s\n", text );
+}
+
 static void CG_ChopNewline( char *value ) {
 	char *cursor;
 
@@ -136,176 +151,204 @@ void CG_LoadPersonalGhost( void ) {
         }
 }
 
+
 static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime, ghostRecording_t *target, int *bestTimeOut, char *vehicleOut, int vehicleOutSize, char *pathOut, int pathOutSize ) {
-        fileHandle_t file;
-        int length;
-        static char buffer[MAX_GHOST_FILE_SIZE+1];
-        char *line;
-        char mapName[MAX_QPATH] = "";
-        char vehicle[MAX_QPATH] = "";
-        int bestTimeMs = 0;
-//        int expectedFrames = 0;
-        int frameCount = 0;
-        int lastOffset = 0;
+	fileHandle_t file;
+	int length;
+	static char buffer[MAX_GHOST_FILE_SIZE+1];
+	char *line;
+	char mapName[MAX_QPATH] = "";
+	char vehicle[MAX_QPATH] = "";
+	int bestTimeMs = 0;
+//	int expectedFrames = 0;
+	int frameCount = 0;
+	int lastOffset = 0;
+	int lineNumber = 1;
 
-        if ( !target ) {
-                return qfalse;
-        }
+	if ( !target ) {
+		return qfalse;
+	}
 
-        memset( target, 0, sizeof( *target ) );
+	memset( target, 0, sizeof( *target ) );
 
-        if ( !path || !path[0] ) {
-                return qfalse;
-        }
+	if ( !path || !path[0] ) {
+		return qfalse;
+	}
 
-        length = trap_FS_FOpenFile( path, &file, FS_READ );
-        if ( length <= 0 ) {
-                CG_Printf( "CG_Ghost: could not open %s\n", path );
-                return qfalse;
-        }
+	length = trap_FS_FOpenFile( path, &file, FS_READ );
+	if ( length <= 0 ) {
+		CG_Printf( "CG_Ghost: could not open %s\n", path );
+		return qfalse;
+	}
 
-        if ( length > MAX_GHOST_FILE_SIZE ) {
-                trap_FS_FCloseFile( file );
-                CG_Printf( "CG_Ghost: %s too large (%d bytes)\n", path, length );
-                return qfalse;
-        }
+	if ( length > MAX_GHOST_FILE_SIZE ) {
+		trap_FS_FCloseFile( file );
+		CG_Printf( "CG_Ghost: %s too large (%d bytes)\n", path, length );
+		return qfalse;
+	}
 
-        trap_FS_Read( buffer, length, file );
-        buffer[length] = '\0';
-        trap_FS_FCloseFile( file );
+	trap_FS_Read( buffer, length, file );
+	buffer[length] = '\0';
+	trap_FS_FCloseFile( file );
 
-		line = buffer;
+	CG_GhostDebugPrint( "Loading ghost '%s' (expected map='%s' vehicle='%s')", path, expectedMap ? expectedMap : "", expectedVehicle ? expectedVehicle : "" );
 
-		while ( line && *line ) {
-			char *cursor = line;
+	line = buffer;
 
-			while ( *cursor == ' ' || *cursor == '\t' ) {
-				++cursor;
+	while ( line && *line ) {
+		char *cursor = line;
+		char preview[256];
+
+		while ( *cursor == ' ' || *cursor == '\t' ) {
+			++cursor;
+		}
+
+		if ( cursor[0] == '\xEF' && cursor[1] == '\xBB' && cursor[2] == '\xBF' ) {
+			cursor += 3;
+		}
+
+		Q_strncpyz( preview, cursor, sizeof( preview ) );
+		CG_ChopNewline( preview );
+
+		if ( cg_ghostDebug.integer >= 2 ) {
+			CG_GhostDebugPrint( "%s line %d: %s", path, lineNumber, preview );
+		}
+
+		if ( cursor[0] == '\0' || cursor[0] == '#' ) {
+			goto nextLine;
+		}
+
+		if ( !Q_stricmpn( cursor, "map", 3 ) ) {
+			const char *value = cursor + 3;
+			while ( *value == ' ' || *value == '\t' ) {
+				++value;
 			}
+			Q_strncpyz( mapName, value, sizeof( mapName ) );
+			CG_ChopNewline( mapName );
+			CG_GhostDebugPrint( "%s line %d: map set to '%s'", path, lineNumber, mapName );
+			goto nextLine;
+		}
 
-			if ( cursor[0] == '\xEF' && cursor[1] == '\xBB' && cursor[2] == '\xBF' ) {
-				cursor += 3;
+		if ( !Q_stricmpn( cursor, "vehicle", 7 ) ) {
+			const char *value = cursor + 7;
+			while ( *value == ' ' || *value == '\t' ) {
+				++value;
 			}
+			Q_strncpyz( vehicle, value, sizeof( vehicle ) );
+			CG_ChopNewline( vehicle );
+			CG_GhostDebugPrint( "%s line %d: vehicle set to '%s'", path, lineNumber, vehicle );
+			goto nextLine;
+		}
 
-			if ( cursor[0] == '\0' || cursor[0] == '#' ) {
+		if ( !Q_stricmpn( cursor, "best_time_ms", 12 ) ) {
+			const char *value = cursor + 12;
+			while ( *value == ' ' || *value == '\t' ) {
+				++value;
+			}
+			bestTimeMs = atoi( value );
+			CG_GhostDebugPrint( "%s line %d: best_time_ms set to %d", path, lineNumber, bestTimeMs );
+			goto nextLine;
+		}
+
+		if ( !Q_stricmpn( cursor, "frames", 6 ) ) {
+			goto nextLine;
+		}
+
+		if ( ( cursor[0] >= '0' && cursor[0] <= '9' ) || cursor[0] == '-' ) {
+			ghostFrame_t *frame;
+			float ox, oy, oz;
+			float ax, ay, az;
+			float vx, vy, vz;
+			int buttons, forwardmove, upmove;
+			int parsed;
+
+			if ( frameCount >= MAX_GHOST_FRAMES ) {
 				goto nextLine;
 			}
 
-			if ( !Q_stricmpn( cursor, "map", 3 ) ) {
-				const char *value = cursor + 3;
-				while ( *value == ' ' || *value == '\t' ) {
-					++value;
+			frame = &target->frames[frameCount];
+			parsed = sscanf( cursor, "%d %f %f %f %f %f %f %f %f %f %d %d %d",
+							&frame->timeOffset, &ox, &oy, &oz,
+							&ax, &ay, &az,
+							&vx, &vy, &vz,
+							&buttons, &forwardmove, &upmove );
+
+			if ( parsed == 13 ) {
+				VectorSet( frame->origin, ox, oy, oz );
+				VectorSet( frame->angles, ax, ay, az );
+				VectorSet( frame->velocity, vx, vy, vz );
+				frame->buttons = buttons;
+				frame->forwardmove = forwardmove;
+				frame->upmove = upmove;
+				lastOffset = frame->timeOffset;
+				frameCount++;
+
+				if ( cg_ghostDebug.integer >= 2 || ( cg_ghostDebug.integer && frameCount <= 5 ) ) {
+					CG_GhostDebugPrint( "%s line %d: frame %d offset %d pos(%.3f %.3f %.3f) ang(%.3f %.3f %.3f) vel(%.3f %.3f %.3f)",
+						path, lineNumber, frameCount, frame->timeOffset,
+						frame->origin[0], frame->origin[1], frame->origin[2],
+						frame->angles[0], frame->angles[1], frame->angles[2],
+						frame->velocity[0], frame->velocity[1], frame->velocity[2] );
 				}
-				Q_strncpyz( mapName, value, sizeof( mapName ) );
-				CG_ChopNewline( mapName );
-				goto nextLine;
+			} else {
+				CG_GhostDebugPrint( "%s line %d: could not parse frame (fields=%d) from '%s'",
+					path, lineNumber, parsed, preview );
 			}
-
-			if ( !Q_stricmpn( cursor, "vehicle", 7 ) ) {
-				const char *value = cursor + 7;
-				while ( *value == ' ' || *value == '\t' ) {
-					++value;
-				}
-				Q_strncpyz( vehicle, value, sizeof( vehicle ) );
-				CG_ChopNewline( vehicle );
-				goto nextLine;
-			}
-
-			if ( !Q_stricmpn( cursor, "best_time_ms", 12 ) ) {
-				const char *value = cursor + 12;
-				while ( *value == ' ' || *value == '\t' ) {
-					++value;
-				}
-				bestTimeMs = atoi( value );
-				goto nextLine;
-			}
-
-			if ( !Q_stricmpn( cursor, "frames", 6 ) ) {
-				goto nextLine;
-			}
-
-			if ( ( cursor[0] >= '0' && cursor[0] <= '9' ) || cursor[0] == '-' ) {
-				ghostFrame_t *frame;
-				float ox, oy, oz;
-				float ax, ay, az;
-				float vx, vy, vz;
-				int buttons, forwardmove, upmove;
-				int parsed;
-
-				if ( frameCount >= MAX_GHOST_FRAMES ) {
-					goto nextLine;
-				}
-
-				frame = &target->frames[frameCount];
-				parsed = sscanf( cursor, "%d %f %f %f %f %f %f %f %f %f %d %d %d",
-									&frame->timeOffset, &ox, &oy, &oz,
-									&ax, &ay, &az,
-									&vx, &vy, &vz,
-									&buttons, &forwardmove, &upmove );
-
-				if ( parsed == 13 ) {
-					VectorSet( frame->origin, ox, oy, oz );
-					VectorSet( frame->angles, ax, ay, az );
-					VectorSet( frame->velocity, vx, vy, vz );
-					frame->buttons = buttons;
-					frame->forwardmove = forwardmove;
-					frame->upmove = upmove;
-					lastOffset = frame->timeOffset;
-					frameCount++;
-				}
-			}
+		}
 nextLine:
-                if ( !line ) {
-                        break;
-                }
+		if ( !line ) {
+			break;
+		}
 
-                while ( *line && *line != '\n' && *line != '\r' ) {
-                        line++;
-                }
+		while ( *line && *line != '\n' && *line != '\r' ) {
+			line++;
+		}
 
-                while ( *line == '\n' || *line == '\r' ) {
-                        *line = '\0';
-                        line++;
-                }
-        }
+		while ( *line == '\n' || *line == '\r' ) {
+			*line = '\0';
+			line++;
+		}
 
+		lineNumber++;
+	}
 
-        if ( expectedMap && expectedMap[0] && mapName[0] && Q_stricmp( expectedMap, mapName ) ) {
-                        CG_Printf( "CG_Ghost: %s map '%s' does not match '%s'\n", path, mapName, expectedMap );
-                        return qfalse;
-        }
+	CG_GhostDebugPrint( "%s summary: map='%s' vehicle='%s' frames=%d duration=%d bestTimeMs=%d", path, mapName, vehicle, frameCount, lastOffset, bestTimeMs );
 
-        if ( expectedVehicle && expectedVehicle[0] && vehicle[0] && Q_stricmp( expectedVehicle, vehicle ) ) {
-                CG_Printf( "CG_Ghost: %s vehicle '%s' does not match '%s'\n", path, vehicle, expectedVehicle );
-                return qfalse;
-        }
+	if ( expectedMap && expectedMap[0] && mapName[0] && Q_stricmp( expectedMap, mapName ) ) {
+			CG_Printf( "CG_Ghost: %s map '%s' does not match '%s'\n", path, mapName, expectedMap );
+			return qfalse;
+	}
 
-        if ( frameCount <= 1 ) {
-                CG_Printf( "CG_Ghost: %s has no usable frames\n", path );
-                return qfalse;
-        }
+	if ( expectedVehicle && expectedVehicle[0] && vehicle[0] && Q_stricmp( expectedVehicle, vehicle ) ) {
+		CG_Printf( "CG_Ghost: %s vehicle '%s' does not match '%s'\n", path, vehicle, expectedVehicle );
+		return qfalse;
+	}
 
-        target->frameCount = frameCount;
-        target->startIndex = 0;
-        target->writeIndex = frameCount % MAX_GHOST_FRAMES;
-        target->duration = lastOffset;
-        target->valid = qtrue;
+	if ( frameCount <= 1 ) {
+		CG_Printf( "CG_Ghost: %s has no usable frames\n", path );
+		return qfalse;
+	}
 
-        if ( bestTimeOut ) {
-                *bestTimeOut = declaredBestTime > 0 ? declaredBestTime : bestTimeMs;
-        }
+	target->frameCount = frameCount;
+	target->startIndex = 0;
+	target->writeIndex = frameCount % MAX_GHOST_FRAMES;
+	target->duration = lastOffset;
+	target->valid = qtrue;
 
-        if ( vehicleOut && vehicleOutSize > 0 ) {
-                Q_strncpyz( vehicleOut, vehicle[0] ? vehicle : expectedVehicle, vehicleOutSize );
-        }
+	if ( bestTimeOut ) {
+		*bestTimeOut = declaredBestTime > 0 ? declaredBestTime : bestTimeMs;
+	}
 
-        if ( pathOut && pathOutSize > 0 ) {
-                Q_strncpyz( pathOut, path, pathOutSize );
-        }
+	if ( vehicleOut && vehicleOutSize > 0 ) {
+		Q_strncpyz( vehicleOut, vehicle[0] ? vehicle : expectedVehicle, vehicleOutSize );
+	}
 
-        return qtrue;
+	if ( pathOut && pathOutSize > 0 ) {
+		Q_strncpyz( pathOut, path, pathOutSize );
+	}
+
+	return qtrue;
 }
-
 qboolean CG_LoadGhostFromFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime ) {
         CG_ResetBaseGhost();
 
