@@ -788,20 +788,12 @@ void CG_AddGhostEntity( void ) {
 	ghostAlpha = CG_GetGhostAlpha();
 
         memset( &ghost, 0, sizeof( ghost ) );
-<<<<<<< HEAD
-        ghost.hModel = ci->bodyModel;
-        ghost.customSkin = ci->bodySkin;
-        VectorCopy( origin, ghost.origin );
-        VectorCopy( origin, ghost.lightingOrigin );
-        ghost.renderfx = RF_LIGHTING_ORIGIN | RF_NOSHADOW | RF_ALPHA_RENDER;
-=======
 	ghost.hModel = ci->bodyModel;
 	ghost.customSkin = ci->bodySkin;
 	ghost.customShader = cgs.media.ghostShader;
 	VectorCopy( origin, ghost.origin );
 	VectorCopy( origin, ghost.lightingOrigin );
         ghost.renderfx = RF_LIGHTING_ORIGIN | RF_NOSHADOW;
->>>>>>> de186bf91e4dd1ec9ea1ead2529aeb5e5d4a06c4
         AnglesToAxis( angles, ghost.axis );
         ghost.shaderRGBA[0] = 255;
         ghost.shaderRGBA[1] = 255;
