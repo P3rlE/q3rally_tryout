@@ -686,7 +686,13 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
         Q_strncpyz( cg.personalGhostPath, path, sizeof( cg.personalGhostPath ) );
 }
 
-static void CG_AddGhostWheels( clientInfo_t *ci, refEntity_t *body ) {
+static byte CG_GetGhostAlpha( void ) {
+	trap_Cvar_Update( &cg_ghostAlpha );
+
+	return (byte)Com_Clamp( 0, 255, cg_ghostAlpha.integer );
+}
+
+static void CG_AddGhostWheels( clientInfo_t *ci, refEntity_t *body, int ghostAlpha ) {
         int i;
         char tags[4][12] = { "tag_wheelfl", "tag_wheelfr", "tag_wheelrl", "tag_wheelrr" };
 
@@ -713,7 +719,7 @@ static void CG_AddGhostWheels( clientInfo_t *ci, refEntity_t *body ) {
                 wheel.shaderRGBA[0] = 255;
                 wheel.shaderRGBA[1] = 255;
                 wheel.shaderRGBA[2] = 255;
-                wheel.shaderRGBA[3] = 160;
+                wheel.shaderRGBA[3] = ghostAlpha;
 
                 AnglesToAxis( wheelAngles, wheel.axis );
                 CG_PositionRotatedEntityOnTag( &wheel, body, body->hModel, tags[i] );
@@ -731,7 +737,8 @@ void CG_AddGhostEntity( void ) {
         clientInfo_t *ci;
         vec3_t origin;
         vec3_t angles;
-        int i;
+	int i;
+	byte ghostAlpha;
 
         if ( cg_ghostPlayback.integer <= 0 ) {
                 return;
@@ -772,26 +779,28 @@ void CG_AddGhostEntity( void ) {
 		return;
 	}
 
-	for ( i = 0; i < 3; i++ ) {
-		origin[i] = from->origin[i] + lerp * ( to->origin[i] - from->origin[i] );
-		angles[i] = from->angles[i] + lerp * AngleSubtract( to->angles[i], from->angles[i] );
-	}
+        for ( i = 0; i < 3; i++ ) {
+                origin[i] = from->origin[i] + lerp * ( to->origin[i] - from->origin[i] );
+                angles[i] = from->angles[i] + lerp * AngleSubtract( to->angles[i], from->angles[i] );
+        }
 
-	memset( &ghost, 0, sizeof( ghost ) );
-	ghost.hModel = ci->bodyModel;
-	ghost.customSkin = ci->bodySkin;
-	VectorCopy( origin, ghost.origin );
-	VectorCopy( origin, ghost.lightingOrigin );
-	ghost.renderfx = RF_LIGHTING_ORIGIN | RF_NOSHADOW;
-	AnglesToAxis( angles, ghost.axis );
-	ghost.shaderRGBA[0] = 255;
+	ghostAlpha = CG_GetGhostAlpha();
+
+        memset( &ghost, 0, sizeof( ghost ) );
+        ghost.hModel = ci->bodyModel;
+        ghost.customSkin = ci->bodySkin;
+        VectorCopy( origin, ghost.origin );
+        VectorCopy( origin, ghost.lightingOrigin );
+        ghost.renderfx = RF_LIGHTING_ORIGIN | RF_NOSHADOW;
+        AnglesToAxis( angles, ghost.axis );
+        ghost.shaderRGBA[0] = 255;
         ghost.shaderRGBA[1] = 255;
         ghost.shaderRGBA[2] = 255;
-        ghost.shaderRGBA[3] = 160;
+        ghost.shaderRGBA[3] = ghostAlpha;
 
         trap_R_AddRefEntityToScene( &ghost );
 
-        CG_AddGhostWheels( ci, &ghost );
+        CG_AddGhostWheels( ci, &ghost, ghostAlpha );
 }
 
 
