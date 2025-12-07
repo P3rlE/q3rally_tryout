@@ -1118,6 +1118,7 @@ static void CG_RegisterGraphics( void ) {
 // Q3Rally Code END
 	cgs.media.battleWeaponShader = trap_R_RegisterShader("powerups/battleWeapon" );
 	cgs.media.invisShader = trap_R_RegisterShader("powerups/invisibility" );
+	cgs.media.ghostShader = trap_R_RegisterShader("gfx/ghost/vehicle" );
 	cgs.media.regenShader = trap_R_RegisterShader("powerups/regen" );
 
 #ifdef MISSIONPACK
