@@ -1541,6 +1541,7 @@ extern	vmCvar_t		cg_debugpredict;
 extern	vmCvar_t		cg_engineSounds;
 extern	vmCvar_t		cg_ghostPlayback;
 extern	vmCvar_t		cg_ghostDebug;
+extern	vmCvar_t		cg_ghostAlpha;
 extern  vmCvar_t                cg_useFuel;
 
 extern  vmCvar_t                cg_fuelWarningLevel;
