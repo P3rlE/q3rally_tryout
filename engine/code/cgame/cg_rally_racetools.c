@@ -686,6 +686,12 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
         Q_strncpyz( cg.personalGhostPath, path, sizeof( cg.personalGhostPath ) );
 }
 
+static byte CG_GetGhostAlpha( void ) {
+	trap_Cvar_Update( &cg_ghostAlpha );
+
+	return (byte)Com_Clamp( 0, 255, cg_ghostAlpha.integer );
+}
+
 static void CG_AddGhostWheels( clientInfo_t *ci, refEntity_t *body, int ghostAlpha ) {
         int i;
         char tags[4][12] = { "tag_wheelfl", "tag_wheelfr", "tag_wheelrl", "tag_wheelrr" };
@@ -731,8 +737,8 @@ void CG_AddGhostEntity( void ) {
         clientInfo_t *ci;
         vec3_t origin;
         vec3_t angles;
-        int i;
-        int ghostAlpha;
+	int i;
+	byte ghostAlpha;
 
         if ( cg_ghostPlayback.integer <= 0 ) {
                 return;
@@ -778,7 +784,7 @@ void CG_AddGhostEntity( void ) {
                 angles[i] = from->angles[i] + lerp * AngleSubtract( to->angles[i], from->angles[i] );
         }
 
-        ghostAlpha = Com_Clamp( 0, 255, cg_ghostAlpha.integer );
+	ghostAlpha = CG_GetGhostAlpha();
 
         memset( &ghost, 0, sizeof( ghost ) );
         ghost.hModel = ci->bodyModel;
