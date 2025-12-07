@@ -1,7 +1,0 @@
-map example_track
-vehicle sport
-best_time_ms 65432
-frames 3
-0 0 0 0 0 0 0 0 0 0 0 0 0
-150 128 0 16 0 45 0 200 0 0 1 127 0
-300 256 0 24 0 90 0 210 15 0 1 127 0
