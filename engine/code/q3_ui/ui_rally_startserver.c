@@ -110,16 +110,6 @@ static int gametype_remap2[] = {0, 1, 2, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 int		allowLength[3];
 int		reversable;
 
-static qboolean ServerOptions_IsRacingGametype( int gametype ) {
-	return ( gametype == GT_RACING
-			|| gametype == GT_RACING_DM
-			|| gametype == GT_SPRINT
-			|| gametype == GT_TEAM_RACING
-			|| gametype == GT_TEAM_RACING_DM
-			|| gametype == GT_ELIMINATION
-			|| gametype == GT_SINGLE_PLAYER );
-}
-
 static void UI_ServerOptionsMenu( qboolean multiplayer );
 static void ServerOptions_InitBotNames( void );
 
@@ -1053,24 +1043,19 @@ default:
 	trap_Cvar_SetValue ("capturelimit", Com_Clamp( 0, flaglimit, flaglimit ) );
 	trap_Cvar_SetValue( "g_friendlyfire", friendlyfire );
 	trap_Cvar_SetValue( "sv_pure", pure );
-	trap_Cvar_SetValue( "g_trackLength", Com_Clamp( 0, trackLength, 2 ) );
-	trap_Cvar_SetValue( "g_trackReversed", Com_Clamp( 0, reversed, 1 ) );
-	trap_Cvar_SetValue( "ui_racing_tracklength", Com_Clamp( 0, trackLength, 2 ) );
-	trap_Cvar_SetValue( "ui_racing_trackreversed", Com_Clamp( 0, reversed, 1 ) );
-	if ( ServerOptions_IsRacingGametype( s_serveroptions.gametype ) ) {
-	trap_Cvar_SetValue( "ui_ghostonly", s_serveroptions.ghostOnly.curvalue );
-	if ( s_serveroptions.ghostOnly.curvalue ) {
-	int playbackValue;
+        trap_Cvar_SetValue( "g_trackLength", Com_Clamp( 0, trackLength, 2 ) );
+        trap_Cvar_SetValue( "g_trackReversed", Com_Clamp( 0, reversed, 1 ) );
+        trap_Cvar_SetValue( "ui_racing_tracklength", Com_Clamp( 0, trackLength, 2 ) );
+        trap_Cvar_SetValue( "ui_racing_trackreversed", Com_Clamp( 0, reversed, 1 ) );
+        trap_Cvar_SetValue( "ui_ghostonly", s_serveroptions.ghostOnly.curvalue );
+        if ( s_serveroptions.ghostOnly.curvalue ) {
+                int playbackValue;
 
-	playbackValue = s_serveroptions.ghostPlaybackRestore > 0 ? s_serveroptions.ghostPlaybackRestore : 1;
-	trap_Cvar_SetValue( "ui_ghostPlayback", playbackValue );
-	} else if ( s_serveroptions.ghostPlaybackStored ) {
-	trap_Cvar_SetValue( "ui_ghostPlayback", s_serveroptions.ghostPlaybackRestore );
-	}
-	} else {
-		trap_Cvar_SetValue( "ui_ghostonly", 0 );
-	trap_Cvar_SetValue( "ui_ghostPlayback", 0 );
-}
+                playbackValue = s_serveroptions.ghostPlaybackRestore > 0 ? s_serveroptions.ghostPlaybackRestore : 1;
+                trap_Cvar_SetValue( "ui_ghostPlayback", playbackValue );
+        } else if ( s_serveroptions.ghostPlaybackStored ) {
+                trap_Cvar_SetValue( "ui_ghostPlayback", s_serveroptions.ghostPlaybackRestore );
+        }
         if ( s_serveroptions.gametype == GT_ELIMINATION ) {
                 trap_Cvar_SetValue( "ui_elimination_weapons", eliminationWeapons );
                 trap_Cvar_SetValue( "g_eliminationWeapons", eliminationWeapons );
@@ -1574,13 +1559,9 @@ static void ServerOptions_SetMenuItems( void ) {
 	s_serveroptions.pure.curvalue = Com_Clamp( 0, 1, trap_Cvar_VariableValue( "sv_pure" ) );
 	s_serveroptions.trackLength.curvalue = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "ui_racing_tracklength" ) );
 	s_serveroptions.reversed.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_racing_trackreversed" ) );
-	if ( ServerOptions_IsRacingGametype( s_serveroptions.gametype ) ) {
-		s_serveroptions.ghostOnly.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_ghostonly" ) );
-	} else {
-		s_serveroptions.ghostOnly.curvalue = 0;
-	}
-	s_serveroptions.ghostPlaybackRestore = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "ui_ghostPlayback" ) );
-	s_serveroptions.ghostPlaybackStored = qtrue;
+	s_serveroptions.ghostOnly.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_ghostonly" ) );
+		s_serveroptions.ghostPlaybackRestore = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "ui_ghostPlayback" ) );
+		s_serveroptions.ghostPlaybackStored = qtrue;
 
 	// set the map pic
 	Com_sprintf( picname, 64, "levelshots/%s", s_startserver.maplist[s_startserver.currentmap] );
@@ -1779,7 +1760,7 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
         s_serveroptions.ghostOnly.generic.flags         = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
         s_serveroptions.ghostOnly.generic.x                     = OPTIONS_X;
         s_serveroptions.ghostOnly.generic.y                     = y;
-        s_serveroptions.ghostOnly.generic.name          = "Ghost Mode:";
+        s_serveroptions.ghostOnly.generic.name          = "Ghost Only:";
         s_serveroptions.ghostOnly.generic.id                    = ID_GHOST_ONLY;
         s_serveroptions.ghostOnly.generic.callback      = ServerOptions_Event;
 
@@ -1978,9 +1959,7 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.pure );
 
-	if ( ServerOptions_IsRacingGametype( s_serveroptions.gametype ) ) {
-		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.ghostOnly );
-}
+	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.ghostOnly );
 
 	if( s_serveroptions.gametype == GT_ELIMINATION ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.eliminationWeapons );

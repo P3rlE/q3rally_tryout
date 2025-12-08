@@ -254,47 +254,106 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, con
 			goto nextLine;
 		}
 
-		if ( ( cursor[0] >= '0' && cursor[0] <= '9' ) || cursor[0] == '-' ) {
-			ghostFrame_t *frame;
-			float ox, oy, oz;
-			float ax, ay, az;
-			float vx, vy, vz;
-			int buttons, forwardmove, upmove;
-			int parsed;
+                if ( ( cursor[0] >= '0' && cursor[0] <= '9' ) || cursor[0] == '-' ) {
+                        ghostFrame_t *frame;
+                        float ox = 0.0f, oy = 0.0f, oz = 0.0f;
+                        float ax = 0.0f, ay = 0.0f, az = 0.0f;
+                        float vx = 0.0f, vy = 0.0f, vz = 0.0f;
+                        int buttons = 0, forwardmove = 0, upmove = 0;
+                        int parsed = 0;
+                        char *parseCursor;
+                        qboolean extraTokens = qfalse;
 
-			if ( frameCount >= MAX_GHOST_FRAMES ) {
-				goto nextLine;
-			}
+                        if ( frameCount >= MAX_GHOST_FRAMES ) {
+                                goto nextLine;
+                        }
 
-			frame = &target->frames[frameCount];
-			parsed = sscanf( cursor, "%d %f %f %f %f %f %f %f %f %f %d %d %d",
-							&frame->timeOffset, &ox, &oy, &oz,
-							&ax, &ay, &az,
-							&vx, &vy, &vz,
-							&buttons, &forwardmove, &upmove );
+                        frame = &target->frames[frameCount];
+                        parseCursor = cursor;
 
-			if ( parsed == 13 ) {
-				VectorSet( frame->origin, ox, oy, oz );
-				VectorSet( frame->angles, ax, ay, az );
-				VectorSet( frame->velocity, vx, vy, vz );
-				frame->buttons = buttons;
-				frame->forwardmove = forwardmove;
-				frame->upmove = upmove;
-				lastOffset = frame->timeOffset;
-				frameCount++;
+                        while ( parsed < 13 ) {
+                                char *token = COM_ParseExt( &parseCursor, qfalse );
 
-				if ( cg_ghostDebug.integer >= 2 || ( cg_ghostDebug.integer && frameCount <= 5 ) ) {
-					CG_GhostDebugPrint( "%s line %d: frame %d offset %d pos(%.3f %.3f %.3f) ang(%.3f %.3f %.3f) vel(%.3f %.3f %.3f)",
-						path, lineNumber, frameCount, frame->timeOffset,
-						frame->origin[0], frame->origin[1], frame->origin[2],
-						frame->angles[0], frame->angles[1], frame->angles[2],
-						frame->velocity[0], frame->velocity[1], frame->velocity[2] );
-				}
-			} else {
-				CG_GhostDebugPrint( "%s line %d: could not parse frame (fields=%d) from '%s'",
-					path, lineNumber, parsed, preview );
-			}
-		}
+                                if ( !token[0] ) {
+                                        break;
+                                }
+
+                                switch ( parsed ) {
+                                case 0:
+                                        frame->timeOffset = atoi( token );
+                                        break;
+                                case 1:
+                                        ox = atof( token );
+                                        break;
+                                case 2:
+                                        oy = atof( token );
+                                        break;
+                                case 3:
+                                        oz = atof( token );
+                                        break;
+                                case 4:
+                                        ax = atof( token );
+                                        break;
+                                case 5:
+                                        ay = atof( token );
+                                        break;
+                                case 6:
+                                        az = atof( token );
+                                        break;
+                                case 7:
+                                        vx = atof( token );
+                                        break;
+                                case 8:
+                                        vy = atof( token );
+                                        break;
+                                case 9:
+                                        vz = atof( token );
+                                        break;
+                                case 10:
+                                        buttons = atoi( token );
+                                        break;
+                                case 11:
+                                        forwardmove = atoi( token );
+                                        break;
+                                case 12:
+                                        upmove = atoi( token );
+                                        break;
+                                }
+
+                                parsed++;
+                        }
+
+                        if ( parsed == 13 ) {
+                                char *extra = COM_ParseExt( &parseCursor, qfalse );
+
+                                if ( extra && extra[0] ) {
+                                        extraTokens = qtrue;
+                                        parsed++;
+                                }
+                        }
+
+                        if ( parsed == 13 && !extraTokens ) {
+                                VectorSet( frame->origin, ox, oy, oz );
+                                VectorSet( frame->angles, ax, ay, az );
+                                VectorSet( frame->velocity, vx, vy, vz );
+                                frame->buttons = buttons;
+                                frame->forwardmove = forwardmove;
+                                frame->upmove = upmove;
+                                lastOffset = frame->timeOffset;
+                                frameCount++;
+
+                                if ( cg_ghostDebug.integer >= 2 || ( cg_ghostDebug.integer && frameCount <= 5 ) ) {
+                                        CG_GhostDebugPrint( "%s line %d: frame %d offset %d pos(%.3f %.3f %.3f) ang(%.3f %.3f %.3f) vel(%.3f %.3f %.3f)",
+                                                path, lineNumber, frameCount, frame->timeOffset,
+                                                frame->origin[0], frame->origin[1], frame->origin[2],
+                                                frame->angles[0], frame->angles[1], frame->angles[2],
+                                                frame->velocity[0], frame->velocity[1], frame->velocity[2] );
+                                }
+                        } else {
+                                CG_GhostDebugPrint( "%s line %d: could not parse frame (fields=%d) from '%s'",
+                                        path, lineNumber, parsed, preview );
+                        }
+                }
 nextLine:
 		if ( !line ) {
 			break;
@@ -394,10 +453,9 @@ void CG_RecordGhostFrame( void ) {
 		return;
 	}
 
-	if ( !isRallyRace() ) {
+	if ( !( isRallyRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ) ) {
 		return;
 	}
-
 
 	if ( !cg.snap || cg.snap->ps.clientNum >= MAX_CLIENTS ) {
 		return;
@@ -687,7 +745,7 @@ void CG_AddGhostEntity( void ) {
                 return;
         }
 
-        if ( !isRallyRace() ) {
+        if ( !( isRallyRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ) ) {
                 return;
         }
 
@@ -823,11 +881,8 @@ void CG_StartRace( int time ) {
                 player->lastStartLapTime = 0;
         }
 
-        if ( isRallyRace() ) {
-                CG_LoadPersonalGhost();
-                CG_BeginGhostRecording( time );
-        }
-
+        CG_LoadPersonalGhost();
+        CG_BeginGhostRecording( time );
 
         cg.eliminationWarningActive = qfalse;
         cg.eliminationWarningTime = 0;
