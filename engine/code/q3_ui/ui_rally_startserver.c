@@ -371,20 +371,17 @@ static int GametypeBits( char *string ) {
 }
 
 static qboolean ServerOptions_IsRacingGametype( int gametype ) {
-        switch ( gametype ) {
-        case GT_RACING:
-        case GT_RACING_DM:
-        case GT_SPRINT:
-        case GT_DERBY:
-        case GT_LCS:
-        case GT_ELIMINATION:
-        case GT_TEAM_RACING:
-        case GT_TEAM_RACING_DM:
-        case GT_SINGLE_PLAYER:
-                return qtrue;
-        default:
-                return qfalse;
-        }
+		switch ( gametype ) {
+		case GT_RACING:
+		case GT_RACING_DM:
+		case GT_SPRINT:
+		case GT_TEAM_RACING:
+		case GT_TEAM_RACING_DM:
+		case GT_SINGLE_PLAYER:
+			return qtrue;
+		default:
+			return qfalse;
+		}
 }
 
 

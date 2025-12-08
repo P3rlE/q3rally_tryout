@@ -523,13 +523,13 @@ static void CG_ForceModelChange( void ) {
 }
 
 static void CG_DisableGhostPlaybackOutsideRacing( void ) {
-        if ( isRallyRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ) {
-                return;
-        }
+	if ( isRallyRace() ) {
+		return;
+	}
 
-        if ( cg_ghostPlayback.integer != 0 ) {
-                trap_Cvar_Set( "cg_ghostPlayback", "0" );
-        }
+	if ( cg_ghostPlayback.integer != 0 ) {
+		trap_Cvar_Set( "cg_ghostPlayback", "0" );
+	}
 }
 
 /*
