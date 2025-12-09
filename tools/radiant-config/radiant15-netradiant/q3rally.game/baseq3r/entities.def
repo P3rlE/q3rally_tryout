@@ -2726,7 +2726,7 @@ model="models/items/fuelcan.md3"
 */
 
 
-/*QUAKED rally_scripted_object (1 .5 0) ?
+/*QUAKED rally_scripted_object (1 .5 0) (-4 -4 0) (4 4 64)
 An interactive prop driven by a .script definition.
 
 "script"       (required) path to the scripted object file without the .script extension
