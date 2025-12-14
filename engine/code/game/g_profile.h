@@ -25,5 +25,6 @@ void G_Profile_RecordExcellent( struct gclient_s *client );
 void G_Profile_RecordImpressive( struct gclient_s *client );
 void G_Profile_RecordAccuracy( struct gclient_s *client, int accuracyPercent );
 void G_Profile_RecordPerfect( struct gclient_s *client );
+qboolean G_Profile_GetRank( const profile_stats_t *stats, profile_rank_t *outRank );
 
 #endif /* G_PROFILE_H */
