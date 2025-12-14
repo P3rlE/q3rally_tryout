@@ -448,6 +448,9 @@ static char s_birthYearStrings[BIRTH_YEAR_COUNT][5];
 
 static qboolean s_birthDateListsInitialized;
 
+static const char *s_statsLabelCurrentRank = "CURRENT RANK";
+static const char *s_statsLabelNextRank = "NEXT RANK";
+
 typedef enum {
         PROFILE_ROW_NAME = 0,
         PROFILE_ROW_GENDER,
@@ -469,6 +472,8 @@ typedef enum {
         STATS_ROW_DAMAGE_TAKEN,
         STATS_ROW_WINS,
         STATS_ROW_PLAYER_SCORE,
+        STATS_ROW_CURRENT_RANK,
+        STATS_ROW_NEXT_RANK,
         STATS_ROW_FLAGS_CAPTURED,
         STATS_ROW_FLAG_ASSISTS,
         STATS_ROW_VEHICLE,
@@ -2153,24 +2158,26 @@ borderColor );
 }
 
 static void PlayerSettings_DrawStatsTab( void ) {
-const profile_stats_t *stats;
-char buffer[64];
-char vehicleName[64];
-char *slash;
+        const profile_stats_t *stats;
+        profile_rank_t rank;
+        qboolean hasRank;
+        char buffer[64];
+        char vehicleName[64];
+        char *slash;
 
-PlayerSettings_UpdateStatsPaginationInfo();
+        PlayerSettings_UpdateStatsPaginationInfo();
 
-	if ( !UI_Profile_HasActiveProfile() ) {
-		PlayerSettings_DrawStatsMessage( STATS_ROW_DISTANCE, "No active profile selected." );
-		PlayerSettings_DrawStatsMessage( STATS_ROW_FUEL, "Create or select a profile from the main menu." );
-		return;
-	}
+        if ( !UI_Profile_HasActiveProfile() ) {
+                PlayerSettings_DrawStatsMessage( STATS_ROW_DISTANCE, "No active profile selected." );
+                PlayerSettings_DrawStatsMessage( STATS_ROW_FUEL, "Create or select a profile from the main menu." );
+                return;
+        }
 
-	stats = UI_Profile_GetActiveStats();
-	if ( !stats ) {
-		PlayerSettings_DrawStatsMessage( STATS_ROW_DISTANCE, "Unable to read profile statistics." );
-		return;
-	}
+        stats = UI_Profile_GetActiveStats();
+        if ( !stats ) {
+                PlayerSettings_DrawStatsMessage( STATS_ROW_DISTANCE, "Unable to read profile statistics." );
+                return;
+        }
 
         Com_sprintf( buffer, sizeof( buffer ), "%.2f km", stats->distanceKm );
         PlayerSettings_DrawStatsLabelValue( STATS_ROW_DISTANCE, "Distance Driven", buffer );
@@ -2186,8 +2193,8 @@ PlayerSettings_UpdateStatsPaginationInfo();
                 int seconds = ( stats->bestLapMs % 60000 ) / 1000;
                 int millis = stats->bestLapMs % 1000;
                 Com_sprintf( buffer, sizeof( buffer ), "%02d:%02d.%03d", minutes, seconds, millis );
-	} else {
-		Q_strncpyz( buffer, "--", sizeof( buffer ) );
+        } else {
+                Q_strncpyz( buffer, "--", sizeof( buffer ) );
         }
         PlayerSettings_DrawStatsLabelValue( STATS_ROW_BEST_LAP, "Best Lap", buffer );
 
@@ -2200,14 +2207,30 @@ PlayerSettings_UpdateStatsPaginationInfo();
         Com_sprintf( buffer, sizeof( buffer ), "%d", stats->damageTaken );
         PlayerSettings_DrawStatsLabelValue( STATS_ROW_DAMAGE_TAKEN, "Damage Taken", buffer );
 
-	Com_sprintf( buffer, sizeof( buffer ), "%d / %d", stats->wins, stats->losses );
-	PlayerSettings_DrawStatsLabelValue( STATS_ROW_WINS, "Wins / Losses", buffer );
+        Com_sprintf( buffer, sizeof( buffer ), "%d / %d", stats->wins, stats->losses );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_WINS, "Wins / Losses", buffer );
 
-	Com_sprintf( buffer, sizeof( buffer ), "%d", stats->playerScore );
-	PlayerSettings_DrawStatsLabelValue( STATS_ROW_PLAYER_SCORE, "Player Score", buffer );
+        Com_sprintf( buffer, sizeof( buffer ), "%d", stats->playerScore );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_PLAYER_SCORE, "Player Score", buffer );
 
-	Com_sprintf( buffer, sizeof( buffer ), "%d", stats->flagCaptures );
-	PlayerSettings_DrawStatsLabelValue( STATS_ROW_FLAGS_CAPTURED, "Flags Captured", buffer );
+        hasRank = UI_Profile_GetRank( stats, &rank );
+
+        if ( hasRank && rank.current ) {
+                Q_strncpyz( buffer, rank.current->name, sizeof( buffer ) );
+        } else {
+                Q_strncpyz( buffer, "--", sizeof( buffer ) );
+        }
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_CURRENT_RANK, s_statsLabelCurrentRank, buffer );
+
+        if ( hasRank && rank.next ) {
+                Com_sprintf( buffer, sizeof( buffer ), "%s (%d)", rank.next->name, rank.next->minimumScore - stats->playerScore );
+        } else {
+                Q_strncpyz( buffer, "--", sizeof( buffer ) );
+        }
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_NEXT_RANK, s_statsLabelNextRank, buffer );
+
+        Com_sprintf( buffer, sizeof( buffer ), "%d", stats->flagCaptures );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_FLAGS_CAPTURED, "Flags Captured", buffer );
 
         Com_sprintf( buffer, sizeof( buffer ), "%d", stats->flagAssists );
         PlayerSettings_DrawStatsLabelValue( STATS_ROW_FLAG_ASSISTS, "Flag Assists", buffer );
