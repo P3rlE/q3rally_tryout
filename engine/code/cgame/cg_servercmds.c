@@ -1173,8 +1173,8 @@ static void CG_ParsePositions( void ) {
 
 
 static void CG_AddAchievementAnnouncement( bgAchievementCategory_t category, int tierIndex ) {
-	cgAchievementAnnouncement_t *slot;
-	int queueCount;
+        cgAchievementAnnouncement_t *slot;
+        int queueCount;
 
 	if ( category < 0 || category >= BG_ACHIEVEMENT_CATEGORY_COUNT ) {
 		return;
@@ -1221,6 +1221,55 @@ static void CG_ParseAchievementUnlock( void ) {
 	}
 
         CG_AddAchievementAnnouncement( (bgAchievementCategory_t) categoryIndex, tierIndex );
+}
+
+static void CG_AddRankAnnouncement( int rankIndex, const char *name, const char *nextName ) {
+		cgRankAnnouncement_t *slot;
+		int queueCount;
+
+		if ( rankIndex < 0 ) {
+			return;
+		}
+
+		queueCount = cg.rankQueueCount;
+		if ( queueCount >= RANK_MAX_QUEUE ) {
+			int i;
+			queueCount = RANK_MAX_QUEUE - 1;
+
+			for ( i = 0; i < queueCount; ++i ) {
+				cg.rankQueue[i] = cg.rankQueue[i + 1];
+			}
+		}
+
+		slot = &cg.rankQueue[queueCount];
+		slot->rankIndex = rankIndex;
+		Q_strncpyz( slot->name, name ? name : "", sizeof( slot->name ) );
+		Q_strncpyz( slot->nextName, nextName ? nextName : "", sizeof( slot->nextName ) );
+		slot->startTime = cg.time;
+		cg.rankQueueCount = queueCount + 1;
+
+		if ( cgs.media.achievementUnlockSound ) {
+			trap_S_StartLocalSound( cgs.media.achievementUnlockSound, CHAN_LOCAL_SOUND );
+		}
+}
+
+static void CG_ParseRankUp( void ) {
+		int rankIndex;
+		const char *name;
+		const char *nextName = "";
+
+		if ( trap_Argc() < 3 ) {
+			return;
+		}
+
+		rankIndex = atoi( CG_Argv( 1 ) );
+		name = CG_Argv( 2 );
+
+		if ( trap_Argc() >= 4 ) {
+			nextName = CG_Argv( 3 );
+		}
+
+		CG_AddRankAnnouncement( rankIndex, name, nextName );
 }
 
 static void CG_ParseGhostMeta( void ) {
@@ -1275,6 +1324,11 @@ static void CG_ServerCommand( void ) {
 
         if ( !strcmp( cmd, "achv" ) ) {
                 CG_ParseAchievementUnlock();
+                return;
+        }
+
+        if ( !strcmp( cmd, "rankup" ) ) {
+                CG_ParseRankUp();
                 return;
         }
 
