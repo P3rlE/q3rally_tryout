@@ -429,6 +429,8 @@ else {
 trap_SendServerCommand( -1, va("print \"%s finished the race!\n\"", other->client->pers.netname ));
 }
 }
+
+        G_Profile_RecordRacePlacement( other->client, other->client->ps.stats[STAT_POSITION] );
 }
 
 void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){

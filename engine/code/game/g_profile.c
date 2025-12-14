@@ -1046,6 +1046,31 @@ void G_Profile_RecordLapComplete( gclient_t *client, qboolean isLeader ) {
     }
 }
 
+void G_Profile_RecordRacePlacement( gclient_t *client, int position ) {
+    if ( !G_Profile_ShouldTrackClient( client ) ) {
+        return;
+    }
+
+    if ( !G_Profile_IsRacingGametype() ) {
+        return;
+    }
+
+    if ( position <= 0 ) {
+        return;
+    }
+
+    if ( position <= 3 ) {
+        return;
+    }
+
+    if ( client->pers.profileRacePlacementPenalized ) {
+        return;
+    }
+
+    G_Profile_AddScore( -5 );
+    client->pers.profileRacePlacementPenalized = qtrue;
+}
+
 void G_Profile_RecordWin( gclient_t *client ) {
     if ( !s_profileState.loaded ) {
         return;
