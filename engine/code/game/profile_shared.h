@@ -17,22 +17,22 @@ typedef struct profile_rank_def_s {
     int minimumScore;
 } profile_rank_def_t;
 
-#define PROFILE_RANK_TABLE( ENTRY ) \
-    ENTRY( "Rank 1", 0 )           \
-    ENTRY( "Rank 2", 50 )          \
-    ENTRY( "Rank 3", 150 )         \
-    ENTRY( "Rank 4", 300 )         \
-    ENTRY( "Rank 5", 600 )         \
-    ENTRY( "Rank 6", 1000 )        \
-    ENTRY( "Rank 7", 1600 )        \
-    ENTRY( "Rank 8", 2400 )        \
-    ENTRY( "Rank 9", 3500 )        \
-    ENTRY( "Rank 10", 5000 )       \
-    ENTRY( "Rank 11", 7000 )       \
-    ENTRY( "Rank 12", 10000 )      \
-    ENTRY( "Rank 13", 14000 )      \
-    ENTRY( "Rank 14", 20000 )      \
-    ENTRY( "Rank 15", 30000 )
+#define PROFILE_RANK_TABLE( ENTRY )       \
+    ENTRY( "Rookie Driver", 0 )          \
+    ENTRY( "Street Newbie", 50 )         \
+    ENTRY( "Weekend Racer", 150 )        \
+    ENTRY( "Track Learner", 350 )        \
+    ENTRY( "Amateur Racer", 700 )        \
+    ENTRY( "Street Racer", 1200 )        \
+    ENTRY( "Semi-Pro Driver", 2000 )     \
+    ENTRY( "Pro Racer", 3200 )           \
+    ENTRY( "Elite Driver", 5000 )        \
+    ENTRY( "Track Dominator", 7500 )     \
+    ENTRY( "Master of Speed", 11000 )    \
+    ENTRY( "Racing Legend", 16000 )      \
+    ENTRY( "Asphalt King", 22000 )       \
+    ENTRY( "Grand Champion", 30000 )     \
+    ENTRY( "Q3Rally Icon", 40000 )
 
 typedef struct profile_stats_s {
     double distanceKm;
