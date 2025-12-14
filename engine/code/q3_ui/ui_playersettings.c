@@ -2161,8 +2161,9 @@ static void PlayerSettings_DrawStatsTab( void ) {
         const profile_stats_t *stats;
         profile_rank_t rank;
         qboolean hasRank;
-        char buffer[64];
+        char buffer[96];
         char vehicleName[64];
+        char vehicleTime[16];
         char *slash;
 
 PlayerSettings_UpdateStatsPaginationInfo();
@@ -2246,7 +2247,18 @@ PlayerSettings_DrawStatsLabelValue( STATS_ROW_FLAGS_CAPTURED, "Flags Captured", 
                 if ( vehicleName[0] >= 'a' && vehicleName[0] <= 'z' ) {
                         vehicleName[0] = vehicleName[0] - 'a' + 'A';
                 }
-                Com_sprintf( buffer, sizeof( buffer ), "%s", vehicleName );
+
+                if ( stats->mostUsedVehicleTimeMs > 0 ) {
+                        int hours = stats->mostUsedVehicleTimeMs / ( 1000 * 60 * 60 );
+                        int minutes = ( stats->mostUsedVehicleTimeMs / ( 1000 * 60 ) ) % 60;
+                        int seconds = ( stats->mostUsedVehicleTimeMs / 1000 ) % 60;
+
+                        Com_sprintf( vehicleTime, sizeof( vehicleTime ), "%02d:%02d:%02d", hours, minutes, seconds );
+                } else {
+                        Q_strncpyz( vehicleTime, "--", sizeof( vehicleTime ) );
+                }
+
+                Com_sprintf( buffer, sizeof( buffer ), "%s — %s", vehicleName, vehicleTime );
         } else {
                 Q_strncpyz( buffer, "--", sizeof( buffer ) );
         }
