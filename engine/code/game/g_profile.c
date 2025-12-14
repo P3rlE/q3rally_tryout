@@ -11,7 +11,7 @@
 #define PROFILE_SCORE_LAP 2
 #define PROFILE_SCORE_LEAD_LAP 2
 #define PROFILE_SCORE_RACE_WIN 10
-#define PROFILE_SCORE_ELIMINATION_WIN 25
+#define PROFILE_SCORE_ELIMINATION_WIN 10
 #define PROFILE_SCORE_ACHIEVEMENT_TIER 20
 
 static struct {
@@ -39,6 +39,21 @@ static qboolean G_Profile_ShouldTrackClient( const gclient_t *client ) {
     }
 
     return client->pers.localClient ? qtrue : qfalse;
+}
+
+static qboolean G_Profile_IsRacingGametype( void ) {
+    switch ( g_gametype.integer ) {
+    case GT_RACING:
+    case GT_RACING_DM:
+    case GT_SPRINT:
+    case GT_TEAM_RACING:
+    case GT_TEAM_RACING_DM:
+        return qtrue;
+    default:
+        break;
+    }
+
+    return qfalse;
 }
 
 typedef struct {
@@ -1051,10 +1066,10 @@ void G_Profile_RecordWin( gclient_t *client ) {
     }
 
     if ( G_Profile_ShouldTrackClient( client ) ) {
-        if ( g_gametype.integer == GT_ELIMINATION ) {
-            G_Profile_AddScore( PROFILE_SCORE_ELIMINATION_WIN );
-        } else {
+        if ( G_Profile_IsRacingGametype() ) {
             G_Profile_AddScore( PROFILE_SCORE_RACE_WIN );
+        } else {
+            G_Profile_AddScore( PROFILE_SCORE_ELIMINATION_WIN );
         }
     }
 }
@@ -1070,6 +1085,10 @@ void G_Profile_RecordLoss( gclient_t *client ) {
 
     s_profileState.stats.losses++;
     s_profileState.dirty = qtrue;
+
+    if ( G_Profile_ShouldTrackClient( client ) && !G_Profile_IsRacingGametype() ) {
+        G_Profile_AddScore( -5 );
+    }
 }
 
 void G_Profile_RecordBestLap( gclient_t *client, int lapTime ) {
