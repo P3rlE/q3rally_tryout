@@ -82,28 +82,29 @@ static void CG_ParseScores( void ) {
 
 	memset( cg.scores, 0, sizeof( cg.scores ) );
 	for ( i = 0 ; i < cg.numScores ; i++ ) {
-		//
-// STONELANCE changed i * 14 to i * 18, added 4
-		cg.scores[i].client = atoi( CG_Argv( i * 18 + 6 ) );
-		cg.scores[i].score = atoi( CG_Argv( i * 18 + 7 ) );
-		cg.scores[i].ping = atoi( CG_Argv( i * 18 + 8 ) );
-		cg.scores[i].time = atoi( CG_Argv( i * 18 + 9 ) );
-		cg.scores[i].scoreFlags = atoi( CG_Argv( i * 18 + 10 ) );
-		powerups = atoi( CG_Argv( i * 18 + 11 ) );
-		cg.scores[i].accuracy = atoi(CG_Argv(i * 18 + 12));
-		cg.scores[i].impressiveCount = atoi(CG_Argv(i * 18 + 13));
-		cg.scores[i].impressiveTelefragCount = atoi(CG_Argv(i * 18 + 14));
-		cg.scores[i].excellentCount = atoi(CG_Argv(i * 18 + 15));
-		cg.scores[i].guantletCount = atoi(CG_Argv(i * 18 + 16));
-		cg.scores[i].defendCount = atoi(CG_Argv(i * 18 + 17));
-		cg.scores[i].assistCount = atoi(CG_Argv(i * 18 + 18));
-		cg.scores[i].perfect = atoi(CG_Argv(i * 18 + 19));
-		cg.scores[i].captures = atoi(CG_Argv(i * 18 + 20));
+//
+// STONELANCE changed i * 14 to i * 18, added 4 (now 19 for rank tier)
+cg.scores[i].client = atoi( CG_Argv( i * 19 + 6 ) );
+cg.scores[i].score = atoi( CG_Argv( i * 19 + 7 ) );
+cg.scores[i].ping = atoi( CG_Argv( i * 19 + 8 ) );
+cg.scores[i].time = atoi( CG_Argv( i * 19 + 9 ) );
+cg.scores[i].scoreFlags = atoi( CG_Argv( i * 19 + 10 ) );
+powerups = atoi( CG_Argv( i * 19 + 11 ) );
+cg.scores[i].accuracy = atoi(CG_Argv(i * 19 + 12));
+cg.scores[i].impressiveCount = atoi(CG_Argv(i * 19 + 13));
+cg.scores[i].impressiveTelefragCount = atoi(CG_Argv(i * 19 + 14));
+cg.scores[i].excellentCount = atoi(CG_Argv(i * 19 + 15));
+cg.scores[i].guantletCount = atoi(CG_Argv(i * 19 + 16));
+cg.scores[i].defendCount = atoi(CG_Argv(i * 19 + 17));
+cg.scores[i].assistCount = atoi(CG_Argv(i * 19 + 18));
+cg.scores[i].perfect = atoi(CG_Argv(i * 19 + 19));
+cg.scores[i].captures = atoi(CG_Argv(i * 19 + 20));
 // END
 // STONELANCE add two more score parts
-		cg.scores[i].damageDealt = atoi(CG_Argv(i * 18 + 21));
-		cg.scores[i].damageTaken = atoi(CG_Argv(i * 18 + 22));
-		cg.scores[i].position = atoi(CG_Argv(i * 18 + 23));
+cg.scores[i].damageDealt = atoi(CG_Argv(i * 19 + 21));
+cg.scores[i].damageTaken = atoi(CG_Argv(i * 19 + 22));
+cg.scores[i].position = atoi(CG_Argv(i * 19 + 23));
+cg.scores[i].rankTier = atoi(CG_Argv(i * 19 + 24));
 // END
 
 		if ( cg.scores[i].client < 0 || cg.scores[i].client >= MAX_CLIENTS ) {
@@ -111,14 +112,14 @@ static void CG_ParseScores( void ) {
 		}
 		cgs.clientinfo[ cg.scores[i].client ].score = cg.scores[i].score;
 		cgs.clientinfo[ cg.scores[i].client ].powerups = powerups;
-// Q3Rally Code Start
+		// Q3Rally Code Start
 		cgs.clientinfo[ cg.scores[i].client ].position = cg.scores[i].position;
-// END
+		// END
 
 		cg.scores[i].team = cgs.clientinfo[cg.scores[i].client].team;
 	}
 
-// Q3Rally Code Start
+	// Q3Rally Code Start
 	for ( ; i < MAX_CLIENTS ; i++ ) {
 		cg.scores[i].client = -1;
 		cg.scores[i].score = 0;
@@ -126,16 +127,17 @@ static void CG_ParseScores( void ) {
 		cg.scores[i].time = 0;
 		cg.scores[i].scoreFlags = -1;
 		cg.scores[i].position = -1;
+		cg.scores[i].rankTier = -1;
 		powerups = 0;
 
-		if ( cg.scores[i].client < 0 || cg.scores[i].client >= MAX_CLIENTS ) {
-			cg.scores[i].client = 0;
+			if ( cg.scores[i].client < 0 || cg.scores[i].client >= MAX_CLIENTS ) {
+				cg.scores[i].client = 0;
+			}
+			cgs.clientinfo[ cg.scores[i].client ].score = cg.scores[i].score;
+			cgs.clientinfo[ cg.scores[i].client ].powerups = powerups;
+			cgs.clientinfo[ cg.scores[i].client ].position = cg.scores[i].position;
 		}
-		cgs.clientinfo[ cg.scores[i].client ].score = cg.scores[i].score;
-		cgs.clientinfo[ cg.scores[i].client ].powerups = powerups;
-		cgs.clientinfo[ cg.scores[i].client ].position = cg.scores[i].position;
-	}
-// END
+	// END
 
 #ifdef MISSIONPACK
 	CG_SetScoreSelection(NULL);
