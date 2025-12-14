@@ -2371,7 +2371,7 @@ static void CG_DrawRankNotifications( void ) {
     textColor[3] *= alpha;
 
     x = 170.0f + ( 300.0f - width ) * 0.5f;
-    y = 10.0f + ( 75.0f - height ) * 0.5f + height + 8.0f;
+    y = 10.0f + ( 75.0f - height ) * 0.5f;
 
     CG_FillRect( x, y, width, height, bgColor );
     CG_DrawRect( x, y, width, height, 1.0f, borderColor );
@@ -2382,7 +2382,7 @@ static void CG_DrawRankNotifications( void ) {
     CG_DrawStringExt( (int)( x + 12.0f ), (int)( y + 26.0f ), announcement->name, highlightColor,
                       qfalse, qtrue, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT, 0 );
 
-    if ( announcement->nextName[0] ) {
+    if ( announcement->nextName[0] && Q_stricmp( announcement->nextName, announcement->name ) ) {
         CG_DrawStringExt( (int)( x + 12.0f ), (int)( y + 42.0f ), va( "Next: %s", announcement->nextName ),
                           textColor, qfalse, qtrue, TINYCHAR_WIDTH, TINYCHAR_HEIGHT, 0 );
     }

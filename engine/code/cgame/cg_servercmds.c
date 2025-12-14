@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // be a valid snapshot this frame
 
 #include "cg_local.h"
+#include "../game/profile_shared.h"
 #ifdef MISSIONPACK
 #include "../../ui/menudef.h"
 
@@ -49,15 +50,31 @@ static const orderTask_t validOrders[] = {
 static const int numValidOrders = ARRAY_LEN(validOrders);
 
 static int CG_ValidOrder(const char *p) {
-	int i;
-	for (i = 0; i < numValidOrders; i++) {
-		if (Q_stricmp(p, validOrders[i].order) == 0) {
-			return validOrders[i].taskNum;
-		}
-	}
-	return -1;
+        int i;
+        for (i = 0; i < numValidOrders; i++) {
+                if (Q_stricmp(p, validOrders[i].order) == 0) {
+                        return validOrders[i].taskNum;
+                }
+        }
+        return -1;
 }
 #endif
+
+#define CG_PROFILE_RANK_ENTRY( name, threshold ) { name, threshold },
+static const profile_rank_def_t cgProfileRanks[] = {
+        PROFILE_RANK_TABLE( CG_PROFILE_RANK_ENTRY )
+};
+#undef CG_PROFILE_RANK_ENTRY
+
+#define CG_PROFILE_RANK_COUNT ( sizeof( cgProfileRanks ) / sizeof( cgProfileRanks[0] ) )
+
+static const profile_rank_def_t *CG_GetRankDef( int index ) {
+        if ( index < 0 || index >= CG_PROFILE_RANK_COUNT ) {
+                return NULL;
+        }
+
+        return &cgProfileRanks[index];
+}
 
 /*
 =================
@@ -1254,22 +1271,35 @@ static void CG_AddRankAnnouncement( int rankIndex, const char *name, const char 
 }
 
 static void CG_ParseRankUp( void ) {
-		int rankIndex;
-		const char *name;
-		const char *nextName = "";
+                int rankIndex;
+                const char *name;
+                const char *nextName = "";
+                const profile_rank_def_t *rankDef;
+                const profile_rank_def_t *nextDef;
 
-		if ( trap_Argc() < 3 ) {
-			return;
-		}
+                if ( trap_Argc() < 3 ) {
+                        return;
+                }
 
-		rankIndex = atoi( CG_Argv( 1 ) );
-		name = CG_Argv( 2 );
+                rankIndex = atoi( CG_Argv( 1 ) );
 
-		if ( trap_Argc() >= 4 ) {
-			nextName = CG_Argv( 3 );
-		}
+                name = CG_Argv( 2 );
+                if ( trap_Argc() >= 4 ) {
+                        nextName = CG_Argv( 3 );
+                }
 
-		CG_AddRankAnnouncement( rankIndex, name, nextName );
+                rankDef = CG_GetRankDef( rankIndex );
+                nextDef = CG_GetRankDef( rankIndex + 1 );
+
+                if ( rankDef && rankDef->name ) {
+                        name = rankDef->name;
+                }
+
+                if ( nextDef && nextDef->name ) {
+                        nextName = nextDef->name;
+                }
+
+                CG_AddRankAnnouncement( rankIndex, name, nextName );
 }
 
 static void CG_ParseGhostMeta( void ) {
