@@ -77,6 +77,7 @@ typedef struct {
     int rankIndex;
     char name[PROFILE_MAX_NAME];
     char nextName[PROFILE_MAX_NAME];
+    qboolean rankUp;
     int startTime;
 } cgRankAnnouncement_t;
 

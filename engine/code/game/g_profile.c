@@ -1043,7 +1043,7 @@ void G_Profile_AddScore( int delta ) {
 
     G_Profile_UpdateRankState();
 
-    if ( G_Profile_GetRank( &s_profileState.stats, &rankInfo ) && rankInfo.index > previousRank ) {
+    if ( G_Profile_GetRank( &s_profileState.stats, &rankInfo ) && rankInfo.index != previousRank ) {
         for ( i = 0; i < level.maxclients; ++i ) {
             gclient_t *client = &level.clients[i];
 
@@ -1056,7 +1056,10 @@ void G_Profile_AddScore( int delta ) {
         if ( clientNum >= 0 && rankInfo.current && rankInfo.current->name ) {
             const char *nextName = ( rankInfo.next && rankInfo.next->name ) ? rankInfo.next->name : "";
 
-            trap_SendServerCommand( clientNum, va( "rankup %d \"%s\" \"%s\"", rankInfo.index, rankInfo.current->name, nextName ) );
+            trap_SendServerCommand( clientNum,
+                                    va( ( rankInfo.index > previousRank ) ? "rankup %d \"%s\" \"%s\"" :
+                                         "rankdown %d \"%s\" \"%s\"",
+                                         rankInfo.index, rankInfo.current->name, nextName ) );
         }
     }
 

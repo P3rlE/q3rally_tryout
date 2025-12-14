@@ -2337,6 +2337,7 @@ static void CG_DrawRankNotifications( void ) {
     vec4_t bgColor = { 0.0f, 0.0f, 0.0f, 0.45f };
     vec4_t borderColor = { 1.0f, 1.0f, 1.0f, 0.25f };
     vec4_t highlightColor = { 0.6f, 1.0f, 0.6f, 1.0f };
+    vec4_t demotionColor = { 1.0f, 0.4f, 0.4f, 1.0f };
     vec4_t textColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     if ( cg.rankQueueCount <= 0 ) {
@@ -2368,6 +2369,7 @@ static void CG_DrawRankNotifications( void ) {
     bgColor[3] *= alpha;
     borderColor[3] *= alpha;
     highlightColor[3] *= alpha;
+    demotionColor[3] *= alpha;
     textColor[3] *= alpha;
 
     x = 170.0f + ( 300.0f - width ) * 0.5f;
@@ -2376,10 +2378,12 @@ static void CG_DrawRankNotifications( void ) {
     CG_FillRect( x, y, width, height, bgColor );
     CG_DrawRect( x, y, width, height, 1.0f, borderColor );
 
-    CG_DrawStringExt( (int)( x + 12.0f ), (int)( y + 10.0f ), "Rank Up!", highlightColor,
+    CG_DrawStringExt( (int)( x + 12.0f ), (int)( y + 10.0f ), announcement->rankUp ? "Rank Up!" : "Rank Down!",
+                      announcement->rankUp ? highlightColor : demotionColor,
                       qfalse, qtrue, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT, 0 );
 
-    CG_DrawStringExt( (int)( x + 12.0f ), (int)( y + 26.0f ), announcement->name, highlightColor,
+    CG_DrawStringExt( (int)( x + 12.0f ), (int)( y + 26.0f ), announcement->name,
+                      announcement->rankUp ? highlightColor : demotionColor,
                       qfalse, qtrue, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT, 0 );
 
     if ( announcement->nextName[0] && Q_stricmp( announcement->nextName, announcement->name ) ) {

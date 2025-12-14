@@ -1240,9 +1240,9 @@ static void CG_ParseAchievementUnlock( void ) {
         CG_AddAchievementAnnouncement( (bgAchievementCategory_t) categoryIndex, tierIndex );
 }
 
-static void CG_AddRankAnnouncement( int rankIndex, const char *name, const char *nextName ) {
-		cgRankAnnouncement_t *slot;
-		int queueCount;
+static void CG_AddRankAnnouncement( int rankIndex, const char *name, const char *nextName, qboolean rankUp ) {
+                cgRankAnnouncement_t *slot;
+                int queueCount;
 
 		if ( rankIndex < 0 ) {
 			return;
@@ -1258,12 +1258,13 @@ static void CG_AddRankAnnouncement( int rankIndex, const char *name, const char 
 			}
 		}
 
-		slot = &cg.rankQueue[queueCount];
-		slot->rankIndex = rankIndex;
-		Q_strncpyz( slot->name, name ? name : "", sizeof( slot->name ) );
-		Q_strncpyz( slot->nextName, nextName ? nextName : "", sizeof( slot->nextName ) );
-		slot->startTime = cg.time;
-		cg.rankQueueCount = queueCount + 1;
+                slot = &cg.rankQueue[queueCount];
+                slot->rankIndex = rankIndex;
+                Q_strncpyz( slot->name, name ? name : "", sizeof( slot->name ) );
+                Q_strncpyz( slot->nextName, nextName ? nextName : "", sizeof( slot->nextName ) );
+                slot->rankUp = rankUp;
+                slot->startTime = cg.time;
+                cg.rankQueueCount = queueCount + 1;
 
 		if ( cgs.media.achievementUnlockSound ) {
 			trap_S_StartLocalSound( cgs.media.achievementUnlockSound, CHAN_LOCAL_SOUND );
@@ -1299,7 +1300,39 @@ static void CG_ParseRankUp( void ) {
                         nextName = nextDef->name;
                 }
 
-                CG_AddRankAnnouncement( rankIndex, name, nextName );
+                CG_AddRankAnnouncement( rankIndex, name, nextName, qtrue );
+}
+
+static void CG_ParseRankDown( void ) {
+                int rankIndex;
+                const char *name;
+                const char *nextName = "";
+                const profile_rank_def_t *rankDef;
+                const profile_rank_def_t *nextDef;
+
+                if ( trap_Argc() < 3 ) {
+                        return;
+                }
+
+                rankIndex = atoi( CG_Argv( 1 ) );
+
+                name = CG_Argv( 2 );
+                if ( trap_Argc() >= 4 ) {
+                        nextName = CG_Argv( 3 );
+                }
+
+                rankDef = CG_GetRankDef( rankIndex );
+                nextDef = CG_GetRankDef( rankIndex + 1 );
+
+                if ( rankDef && rankDef->name ) {
+                        name = rankDef->name;
+                }
+
+                if ( nextDef && nextDef->name ) {
+                        nextName = nextDef->name;
+                }
+
+                CG_AddRankAnnouncement( rankIndex, name, nextName, qfalse );
 }
 
 static void CG_ParseGhostMeta( void ) {
@@ -1359,6 +1392,11 @@ static void CG_ServerCommand( void ) {
 
         if ( !strcmp( cmd, "rankup" ) ) {
                 CG_ParseRankUp();
+                return;
+        }
+
+        if ( !strcmp( cmd, "rankdown" ) ) {
+                CG_ParseRankDown();
                 return;
         }
 
