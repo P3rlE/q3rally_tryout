@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // be a valid snapshot this frame
 
 #include "cg_local.h"
+#include "../game/profile_shared.h"
 #ifdef MISSIONPACK
 #include "../../ui/menudef.h"
 
@@ -49,15 +50,31 @@ static const orderTask_t validOrders[] = {
 static const int numValidOrders = ARRAY_LEN(validOrders);
 
 static int CG_ValidOrder(const char *p) {
-	int i;
-	for (i = 0; i < numValidOrders; i++) {
-		if (Q_stricmp(p, validOrders[i].order) == 0) {
-			return validOrders[i].taskNum;
-		}
-	}
-	return -1;
+        int i;
+        for (i = 0; i < numValidOrders; i++) {
+                if (Q_stricmp(p, validOrders[i].order) == 0) {
+                        return validOrders[i].taskNum;
+                }
+        }
+        return -1;
 }
 #endif
+
+#define CG_PROFILE_RANK_ENTRY( name, threshold ) { name, threshold },
+static const profile_rank_def_t cgProfileRanks[] = {
+        PROFILE_RANK_TABLE( CG_PROFILE_RANK_ENTRY )
+};
+#undef CG_PROFILE_RANK_ENTRY
+
+#define CG_PROFILE_RANK_COUNT ( sizeof( cgProfileRanks ) / sizeof( cgProfileRanks[0] ) )
+
+static const profile_rank_def_t *CG_GetRankDef( int index ) {
+        if ( index < 0 || index >= CG_PROFILE_RANK_COUNT ) {
+                return NULL;
+        }
+
+        return &cgProfileRanks[index];
+}
 
 /*
 =================
@@ -1173,8 +1190,8 @@ static void CG_ParsePositions( void ) {
 
 
 static void CG_AddAchievementAnnouncement( bgAchievementCategory_t category, int tierIndex ) {
-	cgAchievementAnnouncement_t *slot;
-	int queueCount;
+        cgAchievementAnnouncement_t *slot;
+        int queueCount;
 
 	if ( category < 0 || category >= BG_ACHIEVEMENT_CATEGORY_COUNT ) {
 		return;
@@ -1221,6 +1238,68 @@ static void CG_ParseAchievementUnlock( void ) {
 	}
 
         CG_AddAchievementAnnouncement( (bgAchievementCategory_t) categoryIndex, tierIndex );
+}
+
+static void CG_AddRankAnnouncement( int rankIndex, const char *name, const char *nextName ) {
+		cgRankAnnouncement_t *slot;
+		int queueCount;
+
+		if ( rankIndex < 0 ) {
+			return;
+		}
+
+		queueCount = cg.rankQueueCount;
+		if ( queueCount >= RANK_MAX_QUEUE ) {
+			int i;
+			queueCount = RANK_MAX_QUEUE - 1;
+
+			for ( i = 0; i < queueCount; ++i ) {
+				cg.rankQueue[i] = cg.rankQueue[i + 1];
+			}
+		}
+
+		slot = &cg.rankQueue[queueCount];
+		slot->rankIndex = rankIndex;
+		Q_strncpyz( slot->name, name ? name : "", sizeof( slot->name ) );
+		Q_strncpyz( slot->nextName, nextName ? nextName : "", sizeof( slot->nextName ) );
+		slot->startTime = cg.time;
+		cg.rankQueueCount = queueCount + 1;
+
+		if ( cgs.media.achievementUnlockSound ) {
+			trap_S_StartLocalSound( cgs.media.achievementUnlockSound, CHAN_LOCAL_SOUND );
+		}
+}
+
+static void CG_ParseRankUp( void ) {
+                int rankIndex;
+                const char *name;
+                const char *nextName = "";
+                const profile_rank_def_t *rankDef;
+                const profile_rank_def_t *nextDef;
+
+                if ( trap_Argc() < 3 ) {
+                        return;
+                }
+
+                rankIndex = atoi( CG_Argv( 1 ) );
+
+                name = CG_Argv( 2 );
+                if ( trap_Argc() >= 4 ) {
+                        nextName = CG_Argv( 3 );
+                }
+
+                rankDef = CG_GetRankDef( rankIndex );
+                nextDef = CG_GetRankDef( rankIndex + 1 );
+
+                if ( rankDef && rankDef->name ) {
+                        name = rankDef->name;
+                }
+
+                if ( nextDef && nextDef->name ) {
+                        nextName = nextDef->name;
+                }
+
+                CG_AddRankAnnouncement( rankIndex, name, nextName );
 }
 
 static void CG_ParseGhostMeta( void ) {
@@ -1275,6 +1354,11 @@ static void CG_ServerCommand( void ) {
 
         if ( !strcmp( cmd, "achv" ) ) {
                 CG_ParseAchievementUnlock();
+                return;
+        }
+
+        if ( !strcmp( cmd, "rankup" ) ) {
+                CG_ParseRankUp();
                 return;
         }
 

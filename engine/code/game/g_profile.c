@@ -1027,14 +1027,38 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
 }
 
 void G_Profile_AddScore( int delta ) {
+    int previousRank;
+    profile_rank_t rankInfo;
+    int clientNum = -1;
+    int i;
+
     if ( !s_profileState.loaded || delta == 0 ) {
         return;
     }
+
+    previousRank = s_profileState.info.currentRank;
 
     s_profileState.stats.playerScore += delta;
     s_profileState.dirty = qtrue;
 
     G_Profile_UpdateRankState();
+
+    if ( G_Profile_GetRank( &s_profileState.stats, &rankInfo ) && rankInfo.index > previousRank ) {
+        for ( i = 0; i < level.maxclients; ++i ) {
+            gclient_t *client = &level.clients[i];
+
+            if ( client->pers.connected == CON_CONNECTED && client->pers.localClient ) {
+                clientNum = i;
+                break;
+            }
+        }
+
+        if ( clientNum >= 0 && rankInfo.current && rankInfo.current->name ) {
+            const char *nextName = ( rankInfo.next && rankInfo.next->name ) ? rankInfo.next->name : "";
+
+            trap_SendServerCommand( clientNum, va( "rankup %d \"%s\" \"%s\"", rankInfo.index, rankInfo.current->name, nextName ) );
+        }
+    }
 
     G_Profile_MaybeAutosave();
 }
