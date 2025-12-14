@@ -81,6 +81,13 @@ typedef struct profile_rank_s {
     const profile_rank_def_t *next;
 } profile_rank_t;
 
+#ifndef PROFILE_SHARED_IMPLEMENTATION
+qboolean Profile_GetRankForScore( const profile_stats_t *stats,
+                                 const profile_rank_def_t *rankDefs,
+                                 int rankDefCount,
+                                 profile_rank_t *outRank );
+#endif
+
 #ifdef PROFILE_SHARED_IMPLEMENTATION
 static ID_INLINE qboolean Profile_GetRankForScore( const profile_stats_t *stats,
                                                   const profile_rank_def_t *rankDefs,

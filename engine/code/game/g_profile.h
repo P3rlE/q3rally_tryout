@@ -1,8 +1,8 @@
 #ifndef G_PROFILE_H
 #define G_PROFILE_H
 
-typedef struct profile_stats_s profile_stats_t;
-typedef struct profile_rank_s profile_rank_t;
+struct profile_stats_s;
+struct profile_rank_s;
 
 struct gclient_s;
 struct gentity_s;
@@ -26,6 +26,6 @@ void G_Profile_RecordExcellent( struct gclient_s *client );
 void G_Profile_RecordImpressive( struct gclient_s *client );
 void G_Profile_RecordAccuracy( struct gclient_s *client, int accuracyPercent );
 void G_Profile_RecordPerfect( struct gclient_s *client );
-qboolean G_Profile_GetRank( const profile_stats_t *stats, profile_rank_t *outRank );
+qboolean G_Profile_GetRank( const struct profile_stats_s *stats, struct profile_rank_s *outRank );
 
 #endif /* G_PROFILE_H */

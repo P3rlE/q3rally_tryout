@@ -1,4 +1,3 @@
-#define PROFILE_SHARED_IMPLEMENTATION
 #include "profile_shared.h"
 #include "g_local.h"
 #include "g_profile.h"
@@ -77,6 +76,40 @@ static profile_vehicle_usage_t s_profileVehicleUsage[PROFILE_MAX_TRACKED_VEHICLE
 static const char *G_Profile_FindSectionEnd( const char *start, char endChar ) {
     const char *end = strchr( start, endChar );
     return end ? end : start;
+}
+
+qboolean Profile_GetRankForScore( const profile_stats_t *stats,
+                                 const profile_rank_def_t *rankDefs,
+                                 int rankDefCount,
+                                 profile_rank_t *outRank ) {
+    int i;
+    const profile_rank_def_t *current;
+    const profile_rank_def_t *next;
+    int currentIndex;
+
+    if ( !stats || !rankDefs || rankDefCount <= 0 || !outRank ) {
+        return qfalse;
+    }
+
+    current = &rankDefs[0];
+    next = NULL;
+    currentIndex = 0;
+
+    for ( i = 0; i < rankDefCount; ++i ) {
+        if ( stats->playerScore >= rankDefs[i].minimumScore ) {
+            current = &rankDefs[i];
+            currentIndex = i;
+        } else {
+            next = &rankDefs[i];
+            break;
+        }
+    }
+
+    outRank->index = currentIndex;
+    outRank->current = current;
+    outRank->next = next;
+
+    return qtrue;
 }
 
 static int G_Profile_ParseFavoriteCars( const char *buffer, profile_info_t *info ) {
