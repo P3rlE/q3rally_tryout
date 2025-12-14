@@ -23,7 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 #include "g_local.h"
 #include "g_profile.h"
-#define PROFILE_SHARED_IMPLEMENTATION
 #include "profile_shared.h"
 
 #define SCOREBOARD_RANK_ENTRY( name, minimumScore ) { name, minimumScore },
