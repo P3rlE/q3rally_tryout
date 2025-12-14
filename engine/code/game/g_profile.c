@@ -8,6 +8,10 @@
 #define PROFILE_SCORE_SUICIDE -5
 #define PROFILE_SCORE_FLAG_CAPTURE 10
 #define PROFILE_SCORE_FLAG_ASSIST 5
+#define PROFILE_SCORE_LAP 2
+#define PROFILE_SCORE_LEAD_LAP 2
+#define PROFILE_SCORE_RACE_WIN 10
+#define PROFILE_SCORE_ELIMINATION_WIN 25
 #define PROFILE_SCORE_ACHIEVEMENT_TIER 20
 
 static struct {
@@ -1015,6 +1019,18 @@ void G_Profile_RecordFlagAssist( gclient_t *client ) {
     G_Profile_CheckAchievementProgress( client, BG_ACHIEVEMENT_FLAG_ASSISTS );
 }
 
+void G_Profile_RecordLapComplete( gclient_t *client, qboolean isLeader ) {
+    if ( !G_Profile_ShouldTrackClient( client ) ) {
+        return;
+    }
+
+    G_Profile_AddScore( PROFILE_SCORE_LAP );
+
+    if ( isLeader ) {
+        G_Profile_AddScore( PROFILE_SCORE_LEAD_LAP );
+    }
+}
+
 void G_Profile_RecordWin( gclient_t *client ) {
     if ( !s_profileState.loaded ) {
         return;
@@ -1032,6 +1048,14 @@ void G_Profile_RecordWin( gclient_t *client ) {
     if ( g_gametype.integer == GT_SPRINT ) {
         s_profileState.stats.sprintWins++;
         G_Profile_CheckAchievementProgress( client, BG_ACHIEVEMENT_SPRINT_WINS );
+    }
+
+    if ( G_Profile_ShouldTrackClient( client ) ) {
+        if ( g_gametype.integer == GT_ELIMINATION ) {
+            G_Profile_AddScore( PROFILE_SCORE_ELIMINATION_WIN );
+        } else {
+            G_Profile_AddScore( PROFILE_SCORE_RACE_WIN );
+        }
     }
 }
 
