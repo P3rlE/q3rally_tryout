@@ -482,6 +482,7 @@ static qboolean G_Profile_LoadFromDisk( void ) {
     s_profileState.stats.kills = G_Profile_ParseInt( buffer, "kills", 0 );
     s_profileState.stats.deaths = G_Profile_ParseInt( buffer, "deaths", 0 );
     s_profileState.stats.wins = G_Profile_ParseInt( buffer, "wins", 0 );
+    s_profileState.stats.playerScore = G_Profile_ParseInt( buffer, "playerScore", 0 );
     s_profileState.stats.sprintWins = G_Profile_ParseInt( buffer, "sprintWins", 0 );
     s_profileState.stats.losses = G_Profile_ParseInt( buffer, "losses", 0 );
     s_profileState.stats.flagCaptures = G_Profile_ParseInt( buffer, "flagCaptures", 0 );
@@ -696,6 +697,7 @@ static void G_Profile_WriteToDisk( void ) {
         "\t\t\"kills\": %d,\n"
         "\t\t\"deaths\": %d,\n"
         "\t\t\"wins\": %d,\n"
+        "\t\t\"playerScore\": %d,\n"
         "\t\t\"sprintWins\": %d,\n"
         "\t\t\"losses\": %d,\n"
         "\t\t\"flagCaptures\": %d,\n"
@@ -724,6 +726,7 @@ static void G_Profile_WriteToDisk( void ) {
         s_profileState.stats.kills,
         s_profileState.stats.deaths,
         s_profileState.stats.wins,
+        s_profileState.stats.playerScore,
         s_profileState.stats.sprintWins,
         s_profileState.stats.losses,
         s_profileState.stats.flagCaptures,
