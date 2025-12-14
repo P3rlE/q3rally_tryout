@@ -1,3 +1,5 @@
+#define PROFILE_SHARED_IMPLEMENTATION
+#include "profile_shared.h"
 #include "g_local.h"
 #include "g_profile.h"
 #include "bg_achievements.h"
@@ -14,6 +16,14 @@
 #define PROFILE_SCORE_ELIMINATION_WIN 10
 #define PROFILE_SCORE_ACHIEVEMENT_TIER 20
 
+#define PROFILE_RANK_ENTRY( name, threshold ) { name, threshold },
+static const profile_rank_def_t s_profileRankTable[] = {
+    PROFILE_RANK_TABLE( PROFILE_RANK_ENTRY )
+};
+#undef PROFILE_RANK_ENTRY
+
+#define PROFILE_RANK_COUNT ( sizeof( s_profileRankTable ) / sizeof( s_profileRankTable[0] ) )
+
 static struct {
     qboolean        loaded;
     qboolean        dirty;
@@ -28,6 +38,7 @@ static void G_Profile_ParseString( const char *buffer, const char *key, char *ou
 static void G_Profile_RecomputeAchievementState( void );
 static void G_Profile_WriteToDisk( void );
 static void G_Profile_MaybeAutosave( void );
+static void G_Profile_UpdateRankState( void );
 
 static qboolean G_Profile_ShouldTrackClient( const gclient_t *client ) {
     if ( !s_profileState.loaded ) {
@@ -130,6 +141,24 @@ static int G_Profile_ParseFavoriteCars( const char *buffer, profile_info_t *info
 static void G_Profile_MaybeAutosave( void ) {
     if ( s_profileState.dirty && level.time >= s_profileState.nextAutosaveTime ) {
         G_Profile_WriteToDisk();
+    }
+}
+
+qboolean G_Profile_GetRank( const profile_stats_t *stats, profile_rank_t *outRank ) {
+    return Profile_GetRankForScore( stats, s_profileRankTable, PROFILE_RANK_COUNT, outRank );
+}
+
+static void G_Profile_UpdateRankState( void ) {
+    profile_rank_t rank;
+
+    if ( !G_Profile_GetRank( &s_profileState.stats, &rank ) ) {
+        return;
+    }
+
+    s_profileState.info.currentRank = rank.index;
+    if ( rank.index > s_profileState.info.highestRank ) {
+        s_profileState.info.highestRank = rank.index;
+        s_profileState.dirty = qtrue;
     }
 }
 
@@ -538,6 +567,8 @@ static qboolean G_Profile_LoadFromDisk( void ) {
     G_Profile_ParseString( buffer, "birthDate", s_profileState.info.birthDate, sizeof( s_profileState.info.birthDate ), "" );
     G_Profile_ParseString( buffer, "avatar", s_profileState.info.avatar, sizeof( s_profileState.info.avatar ), "" );
     G_Profile_ParseString( buffer, "country", s_profileState.info.country, sizeof( s_profileState.info.country ), "" );
+    s_profileState.info.currentRank = G_Profile_ParseInt( buffer, "currentRank", 0 );
+    s_profileState.info.highestRank = G_Profile_ParseInt( buffer, "highestRank", 0 );
     G_Profile_ParseFavoriteCars( buffer, &s_profileState.info );
 
     // Lade Vehicle-Array aus JSON
@@ -609,6 +640,8 @@ static qboolean G_Profile_LoadFromDisk( void ) {
         s_profileVehicleUsage[0].timeMs = s_profileState.stats.mostUsedVehicleTimeMs;
     }
 
+    G_Profile_UpdateRankState();
+
     return qtrue;
 }
 
@@ -651,6 +684,8 @@ static void G_Profile_WriteToDisk( void ) {
         G_Profile_ParseString( readBuffer, "birthDate", s_profileState.info.birthDate, sizeof( s_profileState.info.birthDate ), s_profileState.info.birthDate );
         G_Profile_ParseString( readBuffer, "avatar", s_profileState.info.avatar, sizeof( s_profileState.info.avatar ), s_profileState.info.avatar );
         G_Profile_ParseString( readBuffer, "country", s_profileState.info.country, sizeof( s_profileState.info.country ), s_profileState.info.country );
+        s_profileState.info.currentRank = G_Profile_ParseInt( readBuffer, "currentRank", s_profileState.info.currentRank );
+        s_profileState.info.highestRank = G_Profile_ParseInt( readBuffer, "highestRank", s_profileState.info.highestRank );
     } else if ( readFile ) {
         trap_FS_FCloseFile( readFile );
     }
@@ -725,6 +760,8 @@ static void G_Profile_WriteToDisk( void ) {
         "\t\t\"birthDate\": \"%s\",\n"
         "\t\t\"avatar\": \"%s\",\n"
         "\t\t\"country\": \"%s\",\n"
+        "\t\t\"currentRank\": %d,\n"
+        "\t\t\"highestRank\": %d,\n"
         "\t\t\"favoriteCars\": %s\n"
         "\t},\n"
         "\t\"stats\": {\n"
@@ -756,6 +793,8 @@ static void G_Profile_WriteToDisk( void ) {
         birthDate,
         avatar,
         country,
+        s_profileState.info.currentRank,
+        s_profileState.info.highestRank,
         favoriteCarsJson,
         s_profileState.stats.distanceKm,
         s_profileState.stats.fuelUsed,
@@ -961,6 +1000,8 @@ void G_Profile_AddScore( int delta ) {
 
     s_profileState.stats.playerScore += delta;
     s_profileState.dirty = qtrue;
+
+    G_Profile_UpdateRankState();
 
     G_Profile_MaybeAutosave();
 }
