@@ -4,6 +4,11 @@
 
 #define PROFILE_AUTOSAVE_INTERVAL 30000
 #define PROFILE_DISPLAY_L_PER_100KM 9.0f
+#define PROFILE_SCORE_FRAG 2
+#define PROFILE_SCORE_SUICIDE -5
+#define PROFILE_SCORE_FLAG_CAPTURE 10
+#define PROFILE_SCORE_FLAG_ASSIST 5
+#define PROFILE_SCORE_ACHIEVEMENT_TIER 20
 
 static struct {
     qboolean        loaded;
@@ -17,6 +22,8 @@ static struct {
 
 static void G_Profile_ParseString( const char *buffer, const char *key, char *out, int outSize, const char *defaultValue );
 static void G_Profile_RecomputeAchievementState( void );
+static void G_Profile_WriteToDisk( void );
+static void G_Profile_MaybeAutosave( void );
 
 static qboolean G_Profile_ShouldTrackClient( const gclient_t *client ) {
     if ( !s_profileState.loaded ) {
@@ -101,6 +108,12 @@ static int G_Profile_ParseFavoriteCars( const char *buffer, profile_info_t *info
     return parsedFavorites;
 }
 
+static void G_Profile_MaybeAutosave( void ) {
+    if ( s_profileState.dirty && level.time >= s_profileState.nextAutosaveTime ) {
+        G_Profile_WriteToDisk();
+    }
+}
+
 static double G_Profile_GetAchievementProgressForCategory( bgAchievementCategory_t category ) {
     switch ( category ) {
     case BG_ACHIEVEMENT_DISTANCE:
@@ -162,12 +175,17 @@ static void G_Profile_CheckAchievementProgress( gclient_t *client, bgAchievement
 
     if ( unlocked > s_profileState.achievementsUnlocked[category] ) {
         int tier;
+        int newlyUnlocked = unlocked - s_profileState.achievementsUnlocked[category];
 
         for ( tier = s_profileState.achievementsUnlocked[category]; tier < unlocked; ++tier ) {
             G_Profile_SendAchievementUnlock( client, category, tier );
         }
 
         s_profileState.achievementsUnlocked[category] = unlocked;
+
+        if ( G_Profile_ShouldTrackClient( client ) && newlyUnlocked > 0 ) {
+            G_Profile_AddScore( newlyUnlocked * PROFILE_SCORE_ACHIEVEMENT_TIER );
+        }
     }
 }
 
@@ -914,9 +932,18 @@ void G_Profile_UpdateClientFrame( gentity_t *ent ) {
     }
 
     // Auto-Save Check
-    if ( s_profileState.dirty && level.time >= s_profileState.nextAutosaveTime ) {
-        G_Profile_WriteToDisk();
+    G_Profile_MaybeAutosave();
+}
+
+void G_Profile_AddScore( int delta ) {
+    if ( !s_profileState.loaded || delta == 0 ) {
+        return;
     }
+
+    s_profileState.stats.playerScore += delta;
+    s_profileState.dirty = qtrue;
+
+    G_Profile_MaybeAutosave();
 }
 
 void G_Profile_RecordKill( gclient_t *attacker, gclient_t *victim ) {
@@ -929,11 +956,14 @@ void G_Profile_RecordKill( gclient_t *attacker, gclient_t *victim ) {
     }
 
     if ( attacker == victim ) {
+        G_Profile_AddScore( PROFILE_SCORE_SUICIDE );
         return;
     }
 
     s_profileState.stats.kills++;
     s_profileState.dirty = qtrue;
+
+    G_Profile_AddScore( PROFILE_SCORE_FRAG );
 
     G_Profile_CheckAchievementProgress( attacker, BG_ACHIEVEMENT_KILLS );
 }
@@ -963,6 +993,8 @@ void G_Profile_RecordFlagCapture( gclient_t *client ) {
     s_profileState.stats.flagCaptures++;
     s_profileState.dirty = qtrue;
 
+    G_Profile_AddScore( PROFILE_SCORE_FLAG_CAPTURE );
+
     G_Profile_CheckAchievementProgress( client, BG_ACHIEVEMENT_FLAG_CAPTURES );
 }
 
@@ -977,6 +1009,8 @@ void G_Profile_RecordFlagAssist( gclient_t *client ) {
 
     s_profileState.stats.flagAssists++;
     s_profileState.dirty = qtrue;
+
+    G_Profile_AddScore( PROFILE_SCORE_FLAG_ASSIST );
 
     G_Profile_CheckAchievementProgress( client, BG_ACHIEVEMENT_FLAG_ASSISTS );
 }
