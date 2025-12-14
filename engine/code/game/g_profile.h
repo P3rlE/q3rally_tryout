@@ -1,7 +1,8 @@
 #ifndef G_PROFILE_H
 #define G_PROFILE_H
 
-#include "profile_shared.h"
+typedef struct profile_stats_s profile_stats_t;
+typedef struct profile_rank_s profile_rank_t;
 
 struct gclient_s;
 struct gentity_s;

@@ -1,3 +1,5 @@
+#define PROFILE_SHARED_IMPLEMENTATION
+#include "profile_shared.h"
 #include "g_local.h"
 #include "g_profile.h"
 #include "bg_achievements.h"

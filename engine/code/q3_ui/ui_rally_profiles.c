@@ -1,3 +1,5 @@
+#define PROFILE_SHARED_IMPLEMENTATION
+#include "../game/profile_shared.h"
 #include "ui_local.h"
 
 #define MAX_PROFILE_FILES   64

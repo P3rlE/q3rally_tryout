@@ -12,7 +12,7 @@
 #define PROFILE_MAX_FAVORITE_CARS 4
 #define PROFILE_MAX_FAVORITE_FIELD MAX_QPATH
 
-typedef struct {
+typedef struct profile_rank_def_s {
     const char *name;
     int minimumScore;
 } profile_rank_def_t;
@@ -34,7 +34,7 @@ typedef struct {
     ENTRY( "Rank 14", 20000 )      \
     ENTRY( "Rank 15", 30000 )
 
-typedef struct {
+typedef struct profile_stats_s {
     double distanceKm;
     double fuelUsed;
     int bestLapMs;
@@ -57,14 +57,14 @@ typedef struct {
     int mostUsedVehicleTimeMs;
 } profile_stats_t;
 
-typedef struct {
+typedef struct profile_favorite_car_s {
     char model[PROFILE_MAX_FAVORITE_FIELD];
     char skin[PROFILE_MAX_FAVORITE_FIELD];
     char rim[PROFILE_MAX_FAVORITE_FIELD];
     char head[PROFILE_MAX_FAVORITE_FIELD];
 } profile_favorite_car_t;
 
-typedef struct {
+typedef struct profile_info_s {
     char name[PROFILE_MAX_NAME];
     char gender[PROFILE_MAX_GENDER];
     char birthDate[PROFILE_MAX_BIRTHDATE];
@@ -75,12 +75,13 @@ typedef struct {
     profile_favorite_car_t favoriteCars[PROFILE_MAX_FAVORITE_CARS];
 } profile_info_t;
 
-typedef struct {
+typedef struct profile_rank_s {
     int index;
     const profile_rank_def_t *current;
     const profile_rank_def_t *next;
 } profile_rank_t;
 
+#ifdef PROFILE_SHARED_IMPLEMENTATION
 static ID_INLINE qboolean Profile_GetRankForScore( const profile_stats_t *stats,
                                                   const profile_rank_def_t *rankDefs,
                                                   int rankDefCount,
@@ -114,5 +115,6 @@ static ID_INLINE qboolean Profile_GetRankForScore( const profile_stats_t *stats,
 
     return qtrue;
 }
+#endif /* PROFILE_SHARED_IMPLEMENTATION */
 
 #endif /* PROFILE_SHARED_H */
