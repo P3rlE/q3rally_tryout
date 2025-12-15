@@ -10,6 +10,10 @@
 #include <ctype.h>
 #endif
 
+#ifdef Q3_VM
+#include "bg_lib.h"
+#endif
+
 #define PROFILE_AUTOSAVE_INTERVAL 30000
 #define PROFILE_DISPLAY_L_PER_100KM 9.0f
 #define PROFILE_SCORE_FRAG 2
@@ -85,6 +89,10 @@ static const char *G_Profile_FindSectionEnd( const char *start, char endChar ) {
     return end ? end : start;
 }
 
+static char G_Profile_ToLowerASCII( char c ) {
+    return ( c >= 'A' && c <= 'Z' ) ? ( c + ( 'a' - 'A' ) ) : c;
+}
+
 static void G_Profile_NormalizeVehicleName( const char *vehicle, char *out, int outSize ) {
     int i;
 
@@ -103,7 +111,7 @@ static void G_Profile_NormalizeVehicleName( const char *vehicle, char *out, int 
             break;
         }
 
-        out[i] = tolower( (unsigned char)vehicle[i] );
+        out[i] = G_Profile_ToLowerASCII( vehicle[i] );
     }
 
     out[i] = '\0';
