@@ -2,6 +2,13 @@
 #include "g_local.h"
 #include "g_profile.h"
 #include "bg_achievements.h"
+#include <ctype.h>
+
+#ifdef Q3_VM
+#include "bg_lib.h"
+#else
+#include <ctype.h>
+#endif
 
 #ifdef Q3_VM
 #include "bg_lib.h"
