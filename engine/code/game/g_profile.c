@@ -213,6 +213,22 @@ static void G_Profile_MaybeAutosave( void ) {
     }
 }
 
+void G_Profile_FlushIfDirty( void ) {
+    if ( !s_profileState.loaded ) {
+        return;
+    }
+
+    if ( s_profileState.dirty ) {
+        G_Profile_WriteToDisk();
+    } else {
+        s_profileState.nextAutosaveTime = level.time + PROFILE_AUTOSAVE_INTERVAL;
+    }
+}
+
+qboolean G_Profile_IsDirty( void ) {
+    return s_profileState.loaded && s_profileState.dirty;
+}
+
 qboolean G_Profile_GetRank( const profile_stats_t *stats, profile_rank_t *outRank ) {
     return Profile_GetRankForScore( stats, s_profileRankTable, PROFILE_RANK_COUNT, outRank );
 }
@@ -1060,9 +1076,7 @@ void G_Profile_Shutdown( void ) {
         return;
     }
 
-    if ( s_profileState.dirty ) {
-        G_Profile_WriteToDisk();
-    }
+    G_Profile_FlushIfDirty();
 
     G_Profile_ClearState();
 }
