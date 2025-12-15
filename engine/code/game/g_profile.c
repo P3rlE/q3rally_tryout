@@ -533,6 +533,7 @@ static profile_vehicle_usage_t *G_Profile_FindVehicleUsage( const char *vehicle,
 static void G_Profile_AddVehicleTime( const char *vehicle, int timeMs ) {
     char normalized[PROFILE_MAX_VEHICLE];
     profile_vehicle_usage_t *usage;
+    qboolean isNewVehicle;
 
     if ( timeMs <= 0 ) {
         return;
@@ -549,20 +550,27 @@ static void G_Profile_AddVehicleTime( const char *vehicle, int timeMs ) {
         return;
     }
 
+    isNewVehicle = ( usage->timeMs == 0 );
     usage->timeMs += timeMs;
-    
-    Com_Printf( "G_Profile: Vehicle '%s' now has %d ms (added %d ms)\n", 
+    s_profileState.dirty = qtrue;
+
+    Com_Printf( "G_Profile: Vehicle '%s' now has %d ms (added %d ms)\n",
                usage->name, usage->timeMs, timeMs );
-    
+
     if ( usage->timeMs > s_profileState.stats.mostUsedVehicleTimeMs ) {
         s_profileState.stats.mostUsedVehicleTimeMs = usage->timeMs;
         Q_strncpyz( s_profileState.stats.mostUsedVehicle, usage->name, sizeof( s_profileState.stats.mostUsedVehicle ) );
-        s_profileState.dirty = qtrue;
-        
-        Com_Printf( "G_Profile: NEW most used vehicle: '%s' with %d ms\n", 
+
+        Com_Printf( "G_Profile: NEW most used vehicle: '%s' with %d ms\n",
                    s_profileState.stats.mostUsedVehicle,
                    s_profileState.stats.mostUsedVehicleTimeMs );
     }
+
+    if ( isNewVehicle ) {
+        s_profileState.nextAutosaveTime = level.time;
+    }
+
+    G_Profile_MaybeAutosave();
 }
 
 static void G_Profile_RecomputeMostUsedVehicle( void ) {
