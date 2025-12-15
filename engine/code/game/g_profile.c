@@ -3,6 +3,12 @@
 #include "g_profile.h"
 #include "bg_achievements.h"
 
+#ifdef Q3_VM
+#include "bg_lib.h"
+#else
+#include <ctype.h>
+#endif
+
 #define PROFILE_AUTOSAVE_INTERVAL 30000
 #define PROFILE_DISPLAY_L_PER_100KM 9.0f
 #define PROFILE_SCORE_FRAG 2
@@ -76,6 +82,30 @@ static profile_vehicle_usage_t s_profileVehicleUsage[PROFILE_MAX_TRACKED_VEHICLE
 static const char *G_Profile_FindSectionEnd( const char *start, char endChar ) {
     const char *end = strchr( start, endChar );
     return end ? end : start;
+}
+
+static void G_Profile_NormalizeVehicleName( const char *vehicle, char *out, int outSize ) {
+    int i;
+
+    if ( !out || outSize <= 0 ) {
+        return;
+    }
+
+    out[0] = '\0';
+
+    if ( !vehicle ) {
+        return;
+    }
+
+    for ( i = 0; i < outSize - 1 && vehicle[i]; ++i ) {
+        if ( vehicle[i] == '/' ) {
+            break;
+        }
+
+        out[i] = tolower( (unsigned char)vehicle[i] );
+    }
+
+    out[i] = '\0';
 }
 
 qboolean Profile_GetRankForScore( const profile_stats_t *stats,
@@ -489,13 +519,19 @@ static profile_vehicle_usage_t *G_Profile_FindVehicleUsage( const char *vehicle,
 }
 
 static void G_Profile_AddVehicleTime( const char *vehicle, int timeMs ) {
+    char normalized[PROFILE_MAX_VEHICLE];
     profile_vehicle_usage_t *usage;
 
     if ( timeMs <= 0 ) {
         return;
     }
 
-    usage = G_Profile_FindVehicleUsage( vehicle, qtrue );
+    G_Profile_NormalizeVehicleName( vehicle, normalized, sizeof( normalized ) );
+    if ( !normalized[0] ) {
+        return;
+    }
+
+    usage = G_Profile_FindVehicleUsage( normalized, qtrue );
     if ( !usage ) {
         Com_Printf( "G_Profile: Failed to find/create vehicle usage for '%s'\n", vehicle );
         return;
@@ -514,6 +550,32 @@ static void G_Profile_AddVehicleTime( const char *vehicle, int timeMs ) {
         Com_Printf( "G_Profile: NEW most used vehicle: '%s' with %d ms\n", 
                    s_profileState.stats.mostUsedVehicle,
                    s_profileState.stats.mostUsedVehicleTimeMs );
+    }
+}
+
+static void G_Profile_RecomputeMostUsedVehicle( void ) {
+    int i;
+    int bestTimeMs = 0;
+    char bestVehicle[PROFILE_MAX_VEHICLE];
+
+    bestVehicle[0] = '\0';
+
+    for ( i = 0; i < PROFILE_MAX_TRACKED_VEHICLES; ++i ) {
+        if ( !s_profileVehicleUsage[i].name[0] ) {
+            continue;
+        }
+
+        if ( s_profileVehicleUsage[i].timeMs > bestTimeMs ) {
+            bestTimeMs = s_profileVehicleUsage[i].timeMs;
+            Q_strncpyz( bestVehicle, s_profileVehicleUsage[i].name, sizeof( bestVehicle ) );
+        }
+    }
+
+    if ( bestTimeMs != s_profileState.stats.mostUsedVehicleTimeMs ||
+         Q_stricmp( s_profileState.stats.mostUsedVehicle, bestVehicle ) ) {
+        s_profileState.stats.mostUsedVehicleTimeMs = bestTimeMs;
+        Q_strncpyz( s_profileState.stats.mostUsedVehicle, bestVehicle, sizeof( s_profileState.stats.mostUsedVehicle ) );
+        s_profileState.dirty = qtrue;
     }
 }
 
@@ -611,15 +673,17 @@ static qboolean G_Profile_LoadFromDisk( void ) {
         if ( vehiclesStart ) {
             int vehicleIndex = 0;
             cursor = vehiclesStart + 1;
-            
+
             while ( *cursor && *cursor != ']' && vehicleIndex < PROFILE_MAX_TRACKED_VEHICLES ) {
                 const char *nameStart;
                 const char *nameEnd;
                 const char *timeStr;
                 char vehicleName[PROFILE_MAX_VEHICLE];
+                char normalizedName[PROFILE_MAX_VEHICLE];
                 int vehicleTime;
                 int nameLength;
-                
+                profile_vehicle_usage_t *usage;
+
                 // Finde "name"
                 cursor = strstr( cursor, "\"name\"" );
                 if ( !cursor ) break;
@@ -648,30 +712,51 @@ static qboolean G_Profile_LoadFromDisk( void ) {
                 cursor = strchr( cursor, ':' );
                 if ( !cursor ) break;
                 cursor++;
-                
+
                 while ( *cursor == ' ' || *cursor == '\t' ) cursor++;
                 timeStr = cursor;
                 vehicleTime = atoi( timeStr );
-                
-                // Speichere im Array
-                Q_strncpyz( s_profileVehicleUsage[vehicleIndex].name, vehicleName, sizeof( s_profileVehicleUsage[vehicleIndex].name ) );
-                s_profileVehicleUsage[vehicleIndex].timeMs = vehicleTime;
-                
-                vehicleIndex++;
-                
+
+                G_Profile_NormalizeVehicleName( vehicleName, normalizedName, sizeof( normalizedName ) );
+                if ( !normalizedName[0] ) {
+                    // Nächstes Objekt
+                    cursor = strchr( cursor, '}' );
+                    if ( !cursor ) break;
+                    cursor++;
+                    vehicleIndex++;
+                    continue;
+                }
+
+                usage = G_Profile_FindVehicleUsage( normalizedName, qtrue );
+                if ( usage ) {
+                    usage->timeMs += vehicleTime;
+                }
+
                 // Nächstes Objekt
                 cursor = strchr( cursor, '}' );
                 if ( !cursor ) break;
                 cursor++;
+
+                vehicleIndex++;
             }
         }
     }
 
     // Falls keine Vehicle-Liste vorhanden (Legacy), lade das mostUsedVehicle-Feld
     if ( s_profileState.stats.mostUsedVehicle[0] && s_profileVehicleUsage[0].name[0] == '\0' ) {
-        Q_strncpyz( s_profileVehicleUsage[0].name, s_profileState.stats.mostUsedVehicle, sizeof( s_profileVehicleUsage[0].name ) );
-        s_profileVehicleUsage[0].timeMs = s_profileState.stats.mostUsedVehicleTimeMs;
+        char normalizedName[PROFILE_MAX_VEHICLE];
+        profile_vehicle_usage_t *usage;
+
+        G_Profile_NormalizeVehicleName( s_profileState.stats.mostUsedVehicle, normalizedName, sizeof( normalizedName ) );
+        if ( normalizedName[0] ) {
+            usage = G_Profile_FindVehicleUsage( normalizedName, qtrue );
+            if ( usage ) {
+                usage->timeMs = s_profileState.stats.mostUsedVehicleTimeMs;
+            }
+        }
     }
+
+    G_Profile_RecomputeMostUsedVehicle();
 
     G_Profile_UpdateRankState();
 
