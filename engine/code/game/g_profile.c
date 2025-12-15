@@ -225,6 +225,10 @@ void G_Profile_FlushIfDirty( void ) {
     }
 }
 
+qboolean G_Profile_IsDirty( void ) {
+    return s_profileState.loaded && s_profileState.dirty;
+}
+
 qboolean G_Profile_GetRank( const profile_stats_t *stats, profile_rank_t *outRank ) {
     return Profile_GetRankForScore( stats, s_profileRankTable, PROFILE_RANK_COUNT, outRank );
 }
