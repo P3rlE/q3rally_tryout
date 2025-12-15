@@ -533,6 +533,7 @@ static profile_vehicle_usage_t *G_Profile_FindVehicleUsage( const char *vehicle,
 static void G_Profile_AddVehicleTime( const char *vehicle, int timeMs ) {
     char normalized[PROFILE_MAX_VEHICLE];
     profile_vehicle_usage_t *usage;
+    qboolean isNewVehicle;
 
     if ( timeMs <= 0 ) {
         return;
@@ -549,6 +550,7 @@ static void G_Profile_AddVehicleTime( const char *vehicle, int timeMs ) {
         return;
     }
 
+    isNewVehicle = ( usage->timeMs == 0 );
     usage->timeMs += timeMs;
     s_profileState.dirty = qtrue;
 
@@ -562,6 +564,10 @@ static void G_Profile_AddVehicleTime( const char *vehicle, int timeMs ) {
         Com_Printf( "G_Profile: NEW most used vehicle: '%s' with %d ms\n",
                    s_profileState.stats.mostUsedVehicle,
                    s_profileState.stats.mostUsedVehicleTimeMs );
+    }
+
+    if ( isNewVehicle ) {
+        s_profileState.nextAutosaveTime = level.time;
     }
 
     G_Profile_MaybeAutosave();
