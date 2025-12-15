@@ -2000,7 +2000,9 @@ void LogExit( const char *string ) {
 
         }
 
-        G_LadderSubmitMatchReport( string );
+	G_LadderSubmitMatchReport( string );
+
+	G_Profile_FlushIfDirty();
 
 #ifdef MISSIONPACK
         if (g_singlePlayer.integer) {
