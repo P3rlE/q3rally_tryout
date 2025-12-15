@@ -27,6 +27,10 @@ static const profile_rank_def_t s_profileRankTable[] = {
 
 #define PROFILE_RANK_COUNT ( sizeof( s_profileRankTable ) / sizeof( s_profileRankTable[0] ) )
 
+#define PROFILE_VEHICLE_JSON_ENTRY_SIZE ( PROFILE_MAX_VEHICLE + 32 )
+#define PROFILE_VEHICLE_JSON_BUFFER_SIZE ( PROFILE_MAX_TRACKED_VEHICLES * PROFILE_VEHICLE_JSON_ENTRY_SIZE + 32 )
+#define PROFILE_FILE_BUFFER_SIZE 16384
+
 static struct {
     qboolean        loaded;
     qboolean        dirty;
@@ -75,7 +79,7 @@ typedef struct {
     int  timeMs;
 } profile_vehicle_usage_t;
 
-#define PROFILE_MAX_TRACKED_VEHICLES 8
+#define PROFILE_MAX_TRACKED_VEHICLES 64
 static profile_vehicle_usage_t s_profileVehicleUsage[PROFILE_MAX_TRACKED_VEHICLES];
 static const char *G_Profile_FindSectionEnd( const char *start, char endChar ) {
     const char *end = strchr( start, endChar );
@@ -517,6 +521,12 @@ static profile_vehicle_usage_t *G_Profile_FindVehicleUsage( const char *vehicle,
         return empty;
     }
 
+    if ( allowCreate ) {
+        Com_Printf( "G_Profile: Vehicle list is full (%d entries), ignoring '%s'\n",
+                   PROFILE_MAX_TRACKED_VEHICLES,
+                   vehicle );
+    }
+
     return NULL;
 }
 
@@ -608,7 +618,7 @@ static void G_Profile_UpdateVehicleUsage( gentity_t *ent, int frameMsec ) {
 static qboolean G_Profile_LoadFromDisk( void ) {
     fileHandle_t file;
     char path[MAX_QPATH];
-    char buffer[2048];
+    char buffer[PROFILE_FILE_BUFFER_SIZE];
     int length;
     const char *vehiclesStart;
     const char *cursor;
@@ -628,6 +638,9 @@ static qboolean G_Profile_LoadFromDisk( void ) {
     }
 
     if ( length >= (int)sizeof( buffer ) ) {
+        Com_Printf( "G_Profile: Truncating profile read to %zu bytes (file is %d bytes)\n",
+                   sizeof( buffer ) - 1u,
+                   length );
         length = sizeof( buffer ) - 1;
     }
 
@@ -676,7 +689,7 @@ static qboolean G_Profile_LoadFromDisk( void ) {
             int vehicleIndex = 0;
             cursor = vehiclesStart + 1;
 
-            while ( *cursor && *cursor != ']' && vehicleIndex < PROFILE_MAX_TRACKED_VEHICLES ) {
+            while ( *cursor && *cursor != ']' ) {
                 const char *nameStart;
                 const char *nameEnd;
                 const char *timeStr;
@@ -685,6 +698,12 @@ static qboolean G_Profile_LoadFromDisk( void ) {
                 int vehicleTime;
                 int nameLength;
                 profile_vehicle_usage_t *usage;
+
+                if ( vehicleIndex >= PROFILE_MAX_TRACKED_VEHICLES ) {
+                    Com_Printf( "G_Profile: Skipping vehicle entries beyond limit of %d\n",
+                               PROFILE_MAX_TRACKED_VEHICLES );
+                    break;
+                }
 
                 // Finde "name"
                 cursor = strstr( cursor, "\"name\"" );
@@ -768,16 +787,16 @@ static qboolean G_Profile_LoadFromDisk( void ) {
 static void G_Profile_WriteToDisk( void ) {
     fileHandle_t file;
     char path[MAX_QPATH];
-    char buffer[4096];
+    char buffer[PROFILE_FILE_BUFFER_SIZE];
     char gender[PROFILE_MAX_GENDER * 2];
     char birthDate[PROFILE_MAX_BIRTHDATE * 2];
     char avatar[PROFILE_MAX_AVATAR * 2];
     char country[PROFILE_MAX_COUNTRY * 2];
-    char vehicleJson[1024];
+    char vehicleJson[PROFILE_VEHICLE_JSON_BUFFER_SIZE];
     char favoriteCarsJson[1024];
     char favoriteField[PROFILE_MAX_FAVORITE_FIELD * 2];
     fileHandle_t readFile;
-    char readBuffer[1024];
+    char readBuffer[PROFILE_FILE_BUFFER_SIZE];
     int readLength;
     int length;
     int i;
@@ -845,25 +864,51 @@ static void G_Profile_WriteToDisk( void ) {
     Com_sprintf( favoriteCarsJson + vehicleJsonPos, sizeof( favoriteCarsJson ) - vehicleJsonPos, "\n\t\t]" );
 
     // Baue Fahrzeug-Array für JSON - manuell ohne Q_strcat
-    vehicleJsonPos = 0;
-    vehicleJsonPos += Com_sprintf( vehicleJson + vehicleJsonPos, sizeof( vehicleJson ) - vehicleJsonPos, "[\n" );
-    
+    vehicleJsonPos = Com_sprintf( vehicleJson, sizeof( vehicleJson ), "[\n" );
+    if ( vehicleJsonPos < 0 ) {
+        vehicleJsonPos = 0;
+    }
+
     for ( i = 0; i < PROFILE_MAX_TRACKED_VEHICLES; ++i ) {
+        int available;
+        int written;
+
         if ( !s_profileVehicleUsage[i].name[0] ) {
             continue;
         }
-        
+
+        if ( vehicleJsonPos >= (int)sizeof( vehicleJson ) - 1 ) {
+            Com_Printf( "G_Profile: Vehicle JSON buffer full, truncating list at %d entries\n", i );
+            break;
+        }
+
         // Füge Komma hinzu, wenn nicht das erste Element
         if ( vehicleJsonPos > 2 ) {  // mehr als nur "[\n"
-            vehicleJsonPos += Com_sprintf( vehicleJson + vehicleJsonPos, sizeof( vehicleJson ) - vehicleJsonPos, ",\n" );
+            available = sizeof( vehicleJson ) - vehicleJsonPos;
+            written = Com_sprintf( vehicleJson + vehicleJsonPos, available, ",\n" );
+            if ( written < 0 || written >= available ) {
+                Com_Printf( "G_Profile: Failed to append vehicle separator, truncating output\n" );
+                vehicleJsonPos = sizeof( vehicleJson ) - 1;
+                break;
+            }
+            vehicleJsonPos += written;
         }
-        
-        vehicleJsonPos += Com_sprintf( vehicleJson + vehicleJsonPos, sizeof( vehicleJson ) - vehicleJsonPos, 
-                                      "\t\t\t{\"name\": \"%s\", \"timeMs\": %d}", 
-                                      s_profileVehicleUsage[i].name, 
-                                      s_profileVehicleUsage[i].timeMs );
+
+        available = sizeof( vehicleJson ) - vehicleJsonPos;
+        written = Com_sprintf( vehicleJson + vehicleJsonPos,
+                               available,
+                               "\t\t\t{\"name\": \"%s\", \"timeMs\": %d}",
+                               s_profileVehicleUsage[i].name,
+                               s_profileVehicleUsage[i].timeMs );
+        if ( written < 0 || written >= available ) {
+            Com_Printf( "G_Profile: Truncated vehicle entry for '%s'\n", s_profileVehicleUsage[i].name );
+            vehicleJsonPos = sizeof( vehicleJson ) - 1;
+            break;
+        }
+
+        vehicleJsonPos += written;
     }
-    
+
     Com_sprintf( vehicleJson + vehicleJsonPos, sizeof( vehicleJson ) - vehicleJsonPos, "\n\t\t]" );
 
     // Debug-Ausgabe
@@ -941,6 +986,13 @@ static void G_Profile_WriteToDisk( void ) {
     if ( length < 0 ) {
         Com_Printf( "G_Profile: Com_sprintf failed\n" );
         return;
+    }
+
+    if ( length >= (int)sizeof( buffer ) ) {
+        Com_Printf( "G_Profile: Profile JSON truncated to %zu bytes (needed %d)\n",
+                   sizeof( buffer ) - 1u,
+                   length );
+        length = sizeof( buffer ) - 1;
     }
 
     // Debug-Ausgabe des gesamten Buffers
