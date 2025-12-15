@@ -4,6 +4,12 @@
 #include "bg_achievements.h"
 #include <ctype.h>
 
+#ifdef Q3_VM
+#include "bg_lib.h"
+#else
+#include <ctype.h>
+#endif
+
 #define PROFILE_AUTOSAVE_INTERVAL 30000
 #define PROFILE_DISPLAY_L_PER_100KM 9.0f
 #define PROFILE_SCORE_FRAG 2
