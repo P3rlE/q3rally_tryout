@@ -638,9 +638,9 @@ static qboolean G_Profile_LoadFromDisk( void ) {
     }
 
     if ( length >= (int)sizeof( buffer ) ) {
-        Com_Printf( "G_Profile: Truncating profile read to %zu bytes (file is %d bytes)\n",
-                   sizeof( buffer ) - 1u,
-                   length );
+        Com_Printf( "G_Profile: Truncating profile read to %d bytes (file is %d bytes)\n",
+                    (int)sizeof( buffer ) - 1,
+                    length );
         length = sizeof( buffer ) - 1;
     }
 
@@ -787,16 +787,16 @@ static qboolean G_Profile_LoadFromDisk( void ) {
 static void G_Profile_WriteToDisk( void ) {
     fileHandle_t file;
     char path[MAX_QPATH];
-    char buffer[PROFILE_FILE_BUFFER_SIZE];
+    static char buffer[PROFILE_FILE_BUFFER_SIZE];
+    static char vehicleJson[PROFILE_VEHICLE_JSON_BUFFER_SIZE];
+    static char favoriteCarsJson[1024];
+    static char favoriteField[PROFILE_MAX_FAVORITE_FIELD * 2];
+    static char readBuffer[PROFILE_FILE_BUFFER_SIZE];
     char gender[PROFILE_MAX_GENDER * 2];
     char birthDate[PROFILE_MAX_BIRTHDATE * 2];
     char avatar[PROFILE_MAX_AVATAR * 2];
     char country[PROFILE_MAX_COUNTRY * 2];
-    char vehicleJson[PROFILE_VEHICLE_JSON_BUFFER_SIZE];
-    char favoriteCarsJson[1024];
-    char favoriteField[PROFILE_MAX_FAVORITE_FIELD * 2];
     fileHandle_t readFile;
-    char readBuffer[PROFILE_FILE_BUFFER_SIZE];
     int readLength;
     int length;
     int i;
@@ -989,9 +989,9 @@ static void G_Profile_WriteToDisk( void ) {
     }
 
     if ( length >= (int)sizeof( buffer ) ) {
-        Com_Printf( "G_Profile: Profile JSON truncated to %zu bytes (needed %d)\n",
-                   sizeof( buffer ) - 1u,
-                   length );
+        Com_Printf( "G_Profile: Profile JSON truncated to %d bytes (needed %d)\n",
+                    (int)sizeof( buffer ) - 1,
+                    length );
         length = sizeof( buffer ) - 1;
     }
 
