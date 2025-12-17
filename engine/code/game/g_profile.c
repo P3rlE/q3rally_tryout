@@ -1297,8 +1297,12 @@ void G_Profile_RecordFlagAssist( gclient_t *client ) {
     G_Profile_CheckAchievementProgress( client, BG_ACHIEVEMENT_FLAG_ASSISTS );
 }
 
-void G_Profile_RecordLapComplete( gclient_t *client, qboolean isLeader ) {
+void G_Profile_RecordLapComplete( gclient_t *client, qboolean isLeader, qboolean allowRankProgress ) {
     if ( !G_Profile_ShouldTrackClient( client ) ) {
+        return;
+    }
+
+    if ( !allowRankProgress ) {
         return;
     }
 
