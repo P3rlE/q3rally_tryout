@@ -584,9 +584,10 @@ static void G_Profile_AddVehicleTime( const char *vehicle, int timeMs ) {
 
     if ( isNewVehicle ) {
         s_profileState.nextAutosaveTime = level.time;
+        G_Profile_FlushIfDirty();
+    } else {
+        G_Profile_MaybeAutosave();
     }
-
-    G_Profile_MaybeAutosave();
 }
 
 static void G_Profile_RecomputeMostUsedVehicle( void ) {
