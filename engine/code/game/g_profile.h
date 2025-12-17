@@ -19,7 +19,7 @@ void G_Profile_RecordKill( struct gclient_s *attacker, struct gclient_s *victim 
 void G_Profile_RecordDeath( struct gclient_s *victim );
 void G_Profile_RecordFlagCapture( struct gclient_s *client );
 void G_Profile_RecordFlagAssist( struct gclient_s *client );
-void G_Profile_RecordLapComplete( struct gclient_s *client, qboolean isLeader );
+void G_Profile_RecordLapComplete( struct gclient_s *client, qboolean isLeader, qboolean allowRankProgress );
 void G_Profile_RecordRacePlacement( struct gclient_s *client, int position );
 void G_Profile_RecordWin( struct gclient_s *client );
 void G_Profile_RecordLoss( struct gclient_s *client );
