@@ -297,6 +297,10 @@ void UI_UpdateMenuBackShader( qboolean force ) {
 			uis.menuBackShader = remoteShader;
 			Q_strncpyz( ui_menuBackRemotePath, remotePath, sizeof( ui_menuBackRemotePath ) );
 		} else if ( uis.menuBackShaderDefault ) {
+			trap_Print( va( "Menu background shader registration failed for '%s'\n", remotePath ) );
+			trap_Cvar_Set( "ui_menuBackState", "failed" );
+			trap_Cvar_Set( "ui_menuBackError", "Shader registration failed" );
+			trap_Cvar_Set( "ui_menuBackPath", "" );
 			ui_menuBackRemotePath[0] = '\0';
 			uis.menuBackShader = uis.menuBackShaderDefault;
 		}

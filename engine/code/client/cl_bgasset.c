@@ -16,6 +16,7 @@
 #define CL_BGASSET_MAX_EXT 8
 #define CL_BGASSET_MAX_CACHE_FILE_SIZE 32768
 #define CL_BGASSET_DEFAULT_MAX_SIZE (5 * 1024 * 1024)
+#define CL_BGASSET_MAX_DIMENSION 4096
 
 typedef enum {
 	CL_BGASSET_JOB_NONE,
@@ -466,16 +467,203 @@ static void CL_BGAsset_ScheduleRefresh(void) {
 	}
 }
 
+static void CL_BGAsset_LogFailure(const char *message) {
+	if (message && *message) {
+		Com_Printf("Menu background: %s\n", message);
+	} else {
+		Com_Printf("Menu background: failed\n");
+	}
+}
+
 static void CL_BGAsset_Fail(const char *state, const char *message) {
+	CL_BGAsset_LogFailure(message && *message ? message : "Download failed");
 	CL_BGAsset_SetState(state && *state ? state : "failed");
 	CL_BGAsset_SetError(message && *message ? message : "Download failed");
 	CL_BGAsset_SetPath("");
+	if (cl_bgasset.tempPath[0]) {
+		FS_HomeRemove(cl_bgasset.tempPath);
+	}
 	if (cl_bgasset.file) {
 		FS_FCloseFile(cl_bgasset.file);
 		cl_bgasset.file = 0;
 	}
 	CL_BGAsset_CleanupHandles();
 	CL_BGAsset_ScheduleRefresh();
+}
+
+static int CL_BGAsset_ReadBE32(const byte *buffer) {
+	return ((int)buffer[0] << 24) | ((int)buffer[1] << 16) | ((int)buffer[2] << 8) | (int)buffer[3];
+}
+
+static qboolean CL_BGAsset_ParsePNG(const byte *buffer, int length, int *width, int *height) {
+	static const byte signature[8] = { 137, 80, 78, 71, 13, 10, 26, 10 };
+
+	if (length < 24) {
+		return qfalse;
+	}
+	if (memcmp(buffer, signature, sizeof(signature)) != 0) {
+		return qfalse;
+	}
+	if (memcmp(buffer + 12, "IHDR", 4) != 0) {
+		return qfalse;
+	}
+
+	*width = CL_BGAsset_ReadBE32(buffer + 16);
+	*height = CL_BGAsset_ReadBE32(buffer + 20);
+	return qtrue;
+}
+
+static qboolean CL_BGAsset_IsSOFMarker(byte marker) {
+	switch (marker) {
+	case 0xC0:
+	case 0xC1:
+	case 0xC2:
+	case 0xC3:
+	case 0xC5:
+	case 0xC6:
+	case 0xC7:
+	case 0xC9:
+	case 0xCA:
+	case 0xCB:
+	case 0xCD:
+	case 0xCE:
+	case 0xCF:
+		return qtrue;
+	default:
+		return qfalse;
+	}
+}
+
+static qboolean CL_BGAsset_ParseJPG(const byte *buffer, int length, int *width, int *height) {
+	int offset = 2;
+
+	if (length < 4 || buffer[0] != 0xFF || buffer[1] != 0xD8) {
+		return qfalse;
+	}
+
+	while (offset + 1 < length) {
+		byte marker;
+		int segmentLength;
+
+		if (buffer[offset] != 0xFF) {
+			offset++;
+			continue;
+		}
+		while (offset < length && buffer[offset] == 0xFF) {
+			offset++;
+		}
+		if (offset >= length) {
+			break;
+		}
+
+		marker = buffer[offset++];
+		if (marker == 0xD9 || marker == 0xDA) {
+			break;
+		}
+		if (offset + 1 >= length) {
+			break;
+		}
+		segmentLength = (buffer[offset] << 8) | buffer[offset + 1];
+		if (segmentLength < 2 || offset + segmentLength > length) {
+			break;
+		}
+		if (CL_BGAsset_IsSOFMarker(marker)) {
+			if (segmentLength < 7) {
+				return qfalse;
+			}
+			*height = (buffer[offset + 3] << 8) | buffer[offset + 4];
+			*width = (buffer[offset + 5] << 8) | buffer[offset + 6];
+			return qtrue;
+		}
+
+		offset += segmentLength;
+	}
+
+	return qfalse;
+}
+
+static qboolean CL_BGAsset_ParseTGA(const byte *buffer, int length, int *width, int *height) {
+	byte imageType;
+	byte pixelDepth;
+
+	if (length < 18) {
+		return qfalse;
+	}
+
+	imageType = buffer[2];
+	pixelDepth = buffer[16];
+
+	if (imageType != 2 && imageType != 10) {
+		return qfalse;
+	}
+	if (pixelDepth != 24 && pixelDepth != 32) {
+		return qfalse;
+	}
+
+	*width = buffer[12] | (buffer[13] << 8);
+	*height = buffer[14] | (buffer[15] << 8);
+	return qtrue;
+}
+
+static qboolean CL_BGAsset_ValidateImageFile(const char *path, int maxSize, char *error, size_t errorSize) {
+	fileHandle_t file;
+	int length;
+	byte *buffer = NULL;
+	int width = 0;
+	int height = 0;
+	qboolean parsed = qfalse;
+	const char *ext;
+
+	if (!path || !path[0]) {
+		Q_strncpyz(error, "Download failed", errorSize);
+		return qfalse;
+	}
+
+	length = FS_SV_FOpenFileRead(path, &file);
+	if (length <= 0) {
+		Q_strncpyz(error, "Download failed", errorSize);
+		return qfalse;
+	}
+	if (length > maxSize) {
+		FS_FCloseFile(file);
+		Q_strncpyz(error, "Background asset exceeds size limit", errorSize);
+		return qfalse;
+	}
+
+	buffer = Z_Malloc(length);
+	FS_Read(buffer, length, file);
+	FS_FCloseFile(file);
+
+	if (CL_BGAsset_ParsePNG(buffer, length, &width, &height)) {
+		parsed = qtrue;
+	} else if (CL_BGAsset_ParseJPG(buffer, length, &width, &height)) {
+		parsed = qtrue;
+	} else {
+		ext = COM_GetExtension(path);
+		if (ext && !Q_stricmp(ext, "tga")) {
+			parsed = CL_BGAsset_ParseTGA(buffer, length, &width, &height);
+		}
+	}
+
+	Z_Free(buffer);
+
+	if (!parsed) {
+		Q_strncpyz(error, "Invalid image format", errorSize);
+		return qfalse;
+	}
+
+	if (width <= 0 || height <= 0) {
+		Q_strncpyz(error, "Invalid image dimensions", errorSize);
+		return qfalse;
+	}
+
+	if (width > CL_BGASSET_MAX_DIMENSION || height > CL_BGASSET_MAX_DIMENSION) {
+		Com_sprintf(error, errorSize, "Image dimensions exceed %dx%d", CL_BGASSET_MAX_DIMENSION,
+			CL_BGASSET_MAX_DIMENSION);
+		return qfalse;
+	}
+
+	return qtrue;
 }
 
 static size_t CL_BGAsset_WriteCallback(void *buffer, size_t size, size_t nmemb, void *userdata) {
@@ -670,6 +858,7 @@ static void CL_BGAsset_HandleComplete(CURLcode result) {
 	unsigned checksum = 0;
 	const char *etag = cl_bgasset.newEtag[0] ? cl_bgasset.newEtag : cl_bgasset.etag;
 	const char *lastModified = cl_bgasset.newLastModified[0] ? cl_bgasset.newLastModified : cl_bgasset.lastModified;
+	char errorMessage[128];
 
 	qcurl_easy_getinfo(cl_bgasset.easyHandle, CURLINFO_RESPONSE_CODE, &responseCode);
 
@@ -679,17 +868,23 @@ static void CL_BGAsset_HandleComplete(CURLcode result) {
 	}
 
 	if (cl_bgasset.sizeExceeded) {
-		CL_BGAsset_Fail("failed", "Background asset exceeds size limit");
+		CL_BGAsset_Fail("failed", "Download failed: background asset exceeds size limit");
 		return;
 	}
 
 	if (result != CURLE_OK) {
 		const char *err = cl_bgasset.errorText[0] ? cl_bgasset.errorText : qcurl_easy_strerror(result);
-		CL_BGAsset_Fail("failed", err);
+		CL_BGAsset_Fail("failed", va("Download failed: %s", err));
 		return;
 	}
 
 	if (responseCode == 304) {
+		if (!CL_BGAsset_ValidateImageFile(cl_bgasset.localPath, cl_bgasset.maxSize, errorMessage,
+			sizeof(errorMessage))) {
+			FS_HomeRemove(cl_bgasset.localPath);
+			CL_BGAsset_Fail("failed", errorMessage);
+			return;
+		}
 		CL_BGAsset_UpdateCacheEntry(cl_bgasset.lastURL, cl_bgasset.localPath, etag, lastModified,
 			CL_BGAsset_ComputeChecksum(cl_bgasset.localPath, cl_bgasset.maxSize));
 		CL_BGAsset_SetState("cached");
@@ -701,7 +896,14 @@ static void CL_BGAsset_HandleComplete(CURLcode result) {
 	}
 
 	if (responseCode < 200 || responseCode >= 300) {
-		CL_BGAsset_Fail("failed", va("HTTP error %ld", responseCode));
+		CL_BGAsset_Fail("failed", va("Download failed: HTTP error %ld", responseCode));
+		return;
+	}
+
+	if (!CL_BGAsset_ValidateImageFile(cl_bgasset.tempPath, cl_bgasset.maxSize, errorMessage,
+		sizeof(errorMessage))) {
+		FS_HomeRemove(cl_bgasset.tempPath);
+		CL_BGAsset_Fail("failed", errorMessage);
 		return;
 	}
 
