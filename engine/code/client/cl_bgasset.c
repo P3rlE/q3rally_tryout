@@ -919,14 +919,14 @@ static void CL_BGAsset_HandleComplete(CURLcode result) {
 #endif
 
 void CL_BGAsset_Register(void) {
-	ui_menuBackUrl = Cvar_Get("ui_menuBackUrl", "", CVAR_ARCHIVE);
-	ui_menuBackEnable = Cvar_Get("ui_menuBackEnable", "0", CVAR_ARCHIVE);
+	ui_menuBackUrl = Cvar_Get("ui_menuBackUrl", "https://ladder.q3rally.com/background/bg.png", CVAR_ARCHIVE);
+	ui_menuBackEnable = Cvar_Get("ui_menuBackEnable", "1", CVAR_ARCHIVE);
 	ui_menuBackRefreshSec = Cvar_Get("ui_menuBackRefreshSec", "0", CVAR_ARCHIVE);
 	ui_menuBackPath = Cvar_Get("ui_menuBackPath", "", CVAR_TEMP);
 	ui_menuBackState = Cvar_Get("ui_menuBackState", "idle", CVAR_TEMP);
 	ui_menuBackError = Cvar_Get("ui_menuBackError", "", CVAR_TEMP);
 
-	cl_uiBackgroundURL = Cvar_Get("cl_uiBackgroundURL", "", CVAR_ARCHIVE);
+	cl_uiBackgroundURL = Cvar_Get("cl_uiBackgroundURL", "https://ladder.q3rally.com/background/bg.png", CVAR_ARCHIVE);
 	cl_uiBackgroundEnable = Cvar_Get("cl_uiBackgroundEnable", "1", CVAR_ARCHIVE);
 	cl_uiBackgroundMaxSize = Cvar_Get("cl_uiBackgroundMaxSize", va("%d", CL_BGASSET_DEFAULT_MAX_SIZE), CVAR_ARCHIVE);
 	cl_uiBackgroundState = Cvar_Get("cl_uiBackgroundState", "idle", CVAR_TEMP);
