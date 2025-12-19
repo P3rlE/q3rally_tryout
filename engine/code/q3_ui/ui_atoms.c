@@ -70,6 +70,11 @@ static int		ui_menuBackOverrideCheckTime;
 static int		ui_menuBackOverrideModCount;
 static char		ui_menuBackOverridePath[MAX_QPATH];
 static char		ui_menuBackOverrideValue[MAX_QPATH];
+static int		ui_menuBackRemoteCheckTime;
+static int		ui_menuBackRemoteModCount;
+static int		ui_menuBackRemoteStateModCount;
+static int		ui_menuBackRemotePathModCount;
+static char		ui_menuBackRemotePath[MAX_QPATH];
 
 // these are here so the functions in q_shared.c can link
 #ifndef UI_HARD_LINKED
@@ -167,10 +172,44 @@ static qboolean UI_ReadMenuBackOverride( const char *overrideValue, char *outVal
 	return outValue[0] != '\0';
 }
 
+static qboolean UI_MenuBackPathExists( const char *path ) {
+	fileHandle_t	file;
+	int				length;
+
+	if ( !path || !path[0] ) {
+		return qfalse;
+	}
+
+	length = trap_FS_FOpenFile( path, &file, FS_READ );
+	if ( length <= 0 ) {
+		return qfalse;
+	}
+
+	trap_FS_FCloseFile( file );
+	return qtrue;
+}
+
+static qboolean UI_MenuBackStateAllows( const char *state ) {
+	if ( !state || !state[0] ) {
+		return qtrue;
+	}
+
+	if ( !Q_stricmp( state, "failed" ) || !Q_stricmp( state, "unavailable" ) ) {
+		return qfalse;
+	}
+
+	return qtrue;
+}
+
 void UI_UpdateMenuBackShader( qboolean force ) {
 	char		overrideValue[MAX_QPATH];
 	const char	*cvarValue;
 	qboolean	fromFile;
+	const char	*remotePath;
+	const char	*remoteState;
+	qhandle_t	remoteShader;
+	qboolean	remoteActive;
+	qboolean	overrideActive;
 
 	if ( !force && uis.realtime < ui_menuBackOverrideCheckTime ) {
 		return;
@@ -188,7 +227,8 @@ void UI_UpdateMenuBackShader( qboolean force ) {
 	ui_menuBackOverrideCheckTime = uis.realtime + 1000;
 
 	cvarValue = ui_menuBackOverride.string;
-	if ( !UI_ReadMenuBackOverride( cvarValue, overrideValue, sizeof( overrideValue ), &fromFile ) ) {
+	overrideActive = UI_ReadMenuBackOverride( cvarValue, overrideValue, sizeof( overrideValue ), &fromFile );
+	if ( !overrideActive ) {
 		if ( ui_menuBackOverrideValue[0] ) {
 			ui_menuBackOverrideValue[0] = '\0';
 			ui_menuBackOverridePath[0] = '\0';
@@ -196,17 +236,69 @@ void UI_UpdateMenuBackShader( qboolean force ) {
 				uis.menuBackShader = uis.menuBackShaderDefault;
 			}
 		}
+	}
+
+	if ( overrideActive ) {
+		if ( Q_stricmp( overrideValue, ui_menuBackOverrideValue ) != 0
+			|| ( fromFile && Q_stricmp( cvarValue, ui_menuBackOverridePath ) != 0 ) ) {
+			uis.menuBackShader = trap_R_RegisterShaderNoMip( overrideValue );
+			Q_strncpyz( ui_menuBackOverrideValue, overrideValue, sizeof( ui_menuBackOverrideValue ) );
+			if ( fromFile ) {
+				Q_strncpyz( ui_menuBackOverridePath, cvarValue, sizeof( ui_menuBackOverridePath ) );
+			} else {
+				ui_menuBackOverridePath[0] = '\0';
+			}
+		}
 		return;
 	}
 
-	if ( Q_stricmp( overrideValue, ui_menuBackOverrideValue ) != 0
-		|| ( fromFile && Q_stricmp( cvarValue, ui_menuBackOverridePath ) != 0 ) ) {
-		uis.menuBackShader = trap_R_RegisterShaderNoMip( overrideValue );
-		Q_strncpyz( ui_menuBackOverrideValue, overrideValue, sizeof( ui_menuBackOverrideValue ) );
-		if ( fromFile ) {
-			Q_strncpyz( ui_menuBackOverridePath, cvarValue, sizeof( ui_menuBackOverridePath ) );
-		} else {
-			ui_menuBackOverridePath[0] = '\0';
+	remoteActive = ui_menuBackEnable.integer != 0;
+	remoteState = ui_menuBackState.string;
+	remotePath = ui_menuBackPath.string;
+
+	if ( ui_menuBackEnable.modificationCount != ui_menuBackRemoteModCount
+		|| ui_menuBackState.modificationCount != ui_menuBackRemoteStateModCount
+		|| ui_menuBackPath.modificationCount != ui_menuBackRemotePathModCount ) {
+		ui_menuBackRemoteModCount = ui_menuBackEnable.modificationCount;
+		ui_menuBackRemoteStateModCount = ui_menuBackState.modificationCount;
+		ui_menuBackRemotePathModCount = ui_menuBackPath.modificationCount;
+		force = qtrue;
+	}
+
+	if ( !force && uis.realtime < ui_menuBackRemoteCheckTime ) {
+		return;
+	}
+
+	ui_menuBackRemoteCheckTime = uis.realtime + 1000;
+
+	if ( !remoteActive || !UI_MenuBackStateAllows( remoteState ) ) {
+		if ( ui_menuBackRemotePath[0] ) {
+			ui_menuBackRemotePath[0] = '\0';
+			if ( uis.menuBackShaderDefault ) {
+				uis.menuBackShader = uis.menuBackShaderDefault;
+			}
+		}
+		return;
+	}
+
+	if ( !remotePath[0] || !UI_MenuBackPathExists( remotePath ) ) {
+		if ( ui_menuBackRemotePath[0] ) {
+			ui_menuBackRemotePath[0] = '\0';
+			if ( uis.menuBackShaderDefault ) {
+				uis.menuBackShader = uis.menuBackShaderDefault;
+			}
+		}
+		return;
+	}
+
+	if ( force || Q_stricmp( remotePath, ui_menuBackRemotePath ) != 0 ) {
+		remoteShader = trap_R_RegisterShaderNoMip( remotePath );
+		if ( remoteShader ) {
+			uis.menuBackShader = remoteShader;
+			Q_strncpyz( ui_menuBackRemotePath, remotePath, sizeof( ui_menuBackRemotePath ) );
+		} else if ( uis.menuBackShaderDefault ) {
+			ui_menuBackRemotePath[0] = '\0';
+			uis.menuBackShader = uis.menuBackShaderDefault;
 		}
 	}
 }

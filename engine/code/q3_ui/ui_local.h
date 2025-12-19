@@ -833,6 +833,11 @@ extern uiStatic_t	uis;
 extern vmCvar_t	ui_profileActive;
 extern vmCvar_t	ui_profileOverlaySeen;
 extern vmCvar_t	ui_menuBackOverride;
+extern vmCvar_t	ui_menuBackUrl;
+extern vmCvar_t	ui_menuBackEnable;
+extern vmCvar_t	ui_menuBackRefreshSec;
+extern vmCvar_t	ui_menuBackPath;
+extern vmCvar_t	ui_menuBackState;
 
 void UI_ProfileOverlay_InitSession( void );
 void UI_ProfileOverlay_MaybeShow( void );
