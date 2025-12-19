@@ -47,6 +47,7 @@ typedef struct {
 	int bytesWritten;
 	qboolean sizeExceeded;
 	fileHandle_t file;
+	int nextRefreshTime;
 #ifdef USE_CURL
 	char errorText[CURL_ERROR_SIZE];
 	CURL *easyHandle;
@@ -61,17 +62,62 @@ static cvar_t *cl_uiBackgroundEnable;
 static cvar_t *cl_uiBackgroundMaxSize;
 static cvar_t *cl_uiBackgroundState;
 static cvar_t *cl_uiBackgroundError;
+static cvar_t *ui_menuBackUrl;
+static cvar_t *ui_menuBackEnable;
+static cvar_t *ui_menuBackRefreshSec;
+static cvar_t *ui_menuBackPath;
+static cvar_t *ui_menuBackState;
+static cvar_t *ui_menuBackError;
 
 static void CL_BGAsset_SetState(const char *state) {
+	if (ui_menuBackState) {
+		Cvar_Set(ui_menuBackState->name, state);
+	}
 	if (cl_uiBackgroundState) {
 		Cvar_Set(cl_uiBackgroundState->name, state);
 	}
 }
 
 static void CL_BGAsset_SetError(const char *message) {
+	if (ui_menuBackError) {
+		Cvar_Set(ui_menuBackError->name, message ? message : "");
+	}
 	if (cl_uiBackgroundError) {
 		Cvar_Set(cl_uiBackgroundError->name, message ? message : "");
 	}
+}
+
+static void CL_BGAsset_SetPath(const char *path) {
+	if (ui_menuBackPath) {
+		Cvar_Set(ui_menuBackPath->name, path ? path : "");
+	}
+}
+
+static const char *CL_BGAsset_GetURL(void) {
+	if (ui_menuBackUrl && ui_menuBackUrl->string[0]) {
+		return ui_menuBackUrl->string;
+	}
+	if (cl_uiBackgroundURL && cl_uiBackgroundURL->string[0]) {
+		return cl_uiBackgroundURL->string;
+	}
+	return "";
+}
+
+static qboolean CL_BGAsset_IsEnabled(void) {
+	if (ui_menuBackEnable) {
+		return ui_menuBackEnable->integer != 0;
+	}
+	if (cl_uiBackgroundEnable) {
+		return cl_uiBackgroundEnable->integer != 0;
+	}
+	return qfalse;
+}
+
+static int CL_BGAsset_GetRefreshSec(void) {
+	if (ui_menuBackRefreshSec) {
+		return ui_menuBackRefreshSec->integer;
+	}
+	return 0;
 }
 
 static void CL_BGAsset_ResetState(void) {
@@ -89,6 +135,7 @@ static void CL_BGAsset_ResetState(void) {
 	cl_bgasset.bytesWritten = 0;
 	cl_bgasset.sizeExceeded = qfalse;
 	cl_bgasset.file = 0;
+	cl_bgasset.nextRefreshTime = 0;
 #ifdef USE_CURL
 	cl_bgasset.errorText[0] = '\0';
 	cl_bgasset.easyHandle = NULL;
@@ -97,6 +144,7 @@ static void CL_BGAsset_ResetState(void) {
 #endif
 	CL_BGAsset_SetState("idle");
 	CL_BGAsset_SetError("");
+	CL_BGAsset_SetPath("");
 }
 
 static qboolean CL_BGAsset_IsSafeRelativePath(const char *path) {
@@ -408,14 +456,26 @@ static void CL_BGAsset_CleanupHandles(void) {
 	cl_bgasset.jobType = CL_BGASSET_JOB_NONE;
 }
 
+static void CL_BGAsset_ScheduleRefresh(void) {
+	int refreshSec = CL_BGAsset_GetRefreshSec();
+
+	if (refreshSec > 0) {
+		cl_bgasset.nextRefreshTime = cls.realtime + (refreshSec * 1000);
+	} else {
+		cl_bgasset.nextRefreshTime = 0;
+	}
+}
+
 static void CL_BGAsset_Fail(const char *state, const char *message) {
 	CL_BGAsset_SetState(state && *state ? state : "failed");
 	CL_BGAsset_SetError(message && *message ? message : "Download failed");
+	CL_BGAsset_SetPath("");
 	if (cl_bgasset.file) {
 		FS_FCloseFile(cl_bgasset.file);
 		cl_bgasset.file = 0;
 	}
 	CL_BGAsset_CleanupHandles();
+	CL_BGAsset_ScheduleRefresh();
 }
 
 static size_t CL_BGAsset_WriteCallback(void *buffer, size_t size, size_t nmemb, void *userdata) {
@@ -634,7 +694,9 @@ static void CL_BGAsset_HandleComplete(CURLcode result) {
 			CL_BGAsset_ComputeChecksum(cl_bgasset.localPath, cl_bgasset.maxSize));
 		CL_BGAsset_SetState("cached");
 		CL_BGAsset_SetError("");
+		CL_BGAsset_SetPath(cl_bgasset.localPath);
 		CL_BGAsset_CleanupHandles();
+		CL_BGAsset_ScheduleRefresh();
 		return;
 	}
 
@@ -648,11 +710,20 @@ static void CL_BGAsset_HandleComplete(CURLcode result) {
 	CL_BGAsset_UpdateCacheEntry(cl_bgasset.lastURL, cl_bgasset.localPath, etag, lastModified, checksum);
 	CL_BGAsset_SetState("ready");
 	CL_BGAsset_SetError("");
+	CL_BGAsset_SetPath(cl_bgasset.localPath);
 	CL_BGAsset_CleanupHandles();
+	CL_BGAsset_ScheduleRefresh();
 }
 #endif
 
 void CL_BGAsset_Register(void) {
+	ui_menuBackUrl = Cvar_Get("ui_menuBackUrl", "", CVAR_ARCHIVE);
+	ui_menuBackEnable = Cvar_Get("ui_menuBackEnable", "0", CVAR_ARCHIVE);
+	ui_menuBackRefreshSec = Cvar_Get("ui_menuBackRefreshSec", "0", CVAR_ARCHIVE);
+	ui_menuBackPath = Cvar_Get("ui_menuBackPath", "", CVAR_TEMP);
+	ui_menuBackState = Cvar_Get("ui_menuBackState", "idle", CVAR_TEMP);
+	ui_menuBackError = Cvar_Get("ui_menuBackError", "", CVAR_TEMP);
+
 	cl_uiBackgroundURL = Cvar_Get("cl_uiBackgroundURL", "", CVAR_ARCHIVE);
 	cl_uiBackgroundEnable = Cvar_Get("cl_uiBackgroundEnable", "1", CVAR_ARCHIVE);
 	cl_uiBackgroundMaxSize = Cvar_Get("cl_uiBackgroundMaxSize", va("%d", CL_BGASSET_DEFAULT_MAX_SIZE), CVAR_ARCHIVE);
@@ -665,36 +736,62 @@ void CL_BGAsset_Register(void) {
 
 void CL_BGAsset_Frame(void) {
 #ifndef USE_CURL
-	if (cl_uiBackgroundEnable && cl_uiBackgroundEnable->integer) {
+	if (CL_BGAsset_IsEnabled()) {
 		CL_BGAsset_SetState("unavailable");
 		CL_BGAsset_SetError("cURL support not compiled");
+		CL_BGAsset_SetPath("");
 	}
 	return;
 #else
 	int runningHandles = 0;
 	CURLMcode multiResult;
+	const char *url;
+	int refreshSec;
 
 	if (!cl_bgasset.registered) {
 		CL_BGAsset_Register();
 	}
 
-	if (!cl_uiBackgroundEnable || !cl_uiBackgroundEnable->integer) {
+	if (!CL_BGAsset_IsEnabled()) {
+		CL_BGAsset_SetState("disabled");
+		CL_BGAsset_SetError("");
+		CL_BGAsset_SetPath("");
+		cl_bgasset.attempted = qfalse;
+		cl_bgasset.running = qfalse;
+		CL_BGAsset_CleanupHandles();
 		return;
 	}
 
-	if (!cl_uiBackgroundURL || !*cl_uiBackgroundURL->string) {
+	url = CL_BGAsset_GetURL();
+	if (!url[0]) {
+		CL_BGAsset_SetState("idle");
+		CL_BGAsset_SetError("");
+		CL_BGAsset_SetPath("");
 		return;
 	}
 
-	if (!CL_BGAsset_IsUrlAllowed(cl_uiBackgroundURL->string)) {
+	if (!CL_BGAsset_IsUrlAllowed(url)) {
 		CL_BGAsset_SetState("failed");
 		CL_BGAsset_SetError("Invalid URL scheme");
+		CL_BGAsset_SetPath("");
+		CL_BGAsset_ScheduleRefresh();
 		return;
 	}
 
-	if (Q_stricmp(cl_bgasset.lastURL, cl_uiBackgroundURL->string)) {
-		Q_strncpyz(cl_bgasset.lastURL, cl_uiBackgroundURL->string, sizeof(cl_bgasset.lastURL));
+	refreshSec = CL_BGAsset_GetRefreshSec();
+	if (refreshSec <= 0 && cl_bgasset.nextRefreshTime) {
+		cl_bgasset.nextRefreshTime = 0;
+	}
+
+	if (Q_stricmp(cl_bgasset.lastURL, url)) {
+		Q_strncpyz(cl_bgasset.lastURL, url, sizeof(cl_bgasset.lastURL));
 		cl_bgasset.attempted = qfalse;
+		cl_bgasset.nextRefreshTime = 0;
+	}
+
+	if (cl_bgasset.nextRefreshTime && cls.realtime >= cl_bgasset.nextRefreshTime && !cl_bgasset.running) {
+		cl_bgasset.attempted = qfalse;
+		cl_bgasset.nextRefreshTime = 0;
 	}
 
 	if (!cl_bgasset.running && !cl_bgasset.attempted) {
@@ -744,4 +841,31 @@ void CL_BGAsset_Shutdown(void) {
 	}
 #endif
 	CL_BGAsset_ResetState();
+}
+
+void CL_BGAsset_ForceRefresh(void) {
+	if (!cl_bgasset.registered) {
+		CL_BGAsset_Register();
+	}
+#ifdef USE_CURL
+	if (cl_bgasset.running || cl_bgasset.multiHandle || cl_bgasset.easyHandle) {
+		if (cl_bgasset.file) {
+			FS_FCloseFile(cl_bgasset.file);
+			cl_bgasset.file = 0;
+		}
+		CL_BGAsset_CleanupHandles();
+	}
+#endif
+	cl_bgasset.running = qfalse;
+	cl_bgasset.attempted = qfalse;
+	cl_bgasset.jobType = CL_BGASSET_JOB_NONE;
+	cl_bgasset.bytesWritten = 0;
+	cl_bgasset.sizeExceeded = qfalse;
+	cl_bgasset.nextRefreshTime = 0;
+	CL_BGAsset_SetState("idle");
+	CL_BGAsset_SetError("");
+}
+
+void CL_BGAsset_ForceRefresh_f(void) {
+	CL_BGAsset_ForceRefresh();
 }
