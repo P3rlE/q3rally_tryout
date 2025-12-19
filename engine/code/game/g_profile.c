@@ -10,9 +10,11 @@
 #define PROFILE_AUTOSAVE_INTERVAL 30000
 #define PROFILE_DISPLAY_L_PER_100KM 9.0f
 #define PROFILE_SCORE_FRAG 2
+#define PROFILE_SCORE_DEATH -2
 #define PROFILE_SCORE_SUICIDE -5
-#define PROFILE_SCORE_FLAG_CAPTURE 10
-#define PROFILE_SCORE_FLAG_ASSIST 5
+#define PROFILE_SCORE_FLAG_CAPTURE 5
+#define PROFILE_SCORE_FLAG_ASSIST 2
+#define PROFILE_SCORE_DOMINATION_CAPTURE 5
 #define PROFILE_SCORE_LAP 2
 #define PROFILE_SCORE_LEAD_LAP 2
 #define PROFILE_SCORE_RACE_WIN 10
@@ -1261,6 +1263,8 @@ void G_Profile_RecordDeath( gclient_t *victim ) {
 
     s_profileState.stats.deaths++;
     s_profileState.dirty = qtrue;
+
+    G_Profile_AddScore( PROFILE_SCORE_DEATH );
 }
 
 void G_Profile_RecordFlagCapture( gclient_t *client ) {
@@ -1383,6 +1387,14 @@ void G_Profile_RecordLoss( gclient_t *client ) {
     }
 }
 
+void G_Profile_RecordDominationCapture( gclient_t *client ) {
+    if ( !G_Profile_ShouldTrackClient( client ) ) {
+        return;
+    }
+
+    G_Profile_AddScore( PROFILE_SCORE_DOMINATION_CAPTURE );
+}
+
 void G_Profile_RecordBestLap( gclient_t *client, int lapTime ) {
     if ( !s_profileState.loaded ) {
         return;
@@ -1449,7 +1461,4 @@ void G_Profile_RecordPerfect( gclient_t *client ) {
 
     G_Profile_CheckAchievementProgress( client, BG_ACHIEVEMENT_PERFECT );
 }
-
-
-
 
