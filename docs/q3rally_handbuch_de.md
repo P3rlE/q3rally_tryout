@@ -190,8 +190,8 @@
 
 **Cvars / Konsolenvariablen:**
 
-- `ui_menuBackEnable` (0/1, Standard: 0) – Schaltet den URL-basierten Menü-Hintergrund ein oder aus.
-- `ui_menuBackUrl` (String, Standard: leer) – HTTP(S)-Adresse der Bilddatei.
+- `ui_menuBackEnable` (0/1, Standard: 1) – Schaltet den URL-basierten Menü-Hintergrund ein oder aus.
+- `ui_menuBackUrl` (String, Standard: `https://ladder.q3rally.com/background/bg.png`) – HTTP(S)-Adresse der Bilddatei.
 - `ui_menuBackRefreshSec` (Sekunden, Standard: 0) – Aktualisierungsintervall; `0` deaktiviert automatische Refreshs.
 
 **Konsolensteuerung / Console control:**

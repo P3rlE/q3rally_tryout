@@ -1,14 +1,14 @@
 # Remote-Menühintergrund (UI-Download)
 
-Dieses Feature erlaubt es, ein optionales Hintergrundbild für das Hauptmenü von einer externen URL zu laden. Der Download ist **opt-in** und findet nur statt, wenn eine URL gesetzt und das Feature explizit aktiviert wurde.【F:engine/code/client/cl_bgasset.c†L97-L114】【F:engine/code/client/cl_bgasset.c†L957-L1002】
+Dieses Feature erlaubt es, ein optionales Hintergrundbild für das Hauptmenü von einer externen URL zu laden. Standardmäßig ist es aktiviert und nutzt die voreingestellte URL; der Download kann jederzeit deaktiviert werden.【F:engine/code/client/cl_bgasset.c†L97-L114】【F:engine/code/client/cl_bgasset.c†L957-L1002】
 
 ## Opt-in / Opt-out
 
-- **Aktivieren (Opt-in):** Eine gültige `http://`- oder `https://`-URL per `ui_menuBackUrl` bzw. `cl_uiBackgroundURL` setzen und `ui_menuBackEnable` (UI) bzw. `cl_uiBackgroundEnable` aktivieren.【F:engine/code/client/cl_bgasset.c†L97-L114】【F:engine/code/client/cl_bgasset.c†L425-L432】【F:engine/code/client/cl_bgasset.c†L922-L931】
+- **Aktivieren:** Eine gültige `http://`- oder `https://`-URL per `ui_menuBackUrl` bzw. `cl_uiBackgroundURL` setzen und `ui_menuBackEnable` (UI) bzw. `cl_uiBackgroundEnable` aktivieren (Standard: `1`).【F:engine/code/client/cl_bgasset.c†L97-L114】【F:engine/code/client/cl_bgasset.c†L425-L432】【F:engine/code/client/cl_bgasset.c†L922-L931】
 - **Deaktivieren (Opt-out):** `ui_menuBackEnable` oder `cl_uiBackgroundEnable` auf `0` setzen. In diesem Zustand wird kein Download angestoßen und der Status bleibt `disabled`.【F:engine/code/client/cl_bgasset.c†L107-L114】【F:engine/code/client/cl_bgasset.c†L957-L964】
 - Ohne URL bleibt das Feature im `idle`-Zustand und startet keinen Request.【F:engine/code/client/cl_bgasset.c†L967-L972】
 
-> **Datenschutz / Zustimmung:** Es erfolgen **keine automatischen Downloads**, solange das Feature nicht explizit aktiviert und eine URL gesetzt ist.【F:engine/code/client/cl_bgasset.c†L957-L1002】
+> **Datenschutz / Zustimmung:** Es erfolgen **keine automatischen Downloads**, wenn das Feature deaktiviert ist oder keine URL gesetzt wurde.【F:engine/code/client/cl_bgasset.c†L957-L1002】
 
 ## Zulässige Dateitypen
 
