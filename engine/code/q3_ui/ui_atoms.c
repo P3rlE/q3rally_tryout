@@ -66,6 +66,11 @@ void UI_InitMemory( void ) {
 uiStatic_t		uis;
 qboolean		m_entersound;		// after a frame, so caching won't disrupt the sound
 
+static int		ui_menuBackOverrideCheckTime;
+static int		ui_menuBackOverrideModCount;
+static char		ui_menuBackOverridePath[MAX_QPATH];
+static char		ui_menuBackOverrideValue[MAX_QPATH];
+
 // these are here so the functions in q_shared.c can link
 #ifndef UI_HARD_LINKED
 
@@ -103,6 +108,107 @@ float UI_ClampCvar( float min, float max, float value )
 	if ( value < min ) return min;
 	if ( value > max ) return max;
 	return value;
+}
+
+static void UI_TrimMenuBackOverride( char *value ) {
+	int		start;
+	int		end;
+	int		length;
+
+	if ( !value[0] ) {
+		return;
+	}
+
+	length = strlen( value );
+	start = 0;
+	while ( start < length && value[start] <= ' ' ) {
+		start++;
+	}
+
+	end = length - 1;
+	while ( end >= start && value[end] <= ' ' ) {
+		value[end] = '\0';
+		end--;
+	}
+
+	if ( start > 0 ) {
+		memmove( value, value + start, end - start + 2 );
+	}
+}
+
+static qboolean UI_ReadMenuBackOverride( const char *overrideValue, char *outValue, int outValueSize, qboolean *fromFile ) {
+	fileHandle_t	file;
+	int				length;
+	int				readLength;
+
+	*fromFile = qfalse;
+	outValue[0] = '\0';
+
+	if ( !overrideValue[0] ) {
+		return qfalse;
+	}
+
+	length = trap_FS_FOpenFile( overrideValue, &file, FS_READ );
+	if ( length > 0 ) {
+		readLength = length;
+		if ( readLength > outValueSize - 1 ) {
+			readLength = outValueSize - 1;
+		}
+		trap_FS_Read( outValue, readLength, file );
+		outValue[readLength] = '\0';
+		trap_FS_FCloseFile( file );
+		*fromFile = qtrue;
+	} else {
+		Q_strncpyz( outValue, overrideValue, outValueSize );
+	}
+
+	UI_TrimMenuBackOverride( outValue );
+
+	return outValue[0] != '\0';
+}
+
+void UI_UpdateMenuBackShader( qboolean force ) {
+	char		overrideValue[MAX_QPATH];
+	const char	*cvarValue;
+	qboolean	fromFile;
+
+	if ( !force && uis.realtime < ui_menuBackOverrideCheckTime ) {
+		return;
+	}
+
+	if ( ui_menuBackOverride.modificationCount != ui_menuBackOverrideModCount ) {
+		ui_menuBackOverrideModCount = ui_menuBackOverride.modificationCount;
+		force = qtrue;
+	}
+
+	if ( !force && uis.realtime < ui_menuBackOverrideCheckTime ) {
+		return;
+	}
+
+	ui_menuBackOverrideCheckTime = uis.realtime + 1000;
+
+	cvarValue = ui_menuBackOverride.string;
+	if ( !UI_ReadMenuBackOverride( cvarValue, overrideValue, sizeof( overrideValue ), &fromFile ) ) {
+		if ( ui_menuBackOverrideValue[0] ) {
+			ui_menuBackOverrideValue[0] = '\0';
+			ui_menuBackOverridePath[0] = '\0';
+			if ( uis.menuBackShaderDefault ) {
+				uis.menuBackShader = uis.menuBackShaderDefault;
+			}
+		}
+		return;
+	}
+
+	if ( Q_stricmp( overrideValue, ui_menuBackOverrideValue ) != 0
+		|| ( fromFile && Q_stricmp( cvarValue, ui_menuBackOverridePath ) != 0 ) ) {
+		uis.menuBackShader = trap_R_RegisterShaderNoMip( overrideValue );
+		Q_strncpyz( ui_menuBackOverrideValue, overrideValue, sizeof( ui_menuBackOverrideValue ) );
+		if ( fromFile ) {
+			Q_strncpyz( ui_menuBackOverridePath, cvarValue, sizeof( ui_menuBackOverridePath ) );
+		} else {
+			ui_menuBackOverridePath[0] = '\0';
+		}
+	}
 }
 
 /*
@@ -165,6 +271,7 @@ void UI_PushMenu( menuframework_s *menu )
 	}
 
 	uis.firstdraw = qtrue;
+	UI_UpdateMenuBackShader( qtrue );
 }
 
 /*
@@ -192,6 +299,8 @@ void UI_PopMenu (void)
 	else {
 		UI_ForceMenuOff ();
 	}
+
+	UI_UpdateMenuBackShader( qtrue );
 }
 
 void UI_ForceMenuOff (void)
@@ -1603,6 +1712,7 @@ void UI_Refresh( int realtime )
 	}
 
 	UI_UpdateCvars();
+	UI_UpdateMenuBackShader( qfalse );
 
 	if ( uis.activemenu )
 	{
