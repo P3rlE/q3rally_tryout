@@ -235,6 +235,14 @@ qboolean G_Profile_GetRank( const profile_stats_t *stats, profile_rank_t *outRan
     return Profile_GetRankForScore( stats, s_profileRankTable, PROFILE_RANK_COUNT, outRank );
 }
 
+int G_Profile_GetPlayerScore( void ) {
+    if ( !s_profileState.loaded ) {
+        return 0;
+    }
+
+    return s_profileState.stats.playerScore;
+}
+
 static void G_Profile_UpdateRankState( void ) {
     profile_rank_t rank;
 
@@ -1461,4 +1469,3 @@ void G_Profile_RecordPerfect( gclient_t *client ) {
 
     G_Profile_CheckAchievementProgress( client, BG_ACHIEVEMENT_PERFECT );
 }
-
