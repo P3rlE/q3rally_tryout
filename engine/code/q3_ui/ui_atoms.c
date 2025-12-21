@@ -75,6 +75,7 @@ static int		ui_menuBackRemoteModCount;
 static int		ui_menuBackRemoteStateModCount;
 static int		ui_menuBackRemotePathModCount;
 static char		ui_menuBackRemotePath[MAX_QPATH];
+static char		ui_menuBackRemoteMissingPath[MAX_QPATH];
 
 // these are here so the functions in q_shared.c can link
 #ifndef UI_HARD_LINKED
@@ -282,6 +283,12 @@ void UI_UpdateMenuBackShader( qboolean force ) {
 	}
 
 	if ( !remotePath[0] || !UI_MenuBackPathExists( remotePath ) ) {
+		if ( remotePath[0] && ( force || Q_stricmp( remotePath, ui_menuBackRemoteMissingPath ) != 0 ) ) {
+			trap_Print( va( "Menu background file not found for '%s'\n", remotePath ) );
+			Q_strncpyz( ui_menuBackRemoteMissingPath, remotePath, sizeof( ui_menuBackRemoteMissingPath ) );
+		} else if ( !remotePath[0] ) {
+			ui_menuBackRemoteMissingPath[0] = '\0';
+		}
 		if ( ui_menuBackRemotePath[0] ) {
 			ui_menuBackRemotePath[0] = '\0';
 			if ( uis.menuBackShaderDefault ) {
@@ -296,6 +303,7 @@ void UI_UpdateMenuBackShader( qboolean force ) {
 		if ( remoteShader ) {
 			uis.menuBackShader = remoteShader;
 			Q_strncpyz( ui_menuBackRemotePath, remotePath, sizeof( ui_menuBackRemotePath ) );
+			ui_menuBackRemoteMissingPath[0] = '\0';
 		} else if ( uis.menuBackShaderDefault ) {
 			trap_Print( va( "Menu background shader registration failed for '%s'\n", remotePath ) );
 			trap_Cvar_Set( "ui_menuBackState", "failed" );
