@@ -420,6 +420,26 @@ void CG_JukeboxPrev_f( void ) {
         return;
     }
 
-    CG_JukeboxAdvance( -1 );
+	CG_JukeboxAdvance( -1 );
 }
 
+void CG_JukeboxRescan_f( void ) {
+	char subtitle[64];
+
+	cg_jukebox.scanned = qfalse;
+	CG_JukeboxScan();
+
+	if ( cg_jukebox.trackCount <= 0 ) {
+		cg_jukebox.currentTrack = 0;
+	} else if ( cg_jukebox.currentTrack < 0 ) {
+		cg_jukebox.currentTrack = 0;
+	} else if ( cg_jukebox.currentTrack >= cg_jukebox.trackCount ) {
+		cg_jukebox.currentTrack = cg_jukebox.trackCount - 1;
+	}
+
+	Com_sprintf( subtitle, sizeof( subtitle ), "%i Track%s gefunden", cg_jukebox.trackCount,
+		( cg_jukebox.trackCount == 1 ) ? "" : "s" );
+	CG_JukeboxSetDisplay( "Jukebox neu gescannt", subtitle );
+
+	CG_Printf( "Jukebox: Scan abgeschlossen (%i Tracks)\n", cg_jukebox.trackCount );
+}

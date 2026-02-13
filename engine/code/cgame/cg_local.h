@@ -1730,6 +1730,7 @@ void CG_JukeboxDraw( float x, float y, float w, float h );
 void CG_JukeboxToggle_f( void );
 void CG_JukeboxNext_f( void );
 void CG_JukeboxPrev_f( void );
+void CG_JukeboxRescan_f( void );
 
 
 //
