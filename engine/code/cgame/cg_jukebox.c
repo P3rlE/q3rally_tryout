@@ -96,10 +96,19 @@ static void CG_JukeboxSetDisplay( const char *status, const char *subtitle ) {
     cg_jukebox.displayExpireTime = cg.time + CG_JUKEBOX_DISPLAY_TIME;
 }
 
+static int CG_JukeboxCompareEntries( const void *a, const void *b ) {
+    const char * const *left = (const char * const *)a;
+    const char * const *right = (const char * const *)b;
+
+    return Q_stricmp( *left, *right );
+}
+
 static void CG_JukeboxScan( void ) {
     char fileList[CG_JUKEBOX_FILELIST_SIZE];
     const char *entry;
+    const char *rawEntries[CG_JUKEBOX_MAX_TRACKS];
     int listed;
+    int rawCount;
     int i;
 
     cg_jukebox.scanned = qtrue;
@@ -107,31 +116,42 @@ static void CG_JukeboxScan( void ) {
 
     listed = trap_FS_GetFileList( CG_JUKEBOX_DIRECTORY, "ogg", fileList, sizeof( fileList ) );
     entry = fileList;
+    rawCount = 0;
 
-    for ( i = 0 ; i < listed && cg_jukebox.trackCount < CG_JUKEBOX_MAX_TRACKS ; i++ ) {
+    for ( i = 0 ; i < listed ; i++ ) {
         int len = strlen( entry );
 
-        if ( len > 0 ) {
-            int totalLen = strlen( CG_JUKEBOX_DIRECTORY ) + 1 + len;
-
-            if ( totalLen >= MAX_QPATH ) {
-                CG_Printf( "Jukebox: Title path too long: %s/%s\n", CG_JUKEBOX_DIRECTORY, entry );
-            } else {
-                char *path = cg_jukebox.trackPaths[cg_jukebox.trackCount];
-                char *name = cg_jukebox.trackNames[cg_jukebox.trackCount];
-
-                Com_sprintf( path, MAX_QPATH, "%s/%s", CG_JUKEBOX_DIRECTORY, entry );
-                CG_JukeboxFormatName( entry, name, MAX_QPATH );
-                cg_jukebox.trackDurations[cg_jukebox.trackCount] = trap_S_GetStreamLength( path );
-                cg_jukebox.trackCount++;
-            }
+        if ( len > 0 && rawCount < CG_JUKEBOX_MAX_TRACKS ) {
+            rawEntries[rawCount++] = entry;
         }
 
         entry += len + 1;
     }
 
+    qsort( rawEntries, rawCount, sizeof( rawEntries[0] ), CG_JukeboxCompareEntries );
+
+    for ( i = 0 ; i < rawCount && cg_jukebox.trackCount < CG_JUKEBOX_MAX_TRACKS ; i++ ) {
+        int len = strlen( rawEntries[i] );
+
+        if ( len > 0 ) {
+            int totalLen = strlen( CG_JUKEBOX_DIRECTORY ) + 1 + len;
+
+            if ( totalLen >= MAX_QPATH ) {
+                CG_Printf( "Jukebox: Title path too long: %s/%s\n", CG_JUKEBOX_DIRECTORY, rawEntries[i] );
+            } else {
+                char *path = cg_jukebox.trackPaths[cg_jukebox.trackCount];
+                char *name = cg_jukebox.trackNames[cg_jukebox.trackCount];
+
+                Com_sprintf( path, MAX_QPATH, "%s/%s", CG_JUKEBOX_DIRECTORY, rawEntries[i] );
+                CG_JukeboxFormatName( rawEntries[i], name, MAX_QPATH );
+                cg_jukebox.trackDurations[cg_jukebox.trackCount] = trap_S_GetStreamLength( path );
+                cg_jukebox.trackCount++;
+            }
+        }
+    }
+
     if ( listed > CG_JUKEBOX_MAX_TRACKS ) {
-        CG_Printf( "Jukebox: Only the first %i Titles will be used\n", CG_JUKEBOX_MAX_TRACKS );
+        CG_Printf( "Jukebox: Only the first %i Titles after sorting will be used\n", CG_JUKEBOX_MAX_TRACKS );
     }
 
     if ( cg_jukebox.trackCount <= 0 ) {
