@@ -48,6 +48,12 @@ typedef struct {
 
 static cgJukeboxState_t cg_jukebox;
 
+typedef enum {
+    JUKEBOX_REPEAT_OFF = 0,
+    JUKEBOX_REPEAT_ALL,
+    JUKEBOX_REPEAT_ONE
+} cgJukeboxRepeatMode_t;
+
 static void CG_JukeboxFormatName( const char *filename, char *out, int outSize ) {
     char *ext;
 
@@ -77,6 +83,55 @@ static void CG_JukeboxFormatDuration( int duration, char *out, int outSize ) {
         int seconds = totalSeconds % 60;
 
         Com_sprintf( out, outSize, "%d:%02d", minutes, seconds );
+    }
+}
+
+static cgJukeboxRepeatMode_t CG_JukeboxGetRepeatMode( void ) {
+    if ( !Q_stricmp( cg_jukeboxRepeatMode.string, "off" ) ) {
+        return JUKEBOX_REPEAT_OFF;
+    }
+
+    if ( !Q_stricmp( cg_jukeboxRepeatMode.string, "all" ) ) {
+        return JUKEBOX_REPEAT_ALL;
+    }
+
+    if ( !Q_stricmp( cg_jukeboxRepeatMode.string, "one" ) ) {
+        return JUKEBOX_REPEAT_ONE;
+    }
+
+    if ( cg_jukeboxRepeatMode.integer <= JUKEBOX_REPEAT_OFF ) {
+        return JUKEBOX_REPEAT_OFF;
+    }
+
+    if ( cg_jukeboxRepeatMode.integer >= JUKEBOX_REPEAT_ONE ) {
+        return JUKEBOX_REPEAT_ONE;
+    }
+
+    return (cgJukeboxRepeatMode_t)cg_jukeboxRepeatMode.integer;
+}
+
+static const char *CG_JukeboxGetRepeatModeLabel( void ) {
+    switch ( CG_JukeboxGetRepeatMode() ) {
+        case JUKEBOX_REPEAT_ONE:
+            return "one";
+        case JUKEBOX_REPEAT_ALL:
+            return "all";
+        default:
+            return "off";
+    }
+}
+
+static const char *CG_JukeboxGetShuffleLabel( void ) {
+    return cg_jukeboxShuffle.integer ? "on" : "off";
+}
+
+static void CG_JukeboxDecorateSubtitle( const char *subtitle, char *out, int outSize ) {
+    if ( subtitle && *subtitle ) {
+        Com_sprintf( out, outSize, "%s  |  Shuffle: %s  Repeat: %s", subtitle,
+            CG_JukeboxGetShuffleLabel(), CG_JukeboxGetRepeatModeLabel() );
+    } else {
+        Com_sprintf( out, outSize, "Shuffle: %s  Repeat: %s",
+            CG_JukeboxGetShuffleLabel(), CG_JukeboxGetRepeatModeLabel() );
     }
 }
 
@@ -196,11 +251,13 @@ static void CG_JukeboxPlayIndex( int index ) {
 
     CG_JukeboxFormatDuration( cg_jukebox.trackDurations[index], durationBuffer, sizeof( durationBuffer ) );
     Com_sprintf( statusBuffer, sizeof( statusBuffer ), "%s  %s", durationBuffer, cg_jukebox.trackNames[index] );
-    Com_sprintf( subtitleBuffer, sizeof( subtitleBuffer ), "Track %i/%i", index + 1, cg_jukebox.trackCount );
+    CG_JukeboxDecorateSubtitle( va( "Track %i/%i", index + 1, cg_jukebox.trackCount ), subtitleBuffer, sizeof( subtitleBuffer ) );
 
     CG_JukeboxSetDisplay( statusBuffer, subtitleBuffer );
     CG_Printf( "Jukebox: %s\n", cg_jukebox.trackNames[index] );
 }
+
+static void CG_JukeboxStopInternal( qboolean showOverlay );
 
 static void CG_JukeboxAdvance( int step ) {
     int nextIndex;
@@ -213,11 +270,42 @@ static void CG_JukeboxAdvance( int step ) {
         return;
     }
 
+    if ( step == 0 ) {
+        CG_JukeboxPlayIndex( cg_jukebox.currentTrack );
+        return;
+    }
+
+    if ( CG_JukeboxGetRepeatMode() == JUKEBOX_REPEAT_ONE ) {
+        CG_JukeboxPlayIndex( cg_jukebox.currentTrack );
+        return;
+    }
+
     nextIndex = cg_jukebox.currentTrack;
 
-    if ( step > 0 ) {
+    if ( cg_jukeboxShuffle.integer && cg_jukebox.trackCount > 1 ) {
+        int attempts = 0;
+
+        do {
+            nextIndex = rand() % cg_jukebox.trackCount;
+            attempts++;
+        } while ( nextIndex == cg_jukebox.currentTrack && attempts < 8 );
+
+        if ( nextIndex == cg_jukebox.currentTrack ) {
+            nextIndex = ( nextIndex + 1 ) % cg_jukebox.trackCount;
+        }
+    } else if ( step > 0 ) {
+        if ( cg_jukebox.currentTrack >= cg_jukebox.trackCount - 1 && CG_JukeboxGetRepeatMode() == JUKEBOX_REPEAT_OFF ) {
+            CG_JukeboxStopInternal( qfalse );
+            return;
+        }
+
         nextIndex = ( nextIndex + 1 ) % cg_jukebox.trackCount;
     } else if ( step < 0 ) {
+        if ( cg_jukebox.currentTrack <= 0 && CG_JukeboxGetRepeatMode() == JUKEBOX_REPEAT_OFF ) {
+            CG_JukeboxStopInternal( qfalse );
+            return;
+        }
+
         nextIndex = ( nextIndex - 1 + cg_jukebox.trackCount ) % cg_jukebox.trackCount;
     }
 
@@ -228,8 +316,8 @@ static void CG_JukeboxStopInternal( qboolean showOverlay ) {
     if ( !cg_jukebox.active ) {
         if ( showOverlay ) {
             if ( cg_jukebox.trackCount > 0 ) {
-                char subtitle[32];
-                Com_sprintf( subtitle, sizeof( subtitle ), "Ready: %i Title", cg_jukebox.trackCount );
+                char subtitle[64];
+                CG_JukeboxDecorateSubtitle( va( "Ready: %i Title", cg_jukebox.trackCount ), subtitle, sizeof( subtitle ) );
                 CG_JukeboxSetDisplay( "Jukebox paused", subtitle );
             } else {
                 CG_JukeboxSetDisplay( "Jukebox paused", NULL );
@@ -245,9 +333,9 @@ static void CG_JukeboxStopInternal( qboolean showOverlay ) {
     CG_StartMusic();
 
     if ( showOverlay ) {
-        char subtitle[32];
+        char subtitle[64];
         if ( cg_jukebox.trackCount > 0 ) {
-            Com_sprintf( subtitle, sizeof( subtitle ), "Ready: %i Title", cg_jukebox.trackCount );
+            CG_JukeboxDecorateSubtitle( va( "Ready: %i Title", cg_jukebox.trackCount ), subtitle, sizeof( subtitle ) );
             CG_JukeboxSetDisplay( "Jukebox stopped", subtitle );
         } else {
             CG_JukeboxSetDisplay( "Jukebox stopped", NULL );
@@ -259,6 +347,9 @@ static void CG_JukeboxStopInternal( qboolean showOverlay ) {
 
 void CG_JukeboxInit( void ) {
     memset( &cg_jukebox, 0, sizeof( cg_jukebox ) );
+
+    trap_Cvar_Update( &cg_jukeboxShuffle );
+    trap_Cvar_Update( &cg_jukeboxRepeatMode );
 }
 
 void CG_JukeboxFrame( void ) {
@@ -275,11 +366,7 @@ void CG_JukeboxFrame( void ) {
     }
 
     if ( cg.time - cg_jukebox.trackStartTime >= cg_jukebox.trackDurations[cg_jukebox.currentTrack] ) {
-        if ( cg_jukebox.trackCount > 1 ) {
-            CG_JukeboxAdvance( 1 );
-        } else {
-            cg_jukebox.trackStartTime = cg.time;
-        }
+        CG_JukeboxAdvance( 1 );
     }
 }
 
@@ -444,7 +531,7 @@ void CG_JukeboxPrev_f( void ) {
 }
 
 void CG_JukeboxRescan_f( void ) {
-	char subtitle[64];
+	char subtitle[96];
 
 	cg_jukebox.scanned = qfalse;
 	CG_JukeboxScan();
@@ -457,9 +544,45 @@ void CG_JukeboxRescan_f( void ) {
 		cg_jukebox.currentTrack = cg_jukebox.trackCount - 1;
 	}
 
-	Com_sprintf( subtitle, sizeof( subtitle ), "%i Track%s gefunden", cg_jukebox.trackCount,
-		( cg_jukebox.trackCount == 1 ) ? "" : "s" );
+	CG_JukeboxDecorateSubtitle( va( "%i Track%s gefunden", cg_jukebox.trackCount,
+		( cg_jukebox.trackCount == 1 ) ? "" : "s" ), subtitle, sizeof( subtitle ) );
 	CG_JukeboxSetDisplay( "Jukebox neu gescannt", subtitle );
 
 	CG_Printf( "Jukebox: Scan abgeschlossen (%i Tracks)\n", cg_jukebox.trackCount );
+}
+
+void CG_JukeboxShuffleToggle_f( void ) {
+    char subtitle[96];
+
+    trap_Cvar_Set( "cg_jukeboxShuffle", cg_jukeboxShuffle.integer ? "0" : "1" );
+    trap_Cvar_Update( &cg_jukeboxShuffle );
+
+    CG_JukeboxDecorateSubtitle( cg_jukebox.active ? cg_jukebox.trackNames[cg_jukebox.currentTrack] : "Jukebox",
+        subtitle, sizeof( subtitle ) );
+    CG_JukeboxSetDisplay( cg_jukeboxShuffle.integer ? "Shuffle aktiviert" : "Shuffle deaktiviert", subtitle );
+}
+
+void CG_JukeboxRepeatCycle_f( void ) {
+    cgJukeboxRepeatMode_t repeatMode = CG_JukeboxGetRepeatMode();
+    char subtitle[96];
+
+    repeatMode = (cgJukeboxRepeatMode_t)( ( repeatMode + 1 ) % 3 );
+
+    switch ( repeatMode ) {
+        case JUKEBOX_REPEAT_ONE:
+            trap_Cvar_Set( "cg_jukeboxRepeatMode", "one" );
+            break;
+        case JUKEBOX_REPEAT_ALL:
+            trap_Cvar_Set( "cg_jukeboxRepeatMode", "all" );
+            break;
+        default:
+            trap_Cvar_Set( "cg_jukeboxRepeatMode", "off" );
+            break;
+    }
+
+    trap_Cvar_Update( &cg_jukeboxRepeatMode );
+
+    CG_JukeboxDecorateSubtitle( cg_jukebox.active ? cg_jukebox.trackNames[cg_jukebox.currentTrack] : "Jukebox",
+        subtitle, sizeof( subtitle ) );
+    CG_JukeboxSetDisplay( va( "Repeat: %s", CG_JukeboxGetRepeatModeLabel() ), subtitle );
 }
