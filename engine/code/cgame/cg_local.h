@@ -1562,6 +1562,8 @@ extern  vmCvar_t                cg_useFuel;
 
 extern  vmCvar_t                cg_fuelWarningLevel;
 extern	vmCvar_t		cg_drawBotPaths;
+extern	vmCvar_t		cg_jukeboxShuffle;
+extern	vmCvar_t		cg_jukeboxRepeatMode;
 // Q3Rally Code END
 
 //
@@ -1731,6 +1733,8 @@ void CG_JukeboxToggle_f( void );
 void CG_JukeboxNext_f( void );
 void CG_JukeboxPrev_f( void );
 void CG_JukeboxRescan_f( void );
+void CG_JukeboxShuffleToggle_f( void );
+void CG_JukeboxRepeatCycle_f( void );
 
 
 //
@@ -2261,6 +2265,5 @@ void	CG_ParticleMisc (qhandle_t pshader, vec3_t origin, int size, int duration, 
 void	CG_ParticleExplosion (char *animStr, vec3_t origin, vec3_t vel, int duration, int sizeStart, int sizeEnd);
 extern qboolean		initparticles;
 int CG_NewParticleArea ( int num );
-
 
 
