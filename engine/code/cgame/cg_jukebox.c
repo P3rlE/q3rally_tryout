@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define CG_JUKEBOX_TEXT_MARGIN         8.0f
 #define CG_JUKEBOX_FOOTER_MARGIN       3.0f
 #define CG_JUKEBOX_FOOTER_GAP          12.0f
+#define CG_JUKEBOX_META_FIELD_LEN      64
 
 typedef struct {
     qboolean    scanned;
@@ -40,6 +41,8 @@ typedef struct {
     int         trackDurations[CG_JUKEBOX_MAX_TRACKS];
     char        trackPaths[CG_JUKEBOX_MAX_TRACKS][MAX_QPATH];
     char        trackNames[CG_JUKEBOX_MAX_TRACKS][MAX_QPATH];
+    char        trackTitles[CG_JUKEBOX_MAX_TRACKS][CG_JUKEBOX_META_FIELD_LEN];
+    char        trackArtists[CG_JUKEBOX_MAX_TRACKS][CG_JUKEBOX_META_FIELD_LEN];
     int         trackStartTime;
     int         displayExpireTime;
     char        statusLine[128];
@@ -69,6 +72,21 @@ static void CG_JukeboxFormatName( const char *filename, char *out, int outSize )
         }
         out++;
     }
+}
+
+
+static void CG_JukeboxBuildDisplayName( const char *fallbackName, const char *artist, const char *title, char *out, int outSize ) {
+    if ( artist && *artist && title && *title ) {
+        Com_sprintf( out, outSize, "%s - %s", artist, title );
+        return;
+    }
+
+    if ( title && *title ) {
+        Q_strncpyz( out, title, outSize );
+        return;
+    }
+
+    Q_strncpyz( out, fallbackName ? fallbackName : "", outSize );
 }
 
 static void CG_JukeboxFormatDuration( int duration, char *out, int outSize ) {
@@ -196,9 +214,12 @@ static void CG_JukeboxScan( void ) {
             } else {
                 char *path = cg_jukebox.trackPaths[cg_jukebox.trackCount];
                 char *name = cg_jukebox.trackNames[cg_jukebox.trackCount];
+                char *title = cg_jukebox.trackTitles[cg_jukebox.trackCount];
+                char *artist = cg_jukebox.trackArtists[cg_jukebox.trackCount];
 
                 Com_sprintf( path, MAX_QPATH, "%s/%s", CG_JUKEBOX_DIRECTORY, rawEntries[i] );
                 CG_JukeboxFormatName( rawEntries[i], name, MAX_QPATH );
+                trap_S_GetStreamMetadata( path, title, CG_JUKEBOX_META_FIELD_LEN, artist, CG_JUKEBOX_META_FIELD_LEN, NULL, 0 );
                 cg_jukebox.trackDurations[cg_jukebox.trackCount] = trap_S_GetStreamLength( path );
                 cg_jukebox.trackCount++;
             }
@@ -234,6 +255,7 @@ static void CG_JukeboxPlayIndex( int index ) {
     char durationBuffer[16];
     char statusBuffer[sizeof( cg_jukebox.statusLine )];
     char subtitleBuffer[sizeof( cg_jukebox.subtitleLine )];
+    char displayName[MAX_QPATH];
 
     if ( !CG_JukeboxEnsureTracks() ) {
         return;
@@ -250,11 +272,13 @@ static void CG_JukeboxPlayIndex( int index ) {
     trap_S_StartBackgroundTrack( cg_jukebox.trackPaths[index], cg_jukebox.trackPaths[index] );
 
     CG_JukeboxFormatDuration( cg_jukebox.trackDurations[index], durationBuffer, sizeof( durationBuffer ) );
-    Com_sprintf( statusBuffer, sizeof( statusBuffer ), "%s  %s", durationBuffer, cg_jukebox.trackNames[index] );
+    CG_JukeboxBuildDisplayName( cg_jukebox.trackNames[index], cg_jukebox.trackArtists[index], cg_jukebox.trackTitles[index],
+        displayName, sizeof( displayName ) );
+    Com_sprintf( statusBuffer, sizeof( statusBuffer ), "%s  %s", durationBuffer, displayName );
     CG_JukeboxDecorateSubtitle( va( "Track %i/%i", index + 1, cg_jukebox.trackCount ), subtitleBuffer, sizeof( subtitleBuffer ) );
 
     CG_JukeboxSetDisplay( statusBuffer, subtitleBuffer );
-    CG_Printf( "Jukebox: %s\n", cg_jukebox.trackNames[index] );
+    CG_Printf( "Jukebox: %s\n", displayName );
 }
 
 static void CG_JukeboxStopInternal( qboolean showOverlay );
