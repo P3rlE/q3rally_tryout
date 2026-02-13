@@ -183,6 +183,13 @@
 
 **Tip / Hinweis:** Legt zusätzliche `.ogg`-Dateien mit dem Präfix `menumusic` im Ordner `baseq3r/music/` ab, um die Rotation um eigene Songs zu erweitern.【F:engine/code/q3_ui/ui_menu.c†L368-L390】
 
+**Jukebox-Konsolenbefehle (Ingame):**
+
+- `jukebox_play` – Startet/stoppt die Ingame-Jukebox.
+- `jukebox_next` – Springt zum nächsten Track.
+- `jukebox_prev` – Springt zum vorherigen Track.
+- `jukebox_rescan` – Scannt `music/jukebox` neu und aktualisiert die Trackliste.
+
 ## 9. Menu Background via URL / Menü-Hintergrund per URL
 
 **DE:** Der Menü-Hintergrund kann optional aus einer entfernten Bilddatei geladen werden. Die UI nutzt dabei lokale Cache-Dateien und fällt bei Fehlern automatisch auf den Standardhintergrund zurück. Aktivierung und Intervall sind vollständig deaktivierbar.

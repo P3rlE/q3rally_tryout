@@ -115,16 +115,17 @@ typedef struct
 #define ID_JUKEBOX_PLAY	34
 #define ID_JUKEBOX_NEXT	35
 #define ID_JUKEBOX_PREV	36
+#define ID_JUKEBOX_RESCAN	37
 
 // all others
-#define ID_FREELOOK		37
-#define ID_INVERTMOUSE	38
-#define ID_ALWAYSRUN	39
-#define ID_AUTOSWITCH	40
-#define ID_MOUSESPEED	41
-#define ID_JOYENABLE	42
-#define ID_JOYTHRESHOLD	43
-#define ID_SMOOTHMOUSE	44
+#define ID_FREELOOK		38
+#define ID_INVERTMOUSE	39
+#define ID_ALWAYSRUN	40
+#define ID_AUTOSWITCH	41
+#define ID_MOUSESPEED	42
+#define ID_JOYENABLE	43
+#define ID_JOYTHRESHOLD	44
+#define ID_SMOOTHMOUSE	45
 
 #define ANIM_IDLE		0
 #define ANIM_RUN		1
@@ -206,6 +207,7 @@ typedef struct
 	menuaction_s		jukeboxPlay;
 	menuaction_s		jukeboxNext;
 	menuaction_s		jukeboxPrev;
+	menuaction_s		jukeboxRescan;
 	playerInfo_t		playerinfo;
 	qboolean			changesmade;
 	menuaction_s		chat;
@@ -239,6 +241,7 @@ static bind_t g_bindings[] =
         {"jukebox_play",		"jukebox play/stop",	ID_JUKEBOX_PLAY,	ANIM_IDLE,		-1,		-1, -1},
         {"jukebox_next",		"jukebox next track",	ID_JUKEBOX_NEXT,	ANIM_IDLE,		-1,		-1, -1},
         {"jukebox_prev",		"jukebox previous track", ID_JUKEBOX_PREV,	ANIM_IDLE,		-1,		-1, -1},
+        {"jukebox_rescan",		"jukebox rescan tracks", ID_JUKEBOX_RESCAN,	ANIM_IDLE,		-1,		-1, -1},
 	{"+speed", 			"run / walk",		ID_SPEED,		ANIM_RUN,		K_SHIFT,		-1,		-1,	-1},
 	{"+forward", 		"walk forward",		ID_FORWARD,		ANIM_WALK,		K_UPARROW,		-1,		-1, -1},
 	{"+back", 			"backpedal",		ID_BACKPEDAL,	ANIM_BACK,		K_DOWNARROW,	-1,		-1, -1},
@@ -341,6 +344,7 @@ static menucommon_s *g_misc_controls[] = {
 	(menucommon_s *)&s_controls.jukeboxPlay,
 	(menucommon_s *)&s_controls.jukeboxNext,
 	(menucommon_s *)&s_controls.jukeboxPrev,
+	(menucommon_s *)&s_controls.jukeboxRescan,
 	(menucommon_s *)&s_controls.gesture,
 	(menucommon_s *)&s_controls.chat,
 	(menucommon_s *)&s_controls.chat2,
@@ -1487,6 +1491,12 @@ static void Controls_MenuInit( void )
 	s_controls.jukeboxPrev.generic.ownerdraw = Controls_DrawKeyBinding;
 	s_controls.jukeboxPrev.generic.id        = ID_JUKEBOX_PREV;
 
+	s_controls.jukeboxRescan.generic.type      = MTYPE_ACTION;
+	s_controls.jukeboxRescan.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.jukeboxRescan.generic.callback  = Controls_ActionEvent;
+	s_controls.jukeboxRescan.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.jukeboxRescan.generic.id        = ID_JUKEBOX_RESCAN;
+
 	s_controls.showscores.generic.type	    = MTYPE_ACTION;
 	s_controls.showscores.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
 	s_controls.showscores.generic.callback  = Controls_ActionEvent;
@@ -1645,6 +1655,7 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.jukeboxPlay );
 	Menu_AddItem( &s_controls.menu, &s_controls.jukeboxNext );
 	Menu_AddItem( &s_controls.menu, &s_controls.jukeboxPrev );
+	Menu_AddItem( &s_controls.menu, &s_controls.jukeboxRescan );
 	Menu_AddItem( &s_controls.menu, &s_controls.gesture );
 	Menu_AddItem( &s_controls.menu, &s_controls.chat );
 	Menu_AddItem( &s_controls.menu, &s_controls.chat2 );

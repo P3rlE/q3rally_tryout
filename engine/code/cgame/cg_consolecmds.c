@@ -720,6 +720,7 @@ static consoleCommand_t	commands[] = {
 	{ "jukebox_play", CG_JukeboxToggle_f },
 	{ "jukebox_next", CG_JukeboxNext_f },
 	{ "jukebox_prev", CG_JukeboxPrev_f },
+	{ "jukebox_rescan", CG_JukeboxRescan_f },
 // Q3Rally Code End
 	{ "startOrbit", CG_StartOrbit_f },
 	{ "nextcamera", CG_NextCameraAngle_f },
