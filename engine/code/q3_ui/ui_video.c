@@ -688,17 +688,8 @@ static void GraphicsOptions_UpdateMenuItems( void )
 	}
 	else
 	{
-		int maxAniso = (int)trap_Cvar_VariableValue( "r_ext_max_anisotropy" );
 		s_graphicsoptions.anisotropy.generic.flags &= ~QMF_GRAYED;
 		s_graphicsoptions.msaa.generic.flags &= ~QMF_GRAYED;
-		if ( maxAniso < 16 && s_graphicsoptions.anisotropy.curvalue > 3 )
-			s_graphicsoptions.anisotropy.curvalue = 3;
-		if ( maxAniso < 8 && s_graphicsoptions.anisotropy.curvalue > 2 )
-			s_graphicsoptions.anisotropy.curvalue = 2;
-		if ( maxAniso < 4 && s_graphicsoptions.anisotropy.curvalue > 1 )
-			s_graphicsoptions.anisotropy.curvalue = 1;
-		if ( maxAniso < 2 && s_graphicsoptions.anisotropy.curvalue > 0 )
-			s_graphicsoptions.anisotropy.curvalue = 0;
 	}
 
 	s_graphicsoptions.apply.generic.flags |= QMF_HIDDEN|QMF_INACTIVE;
@@ -1445,6 +1436,8 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.msaa.generic.callback	 = GraphicsOptions_Event;
 	s_graphicsoptions.msaa.itemnames		 = msaa_names;
 	y += BIGCHAR_HEIGHT+2;
+
+	y += BIGCHAR_HEIGHT + 8;
 
 	s_graphicsoptions.driverinfo.generic.type     = MTYPE_PTEXT;
 	s_graphicsoptions.driverinfo.generic.flags    = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
