@@ -123,7 +123,7 @@ static qboolean CG_AtmosphericInViewCone( const vec3_t point, float conePadding 
 	return fabs( AngleDifference( cg.refdefViewAngles[YAW], yaw ) ) <= halfFov;
 }
 
-static int CG_AtmosphericResolveZone( int type, const vec3_t point )
+static int CG_AtmosphericResolveZone( int type, vec3_t point )
 {
 	entityState_t *s1;
 	vec3_t mins, maxs;
