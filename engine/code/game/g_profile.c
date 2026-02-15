@@ -33,7 +33,11 @@ static const profile_rank_def_t s_profileRankTable[] = {
 #define PROFILE_VEHICLE_JSON_BUFFER_SIZE ( PROFILE_MAX_TRACKED_VEHICLES * PROFILE_VEHICLE_JSON_ENTRY_SIZE + 32 )
 #define PROFILE_FILE_BUFFER_SIZE 16384
 
-#define G_PROFILE_LOG( ... ) do { } while ( 0 )
+static void G_Profile_LogStub( const char *fmt, ... ) {
+    (void)fmt;
+}
+
+#define G_PROFILE_LOG G_Profile_LogStub
 
 static struct {
     qboolean        loaded;
