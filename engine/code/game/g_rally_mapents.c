@@ -261,15 +261,6 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
         trap_SendServerCommand( -1, va( "elim_status %i %i %i", last->s.clientNum, activeCount - 1, 1 ) );
 
         // Trigger a big explosion before moving the player to the scoreboard.
-        G_TempEntity( last->client->ps.origin, EV_EXPLOSION );
-
-        // Trigger a big explosion before moving the player to the scoreboard.
-        G_TempEntity( last->client->ps.origin, EV_EXPLOSION );
-
-        // Trigger a big explosion before moving the player to the scoreboard.
-        G_TriggerEliminationExplosion( last );
-
-        // Trigger a big explosion before moving the player to the scoreboard.
         G_TriggerEliminationExplosion( last );
 
         // Keep the player frozen until they are moved to the scoreboard.
