@@ -579,7 +579,7 @@ static float CG_DrawGhostSplitDelta( float y ) {
 	int		absMs;
 	int		seconds;
 	int		millis;
-	const vec4_t	*deltaColor;
+	vec4_t		deltaColor;
 	const float		columnWidth = CG_GetEliminationColumnWidth();
 	const float		rowHeight = HUD_ROW_HEIGHT;
 
@@ -597,11 +597,17 @@ static float CG_DrawGhostSplitDelta( float y ) {
 	millis = absMs % 1000;
 
 	Com_sprintf( s, sizeof( s ), "D: %c%d.%03d", deltaMs < 0 ? '-' : '+', seconds, millis );
-	deltaColor = deltaMs < 0 ? &colorGreen : ( deltaMs > 0 ? &colorRed : &colorWhite );
+	if ( deltaMs < 0 ) {
+		Vector4Copy( colorGreen, deltaColor );
+	} else if ( deltaMs > 0 ) {
+		Vector4Copy( colorRed, deltaColor );
+	} else {
+		Vector4Copy( colorWhite, deltaColor );
+	}
 
 	x = HUD_RIGHT_EDGE - columnWidth;
 	CG_FillRect( x, y, columnWidth, rowHeight, bgColor );
-	CG_DrawTinyStringColor( x + HUD_TEXT_INSET, y + 4, s, *deltaColor );
+	CG_DrawTinyStringColor( x + HUD_TEXT_INSET, y + 4, s, deltaColor );
 	y += rowHeight;
 
 	return y;
