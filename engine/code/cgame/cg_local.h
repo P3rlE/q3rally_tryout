@@ -877,6 +877,11 @@ typedef struct {
 	int			personalGhostBestTime;
 	char			personalGhostVehicle[MAX_QPATH];
 	char			personalGhostPath[MAX_QPATH];
+	int			ghostSplitLastNextCheckpoint;
+	int			ghostSplitLastLapStartTime;
+	int			ghostSplitDeltaMs;
+	int			ghostSplitDeltaTime;
+	qboolean	ghostSplitDeltaValid;
 } cg_t;
 
 
@@ -1584,6 +1589,7 @@ extern	vmCvar_t		cg_engineSounds;
 extern	vmCvar_t		cg_ghostPlayback;
 extern	vmCvar_t		cg_ghostDebug;
 extern	vmCvar_t		cg_ghostAlpha;
+extern	vmCvar_t		cg_ghostSplitAudio;
 extern  vmCvar_t                cg_useFuel;
 
 extern  vmCvar_t                cg_fuelWarningLevel;
@@ -2016,6 +2022,7 @@ qboolean CG_InsideBox( vec3_t mins, vec3_t maxs, vec3_t pos );
 // cg_rally_race_tools.c
 //
 void CG_NewLapTime( int client, int lap, int time );
+void CG_UpdateGhostSplitDelta( void );
 void CG_FinishedRace( int client, int time );
 void CG_StartRace( int time );
 void CG_BeginGhostRecording( int startTime );
@@ -2297,5 +2304,4 @@ void	CG_ParticleMisc (qhandle_t pshader, vec3_t origin, int size, int duration, 
 void	CG_ParticleExplosion (char *animStr, vec3_t origin, vec3_t vel, int duration, int sizeStart, int sizeEnd);
 extern qboolean		initparticles;
 int CG_NewParticleArea ( int num );
-
 

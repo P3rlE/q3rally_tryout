@@ -280,6 +280,7 @@ vmCvar_t	cg_engineSounds;
 vmCvar_t	cg_ghostPlayback;
 vmCvar_t	cg_ghostDebug;
 vmCvar_t	cg_ghostAlpha;
+vmCvar_t	cg_ghostSplitAudio;
 vmCvar_t	cg_useFuel;
 
 vmCvar_t        cg_fuelWarningLevel;
@@ -402,6 +403,7 @@ static cvarTable_t cvarTable[] = {
         { &cg_ghostPlayback, "cg_ghostPlayback", "0", CVAR_ARCHIVE },
 	{ &cg_ghostAlpha, "cg_ghostAlpha", "160", CVAR_ARCHIVE },
 	{ &cg_ghostDebug, "cg_ghostDebug", "0", CVAR_TEMP },
+	{ &cg_ghostSplitAudio, "cg_ghostSplitAudio", "1", CVAR_ARCHIVE },
         { &cg_useFuel, "g_useFuel", "1", CVAR_SERVERINFO },
 
         { &cg_fuelWarningLevel, "cg_fuelWarningLevel", "10", CVAR_ARCHIVE },
