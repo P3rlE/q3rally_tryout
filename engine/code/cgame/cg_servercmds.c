@@ -1433,6 +1433,52 @@ static void CG_ParseGhostMeta( void ) {
 }
 
 
+static int cgLastElimStatusTime = -1;
+
+static void CG_ParseEliminationStatus( void ) {
+        int clientNum;
+        int remaining;
+        int eventType;
+        qboolean isLocal;
+
+        if ( trap_Argc() < 4 ) {
+                return;
+        }
+
+        clientNum = atoi( CG_Argv( 1 ) );
+        remaining = atoi( CG_Argv( 2 ) );
+        eventType = atoi( CG_Argv( 3 ) );
+        isLocal = qfalse;
+
+        if ( remaining < 0 ) {
+                remaining = 0;
+        }
+
+        if ( cg.snap && clientNum == cg.snap->ps.clientNum ) {
+                isLocal = qtrue;
+        }
+
+        cg.eliminationPlayersRemaining = remaining;
+        cgLastElimStatusTime = cg.time;
+
+        if ( eventType == 1 ) {
+                cg.eliminationWarningActive = qfalse;
+                cg.eliminationWarningTime = 0;
+                CG_CheckEliminationWarning( cg.eliminationPlayersRemaining );
+
+                if ( cgs.media.eliminationEliminatedSound && !isLocal ) {
+                        trap_S_StartLocalSound( cgs.media.eliminationEliminatedSound, CHAN_ANNOUNCER );
+                }
+                return;
+        }
+
+        if ( eventType == 2 ) {
+                cg.eliminationPlayersRemaining = 1;
+                cg.eliminationWarningActive = qfalse;
+        }
+}
+
+
 /*
 =================
 CG_ServerCommand
@@ -1475,14 +1521,20 @@ static void CG_ServerCommand( void ) {
                 return;
         }
 
+        if ( !strcmp( cmd, "elim_status" ) ) {
+                CG_ParseEliminationStatus();
+                return;
+        }
+
         if ( !strcmp( cmd, "cp" ) ) {
                 const char *message;
 
                 message = CG_Argv(1);
                 CG_CenterPrint( message, SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
 
-                if ( message && ( cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS ) ) {
-                        if ( strstr( message, "You have been eliminated" ) ) {
+                if ( message && ( cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS )
+                                && cgLastElimStatusTime != cg.time ) {
+                        if ( strstr( message, "You have been eliminated" ) || strstr( message, "You were eliminated" ) ) {
                                 cg.eliminationWarningActive = qfalse;
                                 cg.eliminationWarningTime = 0;
                                 if ( cgs.media.eliminationEliminatedSound ) {
@@ -1507,10 +1559,14 @@ static void CG_ServerCommand( void ) {
 		message = CG_Argv(1);
 		CG_Printf( "%s", message );
 
-                if ( message && ( cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS ) ) {
+                if ( message && ( cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS )
+                                && cgLastElimStatusTime != cg.time ) {
                         const char *elimText;
 
-                        elimText = strstr( message, "has been eliminated" );
+                        elimText = strstr( message, " was eliminated" );
+                        if ( !elimText ) {
+                                elimText = strstr( message, " has been eliminated" );
+                        }
                         if ( elimText ) {
                                 const char *remainingText;
                                 int remaining;
