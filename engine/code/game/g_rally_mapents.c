@@ -539,11 +539,6 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
 void Think_StartFinish( gentity_t *self ){
 	gentity_t		*ent;
 	int		checkpoints;
-	char		serverinfo[MAX_INFO_STRING];
-	const char	*mapname;
-	qboolean	hasDuplicateNumbers;
-	qboolean	hasMissingNumbers;
-	int		i;
 
 	// FIXME: only do this a couple times after a client joins
 	// send checkpoint to clients
@@ -577,11 +572,6 @@ void Think_StartFinish( gentity_t *self ){
 		VectorCopy( self->s.origin, self->s.origin2 );
 
 	checkpoints = 0;
-	hasDuplicateNumbers = qfalse;
-	hasMissingNumbers = qfalse;
-
-	trap_GetServerinfo( serverinfo, sizeof( serverinfo ) );
-	mapname = Info_ValueForKey( serverinfo, "mapname" );
 
         ent = NULL;
         while ((ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL) checkpoints++;
@@ -597,57 +587,15 @@ void Think_StartFinish( gentity_t *self ){
         memset( level.cpDist, 0, sizeof( level.cpDist ) );
         ent = NULL;
         while ( ( ent = G_Find( ent, FOFS(classname), "rally_checkpoint" ) ) != NULL ) {
-                if ( ent->number <= 0 || ent->number > level.numCheckpoints ) {
-                        G_Printf( "WARNING: map '%s' rally_checkpoint has invalid number %i (expected 1..%i).\\n",
-                                mapname, ent->number, level.numCheckpoints );
-                        continue;
+                if ( ent->number > 0 && ent->number <= level.numCheckpoints ) {
+                        level.checkpoints[ ent->number - 1 ] = ent;
                 }
-
-                if ( level.checkpoints[ ent->number - 1 ] ) {
-                        hasDuplicateNumbers = qtrue;
-                        G_Printf( "WARNING: map '%s' has duplicate rally_checkpoint number %i. "
-                                "Distance/path data will use the first entity; fix duplicate 'number' keys.\\n",
-                                mapname, ent->number );
-                        continue;
-                }
-
-                level.checkpoints[ ent->number - 1 ] = ent;
-        }
-
-        {
-                gentity_t *orderedCheckpoints[MAX_GENTITIES];
-                int orderedCount;
-
-                orderedCount = 0;
-                for ( i = 0; i < level.numCheckpoints; i++ ) {
-                        if ( !level.checkpoints[i] ) {
-                                hasMissingNumbers = qtrue;
-                                G_Printf( "WARNING: map '%s' is missing rally_checkpoint number %i. "
-                                        "Check for missing/duplicate 'number' keys in your map.\\n",
-                                        mapname, i + 1 );
-                                continue;
-                        }
-
-                        orderedCheckpoints[orderedCount] = level.checkpoints[i];
-                        orderedCount++;
-                }
-
-                if ( hasDuplicateNumbers || hasMissingNumbers ) {
-                        G_Printf( "WARNING: map '%s' has invalid rally_checkpoint numbering. "
-                                "Using %i/%i valid checkpoints for distance calculation.\\n",
-                                mapname, orderedCount, level.numCheckpoints );
-                }
-
-                memset( level.checkpoints, 0, sizeof( level.checkpoints ) );
-                for ( i = 0; i < orderedCount; i++ ) {
-                        level.checkpoints[i] = orderedCheckpoints[i];
-                }
-                level.numCheckpoints = orderedCount;
         }
 
         level.trackLength = 0.0f;
         if ( level.numCheckpoints > 0 ) {
                 vec3_t last, first, delta;
+                int i;
 
                 VectorCopy( level.checkpoints[0]->s.origin, first );
                 VectorCopy( first, last );
@@ -868,3 +816,4 @@ void SP_rally_weather_snow( gentity_t *ent ){
 
 	trap_LinkEntity (ent);
 }
+
