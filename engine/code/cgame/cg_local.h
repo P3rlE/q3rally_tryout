@@ -62,6 +62,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define RANK_DISPLAY_TIME               3600
 #define RANK_FADE_TIME                  400
 #define RANK_MAX_QUEUE                  4
+#define ELIM_TIMELINE_MAX_EVENTS         5
 
 #define	PULSE_SCALE			1.5			// amount to scale up the icons when activating
 
@@ -72,6 +73,13 @@ typedef struct {
     int tierIndex;
     int startTime;
 } cgAchievementAnnouncement_t;
+
+typedef struct {
+    int clientNum;
+    int round;
+    int remaining;
+    int timestamp;
+} cgElimTimelineEvent_t;
 
 typedef struct {
     int rankIndex;
@@ -747,6 +755,8 @@ typedef struct {
 	int			eliminationPlayersRemaining;
 	int			eliminationWarningTime;
 	qboolean	eliminationWarningActive;
+	cgElimTimelineEvent_t	elimTimelineEvents[ELIM_TIMELINE_MAX_EVENTS];
+	int			elimTimelineCount;
 	char		killerName[MAX_NAME_LENGTH];
 	char			spectatorList[MAX_STRING_CHARS];		// list of names
 	int				spectatorLen;												// length of list
@@ -1563,6 +1573,7 @@ extern	vmCvar_t		cg_developer;
 extern	vmCvar_t		cg_fpsLimit;
 extern	vmCvar_t		cg_autodrop;
 extern	vmCvar_t		cg_drawPositionSprites;
+extern	vmCvar_t		cg_elimTimeline;
 extern	vmCvar_t		cg_tightCamTracking;
 extern	vmCvar_t		cg_rearViewRenderLevel;
 extern	vmCvar_t		cg_mainViewRenderLevel;
@@ -1994,6 +2005,8 @@ qboolean isRallyNonDMRace( void );
 qboolean isRaceObserver( int clientNum );
 int CG_GetPlayersRemaining( int *lastClientNum );
 void CG_CheckEliminationWarning( int playersRemaining );
+void CG_ResetEliminationTimeline( void );
+void CG_AddEliminationTimelineEvent( int clientNum, int round, int remaining, int timestamp );
 qboolean CG_IsActiveCompetitor( int clientNum );
 
 qboolean CG_InsideBox( vec3_t mins, vec3_t maxs, vec3_t pos );

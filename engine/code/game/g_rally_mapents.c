@@ -141,6 +141,22 @@ static void G_CompleteElimination( gentity_t *ent ) {
         SetTeam( ent, "racerSpectator" );
 }
 
+static void G_SendEliminationTimelineEvent( int clientNum, int round, int remaining ) {
+        if ( clientNum < 0 || clientNum >= level.maxclients ) {
+                return;
+        }
+
+        if ( round < 0 ) {
+                round = 0;
+        }
+
+        if ( remaining < 0 ) {
+                remaining = 0;
+        }
+
+        trap_SendServerCommand( -1, va( "elim_event %i %i %i %i", clientNum, round, remaining, level.time ) );
+}
+
 // *********************** Race Entities ************************
 // *********************** Race Entities ************************
 // *********************** Race Entities ************************
@@ -282,6 +298,7 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
                 last->client->pers.netname, activeCount - 1 ) );
         trap_SendServerCommand( last->s.clientNum, "cp \"You were eliminated\n\"" );
         trap_SendServerCommand( -1, va( "elim_status %i %i %i", last->s.clientNum, activeCount - 1, 1 ) );
+        G_SendEliminationTimelineEvent( last->s.clientNum, level.eliminationRound, activeCount - 1 );
 
         // Trigger a big explosion before moving the player to the scoreboard.
         G_TriggerEliminationExplosion( last );
@@ -342,6 +359,7 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
                                         winner->client->pers.netname ) );
                                 trap_SendServerCommand( winner->s.clientNum, "cp \"You won the elimination!\n\"" );
                                 trap_SendServerCommand( -1, va( "elim_status %i %i %i", winner->s.clientNum, 1, 2 ) );
+                                G_SendEliminationTimelineEvent( winner->s.clientNum, level.eliminationRound + 1, 1 );
                         }
                 }
         }
