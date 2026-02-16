@@ -258,6 +258,7 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
         trap_SendServerCommand( -1, va( "print \"%s was eliminated (%i drivers left)\n\"",
                 last->client->pers.netname, activeCount - 1 ) );
         trap_SendServerCommand( last->s.clientNum, "cp \"You were eliminated\n\"" );
+        trap_SendServerCommand( -1, va( "elim_status %i %i %i", last->s.clientNum, activeCount - 1, 1 ) );
 
         // Trigger a big explosion before moving the player to the scoreboard.
         G_TempEntity( last->client->ps.origin, EV_EXPLOSION );
@@ -326,6 +327,7 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
                                 trap_SendServerCommand( -1, va( "print \"%s won the elimination!\n\"",
                                         winner->client->pers.netname ) );
                                 trap_SendServerCommand( winner->s.clientNum, "cp \"You won the elimination!\n\"" );
+                                trap_SendServerCommand( -1, va( "elim_status %i %i %i", winner->s.clientNum, 1, 2 ) );
                         }
                 }
         }
