@@ -67,6 +67,11 @@ static float CG_GetEliminationColumnWidth( void ) {
             maxWidth = candidate;
         }
 
+        candidate = insetWidth + charWidth * CG_DrawStrlen( "D: +00.000" );
+        if ( candidate > maxWidth ) {
+            maxWidth = candidate;
+        }
+
         candidate = insetWidth + charWidth * CG_DrawStrlen( "PLAYERS LEFT: 000" );
         if ( candidate > maxWidth ) {
             maxWidth = candidate;
@@ -561,6 +566,42 @@ static float CG_DrawTimes( float y ) {
 	x = HUD_RIGHT_EDGE - columnWidth;
 	CG_FillRect( x, y, columnWidth, rowHeight, bgColor );
 	CG_DrawTinyStringColor( x + HUD_TEXT_INSET, y + 4, s, colorWhite );
+	y += rowHeight;
+
+	return y;
+}
+
+
+static float CG_DrawGhostSplitDelta( float y ) {
+	char		s[64];
+	float		x;
+	int		deltaMs;
+	int		absMs;
+	int		seconds;
+	int		millis;
+	const vec4_t	*deltaColor;
+	const float		columnWidth = CG_GetEliminationColumnWidth();
+	const float		rowHeight = HUD_ROW_HEIGHT;
+
+	if ( !cg.ghostSplitDeltaValid ) {
+		return y;
+	}
+
+	if ( cg.ghostSplitDeltaTime <= 0 || cg.time - cg.ghostSplitDeltaTime > 4000 ) {
+		return y;
+	}
+
+	deltaMs = cg.ghostSplitDeltaMs;
+	absMs = deltaMs < 0 ? -deltaMs : deltaMs;
+	seconds = absMs / 1000;
+	millis = absMs % 1000;
+
+	Com_sprintf( s, sizeof( s ), "D: %c%d.%03d", deltaMs < 0 ? '-' : '+', seconds, millis );
+	deltaColor = deltaMs < 0 ? &colorGreen : ( deltaMs > 0 ? &colorRed : &colorWhite );
+
+	x = HUD_RIGHT_EDGE - columnWidth;
+	CG_FillRect( x, y, columnWidth, rowHeight, bgColor );
+	CG_DrawTinyStringColor( x + HUD_TEXT_INSET, y + 4, s, *deltaColor );
 	y += rowHeight;
 
 	return y;
@@ -1252,7 +1293,9 @@ float CG_DrawUpperRightHUD( float y ) {
                         timesStart = y;
                         timesY = y;
 
+                        CG_UpdateGhostSplitDelta();
                         timesY = CG_DrawTimes( timesY );
+                        timesY = CG_DrawGhostSplitDelta( timesY );
                         timesY = CG_DrawLaps( timesY );
                         timesY = CG_DrawDistanceToFinish( timesY );
                         timesY = CG_DrawEliminationTimeline( timesY );
