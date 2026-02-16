@@ -653,6 +653,7 @@ static void CG_MapRestart( void ) {
 	cgs.voteTime = 0;
 
         cg.mapRestart = qtrue;
+        CG_ResetEliminationTimeline();
 
 	cg.ghostRecordingActive = qfalse;
 	cg.ghostRecording.valid = qfalse;
@@ -1435,6 +1436,62 @@ static void CG_ParseGhostMeta( void ) {
 
 static int cgLastElimStatusTime = -1;
 
+void CG_ResetEliminationTimeline( void ) {
+        memset( cg.elimTimelineEvents, 0, sizeof( cg.elimTimelineEvents ) );
+        cg.elimTimelineCount = 0;
+}
+
+void CG_AddEliminationTimelineEvent( int clientNum, int round, int remaining, int timestamp ) {
+        int index;
+
+        if ( clientNum < 0 || clientNum >= MAX_CLIENTS ) {
+                return;
+        }
+
+        if ( round < 0 ) {
+                round = 0;
+        }
+
+        if ( remaining < 0 ) {
+                remaining = 0;
+        }
+
+        if ( cg.elimTimelineCount >= ELIM_TIMELINE_MAX_EVENTS ) {
+                int i;
+
+                for ( i = 1; i < ELIM_TIMELINE_MAX_EVENTS; ++i ) {
+                        cg.elimTimelineEvents[i - 1] = cg.elimTimelineEvents[i];
+                }
+
+                cg.elimTimelineCount = ELIM_TIMELINE_MAX_EVENTS - 1;
+        }
+
+        index = cg.elimTimelineCount;
+        cg.elimTimelineEvents[index].clientNum = clientNum;
+        cg.elimTimelineEvents[index].round = round;
+        cg.elimTimelineEvents[index].remaining = remaining;
+        cg.elimTimelineEvents[index].timestamp = timestamp;
+        cg.elimTimelineCount++;
+}
+
+static void CG_ParseEliminationTimelineEvent( void ) {
+        int clientNum;
+        int round;
+        int remaining;
+        int timestamp;
+
+        if ( trap_Argc() < 5 ) {
+                return;
+        }
+
+        clientNum = atoi( CG_Argv( 1 ) );
+        round = atoi( CG_Argv( 2 ) );
+        remaining = atoi( CG_Argv( 3 ) );
+        timestamp = atoi( CG_Argv( 4 ) );
+
+        CG_AddEliminationTimelineEvent( clientNum, round, remaining, timestamp );
+}
+
 static void CG_ParseEliminationStatus( void ) {
         int clientNum;
         int remaining;
@@ -1523,6 +1580,11 @@ static void CG_ServerCommand( void ) {
 
         if ( !strcmp( cmd, "elim_status" ) ) {
                 CG_ParseEliminationStatus();
+                return;
+        }
+
+        if ( !strcmp( cmd, "elim_event" ) ) {
+                CG_ParseEliminationTimelineEvent();
                 return;
         }
 
