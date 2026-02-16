@@ -72,6 +72,11 @@ static float CG_GetEliminationColumnWidth( void ) {
             maxWidth = candidate;
         }
 
+        candidate = insetWidth + charWidth * CG_DrawStrlen( "R99 C63 -> Name (99)" );
+        if ( candidate > maxWidth ) {
+            maxWidth = candidate;
+        }
+
         columnWidth = maxWidth;
     }
 
@@ -678,6 +683,63 @@ static void CG_DrawCurrentPosition( float y ) {
 
 /*
 ========================
+CG_DrawEliminationTimeline
+========================
+*/
+static float CG_DrawEliminationTimeline( float y ) {
+        int i;
+        float x;
+        char line[64];
+        const float columnWidth = CG_GetEliminationColumnWidth();
+        const float rowHeight = HUD_ROW_HEIGHT;
+
+        if ( !cg_elimTimeline.integer ) {
+                return y;
+        }
+
+        if ( cgs.gametype != GT_ELIMINATION && cgs.gametype != GT_LCS ) {
+                return y;
+        }
+
+        if ( cg.elimTimelineCount <= 0 ) {
+                return y;
+        }
+
+        x = HUD_RIGHT_EDGE - columnWidth;
+
+        for ( i = cg.elimTimelineCount - 1; i >= 0; --i ) {
+                const cgElimTimelineEvent_t *event;
+                const char *name;
+                int elapsedSeconds;
+
+                event = &cg.elimTimelineEvents[i];
+                if ( event->clientNum < 0 || event->clientNum >= MAX_CLIENTS ) {
+                        continue;
+                }
+
+                name = cgs.clientinfo[event->clientNum].name;
+                if ( !name || !name[0] ) {
+                        name = va( "#%d", event->clientNum );
+                }
+
+                elapsedSeconds = 0;
+                if ( event->timestamp > 0 && cg.time > event->timestamp ) {
+                        elapsedSeconds = ( cg.time - event->timestamp ) / 1000;
+                }
+
+                Com_sprintf( line, sizeof( line ), "R%02d C%02d %s (%is)",
+                        event->round, event->remaining, name, elapsedSeconds );
+
+                CG_FillRect( x, y, columnWidth, rowHeight, bgColor );
+                CG_DrawTinyStringColor( x + HUD_TEXT_INSET, y + 4, line, colorWhite );
+                y += rowHeight;
+        }
+
+        return y;
+}
+
+/*
+========================
 CG_DrawCarAheadAndBehind
 ========================
 */
@@ -1193,6 +1255,7 @@ float CG_DrawUpperRightHUD( float y ) {
                         timesY = CG_DrawTimes( timesY );
                         timesY = CG_DrawLaps( timesY );
                         timesY = CG_DrawDistanceToFinish( timesY );
+                        timesY = CG_DrawEliminationTimeline( timesY );
 
                         CG_DrawCurrentPosition( timesStart );
 
