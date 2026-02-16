@@ -72,7 +72,7 @@ static float CG_GetEliminationColumnWidth( void ) {
             maxWidth = candidate;
         }
 
-        candidate = insetWidth + charWidth * CG_DrawStrlen( "R99 C63 -> Name (99)" );
+        candidate = insetWidth + charWidth * CG_DrawStrlen( "R99 LEFT63 Name (99)" );
         if ( candidate > maxWidth ) {
             maxWidth = candidate;
         }
@@ -727,7 +727,7 @@ static float CG_DrawEliminationTimeline( float y ) {
                         elapsedSeconds = ( cg.time - event->timestamp ) / 1000;
                 }
 
-                Com_sprintf( line, sizeof( line ), "R%02d C%02d %s (%is)",
+                Com_sprintf( line, sizeof( line ), "R%02d LEFT%02d %s (%is)",
                         event->round, event->remaining, name, elapsedSeconds );
 
                 CG_FillRect( x, y, columnWidth, rowHeight, bgColor );
