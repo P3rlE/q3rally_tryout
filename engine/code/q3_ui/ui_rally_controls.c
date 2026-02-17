@@ -1130,28 +1130,41 @@ static void Controls_ExitConfirm_MenuEvent( void* ptr, int event )
 		return;
 	}
 
+<<<<<<< codex/add-confirm-dialog-for-control-changes-ntcjtn
 	if ( uis.activemenu != &s_controlsExitConfirm.menu ) {
 		return;
 	}
+=======
+	UI_PopMenu();
+>>>>>>> master
 
 	switch ( ((menucommon_s*)ptr)->id ) {
 		case ID_EXITCONFIRM_SAVE:
 			RallyControls_SetConfig();
 			s_controls.changesmade = qfalse;
 			UI_PopMenu();
+<<<<<<< codex/add-confirm-dialog-for-control-changes-ntcjtn
 			UI_PopMenu();
+=======
+>>>>>>> master
 			break;
 
 		case ID_EXITCONFIRM_DISCARD:
 			RallyControls_GetConfig();
 			s_controls.changesmade = qfalse;
 			UI_PopMenu();
+<<<<<<< codex/add-confirm-dialog-for-control-changes-ntcjtn
 			UI_PopMenu();
+=======
+>>>>>>> master
 			break;
 
 		case ID_EXITCONFIRM_CANCEL:
 		default:
+<<<<<<< codex/add-confirm-dialog-for-control-changes-ntcjtn
 			UI_PopMenu();
+=======
+>>>>>>> master
 			break;
 	}
 }
@@ -1183,7 +1196,11 @@ static void Controls_ExitConfirmMenu( void )
 	s_controlsExitConfirm.menu.draw = Controls_ExitConfirm_Draw;
 	s_controlsExitConfirm.menu.key = Controls_ExitConfirm_MenuKey;
 	s_controlsExitConfirm.menu.wrapAround = qtrue;
+<<<<<<< codex/add-confirm-dialog-for-control-changes-ntcjtn
 	s_controlsExitConfirm.menu.fullscreen = qtrue;
+=======
+	s_controlsExitConfirm.menu.fullscreen = qfalse;
+>>>>>>> master
 	s_controlsExitConfirm.menu.transparent = qtrue;
 
 	s_controlsExitConfirm.save.generic.type = MTYPE_PTEXT;
