@@ -248,7 +248,6 @@ typedef struct
 	qboolean			playerChat;
 
 	menutext_s			back;
-	menutext_s			name;
 } controls_t; 	
 
 static controls_t s_controls;
@@ -842,9 +841,6 @@ static void Controls_Update( void ) {
 		// enable action item
 		((menucommon_s*)(s_controls.menu.items[s_controls.menu.cursor]))->flags &= ~QMF_GRAYED;
 
-		// don't gray out player's name
-		s_controls.name.generic.flags &= ~QMF_GRAYED;
-
 		return;
 	}
 
@@ -904,9 +900,10 @@ static void Controls_DrawKeyBinding( void *self )
 	int				b1;
 	int				b2;
 	qboolean		c;
-	char			name[32];
+	char			name[96];
 	char			name2[32];
 	char			label[96];
+	qboolean		hasSecondaryBind;
 
 	a = (menuaction_s*) self;
 
@@ -914,6 +911,7 @@ static void Controls_DrawKeyBinding( void *self )
 	y = a->generic.y;
 
 	c = (Menu_ItemAtCursor( a->generic.parent ) == a);
+	hasSecondaryBind = qfalse;
 
 	// find the binding
 	for (b1 = 0; g_bindings[b1].command; b1++) {
@@ -935,10 +933,10 @@ static void Controls_DrawKeyBinding( void *self )
 
 			b2 = g_bindings[b1].bind2;
 			if (b2 != -1) {
+				hasSecondaryBind = qtrue;
 				trap_Key_KeynumToStringBuf( b2, name2, 32 );
 				Q_strupr(name2);
-				strcat( name, " or " );
-				strcat( name, name2 );
+				Com_sprintf( name, sizeof( name ), "%s / %s", name, name2 );
 			}
 		}
 
@@ -959,17 +957,21 @@ static void Controls_DrawKeyBinding( void *self )
 		if (s_controls.waitingforkey)
 		{
 			UI_DrawChar( x, y, '=', UI_CENTER|UI_BLINK|UI_SMALLFONT, text_color_highlight);
-			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.80, "Waiting for new key ... ESCAPE to cancel", UI_SMALLFONT|UI_CENTER|UI_PULSE, colorWhite );
+			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.84, "Waiting for new key ... Escape = cancel", UI_SMALLFONT|UI_CENTER|UI_PULSE, colorWhite );
 		}
 		else
 		{
 			UI_DrawChar( x, y, 13, UI_CENTER|UI_BLINK|UI_SMALLFONT, text_color_highlight);
-			UI_DrawString(SCREEN_WIDTH * 0.55, SCREEN_HEIGHT * 0.82, "Press ENTER or CLICK to change", UI_SMALLFONT|UI_CENTER, colorWhite );
-			UI_DrawString(SCREEN_WIDTH * 0.55, SCREEN_HEIGHT * 0.86, "Press BACKSPACE to clear", UI_SMALLFONT|UI_CENTER, colorWhite );
+			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.84, "You can assign two keys per action.", UI_SMALLFONT|UI_CENTER, colorWhite );
+			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.88, "Enter/Click = rebind", UI_SMALLFONT|UI_CENTER, colorWhite );
+			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.92, "Backspace = clear | Escape = cancel", UI_SMALLFONT|UI_CENTER, colorWhite );
+			if ( hasSecondaryBind ) {
+				UI_DrawString( x + SMALLCHAR_WIDTH + (strlen( name ) + 1) * SMALLCHAR_WIDTH, y, "Primary/Secondary", UI_LEFT|UI_SMALLFONT, text_color_highlight );
+			}
 		}
-		UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.90, "Tippen zum Suchen (global ueber alle Kategorien)", UI_SMALLFONT|UI_CENTER, colorWhite );
+		UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.95, "Type to search (across all categories)", UI_SMALLFONT|UI_CENTER, colorWhite );
 		if ( Controls_SearchActive() ) {
-			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.94, va("Search: %s", s_controlsSearchText), UI_SMALLFONT|UI_CENTER, colorWhite );
+			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.98, va("Search: %s", s_controlsSearchText), UI_SMALLFONT|UI_CENTER, colorWhite );
 		}
 	}
 	else
@@ -995,10 +997,12 @@ Controls_StatusBar
 */
 static void Controls_StatusBar( void *self )
 {
-	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.80, "Use Arrow Keys or CLICK to change", UI_SMALLFONT|UI_CENTER, colorWhite );
-	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.84, "Tippen zum Suchen (global ueber alle Kategorien)", UI_SMALLFONT|UI_CENTER, colorWhite );
+	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.82, "You can assign two keys per action.", UI_SMALLFONT|UI_CENTER, colorWhite );
+	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.86, "Enter/Click = rebind | Backspace = clear | Escape = cancel", UI_SMALLFONT|UI_CENTER, colorWhite );
+	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.90, "Use Arrow Keys or Click to change options", UI_SMALLFONT|UI_CENTER, colorWhite );
+	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.94, "Type to search (across all categories)", UI_SMALLFONT|UI_CENTER, colorWhite );
 	if ( Controls_SearchActive() ) {
-		UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.88, va("Search: %s", s_controlsSearchText), UI_SMALLFONT|UI_CENTER, colorWhite );
+		UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.98, va("Search: %s", s_controlsSearchText), UI_SMALLFONT|UI_CENTER, colorWhite );
 	}
 }
 
@@ -1692,7 +1696,6 @@ static void Controls_MenuInit( void )
 // STONELANCE
 	int			x;
 // END
-	static char playername[32];
 
 	// zero set all our globals
 	memset( &s_controls, 0 ,sizeof(controls_t) );
@@ -2282,13 +2285,6 @@ static void Controls_MenuInit( void )
 		Controls_SearchFieldSyncFromState();
 	}
 
-	s_controls.name.generic.type	= MTYPE_PTEXT;
-	s_controls.name.generic.flags	= QMF_CENTER_JUSTIFY|QMF_INACTIVE;
-	s_controls.name.generic.x		= 320;
-	s_controls.name.generic.y		= 440;
-	s_controls.name.string			= playername;
-	s_controls.name.style			= UI_CENTER;
-	s_controls.name.color			= text_color_normal;
 
 	Menu_AddItem( &s_controls.menu, &s_controls.banner );
 // STONELANCE
@@ -2296,7 +2292,6 @@ static void Controls_MenuInit( void )
 //	Menu_AddItem( &s_controls.menu, &s_controls.framer );
 // END
 	Menu_AddItem( &s_controls.menu, &s_controls.player );
-	Menu_AddItem( &s_controls.menu, &s_controls.name );
 
 	Menu_AddItem( &s_controls.menu, &s_controls.looking );
 	Menu_AddItem( &s_controls.menu, &s_controls.movement );
@@ -2385,8 +2380,6 @@ static void Controls_MenuInit( void )
 
 	Menu_AddItem( &s_controls.menu, &s_controls.back );
 
-	trap_Cvar_VariableStringBuffer( "name", s_controls.name.string, 16 );
-	Q_CleanStr( s_controls.name.string );
 
 	// initialize the configurable cvars
         Controls_InitCvars();
