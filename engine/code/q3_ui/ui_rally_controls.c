@@ -550,6 +550,7 @@ static void Controls_BuildGlobalSearchList( void )
 			if ( match && s_globalSearchControlCount < (int)ARRAY_LEN( s_globalSearchControls ) ) {
 				s_globalSearchControls[s_globalSearchControlCount++] = control;
 
+            }
 
 			if ( binding && Controls_StringContainsCaseInsensitive( binding->label, s_controlsSearchText ) ) {
 				if ( s_globalSearchControlCount < (int)ARRAY_LEN( s_globalSearchControls ) ) {
