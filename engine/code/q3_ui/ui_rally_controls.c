@@ -170,10 +170,7 @@ typedef struct
 	menutext_s			looking;
 	menutext_s			weapons;
 	menutext_s			misc;
-<<<<<<< codex/add-global-action-search-to-controls-menu-kk414j
 	menutext_s			searchLabel;
-=======
->>>>>>> master
 	menufield_s		search;
     
 	menuaction_s		accel;
@@ -541,7 +538,7 @@ static void Controls_BuildGlobalSearchList( void )
 		controls = g_controls[i];
 		for ( j = 0; (control = controls[j]); j++ ) {
 			bind_t* binding = Controls_FindBindingById( control->id );
-<<<<<<< codex/add-global-action-search-to-controls-menu-kk414j
+
 			qboolean match = qfalse;
 
 			if ( binding && Controls_StringContainsCaseInsensitive( binding->label, s_controlsSearchText ) ) {
@@ -552,12 +549,7 @@ static void Controls_BuildGlobalSearchList( void )
 
 			if ( match && s_globalSearchControlCount < (int)ARRAY_LEN( s_globalSearchControls ) ) {
 				s_globalSearchControls[s_globalSearchControlCount++] = control;
-=======
-			if ( binding && Controls_StringContainsCaseInsensitive( binding->label, s_controlsSearchText ) ) {
-				if ( s_globalSearchControlCount < (int)ARRAY_LEN( s_globalSearchControls ) ) {
-					s_globalSearchControls[s_globalSearchControlCount++] = control;
-				}
->>>>>>> master
+
 			}
 		}
 	}
@@ -2265,7 +2257,6 @@ static void Controls_MenuInit( void )
 			weaponsCount++;
 		}
 
-<<<<<<< codex/add-global-action-search-to-controls-menu-kk414j
 		s_controls.searchLabel.generic.type		= MTYPE_PTEXT;
 		s_controls.searchLabel.generic.flags		= QMF_RIGHT_JUSTIFY|QMF_INACTIVE;
 		s_controls.searchLabel.generic.x			= x;
@@ -2279,14 +2270,6 @@ static void Controls_MenuInit( void )
 		s_controls.search.generic.x				= x;
 		s_controls.search.generic.y				= s_controls.searchLabel.generic.y;
 		s_controls.search.field.widthInChars	= 24;
-=======
-		s_controls.search.generic.type			= MTYPE_FIELD;
-		s_controls.search.generic.flags			= QMF_SMALLFONT;
-		s_controls.search.generic.name			= "Search";
-		s_controls.search.generic.x				= x;
-		s_controls.search.generic.y				= ( SCREEN_HEIGHT - weaponsCount * SMALLCHAR_HEIGHT ) / 2;
-		s_controls.search.field.widthInChars	= 28;
->>>>>>> master
 		s_controls.search.field.maxchars		= sizeof( s_controlsSearchText ) - 1;
 		Controls_SearchFieldSyncFromState();
 	}
@@ -2311,10 +2294,7 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.movement );
 	Menu_AddItem( &s_controls.menu, &s_controls.weapons );
 	Menu_AddItem( &s_controls.menu, &s_controls.misc );
-<<<<<<< codex/add-global-action-search-to-controls-menu-kk414j
 	Menu_AddItem( &s_controls.menu, &s_controls.searchLabel );
-=======
->>>>>>> master
 	Menu_AddItem( &s_controls.menu, &s_controls.search );
 
 	Menu_AddItem( &s_controls.menu, &s_controls.sensitivity );
