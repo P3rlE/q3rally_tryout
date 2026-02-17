@@ -247,6 +247,9 @@ typedef struct
 } controls_t; 	
 
 static controls_t s_controls;
+static int s_rebindConfirmTargetId = -1;
+static int s_rebindConfirmKey = -1;
+static char s_rebindConfirmQuestion[128];
 
 // static vec4_t controls_binding_color  = {1.00, 0.43, 0.00, 1.00};
 
@@ -995,6 +998,130 @@ static void RallyControls_SetDefaults( void )
 // END
 }
 
+static bind_t* Controls_FindConflictingBinding( int key, int currentId )
+{
+	bind_t *bindptr;
+	int i;
+
+	bindptr = g_bindings;
+	for ( i = 0; ; i++, bindptr++ )
+	{
+		if ( !bindptr->label )
+			break;
+
+		if ( bindptr->id == currentId )
+			continue;
+
+		if ( bindptr->bind1 == key || bindptr->bind2 == key )
+			return bindptr;
+	}
+
+	return NULL;
+}
+
+static qboolean Controls_ApplyBindingChange( int id, int key )
+{
+	int i;
+	qboolean found;
+	bind_t *bindptr;
+
+	found = qfalse;
+	s_controls.changesmade = qtrue;
+
+	if ( key != -1 )
+	{
+		// remove from any other bind
+		bindptr = g_bindings;
+		for ( i = 0; ; i++, bindptr++ )
+		{
+			if ( !bindptr->label )
+				break;
+
+			if ( bindptr->bind2 == key )
+				bindptr->bind2 = -1;
+
+			if ( bindptr->bind1 == key )
+			{
+				bindptr->bind1 = bindptr->bind2;
+				bindptr->bind2 = -1;
+			}
+		}
+	}
+
+	// assign key to local store
+	bindptr = g_bindings;
+	for ( i = 0; ; i++, bindptr++ )
+	{
+		if ( !bindptr->label )
+			break;
+
+		if ( bindptr->id == id )
+		{
+			found = qtrue;
+			if ( key == -1 )
+			{
+				if ( bindptr->bind1 != -1 ) {
+					trap_Key_SetBinding( bindptr->bind1, "" );
+					bindptr->bind1 = -1;
+				}
+				if ( bindptr->bind2 != -1 ) {
+					trap_Key_SetBinding( bindptr->bind2, "" );
+					bindptr->bind2 = -1;
+				}
+			}
+			else if ( bindptr->bind1 == -1 ) {
+				bindptr->bind1 = key;
+			}
+			else if ( bindptr->bind1 != key && bindptr->bind2 == -1 ) {
+				bindptr->bind2 = key;
+			}
+			else
+			{
+				trap_Key_SetBinding( bindptr->bind1, "" );
+				trap_Key_SetBinding( bindptr->bind2, "" );
+				bindptr->bind1 = key;
+				bindptr->bind2 = -1;
+			}
+			break;
+		}
+	}
+
+	s_controls.waitingforkey = qfalse;
+
+	if ( found )
+		Controls_Update();
+
+	return found;
+}
+
+static void Controls_RebindConflict_Action( qboolean result )
+{
+	if ( result ) {
+		Controls_ApplyBindingChange( s_rebindConfirmTargetId, s_rebindConfirmKey );
+	} else {
+		s_controls.waitingforkey = qfalse;
+		Controls_Update();
+	}
+
+	s_rebindConfirmTargetId = -1;
+	s_rebindConfirmKey = -1;
+}
+
+static void Controls_RebindConflict_Draw( void )
+{
+	int textWidth;
+	int boxWidth;
+	int boxX;
+	vec4_t overlayColor = { 0.0f, 0.0f, 0.0f, 0.32f };
+
+	textWidth = strlen( s_rebindConfirmQuestion ) * SMALLCHAR_WIDTH;
+	boxWidth = textWidth + ( SMALLCHAR_WIDTH * 2 );
+	boxX = ( SCREEN_WIDTH - boxWidth ) / 2;
+
+	UI_FillRect( boxX, 196, boxWidth, SMALLCHAR_HEIGHT + 8, overlayColor );
+	UI_DrawString( SCREEN_WIDTH / 2, 200, s_rebindConfirmQuestion, UI_CENTER|UI_SMALLFONT, text_color_normal );
+}
+
 /*
 =================
 Controls_MenuKey
@@ -1003,7 +1130,6 @@ Controls_MenuKey
 static sfxHandle_t Controls_MenuKey( int key )
 {
 	int			id;
-	int			i;
 	qboolean	found;
 	bind_t*		bindptr;
 	found = qfalse;
@@ -1045,72 +1171,24 @@ static sfxHandle_t Controls_MenuKey( int key )
 		}
 	}
 
-	s_controls.changesmade = qtrue;
-	
-	if (key != -1)
+	id      = ((menucommon_s*)(s_controls.menu.items[s_controls.menu.cursor]))->id;
+
+	if ( key != -1 )
 	{
-		// remove from any other bind
-		bindptr = g_bindings;
-		for (i=0; ;i++,bindptr++)
-		{
-			if (!bindptr->label)	
-				break;
-
-			if (bindptr->bind2 == key)
-				bindptr->bind2 = -1;
-
-			if (bindptr->bind1 == key)
-			{
-				bindptr->bind1 = bindptr->bind2;	
-				bindptr->bind2 = -1;
-			}
+		bindptr = Controls_FindConflictingBinding( key, id );
+		if ( bindptr ) {
+			s_rebindConfirmTargetId = id;
+			s_rebindConfirmKey = key;
+			Com_sprintf( s_rebindConfirmQuestion, sizeof( s_rebindConfirmQuestion ), "Key is already bound to %s. Replace?", bindptr->label );
+			UI_ConfirmMenu_Style( "", UI_CENTER|UI_SMALLFONT, Controls_RebindConflict_Draw, Controls_RebindConflict_Action );
+			return menu_move_sound;
 		}
 	}
 
-	// assign key to local store
-	id      = ((menucommon_s*)(s_controls.menu.items[s_controls.menu.cursor]))->id;
-	bindptr = g_bindings;
-	for (i=0; ;i++,bindptr++)
-	{
-		if (!bindptr->label)	
-			break;
-		
-		if (bindptr->id == id)
-		{
-			found = qtrue;
-			if (key == -1)
-			{
-				if( bindptr->bind1 != -1 ) {
-					trap_Key_SetBinding( bindptr->bind1, "" );
-					bindptr->bind1 = -1;
-				}
-				if( bindptr->bind2 != -1 ) {
-					trap_Key_SetBinding( bindptr->bind2, "" );
-					bindptr->bind2 = -1;
-				}
-			}
-			else if (bindptr->bind1 == -1) {
-				bindptr->bind1 = key;
-			}
-			else if (bindptr->bind1 != key && bindptr->bind2 == -1) {
-				bindptr->bind2 = key;
-			}
-			else
-			{
-				trap_Key_SetBinding( bindptr->bind1, "" );
-				trap_Key_SetBinding( bindptr->bind2, "" );
-				bindptr->bind1 = key;
-				bindptr->bind2 = -1;
-			}						
-			break;
-		}
-	}				
-		
-	s_controls.waitingforkey = qfalse;
+	found = Controls_ApplyBindingChange( id, key );
 
 	if (found)
 	{	
-		Controls_Update();
 		return (menu_out_sound);
 	}
 

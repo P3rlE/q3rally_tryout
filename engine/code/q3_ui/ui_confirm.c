@@ -144,13 +144,17 @@ ConfirmMenu_Draw
 =================
 */
 static void ConfirmMenu_Draw( void ) {
-	UI_DrawNamedPic( 142, 118, 359, 256, ART_CONFIRM_FRAME );
+	if ( s_confirm.question && s_confirm.question[0] ) {
+		UI_DrawNamedPic( 142, 118, 359, 256, ART_CONFIRM_FRAME );
+	}
 
 	// BAGPUSS CHANGED TO TEXT_COLOR_NORMAL
 //	UI_DrawProportionalString( 320, 204, s_confirm.question, s_confirm.style, color_red );
 //	UI_DrawProportionalString( s_confirm.slashX, 265, "/", UI_LEFT|UI_INVERSE, color_red );
-	UI_DrawProportionalString( 320, 204, s_confirm.question, s_confirm.style, text_color_normal );
-	UI_DrawProportionalString( s_confirm.slashX, 265, "/", UI_LEFT|UI_INVERSE, text_color_normal );
+	if ( s_confirm.question && s_confirm.question[0] ) {
+		UI_DrawProportionalString( 320, 204, s_confirm.question, s_confirm.style, text_color_normal );
+		UI_DrawProportionalString( s_confirm.slashX, 265, "/", UI_LEFT|UI_INVERSE, text_color_normal );
+	}
 	// END
 
 	Menu_Draw( &s_confirm.menu );
