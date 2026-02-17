@@ -1109,17 +1109,7 @@ static void Controls_RebindConflict_Action( qboolean result )
 
 static void Controls_RebindConflict_Draw( void )
 {
-	int textWidth;
-	int boxWidth;
-	int boxX;
-	vec4_t overlayColor = { 0.0f, 0.0f, 0.0f, 0.32f };
-
-	textWidth = strlen( s_rebindConfirmQuestion ) * SMALLCHAR_WIDTH;
-	boxWidth = textWidth + ( SMALLCHAR_WIDTH * 2 );
-	boxX = ( SCREEN_WIDTH - boxWidth ) / 2;
-
-	UI_FillRect( boxX, 196, boxWidth, SMALLCHAR_HEIGHT + 8, overlayColor );
-	UI_DrawString( SCREEN_WIDTH / 2, 200, s_rebindConfirmQuestion, UI_CENTER|UI_SMALLFONT, text_color_normal );
+	UI_DrawString( SCREEN_WIDTH / 2, 210, s_rebindConfirmQuestion, UI_CENTER|UI_SMALLFONT, text_color_normal );
 }
 
 /*
