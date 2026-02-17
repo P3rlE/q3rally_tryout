@@ -588,13 +588,10 @@ static float CG_DrawGhostSplitDelta( float y ) {
 	}
 
 	if ( cg.ghostSplitDeltaTime <= 0 || cg.time - cg.ghostSplitDeltaTime > 4000 ) {
-<<<<<<< codex/implement-ghost-structure-and-delta-display-m9y4uo
 		if ( !cg.snap || !cg_entities[cg.snap->ps.clientNum].finishRaceTime ) {
 			return y;
 		}
-=======
-		return y;
->>>>>>> master
+
 	}
 
 	deltaMs = cg.ghostSplitDeltaMs;
