@@ -170,6 +170,7 @@ typedef struct
 	menutext_s			looking;
 	menutext_s			weapons;
 	menutext_s			misc;
+	menufield_s		search;
     
 	menuaction_s		accel;
 	menuaction_s		brake;
@@ -422,6 +423,12 @@ static qboolean Controls_SearchActive( void )
 	return s_controlsSearchText[0] != '\0';
 }
 
+static void Controls_SearchFieldSyncFromState( void )
+{
+	Q_strncpyz( s_controls.search.field.buffer, s_controlsSearchText, sizeof( s_controls.search.field.buffer ) );
+	s_controls.search.field.cursor = strlen( s_controls.search.field.buffer );
+}
+
 static bind_t* Controls_FindBindingById( int id )
 {
 	int i;
@@ -467,9 +474,7 @@ static qboolean Controls_StringContainsCaseInsensitive( const char* haystack, co
 			if ( !hc ) {
 				break;
 			}
-
 			if ( Controls_ToLowerAscii( hc ) != Controls_ToLowerAscii( nc ) ) {
-
 				break;
 			}
 		}
@@ -1397,6 +1402,7 @@ static sfxHandle_t Controls_MenuKey( int key )
 			int len = strlen( s_controlsSearchText );
 			if ( len > 0 ) {
 				s_controlsSearchText[len - 1] = '\0';
+				Controls_SearchFieldSyncFromState();
 				Controls_Update();
 				return menu_move_sound;
 			}
@@ -1405,6 +1411,7 @@ static sfxHandle_t Controls_MenuKey( int key )
 			if ( len < (int)sizeof( s_controlsSearchText ) - 1 ) {
 				s_controlsSearchText[len] = (char)ch;
 				s_controlsSearchText[len + 1] = '\0';
+				Controls_SearchFieldSyncFromState();
 				Controls_Update();
 				return menu_move_sound;
 			}
@@ -1675,6 +1682,7 @@ static void Controls_MenuInit( void )
 	memset( &s_controls, 0 ,sizeof(controls_t) );
 	s_controlsSearchText[0] = '\0';
 	s_globalSearchControlCount = 0;
+	Controls_SearchFieldSyncFromState();
 
 	Controls_Cache();
 
@@ -2234,6 +2242,15 @@ static void Controls_MenuInit( void )
 	s_controls.joythreshold.maxvalue		  = 0.75;
 	s_controls.joythreshold.generic.statusbar = Controls_StatusBar;
 
+	s_controls.search.generic.type			= MTYPE_FIELD;
+	s_controls.search.generic.flags			= QMF_SMALLFONT;
+	s_controls.search.generic.name			= "SUCHE";
+	s_controls.search.generic.x				= 186;
+	s_controls.search.generic.y				= 240 - 3 * PROP_HEIGHT;
+	s_controls.search.field.widthInChars	= 28;
+	s_controls.search.field.maxchars		= sizeof( s_controlsSearchText ) - 1;
+	Controls_SearchFieldSyncFromState();
+
 	s_controls.name.generic.type	= MTYPE_PTEXT;
 	s_controls.name.generic.flags	= QMF_CENTER_JUSTIFY|QMF_INACTIVE;
 	s_controls.name.generic.x		= 320;
@@ -2254,6 +2271,7 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.movement );
 	Menu_AddItem( &s_controls.menu, &s_controls.weapons );
 	Menu_AddItem( &s_controls.menu, &s_controls.misc );
+	Menu_AddItem( &s_controls.menu, &s_controls.search );
 
 	Menu_AddItem( &s_controls.menu, &s_controls.sensitivity );
 	Menu_AddItem( &s_controls.menu, &s_controls.smoothmouse );
