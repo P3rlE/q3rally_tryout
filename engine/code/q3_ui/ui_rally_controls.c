@@ -1371,9 +1371,11 @@ static void Controls_MenuEvent( void* ptr, int event )
 		case ID_BACK:
 			if (event == QM_ACTIVATED)
 			{
-				if (s_controls.changesmade)
-                                        RallyControls_SetConfig();
-				UI_PopMenu();
+				if (s_controls.changesmade) {
+					Controls_ExitConfirmMenu();
+				} else {
+					UI_PopMenu();
+				}
 			}
 			break;
 
