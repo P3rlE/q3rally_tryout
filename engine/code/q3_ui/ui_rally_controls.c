@@ -904,9 +904,10 @@ static void Controls_DrawKeyBinding( void *self )
 	int				b1;
 	int				b2;
 	qboolean		c;
-	char			name[32];
+	char			name[96];
 	char			name2[32];
 	char			label[96];
+	qboolean		hasSecondaryBind;
 
 	a = (menuaction_s*) self;
 
@@ -914,6 +915,7 @@ static void Controls_DrawKeyBinding( void *self )
 	y = a->generic.y;
 
 	c = (Menu_ItemAtCursor( a->generic.parent ) == a);
+	hasSecondaryBind = qfalse;
 
 	// find the binding
 	for (b1 = 0; g_bindings[b1].command; b1++) {
@@ -935,10 +937,10 @@ static void Controls_DrawKeyBinding( void *self )
 
 			b2 = g_bindings[b1].bind2;
 			if (b2 != -1) {
+				hasSecondaryBind = qtrue;
 				trap_Key_KeynumToStringBuf( b2, name2, 32 );
 				Q_strupr(name2);
-				strcat( name, " or " );
-				strcat( name, name2 );
+				Com_sprintf( name, sizeof( name ), "%s / %s", name, name2 );
 			}
 		}
 
@@ -959,17 +961,21 @@ static void Controls_DrawKeyBinding( void *self )
 		if (s_controls.waitingforkey)
 		{
 			UI_DrawChar( x, y, '=', UI_CENTER|UI_BLINK|UI_SMALLFONT, text_color_highlight);
-			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.80, "Waiting for new key ... ESCAPE to cancel", UI_SMALLFONT|UI_CENTER|UI_PULSE, colorWhite );
+			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.80, "Waiting for new key ... Escape = cancel", UI_SMALLFONT|UI_CENTER|UI_PULSE, colorWhite );
 		}
 		else
 		{
 			UI_DrawChar( x, y, 13, UI_CENTER|UI_BLINK|UI_SMALLFONT, text_color_highlight);
-			UI_DrawString(SCREEN_WIDTH * 0.55, SCREEN_HEIGHT * 0.82, "Press ENTER or CLICK to change", UI_SMALLFONT|UI_CENTER, colorWhite );
-			UI_DrawString(SCREEN_WIDTH * 0.55, SCREEN_HEIGHT * 0.86, "Press BACKSPACE to clear", UI_SMALLFONT|UI_CENTER, colorWhite );
+			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.80, "You can assign two keys per action.", UI_SMALLFONT|UI_CENTER, colorWhite );
+			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.84, "Enter/Click = rebind", UI_SMALLFONT|UI_CENTER, colorWhite );
+			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.88, "Backspace = clear | Escape = cancel", UI_SMALLFONT|UI_CENTER, colorWhite );
+			if ( hasSecondaryBind ) {
+				UI_DrawString( x + SMALLCHAR_WIDTH + (strlen( name ) + 1) * SMALLCHAR_WIDTH, y, "Primary/Secondary", UI_LEFT|UI_SMALLFONT, text_color_highlight );
+			}
 		}
-		UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.90, "Tippen zum Suchen (global ueber alle Kategorien)", UI_SMALLFONT|UI_CENTER, colorWhite );
+		UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.92, "Type to search (across all categories)", UI_SMALLFONT|UI_CENTER, colorWhite );
 		if ( Controls_SearchActive() ) {
-			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.94, va("Search: %s", s_controlsSearchText), UI_SMALLFONT|UI_CENTER, colorWhite );
+			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.96, va("Search: %s", s_controlsSearchText), UI_SMALLFONT|UI_CENTER, colorWhite );
 		}
 	}
 	else
@@ -995,10 +1001,12 @@ Controls_StatusBar
 */
 static void Controls_StatusBar( void *self )
 {
-	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.80, "Use Arrow Keys or CLICK to change", UI_SMALLFONT|UI_CENTER, colorWhite );
-	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.84, "Tippen zum Suchen (global ueber alle Kategorien)", UI_SMALLFONT|UI_CENTER, colorWhite );
+	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.78, "You can assign two keys per action.", UI_SMALLFONT|UI_CENTER, colorWhite );
+	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.82, "Enter/Click = rebind | Backspace = clear | Escape = cancel", UI_SMALLFONT|UI_CENTER, colorWhite );
+	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.86, "Use Arrow Keys or Click to change options", UI_SMALLFONT|UI_CENTER, colorWhite );
+	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.90, "Type to search (across all categories)", UI_SMALLFONT|UI_CENTER, colorWhite );
 	if ( Controls_SearchActive() ) {
-		UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.88, va("Search: %s", s_controlsSearchText), UI_SMALLFONT|UI_CENTER, colorWhite );
+		UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.94, va("Search: %s", s_controlsSearchText), UI_SMALLFONT|UI_CENTER, colorWhite );
 	}
 }
 
