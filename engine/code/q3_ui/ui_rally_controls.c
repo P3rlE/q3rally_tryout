@@ -548,6 +548,11 @@ static void Controls_BuildGlobalSearchList( void )
 
 			if ( match && s_globalSearchControlCount < (int)ARRAY_LEN( s_globalSearchControls ) ) {
 				s_globalSearchControls[s_globalSearchControlCount++] = control;
+
+			if ( binding && Controls_StringContainsCaseInsensitive( binding->label, s_controlsSearchText ) ) {
+				if ( s_globalSearchControlCount < (int)ARRAY_LEN( s_globalSearchControls ) ) {
+					s_globalSearchControls[s_globalSearchControlCount++] = control;
+				}
 			}
 		}
 	}
@@ -2255,6 +2260,7 @@ static void Controls_MenuInit( void )
 			weaponsCount++;
 		}
 
+
 		s_controls.searchLabel.generic.type		= MTYPE_PTEXT;
 		s_controls.searchLabel.generic.flags		= QMF_RIGHT_JUSTIFY|QMF_INACTIVE;
 		s_controls.searchLabel.generic.x			= x;
@@ -2293,6 +2299,7 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.weapons );
 	Menu_AddItem( &s_controls.menu, &s_controls.misc );
 	Menu_AddItem( &s_controls.menu, &s_controls.searchLabel );
+
 	Menu_AddItem( &s_controls.menu, &s_controls.search );
 
 	Menu_AddItem( &s_controls.menu, &s_controls.sensitivity );
