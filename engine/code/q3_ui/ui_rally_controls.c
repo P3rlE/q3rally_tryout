@@ -140,6 +140,8 @@ typedef struct
 #define ID_MOVE_BHANDLE_Z_NEG	68
 #define ID_PREV_BPOINT		69
 #define ID_NEXT_BPOINT		70
+#define ID_TOGGLE_BOT_PATHS	71
+#define ID_SAVE_BPOINTS	72
 
 
 #define ANIM_IDLE		0
@@ -265,6 +267,8 @@ typedef struct
 	menuaction_s		moveBHandleZNeg;
 	menuaction_s		prevBPoint;
 	menuaction_s		nextBPoint;
+	menuaction_s		toggleBotPaths;
+	menuaction_s		saveBPoints;
 
 	menuradiobutton_s	joyenable;
 	menuslider_s		joythreshold;
@@ -352,6 +356,7 @@ static bind_t g_bindings[] =
 	{"jukebox_shuffle_toggle",	"jukebox shuffle toggle", ID_JUKEBOX_SHUFFLE,	ANIM_IDLE,			K_F9,			-1, -1},
 	{"jukebox_repeat_cycle",	"jukebox repeat mode",	ID_JUKEBOX_REPEAT,	ANIM_IDLE,			K_F10,			-1, -1},
 
+	{"toggle cg_drawBotPaths",	"toggle bot paths",	ID_TOGGLE_BOT_PATHS,	ANIM_IDLE,	-1,			-1,		-1, -1},
 	{"moveBPoint 10 0 0",	"move bezier point +x",	ID_MOVE_BPOINT_X_POS,	ANIM_IDLE,	-1,			-1,		-1, -1},
 	{"moveBPoint -10 0 0",	"move bezier point -x",	ID_MOVE_BPOINT_X_NEG,	ANIM_IDLE,	-1,			-1,		-1, -1},
 	{"moveBPoint 0 10 0",	"move bezier point +y",	ID_MOVE_BPOINT_Y_POS,	ANIM_IDLE,	-1,			-1,		-1, -1},
@@ -366,6 +371,7 @@ static bind_t g_bindings[] =
 	{"moveBHandle 0 0 -10",	"move bezier handle -z",	ID_MOVE_BHANDLE_Z_NEG,	ANIM_IDLE,	-1,			-1,		-1, -1},
 	{"prevBPoint",		"previous bezier point",	ID_PREV_BPOINT,		ANIM_IDLE,	-1,			-1,		-1, -1},
 	{"nextBPoint",		"next bezier point",	ID_NEXT_BPOINT,		ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"saveBPoints",		"save bezier points",	ID_SAVE_BPOINTS,		ANIM_IDLE,	-1,			-1,		-1, -1},
 
 	{(char*)NULL,		(char*)NULL,		0,				0,				-1,				-1,		-1,	-1},
 };
@@ -458,6 +464,7 @@ static menucommon_s *g_misc_controls[] = {
 };
 
 static menucommon_s *g_developer_controls[] = {
+	(menucommon_s *)&s_controls.toggleBotPaths,
 	(menucommon_s *)&s_controls.moveBPointXPos,
 	(menucommon_s *)&s_controls.moveBPointXNeg,
 	(menucommon_s *)&s_controls.moveBPointYPos,
@@ -472,6 +479,7 @@ static menucommon_s *g_developer_controls[] = {
 	(menucommon_s *)&s_controls.moveBHandleZNeg,
 	(menucommon_s *)&s_controls.prevBPoint,
 	(menucommon_s *)&s_controls.nextBPoint,
+	(menucommon_s *)&s_controls.saveBPoints,
 	NULL,
 };
 
@@ -2440,6 +2448,18 @@ static void Controls_MenuInit( void )
 	s_controls.nextBPoint.generic.callback  = Controls_ActionEvent;
 	s_controls.nextBPoint.generic.ownerdraw = Controls_DrawKeyBinding;
 	s_controls.nextBPoint.generic.id        = ID_NEXT_BPOINT;
+
+	s_controls.toggleBotPaths.generic.type      = MTYPE_ACTION;
+	s_controls.toggleBotPaths.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.toggleBotPaths.generic.callback  = Controls_ActionEvent;
+	s_controls.toggleBotPaths.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.toggleBotPaths.generic.id        = ID_TOGGLE_BOT_PATHS;
+
+	s_controls.saveBPoints.generic.type      = MTYPE_ACTION;
+	s_controls.saveBPoints.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.saveBPoints.generic.callback  = Controls_ActionEvent;
+	s_controls.saveBPoints.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.saveBPoints.generic.id        = ID_SAVE_BPOINTS;
     
 // END
 
@@ -2576,6 +2596,7 @@ static void Controls_MenuInit( void )
     Menu_AddItem( &s_controls.menu, &s_controls.stopdemo );
 	Menu_AddItem( &s_controls.menu, &s_controls.nextcamera );
 	Menu_AddItem( &s_controls.menu, &s_controls.horn );
+	Menu_AddItem( &s_controls.menu, &s_controls.toggleBotPaths );
 	Menu_AddItem( &s_controls.menu, &s_controls.moveBPointXPos );
 	Menu_AddItem( &s_controls.menu, &s_controls.moveBPointXNeg );
 	Menu_AddItem( &s_controls.menu, &s_controls.moveBPointYPos );
@@ -2590,6 +2611,7 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.moveBHandleZNeg );
 	Menu_AddItem( &s_controls.menu, &s_controls.prevBPoint );
 	Menu_AddItem( &s_controls.menu, &s_controls.nextBPoint );
+	Menu_AddItem( &s_controls.menu, &s_controls.saveBPoints );
 
 // END
 
