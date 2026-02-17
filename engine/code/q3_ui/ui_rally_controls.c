@@ -250,20 +250,21 @@ static controls_t s_controls;
 
 // static vec4_t controls_binding_color  = {1.00, 0.43, 0.00, 1.00};
 
+// Keep default controls conflict-free and aligned with common racing key layouts.
 static bind_t g_bindings[] = 
 {
 	{"+scores",			  "show scores",		  ID_SHOWSCORES,	  ANIM_IDLE,		  K_TAB,			-1,		-1, -1},
 	{"+button2",		  "use item",			  ID_USEITEM,		  ANIM_IDLE,		  K_ENTER,		    -1,		-1, -1},
         {"drop",                          "drop item",                   ID_DROPITEM,           ANIM_IDLE,              -1,                    -1,             -1, -1},
-	{"+forward", 		  "accelerate",		      ID_ACCEL,		      ANIM_WALK,		  'w',		        -1,		-1, -1},
-	{"+back", 			  "brake",			      ID_BRAKE,		      ANIM_BACK,		  's',	            -1,		-1, -1},
-	{"+button14", 		"handbrake",		ID_HANDBRAKE,	ANIM_BACK,		K_SPACE,		-1,		-1, -1},
+	{"+forward", 		  "accelerate",		      ID_ACCEL,		      ANIM_WALK,		  'w',		        K_UPARROW,		-1, -1},
+	{"+back", 			  "brake",			      ID_BRAKE,		      ANIM_BACK,		  's',	            K_DOWNARROW,		-1, -1},
+	{"+button14", 		"handbrake",		ID_HANDBRAKE,	ANIM_BACK,		K_SPACE,		K_CTRL,		-1, -1},
 	{"+speed", 			"turbo",			ID_TURBO,		ANIM_TURBO,		K_SHIFT,		-1,		-1,	-1},
 	{"+moveup",			"up",				ID_MOVEUP,		ANIM_JUMP,		'x',			-1,		-1, -1},
 	{"+movedown",		"down",				ID_MOVEDOWN,	ANIM_CROUCH,	'c',			-1,		-1, -1},
 	{"+hud", 			"show HUD",			ID_SHOWHUD2,	0,				'q',			-1,		-1, -1},
-	{"+left", 			"turn left",		ID_LEFT,		ANIM_TURNLEFT,	'a',	-1,		-1, -1},
-	{"+right", 			"turn right",		ID_RIGHT,		ANIM_TURNRIGHT,	'd',	-1,		-1, -1},
+	{"+left", 			"turn left",		ID_LEFT,		ANIM_TURNLEFT,	'a',	K_LEFTARROW,		-1, -1},
+	{"+right", 			"turn right",		ID_RIGHT,		ANIM_TURNRIGHT,	'd',	K_RIGHTARROW,		-1, -1},
 	{"+button12", 		"rear attack",		ID_REARATTACK,	ANIM_REARATTACK, K_KP_INS,		-1,		-1, -1},
 	{"+lookup", 		"look up",			ID_LOOKUP,		ANIM_LOOKUP,	K_PGDN,			-1,		-1, -1},
 	{"+lookdown", 		"look down",		ID_LOOKDOWN,	ANIM_LOOKDOWN,	K_DEL,			-1,		-1, -1},
@@ -293,7 +294,7 @@ static bind_t g_bindings[] =
     {"headlights", 		"lights",	ID_HEADLIGHT,	ANIM_HEADLIGHT,	'l',		    -1,		-1, -1},
     {"record",          "start demo record",            ID_STARTDEMO,   ANIM_STARTDEMO, 'z',            -1,     -1, -1},
     {"stoprecord",      "stop demo record",             ID_STOPDEMO,    ANIM_STOPDEMO,  'u',            -1,     -1, -1},
-	{"nextcamera",		"next camera",		  ID_NEXTCAMERA,	  ANIM_IDLE,		  'c',			-1,		-1, -1},
+	{"nextcamera",		"next camera",		  ID_NEXTCAMERA,	  ANIM_IDLE,		  'v',			-1,		-1, -1},
 	{"jukebox_play",		"jukebox play/stop",	ID_JUKEBOX_PLAY,		ANIM_IDLE,			-1,			-1, -1},
 	{"jukebox_next",		"jukebox next track",	ID_JUKEBOX_NEXT,	ANIM_IDLE,			-1,			-1, -1},
 	{"jukebox_prev",		"jukebox previous track", ID_JUKEBOX_PREV,	ANIM_IDLE,			-1,			-1, -1},
