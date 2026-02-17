@@ -538,7 +538,10 @@ static void Controls_BuildGlobalSearchList( void )
 		controls = g_controls[i];
 		for ( j = 0; (control = controls[j]); j++ ) {
 			bind_t* binding = Controls_FindBindingById( control->id );
+<<<<<<< HEAD
 
+=======
+>>>>>>> 7fbd77199e1aaf8bf33770755bab40eeb72463a0
 			qboolean match = qfalse;
 
 			if ( binding && Controls_StringContainsCaseInsensitive( binding->label, s_controlsSearchText ) ) {
@@ -550,6 +553,13 @@ static void Controls_BuildGlobalSearchList( void )
 			if ( match && s_globalSearchControlCount < (int)ARRAY_LEN( s_globalSearchControls ) ) {
 				s_globalSearchControls[s_globalSearchControlCount++] = control;
 
+<<<<<<< HEAD
+=======
+			if ( binding && Controls_StringContainsCaseInsensitive( binding->label, s_controlsSearchText ) ) {
+				if ( s_globalSearchControlCount < (int)ARRAY_LEN( s_globalSearchControls ) ) {
+					s_globalSearchControls[s_globalSearchControlCount++] = control;
+				}
+>>>>>>> 7fbd77199e1aaf8bf33770755bab40eeb72463a0
 			}
 		}
 	}
@@ -2257,6 +2267,10 @@ static void Controls_MenuInit( void )
 			weaponsCount++;
 		}
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7fbd77199e1aaf8bf33770755bab40eeb72463a0
 		s_controls.searchLabel.generic.type		= MTYPE_PTEXT;
 		s_controls.searchLabel.generic.flags		= QMF_RIGHT_JUSTIFY|QMF_INACTIVE;
 		s_controls.searchLabel.generic.x			= x;
@@ -2267,8 +2281,8 @@ static void Controls_MenuInit( void )
 
 		s_controls.search.generic.type			= MTYPE_FIELD;
 		s_controls.search.generic.flags			= QMF_SMALLFONT;
-		s_controls.search.generic.x				= x;
-		s_controls.search.generic.y				= s_controls.searchLabel.generic.y;
+		s_controls.search.generic.x				= x + 6;
+		s_controls.search.generic.y				= s_controls.searchLabel.generic.y + 6;
 		s_controls.search.field.widthInChars	= 24;
 		s_controls.search.field.maxchars		= sizeof( s_controlsSearchText ) - 1;
 		Controls_SearchFieldSyncFromState();
@@ -2295,6 +2309,10 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.weapons );
 	Menu_AddItem( &s_controls.menu, &s_controls.misc );
 	Menu_AddItem( &s_controls.menu, &s_controls.searchLabel );
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7fbd77199e1aaf8bf33770755bab40eeb72463a0
 	Menu_AddItem( &s_controls.menu, &s_controls.search );
 
 	Menu_AddItem( &s_controls.menu, &s_controls.sensitivity );
