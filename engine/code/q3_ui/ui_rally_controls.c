@@ -52,19 +52,21 @@ typedef struct
 #define C_LOOKING		1
 #define C_WEAPONS		2
 #define C_MISC			3
-#define C_MAX			4
+#define C_DEVELOPER	4
+#define C_MAX			5
 
 #define ID_MOVEMENT		100
 #define ID_LOOKING		101
 #define ID_WEAPONS		102
 #define ID_MISC			103
-#define ID_DEFAULTS		104
-#define ID_BACK			105
-#define ID_SAVEANDEXIT	106
-#define ID_EXIT			107
-#define ID_EXITCONFIRM_SAVE	108
-#define ID_EXITCONFIRM_DISCARD	109
-#define ID_EXITCONFIRM_CANCEL	110
+#define ID_DEVELOPER	104
+#define ID_DEFAULTS		105
+#define ID_BACK			106
+#define ID_SAVEANDEXIT	107
+#define ID_EXIT			108
+#define ID_EXITCONFIRM_SAVE	109
+#define ID_EXITCONFIRM_DISCARD	110
+#define ID_EXITCONFIRM_CANCEL	111
 
 // bindable actions
 #define ID_SHOWSCORES	0
@@ -124,6 +126,22 @@ typedef struct
 #define ID_JUKEBOX_RESCAN       54
 #define ID_JUKEBOX_SHUFFLE      55
 #define ID_JUKEBOX_REPEAT       56
+#define ID_MOVE_BPOINT_X_POS	57
+#define ID_MOVE_BPOINT_X_NEG	58
+#define ID_MOVE_BPOINT_Y_POS	59
+#define ID_MOVE_BPOINT_Y_NEG	60
+#define ID_MOVE_BPOINT_Z_POS	61
+#define ID_MOVE_BPOINT_Z_NEG	62
+#define ID_MOVE_BHANDLE_X_POS	63
+#define ID_MOVE_BHANDLE_X_NEG	64
+#define ID_MOVE_BHANDLE_Y_POS	65
+#define ID_MOVE_BHANDLE_Y_NEG	66
+#define ID_MOVE_BHANDLE_Z_POS	67
+#define ID_MOVE_BHANDLE_Z_NEG	68
+#define ID_PREV_BPOINT		69
+#define ID_NEXT_BPOINT		70
+#define ID_TOGGLE_BOT_PATHS	71
+#define ID_SAVE_BPOINTS	72
 
 
 #define ANIM_IDLE		0
@@ -170,6 +188,7 @@ typedef struct
 	menutext_s			looking;
 	menutext_s			weapons;
 	menutext_s			misc;
+	menutext_s			developer;
 	menutext_s			searchLabel;
 	menufield_s		search;
     
@@ -234,6 +253,22 @@ typedef struct
 	menuaction_s		jukeboxRepeat;
     menuaction_s        startdemo;
     menuaction_s        stopdemo;
+	menuaction_s		moveBPointXPos;
+	menuaction_s		moveBPointXNeg;
+	menuaction_s		moveBPointYPos;
+	menuaction_s		moveBPointYNeg;
+	menuaction_s		moveBPointZPos;
+	menuaction_s		moveBPointZNeg;
+	menuaction_s		moveBHandleXPos;
+	menuaction_s		moveBHandleXNeg;
+	menuaction_s		moveBHandleYPos;
+	menuaction_s		moveBHandleYNeg;
+	menuaction_s		moveBHandleZPos;
+	menuaction_s		moveBHandleZNeg;
+	menuaction_s		prevBPoint;
+	menuaction_s		nextBPoint;
+	menuaction_s		toggleBotPaths;
+	menuaction_s		saveBPoints;
 
 	menuradiobutton_s	joyenable;
 	menuslider_s		joythreshold;
@@ -320,6 +355,23 @@ static bind_t g_bindings[] =
 	{"jukebox_rescan",		"jukebox rescan tracks", ID_JUKEBOX_RESCAN,	ANIM_IDLE,			K_F8,			-1, -1},
 	{"jukebox_shuffle_toggle",	"jukebox shuffle toggle", ID_JUKEBOX_SHUFFLE,	ANIM_IDLE,			K_F9,			-1, -1},
 	{"jukebox_repeat_cycle",	"jukebox repeat mode",	ID_JUKEBOX_REPEAT,	ANIM_IDLE,			K_F10,			-1, -1},
+
+	{"toggle cg_drawBotPaths",	"toggle bot paths",	ID_TOGGLE_BOT_PATHS,	ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"moveBPoint 10 0 0",	"move bezier point +x",	ID_MOVE_BPOINT_X_POS,	ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"moveBPoint -10 0 0",	"move bezier point -x",	ID_MOVE_BPOINT_X_NEG,	ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"moveBPoint 0 10 0",	"move bezier point +y",	ID_MOVE_BPOINT_Y_POS,	ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"moveBPoint 0 -10 0",	"move bezier point -y",	ID_MOVE_BPOINT_Y_NEG,	ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"moveBPoint 0 0 10",	"move bezier point +z",	ID_MOVE_BPOINT_Z_POS,	ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"moveBPoint 0 0 -10",	"move bezier point -z",	ID_MOVE_BPOINT_Z_NEG,	ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"moveBHandle 10 0 0",	"move bezier handle +x",	ID_MOVE_BHANDLE_X_POS,	ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"moveBHandle -10 0 0",	"move bezier handle -x",	ID_MOVE_BHANDLE_X_NEG,	ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"moveBHandle 0 10 0",	"move bezier handle +y",	ID_MOVE_BHANDLE_Y_POS,	ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"moveBHandle 0 -10 0",	"move bezier handle -y",	ID_MOVE_BHANDLE_Y_NEG,	ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"moveBHandle 0 0 10",	"move bezier handle +z",	ID_MOVE_BHANDLE_Z_POS,	ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"moveBHandle 0 0 -10",	"move bezier handle -z",	ID_MOVE_BHANDLE_Z_NEG,	ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"prevBPoint",		"previous bezier point",	ID_PREV_BPOINT,		ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"nextBPoint",		"next bezier point",	ID_NEXT_BPOINT,		ANIM_IDLE,	-1,			-1,		-1, -1},
+	{"saveBPoints",		"save bezier points",	ID_SAVE_BPOINTS,		ANIM_IDLE,	-1,			-1,		-1, -1},
 
 	{(char*)NULL,		(char*)NULL,		0,				0,				-1,				-1,		-1,	-1},
 };
@@ -411,16 +463,42 @@ static menucommon_s *g_misc_controls[] = {
 	NULL,
 };
 
+static menucommon_s *g_developer_controls[] = {
+	(menucommon_s *)&s_controls.toggleBotPaths,
+	(menucommon_s *)&s_controls.moveBPointXPos,
+	(menucommon_s *)&s_controls.moveBPointXNeg,
+	(menucommon_s *)&s_controls.moveBPointYPos,
+	(menucommon_s *)&s_controls.moveBPointYNeg,
+	(menucommon_s *)&s_controls.moveBPointZPos,
+	(menucommon_s *)&s_controls.moveBPointZNeg,
+	(menucommon_s *)&s_controls.moveBHandleXPos,
+	(menucommon_s *)&s_controls.moveBHandleXNeg,
+	(menucommon_s *)&s_controls.moveBHandleYPos,
+	(menucommon_s *)&s_controls.moveBHandleYNeg,
+	(menucommon_s *)&s_controls.moveBHandleZPos,
+	(menucommon_s *)&s_controls.moveBHandleZNeg,
+	(menucommon_s *)&s_controls.prevBPoint,
+	(menucommon_s *)&s_controls.nextBPoint,
+	(menucommon_s *)&s_controls.saveBPoints,
+	NULL,
+};
+
 static menucommon_s **g_controls[] = {
 	g_movement_controls,
 	g_looking_controls,
 	g_weapons_controls,
 	g_misc_controls,
+	g_developer_controls,
 };
 
 static qboolean Controls_SearchActive( void )
 {
 	return s_controlsSearchText[0] != '\0';
+}
+
+static qboolean Controls_ShowDeveloper( void )
+{
+	return trap_Cvar_VariableValue( "ui_controls_showDeveloper" ) != 0;
 }
 
 static void Controls_SearchFieldSyncFromState( void )
@@ -521,6 +599,13 @@ static const char* Controls_SectionTagForAction( int id )
 		}
 	}
 
+	controls = g_developer_controls;
+	for ( i = 0; (control = controls[i]); i++ ) {
+		if ( control->id == id ) {
+			return "DEVELOPER";
+		}
+	}
+
 	return "UNKNOWN";
 }
 
@@ -534,6 +619,10 @@ static void Controls_BuildGlobalSearchList( void )
 	s_globalSearchControlCount = 0;
 
 	for ( i = 0; i < C_MAX; i++ ) {
+		if ( i == C_DEVELOPER && !Controls_ShowDeveloper() ) {
+			continue;
+		}
+
 		controls = g_controls[i];
 		for ( j = 0; (control = controls[j]); j++ ) {
 			bind_t* binding = Controls_FindBindingById( control->id );
@@ -789,6 +878,16 @@ static void Controls_Update( void ) {
 
 	searchActive = Controls_SearchActive();
 
+	if ( s_controls.section == C_DEVELOPER && !Controls_ShowDeveloper() ) {
+		s_controls.section = C_LOOKING;
+	}
+
+	if ( Controls_ShowDeveloper() ) {
+		s_controls.developer.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
+	} else {
+		s_controls.developer.generic.flags |= (QMF_HIDDEN|QMF_INACTIVE);
+	}
+
 	// disable all controls in all groups
 	for( i = 0; i < C_MAX; i++ ) {
 		controls = g_controls[i];
@@ -854,11 +953,13 @@ static void Controls_Update( void ) {
 	s_controls.movement.generic.flags &= ~(QMF_GRAYED|QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
 	s_controls.weapons.generic.flags  &= ~(QMF_GRAYED|QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
 	s_controls.misc.generic.flags     &= ~(QMF_GRAYED|QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
+	s_controls.developer.generic.flags &= ~(QMF_GRAYED|QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
 
 	s_controls.looking.generic.flags  |= QMF_PULSEIFFOCUS;
 	s_controls.movement.generic.flags |= QMF_PULSEIFFOCUS;
 	s_controls.weapons.generic.flags  |= QMF_PULSEIFFOCUS;
 	s_controls.misc.generic.flags     |= QMF_PULSEIFFOCUS;
+	s_controls.developer.generic.flags |= QMF_PULSEIFFOCUS;
 
 	// set buttons
 	switch( s_controls.section ) {
@@ -880,6 +981,11 @@ static void Controls_Update( void ) {
 	case C_MISC:
 		s_controls.misc.generic.flags &= ~QMF_PULSEIFFOCUS;
 		s_controls.misc.generic.flags |= (QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
+		break;
+
+	case C_DEVELOPER:
+		s_controls.developer.generic.flags &= ~QMF_PULSEIFFOCUS;
+		s_controls.developer.generic.flags |= (QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
 		break;
 	}
 
@@ -1568,6 +1674,14 @@ static void Controls_MenuEvent( void* ptr, int event )
 			}
 			break;
 
+		case ID_DEVELOPER:
+			if (event == QM_ACTIVATED && Controls_ShowDeveloper())
+			{
+				s_controls.section = C_DEVELOPER;
+				Controls_Update();
+			}
+			break;
+
 		case ID_DEFAULTS:
 			if (event == QM_ACTIVATED)
 			{
@@ -1802,6 +1916,16 @@ static void Controls_MenuInit( void )
 //	s_controls.misc.color			= color_red;
 	s_controls.misc.color			= text_color_normal;
 // END
+
+	s_controls.developer.generic.type	 = MTYPE_PTEXT;
+	s_controls.developer.generic.flags    = QMF_RIGHT_JUSTIFY|QMF_PULSEIFFOCUS;
+	s_controls.developer.generic.id	     = ID_DEVELOPER;
+	s_controls.developer.generic.callback = Controls_MenuEvent;
+	s_controls.developer.generic.x	    = x;
+	s_controls.developer.generic.y		 = 240 + 2 * PROP_HEIGHT;
+	s_controls.developer.string			= "DEVELOPER";
+	s_controls.developer.style			= UI_RIGHT;
+	s_controls.developer.color			= text_color_normal;
 
 // STONELANCE
 /*
@@ -2240,6 +2364,102 @@ static void Controls_MenuInit( void )
     s_controls.stopdemo.generic.callback  = Controls_ActionEvent;
     s_controls.stopdemo.generic.ownerdraw = Controls_DrawKeyBinding;
     s_controls.stopdemo.generic.id        = ID_STOPDEMO;
+
+	s_controls.moveBPointXPos.generic.type      = MTYPE_ACTION;
+	s_controls.moveBPointXPos.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.moveBPointXPos.generic.callback  = Controls_ActionEvent;
+	s_controls.moveBPointXPos.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.moveBPointXPos.generic.id        = ID_MOVE_BPOINT_X_POS;
+
+	s_controls.moveBPointXNeg.generic.type      = MTYPE_ACTION;
+	s_controls.moveBPointXNeg.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.moveBPointXNeg.generic.callback  = Controls_ActionEvent;
+	s_controls.moveBPointXNeg.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.moveBPointXNeg.generic.id        = ID_MOVE_BPOINT_X_NEG;
+
+	s_controls.moveBPointYPos.generic.type      = MTYPE_ACTION;
+	s_controls.moveBPointYPos.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.moveBPointYPos.generic.callback  = Controls_ActionEvent;
+	s_controls.moveBPointYPos.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.moveBPointYPos.generic.id        = ID_MOVE_BPOINT_Y_POS;
+
+	s_controls.moveBPointYNeg.generic.type      = MTYPE_ACTION;
+	s_controls.moveBPointYNeg.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.moveBPointYNeg.generic.callback  = Controls_ActionEvent;
+	s_controls.moveBPointYNeg.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.moveBPointYNeg.generic.id        = ID_MOVE_BPOINT_Y_NEG;
+
+	s_controls.moveBPointZPos.generic.type      = MTYPE_ACTION;
+	s_controls.moveBPointZPos.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.moveBPointZPos.generic.callback  = Controls_ActionEvent;
+	s_controls.moveBPointZPos.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.moveBPointZPos.generic.id        = ID_MOVE_BPOINT_Z_POS;
+
+	s_controls.moveBPointZNeg.generic.type      = MTYPE_ACTION;
+	s_controls.moveBPointZNeg.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.moveBPointZNeg.generic.callback  = Controls_ActionEvent;
+	s_controls.moveBPointZNeg.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.moveBPointZNeg.generic.id        = ID_MOVE_BPOINT_Z_NEG;
+
+	s_controls.moveBHandleXPos.generic.type      = MTYPE_ACTION;
+	s_controls.moveBHandleXPos.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.moveBHandleXPos.generic.callback  = Controls_ActionEvent;
+	s_controls.moveBHandleXPos.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.moveBHandleXPos.generic.id        = ID_MOVE_BHANDLE_X_POS;
+
+	s_controls.moveBHandleXNeg.generic.type      = MTYPE_ACTION;
+	s_controls.moveBHandleXNeg.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.moveBHandleXNeg.generic.callback  = Controls_ActionEvent;
+	s_controls.moveBHandleXNeg.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.moveBHandleXNeg.generic.id        = ID_MOVE_BHANDLE_X_NEG;
+
+	s_controls.moveBHandleYPos.generic.type      = MTYPE_ACTION;
+	s_controls.moveBHandleYPos.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.moveBHandleYPos.generic.callback  = Controls_ActionEvent;
+	s_controls.moveBHandleYPos.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.moveBHandleYPos.generic.id        = ID_MOVE_BHANDLE_Y_POS;
+
+	s_controls.moveBHandleYNeg.generic.type      = MTYPE_ACTION;
+	s_controls.moveBHandleYNeg.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.moveBHandleYNeg.generic.callback  = Controls_ActionEvent;
+	s_controls.moveBHandleYNeg.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.moveBHandleYNeg.generic.id        = ID_MOVE_BHANDLE_Y_NEG;
+
+	s_controls.moveBHandleZPos.generic.type      = MTYPE_ACTION;
+	s_controls.moveBHandleZPos.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.moveBHandleZPos.generic.callback  = Controls_ActionEvent;
+	s_controls.moveBHandleZPos.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.moveBHandleZPos.generic.id        = ID_MOVE_BHANDLE_Z_POS;
+
+	s_controls.moveBHandleZNeg.generic.type      = MTYPE_ACTION;
+	s_controls.moveBHandleZNeg.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.moveBHandleZNeg.generic.callback  = Controls_ActionEvent;
+	s_controls.moveBHandleZNeg.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.moveBHandleZNeg.generic.id        = ID_MOVE_BHANDLE_Z_NEG;
+
+	s_controls.prevBPoint.generic.type      = MTYPE_ACTION;
+	s_controls.prevBPoint.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.prevBPoint.generic.callback  = Controls_ActionEvent;
+	s_controls.prevBPoint.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.prevBPoint.generic.id        = ID_PREV_BPOINT;
+
+	s_controls.nextBPoint.generic.type      = MTYPE_ACTION;
+	s_controls.nextBPoint.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.nextBPoint.generic.callback  = Controls_ActionEvent;
+	s_controls.nextBPoint.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.nextBPoint.generic.id        = ID_NEXT_BPOINT;
+
+	s_controls.toggleBotPaths.generic.type      = MTYPE_ACTION;
+	s_controls.toggleBotPaths.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.toggleBotPaths.generic.callback  = Controls_ActionEvent;
+	s_controls.toggleBotPaths.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.toggleBotPaths.generic.id        = ID_TOGGLE_BOT_PATHS;
+
+	s_controls.saveBPoints.generic.type      = MTYPE_ACTION;
+	s_controls.saveBPoints.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.saveBPoints.generic.callback  = Controls_ActionEvent;
+	s_controls.saveBPoints.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.saveBPoints.generic.id        = ID_SAVE_BPOINTS;
     
 // END
 
@@ -2297,6 +2517,7 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.movement );
 	Menu_AddItem( &s_controls.menu, &s_controls.weapons );
 	Menu_AddItem( &s_controls.menu, &s_controls.misc );
+	Menu_AddItem( &s_controls.menu, &s_controls.developer );
 	Menu_AddItem( &s_controls.menu, &s_controls.searchLabel );
 	Menu_AddItem( &s_controls.menu, &s_controls.search );
 
@@ -2375,6 +2596,22 @@ static void Controls_MenuInit( void )
     Menu_AddItem( &s_controls.menu, &s_controls.stopdemo );
 	Menu_AddItem( &s_controls.menu, &s_controls.nextcamera );
 	Menu_AddItem( &s_controls.menu, &s_controls.horn );
+	Menu_AddItem( &s_controls.menu, &s_controls.toggleBotPaths );
+	Menu_AddItem( &s_controls.menu, &s_controls.moveBPointXPos );
+	Menu_AddItem( &s_controls.menu, &s_controls.moveBPointXNeg );
+	Menu_AddItem( &s_controls.menu, &s_controls.moveBPointYPos );
+	Menu_AddItem( &s_controls.menu, &s_controls.moveBPointYNeg );
+	Menu_AddItem( &s_controls.menu, &s_controls.moveBPointZPos );
+	Menu_AddItem( &s_controls.menu, &s_controls.moveBPointZNeg );
+	Menu_AddItem( &s_controls.menu, &s_controls.moveBHandleXPos );
+	Menu_AddItem( &s_controls.menu, &s_controls.moveBHandleXNeg );
+	Menu_AddItem( &s_controls.menu, &s_controls.moveBHandleYPos );
+	Menu_AddItem( &s_controls.menu, &s_controls.moveBHandleYNeg );
+	Menu_AddItem( &s_controls.menu, &s_controls.moveBHandleZPos );
+	Menu_AddItem( &s_controls.menu, &s_controls.moveBHandleZNeg );
+	Menu_AddItem( &s_controls.menu, &s_controls.prevBPoint );
+	Menu_AddItem( &s_controls.menu, &s_controls.nextBPoint );
+	Menu_AddItem( &s_controls.menu, &s_controls.saveBPoints );
 
 // END
 
