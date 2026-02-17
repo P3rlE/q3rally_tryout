@@ -1170,7 +1170,7 @@ static void Controls_ExitConfirm_Draw( void )
 {
 	vec4_t compactBoxColor = { 0.0f, 0.0f, 0.0f, 0.50f };
 
-	UI_FillRect( 148, 176, 344, 136, compactBoxColor );
+	UI_FillRect( 148, 176, 344, 156, compactBoxColor );
 	UI_DrawString( SCREEN_WIDTH / 2, 202, "Save changes?", UI_CENTER|UI_SMALLFONT, text_color_normal );
 
 	Menu_Draw( &s_controlsExitConfirm.menu );
