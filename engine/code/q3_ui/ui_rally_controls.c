@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 #include "ui_local.h"
+#include <ctype.h>
 
 typedef struct {
 	char	*command;
@@ -435,6 +436,7 @@ static bind_t* Controls_FindBindingById( int id )
 	return NULL;
 }
 
+<<<<<<< codex/add-global-action-search-to-controls-menu-iq1xqc
 static char Controls_ToLowerAscii( char c )
 {
 	if ( c >= 'A' && c <= 'Z' ) {
@@ -444,6 +446,8 @@ static char Controls_ToLowerAscii( char c )
 	return c;
 }
 
+=======
+>>>>>>> master
 static qboolean Controls_StringContainsCaseInsensitive( const char* haystack, const char* needle )
 {
 	int i;
@@ -467,7 +471,11 @@ static qboolean Controls_StringContainsCaseInsensitive( const char* haystack, co
 			if ( !hc ) {
 				break;
 			}
+<<<<<<< codex/add-global-action-search-to-controls-menu-iq1xqc
 			if ( Controls_ToLowerAscii( hc ) != Controls_ToLowerAscii( nc ) ) {
+=======
+			if ( tolower( (unsigned char)hc ) != tolower( (unsigned char)nc ) ) {
+>>>>>>> master
 				break;
 			}
 		}
