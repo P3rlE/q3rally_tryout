@@ -170,6 +170,8 @@ typedef struct
 	menutext_s			looking;
 	menutext_s			weapons;
 	menutext_s			misc;
+	menutext_s			searchLabel;
+	menufield_s		search;
     
 	menuaction_s		accel;
 	menuaction_s		brake;
@@ -262,6 +264,9 @@ static controlsExitConfirm_t s_controlsExitConfirm;
 static int s_rebindConfirmTargetId = -1;
 static int s_rebindConfirmKey = -1;
 static char s_rebindConfirmQuestion[128];
+static char s_controlsSearchText[64];
+static menucommon_s* s_globalSearchControls[128];
+static int s_globalSearchControlCount;
 
 // static vec4_t controls_binding_color  = {1.00, 0.43, 0.00, 1.00};
 
@@ -413,6 +418,140 @@ static menucommon_s **g_controls[] = {
 	g_weapons_controls,
 	g_misc_controls,
 };
+
+static qboolean Controls_SearchActive( void )
+{
+	return s_controlsSearchText[0] != '\0';
+}
+
+static void Controls_SearchFieldSyncFromState( void )
+{
+	Q_strncpyz( s_controls.search.field.buffer, s_controlsSearchText, sizeof( s_controls.search.field.buffer ) );
+	s_controls.search.field.cursor = strlen( s_controls.search.field.buffer );
+}
+
+static bind_t* Controls_FindBindingById( int id )
+{
+	int i;
+
+	for ( i = 0; g_bindings[i].command; i++ ) {
+		if ( g_bindings[i].id == id ) {
+			return &g_bindings[i];
+		}
+	}
+
+	return NULL;
+}
+
+static char Controls_ToLowerAscii( char c )
+{
+	if ( c >= 'A' && c <= 'Z' ) {
+		return c + ('a' - 'A');
+	}
+
+	return c;
+}
+
+static qboolean Controls_StringContainsCaseInsensitive( const char* haystack, const char* needle )
+{
+	int i;
+	int needleLen;
+
+	if ( !needle || !needle[0] ) {
+		return qtrue;
+	}
+
+	if ( !haystack || !haystack[0] ) {
+		return qfalse;
+	}
+
+	needleLen = strlen( needle );
+
+	for ( i = 0; haystack[i]; i++ ) {
+		int j;
+		for ( j = 0; j < needleLen; j++ ) {
+			char hc = haystack[i + j];
+			char nc = needle[j];
+			if ( !hc ) {
+				break;
+			}
+			if ( Controls_ToLowerAscii( hc ) != Controls_ToLowerAscii( nc ) ) {
+				break;
+			}
+		}
+
+		if ( j == needleLen ) {
+			return qtrue;
+		}
+	}
+
+	return qfalse;
+}
+
+static const char* Controls_SectionTagForAction( int id )
+{
+	int i;
+	menucommon_s** controls;
+	menucommon_s* control;
+
+	controls = g_movement_controls;
+	for ( i = 0; (control = controls[i]); i++ ) {
+		if ( control->id == id ) {
+			return "MOVEMENT";
+		}
+	}
+
+	controls = g_looking_controls;
+	for ( i = 0; (control = controls[i]); i++ ) {
+		if ( control->id == id ) {
+			return "LOOKING";
+		}
+	}
+
+	controls = g_weapons_controls;
+	for ( i = 0; (control = controls[i]); i++ ) {
+		if ( control->id == id ) {
+			return "WEAPONS";
+		}
+	}
+
+	controls = g_misc_controls;
+	for ( i = 0; (control = controls[i]); i++ ) {
+		if ( control->id == id ) {
+			return "MISC";
+		}
+	}
+
+	return "UNKNOWN";
+}
+
+static void Controls_BuildGlobalSearchList( void )
+{
+	int i;
+	int j;
+	menucommon_s** controls;
+	menucommon_s* control;
+
+	s_globalSearchControlCount = 0;
+
+	for ( i = 0; i < C_MAX; i++ ) {
+		controls = g_controls[i];
+		for ( j = 0; (control = controls[j]); j++ ) {
+			bind_t* binding = Controls_FindBindingById( control->id );
+			qboolean match = qfalse;
+
+			if ( binding && Controls_StringContainsCaseInsensitive( binding->label, s_controlsSearchText ) ) {
+				match = qtrue;
+			} else if ( control->name && Controls_StringContainsCaseInsensitive( control->name, s_controlsSearchText ) ) {
+				match = qtrue;
+			}
+
+			if ( match && s_globalSearchControlCount < (int)ARRAY_LEN( s_globalSearchControls ) ) {
+				s_globalSearchControls[s_globalSearchControlCount++] = control;
+			}
+		}
+	}
+}
 
 /*
 =================
@@ -638,6 +777,9 @@ static void Controls_Update( void ) {
 	int		y;
 	menucommon_s	**controls;
 	menucommon_s	*control;
+	qboolean	searchActive;
+
+	searchActive = Controls_SearchActive();
 
 	// disable all controls in all groups
 	for( i = 0; i < C_MAX; i++ ) {
@@ -647,30 +789,39 @@ static void Controls_Update( void ) {
 		}
 	}
 
-	controls = g_controls[s_controls.section];
+	if ( searchActive ) {
+		Controls_BuildGlobalSearchList();
+		for ( j = 0; j < s_globalSearchControlCount; j++ ) {
+			s_globalSearchControls[j]->flags &= ~(QMF_GRAYED|QMF_HIDDEN|QMF_INACTIVE);
+		}
+		y = ( SCREEN_HEIGHT - s_globalSearchControlCount * SMALLCHAR_HEIGHT ) / 2;
+		for ( j = 0; j < s_globalSearchControlCount; j++, y += SMALLCHAR_HEIGHT ) {
+			control = s_globalSearchControls[j];
+			control->x      = 300 + (int)(((y - 240) / 14.0F) * ((y - 240) / 14.0F));
+			control->y      = y;
+			control->left   = control->x - 19*SMALLCHAR_WIDTH;
+			control->right  = control->x + 21*SMALLCHAR_WIDTH;
+			control->top    = y;
+			control->bottom = y + SMALLCHAR_HEIGHT;
+		}
+	} else {
+		controls = g_controls[s_controls.section];
 
-	// enable controls in active group (and count number of items for vertical centering)
-	for( j = 0;	(control = controls[j]); j++ ) {
-		control->flags &= ~(QMF_GRAYED|QMF_HIDDEN|QMF_INACTIVE);
-	}
+		// enable controls in active group (and count number of items for vertical centering)
+		for( j = 0;	(control = controls[j]); j++ ) {
+			control->flags &= ~(QMF_GRAYED|QMF_HIDDEN|QMF_INACTIVE);
+		}
 
-	// position controls
-	y = ( SCREEN_HEIGHT - j * SMALLCHAR_HEIGHT ) / 2;
-	for( j = 0;	(control = controls[j]); j++, y += SMALLCHAR_HEIGHT ) {
-// STONELANCE
-/*
-		control->x      = 320;
-		control->y      = y;
-		control->left   = 320 - 19*SMALLCHAR_WIDTH;
-		control->right  = 320 + 21*SMALLCHAR_WIDTH;
-*/
-		control->x      = 300 + (int)(((y - 240) / 14.0F) * ((y - 240) / 14.0F));
-		control->y      = y;
-		control->left   = control->x - 19*SMALLCHAR_WIDTH;
-		control->right  = control->x + 21*SMALLCHAR_WIDTH;
-// END
-		control->top    = y;
-		control->bottom = y + SMALLCHAR_HEIGHT;
+		// position controls
+		y = ( SCREEN_HEIGHT - j * SMALLCHAR_HEIGHT ) / 2;
+		for( j = 0;	(control = controls[j]); j++, y += SMALLCHAR_HEIGHT ) {
+			control->x      = 300 + (int)(((y - 240) / 14.0F) * ((y - 240) / 14.0F));
+			control->y      = y;
+			control->left   = control->x - 19*SMALLCHAR_WIDTH;
+			control->right  = control->x + 21*SMALLCHAR_WIDTH;
+			control->top    = y;
+			control->bottom = y + SMALLCHAR_HEIGHT;
+		}
 	}
 
 	if( s_controls.waitingforkey ) {
@@ -726,6 +877,8 @@ static void Controls_Update( void ) {
 		s_controls.misc.generic.flags |= (QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
 		break;
 	}
+
+	Menu_AdjustCursor( &s_controls.menu, 1 );
 }
 
 
@@ -744,6 +897,7 @@ static void Controls_DrawKeyBinding( void *self )
 	qboolean		c;
 	char			name[32];
 	char			name2[32];
+	char			label[96];
 
 	a = (menuaction_s*) self;
 
@@ -761,6 +915,7 @@ static void Controls_DrawKeyBinding( void *self )
 
 	if (!g_bindings[b1].command) {
 		strcpy(name, "<OUT OF RANGE>");
+		strcpy(label, "<OUT OF RANGE>");
 	} else {
 		b2 = g_bindings[b1].bind1;
 		if (b2 == -1) {
@@ -777,13 +932,19 @@ static void Controls_DrawKeyBinding( void *self )
 				strcat( name, name2 );
 			}
 		}
+
+		if ( Controls_SearchActive() ) {
+			Com_sprintf( label, sizeof( label ), "[%s] %s", Controls_SectionTagForAction( a->generic.id ), g_bindings[b1].label );
+		} else {
+			Q_strncpyz( label, g_bindings[b1].label, sizeof( label ) );
+		}
 	}
 
 	if (c)
 	{
 		UI_FillRect( a->generic.left, a->generic.top, a->generic.right-a->generic.left+1, a->generic.bottom-a->generic.top+1, listbar_color ); 
 
-		UI_DrawString( x - SMALLCHAR_WIDTH, y, g_bindings[b1].label, UI_RIGHT|UI_SMALLFONT, text_color_highlight );
+		UI_DrawString( x - SMALLCHAR_WIDTH, y, label, UI_RIGHT|UI_SMALLFONT, text_color_highlight );
 		UI_DrawString( x + SMALLCHAR_WIDTH, y, name, UI_LEFT|UI_SMALLFONT|UI_PULSE, text_color_highlight );
 
 		if (s_controls.waitingforkey)
@@ -797,25 +958,26 @@ static void Controls_DrawKeyBinding( void *self )
 			UI_DrawString(SCREEN_WIDTH * 0.55, SCREEN_HEIGHT * 0.82, "Press ENTER or CLICK to change", UI_SMALLFONT|UI_CENTER, colorWhite );
 			UI_DrawString(SCREEN_WIDTH * 0.55, SCREEN_HEIGHT * 0.86, "Press BACKSPACE to clear", UI_SMALLFONT|UI_CENTER, colorWhite );
 		}
+		UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.90, "Tippen zum Suchen (global ueber alle Kategorien)", UI_SMALLFONT|UI_CENTER, colorWhite );
+		if ( Controls_SearchActive() ) {
+			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.94, va("Search: %s", s_controlsSearchText), UI_SMALLFONT|UI_CENTER, colorWhite );
+		}
 	}
 	else
 	{
 		if (a->generic.flags & QMF_GRAYED)
 		{
-			UI_DrawString( x - SMALLCHAR_WIDTH, y, g_bindings[b1].label, UI_RIGHT|UI_SMALLFONT, text_color_disabled );
+			UI_DrawString( x - SMALLCHAR_WIDTH, y, label, UI_RIGHT|UI_SMALLFONT, text_color_disabled );
 			UI_DrawString( x + SMALLCHAR_WIDTH, y, name, UI_LEFT|UI_SMALLFONT, text_color_disabled );
 		}
 		else
 		{
-// STONELANCE
-//			UI_DrawString( x - SMALLCHAR_WIDTH, y, g_bindings[b1].label, UI_RIGHT|UI_SMALLFONT, controls_binding_color );
-//			UI_DrawString( x + SMALLCHAR_WIDTH, y, name, UI_LEFT|UI_SMALLFONT, controls_binding_color );
-			UI_DrawString( x - SMALLCHAR_WIDTH, y, g_bindings[b1].label, UI_RIGHT|UI_SMALLFONT, text_color_normal );
+			UI_DrawString( x - SMALLCHAR_WIDTH, y, label, UI_RIGHT|UI_SMALLFONT, text_color_normal );
 			UI_DrawString( x + SMALLCHAR_WIDTH, y, name, UI_LEFT|UI_SMALLFONT, text_color_normal );
-// END
 		}
 	}
 }
+
 
 /*
 =================
@@ -825,6 +987,10 @@ Controls_StatusBar
 static void Controls_StatusBar( void *self )
 {
 	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.80, "Use Arrow Keys or CLICK to change", UI_SMALLFONT|UI_CENTER, colorWhite );
+	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.84, "Tippen zum Suchen (global ueber alle Kategorien)", UI_SMALLFONT|UI_CENTER, colorWhite );
+	if ( Controls_SearchActive() ) {
+		UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.88, va("Search: %s", s_controlsSearchText), UI_SMALLFONT|UI_CENTER, colorWhite );
+	}
 }
 
 
@@ -1232,9 +1398,32 @@ Controls_MenuKey
 static sfxHandle_t Controls_MenuKey( int key )
 {
 	int			id;
+	int			ch;
 	qboolean	found;
 	bind_t*		bindptr;
 	found = qfalse;
+
+	if ( !s_controls.waitingforkey && ( key & K_CHAR_FLAG ) ) {
+		ch = key & ~K_CHAR_FLAG;
+		if ( ch == 8 ) {
+			int len = strlen( s_controlsSearchText );
+			if ( len > 0 ) {
+				s_controlsSearchText[len - 1] = '\0';
+				Controls_SearchFieldSyncFromState();
+				Controls_Update();
+				return menu_move_sound;
+			}
+		} else if ( ch >= 32 && ch < 127 ) {
+			int len = strlen( s_controlsSearchText );
+			if ( len < (int)sizeof( s_controlsSearchText ) - 1 ) {
+				s_controlsSearchText[len] = (char)ch;
+				s_controlsSearchText[len + 1] = '\0';
+				Controls_SearchFieldSyncFromState();
+				Controls_Update();
+				return menu_move_sound;
+			}
+		}
+	}
 
 	if (!s_controls.waitingforkey)
 	{
@@ -1498,6 +1687,9 @@ static void Controls_MenuInit( void )
 
 	// zero set all our globals
 	memset( &s_controls, 0 ,sizeof(controls_t) );
+	s_controlsSearchText[0] = '\0';
+	s_globalSearchControlCount = 0;
+	Controls_SearchFieldSyncFromState();
 
 	Controls_Cache();
 
@@ -2057,6 +2249,29 @@ static void Controls_MenuInit( void )
 	s_controls.joythreshold.maxvalue		  = 0.75;
 	s_controls.joythreshold.generic.statusbar = Controls_StatusBar;
 
+	{
+		int weaponsCount = 0;
+		while ( g_weapons_controls[weaponsCount] ) {
+			weaponsCount++;
+		}
+
+		s_controls.searchLabel.generic.type		= MTYPE_PTEXT;
+		s_controls.searchLabel.generic.flags		= QMF_RIGHT_JUSTIFY|QMF_INACTIVE;
+		s_controls.searchLabel.generic.x			= x;
+		s_controls.searchLabel.generic.y			= ( SCREEN_HEIGHT - weaponsCount * SMALLCHAR_HEIGHT ) / 2;
+		s_controls.searchLabel.string				= "SEARCH";
+		s_controls.searchLabel.style				= UI_RIGHT;
+		s_controls.searchLabel.color				= text_color_normal;
+
+		s_controls.search.generic.type			= MTYPE_FIELD;
+		s_controls.search.generic.flags			= QMF_SMALLFONT;
+		s_controls.search.generic.x				= x;
+		s_controls.search.generic.y				= s_controls.searchLabel.generic.y;
+		s_controls.search.field.widthInChars	= 24;
+		s_controls.search.field.maxchars		= sizeof( s_controlsSearchText ) - 1;
+		Controls_SearchFieldSyncFromState();
+	}
+
 	s_controls.name.generic.type	= MTYPE_PTEXT;
 	s_controls.name.generic.flags	= QMF_CENTER_JUSTIFY|QMF_INACTIVE;
 	s_controls.name.generic.x		= 320;
@@ -2077,6 +2292,8 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.movement );
 	Menu_AddItem( &s_controls.menu, &s_controls.weapons );
 	Menu_AddItem( &s_controls.menu, &s_controls.misc );
+	Menu_AddItem( &s_controls.menu, &s_controls.searchLabel );
+	Menu_AddItem( &s_controls.menu, &s_controls.search );
 
 	Menu_AddItem( &s_controls.menu, &s_controls.sensitivity );
 	Menu_AddItem( &s_controls.menu, &s_controls.smoothmouse );
