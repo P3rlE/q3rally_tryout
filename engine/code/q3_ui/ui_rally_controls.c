@@ -1130,11 +1130,9 @@ static void Controls_ExitConfirm_MenuEvent( void* ptr, int event )
 		return;
 	}
 
-
 	if ( uis.activemenu != &s_controlsExitConfirm.menu ) {
 		return;
 	}
-
 
 	switch ( ((menucommon_s*)ptr)->id ) {
 		case ID_EXITCONFIRM_SAVE:
@@ -1142,7 +1140,6 @@ static void Controls_ExitConfirm_MenuEvent( void* ptr, int event )
 			s_controls.changesmade = qfalse;
 			UI_PopMenu();
 			UI_PopMenu();
-
 			break;
 
 		case ID_EXITCONFIRM_DISCARD:
@@ -1150,14 +1147,11 @@ static void Controls_ExitConfirm_MenuEvent( void* ptr, int event )
 			s_controls.changesmade = qfalse;
 			UI_PopMenu();
 			UI_PopMenu();
-
 			break;
 
 		case ID_EXITCONFIRM_CANCEL:
 		default:
-
 			UI_PopMenu();
-
 			break;
 	}
 }
@@ -1177,7 +1171,7 @@ static void Controls_ExitConfirm_Draw( void )
 	vec4_t compactBoxColor = { 0.0f, 0.0f, 0.0f, 0.50f };
 
 	UI_FillRect( 148, 176, 344, 136, compactBoxColor );
-	UI_DrawString( SCREEN_WIDTH / 2, 202, "Aenderungen speichern?", UI_CENTER|UI_SMALLFONT, text_color_normal );
+	UI_DrawString( SCREEN_WIDTH / 2, 202, "Save changes?", UI_CENTER|UI_SMALLFONT, text_color_normal );
 
 	Menu_Draw( &s_controlsExitConfirm.menu );
 }
@@ -1190,16 +1184,15 @@ static void Controls_ExitConfirmMenu( void )
 	s_controlsExitConfirm.menu.key = Controls_ExitConfirm_MenuKey;
 	s_controlsExitConfirm.menu.wrapAround = qtrue;
 	s_controlsExitConfirm.menu.fullscreen = qtrue;
-
 	s_controlsExitConfirm.menu.transparent = qtrue;
 
 	s_controlsExitConfirm.save.generic.type = MTYPE_PTEXT;
 	s_controlsExitConfirm.save.generic.flags = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
 	s_controlsExitConfirm.save.generic.id = ID_EXITCONFIRM_SAVE;
 	s_controlsExitConfirm.save.generic.x = SCREEN_WIDTH / 2;
-	s_controlsExitConfirm.save.generic.y = 232;
+	s_controlsExitConfirm.save.generic.y = 252;
 	s_controlsExitConfirm.save.generic.callback = Controls_ExitConfirm_MenuEvent;
-	s_controlsExitConfirm.save.string = "Speichern";
+	s_controlsExitConfirm.save.string = "Save";
 	s_controlsExitConfirm.save.style = UI_CENTER|UI_SMALLFONT;
 	s_controlsExitConfirm.save.color = text_color_normal;
 
@@ -1207,9 +1200,9 @@ static void Controls_ExitConfirmMenu( void )
 	s_controlsExitConfirm.discard.generic.flags = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
 	s_controlsExitConfirm.discard.generic.id = ID_EXITCONFIRM_DISCARD;
 	s_controlsExitConfirm.discard.generic.x = SCREEN_WIDTH / 2;
-	s_controlsExitConfirm.discard.generic.y = 252;
+	s_controlsExitConfirm.discard.generic.y = 272;
 	s_controlsExitConfirm.discard.generic.callback = Controls_ExitConfirm_MenuEvent;
-	s_controlsExitConfirm.discard.string = "Verwerfen";
+	s_controlsExitConfirm.discard.string = "Discard";
 	s_controlsExitConfirm.discard.style = UI_CENTER|UI_SMALLFONT;
 	s_controlsExitConfirm.discard.color = text_color_normal;
 
@@ -1217,9 +1210,9 @@ static void Controls_ExitConfirmMenu( void )
 	s_controlsExitConfirm.cancel.generic.flags = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
 	s_controlsExitConfirm.cancel.generic.id = ID_EXITCONFIRM_CANCEL;
 	s_controlsExitConfirm.cancel.generic.x = SCREEN_WIDTH / 2;
-	s_controlsExitConfirm.cancel.generic.y = 272;
+	s_controlsExitConfirm.cancel.generic.y = 292;
 	s_controlsExitConfirm.cancel.generic.callback = Controls_ExitConfirm_MenuEvent;
-	s_controlsExitConfirm.cancel.string = "Abbrechen";
+	s_controlsExitConfirm.cancel.string = "Cancel";
 	s_controlsExitConfirm.cancel.style = UI_CENTER|UI_SMALLFONT;
 	s_controlsExitConfirm.cancel.color = text_color_normal;
 
