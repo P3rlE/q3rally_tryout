@@ -62,6 +62,9 @@ typedef struct
 #define ID_BACK			105
 #define ID_SAVEANDEXIT	106
 #define ID_EXIT			107
+#define ID_EXITCONFIRM_SAVE	108
+#define ID_EXITCONFIRM_DISCARD	109
+#define ID_EXITCONFIRM_CANCEL	110
 
 // bindable actions
 #define ID_SHOWSCORES	0
@@ -247,6 +250,15 @@ typedef struct
 } controls_t; 	
 
 static controls_t s_controls;
+
+typedef struct {
+	menuframework_s	menu;
+	menutext_s		save;
+	menutext_s		discard;
+	menutext_s		cancel;
+} controlsExitConfirm_t;
+
+static controlsExitConfirm_t s_controlsExitConfirm;
 static int s_rebindConfirmTargetId = -1;
 static int s_rebindConfirmKey = -1;
 static char s_rebindConfirmQuestion[128];
@@ -1112,6 +1124,101 @@ static void Controls_RebindConflict_Draw( void )
 	UI_DrawString( SCREEN_WIDTH / 2, 210, s_rebindConfirmQuestion, UI_CENTER|UI_SMALLFONT, text_color_normal );
 }
 
+static void Controls_ExitConfirm_MenuEvent( void* ptr, int event )
+{
+	if ( event != QM_ACTIVATED ) {
+		return;
+	}
+
+	UI_PopMenu();
+
+	switch ( ((menucommon_s*)ptr)->id ) {
+		case ID_EXITCONFIRM_SAVE:
+			RallyControls_SetConfig();
+			s_controls.changesmade = qfalse;
+			UI_PopMenu();
+			break;
+
+		case ID_EXITCONFIRM_DISCARD:
+			RallyControls_GetConfig();
+			s_controls.changesmade = qfalse;
+			UI_PopMenu();
+			break;
+
+		case ID_EXITCONFIRM_CANCEL:
+		default:
+			break;
+	}
+}
+
+static sfxHandle_t Controls_ExitConfirm_MenuKey( int key )
+{
+	if ( key == K_ESCAPE || key == K_MOUSE2 ) {
+		Controls_ExitConfirm_MenuEvent( &s_controlsExitConfirm.cancel, QM_ACTIVATED );
+		return menu_out_sound;
+	}
+
+	return Menu_DefaultKey( &s_controlsExitConfirm.menu, key );
+}
+
+static void Controls_ExitConfirm_Draw( void )
+{
+	vec4_t compactBoxColor = { 0.0f, 0.0f, 0.0f, 0.50f };
+
+	UI_FillRect( 148, 176, 344, 136, compactBoxColor );
+	UI_DrawString( SCREEN_WIDTH / 2, 202, "Aenderungen speichern?", UI_CENTER|UI_SMALLFONT, text_color_normal );
+
+	Menu_Draw( &s_controlsExitConfirm.menu );
+}
+
+static void Controls_ExitConfirmMenu( void )
+{
+	memset( &s_controlsExitConfirm, 0, sizeof( s_controlsExitConfirm ) );
+
+	s_controlsExitConfirm.menu.draw = Controls_ExitConfirm_Draw;
+	s_controlsExitConfirm.menu.key = Controls_ExitConfirm_MenuKey;
+	s_controlsExitConfirm.menu.wrapAround = qtrue;
+	s_controlsExitConfirm.menu.fullscreen = qfalse;
+	s_controlsExitConfirm.menu.transparent = qtrue;
+
+	s_controlsExitConfirm.save.generic.type = MTYPE_PTEXT;
+	s_controlsExitConfirm.save.generic.flags = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
+	s_controlsExitConfirm.save.generic.id = ID_EXITCONFIRM_SAVE;
+	s_controlsExitConfirm.save.generic.x = SCREEN_WIDTH / 2;
+	s_controlsExitConfirm.save.generic.y = 232;
+	s_controlsExitConfirm.save.generic.callback = Controls_ExitConfirm_MenuEvent;
+	s_controlsExitConfirm.save.string = "Speichern";
+	s_controlsExitConfirm.save.style = UI_CENTER|UI_SMALLFONT;
+	s_controlsExitConfirm.save.color = text_color_normal;
+
+	s_controlsExitConfirm.discard.generic.type = MTYPE_PTEXT;
+	s_controlsExitConfirm.discard.generic.flags = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
+	s_controlsExitConfirm.discard.generic.id = ID_EXITCONFIRM_DISCARD;
+	s_controlsExitConfirm.discard.generic.x = SCREEN_WIDTH / 2;
+	s_controlsExitConfirm.discard.generic.y = 252;
+	s_controlsExitConfirm.discard.generic.callback = Controls_ExitConfirm_MenuEvent;
+	s_controlsExitConfirm.discard.string = "Verwerfen";
+	s_controlsExitConfirm.discard.style = UI_CENTER|UI_SMALLFONT;
+	s_controlsExitConfirm.discard.color = text_color_normal;
+
+	s_controlsExitConfirm.cancel.generic.type = MTYPE_PTEXT;
+	s_controlsExitConfirm.cancel.generic.flags = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
+	s_controlsExitConfirm.cancel.generic.id = ID_EXITCONFIRM_CANCEL;
+	s_controlsExitConfirm.cancel.generic.x = SCREEN_WIDTH / 2;
+	s_controlsExitConfirm.cancel.generic.y = 272;
+	s_controlsExitConfirm.cancel.generic.callback = Controls_ExitConfirm_MenuEvent;
+	s_controlsExitConfirm.cancel.string = "Abbrechen";
+	s_controlsExitConfirm.cancel.style = UI_CENTER|UI_SMALLFONT;
+	s_controlsExitConfirm.cancel.color = text_color_normal;
+
+	Menu_AddItem( &s_controlsExitConfirm.menu, &s_controlsExitConfirm.save );
+	Menu_AddItem( &s_controlsExitConfirm.menu, &s_controlsExitConfirm.discard );
+	Menu_AddItem( &s_controlsExitConfirm.menu, &s_controlsExitConfirm.cancel );
+
+	UI_PushMenu( &s_controlsExitConfirm.menu );
+	Menu_SetCursorToItem( &s_controlsExitConfirm.menu, &s_controlsExitConfirm.cancel );
+}
+
 /*
 =================
 Controls_MenuKey
@@ -1136,8 +1243,10 @@ static sfxHandle_t Controls_MenuKey( int key )
 		
 			case K_MOUSE2:
 			case K_ESCAPE:
-				if (s_controls.changesmade)
-                                        RallyControls_SetConfig();
+				if (s_controls.changesmade) {
+					Controls_ExitConfirmMenu();
+					return menu_move_sound;
+				}
 				goto ignorekey;	
 
 			default:
@@ -1262,9 +1371,11 @@ static void Controls_MenuEvent( void* ptr, int event )
 		case ID_BACK:
 			if (event == QM_ACTIVATED)
 			{
-				if (s_controls.changesmade)
-                                        RallyControls_SetConfig();
-				UI_PopMenu();
+				if (s_controls.changesmade) {
+					Controls_ExitConfirmMenu();
+				} else {
+					UI_PopMenu();
+				}
 			}
 			break;
 
