@@ -953,7 +953,7 @@ static void Controls_DrawKeyBinding( void *self )
 		}
 		UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.90, "Tippen zum Suchen (global ueber alle Kategorien)", UI_SMALLFONT|UI_CENTER, colorWhite );
 		if ( Controls_SearchActive() ) {
-			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.94, va("Suche: %s", s_controlsSearchText), UI_SMALLFONT|UI_CENTER, colorWhite );
+			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.94, va("Search: %s", s_controlsSearchText), UI_SMALLFONT|UI_CENTER, colorWhite );
 		}
 	}
 	else
@@ -982,7 +982,7 @@ static void Controls_StatusBar( void *self )
 	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.80, "Use Arrow Keys or CLICK to change", UI_SMALLFONT|UI_CENTER, colorWhite );
 	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.84, "Tippen zum Suchen (global ueber alle Kategorien)", UI_SMALLFONT|UI_CENTER, colorWhite );
 	if ( Controls_SearchActive() ) {
-		UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.88, va("Suche: %s", s_controlsSearchText), UI_SMALLFONT|UI_CENTER, colorWhite );
+		UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.88, va("Search: %s", s_controlsSearchText), UI_SMALLFONT|UI_CENTER, colorWhite );
 	}
 }
 
@@ -2242,14 +2242,21 @@ static void Controls_MenuInit( void )
 	s_controls.joythreshold.maxvalue		  = 0.75;
 	s_controls.joythreshold.generic.statusbar = Controls_StatusBar;
 
-	s_controls.search.generic.type			= MTYPE_FIELD;
-	s_controls.search.generic.flags			= QMF_SMALLFONT;
-	s_controls.search.generic.name			= "SUCHE";
-	s_controls.search.generic.x				= 186;
-	s_controls.search.generic.y				= 240 - 3 * PROP_HEIGHT;
-	s_controls.search.field.widthInChars	= 28;
-	s_controls.search.field.maxchars		= sizeof( s_controlsSearchText ) - 1;
-	Controls_SearchFieldSyncFromState();
+	{
+		int weaponsCount = 0;
+		while ( g_weapons_controls[weaponsCount] ) {
+			weaponsCount++;
+		}
+
+		s_controls.search.generic.type			= MTYPE_FIELD;
+		s_controls.search.generic.flags			= QMF_SMALLFONT;
+		s_controls.search.generic.name			= "Search";
+		s_controls.search.generic.x				= x;
+		s_controls.search.generic.y				= ( SCREEN_HEIGHT - weaponsCount * SMALLCHAR_HEIGHT ) / 2;
+		s_controls.search.field.widthInChars	= 28;
+		s_controls.search.field.maxchars		= sizeof( s_controlsSearchText ) - 1;
+		Controls_SearchFieldSyncFromState();
+	}
 
 	s_controls.name.generic.type	= MTYPE_PTEXT;
 	s_controls.name.generic.flags	= QMF_CENTER_JUSTIFY|QMF_INACTIVE;
