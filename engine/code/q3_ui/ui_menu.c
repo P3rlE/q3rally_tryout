@@ -79,7 +79,6 @@ typedef struct {
 
 
 static mainmenu_t s_main;
-static vec4_t s_profileActionColor;
 
 /*
 =================
@@ -168,7 +167,7 @@ void MainMenu_Update( void ){
 
         trap_Cvar_VariableStringBuffer( "rim", s_main.rimskin, sizeof( s_main.rimskin ) );
         trap_Cvar_VariableStringBuffer( "head", s_main.headskin, sizeof( s_main.headskin ) );
-
+       
         MainMenu_UpdateModel();
 }
 
@@ -270,11 +269,7 @@ MainMenu_RunTransition
 ===============
 */
 void MainMenu_RunTransition( float frac ) {
-<<<<<<< codex/add-profile-menu-entry-and-constants-sqsf3b
         vec4_t profileActionColor;
-=======
-        static vec4_t profileActionColor;
->>>>>>> master
 
         uis.text_color[0] = text_color_normal[0];
         uis.text_color[1] = text_color_normal[1];
@@ -291,36 +286,6 @@ void MainMenu_RunTransition( float frac ) {
         s_main.demos.color = uis.text_color;
         s_main.mods.color = uis.text_color;
         s_main.exit.color = uis.text_color;
-        s_main.profileAction.color = uis.text_color;
-        s_main.profileInfoLine1.color = uis.text_color;
-        s_main.profileInfoLine2.color = uis.text_color;
-
-        uis.color[0] = color_red[0];
-        uis.color[1] = color_red[1];
-        uis.color[2] = color_red[2];
-        uis.color[3] = color_red[3] * frac;
-        s_main.profileAction.color = uis.color;
-
-        s_main.profileInfoLine1.color = uis.text_color;
-        s_main.profileInfoLine2.color = uis.text_color;
-
-        s_profileActionColor[0] = color_red[0];
-        s_profileActionColor[1] = color_red[1];
-        s_profileActionColor[2] = color_red[2];
-        s_profileActionColor[3] = color_red[3] * frac;
-        s_main.profileAction.color = s_profileActionColor;
-
-        s_main.profileInfoLine1.color = uis.text_color;
-        s_main.profileInfoLine2.color = uis.text_color;
-
-        profileActionColor[0] = color_red[0];
-        profileActionColor[1] = color_red[1];
-        profileActionColor[2] = color_red[2];
-        profileActionColor[3] = color_red[3] * frac;
-        s_main.profileAction.color = profileActionColor;
-
-        s_main.profileInfoLine1.color = uis.text_color;
-        s_main.profileInfoLine2.color = uis.text_color;
 
         /* NOTE: keep this local; uiStatic_t has no generic color field. */
         profileActionColor[0] = color_red[0];
@@ -446,7 +411,7 @@ and that local cinematics are killed
 ===============
 */
 void UI_MainMenu( void ) {
-
+	
 	int x;
 	int y;
         int numMusicFiles;
@@ -502,6 +467,7 @@ void UI_MainMenu( void ) {
         y = 75;
         menuSpacing = MAIN_MENU_VERTICAL_SPACING - 5;
 
+        
 	InitMenuText(&s_main.singleplayer, ID_SINGLEPLAYER, "OFFLINE", x - 10, y + 12);
 
 
