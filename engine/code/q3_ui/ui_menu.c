@@ -284,6 +284,9 @@ void MainMenu_RunTransition( float frac ) {
         s_main.demos.color = uis.text_color;
         s_main.mods.color = uis.text_color;
         s_main.exit.color = uis.text_color;
+        s_main.profileAction.color = uis.text_color;
+        s_main.profileInfoLine1.color = uis.text_color;
+        s_main.profileInfoLine2.color = uis.text_color;
 
         uis.color[0] = color_red[0];
         uis.color[1] = color_red[1];
