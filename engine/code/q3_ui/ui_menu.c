@@ -38,6 +38,7 @@ MAIN MENU
 #define ID_SETUP                        12
 #define ID_DEMOS                        13
 #define ID_CINEMATICS                   14
+#define ID_PROFILE_ACTION               15
 
 #define ID_MODS                         16
 #define ID_GARAGE                       17
@@ -60,6 +61,9 @@ typedef struct {
         menutext_s              mods;
         menutext_s              garage;
         menutext_s              exit;
+        menutext_s              profileAction;
+        menutext_s              profileInfoLine1;
+        menutext_s              profileInfoLine2;
 
         menutext_s              banner;
         menubitmap_s            carlogo;
@@ -207,6 +211,10 @@ void Main_MenuEvent (void* ptr, int event) {
                 uis.transitionOut = uis.realtime;
                 break;
 
+        case ID_PROFILE_ACTION:
+                UI_ProfileOverlay_Open( qfalse );
+                break;
+
         case ID_EXIT:
                 UI_ConfirmMenu( "EXIT GAME?", 0, MainMenu_ExitAction );
                 break;
@@ -274,6 +282,9 @@ void MainMenu_RunTransition( float frac ) {
         s_main.demos.color = uis.text_color;
         s_main.mods.color = uis.text_color;
         s_main.exit.color = uis.text_color;
+        s_main.profileAction.color = uis.text_color;
+        s_main.profileInfoLine1.color = uis.text_color;
+        s_main.profileInfoLine2.color = uis.text_color;
 
         s_main.carlogo.generic.x = (int)(640 - 440 * frac);
 }
@@ -364,6 +375,22 @@ static void InitMenuText(menutext_s *item, int id, char *label, int x, int y) {
 }
 
 /*
+=================
+InitMenuTextInfo
+=================
+*/
+static void InitMenuTextInfo(menutext_s *item, char *label, int x, int y) {
+
+        item->generic.type = MTYPE_PTEXT;
+        item->generic.flags = QMF_RIGHT_JUSTIFY|QMF_INACTIVE;
+        item->generic.x = x;
+        item->generic.y = y;
+        item->style = UI_RIGHT|UI_SMALLFONT|UI_DROPSHADOW;
+        item->string = label;
+        item->color = text_color_normal;
+}
+
+/*
 ===============
 UI_MainMenu
 
@@ -380,6 +407,8 @@ void UI_MainMenu( void ) {
         int selectedMusic;
         char musicFiles[256][MAX_QPATH];
         char musicCommand[MAX_QPATH];
+        const char *activeProfileName;
+        const char *profileLabel;
 
 
         numMusicFiles = UI_BuildFileList("music", "ogg", "menumusic", qtrue, qfalse, qfalse, 0, musicFiles);
@@ -455,6 +484,20 @@ void UI_MainMenu( void ) {
 	InitMenuText(&s_main.exit, ID_EXIT, "QUIT", x - 10, y + 12);
 
 
+        y += MAIN_MENU_VERTICAL_SPACING;
+        activeProfileName = UI_Profile_GetActiveName();
+        profileLabel = (activeProfileName && activeProfileName[0]) ? activeProfileName : "CREATE";
+        InitMenuText(&s_main.profileAction, ID_PROFILE_ACTION, (char *)profileLabel, x - 10, y + 12);
+
+
+        y += 22;
+        InitMenuTextInfo(&s_main.profileInfoLine1, "PROFILE", x - 10, y + 12);
+
+
+        y += 16;
+        InitMenuTextInfo(&s_main.profileInfoLine2, "CLICK TO MANAGE", x - 10, y + 12);
+
+
         Menu_AddItem( &s_main.menu,     &s_main.banner );
         Menu_AddItem( &s_main.menu,     &s_main.carlogo );
         Menu_AddItem( &s_main.menu,     &s_main.singleplayer );
@@ -463,6 +506,9 @@ void UI_MainMenu( void ) {
         Menu_AddItem( &s_main.menu,     &s_main.garage );
         Menu_AddItem( &s_main.menu,     &s_main.demos );
         Menu_AddItem( &s_main.menu,     &s_main.exit );            
+        Menu_AddItem( &s_main.menu,     &s_main.profileAction );
+        Menu_AddItem( &s_main.menu,     &s_main.profileInfoLine1 );
+        Menu_AddItem( &s_main.menu,     &s_main.profileInfoLine2 );
 
         trap_Key_SetCatcher( KEYCATCH_UI );
         uis.menusp = 0;
