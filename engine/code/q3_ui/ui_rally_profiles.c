@@ -11,25 +11,27 @@
 #define ID_PROFILE_SELECT    203
 #define ID_PROFILE_NAME      204
 
-#define PROFILE_OVERLAY_SCREEN_WIDTH   640
-#define PROFILE_OVERLAY_SCREEN_HEIGHT  480
-#define PROFILE_OVERLAY_TOP_MARGIN     10
-#define PROFILE_OVERLAY_BOTTOM_MARGIN  10
-#define PROFILE_OVERLAY_AVAILABLE_HEIGHT \
-    (PROFILE_OVERLAY_SCREEN_HEIGHT - PROFILE_OVERLAY_TOP_MARGIN - PROFILE_OVERLAY_BOTTOM_MARGIN)
+#define PROFILE_OVERLAY_SCREEN_WIDTH     640
+#define PROFILE_OVERLAY_SCREEN_HEIGHT    480
+#define PROFILE_OVERLAY_PANEL_WIDTH      456
+#define PROFILE_OVERLAY_PANEL_HEIGHT     352
+#define PROFILE_OVERLAY_PANEL_X          ( ( PROFILE_OVERLAY_SCREEN_WIDTH - PROFILE_OVERLAY_PANEL_WIDTH ) / 2 )
+#define PROFILE_OVERLAY_PANEL_Y          ( ( PROFILE_OVERLAY_SCREEN_HEIGHT - PROFILE_OVERLAY_PANEL_HEIGHT ) / 2 )
 
 #define PROFILE_OVERLAY_TITLE_OFFSET            0
-#define PROFILE_OVERLAY_LIST_OFFSET             82
-#define PROFILE_OVERLAY_NAMEFIELD_OFFSET       218
-#define PROFILE_OVERLAY_BUTTON_ROW_OFFSET      266
-#define PROFILE_OVERLAY_STATUS_OFFSET          330
-#define PROFILE_OVERLAY_GUIDE_PRIMARY_OFFSET   354
-#define PROFILE_OVERLAY_GUIDE_SECONDARY_OFFSET 374
-#define PROFILE_OVERLAY_GUIDE_EMPTY_OFFSET     360
-#define PROFILE_OVERLAY_GUIDE_HINT_OFFSET      410
-#define PROFILE_OVERLAY_CONTENT_SPAN           PROFILE_OVERLAY_GUIDE_HINT_OFFSET
+#define PROFILE_OVERLAY_LIST_OFFSET             60
+#define PROFILE_OVERLAY_NAMEFIELD_OFFSET        182
+#define PROFILE_OVERLAY_BUTTON_ROW_OFFSET       228
+#define PROFILE_OVERLAY_STATUS_OFFSET           274
+#define PROFILE_OVERLAY_GUIDE_PRIMARY_OFFSET    296
+#define PROFILE_OVERLAY_GUIDE_SECONDARY_OFFSET  314
+#define PROFILE_OVERLAY_GUIDE_EMPTY_OFFSET      304
+#define PROFILE_OVERLAY_GUIDE_HINT_OFFSET       332
+#define PROFILE_OVERLAY_CONTENT_SPAN            PROFILE_OVERLAY_GUIDE_HINT_OFFSET
 
-static vec4_t overlayBackgroundColor = { 0.2f, 0.2f, 0.2f, 0.8f };
+static vec4_t overlayBackdropColor = { 0.0f, 0.0f, 0.0f, 0.18f };
+static vec4_t overlayBackgroundColor = { 0.11f, 0.11f, 0.11f, 0.78f };
+static vec4_t overlayBorderColor = { 1.0f, 1.0f, 1.0f, 0.20f };
 static vec4_t statusNormalColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 static vec4_t statusErrorColor  = { 1.0f, 0.3f, 0.3f, 1.0f };
 static vec4_t statusInfoColor   = { 1.0f, 0.8f, 0.3f, 1.0f };
@@ -881,8 +883,8 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->menu.draw = UI_ProfileOverlay_Draw;
     overlay->menu.key = UI_ProfileOverlay_Key;
 
-    overlay->contentBaseY = PROFILE_OVERLAY_TOP_MARGIN +
-        (PROFILE_OVERLAY_AVAILABLE_HEIGHT - PROFILE_OVERLAY_CONTENT_SPAN) / 2;
+    overlay->contentBaseY = PROFILE_OVERLAY_PANEL_Y +
+        (PROFILE_OVERLAY_PANEL_HEIGHT - PROFILE_OVERLAY_CONTENT_SPAN) / 2;
 
     overlay->title.generic.type = MTYPE_BTEXT;
     overlay->title.generic.flags = QMF_INACTIVE;
@@ -927,7 +929,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->createButton.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
     overlay->createButton.generic.id = ID_PROFILE_CREATE;
     overlay->createButton.generic.callback = UI_ProfileOverlay_MenuEvent;
-    overlay->createButton.generic.x = 200;
+    overlay->createButton.generic.x = 248;
     overlay->createButton.generic.y = overlay->contentBaseY + PROFILE_OVERLAY_BUTTON_ROW_OFFSET;
     overlay->createButton.string = "CREATE";
     overlay->createButton.style = UI_CENTER | UI_SMALLFONT;
@@ -947,7 +949,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->selectButton.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
     overlay->selectButton.generic.id = ID_PROFILE_SELECT;
     overlay->selectButton.generic.callback = UI_ProfileOverlay_MenuEvent;
-    overlay->selectButton.generic.x = 440;
+    overlay->selectButton.generic.x = 392;
     overlay->selectButton.generic.y = overlay->contentBaseY + PROFILE_OVERLAY_BUTTON_ROW_OFFSET;
     overlay->selectButton.string = "SELECT";
     overlay->selectButton.style = UI_CENTER | UI_SMALLFONT;
@@ -1094,12 +1096,24 @@ static qboolean UI_ProfileOverlay_HandleSelect( void ) {
 }
 
 static void UI_ProfileOverlay_Draw( void ) {
-    trap_R_SetColor( overlayBackgroundColor );
+    trap_R_SetColor( overlayBackdropColor );
     UI_FillRect( 0,
-                 PROFILE_OVERLAY_TOP_MARGIN,
+                 0,
                  PROFILE_OVERLAY_SCREEN_WIDTH,
-                 PROFILE_OVERLAY_SCREEN_HEIGHT - PROFILE_OVERLAY_TOP_MARGIN - PROFILE_OVERLAY_BOTTOM_MARGIN,
+                 PROFILE_OVERLAY_SCREEN_HEIGHT,
+                 overlayBackdropColor );
+
+    trap_R_SetColor( overlayBackgroundColor );
+    UI_FillRect( PROFILE_OVERLAY_PANEL_X,
+                 PROFILE_OVERLAY_PANEL_Y,
+                 PROFILE_OVERLAY_PANEL_WIDTH,
+                 PROFILE_OVERLAY_PANEL_HEIGHT,
                  overlayBackgroundColor );
+    UI_DrawRect( PROFILE_OVERLAY_PANEL_X,
+                 PROFILE_OVERLAY_PANEL_Y,
+                 PROFILE_OVERLAY_PANEL_WIDTH,
+                 PROFILE_OVERLAY_PANEL_HEIGHT,
+                 overlayBorderColor );
     trap_R_SetColor( NULL );
 
     Menu_Draw( &s_profileOverlay.menu );
@@ -1115,18 +1129,28 @@ static void UI_ProfileOverlay_Draw( void ) {
     if ( s_profileOverlay.profileCount > 0 ) {
         UI_DrawProportionalString( 320,
                                    s_profileOverlay.contentBaseY + PROFILE_OVERLAY_GUIDE_PRIMARY_OFFSET,
-                                   "Highlight a profile and press ENTER or SELECT",
+                                   "Profil auswählen: Markieren und ENTER/SELECT drücken",
                                    UI_CENTER | UI_SMALLFONT,
                                    text_color_normal );
         UI_DrawProportionalString( 320,
                                    s_profileOverlay.contentBaseY + PROFILE_OVERLAY_GUIDE_SECONDARY_OFFSET,
-                                   "Enter a name and press CREATE below to add another",
+                                   "Neues Profil erstellen: Namen eingeben und CREATE drücken",
                                    UI_CENTER | UI_SMALLFONT,
                                    text_color_normal );
     } else {
         UI_DrawProportionalString( 320,
                                    s_profileOverlay.contentBaseY + PROFILE_OVERLAY_GUIDE_EMPTY_OFFSET,
-                                   "Enter a name and press CREATE below",
+                                   "Kein Profil vorhanden: Name eingeben und CREATE drücken",
+                                   UI_CENTER | UI_SMALLFONT | UI_PULSE,
+                                   text_color_highlight );
+        UI_DrawRect( s_profileOverlay.nameField.generic.x - 84,
+                     s_profileOverlay.nameField.generic.y + 14,
+                     168,
+                     22,
+                     text_color_highlight );
+        UI_DrawProportionalString( 320,
+                                   s_profileOverlay.contentBaseY + PROFILE_OVERLAY_GUIDE_SECONDARY_OFFSET,
+                                   "CREATE ist der erste Schritt",
                                    UI_CENTER | UI_SMALLFONT,
                                    text_color_normal );
     }
