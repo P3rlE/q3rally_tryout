@@ -79,6 +79,7 @@ typedef struct {
 
 
 static mainmenu_t s_main;
+static vec4_t s_profileActionColor;
 
 /*
 =================
@@ -287,12 +288,11 @@ void MainMenu_RunTransition( float frac ) {
         s_main.mods.color = uis.text_color;
         s_main.exit.color = uis.text_color;
 
-        /* NOTE: keep this local; uiStatic_t has no generic color field. */
-        profileActionColor[0] = color_red[0];
-        profileActionColor[1] = color_red[1];
-        profileActionColor[2] = color_red[2];
-        profileActionColor[3] = color_red[3] * frac;
-        s_main.profileAction.color = profileActionColor;
+        s_profileActionColor[0] = color_red[0];
+        s_profileActionColor[1] = color_red[1];
+        s_profileActionColor[2] = color_red[2];
+        s_profileActionColor[3] = color_red[3] * frac;
+        s_main.profileAction.color = s_profileActionColor;
 
         s_main.profileInfoLine1.color = uis.text_color;
         s_main.profileInfoLine2.color = uis.text_color;
@@ -414,6 +414,8 @@ void UI_MainMenu( void ) {
 	
 	int x;
 	int y;
+        int profileY;
+        int profileInfoY;
         int numMusicFiles;
         int selectedMusic;
         char musicFiles[256][MAX_QPATH];
@@ -502,7 +504,10 @@ void UI_MainMenu( void ) {
         y += menuSpacing;
         activeProfileName = UI_Profile_GetActiveName();
         profileLabel = (activeProfileName && activeProfileName[0]) ? activeProfileName : "CREATE";
-        InitMenuText(&s_main.profileAction, ID_PROFILE_ACTION, (char *)profileLabel, x - 10, y + 12);
+        profileY = y + 22;
+        profileInfoY = y + 16;
+        InitMenuText(&s_main.profileAction, ID_PROFILE_ACTION, (char *)profileLabel, x - 10, profileY);
+        s_main.profileAction.generic.flags = QMF_RIGHT_JUSTIFY;
 
         activeProfileStats = UI_Profile_GetActiveStats();
         if ( activeProfileStats && UI_Profile_GetRank( activeProfileStats, &activeRank ) && activeRank.current && activeRank.current->name ) {
@@ -513,8 +518,8 @@ void UI_MainMenu( void ) {
                 Q_strncpyz( s_main.profilePointsLine, "PUNKTE: 0", sizeof( s_main.profilePointsLine ) );
         }
 
-        InitMenuTextInfo(&s_main.profileInfoLine1, s_main.profileRankLine, x + 20, y + 6);
-        InitMenuTextInfo(&s_main.profileInfoLine2, s_main.profilePointsLine, x + 20, y + 22);
+        InitMenuTextInfo(&s_main.profileInfoLine1, s_main.profileRankLine, x + 20, profileInfoY);
+        InitMenuTextInfo(&s_main.profileInfoLine2, s_main.profilePointsLine, x + 20, profileInfoY + 16);
 
 
         Menu_AddItem( &s_main.menu,     &s_main.banner );
