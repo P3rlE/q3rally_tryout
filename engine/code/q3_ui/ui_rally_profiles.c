@@ -1218,10 +1218,6 @@ void UI_ProfileOverlay_ClearState( void ) {
 }
 
 void UI_ProfileOverlay_Open( qboolean forceSelection ) {
-    if ( uis.profileOverlayShown && !forceSelection ) {
-        return;
-    }
-
     UI_ProfileOverlay_SetupMenu();
 
     if ( forceSelection ) {
