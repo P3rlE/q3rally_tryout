@@ -38,6 +38,7 @@ MAIN MENU
 #define ID_SETUP                        12
 #define ID_DEMOS                        13
 #define ID_CINEMATICS                   14
+#define ID_PROFILE_ACTION               15
 
 #define ID_MODS                         16
 #define ID_GARAGE                       17
@@ -60,6 +61,11 @@ typedef struct {
         menutext_s              mods;
         menutext_s              garage;
         menutext_s              exit;
+        menutext_s              profileAction;
+        menutext_s              profileInfoLine1;
+        menutext_s              profileInfoLine2;
+        char                    profileRankLine[64];
+        char                    profilePointsLine[64];
 
         menutext_s              banner;
         menubitmap_s            carlogo;
@@ -207,6 +213,10 @@ void Main_MenuEvent (void* ptr, int event) {
                 uis.transitionOut = uis.realtime;
                 break;
 
+        case ID_PROFILE_ACTION:
+                UI_ProfileOverlay_Open( qfalse );
+                break;
+
         case ID_EXIT:
                 UI_ConfirmMenu( "EXIT GAME?", 0, MainMenu_ExitAction );
                 break;
@@ -259,6 +269,8 @@ MainMenu_RunTransition
 ===============
 */
 void MainMenu_RunTransition( float frac ) {
+        vec4_t profileActionColor;
+
         uis.text_color[0] = text_color_normal[0];
         uis.text_color[1] = text_color_normal[1];
         uis.text_color[2] = text_color_normal[2];
@@ -274,6 +286,16 @@ void MainMenu_RunTransition( float frac ) {
         s_main.demos.color = uis.text_color;
         s_main.mods.color = uis.text_color;
         s_main.exit.color = uis.text_color;
+
+        /* NOTE: keep this local; uiStatic_t has no generic color field. */
+        profileActionColor[0] = color_red[0];
+        profileActionColor[1] = color_red[1];
+        profileActionColor[2] = color_red[2];
+        profileActionColor[3] = color_red[3] * frac;
+        s_main.profileAction.color = profileActionColor;
+
+        s_main.profileInfoLine1.color = uis.text_color;
+        s_main.profileInfoLine2.color = uis.text_color;
 
         s_main.carlogo.generic.x = (int)(640 - 440 * frac);
 }
@@ -364,6 +386,22 @@ static void InitMenuText(menutext_s *item, int id, char *label, int x, int y) {
 }
 
 /*
+=================
+InitMenuTextInfo
+=================
+*/
+static void InitMenuTextInfo(menutext_s *item, char *label, int x, int y) {
+
+        item->generic.type = MTYPE_PTEXT;
+        item->generic.flags = QMF_LEFT_JUSTIFY|QMF_INACTIVE;
+        item->generic.x = x;
+        item->generic.y = y;
+        item->style = UI_LEFT|UI_SMALLFONT|UI_DROPSHADOW;
+        item->string = label;
+        item->color = text_color_normal;
+}
+
+/*
 ===============
 UI_MainMenu
 
@@ -380,6 +418,11 @@ void UI_MainMenu( void ) {
         int selectedMusic;
         char musicFiles[256][MAX_QPATH];
         char musicCommand[MAX_QPATH];
+        const profile_stats_t *activeProfileStats;
+        profile_rank_t activeRank;
+        const char *activeProfileName;
+        const char *profileLabel;
+        int menuSpacing;
 
 
         numMusicFiles = UI_BuildFileList("music", "ogg", "menumusic", qtrue, qfalse, qfalse, 0, musicFiles);
@@ -421,25 +464,26 @@ void UI_MainMenu( void ) {
         s_main.banner.style                             = UI_CENTER|UI_DROPSHADOW;
 
         x = 175;
-        y = 100;
+        y = 75;
+        menuSpacing = MAIN_MENU_VERTICAL_SPACING - 5;
 
         
 	InitMenuText(&s_main.singleplayer, ID_SINGLEPLAYER, "OFFLINE", x - 10, y + 12);
 
 
-	y += MAIN_MENU_VERTICAL_SPACING;
+	y += menuSpacing;
 	InitMenuText(&s_main.multiplayer, ID_MULTIPLAYER, "ONLINE", x - 10, y + 12);
 
 
-	y += MAIN_MENU_VERTICAL_SPACING;
+	y += menuSpacing;
 	InitMenuText(&s_main.setup, ID_SETUP, "CONFIG", x - 10, y + 12);
 
 
-	y += MAIN_MENU_VERTICAL_SPACING;
+	y += menuSpacing;
 	InitMenuText(&s_main.garage, ID_GARAGE, "THE GARAGE", x - 10, y + 12);
         
         
-	y += MAIN_MENU_VERTICAL_SPACING;
+	y += menuSpacing;
 	InitMenuText(&s_main.demos, ID_DEMOS, "DEMOS", x - 10, y + 12);
 
 
@@ -451,8 +495,26 @@ void UI_MainMenu( void ) {
         s_main.carlogo.width                            = 480;
         s_main.carlogo.height                           = 480;
         
-	y += MAIN_MENU_VERTICAL_SPACING;
+	y += menuSpacing;
 	InitMenuText(&s_main.exit, ID_EXIT, "QUIT", x - 10, y + 12);
+
+
+        y += menuSpacing;
+        activeProfileName = UI_Profile_GetActiveName();
+        profileLabel = (activeProfileName && activeProfileName[0]) ? activeProfileName : "CREATE";
+        InitMenuText(&s_main.profileAction, ID_PROFILE_ACTION, (char *)profileLabel, x - 10, y + 12);
+
+        activeProfileStats = UI_Profile_GetActiveStats();
+        if ( activeProfileStats && UI_Profile_GetRank( activeProfileStats, &activeRank ) && activeRank.current && activeRank.current->name ) {
+                Com_sprintf( s_main.profileRankLine, sizeof( s_main.profileRankLine ), "RANG: %s", activeRank.current->name );
+                Com_sprintf( s_main.profilePointsLine, sizeof( s_main.profilePointsLine ), "PUNKTE: %d", activeProfileStats->playerScore );
+        } else {
+                Q_strncpyz( s_main.profileRankLine, "RANG: -", sizeof( s_main.profileRankLine ) );
+                Q_strncpyz( s_main.profilePointsLine, "PUNKTE: 0", sizeof( s_main.profilePointsLine ) );
+        }
+
+        InitMenuTextInfo(&s_main.profileInfoLine1, s_main.profileRankLine, x + 20, y + 6);
+        InitMenuTextInfo(&s_main.profileInfoLine2, s_main.profilePointsLine, x + 20, y + 22);
 
 
         Menu_AddItem( &s_main.menu,     &s_main.banner );
@@ -463,6 +525,9 @@ void UI_MainMenu( void ) {
         Menu_AddItem( &s_main.menu,     &s_main.garage );
         Menu_AddItem( &s_main.menu,     &s_main.demos );
         Menu_AddItem( &s_main.menu,     &s_main.exit );            
+        Menu_AddItem( &s_main.menu,     &s_main.profileAction );
+        Menu_AddItem( &s_main.menu,     &s_main.profileInfoLine1 );
+        Menu_AddItem( &s_main.menu,     &s_main.profileInfoLine2 );
 
         trap_Key_SetCatcher( KEYCATCH_UI );
         uis.menusp = 0;
