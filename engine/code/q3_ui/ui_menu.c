@@ -270,7 +270,11 @@ MainMenu_RunTransition
 ===============
 */
 void MainMenu_RunTransition( float frac ) {
+<<<<<<< codex/add-profile-menu-entry-and-constants-sqsf3b
+        vec4_t profileActionColor;
+=======
         static vec4_t profileActionColor;
+>>>>>>> master
 
         uis.text_color[0] = text_color_normal[0];
         uis.text_color[1] = text_color_normal[1];
@@ -309,6 +313,16 @@ void MainMenu_RunTransition( float frac ) {
         s_main.profileInfoLine1.color = uis.text_color;
         s_main.profileInfoLine2.color = uis.text_color;
 
+        profileActionColor[0] = color_red[0];
+        profileActionColor[1] = color_red[1];
+        profileActionColor[2] = color_red[2];
+        profileActionColor[3] = color_red[3] * frac;
+        s_main.profileAction.color = profileActionColor;
+
+        s_main.profileInfoLine1.color = uis.text_color;
+        s_main.profileInfoLine2.color = uis.text_color;
+
+        /* NOTE: keep this local; uiStatic_t has no generic color field. */
         profileActionColor[0] = color_red[0];
         profileActionColor[1] = color_red[1];
         profileActionColor[2] = color_red[2];
