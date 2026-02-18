@@ -81,6 +81,27 @@ typedef struct {
 static mainmenu_t s_main;
 static vec4_t s_profileActionColor;
 
+static void MainMenu_UpdateProfileTexts( void ) {
+        const profile_stats_t *activeProfileStats;
+        profile_rank_t activeRank;
+        const char *activeProfileName;
+
+        activeProfileName = UI_Profile_GetActiveName();
+        s_main.profileAction.string = ( activeProfileName && activeProfileName[0] ) ? (char *)activeProfileName : "CREATE";
+
+        activeProfileStats = UI_Profile_GetActiveStats();
+        if ( activeProfileStats && UI_Profile_GetRank( activeProfileStats, &activeRank ) && activeRank.current && activeRank.current->name ) {
+                Com_sprintf( s_main.profileRankLine, sizeof( s_main.profileRankLine ), "RANG: %s", activeRank.current->name );
+                Com_sprintf( s_main.profilePointsLine, sizeof( s_main.profilePointsLine ), "PUNKTE: %d", activeProfileStats->playerScore );
+        } else {
+                Q_strncpyz( s_main.profileRankLine, "RANG: -", sizeof( s_main.profileRankLine ) );
+                Q_strncpyz( s_main.profilePointsLine, "PUNKTE: 0", sizeof( s_main.profilePointsLine ) );
+        }
+
+        s_main.profileInfoLine1.string = s_main.profileRankLine;
+        s_main.profileInfoLine2.string = s_main.profilePointsLine;
+}
+
 /*
 =================
 MainMenu_UpdateModel
@@ -319,6 +340,8 @@ Main_MenuDraw
 */
 static void Main_MenuDraw( void ) {
 
+        MainMenu_UpdateProfileTexts();
+
         // standard menu drawing
 
         Menu_Draw( &s_main.menu );
@@ -420,10 +443,6 @@ void UI_MainMenu( void ) {
         int selectedMusic;
         char musicFiles[256][MAX_QPATH];
         char musicCommand[MAX_QPATH];
-        const profile_stats_t *activeProfileStats;
-        profile_rank_t activeRank;
-        const char *activeProfileName;
-        const char *profileLabel;
         int menuSpacing;
 
 
@@ -502,24 +521,16 @@ void UI_MainMenu( void ) {
 
 
         y += menuSpacing;
-        activeProfileName = UI_Profile_GetActiveName();
-        profileLabel = (activeProfileName && activeProfileName[0]) ? activeProfileName : "CREATE";
         profileY = y + 22;
         profileInfoY = y + 16;
-        InitMenuText(&s_main.profileAction, ID_PROFILE_ACTION, (char *)profileLabel, x - 10, profileY);
+        InitMenuText(&s_main.profileAction, ID_PROFILE_ACTION, "CREATE", x - 10, profileY);
         s_main.profileAction.generic.flags = QMF_RIGHT_JUSTIFY;
 
-        activeProfileStats = UI_Profile_GetActiveStats();
-        if ( activeProfileStats && UI_Profile_GetRank( activeProfileStats, &activeRank ) && activeRank.current && activeRank.current->name ) {
-                Com_sprintf( s_main.profileRankLine, sizeof( s_main.profileRankLine ), "RANG: %s", activeRank.current->name );
-                Com_sprintf( s_main.profilePointsLine, sizeof( s_main.profilePointsLine ), "PUNKTE: %d", activeProfileStats->playerScore );
-        } else {
-                Q_strncpyz( s_main.profileRankLine, "RANG: -", sizeof( s_main.profileRankLine ) );
-                Q_strncpyz( s_main.profilePointsLine, "PUNKTE: 0", sizeof( s_main.profilePointsLine ) );
-        }
-
+        Q_strncpyz( s_main.profileRankLine, "RANG: -", sizeof( s_main.profileRankLine ) );
+        Q_strncpyz( s_main.profilePointsLine, "PUNKTE: 0", sizeof( s_main.profilePointsLine ) );
         InitMenuTextInfo(&s_main.profileInfoLine1, s_main.profileRankLine, x + 20, profileInfoY);
         InitMenuTextInfo(&s_main.profileInfoLine2, s_main.profilePointsLine, x + 20, profileInfoY + 16);
+        MainMenu_UpdateProfileTexts();
 
 
         Menu_AddItem( &s_main.menu,     &s_main.banner );
