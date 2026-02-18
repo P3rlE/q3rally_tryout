@@ -1217,12 +1217,17 @@ void UI_ProfileOverlay_ClearState( void ) {
     Com_Memset( &s_profileOverlay, 0, sizeof( s_profileOverlay ) );
 }
 
-void UI_ProfileOverlay_MaybeShow( void ) {
-    if ( uis.profileOverlayShown ) {
+void UI_ProfileOverlay_Open( qboolean forceSelection ) {
+    if ( uis.profileOverlayShown && !forceSelection ) {
         return;
     }
 
     UI_ProfileOverlay_SetupMenu();
+
+    if ( forceSelection ) {
+        s_profileOverlay.forcingSelection = qtrue;
+    }
+
     trap_Cvar_Set( "ui_profileOverlaySeen", "1" );
     trap_Cvar_Update( &ui_profileOverlaySeen );
     uis.profileOverlayShown = qtrue;
@@ -1237,6 +1242,14 @@ void UI_ProfileOverlay_MaybeShow( void ) {
     uis.transitionOut = 0;
 
     UI_ProfileOverlay_FocusNameField();
+}
+
+void UI_ProfileOverlay_MaybeShow( void ) {
+    if ( UI_Profile_HasActiveProfile() ) {
+        return;
+    }
+
+    UI_ProfileOverlay_Open( qtrue );
 }
 
 static void UI_ProfileOverlay_FocusNameField( void ) {
