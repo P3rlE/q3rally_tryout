@@ -270,6 +270,8 @@ MainMenu_RunTransition
 ===============
 */
 void MainMenu_RunTransition( float frac ) {
+        static vec4_t profileActionColor;
+
         uis.text_color[0] = text_color_normal[0];
         uis.text_color[1] = text_color_normal[1];
         uis.text_color[2] = text_color_normal[2];
@@ -303,6 +305,15 @@ void MainMenu_RunTransition( float frac ) {
         s_profileActionColor[2] = color_red[2];
         s_profileActionColor[3] = color_red[3] * frac;
         s_main.profileAction.color = s_profileActionColor;
+
+        s_main.profileInfoLine1.color = uis.text_color;
+        s_main.profileInfoLine2.color = uis.text_color;
+
+        profileActionColor[0] = color_red[0];
+        profileActionColor[1] = color_red[1];
+        profileActionColor[2] = color_red[2];
+        profileActionColor[3] = color_red[3] * frac;
+        s_main.profileAction.color = profileActionColor;
 
         s_main.profileInfoLine1.color = uis.text_color;
         s_main.profileInfoLine2.color = uis.text_color;
@@ -477,7 +488,6 @@ void UI_MainMenu( void ) {
         y = 75;
         menuSpacing = MAIN_MENU_VERTICAL_SPACING - 5;
 
-
 	InitMenuText(&s_main.singleplayer, ID_SINGLEPLAYER, "OFFLINE", x - 10, y + 12);
 
 
@@ -491,8 +501,8 @@ void UI_MainMenu( void ) {
 
 	y += menuSpacing;
 	InitMenuText(&s_main.garage, ID_GARAGE, "THE GARAGE", x - 10, y + 12);
-
-
+        
+        
 	y += menuSpacing;
 	InitMenuText(&s_main.demos, ID_DEMOS, "DEMOS", x - 10, y + 12);
 
@@ -504,7 +514,7 @@ void UI_MainMenu( void ) {
         s_main.carlogo.generic.y                        = 0;
         s_main.carlogo.width                            = 480;
         s_main.carlogo.height                           = 480;
-
+        
 	y += menuSpacing;
 	InitMenuText(&s_main.exit, ID_EXIT, "QUIT", x - 10, y + 12);
 
