@@ -1206,7 +1206,7 @@ void UI_ProfileOverlay_InitSession( void ) {
     uis.activeProfileInfoLastRead = 0;
 
     trap_Cvar_Update( &ui_profileActive );
-    if ( ui_profileActive.string && ui_profileActive.string[0] ) {
+    if ( ui_profileActive.string[0] ) {
         Q_strncpyz( uis.activeProfile, ui_profileActive.string, sizeof( uis.activeProfile ) );
     } else {
         trap_Cvar_VariableStringBuffer( "profile_active", uis.activeProfile, sizeof( uis.activeProfile ) );
