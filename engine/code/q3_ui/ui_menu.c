@@ -91,11 +91,11 @@ static void MainMenu_UpdateProfileTexts( void ) {
 
         activeProfileStats = UI_Profile_GetActiveStats();
         if ( activeProfileStats && UI_Profile_GetRank( activeProfileStats, &activeRank ) && activeRank.current && activeRank.current->name ) {
-                Com_sprintf( s_main.profileRankLine, sizeof( s_main.profileRankLine ), "RANG: %s", activeRank.current->name );
-                Com_sprintf( s_main.profilePointsLine, sizeof( s_main.profilePointsLine ), "PUNKTE: %d", activeProfileStats->playerScore );
+                Com_sprintf( s_main.profileRankLine, sizeof( s_main.profileRankLine ), "RANK: %s", activeRank.current->name );
+                Com_sprintf( s_main.profilePointsLine, sizeof( s_main.profilePointsLine ), "POINTS: %d", activeProfileStats->playerScore );
         } else {
-                Q_strncpyz( s_main.profileRankLine, "RANG: -", sizeof( s_main.profileRankLine ) );
-                Q_strncpyz( s_main.profilePointsLine, "PUNKTE: 0", sizeof( s_main.profilePointsLine ) );
+                Q_strncpyz( s_main.profileRankLine, "RANK: -", sizeof( s_main.profileRankLine ) );
+                Q_strncpyz( s_main.profilePointsLine, "POINTS: 0", sizeof( s_main.profilePointsLine ) );
         }
 
         s_main.profileInfoLine1.string = s_main.profileRankLine;
@@ -526,8 +526,8 @@ void UI_MainMenu( void ) {
         InitMenuText(&s_main.profileAction, ID_PROFILE_ACTION, "CREATE", x - 10, profileY);
         s_main.profileAction.generic.flags = QMF_RIGHT_JUSTIFY;
 
-        Q_strncpyz( s_main.profileRankLine, "RANG: -", sizeof( s_main.profileRankLine ) );
-        Q_strncpyz( s_main.profilePointsLine, "PUNKTE: 0", sizeof( s_main.profilePointsLine ) );
+        Q_strncpyz( s_main.profileRankLine, "RANK: -", sizeof( s_main.profileRankLine ) );
+        Q_strncpyz( s_main.profilePointsLine, "POINTS: 0", sizeof( s_main.profilePointsLine ) );
         InitMenuTextInfo(&s_main.profileInfoLine1, s_main.profileRankLine, x + 20, profileInfoY);
         InitMenuTextInfo(&s_main.profileInfoLine2, s_main.profilePointsLine, x + 20, profileInfoY + 16);
         MainMenu_UpdateProfileTexts();
