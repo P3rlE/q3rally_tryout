@@ -64,6 +64,8 @@ typedef struct {
         menutext_s              profileAction;
         menutext_s              profileInfoLine1;
         menutext_s              profileInfoLine2;
+        char                    profileRankLine[64];
+        char                    profilePointsLine[64];
 
         menutext_s              banner;
         menubitmap_s            carlogo;
@@ -286,6 +288,15 @@ void MainMenu_RunTransition( float frac ) {
         s_main.profileInfoLine1.color = uis.text_color;
         s_main.profileInfoLine2.color = uis.text_color;
 
+        uis.color[0] = color_red[0];
+        uis.color[1] = color_red[1];
+        uis.color[2] = color_red[2];
+        uis.color[3] = color_red[3] * frac;
+        s_main.profileAction.color = uis.color;
+
+        s_main.profileInfoLine1.color = uis.text_color;
+        s_main.profileInfoLine2.color = uis.text_color;
+
         s_main.carlogo.generic.x = (int)(640 - 440 * frac);
 }
 
@@ -382,10 +393,10 @@ InitMenuTextInfo
 static void InitMenuTextInfo(menutext_s *item, char *label, int x, int y) {
 
         item->generic.type = MTYPE_PTEXT;
-        item->generic.flags = QMF_RIGHT_JUSTIFY|QMF_INACTIVE;
+        item->generic.flags = QMF_LEFT_JUSTIFY|QMF_INACTIVE;
         item->generic.x = x;
         item->generic.y = y;
-        item->style = UI_RIGHT|UI_SMALLFONT|UI_DROPSHADOW;
+        item->style = UI_LEFT|UI_SMALLFONT|UI_DROPSHADOW;
         item->string = label;
         item->color = text_color_normal;
 }
@@ -407,8 +418,11 @@ void UI_MainMenu( void ) {
         int selectedMusic;
         char musicFiles[256][MAX_QPATH];
         char musicCommand[MAX_QPATH];
+        const profile_stats_t *activeProfileStats;
+        profile_rank_t activeRank;
         const char *activeProfileName;
         const char *profileLabel;
+        int menuSpacing;
 
 
         numMusicFiles = UI_BuildFileList("music", "ogg", "menumusic", qtrue, qfalse, qfalse, 0, musicFiles);
@@ -450,25 +464,26 @@ void UI_MainMenu( void ) {
         s_main.banner.style                             = UI_CENTER|UI_DROPSHADOW;
 
         x = 175;
-        y = 100;
+        y = 75;
+        menuSpacing = MAIN_MENU_VERTICAL_SPACING - 5;
 
         
 	InitMenuText(&s_main.singleplayer, ID_SINGLEPLAYER, "OFFLINE", x - 10, y + 12);
 
 
-	y += MAIN_MENU_VERTICAL_SPACING;
+	y += menuSpacing;
 	InitMenuText(&s_main.multiplayer, ID_MULTIPLAYER, "ONLINE", x - 10, y + 12);
 
 
-	y += MAIN_MENU_VERTICAL_SPACING;
+	y += menuSpacing;
 	InitMenuText(&s_main.setup, ID_SETUP, "CONFIG", x - 10, y + 12);
 
 
-	y += MAIN_MENU_VERTICAL_SPACING;
+	y += menuSpacing;
 	InitMenuText(&s_main.garage, ID_GARAGE, "THE GARAGE", x - 10, y + 12);
         
         
-	y += MAIN_MENU_VERTICAL_SPACING;
+	y += menuSpacing;
 	InitMenuText(&s_main.demos, ID_DEMOS, "DEMOS", x - 10, y + 12);
 
 
@@ -480,22 +495,26 @@ void UI_MainMenu( void ) {
         s_main.carlogo.width                            = 480;
         s_main.carlogo.height                           = 480;
         
-	y += MAIN_MENU_VERTICAL_SPACING;
+	y += menuSpacing;
 	InitMenuText(&s_main.exit, ID_EXIT, "QUIT", x - 10, y + 12);
 
 
-        y += MAIN_MENU_VERTICAL_SPACING;
+        y += menuSpacing;
         activeProfileName = UI_Profile_GetActiveName();
         profileLabel = (activeProfileName && activeProfileName[0]) ? activeProfileName : "CREATE";
         InitMenuText(&s_main.profileAction, ID_PROFILE_ACTION, (char *)profileLabel, x - 10, y + 12);
 
+        activeProfileStats = UI_Profile_GetActiveStats();
+        if ( activeProfileStats && UI_Profile_GetRank( activeProfileStats, &activeRank ) && activeRank.current && activeRank.current->name ) {
+                Com_sprintf( s_main.profileRankLine, sizeof( s_main.profileRankLine ), "RANG: %s", activeRank.current->name );
+                Com_sprintf( s_main.profilePointsLine, sizeof( s_main.profilePointsLine ), "PUNKTE: %d", activeProfileStats->playerScore );
+        } else {
+                Q_strncpyz( s_main.profileRankLine, "RANG: -", sizeof( s_main.profileRankLine ) );
+                Q_strncpyz( s_main.profilePointsLine, "PUNKTE: 0", sizeof( s_main.profilePointsLine ) );
+        }
 
-        y += 22;
-        InitMenuTextInfo(&s_main.profileInfoLine1, "PROFILE", x - 10, y + 12);
-
-
-        y += 16;
-        InitMenuTextInfo(&s_main.profileInfoLine2, "CLICK TO MANAGE", x - 10, y + 12);
+        InitMenuTextInfo(&s_main.profileInfoLine1, s_main.profileRankLine, x + 20, y + 6);
+        InitMenuTextInfo(&s_main.profileInfoLine2, s_main.profilePointsLine, x + 20, y + 22);
 
 
         Menu_AddItem( &s_main.menu,     &s_main.banner );
