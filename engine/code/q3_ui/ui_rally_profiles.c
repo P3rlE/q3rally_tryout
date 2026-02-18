@@ -18,16 +18,15 @@
 #define PROFILE_OVERLAY_PANEL_X          ( ( PROFILE_OVERLAY_SCREEN_WIDTH - PROFILE_OVERLAY_PANEL_WIDTH ) / 2 )
 #define PROFILE_OVERLAY_PANEL_Y          ( ( PROFILE_OVERLAY_SCREEN_HEIGHT - PROFILE_OVERLAY_PANEL_HEIGHT ) / 2 )
 
-#define PROFILE_OVERLAY_TITLE_OFFSET            0
-#define PROFILE_OVERLAY_LIST_OFFSET             60
-#define PROFILE_OVERLAY_NAMEFIELD_OFFSET        182
-#define PROFILE_OVERLAY_BUTTON_ROW_OFFSET       228
-#define PROFILE_OVERLAY_STATUS_OFFSET           274
-#define PROFILE_OVERLAY_GUIDE_PRIMARY_OFFSET    296
-#define PROFILE_OVERLAY_GUIDE_SECONDARY_OFFSET  314
-#define PROFILE_OVERLAY_GUIDE_EMPTY_OFFSET      304
-#define PROFILE_OVERLAY_GUIDE_HINT_OFFSET       332
-#define PROFILE_OVERLAY_CONTENT_SPAN            PROFILE_OVERLAY_GUIDE_HINT_OFFSET
+#define PROFILE_OVERLAY_TITLE_OFFSET            14
+#define PROFILE_OVERLAY_SECTION_OFFSET          56
+#define PROFILE_OVERLAY_LIST_OFFSET             84
+#define PROFILE_OVERLAY_NAMEFIELD_OFFSET        132
+#define PROFILE_OVERLAY_CREATE_BUTTON_OFFSET    184
+#define PROFILE_OVERLAY_LIST_ACTION_OFFSET      216
+#define PROFILE_OVERLAY_DELETE_BUTTON_OFFSET    238
+#define PROFILE_OVERLAY_STATUS_OFFSET           306
+#define PROFILE_OVERLAY_CONTENT_SPAN            PROFILE_OVERLAY_STATUS_OFFSET
 
 static vec4_t overlayBackdropColor = { 0.0f, 0.0f, 0.0f, 0.18f };
 static vec4_t overlayBackgroundColor = { 0.11f, 0.11f, 0.11f, 0.78f };
@@ -886,23 +885,23 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->contentBaseY = PROFILE_OVERLAY_PANEL_Y +
         (PROFILE_OVERLAY_PANEL_HEIGHT - PROFILE_OVERLAY_CONTENT_SPAN) / 2;
 
-    overlay->title.generic.type = MTYPE_BTEXT;
+    overlay->title.generic.type = MTYPE_PTEXT;
     overlay->title.generic.flags = QMF_INACTIVE;
     overlay->title.generic.x = 320;
     overlay->title.generic.y = overlay->contentBaseY + PROFILE_OVERLAY_TITLE_OFFSET;
     overlay->title.string = "PROFILE SELECTION";
     overlay->title.color = text_color_normal;
-    overlay->title.style = UI_CENTER | UI_BIGFONT;
+    overlay->title.style = UI_CENTER | UI_SMALLFONT;
 
     overlay->list.generic.type = MTYPE_SCROLLLIST;
     overlay->list.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS | QMF_SMALLFONT;
     overlay->list.generic.id = ID_PROFILE_LIST;
     overlay->list.generic.callback = UI_ProfileOverlay_MenuEvent;
-    overlay->list.generic.x = 320;
+    overlay->list.generic.x = 228;
     overlay->list.generic.y = overlay->contentBaseY + PROFILE_OVERLAY_LIST_OFFSET;
     overlay->list.curvalue = 0;
     overlay->list.itemnames = overlay->listItems;
-    overlay->list.width = 24;
+    overlay->list.width = 18;
     overlay->list.height = 6;
     overlay->list.columns = 1;
     overlay->list.separation = 0;
@@ -910,7 +909,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->nameField.generic.type = MTYPE_FIELD;
     overlay->nameField.generic.id = ID_PROFILE_NAME;
     overlay->nameField.generic.flags = QMF_SMALLFONT | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
-    overlay->nameField.generic.x = 320;
+    overlay->nameField.generic.x = 412;
     overlay->nameField.generic.y = overlay->contentBaseY + PROFILE_OVERLAY_NAMEFIELD_OFFSET;
     overlay->nameField.generic.name = "NEW PROFILE";
     overlay->nameField.generic.callback = NULL;
@@ -929,8 +928,8 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->createButton.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
     overlay->createButton.generic.id = ID_PROFILE_CREATE;
     overlay->createButton.generic.callback = UI_ProfileOverlay_MenuEvent;
-    overlay->createButton.generic.x = 248;
-    overlay->createButton.generic.y = overlay->contentBaseY + PROFILE_OVERLAY_BUTTON_ROW_OFFSET;
+    overlay->createButton.generic.x = 412;
+    overlay->createButton.generic.y = overlay->contentBaseY + PROFILE_OVERLAY_CREATE_BUTTON_OFFSET;
     overlay->createButton.string = "CREATE";
     overlay->createButton.style = UI_CENTER | UI_SMALLFONT;
     overlay->createButton.color = text_color_normal;
@@ -939,8 +938,8 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->deleteButton.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
     overlay->deleteButton.generic.id = ID_PROFILE_DELETE;
     overlay->deleteButton.generic.callback = UI_ProfileOverlay_MenuEvent;
-    overlay->deleteButton.generic.x = 320;
-    overlay->deleteButton.generic.y = overlay->contentBaseY + PROFILE_OVERLAY_BUTTON_ROW_OFFSET;
+    overlay->deleteButton.generic.x = 228;
+    overlay->deleteButton.generic.y = overlay->contentBaseY + PROFILE_OVERLAY_DELETE_BUTTON_OFFSET;
     overlay->deleteButton.string = "DELETE";
     overlay->deleteButton.style = UI_CENTER | UI_SMALLFONT;
     overlay->deleteButton.color = text_color_normal;
@@ -949,8 +948,8 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->selectButton.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
     overlay->selectButton.generic.id = ID_PROFILE_SELECT;
     overlay->selectButton.generic.callback = UI_ProfileOverlay_MenuEvent;
-    overlay->selectButton.generic.x = 392;
-    overlay->selectButton.generic.y = overlay->contentBaseY + PROFILE_OVERLAY_BUTTON_ROW_OFFSET;
+    overlay->selectButton.generic.x = 228;
+    overlay->selectButton.generic.y = overlay->contentBaseY + PROFILE_OVERLAY_LIST_ACTION_OFFSET;
     overlay->selectButton.string = "SELECT";
     overlay->selectButton.style = UI_CENTER | UI_SMALLFONT;
     overlay->selectButton.color = text_color_normal;
@@ -1126,39 +1125,30 @@ static void UI_ProfileOverlay_Draw( void ) {
                                    s_profileOverlay.statusColor );
     }
 
-    if ( s_profileOverlay.profileCount > 0 ) {
-        UI_DrawProportionalString( 320,
-                                   s_profileOverlay.contentBaseY + PROFILE_OVERLAY_GUIDE_PRIMARY_OFFSET,
-                                   "Profil auswählen: Markieren und ENTER/SELECT drücken",
-                                   UI_CENTER | UI_SMALLFONT,
-                                   text_color_normal );
-        UI_DrawProportionalString( 320,
-                                   s_profileOverlay.contentBaseY + PROFILE_OVERLAY_GUIDE_SECONDARY_OFFSET,
-                                   "Neues Profil erstellen: Namen eingeben und CREATE drücken",
-                                   UI_CENTER | UI_SMALLFONT,
-                                   text_color_normal );
-    } else {
-        UI_DrawProportionalString( 320,
-                                   s_profileOverlay.contentBaseY + PROFILE_OVERLAY_GUIDE_EMPTY_OFFSET,
-                                   "Kein Profil vorhanden: Name eingeben und CREATE drücken",
-                                   UI_CENTER | UI_SMALLFONT | UI_PULSE,
-                                   text_color_highlight );
+    UI_DrawProportionalString( 228,
+                               s_profileOverlay.contentBaseY + PROFILE_OVERLAY_SECTION_OFFSET,
+                               "PROFILES",
+                               UI_CENTER | UI_SMALLFONT,
+                               text_color_normal );
+    UI_DrawProportionalString( 412,
+                               s_profileOverlay.contentBaseY + PROFILE_OVERLAY_SECTION_OFFSET,
+                               "CREATE NEW",
+                               UI_CENTER | UI_SMALLFONT,
+                               text_color_normal );
+
+    UI_DrawRect( 320,
+                 PROFILE_OVERLAY_PANEL_Y + 46,
+                 1,
+                 PROFILE_OVERLAY_PANEL_HEIGHT - 90,
+                 overlayBorderColor );
+
+    if ( s_profileOverlay.profileCount <= 0 ) {
         UI_DrawRect( s_profileOverlay.nameField.generic.x - 84,
                      s_profileOverlay.nameField.generic.y + 14,
                      168,
                      22,
                      text_color_highlight );
-        UI_DrawProportionalString( 320,
-                                   s_profileOverlay.contentBaseY + PROFILE_OVERLAY_GUIDE_SECONDARY_OFFSET,
-                                   "CREATE ist der erste Schritt",
-                                   UI_CENTER | UI_SMALLFONT,
-                                   text_color_normal );
     }
-    UI_DrawProportionalString( 320,
-                                   s_profileOverlay.contentBaseY + PROFILE_OVERLAY_GUIDE_HINT_OFFSET,
-                                   "Edit profile details later under CONFIG -> PLAYER -> PROFILE",
-                                   UI_CENTER | UI_SMALLFONT,
-                                   text_color_normal );
 }
 
 static void UI_ProfileOverlay_DrawNameField( void *self ) {
