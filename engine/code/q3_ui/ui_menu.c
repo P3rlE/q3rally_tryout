@@ -168,7 +168,7 @@ void MainMenu_Update( void ){
 
         trap_Cvar_VariableStringBuffer( "rim", s_main.rimskin, sizeof( s_main.rimskin ) );
         trap_Cvar_VariableStringBuffer( "head", s_main.headskin, sizeof( s_main.headskin ) );
-       
+
         MainMenu_UpdateModel();
 }
 
@@ -421,7 +421,7 @@ and that local cinematics are killed
 ===============
 */
 void UI_MainMenu( void ) {
-	
+
 	int x;
 	int y;
         int numMusicFiles;
@@ -477,7 +477,7 @@ void UI_MainMenu( void ) {
         y = 75;
         menuSpacing = MAIN_MENU_VERTICAL_SPACING - 5;
 
-        
+
 	InitMenuText(&s_main.singleplayer, ID_SINGLEPLAYER, "OFFLINE", x - 10, y + 12);
 
 
@@ -491,8 +491,8 @@ void UI_MainMenu( void ) {
 
 	y += menuSpacing;
 	InitMenuText(&s_main.garage, ID_GARAGE, "THE GARAGE", x - 10, y + 12);
-        
-        
+
+
 	y += menuSpacing;
 	InitMenuText(&s_main.demos, ID_DEMOS, "DEMOS", x - 10, y + 12);
 
@@ -504,7 +504,7 @@ void UI_MainMenu( void ) {
         s_main.carlogo.generic.y                        = 0;
         s_main.carlogo.width                            = 480;
         s_main.carlogo.height                           = 480;
-        
+
 	y += menuSpacing;
 	InitMenuText(&s_main.exit, ID_EXIT, "QUIT", x - 10, y + 12);
 
