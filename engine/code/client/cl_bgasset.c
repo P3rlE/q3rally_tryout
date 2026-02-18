@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CL_BGASSET_CACHE_DIR "ui_cache"
+#define CL_BGASSET_CACHE_DIR BASEGAME "/ui_cache"
 #define CL_BGASSET_CACHE_INDEX CL_BGASSET_CACHE_DIR "/cache_index.txt"
 #define CL_BGASSET_CACHE_PREFIX CL_BGASSET_CACHE_DIR "/"
 #define CL_BGASSET_MAX_URL 512
@@ -238,7 +238,7 @@ static void CL_BGAsset_LoadCacheIndex(clBgAssetCacheEntry_t *entries, int *entry
 
 	*entryCount = 0;
 
-	length = FS_FOpenFileRead(CL_BGASSET_CACHE_INDEX, &file, qfalse);
+	length = FS_SV_FOpenFileRead(CL_BGASSET_CACHE_INDEX, &file);
 	if (length <= 0) {
 		return;
 	}
@@ -290,7 +290,7 @@ static void CL_BGAsset_SaveCacheIndex(const clBgAssetCacheEntry_t *entries, int 
 	int i;
 	const char *header = "# url\tlocal_path\tetag\tlast_modified\tcrc\ttimestamp\n";
 
-	file = FS_FOpenFileWrite(CL_BGASSET_CACHE_INDEX);
+	file = FS_SV_FOpenFileWrite(CL_BGASSET_CACHE_INDEX);
 	if (!file) {
 		return;
 	}
@@ -405,7 +405,7 @@ static unsigned CL_BGAsset_ComputeChecksum(const char *path, int maxSize) {
 	unsigned checksum = 0;
 	byte *buffer;
 
-	length = FS_FOpenFileRead(path, &file, qfalse);
+	length = FS_SV_FOpenFileRead(path, &file);
 	if (length <= 0) {
 		return 0;
 	}
@@ -619,7 +619,7 @@ static qboolean CL_BGAsset_ValidateImageFile(const char *path, int maxSize, char
 		return qfalse;
 	}
 
-	length = FS_FOpenFileRead(path, &file, qfalse);
+	length = FS_SV_FOpenFileRead(path, &file);
 	if (length <= 0) {
 		Q_strncpyz(error, "Download failed", errorSize);
 		return qfalse;
@@ -680,7 +680,7 @@ static size_t CL_BGAsset_WriteCallback(void *buffer, size_t size, size_t nmemb, 
 	}
 
 	if (!ctx->file) {
-		ctx->file = FS_FOpenFileWrite(ctx->tempPath);
+		ctx->file = FS_SV_FOpenFileWrite(ctx->tempPath);
 		if (!ctx->file) {
 			ctx->sizeExceeded = qtrue;
 			return 0;
@@ -781,7 +781,7 @@ static void CL_BGAsset_StartDownload(const char *url) {
 		if (!CL_BGAsset_IsSafeRelativePath(cachedEntry.localPath) ||
 			Q_stricmpn(cachedEntry.localPath, CL_BGASSET_CACHE_PREFIX, strlen(CL_BGASSET_CACHE_PREFIX))) {
 			hasCache = qfalse;
-		} else if (!FS_FileExists(cachedEntry.localPath)) {
+		} else if (!FS_SV_FileExists(cachedEntry.localPath)) {
 			hasCache = qfalse;
 		}
 	}
@@ -907,7 +907,7 @@ static void CL_BGAsset_HandleComplete(CURLcode result) {
 		return;
 	}
 
-	FS_Rename(cl_bgasset.tempPath, cl_bgasset.localPath);
+	FS_SV_Rename(cl_bgasset.tempPath, cl_bgasset.localPath, qfalse);
 	checksum = CL_BGAsset_ComputeChecksum(cl_bgasset.localPath, cl_bgasset.maxSize);
 	CL_BGAsset_UpdateCacheEntry(cl_bgasset.lastURL, cl_bgasset.localPath, etag, lastModified, checksum);
 	CL_BGAsset_SetState("ready");

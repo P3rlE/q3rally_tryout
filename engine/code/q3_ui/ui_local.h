@@ -839,7 +839,6 @@ extern vmCvar_t	ui_menuBackEnable;
 extern vmCvar_t	ui_menuBackRefreshSec;
 extern vmCvar_t	ui_menuBackPath;
 extern vmCvar_t	ui_menuBackState;
-extern vmCvar_t	ui_menuBackError;
 
 void UI_ProfileOverlay_InitSession( void );
 void UI_ProfileOverlay_MaybeShow( void );

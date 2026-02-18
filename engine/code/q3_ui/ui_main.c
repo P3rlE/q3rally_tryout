@@ -230,7 +230,6 @@ vmCvar_t	ui_menuBackEnable;
 vmCvar_t	ui_menuBackRefreshSec;
 vmCvar_t	ui_menuBackPath;
 vmCvar_t	ui_menuBackState;
-vmCvar_t	ui_menuBackError;
 vmCvar_t	ui_cdkeychecked;
 vmCvar_t	ui_ioq3;
 
@@ -348,7 +347,6 @@ static cvarTable_t		cvarTable[] = {
 	{ &ui_menuBackRefreshSec, "ui_menuBackRefreshSec", "0", CVAR_ARCHIVE },
 	{ &ui_menuBackPath, "ui_menuBackPath", "", CVAR_TEMP },
 	{ &ui_menuBackState, "ui_menuBackState", "idle", CVAR_TEMP },
-	{ &ui_menuBackError, "ui_menuBackError", "", CVAR_TEMP },
 	{ &ui_cdkeychecked, "ui_cdkeychecked", "0", CVAR_ROM },
 	{ &ui_ioq3, "ui_ioq3", "1", CVAR_ROM }
 };
