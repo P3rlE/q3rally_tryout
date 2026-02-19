@@ -18,7 +18,7 @@
 #define PROFILE_OVERLAY_PANEL_X          ( ( PROFILE_OVERLAY_SCREEN_WIDTH - PROFILE_OVERLAY_PANEL_WIDTH ) / 2 )
 #define PROFILE_OVERLAY_PANEL_Y          ( ( PROFILE_OVERLAY_SCREEN_HEIGHT - PROFILE_OVERLAY_PANEL_HEIGHT ) / 2 )
 
-#define PROFILE_OVERLAY_TITLE_OFFSET            -1
+#define PROFILE_OVERLAY_TITLE_OFFSET            -6
 #define PROFILE_OVERLAY_SECTION_OFFSET          56
 #define PROFILE_OVERLAY_LIST_OFFSET             94
 #define PROFILE_OVERLAY_NAMEFIELD_OFFSET        94
@@ -877,7 +877,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
 
     Com_Memset( overlay, 0, sizeof( *overlay ) );
 
-    overlay->menu.fullscreen = qfalse;
+    overlay->menu.fullscreen = qtrue;
     overlay->menu.wrapAround = qfalse;
     overlay->menu.draw = UI_ProfileOverlay_Draw;
     overlay->menu.key = UI_ProfileOverlay_Key;
@@ -889,7 +889,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->title.generic.flags = QMF_INACTIVE;
     overlay->title.generic.x = 320;
     overlay->title.generic.y = overlay->contentBaseY + PROFILE_OVERLAY_TITLE_OFFSET;
-    overlay->title.string = "PROFILE SELECTION";
+    overlay->title.string = "PROFILE SELECT / CREATE MENU";
     overlay->title.color = text_color_normal;
     overlay->title.style = UI_CENTER | UI_SMALLFONT;
 
@@ -911,7 +911,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->nameField.generic.flags = QMF_SMALLFONT | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
     overlay->nameField.generic.x = 412;
     overlay->nameField.generic.y = overlay->contentBaseY + PROFILE_OVERLAY_NAMEFIELD_OFFSET;
-    overlay->nameField.generic.name = "NEW PROFILE";
+    overlay->nameField.generic.name = "ENTER PROFILE NAME";
     overlay->nameField.generic.callback = NULL;
     overlay->nameField.generic.ownerdraw = UI_ProfileOverlay_DrawNameField;
     overlay->nameField.generic.statusbar = NULL;
