@@ -554,7 +554,8 @@ void UI_MainMenu( void ) {
 
         UI_ProfileOverlay_MaybeShow();
 
-
-        uis.transitionIn = uis.realtime;
+        if ( uis.activemenu == &s_main.menu ) {
+                uis.transitionIn = uis.realtime;
+        }
 
 }
