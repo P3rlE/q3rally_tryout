@@ -29,9 +29,8 @@
 #define PROFILE_OVERLAY_CONTENT_SPAN            PROFILE_OVERLAY_STATUS_OFFSET
 #define PROFILE_OVERLAY_STATUS_TIMEOUT_MS       1800
 
-static vec4_t overlayBackdropColor = { 0.0f, 0.0f, 0.0f, 0.18f };
-static vec4_t overlayBackgroundColor = { 0.11f, 0.11f, 0.11f, 0.78f };
-static vec4_t overlayBorderColor = { 1.0f, 1.0f, 1.0f, 0.20f };
+static vec4_t overlayBackgroundColor = { 0.11f, 0.11f, 0.11f, 0.60f };
+static vec4_t overlayBorderColor = { 1.0f, 1.0f, 1.0f, 0.28f };
 static vec4_t statusNormalColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 static vec4_t statusErrorColor  = { 1.0f, 0.3f, 0.3f, 1.0f };
 static vec4_t statusInfoColor   = { 1.0f, 0.8f, 0.3f, 1.0f };
@@ -1194,13 +1193,6 @@ static qboolean UI_ProfileOverlay_HandleSelect( void ) {
 }
 
 static void UI_ProfileOverlay_Draw( void ) {
-    trap_R_SetColor( overlayBackdropColor );
-    UI_FillRect( 0,
-                 0,
-                 PROFILE_OVERLAY_SCREEN_WIDTH,
-                 PROFILE_OVERLAY_SCREEN_HEIGHT,
-                 overlayBackdropColor );
-
     trap_R_SetColor( overlayBackgroundColor );
     UI_FillRect( PROFILE_OVERLAY_PANEL_X,
                  PROFILE_OVERLAY_PANEL_Y,
