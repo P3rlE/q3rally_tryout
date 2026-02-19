@@ -330,6 +330,8 @@ MainMenu_Prepare
 */
 void MainMenu_Prepare( void ) {
 
+        UI_Profile_MarkStatsDirty();
+        MainMenu_UpdateProfileTexts();
         MainMenu_Update();
 
 }

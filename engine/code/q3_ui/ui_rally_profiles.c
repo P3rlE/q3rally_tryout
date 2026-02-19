@@ -27,6 +27,7 @@
 #define PROFILE_OVERLAY_DELETE_BUTTON_OFFSET    238
 #define PROFILE_OVERLAY_STATUS_OFFSET           306
 #define PROFILE_OVERLAY_CONTENT_SPAN            PROFILE_OVERLAY_STATUS_OFFSET
+#define PROFILE_OVERLAY_STATUS_TIMEOUT_MS       1800
 
 static vec4_t overlayBackdropColor = { 0.0f, 0.0f, 0.0f, 0.18f };
 static vec4_t overlayBackgroundColor = { 0.11f, 0.11f, 0.11f, 0.78f };
@@ -53,12 +54,14 @@ typedef struct {
     menutext_s      deleteButton;
     menutext_s      selectButton;
     char            profileNames[MAX_PROFILE_FILES][PROFILE_MAX_NAME];
+    char            profileDisplayNames[MAX_PROFILE_FILES][PROFILE_MAX_NAME + 16];
     const char     *listItems[MAX_PROFILE_FILES + 1];
     int             profileCount;
     int             contentBaseY;
 
     char            statusLine[128];
     vec4_t          statusColor;
+    int             statusExpireTime;
     qboolean        forcingSelection;
 } profileOverlay_t;
 
@@ -70,6 +73,8 @@ static sfxHandle_t UI_ProfileOverlay_Key( int key );
 static void UI_ProfileOverlay_FocusNameField( void );
 static void UI_ProfileOverlay_DrawNameField( void *self );
 static void UI_ProfileOverlay_EnsureSelectionVisible( void );
+static int UI_ProfileOverlay_RecentRank( const char *name );
+static void UI_ProfileOverlay_RememberRecent( const char *name );
 static qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *info, const profile_stats_t *stats );
 static void UI_Profile_ParseString( const char *buffer, const char *key, char *out, int outSize, const char *defaultValue );
 qboolean UI_Profile_GetRank( const profile_stats_t *stats, profile_rank_t *outRank );
@@ -278,13 +283,76 @@ static void UI_Profile_SetFavoriteCvars( const profile_info_t *info ) {
 static void UI_ProfileOverlay_SetStatus( const char *text, const vec4_t color ) {
     if ( text ) {
         Q_strncpyz( s_profileOverlay.statusLine, text, sizeof( s_profileOverlay.statusLine ) );
+        s_profileOverlay.statusExpireTime = uis.realtime + PROFILE_OVERLAY_STATUS_TIMEOUT_MS;
     } else {
         s_profileOverlay.statusLine[0] = '\0';
+        s_profileOverlay.statusExpireTime = 0;
     }
     if ( color ) {
         Vector4Copy( color, s_profileOverlay.statusColor );
     } else {
         Vector4Copy( statusNormalColor, s_profileOverlay.statusColor );
+    }
+}
+
+static int UI_ProfileOverlay_RecentRank( const char *name ) {
+    int i;
+
+    if ( !name || !name[0] ) {
+        return 9999;
+    }
+
+    for ( i = 0; i < 4; ++i ) {
+        char cvarName[20];
+        char cvarValue[PROFILE_MAX_NAME];
+
+        Com_sprintf( cvarName, sizeof( cvarName ), "profile_recent%d", i + 1 );
+        trap_Cvar_VariableStringBuffer( cvarName, cvarValue, sizeof( cvarValue ) );
+
+        if ( cvarValue[0] && !Q_stricmp( cvarValue, name ) ) {
+            return i;
+        }
+    }
+
+    return 9999;
+}
+
+static void UI_ProfileOverlay_RememberRecent( const char *name ) {
+    char recent[4][PROFILE_MAX_NAME];
+    int i;
+    int writeIndex = 1;
+
+    if ( !name || !name[0] ) {
+        return;
+    }
+
+    for ( i = 0; i < 4; ++i ) {
+        char cvarName[20];
+
+        Com_sprintf( cvarName, sizeof( cvarName ), "profile_recent%d", i + 1 );
+        trap_Cvar_VariableStringBuffer( cvarName, recent[i], sizeof( recent[i] ) );
+    }
+
+    trap_Cvar_Set( "profile_recent1", name );
+
+    for ( i = 0; i < 4 && writeIndex < 4; ++i ) {
+        char cvarName[20];
+
+        if ( !recent[i][0] || !Q_stricmp( recent[i], name ) ) {
+            continue;
+        }
+
+        Com_sprintf( cvarName, sizeof( cvarName ), "profile_recent%d", writeIndex + 1 );
+        trap_Cvar_Set( cvarName, recent[i] );
+        writeIndex++;
+    }
+
+    while ( writeIndex < 4 ) {
+        char cvarName[20];
+
+        Com_sprintf( cvarName, sizeof( cvarName ), "profile_recent%d", writeIndex + 1 );
+        trap_Cvar_Set( cvarName, "" );
+        writeIndex++;
     }
 }
 
@@ -820,11 +888,40 @@ static void UI_ProfileOverlay_LoadProfiles( void ) {
         trap_FS_FCloseFile( file );
 
         Q_strncpyz( s_profileOverlay.profileNames[s_profileOverlay.profileCount], name, PROFILE_MAX_NAME );
-        s_profileOverlay.listItems[s_profileOverlay.profileCount] = s_profileOverlay.profileNames[s_profileOverlay.profileCount];
         s_profileOverlay.profileCount++;
         ptr += len + 1;
     }
 
+    if ( s_profileOverlay.profileCount > 1 ) {
+        for ( i = 0; i < s_profileOverlay.profileCount - 1; ++i ) {
+            int j;
+
+            for ( j = i + 1; j < s_profileOverlay.profileCount; ++j ) {
+                const char *left = s_profileOverlay.profileNames[i];
+                const char *right = s_profileOverlay.profileNames[j];
+                int leftRank = UI_ProfileOverlay_RecentRank( left );
+                int rightRank = UI_ProfileOverlay_RecentRank( right );
+
+                if ( rightRank < leftRank || ( rightRank == leftRank && Q_stricmp( right, left ) < 0 ) ) {
+                    char swap[PROFILE_MAX_NAME];
+
+                    Q_strncpyz( swap, s_profileOverlay.profileNames[i], sizeof( swap ) );
+                    Q_strncpyz( s_profileOverlay.profileNames[i], s_profileOverlay.profileNames[j], PROFILE_MAX_NAME );
+                    Q_strncpyz( s_profileOverlay.profileNames[j], swap, PROFILE_MAX_NAME );
+                }
+            }
+        }
+    }
+
+    for ( i = 0; i < s_profileOverlay.profileCount; ++i ) {
+        if ( activeName[0] && !Q_stricmp( s_profileOverlay.profileNames[i], activeName ) ) {
+            Com_sprintf( s_profileOverlay.profileDisplayNames[i], sizeof( s_profileOverlay.profileDisplayNames[i] ), "> %s", s_profileOverlay.profileNames[i] );
+        } else {
+            Q_strncpyz( s_profileOverlay.profileDisplayNames[i], s_profileOverlay.profileNames[i], sizeof( s_profileOverlay.profileDisplayNames[i] ) );
+        }
+
+        s_profileOverlay.listItems[i] = s_profileOverlay.profileDisplayNames[i];
+    }
     s_profileOverlay.listItems[s_profileOverlay.profileCount] = NULL;
 
     s_profileOverlay.list.generic.flags &= ~QMF_GRAYED;
@@ -1029,6 +1126,7 @@ static qboolean UI_ProfileOverlay_HandleCreate( void ) {
     }
 
     UI_ProfileOverlay_SetStatus( "Profile created", statusInfoColor );
+    UI_ProfileOverlay_RememberRecent( name );
     return qtrue;
 }
 
@@ -1087,7 +1185,10 @@ static qboolean UI_ProfileOverlay_HandleSelect( void ) {
     Q_strncpyz( uis.activeProfile, name, sizeof( uis.activeProfile ) );
     uis.profileOverlayShown = qtrue;
     UI_Profile_MarkStatsDirty();
+    UI_ProfileOverlay_RememberRecent( name );
+    UI_ProfileOverlay_SetStatus( "Profile selected", statusInfoColor );
 
+    MainMenu_Prepare();
     UI_PopMenu();
     return qtrue;
 }
@@ -1116,11 +1217,15 @@ static void UI_ProfileOverlay_Draw( void ) {
     Menu_Draw( &s_profileOverlay.menu );
 
     if ( s_profileOverlay.statusLine[0] ) {
-        UI_DrawProportionalString( 320,
-                                   s_profileOverlay.contentBaseY + PROFILE_OVERLAY_STATUS_OFFSET,
-                                   s_profileOverlay.statusLine,
-                                   UI_CENTER | UI_SMALLFONT,
-                                   s_profileOverlay.statusColor );
+        if ( s_profileOverlay.statusExpireTime > 0 && uis.realtime >= s_profileOverlay.statusExpireTime ) {
+            UI_ProfileOverlay_SetStatus( NULL, NULL );
+        } else {
+            UI_DrawProportionalString( 320,
+                                       s_profileOverlay.contentBaseY + PROFILE_OVERLAY_STATUS_OFFSET,
+                                       s_profileOverlay.statusLine,
+                                       UI_CENTER | UI_SMALLFONT,
+                                       s_profileOverlay.statusColor );
+        }
     }
 
     UI_DrawProportionalString( 228,
