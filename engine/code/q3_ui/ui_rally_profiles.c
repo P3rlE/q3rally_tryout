@@ -18,11 +18,11 @@
 #define PROFILE_OVERLAY_PANEL_X          ( ( PROFILE_OVERLAY_SCREEN_WIDTH - PROFILE_OVERLAY_PANEL_WIDTH ) / 2 )
 #define PROFILE_OVERLAY_PANEL_Y          ( ( PROFILE_OVERLAY_SCREEN_HEIGHT - PROFILE_OVERLAY_PANEL_HEIGHT ) / 2 )
 
-#define PROFILE_OVERLAY_TITLE_OFFSET            14
+#define PROFILE_OVERLAY_TITLE_OFFSET            -1
 #define PROFILE_OVERLAY_SECTION_OFFSET          56
-#define PROFILE_OVERLAY_LIST_OFFSET             84
-#define PROFILE_OVERLAY_NAMEFIELD_OFFSET        132
-#define PROFILE_OVERLAY_CREATE_BUTTON_OFFSET    184
+#define PROFILE_OVERLAY_LIST_OFFSET             94
+#define PROFILE_OVERLAY_NAMEFIELD_OFFSET        94
+#define PROFILE_OVERLAY_CREATE_BUTTON_OFFSET    216
 #define PROFILE_OVERLAY_LIST_ACTION_OFFSET      216
 #define PROFILE_OVERLAY_DELETE_BUTTON_OFFSET    238
 #define PROFILE_OVERLAY_STATUS_OFFSET           306
@@ -877,7 +877,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
 
     Com_Memset( overlay, 0, sizeof( *overlay ) );
 
-    overlay->menu.fullscreen = qtrue;
+    overlay->menu.fullscreen = qfalse;
     overlay->menu.wrapAround = qfalse;
     overlay->menu.draw = UI_ProfileOverlay_Draw;
     overlay->menu.key = UI_ProfileOverlay_Key;
