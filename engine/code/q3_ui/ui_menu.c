@@ -85,9 +85,11 @@ static void MainMenu_UpdateProfileTexts( void ) {
         const profile_stats_t *activeProfileStats;
         profile_rank_t activeRank;
         const char *activeProfileName;
+        qboolean hasActiveProfile;
 
         activeProfileName = UI_Profile_GetActiveName();
-        s_main.profileAction.string = ( activeProfileName && activeProfileName[0] ) ? (char *)activeProfileName : "CREATE";
+        hasActiveProfile = UI_Profile_HasActiveProfile();
+        s_main.profileAction.string = ( hasActiveProfile && activeProfileName && activeProfileName[0] ) ? (char *)activeProfileName : "CREATE";
 
         activeProfileStats = UI_Profile_GetActiveStats();
         if ( activeProfileStats && UI_Profile_GetRank( activeProfileStats, &activeRank ) && activeRank.current && activeRank.current->name ) {
