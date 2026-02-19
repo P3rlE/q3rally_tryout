@@ -841,7 +841,6 @@ static void UI_ProfileOverlay_LoadProfiles( void ) {
         s_profileOverlay.list.generic.flags |= QMF_GRAYED;
         s_profileOverlay.deleteButton.generic.flags |= QMF_GRAYED;
         s_profileOverlay.selectButton.generic.flags |= QMF_GRAYED;
-        s_profileOverlay.forcingSelection = qtrue;
         UI_ProfileOverlay_SetStatus( "Create a new profile to continue", statusInfoColor );
         if ( uis.profileOverlayShown ) {
             UI_ProfileOverlay_FocusNameField();
@@ -863,7 +862,6 @@ static void UI_ProfileOverlay_LoadProfiles( void ) {
     }
     s_profileOverlay.list.curvalue = index;
     UI_ProfileOverlay_EnsureSelectionVisible();
-    s_profileOverlay.forcingSelection = qfalse;
     UI_ProfileOverlay_SetStatus( "Select a profile to continue", statusNormalColor );
 }
 
@@ -1168,11 +1166,7 @@ static void UI_ProfileOverlay_DrawNameField( void *self ) {
 }
 
 static qboolean UI_ProfileOverlay_CanDismiss( void ) {
-    if ( s_profileOverlay.forcingSelection ) {
-        return qfalse;
-    }
-
-    return UI_Profile_HasActiveProfile();
+    return (qboolean)!s_profileOverlay.forcingSelection;
 }
 
 static sfxHandle_t UI_ProfileOverlay_Key( int key ) {
@@ -1233,10 +1227,7 @@ void UI_ProfileOverlay_ClearState( void ) {
 
 void UI_ProfileOverlay_Open( qboolean forceSelection ) {
     UI_ProfileOverlay_SetupMenu();
-
-    if ( forceSelection ) {
-        s_profileOverlay.forcingSelection = qtrue;
-    }
+    s_profileOverlay.forcingSelection = forceSelection;
 
     trap_Cvar_Set( "ui_profileOverlaySeen", "1" );
     trap_Cvar_Update( &ui_profileOverlaySeen );
