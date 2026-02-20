@@ -839,7 +839,7 @@ qboolean isRallyNonDMRace( void );
 qboolean isRaceObserver( int clientNum );
 void G_PrintMapStats( gentity_t *player, qboolean generateArenaFile, char *longname );
 void G_Ghost_InitForMap( const char *mapname );
-const ghostRecord_t *G_Ghost_FindForVehicle( const char *vehicleClass );
+const ghostRecord_t *G_Ghost_FindBestRecord( void );
 void G_Ghost_AnnounceForClient( gentity_t *ent );
 
 //
