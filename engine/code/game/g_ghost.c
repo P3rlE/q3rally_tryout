@@ -5,6 +5,11 @@
 #define GHOST_DIRECTORY "ghosts"
 #define MAX_GHOST_FILE_SIZE ( 2 * 1024 * 1024 )
 
+// Ghost frames are recorded at ~6ms intervals. At up to 200 km/h (~2200 units/s)
+// consecutive frames are only ~13 units apart, which causes bots to crawl.
+// Keep every Nth frame to get ~240 units between waypoints for smooth navigation.
+#define GHOST_WAYPOINT_STRIDE 10
+
 static ghostRecord_t s_levelGhosts[MAX_GHOST_RECORDS_PER_MAP];
 static int s_levelGhostCount = 0;
 static ghostBotRoute_t s_botRoute;
@@ -41,6 +46,45 @@ static int G_Ghost_ParseInt( const char *text ) {
     }
 
     return value;
+}
+
+static float G_Ghost_ParseFloat( const char **text ) {
+    float value = 0.0f;
+    float frac = 0.0f;
+    float divisor = 1.0f;
+    int negative = 0;
+
+    if ( !text || !*text ) {
+        return 0.0f;
+    }
+
+    while ( **text == ' ' || **text == '\t' ) {
+        ++( *text );
+    }
+
+    if ( **text == '-' ) {
+        negative = 1;
+        ++( *text );
+    } else if ( **text == '+' ) {
+        ++( *text );
+    }
+
+    while ( **text >= '0' && **text <= '9' ) {
+        value = value * 10.0f + ( **text - '0' );
+        ++( *text );
+    }
+
+    if ( **text == '.' ) {
+        ++( *text );
+        while ( **text >= '0' && **text <= '9' ) {
+            frac = frac * 10.0f + ( **text - '0' );
+            divisor *= 10.0f;
+            ++( *text );
+        }
+        value += frac / divisor;
+    }
+
+    return negative ? -value : value;
 }
 
 static void G_Ghost_Reset( void ) {
@@ -82,6 +126,14 @@ static char *G_Ghost_NextLine( char **cursor ) {
         }
     } else {
         *cursor = end;
+    }
+
+    // Strip trailing \r for Windows line endings (\r\n read as single \n)
+    {
+        int trimLen = G_Ghost_Strlen( line );
+        while ( trimLen > 0 && line[trimLen - 1] == '\r' ) {
+            line[--trimLen] = '\0';
+        }
     }
 
     return line;
@@ -147,6 +199,9 @@ static qboolean G_Ghost_LoadBotRouteFromFile( const ghostRecord_t *record, ghost
     char *cursor;
     char *line;
     char mapName[MAX_QPATH] = "";
+    int frameCount = 0;
+    ghostWaypoint_t lastWp;
+    qboolean hasLastWp = qfalse;
 
     if ( !record || !record->path[0] || !outRoute ) {
         return qfalse;
@@ -208,16 +263,55 @@ static qboolean G_Ghost_LoadBotRouteFromFile( const ghostRecord_t *record, ghost
             continue;
         }
 
-        if ( outRoute->numWaypoints < MAX_GHOST_BOT_WAYPOINTS ) {
-            ghostWaypoint_t *wp = &outRoute->waypoints[outRoute->numWaypoints];
-            float ox, oy, oz;
-            int parsed;
+        {
+            const char *p = line;
+            ghostWaypoint_t wp;
 
-            parsed = sscanf( line, "%d %f %f %f", &wp->timeOffset, &ox, &oy, &oz );
-            if ( parsed == 4 ) {
-                wp->origin[0] = ox;
-                wp->origin[1] = oy;
-                wp->origin[2] = oz;
+            // Require a digit to start (skip non-frame lines)
+            while ( *p == ' ' || *p == '\t' ) {
+                ++p;
+            }
+            if ( *p < '0' || *p > '9' ) {
+                continue;
+            }
+
+            // Parse timeOffset
+            wp.timeOffset = 0;
+            while ( *p >= '0' && *p <= '9' ) {
+                wp.timeOffset = wp.timeOffset * 10 + ( *p - '0' );
+                ++p;
+            }
+
+            // Parse x, y, z (remaining fields are ignored)
+            wp.origin[0] = G_Ghost_ParseFloat( &p );
+            wp.origin[1] = G_Ghost_ParseFloat( &p );
+            wp.origin[2] = G_Ghost_ParseFloat( &p );
+
+            if ( *p != ' ' && *p != '\t' && *p != '\0' ) {
+                continue;
+            }
+
+            // Keep every GHOST_WAYPOINT_STRIDE-th frame; always keep the first
+            if ( frameCount == 0 || ( frameCount % GHOST_WAYPOINT_STRIDE ) == 0 ) {
+                if ( outRoute->numWaypoints < MAX_GHOST_BOT_WAYPOINTS ) {
+                    outRoute->waypoints[outRoute->numWaypoints] = wp;
+                    outRoute->numWaypoints++;
+                }
+            }
+
+            // Track the very last valid frame so we can append it as the final waypoint
+            lastWp = wp;
+            hasLastWp = qtrue;
+            frameCount++;
+        }
+    }
+
+    // Always append the last frame so the route ends exactly at the finish line
+    if ( hasLastWp && outRoute->numWaypoints > 0 ) {
+        ghostWaypoint_t *prev = &outRoute->waypoints[outRoute->numWaypoints - 1];
+        if ( prev->timeOffset != lastWp.timeOffset ) {
+            if ( outRoute->numWaypoints < MAX_GHOST_BOT_WAYPOINTS ) {
+                outRoute->waypoints[outRoute->numWaypoints] = lastWp;
                 outRoute->numWaypoints++;
             }
         }
@@ -299,13 +393,11 @@ void G_Ghost_InitForMap( const char *mapname ) {
                     continue;
                 }
 
-                if ( length >= sizeof( buffer ) ) {
-                    trap_FS_FCloseFile( f );
-                    continue;
+                {
+                    int readLen = length < (int)sizeof( buffer ) - 1 ? length : (int)sizeof( buffer ) - 1;
+                    trap_FS_Read( buffer, readLen, f );
+                    buffer[readLen] = '\0';
                 }
-
-                trap_FS_Read( buffer, length, f );
-                buffer[length] = '\0';
                 trap_FS_FCloseFile( f );
 
                 if ( G_Ghost_ParseHeader( buffer, mapname, filenameLooksLikeMap, &s_levelGhosts[s_levelGhostCount] ) ) {
