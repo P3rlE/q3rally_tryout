@@ -1974,10 +1974,15 @@ void SP_func_breakable( gentity_t *ent ) {
 
 	G_SpawnInt( "dmg", "0", &ent->damage );
 	G_SpawnInt( "radius", "120", &ent->splashRadius );	//120 is default splash radius of a rocket
+	G_SpawnInt( "breakdamagefilter", "0", &ent->breakableDamageFilter );
 
 	debrisFlags = ent->spawnflags & (1 | 2 | 4 | 8 | 16 | 32 | 64 | 128);
 	if ( debrisFlags && (debrisFlags & (debrisFlags - 1)) ) {
 		G_Printf("WARNING: %s has multiple debris spawnflags set; using the first compatible flag.\n", ent->classname);
+	}
+
+	if ( ent->breakableDamageFilter & ~7 ) {
+		G_Printf("WARNING: %s has unsupported breakdamagefilter bits (%i).\n", ent->classname, ent->breakableDamageFilter);
 	}
 	
 	G_SpawnString("breaksound", "", &noise);

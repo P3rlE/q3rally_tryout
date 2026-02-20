@@ -169,6 +169,7 @@ struct gentity_s {
 	qboolean	takedamage;
 
 	int			damage;
+	int			breakableDamageFilter;	// func_breakable damage filter bitmask (0 = allow all)
 	int			splashDamage;	// quad will increase this without increasing radius
 	int			splashRadius;
 	int			methodOfDeath;
