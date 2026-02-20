@@ -3025,7 +3025,11 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	float		f, dist, speed, actualSpeed, dot, curvature;
 	//float		accel, a_normal;
 	int			throttleChange;
+<<<<<<< codex/implement-racing-bot-waypoint-system-using-ghost-files-ju0s9c
 	const ghostBotRoute_t *ghostRoute;
+=======
+	ghostBotRoute_t ghostRoute;
+>>>>>>> master
 
 	if (BotIsObserver(bs)) {
 		BotClearActivateGoalStack(bs);
@@ -3050,15 +3054,26 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	if( lastCheckpoint < 1 )
 		lastCheckpoint = level.numCheckpoints;
 
+<<<<<<< codex/implement-racing-bot-waypoint-system-using-ghost-files-ju0s9c
 	if ( G_Ghost_GetBotRoute( &ghostRoute ) && ghostRoute ) {
+=======
+	if ( G_Ghost_GetBotRoute( &ghostRoute ) ) {
+>>>>>>> master
 		int bestIndex = -1;
 		float bestDistSq = 0.0f;
 		int i;
 
+<<<<<<< codex/implement-racing-bot-waypoint-system-using-ghost-files-ju0s9c
 		for ( i = 0; i < ghostRoute->numWaypoints; ++i ) {
 			vec3_t deltaToWaypoint;
 			float distSq;
 			VectorSubtract( ghostRoute->waypoints[i].origin, bs->cur_ps.origin, deltaToWaypoint );
+=======
+		for ( i = 0; i < ghostRoute.numWaypoints; ++i ) {
+			vec3_t deltaToWaypoint;
+			float distSq;
+			VectorSubtract( ghostRoute.waypoints[i].origin, bs->cur_ps.origin, deltaToWaypoint );
+>>>>>>> master
 			distSq = VectorLengthSquared( deltaToWaypoint );
 			if ( bestIndex < 0 || distSq < bestDistSq ) {
 				bestIndex = i;
@@ -3068,6 +3083,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 
 		if ( bestIndex >= 0 ) {
 			int lookAheadIndex = bestIndex + 12;
+<<<<<<< codex/implement-racing-bot-waypoint-system-using-ghost-files-ju0s9c
 			if ( lookAheadIndex >= ghostRoute->numWaypoints ) {
 				lookAheadIndex = ghostRoute->numWaypoints - 1;
 			}
@@ -3079,6 +3095,19 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				float dt;
 				VectorSubtract( ghostRoute->waypoints[bestIndex + 1].origin, ghostRoute->waypoints[bestIndex].origin, seg );
 				dt = (float)( ghostRoute->waypoints[bestIndex + 1].timeOffset - ghostRoute->waypoints[bestIndex].timeOffset );
+=======
+			if ( lookAheadIndex >= ghostRoute.numWaypoints ) {
+				lookAheadIndex = ghostRoute.numWaypoints - 1;
+			}
+			VectorSubtract( ghostRoute.waypoints[lookAheadIndex].origin, bs->cur_ps.origin, dir );
+			dir[2] = 0;
+			actualSpeed = VectorLength( bs->cur_ps.velocity );
+			if ( bestIndex + 1 < ghostRoute.numWaypoints ) {
+				vec3_t seg;
+				float dt;
+				VectorSubtract( ghostRoute.waypoints[bestIndex + 1].origin, ghostRoute.waypoints[bestIndex].origin, seg );
+				dt = (float)( ghostRoute.waypoints[bestIndex + 1].timeOffset - ghostRoute.waypoints[bestIndex].timeOffset );
+>>>>>>> master
 				if ( dt > 0.0f ) {
 					speed = 1000.0f * VectorLength( seg ) / dt;
 				} else {
