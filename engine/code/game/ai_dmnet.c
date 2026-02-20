@@ -3068,24 +3068,82 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 
 		if ( bestIndex >= 0 ) {
 			int lookAheadIndex = bestIndex + 12;
+			int speedStartIndex;
+			int speedEndIndex;
+			float smoothedSpeed = 0.0f;
+			int smoothedSegments = 0;
+			float curvatureScore = 0.0f;
+			int curvatureSamples = 0;
 			if ( lookAheadIndex >= ghostRoute->numWaypoints ) {
 				lookAheadIndex = ghostRoute->numWaypoints - 1;
 			}
 			VectorSubtract( ghostRoute->waypoints[lookAheadIndex].origin, bs->cur_ps.origin, dir );
 			dir[2] = 0;
 			actualSpeed = VectorLength( bs->cur_ps.velocity );
-			if ( bestIndex + 1 < ghostRoute->numWaypoints ) {
+
+			speedStartIndex = bestIndex;
+			speedEndIndex = bestIndex + 10;
+			if ( speedEndIndex >= ghostRoute->numWaypoints - 1 ) {
+				speedEndIndex = ghostRoute->numWaypoints - 2;
+			}
+
+			for ( i = speedStartIndex; i <= speedEndIndex; ++i ) {
 				vec3_t seg;
 				float dt;
-				VectorSubtract( ghostRoute->waypoints[bestIndex + 1].origin, ghostRoute->waypoints[bestIndex].origin, seg );
-				dt = (float)( ghostRoute->waypoints[bestIndex + 1].timeOffset - ghostRoute->waypoints[bestIndex].timeOffset );
-				if ( dt > 0.0f ) {
-					speed = 1000.0f * VectorLength( seg ) / dt;
-				} else {
-					speed = actualSpeed;
+				float segSpeed;
+
+				VectorSubtract( ghostRoute->waypoints[i + 1].origin, ghostRoute->waypoints[i].origin, seg );
+				dt = (float)( ghostRoute->waypoints[i + 1].timeOffset - ghostRoute->waypoints[i].timeOffset );
+				if ( dt <= 0.0f ) {
+					continue;
 				}
+
+				segSpeed = 1000.0f * VectorLength( seg ) / dt;
+				smoothedSpeed += segSpeed;
+				smoothedSegments++;
+			}
+
+			if ( smoothedSegments > 0 ) {
+				speed = smoothedSpeed / smoothedSegments;
 			} else {
 				speed = actualSpeed;
+			}
+
+			if ( speedEndIndex - speedStartIndex >= 2 ) {
+				for ( i = speedStartIndex; i + 2 <= speedEndIndex + 1; ++i ) {
+					vec3_t segA, segB;
+					float lenA, lenB;
+					float segDot;
+
+					VectorSubtract( ghostRoute->waypoints[i + 1].origin, ghostRoute->waypoints[i].origin, segA );
+					VectorSubtract( ghostRoute->waypoints[i + 2].origin, ghostRoute->waypoints[i + 1].origin, segB );
+					lenA = VectorLength( segA );
+					lenB = VectorLength( segB );
+
+					if ( lenA < 1.0f || lenB < 1.0f ) {
+						continue;
+					}
+
+					segDot = DotProduct( segA, segB ) / ( lenA * lenB );
+					if ( segDot > 1.0f ) {
+						segDot = 1.0f;
+					} else if ( segDot < -1.0f ) {
+						segDot = -1.0f;
+					}
+
+					curvatureScore += ( 1.0f - segDot );
+					curvatureSamples++;
+				}
+
+				if ( curvatureSamples > 0 ) {
+					float avgCurvature = curvatureScore / curvatureSamples;
+					float speedScale = 1.0f - avgCurvature * 0.30f;
+
+					if ( speedScale < 0.55f ) {
+						speedScale = 0.55f;
+					}
+					speed *= speedScale;
+				}
 			}
 
 			vectoangles( dir, angles );
@@ -3203,5 +3261,4 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	return qtrue;
 }
 // END
-
 
