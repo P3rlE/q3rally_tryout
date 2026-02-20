@@ -3027,7 +3027,6 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	int			throttleChange;
 	const ghostBotRoute_t *ghostRoute;
 
-
 	if (BotIsObserver(bs)) {
 		BotClearActivateGoalStack(bs);
 		AIEnter_Observer(bs, "moveToNextCheckpoint: observer");
@@ -3052,7 +3051,6 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 		lastCheckpoint = level.numCheckpoints;
 
 	if ( G_Ghost_GetBotRoute( &ghostRoute ) && ghostRoute ) {
-
 		int bestIndex = -1;
 		float bestDistSq = 0.0f;
 		int i;
@@ -3061,7 +3059,6 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			vec3_t deltaToWaypoint;
 			float distSq;
 			VectorSubtract( ghostRoute->waypoints[i].origin, bs->cur_ps.origin, deltaToWaypoint );
-
 			distSq = VectorLengthSquared( deltaToWaypoint );
 			if ( bestIndex < 0 || distSq < bestDistSq ) {
 				bestIndex = i;
@@ -3082,7 +3079,6 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				float dt;
 				VectorSubtract( ghostRoute->waypoints[bestIndex + 1].origin, ghostRoute->waypoints[bestIndex].origin, seg );
 				dt = (float)( ghostRoute->waypoints[bestIndex + 1].timeOffset - ghostRoute->waypoints[bestIndex].timeOffset );
-
 				if ( dt > 0.0f ) {
 					speed = 1000.0f * VectorLength( seg ) / dt;
 				} else {
