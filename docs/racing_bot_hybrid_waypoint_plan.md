@@ -6,14 +6,21 @@ Das aktuelle Bot-Racing-System soll für Mapper deutlich einfacher werden, ohne 
 
 **Hybrid-Ansatz:**
 
-1. **Record & Bake:** Mapper fährt eine gute Referenzrunde und speichert daraus eine `maps/<map>.bpd`-Linie.
+1. **Ghost-Converter (bevorzugt):** Eine vorhandene `.ghost`-Runde wird automatisiert in eine `maps/<map>.bpd`-Linie umgewandelt.
 2. **Flexible Ingame-Navigation:** Bots nutzen die Linie als Primärziel, dürfen aber lokal ausweichen (Hindernisse, andere Fahrer, blockierte Linie).
+3. **Fallback Record & Bake:** Falls keine Ghost-Datei vorliegt, kann die Linie weiterhin direkt im Spiel aufgezeichnet und als `.bpd` gespeichert werden.
 
 ---
 
 ## Warum dieser Mix sinnvoll ist
 
-### Vorteile von "Record & Bake"
+### Vorteile von "Ghost-Converter"
+
+- Noch weniger Aufwand für Mapper: bestehende Bestzeiten/Trainingsrunden können direkt genutzt werden.
+- Reproduzierbare Qualität: dieselbe `.ghost` erzeugt deterministisch dieselbe Bot-Linie.
+- Ideal für Community-Workflow: Ghost teilen → Converter laufen lassen → sofort botfähig testen.
+
+### Vorteile von "Record & Bake" (Fallback)
 
 - Sehr niedrige Einstiegshürde für Mapper (keine manuelle Bezier-Feinarbeit als Pflicht).
 - Linie repräsentiert real fahrbare Route statt theoretischer Kurve.
@@ -37,7 +44,21 @@ Das aktuelle Bot-Racing-System soll für Mapper deutlich einfacher werden, ohne 
 
 **Regel:** Falls `.bpd` fehlt, fallback auf bestehendes Verhalten mit `bezierPos`/`bezierDir` aus den Map-Entities.
 
-## 2) Recording-Workflow für Mapper
+## 2) Autoring-Workflow für Mapper
+
+**Bevorzugter Weg (Ghost → BPD):**
+
+- Eingabe: `ghost/<map>/<run>.ghost` (oder bestehender Ghost-Pfad)
+- Tool: `ghost2bpd <input.ghost> <output.bpd>`
+- Ausgabe: `maps/<map>.bpd`
+
+Beim Konvertieren:
+
+- Ghost-Samples werden resampled/geglättet.
+- Samples werden auf Checkpoint-Segmente projiziert.
+- Bézier-Handles werden automatisch aus Tangenten/Krümmung geschätzt.
+
+**Fallback im Spiel (Record & Bake):**
 
 Neuer Dev-Workflow (Konsole):
 
@@ -78,15 +99,17 @@ Wenn Bot stark von der Linie abweicht:
 
 ## Konkrete Implementierungsschritte
 
-1. **Dev Commands ergänzen** in `g_cmds.c`:
+1. **Ghost-Converter ergänzen** (neues Tool oder Script):
+   - `.ghost` einlesen, glätten, segmentieren, `.bpd` exportieren.
+2. **Dev Commands ergänzen** in `g_cmds.c`:
    - Aufnahme starten/stoppen/speichern.
-2. **Recorder/Exporter** in `g_rally_tools.c`:
+3. **Recorder/Exporter** in `g_rally_tools.c`:
    - Sample sammeln, glätten, als `.bpd` schreiben.
-3. **Lader robust machen** in `g_rally_tools.c`/`g_spawn.c`:
+4. **Lader robust machen** in `g_rally_tools.c`/`g_spawn.c`:
    - saubere Fallback-Regeln und klare Warnungen im Log.
-4. **Bot-Lenkung erweitern** in `ai_dmnet.c`:
+5. **Bot-Lenkung erweitern** in `ai_dmnet.c`:
    - Korridorziel statt Punktziel, plus Recovery-Logik.
-5. **Debug-Overlay/Logs**:
+6. **Debug-Overlay/Logs**:
    - aktuelle Ideallinie, Korridor und gewähltes Bot-Ziel sichtbar machen.
 
 ---
@@ -94,16 +117,16 @@ Wenn Bot stark von der Linie abweicht:
 ## Mapper-UX (kurz)
 
 - Strecke mit normalen `rally_checkpoint`-Volumes bauen.
-- 1 gute Runde aufnehmen.
-- Save ausführen, `.bpd` prüfen.
+- Bestehende Ghost-Runde per `ghost2bpd` in `.bpd` umwandeln.
 - Bot-Testlauf starten.
+- Nur falls nötig: Ingame aufnehmen und kritische Segmente nachjustieren.
 - Bei Problemen nur einzelne Segmente nachjustieren statt komplette Strecke neu zu verdrahten.
 
 ---
 
 ## Akzeptanzkriterien
 
-- Mapper kann für neue Racing-Map ohne manuelle Handle-Feinarbeit eine nutzbare Bot-Linie erzeugen.
+- Mapper kann für neue Racing-Map aus einer vorhandenen `.ghost` ohne manuelle Handle-Feinarbeit eine nutzbare Bot-Linie erzeugen.
 - Bots bleiben bei Verkehr/Hindernissen nicht dauerhaft auf der Ideallinie hängen.
 - Nach Ausweichmanövern kehren Bots stabil auf Race-Fortschrittskurs zurück.
 - Ohne `.bpd` bleibt Legacy-Verhalten vollständig funktionsfähig.

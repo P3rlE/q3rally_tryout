@@ -173,7 +173,7 @@
 
 ## 6.4 Racing Bot Hybrid Waypoint (Plan)
 
-- Neuer Zielansatz: **Record & Bake** (Referenzrunde aufzeichnen → `maps/<map>.bpd`) kombiniert mit **flexibler Ingame-Abweichung** der Bots für Hindernisse und Verkehr.
+- Neuer Zielansatz: **Ghost-Converter** (`.ghost` → `maps/<map>.bpd`) kombiniert mit **flexibler Ingame-Abweichung** der Bots für Hindernisse und Verkehr; Ingame-Record bleibt als Fallback sinnvoll.
 - Details und Umsetzungsschritte im separaten Plan: `docs/racing_bot_hybrid_waypoint_plan.md`.
 
 ## 7. Future Ideas / Ideen für zukünftige Updates
