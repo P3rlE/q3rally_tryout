@@ -195,6 +195,7 @@ static qboolean G_Ghost_LoadBotRouteFromFile( const ghostRecord_t *record, ghost
             outRoute->bestTimeMs = G_Ghost_ParseInt( value );
             continue;
         }
+    }
 
         if ( !Q_stricmpn( line, "frames", 6 ) ) {
             continue;
