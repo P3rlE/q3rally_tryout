@@ -1879,11 +1879,16 @@ void Break_Breakable(gentity_t *ent, gentity_t *other) {
 	vec3_t center;
 	int count = 0;
 	int sound = 0;
-	int spawnflags = 0;
+	int spawnflags;
 	gentity_t *tmp, *tmp2;
-	int type = EV_EMIT_DEBRIS_LIGHT;
 
-	if ( other != ent->activator && !strcmp( other->classname, "func_breakable" ) ) {
+	if ( !other ) {
+		other = ent;
+	}
+
+	spawnflags = ent->spawnflags;
+
+	if ( other != ent->activator && other->classname && !strcmp( other->classname, "func_breakable" ) ) {
 		//if the splash damage from another func_breakable is causing this func_breakable to break
 		//then delay the break to get a nice chain explosion effect
 		ent->activator = other;
@@ -1900,13 +1905,13 @@ void Break_Breakable(gentity_t *ent, gentity_t *other) {
 	ent->takedamage = qfalse;
 	ent->s.eType = ET_INVISIBLE;
 	G_UseTargets( ent, other );
+	G_UseTargets2( ent, other );
 
 
 
 	//need to store properties of the entity in separate variables because we're going to free the entity
 	if ( ent->count > 0) {
 		count = ent->count;
-		spawnflags = ent->spawnflags;
 	}
 
 
@@ -1956,6 +1961,7 @@ A bmodel that just sits there, doing nothing. It is removed when it received a s
 */
 void SP_func_breakable( gentity_t *ent ) {
 	char  *noise;
+	int debrisFlags;
 
 	trap_SetBrushModel( ent, ent->model );
 	InitMover( ent );
@@ -1968,6 +1974,16 @@ void SP_func_breakable( gentity_t *ent ) {
 
 	G_SpawnInt( "dmg", "0", &ent->damage );
 	G_SpawnInt( "radius", "120", &ent->splashRadius );	//120 is default splash radius of a rocket
+	G_SpawnInt( "breakdamagefilter", "0", &ent->breakableDamageFilter );
+
+	debrisFlags = ent->spawnflags & (1 | 2 | 4 | 8 | 16 | 32 | 64 | 128);
+	if ( debrisFlags && (debrisFlags & (debrisFlags - 1)) ) {
+		G_Printf("WARNING: %s has multiple debris spawnflags set; using the first compatible flag.\n", ent->classname);
+	}
+
+	if ( ent->breakableDamageFilter & ~7 ) {
+		G_Printf("WARNING: %s has unsupported breakdamagefilter bits (%i).\n", ent->classname, ent->breakableDamageFilter);
+	}
 	
 	G_SpawnString("breaksound", "", &noise);
 	if (strlen(noise) > 0) {
