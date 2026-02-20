@@ -320,20 +320,14 @@ const ghostRecord_t *G_Ghost_FindBestRecord( void ) {
     return best;
 }
 
-<<<<<<< codex/implement-racing-bot-waypoint-system-using-ghost-files-ju0s9c
 qboolean G_Ghost_GetBotRoute( const ghostBotRoute_t **outRoute ) {
-=======
-qboolean G_Ghost_GetBotRoute( ghostBotRoute_t *outRoute ) {
->>>>>>> master
+
     if ( !outRoute || !s_botRoute.valid ) {
         return qfalse;
     }
 
-<<<<<<< codex/implement-racing-bot-waypoint-system-using-ghost-files-ju0s9c
     *outRoute = &s_botRoute;
-=======
-    *outRoute = s_botRoute;
->>>>>>> master
+
     return qtrue;
 }
 
