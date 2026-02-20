@@ -170,6 +170,9 @@ struct gentity_s {
 
 	int			damage;
 	int			breakableDamageFilter;	// func_breakable damage filter bitmask (0 = allow all)
+	int			breakableMaxHealth;	// func_breakable baseline health for stage calculations
+	int			breakableStages;		// number of pre-break stages to emit (0 disables staged destruction)
+	int			breakableStageEffects;	// staged effect bitmask (1=debris pulse, 2=explosion pulse)
 	int			splashDamage;	// quad will increase this without increasing radius
 	int			splashRadius;
 	int			methodOfDeath;
@@ -733,6 +736,7 @@ gentity_t *fire_prox( gentity_t *self, vec3_t start, vec3_t aimdir );
 void G_RunMover( gentity_t *ent );
 void Touch_DoorTrigger( gentity_t *ent, gentity_t *other, trace_t *trace );
 void Break_Breakable(gentity_t *ent, gentity_t *other);
+void Breakable_EmitStageEffects( gentity_t *ent );
 
 //
 // g_trigger.c

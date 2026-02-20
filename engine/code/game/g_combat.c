@@ -950,6 +950,10 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 	// shootable doors / buttons don't actually have any health
 	if ( targ->s.eType == ET_MOVER ) {
 		if ( !Q_stricmp( targ->classname, "func_breakable" ) ) {
+			int oldHealth;
+			int oldStage;
+			int newStage;
+
 			qboolean allowDamage = qtrue;
 
 			if ( targ->breakableDamageFilter ) {
@@ -975,7 +979,18 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 				return;
 			}
 
+			oldHealth = targ->health;
 			targ->health -= damage;
+
+			if ( targ->breakableStages > 0 && targ->breakableMaxHealth > 0 && oldHealth > 0 && targ->health > 0 ) {
+				oldStage = ( oldHealth * targ->breakableStages ) / targ->breakableMaxHealth;
+				newStage = ( targ->health * targ->breakableStages ) / targ->breakableMaxHealth;
+
+				if ( newStage < oldStage ) {
+					Breakable_EmitStageEffects( targ );
+				}
+			}
+
 			if (targ->health <= 0)
 				Break_Breakable (targ, attacker);
 		} else if ( targ->use && (targ->moverState == MOVER_POS1

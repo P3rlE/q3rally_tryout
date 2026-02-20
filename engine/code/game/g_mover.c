@@ -1948,6 +1948,45 @@ void Break_Breakable(gentity_t *ent, gentity_t *other) {
 	}
 }
 
+/*
+=================
+Breakable_EmitStageEffects
+
+Emit lightweight stage effects while a breakable is being damaged.
+=================
+*/
+void Breakable_EmitStageEffects( gentity_t *ent ) {
+	vec3_t size;
+	vec3_t center;
+	gentity_t *tmp;
+	int spawnflags;
+	int count;
+
+	if ( !ent || ent->breakableStages <= 0 || ent->breakableStageEffects <= 0 ) {
+		return;
+	}
+
+	spawnflags = ent->spawnflags;
+
+	VectorSubtract( ent->r.maxs, ent->r.mins, size );
+	VectorScale( size, 0.5f, size );
+	VectorAdd( ent->r.mins, size, center );
+
+	if ( ent->breakableStageEffects & 1 ) {
+		count = ent->count / (ent->breakableStages + 1);
+		if ( count < 1 ) {
+			count = 1;
+		}
+
+		tmp = G_TempEntity( center, PickDebrisType( spawnflags ) );
+		tmp->s.eventParm = count;
+	}
+
+	if ( ent->breakableStageEffects & 2 ) {
+		G_TempEntity( center, EV_EXPLOSION );
+	}
+}
+
 void Use_Breakable (gentity_t *ent, gentity_t *other, gentity_t *activator) {
 	Break_Breakable( ent, activator );
 }
@@ -1975,6 +2014,9 @@ void SP_func_breakable( gentity_t *ent ) {
 	G_SpawnInt( "dmg", "0", &ent->damage );
 	G_SpawnInt( "radius", "120", &ent->splashRadius );	//120 is default splash radius of a rocket
 	G_SpawnInt( "breakdamagefilter", "0", &ent->breakableDamageFilter );
+	G_SpawnInt( "breakstages", "0", &ent->breakableStages );
+	G_SpawnInt( "breakstageeffects", "1", &ent->breakableStageEffects );
+	ent->breakableMaxHealth = ent->health;
 
 	debrisFlags = ent->spawnflags & (1 | 2 | 4 | 8 | 16 | 32 | 64 | 128);
 	if ( debrisFlags && (debrisFlags & (debrisFlags - 1)) ) {
@@ -1983,6 +2025,15 @@ void SP_func_breakable( gentity_t *ent ) {
 
 	if ( ent->breakableDamageFilter & ~7 ) {
 		G_Printf("WARNING: %s has unsupported breakdamagefilter bits (%i).\n", ent->classname, ent->breakableDamageFilter);
+	}
+
+	if ( ent->breakableStages < 0 ) {
+		G_Printf("WARNING: %s has invalid breakstages (%i), clamping to 0.\n", ent->classname, ent->breakableStages);
+		ent->breakableStages = 0;
+	}
+
+	if ( ent->breakableStageEffects & ~3 ) {
+		G_Printf("WARNING: %s has unsupported breakstageeffects bits (%i).\n", ent->classname, ent->breakableStageEffects);
 	}
 	
 	G_SpawnString("breaksound", "", &noise);
