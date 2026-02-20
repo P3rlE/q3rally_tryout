@@ -1905,6 +1905,7 @@ void Break_Breakable(gentity_t *ent, gentity_t *other) {
 	ent->takedamage = qfalse;
 	ent->s.eType = ET_INVISIBLE;
 	G_UseTargets( ent, other );
+	G_UseTargets2( ent, other );
 
 
 
@@ -1960,6 +1961,7 @@ A bmodel that just sits there, doing nothing. It is removed when it received a s
 */
 void SP_func_breakable( gentity_t *ent ) {
 	char  *noise;
+	int debrisFlags;
 
 	trap_SetBrushModel( ent, ent->model );
 	InitMover( ent );
@@ -1972,6 +1974,11 @@ void SP_func_breakable( gentity_t *ent ) {
 
 	G_SpawnInt( "dmg", "0", &ent->damage );
 	G_SpawnInt( "radius", "120", &ent->splashRadius );	//120 is default splash radius of a rocket
+
+	debrisFlags = ent->spawnflags & (1 | 2 | 4 | 8 | 16 | 32 | 64 | 128);
+	if ( debrisFlags && (debrisFlags & (debrisFlags - 1)) ) {
+		G_Printf("WARNING: %s has multiple debris spawnflags set; using the first compatible flag.\n", ent->classname);
+	}
 	
 	G_SpawnString("breaksound", "", &noise);
 	if (strlen(noise) > 0) {
