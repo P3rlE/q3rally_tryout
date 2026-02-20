@@ -3,9 +3,11 @@
 #define MAX_GHOST_RECORDS_PER_MAP 32
 #define GHOST_FILE_EXTENSION ".ghost"
 #define GHOST_DIRECTORY "ghosts"
+#define MAX_GHOST_FILE_SIZE ( 2 * 1024 * 1024 )
 
 static ghostRecord_t s_levelGhosts[MAX_GHOST_RECORDS_PER_MAP];
 static int s_levelGhostCount = 0;
+static ghostBotRoute_t s_botRoute;
 
 static int G_Ghost_Strlen( const char *text ) {
     int len = 0;
@@ -40,13 +42,52 @@ static int G_Ghost_ParseInt( const char *text ) {
     return value;
 }
 
-static void G_Ghost_Reset(void) {
+static void G_Ghost_Reset( void ) {
     Com_Memset( s_levelGhosts, 0, sizeof( s_levelGhosts ) );
+    Com_Memset( &s_botRoute, 0, sizeof( s_botRoute ) );
     s_levelGhostCount = 0;
+}
+
+static char *G_Ghost_NextLine( char **cursor ) {
+    char *line;
+    char *end;
+
+    if ( !cursor || !*cursor || !( **cursor ) ) {
+        return NULL;
+    }
+
+    line = *cursor;
+
+    while ( *line == ' ' || *line == '\t' ) {
+        ++line;
+    }
+
+    if ( line[0] == '\xEF' && line[1] == '\xBB' && line[2] == '\xBF' ) {
+        line += 3;
+    }
+
+    end = line;
+    while ( *end && *end != '\n' && *end != '\r' ) {
+        ++end;
+    }
+
+    if ( *end ) {
+        char saved = *end;
+        *end = '\0';
+        *cursor = end + 1;
+        if ( saved == '\r' && **cursor == '\n' ) {
+            ++( *cursor );
+        }
+    } else {
+        *cursor = end;
+    }
+
+    return line;
 }
 
 static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, ghostRecord_t *outRecord ) {
     char *cursor;
+    char *line;
     char mapName[MAX_QPATH] = "";
     qboolean hasTime = qfalse;
 
@@ -55,60 +96,32 @@ static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, ghos
     }
 
     cursor = buffer;
-    while ( cursor && *cursor ) {
-        char *lineEnd = cursor;
-        char savedChar;
-
-        while ( *cursor == ' ' || *cursor == '\t' ) {
-            ++cursor;
+    while ( ( line = G_Ghost_NextLine( &cursor ) ) != NULL ) {
+        if ( line[0] == '#' || line[0] == '\0' ) {
+            continue;
         }
 
-        if ( cursor[0] == '\xEF' && cursor[1] == '\xBB' && cursor[2] == '\xBF' ) {
-            cursor += 3;
-        }
-
-        while ( *lineEnd && *lineEnd != '\n' && *lineEnd != '\r' ) {
-            ++lineEnd;
-        }
-
-        savedChar = *lineEnd;
-        *lineEnd = '\0';
-
-        if ( cursor[0] == '#' || cursor[0] == '\0' ) {
-            // skip comments or empty lines
-        } else if ( !Q_stricmpn( cursor, "map", 3 ) ) {
-            const char *value = cursor + 3;
+        if ( !Q_stricmpn( line, "map", 3 ) ) {
+            const char *value = line + 3;
             while ( *value == ' ' || *value == '\t' ) {
                 ++value;
             }
             Q_strncpyz( mapName, value, sizeof( mapName ) );
-        } else if ( !Q_stricmpn( cursor, "vehicle", 7 ) ) {
-            const char *value = cursor + 7;
+        } else if ( !Q_stricmpn( line, "vehicle", 7 ) ) {
+            const char *value = line + 7;
             while ( *value == ' ' || *value == '\t' ) {
                 ++value;
             }
             Q_strncpyz( outRecord->vehicleClass, value, sizeof( outRecord->vehicleClass ) );
-        } else if ( !Q_stricmpn( cursor, "best_time_ms", 12 ) ) {
-            const char *value = cursor + 12;
+        } else if ( !Q_stricmpn( line, "best_time_ms", 12 ) ) {
+            const char *value = line + 12;
             while ( *value == ' ' || *value == '\t' ) {
                 ++value;
             }
             outRecord->bestTimeMs = G_Ghost_ParseInt( value );
             hasTime = outRecord->bestTimeMs > 0;
-        } else if ( !Q_stricmpn( cursor, "frames", 6 ) ) {
-            *lineEnd = savedChar;
-            break; // header parsed
-        }
-
-        *lineEnd = savedChar;
-
-        if ( savedChar == '\0' ) {
+        } else if ( !Q_stricmpn( line, "frames", 6 ) ) {
             break;
-        }
-
-        cursor = lineEnd + 1;
-        if ( savedChar == '\r' && *cursor == '\n' ) {
-            cursor++;
         }
     }
 
@@ -117,6 +130,105 @@ static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, ghos
     }
 
     return hasTime;
+}
+
+static qboolean G_Ghost_LoadBotRouteFromFile( const ghostRecord_t *record, ghostBotRoute_t *outRoute ) {
+    fileHandle_t f;
+    int length;
+    static char buffer[MAX_GHOST_FILE_SIZE + 1];
+    char *cursor;
+    char *line;
+    char mapName[MAX_QPATH] = "";
+
+    if ( !record || !record->path[0] || !outRoute ) {
+        return qfalse;
+    }
+
+    length = trap_FS_FOpenFile( record->path, &f, FS_READ );
+    if ( length <= 0 ) {
+        G_Printf( "G_Ghost: could not open %s for bot route\n", record->path );
+        return qfalse;
+    }
+
+    if ( length > MAX_GHOST_FILE_SIZE ) {
+        trap_FS_FCloseFile( f );
+        G_Printf( "G_Ghost: %s too large for bot route (%d bytes)\n", record->path, length );
+        return qfalse;
+    }
+
+    trap_FS_Read( buffer, length, f );
+    trap_FS_FCloseFile( f );
+    buffer[length] = '\0';
+
+    Com_Memset( outRoute, 0, sizeof( *outRoute ) );
+    Q_strncpyz( outRoute->path, record->path, sizeof( outRoute->path ) );
+
+    cursor = buffer;
+    while ( ( line = G_Ghost_NextLine( &cursor ) ) != NULL ) {
+        if ( line[0] == '#' || line[0] == '\0' ) {
+            continue;
+        }
+
+        if ( !Q_stricmpn( line, "map", 3 ) ) {
+            const char *value = line + 3;
+            while ( *value == ' ' || *value == '\t' ) {
+                ++value;
+            }
+            Q_strncpyz( mapName, value, sizeof( mapName ) );
+            continue;
+        }
+
+        if ( !Q_stricmpn( line, "vehicle", 7 ) ) {
+            const char *value = line + 7;
+            while ( *value == ' ' || *value == '\t' ) {
+                ++value;
+            }
+            Q_strncpyz( outRoute->vehicleClass, value, sizeof( outRoute->vehicleClass ) );
+            continue;
+        }
+
+        if ( !Q_stricmpn( line, "best_time_ms", 12 ) ) {
+            const char *value = line + 12;
+            while ( *value == ' ' || *value == '\t' ) {
+                ++value;
+            }
+            outRoute->bestTimeMs = G_Ghost_ParseInt( value );
+            continue;
+        }
+
+        if ( !Q_stricmpn( line, "frames", 6 ) ) {
+            continue;
+        }
+
+        if ( outRoute->numWaypoints < MAX_GHOST_BOT_WAYPOINTS ) {
+            ghostWaypoint_t *wp = &outRoute->waypoints[outRoute->numWaypoints];
+            float ox, oy, oz;
+            int parsed;
+
+            parsed = sscanf( line, "%d %f %f %f", &wp->timeOffset, &ox, &oy, &oz );
+            if ( parsed == 4 ) {
+                wp->origin[0] = ox;
+                wp->origin[1] = oy;
+                wp->origin[2] = oz;
+                outRoute->numWaypoints++;
+            }
+        }
+    }
+
+    if ( outRoute->numWaypoints < 2 ) {
+        G_Printf( "G_Ghost: %s has no usable bot waypoints\n", record->path );
+        Com_Memset( outRoute, 0, sizeof( *outRoute ) );
+        return qfalse;
+    }
+
+    outRoute->valid = qtrue;
+    G_Printf( "G_Ghost: Bot route ready from %s (%d waypoints, vehicle=%s, map=%s)\n",
+        record->path,
+        outRoute->numWaypoints,
+        outRoute->vehicleClass[0] ? outRoute->vehicleClass : "any",
+        mapName[0] ? mapName : "unknown" );
+
+    return qtrue;
 }
 
 void G_Ghost_InitForMap( const char *mapname ) {
@@ -152,7 +264,6 @@ void G_Ghost_InitForMap( const char *mapname ) {
             continue;
         }
 
-        // Support both <map>.ghost and legacy <map>_<vehicle>.ghost
         Q_strncpyz( cleanName, filename, sizeof( cleanName ) );
         COM_StripExtension( cleanName, cleanName, sizeof( cleanName ) );
         if ( Q_stricmp( cleanName, mapname ) &&
@@ -183,7 +294,16 @@ void G_Ghost_InitForMap( const char *mapname ) {
     if ( s_levelGhostCount == 0 ) {
         G_Printf( "G_Ghost: No matching ghost files for map %s\n", mapname );
     } else {
+        const ghostRecord_t *best;
+
         G_Printf( "G_Ghost: Loaded %d ghost record(s) for %s\n", s_levelGhostCount, mapname );
+
+        best = G_Ghost_FindBestRecord();
+        if ( best && G_Ghost_LoadBotRouteFromFile( best, &s_botRoute ) ) {
+            G_Printf( "G_Ghost: Bot route source set to %s\n", s_botRoute.path );
+        } else {
+            G_Printf( "G_Ghost: Bot route unavailable for map %s\n", mapname );
+        }
     }
 }
 
@@ -198,6 +318,15 @@ const ghostRecord_t *G_Ghost_FindBestRecord( void ) {
     }
 
     return best;
+}
+
+qboolean G_Ghost_GetBotRoute( const ghostBotRoute_t **outRoute ) {
+    if ( !outRoute || !s_botRoute.valid ) {
+        return qfalse;
+    }
+
+    *outRoute = &s_botRoute;
+    return qtrue;
 }
 
 void G_Ghost_AnnounceForClient( gentity_t *ent ) {
