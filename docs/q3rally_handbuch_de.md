@@ -170,6 +170,12 @@
 - `trigger_fuel` – Brush trigger that refuels vehicles over time. `rate` sets fill speed (default 10 units/s) and `max` defines the target level; refueling stops at the cap.【F:engine/code/game/g_trigger.c†L421-L463】
 - Hazard fields (Oil/Fire/Bio) – Spawned by rearfire weapons. Oil lowers friction in a radius, bio sludge expands with toxin damage, and fire ignites oil slicks; mappers can script triggers or spawn items for them.【F:engine/code/game/g_rally_hazard.c†L24-L133】
 
+
+## 6.4 Racing Bot Hybrid Waypoint (Plan)
+
+- Neuer Zielansatz: **Ghost-Converter** (`.ghost` → `maps/<map>.bpd`) kombiniert mit **flexibler Ingame-Abweichung** der Bots für Hindernisse und Verkehr; Ingame-Record bleibt als Fallback sinnvoll.
+- Details und Umsetzungsschritte im separaten Plan: `docs/racing_bot_hybrid_waypoint_plan.md`.
+
 ## 7. Future Ideas / Ideen für zukünftige Updates
 
 1. Dynamic race classes – Server scripts could parse `.arena` data to auto-build Sprint, GP, or Battle playlists (e.g., Sprint = `laps <= 1`, Battle = armed).【F:baseq3r/scripts/q3r_a_to_b_test.arena†L21-L36】【F:baseq3r/scripts/q3r_lavafalls.arena†L24-L39】
