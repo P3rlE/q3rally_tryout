@@ -87,10 +87,11 @@ static char *G_Ghost_NextLine( char **cursor ) {
     return line;
 }
 
-static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, ghostRecord_t *outRecord ) {
+static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, qboolean allowNoMapHeader, ghostRecord_t *outRecord ) {
     char *cursor;
     char *line;
     char mapName[MAX_QPATH] = "";
+    qboolean hasMapHeader = qfalse;
 
     if ( !buffer || !outRecord ) {
         return qfalse;
@@ -108,6 +109,7 @@ static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, ghos
                 ++value;
             }
             Q_strncpyz( mapName, value, sizeof( mapName ) );
+            hasMapHeader = qtrue;
         } else if ( !Q_stricmpn( line, "vehicle", 7 ) ) {
             const char *value = line + 7;
             while ( *value == ' ' || *value == '\t' ) {
@@ -125,8 +127,14 @@ static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, ghos
         }
     }
 
-    if ( expectedMap && expectedMap[0] && mapName[0] && Q_stricmp( expectedMap, mapName ) ) {
-        return qfalse;
+    if ( expectedMap && expectedMap[0] ) {
+        if ( hasMapHeader ) {
+            if ( Q_stricmp( expectedMap, mapName ) ) {
+                return qfalse;
+            }
+        } else if ( !allowNoMapHeader ) {
+            return qfalse;
+        }
     }
 
     return qtrue;
@@ -252,50 +260,64 @@ void G_Ghost_InitForMap( const char *mapname ) {
         return;
     }
 
-    fileCount = trap_FS_GetFileList( GHOST_DIRECTORY, GHOST_FILE_EXTENSION, fileList, sizeof( fileList ) );
-    if ( fileCount <= 0 ) {
-        G_Printf( "G_Ghost: No ghost files found for map %s\n", mapname );
-        return;
-    }
+    {
+        const char *ghostDirectories[] = { GHOST_DIRECTORY, "maps" };
+        int dirIndex;
+        int discoveredFiles = 0;
 
-    offset = 0;
-    for ( i = 0; i < fileCount && s_levelGhostCount < MAX_GHOST_RECORDS_PER_MAP; i++ ) {
-        const char *filename = fileList + offset;
-        char cleanName[MAX_QPATH];
-        fileHandle_t f;
-        int length;
-        char buffer[16 * 1024 + 1];
+        for ( dirIndex = 0; dirIndex < (int)( sizeof( ghostDirectories ) / sizeof( ghostDirectories[0] ) ) && s_levelGhostCount < MAX_GHOST_RECORDS_PER_MAP; ++dirIndex ) {
+            const char *ghostDir = ghostDirectories[dirIndex];
 
-        offset += G_Ghost_Strlen( filename ) + 1;
+            fileCount = trap_FS_GetFileList( ghostDir, GHOST_FILE_EXTENSION, fileList, sizeof( fileList ) );
+            if ( fileCount <= 0 ) {
+                continue;
+            }
 
-        if ( !filename[0] ) {
-            continue;
+            discoveredFiles += fileCount;
+            offset = 0;
+            for ( i = 0; i < fileCount && s_levelGhostCount < MAX_GHOST_RECORDS_PER_MAP; i++ ) {
+                const char *filename = fileList + offset;
+                char cleanName[MAX_QPATH];
+                qboolean filenameLooksLikeMap;
+                fileHandle_t f;
+                int length;
+                char buffer[16 * 1024 + 1];
+
+                offset += G_Ghost_Strlen( filename ) + 1;
+
+                if ( !filename[0] ) {
+                    continue;
+                }
+
+                Q_strncpyz( cleanName, filename, sizeof( cleanName ) );
+                COM_StripExtension( cleanName, cleanName, sizeof( cleanName ) );
+                filenameLooksLikeMap = ( !Q_stricmp( cleanName, mapname ) ||
+                    ( !Q_stricmpn( cleanName, mapname, G_Ghost_Strlen( mapname ) ) && cleanName[G_Ghost_Strlen( mapname )] == '_' ) );
+
+                length = trap_FS_FOpenFile( va( "%s/%s", ghostDir, filename ), &f, FS_READ );
+                if ( length <= 0 ) {
+                    continue;
+                }
+
+                if ( length >= sizeof( buffer ) ) {
+                    trap_FS_FCloseFile( f );
+                    continue;
+                }
+
+                trap_FS_Read( buffer, length, f );
+                buffer[length] = '\0';
+                trap_FS_FCloseFile( f );
+
+                if ( G_Ghost_ParseHeader( buffer, mapname, filenameLooksLikeMap, &s_levelGhosts[s_levelGhostCount] ) ) {
+                    Q_strncpyz( s_levelGhosts[s_levelGhostCount].path, va( "%s/%s", ghostDir, filename ), sizeof( s_levelGhosts[s_levelGhostCount].path ) );
+                    ++s_levelGhostCount;
+                }
+            }
         }
 
-        Q_strncpyz( cleanName, filename, sizeof( cleanName ) );
-        COM_StripExtension( cleanName, cleanName, sizeof( cleanName ) );
-        if ( Q_stricmp( cleanName, mapname ) &&
-             ( Q_stricmpn( cleanName, mapname, G_Ghost_Strlen( mapname ) ) || cleanName[G_Ghost_Strlen( mapname )] != '_' ) ) {
-            continue;
-        }
-
-        length = trap_FS_FOpenFile( va( "%s/%s", GHOST_DIRECTORY, filename ), &f, FS_READ );
-        if ( length <= 0 ) {
-            continue;
-        }
-
-        if ( length >= sizeof( buffer ) ) {
-            trap_FS_FCloseFile( f );
-            continue;
-        }
-
-        trap_FS_Read( buffer, length, f );
-        buffer[length] = '\0';
-        trap_FS_FCloseFile( f );
-
-        if ( G_Ghost_ParseHeader( buffer, mapname, &s_levelGhosts[s_levelGhostCount] ) ) {
-            Q_strncpyz( s_levelGhosts[s_levelGhostCount].path, va( "%s/%s", GHOST_DIRECTORY, filename ), sizeof( s_levelGhosts[s_levelGhostCount].path ) );
-            ++s_levelGhostCount;
+        if ( discoveredFiles <= 0 ) {
+            G_Printf( "G_Ghost: No ghost files found for map %s\n", mapname );
+            return;
         }
     }
 
