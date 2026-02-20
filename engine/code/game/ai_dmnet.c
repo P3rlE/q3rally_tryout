@@ -3025,6 +3025,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	float		f, dist, speed, actualSpeed, dot, curvature;
 	//float		accel, a_normal;
 	int			throttleChange;
+	const ghostBotRoute_t *ghostRoute;
 
 	if (BotIsObserver(bs)) {
 		BotClearActivateGoalStack(bs);
@@ -3048,6 +3049,64 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	lastCheckpoint = (nextCheckpoint - 1);
 	if( lastCheckpoint < 1 )
 		lastCheckpoint = level.numCheckpoints;
+
+	if ( G_Ghost_GetBotRoute( &ghostRoute ) && ghostRoute ) {
+		int bestIndex = -1;
+		float bestDistSq = 0.0f;
+		int i;
+
+		for ( i = 0; i < ghostRoute->numWaypoints; ++i ) {
+			vec3_t deltaToWaypoint;
+			float distSq;
+			VectorSubtract( ghostRoute->waypoints[i].origin, bs->cur_ps.origin, deltaToWaypoint );
+			distSq = VectorLengthSquared( deltaToWaypoint );
+			if ( bestIndex < 0 || distSq < bestDistSq ) {
+				bestIndex = i;
+				bestDistSq = distSq;
+			}
+		}
+
+		if ( bestIndex >= 0 ) {
+			int lookAheadIndex = bestIndex + 12;
+			if ( lookAheadIndex >= ghostRoute->numWaypoints ) {
+				lookAheadIndex = ghostRoute->numWaypoints - 1;
+			}
+			VectorSubtract( ghostRoute->waypoints[lookAheadIndex].origin, bs->cur_ps.origin, dir );
+			dir[2] = 0;
+			actualSpeed = VectorLength( bs->cur_ps.velocity );
+			if ( bestIndex + 1 < ghostRoute->numWaypoints ) {
+				vec3_t seg;
+				float dt;
+				VectorSubtract( ghostRoute->waypoints[bestIndex + 1].origin, ghostRoute->waypoints[bestIndex].origin, seg );
+				dt = (float)( ghostRoute->waypoints[bestIndex + 1].timeOffset - ghostRoute->waypoints[bestIndex].timeOffset );
+				if ( dt > 0.0f ) {
+					speed = 1000.0f * VectorLength( seg ) / dt;
+				} else {
+					speed = actualSpeed;
+				}
+			} else {
+				speed = actualSpeed;
+			}
+
+			vectoangles( dir, angles );
+			if( speed >= actualSpeed )
+				throttleChange = 1;
+			else if( speed + 100 <= actualSpeed )
+				throttleChange = -1;
+			else
+				throttleChange = 0;
+
+			throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
+			VectorCopy( angles, bs->ideal_viewangles );
+
+			if( throttleChange > 0 )
+				trap_EA_MoveForward( bs->client );
+			else if( throttleChange < 0 )
+				trap_EA_MoveBack( bs->client );
+
+			return qtrue;
+		}
+	}
 
 	while ((ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL)
 	{
