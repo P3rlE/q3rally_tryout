@@ -48,7 +48,6 @@ static void G_Ghost_Reset(void) {
 static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, ghostRecord_t *outRecord ) {
     char *cursor;
     char mapName[MAX_QPATH] = "";
-    qboolean hasVehicle = qfalse;
     qboolean hasTime = qfalse;
 
     if ( !buffer || !outRecord ) {
@@ -89,7 +88,6 @@ static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, ghos
                 ++value;
             }
             Q_strncpyz( outRecord->vehicleClass, value, sizeof( outRecord->vehicleClass ) );
-            hasVehicle = outRecord->vehicleClass[0] != '\0';
         } else if ( !Q_stricmpn( cursor, "best_time_ms", 12 ) ) {
             const char *value = cursor + 12;
             while ( *value == ' ' || *value == '\t' ) {
@@ -118,7 +116,7 @@ static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, ghos
         return qfalse;
     }
 
-    return hasVehicle && hasTime;
+    return hasTime;
 }
 
 void G_Ghost_InitForMap( const char *mapname ) {
@@ -154,10 +152,11 @@ void G_Ghost_InitForMap( const char *mapname ) {
             continue;
         }
 
-        // Expect filenames like <map>_<vehicle>.ghost
+        // Support both <map>.ghost and legacy <map>_<vehicle>.ghost
         Q_strncpyz( cleanName, filename, sizeof( cleanName ) );
         COM_StripExtension( cleanName, cleanName, sizeof( cleanName ) );
-        if ( Q_stricmpn( cleanName, mapname, G_Ghost_Strlen( mapname ) ) ) {
+        if ( Q_stricmp( cleanName, mapname ) &&
+             ( Q_stricmpn( cleanName, mapname, G_Ghost_Strlen( mapname ) ) || cleanName[G_Ghost_Strlen( mapname )] != '_' ) ) {
             continue;
         }
 
@@ -188,20 +187,17 @@ void G_Ghost_InitForMap( const char *mapname ) {
     }
 }
 
-const ghostRecord_t *G_Ghost_FindForVehicle( const char *vehicleClass ) {
+const ghostRecord_t *G_Ghost_FindBestRecord( void ) {
     int i;
-
-    if ( !vehicleClass || !vehicleClass[0] ) {
-        return NULL;
-    }
+    const ghostRecord_t *best = NULL;
 
     for ( i = 0; i < s_levelGhostCount; ++i ) {
-        if ( !Q_stricmp( s_levelGhosts[i].vehicleClass, vehicleClass ) ) {
-            return &s_levelGhosts[i];
+        if ( !best || ( s_levelGhosts[i].bestTimeMs > 0 && s_levelGhosts[i].bestTimeMs < best->bestTimeMs ) ) {
+            best = &s_levelGhosts[i];
         }
     }
 
-    return NULL;
+    return best;
 }
 
 void G_Ghost_AnnounceForClient( gentity_t *ent ) {
@@ -211,10 +207,10 @@ void G_Ghost_AnnounceForClient( gentity_t *ent ) {
         return;
     }
 
-    record = G_Ghost_FindForVehicle( ent->client->pers.vehicleClass );
+    record = G_Ghost_FindBestRecord();
 
     if ( record ) {
-        trap_SendServerCommand( ent - g_entities, va( "ghostmeta %s %d %s", record->vehicleClass, record->bestTimeMs, record->path ) );
+        trap_SendServerCommand( ent - g_entities, va( "ghostmeta %s %d %s", record->vehicleClass[0] ? record->vehicleClass : "any", record->bestTimeMs, record->path ) );
     } else {
         trap_SendServerCommand( ent - g_entities, "ghostmeta none 0" );
     }
