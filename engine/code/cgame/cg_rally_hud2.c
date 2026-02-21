@@ -414,11 +414,8 @@ static void CG_DrawHUD_DerbyHitImpact( void ) {
 	float frac;
 	int elapsed;
 	int duration;
-<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
 	float overlayScale;
 	float damageBoost;
-=======
->>>>>>> master
 
 	if ( cgs.gametype != GT_DERBY || !cg_derbyHitFxEnable.integer ) {
 		return;
@@ -429,20 +426,15 @@ static void CG_DrawHUD_DerbyHitImpact( void ) {
 	}
 
 	elapsed = cg.time - cg.derbyHitFxTime;
-<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
 	duration = cg_derbyHitOverlayTime.integer;
 	if ( duration < 120 ) {
 		duration = 120;
 	}
-=======
-	duration = 280;
->>>>>>> master
 	if ( elapsed < 0 || elapsed >= duration ) {
 		return;
 	}
 
 	frac = 1.0f - (float)elapsed / (float)duration;
-<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
 	overlayScale = cg_derbyHitOverlayScale.value;
 	if ( overlayScale < 0.0f ) {
 		overlayScale = 0.0f;
@@ -451,13 +443,10 @@ static void CG_DrawHUD_DerbyHitImpact( void ) {
 	if ( damageBoost > 0.35f ) {
 		damageBoost = 0.35f;
 	}
-=======
->>>>>>> master
 	switch ( cg.derbyHitFxLevel ) {
 	default:
 	case 0:
 		color[0] = 1.0f; color[1] = 1.0f; color[2] = 1.0f;
-<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
 		alpha = 0.14f;
 		break;
 	case 1:
@@ -473,21 +462,114 @@ static void CG_DrawHUD_DerbyHitImpact( void ) {
 	if ( alpha > 0.80f ) {
 		alpha = 0.80f;
 	}
-=======
-		alpha = 0.08f;
-		break;
-	case 1:
-		color[0] = 1.0f; color[1] = 0.72f; color[2] = 0.15f;
-		alpha = 0.15f;
-		break;
-	case 2:
-		color[0] = 1.0f; color[1] = 0.2f; color[2] = 0.1f;
-		alpha = 0.24f;
-		break;
-	}
->>>>>>> master
 	color[3] = alpha * frac;
 	CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, color );
+}
+
+
+/*
+============================
+CG_DrawHUD_DerbyVehicleState
+============================
+*/
+static void CG_DrawHUD_DerbyVehicleState( void ) {
+	const int health = cg.snap->ps.stats[STAT_HEALTH];
+	const float maxHealth = 100.0f;
+	float healthFrac;
+	float x;
+	float y;
+	float scale;
+	float panelW;
+	float panelH;
+	float segW;
+	float segH;
+	vec4_t baseColor;
+	vec4_t statusColor;
+	vec4_t pulseColor;
+	qboolean critical;
+
+	if ( cgs.gametype != GT_DERBY ) {
+		return;
+	}
+
+	/* ensure stable 2D anchor independent from previous HUD passes */
+	CG_SetScreenPlacement( PLACE_CENTER, PLACE_TOP );
+
+	healthFrac = health / maxHealth;
+	if ( healthFrac < 0.0f ) {
+		healthFrac = 0.0f;
+	} else if ( healthFrac > 1.0f ) {
+		healthFrac = 1.0f;
+	}
+
+	x = cg_derbyVehicleHudX.value;
+	y = cg_derbyVehicleHudY.value;
+	scale = cg_derbyVehicleHudScale.value;
+	if ( scale < 0.5f ) {
+		scale = 0.5f;
+	} else if ( scale > 2.0f ) {
+		scale = 2.0f;
+	}
+
+	panelW = 128.0f * scale;
+	panelH = 96.0f * scale;
+	segW = 24.0f * scale;
+	segH = 20.0f * scale;
+
+	baseColor[0] = 0.02f; baseColor[1] = 0.02f; baseColor[2] = 0.02f; baseColor[3] = 0.70f;
+	CG_FillRect( x, y, panelW, panelH, baseColor );
+	CG_DrawRect( x, y, panelW, panelH, 1.0f * scale, colorWhite );
+	if ( cgs.media.derbyHudPanelShader ) {
+		trap_R_SetColor( colorWhite );
+		CG_DrawPic( x, y, panelW, panelH, cgs.media.derbyHudPanelShader );
+		trap_R_SetColor( NULL );
+	}
+
+	if ( healthFrac > 0.50f ) {
+		statusColor[0] = 0.10f; statusColor[1] = 0.88f; statusColor[2] = 0.20f; statusColor[3] = 0.88f;
+	} else if ( healthFrac > 0.25f ) {
+		statusColor[0] = 0.94f; statusColor[1] = 0.84f; statusColor[2] = 0.08f; statusColor[3] = 0.90f;
+	} else {
+		statusColor[0] = 0.94f; statusColor[1] = 0.16f; statusColor[2] = 0.10f; statusColor[3] = 0.94f;
+	}
+
+	critical = ( healthFrac <= 0.25f ) ? qtrue : qfalse;
+
+	CG_FillRect( x + 52.0f * scale, y + 16.0f * scale, segW, segH, statusColor ); /* front */
+	CG_FillRect( x + 26.0f * scale, y + 40.0f * scale, segW, segH, statusColor ); /* left */
+	CG_FillRect( x + 78.0f * scale, y + 40.0f * scale, segW, segH, statusColor ); /* right */
+	CG_FillRect( x + 52.0f * scale, y + 64.0f * scale, segW, segH, statusColor ); /* rear */
+	if ( cg_derbyVehicleHudRoof.integer ) {
+		CG_FillRect( x + 52.0f * scale, y + 40.0f * scale, segW, segH, statusColor );
+	}
+
+	if ( cgs.media.derbyHudVehicleShader ) {
+		vec4_t tint;
+		Vector4Copy( statusColor, tint );
+		tint[3] = 0.65f;
+		trap_R_SetColor( tint );
+		CG_DrawPic( x + 18.0f * scale, y + 8.0f * scale, 92.0f * scale, 80.0f * scale, cgs.media.derbyHudVehicleShader );
+		trap_R_SetColor( NULL );
+	}
+
+	CG_DrawTinyStringColor( (int)( x + 8.0f * scale ), (int)( y + 6.0f * scale ), "VEHICLE", colorWhite );
+	CG_DrawTinyStringColor( (int)( x + 8.0f * scale ), (int)( y + 82.0f * scale ), va("HP %3i%%", (int)(healthFrac * 100.0f)), colorWhite );
+
+	if ( critical ) {
+		float pulse = (float)( cg.time % 1000 ) * 0.001f;
+		if ( pulse > 0.5f ) {
+			pulse = 1.0f - pulse;
+		}
+		pulse *= 2.0f;
+		pulseColor[0] = 1.0f; pulseColor[1] = 0.12f; pulseColor[2] = 0.08f; pulseColor[3] = 0.20f + 0.55f * pulse;
+		CG_DrawRect( x - 1.0f * scale, y - 1.0f * scale, panelW + 2.0f * scale, panelH + 2.0f * scale, 2.0f * scale, pulseColor );
+		CG_DrawBigStringColor( (int)( x + 18.0f * scale ), (int)( y + 30.0f * scale ), "!", pulseColor );
+		if ( cgs.media.derbyHudWarningShader ) {
+			trap_R_SetColor( pulseColor );
+			CG_DrawPic( x + 90.0f * scale, y + 6.0f * scale, 28.0f * scale, 28.0f * scale, cgs.media.derbyHudWarningShader );
+			trap_R_SetColor( NULL );
+		}
+	}
 }
 
 /*
@@ -614,6 +696,7 @@ qboolean CG_DrawHUD( void ) {
 		break;
 
 	case GT_DERBY:
+		CG_DrawHUD_DerbyVehicleState();
 		CG_DrawHUD_DerbyList(440, 130);
 		CG_DrawHUD_DerbyHitImpact();
 		break;
