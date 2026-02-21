@@ -503,7 +503,6 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 	}
 
 	x = cg_derbyVehicleHudX.value;
-	y = cg_derbyVehicleHudY.value;
 	scale = cg_derbyVehicleHudScale.value;
 	if ( scale < 0.5f ) {
 		scale = 0.5f;
@@ -513,6 +512,10 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 
 	panelW = 128.0f * scale;
 	panelH = 96.0f * scale;
+
+	/* anchor to bottom-left, matching the convention of CG_DrawLowerLeftHUD:
+	   y is the bottom edge, panel grows upward */
+	y = cg_derbyVehicleHudY.value - panelH;
 	segW = 24.0f * scale;
 	segH = 20.0f * scale;
 
@@ -661,7 +664,6 @@ qboolean CG_DrawHUD( void ) {
 		if ( cgs.gametype == GT_DERBY ) {
 			/* keep vehicle state panel permanently visible in derby */
 			CG_DrawHUD_DerbyVehicleState();
-			return qtrue;
 		}
 		return qfalse;
 	}
