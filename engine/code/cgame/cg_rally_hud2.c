@@ -551,10 +551,10 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 		float vehicleH;
 		Vector4Copy( statusColor, tint );
 		tint[3] = 0.65f;
-		vehicleW = 74.0f * scale;
-		vehicleH = 86.0f * scale;
+		vehicleW = 92.0f * scale;
+		vehicleH = 60.0f * scale;
 		vehicleX = x + ( panelW - vehicleW ) * 0.5f;
-		vehicleY = y + 6.0f * scale;
+		vehicleY = y + 20.0f * scale;
 		trap_R_SetColor( tint );
 		CG_DrawPic( vehicleX, vehicleY, vehicleW, vehicleH, cgs.media.derbyHudVehicleShader );
 		trap_R_SetColor( NULL );
