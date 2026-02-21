@@ -297,6 +297,7 @@ vmCvar_t	cg_derbyVehicleHudY;
 vmCvar_t	cg_derbyVehicleHudScale;
 vmCvar_t	cg_derbyVehicleHudRoof;
 
+
 // Q3Rally Code END
 
 typedef struct {

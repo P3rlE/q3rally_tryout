@@ -430,7 +430,6 @@ static void CG_DrawHUD_DerbyHitImpact( void ) {
 	if ( duration < 120 ) {
 		duration = 120;
 	}
-
 	if ( elapsed < 0 || elapsed >= duration ) {
 		return;
 	}
@@ -444,7 +443,6 @@ static void CG_DrawHUD_DerbyHitImpact( void ) {
 	if ( damageBoost > 0.35f ) {
 		damageBoost = 0.35f;
 	}
-
 	switch ( cg.derbyHitFxLevel ) {
 	default:
 	case 0:
@@ -464,7 +462,6 @@ static void CG_DrawHUD_DerbyHitImpact( void ) {
 	if ( alpha > 0.80f ) {
 		alpha = 0.80f;
 	}
-
 	color[3] = alpha * frac;
 	CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, color );
 }
@@ -653,6 +650,11 @@ qboolean CG_DrawHUD( void ) {
 	}
 
 	if ( !cg.showHUD ) {
+		if ( cgs.gametype == GT_DERBY ) {
+			/* keep vehicle state panel permanently visible in derby */
+			CG_DrawHUD_DerbyVehicleState();
+			return qtrue;
+		}
 		return qfalse;
 	}
 

@@ -1611,7 +1611,6 @@ extern	vmCvar_t		cg_derbyVehicleHudX;
 extern	vmCvar_t		cg_derbyVehicleHudY;
 extern	vmCvar_t		cg_derbyVehicleHudScale;
 extern	vmCvar_t		cg_derbyVehicleHudRoof;
-
 // Q3Rally Code END
 
 //
