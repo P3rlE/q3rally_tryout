@@ -290,11 +290,12 @@ vmCvar_t	cg_jukeboxRepeatMode;
 vmCvar_t	cg_derbyHitFxEnable;
 vmCvar_t	cg_derbyHitShakeScale;
 vmCvar_t	cg_derbyHitSoundEnable;
-<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
 vmCvar_t	cg_derbyHitOverlayScale;
 vmCvar_t	cg_derbyHitOverlayTime;
-=======
->>>>>>> master
+vmCvar_t	cg_derbyVehicleHudX;
+vmCvar_t	cg_derbyVehicleHudY;
+vmCvar_t	cg_derbyVehicleHudScale;
+vmCvar_t	cg_derbyVehicleHudRoof;
 
 
 // Q3Rally Code END
@@ -393,11 +394,12 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_derbyHitFxEnable, "cg_derbyHitFxEnable", "1", CVAR_ARCHIVE },
 	{ &cg_derbyHitShakeScale, "cg_derbyHitShakeScale", "1.0", CVAR_ARCHIVE },
 	{ &cg_derbyHitSoundEnable, "cg_derbyHitSoundEnable", "1", CVAR_ARCHIVE },
-<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
 	{ &cg_derbyHitOverlayScale, "cg_derbyHitOverlayScale", "1.6", CVAR_ARCHIVE },
 	{ &cg_derbyHitOverlayTime, "cg_derbyHitOverlayTime", "360", CVAR_ARCHIVE },
-=======
->>>>>>> master
+	{ &cg_derbyVehicleHudX, "cg_derbyVehicleHudX", "8", CVAR_ARCHIVE },
+	{ &cg_derbyVehicleHudY, "cg_derbyVehicleHudY", "8", CVAR_ARCHIVE },
+	{ &cg_derbyVehicleHudScale, "cg_derbyVehicleHudScale", "1.0", CVAR_ARCHIVE },
+	{ &cg_derbyVehicleHudRoof, "cg_derbyVehicleHudRoof", "1", CVAR_ARCHIVE },
 
         { &cg_developer, "developer", "0", 0 },
 
@@ -1147,6 +1149,9 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.checkpointArrow = trap_R_RegisterModel("gfx/hud/arrow.md3");
     cgs.media.gaugeImperial = trap_R_RegisterShaderNoMip("gfx/hud/gauge01" );
     cgs.media.gaugeMetric = trap_R_RegisterShaderNoMip("gfx/hud/gauge_metric" );
+	cgs.media.derbyHudPanelShader = trap_R_RegisterShaderNoMip("gfx/hud/derby_panel");
+	cgs.media.derbyHudVehicleShader = trap_R_RegisterShaderNoMip("gfx/hud/derby_vehicle");
+	cgs.media.derbyHudWarningShader = trap_R_RegisterShaderNoMip("gfx/hud/derby_warning");
 // Q3Rally Code END
 
 	// powerup shaders
