@@ -1607,14 +1607,11 @@ extern	vmCvar_t		cg_derbyHitShakeScale;
 extern	vmCvar_t		cg_derbyHitSoundEnable;
 extern	vmCvar_t		cg_derbyHitOverlayScale;
 extern	vmCvar_t		cg_derbyHitOverlayTime;
-<<<<<<< HEAD
-
-=======
 extern	vmCvar_t		cg_derbyVehicleHudX;
 extern	vmCvar_t		cg_derbyVehicleHudY;
 extern	vmCvar_t		cg_derbyVehicleHudScale;
 extern	vmCvar_t		cg_derbyVehicleHudRoof;
->>>>>>> 35c85d9e2e17731dc0ff631f4ac5706e89a9e141
+
 // Q3Rally Code END
 
 //

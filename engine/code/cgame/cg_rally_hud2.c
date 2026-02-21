@@ -416,10 +416,6 @@ static void CG_DrawHUD_DerbyHitImpact( void ) {
 	int duration;
 	float overlayScale;
 	float damageBoost;
-<<<<<<< HEAD
-
-=======
->>>>>>> 35c85d9e2e17731dc0ff631f4ac5706e89a9e141
 
 	if ( cgs.gametype != GT_DERBY || !cg_derbyHitFxEnable.integer ) {
 		return;
@@ -434,10 +430,7 @@ static void CG_DrawHUD_DerbyHitImpact( void ) {
 	if ( duration < 120 ) {
 		duration = 120;
 	}
-<<<<<<< HEAD
 
-=======
->>>>>>> 35c85d9e2e17731dc0ff631f4ac5706e89a9e141
 	if ( elapsed < 0 || elapsed >= duration ) {
 		return;
 	}
@@ -451,10 +444,7 @@ static void CG_DrawHUD_DerbyHitImpact( void ) {
 	if ( damageBoost > 0.35f ) {
 		damageBoost = 0.35f;
 	}
-<<<<<<< HEAD
 
-=======
->>>>>>> 35c85d9e2e17731dc0ff631f4ac5706e89a9e141
 	switch ( cg.derbyHitFxLevel ) {
 	default:
 	case 0:
@@ -474,10 +464,7 @@ static void CG_DrawHUD_DerbyHitImpact( void ) {
 	if ( alpha > 0.80f ) {
 		alpha = 0.80f;
 	}
-<<<<<<< HEAD
 
-=======
->>>>>>> 35c85d9e2e17731dc0ff631f4ac5706e89a9e141
 	color[3] = alpha * frac;
 	CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, color );
 }
