@@ -47,6 +47,10 @@ static derbyHitIntensity_t CG_DerbyHitIntensityForDamage( int damage ) {
 static void CG_ApplyDerbyHitImpact( int damage ) {
 	float shakeScale;
 	derbyHitIntensity_t intensity;
+<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
+=======
+	int soundIndex;
+>>>>>>> master
 
 	if ( cgs.gametype != GT_DERBY || !cg_derbyHitFxEnable.integer ) {
 		return;
@@ -63,7 +67,11 @@ static void CG_ApplyDerbyHitImpact( int damage ) {
 	}
 
 	if ( shakeScale > 0.0f ) {
+<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
 		static const float kickByIntensity[] = { 4.0f, 7.5f, 11.0f };
+=======
+		static const float kickByIntensity[] = { 2.5f, 4.5f, 6.5f };
+>>>>>>> master
 		float kick = kickByIntensity[intensity] * shakeScale;
 		cg.v_dmg_roll += crandom() * kick;
 		cg.v_dmg_pitch -= kick;
@@ -72,12 +80,22 @@ static void CG_ApplyDerbyHitImpact( int damage ) {
 
 	if ( cg_derbyHitSoundEnable.integer ) {
 		if ( intensity == DERBY_HIT_HEAVY ) {
+<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
 			trap_S_StartLocalSound( cgs.media.damage75[(int)(random() * 2)], CHAN_LOCAL_SOUND );
 		} else if ( intensity == DERBY_HIT_MEDIUM ) {
 			trap_S_StartLocalSound( cgs.media.damage50[(int)(random() * 2)], CHAN_LOCAL_SOUND );
 		} else {
 			trap_S_StartLocalSound( cgs.media.damage25[(int)(random() * 2)], CHAN_LOCAL_SOUND );
 		}
+=======
+			soundIndex = 0;
+		} else if ( intensity == DERBY_HIT_MEDIUM ) {
+			soundIndex = 1;
+		} else {
+			soundIndex = 0;
+		}
+		trap_S_StartLocalSound( cgs.media.damage25[soundIndex], CHAN_LOCAL_SOUND );
+>>>>>>> master
 	}
 }
 
@@ -579,6 +597,10 @@ void CG_TransitionPlayerState( playerState_t *ps, playerState_t *ops ) {
 
 	// damage events (player is getting wounded)
 	if ( ps->damageEvent != ops->damageEvent && ps->damageCount ) {
+<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
+=======
+		CG_DamageFeedback( 0, 0, ps->damageCount );
+>>>>>>> master
 		CG_ApplyDerbyHitImpact( ps->damageCount );
 	}
 
