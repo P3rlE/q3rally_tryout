@@ -493,7 +493,7 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 	}
 
 	/* ensure stable 2D anchor independent from previous HUD passes */
-	CG_SetScreenPlacement( PLACE_LEFT, PLACE_BOTTOM );
+	CG_SetScreenPlacement( PLACE_LEFT, PLACE_TOP );
 
 	healthFrac = health / maxHealth;
 	if ( healthFrac < 0.0f ) {
@@ -545,10 +545,18 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 
 	if ( cgs.media.derbyHudVehicleShader ) {
 		vec4_t tint;
+		float vehicleX;
+		float vehicleY;
+		float vehicleW;
+		float vehicleH;
 		Vector4Copy( statusColor, tint );
 		tint[3] = 0.65f;
+		vehicleW = 74.0f * scale;
+		vehicleH = 86.0f * scale;
+		vehicleX = x + ( panelW - vehicleW ) * 0.5f;
+		vehicleY = y + 6.0f * scale;
 		trap_R_SetColor( tint );
-		CG_DrawPic( x + 18.0f * scale, y + 8.0f * scale, 92.0f * scale, 80.0f * scale, cgs.media.derbyHudVehicleShader );
+		CG_DrawPic( vehicleX, vehicleY, vehicleW, vehicleH, cgs.media.derbyHudVehicleShader );
 		trap_R_SetColor( NULL );
 	}
 
