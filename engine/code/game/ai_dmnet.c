@@ -3146,13 +3146,42 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				}
 			}
 
+			/*
+			 * Additional damping to reduce throttle oscillation:
+			 * - low-pass filter target speed across think ticks
+			 * - clamp max per-tick speed target delta
+			 * - hysteresis around throttle changes
+			 */
+			if ( !bs->ghostTargetSpeedValid ) {
+				bs->ghostTargetSpeedFiltered = speed;
+				bs->ghostTargetSpeedValid = qtrue;
+			} else {
+				float maxDeltaPerTick = 220.0f * ( bs->thinktime > 0.0f ? bs->thinktime : 0.1f );
+				float filteredTarget = bs->ghostTargetSpeedFiltered + ( speed - bs->ghostTargetSpeedFiltered ) * 0.25f;
+				float delta = filteredTarget - bs->ghostTargetSpeedFiltered;
+
+				if ( delta > maxDeltaPerTick ) {
+					filteredTarget = bs->ghostTargetSpeedFiltered + maxDeltaPerTick;
+				} else if ( delta < -maxDeltaPerTick ) {
+					filteredTarget = bs->ghostTargetSpeedFiltered - maxDeltaPerTick;
+				}
+
+				bs->ghostTargetSpeedFiltered = filteredTarget;
+			}
+			speed = bs->ghostTargetSpeedFiltered;
+
 			vectoangles( dir, angles );
-			if( speed >= actualSpeed )
-				throttleChange = 1;
-			else if( speed + 100 <= actualSpeed )
-				throttleChange = -1;
-			else
-				throttleChange = 0;
+			{
+				float speedError = speed - actualSpeed;
+
+				if ( speedError > 80.0f ) {
+					throttleChange = 1;
+				} else if ( speedError < -140.0f ) {
+					throttleChange = -1;
+				} else {
+					throttleChange = 0;
+				}
+			}
 
 			throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
 			VectorCopy( angles, bs->ideal_viewangles );
@@ -3165,6 +3194,9 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			return qtrue;
 		}
 	}
+
+	/* Ghost guidance not active this tick, reset speed filter state. */
+	bs->ghostTargetSpeedValid = qfalse;
 
 	while ((ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL)
 	{
