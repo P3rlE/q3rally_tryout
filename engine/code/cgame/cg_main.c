@@ -292,11 +292,11 @@ vmCvar_t	cg_derbyHitShakeScale;
 vmCvar_t	cg_derbyHitSoundEnable;
 vmCvar_t	cg_derbyHitOverlayScale;
 vmCvar_t	cg_derbyHitOverlayTime;
+
 vmCvar_t	cg_derbyVehicleHudX;
 vmCvar_t	cg_derbyVehicleHudY;
 vmCvar_t	cg_derbyVehicleHudScale;
 vmCvar_t	cg_derbyVehicleHudRoof;
-
 
 // Q3Rally Code END
 
@@ -396,6 +396,7 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_derbyHitSoundEnable, "cg_derbyHitSoundEnable", "1", CVAR_ARCHIVE },
 	{ &cg_derbyHitOverlayScale, "cg_derbyHitOverlayScale", "1.6", CVAR_ARCHIVE },
 	{ &cg_derbyHitOverlayTime, "cg_derbyHitOverlayTime", "360", CVAR_ARCHIVE },
+
 	{ &cg_derbyVehicleHudX, "cg_derbyVehicleHudX", "18", CVAR_ARCHIVE },
 	{ &cg_derbyVehicleHudY, "cg_derbyVehicleHudY", "320", CVAR_ARCHIVE },
 	{ &cg_derbyVehicleHudScale, "cg_derbyVehicleHudScale", "1.0", CVAR_ARCHIVE },

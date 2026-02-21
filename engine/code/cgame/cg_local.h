@@ -1607,6 +1607,7 @@ extern	vmCvar_t		cg_derbyHitShakeScale;
 extern	vmCvar_t		cg_derbyHitSoundEnable;
 extern	vmCvar_t		cg_derbyHitOverlayScale;
 extern	vmCvar_t		cg_derbyHitOverlayTime;
+
 extern	vmCvar_t		cg_derbyVehicleHudX;
 extern	vmCvar_t		cg_derbyVehicleHudY;
 extern	vmCvar_t		cg_derbyVehicleHudScale;
