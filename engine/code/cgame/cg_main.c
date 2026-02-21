@@ -397,7 +397,7 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_derbyHitOverlayScale, "cg_derbyHitOverlayScale", "1.6", CVAR_ARCHIVE },
 	{ &cg_derbyHitOverlayTime, "cg_derbyHitOverlayTime", "360", CVAR_ARCHIVE },
 	{ &cg_derbyVehicleHudX, "cg_derbyVehicleHudX", "8", CVAR_ARCHIVE },
-	{ &cg_derbyVehicleHudY, "cg_derbyVehicleHudY", "24", 0 },
+	{ &cg_derbyVehicleHudY, "cg_derbyVehicleHudY", "376", CVAR_ARCHIVE },
 	{ &cg_derbyVehicleHudScale, "cg_derbyVehicleHudScale", "1.0", CVAR_ARCHIVE },
 	{ &cg_derbyVehicleHudRoof, "cg_derbyVehicleHudRoof", "1", CVAR_ARCHIVE },
 

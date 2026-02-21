@@ -475,25 +475,35 @@ CG_DrawHUD_DerbyVehicleState
 static void CG_DrawHUD_DerbyVehicleState( void ) {
 	const int health = cg.snap->ps.stats[STAT_HEALTH];
 	const float maxHealth = 100.0f;
+	const int lastHitFlashMs = 420;
 	float healthFrac;
 	float x;
 	float y;
 	float scale;
 	float panelW;
 	float panelH;
+	float barX;
+	float barY;
+	float barW;
+	float barH;
 	float segW;
 	float segH;
 	vec4_t baseColor;
 	vec4_t statusColor;
+	vec4_t neutralColor;
+	vec4_t barBackColor;
+	vec4_t flashColor;
 	vec4_t pulseColor;
+	int hitSegment;
+	qboolean hasDirectionalHit;
 	qboolean critical;
 
 	if ( cgs.gametype != GT_DERBY ) {
 		return;
 	}
 
-	/* Place panel top-right, below the timer - matches CG_DrawUpperRight placement */
-	CG_SetScreenPlacement( PLACE_RIGHT, PLACE_TOP );
+	/* ensure stable 2D anchor independent from previous HUD passes */
+	CG_SetScreenPlacement( PLACE_LEFT, PLACE_TOP );
 
 	healthFrac = health / maxHealth;
 	if ( healthFrac < 0.0f ) {
@@ -503,6 +513,7 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 	}
 
 	x = cg_derbyVehicleHudX.value;
+	y = cg_derbyVehicleHudY.value;
 	scale = cg_derbyVehicleHudScale.value;
 	if ( scale < 0.5f ) {
 		scale = 0.5f;
@@ -512,10 +523,10 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 
 	panelW = 128.0f * scale;
 	panelH = 96.0f * scale;
-
-	/* X: flush right with small margin. Y: just below the timer (~20px) + configurable offset */
-	x = 640.0f - panelW - 8.0f;
-	y = cg_derbyVehicleHudY.value;
+	barX = x + 8.0f * scale;
+	barY = y + 20.0f * scale;
+	barW = 112.0f * scale;
+	barH = 8.0f * scale;
 	segW = 24.0f * scale;
 	segH = 20.0f * scale;
 
@@ -537,13 +548,53 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 	}
 
 	critical = ( healthFrac <= 0.25f ) ? qtrue : qfalse;
+	neutralColor[0] = 0.38f; neutralColor[1] = 0.38f; neutralColor[2] = 0.40f; neutralColor[3] = 0.55f;
+	barBackColor[0] = 0.10f; barBackColor[1] = 0.10f; barBackColor[2] = 0.12f; barBackColor[3] = 0.80f;
+	flashColor[0] = 1.0f; flashColor[1] = 1.0f; flashColor[2] = 1.0f; flashColor[3] = 0.85f;
 
-	CG_FillRect( x + 52.0f * scale, y + 16.0f * scale, segW, segH, statusColor ); /* front */
-	CG_FillRect( x + 26.0f * scale, y + 40.0f * scale, segW, segH, statusColor ); /* left */
-	CG_FillRect( x + 78.0f * scale, y + 40.0f * scale, segW, segH, statusColor ); /* right */
-	CG_FillRect( x + 52.0f * scale, y + 64.0f * scale, segW, segH, statusColor ); /* rear */
+	hitSegment = -1;
+	hasDirectionalHit = qfalse;
+	if ( cg.damageTime > 0 && cg.time - cg.damageTime < lastHitFlashMs ) {
+		hasDirectionalHit = qtrue;
+		if ( fabs( cg.damageX ) > fabs( cg.damageY ) ) {
+			hitSegment = cg.damageX > 0.0f ? 1 : 2; /* 1=left, 2=right */
+		} else {
+			hitSegment = cg.damageY > 0.0f ? 0 : 3; /* 0=front, 3=rear */
+		}
+	}
+
+	/* Option 1: primary integrity indicator (single health bar) */
+	CG_FillRect( barX, barY, barW, barH, barBackColor );
+	CG_FillRect( barX, barY, barW * healthFrac, barH, statusColor );
+	CG_DrawRect( barX, barY, barW, barH, 1.0f * scale, colorWhite );
+
+	/* neutral silhouette blocks (no fake per-zone damage state) */
+	CG_FillRect( x + 52.0f * scale, y + 16.0f * scale, segW, segH, neutralColor ); /* front */
+	CG_FillRect( x + 26.0f * scale, y + 40.0f * scale, segW, segH, neutralColor ); /* left */
+	CG_FillRect( x + 78.0f * scale, y + 40.0f * scale, segW, segH, neutralColor ); /* right */
+	CG_FillRect( x + 52.0f * scale, y + 64.0f * scale, segW, segH, neutralColor ); /* rear */
 	if ( cg_derbyVehicleHudRoof.integer ) {
-		CG_FillRect( x + 52.0f * scale, y + 40.0f * scale, segW, segH, statusColor );
+		CG_FillRect( x + 52.0f * scale, y + 40.0f * scale, segW, segH, neutralColor );
+	}
+
+	/* Option 2: short last-hit direction flash */
+	if ( hasDirectionalHit ) {
+		switch ( hitSegment ) {
+		case 0:
+			CG_FillRect( x + 52.0f * scale, y + 16.0f * scale, segW, segH, flashColor );
+			break;
+		case 1:
+			CG_FillRect( x + 26.0f * scale, y + 40.0f * scale, segW, segH, flashColor );
+			break;
+		case 2:
+			CG_FillRect( x + 78.0f * scale, y + 40.0f * scale, segW, segH, flashColor );
+			break;
+		case 3:
+			CG_FillRect( x + 52.0f * scale, y + 64.0f * scale, segW, segH, flashColor );
+			break;
+		default:
+			break;
+		}
 	}
 
 	if ( cgs.media.derbyHudVehicleShader ) {
@@ -554,16 +605,16 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 		float vehicleH;
 		Vector4Copy( statusColor, tint );
 		tint[3] = 0.65f;
-		vehicleW = 92.0f * scale;
-		vehicleH = 60.0f * scale;
+		vehicleW = 74.0f * scale;
+		vehicleH = 86.0f * scale;
 		vehicleX = x + ( panelW - vehicleW ) * 0.5f;
-		vehicleY = y + 20.0f * scale;
+		vehicleY = y + 6.0f * scale;
 		trap_R_SetColor( tint );
 		CG_DrawPic( vehicleX, vehicleY, vehicleW, vehicleH, cgs.media.derbyHudVehicleShader );
 		trap_R_SetColor( NULL );
 	}
 
-	CG_DrawTinyStringColor( (int)( x + 8.0f * scale ), (int)( y + 6.0f * scale ), "VEHICLE", colorWhite );
+	CG_DrawTinyStringColor( (int)( x + 8.0f * scale ), (int)( y + 6.0f * scale ), "INTEGRITY", colorWhite );
 	CG_DrawTinyStringColor( (int)( x + 8.0f * scale ), (int)( y + 82.0f * scale ), va("HP %3i%%", (int)(healthFrac * 100.0f)), colorWhite );
 
 	if ( critical ) {
@@ -664,6 +715,7 @@ qboolean CG_DrawHUD( void ) {
 		if ( cgs.gametype == GT_DERBY ) {
 			/* keep vehicle state panel permanently visible in derby */
 			CG_DrawHUD_DerbyVehicleState();
+			return qtrue;
 		}
 		return qfalse;
 	}
