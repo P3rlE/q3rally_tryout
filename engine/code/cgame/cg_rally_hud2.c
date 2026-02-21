@@ -414,6 +414,11 @@ static void CG_DrawHUD_DerbyHitImpact( void ) {
 	float frac;
 	int elapsed;
 	int duration;
+<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
+	float overlayScale;
+	float damageBoost;
+=======
+>>>>>>> master
 
 	if ( cgs.gametype != GT_DERBY || !cg_derbyHitFxEnable.integer ) {
 		return;
@@ -424,16 +429,51 @@ static void CG_DrawHUD_DerbyHitImpact( void ) {
 	}
 
 	elapsed = cg.time - cg.derbyHitFxTime;
+<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
+	duration = cg_derbyHitOverlayTime.integer;
+	if ( duration < 120 ) {
+		duration = 120;
+	}
+=======
 	duration = 280;
+>>>>>>> master
 	if ( elapsed < 0 || elapsed >= duration ) {
 		return;
 	}
 
 	frac = 1.0f - (float)elapsed / (float)duration;
+<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
+	overlayScale = cg_derbyHitOverlayScale.value;
+	if ( overlayScale < 0.0f ) {
+		overlayScale = 0.0f;
+	}
+	damageBoost = (float)cg.derbyHitFxDamage * (1.0f / 40.0f);
+	if ( damageBoost > 0.35f ) {
+		damageBoost = 0.35f;
+	}
+=======
+>>>>>>> master
 	switch ( cg.derbyHitFxLevel ) {
 	default:
 	case 0:
 		color[0] = 1.0f; color[1] = 1.0f; color[2] = 1.0f;
+<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
+		alpha = 0.14f;
+		break;
+	case 1:
+		color[0] = 1.0f; color[1] = 0.72f; color[2] = 0.15f;
+		alpha = 0.24f;
+		break;
+	case 2:
+		color[0] = 1.0f; color[1] = 0.2f; color[2] = 0.1f;
+		alpha = 0.34f;
+		break;
+	}
+	alpha = ( alpha + damageBoost ) * overlayScale;
+	if ( alpha > 0.80f ) {
+		alpha = 0.80f;
+	}
+=======
 		alpha = 0.08f;
 		break;
 	case 1:
@@ -445,6 +485,7 @@ static void CG_DrawHUD_DerbyHitImpact( void ) {
 		alpha = 0.24f;
 		break;
 	}
+>>>>>>> master
 	color[3] = alpha * frac;
 	CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, color );
 }

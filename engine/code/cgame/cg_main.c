@@ -290,6 +290,11 @@ vmCvar_t	cg_jukeboxRepeatMode;
 vmCvar_t	cg_derbyHitFxEnable;
 vmCvar_t	cg_derbyHitShakeScale;
 vmCvar_t	cg_derbyHitSoundEnable;
+<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
+vmCvar_t	cg_derbyHitOverlayScale;
+vmCvar_t	cg_derbyHitOverlayTime;
+=======
+>>>>>>> master
 
 
 // Q3Rally Code END
@@ -388,6 +393,11 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_derbyHitFxEnable, "cg_derbyHitFxEnable", "1", CVAR_ARCHIVE },
 	{ &cg_derbyHitShakeScale, "cg_derbyHitShakeScale", "1.0", CVAR_ARCHIVE },
 	{ &cg_derbyHitSoundEnable, "cg_derbyHitSoundEnable", "1", CVAR_ARCHIVE },
+<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
+	{ &cg_derbyHitOverlayScale, "cg_derbyHitOverlayScale", "1.6", CVAR_ARCHIVE },
+	{ &cg_derbyHitOverlayTime, "cg_derbyHitOverlayTime", "360", CVAR_ARCHIVE },
+=======
+>>>>>>> master
 
         { &cg_developer, "developer", "0", 0 },
 
