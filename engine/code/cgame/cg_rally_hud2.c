@@ -401,6 +401,71 @@ void CG_DrawHUD_Scores(float x, float y){
 	CG_DrawScores(x + 96, y);
 }
 
+
+
+/*
+========================
+CG_DrawHUD_DerbyHitImpact
+========================
+*/
+static void CG_DrawHUD_DerbyHitImpact( void ) {
+	vec4_t color;
+	float alpha;
+	float frac;
+	int elapsed;
+	int duration;
+	float overlayScale;
+	float damageBoost;
+
+	if ( cgs.gametype != GT_DERBY || !cg_derbyHitFxEnable.integer ) {
+		return;
+	}
+
+	if ( !cg.derbyHitFxTime ) {
+		return;
+	}
+
+	elapsed = cg.time - cg.derbyHitFxTime;
+	duration = cg_derbyHitOverlayTime.integer;
+	if ( duration < 120 ) {
+		duration = 120;
+	}
+	if ( elapsed < 0 || elapsed >= duration ) {
+		return;
+	}
+
+	frac = 1.0f - (float)elapsed / (float)duration;
+	overlayScale = cg_derbyHitOverlayScale.value;
+	if ( overlayScale < 0.0f ) {
+		overlayScale = 0.0f;
+	}
+	damageBoost = (float)cg.derbyHitFxDamage * (1.0f / 40.0f);
+	if ( damageBoost > 0.35f ) {
+		damageBoost = 0.35f;
+	}
+	switch ( cg.derbyHitFxLevel ) {
+	default:
+	case 0:
+		color[0] = 1.0f; color[1] = 1.0f; color[2] = 1.0f;
+		alpha = 0.14f;
+		break;
+	case 1:
+		color[0] = 1.0f; color[1] = 0.72f; color[2] = 0.15f;
+		alpha = 0.24f;
+		break;
+	case 2:
+		color[0] = 1.0f; color[1] = 0.2f; color[2] = 0.1f;
+		alpha = 0.34f;
+		break;
+	}
+	alpha = ( alpha + damageBoost ) * overlayScale;
+	if ( alpha > 0.80f ) {
+		alpha = 0.80f;
+	}
+	color[3] = alpha * frac;
+	CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, color );
+}
+
 /*
 ====================
 CG_DrawHUD_DerbyList
@@ -525,6 +590,8 @@ qboolean CG_DrawHUD( void ) {
 		break;
 
 	case GT_DERBY:
+		CG_DrawHUD_DerbyList(440, 130);
+		CG_DrawHUD_DerbyHitImpact();
 		break;
 
 	case GT_LCS:

@@ -287,6 +287,11 @@ vmCvar_t        cg_fuelWarningLevel;
 vmCvar_t	cg_drawBotPaths;
 vmCvar_t	cg_jukeboxShuffle;
 vmCvar_t	cg_jukeboxRepeatMode;
+vmCvar_t	cg_derbyHitFxEnable;
+vmCvar_t	cg_derbyHitShakeScale;
+vmCvar_t	cg_derbyHitSoundEnable;
+vmCvar_t	cg_derbyHitOverlayScale;
+vmCvar_t	cg_derbyHitOverlayTime;
 
 
 // Q3Rally Code END
@@ -381,6 +386,12 @@ static cvarTable_t cvarTable[] = {
         { &cg_distanceFormat, "cg_distanceFormat", "0", CVAR_ARCHIVE },
 	{ &cg_jukeboxShuffle, "cg_jukeboxShuffle", "0", CVAR_ARCHIVE },
 	{ &cg_jukeboxRepeatMode, "cg_jukeboxRepeatMode", "off", CVAR_ARCHIVE },
+	// Derby hit effects defaults: enabled(1), shake scale(1.0), additional staged sound(1)
+	{ &cg_derbyHitFxEnable, "cg_derbyHitFxEnable", "1", CVAR_ARCHIVE },
+	{ &cg_derbyHitShakeScale, "cg_derbyHitShakeScale", "1.0", CVAR_ARCHIVE },
+	{ &cg_derbyHitSoundEnable, "cg_derbyHitSoundEnable", "1", CVAR_ARCHIVE },
+	{ &cg_derbyHitOverlayScale, "cg_derbyHitOverlayScale", "1.6", CVAR_ARCHIVE },
+	{ &cg_derbyHitOverlayTime, "cg_derbyHitOverlayTime", "360", CVAR_ARCHIVE },
 
         { &cg_developer, "developer", "0", 0 },
 

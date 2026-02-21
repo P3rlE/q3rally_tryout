@@ -826,6 +826,9 @@ typedef struct {
 	// blend blobs
 	float		damageTime;
 	float		damageX, damageY, damageValue;
+	int			derbyHitFxTime;
+	int			derbyHitFxLevel;
+	int			derbyHitFxDamage;
 
 	// status bar head
 	float		headYaw;
@@ -1596,6 +1599,11 @@ extern  vmCvar_t                cg_fuelWarningLevel;
 extern	vmCvar_t		cg_drawBotPaths;
 extern	vmCvar_t		cg_jukeboxShuffle;
 extern	vmCvar_t		cg_jukeboxRepeatMode;
+extern	vmCvar_t		cg_derbyHitFxEnable;
+extern	vmCvar_t		cg_derbyHitShakeScale;
+extern	vmCvar_t		cg_derbyHitSoundEnable;
+extern	vmCvar_t		cg_derbyHitOverlayScale;
+extern	vmCvar_t		cg_derbyHitOverlayTime;
 // Q3Rally Code END
 
 //
@@ -2304,4 +2312,3 @@ void	CG_ParticleMisc (qhandle_t pshader, vec3_t origin, int size, int duration, 
 void	CG_ParticleExplosion (char *animStr, vec3_t origin, vec3_t vel, int duration, int sizeStart, int sizeEnd);
 extern qboolean		initparticles;
 int CG_NewParticleArea ( int num );
-
