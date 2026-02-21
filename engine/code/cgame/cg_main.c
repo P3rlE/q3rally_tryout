@@ -292,15 +292,11 @@ vmCvar_t	cg_derbyHitShakeScale;
 vmCvar_t	cg_derbyHitSoundEnable;
 vmCvar_t	cg_derbyHitOverlayScale;
 vmCvar_t	cg_derbyHitOverlayTime;
-<<<<<<< HEAD
 
-=======
 vmCvar_t	cg_derbyVehicleHudX;
 vmCvar_t	cg_derbyVehicleHudY;
 vmCvar_t	cg_derbyVehicleHudScale;
 vmCvar_t	cg_derbyVehicleHudRoof;
->>>>>>> 35c85d9e2e17731dc0ff631f4ac5706e89a9e141
-
 
 // Q3Rally Code END
 
@@ -400,14 +396,11 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_derbyHitSoundEnable, "cg_derbyHitSoundEnable", "1", CVAR_ARCHIVE },
 	{ &cg_derbyHitOverlayScale, "cg_derbyHitOverlayScale", "1.6", CVAR_ARCHIVE },
 	{ &cg_derbyHitOverlayTime, "cg_derbyHitOverlayTime", "360", CVAR_ARCHIVE },
-<<<<<<< HEAD
 
-=======
 	{ &cg_derbyVehicleHudX, "cg_derbyVehicleHudX", "18", CVAR_ARCHIVE },
 	{ &cg_derbyVehicleHudY, "cg_derbyVehicleHudY", "320", CVAR_ARCHIVE },
 	{ &cg_derbyVehicleHudScale, "cg_derbyVehicleHudScale", "1.0", CVAR_ARCHIVE },
 	{ &cg_derbyVehicleHudRoof, "cg_derbyVehicleHudRoof", "1", CVAR_ARCHIVE },
->>>>>>> 35c85d9e2e17731dc0ff631f4ac5706e89a9e141
 
         { &cg_developer, "developer", "0", 0 },
 
