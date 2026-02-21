@@ -1602,11 +1602,9 @@ extern	vmCvar_t		cg_jukeboxRepeatMode;
 extern	vmCvar_t		cg_derbyHitFxEnable;
 extern	vmCvar_t		cg_derbyHitShakeScale;
 extern	vmCvar_t		cg_derbyHitSoundEnable;
-<<<<<<< codex/add-tiered-impact-system-for-derby-hits-x1lkw3
 extern	vmCvar_t		cg_derbyHitOverlayScale;
 extern	vmCvar_t		cg_derbyHitOverlayTime;
-=======
->>>>>>> master
+
 // Q3Rally Code END
 
 //
