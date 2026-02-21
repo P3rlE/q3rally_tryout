@@ -544,21 +544,21 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 	barH = 8.0f * scale;
 
 	vehicleW = 110.0f * scale;
-	vehicleH = 70.0f * scale;
+	vehicleH = 60.0f * scale;
 	vehicleX = x + ( panelW - vehicleW ) * 0.5f;
-	vehicleY = y + 22.0f * scale;
+	vehicleY = y + 26.0f * scale;
 
-	zoneFrontRearW = 34.0f * scale;
-	zoneFrontRearH = 12.0f * scale;
+	zoneFrontRearW = 42.0f * scale;
+	zoneFrontRearH = 10.0f * scale;
 	zoneSideW = 14.0f * scale;
-	zoneSideH = 26.0f * scale;
+	zoneSideH = 22.0f * scale;
 	zoneFrontX = vehicleX + ( vehicleW - zoneFrontRearW ) * 0.5f;
 	zoneFrontY = vehicleY + 2.0f * scale;
 	zoneRearX = zoneFrontX;
 	zoneRearY = vehicleY + vehicleH - zoneFrontRearH - 2.0f * scale;
 	zoneSideY = vehicleY + ( vehicleH - zoneSideH ) * 0.5f;
-	zoneLeftX = vehicleX + 4.0f * scale;
-	zoneRightX = vehicleX + vehicleW - zoneSideW - 4.0f * scale;
+	zoneLeftX = vehicleX + 6.0f * scale;
+	zoneRightX = vehicleX + vehicleW - zoneSideW - 6.0f * scale;
 	zoneRoofX = zoneFrontX;
 	zoneRoofY = vehicleY + ( vehicleH - zoneFrontRearH ) * 0.5f;
 
@@ -580,7 +580,7 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 	}
 
 	critical = ( healthFrac <= 0.25f ) ? qtrue : qfalse;
-	neutralColor[0] = 0.38f; neutralColor[1] = 0.38f; neutralColor[2] = 0.40f; neutralColor[3] = 0.55f;
+	neutralColor[0] = 0.85f; neutralColor[1] = 0.85f; neutralColor[2] = 0.88f; neutralColor[3] = 0.55f;
 	barBackColor[0] = 0.10f; barBackColor[1] = 0.10f; barBackColor[2] = 0.12f; barBackColor[3] = 0.80f;
 	flashColor[0] = 1.0f; flashColor[1] = 1.0f; flashColor[2] = 1.0f; flashColor[3] = 0.85f;
 
@@ -599,6 +599,15 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 	CG_FillRect( barX, barY, barW, barH, barBackColor );
 	CG_FillRect( barX, barY, barW * healthFrac, barH, statusColor );
 	CG_DrawRect( barX, barY, barW, barH, 1.0f * scale, colorWhite );
+
+	if ( cgs.media.derbyHudVehicleShader ) {
+		vec4_t tint;
+		Vector4Copy( statusColor, tint );
+		tint[3] = 0.65f;
+		trap_R_SetColor( tint );
+		CG_DrawPic( vehicleX, vehicleY, vehicleW, vehicleH, cgs.media.derbyHudVehicleShader );
+		trap_R_SetColor( NULL );
+	}
 
 	/* neutral silhouette blocks (no fake per-zone damage state) */
 	CG_FillRect( zoneFrontX, zoneFrontY, zoneFrontRearW, zoneFrontRearH, neutralColor ); /* front */
@@ -627,15 +636,6 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 		default:
 			break;
 		}
-	}
-
-	if ( cgs.media.derbyHudVehicleShader ) {
-		vec4_t tint;
-		Vector4Copy( statusColor, tint );
-		tint[3] = 0.65f;
-		trap_R_SetColor( tint );
-		CG_DrawPic( vehicleX, vehicleY, vehicleW, vehicleH, cgs.media.derbyHudVehicleShader );
-		trap_R_SetColor( NULL );
 	}
 
 	CG_DrawTinyStringColor( (int)( x + 8.0f * scale ), (int)( y + 6.0f * scale ), "INTEGRITY", colorWhite );
