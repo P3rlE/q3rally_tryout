@@ -493,7 +493,7 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 	}
 
 	/* ensure stable 2D anchor independent from previous HUD passes */
-	CG_SetScreenPlacement( PLACE_CENTER, PLACE_TOP );
+	CG_SetScreenPlacement( PLACE_LEFT, PLACE_BOTTOM );
 
 	healthFrac = health / maxHealth;
 	if ( healthFrac < 0.0f ) {
