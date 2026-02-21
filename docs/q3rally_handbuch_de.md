@@ -173,8 +173,10 @@
 
 ## 6.4 Racing Bot Hybrid Waypoint (Plan)
 
-- Neuer Zielansatz: **Ghost-Converter** (`.ghost` → `maps/<map>.bpd`) kombiniert mit **flexibler Ingame-Abweichung** der Bots für Hindernisse und Verkehr; Ingame-Record bleibt als Fallback sinnvoll.
-- Details und Umsetzungsschritte im separaten Plan: `docs/racing_bot_hybrid_waypoint_plan.md`.
+- **Ist-Stand im Code:** Racing-Bots können aktuell bereits direkt aus `.ghost`-Dateien navigieren. Der Server lädt Ghost-Routen (bevorzugt die schnellste), sampelt Waypoints und nutzt sie in der Bot-Lenkung inkl. festem Lookahead + geglätteter Sollgeschwindigkeit.
+- **Weiterhin aktiv:** `maps/<map>.bpd` wird beim Mapstart geladen und versorgt die Checkpoints mit `bezierPos`/`bezierDir` (Legacy-/Streckengeometriepfad).
+- **Noch nicht implementiert:** Der geplante **Ghost-Converter** (`.ghost` → `.bpd`), Ingame-Commands wie `recordRacingLine start/stop/save` und der vollständige Korridor-/Recovery-Ansatz sind derzeit als Design/Plan dokumentiert, aber im Produktivcode noch nicht vollständig umgesetzt.
+- Details und Zielbild stehen im separaten Plan: `docs/racing_bot_hybrid_waypoint_plan.md`.
 
 ## 7. Future Ideas / Ideen für zukünftige Updates
 
