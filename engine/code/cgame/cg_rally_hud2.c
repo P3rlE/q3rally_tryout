@@ -492,8 +492,8 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 		return;
 	}
 
-	/* ensure stable 2D anchor independent from previous HUD passes */
-	CG_SetScreenPlacement( PLACE_LEFT, PLACE_TOP );
+	/* Place panel top-right, below the timer - matches CG_DrawUpperRight placement */
+	CG_SetScreenPlacement( PLACE_RIGHT, PLACE_TOP );
 
 	healthFrac = health / maxHealth;
 	if ( healthFrac < 0.0f ) {
@@ -513,9 +513,9 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 	panelW = 128.0f * scale;
 	panelH = 96.0f * scale;
 
-	/* anchor to bottom-left, matching the convention of CG_DrawLowerLeftHUD:
-	   y is the bottom edge, panel grows upward */
-	y = cg_derbyVehicleHudY.value - panelH;
+	/* X: flush right with small margin. Y: just below the timer (~20px) + configurable offset */
+	x = 640.0f - panelW - 8.0f;
+	y = cg_derbyVehicleHudY.value;
 	segW = 24.0f * scale;
 	segH = 20.0f * scale;
 
