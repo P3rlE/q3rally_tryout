@@ -739,7 +739,7 @@ qboolean CG_DrawHUD( void ) {
 		if ( cgs.gametype == GT_DERBY ) {
 			/* keep vehicle state panel permanently visible in derby */
 			CG_DrawHUD_DerbyVehicleState();
-			return qtrue;
+			return qfalse;
 		}
 		return qfalse;
 	}
