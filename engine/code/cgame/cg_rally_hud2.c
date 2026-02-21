@@ -486,8 +486,23 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 	float barY;
 	float barW;
 	float barH;
-	float segW;
-	float segH;
+	float vehicleX;
+	float vehicleY;
+	float vehicleW;
+	float vehicleH;
+	float zoneFrontRearW;
+	float zoneFrontRearH;
+	float zoneSideW;
+	float zoneSideH;
+	float zoneFrontX;
+	float zoneFrontY;
+	float zoneRearX;
+	float zoneRearY;
+	float zoneSideY;
+	float zoneLeftX;
+	float zoneRightX;
+	float zoneRoofX;
+	float zoneRoofY;
 	vec4_t baseColor;
 	vec4_t statusColor;
 	vec4_t neutralColor;
@@ -524,11 +539,28 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 	panelW = 128.0f * scale;
 	panelH = 96.0f * scale;
 	barX = x + 8.0f * scale;
-	barY = y + 20.0f * scale;
+	barY = y + 16.0f * scale;
 	barW = 112.0f * scale;
 	barH = 8.0f * scale;
-	segW = 24.0f * scale;
-	segH = 20.0f * scale;
+
+	vehicleW = 110.0f * scale;
+	vehicleH = 70.0f * scale;
+	vehicleX = x + ( panelW - vehicleW ) * 0.5f;
+	vehicleY = y + 22.0f * scale;
+
+	zoneFrontRearW = 34.0f * scale;
+	zoneFrontRearH = 12.0f * scale;
+	zoneSideW = 14.0f * scale;
+	zoneSideH = 26.0f * scale;
+	zoneFrontX = vehicleX + ( vehicleW - zoneFrontRearW ) * 0.5f;
+	zoneFrontY = vehicleY + 2.0f * scale;
+	zoneRearX = zoneFrontX;
+	zoneRearY = vehicleY + vehicleH - zoneFrontRearH - 2.0f * scale;
+	zoneSideY = vehicleY + ( vehicleH - zoneSideH ) * 0.5f;
+	zoneLeftX = vehicleX + 4.0f * scale;
+	zoneRightX = vehicleX + vehicleW - zoneSideW - 4.0f * scale;
+	zoneRoofX = zoneFrontX;
+	zoneRoofY = vehicleY + ( vehicleH - zoneFrontRearH ) * 0.5f;
 
 	baseColor[0] = 0.02f; baseColor[1] = 0.02f; baseColor[2] = 0.02f; baseColor[3] = 0.70f;
 	CG_FillRect( x, y, panelW, panelH, baseColor );
@@ -569,28 +601,28 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 	CG_DrawRect( barX, barY, barW, barH, 1.0f * scale, colorWhite );
 
 	/* neutral silhouette blocks (no fake per-zone damage state) */
-	CG_FillRect( x + 52.0f * scale, y + 16.0f * scale, segW, segH, neutralColor ); /* front */
-	CG_FillRect( x + 26.0f * scale, y + 40.0f * scale, segW, segH, neutralColor ); /* left */
-	CG_FillRect( x + 78.0f * scale, y + 40.0f * scale, segW, segH, neutralColor ); /* right */
-	CG_FillRect( x + 52.0f * scale, y + 64.0f * scale, segW, segH, neutralColor ); /* rear */
+	CG_FillRect( zoneFrontX, zoneFrontY, zoneFrontRearW, zoneFrontRearH, neutralColor ); /* front */
+	CG_FillRect( zoneLeftX, zoneSideY, zoneSideW, zoneSideH, neutralColor ); /* left */
+	CG_FillRect( zoneRightX, zoneSideY, zoneSideW, zoneSideH, neutralColor ); /* right */
+	CG_FillRect( zoneRearX, zoneRearY, zoneFrontRearW, zoneFrontRearH, neutralColor ); /* rear */
 	if ( cg_derbyVehicleHudRoof.integer ) {
-		CG_FillRect( x + 52.0f * scale, y + 40.0f * scale, segW, segH, neutralColor );
+		CG_FillRect( zoneRoofX, zoneRoofY, zoneFrontRearW, zoneFrontRearH, neutralColor );
 	}
 
 	/* Option 2: short last-hit direction flash */
 	if ( hasDirectionalHit ) {
 		switch ( hitSegment ) {
 		case 0:
-			CG_FillRect( x + 52.0f * scale, y + 16.0f * scale, segW, segH, flashColor );
+			CG_FillRect( zoneFrontX, zoneFrontY, zoneFrontRearW, zoneFrontRearH, flashColor );
 			break;
 		case 1:
-			CG_FillRect( x + 26.0f * scale, y + 40.0f * scale, segW, segH, flashColor );
+			CG_FillRect( zoneLeftX, zoneSideY, zoneSideW, zoneSideH, flashColor );
 			break;
 		case 2:
-			CG_FillRect( x + 78.0f * scale, y + 40.0f * scale, segW, segH, flashColor );
+			CG_FillRect( zoneRightX, zoneSideY, zoneSideW, zoneSideH, flashColor );
 			break;
 		case 3:
-			CG_FillRect( x + 52.0f * scale, y + 64.0f * scale, segW, segH, flashColor );
+			CG_FillRect( zoneRearX, zoneRearY, zoneFrontRearW, zoneFrontRearH, flashColor );
 			break;
 		default:
 			break;
@@ -599,16 +631,8 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 
 	if ( cgs.media.derbyHudVehicleShader ) {
 		vec4_t tint;
-		float vehicleX;
-		float vehicleY;
-		float vehicleW;
-		float vehicleH;
 		Vector4Copy( statusColor, tint );
 		tint[3] = 0.65f;
-		vehicleW = 74.0f * scale;
-		vehicleH = 86.0f * scale;
-		vehicleX = x + ( panelW - vehicleW ) * 0.5f;
-		vehicleY = y + 6.0f * scale;
 		trap_R_SetColor( tint );
 		CG_DrawPic( vehicleX, vehicleY, vehicleW, vehicleH, cgs.media.derbyHudVehicleShader );
 		trap_R_SetColor( NULL );
