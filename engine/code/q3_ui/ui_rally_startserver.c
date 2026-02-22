@@ -863,6 +863,7 @@ typedef struct {
 	qboolean			newBot;
 	int					newBotIndex;
 	char				newBotName[16];
+
 } serveroptions_t;
 
 static serveroptions_t s_serveroptions;
@@ -1993,6 +1994,7 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 	if( s_serveroptions.gametype == GT_ELIMINATION ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.eliminationWeapons );
 	}
+
 
 	if( s_serveroptions.gametype == GT_RACING || s_serveroptions.gametype == GT_RACING_DM
 	|| s_serveroptions.gametype == GT_SPRINT || s_serveroptions.gametype == GT_TEAM_RACING || s_serveroptions.gametype == GT_TEAM_RACING_DM) {
