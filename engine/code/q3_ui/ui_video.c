@@ -315,8 +315,7 @@ GRAPHICS OPTIONS MENU
 
 #define ID_ANISOTROPY	111
 #define ID_MSAA			112
-#define ID_SUNSHADOWS	113
-#define ID_SHADOWQUALITY	114
+#define ID_ADVANCEDGRAPHICS	113
 
 typedef struct {
 	menuframework_s	menu;
@@ -348,8 +347,7 @@ typedef struct {
 	menulist_s  	filter;
 	menulist_s		anisotropy;
 	menulist_s		msaa;
-	menulist_s		sunshadows;
-	menulist_s		shadowquality;
+	menutext_s		advancedgraphics;
 	menutext_s		driverinfo;
 
 // STONELANCE
@@ -969,6 +967,10 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 		s_graphicsoptions.fs.curvalue          = ivo->fullscreen;
 		break;
 
+	case ID_ADVANCEDGRAPHICS:
+		UI_AdvancedGraphicsMenu();
+		break;
+
 	case ID_DRIVERINFO:
 		UI_DriverInfo_Menu();
 		break;
@@ -1515,6 +1517,17 @@ void GraphicsOptions_MenuInit( void )
 
 	y += BIGCHAR_HEIGHT + 8;
 
+	s_graphicsoptions.advancedgraphics.generic.type     = MTYPE_PTEXT;
+	s_graphicsoptions.advancedgraphics.generic.flags    = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
+	s_graphicsoptions.advancedgraphics.generic.callback = GraphicsOptions_Event;
+	s_graphicsoptions.advancedgraphics.generic.id       = ID_ADVANCEDGRAPHICS;
+	s_graphicsoptions.advancedgraphics.generic.x        = 320;
+	s_graphicsoptions.advancedgraphics.generic.y        = y;
+	s_graphicsoptions.advancedgraphics.string           = "Advanced Graphics";
+	s_graphicsoptions.advancedgraphics.style            = UI_CENTER|UI_SMALLFONT;
+	s_graphicsoptions.advancedgraphics.color            = text_color_normal;
+	y += BIGCHAR_HEIGHT+2;
+
 	s_graphicsoptions.driverinfo.generic.type     = MTYPE_PTEXT;
 	s_graphicsoptions.driverinfo.generic.flags    = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
 	s_graphicsoptions.driverinfo.generic.callback = GraphicsOptions_Event;
@@ -1599,8 +1612,7 @@ void GraphicsOptions_MenuInit( void )
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.filter );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.anisotropy );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.msaa );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.sunshadows );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.shadowquality );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.advancedgraphics );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.driverinfo );
 
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.back );

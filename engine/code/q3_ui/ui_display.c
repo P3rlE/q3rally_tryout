@@ -117,9 +117,6 @@ static void UI_DisplayOptionsMenu_Event( void* ptr, int event ) {
 		trap_Cvar_SetValue( "cg_viewsize", displayOptionsInfo.screensize.curvalue * 10 );
 		break;
 
-	case ID_ADVANCEDGRAPHICS:
-		UI_AdvancedGraphicsMenu();
-		break;
 
 	case ID_BACK:
 		UI_PopMenu();
@@ -246,16 +243,6 @@ static void UI_DisplayOptionsMenu_Init( void ) {
 	displayOptionsInfo.screensize.minvalue			= 3;
     displayOptionsInfo.screensize.maxvalue			= 10;
 
-	y += BIGCHAR_HEIGHT + 8;
-	displayOptionsInfo.advancedgraphics.generic.type		= MTYPE_PTEXT;
-	displayOptionsInfo.advancedgraphics.generic.flags		= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
-	displayOptionsInfo.advancedgraphics.generic.callback	= UI_DisplayOptionsMenu_Event;
-	displayOptionsInfo.advancedgraphics.generic.id		= ID_ADVANCEDGRAPHICS;
-	displayOptionsInfo.advancedgraphics.generic.x		= 320;
-	displayOptionsInfo.advancedgraphics.generic.y		= y;
-	displayOptionsInfo.advancedgraphics.string		= "ADVANCED GRAPHICS";
-	displayOptionsInfo.advancedgraphics.color		= text_color_normal;
-	displayOptionsInfo.advancedgraphics.style		= UI_CENTER|UI_SMALLFONT;
 
 // STONELANCE
 /*
