@@ -868,6 +868,7 @@ typedef struct {
 	qboolean			newBot;
 	int					newBotIndex;
 	char				newBotName[16];
+
 } serveroptions_t;
 
 static serveroptions_t s_serveroptions;

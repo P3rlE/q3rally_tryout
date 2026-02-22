@@ -517,8 +517,8 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 		return;
 	}
 
-	/* ensure stable 2D anchor independent from previous HUD passes */
-	CG_SetScreenPlacement( PLACE_LEFT, PLACE_TOP );
+	/* bottom-left, matching CG_DrawLowerLeft */
+	CG_SetScreenPlacement( PLACE_LEFT, PLACE_BOTTOM );
 
 	healthFrac = health / maxHealth;
 	if ( healthFrac < 0.0f ) {
@@ -527,8 +527,6 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 		healthFrac = 1.0f;
 	}
 
-	x = cg_derbyVehicleHudX.value;
-	y = cg_derbyVehicleHudY.value;
 	scale = cg_derbyVehicleHudScale.value;
 	if ( scale < 0.5f ) {
 		scale = 0.5f;
@@ -538,6 +536,11 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 
 	panelW = 128.0f * scale;
 	panelH = 96.0f * scale;
+
+	/* bottom-left corner, 8px margin */
+	x = 8.0f;
+	y = 480.0f - panelH - 8.0f;
+
 	barX = x + 8.0f * scale;
 	barY = y + 16.0f * scale;
 	barW = 112.0f * scale;
@@ -586,13 +589,33 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 
 	hitSegment = -1;
 	hasDirectionalHit = qfalse;
-	if ( cg.damageTime > 0 && cg.time - cg.damageTime < lastHitFlashMs ) {
-		hasDirectionalHit = qtrue;
-		if ( fabs( cg.damageX ) > fabs( cg.damageY ) ) {
-			hitSegment = cg.damageX > 0.0f ? 1 : 2; /* 1=left, 2=right */
-		} else {
-			hitSegment = cg.damageY > 0.0f ? 0 : 3; /* 0=front, 3=rear */
+	{
+		int curDmg = cg.snap->ps.stats[STAT_DAMAGE_TAKEN];
+		if ( curDmg != cg.derbyLastDamageTaken ) {
+			/* New hit detected - compute direction from velocity vs view yaw */
+			vec3_t forward, right;
+			float fwdDot, rightDot;
+			vec3_t angles;
+
+			VectorSet( angles, 0, cg.snap->ps.viewangles[YAW], 0 );
+			AngleVectors( angles, forward, right, NULL );
+			fwdDot   = DotProduct( cg.snap->ps.velocity, forward );
+			rightDot = DotProduct( cg.snap->ps.velocity, right );
+
+			cg.derbyHitFxTime   = cg.time;
+			cg.derbyHitFxDamage = curDmg - cg.derbyLastDamageTaken;
+			cg.derbyLastDamageTaken = curDmg;
+
+			if ( fabs( fwdDot ) >= fabs( rightDot ) ) {
+				cg.derbyHitFxDir = ( fwdDot >= 0.0f ) ? 0 : 3; /* 0=front 3=rear */
+			} else {
+				cg.derbyHitFxDir = ( rightDot >= 0.0f ) ? 2 : 1; /* 2=right 1=left */
+			}
 		}
+	}
+	if ( cg.derbyHitFxTime > 0 && cg.time - cg.derbyHitFxTime < lastHitFlashMs ) {
+		hasDirectionalHit = qtrue;
+		hitSegment = cg.derbyHitFxDir;
 	}
 
 	/* Option 1: primary integrity indicator (single health bar) */
@@ -639,7 +662,6 @@ static void CG_DrawHUD_DerbyVehicleState( void ) {
 	}
 
 	CG_DrawTinyStringColor( (int)( x + 8.0f * scale ), (int)( y + 6.0f * scale ), "INTEGRITY", colorWhite );
-	CG_DrawTinyStringColor( (int)( x + 8.0f * scale ), (int)( y + 82.0f * scale ), va("HP %3i%%", (int)(healthFrac * 100.0f)), colorWhite );
 
 	if ( critical ) {
 		float pulse = (float)( cg.time % 1000 ) * 0.001f;

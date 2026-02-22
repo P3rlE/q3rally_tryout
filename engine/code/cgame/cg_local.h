@@ -830,6 +830,8 @@ typedef struct {
 	int			derbyHitFxTime;
 	int			derbyHitFxLevel;
 	int			derbyHitFxDamage;
+	int			derbyHitFxDir;		/* 0=front 1=left 2=right 3=rear */
+	int			derbyLastDamageTaken;	/* previous STAT_DAMAGE_TAKEN for delta detection */
 
 	// status bar head
 	float		headYaw;
