@@ -1007,9 +1007,18 @@ static void ServerOptions_Start( void ) {
 	trackLength  = s_serveroptions.trackLength.curvalue;
 	reversed     = s_serveroptions.reversed.curvalue;
 	eliminationWeapons = s_serveroptions.eliminationWeapons.curvalue;
-	derbyRounds = atoi( s_serveroptions.derbyRounds.field.buffer );
-	derbyRoundWarmup = atoi( s_serveroptions.derbyRoundWarmup.field.buffer );
-	derbyRoundResetHealth = s_serveroptions.derbyRoundResetHealth.curvalue;
+	derbyRounds = 5;
+	derbyRoundWarmup = 6;
+	derbyRoundResetHealth = 1;
+	if ( s_serveroptions.gametype == GT_DERBY ) {
+		if ( s_serveroptions.derbyRounds.field.buffer[0] ) {
+			derbyRounds = atoi( s_serveroptions.derbyRounds.field.buffer );
+		}
+		if ( s_serveroptions.derbyRoundWarmup.field.buffer[0] ) {
+			derbyRoundWarmup = atoi( s_serveroptions.derbyRoundWarmup.field.buffer );
+		}
+		derbyRoundResetHealth = s_serveroptions.derbyRoundResetHealth.curvalue;
+	}
 	isRacingGametype = ServerOptions_IsRacingGametype( s_serveroptions.gametype );
 
 	//set maxclients
@@ -1109,13 +1118,13 @@ default:
 	if ( s_serveroptions.gametype == GT_DERBY ) {
 		trap_Cvar_SetValue( "ui_derby_tournament", s_serveroptions.derbyTournament.curvalue );
 		if ( s_serveroptions.derbyTournament.curvalue ) {
-			trap_Cvar_SetValue( "g_derbyRounds", Com_Clamp( 2, derbyRounds, 99 ) );
-			trap_Cvar_SetValue( "g_derbyRoundWarmup", Com_Clamp( 2, derbyRoundWarmup, 30 ) );
-			trap_Cvar_SetValue( "g_derbyRoundResetHealth", Com_Clamp( 0, derbyRoundResetHealth, 1 ) );
+			trap_Cvar_SetValue( "g_derbyRounds", Com_Clamp( 2, 99, derbyRounds ) );
+			trap_Cvar_SetValue( "g_derbyRoundWarmup", Com_Clamp( 2, 30, derbyRoundWarmup ) );
+			trap_Cvar_SetValue( "g_derbyRoundResetHealth", Com_Clamp( 0, 1, derbyRoundResetHealth ) );
 		} else {
 			trap_Cvar_SetValue( "g_derbyRounds", 0 );
-			trap_Cvar_SetValue( "g_derbyRoundWarmup", Com_Clamp( 2, derbyRoundWarmup, 30 ) );
-			trap_Cvar_SetValue( "g_derbyRoundResetHealth", Com_Clamp( 0, derbyRoundResetHealth, 1 ) );
+			trap_Cvar_SetValue( "g_derbyRoundWarmup", Com_Clamp( 2, 30, derbyRoundWarmup ) );
+			trap_Cvar_SetValue( "g_derbyRoundResetHealth", Com_Clamp( 0, 1, derbyRoundResetHealth ) );
 		}
 	} else {
 		trap_Cvar_SetValue( "ui_derby_tournament", 0 );
