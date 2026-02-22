@@ -316,6 +316,8 @@ GRAPHICS OPTIONS MENU
 #define ID_ANISOTROPY	111
 #define ID_MSAA			112
 #define ID_ADVANCEDGRAPHICS	113
+#define ID_SUNSHADOWS	114
+#define ID_SHADOWQUALITY	115
 
 typedef struct {
 	menuframework_s	menu;
@@ -347,6 +349,8 @@ typedef struct {
 	menulist_s  	filter;
 	menulist_s		anisotropy;
 	menulist_s		msaa;
+	menulist_s		sunshadows;
+	menulist_s		shadowquality;
 	menutext_s		advancedgraphics;
 	menutext_s		driverinfo;
 
@@ -1612,6 +1616,8 @@ void GraphicsOptions_MenuInit( void )
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.filter );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.anisotropy );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.msaa );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.sunshadows );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.shadowquality );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.advancedgraphics );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.driverinfo );
 
