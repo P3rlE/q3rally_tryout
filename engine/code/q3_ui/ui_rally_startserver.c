@@ -844,12 +844,6 @@ typedef struct {
         menuradiobutton_s       pure;
 	menuradiobutton_s       eliminationWeapons;
 	menuradiobutton_s       ghostOnly;
-<<<<<<< codex/remove-tournament-derby-remnants-from-ui_rally_startserver.c-i98evq
-=======
-	menufield_s             derbyRounds;
-	menufield_s             derbyRoundWarmup;
-	menuradiobutton_s       derbyRoundResetHealth;
->>>>>>> master
 	menulist_s			botSkill;
 	menutext_s			player0;
 	menulist_s			playerType[PLAYER_SLOTS];
@@ -1085,16 +1079,6 @@ default:
 		trap_Cvar_SetValue( "cg_ghostPlayback", 0 );
 	}
 
-<<<<<<< codex/remove-tournament-derby-remnants-from-ui_rally_startserver.c-i98evq
-=======
-	if ( s_serveroptions.gametype == GT_DERBY ) {
-		trap_Cvar_SetValue( "g_derbyRounds", Com_Clamp( 2, 99, derbyRounds ) );
-		trap_Cvar_SetValue( "g_derbyRoundWarmup", Com_Clamp( 2, 30, derbyRoundWarmup ) );
-		trap_Cvar_SetValue( "g_derbyRoundResetHealth", Com_Clamp( 0, 1, derbyRoundResetHealth ) );
-	} else {
-		trap_Cvar_SetValue( "g_derbyRounds", 0 );
-	}
->>>>>>> master
         if ( s_serveroptions.gametype == GT_ELIMINATION ) {
                 trap_Cvar_SetValue( "ui_elimination_weapons", eliminationWeapons );
                 trap_Cvar_SetValue( "g_eliminationWeapons", eliminationWeapons );
@@ -1587,19 +1571,6 @@ static void ServerOptions_SetMenuItems( void ) {
 		s_serveroptions.eliminationWeapons.curvalue = 0;
 	}
 
-<<<<<<< codex/remove-tournament-derby-remnants-from-ui_rally_startserver.c-i98evq
-=======
-	if ( s_serveroptions.gametype == GT_DERBY ) {
-		Com_sprintf( s_serveroptions.derbyRounds.field.buffer, 4, "%i", (int)Com_Clamp( 2, 99, trap_Cvar_VariableValue( "g_derbyRounds" ) ) );
-		Com_sprintf( s_serveroptions.derbyRoundWarmup.field.buffer, 4, "%i", (int)Com_Clamp( 2, 30, trap_Cvar_VariableValue( "g_derbyRoundWarmup" ) ) );
-		s_serveroptions.derbyRoundResetHealth.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "g_derbyRoundResetHealth" ) );
-	} else {
-		Q_strncpyz( s_serveroptions.derbyRounds.field.buffer, "5", sizeof( s_serveroptions.derbyRounds.field.buffer ) );
-		Q_strncpyz( s_serveroptions.derbyRoundWarmup.field.buffer, "6", sizeof( s_serveroptions.derbyRoundWarmup.field.buffer ) );
-		s_serveroptions.derbyRoundResetHealth.curvalue = 1;
-	}
-
->>>>>>> master
 	Q_strncpyz( s_serveroptions.hostname.field.buffer, UI_Cvar_VariableString( "sv_hostname" ), sizeof( s_serveroptions.hostname.field.buffer ) );
 	s_serveroptions.pure.curvalue = Com_Clamp( 0, 1, trap_Cvar_VariableValue( "sv_pure" ) );
 	s_serveroptions.trackLength.curvalue = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "ui_racing_tracklength" ) );
@@ -1800,36 +1771,6 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 		s_serveroptions.pure.generic.flags |= QMF_GRAYED;
 	}
 
-<<<<<<< codex/remove-tournament-derby-remnants-from-ui_rally_startserver.c-i98evq
-=======
-	if ( s_serveroptions.gametype == GT_DERBY ) {
-		y += BIGCHAR_HEIGHT+2;
-		s_serveroptions.derbyRounds.generic.type = MTYPE_FIELD;
-		s_serveroptions.derbyRounds.generic.name = "Rounds:";
-		s_serveroptions.derbyRounds.generic.flags = QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-		s_serveroptions.derbyRounds.generic.x = OPTIONS_X;
-		s_serveroptions.derbyRounds.generic.y = y;
-		s_serveroptions.derbyRounds.field.widthInChars = 3;
-		s_serveroptions.derbyRounds.field.maxchars = 3;
-
-		y += BIGCHAR_HEIGHT+2;
-		s_serveroptions.derbyRoundWarmup.generic.type = MTYPE_FIELD;
-		s_serveroptions.derbyRoundWarmup.generic.name = "Round Warmup:";
-		s_serveroptions.derbyRoundWarmup.generic.flags = QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-		s_serveroptions.derbyRoundWarmup.generic.x = OPTIONS_X;
-		s_serveroptions.derbyRoundWarmup.generic.y = y;
-		s_serveroptions.derbyRoundWarmup.field.widthInChars = 3;
-		s_serveroptions.derbyRoundWarmup.field.maxchars = 3;
-
-		y += BIGCHAR_HEIGHT+2;
-		s_serveroptions.derbyRoundResetHealth.generic.type = MTYPE_RADIOBUTTON;
-		s_serveroptions.derbyRoundResetHealth.generic.flags = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-		s_serveroptions.derbyRoundResetHealth.generic.x = OPTIONS_X;
-		s_serveroptions.derbyRoundResetHealth.generic.y = y;
-		s_serveroptions.derbyRoundResetHealth.generic.name = "Reset Health:";
-	}
-
->>>>>>> master
         if ( s_serveroptions.gametype == GT_ELIMINATION ) {
                 y += BIGCHAR_HEIGHT+2;
                 s_serveroptions.eliminationWeapons.generic.type = MTYPE_RADIOBUTTON;
@@ -2057,15 +1998,6 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.eliminationWeapons );
 	}
 
-<<<<<<< codex/remove-tournament-derby-remnants-from-ui_rally_startserver.c-i98evq
-=======
-	if( s_serveroptions.gametype == GT_DERBY ) {
-		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.derbyRounds );
-		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.derbyRoundWarmup );
-		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.derbyRoundResetHealth );
-	}
-
->>>>>>> master
 	if( s_serveroptions.gametype == GT_RACING || s_serveroptions.gametype == GT_RACING_DM
 	|| s_serveroptions.gametype == GT_SPRINT || s_serveroptions.gametype == GT_TEAM_RACING || s_serveroptions.gametype == GT_TEAM_RACING_DM) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.trackLength );
