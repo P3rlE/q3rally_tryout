@@ -299,6 +299,29 @@ static void UI_DisplayOptionsMenu_Init( void ) {
 
 	displayOptionsInfo.brightness.curvalue  = trap_Cvar_VariableValue("r_gamma") * 10;
 	displayOptionsInfo.screensize.curvalue  = trap_Cvar_VariableValue( "cg_viewsize")/10;
+	displayOptionsInfo.sunshadows.curvalue  = trap_Cvar_VariableValue( "r_sunShadows" ) != 0;
+	{
+		int shadowMapSize = (int)trap_Cvar_VariableValue( "r_shadowMapSize" );
+		if ( shadowMapSize >= 2048 )
+			displayOptionsInfo.shadowquality.curvalue = 2;
+		else if ( shadowMapSize >= 1024 )
+			displayOptionsInfo.shadowquality.curvalue = 1;
+		else
+			displayOptionsInfo.shadowquality.curvalue = 0;
+	}
+	displayOptionsInfo.sunlightmode.curvalue = (int)trap_Cvar_VariableValue( "r_sunlightMode" );
+	if ( displayOptionsInfo.sunlightmode.curvalue < 0 )
+		displayOptionsInfo.sunlightmode.curvalue = 0;
+	if ( displayOptionsInfo.sunlightmode.curvalue > 2 )
+		displayOptionsInfo.sunlightmode.curvalue = 2;
+	displayOptionsInfo.ssao.curvalue = trap_Cvar_VariableValue( "r_ssao" ) != 0;
+	displayOptionsInfo.hdr.curvalue = trap_Cvar_VariableValue( "r_hdr" ) != 0;
+	displayOptionsInfo.normalmapping.curvalue = trap_Cvar_VariableValue( "r_normalMapping" ) != 0;
+
+	if ( displayOptionsInfo.sunshadows.curvalue == 0 )
+	{
+		displayOptionsInfo.shadowquality.generic.flags |= QMF_GRAYED;
+	}
 }
 
 
