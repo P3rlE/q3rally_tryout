@@ -488,14 +488,6 @@ void RallyStarter_Think( gentity_t *ent ){
 
 	if ( level.time > ent->pain_debounce_time + 5000 ){
 		level.startRaceTime = level.time;
-		if ( g_gametype.integer == GT_DERBY && g_derbyRounds.integer > 1 ) {
-			if ( level.derbyRoundNumber < 1 ) {
-				level.derbyRoundNumber = 1;
-			}
-			level.derbyRoundActive = qtrue;
-			level.derbyRoundResumeTime = 0;
-			level.derbyRoundLastCountdown = -1;
-		}
 
 		trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
 		RaceCountdown("GO!", 0);

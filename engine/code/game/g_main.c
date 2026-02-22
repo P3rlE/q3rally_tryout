@@ -141,9 +141,6 @@ vmCvar_t        g_derbyCollisionFrontWeight;
 vmCvar_t        g_derbyCollisionSideWeight;
 vmCvar_t        g_derbyCollisionRearWeight;
 vmCvar_t        g_derbyCollisionLog;
-vmCvar_t        g_derbyRounds;
-vmCvar_t        g_derbyRoundWarmup;
-vmCvar_t        g_derbyRoundResetHealth;
 vmCvar_t  g_humanplayers;
 vmCvar_t        g_fuelKillReward;
 vmCvar_t        g_useFuel;
@@ -318,9 +315,6 @@ static cvarTable_t		gameCvarTable[] = {
         { &g_derbyCollisionSideWeight, "g_derbyCollisionSideWeight", "0.5", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyCollisionRearWeight, "g_derbyCollisionRearWeight", "0.8", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyCollisionLog, "g_derbyCollisionLog", "0", 0, 0, qfalse },
-        { &g_derbyRounds, "g_derbyRounds", "0", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
-        { &g_derbyRoundWarmup, "g_derbyRoundWarmup", "6", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
-        { &g_derbyRoundResetHealth, "g_derbyRoundResetHealth", "1", CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
         // END
 
         { &g_rankings, "g_rankings", "0", 0, 0, qfalse},
@@ -338,85 +332,6 @@ void G_InitGame( int levelTime, int randomSeed, int restart );
 void G_RunFrame( int levelTime );
 void G_ShutdownGame( int restart );
 void CheckExitRules( void );
-
-static qboolean G_DerbyRoundsEnabled( void ) {
-	return ( g_gametype.integer == GT_DERBY && g_derbyRounds.integer > 1 );
-}
-
-static void G_DerbyPrepareNextRound( void ) {
-	int i;
-	int warmupSeconds;
-
-	if ( !G_DerbyRoundsEnabled() ) {
-		return;
-	}
-
-	warmupSeconds = g_derbyRoundWarmup.integer;
-	if ( warmupSeconds < 2 ) {
-		warmupSeconds = 2;
-	}
-
-	level.derbyRoundActive = qfalse;
-	level.startRaceTime = 0;
-	level.finishRaceTime = 0;
-	level.derbyRoundResumeTime = level.time + warmupSeconds * 1000;
-	level.derbyRoundLastCountdown = warmupSeconds + 1;
-
-	for ( i = 0; i < g_maxclients.integer; i++ ) {
-		gentity_t *player = &g_entities[i];
-		if ( !player->inuse || !player->client ) {
-			continue;
-		}
-		if ( player->client->pers.connected != CON_CONNECTED ) {
-			continue;
-		}
-		if ( player->client->sess.sessionTeam == TEAM_SPECTATOR ) {
-			continue;
-		}
-
-		player->client->finishRaceTime = 0;
-		player->raceObserver = qfalse;
-		if ( g_derbyRoundResetHealth.integer ) {
-			player->health = player->client->ps.stats[STAT_MAX_HEALTH];
-			player->client->ps.stats[STAT_HEALTH] = player->health;
-		}
-
-		ClientSpawn( player );
-	}
-
-	trap_SendServerCommand( -1, va( "print \"Round %i/%i starts in %i...\\n\"", level.derbyRoundNumber, g_derbyRounds.integer, warmupSeconds ) );
-	RaceCountdown( "Next Round", warmupSeconds );
-}
-
-static void G_DerbyUpdateRoundWarmup( void ) {
-	int remainingMs;
-	int remainingSeconds;
-
-	if ( !G_DerbyRoundsEnabled() || level.derbyRoundActive || level.derbyRoundResumeTime <= 0 ) {
-		return;
-	}
-
-	remainingMs = level.derbyRoundResumeTime - level.time;
-	if ( remainingMs <= 0 ) {
-		level.startRaceTime = level.time;
-		level.finishRaceTime = 0;
-		level.winnerNumber = -1;
-		level.derbyRoundActive = qtrue;
-		level.derbyRoundResumeTime = 0;
-		level.derbyRoundLastCountdown = -1;
-
-		trap_SendServerCommand( -1, va( "print \"Round %i/%i - GO!\\n\"", level.derbyRoundNumber, g_derbyRounds.integer ) );
-		trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
-		RaceCountdown( "GO!", 0 );
-		return;
-	}
-
-	remainingSeconds = ( remainingMs + 999 ) / 1000;
-	if ( remainingSeconds != level.derbyRoundLastCountdown && remainingSeconds <= 3 ) {
-		level.derbyRoundLastCountdown = remainingSeconds;
-		RaceCountdown( va( "%i", remainingSeconds ), remainingSeconds );
-	}
-}
 
 
 /*
@@ -894,7 +809,6 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
         player->eliminationRound = client->eliminationRound;
         player->eliminationPlayersRemaining = client->eliminationPlayersRemaining;
         player->eliminationMetric = client->eliminationMetric;
-        player->derbyRoundWins = client->derbyRoundWins;
 
         if ( level.startRaceTime > 0 && client->finishRaceTime > level.startRaceTime ) {
                 player->totalRaceMs = client->finishRaceTime - level.startRaceTime;
@@ -1004,9 +918,6 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
         payload->eliminationStartDelay = g_eliminationStartDelay.integer;
         payload->eliminationInterval = g_eliminationInterval.integer;
         payload->eliminationWarning = g_eliminationWarning.integer;
-        payload->derbyRounds = g_derbyRounds.integer;
-        payload->derbyRoundWarmup = g_derbyRoundWarmup.integer;
-        payload->derbyRoundResetHealth = g_derbyRoundResetHealth.integer ? qtrue : qfalse;
 
         for ( i = 0; i < TEAM_NUM_TEAMS; ++i ) {
                 payload->teamScores[i] = level.teamScores[i];
@@ -2335,24 +2246,9 @@ void CheckExitRules( void ) {
 		if (winner && count == 1) {
 			level.winnerNumber = winner->ps.clientNum;
 			level.finishRaceTime = level.time;
-			winner->derbyRoundWins++;
 
-			if ( G_DerbyRoundsEnabled() ) {
-				int winsNeeded = ( g_derbyRounds.integer / 2 ) + 1;
-				trap_SendServerCommand( -1, va("print \"%s won round %i/%i (%i wins).\\n\"",
-					winner->pers.netname, level.derbyRoundNumber, g_derbyRounds.integer, winner->derbyRoundWins ) );
-
-				if ( winner->derbyRoundWins >= winsNeeded || level.derbyRoundNumber >= g_derbyRounds.integer ) {
-					trap_SendServerCommand( -1, va("print \"%s won the demolition derby match!\\n\"", winner->pers.netname ));
-					trap_SendServerCommand( level.winnerNumber, "cp \"You won the demolition derby match!\n\"");
-				} else {
-					level.derbyRoundNumber++;
-					G_DerbyPrepareNextRound();
-				}
-			} else {
-				trap_SendServerCommand( -1, va("print \"%s won the demolition derby!\n\"", winner->pers.netname ));
-				trap_SendServerCommand( level.winnerNumber, "cp \"You won the demolition derby!\n\"");
-			}
+			trap_SendServerCommand( -1, va("print \"%s won the demolition derby!\n\"", winner->pers.netname ));
+			trap_SendServerCommand( level.winnerNumber, "cp \"You won the demolition derby!\n\"");
 		}
 
 		return;
@@ -2413,9 +2309,6 @@ void CheckExitRules( void ) {
 
 	if ( level.finishRaceTime && g_gametype.integer == GT_DERBY
 		&& level.finishRaceTime + 10000 < level.time ){
-		if ( G_DerbyRoundsEnabled() && level.derbyRoundResumeTime > 0 ) {
-			return;
-		}
 		g_entities[ level.winnerNumber ].client->finishRaceTime = level.time;
 		trap_SendServerCommand( -1, va("raceFinishTime %i %i", level.winnerNumber, level.time) );
 		LogExit( "Derby finished." );
@@ -2886,7 +2779,6 @@ void G_RunFrame( int levelTime ) {
 
 	// get any cvar changes
 	G_UpdateCvars();
-	G_DerbyUpdateRoundWarmup();
 
 // STONELANCE
 //	RunRallyPhysics(); // map object physics

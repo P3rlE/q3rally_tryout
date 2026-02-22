@@ -58,7 +58,6 @@ typedef struct ladderPlayerPayload_s {
         int                     eliminationRound;
         int                     eliminationPlayersRemaining;
         float           eliminationMetric;
-        int                     derbyRoundWins;
         int                     finishRaceTime;
         float           kdRatio;
 } ladderPlayerPayload_t;
@@ -89,9 +88,6 @@ typedef struct ladderMatchPayload_s {
         int                     eliminationStartDelay;
         int                     eliminationInterval;
         int                     eliminationWarning;
-        int                     derbyRounds;
-        int                     derbyRoundWarmup;
-        qboolean        derbyRoundResetHealth;
         int                     teamScores[TEAM_NUM_TEAMS];
         int                     teamTimes[TEAM_NUM_TEAMS];
         int                     playerCount;

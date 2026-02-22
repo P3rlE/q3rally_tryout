@@ -464,7 +464,6 @@ typedef struct {
 	int				damageTaken;
 	int				position;
 	int				rankTier;
-	int				derbyRoundWins;
 } score_t;
 
 // each client has an associated clientInfo_t
@@ -1342,7 +1341,6 @@ typedef struct {
 	int				fraglimit;
 // Q3Rally Code Start
 	int				laplimit;
-	int				derbyRounds;
 // Q3Rally Code END
 	int				capturelimit;
 	int				timelimit;
