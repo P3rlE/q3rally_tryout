@@ -441,6 +441,7 @@ struct gclient_s {
 	int			eliminationRound;
 	int			eliminationPlayersRemaining;
 	float		eliminationMetric;
+	int			derbyRoundWins;
 
 	int			horn_sound_time;
 
@@ -569,6 +570,10 @@ typedef struct {
 	int			eliminationPlayersRemaining;
 	int			eliminationInitialPlayers;
 	qboolean	eliminationSetupComplete;
+	int			derbyRoundNumber;
+	int			derbyRoundResumeTime;
+	int			derbyRoundLastCountdown;
+	qboolean	derbyRoundActive;
 	int			numberOfLaps;
 
 	// map variables
@@ -865,6 +870,7 @@ qboolean G_Ghost_GetBotRoute( const ghostBotRoute_t **outRoute );
 int GetTeamAtRank( int rank );
 void CreateRallyStarter( void );
 void CalculatePlayerPositions( void );
+void RaceCountdown( char *s, int secondsLeft );
 void Cmd_RacePositions_f( void );
 void Cmd_Times_f( gentity_t *ent );
 gentity_t *SelectLastMarkerForSpawn( gentity_t *ent, vec3_t origin, vec3_t angles, qboolean isbot );
@@ -1091,6 +1097,9 @@ extern  vmCvar_t        g_derbyCollisionFrontWeight;
 extern  vmCvar_t        g_derbyCollisionSideWeight;
 extern  vmCvar_t        g_derbyCollisionRearWeight;
 extern  vmCvar_t        g_derbyCollisionLog;
+extern  vmCvar_t        g_derbyRounds;
+extern  vmCvar_t        g_derbyRoundWarmup;
+extern  vmCvar_t        g_derbyRoundResetHealth;
 extern  vmCvar_t        g_fuelKillReward;
 extern  vmCvar_t        g_useFuel;
 
