@@ -115,6 +115,7 @@ static void UI_DisplayOptionsMenu_Event( void* ptr, int event ) {
 		trap_Cvar_SetValue( "cg_viewsize", displayOptionsInfo.screensize.curvalue * 10 );
 		break;
 
+
 	case ID_BACK:
 		UI_PopMenu();
 		break;
@@ -129,7 +130,6 @@ UI_DisplayOptionsMenu_Init
 */
 static void UI_DisplayOptionsMenu_Init( void ) {
 	int		y;
-
 	memset( &displayOptionsInfo, 0, sizeof(displayOptionsInfo) );
 
 	UI_DisplayOptionsMenu_Cache();
@@ -240,6 +240,7 @@ static void UI_DisplayOptionsMenu_Init( void ) {
 	displayOptionsInfo.screensize.generic.y			= y;
 	displayOptionsInfo.screensize.minvalue			= 3;
     displayOptionsInfo.screensize.maxvalue			= 10;
+
 
 // STONELANCE
 /*

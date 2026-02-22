@@ -981,6 +981,8 @@ void UI_SaveConfigMenu( void );
 //
 void UI_DisplayOptionsMenu_Cache( void );
 void UI_DisplayOptionsMenu( void );
+void UI_AdvancedGraphicsMenu_Cache( void );
+void UI_AdvancedGraphicsMenu( void );
 
 //
 // ui_sound.c
