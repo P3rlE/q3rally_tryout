@@ -821,7 +821,6 @@ SERVER OPTIONS MENU *****
 #define ID_TRACK_LENGTH			15
 #define ID_TRACK_REVERSED		16
 #define ID_GHOST_ONLY		17
-#define ID_DERBY_TOURNAMENT      18
 #define PLAYER_SLOTS			12
 
 
@@ -845,7 +844,6 @@ typedef struct {
         menuradiobutton_s       pure;
 	menuradiobutton_s       eliminationWeapons;
 	menuradiobutton_s       ghostOnly;
-	menuradiobutton_s       derbyTournament;
 	menufield_s             derbyRounds;
 	menufield_s             derbyRoundWarmup;
 	menuradiobutton_s       derbyRoundResetHealth;
@@ -872,22 +870,6 @@ typedef struct {
 } serveroptions_t;
 
 static serveroptions_t s_serveroptions;
-
-static void ServerOptions_UpdateDerbyTournamentVisibility( void ) {
-        qboolean showRoundSettings;
-
-        showRoundSettings = ( s_serveroptions.gametype == GT_DERBY && s_serveroptions.derbyTournament.curvalue );
-
-        if ( showRoundSettings ) {
-                s_serveroptions.derbyRounds.generic.flags &= ~( QMF_HIDDEN | QMF_INACTIVE );
-                s_serveroptions.derbyRoundWarmup.generic.flags &= ~( QMF_HIDDEN | QMF_INACTIVE );
-                s_serveroptions.derbyRoundResetHealth.generic.flags &= ~( QMF_HIDDEN | QMF_INACTIVE );
-        } else {
-                s_serveroptions.derbyRounds.generic.flags |= ( QMF_HIDDEN | QMF_INACTIVE );
-                s_serveroptions.derbyRoundWarmup.generic.flags |= ( QMF_HIDDEN | QMF_INACTIVE );
-                s_serveroptions.derbyRoundResetHealth.generic.flags |= ( QMF_HIDDEN | QMF_INACTIVE );
-        }
-}
 
 static const char *dedicated_list[] = {
 	"No",
@@ -1116,18 +1098,10 @@ default:
 	}
 
 	if ( s_serveroptions.gametype == GT_DERBY ) {
-		trap_Cvar_SetValue( "ui_derby_tournament", s_serveroptions.derbyTournament.curvalue );
-		if ( s_serveroptions.derbyTournament.curvalue ) {
-			trap_Cvar_SetValue( "g_derbyRounds", Com_Clamp( 2, 99, derbyRounds ) );
-			trap_Cvar_SetValue( "g_derbyRoundWarmup", Com_Clamp( 2, 30, derbyRoundWarmup ) );
-			trap_Cvar_SetValue( "g_derbyRoundResetHealth", Com_Clamp( 0, 1, derbyRoundResetHealth ) );
-		} else {
-			trap_Cvar_SetValue( "g_derbyRounds", 0 );
-			trap_Cvar_SetValue( "g_derbyRoundWarmup", Com_Clamp( 2, 30, derbyRoundWarmup ) );
-			trap_Cvar_SetValue( "g_derbyRoundResetHealth", Com_Clamp( 0, 1, derbyRoundResetHealth ) );
-		}
+		trap_Cvar_SetValue( "g_derbyRounds", Com_Clamp( 2, 99, derbyRounds ) );
+		trap_Cvar_SetValue( "g_derbyRoundWarmup", Com_Clamp( 2, 30, derbyRoundWarmup ) );
+		trap_Cvar_SetValue( "g_derbyRoundResetHealth", Com_Clamp( 0, 1, derbyRoundResetHealth ) );
 	} else {
-		trap_Cvar_SetValue( "ui_derby_tournament", 0 );
 		trap_Cvar_SetValue( "g_derbyRounds", 0 );
 	}
         if ( s_serveroptions.gametype == GT_ELIMINATION ) {
@@ -1317,14 +1291,6 @@ static void ServerOptions_Event( void* ptr, int event ) {
                 ServerOptions_SetPlayerItems();
                 break;
 
-	case ID_DERBY_TOURNAMENT:
-		if ( event != QM_ACTIVATED || s_serveroptions.gametype != GT_DERBY ) {
-			break;
-		}
-
-		trap_Cvar_SetValue( "ui_derby_tournament", s_serveroptions.derbyTournament.curvalue );
-		ServerOptions_UpdateDerbyTournamentVisibility();
-		break;
 
         case ID_GO:
                 if( event != QM_ACTIVATED ) {
@@ -1631,12 +1597,10 @@ static void ServerOptions_SetMenuItems( void ) {
 	}
 
 	if ( s_serveroptions.gametype == GT_DERBY ) {
-		s_serveroptions.derbyTournament.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_derby_tournament" ) );
 		Com_sprintf( s_serveroptions.derbyRounds.field.buffer, 4, "%i", (int)Com_Clamp( 2, 99, trap_Cvar_VariableValue( "g_derbyRounds" ) ) );
 		Com_sprintf( s_serveroptions.derbyRoundWarmup.field.buffer, 4, "%i", (int)Com_Clamp( 2, 30, trap_Cvar_VariableValue( "g_derbyRoundWarmup" ) ) );
 		s_serveroptions.derbyRoundResetHealth.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "g_derbyRoundResetHealth" ) );
 	} else {
-		s_serveroptions.derbyTournament.curvalue = 0;
 		Q_strncpyz( s_serveroptions.derbyRounds.field.buffer, "5", sizeof( s_serveroptions.derbyRounds.field.buffer ) );
 		Q_strncpyz( s_serveroptions.derbyRoundWarmup.field.buffer, "6", sizeof( s_serveroptions.derbyRoundWarmup.field.buffer ) );
 		s_serveroptions.derbyRoundResetHealth.curvalue = 1;
@@ -1660,7 +1624,6 @@ static void ServerOptions_SetMenuItems( void ) {
 	Com_sprintf( picname, 64, "levelshots/%s", s_startserver.maplist[s_startserver.currentmap] );
 	s_serveroptions.mappic.generic.name = picname;
 
-	ServerOptions_UpdateDerbyTournamentVisibility();
 
 
 	// set the map name
@@ -1844,15 +1807,6 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 	}
 
 	if ( s_serveroptions.gametype == GT_DERBY ) {
-		y += BIGCHAR_HEIGHT+2;
-		s_serveroptions.derbyTournament.generic.type = MTYPE_RADIOBUTTON;
-		s_serveroptions.derbyTournament.generic.id = ID_DERBY_TOURNAMENT;
-		s_serveroptions.derbyTournament.generic.flags = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-		s_serveroptions.derbyTournament.generic.callback = ServerOptions_Event;
-		s_serveroptions.derbyTournament.generic.x = OPTIONS_X;
-		s_serveroptions.derbyTournament.generic.y = y;
-		s_serveroptions.derbyTournament.generic.name = "Tournament Derby:";
-
 		y += BIGCHAR_HEIGHT+2;
 		s_serveroptions.derbyRounds.generic.type = MTYPE_FIELD;
 		s_serveroptions.derbyRounds.generic.name = "Rounds:";
@@ -2107,7 +2061,6 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 	}
 
 	if( s_serveroptions.gametype == GT_DERBY ) {
-		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.derbyTournament );
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.derbyRounds );
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.derbyRoundWarmup );
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.derbyRoundResetHealth );
