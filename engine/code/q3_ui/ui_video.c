@@ -987,7 +987,6 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 		break;
 
 	case ID_DISPLAY:
-		UI_PopMenu();
 		UI_DisplayOptionsMenu();
 		break;
 
@@ -1317,13 +1316,23 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.graphics.generic.id		= ID_GRAPHICS;
 	s_graphicsoptions.graphics.generic.callback	= GraphicsOptions_Event;
 	s_graphicsoptions.graphics.generic.x		= 216;
-	s_graphicsoptions.graphics.generic.y		= 240 - 2 * PROP_HEIGHT;
+	s_graphicsoptions.graphics.generic.y		= 240 - 3 * PROP_HEIGHT;
 	s_graphicsoptions.graphics.string			= "GRAPHICS";
 	s_graphicsoptions.graphics.style			= UI_RIGHT;
 // BAGPUSS
 //	s_graphicsoptions.graphics.color			= color_red;
 	s_graphicsoptions.graphics.color			= text_color_normal;
 // END
+
+	s_graphicsoptions.advancedgraphics.generic.type		= MTYPE_PTEXT;
+	s_graphicsoptions.advancedgraphics.generic.flags		= QMF_RIGHT_JUSTIFY|QMF_PULSEIFFOCUS;
+	s_graphicsoptions.advancedgraphics.generic.id		= ID_ADVANCEDGRAPHICS;
+	s_graphicsoptions.advancedgraphics.generic.callback	= GraphicsOptions_Event;
+	s_graphicsoptions.advancedgraphics.generic.x			= 216;
+	s_graphicsoptions.advancedgraphics.generic.y			= 240 - 2 * PROP_HEIGHT;
+	s_graphicsoptions.advancedgraphics.string			= "ADVANCED GRAPHICS";
+	s_graphicsoptions.advancedgraphics.style				= UI_RIGHT;
+	s_graphicsoptions.advancedgraphics.color			= text_color_normal;
 
 	s_graphicsoptions.display.generic.type		= MTYPE_PTEXT;
 	s_graphicsoptions.display.generic.flags		= QMF_RIGHT_JUSTIFY|QMF_PULSEIFFOCUS;
@@ -1521,17 +1530,6 @@ void GraphicsOptions_MenuInit( void )
 
 	y += BIGCHAR_HEIGHT + 8;
 
-	s_graphicsoptions.advancedgraphics.generic.type     = MTYPE_PTEXT;
-	s_graphicsoptions.advancedgraphics.generic.flags    = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
-	s_graphicsoptions.advancedgraphics.generic.callback = GraphicsOptions_Event;
-	s_graphicsoptions.advancedgraphics.generic.id       = ID_ADVANCEDGRAPHICS;
-	s_graphicsoptions.advancedgraphics.generic.x        = 320;
-	s_graphicsoptions.advancedgraphics.generic.y        = y;
-	s_graphicsoptions.advancedgraphics.string           = "Advanced Graphics";
-	s_graphicsoptions.advancedgraphics.style            = UI_CENTER|UI_SMALLFONT;
-	s_graphicsoptions.advancedgraphics.color            = text_color_normal;
-	y += BIGCHAR_HEIGHT+2;
-
 	s_graphicsoptions.driverinfo.generic.type     = MTYPE_PTEXT;
 	s_graphicsoptions.driverinfo.generic.flags    = QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
 	s_graphicsoptions.driverinfo.generic.callback = GraphicsOptions_Event;
@@ -1598,6 +1596,7 @@ void GraphicsOptions_MenuInit( void )
 // END
 
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.graphics );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.advancedgraphics );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.display );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.sound );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.network );
@@ -1618,7 +1617,6 @@ void GraphicsOptions_MenuInit( void )
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.msaa );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.sunshadows );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.shadowquality );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.advancedgraphics );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.driverinfo );
 
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.back );
