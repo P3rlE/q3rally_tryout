@@ -1451,6 +1451,7 @@ void UI_Cache_f( void ) {
 	DriverInfo_Cache();
 	GraphicsOptions_Cache();
 	UI_DisplayOptionsMenu_Cache();
+	UI_AdvancedGraphicsMenu_Cache();
 	UI_SoundOptionsMenu_Cache();
 	UI_NetworkOptionsMenu_Cache();
 	UI_SPLevelMenu_Cache();
