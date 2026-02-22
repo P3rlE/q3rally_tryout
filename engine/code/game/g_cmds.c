@@ -115,7 +115,7 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 		// STONELANCE changed to 19 fields to include rank tier
 		Com_sprintf (entry, sizeof(entry),
 		
-		" %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i", level.sortedClients[i],
+		" %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i %i", level.sortedClients[i],
 		cl->ps.persistant[PERS_SCORE], ping, time,
 		scoreFlags, g_entities[level.sortedClients[i]].s.powerups, accuracy,
 		cl->ps.persistant[PERS_IMPRESSIVE_COUNT],
@@ -129,7 +129,8 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 		cl->ps.stats[STAT_DAMAGE_DEALT],
 		cl->ps.stats[STAT_DAMAGE_TAKEN],
 		cl->ps.stats[STAT_POSITION],
-		rankTier
+		rankTier,
+		cl->derbyRoundWins
 		);
 
 

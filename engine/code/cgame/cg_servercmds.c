@@ -84,6 +84,12 @@ CG_ParseScores
 */
 static void CG_ParseScores( void ) {
 	int		i, powerups;
+	int             argc;
+	int             base;
+	int             fieldsPerPlayer;
+
+	argc = trap_Argc();
+	fieldsPerPlayer = 19;
 
 	cg.numScores = atoi( CG_Argv( 1 ) );
 	if ( cg.numScores > MAX_CLIENTS ) {
@@ -97,31 +103,44 @@ static void CG_ParseScores( void ) {
 	cg.teamScores[3] = atoi( CG_Argv( 5 ) );
 // END
 
+	if ( cg.numScores > 0 ) {
+		fieldsPerPlayer = ( argc - 6 ) / cg.numScores;
+		if ( fieldsPerPlayer < 19 ) {
+			fieldsPerPlayer = 19;
+		}
+	}
+
 	memset( cg.scores, 0, sizeof( cg.scores ) );
 	for ( i = 0 ; i < cg.numScores ; i++ ) {
 //
 // STONELANCE changed i * 14 to i * 18, added 4 (now 19 for rank tier)
-cg.scores[i].client = atoi( CG_Argv( i * 19 + 6 ) );
-cg.scores[i].score = atoi( CG_Argv( i * 19 + 7 ) );
-cg.scores[i].ping = atoi( CG_Argv( i * 19 + 8 ) );
-cg.scores[i].time = atoi( CG_Argv( i * 19 + 9 ) );
-cg.scores[i].scoreFlags = atoi( CG_Argv( i * 19 + 10 ) );
-powerups = atoi( CG_Argv( i * 19 + 11 ) );
-cg.scores[i].accuracy = atoi(CG_Argv(i * 19 + 12));
-cg.scores[i].impressiveCount = atoi(CG_Argv(i * 19 + 13));
-cg.scores[i].impressiveTelefragCount = atoi(CG_Argv(i * 19 + 14));
-cg.scores[i].excellentCount = atoi(CG_Argv(i * 19 + 15));
-cg.scores[i].guantletCount = atoi(CG_Argv(i * 19 + 16));
-cg.scores[i].defendCount = atoi(CG_Argv(i * 19 + 17));
-cg.scores[i].assistCount = atoi(CG_Argv(i * 19 + 18));
-cg.scores[i].perfect = atoi(CG_Argv(i * 19 + 19));
-cg.scores[i].captures = atoi(CG_Argv(i * 19 + 20));
+base = i * fieldsPerPlayer;
+cg.scores[i].client = atoi( CG_Argv( base + 6 ) );
+cg.scores[i].score = atoi( CG_Argv( base + 7 ) );
+cg.scores[i].ping = atoi( CG_Argv( base + 8 ) );
+cg.scores[i].time = atoi( CG_Argv( base + 9 ) );
+cg.scores[i].scoreFlags = atoi( CG_Argv( base + 10 ) );
+powerups = atoi( CG_Argv( base + 11 ) );
+cg.scores[i].accuracy = atoi(CG_Argv(base + 12));
+cg.scores[i].impressiveCount = atoi(CG_Argv(base + 13));
+cg.scores[i].impressiveTelefragCount = atoi(CG_Argv(base + 14));
+cg.scores[i].excellentCount = atoi(CG_Argv(base + 15));
+cg.scores[i].guantletCount = atoi(CG_Argv(base + 16));
+cg.scores[i].defendCount = atoi(CG_Argv(base + 17));
+cg.scores[i].assistCount = atoi(CG_Argv(base + 18));
+cg.scores[i].perfect = atoi(CG_Argv(base + 19));
+cg.scores[i].captures = atoi(CG_Argv(base + 20));
 // END
 // STONELANCE add two more score parts
-cg.scores[i].damageDealt = atoi(CG_Argv(i * 19 + 21));
-cg.scores[i].damageTaken = atoi(CG_Argv(i * 19 + 22));
-cg.scores[i].position = atoi(CG_Argv(i * 19 + 23));
-cg.scores[i].rankTier = atoi(CG_Argv(i * 19 + 24));
+cg.scores[i].damageDealt = atoi(CG_Argv(base + 21));
+cg.scores[i].damageTaken = atoi(CG_Argv(base + 22));
+cg.scores[i].position = atoi(CG_Argv(base + 23));
+cg.scores[i].rankTier = atoi(CG_Argv(base + 24));
+if ( fieldsPerPlayer >= 20 && argc > base + 25 ) {
+	cg.scores[i].derbyRoundWins = atoi(CG_Argv(base + 25));
+} else {
+	cg.scores[i].derbyRoundWins = 0;
+}
 // END
 
 		if ( cg.scores[i].client < 0 || cg.scores[i].client >= MAX_CLIENTS ) {
@@ -219,6 +238,7 @@ void CG_ParseServerinfo( void ) {
 	cgs.fraglimit = atoi( Info_ValueForKey( info, "fraglimit" ) );
 // Q3Rally Code Start
 	cgs.laplimit = atoi( Info_ValueForKey( info, "laplimit" ) );
+	cgs.derbyRounds = atoi( Info_ValueForKey( info, "g_derbyRounds" ) );
 // END
 	cgs.capturelimit = atoi( Info_ValueForKey( info, "capturelimit" ) );
 	cgs.timelimit = atoi( Info_ValueForKey( info, "timelimit" ) );
