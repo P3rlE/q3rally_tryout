@@ -48,12 +48,7 @@ DISPLAY OPTIONS MENU
 #define ID_BRIGHTNESS		14
 #define ID_SCREENSIZE		15
 #define ID_BACK				16
-#define ID_SUNSHADOWS		17
-#define ID_SHADOWQUALITY	18
-#define ID_SUNLIGHTMODE	19
-#define ID_SSAO			20
-#define ID_HDR			21
-#define ID_NORMALMAPPING	22
+#define ID_ADVANCEDGRAPHICS	17
 
 
 typedef struct {
@@ -74,12 +69,7 @@ typedef struct {
 
 	menuslider_s	brightness;
 	menuslider_s	screensize;
-	menulist_s		sunshadows;
-	menulist_s		shadowquality;
-	menulist_s		sunlightmode;
-	menulist_s		ssao;
-	menulist_s		hdr;
-	menulist_s		normalmapping;
+	menutext_s		advancedgraphics;
 
 // STONELANCE
 //	menubitmap_s	back;
@@ -127,46 +117,8 @@ static void UI_DisplayOptionsMenu_Event( void* ptr, int event ) {
 		trap_Cvar_SetValue( "cg_viewsize", displayOptionsInfo.screensize.curvalue * 10 );
 		break;
 
-	case ID_SUNSHADOWS:
-		trap_Cvar_SetValue( "r_sunShadows", displayOptionsInfo.sunshadows.curvalue );
-		if ( displayOptionsInfo.sunshadows.curvalue == 0 )
-			displayOptionsInfo.shadowquality.generic.flags |= QMF_GRAYED;
-		else
-			displayOptionsInfo.shadowquality.generic.flags &= ~QMF_GRAYED;
-		trap_Cmd_ExecuteText( EXEC_APPEND, "vid_restart\n" );
-		break;
-
-	case ID_SHADOWQUALITY:
-		{
-			static const int shadowFilterValues[] = { 0, 1, 2 };
-			static const int shadowMapSizeValues[] = { 512, 1024, 2048 };
-			int idx = displayOptionsInfo.shadowquality.curvalue;
-			if ( idx < 0 ) idx = 0;
-			if ( idx > 2 ) idx = 2;
-			trap_Cvar_SetValue( "r_shadowFilter", shadowFilterValues[idx] );
-			trap_Cvar_SetValue( "r_shadowMapSize", shadowMapSizeValues[idx] );
-			trap_Cmd_ExecuteText( EXEC_APPEND, "vid_restart\n" );
-		}
-		break;
-
-	case ID_SUNLIGHTMODE:
-		trap_Cvar_SetValue( "r_sunlightMode", displayOptionsInfo.sunlightmode.curvalue );
-		trap_Cmd_ExecuteText( EXEC_APPEND, "vid_restart\n" );
-		break;
-
-	case ID_SSAO:
-		trap_Cvar_SetValue( "r_ssao", displayOptionsInfo.ssao.curvalue );
-		trap_Cmd_ExecuteText( EXEC_APPEND, "vid_restart\n" );
-		break;
-
-	case ID_HDR:
-		trap_Cvar_SetValue( "r_hdr", displayOptionsInfo.hdr.curvalue );
-		trap_Cmd_ExecuteText( EXEC_APPEND, "vid_restart\n" );
-		break;
-
-	case ID_NORMALMAPPING:
-		trap_Cvar_SetValue( "r_normalMapping", displayOptionsInfo.normalmapping.curvalue );
-		trap_Cmd_ExecuteText( EXEC_APPEND, "vid_restart\n" );
+	case ID_ADVANCEDGRAPHICS:
+		UI_AdvancedGraphicsMenu();
 		break;
 
 	case ID_BACK:
@@ -183,10 +135,6 @@ UI_DisplayOptionsMenu_Init
 */
 static void UI_DisplayOptionsMenu_Init( void ) {
 	int		y;
-	static const char *enabled_names[] = { "Off", "On", NULL };
-	static const char *quality_names[] = { "Low", "Medium", "High", NULL };
-	static const char *sunlight_names[] = { "Off", "Multiply", "Add", NULL };
-
 	memset( &displayOptionsInfo, 0, sizeof(displayOptionsInfo) );
 
 	UI_DisplayOptionsMenu_Cache();
@@ -299,64 +247,15 @@ static void UI_DisplayOptionsMenu_Init( void ) {
     displayOptionsInfo.screensize.maxvalue			= 10;
 
 	y += BIGCHAR_HEIGHT + 8;
-	displayOptionsInfo.sunshadows.generic.type		= MTYPE_SPINCONTROL;
-	displayOptionsInfo.sunshadows.generic.name		= "Sun Shadows:";
-	displayOptionsInfo.sunshadows.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	displayOptionsInfo.sunshadows.generic.callback	= UI_DisplayOptionsMenu_Event;
-	displayOptionsInfo.sunshadows.generic.id		= ID_SUNSHADOWS;
-	displayOptionsInfo.sunshadows.generic.x			= 400;
-	displayOptionsInfo.sunshadows.generic.y			= y;
-	displayOptionsInfo.sunshadows.itemnames		= enabled_names;
-
-	y += BIGCHAR_HEIGHT+2;
-	displayOptionsInfo.shadowquality.generic.type		= MTYPE_SPINCONTROL;
-	displayOptionsInfo.shadowquality.generic.name		= "Shadow Quality:";
-	displayOptionsInfo.shadowquality.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	displayOptionsInfo.shadowquality.generic.callback	= UI_DisplayOptionsMenu_Event;
-	displayOptionsInfo.shadowquality.generic.id		= ID_SHADOWQUALITY;
-	displayOptionsInfo.shadowquality.generic.x			= 400;
-	displayOptionsInfo.shadowquality.generic.y			= y;
-	displayOptionsInfo.shadowquality.itemnames		= quality_names;
-
-	y += BIGCHAR_HEIGHT+2;
-	displayOptionsInfo.sunlightmode.generic.type		= MTYPE_SPINCONTROL;
-	displayOptionsInfo.sunlightmode.generic.name		= "Sunlight Mode:";
-	displayOptionsInfo.sunlightmode.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	displayOptionsInfo.sunlightmode.generic.callback	= UI_DisplayOptionsMenu_Event;
-	displayOptionsInfo.sunlightmode.generic.id		= ID_SUNLIGHTMODE;
-	displayOptionsInfo.sunlightmode.generic.x			= 400;
-	displayOptionsInfo.sunlightmode.generic.y			= y;
-	displayOptionsInfo.sunlightmode.itemnames		= sunlight_names;
-
-	y += BIGCHAR_HEIGHT+2;
-	displayOptionsInfo.ssao.generic.type			= MTYPE_SPINCONTROL;
-	displayOptionsInfo.ssao.generic.name			= "SSAO:";
-	displayOptionsInfo.ssao.generic.flags			= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	displayOptionsInfo.ssao.generic.callback		= UI_DisplayOptionsMenu_Event;
-	displayOptionsInfo.ssao.generic.id			= ID_SSAO;
-	displayOptionsInfo.ssao.generic.x			= 400;
-	displayOptionsInfo.ssao.generic.y			= y;
-	displayOptionsInfo.ssao.itemnames			= enabled_names;
-
-	y += BIGCHAR_HEIGHT+2;
-	displayOptionsInfo.hdr.generic.type			= MTYPE_SPINCONTROL;
-	displayOptionsInfo.hdr.generic.name			= "HDR:";
-	displayOptionsInfo.hdr.generic.flags			= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	displayOptionsInfo.hdr.generic.callback		= UI_DisplayOptionsMenu_Event;
-	displayOptionsInfo.hdr.generic.id			= ID_HDR;
-	displayOptionsInfo.hdr.generic.x			= 400;
-	displayOptionsInfo.hdr.generic.y			= y;
-	displayOptionsInfo.hdr.itemnames			= enabled_names;
-
-	y += BIGCHAR_HEIGHT+2;
-	displayOptionsInfo.normalmapping.generic.type		= MTYPE_SPINCONTROL;
-	displayOptionsInfo.normalmapping.generic.name		= "Normal Mapping:";
-	displayOptionsInfo.normalmapping.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	displayOptionsInfo.normalmapping.generic.callback	= UI_DisplayOptionsMenu_Event;
-	displayOptionsInfo.normalmapping.generic.id		= ID_NORMALMAPPING;
-	displayOptionsInfo.normalmapping.generic.x			= 400;
-	displayOptionsInfo.normalmapping.generic.y			= y;
-	displayOptionsInfo.normalmapping.itemnames		= enabled_names;
+	displayOptionsInfo.advancedgraphics.generic.type		= MTYPE_PTEXT;
+	displayOptionsInfo.advancedgraphics.generic.flags		= QMF_CENTER_JUSTIFY|QMF_PULSEIFFOCUS;
+	displayOptionsInfo.advancedgraphics.generic.callback	= UI_DisplayOptionsMenu_Event;
+	displayOptionsInfo.advancedgraphics.generic.id		= ID_ADVANCEDGRAPHICS;
+	displayOptionsInfo.advancedgraphics.generic.x		= 320;
+	displayOptionsInfo.advancedgraphics.generic.y		= y;
+	displayOptionsInfo.advancedgraphics.string		= "ADVANCED GRAPHICS";
+	displayOptionsInfo.advancedgraphics.color		= text_color_normal;
+	displayOptionsInfo.advancedgraphics.style		= UI_CENTER|UI_SMALLFONT;
 
 // STONELANCE
 /*
@@ -395,12 +294,7 @@ static void UI_DisplayOptionsMenu_Init( void ) {
 	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.network );
 	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.brightness );
 	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.screensize );
-	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.sunshadows );
-	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.shadowquality );
-	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.sunlightmode );
-	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.ssao );
-	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.hdr );
-	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.normalmapping );
+	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.advancedgraphics );
 	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.back );
 
 	displayOptionsInfo.brightness.curvalue  = trap_Cvar_VariableValue("r_gamma") * 10;
