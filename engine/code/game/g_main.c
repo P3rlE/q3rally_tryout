@@ -2023,13 +2023,12 @@ void QDECL G_DebugLogPrintf( const char *fmt, ... ) {
 }
 // END
 
-
 /*
-================
+==================================================
 LogExit
 
 Append information about this game to the log file
-================
+==================================================
 */
 void LogExit( const char *string ) {
 	int				i, numSorted;
