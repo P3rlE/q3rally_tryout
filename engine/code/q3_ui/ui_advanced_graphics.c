@@ -230,6 +230,9 @@ void UI_AdvancedGraphicsOptionsMenu_Cache( void ) {
 }
 
 void UI_AdvancedGraphicsOptionsMenu( void ) {
+// STONELANCE FIXME: get rid of this after proper tansitions are added
+	uis.transitionIn = 0;
+// END
 	UI_AdvancedGraphicsOptionsMenu_Init();
 	UI_PushMenu( &advancedGraphicsOptionsInfo.menu );
 	Menu_SetCursorToItem( &advancedGraphicsOptionsInfo.menu, &advancedGraphicsOptionsInfo.hdr );

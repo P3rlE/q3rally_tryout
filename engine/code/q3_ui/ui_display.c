@@ -213,7 +213,7 @@ static void UI_DisplayOptionsMenu_Init( void ) {
 	displayOptionsInfo.sound.generic.id				= ID_SOUND;
 	displayOptionsInfo.sound.generic.callback		= UI_DisplayOptionsMenu_Event;
 	displayOptionsInfo.sound.generic.x				= 216;
-	displayOptionsInfo.sound.generic.y				= 240;
+	displayOptionsInfo.sound.generic.y				= 240 + PROP_HEIGHT;
 	displayOptionsInfo.sound.string					= "SOUND";
 	displayOptionsInfo.sound.style					= UI_RIGHT;
 // BAGPUSS
