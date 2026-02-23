@@ -251,26 +251,6 @@ static void UI_AdvancedGraphicsOptionsMenu_Event( void* ptr, int event ) {
 		UI_AdvancedGraphicsOptionsMenu_SyncPreset();
 		break;
 
-	case ID_TONEMAP:
-		trap_Cvar_SetValue( "r_toneMap", advancedGraphicsOptionsInfo.tonemap.curvalue );
-		break;
-
-	case ID_AUTOEXPOSURE:
-		trap_Cvar_SetValue( "r_autoExposure", advancedGraphicsOptionsInfo.autoexposure.curvalue );
-		break;
-
-	case ID_SSAO:
-		trap_Cvar_SetValue( "r_ssao", advancedGraphicsOptionsInfo.ssao.curvalue );
-		break;
-
-	case ID_SUNRAYS:
-		trap_Cvar_SetValue( "r_drawSunRays", advancedGraphicsOptionsInfo.sunrays.curvalue );
-		break;
-
-	case ID_DYNAMIC_REFLECTIONS:
-		trap_Cvar_SetValue( "r_dynamicReflections", advancedGraphicsOptionsInfo.dynamic_reflections.curvalue );
-		break;
-
 	case ID_BACK:
 		UI_PopMenu();
 		break;
