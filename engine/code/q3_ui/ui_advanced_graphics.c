@@ -485,7 +485,7 @@ static void UI_AdvancedGraphicsOptionsMenu_Init( void ) {
 	advancedGraphicsOptionsInfo.network.style               = UI_RIGHT;
 	advancedGraphicsOptionsInfo.network.color               = text_color_normal;
 
-	y = 240 - 3 * (BIGCHAR_HEIGHT + 2);
+	y = 240 - 5 * (BIGCHAR_HEIGHT + 2);
 	advancedGraphicsOptionsInfo.preset.generic.type      = MTYPE_SPINCONTROL;
 	advancedGraphicsOptionsInfo.preset.generic.name      = "Quality Preset:";
 	advancedGraphicsOptionsInfo.preset.generic.flags     = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
@@ -495,7 +495,8 @@ static void UI_AdvancedGraphicsOptionsMenu_Init( void ) {
 	advancedGraphicsOptionsInfo.preset.generic.y         = y;
 	advancedGraphicsOptionsInfo.preset.itemnames         = preset_items;
 
-	y += BIGCHAR_HEIGHT + 2;
+	// extra spacing below preset so it reads as a separate group header
+	y += 2 * (BIGCHAR_HEIGHT + 2);
 	advancedGraphicsOptionsInfo.hdr.generic.type      = MTYPE_SPINCONTROL;
 	advancedGraphicsOptionsInfo.hdr.generic.name      = "HDR:";
 	advancedGraphicsOptionsInfo.hdr.generic.flags     = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
