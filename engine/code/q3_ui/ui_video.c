@@ -987,7 +987,6 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 		break;
 
 	case ID_DISPLAY:
-		UI_PopMenu();
 		UI_DisplayOptionsMenu();
 		break;
 
