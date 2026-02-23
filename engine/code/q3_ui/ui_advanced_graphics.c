@@ -495,7 +495,8 @@ static void UI_AdvancedGraphicsOptionsMenu_Init( void ) {
 	advancedGraphicsOptionsInfo.preset.generic.y         = y;
 	advancedGraphicsOptionsInfo.preset.itemnames         = preset_items;
 
-	y += BIGCHAR_HEIGHT + 2;
+	// extra spacing below preset so it reads as a separate group header
+	y += 2 * (BIGCHAR_HEIGHT + 2);
 	advancedGraphicsOptionsInfo.hdr.generic.type      = MTYPE_SPINCONTROL;
 	advancedGraphicsOptionsInfo.hdr.generic.name      = "HDR:";
 	advancedGraphicsOptionsInfo.hdr.generic.flags     = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
