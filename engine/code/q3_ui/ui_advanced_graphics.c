@@ -105,6 +105,16 @@ static void UI_AdvancedGraphicsOptionsMenu_Event( void* ptr, int event ) {
 	}
 }
 
+
+static sfxHandle_t UI_AdvancedGraphicsOptionsMenu_Key( int key ) {
+	if( key == K_MOUSE2 || key == K_ESCAPE ) {
+		UI_PopMenu();
+		return menu_out_sound;
+	}
+
+	return Menu_DefaultKey( &advancedGraphicsOptionsInfo.menu, key );
+}
+
 static void UI_AdvancedGraphicsOptionsMenu_Init( void ) {
 	int y;
 
@@ -113,6 +123,7 @@ static void UI_AdvancedGraphicsOptionsMenu_Init( void ) {
 	UI_AdvancedGraphicsOptionsMenu_Cache();
 	advancedGraphicsOptionsInfo.menu.wrapAround = qtrue;
 	advancedGraphicsOptionsInfo.menu.fullscreen = qtrue;
+	advancedGraphicsOptionsInfo.menu.key = UI_AdvancedGraphicsOptionsMenu_Key;
 
 	advancedGraphicsOptionsInfo.banner.generic.type      = MTYPE_BTEXT;
 	advancedGraphicsOptionsInfo.banner.generic.flags     = QMF_CENTER_JUSTIFY;
@@ -221,5 +232,5 @@ void UI_AdvancedGraphicsOptionsMenu_Cache( void ) {
 void UI_AdvancedGraphicsOptionsMenu( void ) {
 	UI_AdvancedGraphicsOptionsMenu_Init();
 	UI_PushMenu( &advancedGraphicsOptionsInfo.menu );
-	Menu_SetCursorToItem( &advancedGraphicsOptionsInfo.menu, &advancedGraphicsOptionsInfo.advanced_graphics );
+	Menu_SetCursorToItem( &advancedGraphicsOptionsInfo.menu, &advancedGraphicsOptionsInfo.hdr );
 }
