@@ -316,8 +316,6 @@ GRAPHICS OPTIONS MENU
 #define ID_ANISOTROPY	111
 #define ID_MSAA			112
 #define ID_ADVANCEDGRAPHICS	113
-#define ID_SUNSHADOWS	114
-#define ID_SHADOWQUALITY	115
 
 typedef struct {
 	menuframework_s	menu;
@@ -987,8 +985,9 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 		break;
 
 	case ID_DISPLAY:
-		UI_DisplayOptionsMenu();
-		break;
+        UI_PopMenu();
+        UI_DisplayOptionsMenu();
+    break;
 
 	case ID_SOUND:
 		UI_PopMenu();
@@ -1506,26 +1505,6 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.msaa.generic.id		 = ID_MSAA;
 	s_graphicsoptions.msaa.generic.callback	 = GraphicsOptions_Event;
 	s_graphicsoptions.msaa.itemnames		 = msaa_names;
-	y += BIGCHAR_HEIGHT+2;
-
-	s_graphicsoptions.sunshadows.generic.type		 = MTYPE_SPINCONTROL;
-	s_graphicsoptions.sunshadows.generic.name		 = "Sun Shadows:";
-	s_graphicsoptions.sunshadows.generic.flags		 = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	s_graphicsoptions.sunshadows.generic.x		 = 400;
-	s_graphicsoptions.sunshadows.generic.y		 = y;
-	s_graphicsoptions.sunshadows.generic.id		 = ID_SUNSHADOWS;
-	s_graphicsoptions.sunshadows.generic.callback	 = GraphicsOptions_Event;
-	s_graphicsoptions.sunshadows.itemnames		 = enabled_names;
-	y += BIGCHAR_HEIGHT+2;
-
-	s_graphicsoptions.shadowquality.generic.type		 = MTYPE_SPINCONTROL;
-	s_graphicsoptions.shadowquality.generic.name		 = "Shadow Quality:";
-	s_graphicsoptions.shadowquality.generic.flags		 = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	s_graphicsoptions.shadowquality.generic.x		 = 400;
-	s_graphicsoptions.shadowquality.generic.y		 = y;
-	s_graphicsoptions.shadowquality.generic.id		 = ID_SHADOWQUALITY;
-	s_graphicsoptions.shadowquality.generic.callback	 = GraphicsOptions_Event;
-	s_graphicsoptions.shadowquality.itemnames		 = quality_names;
 	y += BIGCHAR_HEIGHT+2;
 
 	y += BIGCHAR_HEIGHT + 8;
