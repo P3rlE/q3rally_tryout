@@ -485,7 +485,7 @@ static void UI_AdvancedGraphicsOptionsMenu_Init( void ) {
 	advancedGraphicsOptionsInfo.network.style               = UI_RIGHT;
 	advancedGraphicsOptionsInfo.network.color               = text_color_normal;
 
-	y = 240 - 5 * (BIGCHAR_HEIGHT + 2);
+	y = 240 - 7 * (BIGCHAR_HEIGHT + 2);
 	advancedGraphicsOptionsInfo.preset.generic.type      = MTYPE_SPINCONTROL;
 	advancedGraphicsOptionsInfo.preset.generic.name      = "Quality Preset:";
 	advancedGraphicsOptionsInfo.preset.generic.flags     = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
