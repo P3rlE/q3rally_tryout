@@ -1202,6 +1202,19 @@ void GraphicsOptions_MenuInit( void )
 		"4x",
 		NULL
 	};
+	static const char *quality_names[] =
+	{
+		"Low",
+		"Medium",
+		"High",
+		NULL
+	};
+	static const char *enabled_names[] =
+	{
+		"Off",
+		"On",
+		NULL
+	};
 	int y;
 
 	// zero set all our globals
