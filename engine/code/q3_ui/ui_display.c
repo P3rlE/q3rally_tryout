@@ -48,6 +48,7 @@ DISPLAY OPTIONS MENU
 #define ID_BRIGHTNESS		14
 #define ID_SCREENSIZE		15
 #define ID_BACK				16
+#define ID_ADVANCEDGRAPHICS	17
 
 
 typedef struct {
@@ -68,6 +69,7 @@ typedef struct {
 
 	menuslider_s	brightness;
 	menuslider_s	screensize;
+	menutext_s		advancedgraphics;
 
 // STONELANCE
 //	menubitmap_s	back;
@@ -279,10 +281,12 @@ static void UI_DisplayOptionsMenu_Init( void ) {
 	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.network );
 	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.brightness );
 	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.screensize );
+	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.advancedgraphics );
 	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.back );
 
 	displayOptionsInfo.brightness.curvalue  = trap_Cvar_VariableValue("r_gamma") * 10;
 	displayOptionsInfo.screensize.curvalue  = trap_Cvar_VariableValue( "cg_viewsize")/10;
+
 }
 
 
