@@ -312,9 +312,9 @@ static cvarTable_t		gameCvarTable[] = {
         { &g_derbyRamDamage, "g_derbyRamDamage", "100", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyRamDamageScale, "g_derbyRamDamageScale", "0.05", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyRamDamageMax, "g_derbyRamDamageMax", "50", CVAR_ARCHIVE, 0, qfalse },
-        { &g_derbyCollisionFrontWeight, "g_derbyCollisionFrontWeight", "0.2", CVAR_ARCHIVE, 0, qfalse },
-        { &g_derbyCollisionSideWeight, "g_derbyCollisionSideWeight", "0.5", CVAR_ARCHIVE, 0, qfalse },
-        { &g_derbyCollisionRearWeight, "g_derbyCollisionRearWeight", "0.8", CVAR_ARCHIVE, 0, qfalse },
+        { &g_derbyCollisionFrontWeight, "g_derbyCollisionFrontWeight", "1.0", CVAR_ARCHIVE, 0, qfalse },
+        { &g_derbyCollisionSideWeight, "g_derbyCollisionSideWeight", "0.65", CVAR_ARCHIVE, 0, qfalse },
+        { &g_derbyCollisionRearWeight, "g_derbyCollisionRearWeight", "0.35", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyCollisionLog, "g_derbyCollisionLog", "0", 0, 0, qfalse },
         // END
 
@@ -581,6 +581,23 @@ static void G_ValidateDerbyDamageCvars( void ) {
         if ( g_derbyDamageFactor.value < 0.0f ) {
                 trap_Cvar_Set( "g_derbyDamageFactor", "0" );
                 trap_Cvar_Update( &g_derbyDamageFactor );
+        }
+        clamped = Com_Clamp( 0.0f, 2.0f, g_derbyCollisionFrontWeight.value );
+        if ( clamped != g_derbyCollisionFrontWeight.value ) {
+                trap_Cvar_Set( "g_derbyCollisionFrontWeight", va( "%.3f", clamped ) );
+                trap_Cvar_Update( &g_derbyCollisionFrontWeight );
+        }
+
+        clamped = Com_Clamp( 0.0f, 2.0f, g_derbyCollisionSideWeight.value );
+        if ( clamped != g_derbyCollisionSideWeight.value ) {
+                trap_Cvar_Set( "g_derbyCollisionSideWeight", va( "%.3f", clamped ) );
+                trap_Cvar_Update( &g_derbyCollisionSideWeight );
+        }
+
+        clamped = Com_Clamp( 0.0f, 2.0f, g_derbyCollisionRearWeight.value );
+        if ( clamped != g_derbyCollisionRearWeight.value ) {
+                trap_Cvar_Set( "g_derbyCollisionRearWeight", va( "%.3f", clamped ) );
+                trap_Cvar_Update( &g_derbyCollisionRearWeight );
         }
 }
 
