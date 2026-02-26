@@ -45,6 +45,7 @@ static const char *G_LadderModeForGametype( int gametype );
 static void G_LadderFormatIsoTime( const qtime_t *qt, char *buffer, size_t size );
 static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clientNum );
 static void G_LadderSubmitMatchReport( const char *reason );
+static void G_ValidateDerbyDamageCvars( void );
 static ladderMatchPayload_t s_ladderMatchPayload;
 
 vmCvar_t	g_gametype;
@@ -544,6 +545,8 @@ void G_RegisterCvars( void ) {
 	}
 
 	level.warmupModificationCount = g_warmup.modificationCount;
+
+        G_ValidateDerbyDamageCvars();
 }
 
 /*
@@ -551,6 +554,36 @@ void G_RegisterCvars( void ) {
 G_UpdateCvars
 =================
 */
+static void G_ValidateDerbyDamageCvars( void ) {
+        float clamped;
+
+        clamped = Com_Clamp( 0.0f, 2.0f, g_derbyRammerDamageRatio.value );
+        if ( clamped != g_derbyRammerDamageRatio.value ) {
+                trap_Cvar_Set( "g_derbyRammerDamageRatio", va( "%.3f", clamped ) );
+                trap_Cvar_Update( &g_derbyRammerDamageRatio );
+        }
+
+        if ( g_derbyRamDamage.value < 0.0f ) {
+                trap_Cvar_Set( "g_derbyRamDamage", "0" );
+                trap_Cvar_Update( &g_derbyRamDamage );
+        }
+
+        if ( g_derbyRamDamageScale.value < 0.0f ) {
+                trap_Cvar_Set( "g_derbyRamDamageScale", "0" );
+                trap_Cvar_Update( &g_derbyRamDamageScale );
+        }
+
+        if ( g_derbyRamDamageMax.value < 1.0f ) {
+                trap_Cvar_Set( "g_derbyRamDamageMax", "1" );
+                trap_Cvar_Update( &g_derbyRamDamageMax );
+        }
+
+        if ( g_derbyDamageFactor.value < 0.0f ) {
+                trap_Cvar_Set( "g_derbyDamageFactor", "0" );
+                trap_Cvar_Update( &g_derbyDamageFactor );
+        }
+}
+
 void G_UpdateCvars( void ) {
 	int			i;
 	cvarTable_t	*cv;
@@ -578,6 +611,8 @@ void G_UpdateCvars( void ) {
 	if (remapped) {
 		G_RemapTeamShaders();
 	}
+
+        G_ValidateDerbyDamageCvars();
 }
 
 static void G_LadderBuildMatchId( int randomSeed ) {
