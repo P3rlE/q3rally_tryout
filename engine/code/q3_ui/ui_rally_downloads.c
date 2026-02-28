@@ -56,10 +56,15 @@ written to ui_dl_indexpath so the UI can read it via trap_FS_FOpenFile.
 #define DL_LIST_X               60
 #define DL_LIST_Y               112
 #define DL_LIST_WIDTH           520
+#define DL_TAB_COUNT            4
+#define DL_TAB_WIDTH            ( DL_LIST_WIDTH / DL_TAB_COUNT )
+#define DL_TAB_TOP              68
+#define DL_TAB_HEIGHT           22
+#define DL_TAB_LABEL_Y          ( DL_TAB_TOP + 1 )
 #define DL_PROGRESSBAR_Y        410
 #define DL_PROGRESSBAR_WIDTH    520
 #define DL_PROGRESSBAR_HEIGHT   14
-#define DL_STATUS_Y             430
+#define DL_STATUS_Y             425
 
 // Download states (mirrored from native side via ui_dl_state CVar)
 #define DL_STATE_IDLE           0
@@ -605,14 +610,14 @@ static void DownloadsMenu_Draw( void ) {
 
     // Tab highlight (background only – text drawn by menu framework)
     {
-        int tW = DL_LIST_WIDTH / 4;
-        int tY = 68;
         vec4_t activeBg   = { 0.2f, 0.15f, 0.0f, 0.85f };
         vec4_t inactiveBg = { 0.1f, 0.1f,  0.1f, 0.6f  };
         int t;
-        for ( t = 0; t < 4; t++ ) {
+
+        for ( t = 0; t < DL_TAB_COUNT; t++ ) {
             vec4_t *bg = ( s_dl.activeTab == t ) ? &activeBg : &inactiveBg;
-            UI_FillRect( DL_LIST_X + t * tW, tY, tW - 2, 22, *bg );
+            UI_FillRect( DL_LIST_X + t * DL_TAB_WIDTH, DL_TAB_TOP,
+                         DL_TAB_WIDTH - 2, DL_TAB_HEIGHT, *bg );
         }
     }
 
@@ -681,8 +686,8 @@ static void DownloadsMenu_Draw( void ) {
 
     // Inline info popup
     if ( s_dl.showPopup ) {
-        UI_FillRect( 160, 190, 320, 80, popBg );
-        UI_DrawRect( 160, 190, 320, 80, popBdr );
+        UI_FillRect( 120, 190, 400, 80, popBg );
+        UI_DrawRect( 120, 190, 400, 80, popBdr );
         UI_DrawProportionalString( 320, 204, s_dl.popupText,
                                    UI_CENTER | UI_SMALLFONT, popTxt );
         UI_DrawProportionalString( 320, 236, "[ OK ]",
@@ -792,6 +797,10 @@ static void InitDLButton( menutext_s *item, int id, char *label, int x, int y ) 
 }
 
 
+static int DL_TabCenterX( int tabIndex ) {
+    return DL_LIST_X + tabIndex * DL_TAB_WIDTH + ( DL_TAB_WIDTH / 2 );
+}
+
 // ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
@@ -830,11 +839,10 @@ void UI_Rally_DownloadsMenu( void ) {
 
     // Tab buttons
     {
-        int tY = 49;
-        InitDLTabButton( &s_dl.tabAll,      ID_DL_TAB_ALL,      "ALL",      137, tY );
-        InitDLTabButton( &s_dl.tabTracks,   ID_DL_TAB_TRACKS,   "TRACKS",   311, tY );
-        InitDLTabButton( &s_dl.tabVehicles, ID_DL_TAB_VEHICLES, "VEHICLES", 441, tY );
-        InitDLTabButton( &s_dl.tabSkins,    ID_DL_TAB_SKINS,    "SKINS",    555, tY );
+        InitDLTabButton( &s_dl.tabAll,      ID_DL_TAB_ALL,      "ALL",      DL_TabCenterX( 0 ), DL_TAB_LABEL_Y );
+        InitDLTabButton( &s_dl.tabTracks,   ID_DL_TAB_TRACKS,   "TRACKS",   DL_TabCenterX( 1 ), DL_TAB_LABEL_Y );
+        InitDLTabButton( &s_dl.tabVehicles, ID_DL_TAB_VEHICLES, "VEHICLES", DL_TabCenterX( 2 ), DL_TAB_LABEL_Y );
+        InitDLTabButton( &s_dl.tabSkins,    ID_DL_TAB_SKINS,    "SKINS",    DL_TabCenterX( 3 ), DL_TAB_LABEL_Y );
     }
 
     Menu_AddItem( &s_dl.menu, &s_dl.tabAll );
