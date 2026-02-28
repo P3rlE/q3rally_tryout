@@ -60,11 +60,11 @@ written to ui_dl_indexpath so the UI can read it via trap_FS_FOpenFile.
 #define DL_TAB_WIDTH            ( DL_LIST_WIDTH / DL_TAB_COUNT )
 #define DL_TAB_TOP              68
 #define DL_TAB_HEIGHT           22
-#define DL_TAB_LABEL_Y          ( DL_TAB_TOP + 7 )
+#define DL_TAB_LABEL_Y          ( DL_TAB_TOP + 1 )
 #define DL_PROGRESSBAR_Y        410
 #define DL_PROGRESSBAR_WIDTH    520
 #define DL_PROGRESSBAR_HEIGHT   14
-#define DL_STATUS_Y             430
+#define DL_STATUS_Y             425
 
 // Download states (mirrored from native side via ui_dl_state CVar)
 #define DL_STATE_IDLE           0
@@ -686,8 +686,8 @@ static void DownloadsMenu_Draw( void ) {
 
     // Inline info popup
     if ( s_dl.showPopup ) {
-        UI_FillRect( 160, 190, 320, 80, popBg );
-        UI_DrawRect( 160, 190, 320, 80, popBdr );
+        UI_FillRect( 120, 190, 400, 80, popBg );
+        UI_DrawRect( 120, 190, 400, 80, popBdr );
         UI_DrawProportionalString( 320, 204, s_dl.popupText,
                                    UI_CENTER | UI_SMALLFONT, popTxt );
         UI_DrawProportionalString( 320, 236, "[ OK ]",
