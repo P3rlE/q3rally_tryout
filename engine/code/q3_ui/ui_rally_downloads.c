@@ -60,7 +60,7 @@ written to ui_dl_indexpath so the UI can read it via trap_FS_FOpenFile.
 #define DL_TAB_WIDTH            ( DL_LIST_WIDTH / DL_TAB_COUNT )
 #define DL_TAB_TOP              68
 #define DL_TAB_HEIGHT           22
-#define DL_TAB_LABEL_Y          49
+#define DL_TAB_LABEL_Y          ( DL_TAB_TOP + 7 )
 #define DL_PROGRESSBAR_Y        410
 #define DL_PROGRESSBAR_WIDTH    520
 #define DL_PROGRESSBAR_HEIGHT   14
