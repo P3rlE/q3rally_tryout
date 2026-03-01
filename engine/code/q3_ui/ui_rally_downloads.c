@@ -53,22 +53,28 @@ written to ui_dl_indexpath so the UI can read it via trap_FS_FOpenFile.
 #define DL_MAX_ITEMS            64
 #define DL_ITEMS_PER_PAGE       8
 #define DL_ITEM_HEIGHT          32
-#define DL_LIST_X               60
+#define DL_LIST_X               40
 #define DL_LIST_Y               112
-#define DL_LIST_WIDTH           360
+#define DL_LIST_WIDTH           450
 #define DL_TAB_COUNT            4
 #define DL_TAB_WIDTH            ( DL_LIST_WIDTH / DL_TAB_COUNT )
 #define DL_TAB_TOP              68
 #define DL_TAB_HEIGHT           22
 #define DL_TAB_LABEL_Y          ( DL_TAB_TOP + 1 )
 #define DL_PROGRESSBAR_Y        410
-#define DL_PROGRESSBAR_WIDTH    520
+#define DL_PROGRESSBAR_WIDTH    ( DL_LIST_WIDTH + DL_PREVIEW_WIDTH + 8 )
 #define DL_PROGRESSBAR_HEIGHT   14
 #define DL_STATUS_Y             425
-#define DL_PREVIEW_X            ( DL_LIST_X + DL_LIST_WIDTH + 16 )
+#define DL_PREVIEW_X            ( DL_LIST_X + DL_LIST_WIDTH + 8 )
 #define DL_PREVIEW_Y            DL_LIST_Y
-#define DL_PREVIEW_WIDTH        178
+#define DL_PREVIEW_WIDTH        132
 #define DL_PREVIEW_HEIGHT       184
+
+// Column X offsets within the list (relative to DL_LIST_X)
+#define DL_COL_NAME_X           8
+#define DL_COL_AUTHOR_X         220
+#define DL_COL_SIZE_X           ( DL_LIST_WIDTH - 100 )
+#define DL_COL_STATUS_X         ( DL_LIST_WIDTH - 8 )
 
 // Download states (mirrored from native side via ui_dl_state CVar)
 #define DL_STATE_IDLE           0
@@ -406,11 +412,11 @@ static void DL_DrawItemRow( int index, int y, qboolean selected ) {
     UI_FillRect( DL_LIST_X, y, DL_LIST_WIDTH, rowH - 2, *bg );
 
     // Name (left, normal font)
-    UI_DrawString( DL_LIST_X + 8, y + 8, item->name,
+    UI_DrawString( DL_LIST_X + DL_COL_NAME_X, y + 8, item->name,
                    UI_LEFT | UI_SMALLFONT, nameColor );
 
     // Author (center area)
-    UI_DrawString( DL_LIST_X + 170, y + 8, item->author,
+    UI_DrawString( DL_LIST_X + DL_COL_AUTHOR_X, y + 8, item->author,
                    UI_LEFT | UI_SMALLFONT, infoColor );
 
     // Size
@@ -419,15 +425,15 @@ static void DL_DrawItemRow( int index, int y, qboolean selected ) {
     } else {
         Com_sprintf( sizeStr, sizeof( sizeStr ), "%d KB", item->size_kb );
     }
-    UI_DrawString( DL_LIST_X + DL_LIST_WIDTH - 120, y + 8, sizeStr,
+    UI_DrawString( DL_LIST_X + DL_COL_SIZE_X, y + 8, sizeStr,
                    UI_LEFT | UI_SMALLFONT, infoColor );
 
     // Status column
     if ( item->installed ) {
-        UI_DrawString( DL_LIST_X + DL_LIST_WIDTH - 8, y + 8, "INSTALLED",
+        UI_DrawString( DL_LIST_X + DL_COL_STATUS_X, y + 8, "INSTALLED",
                        UI_RIGHT | UI_SMALLFONT, installedColor );
     } else {
-        UI_DrawString( DL_LIST_X + DL_LIST_WIDTH - 8, y + 8, "available",
+        UI_DrawString( DL_LIST_X + DL_COL_STATUS_X, y + 8, "available",
                        UI_RIGHT | UI_SMALLFONT, infoColor );
     }
 }
@@ -435,47 +441,55 @@ static void DL_DrawItemRow( int index, int y, qboolean selected ) {
 static qhandle_t DL_GetPreviewShader( const dlItem_t *item ) {
     qhandle_t    shader;
     char         shaderPath[MAX_QPATH];
-    const char  *urlPath;
-    const char  *namePart;
+    char         ext[8];
+    const char  *dot;
+    const char  *lastSlash;
+    const char  *filename;
 
     if ( !item ) return 0;
 
+    // 1. Check the preview cache: q3rally_previews/<id>.<ext>
+    //    The engine stores images there after fetching them.
     if ( item->preview[0] ) {
-        urlPath = strstr( item->preview, "://" );
-        if ( urlPath ) {
-            urlPath = strchr( urlPath + 3, '/' );
-        } else if ( item->preview[0] == '/' ) {
-            urlPath = item->preview;
+        // Derive extension from the URL
+        lastSlash = strrchr( item->preview, '/' );
+        filename  = lastSlash ? lastSlash + 1 : item->preview;
+        dot       = strrchr( filename, '.' );
+        if ( dot && strlen( dot ) <= 5 ) {
+            Q_strncpyz( ext, dot, sizeof( ext ) );
         } else {
-            urlPath = NULL;
+            Q_strncpyz( ext, ".jpg", sizeof( ext ) );
         }
 
-        if ( urlPath && urlPath[0] ) {
-            if ( urlPath[0] == '/' ) {
-                Q_strncpyz( shaderPath, urlPath + 1, sizeof( shaderPath ) );
-            } else {
-                Q_strncpyz( shaderPath, urlPath, sizeof( shaderPath ) );
-            }
-            COM_StripExtension( shaderPath, shaderPath, sizeof( shaderPath ) );
-            shader = trap_R_RegisterShaderNoMip( shaderPath );
-            if ( shader ) return shader;
-        }
+        // Strip extension for RegisterShaderNoMip (engine appends its own)
+        Com_sprintf( shaderPath, sizeof( shaderPath ),
+                     "q3rally_previews/%s", item->id );
+        // shaderPath now ends without extension – correct for Q3 shader lookup
+        shader = trap_R_RegisterShaderNoMip( shaderPath );
+        if ( shader ) return shader;
 
-        Q_strncpyz( shaderPath, item->preview, sizeof( shaderPath ) );
+        // Also try with the explicit extension path stripped
+        Com_sprintf( shaderPath, sizeof( shaderPath ),
+                     "q3rally_previews/%s%s", item->id, ext );
         COM_StripExtension( shaderPath, shaderPath, sizeof( shaderPath ) );
         shader = trap_R_RegisterShaderNoMip( shaderPath );
         if ( shader ) return shader;
     }
 
+    // 2. Fallback: levelshots/<id> (already packed in a pk3)
     Com_sprintf( shaderPath, sizeof( shaderPath ), "levelshots/%s", item->id );
     shader = trap_R_RegisterShaderNoMip( shaderPath );
     if ( shader ) return shader;
 
-    namePart = strrchr( item->id, '/' );
-    if ( namePart ) {
-        Com_sprintf( shaderPath, sizeof( shaderPath ), "levelshots/%s", namePart + 1 );
-        shader = trap_R_RegisterShaderNoMip( shaderPath );
-        if ( shader ) return shader;
+    // 3. Fallback: levelshots/<basename> (strip any path prefix from id)
+    {
+        const char *namePart = strrchr( item->id, '/' );
+        if ( namePart ) {
+            Com_sprintf( shaderPath, sizeof( shaderPath ),
+                         "levelshots/%s", namePart + 1 );
+            shader = trap_R_RegisterShaderNoMip( shaderPath );
+            if ( shader ) return shader;
+        }
     }
 
     return 0;
@@ -712,13 +726,13 @@ static void DownloadsMenu_Draw( void ) {
          s_dl.dlState == DL_STATE_DONE  ||
          s_dl.dlState == DL_STATE_ERROR ) {
 
-        UI_DrawString( DL_LIST_X + 8,                         92, "NAME",
+        UI_DrawString( DL_LIST_X + DL_COL_NAME_X,                  92, "NAME",
                        UI_LEFT | UI_SMALLFONT, colHeaderColor );
-        UI_DrawString( DL_LIST_X + 170,                       92, "AUTHOR",
+        UI_DrawString( DL_LIST_X + DL_COL_AUTHOR_X,                92, "AUTHOR",
                        UI_LEFT | UI_SMALLFONT, colHeaderColor );
-        UI_DrawString( DL_LIST_X + DL_LIST_WIDTH - 120,       92, "SIZE",
+        UI_DrawString( DL_LIST_X + DL_COL_SIZE_X,                  92, "SIZE",
                        UI_LEFT | UI_SMALLFONT, colHeaderColor );
-        UI_DrawString( DL_LIST_X + DL_LIST_WIDTH - 55,        92, "STATUS",
+        UI_DrawString( DL_LIST_X + DL_COL_STATUS_X,                92, "STATUS",
                        UI_LEFT | UI_SMALLFONT, colHeaderColor );
     }
 

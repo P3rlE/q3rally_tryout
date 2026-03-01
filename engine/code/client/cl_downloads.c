@@ -125,7 +125,8 @@ static void              (*cl_curl_slist_free_all)(struct curl_slist*);
 
 typedef enum {
     CLREQ_INDEX,        // fetch content index JSON
-    CLREQ_DOWNLOAD      // download a pk3
+    CLREQ_DOWNLOAD,     // download a pk3
+    CLREQ_PREVIEW       // fetch a preview image
 } clDlRequestType_t;
 
 typedef struct {
@@ -154,6 +155,14 @@ typedef struct {
 #endif
 } clDlRequest_t;
 
+// Preview queue – up to 64 pending preview fetches after index load
+#define DL_MAX_PREVIEW_QUEUE    64
+
+typedef struct {
+    char    id[64];
+    char    url[512];
+} clDlPreviewEntry_t;
+
 typedef struct {
     qboolean            initialized;
     qboolean            curlLoaded;
@@ -163,6 +172,12 @@ typedef struct {
     char                pendingAction[256]; // copy of ui_dl_action before clear
 
     clDlRequest_t       *active;
+
+    // Preview image queue – drained one at a time after index is ready
+    clDlPreviewEntry_t  previewQueue[DL_MAX_PREVIEW_QUEUE];
+    int                 previewQueueHead;   // next entry to fetch
+    int                 previewQueueCount;  // total entries enqueued
+    qboolean            previewActive;      // a CLREQ_PREVIEW is in flight
 
 #ifdef USE_CURL
     CURLM               *multi;
@@ -582,6 +597,284 @@ static qboolean CL_DL_StartPk3Download( clDlRequest_t *req ) {
 // Index JSON → temp file
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Preview cache helpers
+// ---------------------------------------------------------------------------
+
+#define DL_PREVIEW_DIR          "q3rally_previews"
+#define DL_PREVIEW_MAX_SIZE     (2 * 1024 * 1024)   // 2 MB per preview image
+
+/*
+ * CL_DL_PreviewLocalPath
+ * Builds the VFS-relative path where a preview image is (or will be) stored.
+ * e.g. id="tracks/mytrack", ext=".jpg"  →  "q3rally_previews/tracks/mytrack.jpg"
+ */
+static void CL_DL_PreviewLocalPath( const char *id, const char *ext,
+                                    char *out, int outSize ) {
+    Com_sprintf( out, outSize, "%s/%s%s", DL_PREVIEW_DIR, id, ext );
+}
+
+/*
+ * CL_DL_PreviewExists
+ * Returns qtrue if the preview file is already present on disk.
+ */
+static qboolean CL_DL_PreviewExists( const char *id, const char *ext ) {
+    char        relPath[MAX_OSPATH];
+    char        absPath[MAX_OSPATH];
+    char        homePath[MAX_OSPATH];
+    char        basegame[MAX_OSPATH];
+    struct stat st;
+
+    CL_DL_PreviewLocalPath( id, ext, relPath, sizeof( relPath ) );
+
+    Q_strncpyz( homePath, Cvar_VariableString( "fs_homepath" ), sizeof( homePath ) );
+    Cvar_VariableStringBuffer( "fs_basegame", basegame, sizeof( basegame ) );
+    if ( !basegame[0] ) Q_strncpyz( basegame, "baseq3r", sizeof( basegame ) );
+
+    Com_sprintf( absPath, sizeof( absPath ), "%s%c%s%c%s",
+                 homePath, PATH_SEP, basegame, PATH_SEP, relPath );
+
+    // Replace forward slashes with platform separator
+#ifdef _WIN32
+    {
+        char *p;
+        for ( p = absPath; *p; p++ ) if ( *p == '/' ) *p = PATH_SEP;
+    }
+#endif
+
+    return ( stat( absPath, &st ) == 0 && st.st_size > 0 ) ? qtrue : qfalse;
+}
+
+/*
+ * CL_DL_ExtFromUrl
+ * Extracts the file extension from a URL (e.g. ".jpg", ".png").
+ * Returns ".jpg" as default if none found.
+ */
+static void CL_DL_ExtFromUrl( const char *url, char *ext, int extSize ) {
+    const char *lastSlash = strrchr( url, '/' );
+    const char *filename  = lastSlash ? lastSlash + 1 : url;
+    const char *dot       = strrchr( filename, '.' );
+
+    if ( dot && strlen( dot ) <= 5 ) {
+        Q_strncpyz( ext, dot, extSize );
+    } else {
+        Q_strncpyz( ext, ".jpg", extSize );
+    }
+}
+
+/*
+ * CL_DL_EnqueuePreviews
+ * Parses the index JSON and populates the preview queue with entries
+ * whose preview images are not yet cached on disk.
+ */
+static void CL_DL_EnqueuePreviews( const char *jsonBuf ) {
+    const char  *p = jsonBuf;
+    const char  *objEnd;
+    char         id[64];
+    char         previewUrl[512];
+    char         ext[8];
+
+    cl_dl.previewQueueHead  = 0;
+    cl_dl.previewQueueCount = 0;
+
+    while ( *p && cl_dl.previewQueueCount < DL_MAX_PREVIEW_QUEUE ) {
+        p = strchr( p, '{' );
+        if ( !p ) break;
+
+        objEnd = strchr( p, '}' );
+        if ( !objEnd ) break;
+
+        id[0]         = '\0';
+        previewUrl[0] = '\0';
+
+        // Reuse the same minimal parser pattern as the QVM side
+        {
+            // id
+            const char *kp;
+            char searchKey[128];
+            int  i;
+
+            Com_sprintf( searchKey, sizeof( searchKey ), "\"id\"" );
+            kp = strstr( p, searchKey );
+            if ( kp && kp < objEnd ) {
+                kp += strlen( searchKey );
+                while ( *kp && ( *kp == ' ' || *kp == '\t' || *kp == ':' ) ) kp++;
+                if ( *kp == '"' ) {
+                    kp++;
+                    for ( i = 0; i < (int)sizeof(id) - 1 && *kp && *kp != '"'; i++ )
+                        id[i] = *kp++;
+                    id[i] = '\0';
+                }
+            }
+
+            // preview
+            Com_sprintf( searchKey, sizeof( searchKey ), "\"preview\"" );
+            kp = strstr( p, searchKey );
+            if ( kp && kp < objEnd ) {
+                kp += strlen( searchKey );
+                while ( *kp && ( *kp == ' ' || *kp == '\t' || *kp == ':' ) ) kp++;
+                if ( *kp == '"' ) {
+                    kp++;
+                    for ( i = 0; i < (int)sizeof(previewUrl) - 1 && *kp && *kp != '"'; i++ )
+                        previewUrl[i] = *kp++;
+                    previewUrl[i] = '\0';
+                }
+            }
+        }
+
+        if ( id[0] && previewUrl[0] ) {
+            CL_DL_ExtFromUrl( previewUrl, ext, sizeof( ext ) );
+
+            if ( !CL_DL_PreviewExists( id, ext ) ) {
+                clDlPreviewEntry_t *entry = &cl_dl.previewQueue[cl_dl.previewQueueCount];
+                Q_strncpyz( entry->id,  id,         sizeof( entry->id ) );
+                Q_strncpyz( entry->url, previewUrl, sizeof( entry->url ) );
+                cl_dl.previewQueueCount++;
+            }
+        }
+
+        p = objEnd + 1;
+    }
+
+    Com_Printf( "CL_Downloads: %d preview(s) queued for download\n",
+                cl_dl.previewQueueCount );
+}
+
+#ifdef USE_CURL
+/*
+ * CL_DL_StartPreviewFetch
+ * Kicks off a curl transfer for the next preview in the queue.
+ * The file is written directly to disk (VFS homepath).
+ */
+static qboolean CL_DL_StartPreviewFetch( clDlRequest_t *req ) {
+    CURL        *easy;
+    CURLcode     code;
+    char         relPath[MAX_OSPATH];
+    char         absPath[MAX_OSPATH];
+    char         pathCopy[MAX_OSPATH];
+    char         ext[8];
+    char         homePath[MAX_OSPATH];
+    char         basegame[MAX_OSPATH];
+
+    if ( !CL_DL_EnsureCurl() ) return qfalse;
+
+    CL_DL_ExtFromUrl( req->url, ext, sizeof( ext ) );
+    CL_DL_PreviewLocalPath( req->id, ext, relPath, sizeof( relPath ) );
+
+    Q_strncpyz( homePath, Cvar_VariableString( "fs_homepath" ), sizeof( homePath ) );
+    Cvar_VariableStringBuffer( "fs_basegame", basegame, sizeof( basegame ) );
+    if ( !basegame[0] ) Q_strncpyz( basegame, "baseq3r", sizeof( basegame ) );
+
+    Com_sprintf( absPath, sizeof( absPath ), "%s%c%s%c%s",
+                 homePath, PATH_SEP, basegame, PATH_SEP, relPath );
+
+#ifdef _WIN32
+    {
+        char *p;
+        for ( p = absPath; *p; p++ ) if ( *p == '/' ) *p = PATH_SEP;
+    }
+#endif
+
+    Q_strncpyz( req->destPath, absPath, sizeof( req->destPath ) );
+
+    // Ensure subdirectory exists
+    Q_strncpyz( pathCopy, absPath, sizeof( pathCopy ) );
+    if ( FS_CreatePath( pathCopy ) ) {
+        Com_Printf( "CL_Downloads: failed to create preview path '%s'\n", absPath );
+        return qfalse;
+    }
+
+    req->file = Sys_FOpen( absPath, "wb" );
+    if ( !req->file ) {
+        Com_Printf( "CL_Downloads: failed to open preview file '%s' (%s)\n",
+                    absPath, strerror( errno ) );
+        return qfalse;
+    }
+
+    easy = cl_curl_easy_init();
+    if ( !easy ) {
+        fclose( req->file );
+        req->file = NULL;
+        return qfalse;
+    }
+
+    req->easy        = easy;
+    req->errorBuf[0] = '\0';
+
+    code  = cl_curl_easy_setopt( easy, CURLOPT_URL,            req->url );
+    code |= cl_curl_easy_setopt( easy, CURLOPT_WRITEFUNCTION,  CL_DL_WriteFile );
+    code |= cl_curl_easy_setopt( easy, CURLOPT_WRITEDATA,      req );
+    code |= cl_curl_easy_setopt( easy, CURLOPT_ERRORBUFFER,    req->errorBuf );
+    code |= cl_curl_easy_setopt( easy, CURLOPT_FOLLOWLOCATION, 1L );
+    code |= cl_curl_easy_setopt( easy, CURLOPT_MAXREDIRS,      5L );
+    code |= cl_curl_easy_setopt( easy, CURLOPT_CONNECTTIMEOUT, DL_CONNECT_TIMEOUT );
+    code |= cl_curl_easy_setopt( easy, CURLOPT_TIMEOUT,        30L );
+    code |= cl_curl_easy_setopt( easy, CURLOPT_NOSIGNAL,       1L );
+    code |= cl_curl_easy_setopt( easy, CURLOPT_USERAGENT,      Q3_VERSION );
+    code |= cl_curl_easy_setopt( easy, CURLOPT_PRIVATE,        req );
+    // Abort if server tries to send more than the limit
+    code |= cl_curl_easy_setopt( easy, CURLOPT_MAXFILESIZE_LARGE,
+                                 (curl_off_t)DL_PREVIEW_MAX_SIZE );
+
+    if ( code != CURLE_OK ) {
+        Com_Printf( "CL_Downloads: curl_easy_setopt failed for preview fetch\n" );
+        fclose( req->file );
+        req->file = NULL;
+        cl_curl_easy_cleanup( easy );
+        req->easy = NULL;
+        return qfalse;
+    }
+
+    if ( cl_curl_multi_add_handle( cl_dl.multi, easy ) != CURLM_OK ) {
+        fclose( req->file );
+        req->file = NULL;
+        cl_curl_easy_cleanup( easy );
+        req->easy = NULL;
+        return qfalse;
+    }
+
+    return qtrue;
+}
+
+/*
+ * CL_DL_PumpPreviewQueue
+ * Called from CL_DL_Frame when no pk3 transfer is active.
+ * Starts the next queued preview fetch if one is pending.
+ */
+static void CL_DL_PumpPreviewQueue( void ) {
+    clDlRequest_t      *req;
+    clDlPreviewEntry_t *entry;
+
+    if ( cl_dl.previewActive ) return;
+    if ( cl_dl.previewQueueHead >= cl_dl.previewQueueCount ) return;
+    // Don't overlap with an active pk3 download
+    if ( cl_dl.active ) return;
+
+    entry = &cl_dl.previewQueue[cl_dl.previewQueueHead];
+
+    req = CL_DL_AllocRequest();
+    if ( !req ) return;
+
+    req->type = CLREQ_PREVIEW;
+    Q_strncpyz( req->id,  entry->id,  sizeof( req->id ) );
+    Q_strncpyz( req->url, entry->url, sizeof( req->url ) );
+
+    if ( !CL_DL_StartPreviewFetch( req ) ) {
+        CL_DL_FreeRequest( req );
+        // Skip broken entry and try next frame
+        cl_dl.previewQueueHead++;
+        return;
+    }
+
+    cl_dl.active        = req;
+    cl_dl.previewActive = qtrue;
+    cl_dl.previewQueueHead++;
+
+    Com_DPrintf( "CL_Downloads: fetching preview %d/%d – %s\n",
+                 cl_dl.previewQueueHead, cl_dl.previewQueueCount, entry->url );
+}
+#endif // USE_CURL
+
 static void CL_DL_SaveIndexToTemp( clDlRequest_t *req ) {
     // Write via FS_WriteFile so the file lands inside the VFS and
     // trap_FS_FOpenFile in the QVM can find it by relative name.
@@ -591,6 +884,9 @@ static void CL_DL_SaveIndexToTemp( clDlRequest_t *req ) {
     CL_DL_SetState( DL_STATE_READY );
     Com_Printf( "CL_Downloads: index fetched (%u bytes) -> %s\n",
                 (unsigned)req->bufLen, DL_INDEX_TMPNAME );
+
+    // Queue preview images for background download
+    CL_DL_EnqueuePreviews( req->buf );
 }
 
 // ---------------------------------------------------------------------------
@@ -809,11 +1105,19 @@ static void CL_DL_CompleteRequest( clDlRequest_t *req, CURLcode result, long htt
             : cl_curl_easy_strerror( result );
 
         Com_Printf( "CL_Downloads: transfer failed: %s\n", errMsg );
-        CL_DL_SetError( errMsg );
 
-        // Remove partial pk3 file on failure
-        if ( req->type == CLREQ_DOWNLOAD && req->destPath[0] ) {
-            remove( req->destPath );
+        if ( req->type == CLREQ_PREVIEW ) {
+            // Non-fatal – just skip this preview and continue the queue
+            Com_DPrintf( "CL_Downloads: preview fetch failed for '%s': %s\n",
+                         req->id, errMsg );
+            if ( req->destPath[0] ) remove( req->destPath );
+            cl_dl.previewActive = qfalse;
+        } else {
+            CL_DL_SetError( errMsg );
+            // Remove partial pk3 file on failure
+            if ( req->type == CLREQ_DOWNLOAD && req->destPath[0] ) {
+                remove( req->destPath );
+            }
         }
 
         CL_DL_FreeRequest( req );
@@ -825,10 +1129,17 @@ static void CL_DL_CompleteRequest( clDlRequest_t *req, CURLcode result, long htt
         char errBuf[64];
         Com_sprintf( errBuf, sizeof( errBuf ), "HTTP %ld", httpCode );
         Com_Printf( "CL_Downloads: server returned %s\n", errBuf );
-        CL_DL_SetError( errBuf );
 
-        if ( req->type == CLREQ_DOWNLOAD && req->destPath[0] ) {
-            remove( req->destPath );
+        if ( req->type == CLREQ_PREVIEW ) {
+            Com_DPrintf( "CL_Downloads: preview HTTP %ld for '%s', skipping\n",
+                         httpCode, req->id );
+            if ( req->destPath[0] ) remove( req->destPath );
+            cl_dl.previewActive = qfalse;
+        } else {
+            CL_DL_SetError( errBuf );
+            if ( req->type == CLREQ_DOWNLOAD && req->destPath[0] ) {
+                remove( req->destPath );
+            }
         }
 
         CL_DL_FreeRequest( req );
@@ -840,8 +1151,15 @@ static void CL_DL_CompleteRequest( clDlRequest_t *req, CURLcode result, long htt
     if ( req->type == CLREQ_INDEX ) {
         CL_DL_SaveIndexToTemp( req );
         // state set inside SaveIndexToTemp
+    } else if ( req->type == CLREQ_PREVIEW ) {
+        if ( req->file ) {
+            fclose( req->file );
+            req->file = NULL;
+        }
+        Com_DPrintf( "CL_Downloads: preview saved – %s\n", req->destPath );
+        cl_dl.previewActive = qfalse;
     } else {
-        // Close file before reporting done
+        // CLREQ_DOWNLOAD – close file before reporting done
         if ( req->file ) {
             fclose( req->file );
             req->file = NULL;
@@ -975,5 +1293,8 @@ void CL_DL_Frame( void ) {
             }
         }
     }
+
+    // Start the next preview image if nothing else is running
+    CL_DL_PumpPreviewQueue();
 #endif // USE_CURL
 }
