@@ -792,66 +792,6 @@ static void CL_DL_HandleAction( const char *action ) {
         return;
     }
 
-    // --- uninstall:<id> ---
-    if ( Q_strncmp( action, "uninstall:", 10 ) == 0 ) {
-        const char  *uninstId = action + 10;
-        char         homePath[MAX_OSPATH];
-        char         basePath[MAX_OSPATH];
-        char         basegame[MAX_OSPATH];
-        char         pk3Path[MAX_OSPATH];
-        char         renamePath[MAX_OSPATH];
-        const char  *rootPaths[2];
-        int          i;
-
-        if ( !uninstId[0] || strchr( uninstId, '/' ) || strchr( uninstId, '\\' ) ) {
-            CL_DL_SetError( "Invalid content id" );
-            return;
-        }
-
-        Q_strncpyz( homePath, Cvar_VariableString( "fs_homepath" ), sizeof( homePath ) );
-        Q_strncpyz( basePath, Cvar_VariableString( "fs_basepath" ), sizeof( basePath ) );
-        Cvar_VariableStringBuffer( "fs_basegame", basegame, sizeof( basegame ) );
-        if ( !basegame[0] ) Q_strncpyz( basegame, "baseq3r", sizeof( basegame ) );
-
-        rootPaths[0] = homePath;
-        rootPaths[1] = basePath;
-
-        for ( i = 0; i < 2; i++ ) {
-            FILE *testFile;
-
-            if ( !rootPaths[i][0] ) {
-                continue;
-            }
-
-            Com_sprintf( pk3Path, sizeof( pk3Path ), "%s%c%s%c%s.pk3",
-                         rootPaths[i], PATH_SEP, basegame, PATH_SEP, uninstId );
-
-            testFile = Sys_FOpen( pk3Path, "rb" );
-            if ( !testFile ) {
-                continue;
-            }
-            fclose( testFile );
-
-            Com_sprintf( renamePath, sizeof( renamePath ), "%s.uninstalled", pk3Path );
-            remove( renamePath );
-
-            chmod( pk3Path, S_IREAD | S_IWRITE );
-
-            if ( rename( pk3Path, renamePath ) == 0 ) {
-                Com_Printf( "CL_Downloads: uninstalled '%s'\n", pk3Path );
-                CL_DL_SetState( DL_STATE_IDLE );
-                return;
-            }
-
-            Com_Printf( "CL_Downloads: failed to uninstall '%s' (%s)\n",
-                        pk3Path, strerror( errno ) );
-            CL_DL_SetError( va( "Uninstall failed (%s)", strerror( errno ) ) );
-            return;
-        }
-
-        CL_DL_SetError( "Installed file not found" );
-        return;
-    }
 
     Com_Printf( "CL_Downloads: unknown action '%s'\n", action );
 #endif // USE_CURL

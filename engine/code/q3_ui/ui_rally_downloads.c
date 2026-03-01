@@ -55,7 +55,7 @@ written to ui_dl_indexpath so the UI can read it via trap_FS_FOpenFile.
 #define DL_ITEM_HEIGHT          32
 #define DL_LIST_X               60
 #define DL_LIST_Y               112
-#define DL_LIST_WIDTH           520
+#define DL_LIST_WIDTH           360
 #define DL_TAB_COUNT            4
 #define DL_TAB_WIDTH            ( DL_LIST_WIDTH / DL_TAB_COUNT )
 #define DL_TAB_TOP              68
@@ -65,6 +65,10 @@ written to ui_dl_indexpath so the UI can read it via trap_FS_FOpenFile.
 #define DL_PROGRESSBAR_WIDTH    520
 #define DL_PROGRESSBAR_HEIGHT   14
 #define DL_STATUS_Y             425
+#define DL_PREVIEW_X            ( DL_LIST_X + DL_LIST_WIDTH + 16 )
+#define DL_PREVIEW_Y            DL_LIST_Y
+#define DL_PREVIEW_WIDTH        144
+#define DL_PREVIEW_HEIGHT       184
 
 // Download states (mirrored from native side via ui_dl_state CVar)
 #define DL_STATE_IDLE           0
@@ -90,7 +94,6 @@ written to ui_dl_indexpath so the UI can read it via trap_FS_FOpenFile.
 #define ID_DL_SCROLL_DOWN       16
 #define ID_DL_DOWNLOAD          17
 #define ID_DL_REFRESH           18
-#define ID_DL_UNINSTALL         19
 #define ID_DL_ITEM_BASE         100  // items: ID_DL_ITEM_BASE + index
 
 
@@ -121,7 +124,6 @@ typedef struct {
     menutext_s      scrollDown;
     menutext_s      downloadBtn;
     menutext_s      refreshBtn;
-    menutext_s      uninstallBtn;
 
     // State
     int             activeTab;
@@ -354,7 +356,6 @@ static void DL_PollState( void ) {
         Q_strncpyz( s_dl.popupText, "Restart required to use new content.", sizeof( s_dl.popupText ) );
 
     }
-    // When uninstall completes (idle after non-idle), reload index
     if ( s_dl.dlState == DL_STATE_IDLE && prevState != DL_STATE_IDLE &&
          prevState != DL_STATE_FETCHING ) {
         DL_LoadIndex();
@@ -407,7 +408,7 @@ static void DL_DrawItemRow( int index, int y, qboolean selected ) {
                    UI_LEFT | UI_SMALLFONT, nameColor );
 
     // Author (center area)
-    UI_DrawString( DL_LIST_X + 280, y + 8, item->author,
+    UI_DrawString( DL_LIST_X + 170, y + 8, item->author,
                    UI_LEFT | UI_SMALLFONT, infoColor );
 
     // Size
@@ -416,7 +417,7 @@ static void DL_DrawItemRow( int index, int y, qboolean selected ) {
     } else {
         Com_sprintf( sizeStr, sizeof( sizeStr ), "%d KB", item->size_kb );
     }
-    UI_DrawString( DL_LIST_X + DL_LIST_WIDTH - 155, y + 8, sizeStr,
+    UI_DrawString( DL_LIST_X + DL_LIST_WIDTH - 120, y + 8, sizeStr,
                    UI_LEFT | UI_SMALLFONT, infoColor );
 
     // Status column
@@ -426,6 +427,53 @@ static void DL_DrawItemRow( int index, int y, qboolean selected ) {
     } else {
         UI_DrawString( DL_LIST_X + DL_LIST_WIDTH - 8, y + 8, "available",
                        UI_RIGHT | UI_SMALLFONT, infoColor );
+    }
+}
+
+static void DL_DrawPreviewPane( void ) {
+    qhandle_t    previewShader = 0;
+    vec4_t       paneBg        = { 0.08f, 0.08f, 0.10f, 0.82f };
+    vec4_t       paneBorder    = { 0.5f, 0.5f, 0.5f, 0.8f };
+    vec4_t       textColor     = { 0.85f, 0.85f, 0.85f, 1.0f };
+    vec4_t       hintColor     = { 0.55f, 0.55f, 0.55f, 1.0f };
+    int          imageX        = DL_PREVIEW_X + 10;
+    int          imageY        = DL_PREVIEW_Y + 10;
+    int          imageW        = DL_PREVIEW_WIDTH - 20;
+    int          imageH        = 94;
+
+    UI_FillRect( DL_PREVIEW_X, DL_PREVIEW_Y, DL_PREVIEW_WIDTH, DL_PREVIEW_HEIGHT, paneBg );
+    UI_DrawRect( DL_PREVIEW_X, DL_PREVIEW_Y, DL_PREVIEW_WIDTH, DL_PREVIEW_HEIGHT, paneBorder );
+
+    UI_DrawString( DL_PREVIEW_X + 8, DL_PREVIEW_Y - 20, "PREVIEW",
+                   UI_LEFT | UI_SMALLFONT, hintColor );
+
+    if ( s_dl.selectedItem >= 0 && s_dl.selectedItem < s_dl.numItems ) {
+        dlItem_t *item = &s_dl.items[s_dl.selectedItem];
+        char      shaderPath[MAX_QPATH];
+
+        Com_sprintf( shaderPath, sizeof( shaderPath ), "levelshots/%s", item->id );
+        previewShader = trap_R_RegisterShaderNoMip( shaderPath );
+
+        if ( previewShader ) {
+            UI_DrawHandlePic( imageX, imageY, imageW, imageH, previewShader );
+        } else {
+            UI_FillRect( imageX, imageY, imageW, imageH, colorBlack );
+            UI_DrawString( DL_PREVIEW_X + 26, DL_PREVIEW_Y + 50, "NO PREVIEW",
+                           UI_LEFT | UI_SMALLFONT, hintColor );
+        }
+
+        UI_DrawString( DL_PREVIEW_X + 8, DL_PREVIEW_Y + 116, item->name,
+                       UI_LEFT | UI_SMALLFONT, textColor );
+        UI_DrawString( DL_PREVIEW_X + 8, DL_PREVIEW_Y + 132, item->author,
+                       UI_LEFT | UI_SMALLFONT, hintColor );
+        UI_DrawString( DL_PREVIEW_X + 8, DL_PREVIEW_Y + 148, item->type,
+                       UI_LEFT | UI_SMALLFONT, hintColor );
+        UI_DrawString( DL_PREVIEW_X + DL_PREVIEW_WIDTH - 8, DL_PREVIEW_Y + 148, item->version,
+                       UI_RIGHT | UI_SMALLFONT, hintColor );
+    } else {
+        UI_FillRect( imageX, imageY, imageW, imageH, colorBlack );
+        UI_DrawString( DL_PREVIEW_X + 18, DL_PREVIEW_Y + 50, "SELECT AN ITEM",
+                       UI_LEFT | UI_SMALLFONT, hintColor );
     }
 }
 
@@ -545,16 +593,6 @@ static void DownloadsMenu_Event( void *ptr, int event ) {
         }
         break;
 
-    case ID_DL_UNINSTALL:
-        if ( s_dl.selectedItem >= 0 && s_dl.selectedItem < s_dl.numItems ) {
-            if ( s_dl.items[s_dl.selectedItem].installed ) {
-                Com_sprintf( cmd, sizeof( cmd ), "uninstall:%s",
-                             s_dl.items[s_dl.selectedItem].id );
-                trap_Cvar_Set( "ui_dl_action", cmd );
-            }
-        }
-        break;
-
     case ID_DL_REFRESH:
         s_dl.numAllItems = 0;
         s_dl.numItems    = 0;
@@ -621,6 +659,8 @@ static void DownloadsMenu_Draw( void ) {
         }
     }
 
+    DL_DrawPreviewPane();
+
     // Column headers
     if ( s_dl.dlState == DL_STATE_READY ||
          s_dl.dlState == DL_STATE_IDLE  ||
@@ -629,9 +669,9 @@ static void DownloadsMenu_Draw( void ) {
 
         UI_DrawString( DL_LIST_X + 8,                         92, "NAME",
                        UI_LEFT | UI_SMALLFONT, colHeaderColor );
-        UI_DrawString( DL_LIST_X + 280,                       92, "AUTHOR",
+        UI_DrawString( DL_LIST_X + 170,                       92, "AUTHOR",
                        UI_LEFT | UI_SMALLFONT, colHeaderColor );
-        UI_DrawString( DL_LIST_X + DL_LIST_WIDTH - 155,       92, "SIZE",
+        UI_DrawString( DL_LIST_X + DL_LIST_WIDTH - 120,       92, "SIZE",
                        UI_LEFT | UI_SMALLFONT, colHeaderColor );
         UI_DrawString( DL_LIST_X + DL_LIST_WIDTH - 55,        92, "STATUS",
                        UI_LEFT | UI_SMALLFONT, colHeaderColor );
@@ -853,11 +893,9 @@ void UI_Rally_DownloadsMenu( void ) {
     // Bottom-row buttons
     InitDLButton( &s_dl.back,         ID_DL_BACK,        "BACK",        btnX,        btnY );
     InitDLButton( &s_dl.downloadBtn,  ID_DL_DOWNLOAD,    "DOWNLOAD",    btnX - 130,  btnY );
-    InitDLButton( &s_dl.uninstallBtn, ID_DL_UNINSTALL,   "UNINSTALL",   btnX - 280,  btnY );
-    InitDLButton( &s_dl.refreshBtn,   ID_DL_REFRESH,     "REFRESH",     btnX - 400,  btnY );
+    InitDLButton( &s_dl.refreshBtn,   ID_DL_REFRESH,     "REFRESH",     btnX - 280,  btnY );
     Menu_AddItem( &s_dl.menu, &s_dl.back );
     Menu_AddItem( &s_dl.menu, &s_dl.downloadBtn );
-    Menu_AddItem( &s_dl.menu, &s_dl.uninstallBtn );
     Menu_AddItem( &s_dl.menu, &s_dl.refreshBtn );
 
 
