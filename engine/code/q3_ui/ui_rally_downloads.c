@@ -67,7 +67,7 @@ written to ui_dl_indexpath so the UI can read it via trap_FS_FOpenFile.
 #define DL_STATUS_Y             425
 #define DL_PREVIEW_X            ( DL_LIST_X + DL_LIST_WIDTH + 16 )
 #define DL_PREVIEW_Y            DL_LIST_Y
-#define DL_PREVIEW_WIDTH        144
+#define DL_PREVIEW_WIDTH        178
 #define DL_PREVIEW_HEIGHT       184
 
 // Download states (mirrored from native side via ui_dl_state CVar)
@@ -107,6 +107,7 @@ typedef struct {
     char    author[64];
     char    version[16];
     char    type[16];       // "track", "vehicle", "skin"
+    char    preview[128];
     int     size_kb;
     qboolean installed;
 } dlItem_t;
@@ -264,6 +265,7 @@ static void DL_ParseIndex( const char *buf ) {
         DL_ParseString( p, "author",  item->author,  sizeof( item->author ) );
         DL_ParseString( p, "version", item->version, sizeof( item->version ) );
         DL_ParseString( p, "type",    item->type,    sizeof( item->type ) );
+        DL_ParseString( p, "preview", item->preview, sizeof( item->preview ) );
         item->size_kb = DL_ParseInt( p, "size" ) / 1024;
 
         if ( item->id[0] && item->name[0] && item->type[0] ) {
@@ -430,6 +432,55 @@ static void DL_DrawItemRow( int index, int y, qboolean selected ) {
     }
 }
 
+static qhandle_t DL_GetPreviewShader( const dlItem_t *item ) {
+    qhandle_t    shader;
+    char         shaderPath[MAX_QPATH];
+    const char  *urlPath;
+    const char  *namePart;
+
+    if ( !item ) return 0;
+
+    if ( item->preview[0] ) {
+        urlPath = strstr( item->preview, "://" );
+        if ( urlPath ) {
+            urlPath = strchr( urlPath + 3, '/' );
+        } else if ( item->preview[0] == '/' ) {
+            urlPath = item->preview;
+        } else {
+            urlPath = NULL;
+        }
+
+        if ( urlPath && urlPath[0] ) {
+            if ( urlPath[0] == '/' ) {
+                Q_strncpyz( shaderPath, urlPath + 1, sizeof( shaderPath ) );
+            } else {
+                Q_strncpyz( shaderPath, urlPath, sizeof( shaderPath ) );
+            }
+            COM_StripExtension( shaderPath, shaderPath, sizeof( shaderPath ) );
+            shader = trap_R_RegisterShaderNoMip( shaderPath );
+            if ( shader ) return shader;
+        }
+
+        Q_strncpyz( shaderPath, item->preview, sizeof( shaderPath ) );
+        COM_StripExtension( shaderPath, shaderPath, sizeof( shaderPath ) );
+        shader = trap_R_RegisterShaderNoMip( shaderPath );
+        if ( shader ) return shader;
+    }
+
+    Com_sprintf( shaderPath, sizeof( shaderPath ), "levelshots/%s", item->id );
+    shader = trap_R_RegisterShaderNoMip( shaderPath );
+    if ( shader ) return shader;
+
+    namePart = strrchr( item->id, '/' );
+    if ( namePart ) {
+        Com_sprintf( shaderPath, sizeof( shaderPath ), "levelshots/%s", namePart + 1 );
+        shader = trap_R_RegisterShaderNoMip( shaderPath );
+        if ( shader ) return shader;
+    }
+
+    return 0;
+}
+
 static void DL_DrawPreviewPane( void ) {
     qhandle_t    previewShader = 0;
     vec4_t       paneBg        = { 0.08f, 0.08f, 0.10f, 0.82f };
@@ -449,10 +500,7 @@ static void DL_DrawPreviewPane( void ) {
 
     if ( s_dl.selectedItem >= 0 && s_dl.selectedItem < s_dl.numItems ) {
         dlItem_t *item = &s_dl.items[s_dl.selectedItem];
-        char      shaderPath[MAX_QPATH];
-
-        Com_sprintf( shaderPath, sizeof( shaderPath ), "levelshots/%s", item->id );
-        previewShader = trap_R_RegisterShaderNoMip( shaderPath );
+        previewShader = DL_GetPreviewShader( item );
 
         if ( previewShader ) {
             UI_DrawHandlePic( imageX, imageY, imageW, imageH, previewShader );
@@ -594,9 +642,6 @@ static void DownloadsMenu_Event( void *ptr, int event ) {
         break;
 
     case ID_DL_REFRESH:
-        s_dl.numAllItems = 0;
-        s_dl.numItems    = 0;
-        s_dl.selectedItem = -1;
         trap_Cvar_Set( "ui_dl_action", "fetch_index" );
         break;
 
