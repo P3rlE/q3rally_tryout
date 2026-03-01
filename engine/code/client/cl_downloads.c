@@ -791,40 +791,6 @@ static void CL_DL_HandleAction( const char *action ) {
         return;
     }
 
-    // --- uninstall:<id> ---
-    if ( Q_strncmp( action, "uninstall:", 10 ) == 0 ) {
-        const char  *uninstId = action + 10;
-        char         homePath[MAX_OSPATH];
-        char         basegame[MAX_OSPATH];
-        char         pk3Path[MAX_OSPATH];
-
-        Q_strncpyz( homePath, Cvar_VariableString( "fs_homepath" ), sizeof( homePath ) );
-        Cvar_VariableStringBuffer( "fs_basegame", basegame, sizeof( basegame ) );
-        if ( !basegame[0] ) Q_strncpyz( basegame, "baseq3r", sizeof( basegame ) );
-
-        Com_sprintf( pk3Path, sizeof( pk3Path ), "%s%c%s%c%s.pk3",
-                     homePath, PATH_SEP, basegame, PATH_SEP, uninstId );
-
-        // On Windows the engine may hold the pk3 open via memory-mapped I/O,
-        // making remove() fail with EACCES even after FS_Restart.
-        // Renaming to .pk3.uninstalled works even on open files and
-        // prevents the engine from loading it on next start.
-        {
-            char renamePath[MAX_OSPATH];
-            Com_sprintf( renamePath, sizeof( renamePath ), "%s.uninstalled", pk3Path );
-            // Remove stale .uninstalled file if present
-            remove( renamePath );
-            if ( rename( pk3Path, renamePath ) == 0 ) {
-                Com_Printf( "CL_Downloads: uninstalled '%s'\n", pk3Path );
-                CL_DL_SetState( DL_STATE_IDLE );
-            } else {
-                Com_Printf( "CL_Downloads: failed to uninstall '%s' (%s)\n",
-                            pk3Path, strerror( errno ) );
-                CL_DL_SetError( "Failed to uninstall file" );
-            }
-        }
-        return;
-    }
 
     Com_Printf( "CL_Downloads: unknown action '%s'\n", action );
 #endif // USE_CURL
