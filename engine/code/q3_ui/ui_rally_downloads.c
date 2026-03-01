@@ -53,9 +53,9 @@ written to ui_dl_indexpath so the UI can read it via trap_FS_FOpenFile.
 #define DL_MAX_ITEMS            64
 #define DL_ITEMS_PER_PAGE       8
 #define DL_ITEM_HEIGHT          32
-#define DL_LIST_X               40
+#define DL_LIST_X               20
 #define DL_LIST_Y               112
-#define DL_LIST_WIDTH           450
+#define DL_LIST_WIDTH           468
 #define DL_TAB_COUNT            4
 #define DL_TAB_WIDTH            ( DL_LIST_WIDTH / DL_TAB_COUNT )
 #define DL_TAB_TOP              68
@@ -67,13 +67,13 @@ written to ui_dl_indexpath so the UI can read it via trap_FS_FOpenFile.
 #define DL_STATUS_Y             425
 #define DL_PREVIEW_X            ( DL_LIST_X + DL_LIST_WIDTH + 8 )
 #define DL_PREVIEW_Y            DL_LIST_Y
-#define DL_PREVIEW_WIDTH        132
+#define DL_PREVIEW_WIDTH        144
 #define DL_PREVIEW_HEIGHT       184
 
 // Column X offsets within the list (relative to DL_LIST_X)
 #define DL_COL_NAME_X           8
-#define DL_COL_AUTHOR_X         220
-#define DL_COL_SIZE_X           ( DL_LIST_WIDTH - 100 )
+#define DL_COL_AUTHOR_X         232
+#define DL_COL_SIZE_X           ( DL_LIST_WIDTH - 136 )
 #define DL_COL_STATUS_X         ( DL_LIST_WIDTH - 8 )
 
 // Download states (mirrored from native side via ui_dl_state CVar)
@@ -733,7 +733,7 @@ static void DownloadsMenu_Draw( void ) {
         UI_DrawString( DL_LIST_X + DL_COL_SIZE_X,                  92, "SIZE",
                        UI_LEFT | UI_SMALLFONT, colHeaderColor );
         UI_DrawString( DL_LIST_X + DL_COL_STATUS_X,                92, "STATUS",
-                       UI_LEFT | UI_SMALLFONT, colHeaderColor );
+                       UI_RIGHT | UI_SMALLFONT, colHeaderColor );
     }
 
     // Item list
@@ -804,12 +804,27 @@ DownloadsMenu_Key
 */
 static sfxHandle_t DownloadsMenu_Key( int key ) {
     char    cmd[128];
+    int     row;
     // Dismiss popup on any key
     if ( s_dl.showPopup ) {
         s_dl.showPopup = qfalse;
         return 0;
     }
     if ( key & K_CHAR_FLAG ) return 0;
+
+    if ( key == K_MOUSE1 ) {
+        if ( uis.cursorx >= DL_LIST_X &&
+             uis.cursorx <= DL_LIST_X + DL_LIST_WIDTH &&
+             uis.cursory >= DL_LIST_Y &&
+             uis.cursory < DL_LIST_Y + DL_ITEMS_PER_PAGE * DL_ITEM_HEIGHT ) {
+            row = ( uis.cursory - DL_LIST_Y ) / DL_ITEM_HEIGHT;
+            row += s_dl.scrollOffset;
+            if ( row >= 0 && row < s_dl.numItems ) {
+                s_dl.selectedItem = row;
+                return menu_move_sound;
+            }
+        }
+    }
 
     switch ( key ) {
     case K_ESCAPE:
@@ -910,7 +925,6 @@ UI_Rally_DownloadsMenu
 =================
 */
 void UI_Rally_DownloadsMenu( void ) {
-    int btnX = 590;
     int btnY = 460;
 
     memset( &s_dl, 0, sizeof( s_dl ) );
@@ -950,9 +964,9 @@ void UI_Rally_DownloadsMenu( void ) {
     Menu_AddItem( &s_dl.menu, &s_dl.tabSkins );
 
     // Bottom-row buttons
-    InitDLButton( &s_dl.back,         ID_DL_BACK,        "BACK",        btnX,        btnY );
-    InitDLButton( &s_dl.downloadBtn,  ID_DL_DOWNLOAD,    "DOWNLOAD",    btnX - 130,  btnY );
-    InitDLButton( &s_dl.refreshBtn,   ID_DL_REFRESH,     "REFRESH",     btnX - 280,  btnY );
+    InitDLButton( &s_dl.back,         ID_DL_BACK,        "BACK",        80,   btnY );
+    InitDLButton( &s_dl.downloadBtn,  ID_DL_DOWNLOAD,    "DOWNLOAD",    356,  btnY );
+    InitDLButton( &s_dl.refreshBtn,   ID_DL_REFRESH,     "REFRESH",     620,  btnY );
     Menu_AddItem( &s_dl.menu, &s_dl.back );
     Menu_AddItem( &s_dl.menu, &s_dl.downloadBtn );
     Menu_AddItem( &s_dl.menu, &s_dl.refreshBtn );
