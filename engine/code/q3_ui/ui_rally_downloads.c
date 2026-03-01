@@ -72,8 +72,8 @@ written to ui_dl_indexpath so the UI can read it via trap_FS_FOpenFile.
 
 // Column X offsets within the list (relative to DL_LIST_X)
 #define DL_COL_NAME_X           8
-#define DL_COL_AUTHOR_X         258
-#define DL_COL_SIZE_X           ( DL_LIST_WIDTH - 104 )
+#define DL_COL_AUTHOR_X         232
+#define DL_COL_SIZE_X           ( DL_LIST_WIDTH - 136 )
 #define DL_COL_STATUS_X         ( DL_LIST_WIDTH - 8 )
 
 // Download states (mirrored from native side via ui_dl_state CVar)
