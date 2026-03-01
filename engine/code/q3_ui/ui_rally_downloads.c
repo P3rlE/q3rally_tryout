@@ -733,7 +733,7 @@ static void DownloadsMenu_Draw( void ) {
         UI_DrawString( DL_LIST_X + DL_COL_SIZE_X,                  92, "SIZE",
                        UI_LEFT | UI_SMALLFONT, colHeaderColor );
         UI_DrawString( DL_LIST_X + DL_COL_STATUS_X,                92, "STATUS",
-                       UI_LEFT | UI_SMALLFONT, colHeaderColor );
+                       UI_RIGHT | UI_SMALLFONT, colHeaderColor );
     }
 
     // Item list
@@ -925,7 +925,6 @@ UI_Rally_DownloadsMenu
 =================
 */
 void UI_Rally_DownloadsMenu( void ) {
-    int btnX = 590;
     int btnY = 460;
 
     memset( &s_dl, 0, sizeof( s_dl ) );
@@ -965,9 +964,9 @@ void UI_Rally_DownloadsMenu( void ) {
     Menu_AddItem( &s_dl.menu, &s_dl.tabSkins );
 
     // Bottom-row buttons
-    InitDLButton( &s_dl.back,         ID_DL_BACK,        "BACK",        btnX,        btnY );
-    InitDLButton( &s_dl.downloadBtn,  ID_DL_DOWNLOAD,    "DOWNLOAD",    btnX - 130,  btnY );
-    InitDLButton( &s_dl.refreshBtn,   ID_DL_REFRESH,     "REFRESH",     btnX - 280,  btnY );
+    InitDLButton( &s_dl.back,         ID_DL_BACK,        "BACK",        80,   btnY );
+    InitDLButton( &s_dl.downloadBtn,  ID_DL_DOWNLOAD,    "DOWNLOAD",    356,  btnY );
+    InitDLButton( &s_dl.refreshBtn,   ID_DL_REFRESH,     "REFRESH",     620,  btnY );
     Menu_AddItem( &s_dl.menu, &s_dl.back );
     Menu_AddItem( &s_dl.menu, &s_dl.downloadBtn );
     Menu_AddItem( &s_dl.menu, &s_dl.refreshBtn );
