@@ -722,6 +722,12 @@ ClientIntermissionThink
 ====================
 */
 void ClientIntermissionThink( gclient_t *client ) {
+	gentity_t *ent;
+	int clientNum;
+
+	clientNum = (int)(client - level.clients);
+	ent = &g_entities[clientNum];
+
 	client->ps.eFlags &= ~EF_TALK;
 	client->ps.eFlags &= ~EF_FIRING;
 
@@ -730,6 +736,15 @@ void ClientIntermissionThink( gclient_t *client ) {
 	// swap and latch button actions
 	client->oldbuttons = client->buttons;
 	client->buttons = client->pers.cmd.buttons;
+
+	if ( isRallyRace() && isRaceObserver( clientNum ) ) {
+		if ( ( client->buttons & BUTTON_ATTACK ) && !( client->oldbuttons & BUTTON_ATTACK )
+			&& !(ent->r.svFlags & SVF_BOT) ) {
+			Cmd_FollowCycle_f( ent, 1 );
+		}
+		return;
+	}
+
 	if ( client->buttons & ( BUTTON_ATTACK | BUTTON_USE_HOLDABLE ) & ( client->oldbuttons ^ client->buttons ) ) {
 		// this used to be an ^1 but once a player says ready, it should stick
 		client->readyToExit = 1;
@@ -1979,4 +1994,3 @@ void ClientEndFrame( gentity_t *ent ) {
 //	i = trap_AAS_PointReachabilityAreaIndex( ent->client->ps.origin );
 //	ent->client->areabits[i >> 3] |= 1 << (i & 7);
 }
-
