@@ -1786,7 +1786,15 @@ void SpectatorClientEndFrame( gentity_t *ent ) {
 				ent->client->sess.spectatorState = SPECTATOR_FREE;
 			}
 
-			ClientBegin( ent->client - level.clients );
+// STONELANCE - raceObservers cannot safely respawn via ClientBegin due to
+// detached vehicle sub-entity pointers. Keep them in follow mode instead.
+			if ( isRaceObserver( ent->s.number ) ) {
+				ent->client->ps.pm_flags &= ~PMF_FOLLOW;
+				ent->client->sess.spectatorState = SPECTATOR_FOLLOW;
+			} else {
+				ClientBegin( ent->client - level.clients );
+			}
+
 		}
 	}
 // STONELANCE
@@ -2007,4 +2015,3 @@ void ClientEndFrame( gentity_t *ent ) {
 //	i = trap_AAS_PointReachabilityAreaIndex( ent->client->ps.origin );
 //	ent->client->areabits[i >> 3] |= 1 << (i & 7);
 }
-
