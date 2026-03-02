@@ -3999,10 +3999,10 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.plate.generic.flags			= QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_NODEFAULTINIT;
 	s_playersettings.plate.generic.x				= 640 - 140;
 	s_playersettings.plate.generic.y				= 378;
-	s_playersettings.plate.generic.left			= s_playersettings.plate.generic.x - 8;
+	s_playersettings.plate.generic.left			= s_playersettings.plate.generic.x - 4;
 	s_playersettings.plate.generic.top				= s_playersettings.plate.generic.y + 6;
-	s_playersettings.plate.generic.right			= s_playersettings.plate.generic.x + 180;
-	s_playersettings.plate.generic.bottom			= s_playersettings.plate.generic.y + PROP_HEIGHT;
+	s_playersettings.plate.generic.right			= s_playersettings.plate.generic.x + 120;
+	s_playersettings.plate.generic.bottom			= s_playersettings.plate.generic.y + PROP_HEIGHT + 10;
 	s_playersettings.plate.generic.id				= ID_PLATE;
 	s_playersettings.plate.generic.callback			= PlayerSettings_MenuEvent; 
 	s_playersettings.plate.string					= "CHANGE PLATE";
