@@ -2094,11 +2094,15 @@ sfxHandle_t Menu_ActivateItem( menuframework_s *s, menucommon_s* item ) {
 
 static qboolean Menu_IsGamepadSelectKey( int key )
 {
+<<<<<<< codex/configure-ps5-dualsense-for-q3rally-yil21e
+	if ( key == K_PAD0_A || key == K_PAD0_START ) {
+=======
 	if ( key >= K_PAD0_A && key <= K_PAD0_DPAD_RIGHT ) {
 		return qtrue;
 	}
 
 	if ( key >= K_PAD0_MISC1 && key <= K_PAD0_TOUCHPAD ) {
+>>>>>>> master
 		return qtrue;
 	}
 
@@ -2121,7 +2125,8 @@ sfxHandle_t Menu_DefaultKey( menuframework_s *m, int key )
 	{
 		case K_MOUSE2:
 		case K_ESCAPE:
-// STONELANCE - dont pop the menu if we are on the top menu
+		case K_PAD0_B:
+	// STONELANCE - dont pop the menu if we are on the top menu
 			if (uis.mainMenu)
 				return sound;
 

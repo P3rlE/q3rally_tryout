@@ -1452,7 +1452,7 @@ static void Controls_ExitConfirm_MenuEvent( void* ptr, int event )
 
 static sfxHandle_t Controls_ExitConfirm_MenuKey( int key )
 {
-	if ( key == K_ESCAPE || key == K_MOUSE2 ) {
+	if ( key == K_ESCAPE || key == K_MOUSE2 || key == K_PAD0_B ) {
 		Controls_ExitConfirm_MenuEvent( &s_controlsExitConfirm.cancel, QM_ACTIVATED );
 		return menu_out_sound;
 	}
@@ -1555,19 +1555,20 @@ static sfxHandle_t Controls_MenuKey( int key )
 
 	if (!s_controls.waitingforkey)
 	{
-		switch (key)
-		{
+			switch (key)
+			{
 			case K_BACKSPACE:
 			case K_DEL:
 			case K_KP_DEL:
 				key = -1;
 				break;
 		
-			case K_MOUSE2:
-			case K_ESCAPE:
-				if (s_controls.changesmade) {
-					Controls_ExitConfirmMenu();
-					return menu_move_sound;
+				case K_MOUSE2:
+				case K_ESCAPE:
+				case K_PAD0_B:
+					if (s_controls.changesmade) {
+						Controls_ExitConfirmMenu();
+						return menu_move_sound;
 				}
 				goto ignorekey;	
 
@@ -1580,12 +1581,13 @@ static sfxHandle_t Controls_MenuKey( int key )
 		if (key & K_CHAR_FLAG)
 			return 0;
 
-		switch (key)
-		{
-			case K_ESCAPE:
-				s_controls.waitingforkey = qfalse;
-				Controls_Update();
-				return (menu_out_sound);
+			switch (key)
+			{
+				case K_ESCAPE:
+				case K_PAD0_B:
+					s_controls.waitingforkey = qfalse;
+					Controls_Update();
+					return (menu_out_sound);
 	
 			case '`':
 				goto ignorekey;
