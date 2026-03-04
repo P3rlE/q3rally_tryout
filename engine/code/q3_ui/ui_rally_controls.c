@@ -1569,17 +1569,17 @@ static sfxHandle_t Controls_MenuKey( int key )
 					if (s_controls.changesmade) {
 						Controls_ExitConfirmMenu();
 						return menu_move_sound;
-				}
-				goto ignorekey;	
+					}
+					goto ignorekey;
 
 			default:
 				goto ignorekey;
 		}
 	}
 	else
-	{
-		if (key & K_CHAR_FLAG)
-			return 0;
+		{
+			if (key & K_CHAR_FLAG)
+				return 0;
 
 			switch (key)
 			{
@@ -1588,11 +1588,11 @@ static sfxHandle_t Controls_MenuKey( int key )
 					s_controls.waitingforkey = qfalse;
 					Controls_Update();
 					return (menu_out_sound);
-	
-			case '`':
-				goto ignorekey;
+
+				case '`':
+					goto ignorekey;
+			}
 		}
-	}
 
 	id      = ((menucommon_s*)(s_controls.menu.items[s_controls.menu.cursor]))->id;
 

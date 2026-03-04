@@ -2095,7 +2095,6 @@ sfxHandle_t Menu_ActivateItem( menuframework_s *s, menucommon_s* item ) {
 static qboolean Menu_IsGamepadSelectKey( int key )
 {
 	if ( key == K_PAD0_A || key == K_PAD0_START ) {
-
 		return qtrue;
 	}
 
