@@ -498,7 +498,7 @@ static qboolean Controls_SearchActive( void )
 
 static qboolean Controls_SearchFieldHasFocus( void )
 {
-	if ( !s_controls.menu.items || s_controls.menu.cursor < 0 || s_controls.menu.cursor >= s_controls.menu.nitems ) {
+	if ( s_controls.menu.nitems <= 0 || s_controls.menu.cursor < 0 || s_controls.menu.cursor >= s_controls.menu.nitems ) {
 		return qfalse;
 	}
 
