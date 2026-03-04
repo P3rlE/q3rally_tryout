@@ -1512,6 +1512,8 @@ sfxHandle_t ScrollList_Key( menulist_s *l, int key )
 
 		case K_KP_UPARROW:
 		case K_UPARROW:
+		case K_PAD0_DPAD_UP:
+		case K_PAD0_LEFTSTICK_UP:
 			if( l->curvalue == 0 ) {
 				return menu_buzz_sound;
 			}
@@ -1536,6 +1538,8 @@ sfxHandle_t ScrollList_Key( menulist_s *l, int key )
 
 		case K_KP_DOWNARROW:
 		case K_DOWNARROW:
+		case K_PAD0_DPAD_DOWN:
+		case K_PAD0_LEFTSTICK_DOWN:
 			if( l->curvalue == l->numitems - 1 ) {
 				return menu_buzz_sound;
 			}
@@ -1560,6 +1564,8 @@ sfxHandle_t ScrollList_Key( menulist_s *l, int key )
 
 		case K_KP_LEFTARROW:
 		case K_LEFTARROW:
+		case K_PAD0_DPAD_LEFT:
+		case K_PAD0_LEFTSTICK_LEFT:
 			if( l->columns == 1 ) {
 				return menu_null_sound;
 			}
@@ -1583,6 +1589,8 @@ sfxHandle_t ScrollList_Key( menulist_s *l, int key )
 
 		case K_KP_RIGHTARROW:
 		case K_RIGHTARROW:
+		case K_PAD0_DPAD_RIGHT:
+		case K_PAD0_LEFTSTICK_RIGHT:
 			if( l->columns == 1 ) {
 				return menu_null_sound;
 			}
