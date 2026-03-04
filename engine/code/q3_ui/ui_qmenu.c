@@ -2094,7 +2094,15 @@ sfxHandle_t Menu_ActivateItem( menuframework_s *s, menucommon_s* item ) {
 
 static qboolean Menu_IsGamepadSelectKey( int key )
 {
+<<<<<<< codex/configure-ps5-dualsense-for-q3rally-yil21e
 	if ( key == K_PAD0_A || key == K_PAD0_START ) {
+=======
+	if ( key >= K_PAD0_A && key <= K_PAD0_DPAD_RIGHT ) {
+		return qtrue;
+	}
+
+	if ( key >= K_PAD0_MISC1 && key <= K_PAD0_TOUCHPAD ) {
+>>>>>>> master
 		return qtrue;
 	}
 
