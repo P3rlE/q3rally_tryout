@@ -2466,8 +2466,31 @@ void CG_EventHandling(int type) {
 
 
 void CG_KeyEvent(int key, qboolean down) {
+	/* Let HUD options menu consume left-clicks for row toggles. */
+	if ( down && key == K_MOUSE1 ) {
+		if ( CG_HUDOptions_MouseEvent( cgs.cursorX, cgs.cursorY, qtrue ) ) {
+			return;
+		}
+	}
 }
 
 void CG_MouseEvent(int x, int y) {
+	/* Keep a 640x480 UI cursor position for HUD menu hit-testing. */
+	cgs.cursorX += x;
+	if ( cgs.cursorX < 0 ) {
+		cgs.cursorX = 0;
+	} else if ( cgs.cursorX > 640 ) {
+		cgs.cursorX = 640;
+	}
+
+	cgs.cursorY += y;
+	if ( cgs.cursorY < 0 ) {
+		cgs.cursorY = 0;
+	} else if ( cgs.cursorY > 480 ) {
+		cgs.cursorY = 480;
+	}
+
+	/* Hover updates for row highlighting and click targeting. */
+	CG_HUDOptions_MouseEvent( cgs.cursorX, cgs.cursorY, qfalse );
 }
 #endif
