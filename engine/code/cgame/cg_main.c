@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // cg_main.c -- initialization and primary entry point for cgame
 #include "cg_local.h"
 #include "cg_hud_elements.h"
+#include "../client/keycodes.h"
 
 #ifdef MISSIONPACK
 #include "../ui/ui_shared.h"
