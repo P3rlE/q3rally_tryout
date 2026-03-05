@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 // cg_main.c -- initialization and primary entry point for cgame
 #include "cg_local.h"
+#include "cg_hud_elements.h"
 
 #ifdef MISSIONPACK
 #include "../ui/ui_shared.h"
@@ -528,6 +529,9 @@ void CG_RegisterCvars( void ) {
 // Q3Rally Code END
 	trap_Cvar_Register(NULL, "team_model", DEFAULT_TEAM_MODEL, CVAR_USERINFO | CVAR_ARCHIVE );
 	trap_Cvar_Register(NULL, "team_headmodel", DEFAULT_TEAM_HEAD, CVAR_USERINFO | CVAR_ARCHIVE );
+
+	/* Register HUD split-module cvars (including cg_hudOptionsOpen). */
+	CG_HUD_RegisterCvars();
 }
 
 /*																																			
