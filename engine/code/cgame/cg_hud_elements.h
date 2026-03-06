@@ -100,6 +100,8 @@ void  CG_AddObjectsToScene( int renderLevel );
 float    CG_GetEliminationColumnWidth( void );
 void     CG_DrawHUDOptionsMenu( void );
 qboolean CG_HUDOptions_MouseEvent( int cx, int cy, qboolean clicked );
+void     CG_HUDOptions_KeyEvent( int key );
+qboolean CG_HUDOptionsIsOpen( void );
 void     CG_HUD_RegisterCvars( void );
 qboolean CG_DrawHUD( void );
 float    CG_DrawUpperRightHUD( float y );

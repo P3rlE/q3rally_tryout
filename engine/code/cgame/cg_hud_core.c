@@ -207,6 +207,44 @@ static int      g_hudOptHoverRow  = -1;
 
 /*
 ================
+CG_HUDOptionsIsOpen
+Safe accessor for cg_main.c (cg_hudOptionsOpen is static here).
+================
+*/
+qboolean CG_HUDOptionsIsOpen( void ) {
+    return cg_hudOptionsOpen.integer ? qtrue : qfalse;
+}
+
+/*
+================
+CG_HUDOptions_KeyEvent
+Keyboard navigation: Up/Down to move, Enter/Space to toggle, Escape to close.
+================
+*/
+void CG_HUDOptions_KeyEvent( int key ) {
+    if ( !cg_hudOptionsOpen.integer ) return;
+
+    if ( key == 128 /* K_UPARROW */ ) {
+        g_hudOptHoverRow--;
+        if ( g_hudOptHoverRow < 0 ) g_hudOptHoverRow = HUDOPT_NUM_ENTRIES - 1;
+    } else if ( key == 129 /* K_DOWNARROW */ ) {
+        g_hudOptHoverRow++;
+        if ( g_hudOptHoverRow >= HUDOPT_NUM_ENTRIES ) g_hudOptHoverRow = 0;
+    } else if ( key == 13 /* K_ENTER */ || key == 32 /* K_SPACE */ ) {
+        if ( g_hudOptHoverRow >= 0 && g_hudOptHoverRow < HUDOPT_NUM_ENTRIES ) {
+            int cur = hudToggleTable[g_hudOptHoverRow].cvar->integer;
+            trap_Cvar_Set( hudToggleTable[g_hudOptHoverRow].cvarName, cur ? "0" : "1" );
+            trap_Cvar_Update( hudToggleTable[g_hudOptHoverRow].cvar );
+        }
+    } else if ( key == 27 /* K_ESCAPE */ ) {
+        /* cg_main.c CG_KeyEvent handles the key catcher release */
+        trap_Cvar_Set( "cg_hudOptionsOpen", "0" );
+        trap_Cvar_Update( &cg_hudOptionsOpen );
+    }
+}
+
+/*
+================
 CG_HUDOptions_MouseEvent
 Forward raw mouse deltas here from CG_MouseEvent().
 cx/cy are *absolute* cursor coordinates in 640x480 space.
@@ -311,7 +349,7 @@ void CG_DrawHUDOptionsMenu( void ) {
 
     /* Hint */
     {
-        const char *hint = "Click row to toggle  |  F9 to close";
+        const char *hint = "Up/Down: navigate  |  Enter: toggle  |  F9/Esc: close";
         CG_DrawStringExt( (int)( HUDOPT_X + HUDOPT_W * 0.5f
                                   - CG_DrawStrlen( hint ) * TINYCHAR_WIDTH * 0.5f ),
                           (int)( HUDOPT_Y + SMALLCHAR_HEIGHT + 2 ),
@@ -476,6 +514,7 @@ qboolean CG_DrawHUD( void ) {
     trap_Cvar_Update( &cg_hudShowArrow );
     trap_Cvar_Update( &cg_hudShowCarAheadBehind );
     trap_Cvar_Update( &cg_hudShowElimTimeline );
+
     trap_Cvar_Update( &cg_hudShowOpponentList );
     trap_Cvar_Update( &cg_hudShowScores );
     trap_Cvar_Update( &cg_hudShowSpeed );

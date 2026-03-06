@@ -2467,10 +2467,29 @@ void CG_EventHandling(int type) {
 
 
 void CG_KeyEvent(int key, qboolean down) {
-	/* Let HUD options menu consume left-clicks for row toggles. */
-	if ( down && key == K_MOUSE1 ) {
-		if ( CG_HUDOptions_MouseEvent( cgs.cursorX, cgs.cursorY, qtrue ) ) {
-			return;
+	if ( !down ) return;
+
+	/* F9 toggles the HUD options menu and manages the key catcher */
+	if ( key == 67 /* K_F9 */ ) {
+		if ( CG_HUDOptionsIsOpen() ) {
+			trap_Cvar_Set( "cg_hudOptionsOpen", "0" );
+			trap_Key_SetCatcher( trap_Key_GetCatcher() & ~0x0002 /* ~KEYCATCH_CGAME */ );
+		} else {
+			trap_Cvar_Set( "cg_hudOptionsOpen", "1" );
+			trap_Key_SetCatcher( trap_Key_GetCatcher() | 0x0002 /* KEYCATCH_CGAME */ );
+		}
+		return;
+	}
+
+	/* While menu is open: navigation and toggle */
+	if ( CG_HUDOptionsIsOpen() ) {
+		if ( key == 27 /* K_ESCAPE */ ) {
+			trap_Cvar_Set( "cg_hudOptionsOpen", "0" );
+			trap_Key_SetCatcher( trap_Key_GetCatcher() & ~0x0002 );
+		} else if ( key == K_MOUSE1 ) {
+			CG_HUDOptions_MouseEvent( cgs.cursorX, cgs.cursorY, qtrue );
+		} else {
+			CG_HUDOptions_KeyEvent( key );
 		}
 	}
 }
