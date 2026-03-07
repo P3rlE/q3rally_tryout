@@ -37,23 +37,21 @@ extern vmCvar_t  cg_hudShowTimes;          /* Lap/total/best times panel      */
 extern vmCvar_t  cg_hudShowLaps;           /* Lap counter                      */
 extern vmCvar_t  cg_hudShowPosition;       /* Current race position            */
 extern vmCvar_t  cg_hudShowDistToFinish;   /* Distance to finish               */
-extern vmCvar_t  cg_hudShowGhostDelta;     /* Ghost split-time delta           */
-extern vmCvar_t  cg_hudShowArrow;          /* Arrow to next checkpoint         */
+/* cg_hudShowGhostDelta removed – use native cg_ghostPlayback */
+/* cg_hudShowArrow removed – use native cg_checkpointArrowMode */
 extern vmCvar_t  cg_hudShowCarAheadBehind; /* Nearest opponent names/gaps      */
-extern vmCvar_t  cg_hudShowElimTimeline;   /* Elimination countdown bar        */
+/* cg_hudShowElimTimeline removed – use native cg_elimTimeline */
 extern vmCvar_t  cg_hudShowOpponentList;   /* Opponent list (Elimination/LCS)  */
 extern vmCvar_t  cg_hudShowScores;         /* DM/team scores panel             */
 
 /* --- Vehicle HUD --- */
 extern vmCvar_t  cg_hudShowSpeed;          /* Speedometer / RPM gauge          */
-extern vmCvar_t  cg_hudShowFuelGauge;      /* Fuel gauge                       */
-extern vmCvar_t  cg_hudShowRearView;       /* Rear-view mirror                 */
-extern vmCvar_t  cg_hudShowMiniMap;        /* Mini-map                         */
+/* cg_hudShowRearView removed – use native cg_drawRearView */
+/* cg_hudShowMiniMap removed – use native cg_drawMMap */
 
 /* --- Derby HUD --- */
 extern vmCvar_t  cg_hudShowDerbyVehicle;   /* Vehicle state panel (Derby)      */
 extern vmCvar_t  cg_hudShowDerbyList;      /* Derby scoreboard                 */
-extern vmCvar_t  cg_hudShowDerbyHitImpact; /* Hit-impact flash                 */
 
 /*
 ===========================================================================
