@@ -1247,6 +1247,8 @@ qboolean UI_IsFullscreen( void ) {
 	return qfalse;
 }
 
+static qboolean s_mainMenuGfxLoadingShown = qfalse;
+
 static void NeedCDAction( qboolean result ) {
 	if ( !result ) {
 		trap_Cmd_ExecuteText( EXEC_APPEND, "quit\n" );
@@ -1271,7 +1273,12 @@ void UI_SetActiveMenu( uiMenuCommand_t menu ) {
 	case UIMENU_MAIN:
 // STONELANCE
 //		UI_MainMenu();
-		UI_GFX_Loading();
+		if ( !s_mainMenuGfxLoadingShown ) {
+			s_mainMenuGfxLoadingShown = qtrue;
+			UI_GFX_Loading();
+		} else {
+			UI_MainMenu();
+		}
 // END
 		return;
 	case UIMENU_NEED_CD:
