@@ -1293,6 +1293,12 @@ void UI_SetActiveMenu( uiMenuCommand_t menu ) {
 		UI_RankingsMenu();
 		return;
 		*/
+		/*
+		 * If the player has already entered an active game, don't show the
+		 * startup loading splash when returning to the main menu later
+		 * (e.g. via LEAVE ARENA).
+		 */
+		s_mainMenuGfxLoadingShown = qtrue;
 		trap_Cvar_Set( "cl_paused", "1" );
 		UI_InGameMenu();
 		return;
