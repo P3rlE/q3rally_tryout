@@ -1247,6 +1247,8 @@ qboolean UI_IsFullscreen( void ) {
 	return qfalse;
 }
 
+static qboolean s_mainMenuGfxLoadingShown = qfalse;
+
 static void NeedCDAction( qboolean result ) {
 	if ( !result ) {
 		trap_Cmd_ExecuteText( EXEC_APPEND, "quit\n" );
@@ -1271,7 +1273,12 @@ void UI_SetActiveMenu( uiMenuCommand_t menu ) {
 	case UIMENU_MAIN:
 // STONELANCE
 //		UI_MainMenu();
-		UI_GFX_Loading();
+		if ( !s_mainMenuGfxLoadingShown ) {
+			s_mainMenuGfxLoadingShown = qtrue;
+			UI_GFX_Loading();
+		} else {
+			UI_MainMenu();
+		}
 // END
 		return;
 	case UIMENU_NEED_CD:
@@ -1286,6 +1293,12 @@ void UI_SetActiveMenu( uiMenuCommand_t menu ) {
 		UI_RankingsMenu();
 		return;
 		*/
+		/*
+		 * If the player has already entered an active game, don't show the
+		 * startup loading splash when returning to the main menu later
+		 * (e.g. via LEAVE ARENA).
+		 */
+		s_mainMenuGfxLoadingShown = qtrue;
 		trap_Cvar_Set( "cl_paused", "1" );
 		UI_InGameMenu();
 		return;
