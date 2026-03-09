@@ -1579,14 +1579,21 @@ void ClientThink_real( gentity_t *ent ) {
 	// touch other objects
 	ClientImpacts( ent, &pm );
 
-        if ( level.trackLength > 0.0f && level.numCheckpoints > 0 ) {
+        if ( client->finishRaceTime ) {
+                client->ps.stats[STAT_DISTANCE_REMAIN] = 0;
+        } else if ( level.trackLength > 0.0f && level.numCheckpoints > 0 ) {
                 int next = client->ps.stats[STAT_NEXT_CHECKPOINT];
                 if ( next > 0 && next <= level.numCheckpoints ) {
                         gentity_t *cp = level.checkpoints[next-1];
                         if ( cp ) {
-                                vec3_t v;
+                                vec3_t v, cpCenter;
                                 float dist, segs;
-                                VectorSubtract( cp->s.origin, client->ps.origin, v );
+                                // Use brush bounds center: s.origin is (0,0,0) for brush
+                                // entities without an explicit "origin" key in the map.
+                                cpCenter[0] = ( cp->r.absmin[0] + cp->r.absmax[0] ) * 0.5f;
+                                cpCenter[1] = ( cp->r.absmin[1] + cp->r.absmax[1] ) * 0.5f;
+                                cpCenter[2] = ( cp->r.absmin[2] + cp->r.absmax[2] ) * 0.5f;
+                                VectorSubtract( cpCenter, client->ps.origin, v );
                                 dist = VectorLength( v );
                                 segs = level.cpDist[level.numCheckpoints-1] - level.cpDist[next-1];
                                 dist += segs;
@@ -1595,45 +1602,20 @@ void ClientThink_real( gentity_t *ent ) {
                                         dist += lapsRemaining * level.trackLength;
                                 }
                                 client->ps.stats[STAT_DISTANCE_REMAIN] = (int)( dist / CP_M_2_QU );
-
-                                if ( g_developer.integer ) {
-                                        G_Printf(
-                                                "DISTDBG c=%d next=%d numCP=%d lap=%d/%d trackLenM=%d segsM=%d toNextM=%d remainM=%d\n",
-                                                ent->s.clientNum,
-                                                next,
-                                                level.numCheckpoints,
-                                                ent->currentLap,
-                                                level.numberOfLaps,
-                                                (int)( level.trackLength / CP_M_2_QU ),
-                                                (int)( segs / CP_M_2_QU ),
-                                                (int)( VectorLength( v ) / CP_M_2_QU ),
-                                                client->ps.stats[STAT_DISTANCE_REMAIN] );
-                                }
-                        } else if ( g_developer.integer ) {
-                                G_Printf( "DISTDBG c=%d next=%d numCP=%d cp=NULL\n",
-                                        ent->s.clientNum,
-                                        next,
-                                        level.numCheckpoints );
                         }
+                } else if ( next > level.numCheckpoints && level.finishEnt ) {
+                        // Past the last checkpoint, heading to the finish line.
+                        vec3_t sfCenter, v;
+                        sfCenter[0] = ( level.finishEnt->r.absmin[0] + level.finishEnt->r.absmax[0] ) * 0.5f;
+                        sfCenter[1] = ( level.finishEnt->r.absmin[1] + level.finishEnt->r.absmax[1] ) * 0.5f;
+                        sfCenter[2] = ( level.finishEnt->r.absmin[2] + level.finishEnt->r.absmax[2] ) * 0.5f;
+                        VectorSubtract( sfCenter, client->ps.origin, v );
+                        client->ps.stats[STAT_DISTANCE_REMAIN] = (int)( VectorLength( v ) / CP_M_2_QU );
                 } else {
                         client->ps.stats[STAT_DISTANCE_REMAIN] = 0;
-
-                        if ( g_developer.integer ) {
-                                G_Printf( "DISTDBG c=%d invalid-next next=%d numCP=%d\n",
-                                        ent->s.clientNum,
-                                        next,
-                                        level.numCheckpoints );
-                        }
                 }
         } else {
                 client->ps.stats[STAT_DISTANCE_REMAIN] = 0;
-
-                if ( g_developer.integer ) {
-                        G_Printf( "DISTDBG c=%d no-track trackLen=%.1f numCP=%d\n",
-                                ent->s.clientNum,
-                                level.trackLength,
-                                level.numCheckpoints );
-                }
         }
 
 	// save results of triggers and client events
