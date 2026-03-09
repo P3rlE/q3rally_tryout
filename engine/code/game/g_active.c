@@ -1595,12 +1595,45 @@ void ClientThink_real( gentity_t *ent ) {
                                         dist += lapsRemaining * level.trackLength;
                                 }
                                 client->ps.stats[STAT_DISTANCE_REMAIN] = (int)( dist / CP_M_2_QU );
+
+                                if ( g_developer.integer ) {
+                                        G_Printf(
+                                                "DISTDBG c=%d next=%d numCP=%d lap=%d/%d trackLenM=%d segsM=%d toNextM=%d remainM=%d\n",
+                                                ent->s.clientNum,
+                                                next,
+                                                level.numCheckpoints,
+                                                ent->currentLap,
+                                                level.numberOfLaps,
+                                                (int)( level.trackLength / CP_M_2_QU ),
+                                                (int)( segs / CP_M_2_QU ),
+                                                (int)( VectorLength( v ) / CP_M_2_QU ),
+                                                client->ps.stats[STAT_DISTANCE_REMAIN] );
+                                }
+                        } else if ( g_developer.integer ) {
+                                G_Printf( "DISTDBG c=%d next=%d numCP=%d cp=NULL\n",
+                                        ent->s.clientNum,
+                                        next,
+                                        level.numCheckpoints );
                         }
                 } else {
                         client->ps.stats[STAT_DISTANCE_REMAIN] = 0;
+
+                        if ( g_developer.integer ) {
+                                G_Printf( "DISTDBG c=%d invalid-next next=%d numCP=%d\n",
+                                        ent->s.clientNum,
+                                        next,
+                                        level.numCheckpoints );
+                        }
                 }
         } else {
                 client->ps.stats[STAT_DISTANCE_REMAIN] = 0;
+
+                if ( g_developer.integer ) {
+                        G_Printf( "DISTDBG c=%d no-track trackLen=%.1f numCP=%d\n",
+                                ent->s.clientNum,
+                                level.trackLength,
+                                level.numCheckpoints );
+                }
         }
 
 	// save results of triggers and client events

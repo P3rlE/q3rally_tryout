@@ -576,10 +576,35 @@ void Think_StartFinish( gentity_t *self ){
 
         memset( level.checkpoints, 0, sizeof( level.checkpoints ) );
         memset( level.cpDist, 0, sizeof( level.cpDist ) );
-        ent = NULL;
-        while ( ( ent = G_Find( ent, FOFS(classname), "rally_checkpoint" ) ) != NULL ) {
-                if ( ent->number > 0 && ent->number <= level.numCheckpoints ) {
-                        level.checkpoints[ ent->number - 1 ] = ent;
+        {
+                gentity_t       *fallback[MAX_GENTITIES];
+                int             fallbackCount = 0;
+                int             i;
+
+                ent = NULL;
+                while ( ( ent = G_Find( ent, FOFS(classname), "rally_checkpoint" ) ) != NULL ) {
+                        if ( ent->number > 0 && ent->number <= level.numCheckpoints && !level.checkpoints[ent->number - 1] ) {
+                                level.checkpoints[ ent->number - 1 ] = ent;
+                        } else {
+                                fallback[fallbackCount++] = ent;
+                        }
+                }
+
+                /* Mapper fallback: if checkpoint numbers are missing/invalid/duplicated,
+                 * fill empty slots in discovery order so distance/track length still work. */
+                for ( i = 0; i < level.numCheckpoints && fallbackCount > 0; i++ ) {
+                        if ( !level.checkpoints[i] ) {
+                                gentity_t *autoEnt = fallback[0];
+                                int j;
+
+                                for ( j = 1; j < fallbackCount; j++ ) {
+                                        fallback[j - 1] = fallback[j];
+                                }
+                                fallbackCount--;
+
+                                autoEnt->number = i + 1;
+                                level.checkpoints[i] = autoEnt;
+                        }
                 }
         }
 
@@ -587,6 +612,16 @@ void Think_StartFinish( gentity_t *self ){
         if ( level.numCheckpoints > 0 ) {
                 vec3_t last, first, delta;
                 int i;
+
+                for ( i = 0; i < level.numCheckpoints; i++ ) {
+                        if ( !level.checkpoints[i] ) {
+                                G_Printf( "Warning: checkpoint chain incomplete (missing checkpoint #%d)\n", i + 1 );
+                                trap_SetConfigstring( CS_TRACKLENGTH, "0" );
+                                self->number = level.numCheckpoints;
+                                self->s.weapon = self->number;
+                                return;
+                        }
+                }
 
                 VectorCopy( level.checkpoints[0]->s.origin, first );
                 VectorCopy( first, last );
