@@ -56,6 +56,7 @@ typedef struct teamgame_s {
 	int				kothOwner;
 	int				kothContested;
 	int				kothCaptureStart;
+	int				kothCapturingTeam;
 	int				kothPresenceRed;
 	int				kothPresenceBlue;
 	int				kothNextTick;
@@ -106,6 +107,7 @@ void Team_InitGame( void ) {
 		teamgame.kothOwner = TEAM_FREE;
 		teamgame.kothContested = qfalse;
 		teamgame.kothCaptureStart = 0;
+		teamgame.kothCapturingTeam = TEAM_FREE;
 		teamgame.kothPresenceRed = 0;
 		teamgame.kothPresenceBlue = 0;
 		teamgame.kothNextTick = 0;
@@ -1482,6 +1484,7 @@ void KOTH_Think( void ) {
 	if ( redCount > 0 && blueCount > 0 ) {
 		teamgame.kothContested = qtrue;
 		teamgame.kothCaptureStart = 0;
+		teamgame.kothCapturingTeam = TEAM_FREE;
 		KOTH_SetHillStatus( teamgame.kothOwner, qtrue, 0 );
 		return;
 	}
@@ -1491,6 +1494,7 @@ void KOTH_Think( void ) {
 	// --- Nobody in hill ---
 	if ( redCount == 0 && blueCount == 0 ) {
 		teamgame.kothCaptureStart = 0;
+		teamgame.kothCapturingTeam = TEAM_FREE;
 		KOTH_SetHillStatus( teamgame.kothOwner, qfalse, 0 );
 		return;
 	}
@@ -1500,6 +1504,8 @@ void KOTH_Think( void ) {
 		int presentTeam = ( redCount > 0 ) ? TEAM_RED : TEAM_BLUE;
 
 		if ( presentTeam == teamgame.kothOwner ) {
+			teamgame.kothCaptureStart = 0;
+			teamgame.kothCapturingTeam = TEAM_FREE;
 			// Owner is defending - score tick
 			if ( level.time >= teamgame.kothNextTick ) {
 				int ci;
@@ -1529,8 +1535,9 @@ void KOTH_Think( void ) {
 			int captureTime = g_kothCaptureTime.integer;
 			if ( captureTime <= 0 ) captureTime = 3000;
 
-			if ( teamgame.kothCaptureStart == 0 ) {
+			if ( teamgame.kothCaptureStart == 0 || teamgame.kothCapturingTeam != presentTeam ) {
 				teamgame.kothCaptureStart = level.time;
+				teamgame.kothCapturingTeam = presentTeam;
 			}
 
 			pct = (int)( 100.0f * ( level.time - teamgame.kothCaptureStart ) / captureTime );
@@ -1541,6 +1548,7 @@ void KOTH_Think( void ) {
 				int oldOwner = teamgame.kothOwner;
 				teamgame.kothOwner = presentTeam;
 				teamgame.kothCaptureStart = 0;
+				teamgame.kothCapturingTeam = TEAM_FREE;
 				teamgame.kothNextTick = level.time + 1000;
 				// Capture bonus
 				level.teamScores[presentTeam] += 5;
