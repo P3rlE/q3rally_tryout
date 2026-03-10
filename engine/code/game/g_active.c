@@ -1630,8 +1630,16 @@ void ClientThink_real( gentity_t *ent ) {
 
 	// check for respawning
 	if ( client->ps.stats[STAT_HEALTH] <= 0 ) {
+		int canRespawn = qtrue;
+
+		if ( g_gametype.integer == GT_KOTH && g_kothRespawnWave.integer > 0 ) {
+			int waveMs = g_kothRespawnWave.integer;
+			int nextWave = ( ( client->respawnTime + waveMs - 1 ) / waveMs ) * waveMs;
+			canRespawn = ( level.time >= nextWave );
+		}
+
 		// wait for the attack button to be pressed
-		if ( level.time > client->respawnTime ) {
+		if ( level.time > client->respawnTime && canRespawn ) {
 			// forcerespawn is to prevent users from waiting out powerups
 			if ( g_forcerespawn.integer > 0 && 
 				( level.time - client->respawnTime ) > g_forcerespawn.integer * 1000 ) {
