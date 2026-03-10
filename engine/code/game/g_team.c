@@ -1550,8 +1550,6 @@ void KOTH_Think( void ) {
 				teamgame.kothCaptureStart = 0;
 				teamgame.kothCapturingTeam = TEAM_FREE;
 				teamgame.kothNextTick = level.time + 1000;
-				// Capture bonus
-				level.teamScores[presentTeam] += 5;
 				CalculateRanks();
 				(void)oldOwner;
 				trap_SendServerCommand( -1, va( "print \"%s^7 team captured the hill!\n\"",
