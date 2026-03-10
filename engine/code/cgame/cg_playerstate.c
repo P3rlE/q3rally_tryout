@@ -262,6 +262,7 @@ void CG_Respawn( void ) {
 	VectorCopy( cg.snap->ps.origin, cg.predictedPlayerState.origin);
 	VectorCopy( cg.snap->ps.viewangles, cg.predictedPlayerState.viewangles );
 	cg.car.initializeOnNextMove = qtrue;
+	cg.kothDeathTime = 0;
 // END
 }
 
@@ -585,6 +586,11 @@ void CG_TransitionPlayerState( playerState_t *ps, playerState_t *ops ) {
 	if ( ps->damageEvent != ops->damageEvent && ps->damageCount ) {
 
 		CG_ApplyDerbyHitImpact( ps->damageCount );
+	}
+
+	// Q3Rally KOTH: remember when local player died so client can show wave-respawn ETA
+	if ( cgs.gametype == GT_KOTH && ps->pm_type == PM_DEAD && ops->pm_type != PM_DEAD ) {
+		cg.kothDeathTime = cg.snap->serverTime;
 	}
 
 	// respawning

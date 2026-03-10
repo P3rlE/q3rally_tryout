@@ -776,6 +776,7 @@ typedef struct {
 
 	char		countDownPrint[16];
 	int			countDownEnd;
+	int			kothDeathTime;		// serverTime when local player entered PM_DEAD in KOTH
 
 	// low ammo warning state
 	int			lowAmmoWarning;		// 1 = low, 2 = empty
@@ -1596,6 +1597,7 @@ extern	vmCvar_t		cg_rearViewRenderLevel;
 extern	vmCvar_t		cg_mainViewRenderLevel;
 
 extern	vmCvar_t		cg_debugpredict;
+extern	vmCvar_t		cg_kothRespawnWave;
 
 extern	vmCvar_t		cg_engineSounds;
 extern	vmCvar_t		cg_ghostPlayback;
@@ -2070,6 +2072,7 @@ void CG_DrawMMap( float x, float y, float w, float h );
 void CG_DrawHUD_DerbyList(float x, float y);
 void CG_DrawFuelGauge( float x, float y, float w, float h );
 void CG_DrawKOTH_HillStatus( void ); /* Q3Rally KOTH */
+void CG_DrawKOTH_RespawnWave( void ); /* Q3Rally KOTH */
 
 
 //
