@@ -354,6 +354,18 @@ static void CG_ParseSigilStatus( void ) {
 	}
 }
 
+// Q3Rally Code Start - KOTH
+static void CG_ParseKothStatus( void ) {
+	const char *str;
+	str = CG_ConfigString( CS_KOTHSTATUS );
+	cgs.kothOwner     = atoi( str );
+	str = strchr( str, ' ' ); if ( str ) str++; else return;
+	cgs.kothContested = atoi( str );
+	str = strchr( str, ' ' ); if ( str ) str++; else return;
+	cgs.kothCapturePct = atoi( str );
+}
+// Q3Rally Code END - KOTH
+
 /*
 ===============================================================
 CG_SetConfigValues
@@ -388,6 +400,11 @@ if( cgs.gametype == GT_CTF ) {
 	else if ( cgs.gametype == GT_DOMINATION ) {
 		CG_ParseSigilStatus();
 	}
+	// Q3Rally Code Start - KOTH
+	else if ( cgs.gametype == GT_KOTH ) {
+		CG_ParseKothStatus();
+	}
+	// Q3Rally Code END - KOTH
 
 #ifdef MISSIONPACK
 	else if( cgs.gametype == GT_1FCTF ) {
@@ -536,6 +553,13 @@ static void CG_ConfigStringModified( void ) {
 			CG_ParseSigilStatus();
 		}
 	}
+	// Q3Rally Code Start - KOTH
+	else if ( num == CS_KOTHSTATUS ) {
+		if ( cgs.gametype == GT_KOTH ) {
+			CG_ParseKothStatus();
+		}
+	}
+	// Q3Rally Code END - KOTH
 	else if ( num == CS_SHADERSTATE ) {
 		CG_ShaderStateChanged();
 	}

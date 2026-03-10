@@ -43,6 +43,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define COL_TOTALTIME_WIDTH     120  /* Total time */
 #define COL_PING_WIDTH          60   /* Ping */
 #define COL_STATUS_WIDTH        80   /* Status (Ready, etc) */
+#define COL_HILL_TIME_WIDTH     100  /* Q3Rally KOTH: Time on Hill */
 
 /* Visual styling */
 #define MODERN_SB_ALPHA         0.85f
@@ -66,6 +67,7 @@ typedef enum {
     SBCOL_TOTALTIME,  /* Total/Race time */
     SBCOL_PING,       /* Network ping */
     SBCOL_STATUS,     /* Ready status, etc */
+    SBCOL_HILL_TIME,  /* Q3Rally KOTH: time on hill */
     SBCOL_MAX
 } sbColumn_t;
 
@@ -115,7 +117,8 @@ static qboolean CG_IsTeamGametype(void) {
             cgs.gametype == GT_TEAM_RACING_DM ||
             cgs.gametype == GT_CTF ||
             cgs.gametype == GT_CTF4 ||
-            cgs.gametype == GT_DOMINATION);
+            cgs.gametype == GT_DOMINATION ||
+            cgs.gametype == GT_KOTH); /* Q3Rally KOTH */
 }
 
 /*
@@ -165,6 +168,11 @@ static void CG_InitScoreboardColumns(void) {
 		case GT_CTF4:
         case GT_DOMINATION:
             /* Pure combat - only frags/score matter */
+            showScore = qtrue;
+            showDeaths = qtrue;
+            break;
+
+        case GT_KOTH: /* Q3Rally KOTH */
             showScore = qtrue;
             showDeaths = qtrue;
             break;
@@ -222,6 +230,8 @@ static void CG_InitScoreboardColumns(void) {
         /* Different header based on gametype */
         if (cgs.gametype == GT_CTF) {
             columns[SBCOL_SCORE].header = "CAPS";
+        } else if (cgs.gametype == GT_KOTH) {
+            columns[SBCOL_SCORE].header = "PTS";
         } else if (cgs.gametype == GT_DOMINATION) {
             columns[SBCOL_SCORE].header = "POINTS";
         } else if (cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS || cgs.gametype == GT_ELIMINATION) {
@@ -268,6 +278,15 @@ static void CG_InitScoreboardColumns(void) {
         columns[SBCOL_TOTALTIME].visible = qtrue;
     }
     
+    /* Q3Rally KOTH: Time on Hill column - only in intermission */
+    if (cgs.gametype == GT_KOTH &&
+        cg.predictedPlayerState.pm_type == PM_INTERMISSION) {
+        columns[SBCOL_HILL_TIME].type    = SBCOL_HILL_TIME;
+        columns[SBCOL_HILL_TIME].width   = COL_HILL_TIME_WIDTH;
+        columns[SBCOL_HILL_TIME].header  = "HILL TIME";
+        columns[SBCOL_HILL_TIME].visible = qtrue;
+    }
+
     /* Status column only in intermission - no ping column */
     if (cg.predictedPlayerState.pm_type == PM_INTERMISSION) {
         columns[SBCOL_STATUS].type = SBCOL_STATUS;
@@ -665,6 +684,23 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
             }
             break;
             
+        case SBCOL_HILL_TIME: /* Q3Rally KOTH */
+            if (ci->team == TEAM_SPECTATOR) {
+                CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
+            } else {
+                /* timeOnHill is stored in score->captures for KOTH
+                   (reused from CTF captures field, set by server) */
+                int hillSecs = score->captures;
+                if (hillSecs > 0) {
+                    Com_sprintf(buffer, sizeof(buffer), "%d:%02d",
+                                hillSecs / 60, hillSecs % 60);
+                    CG_DrawModernText(x, y, buffer, 1, width, textColor, qfalse);
+                } else {
+                    CG_DrawModernText(x, y, "0:00", 1, width, textColor, qfalse);
+                }
+            }
+            break;
+
         case SBCOL_STATUS:
             if (cg.snap && (cg.snap->ps.stats[STAT_CLIENTS_READY] & (1 << score->client))) {
                 CG_DrawModernText(x, y, "READY", 1, width, readyColor, qfalse);
@@ -1161,6 +1197,7 @@ void CG_DrawScoreboardGameModeInfo(void) {
         case GT_TEAM_RACING_DM:   gametypeName = "Team Racing DM"; break;
         case GT_CTF:              gametypeName = "Capture The Flag"; break;
         case GT_DOMINATION:       gametypeName = "Domination"; break;
+        case GT_KOTH:              gametypeName = "King of the Hill"; break; /* Q3Rally KOTH */
         default:                  gametypeName = "Unknown"; break;
     }
     
@@ -1198,6 +1235,8 @@ const char* CG_GetGametypeScoreLabel(void) {
             return "CAPS";
         case GT_DOMINATION:
             return "POINTS";
+        case GT_KOTH:
+            return "PTS"; /* Q3Rally KOTH */
         case GT_DERBY:
         case GT_LCS:
         case GT_ELIMINATION:

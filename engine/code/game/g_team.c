@@ -27,6 +27,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 extern vmCvar_t g_dominationScoreInterval;
 extern vmCvar_t g_dominationCaptureDelay;
+// Q3Rally Code Start - KOTH
+extern vmCvar_t g_kothScoreWin;
+extern vmCvar_t g_kothCaptureTime;
+extern vmCvar_t g_kothRespawnWave;
+// Q3Rally Code END - KOTH
 
 // Q3Rally Code Start
 
@@ -47,6 +52,13 @@ typedef struct teamgame_s {
 // Q3Rally Code Start
 	domination_sigil_t     sigil[MAX_SIGILS];
 	int				numSigils;
+	// KOTH hill state
+	int				kothOwner;
+	int				kothContested;
+	int				kothCaptureStart;
+	int				kothPresenceRed;
+	int				kothPresenceBlue;
+	int				kothNextTick;
 // Q3Rally Code END
 } teamgame_t;
 
@@ -59,6 +71,10 @@ void Team_SetFlagStatus( int team, flagStatus_t status );
 void Team_SetSigilStatus( int sigilNum, sigilStatus_t status );
 void Init_Sigils( void );
 // Q3Rally Code END
+// Q3Rally Code Start - KOTH
+void KOTH_SetHillStatus( int owner, int contested, int pct );
+void KOTH_Think( void );
+// Q3Rally Code END - KOTH
 
 void Team_InitGame( void ) {
 	int i;
@@ -86,6 +102,16 @@ void Team_InitGame( void ) {
         		
 // Q3Rally Code Start
 		
+	case GT_KOTH:
+		teamgame.kothOwner = TEAM_FREE;
+		teamgame.kothContested = qfalse;
+		teamgame.kothCaptureStart = 0;
+		teamgame.kothPresenceRed = 0;
+		teamgame.kothPresenceBlue = 0;
+		teamgame.kothNextTick = 0;
+		KOTH_SetHillStatus( TEAM_FREE, qfalse, 0 );
+		break;
+
 	case GT_DOMINATION:
 	  Init_Sigils();
 	  for ( i = 0; i < teamgame.numSigils; i++ ) {
@@ -117,6 +143,9 @@ void Team_InitGame( void ) {
 // Q3Rally Code Start
 void Team_EndGame( void ) {
 	// stop adding score when intermission starts
+	if ( g_gametype.integer == GT_KOTH ) {
+		// nothing to tear down for KOTH on EndGame
+	}
 	if ( g_gametype.integer == GT_DOMINATION ) {
 		int i;
 		for ( i = 0; i < teamgame.numSigils; i++ ) {
@@ -1377,9 +1406,161 @@ int Sigil_Touch( gentity_t *ent, gentity_t *other ) {
   }
 
 // Q3Rally Code END
+
+// Q3Rally Code Start - KOTH
+/*
+===================
+KOTH_SetHillStatus
+
+Encodes hill state into CS_KOTHSTATUS configstring:
+  "<owner> <contested> <capture_pct>"
+  owner: 0=free 1=red 2=blue
+  contested: 0 or 1
+  capture_pct: 0-100
+===================
+*/
+void KOTH_SetHillStatus( int owner, int contested, int pct ) {
+	trap_SetConfigstring( CS_KOTHSTATUS, va( "%i %i %i", owner, contested, pct ) );
+}
+
+/*
+===================
+KOTH_Think
+
+Called every server frame from g_active.c / RunFrame.
+Counts team presence in the hill trigger, drives capture/score/contested logic.
+===================
+*/
+void KOTH_Think( void ) {
+	gentity_t	*hill;
+	gentity_t	*ent;
+	int			redCount = 0, blueCount = 0;
+	int			i;
+	int			pct = 0;
+
+	if ( level.warmupTime ) {
+		return;
+	}
+
+	// Find the hill entity
+	hill = NULL;
+	for ( ent = g_entities; ent < &g_entities[level.num_entities]; ent++ ) {
+		if ( ent->inuse && !Q_stricmp( ent->classname, "trigger_koth_hill" ) ) {
+			hill = ent;
+			break;
+		}
+	}
+
+	if ( !hill ) {
+		return;
+	}
+
+	// Count players inside the hill bounding box
+	for ( i = 0; i < level.maxclients; i++ ) {
+		gclient_t *cl = &level.clients[i];
+		gentity_t *player = &g_entities[i];
+
+		if ( cl->pers.connected != CON_CONNECTED ) continue;
+		if ( cl->sess.sessionTeam == TEAM_SPECTATOR ) continue;
+		if ( cl->ps.stats[STAT_HEALTH] <= 0 ) continue;
+
+		if ( player->r.currentOrigin[0] >= hill->r.absmin[0] &&
+		     player->r.currentOrigin[0] <= hill->r.absmax[0] &&
+		     player->r.currentOrigin[1] >= hill->r.absmin[1] &&
+		     player->r.currentOrigin[1] <= hill->r.absmax[1] &&
+		     player->r.currentOrigin[2] >= hill->r.absmin[2] &&
+		     player->r.currentOrigin[2] <= hill->r.absmax[2] ) {
+			if ( cl->sess.sessionTeam == TEAM_RED )  redCount++;
+			if ( cl->sess.sessionTeam == TEAM_BLUE ) blueCount++;
+		}
+	}
+
+	teamgame.kothPresenceRed  = redCount;
+	teamgame.kothPresenceBlue = blueCount;
+
+	// --- Contested: both teams present ---
+	if ( redCount > 0 && blueCount > 0 ) {
+		teamgame.kothContested = qtrue;
+		teamgame.kothCaptureStart = 0;
+		KOTH_SetHillStatus( teamgame.kothOwner, qtrue, 0 );
+		return;
+	}
+
+	teamgame.kothContested = qfalse;
+
+	// --- Nobody in hill ---
+	if ( redCount == 0 && blueCount == 0 ) {
+		teamgame.kothCaptureStart = 0;
+		KOTH_SetHillStatus( teamgame.kothOwner, qfalse, 0 );
+		return;
+	}
+
+	// --- One team in hill ---
+	{
+		int presentTeam = ( redCount > 0 ) ? TEAM_RED : TEAM_BLUE;
+
+		if ( presentTeam == teamgame.kothOwner ) {
+			// Owner is defending - score tick
+			if ( level.time >= teamgame.kothNextTick ) {
+				int ci;
+				level.teamScores[presentTeam]++;
+				teamgame.kothNextTick = level.time + 1000;
+				// Track time-on-hill per player in PERS_CAPTURES (reused for KOTH stat)
+				for ( ci = 0; ci < level.maxclients; ci++ ) {
+					gclient_t *pl = &level.clients[ci];
+					gentity_t *pe = &g_entities[ci];
+					if ( pl->pers.connected != CON_CONNECTED ) continue;
+					if ( pl->sess.sessionTeam != presentTeam ) continue;
+					if ( pl->ps.stats[STAT_HEALTH] <= 0 ) continue;
+					if ( pe->r.currentOrigin[0] >= hill->r.absmin[0] &&
+					     pe->r.currentOrigin[0] <= hill->r.absmax[0] &&
+					     pe->r.currentOrigin[1] >= hill->r.absmin[1] &&
+					     pe->r.currentOrigin[1] <= hill->r.absmax[1] &&
+					     pe->r.currentOrigin[2] >= hill->r.absmin[2] &&
+					     pe->r.currentOrigin[2] <= hill->r.absmax[2] ) {
+						pl->ps.persistant[PERS_CAPTURES]++;
+					}
+				}
+				CalculateRanks();
+			}
+			KOTH_SetHillStatus( presentTeam, qfalse, 100 );
+		} else {
+			// Captor is capturing / neutralizing
+			int captureTime = g_kothCaptureTime.integer;
+			if ( captureTime <= 0 ) captureTime = 3000;
+
+			if ( teamgame.kothCaptureStart == 0 ) {
+				teamgame.kothCaptureStart = level.time;
+			}
+
+			pct = (int)( 100.0f * ( level.time - teamgame.kothCaptureStart ) / captureTime );
+			if ( pct > 100 ) pct = 100;
+
+			if ( pct >= 100 ) {
+				// Capture complete
+				int oldOwner = teamgame.kothOwner;
+				teamgame.kothOwner = presentTeam;
+				teamgame.kothCaptureStart = 0;
+				teamgame.kothNextTick = level.time + 1000;
+				// Capture bonus
+				level.teamScores[presentTeam] += 5;
+				CalculateRanks();
+				(void)oldOwner;
+				trap_SendServerCommand( -1, va( "print \"%s^7 team captured the hill!\n\"",
+					( presentTeam == TEAM_RED ) ? "^1Red" : "^4Blue" ) );
+				KOTH_SetHillStatus( presentTeam, qfalse, 100 );
+			} else {
+				KOTH_SetHillStatus( teamgame.kothOwner, qfalse, pct );
+			}
+		}
+	}
+}
+// Q3Rally Code END - KOTH
+
 /*
 ===========
 Team_GetLocation
+
 
 Report a location for the player. Uses placed nearby target_location entities
 ============
@@ -1727,6 +1908,40 @@ Targets will be fired when someone spawns in on them.
 void SP_team_CTF_yellowspawn(gentity_t *ent) {
 	(void)ent;
 }
+
+// Q3Rally Code Start - KOTH spawn points
+/*QUAKED team_KOTH_redplayer (1 0 0) (-16 -16 -16) (16 16 32)
+KOTH game mode only. Red team players spawn here at game start.
+This is a point entity - place it where red team should initially spawn.
+*/
+void SP_team_KOTH_redplayer( gentity_t *ent ) {
+	ent->classname = "team_CTF_redplayer";
+}
+
+/*QUAKED team_KOTH_blueplayer (0 0 1) (-16 -16 -16) (16 16 32)
+KOTH game mode only. Blue team players spawn here at game start.
+This is a point entity - place it where blue team should initially spawn.
+*/
+void SP_team_KOTH_blueplayer( gentity_t *ent ) {
+	ent->classname = "team_CTF_blueplayer";
+}
+
+/*QUAKED team_KOTH_redspawn (1 0 0) (-16 -16 -24) (16 16 32)
+KOTH game mode only. Potential respawn point for red team.
+Place multiple around the map for varied red team respawning.
+*/
+void SP_team_KOTH_redspawn( gentity_t *ent ) {
+	ent->classname = "team_CTF_redspawn";
+}
+
+/*QUAKED team_KOTH_bluespawn (0 0 1) (-16 -16 -24) (16 16 32)
+KOTH game mode only. Potential respawn point for blue team.
+Place multiple around the map for varied blue team respawning.
+*/
+void SP_team_KOTH_bluespawn( gentity_t *ent ) {
+	ent->classname = "team_CTF_bluespawn";
+}
+// Q3Rally Code END - KOTH spawn points
 
 /*QUAKED team_CTF_redflag (1 0 0) (-16 -16 -16) (16 16 16)
 Red flag

@@ -100,12 +100,13 @@ static const char *gametype_items[] = {
 	"Capture the Flag",
 	"4-Team CTF",
 	"Domination",
+	"King of the Hill",
 	0
 };
 
 // gametype_items[gametype_remap2[s_serveroptions.gametype]]
-static int gametype_remap[] = {GT_RACING, GT_RACING_DM, GT_SPRINT, GT_DERBY, GT_LCS, GT_ELIMINATION, GT_DEATHMATCH, GT_TEAM, GT_TEAM_RACING, GT_TEAM_RACING_DM, GT_CTF, GT_CTF4, GT_DOMINATION};
-static int gametype_remap2[] = {0, 1, 2, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+static int gametype_remap[] = {GT_RACING, GT_RACING_DM, GT_SPRINT, GT_DERBY, GT_LCS, GT_ELIMINATION, GT_DEATHMATCH, GT_TEAM, GT_TEAM_RACING, GT_TEAM_RACING_DM, GT_CTF, GT_CTF4, GT_DOMINATION, GT_KOTH};
+static int gametype_remap2[] = {0, 1, 2, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
 
 int		allowLength[3];
 int		reversable;
@@ -339,6 +340,7 @@ static const struct {
         { "q3r_ctf", GT_CTF },
         { "q3r_ctf4", GT_CTF4 },
         { "q3r_dom", GT_DOMINATION },
+        { "q3r_koth", GT_KOTH }, /* Q3Rally KOTH */
 };
 
 /*
@@ -1040,6 +1042,17 @@ default:
 		trap_Cvar_SetValue( "ui_ctf_friendly", friendlyfire );
 		break;
 		
+    // Q3Rally Code Start - KOTH
+    case GT_KOTH:
+		trap_Cvar_SetValue( "g_kothScoreWin",    Com_Clamp( 1, 9999, flaglimit ) );
+		trap_Cvar_SetValue( "g_kothCaptureTime", 3000 );
+		trap_Cvar_SetValue( "g_kothRespawnWave", 5000 );
+		trap_Cvar_SetValue( "ui_koth_scorelimit", flaglimit );
+		trap_Cvar_SetValue( "ui_koth_timelimit",  timelimit );
+		trap_Cvar_SetValue( "ui_koth_friendly",   friendlyfire );
+		break;
+    // Q3Rally Code END - KOTH
+
     case GT_DOMINATION:
 		trap_Cvar_SetValue( "g_dominationSpawnStyle", Com_Clamp( 0, 1, dominationSpawnStyle ) );
 		trap_Cvar_SetValue( "g_dominationScoreInterval", Com_Clamp( 0, 99999, dominationScoreInterval * 1000 ) );
@@ -1057,7 +1070,12 @@ default:
 	trap_Cvar_SetValue ("timelimit", Com_Clamp( 0, timelimit, timelimit ) );
 	trap_Cvar_SetValue ("fraglimit", Com_Clamp( 0, fraglimit, fraglimit ) );
 	trap_Cvar_SetValue ("laplimit", Com_Clamp( 0, fraglimit, fraglimit ) );
-	trap_Cvar_SetValue ("capturelimit", Com_Clamp( 0, flaglimit, flaglimit ) );
+	// Q3Rally Fix: KOTH uses g_kothScoreWin, not capturelimit - reset to 0 to avoid false exits
+	if ( s_serveroptions.gametype == GT_KOTH ) {
+		trap_Cvar_SetValue( "capturelimit", 0 );
+	} else {
+		trap_Cvar_SetValue( "capturelimit", Com_Clamp( 0, flaglimit, flaglimit ) );
+	}
 	trap_Cvar_SetValue( "g_friendlyfire", friendlyfire );
 	trap_Cvar_SetValue( "sv_pure", pure );
 	trap_Cvar_SetValue( "g_trackLength", Com_Clamp( 0, trackLength, 2 ) );
@@ -1554,6 +1572,12 @@ static void ServerOptions_SetMenuItems( void ) {
 		s_serveroptions.friendlyfire.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_ctf_friendly" ) );
 		break;
 
+	case GT_KOTH:
+		Com_sprintf( s_serveroptions.flaglimit.field.buffer, 5, "%i", (int)Com_Clamp( 0, 9999, trap_Cvar_VariableValue( "ui_koth_scorelimit" ) ) );
+		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_koth_timelimit" ) ) );
+		s_serveroptions.friendlyfire.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_koth_friendly" ) );
+		break;
+
 	case GT_DOMINATION:
 		Com_sprintf( s_serveroptions.flaglimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 100, trap_Cvar_VariableValue( "ui_dom_capturelimit" ) ) );
 		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_dom_timelimit" ) ) );
@@ -1696,7 +1720,19 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 
 	limitFieldAdded = qfalse;
 
-	if( s_serveroptions.gametype == GT_CTF || s_serveroptions.gametype == GT_CTF4 || s_serveroptions.gametype == GT_DOMINATION ) {
+	if( s_serveroptions.gametype == GT_KOTH ) {
+		s_serveroptions.flaglimit.generic.type		= MTYPE_FIELD;
+		s_serveroptions.flaglimit.generic.name		= "Score Limit:";
+		s_serveroptions.flaglimit.generic.flags		= QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+		s_serveroptions.flaglimit.generic.x			= OPTIONS_X;
+		s_serveroptions.flaglimit.generic.y			= y;
+		s_serveroptions.flaglimit.generic.statusbar	= ServerOptions_StatusBar;
+		s_serveroptions.flaglimit.field.widthInChars = 3;
+		s_serveroptions.flaglimit.field.maxchars	= 4;
+
+		limitFieldAdded = qtrue;
+	}
+	else if( s_serveroptions.gametype == GT_CTF || s_serveroptions.gametype == GT_CTF4 || s_serveroptions.gametype == GT_DOMINATION ) {
 		s_serveroptions.flaglimit.generic.type		= MTYPE_FIELD;
 		s_serveroptions.flaglimit.generic.name		= "Capture Limit:";
 		s_serveroptions.flaglimit.generic.flags		= QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
@@ -1975,7 +2011,7 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 		}
 	}
 
-	if( s_serveroptions.gametype == GT_CTF || s_serveroptions.gametype == GT_CTF4 || s_serveroptions.gametype == GT_DOMINATION ) {
+	if( s_serveroptions.gametype == GT_CTF || s_serveroptions.gametype == GT_CTF4 || s_serveroptions.gametype == GT_DOMINATION || s_serveroptions.gametype == GT_KOTH ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.flaglimit );
 	}
 	else if( s_serveroptions.gametype != GT_DERBY && s_serveroptions.gametype != GT_LCS && s_serveroptions.gametype != GT_SPRINT ) {

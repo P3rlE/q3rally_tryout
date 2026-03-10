@@ -784,6 +784,13 @@ qboolean CG_DrawHUD( void ) {
         if ( cg_hudShowScores.integer )   CG_DrawHUD_Scores( 264, 130 );
         break;
 
+    // Q3Rally Code Start - KOTH
+    case GT_KOTH:
+        if ( cg_hudShowScores.integer )   CG_DrawHUD_Scores( 264, 130 );
+        CG_DrawKOTH_HillStatus();
+        break;
+    // Q3Rally Code END - KOTH
+
     case GT_DERBY:
         if ( cg_hudShowDerbyVehicle.integer )   CG_DrawHUD_DerbyVehicleState();
         if ( cg_hudShowDerbyList.integer )      CG_DrawHUD_DerbyList( 440, 130 );

@@ -104,6 +104,11 @@ vmCvar_t    g_enableSnow;
 vmCvar_t    g_dominationScoreInterval;
 vmCvar_t    g_dominationCaptureDelay;
 vmCvar_t    g_dominationSpawnStyle;
+// Q3Rally Code Start - KOTH
+vmCvar_t    g_kothScoreWin;
+vmCvar_t    g_kothCaptureTime;
+vmCvar_t    g_kothRespawnWave;
+// Q3Rally Code END - KOTH
 #ifdef MISSIONPACK
 vmCvar_t	g_obeliskHealth;
 vmCvar_t	g_obeliskRegenPeriod;
@@ -323,7 +328,12 @@ static cvarTable_t		gameCvarTable[] = {
 
 	{ &g_dominationScoreInterval, "g_dominationScoreInterval", "10000", CVAR_ARCHIVE, 0, qfalse },
 	{ &g_dominationCaptureDelay, "g_dominationCaptureDelay", "1500", CVAR_ARCHIVE, 0, qfalse },
-	{ &g_dominationSpawnStyle, "g_dominationSpawnStyle", "0", CVAR_ARCHIVE, 0, qfalse }
+	{ &g_dominationSpawnStyle, "g_dominationSpawnStyle", "0", CVAR_ARCHIVE, 0, qfalse },
+	// Q3Rally Code Start - KOTH
+	{ &g_kothScoreWin, "g_kothScoreWin", "100", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse },
+	{ &g_kothCaptureTime, "g_kothCaptureTime", "3000", CVAR_ARCHIVE, 0, qfalse },
+	{ &g_kothRespawnWave, "g_kothRespawnWave", "5000", CVAR_ARCHIVE, 0, qfalse }
+	// Q3Rally Code END - KOTH
 };
 
 static int gameCvarTableSize = ARRAY_LEN( gameCvarTable );
@@ -725,6 +735,8 @@ static const char *G_LadderModeForGametype( int gametype ) {
                 return "GT_CTF4";
         case GT_DOMINATION:
                 return "GT_DOMINATION";
+        case GT_KOTH:
+                return "GT_KOTH";
         default:
                 break;
         }
@@ -2440,7 +2452,7 @@ void CheckExitRules( void ) {
 		trap_Cvar_Update( &g_capturelimit );
 	}
 
-	if ( g_gametype.integer >= GT_CTF && g_capturelimit.integer ) {
+	if ( g_gametype.integer >= GT_CTF && g_gametype.integer != GT_KOTH && g_capturelimit.integer ) {
 
 		if ( level.teamScores[TEAM_RED] >= g_capturelimit.integer ) {
 			trap_SendServerCommand( -1, "print \"Red hit the capturelimit.\n\"" );
@@ -2454,6 +2466,21 @@ void CheckExitRules( void ) {
 			return;
 		}
 	}
+
+	// Q3Rally Code Start - KOTH win condition
+	if ( g_gametype.integer == GT_KOTH && g_kothScoreWin.integer > 0 ) {
+		if ( level.teamScores[TEAM_RED] >= g_kothScoreWin.integer ) {
+			trap_SendServerCommand( -1, "print \"Red team captured the hill!\n\"" );
+			LogExit( "KOTH score limit hit." );
+			return;
+		}
+		if ( level.teamScores[TEAM_BLUE] >= g_kothScoreWin.integer ) {
+			trap_SendServerCommand( -1, "print \"Blue team captured the hill!\n\"" );
+			LogExit( "KOTH score limit hit." );
+			return;
+		}
+	}
+	// Q3Rally Code END - KOTH
 }
 
 
@@ -2583,12 +2610,19 @@ void CheckTournament( void ) {
 			return;
 		}
 
-		// if the warmup time has counted down, restart
+		// if the warmup time has counted down, start the game
 		if ( level.time > level.warmupTime ) {
-			level.warmupTime += 10000;
-			trap_Cvar_Set( "g_restarted", "1" );
-			trap_SendConsoleCommand( EXEC_APPEND, "map_restart 0\n" );
-			level.restarted = qtrue;
+			// Q3Rally Fix: KOTH does not need map_restart - just clear warmupTime
+			if ( g_gametype.integer == GT_KOTH ) {
+				level.warmupTime = 0;
+				trap_SetConfigstring( CS_WARMUP, "0" );
+				G_LogPrintf( "KOTH game started.\n" );
+			} else {
+				level.warmupTime += 10000;
+				trap_Cvar_Set( "g_restarted", "1" );
+				trap_SendConsoleCommand( EXEC_APPEND, "map_restart 0\n" );
+				level.restarted = qtrue;
+			}
 			return;
 		}
 	}
@@ -2919,6 +2953,12 @@ void G_RunFrame( int levelTime ) {
 
 	// update to team status?
 	CheckTeamStatus();
+
+	// Q3Rally Code Start - KOTH
+	if ( g_gametype.integer == GT_KOTH ) {
+		KOTH_Think();
+	}
+	// Q3Rally Code END - KOTH
 
 	// cancel vote if timed out
 	CheckVote();

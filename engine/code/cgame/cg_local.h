@@ -1386,6 +1386,10 @@ typedef struct {
 	int				redflag, blueflag, greenflag, yellowflag;		// flag status from configstrings
 	int				flagStatus;
     int             sigil[MAX_SIGILS];
+    /* Q3Rally KOTH - parsed from CS_KOTHSTATUS */
+    int             kothOwner;      /* TEAM_FREE / TEAM_RED / TEAM_BLUE */
+    int             kothContested;  /* qtrue when both teams in hill */
+    int             kothCapturePct; /* 0-100 capture progress */
 	qboolean  newHud;
 
 	//
@@ -2065,6 +2069,7 @@ float CG_DrawLowerLeftHUD( float y );
 void CG_DrawMMap( float x, float y, float w, float h );
 void CG_DrawHUD_DerbyList(float x, float y);
 void CG_DrawFuelGauge( float x, float y, float w, float h );
+void CG_DrawKOTH_HillStatus( void ); /* Q3Rally KOTH */
 
 
 //

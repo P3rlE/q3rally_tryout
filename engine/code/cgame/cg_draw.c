@@ -536,6 +536,58 @@ void CG_DrawTeamBackground( int x, int y, int w, int h, float alpha, int team )
 	trap_R_SetColor( NULL );
 }
 
+// Q3Rally Code Start - KOTH
+/*
+===================
+CG_DrawKOTH_HillStatus
+
+Draws the KOTH hill status panel:
+  - Owner name / Neutral / Contested
+  - Capture progress bar
+Called from cg_hud_core.c GT_KOTH case.
+===================
+*/
+void CG_DrawKOTH_HillStatus( void ) {
+	float		x, y, w, h;
+	const char	*statusText;
+	char		scoreText[64];
+
+	if ( cgs.gametype != GT_KOTH ) return;
+
+	x = 240.0f;
+	y = 14.0f;
+	w = 160.0f;
+
+	// --- Hill status label ---
+	if ( cgs.kothContested ) {
+		statusText = "^3CONTESTED";
+	} else if ( cgs.kothOwner == TEAM_RED ) {
+		statusText = "^1RED HOLDS HILL";
+	} else if ( cgs.kothOwner == TEAM_BLUE ) {
+		statusText = "^4BLUE HOLDS HILL";
+	} else {
+		statusText = "^7NEUTRAL";
+	}
+
+	CG_DrawBigString( x, y, statusText, 1.0f );
+
+	// --- Capture progress bar (only when capturing) ---
+	if ( !cgs.kothContested && cgs.kothCapturePct > 0 && cgs.kothCapturePct < 100 ) {
+		float barW = w * ( cgs.kothCapturePct / 100.0f );
+		vec4_t bgColor  = { 0.2f, 0.2f, 0.2f, 0.7f };
+		vec4_t barColor = { 1.0f, 0.6f, 0.0f, 0.9f };
+		h = 8.0f;
+		CG_FillRect( x, y + 22.0f, w,    h, bgColor );
+		CG_FillRect( x, y + 22.0f, barW, h, barColor );
+	}
+
+	// --- Team scores summary ---
+	Com_sprintf( scoreText, sizeof(scoreText), "^1%i ^7- ^4%i",
+		cgs.scores1, cgs.scores2 );
+	CG_DrawBigString( x + 12.0f, y + 34.0f, scoreText, 0.7f );
+}
+// Q3Rally Code END - KOTH
+
 /*
 ===============
 CG_DrawSigilHUD
