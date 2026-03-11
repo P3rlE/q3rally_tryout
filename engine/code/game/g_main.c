@@ -332,7 +332,7 @@ static cvarTable_t		gameCvarTable[] = {
 	// Q3Rally Code Start - KOTH
 	{ &g_kothScoreWin, "g_kothScoreWin", "100", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse },
 	{ &g_kothCaptureTime, "g_kothCaptureTime", "3000", CVAR_ARCHIVE, 0, qfalse },
-	{ &g_kothRespawnWave, "g_kothRespawnWave", "5000", CVAR_ARCHIVE, 0, qfalse }
+	{ &g_kothRespawnWave, "g_kothRespawnWave", "5000", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse }
 	// Q3Rally Code END - KOTH
 };
 
