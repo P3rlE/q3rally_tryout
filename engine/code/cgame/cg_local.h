@@ -777,6 +777,7 @@ typedef struct {
 	char		countDownPrint[16];
 	int			countDownEnd;
 	int			kothDeathTime;		// serverTime when local player entered PM_DEAD in KOTH
+	int			kothRespawnAt;		// serverTime when next KOTH respawn wave should trigger
 
 	// low ammo warning state
 	int			lowAmmoWarning;		// 1 = low, 2 = empty

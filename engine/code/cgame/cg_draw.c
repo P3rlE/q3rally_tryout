@@ -588,8 +588,7 @@ void CG_DrawKOTH_HillStatus( void ) {
 }
 void CG_DrawKOTH_RespawnWave( void ) {
 	int waveMs;
-	int deathBase;
-	int nextWave;
+	int respawnAt;
 	int remainingMs;
 	char msg[64];
 
@@ -600,14 +599,20 @@ void CG_DrawKOTH_RespawnWave( void ) {
 	waveMs = cg_kothRespawnWave.integer;
 	if ( waveMs <= 0 ) return;
 
-	deathBase = cg.kothDeathTime;
-	if ( deathBase <= 0 ) {
-		deathBase = cg.snap->serverTime;
+	respawnAt = cg.kothRespawnAt;
+	if ( respawnAt <= 0 ) {
+		int deathBase = cg.kothDeathTime;
+		if ( deathBase <= 0 ) {
+			deathBase = cg.snap->serverTime;
+			cg.kothDeathTime = deathBase;
+		}
+
+		// Server gates KOTH respawn by: respawnTime = deathTime + 1700, then align to wave
+		respawnAt = ( ( deathBase + 1700 + waveMs - 1 ) / waveMs ) * waveMs;
+		cg.kothRespawnAt = respawnAt;
 	}
 
-	// Server gates KOTH respawn by: respawnTime = deathTime + 1700, then align to wave
-	nextWave = ( ( deathBase + 1700 + waveMs - 1 ) / waveMs ) * waveMs;
-	remainingMs = nextWave - cg.time;
+	remainingMs = respawnAt - cg.time;
 	if ( remainingMs < 0 ) remainingMs = 0;
 
 	Com_sprintf( msg, sizeof(msg), "^3Respawn in:^7 %.1f s", remainingMs / 1000.0f );
