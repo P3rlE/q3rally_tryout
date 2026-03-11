@@ -1044,13 +1044,22 @@ default:
 		
     // Q3Rally Code Start - KOTH
     case GT_KOTH:
-		trap_Cvar_SetValue( "g_kothScoreWin",    Com_Clamp( 1, 9999, flaglimit ) );
+	{
+		int kothScoreWin = flaglimit;
+		if ( kothScoreWin <= 0 ) {
+			kothScoreWin = (int)trap_Cvar_VariableValue( "ui_koth_scorelimit" );
+		}
+		if ( kothScoreWin <= 0 ) {
+			kothScoreWin = 100;
+		}
+		trap_Cvar_SetValue( "g_kothScoreWin",    Com_Clamp( 1, 9999, kothScoreWin ) );
 		trap_Cvar_SetValue( "g_kothCaptureTime", 3000 );
 		trap_Cvar_SetValue( "g_kothRespawnWave", 5000 );
-		trap_Cvar_SetValue( "ui_koth_scorelimit", flaglimit );
+		trap_Cvar_SetValue( "ui_koth_scorelimit", kothScoreWin );
 		trap_Cvar_SetValue( "ui_koth_timelimit",  timelimit );
 		trap_Cvar_SetValue( "ui_koth_friendly",   friendlyfire );
 		break;
+	}
     // Q3Rally Code END - KOTH
 
     case GT_DOMINATION:
@@ -1573,10 +1582,21 @@ static void ServerOptions_SetMenuItems( void ) {
 		break;
 
 	case GT_KOTH:
-		Com_sprintf( s_serveroptions.flaglimit.field.buffer, 5, "%i", (int)Com_Clamp( 0, 9999, trap_Cvar_VariableValue( "ui_koth_scorelimit" ) ) );
+	{
+		int kothScoreLimit = (int)trap_Cvar_VariableValue( "ui_koth_scorelimit" );
+		if ( kothScoreLimit <= 0 ) {
+			kothScoreLimit = (int)trap_Cvar_VariableValue( "g_kothScoreWin" );
+		}
+		if ( kothScoreLimit <= 0 ) {
+			kothScoreLimit = 100;
+		}
+		kothScoreLimit = (int)Com_Clamp( 1, 999, kothScoreLimit );
+		trap_Cvar_SetValue( "ui_koth_scorelimit", kothScoreLimit );
+		Com_sprintf( s_serveroptions.flaglimit.field.buffer, 4, "%i", kothScoreLimit );
 		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_koth_timelimit" ) ) );
 		s_serveroptions.friendlyfire.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_koth_friendly" ) );
 		break;
+	}
 
 	case GT_DOMINATION:
 		Com_sprintf( s_serveroptions.flaglimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 100, trap_Cvar_VariableValue( "ui_dom_capturelimit" ) ) );
@@ -1728,7 +1748,7 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 		s_serveroptions.flaglimit.generic.y			= y;
 		s_serveroptions.flaglimit.generic.statusbar	= ServerOptions_StatusBar;
 		s_serveroptions.flaglimit.field.widthInChars = 3;
-		s_serveroptions.flaglimit.field.maxchars	= 4;
+		s_serveroptions.flaglimit.field.maxchars	= 3;
 
 		limitFieldAdded = qtrue;
 	}

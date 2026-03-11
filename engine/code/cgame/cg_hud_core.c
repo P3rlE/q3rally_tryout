@@ -786,7 +786,7 @@ qboolean CG_DrawHUD( void ) {
 
     // Q3Rally Code Start - KOTH
     case GT_KOTH:
-        if ( cg_hudShowScores.integer )   CG_DrawHUD_Scores( 264, 130 );
+        // KOTH uses the modular top-right scoreboard; avoid duplicate legacy FRAGS/TEAM panel.
         CG_DrawKOTH_HillStatus();
         break;
     // Q3Rally Code END - KOTH
