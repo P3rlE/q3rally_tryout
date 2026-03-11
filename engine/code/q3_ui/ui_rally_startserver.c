@@ -1044,13 +1044,22 @@ default:
 		
     // Q3Rally Code Start - KOTH
     case GT_KOTH:
-		trap_Cvar_SetValue( "g_kothScoreWin",    Com_Clamp( 1, 9999, flaglimit ) );
+	{
+		int kothScoreWin = flaglimit;
+		if ( kothScoreWin <= 0 ) {
+			kothScoreWin = (int)trap_Cvar_VariableValue( "ui_koth_scorelimit" );
+		}
+		if ( kothScoreWin <= 0 ) {
+			kothScoreWin = 100;
+		}
+		trap_Cvar_SetValue( "g_kothScoreWin",    Com_Clamp( 1, 9999, kothScoreWin ) );
 		trap_Cvar_SetValue( "g_kothCaptureTime", 3000 );
 		trap_Cvar_SetValue( "g_kothRespawnWave", 5000 );
-		trap_Cvar_SetValue( "ui_koth_scorelimit", flaglimit );
+		trap_Cvar_SetValue( "ui_koth_scorelimit", kothScoreWin );
 		trap_Cvar_SetValue( "ui_koth_timelimit",  timelimit );
 		trap_Cvar_SetValue( "ui_koth_friendly",   friendlyfire );
 		break;
+	}
     // Q3Rally Code END - KOTH
 
     case GT_DOMINATION:

@@ -1635,7 +1635,14 @@ void ClientThink_real( gentity_t *ent ) {
 
 		if ( g_gametype.integer == GT_KOTH && g_kothRespawnWave.integer > 0 ) {
 			int waveMs = g_kothRespawnWave.integer;
-			int nextWave = ( ( client->respawnTime + waveMs - 1 ) / waveMs ) * waveMs;
+			int nextWave;
+
+			// Accept accidental "seconds" input values (e.g. 5) as 5000ms.
+			if ( waveMs > 0 && waveMs < 1000 ) {
+				waveMs *= 1000;
+			}
+
+			nextWave = ( ( client->respawnTime + waveMs - 1 ) / waveMs ) * waveMs;
 			canRespawn = ( level.time >= nextWave );
 			kothWaveRespawn = qtrue;
 		}

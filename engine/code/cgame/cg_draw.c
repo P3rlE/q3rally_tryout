@@ -598,6 +598,9 @@ void CG_DrawKOTH_RespawnWave( void ) {
 
 	waveMs = cg_kothRespawnWave.integer;
 	if ( waveMs <= 0 ) return;
+	if ( waveMs < 1000 ) {
+		waveMs *= 1000;
+	}
 
 	respawnAt = cg.kothRespawnAt;
 	if ( respawnAt <= 0 ) {

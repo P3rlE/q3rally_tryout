@@ -596,6 +596,9 @@ void CG_TransitionPlayerState( playerState_t *ps, playerState_t *ops ) {
 		cg.kothDeathTime = cg.snap->serverTime;
 		if ( waveMs > 0 ) {
 			int respawnGate = cg.kothDeathTime + 1700;
+			if ( waveMs < 1000 ) {
+				waveMs *= 1000;
+			}
 			cg.kothRespawnAt = ( ( respawnGate + waveMs - 1 ) / waveMs ) * waveMs;
 		} else {
 			cg.kothRespawnAt = 0;
