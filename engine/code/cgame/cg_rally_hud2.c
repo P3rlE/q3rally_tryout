@@ -808,6 +808,12 @@ qboolean CG_DrawHUD( void ) {
 
 		break;
 
+	case GT_KOTH:
+		CG_DrawHUD_Scores(264, 130);
+		CG_DrawKOTH_HillStatus();
+
+		break;
+
 	case GT_DERBY:
 		CG_DrawHUD_DerbyVehicleState();
 		CG_DrawHUD_DerbyList(440, 130);
