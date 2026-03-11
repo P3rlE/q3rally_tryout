@@ -586,6 +586,41 @@ void CG_DrawKOTH_HillStatus( void ) {
 		cgs.scores1, cgs.scores2 );
 	CG_DrawBigString( x + 12.0f, y + 34.0f, scoreText, 0.7f );
 }
+void CG_DrawKOTH_RespawnWave( void ) {
+	int waveMs;
+	int respawnAt;
+	int remainingMs;
+	char msg[64];
+
+	if ( cgs.gametype != GT_KOTH ) return;
+	if ( cg.snap->ps.stats[STAT_HEALTH] > 0 ) return;
+	if ( cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR ) return;
+
+	waveMs = cg_kothRespawnWave.integer;
+	if ( waveMs <= 0 ) return;
+	if ( waveMs < 1000 ) {
+		waveMs *= 1000;
+	}
+
+	respawnAt = cg.kothRespawnAt;
+	if ( respawnAt <= 0 ) {
+		int deathBase = cg.kothDeathTime;
+		if ( deathBase <= 0 ) {
+			deathBase = cg.snap->serverTime;
+			cg.kothDeathTime = deathBase;
+		}
+
+		// Server gates KOTH respawn by: respawnTime = deathTime + 1700, then align to wave
+		respawnAt = ( ( deathBase + 1700 + waveMs - 1 ) / waveMs ) * waveMs;
+		cg.kothRespawnAt = respawnAt;
+	}
+
+	remainingMs = respawnAt - cg.time;
+	if ( remainingMs < 0 ) remainingMs = 0;
+
+	Com_sprintf( msg, sizeof(msg), "^3Respawn in:^7 %.1f s", remainingMs / 1000.0f );
+	CG_DrawBigString( 240, 420, msg, 0.85f );
+}
 // Q3Rally Code END - KOTH
 
 /*
@@ -3528,6 +3563,8 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
                         }
                 }
         }
+
+	CG_DrawKOTH_RespawnWave();
 
 	if ( cgs.gametype >= GT_TEAM ) {
 #ifndef MISSIONPACK
