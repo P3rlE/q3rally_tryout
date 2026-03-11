@@ -802,5 +802,6 @@ qboolean CG_DrawHUD( void ) {
         break;
     }
 
-    return qtrue;
+    // CG_DrawHUD draws overlays but is not the scoreboard visibility gate.
+    return qfalse;
 }
