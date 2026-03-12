@@ -549,42 +549,82 @@ Called from cg_hud_core.c GT_KOTH case.
 */
 void CG_DrawKOTH_HillStatus( void ) {
 	float		x, y, w, h;
+	float		statusX;
 	const char	*statusText;
-	char		scoreText[64];
+	int		statusLen;
 
 	if ( cgs.gametype != GT_KOTH ) return;
 
-	x = 240.0f;
-	y = 14.0f;
-	w = 160.0f;
+	CG_SetScreenPlacement( PLACE_CENTER, PLACE_TOP );
+
+	/* Place KOTH panel in the top gap: right of mirror, left of score widgets. */
+	x = 484.0f;
+	y = 12.0f;
+	w = 140.0f;
+	h = 8.0f;
 
 	// --- Hill status label ---
 	if ( cgs.kothContested ) {
 		statusText = "^3CONTESTED";
 	} else if ( cgs.kothOwner == TEAM_RED ) {
-		statusText = "^1RED HOLDS HILL";
+		statusText = "^1RED HILL";
 	} else if ( cgs.kothOwner == TEAM_BLUE ) {
-		statusText = "^4BLUE HOLDS HILL";
+		statusText = "^4BLUE HILL";
 	} else {
 		statusText = "^7NEUTRAL";
 	}
 
-	CG_DrawBigString( x, y, statusText, 1.0f );
+	statusLen = Q_PrintStrlen( statusText );
+	statusX = x + ( w - ( statusLen * BIGCHAR_WIDTH ) ) * 0.5f;
+	CG_DrawBigString( statusX, y, statusText, 1.0f );
 
 	// --- Capture progress bar (only when capturing) ---
 	if ( !cgs.kothContested && cgs.kothCapturePct > 0 && cgs.kothCapturePct < 100 ) {
 		float barW = w * ( cgs.kothCapturePct / 100.0f );
 		vec4_t bgColor  = { 0.2f, 0.2f, 0.2f, 0.7f };
 		vec4_t barColor = { 1.0f, 0.6f, 0.0f, 0.9f };
-		h = 8.0f;
-		CG_FillRect( x, y + 22.0f, w,    h, bgColor );
-		CG_FillRect( x, y + 22.0f, barW, h, barColor );
+		CG_FillRect( x, y + 20.0f, w,    h, bgColor );
+		CG_FillRect( x, y + 20.0f, barW, h, barColor );
 	}
 
-	// --- Team scores summary ---
-	Com_sprintf( scoreText, sizeof(scoreText), "^1%i ^7- ^4%i",
-		cgs.scores1, cgs.scores2 );
-	CG_DrawBigString( x + 12.0f, y + 34.0f, scoreText, 0.7f );
+	CG_PopScreenPlacement();
+}
+static void CG_DrawKOTH_RespawnWave_Internal( void ) {
+	int waveMs;
+	int respawnAt;
+	int remainingMs;
+	char msg[64];
+
+	if ( cgs.gametype != GT_KOTH ) return;
+	if ( cg.snap->ps.stats[STAT_HEALTH] > 0 ) return;
+	if ( cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR ) return;
+
+	waveMs = cg_kothRespawnWave.integer;
+	if ( waveMs <= 0 ) return;
+	if ( waveMs < 1000 ) {
+		waveMs *= 1000;
+	}
+
+	respawnAt = cg.kothRespawnAt;
+	if ( respawnAt <= 0 ) {
+		int deathBase = cg.kothDeathTime;
+		if ( deathBase <= 0 ) {
+			deathBase = cg.snap->serverTime;
+			cg.kothDeathTime = deathBase;
+		}
+
+		// Server gates KOTH respawn by: respawnTime = deathTime + 1700, then align to wave
+		respawnAt = ( ( deathBase + 1700 + waveMs - 1 ) / waveMs ) * waveMs;
+		cg.kothRespawnAt = respawnAt;
+	}
+
+	remainingMs = respawnAt - cg.time;
+	if ( remainingMs < 0 ) remainingMs = 0;
+
+	Com_sprintf( msg, sizeof(msg), "^3Respawn in:^7 %.1f s", remainingMs / 1000.0f );
+	CG_SetScreenPlacement( PLACE_CENTER, PLACE_TOP );
+	CG_DrawBigString( 220, 390, msg, 0.85f );
+	CG_PopScreenPlacement();
 }
 // Q3Rally Code END - KOTH
 
@@ -1781,7 +1821,7 @@ float CG_DrawScores( float x, float y ) {
 
 		CG_FillRect( x - 80, y, 96, 18, bgColor );
 
-        if (cgs.gametype >= GT_TEAM){
+        if ( cgs.gametype >= GT_TEAM && cgs.gametype != GT_KOTH ) {
 			// draw yellow
 			color[0] = 1.0f;
 			color[1] = 1.0f;
@@ -3528,6 +3568,8 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
                         }
                 }
         }
+
+	CG_DrawKOTH_RespawnWave_Internal();
 
 	if ( cgs.gametype >= GT_TEAM ) {
 #ifndef MISSIONPACK

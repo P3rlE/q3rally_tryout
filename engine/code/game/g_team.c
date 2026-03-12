@@ -1506,7 +1506,7 @@ void KOTH_Think( void ) {
 		if ( presentTeam == teamgame.kothOwner ) {
 			teamgame.kothCaptureStart = 0;
 			teamgame.kothCapturingTeam = TEAM_FREE;
-			// Owner is defending - score tick
+			// Owner is defending - score tick + time-on-hill stat tick
 			if ( level.time >= teamgame.kothNextTick ) {
 				int ci;
 				level.teamScores[presentTeam]++;
