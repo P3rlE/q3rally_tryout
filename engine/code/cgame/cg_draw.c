@@ -549,7 +549,6 @@ Called from cg_hud_core.c GT_KOTH case.
 */
 void CG_DrawKOTH_HillStatus( void ) {
 	float		x, y, w, h;
-	float		mirrorX, mirrorY, mirrorW, mirrorH;
 	float		statusX;
 	const char	*statusText;
 	int		statusLen;
@@ -558,30 +557,25 @@ void CG_DrawKOTH_HillStatus( void ) {
 
 	CG_SetScreenPlacement( PLACE_CENTER, PLACE_TOP );
 
-	/* Place KOTH status block between rear-view mirror and right-side score widgets. */
-	mirrorX = 170.0f;
-	mirrorY = 10.0f;
-	mirrorW = 300.0f;
-	mirrorH = 75.0f;
-	w = 180.0f;
+	/* Place KOTH panel in the top gap: right of mirror, left of score widgets. */
+	x = 484.0f;
+	y = 12.0f;
+	w = 140.0f;
 	h = 8.0f;
-
-	x = mirrorX + ( mirrorW - w ) * 0.5f;
-	y = mirrorY + mirrorH + 6.0f;
 
 	// --- Hill status label ---
 	if ( cgs.kothContested ) {
 		statusText = "^3CONTESTED";
 	} else if ( cgs.kothOwner == TEAM_RED ) {
-		statusText = "^1RED HOLDS HILL";
+		statusText = "^1RED HILL";
 	} else if ( cgs.kothOwner == TEAM_BLUE ) {
-		statusText = "^4BLUE HOLDS HILL";
+		statusText = "^4BLUE HILL";
 	} else {
 		statusText = "^7NEUTRAL";
 	}
 
 	statusLen = Q_PrintStrlen( statusText );
-	statusX = mirrorX + ( mirrorW - ( statusLen * BIGCHAR_WIDTH ) ) * 0.5f;
+	statusX = x + ( w - ( statusLen * BIGCHAR_WIDTH ) ) * 0.5f;
 	CG_DrawBigString( statusX, y, statusText, 1.0f );
 
 	// --- Capture progress bar (only when capturing) ---
