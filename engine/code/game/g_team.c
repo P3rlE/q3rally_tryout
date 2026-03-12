@@ -1506,9 +1506,11 @@ void KOTH_Think( void ) {
 		if ( presentTeam == teamgame.kothOwner ) {
 			teamgame.kothCaptureStart = 0;
 			teamgame.kothCapturingTeam = TEAM_FREE;
-			// Owner is defending - track time-on-hill stat tick
+			// Owner is defending - award team score tick and track time-on-hill stat tick
 			if ( level.time >= teamgame.kothNextTick ) {
 				int ci;
+
+				level.teamScores[presentTeam]++;
 				teamgame.kothNextTick = level.time + 1000;
 				// Track time-on-hill per player in PERS_CAPTURES (reused for KOTH stat)
 				for ( ci = 0; ci < level.maxclients; ci++ ) {
