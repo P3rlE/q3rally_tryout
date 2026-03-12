@@ -2073,6 +2073,7 @@ void CG_DrawMMap( float x, float y, float w, float h );
 void CG_DrawHUD_DerbyList(float x, float y);
 void CG_DrawFuelGauge( float x, float y, float w, float h );
 void CG_DrawKOTH_HillStatus( void ); /* Q3Rally KOTH */
+void CG_DrawKOTH_RespawnWave( void ); /* Q3Rally KOTH */
 
 
 //
