@@ -550,16 +550,15 @@ Called from cg_hud_core.c GT_KOTH case.
 void CG_DrawKOTH_HillStatus( void ) {
 	float		x, y, w, h;
 	float		mirrorX, mirrorY, mirrorW, mirrorH;
-	float		statusX, scoreX;
+	float		statusX;
 	const char	*statusText;
-	char		scoreText[64];
-	int		statusLen, scoreLen;
+	int		statusLen;
 
 	if ( cgs.gametype != GT_KOTH ) return;
 
 	CG_SetScreenPlacement( PLACE_CENTER, PLACE_TOP );
 
-	/* Keep KOTH panel centered inside rear-view mirror area (170,10,300,75). */
+	/* Place KOTH status block between rear-view mirror and right-side score widgets. */
 	mirrorX = 170.0f;
 	mirrorY = 10.0f;
 	mirrorW = 300.0f;
@@ -568,8 +567,7 @@ void CG_DrawKOTH_HillStatus( void ) {
 	h = 8.0f;
 
 	x = mirrorX + ( mirrorW - w ) * 0.5f;
-	/* Block height ~49 px: status(16) + gap(6) + bar(8) + gap(6) + score(~13). */
-	y = mirrorY + ( mirrorH - 49.0f ) * 0.5f;
+	y = mirrorY + mirrorH + 6.0f;
 
 	// --- Hill status label ---
 	if ( cgs.kothContested ) {
@@ -591,16 +589,9 @@ void CG_DrawKOTH_HillStatus( void ) {
 		float barW = w * ( cgs.kothCapturePct / 100.0f );
 		vec4_t bgColor  = { 0.2f, 0.2f, 0.2f, 0.7f };
 		vec4_t barColor = { 1.0f, 0.6f, 0.0f, 0.9f };
-		CG_FillRect( x, y + 22.0f, w,    h, bgColor );
-		CG_FillRect( x, y + 22.0f, barW, h, barColor );
+		CG_FillRect( x, y + 20.0f, w,    h, bgColor );
+		CG_FillRect( x, y + 20.0f, barW, h, barColor );
 	}
-
-	// --- Team scores summary ---
-	Com_sprintf( scoreText, sizeof(scoreText), "^1%i ^7- ^4%i",
-		cgs.scores1, cgs.scores2 );
-	scoreLen = Q_PrintStrlen( scoreText );
-	scoreX = mirrorX + ( mirrorW - ( scoreLen * BIGCHAR_WIDTH * 0.7f ) ) * 0.5f;
-	CG_DrawBigString( scoreX, y + 36.0f, scoreText, 0.7f );
 
 	CG_PopScreenPlacement();
 }
@@ -1836,7 +1827,7 @@ float CG_DrawScores( float x, float y ) {
 
 		CG_FillRect( x - 80, y, 96, 18, bgColor );
 
-        if (cgs.gametype >= GT_TEAM){
+        if ( cgs.gametype >= GT_TEAM && cgs.gametype != GT_KOTH ) {
 			// draw yellow
 			color[0] = 1.0f;
 			color[1] = 1.0f;
