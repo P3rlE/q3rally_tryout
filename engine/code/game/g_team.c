@@ -63,6 +63,8 @@ typedef struct teamgame_s {
 	int				kothPresenceRed;
 	int				kothPresenceBlue;
 	int				kothNextTick;
+	int				kothContestedStart;
+	int				kothLastAttackingTeam;
 // Q3Rally Code END
 } teamgame_t;
 
@@ -114,6 +116,8 @@ void Team_InitGame( void ) {
 		teamgame.kothPresenceRed = 0;
 		teamgame.kothPresenceBlue = 0;
 		teamgame.kothNextTick = 0;
+		teamgame.kothContestedStart = 0;
+		teamgame.kothLastAttackingTeam = TEAM_FREE;
 		KOTH_SetHillStatus( TEAM_FREE, qfalse, 0 );
 		break;
 
@@ -1446,6 +1450,7 @@ void KOTH_Think( void ) {
 	int			capturePoints;
 	int			defendPoints;
 	qboolean	wasContested;
+	int			contestedDuration;
 
 	if ( level.warmupTime ) {
 		return;
@@ -1494,14 +1499,28 @@ void KOTH_Think( void ) {
 	defendPoints = g_kothPtsDefend.integer;
 	if ( defendPoints < 0 ) defendPoints = 0;
 	wasContested = teamgame.kothContested;
+	contestedDuration = 0;
 
 	// --- Contested: both teams present ---
 	if ( redCount > 0 && blueCount > 0 ) {
+		if ( !wasContested ) {
+			teamgame.kothContestedStart = level.time;
+		}
 		teamgame.kothContested = qtrue;
 		teamgame.kothCaptureStart = 0;
 		teamgame.kothCapturingTeam = TEAM_FREE;
 		KOTH_SetHillStatus( teamgame.kothOwner, qtrue, 0 );
 		return;
+	}
+
+	if ( wasContested && teamgame.kothContestedStart > 0 ) {
+		contestedDuration = level.time - teamgame.kothContestedStart;
+		if ( contestedDuration < 0 ) {
+			contestedDuration = 0;
+		}
+		G_LogPrintf( "koth_hill_contested: duration_ms=%i owner=%i red=%i blue=%i\n",
+			contestedDuration, teamgame.kothOwner, redCount, blueCount );
+		teamgame.kothContestedStart = 0;
 	}
 
 	teamgame.kothContested = qfalse;
@@ -1510,6 +1529,7 @@ void KOTH_Think( void ) {
 	if ( redCount == 0 && blueCount == 0 ) {
 		teamgame.kothCaptureStart = 0;
 		teamgame.kothCapturingTeam = TEAM_FREE;
+		teamgame.kothLastAttackingTeam = TEAM_FREE;
 		KOTH_SetHillStatus( teamgame.kothOwner, qfalse, 0 );
 		return;
 	}
@@ -1521,7 +1541,7 @@ void KOTH_Think( void ) {
 		if ( presentTeam == teamgame.kothOwner ) {
 			qboolean defendedHill = qfalse;
 
-			if ( wasContested || teamgame.kothCaptureStart > 0 ) {
+			if ( wasContested || teamgame.kothLastAttackingTeam != TEAM_FREE ) {
 				defendedHill = qtrue;
 			}
 
@@ -1529,10 +1549,31 @@ void KOTH_Think( void ) {
 			teamgame.kothCapturingTeam = TEAM_FREE;
 
 			if ( defendedHill && defendPoints > 0 ) {
+				int ci;
 				level.teamScores[presentTeam] += defendPoints;
 				trap_SendServerCommand( -1, va( "print \"%s^7 team defended the hill! (+%d)\\n\"",
 					( presentTeam == TEAM_RED ) ? "^1Red" : "^4Blue", defendPoints ) );
+				G_LogPrintf( "koth_hill_defended: team=%i points=%i attackTeam=%i contested_ms=%i\n",
+					presentTeam, defendPoints, teamgame.kothLastAttackingTeam, contestedDuration );
+
+				for ( ci = 0; ci < level.maxclients; ci++ ) {
+					gclient_t *pl = &level.clients[ci];
+					gentity_t *pe = &g_entities[ci];
+					if ( pl->pers.connected != CON_CONNECTED ) continue;
+					if ( pl->sess.sessionTeam != presentTeam ) continue;
+					if ( pl->ps.stats[STAT_HEALTH] <= 0 ) continue;
+					if ( pe->r.currentOrigin[0] >= hill->r.absmin[0] &&
+					     pe->r.currentOrigin[0] <= hill->r.absmax[0] &&
+					     pe->r.currentOrigin[1] >= hill->r.absmin[1] &&
+					     pe->r.currentOrigin[1] <= hill->r.absmax[1] &&
+					     pe->r.currentOrigin[2] >= hill->r.absmin[2] &&
+					     pe->r.currentOrigin[2] <= hill->r.absmax[2] ) {
+						pl->ps.persistant[PERS_DEFEND_COUNT]++;
+					}
+				}
 			}
+
+			teamgame.kothLastAttackingTeam = TEAM_FREE;
 
 			// Owner is defending - award team score tick and track time-on-hill stat tick
 			if ( level.time >= teamgame.kothNextTick ) {
@@ -1569,6 +1610,7 @@ void KOTH_Think( void ) {
 			if ( teamgame.kothCaptureStart == 0 || teamgame.kothCapturingTeam != presentTeam ) {
 				teamgame.kothCaptureStart = level.time;
 				teamgame.kothCapturingTeam = presentTeam;
+				teamgame.kothLastAttackingTeam = presentTeam;
 			}
 
 			pct = (int)( 100.0f * ( level.time - teamgame.kothCaptureStart ) / captureTime );
@@ -1580,8 +1622,11 @@ void KOTH_Think( void ) {
 				teamgame.kothOwner = presentTeam;
 				teamgame.kothCaptureStart = 0;
 				teamgame.kothCapturingTeam = TEAM_FREE;
+				teamgame.kothLastAttackingTeam = TEAM_FREE;
 				teamgame.kothNextTick = level.time + 1000;
 				CalculateRanks();
+				G_LogPrintf( "koth_hill_captured: team=%i points=%i time=%i\n",
+					presentTeam, capturePoints, level.time );
 				trap_SendServerCommand( -1, va( "print \"%s^7 team captured the hill! (+%d)\\n\"",
 					( presentTeam == TEAM_RED ) ? "^1Red" : "^4Blue", capturePoints ) );
 				KOTH_SetHillStatus( presentTeam, qfalse, 100 );
