@@ -838,6 +838,8 @@ typedef struct {
 	menufield_s			kothPtsTick;
 	menufield_s			kothPtsCapture;
 	menufield_s			kothPtsDefend;
+	menuradiobutton_s	kothOvertime;
+	menufield_s			kothOvertimeHold;
 	menuradiobutton_s	friendlyfire;
 	menufield_s			hostname;
     menulist_s          dominationSpawnStyle;
@@ -968,6 +970,8 @@ static void ServerOptions_Start( void ) {
 	int		kothPtsTick;
 	int		kothPtsCapture;
 	int		kothPtsDefend;
+	int		kothOvertime;
+	int		kothOvertimeHoldSec;
 	int		pure;
 	int		trackLength;
 	int		reversed;
@@ -983,6 +987,8 @@ static void ServerOptions_Start( void ) {
 	kothPtsTick	 = atoi( s_serveroptions.kothPtsTick.field.buffer );
 	kothPtsCapture = atoi( s_serveroptions.kothPtsCapture.field.buffer );
 	kothPtsDefend = atoi( s_serveroptions.kothPtsDefend.field.buffer );
+	kothOvertime = s_serveroptions.kothOvertime.curvalue;
+	kothOvertimeHoldSec = atoi( s_serveroptions.kothOvertimeHold.field.buffer );
 	dominationScoreInterval = atoi( s_serveroptions.dominationScoreInterval.field.buffer );
 	dominationCaptureDelay = atoi( s_serveroptions.dominationCaptureDelay.field.buffer );
 	dedicated	 = s_serveroptions.dedicated.curvalue;
@@ -1058,6 +1064,8 @@ default:
 			int kothTick = kothPtsTick;
 			int kothCapture = kothPtsCapture;
 			int kothDefend = kothPtsDefend;
+			int kothOtEnabled = kothOvertime;
+			int kothOtHoldMs = kothOvertimeHoldSec * 1000;
 			if ( kothScoreWin <= 0 ) {
 				kothScoreWin = (int)trap_Cvar_VariableValue( "ui_koth_scorelimit" );
 			}
@@ -1074,6 +1082,15 @@ default:
 			if ( kothDefend < 0 ) {
 				kothDefend = (int)trap_Cvar_VariableValue( "ui_koth_pts_defend" );
 			}
+			if ( kothOtHoldMs <= 0 ) {
+				kothOtHoldMs = (int)trap_Cvar_VariableValue( "ui_koth_overtime_hold" );
+			}
+			if ( kothOtHoldMs <= 0 ) {
+				kothOtHoldMs = (int)trap_Cvar_VariableValue( "koth_overtime_hold" );
+			}
+			if ( kothOtHoldMs <= 0 ) {
+				kothOtHoldMs = 10000;
+			}
 
 			trap_Cvar_SetValue( "g_kothScoreWin",    Com_Clamp( 1, 9999, kothScoreWin ) );
 			trap_Cvar_SetValue( "g_kothCaptureTime", 3000 );
@@ -1081,10 +1098,14 @@ default:
 			trap_Cvar_SetValue( "koth_pts_tick", Com_Clamp( 0, 999, kothTick ) );
 			trap_Cvar_SetValue( "koth_pts_capture", Com_Clamp( 0, 999, kothCapture ) );
 			trap_Cvar_SetValue( "koth_pts_defend", Com_Clamp( 0, 999, kothDefend ) );
+			trap_Cvar_SetValue( "koth_overtime", Com_Clamp( 0, 1, kothOtEnabled ) );
+			trap_Cvar_SetValue( "koth_overtime_hold", Com_Clamp( 1000, 120000, kothOtHoldMs ) );
 			trap_Cvar_SetValue( "ui_koth_scorelimit", kothScoreWin );
 			trap_Cvar_SetValue( "ui_koth_pts_tick", Com_Clamp( 0, 999, kothTick ) );
 			trap_Cvar_SetValue( "ui_koth_pts_capture", Com_Clamp( 0, 999, kothCapture ) );
 			trap_Cvar_SetValue( "ui_koth_pts_defend", Com_Clamp( 0, 999, kothDefend ) );
+			trap_Cvar_SetValue( "ui_koth_overtime", Com_Clamp( 0, 1, kothOtEnabled ) );
+			trap_Cvar_SetValue( "ui_koth_overtime_hold", Com_Clamp( 1000, 120000, kothOtHoldMs ) );
 			trap_Cvar_SetValue( "ui_koth_timelimit",  timelimit );
 			trap_Cvar_SetValue( "ui_koth_friendly",   friendlyfire );
 			break;
@@ -1648,6 +1669,19 @@ static void ServerOptions_SetMenuItems( void ) {
 				Com_sprintf( s_serveroptions.kothPtsCapture.field.buffer, 4, "%i", kothCapture );
 				Com_sprintf( s_serveroptions.kothPtsDefend.field.buffer, 4, "%i", kothDefend );
 			}
+			{
+				int kothOtEnable = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_koth_overtime" ) );
+				int kothOtHoldMs = (int)Com_Clamp( 1000, 120000, trap_Cvar_VariableValue( "ui_koth_overtime_hold" ) );
+
+				if ( trap_Cvar_VariableValue( "ui_koth_overtime_hold" ) <= 0 ) {
+					kothOtHoldMs = (int)Com_Clamp( 1000, 120000, trap_Cvar_VariableValue( "koth_overtime_hold" ) );
+				}
+
+				trap_Cvar_SetValue( "ui_koth_overtime", kothOtEnable );
+				trap_Cvar_SetValue( "ui_koth_overtime_hold", kothOtHoldMs );
+				s_serveroptions.kothOvertime.curvalue = kothOtEnable;
+				Com_sprintf( s_serveroptions.kothOvertimeHold.field.buffer, 4, "%i", kothOtHoldMs / 1000 );
+			}
 			Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_koth_timelimit" ) ) );
 			s_serveroptions.friendlyfire.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_koth_friendly" ) );
 			break;
@@ -1882,6 +1916,23 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 		s_serveroptions.kothPtsDefend.generic.statusbar = ServerOptions_StatusBar;
 		s_serveroptions.kothPtsDefend.field.widthInChars = 3;
 		s_serveroptions.kothPtsDefend.field.maxchars	= 3;
+		y += BIGCHAR_HEIGHT+2;
+
+		s_serveroptions.kothOvertime.generic.type     = MTYPE_RADIOBUTTON;
+		s_serveroptions.kothOvertime.generic.flags    = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+		s_serveroptions.kothOvertime.generic.x        = OPTIONS_X;
+		s_serveroptions.kothOvertime.generic.y        = y;
+		s_serveroptions.kothOvertime.generic.name     = "Overtime:";
+		y += BIGCHAR_HEIGHT+2;
+
+		s_serveroptions.kothOvertimeHold.generic.type       = MTYPE_FIELD;
+		s_serveroptions.kothOvertimeHold.generic.name       = "OT Hold (s):";
+		s_serveroptions.kothOvertimeHold.generic.flags      = QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+		s_serveroptions.kothOvertimeHold.generic.x          = OPTIONS_X;
+		s_serveroptions.kothOvertimeHold.generic.y          = y;
+		s_serveroptions.kothOvertimeHold.generic.statusbar  = ServerOptions_StatusBar;
+		s_serveroptions.kothOvertimeHold.field.widthInChars = 3;
+		s_serveroptions.kothOvertimeHold.field.maxchars     = 3;
 		y += BIGCHAR_HEIGHT+2;
 	}
 
@@ -2130,6 +2181,8 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.kothPtsTick );
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.kothPtsCapture );
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.kothPtsDefend );
+		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.kothOvertime );
+		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.kothOvertimeHold );
 	}
 
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.timelimit );
