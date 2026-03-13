@@ -111,6 +111,8 @@ vmCvar_t    g_kothRespawnWave;
 vmCvar_t    g_kothPtsTick;
 vmCvar_t    g_kothPtsCapture;
 vmCvar_t    g_kothPtsDefend;
+vmCvar_t    g_kothOvertime;
+vmCvar_t    g_kothOvertimeHoldTime;
 // Q3Rally Code END - KOTH
 #ifdef MISSIONPACK
 vmCvar_t	g_obeliskHealth;
@@ -338,7 +340,9 @@ static cvarTable_t		gameCvarTable[] = {
 		{ &g_kothRespawnWave, "g_kothRespawnWave", "5000", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse },
 		{ &g_kothPtsTick, "koth_pts_tick", "1", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse },
 		{ &g_kothPtsCapture, "koth_pts_capture", "5", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse },
-		{ &g_kothPtsDefend, "koth_pts_defend", "3", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse }
+		{ &g_kothPtsDefend, "koth_pts_defend", "3", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse },
+		{ &g_kothOvertime, "koth_overtime", "1", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse },
+		{ &g_kothOvertimeHoldTime, "koth_overtime_hold", "10000", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse }
 		// Q3Rally Code END - KOTH
 };
 
@@ -2292,6 +2296,13 @@ void CheckExitRules( void ) {
 
 	if ( g_timelimit.integer && !level.warmupTime ) {
 		if ( level.time - level.startTime >= g_timelimit.integer*60000 ) {
+			if ( g_gametype.integer == GT_KOTH ) {
+				if ( KOTH_HandleOvertime() ) {
+					trap_SendServerCommand( -1, "print \"KOTH overtime finished.\n\"" );
+					LogExit( "KOTH overtime finished." );
+				}
+				return;
+			}
 			trap_SendServerCommand( -1, "print \"Timelimit hit.\n\"");
 			LogExit( "Timelimit hit." );
 			return;

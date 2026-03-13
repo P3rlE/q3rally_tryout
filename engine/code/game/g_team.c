@@ -34,6 +34,8 @@ extern vmCvar_t g_kothRespawnWave;
 extern vmCvar_t g_kothPtsTick;
 extern vmCvar_t g_kothPtsCapture;
 extern vmCvar_t g_kothPtsDefend;
+extern vmCvar_t g_kothOvertime;
+extern vmCvar_t g_kothOvertimeHoldTime;
 // Q3Rally Code END - KOTH
 
 // Q3Rally Code Start
@@ -65,6 +67,9 @@ typedef struct teamgame_s {
 	int				kothNextTick;
 	int				kothContestedStart;
 	int				kothLastAttackingTeam;
+	int				kothOvertimeActive;
+	int				kothOvertimeOwner;
+	int				kothOvertimeOwnerSince;
 // Q3Rally Code END
 } teamgame_t;
 
@@ -118,6 +123,9 @@ void Team_InitGame( void ) {
 		teamgame.kothNextTick = 0;
 		teamgame.kothContestedStart = 0;
 		teamgame.kothLastAttackingTeam = TEAM_FREE;
+		teamgame.kothOvertimeActive = qfalse;
+		teamgame.kothOvertimeOwner = TEAM_FREE;
+		teamgame.kothOvertimeOwnerSince = 0;
 		KOTH_SetHillStatus( TEAM_FREE, qfalse, 0 );
 		break;
 
@@ -1635,6 +1643,60 @@ void KOTH_Think( void ) {
 			}
 		}
 	}
+}
+
+/*
+===================
+KOTH_HandleOvertime
+
+Returns qtrue when KOTH should end after timelimit handling.
+Returns qfalse while Overtime remains active.
+===================
+*/
+qboolean KOTH_HandleOvertime( void ) {
+	int holdMs = g_kothOvertimeHoldTime.integer;
+
+	if ( g_kothOvertime.integer <= 0 ) {
+		return qtrue;
+	}
+
+	if ( holdMs <= 0 ) {
+		holdMs = 10000;
+	}
+
+	if ( !teamgame.kothOvertimeActive ) {
+		if ( !teamgame.kothContested ) {
+			return qtrue;
+		}
+
+		teamgame.kothOvertimeActive = qtrue;
+		teamgame.kothOvertimeOwner = TEAM_FREE;
+		teamgame.kothOvertimeOwnerSince = 0;
+		trap_SendServerCommand( -1, "print \"KOTH OVERTIME! Hold hill uncontested to win.\n\"" );
+		G_LogPrintf( "koth_overtime_start: time=%i owner=%i\n", level.time, teamgame.kothOwner );
+		return qfalse;
+	}
+
+	if ( teamgame.kothContested || teamgame.kothOwner == TEAM_FREE ) {
+		teamgame.kothOvertimeOwner = TEAM_FREE;
+		teamgame.kothOvertimeOwnerSince = 0;
+		return qfalse;
+	}
+
+	if ( teamgame.kothOvertimeOwner != teamgame.kothOwner ) {
+		teamgame.kothOvertimeOwner = teamgame.kothOwner;
+		teamgame.kothOvertimeOwnerSince = level.time;
+		G_LogPrintf( "koth_overtime_hold_start: team=%i time=%i\n", teamgame.kothOvertimeOwner, level.time );
+		return qfalse;
+	}
+
+	if ( teamgame.kothOvertimeOwnerSince > 0 && level.time - teamgame.kothOvertimeOwnerSince >= holdMs ) {
+		G_LogPrintf( "koth_overtime_end: team=%i hold_ms=%i\n", teamgame.kothOvertimeOwner, holdMs );
+		teamgame.kothOvertimeActive = qfalse;
+		return qtrue;
+	}
+
+	return qfalse;
 }
 // Q3Rally Code END - KOTH
 
