@@ -1398,6 +1398,8 @@ typedef struct {
     int             kothOwner;      /* TEAM_FREE / TEAM_RED / TEAM_BLUE */
     int             kothContested;  /* qtrue when both teams in hill */
     int             kothCapturePct; /* 0-100 capture progress */
+	vec3_t			kothHillOrigin;
+	qboolean		kothHillOriginValid;
 	qboolean  newHud;
 
 	//

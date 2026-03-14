@@ -23,6 +23,70 @@ This file is part of q3rally source code.
 #include "cg_local.h"
 #include "cg_hud_elements.h"
 
+/* -----------------------------------------------------------------------
+   CG_AddKOTHHillIndicatorToScene
+   Adds a pulse/ring style world indicator for the KOTH hill. Used in
+   main world rendering and minimap rendering.
+   ----------------------------------------------------------------------- */
+void CG_AddKOTHHillIndicatorToScene( qboolean minimapPass ) {
+	refEntity_t marker;
+	vec4_t pulseColor;
+	float pulse;
+
+	if ( cgs.gametype != GT_KOTH ) {
+		return;
+	}
+
+	if ( !cgs.kothHillOriginValid ) {
+		return;
+	}
+
+	Com_Memset( &marker, 0, sizeof( marker ) );
+	marker.reType = RT_SPRITE;
+	VectorCopy( cgs.kothHillOrigin, marker.origin );
+
+	if ( cgs.kothContested ) {
+		marker.shaderRGBA[0] = 255;
+		marker.shaderRGBA[1] = 220;
+		marker.shaderRGBA[2] = 64;
+	} else if ( cgs.kothOwner == TEAM_RED ) {
+		marker.shaderRGBA[0] = 255;
+		marker.shaderRGBA[1] = 72;
+		marker.shaderRGBA[2] = 72;
+	} else if ( cgs.kothOwner == TEAM_BLUE ) {
+		marker.shaderRGBA[0] = 96;
+		marker.shaderRGBA[1] = 160;
+		marker.shaderRGBA[2] = 255;
+	} else {
+		marker.shaderRGBA[0] = 240;
+		marker.shaderRGBA[1] = 240;
+		marker.shaderRGBA[2] = 240;
+	}
+	marker.shaderRGBA[3] = 220;
+
+	marker.customShader = cgs.media.selectShader;
+	marker.radius = minimapPass ? 42.0f : 30.0f;
+	trap_R_AddRefEntityToScene( &marker );
+
+	/* subtle pulse halo around the ring */
+	pulse = 0.5f + 0.5f * sin( (float)cg.time * 0.009f );
+	pulseColor[0] = marker.shaderRGBA[0] / 255.0f;
+	pulseColor[1] = marker.shaderRGBA[1] / 255.0f;
+	pulseColor[2] = marker.shaderRGBA[2] / 255.0f;
+	pulseColor[3] = 0.25f + pulse * 0.35f;
+
+	Com_Memset( &marker, 0, sizeof( marker ) );
+	marker.reType = RT_SPRITE;
+	VectorCopy( cgs.kothHillOrigin, marker.origin );
+	marker.customShader = cgs.media.sigilShader;
+	marker.shaderRGBA[0] = (byte)( pulseColor[0] * 255.0f );
+	marker.shaderRGBA[1] = (byte)( pulseColor[1] * 255.0f );
+	marker.shaderRGBA[2] = (byte)( pulseColor[2] * 255.0f );
+	marker.shaderRGBA[3] = (byte)( pulseColor[3] * 255.0f );
+	marker.radius = minimapPass ? ( 60.0f + 25.0f * pulse ) : ( 44.0f + 18.0f * pulse );
+	trap_R_AddRefEntityToScene( &marker );
+}
+
 
 /* -----------------------------------------------------------------------
    CG_AddObjectsToScene
@@ -121,6 +185,7 @@ void CG_DrawMMap( float x, float y, float w, float h ) {
 	cg.mmapRefdef.rdflags = 0;
 
 	CG_AddObjectsToScene( cg_mmap_renderLevel.integer );
+	CG_AddKOTHHillIndicatorToScene( qtrue );
 
 	if ( cg_mmap_renderLevel.integer & RL_PLAYERS )
 		CG_AddCEntity( &cg_entities[cg.snap->ps.clientNum] );

@@ -83,7 +83,7 @@ void Team_SetSigilStatus( int sigilNum, sigilStatus_t status );
 void Init_Sigils( void );
 // Q3Rally Code END
 // Q3Rally Code Start - KOTH
-void KOTH_SetHillStatus( int owner, int contested, int pct );
+void KOTH_SetHillStatus( int owner, int contested, int pct, const vec3_t hillOrigin );
 void KOTH_Think( void );
 // Q3Rally Code END - KOTH
 
@@ -114,6 +114,8 @@ void Team_InitGame( void ) {
 // Q3Rally Code Start
 		
 	case GT_KOTH:
+	{
+		vec3_t initOrigin = { 0.0f, 0.0f, 0.0f };
 		teamgame.kothOwner = TEAM_FREE;
 		teamgame.kothContested = qfalse;
 		teamgame.kothCaptureStart = 0;
@@ -126,8 +128,9 @@ void Team_InitGame( void ) {
 		teamgame.kothOvertimeActive = qfalse;
 		teamgame.kothOvertimeOwner = TEAM_FREE;
 		teamgame.kothOvertimeOwnerSince = 0;
-		KOTH_SetHillStatus( TEAM_FREE, qfalse, 0 );
+		KOTH_SetHillStatus( TEAM_FREE, qfalse, 0, initOrigin );
 		break;
+	}
 
 	case GT_DOMINATION:
 	  Init_Sigils();
@@ -1430,14 +1433,49 @@ int Sigil_Touch( gentity_t *ent, gentity_t *other ) {
 KOTH_SetHillStatus
 
 Encodes hill state into CS_KOTHSTATUS configstring:
-  "<owner> <contested> <capture_pct>"
+  "<owner> <contested> <capture_pct> <x> <y> <z>"
   owner: 0=free 1=red 2=blue
   contested: 0 or 1
   capture_pct: 0-100
 ===================
 */
-void KOTH_SetHillStatus( int owner, int contested, int pct ) {
-	trap_SetConfigstring( CS_KOTHSTATUS, va( "%i %i %i", owner, contested, pct ) );
+void KOTH_SetHillStatus( int owner, int contested, int pct, const vec3_t hillOrigin ) {
+	trap_SetConfigstring( CS_KOTHSTATUS, va( "%i %i %i %i %i %i",
+		owner,
+		contested,
+		pct,
+		(int)hillOrigin[0],
+		(int)hillOrigin[1],
+		(int)hillOrigin[2] ) );
+}
+
+qboolean KOTH_IsClientInHill( int clientNum ) {
+	gentity_t	*ent;
+	gentity_t	*hill = NULL;
+	gentity_t	*player;
+
+	if ( clientNum < 0 || clientNum >= level.maxclients ) {
+		return qfalse;
+	}
+
+	for ( ent = g_entities; ent < &g_entities[level.num_entities]; ent++ ) {
+		if ( ent->inuse && !Q_stricmp( ent->classname, "trigger_koth_hill" ) ) {
+			hill = ent;
+			break;
+		}
+	}
+
+	if ( !hill ) {
+		return qfalse;
+	}
+
+	player = &g_entities[clientNum];
+	return ( player->r.currentOrigin[0] >= hill->r.absmin[0] &&
+		player->r.currentOrigin[0] <= hill->r.absmax[0] &&
+		player->r.currentOrigin[1] >= hill->r.absmin[1] &&
+		player->r.currentOrigin[1] <= hill->r.absmax[1] &&
+		player->r.currentOrigin[2] >= hill->r.absmin[2] &&
+		player->r.currentOrigin[2] <= hill->r.absmax[2] ) ? qtrue : qfalse;
 }
 
 qboolean KOTH_IsClientInHill( int clientNum ) {
@@ -1488,6 +1526,7 @@ void KOTH_Think( void ) {
 	int			defendPoints;
 	qboolean	wasContested;
 	int			contestedDuration;
+	vec3_t		hillCenter;
 
 	if ( level.warmupTime ) {
 		return;
@@ -1505,6 +1544,10 @@ void KOTH_Think( void ) {
 	if ( !hill ) {
 		return;
 	}
+
+	hillCenter[0] = ( hill->r.absmin[0] + hill->r.absmax[0] ) * 0.5f;
+	hillCenter[1] = ( hill->r.absmin[1] + hill->r.absmax[1] ) * 0.5f;
+	hillCenter[2] = hill->r.absmax[2] + 24.0f;
 
 	// Count players inside the hill bounding box
 	for ( i = 0; i < level.maxclients; i++ ) {
@@ -1568,7 +1611,7 @@ void KOTH_Think( void ) {
 		teamgame.kothContested = qtrue;
 		teamgame.kothCaptureStart = 0;
 		teamgame.kothCapturingTeam = TEAM_FREE;
-		KOTH_SetHillStatus( teamgame.kothOwner, qtrue, 0 );
+		KOTH_SetHillStatus( teamgame.kothOwner, qtrue, 0, hillCenter );
 		return;
 	}
 
@@ -1589,7 +1632,7 @@ void KOTH_Think( void ) {
 		teamgame.kothCaptureStart = 0;
 		teamgame.kothCapturingTeam = TEAM_FREE;
 		teamgame.kothLastAttackingTeam = TEAM_FREE;
-		KOTH_SetHillStatus( teamgame.kothOwner, qfalse, 0 );
+		KOTH_SetHillStatus( teamgame.kothOwner, qfalse, 0, hillCenter );
 		return;
 	}
 
@@ -1660,7 +1703,7 @@ void KOTH_Think( void ) {
 				}
 				CalculateRanks();
 			}
-			KOTH_SetHillStatus( presentTeam, qfalse, 100 );
+			KOTH_SetHillStatus( presentTeam, qfalse, 100, hillCenter );
 		} else {
 			// Captor is capturing / neutralizing
 			int captureTime = g_kothCaptureTime.integer;
@@ -1706,9 +1749,9 @@ void KOTH_Think( void ) {
 				}
 				trap_SendServerCommand( -1, va( "print \"%s^7 team captured the hill! (+%d)\\n\"",
 					( presentTeam == TEAM_RED ) ? "^1Red" : "^4Blue", capturePoints ) );
-				KOTH_SetHillStatus( presentTeam, qfalse, 100 );
+				KOTH_SetHillStatus( presentTeam, qfalse, 100, hillCenter );
 			} else {
-				KOTH_SetHillStatus( teamgame.kothOwner, qfalse, pct );
+				KOTH_SetHillStatus( teamgame.kothOwner, qfalse, pct, hillCenter );
 			}
 		}
 	}

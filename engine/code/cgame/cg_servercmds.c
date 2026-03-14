@@ -379,6 +379,25 @@ static void CG_ParseKothStatus( void ) {
 	str = strchr( str, ' ' ); if ( str ) str++; else return;
 	cgs.kothCapturePct = atoi( str );
 
+	/* Optional hill origin payload: "owner contested pct x y z" */
+	cgs.kothHillOriginValid = qfalse;
+	str = strchr( str, ' ' );
+	if ( str ) {
+		str++;
+		cgs.kothHillOrigin[0] = atof( str );
+		str = strchr( str, ' ' );
+		if ( str ) {
+			str++;
+			cgs.kothHillOrigin[1] = atof( str );
+			str = strchr( str, ' ' );
+			if ( str ) {
+				str++;
+				cgs.kothHillOrigin[2] = atof( str );
+				cgs.kothHillOriginValid = qtrue;
+			}
+		}
+	}
+
 	if ( !cg.kothStatusInitialized ) {
 		cg.kothStatusInitialized = qtrue;
 		cg.kothLastOwner = cgs.kothOwner;
