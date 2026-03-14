@@ -463,6 +463,8 @@ typedef struct {
 	int				damageDealt;
 	int				damageTaken;
 	int				position;
+	int				kothHillKills;
+	int				kothContestTimeMs;
 	int				rankTier;
 } score_t;
 
@@ -778,6 +780,10 @@ typedef struct {
 	int			countDownEnd;
 	int			kothDeathTime;		// serverTime when local player entered PM_DEAD in KOTH
 	int			kothRespawnAt;		// serverTime when next KOTH respawn wave should trigger
+	int			kothLastOwner;		// previous owner seen from CS_KOTHSTATUS
+	int			kothLastContested;	// previous contested flag seen from CS_KOTHSTATUS
+	int			kothStatusInitialized;
+	int			kothLossFlashUntil;	// local-team-loss tint end time
 
 	// low ammo warning state
 	int			lowAmmoWarning;		// 1 = low, 2 = empty
@@ -925,6 +931,10 @@ typedef struct {
     qhandle_t   bluesigilShader;
     qhandle_t   greensigilShader;
     qhandle_t   yellowsigilShader;
+	/* KOTH hill indicator shaders */
+	qhandle_t   kothHillMarkerNeutralShader;
+	qhandle_t   kothHillMarkerRedShader;
+	qhandle_t   kothHillMarkerBlueShader;
 	qhandle_t	flagPoleModel;
 	qhandle_t	flagFlapModel;
 
@@ -1392,6 +1402,8 @@ typedef struct {
     int             kothOwner;      /* TEAM_FREE / TEAM_RED / TEAM_BLUE */
     int             kothContested;  /* qtrue when both teams in hill */
     int             kothCapturePct; /* 0-100 capture progress */
+	vec3_t			kothHillOrigin;
+	qboolean		kothHillOriginValid;
 	qboolean  newHud;
 
 	//

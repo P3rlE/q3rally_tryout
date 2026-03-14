@@ -23,6 +23,91 @@ This file is part of q3rally source code.
 #include "cg_local.h"
 #include "cg_hud_elements.h"
 
+/* -----------------------------------------------------------------------
+   CG_AddKOTHHillIndicatorToScene
+   Adds a pulse/ring style world indicator for the KOTH hill. Used in
+   main world rendering and minimap rendering.
+   ----------------------------------------------------------------------- */
+void CG_AddKOTHHillIndicatorToScene( qboolean minimapPass ) {
+	refEntity_t marker;
+	float pulse;
+	qhandle_t hillMarkerShader;
+
+	if ( cgs.gametype != GT_KOTH ) {
+		return;
+	}
+
+	if ( !cgs.kothHillOriginValid ) {
+		return;
+	}
+
+	hillMarkerShader = cgs.media.kothHillMarkerNeutralShader;
+	if ( cgs.kothOwner == TEAM_RED ) {
+		hillMarkerShader = cgs.media.kothHillMarkerRedShader;
+	} else if ( cgs.kothOwner == TEAM_BLUE ) {
+		hillMarkerShader = cgs.media.kothHillMarkerBlueShader;
+	}
+
+	Com_Memset( &marker, 0, sizeof( marker ) );
+	marker.reType = RT_SPRITE;
+	VectorCopy( cgs.kothHillOrigin, marker.origin );
+
+	if ( cgs.kothContested ) {
+		marker.shaderRGBA[0] = 255;
+		marker.shaderRGBA[1] = 220;
+		marker.shaderRGBA[2] = 64;
+	} else if ( cgs.kothOwner == TEAM_RED ) {
+		/* Match hillmarker_red base color: #ff0000 */
+		marker.shaderRGBA[0] = 255;
+		marker.shaderRGBA[1] = 0;
+		marker.shaderRGBA[2] = 0;
+	} else if ( cgs.kothOwner == TEAM_BLUE ) {
+		/* Match hillmarker_blue base color: #000cff */
+		marker.shaderRGBA[0] = 0;
+		marker.shaderRGBA[1] = 12;
+		marker.shaderRGBA[2] = 255;
+	} else {
+		marker.shaderRGBA[0] = 240;
+		marker.shaderRGBA[1] = 240;
+		marker.shaderRGBA[2] = 240;
+	}
+	marker.shaderRGBA[3] = 220;
+
+	pulse = 0.5f + 0.5f * sin( (float)cg.time * 0.009f );
+
+	/* use select shader as a circular pulse around the hill marker */
+	marker.customShader = cgs.media.selectShader;
+	marker.shaderRGBA[3] = (byte)( 110 + 100 * pulse );
+	marker.radius = minimapPass ? ( 34.0f + 16.0f * pulse ) : ( 24.0f + 10.0f * pulse );
+	trap_R_AddRefEntityToScene( &marker );
+
+	/* keep hill marker stable so only the circular select ring pulses */
+	Com_Memset( &marker, 0, sizeof( marker ) );
+	marker.reType = RT_SPRITE;
+	VectorCopy( cgs.kothHillOrigin, marker.origin );
+	marker.customShader = hillMarkerShader;
+	if ( cgs.kothContested ) {
+		marker.shaderRGBA[0] = 255;
+		marker.shaderRGBA[1] = 220;
+		marker.shaderRGBA[2] = 64;
+	} else if ( cgs.kothOwner == TEAM_RED ) {
+		marker.shaderRGBA[0] = 255;
+		marker.shaderRGBA[1] = 0;
+		marker.shaderRGBA[2] = 0;
+	} else if ( cgs.kothOwner == TEAM_BLUE ) {
+		marker.shaderRGBA[0] = 0;
+		marker.shaderRGBA[1] = 12;
+		marker.shaderRGBA[2] = 255;
+	} else {
+		marker.shaderRGBA[0] = 240;
+		marker.shaderRGBA[1] = 240;
+		marker.shaderRGBA[2] = 240;
+	}
+	marker.shaderRGBA[3] = 170;
+	marker.radius = minimapPass ? 58.0f : 42.0f;
+	trap_R_AddRefEntityToScene( &marker );
+}
+
 
 /* -----------------------------------------------------------------------
    CG_AddObjectsToScene
@@ -121,6 +206,7 @@ void CG_DrawMMap( float x, float y, float w, float h ) {
 	cg.mmapRefdef.rdflags = 0;
 
 	CG_AddObjectsToScene( cg_mmap_renderLevel.integer );
+	CG_AddKOTHHillIndicatorToScene( qtrue );
 
 	if ( cg_mmap_renderLevel.integer & RL_PLAYERS )
 		CG_AddCEntity( &cg_entities[cg.snap->ps.clientNum] );

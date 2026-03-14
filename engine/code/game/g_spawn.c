@@ -720,6 +720,7 @@ void LoadBezierPathFile_Think(gentity_t *ent) {
 Marks the King of the Hill control zone.
 Place a brush entity covering the hill area.
 KOTH_Think() detects player presence via bounding box overlap.
+"indicatorHeight" vertical offset above hill top for HUD/world indicator origin (default 24)
 */
 void SP_trigger_koth_hill( gentity_t *ent ) {
 	if ( g_gametype.integer != GT_KOTH ) {
@@ -731,10 +732,15 @@ void SP_trigger_koth_hill( gentity_t *ent ) {
 	trap_SetBrushModel( ent, ent->model );
 	ent->r.contents = CONTENTS_TRIGGER;	// passthrough volume, not solid
 	ent->r.svFlags = SVF_NOCLIENT;		// invisible to clients, no physical collision
+
+	// mapper-configurable vertical indicator offset above hill top
+	if ( !G_SpawnFloat( "indicatorHeight", "24", &ent->speed ) ) {
+		ent->speed = 24.0f;
+	}
 	trap_LinkEntity( ent );
 
-	G_Printf( "^2KOTH: trigger_koth_hill spawned at (%.0f %.0f %.0f)\n",
-		ent->s.origin[0], ent->s.origin[1], ent->s.origin[2] );
+	G_Printf( "^2KOTH: trigger_koth_hill spawned at (%.0f %.0f %.0f), indicatorHeight=%.1f\n",
+		ent->s.origin[0], ent->s.origin[1], ent->s.origin[2], ent->speed );
 }
 // Q3Rally Code END - KOTH
 
