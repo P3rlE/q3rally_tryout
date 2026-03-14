@@ -30,9 +30,7 @@ This file is part of q3rally source code.
    ----------------------------------------------------------------------- */
 void CG_AddKOTHHillIndicatorToScene( qboolean minimapPass ) {
 	refEntity_t marker;
-	vec4_t pulseColor;
 	float pulse;
-	float inversePulse;
 	qhandle_t hillMarkerShader;
 
 	if ( cgs.gametype != GT_KOTH ) {
@@ -76,29 +74,37 @@ void CG_AddKOTHHillIndicatorToScene( qboolean minimapPass ) {
 	marker.shaderRGBA[3] = 220;
 
 	pulse = 0.5f + 0.5f * sin( (float)cg.time * 0.009f );
-	inversePulse = 1.0f - pulse;
 
-	/* base select ring pulses opposite to hillmarker */
+	/* use select shader as a circular pulse around the hill marker */
 	marker.customShader = cgs.media.selectShader;
-	marker.shaderRGBA[3] = (byte)( 120 + 90 * inversePulse );
-	marker.radius = minimapPass ? ( 40.0f + 8.0f * inversePulse ) : ( 28.0f + 6.0f * inversePulse );
+	marker.shaderRGBA[3] = (byte)( 110 + 100 * pulse );
+	marker.radius = minimapPass ? ( 34.0f + 16.0f * pulse ) : ( 24.0f + 10.0f * pulse );
 	trap_R_AddRefEntityToScene( &marker );
 
-	/* hill marker layer pulse */
-	pulseColor[0] = marker.shaderRGBA[0] / 255.0f;
-	pulseColor[1] = marker.shaderRGBA[1] / 255.0f;
-	pulseColor[2] = marker.shaderRGBA[2] / 255.0f;
-	pulseColor[3] = 0.22f + pulse * 0.48f;
-
+	/* keep hill marker stable so only the circular select ring pulses */
 	Com_Memset( &marker, 0, sizeof( marker ) );
 	marker.reType = RT_SPRITE;
 	VectorCopy( cgs.kothHillOrigin, marker.origin );
 	marker.customShader = hillMarkerShader;
-	marker.shaderRGBA[0] = (byte)( pulseColor[0] * 255.0f );
-	marker.shaderRGBA[1] = (byte)( pulseColor[1] * 255.0f );
-	marker.shaderRGBA[2] = (byte)( pulseColor[2] * 255.0f );
-	marker.shaderRGBA[3] = (byte)( pulseColor[3] * 255.0f );
-	marker.radius = minimapPass ? ( 58.0f + 20.0f * pulse ) : ( 42.0f + 14.0f * pulse );
+	if ( cgs.kothContested ) {
+		marker.shaderRGBA[0] = 255;
+		marker.shaderRGBA[1] = 220;
+		marker.shaderRGBA[2] = 64;
+	} else if ( cgs.kothOwner == TEAM_RED ) {
+		marker.shaderRGBA[0] = 255;
+		marker.shaderRGBA[1] = 0;
+		marker.shaderRGBA[2] = 0;
+	} else if ( cgs.kothOwner == TEAM_BLUE ) {
+		marker.shaderRGBA[0] = 0;
+		marker.shaderRGBA[1] = 12;
+		marker.shaderRGBA[2] = 255;
+	} else {
+		marker.shaderRGBA[0] = 240;
+		marker.shaderRGBA[1] = 240;
+		marker.shaderRGBA[2] = 240;
+	}
+	marker.shaderRGBA[3] = 170;
+	marker.radius = minimapPass ? 58.0f : 42.0f;
 	trap_R_AddRefEntityToScene( &marker );
 }
 
