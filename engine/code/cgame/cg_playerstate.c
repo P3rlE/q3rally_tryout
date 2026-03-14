@@ -264,6 +264,10 @@ void CG_Respawn( void ) {
 	cg.car.initializeOnNextMove = qtrue;
 	cg.kothDeathTime = 0;
 	cg.kothRespawnAt = 0;
+	cg.kothLastOwner = TEAM_FREE;
+	cg.kothLastContested = qfalse;
+	cg.kothStatusInitialized = qfalse;
+	cg.kothLossFlashUntil = 0;
 // END
 }
 
@@ -633,4 +637,3 @@ void CG_TransitionPlayerState( playerState_t *ps, playerState_t *ops ) {
 		cg.duckTime = cg.time;
 	}
 }
-
