@@ -1626,6 +1626,7 @@ void KOTH_Think( void ) {
 
 			if ( pct >= 100 ) {
 				// Capture complete
+				int ci;
 				level.teamScores[presentTeam] += capturePoints;
 				teamgame.kothOwner = presentTeam;
 				teamgame.kothCaptureStart = 0;
@@ -1635,6 +1636,23 @@ void KOTH_Think( void ) {
 				CalculateRanks();
 				G_LogPrintf( "koth_hill_captured: team=%i points=%i time=%i\n",
 					presentTeam, capturePoints, level.time );
+
+				/* KOTH post-match stat: capture contribution (stored in assists field). */
+				for ( ci = 0; ci < level.maxclients; ci++ ) {
+					gclient_t *pl = &level.clients[ci];
+					gentity_t *pe = &g_entities[ci];
+					if ( pl->pers.connected != CON_CONNECTED ) continue;
+					if ( pl->sess.sessionTeam != presentTeam ) continue;
+					if ( pl->ps.stats[STAT_HEALTH] <= 0 ) continue;
+					if ( pe->r.currentOrigin[0] >= hill->r.absmin[0] &&
+					     pe->r.currentOrigin[0] <= hill->r.absmax[0] &&
+					     pe->r.currentOrigin[1] >= hill->r.absmin[1] &&
+					     pe->r.currentOrigin[1] <= hill->r.absmax[1] &&
+					     pe->r.currentOrigin[2] >= hill->r.absmin[2] &&
+					     pe->r.currentOrigin[2] <= hill->r.absmax[2] ) {
+						pl->ps.persistant[PERS_ASSIST_COUNT]++;
+					}
+				}
 				trap_SendServerCommand( -1, va( "print \"%s^7 team captured the hill! (+%d)\\n\"",
 					( presentTeam == TEAM_RED ) ? "^1Red" : "^4Blue", capturePoints ) );
 				KOTH_SetHillStatus( presentTeam, qfalse, 100 );
