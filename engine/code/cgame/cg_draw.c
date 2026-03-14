@@ -626,6 +626,33 @@ static void CG_DrawKOTH_RespawnWave_Internal( void ) {
 	CG_DrawBigString( 220, 390, msg, 0.85f );
 	CG_PopScreenPlacement();
 }
+
+static void CG_DrawKOTH_LossFlash( void ) {
+	vec4_t flashColor;
+	float remain;
+
+	if ( cgs.gametype != GT_KOTH ) {
+		return;
+	}
+
+	if ( cg.kothLossFlashUntil <= cg.time ) {
+		return;
+	}
+
+	remain = ( cg.kothLossFlashUntil - cg.time ) / 600.0f;
+	if ( remain < 0.0f ) {
+		remain = 0.0f;
+	}
+
+	flashColor[0] = 0.9f;
+	flashColor[1] = 0.1f;
+	flashColor[2] = 0.1f;
+	flashColor[3] = 0.25f * remain;
+
+	CG_SetScreenPlacement( PLACE_CENTER, PLACE_CENTER );
+	CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, flashColor );
+	CG_PopScreenPlacement();
+}
 // Q3Rally Code END - KOTH
 
 /*
@@ -3570,6 +3597,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
         }
 
 	CG_DrawKOTH_RespawnWave_Internal();
+	CG_DrawKOTH_LossFlash();
 
 	if ( cgs.gametype >= GT_TEAM ) {
 #ifndef MISSIONPACK
@@ -3657,5 +3685,4 @@ void CG_DrawActive( stereoFrame_t stereoView ) {
 	// draw status bar and other floating elements
  	CG_Draw2D(stereoView);
 }
-
 

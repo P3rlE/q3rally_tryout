@@ -23,6 +23,85 @@ This file is part of q3rally source code.
 #include "cg_local.h"
 #include "cg_hud_elements.h"
 
+/* -----------------------------------------------------------------------
+   CG_AddKOTHHillIndicatorToScene
+   Adds a pulse/ring style world indicator for the KOTH hill. Used in
+   main world rendering and minimap rendering.
+   ----------------------------------------------------------------------- */
+void CG_AddKOTHHillIndicatorToScene( qboolean minimapPass ) {
+	refEntity_t marker;
+	float pulse;
+	float inversePulse;
+	qhandle_t hillMarkerShader;
+	byte tintR;
+	byte tintG;
+	byte tintB;
+
+	if ( cgs.gametype != GT_KOTH ) {
+		return;
+	}
+
+	if ( !cgs.kothHillOriginValid ) {
+		return;
+	}
+
+	hillMarkerShader = cgs.media.kothHillMarkerNeutralShader;
+	if ( cgs.kothOwner == TEAM_RED ) {
+		hillMarkerShader = cgs.media.kothHillMarkerRedShader;
+	} else if ( cgs.kothOwner == TEAM_BLUE ) {
+		hillMarkerShader = cgs.media.kothHillMarkerBlueShader;
+	}
+
+	if ( cgs.kothContested ) {
+		tintR = 255;
+		tintG = 220;
+		tintB = 64;
+	} else if ( cgs.kothOwner == TEAM_RED ) {
+		/* Match hillmarker_red base color: #ff0000 */
+		tintR = 255;
+		tintG = 0;
+		tintB = 0;
+	} else if ( cgs.kothOwner == TEAM_BLUE ) {
+		/* Match hillmarker_blue base color: #000cff */
+		tintR = 0;
+		tintG = 12;
+		tintB = 255;
+	} else {
+		tintR = 240;
+		tintG = 240;
+		tintB = 240;
+	}
+
+	pulse = 0.5f + 0.5f * sin( (float)cg.time * 0.009f );
+	inversePulse = 1.0f - pulse;
+
+	/* use select2 as circular pulse ring and rotate it continuously */
+	Com_Memset( &marker, 0, sizeof( marker ) );
+	marker.reType = RT_SPRITE;
+	VectorCopy( cgs.kothHillOrigin, marker.origin );
+	marker.customShader = cgs.media.select2Shader;
+	marker.shaderRGBA[0] = tintR;
+	marker.shaderRGBA[1] = tintG;
+	marker.shaderRGBA[2] = tintB;
+	marker.shaderRGBA[3] = (byte)( 100 + 120 * pulse );
+	marker.rotation = (float)cg.time * 0.16f;
+	marker.radius = minimapPass ? ( 34.0f + 18.0f * pulse ) : ( 24.0f + 12.0f * pulse );
+	trap_R_AddRefEntityToScene( &marker );
+
+	/* hillmarker pulses in opposite phase, but does not rotate */
+	Com_Memset( &marker, 0, sizeof( marker ) );
+	marker.reType = RT_SPRITE;
+	VectorCopy( cgs.kothHillOrigin, marker.origin );
+	marker.customShader = hillMarkerShader;
+	marker.shaderRGBA[0] = tintR;
+	marker.shaderRGBA[1] = tintG;
+	marker.shaderRGBA[2] = tintB;
+	marker.shaderRGBA[3] = (byte)( 110 + 105 * inversePulse );
+	marker.rotation = 0.0f;
+	marker.radius = minimapPass ? ( 54.0f + 12.0f * inversePulse ) : ( 40.0f + 8.0f * inversePulse );
+	trap_R_AddRefEntityToScene( &marker );
+}
+
 
 /* -----------------------------------------------------------------------
    CG_AddObjectsToScene
@@ -121,6 +200,7 @@ void CG_DrawMMap( float x, float y, float w, float h ) {
 	cg.mmapRefdef.rdflags = 0;
 
 	CG_AddObjectsToScene( cg_mmap_renderLevel.integer );
+	CG_AddKOTHHillIndicatorToScene( qtrue );
 
 	if ( cg_mmap_renderLevel.integer & RL_PLAYERS )
 		CG_AddCEntity( &cg_entities[cg.snap->ps.clientNum] );
