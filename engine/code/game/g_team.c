@@ -1519,7 +1519,7 @@ void KOTH_Think( void ) {
 
 	hillCenter[0] = ( hill->r.absmin[0] + hill->r.absmax[0] ) * 0.5f;
 	hillCenter[1] = ( hill->r.absmin[1] + hill->r.absmax[1] ) * 0.5f;
-	hillCenter[2] = hill->r.absmax[2] + 24.0f;
+	hillCenter[2] = hill->r.absmax[2] + hill->speed;
 
 	// Count players inside the hill bounding box
 	for ( i = 0; i < level.maxclients; i++ ) {
