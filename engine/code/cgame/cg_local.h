@@ -463,6 +463,8 @@ typedef struct {
 	int				damageDealt;
 	int				damageTaken;
 	int				position;
+	int				kothHillKills;
+	int				kothContestTimeMs;
 	int				rankTier;
 } score_t;
 

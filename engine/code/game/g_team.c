@@ -1440,6 +1440,35 @@ void KOTH_SetHillStatus( int owner, int contested, int pct ) {
 	trap_SetConfigstring( CS_KOTHSTATUS, va( "%i %i %i", owner, contested, pct ) );
 }
 
+qboolean KOTH_IsClientInHill( int clientNum ) {
+	gentity_t	*ent;
+	gentity_t	*hill = NULL;
+	gentity_t	*player;
+
+	if ( clientNum < 0 || clientNum >= level.maxclients ) {
+		return qfalse;
+	}
+
+	for ( ent = g_entities; ent < &g_entities[level.num_entities]; ent++ ) {
+		if ( ent->inuse && !Q_stricmp( ent->classname, "trigger_koth_hill" ) ) {
+			hill = ent;
+			break;
+		}
+	}
+
+	if ( !hill ) {
+		return qfalse;
+	}
+
+	player = &g_entities[clientNum];
+	return ( player->r.currentOrigin[0] >= hill->r.absmin[0] &&
+		player->r.currentOrigin[0] <= hill->r.absmax[0] &&
+		player->r.currentOrigin[1] >= hill->r.absmin[1] &&
+		player->r.currentOrigin[1] <= hill->r.absmax[1] &&
+		player->r.currentOrigin[2] >= hill->r.absmin[2] &&
+		player->r.currentOrigin[2] <= hill->r.absmax[2] ) ? qtrue : qfalse;
+}
+
 /*
 ===================
 KOTH_Think
@@ -1511,9 +1540,31 @@ void KOTH_Think( void ) {
 
 	// --- Contested: both teams present ---
 	if ( redCount > 0 && blueCount > 0 ) {
+		int frameMs = level.time - level.previousTime;
+		if ( frameMs < 0 ) {
+			frameMs = 0;
+		}
+
 		if ( !wasContested ) {
 			teamgame.kothContestedStart = level.time;
 		}
+
+		for ( i = 0; i < level.maxclients; i++ ) {
+			gclient_t *pl = &level.clients[i];
+			gentity_t *pe = &g_entities[i];
+			if ( pl->pers.connected != CON_CONNECTED ) continue;
+			if ( pl->sess.sessionTeam != TEAM_RED && pl->sess.sessionTeam != TEAM_BLUE ) continue;
+			if ( pl->ps.stats[STAT_HEALTH] <= 0 ) continue;
+			if ( pe->r.currentOrigin[0] >= hill->r.absmin[0] &&
+			     pe->r.currentOrigin[0] <= hill->r.absmax[0] &&
+			     pe->r.currentOrigin[1] >= hill->r.absmin[1] &&
+			     pe->r.currentOrigin[1] <= hill->r.absmax[1] &&
+			     pe->r.currentOrigin[2] >= hill->r.absmin[2] &&
+			     pe->r.currentOrigin[2] <= hill->r.absmax[2] ) {
+				pl->kothContestTimeMs += frameMs;
+			}
+		}
+
 		teamgame.kothContested = qtrue;
 		teamgame.kothCaptureStart = 0;
 		teamgame.kothCapturingTeam = TEAM_FREE;

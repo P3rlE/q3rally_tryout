@@ -458,6 +458,10 @@ struct gclient_s {
 
 	int			profileLastTime;        // NEU: für Zeit-Tracking unabhängig von Framerate
 
+	/* Q3Rally KOTH post-match stats */
+	int			kothHillKills;
+	int			kothContestTimeMs;
+
 	// profileLastCmdTime wird nicht mehr benötigt - kann entfernt werden
 	// int		profileLastCmdTime;
 	// qboolean	profileHasLastCmdTime;
@@ -946,6 +950,7 @@ void Team_CheckDroppedItem( gentity_t *dropped );
 qboolean CheckObeliskAttack( gentity_t *obelisk, gentity_t *attacker );
 void KOTH_Think( void ); /* Q3Rally KOTH */
 qboolean KOTH_HandleOvertime( void ); /* Q3Rally KOTH */
+qboolean KOTH_IsClientInHill( int clientNum ); /* Q3Rally KOTH */
 
 //
 // g_mem.c
