@@ -44,6 +44,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define COL_PING_WIDTH          60   /* Ping */
 #define COL_STATUS_WIDTH        80   /* Status (Ready, etc) */
 #define COL_HILL_TIME_WIDTH     100  /* Q3Rally KOTH: Time on Hill */
+#define COL_KOTH_CAPTURE_WIDTH  64
+#define COL_KOTH_DEFEND_WIDTH   64
 
 /* Visual styling */
 #define MODERN_SB_ALPHA         0.85f
@@ -68,6 +70,8 @@ typedef enum {
     SBCOL_PING,       /* Network ping */
     SBCOL_STATUS,     /* Ready status, etc */
     SBCOL_HILL_TIME,  /* Q3Rally KOTH: time on hill */
+    SBCOL_KOTH_CAPS,  /* Q3Rally KOTH: captures */
+    SBCOL_KOTH_DEF,   /* Q3Rally KOTH: defends */
     SBCOL_MAX
 } sbColumn_t;
 
@@ -285,6 +289,16 @@ static void CG_InitScoreboardColumns(void) {
         columns[SBCOL_HILL_TIME].width   = COL_HILL_TIME_WIDTH;
         columns[SBCOL_HILL_TIME].header  = "HILL TIME";
         columns[SBCOL_HILL_TIME].visible = qtrue;
+
+        columns[SBCOL_KOTH_CAPS].type    = SBCOL_KOTH_CAPS;
+        columns[SBCOL_KOTH_CAPS].width   = COL_KOTH_CAPTURE_WIDTH;
+        columns[SBCOL_KOTH_CAPS].header  = "CAP";
+        columns[SBCOL_KOTH_CAPS].visible = qtrue;
+
+        columns[SBCOL_KOTH_DEF].type    = SBCOL_KOTH_DEF;
+        columns[SBCOL_KOTH_DEF].width   = COL_KOTH_DEFEND_WIDTH;
+        columns[SBCOL_KOTH_DEF].header  = "DEF";
+        columns[SBCOL_KOTH_DEF].visible = qtrue;
     }
 
     /* Status column only in intermission - no ping column */
@@ -438,6 +452,8 @@ static void CG_DrawModernHeader(int y) {
             case SBCOL_DELTA:
             case SBCOL_TOTALTIME:
             case SBCOL_STATUS:
+            case SBCOL_KOTH_CAPS:
+            case SBCOL_KOTH_DEF:
                 /* Center-aligned columns */
                 CG_DrawModernText(columns[i].x, y + 8, columns[i].header, 1, 
                                  columns[i].width, headerTextColor, qtrue);
@@ -708,6 +724,24 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
                 CG_DrawModernText(x, y, "WAIT", 1, width, textColor, qfalse);
             } else {
                 CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
+            }
+            break;
+
+        case SBCOL_KOTH_CAPS:
+            if (ci->team == TEAM_SPECTATOR) {
+                CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
+            } else {
+                Com_sprintf(buffer, sizeof(buffer), "%d", score->assistCount);
+                CG_DrawModernText(x, y, buffer, 1, width, textColor, qfalse);
+            }
+            break;
+
+        case SBCOL_KOTH_DEF:
+            if (ci->team == TEAM_SPECTATOR) {
+                CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
+            } else {
+                Com_sprintf(buffer, sizeof(buffer), "%d", score->defendCount);
+                CG_DrawModernText(x, y, buffer, 1, width, textColor, qfalse);
             }
             break;
             
