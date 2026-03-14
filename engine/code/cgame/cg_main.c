@@ -1132,6 +1132,7 @@ static void CG_RegisterGraphics( void ) {
 
 	cgs.media.tracerShader = trap_R_RegisterShader( "gfx/misc/tracer" );
 	cgs.media.selectShader = trap_R_RegisterShader( "gfx/2d/select" );
+	cgs.media.select2Shader = trap_R_RegisterShader( "gfx/2d/select2" );
 	/* KOTH hill indicator textures (loaded globally for main world/minimap passes) */
 	cgs.media.kothHillMarkerNeutralShader = trap_R_RegisterShaderNoMip( "gfx/2d/hillmarker.png" );
 	cgs.media.kothHillMarkerRedShader = trap_R_RegisterShaderNoMip( "gfx/2d/hillmarker_red.png" );
