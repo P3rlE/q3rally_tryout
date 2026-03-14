@@ -1478,6 +1478,35 @@ qboolean KOTH_IsClientInHill( int clientNum ) {
 		player->r.currentOrigin[2] <= hill->r.absmax[2] ) ? qtrue : qfalse;
 }
 
+qboolean KOTH_IsClientInHill( int clientNum ) {
+	gentity_t	*ent;
+	gentity_t	*hill = NULL;
+	gentity_t	*player;
+
+	if ( clientNum < 0 || clientNum >= level.maxclients ) {
+		return qfalse;
+	}
+
+	for ( ent = g_entities; ent < &g_entities[level.num_entities]; ent++ ) {
+		if ( ent->inuse && !Q_stricmp( ent->classname, "trigger_koth_hill" ) ) {
+			hill = ent;
+			break;
+		}
+	}
+
+	if ( !hill ) {
+		return qfalse;
+	}
+
+	player = &g_entities[clientNum];
+	return ( player->r.currentOrigin[0] >= hill->r.absmin[0] &&
+		player->r.currentOrigin[0] <= hill->r.absmax[0] &&
+		player->r.currentOrigin[1] >= hill->r.absmin[1] &&
+		player->r.currentOrigin[1] <= hill->r.absmax[1] &&
+		player->r.currentOrigin[2] >= hill->r.absmin[2] &&
+		player->r.currentOrigin[2] <= hill->r.absmax[2] ) ? qtrue : qfalse;
+}
+
 /*
 ===================
 KOTH_Think
