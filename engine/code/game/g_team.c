@@ -1478,6 +1478,7 @@ qboolean KOTH_IsClientInHill( int clientNum ) {
 		player->r.currentOrigin[2] <= hill->r.absmax[2] ) ? qtrue : qfalse;
 }
 
+
 /*
 ===================
 KOTH_Think
