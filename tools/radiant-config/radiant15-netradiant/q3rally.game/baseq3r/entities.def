@@ -2378,6 +2378,7 @@ The server detects player presence by bounding box overlap with this volume.
 - Use a clip brush with a trigger texture so it is invisible but solid
 - Surround with at least 3 entry routes for anti-camping
 - Maximum approach slope into zone: 35 degrees
+- indicatorHeight : vertical offset above hill top for HUD/world indicator origin (default 24)
 -------- CVARS (server-side) --------
 g_kothScoreWin    : points needed to win (default 100)
 g_kothCaptureTime : ms to neutralize/capture (default 3000)
