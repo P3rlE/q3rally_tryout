@@ -1208,7 +1208,7 @@ static void CG_RegisterGraphics( void ) {
 		cgs.media.yellowFlagShader[1] = trap_R_RegisterShaderNoMip( "icons/iconf_yell2" );
 		cgs.media.yellowFlagShader[2] = trap_R_RegisterShaderNoMip( "icons/iconf_yell3" );
 // Q3Rally Code Start
-        cgs.media.sigilShader = trap_R_RegisterShaderNoMip( "icons/icons_neutral" );
+        cgs.media.sigilShader = trap_R_RegisterShaderNoMip( "gfx/2d/hillmarker.png" );
         cgs.media.redsigilShader = trap_R_RegisterShaderNoMip( "icons/icons_red" );
         cgs.media.bluesigilShader = trap_R_RegisterShaderNoMip( "icons/icons_blu" );
         cgs.media.greensigilShader = trap_R_RegisterShaderNoMip( "icons/icons_green" );
