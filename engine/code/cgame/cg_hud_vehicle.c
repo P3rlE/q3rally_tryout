@@ -59,12 +59,14 @@ void CG_AddKOTHHillIndicatorToScene( qboolean minimapPass ) {
 		marker.shaderRGBA[1] = 220;
 		marker.shaderRGBA[2] = 64;
 	} else if ( cgs.kothOwner == TEAM_RED ) {
+		/* Match hillmarker_red base color: #ff0000 */
 		marker.shaderRGBA[0] = 255;
-		marker.shaderRGBA[1] = 72;
-		marker.shaderRGBA[2] = 72;
+		marker.shaderRGBA[1] = 0;
+		marker.shaderRGBA[2] = 0;
 	} else if ( cgs.kothOwner == TEAM_BLUE ) {
-		marker.shaderRGBA[0] = 96;
-		marker.shaderRGBA[1] = 160;
+		/* Match hillmarker_blue base color: #000cff */
+		marker.shaderRGBA[0] = 0;
+		marker.shaderRGBA[1] = 12;
 		marker.shaderRGBA[2] = 255;
 	} else {
 		marker.shaderRGBA[0] = 240;
