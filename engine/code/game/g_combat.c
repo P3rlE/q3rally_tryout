@@ -591,6 +591,10 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
 		} else {
 			AddScore( attacker, self->r.currentOrigin, 1 );
 
+			if ( g_gametype.integer == GT_KOTH && KOTH_IsClientInHill( attacker->s.number ) ) {
+				attacker->client->kothHillKills++;
+			}
+
 			if( meansOfDeath == MOD_GAUNTLET ) {
 				
 				// play humiliation on player
