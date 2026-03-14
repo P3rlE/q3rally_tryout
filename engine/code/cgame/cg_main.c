@@ -1132,6 +1132,10 @@ static void CG_RegisterGraphics( void ) {
 
 	cgs.media.tracerShader = trap_R_RegisterShader( "gfx/misc/tracer" );
 	cgs.media.selectShader = trap_R_RegisterShader( "gfx/2d/select" );
+	/* KOTH hill indicator textures (loaded globally for main world/minimap passes) */
+	cgs.media.kothHillMarkerNeutralShader = trap_R_RegisterShaderNoMip( "gfx/2d/hillmarker.png" );
+	cgs.media.kothHillMarkerRedShader = trap_R_RegisterShaderNoMip( "gfx/2d/hillmarker_red.png" );
+	cgs.media.kothHillMarkerBlueShader = trap_R_RegisterShaderNoMip( "gfx/2d/hillmarker_blue.png" );
 
 	for ( i = 0 ; i < NUM_CROSSHAIRS ; i++ ) {
 //		cgs.media.crosshairShader[i] = trap_R_RegisterShader( va("gfx/2d/crosshair%c", 'a'+i) );
@@ -1184,7 +1188,7 @@ static void CG_RegisterGraphics( void ) {
 
 	if ( cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 || cgs.gametype == GT_1FCTF || cgs.gametype == GT_HARVESTER || cg_buildScript.integer ) {
 #else
-	if ( cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION || cg_buildScript.integer ) {
+	if ( cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION || cgs.gametype == GT_KOTH || cg_buildScript.integer ) {
 #endif
 		cgs.media.redFlagModel = trap_R_RegisterModel( "models/flags/r_flag.md3" );
 		cgs.media.blueFlagModel = trap_R_RegisterModel( "models/flags/b_flag.md3" );
