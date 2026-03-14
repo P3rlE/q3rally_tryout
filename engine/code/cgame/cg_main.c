@@ -1184,7 +1184,7 @@ static void CG_RegisterGraphics( void ) {
 
 	if ( cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 || cgs.gametype == GT_1FCTF || cgs.gametype == GT_HARVESTER || cg_buildScript.integer ) {
 #else
-	if ( cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION || cg_buildScript.integer ) {
+	if ( cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION || cgs.gametype == GT_KOTH || cg_buildScript.integer ) {
 #endif
 		cgs.media.redFlagModel = trap_R_RegisterModel( "models/flags/r_flag.md3" );
 		cgs.media.blueFlagModel = trap_R_RegisterModel( "models/flags/b_flag.md3" );
@@ -1208,7 +1208,7 @@ static void CG_RegisterGraphics( void ) {
 		cgs.media.yellowFlagShader[1] = trap_R_RegisterShaderNoMip( "icons/iconf_yell2" );
 		cgs.media.yellowFlagShader[2] = trap_R_RegisterShaderNoMip( "icons/iconf_yell3" );
 // Q3Rally Code Start
-        cgs.media.sigilShader = trap_R_RegisterShaderNoMip( "icons/icons_neutral" );
+        cgs.media.sigilShader = trap_R_RegisterShaderNoMip( "gfx/2d/hillmarker.png" );
         cgs.media.redsigilShader = trap_R_RegisterShaderNoMip( "icons/icons_red" );
         cgs.media.bluesigilShader = trap_R_RegisterShaderNoMip( "icons/icons_blu" );
         cgs.media.greensigilShader = trap_R_RegisterShaderNoMip( "icons/icons_green" );
