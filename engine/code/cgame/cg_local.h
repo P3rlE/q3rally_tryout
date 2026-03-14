@@ -931,6 +931,10 @@ typedef struct {
     qhandle_t   bluesigilShader;
     qhandle_t   greensigilShader;
     qhandle_t   yellowsigilShader;
+	/* KOTH hill indicator shaders */
+	qhandle_t   kothHillMarkerNeutralShader;
+	qhandle_t   kothHillMarkerRedShader;
+	qhandle_t   kothHillMarkerBlueShader;
 	qhandle_t	flagPoleModel;
 	qhandle_t	flagFlapModel;
 

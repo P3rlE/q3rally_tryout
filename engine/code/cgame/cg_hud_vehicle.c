@@ -32,6 +32,8 @@ void CG_AddKOTHHillIndicatorToScene( qboolean minimapPass ) {
 	refEntity_t marker;
 	vec4_t pulseColor;
 	float pulse;
+	float inversePulse;
+	qhandle_t hillMarkerShader;
 
 	if ( cgs.gametype != GT_KOTH ) {
 		return;
@@ -39,6 +41,13 @@ void CG_AddKOTHHillIndicatorToScene( qboolean minimapPass ) {
 
 	if ( !cgs.kothHillOriginValid ) {
 		return;
+	}
+
+	hillMarkerShader = cgs.media.kothHillMarkerNeutralShader;
+	if ( cgs.kothOwner == TEAM_RED ) {
+		hillMarkerShader = cgs.media.kothHillMarkerRedShader;
+	} else if ( cgs.kothOwner == TEAM_BLUE ) {
+		hillMarkerShader = cgs.media.kothHillMarkerBlueShader;
 	}
 
 	Com_Memset( &marker, 0, sizeof( marker ) );
@@ -64,26 +73,30 @@ void CG_AddKOTHHillIndicatorToScene( qboolean minimapPass ) {
 	}
 	marker.shaderRGBA[3] = 220;
 
+	pulse = 0.5f + 0.5f * sin( (float)cg.time * 0.009f );
+	inversePulse = 1.0f - pulse;
+
+	/* base select ring pulses opposite to hillmarker */
 	marker.customShader = cgs.media.selectShader;
-	marker.radius = minimapPass ? 42.0f : 30.0f;
+	marker.shaderRGBA[3] = (byte)( 120 + 90 * inversePulse );
+	marker.radius = minimapPass ? ( 40.0f + 8.0f * inversePulse ) : ( 28.0f + 6.0f * inversePulse );
 	trap_R_AddRefEntityToScene( &marker );
 
-	/* subtle pulse halo around the ring */
-	pulse = 0.5f + 0.5f * sin( (float)cg.time * 0.009f );
+	/* hill marker layer pulse */
 	pulseColor[0] = marker.shaderRGBA[0] / 255.0f;
 	pulseColor[1] = marker.shaderRGBA[1] / 255.0f;
 	pulseColor[2] = marker.shaderRGBA[2] / 255.0f;
-	pulseColor[3] = 0.25f + pulse * 0.35f;
+	pulseColor[3] = 0.22f + pulse * 0.48f;
 
 	Com_Memset( &marker, 0, sizeof( marker ) );
 	marker.reType = RT_SPRITE;
 	VectorCopy( cgs.kothHillOrigin, marker.origin );
-	marker.customShader = cgs.media.sigilShader;
+	marker.customShader = hillMarkerShader;
 	marker.shaderRGBA[0] = (byte)( pulseColor[0] * 255.0f );
 	marker.shaderRGBA[1] = (byte)( pulseColor[1] * 255.0f );
 	marker.shaderRGBA[2] = (byte)( pulseColor[2] * 255.0f );
 	marker.shaderRGBA[3] = (byte)( pulseColor[3] * 255.0f );
-	marker.radius = minimapPass ? ( 60.0f + 25.0f * pulse ) : ( 44.0f + 18.0f * pulse );
+	marker.radius = minimapPass ? ( 58.0f + 20.0f * pulse ) : ( 42.0f + 14.0f * pulse );
 	trap_R_AddRefEntityToScene( &marker );
 }
 
