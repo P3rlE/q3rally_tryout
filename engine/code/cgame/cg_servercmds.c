@@ -357,12 +357,60 @@ static void CG_ParseSigilStatus( void ) {
 // Q3Rally Code Start - KOTH
 static void CG_ParseKothStatus( void ) {
 	const char *str;
+	int oldOwner;
+	int oldContested;
+	int localTeam;
+	qboolean hadSnapshot;
+
+	hadSnapshot = ( cg.snap != NULL );
+	oldOwner = cgs.kothOwner;
+	oldContested = cgs.kothContested;
+	localTeam = TEAM_FREE;
+	if ( hadSnapshot ) {
+		localTeam = cg.snap->ps.persistant[PERS_TEAM];
+	}
+
 	str = CG_ConfigString( CS_KOTHSTATUS );
 	cgs.kothOwner     = atoi( str );
 	str = strchr( str, ' ' ); if ( str ) str++; else return;
 	cgs.kothContested = atoi( str );
 	str = strchr( str, ' ' ); if ( str ) str++; else return;
 	cgs.kothCapturePct = atoi( str );
+
+	if ( !cg.kothStatusInitialized ) {
+		cg.kothStatusInitialized = qtrue;
+		cg.kothLastOwner = cgs.kothOwner;
+		cg.kothLastContested = cgs.kothContested;
+		return;
+	}
+
+	if ( !hadSnapshot || localTeam == TEAM_SPECTATOR ) {
+		cg.kothLastOwner = cgs.kothOwner;
+		cg.kothLastContested = cgs.kothContested;
+		return;
+	}
+
+	if ( !oldContested && cgs.kothContested ) {
+		trap_S_StartLocalSound( cgs.media.takenOpponentSound, CHAN_ANNOUNCER );
+	}
+
+	if ( oldContested && !cgs.kothContested ) {
+		trap_S_StartLocalSound( cgs.media.returnYourTeamSound, CHAN_ANNOUNCER );
+	}
+
+	if ( oldOwner != cgs.kothOwner ) {
+		if ( cgs.kothOwner == localTeam ) {
+			trap_S_StartLocalSound( cgs.media.captureYourTeamSound, CHAN_ANNOUNCER );
+		} else if ( cgs.kothOwner != TEAM_FREE ) {
+			trap_S_StartLocalSound( cgs.media.captureOpponentSound, CHAN_ANNOUNCER );
+			if ( oldOwner == localTeam ) {
+				cg.kothLossFlashUntil = cg.time + 600;
+			}
+		}
+	}
+
+	cg.kothLastOwner = cgs.kothOwner;
+	cg.kothLastContested = cgs.kothContested;
 }
 // Q3Rally Code END - KOTH
 
