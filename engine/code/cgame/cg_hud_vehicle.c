@@ -84,8 +84,8 @@ void CG_AddKOTHHillIndicatorToScene( qboolean minimapPass ) {
 	marker.shaderRGBA[1] = tintG;
 	marker.shaderRGBA[2] = tintB;
 	marker.shaderRGBA[3] = (byte)( 100 + 120 * pulse );
-	marker.rotation = (float)cg.time * 0.16f;
-	marker.radius = minimapPass ? ( 34.0f + 18.0f * pulse ) : ( 24.0f + 12.0f * pulse );
+	marker.rotation = -(float)cg.time * 0.16f;
+	marker.radius = minimapPass ? ( 54.0f + 12.0f * inversePulse ) : ( 40.0f + 8.0f * inversePulse );
 	trap_R_AddRefEntityToScene( &marker );
 
 	/* hillmarker pulses in opposite phase, but does not rotate */
