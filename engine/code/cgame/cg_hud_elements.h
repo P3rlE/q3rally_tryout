@@ -52,6 +52,8 @@ extern vmCvar_t  cg_hudShowSpeed;          /* Speedometer / RPM gauge          *
 /* --- Derby HUD --- */
 extern vmCvar_t  cg_hudShowDerbyVehicle;   /* Vehicle state panel (Derby)      */
 extern vmCvar_t  cg_hudShowDerbyList;      /* Derby scoreboard                 */
+extern vmCvar_t  cg_hudShowKothHillStatus; /* KOTH hill status panel           */
+extern vmCvar_t  cg_hudShowKothRespawnWave;/* KOTH respawn wave timer          */
 
 /*
 ===========================================================================
