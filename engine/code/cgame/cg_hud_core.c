@@ -72,6 +72,8 @@ vmCvar_t  cg_hudShowFuelGauge;
 
 vmCvar_t  cg_hudShowDerbyVehicle;
 vmCvar_t  cg_hudShowDerbyList;
+vmCvar_t  cg_hudShowKothHillStatus;
+vmCvar_t  cg_hudShowKothRespawnWave;
 
 /* Menu open/close toggle – registered in CG_HUD_RegisterCvars, updated each frame */
 static vmCvar_t cg_hudOptionsOpen;
@@ -100,6 +102,10 @@ void CG_HUD_RegisterCvars( void ) {
     /* Derby */
     trap_Cvar_Register( &cg_hudShowDerbyVehicle,   "cg_hudShowDerbyVehicle",   "1", CVAR_ARCHIVE );
     trap_Cvar_Register( &cg_hudShowDerbyList,      "cg_hudShowDerbyList",      "1", CVAR_ARCHIVE );
+
+    /* KOTH */
+    trap_Cvar_Register( &cg_hudShowKothHillStatus,  "cg_hudShowKothHillStatus",  "1", CVAR_ARCHIVE );
+    trap_Cvar_Register( &cg_hudShowKothRespawnWave, "cg_hudShowKothRespawnWave", "1", CVAR_ARCHIVE );
 }
 
 /* -----------------------------------------------------------------------
@@ -170,11 +176,13 @@ float CG_GetEliminationColumnWidth( void ) {
 /* Text sizes reuse the engine's built-in char constants:
  * Title  → BIGCHAR,  sections/entries → SMALLCHAR / TINYCHAR               */
 /* Left col: Racing (10 entries, indices 0-9)
- * Right col: Derby (3, indices 10-12) + Vehicle (3, indices 13-15)         */
+ * Right col: Derby (3, indices 10-12) + KOTH (2, indices 13-14) + Vehicle (3, indices 15-17) */
 #define HUDOPT_LEFT_COUNT   10
 #define HUDOPT_DERBY_START  10
 #define HUDOPT_DERBY_COUNT   3
-#define HUDOPT_VEH_START    13
+#define HUDOPT_KOTH_START   13
+#define HUDOPT_KOTH_COUNT    2
+#define HUDOPT_VEH_START    15
 #define HUDOPT_VEH_COUNT     3
 
 typedef struct {
@@ -202,7 +210,10 @@ static const hudToggleEntry_t hudToggleTable[] = {
     { "Derby Vehicle State", "cg_hudShowDerbyVehicle",   &cg_hudShowDerbyVehicle,   1, GT_DERBY, qfalse },
     { "Derby Scoreboard",    "cg_hudShowDerbyList",      &cg_hudShowDerbyList,      1, GT_DERBY, qfalse },
     { "Derby Hit Impact",    "cg_derbyHitFxEnable",      &cg_derbyHitFxEnable,      1, GT_DERBY, qfalse },
-    /* ---- Vehicle (right column bottom, indices 13-15) ---- */
+    /* ---- KOTH (right column middle, indices 13-14) ---- */
+    { "KOTH Hill Status",   "cg_hudShowKothHillStatus",  &cg_hudShowKothHillStatus,  1, GT_KOTH,  qfalse },
+    { "KOTH Respawn Wave",  "cg_hudShowKothRespawnWave", &cg_hudShowKothRespawnWave, 1, GT_KOTH,  qfalse },
+    /* ---- Vehicle (right column bottom, indices 15-17) ---- */
     { "Speedometer",         "cg_hudShowSpeed",          &cg_hudShowSpeed,          1, -1,       qfalse },
     /* Fuel Gauge is part of Speedometer – hidden when Speedometer is OFF */
     { "Rear-View Mirror",    "cg_drawRearView",          &cg_drawRearView,          1, -1,       qfalse },
@@ -367,9 +378,24 @@ qboolean CG_HUDOptions_MouseEvent( int cx, int cy, qboolean clicked ) {
         rowY += HUDOPT_ROW_H;
     }
 
-    /* Right column Vehicle section (separator adds 6px) */
-    rowY += 6.0f + HUDOPT_SEC_H;
-    for ( i = HUDOPT_VEH_START; i < HUDOPT_VEH_START + HUDOPT_VEH_COUNT; i++ ) {
+	/* Right column KOTH section (separator adds 6px) */
+	rowY += 6.0f + HUDOPT_SEC_H;
+	for ( i = HUDOPT_KOTH_START; i < HUDOPT_KOTH_START + HUDOPT_KOTH_COUNT; i++ ) {
+		if ( cy >= rowY && cy < rowY + HUDOPT_ROW_H &&
+		     cx >= HUDOPT_COL_R_X - 2.0f &&
+		     cx <  HUDOPT_COL_R_X + HUDOPT_COL_W + 4.0f ) {
+			if ( !HUDEntry_IsUnavail( &hudToggleTable[i] ) ) {
+				g_hudOptHoverRow = i;
+				if ( clicked ) HUDEntry_DoToggle( &hudToggleTable[i] );
+			}
+			return qtrue;
+		}
+		rowY += HUDOPT_ROW_H;
+	}
+
+	/* Right column Vehicle section (separator adds 6px) */
+	rowY += 6.0f + HUDOPT_SEC_H;
+	for ( i = HUDOPT_VEH_START; i < HUDOPT_VEH_START + HUDOPT_VEH_COUNT; i++ ) {
         if ( cy >= rowY && cy < rowY + HUDOPT_ROW_H &&
              cx >= HUDOPT_COL_R_X - 2.0f &&
              cx <  HUDOPT_COL_R_X + HUDOPT_COL_W + 4.0f ) {
@@ -529,6 +555,44 @@ void CG_DrawHUDOptionsMenu( void ) {
         }
         rowY = secY + HUDOPT_SEC_H;
         for ( i = HUDOPT_DERBY_START; i < HUDOPT_DERBY_START + HUDOPT_DERBY_COUNT; i++ ) {
+            const hudToggleEntry_t *e       = &hudToggleTable[i];
+            qboolean                unavail = HUDEntry_IsUnavail( e );
+            const char             *badge;
+            float                  *badgeClr, *entryClr;
+            int                     blen, bx;
+
+            if ( i == g_hudOptHoverRow && !unavail )
+                CG_FillRect( HUDOPT_COL_R_X - 2.0f, rowY, HUDOPT_COL_W + 4.0f, HUDOPT_ROW_H, hoverColor );
+
+            badge    = unavail ? "[ n/a]" : ( e->cvar->integer ? "[ ON ]" : "[ OFF]" );
+            badgeClr = unavail ? naColor : ( e->cvar->integer ? onColor : offColor );
+            entryClr = unavail ? greyColor : labelColor;
+
+            blen = CG_DrawStrlen( badge );
+            bx   = (int)( HUDOPT_COL_R_X + HUDOPT_COL_W - blen * SMALLCHAR_WIDTH );
+            CG_DrawStringExt( (int)( HUDOPT_COL_R_X + 2 ), (int)( rowY + 2 ),
+                              e->label, entryClr, qfalse, qfalse, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT, 0 );
+            CG_DrawStringExt( bx, (int)( rowY + 2 ),
+                              badge, badgeClr, qfalse, qfalse, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT, 0 );
+            rowY += HUDOPT_ROW_H;
+        }
+
+        /* =============== RIGHT COLUMN MIDDLE: KOTH =============== */
+        {
+            float sepY = rowY + 2.0f;
+            CG_FillRect( HUDOPT_COL_R_X, sepY, HUDOPT_COL_W, 1.0f, divColor );
+            rowY += 6.0f;
+        }
+        {
+            const char *sec  = "KOTH";
+            int slen = CG_DrawStrlen( sec );
+            int sx   = (int)( HUDOPT_COL_R_X + ( HUDOPT_COL_W - slen * TINYCHAR_WIDTH ) * 0.5f );
+            CG_DrawStringExt( sx, (int)( rowY + 2 ),
+                              sec, secColor, qfalse, qtrue,
+                              TINYCHAR_WIDTH, TINYCHAR_HEIGHT, 0 );
+        }
+        rowY += HUDOPT_SEC_H;
+        for ( i = HUDOPT_KOTH_START; i < HUDOPT_KOTH_START + HUDOPT_KOTH_COUNT; i++ ) {
             const hudToggleEntry_t *e       = &hudToggleTable[i];
             qboolean                unavail = HUDEntry_IsUnavail( e );
             const char             *badge;
@@ -732,6 +796,8 @@ qboolean CG_DrawHUD( void ) {
     trap_Cvar_Update( &cg_drawMMap );
     trap_Cvar_Update( &cg_hudShowDerbyVehicle );
     trap_Cvar_Update( &cg_hudShowDerbyList );
+    trap_Cvar_Update( &cg_hudShowKothHillStatus );
+    trap_Cvar_Update( &cg_hudShowKothRespawnWave );
 
     if ( cg_paused.integer ) {
         return qfalse;
@@ -787,7 +853,9 @@ qboolean CG_DrawHUD( void ) {
     // Q3Rally Code Start - KOTH
     case GT_KOTH:
         // KOTH uses the modular top-right scoreboard; avoid duplicate legacy FRAGS/TEAM panel.
-        CG_DrawKOTH_HillStatus();
+        if ( cg_hudShowKothHillStatus.integer ) {
+            CG_DrawKOTH_HillStatus();
+        }
         break;
     // Q3Rally Code END - KOTH
 
