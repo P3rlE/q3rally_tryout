@@ -1428,6 +1428,38 @@ int Sigil_Touch( gentity_t *ent, gentity_t *other ) {
 // Q3Rally Code END
 
 // Q3Rally Code Start - KOTH
+static gentity_t *KOTH_GetHillEntity( void ) {
+	gentity_t *ent;
+	static gentity_t *cachedHill = NULL;
+
+	if ( cachedHill && cachedHill->inuse && !Q_stricmp( cachedHill->classname, "trigger_koth_hill" ) ) {
+		return cachedHill;
+	}
+
+	for ( ent = g_entities; ent < &g_entities[level.num_entities]; ent++ ) {
+		if ( ent->inuse && !Q_stricmp( ent->classname, "trigger_koth_hill" ) ) {
+			cachedHill = ent;
+			return cachedHill;
+		}
+	}
+
+	cachedHill = NULL;
+	return NULL;
+}
+
+static qboolean KOTH_IsPositionInHillBounds( const vec3_t position, const gentity_t *hill ) {
+	if ( !hill ) {
+		return qfalse;
+	}
+
+	return ( position[0] >= hill->r.absmin[0] &&
+		position[0] <= hill->r.absmax[0] &&
+		position[1] >= hill->r.absmin[1] &&
+		position[1] <= hill->r.absmax[1] &&
+		position[2] >= hill->r.absmin[2] &&
+		position[2] <= hill->r.absmax[2] ) ? qtrue : qfalse;
+}
+
 /*
 ===================
 KOTH_SetHillStatus
@@ -1451,32 +1483,21 @@ void KOTH_SetHillStatus( int owner, int contested, int pct, const vec3_t hillOri
 }
 
 qboolean KOTH_IsClientInHill( int clientNum ) {
-	gentity_t	*ent;
-	gentity_t	*hill = NULL;
+	gentity_t	*hill;
 	gentity_t	*player;
 
 	if ( clientNum < 0 || clientNum >= level.maxclients ) {
 		return qfalse;
 	}
 
-	for ( ent = g_entities; ent < &g_entities[level.num_entities]; ent++ ) {
-		if ( ent->inuse && !Q_stricmp( ent->classname, "trigger_koth_hill" ) ) {
-			hill = ent;
-			break;
-		}
-	}
+	hill = KOTH_GetHillEntity();
 
 	if ( !hill ) {
 		return qfalse;
 	}
 
 	player = &g_entities[clientNum];
-	return ( player->r.currentOrigin[0] >= hill->r.absmin[0] &&
-		player->r.currentOrigin[0] <= hill->r.absmax[0] &&
-		player->r.currentOrigin[1] >= hill->r.absmin[1] &&
-		player->r.currentOrigin[1] <= hill->r.absmax[1] &&
-		player->r.currentOrigin[2] >= hill->r.absmin[2] &&
-		player->r.currentOrigin[2] <= hill->r.absmax[2] ) ? qtrue : qfalse;
+	return KOTH_IsPositionInHillBounds( player->r.currentOrigin, hill );
 }
 
 
@@ -1490,7 +1511,6 @@ Counts team presence in the hill trigger, drives capture/score/contested logic.
 */
 void KOTH_Think( void ) {
 	gentity_t	*hill;
-	gentity_t	*ent;
 	int			redCount = 0, blueCount = 0;
 	int			i;
 	int			pct = 0;
@@ -1507,13 +1527,7 @@ void KOTH_Think( void ) {
 	}
 
 	// Find the hill entity
-	hill = NULL;
-	for ( ent = g_entities; ent < &g_entities[level.num_entities]; ent++ ) {
-		if ( ent->inuse && !Q_stricmp( ent->classname, "trigger_koth_hill" ) ) {
-			hill = ent;
-			break;
-		}
-	}
+	hill = KOTH_GetHillEntity();
 
 	if ( !hill ) {
 		return;
@@ -1538,12 +1552,7 @@ void KOTH_Think( void ) {
 		if ( cl->sess.sessionTeam == TEAM_SPECTATOR ) continue;
 		if ( cl->ps.stats[STAT_HEALTH] <= 0 ) continue;
 
-		if ( player->r.currentOrigin[0] >= hill->r.absmin[0] &&
-		     player->r.currentOrigin[0] <= hill->r.absmax[0] &&
-		     player->r.currentOrigin[1] >= hill->r.absmin[1] &&
-		     player->r.currentOrigin[1] <= hill->r.absmax[1] &&
-		     player->r.currentOrigin[2] >= hill->r.absmin[2] &&
-		     player->r.currentOrigin[2] <= hill->r.absmax[2] ) {
+		if ( KOTH_IsPositionInHillBounds( player->r.currentOrigin, hill ) ) {
 			if ( cl->sess.sessionTeam == TEAM_RED )  redCount++;
 			if ( cl->sess.sessionTeam == TEAM_BLUE ) blueCount++;
 		}
@@ -1578,12 +1587,7 @@ void KOTH_Think( void ) {
 			if ( pl->pers.connected != CON_CONNECTED ) continue;
 			if ( pl->sess.sessionTeam != TEAM_RED && pl->sess.sessionTeam != TEAM_BLUE ) continue;
 			if ( pl->ps.stats[STAT_HEALTH] <= 0 ) continue;
-			if ( pe->r.currentOrigin[0] >= hill->r.absmin[0] &&
-			     pe->r.currentOrigin[0] <= hill->r.absmax[0] &&
-			     pe->r.currentOrigin[1] >= hill->r.absmin[1] &&
-			     pe->r.currentOrigin[1] <= hill->r.absmax[1] &&
-			     pe->r.currentOrigin[2] >= hill->r.absmin[2] &&
-			     pe->r.currentOrigin[2] <= hill->r.absmax[2] ) {
+			if ( KOTH_IsPositionInHillBounds( pe->r.currentOrigin, hill ) ) {
 				pl->kothContestTimeMs += frameMs;
 			}
 		}
@@ -1644,12 +1648,7 @@ void KOTH_Think( void ) {
 					if ( pl->pers.connected != CON_CONNECTED ) continue;
 					if ( pl->sess.sessionTeam != presentTeam ) continue;
 					if ( pl->ps.stats[STAT_HEALTH] <= 0 ) continue;
-					if ( pe->r.currentOrigin[0] >= hill->r.absmin[0] &&
-					     pe->r.currentOrigin[0] <= hill->r.absmax[0] &&
-					     pe->r.currentOrigin[1] >= hill->r.absmin[1] &&
-					     pe->r.currentOrigin[1] <= hill->r.absmax[1] &&
-					     pe->r.currentOrigin[2] >= hill->r.absmin[2] &&
-					     pe->r.currentOrigin[2] <= hill->r.absmax[2] ) {
+					if ( KOTH_IsPositionInHillBounds( pe->r.currentOrigin, hill ) ) {
 						pl->ps.persistant[PERS_DEFEND_COUNT]++;
 					}
 				}
@@ -1702,12 +1701,7 @@ void KOTH_Think( void ) {
 					if ( pl->pers.connected != CON_CONNECTED ) continue;
 					if ( pl->sess.sessionTeam != presentTeam ) continue;
 					if ( pl->ps.stats[STAT_HEALTH] <= 0 ) continue;
-					if ( pe->r.currentOrigin[0] >= hill->r.absmin[0] &&
-					     pe->r.currentOrigin[0] <= hill->r.absmax[0] &&
-					     pe->r.currentOrigin[1] >= hill->r.absmin[1] &&
-					     pe->r.currentOrigin[1] <= hill->r.absmax[1] &&
-					     pe->r.currentOrigin[2] >= hill->r.absmin[2] &&
-					     pe->r.currentOrigin[2] <= hill->r.absmax[2] ) {
+					if ( KOTH_IsPositionInHillBounds( pe->r.currentOrigin, hill ) ) {
 						pl->ps.persistant[PERS_CAPTURES]++;
 					}
 				}
