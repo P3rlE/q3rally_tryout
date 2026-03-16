@@ -2487,13 +2487,13 @@ void CheckExitRules( void ) {
 	// Q3Rally Code Start - KOTH win condition
 	if ( g_gametype.integer == GT_KOTH && g_kothScoreWin.integer > 0 ) {
 		if ( level.teamScores[TEAM_RED] >= g_kothScoreWin.integer ) {
-			trap_SendServerCommand( -1, "print \"Red team captured the hill!\n\"" );
-			LogExit( "KOTH score limit hit." );
+			trap_SendServerCommand( -1, "print \"Red team hit the KOTH score limit.\n\"" );
+			LogExit( "KOTH score limit hit by Red." );
 			return;
 		}
 		if ( level.teamScores[TEAM_BLUE] >= g_kothScoreWin.integer ) {
-			trap_SendServerCommand( -1, "print \"Blue team captured the hill!\n\"" );
-			LogExit( "KOTH score limit hit." );
+			trap_SendServerCommand( -1, "print \"Blue team hit the KOTH score limit.\n\"" );
+			LogExit( "KOTH score limit hit by Blue." );
 			return;
 		}
 	}
