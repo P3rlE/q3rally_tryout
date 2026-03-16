@@ -461,13 +461,15 @@ void CG_DrawHUDOptionsMenu( void ) {
         static vec4_t hintColor  = { 0.75f, 0.75f, 0.75f, 1.0f  };
         static vec4_t divColor   = { 0.5f,  0.1f,  0.1f,  0.8f  };
 
-        /* Panel height: title + hint + max(leftH, rightH) + padding
-         * Right col has 2 sections: Derby + Vehicle               */
-        float leftH  = HUDOPT_SEC_H + HUDOPT_LEFT_COUNT * HUDOPT_ROW_H;
-        float rightH = HUDOPT_SEC_H + HUDOPT_DERBY_COUNT * HUDOPT_ROW_H
-                     + HUDOPT_SEC_H + HUDOPT_VEH_COUNT   * HUDOPT_ROW_H;
-        float colH   = leftH > rightH ? leftH : rightH;
-        float panelH = HUDOPT_TITLE_H + HUDOPT_HINT_H + HUDOPT_PAD + colH + HUDOPT_PAD;
+		/* Panel height: title + hint + max(leftH, rightH) + padding
+		 * Right col has 3 sections: Derby + KOTH + Vehicle         */
+		float leftH  = HUDOPT_SEC_H + HUDOPT_LEFT_COUNT * HUDOPT_ROW_H;
+		float rightH = HUDOPT_SEC_H + HUDOPT_DERBY_COUNT * HUDOPT_ROW_H
+		             + HUDOPT_SEC_H + HUDOPT_KOTH_COUNT  * HUDOPT_ROW_H
+		             + HUDOPT_SEC_H + HUDOPT_VEH_COUNT   * HUDOPT_ROW_H
+		             + 12.0f; /* two section separators (6px each) */
+		float colH   = leftH > rightH ? leftH : rightH;
+		float panelH = HUDOPT_TITLE_H + HUDOPT_HINT_H + HUDOPT_PAD + colH + HUDOPT_PAD + 6.0f;
 
         float panelX = HUDOPT_PNL_X - HUDOPT_PAD;
         float panelY = HUDOPT_PNL_Y - HUDOPT_PAD;
@@ -681,53 +683,15 @@ Draws the legacy right-side racing info stack.
 float CG_DrawUpperRightHUD( float y ) {
     int i;
 
-    /* FIXME: move racer count update somewhere more appropriate */
+    /* Keep racer count updates for subsystems that still read cgs.numRacers,
+       but avoid drawing legacy HUD blocks here to prevent duplicate overlays.
+       Rendering is handled by the modular CG_DrawHUD gametype switch below. */
     cgs.numRacers = 0;
     for ( i = 0; i < cgs.maxclients; i++ ) {
-        if ( !cgs.clientinfo[i].infoValid )                      continue;
-        if (  cgs.clientinfo[i].team == TEAM_SPECTATOR )         continue;
-        if (  cg.scores[i].ping == -1 )                          continue;
+        if ( !cgs.clientinfo[i].infoValid )              continue;
+        if ( cgs.clientinfo[i].team == TEAM_SPECTATOR )  continue;
+        if ( cg.scores[i].ping == -1 )                   continue;
         cgs.numRacers++;
-    }
-
-    if ( cgs.clientinfo[cg.snap->ps.clientNum].team != TEAM_SPECTATOR ) {
-        if ( isRallyRace() ) {
-            float timesStart;
-            float timesY;
-
-            if ( cg_checkpointArrowMode.integer ) {
-                y = CG_DrawArrowToCheckpoint( y );
-            }
-
-            timesStart = y;
-            timesY     = y;
-
-            CG_UpdateGhostSplitDelta();
-
-            if ( cg_hudShowTimes.integer )         timesY = CG_DrawTimes( timesY );
-            if ( cg_ghostPlayback.integer )    timesY = CG_DrawGhostSplitDelta( timesY );
-            if ( cg_hudShowLaps.integer )          timesY = CG_DrawLaps( timesY );
-            if ( cg_hudShowDistToFinish.integer )  timesY = CG_DrawDistanceToFinish( timesY );
-            if ( cg_elimTimeline.integer )  timesY = CG_DrawEliminationTimeline( timesY );
-
-            if ( cg_hudShowPosition.integer )      CG_DrawCurrentPosition( timesStart );
-            if ( cg_hudShowCarAheadBehind.integer) y = CG_DrawCarAheadAndBehind( timesY );
-            else                                   y = timesY;
-
-        } else if ( cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ) {
-            float timesStart = y;
-            if ( cg_hudShowTimes.integer ) y = CG_DrawTimes( y );
-            if ( cg_hudShowPosition.integer && cgs.gametype == GT_LCS ) {
-                CG_DrawCurrentPosition( timesStart );
-            }
-        }
-    }
-
-    if ( !isRallyNonDMRace()
-         && cgs.gametype != GT_DERBY
-         && cgs.gametype != GT_LCS
-         && cg_hudShowScores.integer ) {
-        y = CG_DrawScores( 636, y );
     }
 
     return y;
@@ -860,12 +824,15 @@ qboolean CG_DrawHUD( void ) {
     // Q3Rally Code END - KOTH
 
     case GT_DERBY:
+        if ( cg_hudShowTimes.integer )        CG_DrawHUD_Times( 0, 112 );
         if ( cg_hudShowDerbyVehicle.integer )   CG_DrawHUD_DerbyVehicleState();
         if ( cg_hudShowDerbyList.integer )      CG_DrawHUD_DerbyList( 440, 130 );
         if ( cg_derbyHitFxEnable.integer )     CG_DrawHUD_DerbyHitImpact();
         break;
 
     case GT_LCS:
+        if ( cg_hudShowTimes.integer )         CG_DrawHUD_Times( 0, 112 );
+        if ( cg_hudShowPosition.integer )      CG_DrawHUD_Positions( 0, 228 );
         if ( cg_hudShowOpponentList.integer )   CG_DrawHUD_OpponentList( 440, 130 );
         break;
     }
