@@ -787,31 +787,23 @@ qboolean CG_DrawHUD( void ) {
     case GT_RACING:
     case GT_SPRINT:
     case GT_TEAM_RACING:
-        if ( cg_hudShowTimes.integer )    CG_DrawHUD_Times( 0, 112 );
-        if ( cg_hudShowPosition.integer ) CG_DrawHUD_Positions( 0, 228 );
-        if ( cg_hudShowLaps.integer )     CG_DrawHUD_Laps( 0, 304 );
+        /* Rendered via legacy upper-right stack (CG_DrawUpperRightHUD). */
         break;
 
     case GT_ELIMINATION:
-        if ( cg_hudShowTimes.integer )         CG_DrawHUD_Times( 0, 112 );
-        if ( cg_hudShowPosition.integer )      CG_DrawHUD_Positions( 0, 228 );
-        if ( cg_hudShowLaps.integer )          CG_DrawHUD_Laps( 0, 304 );
-        if ( cg_hudShowOpponentList.integer )  CG_DrawHUD_OpponentList( 440, 130 );
+        /* Rendered via legacy upper-right stack (CG_DrawUpperRightHUD). */
         break;
 
     case GT_RACING_DM:
     case GT_TEAM_RACING_DM:
-        if ( cg_hudShowTimes.integer )    CG_DrawHUD_Times( 0, 112 );
-        if ( cg_hudShowPosition.integer ) CG_DrawHUD_Positions( 0, 228 );
-        if ( cg_hudShowLaps.integer )     CG_DrawHUD_Laps( 0, 304 );
-        if ( cg_hudShowScores.integer )   CG_DrawHUD_Scores( 264, 130 );
+        /* Rendered via legacy upper-right stack (CG_DrawUpperRightHUD). */
         break;
 
     case GT_DEATHMATCH:
     case GT_TEAM:
     case GT_CTF:
     case GT_DOMINATION:
-        if ( cg_hudShowScores.integer )   CG_DrawHUD_Scores( 264, 130 );
+        /* Rendered via legacy upper-right stack (CG_DrawUpperRightHUD). */
         break;
 
     // Q3Rally Code Start - KOTH
