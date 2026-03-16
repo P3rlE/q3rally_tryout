@@ -394,8 +394,17 @@ static void CG_ParseKothStatus( void ) {
 				str++;
 				cgs.kothHillOrigin[2] = atof( str );
 				cgs.kothHillOriginValid = qtrue;
+				/* Optional radius field */
+				str = strchr( str, ' ' );
+				if ( str ) {
+					str++;
+					cgs.kothHillRadius = atof( str );
+				}
 			}
 		}
+	}
+	if ( cgs.kothHillRadius <= 0.0f ) {
+		cgs.kothHillRadius = 128.0f;	/* safe fallback */
 	}
 
 	if ( !cg.kothStatusInitialized ) {
@@ -421,7 +430,7 @@ static void CG_ParseKothStatus( void ) {
 
 	if ( oldOwner != cgs.kothOwner ) {
 		if ( cgs.kothOwner == localTeam ) {
-			trap_S_StartLocalSound( cgs.media.captureYourTeamSound, CHAN_ANNOUNCER );
+			trap_S_StartLocalSound( cgs.media.kothCaptureRewardSound, CHAN_ANNOUNCER );
 		} else if ( cgs.kothOwner != TEAM_FREE ) {
 			trap_S_StartLocalSound( cgs.media.captureOpponentSound, CHAN_ANNOUNCER );
 			if ( oldOwner == localTeam ) {

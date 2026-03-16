@@ -898,6 +898,8 @@ cgs.media.impressiveTelefragSound = trap_S_RegisterSound( "sound/feedback/telefr
 	cgs.media.humiliationSound = trap_S_RegisterSound( "sound/feedback/humiliation.wav", qtrue );
 	cgs.media.assistSound = trap_S_RegisterSound( "sound/feedback/assist.wav", qtrue );
 	cgs.media.defendSound = trap_S_RegisterSound( "sound/feedback/defense.wav", qtrue );
+	cgs.media.kothCaptureRewardSound = trap_S_RegisterSound( "sound/feedback/koth_capture.wav", qtrue );
+	cgs.media.kothDefendRewardSound  = trap_S_RegisterSound( "sound/feedback/koth_defend.wav", qtrue );
 #ifdef MISSIONPACK
 	cgs.media.firstImpressiveSound = trap_S_RegisterSound( "sound/feedback/first_impressive.wav", qtrue );
 	cgs.media.firstExcellentSound = trap_S_RegisterSound( "sound/feedback/first_excellent.wav", qtrue );
@@ -1135,8 +1137,12 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.select2Shader = trap_R_RegisterShader( "gfx/2d/select2" );
 	/* KOTH hill indicator textures (loaded globally for main world/minimap passes) */
 	cgs.media.kothHillMarkerNeutralShader = trap_R_RegisterShaderNoMip( "gfx/2d/hillmarker.png" );
-	cgs.media.kothHillMarkerRedShader = trap_R_RegisterShaderNoMip( "gfx/2d/hillmarker_red.png" );
-	cgs.media.kothHillMarkerBlueShader = trap_R_RegisterShaderNoMip( "gfx/2d/hillmarker_blue.png" );
+	cgs.media.kothHillMarkerRedShader     = trap_R_RegisterShaderNoMip( "gfx/2d/hillmarker_red.png" );
+	cgs.media.kothHillMarkerBlueShader    = trap_R_RegisterShaderNoMip( "gfx/2d/hillmarker_blue.png" );
+	cgs.media.kothBeamShader              = trap_R_RegisterShader( "textures/fx/koth_beam" );
+	cgs.media.kothRingShader              = trap_R_RegisterShader( "textures/fx/koth_ring" );
+	cgs.media.medalKothCapture            = trap_R_RegisterShaderNoMip( "medal_koth_capture" );
+	cgs.media.medalKothDefend             = trap_R_RegisterShaderNoMip( "medal_koth_defend" );
 
 	for ( i = 0 ; i < NUM_CROSSHAIRS ; i++ ) {
 //		cgs.media.crosshairShader[i] = trap_R_RegisterShader( va("gfx/2d/crosshair%c", 'a'+i) );

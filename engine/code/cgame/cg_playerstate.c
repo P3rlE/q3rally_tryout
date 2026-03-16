@@ -412,10 +412,17 @@ void CG_CheckLocalSounds( playerState_t *ps, playerState_t *ops ) {
 
 	// reward sounds
 	reward = qfalse;
-	if (ps->persistant[PERS_CAPTURES] != ops->persistant[PERS_CAPTURES]) {
-		pushReward(cgs.media.captureAwardSound, cgs.media.medalCapture, ps->persistant[PERS_CAPTURES]);
-		reward = qtrue;
-		//Com_Printf("capture\n");
+	/* KOTH: hill capture reward - sprite only, sound via cg_servercmds.c */
+	if ( cgs.gametype == GT_KOTH ) {
+		if (ps->persistant[PERS_CAPTURES] != ops->persistant[PERS_CAPTURES]) {
+			pushReward(0, cgs.media.medalKothCapture, ps->persistant[PERS_CAPTURES]);
+			reward = qtrue;
+		}
+	} else {
+		if (ps->persistant[PERS_CAPTURES] != ops->persistant[PERS_CAPTURES]) {
+			pushReward(cgs.media.captureAwardSound, cgs.media.medalCapture, ps->persistant[PERS_CAPTURES]);
+			reward = qtrue;
+		}
 	}
 	if (ps->persistant[PERS_IMPRESSIVE_COUNT] != ops->persistant[PERS_IMPRESSIVE_COUNT]) {
 #ifdef MISSIONPACK
@@ -473,10 +480,17 @@ void CG_CheckLocalSounds( playerState_t *ps, playerState_t *ops ) {
 		reward = qtrue;
 		//Com_Printf("gauntlet frag\n");
 	}
-	if (ps->persistant[PERS_DEFEND_COUNT] != ops->persistant[PERS_DEFEND_COUNT]) {
-		pushReward(cgs.media.defendSound, cgs.media.medalDefend, ps->persistant[PERS_DEFEND_COUNT]);
-		reward = qtrue;
-		//Com_Printf("defend\n");
+	/* KOTH: hill defend reward (replaces CTF flag-defend medal) */
+	if ( cgs.gametype == GT_KOTH ) {
+		if (ps->persistant[PERS_DEFEND_COUNT] != ops->persistant[PERS_DEFEND_COUNT]) {
+			pushReward(cgs.media.kothDefendRewardSound, cgs.media.medalKothDefend, ps->persistant[PERS_DEFEND_COUNT]);
+			reward = qtrue;
+		}
+	} else {
+		if (ps->persistant[PERS_DEFEND_COUNT] != ops->persistant[PERS_DEFEND_COUNT]) {
+			pushReward(cgs.media.defendSound, cgs.media.medalDefend, ps->persistant[PERS_DEFEND_COUNT]);
+			reward = qtrue;
+		}
 	}
 	if (ps->persistant[PERS_ASSIST_COUNT] != ops->persistant[PERS_ASSIST_COUNT]) {
 		pushReward(cgs.media.assistSound, cgs.media.medalAssist, ps->persistant[PERS_ASSIST_COUNT]);

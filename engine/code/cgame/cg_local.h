@@ -935,6 +935,10 @@ typedef struct {
 	qhandle_t   kothHillMarkerNeutralShader;
 	qhandle_t   kothHillMarkerRedShader;
 	qhandle_t   kothHillMarkerBlueShader;
+	qhandle_t   kothBeamShader;             /* upward beam: textures/fx/koth_beam */
+	qhandle_t   kothRingShader;             /* flat ground ring: textures/fx/koth_ring */
+	qhandle_t   medalKothCapture;           /* KOTH hill-capture reward sprite */
+	qhandle_t   medalKothDefend;            /* KOTH hill-defend reward sprite */
 	qhandle_t	flagPoleModel;
 	qhandle_t	flagFlapModel;
 
@@ -1212,6 +1216,8 @@ typedef struct {
 	sfxHandle_t humiliationSound;
 	sfxHandle_t assistSound;
 	sfxHandle_t defendSound;
+	sfxHandle_t kothCaptureRewardSound;     /* KOTH hill-capture reward sound */
+	sfxHandle_t kothDefendRewardSound;      /* KOTH hill-defend reward sound */
 	sfxHandle_t firstImpressiveSound;
 	sfxHandle_t firstExcellentSound;
 	sfxHandle_t firstHumiliationSound;
@@ -1405,6 +1411,7 @@ typedef struct {
     int             kothCapturePct; /* 0-100 capture progress */
 	vec3_t			kothHillOrigin;
 	qboolean		kothHillOriginValid;
+	float			kothHillRadius;		/* XY radius of the hill brush, from CS_KOTHSTATUS */
 	qboolean  newHud;
 
 	//
