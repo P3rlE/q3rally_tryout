@@ -78,11 +78,6 @@ float CG_DrawDistanceToFinish( float y );
 void  CG_DrawCurrentPosition( float y );
 float CG_DrawEliminationTimeline( float y );
 float CG_DrawCarAheadAndBehind( float y );
-void  CG_DrawHUD_Times( float x, float y );
-void  CG_DrawHUD_Positions( float x, float y );
-void  CG_DrawHUD_Laps( float x, float y );
-void  CG_DrawHUD_OpponentList( float x, float y );
-void  CG_DrawHUD_Scores( float x, float y );
 
 /* cg_hud_derby.c */
 void  CG_DrawHUD_DerbyList( float x, float y );

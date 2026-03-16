@@ -816,16 +816,16 @@ qboolean CG_DrawHUD( void ) {
     // Q3Rally Code END - KOTH
 
     case GT_DERBY:
-        if ( cg_hudShowTimes.integer )        CG_DrawHUD_Times( 0, 112 );
+        if ( cg_hudShowTimes.integer )        CG_DrawTimes( 112 );
         if ( cg_hudShowDerbyVehicle.integer )   CG_DrawHUD_DerbyVehicleState();
         if ( cg_hudShowDerbyList.integer )      CG_DrawHUD_DerbyList( 440, 130 );
         if ( cg_derbyHitFxEnable.integer )     CG_DrawHUD_DerbyHitImpact();
         break;
 
     case GT_LCS:
-        if ( cg_hudShowTimes.integer )         CG_DrawHUD_Times( 0, 112 );
-        if ( cg_hudShowPosition.integer )      CG_DrawHUD_Positions( 0, 228 );
-        if ( cg_hudShowOpponentList.integer )   CG_DrawHUD_OpponentList( 440, 130 );
+        if ( cg_hudShowTimes.integer )         CG_DrawTimes( 112 );
+        if ( cg_hudShowPosition.integer )      CG_DrawCurrentPosition( 228 );
+        if ( cg_hudShowOpponentList.integer )   CG_DrawCarAheadAndBehind( 130 );
         break;
     }
 
