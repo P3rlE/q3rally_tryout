@@ -1848,13 +1848,18 @@ STATIC
 */
 
 
-/*QUAKED func_static (0 .5 .8) ?
+/*QUAKED func_static (0 .5 .8) ? KOTH_ONLY
 A bmodel that just sits there, doing nothing.  Can be used for conditional walls and models.
 "model2"	.md3 model to also draw
 "color"		constantLight color
 "light"		constantLight radius
 */
 void SP_func_static( gentity_t *ent ) {
+	if ( ( ent->spawnflags & 1 ) && g_gametype.integer != GT_KOTH ) {
+		G_FreeEntity( ent );
+		return;
+	}
+
 	trap_SetBrushModel( ent, ent->model );
 	InitMover( ent );
 	VectorCopy( ent->s.origin, ent->s.pos.trBase );
