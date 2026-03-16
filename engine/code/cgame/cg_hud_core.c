@@ -683,15 +683,61 @@ Draws the legacy right-side racing info stack.
 float CG_DrawUpperRightHUD( float y ) {
     int i;
 
-    /* Keep racer count updates for subsystems that still read cgs.numRacers,
-       but avoid drawing legacy HUD blocks here to prevent duplicate overlays.
-       Rendering is handled by the modular CG_DrawHUD gametype switch below. */
     cgs.numRacers = 0;
     for ( i = 0; i < cgs.maxclients; i++ ) {
         if ( !cgs.clientinfo[i].infoValid )              continue;
         if ( cgs.clientinfo[i].team == TEAM_SPECTATOR )  continue;
         if ( cg.scores[i].ping == -1 )                   continue;
         cgs.numRacers++;
+    }
+
+    if ( cgs.clientinfo[cg.snap->ps.clientNum].team == TEAM_SPECTATOR ) {
+        return y;
+    }
+
+    if ( isRallyRace() ) {
+        float timesStart = y;
+        float timesY     = y;
+
+        if ( cg_checkpointArrowMode.integer ) {
+            y = CG_DrawArrowToCheckpoint( y );
+            timesStart = y;
+            timesY     = y;
+        }
+
+        CG_UpdateGhostSplitDelta();
+
+        if ( cg_hudShowTimes.integer )        timesY = CG_DrawTimes( timesY );
+        if ( cg_ghostPlayback.integer )       timesY = CG_DrawGhostSplitDelta( timesY );
+        if ( cg_hudShowLaps.integer )         timesY = CG_DrawLaps( timesY );
+        if ( cg_hudShowDistToFinish.integer ) timesY = CG_DrawDistanceToFinish( timesY );
+        if ( cg_elimTimeline.integer )        timesY = CG_DrawEliminationTimeline( timesY );
+
+        if ( cg_hudShowPosition.integer ) {
+            CG_DrawCurrentPosition( timesStart );
+        }
+
+        if ( cg_hudShowCarAheadBehind.integer ) {
+            y = CG_DrawCarAheadAndBehind( timesY );
+        } else {
+            y = timesY;
+        }
+    } else if ( cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ) {
+        float timesStart = y;
+
+        if ( cg_hudShowTimes.integer ) {
+            y = CG_DrawTimes( y );
+        }
+
+        if ( cgs.gametype == GT_LCS && cg_hudShowPosition.integer ) {
+            CG_DrawCurrentPosition( timesStart );
+        }
+    }
+
+    if ( !isRallyNonDMRace() && cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS ) {
+        if ( cg_hudShowScores.integer ) {
+            y = CG_DrawScores( 636.0f, y );
+        }
     }
 
     return y;
@@ -816,15 +862,12 @@ qboolean CG_DrawHUD( void ) {
     // Q3Rally Code END - KOTH
 
     case GT_DERBY:
-        if ( cg_hudShowTimes.integer )        CG_DrawTimes( 112 );
         if ( cg_hudShowDerbyVehicle.integer )   CG_DrawHUD_DerbyVehicleState();
         if ( cg_hudShowDerbyList.integer )      CG_DrawHUD_DerbyList( 440, 130 );
         if ( cg_derbyHitFxEnable.integer )     CG_DrawHUD_DerbyHitImpact();
         break;
 
     case GT_LCS:
-        if ( cg_hudShowTimes.integer )         CG_DrawTimes( 112 );
-        if ( cg_hudShowPosition.integer )      CG_DrawCurrentPosition( 228 );
         if ( cg_hudShowOpponentList.integer )   CG_DrawCarAheadAndBehind( 130 );
         break;
     }
