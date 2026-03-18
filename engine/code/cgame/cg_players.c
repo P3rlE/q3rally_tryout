@@ -2588,9 +2588,11 @@ typedef struct {
 } cgEngineBand_t;
 
 static const cgEngineBand_t cg_engineBands[] = {
-	{ 1, 1300, 2500, CP_RPM_MIN },
-	{ 5, 3500, 4600, 2100 },
-	{ 9, 5700, CP_RPM_MAX, 4200 }
+	/* idle, low, mid, high -> engine0.wav .. engine3.wav */
+	{ 0,  800, 1100, CP_RPM_MIN },
+	{ 1, 1300, 2500,  950 },
+	{ 2, 3500, 4700, 2200 },
+	{ 3, 5700, CP_RPM_MAX, 4300 }
 };
 
 /*
@@ -2614,9 +2616,9 @@ static float CG_ClampEngineRPM( int rpm ) {
 =================
 CG_UpdateEngineSoundState
 
-Use three wide engine bands and continuous pitch within each band. This
-cuts the audible loop stepping way down compared to the old 11-loop model
-while still leaving the base backend with a simple fallback.
+Use four engine bands (idle / low / mid / high) and continuous pitch
+within each band. This keeps the idle range believable while still
+reducing loop stepping for the base backend.
 =================
 */
 static void CG_UpdateEngineSoundState( centity_t *cent, int rpm,
@@ -2626,7 +2628,9 @@ static void CG_UpdateEngineSoundState( centity_t *cent, int rpm,
 	int band;
 
 	if ( cent->engineSoundIndex < 0 ) {
-		if ( rpm >= cg_engineBands[2].downshiftRpm ) {
+		if ( rpm >= cg_engineBands[3].downshiftRpm ) {
+			cent->engineSoundIndex = 3;
+		} else if ( rpm >= cg_engineBands[2].downshiftRpm ) {
 			cent->engineSoundIndex = 2;
 		} else if ( rpm >= cg_engineBands[1].downshiftRpm ) {
 			cent->engineSoundIndex = 1;
@@ -2647,7 +2651,7 @@ static void CG_UpdateEngineSoundState( centity_t *cent, int rpm,
 	smoothedRpm = cent->engineSoundFrac;
 	band = cent->engineSoundIndex;
 
-	while ( band < 2 && smoothedRpm > cg_engineBands[band].upshiftRpm ) {
+	while ( band < 3 && smoothedRpm > cg_engineBands[band].upshiftRpm ) {
 		band++;
 	}
 
@@ -2659,10 +2663,10 @@ static void CG_UpdateEngineSoundState( centity_t *cent, int rpm,
 	*soundIndex = cg_engineBands[band].soundIndex;
 	*pitch = smoothedRpm / cg_engineBands[band].centerRpm;
 
-	if ( *pitch < 0.7f ) {
-		*pitch = 0.7f;
-	} else if ( *pitch > 1.3f ) {
-		*pitch = 1.3f;
+	if ( *pitch < 0.75f ) {
+		*pitch = 0.75f;
+	} else if ( *pitch > 1.45f ) {
+		*pitch = 1.45f;
 	}
 }
 
