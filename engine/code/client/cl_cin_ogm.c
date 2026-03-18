@@ -271,8 +271,13 @@ static int loadPagesToStreams(void)
 #define SIZEOF_RAWBUFF 4*1024
 static byte     rawBuffer[SIZEOF_RAWBUFF];
 
-#define MIN_AUDIO_PRELOAD 400	// in ms
-#define MAX_AUDIO_PRELOAD 500	// in ms
+// Keep OGM preload below the default streaming capacity of both sound backends.
+// With SDL at 44.1 kHz, the default mix buffer is 10240 sample-pairs
+// (~232 ms). OpenAL also streams OGM audio in 1024-sample chunks and has a
+// finite queued-buffer limit. Staying at 100-200 ms avoids overfilling either
+// path while still providing enough headroom for decoding jitter.
+#define MIN_AUDIO_PRELOAD 100	// in ms
+#define MAX_AUDIO_PRELOAD 200	// in ms
 
 
 /*
@@ -996,4 +1001,3 @@ void Cin_OGM_Shutdown(void)
 	return;
 }
 #endif
-
