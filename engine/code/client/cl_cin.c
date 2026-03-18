@@ -1200,11 +1200,37 @@ redump:
 		case	ZA_SOUND_MONO:
 			if (!cinTable[currentHandle].silent) {
 				ssize = RllDecodeMonoToStereo( framedata, sbuf, cinTable[currentHandle].RoQFrameSize, 0, (unsigned short)cinTable[currentHandle].roq_flags);
+				if ( com_developer && com_developer->integer ) {
+					Com_Printf( "RoQ audio mono: frameSize=%u flags=0x%04x samples=%d soundtime=%d rawend=%d firstSample=%d\n",
+						cinTable[currentHandle].RoQFrameSize,
+						(unsigned short)cinTable[currentHandle].roq_flags,
+						(int)ssize,
+						s_soundtime,
+						s_rawend[0],
+						ssize > 0 ? sbuf[0] : 0 );
+				}
                                 S_RawSamples(0, ssize, 22050, 2, 1, (byte *)sbuf, 1.0f, -1);
 			}
 			break;
 		case	ZA_SOUND_STEREO:
 			if (!cinTable[currentHandle].silent) {
+<<<<<<< codex/validate-audio-streaming-path-adjustments-rnhv1o
+				if (cinTable[currentHandle].numQuads == -1) {
+						S_Update();
+						s_rawend[0] = s_soundtime;
+					}
+					ssize = RllDecodeStereoToStereo( framedata, sbuf, cinTable[currentHandle].RoQFrameSize, 0, (unsigned short)cinTable[currentHandle].roq_flags);
+					if ( com_developer && com_developer->integer ) {
+						Com_Printf( "RoQ audio stereo: frameSize=%u flags=0x%04x samples=%d soundtime=%d rawend=%d firstPair=(%d,%d)\n",
+							cinTable[currentHandle].RoQFrameSize,
+							(unsigned short)cinTable[currentHandle].roq_flags,
+							(int)ssize,
+							s_soundtime,
+							s_rawend[0],
+							ssize > 0 ? sbuf[0] : 0,
+							ssize > 0 ? sbuf[1] : 0 );
+					}
+=======
 				if (cinTable[currentHandle].numQuads == -1 || s_rawend[0] < s_soundtime) {
 					// Don't call S_Update() here: it advances s_soundtime and causes
 					// s_rawend to fall behind, making RawSamples discard the first
@@ -1212,6 +1238,7 @@ redump:
 					s_rawend[0] = s_soundtime;
 				}
 				ssize = RllDecodeStereoToStereo( framedata, sbuf, cinTable[currentHandle].RoQFrameSize, 0, (unsigned short)cinTable[currentHandle].roq_flags);
+>>>>>>> master
                                 S_RawSamples(0, ssize, 22050, 2, 2, (byte *)sbuf, 1.0f, -1);
 			}
 			break;
@@ -1981,4 +2008,3 @@ void CIN_UploadCinematic(int handle) {
 		}
 	}
 }
-
