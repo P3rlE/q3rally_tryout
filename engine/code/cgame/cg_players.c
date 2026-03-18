@@ -2580,6 +2580,92 @@ static void CG_PlayerFloatSpriteField( centity_t *cent, int value ) {
 }
 // END
 
+typedef struct {
+	int		soundIndex;
+	int		centerRpm;
+	int		upshiftRpm;
+	int		downshiftRpm;
+} cgEngineBand_t;
+
+static const cgEngineBand_t cg_engineBands[] = {
+	{ 1, 1300, 2500, CP_RPM_MIN },
+	{ 5, 3500, 4600, 2100 },
+	{ 9, 5700, CP_RPM_MAX, 4200 }
+};
+
+/*
+=================
+CG_ClampEngineRPM
+=================
+*/
+static float CG_ClampEngineRPM( int rpm ) {
+	if ( rpm < CP_RPM_MIN ) {
+		return CP_RPM_MIN;
+	}
+
+	if ( rpm > CP_RPM_MAX ) {
+		return CP_RPM_MAX;
+	}
+
+	return rpm;
+}
+
+/*
+=================
+CG_UpdateEngineSoundState
+
+Use three wide engine bands and continuous pitch within each band. This
+cuts the audible loop stepping way down compared to the old 11-loop model
+while still leaving the base backend with a simple fallback.
+=================
+*/
+static void CG_UpdateEngineSoundState( centity_t *cent, int rpm,
+	int *soundIndex, float *pitch ) {
+	float frameScale;
+	float smoothedRpm;
+	int band;
+
+	if ( cent->engineSoundIndex < 0 ) {
+		if ( rpm >= cg_engineBands[2].downshiftRpm ) {
+			cent->engineSoundIndex = 2;
+		} else if ( rpm >= cg_engineBands[1].downshiftRpm ) {
+			cent->engineSoundIndex = 1;
+		} else {
+			cent->engineSoundIndex = 0;
+		}
+
+		cent->engineSoundFrac = CG_ClampEngineRPM( rpm );
+	}
+
+	frameScale = (float)( cg.frametime > 0 ? cg.frametime : 16 ) / 1000.0f;
+	frameScale *= 10.0f;
+	if ( frameScale > 1.0f ) {
+		frameScale = 1.0f;
+	}
+
+	cent->engineSoundFrac += ( CG_ClampEngineRPM( rpm ) - cent->engineSoundFrac ) * frameScale;
+	smoothedRpm = cent->engineSoundFrac;
+	band = cent->engineSoundIndex;
+
+	while ( band < 2 && smoothedRpm > cg_engineBands[band].upshiftRpm ) {
+		band++;
+	}
+
+	while ( band > 0 && smoothedRpm < cg_engineBands[band].downshiftRpm ) {
+		band--;
+	}
+
+	cent->engineSoundIndex = band;
+	*soundIndex = cg_engineBands[band].soundIndex;
+	*pitch = smoothedRpm / cg_engineBands[band].centerRpm;
+
+	if ( *pitch < 0.7f ) {
+		*pitch = 0.7f;
+	} else if ( *pitch > 1.3f ) {
+		*pitch = 1.3f;
+	}
+}
+
 /*
 ===============
 CG_PlayerSprites
@@ -3582,20 +3668,18 @@ void CG_Player( centity_t *cent ) {
        if( cent->currentState.clientNum == cg.predictedPlayerState.clientNum &&
                cg_engineSounds.integer )
        {
-               int index = (int) (10.0f * (cg.predictedPlayerState.stats[STAT_RPM] - CP_RPM_MIN) / (CP_RPM_MAX - CP_RPM_MIN));
+               float pitch;
+               int index;
 
                cent->engineSoundEntity = cg.predictedPlayerState.clientNum;
+               CG_UpdateEngineSoundState( cent, cg.predictedPlayerState.stats[STAT_RPM],
+                               &index, &pitch );
                trap_S_AddRealLoopingSound( cent->engineSoundEntity,
                                cg.predictedPlayerState.origin,
                                cg.predictedPlayerState.velocity,
                                cgs.clientinfo[cent->engineSoundEntity].sounds[index] );
 
-               {
-                       float t = (cg.predictedPlayerState.stats[STAT_RPM] - CP_RPM_MIN) /
-                                       (float)(CP_RPM_MAX - CP_RPM_MIN);
-                       float pitch = 0.5f + 1.5f * t;
-                       trap_S_SetEntityPitch( cent->engineSoundEntity, pitch );
-               }
+               trap_S_SetEntityPitch( cent->engineSoundEntity, pitch );
        }
 
 
@@ -4218,6 +4302,8 @@ A player just came into view or teleported, so reset all animation info
 void CG_ResetPlayerEntity( centity_t *cent ) {
 	cent->errorTime = -99999;		// guarantee no error decay added
 	cent->extrapolated = qfalse;	
+	cent->engineSoundFrac = 0.0f;
+	cent->engineSoundIndex = -1;
 
 // SKWID( removed functions )
 //	CG_ClearLerpFrame( &cgs.clientinfo[ cent->currentState.clientNum ], &cent->pe.legs, cent->currentState.legsAnim );
@@ -4256,4 +4342,3 @@ void CG_ResetPlayerEntity( centity_t *cent ) {
 */
 // END
 }
-
