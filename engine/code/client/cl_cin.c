@@ -1229,11 +1229,7 @@ redump:
 							ssize > 0 ? sbuf[0] : 0,
 							ssize > 0 ? sbuf[1] : 0 );
 					}
-<<<<<<< HEAD
-=======
                                 S_RawSamples(CIN_RAW_STREAM, ssize, 22050, 2, 2, (byte *)sbuf, 1.0f, -1);
->>>>>>> cdb8e6abbaf487c5977fedcc100f3105768e5435
-                                S_RawSamples(0, ssize, 22050, 2, 2, (byte *)sbuf, 1.0f, -1);
 			}
 			break;
 		case	ROQ_QUAD_INFO:
