@@ -863,6 +863,7 @@ static void CG_RegisterSounds( void ) {
 	cgs.media.selectSound = trap_S_RegisterSound( "sound/weapons/change.wav", qfalse );
 // Q3Rally Code Start
 	cgs.media.turboSound = trap_S_RegisterSound( "sound/items/turbo_use.wav", qfalse );
+	cgs.media.skidSound = trap_S_RegisterSound( "sound/rally/car/skid.wav", qfalse );
 // Q3Rally Code END
 	cgs.media.wearOffSound = trap_S_RegisterSound( "sound/items/wearoff.wav", qfalse );
 	cgs.media.useNothingSound = trap_S_RegisterSound( "sound/items/use_nothing.wav", qfalse );
