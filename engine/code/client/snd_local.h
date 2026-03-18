@@ -203,6 +203,7 @@ extern	dma_t	dma;
 
 #define	MAX_RAW_SAMPLES	16384
 #define MAX_RAW_STREAMS (MAX_CLIENTS * 2 + 1)
+#define CIN_RAW_STREAM (MAX_RAW_STREAMS - 1)
 extern	portable_samplepair_t s_rawsamples[MAX_RAW_STREAMS][MAX_RAW_SAMPLES];
 extern	int		s_rawend[MAX_RAW_STREAMS];
 
