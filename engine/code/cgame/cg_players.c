@@ -3124,11 +3124,11 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 				return;
 			}
 
-			trap_S_AddRealLoopingSound( cent->currentState.clientNum, origin, cent->currentState.pos.trDelta, trap_S_RegisterSound( "sound/rally/car/skid.wav", qfalse ) );
+			trap_S_AddRealLoopingSound( cent->currentState.clientNum, origin, cent->currentState.pos.trDelta, cgs.media.skidSound );
 
 			if( cent->skidSoundTime + 500 < cg.time )
 			{
-				trap_S_StartSound( origin, cent->currentState.clientNum, CHAN_VOICE, trap_S_RegisterSound( "sound/rally/car/skid.wav", qfalse ) );
+				trap_S_StartSound( origin, cent->currentState.clientNum, CHAN_VOICE, cgs.media.skidSound );
 				cent->skidSoundTime = cg.time;
 			}
 
