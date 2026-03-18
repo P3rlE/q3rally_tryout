@@ -284,9 +284,11 @@ typedef struct centity_s {
 	vec3_t			lastSkidOrigin[4];
 	float			smokeTime[4];
 	float			engineSmokeTime;
+	float			engineSoundFrac;
 
 	int				skidSoundTime;
 	int				engineSoundEntity;
+	int				engineSoundIndex;
 
 	// scripted object variables
 	int				scriptLoadTime;
