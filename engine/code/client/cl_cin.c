@@ -1214,7 +1214,6 @@ redump:
 			break;
 		case	ZA_SOUND_STEREO:
 			if (!cinTable[currentHandle].silent) {
-<<<<<<< codex/validate-audio-streaming-path-adjustments-rnhv1o
 				if (cinTable[currentHandle].numQuads == -1) {
 						S_Update();
 						s_rawend[0] = s_soundtime;
@@ -1230,15 +1229,6 @@ redump:
 							ssize > 0 ? sbuf[0] : 0,
 							ssize > 0 ? sbuf[1] : 0 );
 					}
-=======
-				if (cinTable[currentHandle].numQuads == -1 || s_rawend[0] < s_soundtime) {
-					// Don't call S_Update() here: it advances s_soundtime and causes
-					// s_rawend to fall behind, making RawSamples discard the first
-					// audio chunks (no-sound bug). Sync rawend directly instead.
-					s_rawend[0] = s_soundtime;
-				}
-				ssize = RllDecodeStereoToStereo( framedata, sbuf, cinTable[currentHandle].RoQFrameSize, 0, (unsigned short)cinTable[currentHandle].roq_flags);
->>>>>>> master
                                 S_RawSamples(0, ssize, 22050, 2, 2, (byte *)sbuf, 1.0f, -1);
 			}
 			break;
