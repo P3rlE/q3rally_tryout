@@ -237,11 +237,14 @@ static int loadPagesToStreams(void)
 	int             r = -1;
 	int             AudioPages = 0;
 	int             VideoPages = 0;
+	int             KnownPages = 0;
 	ogg_stream_state *osptr = NULL;
 	ogg_page        og;
 
 	while(!AudioPages || !VideoPages)
 	{
+		osptr = NULL;
+
 		if(ogg_sync_pageout(&g_ogm.oy, &og) != 1)
 			break;
 
@@ -250,7 +253,7 @@ static int loadPagesToStreams(void)
 			osptr = &g_ogm.os_audio;
 			++AudioPages;
 		}
-		if(g_ogm.os_video.serialno == ogg_page_serialno(&og))
+		else if(g_ogm.os_video.serialno == ogg_page_serialno(&og))
 		{
 			osptr = &g_ogm.os_video;
 			++VideoPages;
@@ -259,10 +262,11 @@ static int loadPagesToStreams(void)
 		if(osptr != NULL)
 		{
 			ogg_stream_pagein(osptr, &og);
+			++KnownPages;
 		}
 	}
 
-	if(AudioPages && VideoPages)
+	if(KnownPages)
 		r = 0;
 
 	return r;
@@ -996,4 +1000,3 @@ void Cin_OGM_Shutdown(void)
 	return;
 }
 #endif
-
