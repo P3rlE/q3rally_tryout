@@ -2667,6 +2667,71 @@ static void CG_UpdateEngineSoundState( centity_t *cent, int rpm,
 }
 
 /*
+=================
+CG_CalcEngineSoundFrac
+=================
+*/
+static float CG_CalcEngineSoundFrac( int rpm ) {
+	float frac;
+
+	frac = ( rpm - CP_RPM_MIN ) / (float)( CP_RPM_MAX - CP_RPM_MIN );
+
+	if ( frac < 0.0f ) {
+		return 0.0f;
+	}
+
+	if ( frac > 1.0f ) {
+		return 1.0f;
+	}
+
+	return frac;
+}
+
+/*
+=================
+CG_UpdateEngineSoundState
+
+Smooth the RPM input and add hysteresis to loop changes. This gives
+OpenAL a steadier pitch curve and acts as a clear fallback for the base
+backend, which cannot pitch-shift a running loop at all.
+=================
+*/
+static void CG_UpdateEngineSoundState( centity_t *cent, float targetFrac,
+	int *soundIndex, float *pitch ) {
+	float frameScale;
+	float targetIndex;
+	float hysteresis;
+
+	if ( cent->engineSoundIndex < 0 ) {
+		cent->engineSoundFrac = targetFrac;
+		cent->engineSoundIndex = (int)( targetFrac * 10.0f + 0.5f );
+	}
+
+	frameScale = (float)( cg.frametime > 0 ? cg.frametime : 16 ) / 1000.0f;
+	frameScale *= 8.0f;
+	if ( frameScale > 1.0f ) {
+		frameScale = 1.0f;
+	}
+
+	cent->engineSoundFrac += ( targetFrac - cent->engineSoundFrac ) * frameScale;
+	targetIndex = cent->engineSoundFrac * 10.0f;
+	hysteresis = 0.35f;
+
+	while ( cent->engineSoundIndex < 10 &&
+		targetIndex > cent->engineSoundIndex + 1.0f - hysteresis ) {
+		cent->engineSoundIndex++;
+	}
+
+	while ( cent->engineSoundIndex > 0 &&
+		targetIndex < cent->engineSoundIndex - hysteresis ) {
+		cent->engineSoundIndex--;
+	}
+
+	*soundIndex = cent->engineSoundIndex;
+	*pitch = 0.75f + 0.9f * cent->engineSoundFrac;
+}
+
+/*
 ===============
 CG_PlayerSprites
 
@@ -3145,11 +3210,11 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 				return;
 			}
 
-			trap_S_AddRealLoopingSound( cent->currentState.clientNum, origin, cent->currentState.pos.trDelta, trap_S_RegisterSound( "sound/rally/car/skid.wav", qfalse ) );
+			trap_S_AddRealLoopingSound( cent->currentState.clientNum, origin, cent->currentState.pos.trDelta, cgs.media.skidSound );
 
 			if( cent->skidSoundTime + 500 < cg.time )
 			{
-				trap_S_StartSound( origin, cent->currentState.clientNum, CHAN_VOICE, trap_S_RegisterSound( "sound/rally/car/skid.wav", qfalse ) );
+				trap_S_StartSound( origin, cent->currentState.clientNum, CHAN_VOICE, cgs.media.skidSound );
 				cent->skidSoundTime = cg.time;
 			}
 

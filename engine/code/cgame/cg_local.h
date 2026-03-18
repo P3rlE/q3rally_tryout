@@ -1176,6 +1176,7 @@ typedef struct {
 	sfxHandle_t	useNothingSound;
 	sfxHandle_t	wearOffSound;
 	sfxHandle_t	turboSound;
+	sfxHandle_t	skidSound;
 	sfxHandle_t	shieldSound;
 	sfxHandle_t	sfx_lghit1;
 	sfxHandle_t	sfx_lghit2;
