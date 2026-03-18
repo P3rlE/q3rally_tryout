@@ -1230,6 +1230,7 @@ redump:
 							ssize > 0 ? sbuf[1] : 0 );
 					}
                                 S_RawSamples(CIN_RAW_STREAM, ssize, 22050, 2, 2, (byte *)sbuf, 1.0f, -1);
+                                S_RawSamples(0, ssize, 22050, 2, 2, (byte *)sbuf, 1.0f, -1);
 			}
 			break;
 		case	ROQ_QUAD_INFO:
@@ -1517,7 +1518,7 @@ if (cinTable[currentHandle].fileType == FT_OGM)
 	if (cinTable[currentHandle].shader && (abs(thisTime - cinTable[currentHandle].lastTime))>100) {
 		cinTable[currentHandle].startTime += thisTime - cinTable[currentHandle].lastTime;
 	}
-	cinTable[currentHandle].tfps = (((CL_ScaledMilliseconds() - cinTable[currentHandle].startTime)*3)/100);
+	cinTable[currentHandle].tfps = (((CL_ScaledMilliseconds() - cinTable[currentHandle].startTime) * cinTable[currentHandle].roqFPS) / 1000);
 
 	start = cinTable[currentHandle].startTime;
 	while(  (cinTable[currentHandle].tfps != cinTable[currentHandle].numQuads)
@@ -1525,7 +1526,7 @@ if (cinTable[currentHandle].fileType == FT_OGM)
 	{
 		RoQInterrupt();
 		if (start != cinTable[currentHandle].startTime) {
-			cinTable[currentHandle].tfps = (((CL_ScaledMilliseconds() - cinTable[currentHandle].startTime)*3)/100);
+			cinTable[currentHandle].tfps = (((CL_ScaledMilliseconds() - cinTable[currentHandle].startTime) * cinTable[currentHandle].roqFPS) / 1000);
 			start = cinTable[currentHandle].startTime;
 		}
 	}
