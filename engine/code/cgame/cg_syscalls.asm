@@ -83,6 +83,7 @@ equ trap_R_RemapShader					-80
 equ	trap_S_AddRealLoopingSound			-81
 equ trap_S_StopLoopingSound				-82
 equ trap_S_SetEntityPitch                               -83
+equ trap_S_RawSamples				-84
 equ trap_CM_TempCapsuleModel			-84
 equ trap_CM_CapsuleTrace				-85
 equ trap_CM_TransformedCapsuleTrace		-86

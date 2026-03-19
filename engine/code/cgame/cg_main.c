@@ -2462,6 +2462,8 @@ void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum ) {
 
 	CG_ShaderStateChanged();
 
+	CG_EngineSound_Init();
+
 	trap_S_ClearLoopingSounds( qtrue );
 }
 
@@ -2473,8 +2475,7 @@ Called before every level change or subsystem restart
 =================
 */
 void CG_Shutdown( void ) {
-	// some mods may need to do cleanup work here,
-	// like closing files or archiving session data
+	CG_EngineSound_Shutdown();
 }
 
 

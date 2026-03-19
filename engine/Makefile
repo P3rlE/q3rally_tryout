@@ -2725,6 +2725,7 @@ Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_marks.o \
   $(B)/$(BASEGAME)/cgame/cg_particles.o \
   $(B)/$(BASEGAME)/cgame/cg_players.o \
+  $(B)/$(BASEGAME)/cgame/cg_enginesound.o \
   $(B)/$(BASEGAME)/cgame/cg_playerstate.o \
   $(B)/$(BASEGAME)/cgame/cg_predict.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_draw.o \
@@ -2781,6 +2782,7 @@ MPCGOBJ_ = \
   $(B)/$(MISSIONPACK)/cgame/cg_marks.o \
   $(B)/$(MISSIONPACK)/cgame/cg_particles.o \
   $(B)/$(MISSIONPACK)/cgame/cg_players.o \
+  $(B)/$(MISSIONPACK)/cgame/cg_enginesound.o \
   $(B)/$(MISSIONPACK)/cgame/cg_playerstate.o \
   $(B)/$(MISSIONPACK)/cgame/cg_predict.o \
   $(B)/$(MISSIONPACK)/cgame/cg_scoreboard.o \
