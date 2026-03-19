@@ -189,6 +189,11 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
         int rawEndEst   = state->rawEndEst;
         int maxAhead    = 3840; /* 80ms @ 48kHz, well below MAX_RAW_SAMPLES/4 */
 
+        if ( rawEndEst < paintedEst ) {
+            rawEndEst = paintedEst;
+            state->rawEndEst = paintedEst;
+        }
+
         debugPaintedEst = paintedEst;
         debugRawEndEst = rawEndEst;
         debugAhead = rawEndEst - paintedEst;
