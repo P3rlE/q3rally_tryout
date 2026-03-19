@@ -167,11 +167,11 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
     }
 
     // Calculate samples for this frame based on actual frametime.
-    // Add a small fixed surplus (96 samples = 2ms) so s_rawend stays ahead
-    // of s_paintedtime even when frames arrive slightly late.
+    // Keep this tightly matched to the frame duration so we do not
+    // continuously overfill the raw-sample buffer.
     {
         int msec = ( cg.frametime > 0 && cg.frametime < 100 ) ? cg.frametime : 20;
-        numSamples = msec * CG_ES_SAMPLE_RATE / 1000 + 96;
+        numSamples = msec * CG_ES_SAMPLE_RATE / 1000;
         if ( numSamples > 960 ) numSamples = 960;
         if ( numSamples < 64  ) numSamples = 64;
     }
