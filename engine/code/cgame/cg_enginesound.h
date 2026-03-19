@@ -91,6 +91,7 @@ typedef struct {
     float   lpState;
 
     int     configHash;
+    int     debugSkipBucket;
     int     rawEndEst;              /* estimated s_rawend, for overflow guard */
     qboolean    initialized;
 } cgEngineSynthState_t;
