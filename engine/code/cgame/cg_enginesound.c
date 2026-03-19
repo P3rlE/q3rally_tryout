@@ -155,6 +155,10 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
     float               fc_norm;
     int                 numSamples;
     float               gain;
+    int                 debugPaintedEst;
+    int                 debugRawEndEst;
+    int                 debugAhead;
+    qboolean            debugWouldSkip;
 
     state = &cg_engineSynth;
 
@@ -163,14 +167,19 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
     }
 
     // Calculate samples for this frame based on actual frametime.
-    // Add a small fixed surplus (96 samples = 2ms) so s_rawend stays ahead
-    // of s_paintedtime even when frames arrive slightly late.
+    // Keep this tightly matched to the frame duration so we do not
+    // continuously overfill the raw-sample buffer.
     {
         int msec = ( cg.frametime > 0 && cg.frametime < 100 ) ? cg.frametime : 20;
-        numSamples = msec * CG_ES_SAMPLE_RATE / 1000 + 96;
+        numSamples = msec * CG_ES_SAMPLE_RATE / 1000;
         if ( numSamples > 960 ) numSamples = 960;
         if ( numSamples < 64  ) numSamples = 64;
     }
+
+    debugWouldSkip = qfalse;
+    debugPaintedEst = 0;
+    debugRawEndEst = state->rawEndEst;
+    debugAhead = 0;
 
     // Overflow guard: estimate how far s_rawend is ahead of s_paintedtime.
     // s_paintedtime ≈ cg.time * CG_ES_SAMPLE_RATE / 1000 (within a few ms).
@@ -180,18 +189,38 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
         int rawEndEst   = state->rawEndEst;
         int maxAhead    = 3840; /* 80ms @ 48kHz, well below MAX_RAW_SAMPLES/4 */
 
+        if ( rawEndEst < paintedEst ) {
+            rawEndEst = paintedEst;
+            state->rawEndEst = paintedEst;
+        }
+
+        debugPaintedEst = paintedEst;
+        debugRawEndEst = rawEndEst;
+        debugAhead = rawEndEst - paintedEst;
+
         if ( rawEndEst - paintedEst > maxAhead ) {
             /* buffer is full enough -- synthesize but don't submit */
+            debugWouldSkip = qtrue;
+
+            if ( ( cg.time / 500 ) != state->debugSkipBucket ) {
+                state->debugSkipBucket = cg.time / 500;
+                Com_Printf( "^3ESBUF: SKIP time=%d frame=%d samples=%d rawEndEst=%d paintedEst=%d ahead=%d maxAhead=%d\n",
+                            cg.time, cg.frametime, numSamples, rawEndEst, paintedEst,
+                            rawEndEst - paintedEst, maxAhead );
+            }
             return;
         }
         state->rawEndEst = rawEndEst + numSamples;
+        debugRawEndEst = state->rawEndEst;
+        debugAhead = state->rawEndEst - paintedEst;
     }
 
     // debug: print every 2 seconds to show live RPM values
     if ( ( cg.time / 2000 ) != state->configHash ) {
         state->configHash = cg.time / 2000;
-        Com_Printf( "^2ES: rpm=%d gear=%d throttle=%.2f samples=%d\n",
-                    rpm, gear, throttle, numSamples );
+        Com_Printf( "^2ES: time=%d frame=%d rpm=%d gear=%d throttle=%.2f samples=%d rawEndEst=%d paintedEst=%d ahead=%d skip=%d\n",
+                    cg.time, cg.frametime, rpm, gear, throttle, numSamples,
+                    debugRawEndEst, debugPaintedEst, debugAhead, debugWouldSkip );
     }
 
     CG_EngineSound_DefaultConfig( &cfg );
