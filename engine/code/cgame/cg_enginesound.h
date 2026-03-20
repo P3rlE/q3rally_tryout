@@ -41,9 +41,9 @@ struct centity_s;
 #define CG_ES_WG_MASK           (CG_ES_WG_MAX_LEN - 1)
 
 // Raw-stream slot for the engine synthesizer.
-// Stream 0 is used by RoQ video but is idle during gameplay.
-// Q3 keeps s_rawend[0] warm so there is no cold-start gap vs s_paintedtime.
-#define CG_ES_RAW_STREAM        0
+// Reserve a dedicated stream above the VoIP slots so engine audio does not
+// contend with legacy stream 0 warmup or with cinematic playback.
+#define CG_ES_RAW_STREAM        ENGINE_RAW_STREAM
 
 // ---------------------------------------------------------------------------
 // per-vehicle engine configuration
@@ -91,7 +91,6 @@ typedef struct {
     float   lpState;
 
     int     configHash;
-    int     rawEndEst;              /* estimated s_rawend, for overflow guard */
     qboolean    initialized;
 } cgEngineSynthState_t;
 // NOTE: cgEngineSynthState_t is large (~8 KB). It must NOT be embedded in
