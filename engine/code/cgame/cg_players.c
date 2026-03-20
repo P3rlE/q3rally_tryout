@@ -2581,6 +2581,71 @@ static void CG_PlayerFloatSpriteField( centity_t *cent, int value ) {
 // END
 
 /*
+=================
+CG_CalcEngineSoundFrac
+=================
+*/
+static float CG_CalcEngineSoundFrac( int rpm ) {
+	float frac;
+
+	frac = ( rpm - CP_RPM_MIN ) / (float)( CP_RPM_MAX - CP_RPM_MIN );
+
+	if ( frac < 0.0f ) {
+		return 0.0f;
+	}
+
+	if ( frac > 1.0f ) {
+		return 1.0f;
+	}
+
+	return frac;
+}
+
+/*
+=================
+CG_UpdateEngineSoundState
+
+Smooth the RPM input and add hysteresis to loop changes. This gives
+OpenAL a steadier pitch curve and acts as a clear fallback for the base
+backend, which cannot pitch-shift a running loop at all.
+=================
+*/
+static void CG_UpdateEngineSoundState( centity_t *cent, float targetFrac,
+	int *soundIndex, float *pitch ) {
+	float frameScale;
+	float targetIndex;
+	float hysteresis;
+
+	if ( cent->engineSoundIndex < 0 ) {
+		cent->engineSoundFrac = targetFrac;
+		cent->engineSoundIndex = (int)( targetFrac * 10.0f + 0.5f );
+	}
+
+	frameScale = (float)( cg.frametime > 0 ? cg.frametime : 16 ) / 1000.0f;
+	frameScale *= 8.0f;
+	if ( frameScale > 1.0f ) {
+		frameScale = 1.0f;
+	}
+
+	cent->engineSoundFrac += ( targetFrac - cent->engineSoundFrac ) * frameScale;
+	targetIndex = cent->engineSoundFrac * 10.0f;
+	hysteresis = 0.35f;
+
+	while ( cent->engineSoundIndex < 10 &&
+		targetIndex > cent->engineSoundIndex + 1.0f - hysteresis ) {
+		cent->engineSoundIndex++;
+	}
+
+	while ( cent->engineSoundIndex > 0 &&
+		targetIndex < cent->engineSoundIndex - hysteresis ) {
+		cent->engineSoundIndex--;
+	}
+
+	*soundIndex = cent->engineSoundIndex;
+	*pitch = 0.75f + 0.9f * cent->engineSoundFrac;
+}
+
+/*
 ===============
 CG_PlayerSprites
 
@@ -3577,22 +3642,25 @@ void CG_Player( centity_t *cent ) {
 		CG_AddRefEntityWithPowerups( &body, &cent->currentState, ci->team );
 
 
-	// engine sounds -- procedural pulse-train synthesizer
-	if ( cent->currentState.clientNum == cg.predictedPlayerState.clientNum &&
-	     cg_engineSounds.integer ) {
-		usercmd_t cmd;
-		float throttle;
+	// engine sounds
 
-		trap_GetUserCmd( trap_GetCurrentCmdNumber(), &cmd );
-		throttle = (float)cmd.forwardmove / 127.0f;
-		if ( throttle < 0.0f ) throttle = 0.0f;
+       if( cent->currentState.clientNum == cg.predictedPlayerState.clientNum &&
+               cg_engineSounds.integer )
+       {
+               float rpmFrac;
+               float pitch;
+               int index;
 
-		cent->engineSoundEntity = cg.predictedPlayerState.clientNum;
-		CG_EngineSound_Update( cent->engineSoundEntity,
-		                       cg.predictedPlayerState.stats[STAT_RPM],
-		                       cg.predictedPlayerState.stats[STAT_GEAR],
-		                       throttle );
-	}
+               cent->engineSoundEntity = cg.predictedPlayerState.clientNum;
+               rpmFrac = CG_CalcEngineSoundFrac( cg.predictedPlayerState.stats[STAT_RPM] );
+               CG_UpdateEngineSoundState( cent, rpmFrac, &index, &pitch );
+               trap_S_AddRealLoopingSound( cent->engineSoundEntity,
+                               cg.predictedPlayerState.origin,
+                               cg.predictedPlayerState.velocity,
+                               cgs.clientinfo[cent->engineSoundEntity].sounds[index] );
+
+               trap_S_SetEntityPitch( cent->engineSoundEntity, pitch );
+       }
 
 
 	if (ci->controlMode == CT_MOUSE){
@@ -4212,8 +4280,10 @@ A player just came into view or teleported, so reset all animation info
 ===============
 */
 void CG_ResetPlayerEntity( centity_t *cent ) {
-	cent->errorTime = -99999;
-	cent->extrapolated = qfalse;
+	cent->errorTime = -99999;		// guarantee no error decay added
+	cent->extrapolated = qfalse;	
+	cent->engineSoundFrac = 0.0f;
+	cent->engineSoundIndex = -1;
 
 // SKWID( removed functions )
 //	CG_ClearLerpFrame( &cgs.clientinfo[ cent->currentState.clientNum ], &cent->pe.legs, cent->currentState.legsAnim );

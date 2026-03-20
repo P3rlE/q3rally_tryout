@@ -221,9 +221,6 @@ typedef struct {
 // centity_t have a direct corespondence with gentity_t in the game, but
 // only the entityState_t is directly communicated to the cgame
 
-// procedural engine sound synthesizer types (needed by centity_t)
-#include "cg_enginesound.h"
-
 // number of gib models that can be registered for a scripted object
 #define MAX_SCRIPT_GIBS       5
 typedef struct centity_s {
@@ -287,8 +284,11 @@ typedef struct centity_s {
 	vec3_t			lastSkidOrigin[4];
 	float			smokeTime[4];
 	float			engineSmokeTime;
+	float			engineSoundFrac;
+
 	int				skidSoundTime;
 	int				engineSoundEntity;
+	int				engineSoundIndex;
 
 	// scripted object variables
 	int				scriptLoadTime;
@@ -2222,8 +2222,6 @@ void		trap_S_AddLoopingSound( int entityNum, const vec3_t origin, const vec3_t v
 void		trap_S_AddRealLoopingSound( int entityNum, const vec3_t origin, const vec3_t velocity, sfxHandle_t sfx );
 void		trap_S_UpdateEntityPosition( int entityNum, const vec3_t origin );
 void		trap_S_SetEntityPitch( int entityNum, float pitch );
-void		trap_S_RawSamples( int stream, int samples, int rate, int width,
-			int channels, const byte *data, float volume, int entityNum );
 
 // respatialize recalculates the volumes of sound as they should be heard by the
 // given entityNum and position

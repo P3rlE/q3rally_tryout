@@ -205,8 +205,7 @@ extern	dma_t	dma;
 // this as a power of two. 32768 sample-pairs buffer ~743 ms at 44.1 kHz,
 // which keeps cinematic/audio preload safely above 500 ms.
 #define	MAX_RAW_SAMPLES	32768
-#define MAX_RAW_STREAMS (MAX_CLIENTS * 2 + 2)
-#define ENGINE_RAW_STREAM (MAX_RAW_STREAMS - 2)
+#define MAX_RAW_STREAMS (MAX_CLIENTS * 2 + 1)
 #define CIN_RAW_STREAM (MAX_RAW_STREAMS - 1)
 extern	portable_samplepair_t s_rawsamples[MAX_RAW_STREAMS][MAX_RAW_SAMPLES];
 extern	int		s_rawend[MAX_RAW_STREAMS];
