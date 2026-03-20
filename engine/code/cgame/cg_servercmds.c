@@ -803,14 +803,25 @@ static void CG_MapRestart( void ) {
 	CG_InitMarkPolys();
 	CG_ClearParticles ();
 
-	// make sure the "3 frags left" warnings play again
+	// make sure end-of-round announcer state does not leak into the next round
 	cg.fraglimitWarnings = 0;
-
 	cg.timelimitWarnings = 0;
+	cgs.scores1 = SCORE_NOT_PRESENT;
+	cgs.scores2 = SCORE_NOT_PRESENT;
+	cgs.scores3 = SCORE_NOT_PRESENT;
+	cgs.scores4 = SCORE_NOT_PRESENT;
 	cg.rewardTime = 0;
 	cg.rewardStack = 0;
 	cg.intermissionStarted = qfalse;
 	cg.levelShot = qfalse;
+	cg.achievementQueueCount = 0;
+	cg.rankQueueCount = 0;
+	cg.soundBufferIn = 0;
+	cg.soundBufferOut = 0;
+	cg.soundTime = 0;
+	memset( cg.soundBuffer, 0, sizeof( cg.soundBuffer ) );
+	memset( cg.achievementQueue, 0, sizeof( cg.achievementQueue ) );
+	memset( cg.rankQueue, 0, sizeof( cg.rankQueue ) );
 
 	cgs.voteTime = 0;
 
