@@ -1510,9 +1510,12 @@ static void CG_AddRankAnnouncement( int rankIndex, const char *name, const char 
                 slot->startTime = cg.time;
                 cg.rankQueueCount = queueCount + 1;
 
-		if ( cgs.media.achievementUnlockSound ) {
-			trap_S_StartLocalSound( cgs.media.achievementUnlockSound, CHAN_LOCAL_SOUND );
-		}
+		/*
+		 * Rank changes are shown via the dedicated rank banner. Reusing the
+		 * achievement VO here makes intermission/scoreboard transitions sound
+		 * like a fresh achievement unlock when the profile score changes at the
+		 * end of a match.
+		 */
 }
 
 static void CG_ParseRankUp( void ) {
