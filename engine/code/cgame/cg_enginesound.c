@@ -154,6 +154,11 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
     int                 s16;
     float               fc_norm;
     int                 numSamples;
+    int                 playbackCursorEstimate;
+    int                 playbackSafetySamples;
+    int                 targetLeadSamples;
+    int                 samplesNeeded;
+    int                 aheadSamples;
     float               gain;
 
     state = &cg_engineSynth;
@@ -162,36 +167,40 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
         CG_EngineSound_Init();
     }
 
-    // Calculate samples for this frame based on actual frametime.
-    // Add a small fixed surplus (96 samples = 2ms) so s_rawend stays ahead
-    // of s_paintedtime even when frames arrive slightly late.
-    {
-        int msec = ( cg.frametime > 0 && cg.frametime < 100 ) ? cg.frametime : 20;
-        numSamples = msec * CG_ES_SAMPLE_RATE / 1000 + 96;
-        if ( numSamples > 960 ) numSamples = 960;
-        if ( numSamples < 64  ) numSamples = 64;
+    // Maintain an engine-owned submission cursor for this raw stream.
+    // Estimate playback from cg.time plus a small safety cushion so cgame
+    // stays ahead of the backend mixer clock instead of repeatedly dropping
+    // just behind s_soundtime and forcing stream resets.
+    playbackSafetySamples = 1024;
+    playbackCursorEstimate = (int)( (float)cg.time * ( CG_ES_SAMPLE_RATE / 1000.0f ) ) + playbackSafetySamples;
+    if ( !state->streamPrimed ) {
+        state->submittedSamples = playbackCursorEstimate;
+        state->streamPrimed = qtrue;
+    }
+    if ( state->submittedSamples < playbackCursorEstimate ) {
+        state->submittedSamples = playbackCursorEstimate;
     }
 
-    // Overflow guard: estimate how far s_rawend is ahead of s_paintedtime.
-    // s_paintedtime ≈ cg.time * CG_ES_SAMPLE_RATE / 1000 (within a few ms).
-    // Allow at most 80ms (~3840 samples) of pre-buffered audio.
-    {
-        int paintedEst  = (int)( (float)cg.time * ( CG_ES_SAMPLE_RATE / 1000.0f ) );
-        int rawEndEst   = state->rawEndEst;
-        int maxAhead    = 3840; /* 80ms @ 48kHz, well below MAX_RAW_SAMPLES/4 */
-
-        if ( rawEndEst - paintedEst > maxAhead ) {
-            /* buffer is full enough -- synthesize but don't submit */
-            return;
-        }
-        state->rawEndEst = rawEndEst + numSamples;
+    targetLeadSamples = 2048;
+    aheadSamples = state->submittedSamples - playbackCursorEstimate;
+    samplesNeeded = targetLeadSamples - aheadSamples;
+    if ( samplesNeeded < 0 ) {
+        samplesNeeded = 0;
     }
+    if ( samplesNeeded > 1024 ) {
+        samplesNeeded = 1024;
+    }
+    numSamples = samplesNeeded;
 
-    // debug: print every 2 seconds to show live RPM values
+    // Debug print every 2 seconds to show live RPM values.
     if ( ( cg.time / 2000 ) != state->configHash ) {
         state->configHash = cg.time / 2000;
-        Com_Printf( "^2ES: rpm=%d gear=%d throttle=%.2f samples=%d\n",
-                    rpm, gear, throttle, numSamples );
+        Com_Printf( "^2ES: rpm=%d gear=%d throttle=%.2f samples=%d ahead=%d\n",
+                    rpm, gear, throttle, numSamples, aheadSamples );
+    }
+
+    if ( numSamples <= 0 ) {
+        return;
     }
 
     CG_EngineSound_DefaultConfig( &cfg );
@@ -336,4 +345,6 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
         1.0f,
         entityNum
     );
+
+    state->submittedSamples += numSamples;
 }
