@@ -159,6 +159,9 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
     int                 samplesNeeded;
     int                 aheadSamples;
     float               gain;
+    int                 debugPaintedEst;
+    int                 debugRawEndEst;
+    int                 debugAhead;
 
     state = &cg_engineSynth;
 
