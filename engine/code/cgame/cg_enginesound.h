@@ -113,7 +113,8 @@ extern cgEngineSynthState_t cg_engineSynth;
 void CG_EngineSound_Init( void );
 
 // Call once per rendered frame for the local player.
-// entityNum    -- cent->engineSoundEntity (for S_RawSamples spatialization)
+// entityNum    -- currently ignored; local-player engine audio is submitted
+//                 as an unspatialized raw stream
 // rpm          -- from cg.predictedPlayerState.stats[STAT_RPM]
 // gear         -- from cg.predictedPlayerState.stats[STAT_GEAR]
 // throttle     -- 0.0 (coast) to 1.0 (full) derived from usercmd forwardmove

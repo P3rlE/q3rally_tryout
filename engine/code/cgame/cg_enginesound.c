@@ -343,7 +343,7 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
         2,
         (const byte *)pcmBuffer,
         1.0f,
-        entityNum
+        -1
     );
 
     state->submittedSamples += numSamples;
