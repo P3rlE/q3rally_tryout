@@ -163,8 +163,8 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
     }
 
     // Calculate samples for this frame based on actual frametime.
-    // Add a small fixed surplus (96 samples = 2ms) so s_rawend stays ahead
-    // of s_paintedtime even when frames arrive slightly late.
+    // Add a small fixed surplus so the dedicated raw stream stays a little
+    // ahead of the mixer even when a frame arrives late.
     {
         int msec = ( cg.frametime > 0 && cg.frametime < 100 ) ? cg.frametime : 20;
         numSamples = msec * CG_ES_SAMPLE_RATE / 1000 + 96;
@@ -172,22 +172,7 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
         if ( numSamples < 64  ) numSamples = 64;
     }
 
-    // Overflow guard: estimate how far s_rawend is ahead of s_paintedtime.
-    // s_paintedtime ≈ cg.time * CG_ES_SAMPLE_RATE / 1000 (within a few ms).
-    // Allow at most 80ms (~3840 samples) of pre-buffered audio.
-    {
-        int paintedEst  = (int)( (float)cg.time * ( CG_ES_SAMPLE_RATE / 1000.0f ) );
-        int rawEndEst   = state->rawEndEst;
-        int maxAhead    = 3840; /* 80ms @ 48kHz, well below MAX_RAW_SAMPLES/4 */
-
-        if ( rawEndEst - paintedEst > maxAhead ) {
-            /* buffer is full enough -- synthesize but don't submit */
-            return;
-        }
-        state->rawEndEst = rawEndEst + numSamples;
-    }
-
-    // debug: print every 2 seconds to show live RPM values
+    // Debug print every 2 seconds to show live RPM values.
     if ( ( cg.time / 2000 ) != state->configHash ) {
         state->configHash = cg.time / 2000;
         Com_Printf( "^2ES: rpm=%d gear=%d throttle=%.2f samples=%d\n",
