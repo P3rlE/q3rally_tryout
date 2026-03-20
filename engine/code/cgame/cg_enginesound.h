@@ -41,9 +41,9 @@ struct centity_s;
 #define CG_ES_WG_MASK           (CG_ES_WG_MAX_LEN - 1)
 
 // Raw-stream slot for the engine synthesizer.
-// Reserve a dedicated stream above the VoIP slots so engine audio does not
-// contend with legacy stream 0 warmup or with cinematic playback.
-#define CG_ES_RAW_STREAM        ENGINE_RAW_STREAM
+// Keep this aligned with ENGINE_RAW_STREAM in snd_local.h, but define it here
+// from MAX_CLIENTS so cgame does not depend on client-only sound headers.
+#define CG_ES_RAW_STREAM        (MAX_CLIENTS * 2 + 1)
 
 // ---------------------------------------------------------------------------
 // per-vehicle engine configuration
