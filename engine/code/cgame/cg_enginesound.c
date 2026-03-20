@@ -155,13 +155,11 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
     float               fc_norm;
     int                 numSamples;
     int                 playbackCursorEstimate;
+    int                 playbackSafetySamples;
     int                 targetLeadSamples;
     int                 samplesNeeded;
     int                 aheadSamples;
     float               gain;
-    int                 debugPaintedEst;
-    int                 debugRawEndEst;
-    int                 debugAhead;
 
     state = &cg_engineSynth;
 
@@ -170,9 +168,11 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
     }
 
     // Maintain an engine-owned submission cursor for this raw stream.
-    // Estimate playback from cg.time, prime once on first use, then only
-    // generate enough samples to keep a small lead over the mixer estimate.
-    playbackCursorEstimate = (int)( (float)cg.time * ( CG_ES_SAMPLE_RATE / 1000.0f ) );
+    // Estimate playback from cg.time plus a small safety cushion so cgame
+    // stays ahead of the backend mixer clock instead of repeatedly dropping
+    // just behind s_soundtime and forcing stream resets.
+    playbackSafetySamples = 1024;
+    playbackCursorEstimate = (int)( (float)cg.time * ( CG_ES_SAMPLE_RATE / 1000.0f ) ) + playbackSafetySamples;
     if ( !state->streamPrimed ) {
         state->submittedSamples = playbackCursorEstimate;
         state->streamPrimed = qtrue;
