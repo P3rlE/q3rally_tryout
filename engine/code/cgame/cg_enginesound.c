@@ -166,8 +166,8 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
     }
 
     // Calculate samples for this frame based on actual frametime.
-    // Keep this tightly matched to the frame duration so we do not
-    // continuously overfill the raw-sample buffer.
+    // Add a small fixed surplus so the dedicated raw stream stays a little
+    // ahead of the mixer even when a frame arrives late.
     {
         int msec = ( cg.frametime > 0 && cg.frametime < 100 ) ? cg.frametime : 20;
         numSamples = msec * CG_ES_SAMPLE_RATE / 1000;
@@ -175,32 +175,7 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
         if ( numSamples < 64  ) numSamples = 64;
     }
 
-    debugPaintedEst = 0;
-    debugRawEndEst = state->rawEndEst;
-    debugAhead = 0;
-
-    // Track an estimated relation between submitted samples and painted time.
-    // We keep the estimate synchronized for diagnostics, but do not hard-skip
-    // submission based on this approximation because it can drift from the
-    // actual mixer clock and starve the engine stream.
-    {
-        int paintedEst  = (int)( (float)cg.time * ( CG_ES_SAMPLE_RATE / 1000.0f ) );
-        int rawEndEst   = state->rawEndEst;
-        if ( rawEndEst < paintedEst ) {
-            rawEndEst = paintedEst;
-            state->rawEndEst = paintedEst;
-        }
-
-        debugPaintedEst = paintedEst;
-        debugRawEndEst = rawEndEst;
-        debugAhead = rawEndEst - paintedEst;
-
-        state->rawEndEst = rawEndEst + numSamples;
-        debugRawEndEst = state->rawEndEst;
-        debugAhead = state->rawEndEst - paintedEst;
-    }
-
-    // debug: print every 2 seconds to show live RPM values
+    // Debug print every 2 seconds to show live RPM values.
     if ( ( cg.time / 2000 ) != state->configHash ) {
         state->configHash = cg.time / 2000;
         Com_Printf( "^2ES: time=%d frame=%d rpm=%d gear=%d throttle=%.2f samples=%d rawEndEst=%d paintedEst=%d ahead=%d\n",

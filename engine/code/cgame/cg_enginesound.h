@@ -43,7 +43,7 @@ struct centity_s;
 // Raw-stream slot for the engine synthesizer.
 // Reserve a dedicated stream above the VoIP slots so engine audio does not
 // contend with legacy stream 0 warmup or with cinematic playback.
-#define CG_ES_RAW_STREAM        (MAX_CLIENTS * 2 + 1)
+#define CG_ES_RAW_STREAM        ENGINE_RAW_STREAM
 
 // ---------------------------------------------------------------------------
 // per-vehicle engine configuration
@@ -91,8 +91,6 @@ typedef struct {
     float   lpState;
 
     int     configHash;
-    int     debugSkipBucket;
-    int     rawEndEst;              /* estimated s_rawend, for overflow guard */
     qboolean    initialized;
 } cgEngineSynthState_t;
 // NOTE: cgEngineSynthState_t is large (~8 KB). It must NOT be embedded in
