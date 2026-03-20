@@ -155,6 +155,9 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
     float               fc_norm;
     int                 numSamples;
     float               gain;
+    int                 debugPaintedEst;
+    int                 debugRawEndEst;
+    int                 debugAhead;
 
     state = &cg_engineSynth;
 
@@ -167,7 +170,7 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
     // ahead of the mixer even when a frame arrives late.
     {
         int msec = ( cg.frametime > 0 && cg.frametime < 100 ) ? cg.frametime : 20;
-        numSamples = msec * CG_ES_SAMPLE_RATE / 1000 + 96;
+        numSamples = msec * CG_ES_SAMPLE_RATE / 1000;
         if ( numSamples > 960 ) numSamples = 960;
         if ( numSamples < 64  ) numSamples = 64;
     }
@@ -175,8 +178,9 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
     // Debug print every 2 seconds to show live RPM values.
     if ( ( cg.time / 2000 ) != state->configHash ) {
         state->configHash = cg.time / 2000;
-        Com_Printf( "^2ES: rpm=%d gear=%d throttle=%.2f samples=%d\n",
-                    rpm, gear, throttle, numSamples );
+        Com_Printf( "^2ES: time=%d frame=%d rpm=%d gear=%d throttle=%.2f samples=%d rawEndEst=%d paintedEst=%d ahead=%d\n",
+                    cg.time, cg.frametime, rpm, gear, throttle, numSamples,
+                    debugRawEndEst, debugPaintedEst, debugAhead );
     }
 
     CG_EngineSound_DefaultConfig( &cfg );
