@@ -90,6 +90,10 @@ typedef struct {
     // --- body LP filter state ---
     float   lpState;
 
+    // --- engine-owned raw-stream tracking ---
+    int     submittedSamples;
+    qboolean    streamPrimed;
+
     int     configHash;
     qboolean    initialized;
 } cgEngineSynthState_t;

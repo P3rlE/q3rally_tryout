@@ -154,6 +154,10 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
     int                 s16;
     float               fc_norm;
     int                 numSamples;
+    int                 playbackCursorEstimate;
+    int                 targetLeadSamples;
+    int                 samplesNeeded;
+    int                 aheadSamples;
     float               gain;
     int                 debugPaintedEst;
     int                 debugRawEndEst;
@@ -165,22 +169,38 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
         CG_EngineSound_Init();
     }
 
-    // Calculate samples for this frame based on actual frametime.
-    // Add a small fixed surplus so the dedicated raw stream stays a little
-    // ahead of the mixer even when a frame arrives late.
-    {
-        int msec = ( cg.frametime > 0 && cg.frametime < 100 ) ? cg.frametime : 20;
-        numSamples = msec * CG_ES_SAMPLE_RATE / 1000;
-        if ( numSamples > 960 ) numSamples = 960;
-        if ( numSamples < 64  ) numSamples = 64;
+    // Maintain an engine-owned submission cursor for this raw stream.
+    // Estimate playback from cg.time, prime once on first use, then only
+    // generate enough samples to keep a small lead over the mixer estimate.
+    playbackCursorEstimate = (int)( (float)cg.time * ( CG_ES_SAMPLE_RATE / 1000.0f ) );
+    if ( !state->streamPrimed ) {
+        state->submittedSamples = playbackCursorEstimate;
+        state->streamPrimed = qtrue;
     }
+    if ( state->submittedSamples < playbackCursorEstimate ) {
+        state->submittedSamples = playbackCursorEstimate;
+    }
+
+    targetLeadSamples = 2048;
+    aheadSamples = state->submittedSamples - playbackCursorEstimate;
+    samplesNeeded = targetLeadSamples - aheadSamples;
+    if ( samplesNeeded < 0 ) {
+        samplesNeeded = 0;
+    }
+    if ( samplesNeeded > 1024 ) {
+        samplesNeeded = 1024;
+    }
+    numSamples = samplesNeeded;
 
     // Debug print every 2 seconds to show live RPM values.
     if ( ( cg.time / 2000 ) != state->configHash ) {
         state->configHash = cg.time / 2000;
-        Com_Printf( "^2ES: time=%d frame=%d rpm=%d gear=%d throttle=%.2f samples=%d rawEndEst=%d paintedEst=%d ahead=%d\n",
-                    cg.time, cg.frametime, rpm, gear, throttle, numSamples,
-                    debugRawEndEst, debugPaintedEst, debugAhead );
+        Com_Printf( "^2ES: rpm=%d gear=%d throttle=%.2f samples=%d ahead=%d\n",
+                    rpm, gear, throttle, numSamples, aheadSamples );
+    }
+
+    if ( numSamples <= 0 ) {
+        return;
     }
 
     CG_EngineSound_DefaultConfig( &cfg );
@@ -325,4 +345,6 @@ void CG_EngineSound_Update( int entityNum, int rpm, int gear, float throttle ) {
         1.0f,
         entityNum
     );
+
+    state->submittedSamples += numSamples;
 }
