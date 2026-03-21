@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "client.h"
+#include "snd_engine_audio.h"
 #include "snd_codec.h"
 #include "snd_local.h"
 #include "snd_public.h"
@@ -261,6 +262,8 @@ void S_Update( void )
 		}
 	}
 	
+	S_EngineAudio_BeginFrame();
+
 	if( si.Update ) {
 		si.Update( );
 	}
@@ -524,6 +527,8 @@ void S_Init( void )
 		}
 
 		if( started ) {
+			S_EngineAudio_Init();
+
 			if( !S_ValidSoundInterface( &si ) ) {
 				Com_Error( ERR_FATAL, "Sound interface invalid" );
 			}
@@ -545,6 +550,8 @@ S_Shutdown
 */
 void S_Shutdown( void )
 {
+	S_EngineAudio_Shutdown();
+
 	if( si.Shutdown ) {
 		si.Shutdown( );
 	}
