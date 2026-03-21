@@ -21,6 +21,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // snd_local.h -- private sound definations
 
+#ifndef SND_LOCAL_H
+#define SND_LOCAL_H
 
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
@@ -274,3 +276,5 @@ qboolean S_AL_Init( soundInterface_t *si );
 #ifdef idppc_altivec
 void S_PaintChannelFrom16_altivec( portable_samplepair_t paintbuffer[PAINTBUFFER_SIZE], int snd_vol, channel_t *ch, const sfx_t *sc, int count, int sampleOffset, int bufferOffset );
 #endif
+
+#endif /* SND_LOCAL_H */
