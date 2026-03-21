@@ -195,4 +195,8 @@ Mit dieser Entscheidung legen wir fest:
 - **Keine Vollportierung von `engine-sim`**
 - **Ja zu einem Q3Rally-eigenen Laufzeit-Synthesizer mit `engine-sim` als Vorbild**
 
+<<<<<<< codex/design-new-engine-sound-system-xyr5v3
 Das ist die Grundlage für den nächsten Schritt: ein konkretes technisches Design mit Datenfluss, API-Vorschlag, Modulgrenzen und MVP-Scope. Dieses Folgedesign ist in `docs/engine_audio_technical_design.md` festgehalten.
+=======
+Das ist die Grundlage für den nächsten Schritt: ein konkretes technisches Design mit Datenfluss, API-Vorschlag, Modulgrenzen und MVP-Scope.
+>>>>>>> master
