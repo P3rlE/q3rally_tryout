@@ -18,9 +18,11 @@ typedef struct engineAudioEmitterInternal_s {
 
     qboolean initialized;
     int generation;
+    int lastUpdateFrame;
 } engineAudioEmitterInternal_t;
 
 static engineAudioEmitterInternal_t s_engineEmitters[MAX_ENGINE_AUDIO_EMITTERS];
+static int s_engineAudioFrameCounter;
 
 static engineAudioEmitterInternal_t *S_GetEngineEmitterForEntity( int entityNum ) {
     int i;
@@ -46,6 +48,7 @@ static engineAudioEmitterInternal_t *S_AllocEngineEmitter( int entityNum ) {
             em->pub.active = qtrue;
             em->pub.entityNum = entityNum;
             em->generation++;
+            em->lastUpdateFrame = s_engineAudioFrameCounter;
 
             return em;
         }
@@ -64,15 +67,31 @@ static void S_FreeEngineEmitter( engineAudioEmitterInternal_t *em ) {
 
 void S_EngineAudio_Init( void ) {
     Com_Memset( s_engineEmitters, 0, sizeof( s_engineEmitters ) );
+    s_engineAudioFrameCounter = 0;
     S_LoadEngineAudioPresets();
 }
 
 void S_EngineAudio_Shutdown( void ) {
     Com_Memset( s_engineEmitters, 0, sizeof( s_engineEmitters ) );
+    s_engineAudioFrameCounter = 0;
 }
 
 void S_EngineAudio_BeginFrame( void ) {
-    /* reserved for stale-emitter cleanup and diagnostics */
+    int i;
+
+    ++s_engineAudioFrameCounter;
+
+    for ( i = 0; i < MAX_ENGINE_AUDIO_EMITTERS; ++i ) {
+        engineAudioEmitterInternal_t *em = &s_engineEmitters[i];
+
+        if ( !em->pub.active ) {
+            continue;
+        }
+
+        if ( em->lastUpdateFrame + 2 < s_engineAudioFrameCounter ) {
+            S_FreeEngineEmitter( em );
+        }
+    }
 }
 
 void S_RegisterEngineEmitter( int entityNum, int presetHandle ) {
@@ -96,6 +115,8 @@ void S_RegisterEngineEmitter( int entityNum, int presetHandle ) {
     }
 
     em->pub.preset = preset;
+
+    em->lastUpdateFrame = s_engineAudioFrameCounter;
 
     if ( !em->initialized ) {
         S_EngineDSP_Reset( &em->synth, dma.speed > 0 ? (float)dma.speed : 44100.0f );
@@ -132,6 +153,7 @@ void S_UpdateEngineEmitterState(
         }
     }
 
+    em->lastUpdateFrame = s_engineAudioFrameCounter;
     em->pub.control = *state;
     em->pub.quality = quality;
     VectorCopy( origin, em->pub.origin );
@@ -150,12 +172,14 @@ void S_SetEngineEmitterPreset( int entityNum, int presetHandle ) {
     preset = S_GetEngineAudioPresetByHandle( presetHandle );
 
     if ( em && preset ) {
+        em->lastUpdateFrame = s_engineAudioFrameCounter;
         em->pub.preset = preset;
     }
 }
 
 void S_StopAllEngineEmitters( void ) {
     Com_Memset( s_engineEmitters, 0, sizeof( s_engineEmitters ) );
+    s_engineAudioFrameCounter = 0;
 }
 
 static void S_ComputeEngineEmitterSpatialGains(
