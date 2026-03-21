@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // cg_main.c -- initialization and primary entry point for cgame
 #include "cg_local.h"
 #include "cg_hud_elements.h"
+#include "cg_engine_audio.h"
 #include "../client/keycodes.h"
 
 #ifdef MISSIONPACK
@@ -2462,6 +2463,8 @@ void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum ) {
 
 	CG_ShaderStateChanged();
 
+	CG_EngineAudio_Init();
+
 	trap_S_ClearLoopingSounds( qtrue );
 }
 
@@ -2473,6 +2476,8 @@ Called before every level change or subsystem restart
 =================
 */
 void CG_Shutdown( void ) {
+	CG_EngineAudio_Shutdown();
+
 	// some mods may need to do cleanup work here,
 	// like closing files or archiving session data
 }
