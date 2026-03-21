@@ -11,6 +11,8 @@
 #include "cg_engine_audio.h"
 
 static cgVehicleAudioDebug_t s_cgVehicleAudioDebug;
+static float s_cgLastLocalSpeed;
+static float s_cgLastLocalRpmNorm;
 
 static float CG_CalcEngineAudioRpmNorm( float rpm, float idleRpm, float redlineRpm ) {
     float norm;
@@ -31,24 +33,89 @@ static float CG_CalcEngineAudioRpmNorm( float rpm, float idleRpm, float redlineR
     return norm;
 }
 
-static float CG_ApproxVehicleThrottle( centity_t *cent ) {
-    (void)cent;
-
-    if ( !cg.snap ) {
+static float CG_Clamp01( float value ) {
+    if ( value < 0.0f ) {
         return 0.0f;
     }
 
-    return CG_CalcEngineAudioRpmNorm(
-        (float)cg.predictedPlayerState.stats[STAT_RPM],
-        900.0f,
-        8000.0f );
+    if ( value > 1.0f ) {
+        return 1.0f;
+    }
+
+    return value;
 }
 
-static float CG_ApproxVehicleLoad( centity_t *cent ) {
+static float CG_ApproxVehicleWheelSlip( centity_t *cent ) {
+    int i;
+    int slipCount;
+
+    if ( !cent ) {
+        return 0.0f;
+    }
+
+    slipCount = 0;
+
+    if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
+        for ( i = FL_WHEEL; i <= RR_WHEEL; ++i ) {
+            if ( cg.car.sPoints[i].slipping ) {
+                ++slipCount;
+            }
+        }
+    }
+    else {
+        for ( i = 0; i < 4; ++i ) {
+            if ( cent->wheelSkidding[i] ) {
+                ++slipCount;
+            }
+        }
+    }
+
+    return CG_Clamp01( slipCount / 4.0f );
+}
+
+static float CG_ApproxVehicleThrottle( centity_t *cent, float rpmNorm ) {
     float throttle;
 
-    throttle = CG_ApproxVehicleThrottle( cent );
-    return 0.25f + 0.75f * throttle;
+    if ( !cent || !cg.snap ) {
+        return 0.0f;
+    }
+
+    if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
+        throttle = fabs( cg.car.throttle );
+        throttle = 0.7f * throttle + 0.3f * rpmNorm;
+        return CG_Clamp01( throttle );
+    }
+
+    return rpmNorm;
+}
+
+static float CG_ApproxVehicleLoad( centity_t *cent, float throttle, float rpmNorm, float wheelSlip, float speed ) {
+    float accelNorm;
+    float rpmRiseNorm;
+    float load;
+
+    if ( !cent ) {
+        return 0.0f;
+    }
+
+    accelNorm = 0.0f;
+    rpmRiseNorm = 0.0f;
+    if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
+        accelNorm = CG_Clamp01( fabs( speed - s_cgLastLocalSpeed ) / 120.0f );
+        rpmRiseNorm = CG_Clamp01( fabs( rpmNorm - s_cgLastLocalRpmNorm ) * 3.0f );
+        load = 0.10f + 0.40f * throttle + 0.20f * rpmNorm + 0.15f * accelNorm + 0.15f * rpmRiseNorm;
+
+        if ( cg.predictedPlayerState.powerups[PW_TURBO] > cg.time ) {
+            load += 0.15f;
+        }
+    }
+    else {
+        load = 0.20f + 0.55f * throttle + 0.25f * rpmNorm;
+    }
+
+    load += 0.20f * wheelSlip;
+
+    return CG_Clamp01( load );
 }
 
 static qboolean CG_IsVehicleEntity( centity_t *cent ) {
@@ -65,16 +132,22 @@ static qboolean CG_IsVehicleEntity( centity_t *cent ) {
 
 void CG_EngineAudio_Init( void ) {
     Com_Memset( &s_cgVehicleAudioDebug, 0, sizeof( s_cgVehicleAudioDebug ) );
+    s_cgLastLocalSpeed = 0.0f;
+    s_cgLastLocalRpmNorm = 0.0f;
 }
 
 void CG_EngineAudio_Shutdown( void ) {
     Com_Memset( &s_cgVehicleAudioDebug, 0, sizeof( s_cgVehicleAudioDebug ) );
+    s_cgLastLocalSpeed = 0.0f;
+    s_cgLastLocalRpmNorm = 0.0f;
 }
 
 qboolean CG_BuildVehicleAudioState( centity_t *cent, vehicleAudioState_t *outState ) {
     float rpm;
     float throttle;
     float load;
+    float rpmNorm;
+    float wheelSlip;
 
     if ( !cent || !outState || !cg.snap ) {
         return qfalse;
@@ -97,23 +170,30 @@ qboolean CG_BuildVehicleAudioState( centity_t *cent, vehicleAudioState_t *outSta
         outState->speed = VectorLength( cent->currentState.pos.trDelta );
     }
 
-    throttle = CG_ApproxVehicleThrottle( cent );
-    load = CG_ApproxVehicleLoad( cent );
+    rpmNorm = CG_CalcEngineAudioRpmNorm( rpm, 900.0f, 8000.0f );
+    wheelSlip = CG_ApproxVehicleWheelSlip( cent );
+    throttle = CG_ApproxVehicleThrottle( cent, rpmNorm );
+    load = CG_ApproxVehicleLoad( cent, throttle, rpmNorm, wheelSlip, outState->speed );
 
     outState->rpm = rpm;
-    outState->rpmNorm = CG_CalcEngineAudioRpmNorm( rpm, 900.0f, 8000.0f );
+    outState->rpmNorm = rpmNorm;
     outState->throttle = throttle;
     outState->load = load;
 
     outState->clutchSlip = 0.0f;
-    outState->wheelSlip = 0.0f;
-    outState->turboBoost = 0.0f;
+    outState->wheelSlip = wheelSlip;
+    outState->turboBoost = ( cent->currentState.powerups & ( 1 << PW_TURBO ) ) ? 1.0f : 0.0f;
 
     outState->ignitionCut = qfalse;
     outState->fuelCut = qfalse;
     outState->limiterActive = ( rpm > 7800.0f ) ? qtrue : qfalse;
     outState->backfireEvent = qfalse;
     outState->damaged = qfalse;
+
+    if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
+        s_cgLastLocalSpeed = outState->speed;
+        s_cgLastLocalRpmNorm = rpmNorm;
+    }
 
     return qtrue;
 }
