@@ -157,6 +157,14 @@ void CG_EngineAudio_Frame( void ) {
         return;
     }
 
+    if ( !cg_engineSounds.integer || cg_engineAudioMode.integer != 2 ) {
+        for ( i = 0; i < cg.snap->numEntities; ++i ) {
+            const entityState_t *es = &cg.snap->entities[i];
+            trap_S_RemoveEngineEmitter( es->number );
+        }
+        return;
+    }
+
     for ( i = 0; i < cg.snap->numEntities; ++i ) {
         const entityState_t *es;
         centity_t *cent;

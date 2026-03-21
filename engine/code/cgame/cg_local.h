@@ -1634,6 +1634,7 @@ extern	vmCvar_t		cg_kothBeamAlphaBase;
 extern	vmCvar_t		cg_kothBeamAlphaPulse;
 
 extern	vmCvar_t		cg_engineSounds;
+extern	vmCvar_t		cg_engineAudioMode;
 extern	vmCvar_t		cg_ghostPlayback;
 extern	vmCvar_t		cg_ghostDebug;
 extern	vmCvar_t		cg_ghostAlpha;

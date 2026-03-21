@@ -287,6 +287,7 @@ vmCvar_t	cg_kothBeamAlphaBase;
 vmCvar_t	cg_kothBeamAlphaPulse;
 
 vmCvar_t	cg_engineSounds;
+vmCvar_t	cg_engineAudioMode;
 vmCvar_t	cg_ghostPlayback;
 vmCvar_t	cg_ghostDebug;
 vmCvar_t	cg_ghostAlpha;
@@ -429,6 +430,7 @@ static cvarTable_t cvarTable[] = {
         { &cg_debugpredict, "cg_debugpredict", "0", 0 },
 
         { &cg_engineSounds, "cg_engineSounds", "0", CVAR_ARCHIVE },
+        { &cg_engineAudioMode, "cg_engineAudioMode", "1", CVAR_ARCHIVE },
         { &cg_ghostPlayback, "cg_ghostPlayback", "0", CVAR_ARCHIVE },
 	{ &cg_ghostAlpha, "cg_ghostAlpha", "160", CVAR_ARCHIVE },
 	{ &cg_ghostDebug, "cg_ghostDebug", "0", CVAR_TEMP },
