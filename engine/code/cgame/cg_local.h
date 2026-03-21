@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef CG_LOCAL_H
 #define CG_LOCAL_H
 #include "../qcommon/q_shared.h"
+#include "../qcommon/engine_audio_shared.h"
 #include "../renderercommon/tr_types.h"
 #include "../game/bg_public.h"
 #include "../game/bg_achievements.h"
@@ -2225,6 +2226,9 @@ void		trap_S_AddLoopingSound( int entityNum, const vec3_t origin, const vec3_t v
 void		trap_S_AddRealLoopingSound( int entityNum, const vec3_t origin, const vec3_t velocity, sfxHandle_t sfx );
 void		trap_S_UpdateEntityPosition( int entityNum, const vec3_t origin );
 void		trap_S_SetEntityPitch( int entityNum, float pitch );
+void		trap_S_RegisterEngineEmitter( int entityNum, int presetHandle );
+void		trap_S_RemoveEngineEmitter( int entityNum );
+void		trap_S_UpdateEngineEmitterState( int entityNum, const vehicleAudioState_t *state, const vec3_t origin, const vec3_t velocity, int quality );
 
 // respatialize recalculates the volumes of sound as they should be heard by the
 // given entityNum and position

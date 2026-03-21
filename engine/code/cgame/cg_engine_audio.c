@@ -149,15 +149,52 @@ const cgVehicleAudioDebug_t *CG_GetVehicleAudioDebug( void ) {
 }
 
 void CG_EngineAudio_Frame( void ) {
-    /*
-    Draft control flow only.
+    int i;
 
-    Intended future flow:
-    - iterate active vehicle entities
-    - build vehicleAudioState_t per entity
-    - choose quality tier
-    - register/update sound backend engine emitters
-    - expose one representative debug sample to HUD diagnostics
-    */
     Com_Memset( &s_cgVehicleAudioDebug, 0, sizeof( s_cgVehicleAudioDebug ) );
+
+    if ( !cg.snap ) {
+        return;
+    }
+
+    for ( i = 0; i < cg.snap->numEntities; ++i ) {
+        const entityState_t *es;
+        centity_t *cent;
+        vehicleAudioState_t state;
+        engineAudioQualityTier_t quality;
+
+        es = &cg.snap->entities[i];
+        cent = &cg_entities[es->number];
+
+        if ( !CG_BuildVehicleAudioState( cent, &state ) ) {
+            trap_S_RemoveEngineEmitter( cent->currentState.number );
+            continue;
+        }
+
+        quality = CG_ChooseEngineAudioQuality( cent );
+        if ( quality == EA_QUALITY_OFF ) {
+            trap_S_RemoveEngineEmitter( cent->currentState.number );
+            continue;
+        }
+
+        trap_S_RegisterEngineEmitter( cent->currentState.number, 0 );
+        trap_S_UpdateEngineEmitterState(
+            cent->currentState.number,
+            &state,
+            cent->lerpOrigin,
+            cent->currentState.pos.trDelta,
+            quality );
+
+        if ( !s_cgVehicleAudioDebug.valid ||
+             cent->currentState.number == cg.predictedPlayerState.clientNum ) {
+            s_cgVehicleAudioDebug.valid = qtrue;
+            s_cgVehicleAudioDebug.entityNum = cent->currentState.number;
+            s_cgVehicleAudioDebug.quality = quality;
+            s_cgVehicleAudioDebug.rpm = state.rpm;
+            s_cgVehicleAudioDebug.throttle = state.throttle;
+            s_cgVehicleAudioDebug.load = state.load;
+            s_cgVehicleAudioDebug.wheelSlip = state.wheelSlip;
+            s_cgVehicleAudioDebug.gear = state.gear;
+        }
+    }
 }
