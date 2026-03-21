@@ -230,6 +230,8 @@ void S_PaintChannels(int endtime);
 
 void S_memoryLoad(sfx_t *sfx);
 
+void S_SpatializeOrigin( vec3_t origin, int master_vol, int *left_vol, int *right_vol );
+
 // spatializes a channel
 void S_Spatialize(channel_t *ch);
 

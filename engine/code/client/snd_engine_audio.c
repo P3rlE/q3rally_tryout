@@ -158,6 +158,41 @@ void S_StopAllEngineEmitters( void ) {
     Com_Memset( s_engineEmitters, 0, sizeof( s_engineEmitters ) );
 }
 
+static void S_ComputeEngineEmitterSpatialGains(
+    const engineAudioEmitterInternal_t *em,
+    float *leftGain,
+    float *rightGain ) {
+    int leftVol;
+    int rightVol;
+    int masterVol;
+    vec3_t origin;
+
+    if ( !leftGain || !rightGain ) {
+        return;
+    }
+
+    *leftGain = 0.0f;
+    *rightGain = 0.0f;
+
+    if ( !em ) {
+        return;
+    }
+
+    masterVol = 220;
+    if ( em->pub.quality == EA_QUALITY_NEAR ) {
+        masterVol = 180;
+    }
+    else if ( em->pub.quality == EA_QUALITY_FAR ) {
+        masterVol = 132;
+    }
+
+    VectorCopy( em->pub.origin, origin );
+    S_SpatializeOrigin( origin, masterVol, &leftVol, &rightVol );
+
+    *leftGain = leftVol / 255.0f;
+    *rightGain = rightVol / 255.0f;
+}
+
 void S_RenderEngineAudio( portable_samplepair_t *buffer, int sampleCount ) {
     int i;
     static float tempLeft[4096];
@@ -173,6 +208,8 @@ void S_RenderEngineAudio( portable_samplepair_t *buffer, int sampleCount ) {
 
     for ( i = 0; i < MAX_ENGINE_AUDIO_EMITTERS; ++i ) {
         int s;
+        float leftGain;
+        float rightGain;
         engineAudioEmitterInternal_t *em = &s_engineEmitters[i];
 
         if ( !em->pub.active || em->pub.quality == EA_QUALITY_OFF || !em->pub.preset ) {
@@ -181,6 +218,11 @@ void S_RenderEngineAudio( portable_samplepair_t *buffer, int sampleCount ) {
 
         Com_Memset( tempLeft, 0, sizeof(float) * sampleCount );
         Com_Memset( tempRight, 0, sizeof(float) * sampleCount );
+
+        S_ComputeEngineEmitterSpatialGains( em, &leftGain, &rightGain );
+        if ( leftGain <= 0.0f && rightGain <= 0.0f ) {
+            continue;
+        }
 
         S_EngineDSP_RenderEmitter(
             &em->synth,
@@ -192,8 +234,8 @@ void S_RenderEngineAudio( portable_samplepair_t *buffer, int sampleCount ) {
             tempRight );
 
         for ( s = 0; s < sampleCount; ++s ) {
-            int l = buffer[s].left + (int)( tempLeft[s] * 2000.0f );
-            int r = buffer[s].right + (int)( tempRight[s] * 2000.0f );
+            int l = buffer[s].left + (int)( tempLeft[s] * leftGain * 2000.0f );
+            int r = buffer[s].right + (int)( tempRight[s] * rightGain * 2000.0f );
 
             if ( l > 32767 ) l = 32767;
             if ( l < -32768 ) l = -32768;
