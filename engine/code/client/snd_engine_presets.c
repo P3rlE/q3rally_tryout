@@ -34,6 +34,22 @@ static void S_BuildDefaultSportI4Preset( engineAudioPreset_t *p ) {
     p->mechanicalGain = 0.32f;
     p->transmissionGain = 0.18f;
 
+    p->exhaustResonatorCount = 2;
+    p->exhaustResonators[0].frequencyHz = 92.0f;
+    p->exhaustResonators[0].q = 1.15f;
+    p->exhaustResonators[0].gain = 1.00f;
+    p->exhaustResonators[1].frequencyHz = 184.0f;
+    p->exhaustResonators[1].q = 1.35f;
+    p->exhaustResonators[1].gain = 0.62f;
+
+    p->intakeResonatorCount = 2;
+    p->intakeResonators[0].frequencyHz = 410.0f;
+    p->intakeResonators[0].q = 0.95f;
+    p->intakeResonators[0].gain = 0.55f;
+    p->intakeResonators[1].frequencyHz = 760.0f;
+    p->intakeResonators[1].q = 0.90f;
+    p->intakeResonators[1].gain = 0.35f;
+
     p->harmonicGains[0] = 1.00f;
     p->harmonicGains[1] = 0.42f;
     p->harmonicGains[2] = 0.16f;
