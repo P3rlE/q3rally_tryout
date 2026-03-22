@@ -54,7 +54,8 @@ typedef struct engineAudioEmitterPublicState_s {
     vehicleAudioState_t control;
     engineAudioQualityTier_t quality;
 
-    vec3_t origin;
+    vec3_t exhaustOrigin;
+    vec3_t engineBayOrigin;
     vec3_t velocity;
 
     const engineAudioPreset_t *preset;
@@ -70,7 +71,8 @@ void S_RemoveEngineEmitter( int entityNum );
 void S_UpdateEngineEmitterState(
     int entityNum,
     const vehicleAudioState_t *state,
-    const vec3_t origin,
+    const vec3_t exhaustOrigin,
+    const vec3_t engineBayOrigin,
     const vec3_t velocity,
     engineAudioQualityTier_t quality );
 void S_SetEngineEmitterPreset( int entityNum, int presetHandle );

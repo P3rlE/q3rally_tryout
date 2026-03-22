@@ -144,7 +144,8 @@ void S_RemoveEngineEmitter( int entityNum ) {
 void S_UpdateEngineEmitterState(
     int entityNum,
     const vehicleAudioState_t *state,
-    const vec3_t origin,
+    const vec3_t exhaustOrigin,
+    const vec3_t engineBayOrigin,
     const vec3_t velocity,
     engineAudioQualityTier_t quality ) {
     engineAudioEmitterInternal_t *em;
@@ -164,7 +165,8 @@ void S_UpdateEngineEmitterState(
     em->lastUpdateFrame = s_engineAudioFrameCounter;
     em->pub.control = *state;
     em->pub.quality = quality;
-    VectorCopy( origin, em->pub.origin );
+    VectorCopy( exhaustOrigin, em->pub.exhaustOrigin );
+    VectorCopy( engineBayOrigin, em->pub.engineBayOrigin );
     VectorCopy( velocity, em->pub.velocity );
 
     if ( state->backfireEvent ) {
@@ -288,14 +290,14 @@ static void S_DebugPrintEngineAudioState( void ) {
 }
 
 static void S_ComputeEngineEmitterSpatialGains(
-    const engineAudioEmitterInternal_t *em,
+    const vec3_t origin,
+    engineAudioQualityTier_t quality,
     float *leftGain,
     float *rightGain ) {
     int leftVol;
     int rightVol;
     int masterVol;
-    vec3_t origin;
-
+    vec3_t spatialOrigin;
     if ( !leftGain || !rightGain ) {
         return;
     }
@@ -303,20 +305,16 @@ static void S_ComputeEngineEmitterSpatialGains(
     *leftGain = 0.0f;
     *rightGain = 0.0f;
 
-    if ( !em ) {
-        return;
-    }
-
     masterVol = 220;
-    if ( em->pub.quality == EA_QUALITY_NEAR ) {
+    if ( quality == EA_QUALITY_NEAR ) {
         masterVol = 180;
     }
-    else if ( em->pub.quality == EA_QUALITY_FAR ) {
+    else if ( quality == EA_QUALITY_FAR ) {
         masterVol = 132;
     }
 
-    VectorCopy( em->pub.origin, origin );
-    S_SpatializeOrigin( origin, masterVol, &leftVol, &rightVol );
+    VectorCopy( origin, spatialOrigin );
+    S_SpatializeOrigin( spatialOrigin, masterVol, &leftVol, &rightVol );
 
     *leftGain = leftVol / 255.0f;
     *rightGain = rightVol / 255.0f;
@@ -326,8 +324,10 @@ void S_RenderEngineAudio( portable_samplepair_t *buffer, int sampleCount ) {
     int i;
     const int paintbufferClamp = 0x00ffff00;
     const float mixScale = 2000.0f * 256.0f;
-    static float tempLeft[4096];
-    static float tempRight[4096];
+    static float tempExhaustLeft[4096];
+    static float tempExhaustRight[4096];
+    static float tempEngineBayLeft[4096];
+    static float tempEngineBayRight[4096];
 
     if ( !buffer || sampleCount <= 0 ) {
         return;
@@ -341,34 +341,46 @@ void S_RenderEngineAudio( portable_samplepair_t *buffer, int sampleCount ) {
 
     for ( i = 0; i < MAX_ENGINE_AUDIO_EMITTERS; ++i ) {
         int s;
-        float leftGain;
-        float rightGain;
+        float exhaustLeftGain;
+        float exhaustRightGain;
+        float engineBayLeftGain;
+        float engineBayRightGain;
         engineAudioEmitterInternal_t *em = &s_engineEmitters[i];
 
         if ( !em->pub.active || em->pub.quality == EA_QUALITY_OFF || !em->pub.preset ) {
             continue;
         }
 
-        Com_Memset( tempLeft, 0, sizeof(float) * sampleCount );
-        Com_Memset( tempRight, 0, sizeof(float) * sampleCount );
+        Com_Memset( tempExhaustLeft, 0, sizeof(float) * sampleCount );
+        Com_Memset( tempExhaustRight, 0, sizeof(float) * sampleCount );
+        Com_Memset( tempEngineBayLeft, 0, sizeof(float) * sampleCount );
+        Com_Memset( tempEngineBayRight, 0, sizeof(float) * sampleCount );
 
-        S_ComputeEngineEmitterSpatialGains( em, &leftGain, &rightGain );
-        if ( leftGain <= 0.0f && rightGain <= 0.0f ) {
+        S_ComputeEngineEmitterSpatialGains( em->pub.exhaustOrigin, em->pub.quality, &exhaustLeftGain, &exhaustRightGain );
+        S_ComputeEngineEmitterSpatialGains( em->pub.engineBayOrigin, em->pub.quality, &engineBayLeftGain, &engineBayRightGain );
+        if ( exhaustLeftGain <= 0.0f && exhaustRightGain <= 0.0f &&
+             engineBayLeftGain <= 0.0f && engineBayRightGain <= 0.0f ) {
             continue;
         }
 
-        S_EngineDSP_RenderEmitter(
+        S_EngineDSP_RenderVehicle(
             &em->synth,
             em->pub.preset,
             &em->pub.control,
             em->pub.quality,
             sampleCount,
-            tempLeft,
-            tempRight );
+            tempExhaustLeft,
+            tempExhaustRight,
+            tempEngineBayLeft,
+            tempEngineBayRight );
 
         for ( s = 0; s < sampleCount; ++s ) {
-            int l = buffer[s].left + (int)( tempLeft[s] * leftGain * mixScale );
-            int r = buffer[s].right + (int)( tempRight[s] * rightGain * mixScale );
+            int l = buffer[s].left +
+                (int)( tempExhaustLeft[s] * exhaustLeftGain * mixScale ) +
+                (int)( tempEngineBayLeft[s] * engineBayLeftGain * mixScale );
+            int r = buffer[s].right +
+                (int)( tempExhaustRight[s] * exhaustRightGain * mixScale ) +
+                (int)( tempEngineBayRight[s] * engineBayRightGain * mixScale );
 
             if ( l > paintbufferClamp ) l = paintbufferClamp;
             if ( l < -paintbufferClamp ) l = -paintbufferClamp;

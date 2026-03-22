@@ -31,10 +31,10 @@ typedef struct engineAudioSynthState_s {
     float backfireEnvelope;
     float overrunPopEnvelope;
 
-    float cockpitLowpassL;
-    float cockpitLowpassR;
-    float toneLowpassL;
-    float toneLowpassR;
+    float cockpitLowpassL[2];
+    float cockpitLowpassR[2];
+    float toneLowpassL[2];
+    float toneLowpassR[2];
 
     unsigned int noiseSeed;
 
@@ -45,14 +45,16 @@ typedef struct engineAudioSynthState_s {
 } engineAudioSynthState_t;
 
 void S_EngineDSP_Reset( engineAudioSynthState_t *state, float sampleRate );
-void S_EngineDSP_RenderEmitter(
+void S_EngineDSP_RenderVehicle(
     engineAudioSynthState_t *synth,
     const engineAudioPreset_t *preset,
     const vehicleAudioState_t *control,
     engineAudioQualityTier_t quality,
     int sampleCount,
-    float *outLeft,
-    float *outRight );
+    float *outExhaustLeft,
+    float *outExhaustRight,
+    float *outEngineBayLeft,
+    float *outEngineBayRight );
 void S_EngineDSP_TriggerBackfire( engineAudioSynthState_t *state );
 
 #endif /* SND_ENGINE_DSP_H */

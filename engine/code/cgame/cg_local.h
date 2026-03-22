@@ -2229,7 +2229,7 @@ void		trap_S_UpdateEntityPosition( int entityNum, const vec3_t origin );
 void		trap_S_SetEntityPitch( int entityNum, float pitch );
 void		trap_S_RegisterEngineEmitter( int entityNum, int presetHandle );
 void		trap_S_RemoveEngineEmitter( int entityNum );
-void		trap_S_UpdateEngineEmitterState( int entityNum, const vehicleAudioState_t *state, const vec3_t origin, const vec3_t velocity, int quality );
+void		trap_S_UpdateEngineEmitterState( int entityNum, const vehicleAudioState_t *state, const vec3_t exhaustOrigin, const vec3_t engineBayOrigin, const vec3_t velocity, int quality );
 
 // respatialize recalculates the volumes of sound as they should be heard by the
 // given entityNum and position

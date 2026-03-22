@@ -230,8 +230,8 @@ void	trap_S_RemoveEngineEmitter( int entityNum ) {
 	syscall( CG_S_REMOVEENGINEEMITTER, entityNum );
 }
 
-void	trap_S_UpdateEngineEmitterState( int entityNum, const vehicleAudioState_t *state, const vec3_t origin, const vec3_t velocity, int quality ) {
-	syscall( CG_S_UPDATEENGINEEMITTERSTATE, entityNum, state, origin, velocity, quality );
+void	trap_S_UpdateEngineEmitterState( int entityNum, const vehicleAudioState_t *state, const vec3_t exhaustOrigin, const vec3_t engineBayOrigin, const vec3_t velocity, int quality ) {
+	syscall( CG_S_UPDATEENGINEEMITTERSTATE, entityNum, state, exhaustOrigin, engineBayOrigin, velocity, quality );
 }
 
 

@@ -38,7 +38,7 @@ The proposed system has four layers:
 2. **Engine Synthesis Layer**  
    Converts control state into excitation signals and resonant sound layers.
 3. **Emitter and Mixing Layer**  
-   Maintains active procedural emitters per vehicle and renders PCM audio.
+   Maintains one shared synth per vehicle, renders the combustion model once, then splits it into exhaust and engine-bay buses before mixing.
 4. **Spatialization and Playback Layer**  
    Routes synthesized audio through the existing sound backend and 3D positioning system.
 
@@ -78,6 +78,7 @@ For the MVP, use:
 - mechanical harmonic layer
 - transient envelopes for limiter and backfire
 - conservative stereo mix into the existing sound path
+- shared-vehicle render with rear exhaust and front engine-bay spatial outputs
 
 ## Quality tiers
 Recommended runtime tiers:
@@ -116,7 +117,7 @@ Suggested preset content:
 ### Phase 2
 - local vehicle only
 - single preset
-- exhaust, intake, mechanical layers
+- exhaust, intake, mechanical layers with one synth feeding multiple spatial outputs
 - hero-quality path only
 
 ### Phase 3

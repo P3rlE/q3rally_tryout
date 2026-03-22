@@ -60,7 +60,7 @@ void S_UpdateEntityPosition( int entityNum, const vec3_t origin );
 void S_SetEntityPitch( int entityNum, float pitch );
 void S_RegisterEngineEmitter( int entityNum, int presetHandle );
 void S_RemoveEngineEmitter( int entityNum );
-void S_UpdateEngineEmitterState( int entityNum, const vehicleAudioState_t *state, const vec3_t origin, const vec3_t velocity, engineAudioQualityTier_t quality );
+void S_UpdateEngineEmitterState( int entityNum, const vehicleAudioState_t *state, const vec3_t exhaustOrigin, const vec3_t engineBayOrigin, const vec3_t velocity, engineAudioQualityTier_t quality );
 
 void S_Update( void );
 
