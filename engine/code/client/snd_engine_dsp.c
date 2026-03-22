@@ -244,6 +244,7 @@ void S_EngineDSP_RenderEmitter(
         float transmission;
         float limiterBuzz;
         float backfire;
+        float overrunPop;
         float slipNoise;
         float body;
         float left;
@@ -281,6 +282,9 @@ void S_EngineDSP_RenderEmitter(
                     0.14f * ( 0.5f + 0.5f * S_EngineDSP_NextNoise( synth ) );
                 synth->combustionTone = 0.92f + 0.12f * cylinderNorm - 0.08f * burbleStrength;
                 synth->combustionNoise = ( 0.08f + 0.18f * burbleStrength ) * S_EngineDSP_NextNoise( synth );
+                if ( overrunBurbleStrength > 0.12f && S_EngineDSP_NextNoise( synth ) > 0.72f ) {
+                    synth->overrunPopEnvelope = 0.45f + 0.40f * overrunBurbleStrength;
+                }
                 synth->firingOrderIndex = ( synth->firingOrderIndex + 1 ) % firingOrderLength;
             }
         }
@@ -309,7 +313,7 @@ void S_EngineDSP_RenderEmitter(
         }
 
         noise = S_EngineDSP_NextNoise( synth );
-        intakeNoise = noise * preset->noiseGain * 8.0f * ( 0.15f + 0.85f * throttle ) * ( 0.30f + 0.70f * load );
+        intakeNoise = noise * preset->noiseGain * 8.0f * ( 0.15f + 0.85f * throttle ) * ( 0.30f + 0.70f * load ) * ( 1.0f - 0.30f * rpmNorm );
         intakeNoise += noise * wheelSlip * 0.25f;
         intakeColor = intakeNoise;
         if ( preset->intakeResonatorCount > 0 ) {
@@ -340,14 +344,14 @@ void S_EngineDSP_RenderEmitter(
 
             mechanical += sinf( synth->harmonicPhase[h] ) * harmonicAmp;
         }
-        mechanical *= 0.05f + 0.04f * rpmNorm;
+        mechanical *= ( 0.05f + 0.04f * rpmNorm ) * ( 1.0f - 0.35f * rpmNorm );
 
         synth->phase += ( 2.0f * (float)M_PI * ( rpm / 60.0f ) ) / sr;
         if ( synth->phase > 2.0f * (float)M_PI ) {
             synth->phase -= 2.0f * (float)M_PI;
         }
 
-        transmission = sinf( synth->phase * 1.5f ) * ( 0.005f + 0.010f * rpmNorm + 0.020f * turboBoost );
+        transmission = sinf( synth->phase * 1.5f ) * ( 0.005f + 0.010f * rpmNorm + 0.020f * turboBoost ) * ( 1.0f - 0.50f * rpmNorm );
         slipNoise = noise * preset->noiseGain * wheelSlip * ( 0.03f + 0.05f * load );
 
         if ( control->limiterActive ) {
@@ -370,12 +374,18 @@ void S_EngineDSP_RenderEmitter(
             synth->backfireEnvelope *= 0.965f;
         }
 
+        overrunPop = 0.0f;
+        if ( synth->overrunPopEnvelope > 0.001f ) {
+            overrunPop = S_EngineDSP_NextNoise( synth ) * synth->overrunPopEnvelope * ( 0.10f + 0.08f * overrunBurbleStrength );
+            synth->overrunPopEnvelope *= 0.93f;
+        }
+
         body =
             exhaustColor * preset->exhaustGain * exhaustLayerScale * 0.55f +
             intakeColor * preset->intakeGain * intakeLayerScale * 0.35f +
             mechanical * preset->mechanicalGain * mechanicalLayerScale * 0.40f +
             transmission * preset->transmissionGain * transmissionLayerScale * 0.30f +
-            slipNoise + limiterBuzz + backfire;
+            slipNoise + limiterBuzz + backfire + overrunPop;
 
         body *= gainScale * ( s_engineAudioGain ? s_engineAudioGain->value : 1.0f ) *
             ( 0.55f + 0.45f * preset->exteriorPresenceGain );

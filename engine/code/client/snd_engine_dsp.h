@@ -29,6 +29,7 @@ typedef struct engineAudioSynthState_s {
 
     float limiterEnvelope;
     float backfireEnvelope;
+    float overrunPopEnvelope;
 
     float cockpitLowpassL;
     float cockpitLowpassR;
