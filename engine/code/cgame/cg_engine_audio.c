@@ -383,10 +383,15 @@ void CG_EngineAudio_Frame( void ) {
             s_cgVehicleAudioDebug.valid = qtrue;
             s_cgVehicleAudioDebug.entityNum = cent->currentState.number;
             s_cgVehicleAudioDebug.quality = quality;
+            s_cgVehicleAudioDebug.speed = state.speed;
             s_cgVehicleAudioDebug.rpm = state.rpm;
+            s_cgVehicleAudioDebug.rpmNorm = state.rpmNorm;
             s_cgVehicleAudioDebug.throttle = state.throttle;
             s_cgVehicleAudioDebug.load = state.load;
             s_cgVehicleAudioDebug.wheelSlip = state.wheelSlip;
+            s_cgVehicleAudioDebug.turboBoost = state.turboBoost;
+            s_cgVehicleAudioDebug.limiterActive = state.limiterActive;
+            s_cgVehicleAudioDebug.backfireEvent = state.backfireEvent;
             s_cgVehicleAudioDebug.gear = state.gear;
         }
     }

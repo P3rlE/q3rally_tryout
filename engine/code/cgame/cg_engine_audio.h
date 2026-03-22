@@ -9,10 +9,15 @@ typedef struct cgVehicleAudioDebug_s {
     int entityNum;
     engineAudioQualityTier_t quality;
 
+    float speed;
     float rpm;
+    float rpmNorm;
     float throttle;
     float load;
     float wheelSlip;
+    float turboBoost;
+    qboolean limiterActive;
+    qboolean backfireEvent;
     int gear;
 } cgVehicleAudioDebug_t;
 

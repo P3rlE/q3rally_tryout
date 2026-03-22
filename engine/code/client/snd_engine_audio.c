@@ -23,6 +23,9 @@ typedef struct engineAudioEmitterInternal_s {
 
 static engineAudioEmitterInternal_t s_engineEmitters[MAX_ENGINE_AUDIO_EMITTERS];
 static int s_engineAudioFrameCounter;
+static int s_engineAudioNextDebugPrintTime;
+
+static void S_DebugPrintEngineAudioState( void );
 
 static engineAudioEmitterInternal_t *S_GetEngineEmitterForEntity( int entityNum ) {
     int i;
@@ -68,12 +71,14 @@ static void S_FreeEngineEmitter( engineAudioEmitterInternal_t *em ) {
 void S_EngineAudio_Init( void ) {
     Com_Memset( s_engineEmitters, 0, sizeof( s_engineEmitters ) );
     s_engineAudioFrameCounter = 0;
+    s_engineAudioNextDebugPrintTime = 0;
     S_LoadEngineAudioPresets();
 }
 
 void S_EngineAudio_Shutdown( void ) {
     Com_Memset( s_engineEmitters, 0, sizeof( s_engineEmitters ) );
     s_engineAudioFrameCounter = 0;
+    s_engineAudioNextDebugPrintTime = 0;
 }
 
 void S_EngineAudio_BeginFrame( void ) {
@@ -89,6 +94,9 @@ void S_EngineAudio_BeginFrame( void ) {
         }
 
         if ( em->lastUpdateFrame + 2 < s_engineAudioFrameCounter ) {
+            if ( s_engineAudioDebug && s_engineAudioDebug->integer >= 3 && em->pub.preset ) {
+                Com_Printf( "EngineAudio: freed stale emitter ent=%d preset=%s\n", em->pub.entityNum, em->pub.preset->name );
+            }
             S_FreeEngineEmitter( em );
         }
     }
@@ -180,6 +188,99 @@ void S_SetEngineEmitterPreset( int entityNum, int presetHandle ) {
 void S_StopAllEngineEmitters( void ) {
     Com_Memset( s_engineEmitters, 0, sizeof( s_engineEmitters ) );
     s_engineAudioFrameCounter = 0;
+    s_engineAudioNextDebugPrintTime = 0;
+}
+
+static const char *S_EngineAudioQualityName( engineAudioQualityTier_t quality ) {
+    switch ( quality ) {
+    case EA_QUALITY_HERO:
+        return "hero";
+    case EA_QUALITY_NEAR:
+        return "near";
+    case EA_QUALITY_FAR:
+        return "far";
+    default:
+        return "off";
+    }
+}
+
+static void S_DebugPrintEngineAudioState( void ) {
+    int i;
+    int activeCount;
+    int heroCount;
+    int nearCount;
+    int farCount;
+    int now;
+
+    if ( !s_engineAudioDebug || !s_engineAudioDebug->integer ) {
+        return;
+    }
+
+    now = Com_Milliseconds();
+    if ( now < s_engineAudioNextDebugPrintTime ) {
+        return;
+    }
+
+    s_engineAudioNextDebugPrintTime = now + 1000;
+    activeCount = 0;
+    heroCount = 0;
+    nearCount = 0;
+    farCount = 0;
+
+    for ( i = 0; i < MAX_ENGINE_AUDIO_EMITTERS; ++i ) {
+        engineAudioEmitterInternal_t *em = &s_engineEmitters[i];
+
+        if ( !em->pub.active || em->pub.quality == EA_QUALITY_OFF || !em->pub.preset ) {
+            continue;
+        }
+
+        ++activeCount;
+        if ( em->pub.quality == EA_QUALITY_HERO ) {
+            ++heroCount;
+        }
+        else if ( em->pub.quality == EA_QUALITY_NEAR ) {
+            ++nearCount;
+        }
+        else if ( em->pub.quality == EA_QUALITY_FAR ) {
+            ++farCount;
+        }
+    }
+
+    Com_Printf( "EngineAudio: active=%d hero=%d near=%d far=%d gain=%.2f exh=%.2f int=%.2f mech=%.2f trans=%.2f cockpit=%d limiter=%d backfire=%d\n",
+        activeCount,
+        heroCount,
+        nearCount,
+        farCount,
+        s_engineAudioGain ? s_engineAudioGain->value : 1.0f,
+        s_engineAudioExhaustGainScale ? s_engineAudioExhaustGainScale->value : 1.0f,
+        s_engineAudioIntakeGainScale ? s_engineAudioIntakeGainScale->value : 1.0f,
+        s_engineAudioMechanicalGainScale ? s_engineAudioMechanicalGainScale->value : 1.0f,
+        s_engineAudioTransmissionGainScale ? s_engineAudioTransmissionGainScale->value : 1.0f,
+        s_engineAudioCockpitEnable ? s_engineAudioCockpitEnable->integer : 1,
+        s_engineAudioLimiterEnable ? s_engineAudioLimiterEnable->integer : 1,
+        s_engineAudioBackfireEnable ? s_engineAudioBackfireEnable->integer : 1 );
+
+    if ( s_engineAudioDebug->integer < 2 ) {
+        return;
+    }
+
+    for ( i = 0; i < MAX_ENGINE_AUDIO_EMITTERS; ++i ) {
+        engineAudioEmitterInternal_t *em = &s_engineEmitters[i];
+
+        if ( !em->pub.active || em->pub.quality == EA_QUALITY_OFF || !em->pub.preset ) {
+            continue;
+        }
+
+        Com_Printf( "  ent=%d preset=%s quality=%s rpm=%.0f throttle=%.2f load=%.2f slip=%.2f turbo=%.2f\n",
+            em->pub.entityNum,
+            em->pub.preset->name,
+            S_EngineAudioQualityName( em->pub.quality ),
+            em->pub.control.rpm,
+            em->pub.control.throttle,
+            em->pub.control.load,
+            em->pub.control.wheelSlip,
+            em->pub.control.turboBoost );
+    }
 }
 
 static void S_ComputeEngineEmitterSpatialGains(
@@ -229,6 +330,8 @@ void S_RenderEngineAudio( portable_samplepair_t *buffer, int sampleCount ) {
     if ( sampleCount > 4096 ) {
         sampleCount = 4096;
     }
+
+    S_DebugPrintEngineAudioState();
 
     for ( i = 0; i < MAX_ENGINE_AUDIO_EMITTERS; ++i ) {
         int s;

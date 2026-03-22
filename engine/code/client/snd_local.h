@@ -218,6 +218,15 @@ extern cvar_t *s_muted;
 extern cvar_t *s_doppler;
 
 extern cvar_t *s_testsound;
+extern cvar_t *s_engineAudioGain;
+extern cvar_t *s_engineAudioExhaustGainScale;
+extern cvar_t *s_engineAudioIntakeGainScale;
+extern cvar_t *s_engineAudioMechanicalGainScale;
+extern cvar_t *s_engineAudioTransmissionGainScale;
+extern cvar_t *s_engineAudioLimiterEnable;
+extern cvar_t *s_engineAudioBackfireEnable;
+extern cvar_t *s_engineAudioCockpitEnable;
+extern cvar_t *s_engineAudioDebug;
 
 qboolean S_LoadSound( sfx_t *sfx );
 

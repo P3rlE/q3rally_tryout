@@ -160,6 +160,10 @@ void S_EngineDSP_RenderEmitter(
     float cylPerRev;
     float pulseHz;
     float gainScale;
+    float exhaustLayerScale;
+    float intakeLayerScale;
+    float mechanicalLayerScale;
+    float transmissionLayerScale;
     float exhaustBankMix;
     float intakeBankMix;
     float stereoWidth;
@@ -191,6 +195,10 @@ void S_EngineDSP_RenderEmitter(
     pulseHz = max( 12.0f, ( rpm / 60.0f ) * cylPerRev );
 
     gainScale = 0.45f;
+    exhaustLayerScale = s_engineAudioExhaustGainScale ? s_engineAudioExhaustGainScale->value : 1.0f;
+    intakeLayerScale = s_engineAudioIntakeGainScale ? s_engineAudioIntakeGainScale->value : 1.0f;
+    mechanicalLayerScale = s_engineAudioMechanicalGainScale ? s_engineAudioMechanicalGainScale->value : 1.0f;
+    transmissionLayerScale = s_engineAudioTransmissionGainScale ? s_engineAudioTransmissionGainScale->value : 1.0f;
     exhaustBankMix = 0.85f;
     intakeBankMix = 0.65f;
     stereoWidth = 0.08f;
@@ -306,22 +314,28 @@ void S_EngineDSP_RenderEmitter(
             synth->limiterEnvelope *= 0.92f;
         }
 
-        limiterBuzz = noise * synth->limiterEnvelope * preset->limiterGain * 0.08f;
+        limiterBuzz = 0.0f;
+        if ( !s_engineAudioLimiterEnable || s_engineAudioLimiterEnable->integer ) {
+            limiterBuzz = noise * synth->limiterEnvelope * preset->limiterGain * 0.08f;
+        }
 
         backfire = 0.0f;
         if ( synth->backfireEnvelope > 0.001f ) {
-            backfire = S_EngineDSP_NextNoise( synth ) * synth->backfireEnvelope * preset->backfireGain * 0.12f;
+            if ( !s_engineAudioBackfireEnable || s_engineAudioBackfireEnable->integer ) {
+                backfire = S_EngineDSP_NextNoise( synth ) * synth->backfireEnvelope * preset->backfireGain * 0.12f;
+            }
             synth->backfireEnvelope *= 0.965f;
         }
 
         body =
-            exhaustColor * preset->exhaustGain * 0.55f +
-            intakeColor * preset->intakeGain * 0.35f +
-            mechanical * preset->mechanicalGain * 0.40f +
-            transmission * preset->transmissionGain * 0.30f +
+            exhaustColor * preset->exhaustGain * exhaustLayerScale * 0.55f +
+            intakeColor * preset->intakeGain * intakeLayerScale * 0.35f +
+            mechanical * preset->mechanicalGain * mechanicalLayerScale * 0.40f +
+            transmission * preset->transmissionGain * transmissionLayerScale * 0.30f +
             slipNoise + limiterBuzz + backfire;
 
-        body *= gainScale * ( 0.55f + 0.45f * preset->exteriorPresenceGain );
+        body *= gainScale * ( s_engineAudioGain ? s_engineAudioGain->value : 1.0f ) *
+            ( 0.55f + 0.45f * preset->exteriorPresenceGain );
         body *= 0.55f + 0.45f * ( 0.25f + 0.75f * load );
 
         if ( preset->distortionDrive > 0.0f ) {
@@ -332,7 +346,7 @@ void S_EngineDSP_RenderEmitter(
         left = body * ( 1.0f - stereoWidth * widthPhase );
         right = body * ( 1.0f + stereoWidth * widthPhase );
 
-        if ( cockpitView ) {
+        if ( cockpitView && ( !s_engineAudioCockpitEnable || s_engineAudioCockpitEnable->integer ) ) {
             float mono;
 
             mono = 0.5f * ( left + right );
