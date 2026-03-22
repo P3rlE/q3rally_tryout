@@ -106,6 +106,24 @@ static float S_EngineDSP_RenderResonatorBank(
     return sum;
 }
 
+static float S_EngineDSP_ComputeLowpassAlpha( float cutoffHz, float sampleRate ) {
+    float normalizedCutoff;
+
+    if ( sampleRate <= 0.0f || cutoffHz <= 0.0f ) {
+        return 1.0f;
+    }
+
+    normalizedCutoff = 2.0f * (float)M_PI * cutoffHz / sampleRate;
+    if ( normalizedCutoff > 1.0f ) {
+        normalizedCutoff = 1.0f;
+    }
+    else if ( normalizedCutoff < 0.0f ) {
+        normalizedCutoff = 0.0f;
+    }
+
+    return normalizedCutoff;
+}
+
 void S_EngineDSP_Reset( engineAudioSynthState_t *state, float sampleRate ) {
     if ( !state ) {
         return;
@@ -145,6 +163,8 @@ void S_EngineDSP_RenderEmitter(
     float exhaustBankMix;
     float intakeBankMix;
     float stereoWidth;
+    float cockpitLowpassAlpha;
+    qboolean cockpitView;
 
     if ( !synth || !preset || !control || !outLeft || !outRight || sampleCount <= 0 ) {
         return;
@@ -192,6 +212,9 @@ void S_EngineDSP_RenderEmitter(
     if ( quality != EA_QUALITY_HERO ) {
         harmonicCount = 4;
     }
+
+    cockpitView = ( quality == EA_QUALITY_HERO ) ? qtrue : qfalse;
+    cockpitLowpassAlpha = S_EngineDSP_ComputeLowpassAlpha( preset->cockpitLowpassHz, sr );
 
     for ( i = 0; i < sampleCount; ++i ) {
         int h;
@@ -308,6 +331,20 @@ void S_EngineDSP_RenderEmitter(
         widthPhase = sinf( synth->phase * 0.5f );
         left = body * ( 1.0f - stereoWidth * widthPhase );
         right = body * ( 1.0f + stereoWidth * widthPhase );
+
+        if ( cockpitView ) {
+            float mono;
+
+            mono = 0.5f * ( left + right );
+            left = left * 0.25f + mono * 0.75f;
+            right = right * 0.25f + mono * 0.75f;
+
+            synth->cockpitLowpassL += ( left - synth->cockpitLowpassL ) * cockpitLowpassAlpha;
+            synth->cockpitLowpassR += ( right - synth->cockpitLowpassR ) * cockpitLowpassAlpha;
+
+            left = synth->cockpitLowpassL;
+            right = synth->cockpitLowpassR;
+        }
 
         outLeft[i] += left;
         outRight[i] += right;

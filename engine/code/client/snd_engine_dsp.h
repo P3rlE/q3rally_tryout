@@ -25,6 +25,9 @@ typedef struct engineAudioSynthState_s {
     float limiterEnvelope;
     float backfireEnvelope;
 
+    float cockpitLowpassL;
+    float cockpitLowpassR;
+
     unsigned int noiseSeed;
 
     engineAudioResonatorState_t exhaustStates[MAX_ENGINE_AUDIO_RESONATORS];
