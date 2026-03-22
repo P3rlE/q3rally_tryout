@@ -150,6 +150,34 @@ static float CG_ApproxVehicleWheelSlip( centity_t *cent ) {
     return CG_Clamp01( slipCount / 4.0f );
 }
 
+static float CG_ApproxVehicleGroundContact( centity_t *cent ) {
+    int i;
+    int groundedCount;
+
+    if ( !cent ) {
+        return 0.0f;
+    }
+
+    groundedCount = 0;
+
+    if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
+        for ( i = FL_WHEEL; i <= RR_WHEEL; ++i ) {
+            if ( cg.car.sPoints[i].onGround ) {
+                ++groundedCount;
+            }
+        }
+    }
+    else {
+        /*
+        ** Remote cars do not currently expose full wheel contact state.
+        ** Keep their contact assumption conservative and stable.
+        */
+        groundedCount = 4;
+    }
+
+    return CG_Clamp01( groundedCount / 4.0f );
+}
+
 static float CG_ApproxVehicleThrottle( centity_t *cent, float rpmNorm ) {
     float throttle;
     float signedSpeed;
@@ -160,7 +188,6 @@ static float CG_ApproxVehicleThrottle( centity_t *cent, float rpmNorm ) {
 
     if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
         throttle = fabs( cg.car.throttle );
-        throttle = 0.7f * throttle + 0.3f * rpmNorm;
         return CG_Clamp01( throttle );
     }
 
@@ -176,6 +203,9 @@ static float CG_ApproxVehicleThrottle( centity_t *cent, float rpmNorm ) {
 
 static float CG_ApproxVehicleLoad( centity_t *cent, float throttle, float rpmNorm, float wheelSlip, float speed ) {
     float accelNorm;
+    float contactNorm;
+    float launchLoad;
+    float tractionStrain;
     float rpmRiseNorm;
     float load;
 
@@ -184,11 +214,17 @@ static float CG_ApproxVehicleLoad( centity_t *cent, float throttle, float rpmNor
     }
 
     accelNorm = 0.0f;
+    contactNorm = CG_ApproxVehicleGroundContact( cent );
+    launchLoad = 0.0f;
+    tractionStrain = 0.0f;
     rpmRiseNorm = 0.0f;
     if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
         accelNorm = CG_Clamp01( fabs( speed - s_cgLastLocalSpeed ) / 120.0f );
         rpmRiseNorm = CG_Clamp01( fabs( rpmNorm - s_cgLastLocalRpmNorm ) * 3.0f );
-        load = 0.10f + 0.40f * throttle + 0.20f * rpmNorm + 0.15f * accelNorm + 0.15f * rpmRiseNorm;
+        launchLoad = throttle * ( 1.0f - CG_Clamp01( fabs( speed ) / 85.0f ) );
+        tractionStrain = throttle * ( 1.0f - contactNorm ) + 0.50f * wheelSlip;
+        load = 0.06f + 0.48f * throttle + 0.14f * rpmNorm + 0.12f * accelNorm + 0.10f * rpmRiseNorm +
+            0.18f * launchLoad + 0.12f * tractionStrain;
 
         if ( cg.predictedPlayerState.powerups[PW_TURBO] > cg.time ) {
             load += 0.15f;
@@ -327,6 +363,7 @@ qboolean CG_BuildVehicleAudioState( centity_t *cent, vehicleAudioState_t *outSta
 
     if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
         float throttleDrop;
+        float maxHealth;
         qboolean shifted;
         qboolean aggressiveLift;
         qboolean loadedUpshift;
@@ -340,6 +377,8 @@ qboolean CG_BuildVehicleAudioState( centity_t *cent, vehicleAudioState_t *outSta
         outState->ignitionCut = ( outState->limiterActive || loadedUpshift ) ? qtrue : qfalse;
         outState->clutchSlip = shifted ? 1.0f : CG_Clamp01( fabs( rpmNorm - s_cgLastLocalRpmNorm ) * 2.4f );
         outState->backfireEvent = ( aggressiveLift || loadedUpshift ) ? qtrue : qfalse;
+        maxHealth = (float)max( cg.predictedPlayerState.stats[STAT_MAX_HEALTH], 1 );
+        outState->damaged = ( cg.predictedPlayerState.stats[STAT_HEALTH] < (int)( maxHealth * 0.55f ) || cg.car.fuelLeak ) ? qtrue : qfalse;
 
         s_cgLastLocalSpeed = outState->speed;
         s_cgLastLocalRpmNorm = rpmNorm;

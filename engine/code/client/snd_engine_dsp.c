@@ -252,6 +252,7 @@ void S_EngineDSP_RenderEmitter(
         float fuelCutCrackle;
         float ignitionCutChatter;
         float shiftChirp;
+        float damageRattle;
         float slipNoise;
         float body;
         float left;
@@ -426,12 +427,19 @@ void S_EngineDSP_RenderEmitter(
             }
         }
 
+        damageRattle = 0.0f;
+        if ( control->damaged ) {
+            damageRattle = S_EngineDSP_NextNoise( synth ) * ( 0.020f + 0.030f * rpmNorm ) * ( exteriorView ? 1.30f : 0.80f );
+            exhaustColor *= exteriorView ? 1.10f : 1.05f;
+            mechanical *= 1.18f;
+        }
+
         body =
             exhaustColor * preset->exhaustGain * exhaustLayerScale * 0.55f +
             intakeColor * preset->intakeGain * intakeLayerScale * 0.35f +
             mechanical * preset->mechanicalGain * mechanicalLayerScale * 0.40f +
             transmission * preset->transmissionGain * transmissionLayerScale * 0.30f +
-            slipNoise + limiterBuzz + backfire + overrunPop + fuelCutCrackle + ignitionCutChatter + shiftChirp;
+            slipNoise + limiterBuzz + backfire + overrunPop + fuelCutCrackle + ignitionCutChatter + shiftChirp + damageRattle;
 
         if ( exteriorView ) {
             body += exhaustColor * preset->exhaustGain * exhaustLayerScale * ( 0.18f + 0.10f * load );
