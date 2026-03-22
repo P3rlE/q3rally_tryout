@@ -238,6 +238,7 @@ void S_EngineDSP_RenderEmitter(
         float overrunBurbleStrength;
         float burbleStrength;
         float drivenHarshness;
+        float tonalWhineSuppression;
         float exhaustColor;
         float intakeNoise;
         float intakeColor;
@@ -260,6 +261,7 @@ void S_EngineDSP_RenderEmitter(
             burbleStrength = overrunBurbleStrength;
         }
         drivenHarshness = S_Clamp01( ( rpmNorm - 0.32f ) * 1.8f ) * S_Clamp01( ( load - 0.45f ) * 1.8f );
+        tonalWhineSuppression = S_Clamp01( ( rpmNorm - 0.08f ) * 1.4f );
 
         synth->crankPhase += phaseStep;
         synth->combustionPhase += phaseStep;
@@ -301,6 +303,7 @@ void S_EngineDSP_RenderEmitter(
         pulseShape += 0.32f * ( expf( -18.0f * secondaryPhase ) - expf( -72.0f * secondaryPhase ) );
         pulseShape += burbleStrength * 0.26f * ( expf( -8.0f * secondaryPhase ) - expf( -28.0f * secondaryPhase ) );
         pulseShape += synth->combustionNoise * ( 1.0f + 0.8f * burbleStrength ) * expf( -18.0f * combustionPhase );
+        pulseShape += ( 0.04f + 0.10f * tonalWhineSuppression ) * throttle * load * S_EngineDSP_NextNoise( synth ) * expf( -16.0f * combustionPhase );
         pulseShape *= synth->combustionJitter * ( 0.45f + 0.55f * throttle ) * ( 0.30f + 0.70f * load );
 
         exhaustColor = pulseShape;
@@ -314,6 +317,7 @@ void S_EngineDSP_RenderEmitter(
             exhaustColor = pulseShape * ( 1.0f - exhaustBankMix ) + exhaustColor * exhaustBankMix;
         }
         exhaustColor += drivenHarshness * 0.24f * ( expf( -7.0f * combustionPhase ) - expf( -24.0f * combustionPhase ) );
+        exhaustColor *= 1.0f + 0.30f * tonalWhineSuppression * load;
 
         noise = S_EngineDSP_NextNoise( synth );
         intakeNoise = noise * preset->noiseGain * 8.0f * ( 0.15f + 0.85f * throttle ) * ( 0.30f + 0.70f * load ) * ( 1.0f - 0.30f * rpmNorm ) * ( 1.0f - 0.55f * drivenHarshness );
@@ -335,6 +339,7 @@ void S_EngineDSP_RenderEmitter(
             float harmonicAmp;
 
             harmonicAmp = preset->harmonicGains[h];
+            harmonicAmp *= 1.0f - tonalWhineSuppression * ( 0.35f + 0.12f * (float)h );
             if ( harmonicAmp <= 0.0f ) {
                 continue;
             }
@@ -347,14 +352,14 @@ void S_EngineDSP_RenderEmitter(
 
             mechanical += sinf( synth->harmonicPhase[h] ) * harmonicAmp;
         }
-        mechanical *= ( 0.05f + 0.04f * rpmNorm ) * ( 1.0f - 0.35f * rpmNorm ) * ( 1.0f - 0.65f * drivenHarshness );
+        mechanical *= ( 0.05f + 0.04f * rpmNorm ) * ( 1.0f - 0.35f * rpmNorm ) * ( 1.0f - 0.65f * drivenHarshness ) * ( 1.0f - 0.75f * tonalWhineSuppression );
 
         synth->phase += ( 2.0f * (float)M_PI * ( rpm / 60.0f ) ) / sr;
         if ( synth->phase > 2.0f * (float)M_PI ) {
             synth->phase -= 2.0f * (float)M_PI;
         }
 
-        transmission = sinf( synth->phase * 1.5f ) * ( 0.005f + 0.010f * rpmNorm + 0.020f * turboBoost ) * ( 1.0f - 0.50f * rpmNorm ) * ( 1.0f - 0.75f * drivenHarshness );
+        transmission = sinf( synth->phase * 1.5f ) * ( 0.005f + 0.010f * rpmNorm + 0.020f * turboBoost ) * ( 1.0f - 0.50f * rpmNorm ) * ( 1.0f - 0.75f * drivenHarshness ) * ( 1.0f - 0.85f * tonalWhineSuppression );
         slipNoise = noise * preset->noiseGain * wheelSlip * ( 0.03f + 0.05f * load );
 
         if ( control->limiterActive ) {
