@@ -333,8 +333,54 @@ const cgVehicleAudioDebug_t *CG_GetVehicleAudioDebug( void ) {
     return &s_cgVehicleAudioDebug;
 }
 
+static void CG_ProcessVehicleEngineAudio( centity_t *cent ) {
+    vehicleAudioState_t state;
+    engineAudioQualityTier_t quality;
+
+    if ( !cent ) {
+        return;
+    }
+
+    if ( !CG_BuildVehicleAudioState( cent, &state ) ) {
+        trap_S_RemoveEngineEmitter( cent->currentState.number );
+        return;
+    }
+
+    quality = CG_ChooseEngineAudioQuality( cent );
+    if ( quality == EA_QUALITY_OFF ) {
+        trap_S_RemoveEngineEmitter( cent->currentState.number );
+        return;
+    }
+
+    trap_S_RegisterEngineEmitter( cent->currentState.number, 0 );
+    trap_S_UpdateEngineEmitterState(
+        cent->currentState.number,
+        &state,
+        cent->lerpOrigin,
+        cent->currentState.pos.trDelta,
+        quality );
+
+    if ( !s_cgVehicleAudioDebug.valid ||
+         cent->currentState.number == cg.predictedPlayerState.clientNum ) {
+        s_cgVehicleAudioDebug.valid = qtrue;
+        s_cgVehicleAudioDebug.entityNum = cent->currentState.number;
+        s_cgVehicleAudioDebug.quality = quality;
+        s_cgVehicleAudioDebug.speed = state.speed;
+        s_cgVehicleAudioDebug.rpm = state.rpm;
+        s_cgVehicleAudioDebug.rpmNorm = state.rpmNorm;
+        s_cgVehicleAudioDebug.throttle = state.throttle;
+        s_cgVehicleAudioDebug.load = state.load;
+        s_cgVehicleAudioDebug.wheelSlip = state.wheelSlip;
+        s_cgVehicleAudioDebug.turboBoost = state.turboBoost;
+        s_cgVehicleAudioDebug.limiterActive = state.limiterActive;
+        s_cgVehicleAudioDebug.backfireEvent = state.backfireEvent;
+        s_cgVehicleAudioDebug.gear = state.gear;
+    }
+}
+
 void CG_EngineAudio_Frame( void ) {
     int i;
+    int localClientNum;
 
     Com_Memset( &s_cgVehicleAudioDebug, 0, sizeof( s_cgVehicleAudioDebug ) );
 
@@ -342,7 +388,11 @@ void CG_EngineAudio_Frame( void ) {
         return;
     }
 
+    localClientNum = cg.predictedPlayerState.clientNum;
+
     if ( !cg_engineSounds.integer || cg_engineAudioMode.integer != 2 ) {
+        trap_S_RemoveEngineEmitter( localClientNum );
+
         for ( i = 0; i < cg.snap->numEntities; ++i ) {
             const entityState_t *es = &cg.snap->entities[i];
             trap_S_RemoveEngineEmitter( es->number );
@@ -350,49 +400,18 @@ void CG_EngineAudio_Frame( void ) {
         return;
     }
 
+    if ( localClientNum >= 0 && localClientNum < MAX_CLIENTS ) {
+        CG_ProcessVehicleEngineAudio( &cg_entities[localClientNum] );
+    }
+
     for ( i = 0; i < cg.snap->numEntities; ++i ) {
         const entityState_t *es;
-        centity_t *cent;
-        vehicleAudioState_t state;
-        engineAudioQualityTier_t quality;
 
         es = &cg.snap->entities[i];
-        cent = &cg_entities[es->number];
-
-        if ( !CG_BuildVehicleAudioState( cent, &state ) ) {
-            trap_S_RemoveEngineEmitter( cent->currentState.number );
+        if ( es->number == localClientNum ) {
             continue;
         }
 
-        quality = CG_ChooseEngineAudioQuality( cent );
-        if ( quality == EA_QUALITY_OFF ) {
-            trap_S_RemoveEngineEmitter( cent->currentState.number );
-            continue;
-        }
-
-        trap_S_RegisterEngineEmitter( cent->currentState.number, 0 );
-        trap_S_UpdateEngineEmitterState(
-            cent->currentState.number,
-            &state,
-            cent->lerpOrigin,
-            cent->currentState.pos.trDelta,
-            quality );
-
-        if ( !s_cgVehicleAudioDebug.valid ||
-             cent->currentState.number == cg.predictedPlayerState.clientNum ) {
-            s_cgVehicleAudioDebug.valid = qtrue;
-            s_cgVehicleAudioDebug.entityNum = cent->currentState.number;
-            s_cgVehicleAudioDebug.quality = quality;
-            s_cgVehicleAudioDebug.speed = state.speed;
-            s_cgVehicleAudioDebug.rpm = state.rpm;
-            s_cgVehicleAudioDebug.rpmNorm = state.rpmNorm;
-            s_cgVehicleAudioDebug.throttle = state.throttle;
-            s_cgVehicleAudioDebug.load = state.load;
-            s_cgVehicleAudioDebug.wheelSlip = state.wheelSlip;
-            s_cgVehicleAudioDebug.turboBoost = state.turboBoost;
-            s_cgVehicleAudioDebug.limiterActive = state.limiterActive;
-            s_cgVehicleAudioDebug.backfireEvent = state.backfireEvent;
-            s_cgVehicleAudioDebug.gear = state.gear;
-        }
+        CG_ProcessVehicleEngineAudio( &cg_entities[es->number] );
     }
 }
