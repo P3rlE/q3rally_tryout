@@ -167,6 +167,7 @@ void S_EngineDSP_RenderEmitter(
     float exhaustBankMix;
     float intakeBankMix;
     float stereoWidth;
+    float outputMakeupGain;
     float cockpitLowpassAlpha;
     qboolean cockpitView;
 
@@ -202,6 +203,7 @@ void S_EngineDSP_RenderEmitter(
     exhaustBankMix = 0.85f;
     intakeBankMix = 0.65f;
     stereoWidth = 0.08f;
+    outputMakeupGain = 18.0f;
 
     if ( quality == EA_QUALITY_FAR ) {
         gainScale *= 0.35f;
@@ -359,6 +361,9 @@ void S_EngineDSP_RenderEmitter(
             left = synth->cockpitLowpassL;
             right = synth->cockpitLowpassR;
         }
+
+        left = tanhf( left * outputMakeupGain );
+        right = tanhf( right * outputMakeupGain );
 
         outLeft[i] += left;
         outRight[i] += right;
