@@ -170,6 +170,7 @@ void S_EngineDSP_RenderEmitter(
     float stereoWidth;
     float outputMakeupGain;
     float cockpitLowpassAlpha;
+    float toneLowpassAlpha;
     float exhaustSourceGain;
     float intakeSourceGain;
     float mechanicalSourceGain;
@@ -236,6 +237,7 @@ void S_EngineDSP_RenderEmitter(
     sourceType = (engineAudioSourceType_t)control->sourceType;
     cockpitView = ( quality == EA_QUALITY_HERO && !exteriorView ) ? qtrue : qfalse;
     cockpitLowpassAlpha = S_EngineDSP_ComputeLowpassAlpha( preset->cockpitLowpassHz, sr );
+    toneLowpassAlpha = 1.0f;
     exhaustSourceGain = 1.0f;
     intakeSourceGain = 1.0f;
     mechanicalSourceGain = 1.0f;
@@ -252,6 +254,7 @@ void S_EngineDSP_RenderEmitter(
         mechanicalSourceGain *= s_engineAudioEngineBaySourceGainScale ? s_engineAudioEngineBaySourceGainScale->value : 1.0f;
         transmissionSourceGain *= 0.85f + 0.15f * ( s_engineAudioEngineBaySourceGainScale ? s_engineAudioEngineBaySourceGainScale->value : 1.0f );
         eventSourceGain *= s_engineAudioEngineBayEventGainScale ? s_engineAudioEngineBayEventGainScale->value : 1.0f;
+        toneLowpassAlpha = S_EngineDSP_ComputeLowpassAlpha( 3600.0f, sr );
     }
     else {
         exhaustSourceGain = 1.18f;
@@ -262,6 +265,7 @@ void S_EngineDSP_RenderEmitter(
         exhaustSourceGain *= s_engineAudioExhaustSourceGainScale ? s_engineAudioExhaustSourceGainScale->value : 1.0f;
         transmissionSourceGain *= 0.90f + 0.10f * ( s_engineAudioExhaustSourceGainScale ? s_engineAudioExhaustSourceGainScale->value : 1.0f );
         eventSourceGain *= s_engineAudioExhaustEventGainScale ? s_engineAudioExhaustEventGainScale->value : 1.0f;
+        toneLowpassAlpha = S_EngineDSP_ComputeLowpassAlpha( 4300.0f, sr );
     }
 
     for ( i = 0; i < sampleCount; ++i ) {
@@ -275,6 +279,7 @@ void S_EngineDSP_RenderEmitter(
         float burbleStrength;
         float drivenHarshness;
         float tonalWhineSuppression;
+        float brightnessDamping;
         float exhaustColor;
         float intakeNoise;
         float intakeColor;
@@ -302,6 +307,10 @@ void S_EngineDSP_RenderEmitter(
         }
         drivenHarshness = S_Clamp01( ( rpmNorm - 0.32f ) * 1.8f ) * S_Clamp01( ( load - 0.45f ) * 1.8f );
         tonalWhineSuppression = S_Clamp01( ( rpmNorm - 0.08f ) * 1.4f );
+        brightnessDamping = S_Clamp01( ( rpmNorm - 0.42f ) * 1.5f );
+        if ( sourceType == EA_SOURCE_ENGINE_BAY ) {
+            brightnessDamping = S_Clamp01( brightnessDamping * 1.20f );
+        }
 
         synth->crankPhase += phaseStep;
         synth->combustionPhase += phaseStep;
@@ -369,6 +378,7 @@ void S_EngineDSP_RenderEmitter(
         if ( exteriorView ) {
             intakeNoise *= 0.82f;
         }
+        intakeNoise *= 1.0f - 0.38f * brightnessDamping;
         intakeNoise *= intakeSourceGain;
         intakeColor = intakeNoise;
         if ( preset->intakeResonatorCount > 0 ) {
@@ -388,6 +398,7 @@ void S_EngineDSP_RenderEmitter(
 
             harmonicAmp = preset->harmonicGains[h];
             harmonicAmp *= 1.0f - tonalWhineSuppression * ( 0.35f + 0.12f * (float)h );
+            harmonicAmp *= 1.0f - brightnessDamping * ( 0.08f + 0.10f * (float)h );
             if ( harmonicAmp <= 0.0f ) {
                 continue;
             }
@@ -504,6 +515,11 @@ void S_EngineDSP_RenderEmitter(
         widthPhase = sinf( synth->phase * 0.5f );
         left = body * ( 1.0f - stereoWidth * widthPhase );
         right = body * ( 1.0f + stereoWidth * widthPhase );
+
+        synth->toneLowpassL += ( left - synth->toneLowpassL ) * toneLowpassAlpha;
+        synth->toneLowpassR += ( right - synth->toneLowpassR ) * toneLowpassAlpha;
+        left = left * ( 1.0f - 0.55f * brightnessDamping ) + synth->toneLowpassL * ( 0.55f * brightnessDamping );
+        right = right * ( 1.0f - 0.55f * brightnessDamping ) + synth->toneLowpassR * ( 0.55f * brightnessDamping );
 
         if ( cockpitView && ( !s_engineAudioCockpitEnable || s_engineAudioCockpitEnable->integer ) ) {
             float mono;

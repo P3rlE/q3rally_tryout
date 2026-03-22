@@ -33,6 +33,8 @@ typedef struct engineAudioSynthState_s {
 
     float cockpitLowpassL;
     float cockpitLowpassR;
+    float toneLowpassL;
+    float toneLowpassR;
 
     unsigned int noiseSeed;
 
