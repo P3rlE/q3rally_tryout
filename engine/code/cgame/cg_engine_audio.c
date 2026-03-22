@@ -13,6 +13,8 @@
 static cgVehicleAudioDebug_t s_cgVehicleAudioDebug;
 static float s_cgLastLocalSpeed;
 static float s_cgLastLocalRpmNorm;
+static float s_cgLastLocalThrottle;
+static int s_cgLastLocalGear;
 
 #define CG_ENGINE_AUDIO_IDLE_RPM 900.0f
 #define CG_ENGINE_AUDIO_REDLINE_RPM 8000.0f
@@ -246,12 +248,16 @@ void CG_EngineAudio_Init( void ) {
     Com_Memset( &s_cgVehicleAudioDebug, 0, sizeof( s_cgVehicleAudioDebug ) );
     s_cgLastLocalSpeed = 0.0f;
     s_cgLastLocalRpmNorm = 0.0f;
+    s_cgLastLocalThrottle = 0.0f;
+    s_cgLastLocalGear = 0;
 }
 
 void CG_EngineAudio_Shutdown( void ) {
     Com_Memset( &s_cgVehicleAudioDebug, 0, sizeof( s_cgVehicleAudioDebug ) );
     s_cgLastLocalSpeed = 0.0f;
     s_cgLastLocalRpmNorm = 0.0f;
+    s_cgLastLocalThrottle = 0.0f;
+    s_cgLastLocalGear = 0;
 }
 
 qboolean CG_BuildVehicleAudioState( centity_t *cent, vehicleAudioState_t *outState ) {
@@ -320,8 +326,30 @@ qboolean CG_BuildVehicleAudioState( centity_t *cent, vehicleAudioState_t *outSta
     outState->damaged = qfalse;
 
     if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
+        float throttleDrop;
+        qboolean shifted;
+        qboolean aggressiveLift;
+        qboolean loadedUpshift;
+
+        throttleDrop = s_cgLastLocalThrottle - throttle;
+        shifted = ( s_cgLastLocalGear != 0 && outState->gear != s_cgLastLocalGear ) ? qtrue : qfalse;
+        aggressiveLift = ( throttleDrop > 0.34f && rpmNorm > 0.52f && outState->speed > 18.0f ) ? qtrue : qfalse;
+        loadedUpshift = ( shifted && outState->gear > s_cgLastLocalGear && s_cgLastLocalThrottle > 0.58f && rpmNorm > 0.50f ) ? qtrue : qfalse;
+
+        outState->fuelCut = ( throttle < 0.16f && rpmNorm > 0.46f && outState->speed > 12.0f ) ? qtrue : qfalse;
+        outState->ignitionCut = ( outState->limiterActive || loadedUpshift ) ? qtrue : qfalse;
+        outState->clutchSlip = shifted ? 1.0f : CG_Clamp01( fabs( rpmNorm - s_cgLastLocalRpmNorm ) * 2.4f );
+        outState->backfireEvent = ( aggressiveLift || loadedUpshift ) ? qtrue : qfalse;
+
         s_cgLastLocalSpeed = outState->speed;
         s_cgLastLocalRpmNorm = rpmNorm;
+        s_cgLastLocalThrottle = throttle;
+        s_cgLastLocalGear = outState->gear;
+    }
+    else {
+        outState->fuelCut = ( throttle < 0.10f && rpmNorm > 0.55f && outState->speed > 20.0f ) ? qtrue : qfalse;
+        outState->ignitionCut = outState->limiterActive;
+        outState->clutchSlip = CG_Clamp01( wheelSlip * 0.65f + ( outState->fuelCut ? 0.20f : 0.0f ) );
     }
 
     return qtrue;

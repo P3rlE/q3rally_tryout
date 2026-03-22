@@ -249,6 +249,9 @@ void S_EngineDSP_RenderEmitter(
         float limiterBuzz;
         float backfire;
         float overrunPop;
+        float fuelCutCrackle;
+        float ignitionCutChatter;
+        float shiftChirp;
         float slipNoise;
         float body;
         float left;
@@ -400,15 +403,44 @@ void S_EngineDSP_RenderEmitter(
             synth->overrunPopEnvelope *= 0.93f;
         }
 
+        fuelCutCrackle = 0.0f;
+        if ( control->fuelCut ) {
+            fuelCutCrackle = S_EngineDSP_NextNoise( synth ) * ( 0.025f + 0.060f * rpmNorm ) *
+                ( 0.55f + 0.45f * load ) * ( exteriorView ? 1.35f : 0.85f );
+            fuelCutCrackle += expf( -12.0f * combustionPhase ) * ( 0.015f + 0.020f * overrunBurbleStrength );
+        }
+
+        ignitionCutChatter = 0.0f;
+        if ( control->ignitionCut ) {
+            ignitionCutChatter = noise * preset->limiterGain * ( 0.030f + 0.030f * rpmNorm );
+            if ( exteriorView ) {
+                ignitionCutChatter *= 1.20f;
+            }
+        }
+
+        shiftChirp = 0.0f;
+        if ( control->clutchSlip > 0.05f ) {
+            shiftChirp = noise * preset->noiseGain * control->clutchSlip * ( 0.025f + 0.020f * load );
+            if ( exteriorView ) {
+                shiftChirp *= 1.15f;
+            }
+        }
+
         body =
             exhaustColor * preset->exhaustGain * exhaustLayerScale * 0.55f +
             intakeColor * preset->intakeGain * intakeLayerScale * 0.35f +
             mechanical * preset->mechanicalGain * mechanicalLayerScale * 0.40f +
             transmission * preset->transmissionGain * transmissionLayerScale * 0.30f +
-            slipNoise + limiterBuzz + backfire + overrunPop;
+            slipNoise + limiterBuzz + backfire + overrunPop + fuelCutCrackle + ignitionCutChatter + shiftChirp;
 
         if ( exteriorView ) {
             body += exhaustColor * preset->exhaustGain * exhaustLayerScale * ( 0.18f + 0.10f * load );
+        }
+        if ( control->fuelCut ) {
+            body += exhaustColor * preset->exhaustGain * exhaustLayerScale * ( exteriorView ? 0.08f : 0.04f );
+        }
+        if ( control->ignitionCut ) {
+            body *= exteriorView ? 0.94f : 0.90f;
         }
 
         body *= gainScale * ( s_engineAudioGain ? s_engineAudioGain->value : 1.0f ) *
