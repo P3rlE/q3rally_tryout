@@ -18,6 +18,7 @@ static int s_cgLastLocalGear;
 
 #define CG_ENGINE_AUDIO_IDLE_RPM 900.0f
 #define CG_ENGINE_AUDIO_REDLINE_RPM 8000.0f
+#define CG_ENGINE_AUDIO_SOURCE_ID_STRIDE MAX_GENTITIES
 
 static float CG_CalcEngineAudioRpmNorm( float rpm, float idleRpm, float redlineRpm ) {
     float norm;
@@ -280,6 +281,29 @@ static void CG_ComputeVehicleEngineAudioOrigin( centity_t *cent, vec3_t outOrigi
     VectorMA( outOrigin, -6.0f, up, outOrigin );
 }
 
+static void CG_ComputeVehicleEngineBayAudioOrigin( centity_t *cent, vec3_t outOrigin ) {
+    vec3_t forward;
+    vec3_t up;
+
+    if ( !outOrigin ) {
+        return;
+    }
+
+    if ( !cent ) {
+        VectorClear( outOrigin );
+        return;
+    }
+
+    AngleVectors( cent->lerpAngles, forward, NULL, up );
+    VectorCopy( cent->lerpOrigin, outOrigin );
+    VectorMA( outOrigin, 18.0f, forward, outOrigin );
+    VectorMA( outOrigin, 6.0f, up, outOrigin );
+}
+
+static int CG_EngineAudioEmitterId( int entityNum, engineAudioSourceType_t sourceType ) {
+    return entityNum + ( (int)sourceType * CG_ENGINE_AUDIO_SOURCE_ID_STRIDE );
+}
+
 void CG_EngineAudio_Init( void ) {
     Com_Memset( &s_cgVehicleAudioDebug, 0, sizeof( s_cgVehicleAudioDebug ) );
     s_cgLastLocalSpeed = 0.0f;
@@ -426,32 +450,55 @@ const cgVehicleAudioDebug_t *CG_GetVehicleAudioDebug( void ) {
 
 static void CG_ProcessVehicleEngineAudio( centity_t *cent ) {
     vehicleAudioState_t state;
+    vehicleAudioState_t exhaustState;
+    vehicleAudioState_t engineBayState;
     engineAudioQualityTier_t quality;
     vec3_t emitterOrigin;
+    vec3_t engineBayOrigin;
+    int exhaustEmitterId;
+    int engineBayEmitterId;
 
     if ( !cent ) {
         return;
     }
 
     if ( !CG_BuildVehicleAudioState( cent, &state ) ) {
-        trap_S_RemoveEngineEmitter( cent->currentState.number );
+        trap_S_RemoveEngineEmitter( CG_EngineAudioEmitterId( cent->currentState.number, EA_SOURCE_EXHAUST ) );
+        trap_S_RemoveEngineEmitter( CG_EngineAudioEmitterId( cent->currentState.number, EA_SOURCE_ENGINE_BAY ) );
         return;
     }
 
     quality = CG_ChooseEngineAudioQuality( cent );
     if ( quality == EA_QUALITY_OFF ) {
-        trap_S_RemoveEngineEmitter( cent->currentState.number );
+        trap_S_RemoveEngineEmitter( CG_EngineAudioEmitterId( cent->currentState.number, EA_SOURCE_EXHAUST ) );
+        trap_S_RemoveEngineEmitter( CG_EngineAudioEmitterId( cent->currentState.number, EA_SOURCE_ENGINE_BAY ) );
         return;
     }
 
     state.exteriorView = ( cent->currentState.number != cg.predictedPlayerState.clientNum || cg.renderingThirdPerson ) ? qtrue : qfalse;
+    state.sourceType = EA_SOURCE_EXHAUST;
+    exhaustState = state;
+    engineBayState = state;
+    engineBayState.sourceType = EA_SOURCE_ENGINE_BAY;
+    engineBayState.backfireEvent = qfalse;
     CG_ComputeVehicleEngineAudioOrigin( cent, emitterOrigin );
+    CG_ComputeVehicleEngineBayAudioOrigin( cent, engineBayOrigin );
+    exhaustEmitterId = CG_EngineAudioEmitterId( cent->currentState.number, EA_SOURCE_EXHAUST );
+    engineBayEmitterId = CG_EngineAudioEmitterId( cent->currentState.number, EA_SOURCE_ENGINE_BAY );
 
-    trap_S_RegisterEngineEmitter( cent->currentState.number, 0 );
+    trap_S_RegisterEngineEmitter( exhaustEmitterId, 0 );
     trap_S_UpdateEngineEmitterState(
-        cent->currentState.number,
-        &state,
+        exhaustEmitterId,
+        &exhaustState,
         emitterOrigin,
+        cent->currentState.pos.trDelta,
+        quality );
+
+    trap_S_RegisterEngineEmitter( engineBayEmitterId, 0 );
+    trap_S_UpdateEngineEmitterState(
+        engineBayEmitterId,
+        &engineBayState,
+        engineBayOrigin,
         cent->currentState.pos.trDelta,
         quality );
 
@@ -486,11 +533,13 @@ void CG_EngineAudio_Frame( void ) {
     localClientNum = cg.predictedPlayerState.clientNum;
 
     if ( !cg_engineSounds.integer || cg_engineAudioMode.integer != 2 ) {
-        trap_S_RemoveEngineEmitter( localClientNum );
+        trap_S_RemoveEngineEmitter( CG_EngineAudioEmitterId( localClientNum, EA_SOURCE_EXHAUST ) );
+        trap_S_RemoveEngineEmitter( CG_EngineAudioEmitterId( localClientNum, EA_SOURCE_ENGINE_BAY ) );
 
         for ( i = 0; i < cg.snap->numEntities; ++i ) {
             const entityState_t *es = &cg.snap->entities[i];
-            trap_S_RemoveEngineEmitter( es->number );
+            trap_S_RemoveEngineEmitter( CG_EngineAudioEmitterId( es->number, EA_SOURCE_EXHAUST ) );
+            trap_S_RemoveEngineEmitter( CG_EngineAudioEmitterId( es->number, EA_SOURCE_ENGINE_BAY ) );
         }
         return;
     }

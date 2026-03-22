@@ -170,8 +170,14 @@ void S_EngineDSP_RenderEmitter(
     float stereoWidth;
     float outputMakeupGain;
     float cockpitLowpassAlpha;
+    float exhaustSourceGain;
+    float intakeSourceGain;
+    float mechanicalSourceGain;
+    float transmissionSourceGain;
+    float eventSourceGain;
     qboolean cockpitView;
     qboolean exteriorView;
+    engineAudioSourceType_t sourceType;
 
     if ( !synth || !preset || !control || !outLeft || !outRight || sampleCount <= 0 ) {
         return;
@@ -227,8 +233,29 @@ void S_EngineDSP_RenderEmitter(
     }
 
     exteriorView = control->exteriorView;
+    sourceType = (engineAudioSourceType_t)control->sourceType;
     cockpitView = ( quality == EA_QUALITY_HERO && !exteriorView ) ? qtrue : qfalse;
     cockpitLowpassAlpha = S_EngineDSP_ComputeLowpassAlpha( preset->cockpitLowpassHz, sr );
+    exhaustSourceGain = 1.0f;
+    intakeSourceGain = 1.0f;
+    mechanicalSourceGain = 1.0f;
+    transmissionSourceGain = 1.0f;
+    eventSourceGain = 1.0f;
+
+    if ( sourceType == EA_SOURCE_ENGINE_BAY ) {
+        exhaustSourceGain = 0.22f;
+        intakeSourceGain = 1.20f;
+        mechanicalSourceGain = 1.12f;
+        transmissionSourceGain = 0.82f;
+        eventSourceGain = 0.18f;
+    }
+    else {
+        exhaustSourceGain = 1.18f;
+        intakeSourceGain = 0.34f;
+        mechanicalSourceGain = 0.58f;
+        transmissionSourceGain = 0.86f;
+        eventSourceGain = 1.18f;
+    }
 
     for ( i = 0; i < sampleCount; ++i ) {
         int h;
@@ -327,6 +354,7 @@ void S_EngineDSP_RenderEmitter(
         if ( exteriorView ) {
             exhaustColor *= 1.12f + 0.24f * load;
         }
+        exhaustColor *= exhaustSourceGain;
 
         noise = S_EngineDSP_NextNoise( synth );
         intakeNoise = noise * preset->noiseGain * 8.0f * ( 0.15f + 0.85f * throttle ) * ( 0.30f + 0.70f * load ) * ( 1.0f - 0.30f * rpmNorm ) * ( 1.0f - 0.55f * drivenHarshness );
@@ -334,6 +362,7 @@ void S_EngineDSP_RenderEmitter(
         if ( exteriorView ) {
             intakeNoise *= 0.82f;
         }
+        intakeNoise *= intakeSourceGain;
         intakeColor = intakeNoise;
         if ( preset->intakeResonatorCount > 0 ) {
             intakeColor = S_EngineDSP_RenderResonatorBank(
@@ -377,6 +406,8 @@ void S_EngineDSP_RenderEmitter(
             mechanical *= 0.72f;
             transmission *= 0.58f;
         }
+        mechanical *= mechanicalSourceGain;
+        transmission *= transmissionSourceGain;
 
         if ( control->limiterActive ) {
             synth->limiterEnvelope += ( 1.0f - synth->limiterEnvelope ) * 0.12f;
@@ -409,6 +440,7 @@ void S_EngineDSP_RenderEmitter(
             fuelCutCrackle = S_EngineDSP_NextNoise( synth ) * ( 0.025f + 0.060f * rpmNorm ) *
                 ( 0.55f + 0.45f * load ) * ( exteriorView ? 1.35f : 0.85f );
             fuelCutCrackle += expf( -12.0f * combustionPhase ) * ( 0.015f + 0.020f * overrunBurbleStrength );
+            fuelCutCrackle *= eventSourceGain;
         }
 
         ignitionCutChatter = 0.0f;
@@ -417,6 +449,7 @@ void S_EngineDSP_RenderEmitter(
             if ( exteriorView ) {
                 ignitionCutChatter *= 1.20f;
             }
+            ignitionCutChatter *= eventSourceGain;
         }
 
         shiftChirp = 0.0f;
@@ -425,6 +458,7 @@ void S_EngineDSP_RenderEmitter(
             if ( exteriorView ) {
                 shiftChirp *= 1.15f;
             }
+            shiftChirp *= eventSourceGain;
         }
 
         damageRattle = 0.0f;
@@ -432,6 +466,7 @@ void S_EngineDSP_RenderEmitter(
             damageRattle = S_EngineDSP_NextNoise( synth ) * ( 0.020f + 0.030f * rpmNorm ) * ( exteriorView ? 1.30f : 0.80f );
             exhaustColor *= exteriorView ? 1.10f : 1.05f;
             mechanical *= 1.18f;
+            damageRattle *= 0.65f * eventSourceGain + 0.35f * mechanicalSourceGain;
         }
 
         body =

@@ -10,6 +10,11 @@ typedef enum engineAudioQualityTier_e {
     EA_QUALITY_HERO
 } engineAudioQualityTier_t;
 
+typedef enum engineAudioSourceType_e {
+    EA_SOURCE_EXHAUST = 0,
+    EA_SOURCE_ENGINE_BAY
+} engineAudioSourceType_t;
+
 typedef struct vehicleAudioState_s {
     float rpm;
     float rpmNorm;
@@ -30,6 +35,7 @@ typedef struct vehicleAudioState_s {
     qboolean backfireEvent;
     qboolean damaged;
     qboolean exteriorView;
+    int sourceType;
 } vehicleAudioState_t;
 
 #endif /* ENGINE_AUDIO_SHARED_H */
