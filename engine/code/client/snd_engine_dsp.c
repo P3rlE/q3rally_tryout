@@ -234,6 +234,9 @@ void S_EngineDSP_RenderEmitter(
         float pulseShape;
         float combustionPhase;
         float secondaryPhase;
+        float idleBurbleStrength;
+        float overrunBurbleStrength;
+        float burbleStrength;
         float exhaustColor;
         float intakeNoise;
         float intakeColor;
@@ -247,6 +250,13 @@ void S_EngineDSP_RenderEmitter(
         float right;
         float widthPhase;
         float noise;
+
+        idleBurbleStrength = S_Clamp01( ( 0.24f - rpmNorm ) * 5.0f ) * S_Clamp01( ( 0.42f - throttle ) * 2.4f );
+        overrunBurbleStrength = S_Clamp01( ( rpmNorm - 0.18f ) * 1.6f ) * S_Clamp01( ( 0.24f - throttle ) * 4.0f );
+        burbleStrength = idleBurbleStrength;
+        if ( overrunBurbleStrength > burbleStrength ) {
+            burbleStrength = overrunBurbleStrength;
+        }
 
         synth->crankPhase += phaseStep;
         synth->combustionPhase += phaseStep;
@@ -267,10 +277,10 @@ void S_EngineDSP_RenderEmitter(
                 cylinderNorm = (float)cylinderId / (float)firingOrderLength;
 
                 synth->combustionPhase = 0.0f;
-                synth->combustionJitter = 0.82f + 0.12f * cylinderNorm +
-                    0.12f * ( 0.5f + 0.5f * S_EngineDSP_NextNoise( synth ) );
-                synth->combustionTone = 0.90f + 0.14f * cylinderNorm;
-                synth->combustionNoise = 0.10f * S_EngineDSP_NextNoise( synth );
+                synth->combustionJitter = 0.78f + 0.10f * cylinderNorm + 0.18f * burbleStrength +
+                    0.14f * ( 0.5f + 0.5f * S_EngineDSP_NextNoise( synth ) );
+                synth->combustionTone = 0.92f + 0.12f * cylinderNorm - 0.08f * burbleStrength;
+                synth->combustionNoise = ( 0.08f + 0.18f * burbleStrength ) * S_EngineDSP_NextNoise( synth );
                 synth->firingOrderIndex = ( synth->firingOrderIndex + 1 ) % firingOrderLength;
             }
         }
@@ -283,7 +293,8 @@ void S_EngineDSP_RenderEmitter(
 
         pulseShape = expf( -13.0f * combustionPhase ) - expf( -54.0f * combustionPhase );
         pulseShape += 0.32f * ( expf( -18.0f * secondaryPhase ) - expf( -72.0f * secondaryPhase ) );
-        pulseShape += synth->combustionNoise * expf( -22.0f * combustionPhase );
+        pulseShape += burbleStrength * 0.26f * ( expf( -8.0f * secondaryPhase ) - expf( -28.0f * secondaryPhase ) );
+        pulseShape += synth->combustionNoise * ( 1.0f + 0.8f * burbleStrength ) * expf( -18.0f * combustionPhase );
         pulseShape *= synth->combustionJitter * ( 0.45f + 0.55f * throttle ) * ( 0.30f + 0.70f * load );
 
         exhaustColor = pulseShape;
