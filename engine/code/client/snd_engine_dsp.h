@@ -17,6 +17,9 @@ typedef struct engineAudioSynthState_s {
 
     float phase;
     float crankPhase;
+    float combustionPhase;
+    float combustionJitter;
+    int firingOrderIndex;
 
     float smoothedRpm;
     float smoothedThrottle;

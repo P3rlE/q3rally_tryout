@@ -159,6 +159,7 @@ void S_EngineDSP_RenderEmitter(
     float turboBoost;
     float cylPerRev;
     float pulseHz;
+    float phaseStep;
     float gainScale;
     float exhaustLayerScale;
     float intakeLayerScale;
@@ -194,6 +195,7 @@ void S_EngineDSP_RenderEmitter(
     }
 
     pulseHz = max( 12.0f, ( rpm / 60.0f ) * cylPerRev );
+    phaseStep = pulseHz / sr;
 
     gainScale = 0.45f;
     exhaustLayerScale = s_engineAudioExhaustGainScale ? s_engineAudioExhaustGainScale->value : 1.0f;
@@ -228,7 +230,6 @@ void S_EngineDSP_RenderEmitter(
 
     for ( i = 0; i < sampleCount; ++i ) {
         int h;
-        float pulse;
         float pulseWrap;
         float pulseShape;
         float exhaustColor;
@@ -245,16 +246,34 @@ void S_EngineDSP_RenderEmitter(
         float widthPhase;
         float noise;
 
-        synth->crankPhase += pulseHz / sr;
+        synth->crankPhase += phaseStep;
+        synth->combustionPhase += phaseStep;
         pulseWrap = floorf( synth->crankPhase );
         if ( pulseWrap > 0.0f ) {
+            int firedCount;
+
             synth->crankPhase -= pulseWrap;
+            for ( firedCount = 0; firedCount < (int)pulseWrap; ++firedCount ) {
+                int firingOrderLength;
+                int cylinderId;
+                float cylinderNorm;
+
+                firingOrderLength = ( preset->firingOrderLength > 0 ) ? preset->firingOrderLength : 1;
+                cylinderId = ( preset->firingOrderLength > 0 ) ?
+                    preset->firingOrder[synth->firingOrderIndex % firingOrderLength] :
+                    ( synth->firingOrderIndex + 1 );
+                cylinderNorm = (float)cylinderId / (float)firingOrderLength;
+
+                synth->combustionPhase = 0.0f;
+                synth->combustionJitter = 0.88f + 0.10f * cylinderNorm +
+                    0.08f * ( 0.5f + 0.5f * S_EngineDSP_NextNoise( synth ) );
+                synth->firingOrderIndex = ( synth->firingOrderIndex + 1 ) % firingOrderLength;
+            }
         }
 
-        pulse = synth->crankPhase;
-        pulseShape = expf( -24.0f * pulse ) - expf( -150.0f * pulse );
-        pulseShape += 0.15f * sinf( 2.0f * (float)M_PI * pulse );
-        pulseShape *= 0.40f + 0.60f * load;
+        pulseShape = expf( -30.0f * synth->combustionPhase ) - expf( -210.0f * synth->combustionPhase );
+        pulseShape += 0.10f * sinf( 2.0f * (float)M_PI * synth->combustionPhase );
+        pulseShape *= synth->combustionJitter * ( 0.45f + 0.55f * throttle ) * ( 0.30f + 0.70f * load );
 
         exhaustColor = pulseShape;
         if ( preset->exhaustResonatorCount > 0 ) {
