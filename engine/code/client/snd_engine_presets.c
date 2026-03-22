@@ -2,16 +2,212 @@
 ===========================================================================
   snd_engine_presets.c
 
-  MVP preset registry with hardcoded fallback presets.
+  MVP preset registry with hardcoded fallback presets and optional
+  file-based overrides.
 ===========================================================================
 */
 
 #include "snd_engine_presets.h"
 
 #define MAX_ENGINE_AUDIO_PRESETS 16
+#define DEFAULT_ENGINE_AUDIO_PRESET_PATH "sound/engine_audio/presets/sport_i4.eapreset"
 
 static engineAudioPreset_t s_enginePresets[MAX_ENGINE_AUDIO_PRESETS];
 static int s_enginePresetCount = 0;
+
+static qboolean S_ParseFloatToken( char **text, float *outValue ) {
+    char *token;
+
+    token = COM_ParseExt( text, qfalse );
+    if ( !token[0] ) {
+        return qfalse;
+    }
+
+    *outValue = atof( token );
+    return qtrue;
+}
+
+static qboolean S_ParseIntToken( char **text, int *outValue ) {
+    char *token;
+
+    token = COM_ParseExt( text, qfalse );
+    if ( !token[0] ) {
+        return qfalse;
+    }
+
+    *outValue = atoi( token );
+    return qtrue;
+}
+
+static qboolean S_ParseEngineAudioPresetText( char *text, engineAudioPreset_t *outPreset ) {
+    char *token;
+
+    if ( !text || !outPreset ) {
+        return qfalse;
+    }
+
+    Com_Memset( outPreset, 0, sizeof( *outPreset ) );
+
+    while ( 1 ) {
+        token = COM_ParseExt( &text, qtrue );
+        if ( !token[0] ) {
+            break;
+        }
+
+        if ( !Q_stricmp( token, "name" ) ) {
+            token = COM_ParseExt( &text, qfalse );
+            if ( !token[0] ) {
+                return qfalse;
+            }
+            Q_strncpyz( outPreset->name, token, sizeof( outPreset->name ) );
+        }
+        else if ( !Q_stricmp( token, "cylinderCount" ) ) {
+            if ( !S_ParseIntToken( &text, &outPreset->cylinderCount ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "strokeCycle" ) ) {
+            if ( !S_ParseIntToken( &text, &outPreset->strokeCycle ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "firingOrderLength" ) ) {
+            if ( !S_ParseIntToken( &text, &outPreset->firingOrderLength ) ) {
+                return qfalse;
+            }
+            if ( outPreset->firingOrderLength < 0 || outPreset->firingOrderLength > MAX_ENGINE_AUDIO_FIRING_ORDER ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "firingOrder" ) ) {
+            int i;
+            int count;
+
+            count = outPreset->firingOrderLength;
+            if ( count <= 0 || count > MAX_ENGINE_AUDIO_FIRING_ORDER ) {
+                return qfalse;
+            }
+
+            for ( i = 0; i < count; ++i ) {
+                if ( !S_ParseIntToken( &text, &outPreset->firingOrder[i] ) ) {
+                    return qfalse;
+                }
+            }
+        }
+        else if ( !Q_stricmp( token, "idleRpm" ) ) {
+            if ( !S_ParseFloatToken( &text, &outPreset->idleRpm ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "redlineRpm" ) ) {
+            if ( !S_ParseFloatToken( &text, &outPreset->redlineRpm ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "exhaustGain" ) ) {
+            if ( !S_ParseFloatToken( &text, &outPreset->exhaustGain ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "intakeGain" ) ) {
+            if ( !S_ParseFloatToken( &text, &outPreset->intakeGain ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "mechanicalGain" ) ) {
+            if ( !S_ParseFloatToken( &text, &outPreset->mechanicalGain ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "transmissionGain" ) ) {
+            if ( !S_ParseFloatToken( &text, &outPreset->transmissionGain ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "harmonicGain" ) ) {
+            int index;
+            float value;
+
+            if ( !S_ParseIntToken( &text, &index ) || !S_ParseFloatToken( &text, &value ) ) {
+                return qfalse;
+            }
+            if ( index < 0 || index >= MAX_ENGINE_AUDIO_HARMONICS ) {
+                return qfalse;
+            }
+            outPreset->harmonicGains[index] = value;
+        }
+        else if ( !Q_stricmp( token, "exhaustResonator" ) ) {
+            int index;
+            engineAudioResonator_t *resonator;
+
+            if ( outPreset->exhaustResonatorCount >= MAX_ENGINE_AUDIO_RESONATORS ) {
+                return qfalse;
+            }
+
+            index = outPreset->exhaustResonatorCount++;
+            resonator = &outPreset->exhaustResonators[index];
+
+            if ( !S_ParseFloatToken( &text, &resonator->frequencyHz ) ||
+                 !S_ParseFloatToken( &text, &resonator->q ) ||
+                 !S_ParseFloatToken( &text, &resonator->gain ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "intakeResonator" ) ) {
+            int index;
+            engineAudioResonator_t *resonator;
+
+            if ( outPreset->intakeResonatorCount >= MAX_ENGINE_AUDIO_RESONATORS ) {
+                return qfalse;
+            }
+
+            index = outPreset->intakeResonatorCount++;
+            resonator = &outPreset->intakeResonators[index];
+
+            if ( !S_ParseFloatToken( &text, &resonator->frequencyHz ) ||
+                 !S_ParseFloatToken( &text, &resonator->q ) ||
+                 !S_ParseFloatToken( &text, &resonator->gain ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "distortionDrive" ) ) {
+            if ( !S_ParseFloatToken( &text, &outPreset->distortionDrive ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "noiseGain" ) ) {
+            if ( !S_ParseFloatToken( &text, &outPreset->noiseGain ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "backfireGain" ) ) {
+            if ( !S_ParseFloatToken( &text, &outPreset->backfireGain ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "limiterGain" ) ) {
+            if ( !S_ParseFloatToken( &text, &outPreset->limiterGain ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "cockpitLowpassHz" ) ) {
+            if ( !S_ParseFloatToken( &text, &outPreset->cockpitLowpassHz ) ) {
+                return qfalse;
+            }
+        }
+        else if ( !Q_stricmp( token, "exteriorPresenceGain" ) ) {
+            if ( !S_ParseFloatToken( &text, &outPreset->exteriorPresenceGain ) ) {
+                return qfalse;
+            }
+        }
+        else {
+            Com_Printf( S_COLOR_YELLOW "S_ParseEngineAudioPresetFile: unknown token '%s'\n", token );
+            return qfalse;
+        }
+    }
+
+    return S_ValidateEngineAudioPreset( outPreset );
+}
 
 static void S_BuildDefaultSportI4Preset( engineAudioPreset_t *p ) {
     Com_Memset( p, 0, sizeof( *p ) );
@@ -80,6 +276,10 @@ qboolean S_ValidateEngineAudioPreset( const engineAudioPreset_t *preset ) {
         return qfalse;
     }
 
+    if ( !preset->name[0] ) {
+        return qfalse;
+    }
+
     return qtrue;
 }
 
@@ -121,15 +321,34 @@ const engineAudioPreset_t *S_GetEngineAudioPresetByHandle( int handle ) {
 }
 
 qboolean S_ParseEngineAudioPresetFile( const char *path, engineAudioPreset_t *outPreset ) {
-    (void)path;
-    (void)outPreset;
-    return qfalse;
+    char *buffer;
+    int len;
+    qboolean ok;
+
+    if ( !path || !path[0] || !outPreset ) {
+        return qfalse;
+    }
+
+    len = FS_ReadFile( path, (void **)&buffer );
+    if ( len <= 0 || !buffer ) {
+        return qfalse;
+    }
+
+    ok = S_ParseEngineAudioPresetText( buffer, outPreset );
+    FS_FreeFile( buffer );
+
+    return ok;
 }
 
 void S_LoadEngineAudioPresets( void ) {
     engineAudioPreset_t preset;
 
     s_enginePresetCount = 0;
+
+    if ( S_ParseEngineAudioPresetFile( DEFAULT_ENGINE_AUDIO_PRESET_PATH, &preset ) ) {
+        S_RegisterEngineAudioPreset( &preset );
+        return;
+    }
 
     S_BuildDefaultSportI4Preset( &preset );
     S_RegisterEngineAudioPreset( &preset );
