@@ -225,38 +225,42 @@ static void S_BuildDefaultSportI4Preset( engineAudioPreset_t *p ) {
     p->idleRpm = 950.0f;
     p->redlineRpm = 8000.0f;
 
-    p->exhaustGain = 1.15f;
-    p->intakeGain = 0.42f;
-    p->mechanicalGain = 0.22f;
-    p->transmissionGain = 0.10f;
+    p->exhaustGain = 1.28f;
+    p->intakeGain = 0.30f;
+    p->mechanicalGain = 0.16f;
+    p->transmissionGain = 0.06f;
 
-    p->exhaustResonatorCount = 2;
-    p->exhaustResonators[0].frequencyHz = 92.0f;
-    p->exhaustResonators[0].q = 1.30f;
-    p->exhaustResonators[0].gain = 1.00f;
-    p->exhaustResonators[1].frequencyHz = 210.0f;
-    p->exhaustResonators[1].q = 1.20f;
-    p->exhaustResonators[1].gain = 0.45f;
+    p->exhaustResonatorCount = 3;
+    p->exhaustResonators[0].frequencyHz = 78.0f;
+    p->exhaustResonators[0].q = 1.40f;
+    p->exhaustResonators[0].gain = 1.15f;
+    p->exhaustResonators[1].frequencyHz = 132.0f;
+    p->exhaustResonators[1].q = 1.15f;
+    p->exhaustResonators[1].gain = 0.70f;
+
+    p->exhaustResonators[2].frequencyHz = 196.0f;
+    p->exhaustResonators[2].q = 1.00f;
+    p->exhaustResonators[2].gain = 0.30f;
 
     p->intakeResonatorCount = 2;
-    p->intakeResonators[0].frequencyHz = 410.0f;
-    p->intakeResonators[0].q = 0.90f;
-    p->intakeResonators[0].gain = 0.35f;
-    p->intakeResonators[1].frequencyHz = 760.0f;
-    p->intakeResonators[1].q = 0.85f;
-    p->intakeResonators[1].gain = 0.20f;
+    p->intakeResonators[0].frequencyHz = 360.0f;
+    p->intakeResonators[0].q = 0.85f;
+    p->intakeResonators[0].gain = 0.22f;
+    p->intakeResonators[1].frequencyHz = 690.0f;
+    p->intakeResonators[1].q = 0.80f;
+    p->intakeResonators[1].gain = 0.12f;
 
     p->harmonicGains[0] = 1.00f;
-    p->harmonicGains[1] = 0.30f;
-    p->harmonicGains[2] = 0.10f;
-    p->harmonicGains[3] = 0.04f;
+    p->harmonicGains[1] = 0.22f;
+    p->harmonicGains[2] = 0.06f;
+    p->harmonicGains[3] = 0.02f;
 
-    p->distortionDrive = 0.08f;
-    p->noiseGain = 0.04f;
-    p->backfireGain = 0.28f;
-    p->limiterGain = 0.18f;
-    p->cockpitLowpassHz = 3600.0f;
-    p->exteriorPresenceGain = 1.10f;
+    p->distortionDrive = 0.04f;
+    p->noiseGain = 0.03f;
+    p->backfireGain = 0.24f;
+    p->limiterGain = 0.14f;
+    p->cockpitLowpassHz = 3000.0f;
+    p->exteriorPresenceGain = 1.12f;
 }
 
 qboolean S_ValidateEngineAudioPreset( const engineAudioPreset_t *preset ) {
