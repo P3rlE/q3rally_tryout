@@ -246,7 +246,7 @@ static void S_DebugPrintEngineAudioState( void ) {
         }
     }
 
-    Com_Printf( "EngineAudio: active=%d hero=%d near=%d far=%d gain=%.2f exh=%.2f int=%.2f mech=%.2f trans=%.2f cockpit=%d limiter=%d backfire=%d\n",
+    Com_Printf( "EngineAudio: active=%d hero=%d near=%d far=%d gain=%.2f exh=%.2f int=%.2f mech=%.2f trans=%.2f srcExh=%.2f srcBay=%.2f evtExh=%.2f evtBay=%.2f cockpit=%d limiter=%d backfire=%d\n",
         activeCount,
         heroCount,
         nearCount,
@@ -256,6 +256,10 @@ static void S_DebugPrintEngineAudioState( void ) {
         s_engineAudioIntakeGainScale ? s_engineAudioIntakeGainScale->value : 1.0f,
         s_engineAudioMechanicalGainScale ? s_engineAudioMechanicalGainScale->value : 1.0f,
         s_engineAudioTransmissionGainScale ? s_engineAudioTransmissionGainScale->value : 1.0f,
+        s_engineAudioExhaustSourceGainScale ? s_engineAudioExhaustSourceGainScale->value : 1.0f,
+        s_engineAudioEngineBaySourceGainScale ? s_engineAudioEngineBaySourceGainScale->value : 1.0f,
+        s_engineAudioExhaustEventGainScale ? s_engineAudioExhaustEventGainScale->value : 1.0f,
+        s_engineAudioEngineBayEventGainScale ? s_engineAudioEngineBayEventGainScale->value : 1.0f,
         s_engineAudioCockpitEnable ? s_engineAudioCockpitEnable->integer : 1,
         s_engineAudioLimiterEnable ? s_engineAudioLimiterEnable->integer : 1,
         s_engineAudioBackfireEnable ? s_engineAudioBackfireEnable->integer : 1 );

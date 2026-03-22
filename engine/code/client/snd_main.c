@@ -39,6 +39,10 @@ cvar_t *s_engineAudioExhaustGainScale;
 cvar_t *s_engineAudioIntakeGainScale;
 cvar_t *s_engineAudioMechanicalGainScale;
 cvar_t *s_engineAudioTransmissionGainScale;
+cvar_t *s_engineAudioExhaustSourceGainScale;
+cvar_t *s_engineAudioEngineBaySourceGainScale;
+cvar_t *s_engineAudioExhaustEventGainScale;
+cvar_t *s_engineAudioEngineBayEventGainScale;
 cvar_t *s_engineAudioLimiterEnable;
 cvar_t *s_engineAudioBackfireEnable;
 cvar_t *s_engineAudioCockpitEnable;
@@ -513,6 +517,10 @@ void S_Init( void )
 	s_engineAudioIntakeGainScale = Cvar_Get( "s_engineAudioIntakeGainScale", "1", CVAR_ARCHIVE );
 	s_engineAudioMechanicalGainScale = Cvar_Get( "s_engineAudioMechanicalGainScale", "1", CVAR_ARCHIVE );
 	s_engineAudioTransmissionGainScale = Cvar_Get( "s_engineAudioTransmissionGainScale", "1", CVAR_ARCHIVE );
+	s_engineAudioExhaustSourceGainScale = Cvar_Get( "s_engineAudioExhaustSourceGainScale", "1", CVAR_ARCHIVE );
+	s_engineAudioEngineBaySourceGainScale = Cvar_Get( "s_engineAudioEngineBaySourceGainScale", "1", CVAR_ARCHIVE );
+	s_engineAudioExhaustEventGainScale = Cvar_Get( "s_engineAudioExhaustEventGainScale", "1", CVAR_ARCHIVE );
+	s_engineAudioEngineBayEventGainScale = Cvar_Get( "s_engineAudioEngineBayEventGainScale", "1", CVAR_ARCHIVE );
 	s_engineAudioLimiterEnable = Cvar_Get( "s_engineAudioLimiterEnable", "1", CVAR_ARCHIVE );
 	s_engineAudioBackfireEnable = Cvar_Get( "s_engineAudioBackfireEnable", "1", CVAR_ARCHIVE );
 	s_engineAudioCockpitEnable = Cvar_Get( "s_engineAudioCockpitEnable", "1", CVAR_ARCHIVE );
@@ -585,4 +593,3 @@ void S_Shutdown( void )
 
 	S_CodecShutdown( );
 }
-

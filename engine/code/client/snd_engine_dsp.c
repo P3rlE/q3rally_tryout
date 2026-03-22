@@ -248,6 +248,10 @@ void S_EngineDSP_RenderEmitter(
         mechanicalSourceGain = 1.12f;
         transmissionSourceGain = 0.82f;
         eventSourceGain = 0.18f;
+        intakeSourceGain *= s_engineAudioEngineBaySourceGainScale ? s_engineAudioEngineBaySourceGainScale->value : 1.0f;
+        mechanicalSourceGain *= s_engineAudioEngineBaySourceGainScale ? s_engineAudioEngineBaySourceGainScale->value : 1.0f;
+        transmissionSourceGain *= 0.85f + 0.15f * ( s_engineAudioEngineBaySourceGainScale ? s_engineAudioEngineBaySourceGainScale->value : 1.0f );
+        eventSourceGain *= s_engineAudioEngineBayEventGainScale ? s_engineAudioEngineBayEventGainScale->value : 1.0f;
     }
     else {
         exhaustSourceGain = 1.18f;
@@ -255,6 +259,9 @@ void S_EngineDSP_RenderEmitter(
         mechanicalSourceGain = 0.58f;
         transmissionSourceGain = 0.86f;
         eventSourceGain = 1.18f;
+        exhaustSourceGain *= s_engineAudioExhaustSourceGainScale ? s_engineAudioExhaustSourceGainScale->value : 1.0f;
+        transmissionSourceGain *= 0.90f + 0.10f * ( s_engineAudioExhaustSourceGainScale ? s_engineAudioExhaustSourceGainScale->value : 1.0f );
+        eventSourceGain *= s_engineAudioExhaustEventGainScale ? s_engineAudioExhaustEventGainScale->value : 1.0f;
     }
 
     for ( i = 0; i < sampleCount; ++i ) {
