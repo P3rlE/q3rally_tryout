@@ -14,6 +14,9 @@ static cgVehicleAudioDebug_t s_cgVehicleAudioDebug;
 static float s_cgLastLocalSpeed;
 static float s_cgLastLocalRpmNorm;
 
+#define CG_ENGINE_AUDIO_IDLE_RPM 900.0f
+#define CG_ENGINE_AUDIO_REDLINE_RPM 8000.0f
+
 static float CG_CalcEngineAudioRpmNorm( float rpm, float idleRpm, float redlineRpm ) {
     float norm;
 
@@ -43,6 +46,78 @@ static float CG_Clamp01( float value ) {
     }
 
     return value;
+}
+
+static int CG_EstimateRemoteGear( centity_t *cent, float speed ) {
+    float absSpeed;
+
+    (void)cent;
+
+    absSpeed = fabs( speed );
+
+    if ( absSpeed < 15.0f ) {
+        return 1;
+    }
+    if ( absSpeed < 28.0f ) {
+        return 2;
+    }
+    if ( absSpeed < 40.0f ) {
+        return 3;
+    }
+    if ( absSpeed < 56.0f ) {
+        return 4;
+    }
+    if ( absSpeed < 74.0f ) {
+        return 5;
+    }
+
+    return 6;
+}
+
+static float CG_ApproxRemoteVehicleSignedSpeed( centity_t *cent ) {
+    vec3_t forward;
+    float signedSpeed;
+
+    if ( !cent ) {
+        return 0.0f;
+    }
+
+    AngleVectors( cent->lerpAngles, forward, NULL, NULL );
+    signedSpeed = DotProduct( cent->currentState.pos.trDelta, forward );
+
+    if ( cent->currentState.eFlags & EF_REVERSE ) {
+        signedSpeed = -fabs( signedSpeed );
+    }
+
+    return signedSpeed;
+}
+
+static float CG_EstimateRemoteRpm( float speed, int gear, float wheelSlip ) {
+    static const float speedPerGear[] = { 0.0f, 15.0f, 24.0f, 33.0f, 44.0f, 58.0f, 74.0f };
+    float absSpeed;
+    float rpm;
+    float gearNorm;
+
+    if ( gear < 1 ) {
+        gear = 1;
+    }
+    else if ( gear > 6 ) {
+        gear = 6;
+    }
+
+    absSpeed = fabs( speed );
+    gearNorm = absSpeed / speedPerGear[gear];
+    rpm = CG_ENGINE_AUDIO_IDLE_RPM + gearNorm * ( CG_ENGINE_AUDIO_REDLINE_RPM - CG_ENGINE_AUDIO_IDLE_RPM ) * 0.55f;
+    rpm += wheelSlip * 900.0f;
+
+    if ( rpm < CG_ENGINE_AUDIO_IDLE_RPM ) {
+        rpm = CG_ENGINE_AUDIO_IDLE_RPM;
+    }
+    else if ( rpm > CG_ENGINE_AUDIO_REDLINE_RPM ) {
+        rpm = CG_ENGINE_AUDIO_REDLINE_RPM;
+    }
+
+    return rpm;
 }
 
 static float CG_ApproxVehicleWheelSlip( centity_t *cent ) {
@@ -75,6 +150,7 @@ static float CG_ApproxVehicleWheelSlip( centity_t *cent ) {
 
 static float CG_ApproxVehicleThrottle( centity_t *cent, float rpmNorm ) {
     float throttle;
+    float signedSpeed;
 
     if ( !cent || !cg.snap ) {
         return 0.0f;
@@ -86,7 +162,14 @@ static float CG_ApproxVehicleThrottle( centity_t *cent, float rpmNorm ) {
         return CG_Clamp01( throttle );
     }
 
-    return rpmNorm;
+    signedSpeed = CG_ApproxRemoteVehicleSignedSpeed( cent );
+    throttle = 0.35f + 0.45f * rpmNorm;
+    throttle += 0.15f * CG_Clamp01( fabs( signedSpeed ) / 80.0f );
+    if ( cent->currentState.powerups & ( 1 << PW_TURBO ) ) {
+        throttle += 0.15f;
+    }
+
+    return CG_Clamp01( throttle );
 }
 
 static float CG_ApproxVehicleLoad( centity_t *cent, float throttle, float rpmNorm, float wheelSlip, float speed ) {
@@ -110,7 +193,12 @@ static float CG_ApproxVehicleLoad( centity_t *cent, float throttle, float rpmNor
         }
     }
     else {
-        load = 0.20f + 0.55f * throttle + 0.25f * rpmNorm;
+        accelNorm = CG_Clamp01( fabs( speed ) / 90.0f );
+        load = 0.10f + 0.40f * throttle + 0.20f * rpmNorm + 0.15f * accelNorm;
+
+        if ( cent->currentState.powerups & ( 1 << PW_TURBO ) ) {
+            load += 0.10f;
+        }
     }
 
     load += 0.20f * wheelSlip;
@@ -165,13 +253,30 @@ qboolean CG_BuildVehicleAudioState( centity_t *cent, vehicleAudioState_t *outSta
         outState->speed = VectorLength( cg.predictedPlayerState.velocity );
     }
     else {
-        rpm = 2000.0f;
-        outState->gear = 2;
+        float signedSpeed;
+
+        signedSpeed = CG_ApproxRemoteVehicleSignedSpeed( cent );
         outState->speed = VectorLength( cent->currentState.pos.trDelta );
+        outState->gear = CG_EstimateRemoteGear( cent, signedSpeed );
+        rpm = 0.0f;
+
+        if ( cent->currentState.eFlags & EF_REVERSE ) {
+            outState->gear = -1;
+        }
     }
 
-    rpmNorm = CG_CalcEngineAudioRpmNorm( rpm, 900.0f, 8000.0f );
     wheelSlip = CG_ApproxVehicleWheelSlip( cent );
+
+    if ( cent->currentState.number != cg.predictedPlayerState.clientNum ) {
+        if ( outState->gear < 0 ) {
+            rpm = CG_EstimateRemoteRpm( -outState->speed, 1, wheelSlip );
+        }
+        else {
+            rpm = CG_EstimateRemoteRpm( outState->speed, outState->gear, wheelSlip );
+        }
+    }
+
+    rpmNorm = CG_CalcEngineAudioRpmNorm( rpm, CG_ENGINE_AUDIO_IDLE_RPM, CG_ENGINE_AUDIO_REDLINE_RPM );
     throttle = CG_ApproxVehicleThrottle( cent, rpmNorm );
     load = CG_ApproxVehicleLoad( cent, throttle, rpmNorm, wheelSlip, outState->speed );
 
