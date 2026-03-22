@@ -1,0 +1,390 @@
+/*
+===========================================================================
+  snd_engine_dsp.c
+
+  Procedural engine DSP MVP with pulse excitation, resonator coloring,
+  intake noise, and a simple mechanical harmonic layer.
+===========================================================================
+*/
+
+#include <math.h>
+
+#include "snd_engine_dsp.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+static float S_Clamp01( float value ) {
+    if ( value < 0.0f ) {
+        return 0.0f;
+    }
+
+    if ( value > 1.0f ) {
+        return 1.0f;
+    }
+
+    return value;
+}
+
+static float S_EngineDSP_NextNoise( engineAudioSynthState_t *state ) {
+    float noise;
+
+    state->noiseSeed = state->noiseSeed * 1664525u + 1013904223u;
+    noise = ( ( ( state->noiseSeed >> 8 ) & 0xFFFFu ) / 32768.0f ) - 1.0f;
+
+    return noise;
+}
+
+static float S_EngineDSP_ApplyResonator(
+    engineAudioResonatorState_t *state,
+    const engineAudioResonator_t *resonator,
+    float sampleRate,
+    float input ) {
+    float omega;
+    float sinOmega;
+    float cosOmega;
+    float alpha;
+    float q;
+    float b0;
+    float b1;
+    float b2;
+    float a0;
+    float a1;
+    float a2;
+    float output;
+
+    if ( !state || !resonator || sampleRate <= 0.0f || resonator->frequencyHz <= 0.0f ) {
+        return input;
+    }
+
+    q = ( resonator->q > 0.1f ) ? resonator->q : 0.1f;
+    omega = 2.0f * (float)M_PI * resonator->frequencyHz / sampleRate;
+    sinOmega = sinf( omega );
+    cosOmega = cosf( omega );
+    alpha = sinOmega / ( 2.0f * q );
+
+    b0 = alpha;
+    b1 = 0.0f;
+    b2 = -alpha;
+    a0 = 1.0f + alpha;
+    a1 = -2.0f * cosOmega;
+    a2 = 1.0f - alpha;
+
+    output = ( b0 / a0 ) * input +
+        ( b1 / a0 ) * state->biquad.x1 +
+        ( b2 / a0 ) * state->biquad.x2 -
+        ( a1 / a0 ) * state->biquad.y1 -
+        ( a2 / a0 ) * state->biquad.y2;
+
+    state->biquad.x2 = state->biquad.x1;
+    state->biquad.x1 = input;
+    state->biquad.y2 = state->biquad.y1;
+    state->biquad.y1 = output;
+
+    return output * resonator->gain;
+}
+
+static float S_EngineDSP_RenderResonatorBank(
+    engineAudioResonatorState_t *states,
+    const engineAudioResonator_t *resonators,
+    int resonatorCount,
+    float sampleRate,
+    float input ) {
+    int i;
+    float sum;
+
+    if ( !states || !resonators || resonatorCount <= 0 ) {
+        return input;
+    }
+
+    sum = 0.0f;
+    for ( i = 0; i < resonatorCount; ++i ) {
+        sum += S_EngineDSP_ApplyResonator( &states[i], &resonators[i], sampleRate, input );
+    }
+
+    return sum;
+}
+
+static float S_EngineDSP_ComputeLowpassAlpha( float cutoffHz, float sampleRate ) {
+    float normalizedCutoff;
+
+    if ( sampleRate <= 0.0f || cutoffHz <= 0.0f ) {
+        return 1.0f;
+    }
+
+    normalizedCutoff = 2.0f * (float)M_PI * cutoffHz / sampleRate;
+    if ( normalizedCutoff > 1.0f ) {
+        normalizedCutoff = 1.0f;
+    }
+    else if ( normalizedCutoff < 0.0f ) {
+        normalizedCutoff = 0.0f;
+    }
+
+    return normalizedCutoff;
+}
+
+void S_EngineDSP_Reset( engineAudioSynthState_t *state, float sampleRate ) {
+    if ( !state ) {
+        return;
+    }
+
+    Com_Memset( state, 0, sizeof( *state ) );
+    state->sampleRate = ( sampleRate > 0.0f ) ? sampleRate : 44100.0f;
+    state->noiseSeed = 1u;
+}
+
+void S_EngineDSP_TriggerBackfire( engineAudioSynthState_t *state ) {
+    if ( state ) {
+        state->backfireEnvelope = 1.0f;
+    }
+}
+
+void S_EngineDSP_RenderEmitter(
+    engineAudioSynthState_t *synth,
+    const engineAudioPreset_t *preset,
+    const vehicleAudioState_t *control,
+    engineAudioQualityTier_t quality,
+    int sampleCount,
+    float *outLeft,
+    float *outRight ) {
+    int i;
+    int harmonicCount;
+    float sr;
+    float rpm;
+    float rpmNorm;
+    float throttle;
+    float load;
+    float wheelSlip;
+    float turboBoost;
+    float cylPerRev;
+    float pulseHz;
+    float phaseStep;
+    float gainScale;
+    float exhaustLayerScale;
+    float intakeLayerScale;
+    float mechanicalLayerScale;
+    float transmissionLayerScale;
+    float exhaustBankMix;
+    float intakeBankMix;
+    float stereoWidth;
+    float outputMakeupGain;
+    float cockpitLowpassAlpha;
+    qboolean cockpitView;
+
+    if ( !synth || !preset || !control || !outLeft || !outRight || sampleCount <= 0 ) {
+        return;
+    }
+
+    sr = ( synth->sampleRate > 0.0f ) ? synth->sampleRate : 44100.0f;
+
+    synth->smoothedRpm += ( control->rpm - synth->smoothedRpm ) * 0.05f;
+    synth->smoothedThrottle += ( control->throttle - synth->smoothedThrottle ) * 0.05f;
+    synth->smoothedLoad += ( control->load - synth->smoothedLoad ) * 0.05f;
+
+    rpm = synth->smoothedRpm;
+    rpmNorm = S_Clamp01( control->rpmNorm );
+    throttle = S_Clamp01( synth->smoothedThrottle );
+    load = S_Clamp01( synth->smoothedLoad );
+    wheelSlip = S_Clamp01( control->wheelSlip );
+    turboBoost = S_Clamp01( control->turboBoost );
+
+    cylPerRev = 0.5f * (float)max( preset->cylinderCount, 1 );
+    if ( preset->strokeCycle == 2 ) {
+        cylPerRev = (float)max( preset->cylinderCount, 1 );
+    }
+
+    pulseHz = max( 12.0f, ( rpm / 60.0f ) * cylPerRev );
+    phaseStep = pulseHz / sr;
+
+    gainScale = 0.45f;
+    exhaustLayerScale = s_engineAudioExhaustGainScale ? s_engineAudioExhaustGainScale->value : 1.0f;
+    intakeLayerScale = s_engineAudioIntakeGainScale ? s_engineAudioIntakeGainScale->value : 1.0f;
+    mechanicalLayerScale = s_engineAudioMechanicalGainScale ? s_engineAudioMechanicalGainScale->value : 1.0f;
+    transmissionLayerScale = s_engineAudioTransmissionGainScale ? s_engineAudioTransmissionGainScale->value : 1.0f;
+    exhaustBankMix = 0.92f;
+    intakeBankMix = 0.45f;
+    stereoWidth = 0.08f;
+    outputMakeupGain = 18.0f;
+
+    if ( quality == EA_QUALITY_FAR ) {
+        gainScale *= 0.35f;
+        exhaustBankMix = 0.35f;
+        intakeBankMix = 0.15f;
+        stereoWidth = 0.02f;
+    }
+    else if ( quality == EA_QUALITY_NEAR ) {
+        gainScale *= 0.60f;
+        exhaustBankMix = 0.55f;
+        intakeBankMix = 0.35f;
+        stereoWidth = 0.04f;
+    }
+
+    harmonicCount = MAX_ENGINE_AUDIO_HARMONICS;
+    if ( quality != EA_QUALITY_HERO ) {
+        harmonicCount = 4;
+    }
+
+    cockpitView = ( quality == EA_QUALITY_HERO ) ? qtrue : qfalse;
+    cockpitLowpassAlpha = S_EngineDSP_ComputeLowpassAlpha( preset->cockpitLowpassHz, sr );
+
+    for ( i = 0; i < sampleCount; ++i ) {
+        int h;
+        float pulseWrap;
+        float pulseShape;
+        float exhaustColor;
+        float intakeNoise;
+        float intakeColor;
+        float mechanical;
+        float transmission;
+        float limiterBuzz;
+        float backfire;
+        float slipNoise;
+        float body;
+        float left;
+        float right;
+        float widthPhase;
+        float noise;
+
+        synth->crankPhase += phaseStep;
+        synth->combustionPhase += phaseStep;
+        pulseWrap = floorf( synth->crankPhase );
+        if ( pulseWrap > 0.0f ) {
+            int firedCount;
+
+            synth->crankPhase -= pulseWrap;
+            for ( firedCount = 0; firedCount < (int)pulseWrap; ++firedCount ) {
+                int firingOrderLength;
+                int cylinderId;
+                float cylinderNorm;
+
+                firingOrderLength = ( preset->firingOrderLength > 0 ) ? preset->firingOrderLength : 1;
+                cylinderId = ( preset->firingOrderLength > 0 ) ?
+                    preset->firingOrder[synth->firingOrderIndex % firingOrderLength] :
+                    ( synth->firingOrderIndex + 1 );
+                cylinderNorm = (float)cylinderId / (float)firingOrderLength;
+
+                synth->combustionPhase = 0.0f;
+                synth->combustionJitter = 0.88f + 0.10f * cylinderNorm +
+                    0.08f * ( 0.5f + 0.5f * S_EngineDSP_NextNoise( synth ) );
+                synth->firingOrderIndex = ( synth->firingOrderIndex + 1 ) % firingOrderLength;
+            }
+        }
+
+        pulseShape = expf( -20.0f * synth->combustionPhase ) - expf( -120.0f * synth->combustionPhase );
+        pulseShape += 0.05f * sinf( 2.0f * (float)M_PI * synth->combustionPhase );
+        pulseShape *= synth->combustionJitter * ( 0.45f + 0.55f * throttle ) * ( 0.30f + 0.70f * load );
+
+        exhaustColor = pulseShape;
+        if ( preset->exhaustResonatorCount > 0 ) {
+            exhaustColor = S_EngineDSP_RenderResonatorBank(
+                synth->exhaustStates,
+                preset->exhaustResonators,
+                preset->exhaustResonatorCount,
+                sr,
+                pulseShape );
+            exhaustColor = pulseShape * ( 1.0f - exhaustBankMix ) + exhaustColor * exhaustBankMix;
+        }
+
+        noise = S_EngineDSP_NextNoise( synth );
+        intakeNoise = noise * preset->noiseGain * 8.0f * ( 0.15f + 0.85f * throttle ) * ( 0.30f + 0.70f * load );
+        intakeNoise += noise * wheelSlip * 0.25f;
+        intakeColor = intakeNoise;
+        if ( preset->intakeResonatorCount > 0 ) {
+            intakeColor = S_EngineDSP_RenderResonatorBank(
+                synth->intakeStates,
+                preset->intakeResonators,
+                preset->intakeResonatorCount,
+                sr,
+                intakeNoise );
+            intakeColor = intakeNoise * ( 1.0f - intakeBankMix ) + intakeColor * intakeBankMix;
+        }
+
+        mechanical = 0.0f;
+        for ( h = 0; h < harmonicCount; ++h ) {
+            float harmonicHz;
+            float harmonicAmp;
+
+            harmonicAmp = preset->harmonicGains[h];
+            if ( harmonicAmp <= 0.0f ) {
+                continue;
+            }
+
+            harmonicHz = ( rpm / 60.0f ) * (float)( h + 1 );
+            synth->harmonicPhase[h] += ( 2.0f * (float)M_PI * harmonicHz ) / sr;
+            if ( synth->harmonicPhase[h] > 2.0f * (float)M_PI ) {
+                synth->harmonicPhase[h] -= 2.0f * (float)M_PI;
+            }
+
+            mechanical += sinf( synth->harmonicPhase[h] ) * harmonicAmp;
+        }
+        mechanical *= 0.08f + 0.06f * rpmNorm;
+
+        synth->phase += ( 2.0f * (float)M_PI * ( rpm / 60.0f ) ) / sr;
+        if ( synth->phase > 2.0f * (float)M_PI ) {
+            synth->phase -= 2.0f * (float)M_PI;
+        }
+
+        transmission = sinf( synth->phase * 1.5f ) * ( 0.01f + 0.02f * rpmNorm + 0.03f * turboBoost );
+        slipNoise = noise * preset->noiseGain * wheelSlip * ( 0.03f + 0.05f * load );
+
+        if ( control->limiterActive ) {
+            synth->limiterEnvelope += ( 1.0f - synth->limiterEnvelope ) * 0.12f;
+        }
+        else {
+            synth->limiterEnvelope *= 0.92f;
+        }
+
+        limiterBuzz = 0.0f;
+        if ( !s_engineAudioLimiterEnable || s_engineAudioLimiterEnable->integer ) {
+            limiterBuzz = noise * synth->limiterEnvelope * preset->limiterGain * 0.08f;
+        }
+
+        backfire = 0.0f;
+        if ( synth->backfireEnvelope > 0.001f ) {
+            if ( !s_engineAudioBackfireEnable || s_engineAudioBackfireEnable->integer ) {
+                backfire = S_EngineDSP_NextNoise( synth ) * synth->backfireEnvelope * preset->backfireGain * 0.12f;
+            }
+            synth->backfireEnvelope *= 0.965f;
+        }
+
+        body =
+            exhaustColor * preset->exhaustGain * exhaustLayerScale * 0.55f +
+            intakeColor * preset->intakeGain * intakeLayerScale * 0.35f +
+            mechanical * preset->mechanicalGain * mechanicalLayerScale * 0.40f +
+            transmission * preset->transmissionGain * transmissionLayerScale * 0.30f +
+            slipNoise + limiterBuzz + backfire;
+
+        body *= gainScale * ( s_engineAudioGain ? s_engineAudioGain->value : 1.0f ) *
+            ( 0.55f + 0.45f * preset->exteriorPresenceGain );
+        body *= 0.55f + 0.45f * ( 0.25f + 0.75f * load );
+
+        if ( preset->distortionDrive > 0.0f ) {
+            body = tanhf( body * ( 1.0f + preset->distortionDrive * 4.0f ) );
+        }
+
+        widthPhase = sinf( synth->phase * 0.5f );
+        left = body * ( 1.0f - stereoWidth * widthPhase );
+        right = body * ( 1.0f + stereoWidth * widthPhase );
+
+        if ( cockpitView && ( !s_engineAudioCockpitEnable || s_engineAudioCockpitEnable->integer ) ) {
+            float mono;
+
+            mono = 0.5f * ( left + right );
+            left = left * 0.25f + mono * 0.75f;
+            right = right * 0.25f + mono * 0.75f;
+
+            synth->cockpitLowpassL += ( left - synth->cockpitLowpassL ) * cockpitLowpassAlpha;
+            synth->cockpitLowpassR += ( right - synth->cockpitLowpassR ) * cockpitLowpassAlpha;
+
+            left = synth->cockpitLowpassL;
+            right = synth->cockpitLowpassR;
+        }
+
+        left = tanhf( left * outputMakeupGain );
+        right = tanhf( right * outputMakeupGain );
+
+        outLeft[i] += left;
+        outRight[i] += right;
+    }
+}
