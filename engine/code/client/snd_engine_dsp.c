@@ -202,8 +202,8 @@ void S_EngineDSP_RenderEmitter(
     intakeLayerScale = s_engineAudioIntakeGainScale ? s_engineAudioIntakeGainScale->value : 1.0f;
     mechanicalLayerScale = s_engineAudioMechanicalGainScale ? s_engineAudioMechanicalGainScale->value : 1.0f;
     transmissionLayerScale = s_engineAudioTransmissionGainScale ? s_engineAudioTransmissionGainScale->value : 1.0f;
-    exhaustBankMix = 0.85f;
-    intakeBankMix = 0.65f;
+    exhaustBankMix = 0.92f;
+    intakeBankMix = 0.45f;
     stereoWidth = 0.08f;
     outputMakeupGain = 18.0f;
 
@@ -271,8 +271,8 @@ void S_EngineDSP_RenderEmitter(
             }
         }
 
-        pulseShape = expf( -30.0f * synth->combustionPhase ) - expf( -210.0f * synth->combustionPhase );
-        pulseShape += 0.10f * sinf( 2.0f * (float)M_PI * synth->combustionPhase );
+        pulseShape = expf( -20.0f * synth->combustionPhase ) - expf( -120.0f * synth->combustionPhase );
+        pulseShape += 0.05f * sinf( 2.0f * (float)M_PI * synth->combustionPhase );
         pulseShape *= synth->combustionJitter * ( 0.45f + 0.55f * throttle ) * ( 0.30f + 0.70f * load );
 
         exhaustColor = pulseShape;
@@ -318,14 +318,14 @@ void S_EngineDSP_RenderEmitter(
 
             mechanical += sinf( synth->harmonicPhase[h] ) * harmonicAmp;
         }
-        mechanical *= 0.12f + 0.10f * rpmNorm;
+        mechanical *= 0.08f + 0.06f * rpmNorm;
 
         synth->phase += ( 2.0f * (float)M_PI * ( rpm / 60.0f ) ) / sr;
         if ( synth->phase > 2.0f * (float)M_PI ) {
             synth->phase -= 2.0f * (float)M_PI;
         }
 
-        transmission = sinf( synth->phase * 1.5f ) * ( 0.03f + 0.04f * rpmNorm + 0.06f * turboBoost );
+        transmission = sinf( synth->phase * 1.5f ) * ( 0.01f + 0.02f * rpmNorm + 0.03f * turboBoost );
         slipNoise = noise * preset->noiseGain * wheelSlip * ( 0.03f + 0.05f * load );
 
         if ( control->limiterActive ) {
