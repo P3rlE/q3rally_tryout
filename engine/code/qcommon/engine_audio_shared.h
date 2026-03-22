@@ -29,6 +29,7 @@ typedef struct vehicleAudioState_s {
     qboolean limiterActive;
     qboolean backfireEvent;
     qboolean damaged;
+    qboolean exteriorView;
 } vehicleAudioState_t;
 
 #endif /* ENGINE_AUDIO_SHARED_H */

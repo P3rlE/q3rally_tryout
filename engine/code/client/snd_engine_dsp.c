@@ -171,6 +171,7 @@ void S_EngineDSP_RenderEmitter(
     float outputMakeupGain;
     float cockpitLowpassAlpha;
     qboolean cockpitView;
+    qboolean exteriorView;
 
     if ( !synth || !preset || !control || !outLeft || !outRight || sampleCount <= 0 ) {
         return;
@@ -225,7 +226,8 @@ void S_EngineDSP_RenderEmitter(
         harmonicCount = 4;
     }
 
-    cockpitView = ( quality == EA_QUALITY_HERO ) ? qtrue : qfalse;
+    exteriorView = control->exteriorView;
+    cockpitView = ( quality == EA_QUALITY_HERO && !exteriorView ) ? qtrue : qfalse;
     cockpitLowpassAlpha = S_EngineDSP_ComputeLowpassAlpha( preset->cockpitLowpassHz, sr );
 
     for ( i = 0; i < sampleCount; ++i ) {
@@ -318,10 +320,16 @@ void S_EngineDSP_RenderEmitter(
         }
         exhaustColor += drivenHarshness * 0.24f * ( expf( -7.0f * combustionPhase ) - expf( -24.0f * combustionPhase ) );
         exhaustColor *= 1.0f + 0.30f * tonalWhineSuppression * load;
+        if ( exteriorView ) {
+            exhaustColor *= 1.12f + 0.24f * load;
+        }
 
         noise = S_EngineDSP_NextNoise( synth );
         intakeNoise = noise * preset->noiseGain * 8.0f * ( 0.15f + 0.85f * throttle ) * ( 0.30f + 0.70f * load ) * ( 1.0f - 0.30f * rpmNorm ) * ( 1.0f - 0.55f * drivenHarshness );
         intakeNoise += noise * wheelSlip * 0.25f;
+        if ( exteriorView ) {
+            intakeNoise *= 0.82f;
+        }
         intakeColor = intakeNoise;
         if ( preset->intakeResonatorCount > 0 ) {
             intakeColor = S_EngineDSP_RenderResonatorBank(
@@ -361,6 +369,10 @@ void S_EngineDSP_RenderEmitter(
 
         transmission = sinf( synth->phase * 1.5f ) * ( 0.005f + 0.010f * rpmNorm + 0.020f * turboBoost ) * ( 1.0f - 0.50f * rpmNorm ) * ( 1.0f - 0.75f * drivenHarshness ) * ( 1.0f - 0.85f * tonalWhineSuppression );
         slipNoise = noise * preset->noiseGain * wheelSlip * ( 0.03f + 0.05f * load );
+        if ( exteriorView ) {
+            mechanical *= 0.72f;
+            transmission *= 0.58f;
+        }
 
         if ( control->limiterActive ) {
             synth->limiterEnvelope += ( 1.0f - synth->limiterEnvelope ) * 0.12f;
@@ -394,6 +406,10 @@ void S_EngineDSP_RenderEmitter(
             mechanical * preset->mechanicalGain * mechanicalLayerScale * 0.40f +
             transmission * preset->transmissionGain * transmissionLayerScale * 0.30f +
             slipNoise + limiterBuzz + backfire + overrunPop;
+
+        if ( exteriorView ) {
+            body += exhaustColor * preset->exhaustGain * exhaustLayerScale * ( 0.18f + 0.10f * load );
+        }
 
         body *= gainScale * ( s_engineAudioGain ? s_engineAudioGain->value : 1.0f ) *
             ( 0.55f + 0.45f * preset->exteriorPresenceGain );

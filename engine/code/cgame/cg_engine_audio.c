@@ -218,6 +218,30 @@ static qboolean CG_IsVehicleEntity( centity_t *cent ) {
     return qtrue;
 }
 
+static void CG_ComputeVehicleEngineAudioOrigin( centity_t *cent, vec3_t outOrigin ) {
+    vec3_t forward;
+    vec3_t up;
+
+    if ( !outOrigin ) {
+        return;
+    }
+
+    if ( !cent ) {
+        VectorClear( outOrigin );
+        return;
+    }
+
+    AngleVectors( cent->lerpAngles, forward, NULL, up );
+    VectorCopy( cent->lerpOrigin, outOrigin );
+
+    /*
+    ** Bias the emitter toward the rear/lower area of the chassis so the
+    ** synthesized sound reads more like an exhaust source in third person.
+    */
+    VectorMA( outOrigin, -26.0f, forward, outOrigin );
+    VectorMA( outOrigin, -6.0f, up, outOrigin );
+}
+
 void CG_EngineAudio_Init( void ) {
     Com_Memset( &s_cgVehicleAudioDebug, 0, sizeof( s_cgVehicleAudioDebug ) );
     s_cgLastLocalSpeed = 0.0f;
@@ -336,6 +360,7 @@ const cgVehicleAudioDebug_t *CG_GetVehicleAudioDebug( void ) {
 static void CG_ProcessVehicleEngineAudio( centity_t *cent ) {
     vehicleAudioState_t state;
     engineAudioQualityTier_t quality;
+    vec3_t emitterOrigin;
 
     if ( !cent ) {
         return;
@@ -352,11 +377,14 @@ static void CG_ProcessVehicleEngineAudio( centity_t *cent ) {
         return;
     }
 
+    state.exteriorView = ( cent->currentState.number != cg.predictedPlayerState.clientNum || cg.renderingThirdPerson ) ? qtrue : qfalse;
+    CG_ComputeVehicleEngineAudioOrigin( cent, emitterOrigin );
+
     trap_S_RegisterEngineEmitter( cent->currentState.number, 0 );
     trap_S_UpdateEngineEmitterState(
         cent->currentState.number,
         &state,
-        cent->lerpOrigin,
+        emitterOrigin,
         cent->currentState.pos.trDelta,
         quality );
 
