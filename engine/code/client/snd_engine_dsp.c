@@ -232,6 +232,8 @@ void S_EngineDSP_RenderEmitter(
         int h;
         float pulseWrap;
         float pulseShape;
+        float combustionPhase;
+        float secondaryPhase;
         float exhaustColor;
         float intakeNoise;
         float intakeColor;
@@ -265,14 +267,23 @@ void S_EngineDSP_RenderEmitter(
                 cylinderNorm = (float)cylinderId / (float)firingOrderLength;
 
                 synth->combustionPhase = 0.0f;
-                synth->combustionJitter = 0.88f + 0.10f * cylinderNorm +
-                    0.08f * ( 0.5f + 0.5f * S_EngineDSP_NextNoise( synth ) );
+                synth->combustionJitter = 0.82f + 0.12f * cylinderNorm +
+                    0.12f * ( 0.5f + 0.5f * S_EngineDSP_NextNoise( synth ) );
+                synth->combustionTone = 0.90f + 0.14f * cylinderNorm;
+                synth->combustionNoise = 0.10f * S_EngineDSP_NextNoise( synth );
                 synth->firingOrderIndex = ( synth->firingOrderIndex + 1 ) % firingOrderLength;
             }
         }
 
-        pulseShape = expf( -14.0f * synth->combustionPhase ) - expf( -70.0f * synth->combustionPhase );
-        pulseShape += 0.02f * sinf( 2.0f * (float)M_PI * synth->combustionPhase );
+        combustionPhase = synth->combustionPhase * synth->combustionTone;
+        secondaryPhase = combustionPhase - ( 0.12f + 0.04f * synth->combustionJitter );
+        if ( secondaryPhase < 0.0f ) {
+            secondaryPhase = 0.0f;
+        }
+
+        pulseShape = expf( -13.0f * combustionPhase ) - expf( -54.0f * combustionPhase );
+        pulseShape += 0.32f * ( expf( -18.0f * secondaryPhase ) - expf( -72.0f * secondaryPhase ) );
+        pulseShape += synth->combustionNoise * expf( -22.0f * combustionPhase );
         pulseShape *= synth->combustionJitter * ( 0.45f + 0.55f * throttle ) * ( 0.30f + 0.70f * load );
 
         exhaustColor = pulseShape;
