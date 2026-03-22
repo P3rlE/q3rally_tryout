@@ -237,6 +237,7 @@ void S_EngineDSP_RenderEmitter(
         float idleBurbleStrength;
         float overrunBurbleStrength;
         float burbleStrength;
+        float drivenHarshness;
         float exhaustColor;
         float intakeNoise;
         float intakeColor;
@@ -258,6 +259,7 @@ void S_EngineDSP_RenderEmitter(
         if ( overrunBurbleStrength > burbleStrength ) {
             burbleStrength = overrunBurbleStrength;
         }
+        drivenHarshness = S_Clamp01( ( rpmNorm - 0.32f ) * 1.8f ) * S_Clamp01( ( load - 0.45f ) * 1.8f );
 
         synth->crankPhase += phaseStep;
         synth->combustionPhase += phaseStep;
@@ -311,9 +313,10 @@ void S_EngineDSP_RenderEmitter(
                 pulseShape );
             exhaustColor = pulseShape * ( 1.0f - exhaustBankMix ) + exhaustColor * exhaustBankMix;
         }
+        exhaustColor += drivenHarshness * 0.24f * ( expf( -7.0f * combustionPhase ) - expf( -24.0f * combustionPhase ) );
 
         noise = S_EngineDSP_NextNoise( synth );
-        intakeNoise = noise * preset->noiseGain * 8.0f * ( 0.15f + 0.85f * throttle ) * ( 0.30f + 0.70f * load ) * ( 1.0f - 0.30f * rpmNorm );
+        intakeNoise = noise * preset->noiseGain * 8.0f * ( 0.15f + 0.85f * throttle ) * ( 0.30f + 0.70f * load ) * ( 1.0f - 0.30f * rpmNorm ) * ( 1.0f - 0.55f * drivenHarshness );
         intakeNoise += noise * wheelSlip * 0.25f;
         intakeColor = intakeNoise;
         if ( preset->intakeResonatorCount > 0 ) {
@@ -344,14 +347,14 @@ void S_EngineDSP_RenderEmitter(
 
             mechanical += sinf( synth->harmonicPhase[h] ) * harmonicAmp;
         }
-        mechanical *= ( 0.05f + 0.04f * rpmNorm ) * ( 1.0f - 0.35f * rpmNorm );
+        mechanical *= ( 0.05f + 0.04f * rpmNorm ) * ( 1.0f - 0.35f * rpmNorm ) * ( 1.0f - 0.65f * drivenHarshness );
 
         synth->phase += ( 2.0f * (float)M_PI * ( rpm / 60.0f ) ) / sr;
         if ( synth->phase > 2.0f * (float)M_PI ) {
             synth->phase -= 2.0f * (float)M_PI;
         }
 
-        transmission = sinf( synth->phase * 1.5f ) * ( 0.005f + 0.010f * rpmNorm + 0.020f * turboBoost ) * ( 1.0f - 0.50f * rpmNorm );
+        transmission = sinf( synth->phase * 1.5f ) * ( 0.005f + 0.010f * rpmNorm + 0.020f * turboBoost ) * ( 1.0f - 0.50f * rpmNorm ) * ( 1.0f - 0.75f * drivenHarshness );
         slipNoise = noise * preset->noiseGain * wheelSlip * ( 0.03f + 0.05f * load );
 
         if ( control->limiterActive ) {
