@@ -320,6 +320,7 @@ static void S_ComputeEngineEmitterSpatialGains(
 
 void S_RenderEngineAudio( portable_samplepair_t *buffer, int sampleCount ) {
     int i;
+    const int paintbufferClamp = 0x00ffff00;
     const float mixScale = 2000.0f * 256.0f;
     static float tempLeft[4096];
     static float tempRight[4096];
@@ -365,10 +366,10 @@ void S_RenderEngineAudio( portable_samplepair_t *buffer, int sampleCount ) {
             int l = buffer[s].left + (int)( tempLeft[s] * leftGain * mixScale );
             int r = buffer[s].right + (int)( tempRight[s] * rightGain * mixScale );
 
-            if ( l > 32767 ) l = 32767;
-            if ( l < -32768 ) l = -32768;
-            if ( r > 32767 ) r = 32767;
-            if ( r < -32768 ) r = -32768;
+            if ( l > paintbufferClamp ) l = paintbufferClamp;
+            if ( l < -paintbufferClamp ) l = -paintbufferClamp;
+            if ( r > paintbufferClamp ) r = paintbufferClamp;
+            if ( r < -paintbufferClamp ) r = -paintbufferClamp;
 
             buffer[s].left = l;
             buffer[s].right = r;
