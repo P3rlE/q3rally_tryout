@@ -389,12 +389,12 @@ qboolean CG_BuildVehicleAudioState( centity_t *cent, vehicleAudioState_t *outSta
 
         throttleDrop = s_cgLastLocalThrottle - throttle;
         shifted = ( s_cgLastLocalGear != 0 && outState->gear != s_cgLastLocalGear ) ? qtrue : qfalse;
-        aggressiveLift = ( throttleDrop > 0.34f && rpmNorm > 0.52f && outState->speed > 18.0f ) ? qtrue : qfalse;
-        loadedUpshift = ( shifted && outState->gear > s_cgLastLocalGear && s_cgLastLocalThrottle > 0.58f && rpmNorm > 0.50f ) ? qtrue : qfalse;
+        aggressiveLift = ( throttleDrop > 0.24f && rpmNorm > 0.45f && outState->speed > 14.0f ) ? qtrue : qfalse;
+        loadedUpshift = ( shifted && outState->gear > s_cgLastLocalGear && s_cgLastLocalThrottle > 0.45f && rpmNorm > 0.42f ) ? qtrue : qfalse;
 
         outState->fuelCut = ( throttle < 0.16f && rpmNorm > 0.46f && outState->speed > 12.0f ) ? qtrue : qfalse;
         outState->ignitionCut = ( outState->limiterActive || loadedUpshift ) ? qtrue : qfalse;
-        outState->clutchSlip = shifted ? 1.0f : CG_Clamp01( fabs( rpmNorm - s_cgLastLocalRpmNorm ) * 2.4f );
+        outState->clutchSlip = shifted ? 1.0f : CG_Clamp01( fabs( rpmNorm - s_cgLastLocalRpmNorm ) * 3.2f );
         outState->backfireEvent = ( aggressiveLift || loadedUpshift ) ? qtrue : qfalse;
         maxHealth = (float)max( cg.predictedPlayerState.stats[STAT_MAX_HEALTH], 1 );
         outState->damaged = ( cg.predictedPlayerState.stats[STAT_HEALTH] < (int)( maxHealth * 0.55f ) || cg.car.fuelLeak ) ? qtrue : qfalse;

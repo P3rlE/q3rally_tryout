@@ -214,7 +214,7 @@ void S_EngineDSP_RenderVehicle(
     exhaustBankMix = 0.97f;
     intakeBankMix = 0.30f;
     stereoWidth = 0.08f;
-    outputMakeupGain = 18.0f;
+    outputMakeupGain = 15.0f;
 
     if ( quality == EA_QUALITY_FAR ) {
         gainScale *= 0.35f;
@@ -237,18 +237,18 @@ void S_EngineDSP_RenderVehicle(
     exteriorView = control->exteriorView;
     cockpitView = ( quality == EA_QUALITY_HERO && !exteriorView ) ? qtrue : qfalse;
     cockpitLowpassAlpha = S_EngineDSP_ComputeLowpassAlpha( preset->cockpitLowpassHz, sr );
-    toneLowpassAlpha[EA_SOURCE_EXHAUST] = S_EngineDSP_ComputeLowpassAlpha( 4300.0f, sr );
-    toneLowpassAlpha[EA_SOURCE_ENGINE_BAY] = S_EngineDSP_ComputeLowpassAlpha( 3600.0f, sr );
-    exhaustSourceGain[EA_SOURCE_EXHAUST] = 1.18f * ( s_engineAudioExhaustSourceGainScale ? s_engineAudioExhaustSourceGainScale->value : 1.0f );
-    intakeSourceGain[EA_SOURCE_EXHAUST] = 0.34f;
-    mechanicalSourceGain[EA_SOURCE_EXHAUST] = 0.58f;
+    toneLowpassAlpha[EA_SOURCE_EXHAUST] = S_EngineDSP_ComputeLowpassAlpha( 3400.0f, sr );
+    toneLowpassAlpha[EA_SOURCE_ENGINE_BAY] = S_EngineDSP_ComputeLowpassAlpha( 2500.0f, sr );
+    exhaustSourceGain[EA_SOURCE_EXHAUST] = 1.22f * ( s_engineAudioExhaustSourceGainScale ? s_engineAudioExhaustSourceGainScale->value : 1.0f );
+    intakeSourceGain[EA_SOURCE_EXHAUST] = 0.24f;
+    mechanicalSourceGain[EA_SOURCE_EXHAUST] = 0.46f;
     transmissionSourceGain[EA_SOURCE_EXHAUST] = 0.86f * ( 0.90f + 0.10f * ( s_engineAudioExhaustSourceGainScale ? s_engineAudioExhaustSourceGainScale->value : 1.0f ) );
     eventSourceGain[EA_SOURCE_EXHAUST] = 1.18f * ( s_engineAudioExhaustEventGainScale ? s_engineAudioExhaustEventGainScale->value : 1.0f );
-    exhaustSourceGain[EA_SOURCE_ENGINE_BAY] = 0.22f;
-    intakeSourceGain[EA_SOURCE_ENGINE_BAY] = 1.20f * ( s_engineAudioEngineBaySourceGainScale ? s_engineAudioEngineBaySourceGainScale->value : 1.0f );
-    mechanicalSourceGain[EA_SOURCE_ENGINE_BAY] = 1.12f * ( s_engineAudioEngineBaySourceGainScale ? s_engineAudioEngineBaySourceGainScale->value : 1.0f );
+    exhaustSourceGain[EA_SOURCE_ENGINE_BAY] = 0.16f;
+    intakeSourceGain[EA_SOURCE_ENGINE_BAY] = 0.82f * ( s_engineAudioEngineBaySourceGainScale ? s_engineAudioEngineBaySourceGainScale->value : 1.0f );
+    mechanicalSourceGain[EA_SOURCE_ENGINE_BAY] = 0.84f * ( s_engineAudioEngineBaySourceGainScale ? s_engineAudioEngineBaySourceGainScale->value : 1.0f );
     transmissionSourceGain[EA_SOURCE_ENGINE_BAY] = 0.82f * ( 0.85f + 0.15f * ( s_engineAudioEngineBaySourceGainScale ? s_engineAudioEngineBaySourceGainScale->value : 1.0f ) );
-    eventSourceGain[EA_SOURCE_ENGINE_BAY] = 0.18f * ( s_engineAudioEngineBayEventGainScale ? s_engineAudioEngineBayEventGainScale->value : 1.0f );
+    eventSourceGain[EA_SOURCE_ENGINE_BAY] = 0.58f * ( s_engineAudioEngineBayEventGainScale ? s_engineAudioEngineBayEventGainScale->value : 1.0f );
 
     for ( i = 0; i < sampleCount; ++i ) {
         int h;
@@ -349,7 +349,7 @@ void S_EngineDSP_RenderVehicle(
             exhaustColor *= 1.12f + 0.24f * load;
         }
         noise = S_EngineDSP_NextNoise( synth );
-        intakeNoise = noise * preset->noiseGain * 8.0f * ( 0.15f + 0.85f * throttle ) * ( 0.30f + 0.70f * load ) * ( 1.0f - 0.30f * rpmNorm ) * ( 1.0f - 0.55f * drivenHarshness );
+        intakeNoise = noise * preset->noiseGain * 6.5f * ( 0.15f + 0.85f * throttle ) * ( 0.30f + 0.70f * load ) * ( 1.0f - 0.30f * rpmNorm ) * ( 1.0f - 0.55f * drivenHarshness );
         intakeNoise += noise * wheelSlip * 0.25f;
         if ( exteriorView ) {
             intakeNoise *= 0.82f;
@@ -442,9 +442,9 @@ void S_EngineDSP_RenderVehicle(
 
         shiftChirp = 0.0f;
         if ( control->clutchSlip > 0.05f ) {
-            shiftChirp = noise * preset->noiseGain * control->clutchSlip * ( 0.025f + 0.020f * load );
+            shiftChirp = noise * preset->noiseGain * control->clutchSlip * ( 0.085f + 0.050f * load );
             if ( exteriorView ) {
-                shiftChirp *= 1.15f;
+                shiftChirp *= 1.35f;
             }
         }
 

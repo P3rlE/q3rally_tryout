@@ -243,23 +243,23 @@ static void S_BuildDefaultSportI4Preset( engineAudioPreset_t *p ) {
     p->exhaustResonators[2].gain = 0.30f;
 
     p->intakeResonatorCount = 2;
-    p->intakeResonators[0].frequencyHz = 360.0f;
-    p->intakeResonators[0].q = 0.85f;
-    p->intakeResonators[0].gain = 0.22f;
-    p->intakeResonators[1].frequencyHz = 690.0f;
-    p->intakeResonators[1].q = 0.80f;
-    p->intakeResonators[1].gain = 0.12f;
+    p->intakeResonators[0].frequencyHz = 300.0f;
+    p->intakeResonators[0].q = 0.90f;
+    p->intakeResonators[0].gain = 0.14f;
+    p->intakeResonators[1].frequencyHz = 540.0f;
+    p->intakeResonators[1].q = 0.78f;
+    p->intakeResonators[1].gain = 0.07f;
 
     p->harmonicGains[0] = 1.00f;
     p->harmonicGains[1] = 0.22f;
     p->harmonicGains[2] = 0.06f;
     p->harmonicGains[3] = 0.02f;
 
-    p->distortionDrive = 0.04f;
-    p->noiseGain = 0.03f;
-    p->backfireGain = 0.24f;
-    p->limiterGain = 0.14f;
-    p->cockpitLowpassHz = 3000.0f;
+    p->distortionDrive = 0.03f;
+    p->noiseGain = 0.035f;
+    p->backfireGain = 0.32f;
+    p->limiterGain = 0.20f;
+    p->cockpitLowpassHz = 2400.0f;
     p->exteriorPresenceGain = 1.12f;
 }
 
