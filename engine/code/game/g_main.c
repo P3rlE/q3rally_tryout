@@ -956,10 +956,22 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
                                  * Info fields are at top level of "info" object,
                                  * stats fields are nested under "stats". */
                                 {
+                                        /* Find the opening brace of each section to avoid
+                                         * parsing keys from sibling sections. */
                                         const char *statsSection = strstr( profileBuf, "\"stats\"" );
                                         const char *infoSection  = strstr( profileBuf, "\"info\"" );
-                                        const char *statsBuf  = statsSection  ? statsSection  : profileBuf;
-                                        const char *infoBuf   = infoSection   ? infoSection   : profileBuf;
+                                        /* Advance past the colon and opening brace so the parser
+                                         * only sees content inside that section. */
+                                        const char *statsBuf = profileBuf;
+                                        const char *infoBuf  = profileBuf;
+                                        if ( statsSection ) {
+                                                const char *brace = strchr( statsSection, '{' );
+                                                if ( brace ) statsBuf = brace;
+                                        }
+                                        if ( infoSection ) {
+                                                const char *brace = strchr( infoSection, '{' );
+                                                if ( brace ) infoBuf = brace;
+                                        }
 
                                         snap->valid            = qtrue;
                                         snap->playerScore      = G_Profile_ParseIntPublic( statsBuf,  "playerScore",     0 );
