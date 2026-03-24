@@ -950,28 +950,40 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
                                 profileBuf[len] = '\0';
                                 trap_FS_FCloseFile( fh );
 
-                                snap->valid            = qtrue;
-                                snap->playerScore      = G_Profile_ParseIntPublic( profileBuf, "playerScore",     0 );
-                                snap->currentRank      = G_Profile_ParseIntPublic( profileBuf, "currentRank",     0 );
-                                snap->highestRank      = G_Profile_ParseIntPublic( profileBuf, "highestRank",     0 );
-                                snap->wins             = G_Profile_ParseIntPublic( profileBuf, "wins",            0 );
-                                snap->losses           = G_Profile_ParseIntPublic( profileBuf, "losses",          0 );
-                                snap->kills            = G_Profile_ParseIntPublic( profileBuf, "kills",           0 );
-                                snap->deaths           = G_Profile_ParseIntPublic( profileBuf, "deaths",          0 );
-                                snap->flagCaptures     = G_Profile_ParseIntPublic( profileBuf, "flagCaptures",    0 );
-                                snap->flagAssists      = G_Profile_ParseIntPublic( profileBuf, "flagAssists",     0 );
-                                snap->bestLapMs        = G_Profile_ParseIntPublic( profileBuf, "bestLapMs",       0 );
-                                snap->accuracyAwards   = G_Profile_ParseIntPublic( profileBuf, "accuracyAwards",  0 );
-                                snap->excellentAwards  = G_Profile_ParseIntPublic( profileBuf, "excellentAwards", 0 );
-                                snap->impressiveAwards = G_Profile_ParseIntPublic( profileBuf, "impressiveAwards",0 );
-                                snap->perfectAwards    = G_Profile_ParseIntPublic( profileBuf, "perfectAwards",   0 );
-                                snap->damageDealt      = G_Profile_ParseIntPublic( profileBuf, "damageDealt",     0 );
-                                snap->damageTaken      = G_Profile_ParseIntPublic( profileBuf, "damageTaken",     0 );
-                                snap->distanceKm       = G_Profile_ParseDoublePublic( profileBuf, "distanceKm",  0.0 );
-                                snap->topSpeedKph      = G_Profile_ParseDoublePublic( profileBuf, "topSpeedKph", 0.0 );
-                                snap->fuelUsed         = G_Profile_ParseDoublePublic( profileBuf, "fuelUsed",    0.0 );
-                                G_Profile_ParseStringPublic( profileBuf, "mostUsedVehicle",
-                                        snap->mostUsedVehicle, sizeof( snap->mostUsedVehicle ), "" );
+                                /* Profile JSON structure:
+                                 * { "name": "...", "info": { "currentRank": N, "highestRank": N, ... },
+                                 *   "stats": { "playerScore": N, "kills": N, ... } }
+                                 * Info fields are at top level of "info" object,
+                                 * stats fields are nested under "stats". */
+                                {
+                                        const char *statsSection = strstr( profileBuf, ""stats"" );
+                                        const char *infoSection  = strstr( profileBuf, ""info"" );
+                                        const char *statsBuf  = statsSection  ? statsSection  : profileBuf;
+                                        const char *infoBuf   = infoSection   ? infoSection   : profileBuf;
+
+                                        snap->valid            = qtrue;
+                                        snap->playerScore      = G_Profile_ParseIntPublic( statsBuf,  "playerScore",     0 );
+                                        snap->currentRank      = G_Profile_ParseIntPublic( infoBuf,   "currentRank",     0 );
+                                        snap->highestRank      = G_Profile_ParseIntPublic( infoBuf,   "highestRank",     0 );
+                                        snap->wins             = G_Profile_ParseIntPublic( statsBuf,  "wins",            0 );
+                                        snap->losses           = G_Profile_ParseIntPublic( statsBuf,  "losses",          0 );
+                                        snap->kills            = G_Profile_ParseIntPublic( statsBuf,  "kills",           0 );
+                                        snap->deaths           = G_Profile_ParseIntPublic( statsBuf,  "deaths",          0 );
+                                        snap->flagCaptures     = G_Profile_ParseIntPublic( statsBuf,  "flagCaptures",    0 );
+                                        snap->flagAssists      = G_Profile_ParseIntPublic( statsBuf,  "flagAssists",     0 );
+                                        snap->bestLapMs        = G_Profile_ParseIntPublic( statsBuf,  "bestLapMs",       0 );
+                                        snap->accuracyAwards   = G_Profile_ParseIntPublic( statsBuf,  "accuracyAwards",  0 );
+                                        snap->excellentAwards  = G_Profile_ParseIntPublic( statsBuf,  "excellentAwards", 0 );
+                                        snap->impressiveAwards = G_Profile_ParseIntPublic( statsBuf,  "impressiveAwards",0 );
+                                        snap->perfectAwards    = G_Profile_ParseIntPublic( statsBuf,  "perfectAwards",   0 );
+                                        snap->damageDealt      = G_Profile_ParseIntPublic( statsBuf,  "damageDealt",     0 );
+                                        snap->damageTaken      = G_Profile_ParseIntPublic( statsBuf,  "damageTaken",     0 );
+                                        snap->distanceKm       = G_Profile_ParseDoublePublic( statsBuf,  "distanceKm",  0.0 );
+                                        snap->topSpeedKph      = G_Profile_ParseDoublePublic( statsBuf,  "topSpeedKph", 0.0 );
+                                        snap->fuelUsed         = G_Profile_ParseDoublePublic( statsBuf,  "fuelUsed",    0.0 );
+                                        G_Profile_ParseStringPublic( statsBuf, "mostUsedVehicle",
+                                                snap->mostUsedVehicle, sizeof( snap->mostUsedVehicle ), "" );
+                                }
 
                                 /* Achievement tiers – reuse bg_achievements logic */
                                 {
