@@ -4400,37 +4400,30 @@ function profile_upsert_from_payload(array $payload): void
 
         $existing = profile_load($playerId) ?? [];
 
-        // Keep the best (highest) playerScore seen
-        $newScore = (int)($snap['playerScore'] ?? 0);
-        $oldScore = (int)($existing['playerScore'] ?? 0);
-
+        // Mirror the latest profile snapshot from the local client so the
+        // web profile matches what the player sees in-game.
         $profile = [
             'playerId'        => $playerId,
-            'cleanName'       => (string)($player['cleanName'] ?? $player['name'] ?? ''),
-            'playerScore'     => max($newScore, $oldScore),
-            'currentRank'     => (int)($snap['currentRank'] ?? 0),
-            'highestRank'     => max((int)($snap['highestRank'] ?? 0), (int)($existing['highestRank'] ?? 0)),
+            'cleanName'       => (string)($player['cleanName'] ?? $player['displayName'] ?? $player['name'] ?? ($existing['cleanName'] ?? '')),
+            'playerScore'     => (int)($snap['playerScore']      ?? $existing['playerScore']      ?? 0),
+            'currentRank'     => (int)($snap['currentRank']      ?? $existing['currentRank']      ?? 0),
+            'highestRank'     => (int)($snap['highestRank']      ?? $existing['highestRank']      ?? 0),
             'wins'            => (int)($snap['wins']             ?? $existing['wins']             ?? 0),
             'losses'          => (int)($snap['losses']           ?? $existing['losses']           ?? 0),
             'kills'           => (int)($snap['kills']            ?? $existing['kills']            ?? 0),
             'deaths'          => (int)($snap['deaths']           ?? $existing['deaths']           ?? 0),
             'flagCaptures'    => (int)($snap['flagCaptures']     ?? $existing['flagCaptures']     ?? 0),
             'flagAssists'     => (int)($snap['flagAssists']      ?? $existing['flagAssists']      ?? 0),
-            'bestLapMs'       => (function() use ($snap, $existing) {
-                $new = (int)($snap['bestLapMs'] ?? 0);
-                $old = (int)($existing['bestLapMs'] ?? 0);
-                if ($new > 0 && ($old === 0 || $new < $old)) return $new;
-                return $old ?: $new;
-            })(),
-            'accuracyAwards'  => (int)($snap['accuracyAwards']  ?? $existing['accuracyAwards']  ?? 0),
-            'excellentAwards' => (int)($snap['excellentAwards'] ?? $existing['excellentAwards'] ?? 0),
-            'impressiveAwards'=> (int)($snap['impressiveAwards']?? $existing['impressiveAwards']?? 0),
-            'perfectAwards'   => (int)($snap['perfectAwards']   ?? $existing['perfectAwards']   ?? 0),
-            'damageDealt'     => (int)($snap['damageDealt']     ?? $existing['damageDealt']     ?? 0),
-            'damageTaken'     => (int)($snap['damageTaken']     ?? $existing['damageTaken']     ?? 0),
-            'distanceKm'      => (float)($snap['distanceKm']    ?? $existing['distanceKm']      ?? 0.0),
-            'topSpeedKph'     => max((float)($snap['topSpeedKph'] ?? 0), (float)($existing['topSpeedKph'] ?? 0)),
-            'fuelUsed'        => (float)($snap['fuelUsed']       ?? $existing['fuelUsed']        ?? 0.0),
+            'bestLapMs'       => (int)($snap['bestLapMs']        ?? $existing['bestLapMs']        ?? 0),
+            'accuracyAwards'  => (int)($snap['accuracyAwards']   ?? $existing['accuracyAwards']   ?? 0),
+            'excellentAwards' => (int)($snap['excellentAwards']  ?? $existing['excellentAwards']  ?? 0),
+            'impressiveAwards'=> (int)($snap['impressiveAwards'] ?? $existing['impressiveAwards'] ?? 0),
+            'perfectAwards'   => (int)($snap['perfectAwards']    ?? $existing['perfectAwards']    ?? 0),
+            'damageDealt'     => (int)($snap['damageDealt']      ?? $existing['damageDealt']      ?? 0),
+            'damageTaken'     => (int)($snap['damageTaken']      ?? $existing['damageTaken']      ?? 0),
+            'distanceKm'      => (float)($snap['distanceKm']     ?? $existing['distanceKm']       ?? 0.0),
+            'topSpeedKph'     => (float)($snap['topSpeedKph']    ?? $existing['topSpeedKph']      ?? 0.0),
+            'fuelUsed'        => (float)($snap['fuelUsed']       ?? $existing['fuelUsed']         ?? 0.0),
             'mostUsedVehicle' => (string)($snap['mostUsedVehicle'] ?? $existing['mostUsedVehicle'] ?? ''),
             'achievementTiers'=> (array)($snap['achievementTiers'] ?? $existing['achievementTiers'] ?? []),
             'lastSeen'        => $payload['receivedAt'] ?? gmdate('c'),
