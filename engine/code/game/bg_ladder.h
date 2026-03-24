@@ -46,9 +46,11 @@ typedef struct ladderProfileSnapshot_s {
         int             perfectAwards;
         int             damageDealt;
         int             damageTaken;
-        double          distanceKm;
-        double          topSpeedKph;
-        double          fuelUsed;
+        /* Keep telemetry fields as float to avoid 8-byte alignment padding
+         * differences between QVM and native server builds. */
+        float           distanceKm;
+        float           topSpeedKph;
+        float           fuelUsed;
         char            mostUsedVehicle[PROFILE_MAX_VEHICLE];
         /* Achievement progress per category (unlocked tier count, 0 = none) */
         int             achievementTiers[LADDER_ACHIEVEMENT_CATEGORY_COUNT];
