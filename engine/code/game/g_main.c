@@ -803,7 +803,13 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
 
         value = Info_ValueForKey( userinfo, "ip" );
         if ( value && value[0] ) {
-                Q_strncpyz( player->playerId, value, sizeof( player->playerId ) );
+                /* For local clients, don't use IP (would be "localhost") as playerId.
+                 * We prefer cl_guid which is already set above, or fall through to cleanName. */
+                if ( !client->pers.localClient ) {
+                        if ( !player->playerId[0] ) {
+                                Q_strncpyz( player->playerId, value, sizeof( player->playerId ) );
+                        }
+                }
                 if ( !player->guid[0] ) {
                         Q_strncpyz( player->guid, value, sizeof( player->guid ) );
                 }
