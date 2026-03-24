@@ -956,8 +956,8 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
                                  * Info fields are at top level of "info" object,
                                  * stats fields are nested under "stats". */
                                 {
-                                        const char *statsSection = strstr( profileBuf, ""stats"" );
-                                        const char *infoSection  = strstr( profileBuf, ""info"" );
+                                        const char *statsSection = strstr( profileBuf, "\"stats\"" );
+                                        const char *infoSection  = strstr( profileBuf, "\"info\"" );
                                         const char *statsBuf  = statsSection  ? statsSection  : profileBuf;
                                         const char *infoBuf   = infoSection   ? infoSection   : profileBuf;
 
