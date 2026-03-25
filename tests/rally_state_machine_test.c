@@ -141,7 +141,7 @@ gentity_t *G_Find (gentity_t *from, int fieldofs, const char *match) {
     int start = 0;
 
     if (match && strcmp(match, "rally_checkpoint") == 0) {
-        return &checkpoint;
+        return checkpoint.inuse ? &checkpoint : NULL;
     }
 
     if (from) {
@@ -356,6 +356,32 @@ void test_checkpointless_map_waits_for_player_before_start(void) {
     assert(commandLogCount == 0);
 }
 
+void test_checkpointless_map_starts_with_non_spectator_even_if_marked_observer(void) {
+    reset_environment();
+    g_gametype.integer = GT_RACING;
+    g_forceEngineStart.integer = 30;
+    checkpoint.inuse = qfalse;
+
+    g_entities[0].inuse = qtrue;
+    g_entities[0].client = &levelClients[0];
+    g_entities[0].classname = "player";
+    g_entities[0].client->sess.sessionTeam = TEAM_RED;
+    g_entities[0].raceObserver = qtrue;
+
+    gentity_t starter = {0};
+    starter.think = RallyStarter_Think;
+    starter.number = 0;
+    starter.classname = "rally_starter";
+
+    level.time = 9000;
+    level.startTime = 0;
+
+    RallyStarter_Think(&starter);
+
+    assert(level.startRaceTime == level.time);
+    assert(commandLogCount >= 1);
+}
+
 void test_overflow_grid_spawn_adds_spacing_and_message(void) {
     reset_environment();
     g_gametype.integer = GT_RACING;
@@ -408,6 +434,7 @@ int main(void) {
     test_single_player_skips_ready_check();
     test_ignoring_bots_prevents_ready_count();
     test_checkpointless_map_waits_for_player_before_start();
+    test_checkpointless_map_starts_with_non_spectator_even_if_marked_observer();
     test_overflow_grid_spawn_adds_spacing_and_message();
     printf("ok\n");
     return 0;

@@ -453,7 +453,6 @@ void RallyStarter_Think( gentity_t *ent ){
 				if ( !player->inuse ) continue;
 				if ( !player->client ) continue;
 				if ( player->client->sess.sessionTeam == TEAM_SPECTATOR ) continue;
-				if ( isRaceObserver( i ) ) continue;
 
 				activePlayers++;
 				break;
