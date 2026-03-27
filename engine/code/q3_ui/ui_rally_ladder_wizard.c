@@ -30,7 +30,6 @@ typedef enum {
 
 static struct {
     menuframework_s menu;
-    menutext_s      dummy;   /* invisible first item to avoid hitbox issues */
     menufield_s     ownerName;
     menufield_s     ownerEmail;
     menutext_s      btnYes;
@@ -52,11 +51,11 @@ static vec4_t wizardTitle  = { 0.72f, 0.82f, 1.00f, 1.00f };
 static vec4_t wizardText   = { 0.75f, 0.78f, 0.88f, 1.00f };
 static vec4_t wizardAccent = { 0.50f, 0.65f, 1.00f, 1.00f };
 static vec4_t wizardError  = { 1.00f, 0.42f, 0.42f, 1.00f };
-static vec4_t colorClear   = { 0.0f,  0.0f,  0.0f,  0.0f  };
 
 static void LadderWizard_MenuEvent( void *ptr, int event );
 static void LadderWizard_Draw( void );
 static void LadderWizard_UpdateButtons( void );
+static sfxHandle_t LadderWizard_MenuKey( int key );
 
 #define WIZARD_CONTENT_PAD_X        24
 #define WIZARD_FORM_TOP_Y           ( WIZARD_PANEL_Y + 108 )
@@ -269,12 +268,12 @@ static void LadderWizard_UpdateButtons( void ) {
         s_wizard.btnYes.string = "REGISTER";
         s_wizard.btnNo.string  = "CANCEL";
 
-        s_wizard.ownerName.generic.flags = ( s_wizard.result == WIZARD_RESULT_PENDING )
-            ? QMF_INACTIVE
-            : 0;
-        s_wizard.ownerEmail.generic.flags = ( s_wizard.result == WIZARD_RESULT_PENDING )
-            ? QMF_INACTIVE
-            : 0;
+        s_wizard.ownerName.generic.flags &= ~( QMF_INACTIVE | QMF_GRAYED );
+        s_wizard.ownerEmail.generic.flags &= ~( QMF_INACTIVE | QMF_GRAYED );
+        if ( s_wizard.result == WIZARD_RESULT_PENDING ) {
+            s_wizard.ownerName.generic.flags |= QMF_INACTIVE;
+            s_wizard.ownerEmail.generic.flags |= QMF_INACTIVE;
+        }
 
         s_wizard.btnYes.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
         if ( s_wizard.result == WIZARD_RESULT_PENDING ) {
@@ -296,6 +295,79 @@ static void LadderWizard_UpdateButtons( void ) {
     }
 
     s_wizard.btnYes.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
+}
+
+static qboolean LadderWizard_IsFocusableItem( const menucommon_s *item ) {
+    if ( !item ) {
+        return qfalse;
+    }
+
+    if ( item->flags & ( QMF_INACTIVE | QMF_GRAYED | QMF_HIDDEN ) ) {
+        return qfalse;
+    }
+
+    return qtrue;
+}
+
+static sfxHandle_t LadderWizard_MoveFocus( int dir ) {
+    menucommon_s *order[] = {
+        (menucommon_s *)&s_wizard.ownerName,
+        (menucommon_s *)&s_wizard.ownerEmail,
+        (menucommon_s *)&s_wizard.btnYes,
+        (menucommon_s *)&s_wizard.btnNo
+    };
+    menucommon_s *current;
+    int count;
+    int i;
+    int currentIndex;
+
+    count = ARRAY_LEN( order );
+    if ( !count || !dir ) {
+        return 0;
+    }
+
+    current = Menu_ItemAtCursor( &s_wizard.menu );
+    currentIndex = 0;
+    for ( i = 0; i < count; ++i ) {
+        if ( order[i] == current ) {
+            currentIndex = i;
+            break;
+        }
+    }
+
+    for ( i = 1; i <= count; ++i ) {
+        int next = ( currentIndex + dir * i + count ) % count;
+        if ( LadderWizard_IsFocusableItem( order[next] ) ) {
+            Menu_SetCursorToItem( &s_wizard.menu, order[next] );
+            return menu_move_sound;
+        }
+    }
+
+    return 0;
+}
+
+static sfxHandle_t LadderWizard_MenuKey( int key ) {
+    if ( key == K_TAB ) {
+        if ( trap_Key_IsDown( K_SHIFT ) ) {
+            return LadderWizard_MoveFocus( -1 );
+        }
+        return LadderWizard_MoveFocus( 1 );
+    }
+
+    switch ( key ) {
+    case K_UPARROW:
+    case K_KP_UPARROW:
+    case K_LEFTARROW:
+    case K_KP_LEFTARROW:
+        return LadderWizard_MoveFocus( -1 );
+    case K_DOWNARROW:
+    case K_KP_DOWNARROW:
+    case K_RIGHTARROW:
+    case K_KP_RIGHTARROW:
+        return LadderWizard_MoveFocus( 1 );
+    }
+
+    return Menu_DefaultKey( &s_wizard.menu, key );
 }
 
 /* ── MaybeShow ───────────────────────────────────────────────────────────────── */
@@ -378,15 +450,7 @@ void UI_LadderWizardMenu( void ) {
     s_wizard.menu.fullscreen = qfalse;
     s_wizard.menu.wrapAround = qtrue;
     s_wizard.menu.showlogo   = qfalse;
-
-    /* Invisible dummy – absorbs the automatic first-item cursor focus */
-    s_wizard.dummy.generic.type  = MTYPE_PTEXT;
-    s_wizard.dummy.generic.flags = QMF_INACTIVE;
-    s_wizard.dummy.generic.x     = -9999;
-    s_wizard.dummy.generic.y     = -9999;
-    s_wizard.dummy.string        = " ";
-    s_wizard.dummy.style         = UI_LEFT | UI_SMALLFONT;
-    s_wizard.dummy.color         = colorClear;
+    s_wizard.menu.key        = LadderWizard_MenuKey;
 
     s_wizard.ownerName.generic.type = MTYPE_FIELD;
     s_wizard.ownerName.generic.flags = 0;
@@ -435,13 +499,13 @@ void UI_LadderWizardMenu( void ) {
     s_wizard.btnNo.style            = UI_CENTER | UI_SMALLFONT;
     s_wizard.btnNo.color            = wizardText;
 
-    Menu_AddItem( &s_wizard.menu, &s_wizard.dummy );
     Menu_AddItem( &s_wizard.menu, &s_wizard.ownerName );
     Menu_AddItem( &s_wizard.menu, &s_wizard.ownerEmail );
     Menu_AddItem( &s_wizard.menu, &s_wizard.btnYes );
     Menu_AddItem( &s_wizard.menu, &s_wizard.btnNo );
 
     LadderWizard_UpdateButtons();
+    Menu_SetCursorToItem( &s_wizard.menu, &s_wizard.ownerName );
 
     uis.transitionIn  = 0;
     uis.transitionOut = 0;
