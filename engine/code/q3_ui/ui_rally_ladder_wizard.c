@@ -58,12 +58,17 @@ static void LadderWizard_MenuEvent( void *ptr, int event );
 static void LadderWizard_Draw( void );
 static void LadderWizard_UpdateButtons( void );
 static sfxHandle_t LadderWizard_MenuKey( int key );
+static void LadderWizard_ComputeFormLayout( int *contentLeft,
+                                            int *contentRight,
+                                            int *fieldX,
+                                            int *fieldWidthChars );
 
 #define WIZARD_CONTENT_PAD_X        24
 #define WIZARD_FORM_TOP_Y           ( WIZARD_PANEL_Y + 108 )
 #define WIZARD_FORM_ROW_H           28
-#define WIZARD_FORM_LABEL_OFFSET_Y  8
-#define WIZARD_FORM_LABEL_W         86
+#define WIZARD_FORM_LABEL_OFFSET_Y  -12
+#define WIZARD_FIELD_SAFE_PAD_PX    ( SMALLCHAR_WIDTH * 2 )
+#define WIZARD_FIELD_MIN_CHARS      10
 
 /* ── CVar registration ───────────────────────────────────────────────────────── */
 
@@ -100,6 +105,49 @@ static qboolean LadderWizard_ValidateEmail( const char *email ) {
 
 static qboolean LadderWizard_IsWhitespace( char c ) {
     return ( c == ' ' || c == '\t' || c == '\n' || c == '\r' );
+}
+
+static void LadderWizard_ComputeFormLayout( int *contentLeft,
+                                            int *contentRight,
+                                            int *fieldX,
+                                            int *fieldWidthChars ) {
+    int left;
+    int right;
+    int x;
+    int usableWidth;
+    int widthChars;
+    int fieldRight;
+
+    left = WIZARD_PANEL_X + WIZARD_CONTENT_PAD_X;
+    right = WIZARD_PANEL_X + WIZARD_PANEL_W - WIZARD_CONTENT_PAD_X;
+    x = left;
+
+    usableWidth = right - left - WIZARD_FIELD_SAFE_PAD_PX;
+    widthChars = usableWidth / SMALLCHAR_WIDTH;
+    if ( widthChars < WIZARD_FIELD_MIN_CHARS ) {
+        widthChars = WIZARD_FIELD_MIN_CHARS;
+    }
+
+    fieldRight = x + widthChars * SMALLCHAR_WIDTH;
+    if ( fieldRight > right ) {
+        widthChars = ( right - x ) / SMALLCHAR_WIDTH;
+        if ( widthChars < 1 ) {
+            widthChars = 1;
+        }
+    }
+
+    if ( contentLeft ) {
+        *contentLeft = left;
+    }
+    if ( contentRight ) {
+        *contentRight = right;
+    }
+    if ( fieldX ) {
+        *fieldX = x;
+    }
+    if ( fieldWidthChars ) {
+        *fieldWidthChars = widthChars;
+    }
 }
 
 static void LadderWizard_MakeCompareKey( const char *src, char *dst, size_t dstSize ) {
@@ -406,8 +454,6 @@ void UI_LadderWizard_MaybeShow( void ) {
 /* ── Menu init ───────────────────────────────────────────────────────────────── */
 
 void UI_LadderWizardMenu( void ) {
-    int contentLeft;
-    int contentRight;
     int fieldX;
     int fieldWidthChars;
 
@@ -468,13 +514,7 @@ void UI_LadderWizardMenu( void ) {
     s_wizard.ownerName.generic.type = MTYPE_FIELD;
     s_wizard.ownerName.generic.flags = QMF_SMALLFONT;
     s_wizard.ownerName.generic.id = ID_OWNER_NAME;
-    contentLeft = WIZARD_PANEL_X + WIZARD_CONTENT_PAD_X;
-    contentRight = WIZARD_PANEL_X + WIZARD_PANEL_W - WIZARD_CONTENT_PAD_X;
-    fieldX = contentLeft + WIZARD_FORM_LABEL_W;
-    fieldWidthChars = ( contentRight - fieldX ) / SMALLCHAR_WIDTH;
-    if ( fieldWidthChars < 10 ) {
-        fieldWidthChars = 10;
-    }
+    LadderWizard_ComputeFormLayout( NULL, NULL, &fieldX, &fieldWidthChars );
 
     s_wizard.ownerName.generic.x = fieldX;
     s_wizard.ownerName.generic.y = WIZARD_FORM_TOP_Y;
@@ -543,8 +583,10 @@ void UI_LadderWizardMenu( void ) {
 static void LadderWizard_Draw( void ) {
     int cx = WIZARD_SCREEN_W / 2;
     int ty = WIZARD_PANEL_Y + 60;
-    int contentLeft = WIZARD_PANEL_X + WIZARD_CONTENT_PAD_X;
+    int contentLeft;
     int labelY = WIZARD_FORM_TOP_Y + WIZARD_FORM_LABEL_OFFSET_Y;
+
+    LadderWizard_ComputeFormLayout( &contentLeft, NULL, NULL, NULL );
 
     /* modal backdrop: static menu background + wizard-owned dimming */
     UI_FillRect( 0, 0, WIZARD_SCREEN_W, WIZARD_SCREEN_H, wizardDim );
