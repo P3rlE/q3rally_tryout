@@ -44,6 +44,7 @@ static struct {
     char            serverNameNotice[128];
     char            apiKey[256];
     char            statusLine[128];
+    qboolean        submitting;
 } s_wizard;
 
 static vec4_t wizardBg     = { 0.08f, 0.08f, 0.12f, 0.97f };
@@ -58,6 +59,7 @@ static void LadderWizard_MenuEvent( void *ptr, int event );
 static void LadderWizard_Draw( void );
 static void LadderWizard_UpdateButtons( void );
 static sfxHandle_t LadderWizard_MenuKey( int key );
+static void LadderWizard_FinishSubmission( wizardResult_t result, const char *statusLine );
 static void LadderWizard_ComputeFormLayout( int *contentLeft,
                                             int *contentRight,
                                             int *fieldX,
@@ -269,6 +271,24 @@ static void LadderWizard_SanitizeArg( const char *src, char *dst, size_t dstSize
     dst[j] = '\0';
 }
 
+static qboolean LadderWizard_ContainsToken( const char *haystack, const char *needle ) {
+    size_t i;
+    size_t needleLen;
+
+    if ( !haystack || !needle || !needle[0] ) {
+        return qfalse;
+    }
+
+    needleLen = strlen( needle );
+    for ( i = 0; haystack[i]; ++i ) {
+        if ( Q_stricmpn( haystack + i, needle, needleLen ) == 0 ) {
+            return qtrue;
+        }
+    }
+
+    return qfalse;
+}
+
 static void LadderWizard_StartRegistration( void ) {
     char ownerName[64];
     char ownerEmail[128];
@@ -302,15 +322,31 @@ static void LadderWizard_StartRegistration( void ) {
     trap_Cvar_Set( "sv_hostname", s_wizard.serverName );
 
     Com_sprintf( cmd, sizeof( cmd ),
-                 "ladder_register \"%s\" \"%s\" \"%s\"\n",
+                 "ladder_register \"%s\" \"%s\" \"%s\" \"agree\"\n",
                  ownerName, ownerEmail, serverName );
     trap_Cmd_ExecuteText( EXEC_APPEND, cmd );
 
     s_wizard.result = WIZARD_RESULT_PENDING;
+    s_wizard.submitting = qtrue;
     Q_strncpyz( s_wizard.statusLine,
-                "Submitting registration...",
+                "Submitting registration to /register endpoint...",
                 sizeof( s_wizard.statusLine ) );
     LadderWizard_UpdateButtons();
+}
+
+static void LadderWizard_FinishSubmission( wizardResult_t result, const char *statusLine ) {
+    s_wizard.submitting = qfalse;
+    s_wizard.page = WIZARD_PAGE_DONE;
+    s_wizard.result = result;
+
+    if ( statusLine && statusLine[0] ) {
+        Q_strncpyz( s_wizard.statusLine, statusLine, sizeof( s_wizard.statusLine ) );
+    } else {
+        s_wizard.statusLine[0] = '\0';
+    }
+
+    LadderWizard_UpdateButtons();
+    Menu_SetCursorToItem( &s_wizard.menu, &s_wizard.btnYes );
 }
 
 static void LadderWizard_UpdateButtons( void ) {
@@ -321,13 +357,13 @@ static void LadderWizard_UpdateButtons( void ) {
 
         s_wizard.ownerName.generic.flags &= ~( QMF_INACTIVE | QMF_GRAYED );
         s_wizard.ownerEmail.generic.flags &= ~( QMF_INACTIVE | QMF_GRAYED );
-        if ( s_wizard.result == WIZARD_RESULT_PENDING ) {
+        if ( s_wizard.submitting ) {
             s_wizard.ownerName.generic.flags |= QMF_INACTIVE;
             s_wizard.ownerEmail.generic.flags |= QMF_INACTIVE;
         }
 
         s_wizard.btnYes.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
-        if ( s_wizard.result == WIZARD_RESULT_PENDING ) {
+        if ( s_wizard.submitting ) {
             s_wizard.btnYes.generic.flags |= QMF_INACTIVE;
             s_wizard.btnNo.string = "ABORT";
             s_wizard.btnNever.generic.flags = QMF_INACTIVE | QMF_HIDDEN;
@@ -620,7 +656,11 @@ static void LadderWizard_Draw( void ) {
         UI_DrawString( contentLeft, labelY + WIZARD_FORM_ROW_H,
             "Email:", UI_LEFT | UI_SMALLFONT, wizardText );
 
-        if ( s_wizard.statusLine[0] ) {
+        if ( s_wizard.submitting ) {
+            UI_DrawString( cx, ty + 96,
+                "Submitting... please wait.",
+                UI_CENTER | UI_SMALLFONT, wizardText );
+        } else if ( s_wizard.statusLine[0] ) {
             UI_DrawString( cx, ty + 96,
                 s_wizard.statusLine,
                 UI_CENTER | UI_SMALLFONT,
@@ -693,6 +733,12 @@ static void LadderWizard_MenuEvent( void *ptr, int event ) {
         break;
 
     case ID_WIZARD_NO:
+        if ( s_wizard.submitting ) {
+            Q_strncpyz( s_wizard.statusLine,
+                        "Registration still in progress. Please wait for completion.",
+                        sizeof( s_wizard.statusLine ) );
+            return;
+        }
         UI_PopMenu();
         break;
 
@@ -710,6 +756,7 @@ static void LadderWizard_MenuEvent( void *ptr, int event ) {
 /* Called by engine when ladder_register succeeds */
 void UI_LadderWizard_OnSuccess( const char *key ) {
     if ( !key || !key[0] ) {
+        trap_Print( S_COLOR_YELLOW "Ladder wizard: registration response missing API key.\n" );
         UI_LadderWizard_OnError( "Server returned no API key." );
         return;
     }
@@ -722,24 +769,25 @@ void UI_LadderWizard_OnSuccess( const char *key ) {
     trap_Cvar_Update( &ui_ladderWizardCompleted );
 
     Q_strncpyz( s_wizard.apiKey, key, sizeof( s_wizard.apiKey ) );
-    Q_strncpyz( s_wizard.statusLine, "", sizeof( s_wizard.statusLine ) );
-    s_wizard.page = WIZARD_PAGE_DONE;
-    s_wizard.result = WIZARD_RESULT_SUCCESS;
-    LadderWizard_UpdateButtons();
-    Menu_SetCursorToItem( &s_wizard.menu, &s_wizard.btnYes );
+    trap_Print( va( "Ladder wizard: registration succeeded, key prefix=%.8s...\n", key ) );
+    LadderWizard_FinishSubmission( WIZARD_RESULT_SUCCESS, "" );
 }
 
 void UI_LadderWizard_OnError( const char *msg ) {
     if ( msg && msg[0] ) {
-        Q_strncpyz( s_wizard.statusLine, msg, sizeof( s_wizard.statusLine ) );
+        const char *statusMsg = msg;
+        if ( LadderWizard_ContainsToken( msg, "timeout" ) ||
+             LadderWizard_ContainsToken( msg, "network" ) ) {
+            statusMsg = "Network/timeout error. Please retry.";
+        }
+        Q_strncpyz( s_wizard.statusLine, statusMsg, sizeof( s_wizard.statusLine ) );
+        trap_Print( va( "Ladder wizard: registration failed: %s\n", msg ) );
     } else {
         Q_strncpyz( s_wizard.statusLine,
                     "Registration request failed.",
                     sizeof( s_wizard.statusLine ) );
+        trap_Print( "Ladder wizard: registration failed (no error message).\n" );
     }
 
-    s_wizard.page = WIZARD_PAGE_DONE;
-    s_wizard.result = WIZARD_RESULT_ERROR;
-    LadderWizard_UpdateButtons();
-    Menu_SetCursorToItem( &s_wizard.menu, &s_wizard.btnYes );
+    LadderWizard_FinishSubmission( WIZARD_RESULT_ERROR, s_wizard.statusLine );
 }
