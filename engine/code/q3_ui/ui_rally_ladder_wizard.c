@@ -58,6 +58,12 @@ static void LadderWizard_MenuEvent( void *ptr, int event );
 static void LadderWizard_Draw( void );
 static void LadderWizard_UpdateButtons( void );
 
+#define WIZARD_CONTENT_PAD_X        24
+#define WIZARD_FORM_TOP_Y           ( WIZARD_PANEL_Y + 108 )
+#define WIZARD_FORM_ROW_H           28
+#define WIZARD_FORM_LABEL_OFFSET_Y  8
+#define WIZARD_FORM_LABEL_W         86
+
 /* ── CVar registration ───────────────────────────────────────────────────────── */
 
 static vmCvar_t ui_ladderWizardDismissed;
@@ -317,6 +323,11 @@ void UI_LadderWizard_MaybeShow( void ) {
 /* ── Menu init ───────────────────────────────────────────────────────────────── */
 
 void UI_LadderWizardMenu( void ) {
+    int contentLeft;
+    int contentRight;
+    int fieldX;
+    int fieldWidthChars;
+
     memset( &s_wizard, 0, sizeof( s_wizard ) );
 
     trap_Cvar_VariableStringBuffer( "profile_active",
@@ -380,17 +391,26 @@ void UI_LadderWizardMenu( void ) {
     s_wizard.ownerName.generic.type = MTYPE_FIELD;
     s_wizard.ownerName.generic.flags = 0;
     s_wizard.ownerName.generic.id = ID_OWNER_NAME;
-    s_wizard.ownerName.generic.x = WIZARD_PANEL_X + 172;
-    s_wizard.ownerName.generic.y = WIZARD_PANEL_Y + 112;
-    s_wizard.ownerName.field.widthInChars = 22;
-    s_wizard.ownerName.field.maxchars = 32;
+    contentLeft = WIZARD_PANEL_X + WIZARD_CONTENT_PAD_X;
+    contentRight = WIZARD_PANEL_X + WIZARD_PANEL_W - WIZARD_CONTENT_PAD_X;
+    fieldX = contentLeft + WIZARD_FORM_LABEL_W;
+    fieldWidthChars = ( contentRight - fieldX ) / SMALLCHAR_WIDTH;
+    if ( fieldWidthChars < 10 ) {
+        fieldWidthChars = 10;
+    }
+
+    s_wizard.ownerName.generic.x = fieldX;
+    s_wizard.ownerName.generic.y = WIZARD_FORM_TOP_Y;
+    s_wizard.ownerName.field.widthInChars = fieldWidthChars;
+    /* keep maxchars > widthInChars: long input scrolls instead of growing the field */
+    s_wizard.ownerName.field.maxchars = 48;
 
     s_wizard.ownerEmail.generic.type = MTYPE_FIELD;
     s_wizard.ownerEmail.generic.flags = 0;
     s_wizard.ownerEmail.generic.id = ID_OWNER_EMAIL;
-    s_wizard.ownerEmail.generic.x = WIZARD_PANEL_X + 172;
-    s_wizard.ownerEmail.generic.y = WIZARD_PANEL_Y + 134;
-    s_wizard.ownerEmail.field.widthInChars = 22;
+    s_wizard.ownerEmail.generic.x = fieldX;
+    s_wizard.ownerEmail.generic.y = WIZARD_FORM_TOP_Y + WIZARD_FORM_ROW_H;
+    s_wizard.ownerEmail.field.widthInChars = fieldWidthChars;
     s_wizard.ownerEmail.field.maxchars = 64;
 
     /* YES */
@@ -434,6 +454,8 @@ void UI_LadderWizardMenu( void ) {
 static void LadderWizard_Draw( void ) {
     int cx = WIZARD_SCREEN_W / 2;
     int ty = WIZARD_PANEL_Y + 60;
+    int contentLeft = WIZARD_PANEL_X + WIZARD_CONTENT_PAD_X;
+    int labelY = WIZARD_FORM_TOP_Y + WIZARD_FORM_LABEL_OFFSET_Y;
 
     /* keep underlying main menu visible, but dim it for focus */
     UI_FillRect( 0, 0, WIZARD_SCREEN_W, WIZARD_SCREEN_H, wizardDim );
@@ -462,9 +484,9 @@ static void LadderWizard_Draw( void ) {
                 UI_CENTER | UI_SMALLFONT, wizardError );
         }
 
-        UI_DrawString( WIZARD_PANEL_X + 78, WIZARD_PANEL_Y + 120,
+        UI_DrawString( contentLeft, labelY,
             "Owner:", UI_LEFT | UI_SMALLFONT, wizardText );
-        UI_DrawString( WIZARD_PANEL_X + 78, WIZARD_PANEL_Y + 142,
+        UI_DrawString( contentLeft, labelY + WIZARD_FORM_ROW_H,
             "Email:", UI_LEFT | UI_SMALLFONT, wizardText );
 
         if ( s_wizard.statusLine[0] ) {
