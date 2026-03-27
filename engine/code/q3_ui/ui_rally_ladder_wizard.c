@@ -446,8 +446,10 @@ void UI_LadderWizardMenu( void ) {
                 sizeof( s_wizard.ownerName.field.buffer ) );
 
     s_wizard.menu.draw       = LadderWizard_Draw;
-    s_wizard.menu.transparent = qtrue;
-    s_wizard.menu.fullscreen = qfalse;
+    /* Modal dialog: draw our own full-screen dimmed backdrop and avoid
+     * rendering/updating interaction from lower stack menus (e.g. main menu). */
+    s_wizard.menu.transparent = qfalse;
+    s_wizard.menu.fullscreen = qtrue;
     s_wizard.menu.wrapAround = qtrue;
     s_wizard.menu.showlogo   = qfalse;
     s_wizard.menu.key        = LadderWizard_MenuKey;
@@ -521,7 +523,7 @@ static void LadderWizard_Draw( void ) {
     int contentLeft = WIZARD_PANEL_X + WIZARD_CONTENT_PAD_X;
     int labelY = WIZARD_FORM_TOP_Y + WIZARD_FORM_LABEL_OFFSET_Y;
 
-    /* keep underlying main menu visible, but dim it for focus */
+    /* modal backdrop: static menu background + wizard-owned dimming */
     UI_FillRect( 0, 0, WIZARD_SCREEN_W, WIZARD_SCREEN_H, wizardDim );
 
     UI_FillRect( WIZARD_PANEL_X, WIZARD_PANEL_Y,
