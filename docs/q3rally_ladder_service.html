@@ -226,7 +226,7 @@ pip install -r requirements.txt</pre>
   <p>All POST requests require a bearer token in the <code>Authorization</code> header. Keys are managed server-side via <code>register.php</code> / <code>admin.php</code> (PHP) or the admin interface (Python).</p>
 <pre>Authorization: Bearer your-secret-api-key</pre>
 
-  <h3>POST /matches — Submit a Match</h3>
+  <h3>POST /index.php/matches — Submit a Match</h3>
 <pre>curl -X POST https://example.com/ladder/index.php/matches \
      -H "Content-Type: application/json" \
      -H "Authorization: Bearer your-secret-api-key" \
@@ -251,7 +251,7 @@ pip install -r requirements.txt</pre>
 
   <p>Responses: <code>201 Created</code> with <code>{ "matchId": "…" }</code> on success. <code>200 OK</code> if <code>matchId</code> already exists (no-op). <code>400</code> for malformed JSON. <code>413</code> if payload exceeds 512 KB. <code>429</code> if rate-limited.</p>
 
-  <h3>GET /matches — List Matches</h3>
+  <h3>GET /index.php/matches — List Matches</h3>
 <pre>curl "https://example.com/ladder/index.php/matches?limit=10&amp;mode=GT_RACING"</pre>
   <div class="table-wrap"><table>
     <thead><tr><th>Parameter</th><th>Default</th><th>Description</th></tr></thead>
@@ -262,15 +262,15 @@ pip install -r requirements.txt</pre>
     </tbody>
   </table></div>
 
-  <h3>GET /matches/{matchId} — Single Match</h3>
+  <h3>GET /index.php/matches/{matchId} — Single Match</h3>
 <pre>curl https://example.com/ladder/index.php/matches/srv-20240405-183011-42</pre>
   <p>Returns the full stored payload. The server key is stripped from the response.</p>
 
-  <h3>DELETE /matches/{matchId}</h3>
+  <h3>DELETE /index.php/matches/{matchId}</h3>
 <pre>curl -X DELETE https://example.com/ladder/index.php/matches/srv-20240405-183011-42</pre>
   <p>Returns <code>204 No Content</code> on success. Requires admin auth.</p>
 
-  <h3>GET /matches/index — Fast Leaderboard Index</h3>
+  <h3>GET /index.php/matches/index — Fast Leaderboard Index</h3>
 <pre>curl https://example.com/ladder/index.php/matches/index</pre>
   <p>Returns only the leaderboard-relevant fields for every match (no full payloads). Used by the web dashboard to load all results efficiently. Cached for 30 s.</p>
 

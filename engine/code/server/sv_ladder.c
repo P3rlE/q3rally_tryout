@@ -87,6 +87,7 @@ typedef struct {
         qboolean        spoolReady;
         qboolean        warnedNoCurl;
         qboolean        warnedNoUrl;
+        qboolean        warnedInvalidUrl;
         int             maxQueue;
         int             queueSize;
         int             nextFileId;
@@ -165,6 +166,22 @@ static qboolean SV_LadderGetRankForScore( int playerScore, profile_rank_t *outRa
         stats.playerScore = playerScore;
 
         return Profile_GetRankForScore( &stats, sv_ladderRankTable, SV_LADDER_RANK_COUNT, outRank );
+}
+
+static qboolean SV_LadderLooksLikeMatchEndpoint( const char *url ) {
+        const char *matches;
+
+        if ( !url || !url[0] ) {
+                return qfalse;
+        }
+
+        matches = strstr( url, "/matches" );
+        if ( !matches ) {
+                return qfalse;
+        }
+
+        matches += 8;
+        return ( *matches == '\0' || *matches == '?' || *matches == '#' );
 }
 
 static void SV_LadderRefreshQueueLimit( void ) {
@@ -1695,6 +1712,7 @@ static void SV_LadderResetState( void ) {
         sv_ladder.active = NULL;
         sv_ladder.warnedNoCurl = qfalse;
         sv_ladder.warnedNoUrl = qfalse;
+        sv_ladder.warnedInvalidUrl = qfalse;
         sv_ladder.nextFileId = 1;
         SV_LadderRefreshQueueLimit();
 }
@@ -1762,6 +1780,14 @@ void SV_LadderSubmit( const ladderMatchPayload_t *payload ) {
                         sv_ladder.warnedNoUrl = qtrue;
                 }
                 return;
+        }
+
+        if ( SV_LadderLooksLikeMatchEndpoint( sv_ladderUrl->string ) ) {
+                sv_ladder.warnedInvalidUrl = qfalse;
+        } else if ( !sv_ladder.warnedInvalidUrl ) {
+                Com_Printf( "Ladder: sv_ladderUrl \"%s\" does not look like a match endpoint (expected .../matches)\n",
+                        sv_ladderUrl->string );
+                sv_ladder.warnedInvalidUrl = qtrue;
         }
 
         SV_LadderRefreshQueueLimit();

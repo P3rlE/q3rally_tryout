@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <strong>Save this key now – it will not be shown again.</strong><br>
         Once approved, add these lines to your server config:
         <div class="codeblock">set sv_ladderEnabled  "1"
-set sv_ladderUrl      "https://ladder.q3rally.com/index.php"
+set sv_ladderUrl      "https://ladder.q3rally.com/index.php/matches"
 set sv_ladderApiKey   "<?= htmlspecialchars($newKey) ?>"</div>
       </div>
 
@@ -200,7 +200,7 @@ set sv_ladderApiKey   "<?= htmlspecialchars($newKey) ?>"</div>
           <p class="step-title">Add three lines to your server config</p>
           <p class="step-desc">Once approved, add the following and restart your server:</p>
           <div class="codeblock">set sv_ladderEnabled  "1"
-set sv_ladderUrl      "https://ladder.q3rally.com/index.php"
+set sv_ladderUrl      "https://ladder.q3rally.com/index.php/matches"
 set sv_ladderApiKey   "your-key-here"</div>
           <p class="step-desc" style="margin-top:10px">
             The key is handled like <code>rconPassword</code> –
