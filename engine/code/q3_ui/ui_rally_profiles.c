@@ -1189,6 +1189,11 @@ static qboolean UI_ProfileOverlay_HandleSelect( void ) {
 
     MainMenu_Prepare();
     UI_PopMenu();
+
+    /* Q3RALLY LADDER: show wizard after profile is activated.
+     * wizard has fullscreen=qfalse so the main menu shows behind it. */
+    UI_LadderWizard_MaybeShow();
+
     return qtrue;
 }
 
