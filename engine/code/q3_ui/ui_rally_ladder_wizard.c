@@ -65,6 +65,26 @@ static void LadderWizard_ComputeFormLayout( int *contentLeft,
                                             int *fieldX,
                                             int *fieldWidthChars );
 
+/* ── Localized UI strings (English default) ─────────────────────────────────── */
+#define WIZARD_TEXT_REGISTER                 "REGISTER"
+#define WIZARD_TEXT_CANCEL                   "CANCEL"
+#define WIZARD_TEXT_ABORT                    "ABORT"
+#define WIZARD_TEXT_NEVER_SHOW               "NEVER SHOW AGAIN"
+#define WIZARD_TEXT_SERVERNAME_TRUNCATED     "Note: Server name was truncated to 64 characters."
+#define WIZARD_TEXT_SERVERNAME_NORMALIZED    "Note: Server name was normalized for the service."
+#define WIZARD_TEXT_CONFIRM_QUESTION         "Do you want to track offline matches on the ladder?"
+#define WIZARD_TEXT_OWNER_LABEL              "Owner:"
+#define WIZARD_TEXT_EMAIL_LABEL              "Email:"
+#define WIZARD_TEXT_SUBMITTING               "Submitting... please wait."
+#define WIZARD_TEXT_CANCEL_HINT              "Cancel only closes this dialog."
+#define WIZARD_TEXT_NEVER_HINT               "\"Never show again\" suppresses it permanently."
+#define WIZARD_TEXT_SUCCESS                  "Registration successful."
+#define WIZARD_TEXT_SUCCESS_KEY              "API key saved (sv_ladderApiKey)."
+#define WIZARD_TEXT_NEXT_STEPS               "Next steps:"
+#define WIZARD_TEXT_FAILED                   "Registration failed."
+#define WIZARD_TEXT_FAILED_HINT              "Please check data/connection and try again."
+#define WIZARD_TEXT_DISMISSED_LOG            "Ladder wizard permanently dismissed via 'Never show again'.\n"
+
 #define WIZARD_CONTENT_PAD_X        24
 #define WIZARD_FORM_TOP_Y           ( WIZARD_PANEL_Y + 108 )
 #define WIZARD_FORM_ROW_H           28
@@ -351,9 +371,9 @@ static void LadderWizard_FinishSubmission( wizardResult_t result, const char *st
 
 static void LadderWizard_UpdateButtons( void ) {
     if ( s_wizard.page == WIZARD_PAGE_CONFIRM ) {
-        s_wizard.btnYes.string = "REGISTER";
-        s_wizard.btnNo.string  = "ABBRECHEN";
-        s_wizard.btnNever.string = "NICHT MEHR ANZEIGEN";
+        s_wizard.btnYes.string = WIZARD_TEXT_REGISTER;
+        s_wizard.btnNo.string  = WIZARD_TEXT_CANCEL;
+        s_wizard.btnNever.string = WIZARD_TEXT_NEVER_SHOW;
 
         s_wizard.ownerName.generic.flags &= ~( QMF_INACTIVE | QMF_GRAYED );
         s_wizard.ownerEmail.generic.flags &= ~( QMF_INACTIVE | QMF_GRAYED );
@@ -365,7 +385,7 @@ static void LadderWizard_UpdateButtons( void ) {
         s_wizard.btnYes.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
         if ( s_wizard.submitting ) {
             s_wizard.btnYes.generic.flags |= QMF_INACTIVE;
-            s_wizard.btnNo.string = "ABORT";
+            s_wizard.btnNo.string = WIZARD_TEXT_ABORT;
             s_wizard.btnNever.generic.flags = QMF_INACTIVE | QMF_HIDDEN;
         } else {
             s_wizard.btnNever.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
@@ -524,11 +544,11 @@ void UI_LadderWizardMenu( void ) {
 
         if ( truncated ) {
             Q_strncpyz( s_wizard.serverNameNotice,
-                        "Hinweis: Servername wurde auf 64 Zeichen gekuerzt.",
+                        WIZARD_TEXT_SERVERNAME_TRUNCATED,
                         sizeof( s_wizard.serverNameNotice ) );
         } else if ( Q_stricmp( s_wizard.serverNameCompareKey, finalCompareKey ) != 0 ) {
             Q_strncpyz( s_wizard.serverNameNotice,
-                        "Hinweis: Servername wurde fuer den Service normalisiert.",
+                        WIZARD_TEXT_SERVERNAME_NORMALIZED,
                         sizeof( s_wizard.serverNameNotice ) );
         }
     }
@@ -573,7 +593,7 @@ void UI_LadderWizardMenu( void ) {
     s_wizard.btnYes.generic.callback = LadderWizard_MenuEvent;
     s_wizard.btnYes.generic.x        = WIZARD_SCREEN_W / 2 - 145;
     s_wizard.btnYes.generic.y        = WIZARD_BTN_Y;
-    s_wizard.btnYes.string           = "REGISTER";
+    s_wizard.btnYes.string           = WIZARD_TEXT_REGISTER;
     s_wizard.btnYes.style            = UI_CENTER | UI_SMALLFONT;
     s_wizard.btnYes.color            = wizardAccent;
 
@@ -584,7 +604,7 @@ void UI_LadderWizardMenu( void ) {
     s_wizard.btnNo.generic.callback = LadderWizard_MenuEvent;
     s_wizard.btnNo.generic.x        = WIZARD_SCREEN_W / 2;
     s_wizard.btnNo.generic.y        = WIZARD_BTN_Y;
-    s_wizard.btnNo.string           = "ABBRECHEN";
+    s_wizard.btnNo.string           = WIZARD_TEXT_CANCEL;
     s_wizard.btnNo.style            = UI_CENTER | UI_SMALLFONT;
     s_wizard.btnNo.color            = wizardText;
 
@@ -595,7 +615,7 @@ void UI_LadderWizardMenu( void ) {
     s_wizard.btnNever.generic.callback = LadderWizard_MenuEvent;
     s_wizard.btnNever.generic.x        = WIZARD_SCREEN_W / 2 + 145;
     s_wizard.btnNever.generic.y        = WIZARD_BTN_Y;
-    s_wizard.btnNever.string           = "NICHT MEHR ANZEIGEN";
+    s_wizard.btnNever.string           = WIZARD_TEXT_NEVER_SHOW;
     s_wizard.btnNever.style            = UI_CENTER | UI_SMALLFONT;
     s_wizard.btnNever.color            = wizardText;
 
@@ -640,7 +660,7 @@ static void LadderWizard_Draw( void ) {
 
     if ( s_wizard.page == WIZARD_PAGE_CONFIRM ) {
         UI_DrawString( cx, ty,
-            "Moechtest du Offline-Matches auf der Ladder tracken?",
+            WIZARD_TEXT_CONFIRM_QUESTION,
             UI_CENTER | UI_SMALLFONT, wizardText );
         UI_DrawString( cx, ty + 16,
             va( "Server name: %s", s_wizard.serverName ),
@@ -652,13 +672,13 @@ static void LadderWizard_Draw( void ) {
         }
 
         UI_DrawString( contentLeft, labelY,
-            "Owner:", UI_LEFT | UI_SMALLFONT, wizardText );
+            WIZARD_TEXT_OWNER_LABEL, UI_LEFT | UI_SMALLFONT, wizardText );
         UI_DrawString( contentLeft, labelY + WIZARD_FORM_ROW_H,
-            "Email:", UI_LEFT | UI_SMALLFONT, wizardText );
+            WIZARD_TEXT_EMAIL_LABEL, UI_LEFT | UI_SMALLFONT, wizardText );
 
         if ( s_wizard.submitting ) {
             UI_DrawString( cx, ty + 96,
-                "Submitting... please wait.",
+                WIZARD_TEXT_SUBMITTING,
                 UI_CENTER | UI_SMALLFONT, wizardText );
         } else if ( s_wizard.statusLine[0] ) {
             UI_DrawString( cx, ty + 96,
@@ -667,21 +687,21 @@ static void LadderWizard_Draw( void ) {
                 s_wizard.result == WIZARD_RESULT_PENDING ? wizardText : wizardError );
         } else {
             UI_DrawString( cx, ty + 96,
-                "Abbrechen schliesst nur diesen Dialog.",
+                WIZARD_TEXT_CANCEL_HINT,
                 UI_CENTER | UI_SMALLFONT, wizardText );
             UI_DrawString( cx, ty + 110,
-                "\"Nicht mehr anzeigen\" unterdrueckt ihn dauerhaft.",
+                WIZARD_TEXT_NEVER_HINT,
                 UI_CENTER | UI_SMALLFONT, wizardText );
         }
     } else if ( s_wizard.result == WIZARD_RESULT_SUCCESS ) {
         UI_DrawString( cx, ty,
-            "Registrierung erfolgreich.",
+            WIZARD_TEXT_SUCCESS,
             UI_CENTER | UI_SMALLFONT, wizardAccent );
         UI_DrawString( cx, ty + 16,
-            "API-Key wurde gespeichert (sv_ladderApiKey).",
+            WIZARD_TEXT_SUCCESS_KEY,
             UI_CENTER | UI_SMALLFONT, wizardText );
         UI_DrawString( cx, ty + 38,
-            "Naechste Schritte:",
+            WIZARD_TEXT_NEXT_STEPS,
             UI_CENTER | UI_SMALLFONT, wizardText );
         UI_DrawString( cx, ty + 54,
             va( "set sv_hostname \"%s\"", s_wizard.serverName ),
@@ -696,7 +716,7 @@ static void LadderWizard_Draw( void ) {
         }
     } else {
         UI_DrawString( cx, ty,
-            "Registrierung fehlgeschlagen.",
+            WIZARD_TEXT_FAILED,
             UI_CENTER | UI_SMALLFONT, wizardError );
         if ( s_wizard.statusLine[0] ) {
             UI_DrawString( cx, ty + 16,
@@ -704,7 +724,7 @@ static void LadderWizard_Draw( void ) {
                 UI_CENTER | UI_SMALLFONT, wizardText );
         }
         UI_DrawString( cx, ty + 46,
-            "Bitte pruefe Daten/Verbindung und versuche es erneut.",
+            WIZARD_TEXT_FAILED_HINT,
             UI_CENTER | UI_SMALLFONT, wizardText );
     }
 }
@@ -746,7 +766,7 @@ static void LadderWizard_MenuEvent( void *ptr, int event ) {
         if ( s_wizard.page == WIZARD_PAGE_CONFIRM && s_wizard.result != WIZARD_RESULT_PENDING ) {
             trap_Cvar_SetValue( "ladder_wizard_dismissed", 1 );
             trap_Cvar_Update( &ui_ladderWizardDismissed );
-            trap_Print( S_COLOR_YELLOW "Ladder wizard permanently dismissed via 'Nicht mehr anzeigen'.\n" );
+            trap_Print( S_COLOR_YELLOW WIZARD_TEXT_DISMISSED_LOG );
             UI_PopMenu();
         }
         break;
