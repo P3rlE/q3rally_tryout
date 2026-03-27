@@ -38,7 +38,9 @@ static struct {
     wizardPage_t    page;
     wizardResult_t  result;
     char            playerName[PROFILE_MAX_NAME];
-    char            serverName[64];
+    char            serverName[65];
+    char            serverNameCompareKey[65];
+    char            serverNameNotice[128];
     char            apiKey[256];
     char            statusLine[128];
 } s_wizard;
@@ -87,6 +89,106 @@ static qboolean LadderWizard_ValidateEmail( const char *email ) {
     }
 
     return qtrue;
+}
+
+static qboolean LadderWizard_IsWhitespace( char c ) {
+    return ( c == ' ' || c == '\t' || c == '\n' || c == '\r' );
+}
+
+static void LadderWizard_MakeCompareKey( const char *src, char *dst, size_t dstSize ) {
+    size_t i;
+    size_t j;
+
+    if ( !dst || !dstSize ) {
+        return;
+    }
+
+    if ( !src ) {
+        dst[0] = '\0';
+        return;
+    }
+
+    for ( i = 0, j = 0; src[i] && j + 1 < dstSize; ++i ) {
+        unsigned char c = (unsigned char)src[i];
+
+        if ( Q_IsColorString( &src[i] ) ) {
+            ++i;
+            continue;
+        }
+
+        dst[j++] = tolower( c );
+    }
+
+    dst[j] = '\0';
+}
+
+static void LadderWizard_NormalizeServerName( const char *src,
+                                              char *dst,
+                                              size_t dstSize,
+                                              qboolean *wasTruncated ) {
+    char cleaned[256];
+    size_t i;
+    size_t j;
+    size_t start;
+    size_t end;
+    size_t len;
+
+    if ( wasTruncated ) {
+        *wasTruncated = qfalse;
+    }
+
+    if ( !dst || !dstSize ) {
+        return;
+    }
+
+    if ( !src || !src[0] ) {
+        dst[0] = '\0';
+        return;
+    }
+
+    for ( i = 0, j = 0; src[i] && j + 1 < sizeof( cleaned ); ++i ) {
+        if ( Q_IsColorString( &src[i] ) ) {
+            ++i;
+            continue;
+        }
+        if ( src[i] == '"' || src[i] == '\\' || src[i] == ';' ) {
+            cleaned[j++] = '_';
+            continue;
+        }
+        if ( (unsigned char)src[i] < 0x20 || (unsigned char)src[i] > 0x7E ) {
+            continue;
+        }
+        if ( ( src[i] >= '0' && src[i] <= '9' ) ||
+             ( src[i] >= 'a' && src[i] <= 'z' ) ||
+             ( src[i] >= 'A' && src[i] <= 'Z' ) ||
+             src[i] == '_' || src[i] == '-' || src[i] == '.' || src[i] == ' ' ) {
+            cleaned[j++] = src[i];
+        } else {
+            cleaned[j++] = '_';
+        }
+    }
+    cleaned[j] = '\0';
+
+    start = 0;
+    while ( cleaned[start] && LadderWizard_IsWhitespace( cleaned[start] ) ) {
+        ++start;
+    }
+
+    end = strlen( cleaned );
+    while ( end > start && LadderWizard_IsWhitespace( cleaned[end - 1] ) ) {
+        --end;
+    }
+
+    len = end - start;
+    if ( len >= dstSize ) {
+        len = dstSize - 1;
+        if ( wasTruncated ) {
+            *wasTruncated = qtrue;
+        }
+    }
+
+    memcpy( dst, cleaned + start, len );
+    dst[len] = '\0';
 }
 
 static void LadderWizard_SanitizeArg( const char *src, char *dst, size_t dstSize ) {
@@ -222,8 +324,38 @@ void UI_LadderWizardMenu( void ) {
                                     sizeof( s_wizard.playerName ) );
     if ( !s_wizard.playerName[0] ) return;
 
-    Com_sprintf( s_wizard.serverName, sizeof( s_wizard.serverName ),
-                 "%s_OFFLINE", s_wizard.playerName );
+    {
+        char rawServerName[128];
+        char finalCompareKey[65];
+        qboolean truncated = qfalse;
+
+        Com_sprintf( rawServerName, sizeof( rawServerName ), "%s_OFFLINE", s_wizard.playerName );
+        LadderWizard_NormalizeServerName( rawServerName,
+                                          s_wizard.serverName,
+                                          sizeof( s_wizard.serverName ),
+                                          &truncated );
+        LadderWizard_MakeCompareKey( rawServerName,
+                                     s_wizard.serverNameCompareKey,
+                                     sizeof( s_wizard.serverNameCompareKey ) );
+        if ( !s_wizard.serverName[0] ) {
+            Q_strncpyz( s_wizard.serverName,
+                        "q3rally_offline",
+                        sizeof( s_wizard.serverName ) );
+        }
+        LadderWizard_MakeCompareKey( s_wizard.serverName,
+                                     finalCompareKey,
+                                     sizeof( finalCompareKey ) );
+
+        if ( truncated ) {
+            Q_strncpyz( s_wizard.serverNameNotice,
+                        "Hinweis: Servername wurde auf 64 Zeichen gekuerzt.",
+                        sizeof( s_wizard.serverNameNotice ) );
+        } else if ( Q_stricmp( s_wizard.serverNameCompareKey, finalCompareKey ) != 0 ) {
+            Q_strncpyz( s_wizard.serverNameNotice,
+                        "Hinweis: Servername wurde fuer den Service normalisiert.",
+                        sizeof( s_wizard.serverNameNotice ) );
+        }
+    }
     s_wizard.page = WIZARD_PAGE_CONFIRM;
     s_wizard.result = WIZARD_RESULT_NONE;
 
@@ -324,6 +456,11 @@ static void LadderWizard_Draw( void ) {
         UI_DrawString( cx, ty + 16,
             va( "Server name: %s", s_wizard.serverName ),
             UI_CENTER | UI_SMALLFONT, wizardAccent );
+        if ( s_wizard.serverNameNotice[0] ) {
+            UI_DrawString( cx, ty + 32,
+                s_wizard.serverNameNotice,
+                UI_CENTER | UI_SMALLFONT, wizardError );
+        }
 
         UI_DrawString( WIZARD_PANEL_X + 78, WIZARD_PANEL_Y + 120,
             "Owner:", UI_LEFT | UI_SMALLFONT, wizardText );
