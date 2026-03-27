@@ -176,10 +176,10 @@ static void LadderWizard_UpdateButtons( void ) {
     if ( s_wizard.result == WIZARD_RESULT_SUCCESS ) {
         s_wizard.btnYes.string = "OK";
         s_wizard.btnNo.string  = "";
-        s_wizard.btnNo.generic.flags = QMF_INACTIVE;
+        s_wizard.btnNo.generic.flags = QMF_INACTIVE | QMF_HIDDEN;
     } else {
         s_wizard.btnYes.string = "RETRY";
-        s_wizard.btnNo.string  = "ABBRECHEN";
+        s_wizard.btnNo.string  = "BACK";
         s_wizard.btnNo.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
     }
 
@@ -413,6 +413,7 @@ void UI_LadderWizard_OnSuccess( const char *key ) {
     s_wizard.page = WIZARD_PAGE_DONE;
     s_wizard.result = WIZARD_RESULT_SUCCESS;
     LadderWizard_UpdateButtons();
+    Menu_SetCursorToItem( &s_wizard.menu, &s_wizard.btnYes );
 }
 
 void UI_LadderWizard_OnError( const char *msg ) {
@@ -427,4 +428,5 @@ void UI_LadderWizard_OnError( const char *msg ) {
     s_wizard.page = WIZARD_PAGE_DONE;
     s_wizard.result = WIZARD_RESULT_ERROR;
     LadderWizard_UpdateButtons();
+    Menu_SetCursorToItem( &s_wizard.menu, &s_wizard.btnYes );
 }
