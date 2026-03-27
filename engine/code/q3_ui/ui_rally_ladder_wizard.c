@@ -44,6 +44,7 @@ static struct {
 } s_wizard;
 
 static vec4_t wizardBg     = { 0.08f, 0.08f, 0.12f, 0.97f };
+static vec4_t wizardDim    = { 0.00f, 0.00f, 0.00f, 0.45f };
 static vec4_t wizardBorder = { 0.35f, 0.45f, 0.75f, 0.60f };
 static vec4_t wizardTitle  = { 0.72f, 0.82f, 1.00f, 1.00f };
 static vec4_t wizardText   = { 0.75f, 0.78f, 0.88f, 1.00f };
@@ -223,6 +224,7 @@ void UI_LadderWizardMenu( void ) {
                 sizeof( s_wizard.ownerName.field.buffer ) );
 
     s_wizard.menu.draw       = LadderWizard_Draw;
+    s_wizard.menu.transparent = qtrue;
     s_wizard.menu.fullscreen = qfalse;
     s_wizard.menu.wrapAround = qtrue;
     s_wizard.menu.showlogo   = qfalse;
@@ -293,6 +295,9 @@ void UI_LadderWizardMenu( void ) {
 static void LadderWizard_Draw( void ) {
     int cx = WIZARD_SCREEN_W / 2;
     int ty = WIZARD_PANEL_Y + 60;
+
+    /* keep underlying main menu visible, but dim it for focus */
+    UI_FillRect( 0, 0, WIZARD_SCREEN_W, WIZARD_SCREEN_H, wizardDim );
 
     UI_FillRect( WIZARD_PANEL_X, WIZARD_PANEL_Y,
                  WIZARD_PANEL_W, WIZARD_PANEL_H, wizardBg );
