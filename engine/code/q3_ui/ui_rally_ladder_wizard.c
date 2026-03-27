@@ -17,6 +17,7 @@ Copyright (C) 2002-2026 Q3Rally Team
 
 #define ID_WIZARD_YES       10
 #define ID_WIZARD_NO        11
+#define ID_WIZARD_NEVER     14
 #define ID_OWNER_NAME       12
 #define ID_OWNER_EMAIL      13
 
@@ -34,6 +35,7 @@ static struct {
     menufield_s     ownerEmail;
     menutext_s      btnYes;
     menutext_s      btnNo;
+    menutext_s      btnNever;
     wizardPage_t    page;
     wizardResult_t  result;
     char            playerName[PROFILE_MAX_NAME];
@@ -266,7 +268,8 @@ static void LadderWizard_StartRegistration( void ) {
 static void LadderWizard_UpdateButtons( void ) {
     if ( s_wizard.page == WIZARD_PAGE_CONFIRM ) {
         s_wizard.btnYes.string = "REGISTER";
-        s_wizard.btnNo.string  = "CANCEL";
+        s_wizard.btnNo.string  = "ABBRECHEN";
+        s_wizard.btnNever.string = "NICHT MEHR ANZEIGEN";
 
         s_wizard.ownerName.generic.flags &= ~( QMF_INACTIVE | QMF_GRAYED );
         s_wizard.ownerEmail.generic.flags &= ~( QMF_INACTIVE | QMF_GRAYED );
@@ -279,6 +282,9 @@ static void LadderWizard_UpdateButtons( void ) {
         if ( s_wizard.result == WIZARD_RESULT_PENDING ) {
             s_wizard.btnYes.generic.flags |= QMF_INACTIVE;
             s_wizard.btnNo.string = "ABORT";
+            s_wizard.btnNever.generic.flags = QMF_INACTIVE | QMF_HIDDEN;
+        } else {
+            s_wizard.btnNever.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
         }
         s_wizard.btnNo.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
         return;
@@ -288,10 +294,14 @@ static void LadderWizard_UpdateButtons( void ) {
         s_wizard.btnYes.string = "OK";
         s_wizard.btnNo.string  = "";
         s_wizard.btnNo.generic.flags = QMF_INACTIVE | QMF_HIDDEN;
+        s_wizard.btnNever.string = "";
+        s_wizard.btnNever.generic.flags = QMF_INACTIVE | QMF_HIDDEN;
     } else {
         s_wizard.btnYes.string = "RETRY";
         s_wizard.btnNo.string  = "BACK";
         s_wizard.btnNo.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
+        s_wizard.btnNever.string = "";
+        s_wizard.btnNever.generic.flags = QMF_INACTIVE | QMF_HIDDEN;
     }
 
     s_wizard.btnYes.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
@@ -314,7 +324,8 @@ static sfxHandle_t LadderWizard_MoveFocus( int dir ) {
         (menucommon_s *)&s_wizard.ownerName,
         (menucommon_s *)&s_wizard.ownerEmail,
         (menucommon_s *)&s_wizard.btnYes,
-        (menucommon_s *)&s_wizard.btnNo
+        (menucommon_s *)&s_wizard.btnNo,
+        (menucommon_s *)&s_wizard.btnNever
     };
     menucommon_s *current;
     int count;
@@ -484,7 +495,7 @@ void UI_LadderWizardMenu( void ) {
     s_wizard.btnYes.generic.flags    = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
     s_wizard.btnYes.generic.id       = ID_WIZARD_YES;
     s_wizard.btnYes.generic.callback = LadderWizard_MenuEvent;
-    s_wizard.btnYes.generic.x        = WIZARD_SCREEN_W / 2 - 70;
+    s_wizard.btnYes.generic.x        = WIZARD_SCREEN_W / 2 - 145;
     s_wizard.btnYes.generic.y        = WIZARD_BTN_Y;
     s_wizard.btnYes.string           = "REGISTER";
     s_wizard.btnYes.style            = UI_CENTER | UI_SMALLFONT;
@@ -495,16 +506,28 @@ void UI_LadderWizardMenu( void ) {
     s_wizard.btnNo.generic.flags    = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
     s_wizard.btnNo.generic.id       = ID_WIZARD_NO;
     s_wizard.btnNo.generic.callback = LadderWizard_MenuEvent;
-    s_wizard.btnNo.generic.x        = WIZARD_SCREEN_W / 2 + 70;
+    s_wizard.btnNo.generic.x        = WIZARD_SCREEN_W / 2;
     s_wizard.btnNo.generic.y        = WIZARD_BTN_Y;
-    s_wizard.btnNo.string           = "CANCEL";
+    s_wizard.btnNo.string           = "ABBRECHEN";
     s_wizard.btnNo.style            = UI_CENTER | UI_SMALLFONT;
     s_wizard.btnNo.color            = wizardText;
+
+    /* NEVER SHOW AGAIN */
+    s_wizard.btnNever.generic.type     = MTYPE_PTEXT;
+    s_wizard.btnNever.generic.flags    = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
+    s_wizard.btnNever.generic.id       = ID_WIZARD_NEVER;
+    s_wizard.btnNever.generic.callback = LadderWizard_MenuEvent;
+    s_wizard.btnNever.generic.x        = WIZARD_SCREEN_W / 2 + 145;
+    s_wizard.btnNever.generic.y        = WIZARD_BTN_Y;
+    s_wizard.btnNever.string           = "NICHT MEHR ANZEIGEN";
+    s_wizard.btnNever.style            = UI_CENTER | UI_SMALLFONT;
+    s_wizard.btnNever.color            = wizardText;
 
     Menu_AddItem( &s_wizard.menu, &s_wizard.ownerName );
     Menu_AddItem( &s_wizard.menu, &s_wizard.ownerEmail );
     Menu_AddItem( &s_wizard.menu, &s_wizard.btnYes );
     Menu_AddItem( &s_wizard.menu, &s_wizard.btnNo );
+    Menu_AddItem( &s_wizard.menu, &s_wizard.btnNever );
 
     LadderWizard_UpdateButtons();
     Menu_SetCursorToItem( &s_wizard.menu, &s_wizard.ownerName );
@@ -560,6 +583,13 @@ static void LadderWizard_Draw( void ) {
                 s_wizard.statusLine,
                 UI_CENTER | UI_SMALLFONT,
                 s_wizard.result == WIZARD_RESULT_PENDING ? wizardText : wizardError );
+        } else {
+            UI_DrawString( cx, ty + 96,
+                "Abbrechen schliesst nur diesen Dialog.",
+                UI_CENTER | UI_SMALLFONT, wizardText );
+            UI_DrawString( cx, ty + 110,
+                "\"Nicht mehr anzeigen\" unterdrueckt ihn dauerhaft.",
+                UI_CENTER | UI_SMALLFONT, wizardText );
         }
     } else if ( s_wizard.result == WIZARD_RESULT_SUCCESS ) {
         UI_DrawString( cx, ty,
@@ -621,11 +651,16 @@ static void LadderWizard_MenuEvent( void *ptr, int event ) {
         break;
 
     case ID_WIZARD_NO:
-        if ( s_wizard.page == WIZARD_PAGE_CONFIRM ) {
+        UI_PopMenu();
+        break;
+
+    case ID_WIZARD_NEVER:
+        if ( s_wizard.page == WIZARD_PAGE_CONFIRM && s_wizard.result != WIZARD_RESULT_PENDING ) {
             trap_Cvar_SetValue( "ladder_wizard_dismissed", 1 );
             trap_Cvar_Update( &ui_ladderWizardDismissed );
+            trap_Print( S_COLOR_YELLOW "Ladder wizard permanently dismissed via 'Nicht mehr anzeigen'.\n" );
+            UI_PopMenu();
         }
-        UI_PopMenu();
         break;
     }
 }
