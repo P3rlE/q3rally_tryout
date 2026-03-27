@@ -466,7 +466,7 @@ void UI_LadderWizardMenu( void ) {
     s_wizard.menu.key        = LadderWizard_MenuKey;
 
     s_wizard.ownerName.generic.type = MTYPE_FIELD;
-    s_wizard.ownerName.generic.flags = 0;
+    s_wizard.ownerName.generic.flags = QMF_SMALLFONT;
     s_wizard.ownerName.generic.id = ID_OWNER_NAME;
     contentLeft = WIZARD_PANEL_X + WIZARD_CONTENT_PAD_X;
     contentRight = WIZARD_PANEL_X + WIZARD_PANEL_W - WIZARD_CONTENT_PAD_X;
@@ -483,7 +483,7 @@ void UI_LadderWizardMenu( void ) {
     s_wizard.ownerName.field.maxchars = 48;
 
     s_wizard.ownerEmail.generic.type = MTYPE_FIELD;
-    s_wizard.ownerEmail.generic.flags = 0;
+    s_wizard.ownerEmail.generic.flags = QMF_SMALLFONT;
     s_wizard.ownerEmail.generic.id = ID_OWNER_EMAIL;
     s_wizard.ownerEmail.generic.x = fieldX;
     s_wizard.ownerEmail.generic.y = WIZARD_FORM_TOP_Y + WIZARD_FORM_ROW_H;
