@@ -59,10 +59,14 @@ static void LadderWizard_UpdateButtons( void );
 /* ── CVar registration ───────────────────────────────────────────────────────── */
 
 static vmCvar_t ui_ladderWizardDismissed;
+static vmCvar_t ui_ladderWizardCompleted;
 
 static void LadderWizard_RegisterCvars( void ) {
     trap_Cvar_Register( &ui_ladderWizardDismissed,
                         "ladder_wizard_dismissed", "0",
+                        CVAR_ARCHIVE | CVAR_USERINFO );
+    trap_Cvar_Register( &ui_ladderWizardCompleted,
+                        "ladder_wizard_completed", "0",
                         CVAR_ARCHIVE | CVAR_USERINFO );
 }
 
@@ -194,12 +198,15 @@ void UI_LadderWizard_MaybeShow( void ) {
 
     LadderWizard_RegisterCvars();
     trap_Cvar_Update( &ui_ladderWizardDismissed );
+    trap_Cvar_Update( &ui_ladderWizardCompleted );
 
     trap_Cvar_VariableStringBuffer( "profile_active", profileName, sizeof( profileName ) );
     trap_Cvar_VariableStringBuffer( "sv_ladderApiKey", apiKey,     sizeof( apiKey ) );
 
     if ( !profileName[0] ) return;
     if ( apiKey[0] )       return;
+    /* Product decision: once completed, don't auto-show again even if API key is removed later. */
+    if ( ui_ladderWizardCompleted.integer != 0 ) return;
     if ( ui_ladderWizardDismissed.integer != 0 ) return;
 
     UI_LadderWizardMenu();
@@ -377,6 +384,8 @@ static void LadderWizard_MenuEvent( void *ptr, int event ) {
                 LadderWizard_StartRegistration();
             }
         } else if ( s_wizard.result == WIZARD_RESULT_SUCCESS ) {
+            trap_Cvar_SetValue( "ladder_wizard_completed", 1 );
+            trap_Cvar_Update( &ui_ladderWizardCompleted );
             UI_PopMenu();
         } else {
             s_wizard.page = WIZARD_PAGE_CONFIRM;
@@ -407,6 +416,8 @@ void UI_LadderWizard_OnSuccess( const char *key ) {
     trap_Cvar_Set( "sv_ladderUrl", "https://ladder.q3rally.com/index.php/matches" );
     trap_Cvar_Set( "sv_ladderApiKey", key );
     trap_Cvar_Set( "sv_hostname", s_wizard.serverName );
+    trap_Cvar_SetValue( "ladder_wizard_completed", 1 );
+    trap_Cvar_Update( &ui_ladderWizardCompleted );
 
     Q_strncpyz( s_wizard.apiKey, key, sizeof( s_wizard.apiKey ) );
     Q_strncpyz( s_wizard.statusLine, "", sizeof( s_wizard.statusLine ) );
