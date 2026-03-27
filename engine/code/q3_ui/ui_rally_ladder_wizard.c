@@ -613,7 +613,7 @@ void UI_LadderWizardMenu( void ) {
     s_wizard.btnNever.generic.flags    = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
     s_wizard.btnNever.generic.id       = ID_WIZARD_NEVER;
     s_wizard.btnNever.generic.callback = LadderWizard_MenuEvent;
-    s_wizard.btnNever.generic.x        = WIZARD_SCREEN_W / 2 + 145;
+    s_wizard.btnNever.generic.x        = WIZARD_SCREEN_W / 2 + 135;
     s_wizard.btnNever.generic.y        = WIZARD_BTN_Y;
     s_wizard.btnNever.string           = WIZARD_TEXT_NEVER_SHOW;
     s_wizard.btnNever.style            = UI_CENTER | UI_SMALLFONT;
