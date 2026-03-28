@@ -173,6 +173,23 @@ footer a:hover{color:#fff}
     </tbody>
   </table></div>
 
+  <h3>In-Game Client Registration</h3>
+  <p>Solo players can register directly from the Q3Rally main menu without touching any config file. The wizard sends a <code>POST</code> request to <code>register.php</code> and receives a JSON response containing the new API key.</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>Step</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Wizard location</td><td><strong>Main Menu → Multiplayer → Ladder → Register Client</strong></td></tr>
+      <tr><td>Request endpoint</td><td><code>POST /register.php</code> with <code>Accept: application/json</code> header</td></tr>
+      <tr><td>Response</td><td><code>{"status":"pending","key":"&lt;hex64&gt;"}</code> — the key is immediately stored in the engine</td></tr>
+      <tr><td>Server name</td><td>Derived from the player name with an <code>_OFFLINE</code> suffix, e.g. <code>P3rlE_OFFLINE</code></td></tr>
+      <tr><td>Admin panel</td><td>Offline registrations appear in the <strong>Offline</strong> tab of <code>admin.php</code>, separate from dedicated server keys</td></tr>
+      <tr><td>Auto-configuration</td><td>On success the engine sets <code>sv_ladderEnabled</code>, <code>sv_ladderUrl</code>, <code>sv_ladderApiKey</code>, and <code>sv_hostname</code> and writes them to <code>q3config.cfg</code> automatically</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout"><strong>register.php — JSON branch</strong> When the request includes <code>Accept: application/json</code> the endpoint returns a compact JSON object instead of an HTML page. This is how the in-game wizard communicates with the service. Browser requests without the header continue to receive the standard HTML registration form.</div>
+
   <h3>Error Responses</h3>
   <p>All errors return JSON: <code>{ "error": "..." }</code>. File permission issues return HTTP 500. Malformed payloads return HTTP 400.</p>
 </section>
