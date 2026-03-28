@@ -1,0 +1,2007 @@
+/*
+===========================================================================
+Copyright (C) 1999-2005 Id Software, Inc.
+Copyright (C) 2002-2021 Q3Rally Team (Per Thormann - q3rally@gmail.com)
+
+This file is part of q3rally source code.
+
+q3rally source code is free software; you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation; either version 2 of the License,
+or (at your option) any later version.
+
+q3rally source code is distributed in the hope that it will be
+useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with q3rally; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+===========================================================================
+*/
+//
+// cg_servercmds.c -- reliably sequenced text commands sent by the server
+// these are processed at snapshot transition time, so there will definitely
+// be a valid snapshot this frame
+
+#include "cg_local.h"
+#include "../game/profile_shared.h"
+#ifdef MISSIONPACK
+#include "../../ui/menudef.h"
+
+typedef struct {
+	const char *order;
+	int taskNum;
+} orderTask_t;
+
+static const orderTask_t validOrders[] = {
+	{ VOICECHAT_GETFLAG,						TEAMTASK_OFFENSE },
+	{ VOICECHAT_OFFENSE,						TEAMTASK_OFFENSE },
+	{ VOICECHAT_DEFEND,							TEAMTASK_DEFENSE },
+	{ VOICECHAT_DEFENDFLAG,					TEAMTASK_DEFENSE },
+	{ VOICECHAT_PATROL,							TEAMTASK_PATROL },
+	{ VOICECHAT_CAMP,								TEAMTASK_CAMP },
+	{ VOICECHAT_FOLLOWME,						TEAMTASK_FOLLOW },
+	{ VOICECHAT_RETURNFLAG,					TEAMTASK_RETRIEVE },
+	{ VOICECHAT_FOLLOWFLAGCARRIER,	TEAMTASK_ESCORT }
+};
+
+static const int numValidOrders = ARRAY_LEN(validOrders);
+
+static int CG_ValidOrder(const char *p) {
+        int i;
+        for (i = 0; i < numValidOrders; i++) {
+                if (Q_stricmp(p, validOrders[i].order) == 0) {
+                        return validOrders[i].taskNum;
+                }
+        }
+        return -1;
+}
+#endif
+
+#define CG_PROFILE_RANK_ENTRY( name, threshold ) { name, threshold },
+static const profile_rank_def_t cgProfileRanks[] = {
+        PROFILE_RANK_TABLE( CG_PROFILE_RANK_ENTRY )
+};
+#undef CG_PROFILE_RANK_ENTRY
+
+#define CG_PROFILE_RANK_COUNT ( sizeof( cgProfileRanks ) / sizeof( cgProfileRanks[0] ) )
+
+static const profile_rank_def_t *CG_GetRankDef( int index ) {
+        if ( index < 0 || index >= CG_PROFILE_RANK_COUNT ) {
+                return NULL;
+        }
+
+        return &cgProfileRanks[index];
+}
+
+/*
+=================
+CG_ParseScores
+
+=================
+*/
+static void CG_ParseScores( void ) {
+	int		i, powerups;
+
+	cg.numScores = atoi( CG_Argv( 1 ) );
+	if ( cg.numScores > MAX_CLIENTS ) {
+		cg.numScores = MAX_CLIENTS;
+	}
+
+	cg.teamScores[0] = atoi( CG_Argv( 2 ) );
+	cg.teamScores[1] = atoi( CG_Argv( 3 ) );
+// Q3Rally Code Start
+	cg.teamScores[2] = atoi( CG_Argv( 4 ) );
+	cg.teamScores[3] = atoi( CG_Argv( 5 ) );
+// END
+
+	memset( cg.scores, 0, sizeof( cg.scores ) );
+	for ( i = 0 ; i < cg.numScores ; i++ ) {
+//
+// STONELANCE changed i * 14 to i * 20, added 6 (now 21 with KOTH extras + rank tier)
+cg.scores[i].client = atoi( CG_Argv( i * 21 + 6 ) );
+cg.scores[i].score = atoi( CG_Argv( i * 21 + 7 ) );
+cg.scores[i].ping = atoi( CG_Argv( i * 21 + 8 ) );
+cg.scores[i].time = atoi( CG_Argv( i * 21 + 9 ) );
+cg.scores[i].scoreFlags = atoi( CG_Argv( i * 21 + 10 ) );
+powerups = atoi( CG_Argv( i * 21 + 11 ) );
+cg.scores[i].accuracy = atoi(CG_Argv(i * 21 + 12));
+cg.scores[i].impressiveCount = atoi(CG_Argv(i * 21 + 13));
+cg.scores[i].impressiveTelefragCount = atoi(CG_Argv(i * 21 + 14));
+cg.scores[i].excellentCount = atoi(CG_Argv(i * 21 + 15));
+cg.scores[i].guantletCount = atoi(CG_Argv(i * 21 + 16));
+cg.scores[i].defendCount = atoi(CG_Argv(i * 21 + 17));
+cg.scores[i].assistCount = atoi(CG_Argv(i * 21 + 18));
+cg.scores[i].perfect = atoi(CG_Argv(i * 21 + 19));
+cg.scores[i].captures = atoi(CG_Argv(i * 21 + 20));
+// END
+// STONELANCE add four more score parts
+cg.scores[i].damageDealt = atoi(CG_Argv(i * 21 + 21));
+cg.scores[i].damageTaken = atoi(CG_Argv(i * 21 + 22));
+cg.scores[i].position = atoi(CG_Argv(i * 21 + 23));
+cg.scores[i].kothHillKills = atoi(CG_Argv(i * 21 + 24));
+cg.scores[i].kothContestTimeMs = atoi(CG_Argv(i * 21 + 25));
+cg.scores[i].rankTier = atoi(CG_Argv(i * 21 + 26));
+// END
+
+		if ( cg.scores[i].client < 0 || cg.scores[i].client >= MAX_CLIENTS ) {
+			cg.scores[i].client = 0;
+		}
+		cgs.clientinfo[ cg.scores[i].client ].score = cg.scores[i].score;
+		cgs.clientinfo[ cg.scores[i].client ].powerups = powerups;
+		// Q3Rally Code Start
+		cgs.clientinfo[ cg.scores[i].client ].position = cg.scores[i].position;
+		// END
+
+		cg.scores[i].team = cgs.clientinfo[cg.scores[i].client].team;
+	}
+
+	// Q3Rally Code Start
+	for ( ; i < MAX_CLIENTS ; i++ ) {
+		cg.scores[i].client = -1;
+		cg.scores[i].score = 0;
+		cg.scores[i].ping = 0;
+		cg.scores[i].time = 0;
+		cg.scores[i].scoreFlags = -1;
+		cg.scores[i].position = -1;
+		cg.scores[i].rankTier = -1;
+		powerups = 0;
+
+			if ( cg.scores[i].client < 0 || cg.scores[i].client >= MAX_CLIENTS ) {
+				cg.scores[i].client = 0;
+			}
+			cgs.clientinfo[ cg.scores[i].client ].score = cg.scores[i].score;
+			cgs.clientinfo[ cg.scores[i].client ].powerups = powerups;
+			cgs.clientinfo[ cg.scores[i].client ].position = cg.scores[i].position;
+		}
+	// END
+
+#ifdef MISSIONPACK
+	CG_SetScoreSelection(NULL);
+#endif
+
+}
+
+/*
+=================
+CG_ParseTeamInfo
+
+=================
+*/
+static void CG_ParseTeamInfo( void ) {
+	int		i;
+	int		client;
+
+	numSortedTeamPlayers = atoi( CG_Argv( 1 ) );
+	if( numSortedTeamPlayers < 0 || numSortedTeamPlayers > TEAM_MAXOVERLAY )
+	{
+		CG_Error( "CG_ParseTeamInfo: numSortedTeamPlayers out of range (%d)",
+				numSortedTeamPlayers );
+		return;
+	}
+
+	for ( i = 0 ; i < numSortedTeamPlayers ; i++ ) {
+		client = atoi( CG_Argv( i * 6 + 2 ) );
+		if( client < 0 || client >= MAX_CLIENTS )
+		{
+		  CG_Error( "CG_ParseTeamInfo: bad client number: %d", client );
+		  return;
+		}
+
+		sortedTeamPlayers[i] = client;
+
+		cgs.clientinfo[ client ].location = atoi( CG_Argv( i * 6 + 3 ) );
+		cgs.clientinfo[ client ].health = atoi( CG_Argv( i * 6 + 4 ) );
+		cgs.clientinfo[ client ].armor = atoi( CG_Argv( i * 6 + 5 ) );
+		cgs.clientinfo[ client ].curWeapon = atoi( CG_Argv( i * 6 + 6 ) );
+		cgs.clientinfo[ client ].powerups = atoi( CG_Argv( i * 6 + 7 ) );
+	}
+}
+
+
+/*
+================
+CG_ParseServerinfo
+
+This is called explicitly when the gamestate is first received,
+and whenever the server updates any serverinfo flagged cvars
+================
+*/
+void CG_ParseServerinfo( void ) {
+	const char	*info;
+	char	*mapname;
+
+	info = CG_ConfigString( CS_SERVERINFO );
+	cgs.gametype = atoi( Info_ValueForKey( info, "g_gametype" ) );
+	trap_Cvar_Set("g_gametype", va("%i", cgs.gametype));
+	cgs.dmflags = atoi( Info_ValueForKey( info, "dmflags" ) );
+	cgs.teamflags = atoi( Info_ValueForKey( info, "teamflags" ) );
+	cgs.fraglimit = atoi( Info_ValueForKey( info, "fraglimit" ) );
+// Q3Rally Code Start
+	cgs.laplimit = atoi( Info_ValueForKey( info, "laplimit" ) );
+// END
+	cgs.capturelimit = atoi( Info_ValueForKey( info, "capturelimit" ) );
+	cgs.timelimit = atoi( Info_ValueForKey( info, "timelimit" ) );
+	cgs.maxclients = atoi( Info_ValueForKey( info, "sv_maxclients" ) );
+	mapname = Info_ValueForKey( info, "mapname" );
+	Com_sprintf( cgs.mapname, sizeof( cgs.mapname ), "maps/%s.bsp", mapname );
+	Q_strncpyz( cgs.redTeam, Info_ValueForKey( info, "g_redTeam" ), sizeof(cgs.redTeam) );
+	trap_Cvar_Set("g_redTeam", cgs.redTeam);
+	Q_strncpyz( cgs.blueTeam, Info_ValueForKey( info, "g_blueTeam" ), sizeof(cgs.blueTeam) );
+	trap_Cvar_Set("g_blueTeam", cgs.blueTeam);
+	cgs.eliminationWeapons = atoi( Info_ValueForKey( info, "g_eliminationWeapons" ) );
+
+	cgs.car_spring = atof( Info_ValueForKey( info, "car_spring" ) );
+	if ( cgs.car_spring <= 0.0f ) {
+		cgs.car_spring = 120.0f;
+	}
+
+	cgs.car_shock_up = atof( Info_ValueForKey( info, "car_shock_up" ) );
+	if ( cgs.car_shock_up <= 0.0f ) {
+		cgs.car_shock_up = 12.0f;
+	}
+
+	cgs.car_shock_down = atof( Info_ValueForKey( info, "car_shock_down" ) );
+	if ( cgs.car_shock_down <= 0.0f ) {
+		cgs.car_shock_down = 11.0f;
+	}
+
+	cgs.car_swaybar = atof( Info_ValueForKey( info, "car_swaybar" ) );
+	if ( cgs.car_swaybar <= 0.0f ) {
+		cgs.car_swaybar = 20.0f;
+	}
+
+	cgs.car_wheel = atof( Info_ValueForKey( info, "car_wheel" ) );
+	if ( cgs.car_wheel <= 0.0f ) {
+		cgs.car_wheel = 2400.0f;
+	}
+
+	cgs.car_wheel_damp = atof( Info_ValueForKey( info, "car_wheel_damp" ) );
+	if ( cgs.car_wheel_damp <= 0.0f ) {
+		cgs.car_wheel_damp = 140.0f;
+	}
+
+	cgs.car_frontweight_dist = atof( Info_ValueForKey( info, "car_frontweight_dist" ) );
+	if ( cgs.car_frontweight_dist <= 0.0f || cgs.car_frontweight_dist >= 1.0f ) {
+		cgs.car_frontweight_dist = 0.5f;
+	}
+
+	cgs.car_IT_xScale = atof( Info_ValueForKey( info, "car_IT_xScale" ) );
+	if ( cgs.car_IT_xScale <= 0.0f ) {
+		cgs.car_IT_xScale = 1.0f;
+	}
+
+	cgs.car_IT_yScale = atof( Info_ValueForKey( info, "car_IT_yScale" ) );
+	if ( cgs.car_IT_yScale <= 0.0f ) {
+		cgs.car_IT_yScale = 1.0f;
+	}
+
+	cgs.car_IT_zScale = atof( Info_ValueForKey( info, "car_IT_zScale" ) );
+	if ( cgs.car_IT_zScale <= 0.0f ) {
+		cgs.car_IT_zScale = 1.0f;
+	}
+
+	cgs.car_body_elasticity = atof( Info_ValueForKey( info, "car_body_elasticity" ) );
+	if ( cgs.car_body_elasticity <= 0.0f ) {
+		cgs.car_body_elasticity = 0.05f;
+	}
+
+	cgs.car_air_cof = atof( Info_ValueForKey( info, "car_air_cof" ) );
+	if ( cgs.car_air_cof <= 0.0f ) {
+		cgs.car_air_cof = 0.31f;
+	}
+
+	cgs.car_air_frac_to_df = atof( Info_ValueForKey( info, "car_air_frac_to_df" ) );
+	if ( cgs.car_air_frac_to_df <= 0.0f ) {
+		cgs.car_air_frac_to_df = 0.5f;
+	}
+
+	cgs.car_friction_scale = atof( Info_ValueForKey( info, "car_friction_scale" ) );
+	if ( cgs.car_friction_scale <= 0.0f ) {
+		cgs.car_friction_scale = 1.1f;
+	}
+}
+
+/*
+==================
+CG_ParseWarmup
+==================
+*/
+static void CG_ParseWarmup( void ) {
+	const char	*info;
+	int			warmup;
+
+	info = CG_ConfigString( CS_WARMUP );
+
+	warmup = atoi( info );
+	cg.warmupCount = -1;
+
+	if ( warmup == 0 && cg.warmup ) {
+
+	} else if ( warmup > 0 && cg.warmup <= 0 ) {
+#ifdef MISSIONPACK
+		if (cgs.gametype >= GT_CTF && cgs.gametype <= GT_HARVESTER) {
+			trap_S_StartLocalSound( cgs.media.countPrepareTeamSound, CHAN_ANNOUNCER );
+		} else
+#endif
+		{
+			trap_S_StartLocalSound( cgs.media.countPrepareSound, CHAN_ANNOUNCER );
+		}
+	}
+
+	cg.warmup = warmup;
+}
+
+/*
+===================
+CG_ParseSigilStatus
+===================
+*/
+static void CG_ParseSigilStatus( void ) {
+	const char *str;
+	int i;
+
+	str = CG_ConfigString( CS_SIGILSTATUS );
+
+	for ( i = 0; i < MAX_SIGILS; i++ ) {
+		if ( str[i] == 0 ) {
+			break;
+		}
+		cgs.sigil[i] = str[i] - '0';
+	}
+	for (/**/; i < MAX_SIGILS; i++ ) {
+		cgs.sigil[i] = SIGIL_NONE;
+	}
+}
+
+// Q3Rally Code Start - KOTH
+static qboolean CG_ParseNextKothInt( const char **cursor, int *out ) {
+	char *endptr;
+	long value;
+
+	if ( !cursor || !*cursor || !out ) {
+		return qfalse;
+	}
+
+	while ( **cursor == ' ' ) {
+		( *cursor )++;
+	}
+
+	if ( **cursor == '\0' ) {
+		return qfalse;
+	}
+
+	value = strtol( *cursor, &endptr, 10 );
+	if ( endptr == *cursor ) {
+		return qfalse;
+	}
+
+	*out = (int)value;
+	*cursor = endptr;
+	return qtrue;
+}
+
+static qboolean CG_ParseNextKothFloat( const char **cursor, float *out ) {
+	char *endptr;
+	double value;
+
+	if ( !cursor || !*cursor || !out ) {
+		return qfalse;
+	}
+
+	while ( **cursor == ' ' ) {
+		( *cursor )++;
+	}
+
+	if ( **cursor == '\0' ) {
+		return qfalse;
+	}
+
+	value = strtod( *cursor, &endptr );
+	if ( endptr == *cursor ) {
+		return qfalse;
+	}
+
+	*out = (float)value;
+	*cursor = endptr;
+	return qtrue;
+}
+
+static void CG_ParseKothStatus( void ) {
+	const char *str;
+	const char *cursor;
+	int owner;
+	int contested;
+	int capturePct;
+	float hillX, hillY, hillZ, hillRadius;
+	qboolean haveHillOrigin;
+	qboolean haveHillRadius;
+	int oldOwner;
+	int oldContested;
+	int localTeam;
+	qboolean hadSnapshot;
+
+	hadSnapshot = ( cg.snap != NULL );
+	oldOwner = cgs.kothOwner;
+	oldContested = cgs.kothContested;
+	localTeam = TEAM_FREE;
+	if ( hadSnapshot ) {
+		localTeam = cg.snap->ps.persistant[PERS_TEAM];
+	}
+
+	str = CG_ConfigString( CS_KOTHSTATUS );
+	cursor = str;
+	if ( !CG_ParseNextKothInt( &cursor, &owner ) ) {
+		return;
+	}
+	if ( !CG_ParseNextKothInt( &cursor, &contested ) ) {
+		return;
+	}
+	if ( !CG_ParseNextKothInt( &cursor, &capturePct ) ) {
+		return;
+	}
+
+	cgs.kothOwner = owner;
+	cgs.kothContested = contested;
+	cgs.kothCapturePct = capturePct;
+
+	/* Optional hill origin payload: "owner contested pct x y z" */
+	cgs.kothHillOriginValid = qfalse;
+	haveHillOrigin = CG_ParseNextKothFloat( &cursor, &hillX ) &&
+		CG_ParseNextKothFloat( &cursor, &hillY ) &&
+		CG_ParseNextKothFloat( &cursor, &hillZ );
+	if ( haveHillOrigin ) {
+		cgs.kothHillOrigin[0] = hillX;
+		cgs.kothHillOrigin[1] = hillY;
+		cgs.kothHillOrigin[2] = hillZ;
+		cgs.kothHillOriginValid = qtrue;
+
+		haveHillRadius = CG_ParseNextKothFloat( &cursor, &hillRadius );
+		if ( haveHillRadius ) {
+			cgs.kothHillRadius = hillRadius;
+		}
+	}
+	if ( cgs.kothHillRadius <= 0.0f ) {
+		cgs.kothHillRadius = 128.0f;	/* safe fallback */
+	}
+
+	if ( !cg.kothStatusInitialized ) {
+		cg.kothStatusInitialized = qtrue;
+		cg.kothLastOwner = cgs.kothOwner;
+		cg.kothLastContested = cgs.kothContested;
+		return;
+	}
+
+	if ( !hadSnapshot || localTeam == TEAM_SPECTATOR ) {
+		cg.kothLastOwner = cgs.kothOwner;
+		cg.kothLastContested = cgs.kothContested;
+		return;
+	}
+
+	if ( !oldContested && cgs.kothContested ) {
+		trap_S_StartLocalSound( cgs.media.takenOpponentSound, CHAN_ANNOUNCER );
+	}
+
+	if ( oldContested && !cgs.kothContested ) {
+		trap_S_StartLocalSound( cgs.media.returnYourTeamSound, CHAN_ANNOUNCER );
+	}
+
+	if ( oldOwner != cgs.kothOwner ) {
+		if ( cgs.kothOwner == localTeam ) {
+			trap_S_StartLocalSound( cgs.media.kothCaptureRewardSound, CHAN_ANNOUNCER );
+		} else if ( cgs.kothOwner != TEAM_FREE ) {
+			trap_S_StartLocalSound( cgs.media.captureOpponentSound, CHAN_ANNOUNCER );
+			if ( oldOwner == localTeam ) {
+				cg.kothLossFlashUntil = cg.time + 600;
+			}
+		}
+	}
+
+	cg.kothLastOwner = cgs.kothOwner;
+	cg.kothLastContested = cgs.kothContested;
+}
+// Q3Rally Code END - KOTH
+
+/*
+===============================================================
+CG_SetConfigValues
+
+Called on load to set the initial values from configure strings
+===============================================================
+*/
+void CG_SetConfigValues( void ) {
+	const char *s;
+
+	cgs.scores1 = atoi( CG_ConfigString( CS_SCORES1 ) );
+	cgs.scores2 = atoi( CG_ConfigString( CS_SCORES2 ) );
+// Q3Rally Code Start
+cgs.scores3 = atoi( CG_ConfigString( CS_SCORES3 ) );
+cgs.scores4 = atoi( CG_ConfigString( CS_SCORES4 ) );
+// END
+cgs.levelStartTime = atoi( CG_ConfigString( CS_LEVEL_START_TIME ) );
+cgs.trackLength = atof( CG_ConfigString( CS_TRACKLENGTH ) );
+if( cgs.gametype == GT_CTF ) {
+		s = CG_ConfigString( CS_FLAGSTATUS );
+		cgs.redflag = s[0] - '0';
+		cgs.blueflag = s[1] - '0';
+	}
+	else if ( cgs.gametype == GT_CTF4 ) {
+		s = CG_ConfigString( CS_FLAGSTATUS );
+		cgs.redflag = s[0] - '0';
+		cgs.blueflag = s[1] - '0';
+		cgs.greenflag = s[2] - '0';
+		cgs.yellowflag = s[3] - '0';
+	}
+
+	else if ( cgs.gametype == GT_DOMINATION ) {
+		CG_ParseSigilStatus();
+	}
+	// Q3Rally Code Start - KOTH
+	else if ( cgs.gametype == GT_KOTH ) {
+		CG_ParseKothStatus();
+	}
+	// Q3Rally Code END - KOTH
+
+#ifdef MISSIONPACK
+	else if( cgs.gametype == GT_1FCTF ) {
+		s = CG_ConfigString( CS_FLAGSTATUS );
+		cgs.flagStatus = s[0] - '0';
+	}
+#endif
+	cg.warmup = atoi( CG_ConfigString( CS_WARMUP ) );
+}
+
+/*
+=====================
+CG_ShaderStateChanged
+=====================
+*/
+void CG_ShaderStateChanged(void) {
+	char originalShader[MAX_QPATH];
+	char newShader[MAX_QPATH];
+	char timeOffset[16];
+	const char *o;
+	char *n,*t;
+
+	o = CG_ConfigString( CS_SHADERSTATE );
+	while (o && *o) {
+		n = strstr(o, "=");
+		if (n && *n) {
+			Q_strncpyz(originalShader, o, n-o+1);
+			n++;
+			t = strstr(n, ":");
+			if (t && *t) {
+				Q_strncpyz(newShader, n, t-n+1);
+			} else {
+				break;
+			}
+			t++;
+			o = strstr(t, "@");
+			if (o) {
+				Q_strncpyz(timeOffset, t, o-t+1);
+				o++;
+				trap_R_RemapShader( originalShader, newShader, timeOffset );
+			}
+		} else {
+			break;
+		}
+	}
+}
+
+/*
+================
+CG_ConfigStringModified
+
+================
+*/
+static void CG_ConfigStringModified( void ) {
+	const char	*str;
+	int		num;
+
+	num = atoi( CG_Argv( 1 ) );
+
+	// get the gamestate from the client system, which will have the
+	// new configstring already integrated
+	trap_GetGameState( &cgs.gameState );
+
+	// look up the individual string that was modified
+	str = CG_ConfigString( num );
+
+	// do something with it if necessary
+	if ( num == CS_MUSIC ) {
+		CG_StartMusic();
+	} else if ( num == CS_SERVERINFO ) {
+		CG_ParseServerinfo();
+	} else if ( num == CS_WARMUP ) {
+		CG_ParseWarmup();
+	} else if ( num == CS_SCORES1 ) {
+		cgs.scores1 = atoi( str );
+	} else if ( num == CS_SCORES2 ) {
+		cgs.scores2 = atoi( str );
+// Q3Rally Code Start
+	} else if ( num == CS_SCORES3 ) {
+		cgs.scores3 = atoi( str );
+	} else if ( num == CS_SCORES4 ) {
+		cgs.scores4 = atoi( str );
+// END
+	} else if ( num == CS_TRACKLENGTH ) {
+		cgs.trackLength = atof( str );
+	} else if ( num == CS_LEVEL_START_TIME ) {
+		cgs.levelStartTime = atoi( str );
+	} else if ( num == CS_VOTE_TIME ) {
+		cgs.voteTime = atoi( str );
+		cgs.voteModified = qtrue;
+	} else if ( num == CS_VOTE_YES ) {
+		cgs.voteYes = atoi( str );
+		cgs.voteModified = qtrue;
+	} else if ( num == CS_VOTE_NO ) {
+		cgs.voteNo = atoi( str );
+		cgs.voteModified = qtrue;
+	} else if ( num == CS_VOTE_STRING ) {
+		Q_strncpyz( cgs.voteString, str, sizeof( cgs.voteString ) );
+#ifdef MISSIONPACK
+		trap_S_StartLocalSound( cgs.media.voteNow, CHAN_ANNOUNCER );
+#endif //MISSIONPACK
+	} else if ( num >= CS_TEAMVOTE_TIME && num <= CS_TEAMVOTE_TIME + 1) {
+		cgs.teamVoteTime[num-CS_TEAMVOTE_TIME] = atoi( str );
+		cgs.teamVoteModified[num-CS_TEAMVOTE_TIME] = qtrue;
+	} else if ( num >= CS_TEAMVOTE_YES && num <= CS_TEAMVOTE_YES + 1) {
+		cgs.teamVoteYes[num-CS_TEAMVOTE_YES] = atoi( str );
+		cgs.teamVoteModified[num-CS_TEAMVOTE_YES] = qtrue;
+	} else if ( num >= CS_TEAMVOTE_NO && num <= CS_TEAMVOTE_NO + 1) {
+		cgs.teamVoteNo[num-CS_TEAMVOTE_NO] = atoi( str );
+		cgs.teamVoteModified[num-CS_TEAMVOTE_NO] = qtrue;
+	} else if ( num >= CS_TEAMVOTE_STRING && num <= CS_TEAMVOTE_STRING + 1) {
+		Q_strncpyz( cgs.teamVoteString[num-CS_TEAMVOTE_STRING], str, sizeof( cgs.teamVoteString[0] ) );
+#ifdef MISSIONPACK
+		trap_S_StartLocalSound( cgs.media.voteNow, CHAN_ANNOUNCER );
+#endif
+	} else if ( num == CS_INTERMISSION ) {
+		cg.intermissionStarted = atoi( str );
+	} else if ( num >= CS_MODELS && num < CS_MODELS+MAX_MODELS ) {
+		cgs.gameModels[ num-CS_MODELS ] = trap_R_RegisterModel( str );
+	} else if ( num >= CS_SOUNDS && num < CS_SOUNDS+MAX_SOUNDS ) {
+		if ( str[0] != '*' ) {	// player specific sounds don't register here
+			cgs.gameSounds[ num-CS_SOUNDS] = trap_S_RegisterSound( str, qfalse );
+		}
+	} else if ( num >= CS_PLAYERS && num < CS_PLAYERS+MAX_CLIENTS ) {
+		CG_NewClientInfo( num - CS_PLAYERS );
+		CG_BuildSpectatorString();
+	} else if ( num == CS_FLAGSTATUS ) {
+		if( cgs.gametype == GT_CTF ) {
+			// format is rb where its red/blue, 0 is at base, 1 is taken, 2 is dropped
+			cgs.redflag = str[0] - '0';
+			cgs.blueflag = str[1] - '0';
+		} else if ( cgs.gametype == GT_CTF4 ) {
+			cgs.redflag = str[0] - '0';
+			cgs.blueflag = str[1] - '0';
+			cgs.greenflag = str[2] - '0';
+			cgs.yellowflag = str[3] - '0';
+		}
+#ifdef MISSIONPACK
+		else if( cgs.gametype == GT_1FCTF ) {
+			cgs.flagStatus = str[0] - '0';
+		}
+#endif
+	}
+	else if ( num == CS_SIGILSTATUS ) {
+		if( cgs.gametype == GT_DOMINATION ) {
+			CG_ParseSigilStatus();
+		}
+	}
+	// Q3Rally Code Start - KOTH
+	else if ( num == CS_KOTHSTATUS ) {
+		if ( cgs.gametype == GT_KOTH ) {
+			CG_ParseKothStatus();
+		}
+	}
+	// Q3Rally Code END - KOTH
+	else if ( num == CS_SHADERSTATE ) {
+		CG_ShaderStateChanged();
+	}
+		
+}
+
+
+/*
+=======================
+CG_AddToTeamChat
+
+=======================
+*/
+static void CG_AddToTeamChat( const char *str ) {
+	int len = 0;
+	char *p, *ls;
+	int lastcolor;
+	int chatHeight;
+
+	if (cg_teamChatHeight.integer < TEAMCHAT_HEIGHT) {
+		chatHeight = cg_teamChatHeight.integer;
+	} else {
+		chatHeight = TEAMCHAT_HEIGHT;
+	}
+
+	if (chatHeight <= 0 || cg_teamChatTime.integer <= 0) {
+		// team chat disabled, dump into normal chat
+		cgs.teamChatPos = cgs.teamLastChatPos = 0;
+		return;
+	}
+
+
+
+	p = cgs.teamChatMsgs[cgs.teamChatPos % chatHeight];
+	*p = 0;
+
+	lastcolor = '7';
+
+	ls = NULL;
+	while (*str) {
+		if (len > TEAMCHAT_WIDTH - 1) {
+			if (ls) {
+				str -= (p - ls);
+				str++;
+				p -= (p - ls);
+			}
+			*p = 0;
+
+			cgs.teamChatMsgTimes[cgs.teamChatPos % chatHeight] = cg.time;
+
+			cgs.teamChatPos++;
+			p = cgs.teamChatMsgs[cgs.teamChatPos % chatHeight];
+			*p = 0;
+			*p++ = Q_COLOR_ESCAPE;
+			*p++ = lastcolor;
+			len = 0;
+			ls = NULL;
+		}
+
+		if ( Q_IsColorString( str ) ) {
+			*p++ = *str++;
+			lastcolor = *str;
+			*p++ = *str++;
+			continue;
+		}
+		if (*str == ' ') {
+			ls = p;
+		}
+		*p++ = *str++;
+		len++;
+	}
+	*p = 0;
+
+	cgs.teamChatMsgTimes[cgs.teamChatPos % chatHeight] = cg.time;
+	cgs.teamChatPos++;
+
+	if (cgs.teamChatPos - cgs.teamLastChatPos > chatHeight)
+		cgs.teamLastChatPos = cgs.teamChatPos - chatHeight;
+}
+
+/*
+===============
+CG_MapRestart
+
+The server has issued a map_restart, so the next snapshot
+is completely new and should not be interpolated to.
+
+A tournement restart will clear everything, but doesn't
+require a reload of all the media
+===============
+*/
+static void CG_MapRestart( void ) {
+// Q3Rally Code Start
+	int			i;
+	centity_t	*cent;
+// END
+
+	if ( cg_showmiss.integer ) {
+		CG_Printf( "CG_MapRestart\n" );
+	}
+
+	CG_InitLocalEntities();
+	CG_InitMarkPolys();
+	CG_ClearParticles ();
+
+	// make sure end-of-round announcer state does not leak into the next round
+	cg.fraglimitWarnings = 0;
+	cg.timelimitWarnings = 0;
+	cgs.scores1 = SCORE_NOT_PRESENT;
+	cgs.scores2 = SCORE_NOT_PRESENT;
+	cgs.scores3 = SCORE_NOT_PRESENT;
+	cgs.scores4 = SCORE_NOT_PRESENT;
+	cg.rewardTime = 0;
+	cg.rewardStack = 0;
+	cg.intermissionStarted = qfalse;
+	cg.levelShot = qfalse;
+	cg.achievementQueueCount = 0;
+	cg.rankQueueCount = 0;
+	cg.soundBufferIn = 0;
+	cg.soundBufferOut = 0;
+	cg.soundTime = 0;
+	memset( cg.soundBuffer, 0, sizeof( cg.soundBuffer ) );
+	memset( cg.achievementQueue, 0, sizeof( cg.achievementQueue ) );
+	memset( cg.rankQueue, 0, sizeof( cg.rankQueue ) );
+
+	cgs.voteTime = 0;
+
+        cg.mapRestart = qtrue;
+        CG_ResetEliminationTimeline();
+
+	cg.ghostRecordingActive = qfalse;
+	cg.ghostRecording.valid = qfalse;
+	cg.ghostPlayback.valid = qfalse;
+	cg.baseGhost.valid = qfalse;
+	cg.baseGhostAvailable = qfalse;
+	cg.baseGhostBestTime = 0;
+        cg.baseGhostVehicle[0] = '\0';
+        cg.baseGhostPath[0] = '\0';
+        cg.personalGhostAvailable = qfalse;
+        cg.personalGhostBestTime = 0;
+        cg.personalGhostVehicle[0] = '\0';
+        cg.personalGhostPath[0] = '\0';
+
+	CG_StartMusic();
+
+	trap_S_ClearLoopingSounds(qtrue);
+
+	// we really should clear more parts of cg here and stop sounds
+
+// Q3Rally Code Start
+	// play the "fight" sound if this is a restart without warmup
+/*
+	if ( cg.warmup == 0 && cgs.gametype == GT_TOURNAMENT) {
+		trap_S_StartLocalSound( cgs.media.countFightSound, CHAN_ANNOUNCER );
+		CG_CenterPrint( "FIGHT!", 120, GIANTCHAR_WIDTH*2 );
+	}
+*/
+
+	for(i = 0; i < MAX_CLIENTS; i++){
+		cent = &cg_entities[i];
+		if (!cent) continue;
+
+		cent->currentLap = 0;
+		cent->bestLapTime = 0;
+		cent->bestLap = 0;
+		cent->currentPosition = 0;
+		cent->finishRaceTime = 0;
+		cent->startRaceTime = 0;
+		cent->startLapTime = 0;
+		cent->lastStartLapTime = 0;
+	}
+// END
+
+#ifdef MISSIONPACK
+	if (cg_singlePlayerActive.integer) {
+		trap_Cvar_Set("ui_matchStartTime", va("%i", cg.time));
+		if (cg_recordSPDemo.integer && *cg_recordSPDemoName.string) {
+			trap_SendConsoleCommand(va("set g_synchronousclients 1 ; record %s \n", cg_recordSPDemoName.string));
+		}
+	}
+#endif
+// Q3Rally Code Start
+//	trap_Cvar_Set("cg_thirdPerson", "0");
+// END
+}
+
+#ifdef MISSIONPACK
+
+#define MAX_VOICEFILESIZE	16384
+#define MAX_VOICEFILES		8
+#define MAX_VOICECHATS		64
+#define MAX_VOICESOUNDS		64
+#define MAX_CHATSIZE		64
+#define MAX_HEADMODELS		64
+
+typedef struct voiceChat_s
+{
+	char id[64];
+	int numSounds;
+	sfxHandle_t sounds[MAX_VOICESOUNDS];
+	char chats[MAX_VOICESOUNDS][MAX_CHATSIZE];
+} voiceChat_t;
+
+typedef struct voiceChatList_s
+{
+	char name[64];
+	int gender;
+	int numVoiceChats;
+	voiceChat_t voiceChats[MAX_VOICECHATS];
+} voiceChatList_t;
+
+typedef struct headModelVoiceChat_s
+{
+	char headmodel[64];
+	int voiceChatNum;
+} headModelVoiceChat_t;
+
+voiceChatList_t voiceChatLists[MAX_VOICEFILES];
+headModelVoiceChat_t headModelVoiceChat[MAX_HEADMODELS];
+
+/*
+=================
+CG_ParseVoiceChats
+=================
+*/
+int CG_ParseVoiceChats( const char *filename, voiceChatList_t *voiceChatList, int maxVoiceChats ) {
+	int	len, i;
+	fileHandle_t f;
+	char buf[MAX_VOICEFILESIZE];
+	char **p, *ptr;
+	char *token;
+	voiceChat_t *voiceChats;
+	qboolean compress;
+	sfxHandle_t sound;
+	const char *soundName;
+
+	compress = qtrue;
+	if (cg_buildScript.integer) {
+		compress = qfalse;
+	}
+
+	len = trap_FS_FOpenFile( filename, &f, FS_READ );
+	if ( !f ) {
+		trap_Print( va( S_COLOR_RED "voice chat file not found: %s\n", filename ) );
+		return qfalse;
+	}
+	if ( len >= MAX_VOICEFILESIZE ) {
+		trap_Print( va( S_COLOR_RED "voice chat file too large: %s is %i, max allowed is %i\n", filename, len, MAX_VOICEFILESIZE ) );
+		trap_FS_FCloseFile( f );
+		return qfalse;
+	}
+
+	trap_FS_Read( buf, len, f );
+	buf[len] = 0;
+	trap_FS_FCloseFile( f );
+
+	ptr = buf;
+	p = &ptr;
+
+	Com_sprintf(voiceChatList->name, sizeof(voiceChatList->name), "%s", filename);
+	voiceChats = voiceChatList->voiceChats;
+	for ( i = 0; i < maxVoiceChats; i++ ) {
+		voiceChats[i].id[0] = 0;
+	}
+	token = COM_ParseExt(p, qtrue);
+	if (!token[0]) {
+		return qtrue;
+	}
+	if (!Q_stricmp(token, "female")) {
+		voiceChatList->gender = GENDER_FEMALE;
+	}
+	else if (!Q_stricmp(token, "male")) {
+		voiceChatList->gender = GENDER_MALE;
+	}
+	else if (!Q_stricmp(token, "neuter")) {
+		voiceChatList->gender = GENDER_NEUTER;
+	}
+	else {
+		trap_Print( va( S_COLOR_RED "expected gender not found in voice chat file: %s\n", filename ) );
+		return qfalse;
+	}
+
+	voiceChatList->numVoiceChats = 0;
+	while ( 1 ) {
+		token = COM_ParseExt(p, qtrue);
+		if (!token[0]) {
+			return qtrue;
+		}
+		Com_sprintf(voiceChats[voiceChatList->numVoiceChats].id, sizeof( voiceChats[voiceChatList->numVoiceChats].id ), "%s", token);
+		token = COM_ParseExt(p, qtrue);
+		if (Q_stricmp(token, "{")) {
+			trap_Print( va( S_COLOR_RED "expected { found %s in voice chat file: %s\n", token, filename ) );
+			return qfalse;
+		}
+		voiceChats[voiceChatList->numVoiceChats].numSounds = 0;
+		while(1) {
+			token = COM_ParseExt(p, qtrue);
+			if (!token[0]) {
+				return qtrue;
+			}
+			if (!Q_stricmp(token, "}"))
+				break;
+			soundName = token;
+			sound = trap_S_RegisterSound( soundName, compress );
+			token = COM_ParseExt(p, qtrue);
+			if (!token[0]) {
+				return qtrue;
+			}
+			if ( sound ) {
+				voiceChats[voiceChatList->numVoiceChats].sounds[voiceChats[voiceChatList->numVoiceChats].numSounds] = sound;
+				Com_sprintf(voiceChats[voiceChatList->numVoiceChats].chats[
+							voiceChats[voiceChatList->numVoiceChats].numSounds], MAX_CHATSIZE, "%s", token);
+				voiceChats[voiceChatList->numVoiceChats].numSounds++;
+				if (voiceChats[voiceChatList->numVoiceChats].numSounds >= MAX_VOICESOUNDS)
+					break;
+			} else {
+				trap_Print( va( S_COLOR_RED "Failed to load voice chat sound %s in %s\n", soundName, filename ) );
+			}
+		}
+		voiceChatList->numVoiceChats++;
+		if (voiceChatList->numVoiceChats >= maxVoiceChats)
+			return qtrue;
+	}
+	return qtrue;
+}
+
+/*
+=================
+CG_LoadVoiceChats
+=================
+*/
+void CG_LoadVoiceChats( void ) {
+	int size;
+
+	size = trap_MemoryRemaining();
+	CG_ParseVoiceChats( "scripts/female1.voice", &voiceChatLists[0], MAX_VOICECHATS );
+	CG_ParseVoiceChats( "scripts/female2.voice", &voiceChatLists[1], MAX_VOICECHATS );
+	CG_ParseVoiceChats( "scripts/female3.voice", &voiceChatLists[2], MAX_VOICECHATS );
+	CG_ParseVoiceChats( "scripts/male1.voice", &voiceChatLists[3], MAX_VOICECHATS );
+	CG_ParseVoiceChats( "scripts/male2.voice", &voiceChatLists[4], MAX_VOICECHATS );
+	CG_ParseVoiceChats( "scripts/male3.voice", &voiceChatLists[5], MAX_VOICECHATS );
+	CG_ParseVoiceChats( "scripts/male4.voice", &voiceChatLists[6], MAX_VOICECHATS );
+	CG_ParseVoiceChats( "scripts/male5.voice", &voiceChatLists[7], MAX_VOICECHATS );
+	CG_Printf("voice chat memory size = %d\n", size - trap_MemoryRemaining());
+}
+
+/*
+=================
+CG_HeadModelVoiceChats
+=================
+*/
+int CG_HeadModelVoiceChats( char *filename ) {
+	int	len, i;
+	fileHandle_t f;
+	char buf[MAX_VOICEFILESIZE];
+	char **p, *ptr;
+	char *token;
+
+	len = trap_FS_FOpenFile( filename, &f, FS_READ );
+	if ( !f ) {
+		//trap_Print( va( "voice chat file not found: %s\n", filename ) );
+		return -1;
+	}
+	if ( len >= MAX_VOICEFILESIZE ) {
+		trap_Print( va( S_COLOR_RED "voice chat file too large: %s is %i, max allowed is %i\n", filename, len, MAX_VOICEFILESIZE ) );
+		trap_FS_FCloseFile( f );
+		return -1;
+	}
+
+	trap_FS_Read( buf, len, f );
+	buf[len] = 0;
+	trap_FS_FCloseFile( f );
+
+	ptr = buf;
+	p = &ptr;
+
+	token = COM_ParseExt(p, qtrue);
+	if ( !token[0] ) {
+		return -1;
+	}
+
+	for ( i = 0; i < MAX_VOICEFILES; i++ ) {
+		if ( !Q_stricmp(token, voiceChatLists[i].name) ) {
+			return i;
+		}
+	}
+
+	//FIXME: maybe try to load the .voice file which name is stored in token?
+
+	return -1;
+}
+
+
+/*
+=================
+CG_GetVoiceChat
+=================
+*/
+int CG_GetVoiceChat( voiceChatList_t *voiceChatList, const char *id, sfxHandle_t *snd, char **chat) {
+	int i, rnd;
+
+	for ( i = 0; i < voiceChatList->numVoiceChats; i++ ) {
+		if ( !Q_stricmp( id, voiceChatList->voiceChats[i].id ) ) {
+			rnd = random() * voiceChatList->voiceChats[i].numSounds;
+			*snd = voiceChatList->voiceChats[i].sounds[rnd];
+			*chat = voiceChatList->voiceChats[i].chats[rnd];
+			return qtrue;
+		}
+	}
+	return qfalse;
+}
+
+/*
+=================
+CG_VoiceChatListForClient
+=================
+*/
+voiceChatList_t *CG_VoiceChatListForClient( int clientNum ) {
+	clientInfo_t *ci;
+	int voiceChatNum, i, j, k, gender;
+	char filename[MAX_QPATH], headModelName[MAX_QPATH];
+
+	if ( clientNum < 0 || clientNum >= MAX_CLIENTS ) {
+		clientNum = 0;
+	}
+	ci = &cgs.clientinfo[ clientNum ];
+
+	for ( k = 0; k < 2; k++ ) {
+// Q3Rally Code Start
+/*
+		if ( k == 0 ) {
+			if (ci->headModelName[0] == '*') {
+				Com_sprintf( headModelName, sizeof(headModelName), "%s/%s", ci->headModelName+1, ci->headSkinName );
+			}
+			else {
+				Com_sprintf( headModelName, sizeof(headModelName), "%s/%s", ci->headModelName, ci->headSkinName );
+			}
+		}
+		else {
+*/
+// END
+			if (ci->headModelName[0] == '*') {
+				Com_sprintf( headModelName, sizeof(headModelName), "%s", ci->headModelName+1 );
+			}
+			else {
+				Com_sprintf( headModelName, sizeof(headModelName), "%s", ci->headModelName );
+			}
+// Q3Rally Code Start
+//		}
+// END
+		// find the voice file for the head model the client uses
+		for ( i = 0; i < MAX_HEADMODELS; i++ ) {
+			if (!Q_stricmp(headModelVoiceChat[i].headmodel, headModelName)) {
+				break;
+			}
+		}
+		if (i < MAX_HEADMODELS) {
+			return &voiceChatLists[headModelVoiceChat[i].voiceChatNum];
+		}
+		// find a <headmodelname>.vc file
+		for ( i = 0; i < MAX_HEADMODELS; i++ ) {
+			if (!strlen(headModelVoiceChat[i].headmodel)) {
+				Com_sprintf(filename, sizeof(filename), "scripts/%s.vc", headModelName);
+				voiceChatNum = CG_HeadModelVoiceChats(filename);
+				if (voiceChatNum == -1)
+					break;
+				Com_sprintf(headModelVoiceChat[i].headmodel, sizeof ( headModelVoiceChat[i].headmodel ),
+							"%s", headModelName);
+				headModelVoiceChat[i].voiceChatNum = voiceChatNum;
+				return &voiceChatLists[headModelVoiceChat[i].voiceChatNum];
+			}
+		}
+	}
+	gender = ci->gender;
+	for (k = 0; k < 2; k++) {
+		// just pick the first with the right gender
+		for ( i = 0; i < MAX_VOICEFILES; i++ ) {
+			if (strlen(voiceChatLists[i].name)) {
+				if (voiceChatLists[i].gender == gender) {
+					// store this head model with voice chat for future reference
+					for ( j = 0; j < MAX_HEADMODELS; j++ ) {
+						if (!strlen(headModelVoiceChat[j].headmodel)) {
+							Com_sprintf(headModelVoiceChat[j].headmodel, sizeof ( headModelVoiceChat[j].headmodel ),
+									"%s", headModelName);
+							headModelVoiceChat[j].voiceChatNum = i;
+							break;
+						}
+					}
+					return &voiceChatLists[i];
+				}
+			}
+		}
+		// fall back to male gender because we don't have neuter in the mission pack
+		if (gender == GENDER_MALE)
+			break;
+		gender = GENDER_MALE;
+	}
+	// store this head model with voice chat for future reference
+	for ( j = 0; j < MAX_HEADMODELS; j++ ) {
+		if (!strlen(headModelVoiceChat[j].headmodel)) {
+			Com_sprintf(headModelVoiceChat[j].headmodel, sizeof ( headModelVoiceChat[j].headmodel ),
+					"%s", headModelName);
+			headModelVoiceChat[j].voiceChatNum = 0;
+			break;
+		}
+	}
+	// just return the first voice chat list
+	return &voiceChatLists[0];
+}
+
+#define MAX_VOICECHATBUFFER		32
+
+typedef struct bufferedVoiceChat_s
+{
+	int clientNum;
+	sfxHandle_t snd;
+	int voiceOnly;
+	char cmd[MAX_SAY_TEXT];
+	char message[MAX_SAY_TEXT];
+} bufferedVoiceChat_t;
+
+bufferedVoiceChat_t voiceChatBuffer[MAX_VOICECHATBUFFER];
+
+/*
+=================
+CG_PlayVoiceChat
+=================
+*/
+void CG_PlayVoiceChat( bufferedVoiceChat_t *vchat ) {
+	// if we are going into the intermission, don't start any voices
+	if ( cg.intermissionStarted ) {
+		return;
+	}
+
+	if ( !cg_noVoiceChats.integer ) {
+		if ( vchat->snd ) {
+			trap_S_StartLocalSound( vchat->snd, CHAN_VOICE);
+		}
+		if (vchat->clientNum != cg.snap->ps.clientNum) {
+			int orderTask = CG_ValidOrder(vchat->cmd);
+			if (orderTask > 0) {
+				cgs.acceptOrderTime = cg.time + 5000;
+				Q_strncpyz(cgs.acceptVoice, vchat->cmd, sizeof(cgs.acceptVoice));
+				cgs.acceptTask = orderTask;
+				cgs.acceptLeader = vchat->clientNum;
+			}
+			// see if this was an order
+			CG_ShowResponseHead();
+		}
+	}
+	if (!vchat->voiceOnly && !cg_noVoiceText.integer) {
+		CG_AddToTeamChat( vchat->message );
+		CG_Printf( "%s\n", vchat->message );
+	}
+	voiceChatBuffer[cg.voiceChatBufferOut].snd = 0;
+}
+
+/*
+=====================
+CG_PlayBufferedVoieChats
+=====================
+*/
+void CG_PlayBufferedVoiceChats( void ) {
+	if ( cg.voiceChatTime < cg.time ) {
+		if (cg.voiceChatBufferOut != cg.voiceChatBufferIn && voiceChatBuffer[cg.voiceChatBufferOut].snd) {
+			//
+			CG_PlayVoiceChat(&voiceChatBuffer[cg.voiceChatBufferOut]);
+			//
+			cg.voiceChatBufferOut = (cg.voiceChatBufferOut + 1) % MAX_VOICECHATBUFFER;
+			cg.voiceChatTime = cg.time + 1000;
+		}
+	}
+}
+
+/*
+=====================
+CG_AddBufferedVoiceChat
+=====================
+*/
+void CG_AddBufferedVoiceChat( bufferedVoiceChat_t *vchat ) {
+	// if we are going into the intermission, don't start any voices
+	if ( cg.intermissionStarted ) {
+		return;
+	}
+
+	memcpy(&voiceChatBuffer[cg.voiceChatBufferIn], vchat, sizeof(bufferedVoiceChat_t));
+	cg.voiceChatBufferIn = (cg.voiceChatBufferIn + 1) % MAX_VOICECHATBUFFER;
+	if (cg.voiceChatBufferIn == cg.voiceChatBufferOut) {
+		CG_PlayVoiceChat( &voiceChatBuffer[cg.voiceChatBufferOut] );
+		cg.voiceChatBufferOut++;
+	}
+}
+
+/*
+=================
+CG_VoiceChatLocal
+=================
+*/
+void CG_VoiceChatLocal( int mode, qboolean voiceOnly, int clientNum, int color, const char *cmd ) {
+	char *chat;
+	voiceChatList_t *voiceChatList;
+	clientInfo_t *ci;
+	sfxHandle_t snd;
+	bufferedVoiceChat_t vchat;
+
+	// if we are going into the intermission, don't start any voices
+	if ( cg.intermissionStarted ) {
+		return;
+	}
+
+	if ( mode == SAY_ALL && cgs.gametype >= GT_TEAM && cg_teamChatsOnly.integer ) {
+		return;
+	}
+
+	if ( clientNum < 0 || clientNum >= MAX_CLIENTS ) {
+		clientNum = 0;
+	}
+	ci = &cgs.clientinfo[ clientNum ];
+
+	cgs.currentVoiceClient = clientNum;
+
+	voiceChatList = CG_VoiceChatListForClient( clientNum );
+
+	if ( CG_GetVoiceChat( voiceChatList, cmd, &snd, &chat ) ) {
+		vchat.clientNum = clientNum;
+		vchat.snd = snd;
+		vchat.voiceOnly = voiceOnly;
+		Q_strncpyz(vchat.cmd, cmd, sizeof(vchat.cmd));
+		if ( mode == SAY_TELL ) {
+			Com_sprintf(vchat.message, sizeof(vchat.message), "[%s]: %c%c%s", ci->name, Q_COLOR_ESCAPE, color, chat);
+		}
+		else if ( mode == SAY_TEAM ) {
+			Com_sprintf(vchat.message, sizeof(vchat.message), "(%s): %c%c%s", ci->name, Q_COLOR_ESCAPE, color, chat);
+		}
+		else {
+			Com_sprintf(vchat.message, sizeof(vchat.message), "%s: %c%c%s", ci->name, Q_COLOR_ESCAPE, color, chat);
+		}
+		CG_AddBufferedVoiceChat(&vchat);
+	}
+}
+
+/*
+=================
+CG_VoiceChat
+=================
+*/
+void CG_VoiceChat( int mode ) {
+	const char *cmd;
+	int clientNum, color;
+	qboolean voiceOnly;
+
+	voiceOnly = atoi(CG_Argv(1));
+	clientNum = atoi(CG_Argv(2));
+	color = atoi(CG_Argv(3));
+	cmd = CG_Argv(4);
+
+	if (cg_noTaunt.integer != 0) {
+		if (!strcmp(cmd, VOICECHAT_KILLINSULT)  || !strcmp(cmd, VOICECHAT_TAUNT) || \
+			!strcmp(cmd, VOICECHAT_DEATHINSULT) || !strcmp(cmd, VOICECHAT_KILLGAUNTLET) || \
+			!strcmp(cmd, VOICECHAT_PRAISE)) {
+			return;
+		}
+	}
+
+	CG_VoiceChatLocal( mode, voiceOnly, clientNum, color, cmd );
+}
+#endif // MISSIONPACK
+
+/*
+=================
+CG_RemoveChatEscapeChar
+=================
+*/
+static void CG_RemoveChatEscapeChar( char *text ) {
+	int i, l;
+
+	l = 0;
+	for ( i = 0; text[i]; i++ ) {
+		if (text[i] == '\x19')
+			continue;
+		text[l++] = text[i];
+	}
+	text[l] = '\0';
+}
+
+
+// Q3Rally Code Start
+/*
+=================
+CG_ParseTimes
+
+=================
+*/
+static void CG_ParseTimes( void ) {
+	int		i;
+	cg.teamTimes[0] = atoi( CG_Argv( 1 ) );
+	cg.teamTimes[1] = atoi( CG_Argv( 2 ) );
+	cg.teamTimes[2] = atoi( CG_Argv( 3 ) );
+	cg.teamTimes[3] = atoi( CG_Argv( 4 ) );
+
+	for(i = 0; i < 4; i++){
+		if(!cg.teamTimes[i]){
+			cg.teamTimes[i] = 1<<30;
+		}
+	}
+}
+
+
+/*
+=================
+CG_ParsePositions
+
+=================
+*/
+static void CG_ParsePositions( void ) {
+	int		i;
+	int		clients, client, newPos;
+
+	clients = atoi(CG_Argv(1));
+	for ( i = 0 ; i < clients ; i++ ) {
+		client = atoi(CG_Argv(i*2 + 2));
+		newPos = atoi(CG_Argv(i*2 + 3));
+
+		if (cg_entities[client].currentPosition != newPos){
+			cg_entities[client].currentPosition = newPos;
+			cg_entities[client].positionChangeTime = cg.time;
+		}
+
+//		Com_Printf("Client, %s, set to position %i\n",
+//			cgs.clientinfo[atoi(CG_Argv(i*2 + 2))].name, atoi(CG_Argv(i*2 + 3)));
+	}
+}
+// END
+
+
+static void CG_AddAchievementAnnouncement( bgAchievementCategory_t category, int tierIndex ) {
+        cgAchievementAnnouncement_t *slot;
+        int queueCount;
+
+	if ( category < 0 || category >= BG_ACHIEVEMENT_CATEGORY_COUNT ) {
+		return;
+	}
+
+	queueCount = cg.achievementQueueCount;
+	if ( queueCount >= ACHIEVEMENT_MAX_QUEUE ) {
+		int i;
+		queueCount = ACHIEVEMENT_MAX_QUEUE - 1;
+
+		for ( i = 0; i < queueCount; ++i ) {
+			cg.achievementQueue[i] = cg.achievementQueue[i + 1];
+		}
+	}
+
+	slot = &cg.achievementQueue[queueCount];
+	slot->category = category;
+	slot->tierIndex = tierIndex;
+	slot->startTime = cg.time;
+	cg.achievementQueueCount = queueCount + 1;
+
+	if ( cgs.media.achievementUnlockSound ) {
+		trap_S_StartLocalSound( cgs.media.achievementUnlockSound, CHAN_LOCAL_SOUND );
+	}
+}
+
+static void CG_ParseAchievementUnlock( void ) {
+        int categoryIndex;
+        int tierIndex;
+
+	if ( trap_Argc() < 3 ) {
+		return;
+	}
+
+	categoryIndex = atoi( CG_Argv( 1 ) );
+	tierIndex = atoi( CG_Argv( 2 ) );
+
+	if ( categoryIndex < 0 || categoryIndex >= BG_ACHIEVEMENT_CATEGORY_COUNT ) {
+		return;
+	}
+
+	if ( !BG_AchievementGetTier( categoryIndex, tierIndex ) ) {
+		return;
+	}
+
+        CG_AddAchievementAnnouncement( (bgAchievementCategory_t) categoryIndex, tierIndex );
+}
+
+static void CG_AddRankAnnouncement( int rankIndex, const char *name, const char *nextName, qboolean rankUp ) {
+                cgRankAnnouncement_t *slot;
+                int queueCount;
+
+		if ( rankIndex < 0 ) {
+			return;
+		}
+
+		queueCount = cg.rankQueueCount;
+		if ( queueCount >= RANK_MAX_QUEUE ) {
+			int i;
+			queueCount = RANK_MAX_QUEUE - 1;
+
+			for ( i = 0; i < queueCount; ++i ) {
+				cg.rankQueue[i] = cg.rankQueue[i + 1];
+			}
+		}
+
+                slot = &cg.rankQueue[queueCount];
+                slot->rankIndex = rankIndex;
+                Q_strncpyz( slot->name, name ? name : "", sizeof( slot->name ) );
+                Q_strncpyz( slot->nextName, nextName ? nextName : "", sizeof( slot->nextName ) );
+                slot->rankUp = rankUp;
+                slot->startTime = cg.time;
+                cg.rankQueueCount = queueCount + 1;
+
+		/*
+		 * Rank changes are shown via the dedicated rank banner. Reusing the
+		 * achievement VO here makes intermission/scoreboard transitions sound
+		 * like a fresh achievement unlock when the profile score changes at the
+		 * end of a match.
+		 */
+}
+
+static void CG_ParseRankUp( void ) {
+                int rankIndex;
+                const char *name;
+                const char *nextName = "";
+                const profile_rank_def_t *rankDef;
+                const profile_rank_def_t *nextDef;
+
+                if ( trap_Argc() < 3 ) {
+                        return;
+                }
+
+                rankIndex = atoi( CG_Argv( 1 ) );
+
+                name = CG_Argv( 2 );
+                if ( trap_Argc() >= 4 ) {
+                        nextName = CG_Argv( 3 );
+                }
+
+                rankDef = CG_GetRankDef( rankIndex );
+                nextDef = CG_GetRankDef( rankIndex + 1 );
+
+                if ( rankDef && rankDef->name ) {
+                        name = rankDef->name;
+                }
+
+                if ( nextDef && nextDef->name ) {
+                        nextName = nextDef->name;
+                }
+
+                CG_AddRankAnnouncement( rankIndex, name, nextName, qtrue );
+}
+
+static void CG_ParseRankDown( void ) {
+                int rankIndex;
+                const char *name;
+                const char *nextName = "";
+                const profile_rank_def_t *rankDef;
+                const profile_rank_def_t *nextDef;
+
+                if ( trap_Argc() < 3 ) {
+                        return;
+                }
+
+                rankIndex = atoi( CG_Argv( 1 ) );
+
+                name = CG_Argv( 2 );
+                if ( trap_Argc() >= 4 ) {
+                        nextName = CG_Argv( 3 );
+                }
+
+                rankDef = CG_GetRankDef( rankIndex );
+                nextDef = CG_GetRankDef( rankIndex + 1 );
+
+                if ( rankDef && rankDef->name ) {
+                        name = rankDef->name;
+                }
+
+                if ( nextDef && nextDef->name ) {
+                        nextName = nextDef->name;
+                }
+
+                CG_AddRankAnnouncement( rankIndex, name, nextName, qfalse );
+}
+
+static void CG_ParseGhostMeta( void ) {
+        const char *vehicle;
+        const char *path;
+        int bestTime;
+        char mapname[MAX_QPATH];
+
+        if ( trap_Argc() < 4 ) {
+                CG_ResetBaseGhost();
+                return;
+        }
+
+        vehicle = CG_Argv( 1 );
+        bestTime = atoi( CG_Argv( 2 ) );
+        path = CG_Argv( 3 );
+
+        COM_StripExtension( COM_SkipPath( cgs.mapname ), mapname, sizeof( mapname ) );
+
+        if ( !vehicle[0] || !path || !path[0] ) {
+                CG_ResetBaseGhost();
+                return;
+        }
+
+        if ( CG_LoadGhostFromFile( path, mapname, vehicle, bestTime ) ) {
+                CG_Printf( "Loaded base ghost for %s (%s) in %d ms\n", mapname, vehicle, cg.baseGhostBestTime );
+        }
+}
+
+
+static int cgLastElimStatusTime = -1;
+
+void CG_ResetEliminationTimeline( void ) {
+        memset( cg.elimTimelineEvents, 0, sizeof( cg.elimTimelineEvents ) );
+        cg.elimTimelineCount = 0;
+}
+
+void CG_AddEliminationTimelineEvent( int clientNum, int round, int remaining, int timestamp ) {
+        int index;
+
+        if ( clientNum < 0 || clientNum >= MAX_CLIENTS ) {
+                return;
+        }
+
+        if ( round < 0 ) {
+                round = 0;
+        }
+
+        if ( remaining < 0 ) {
+                remaining = 0;
+        }
+
+        if ( cg.elimTimelineCount >= ELIM_TIMELINE_MAX_EVENTS ) {
+                int i;
+
+                for ( i = 1; i < ELIM_TIMELINE_MAX_EVENTS; ++i ) {
+                        cg.elimTimelineEvents[i - 1] = cg.elimTimelineEvents[i];
+                }
+
+                cg.elimTimelineCount = ELIM_TIMELINE_MAX_EVENTS - 1;
+        }
+
+        index = cg.elimTimelineCount;
+        cg.elimTimelineEvents[index].clientNum = clientNum;
+        cg.elimTimelineEvents[index].round = round;
+        cg.elimTimelineEvents[index].remaining = remaining;
+        cg.elimTimelineEvents[index].timestamp = timestamp;
+        cg.elimTimelineCount++;
+}
+
+static void CG_ParseEliminationTimelineEvent( void ) {
+        int clientNum;
+        int round;
+        int remaining;
+        int timestamp;
+
+        if ( trap_Argc() < 5 ) {
+                return;
+        }
+
+        clientNum = atoi( CG_Argv( 1 ) );
+        round = atoi( CG_Argv( 2 ) );
+        remaining = atoi( CG_Argv( 3 ) );
+        timestamp = atoi( CG_Argv( 4 ) );
+
+        CG_AddEliminationTimelineEvent( clientNum, round, remaining, timestamp );
+}
+
+static void CG_ParseEliminationStatus( void ) {
+        int clientNum;
+        int remaining;
+        int eventType;
+        qboolean isLocal;
+
+        if ( trap_Argc() < 4 ) {
+                return;
+        }
+
+        clientNum = atoi( CG_Argv( 1 ) );
+        remaining = atoi( CG_Argv( 2 ) );
+        eventType = atoi( CG_Argv( 3 ) );
+        isLocal = qfalse;
+
+        if ( remaining < 0 ) {
+                remaining = 0;
+        }
+
+        if ( cg.snap && clientNum == cg.snap->ps.clientNum ) {
+                isLocal = qtrue;
+        }
+
+        cg.eliminationPlayersRemaining = remaining;
+        cgLastElimStatusTime = cg.time;
+
+        if ( eventType == 1 ) {
+                cg.eliminationWarningActive = qfalse;
+                cg.eliminationWarningTime = 0;
+                CG_CheckEliminationWarning( cg.eliminationPlayersRemaining );
+
+                if ( cgs.media.eliminationEliminatedSound && !isLocal ) {
+                        trap_S_StartLocalSound( cgs.media.eliminationEliminatedSound, CHAN_ANNOUNCER );
+                }
+                return;
+        }
+
+        if ( eventType == 2 ) {
+                cg.eliminationPlayersRemaining = 1;
+                cg.eliminationWarningActive = qfalse;
+        }
+}
+
+
+/*
+=================
+CG_ServerCommand
+
+The string has been tokenized and can be retrieved with
+Cmd_Argc() / Cmd_Argv()
+=================
+*/
+static void CG_ServerCommand( void ) {
+	const char	*cmd;
+	char		text[MAX_SAY_TEXT];
+// Q3Rally Code Start
+	int			i1, i2;
+// END
+
+	cmd = CG_Argv(0);
+
+	if ( !cmd[0] ) {
+		// server claimed the command
+		return;
+	}
+
+        if ( !strcmp( cmd, "achv" ) ) {
+                CG_ParseAchievementUnlock();
+                return;
+        }
+
+        if ( !strcmp( cmd, "rankup" ) ) {
+                CG_ParseRankUp();
+                return;
+        }
+
+        if ( !strcmp( cmd, "rankdown" ) ) {
+                CG_ParseRankDown();
+                return;
+        }
+
+        if ( !strcmp( cmd, "ghostmeta" ) ) {
+                CG_ParseGhostMeta();
+                return;
+        }
+
+        if ( !strcmp( cmd, "elim_status" ) ) {
+                CG_ParseEliminationStatus();
+                return;
+        }
+
+        if ( !strcmp( cmd, "elim_event" ) ) {
+                CG_ParseEliminationTimelineEvent();
+                return;
+        }
+
+        if ( !strcmp( cmd, "cp" ) ) {
+                const char *message;
+
+                message = CG_Argv(1);
+                CG_CenterPrint( message, SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
+
+                if ( message && ( cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS )
+                                && cgLastElimStatusTime != cg.time ) {
+                        if ( strstr( message, "You have been eliminated" ) || strstr( message, "You were eliminated" ) ) {
+                                cg.eliminationWarningActive = qfalse;
+                                cg.eliminationWarningTime = 0;
+                                if ( cgs.media.eliminationEliminatedSound ) {
+                                        trap_S_StartLocalSound( cgs.media.eliminationEliminatedSound, CHAN_ANNOUNCER );
+                                }
+                        } else if ( strstr( message, "You won the elimination!" ) ) {
+                                cg.eliminationWarningActive = qfalse;
+                        }
+                }
+
+                return;
+        }
+
+	if ( !strcmp( cmd, "cs" ) ) {
+		CG_ConfigStringModified();
+		return;
+	}
+
+	if ( !strcmp( cmd, "print" ) ) {
+		const char *message;
+
+		message = CG_Argv(1);
+		CG_Printf( "%s", message );
+
+                if ( message && ( cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS )
+                                && cgLastElimStatusTime != cg.time ) {
+                        const char *elimText;
+
+                        elimText = strstr( message, " was eliminated" );
+                        if ( !elimText ) {
+                                elimText = strstr( message, " has been eliminated" );
+                        }
+                        if ( elimText ) {
+                                const char *remainingText;
+                                int remaining;
+                                char eliminatedName[MAX_NAME_LENGTH];
+                                char localName[MAX_NAME_LENGTH];
+				qboolean isLocal = qfalse;
+				int nameLength;
+
+				remainingText = strchr( message, '(' );
+				if ( remainingText ) {
+					remaining = atoi( remainingText + 1 );
+					if ( remaining < 0 ) {
+						remaining = 0;
+					}
+					cg.eliminationPlayersRemaining = remaining;
+				}
+
+				if ( cg.eliminationPlayersRemaining <= 0 ) {
+					cg.eliminationPlayersRemaining = CG_GetPlayersRemaining( NULL );
+				}
+
+				CG_CheckEliminationWarning( cg.eliminationPlayersRemaining );
+
+				nameLength = elimText - message;
+				if ( nameLength >= MAX_NAME_LENGTH ) {
+					nameLength = MAX_NAME_LENGTH - 1;
+				}
+				Q_strncpyz( eliminatedName, message, nameLength + 1 );
+				Q_CleanStr( eliminatedName );
+
+				if ( cg.snap ) {
+					Q_strncpyz( localName, cgs.clientinfo[cg.snap->ps.clientNum].name, sizeof(localName) );
+					Q_CleanStr( localName );
+					if ( Q_stricmp( eliminatedName, localName ) == 0 ) {
+						isLocal = qtrue;
+					}
+				}
+
+				if ( !isLocal && cgs.media.eliminationEliminatedSound ) {
+					trap_S_StartLocalSound( cgs.media.eliminationEliminatedSound, CHAN_ANNOUNCER );
+				}
+			} else if ( strstr( message, "won the elimination!" ) ) {
+				cg.eliminationPlayersRemaining = 1;
+				cg.eliminationWarningActive = qfalse;
+			}
+		}
+#ifdef MISSIONPACK
+		cmd = CG_Argv(1);			// yes, this is obviously a hack, but so is the way we hear about
+									// votes passing or failing
+		if ( !Q_stricmpn( cmd, "vote failed", 11 ) || !Q_stricmpn( cmd, "team vote failed", 16 )) {
+			trap_S_StartLocalSound( cgs.media.voteFailed, CHAN_ANNOUNCER );
+		} else if ( !Q_stricmpn( cmd, "vote passed", 11 ) || !Q_stricmpn( cmd, "team vote passed", 16 ) ) {
+			trap_S_StartLocalSound( cgs.media.votePassed, CHAN_ANNOUNCER );
+		}
+#endif
+		return;
+	}
+
+	if ( !strcmp( cmd, "chat" ) ) {
+		if ( cgs.gametype >= GT_TEAM && cg_teamChatsOnly.integer ) {
+			return;
+		}
+
+		trap_S_StartLocalSound( cgs.media.talkSound, CHAN_LOCAL_SOUND );
+		Q_strncpyz( text, CG_Argv(1), MAX_SAY_TEXT );
+		CG_RemoveChatEscapeChar( text );
+		CG_Printf( "%s\n", text );
+		return;
+	}
+
+	if ( !strcmp( cmd, "tchat" ) ) {
+		trap_S_StartLocalSound( cgs.media.talkSound, CHAN_LOCAL_SOUND );
+		Q_strncpyz( text, CG_Argv(1), MAX_SAY_TEXT );
+		CG_RemoveChatEscapeChar( text );
+		CG_AddToTeamChat( text );
+		CG_Printf( "%s\n", text );
+		return;
+	}
+
+#ifdef MISSIONPACK
+	if ( !strcmp( cmd, "vchat" ) ) {
+		CG_VoiceChat( SAY_ALL );
+		return;
+	}
+
+	if ( !strcmp( cmd, "vtchat" ) ) {
+		CG_VoiceChat( SAY_TEAM );
+		return;
+	}
+
+	if ( !strcmp( cmd, "vtell" ) ) {
+		CG_VoiceChat( SAY_TELL );
+		return;
+	}
+#endif
+
+	if ( !strcmp( cmd, "scores" ) ) {
+		CG_ParseScores();
+		return;
+	}
+
+	if ( !strcmp( cmd, "tinfo" ) ) {
+		CG_ParseTeamInfo();
+		return;
+	}
+
+	if ( !strcmp( cmd, "map_restart" ) ) {
+		CG_MapRestart();
+		return;
+	}
+
+	if ( Q_stricmp (cmd, "remapShader") == 0 )
+	{
+		if (trap_Argc() == 4)
+		{
+			char shader1[MAX_QPATH];
+			char shader2[MAX_QPATH];
+			char shader3[MAX_QPATH];
+
+			Q_strncpyz(shader1, CG_Argv(1), sizeof(shader1));
+			Q_strncpyz(shader2, CG_Argv(2), sizeof(shader2));
+			Q_strncpyz(shader3, CG_Argv(3), sizeof(shader3));
+
+			trap_R_RemapShader(shader1, shader2, shader3);
+		}
+		
+		return;
+	}
+
+	// loaddeferred can be both a servercmd and a consolecmd
+	if ( !strcmp( cmd, "loaddefered" ) ) {	// FIXME: spelled wrong, but not changing for demo
+		CG_LoadDeferredPlayers();
+		return;
+	}
+
+	// clientLevelShot is sent before taking a special screenshot for
+	// the menu system during development
+	if ( !strcmp( cmd, "clientLevelShot" ) ) {
+		cg.levelShot = qtrue;
+		return;
+	}
+
+// Q3Rally Code Start
+	if ( !strcmp( cmd, "times" ) ) {
+		CG_ParseTimes();
+		return;
+	}
+
+	if ( !strcmp( cmd, "rc" ) ) {
+		i1 = atoi(CG_Argv(2));
+		CG_RaceCountDown(CG_Argv(1), i1);
+		return;
+	}
+
+       if ( !strcmp( cmd, "newLapTime" ) ) {
+	       int client = atoi(CG_Argv(1));
+	       int lap = atoi(CG_Argv(2));
+	       int time = atoi(CG_Argv(3));
+
+	       CG_NewLapTime( client, lap, time );
+	       return;
+       }
+
+	if ( !strcmp( cmd, "positions" ) ) {
+		CG_ParsePositions();
+		return;
+	}
+
+	if ( !strcmp( cmd, "raceTime" ) ) {
+		CG_StartRace( atoi(CG_Argv(1)) );
+		return;
+	}
+
+	if ( !strcmp( cmd, "raceFinishTime" ) ) {
+		i1 = atoi(CG_Argv(1));
+		i2 = atoi(CG_Argv(2));
+		CG_FinishedRace( i1, i2 );
+		return;
+	}
+// END
+
+	CG_Printf( "Unknown client game command: %s\n", cmd );
+}
+
+
+/*
+====================
+CG_ExecuteNewServerCommands
+
+Execute all of the server commands that were received along
+with this this snapshot.
+====================
+*/
+void CG_ExecuteNewServerCommands( int latestSequence ) {
+	while ( cgs.serverCommandSequence < latestSequence ) {
+		if ( trap_GetServerCommand( ++cgs.serverCommandSequence ) ) {
+			CG_ServerCommand();
+		}
+	}
+}
