@@ -43,7 +43,3 @@ Jedes Match wird als einzelne JSON-Datei unter `data/<matchId>.json` abgelegt. S
 ## Fehlerbehandlung
 Fehlerhafte Anfragen werden als JSON im Format `{ "error": "..." }` beantwortet. Stimmt etwas mit den Dateirechten nicht, liefert der Service HTTP-Status 500.
 
-
-## Profile API-Vertrag
-
-Für die einheitliche Verarbeitung zwischen Engine, PHP-Webservice und UI gilt `docs/profile_contract_v1.md` als verbindliche Quelle (Identität über `user_id`, Auth-Token, Profilschema v1, Legacy-Lesbarkeit alter Name-only-Profile).

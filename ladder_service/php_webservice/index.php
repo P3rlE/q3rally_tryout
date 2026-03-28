@@ -26,11 +26,6 @@ const LADDER_MAX_BODY_BYTES    = 524288;  // 512 KB max POST body
 const LADDER_RATE_LIMIT_MAX    = 30;      // max requests per window per IP
 const LADDER_RATE_LIMIT_WINDOW = 60;      // window in seconds
 const LADDER_RATE_FILE_PREFIX  = 'rl_';   // rate-limit state file prefix
-const LADDER_AUTH_RATE_FILE_PREFIX = 'auth_rl_';
-const USERS_FILE = __DIR__ . '/data/users.json';
-const REFRESH_FILE = __DIR__ . '/data/user_refresh_tokens.json';
-const USER_ACCESS_TTL = 900;
-const USER_REFRESH_TTL = 604800;
 
 require_once __DIR__ . '/keys.php';
 
@@ -4453,26 +4448,20 @@ try {
     switch ($method) {
         case 'POST':
             ladder_check_rate_limit();
-            if (count($segments) >= 2 && $segments[0] === 'auth') {
-                ladder_check_auth_rate_limit($segments[1]);
-            }
             handle_post($segments);
             break;
         case 'GET':
             handle_get($segments);
-            break;
-        case 'PUT':
-            handle_put($segments);
             break;
         case 'DELETE':
             keys_require_auth('');
             handle_delete($segments);
             break;
         default:
-            send_api_error(405, 'method_not_allowed', 'Method not allowed.');
+            send_error(405, 'Method not allowed.');
     }
 } catch (RuntimeException $e) {
-    send_api_error(400, 'invalid_request', $e->getMessage());
+    send_error(400, $e->getMessage());
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -4483,8 +4472,6 @@ try {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // Rank table mirrored from profile_shared.h PROFILE_RANK_TABLE
-const PROFILE_SCHEMA_VERSION = 'v1';
-
 const LADDER_RANK_NAMES = [
     'Rookie Driver', 'Street Newbie', 'Weekend Racer', 'Track Learner',
     'Amateur Racer', 'Street Racer', 'Semi-Pro Driver', 'Pro Racer',
@@ -4498,74 +4485,6 @@ const LADDER_ACHIEVEMENT_NAMES = [
     'Flags Captured', 'Flag Assists', 'Fuel Consumed', 'Accuracy',
     'Excellent', 'Impressive', 'Perfect'
 ];
-
-/**
- * Resolve canonical user id from a player payload.
- * New clients send user_id, older ones still send playerId.
- */
-function profile_resolve_user_id(array $player): string
-{
-    $userId = trim((string)($player['user_id'] ?? ''));
-    if ($userId !== '') {
-        return $userId;
-    }
-    return trim((string)($player['playerId'] ?? ''));
-}
-
-/**
- * Resolve legacy player id from payload if present.
- */
-function profile_resolve_legacy_player_id(array $player): string
-{
-    return trim((string)($player['playerId'] ?? ''));
-}
-
-/**
- * Normalize profile identity fields to the profile.v1 contract.
- * Legacy payloads that only provide a name remain readable.
- */
-function profile_normalize_v1(array $snap, string $fallbackName = ''): ?array
-{
-    $name = trim((string)($snap['name'] ?? $fallbackName));
-    if ($name === '') {
-        return null;
-    }
-
-    $country = $snap['country'] ?? null;
-    if (is_string($country) && $country !== '') {
-        $country = strtoupper($country);
-        if (!preg_match('/^[A-Z]{2}$/', $country)) {
-            $country = null;
-        }
-    } else {
-        $country = null;
-    }
-
-    $birthdate = $snap['birthdate'] ?? null;
-    if (!is_string($birthdate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $birthdate)) {
-        $birthdate = null;
-    }
-
-    $gender = $snap['gender'] ?? null;
-    $allowedGenders = ['male', 'female', 'non_binary', 'unspecified', 'other'];
-    if (!is_string($gender) || !in_array($gender, $allowedGenders, true)) {
-        $gender = 'unspecified';
-    }
-
-    $avatarRef = $snap['avatar_ref'] ?? null;
-    if (!is_string($avatarRef) || trim($avatarRef) === '') {
-        $avatarRef = null;
-    }
-
-    return [
-        'schema_version' => PROFILE_SCHEMA_VERSION,
-        'name'           => $name,
-        'country'        => $country,
-        'birthdate'      => $birthdate,
-        'gender'         => $gender,
-        'avatar_ref'     => $avatarRef,
-    ];
-}
 
 function profile_path(string $playerId): string
 {
@@ -4584,27 +4503,7 @@ function profile_load(string $playerId): ?array
         return null;
     }
     $data = json_decode($raw, true);
-    if (!is_array($data)) {
-        return null;
-    }
-
-    if (isset($data['profileV1']) && is_array($data['profileV1'])) {
-        $normalized = profile_normalize_v1($data['profileV1']);
-        if ($normalized !== null) {
-            $data['profileV1'] = $normalized;
-        }
-        return $data;
-    }
-
-    // Legacy compatibility: old profiles with only name stay readable.
-    if (isset($data['name']) && !isset($data['schema_version'])) {
-        $normalized = profile_normalize_v1($data);
-        if ($normalized !== null) {
-            return $normalized;
-        }
-    }
-
-    return $data;
+    return is_array($data) ? $data : null;
 }
 
 function profile_save(string $playerId, array $data): void
@@ -4617,57 +4516,6 @@ function profile_save(string $playerId, array $data): void
         json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
         LOCK_EX
     );
-}
-
-/**
- * Find a profile for GET /players/{id}.
- * Primary path uses canonical user_id. Legacy id is accepted as a fallback
- * for older data and explicitly marked for migration visibility.
- *
- * @return array{profile: array, resolved_id: string, lookup: string}|null
- */
-function profile_lookup_for_player_id(string $requestedId): ?array
-{
-    $requestedId = trim($requestedId);
-    if ($requestedId === '') {
-        return null;
-    }
-
-    $direct = profile_load($requestedId);
-    if ($direct !== null) {
-        return [
-            'profile' => $direct,
-            'resolved_id' => $requestedId,
-            'lookup' => 'user_id',
-        ];
-    }
-
-    // Legacy fallback: for old profile files, allow lookup by stored playerId.
-    foreach (glob(PROFILES_DIR . '/*.json') ?: [] as $path) {
-        if (!is_file($path)) {
-            continue;
-        }
-        $raw = file_get_contents($path);
-        if ($raw === false) {
-            continue;
-        }
-        $profile = json_decode($raw, true);
-        if (!is_array($profile)) {
-            continue;
-        }
-        $legacyId = trim((string)($profile['playerId'] ?? ''));
-        $userId = trim((string)($profile['user_id'] ?? ''));
-        if ($legacyId === '' || $legacyId !== $requestedId || $userId === $requestedId) {
-            continue;
-        }
-        return [
-            'profile' => profile_load($userId !== '' ? $userId : $requestedId) ?? $profile,
-            'resolved_id' => $userId !== '' ? $userId : $requestedId,
-            'lookup' => 'legacy_playerId',
-        ];
-    }
-
-    return null;
 }
 
 /**
@@ -4691,30 +4539,20 @@ function profile_upsert_from_payload(array $payload): void
             continue;
         }
 
-        $playerId = profile_resolve_user_id($player);
+        $playerId = (string)($player['playerId'] ?? '');
         if ($playerId === '') {
             continue;
         }
-        $legacyPlayerId = profile_resolve_legacy_player_id($player);
-        $identitySource = isset($player['user_id']) && trim((string)$player['user_id']) !== ''
-            ? 'user_id'
-            : 'legacy_playerId';
-        $requiresMigration = $identitySource !== 'user_id';
 
         $existing = profile_load($playerId) ?? [];
-        $profileV1 = profile_normalize_v1($snap, (string)($player['cleanName'] ?? $player['name'] ?? ''));
 
         // Keep the best (highest) playerScore seen
         $newScore = (int)($snap['playerScore'] ?? 0);
         $oldScore = (int)($existing['playerScore'] ?? 0);
 
         $profile = [
-            'user_id'         => $playerId,
-            'playerId'        => $legacyPlayerId !== '' ? $legacyPlayerId : (string)($existing['playerId'] ?? $playerId),
-            'identity_source' => $identitySource,
-            'requires_migration' => $requiresMigration,
+            'playerId'        => $playerId,
             'cleanName'       => (string)($player['cleanName'] ?? $player['name'] ?? ''),
-            'profileV1'       => $profileV1 ?? ($existing['profileV1'] ?? null),
             'playerScore'     => max($newScore, $oldScore),
             'currentRank'     => (int)($snap['currentRank'] ?? 0),
             'highestRank'     => max((int)($snap['highestRank'] ?? 0), (int)($existing['highestRank'] ?? 0)),
@@ -4962,86 +4800,13 @@ function handle_register_json(): void
 
 function handle_post(array $segments): void
 {
-    if ($segments === ['auth', 'register']) {
-        $data = ladder_decode_json_body();
-        $userId = trim((string)($data['user_id'] ?? ''));
-        $password = (string)($data['password'] ?? '');
-        if ($userId === '' || strlen($userId) < 3 || strlen($userId) > 64) {
-            send_api_error(400, 'invalid_request', 'user_id must be 3..64 chars.');
-        }
-        if (strlen($password) < 8 || strlen($password) > 128) {
-            send_api_error(400, 'invalid_request', 'password must be 8..128 chars.');
-        }
-        if (users_find($userId) !== null) {
-            send_api_error(409, 'user_exists', 'user_id already registered.');
-        }
-
-        $profile = [
-            'schema_version' => PROFILE_SCHEMA_VERSION,
-            'name' => $userId,
-            'country' => null,
-            'birthdate' => null,
-            'gender' => 'unspecified',
-            'avatar_ref' => null,
-        ];
-        users_create($userId, $password, $profile);
-
-        $access = user_create_access_token($userId);
-        $refresh = user_create_refresh_token($userId);
-        send_json([
-            'access_token' => $access,
-            'refresh_token' => $refresh,
-            'token_type' => 'Bearer',
-            'expires_in' => USER_ACCESS_TTL,
-        ], 200);
-    }
-
-    if ($segments === ['auth', 'login']) {
-        $data = ladder_decode_json_body();
-        $userId = trim((string)($data['user_id'] ?? ''));
-        $password = (string)($data['password'] ?? '');
-        $user = users_find($userId);
-        if ($user === null || !password_verify($password . user_password_pepper(), (string)($user['password_hash'] ?? ''))) {
-            send_api_error(401, 'invalid_credentials', 'Invalid user_id or password.');
-        }
-
-        $access = user_create_access_token($userId);
-        $refresh = user_create_refresh_token($userId);
-        send_json([
-            'access_token' => $access,
-            'refresh_token' => $refresh,
-            'token_type' => 'Bearer',
-            'expires_in' => USER_ACCESS_TTL,
-        ], 200);
-    }
-
-    if ($segments === ['auth', 'refresh']) {
-        $data = ladder_decode_json_body();
-        $refreshToken = trim((string)($data['refresh_token'] ?? ''));
-        if ($refreshToken === '') {
-            send_api_error(400, 'invalid_request', 'refresh_token required.');
-        }
-        $userId = user_consume_refresh_token($refreshToken);
-        if ($userId === null) {
-            send_api_error(401, 'invalid_refresh_token', 'Refresh token is invalid.');
-        }
-        $access = user_create_access_token($userId);
-        $refresh = user_create_refresh_token($userId);
-        send_json([
-            'access_token' => $access,
-            'refresh_token' => $refresh,
-            'token_type' => 'Bearer',
-            'expires_in' => USER_ACCESS_TTL,
-        ], 200);
-    }
-
     if ($segments === ['register']) {
         handle_register_json();
         return;
     }
 
     if ($segments !== ['matches']) {
-        send_api_error(404, 'not_found', 'Endpoint not found.');
+        send_error(404, 'Endpoint not found.');
     }
 
     $payload = json_decode(ladder_read_body(), true);
@@ -5049,6 +4814,8 @@ function handle_post(array $segments): void
         throw new RuntimeException('Invalid JSON payload.');
     }
 
+    // Auth: verify Bearer token against registered server keys.
+    // Server name in payload must match the registered name for this key.
     $serverName = '';
     if (isset($payload['server']['name']) && is_string($payload['server']['name'])) {
         $serverName = $payload['server']['name'];
@@ -5064,6 +4831,7 @@ function handle_post(array $segments): void
         throw new RuntimeException('matchId contains unsupported characters.');
     }
 
+    // Silently discard matches with no players
     $playerCount = (int)($payload['playerCount'] ?? 0);
     if ($playerCount <= 0) {
         send_json(['matchId' => $payload['matchId'], 'skipped' => true], 200);
@@ -5078,6 +4846,7 @@ function handle_post(array $segments): void
 
     $payload['receivedAt'] = gmdate('c');
 
+    // Normalize dedicated flag → source field for frontend filtering
     $dedicated = $payload['server']['dedicated'] ?? null;
     $payload['source'] = ($dedicated === true || $dedicated === 1 || $dedicated === '1')
         ? 'online'
@@ -5092,7 +4861,10 @@ function handle_post(array $segments): void
         throw new RuntimeException('Unable to persist match.');
     }
 
+    // Update leaderboard index
     index_append($payload);
+
+    // Update player profiles
     profile_upsert_from_payload($payload);
 
     send_json(['matchId' => $payload['matchId']], 201);
@@ -5164,7 +4936,6 @@ function handle_get(array $segments): void
 
     // Fast leaderboard index endpoint – returns only fields needed by the frontend
     if ($segments === ['matches', 'index']) {
-        keys_require_auth('');
         $entries = index_get();
         header('Content-Type: application/json');
         header('Cache-Control: public, max-age=30');
@@ -5173,7 +4944,15 @@ function handle_get(array $segments): void
     }
 
     if ($segments === ['matches']) {
-        keys_require_auth('');
+        $header   = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+        $provided = strncasecmp($header, 'Bearer ', 7) === 0 ? trim(substr($header, 7)) : '';
+        if ($provided === '') {
+            send_error(401, 'Authorization required.');
+        }
+        $record = keys_find_by_key($provided);
+        if ($record === null || ($record['status'] ?? '') !== 'active') {
+            send_error(403, 'Invalid or inactive API key.');
+        }
         $mode = $_GET['mode'] ?? null;
         $modeFilter = is_string($mode) && $mode !== '' ? $mode : null;
 
@@ -5198,29 +4977,16 @@ function handle_get(array $segments): void
         return;
     }
 
-    if ($segments === ['profile']) {
-        $user = user_require_auth();
-        $profile = user_normalize_profile((array)($user['profile'] ?? []), (string)$user['user_id']);
-        send_json(['user_id' => $user['user_id'], 'profile' => $profile], 200);
-    }
-
     // Player profile endpoint
     if (count($segments) === 2 && $segments[0] === 'players') {
         $playerId = $segments[1];
         if ($playerId === '') {
             send_error(400, 'Player ID required.');
         }
-        $result = profile_lookup_for_player_id($playerId);
-        if ($result === null) {
+        $profile = profile_load($playerId);
+        if ($profile === null) {
             send_error(404, 'Player not found.');
         }
-        $profile = $result['profile'];
-        $profile['lookup'] = [
-            'requested_id' => $playerId,
-            'resolved_user_id' => (string)($result['resolved_id'] ?? ''),
-            'mode' => (string)($result['lookup'] ?? 'user_id'),
-            'legacy_fallback_used' => (string)($result['lookup'] ?? 'user_id') !== 'user_id',
-        ];
         header('Content-Type: application/json');
         header('Cache-Control: public, max-age=60');
         echo json_encode($profile, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -5228,7 +4994,6 @@ function handle_get(array $segments): void
     }
 
     if (count($segments) === 2 && $segments[0] === 'matches') {
-        keys_require_auth('');
         $matchId = normalize_match_id($segments[1]);
         $matchPath = DATA_DIR . '/' . $matchId . '.json';
         if (!is_readable($matchPath)) {
@@ -5249,39 +5014,13 @@ function handle_get(array $segments): void
         return;
     }
 
-    send_api_error(404, 'not_found', 'Endpoint not found.');
-}
-
-function handle_put(array $segments): void
-{
-    if ($segments === ['profile']) {
-        $user = user_require_auth();
-        $data = ladder_decode_json_body();
-        $profile = user_normalize_profile($data, (string)$user['user_id']);
-        users_update_profile((string)$user['user_id'], $profile);
-        send_json(['user_id' => $user['user_id'], 'profile' => $profile], 200);
-    }
-
-    if ($segments === ['profile', 'avatar']) {
-        $user = user_require_auth();
-        $data = ladder_decode_json_body();
-        $avatarRef = trim((string)($data['avatar_ref'] ?? ''));
-        if ($avatarRef === '' || strlen($avatarRef) > 256) {
-            send_api_error(400, 'invalid_request', 'avatar_ref must be 1..256 chars.');
-        }
-        $profile = user_normalize_profile((array)($user['profile'] ?? []), (string)$user['user_id']);
-        $profile['avatar_ref'] = $avatarRef;
-        users_update_profile((string)$user['user_id'], $profile);
-        send_json(['user_id' => $user['user_id'], 'profile' => $profile], 200);
-    }
-
-    send_api_error(404, 'not_found', 'Endpoint not found.');
+    send_error(404, 'Endpoint not found.');
 }
 
 function handle_delete(array $segments): void
 {
     if (count($segments) !== 2 || $segments[0] !== 'matches') {
-        send_api_error(404, 'not_found', 'Endpoint not found.');
+        send_error(404, 'Endpoint not found.');
     }
 
     $matchId = normalize_match_id($segments[1]);
@@ -5630,264 +5369,6 @@ function normalize_map_key(string $raw): string
     return trim((string) $normalized, '_');
 }
 
-function ladder_decode_json_body(): array
-{
-    $body = ladder_read_body();
-    $data = json_decode($body, true);
-    if (!is_array($data)) {
-        send_api_error(400, 'invalid_request', 'Invalid JSON body.');
-    }
-    return $data;
-}
-
-function ladder_check_auth_rate_limit(string $endpoint): void
-{
-    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    $safeIp = preg_replace('/[^a-fA-F0-9:.]/', '_', $ip);
-    $safeEndpoint = preg_replace('/[^a-z0-9_]/', '_', strtolower($endpoint));
-    $rlFile = DATA_DIR . '/' . LADDER_AUTH_RATE_FILE_PREFIX . $safeIp . '_' . $safeEndpoint . '.json';
-    $now = time();
-    $windowStart = $now - LADDER_RATE_LIMIT_WINDOW;
-
-    $state = ['hits' => []];
-    if (is_file($rlFile)) {
-        $raw = file_get_contents($rlFile);
-        $decoded = is_string($raw) ? json_decode($raw, true) : null;
-        if (is_array($decoded)) {
-            $state = $decoded;
-        }
-    }
-
-    $state['hits'] = array_values(array_filter(
-        $state['hits'] ?? [],
-        static fn($t) => is_int($t) && $t > $windowStart
-    ));
-
-    if (count($state['hits']) >= 20) {
-        header('Retry-After: ' . LADDER_RATE_LIMIT_WINDOW);
-        send_api_error(429, 'rate_limited', 'Too many auth requests.');
-    }
-
-    $state['hits'][] = $now;
-    file_put_contents($rlFile, json_encode($state), LOCK_EX);
-}
-
-function users_load_all(): array
-{
-    if (!is_file(USERS_FILE)) {
-        return [];
-    }
-    $raw = file_get_contents(USERS_FILE);
-    $data = is_string($raw) ? json_decode($raw, true) : null;
-    return is_array($data) ? $data : [];
-}
-
-function users_save_all(array $users): void
-{
-    $dir = dirname(USERS_FILE);
-    if (!is_dir($dir)) {
-        mkdir($dir, 0775, true);
-    }
-    file_put_contents(USERS_FILE, json_encode(array_values($users), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
-}
-
-function users_find(string $userId): ?array
-{
-    foreach (users_load_all() as $user) {
-        if (($user['user_id'] ?? '') === $userId) {
-            return $user;
-        }
-    }
-    return null;
-}
-
-function users_create(string $userId, string $password, array $profile): void
-{
-    $users = users_load_all();
-    $users[] = [
-        'user_id' => $userId,
-        'password_hash' => password_hash($password . user_password_pepper(), PASSWORD_DEFAULT),
-        'profile' => $profile,
-        'created_at' => gmdate('c'),
-        'updated_at' => gmdate('c'),
-    ];
-    users_save_all($users);
-}
-
-function users_update_profile(string $userId, array $profile): void
-{
-    $users = users_load_all();
-    foreach ($users as &$user) {
-        if (($user['user_id'] ?? '') !== $userId) {
-            continue;
-        }
-        $user['profile'] = $profile;
-        $user['updated_at'] = gmdate('c');
-        users_save_all($users);
-        return;
-    }
-    unset($user);
-    send_api_error(401, 'unauthorized', 'Unknown user.');
-}
-
-function user_password_pepper(): string
-{
-    return getenv('LADDER_PASSWORD_PEPPER') ?: 'q3rally-dev-pepper';
-}
-
-function user_token_secret(): string
-{
-    return getenv('LADDER_TOKEN_SECRET') ?: 'q3rally-dev-secret';
-}
-
-function user_create_access_token(string $userId): string
-{
-    $exp = time() + USER_ACCESS_TTL;
-    $payload = $userId . ':' . $exp;
-    $sig = hash_hmac('sha256', $payload, user_token_secret());
-    return rtrim(strtr(base64_encode('usr.' . $payload . ':' . $sig), '+/', '-_'), '=');
-}
-
-function user_decode_access_token(string $token): ?string
-{
-    $decoded = base64_decode(strtr($token, '-_', '+/'), true);
-    if (!is_string($decoded) || strpos($decoded, 'usr.') !== 0) {
-        return null;
-    }
-    $parts = explode(':', substr($decoded, 4));
-    if (count($parts) < 3) {
-        return null;
-    }
-    $sig = array_pop($parts);
-    $exp = (int)array_pop($parts);
-    $userId = implode(':', $parts);
-    $payload = $userId . ':' . $exp;
-    $expected = hash_hmac('sha256', $payload, user_token_secret());
-    if (!hash_equals($expected, $sig) || $exp < time()) {
-        return null;
-    }
-    return $userId;
-}
-
-function refresh_load_all(): array
-{
-    if (!is_file(REFRESH_FILE)) {
-        return [];
-    }
-    $raw = file_get_contents(REFRESH_FILE);
-    $data = is_string($raw) ? json_decode($raw, true) : null;
-    return is_array($data) ? $data : [];
-}
-
-function refresh_save_all(array $tokens): void
-{
-    $dir = dirname(REFRESH_FILE);
-    if (!is_dir($dir)) {
-        mkdir($dir, 0775, true);
-    }
-    file_put_contents(REFRESH_FILE, json_encode(array_values($tokens), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
-}
-
-function user_create_refresh_token(string $userId): string
-{
-    $token = rtrim(strtr(base64_encode(random_bytes(48)), '+/', '-_'), '=');
-    $tokens = refresh_load_all();
-    $tokens[] = [
-        'hash' => hash('sha256', $token),
-        'user_id' => $userId,
-        'expires_at' => time() + USER_REFRESH_TTL,
-        'revoked' => false,
-    ];
-    refresh_save_all($tokens);
-    return $token;
-}
-
-function user_consume_refresh_token(string $token): ?string
-{
-    $hash = hash('sha256', $token);
-    $tokens = refresh_load_all();
-    $userId = null;
-    foreach ($tokens as &$entry) {
-        if (($entry['hash'] ?? '') !== $hash) {
-            continue;
-        }
-        if (!empty($entry['revoked']) || (int)($entry['expires_at'] ?? 0) < time()) {
-            break;
-        }
-        $entry['revoked'] = true;
-        $userId = (string)($entry['user_id'] ?? '');
-        break;
-    }
-    unset($entry);
-    if ($userId !== null) {
-        refresh_save_all($tokens);
-    }
-    return $userId;
-}
-
-function user_require_auth(): array
-{
-    $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-    $token = strncasecmp($header, 'Bearer ', 7) === 0 ? trim(substr($header, 7)) : '';
-    if ($token === '') {
-        send_api_error(401, 'unauthorized', 'Missing or invalid bearer token.');
-    }
-    $userId = user_decode_access_token($token);
-    if ($userId === null) {
-        send_api_error(401, 'unauthorized', 'Invalid or expired user token.');
-    }
-    $user = users_find($userId);
-    if ($user === null) {
-        send_api_error(401, 'unauthorized', 'Unknown user.');
-    }
-    return $user;
-}
-
-function user_normalize_profile(array $profile, string $fallbackName): array
-{
-    $name = trim((string)($profile['name'] ?? $fallbackName));
-    if ($name === '' || strlen($name) > 64) {
-        send_api_error(400, 'invalid_request', 'profile.name must be 1..64 chars.');
-    }
-    $country = $profile['country'] ?? null;
-    if ($country !== null) {
-        $country = strtoupper(trim((string)$country));
-        if (!preg_match('/^[A-Z]{2}$/', $country)) {
-            send_api_error(400, 'invalid_request', 'profile.country must be ISO alpha-2.');
-        }
-    }
-    $gender = $profile['gender'] ?? 'unspecified';
-    $allowed = ['male', 'female', 'non_binary', 'unspecified', 'other', null];
-    if (!in_array($gender, $allowed, true)) {
-        send_api_error(400, 'invalid_request', 'profile.gender is invalid.');
-    }
-    $birthdate = $profile['birthdate'] ?? null;
-    if ($birthdate !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$birthdate)) {
-        send_api_error(400, 'invalid_request', 'profile.birthdate must be YYYY-MM-DD.');
-    }
-    $avatar = $profile['avatar_ref'] ?? null;
-    if ($avatar !== null) {
-        $avatar = trim((string)$avatar);
-        if ($avatar === '' || strlen($avatar) > 256) {
-            send_api_error(400, 'invalid_request', 'profile.avatar_ref must be 1..256 chars.');
-        }
-    }
-
-    return [
-        'schema_version' => PROFILE_SCHEMA_VERSION,
-        'name' => $name,
-        'country' => $country,
-        'birthdate' => $birthdate,
-        'gender' => $gender,
-        'avatar_ref' => $avatar,
-    ];
-}
-
-function send_api_error(int $statusCode, string $code, string $message): void
-{
-    send_json(['error' => ['code' => $code, 'message' => $message]], $statusCode);
-}
-
 function send_json(array $payload, int $statusCode): void
 {
     http_response_code($statusCode);
@@ -5898,5 +5379,5 @@ function send_json(array $payload, int $statusCode): void
 
 function send_error(int $statusCode, string $message): void
 {
-    send_api_error($statusCode, 'error', $message);
+    send_json(['error' => $message], $statusCode);
 }

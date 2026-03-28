@@ -16,8 +16,6 @@ from ladder_service.ladder_service import main
 from ladder_service.ladder_service.db import session_scope
 from ladder_service.ladder_service.models import Base
 
-SERVER_HEADERS = {"Authorization": "Bearer dev-server-key"}
-
 
 @pytest.fixture(scope="module", autouse=True)
 def override_db(tmp_path_factory: pytest.TempPathFactory) -> None:
@@ -61,19 +59,14 @@ MATCH_TEMPLATE = {
 }
 
 
-def test_create_match_requires_server_key() -> None:
-    response = client.post("/api/v1/matches", json=MATCH_TEMPLATE)
-    assert response.status_code == 401
-
-
 def test_create_match() -> None:
-    response = client.post("/api/v1/matches", json=MATCH_TEMPLATE, headers=SERVER_HEADERS)
+    response = client.post("/api/v1/matches", json=MATCH_TEMPLATE)
     assert response.status_code == 201, response.text
     assert response.json() == {"matchId": MATCH_TEMPLATE["matchId"]}
 
 
 def test_get_match() -> None:
-    response = client.get(f"/api/v1/matches/{MATCH_TEMPLATE['matchId']}", headers=SERVER_HEADERS)
+    response = client.get(f"/api/v1/matches/{MATCH_TEMPLATE['matchId']}")
     assert response.status_code == 200
     data = response.json()
     assert data["matchId"] == MATCH_TEMPLATE["matchId"]
@@ -84,7 +77,7 @@ def test_get_match() -> None:
 
 
 def test_list_matches() -> None:
-    response = client.get("/api/v1/matches?limit=10", headers=SERVER_HEADERS)
+    response = client.get("/api/v1/matches?limit=10")
     assert response.status_code == 200
     data = response.json()
     assert len(data["matches"]) >= 1
@@ -96,10 +89,10 @@ def test_list_matches_filter_mode() -> None:
         "matchId": "srv-20240405-183011-43",
         "mode": "ARCADE_RACING",
     }
-    created = client.post("/api/v1/matches", json=alt_match, headers=SERVER_HEADERS)
+    created = client.post("/api/v1/matches", json=alt_match)
     assert created.status_code == 201, created.text
 
-    response = client.get("/api/v1/matches?mode=GT_RACING", headers=SERVER_HEADERS)
+    response = client.get("/api/v1/matches?mode=GT_RACING")
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["matches"], "Expected at least one GT_RACING match in response"
@@ -107,7 +100,7 @@ def test_list_matches_filter_mode() -> None:
         assert match["mode"] == "GT_RACING"
         assert match["matchId"] != alt_match["matchId"]
 
-    cleanup = client.delete(f"/api/v1/matches/{alt_match['matchId']}", headers=SERVER_HEADERS)
+    cleanup = client.delete(f"/api/v1/matches/{alt_match['matchId']}")
     assert cleanup.status_code == 204
 
 
@@ -117,15 +110,15 @@ def test_list_matches_supports_team_race_dm_mode() -> None:
         "matchId": "srv-20240405-183011-44",
         "mode": "GT_TEAM_RACING_DM",
     }
-    created = client.post("/api/v1/matches", json=match, headers=SERVER_HEADERS)
+    created = client.post("/api/v1/matches", json=match)
     assert created.status_code == 201, created.text
 
-    response = client.get("/api/v1/matches?mode=GT_TEAM_RACING_DM", headers=SERVER_HEADERS)
+    response = client.get("/api/v1/matches?mode=GT_TEAM_RACING_DM")
     assert response.status_code == 200, response.text
     data = response.json()
     assert any(entry["matchId"] == match["matchId"] for entry in data["matches"])
 
-    cleanup = client.delete(f"/api/v1/matches/{match['matchId']}", headers=SERVER_HEADERS)
+    cleanup = client.delete(f"/api/v1/matches/{match['matchId']}")
     assert cleanup.status_code == 204
 
 
@@ -137,68 +130,20 @@ def test_create_match_accepts_sprint_mode() -> None:
         "settings": {"g_gametype": 145},
     }
 
-    response = client.post("/api/v1/matches", json=match, headers=SERVER_HEADERS)
+    response = client.post("/api/v1/matches", json=match)
     assert response.status_code == 201, response.text
 
-    stored = client.get(f"/api/v1/matches/{match['matchId']}", headers=SERVER_HEADERS)
+    stored = client.get(f"/api/v1/matches/{match['matchId']}")
     assert stored.status_code == 200, stored.text
     payload = stored.json()
     assert payload["mode"] == "GT_SPRINT"
 
-    cleanup = client.delete(f"/api/v1/matches/{match['matchId']}", headers=SERVER_HEADERS)
+    cleanup = client.delete(f"/api/v1/matches/{match['matchId']}")
     assert cleanup.status_code == 204
 
 
 def test_delete_match() -> None:
-    response = client.delete(f"/api/v1/matches/{MATCH_TEMPLATE['matchId']}", headers=SERVER_HEADERS)
+    response = client.delete(f"/api/v1/matches/{MATCH_TEMPLATE['matchId']}")
     assert response.status_code == 204
-    follow_up = client.get(f"/api/v1/matches/{MATCH_TEMPLATE['matchId']}", headers=SERVER_HEADERS)
+    follow_up = client.get(f"/api/v1/matches/{MATCH_TEMPLATE['matchId']}")
     assert follow_up.status_code == 404
-
-
-def test_register_login_refresh_and_profile_flow() -> None:
-    register = client.post(
-        "/api/v1/auth/register",
-        json={"user_id": "racer_1", "password": "TopSecret42"},
-    )
-    assert register.status_code == 200, register.text
-    register_data = register.json()
-    assert "access_token" in register_data
-    assert "refresh_token" in register_data
-
-    login = client.post(
-        "/api/v1/auth/login",
-        json={"user_id": "racer_1", "password": "TopSecret42"},
-    )
-    assert login.status_code == 200, login.text
-
-    user_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
-    profile = client.get("/api/v1/profile", headers=user_headers)
-    assert profile.status_code == 200
-    assert profile.json()["user_id"] == "racer_1"
-
-    avatar_update = client.put(
-        "/api/v1/profile/avatar",
-        headers=user_headers,
-        json={"avatar_ref": "avatars/racer_1.png"},
-    )
-    assert avatar_update.status_code == 200
-    assert avatar_update.json()["profile"]["avatar_ref"] == "avatars/racer_1.png"
-
-    refresh = client.post("/api/v1/auth/refresh", json={"refresh_token": login.json()["refresh_token"]})
-    assert refresh.status_code == 200, refresh.text
-
-
-def test_auth_rate_limit() -> None:
-    for _ in range(20):
-        response = client.post(
-            "/api/v1/auth/login",
-            json={"user_id": "nobody", "password": "wrong-password"},
-        )
-        assert response.status_code in {401, 429}
-
-    blocked = client.post(
-        "/api/v1/auth/login",
-        json={"user_id": "nobody", "password": "wrong-password"},
-    )
-    assert blocked.status_code == 429

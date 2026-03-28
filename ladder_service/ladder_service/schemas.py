@@ -1,7 +1,7 @@
 """Pydantic schemas for request and response payloads."""
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime
 from typing import Any, Literal, Optional, get_args
 
 from pydantic import BaseModel, Field, HttpUrl, root_validator, validator
@@ -26,16 +26,6 @@ Gametype = Literal[
 
 
 _VALID_GAMETYPES: set[str] = set(get_args(Gametype))
-_ALLOWED_GENDERS = {"male", "female", "non_binary", "unspecified", "other"}
-
-
-class ApiError(BaseModel):
-    code: str
-    message: str
-
-
-class ErrorEnvelope(BaseModel):
-    error: ApiError
 
 
 class ServerInfo(BaseModel):
@@ -55,7 +45,6 @@ class Settings(BaseModel):
 
 class Player(BaseModel):
     playerId: str
-    user_id: Optional[str] = None
     displayName: Optional[str]
     team: Optional[str | int]
     rawScore: Optional[int]
@@ -64,7 +53,6 @@ class Player(BaseModel):
     position: Optional[int]
     damageDealt: Optional[int]
     damageTaken: Optional[int]
-    profile: Optional[dict[str, Any]]
 
     class Config:
         extra = "allow"
@@ -144,46 +132,3 @@ class MatchRead(MatchCreate):
 
     class Config:
         orm_mode = True
-
-
-class ProfileV1(BaseModel):
-    schema_version: Literal["v1"] = "v1"
-    name: str = Field(..., min_length=1, max_length=64)
-    country: Optional[str] = Field(default=None, regex=r"^[A-Z]{2}$")
-    birthdate: Optional[date] = None
-    gender: Optional[str] = None
-    avatar_ref: Optional[str] = Field(default=None, min_length=1, max_length=256)
-
-    @validator("gender")
-    def validate_gender(cls, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return value
-        if value not in _ALLOWED_GENDERS:
-            raise ValueError("gender must be one of the allowed values")
-        return value
-
-
-class RegisterRequest(BaseModel):
-    user_id: str = Field(..., min_length=3, max_length=64)
-    password: str = Field(..., min_length=8, max_length=128)
-
-
-class LoginRequest(BaseModel):
-    user_id: str = Field(..., min_length=1, max_length=64)
-    password: str = Field(..., min_length=1, max_length=128)
-
-
-class RefreshRequest(BaseModel):
-    refresh_token: str = Field(..., min_length=16, max_length=1024)
-
-
-class AuthTokens(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: Literal["Bearer"] = "Bearer"
-    expires_in: int
-
-
-class ProfileEnvelope(BaseModel):
-    user_id: str
-    profile: ProfileV1

@@ -38,7 +38,3 @@ Standardmäßig wird eine Datei `ladder.db` im Arbeitsverzeichnis genutzt. Über
 ```bash
 pytest
 ```
-
-## Profile-Vertrag (v1)
-
-Der verbindliche, komponentenübergreifende Vertrag für `user_id`, Auth-Token, Profilschema `v1` und Legacy-Kompatibilität ist in `docs/profile_contract_v1.md` dokumentiert.
