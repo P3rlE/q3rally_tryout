@@ -4472,6 +4472,8 @@ try {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // Rank table mirrored from profile_shared.h PROFILE_RANK_TABLE
+const PROFILE_SCHEMA_VERSION = 'v1';
+
 const LADDER_RANK_NAMES = [
     'Rookie Driver', 'Street Newbie', 'Weekend Racer', 'Track Learner',
     'Amateur Racer', 'Street Racer', 'Semi-Pro Driver', 'Pro Racer',
@@ -4485,6 +4487,66 @@ const LADDER_ACHIEVEMENT_NAMES = [
     'Flags Captured', 'Flag Assists', 'Fuel Consumed', 'Accuracy',
     'Excellent', 'Impressive', 'Perfect'
 ];
+
+/**
+ * Resolve canonical user id from a player payload.
+ * New clients send user_id, older ones still send playerId.
+ */
+function profile_resolve_user_id(array $player): string
+{
+    $userId = (string)($player['user_id'] ?? '');
+    if ($userId !== '') {
+        return $userId;
+    }
+    return (string)($player['playerId'] ?? '');
+}
+
+/**
+ * Normalize profile identity fields to the profile.v1 contract.
+ * Legacy payloads that only provide a name remain readable.
+ */
+function profile_normalize_v1(array $snap, string $fallbackName = ''): ?array
+{
+    $name = trim((string)($snap['name'] ?? $fallbackName));
+    if ($name === '') {
+        return null;
+    }
+
+    $country = $snap['country'] ?? null;
+    if (is_string($country) && $country !== '') {
+        $country = strtoupper($country);
+        if (!preg_match('/^[A-Z]{2}$/', $country)) {
+            $country = null;
+        }
+    } else {
+        $country = null;
+    }
+
+    $birthdate = $snap['birthdate'] ?? null;
+    if (!is_string($birthdate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $birthdate)) {
+        $birthdate = null;
+    }
+
+    $gender = $snap['gender'] ?? null;
+    $allowedGenders = ['male', 'female', 'non_binary', 'unspecified', 'other'];
+    if (!is_string($gender) || !in_array($gender, $allowedGenders, true)) {
+        $gender = 'unspecified';
+    }
+
+    $avatarRef = $snap['avatar_ref'] ?? null;
+    if (!is_string($avatarRef) || trim($avatarRef) === '') {
+        $avatarRef = null;
+    }
+
+    return [
+        'schema_version' => PROFILE_SCHEMA_VERSION,
+        'name'           => $name,
+        'country'        => $country,
+        'birthdate'      => $birthdate,
+        'gender'         => $gender,
+        'avatar_ref'     => $avatarRef,
+    ];
+}
 
 function profile_path(string $playerId): string
 {
@@ -4503,7 +4565,27 @@ function profile_load(string $playerId): ?array
         return null;
     }
     $data = json_decode($raw, true);
-    return is_array($data) ? $data : null;
+    if (!is_array($data)) {
+        return null;
+    }
+
+    if (isset($data['profileV1']) && is_array($data['profileV1'])) {
+        $normalized = profile_normalize_v1($data['profileV1']);
+        if ($normalized !== null) {
+            $data['profileV1'] = $normalized;
+        }
+        return $data;
+    }
+
+    // Legacy compatibility: old profiles with only name stay readable.
+    if (isset($data['name']) && !isset($data['schema_version'])) {
+        $normalized = profile_normalize_v1($data);
+        if ($normalized !== null) {
+            return $normalized;
+        }
+    }
+
+    return $data;
 }
 
 function profile_save(string $playerId, array $data): void
@@ -4539,20 +4621,23 @@ function profile_upsert_from_payload(array $payload): void
             continue;
         }
 
-        $playerId = (string)($player['playerId'] ?? '');
+        $playerId = profile_resolve_user_id($player);
         if ($playerId === '') {
             continue;
         }
 
         $existing = profile_load($playerId) ?? [];
+        $profileV1 = profile_normalize_v1($snap, (string)($player['cleanName'] ?? $player['name'] ?? ''));
 
         // Keep the best (highest) playerScore seen
         $newScore = (int)($snap['playerScore'] ?? 0);
         $oldScore = (int)($existing['playerScore'] ?? 0);
 
         $profile = [
+            'user_id'         => $playerId,
             'playerId'        => $playerId,
             'cleanName'       => (string)($player['cleanName'] ?? $player['name'] ?? ''),
+            'profileV1'       => $profileV1 ?? ($existing['profileV1'] ?? null),
             'playerScore'     => max($newScore, $oldScore),
             'currentRank'     => (int)($snap['currentRank'] ?? 0),
             'highestRank'     => max((int)($snap['highestRank'] ?? 0), (int)($existing['highestRank'] ?? 0)),
