@@ -78,9 +78,7 @@ static void LadderWizard_ComputeFormLayout( int *contentLeft,
 #define WIZARD_TEXT_SUBMITTING               "Submitting... please wait."
 #define WIZARD_TEXT_CANCEL_HINT              "Cancel only closes this dialog."
 #define WIZARD_TEXT_NEVER_HINT               "\"Never show again\" suppresses it permanently."
-#define WIZARD_TEXT_SUCCESS                  "Registration successful."
-#define WIZARD_TEXT_SUCCESS_KEY              "API key saved (sv_ladderApiKey)."
-#define WIZARD_TEXT_NEXT_STEPS               "Next steps:"
+#define WIZARD_TEXT_SUCCESS                  "Registration successful!"
 #define WIZARD_TEXT_FAILED                   "Registration failed."
 #define WIZARD_TEXT_FAILED_HINT              "Please check data/connection and try again."
 #define WIZARD_TEXT_DISMISSED_LOG            "Ladder wizard permanently dismissed via 'Never show again'.\n"
@@ -695,25 +693,14 @@ static void LadderWizard_Draw( void ) {
         }
     } else if ( s_wizard.result == WIZARD_RESULT_SUCCESS ) {
         UI_DrawString( cx, ty,
-            WIZARD_TEXT_SUCCESS,
+            "Registration successful!",
             UI_CENTER | UI_SMALLFONT, wizardAccent );
-        UI_DrawString( cx, ty + 16,
-            WIZARD_TEXT_SUCCESS_KEY,
+        UI_DrawString( cx, ty + 20,
+            "Your client is now registered with the ladder.",
             UI_CENTER | UI_SMALLFONT, wizardText );
-        UI_DrawString( cx, ty + 38,
-            WIZARD_TEXT_NEXT_STEPS,
+        UI_DrawString( cx, ty + 36,
+            "Settings have been saved automatically.",
             UI_CENTER | UI_SMALLFONT, wizardText );
-        UI_DrawString( cx, ty + 54,
-            va( "set sv_hostname \"%s\"", s_wizard.serverName ),
-            UI_CENTER | UI_SMALLFONT, wizardAccent );
-        UI_DrawString( cx, ty + 68,
-            "set sv_ladderEnabled \"1\"",
-            UI_CENTER | UI_SMALLFONT, wizardAccent );
-        if ( s_wizard.apiKey[0] ) {
-            UI_DrawString( cx, ty + 82,
-                va( "Key: %.28s...", s_wizard.apiKey ),
-                UI_CENTER | UI_SMALLFONT, wizardText );
-        }
     } else {
         UI_DrawString( cx, ty,
             WIZARD_TEXT_FAILED,
@@ -781,10 +768,10 @@ void UI_LadderWizard_OnSuccess( const char *key ) {
         return;
     }
 
-    trap_Cvar_Set( "sv_ladderEnabled", "1" );
-    trap_Cvar_Set( "sv_ladderUrl", "https://ladder.q3rally.com/index.php/matches" );
-    trap_Cvar_Set( "sv_ladderApiKey", key );
-    trap_Cvar_Set( "sv_hostname", s_wizard.serverName );
+    /* sv_ladderEnabled, sv_ladderUrl, sv_ladderApiKey and sv_hostname are
+     * set by SV_LadderFinishRegister in engine code – the UI VM lacks write
+     * access to protected server cvars.  writeconfig is also triggered from
+     * there, after all cvars are set.                                       */
     trap_Cvar_SetValue( "ladder_wizard_completed", 1 );
     trap_Cvar_Update( &ui_ladderWizardCompleted );
 
