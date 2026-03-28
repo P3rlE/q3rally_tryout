@@ -393,16 +393,20 @@ static void LadderWizard_UpdateButtons( void ) {
     }
 
     if ( s_wizard.result == WIZARD_RESULT_SUCCESS ) {
-        s_wizard.btnYes.string = "OK";
-        s_wizard.btnNo.string  = "";
-        s_wizard.btnNo.generic.flags = QMF_INACTIVE | QMF_HIDDEN;
-        s_wizard.btnNever.string = "";
+        s_wizard.btnYes.string    = "OK";
+        s_wizard.btnYes.generic.x = WIZARD_SCREEN_W / 2 - 145;
+        s_wizard.btnNo.string     = "";
+        s_wizard.btnNo.generic.flags    = QMF_INACTIVE | QMF_HIDDEN;
+        s_wizard.btnNever.string        = "";
         s_wizard.btnNever.generic.flags = QMF_INACTIVE | QMF_HIDDEN;
+        s_wizard.ownerName.generic.flags  = QMF_INACTIVE | QMF_HIDDEN;
+        s_wizard.ownerEmail.generic.flags = QMF_INACTIVE | QMF_HIDDEN;
     } else {
-        s_wizard.btnYes.string = "RETRY";
-        s_wizard.btnNo.string  = "BACK";
-        s_wizard.btnNo.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
-        s_wizard.btnNever.string = "";
+        s_wizard.btnYes.string    = "RETRY";
+        s_wizard.btnYes.generic.x = WIZARD_SCREEN_W / 2 - 145;
+        s_wizard.btnNo.string     = "BACK";
+        s_wizard.btnNo.generic.flags    = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
+        s_wizard.btnNever.string        = "";
         s_wizard.btnNever.generic.flags = QMF_INACTIVE | QMF_HIDDEN;
     }
 
@@ -692,13 +696,17 @@ static void LadderWizard_Draw( void ) {
                 UI_CENTER | UI_SMALLFONT, wizardText );
         }
     } else if ( s_wizard.result == WIZARD_RESULT_SUCCESS ) {
-        UI_DrawString( cx, ty,
+        /* Vertically center the three lines in the panel.
+         * Panel content area: WIZARD_PANEL_Y+40 … WIZARD_BTN_Y
+         * Three lines at 0 / +20 / +36, total height ~46px            */
+        int sty = WIZARD_PANEL_Y + ( WIZARD_PANEL_H - 48 - 40 - 46 ) / 2 + 40;
+        UI_DrawString( cx, sty,
             "Registration successful!",
             UI_CENTER | UI_SMALLFONT, wizardAccent );
-        UI_DrawString( cx, ty + 20,
+        UI_DrawString( cx, sty + 20,
             "Your client is now registered with the ladder.",
             UI_CENTER | UI_SMALLFONT, wizardText );
-        UI_DrawString( cx, ty + 36,
+        UI_DrawString( cx, sty + 36,
             "Settings have been saved automatically.",
             UI_CENTER | UI_SMALLFONT, wizardText );
     } else {
