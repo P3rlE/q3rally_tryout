@@ -4505,11 +4505,19 @@ const LADDER_ACHIEVEMENT_NAMES = [
  */
 function profile_resolve_user_id(array $player): string
 {
-    $userId = (string)($player['user_id'] ?? '');
+    $userId = trim((string)($player['user_id'] ?? ''));
     if ($userId !== '') {
         return $userId;
     }
-    return (string)($player['playerId'] ?? '');
+    return trim((string)($player['playerId'] ?? ''));
+}
+
+/**
+ * Resolve legacy player id from payload if present.
+ */
+function profile_resolve_legacy_player_id(array $player): string
+{
+    return trim((string)($player['playerId'] ?? ''));
 }
 
 /**
@@ -4612,6 +4620,57 @@ function profile_save(string $playerId, array $data): void
 }
 
 /**
+ * Find a profile for GET /players/{id}.
+ * Primary path uses canonical user_id. Legacy id is accepted as a fallback
+ * for older data and explicitly marked for migration visibility.
+ *
+ * @return array{profile: array, resolved_id: string, lookup: string}|null
+ */
+function profile_lookup_for_player_id(string $requestedId): ?array
+{
+    $requestedId = trim($requestedId);
+    if ($requestedId === '') {
+        return null;
+    }
+
+    $direct = profile_load($requestedId);
+    if ($direct !== null) {
+        return [
+            'profile' => $direct,
+            'resolved_id' => $requestedId,
+            'lookup' => 'user_id',
+        ];
+    }
+
+    // Legacy fallback: for old profile files, allow lookup by stored playerId.
+    foreach (glob(PROFILES_DIR . '/*.json') ?: [] as $path) {
+        if (!is_file($path)) {
+            continue;
+        }
+        $raw = file_get_contents($path);
+        if ($raw === false) {
+            continue;
+        }
+        $profile = json_decode($raw, true);
+        if (!is_array($profile)) {
+            continue;
+        }
+        $legacyId = trim((string)($profile['playerId'] ?? ''));
+        $userId = trim((string)($profile['user_id'] ?? ''));
+        if ($legacyId === '' || $legacyId !== $requestedId || $userId === $requestedId) {
+            continue;
+        }
+        return [
+            'profile' => profile_load($userId !== '' ? $userId : $requestedId) ?? $profile,
+            'resolved_id' => $userId !== '' ? $userId : $requestedId,
+            'lookup' => 'legacy_playerId',
+        ];
+    }
+
+    return null;
+}
+
+/**
  * Extract and upsert profile data from an incoming match payload.
  * Called once per upload. Only updates if the payload contains a valid
  * profile snapshot (local client only).
@@ -4636,6 +4695,11 @@ function profile_upsert_from_payload(array $payload): void
         if ($playerId === '') {
             continue;
         }
+        $legacyPlayerId = profile_resolve_legacy_player_id($player);
+        $identitySource = isset($player['user_id']) && trim((string)$player['user_id']) !== ''
+            ? 'user_id'
+            : 'legacy_playerId';
+        $requiresMigration = $identitySource !== 'user_id';
 
         $existing = profile_load($playerId) ?? [];
         $profileV1 = profile_normalize_v1($snap, (string)($player['cleanName'] ?? $player['name'] ?? ''));
@@ -4646,7 +4710,9 @@ function profile_upsert_from_payload(array $payload): void
 
         $profile = [
             'user_id'         => $playerId,
-            'playerId'        => $playerId,
+            'playerId'        => $legacyPlayerId !== '' ? $legacyPlayerId : (string)($existing['playerId'] ?? $playerId),
+            'identity_source' => $identitySource,
+            'requires_migration' => $requiresMigration,
             'cleanName'       => (string)($player['cleanName'] ?? $player['name'] ?? ''),
             'profileV1'       => $profileV1 ?? ($existing['profileV1'] ?? null),
             'playerScore'     => max($newScore, $oldScore),
@@ -5144,10 +5210,17 @@ function handle_get(array $segments): void
         if ($playerId === '') {
             send_error(400, 'Player ID required.');
         }
-        $profile = profile_load($playerId);
-        if ($profile === null) {
+        $result = profile_lookup_for_player_id($playerId);
+        if ($result === null) {
             send_error(404, 'Player not found.');
         }
+        $profile = $result['profile'];
+        $profile['lookup'] = [
+            'requested_id' => $playerId,
+            'resolved_user_id' => (string)($result['resolved_id'] ?? ''),
+            'mode' => (string)($result['lookup'] ?? 'user_id'),
+            'legacy_fallback_used' => (string)($result['lookup'] ?? 'user_id') !== 'user_id',
+        ];
         header('Content-Type: application/json');
         header('Cache-Control: public, max-age=60');
         echo json_encode($profile, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
