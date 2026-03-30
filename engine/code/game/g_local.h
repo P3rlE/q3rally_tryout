@@ -570,6 +570,7 @@ typedef struct {
 	int			startRaceTime;
 	int			finishRaceTime;
 	int			winnerNumber;
+	int			derbyStartPlayerCount;	// number of active players when the Derby/LCS race started
 	qboolean	trackIsReversable;
 	int			eliminationRound;
 	int			eliminationPlayersRemaining;
@@ -1093,6 +1094,8 @@ extern	vmCvar_t	g_trackReversed;
 extern	vmCvar_t	g_trackLength;
 extern	vmCvar_t	g_developer;
 extern	vmCvar_t	g_rallyReadyCheck;
+extern	vmCvar_t	g_derbyMinPlayers;
+void G_RallyUpdateAllTeamTimes( void );
 extern	vmCvar_t	g_rallyIgnoreBots;
 extern	vmCvar_t	g_damageScale;
 extern	vmCvar_t	g_vehicleDamageScale;

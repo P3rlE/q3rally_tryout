@@ -136,6 +136,7 @@ vmCvar_t	g_trackReversed;
 vmCvar_t	g_trackLength;
 vmCvar_t	g_developer;
 vmCvar_t	g_rallyReadyCheck;
+vmCvar_t	g_derbyMinPlayers;
 vmCvar_t	g_rallyIgnoreBots;
 
 vmCvar_t	g_damageScale;
@@ -287,6 +288,7 @@ static cvarTable_t		gameCvarTable[] = {
 
 { &g_developer, "developer", "0", 0, 0, qfalse },
 { &g_rallyReadyCheck, "g_rallyReadyCheck", "1", CVAR_ARCHIVE, 0, qfalse },
+{ &g_derbyMinPlayers, "g_derbyMinPlayers", "2", CVAR_ARCHIVE, 0, qfalse },
 { &g_rallyIgnoreBots, "g_rallyIgnoreBots", "0", CVAR_ARCHIVE, 0, qfalse },
 { &g_humanplayers, "g_humanplayers", "0", CVAR_ROM | CVAR_NORESTART, 0, qfalse },
 { &g_fuelKillReward, "g_fuelKillReward", "10", CVAR_ARCHIVE, 0, qfalse },
@@ -2158,6 +2160,10 @@ void ExitLevel (void) {
 	level.teamScores[TEAM_GREEN] = 0;
 	level.teamScores[TEAM_YELLOW] = 0;
 // END
+	level.teamTimes[TEAM_RED] = 0;
+	level.teamTimes[TEAM_BLUE] = 0;
+	level.teamTimes[TEAM_GREEN] = 0;
+	level.teamTimes[TEAM_YELLOW] = 0;
 	for ( i=0 ; i< g_maxclients.integer ; i++ ) {
 		cl = level.clients + i;
 		if ( cl->pers.connected != CON_CONNECTED ) {
@@ -2468,7 +2474,11 @@ qboolean ScoreIsTied( void ) {
 			if (i == winner) continue;
 			if (!TeamCount(-1, TEAM_RED + i)) continue;
 
-			if ((isRallyRace() && level.teamTimes[winner + TEAM_RED] == level.teamTimes[i + TEAM_RED])
+			if ((isRallyRace()
+					// Only a tie if both teams have actual finish times.
+					// Two zeros just mean nobody has finished yet.
+					&& level.teamTimes[winner + TEAM_RED] != 0
+					&& level.teamTimes[winner + TEAM_RED] == level.teamTimes[i + TEAM_RED])
 				|| (!isRallyRace() && level.teamScores[winner + TEAM_RED] == level.teamScores[i + TEAM_RED])){
 				tied = qtrue;
 				break;
@@ -2565,12 +2575,14 @@ void CheckExitRules( void ) {
 			winner = cl;
 		}
 
-		if (winner && count == 1) {
+		// Only declare a winner when more than one player participated.
+		// A lone player who started with no opponents never gets a free win.
+		if (winner && count == 1 && level.derbyStartPlayerCount >= g_derbyMinPlayers.integer) {
 			level.winnerNumber = winner->ps.clientNum;
 			level.finishRaceTime = level.time;
 
 			trap_SendServerCommand( -1, va("print \"%s won the demolition derby!\n\"", winner->pers.netname ));
-			trap_SendServerCommand( level.winnerNumber, "cp \"You won the demolition derby!\n\"");
+			trap_SendServerCommand( level.winnerNumber, "cp \"You won the demolition derby!\"");
 		}
 
 		return;
@@ -2590,12 +2602,12 @@ void CheckExitRules( void ) {
 			winner = cl;
 		}
 
-		if (winner && count == 1) {
+		if (winner && count == 1 && level.derbyStartPlayerCount >= g_derbyMinPlayers.integer) {
 			level.winnerNumber = winner->ps.clientNum;
 			level.finishRaceTime = level.time;
 
 			trap_SendServerCommand( -1, va("print \"%s won the last car standing!\n\"", winner->pers.netname ));
-			trap_SendServerCommand( level.winnerNumber, "cp \"You won the last car standing!\n\"");
+			trap_SendServerCommand( level.winnerNumber, "cp \"You won the last car standing!\"");
 		}
 
 		return;

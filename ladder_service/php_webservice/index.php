@@ -1012,19 +1012,33 @@ try {
     @keyframes slideUp { from { transform: translateY(16px); opacity:0 } to { transform:none; opacity:1 } }
 
     .q3-overlay-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 20px;
+      display: flex; align-items: center; justify-content: flex-end;
+      padding: 10px 16px;
       background: var(--accent);
       border-radius: 20px 20px 0 0;
-      gap: 16px;
-      min-height: 48px;
+      min-height: 44px;
     }
     .q3-overlay-title {
-      display: flex; align-items: center; gap: 10px;
-      flex: 1; min-width: 0;
-      flex-wrap: wrap;
-      font-size: 1rem; font-weight: 700; color: #fff;
-      margin: 0;
+      font-size: 1.1rem; font-weight: 700; color: var(--text);
+      margin: 0 0 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .q3-overlay-title-main {
+      font-size: 1.05rem; font-weight: 700; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .q3-overlay-title-sub {
+      display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+      font-size: .78rem; font-weight: 400; color: rgba(255,255,255,0.72);
+    }
+    .q3-overlay-rank-bar {
+      height: 3px; background: rgba(255,255,255,0.2);
+      border-radius: 0; overflow: hidden;
+    }
+    .q3-overlay-rank-bar-fill {
+      height: 100%; background: rgba(255,255,255,0.55);
+      transition: width .4s ease;
     }
     .q3-overlay-body {
       padding: 24px 28px;
@@ -2955,7 +2969,10 @@ function updateSummary() {
   elements.statPlayers.textContent = playerCount ? playerCount.toString() : '–';
 
   const items = Array.from(aggregation.modeCounts.entries())
-    .map(([modeKey, count]) => ({ label: humanizeMode(modeKey), count }))
+    .map(([modeKey, count]) => ({
+      label: modeKey === '__unknown__' ? t('mode.unknown') : humanizeMode(modeKey),
+      count
+    }))
     .sort((a, b) => b.count - a.count);
 
   if (!items.length) {
@@ -3168,7 +3185,15 @@ function ingestMatchInto(match, aggregation) {
 
   const rawMode = extractMode(match);
   const modeKey = canonicalMode(rawMode);
-  aggregation.modeCounts.set(modeKey, (aggregation.modeCounts.get(modeKey) || 0) + 1);
+  // Count all modes in the breakdown, using '__unknown__' for unrecognised ones
+  // so they appear in the distribution without polluting any leaderboard.
+  const modeCountKey = modeKey ?? '__unknown__';
+  aggregation.modeCounts.set(modeCountKey, (aggregation.modeCounts.get(modeCountKey) || 0) + 1);
+
+  // Unknown mode: nothing to ingest into any leaderboard.
+  if (modeKey === null) {
+    return;
+  }
 
   const entries = extractScoreboardEntries(match);
   if (!entries.length) {
@@ -3360,12 +3385,15 @@ function escapeHtml(value) {
 }
 
 function canonicalMode(mode) {
+  // Returns a known gt_* key from MODE_CONFIG_MAP, or null for unrecognised modes.
+  // Never falls back to 'gt_elimination' — callers must handle null explicitly
+  // so that unknown matches don't pollute the Elimination leaderboard.
   if (typeof mode !== 'string') {
-    return 'gt_elimination';
+    return null;
   }
   const trimmed = mode.trim();
   if (!trimmed) {
-    return 'gt_elimination';
+    return null;
   }
   let normalized = trimmed.toLowerCase().replace(/[\s-]+/g, '_');
   if (!normalized.startsWith('gt_')) {
@@ -3374,25 +3402,20 @@ function canonicalMode(mode) {
   if (MODE_CONFIG_MAP.has(normalized)) {
     return normalized;
   }
-  return 'gt_elimination';
+  return null;
 }
 
 function humanizeMode(mode) {
   const translations = MODE_TRANSLATIONS[state.language] || {};
-  if (typeof mode !== 'string') {
-    return translations.gt_elimination || 'Elimination';
+  if (typeof mode !== 'string' || !mode.trim()) {
+    return t('mode.unknown');
   }
   const trimmed = mode.trim();
-  if (!trimmed) {
-    return translations.gt_elimination || 'Elimination';
-  }
   const canonical = canonicalMode(trimmed);
-  if (Object.prototype.hasOwnProperty.call(translations, canonical)) {
+  if (canonical !== null && Object.prototype.hasOwnProperty.call(translations, canonical)) {
     return translations[canonical];
   }
-  if (canonical === 'gt_elimination') {
-    return translations.gt_elimination || 'Elimination';
-  }
+  // Unknown mode: strip gt_ prefix and title-case the remainder for display.
   const withoutPrefix = trimmed.replace(/^GT[_\-\s]?/i, '');
   const normalized = withoutPrefix.replace(/[_\-]+/g, ' ').toLowerCase();
   const locale = getLocale();
@@ -4116,20 +4139,26 @@ function createOverlay(content, title) {
   const box = document.createElement('div');
   box.className = 'q3-overlay';
 
+  // Header: close button only — no title here
   const header = document.createElement('div');
   header.className = 'q3-overlay-header';
-  const titleEl = document.createElement('span');
-  titleEl.className = 'q3-overlay-title';
-  titleEl.textContent = title || '';
   const close = document.createElement('button');
   close.className = 'q3-overlay-close';
   close.textContent = '✕ Close';
   close.addEventListener('click', () => backdrop.remove());
-  header.appendChild(titleEl);
   header.appendChild(close);
 
   const body = document.createElement('div');
   body.className = 'q3-overlay-body';
+
+  // Title goes into the body as the first element, before the caller's content
+  if (title) {
+    const titleEl = document.createElement('div');
+    titleEl.className = 'q3-overlay-title';
+    titleEl.textContent = title;
+    body.appendChild(titleEl);
+  }
+
   body.appendChild(content);
 
   box.appendChild(header);
@@ -4176,24 +4205,33 @@ async function showPlayerProfile(playerId, playerName) {
 
     loading.remove();
     const body = backdrop.querySelector('.q3-overlay-body');
-    const headerTitle = backdrop.querySelector('.q3-overlay-title');
 
-    // Rank — in den Header-Titel integrieren
     const rankName = RANK_NAMES[p.currentRank] || `Rank ${p.currentRank}`;
-    const highestName = RANK_NAMES[p.highestRank] || `Rank ${p.highestRank}`;
-    const rankPct = Math.round(((p.currentRank || 0) / (RANK_NAMES.length - 1)) * 100);
+    const rankPct  = Math.round(((p.currentRank || 0) / (RANK_NAMES.length - 1)) * 100);
 
-    // Header erweitern mit Rank-Info
-    headerTitle.innerHTML = `
-      <span style="font-size:1.05rem;font-weight:700">${playerName || 'Player'}</span>
-      <span style="font-size:.8rem;opacity:.7;font-weight:400">${rankName}</span>
-      <span style="font-size:.78rem;opacity:.6;font-weight:400">Score: ${((p.playerScore)||0).toLocaleString()}</span>`;
+    // Rank + Score + progress bar as a compact info strip at the top of the body
+    const rankStrip = document.createElement('div');
+    rankStrip.style.cssText = [
+      'display:flex', 'align-items:center', 'gap:16px',
+      'padding:12px 16px', 'margin-bottom:20px',
+      'background:rgba(255,255,255,0.04)',
+      'border:1px solid rgba(255,255,255,0.08)',
+      'border-radius:12px', 'flex-wrap:wrap'
+    ].join(';');
+    rankStrip.innerHTML = `
+      <div style="flex:1;min-width:160px">
+        <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:4px">Rank</div>
+        <div style="font-size:.95rem;font-weight:600;color:var(--text)">${rankName}</div>
+        <div class="q3-rank-bar" style="margin-top:6px">
+          <div class="q3-rank-bar-fill" style="width:${rankPct}%"></div>
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:4px">Score</div>
+        <div style="font-size:.95rem;font-weight:600;color:var(--text)">${((p.playerScore)||0).toLocaleString()}</div>
+      </div>`;
+    body.appendChild(rankStrip);
 
-    // Rank-Bar unter dem Header
-    const rankBar = document.createElement('div');
-    rankBar.style.cssText = 'height:3px;background:rgba(255,255,255,0.15);border-radius:0;overflow:hidden;margin:-1px 0 0';
-    rankBar.innerHTML = `<div style="height:100%;width:${rankPct}%;background:rgba(255,255,255,0.5);transition:width .3s"></div>`;
-    backdrop.querySelector('.q3-overlay-header').after(rankBar);
     // Zweispaltiges Haupt-Layout
     const layout = document.createElement('div');
     layout.className = 'q3-profile-layout';
@@ -4329,16 +4367,13 @@ async function showPlayerProfile(playerId, playerName) {
 // ── Match Details Overlay ─────────────────────────────────────────────────────
 async function showMatchDetails(matchId) {
   const frag = document.createDocumentFragment();
-  const h2 = document.createElement('h2');
-  h2.textContent = 'Match Details';
-  frag.appendChild(h2);
 
   const loading = document.createElement('div');
   loading.className = 'q3-loading';
   loading.textContent = 'Loading match…';
   frag.appendChild(loading);
 
-  const backdrop = createOverlay(frag);
+  const backdrop = createOverlay(frag, 'Match Details');
 
   try {
     const resp = await fetch(`${API_BASE}/matches/${encodeURIComponent(matchId)}`);
@@ -4346,28 +4381,39 @@ async function showMatchDetails(matchId) {
     const m = await resp.json();
 
     loading.remove();
-    const box = backdrop.querySelector('.q3-overlay');
+    const box    = backdrop.querySelector('.q3-overlay');
+    const body   = backdrop.querySelector('.q3-overlay-body');
+    const header = backdrop.querySelector('.q3-overlay-header');
 
-    // Header info
-    const mode = m.mode || '–';
-    const map  = m.map  || '–';
-    const date = m.startTime ? new Date(m.startTime).toLocaleString() : '–';
-    const server = m.server?.name || '–';
+    // Header stays "Match Details" — mode + map go into the body as a title
+    const rawMode = m.mode || '';
+    const rawMap  = m.map  || '';
+    const date    = m.startTime ? new Date(m.startTime).toLocaleString() : '–';
+    const server  = m.server?.name || '–';
 
-    box.querySelector('h2').textContent = `${mode} · ${map}`;
+    const displayMode = rawMode ? humanizeMode(rawMode) : '–';
+    const displayMap  = rawMap  ? humanizeMapName(rawMap) : '–';
 
+    // Mode · Map heading inside the body
+    const matchTitle = document.createElement('div');
+    matchTitle.style.cssText = 'margin-bottom:6px';
+    matchTitle.innerHTML = `
+      <div style="font-size:1.1rem;font-weight:700;color:var(--text)">${displayMode}</div>
+      <div style="font-size:.88rem;color:var(--text-muted);margin-top:2px">${displayMap}</div>`;
+    body.appendChild(matchTitle);
+
+    // Meta row: date, server, ID
     const meta = document.createElement('div');
-    meta.style.cssText = 'font-size:.85rem;color:var(--text-muted);margin-bottom:20px;display:flex;gap:16px;flex-wrap:wrap';
+    meta.style.cssText = 'font-size:.82rem;color:var(--text-muted);margin-bottom:20px;margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.07)';
     meta.innerHTML = `<span>📅 ${date}</span><span>🖥 ${server}</span><span>🆔 ${matchId}</span>`;
-    box.insertBefore(meta, box.querySelector('h3') || null);
-    box.appendChild(meta);
+    body.appendChild(meta);
 
     // Players
     const players = Array.isArray(m.players) ? m.players : [];
     if (players.length > 0) {
       const ph = document.createElement('h3');
       ph.textContent = `Players (${players.length})`;
-      box.appendChild(ph);
+      body.appendChild(ph);
 
       const list = document.createElement('div');
       list.className = 'q3-match-players';
@@ -4401,7 +4447,7 @@ async function showMatchDetails(matchId) {
         }
         list.appendChild(row);
       });
-      box.appendChild(list);
+      body.appendChild(list);
     }
 
   } catch (err) {
@@ -4732,7 +4778,11 @@ function profile_upsert_from_payload(array $payload): void
                                     (int)($player['rankTier'] ?? 0),
                                     (int)($existing['highestRank'] ?? 0)
                                  ),
-            'gamesPlayed'     => $se('gamesPlayed'),
+            // gamesPlayed: always increment by 1 for this match regardless of any
+            // snapshot value. The snapshot reflects the local client counter which
+            // is not synchronised with server matches. The ladder is the authoritative
+            // source for how many matches have been reported.
+            'gamesPlayed'     => (int)($existing['gamesPlayed'] ?? 0) + 1,
 
             // ── Allgemein ───────────────────────────────────────────────
             'wins'            => $se('wins'),
