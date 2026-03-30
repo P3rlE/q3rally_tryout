@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/q_shared.h"
 #include "bg_public.h"
 #include "bg_ladder.h"
+#include "profile_shared.h"
 #include "g_public.h"
 
 //==================================================================
@@ -356,6 +357,7 @@ typedef struct {
 	qboolean	manualShift;		// shift manually?
 	char                    vehicleClass[MAX_QPATH];
         qboolean        profileRacePlacementPenalized; // profile penalty for poor race placement already applied
+        char            uuid[PROFILE_MAX_UUID];         // cl_uuid aus dem Userinfo; leer wenn kein UUID-Client
 // END
 } clientPersistant_t;
 
