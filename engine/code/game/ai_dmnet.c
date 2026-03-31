@@ -67,6 +67,15 @@ char nodeswitch[MAX_NODESWITCHES+1][144];
 #define GHOST_ROUTE_HINT_WINDOW		48
 #define GHOST_ROUTE_LOOKAHEAD_MS	900
 
+typedef enum {
+	GHOST_DECISION_FOLLOW = 0,
+	GHOST_DECISION_PREPARE_OVERTAKE,
+	GHOST_DECISION_OVERTAKE_INSIDE,
+	GHOST_DECISION_OVERTAKE_OUTSIDE,
+	GHOST_DECISION_DEFEND_LINE,
+	GHOST_DECISION_ABORT_OVERTAKE
+} ghostDecisionState_t;
+
 /*
 ==================
 BotResetNodeSwitches
@@ -3029,6 +3038,9 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	int			throttleChange;
 	const ghostBotRoute_t *ghostRoute;
 	const char *routeVariant = NULL;
+	ghostDecisionState_t decisionState;
+	float desiredOffset;
+	float speedBias;
 
 	if (BotIsObserver(bs)) {
 		BotClearActivateGoalStack(bs);
@@ -3076,6 +3088,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			int smoothedSegments = 0;
 			float curvatureScore = 0.0f;
 			int curvatureSamples = 0;
+			float cornerPhase = 0.0f;
 			bs->ghostRouteIndexHint = bestIndex;
 
 			for ( i = bestIndex + 1; i < ghostRoute->numWaypoints; ++i ) {
@@ -3089,8 +3102,6 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				}
 			}
 
-			VectorSubtract( ghostRoute->waypoints[lookAheadIndex].origin, bs->cur_ps.origin, dir );
-			dir[2] = 0;
 			actualSpeed = VectorLength( bs->cur_ps.velocity );
 
 			speedStartIndex = bestIndex;
@@ -3157,7 +3168,194 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 						speedScale = 0.55f;
 					}
 					speed *= speedScale;
+					cornerPhase = avgCurvature * 2.2f;
+					if ( cornerPhase > 1.0f ) {
+						cornerPhase = 1.0f;
+					}
 				}
+			}
+
+			{
+			vec3_t targetPoint;
+			vec3_t routeForward;
+			vec3_t routeRight;
+			float routeForwardLen;
+			float nearestAheadDist = 4096.0f;
+			float nearestBehindDist = 4096.0f;
+			float nearestAheadRelSpeed = 0.0f;
+			float nearestBehindRelSpeed = 0.0f;
+			float nearestAheadLateral = 0.0f;
+			float nearestBehindLateral = 0.0f;
+			float brakeZone;
+			float sideSafetyInside = 9999.0f;
+			float sideSafetyOutside = 9999.0f;
+			int preferredInside = qtrue;
+
+			VectorSubtract( ghostRoute->waypoints[lookAheadIndex].origin, bs->cur_ps.origin, routeForward );
+			routeForward[2] = 0;
+			routeForwardLen = VectorNormalize( routeForward );
+			if ( routeForwardLen <= 0.001f ) {
+				VectorSet( routeForward, 1.0f, 0.0f, 0.0f );
+			}
+			routeRight[0] = -routeForward[1];
+			routeRight[1] = routeForward[0];
+			routeRight[2] = 0.0f;
+
+			if ( speedEndIndex - speedStartIndex >= 1 ) {
+				vec3_t segA, segB;
+				float crossZ;
+				VectorSubtract( ghostRoute->waypoints[speedStartIndex + 1].origin, ghostRoute->waypoints[speedStartIndex].origin, segA );
+				VectorSubtract( ghostRoute->waypoints[speedEndIndex + 1].origin, ghostRoute->waypoints[speedEndIndex].origin, segB );
+				crossZ = segA[0] * segB[1] - segA[1] * segB[0];
+				preferredInside = ( crossZ >= 0.0f );
+			}
+
+			for ( i = 0; i < level.maxclients; ++i ) {
+				gentity_t *otherEnt;
+				vec3_t toOther;
+				float ahead;
+				float lateral;
+				float relSpeed;
+				float absLateral;
+
+				if ( i == bs->client ) {
+					continue;
+				}
+				if ( level.clients[i].pers.connected != CON_CONNECTED ) {
+					continue;
+				}
+
+				otherEnt = &g_entities[i];
+				if ( !otherEnt->inuse || !otherEnt->client || otherEnt->health <= 0 ) {
+					continue;
+				}
+
+				VectorSubtract( otherEnt->client->ps.origin, bs->cur_ps.origin, toOther );
+				ahead = DotProduct( toOther, routeForward );
+				lateral = DotProduct( toOther, routeRight );
+				relSpeed = DotProduct( bs->cur_ps.velocity, routeForward ) - DotProduct( otherEnt->client->ps.velocity, routeForward );
+				absLateral = fabs( lateral );
+
+				if ( ahead > -40.0f && ahead < nearestAheadDist && absLateral < 120.0f ) {
+					nearestAheadDist = ahead;
+					nearestAheadRelSpeed = relSpeed;
+					nearestAheadLateral = lateral;
+				}
+				if ( ahead < 40.0f && -ahead < nearestBehindDist && absLateral < 140.0f ) {
+					nearestBehindDist = -ahead;
+					nearestBehindRelSpeed = DotProduct( otherEnt->client->ps.velocity, routeForward ) - DotProduct( bs->cur_ps.velocity, routeForward );
+					nearestBehindLateral = lateral;
+				}
+
+				if ( ahead > -20.0f && ahead < 180.0f ) {
+					if ( lateral < 0.0f && -lateral < sideSafetyInside ) {
+						sideSafetyInside = -lateral;
+					}
+					if ( lateral > 0.0f && lateral < sideSafetyOutside ) {
+						sideSafetyOutside = lateral;
+					}
+				}
+			}
+
+			brakeZone = ( actualSpeed > speed * 1.08f || cornerPhase > 0.55f ) ? 1.0f : 0.0f;
+			decisionState = (ghostDecisionState_t)bs->ghostDecisionState;
+			if ( decisionState < GHOST_DECISION_FOLLOW || decisionState > GHOST_DECISION_ABORT_OVERTAKE ) {
+				decisionState = GHOST_DECISION_FOLLOW;
+			}
+			desiredOffset = 0.0f;
+			speedBias = 0.0f;
+
+			switch ( decisionState ) {
+				default:
+				case GHOST_DECISION_FOLLOW:
+					if ( nearestAheadDist < 190.0f && nearestAheadRelSpeed > 45.0f && brakeZone < 0.5f ) {
+						decisionState = GHOST_DECISION_PREPARE_OVERTAKE;
+					} else if ( nearestBehindDist < 120.0f && nearestBehindRelSpeed > 70.0f && ( brakeZone > 0.5f || cornerPhase > 0.35f ) ) {
+						decisionState = GHOST_DECISION_DEFEND_LINE;
+					}
+					break;
+
+				case GHOST_DECISION_PREPARE_OVERTAKE:
+					if ( nearestAheadDist > 260.0f || nearestAheadRelSpeed < 5.0f ) {
+						decisionState = GHOST_DECISION_FOLLOW;
+					} else if ( brakeZone > 0.5f ) {
+						decisionState = GHOST_DECISION_ABORT_OVERTAKE;
+					} else {
+						if ( preferredInside ) {
+							decisionState = GHOST_DECISION_OVERTAKE_INSIDE;
+						} else {
+							decisionState = GHOST_DECISION_OVERTAKE_OUTSIDE;
+						}
+					}
+					break;
+
+				case GHOST_DECISION_OVERTAKE_INSIDE:
+				case GHOST_DECISION_OVERTAKE_OUTSIDE:
+				{
+					qboolean sideBlocked;
+					sideBlocked = ( decisionState == GHOST_DECISION_OVERTAKE_INSIDE ) ? ( sideSafetyInside < 48.0f ) : ( sideSafetyOutside < 48.0f );
+					if ( nearestAheadDist < 35.0f || sideBlocked || brakeZone > 0.75f ) {
+						decisionState = GHOST_DECISION_ABORT_OVERTAKE;
+					} else if ( nearestAheadDist > 270.0f || nearestAheadRelSpeed < -20.0f ) {
+						decisionState = GHOST_DECISION_FOLLOW;
+					}
+					break;
+				}
+
+				case GHOST_DECISION_DEFEND_LINE:
+					if ( nearestBehindDist > 220.0f || nearestBehindRelSpeed < 25.0f ) {
+						decisionState = GHOST_DECISION_FOLLOW;
+					}
+					break;
+
+				case GHOST_DECISION_ABORT_OVERTAKE:
+					if ( nearestAheadDist > 140.0f || brakeZone > 0.5f ) {
+						decisionState = GHOST_DECISION_FOLLOW;
+					}
+					break;
+			}
+
+			if ( decisionState != (ghostDecisionState_t)bs->ghostDecisionState ) {
+				bs->ghostDecisionState = decisionState;
+				bs->ghostDecisionStateTime = FloatTime();
+			}
+
+			switch ( decisionState ) {
+				case GHOST_DECISION_PREPARE_OVERTAKE:
+					desiredOffset = ( nearestAheadLateral >= 0.0f ) ? -32.0f : 32.0f;
+					speedBias = 40.0f;
+					break;
+				case GHOST_DECISION_OVERTAKE_INSIDE:
+					desiredOffset = preferredInside ? -72.0f : 72.0f;
+					speedBias = 65.0f;
+					break;
+				case GHOST_DECISION_OVERTAKE_OUTSIDE:
+					desiredOffset = preferredInside ? 72.0f : -72.0f;
+					speedBias = 20.0f;
+					break;
+				case GHOST_DECISION_DEFEND_LINE:
+					desiredOffset = ( nearestBehindLateral >= 0.0f ) ? -46.0f : 46.0f;
+					speedBias = -25.0f;
+					break;
+				case GHOST_DECISION_ABORT_OVERTAKE:
+					desiredOffset = 0.0f;
+					speedBias = -90.0f;
+					break;
+				case GHOST_DECISION_FOLLOW:
+				default:
+					desiredOffset = 0.0f;
+					speedBias = 0.0f;
+					break;
+			}
+
+			bs->ghostDecisionLateralOffset += ( desiredOffset - bs->ghostDecisionLateralOffset ) * 0.35f;
+			VectorMA( ghostRoute->waypoints[lookAheadIndex].origin, bs->ghostDecisionLateralOffset, routeRight, targetPoint );
+			VectorSubtract( targetPoint, bs->cur_ps.origin, dir );
+			dir[2] = 0;
+			speed += speedBias;
+			if ( speed < 300.0f ) {
+				speed = 300.0f;
+			}
 			}
 
 			/*
@@ -3212,6 +3410,9 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	/* Ghost guidance not active this tick, reset speed filter state. */
 	bs->ghostTargetSpeedValid = qfalse;
 	bs->ghostRouteIndexHint = -1;
+	bs->ghostDecisionState = GHOST_DECISION_FOLLOW;
+	bs->ghostDecisionStateTime = 0.0f;
+	bs->ghostDecisionLateralOffset = 0.0f;
 
 	while ((ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL)
 	{
