@@ -203,7 +203,6 @@ static const char *loadingTips[] = {
 };
 
 
-static vec4_t gfxBgColor            = UI_THEME_COLOR_PANEL_BG;
 static vec4_t gfxSeparatorColor     = UI_THEME_COLOR_PANEL_BORDER;
 static vec4_t gfxHeaderColor        = UI_THEME_COLOR_TEXT_TITLE;
 static vec4_t gfxSecondaryTextColor = UI_THEME_COLOR_TEXT_HINT;
@@ -220,6 +219,7 @@ static vec4_t gfxButtonTextColor    = UI_THEME_COLOR_BUTTON_TEXT;
 static vec4_t gfxButtonHoverBgColor     = UI_THEME_COLOR_BUTTON_HOVER_BG;
 static vec4_t gfxButtonHoverBorderColor = UI_THEME_COLOR_BUTTON_HOVER_BORDER;
 static vec4_t gfxButtonHoverTextColor   = UI_THEME_COLOR_BUTTON_HOVER_TEXT;
+static vec4_t gfxBackdropColor          = UI_THEME_COLOR_PANEL_BG;
 
 /* -------------------------------------------------------------------------
    Helper: draw a thin horizontal separator line
@@ -330,7 +330,8 @@ static void UI_GFX_Loading_MenuDraw(void) {
     static int  lastDrawTime = 0;
 
     Menu_Draw(&s_gfxloading.menu);
-    UI_FillRect(-uis.bias, 0, SCREEN_WIDTH + uis.bias * 2, SCREEN_HEIGHT, gfxBgColor);
+    gfxBackdropColor[3] = 1.0f;
+    UI_FillRect(-uis.bias, 0, SCREEN_WIDTH + uis.bias * 2, SCREEN_HEIGHT, gfxBackdropColor);
 
     currentTime = trap_Milliseconds();
     deltaTime   = (lastDrawTime > 0)
