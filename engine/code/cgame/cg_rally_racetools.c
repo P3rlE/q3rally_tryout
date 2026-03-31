@@ -162,6 +162,7 @@ void CG_ResetBaseGhost( void ) {
 }
 
 void CG_LoadPersonalGhost( void ) {
+        static ghostRecording_t candidateRecording;
         char mapname[MAX_QPATH];
         char fileList[4096];
         int fileCount;
@@ -170,9 +171,7 @@ void CG_LoadPersonalGhost( void ) {
         int trackLength = 0;
         int trackReversed = 0;
         int bestTime = 0;
-        ghostRecording_t bestRecording;
-        char bestVehicle[MAX_QPATH] = "";
-        char bestPath[MAX_QPATH] = "";
+        qboolean foundRecording = qfalse;
 
         if ( !cg.snap || cg.snap->ps.clientNum >= MAX_CLIENTS ) {
                 return;
@@ -192,7 +191,6 @@ void CG_LoadPersonalGhost( void ) {
 
         CG_GetGhostTrackVariant( &trackLength, &trackReversed );
 
-        memset( &bestRecording, 0, sizeof( bestRecording ) );
         fileCount = trap_FS_GetFileList( "ghosts", ".ghost", fileList, sizeof( fileList ) );
         offset = 0;
 
@@ -200,7 +198,6 @@ void CG_LoadPersonalGhost( void ) {
                 const char *filename = fileList + offset;
                 char cleanName[MAX_QPATH];
                 char path[MAX_QPATH];
-                ghostRecording_t candidateRecording;
                 int candidateTime = 0;
                 char candidateVehicle[MAX_QPATH] = "";
                 char candidatePath[MAX_QPATH] = "";
@@ -224,20 +221,18 @@ void CG_LoadPersonalGhost( void ) {
                         continue;
                 }
 
-                if ( !bestRecording.valid || ( candidateTime > 0 && ( bestTime <= 0 || candidateTime < bestTime ) ) ) {
-                        bestRecording = candidateRecording;
+                if ( !foundRecording || ( candidateTime > 0 && ( bestTime <= 0 || candidateTime < bestTime ) ) ) {
+                        cg.ghostPlayback = candidateRecording;
                         bestTime = candidateTime;
-                        Q_strncpyz( bestVehicle, candidateVehicle, sizeof( bestVehicle ) );
-                        Q_strncpyz( bestPath, candidatePath, sizeof( bestPath ) );
+                        Q_strncpyz( cg.personalGhostVehicle, candidateVehicle, sizeof( cg.personalGhostVehicle ) );
+                        Q_strncpyz( cg.personalGhostPath, candidatePath, sizeof( cg.personalGhostPath ) );
+                        foundRecording = qtrue;
                 }
         }
 
-        if ( bestRecording.valid ) {
-                cg.ghostPlayback = bestRecording;
+        if ( foundRecording ) {
                 cg.personalGhostAvailable = qtrue;
                 cg.personalGhostBestTime = bestTime;
-                Q_strncpyz( cg.personalGhostVehicle, bestVehicle, sizeof( cg.personalGhostVehicle ) );
-                Q_strncpyz( cg.personalGhostPath, bestPath, sizeof( cg.personalGhostPath ) );
         }
 }
 
