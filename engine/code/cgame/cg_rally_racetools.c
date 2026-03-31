@@ -28,6 +28,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, int expectedTrackLength, int expectedTrackReversed, const char *expectedVehicle, int declaredBestTime,
                 ghostRecording_t *target, int *bestTimeOut, char *vehicleOut, int vehicleOutSize, char *pathOut, int pathOutSize );
 static qboolean CG_WriteGhostFile( const char *path, const char *mapname, int trackLength, int trackReversed, const char *vehicle, int bestLapTime, const ghostRecording_t *recording );
+static void CG_CleanupPersonalGhostsForVariant( const char *mapname, int trackLength, int trackReversed );
+static qboolean CG_FindGhostRecyclePathForVariant( const char *mapname, int trackLength, int trackReversed, char *pathOut, int pathOutSize );
+
+typedef struct ghostRetentionEntry_s {
+        char path[MAX_QPATH];
+        int bestTimeMs;
+} ghostRetentionEntry_t;
 
 static void QDECL CG_GhostDebugPrint( const char *fmt, ... ) {
 	va_list argptr;
@@ -98,6 +105,179 @@ static qboolean CG_GhostFilenameMatchesVariant( const char *filenameNoExt, const
 
         Com_sprintf( variantPrefix, sizeof( variantPrefix ), "_tl%d_rev%d_", trackLength, trackReversed );
         return !Q_stricmpn( filenameNoExt + mapLen, variantPrefix, strlen( variantPrefix ) );
+}
+
+static int CG_GhostRetentionCompare( const ghostRetentionEntry_t *a, const ghostRetentionEntry_t *b ) {
+        if ( a->bestTimeMs <= 0 && b->bestTimeMs <= 0 ) {
+                return Q_stricmp( a->path, b->path );
+        }
+        if ( a->bestTimeMs <= 0 ) {
+                return 1;
+        }
+        if ( b->bestTimeMs <= 0 ) {
+                return -1;
+        }
+        if ( a->bestTimeMs < b->bestTimeMs ) {
+                return -1;
+        }
+        if ( a->bestTimeMs > b->bestTimeMs ) {
+                return 1;
+        }
+        return Q_stricmp( a->path, b->path );
+}
+
+static void CG_DeactivateGhostFile( const char *path, int bestTimeMs ) {
+        fileHandle_t file;
+        char line[128];
+
+        if ( !path || !path[0] ) {
+                return;
+        }
+
+        if ( trap_FS_FOpenFile( path, &file, FS_WRITE ) < 0 ) {
+                CG_Printf( "CG_Ghost: failed to deactivate %s\n", path );
+                return;
+        }
+
+        trap_FS_Write( "map __disabled__\n", 17, file );
+        Com_sprintf( line, sizeof( line ), "best_time_ms %d\n", bestTimeMs > 0 ? bestTimeMs : 999999999 );
+        trap_FS_Write( line, strlen( line ), file );
+        trap_FS_Write( "frames 0\n", 9, file );
+        trap_FS_FCloseFile( file );
+}
+
+static void CG_CleanupPersonalGhostsForVariant( const char *mapname, int trackLength, int trackReversed ) {
+        char fileList[4096];
+        int fileCount;
+        int offset;
+        int i;
+        ghostRetentionEntry_t entries[128];
+        int entryCount = 0;
+        ghostRecording_t scratchRecording;
+
+        if ( !mapname || !mapname[0] ) {
+                return;
+        }
+
+        fileCount = trap_FS_GetFileList( "ghosts", ".ghost", fileList, sizeof( fileList ) );
+        offset = 0;
+
+        for ( i = 0; i < fileCount; ++i ) {
+                const char *filename = fileList + offset;
+                char cleanName[MAX_QPATH];
+                char fullPath[MAX_QPATH];
+                int bestTimeMs = 0;
+
+                offset += strlen( filename ) + 1;
+                if ( !filename[0] ) {
+                        continue;
+                }
+
+                Q_strncpyz( cleanName, filename, sizeof( cleanName ) );
+                COM_StripExtension( cleanName, cleanName, sizeof( cleanName ) );
+
+                if ( !CG_GhostFilenameMatchesVariant( cleanName, mapname, trackLength, trackReversed ) ) {
+                        continue;
+                }
+
+                if ( entryCount >= (int)( sizeof( entries ) / sizeof( entries[0] ) ) ) {
+                        break;
+                }
+
+                Com_sprintf( fullPath, sizeof( fullPath ), "ghosts/%s", filename );
+                if ( !CG_LoadGhostFile( fullPath, mapname, trackLength, trackReversed, NULL, 0, &scratchRecording, &bestTimeMs, NULL, 0, NULL, 0 ) ) {
+                        continue;
+                }
+
+                Q_strncpyz( entries[entryCount].path, fullPath, sizeof( entries[entryCount].path ) );
+                entries[entryCount].bestTimeMs = bestTimeMs;
+                entryCount++;
+        }
+
+        for ( i = 1; i < entryCount; ++i ) {
+                int j = i;
+                ghostRetentionEntry_t key = entries[i];
+                while ( j > 0 && CG_GhostRetentionCompare( &key, &entries[j - 1] ) < 0 ) {
+                        entries[j] = entries[j - 1];
+                        --j;
+                }
+                entries[j] = key;
+        }
+
+        for ( i = 5; i < entryCount; ++i ) {
+                CG_DeactivateGhostFile( entries[i].path, entries[i].bestTimeMs );
+        }
+}
+
+static qboolean CG_FindGhostRecyclePathForVariant( const char *mapname, int trackLength, int trackReversed, char *pathOut, int pathOutSize ) {
+        char fileList[4096];
+        int fileCount;
+        int offset;
+        int i;
+        ghostRetentionEntry_t entries[128];
+        int entryCount = 0;
+        ghostRecording_t scratchRecording;
+
+        if ( !pathOut || pathOutSize <= 0 ) {
+                return qfalse;
+        }
+        pathOut[0] = '\0';
+
+        if ( !mapname || !mapname[0] ) {
+                return qfalse;
+        }
+
+        fileCount = trap_FS_GetFileList( "ghosts", ".ghost", fileList, sizeof( fileList ) );
+        offset = 0;
+
+        for ( i = 0; i < fileCount; ++i ) {
+                const char *filename = fileList + offset;
+                char cleanName[MAX_QPATH];
+                char fullPath[MAX_QPATH];
+                int bestTimeMs = 0;
+
+                offset += strlen( filename ) + 1;
+                if ( !filename[0] ) {
+                        continue;
+                }
+
+                Q_strncpyz( cleanName, filename, sizeof( cleanName ) );
+                COM_StripExtension( cleanName, cleanName, sizeof( cleanName ) );
+
+                if ( !CG_GhostFilenameMatchesVariant( cleanName, mapname, trackLength, trackReversed ) ) {
+                        continue;
+                }
+
+                if ( entryCount >= (int)( sizeof( entries ) / sizeof( entries[0] ) ) ) {
+                        break;
+                }
+
+                Com_sprintf( fullPath, sizeof( fullPath ), "ghosts/%s", filename );
+                if ( !CG_LoadGhostFile( fullPath, mapname, trackLength, trackReversed, NULL, 0, &scratchRecording, &bestTimeMs, NULL, 0, NULL, 0 ) ) {
+                        continue;
+                }
+
+                Q_strncpyz( entries[entryCount].path, fullPath, sizeof( entries[entryCount].path ) );
+                entries[entryCount].bestTimeMs = bestTimeMs;
+                entryCount++;
+        }
+
+        if ( entryCount < 5 ) {
+                return qfalse;
+        }
+
+        for ( i = 1; i < entryCount; ++i ) {
+                int j = i;
+                ghostRetentionEntry_t key = entries[i];
+                while ( j > 0 && CG_GhostRetentionCompare( &key, &entries[j - 1] ) < 0 ) {
+                        entries[j] = entries[j - 1];
+                        --j;
+                }
+                entries[j] = key;
+        }
+
+        Q_strncpyz( pathOut, entries[entryCount - 1].path, pathOutSize );
+        return qtrue;
 }
 
 static void CG_ResetPersonalGhost( void ) {
@@ -618,6 +798,7 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
         char mapname[MAX_QPATH];
         char vehicle[MAX_QPATH];
         char path[MAX_QPATH];
+        char recyclePath[MAX_QPATH];
         char timestamp[32];
         qtime_t now;
         int bestLapTime;
@@ -771,11 +952,17 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
                 1900 + now.tm_year, 1 + now.tm_mon, now.tm_mday,
                 now.tm_hour, now.tm_min, now.tm_sec );
 
-        Com_sprintf( path, sizeof( path ), "ghosts/%s_tl%d_rev%d_%s.ghost", mapname, trackLength, trackReversed, timestamp );
+        if ( CG_FindGhostRecyclePathForVariant( mapname, trackLength, trackReversed, recyclePath, sizeof( recyclePath ) ) ) {
+                Q_strncpyz( path, recyclePath, sizeof( path ) );
+        } else {
+                Com_sprintf( path, sizeof( path ), "ghosts/%s_tl%d_rev%d_%s.ghost", mapname, trackLength, trackReversed, timestamp );
+        }
 
         if ( !CG_WriteGhostFile( path, mapname, trackLength, trackReversed, vehicle, bestLapTime, &lapRecording ) ) {
                 return;
         }
+
+        CG_CleanupPersonalGhostsForVariant( mapname, trackLength, trackReversed );
 
         cg.ghostPlayback = lapRecording;
         cg.personalGhostAvailable = qtrue;
