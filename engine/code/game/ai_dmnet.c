@@ -3062,33 +3062,9 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 
 	if ( G_Ghost_GetBotRouteForVariant( routeVariant, &ghostRoute ) && ghostRoute ) {
 		int bestIndex = -1;
-		float bestDistSq = 0.0f;
 		int i;
-		int searchStart = 0;
-		int searchEnd = ghostRoute->numWaypoints - 1;
 		int hintIndex = bs->ghostRouteIndexHint;
-
-		if ( hintIndex >= 0 && hintIndex < ghostRoute->numWaypoints ) {
-			searchStart = hintIndex - GHOST_ROUTE_HINT_WINDOW;
-			searchEnd = hintIndex + GHOST_ROUTE_HINT_WINDOW;
-			if ( searchStart < 0 ) {
-				searchStart = 0;
-			}
-			if ( searchEnd >= ghostRoute->numWaypoints ) {
-				searchEnd = ghostRoute->numWaypoints - 1;
-			}
-		}
-
-		for ( i = searchStart; i <= searchEnd; ++i ) {
-			vec3_t deltaToWaypoint;
-			float distSq;
-			VectorSubtract( ghostRoute->waypoints[i].origin, bs->cur_ps.origin, deltaToWaypoint );
-			distSq = VectorLengthSquared( deltaToWaypoint );
-			if ( bestIndex < 0 || distSq < bestDistSq ) {
-				bestIndex = i;
-				bestDistSq = distSq;
-			}
-		}
+		bestIndex = G_Ghost_SelectClosestWaypoint( ghostRoute, bs->cur_ps.origin, hintIndex, GHOST_ROUTE_HINT_WINDOW );
 
 		if ( bestIndex >= 0 ) {
 			int lookAheadIndex = bestIndex;
