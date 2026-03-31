@@ -76,6 +76,149 @@ typedef enum {
 	GHOST_DECISION_ABORT_OVERTAKE
 } ghostDecisionState_t;
 
+typedef struct {
+	float nearestAheadDist;
+	float nearestBehindDist;
+	float nearestAheadRelSpeed;
+	float nearestBehindRelSpeed;
+	float nearestAheadLateral;
+	float nearestBehindLateral;
+	float sideSafetyInside;
+	float sideSafetyOutside;
+	qboolean hasPredictedConflict;
+	qboolean laneSwapRecommended;
+	qboolean abortOvertakeRecommended;
+	float recommendedSpeedBias;
+} botCollisionRisk_t;
+
+/*
+==================
+Bot_PredictCollisionRisk
+==================
+*/
+static void Bot_PredictCollisionRisk( bot_state_t *bs, const vec3_t routeForward, const vec3_t routeRight,
+	float minPredictionSec, float maxPredictionSec, botCollisionRisk_t *risk ) {
+	int i;
+	float myForwardSpeed;
+
+	risk->nearestAheadDist = 4096.0f;
+	risk->nearestBehindDist = 4096.0f;
+	risk->nearestAheadRelSpeed = 0.0f;
+	risk->nearestBehindRelSpeed = 0.0f;
+	risk->nearestAheadLateral = 0.0f;
+	risk->nearestBehindLateral = 0.0f;
+	risk->sideSafetyInside = 9999.0f;
+	risk->sideSafetyOutside = 9999.0f;
+	risk->hasPredictedConflict = qfalse;
+	risk->laneSwapRecommended = qfalse;
+	risk->abortOvertakeRecommended = qfalse;
+	risk->recommendedSpeedBias = 0.0f;
+
+	if ( minPredictionSec < 0.5f ) {
+		minPredictionSec = 0.5f;
+	}
+	if ( maxPredictionSec > 1.5f ) {
+		maxPredictionSec = 1.5f;
+	}
+	if ( maxPredictionSec < minPredictionSec ) {
+		maxPredictionSec = minPredictionSec;
+	}
+
+	myForwardSpeed = DotProduct( bs->cur_ps.velocity, routeForward );
+
+	for ( i = 0; i < level.maxclients; ++i ) {
+		gentity_t *otherEnt;
+		vec3_t toOther;
+		float ahead;
+		float lateral;
+		float relSpeed;
+		float absLateral;
+		float predictionTime;
+		float predictionScale;
+		float dampedPrediction;
+		vec3_t predictedSelf;
+		vec3_t predictedOther;
+		vec3_t predictedDelta;
+		float predictedAhead;
+		float predictedLateral;
+		float predictedAbsLateral;
+		float otherForwardSpeed;
+
+		if ( i == bs->client ) {
+			continue;
+		}
+		if ( level.clients[i].pers.connected != CON_CONNECTED ) {
+			continue;
+		}
+
+		otherEnt = &g_entities[i];
+		if ( !otherEnt->inuse || !otherEnt->client || otherEnt->health <= 0 ) {
+			continue;
+		}
+
+		VectorSubtract( otherEnt->client->ps.origin, bs->cur_ps.origin, toOther );
+		ahead = DotProduct( toOther, routeForward );
+		lateral = DotProduct( toOther, routeRight );
+		otherForwardSpeed = DotProduct( otherEnt->client->ps.velocity, routeForward );
+		relSpeed = myForwardSpeed - otherForwardSpeed;
+		absLateral = fabs( lateral );
+
+		if ( ahead > -40.0f && ahead < risk->nearestAheadDist && absLateral < 120.0f ) {
+			risk->nearestAheadDist = ahead;
+			risk->nearestAheadRelSpeed = relSpeed;
+			risk->nearestAheadLateral = lateral;
+		}
+		if ( ahead < 40.0f && -ahead < risk->nearestBehindDist && absLateral < 140.0f ) {
+			risk->nearestBehindDist = -ahead;
+			risk->nearestBehindRelSpeed = otherForwardSpeed - myForwardSpeed;
+			risk->nearestBehindLateral = lateral;
+		}
+
+		predictionScale = fabs( ahead ) / 240.0f;
+		if ( predictionScale < 0.0f ) {
+			predictionScale = 0.0f;
+		} else if ( predictionScale > 1.0f ) {
+			predictionScale = 1.0f;
+		}
+		predictionTime = minPredictionSec + ( maxPredictionSec - minPredictionSec ) * predictionScale;
+		dampedPrediction = predictionTime * 0.82f;
+
+		VectorMA( bs->cur_ps.origin, dampedPrediction, bs->cur_ps.velocity, predictedSelf );
+		VectorMA( otherEnt->client->ps.origin, dampedPrediction, otherEnt->client->ps.velocity, predictedOther );
+		VectorSubtract( predictedOther, predictedSelf, predictedDelta );
+		predictedAhead = DotProduct( predictedDelta, routeForward );
+		predictedLateral = DotProduct( predictedDelta, routeRight );
+		predictedAbsLateral = fabs( predictedLateral );
+
+		if ( predictedAhead > -30.0f && predictedAhead < 150.0f ) {
+			if ( predictedLateral < 0.0f && -predictedLateral < risk->sideSafetyInside ) {
+				risk->sideSafetyInside = -predictedLateral;
+			}
+			if ( predictedLateral > 0.0f && predictedLateral < risk->sideSafetyOutside ) {
+				risk->sideSafetyOutside = predictedLateral;
+			}
+		}
+
+		if ( predictedAhead > -35.0f && predictedAhead < 130.0f && predictedAbsLateral < 92.0f ) {
+			risk->hasPredictedConflict = qtrue;
+
+			if ( relSpeed > 45.0f ) {
+				risk->recommendedSpeedBias -= 55.0f;
+			} else {
+				risk->recommendedSpeedBias -= 35.0f;
+			}
+
+			if ( predictedAbsLateral < 70.0f || predictedAhead < 30.0f ) {
+				risk->abortOvertakeRecommended = qtrue;
+			}
+		}
+	}
+
+	if ( risk->sideSafetyInside + 8.0f < risk->sideSafetyOutside ) {
+		risk->laneSwapRecommended = qtrue;
+	}
+}
+
 /*
 ==================
 BotResetNodeSwitches
@@ -3180,16 +3323,9 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			vec3_t routeForward;
 			vec3_t routeRight;
 			float routeForwardLen;
-			float nearestAheadDist = 4096.0f;
-			float nearestBehindDist = 4096.0f;
-			float nearestAheadRelSpeed = 0.0f;
-			float nearestBehindRelSpeed = 0.0f;
-			float nearestAheadLateral = 0.0f;
-			float nearestBehindLateral = 0.0f;
 			float brakeZone;
-			float sideSafetyInside = 9999.0f;
-			float sideSafetyOutside = 9999.0f;
 			int preferredInside = qtrue;
+			botCollisionRisk_t collisionRisk;
 
 			VectorSubtract( ghostRoute->waypoints[lookAheadIndex].origin, bs->cur_ps.origin, routeForward );
 			routeForward[2] = 0;
@@ -3210,52 +3346,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				preferredInside = ( crossZ >= 0.0f );
 			}
 
-			for ( i = 0; i < level.maxclients; ++i ) {
-				gentity_t *otherEnt;
-				vec3_t toOther;
-				float ahead;
-				float lateral;
-				float relSpeed;
-				float absLateral;
-
-				if ( i == bs->client ) {
-					continue;
-				}
-				if ( level.clients[i].pers.connected != CON_CONNECTED ) {
-					continue;
-				}
-
-				otherEnt = &g_entities[i];
-				if ( !otherEnt->inuse || !otherEnt->client || otherEnt->health <= 0 ) {
-					continue;
-				}
-
-				VectorSubtract( otherEnt->client->ps.origin, bs->cur_ps.origin, toOther );
-				ahead = DotProduct( toOther, routeForward );
-				lateral = DotProduct( toOther, routeRight );
-				relSpeed = DotProduct( bs->cur_ps.velocity, routeForward ) - DotProduct( otherEnt->client->ps.velocity, routeForward );
-				absLateral = fabs( lateral );
-
-				if ( ahead > -40.0f && ahead < nearestAheadDist && absLateral < 120.0f ) {
-					nearestAheadDist = ahead;
-					nearestAheadRelSpeed = relSpeed;
-					nearestAheadLateral = lateral;
-				}
-				if ( ahead < 40.0f && -ahead < nearestBehindDist && absLateral < 140.0f ) {
-					nearestBehindDist = -ahead;
-					nearestBehindRelSpeed = DotProduct( otherEnt->client->ps.velocity, routeForward ) - DotProduct( bs->cur_ps.velocity, routeForward );
-					nearestBehindLateral = lateral;
-				}
-
-				if ( ahead > -20.0f && ahead < 180.0f ) {
-					if ( lateral < 0.0f && -lateral < sideSafetyInside ) {
-						sideSafetyInside = -lateral;
-					}
-					if ( lateral > 0.0f && lateral < sideSafetyOutside ) {
-						sideSafetyOutside = lateral;
-					}
-				}
-			}
+			Bot_PredictCollisionRisk( bs, routeForward, routeRight, 0.5f, 1.5f, &collisionRisk );
 
 			brakeZone = ( actualSpeed > speed * 1.08f || cornerPhase > 0.55f ) ? 1.0f : 0.0f;
 			decisionState = (ghostDecisionState_t)bs->ghostDecisionState;
@@ -3268,17 +3359,19 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			switch ( decisionState ) {
 				default:
 				case GHOST_DECISION_FOLLOW:
-					if ( nearestAheadDist < 190.0f && nearestAheadRelSpeed > 45.0f && brakeZone < 0.5f ) {
+					if ( collisionRisk.nearestAheadDist < 190.0f && collisionRisk.nearestAheadRelSpeed > 45.0f && brakeZone < 0.5f ) {
 						decisionState = GHOST_DECISION_PREPARE_OVERTAKE;
-					} else if ( nearestBehindDist < 120.0f && nearestBehindRelSpeed > 70.0f && ( brakeZone > 0.5f || cornerPhase > 0.35f ) ) {
+					} else if ( collisionRisk.nearestBehindDist < 120.0f && collisionRisk.nearestBehindRelSpeed > 70.0f && ( brakeZone > 0.5f || cornerPhase > 0.35f ) ) {
 						decisionState = GHOST_DECISION_DEFEND_LINE;
+					} else if ( collisionRisk.hasPredictedConflict ) {
+						decisionState = GHOST_DECISION_ABORT_OVERTAKE;
 					}
 					break;
 
 				case GHOST_DECISION_PREPARE_OVERTAKE:
-					if ( nearestAheadDist > 260.0f || nearestAheadRelSpeed < 5.0f ) {
+					if ( collisionRisk.nearestAheadDist > 260.0f || collisionRisk.nearestAheadRelSpeed < 5.0f ) {
 						decisionState = GHOST_DECISION_FOLLOW;
-					} else if ( brakeZone > 0.5f ) {
+					} else if ( brakeZone > 0.5f || collisionRisk.abortOvertakeRecommended ) {
 						decisionState = GHOST_DECISION_ABORT_OVERTAKE;
 					} else {
 						if ( preferredInside ) {
@@ -3293,23 +3386,23 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				case GHOST_DECISION_OVERTAKE_OUTSIDE:
 				{
 					qboolean sideBlocked;
-					sideBlocked = ( decisionState == GHOST_DECISION_OVERTAKE_INSIDE ) ? ( sideSafetyInside < 48.0f ) : ( sideSafetyOutside < 48.0f );
-					if ( nearestAheadDist < 35.0f || sideBlocked || brakeZone > 0.75f ) {
+					sideBlocked = ( decisionState == GHOST_DECISION_OVERTAKE_INSIDE ) ? ( collisionRisk.sideSafetyInside < 48.0f ) : ( collisionRisk.sideSafetyOutside < 48.0f );
+					if ( collisionRisk.nearestAheadDist < 35.0f || sideBlocked || brakeZone > 0.75f || collisionRisk.abortOvertakeRecommended ) {
 						decisionState = GHOST_DECISION_ABORT_OVERTAKE;
-					} else if ( nearestAheadDist > 270.0f || nearestAheadRelSpeed < -20.0f ) {
+					} else if ( collisionRisk.nearestAheadDist > 270.0f || collisionRisk.nearestAheadRelSpeed < -20.0f ) {
 						decisionState = GHOST_DECISION_FOLLOW;
 					}
 					break;
 				}
 
 				case GHOST_DECISION_DEFEND_LINE:
-					if ( nearestBehindDist > 220.0f || nearestBehindRelSpeed < 25.0f ) {
+					if ( collisionRisk.nearestBehindDist > 220.0f || collisionRisk.nearestBehindRelSpeed < 25.0f ) {
 						decisionState = GHOST_DECISION_FOLLOW;
 					}
 					break;
 
 				case GHOST_DECISION_ABORT_OVERTAKE:
-					if ( nearestAheadDist > 140.0f || brakeZone > 0.5f ) {
+					if ( collisionRisk.nearestAheadDist > 140.0f || brakeZone > 0.5f ) {
 						decisionState = GHOST_DECISION_FOLLOW;
 					}
 					break;
@@ -3322,7 +3415,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 
 			switch ( decisionState ) {
 				case GHOST_DECISION_PREPARE_OVERTAKE:
-					desiredOffset = ( nearestAheadLateral >= 0.0f ) ? -32.0f : 32.0f;
+					desiredOffset = ( collisionRisk.nearestAheadLateral >= 0.0f ) ? -32.0f : 32.0f;
 					speedBias = 40.0f;
 					break;
 				case GHOST_DECISION_OVERTAKE_INSIDE:
@@ -3334,7 +3427,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 					speedBias = 20.0f;
 					break;
 				case GHOST_DECISION_DEFEND_LINE:
-					desiredOffset = ( nearestBehindLateral >= 0.0f ) ? -46.0f : 46.0f;
+					desiredOffset = ( collisionRisk.nearestBehindLateral >= 0.0f ) ? -46.0f : 46.0f;
 					speedBias = -25.0f;
 					break;
 				case GHOST_DECISION_ABORT_OVERTAKE:
@@ -3346,6 +3439,16 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 					desiredOffset = 0.0f;
 					speedBias = 0.0f;
 					break;
+			}
+			if ( collisionRisk.hasPredictedConflict ) {
+				if ( collisionRisk.laneSwapRecommended ) {
+					desiredOffset = ( preferredInside ? 72.0f : -72.0f );
+				} else if ( collisionRisk.sideSafetyInside > collisionRisk.sideSafetyOutside + 5.0f ) {
+					desiredOffset = -68.0f;
+				} else if ( collisionRisk.sideSafetyOutside > collisionRisk.sideSafetyInside + 5.0f ) {
+					desiredOffset = 68.0f;
+				}
+				speedBias += collisionRisk.recommendedSpeedBias;
 			}
 
 			bs->ghostDecisionLateralOffset += ( desiredOffset - bs->ghostDecisionLateralOffset ) * 0.35f;
