@@ -1368,7 +1368,8 @@ void Sigil_Think( gentity_t *ent ) {
 
 void CaptureSigil(gentity_t *ent, int sigilNum, sigilStatus_t status, powerup_t powerup) {
     Team_SetSigilStatus(sigilNum, status);
-    ent->nextthink = level.time - (level.time % 4000) + 4000;
+    ent->timestamp = level.time;
+    ent->nextthink = level.time + g_dominationScoreInterval.integer;
     ent->think = Sigil_Think;
     ent->s.powerups = powerup;
     ent->s.modelindex = ITEM_INDEX( BG_FindItemForPowerup( powerup ) );
@@ -1389,7 +1390,7 @@ int Sigil_Touch( gentity_t *ent, gentity_t *other ) {
     if (!cl)
         return 0;
         
-    if    (ent->count && ent->nextthink < level.time + g_dominationCaptureDelay.integer)    // protect against overflows by not counting
+    if ( ent->count && level.time < ent->timestamp + g_dominationCaptureDelay.integer )
         return 0;
         
     // find the index of the sigil reffered by ent
