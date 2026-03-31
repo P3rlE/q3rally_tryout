@@ -12,7 +12,9 @@
 
 static ghostRecord_t s_levelGhosts[MAX_GHOST_RECORDS_PER_MAP];
 static int s_levelGhostCount = 0;
-static ghostBotRoute_t s_botRoute;
+static ghostBotRoute_t s_botRoutePool[MAX_GHOST_BOT_ROUTE_VARIANTS];
+static int s_botRoutePoolCount = 0;
+static int s_bestBotRouteIndex = -1;
 static ghostBotRoute_t s_botRouteScratch;
 
 // Shared read buffer for ghost file loading. Declared once at module level to
@@ -21,6 +23,9 @@ static ghostBotRoute_t s_botRouteScratch;
 // scan loop in G_Ghost_LoadForMap are never called concurrently (single-thread QVM).
 static char s_ghostFileBuffer[MAX_GHOST_FILE_SIZE + 1];
 static int G_Ghost_Strlen( const char *text );
+static qboolean G_Ghost_IsRouteBetter( const ghostBotRoute_t *candidate, const ghostBotRoute_t *currentBest );
+static int G_Ghost_FindRoutePoolIndexByVariant( const char *variantKey );
+static int G_Ghost_SelectRoutePoolSlot( const ghostBotRoute_t *route );
 
 static int G_Ghost_GetTrackLengthVariant( void ) {
     if ( g_trackLength.integer < 0 || g_trackLength.integer > 2 ) {
@@ -125,9 +130,62 @@ static float G_Ghost_ParseFloat( const char **text ) {
 
 static void G_Ghost_Reset( void ) {
     Com_Memset( s_levelGhosts, 0, sizeof( s_levelGhosts ) );
-    Com_Memset( &s_botRoute, 0, sizeof( s_botRoute ) );
+    Com_Memset( s_botRoutePool, 0, sizeof( s_botRoutePool ) );
     Com_Memset( &s_botRouteScratch, 0, sizeof( s_botRouteScratch ) );
     s_levelGhostCount = 0;
+    s_botRoutePoolCount = 0;
+    s_bestBotRouteIndex = -1;
+}
+
+static qboolean G_Ghost_IsRouteBetter( const ghostBotRoute_t *candidate, const ghostBotRoute_t *currentBest ) {
+    if ( !candidate || !candidate->valid ) {
+        return qfalse;
+    }
+
+    if ( !currentBest || !currentBest->valid ) {
+        return qtrue;
+    }
+
+    if ( candidate->bestTimeMs > 0 ) {
+        if ( currentBest->bestTimeMs <= 0 || candidate->bestTimeMs < currentBest->bestTimeMs ) {
+            return qtrue;
+        }
+    }
+
+    return qfalse;
+}
+
+static int G_Ghost_FindRoutePoolIndexByVariant( const char *variantKey ) {
+    int i;
+    const char *lookupKey = variantKey && variantKey[0] ? variantKey : "any";
+
+    for ( i = 0; i < s_botRoutePoolCount; ++i ) {
+        const char *candidateKey = s_botRoutePool[i].vehicleClass[0] ? s_botRoutePool[i].vehicleClass : "any";
+        if ( !Q_stricmp( lookupKey, candidateKey ) ) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+static int G_Ghost_SelectRoutePoolSlot( const ghostBotRoute_t *route ) {
+    int existingIndex;
+
+    if ( !route || !route->valid ) {
+        return -1;
+    }
+
+    existingIndex = G_Ghost_FindRoutePoolIndexByVariant( route->vehicleClass );
+    if ( existingIndex >= 0 ) {
+        return existingIndex;
+    }
+
+    if ( s_botRoutePoolCount < MAX_GHOST_BOT_ROUTE_VARIANTS ) {
+        return s_botRoutePoolCount++;
+    }
+
+    return -1;
 }
 
 static char *G_Ghost_NextLine( char **cursor ) {
@@ -476,31 +534,36 @@ void G_Ghost_InitForMap( const char *mapname ) {
     if ( s_levelGhostCount == 0 ) {
         G_Printf( "G_Ghost: No matching ghost files for map %s\n", mapname );
     } else {
-        qboolean foundRoute = qfalse;
-        int bestRouteTime = 0;
-
         G_Printf( "G_Ghost: Loaded %d ghost record(s) for %s\n", s_levelGhostCount, mapname );
 
         for ( i = 0; i < s_levelGhostCount; ++i ) {
+            int poolSlot;
+
             if ( !G_Ghost_LoadBotRouteFromFile( &s_levelGhosts[i], &s_botRouteScratch ) ) {
                 continue;
             }
 
-            if ( !foundRoute ) {
-                s_botRoute = s_botRouteScratch;
-                bestRouteTime = s_botRouteScratch.bestTimeMs;
-                foundRoute = qtrue;
+            poolSlot = G_Ghost_SelectRoutePoolSlot( &s_botRouteScratch );
+            if ( poolSlot < 0 ) {
+                G_Printf( "G_Ghost: route pool full, dropping variant %s from %s\n",
+                    s_botRouteScratch.vehicleClass[0] ? s_botRouteScratch.vehicleClass : "any",
+                    s_botRouteScratch.path );
                 continue;
             }
 
-            if ( s_botRouteScratch.bestTimeMs > 0 && ( bestRouteTime <= 0 || s_botRouteScratch.bestTimeMs < bestRouteTime ) ) {
-                s_botRoute = s_botRouteScratch;
-                bestRouteTime = s_botRouteScratch.bestTimeMs;
+            if ( G_Ghost_IsRouteBetter( &s_botRouteScratch, &s_botRoutePool[poolSlot] ) ) {
+                s_botRoutePool[poolSlot] = s_botRouteScratch;
+            }
+
+            if ( s_bestBotRouteIndex < 0 || G_Ghost_IsRouteBetter( &s_botRoutePool[poolSlot], &s_botRoutePool[s_bestBotRouteIndex] ) ) {
+                s_bestBotRouteIndex = poolSlot;
             }
         }
 
-        if ( foundRoute ) {
-            G_Printf( "G_Ghost: Bot route source set to %s\n", s_botRoute.path );
+        if ( s_bestBotRouteIndex >= 0 ) {
+            G_Printf( "G_Ghost: Bot route pool ready (%d variant(s), fallback=%s)\n",
+                s_botRoutePoolCount,
+                s_botRoutePool[s_bestBotRouteIndex].path );
         } else {
             G_Printf( "G_Ghost: Bot route unavailable for map %s\n", mapname );
         }
@@ -530,11 +593,29 @@ const ghostRecord_t *G_Ghost_FindBestRecord( void ) {
 }
 
 qboolean G_Ghost_GetBotRoute( const ghostBotRoute_t **outRoute ) {
-    if ( !outRoute || !s_botRoute.valid ) {
+    return G_Ghost_GetBotRouteForVariant( NULL, outRoute );
+}
+
+qboolean G_Ghost_GetBotRouteForVariant( const char *variantKey, const ghostBotRoute_t **outRoute ) {
+    int poolIndex = -1;
+
+    if ( !outRoute ) {
         return qfalse;
     }
 
-    *outRoute = &s_botRoute;
+    if ( variantKey && variantKey[0] ) {
+        poolIndex = G_Ghost_FindRoutePoolIndexByVariant( variantKey );
+    }
+
+    if ( poolIndex < 0 ) {
+        poolIndex = s_bestBotRouteIndex;
+    }
+
+    if ( poolIndex < 0 || poolIndex >= s_botRoutePoolCount || !s_botRoutePool[poolIndex].valid ) {
+        return qfalse;
+    }
+
+    *outRoute = &s_botRoutePool[poolIndex];
     return qtrue;
 }
 

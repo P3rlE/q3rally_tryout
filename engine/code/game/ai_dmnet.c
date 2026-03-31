@@ -3026,6 +3026,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	//float		accel, a_normal;
 	int			throttleChange;
 	const ghostBotRoute_t *ghostRoute;
+	const char *routeVariant = NULL;
 
 	if (BotIsObserver(bs)) {
 		BotClearActivateGoalStack(bs);
@@ -3050,7 +3051,14 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	if( lastCheckpoint < 1 )
 		lastCheckpoint = level.numCheckpoints;
 
-	if ( G_Ghost_GetBotRoute( &ghostRoute ) && ghostRoute ) {
+	if ( bs->entitynum >= 0 && bs->entitynum < level.maxclients ) {
+		gentity_t *botEnt = &g_entities[bs->entitynum];
+		if ( botEnt->client && botEnt->client->pers.vehicleClass[0] ) {
+			routeVariant = botEnt->client->pers.vehicleClass;
+		}
+	}
+
+	if ( G_Ghost_GetBotRouteForVariant( routeVariant, &ghostRoute ) && ghostRoute ) {
 		int bestIndex = -1;
 		float bestDistSq = 0.0f;
 		int i;
@@ -3293,4 +3301,3 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	return qtrue;
 }
 // END
-
