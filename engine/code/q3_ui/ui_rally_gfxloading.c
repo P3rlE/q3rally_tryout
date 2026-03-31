@@ -330,7 +330,7 @@ static void UI_GFX_Loading_MenuDraw(void) {
     static int  lastDrawTime = 0;
 
     Menu_Draw(&s_gfxloading.menu);
-    UI_FillRect(0, 0, 640, 480, gfxBgColor);
+    UI_FillRect(-uis.bias, 0, SCREEN_WIDTH + uis.bias * 2, SCREEN_HEIGHT, gfxBgColor);
 
     currentTime = trap_Milliseconds();
     deltaTime   = (lastDrawTime > 0)
@@ -606,7 +606,12 @@ void UI_GFX_Loading(void) {
     s_gfxloading.carShader = trap_R_RegisterShaderNoMip("menu/art/loading_car");
 
     s_gfxloading.menu.draw       = UI_GFX_Loading_MenuDraw;
-    s_gfxloading.menu.fullscreen = qtrue;
+    /*
+     * Draw our own full-width theme background in UI_GFX_Loading_MenuDraw.
+     * Keep fullscreen background disabled here so UI_DrawMenu won't paint
+     * menuBackShader underneath.
+     */
+    s_gfxloading.menu.fullscreen = qfalse;
     s_gfxloading.menu.key        = UI_GFX_Loading_Key;
 
     uis.menusp = 0;
