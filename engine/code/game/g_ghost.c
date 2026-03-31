@@ -20,6 +20,36 @@ static ghostBotRoute_t s_botRouteScratch;
 // Safe to share: G_Ghost_ParseHeader, G_Ghost_LoadBotRouteFromFile, and the
 // scan loop in G_Ghost_LoadForMap are never called concurrently (single-thread QVM).
 static char s_ghostFileBuffer[MAX_GHOST_FILE_SIZE + 1];
+static int G_Ghost_Strlen( const char *text );
+
+static int G_Ghost_GetTrackLengthVariant( void ) {
+    if ( g_trackLength.integer < 0 || g_trackLength.integer > 2 ) {
+        return 0;
+    }
+
+    return g_trackLength.integer;
+}
+
+static int G_Ghost_GetTrackReversedVariant( void ) {
+    return g_trackReversed.integer ? 1 : 0;
+}
+
+static qboolean G_Ghost_FilenameMatchesVariant( const char *filenameNoExt, const char *mapname, int trackLength, int trackReversed ) {
+    int mapLen;
+    char variantPrefix[32];
+
+    if ( !filenameNoExt || !filenameNoExt[0] || !mapname || !mapname[0] ) {
+        return qfalse;
+    }
+
+    mapLen = G_Ghost_Strlen( mapname );
+    if ( Q_stricmpn( filenameNoExt, mapname, mapLen ) ) {
+        return qfalse;
+    }
+
+    Com_sprintf( variantPrefix, sizeof( variantPrefix ), "_tl%d_rev%d_", trackLength, trackReversed );
+    return !Q_stricmpn( filenameNoExt + mapLen, variantPrefix, G_Ghost_Strlen( variantPrefix ) );
+}
 
 static int G_Ghost_Strlen( const char *text ) {
     int len = 0;
@@ -145,10 +175,12 @@ static char *G_Ghost_NextLine( char **cursor ) {
     return line;
 }
 
-static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, qboolean allowNoMapHeader, ghostRecord_t *outRecord ) {
+static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, int expectedTrackLength, int expectedTrackReversed, qboolean allowNoMapHeader, ghostRecord_t *outRecord ) {
     char *cursor;
     char *line;
     char mapName[MAX_QPATH] = "";
+    int trackLength = -1;
+    int trackReversed = -1;
     qboolean hasMapHeader = qfalse;
 
     if ( !buffer || !outRecord ) {
@@ -180,6 +212,18 @@ static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, qboo
                 ++value;
             }
             outRecord->bestTimeMs = G_Ghost_ParseInt( value );
+        } else if ( !Q_stricmpn( line, "track_length", 12 ) ) {
+            const char *value = line + 12;
+            while ( *value == ' ' || *value == '\t' ) {
+                ++value;
+            }
+            trackLength = G_Ghost_ParseInt( value );
+        } else if ( !Q_stricmpn( line, "track_reversed", 14 ) ) {
+            const char *value = line + 14;
+            while ( *value == ' ' || *value == '\t' ) {
+                ++value;
+            }
+            trackReversed = G_Ghost_ParseInt( value ) ? 1 : 0;
         } else if ( !Q_stricmpn( line, "frames", 6 ) ) {
             break;
         }
@@ -193,6 +237,14 @@ static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, qboo
         } else if ( !allowNoMapHeader ) {
             return qfalse;
         }
+    }
+
+    if ( expectedTrackLength >= 0 && ( trackLength < 0 || trackLength != expectedTrackLength ) ) {
+        return qfalse;
+    }
+
+    if ( expectedTrackReversed >= 0 && ( trackReversed < 0 || trackReversed != expectedTrackReversed ) ) {
+        return qfalse;
     }
 
     return qtrue;
@@ -351,6 +403,8 @@ void G_Ghost_InitForMap( const char *mapname ) {
     int fileCount;
     int offset;
     int i;
+    int trackLength = G_Ghost_GetTrackLengthVariant();
+    int trackReversed = G_Ghost_GetTrackReversedVariant();
 
     G_Ghost_Reset();
 
@@ -377,7 +431,7 @@ void G_Ghost_InitForMap( const char *mapname ) {
             for ( i = 0; i < fileCount && s_levelGhostCount < MAX_GHOST_RECORDS_PER_MAP; i++ ) {
                 const char *filename = fileList + offset;
                 char cleanName[MAX_QPATH];
-                qboolean filenameLooksLikeMap;
+                qboolean filenameLooksLikeVariant;
                 fileHandle_t f;
                 int length;
 
@@ -389,8 +443,10 @@ void G_Ghost_InitForMap( const char *mapname ) {
 
                 Q_strncpyz( cleanName, filename, sizeof( cleanName ) );
                 COM_StripExtension( cleanName, cleanName, sizeof( cleanName ) );
-                filenameLooksLikeMap = ( !Q_stricmp( cleanName, mapname ) ||
-                    ( !Q_stricmpn( cleanName, mapname, G_Ghost_Strlen( mapname ) ) && cleanName[G_Ghost_Strlen( mapname )] == '_' ) );
+                filenameLooksLikeVariant = G_Ghost_FilenameMatchesVariant( cleanName, mapname, trackLength, trackReversed );
+                if ( !filenameLooksLikeVariant ) {
+                    continue;
+                }
 
                 length = trap_FS_FOpenFile( va( "%s/%s", ghostDir, filename ), &f, FS_READ );
                 if ( length <= 0 ) {
@@ -404,7 +460,7 @@ void G_Ghost_InitForMap( const char *mapname ) {
                 }
                 trap_FS_FCloseFile( f );
 
-                if ( G_Ghost_ParseHeader( s_ghostFileBuffer, mapname, filenameLooksLikeMap, &s_levelGhosts[s_levelGhostCount] ) ) {
+                if ( G_Ghost_ParseHeader( s_ghostFileBuffer, mapname, trackLength, trackReversed, qfalse, &s_levelGhosts[s_levelGhostCount] ) ) {
                     Q_strncpyz( s_levelGhosts[s_levelGhostCount].path, va( "%s/%s", ghostDir, filename ), sizeof( s_levelGhosts[s_levelGhostCount].path ) );
                     ++s_levelGhostCount;
                 }
