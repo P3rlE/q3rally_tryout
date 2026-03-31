@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime,
                 ghostRecording_t *target, int *bestTimeOut, char *vehicleOut, int vehicleOutSize, char *pathOut, int pathOutSize );
+static qboolean CG_WriteGhostFile( const char *path, const char *mapname, const char *vehicle, int bestLapTime, const ghostRecording_t *recording );
 
 static void QDECL CG_GhostDebugPrint( const char *fmt, ... ) {
 	va_list argptr;
@@ -488,10 +489,12 @@ void CG_RecordGhostFrame( void ) {
 }
 
 void CG_AttemptSavePersonalGhost( int finishTime ) {
-        fileHandle_t file;
         char mapname[MAX_QPATH];
         char vehicle[MAX_QPATH];
         char path[MAX_QPATH];
+        char legacyPath[MAX_QPATH];
+        char timestamp[32];
+        qtime_t now;
         int bestLapTime;
         int lapStartOffset;
         int lapEndOffset;
@@ -635,11 +638,34 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
         lapRecording.duration = lapRecording.frames[lapRecording.frameCount - 1].timeOffset;
         lapRecording.valid = qtrue;
 
-        Com_sprintf( path, sizeof( path ), "ghosts/%s.ghost", mapname );
+        trap_RealTime( &now );
+        Com_sprintf( timestamp, sizeof( timestamp ), "%04d%02d%02d-%02d%02d%02d",
+                1900 + now.tm_year, 1 + now.tm_mon, now.tm_mday,
+                now.tm_hour, now.tm_min, now.tm_sec );
+
+        Com_sprintf( path, sizeof( path ), "ghosts/%s-%s.ghost", mapname, timestamp );
+        Com_sprintf( legacyPath, sizeof( legacyPath ), "ghosts/%s.ghost", mapname );
+
+        if ( !CG_WriteGhostFile( path, mapname, vehicle, bestLapTime, &lapRecording ) ) {
+                return;
+        }
+
+        CG_WriteGhostFile( legacyPath, mapname, vehicle, bestLapTime, &lapRecording );
+
+        cg.ghostPlayback = lapRecording;
+        cg.personalGhostAvailable = qtrue;
+        cg.personalGhostBestTime = bestLapTime;
+        Q_strncpyz( cg.personalGhostVehicle, vehicle, sizeof( cg.personalGhostVehicle ) );
+        Q_strncpyz( cg.personalGhostPath, path, sizeof( cg.personalGhostPath ) );
+}
+
+static qboolean CG_WriteGhostFile( const char *path, const char *mapname, const char *vehicle, int bestLapTime, const ghostRecording_t *recording ) {
+        fileHandle_t file;
+        int i;
 
         if ( trap_FS_FOpenFile( path, &file, FS_WRITE ) < 0 ) {
                 CG_Printf( "CG_Ghost: failed to save %s\n", path );
-                return;
+                return qfalse;
         }
 
         {
@@ -654,13 +680,13 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
                 Com_sprintf( header, sizeof( header ), "best_time_ms %d\n", bestLapTime );
                 trap_FS_Write( header, strlen( header ), file );
 
-                Com_sprintf( header, sizeof( header ), "frames %d\n", lapRecording.frameCount );
+                Com_sprintf( header, sizeof( header ), "frames %d\n", recording->frameCount );
                 trap_FS_Write( header, strlen( header ), file );
         }
 
-        for ( i = 0; i < lapRecording.frameCount; i++ ) {
-                int index = ( lapRecording.startIndex + i ) % MAX_GHOST_FRAMES;
-                ghostFrame_t *frame = &lapRecording.frames[index];
+        for ( i = 0; i < recording->frameCount; i++ ) {
+                int index = ( recording->startIndex + i ) % MAX_GHOST_FRAMES;
+                const ghostFrame_t *frame = &recording->frames[index];
                 char line[256];
 
                 Com_sprintf( line, sizeof( line ), "%d %f %f %f %f %f %f %f %f %f %d %d %d\n",
@@ -674,11 +700,7 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
 
         trap_FS_FCloseFile( file );
 
-        cg.ghostPlayback = lapRecording;
-        cg.personalGhostAvailable = qtrue;
-        cg.personalGhostBestTime = bestLapTime;
-        Q_strncpyz( cg.personalGhostVehicle, vehicle, sizeof( cg.personalGhostVehicle ) );
-        Q_strncpyz( cg.personalGhostPath, path, sizeof( cg.personalGhostPath ) );
+        return qtrue;
 }
 
 static byte CG_GetGhostAlpha( void ) {
