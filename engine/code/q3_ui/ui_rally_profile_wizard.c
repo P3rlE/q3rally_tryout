@@ -164,11 +164,12 @@ static const char *s_avatarShaderPaths[ PW_AVATAR_COUNT ] = {
     "gfx/avatars/preset/driver_07", "gfx/avatars/preset/driver_08",
     "gfx/avatars/preset/driver_09",
 };
-static const char *s_avatarDisplayNames[ PW_AVATAR_COUNT ] = {
+static const char *s_avatarDisplayNames[ PW_AVATAR_COUNT + 1 ] = {
     "None",
     "Driver 01", "Driver 02", "Driver 03",
     "Driver 04", "Driver 05", "Driver 06",
     "Driver 07", "Driver 08", "Driver 09",
+    NULL
 };
 
 #define PW_COUNTRY_COUNT 42
@@ -180,7 +181,7 @@ static const char *s_countryCodes[ PW_COUNTRY_COUNT ] = {
     "RO","RU","SE","SG","SK","TH","TR","TW","UA",
     "US","VN","ZA","AR","CL",
 };
-static const char *s_countryNames[ PW_COUNTRY_COUNT ] = {
+static const char *s_countryNames[ PW_COUNTRY_COUNT + 1 ] = {
     "Not specified",
     "Austria",       "Australia",      "Belgium",       "Brazil",
     "Canada",        "Switzerland",    "China",         "Czech Republic",
@@ -193,6 +194,7 @@ static const char *s_countryNames[ PW_COUNTRY_COUNT ] = {
     "Thailand",      "Turkey",         "Taiwan",        "Ukraine",
     "United States", "Vietnam",        "South Africa",  "Argentina",
     "Chile",
+    NULL
 };
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -641,6 +643,7 @@ static void PW_DrawPageDone( void ) {
     UI_DrawString( PW_CONTENT_X, PW_BODY_Y + 58, "Start here:",                          UI_LEFT | UI_SMALLFONT, pwText );
     UI_DrawString( PW_CONTENT_X, PW_BODY_Y + 76, "PLAY OFFLINE for a first Solo Race",            UI_LEFT | UI_SMALLFONT, pwAccent );
     UI_DrawString( PW_CONTENT_X, PW_BODY_Y + 94, "CONFIG > CONTROLS for Key Bindings",     UI_LEFT | UI_SMALLFONT, pwMuted );
+    UI_DrawString( PW_CONTENT_X, PW_BODY_Y + 118, "Ladder tracking starts after admin key activation.", UI_LEFT | UI_SMALLFONT, pwMuted );
 }
 
 static void PW_Draw( void ) {
