@@ -130,14 +130,72 @@ typedef struct {
 	byte*				buf;
 	long				drawX, drawY;
     filetype_t			fileType;
+	qboolean			audioInitialized;
 } cin_cache;
 
 static cinematics_t		cin;
 static cin_cache		cinTable[MAX_VIDEO_HANDLES];
 static int				currentHandle = -1;
 static int				CL_handle = -1;
+static qboolean			cinAudioMuteOverrideActive = qfalse;
+static int				cinPrevMuteWhenMinimized = 0;
+static int				cinPrevMuteWhenUnfocused = 0;
 
 extern int				s_soundtime;		// sample PAIRS
+
+static void CIN_EnsureAudioPlaybackReady( int handle ) {
+	if ( handle < 0 || handle >= MAX_VIDEO_HANDLES ) {
+		return;
+	}
+
+	if ( cinTable[handle].silent ) {
+		return;
+	}
+
+	if ( !cls.soundStarted ) {
+		cls.soundStarted = qtrue;
+		S_Init();
+	}
+
+	if ( !cls.soundRegistered ) {
+		cls.soundRegistered = qtrue;
+		S_BeginRegistration();
+	}
+
+	if (cinTable[handle].alterGameState && !cinAudioMuteOverrideActive) {
+		cinPrevMuteWhenMinimized = Cvar_VariableIntegerValue("s_muteWhenMinimized");
+		cinPrevMuteWhenUnfocused = Cvar_VariableIntegerValue("s_muteWhenUnfocused");
+		if (cinPrevMuteWhenMinimized || cinPrevMuteWhenUnfocused) {
+			Cvar_Set("s_muteWhenMinimized", "0");
+			Cvar_Set("s_muteWhenUnfocused", "0");
+			cinAudioMuteOverrideActive = qtrue;
+		}
+	}
+
+	if (cinTable[handle].alterGameState &&
+		Cvar_VariableIntegerValue("s_muted") &&
+		(!Cvar_VariableIntegerValue("s_volume") || !Cvar_VariableIntegerValue("s_alGain"))) {
+		Com_DPrintf("CIN audio: muted by zero volume/gain cvar at startup\n");
+	}
+
+	S_Update();
+
+	if ( !cinTable[handle].audioInitialized || s_rawend[CIN_RAW_STREAM] < s_soundtime ) {
+		s_rawend[CIN_RAW_STREAM] = s_soundtime;
+	}
+
+	cinTable[handle].audioInitialized = qtrue;
+}
+
+static void CIN_RestoreAudioMutePolicy( void ) {
+	if (!cinAudioMuteOverrideActive) {
+		return;
+	}
+
+	Cvar_Set("s_muteWhenMinimized", va("%d", cinPrevMuteWhenMinimized));
+	Cvar_Set("s_muteWhenUnfocused", va("%d", cinPrevMuteWhenUnfocused));
+	cinAudioMuteOverrideActive = qfalse;
+}
 
 
 void CIN_CloseAllVideos(void) {
@@ -1215,9 +1273,8 @@ redump:
 		case	ZA_SOUND_STEREO:
 			if (!cinTable[currentHandle].silent) {
 				if (cinTable[currentHandle].numQuads == -1) {
-						S_Update();
-						s_rawend[CIN_RAW_STREAM] = s_soundtime;
-					}
+					CIN_EnsureAudioPlaybackReady(currentHandle);
+				}
 					ssize = RllDecodeStereoToStereo( framedata, sbuf, cinTable[currentHandle].RoQFrameSize, 0, (unsigned short)cinTable[currentHandle].roq_flags);
 					if ( com_developer && com_developer->integer ) {
 						Com_Printf( "RoQ audio stereo: frameSize=%u flags=0x%04x samples=%d soundtime=%d rawend=%d firstPair=(%d,%d)\n",
@@ -1354,6 +1411,7 @@ static void RoQShutdown( void ) {
 
 	if (cinTable[currentHandle].alterGameState) {
 		clc.state = CA_DISCONNECTED;
+		CIN_RestoreAudioMutePolicy();
 		// we can't just do a vstr nextmap, because
 		// if we are aborting the intro cinematic with
 		// a devmap command, nextmap would be valid by
@@ -1725,6 +1783,7 @@ int CIN_PlayCinematic( const char *arg, int x, int y, int w, int h, int systemBi
 		}
 
 		cinTable[currentHandle].status = FMV_PLAY;
+		CIN_EnsureAudioPlaybackReady(currentHandle);
 
 		return currentHandle;
 	}
@@ -1778,10 +1837,7 @@ int CIN_PlayCinematic( const char *arg, int x, int y, int w, int h, int systemBi
 		}
 		
 		Con_Close();
-
-		if (!cinTable[currentHandle].silent) {
-			s_rawend[CIN_RAW_STREAM] = s_soundtime;
-		}
+		CIN_EnsureAudioPlaybackReady(currentHandle);
 
 		return currentHandle;
 	}
