@@ -612,7 +612,7 @@ void UI_GFX_Loading(void) {
      * Keep fullscreen background disabled here so UI_DrawMenu won't paint
      * menuBackShader underneath.
      */
-    s_gfxloading.menu.fullscreen = qfalse;
+    s_gfxloading.menu.fullscreen = qtrue;
     s_gfxloading.menu.key        = UI_GFX_Loading_Key;
 
     uis.menusp = 0;
