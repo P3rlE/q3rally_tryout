@@ -36,6 +36,10 @@ typedef struct ghostRetentionEntry_s {
         int bestTimeMs;
 } ghostRetentionEntry_t;
 
+static char s_ghostRetentionFileList[4096];
+static ghostRetentionEntry_t s_ghostRetentionEntries[128];
+static ghostRecording_t s_ghostRetentionScratchRecording;
+
 static void QDECL CG_GhostDebugPrint( const char *fmt, ... ) {
 	va_list argptr;
 	char text[1024];
@@ -126,6 +130,67 @@ static int CG_GhostRetentionCompare( const ghostRetentionEntry_t *a, const ghost
         return Q_stricmp( a->path, b->path );
 }
 
+static int CG_CollectGhostRetentionEntriesForVariant( const char *mapname, int trackLength, int trackReversed ) {
+        int fileCount;
+        int offset;
+        int i;
+        int entryCount = 0;
+
+        if ( !mapname || !mapname[0] ) {
+                return 0;
+        }
+
+        fileCount = trap_FS_GetFileList( "ghosts", ".ghost", s_ghostRetentionFileList, sizeof( s_ghostRetentionFileList ) );
+        offset = 0;
+
+        for ( i = 0; i < fileCount; ++i ) {
+                const char *filename = s_ghostRetentionFileList + offset;
+                char cleanName[MAX_QPATH];
+                char fullPath[MAX_QPATH];
+                int bestTimeMs = 0;
+
+                offset += strlen( filename ) + 1;
+                if ( !filename[0] ) {
+                        continue;
+                }
+
+                Q_strncpyz( cleanName, filename, sizeof( cleanName ) );
+                COM_StripExtension( cleanName, cleanName, sizeof( cleanName ) );
+
+                if ( !CG_GhostFilenameMatchesVariant( cleanName, mapname, trackLength, trackReversed ) ) {
+                        continue;
+                }
+
+                if ( entryCount >= (int)( sizeof( s_ghostRetentionEntries ) / sizeof( s_ghostRetentionEntries[0] ) ) ) {
+                        break;
+                }
+
+                Com_sprintf( fullPath, sizeof( fullPath ), "ghosts/%s", filename );
+                if ( !CG_LoadGhostFile( fullPath, mapname, trackLength, trackReversed, NULL, 0, &s_ghostRetentionScratchRecording, &bestTimeMs, NULL, 0, NULL, 0 ) ) {
+                        continue;
+                }
+
+                Q_strncpyz( s_ghostRetentionEntries[entryCount].path, fullPath, sizeof( s_ghostRetentionEntries[entryCount].path ) );
+                s_ghostRetentionEntries[entryCount].bestTimeMs = bestTimeMs;
+                entryCount++;
+        }
+
+        return entryCount;
+}
+
+static void CG_SortGhostRetentionEntries( int entryCount ) {
+        int i;
+        for ( i = 1; i < entryCount; ++i ) {
+                int j = i;
+                ghostRetentionEntry_t key = s_ghostRetentionEntries[i];
+                while ( j > 0 && CG_GhostRetentionCompare( &key, &s_ghostRetentionEntries[j - 1] ) < 0 ) {
+                        s_ghostRetentionEntries[j] = s_ghostRetentionEntries[j - 1];
+                        --j;
+                }
+                s_ghostRetentionEntries[j] = key;
+        }
+}
+
 static void CG_DeactivateGhostFile( const char *path, int bestTimeMs ) {
         fileHandle_t file;
         char line[128];
@@ -147,76 +212,23 @@ static void CG_DeactivateGhostFile( const char *path, int bestTimeMs ) {
 }
 
 static void CG_CleanupPersonalGhostsForVariant( const char *mapname, int trackLength, int trackReversed ) {
-        char fileList[4096];
-        int fileCount;
-        int offset;
+        int entryCount;
         int i;
-        ghostRetentionEntry_t entries[128];
-        int entryCount = 0;
-        ghostRecording_t scratchRecording;
 
         if ( !mapname || !mapname[0] ) {
                 return;
         }
 
-        fileCount = trap_FS_GetFileList( "ghosts", ".ghost", fileList, sizeof( fileList ) );
-        offset = 0;
-
-        for ( i = 0; i < fileCount; ++i ) {
-                const char *filename = fileList + offset;
-                char cleanName[MAX_QPATH];
-                char fullPath[MAX_QPATH];
-                int bestTimeMs = 0;
-
-                offset += strlen( filename ) + 1;
-                if ( !filename[0] ) {
-                        continue;
-                }
-
-                Q_strncpyz( cleanName, filename, sizeof( cleanName ) );
-                COM_StripExtension( cleanName, cleanName, sizeof( cleanName ) );
-
-                if ( !CG_GhostFilenameMatchesVariant( cleanName, mapname, trackLength, trackReversed ) ) {
-                        continue;
-                }
-
-                if ( entryCount >= (int)( sizeof( entries ) / sizeof( entries[0] ) ) ) {
-                        break;
-                }
-
-                Com_sprintf( fullPath, sizeof( fullPath ), "ghosts/%s", filename );
-                if ( !CG_LoadGhostFile( fullPath, mapname, trackLength, trackReversed, NULL, 0, &scratchRecording, &bestTimeMs, NULL, 0, NULL, 0 ) ) {
-                        continue;
-                }
-
-                Q_strncpyz( entries[entryCount].path, fullPath, sizeof( entries[entryCount].path ) );
-                entries[entryCount].bestTimeMs = bestTimeMs;
-                entryCount++;
-        }
-
-        for ( i = 1; i < entryCount; ++i ) {
-                int j = i;
-                ghostRetentionEntry_t key = entries[i];
-                while ( j > 0 && CG_GhostRetentionCompare( &key, &entries[j - 1] ) < 0 ) {
-                        entries[j] = entries[j - 1];
-                        --j;
-                }
-                entries[j] = key;
-        }
+        entryCount = CG_CollectGhostRetentionEntriesForVariant( mapname, trackLength, trackReversed );
+        CG_SortGhostRetentionEntries( entryCount );
 
         for ( i = 5; i < entryCount; ++i ) {
-                CG_DeactivateGhostFile( entries[i].path, entries[i].bestTimeMs );
+                CG_DeactivateGhostFile( s_ghostRetentionEntries[i].path, s_ghostRetentionEntries[i].bestTimeMs );
         }
 }
 
 static qboolean CG_FindGhostRecyclePathForVariant( const char *mapname, int trackLength, int trackReversed, char *pathOut, int pathOutSize ) {
-        char fileList[4096];
-        int fileCount;
-        int offset;
-        int i;
-        ghostRetentionEntry_t entries[128];
-        int entryCount = 0;
-        ghostRecording_t scratchRecording;
+        int entryCount;
 
         if ( !pathOut || pathOutSize <= 0 ) {
                 return qfalse;
@@ -227,56 +239,15 @@ static qboolean CG_FindGhostRecyclePathForVariant( const char *mapname, int trac
                 return qfalse;
         }
 
-        fileCount = trap_FS_GetFileList( "ghosts", ".ghost", fileList, sizeof( fileList ) );
-        offset = 0;
-
-        for ( i = 0; i < fileCount; ++i ) {
-                const char *filename = fileList + offset;
-                char cleanName[MAX_QPATH];
-                char fullPath[MAX_QPATH];
-                int bestTimeMs = 0;
-
-                offset += strlen( filename ) + 1;
-                if ( !filename[0] ) {
-                        continue;
-                }
-
-                Q_strncpyz( cleanName, filename, sizeof( cleanName ) );
-                COM_StripExtension( cleanName, cleanName, sizeof( cleanName ) );
-
-                if ( !CG_GhostFilenameMatchesVariant( cleanName, mapname, trackLength, trackReversed ) ) {
-                        continue;
-                }
-
-                if ( entryCount >= (int)( sizeof( entries ) / sizeof( entries[0] ) ) ) {
-                        break;
-                }
-
-                Com_sprintf( fullPath, sizeof( fullPath ), "ghosts/%s", filename );
-                if ( !CG_LoadGhostFile( fullPath, mapname, trackLength, trackReversed, NULL, 0, &scratchRecording, &bestTimeMs, NULL, 0, NULL, 0 ) ) {
-                        continue;
-                }
-
-                Q_strncpyz( entries[entryCount].path, fullPath, sizeof( entries[entryCount].path ) );
-                entries[entryCount].bestTimeMs = bestTimeMs;
-                entryCount++;
-        }
+        entryCount = CG_CollectGhostRetentionEntriesForVariant( mapname, trackLength, trackReversed );
 
         if ( entryCount < 5 ) {
                 return qfalse;
         }
 
-        for ( i = 1; i < entryCount; ++i ) {
-                int j = i;
-                ghostRetentionEntry_t key = entries[i];
-                while ( j > 0 && CG_GhostRetentionCompare( &key, &entries[j - 1] ) < 0 ) {
-                        entries[j] = entries[j - 1];
-                        --j;
-                }
-                entries[j] = key;
-        }
+        CG_SortGhostRetentionEntries( entryCount );
 
-        Q_strncpyz( pathOut, entries[entryCount - 1].path, pathOutSize );
+        Q_strncpyz( pathOut, s_ghostRetentionEntries[entryCount - 1].path, pathOutSize );
         return qtrue;
 }
 
