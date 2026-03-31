@@ -552,6 +552,10 @@ static void PW_UpdateButtons( void ) {
         s_pw.btnNext.generic.flags = QMF_RIGHT_JUSTIFY | QMF_PULSEIFFOCUS;
         break;
     }
+
+    UI_ReflowPTextBounds( &s_pw.btnNext );
+    UI_ReflowPTextBounds( &s_pw.btnBack );
+    UI_ReflowPTextBounds( &s_pw.btnSkip );
 }
 
 // ── Draw ──────────────────────────────────────────────────────────────────────
