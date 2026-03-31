@@ -607,7 +607,12 @@ void UI_GFX_Loading(void) {
     s_gfxloading.carShader = trap_R_RegisterShaderNoMip("menu/art/loading_car");
 
     s_gfxloading.menu.draw       = UI_GFX_Loading_MenuDraw;
-    s_gfxloading.menu.fullscreen = qtrue;
+    /*
+     * Draw our own full-width theme background in UI_GFX_Loading_MenuDraw.
+     * Keep fullscreen background disabled here so UI_DrawMenu won't paint
+     * menuBackShader underneath.
+     */
+    s_gfxloading.menu.fullscreen = qfalse;
     s_gfxloading.menu.key        = UI_GFX_Loading_Key;
 
     uis.menusp = 0;
