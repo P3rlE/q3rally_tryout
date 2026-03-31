@@ -265,6 +265,7 @@ typedef struct ghostRecord_s {
 } ghostRecord_t;
 
 #define MAX_GHOST_BOT_WAYPOINTS 4096
+#define MAX_GHOST_BOT_ROUTE_VARIANTS 8
 
 typedef struct ghostWaypoint_s {
 	vec3_t	origin;
@@ -866,6 +867,7 @@ void G_Ghost_InitForMap( const char *mapname );
 const ghostRecord_t *G_Ghost_FindBestRecord( void );
 void G_Ghost_AnnounceForClient( gentity_t *ent );
 qboolean G_Ghost_GetBotRoute( const ghostBotRoute_t **outRoute );
+qboolean G_Ghost_GetBotRouteForVariant( const char *variantKey, const ghostBotRoute_t **outRoute );
 
 //
 // g_rally_racetools.c
