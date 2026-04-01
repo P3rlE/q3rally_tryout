@@ -3315,7 +3315,10 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	bot_recovery_state_t recoveryState;
 	bot_recovery_state_t previousRecoveryState;
 	float routeDistanceFromCenter = 0.0f;
+<<<<<<< codex/add-optional-debug-export-for-ai-0b3wcy
 	qboolean collisionRiskActive = qfalse;
+=======
+>>>>>>> master
 	const char *recoveryEvent = "";
 
 	if (BotIsObserver(bs)) {
@@ -3752,7 +3755,11 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
 			VectorCopy( angles, bs->ideal_viewangles );
 			Bot_DebugExportDmnetTick( bs, bestIndex, speed, actualSpeed, decisionState,
+<<<<<<< codex/add-optional-debug-export-for-ai-0b3wcy
 				collisionRiskActive, recoveryState, recoveryEvent, routeDistanceFromCenter );
+=======
+				collisionRisk.hasPredictedConflict, recoveryState, recoveryEvent, routeDistanceFromCenter );
+>>>>>>> master
 
 			if( throttleChange > 0 )
 				trap_EA_MoveForward( bs->client );
