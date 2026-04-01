@@ -122,6 +122,15 @@ typedef struct bot_activategoal_s
 	struct bot_activategoal_s *next;		//next activate goal on stack
 } bot_activategoal_t;
 
+typedef enum bot_recovery_state_e
+{
+	BOT_RECOVERY_NONE = 0,
+	BOT_RECOVERY_STUCK_DETECT,
+	BOT_RECOVERY_REVERSE_UNWIND,
+	BOT_RECOVERY_REJOIN_ROUTE,
+	BOT_RECOVERY_EMERGENCY_RESET_REQUEST
+} bot_recovery_state_t;
+
 //bot state
 typedef struct bot_state_s
 {
@@ -282,6 +291,13 @@ typedef struct bot_state_s
 	int ghostDecisionState;					//tactical race decision layer state
 	float ghostDecisionStateTime;				//time state was entered
 	float ghostDecisionLateralOffset;			//smoothed temporary lateral route offset
+	int ghostRecoveryState;					//current recovery state for route rejoin
+	float ghostRecoveryStateTime;				//time recovery state was entered
+	vec3_t ghostRecoveryLastOrigin;				//origin sample for stuck-distance checks
+	float ghostRecoveryLastSampleTime;			//timestamp for movement sampling
+	float ghostRecoveryThrottleIntentTime;		//last timestamp where bot requested acceleration
+	int ghostRecoveryCollisionCount;			//repeated collision pressure counter
+	float ghostRecoveryThrottleRamp;			//ramped throttle command in recovery
 } bot_state_t;
 
 //resets the whole bot state
