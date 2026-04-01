@@ -812,7 +812,7 @@ void SP_worldspawn( void ) {
 			g_trackLength.integer = (g_trackLength.integer + 1) % 3;
 		}
 
-		// UPDATE: set g_trackLength cvar now?
+		trap_Cvar_Set( "g_trackLength", va( "%i", g_trackLength.integer ) );
 	}
 
 	G_SpawnString( "reflectionImage", "/textures/reflect/chrometest2", &s );
