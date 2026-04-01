@@ -773,6 +773,8 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
         char timestamp[32];
         qtime_t now;
         int bestLapTime;
+        int retentionEntryCount;
+        int worstQualifiedBestTime;
         int lapStartOffset;
         int lapEndOffset;
         int trackLength = 0;
@@ -809,16 +811,30 @@ void CG_AttemptSavePersonalGhost( int finishTime ) {
                 return;
         }
 
-        if ( cg.personalGhostBestTime > 0 && bestLapTime >= cg.personalGhostBestTime ) {
-                return;
-        }
-
         COM_StripExtension( COM_SkipPath( cgs.mapname ), mapname, sizeof( mapname ) );
         Q_strncpyz( vehicle, cgs.clientinfo[cg.snap->ps.clientNum].modelName, sizeof( vehicle ) );
         CG_GetGhostTrackVariant( &trackLength, &trackReversed );
 
         if ( !mapname[0] || !vehicle[0] ) {
                 return;
+        }
+
+        retentionEntryCount = CG_CollectGhostRetentionEntriesForVariant( mapname, trackLength, trackReversed );
+        if ( retentionEntryCount >= 5 ) {
+                worstQualifiedBestTime = 0;
+
+                CG_SortGhostRetentionEntries( retentionEntryCount );
+
+                for ( i = retentionEntryCount - 1; i >= 0; --i ) {
+                        if ( s_ghostRetentionEntries[i].bestTimeMs > 0 ) {
+                                worstQualifiedBestTime = s_ghostRetentionEntries[i].bestTimeMs;
+                                break;
+                        }
+                }
+
+                if ( worstQualifiedBestTime > 0 && bestLapTime >= worstQualifiedBestTime ) {
+                        return;
+                }
         }
 
         memset( &lapRecording, 0, sizeof( lapRecording ) );
