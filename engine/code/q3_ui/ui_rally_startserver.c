@@ -139,6 +139,8 @@ static int gametype_remap2[] = {
 
 int		allowLength[3];
 int		reversable;
+static int	trackLengthValueByUiIndex[3];
+static int	trackLengthUiCount;
 
 static void UI_ServerOptionsMenu( qboolean multiplayer );
 static void ServerOptions_InitBotNames( void );
@@ -957,50 +959,25 @@ static const char *dtfspawn_list[] = {
 };
 
 static int ServerOptions_TrackLengthValueFromIndex( int listIndex ) {
-	int i;
-	int selectedIndex;
-
-	if ( listIndex < 0 ) {
-		listIndex = 0;
+	if ( trackLengthUiCount <= 0 ) {
+		return 0;
 	}
 
-	selectedIndex = 0;
-	for ( i = 0; i < 3; i++ ) {
-		if ( !allowLength[i] ) {
-			continue;
-		}
-
-		if ( selectedIndex == listIndex ) {
-			return i;
-		}
-		selectedIndex++;
+	if ( listIndex < 0 || listIndex >= trackLengthUiCount ) {
+		return trackLengthValueByUiIndex[0];
 	}
 
-	/* Fallback: first allowed length, else short track. */
-	for ( i = 0; i < 3; i++ ) {
-		if ( allowLength[i] ) {
-			return i;
-		}
-	}
-
-	return 0;
+	return trackLengthValueByUiIndex[listIndex];
 }
 
 static int ServerOptions_TrackLengthIndexFromValue( int trackLengthValue ) {
 	int i;
-	int listIndex;
 
 	trackLengthValue = (int)Com_Clamp( 0, 2, trackLengthValue );
-	listIndex = 0;
-	for ( i = 0; i < 3; i++ ) {
-		if ( !allowLength[i] ) {
-			continue;
+	for ( i = 0; i < trackLengthUiCount; i++ ) {
+		if ( trackLengthValueByUiIndex[i] == trackLengthValue ) {
+			return i;
 		}
-
-		if ( i == trackLengthValue ) {
-			return listIndex;
-		}
-		listIndex++;
 	}
 
 	return 0;
@@ -2104,17 +2081,30 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 	}
 
         n = 0;
+	trackLengthUiCount = 0;
         if ( allowLength[0] ){
                 track_length_list[n] = "Short";
+		trackLengthValueByUiIndex[n] = 0;
                 n++;
+		trackLengthUiCount++;
         }
 	if ( allowLength[1] ){
 		track_length_list[n] = "Medium";
+		trackLengthValueByUiIndex[n] = 1;
 		n++;
+		trackLengthUiCount++;
 	}
 	if ( allowLength[2] ){
 		track_length_list[n] = "Long";
+		trackLengthValueByUiIndex[n] = 2;
 		n++;
+		trackLengthUiCount++;
+	}
+	if ( trackLengthUiCount <= 0 ) {
+		track_length_list[0] = "Short";
+		trackLengthValueByUiIndex[0] = 0;
+		trackLengthUiCount = 1;
+		n = 1;
 	}
 	track_length_list[n] = 0;
 
