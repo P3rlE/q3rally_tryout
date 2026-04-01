@@ -274,13 +274,36 @@ typedef struct ghostWaypoint_s {
 	int	timeOffset;
 } ghostWaypoint_t;
 
+typedef enum {
+	GHOST_LINE_BASE = 0,
+	GHOST_LINE_RACE,
+	GHOST_LINE_DEFENSIVE,
+	GHOST_LINE_SAFE,
+	GHOST_LINE_FAMILY_COUNT
+} ghostRouteLineFamily_t;
+
+typedef struct ghostRouteLineProfile_s {
+	float lateralOffset;
+	float speedScale;
+} ghostRouteLineProfile_t;
+
+typedef struct ghostRouteSegment_s {
+	float recommendedSpeed;
+	float curvature;
+	float overtakeWindowInside;
+	float overtakeWindowOutside;
+	ghostRouteLineProfile_t lines[GHOST_LINE_FAMILY_COUNT];
+} ghostRouteSegment_t;
+
 typedef struct ghostBotRoute_s {
 	char	path[MAX_QPATH];
 	char	vehicleClass[MAX_QPATH];
 	int	bestTimeMs;
 	int	numWaypoints;
+	int	numSegments;
 	qboolean valid;
 	ghostWaypoint_t waypoints[MAX_GHOST_BOT_WAYPOINTS];
+	ghostRouteSegment_t segments[MAX_GHOST_BOT_WAYPOINTS - 1];
 } ghostBotRoute_t;
 
 typedef enum {

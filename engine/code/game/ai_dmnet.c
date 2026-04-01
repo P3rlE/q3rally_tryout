@@ -91,6 +91,26 @@ typedef struct {
 	float recommendedSpeedBias;
 } botCollisionRisk_t;
 
+static ghostRouteLineFamily_t Bot_SelectGhostLineFamily( const botCollisionRisk_t *risk, float cornerPhase, qboolean chaosActive ) {
+	if ( !risk ) {
+		return GHOST_LINE_BASE;
+	}
+
+	if ( chaosActive ) {
+		return GHOST_LINE_SAFE;
+	}
+
+	if ( risk->nearestBehindDist < 130.0f && risk->nearestBehindRelSpeed > 55.0f ) {
+		return GHOST_LINE_DEFENSIVE;
+	}
+
+	if ( risk->nearestAheadDist < 220.0f && risk->nearestAheadRelSpeed > 20.0f && cornerPhase < 0.70f ) {
+		return GHOST_LINE_RACE;
+	}
+
+	return GHOST_LINE_BASE;
+}
+
 /*
 ==================
 Bot_PredictCollisionRisk
@@ -3225,13 +3245,12 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			int lookAheadIndex = bestIndex;
 			int speedStartIndex;
 			int speedEndIndex = bestIndex;
+			int segmentStartIndex;
+			int segmentEndIndex;
 			int lookAheadTime = ghostRoute->waypoints[bestIndex].timeOffset + GHOST_ROUTE_LOOKAHEAD_MS;
 			float lookAheadDistanceSq = LOOKAHEAD_DISTANCE * LOOKAHEAD_DISTANCE;
-			float smoothedSpeed = 0.0f;
-			int smoothedSegments = 0;
-			float curvatureScore = 0.0f;
-			int curvatureSamples = 0;
 			float cornerPhase = 0.0f;
+			float avgCurvature = 0.0f;
 			bs->ghostRouteIndexHint = bestIndex;
 
 			for ( i = bestIndex + 1; i < ghostRoute->numWaypoints; ++i ) {
@@ -3254,68 +3273,36 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			if ( speedEndIndex >= ghostRoute->numWaypoints - 1 ) {
 				speedEndIndex = ghostRoute->numWaypoints - 2;
 			}
-
-			for ( i = speedStartIndex; i <= speedEndIndex; ++i ) {
-				vec3_t seg;
-				float dt;
-				float segSpeed;
-
-				VectorSubtract( ghostRoute->waypoints[i + 1].origin, ghostRoute->waypoints[i].origin, seg );
-				dt = (float)( ghostRoute->waypoints[i + 1].timeOffset - ghostRoute->waypoints[i].timeOffset );
-				if ( dt <= 0.0f ) {
-					continue;
-				}
-
-				segSpeed = 1000.0f * VectorLength( seg ) / dt;
-				smoothedSpeed += segSpeed;
-				smoothedSegments++;
+			segmentStartIndex = speedStartIndex;
+			segmentEndIndex = speedEndIndex;
+			if ( segmentEndIndex >= ghostRoute->numSegments ) {
+				segmentEndIndex = ghostRoute->numSegments - 1;
 			}
 
-			if ( smoothedSegments > 0 ) {
-				speed = smoothedSpeed / smoothedSegments;
+			if ( ghostRoute->numSegments > 0 && segmentStartIndex >= 0 && segmentStartIndex <= segmentEndIndex ) {
+				float segmentSpeedSum = 0.0f;
+				float segmentCurvatureSum = 0.0f;
+				int segmentSamples = 0;
+
+				for ( i = segmentStartIndex; i <= segmentEndIndex; ++i ) {
+					segmentSpeedSum += ghostRoute->segments[i].recommendedSpeed;
+					segmentCurvatureSum += ghostRoute->segments[i].curvature;
+					segmentSamples++;
+				}
+
+				if ( segmentSamples > 0 ) {
+					speed = segmentSpeedSum / segmentSamples;
+					avgCurvature = segmentCurvatureSum / segmentSamples;
+				} else {
+					speed = actualSpeed;
+				}
 			} else {
 				speed = actualSpeed;
 			}
 
-			if ( speedEndIndex - speedStartIndex >= 2 ) {
-				for ( i = speedStartIndex; i + 2 <= speedEndIndex + 1; ++i ) {
-					vec3_t segA, segB;
-					float lenA, lenB;
-					float segDot;
-
-					VectorSubtract( ghostRoute->waypoints[i + 1].origin, ghostRoute->waypoints[i].origin, segA );
-					VectorSubtract( ghostRoute->waypoints[i + 2].origin, ghostRoute->waypoints[i + 1].origin, segB );
-					lenA = VectorLength( segA );
-					lenB = VectorLength( segB );
-
-					if ( lenA < 1.0f || lenB < 1.0f ) {
-						continue;
-					}
-
-					segDot = DotProduct( segA, segB ) / ( lenA * lenB );
-					if ( segDot > 1.0f ) {
-						segDot = 1.0f;
-					} else if ( segDot < -1.0f ) {
-						segDot = -1.0f;
-					}
-
-					curvatureScore += ( 1.0f - segDot );
-					curvatureSamples++;
-				}
-
-				if ( curvatureSamples > 0 ) {
-					float avgCurvature = curvatureScore / curvatureSamples;
-					float speedScale = 1.0f - avgCurvature * 0.30f;
-
-					if ( speedScale < 0.55f ) {
-						speedScale = 0.55f;
-					}
-					speed *= speedScale;
-					cornerPhase = avgCurvature * 2.2f;
-					if ( cornerPhase > 1.0f ) {
-						cornerPhase = 1.0f;
-					}
-				}
+			cornerPhase = avgCurvature * 2.2f;
+			if ( cornerPhase > 1.0f ) {
+				cornerPhase = 1.0f;
 			}
 
 			{
@@ -3324,8 +3311,14 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			vec3_t routeRight;
 			float routeForwardLen;
 			float brakeZone;
+			float baseTargetOffset;
+			float blendFactor;
+			float lineSpeedScale;
 			int preferredInside = qtrue;
+			int segmentForProfile;
 			botCollisionRisk_t collisionRisk;
+			ghostRouteLineFamily_t selectedFamily = GHOST_LINE_BASE;
+			qboolean chaosContext = qfalse;
 
 			VectorSubtract( ghostRoute->waypoints[lookAheadIndex].origin, bs->cur_ps.origin, routeForward );
 			routeForward[2] = 0;
@@ -3349,6 +3342,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			Bot_PredictCollisionRisk( bs, routeForward, routeRight, 0.5f, 1.5f, &collisionRisk );
 
 			brakeZone = ( actualSpeed > speed * 1.08f || cornerPhase > 0.55f ) ? 1.0f : 0.0f;
+			chaosContext = ( collisionRisk.hasPredictedConflict || collisionRisk.abortOvertakeRecommended || brakeZone > 0.8f ) ? qtrue : qfalse;
 			decisionState = (ghostDecisionState_t)bs->ghostDecisionState;
 			if ( decisionState < GHOST_DECISION_FOLLOW || decisionState > GHOST_DECISION_ABORT_OVERTAKE ) {
 				decisionState = GHOST_DECISION_FOLLOW;
@@ -3440,6 +3434,31 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 					speedBias = 0.0f;
 					break;
 			}
+
+			selectedFamily = Bot_SelectGhostLineFamily( &collisionRisk, cornerPhase, chaosContext );
+			if ( decisionState == GHOST_DECISION_PREPARE_OVERTAKE ||
+				decisionState == GHOST_DECISION_OVERTAKE_INSIDE ||
+				decisionState == GHOST_DECISION_OVERTAKE_OUTSIDE ) {
+				selectedFamily = GHOST_LINE_RACE;
+			} else if ( decisionState == GHOST_DECISION_DEFEND_LINE ) {
+				selectedFamily = GHOST_LINE_DEFENSIVE;
+			} else if ( decisionState == GHOST_DECISION_ABORT_OVERTAKE ) {
+				selectedFamily = GHOST_LINE_SAFE;
+			}
+
+			baseTargetOffset = 0.0f;
+			lineSpeedScale = 1.0f;
+			if ( ghostRoute->numSegments > 0 ) {
+				segmentForProfile = speedStartIndex;
+				if ( segmentForProfile < 0 ) {
+					segmentForProfile = 0;
+				} else if ( segmentForProfile >= ghostRoute->numSegments ) {
+					segmentForProfile = ghostRoute->numSegments - 1;
+				}
+				baseTargetOffset = ghostRoute->segments[segmentForProfile].lines[selectedFamily].lateralOffset;
+				lineSpeedScale = ghostRoute->segments[segmentForProfile].lines[selectedFamily].speedScale;
+			}
+
 			if ( collisionRisk.hasPredictedConflict ) {
 				if ( collisionRisk.laneSwapRecommended ) {
 					desiredOffset = ( preferredInside ? 72.0f : -72.0f );
@@ -3451,10 +3470,12 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				speedBias += collisionRisk.recommendedSpeedBias;
 			}
 
-			bs->ghostDecisionLateralOffset += ( desiredOffset - bs->ghostDecisionLateralOffset ) * 0.35f;
+			blendFactor = ( selectedFamily == GHOST_LINE_BASE ) ? 0.22f : 0.35f;
+			bs->ghostDecisionLateralOffset += ( ( baseTargetOffset + desiredOffset ) - bs->ghostDecisionLateralOffset ) * blendFactor;
 			VectorMA( ghostRoute->waypoints[lookAheadIndex].origin, bs->ghostDecisionLateralOffset, routeRight, targetPoint );
 			VectorSubtract( targetPoint, bs->cur_ps.origin, dir );
 			dir[2] = 0;
+			speed *= lineSpeedScale;
 			speed += speedBias;
 			if ( speed < 300.0f ) {
 				speed = 300.0f;
