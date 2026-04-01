@@ -281,8 +281,8 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &pmove_msec, "pmove_msec", "18", CVAR_SYSTEMINFO, 0, qfalse},
 
 	// UPDATE : needs to be server info?
-	{ &g_trackReversed, "g_trackReversed", "0", CVAR_LATCH, 0, qfalse  },
-	{ &g_trackLength, "g_trackLength", "0", CVAR_LATCH, 0, qfalse  },
+	{ &g_trackReversed, "g_trackReversed", "0", CVAR_SERVERINFO | CVAR_LATCH, 0, qfalse  },
+	{ &g_trackLength, "g_trackLength", "0", CVAR_SERVERINFO | CVAR_LATCH, 0, qfalse  },
 
 { &g_forceEngineStart, "g_forceEngineStart", "60", CVAR_ARCHIVE, 0, qfalse },
 { &g_finishRaceDelay, "g_finishRaceDelay", "30", CVAR_ARCHIVE, 0, qfalse },
