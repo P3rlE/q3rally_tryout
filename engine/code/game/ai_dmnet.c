@@ -3344,6 +3344,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			vec3_t routeForward;
 			vec3_t routeRight;
 			float routeForwardLen;
+			float routeDistanceFromCenter;
 			float brakeZone;
 			float baseTargetOffset;
 			float blendFactor;
