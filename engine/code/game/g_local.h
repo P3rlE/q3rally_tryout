@@ -268,6 +268,8 @@ typedef struct ghostRecord_s {
 
 #define MAX_GHOST_BOT_WAYPOINTS 4096
 #define MAX_GHOST_BOT_ROUTE_VARIANTS 8
+#define MAX_BOT_PATH_NODES 4096
+#define MAX_BOT_PATH_ROUTES 64
 
 typedef struct ghostWaypoint_s {
 	vec3_t	origin;
@@ -305,6 +307,19 @@ typedef struct ghostBotRoute_s {
 	ghostWaypoint_t waypoints[MAX_GHOST_BOT_WAYPOINTS];
 	ghostRouteSegment_t segments[MAX_GHOST_BOT_WAYPOINTS - 1];
 } ghostBotRoute_t;
+
+typedef struct botPathNode_s {
+	vec3_t	origin;
+	float	radius;
+	int	flags;
+} botPathNode_t;
+
+typedef struct botPathRoute_s {
+	char	name[MAX_QPATH];
+	int	numNodes;
+	qboolean valid;
+	botPathNode_t nodes[MAX_BOT_PATH_NODES];
+} botPathRoute_t;
 
 typedef enum {
 	SPECTATOR_NOT,
@@ -895,6 +910,13 @@ void G_Ghost_AnnounceForClient( gentity_t *ent );
 qboolean G_Ghost_GetBotRoute( const ghostBotRoute_t **outRoute );
 qboolean G_Ghost_GetBotRouteForVariant( const char *variantKey, const ghostBotRoute_t **outRoute );
 int G_Ghost_SelectClosestWaypoint( const ghostBotRoute_t *route, const vec3_t origin, int hintIndex, int hintWindow );
+void G_BotPath_ClearAllRoutes( void );
+int G_BotPath_RegisterRoute( const char *name, const botPathNode_t *nodes, int numNodes );
+int G_BotPath_GetRouteCount( void );
+const botPathRoute_t *G_BotPath_GetRouteByIndex( int routeIndex );
+const botPathRoute_t *G_BotPath_GetRouteByName( const char *name );
+int G_BotPath_SelectClosestNode( const botPathRoute_t *route, const vec3_t origin, int hintIndex, int hintWindow );
+int G_BotPath_SelectLookAheadNode( const botPathRoute_t *route, const vec3_t origin, int hintIndex, int hintWindow, int lookAheadNodes );
 
 #ifdef UNIT_TEST
 int G_Ghost_Test_GetLevelGhostCount( void );
