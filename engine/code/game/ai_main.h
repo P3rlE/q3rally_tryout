@@ -298,6 +298,10 @@ typedef struct bot_state_s
 	float ghostRecoveryThrottleIntentTime;		//last timestamp where bot requested acceleration
 	int ghostRecoveryCollisionCount;			//repeated collision pressure counter
 	float ghostRecoveryThrottleRamp;			//ramped throttle command in recovery
+	int ghostRecoveryReverseCycles;			//reverse entries counted within the active time window
+	float ghostRecoveryReverseWindowStart;		//start time for reverse cycle counting
+	vec3_t ghostRecoveryReverseStartOrigin;		//position where the current reverse phase started
+	int ghostRecoveryReverseStartCollisionCount;	//collision pressure sampled at reverse phase start
 } bot_state_t;
 
 //resets the whole bot state
