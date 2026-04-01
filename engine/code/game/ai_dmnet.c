@@ -3315,6 +3315,10 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	bot_recovery_state_t recoveryState;
 	bot_recovery_state_t previousRecoveryState;
 	float routeDistanceFromCenter = 0.0f;
+<<<<<<< codex/add-optional-debug-export-for-ai-0b3wcy
+	qboolean collisionRiskActive = qfalse;
+=======
+>>>>>>> master
 	const char *recoveryEvent = "";
 
 	if (BotIsObserver(bs)) {
@@ -3612,16 +3616,17 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				lineSpeedScale = ghostRoute->segments[segmentForProfile].lines[selectedFamily].speedScale;
 			}
 
-			if ( collisionRisk.hasPredictedConflict ) {
-				if ( collisionRisk.laneSwapRecommended ) {
+				if ( collisionRisk.hasPredictedConflict ) {
+					if ( collisionRisk.laneSwapRecommended ) {
 					desiredOffset = ( preferredInside ? 72.0f : -72.0f );
 				} else if ( collisionRisk.sideSafetyInside > collisionRisk.sideSafetyOutside + 5.0f ) {
 					desiredOffset = -68.0f;
 				} else if ( collisionRisk.sideSafetyOutside > collisionRisk.sideSafetyInside + 5.0f ) {
 					desiredOffset = 68.0f;
 				}
-				speedBias += collisionRisk.recommendedSpeedBias;
-			}
+					speedBias += collisionRisk.recommendedSpeedBias;
+				}
+				collisionRiskActive = collisionRisk.hasPredictedConflict;
 
 			blendFactor = ( selectedFamily == GHOST_LINE_BASE ) ? 0.22f : 0.35f;
 			bs->ghostDecisionLateralOffset += ( ( baseTargetOffset + desiredOffset ) - bs->ghostDecisionLateralOffset ) * blendFactor;
@@ -3750,7 +3755,11 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
 			VectorCopy( angles, bs->ideal_viewangles );
 			Bot_DebugExportDmnetTick( bs, bestIndex, speed, actualSpeed, decisionState,
+<<<<<<< codex/add-optional-debug-export-for-ai-0b3wcy
+				collisionRiskActive, recoveryState, recoveryEvent, routeDistanceFromCenter );
+=======
 				collisionRisk.hasPredictedConflict, recoveryState, recoveryEvent, routeDistanceFromCenter );
+>>>>>>> master
 
 			if( throttleChange > 0 )
 				trap_EA_MoveForward( bs->client );
