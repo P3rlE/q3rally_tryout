@@ -1130,6 +1130,8 @@ extern	vmCvar_t	g_rallyReadyCheck;
 extern	vmCvar_t	g_derbyMinPlayers;
 void G_RallyUpdateAllTeamTimes( void );
 extern	vmCvar_t	g_rallyIgnoreBots;
+extern	vmCvar_t	g_aiDmnetDebugExport;
+extern	vmCvar_t	g_aiDmnetDebugExportPath;
 extern	vmCvar_t	g_damageScale;
 extern	vmCvar_t	g_vehicleDamageScale;
 extern  vmCvar_t        g_vehicleDamageOffset;
