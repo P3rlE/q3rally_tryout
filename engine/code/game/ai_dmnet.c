@@ -3459,7 +3459,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 		if ( botEnt->client && botEnt->client->pers.vehicleClass[0] ) {
 			routeVariant = botEnt->client->pers.vehicleClass;
 		}
-		if ( botEnt->client && level.time - botEnt->client->respawnTime <= GHOST_FORWARD_INIT_PHASE_MS ) {
+		if ( botEnt->client && level.time - botEnt->client->ghostSpawnTime <= GHOST_FORWARD_INIT_PHASE_MS ) {
 			forwardLaunchPhase = qtrue;
 		}
 	}
