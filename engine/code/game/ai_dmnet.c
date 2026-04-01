@@ -73,6 +73,9 @@ char nodeswitch[MAX_NODESWITCHES+1][144];
 #define GHOST_RECOVERY_MAX_REVERSE_TIME	1.35f
 #define GHOST_RECOVERY_REJOIN_STEER_LIMIT	16.0f
 #define GHOST_RECOVERY_REJOIN_THROTTLE_STEP	0.22f
+#define GHOST_FORWARD_DOT_SOFT_REJECT		-0.35f
+#define GHOST_FORWARD_DOT_STRICT_REJECT		0.05f
+#define GHOST_FORWARD_INIT_PHASE_MS		1500
 
 typedef enum {
 	GHOST_DECISION_FOLLOW = 0,
@@ -217,6 +220,76 @@ static float Bot_ClampSteeringToRecoveryLimit( float currentYaw, float desiredYa
 		yawDelta = -yawLimit;
 	}
 	return AngleNormalize360( currentYaw + yawDelta );
+}
+
+static int Bot_SelectForwardWaypointIndex( const ghostBotRoute_t *route, const vec3_t origin, const vec3_t forward,
+	int hintIndex, int hintWindow, qboolean strictForwardOnly ) {
+	int i;
+	int searchStart = 0;
+	int searchEnd;
+	int bestIndex = -1;
+	float bestScore = 0.0f;
+	float rejectDot = strictForwardOnly ? GHOST_FORWARD_DOT_STRICT_REJECT : GHOST_FORWARD_DOT_SOFT_REJECT;
+
+	if ( !route || !route->valid || route->numWaypoints <= 0 ) {
+		return -1;
+	}
+
+	searchEnd = route->numWaypoints - 1;
+	if ( hintWindow <= 0 ) {
+		hintWindow = 24;
+	}
+
+	if ( hintIndex >= 0 && hintIndex < route->numWaypoints ) {
+		searchStart = hintIndex - hintWindow;
+		searchEnd = hintIndex + hintWindow;
+		if ( searchStart < 0 ) {
+			searchStart = 0;
+		}
+		if ( searchEnd >= route->numWaypoints ) {
+			searchEnd = route->numWaypoints - 1;
+		}
+	}
+
+	for ( i = searchStart; i <= searchEnd; ++i ) {
+		vec3_t toWaypoint;
+		float distSq;
+		float dotForward = 1.0f;
+		float score;
+		VectorSubtract( route->waypoints[i].origin, origin, toWaypoint );
+		toWaypoint[2] = 0.0f;
+		distSq = VectorLengthSquared( toWaypoint );
+		if ( distSq > 1.0f ) {
+			VectorNormalize( toWaypoint );
+			dotForward = DotProduct( forward, toWaypoint );
+		}
+
+		if ( dotForward < rejectDot ) {
+			continue;
+		}
+
+		score = distSq;
+		if ( dotForward < 0.0f ) {
+			score += (0.0f - dotForward) * 120000.0f;
+		}
+
+		if ( bestIndex < 0 || score < bestScore ) {
+			bestIndex = i;
+			bestScore = score;
+		}
+	}
+
+	if ( hintIndex >= 0 && bestIndex >= 0 ) {
+		int minBackwardIndex = hintIndex - 3;
+		if ( minBackwardIndex < 0 ) {
+			minBackwardIndex = 0;
+		}
+		if ( bestIndex < minBackwardIndex ) {
+			bestIndex = minBackwardIndex;
+		}
+	}
+
+	return bestIndex;
 }
 
 /*
@@ -3352,7 +3425,22 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 		int bestIndex = -1;
 		int i;
 		int hintIndex = bs->ghostRouteIndexHint;
-		bestIndex = G_Ghost_SelectClosestWaypoint( ghostRoute, bs->cur_ps.origin, hintIndex, GHOST_ROUTE_HINT_WINDOW );
+		vec3_t botForward;
+		gentity_t *botEnt = ( bs->entitynum >= 0 && bs->entitynum < level.maxclients ) ? &g_entities[bs->entitynum] : NULL;
+		qboolean strictForwardOnly = qfalse;
+
+		AngleVectors( bs->cur_ps.viewangles, botForward, NULL, NULL );
+		botForward[2] = 0.0f;
+		if ( VectorNormalize( botForward ) <= 0.001f ) {
+			VectorSet( botForward, 1.0f, 0.0f, 0.0f );
+		}
+
+		if ( botEnt && botEnt->client && level.time - botEnt->client->respawnTime <= GHOST_FORWARD_INIT_PHASE_MS ) {
+			strictForwardOnly = qtrue;
+		}
+
+		bestIndex = Bot_SelectForwardWaypointIndex( ghostRoute, bs->cur_ps.origin, botForward, hintIndex,
+			GHOST_ROUTE_HINT_WINDOW, strictForwardOnly );
 
 		if ( bestIndex >= 0 ) {
 			int lookAheadIndex = bestIndex;
@@ -3368,9 +3456,20 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 
 			for ( i = bestIndex + 1; i < ghostRoute->numWaypoints; ++i ) {
 				vec3_t deltaToWaypoint;
+				vec3_t toWaypoint;
 				float distSq;
+				float dotForward = 1.0f;
 				lookAheadIndex = i;
 				VectorSubtract( ghostRoute->waypoints[i].origin, bs->cur_ps.origin, deltaToWaypoint );
+				VectorCopy( deltaToWaypoint, toWaypoint );
+				toWaypoint[2] = 0.0f;
+				if ( VectorLengthSquared( toWaypoint ) > 1.0f ) {
+					VectorNormalize( toWaypoint );
+					dotForward = DotProduct( botForward, toWaypoint );
+				}
+				if ( dotForward < GHOST_FORWARD_DOT_SOFT_REJECT ) {
+					continue;
+				}
 				distSq = VectorLengthSquared( deltaToWaypoint );
 				if ( ghostRoute->waypoints[i].timeOffset >= lookAheadTime || distSq >= lookAheadDistanceSq ) {
 					break;
