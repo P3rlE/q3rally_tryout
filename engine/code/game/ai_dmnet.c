@@ -3237,7 +3237,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	float desiredOffset;
 	float speedBias;
 	bot_recovery_state_t recoveryState;
-	float routeDistanceFromCenter;
+	float routeDistanceFromCenter = 0.0f;
 
 	if (BotIsObserver(bs)) {
 		BotClearActivateGoalStack(bs);
