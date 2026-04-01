@@ -66,6 +66,13 @@ char nodeswitch[MAX_NODESWITCHES+1][144];
 #define LOOKAHEAD_DISTANCE			300
 #define GHOST_ROUTE_HINT_WINDOW		48
 #define GHOST_ROUTE_LOOKAHEAD_MS	900
+#define GHOST_RECOVERY_ROUTE_DIST_THRESHOLD	260.0f
+#define GHOST_RECOVERY_MIN_PROGRESS		70.0f
+#define GHOST_RECOVERY_SAMPLE_WINDOW		0.55f
+#define GHOST_RECOVERY_MAX_COLLISION_COUNT	4
+#define GHOST_RECOVERY_MAX_REVERSE_TIME	1.35f
+#define GHOST_RECOVERY_REJOIN_STEER_LIMIT	16.0f
+#define GHOST_RECOVERY_REJOIN_THROTTLE_STEP	0.22f
 
 typedef enum {
 	GHOST_DECISION_FOLLOW = 0,
@@ -109,6 +116,31 @@ static ghostRouteLineFamily_t Bot_SelectGhostLineFamily( const botCollisionRisk_
 	}
 
 	return GHOST_LINE_BASE;
+}
+
+static void Bot_SetRecoveryState( bot_state_t *bs, bot_recovery_state_t newState ) {
+	if ( bs->ghostRecoveryState != newState ) {
+		bs->ghostRecoveryState = newState;
+		bs->ghostRecoveryStateTime = FloatTime();
+		if ( newState == BOT_RECOVERY_STUCK_DETECT ) {
+			VectorCopy( bs->cur_ps.origin, bs->ghostRecoveryLastOrigin );
+			bs->ghostRecoveryLastSampleTime = FloatTime();
+			bs->ghostRecoveryCollisionCount = 0;
+		}
+		if ( newState == BOT_RECOVERY_REJOIN_ROUTE ) {
+			bs->ghostRecoveryThrottleRamp = 0.0f;
+		}
+	}
+}
+
+static float Bot_ClampSteeringToRecoveryLimit( float currentYaw, float desiredYaw, float yawLimit ) {
+	float yawDelta = AngleSubtract( desiredYaw, currentYaw );
+	if ( yawDelta > yawLimit ) {
+		yawDelta = yawLimit;
+	} else if ( yawDelta < -yawLimit ) {
+		yawDelta = -yawLimit;
+	}
+	return AngleNormalize360( currentYaw + yawDelta );
 }
 
 /*
@@ -3204,6 +3236,8 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	ghostDecisionState_t decisionState;
 	float desiredOffset;
 	float speedBias;
+	bot_recovery_state_t recoveryState;
+	float routeDistanceFromCenter = 0.0f;
 
 	if (BotIsObserver(bs)) {
 		BotClearActivateGoalStack(bs);
@@ -3340,6 +3374,42 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			}
 
 			Bot_PredictCollisionRisk( bs, routeForward, routeRight, 0.5f, 1.5f, &collisionRisk );
+			routeDistanceFromCenter = Distance( bs->cur_ps.origin, ghostRoute->waypoints[bestIndex].origin );
+			recoveryState = (bot_recovery_state_t)bs->ghostRecoveryState;
+			if ( recoveryState < BOT_RECOVERY_NONE || recoveryState > BOT_RECOVERY_EMERGENCY_RESET_REQUEST ) {
+				recoveryState = BOT_RECOVERY_NONE;
+			}
+
+			if ( speed > actualSpeed + 80.0f ) {
+				bs->ghostRecoveryThrottleIntentTime = FloatTime();
+			}
+
+			if ( FloatTime() - bs->ghostRecoveryLastSampleTime >= GHOST_RECOVERY_SAMPLE_WINDOW ) {
+				float sampledProgress = Distance( bs->cur_ps.origin, bs->ghostRecoveryLastOrigin );
+				if ( FloatTime() - bs->ghostRecoveryThrottleIntentTime < GHOST_RECOVERY_SAMPLE_WINDOW + 0.15f &&
+					sampledProgress < GHOST_RECOVERY_MIN_PROGRESS ) {
+					Bot_SetRecoveryState( bs, BOT_RECOVERY_STUCK_DETECT );
+					recoveryState = BOT_RECOVERY_STUCK_DETECT;
+				}
+				VectorCopy( bs->cur_ps.origin, bs->ghostRecoveryLastOrigin );
+				bs->ghostRecoveryLastSampleTime = FloatTime();
+			}
+
+			if ( collisionRisk.hasPredictedConflict && collisionRisk.nearestAheadDist < 90.0f && fabs( collisionRisk.nearestAheadLateral ) < 75.0f ) {
+				bs->ghostRecoveryCollisionCount++;
+			} else if ( bs->ghostRecoveryCollisionCount > 0 ) {
+				bs->ghostRecoveryCollisionCount--;
+			}
+
+			if ( routeDistanceFromCenter > GHOST_RECOVERY_ROUTE_DIST_THRESHOLD ) {
+				Bot_SetRecoveryState( bs, BOT_RECOVERY_REJOIN_ROUTE );
+				recoveryState = BOT_RECOVERY_REJOIN_ROUTE;
+			}
+
+			if ( bs->ghostRecoveryCollisionCount >= GHOST_RECOVERY_MAX_COLLISION_COUNT ) {
+				Bot_SetRecoveryState( bs, BOT_RECOVERY_REVERSE_UNWIND );
+				recoveryState = BOT_RECOVERY_REVERSE_UNWIND;
+			}
 
 			brakeZone = ( actualSpeed > speed * 1.08f || cornerPhase > 0.55f ) ? 1.0f : 0.0f;
 			chaosContext = ( collisionRisk.hasPredictedConflict || collisionRisk.abortOvertakeRecommended || brakeZone > 0.8f ) ? qtrue : qfalse;
@@ -3519,6 +3589,74 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				}
 			}
 
+			switch ( recoveryState ) {
+				case BOT_RECOVERY_STUCK_DETECT:
+					if ( FloatTime() - bs->ghostRecoveryStateTime > 0.35f ) {
+						Bot_SetRecoveryState( bs, BOT_RECOVERY_REVERSE_UNWIND );
+						recoveryState = BOT_RECOVERY_REVERSE_UNWIND;
+					}
+					throttleChange = 0;
+					break;
+
+				case BOT_RECOVERY_REVERSE_UNWIND:
+				{
+					float reverseTime = FloatTime() - bs->ghostRecoveryStateTime;
+					if ( reverseTime > GHOST_RECOVERY_MAX_REVERSE_TIME ) {
+						Bot_SetRecoveryState( bs, BOT_RECOVERY_REJOIN_ROUTE );
+						recoveryState = BOT_RECOVERY_REJOIN_ROUTE;
+						bs->ghostRecoveryThrottleRamp = 0.0f;
+					} else {
+						vec3_t reverseDir;
+						VectorSubtract( bs->cur_ps.origin, ghostRoute->waypoints[lookAheadIndex].origin, reverseDir );
+						reverseDir[2] = 0.0f;
+						vectoangles( reverseDir, angles );
+						throttleChange = -1;
+					}
+					break;
+				}
+
+				case BOT_RECOVERY_REJOIN_ROUTE:
+				{
+					float currentYaw = bs->cur_ps.viewangles[YAW];
+					float desiredYaw = angles[YAW];
+					float steerLimit = GHOST_RECOVERY_REJOIN_STEER_LIMIT;
+					float throttleForRamp;
+					angles[YAW] = Bot_ClampSteeringToRecoveryLimit( currentYaw, desiredYaw, steerLimit );
+					bs->ghostRecoveryThrottleRamp += GHOST_RECOVERY_REJOIN_THROTTLE_STEP;
+					if ( bs->ghostRecoveryThrottleRamp > 1.0f ) {
+						bs->ghostRecoveryThrottleRamp = 1.0f;
+					}
+					throttleForRamp = bs->ghostRecoveryThrottleRamp;
+					if ( throttleForRamp < 0.35f ) {
+						throttleChange = 0;
+					} else {
+						throttleChange = 1;
+					}
+					if ( routeDistanceFromCenter < GHOST_RECOVERY_ROUTE_DIST_THRESHOLD * 0.58f &&
+						bs->ghostRecoveryCollisionCount <= 1 ) {
+						Bot_SetRecoveryState( bs, BOT_RECOVERY_NONE );
+						recoveryState = BOT_RECOVERY_NONE;
+					}
+					break;
+				}
+
+				case BOT_RECOVERY_EMERGENCY_RESET_REQUEST:
+					bs->ghostRouteIndexHint = -1;
+					bs->ghostDecisionLateralOffset = 0.0f;
+					throttleChange = -1;
+					break;
+
+				case BOT_RECOVERY_NONE:
+				default:
+					break;
+			}
+
+			if ( ( recoveryState == BOT_RECOVERY_REVERSE_UNWIND || recoveryState == BOT_RECOVERY_REJOIN_ROUTE ) &&
+				FloatTime() - bs->ghostRecoveryStateTime > 3.5f ) {
+				Bot_SetRecoveryState( bs, BOT_RECOVERY_EMERGENCY_RESET_REQUEST );
+				recoveryState = BOT_RECOVERY_EMERGENCY_RESET_REQUEST;
+			}
+
 			throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
 			VectorCopy( angles, bs->ideal_viewangles );
 
@@ -3537,6 +3675,10 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	bs->ghostDecisionState = GHOST_DECISION_FOLLOW;
 	bs->ghostDecisionStateTime = 0.0f;
 	bs->ghostDecisionLateralOffset = 0.0f;
+	bs->ghostRecoveryState = BOT_RECOVERY_NONE;
+	bs->ghostRecoveryStateTime = 0.0f;
+	bs->ghostRecoveryCollisionCount = 0;
+	bs->ghostRecoveryThrottleRamp = 0.0f;
 
 	while ((ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL)
 	{
