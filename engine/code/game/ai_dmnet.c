@@ -73,8 +73,13 @@ char nodeswitch[MAX_NODESWITCHES+1][144];
 #define GHOST_RECOVERY_MAX_REVERSE_TIME	1.35f
 #define GHOST_RECOVERY_REJOIN_STEER_LIMIT	16.0f
 #define GHOST_RECOVERY_REJOIN_THROTTLE_STEP	0.22f
+<<<<<<< codex/add-direction-criteria-for-bestindex-selection-8i3zid
 #define GHOST_FORWARD_DOT_SOFT_REJECT		-0.05f
 #define GHOST_FORWARD_DOT_STRICT_REJECT		0.25f
+=======
+#define GHOST_FORWARD_DOT_SOFT_REJECT		-0.35f
+#define GHOST_FORWARD_DOT_STRICT_REJECT		0.05f
+>>>>>>> master
 #define GHOST_FORWARD_INIT_PHASE_MS		1500
 
 typedef enum {
@@ -3430,7 +3435,12 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 		int i;
 		int hintIndex = bs->ghostRouteIndexHint;
 		vec3_t botForward;
+<<<<<<< codex/add-direction-criteria-for-bestindex-selection-8i3zid
 		qboolean strictForwardOnly = forwardLaunchPhase;
+=======
+		gentity_t *botEnt = ( bs->entitynum >= 0 && bs->entitynum < level.maxclients ) ? &g_entities[bs->entitynum] : NULL;
+		qboolean strictForwardOnly = qfalse;
+>>>>>>> master
 
 		AngleVectors( bs->cur_ps.viewangles, botForward, NULL, NULL );
 		botForward[2] = 0.0f;
@@ -3438,6 +3448,13 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			VectorSet( botForward, 1.0f, 0.0f, 0.0f );
 		}
 
+<<<<<<< codex/add-direction-criteria-for-bestindex-selection-8i3zid
+=======
+		if ( botEnt && botEnt->client && level.time - botEnt->client->respawnTime <= GHOST_FORWARD_INIT_PHASE_MS ) {
+			strictForwardOnly = qtrue;
+		}
+
+>>>>>>> master
 		bestIndex = Bot_SelectForwardWaypointIndex( ghostRoute, bs->cur_ps.origin, botForward, hintIndex,
 			GHOST_ROUTE_HINT_WINDOW, strictForwardOnly );
 
@@ -3458,6 +3475,10 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				vec3_t toWaypoint;
 				float distSq;
 				float dotForward = 1.0f;
+<<<<<<< codex/add-direction-criteria-for-bestindex-selection-8i3zid
+=======
+				lookAheadIndex = i;
+>>>>>>> master
 				VectorSubtract( ghostRoute->waypoints[i].origin, bs->cur_ps.origin, deltaToWaypoint );
 				VectorCopy( deltaToWaypoint, toWaypoint );
 				toWaypoint[2] = 0.0f;
@@ -3468,7 +3489,10 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				if ( dotForward < GHOST_FORWARD_DOT_SOFT_REJECT ) {
 					continue;
 				}
+<<<<<<< codex/add-direction-criteria-for-bestindex-selection-8i3zid
 				lookAheadIndex = i;
+=======
+>>>>>>> master
 				distSq = VectorLengthSquared( deltaToWaypoint );
 				if ( ghostRoute->waypoints[i].timeOffset >= lookAheadTime || distSq >= lookAheadDistanceSq ) {
 					break;
