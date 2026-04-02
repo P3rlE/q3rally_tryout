@@ -24,6 +24,91 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
+typedef struct {
+	int		pathId;
+	int		order;
+	float	targetSpeed;
+	float	width;
+	int		trackLengthMask;
+	qboolean	reversed;
+	vec3_t	origin;
+} botPathNodeSpawn_t;
+
+static botPathNodeSpawn_t	s_botPathNodeSpawns[MAX_BOT_PATH_NODES];
+static int			s_botPathNodeSpawnCount;
+
+static void G_ResetBotPathNodeSpawns( void ) {
+	s_botPathNodeSpawnCount = 0;
+}
+
+static void G_CollectBotPathNodeSpawn( gentity_t *ent ) {
+	botPathNodeSpawn_t *node;
+	int pathId;
+	int order;
+	float targetSpeed;
+	float width;
+	int trackLengthMask;
+	int reversed;
+	vec3_t origin;
+
+	if ( s_botPathNodeSpawnCount >= MAX_BOT_PATH_NODES ) {
+		G_Printf( "bot_path_node ignored: MAX_BOT_PATH_NODES (%d) reached\n", MAX_BOT_PATH_NODES );
+		return;
+	}
+
+	G_SpawnInt( "pathId", "0", &pathId );
+	if ( pathId < 0 ) {
+		pathId = 0;
+	} else if ( pathId >= MAX_BOT_PATH_ROUTES ) {
+		pathId = MAX_BOT_PATH_ROUTES - 1;
+	}
+
+	G_SpawnInt( "order", "0", &order );
+	if ( order < 0 ) {
+		order = 0;
+	} else if ( order >= MAX_BOT_PATH_NODES ) {
+		order = MAX_BOT_PATH_NODES - 1;
+	}
+
+	G_SpawnFloat( "targetSpeed", "0", &targetSpeed );
+	if ( targetSpeed < 0.0f ) {
+		targetSpeed = 0.0f;
+	} else if ( targetSpeed > 5000.0f ) {
+		targetSpeed = 5000.0f;
+	}
+
+	G_SpawnFloat( "width", "256", &width );
+	if ( width < 1.0f ) {
+		width = 1.0f;
+	} else if ( width > 8192.0f ) {
+		width = 8192.0f;
+	}
+
+	G_SpawnInt( "trackLengthMask", "7", &trackLengthMask );
+	if ( trackLengthMask < 1 ) {
+		trackLengthMask = 7;
+	} else if ( trackLengthMask > 7 ) {
+		trackLengthMask = 7;
+	}
+
+	G_SpawnInt( "reversed", "0", &reversed );
+	reversed = reversed ? 1 : 0;
+
+	G_SpawnVector( "origin", "0 0 0", origin );
+	if ( ent ) {
+		VectorCopy( ent->s.origin, origin );
+	}
+
+	node = &s_botPathNodeSpawns[s_botPathNodeSpawnCount++];
+	node->pathId = pathId;
+	node->order = order;
+	node->targetSpeed = targetSpeed;
+	node->width = width;
+	node->trackLengthMask = trackLengthMask;
+	node->reversed = reversed ? qtrue : qfalse;
+	VectorCopy( origin, node->origin );
+}
+
 qboolean	G_SpawnString( const char *key, const char *defaultString, char **out ) {
 	int		i;
 
@@ -606,7 +691,13 @@ void G_SpawnGEntityFromSpawnVars( void ) {
 			return;
 //		}
 	}
-// END
+	// END
+
+	if ( ent->classname && !Q_stricmp( ent->classname, "bot_path_node" ) ) {
+		G_CollectBotPathNodeSpawn( ent );
+		G_FreeEntity( ent );
+		return;
+	}
 
 	// move editor origin to pos
 	VectorCopy( ent->s.origin, ent->s.pos.trBase );
@@ -886,6 +977,7 @@ void G_SpawnEntitiesFromString( void ) {
 	// allow calls to G_Spawn*()
 	level.spawning = qtrue;
 	level.numSpawnVars = 0;
+	G_ResetBotPathNodeSpawns();
 
 	// the worldspawn is not an actual entity, but it still
 	// has a "spawn" function to perform any global setup
