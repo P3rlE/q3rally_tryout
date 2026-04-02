@@ -38,9 +38,8 @@ typedef struct {
 	vec3_t	origin;
 } botPathNodeSpawn_t;
 
-#define BOT_PATH_REVERSED_FORWARD	0
-#define BOT_PATH_REVERSED_REVERSED	1
-#define BOT_PATH_REVERSED_BOTH		2
+#include "g_botpath_spawn_helpers.h"
+
 #define BOT_PATH_ROUTE_MIN_NODES	2
 #define BOT_PATH_SEGMENT_OUTLIER_MIN	64.0f
 #define BOT_PATH_SEGMENT_OUTLIER_MAX	16384.0f
@@ -72,53 +71,24 @@ static void G_CollectBotPathNodeSpawn( gentity_t *ent ) {
 	}
 
 	G_SpawnInt( "pathId", "0", &pathId );
-	if ( pathId < 0 ) {
-		pathId = 0;
-	} else if ( pathId >= MAX_BOT_PATH_ROUTES ) {
-		pathId = MAX_BOT_PATH_ROUTES - 1;
-	}
+	pathId = G_BotPath_ClampPathId( pathId );
 
 	G_SpawnInt( "order", "0", &order );
-	if ( order < 0 ) {
-		order = 0;
-	} else if ( order >= MAX_BOT_PATH_NODES ) {
-		order = MAX_BOT_PATH_NODES - 1;
-	}
+	order = G_BotPath_ClampOrder( order );
 
 	G_SpawnFloat( "targetSpeed", "0", &targetSpeed );
-	if ( targetSpeed < -1.0f ) {
-		targetSpeed = -1.0f;
-	} else if ( targetSpeed > 5000.0f ) {
-		targetSpeed = 5000.0f;
-	}
+	targetSpeed = G_BotPath_ClampTargetSpeed( targetSpeed );
 
 	G_SpawnFloat( "width", "256", &width );
-	if ( width < 1.0f ) {
-		width = 1.0f;
-	} else if ( width > 8192.0f ) {
-		width = 8192.0f;
-	}
+	width = G_BotPath_ClampWidth( width );
 
 	G_SpawnInt( "trackLengthMask", "7", &trackLengthMask );
 	node = &s_botPathNodeSpawns[s_botPathNodeSpawnCount++];
 	node->trackLengthMaskRaw = trackLengthMask;
-	node->trackLengthMaskValid = ( trackLengthMask >= 1 && trackLengthMask <= 7 ) ? qtrue : qfalse;
-	if ( !node->trackLengthMaskValid ) {
-		trackLengthMask = 7;
-	}
+	trackLengthMask = G_BotPath_NormalizeTrackLengthMask( trackLengthMask, &node->trackLengthMaskValid );
 
 	G_SpawnString( "reversed", "0", &reversedValue );
-	node->reversedValueValid = qtrue;
-	if ( !Q_stricmp( reversedValue, "both" ) ) {
-		reversedMode = BOT_PATH_REVERSED_BOTH;
-	} else if ( !Q_stricmp( reversedValue, "1" ) || !Q_stricmp( reversedValue, "true" ) || !Q_stricmp( reversedValue, "reversed" ) ) {
-		reversedMode = BOT_PATH_REVERSED_REVERSED;
-	} else if ( !Q_stricmp( reversedValue, "0" ) || !Q_stricmp( reversedValue, "false" ) || !Q_stricmp( reversedValue, "forward" ) ) {
-		reversedMode = BOT_PATH_REVERSED_FORWARD;
-	} else {
-		reversedMode = BOT_PATH_REVERSED_FORWARD;
-		node->reversedValueValid = qfalse;
-	}
+	reversedMode = G_BotPath_ParseReversedMode( reversedValue, &node->reversedValueValid );
 
 	G_SpawnVector( "origin", "0 0 0", origin );
 	if ( ent ) {
@@ -149,33 +119,17 @@ static int G_BotPathNodeSpawnOrderCmp( const void *left, const void *right ) {
 }
 
 static qboolean G_BotPathNodeMatchesTrackLength( const botPathNodeSpawn_t *node ) {
-	int trackLengthBit;
-
 	if ( !node ) {
 		return qfalse;
 	}
-
-	if ( g_trackLength.integer < 0 || g_trackLength.integer > 2 ) {
-		return qtrue;
-	}
-
-	trackLengthBit = 1 << g_trackLength.integer;
-	return ( node->trackLengthMask & trackLengthBit ) != 0;
+	return G_BotPath_NodeMatchesTrackLengthMask( node->trackLengthMask, g_trackLength.integer );
 }
 
 static qboolean G_BotPathNodeMatchesReverseMode( const botPathNodeSpawn_t *node ) {
-	int activeReverse;
-
 	if ( !node ) {
 		return qfalse;
 	}
-
-	if ( node->reversedMode == BOT_PATH_REVERSED_BOTH ) {
-		return qtrue;
-	}
-
-	activeReverse = ( g_trackReversed.integer && level.trackIsReversable ) ? BOT_PATH_REVERSED_REVERSED : BOT_PATH_REVERSED_FORWARD;
-	return node->reversedMode == activeReverse;
+	return G_BotPath_NodeMatchesReversedMode( node->reversedMode, g_trackReversed.integer, level.trackIsReversable );
 }
 
 static qboolean G_BotPathHasSegmentLengthOutlier( const botPathNodeSpawn_t *nodes, int nodeCount, int pathId ) {
@@ -283,11 +237,9 @@ static void G_BuildBotPathRoutesFromSpawnNodes( void ) {
 				G_Printf( "G_BotPath: critical validation error pathId=%d duplicate order=%d\n",
 					pathId, s_routeSpawnsScratch[i].order );
 				hasCriticalValidationError = qtrue;
-				continue;
 			}
-
-			s_routeSpawnsScratch[uniqueCount++] = s_routeSpawnsScratch[i];
 		}
+		uniqueCount = G_BotPath_CompressUniqueOrdersInPlace( s_routeSpawnsScratch, filteredCount );
 
 		if ( uniqueCount < BOT_PATH_ROUTE_MIN_NODES ) {
 			G_Printf( "G_BotPath: critical validation error pathId=%d discarded, not enough nodes after filtering (%d < %d)\n",

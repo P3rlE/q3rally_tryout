@@ -47,6 +47,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "ai_chat.h"
 #include "ai_cmd.h"
 #include "ai_dmnet.h"
+#include "ai_dmnet_pathselect.h"
 #include "ai_team.h"
 //data file headers
 #include "chars.h"			//characteristics
@@ -233,40 +234,14 @@ typedef enum {
 } botPathLineFamily_t;
 
 static int Bot_SelectBotPathRouteIdWithFallback( const botPathRoute_t *routes[BOT_PATH_LINE_FAMILY_COUNT], int preferredId ) {
-	int order[BOT_PATH_LINE_FAMILY_COUNT];
-	int cursor = 0;
+	qboolean available[BOT_PATH_LINE_FAMILY_COUNT];
 	int i;
 
-	if ( preferredId < 0 || preferredId >= BOT_PATH_LINE_FAMILY_COUNT ) {
-		preferredId = BOT_PATH_LINE_BASE;
-	}
-
-	order[cursor++] = preferredId;
-	if ( preferredId != BOT_PATH_LINE_BASE ) {
-		order[cursor++] = BOT_PATH_LINE_BASE;
-	}
 	for ( i = 0; i < BOT_PATH_LINE_FAMILY_COUNT; ++i ) {
-		int j;
-		qboolean alreadyAdded = qfalse;
-		for ( j = 0; j < cursor; ++j ) {
-			if ( order[j] == i ) {
-				alreadyAdded = qtrue;
-				break;
-			}
-		}
-		if ( !alreadyAdded ) {
-			order[cursor++] = i;
-		}
+		available[i] = ( routes[i] && routes[i]->valid && routes[i]->numNodes > 1 ) ? qtrue : qfalse;
 	}
 
-	for ( i = 0; i < cursor; ++i ) {
-		int routeId = order[i];
-		if ( routes[routeId] && routes[routeId]->valid && routes[routeId]->numNodes > 1 ) {
-			return routeId;
-		}
-	}
-
-	return -1;
+	return Bot_SelectRouteIdWithFallbackByAvailability( available, BOT_PATH_LINE_FAMILY_COUNT, preferredId, BOT_PATH_LINE_BASE );
 }
 
 static qboolean Bot_BuildBotPathGuidance( const botPathRoute_t *route, bot_state_t *bs, float actualSpeed, vec3_t targetPoint,
