@@ -3760,6 +3760,10 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				selectedNodeIndex >= 0 ) {
 				int speedProbeStart = selectedNodeIndex;
 				int speedProbeEnd = selectedLookAheadIndex;
+<<<<<<< codex/add-bot-path-metadata-to-dmnet-logs-m0oicx
+				int speedProbeIndex;
+=======
+>>>>>>> master
 				if ( speedProbeStart >= pathRoutes[selectedPathId]->numNodes ) {
 					speedProbeStart = pathRoutes[selectedPathId]->numNodes - 1;
 				}
@@ -3771,8 +3775,13 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				}
 				autoSpeedActive = 1;
 				targetSpeedOverrideActive = 0;
+<<<<<<< codex/add-bot-path-metadata-to-dmnet-logs-m0oicx
+				for ( speedProbeIndex = speedProbeStart; speedProbeIndex <= speedProbeEnd; ++speedProbeIndex ) {
+					if ( pathRoutes[selectedPathId]->nodes[speedProbeIndex].targetSpeed >= 0.0f ) {
+=======
 				for ( i = speedProbeStart; i <= speedProbeEnd; ++i ) {
 					if ( pathRoutes[selectedPathId]->nodes[i].targetSpeed >= 0.0f ) {
+>>>>>>> master
 						targetSpeedOverrideActive = 1;
 						autoSpeedActive = 0;
 						break;
