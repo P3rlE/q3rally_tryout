@@ -41,6 +41,8 @@ typedef struct {
 
 static botPathNodeSpawn_t	s_botPathNodeSpawns[MAX_BOT_PATH_NODES];
 static int			s_botPathNodeSpawnCount;
+static botPathNodeSpawn_t	s_routeSpawnsScratch[MAX_BOT_PATH_NODES];
+static botPathNode_t		s_routeNodesScratch[MAX_BOT_PATH_NODES];
 
 static void G_ResetBotPathNodeSpawns( void ) {
 	s_botPathNodeSpawnCount = 0;
@@ -173,8 +175,6 @@ static void G_BuildBotPathRoutesFromSpawnNodes( void ) {
 	G_BotPath_ClearAllRoutes();
 
 	for ( pathId = 0; pathId < MAX_BOT_PATH_ROUTES; ++pathId ) {
-		botPathNodeSpawn_t routeSpawns[MAX_BOT_PATH_NODES];
-		botPathNode_t routeNodes[MAX_BOT_PATH_NODES];
 		char routeName[32];
 		int i;
 		int filteredCount = 0;
@@ -203,32 +203,32 @@ static void G_BuildBotPathRoutesFromSpawnNodes( void ) {
 				break;
 			}
 
-			routeSpawns[filteredCount++] = *node;
+			s_routeSpawnsScratch[filteredCount++] = *node;
 		}
 
 		if ( filteredCount <= 0 ) {
 			continue;
 		}
 
-		qsort( routeSpawns, filteredCount, sizeof( routeSpawns[0] ), G_BotPathNodeSpawnOrderCmp );
+		qsort( s_routeSpawnsScratch, filteredCount, sizeof( s_routeSpawnsScratch[0] ), G_BotPathNodeSpawnOrderCmp );
 
 		for ( i = 0; i < filteredCount; ++i ) {
-			if ( uniqueCount > 0 && routeSpawns[i].order == routeSpawns[uniqueCount - 1].order ) {
+			if ( uniqueCount > 0 && s_routeSpawnsScratch[i].order == s_routeSpawnsScratch[uniqueCount - 1].order ) {
 				duplicateOrderCount++;
 				G_Printf( "G_BotPath: validation error pathId=%d duplicate order=%d (using last definition)\n",
-					pathId, routeSpawns[i].order );
-				routeSpawns[uniqueCount - 1] = routeSpawns[i];
+					pathId, s_routeSpawnsScratch[i].order );
+				s_routeSpawnsScratch[uniqueCount - 1] = s_routeSpawnsScratch[i];
 				continue;
 			}
 
-			routeSpawns[uniqueCount++] = routeSpawns[i];
+			s_routeSpawnsScratch[uniqueCount++] = s_routeSpawnsScratch[i];
 		}
 
 		for ( i = 0; i < uniqueCount; ++i ) {
-			VectorCopy( routeSpawns[i].origin, routeNodes[i].origin );
-			routeNodes[i].width = routeSpawns[i].width;
-			routeNodes[i].targetSpeed = routeSpawns[i].targetSpeed;
-			routeNodes[i].effectiveWidth = routeSpawns[i].width;
+			VectorCopy( s_routeSpawnsScratch[i].origin, s_routeNodesScratch[i].origin );
+			s_routeNodesScratch[i].width = s_routeSpawnsScratch[i].width;
+			s_routeNodesScratch[i].targetSpeed = s_routeSpawnsScratch[i].targetSpeed;
+			s_routeNodesScratch[i].effectiveWidth = s_routeSpawnsScratch[i].width;
 		}
 
 		if ( uniqueCount < BOT_PATH_ROUTE_MIN_NODES ) {
@@ -238,7 +238,7 @@ static void G_BuildBotPathRoutesFromSpawnNodes( void ) {
 		}
 
 		Com_sprintf( routeName, sizeof( routeName ), "path_%d", pathId );
-		registeredIndex = G_BotPath_RegisterRoute( routeName, routeNodes, uniqueCount );
+		registeredIndex = G_BotPath_RegisterRoute( routeName, s_routeNodesScratch, uniqueCount );
 		if ( registeredIndex < 0 ) {
 			G_Printf( "G_BotPath: failed to register route pathId=%d (%d nodes)\n", pathId, uniqueCount );
 			continue;
