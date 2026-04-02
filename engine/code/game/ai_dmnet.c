@@ -220,6 +220,132 @@ static ghostRouteLineFamily_t Bot_SelectGhostLineFamily( const botCollisionRisk_
 	return GHOST_LINE_BASE;
 }
 
+typedef enum {
+	BOT_PATH_LINE_BASE = 0,
+	BOT_PATH_LINE_AGGRESSIVE = 1,
+	BOT_PATH_LINE_SAFE = 2,
+	BOT_PATH_LINE_FAMILY_COUNT = 3
+} botPathLineFamily_t;
+
+static int Bot_SelectBotPathRouteIdWithFallback( const botPathRoute_t *routes[BOT_PATH_LINE_FAMILY_COUNT], int preferredId ) {
+	int order[BOT_PATH_LINE_FAMILY_COUNT];
+	int cursor = 0;
+	int i;
+
+	if ( preferredId < 0 || preferredId >= BOT_PATH_LINE_FAMILY_COUNT ) {
+		preferredId = BOT_PATH_LINE_BASE;
+	}
+
+	order[cursor++] = preferredId;
+	if ( preferredId != BOT_PATH_LINE_BASE ) {
+		order[cursor++] = BOT_PATH_LINE_BASE;
+	}
+	for ( i = 0; i < BOT_PATH_LINE_FAMILY_COUNT; ++i ) {
+		int j;
+		qboolean alreadyAdded = qfalse;
+		for ( j = 0; j < cursor; ++j ) {
+			if ( order[j] == i ) {
+				alreadyAdded = qtrue;
+				break;
+			}
+		}
+		if ( !alreadyAdded ) {
+			order[cursor++] = i;
+		}
+	}
+
+	for ( i = 0; i < cursor; ++i ) {
+		int routeId = order[i];
+		if ( routes[routeId] && routes[routeId]->valid && routes[routeId]->numNodes > 1 ) {
+			return routeId;
+		}
+	}
+
+	return -1;
+}
+
+static qboolean Bot_BuildBotPathGuidance( const botPathRoute_t *route, bot_state_t *bs, float actualSpeed, vec3_t targetPoint, float *targetSpeed, float *avgCurvatureOut ) {
+	int closestIndex;
+	int lookAheadNodes;
+	int lookAheadIndex;
+	int segmentStart;
+	int segmentEnd;
+	int segmentSamples = 0;
+	int i;
+	float segmentSpeedSum = 0.0f;
+	float segmentCurvatureSum = 0.0f;
+	float dynamicLookAhead;
+
+	if ( !route || !bs || !targetPoint || !targetSpeed ) {
+		return qfalse;
+	}
+	if ( !route->valid || route->numNodes <= 1 ) {
+		return qfalse;
+	}
+
+	closestIndex = G_BotPath_SelectClosestNode( route, bs->cur_ps.origin, bs->ghostRouteIndexHint, GHOST_ROUTE_HINT_WINDOW );
+	if ( closestIndex < 0 ) {
+		return qfalse;
+	}
+
+	dynamicLookAhead = 2.0f + actualSpeed / 280.0f;
+	if ( closestIndex < route->numSegments ) {
+		float entryCurvature = route->segments[closestIndex].curvature;
+		if ( entryCurvature > 0.45f ) {
+			dynamicLookAhead -= 1.0f;
+		} else if ( entryCurvature < 0.15f ) {
+			dynamicLookAhead += 1.0f;
+		}
+	}
+	lookAheadNodes = (int)dynamicLookAhead;
+	if ( lookAheadNodes < 2 ) {
+		lookAheadNodes = 2;
+	} else if ( lookAheadNodes > 8 ) {
+		lookAheadNodes = 8;
+	}
+
+	lookAheadIndex = closestIndex + lookAheadNodes;
+	if ( lookAheadIndex >= route->numNodes ) {
+		lookAheadIndex = route->numNodes - 1;
+	}
+
+	segmentStart = closestIndex;
+	segmentEnd = lookAheadIndex - 1;
+	if ( segmentStart < 0 ) {
+		segmentStart = 0;
+	}
+	if ( segmentEnd >= route->numSegments ) {
+		segmentEnd = route->numSegments - 1;
+	}
+
+	for ( i = segmentStart; i <= segmentEnd; ++i ) {
+		segmentSpeedSum += route->segments[i].recommendedSpeed;
+		segmentCurvatureSum += route->segments[i].curvature;
+		segmentSamples++;
+	}
+
+	if ( segmentSamples > 0 ) {
+		float avgCurvature = segmentCurvatureSum / segmentSamples;
+		*targetSpeed = segmentSpeedSum / segmentSamples;
+		*targetSpeed *= ( 1.02f - avgCurvature * 0.24f );
+		if ( avgCurvatureOut ) {
+			*avgCurvatureOut = avgCurvature;
+		}
+	} else {
+		*targetSpeed = route->nodes[closestIndex].targetSpeed;
+		if ( *targetSpeed < 0.0f ) {
+			*targetSpeed = 700.0f;
+		}
+		if ( avgCurvatureOut ) {
+			*avgCurvatureOut = 0.0f;
+		}
+	}
+
+	VectorCopy( route->nodes[lookAheadIndex].origin, targetPoint );
+	bs->ghostRouteIndexHint = closestIndex;
+	return qtrue;
+}
+
 static void Bot_SetRecoveryState( bot_state_t *bs, bot_recovery_state_t newState ) {
 	float now = FloatTime();
 
@@ -3465,131 +3591,151 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	}
 
 	{
-		const botPathRoute_t *botPathRoute = G_BotPath_GetRouteByIndex( 0 );
-		if ( botPathRoute && botPathRoute->valid && botPathRoute->numNodes > 1 ) {
-			int i;
-			int closestIndex;
-			int lookAheadNodes;
-			int lookAheadIndex;
-			int segmentStart;
-			int segmentEnd;
-			int segmentSamples = 0;
-			float segmentSpeedSum = 0.0f;
-			float segmentCurvatureSum = 0.0f;
-			float speedFromRoute;
-			float dynamicLookAhead;
-			float currentLateral;
-			float maxCorridorOffset;
-			float clampedLateral;
-			vec3_t routeForward;
-			vec3_t routeRight;
-			vec3_t toBot;
-			vec3_t targetPoint;
+		const botPathRoute_t *pathRoutes[BOT_PATH_LINE_FAMILY_COUNT];
+		vec3_t baseTargetPoint;
+		vec3_t lineTargetPoint;
+		vec3_t blendedTargetPoint;
+		vec3_t routeForward;
+		vec3_t routeRight;
+		float baseRouteSpeed = 0.0f;
+		float lineRouteSpeed = 0.0f;
+		float speedFromRoute;
+		float baseCurvature = 0.0f;
+		float cornerPhase = 0.0f;
+		float routeBlendAlpha = 0.2f;
+		float speedBlendAlpha = 0.2f;
+		float stateSpeedBias = 0.0f;
+		int preferredPathId = BOT_PATH_LINE_BASE;
+		int selectedPathId = -1;
+		botCollisionRisk_t pathCollisionRisk;
+		bot_recovery_state_t pathRecoveryState;
+		qboolean haveBaseGuidance = qfalse;
+		qboolean haveSelectedGuidance = qfalse;
 
-			closestIndex = G_BotPath_SelectClosestNode( botPathRoute, bs->cur_ps.origin, bs->ghostRouteIndexHint, GHOST_ROUTE_HINT_WINDOW );
-			if ( closestIndex >= 0 ) {
-				bs->ghostRouteIndexHint = closestIndex;
-				actualSpeed = VectorLength( bs->cur_ps.velocity );
+		pathRoutes[BOT_PATH_LINE_BASE] = G_BotPath_GetRouteByIndex( BOT_PATH_LINE_BASE );
+		pathRoutes[BOT_PATH_LINE_AGGRESSIVE] = G_BotPath_GetRouteByIndex( BOT_PATH_LINE_AGGRESSIVE );
+		pathRoutes[BOT_PATH_LINE_SAFE] = G_BotPath_GetRouteByIndex( BOT_PATH_LINE_SAFE );
 
-				dynamicLookAhead = 2.0f + actualSpeed / 280.0f;
-				if ( closestIndex < botPathRoute->numSegments ) {
-					float entryCurvature = botPathRoute->segments[closestIndex].curvature;
-					if ( entryCurvature > 0.45f ) {
-						dynamicLookAhead -= 1.0f;
-					} else if ( entryCurvature < 0.15f ) {
-						dynamicLookAhead += 1.0f;
-					}
-				}
-				lookAheadNodes = (int)dynamicLookAhead;
-				if ( lookAheadNodes < 2 ) {
-					lookAheadNodes = 2;
-				} else if ( lookAheadNodes > 8 ) {
-					lookAheadNodes = 8;
-				}
+		actualSpeed = VectorLength( bs->cur_ps.velocity );
+		haveBaseGuidance = Bot_BuildBotPathGuidance( pathRoutes[BOT_PATH_LINE_BASE], bs, actualSpeed, baseTargetPoint, &baseRouteSpeed, &baseCurvature );
 
-				lookAheadIndex = closestIndex + lookAheadNodes;
-				if ( lookAheadIndex >= botPathRoute->numNodes ) {
-					lookAheadIndex = botPathRoute->numNodes - 1;
-				}
-
-				segmentStart = closestIndex;
-				segmentEnd = lookAheadIndex - 1;
-				if ( segmentStart < 0 ) {
-					segmentStart = 0;
-				}
-				if ( segmentEnd >= botPathRoute->numSegments ) {
-					segmentEnd = botPathRoute->numSegments - 1;
-				}
-
-				for ( i = segmentStart; i <= segmentEnd; ++i ) {
-					segmentSpeedSum += botPathRoute->segments[i].recommendedSpeed;
-					segmentCurvatureSum += botPathRoute->segments[i].curvature;
-					segmentSamples++;
-				}
-
-				if ( segmentSamples > 0 ) {
-					float avgCurvature = segmentCurvatureSum / segmentSamples;
-					speedFromRoute = segmentSpeedSum / segmentSamples;
-					speedFromRoute *= ( 1.02f - avgCurvature * 0.24f );
-				} else {
-					speedFromRoute = botPathRoute->nodes[closestIndex].targetSpeed;
-					if ( speedFromRoute < 0.0f ) {
-						speedFromRoute = 700.0f;
-					}
-				}
-
-				VectorSubtract( botPathRoute->nodes[lookAheadIndex].origin, botPathRoute->nodes[closestIndex].origin, routeForward );
-				routeForward[2] = 0.0f;
-				if ( VectorNormalize( routeForward ) <= 0.001f ) {
-					VectorSet( routeForward, 1.0f, 0.0f, 0.0f );
-				}
-				routeRight[0] = -routeForward[1];
-				routeRight[1] = routeForward[0];
-				routeRight[2] = 0.0f;
-
-				VectorSubtract( bs->cur_ps.origin, botPathRoute->nodes[closestIndex].origin, toBot );
-				toBot[2] = 0.0f;
-				currentLateral = DotProduct( toBot, routeRight );
-				maxCorridorOffset = botPathRoute->nodes[closestIndex].effectiveWidth * 0.5f;
-				if ( lookAheadIndex < botPathRoute->numNodes ) {
-					float lookAheadHalfWidth = botPathRoute->nodes[lookAheadIndex].effectiveWidth * 0.5f;
-					if ( lookAheadHalfWidth < maxCorridorOffset ) {
-						maxCorridorOffset = lookAheadHalfWidth;
-					}
-				}
-				if ( maxCorridorOffset < 40.0f ) {
-					maxCorridorOffset = 40.0f;
-				}
-				clampedLateral = currentLateral;
-				if ( clampedLateral > maxCorridorOffset ) {
-					clampedLateral = maxCorridorOffset;
-				} else if ( clampedLateral < -maxCorridorOffset ) {
-					clampedLateral = -maxCorridorOffset;
-				}
-
-				VectorMA( botPathRoute->nodes[lookAheadIndex].origin, clampedLateral, routeRight, targetPoint );
-				VectorSubtract( targetPoint, bs->cur_ps.origin, dir );
-				dir[2] = 0.0f;
-				vectoangles( dir, angles );
-
-				if ( speedFromRoute >= actualSpeed + 55.0f ) {
-					throttleChange = 1;
-				} else if ( speedFromRoute + 95.0f <= actualSpeed ) {
-					throttleChange = -1;
-				} else {
-					throttleChange = 0;
-				}
-
-				throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
-				VectorCopy( angles, bs->ideal_viewangles );
-
-				if ( throttleChange > 0 ) {
-					trap_EA_MoveForward( bs->client );
-				} else if ( throttleChange < 0 ) {
-					trap_EA_MoveBack( bs->client );
-				}
-				return qtrue;
+		if ( !haveBaseGuidance ) {
+			int baseFallbackId = Bot_SelectBotPathRouteIdWithFallback( pathRoutes, BOT_PATH_LINE_BASE );
+			if ( baseFallbackId >= 0 ) {
+				haveBaseGuidance = Bot_BuildBotPathGuidance( pathRoutes[baseFallbackId], bs, actualSpeed, baseTargetPoint, &baseRouteSpeed, &baseCurvature );
 			}
+		}
+
+		if ( haveBaseGuidance ) {
+			VectorSubtract( baseTargetPoint, bs->cur_ps.origin, routeForward );
+			routeForward[2] = 0.0f;
+			if ( VectorNormalize( routeForward ) <= 0.001f ) {
+				VectorSet( routeForward, 1.0f, 0.0f, 0.0f );
+			}
+			routeRight[0] = -routeForward[1];
+			routeRight[1] = routeForward[0];
+			routeRight[2] = 0.0f;
+
+			pathRecoveryState = (bot_recovery_state_t)bs->ghostRecoveryState;
+			if ( pathRecoveryState < BOT_RECOVERY_NONE || pathRecoveryState > BOT_RECOVERY_EMERGENCY_RESET_REQUEST ) {
+				pathRecoveryState = BOT_RECOVERY_NONE;
+			}
+
+			Bot_PredictCollisionRisk( bs, routeForward, routeRight, 0.5f, 1.3f, &pathCollisionRisk );
+			cornerPhase = baseCurvature * 2.2f;
+			if ( cornerPhase > 1.0f ) {
+				cornerPhase = 1.0f;
+			}
+
+			if ( pathRecoveryState != BOT_RECOVERY_NONE ) {
+				preferredPathId = BOT_PATH_LINE_SAFE;
+				decisionState = GHOST_DECISION_ABORT_OVERTAKE;
+			} else if ( pathCollisionRisk.nearestAheadDist < 190.0f && pathCollisionRisk.nearestAheadRelSpeed > 40.0f && !pathCollisionRisk.abortOvertakeRecommended ) {
+				preferredPathId = BOT_PATH_LINE_AGGRESSIVE;
+				decisionState = GHOST_DECISION_PREPARE_OVERTAKE;
+			} else if ( pathCollisionRisk.nearestBehindDist < 130.0f && pathCollisionRisk.nearestBehindRelSpeed > 60.0f ) {
+				preferredPathId = BOT_PATH_LINE_SAFE;
+				decisionState = GHOST_DECISION_DEFEND_LINE;
+			} else {
+				preferredPathId = BOT_PATH_LINE_BASE;
+				decisionState = GHOST_DECISION_FOLLOW;
+			}
+
+			selectedPathId = Bot_SelectBotPathRouteIdWithFallback( pathRoutes, preferredPathId );
+			if ( selectedPathId >= 0 ) {
+				haveSelectedGuidance = Bot_BuildBotPathGuidance( pathRoutes[selectedPathId], bs, actualSpeed, lineTargetPoint, &lineRouteSpeed, NULL );
+			}
+			if ( !haveSelectedGuidance ) {
+				VectorCopy( baseTargetPoint, lineTargetPoint );
+				lineRouteSpeed = baseRouteSpeed;
+				selectedPathId = BOT_PATH_LINE_BASE;
+			}
+
+			switch ( decisionState ) {
+				case GHOST_DECISION_PREPARE_OVERTAKE:
+				case GHOST_DECISION_OVERTAKE_INSIDE:
+				case GHOST_DECISION_OVERTAKE_OUTSIDE:
+					routeBlendAlpha = 0.68f;
+					speedBlendAlpha = 0.64f;
+					stateSpeedBias = 40.0f;
+					break;
+				case GHOST_DECISION_DEFEND_LINE:
+					routeBlendAlpha = 0.58f;
+					speedBlendAlpha = 0.50f;
+					stateSpeedBias = -22.0f;
+					break;
+				case GHOST_DECISION_ABORT_OVERTAKE:
+					routeBlendAlpha = 0.82f;
+					speedBlendAlpha = 0.76f;
+					stateSpeedBias = -72.0f;
+					break;
+				case GHOST_DECISION_FOLLOW:
+				default:
+					routeBlendAlpha = 0.24f;
+					speedBlendAlpha = 0.24f;
+					stateSpeedBias = 0.0f;
+					break;
+			}
+			if ( selectedPathId == BOT_PATH_LINE_BASE ) {
+				routeBlendAlpha *= 0.35f;
+				speedBlendAlpha *= 0.35f;
+			}
+			if ( cornerPhase > 0.5f && preferredPathId == BOT_PATH_LINE_AGGRESSIVE ) {
+				speedBlendAlpha *= 0.75f;
+			}
+
+			VectorCopy( baseTargetPoint, blendedTargetPoint );
+			blendedTargetPoint[0] = baseTargetPoint[0] + ( lineTargetPoint[0] - baseTargetPoint[0] ) * routeBlendAlpha;
+			blendedTargetPoint[1] = baseTargetPoint[1] + ( lineTargetPoint[1] - baseTargetPoint[1] ) * routeBlendAlpha;
+			blendedTargetPoint[2] = baseTargetPoint[2] + ( lineTargetPoint[2] - baseTargetPoint[2] ) * routeBlendAlpha;
+
+			speedFromRoute = baseRouteSpeed + ( lineRouteSpeed - baseRouteSpeed ) * speedBlendAlpha;
+			speedFromRoute += stateSpeedBias;
+			if ( speedFromRoute < 280.0f ) {
+				speedFromRoute = 280.0f;
+			}
+
+			VectorSubtract( blendedTargetPoint, bs->cur_ps.origin, dir );
+			dir[2] = 0.0f;
+			vectoangles( dir, angles );
+
+			if ( speedFromRoute >= actualSpeed + 55.0f ) {
+				throttleChange = 1;
+			} else if ( speedFromRoute + 95.0f <= actualSpeed ) {
+				throttleChange = -1;
+			} else {
+				throttleChange = 0;
+			}
+
+			throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
+			VectorCopy( angles, bs->ideal_viewangles );
+
+			if ( throttleChange > 0 ) {
+				trap_EA_MoveForward( bs->client );
+			} else if ( throttleChange < 0 ) {
+				trap_EA_MoveBack( bs->client );
+			}
+			return qtrue;
 		}
 	}
 
