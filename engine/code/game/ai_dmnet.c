@@ -147,7 +147,8 @@ static void Bot_DebugFormatRecoveryTransition( char *buffer, int bufferSize, bot
 static void Bot_DebugExportDmnetTick( bot_state_t *bs, int routeIndex, float targetSpeed, float actualSpeed,
 	ghostDecisionState_t decisionState, qboolean collisionRisk, bot_recovery_state_t recoveryState,
 	bot_recovery_state_t previousRecoveryState, const char *recoveryEvent,
-	const char *recoveryTrigger, float routeDeviation ) {
+	const char *recoveryTrigger, float routeDeviation, int pathId, int nodeIndex, int lookAheadIndex,
+	int widthClampEvent, int autoSpeedActive, int targetSpeedOverrideActive ) {
 	fileHandle_t f;
 	char line[1024];
 	char recoveryTransition[96];
@@ -172,7 +173,7 @@ static void Bot_DebugExportDmnetTick( bot_state_t *bs, int routeIndex, float tar
 	}
 
 	if ( len == 0 && !isJson ) {
-		char header[] = "time,client,routeIndex,targetSpeed,actualSpeed,decisionState,collisionRisk,recoveryState,recoveryTransition,recoveryEvent,recoveryTrigger,routeDeviation\n";
+		char header[] = "time,client,routeIndex,targetSpeed,actualSpeed,decisionState,collisionRisk,recoveryState,recoveryTransition,recoveryEvent,recoveryTrigger,routeDeviation,pathId,nodeIndex,lookaheadIndex,widthClampEvent,autoSpeedActive,targetSpeedOverrideActive\n";
 		trap_FS_Write( header, strlen( header ), f );
 	}
 	Bot_DebugFormatRecoveryTransition( recoveryTransition, sizeof( recoveryTransition ), previousRecoveryState, recoveryState );
@@ -181,20 +182,24 @@ static void Bot_DebugExportDmnetTick( bot_state_t *bs, int routeIndex, float tar
 		Com_sprintf( line, sizeof( line ),
 			"{\"time\":%.3f,\"client\":%d,\"routeIndex\":%d,\"targetSpeed\":%.2f,\"actualSpeed\":%.2f,"
 			"\"decisionState\":\"%s\",\"collisionRisk\":%d,\"recoveryState\":\"%s\","
-			"\"recoveryTransition\":\"%s\",\"recoveryEvent\":\"%s\",\"recoveryTrigger\":\"%s\",\"routeDeviation\":%.2f}\n",
+			"\"recoveryTransition\":\"%s\",\"recoveryEvent\":\"%s\",\"recoveryTrigger\":\"%s\",\"routeDeviation\":%.2f,"
+			"\"pathId\":%d,\"nodeIndex\":%d,\"lookaheadIndex\":%d,\"widthClampEvent\":%d,"
+			"\"autoSpeedActive\":%d,\"targetSpeedOverrideActive\":%d}\n",
 			level.time * 0.001f, bs->client, routeIndex, targetSpeed, actualSpeed,
 			Bot_DebugDecisionStateName( decisionState ), collisionRisk ? 1 : 0,
 			Bot_DebugRecoveryStateName( recoveryState ), recoveryTransition,
 			recoveryEvent ? recoveryEvent : "", recoveryTrigger ? recoveryTrigger : "",
-			routeDeviation );
+			routeDeviation, pathId, nodeIndex, lookAheadIndex, widthClampEvent,
+			autoSpeedActive, targetSpeedOverrideActive );
 	} else {
 		Com_sprintf( line, sizeof( line ),
-			"%.3f,%d,%d,%.2f,%.2f,%s,%d,%s,%s,%s,%s,%.2f\n",
+			"%.3f,%d,%d,%.2f,%.2f,%s,%d,%s,%s,%s,%s,%.2f,%d,%d,%d,%d,%d,%d\n",
 			level.time * 0.001f, bs->client, routeIndex, targetSpeed, actualSpeed,
 			Bot_DebugDecisionStateName( decisionState ), collisionRisk ? 1 : 0,
 			Bot_DebugRecoveryStateName( recoveryState ), recoveryTransition,
 			recoveryEvent ? recoveryEvent : "", recoveryTrigger ? recoveryTrigger : "",
-			routeDeviation );
+			routeDeviation, pathId, nodeIndex, lookAheadIndex, widthClampEvent,
+			autoSpeedActive, targetSpeedOverrideActive );
 	}
 	trap_FS_Write( line, strlen( line ), f );
 	trap_FS_FCloseFile( f );
@@ -264,7 +269,8 @@ static int Bot_SelectBotPathRouteIdWithFallback( const botPathRoute_t *routes[BO
 	return -1;
 }
 
-static qboolean Bot_BuildBotPathGuidance( const botPathRoute_t *route, bot_state_t *bs, float actualSpeed, vec3_t targetPoint, float *targetSpeed, float *avgCurvatureOut ) {
+static qboolean Bot_BuildBotPathGuidance( const botPathRoute_t *route, bot_state_t *bs, float actualSpeed, vec3_t targetPoint,
+	float *targetSpeed, float *avgCurvatureOut, int *nodeIndexOut, int *lookAheadIndexOut ) {
 	int closestIndex;
 	int lookAheadNodes;
 	int lookAheadIndex;
@@ -342,6 +348,12 @@ static qboolean Bot_BuildBotPathGuidance( const botPathRoute_t *route, bot_state
 	}
 
 	VectorCopy( route->nodes[lookAheadIndex].origin, targetPoint );
+	if ( nodeIndexOut ) {
+		*nodeIndexOut = closestIndex;
+	}
+	if ( lookAheadIndexOut ) {
+		*lookAheadIndexOut = lookAheadIndex;
+	}
 	bs->ghostRouteIndexHint = closestIndex;
 	return qtrue;
 }
@@ -3605,8 +3617,17 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 		float routeBlendAlpha = 0.2f;
 		float speedBlendAlpha = 0.2f;
 		float stateSpeedBias = 0.0f;
+		float selectedWidthLimit = 0.0f;
+		float selectedLateralOffset = 0.0f;
 		int preferredPathId = BOT_PATH_LINE_BASE;
 		int selectedPathId = -1;
+		int baseNodeIndex = -1;
+		int baseLookAheadIndex = -1;
+		int selectedNodeIndex = -1;
+		int selectedLookAheadIndex = -1;
+		int widthClampEvent = 0;
+		int autoSpeedActive = 1;
+		int targetSpeedOverrideActive = 0;
 		botCollisionRisk_t pathCollisionRisk;
 		bot_recovery_state_t pathRecoveryState;
 		qboolean haveBaseGuidance = qfalse;
@@ -3617,12 +3638,14 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 		pathRoutes[BOT_PATH_LINE_SAFE] = G_BotPath_GetRouteByIndex( BOT_PATH_LINE_SAFE );
 
 		actualSpeed = VectorLength( bs->cur_ps.velocity );
-		haveBaseGuidance = Bot_BuildBotPathGuidance( pathRoutes[BOT_PATH_LINE_BASE], bs, actualSpeed, baseTargetPoint, &baseRouteSpeed, &baseCurvature );
+		haveBaseGuidance = Bot_BuildBotPathGuidance( pathRoutes[BOT_PATH_LINE_BASE], bs, actualSpeed, baseTargetPoint,
+			&baseRouteSpeed, &baseCurvature, &baseNodeIndex, &baseLookAheadIndex );
 
 		if ( !haveBaseGuidance ) {
 			int baseFallbackId = Bot_SelectBotPathRouteIdWithFallback( pathRoutes, BOT_PATH_LINE_BASE );
 			if ( baseFallbackId >= 0 ) {
-				haveBaseGuidance = Bot_BuildBotPathGuidance( pathRoutes[baseFallbackId], bs, actualSpeed, baseTargetPoint, &baseRouteSpeed, &baseCurvature );
+				haveBaseGuidance = Bot_BuildBotPathGuidance( pathRoutes[baseFallbackId], bs, actualSpeed, baseTargetPoint,
+					&baseRouteSpeed, &baseCurvature, &baseNodeIndex, &baseLookAheadIndex );
 			}
 		}
 
@@ -3663,12 +3686,15 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 
 			selectedPathId = Bot_SelectBotPathRouteIdWithFallback( pathRoutes, preferredPathId );
 			if ( selectedPathId >= 0 ) {
-				haveSelectedGuidance = Bot_BuildBotPathGuidance( pathRoutes[selectedPathId], bs, actualSpeed, lineTargetPoint, &lineRouteSpeed, NULL );
+				haveSelectedGuidance = Bot_BuildBotPathGuidance( pathRoutes[selectedPathId], bs, actualSpeed, lineTargetPoint,
+					&lineRouteSpeed, NULL, &selectedNodeIndex, &selectedLookAheadIndex );
 			}
 			if ( !haveSelectedGuidance ) {
 				VectorCopy( baseTargetPoint, lineTargetPoint );
 				lineRouteSpeed = baseRouteSpeed;
 				selectedPathId = BOT_PATH_LINE_BASE;
+				selectedNodeIndex = baseNodeIndex;
+				selectedLookAheadIndex = baseLookAheadIndex;
 			}
 
 			switch ( decisionState ) {
@@ -3708,6 +3734,51 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			blendedTargetPoint[0] = baseTargetPoint[0] + ( lineTargetPoint[0] - baseTargetPoint[0] ) * routeBlendAlpha;
 			blendedTargetPoint[1] = baseTargetPoint[1] + ( lineTargetPoint[1] - baseTargetPoint[1] ) * routeBlendAlpha;
 			blendedTargetPoint[2] = baseTargetPoint[2] + ( lineTargetPoint[2] - baseTargetPoint[2] ) * routeBlendAlpha;
+			if ( selectedPathId >= 0 && selectedPathId < BOT_PATH_LINE_FAMILY_COUNT &&
+				pathRoutes[selectedPathId] && selectedNodeIndex >= 0 &&
+				selectedNodeIndex < pathRoutes[selectedPathId]->numNodes ) {
+				float effectiveWidth = pathRoutes[selectedPathId]->nodes[selectedNodeIndex].effectiveWidth;
+				selectedWidthLimit = effectiveWidth * 0.5f - 32.0f;
+				if ( selectedWidthLimit < 0.0f ) {
+					selectedWidthLimit = 0.0f;
+				}
+			}
+			selectedLateralOffset = DotProduct( routeRight, blendedTargetPoint ) - DotProduct( routeRight, baseTargetPoint );
+			if ( selectedLateralOffset > selectedWidthLimit ) {
+				widthClampEvent = 1;
+				selectedLateralOffset = selectedWidthLimit;
+			} else if ( selectedLateralOffset < -selectedWidthLimit ) {
+				widthClampEvent = 1;
+				selectedLateralOffset = -selectedWidthLimit;
+			}
+			if ( widthClampEvent ) {
+				VectorMA( baseTargetPoint, selectedLateralOffset, routeRight, blendedTargetPoint );
+			}
+
+			if ( selectedPathId >= 0 && selectedPathId < BOT_PATH_LINE_FAMILY_COUNT &&
+				pathRoutes[selectedPathId] && pathRoutes[selectedPathId]->numNodes > 1 &&
+				selectedNodeIndex >= 0 ) {
+				int speedProbeStart = selectedNodeIndex;
+				int speedProbeEnd = selectedLookAheadIndex;
+				if ( speedProbeStart >= pathRoutes[selectedPathId]->numNodes ) {
+					speedProbeStart = pathRoutes[selectedPathId]->numNodes - 1;
+				}
+				if ( speedProbeEnd < speedProbeStart ) {
+					speedProbeEnd = speedProbeStart;
+				}
+				if ( speedProbeEnd >= pathRoutes[selectedPathId]->numNodes ) {
+					speedProbeEnd = pathRoutes[selectedPathId]->numNodes - 1;
+				}
+				autoSpeedActive = 1;
+				targetSpeedOverrideActive = 0;
+				for ( i = speedProbeStart; i <= speedProbeEnd; ++i ) {
+					if ( pathRoutes[selectedPathId]->nodes[i].targetSpeed >= 0.0f ) {
+						targetSpeedOverrideActive = 1;
+						autoSpeedActive = 0;
+						break;
+					}
+				}
+			}
 
 			speedFromRoute = baseRouteSpeed + ( lineRouteSpeed - baseRouteSpeed ) * speedBlendAlpha;
 			speedFromRoute += stateSpeedBias;
@@ -3729,6 +3800,10 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 
 			throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
 			VectorCopy( angles, bs->ideal_viewangles );
+			Bot_DebugExportDmnetTick( bs, selectedLookAheadIndex, speedFromRoute, actualSpeed, decisionState,
+				pathCollisionRisk.hasPredictedConflict, pathRecoveryState, pathRecoveryState, "", "",
+				Distance( bs->cur_ps.origin, baseTargetPoint ), selectedPathId, selectedNodeIndex,
+				selectedLookAheadIndex, widthClampEvent, autoSpeedActive, targetSpeedOverrideActive );
 
 			if ( throttleChange > 0 ) {
 				trap_EA_MoveForward( bs->client );
@@ -4200,7 +4275,8 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
 			VectorCopy( angles, bs->ideal_viewangles );
 			Bot_DebugExportDmnetTick( bs, bestIndex, speed, actualSpeed, decisionState, collisionRiskActive,
-				recoveryState, previousRecoveryState, recoveryEvent, recoveryTrigger, routeDistanceFromCenter );
+				recoveryState, previousRecoveryState, recoveryEvent, recoveryTrigger, routeDistanceFromCenter,
+				-1, bestIndex, lookAheadIndex, 0, 1, 0 );
 
 			if( throttleChange > 0 )
 				trap_EA_MoveForward( bs->client );
