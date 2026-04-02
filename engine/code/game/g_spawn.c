@@ -30,9 +30,14 @@ typedef struct {
 	float	targetSpeed;
 	float	width;
 	int		trackLengthMask;
-	qboolean	reversed;
+	int		reversedMode;
 	vec3_t	origin;
 } botPathNodeSpawn_t;
+
+#define BOT_PATH_REVERSED_FORWARD	0
+#define BOT_PATH_REVERSED_REVERSED	1
+#define BOT_PATH_REVERSED_BOTH		2
+#define BOT_PATH_ROUTE_MIN_NODES	2
 
 static botPathNodeSpawn_t	s_botPathNodeSpawns[MAX_BOT_PATH_NODES];
 static int			s_botPathNodeSpawnCount;
@@ -48,7 +53,8 @@ static void G_CollectBotPathNodeSpawn( gentity_t *ent ) {
 	float targetSpeed;
 	float width;
 	int trackLengthMask;
-	int reversed;
+	char *reversedValue;
+	int reversedMode;
 	vec3_t origin;
 
 	if ( s_botPathNodeSpawnCount >= MAX_BOT_PATH_NODES ) {
@@ -91,8 +97,14 @@ static void G_CollectBotPathNodeSpawn( gentity_t *ent ) {
 		trackLengthMask = 7;
 	}
 
-	G_SpawnInt( "reversed", "0", &reversed );
-	reversed = reversed ? 1 : 0;
+	G_SpawnString( "reversed", "0", &reversedValue );
+	if ( !Q_stricmp( reversedValue, "both" ) ) {
+		reversedMode = BOT_PATH_REVERSED_BOTH;
+	} else if ( !Q_stricmp( reversedValue, "1" ) || !Q_stricmp( reversedValue, "true" ) || !Q_stricmp( reversedValue, "reversed" ) ) {
+		reversedMode = BOT_PATH_REVERSED_REVERSED;
+	} else {
+		reversedMode = BOT_PATH_REVERSED_FORWARD;
+	}
 
 	G_SpawnVector( "origin", "0 0 0", origin );
 	if ( ent ) {
@@ -105,8 +117,142 @@ static void G_CollectBotPathNodeSpawn( gentity_t *ent ) {
 	node->targetSpeed = targetSpeed;
 	node->width = width;
 	node->trackLengthMask = trackLengthMask;
-	node->reversed = reversed ? qtrue : qfalse;
+	node->reversedMode = reversedMode;
 	VectorCopy( origin, node->origin );
+}
+
+static int G_BotPathNodeSpawnOrderCmp( const void *left, const void *right ) {
+	const botPathNodeSpawn_t *a = (const botPathNodeSpawn_t *)left;
+	const botPathNodeSpawn_t *b = (const botPathNodeSpawn_t *)right;
+
+	if ( a->order < b->order ) {
+		return -1;
+	}
+	if ( a->order > b->order ) {
+		return 1;
+	}
+	return 0;
+}
+
+static qboolean G_BotPathNodeMatchesTrackLength( const botPathNodeSpawn_t *node ) {
+	int trackLengthBit;
+
+	if ( !node ) {
+		return qfalse;
+	}
+
+	if ( g_trackLength.integer < 0 || g_trackLength.integer > 2 ) {
+		return qtrue;
+	}
+
+	trackLengthBit = 1 << g_trackLength.integer;
+	return ( node->trackLengthMask & trackLengthBit ) != 0;
+}
+
+static qboolean G_BotPathNodeMatchesReverseMode( const botPathNodeSpawn_t *node ) {
+	int activeReverse;
+
+	if ( !node ) {
+		return qfalse;
+	}
+
+	if ( node->reversedMode == BOT_PATH_REVERSED_BOTH ) {
+		return qtrue;
+	}
+
+	activeReverse = ( g_trackReversed.integer && level.trackIsReversable ) ? BOT_PATH_REVERSED_REVERSED : BOT_PATH_REVERSED_FORWARD;
+	return node->reversedMode == activeReverse;
+}
+
+static void G_BuildBotPathRoutesFromSpawnNodes( void ) {
+	int pathId;
+	int totalRoutesBuilt = 0;
+	int totalNodesKept = 0;
+	int totalNodesRejected = 0;
+
+	G_BotPath_ClearAllRoutes();
+
+	for ( pathId = 0; pathId < MAX_BOT_PATH_ROUTES; ++pathId ) {
+		botPathNodeSpawn_t routeSpawns[MAX_BOT_PATH_NODES];
+		botPathNode_t routeNodes[MAX_BOT_PATH_NODES];
+		char routeName[32];
+		int i;
+		int filteredCount = 0;
+		int duplicateOrderCount = 0;
+		int uniqueCount = 0;
+		int registeredIndex;
+
+		for ( i = 0; i < s_botPathNodeSpawnCount; ++i ) {
+			const botPathNodeSpawn_t *node = &s_botPathNodeSpawns[i];
+
+			if ( node->pathId != pathId ) {
+				continue;
+			}
+			if ( !G_BotPathNodeMatchesTrackLength( node ) ) {
+				totalNodesRejected++;
+				continue;
+			}
+			if ( !G_BotPathNodeMatchesReverseMode( node ) ) {
+				totalNodesRejected++;
+				continue;
+			}
+
+			if ( filteredCount >= MAX_BOT_PATH_NODES ) {
+				G_Printf( "G_BotPath: validation error pathId=%d has too many nodes after filtering (max=%d)\n",
+					pathId, MAX_BOT_PATH_NODES );
+				break;
+			}
+
+			routeSpawns[filteredCount++] = *node;
+		}
+
+		if ( filteredCount <= 0 ) {
+			continue;
+		}
+
+		qsort( routeSpawns, filteredCount, sizeof( routeSpawns[0] ), G_BotPathNodeSpawnOrderCmp );
+
+		for ( i = 0; i < filteredCount; ++i ) {
+			if ( uniqueCount > 0 && routeSpawns[i].order == routeSpawns[uniqueCount - 1].order ) {
+				duplicateOrderCount++;
+				G_Printf( "G_BotPath: validation error pathId=%d duplicate order=%d (using last definition)\n",
+					pathId, routeSpawns[i].order );
+				routeSpawns[uniqueCount - 1] = routeSpawns[i];
+				continue;
+			}
+
+			routeSpawns[uniqueCount++] = routeSpawns[i];
+		}
+
+		for ( i = 0; i < uniqueCount; ++i ) {
+			VectorCopy( routeSpawns[i].origin, routeNodes[i].origin );
+			routeNodes[i].radius = routeSpawns[i].width;
+			routeNodes[i].flags = (int)routeSpawns[i].targetSpeed;
+		}
+
+		if ( uniqueCount < BOT_PATH_ROUTE_MIN_NODES ) {
+			G_Printf( "G_BotPath: validation error pathId=%d discarded, not enough nodes after filtering (%d < %d)\n",
+				pathId, uniqueCount, BOT_PATH_ROUTE_MIN_NODES );
+			continue;
+		}
+
+		Com_sprintf( routeName, sizeof( routeName ), "path_%d", pathId );
+		registeredIndex = G_BotPath_RegisterRoute( routeName, routeNodes, uniqueCount );
+		if ( registeredIndex < 0 ) {
+			G_Printf( "G_BotPath: failed to register route pathId=%d (%d nodes)\n", pathId, uniqueCount );
+			continue;
+		}
+
+		totalRoutesBuilt++;
+		totalNodesKept += uniqueCount;
+		if ( duplicateOrderCount > 0 ) {
+			G_Printf( "G_BotPath: route pathId=%d registered with %d duplicate order collision(s)\n",
+				pathId, duplicateOrderCount );
+		}
+	}
+
+	G_Printf( "G_BotPath: build complete, routes=%d keptNodes=%d rejectedNodes=%d collectedNodes=%d\n",
+		totalRoutesBuilt, totalNodesKept, totalNodesRejected, s_botPathNodeSpawnCount );
 }
 
 qboolean	G_SpawnString( const char *key, const char *defaultString, char **out ) {
@@ -991,6 +1137,8 @@ void G_SpawnEntitiesFromString( void ) {
 	while( G_ParseSpawnVars() ) {
 		G_SpawnGEntityFromSpawnVars();
 	}	
+
+	G_BuildBotPathRoutesFromSpawnNodes();
 
 // make sure Domination maps have a 3rd sigil
 if (g_gametype.integer == GT_DOMINATION)
