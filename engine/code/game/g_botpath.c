@@ -26,6 +26,106 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 static botPathRoute_t g_botPathRoutes[MAX_BOT_PATH_ROUTES];
 static int g_botPathRouteCount;
 
+static float G_BotPath_ClampFloat( float value, float minValue, float maxValue ) {
+	if ( value < minValue ) {
+		return minValue;
+	}
+	if ( value > maxValue ) {
+		return maxValue;
+	}
+	return value;
+}
+
+static float G_BotPath_AutoRecommendedSpeed( float curvature, float width, float length ) {
+	float widthBonus = ( width - 128.0f ) * 0.30f;
+	float segmentScale = G_BotPath_ClampFloat( length / 360.0f, 0.65f, 1.15f );
+	float speed = ( 920.0f + widthBonus ) * segmentScale - curvature * 520.0f;
+	return G_BotPath_ClampFloat( speed, 300.0f, 2600.0f );
+}
+
+static void G_BotPath_BuildRouteSegments( botPathRoute_t *route ) {
+	int i;
+	int segmentCount;
+
+	if ( !route || !route->valid || route->numNodes < 2 ) {
+		if ( route ) {
+			route->numSegments = 0;
+		}
+		return;
+	}
+
+	segmentCount = route->numNodes - 1;
+	if ( segmentCount > MAX_BOT_PATH_NODES - 1 ) {
+		segmentCount = MAX_BOT_PATH_NODES - 1;
+	}
+	route->numSegments = segmentCount;
+
+	for ( i = 0; i < route->numNodes; ++i ) {
+		float effectiveWidth = route->nodes[i].width;
+		if ( i > 0 && i < route->numNodes - 1 ) {
+			float prevWidth = route->nodes[i - 1].width;
+			float nextWidth = route->nodes[i + 1].width;
+			float flankMin = prevWidth < nextWidth ? prevWidth : nextWidth;
+			if ( flankMin < effectiveWidth ) {
+				effectiveWidth = flankMin;
+			}
+		}
+		route->nodes[i].effectiveWidth = effectiveWidth;
+	}
+
+	for ( i = 0; i < segmentCount; ++i ) {
+		vec3_t seg;
+		float length;
+		float curvature = 0.0f;
+		float width;
+		float recommendedSpeed;
+		float startTargetSpeed = route->nodes[i].targetSpeed;
+		float endTargetSpeed = route->nodes[i + 1].targetSpeed;
+
+		VectorSubtract( route->nodes[i + 1].origin, route->nodes[i].origin, seg );
+		length = VectorLength( seg );
+		if ( length > 0.001f ) {
+			VectorScale( seg, 1.0f / length, route->segments[i].direction );
+		} else {
+			VectorSet( route->segments[i].direction, 1.0f, 0.0f, 0.0f );
+			length = 0.0f;
+		}
+
+		if ( i > 0 ) {
+			vec3_t prevDir;
+			float dot;
+			VectorCopy( route->segments[i - 1].direction, prevDir );
+			dot = DotProduct( prevDir, route->segments[i].direction );
+			if ( dot < -1.0f ) {
+				dot = -1.0f;
+			} else if ( dot > 1.0f ) {
+				dot = 1.0f;
+			}
+			curvature = ( 1.0f - dot ) * 0.5f;
+		}
+
+		width = route->nodes[i].effectiveWidth;
+		if ( route->nodes[i + 1].effectiveWidth < width ) {
+			width = route->nodes[i + 1].effectiveWidth;
+		}
+
+		if ( startTargetSpeed >= 0.0f && endTargetSpeed >= 0.0f ) {
+			recommendedSpeed = 0.5f * ( startTargetSpeed + endTargetSpeed );
+		} else if ( startTargetSpeed >= 0.0f ) {
+			recommendedSpeed = startTargetSpeed;
+		} else if ( endTargetSpeed >= 0.0f ) {
+			recommendedSpeed = endTargetSpeed;
+		} else {
+			recommendedSpeed = G_BotPath_AutoRecommendedSpeed( curvature, width, length );
+		}
+
+		route->segments[i].length = length;
+		route->segments[i].curvature = curvature;
+		route->segments[i].recommendedSpeed = recommendedSpeed;
+		route->segments[i].width = width;
+	}
+}
+
 static int G_BotPath_ClampSearchStart( int hintIndex, int hintWindow, int nodeCount ) {
 	int start = 0;
 
@@ -82,6 +182,7 @@ int G_BotPath_RegisterRoute( const char *name, const botPathNode_t *nodes, int n
 	route->numNodes = numNodes;
 	route->valid = qtrue;
 	Com_Memcpy( route->nodes, nodes, sizeof( route->nodes[0] ) * numNodes );
+	G_BotPath_BuildRouteSegments( route );
 
 	g_botPathRouteCount++;
 	return g_botPathRouteCount - 1;

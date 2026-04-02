@@ -310,15 +310,26 @@ typedef struct ghostBotRoute_s {
 
 typedef struct botPathNode_s {
 	vec3_t	origin;
-	float	radius;
-	int	flags;
+	float	width;
+	float	targetSpeed;
+	float	effectiveWidth;
 } botPathNode_t;
+
+typedef struct botPathSegment_s {
+	vec3_t	direction;
+	float	length;
+	float	curvature;
+	float	recommendedSpeed;
+	float	width;
+} botPathSegment_t;
 
 typedef struct botPathRoute_s {
 	char	name[MAX_QPATH];
 	int	numNodes;
+	int	numSegments;
 	qboolean valid;
 	botPathNode_t nodes[MAX_BOT_PATH_NODES];
+	botPathSegment_t segments[MAX_BOT_PATH_NODES - 1];
 } botPathRoute_t;
 
 typedef enum {
