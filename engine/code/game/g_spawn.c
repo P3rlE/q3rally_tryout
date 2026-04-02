@@ -77,8 +77,8 @@ static void G_CollectBotPathNodeSpawn( gentity_t *ent ) {
 	}
 
 	G_SpawnFloat( "targetSpeed", "0", &targetSpeed );
-	if ( targetSpeed < 0.0f ) {
-		targetSpeed = 0.0f;
+	if ( targetSpeed < -1.0f ) {
+		targetSpeed = -1.0f;
 	} else if ( targetSpeed > 5000.0f ) {
 		targetSpeed = 5000.0f;
 	}
@@ -226,8 +226,9 @@ static void G_BuildBotPathRoutesFromSpawnNodes( void ) {
 
 		for ( i = 0; i < uniqueCount; ++i ) {
 			VectorCopy( routeSpawns[i].origin, routeNodes[i].origin );
-			routeNodes[i].radius = routeSpawns[i].width;
-			routeNodes[i].flags = (int)routeSpawns[i].targetSpeed;
+			routeNodes[i].width = routeSpawns[i].width;
+			routeNodes[i].targetSpeed = routeSpawns[i].targetSpeed;
+			routeNodes[i].effectiveWidth = routeSpawns[i].width;
 		}
 
 		if ( uniqueCount < BOT_PATH_ROUTE_MIN_NODES ) {
