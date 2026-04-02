@@ -3464,6 +3464,135 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 		}
 	}
 
+	{
+		const botPathRoute_t *botPathRoute = G_BotPath_GetRouteByIndex( 0 );
+		if ( botPathRoute && botPathRoute->valid && botPathRoute->numNodes > 1 ) {
+			int i;
+			int closestIndex;
+			int lookAheadNodes;
+			int lookAheadIndex;
+			int segmentStart;
+			int segmentEnd;
+			int segmentSamples = 0;
+			float segmentSpeedSum = 0.0f;
+			float segmentCurvatureSum = 0.0f;
+			float speedFromRoute;
+			float dynamicLookAhead;
+			float currentLateral;
+			float maxCorridorOffset;
+			float clampedLateral;
+			vec3_t routeForward;
+			vec3_t routeRight;
+			vec3_t toBot;
+			vec3_t targetPoint;
+
+			closestIndex = G_BotPath_SelectClosestNode( botPathRoute, bs->cur_ps.origin, bs->ghostRouteIndexHint, GHOST_ROUTE_HINT_WINDOW );
+			if ( closestIndex >= 0 ) {
+				bs->ghostRouteIndexHint = closestIndex;
+				actualSpeed = VectorLength( bs->cur_ps.velocity );
+
+				dynamicLookAhead = 2.0f + actualSpeed / 280.0f;
+				if ( closestIndex < botPathRoute->numSegments ) {
+					float entryCurvature = botPathRoute->segments[closestIndex].curvature;
+					if ( entryCurvature > 0.45f ) {
+						dynamicLookAhead -= 1.0f;
+					} else if ( entryCurvature < 0.15f ) {
+						dynamicLookAhead += 1.0f;
+					}
+				}
+				lookAheadNodes = (int)dynamicLookAhead;
+				if ( lookAheadNodes < 2 ) {
+					lookAheadNodes = 2;
+				} else if ( lookAheadNodes > 8 ) {
+					lookAheadNodes = 8;
+				}
+
+				lookAheadIndex = closestIndex + lookAheadNodes;
+				if ( lookAheadIndex >= botPathRoute->numNodes ) {
+					lookAheadIndex = botPathRoute->numNodes - 1;
+				}
+
+				segmentStart = closestIndex;
+				segmentEnd = lookAheadIndex - 1;
+				if ( segmentStart < 0 ) {
+					segmentStart = 0;
+				}
+				if ( segmentEnd >= botPathRoute->numSegments ) {
+					segmentEnd = botPathRoute->numSegments - 1;
+				}
+
+				for ( i = segmentStart; i <= segmentEnd; ++i ) {
+					segmentSpeedSum += botPathRoute->segments[i].recommendedSpeed;
+					segmentCurvatureSum += botPathRoute->segments[i].curvature;
+					segmentSamples++;
+				}
+
+				if ( segmentSamples > 0 ) {
+					float avgCurvature = segmentCurvatureSum / segmentSamples;
+					speedFromRoute = segmentSpeedSum / segmentSamples;
+					speedFromRoute *= ( 1.02f - avgCurvature * 0.24f );
+				} else {
+					speedFromRoute = botPathRoute->nodes[closestIndex].targetSpeed;
+					if ( speedFromRoute < 0.0f ) {
+						speedFromRoute = 700.0f;
+					}
+				}
+
+				VectorSubtract( botPathRoute->nodes[lookAheadIndex].origin, botPathRoute->nodes[closestIndex].origin, routeForward );
+				routeForward[2] = 0.0f;
+				if ( VectorNormalize( routeForward ) <= 0.001f ) {
+					VectorSet( routeForward, 1.0f, 0.0f, 0.0f );
+				}
+				routeRight[0] = -routeForward[1];
+				routeRight[1] = routeForward[0];
+				routeRight[2] = 0.0f;
+
+				VectorSubtract( bs->cur_ps.origin, botPathRoute->nodes[closestIndex].origin, toBot );
+				toBot[2] = 0.0f;
+				currentLateral = DotProduct( toBot, routeRight );
+				maxCorridorOffset = botPathRoute->nodes[closestIndex].effectiveWidth * 0.5f;
+				if ( lookAheadIndex < botPathRoute->numNodes ) {
+					float lookAheadHalfWidth = botPathRoute->nodes[lookAheadIndex].effectiveWidth * 0.5f;
+					if ( lookAheadHalfWidth < maxCorridorOffset ) {
+						maxCorridorOffset = lookAheadHalfWidth;
+					}
+				}
+				if ( maxCorridorOffset < 40.0f ) {
+					maxCorridorOffset = 40.0f;
+				}
+				clampedLateral = currentLateral;
+				if ( clampedLateral > maxCorridorOffset ) {
+					clampedLateral = maxCorridorOffset;
+				} else if ( clampedLateral < -maxCorridorOffset ) {
+					clampedLateral = -maxCorridorOffset;
+				}
+
+				VectorMA( botPathRoute->nodes[lookAheadIndex].origin, clampedLateral, routeRight, targetPoint );
+				VectorSubtract( targetPoint, bs->cur_ps.origin, dir );
+				dir[2] = 0.0f;
+				vectoangles( dir, angles );
+
+				if ( speedFromRoute >= actualSpeed + 55.0f ) {
+					throttleChange = 1;
+				} else if ( speedFromRoute + 95.0f <= actualSpeed ) {
+					throttleChange = -1;
+				} else {
+					throttleChange = 0;
+				}
+
+				throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
+				VectorCopy( angles, bs->ideal_viewangles );
+
+				if ( throttleChange > 0 ) {
+					trap_EA_MoveForward( bs->client );
+				} else if ( throttleChange < 0 ) {
+					trap_EA_MoveBack( bs->client );
+				}
+				return qtrue;
+			}
+		}
+	}
+
 	if ( G_Ghost_GetBotRouteForVariant( routeVariant, &ghostRoute ) && ghostRoute ) {
 		int bestIndex = -1;
 		int i;
@@ -3936,74 +4065,6 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 		}
 	}
 
-	{
-		const botPathRoute_t *botPathRoute = G_BotPath_GetRouteByIndex( 0 );
-		if ( botPathRoute && botPathRoute->valid && botPathRoute->numNodes > 1 ) {
-			int i;
-			int closestIndex;
-			int lookAheadIndex;
-			int segmentStart;
-			int segmentEnd;
-			int segmentSamples = 0;
-			float segmentSpeedSum = 0.0f;
-			float speedFromRoute;
-
-			closestIndex = G_BotPath_SelectClosestNode( botPathRoute, bs->cur_ps.origin, bs->ghostRouteIndexHint, GHOST_ROUTE_HINT_WINDOW );
-			if ( closestIndex >= 0 ) {
-				bs->ghostRouteIndexHint = closestIndex;
-				lookAheadIndex = closestIndex + 3;
-				if ( lookAheadIndex >= botPathRoute->numNodes ) {
-					lookAheadIndex = botPathRoute->numNodes - 1;
-				}
-
-				segmentStart = closestIndex;
-				segmentEnd = lookAheadIndex - 1;
-				if ( segmentStart < 0 ) {
-					segmentStart = 0;
-				}
-				if ( segmentEnd >= botPathRoute->numSegments ) {
-					segmentEnd = botPathRoute->numSegments - 1;
-				}
-
-				for ( i = segmentStart; i <= segmentEnd; ++i ) {
-					segmentSpeedSum += botPathRoute->segments[i].recommendedSpeed;
-					segmentSamples++;
-				}
-
-				if ( segmentSamples > 0 ) {
-					speedFromRoute = segmentSpeedSum / segmentSamples;
-				} else {
-					speedFromRoute = botPathRoute->nodes[closestIndex].targetSpeed;
-					if ( speedFromRoute < 0.0f ) {
-						speedFromRoute = 700.0f;
-					}
-				}
-
-				VectorSubtract( botPathRoute->nodes[lookAheadIndex].origin, bs->cur_ps.origin, dir );
-				dir[2] = 0.0f;
-				actualSpeed = VectorLength( bs->cur_ps.velocity );
-				vectoangles( dir, angles );
-
-				if ( speedFromRoute >= actualSpeed ) {
-					throttleChange = 1;
-				} else if ( speedFromRoute + 100.0f <= actualSpeed ) {
-					throttleChange = -1;
-				} else {
-					throttleChange = 0;
-				}
-
-				throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
-				VectorCopy( angles, bs->ideal_viewangles );
-
-				if ( throttleChange > 0 ) {
-					trap_EA_MoveForward( bs->client );
-				} else if ( throttleChange < 0 ) {
-					trap_EA_MoveBack( bs->client );
-				}
-				return qtrue;
-			}
-		}
-	}
 
 	/* Ghost guidance not active this tick, reset speed filter state. */
 	bs->ghostTargetSpeedValid = qfalse;
