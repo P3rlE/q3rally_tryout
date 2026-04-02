@@ -3936,6 +3936,75 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 		}
 	}
 
+	{
+		const botPathRoute_t *botPathRoute = G_BotPath_GetRouteByIndex( 0 );
+		if ( botPathRoute && botPathRoute->valid && botPathRoute->numNodes > 1 ) {
+			int i;
+			int closestIndex;
+			int lookAheadIndex;
+			int segmentStart;
+			int segmentEnd;
+			int segmentSamples = 0;
+			float segmentSpeedSum = 0.0f;
+			float speedFromRoute;
+
+			closestIndex = G_BotPath_SelectClosestNode( botPathRoute, bs->cur_ps.origin, bs->ghostRouteIndexHint, GHOST_ROUTE_HINT_WINDOW );
+			if ( closestIndex >= 0 ) {
+				bs->ghostRouteIndexHint = closestIndex;
+				lookAheadIndex = closestIndex + 3;
+				if ( lookAheadIndex >= botPathRoute->numNodes ) {
+					lookAheadIndex = botPathRoute->numNodes - 1;
+				}
+
+				segmentStart = closestIndex;
+				segmentEnd = lookAheadIndex - 1;
+				if ( segmentStart < 0 ) {
+					segmentStart = 0;
+				}
+				if ( segmentEnd >= botPathRoute->numSegments ) {
+					segmentEnd = botPathRoute->numSegments - 1;
+				}
+
+				for ( i = segmentStart; i <= segmentEnd; ++i ) {
+					segmentSpeedSum += botPathRoute->segments[i].recommendedSpeed;
+					segmentSamples++;
+				}
+
+				if ( segmentSamples > 0 ) {
+					speedFromRoute = segmentSpeedSum / segmentSamples;
+				} else {
+					speedFromRoute = botPathRoute->nodes[closestIndex].targetSpeed;
+					if ( speedFromRoute < 0.0f ) {
+						speedFromRoute = 700.0f;
+					}
+				}
+
+				VectorSubtract( botPathRoute->nodes[lookAheadIndex].origin, bs->cur_ps.origin, dir );
+				dir[2] = 0.0f;
+				actualSpeed = VectorLength( bs->cur_ps.velocity );
+				vectoangles( dir, angles );
+
+				if ( speedFromRoute >= actualSpeed ) {
+					throttleChange = 1;
+				} else if ( speedFromRoute + 100.0f <= actualSpeed ) {
+					throttleChange = -1;
+				} else {
+					throttleChange = 0;
+				}
+
+				throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
+				VectorCopy( angles, bs->ideal_viewangles );
+
+				if ( throttleChange > 0 ) {
+					trap_EA_MoveForward( bs->client );
+				} else if ( throttleChange < 0 ) {
+					trap_EA_MoveBack( bs->client );
+				}
+				return qtrue;
+			}
+		}
+	}
+
 	/* Ghost guidance not active this tick, reset speed filter state. */
 	bs->ghostTargetSpeedValid = qfalse;
 	bs->ghostRouteIndexHint = -1;
