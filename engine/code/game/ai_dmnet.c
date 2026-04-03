@@ -337,6 +337,10 @@ static qboolean Bot_BuildBotPathGuidance( const botPathRoute_t *route, bot_state
 static void Bot_SetRecoveryState( bot_state_t *bs, bot_recovery_state_t newState ) {
 	float now = FloatTime();
 
+	if ( newState == BOT_RECOVERY_STUCK_DETECT && bs->ghostRecoveryState != BOT_RECOVERY_NONE ) {
+		return;
+	}
+
 	if ( bs->ghostRecoveryState != newState ) {
 		bs->ghostRecoveryState = newState;
 		bs->ghostRecoveryStateTime = now;
@@ -360,6 +364,9 @@ static void Bot_SetRecoveryState( bot_state_t *bs, bot_recovery_state_t newState
 		if ( newState == BOT_RECOVERY_NONE ) {
 			bs->ghostRecoveryReverseCycles = 0;
 			bs->ghostRecoveryReverseWindowStart = 0.0f;
+			bs->ghostRecoveryCollisionCount = 0;
+			VectorCopy( bs->cur_ps.origin, bs->ghostRecoveryLastOrigin );
+			bs->ghostRecoveryLastSampleTime = now;
 		}
 	}
 }
@@ -3850,6 +3857,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 		int hintIndex = bs->ghostRouteIndexHint;
 		vec3_t botForward;
 		qboolean strictForwardOnly = forwardLaunchPhase;
+		qboolean lapWrapWindow = qfalse;
 
 		AngleVectors( bs->cur_ps.viewangles, botForward, NULL, NULL );
 		botForward[2] = 0.0f;
@@ -3857,8 +3865,21 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			VectorSet( botForward, 1.0f, 0.0f, 0.0f );
 		}
 
+		if ( hintIndex >= 0 && ghostRoute->numWaypoints > 8 &&
+			hintIndex >= ghostRoute->numWaypoints - 4 && nextCheckpoint <= 2 ) {
+			hintIndex = -1;
+			lapWrapWindow = qtrue;
+		}
+
 		bestIndex = Bot_SelectForwardWaypointIndex( ghostRoute, bs->cur_ps.origin, botForward, hintIndex,
 			GHOST_ROUTE_HINT_WINDOW, strictForwardOnly );
+		if ( lapWrapWindow && bestIndex >= ghostRoute->numWaypoints - 4 ) {
+			int wrapCandidate = Bot_SelectForwardWaypointIndex( ghostRoute, bs->cur_ps.origin, botForward, 0,
+				GHOST_ROUTE_HINT_WINDOW * 2, qfalse );
+			if ( wrapCandidate >= 0 && wrapCandidate < ghostRoute->numWaypoints - 4 ) {
+				bestIndex = wrapCandidate;
+			}
+		}
 
 		if ( bestIndex >= 0 ) {
 			int lookAheadIndex = bestIndex;
@@ -3977,6 +3998,12 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			if ( recoveryState < BOT_RECOVERY_NONE || recoveryState > BOT_RECOVERY_EMERGENCY_RESET_REQUEST ) {
 				recoveryState = BOT_RECOVERY_NONE;
 			}
+			if ( lapWrapWindow && recoveryState != BOT_RECOVERY_NONE ) {
+				Bot_SetRecoveryState( bs, BOT_RECOVERY_NONE );
+				recoveryState = BOT_RECOVERY_NONE;
+				recoveryEvent = "lap_wrap_recovery_clear";
+				recoveryTrigger = "checkpoint_wrap";
+			}
 
 			if ( speed > actualSpeed + 80.0f ) {
 				bs->ghostRecoveryThrottleIntentTime = FloatTime();
@@ -4009,7 +4036,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 					bs->ghostRecoveryCollisionCount--;
 				}
 
-				if ( recoveryArmed && routeDistanceFromCenter > GHOST_RECOVERY_ROUTE_DIST_THRESHOLD ) {
+				if ( recoveryArmed && !lapWrapWindow && routeDistanceFromCenter > GHOST_RECOVERY_ROUTE_DIST_THRESHOLD ) {
 					Bot_SetRecoveryState( bs, BOT_RECOVERY_REJOIN_ROUTE );
 					recoveryState = BOT_RECOVERY_REJOIN_ROUTE;
 					recoveryEvent = "off_route_rejoin";
