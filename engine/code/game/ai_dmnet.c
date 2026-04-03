@@ -247,7 +247,6 @@ static int Bot_SelectBotPathRouteIdWithFallback( const botPathRoute_t *routes[BO
 static qboolean Bot_BuildBotPathGuidance( const botPathRoute_t *route, bot_state_t *bs, float actualSpeed, vec3_t targetPoint,
 	float *targetSpeed, float *avgCurvatureOut, int *nodeIndexOut, int *lookAheadIndexOut ) {
 	int closestIndex;
-	int lookAheadNodes;
 	int lookAheadIndex;
 	int segmentStart;
 	int segmentEnd;
@@ -255,7 +254,6 @@ static qboolean Bot_BuildBotPathGuidance( const botPathRoute_t *route, bot_state
 	int i;
 	float segmentSpeedSum = 0.0f;
 	float segmentCurvatureSum = 0.0f;
-	float dynamicLookAhead;
 
 	if ( !route || !bs || !targetPoint || !targetSpeed ) {
 		return qfalse;
@@ -264,30 +262,32 @@ static qboolean Bot_BuildBotPathGuidance( const botPathRoute_t *route, bot_state
 		return qfalse;
 	}
 
-	closestIndex = G_BotPath_SelectClosestNode( route, bs->cur_ps.origin, bs->ghostRouteIndexHint, GHOST_ROUTE_HINT_WINDOW );
+	closestIndex = G_BotPath_SelectClosestNode( route, bs->cur_ps.origin, bs->botPathRouteIndexHint, GHOST_ROUTE_HINT_WINDOW );
 	if ( closestIndex < 0 ) {
 		return qfalse;
 	}
 
-	dynamicLookAhead = 2.0f + actualSpeed / 280.0f;
-	if ( closestIndex < route->numSegments ) {
-		float entryCurvature = route->segments[closestIndex].curvature;
-		if ( entryCurvature > 0.45f ) {
-			dynamicLookAhead -= 1.0f;
-		} else if ( entryCurvature < 0.15f ) {
-			dynamicLookAhead += 1.0f;
+	// Distance-based lookahead: target a fixed distance ahead along the route
+	// instead of a fixed node count. This prevents the bot from steering to
+	// nodes far across the map on routes with uneven segment lengths.
+	{
+		float targetLookAheadDist = 400.0f + actualSpeed * 0.35f;
+		float cumDist = 0.0f;
+		lookAheadIndex = closestIndex;
+		while ( lookAheadIndex < route->numNodes - 1 ) {
+			float segLen = route->segments[lookAheadIndex].length;
+			if ( cumDist + segLen >= targetLookAheadDist ) {
+				break;
+			}
+			cumDist += segLen;
+			lookAheadIndex++;
 		}
-	}
-	lookAheadNodes = (int)dynamicLookAhead;
-	if ( lookAheadNodes < 2 ) {
-		lookAheadNodes = 2;
-	} else if ( lookAheadNodes > 8 ) {
-		lookAheadNodes = 8;
-	}
-
-	lookAheadIndex = closestIndex + lookAheadNodes;
-	if ( lookAheadIndex >= route->numNodes ) {
-		lookAheadIndex = route->numNodes - 1;
+		if ( lookAheadIndex <= closestIndex ) {
+			lookAheadIndex = closestIndex + 1;
+			if ( lookAheadIndex >= route->numNodes ) {
+				lookAheadIndex = route->numNodes - 1;
+			}
+		}
 	}
 
 	segmentStart = closestIndex;
@@ -329,7 +329,7 @@ static qboolean Bot_BuildBotPathGuidance( const botPathRoute_t *route, bot_state
 	if ( lookAheadIndexOut ) {
 		*lookAheadIndexOut = lookAheadIndex;
 	}
-	bs->ghostRouteIndexHint = closestIndex;
+	bs->botPathRouteIndexHint = closestIndex;
 	return qtrue;
 }
 
@@ -379,7 +379,7 @@ static int Bot_SelectForwardWaypointIndex( const ghostBotRoute_t *route, const v
 	int searchStart = 0;
 	int searchEnd;
 	int bestIndex = -1;
-	float bestScore = 0.0f;
+	float bestScore = -999999.0f;
 	float rejectDot = strictForwardOnly ? GHOST_FORWARD_DOT_STRICT_REJECT : GHOST_FORWARD_DOT_SOFT_REJECT;
 
 	if ( !route || !route->valid || route->numWaypoints <= 0 ) {
@@ -419,14 +419,33 @@ static int Bot_SelectForwardWaypointIndex( const ghostBotRoute_t *route, const v
 			continue;
 		}
 
-		score = distSq;
-		if ( dotForward < 0.0f ) {
-			score += (0.0f - dotForward) * 120000.0f;
+		/* Skip waypoints that are too close - bot standing on WP0 (distSq~0)
+		   would always win, causing lookAhead to point backwards */
+		if ( distSq < 80.0f * 80.0f ) {
+			continue;
 		}
 
-		if ( bestIndex < 0 || score < bestScore ) {
+		/* Score: forward-facing wins, closer breaks ties */
+		score = dotForward * 10000.0f - distSq * 0.005f;
+
+		if ( bestIndex < 0 || score > bestScore ) {
 			bestIndex = i;
 			bestScore = score;
+		}
+	}
+
+	/* Fallback: if all waypoints are within minDist (e.g. very start),
+	   pick nearest with positive dot */
+	if ( bestIndex < 0 ) {
+		for ( i = searchStart; i <= searchEnd; ++i ) {
+			vec3_t toWaypoint2;
+			float distSq2, dot2 = 1.0f;
+			VectorSubtract( route->waypoints[i].origin, origin, toWaypoint2 );
+			toWaypoint2[2] = 0.0f;
+			distSq2 = VectorLengthSquared( toWaypoint2 );
+			if ( distSq2 > 1.0f ) { VectorNormalize( toWaypoint2 ); dot2 = DotProduct( forward, toWaypoint2 ); }
+			if ( dot2 < rejectDot ) continue;
+			if ( bestIndex < 0 || distSq2 < bestScore ) { bestIndex = i; bestScore = distSq2; }
 		}
 	}
 
@@ -3625,14 +3644,27 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 		}
 
 		if ( haveBaseGuidance ) {
-			VectorSubtract( baseTargetPoint, bs->cur_ps.origin, routeForward );
-			routeForward[2] = 0.0f;
-			if ( VectorNormalize( routeForward ) <= 0.001f ) {
-				VectorSet( routeForward, 1.0f, 0.0f, 0.0f );
-			}
-			routeRight[0] = -routeForward[1];
-			routeRight[1] = routeForward[0];
-			routeRight[2] = 0.0f;
+        // Segment-Direction des closest-Segments nutzen statt Bot?Lookahead-Vektor.
+        // Das ergibt ein stabiles, routenparalleles Koordinatensystem unabhängig
+        // von der aktuellen Bot-Position relativ zum Pfad.
+        if ( baseNodeIndex >= 0 && baseNodeIndex < pathRoutes[BOT_PATH_LINE_BASE]->numSegments ) {
+            VectorCopy( pathRoutes[BOT_PATH_LINE_BASE]->segments[baseNodeIndex].direction, routeForward );
+            routeForward[2] = 0.0f;
+        if ( VectorNormalize( routeForward ) <= 0.001f ) {
+            VectorSubtract( baseTargetPoint, bs->cur_ps.origin, routeForward );
+            routeForward[2] = 0.0f;
+            VectorNormalize( routeForward );
+        }
+        } else {
+            VectorSubtract( baseTargetPoint, bs->cur_ps.origin, routeForward );
+            routeForward[2] = 0.0f;
+        if ( VectorNormalize( routeForward ) <= 0.001f ) {
+            VectorSet( routeForward, 1.0f, 0.0f, 0.0f );
+        }
+    }
+            routeRight[0] = -routeForward[1];
+            routeRight[1] = routeForward[0];
+            routeRight[2] = 0.0f;
 
 			pathRecoveryState = (bot_recovery_state_t)bs->ghostRecoveryState;
 			if ( pathRecoveryState < BOT_RECOVERY_NONE || pathRecoveryState > BOT_RECOVERY_EMERGENCY_RESET_REQUEST ) {
@@ -3764,6 +3796,19 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			if ( speedFromRoute < 280.0f ) {
 				speedFromRoute = 280.0f;
 			}
+
+            {
+            float desiredLateralOffset;
+            float blendFactor;
+
+            desiredLateralOffset = DotProduct( routeRight, blendedTargetPoint )
+                         - DotProduct( routeRight, baseTargetPoint );
+
+            blendFactor = ( selectedPathId == BOT_PATH_LINE_BASE ) ? 0.22f : 0.35f;
+            bs->botPathLateralOffset += ( desiredLateralOffset - bs->botPathLateralOffset ) * blendFactor;
+
+            VectorMA( baseTargetPoint, bs->botPathLateralOffset, routeRight, blendedTargetPoint );
+            }
 
 			VectorSubtract( blendedTargetPoint, bs->cur_ps.origin, dir );
 			dir[2] = 0.0f;
@@ -3944,8 +3989,10 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				bs->ghostRecoveryLastSampleTime = FloatTime();
 			}
 
-			if ( !forwardLaunchPhase &&
-				collisionRisk.hasPredictedConflict && collisionRisk.nearestAheadDist < 90.0f && fabs( collisionRisk.nearestAheadLateral ) < 75.0f ) {
+			if ( forwardLaunchPhase ) {
+				/* Reset during launch phase so count doesn't burst when phase ends */
+				bs->ghostRecoveryCollisionCount = 0;
+			} else if ( collisionRisk.hasPredictedConflict && collisionRisk.nearestAheadDist < 90.0f && fabs( collisionRisk.nearestAheadLateral ) < 75.0f ) {
 				bs->ghostRecoveryCollisionCount++;
 			} else if ( bs->ghostRecoveryCollisionCount > 0 ) {
 				bs->ghostRecoveryCollisionCount--;
@@ -3958,7 +4005,10 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				recoveryTrigger = "route_deviation";
 			}
 
-			if ( !forwardLaunchPhase && bs->ghostRecoveryCollisionCount >= GHOST_RECOVERY_MAX_COLLISION_COUNT ) {
+			/* Only trigger collision recovery if the bot is actually unable to move.
+			   At race start all bots cluster together causing false collision pressure. */
+			if ( !forwardLaunchPhase && bs->ghostRecoveryCollisionCount >= GHOST_RECOVERY_MAX_COLLISION_COUNT
+				&& actualSpeed < 80.0f ) {
 				Bot_SetRecoveryState( bs, BOT_RECOVERY_REVERSE_UNWIND );
 				recoveryState = BOT_RECOVERY_REVERSE_UNWIND;
 				recoveryEvent = "collision_reverse";
@@ -4218,9 +4268,13 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				}
 
 				case BOT_RECOVERY_EMERGENCY_RESET_REQUEST:
-					bs->ghostRouteIndexHint = -1;
+					/* Keep ghostRouteIndexHint at current bestIndex - clearing to -1
+					   causes the waypoint selector to jump to end-of-route waypoints */
+					bs->ghostRouteIndexHint = bestIndex;
 					bs->ghostDecisionLateralOffset = 0.0f;
-					throttleChange = -1;
+					Bot_SetRecoveryState( bs, BOT_RECOVERY_NONE );
+					recoveryState = BOT_RECOVERY_NONE;
+					throttleChange = 1;
 					break;
 
 				case BOT_RECOVERY_NONE:

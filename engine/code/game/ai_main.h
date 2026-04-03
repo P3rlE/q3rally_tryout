@@ -288,6 +288,14 @@ typedef struct bot_state_s
 	float ghostTargetSpeedFiltered;				//smoothed target speed for ghost racing line
 	int ghostTargetSpeedValid;					//whether ghostTargetSpeedFiltered is initialized
 	int ghostRouteIndexHint;					//persistent waypoint index hint for ghost racing line
+    int botPathRouteIndexHint;                  // persistent node index hint for bot_path_node system
+    float botPathLateralOffset;
+    int   botPathLastNodeIndex;
+    float botPathStuckTime;
+    float botPathReverseTime;
+    int   botPathReverseActive;
+    int   botPathFuelSeekActive;
+    int   botPathFuelCanTarget;
 	int ghostDecisionState;					//tactical race decision layer state
 	float ghostDecisionStateTime;				//time state was entered
 	float ghostDecisionLateralOffset;			//smoothed temporary lateral route offset

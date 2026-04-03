@@ -76,7 +76,7 @@ static void G_CollectBotPathNodeSpawn( gentity_t *ent ) {
 	G_SpawnInt( "order", "0", &order );
 	order = G_BotPath_ClampOrder( order );
 
-	G_SpawnFloat( "targetSpeed", "0", &targetSpeed );
+	G_SpawnFloat( "targetSpeed", "-1", &targetSpeed );
 	targetSpeed = G_BotPath_ClampTargetSpeed( targetSpeed );
 
 	G_SpawnFloat( "width", "256", &width );
