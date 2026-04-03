@@ -4306,7 +4306,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				recoveryEvent = "state_changed";
 				recoveryTrigger = "state_transition";
 			}
-			if ( forwardLaunchPhase && throttleChange < 0 ) {
+			if ( spawnInitPhase && throttleChange < 0 ) {
 				throttleChange = 0;
 			}
 
