@@ -82,6 +82,7 @@ char nodeswitch[MAX_NODESWITCHES+1][144];
 #define GHOST_FORWARD_DOT_STRICT_REJECT		0.25f
 
 #define GHOST_FORWARD_INIT_PHASE_MS		1500
+#define GHOST_RECOVERY_REARM_DELAY		0.75f
 
 typedef enum {
 	GHOST_DECISION_FOLLOW = 0,
@@ -3981,43 +3982,49 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				bs->ghostRecoveryThrottleIntentTime = FloatTime();
 			}
 
-			if ( !forwardLaunchPhase && FloatTime() - bs->ghostRecoveryLastSampleTime >= GHOST_RECOVERY_SAMPLE_WINDOW ) {
-				float sampledProgress = Distance( bs->cur_ps.origin, bs->ghostRecoveryLastOrigin );
-				if ( FloatTime() - bs->ghostRecoveryThrottleIntentTime < GHOST_RECOVERY_SAMPLE_WINDOW + 0.15f &&
-					sampledProgress < GHOST_RECOVERY_MIN_PROGRESS ) {
-					Bot_SetRecoveryState( bs, BOT_RECOVERY_STUCK_DETECT );
-					recoveryState = BOT_RECOVERY_STUCK_DETECT;
-					recoveryEvent = "stuck_detect";
-					recoveryTrigger = "low_progress_under_throttle";
+			{
+				float recoveryIdleTime = FloatTime() - bs->ghostRecoveryStateTime;
+				qboolean recoveryArmed = ( recoveryState == BOT_RECOVERY_NONE &&
+					recoveryIdleTime >= GHOST_RECOVERY_REARM_DELAY ) ? qtrue : qfalse;
+
+				if ( recoveryArmed && !forwardLaunchPhase && FloatTime() - bs->ghostRecoveryLastSampleTime >= GHOST_RECOVERY_SAMPLE_WINDOW ) {
+					float sampledProgress = Distance( bs->cur_ps.origin, bs->ghostRecoveryLastOrigin );
+					if ( FloatTime() - bs->ghostRecoveryThrottleIntentTime < GHOST_RECOVERY_SAMPLE_WINDOW + 0.15f &&
+						sampledProgress < GHOST_RECOVERY_MIN_PROGRESS ) {
+						Bot_SetRecoveryState( bs, BOT_RECOVERY_STUCK_DETECT );
+						recoveryState = BOT_RECOVERY_STUCK_DETECT;
+						recoveryEvent = "stuck_detect";
+						recoveryTrigger = "low_progress_under_throttle";
+					}
+					VectorCopy( bs->cur_ps.origin, bs->ghostRecoveryLastOrigin );
+					bs->ghostRecoveryLastSampleTime = FloatTime();
 				}
-				VectorCopy( bs->cur_ps.origin, bs->ghostRecoveryLastOrigin );
-				bs->ghostRecoveryLastSampleTime = FloatTime();
-			}
 
-			if ( forwardLaunchPhase ) {
-				/* Reset during launch phase so count doesn't burst when phase ends */
-				bs->ghostRecoveryCollisionCount = 0;
-			} else if ( collisionRisk.hasPredictedConflict && collisionRisk.nearestAheadDist < 90.0f && fabs( collisionRisk.nearestAheadLateral ) < 75.0f ) {
-				bs->ghostRecoveryCollisionCount++;
-			} else if ( bs->ghostRecoveryCollisionCount > 0 ) {
-				bs->ghostRecoveryCollisionCount--;
-			}
+				if ( forwardLaunchPhase ) {
+					/* Reset during launch phase so count doesn't burst when phase ends */
+					bs->ghostRecoveryCollisionCount = 0;
+				} else if ( collisionRisk.hasPredictedConflict && collisionRisk.nearestAheadDist < 90.0f && fabs( collisionRisk.nearestAheadLateral ) < 75.0f ) {
+					bs->ghostRecoveryCollisionCount++;
+				} else if ( bs->ghostRecoveryCollisionCount > 0 ) {
+					bs->ghostRecoveryCollisionCount--;
+				}
 
-			if ( routeDistanceFromCenter > GHOST_RECOVERY_ROUTE_DIST_THRESHOLD ) {
-				Bot_SetRecoveryState( bs, BOT_RECOVERY_REJOIN_ROUTE );
-				recoveryState = BOT_RECOVERY_REJOIN_ROUTE;
-				recoveryEvent = "off_route_rejoin";
-				recoveryTrigger = "route_deviation";
-			}
+				if ( recoveryArmed && routeDistanceFromCenter > GHOST_RECOVERY_ROUTE_DIST_THRESHOLD ) {
+					Bot_SetRecoveryState( bs, BOT_RECOVERY_REJOIN_ROUTE );
+					recoveryState = BOT_RECOVERY_REJOIN_ROUTE;
+					recoveryEvent = "off_route_rejoin";
+					recoveryTrigger = "route_deviation";
+				}
 
-			/* Only trigger collision recovery if the bot is actually unable to move.
-			   At race start all bots cluster together causing false collision pressure. */
-			if ( !forwardLaunchPhase && bs->ghostRecoveryCollisionCount >= GHOST_RECOVERY_MAX_COLLISION_COUNT
-				&& actualSpeed < 80.0f ) {
-				Bot_SetRecoveryState( bs, BOT_RECOVERY_REVERSE_UNWIND );
-				recoveryState = BOT_RECOVERY_REVERSE_UNWIND;
-				recoveryEvent = "collision_reverse";
-				recoveryTrigger = "collision_pressure";
+				/* Only trigger collision recovery if the bot is actually unable to move.
+				   At race start all bots cluster together causing false collision pressure. */
+				if ( recoveryArmed && !forwardLaunchPhase && bs->ghostRecoveryCollisionCount >= GHOST_RECOVERY_MAX_COLLISION_COUNT
+					&& actualSpeed < 80.0f ) {
+					Bot_SetRecoveryState( bs, BOT_RECOVERY_REVERSE_UNWIND );
+					recoveryState = BOT_RECOVERY_REVERSE_UNWIND;
+					recoveryEvent = "collision_reverse";
+					recoveryTrigger = "collision_pressure";
+				}
 			}
 
 			brakeZone = ( actualSpeed > speed * 1.08f || cornerPhase > 0.55f ) ? 1.0f : 0.0f;
