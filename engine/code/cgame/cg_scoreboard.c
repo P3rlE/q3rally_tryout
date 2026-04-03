@@ -271,7 +271,7 @@ static void CG_InitScoreboardColumns(void) {
     if (showDelta) {
         columns[SBCOL_DELTA].type = SBCOL_DELTA;
         columns[SBCOL_DELTA].width = COL_DELTA_WIDTH;
-        columns[SBCOL_DELTA].header = "DELTA (GHOST)";
+        columns[SBCOL_DELTA].header = "DELTA";
         columns[SBCOL_DELTA].visible = qtrue;
     }
     
@@ -705,9 +705,9 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
                 Com_sprintf(buffer, sizeof(buffer), "%c%d.%03d", sign, absMs / 1000, absMs % 1000);
                 CG_DrawModernText(x, y, buffer, 1, width, textColor, qfalse);
             } else if (cg.snap && score->client == cg.snap->ps.clientNum) {
-                CG_DrawModernText(x, y, "NO GHOST", 1, width, textColor, qfalse);
+                CG_DrawModernText(x, y, "- - -", 1, width, textColor, qfalse);
             } else {
-                CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
+                CG_DrawModernText(x, y, "- - -", 1, width, textColor, qfalse);
             }
             break;
             
