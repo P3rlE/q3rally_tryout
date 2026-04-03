@@ -149,7 +149,7 @@ static void Bot_DebugExportDmnetTick( bot_state_t *bs, int routeIndex, float tar
 	ghostDecisionState_t decisionState, qboolean collisionRisk, bot_recovery_state_t recoveryState,
 	bot_recovery_state_t previousRecoveryState, const char *recoveryEvent,
 	const char *recoveryTrigger, float routeDeviation, int pathId, int nodeIndex, int lookAheadIndex,
-	int widthClampEvent, int autoSpeedActive, int targetSpeedOverrideActive ) {
+	int widthClampEvent, int autoSpeedActive, int targetSpeedOverrideActive, int launchGateActive ) {
 	fileHandle_t f;
 	char line[1024];
 	char recoveryTransition[96];
@@ -174,7 +174,7 @@ static void Bot_DebugExportDmnetTick( bot_state_t *bs, int routeIndex, float tar
 	}
 
 	if ( len == 0 && !isJson ) {
-		char header[] = "time,client,routeIndex,targetSpeed,actualSpeed,decisionState,collisionRisk,recoveryState,recoveryTransition,recoveryEvent,recoveryTrigger,routeDeviation,pathId,nodeIndex,lookaheadIndex,widthClampEvent,autoSpeedActive,targetSpeedOverrideActive\n";
+		char header[] = "time,client,routeIndex,targetSpeed,actualSpeed,decisionState,collisionRisk,recoveryState,recoveryTransition,recoveryEvent,recoveryTrigger,routeDeviation,pathId,nodeIndex,lookaheadIndex,widthClampEvent,autoSpeedActive,targetSpeedOverrideActive,launchGate\n";
 		trap_FS_Write( header, strlen( header ), f );
 	}
 	Bot_DebugFormatRecoveryTransition( recoveryTransition, sizeof( recoveryTransition ), previousRecoveryState, recoveryState );
@@ -185,22 +185,22 @@ static void Bot_DebugExportDmnetTick( bot_state_t *bs, int routeIndex, float tar
 			"\"decisionState\":\"%s\",\"collisionRisk\":%d,\"recoveryState\":\"%s\","
 			"\"recoveryTransition\":\"%s\",\"recoveryEvent\":\"%s\",\"recoveryTrigger\":\"%s\",\"routeDeviation\":%.2f,"
 			"\"pathId\":%d,\"nodeIndex\":%d,\"lookaheadIndex\":%d,\"widthClampEvent\":%d,"
-			"\"autoSpeedActive\":%d,\"targetSpeedOverrideActive\":%d}\n",
+			"\"autoSpeedActive\":%d,\"targetSpeedOverrideActive\":%d,\"launchGate\":%d}\n",
 			level.time * 0.001f, bs->client, routeIndex, targetSpeed, actualSpeed,
 			Bot_DebugDecisionStateName( decisionState ), collisionRisk ? 1 : 0,
 			Bot_DebugRecoveryStateName( recoveryState ), recoveryTransition,
 			recoveryEvent ? recoveryEvent : "", recoveryTrigger ? recoveryTrigger : "",
 			routeDeviation, pathId, nodeIndex, lookAheadIndex, widthClampEvent,
-			autoSpeedActive, targetSpeedOverrideActive );
+			autoSpeedActive, targetSpeedOverrideActive, launchGateActive );
 	} else {
 		Com_sprintf( line, sizeof( line ),
-			"%.3f,%d,%d,%.2f,%.2f,%s,%d,%s,%s,%s,%s,%.2f,%d,%d,%d,%d,%d,%d\n",
+			"%.3f,%d,%d,%.2f,%.2f,%s,%d,%s,%s,%s,%s,%.2f,%d,%d,%d,%d,%d,%d,%d\n",
 			level.time * 0.001f, bs->client, routeIndex, targetSpeed, actualSpeed,
 			Bot_DebugDecisionStateName( decisionState ), collisionRisk ? 1 : 0,
 			Bot_DebugRecoveryStateName( recoveryState ), recoveryTransition,
 			recoveryEvent ? recoveryEvent : "", recoveryTrigger ? recoveryTrigger : "",
 			routeDeviation, pathId, nodeIndex, lookAheadIndex, widthClampEvent,
-			autoSpeedActive, targetSpeedOverrideActive );
+			autoSpeedActive, targetSpeedOverrideActive, launchGateActive );
 	}
 	trap_FS_Write( line, strlen( line ), f );
 	trap_FS_FCloseFile( f );
@@ -3562,6 +3562,8 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	const char *recoveryEvent = "";
 	const char *recoveryTrigger = "";
 	qboolean forwardLaunchPhase = qfalse;
+	qboolean raceStartGateActive = qfalse;
+	qboolean spawnInitPhase = qfalse;
 
 	if (BotIsObserver(bs)) {
 		BotClearActivateGoalStack(bs);
@@ -3592,9 +3594,11 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			routeVariant = botEnt->client->pers.vehicleClass;
 		}
 		if ( botEnt->client && level.time - botEnt->client->ghostSpawnTime <= GHOST_FORWARD_INIT_PHASE_MS ) {
-			forwardLaunchPhase = qtrue;
+			spawnInitPhase = qtrue;
 		}
 	}
+	raceStartGateActive = ( level.startRaceTime <= 0 || level.time < level.startRaceTime ) ? qtrue : qfalse;
+	forwardLaunchPhase = ( raceStartGateActive || spawnInitPhase ) ? qtrue : qfalse;
 
 	{
 		const botPathRoute_t *pathRoutes[BOT_PATH_LINE_FAMILY_COUNT];
@@ -3645,7 +3649,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 
 		if ( haveBaseGuidance ) {
         // Segment-Direction des closest-Segments nutzen statt Bot?Lookahead-Vektor.
-        // Das ergibt ein stabiles, routenparalleles Koordinatensystem unabhängig
+        // Das ergibt ein stabiles, routenparalleles Koordinatensystem unabhÃ¤ngig
         // von der aktuellen Bot-Position relativ zum Pfad.
         if ( baseNodeIndex >= 0 && baseNodeIndex < pathRoutes[BOT_PATH_LINE_BASE]->numSegments ) {
             VectorCopy( pathRoutes[BOT_PATH_LINE_BASE]->segments[baseNodeIndex].direction, routeForward );
@@ -3827,7 +3831,8 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			Bot_DebugExportDmnetTick( bs, selectedLookAheadIndex, speedFromRoute, actualSpeed, decisionState,
 				pathCollisionRisk.hasPredictedConflict, pathRecoveryState, pathRecoveryState, "", "",
 				Distance( bs->cur_ps.origin, baseTargetPoint ), selectedPathId, selectedNodeIndex,
-				selectedLookAheadIndex, widthClampEvent, autoSpeedActive, targetSpeedOverrideActive );
+				selectedLookAheadIndex, widthClampEvent, autoSpeedActive, targetSpeedOverrideActive,
+				forwardLaunchPhase ? 1 : 0 );
 
 			if ( throttleChange > 0 ) {
 				trap_EA_MoveForward( bs->client );
@@ -4301,7 +4306,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				recoveryEvent = "state_changed";
 				recoveryTrigger = "state_transition";
 			}
-			if ( forwardLaunchPhase && throttleChange < 0 ) {
+			if ( spawnInitPhase && throttleChange < 0 ) {
 				throttleChange = 0;
 			}
 
@@ -4309,7 +4314,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			VectorCopy( angles, bs->ideal_viewangles );
 			Bot_DebugExportDmnetTick( bs, bestIndex, speed, actualSpeed, decisionState, collisionRiskActive,
 				recoveryState, previousRecoveryState, recoveryEvent, recoveryTrigger, routeDistanceFromCenter,
-				-1, bestIndex, lookAheadIndex, 0, 1, 0 );
+				-1, bestIndex, lookAheadIndex, 0, 1, 0, forwardLaunchPhase ? 1 : 0 );
 
 			if( throttleChange > 0 )
 				trap_EA_MoveForward( bs->client );
