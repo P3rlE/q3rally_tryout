@@ -1746,6 +1746,151 @@ void G_RunClient( gentity_t *ent ) {
 }
 
 
+static float G_IntroCam_BlendFraction( int blendType, float t ) {
+	if ( t <= 0.0f ) {
+		return 0.0f;
+	}
+	if ( t >= 1.0f ) {
+		return 1.0f;
+	}
+
+	switch ( blendType ) {
+	default:
+	case INTRO_CAM_BLEND_CUT:
+		return 0.0f;
+	case INTRO_CAM_BLEND_LINEAR:
+		return t;
+	case INTRO_CAM_BLEND_EASE_IN_OUT:
+		return t * t * ( 3.0f - 2.0f * t );
+	}
+}
+
+static qboolean G_IntroCam_GetNodeLookAt( const intro_cam_node_t *node, vec3_t lookAtOut ) {
+	gentity_t *targetEnt;
+
+	if ( !node ) {
+		return qfalse;
+	}
+
+	if ( node->lookAtTargetName && node->lookAtTargetName[0] ) {
+		targetEnt = G_Find( NULL, FOFS( targetname ), node->lookAtTargetName );
+		if ( targetEnt ) {
+			VectorCopy( targetEnt->s.origin, lookAtOut );
+			return qtrue;
+		}
+	}
+
+	if ( node->hasLookAt ) {
+		VectorCopy( node->lookAt, lookAtOut );
+		return qtrue;
+	}
+
+	return qfalse;
+}
+
+static qboolean G_ApplyIntroCamSequence( gentity_t *ent ) {
+	int nodeIndex;
+	int nextNodeIndex;
+	int seqStartTime;
+	int elapsed;
+	int segmentStart;
+	int nodeCount;
+	float t;
+	float blend;
+	vec3_t origin;
+	vec3_t angles;
+	const intro_cam_node_t *node;
+	const intro_cam_node_t *nextNode;
+	vec3_t lookAt;
+
+	if ( !ent || !ent->client || level.raceState != RACE_STATE_INTRO_CAM || !level.raceIntroHasSequence ) {
+		return qfalse;
+	}
+
+	nodeCount = level.introCamNodeCount;
+	if ( nodeCount <= 0 ) {
+		return qfalse;
+	}
+
+	if ( level.raceIntroEndTime > 0 && level.time >= level.raceIntroEndTime ) {
+		level.raceState = RACE_STATE_COUNTDOWN;
+		level.raceIntroEndTime = 0;
+		return qfalse;
+	}
+
+	seqStartTime = level.raceIntroEndTime - level.raceIntroDurationMs;
+	if ( seqStartTime < 0 ) {
+		seqStartTime = 0;
+	}
+
+	elapsed = level.time - seqStartTime;
+	if ( elapsed < 0 ) {
+		elapsed = 0;
+	}
+	if ( elapsed >= level.raceIntroDurationMs ) {
+		nodeIndex = nodeCount - 1;
+		nextNodeIndex = nodeIndex;
+		t = 1.0f;
+	} else {
+		segmentStart = 0;
+		nodeIndex = 0;
+		nextNodeIndex = 0;
+		t = 0.0f;
+
+		for ( nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++ ) {
+			int segmentDuration = level.introCamNodes[nodeIndex].durationMs;
+			if ( segmentDuration <= 0 ) {
+				segmentDuration = 1;
+			}
+
+			if ( nodeIndex == nodeCount - 1 || elapsed < segmentStart + segmentDuration ) {
+				nextNodeIndex = ( nodeIndex + 1 < nodeCount ) ? nodeIndex + 1 : nodeIndex;
+				t = (float)( elapsed - segmentStart ) / (float)segmentDuration;
+				if ( t < 0.0f ) {
+					t = 0.0f;
+				} else if ( t > 1.0f ) {
+					t = 1.0f;
+				}
+				break;
+			}
+
+			segmentStart += segmentDuration;
+		}
+	}
+
+	node = &level.introCamNodes[nodeIndex];
+	nextNode = &level.introCamNodes[nextNodeIndex];
+	blend = G_IntroCam_BlendFraction( node->blendType, t );
+
+	origin[0] = node->position[0] + ( nextNode->position[0] - node->position[0] ) * blend;
+	origin[1] = node->position[1] + ( nextNode->position[1] - node->position[1] ) * blend;
+	origin[2] = node->position[2] + ( nextNode->position[2] - node->position[2] ) * blend;
+
+	if ( G_IntroCam_GetNodeLookAt( node, lookAt ) ) {
+		vec3_t delta;
+		VectorSubtract( lookAt, origin, delta );
+		if ( VectorLengthSquared( delta ) > 0.001f ) {
+			vectoangles( delta, angles );
+		} else {
+			VectorCopy( node->angles, angles );
+		}
+	} else {
+		angles[0] = LerpAngle( node->angles[0], nextNode->angles[0], blend );
+		angles[1] = LerpAngle( node->angles[1], nextNode->angles[1], blend );
+		angles[2] = LerpAngle( node->angles[2], nextNode->angles[2], blend );
+	}
+
+	VectorCopy( origin, ent->client->ps.origin );
+	VectorCopy( angles, ent->client->ps.viewangles );
+	VectorCopy( origin, ent->s.origin );
+	VectorCopy( origin, ent->r.currentOrigin );
+	VectorCopy( angles, ent->s.angles );
+	VectorCopy( angles, ent->r.currentAngles );
+	ent->client->ps.pm_flags |= PMF_FOLLOW;
+	return qtrue;
+}
+
+
 /*
 ==================
 SpectatorClientEndFrame
@@ -1761,6 +1906,10 @@ void SpectatorClientEndFrame( gentity_t *ent ) {
 
 //	Com_Printf( "Spectator Mode: %i\n", ent->client->sess.spectatorState );
 // END
+
+	if ( G_ApplyIntroCamSequence( ent ) ) {
+		return;
+	}
 
 	// if we are doing a chase cam or a remote view, grab the latest info
 	if ( ent->client->sess.spectatorState == SPECTATOR_FOLLOW ) {
