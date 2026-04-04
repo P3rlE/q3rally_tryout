@@ -104,8 +104,10 @@ typedef struct {
 	int			durationMs;
 	int			order;
 	int			blendType;
+	float			fov;
 	qboolean		hasLookAt;
 	vec3_t			lookAt;
+	char			*lookAtTargetName;
 } intro_cam_node_t;
 
 #define SP_PODIUM_MODEL		"models/mapobjects/podium/podium4.md3"
