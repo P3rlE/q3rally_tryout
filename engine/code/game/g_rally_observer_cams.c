@@ -23,6 +23,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
+#define INTRO_CAM_DEFAULT_DURATION_MS 1000
+#define INTRO_CAM_MIN_DURATION_MS 100
+#define INTRO_CAM_MAX_DURATION_MS 60000
+#define INTRO_CAM_DEFAULT_FOV 90.0f
+#define INTRO_CAM_MIN_FOV 10.0f
+#define INTRO_CAM_MAX_FOV 170.0f
+
 static int G_ParseIntroCamBlendType( const char *blendName ) {
 	if ( !blendName || !blendName[0] ) {
 		return INTRO_CAM_BLEND_CUT;
@@ -39,24 +46,86 @@ static int G_ParseIntroCamBlendType( const char *blendName ) {
 	return INTRO_CAM_BLEND_CUT;
 }
 
+static qboolean G_ObserverCamSequence_ShouldRegisterSpot( void ) {
+	char *sequenceName;
+	char *introValue;
+
+	G_SpawnString( "sequence", "", &sequenceName );
+	if ( sequenceName[0] ) {
+		return ( Q_stricmp( sequenceName, "intro" ) == 0 ) ? qtrue : qfalse;
+	}
+
+	G_SpawnString( "intro", "", &introValue );
+	if ( !introValue[0] ) {
+		return qtrue;
+	}
+
+	if ( !Q_stricmp( introValue, "0" ) || !Q_stricmp( introValue, "false" ) || !Q_stricmp( introValue, "no" ) ) {
+		return qfalse;
+	}
+
+	if ( !Q_stricmp( introValue, "1" ) || !Q_stricmp( introValue, "true" ) || !Q_stricmp( introValue, "yes" ) ) {
+		return qtrue;
+	}
+
+	return ( Q_stricmp( introValue, "intro" ) == 0 ) ? qtrue : qfalse;
+}
+
+static void G_ObserverCamSequence_SortNodesByOrder( void ) {
+	int i, j;
+
+	for ( i = 1; i < level.introCamNodeCount; i++ ) {
+		intro_cam_node_t key = level.introCamNodes[i];
+		j = i - 1;
+		while ( j >= 0 && level.introCamNodes[j].order > key.order ) {
+			level.introCamNodes[j + 1] = level.introCamNodes[j];
+			j--;
+		}
+		level.introCamNodes[j + 1] = key;
+	}
+}
+
+static void G_ObserverCamSequence_ResolveLookAtTargets( void ) {
+	int i;
+
+	for ( i = 0; i < level.introCamNodeCount; i++ ) {
+		gentity_t *targetEnt;
+		intro_cam_node_t *node;
+
+		node = &level.introCamNodes[i];
+		if ( !node->lookAtTargetName || !node->lookAtTargetName[0] ) {
+			continue;
+		}
+
+		targetEnt = G_Find( NULL, FOFS( targetname ), node->lookAtTargetName );
+		if ( !targetEnt ) {
+			G_Printf( "Warning: Intro observer spot order=%d references unknown lookat_target '%s'.\n",
+				node->order, node->lookAtTargetName );
+			continue;
+		}
+
+		VectorCopy( targetEnt->s.origin, node->lookAt );
+		node->hasLookAt = qtrue;
+	}
+}
+
 void G_ObserverCamSequence_RegisterSpot( gentity_t *ent ) {
 	int				nodeIndex;
 	int				order;
 	float				durationSeconds;
-	char				*sequenceName;
 	char				*blendName;
 	int				durationMs;
-	int				insertPos;
 	int				lookAtProvided;
 	int				hasOrder;
 	int				orderValue;
+	float				fov;
+	char				*lookAtTargetName;
 
 	if ( !ent ) {
 		return;
 	}
 
-	G_SpawnString( "sequence", "", &sequenceName );
-	if ( sequenceName[0] && Q_stricmp( sequenceName, "intro" ) ) {
+	if ( !G_ObserverCamSequence_ShouldRegisterSpot() ) {
 		return;
 	}
 
@@ -72,17 +141,38 @@ void G_ObserverCamSequence_RegisterSpot( gentity_t *ent ) {
 	if ( hasOrder ) {
 		order = orderValue;
 	}
+	if ( order < 0 ) {
+		G_Printf( "Warning: Intro observer spot at %s has invalid order=%d; clamping to 0.\n",
+			vtos( ent->s.origin ), order );
+		order = 0;
+	}
 
 	durationSeconds = 0.0f;
 	G_SpawnFloat( "duration", "0", &durationSeconds );
-	durationMs = ( durationSeconds > 0.0f ) ? (int)( durationSeconds * 1000.0f ) : 1000;
+	durationMs = ( durationSeconds > 0.0f ) ? (int)( durationSeconds * 1000.0f ) : INTRO_CAM_DEFAULT_DURATION_MS;
+	if ( durationMs < INTRO_CAM_MIN_DURATION_MS || durationMs > INTRO_CAM_MAX_DURATION_MS ) {
+		G_Printf( "Warning: Intro observer spot at %s has invalid duration=%.3fs; using default %.3fs.\n",
+			vtos( ent->s.origin ), durationSeconds, INTRO_CAM_DEFAULT_DURATION_MS / 1000.0f );
+		durationMs = INTRO_CAM_DEFAULT_DURATION_MS;
+	}
+
+	fov = INTRO_CAM_DEFAULT_FOV;
+	G_SpawnFloat( "fov", "90", &fov );
+	if ( fov < INTRO_CAM_MIN_FOV || fov > INTRO_CAM_MAX_FOV ) {
+		G_Printf( "Warning: Intro observer spot at %s has invalid fov=%.1f; clamping to %.1f.\n",
+			vtos( ent->s.origin ), fov,
+			(fov < INTRO_CAM_MIN_FOV) ? INTRO_CAM_MIN_FOV : INTRO_CAM_MAX_FOV );
+		fov = (fov < INTRO_CAM_MIN_FOV) ? INTRO_CAM_MIN_FOV : INTRO_CAM_MAX_FOV;
+	}
 
 	nodeIndex = level.introCamNodeCount;
 	VectorCopy( ent->s.origin, level.introCamNodes[nodeIndex].position );
 	VectorCopy( ent->s.angles, level.introCamNodes[nodeIndex].angles );
 	level.introCamNodes[nodeIndex].durationMs = durationMs;
 	level.introCamNodes[nodeIndex].order = order;
+	level.introCamNodes[nodeIndex].fov = fov;
 	level.introCamNodes[nodeIndex].hasLookAt = qfalse;
+	level.introCamNodes[nodeIndex].lookAtTargetName = NULL;
 
 	G_SpawnString( "blend", "", &blendName );
 	level.introCamNodes[nodeIndex].blendType = G_ParseIntroCamBlendType( blendName );
@@ -92,17 +182,17 @@ void G_ObserverCamSequence_RegisterSpot( gentity_t *ent ) {
 		level.introCamNodes[nodeIndex].hasLookAt = qtrue;
 	}
 
-	level.introCamNodeCount++;
-
-	insertPos = nodeIndex;
-	while ( insertPos > 0 && level.introCamNodes[insertPos - 1].order > level.introCamNodes[insertPos].order ) {
-		intro_cam_node_t tmp;
-		tmp = level.introCamNodes[insertPos - 1];
-		level.introCamNodes[insertPos - 1] = level.introCamNodes[insertPos];
-		level.introCamNodes[insertPos] = tmp;
-		insertPos--;
+	G_SpawnString( "lookat_target", "", &lookAtTargetName );
+	if ( lookAtTargetName[0] ) {
+		if ( level.introCamNodes[nodeIndex].hasLookAt ) {
+			G_Printf( "Warning: Intro observer spot at %s has both lookat and lookat_target; keeping lookat vector.\n",
+				vtos( ent->s.origin ) );
+		} else {
+			level.introCamNodes[nodeIndex].lookAtTargetName = lookAtTargetName;
+		}
 	}
 
+	level.introCamNodeCount++;
 }
 
 void G_ObserverCamSequence_Finalize( void ) {
@@ -117,6 +207,9 @@ void G_ObserverCamSequence_Finalize( void ) {
 		return;
 	}
 
+	G_ObserverCamSequence_SortNodesByOrder();
+	G_ObserverCamSequence_ResolveLookAtTargets();
+
 	for ( i = 0; i < level.introCamNodeCount; i++ ) {
 		level.raceIntroDurationMs += level.introCamNodes[i].durationMs;
 	}
@@ -128,6 +221,20 @@ void G_ObserverCamSequence_Finalize( void ) {
 	}
 }
 
+/*
+==============
+SP_info_observer_spot
+
+Intro sequence keys (all optional):
+ - sequence / intro: sequence selector. Defaults to intro when omitted.
+   `sequence` supports "intro"; `intro` supports 1/0, true/false, yes/no, or "intro".
+ - order: playback order. Default: spawn order index.
+ - duration: node duration in seconds. Default: 1.0.
+ - lookat_target: targetname of an entity to look at. Default: unused.
+ - lookat: explicit world position override. Default: unused.
+ - fov: node field-of-view. Default: 90.
+==============
+*/
 void SP_info_observer_spot( gentity_t *ent ){
 	G_SetOrigin(ent, ent->s.origin);
 
