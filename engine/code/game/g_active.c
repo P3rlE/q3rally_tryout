@@ -493,6 +493,20 @@ static void G_ApplyIntroInputLock( gentity_t *ent, usercmd_t *ucmd ) {
 	}
 }
 
+static void G_DebugIntroCamGuard( gentity_t *ent, const char *context ) {
+	if ( !g_debugIntroCam.integer ) {
+		return;
+	}
+
+	G_Printf( "IntroCamGuard[%s]: client=%d spectatorState=%d raceState=%d end=%d now=%d\n",
+		context ? context : "unknown",
+		ent ? ent->s.number : -1,
+		( ent && ent->client ) ? ent->client->sess.spectatorState : -1,
+		level.raceState,
+		level.raceIntroEndTime,
+		level.time );
+}
+
 /*
 =================
 SpectatorThink
@@ -506,6 +520,14 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 
 	if ( G_ClientShouldUseIntroCam( ent ) ) {
 		G_ApplyIntroInputLock( ent, ucmd );
+		/*
+		 * Hard guard: while intro camera is active, only G_ApplyIntroCamSequence
+		 * may author camera state (ps.origin/ps.viewangles/pm_flags).
+		 */
+		G_DebugIntroCamGuard( ent, "SpectatorThink early exit" );
+		client->oldbuttons = client->buttons;
+		client->buttons = ucmd->buttons;
+		return;
 	}
 
 // STONELANCE
@@ -1112,7 +1134,11 @@ void ClientThink_real( gentity_t *ent ) {
 	else if ( isRaceObserver( ent->s.number ) ){
 		if ( client->sess.spectatorState == SPECTATOR_NOT ) {
 			client->sess.spectatorState = SPECTATOR_OBSERVE;
-			UpdateObserverSpot( ent, qtrue );
+			if ( !G_ClientShouldUseIntroCam( ent ) ) {
+				UpdateObserverSpot( ent, qtrue );
+			} else {
+				G_DebugIntroCamGuard( ent, "ClientThink_real skip UpdateObserverSpot(qtrue)" );
+			}
 		}
 
 		SpectatorThink( ent, ucmd );
