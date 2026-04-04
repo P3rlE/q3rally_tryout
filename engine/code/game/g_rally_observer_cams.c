@@ -38,10 +38,15 @@ gentity_t *FindBestObserverSpot( gentity_t *self, gentity_t *target, vec3_t spot
 	gentity_t		*ent;
 	trace_t			tr;
 	vec3_t			delta;
+	vec3_t			targetOrigin;
 	static vec3_t	mins = { -4, -4, -4 };
 	static vec3_t	maxs = { 4, 4, 4 };
 	float			dist, bestDist;
 	gentity_t		*foundSpot;
+
+	// Use ps.origin as the target reference for both trace and distance checks
+	// so observer spot selection stays consistent and more deterministic.
+	VectorCopy(target->client->ps.origin, targetOrigin);
 
 	foundSpot = NULL;
 	dist = 0;
@@ -56,11 +61,11 @@ gentity_t *FindBestObserverSpot( gentity_t *self, gentity_t *target, vec3_t spot
 //		foundSpot = ent;
 //		return foundSpot;
 		
-		trap_Trace(&tr, ent->r.currentOrigin, mins, maxs, target->client->ps.origin, target->s.number, CONTENTS_SOLID);
+		trap_Trace(&tr, ent->r.currentOrigin, mins, maxs, targetOrigin, target->s.number, CONTENTS_SOLID);
 
 		if (tr.startsolid || tr.allsolid || tr.fraction < 1.0) continue;
 
-		VectorSubtract(target->s.origin, ent->s.origin, delta);
+		VectorSubtract(targetOrigin, ent->s.origin, delta);
 		dist = VectorNormalize(delta);
 
 		// check for spot with locked angles
