@@ -2845,6 +2845,8 @@ void CheckTournament( void ) {
 
 		int		counts[TEAM_NUM_TEAMS];
 		qboolean	notEnough = qfalse;
+		level.raceState = RACE_STATE_NONE;
+		level.raceIntroEndTime = 0;
 
 		if ( g_gametype.integer >= GT_TEAM ) {
 			counts[TEAM_BLUE] = TeamCount( -1, TEAM_BLUE );
