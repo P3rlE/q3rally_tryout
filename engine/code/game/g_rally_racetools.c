@@ -35,6 +35,23 @@ static vec3_t rallyIntroGridOrigin[MAX_CLIENTS];
 static vec3_t rallyIntroGridAngles[MAX_CLIENTS];
 static qboolean rallyIntroGridSaved[MAX_CLIENTS];
 
+static void G_DebugRaceStateTransitionRally( gentity_t *ent, const char *context, int oldState, int newState ) {
+	if ( !g_debugIntroCam.integer ) {
+		return;
+	}
+
+	G_Printf( "RaceStateFlip[%s]: clientNum=%d sessionTeam=%d spectatorState=%d pm_flags=%d raceState=%d->%d level.time=%d raceIntroEndTime=%d\n",
+		context ? context : "unknown",
+		ent ? ent->s.number : -1,
+		( ent && ent->client ) ? ent->client->sess.sessionTeam : -1,
+		( ent && ent->client ) ? ent->client->sess.spectatorState : -1,
+		( ent && ent->client ) ? ent->client->ps.pm_flags : -1,
+		oldState,
+		newState,
+		level.time,
+		level.raceIntroEndTime );
+}
+
 static void G_RallyClearIntroGridSnapshots( void ) {
 	int i;
 
@@ -515,8 +532,12 @@ void RallyStarter_Think( gentity_t *ent ){
 	introDurationMs = level.raceIntroDurationMs > 0 ? level.raceIntroDurationMs : RALLY_INTRO_CAM_DURATION_MS;
 
 	if (level.startRaceTime){
-		level.raceState = RACE_STATE_RUNNING;
-		level.raceIntroEndTime = 0;
+		{
+			int oldRaceState = level.raceState;
+			level.raceState = RACE_STATE_RUNNING;
+			level.raceIntroEndTime = 0;
+			G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage countdown finished -> RUNNING", oldRaceState, level.raceState );
+		}
 		return;
 	}
 
@@ -602,15 +623,19 @@ void RallyStarter_Think( gentity_t *ent ){
 		else if ( start && count ){
 			ent->number = 3;
 			if ( useIntroRaceState && level.raceIntroHasSequence ) {
+				int oldRaceState = level.raceState;
 				level.raceState = RACE_STATE_INTRO_CAM;
 				level.raceIntroEndTime = level.time + introDurationMs;
+				G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage start -> INTRO_CAM", oldRaceState, level.raceState );
 				G_RallySnapshotIntroGridPositions();
 			} else {
 				if ( useIntroRaceState && !level.raceIntroHasSequence ) {
 					level.raceIntroFallback = qtrue;
 				}
+				int oldRaceState = level.raceState;
 				level.raceState = RACE_STATE_COUNTDOWN;
 				level.raceIntroEndTime = 0;
+				G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage start -> COUNTDOWN", oldRaceState, level.raceState );
 				G_RallyClearIntroGridSnapshots();
 			}
 			ent->pain_debounce_time = 0;
@@ -619,15 +644,19 @@ void RallyStarter_Think( gentity_t *ent ){
 		else if ( level.time >= level.startTime + (g_forceEngineStart.integer * 1000) ) {
 			ent->number = 3; // force race start
 			if ( useIntroRaceState && level.raceIntroHasSequence ) {
+				int oldRaceState = level.raceState;
 				level.raceState = RACE_STATE_INTRO_CAM;
 				level.raceIntroEndTime = level.time + introDurationMs;
+				G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage forced start -> INTRO_CAM", oldRaceState, level.raceState );
 				G_RallySnapshotIntroGridPositions();
 			} else {
 				if ( useIntroRaceState && !level.raceIntroHasSequence ) {
 					level.raceIntroFallback = qtrue;
 				}
+				int oldRaceState = level.raceState;
 				level.raceState = RACE_STATE_COUNTDOWN;
 				level.raceIntroEndTime = 0;
+				G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage forced start -> COUNTDOWN", oldRaceState, level.raceState );
 				G_RallyClearIntroGridSnapshots();
 			}
 			ent->pain_debounce_time = 0;
@@ -648,20 +677,32 @@ void RallyStarter_Think( gentity_t *ent ){
 			return;
 		}
 
-		level.raceState = RACE_STATE_COUNTDOWN;
+		{
+			int oldRaceState = level.raceState;
+			level.raceState = RACE_STATE_COUNTDOWN;
+			G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage intro expired -> COUNTDOWN", oldRaceState, level.raceState );
+		}
 		G_RallyIntroCountdownHandover();
 		ent->pain_debounce_time = level.time;
 	}
 
 	if ( ent->pain_debounce_time == 0 ) {
-		level.raceState = RACE_STATE_COUNTDOWN;
+		{
+			int oldRaceState = level.raceState;
+			level.raceState = RACE_STATE_COUNTDOWN;
+			G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage countdown bootstrap", oldRaceState, level.raceState );
+		}
 		G_RallyIntroCountdownHandover();
 		ent->pain_debounce_time = level.time;
 	}
 
 	if ( level.time > ent->pain_debounce_time + 5000 ){
-		level.raceState = RACE_STATE_RUNNING;
-		level.raceIntroEndTime = 0;
+		{
+			int oldRaceState = level.raceState;
+			level.raceState = RACE_STATE_RUNNING;
+			level.raceIntroEndTime = 0;
+			G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage countdown finished -> RUNNING", oldRaceState, level.raceState );
+		}
 		level.startRaceTime = level.time;
 		// Snapshot how many players were present at race start.
 		// Used by CheckExitRules to prevent a solo-start instant win.
