@@ -2010,6 +2010,18 @@ void SpectatorClientEndFrame( gentity_t *ent ) {
 //	Com_Printf( "Spectator Mode: %i\n", ent->client->sess.spectatorState );
 // END
 
+	/*
+	 * Camera path selection order (race/spectator clients):
+	 * 1) Intro sequence path (G_ApplyIntroCamSequence): active only while
+	 *    level.raceState == RACE_STATE_INTRO_CAM and raceIntroEndTime > now.
+	 *    While active, it owns origin/viewangles and we return early.
+	 * 2) Normal spectator paths:
+	 *    - SPECTATOR_FOLLOW: chase target player state.
+	 *    - SPECTATOR_OBSERVE: observer spot + optional tracking/zoom.
+	 *    - SPECTATOR_FREE: free-fly movement (handled in SpectatorThink).
+	 * After intro finishes (or is disabled), execution falls through to the
+	 * existing follow/observe/free logic unchanged.
+	 */
 	if ( G_ApplyIntroCamSequence( ent ) ) {
 		return;
 	}
