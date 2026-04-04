@@ -109,6 +109,57 @@ static void G_ObserverCamSequence_ResolveLookAtTargets( void ) {
 	}
 }
 
+static qboolean G_ObserverCamSequence_NodeHasValidData( const intro_cam_node_t *node ) {
+	if ( !node ) {
+		return qfalse;
+	}
+
+	if ( node->durationMs <= 0 ) {
+		return qfalse;
+	}
+
+	if ( node->fov < INTRO_CAM_MIN_FOV || node->fov > INTRO_CAM_MAX_FOV ) {
+		return qfalse;
+	}
+
+	if ( IS_NAN( node->position[0] ) || IS_NAN( node->position[1] ) || IS_NAN( node->position[2] ) ) {
+		return qfalse;
+	}
+
+	if ( IS_NAN( node->angles[0] ) || IS_NAN( node->angles[1] ) || IS_NAN( node->angles[2] ) ) {
+		return qfalse;
+	}
+
+	if ( node->hasLookAt &&
+		( IS_NAN( node->lookAt[0] ) || IS_NAN( node->lookAt[1] ) || IS_NAN( node->lookAt[2] ) ) ) {
+		return qfalse;
+	}
+
+	return qtrue;
+}
+
+static void G_ObserverCamSequence_RemoveInvalidNodes( void ) {
+	int readIndex;
+	int writeIndex;
+
+	writeIndex = 0;
+	for ( readIndex = 0; readIndex < level.introCamNodeCount; readIndex++ ) {
+		const intro_cam_node_t *node = &level.introCamNodes[readIndex];
+
+		if ( !G_ObserverCamSequence_NodeHasValidData( node ) ) {
+			G_Printf( "Warning: Intro observer spot order=%d has invalid data; skipping node.\n", node->order );
+			continue;
+		}
+
+		if ( writeIndex != readIndex ) {
+			level.introCamNodes[writeIndex] = level.introCamNodes[readIndex];
+		}
+		writeIndex++;
+	}
+
+	level.introCamNodeCount = writeIndex;
+}
+
 void G_ObserverCamSequence_RegisterSpot( gentity_t *ent ) {
 	int				nodeIndex;
 	int				order;
@@ -199,6 +250,7 @@ void G_ObserverCamSequence_Finalize( void ) {
 	int i;
 
 	level.raceIntroDurationMs = 0;
+	level.raceIntroSequenceWarned = qfalse;
 	level.raceIntroHasSequence = ( level.introCamNodeCount > 0 ) ? qtrue : qfalse;
 
 	if ( !level.raceIntroHasSequence ) {
@@ -209,6 +261,14 @@ void G_ObserverCamSequence_Finalize( void ) {
 
 	G_ObserverCamSequence_SortNodesByOrder();
 	G_ObserverCamSequence_ResolveLookAtTargets();
+	G_ObserverCamSequence_RemoveInvalidNodes();
+
+	if ( level.introCamNodeCount <= 0 ) {
+		level.raceIntroFallback = qtrue;
+		level.raceIntroHasSequence = qfalse;
+		G_Printf( "Warning: Intro camera sequence only contained invalid spots; using countdown fallback.\n" );
+		return;
+	}
 
 	for ( i = 0; i < level.introCamNodeCount; i++ ) {
 		level.raceIntroDurationMs += level.introCamNodes[i].durationMs;

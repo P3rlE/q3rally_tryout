@@ -138,6 +138,7 @@ vmCvar_t	g_developer;
 vmCvar_t	g_rallyReadyCheck;
 vmCvar_t	g_derbyMinPlayers;
 vmCvar_t	g_rallyIntroCamClients;
+vmCvar_t	g_debugIntroCam;
 vmCvar_t	g_rallyIgnoreBots;
 vmCvar_t	g_aiDmnetDebugExport;
 vmCvar_t	g_aiDmnetDebugExportPath;
@@ -294,6 +295,7 @@ static cvarTable_t		gameCvarTable[] = {
 { &g_derbyMinPlayers, "g_derbyMinPlayers", "2", CVAR_ARCHIVE, 0, qfalse },
 // 0 = spectators/race observers only, 1 = all human clients before race start
 { &g_rallyIntroCamClients, "g_rallyIntroCamClients", "1", CVAR_ARCHIVE, 0, qfalse },
+{ &g_debugIntroCam, "g_debugIntroCam", "0", CVAR_ARCHIVE, 0, qfalse },
 { &g_rallyIgnoreBots, "g_rallyIgnoreBots", "0", CVAR_ARCHIVE, 0, qfalse },
 { &g_aiDmnetDebugExport, "g_aiDmnetDebugExport", "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
 { &g_aiDmnetDebugExportPath, "g_aiDmnetDebugExportPath", "logs/ai_dmnet_debug.csv", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
