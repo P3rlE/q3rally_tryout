@@ -620,15 +620,26 @@ void RallyStarter_Think( gentity_t *ent ){
 				count, g_derbyMinPlayers.integer) );
 			return;
 		}
+		/*
+		 * Start intro preview as soon as we enter the populated pre-race phase,
+		 * before Fire/Use ready interaction can advance any later start step.
+		 * This keeps flow deterministic: PRE-RACE -> INTRO_CAM -> COUNTDOWN.
+		 */
+		if ( useIntroRaceState && level.raceIntroHasSequence ) {
+			if ( level.raceState != RACE_STATE_INTRO_CAM ) {
+				int oldRaceState = level.raceState;
+				level.raceState = RACE_STATE_INTRO_CAM;
+				level.raceIntroEndTime = level.time + introDurationMs;
+				G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage pre-race entry -> INTRO_CAM", oldRaceState, level.raceState );
+				G_RallySnapshotIntroGridPositions();
+				ent->number = 3;
+				ent->pain_debounce_time = 0;
+				G_RallyConfigureElimination( count );
+			}
+		}
 		else if ( start && count ){
 			ent->number = 3;
-				if ( useIntroRaceState && level.raceIntroHasSequence ) {
-					int oldRaceState = level.raceState;
-					level.raceState = RACE_STATE_INTRO_CAM;
-					level.raceIntroEndTime = level.time + introDurationMs;
-					G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage start -> INTRO_CAM", oldRaceState, level.raceState );
-					G_RallySnapshotIntroGridPositions();
-				} else {
+				{
 					int oldRaceState = level.raceState;
 
 					if ( useIntroRaceState && !level.raceIntroHasSequence ) {
@@ -644,13 +655,7 @@ void RallyStarter_Think( gentity_t *ent ){
 		}
 		else if ( level.time >= level.startTime + (g_forceEngineStart.integer * 1000) ) {
 			ent->number = 3; // force race start
-				if ( useIntroRaceState && level.raceIntroHasSequence ) {
-					int oldRaceState = level.raceState;
-					level.raceState = RACE_STATE_INTRO_CAM;
-					level.raceIntroEndTime = level.time + introDurationMs;
-					G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage forced start -> INTRO_CAM", oldRaceState, level.raceState );
-					G_RallySnapshotIntroGridPositions();
-				} else {
+				{
 					int oldRaceState = level.raceState;
 
 					if ( useIntroRaceState && !level.raceIntroHasSequence ) {

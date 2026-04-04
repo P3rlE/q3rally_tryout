@@ -448,7 +448,7 @@ static qboolean G_IsIntroCamActive( void ) {
 }
 
 static qboolean G_BlockSpectatorButtonsDuringIntro( gentity_t *ent ) {
-	if ( !ent || !ent->client || !G_IsIntroCamActive() ) {
+	if ( !ent || !ent->client || level.raceState != RACE_STATE_INTRO_CAM ) {
 		return qfalse;
 	}
 
@@ -689,6 +689,13 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 			break;
 		}
 		G_DebugClientRaceSnapshot( ent, "SpectatorThink RearAttack edge (after)" );
+	}
+
+	if ( ( client->buttons & BUTTON_USE_HOLDABLE ) && !( client->oldbuttons & BUTTON_USE_HOLDABLE ) ) {
+		G_DebugClientRaceSnapshot( ent, "SpectatorThink Use edge" );
+		if ( G_BlockSpectatorButtonsDuringIntro( ent ) ) {
+			return;
+		}
 	}
 // END
 }
