@@ -31,6 +31,100 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define RALLY_INTRO_CAM_DURATION_MS 3000
 
+static vec3_t rallyIntroGridOrigin[MAX_CLIENTS];
+static vec3_t rallyIntroGridAngles[MAX_CLIENTS];
+static qboolean rallyIntroGridSaved[MAX_CLIENTS];
+
+static void G_RallyClearIntroGridSnapshots( void ) {
+	int i;
+
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		rallyIntroGridSaved[i] = qfalse;
+	}
+}
+
+static void G_RallySnapshotIntroGridPositions( void ) {
+	int i;
+
+	G_RallyClearIntroGridSnapshots();
+
+	for ( i = 0; i < level.maxclients; i++ ) {
+		gentity_t *player = &g_entities[i];
+
+		if ( !player->inuse || !player->client ) {
+			continue;
+		}
+
+		if ( player->client->sess.sessionTeam == TEAM_SPECTATOR ) {
+			continue;
+		}
+
+		VectorCopy( player->client->ps.origin, rallyIntroGridOrigin[i] );
+		VectorCopy( player->client->ps.viewangles, rallyIntroGridAngles[i] );
+		rallyIntroGridSaved[i] = qtrue;
+	}
+}
+
+static void G_RallyIntroCountdownHandover( void ) {
+	int i;
+	qboolean hasSnapshots = qfalse;
+
+	for ( i = 0; i < level.maxclients; i++ ) {
+		if ( rallyIntroGridSaved[i] ) {
+			hasSnapshots = qtrue;
+			break;
+		}
+	}
+
+	if ( !hasSnapshots ) {
+		return;
+	}
+
+	for ( i = 0; i < level.maxclients; i++ ) {
+		gentity_t *player = &g_entities[i];
+		gclient_t *client;
+		int beforeSessionTeam;
+		int beforeSpectatorState;
+		int beforePmFlags;
+
+		if ( !player->inuse || !player->client ) {
+			continue;
+		}
+
+		client = player->client;
+		beforeSessionTeam = client->sess.sessionTeam;
+		beforeSpectatorState = client->sess.spectatorState;
+		beforePmFlags = client->ps.pm_flags;
+
+		G_Printf( "IntroHandover before: clientNum=%d sessionTeam=%d spectatorState=%d pm_flags=%d\n",
+			i, beforeSessionTeam, beforeSpectatorState, beforePmFlags );
+
+		if ( client->sess.sessionTeam == TEAM_SPECTATOR ) {
+			G_Printf( "IntroHandover after: clientNum=%d sessionTeam=%d spectatorState=%d pm_flags=%d\n",
+				i, client->sess.sessionTeam, client->sess.spectatorState, client->ps.pm_flags );
+			continue;
+		}
+
+		client->ps.pm_flags &= ~( PMF_FOLLOW | PMF_OBSERVE );
+		client->sess.spectatorState = SPECTATOR_NOT;
+		client->ps.pm_type = PM_NORMAL;
+
+		if ( rallyIntroGridSaved[i] ) {
+			VectorCopy( rallyIntroGridOrigin[i], client->ps.origin );
+			VectorCopy( rallyIntroGridAngles[i], client->ps.viewangles );
+			VectorCopy( rallyIntroGridOrigin[i], player->s.origin );
+			VectorCopy( rallyIntroGridOrigin[i], player->r.currentOrigin );
+			VectorCopy( rallyIntroGridAngles[i], player->s.angles );
+			VectorCopy( rallyIntroGridAngles[i], player->r.currentAngles );
+		}
+
+		G_Printf( "IntroHandover after: clientNum=%d sessionTeam=%d spectatorState=%d pm_flags=%d\n",
+			i, client->sess.sessionTeam, client->sess.spectatorState, client->ps.pm_flags );
+	}
+
+	G_RallyClearIntroGridSnapshots();
+}
+
 
 int GetTeamAtRank( int rank ){
 	int		i, j, count;
@@ -510,12 +604,14 @@ void RallyStarter_Think( gentity_t *ent ){
 			if ( useIntroRaceState && level.raceIntroHasSequence ) {
 				level.raceState = RACE_STATE_INTRO_CAM;
 				level.raceIntroEndTime = level.time + introDurationMs;
+				G_RallySnapshotIntroGridPositions();
 			} else {
 				if ( useIntroRaceState && !level.raceIntroHasSequence ) {
 					level.raceIntroFallback = qtrue;
 				}
 				level.raceState = RACE_STATE_COUNTDOWN;
 				level.raceIntroEndTime = 0;
+				G_RallyClearIntroGridSnapshots();
 			}
 			ent->pain_debounce_time = 0;
 			G_RallyConfigureElimination( count );
@@ -525,12 +621,14 @@ void RallyStarter_Think( gentity_t *ent ){
 			if ( useIntroRaceState && level.raceIntroHasSequence ) {
 				level.raceState = RACE_STATE_INTRO_CAM;
 				level.raceIntroEndTime = level.time + introDurationMs;
+				G_RallySnapshotIntroGridPositions();
 			} else {
 				if ( useIntroRaceState && !level.raceIntroHasSequence ) {
 					level.raceIntroFallback = qtrue;
 				}
 				level.raceState = RACE_STATE_COUNTDOWN;
 				level.raceIntroEndTime = 0;
+				G_RallyClearIntroGridSnapshots();
 			}
 			ent->pain_debounce_time = 0;
 			G_RallyConfigureElimination( count );
@@ -551,11 +649,13 @@ void RallyStarter_Think( gentity_t *ent ){
 		}
 
 		level.raceState = RACE_STATE_COUNTDOWN;
+		G_RallyIntroCountdownHandover();
 		ent->pain_debounce_time = level.time;
 	}
 
 	if ( ent->pain_debounce_time == 0 ) {
 		level.raceState = RACE_STATE_COUNTDOWN;
+		G_RallyIntroCountdownHandover();
 		ent->pain_debounce_time = level.time;
 	}
 
