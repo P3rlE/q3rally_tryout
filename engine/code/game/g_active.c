@@ -528,6 +528,9 @@ SpectatorThink
 void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 	pmove_t	pm;
 	gclient_t	*client;
+	int		newState;
+	vec3_t	origin, angles;
+	int		clientNum;
 
 	client = ent->client;
 
@@ -603,9 +606,6 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 		if ( G_BlockSpectatorButtonsDuringIntro( ent ) ) {
 			return;
 		}
-		int			newState;
-		vec3_t		origin, angles;
-		int			clientNum;
 		
 		if( client->sess.spectatorState == SPECTATOR_FREE )
 			newState = SPECTATOR_OBSERVE;
