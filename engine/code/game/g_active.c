@@ -520,6 +520,39 @@ static void G_DebugIntroCamGuard( gentity_t *ent, const char *context ) {
 		level.time );
 }
 
+static void G_DebugRaceStateTransition( gentity_t *ent, const char *context, int oldState, int newState ) {
+	if ( !g_debugIntroCam.integer ) {
+		return;
+	}
+
+	G_Printf( "RaceStateFlip[%s]: clientNum=%d sessionTeam=%d spectatorState=%d pm_flags=%d raceState=%d->%d level.time=%d raceIntroEndTime=%d\n",
+		context ? context : "unknown",
+		ent ? ent->s.number : -1,
+		( ent && ent->client ) ? ent->client->sess.sessionTeam : -1,
+		( ent && ent->client ) ? ent->client->sess.spectatorState : -1,
+		( ent && ent->client ) ? ent->client->ps.pm_flags : -1,
+		oldState,
+		newState,
+		level.time,
+		level.raceIntroEndTime );
+}
+
+static void G_DebugClientRaceSnapshot( gentity_t *ent, const char *context ) {
+	if ( !g_debugIntroCam.integer ) {
+		return;
+	}
+
+	G_Printf( "RaceDebug[%s]: clientNum=%d sessionTeam=%d spectatorState=%d pm_flags=%d raceState=%d level.time=%d raceIntroEndTime=%d\n",
+		context ? context : "unknown",
+		ent ? ent->s.number : -1,
+		( ent && ent->client ) ? ent->client->sess.sessionTeam : -1,
+		( ent && ent->client ) ? ent->client->sess.spectatorState : -1,
+		( ent && ent->client ) ? ent->client->ps.pm_flags : -1,
+		level.raceState,
+		level.time,
+		level.raceIntroEndTime );
+}
+
 /*
 =================
 SpectatorThink
@@ -595,6 +628,7 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 	if ( ( client->buttons & BUTTON_ATTACK ) && ! ( client->oldbuttons & BUTTON_ATTACK ) 
 		&& !(ent->r.svFlags & SVF_BOT) ) {
 // END
+		G_DebugClientRaceSnapshot( ent, "SpectatorThink Attack edge" );
 		if ( G_BlockSpectatorButtonsDuringIntro( ent ) ) {
 			return;
 		}
@@ -603,6 +637,7 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 
 // STONELANCE
 	if ( ( client->buttons & BUTTON_REARATTACK ) && ! ( client->oldbuttons & BUTTON_REARATTACK ) ) {
+		G_DebugClientRaceSnapshot( ent, "SpectatorThink RearAttack edge (before)" );
 		if ( G_BlockSpectatorButtonsDuringIntro( ent ) ) {
 			return;
 		}
@@ -653,6 +688,7 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 
 			break;
 		}
+		G_DebugClientRaceSnapshot( ent, "SpectatorThink RearAttack edge (after)" );
 	}
 // END
 }
@@ -1893,6 +1929,8 @@ static qboolean G_IntroCam_GetNodeLookAt( const intro_cam_node_t *node, vec3_t l
 }
 
 static qboolean G_IntroCam_DisableSequence( gentity_t *ent, const char *reason ) {
+	int oldRaceState = level.raceState;
+
 	if ( !level.raceIntroSequenceWarned ) {
 		G_Printf( "Warning: Intro camera sequence invalid (%s); switching to countdown fallback.\n",
 			( reason && reason[0] ) ? reason : "unknown error" );
@@ -1903,6 +1941,7 @@ static qboolean G_IntroCam_DisableSequence( gentity_t *ent, const char *reason )
 	level.raceIntroFallback = qtrue;
 	level.raceIntroEndTime = 0;
 	level.raceState = RACE_STATE_COUNTDOWN;
+	G_DebugRaceStateTransition( ent, "G_IntroCam_DisableSequence", oldRaceState, level.raceState );
 
 	if ( ent && ent->client ) {
 		ent->client->ps.pm_flags &= ~( PMF_FOLLOW | PMF_OBSERVE );
@@ -1942,10 +1981,12 @@ static qboolean G_ApplyIntroCamSequence( gentity_t *ent ) {
 	}
 
 	if ( level.raceIntroEndTime > 0 && level.time >= level.raceIntroEndTime ) {
+		int oldRaceState = level.raceState;
 		level.raceState = RACE_STATE_COUNTDOWN;
 		level.raceIntroEndTime = 0;
 		ent->client->ps.pm_flags &= ~( PMF_FOLLOW | PMF_OBSERVE );
 		ent->updateTime = 0;
+		G_DebugRaceStateTransition( ent, "G_ApplyIntroCamSequence timeout", oldRaceState, level.raceState );
 		return qfalse;
 	}
 
@@ -2029,6 +2070,7 @@ static qboolean G_ApplyIntroCamSequence( gentity_t *ent ) {
 	VectorCopy( angles, ent->r.currentAngles );
 	ent->client->ps.pm_flags &= ~( PMF_FOLLOW | PMF_OBSERVE );
 	ent->client->ps.pm_flags |= ( PMF_FOLLOW | PMF_OBSERVE );
+	G_DebugClientRaceSnapshot( ent, "G_ApplyIntroCamSequence wrote camera state" );
 
 	if ( g_debugIntroCam.integer ) {
 		G_Printf( "IntroCam: node=%d next=%d elapsed=%dms/%dms t=%.3f blend=%.3f\n",
@@ -2070,6 +2112,7 @@ void SpectatorClientEndFrame( gentity_t *ent ) {
 	if ( G_ApplyIntroCamSequence( ent ) ) {
 		return;
 	}
+	G_DebugClientRaceSnapshot( ent, "After G_ApplyIntroCamSequence (fallthrough)" );
 
 	// if we are doing a chase cam or a remote view, grab the latest info
 	if ( ent->client->sess.spectatorState == SPECTATOR_FOLLOW ) {
