@@ -23,6 +23,110 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "g_local.h"
 
+static int G_ParseIntroCamBlendType( const char *blendName ) {
+	if ( !blendName || !blendName[0] ) {
+		return INTRO_CAM_BLEND_CUT;
+	}
+
+	if ( !Q_stricmp( blendName, "linear" ) ) {
+		return INTRO_CAM_BLEND_LINEAR;
+	}
+
+	if ( !Q_stricmp( blendName, "ease" ) || !Q_stricmp( blendName, "easeinout" ) ) {
+		return INTRO_CAM_BLEND_EASE_IN_OUT;
+	}
+
+	return INTRO_CAM_BLEND_CUT;
+}
+
+void G_ObserverCamSequence_RegisterSpot( gentity_t *ent ) {
+	int				nodeIndex;
+	int				order;
+	float				durationSeconds;
+	char				*sequenceName;
+	char				*blendName;
+	int				durationMs;
+	int				insertPos;
+	int				lookAtProvided;
+	int				hasOrder;
+	int				orderValue;
+
+	if ( !ent ) {
+		return;
+	}
+
+	G_SpawnString( "sequence", "", &sequenceName );
+	if ( sequenceName[0] && Q_stricmp( sequenceName, "intro" ) ) {
+		return;
+	}
+
+	if ( level.introCamNodeCount >= MAX_INTRO_CAM_NODES ) {
+		G_Printf( "Warning: Too many intro observer spots (max %i); ignoring '%s'\n",
+			MAX_INTRO_CAM_NODES, vtos( ent->s.origin ) );
+		level.raceIntroFallback = qtrue;
+		return;
+	}
+
+	order = level.introCamNodeCount;
+	hasOrder = G_SpawnInt( "order", "0", &orderValue );
+	if ( hasOrder ) {
+		order = orderValue;
+	}
+
+	durationSeconds = 0.0f;
+	G_SpawnFloat( "duration", "0", &durationSeconds );
+	durationMs = ( durationSeconds > 0.0f ) ? (int)( durationSeconds * 1000.0f ) : 1000;
+
+	nodeIndex = level.introCamNodeCount;
+	VectorCopy( ent->s.origin, level.introCamNodes[nodeIndex].position );
+	VectorCopy( ent->s.angles, level.introCamNodes[nodeIndex].angles );
+	level.introCamNodes[nodeIndex].durationMs = durationMs;
+	level.introCamNodes[nodeIndex].order = order;
+	level.introCamNodes[nodeIndex].hasLookAt = qfalse;
+
+	G_SpawnString( "blend", "", &blendName );
+	level.introCamNodes[nodeIndex].blendType = G_ParseIntroCamBlendType( blendName );
+
+	lookAtProvided = G_SpawnVector( "lookat", "0 0 0", level.introCamNodes[nodeIndex].lookAt );
+	if ( lookAtProvided ) {
+		level.introCamNodes[nodeIndex].hasLookAt = qtrue;
+	}
+
+	level.introCamNodeCount++;
+
+	insertPos = nodeIndex;
+	while ( insertPos > 0 && level.introCamNodes[insertPos - 1].order > level.introCamNodes[insertPos].order ) {
+		intro_cam_node_t tmp;
+		tmp = level.introCamNodes[insertPos - 1];
+		level.introCamNodes[insertPos - 1] = level.introCamNodes[insertPos];
+		level.introCamNodes[insertPos] = tmp;
+		insertPos--;
+	}
+
+}
+
+void G_ObserverCamSequence_Finalize( void ) {
+	int i;
+
+	level.raceIntroDurationMs = 0;
+	level.raceIntroHasSequence = ( level.introCamNodeCount > 0 ) ? qtrue : qfalse;
+
+	if ( !level.raceIntroHasSequence ) {
+		level.raceIntroFallback = qtrue;
+		G_Printf( "Info: No intro camera sequence found; using countdown fallback.\n" );
+		return;
+	}
+
+	for ( i = 0; i < level.introCamNodeCount; i++ ) {
+		level.raceIntroDurationMs += level.introCamNodes[i].durationMs;
+	}
+
+	if ( level.raceIntroDurationMs <= 0 ) {
+		level.raceIntroFallback = qtrue;
+		level.raceIntroHasSequence = qfalse;
+		G_Printf( "Warning: Intro camera sequence has invalid duration; using countdown fallback.\n" );
+	}
+}
 
 void SP_info_observer_spot( gentity_t *ent ){
 	G_SetOrigin(ent, ent->s.origin);
@@ -31,6 +135,8 @@ void SP_info_observer_spot( gentity_t *ent ){
 	{
 		ent->spawnflags |= OBSERVERCAM_FIXED;
 	}
+
+	G_ObserverCamSequence_RegisterSpot( ent );
 }
 
 

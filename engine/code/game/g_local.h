@@ -90,6 +90,24 @@ typedef enum {
 	RACE_STATE_RUNNING
 } raceState_t;
 
+#define MAX_INTRO_CAM_NODES	64
+
+typedef enum {
+	INTRO_CAM_BLEND_CUT = 0,
+	INTRO_CAM_BLEND_LINEAR,
+	INTRO_CAM_BLEND_EASE_IN_OUT
+} intro_cam_blend_t;
+
+typedef struct {
+	vec3_t			position;
+	vec3_t			angles;
+	int			durationMs;
+	int			order;
+	int			blendType;
+	qboolean		hasLookAt;
+	vec3_t			lookAt;
+} intro_cam_node_t;
+
 #define SP_PODIUM_MODEL		"models/mapobjects/podium/podium4.md3"
 
 //============================================================================
@@ -629,6 +647,9 @@ typedef struct {
 	// race variables
 	raceState_t	raceState;
 	int			raceIntroEndTime;
+	int			raceIntroDurationMs;
+	qboolean		raceIntroHasSequence;
+	qboolean		raceIntroFallback;
 	int			startRaceTime;
 	int			finishRaceTime;
 	int			winnerNumber;
@@ -653,6 +674,9 @@ typedef struct {
         char            ladderMatchId[LADDER_MAX_MATCH_ID];
 
         int                     testModelID;
+
+	int			introCamNodeCount;
+	intro_cam_node_t	introCamNodes[MAX_INTRO_CAM_NODES];
 // END
 } level_locals_t;
 
@@ -901,6 +925,8 @@ void G_StartKamikaze( gentity_t *ent );
 
 gentity_t *FindBestObserverSpot( gentity_t *self, gentity_t *target, vec3_t spot, vec3_t angles);
 void UpdateObserverSpot( gentity_t *ent, qboolean forceUpdate );
+void G_ObserverCamSequence_RegisterSpot( gentity_t *ent );
+void G_ObserverCamSequence_Finalize( void );
 
 //
 // g_rally_mapobjects.c
