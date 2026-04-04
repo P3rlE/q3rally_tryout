@@ -29,6 +29,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define TESTABLE_STATIC static
 #endif
 
+#define RALLY_INTRO_CAM_DURATION_MS 3000
+
 
 int GetTeamAtRank( int rank ){
 	int		i, j, count;
@@ -409,6 +411,8 @@ void RallyStarter_Think( gentity_t *ent ){
 	qboolean	ignoreBots;
 
 	if (level.startRaceTime){
+		level.raceState = RACE_STATE_RUNNING;
+		level.raceIntroEndTime = 0;
 		return;
 	}
 
@@ -433,6 +437,8 @@ void RallyStarter_Think( gentity_t *ent ){
 			}
 
 			// start race right away
+			level.raceState = RACE_STATE_RUNNING;
+			level.raceIntroEndTime = 0;
 			level.startRaceTime = level.time;
 			G_RallyInitializeLapTimersAtRaceStart( level.startRaceTime );
 			trap_SendServerCommand( -1, va("raceTime %i", level.startRaceTime) );
@@ -491,10 +497,16 @@ void RallyStarter_Think( gentity_t *ent ){
 		}
 		else if ( start && count ){
 			ent->number = 3;
+			level.raceState = RACE_STATE_INTRO_CAM;
+			level.raceIntroEndTime = level.time + RALLY_INTRO_CAM_DURATION_MS;
+			ent->pain_debounce_time = 0;
 			G_RallyConfigureElimination( count );
 		}
 		else if ( level.time >= level.startTime + (g_forceEngineStart.integer * 1000) ) {
 			ent->number = 3; // force race start
+			level.raceState = RACE_STATE_INTRO_CAM;
+			level.raceIntroEndTime = level.time + RALLY_INTRO_CAM_DURATION_MS;
+			ent->pain_debounce_time = 0;
 			G_RallyConfigureElimination( count );
 		}
 		else if (ent->number == 0 && level.time > level.startTime + (g_forceEngineStart.integer * 1000) - 10000){
@@ -506,10 +518,24 @@ void RallyStarter_Think( gentity_t *ent ){
 		}
 	}
 
-	if ( ent->pain_debounce_time == 0 )
+	if ( level.raceState == RACE_STATE_INTRO_CAM ) {
+		CenterPrint_All( "Intro camera..." );
+		if ( level.time < level.raceIntroEndTime ) {
+			return;
+		}
+
+		level.raceState = RACE_STATE_COUNTDOWN;
 		ent->pain_debounce_time = level.time;
+	}
+
+	if ( ent->pain_debounce_time == 0 ) {
+		level.raceState = RACE_STATE_COUNTDOWN;
+		ent->pain_debounce_time = level.time;
+	}
 
 	if ( level.time > ent->pain_debounce_time + 5000 ){
+		level.raceState = RACE_STATE_RUNNING;
+		level.raceIntroEndTime = 0;
 		level.startRaceTime = level.time;
 		// Snapshot how many players were present at race start.
 		// Used by CheckExitRules to prevent a solo-start instant win.
