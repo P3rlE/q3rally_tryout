@@ -622,43 +622,45 @@ void RallyStarter_Think( gentity_t *ent ){
 		}
 		else if ( start && count ){
 			ent->number = 3;
-			if ( useIntroRaceState && level.raceIntroHasSequence ) {
-				int oldRaceState = level.raceState;
-				level.raceState = RACE_STATE_INTRO_CAM;
-				level.raceIntroEndTime = level.time + introDurationMs;
-				G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage start -> INTRO_CAM", oldRaceState, level.raceState );
-				G_RallySnapshotIntroGridPositions();
-			} else {
-				if ( useIntroRaceState && !level.raceIntroHasSequence ) {
-					level.raceIntroFallback = qtrue;
+				if ( useIntroRaceState && level.raceIntroHasSequence ) {
+					int oldRaceState = level.raceState;
+					level.raceState = RACE_STATE_INTRO_CAM;
+					level.raceIntroEndTime = level.time + introDurationMs;
+					G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage start -> INTRO_CAM", oldRaceState, level.raceState );
+					G_RallySnapshotIntroGridPositions();
+				} else {
+					int oldRaceState = level.raceState;
+
+					if ( useIntroRaceState && !level.raceIntroHasSequence ) {
+						level.raceIntroFallback = qtrue;
+					}
+					level.raceState = RACE_STATE_COUNTDOWN;
+					level.raceIntroEndTime = 0;
+					G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage start -> COUNTDOWN", oldRaceState, level.raceState );
+					G_RallyClearIntroGridSnapshots();
 				}
-				int oldRaceState = level.raceState;
-				level.raceState = RACE_STATE_COUNTDOWN;
-				level.raceIntroEndTime = 0;
-				G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage start -> COUNTDOWN", oldRaceState, level.raceState );
-				G_RallyClearIntroGridSnapshots();
-			}
 			ent->pain_debounce_time = 0;
 			G_RallyConfigureElimination( count );
 		}
 		else if ( level.time >= level.startTime + (g_forceEngineStart.integer * 1000) ) {
 			ent->number = 3; // force race start
-			if ( useIntroRaceState && level.raceIntroHasSequence ) {
-				int oldRaceState = level.raceState;
-				level.raceState = RACE_STATE_INTRO_CAM;
-				level.raceIntroEndTime = level.time + introDurationMs;
-				G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage forced start -> INTRO_CAM", oldRaceState, level.raceState );
-				G_RallySnapshotIntroGridPositions();
-			} else {
-				if ( useIntroRaceState && !level.raceIntroHasSequence ) {
-					level.raceIntroFallback = qtrue;
+				if ( useIntroRaceState && level.raceIntroHasSequence ) {
+					int oldRaceState = level.raceState;
+					level.raceState = RACE_STATE_INTRO_CAM;
+					level.raceIntroEndTime = level.time + introDurationMs;
+					G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage forced start -> INTRO_CAM", oldRaceState, level.raceState );
+					G_RallySnapshotIntroGridPositions();
+				} else {
+					int oldRaceState = level.raceState;
+
+					if ( useIntroRaceState && !level.raceIntroHasSequence ) {
+						level.raceIntroFallback = qtrue;
+					}
+					level.raceState = RACE_STATE_COUNTDOWN;
+					level.raceIntroEndTime = 0;
+					G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage forced start -> COUNTDOWN", oldRaceState, level.raceState );
+					G_RallyClearIntroGridSnapshots();
 				}
-				int oldRaceState = level.raceState;
-				level.raceState = RACE_STATE_COUNTDOWN;
-				level.raceIntroEndTime = 0;
-				G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage forced start -> COUNTDOWN", oldRaceState, level.raceState );
-				G_RallyClearIntroGridSnapshots();
-			}
 			ent->pain_debounce_time = 0;
 			G_RallyConfigureElimination( count );
 		}
