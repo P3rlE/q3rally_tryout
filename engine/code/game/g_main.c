@@ -1280,6 +1280,8 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 
 	// set some level globals
 	memset( &level, 0, sizeof( level ) );
+	level.raceState = RACE_STATE_NONE;
+	level.raceIntroEndTime = 0;
         level.time = levelTime;
         level.startTime = levelTime;
         level.ladderStartEpoch = trap_RealTime( &level.ladderStartTime );
@@ -2840,6 +2842,8 @@ void CheckTournament( void ) {
 	if ( g_gametype.integer != GT_SINGLE_PLAYER && level.warmupTime != 0 ) {
 		int		counts[TEAM_NUM_TEAMS];
 		qboolean	notEnough = qfalse;
+		level.raceState = RACE_STATE_NONE;
+		level.raceIntroEndTime = 0;
 
 		if ( g_gametype.integer >= GT_TEAM ) {
 			counts[TEAM_BLUE] = TeamCount( -1, TEAM_BLUE );
@@ -3119,6 +3123,8 @@ void G_RunFrame( int levelTime ) {
 	// if we are waiting for the level to restart, do nothing
 	if ( level.restarted ) {
 // STONELANCE
+		level.raceState = RACE_STATE_NONE;
+		level.raceIntroEndTime = 0;
 		level.startRaceTime = 0;
 		level.finishRaceTime = 0;
 		level.winnerNumber = -1;
