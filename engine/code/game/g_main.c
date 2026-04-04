@@ -1287,6 +1287,12 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	memset( &level, 0, sizeof( level ) );
 	level.raceState = RACE_STATE_NONE;
 	level.raceIntroEndTime = 0;
+	/* Preserve restart flag so the intro camera knows not to play again.
+	   raceIntroFallback=qtrue suppresses the early-intro trigger in
+	   RallyStarter_Think for all map_restart calls within a session. */
+	if ( restart ) {
+		level.raceIntroFallback = qtrue;
+	}
         level.time = levelTime;
         level.startTime = levelTime;
         level.ladderStartEpoch = trap_RealTime( &level.ladderStartTime );

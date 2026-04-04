@@ -530,6 +530,7 @@ void RallyStarter_Think( gentity_t *ent ){
 		|| g_gametype.integer == GT_SPRINT
 		|| g_gametype.integer == GT_ELIMINATION ) ? qtrue : qfalse;
 	introDurationMs = level.raceIntroDurationMs > 0 ? level.raceIntroDurationMs : RALLY_INTRO_CAM_DURATION_MS;
+	ignoreBots = g_rallyIgnoreBots.integer;
 
 	if (level.startRaceTime){
 		{
@@ -539,6 +540,37 @@ void RallyStarter_Think( gentity_t *ent ){
 			G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage countdown finished -> RUNNING", oldRaceState, level.raceState );
 		}
 		return;
+	}
+
+	/* Fire intro camera as early as possible -- before the 7500ms grid guard --
+	   so players see the track preview instead of sitting on the grid.
+	   raceIntroFallback is pre-set to qtrue in G_InitGame when restart=1,
+	   so the intro only plays on the initial map load, not after every race.
+	   We count connected non-spectator clients independently of the
+	   main ready-check loop below. */
+	if ( useIntroRaceState && level.raceIntroHasSequence
+		&& level.raceState != RACE_STATE_INTRO_CAM
+		&& !level.raceIntroFallback ) {
+		int introCount = 0;
+		for ( i = 0; i < MAX_CLIENTS; i++ ) {
+			player = &g_entities[i];
+			if ( !player->inuse || !player->client ) continue;
+			if ( player->client->sess.sessionTeam == TEAM_SPECTATOR ) continue;
+			if ( (player->r.svFlags & SVF_BOT) && ignoreBots ) continue;
+			introCount++;
+		}
+		if ( introCount > 0 ) {
+			int oldRaceState = level.raceState;
+			level.raceState = RACE_STATE_INTRO_CAM;
+			level.raceIntroEndTime = level.time + introDurationMs;
+			level.raceIntroFallback = qtrue;  /* prevent re-trigger after expiry */
+			G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage early intro -> INTRO_CAM", oldRaceState, level.raceState );
+			trap_SendServerCommand( -1, va( "introCamStart %d", level.time ) );
+			G_RallySnapshotIntroGridPositions();
+			ent->number = 3;
+			ent->pain_debounce_time = 0;
+			G_RallyConfigureElimination( introCount );
+		}
 	}
 
 	// if no checkpoints dont do start sequence
@@ -577,7 +609,6 @@ void RallyStarter_Think( gentity_t *ent ){
 	t = NULL;
 
 	enforceReady = g_gametype.integer != GT_SINGLE_PLAYER && g_rallyReadyCheck.integer;
-	ignoreBots = g_rallyIgnoreBots.integer;
 
 	if ( ent->number == 0 ){
 
@@ -620,22 +651,11 @@ void RallyStarter_Think( gentity_t *ent ){
 				count, g_derbyMinPlayers.integer) );
 			return;
 		}
-		/*
-		 * Start intro preview as soon as we enter the populated pre-race phase,
-		 * before Fire/Use ready interaction can advance any later start step.
-		 * This keeps flow deterministic: PRE-RACE -> INTRO_CAM -> COUNTDOWN.
-		 */
-		if ( useIntroRaceState && level.raceIntroHasSequence ) {
-			if ( level.raceState != RACE_STATE_INTRO_CAM ) {
-				int oldRaceState = level.raceState;
-				level.raceState = RACE_STATE_INTRO_CAM;
-				level.raceIntroEndTime = level.time + introDurationMs;
-				G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage pre-race entry -> INTRO_CAM", oldRaceState, level.raceState );
-				G_RallySnapshotIntroGridPositions();
-				ent->number = 3;
-				ent->pain_debounce_time = 0;
-				G_RallyConfigureElimination( count );
-			}
+		/* Intro is now triggered early (before the 7500ms grid guard) if a
+		   sequence exists. If we reach here and INTRO_CAM is already active,
+		   do nothing -- the intro expiry block below handles the handover. */
+		if ( level.raceState == RACE_STATE_INTRO_CAM ) {
+			/* waiting for intro to finish */
 		}
 		else if ( start && count ){
 			ent->number = 3;
@@ -679,7 +699,6 @@ void RallyStarter_Think( gentity_t *ent ){
 	}
 
 	if ( level.raceState == RACE_STATE_INTRO_CAM ) {
-		CenterPrint_All( "Intro camera..." );
 		if ( level.time < level.raceIntroEndTime ) {
 			return;
 		}

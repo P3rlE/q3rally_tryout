@@ -501,7 +501,7 @@ static void G_ApplyIntroInputLock( gentity_t *ent, usercmd_t *ucmd ) {
 			secondsLeft = 1;
 		}
 		trap_SendServerCommand( ent - g_entities,
-			va( "cp \"Track Preview\\nRace starts in %i...\"", secondsLeft ) );
+			va( "cp \"Track Preview - Race starts in %i...\"", secondsLeft ) );
 		ent->updateTime = level.time + 1000;
 	}
 }

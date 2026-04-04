@@ -239,11 +239,58 @@ void G_ObserverCamSequence_RegisterSpot( gentity_t *ent ) {
 			G_Printf( "Warning: Intro observer spot at %s has both lookat and lookat_target; keeping lookat vector.\n",
 				vtos( ent->s.origin ) );
 		} else {
-			level.introCamNodes[nodeIndex].lookAtTargetName = lookAtTargetName;
+			/* CopyString: spawn strings are temporary; we need a persistent copy. */
+			level.introCamNodes[nodeIndex].lookAtTargetName = G_NewString( lookAtTargetName );
 		}
 	}
 
 	level.introCamNodeCount++;
+}
+
+void G_ObserverCamSequence_WriteConfigstring( void ) {
+	char	buf[MAX_INFO_STRING];
+	char	node_buf[128];
+	int		pos, i, len, remaining;
+
+	if ( !level.raceIntroHasSequence || level.introCamNodeCount <= 0 ) {
+		trap_SetConfigstring( CS_INTRO_CAM, "" );
+		return;
+	}
+
+	pos       = Com_sprintf( buf, sizeof( buf ), "%d", level.introCamNodeCount );
+	remaining = (int)sizeof( buf ) - pos - 1;
+
+	for ( i = 0; i < level.introCamNodeCount; i++ ) {
+		const intro_cam_node_t *n = &level.introCamNodes[i];
+
+		if ( n->hasLookAt ) {
+			len = Com_sprintf( node_buf, sizeof( node_buf ),
+				" %.1f %.1f %.1f %.1f %.1f %.1f %d %d %.1f 1 %.1f %.1f %.1f",
+				n->position[0], n->position[1], n->position[2],
+				n->angles[0],   n->angles[1],   n->angles[2],
+				n->durationMs,  n->blendType,   n->fov,
+				n->lookAt[0],   n->lookAt[1],   n->lookAt[2] );
+		} else {
+			len = Com_sprintf( node_buf, sizeof( node_buf ),
+				" %.1f %.1f %.1f %.1f %.1f %.1f %d %d %.1f 0",
+				n->position[0], n->position[1], n->position[2],
+				n->angles[0],   n->angles[1],   n->angles[2],
+				n->durationMs,  n->blendType,   n->fov );
+		}
+
+		if ( len >= remaining ) {
+			G_Printf( "Warning: CS_INTRO_CAM overflow at node %d/%d. "
+				"Reduce node count.\n", i, level.introCamNodeCount );
+			break;
+		}
+
+		Q_strcat( buf, sizeof( buf ), node_buf );
+		remaining -= len;
+	}
+
+	trap_SetConfigstring( CS_INTRO_CAM, buf );
+	G_Printf( "Info: CS_INTRO_CAM written (%d bytes, %d nodes).\n",
+		(int)strlen( buf ), level.introCamNodeCount );
 }
 
 void G_ObserverCamSequence_Finalize( void ) {
@@ -278,7 +325,13 @@ void G_ObserverCamSequence_Finalize( void ) {
 		level.raceIntroFallback = qtrue;
 		level.raceIntroHasSequence = qfalse;
 		G_Printf( "Warning: Intro camera sequence has invalid duration; using countdown fallback.\n" );
+		return;
 	}
+
+	/* Serialise sequence into CS_INTRO_CAM for client-side evaluation.
+	   The client reads this once and evaluates it at full framerate,
+	   eliminating the 20 Hz stutter from server-driven ps updates. */
+	G_ObserverCamSequence_WriteConfigstring();
 }
 
 /*
