@@ -100,6 +100,7 @@ void UpdateObserverSpot( gentity_t *ent, qboolean forceUpdate ){
 	vec3_t			origin, angles;
 	trace_t			tr;
 	int				clientNum;
+	gclient_t		*targetClient;
 	static vec3_t	mins = { -4, -4, -4 };
 	static vec3_t	maxs = { 4, 4, 4 };
 
@@ -118,7 +119,20 @@ void UpdateObserverSpot( gentity_t *ent, qboolean forceUpdate ){
 		return;
 	}
 
-	trap_Trace( &tr, ent->client->ps.origin, mins, maxs, level.clients[clientNum].ps.origin, ent->s.number, CONTENTS_SOLID );
+	if ( clientNum < 0 || clientNum >= level.maxclients )
+	{
+		StopFollowing( ent );
+		return;
+	}
+
+	targetClient = &level.clients[clientNum];
+	if ( targetClient->pers.connected != CON_CONNECTED || targetClient->sess.sessionTeam == TEAM_SPECTATOR )
+	{
+		ent->client->sess.spectatorState = SPECTATOR_FOLLOW;
+		return;
+	}
+
+	trap_Trace( &tr, ent->client->ps.origin, mins, maxs, targetClient->ps.origin, ent->s.number, CONTENTS_SOLID );
 	if ( forceUpdate || tr.fraction < 1 )
 	{
 		if ( !FindBestObserverSpot(ent, &g_entities[clientNum], origin, angles) )
@@ -144,4 +158,3 @@ void UpdateObserverSpot( gentity_t *ent, qboolean forceUpdate ){
 		ent->updateTime = level.time;
 	}
 }
-
