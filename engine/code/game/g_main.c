@@ -2840,11 +2840,9 @@ void CheckTournament( void ) {
 */
 // END
 	if ( g_gametype.integer != GT_SINGLE_PLAYER && level.warmupTime != 0 ) {
-		level.raceState = RACE_STATE_NONE;
-		level.raceIntroEndTime = 0;
-
 		int		counts[TEAM_NUM_TEAMS];
 		qboolean	notEnough = qfalse;
+
 		level.raceState = RACE_STATE_NONE;
 		level.raceIntroEndTime = 0;
 
