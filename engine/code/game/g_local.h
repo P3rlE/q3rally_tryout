@@ -652,6 +652,7 @@ typedef struct {
 	int			raceIntroDurationMs;
 	qboolean		raceIntroHasSequence;
 	qboolean		raceIntroFallback;
+	qboolean		raceIntroSequenceWarned;
 	int			startRaceTime;
 	int			finishRaceTime;
 	int			winnerNumber;
@@ -1200,6 +1201,7 @@ extern	vmCvar_t	g_developer;
 extern	vmCvar_t	g_rallyReadyCheck;
 extern	vmCvar_t	g_derbyMinPlayers;
 extern	vmCvar_t	g_rallyIntroCamClients;
+extern	vmCvar_t	g_debugIntroCam;
 void G_RallyUpdateAllTeamTimes( void );
 extern	vmCvar_t	g_rallyIgnoreBots;
 extern	vmCvar_t	g_aiDmnetDebugExport;

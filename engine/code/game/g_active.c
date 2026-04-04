@@ -1847,6 +1847,26 @@ static qboolean G_IntroCam_GetNodeLookAt( const intro_cam_node_t *node, vec3_t l
 	return qfalse;
 }
 
+static qboolean G_IntroCam_DisableSequence( gentity_t *ent, const char *reason ) {
+	if ( !level.raceIntroSequenceWarned ) {
+		G_Printf( "Warning: Intro camera sequence invalid (%s); switching to countdown fallback.\n",
+			( reason && reason[0] ) ? reason : "unknown error" );
+		level.raceIntroSequenceWarned = qtrue;
+	}
+
+	level.raceIntroHasSequence = qfalse;
+	level.raceIntroFallback = qtrue;
+	level.raceIntroEndTime = 0;
+	level.raceState = RACE_STATE_COUNTDOWN;
+
+	if ( ent && ent->client ) {
+		ent->client->ps.pm_flags &= ~( PMF_FOLLOW | PMF_OBSERVE );
+		ent->updateTime = 0;
+	}
+
+	return qfalse;
+}
+
 static qboolean G_ApplyIntroCamSequence( gentity_t *ent ) {
 	int nodeIndex;
 	int nextNodeIndex;
@@ -1854,6 +1874,7 @@ static qboolean G_ApplyIntroCamSequence( gentity_t *ent ) {
 	int elapsed;
 	int segmentStart;
 	int nodeCount;
+	qboolean foundSegment;
 	float t;
 	float blend;
 	vec3_t origin;
@@ -1867,8 +1888,12 @@ static qboolean G_ApplyIntroCamSequence( gentity_t *ent ) {
 	}
 
 	nodeCount = level.introCamNodeCount;
-	if ( nodeCount <= 0 ) {
-		return qfalse;
+	if ( nodeCount <= 0 || nodeCount > MAX_INTRO_CAM_NODES ) {
+		return G_IntroCam_DisableSequence( ent, "empty or out-of-range node count" );
+	}
+
+	if ( level.raceIntroDurationMs <= 0 ) {
+		return G_IntroCam_DisableSequence( ent, "invalid total duration" );
 	}
 
 	if ( level.raceIntroEndTime > 0 && level.time >= level.raceIntroEndTime ) {
@@ -1897,11 +1922,12 @@ static qboolean G_ApplyIntroCamSequence( gentity_t *ent ) {
 		nodeIndex = 0;
 		nextNodeIndex = 0;
 		t = 0.0f;
+		foundSegment = qfalse;
 
 		for ( nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++ ) {
 			int segmentDuration = level.introCamNodes[nodeIndex].durationMs;
 			if ( segmentDuration <= 0 ) {
-				segmentDuration = 1;
+				continue;
 			}
 
 			if ( nodeIndex == nodeCount - 1 || elapsed < segmentStart + segmentDuration ) {
@@ -1912,11 +1938,20 @@ static qboolean G_ApplyIntroCamSequence( gentity_t *ent ) {
 				} else if ( t > 1.0f ) {
 					t = 1.0f;
 				}
+				foundSegment = qtrue;
 				break;
 			}
 
 			segmentStart += segmentDuration;
 		}
+
+		if ( !foundSegment ) {
+			return G_IntroCam_DisableSequence( ent, "no valid segment in sequence" );
+		}
+	}
+
+	if ( nodeIndex < 0 || nodeIndex >= nodeCount || nextNodeIndex < 0 || nextNodeIndex >= nodeCount ) {
+		return G_IntroCam_DisableSequence( ent, "node index out of bounds" );
 	}
 
 	node = &level.introCamNodes[nodeIndex];
@@ -1949,6 +1984,12 @@ static qboolean G_ApplyIntroCamSequence( gentity_t *ent ) {
 	VectorCopy( angles, ent->r.currentAngles );
 	ent->client->ps.pm_flags &= ~( PMF_FOLLOW | PMF_OBSERVE );
 	ent->client->ps.pm_flags |= ( PMF_FOLLOW | PMF_OBSERVE );
+
+	if ( g_debugIntroCam.integer ) {
+		G_Printf( "IntroCam: node=%d next=%d elapsed=%dms/%dms t=%.3f blend=%.3f\n",
+			nodeIndex, nextNodeIndex, elapsed, level.raceIntroDurationMs, t, blend );
+	}
+
 	return qtrue;
 }
 
