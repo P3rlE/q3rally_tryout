@@ -1199,6 +1199,7 @@ extern	vmCvar_t	g_trackLength;
 extern	vmCvar_t	g_developer;
 extern	vmCvar_t	g_rallyReadyCheck;
 extern	vmCvar_t	g_derbyMinPlayers;
+extern	vmCvar_t	g_rallyIntroCamClients;
 void G_RallyUpdateAllTeamTimes( void );
 extern	vmCvar_t	g_rallyIgnoreBots;
 extern	vmCvar_t	g_aiDmnetDebugExport;

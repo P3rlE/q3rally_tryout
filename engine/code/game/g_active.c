@@ -447,10 +447,32 @@ static qboolean G_IsIntroCamActive( void ) {
 	return ( level.raceState == RACE_STATE_INTRO_CAM && level.raceIntroEndTime > level.time );
 }
 
+static qboolean G_ClientShouldUseIntroCam( gentity_t *ent ) {
+	if ( !ent || !ent->client || !G_IsIntroCamActive() ) {
+		return qfalse;
+	}
+
+	// Keep bots/AI out of intro camera flow so their vehicle logic remains deterministic.
+	if ( ent->r.svFlags & SVF_BOT ) {
+		return qfalse;
+	}
+
+	if ( isRaceObserver( ent->s.number ) || ent->client->sess.sessionTeam == TEAM_SPECTATOR ) {
+		return qtrue;
+	}
+
+	// Optional mode: include active human players before race start.
+	if ( g_rallyIntroCamClients.integer > 0 && !level.startRaceTime ) {
+		return qtrue;
+	}
+
+	return qfalse;
+}
+
 static void G_ApplyIntroInputLock( gentity_t *ent, usercmd_t *ucmd ) {
 	int secondsLeft;
 
-	if ( !ent || !ent->client || !ucmd || !G_IsIntroCamActive() ) {
+	if ( !ent || !ent->client || !ucmd || !G_ClientShouldUseIntroCam( ent ) ) {
 		return;
 	}
 
@@ -482,7 +504,7 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 
 	client = ent->client;
 
-	if ( G_IsIntroCamActive() ) {
+	if ( G_ClientShouldUseIntroCam( ent ) ) {
 		G_ApplyIntroInputLock( ent, ucmd );
 	}
 
@@ -1074,7 +1096,7 @@ void ClientThink_real( gentity_t *ent ) {
 		return;
 	}
 
-	if ( G_IsIntroCamActive() ) {
+	if ( G_ClientShouldUseIntroCam( ent ) ) {
 		G_ApplyIntroInputLock( ent, ucmd );
 	}
 
@@ -2153,10 +2175,8 @@ while a slow client may have multiple ClientEndFrame between ClientThink.
 void ClientEndFrame( gentity_t *ent ) {
 	int			i;
 
-// STONELANCE
-//	if ( ent->client->sess.sessionTeam == TEAM_SPECTATOR ) {
-	if ( ent->client->sess.sessionTeam == TEAM_SPECTATOR || isRaceObserver( ent->s.number ) ){
-// END
+	if ( ent->client->sess.sessionTeam == TEAM_SPECTATOR || isRaceObserver( ent->s.number ) ||
+		G_ClientShouldUseIntroCam( ent ) ) {
 		SpectatorClientEndFrame( ent );
 		return;
 	}
