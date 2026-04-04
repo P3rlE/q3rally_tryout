@@ -442,6 +442,35 @@ void	G_TouchTriggers( gentity_t *ent ) {
 	}
 }
 
+
+static qboolean G_IsIntroCamActive( void ) {
+	return ( level.raceState == RACE_STATE_INTRO_CAM && level.raceIntroEndTime > level.time );
+}
+
+static void G_ApplyIntroInputLock( gentity_t *ent, usercmd_t *ucmd ) {
+	int secondsLeft;
+
+	if ( !ent || !ent->client || !ucmd || !G_IsIntroCamActive() ) {
+		return;
+	}
+
+	ucmd->buttons &= ~( BUTTON_ATTACK | BUTTON_REARATTACK | BUTTON_USE_HOLDABLE );
+	ucmd->forwardmove = 0;
+	ucmd->rightmove = 0;
+	ucmd->upmove = 0;
+	ucmd->weapon = WP_NONE;
+
+	if ( ent->updateTime <= level.time ) {
+		secondsLeft = ( level.raceIntroEndTime - level.time + 999 ) / 1000;
+		if ( secondsLeft < 1 ) {
+			secondsLeft = 1;
+		}
+		trap_SendServerCommand( ent - g_entities,
+			va( "cp \"Track Preview\\nRace starts in %i...\"", secondsLeft ) );
+		ent->updateTime = level.time + 1000;
+	}
+}
+
 /*
 =================
 SpectatorThink
@@ -452,6 +481,10 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 	gclient_t	*client;
 
 	client = ent->client;
+
+	if ( G_IsIntroCamActive() ) {
+		G_ApplyIntroInputLock( ent, ucmd );
+	}
 
 // STONELANCE
 //	if ( client->sess.spectatorState != SPECTATOR_FOLLOW ) {
@@ -1039,6 +1072,10 @@ void ClientThink_real( gentity_t *ent ) {
 	if ( level.intermissiontime ) {
 		ClientIntermissionThink( client );
 		return;
+	}
+
+	if ( G_IsIntroCamActive() ) {
+		G_ApplyIntroInputLock( ent, ucmd );
 	}
 
 	// spectators don't do much
@@ -1815,6 +1852,8 @@ static qboolean G_ApplyIntroCamSequence( gentity_t *ent ) {
 	if ( level.raceIntroEndTime > 0 && level.time >= level.raceIntroEndTime ) {
 		level.raceState = RACE_STATE_COUNTDOWN;
 		level.raceIntroEndTime = 0;
+		ent->client->ps.pm_flags &= ~( PMF_FOLLOW | PMF_OBSERVE );
+		ent->updateTime = 0;
 		return qfalse;
 	}
 
@@ -1886,7 +1925,8 @@ static qboolean G_ApplyIntroCamSequence( gentity_t *ent ) {
 	VectorCopy( origin, ent->r.currentOrigin );
 	VectorCopy( angles, ent->s.angles );
 	VectorCopy( angles, ent->r.currentAngles );
-	ent->client->ps.pm_flags |= PMF_FOLLOW;
+	ent->client->ps.pm_flags &= ~( PMF_FOLLOW | PMF_OBSERVE );
+	ent->client->ps.pm_flags |= ( PMF_FOLLOW | PMF_OBSERVE );
 	return qtrue;
 }
 
