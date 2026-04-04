@@ -410,6 +410,7 @@ void RallyStarter_Think( gentity_t *ent ){
 	qboolean	enforceReady;
 	qboolean	ignoreBots;
 	qboolean	useIntroRaceState;
+	int			introDurationMs;
 
 	useIntroRaceState = ( g_gametype.integer == GT_RACING
 		|| g_gametype.integer == GT_RACING_DM
@@ -417,6 +418,7 @@ void RallyStarter_Think( gentity_t *ent ){
 		|| g_gametype.integer == GT_TEAM_RACING_DM
 		|| g_gametype.integer == GT_SPRINT
 		|| g_gametype.integer == GT_ELIMINATION ) ? qtrue : qfalse;
+	introDurationMs = level.raceIntroDurationMs > 0 ? level.raceIntroDurationMs : RALLY_INTRO_CAM_DURATION_MS;
 
 	if (level.startRaceTime){
 		level.raceState = RACE_STATE_RUNNING;
@@ -505,10 +507,13 @@ void RallyStarter_Think( gentity_t *ent ){
 		}
 		else if ( start && count ){
 			ent->number = 3;
-			if ( useIntroRaceState ) {
+			if ( useIntroRaceState && level.raceIntroHasSequence ) {
 				level.raceState = RACE_STATE_INTRO_CAM;
-				level.raceIntroEndTime = level.time + RALLY_INTRO_CAM_DURATION_MS;
+				level.raceIntroEndTime = level.time + introDurationMs;
 			} else {
+				if ( useIntroRaceState && !level.raceIntroHasSequence ) {
+					level.raceIntroFallback = qtrue;
+				}
 				level.raceState = RACE_STATE_COUNTDOWN;
 				level.raceIntroEndTime = 0;
 			}
@@ -517,10 +522,13 @@ void RallyStarter_Think( gentity_t *ent ){
 		}
 		else if ( level.time >= level.startTime + (g_forceEngineStart.integer * 1000) ) {
 			ent->number = 3; // force race start
-			if ( useIntroRaceState ) {
+			if ( useIntroRaceState && level.raceIntroHasSequence ) {
 				level.raceState = RACE_STATE_INTRO_CAM;
-				level.raceIntroEndTime = level.time + RALLY_INTRO_CAM_DURATION_MS;
+				level.raceIntroEndTime = level.time + introDurationMs;
 			} else {
+				if ( useIntroRaceState && !level.raceIntroHasSequence ) {
+					level.raceIntroFallback = qtrue;
+				}
 				level.raceState = RACE_STATE_COUNTDOWN;
 				level.raceIntroEndTime = 0;
 			}
