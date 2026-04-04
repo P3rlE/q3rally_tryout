@@ -447,6 +447,19 @@ static qboolean G_IsIntroCamActive( void ) {
 	return ( level.raceState == RACE_STATE_INTRO_CAM && level.raceIntroEndTime > level.time );
 }
 
+static qboolean G_BlockSpectatorButtonsDuringIntro( gentity_t *ent ) {
+	if ( !ent || !ent->client || !G_IsIntroCamActive() ) {
+		return qfalse;
+	}
+
+	if ( ent->updateTime <= level.time ) {
+		trap_SendServerCommand( ent - g_entities, "print \"Track preview active\\n\"" );
+		ent->updateTime = level.time + 1000;
+	}
+
+	return qtrue;
+}
+
 static qboolean G_ClientShouldUseIntroCam( gentity_t *ent ) {
 	if ( !ent || !ent->client || !G_IsIntroCamActive() ) {
 		return qfalse;
@@ -579,11 +592,17 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 	if ( ( client->buttons & BUTTON_ATTACK ) && ! ( client->oldbuttons & BUTTON_ATTACK ) 
 		&& !(ent->r.svFlags & SVF_BOT) ) {
 // END
+		if ( G_BlockSpectatorButtonsDuringIntro( ent ) ) {
+			return;
+		}
 		Cmd_FollowCycle_f( ent, 1 );
 	}
 
 // STONELANCE
 	if ( ( client->buttons & BUTTON_REARATTACK ) && ! ( client->oldbuttons & BUTTON_REARATTACK ) ) {
+		if ( G_BlockSpectatorButtonsDuringIntro( ent ) ) {
+			return;
+		}
 		int			newState;
 		vec3_t		origin, angles;
 		int			clientNum;
@@ -614,7 +633,7 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 				clientNum = level.follow2;
 			}
 
-			if ( clientNum < 0 )
+			if ( clientNum < 0 && !G_IsIntroCamActive() )
 				Cmd_FollowCycle_f( ent, 1 );
 
 			if ( clientNum < 0 )
@@ -2206,7 +2225,9 @@ void SpectatorClientEndFrame( gentity_t *ent ) {
 // STONELANCE
 				// try cycling to a new client
 				clientNum = ent->client->sess.spectatorClient;
-				Cmd_FollowCycle_f( ent, 1 );
+				if ( !G_IsIntroCamActive() ) {
+					Cmd_FollowCycle_f( ent, 1 );
+				}
 				if ( clientNum != ent->client->sess.spectatorClient ) {
 //					Com_Printf( "Observer Cam: cycle to next player\n" );
 //					G_DebugLogPrintf( "Observer Cam: cycle to next player\n" );
