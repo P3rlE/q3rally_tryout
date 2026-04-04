@@ -83,6 +83,13 @@ typedef enum {
 	ROTATOR_2TO1
 } moverState_t;
 
+typedef enum {
+	RACE_STATE_NONE = 0,
+	RACE_STATE_INTRO_CAM,
+	RACE_STATE_COUNTDOWN,
+	RACE_STATE_RUNNING
+} raceState_t;
+
 #define SP_PODIUM_MODEL		"models/mapobjects/podium/podium4.md3"
 
 //============================================================================
@@ -620,6 +627,8 @@ typedef struct {
 	car_t		*cars[MAX_CLIENTS];
 
 	// race variables
+	raceState_t	raceState;
+	int			raceIntroEndTime;
 	int			startRaceTime;
 	int			finishRaceTime;
 	int			winnerNumber;
