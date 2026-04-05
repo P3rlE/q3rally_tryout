@@ -1922,7 +1922,15 @@ void CalculateRanks( void ) {
 		score = 0;
 		for ( i = 0;  i < level.numPlayingClients; i++ ) {
 			cl = &level.clients[ level.sortedClients[i] ];
-			newScore = cl->ps.persistant[PERS_SCORE];
+			if ( isRallyRace() ) {
+				/* In rally races every player has the same PERS_SCORE (0),
+				   so use STAT_POSITION to detect ties instead. Positions
+				   are unique per player, so ties are extremely rare and
+				   only occur when two players genuinely share a position. */
+				newScore = cl->ps.stats[STAT_POSITION];
+			} else {
+				newScore = cl->ps.persistant[PERS_SCORE];
+			}
 			if ( i == 0 || newScore != score ) {
 				rank = i;
 				// assume we aren't tied until the next client is checked
