@@ -154,18 +154,32 @@ static void Bot_DebugExportDmnetTick( bot_state_t *bs, int routeIndex, float tar
 	fileHandle_t f;
 	char line[1024];
 	char recoveryTransition[96];
-	int mode = g_aiDmnetDebugExport.integer;
+	char autoPath[MAX_QPATH];
+	char mapname[MAX_QPATH];
+	vec3_t origin;
+	int mode;
 	const char *path;
 	int isJson;
 	int len;
+
+	mode = g_aiDmnetDebugExport.integer;
+	VectorCopy( bs->cur_ps.origin, origin );
 
 	if ( mode <= 0 ) {
 		return;
 	}
 
+	trap_Cvar_VariableStringBuffer( "mapname", mapname, sizeof( mapname ) );
+	if ( mapname[0] ) {
+		Com_sprintf( autoPath, sizeof( autoPath ),
+			( mode == 2 ) ? "logs/%s_bot.jsonl" : "logs/%s_bot.csv", mapname );
+	} else {
+		Com_sprintf( autoPath, sizeof( autoPath ),
+			( mode == 2 ) ? "logs/bot.jsonl" : "logs/bot.csv" );
+	}
 	path = g_aiDmnetDebugExportPath.string;
 	if ( !path || !path[0] ) {
-		path = ( mode == 2 ) ? "logs/ai_dmnet_debug.jsonl" : "logs/ai_dmnet_debug.csv";
+		path = autoPath;
 	}
 	isJson = ( mode == 2 );
 
@@ -186,13 +200,14 @@ static void Bot_DebugExportDmnetTick( bot_state_t *bs, int routeIndex, float tar
 			"\"decisionState\":\"%s\",\"collisionRisk\":%d,\"recoveryState\":\"%s\","
 			"\"recoveryTransition\":\"%s\",\"recoveryEvent\":\"%s\",\"recoveryTrigger\":\"%s\",\"routeDeviation\":%.2f,"
 			"\"pathId\":%d,\"nodeIndex\":%d,\"lookaheadIndex\":%d,\"widthClampEvent\":%d,"
-			"\"autoSpeedActive\":%d,\"targetSpeedOverrideActive\":%d,\"launchGate\":%d}\n",
+			"\"autoSpeedActive\":%d,\"targetSpeedOverrideActive\":%d,\"launchGate\":%d,"			"\"ox\":%.2f,\"oy\":%.2f,\"oz\":%.2f}\n",
 			level.time * 0.001f, bs->client, routeIndex, targetSpeed, actualSpeed,
 			Bot_DebugDecisionStateName( decisionState ), collisionRisk ? 1 : 0,
 			Bot_DebugRecoveryStateName( recoveryState ), recoveryTransition,
 			recoveryEvent ? recoveryEvent : "", recoveryTrigger ? recoveryTrigger : "",
 			routeDeviation, pathId, nodeIndex, lookAheadIndex, widthClampEvent,
-			autoSpeedActive, targetSpeedOverrideActive, launchGateActive );
+			autoSpeedActive, targetSpeedOverrideActive, launchGateActive,
+			origin[0], origin[1], origin[2] );
 	} else {
 		Com_sprintf( line, sizeof( line ),
 			"%.3f,%d,%d,%.2f,%.2f,%s,%d,%s,%s,%s,%s,%.2f,%d,%d,%d,%d,%d,%d,%d\n",
