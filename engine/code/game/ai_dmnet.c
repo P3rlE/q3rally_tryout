@@ -3888,6 +3888,17 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 
 		bestIndex = Bot_SelectForwardWaypointIndex( ghostRoute, bs->cur_ps.origin, botForward, hintIndex,
 			GHOST_ROUTE_HINT_WINDOW, strictForwardOnly );
+
+		/* On the very first frame after spawn (hintIndex == -1, spawnInitPhase),
+		   the forward-scored search can pick a waypoint slightly to the side,
+		   causing an immediate right-swerve. Use the closest waypoint instead
+		   so the bot starts straight and converges naturally. */
+		if ( bestIndex < 0 || ( spawnInitPhase && hintIndex < 0 ) ) {
+			int closestIndex = G_Ghost_SelectClosestWaypoint( ghostRoute, bs->cur_ps.origin, -1, ghostRoute->numWaypoints );
+			if ( closestIndex >= 0 ) {
+				bestIndex = closestIndex;
+			}
+		}
 		if ( lapWrapWindow && bestIndex >= ghostRoute->numWaypoints - 4 ) {
 			int wrapCandidate = Bot_SelectForwardWaypointIndex( ghostRoute, bs->cur_ps.origin, botForward, 0,
 				GHOST_ROUTE_HINT_WINDOW * 2, qfalse );
