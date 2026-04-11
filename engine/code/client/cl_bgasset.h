@@ -8,3 +8,5 @@
  * builds can still reference this header via stale dependency files until
  * affected objects are rebuilt.
  */
+
+#endif
