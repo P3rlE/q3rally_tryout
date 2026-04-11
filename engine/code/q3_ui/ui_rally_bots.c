@@ -282,10 +282,9 @@ static qhandle_t UI_GenerateBotPlateShader( const char *botName, int botIndex ) 
         return 0;
     }
 
-    /* Register directly with full TGA path — file is on disk now.
-       Also remap in case the renderer has a stale empty cache entry. */
-    trap_R_RemapShader( output, output, "0" );
-    h = trap_R_RegisterShaderNoMip( output );
+    /* Register directly with full TGA path.
+       Use trap_R_RegisterShader to avoid mixed image flag reuse with model stages. */
+    h = trap_R_RegisterShader( output );
     Com_Printf( "Q3R UI Plate: bot %d (%s) -> shader handle %d\n", botIndex, botName, h );
     return h;
 }
