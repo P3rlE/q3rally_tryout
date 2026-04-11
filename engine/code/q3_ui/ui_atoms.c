@@ -177,12 +177,10 @@ static qboolean UI_MenuBackPathExists( const char *path ) {
 	fileHandle_t	file;
 	int				length;
 	const char		*normalizedPath;
-<<<<<<< codex/verify-ui_menubackpath-value-format-0hp1bm
 	char			candidate[MAX_QPATH];
 	const char		*extensions[] = { ".png", ".jpg", ".jpeg", ".tga" };
 	int				i;
-=======
->>>>>>> master
+
 
 	if ( !path || !path[0] ) {
 		return qfalse;
@@ -191,14 +189,7 @@ static qboolean UI_MenuBackPathExists( const char *path ) {
 	normalizedPath = path;
 	if ( !Q_stricmpn( normalizedPath, BASEGAME "/", strlen( BASEGAME "/" ) ) ) {
 		normalizedPath += strlen( BASEGAME "/" );
-<<<<<<< codex/verify-ui_menubackpath-value-format-0hp1bm
-=======
-	}
 
-	length = trap_FS_FOpenFile( normalizedPath, &file, FS_READ );
-	if ( length <= 0 ) {
-		return qfalse;
->>>>>>> master
 	}
 
 	length = trap_FS_FOpenFile( normalizedPath, &file, FS_READ );
