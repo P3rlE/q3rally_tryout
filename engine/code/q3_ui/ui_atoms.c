@@ -177,6 +177,12 @@ static qboolean UI_MenuBackPathExists( const char *path ) {
 	fileHandle_t	file;
 	int				length;
 	const char		*normalizedPath;
+<<<<<<< codex/verify-ui_menubackpath-value-format-0hp1bm
+	char			candidate[MAX_QPATH];
+	const char		*extensions[] = { ".png", ".jpg", ".jpeg", ".tga" };
+	int				i;
+=======
+>>>>>>> master
 
 	if ( !path || !path[0] ) {
 		return qfalse;
@@ -185,15 +191,45 @@ static qboolean UI_MenuBackPathExists( const char *path ) {
 	normalizedPath = path;
 	if ( !Q_stricmpn( normalizedPath, BASEGAME "/", strlen( BASEGAME "/" ) ) ) {
 		normalizedPath += strlen( BASEGAME "/" );
+<<<<<<< codex/verify-ui_menubackpath-value-format-0hp1bm
+=======
 	}
 
 	length = trap_FS_FOpenFile( normalizedPath, &file, FS_READ );
 	if ( length <= 0 ) {
 		return qfalse;
+>>>>>>> master
 	}
 
-	trap_FS_FCloseFile( file );
-	return qtrue;
+	length = trap_FS_FOpenFile( normalizedPath, &file, FS_READ );
+	if ( length > 0 ) {
+		trap_FS_FCloseFile( file );
+		return qtrue;
+	}
+
+	for ( i = 0; i < (int)( sizeof( extensions ) / sizeof( extensions[0] ) ); i++ ) {
+		Com_sprintf( candidate, sizeof( candidate ), "%s%s", normalizedPath, extensions[i] );
+		length = trap_FS_FOpenFile( candidate, &file, FS_READ );
+		if ( length > 0 ) {
+			trap_FS_FCloseFile( file );
+			return qtrue;
+		}
+	}
+
+	return qfalse;
+}
+
+static const char *UI_NormalizeMenuBackPath( const char *path, char *normalized, int normalizedSize ) {
+	if ( !path || !path[0] ) {
+		return path;
+	}
+
+	if ( !Q_stricmpn( path, BASEGAME "/", strlen( BASEGAME "/" ) ) ) {
+		Q_strncpyz( normalized, path + strlen( BASEGAME "/" ), normalizedSize );
+		return normalized;
+	}
+
+	return path;
 }
 
 static const char *UI_NormalizeMenuBackPath( const char *path, char *normalized, int normalizedSize ) {
