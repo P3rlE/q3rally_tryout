@@ -131,7 +131,8 @@ typedef enum {
 	UI_ATAN2,
 	UI_SQRT,
 	UI_FLOOR,
-	UI_CEIL
+	UI_CEIL,
+	UI_CREATEPLATE          /* CreateLicensePlateImage(input, output, name, maxChars) */
 } uiImport_t;
 
 typedef enum {
