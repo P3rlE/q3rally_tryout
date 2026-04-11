@@ -567,9 +567,9 @@ static void UI_BotsMenu_SetRival( int index ) {
 
     wp = botWeapons[index];
 
-    /* plate: use pre-generated shader if available, else fall back to cvar */
+    /* plate: use USA marker for model selection when using generated bot plate shaders */
     if ( botPlateShaders[index] ) {
-        Com_sprintf( plate, sizeof(plate), "uibot%d.tga", index );
+        Q_strncpyz( plate, "usa_california", sizeof(plate) );
     } else {
         trap_Cvar_VariableStringBuffer( "plate", plate, sizeof(plate) );
         if ( !plate[0] ) Q_strncpyz( plate, "usa_california", sizeof(plate) );
@@ -579,6 +579,7 @@ static void UI_BotsMenu_SetRival( int index ) {
 
     /* Override the plateShader directly with our pre-generated one */
     if ( botPlateShaders[index] ) {
+        Com_Printf( "RIVALS: Bot %d uses generated plate shader uibot%d.tga with plate marker '%s'\n", index, index, plate );
         s_garagePlayerInfo.plateShader = botPlateShaders[index];
     }
 
