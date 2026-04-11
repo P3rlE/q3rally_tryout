@@ -402,15 +402,19 @@ static void CL_BGAsset_GenerateLocalPath(const char *url, char *path, size_t pat
 }
 
 static qboolean CL_BGAsset_ToQPath(const char *localPath, char *qpath, size_t qpathSize) {
+<<<<<<< codex/verify-ui_menubackpath-value-format-0hp1bm
 	char *slash;
 	char *dot;
 
+=======
+>>>>>>> master
 	if (!localPath || !localPath[0] || !qpath || qpathSize == 0) {
 		return qfalse;
 	}
 
 	if (!Q_stricmpn(localPath, CL_BGASSET_CACHE_PREFIX, strlen(CL_BGASSET_CACHE_PREFIX))) {
 		Com_sprintf(qpath, qpathSize, "%s", localPath + strlen(BASEGAME "/"));
+<<<<<<< codex/verify-ui_menubackpath-value-format-0hp1bm
 	} else if (!Q_stricmpn(localPath, CL_BGASSET_CACHE_QPREFIX, strlen(CL_BGASSET_CACHE_QPREFIX))) {
 		Q_strncpyz(qpath, localPath, qpathSize);
 	} else {
@@ -424,6 +428,17 @@ static qboolean CL_BGAsset_ToQPath(const char *localPath, char *qpath, size_t qp
 	}
 
 	return qtrue;
+=======
+		return qtrue;
+	}
+
+	if (!Q_stricmpn(localPath, CL_BGASSET_CACHE_QPREFIX, strlen(CL_BGASSET_CACHE_QPREFIX))) {
+		Q_strncpyz(qpath, localPath, qpathSize);
+		return qtrue;
+	}
+
+	return qfalse;
+>>>>>>> master
 }
 
 static unsigned CL_BGAsset_ComputeChecksum(const char *path, int maxSize) {
