@@ -1320,7 +1320,7 @@ void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int ti
 
 		VectorCopy( origin, plate.lightingOrigin );
 		UI_PositionEntityOnTag( &plate, &body, pi->bodyModel, "tag_plate");
-		plate.renderfx = renderfx;
+		plate.renderfx = renderfx | RF_MINLIGHT;
 
 		trap_R_AddRefEntityToScene( &plate );
 	}
