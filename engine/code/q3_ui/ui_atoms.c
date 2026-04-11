@@ -223,19 +223,6 @@ static const char *UI_NormalizeMenuBackPath( const char *path, char *normalized,
 	return path;
 }
 
-static const char *UI_NormalizeMenuBackPath( const char *path, char *normalized, int normalizedSize ) {
-	if ( !path || !path[0] ) {
-		return path;
-	}
-
-	if ( !Q_stricmpn( path, BASEGAME "/", strlen( BASEGAME "/" ) ) ) {
-		Q_strncpyz( normalized, path + strlen( BASEGAME "/" ), normalizedSize );
-		return normalized;
-	}
-
-	return path;
-}
-
 static qboolean UI_MenuBackStateAllows( const char *state ) {
 	if ( !state || !state[0] ) {
 		return qtrue;
