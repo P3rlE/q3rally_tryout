@@ -2204,9 +2204,7 @@ FS_AddPakToSearchpaths
 
 Loads a pk3 file from an absolute OS path and prepends it to the
 search path list so that its contents are immediately accessible
-via FS_ReadFile / FS_FOpenFileRead.  Used to make dynamically
-downloaded loose assets (e.g. ui_cache background images) visible
-to the renderer without requiring a full FS_Restart.
+via FS_ReadFile / FS_FOpenFileRead.
 =================
 */
 void FS_AddPakToSearchpaths( const char *ospath, const char *pakBasename )
@@ -2220,13 +2218,8 @@ void FS_AddPakToSearchpaths( const char *ospath, const char *pakBasename )
 
 	pak = FS_LoadZipFile( ospath, pakBasename );
 	if ( !pak ) {
-		Com_Printf( "BGASSET DEBUG: FS_LoadZipFile FAILED for '%s'\n", ospath );
 		return;
 	}
-
-	Com_Printf( "BGASSET DEBUG: FS_LoadZipFile OK: %d files, first='%s'\n",
-		pak->numfiles,
-		(pak->numfiles > 0 && pak->buildBuffer) ? pak->buildBuffer[0].name : "(none)" );
 
 	search = Z_Malloc( sizeof( searchpath_t ) );
 	search->pack = pak;
@@ -2234,8 +2227,6 @@ void FS_AddPakToSearchpaths( const char *ospath, const char *pakBasename )
 	/* Prepend so this pak is searched before the existing paths */
 	search->next = fs_searchpaths;
 	fs_searchpaths = search;
-
-	Com_Printf( "BGASSET DEBUG: FS_AddPakToSearchpaths: loaded '%s'\n", ospath );
 }
 
 /*
@@ -2521,12 +2512,6 @@ int	FS_GetFileList(  const char *path, const char *extension, char *listbuf, int
 	if (Q_stricmp(path, "$modlist") == 0) {
 		return FS_GetModList(listbuf, bufsize);
 	}
-
-const char *extensions[] = { "RoQ", "roq"
-#if defined(USE_CODEC_VORBIS) && (defined(USE_CIN_XVID) || defined(USE_CIN_THEORA))
-			, "ogm", "ogv"
-#endif
-			};
 
 	pFiles = FS_ListFiles(path, extension, &nFiles);
 
