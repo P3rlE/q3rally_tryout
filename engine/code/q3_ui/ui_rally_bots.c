@@ -283,8 +283,8 @@ static qhandle_t UI_GenerateBotPlateShader( const char *botName, int botIndex ) 
     }
 
     /* Register directly with full TGA path.
-       Use trap_R_RegisterShader to avoid mixed image flag reuse with model stages. */
-    h = trap_R_RegisterShader( output );
+       Avoid remapping here so we don't preload the image with different flags. */
+    h = trap_R_RegisterShaderNoMip( output );
     Com_Printf( "Q3R UI Plate: bot %d (%s) -> shader handle %d\n", botIndex, botName, h );
     return h;
 }
