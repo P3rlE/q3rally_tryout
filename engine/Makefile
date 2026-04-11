@@ -1955,11 +1955,10 @@ $(B)/$(AUTOUPDATER_BIN): $(Q3AUTOUPDATEROBJ)
 
 Q3OBJ = \
   $(B)/client/cl_cgame.o \
-  $(B)/client/cl_cin.o \
-  $(B)/client/cl_cin_ogm.o \
-  $(B)/client/cl_console.o \
-  $(B)/client/cl_bgasset.o \
-  $(B)/client/cl_input.o \
+	$(B)/client/cl_cin.o \
+	$(B)/client/cl_cin_ogm.o \
+	$(B)/client/cl_console.o \
+	$(B)/client/cl_input.o \
   $(B)/client/cl_keys.o \
   $(B)/client/cl_main.o \
   $(B)/client/cl_net_chan.o \
