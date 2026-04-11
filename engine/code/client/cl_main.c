@@ -3172,8 +3172,7 @@ FS_ReadFileWithHomepathFallback
 
 Wrapper for ri.FS_ReadFile: tries the normal VFS search first, then falls
 back to a direct homepath read (FS_SV_FOpenFileRead) for files that were
-written to disk after the VFS was initialised -- e.g. dynamically downloaded
-menu background images stored in ui_cache/.
+written to disk after the VFS was initialised.
 ======================
 */
 static long FS_ReadFileWithHomepathFallback( const char *qpath, void **buffer ) {
@@ -3185,16 +3184,11 @@ static long FS_ReadFileWithHomepathFallback( const char *qpath, void **buffer ) 
 	// Try the normal VFS path first.
 	len = FS_ReadFile( qpath, buffer );
 	if ( len > 0 ) {
-		Com_DPrintf( "BGASSET DEBUG: VFS found '%s' (len=%ld)\n", qpath, len );
 		return len;
 	}
 
-	Com_DPrintf( "BGASSET DEBUG: VFS missed '%s', trying SV path\n", qpath );
-
 	Com_sprintf( svpath, sizeof(svpath), BASEGAME "/%s", qpath );
 	len = FS_SV_FOpenFileRead( svpath, &fh );
-
-	Com_DPrintf( "BGASSET DEBUG: SV_FOpenFileRead('%s') = %ld, fh=%d\n", svpath, len, (int)fh );
 
 	if ( len <= 0 ) {
 		if ( buffer ) {
@@ -3213,7 +3207,6 @@ static long FS_ReadFileWithHomepathFallback( const char *qpath, void **buffer ) 
 	FS_Read( buf, len, fh );
 	FS_FCloseFile( fh );
 	*buffer = buf;
-	Com_DPrintf( "BGASSET DEBUG: SV fallback loaded '%s' (%ld bytes)\n", qpath, len );
 	return len;
 }
 
