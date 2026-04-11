@@ -176,18 +176,37 @@ static qboolean UI_ReadMenuBackOverride( const char *overrideValue, char *outVal
 static qboolean UI_MenuBackPathExists( const char *path ) {
 	fileHandle_t	file;
 	int				length;
+	const char		*normalizedPath;
 
 	if ( !path || !path[0] ) {
 		return qfalse;
 	}
 
-	length = trap_FS_FOpenFile( path, &file, FS_READ );
+	normalizedPath = path;
+	if ( !Q_stricmpn( normalizedPath, BASEGAME "/", strlen( BASEGAME "/" ) ) ) {
+		normalizedPath += strlen( BASEGAME "/" );
+	}
+
+	length = trap_FS_FOpenFile( normalizedPath, &file, FS_READ );
 	if ( length <= 0 ) {
 		return qfalse;
 	}
 
 	trap_FS_FCloseFile( file );
 	return qtrue;
+}
+
+static const char *UI_NormalizeMenuBackPath( const char *path, char *normalized, int normalizedSize ) {
+	if ( !path || !path[0] ) {
+		return path;
+	}
+
+	if ( !Q_stricmpn( path, BASEGAME "/", strlen( BASEGAME "/" ) ) ) {
+		Q_strncpyz( normalized, path + strlen( BASEGAME "/" ), normalizedSize );
+		return normalized;
+	}
+
+	return path;
 }
 
 static qboolean UI_MenuBackStateAllows( const char *state ) {
@@ -207,10 +226,12 @@ void UI_UpdateMenuBackShader( qboolean force ) {
 	const char	*cvarValue;
 	qboolean	fromFile;
 	const char	*remotePath;
+	const char	*normalizedRemotePath;
 	const char	*remoteState;
 	qhandle_t	remoteShader;
 	qboolean	remoteActive;
 	qboolean	overrideActive;
+	char		normalizedRemotePathBuffer[MAX_QPATH];
 
 	if ( !force && uis.realtime < ui_menuBackOverrideCheckTime ) {
 		return;
@@ -256,6 +277,7 @@ void UI_UpdateMenuBackShader( qboolean force ) {
 	remoteActive = ui_menuBackEnable.integer != 0;
 	remoteState = ui_menuBackState.string;
 	remotePath = ui_menuBackPath.string;
+	normalizedRemotePath = UI_NormalizeMenuBackPath( remotePath, normalizedRemotePathBuffer, sizeof( normalizedRemotePathBuffer ) );
 
 	if ( ui_menuBackEnable.modificationCount != ui_menuBackRemoteModCount
 		|| ui_menuBackState.modificationCount != ui_menuBackRemoteStateModCount
@@ -282,7 +304,7 @@ void UI_UpdateMenuBackShader( qboolean force ) {
 		return;
 	}
 
-	if ( !remotePath[0] || !UI_MenuBackPathExists( remotePath ) ) {
+	if ( !normalizedRemotePath[0] || !UI_MenuBackPathExists( normalizedRemotePath ) ) {
 		if ( remotePath[0] && ( force || Q_stricmp( remotePath, ui_menuBackRemoteMissingPath ) != 0 ) ) {
 			trap_Print( va( "Menu background file not found for '%s'\n", remotePath ) );
 			Q_strncpyz( ui_menuBackRemoteMissingPath, remotePath, sizeof( ui_menuBackRemoteMissingPath ) );
@@ -299,7 +321,7 @@ void UI_UpdateMenuBackShader( qboolean force ) {
 	}
 
 	if ( force || Q_stricmp( remotePath, ui_menuBackRemotePath ) != 0 ) {
-		remoteShader = trap_R_RegisterShaderNoMip( remotePath );
+		remoteShader = trap_R_RegisterShaderNoMip( normalizedRemotePath );
 		if ( remoteShader ) {
 			uis.menuBackShader = remoteShader;
 			Q_strncpyz( ui_menuBackRemotePath, remotePath, sizeof( ui_menuBackRemotePath ) );

@@ -5,9 +5,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CL_BGASSET_CACHE_DIR BASEGAME "/ui_cache"
+#define CL_BGASSET_CACHE_QDIR "ui_cache"
+#define CL_BGASSET_CACHE_DIR BASEGAME "/" CL_BGASSET_CACHE_QDIR
 #define CL_BGASSET_CACHE_INDEX CL_BGASSET_CACHE_DIR "/cache_index.txt"
 #define CL_BGASSET_CACHE_PREFIX CL_BGASSET_CACHE_DIR "/"
+#define CL_BGASSET_CACHE_QPREFIX CL_BGASSET_CACHE_QDIR "/"
 #define CL_BGASSET_MAX_URL 512
 #define CL_BGASSET_MAX_ETAG 128
 #define CL_BGASSET_MAX_LASTMOD 128
@@ -397,6 +399,24 @@ static void CL_BGAsset_GenerateLocalPath(const char *url, char *path, size_t pat
 	}
 
 	Com_sprintf(path, pathSize, "%s/bg_%08x.%s", CL_BGASSET_CACHE_DIR, hash, ext);
+}
+
+static qboolean CL_BGAsset_ToQPath(const char *localPath, char *qpath, size_t qpathSize) {
+	if (!localPath || !localPath[0] || !qpath || qpathSize == 0) {
+		return qfalse;
+	}
+
+	if (!Q_stricmpn(localPath, CL_BGASSET_CACHE_PREFIX, strlen(CL_BGASSET_CACHE_PREFIX))) {
+		Com_sprintf(qpath, qpathSize, "%s", localPath + strlen(BASEGAME "/"));
+		return qtrue;
+	}
+
+	if (!Q_stricmpn(localPath, CL_BGASSET_CACHE_QPREFIX, strlen(CL_BGASSET_CACHE_QPREFIX))) {
+		Q_strncpyz(qpath, localPath, qpathSize);
+		return qtrue;
+	}
+
+	return qfalse;
 }
 
 static unsigned CL_BGAsset_ComputeChecksum(const char *path, int maxSize) {
@@ -859,6 +879,7 @@ static void CL_BGAsset_HandleComplete(CURLcode result) {
 	const char *etag = cl_bgasset.newEtag[0] ? cl_bgasset.newEtag : cl_bgasset.etag;
 	const char *lastModified = cl_bgasset.newLastModified[0] ? cl_bgasset.newLastModified : cl_bgasset.lastModified;
 	char errorMessage[128];
+	char qpath[MAX_QPATH];
 
 	qcurl_easy_getinfo(cl_bgasset.easyHandle, CURLINFO_RESPONSE_CODE, &responseCode);
 
@@ -889,7 +910,11 @@ static void CL_BGAsset_HandleComplete(CURLcode result) {
 			CL_BGAsset_ComputeChecksum(cl_bgasset.localPath, cl_bgasset.maxSize));
 		CL_BGAsset_SetState("cached");
 		CL_BGAsset_SetError("");
-		CL_BGAsset_SetPath(cl_bgasset.localPath);
+		if (CL_BGAsset_ToQPath(cl_bgasset.localPath, qpath, sizeof(qpath))) {
+			CL_BGAsset_SetPath(qpath);
+		} else {
+			CL_BGAsset_SetPath("");
+		}
 		CL_BGAsset_CleanupHandles();
 		CL_BGAsset_ScheduleRefresh();
 		return;
@@ -912,7 +937,11 @@ static void CL_BGAsset_HandleComplete(CURLcode result) {
 	CL_BGAsset_UpdateCacheEntry(cl_bgasset.lastURL, cl_bgasset.localPath, etag, lastModified, checksum);
 	CL_BGAsset_SetState("ready");
 	CL_BGAsset_SetError("");
-	CL_BGAsset_SetPath(cl_bgasset.localPath);
+	if (CL_BGAsset_ToQPath(cl_bgasset.localPath, qpath, sizeof(qpath))) {
+		CL_BGAsset_SetPath(qpath);
+	} else {
+		CL_BGAsset_SetPath("");
+	}
 	CL_BGAsset_CleanupHandles();
 	CL_BGAsset_ScheduleRefresh();
 }
