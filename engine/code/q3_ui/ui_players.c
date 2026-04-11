@@ -1938,8 +1938,11 @@ qboolean UI_RegisterClientModelname( playerInfo_t *pi,  const char *modelSkinNam
 
 	// figure out plate model
 //	Com_sprintf( filename, sizeof( filename ), "models/players/plates/player%d.tga", ci->clientNum );
-	if ( !Q_stricmpn( plateName, "usa_", 4 ) ){
+	if ( !Q_stricmpn( plateName, "usa_", 4 ) || !Q_stricmpn( plateName, "uibot", 5 ) ){
 		Q_strncpyz( pi->plateName, "plate_usa", sizeof( pi->plateName ) );
+		if ( !Q_stricmpn( plateName, "uibot", 5 ) ) {
+			Com_Printf( "RIVALS: Detected generated bot plate '%s' -> pi->plateName '%s'\n", plateName, pi->plateName );
+		}
 //		CreateLicensePlateImage(va("models/players/plates/%s.tga", ci->plateSkinName), filename, ci->name, 10);
 	}
 	else{
@@ -2159,4 +2162,3 @@ void UI_PlayerInfo_SetInfo( playerInfo_t *pi, int legsAnim, int torsoAnim, vec3_
 */
 // END
 }
-
