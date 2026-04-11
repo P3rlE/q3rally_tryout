@@ -20,6 +20,169 @@
 #define CL_BGASSET_DEFAULT_MAX_SIZE (5 * 1024 * 1024)
 #define CL_BGASSET_MAX_DIMENSION 4096
 
+
+/* ---------- minimal stored-ZIP / pk3 writer --------------------------------
+ * Writes a single-file, uncompressed ZIP so that the renderer can find the
+ * background image via the normal pk3 search path without a FS_Restart.
+ * The format is: local-file-header | data | central-dir-header | EOCD.
+ * All multi-byte fields are little-endian.
+ * --------------------------------------------------------------------------*/
+
+/* Standard CRC-32 for ZIP files (poly 0xEDB88320, reflected). */
+static unsigned CL_BGAsset_CRC32( const byte *data, int len ) {
+	unsigned crc = 0xFFFFFFFFu;
+	int i, b;
+	for ( i = 0; i < len; i++ ) {
+		crc ^= data[i];
+		for ( b = 0; b < 8; b++ ) {
+			if ( crc & 1 ) crc = (crc >> 1) ^ 0xEDB88320u;
+			else           crc >>= 1;
+		}
+	}
+	return crc ^ 0xFFFFFFFFu;
+}
+
+/* Write a little-endian 16-bit value into buf at offset. */
+static void CL_BGAsset_ZipPut16( byte *buf, int off, unsigned v ) {
+	buf[off]   = (byte)( v        & 0xff );
+	buf[off+1] = (byte)( (v >> 8) & 0xff );
+}
+
+/* Write a little-endian 32-bit value into buf at offset. */
+static void CL_BGAsset_ZipPut32( byte *buf, int off, unsigned v ) {
+	buf[off]   = (byte)( v         & 0xff );
+	buf[off+1] = (byte)( (v >>  8) & 0xff );
+	buf[off+2] = (byte)( (v >> 16) & 0xff );
+	buf[off+3] = (byte)( (v >> 24) & 0xff );
+}
+
+/*
+ * CL_BGAsset_WriteStoredPk3
+ *
+ * Reads the image file at <imagePath> (homepath-relative, e.g.
+ * "baseq3r/ui_cache/bg_XXXX.png"), wraps it in a minimal stored-ZIP and
+ * writes the result to <pk3Path> (also homepath-relative).  The entry name
+ * inside the ZIP is <entryName> (the qpath the renderer will look up, e.g.
+ * "ui_cache/bg_XXXX.png").
+ *
+ * Returns qtrue on success.
+ */
+static qboolean CL_BGAsset_WriteStoredPk3( const char *imagePath,
+                                            const char *pk3SvPath,
+                                            const char *entryName ) {
+	fileHandle_t	srcFile;
+	long		imgLen;
+	byte		*imgBuf;
+	byte		*zipBuf;
+	int			zipSize;
+	byte		*p;
+	unsigned	crc;
+	int			nameLen;
+	unsigned	dataOffset;
+	unsigned	cdrOffset;
+	qboolean	ok;
+
+	nameLen = (int)strlen( entryName );
+
+	/* --- read the image into memory --- */
+	imgLen = FS_SV_FOpenFileRead( imagePath, &srcFile );
+	if ( imgLen <= 0 ) {
+		Com_DPrintf( "CL_BGAsset_WriteStoredPk3: cannot read '%s'\n", imagePath );
+		return qfalse;
+	}
+	imgBuf = Z_Malloc( imgLen );
+	FS_Read( imgBuf, imgLen, srcFile );
+	FS_FCloseFile( srcFile );
+
+	/* --- compute CRC-32 (standard ZIP polynomial) --- */
+	crc = CL_BGAsset_CRC32( imgBuf, (int)imgLen );
+
+	/* --- allocate contiguous ZIP buffer --- */
+	dataOffset = 30 + nameLen;
+	cdrOffset  = dataOffset + (unsigned)imgLen;
+	zipSize    = cdrOffset + 46 + nameLen + 22;
+	zipBuf     = Z_Malloc( zipSize );
+	Com_Memset( zipBuf, 0, zipSize );
+	p = zipBuf;
+
+	/* local file header */
+	CL_BGAsset_ZipPut32( p,  0, 0x04034b50 );
+	CL_BGAsset_ZipPut16( p,  4, 20 );
+	CL_BGAsset_ZipPut32( p, 14, crc );
+	CL_BGAsset_ZipPut32( p, 18, (unsigned)imgLen );
+	CL_BGAsset_ZipPut32( p, 22, (unsigned)imgLen );
+	CL_BGAsset_ZipPut16( p, 26, (unsigned short)nameLen );
+	p += 30;
+	Com_Memcpy( p, entryName, nameLen );
+	p += nameLen;
+
+	/* file data */
+	Com_Memcpy( p, imgBuf, imgLen );
+	p += imgLen;
+	Z_Free( imgBuf );
+
+	/* central directory header */
+	CL_BGAsset_ZipPut32( p,  0, 0x02014b50 );
+	CL_BGAsset_ZipPut16( p,  4, 20 );
+	CL_BGAsset_ZipPut16( p,  6, 20 );
+	CL_BGAsset_ZipPut32( p, 16, crc );
+	CL_BGAsset_ZipPut32( p, 20, (unsigned)imgLen );
+	CL_BGAsset_ZipPut32( p, 24, (unsigned)imgLen );
+	CL_BGAsset_ZipPut16( p, 28, (unsigned short)nameLen );
+	CL_BGAsset_ZipPut32( p, 42, 0 );
+	p += 46;
+	Com_Memcpy( p, entryName, nameLen );
+	p += nameLen;
+
+	/* end of central directory */
+	CL_BGAsset_ZipPut32( p,  0, 0x06054b50 );
+	CL_BGAsset_ZipPut16( p,  8, 1 );
+	CL_BGAsset_ZipPut16( p, 10, 1 );
+	CL_BGAsset_ZipPut32( p, 12, (unsigned)(46 + nameLen) );
+	CL_BGAsset_ZipPut32( p, 16, cdrOffset );
+
+	/* write via dedicated function that bypasses the .pk3 write restriction */
+	ok = FS_SV_WritePk3File( pk3SvPath, zipBuf, zipSize );
+	Z_Free( zipBuf );
+	if ( ok ) {
+		Com_Printf( "BGASSET DEBUG: wrote pk3 '%s' (%d bytes, entry='%s', imgLen=%ld)\n",
+			pk3SvPath, zipSize, entryName, imgLen );
+	} else {
+		Com_Printf( "BGASSET DEBUG: FAILED to write pk3 '%s'\n", pk3SvPath );
+	}
+	return ok;
+}
+
+/* Build the OS path/* Build the OS path for the generated pk3 given the image's local path. */
+static void CL_BGAsset_GetPk3Path( const char *localPath,
+                                    char *pk3SvPath, size_t pk3SvSize,
+                                    char *pk3OsPath, size_t pk3OsSize ) {
+	const char	*homepath;
+	char		stripped[MAX_OSPATH];
+	char		*dot;
+
+	/* Strip extension from localPath to form pk3 filename, e.g.
+	 * "baseq3r/ui_cache/bg_XXXX.png" -> "baseq3r/ui_cache/bg_XXXX.pk3" */
+	Q_strncpyz( stripped, localPath, sizeof(stripped) );
+	dot = strrchr( stripped, '.' );
+	if ( dot && dot > strrchr( stripped, '/' ) ) {
+		*dot = '\0';
+	}
+	Com_sprintf( pk3SvPath, pk3SvSize, "%s.pk3", stripped );
+
+	homepath = Cvar_VariableString( "fs_homepath" );
+	Com_sprintf( pk3OsPath, pk3OsSize, "%s/%s", homepath, pk3SvPath );
+	/* Normalise path separators for the current platform */
+	{
+		char *p;
+		for ( p = pk3OsPath; *p; p++ ) {
+			if ( *p == '/' || *p == '\\' ) {
+				*p = PATH_SEP;
+			}
+		}
+	}
+}
+
 typedef enum {
 	CL_BGASSET_JOB_NONE,
 	CL_BGASSET_JOB_DOWNLOAD
@@ -403,9 +566,6 @@ static void CL_BGAsset_GenerateLocalPath(const char *url, char *path, size_t pat
 
 static qboolean CL_BGAsset_ToQPath(const char *localPath, char *qpath, size_t qpathSize) {
 
-	char *slash;
-	char *dot;
-
 	if (!localPath || !localPath[0] || !qpath || qpathSize == 0) {
 		return qfalse;
 	}
@@ -419,11 +579,10 @@ static qboolean CL_BGAsset_ToQPath(const char *localPath, char *qpath, size_t qp
 		return qfalse;
 	}
 
-	slash = strrchr(qpath, '/');
-	dot = strrchr(qpath, '.');
-	if (dot && (!slash || dot > slash)) {
-		*dot = '\0';
-	}
+	// Keep the file extension in the qpath so that trap_R_RegisterShaderNoMip
+	// can resolve the image directly. Previously the extension was stripped here,
+	// which caused the renderer to search for a shader script named e.g.
+	// "ui_cache/bg_82405e13" and fail with "Couldn't find image file for shader".
 
 	return qtrue;
 }
@@ -924,6 +1083,15 @@ static void CL_BGAsset_HandleComplete(CURLcode result) {
 		} else {
 			CL_BGAsset_SetPath("");
 		}
+	{
+		char pk3SvPath[MAX_OSPATH], pk3OsPath[MAX_OSPATH];
+		CL_BGAsset_GetPk3Path( cl_bgasset.localPath, pk3SvPath, sizeof(pk3SvPath),
+		                        pk3OsPath, sizeof(pk3OsPath) );
+		if ( qpath[0] && CL_BGAsset_WriteStoredPk3( cl_bgasset.localPath, pk3SvPath, qpath ) ) {
+			FS_AddPakToSearchpaths( pk3OsPath, pk3SvPath );
+			Com_DPrintf( "Menu background: loaded pk3 '%s'\n", pk3OsPath );
+		}
+	}
 		CL_BGAsset_CleanupHandles();
 		CL_BGAsset_ScheduleRefresh();
 		return;
@@ -950,6 +1118,15 @@ static void CL_BGAsset_HandleComplete(CURLcode result) {
 		CL_BGAsset_SetPath(qpath);
 	} else {
 		CL_BGAsset_SetPath("");
+	}
+	{
+		char pk3SvPath[MAX_OSPATH], pk3OsPath[MAX_OSPATH];
+		CL_BGAsset_GetPk3Path( cl_bgasset.localPath, pk3SvPath, sizeof(pk3SvPath),
+		                        pk3OsPath, sizeof(pk3OsPath) );
+		if ( qpath[0] && CL_BGAsset_WriteStoredPk3( cl_bgasset.localPath, pk3SvPath, qpath ) ) {
+			FS_AddPakToSearchpaths( pk3OsPath, pk3SvPath );
+			Com_DPrintf( "Menu background: loaded pk3 '%s'\n", pk3OsPath );
+		}
 	}
 	CL_BGAsset_CleanupHandles();
 	CL_BGAsset_ScheduleRefresh();

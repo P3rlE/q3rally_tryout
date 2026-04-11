@@ -76,6 +76,10 @@ static int		ui_menuBackRemoteStateModCount;
 static int		ui_menuBackRemotePathModCount;
 static char		ui_menuBackRemotePath[MAX_QPATH];
 static char		ui_menuBackRemoteMissingPath[MAX_QPATH];
+static int		ui_menuBackShaderRetries;
+static int		ui_menuBackShaderRetryTime;
+#define UI_MENUBACK_MAX_RETRIES		10
+#define UI_MENUBACK_RETRY_INTERVAL	500
 
 // these are here so the functions in q_shared.c can link
 #ifndef UI_HARD_LINKED
@@ -335,17 +339,39 @@ void UI_UpdateMenuBackShader( qboolean force ) {
 	}
 
 	if ( force || Q_stricmp( remotePath, ui_menuBackRemotePath ) != 0 ) {
+		// Reset retry counter when the path changes
+		if ( Q_stricmp( remotePath, ui_menuBackRemotePath ) != 0 ) {
+			ui_menuBackShaderRetries = 0;
+			ui_menuBackShaderRetryTime = 0;
+		}
+
+		// Rate-limit retries so we don't spam every frame
+		if ( ui_menuBackShaderRetries > 0 && uis.realtime < ui_menuBackShaderRetryTime ) {
+			return;
+		}
+
 		remoteShader = trap_R_RegisterShaderNoMip( normalizedRemotePath );
 		if ( remoteShader ) {
 			uis.menuBackShader = remoteShader;
 			Q_strncpyz( ui_menuBackRemotePath, remotePath, sizeof( ui_menuBackRemotePath ) );
 			ui_menuBackRemoteMissingPath[0] = '\0';
+			ui_menuBackShaderRetries = 0;
+		} else if ( ui_menuBackShaderRetries < UI_MENUBACK_MAX_RETRIES ) {
+			// The renderer may not have the file available yet (e.g. written to
+			// disk after the renderer initialised). Retry a few times before
+			// giving up permanently.
+			ui_menuBackShaderRetries++;
+			ui_menuBackShaderRetryTime = uis.realtime + UI_MENUBACK_RETRY_INTERVAL;
+			if ( uis.menuBackShaderDefault ) {
+				uis.menuBackShader = uis.menuBackShaderDefault;
+			}
 		} else if ( uis.menuBackShaderDefault ) {
 			trap_Print( va( "Menu background shader registration failed for '%s'\n", remotePath ) );
 			trap_Cvar_Set( "ui_menuBackState", "failed" );
 			trap_Cvar_Set( "ui_menuBackError", "Shader registration failed" );
 			trap_Cvar_Set( "ui_menuBackPath", "" );
 			ui_menuBackRemotePath[0] = '\0';
+			ui_menuBackShaderRetries = 0;
 			uis.menuBackShader = uis.menuBackShaderDefault;
 		}
 	}

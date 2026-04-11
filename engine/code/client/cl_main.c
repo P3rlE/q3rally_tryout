@@ -3170,6 +3170,57 @@ void CL_ShutdownRef( void ) {
 }
 
 /*
+======================
+FS_ReadFileWithHomepathFallback
+
+Wrapper for ri.FS_ReadFile: tries the normal VFS search first, then falls
+back to a direct homepath read (FS_SV_FOpenFileRead) for files that were
+written to disk after the VFS was initialised -- e.g. dynamically downloaded
+menu background images stored in ui_cache/.
+======================
+*/
+static long FS_ReadFileWithHomepathFallback( const char *qpath, void **buffer ) {
+	long		len;
+	fileHandle_t	fh;
+	byte		*buf;
+	char		svpath[MAX_OSPATH];
+
+	// Try the normal VFS path first.
+	len = FS_ReadFile( qpath, buffer );
+	if ( len > 0 ) {
+		Com_DPrintf( "BGASSET DEBUG: VFS found '%s' (len=%ld)\n", qpath, len );
+		return len;
+	}
+
+	Com_DPrintf( "BGASSET DEBUG: VFS missed '%s', trying SV path\n", qpath );
+
+	Com_sprintf( svpath, sizeof(svpath), BASEGAME "/%s", qpath );
+	len = FS_SV_FOpenFileRead( svpath, &fh );
+
+	Com_DPrintf( "BGASSET DEBUG: SV_FOpenFileRead('%s') = %ld, fh=%d\n", svpath, len, (int)fh );
+
+	if ( len <= 0 ) {
+		if ( buffer ) {
+			*buffer = NULL;
+		}
+		return -1;
+	}
+
+	if ( !buffer ) {
+		FS_FCloseFile( fh );
+		return len;
+	}
+
+	buf = Hunk_AllocateTempMemory( len + 1 );
+	( (byte *)buf )[len] = 0;
+	FS_Read( buf, len, fh );
+	FS_FCloseFile( fh );
+	*buffer = buf;
+	Com_DPrintf( "BGASSET DEBUG: SV fallback loaded '%s' (%ld bytes)\n", qpath, len );
+	return len;
+}
+
+/*
 ============
 CL_InitRenderer
 ============
@@ -3308,7 +3359,7 @@ void CL_InitRef( void ) {
 	ri.CM_ClusterPVS = CM_ClusterPVS;
 	ri.CM_DrawDebugSurface = CM_DrawDebugSurface;
 
-	ri.FS_ReadFile = FS_ReadFile;
+	ri.FS_ReadFile = FS_ReadFileWithHomepathFallback;
 	ri.FS_FreeFile = FS_FreeFile;
 	ri.FS_WriteFile = FS_WriteFile;
 	ri.FS_FreeFileList = FS_FreeFileList;
