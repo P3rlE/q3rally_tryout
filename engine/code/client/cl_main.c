@@ -22,7 +22,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // cl_main.c  -- client main loop
 
 #include "client.h"
-#include "cl_bgasset.h"
 #include "cl_update.h"
 #include <limits.h>
 
@@ -1219,7 +1218,6 @@ void CL_ShutdownAll(qboolean shutdownRef)
 
 #ifdef USE_CURL
 	CL_UpdateVersionCheck_Shutdown();
-	CL_BGAsset_Shutdown();
 	CL_cURL_Shutdown();
 #endif
 	// Q3RALLY DOWNLOADS START
@@ -2998,7 +2996,6 @@ void CL_Frame ( int msec ) {
 #endif
 
         CL_UpdateVersionCheck_Frame();
-	CL_BGAsset_Frame();
 	// Q3RALLY DOWNLOADS START
 	CL_DL_Frame();
 	// Q3RALLY DOWNLOADS END
@@ -3712,7 +3709,6 @@ void CL_Init( void ) {
         cl_motdString = Cvar_Get( "cl_motdString", "", CVAR_ROM );
 
         CL_UpdateVersionCheck_Register();
-	CL_BGAsset_Register();
 
 	Cvar_Get( "cl_maxPing", "800", CVAR_ARCHIVE );
 
@@ -3797,7 +3793,6 @@ void CL_Init( void ) {
 	Cmd_AddCommand ("model", CL_SetModel_f );
 	Cmd_AddCommand ("video", CL_Video_f );
         Cmd_AddCommand ("stopvideo", CL_StopVideo_f );
-	Cmd_AddCommand ("ui_menuBackRefresh", CL_BGAsset_ForceRefresh_f);
 	if( !com_dedicated->integer ) {
 		Cmd_AddCommand ("sayto", CL_Sayto_f );
 		Cmd_SetCommandCompletionFunc( "sayto", CL_CompletePlayerName );
