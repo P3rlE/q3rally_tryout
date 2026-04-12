@@ -86,37 +86,6 @@ typedef struct {
 
 static mainmenu_t s_main;
 static vec4_t s_profileActionColor;
-static char s_mainMenuPlateProfile[MAX_QPATH];
-static qhandle_t s_mainMenuPlateShader;
-
-static void MainMenu_UpdateProfilePlate( qboolean forceRegenerate ) {
-        const char *activeProfileName;
-        char profileForPlate[64];
-        char shaderMarker[MAX_QPATH];
-
-        activeProfileName = UI_Profile_GetActiveName();
-        if ( activeProfileName && activeProfileName[0] ) {
-                Q_strncpyz( profileForPlate, activeProfileName, sizeof( profileForPlate ) );
-        } else {
-                Q_strncpyz( profileForPlate, "PLAYER", sizeof( profileForPlate ) );
-        }
-
-        if ( forceRegenerate || !s_mainMenuPlateShader || Q_stricmp( profileForPlate, s_mainMenuPlateProfile ) ) {
-                Q_strncpyz( s_mainMenuPlateProfile, profileForPlate, sizeof( s_mainMenuPlateProfile ) );
-                s_mainMenuPlateShader = UI_GenerateMainMenuPlateShader( profileForPlate, shaderMarker, sizeof( shaderMarker ) );
-                if ( ui_debugMainMenuPlate.integer ) {
-                        Com_Printf( "Q3R UI Plate: main menu regenerate profile='%s' output='models/players/plates/uimain_profile.tga' shader='%s' handle=%d\n",
-                                    profileForPlate, shaderMarker, s_mainMenuPlateShader );
-                }
-        } else if ( ui_debugMainMenuPlate.integer ) {
-                Com_Printf( "Q3R UI Plate: main menu keep cached profile='%s' output='models/players/plates/uimain_profile.tga' handle=%d\n",
-                            profileForPlate, s_mainMenuPlateShader );
-        }
-
-        if ( s_mainMenuPlateShader ) {
-                s_main.playerinfo.plateShader = s_mainMenuPlateShader;
-        }
-}
 
 static void MainMenu_UpdateProfileTexts( void ) {
         const profile_stats_t *activeProfileStats;
@@ -150,13 +119,14 @@ static void MainMenu_UpdateModel( void )
 {
         vec3_t  viewangles;
         vec3_t  moveangles;
+        char    plate[MAX_QPATH];
 
         VectorClear( viewangles );
         VectorClear( moveangles );
 
-        UI_PlayerInfo_SetModel( &s_main.playerinfo, s_main.modelskin, s_main.rimskin, s_main.headskin, "usa_california" );
+        trap_Cvar_VariableStringBuffer( "plate", plate, sizeof( plate ) );
+        UI_PlayerInfo_SetModel( &s_main.playerinfo, s_main.modelskin, s_main.rimskin, s_main.headskin, plate);
         UI_PlayerInfo_SetInfo( &s_main.playerinfo, LEGS_IDLE, TORSO_STAND, viewangles, moveangles, WP_NONE, qfalse );
-        MainMenu_UpdateProfilePlate( qfalse );
 }
 
 
@@ -379,7 +349,6 @@ void MainMenu_Prepare( void ) {
         UI_Profile_MarkStatsDirty();
         MainMenu_UpdateProfileTexts();
         MainMenu_Update();
-        MainMenu_UpdateProfilePlate( qtrue );
 
 }
 
@@ -392,7 +361,6 @@ Main_MenuDraw
 static void Main_MenuDraw( void ) {
 
         MainMenu_UpdateProfileTexts();
-        MainMenu_UpdateProfilePlate( qfalse );
 
         // standard menu drawing
 

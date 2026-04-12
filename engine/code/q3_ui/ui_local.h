@@ -866,7 +866,6 @@ extern uiStatic_t	uis;
 extern vmCvar_t	ui_profileActive;
 extern vmCvar_t	ui_profileOverlaySeen;
 extern vmCvar_t	ui_clUuid;
-extern vmCvar_t	ui_debugMainMenuPlate;
 
 // Q3RALLY DOWNLOADS START
 extern vmCvar_t	ui_dl_state;
@@ -886,7 +885,6 @@ const profile_info_t *UI_Profile_GetActiveInfo( void );
 qboolean UI_Profile_GetRank( const profile_stats_t *stats, profile_rank_t *outRank );
 qboolean UI_Profile_SaveActiveInfo( const profile_info_t *info );
 qboolean UI_Profile_HasActiveProfile( void );
-qhandle_t UI_GenerateMainMenuPlateShader( const char *profileName, char *plateShaderName, int plateShaderNameSize );
 
 //
 // ui_spLevel.c
