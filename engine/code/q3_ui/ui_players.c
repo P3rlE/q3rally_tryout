@@ -51,6 +51,34 @@ static float		yaw;
 static float		deltaYaw	= 60;
 static float		deltaRoll;
 
+qhandle_t UI_GenerateMainMenuPlateShader( const char *profileName, char *plateShaderName, int plateShaderNameSize ) {
+	char		output[MAX_QPATH];
+	char		shaderPath[MAX_QPATH];
+	char		cleanName[64];
+	qhandle_t	h;
+
+	if ( !profileName || !profileName[0] ) {
+		profileName = "PLAYER";
+	}
+
+	Q_strncpyz( cleanName, profileName, sizeof( cleanName ) );
+	Q_CleanStr( cleanName );
+	if ( !cleanName[0] ) {
+		Q_strncpyz( cleanName, "PLAYER", sizeof( cleanName ) );
+	}
+
+	Com_sprintf( output, sizeof( output ), "models/players/plates/uimain_profile.tga" );
+	Com_sprintf( shaderPath, sizeof( shaderPath ), "models/players/plates/uimain_profile" );
+	CreateLicensePlateImage( "models/players/plates/usa_california.tga", output, cleanName, 10 );
+
+	h = trap_R_RegisterShader( shaderPath );
+	if ( plateShaderName && plateShaderNameSize > 0 ) {
+		Q_strncpyz( plateShaderName, "uimain_profile", plateShaderNameSize );
+	}
+
+	return h;
+}
+
 /*
 ===============
 UI_PlayerInfo_SetWeapon
