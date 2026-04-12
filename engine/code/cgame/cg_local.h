@@ -2117,7 +2117,7 @@ void CG_DrawKOTH_RespawnWave( void ); /* Q3Rally KOTH */
 qboolean CG_DrawHUD( void );
 
 //
-// cg_rally_platetools.c
+// qcommon/rally_plate_tools.c
 //
 extern int	propMap[128][3];
 
