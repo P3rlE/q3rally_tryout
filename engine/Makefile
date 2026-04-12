@@ -2736,7 +2736,6 @@ Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_hud_racing.o \
   $(B)/$(BASEGAME)/cgame/cg_hud_derby.o \
   $(B)/$(BASEGAME)/cgame/cg_hud_vehicle.o \
-  $(B)/$(BASEGAME)/cgame/cg_rally_platetools.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_racetools.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_rearweapons.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_scripted_objects.o \
@@ -2748,6 +2747,7 @@ Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_view.o \
   $(B)/$(BASEGAME)/cgame/cg_weapons.o \
   \
+  $(B)/$(BASEGAME)/qcommon/rally_plate_tools.o \
   $(B)/$(BASEGAME)/qcommon/q_math.o \
   $(B)/$(BASEGAME)/qcommon/q_shared.o
 
@@ -2994,6 +2994,7 @@ Q3UIOBJ_ = \
   $(B)/$(BASEGAME)/ui/ui_video.o \
   $(B)/$(BASEGAME)/ui/ui_rally_bots.o \
   \
+  $(B)/$(BASEGAME)/qcommon/rally_plate_tools.o \
   $(B)/$(BASEGAME)/qcommon/q_math.o \
   $(B)/$(BASEGAME)/qcommon/q_shared.o
 

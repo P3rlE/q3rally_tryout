@@ -35,6 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../client/keycodes.h"
 #include "../game/bg_public.h"
 #include "../game/profile_shared.h"
+#include "../qcommon/rally_plate_tools.h"
 
 typedef void (*voidfunc_f)(void);
 
@@ -744,6 +745,8 @@ qboolean UI_RegisterClientModelname( playerInfo_t *pi,  const char *modelSkinNam
 //
 // ui_atoms.c
 //
+extern int propMap[128][3];
+
 typedef struct {
 	int					frametime;
 	int					realtime;
