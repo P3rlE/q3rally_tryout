@@ -22,18 +22,20 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "ui_local.h"
-static qhandle_t UI_GenerateBotPlateShader( const char *botName, int botIndex ) {
+static qhandle_t UI_GenerateBotPlateShader( const char *botName, int botIndex, char *plateShaderName, int plateShaderNameSize ) {
     char          output[MAX_QPATH];
+    char          shaderName[MAX_QPATH];
     qhandle_t     h;
 
-    Com_sprintf( output, sizeof(output), "models/players/plates/uibot%d.tga", botIndex );
+    Com_sprintf( output, sizeof(output), "models/players/plates/player%d.tga", botIndex );
+    Com_sprintf( shaderName, sizeof(shaderName), "models/players/plates/player%d", botIndex );
     CreateLicensePlateImage( "models/players/plates/usa_california.tga", output, botName, 10 );
 
-    /* Register directly with full TGA path using the same shader registration
-       path as in-game. Avoid remapping here so we don't preload the image
-       with different flags. */
-    h = trap_R_RegisterShader( output );
-    Com_Printf( "Q3R UI Plate: bot %d (%s) -> shader handle %d\n", botIndex, botName, h );
+    h = trap_R_RegisterShader( shaderName );
+    if ( plateShaderName && plateShaderNameSize > 0 ) {
+        Q_strncpyz( plateShaderName, va("player%d", botIndex), plateShaderNameSize );
+    }
+    Com_Printf( "Q3R UI Plate: bot %d (%s) -> %s (handle %d)\n", botIndex, botName, shaderName, h );
     return h;
 }
 
@@ -280,6 +282,7 @@ static char botAIFiles[MAX_BOTS][NAME_BUFSIZE];
 static char botDescriptions[MAX_BOTS][DESC_BUFSIZE];
 static char botPersonalities[MAX_BOTS][DESC_BUFSIZE];
 static char botFavWeapon[MAX_BOTS][DESC_BUFSIZE];
+static char botPlateNames[MAX_BOTS][NAME_BUFSIZE];
 static qhandle_t botIcons[MAX_BOTS];
 static qhandle_t botPlateShaders[MAX_BOTS];
 static weapon_t  botWeapons[MAX_BOTS];
@@ -314,9 +317,16 @@ static void UI_BotsMenu_SetRival( int index ) {
 
     wp = botWeapons[index];
 
-    /* plate: use USA marker for model selection when using generated bot plate shaders */
-    if ( botPlateShaders[index] ) {
-        Q_strncpyz( plate, "usa_california", sizeof(plate) );
+    /*
+     * Reload/invalidate point for RIVALS:
+     * regenerate and re-register plate shader whenever a rival is (re)selected
+     * so the latest generated file is always bound.
+     */
+    botPlateShaders[index] = 0;
+    botPlateShaders[index] = UI_GenerateBotPlateShader( botNames[index], index, botPlateNames[index], sizeof(botPlateNames[index]) );
+
+    if ( botPlateNames[index][0] ) {
+        Q_strncpyz( plate, botPlateNames[index], sizeof(plate) );
     } else {
         trap_Cvar_VariableStringBuffer( "plate", plate, sizeof(plate) );
         if ( !plate[0] ) Q_strncpyz( plate, "usa_california", sizeof(plate) );
@@ -324,9 +334,10 @@ static void UI_BotsMenu_SetRival( int index ) {
 
     UI_PlayerInfo_SetModel( &s_garagePlayerInfo, botModels[index], NULL, NULL, plate );
 
-    /* Override the plateShader directly with our pre-generated one */
+    /* Ensure plateShader points to the exact freshly-generated shader handle. */
     if ( botPlateShaders[index] ) {
-        Com_Printf( "RIVALS: Bot %d uses generated plate shader uibot%d.tga with plate marker '%s'\n", index, index, plate );
+        Com_Printf( "RIVALS: Bot %d uses generated plate '%s' with marker '%s' (handle %d)\n",
+                    index, botPlateNames[index], plate, botPlateShaders[index] );
         s_garagePlayerInfo.plateShader = botPlateShaders[index];
     }
 
@@ -500,9 +511,10 @@ static void UI_BotsMenu_ParseBots(void) {
             Q_strncpyz(botDescriptions[botCount], description, DESC_BUFSIZE);
             Q_strncpyz(botPersonalities[botCount], personality, DESC_BUFSIZE);
             Q_strncpyz(botFavWeapon[botCount], favoriteweapon, DESC_BUFSIZE);
+            botPlateNames[botCount][0] = '\0';
             botIcons[botCount]        = UI_LoadModelIconFor(model);
             botWeapons[botCount]      = UI_WeaponEnumFromText(favoriteweapon);
-            botPlateShaders[botCount] = UI_GenerateBotPlateShader(name, botCount);
+            botPlateShaders[botCount] = 0;
             
             botCount++;
         }
