@@ -1309,6 +1309,7 @@ void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int ti
 	//
 	// add the license plate
 	//
+	// NOTE: UI has no in-game invisibility powerup state here; only tag/model availability is checked.
 	if (UI_TagExists(pi->bodyModel, "tag_plate")){
 		plate.frame = 0;
 		plate.hModel = pi->plateModel;
@@ -1320,7 +1321,8 @@ void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int ti
 
 		VectorCopy( origin, plate.lightingOrigin );
 		UI_PositionEntityOnTag( &plate, &body, pi->bodyModel, "tag_plate");
-		plate.renderfx = renderfx | RF_MINLIGHT;
+		plate.shadowPlane = body.shadowPlane;
+		plate.renderfx = renderfx;
 
 		trap_R_AddRefEntityToScene( &plate );
 	}
