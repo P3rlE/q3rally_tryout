@@ -175,6 +175,10 @@ int BotOppositeTeam(bot_state_t *bs) {
 	int team, i, enemyTeams[3], enemyCount, bestTeam, bestTravel;
 	bot_goal_t *goal;
 	int travelTime;
+	char flagStatus[8];
+	int ownFlagIndex, ownFlagStolen;
+	int lowEnemyScore;
+	qboolean scorePressure;
 
 	team = BotTeam(bs);
 	if (team < TEAM_RED || team > TEAM_YELLOW) {
@@ -182,6 +186,7 @@ int BotOppositeTeam(bot_state_t *bs) {
 	}
 
 	enemyCount = 0;
+	lowEnemyScore = 0x7fffffff;
 	for (i = TEAM_RED; i <= TEAM_YELLOW; i++) {
 		if (i == team) {
 			continue;
@@ -191,6 +196,12 @@ int BotOppositeTeam(bot_state_t *bs) {
 			(i == TEAM_GREEN) ? &ctf_greenflag : &ctf_yellowflag;
 		if (!goal->areanum) {
 			continue;
+		}
+		if (TeamCount(-1, i) <= 0) {
+			continue;
+		}
+		if (level.teamScores[i] < lowEnemyScore) {
+			lowEnemyScore = level.teamScores[i];
 		}
 		enemyTeams[enemyCount++] = i;
 	}
@@ -204,16 +215,51 @@ int BotOppositeTeam(bot_state_t *bs) {
 
 	bestTeam = enemyTeams[0];
 	bestTravel = 0x7fffffff;
+	trap_GetConfigstring(CS_FLAGSTATUS, flagStatus, sizeof(flagStatus));
+	ownFlagIndex = (team == TEAM_RED) ? 0 :
+		(team == TEAM_BLUE) ? 1 :
+		(team == TEAM_GREEN) ? 2 :
+		(team == TEAM_YELLOW) ? 3 : -1;
+	ownFlagStolen = (ownFlagIndex >= 0 && flagStatus[ownFlagIndex] && flagStatus[ownFlagIndex] != '0');
+	scorePressure = (g_capturelimit.integer > 0);
+	if (scorePressure) {
+		int topEnemy = -1;
+		for (i = 0; i < enemyCount; i++) {
+			if (level.teamScores[enemyTeams[i]] > topEnemy) {
+				topEnemy = level.teamScores[enemyTeams[i]];
+			}
+		}
+		scorePressure = (topEnemy >= g_capturelimit.integer - 1 ||
+			topEnemy - level.teamScores[team] >= 2);
+	}
+
 	for (i = 0; i < enemyCount; i++) {
+		int score;
+		int idx;
 		goal = (enemyTeams[i] == TEAM_RED) ? &ctf_redflag :
 			(enemyTeams[i] == TEAM_BLUE) ? &ctf_blueflag :
 			(enemyTeams[i] == TEAM_GREEN) ? &ctf_greenflag : &ctf_yellowflag;
 		travelTime = trap_AAS_AreaTravelTimeToGoalArea(bs->areanum, bs->origin, goal->areanum, TFL_DEFAULT);
-		if (!travelTime) {
-			continue;
+		score = travelTime > 0 ? travelTime : 10000;
+		// favor the weaker enemy team as primary farm target
+		score += (level.teamScores[enemyTeams[i]] - lowEnemyScore) * 120;
+		idx = (enemyTeams[i] == TEAM_RED) ? 0 :
+			(enemyTeams[i] == TEAM_BLUE) ? 1 :
+			(enemyTeams[i] == TEAM_GREEN) ? 2 : 3;
+		// if this flag is already missing from base, spread pressure to other teams
+		if (flagStatus[idx] && flagStatus[idx] != '0') {
+			score += 220;
 		}
-		if (travelTime < bestTravel) {
-			bestTravel = travelTime;
+		// when under pressure, deprioritize distant targets if own flag is currently stolen
+		if (ownFlagStolen && scorePressure) {
+			score += 120;
+		}
+		if (scorePressure && g_capturelimit.integer > 0 &&
+			level.teamScores[enemyTeams[i]] >= g_capturelimit.integer - 1) {
+			score -= 320;
+		}
+		if (score < bestTravel) {
+			bestTravel = score;
 			bestTeam = enemyTeams[i];
 		}
 	}
