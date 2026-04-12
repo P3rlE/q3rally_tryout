@@ -1543,6 +1543,110 @@ void BotHarvesterRetreatGoals(bot_state_t *bs) {
 }
 #endif
 
+void BotDominationSeekGoals(bot_state_t *bs) {
+	int sigilStatus;
+	int team;
+
+	if (!BotGetDominationSigilGoal(bs, &bs->teamgoal, &sigilStatus)) {
+		return;
+	}
+
+	team = BotTeam(bs);
+	bs->decisionmaker = bs->client;
+	bs->ordered = qfalse;
+	bs->teammessage_time = FloatTime() + random();
+
+	if (Bot_IsLowHealthForObjectivePush(bs) && BotFindEnemy(bs, -1)) {
+		bs->ltgtype = LTG_GETITEM;
+		bs->teamgoal_time = FloatTime() + 5;
+		BotSetTeamStatus(bs);
+		return;
+	}
+
+	if (sigilStatus == SIGIL_ISWHITE) {
+		bs->ltgtype = LTG_GETFLAG;
+		bs->teamgoal_time = FloatTime() + TEAM_ATTACKENEMYBASE_TIME;
+		BotGetAlternateRouteGoal(bs, BotOppositeTeam(bs));
+	}
+	else if ((team == TEAM_RED && sigilStatus == SIGIL_ISBLUE)
+		|| (team == TEAM_BLUE && sigilStatus == SIGIL_ISRED)) {
+		bs->ltgtype = LTG_ATTACKENEMYBASE;
+		bs->teamgoal_time = FloatTime() + TEAM_ATTACKENEMYBASE_TIME;
+		bs->attackaway_time = 0;
+		BotGetAlternateRouteGoal(bs, BotOppositeTeam(bs));
+	}
+	else {
+		bs->ltgtype = LTG_DEFENDKEYAREA;
+		bs->teamgoal_time = FloatTime() + TEAM_DEFENDKEYAREA_TIME;
+		bs->defendaway_time = 0;
+	}
+	BotSetTeamStatus(bs);
+}
+
+void BotDominationRetreatGoals(bot_state_t *bs) {
+	if (Bot_IsLowHealthForObjectivePush(bs)) {
+		bs->ltgtype = LTG_GETITEM;
+		bs->teamgoal_time = FloatTime() + 4;
+		BotSetTeamStatus(bs);
+		return;
+	}
+	BotDominationSeekGoals(bs);
+}
+
+void BotKOTHSeekGoals(bot_state_t *bs) {
+	int owner, contested, capturePct;
+	float hillRadius;
+	vec3_t hillOrigin;
+	float radiusExtent;
+
+	if (!BotGetKOTHStatus(&owner, &contested, &capturePct, hillOrigin, &hillRadius)) {
+		return;
+	}
+
+	bs->decisionmaker = bs->client;
+	bs->ordered = qfalse;
+	bs->teammessage_time = FloatTime() + random();
+
+	if (Bot_IsLowHealthForObjectivePush(bs) && owner != BotTeam(bs)) {
+		bs->ltgtype = LTG_GETITEM;
+		bs->teamgoal_time = FloatTime() + 5;
+		BotSetTeamStatus(bs);
+		return;
+	}
+
+	radiusExtent = (hillRadius > 32.0f) ? hillRadius : 128.0f;
+	bs->teamgoal.entitynum = ENTITYNUM_NONE;
+	bs->teamgoal.areanum = BotPointAreaNum(hillOrigin);
+	VectorSet(bs->teamgoal.mins, -radiusExtent, -radiusExtent, -24);
+	VectorSet(bs->teamgoal.maxs, radiusExtent, radiusExtent, 48);
+	VectorCopy(hillOrigin, bs->teamgoal.origin);
+	bs->teamgoal.flags = 0;
+	bs->teamgoal.number = 0;
+	bs->teamgoal.iteminfo = 0;
+
+	if (owner == BotTeam(bs) && !contested && capturePct >= 100) {
+		bs->ltgtype = LTG_DEFENDKEYAREA;
+		bs->teamgoal_time = FloatTime() + TEAM_DEFENDKEYAREA_TIME;
+		bs->defendaway_time = 0;
+	}
+	else {
+		bs->ltgtype = LTG_ATTACKENEMYBASE;
+		bs->teamgoal_time = FloatTime() + TEAM_ATTACKENEMYBASE_TIME;
+		bs->attackaway_time = 0;
+	}
+	BotSetTeamStatus(bs);
+}
+
+void BotKOTHRetreatGoals(bot_state_t *bs) {
+	if (Bot_IsLowHealthForObjectivePush(bs)) {
+		bs->ltgtype = LTG_GETITEM;
+		bs->teamgoal_time = FloatTime() + 4;
+		BotSetTeamStatus(bs);
+		return;
+	}
+	BotKOTHSeekGoals(bs);
+}
+
 
 // STONELANCE
 void BotRaceSeekGoals(bot_state_t *bs) {
