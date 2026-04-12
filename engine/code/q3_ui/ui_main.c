@@ -222,6 +222,7 @@ vmCvar_t	ui_head;
 vmCvar_t	ui_rim;
 vmCvar_t	ui_plate;
 vmCvar_t	ui_clUuid;
+vmCvar_t	ui_debugMainMenuPlate;
 // END
 
 vmCvar_t	ui_profileActive;
@@ -345,6 +346,7 @@ static cvarTable_t		cvarTable[] = {
 	 * nicht vom Spieler editierbar. CVAR_USERINFO sorgt dafür dass
 	 * die Engine den Wert automatisch in den Userinfo-String einträgt. */
 	{ &ui_clUuid, "cl_uuid", "", CVAR_USERINFO|CVAR_ARCHIVE },
+	{ &ui_debugMainMenuPlate, "ui_debugMainMenuPlate", "0", CVAR_ARCHIVE },
 // END
 
 	{ &ui_profileActive, "profile_active", "", CVAR_ARCHIVE },

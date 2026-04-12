@@ -24,18 +24,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "ui_local.h"
 static qhandle_t UI_GenerateBotPlateShader( const char *botName, int botIndex, char *plateShaderName, int plateShaderNameSize ) {
     char          output[MAX_QPATH];
-    char          shaderName[MAX_QPATH];
     qhandle_t     h;
 
     Com_sprintf( output, sizeof(output), "models/players/plates/player%d.tga", botIndex );
-    Com_sprintf( shaderName, sizeof(shaderName), "models/players/plates/player%d", botIndex );
     CreateLicensePlateImage( "models/players/plates/usa_california.tga", output, botName, 10 );
 
-    h = trap_R_RegisterShader( shaderName );
+    h = trap_R_RegisterShader( output );
     if ( plateShaderName && plateShaderNameSize > 0 ) {
         Q_strncpyz( plateShaderName, va("player%d", botIndex), plateShaderNameSize );
     }
-    Com_Printf( "Q3R UI Plate: bot %d (%s) -> %s (handle %d)\n", botIndex, botName, shaderName, h );
+    Com_Printf( "Q3R UI Plate: bot %d (%s) -> %s (handle %d)\n", botIndex, botName, output, h );
     return h;
 }
 
