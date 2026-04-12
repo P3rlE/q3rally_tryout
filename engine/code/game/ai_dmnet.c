@@ -4220,57 +4220,66 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			}
 			desiredOffset = 0.0f;
 			speedBias = 0.0f;
+			{
+				float overtakeEnterDist = 170.0f + ( bs->personalityOvertakeBias * 60.0f );
+				float overtakeEnterRelSpeed = 60.0f - ( bs->personalityOvertakeBias * 25.0f );
+				float defendRelSpeed = 95.0f - ( bs->personalityRisk * 35.0f );
+				float abortDist = 25.0f + ( ( 1.0f - bs->personalityRisk ) * 18.0f );
+				float sideSafetyThreshold = 66.0f - ( bs->personalityRisk * 28.0f );
+				float abortBrakeZone = 0.88f - ( bs->personalityRisk * 0.20f );
+				float followClearDist = 240.0f + ( bs->personalityOvertakeBias * 55.0f );
 
-			switch ( decisionState ) {
-				default:
-				case GHOST_DECISION_FOLLOW:
-					if ( collisionRisk.nearestAheadDist < 190.0f && collisionRisk.nearestAheadRelSpeed > 45.0f && brakeZone < 0.5f ) {
-						decisionState = GHOST_DECISION_PREPARE_OVERTAKE;
-					} else if ( collisionRisk.nearestBehindDist < 120.0f && collisionRisk.nearestBehindRelSpeed > 70.0f && ( brakeZone > 0.5f || cornerPhase > 0.35f ) ) {
-						decisionState = GHOST_DECISION_DEFEND_LINE;
-					} else if ( collisionRisk.hasPredictedConflict ) {
-						decisionState = GHOST_DECISION_ABORT_OVERTAKE;
-					}
-					break;
-
-				case GHOST_DECISION_PREPARE_OVERTAKE:
-					if ( collisionRisk.nearestAheadDist > 260.0f || collisionRisk.nearestAheadRelSpeed < 5.0f ) {
-						decisionState = GHOST_DECISION_FOLLOW;
-					} else if ( brakeZone > 0.5f || collisionRisk.abortOvertakeRecommended ) {
-						decisionState = GHOST_DECISION_ABORT_OVERTAKE;
-					} else {
-						if ( preferredInside ) {
-							decisionState = GHOST_DECISION_OVERTAKE_INSIDE;
-						} else {
-							decisionState = GHOST_DECISION_OVERTAKE_OUTSIDE;
+				switch ( decisionState ) {
+					default:
+					case GHOST_DECISION_FOLLOW:
+						if ( collisionRisk.nearestAheadDist < overtakeEnterDist && collisionRisk.nearestAheadRelSpeed > overtakeEnterRelSpeed && brakeZone < 0.5f ) {
+							decisionState = GHOST_DECISION_PREPARE_OVERTAKE;
+						} else if ( collisionRisk.nearestBehindDist < 120.0f && collisionRisk.nearestBehindRelSpeed > defendRelSpeed && ( brakeZone > 0.5f || cornerPhase > 0.35f ) ) {
+							decisionState = GHOST_DECISION_DEFEND_LINE;
+						} else if ( collisionRisk.hasPredictedConflict ) {
+							decisionState = GHOST_DECISION_ABORT_OVERTAKE;
 						}
-					}
-					break;
+						break;
 
-				case GHOST_DECISION_OVERTAKE_INSIDE:
-				case GHOST_DECISION_OVERTAKE_OUTSIDE:
-				{
-					qboolean sideBlocked;
-					sideBlocked = ( decisionState == GHOST_DECISION_OVERTAKE_INSIDE ) ? ( collisionRisk.sideSafetyInside < 48.0f ) : ( collisionRisk.sideSafetyOutside < 48.0f );
-					if ( collisionRisk.nearestAheadDist < 35.0f || sideBlocked || brakeZone > 0.75f || collisionRisk.abortOvertakeRecommended ) {
-						decisionState = GHOST_DECISION_ABORT_OVERTAKE;
-					} else if ( collisionRisk.nearestAheadDist > 270.0f || collisionRisk.nearestAheadRelSpeed < -20.0f ) {
-						decisionState = GHOST_DECISION_FOLLOW;
+					case GHOST_DECISION_PREPARE_OVERTAKE:
+						if ( collisionRisk.nearestAheadDist > followClearDist || collisionRisk.nearestAheadRelSpeed < 5.0f ) {
+							decisionState = GHOST_DECISION_FOLLOW;
+						} else if ( brakeZone > 0.5f || collisionRisk.abortOvertakeRecommended ) {
+							decisionState = GHOST_DECISION_ABORT_OVERTAKE;
+						} else {
+							if ( preferredInside ) {
+								decisionState = GHOST_DECISION_OVERTAKE_INSIDE;
+							} else {
+								decisionState = GHOST_DECISION_OVERTAKE_OUTSIDE;
+							}
+						}
+						break;
+
+					case GHOST_DECISION_OVERTAKE_INSIDE:
+					case GHOST_DECISION_OVERTAKE_OUTSIDE:
+					{
+						qboolean sideBlocked;
+						sideBlocked = ( decisionState == GHOST_DECISION_OVERTAKE_INSIDE ) ? ( collisionRisk.sideSafetyInside < sideSafetyThreshold ) : ( collisionRisk.sideSafetyOutside < sideSafetyThreshold );
+						if ( collisionRisk.nearestAheadDist < abortDist || sideBlocked || brakeZone > abortBrakeZone || collisionRisk.abortOvertakeRecommended ) {
+							decisionState = GHOST_DECISION_ABORT_OVERTAKE;
+						} else if ( collisionRisk.nearestAheadDist > followClearDist + 15.0f || collisionRisk.nearestAheadRelSpeed < -20.0f ) {
+							decisionState = GHOST_DECISION_FOLLOW;
+						}
+						break;
 					}
-					break;
+
+					case GHOST_DECISION_DEFEND_LINE:
+						if ( collisionRisk.nearestBehindDist > 220.0f || collisionRisk.nearestBehindRelSpeed < 25.0f ) {
+							decisionState = GHOST_DECISION_FOLLOW;
+						}
+						break;
+
+					case GHOST_DECISION_ABORT_OVERTAKE:
+						if ( collisionRisk.nearestAheadDist > 140.0f || brakeZone > 0.5f ) {
+							decisionState = GHOST_DECISION_FOLLOW;
+						}
+						break;
 				}
-
-				case GHOST_DECISION_DEFEND_LINE:
-					if ( collisionRisk.nearestBehindDist > 220.0f || collisionRisk.nearestBehindRelSpeed < 25.0f ) {
-						decisionState = GHOST_DECISION_FOLLOW;
-					}
-					break;
-
-				case GHOST_DECISION_ABORT_OVERTAKE:
-					if ( collisionRisk.nearestAheadDist > 140.0f || brakeZone > 0.5f ) {
-						decisionState = GHOST_DECISION_FOLLOW;
-					}
-					break;
 			}
 
 			if ( decisionState != (ghostDecisionState_t)bs->ghostDecisionState ) {
@@ -4281,15 +4290,15 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			switch ( decisionState ) {
 				case GHOST_DECISION_PREPARE_OVERTAKE:
 					desiredOffset = ( collisionRisk.nearestAheadLateral >= 0.0f ) ? -32.0f : 32.0f;
-					speedBias = 40.0f;
+					speedBias = 25.0f + ( bs->personalityOvertakeBias * 30.0f );
 					break;
 				case GHOST_DECISION_OVERTAKE_INSIDE:
 					desiredOffset = preferredInside ? -72.0f : 72.0f;
-					speedBias = 65.0f;
+					speedBias = 35.0f + ( bs->personalityRisk * 45.0f );
 					break;
 				case GHOST_DECISION_OVERTAKE_OUTSIDE:
 					desiredOffset = preferredInside ? 72.0f : -72.0f;
-					speedBias = 20.0f;
+					speedBias = 10.0f + ( bs->personalityOvertakeBias * 25.0f );
 					break;
 				case GHOST_DECISION_DEFEND_LINE:
 					desiredOffset = ( collisionRisk.nearestBehindLateral >= 0.0f ) ? -46.0f : 46.0f;
