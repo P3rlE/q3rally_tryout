@@ -29,9 +29,10 @@ static qhandle_t UI_GenerateBotPlateShader( const char *botName, int botIndex ) 
     Com_sprintf( output, sizeof(output), "models/players/plates/uibot%d.tga", botIndex );
     CreateLicensePlateImage( "models/players/plates/usa_california.tga", output, botName, 10 );
 
-    /* Register directly with full TGA path.
-       Avoid remapping here so we don't preload the image with different flags. */
-    h = trap_R_RegisterShaderNoMip( output );
+    /* Register directly with full TGA path using the same shader registration
+       path as in-game. Avoid remapping here so we don't preload the image
+       with different flags. */
+    h = trap_R_RegisterShader( output );
     Com_Printf( "Q3R UI Plate: bot %d (%s) -> shader handle %d\n", botIndex, botName, h );
     return h;
 }

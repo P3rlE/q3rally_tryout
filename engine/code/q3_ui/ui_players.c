@@ -1597,7 +1597,7 @@ static qboolean	UI_RegisterClientSkin( playerInfo_t *pi, const char *modelName, 
 	}
 
 	Com_sprintf( filename, sizeof( filename ), "models/players/plates/%s", plateName );
-	pi->plateShader = trap_R_RegisterShaderNoMip(filename);
+	pi->plateShader = trap_R_RegisterShader( filename );
 	if( !pi->plateShader ) {
 		Com_Printf( S_COLOR_YELLOW "Q3R Warning: Failed to load plate shader: %s\n", filename );
 	}
