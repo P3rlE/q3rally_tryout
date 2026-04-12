@@ -1351,6 +1351,9 @@ void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int ti
 		UI_PositionEntityOnTag( &plate, &body, pi->bodyModel, "tag_plate");
 		plate.shadowPlane = body.shadowPlane;
 		plate.renderfx = renderfx;
+		if ( uis.mainMenu ) {
+			plate.renderfx |= RF_MINLIGHT;
+		}
 
 		trap_R_AddRefEntityToScene( &plate );
 	}
