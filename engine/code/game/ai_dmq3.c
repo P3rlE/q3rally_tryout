@@ -95,6 +95,8 @@ int max_bspmodelindex;			//maximum BSP model index
 //CTF flag goals
 bot_goal_t ctf_redflag;
 bot_goal_t ctf_blueflag;
+bot_goal_t ctf_greenflag;
+bot_goal_t ctf_yellowflag;
 #ifdef MISSIONPACK
 bot_goal_t ctf_neutralflag;
 bot_goal_t redobelisk;
@@ -135,6 +137,8 @@ int BotCTFCarryingFlag(bot_state_t *bs) {
 
 	if (bs->inventory[INVENTORY_REDFLAG] > 0) return CTF_FLAG_RED;
 	else if (bs->inventory[INVENTORY_BLUEFLAG] > 0) return CTF_FLAG_BLUE;
+	else if (bs->cur_ps.powerups[PW_GREENFLAG]) return CTF_FLAG_GREEN;
+	else if (bs->cur_ps.powerups[PW_YELLOWFLAG]) return CTF_FLAG_YELLOW;
 	return CTF_FLAG_NONE;
 }
 
@@ -149,10 +153,14 @@ int BotTeam(bot_state_t *bs) {
 		return qfalse;
 	}
 
-    if (level.clients[bs->client].sess.sessionTeam == TEAM_RED) {
+	if (level.clients[bs->client].sess.sessionTeam == TEAM_RED) {
 		return TEAM_RED;
 	} else if (level.clients[bs->client].sess.sessionTeam == TEAM_BLUE) {
 		return TEAM_BLUE;
+	} else if (level.clients[bs->client].sess.sessionTeam == TEAM_GREEN) {
+		return TEAM_GREEN;
+	} else if (level.clients[bs->client].sess.sessionTeam == TEAM_YELLOW) {
+		return TEAM_YELLOW;
 	}
 
 	return TEAM_FREE;
@@ -164,11 +172,52 @@ BotOppositeTeam
 ==================
 */
 int BotOppositeTeam(bot_state_t *bs) {
-	switch(BotTeam(bs)) {
-		case TEAM_RED: return TEAM_BLUE;
-		case TEAM_BLUE: return TEAM_RED;
-		default: return TEAM_FREE;
+	int team, i, enemyTeams[3], enemyCount, bestTeam, bestTravel;
+	bot_goal_t *goal;
+	int travelTime;
+
+	team = BotTeam(bs);
+	if (team < TEAM_RED || team > TEAM_YELLOW) {
+		return TEAM_FREE;
 	}
+
+	enemyCount = 0;
+	for (i = TEAM_RED; i <= TEAM_YELLOW; i++) {
+		if (i == team) {
+			continue;
+		}
+		goal = (i == TEAM_RED) ? &ctf_redflag :
+			(i == TEAM_BLUE) ? &ctf_blueflag :
+			(i == TEAM_GREEN) ? &ctf_greenflag : &ctf_yellowflag;
+		if (!goal->areanum) {
+			continue;
+		}
+		enemyTeams[enemyCount++] = i;
+	}
+	if (!enemyCount) {
+		switch(team) {
+			case TEAM_RED: return TEAM_BLUE;
+			case TEAM_BLUE: return TEAM_RED;
+			default: return TEAM_FREE;
+		}
+	}
+
+	bestTeam = enemyTeams[0];
+	bestTravel = 0x7fffffff;
+	for (i = 0; i < enemyCount; i++) {
+		goal = (enemyTeams[i] == TEAM_RED) ? &ctf_redflag :
+			(enemyTeams[i] == TEAM_BLUE) ? &ctf_blueflag :
+			(enemyTeams[i] == TEAM_GREEN) ? &ctf_greenflag : &ctf_yellowflag;
+		travelTime = trap_AAS_AreaTravelTimeToGoalArea(bs->areanum, bs->origin, goal->areanum, TFL_DEFAULT);
+		if (!travelTime) {
+			continue;
+		}
+		if (travelTime < bestTravel) {
+			bestTravel = travelTime;
+			bestTeam = enemyTeams[i];
+		}
+	}
+	return bestTeam;
 }
 
 /*
@@ -177,11 +226,19 @@ BotEnemyFlag
 ==================
 */
 bot_goal_t *BotEnemyFlag(bot_state_t *bs) {
-	if (BotTeam(bs) == TEAM_RED) {
-		return &ctf_blueflag;
-	}
-	else {
-		return &ctf_redflag;
+	int enemyTeam;
+
+	enemyTeam = BotOppositeTeam(bs);
+	switch (enemyTeam) {
+		case TEAM_RED: return &ctf_redflag;
+		case TEAM_BLUE: return &ctf_blueflag;
+		case TEAM_GREEN: return &ctf_greenflag;
+		case TEAM_YELLOW: return &ctf_yellowflag;
+		default:
+			if (BotTeam(bs) == TEAM_RED) {
+				return &ctf_blueflag;
+			}
+			return &ctf_redflag;
 	}
 }
 
@@ -191,11 +248,12 @@ BotTeamFlag
 ==================
 */
 bot_goal_t *BotTeamFlag(bot_state_t *bs) {
-	if (BotTeam(bs) == TEAM_RED) {
-		return &ctf_redflag;
-	}
-	else {
-		return &ctf_blueflag;
+	switch (BotTeam(bs)) {
+		case TEAM_RED: return &ctf_redflag;
+		case TEAM_BLUE: return &ctf_blueflag;
+		case TEAM_GREEN: return &ctf_greenflag;
+		case TEAM_YELLOW: return &ctf_yellowflag;
+		default: return &ctf_redflag;
 	}
 }
 
@@ -342,6 +400,10 @@ qboolean EntityCarriesFlag(aas_entityinfo_t *entinfo) {
 	if ( entinfo->powerups & ( 1 << PW_REDFLAG ) )
 		return qtrue;
 	if ( entinfo->powerups & ( 1 << PW_BLUEFLAG ) )
+		return qtrue;
+	if ( entinfo->powerups & ( 1 << PW_GREENFLAG ) )
+		return qtrue;
+	if ( entinfo->powerups & ( 1 << PW_YELLOWFLAG ) )
 		return qtrue;
 #ifdef MISSIONPACK
 	if ( entinfo->powerups & ( 1 << PW_NEUTRALFLAG ) )
@@ -543,16 +605,26 @@ BotSetLastOrderedTask
 ==================
 */
 int BotSetLastOrderedTask(bot_state_t *bs) {
+	char flagStatus[8];
+	int team;
 
 	if (gametype == GT_CTF) {
 		// don't go back to returning the flag if it's at the base
 		if ( bs->lastgoal_ltgtype == LTG_RETURNFLAG ) {
-			if ( BotTeam(bs) == TEAM_RED ) {
+			team = BotTeam(bs);
+			if (g_gametype.integer == GT_CTF4) {
+				trap_GetConfigstring(CS_FLAGSTATUS, flagStatus, sizeof(flagStatus));
+				if ((team == TEAM_RED && flagStatus[0] == '0') ||
+					(team == TEAM_BLUE && flagStatus[1] == '0') ||
+					(team == TEAM_GREEN && flagStatus[2] == '0') ||
+					(team == TEAM_YELLOW && flagStatus[3] == '0')) {
+					bs->lastgoal_ltgtype = 0;
+				}
+			} else if ( team == TEAM_RED ) {
 				if ( bs->redflagstatus == 0 ) {
 					bs->lastgoal_ltgtype = 0;
 				}
-			}
-			else {
+			} else {
 				if ( bs->blueflagstatus == 0 ) {
 					bs->lastgoal_ltgtype = 0;
 				}
@@ -621,6 +693,8 @@ void BotCTFSeekGoals(bot_state_t *bs) {
 	if (BotCTFCarryingFlag(bs)) {
 		//if not already rushing to the base
 		if (bs->ltgtype != LTG_RUSHBASE) {
+			bot_goal_t *enemyFlag;
+
 			BotRefuseOrder(bs);
 			bs->ltgtype = LTG_RUSHBASE;
 			bs->teamgoal_time = FloatTime() + CTF_RUSHBASE_TIME;
@@ -628,10 +702,11 @@ void BotCTFSeekGoals(bot_state_t *bs) {
 			bs->decisionmaker = bs->client;
 			bs->ordered = qfalse;
 			//
-			switch(BotTeam(bs)) {
-				case TEAM_RED: VectorSubtract(bs->origin, ctf_blueflag.origin, dir); break;
-				case TEAM_BLUE: VectorSubtract(bs->origin, ctf_redflag.origin, dir); break;
-				default: VectorSet(dir, 999, 999, 999); break;
+			enemyFlag = BotEnemyFlag(bs);
+			if (enemyFlag && enemyFlag->areanum) {
+				VectorSubtract(bs->origin, enemyFlag->origin, dir);
+			} else {
+				VectorSet(dir, 999, 999, 999);
 			}
 			// if the bot picked up the flag very close to the enemy base
 			if ( VectorLength(dir) < 128 ) {
@@ -645,7 +720,16 @@ void BotCTFSeekGoals(bot_state_t *bs) {
 			BotVoiceChat(bs, -1, VOICECHAT_IHAVEFLAG);
 		}
 		else if (bs->rushbaseaway_time > FloatTime()) {
-			if (BotTeam(bs) == TEAM_RED) flagstatus = bs->redflagstatus;
+			if (g_gametype.integer == GT_CTF4) {
+				char flagStatus[8];
+				int team = BotTeam(bs);
+				trap_GetConfigstring(CS_FLAGSTATUS, flagStatus, sizeof(flagStatus));
+				if (team == TEAM_RED) flagstatus = (flagStatus[0] != '0');
+				else if (team == TEAM_BLUE) flagstatus = (flagStatus[1] != '0');
+				else if (team == TEAM_GREEN) flagstatus = (flagStatus[2] != '0');
+				else if (team == TEAM_YELLOW) flagstatus = (flagStatus[3] != '0');
+				else flagstatus = 1;
+			} else if (BotTeam(bs) == TEAM_RED) flagstatus = bs->redflagstatus;
 			else flagstatus = bs->blueflagstatus;
 			//if the flag is back
 			if (flagstatus == 0) {
@@ -2196,6 +2280,12 @@ void BotUpdateInventory(bot_state_t *bs) {
 #endif
 	bs->inventory[INVENTORY_REDFLAG] = bs->cur_ps.powerups[PW_REDFLAG] != 0;
 	bs->inventory[INVENTORY_BLUEFLAG] = bs->cur_ps.powerups[PW_BLUEFLAG] != 0;
+#ifdef INVENTORY_GREENFLAG
+	bs->inventory[INVENTORY_GREENFLAG] = bs->cur_ps.powerups[PW_GREENFLAG] != 0;
+#endif
+#ifdef INVENTORY_YELLOWFLAG
+	bs->inventory[INVENTORY_YELLOWFLAG] = bs->cur_ps.powerups[PW_YELLOWFLAG] != 0;
+#endif
 #ifdef MISSIONPACK
 	bs->inventory[INVENTORY_NEUTRALFLAG] = bs->cur_ps.powerups[PW_NEUTRALFLAG] != 0;
 	if (BotTeam(bs) == TEAM_RED) {
@@ -5998,6 +6088,12 @@ void BotSetupDeathmatchAI(void) {
 			BotAI_Print(PRT_WARNING, "CTF without Red Flag\n");
 		if (trap_BotGetLevelItemGoal(-1, "Blue Flag", &ctf_blueflag) < 0)
 			BotAI_Print(PRT_WARNING, "CTF without Blue Flag\n");
+		if (g_gametype.integer == GT_CTF4) {
+			if (trap_BotGetLevelItemGoal(-1, "Green Flag", &ctf_greenflag) < 0)
+				BotAI_Print(PRT_WARNING, "CTF4 without Green Flag\n");
+			if (trap_BotGetLevelItemGoal(-1, "Yellow Flag", &ctf_yellowflag) < 0)
+				BotAI_Print(PRT_WARNING, "CTF4 without Yellow Flag\n");
+		}
 	}
 #ifdef MISSIONPACK
 	else if (gametype == GT_1FCTF) {
