@@ -193,6 +193,8 @@ void BotMapScripts(bot_state_t *bs);
 #define CTF_FLAG_NONE		0
 #define CTF_FLAG_RED		1
 #define CTF_FLAG_BLUE		2
+#define CTF_FLAG_GREEN		3
+#define CTF_FLAG_YELLOW		4
 //CTF skins
 #define CTF_SKIN_REDTEAM	"red"
 #define CTF_SKIN_BLUETEAM	"blue"
@@ -209,6 +211,8 @@ extern vmCvar_t bot_challenge;
 
 extern bot_goal_t ctf_redflag;
 extern bot_goal_t ctf_blueflag;
+extern bot_goal_t ctf_greenflag;
+extern bot_goal_t ctf_yellowflag;
 #ifdef MISSIONPACK
 extern bot_goal_t ctf_neutralflag;
 extern bot_goal_t redobelisk;
