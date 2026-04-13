@@ -141,6 +141,8 @@ static const char *Bot_DebugObjectiveStateName( int state ) {
 		case 4: return "koth_contest";
 		case 5: return "koth_defend";
 		case 6: return "health_retreat";
+		case 7: return "lcs_avoid_contact";
+		case 8: return "lcs_break_engagement";
 		default: return "none";
 	}
 }
@@ -183,6 +185,13 @@ static void Bot_DebugGetObjectiveSnapshot( bot_state_t *bs, int *objectiveState,
 				}
 			}
 		}
+		else if ( gametype == GT_LCS ) {
+			if ( bs->inventory[INVENTORY_HEALTH] < 50 ) {
+				state = 8;
+			} else if ( bs->inventory[INVENTORY_HEALTH] < 70 ) {
+				state = 7;
+			}
+		}
 	}
 
 	if ( objectiveState ) {
@@ -194,6 +203,81 @@ static void Bot_DebugGetObjectiveSnapshot( bot_state_t *bs, int *objectiveState,
 	if ( kothContested ) {
 		*kothContested = contested;
 	}
+}
+
+static qboolean Bot_LcsShouldAvoidBattleEntry( bot_state_t *bs, const char **reasonOut ) {
+	float relativePosition = 0.5f;
+	float threatProximity = 0.0f;
+	int remainingOpponents = 0;
+
+	if ( reasonOut ) {
+		*reasonOut = "none";
+	}
+	if ( !bs || gametype != GT_LCS ) {
+		return qfalse;
+	}
+
+	if ( BotGetLcsRiskMetrics( bs, &relativePosition, &threatProximity, &remainingOpponents ) ) {
+		if ( bs->inventory[INVENTORY_HEALTH] < 62 ) {
+			if ( reasonOut ) {
+				*reasonOut = "lcs_avoid_low_health";
+			}
+			return qtrue;
+		}
+		if ( threatProximity > 0.45f && remainingOpponents > 1 ) {
+			if ( reasonOut ) {
+				*reasonOut = "lcs_avoid_cluster";
+			}
+			return qtrue;
+		}
+		if ( remainingOpponents > 2 && relativePosition < 0.35f ) {
+			if ( reasonOut ) {
+				*reasonOut = "lcs_avoid_last_place_risk";
+			}
+			return qtrue;
+		}
+	}
+
+	return qfalse;
+}
+
+static qboolean Bot_LcsShouldBreakEngagement( bot_state_t *bs, const botCollisionRisk_t *risk, const char **triggerOut ) {
+	float relativePosition = 0.5f;
+	float threatProximity = 0.0f;
+	int remainingOpponents = 0;
+
+	if ( triggerOut ) {
+		*triggerOut = "none";
+	}
+	if ( !bs || gametype != GT_LCS ) {
+		return qfalse;
+	}
+
+	if ( bs->inventory[INVENTORY_HEALTH] <= 45 ) {
+		if ( triggerOut ) {
+			*triggerOut = "low_health";
+		}
+		return qtrue;
+	}
+
+	if ( risk && risk->hasPredictedConflict &&
+		risk->nearestAheadDist < 95.0f && risk->nearestBehindDist < 85.0f ) {
+		if ( triggerOut ) {
+			*triggerOut = "cluster_danger";
+		}
+		return qtrue;
+	}
+
+	if ( BotGetLcsRiskMetrics( bs, &relativePosition, &threatProximity, &remainingOpponents ) ) {
+		if ( remainingOpponents > 2 && relativePosition < 0.32f && threatProximity > 0.35f ) {
+			if ( triggerOut ) {
+				*triggerOut = "last_place_risk";
+			}
+			return qtrue;
+		}
+	}
+
+	return qfalse;
 }
 
 static void Bot_DebugFormatRecoveryTransition( char *buffer, int bufferSize, bot_recovery_state_t fromState, bot_recovery_state_t toState ) {
@@ -2832,11 +2916,15 @@ AIEnter_Battle_Fight
 ==================
 */
 void AIEnter_Battle_Fight(bot_state_t *bs, char *s) {
+	const char *lcsReason = NULL;
 // Q3Rally Code Start
    if ( gametype == GT_RACING || gametype == GT_SPRINT || gametype == GT_TEAM_RACING )
 		return;
-	if ( gametype == GT_LCS && !BotWantsToChase(bs) )
+	if ( gametype == GT_LCS &&
+		( !BotWantsToChase(bs) || Bot_LcsShouldAvoidBattleEntry( bs, &lcsReason ) ) ) {
+		AIEnter_Seek_LTG( bs, lcsReason ? (char *)lcsReason : "lcs_avoid_contact" );
 		return;
+	}
 // END
 
 	BotRecordNodeSwitch(bs, "battle fight", "", s);
@@ -3035,9 +3123,14 @@ AIEnter_Battle_Chase
 ==================
 */
 void AIEnter_Battle_Chase(bot_state_t *bs, char *s) {
+	const char *lcsReason = NULL;
 // Q3Rally Code Start
    if ( gametype == GT_RACING || gametype == GT_SPRINT || gametype == GT_TEAM_RACING )
 		return;
+	if ( gametype == GT_LCS && Bot_LcsShouldAvoidBattleEntry( bs, &lcsReason ) ) {
+		AIEnter_Seek_LTG( bs, lcsReason ? (char *)lcsReason : "lcs_avoid_contact" );
+		return;
+	}
 // END
 
 	BotRecordNodeSwitch(bs, "battle chase", "", s);
@@ -3190,9 +3283,14 @@ AIEnter_Battle_Retreat
 ==================
 */
 void AIEnter_Battle_Retreat(bot_state_t *bs, char *s) {
+	const char *lcsReason = NULL;
 // STONELANCE
    if ( gametype == GT_RACING || gametype == GT_SPRINT || gametype == GT_TEAM_RACING )
 		return;
+   if ( gametype == GT_LCS && Bot_LcsShouldAvoidBattleEntry( bs, &lcsReason ) ) {
+		AIEnter_Seek_LTG( bs, lcsReason ? (char *)lcsReason : "lcs_avoid_contact" );
+		return;
+	}
 // END
 
 	BotRecordNodeSwitch(bs, "battle retreat", "", s);
@@ -3730,6 +3828,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	bot_recovery_state_t previousRecoveryState;
 	float routeDistanceFromCenter = 0.0f;
 	qboolean collisionRiskActive = qfalse;
+	qboolean lcsPredictedConflict = qfalse;
 	const char *recoveryEvent = "";
 	const char *recoveryTrigger = "";
 	qboolean forwardLaunchPhase = qfalse;
@@ -4303,10 +4402,18 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 						break;
 				}
 				if ( gametype == GT_LCS ) {
+					const char *breakTrigger = NULL;
 					if ( decisionState == GHOST_DECISION_PREPARE_OVERTAKE ||
 						decisionState == GHOST_DECISION_OVERTAKE_INSIDE ||
 						decisionState == GHOST_DECISION_OVERTAKE_OUTSIDE ) {
 						decisionState = GHOST_DECISION_DEFEND_LINE;
+					}
+					if ( Bot_LcsShouldBreakEngagement( bs, &collisionRisk, &breakTrigger ) ) {
+						decisionState = GHOST_DECISION_ABORT_OVERTAKE;
+						if ( !recoveryEvent[0] ) {
+							recoveryEvent = "break_engagement";
+						}
+						recoveryTrigger = breakTrigger ? breakTrigger : "lcs_break";
 					}
 				}
 			}
@@ -4384,6 +4491,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 					speedBias += collisionRisk.recommendedSpeedBias;
 				}
 				collisionRiskActive = collisionRisk.hasPredictedConflict;
+				lcsPredictedConflict = collisionRisk.hasPredictedConflict;
 
 			blendFactor = ( selectedFamily == GHOST_LINE_BASE ) ? 0.22f : 0.35f;
 			bs->ghostDecisionLateralOffset += ( ( baseTargetOffset + desiredOffset ) - bs->ghostDecisionLateralOffset ) * blendFactor;
@@ -4486,19 +4594,32 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 					float desiredYaw = angles[YAW];
 					float steerLimit = GHOST_RECOVERY_REJOIN_STEER_LIMIT;
 					float throttleForRamp;
+					if ( gametype == GT_LCS ) {
+						steerLimit *= 0.85f;
+					}
 					angles[YAW] = Bot_ClampSteeringToRecoveryLimit( currentYaw, desiredYaw, steerLimit );
 					bs->ghostRecoveryThrottleRamp += GHOST_RECOVERY_REJOIN_THROTTLE_STEP;
 					if ( bs->ghostRecoveryThrottleRamp > 1.0f ) {
 						bs->ghostRecoveryThrottleRamp = 1.0f;
 					}
+					if ( gametype == GT_LCS && lcsPredictedConflict ) {
+						bs->ghostRecoveryThrottleRamp -= 0.20f;
+						if ( bs->ghostRecoveryThrottleRamp < 0.0f ) {
+							bs->ghostRecoveryThrottleRamp = 0.0f;
+						}
+						if ( !recoveryEvent[0] ) {
+							recoveryEvent = "rejoin_hold_avoid_contact";
+							recoveryTrigger = "collision_conflict";
+						}
+					}
 					throttleForRamp = bs->ghostRecoveryThrottleRamp;
-					if ( throttleForRamp < 0.35f ) {
+					if ( throttleForRamp < ( gametype == GT_LCS ? 0.48f : 0.35f ) ) {
 						throttleChange = 0;
 					} else {
 						throttleChange = 1;
 					}
-					if ( routeDistanceFromCenter < GHOST_RECOVERY_ROUTE_DIST_THRESHOLD * 0.58f &&
-						bs->ghostRecoveryCollisionCount <= 1 ) {
+					if ( routeDistanceFromCenter < GHOST_RECOVERY_ROUTE_DIST_THRESHOLD * ( gametype == GT_LCS ? 0.50f : 0.58f ) &&
+						bs->ghostRecoveryCollisionCount <= ( gametype == GT_LCS ? 0 : 1 ) ) {
 						Bot_SetRecoveryState( bs, BOT_RECOVERY_NONE );
 						recoveryState = BOT_RECOVERY_NONE;
 						recoveryEvent = "rejoin_complete";
