@@ -21,7 +21,7 @@ if (!is_dir(PROFILES_DIR)) {
 // SECURITY CONFIGURATION
 // Per-server keys are managed via register.php / admin.php.
 // ─────────────────────────────────────────────────────────────────────────────
-const LADDER_VERSION        = '1.0.7';
+const LADDER_VERSION        = '1.0.8';
 const LADDER_MAX_BODY_BYTES    = 524288;  // 512 KB max POST body
 const LADDER_RATE_LIMIT_MAX    = 30;      // max requests per window per IP
 const LADDER_RATE_LIMIT_WINDOW = 60;      // window in seconds
@@ -4526,13 +4526,14 @@ async function showMatchDetails(matchId) {
 // ── Changelog ────────────────────────────────────────────────────────────────
 const LADDER_CHANGELOG = [
   {
-    version: '1.0.7',
+    version: '1.0.8',
     date: '2026-04-13',
     changes: [
-      'Ingest parser now normalizes mode-specific player fields (race/kills/zone/elimination)',
-      'Index mapping updated for score/kills/race timers/zone hold and elimination metadata',
-      'Backward-compatible payload handling: legacy aliases still accepted in degraded mode',
-      'Structured API errors with error.code/error.message/error.details (no silent no-player drops)',
+      'Contract update: mode-aware player fields are now validated and normalized per game mode',
+      'Required fields by mode documented (race, deathmatch, objective, elimination)',
+      'Breaking: score-only payloads are rejected if required mode-specific fields are missing',
+      'Non-breaking: legacy aliases still accepted and normalized to canonical keys',
+      'Migration and rollout checklist published for server/service/dashboard consumers',
     ]
   },
   {
