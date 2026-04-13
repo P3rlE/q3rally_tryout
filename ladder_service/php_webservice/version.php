@@ -6,9 +6,18 @@
 
 declare(strict_types=1);
 
-const LADDER_VERSION = '1.0.6';
+const LADDER_VERSION = '1.0.7';
 
 const LADDER_CHANGELOG = [
+    '1.0.7' => [
+        'date'    => '2026-04-13',
+        'changes' => [
+            'Ingest parser now normalizes mode-specific player fields (race/kills/zone/elimination)',
+            'Index mapping updated for score/kills/race timers/zone hold and elimination metadata',
+            'Backward-compatible payload handling: legacy aliases still accepted in degraded mode',
+            'Structured API errors with code/message/details payloads (no silent no-player drops)',
+        ],
+    ],
     '1.0.6' => [
         'date'    => '2026-03-30',
         'changes' => [
