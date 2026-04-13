@@ -109,6 +109,7 @@ bot_moveresult_t BotAttackMove(bot_state_t *bs, int tfl);
 int BotSameTeam(bot_state_t *bs, int entnum);
 //returns true if teamplay is on
 int TeamPlayIsOn(void);
+qboolean BotGetLcsRiskMetrics(bot_state_t *bs, float *relativePosition, float *threatProximity, int *remainingOpponents);
 // returns the client number of the team mate flag carrier (-1 if none)
 int BotTeamFlagCarrier(bot_state_t *bs);
 //returns visible team mate flag carrier if available
@@ -212,6 +213,8 @@ extern vmCvar_t bot_fastchat;
 extern vmCvar_t bot_nochat;
 extern vmCvar_t bot_testrchat;
 extern vmCvar_t bot_challenge;
+extern vmCvar_t g_botLcsAggressionBias;
+extern vmCvar_t g_botLcsEvasionBias;
 
 extern bot_goal_t ctf_redflag;
 extern bot_goal_t ctf_blueflag;
