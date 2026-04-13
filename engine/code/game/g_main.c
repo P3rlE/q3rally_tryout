@@ -1082,42 +1082,45 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
         }
 
         /* Attach career profile snapshot for the local client only.
-         * Remote players do not have their profile data available on the server. */
+         * Prefer runtime state (g_profile), use file-read fallback only when needed. */
         if ( client->pers.localClient ) {
                 ladderProfileSnapshot_t *snap = &player->profile;
+                int snapshotRevision = 0;
+                int snapshotEpoch = 0;
                 char profileName[PROFILE_MAX_NAME];
                 char profilePath[MAX_QPATH];
                 fileHandle_t fh;
                 int len;
                 int i;
 
+                player->profileAttached = qtrue;
                 Com_Memset( snap, 0, sizeof( *snap ) );
+                snap->valid = qfalse;
 
-                trap_Cvar_VariableStringBuffer( "profile_active", profileName, sizeof( profileName ) );
-                if ( profileName[0] ) {
-                        Com_sprintf( profilePath, sizeof( profilePath ), "profiles/%s.json", profileName );
-                        len = trap_FS_FOpenFile( profilePath, &fh, FS_READ );
-                        if ( len > 0 ) {
-                                static char profileBuf[8192];
-                                if ( len >= (int)sizeof( profileBuf ) ) len = sizeof( profileBuf ) - 1;
-                                trap_FS_Read( profileBuf, len, fh );
-                                profileBuf[len] = '\0';
-                                trap_FS_FCloseFile( fh );
+                if ( G_Profile_GetLadderSnapshot( snap, &snapshotRevision, &snapshotEpoch ) ) {
+                        snap->valid = qtrue;
+                        snap->snapshotRevision = snapshotRevision;
+                        snap->snapshotEpoch = snapshotEpoch;
+                } else {
+                        trap_Cvar_VariableStringBuffer( "profile_active", profileName, sizeof( profileName ) );
+                        if ( profileName[0] ) {
+                                Com_sprintf( profilePath, sizeof( profilePath ), "profiles/%s.json", profileName );
+                                len = trap_FS_FOpenFile( profilePath, &fh, FS_READ );
+                                if ( len > 0 ) {
+                                        static char profileBuf[8192];
+                                        const char *statsSection;
+                                        const char *infoSection;
+                                        const char *statsBuf;
+                                        const char *infoBuf;
+                                        if ( len >= (int)sizeof( profileBuf ) ) len = sizeof( profileBuf ) - 1;
+                                        trap_FS_Read( profileBuf, len, fh );
+                                        profileBuf[len] = '\0';
+                                        trap_FS_FCloseFile( fh );
 
-                                /* Profile JSON structure:
-                                 * { "name": "...", "info": { "currentRank": N, "highestRank": N, ... },
-                                 *   "stats": { "playerScore": N, "kills": N, ... } }
-                                 * Info fields are at top level of "info" object,
-                                 * stats fields are nested under "stats". */
-                                {
-                                        /* Find the opening brace of each section to avoid
-                                         * parsing keys from sibling sections. */
-                                        const char *statsSection = strstr( profileBuf, "\"stats\"" );
-                                        const char *infoSection  = strstr( profileBuf, "\"info\"" );
-                                        /* Advance past the colon and opening brace so the parser
-                                         * only sees content inside that section. */
-                                        const char *statsBuf = profileBuf;
-                                        const char *infoBuf  = profileBuf;
+                                        statsSection = strstr( profileBuf, "\"stats\"" );
+                                        infoSection  = strstr( profileBuf, "\"info\"" );
+                                        statsBuf = profileBuf;
+                                        infoBuf  = profileBuf;
                                         if ( statsSection ) {
                                                 const char *brace = strchr( statsSection, '{' );
                                                 if ( brace ) statsBuf = brace;
@@ -1128,6 +1131,8 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
                                         }
 
                                         snap->valid            = qtrue;
+                                        snap->snapshotRevision = G_Profile_ParseIntPublic( profileBuf, "revision", 0 );
+                                        snap->snapshotEpoch    = G_Profile_ParseIntPublic( profileBuf, "timestamp", 0 );
                                         snap->playerScore      = G_Profile_ParseIntPublic( statsBuf,  "playerScore",     0 );
                                         snap->currentRank      = G_Profile_ParseIntPublic( infoBuf,   "currentRank",     0 );
                                         snap->highestRank      = G_Profile_ParseIntPublic( infoBuf,   "highestRank",     0 );
@@ -1150,103 +1155,73 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
                                         snap->gamesPlayed      = G_Profile_ParseIntPublic( statsBuf,  "gamesPlayed",     0 );
                                         G_Profile_ParseStringPublic( statsBuf, "mostUsedVehicle",
                                                 snap->mostUsedVehicle, sizeof( snap->mostUsedVehicle ), "" );
-
-                                        /* ── GT_RACING ── */
-                                        snap->racingWins       = G_Profile_ParseIntPublic( statsBuf, "racingWins",      0 );
-                                        snap->racingPodiums    = G_Profile_ParseIntPublic( statsBuf, "racingPodiums",   0 );
-                                        snap->racingCompleted  = G_Profile_ParseIntPublic( statsBuf, "racingCompleted", 0 );
-                                        snap->racingTotalMs    = G_Profile_ParseIntPublic( statsBuf, "racingTotalMs",   0 );
-
-                                        /* ── GT_RACING_DM ── */
-                                        snap->racingDmWins      = G_Profile_ParseIntPublic( statsBuf, "racingDmWins",      0 );
-                                        snap->racingDmPodiums   = G_Profile_ParseIntPublic( statsBuf, "racingDmPodiums",   0 );
+                                        snap->racingWins = G_Profile_ParseIntPublic( statsBuf, "racingWins", 0 );
+                                        snap->racingPodiums = G_Profile_ParseIntPublic( statsBuf, "racingPodiums", 0 );
+                                        snap->racingCompleted = G_Profile_ParseIntPublic( statsBuf, "racingCompleted", 0 );
+                                        snap->racingTotalMs = G_Profile_ParseIntPublic( statsBuf, "racingTotalMs", 0 );
+                                        snap->racingDmWins = G_Profile_ParseIntPublic( statsBuf, "racingDmWins", 0 );
+                                        snap->racingDmPodiums = G_Profile_ParseIntPublic( statsBuf, "racingDmPodiums", 0 );
                                         snap->racingDmCompleted = G_Profile_ParseIntPublic( statsBuf, "racingDmCompleted", 0 );
-                                        snap->racingDmTotalMs   = G_Profile_ParseIntPublic( statsBuf, "racingDmTotalMs",   0 );
-
-                                        /* ── GT_SPRINT ── */
-                                        snap->sprintWins      = G_Profile_ParseIntPublic( statsBuf, "sprintWins",      0 );
+                                        snap->racingDmTotalMs = G_Profile_ParseIntPublic( statsBuf, "racingDmTotalMs", 0 );
+                                        snap->sprintWins = G_Profile_ParseIntPublic( statsBuf, "sprintWins", 0 );
                                         snap->sprintCompleted = G_Profile_ParseIntPublic( statsBuf, "sprintCompleted", 0 );
-                                        snap->sprintBestMs    = G_Profile_ParseIntPublic( statsBuf, "sprintBestMs",    0 );
-
-                                        /* ── GT_ELIMINATION ── */
-                                        snap->eliminationWins               = G_Profile_ParseIntPublic( statsBuf, "eliminationWins",               0 );
-                                        snap->eliminationCompleted          = G_Profile_ParseIntPublic( statsBuf, "eliminationCompleted",          0 );
-                                        snap->eliminationTotalRoundsLasted  = G_Profile_ParseIntPublic( statsBuf, "eliminationTotalRoundsLasted",  0 );
-
-                                        /* ── GT_LCS ── */
-                                        snap->lcsWins            = G_Profile_ParseIntPublic( statsBuf, "lcsWins",            0 );
-                                        snap->lcsCompleted       = G_Profile_ParseIntPublic( statsBuf, "lcsCompleted",       0 );
+                                        snap->sprintBestMs = G_Profile_ParseIntPublic( statsBuf, "sprintBestMs", 0 );
+                                        snap->eliminationWins = G_Profile_ParseIntPublic( statsBuf, "eliminationWins", 0 );
+                                        snap->eliminationCompleted = G_Profile_ParseIntPublic( statsBuf, "eliminationCompleted", 0 );
+                                        snap->eliminationTotalRoundsLasted = G_Profile_ParseIntPublic( statsBuf, "eliminationTotalRoundsLasted", 0 );
+                                        snap->lcsWins = G_Profile_ParseIntPublic( statsBuf, "lcsWins", 0 );
+                                        snap->lcsCompleted = G_Profile_ParseIntPublic( statsBuf, "lcsCompleted", 0 );
                                         snap->lcsTotalSurvivalMs = G_Profile_ParseIntPublic( statsBuf, "lcsTotalSurvivalMs", 0 );
-
-                                        /* ── GT_DERBY ── */
-                                        snap->derbyWins      = G_Profile_ParseIntPublic( statsBuf, "derbyWins",      0 );
+                                        snap->derbyWins = G_Profile_ParseIntPublic( statsBuf, "derbyWins", 0 );
                                         snap->derbyCompleted = G_Profile_ParseIntPublic( statsBuf, "derbyCompleted", 0 );
-                                        snap->derbyKills     = G_Profile_ParseIntPublic( statsBuf, "derbyKills",     0 );
-
-                                        /* ── GT_DEATHMATCH ── */
-                                        snap->dmWins      = G_Profile_ParseIntPublic( statsBuf, "dmWins",      0 );
+                                        snap->derbyKills = G_Profile_ParseIntPublic( statsBuf, "derbyKills", 0 );
+                                        snap->dmWins = G_Profile_ParseIntPublic( statsBuf, "dmWins", 0 );
                                         snap->dmCompleted = G_Profile_ParseIntPublic( statsBuf, "dmCompleted", 0 );
-                                        snap->dmKills     = G_Profile_ParseIntPublic( statsBuf, "dmKills",     0 );
-
-                                        /* ── GT_CTF ── */
-                                        snap->ctfWins      = G_Profile_ParseIntPublic( statsBuf, "ctfWins",      0 );
+                                        snap->dmKills = G_Profile_ParseIntPublic( statsBuf, "dmKills", 0 );
+                                        snap->ctfWins = G_Profile_ParseIntPublic( statsBuf, "ctfWins", 0 );
                                         snap->ctfCompleted = G_Profile_ParseIntPublic( statsBuf, "ctfCompleted", 0 );
-                                        snap->ctfCaptures  = G_Profile_ParseIntPublic( statsBuf, "ctfCaptures",  0 );
-
-                                        /* ── GT_CTF4 ── */
-                                        snap->ctf4Wins      = G_Profile_ParseIntPublic( statsBuf, "ctf4Wins",      0 );
+                                        snap->ctfCaptures = G_Profile_ParseIntPublic( statsBuf, "ctfCaptures", 0 );
+                                        snap->ctf4Wins = G_Profile_ParseIntPublic( statsBuf, "ctf4Wins", 0 );
                                         snap->ctf4Completed = G_Profile_ParseIntPublic( statsBuf, "ctf4Completed", 0 );
-                                        snap->ctf4Captures  = G_Profile_ParseIntPublic( statsBuf, "ctf4Captures",  0 );
-
-                                        /* ── GT_TEAM ── */
-                                        snap->teamWins      = G_Profile_ParseIntPublic( statsBuf, "teamWins",      0 );
+                                        snap->ctf4Captures = G_Profile_ParseIntPublic( statsBuf, "ctf4Captures", 0 );
+                                        snap->teamWins = G_Profile_ParseIntPublic( statsBuf, "teamWins", 0 );
                                         snap->teamCompleted = G_Profile_ParseIntPublic( statsBuf, "teamCompleted", 0 );
-                                        snap->teamKills     = G_Profile_ParseIntPublic( statsBuf, "teamKills",     0 );
-
-                                        /* ── GT_TEAM_RACING ── */
-                                        snap->teamRacingWins      = G_Profile_ParseIntPublic( statsBuf, "teamRacingWins",      0 );
+                                        snap->teamKills = G_Profile_ParseIntPublic( statsBuf, "teamKills", 0 );
+                                        snap->teamRacingWins = G_Profile_ParseIntPublic( statsBuf, "teamRacingWins", 0 );
                                         snap->teamRacingCompleted = G_Profile_ParseIntPublic( statsBuf, "teamRacingCompleted", 0 );
-                                        snap->teamRacingPodiums   = G_Profile_ParseIntPublic( statsBuf, "teamRacingPodiums",   0 );
-
-                                        /* ── GT_TEAM_RACING_DM ── */
-                                        snap->teamRacingDmWins      = G_Profile_ParseIntPublic( statsBuf, "teamRacingDmWins",      0 );
+                                        snap->teamRacingPodiums = G_Profile_ParseIntPublic( statsBuf, "teamRacingPodiums", 0 );
+                                        snap->teamRacingDmWins = G_Profile_ParseIntPublic( statsBuf, "teamRacingDmWins", 0 );
                                         snap->teamRacingDmCompleted = G_Profile_ParseIntPublic( statsBuf, "teamRacingDmCompleted", 0 );
-                                        snap->teamRacingDmPodiums   = G_Profile_ParseIntPublic( statsBuf, "teamRacingDmPodiums",   0 );
-
-                                        /* ── GT_DOMINATION ── */
-                                        snap->dominationWins        = G_Profile_ParseIntPublic( statsBuf, "dominationWins",        0 );
-                                        snap->dominationCompleted   = G_Profile_ParseIntPublic( statsBuf, "dominationCompleted",   0 );
-                                        snap->dominationZoneHoldMs  = G_Profile_ParseIntPublic( statsBuf, "dominationZoneHoldMs",  0 );
-
-                                        /* ── GT_KOTH ── */
-                                        snap->kothWins       = G_Profile_ParseIntPublic( statsBuf, "kothWins",       0 );
-                                        snap->kothCompleted  = G_Profile_ParseIntPublic( statsBuf, "kothCompleted",  0 );
+                                        snap->teamRacingDmPodiums = G_Profile_ParseIntPublic( statsBuf, "teamRacingDmPodiums", 0 );
+                                        snap->dominationWins = G_Profile_ParseIntPublic( statsBuf, "dominationWins", 0 );
+                                        snap->dominationCompleted = G_Profile_ParseIntPublic( statsBuf, "dominationCompleted", 0 );
+                                        snap->dominationZoneHoldMs = G_Profile_ParseIntPublic( statsBuf, "dominationZoneHoldMs", 0 );
+                                        snap->kothWins = G_Profile_ParseIntPublic( statsBuf, "kothWins", 0 );
+                                        snap->kothCompleted = G_Profile_ParseIntPublic( statsBuf, "kothCompleted", 0 );
                                         snap->kothZoneHoldMs = G_Profile_ParseIntPublic( statsBuf, "kothZoneHoldMs", 0 );
-                                }
 
-                                /* Achievement tiers – reuse bg_achievements logic */
-                                {
-                                        int sprintWins = G_Profile_ParseIntPublic( profileBuf, "sprintWins", 0 );
-                                        double progress_table[BG_ACHIEVEMENT_CATEGORY_COUNT];
-                                        progress_table[BG_ACHIEVEMENT_DISTANCE]      = snap->distanceKm;
-                                        progress_table[BG_ACHIEVEMENT_KILLS]         = (double)snap->kills;
-                                        progress_table[BG_ACHIEVEMENT_WINS]          = (double)snap->wins;
-                                        progress_table[BG_ACHIEVEMENT_SPRINT_WINS]   = (double)sprintWins;
-                                        progress_table[BG_ACHIEVEMENT_FLAG_CAPTURES] = (double)snap->flagCaptures;
-                                        progress_table[BG_ACHIEVEMENT_FLAG_ASSISTS]  = (double)snap->flagAssists;
-                                        progress_table[BG_ACHIEVEMENT_FUEL]          = snap->fuelUsed;
-                                        progress_table[BG_ACHIEVEMENT_ACCURACY]      = (double)snap->accuracyAwards;
-                                        progress_table[BG_ACHIEVEMENT_EXCELLENT]     = (double)snap->excellentAwards;
-                                        progress_table[BG_ACHIEVEMENT_IMPRESSIVE]    = (double)snap->impressiveAwards;
-                                        progress_table[BG_ACHIEVEMENT_PERFECT]       = (double)snap->perfectAwards;
+                                        {
+                                                double progress_table[BG_ACHIEVEMENT_CATEGORY_COUNT];
+                                                progress_table[BG_ACHIEVEMENT_DISTANCE]      = snap->distanceKm;
+                                                progress_table[BG_ACHIEVEMENT_KILLS]         = (double)snap->kills;
+                                                progress_table[BG_ACHIEVEMENT_WINS]          = (double)snap->wins;
+                                                progress_table[BG_ACHIEVEMENT_SPRINT_WINS]   = (double)snap->sprintWins;
+                                                progress_table[BG_ACHIEVEMENT_FLAG_CAPTURES] = (double)snap->flagCaptures;
+                                                progress_table[BG_ACHIEVEMENT_FLAG_ASSISTS]  = (double)snap->flagAssists;
+                                                progress_table[BG_ACHIEVEMENT_FUEL]          = snap->fuelUsed;
+                                                progress_table[BG_ACHIEVEMENT_ACCURACY]      = (double)snap->accuracyAwards;
+                                                progress_table[BG_ACHIEVEMENT_EXCELLENT]     = (double)snap->excellentAwards;
+                                                progress_table[BG_ACHIEVEMENT_IMPRESSIVE]    = (double)snap->impressiveAwards;
+                                                progress_table[BG_ACHIEVEMENT_PERFECT]       = (double)snap->perfectAwards;
 
-                                        for ( i = 0; i < BG_ACHIEVEMENT_CATEGORY_COUNT; ++i ) {
-                                                const bgAchievementCategoryDef_t *cat = BG_AchievementGetCategory( i );
-                                                snap->achievementTiers[i] = BG_AchievementUnlockedTiers( cat, progress_table[i] );
+                                                for ( i = 0; i < BG_ACHIEVEMENT_CATEGORY_COUNT; ++i ) {
+                                                        const bgAchievementCategoryDef_t *cat = BG_AchievementGetCategory( i );
+                                                        snap->achievementTiers[i] = BG_AchievementUnlockedTiers( cat, progress_table[i] );
+                                                }
                                         }
+                                } else if ( fh ) {
+                                        trap_FS_FCloseFile( fh );
                                 }
-                        } else if ( fh ) {
-                                trap_FS_FCloseFile( fh );
                         }
                 }
         }
@@ -2496,13 +2471,13 @@ void LogExit( const char *string ) {
 
         }
 
-	G_LadderSubmitMatchReport( string );
-
 	G_Profile_FlushIfDirty();
 
         if ( G_Profile_IsDirty() ) {
                 G_Profile_FlushIfDirty();
         }
+
+	G_LadderSubmitMatchReport( string );
 
 #ifdef MISSIONPACK
         if (g_singlePlayer.integer) {
