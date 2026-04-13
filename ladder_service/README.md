@@ -38,3 +38,12 @@ Standardmäßig wird eine Datei `ladder.db` im Arbeitsverzeichnis genutzt. Über
 ```bash
 pytest
 ```
+
+## E2E-Modusmatrix-Tests
+
+```bash
+pytest tests/test_mode_e2e_matrix.py -q
+```
+
+Der Testlauf deckt alle unterstützten Modi mit Golden-Payloads, Negativfällen und Python/PHP-End-to-End-Prüfung ab.
+
