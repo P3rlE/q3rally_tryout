@@ -63,6 +63,10 @@ qboolean EntityIsDead(aas_entityinfo_t *entinfo);
 qboolean EntityIsInvisible(aas_entityinfo_t *entinfo);
 //returns true if the entity is shooting
 qboolean EntityIsShooting(aas_entityinfo_t *entinfo);
+//returns true if the entity carries any CTF flag
+qboolean EntityCarriesFlag(aas_entityinfo_t *entinfo);
+//returns true if the entity carries harvester cubes (missionpack)
+qboolean EntityCarriesCubes(aas_entityinfo_t *entinfo);
 #ifdef MISSIONPACK
 //returns true if this entity has the kamikaze
 qboolean EntityHasKamikaze(aas_entityinfo_t *entinfo);
