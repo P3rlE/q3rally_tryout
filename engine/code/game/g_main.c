@@ -775,6 +775,10 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
         int slot;
         int i;
         int deaths;
+        qboolean killSemantics;
+        qboolean raceSemantics;
+        qboolean zoneSemantics;
+        qboolean perfectSemantics;
 
         if ( !payload ) {
                 return qfalse;
@@ -911,7 +915,32 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
         player->damageTaken = client->ps.stats[STAT_DAMAGE_TAKEN];
         player->position = client->ps.stats[STAT_POSITION];
 
-        if ( level.startRaceTime > 0 ) {
+        killSemantics = qfalse;
+        raceSemantics = ( isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS ) ? qtrue : qfalse;
+        zoneSemantics = ( g_gametype.integer == GT_DOMINATION || g_gametype.integer == GT_KOTH ) ? qtrue : qfalse;
+
+        switch ( g_gametype.integer ) {
+        case GT_DEATHMATCH:
+        case GT_TEAM:
+        case GT_CTF:
+        case GT_CTF4:
+        case GT_DOMINATION:
+        case GT_KOTH:
+        case GT_RACING_DM:
+        case GT_TEAM_RACING_DM:
+        case GT_DERBY:
+        case GT_LCS:
+                killSemantics = qtrue;
+                break;
+        case GT_ELIMINATION:
+                killSemantics = g_eliminationWeapons.integer ? qtrue : qfalse;
+                break;
+        default:
+                break;
+        }
+        perfectSemantics = killSemantics;
+
+        if ( raceSemantics && level.startRaceTime > 0 ) {
                 if ( client->finishRaceTime > level.startRaceTime ) {
                         player->survivalMs = client->finishRaceTime - level.startRaceTime;
                 } else if ( level.finishRaceTime > level.startRaceTime ) {
@@ -922,15 +951,21 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
         player->eliminationPlayersRemaining = client->eliminationPlayersRemaining;
         player->eliminationMetric = client->eliminationMetric;
 
-        if ( level.startRaceTime > 0 && client->finishRaceTime > level.startRaceTime ) {
+        if ( raceSemantics && level.startRaceTime > 0 && client->finishRaceTime > level.startRaceTime ) {
                 player->totalRaceMs = client->finishRaceTime - level.startRaceTime;
-        } else if ( level.startRaceTime > 0 && level.time > level.startRaceTime ) {
+        } else if ( raceSemantics && level.startRaceTime > 0 && level.time > level.startRaceTime ) {
                 player->totalRaceMs = level.time - level.startRaceTime;
         }
-        player->finishRaceTime = client->finishRaceTime;
-        player->bestLapMs = client->bestLapMs;
+        if ( raceSemantics ) {
+                player->finishRaceTime = client->finishRaceTime;
+                player->bestLapMs = client->bestLapMs;
+        } else {
+                player->finishRaceTime = 0;
+                player->bestLapMs = 0;
+                player->totalRaceMs = 0;
+        }
 
-        {
+        if ( raceSemantics ) {
                 int lapCount = client->recordedLapCount;
                 if ( lapCount < 0 ) {
                         lapCount = 0;
@@ -942,21 +977,45 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
                         player->lapTimes[i] = client->recordedLaps[i];
                 }
                 player->lapCount = lapCount;
+        } else {
+                player->lapCount = 0;
+                for ( i = 0; i < LADDER_MAX_LAP_TIMES; ++i ) {
+                        player->lapTimes[i] = 0;
+                }
         }
 
-        player->kills = client->ps.persistant[PERS_SCORE];
-        deaths = client->ps.persistant[PERS_KILLED];
+        if ( killSemantics ) {
+                player->kills = client->ps.persistant[PERS_SCORE];
+                deaths = client->ps.persistant[PERS_KILLED];
+        } else {
+                player->kills = 0;
+                deaths = 0;
+        }
         player->deaths = deaths;
-        if ( player->kills > 0 && deaths == 0 ) {
+        if ( perfectSemantics && player->kills > 0 && deaths == 0 ) {
                 player->perfect = qtrue;
+        } else {
+                player->perfect = qfalse;
         }
-        if ( deaths > 0 ) {
+        if ( killSemantics && deaths > 0 ) {
                 player->kdRatio = (float)player->kills / (float)deaths;
-        } else if ( player->kills > 0 ) {
+        } else if ( killSemantics && player->kills > 0 ) {
                 player->kdRatio = (float)player->kills;
+        } else {
+                player->kdRatio = 0.0f;
         }
 
-        player->zoneActiveSigil = -1;
+        if ( zoneSemantics ) {
+                if ( g_gametype.integer == GT_KOTH ) {
+                        player->zoneHoldMs = client->kothContestTimeMs;
+                } else {
+                        player->zoneHoldMs = 0;
+                }
+                player->zoneActiveSigil = -1;
+        } else {
+                player->zoneHoldMs = 0;
+                player->zoneActiveSigil = -1;
+        }
 
         /* Attach career profile snapshot for the local client only.
          * Remote players do not have their profile data available on the server. */
