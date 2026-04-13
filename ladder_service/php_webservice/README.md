@@ -41,5 +41,16 @@ Jedes Match wird als einzelne JSON-Datei unter `data/<matchId>.json` abgelegt. S
 * Bei sehr vielen Matches kann die Dateibasis unübersichtlich werden; für große Installationen empfiehlt sich langfristig dennoch eine vollwertige Datenbank.
 
 ## Fehlerbehandlung
-Fehlerhafte Anfragen werden als JSON im Format `{ "error": "..." }` beantwortet. Stimmt etwas mit den Dateirechten nicht, liefert der Service HTTP-Status 500.
+Fehlerhafte Anfragen werden als strukturiertes JSON beantwortet:
 
+```json
+{
+  "error": {
+    "code": "MATCH_ID_REQUIRED",
+    "message": "matchId is required.",
+    "details": {}
+  }
+}
+```
+
+Ältere Payload-Varianten werden weiterhin akzeptiert (degraded mode), die neue Payload-Semantik wird jedoch bevorzugt normalisiert verarbeitet.
