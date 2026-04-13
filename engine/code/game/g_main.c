@@ -766,6 +766,70 @@ static const char *G_LadderModeForGametype( int gametype ) {
         return "GT_ELIMINATION";
 }
 
+static qboolean G_LadderGametypeHasRaceFields( int gametype ) {
+        return ( gametype == GT_RACING
+                || gametype == GT_RACING_DM
+                || gametype == GT_SPRINT
+                || gametype == GT_TEAM_RACING
+                || gametype == GT_TEAM_RACING_DM
+                || gametype == GT_ELIMINATION
+                || gametype == GT_SINGLE_PLAYER
+                || gametype == GT_DERBY
+                || gametype == GT_LCS ) ? qtrue : qfalse;
+}
+
+static qboolean G_LadderGametypeUsesEliminationSettings( int gametype ) {
+        return ( gametype == GT_ELIMINATION || gametype == GT_LCS ) ? qtrue : qfalse;
+}
+
+static qboolean G_LadderGametypeIsTeamMode( int gametype ) {
+        return ( gametype == GT_TEAM
+                || gametype == GT_TEAM_RACING
+                || gametype == GT_TEAM_RACING_DM
+                || gametype == GT_CTF
+                || gametype == GT_CTF4
+                || gametype == GT_DOMINATION
+                || gametype == GT_KOTH ) ? qtrue : qfalse;
+}
+
+static int G_LadderWinnerForGametype( int gametype ) {
+        int wi;
+
+        switch ( gametype ) {
+        case GT_DEATHMATCH:
+                {
+                        int dmWinner = -1;
+                        int dmBestScore = -99999;
+                        for ( wi = 0; wi < level.maxclients; ++wi ) {
+                                gclient_t *wc = &level.clients[wi];
+                                if ( wc->pers.connected != CON_CONNECTED ) {
+                                        continue;
+                                }
+                                if ( wc->sess.sessionTeam == TEAM_SPECTATOR ) {
+                                        continue;
+                                }
+                                if ( wc->ps.persistant[PERS_SCORE] > dmBestScore ) {
+                                        dmBestScore = wc->ps.persistant[PERS_SCORE];
+                                        dmWinner = wi;
+                                }
+                        }
+                        return dmWinner;
+                }
+        case GT_TEAM:
+        case GT_TEAM_RACING:
+        case GT_TEAM_RACING_DM:
+        case GT_CTF:
+        case GT_CTF4:
+        case GT_DOMINATION:
+        case GT_KOTH:
+                return -1;
+        default:
+                break;
+        }
+
+        return level.winnerNumber;
+}
+
 static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clientNum ) {
         gclient_t *client;
         gentity_t *ent;
@@ -1199,6 +1263,9 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
         const char *value;
         char buffer[MAX_INFO_STRING];
         int i;
+        qboolean hasRaceFields;
+        qboolean hasEliminationSettings;
+        qboolean isTeamMode;
 
         if ( trap_Cvar_VariableIntegerValue( "sv_ladderEnabled" ) == 0 ) {
                 return;
@@ -1254,41 +1321,65 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
 
         payload->levelStartTime = level.startTime;
         payload->levelEndTime = level.time;
-        payload->raceStartTime = level.startRaceTime;
-        payload->raceEndTime = level.finishRaceTime;
-        payload->finishRaceTime = level.finishRaceTime;
-        /* For score-based game modes (DM, Derby, etc.) level.winnerNumber is
-         * initialised to 0 and only set for modes that have an explicit
-         * winner event (Race, LCS, Derby last-man-standing).
-         * Re-derive the winner here by finding the connected non-spectator
-         * with the highest score so the payload always carries the correct value. */
-        {
-            int dmWinner = -1;
-            int dmBestScore = -99999;
-            int wi;
-            for ( wi = 0; wi < level.maxclients; ++wi ) {
-                gclient_t *wc = &level.clients[wi];
-                if ( wc->pers.connected != CON_CONNECTED ) continue;
-                if ( wc->sess.sessionTeam == TEAM_SPECTATOR ) continue;
-                if ( wc->ps.persistant[PERS_SCORE] > dmBestScore ) {
-                    dmBestScore = wc->ps.persistant[PERS_SCORE];
-                    dmWinner = wi;
-                }
-            }
-            if ( dmWinner >= 0 ) {
-                level.winnerNumber = dmWinner;
-            }
-        }
-        payload->winnerClientNum = level.winnerNumber;
-        payload->numberOfLaps = level.numberOfLaps;
-        payload->trackReversed = g_trackReversed.integer ? qtrue : qfalse;
-        payload->eliminationStartDelay = g_eliminationStartDelay.integer;
-        payload->eliminationInterval = g_eliminationInterval.integer;
-        payload->eliminationWarning = g_eliminationWarning.integer;
+        hasRaceFields = G_LadderGametypeHasRaceFields( payload->gametype );
+        hasEliminationSettings = G_LadderGametypeUsesEliminationSettings( payload->gametype );
+        isTeamMode = G_LadderGametypeIsTeamMode( payload->gametype );
 
-        for ( i = 0; i < TEAM_NUM_TEAMS; ++i ) {
-                payload->teamScores[i] = level.teamScores[i];
-                payload->teamTimes[i] = level.teamTimes[i];
+        if ( hasRaceFields ) {
+                payload->raceStartTime = level.startRaceTime;
+                payload->raceEndTime = level.finishRaceTime;
+                payload->finishRaceTime = level.finishRaceTime;
+                payload->numberOfLaps = level.numberOfLaps;
+                payload->trackReversed = g_trackReversed.integer ? qtrue : qfalse;
+        } else {
+                if ( level.startRaceTime || level.finishRaceTime || level.numberOfLaps || g_trackReversed.integer ) {
+                        Com_Printf( "Ladder: warning - race fields set in non-race mode %s; neutralizing payload fields\n",
+                                payload->mode );
+                }
+                payload->raceStartTime = 0;
+                payload->raceEndTime = 0;
+                payload->finishRaceTime = 0;
+                payload->numberOfLaps = 0;
+                payload->trackReversed = qfalse;
+        }
+
+        payload->winnerClientNum = G_LadderWinnerForGametype( payload->gametype );
+        if ( payload->winnerClientNum != level.winnerNumber ) {
+                Com_Printf( "Ladder: info - winnerClientNum adjusted for mode %s (%d -> %d)\n",
+                        payload->mode, level.winnerNumber, payload->winnerClientNum );
+        }
+
+        if ( hasEliminationSettings ) {
+                payload->eliminationStartDelay = g_eliminationStartDelay.integer;
+                payload->eliminationInterval = g_eliminationInterval.integer;
+                payload->eliminationWarning = g_eliminationWarning.integer;
+        } else {
+                if ( g_eliminationStartDelay.integer || g_eliminationInterval.integer || g_eliminationWarning.integer ) {
+                        Com_Printf( "Ladder: warning - elimination settings present in mode %s; emitting optional neutral values\n",
+                                payload->mode );
+                }
+                payload->eliminationStartDelay = 0;
+                payload->eliminationInterval = 0;
+                payload->eliminationWarning = 0;
+        }
+
+        if ( isTeamMode ) {
+                for ( i = 0; i < TEAM_NUM_TEAMS; ++i ) {
+                        payload->teamScores[i] = level.teamScores[i];
+                        payload->teamTimes[i] = level.teamTimes[i];
+                }
+        } else {
+                for ( i = 0; i < TEAM_NUM_TEAMS; ++i ) {
+                        if ( level.teamScores[i] || level.teamTimes[i] ) {
+                                Com_Printf( "Ladder: warning - team fields populated in non-team mode %s; neutralizing payload fields\n",
+                                        payload->mode );
+                                break;
+                        }
+                }
+                for ( i = 0; i < TEAM_NUM_TEAMS; ++i ) {
+                        payload->teamScores[i] = 0;
+                        payload->teamTimes[i] = 0;
+                }
         }
 
         for ( i = 0; i < level.maxclients; ++i ) {
