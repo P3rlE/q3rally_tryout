@@ -4602,11 +4602,9 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 					if ( bs->ghostRecoveryThrottleRamp > 1.0f ) {
 						bs->ghostRecoveryThrottleRamp = 1.0f;
 					}
-<<<<<<< codex/fix-lcs-bots-combat-state-issues-e4rgb8
+
 					if ( gametype == GT_LCS && lcsPredictedConflict ) {
-=======
-					if ( gametype == GT_LCS && collisionRisk.hasPredictedConflict ) {
->>>>>>> master
+
 						bs->ghostRecoveryThrottleRamp -= 0.20f;
 						if ( bs->ghostRecoveryThrottleRamp < 0.0f ) {
 							bs->ghostRecoveryThrottleRamp = 0.0f;
