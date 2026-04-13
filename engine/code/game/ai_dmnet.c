@@ -3828,6 +3828,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	bot_recovery_state_t previousRecoveryState;
 	float routeDistanceFromCenter = 0.0f;
 	qboolean collisionRiskActive = qfalse;
+	qboolean lcsPredictedConflict = qfalse;
 	const char *recoveryEvent = "";
 	const char *recoveryTrigger = "";
 	qboolean forwardLaunchPhase = qfalse;
@@ -4490,6 +4491,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 					speedBias += collisionRisk.recommendedSpeedBias;
 				}
 				collisionRiskActive = collisionRisk.hasPredictedConflict;
+				lcsPredictedConflict = collisionRisk.hasPredictedConflict;
 
 			blendFactor = ( selectedFamily == GHOST_LINE_BASE ) ? 0.22f : 0.35f;
 			bs->ghostDecisionLateralOffset += ( ( baseTargetOffset + desiredOffset ) - bs->ghostDecisionLateralOffset ) * blendFactor;
@@ -4600,7 +4602,11 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 					if ( bs->ghostRecoveryThrottleRamp > 1.0f ) {
 						bs->ghostRecoveryThrottleRamp = 1.0f;
 					}
+<<<<<<< codex/fix-lcs-bots-combat-state-issues-e4rgb8
+					if ( gametype == GT_LCS && lcsPredictedConflict ) {
+=======
 					if ( gametype == GT_LCS && collisionRisk.hasPredictedConflict ) {
+>>>>>>> master
 						bs->ghostRecoveryThrottleRamp -= 0.20f;
 						if ( bs->ghostRecoveryThrottleRamp < 0.0f ) {
 							bs->ghostRecoveryThrottleRamp = 0.0f;
