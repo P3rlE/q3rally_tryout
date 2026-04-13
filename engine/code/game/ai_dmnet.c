@@ -294,6 +294,12 @@ static ghostRouteLineFamily_t Bot_SelectGhostLineFamily( const botCollisionRisk_
 	if ( !risk ) {
 		return GHOST_LINE_BASE;
 	}
+	if ( gametype == GT_LCS ) {
+		if ( chaosActive || risk->hasPredictedConflict || risk->nearestAheadDist < 130.0f ) {
+			return GHOST_LINE_SAFE;
+		}
+		return GHOST_LINE_DEFENSIVE;
+	}
 
 	if ( chaosActive ) {
 		return GHOST_LINE_SAFE;
@@ -807,6 +813,8 @@ BotNearbyGoal
 */
 int BotNearbyGoal(bot_state_t *bs, int tfl, bot_goal_t *ltg, float range) {
 	int ret;
+	float lcsThreatProximity = 0.0f;
+	int lcsOpponents = 0;
 
 	//check if the bot should go for air
 	if (BotGoForAir(bs, tfl, ltg, range)) return qtrue;
@@ -821,6 +829,18 @@ int BotNearbyGoal(bot_state_t *bs, int tfl, bot_goal_t *ltg, float range) {
 				bs->teamgoal.areanum, TFL_DEFAULT) < 300) {
 			//make the range really small
 			range = 50;
+		}
+	}
+	if ( BotGetLcsRiskMetrics(bs, NULL, &lcsThreatProximity, &lcsOpponents) ) {
+		if ( bs->inventory[INVENTORY_HEALTH] < 80 || bs->inventory[INVENTORY_ARMOR] < 60 || lcsThreatProximity > 0.50f ) {
+			if ( range < 260 ) {
+				range = 260;
+			}
+		} else {
+			range *= 0.55f;
+		}
+		if ( lcsOpponents > 2 && range > 220 ) {
+			range = 220;
 		}
 	}
 	//
@@ -2815,6 +2835,8 @@ void AIEnter_Battle_Fight(bot_state_t *bs, char *s) {
 // Q3Rally Code Start
    if ( gametype == GT_RACING || gametype == GT_SPRINT || gametype == GT_TEAM_RACING )
 		return;
+	if ( gametype == GT_LCS && !BotWantsToChase(bs) )
+		return;
 // END
 
 	BotRecordNodeSwitch(bs, "battle fight", "", s);
@@ -4280,6 +4302,13 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 						}
 						break;
 				}
+				if ( gametype == GT_LCS ) {
+					if ( decisionState == GHOST_DECISION_PREPARE_OVERTAKE ||
+						decisionState == GHOST_DECISION_OVERTAKE_INSIDE ||
+						decisionState == GHOST_DECISION_OVERTAKE_OUTSIDE ) {
+						decisionState = GHOST_DECISION_DEFEND_LINE;
+					}
+				}
 			}
 
 			if ( decisionState != (ghostDecisionState_t)bs->ghostDecisionState ) {
@@ -4324,6 +4353,11 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				selectedFamily = GHOST_LINE_DEFENSIVE;
 			} else if ( decisionState == GHOST_DECISION_ABORT_OVERTAKE ) {
 				selectedFamily = GHOST_LINE_SAFE;
+			}
+			if ( gametype == GT_LCS ) {
+				if ( selectedFamily == GHOST_LINE_RACE ) {
+					selectedFamily = GHOST_LINE_DEFENSIVE;
+				}
 			}
 
 			baseTargetOffset = 0.0f;

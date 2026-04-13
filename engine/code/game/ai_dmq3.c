@@ -85,6 +85,8 @@ vmCvar_t bot_testrchat;
 vmCvar_t bot_challenge;
 vmCvar_t bot_predictobstacles;
 vmCvar_t g_spSkill;
+vmCvar_t g_botLcsAggressionBias;
+vmCvar_t g_botLcsEvasionBias;
 
 extern vmCvar_t bot_developer;
 
@@ -2781,6 +2783,69 @@ int TeamPlayIsOn(void) {
 	return ( gametype >= GT_TEAM );
 }
 
+qboolean BotGetLcsRiskMetrics(bot_state_t *bs, float *relativePosition, float *threatProximity, int *remainingOpponents) {
+	int i;
+	int opponents = 0;
+	int healthierOpponents = 0;
+	float nearestDist = 99999.0f;
+
+	if ( !bs || gametype != GT_LCS ) {
+		return qfalse;
+	}
+
+	for ( i = 0; i < level.maxclients; i++ ) {
+		gentity_t *other = &g_entities[i];
+		vec3_t toOther;
+		float dist;
+
+		if ( i == bs->client ) {
+			continue;
+		}
+		if ( level.clients[i].pers.connected != CON_CONNECTED ) {
+			continue;
+		}
+		if ( level.clients[i].sess.sessionTeam == TEAM_SPECTATOR ) {
+			continue;
+		}
+		if ( !other->inuse || !other->client || other->health <= 0 ) {
+			continue;
+		}
+
+		opponents++;
+		if ( other->health > bs->inventory[INVENTORY_HEALTH] ) {
+			healthierOpponents++;
+		}
+
+		VectorSubtract( other->client->ps.origin, bs->origin, toOther );
+		dist = VectorLength( toOther );
+		if ( dist < nearestDist ) {
+			nearestDist = dist;
+		}
+	}
+
+	if ( remainingOpponents ) {
+		*remainingOpponents = opponents;
+	}
+	if ( relativePosition ) {
+		if ( opponents <= 0 ) {
+			*relativePosition = 1.0f;
+		} else {
+			*relativePosition = 1.0f - ( (float)healthierOpponents / (float)opponents );
+		}
+	}
+	if ( threatProximity ) {
+		float threat = 0.0f;
+		if ( nearestDist < 1400.0f ) {
+			threat = 1.0f - ( nearestDist / 1400.0f );
+			if ( threat < 0.0f ) threat = 0.0f;
+			if ( threat > 1.0f ) threat = 1.0f;
+		}
+		*threatProximity = threat;
+	}
+
+	return qtrue;
+}
+
 /*
 ==================
 BotAggression
@@ -2788,6 +2853,9 @@ BotAggression
 */
 float BotAggression(bot_state_t *bs) {
 	float aggression;
+	float lcsRelativePosition = 0.5f;
+	float lcsThreatProximity = 0.0f;
+	int lcsRemainingOpponents = 0;
 
 	//if the bot has quad
 	if (bs->inventory[INVENTORY_QUAD]) {
@@ -2854,6 +2922,14 @@ float BotAggression(bot_state_t *bs) {
 
 apply_profile:
 	aggression += bs->personalityAggressionBias;
+	if ( BotGetLcsRiskMetrics(bs, &lcsRelativePosition, &lcsThreatProximity, &lcsRemainingOpponents) ) {
+		float lcsAggressionBias = g_botLcsAggressionBias.value;
+		float lcsEvasionBias = g_botLcsEvasionBias.value;
+		aggression *= 0.52f + lcsAggressionBias;
+		aggression -= lcsThreatProximity * (28.0f + lcsEvasionBias * 20.0f);
+		aggression -= lcsRemainingOpponents * (1.6f + lcsEvasionBias * 0.5f);
+		aggression += lcsRelativePosition * 10.0f;
+	}
 	if ( aggression < 0 ) {
 		aggression = 0;
 	} else if ( aggression > 100 ) {
@@ -2890,6 +2966,9 @@ BotWantsToRetreat
 */
 int BotWantsToRetreat(bot_state_t *bs) {
 	aas_entityinfo_t entinfo;
+	float lcsRelativePosition = 0.5f;
+	float lcsThreatProximity = 0.0f;
+	int lcsRemainingOpponents = 0;
 
 	if (gametype == GT_CTF) {
 		//always retreat when carrying a CTF flag
@@ -2933,6 +3012,19 @@ int BotWantsToRetreat(bot_state_t *bs) {
 	//if the bot is getting the flag
 	if (bs->ltgtype == LTG_GETFLAG)
 		return qtrue;
+
+	if ( BotGetLcsRiskMetrics(bs, &lcsRelativePosition, &lcsThreatProximity, &lcsRemainingOpponents) ) {
+		float retreatThreshold = 58.0f + g_botLcsEvasionBias.value * 12.0f;
+		if ( lcsThreatProximity > 0.38f ) {
+			return qtrue;
+		}
+		if ( lcsRemainingOpponents > 2 ) {
+			return qtrue;
+		}
+		if ( BotAggression(bs) < retreatThreshold ) {
+			return qtrue;
+		}
+	}
 	//
 	if (BotAggression(bs) < 50)
 		return qtrue;
@@ -2946,6 +3038,9 @@ BotWantsToChase
 */
 int BotWantsToChase(bot_state_t *bs) {
 	aas_entityinfo_t entinfo;
+	float lcsRelativePosition = 0.5f;
+	float lcsThreatProximity = 0.0f;
+	int lcsRemainingOpponents = 0;
 
 	if (gametype == GT_CTF) {
 		//never chase when carrying a CTF flag
@@ -2987,6 +3082,16 @@ int BotWantsToChase(bot_state_t *bs) {
 	//if the bot is getting the flag
 	if (bs->ltgtype == LTG_GETFLAG)
 		return qfalse;
+
+	if ( BotGetLcsRiskMetrics(bs, &lcsRelativePosition, &lcsThreatProximity, &lcsRemainingOpponents) ) {
+		float aggressionThreshold = 62.0f + g_botLcsEvasionBias.value * 10.0f;
+		qboolean closeOpportunity = ( bs->inventory[ENEMY_HORIZONTAL_DIST] > 0 && bs->inventory[ENEMY_HORIZONTAL_DIST] < 260 );
+		if ( lcsRemainingOpponents <= 2 && lcsRelativePosition > 0.45f && closeOpportunity &&
+			lcsThreatProximity > 0.52f && BotAggression(bs) >= aggressionThreshold ) {
+			return qtrue;
+		}
+		return qfalse;
+	}
 	//
 	if (BotAggression(bs) > 50)
 		return qtrue;
@@ -3185,7 +3290,9 @@ BotGoForPowerups
 void BotGoForPowerups(bot_state_t *bs) {
 
 	//don't avoid any of the powerups anymore
-	BotDontAvoid(bs, "Quad Damage");
+	if ( gametype != GT_LCS ) {
+		BotDontAvoid(bs, "Quad Damage");
+	}
 	BotDontAvoid(bs, "Auto Repair");
 	BotDontAvoid(bs, "Battle Suit");
 	BotDontAvoid(bs, "Speed");
@@ -6128,6 +6235,8 @@ void BotSetupDeathmatchAI(void) {
 	trap_Cvar_Register(&bot_challenge, "bot_challenge", "0", 0);
 	trap_Cvar_Register(&bot_predictobstacles, "bot_predictobstacles", "1", 0);
 	trap_Cvar_Register(&g_spSkill, "g_spSkill", "2", 0);
+	trap_Cvar_Register(&g_botLcsAggressionBias, "g_botLcsAggressionBias", "0.18", CVAR_ARCHIVE);
+	trap_Cvar_Register(&g_botLcsEvasionBias, "g_botLcsEvasionBias", "0.32", CVAR_ARCHIVE);
 	//
 	if (gametype == GT_CTF) {
 		if (trap_BotGetLevelItemGoal(-1, "Red Flag", &ctf_redflag) < 0)
