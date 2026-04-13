@@ -30,6 +30,8 @@
  * profile data available on the server. */
 typedef struct ladderProfileSnapshot_s {
         qboolean        valid;
+        int             snapshotEpoch;
+        int             snapshotRevision;
         /* ── Allgemein ─────────────────────────────────────────────────── */
         int             playerScore;
         int             currentRank;
@@ -168,6 +170,7 @@ typedef struct ladderPlayerPayload_s {
         float           eliminationMetric;
         int                     finishRaceTime;
         float           kdRatio;
+        qboolean        profileAttached; /* profile block explicitly attached (valid true/false) */
         ladderProfileSnapshot_t profile;   /* career snapshot, valid only for local client */
 } ladderPlayerPayload_t;
 

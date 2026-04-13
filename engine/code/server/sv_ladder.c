@@ -678,7 +678,7 @@ static qboolean SV_LadderJsonAppendPlayer( ladderJsonBuilder_t *builder, const l
         }
 
         /* Career profile snapshot */
-        if ( player->profile.valid ) {
+        if ( player->profileAttached ) {
                 const ladderProfileSnapshot_t *snap = &player->profile;
                 qboolean profFirst = qtrue;
                 int i;
@@ -698,121 +698,133 @@ static qboolean SV_LadderJsonAppendPlayer( ladderJsonBuilder_t *builder, const l
                 if ( !SV_LadderJsonAppendKey( builder, key, &profFirst ) || \
                      !SV_LadderJsonAppendString( builder, snap->field ) ) { return qfalse; }
 
-                SNAP_INT( "playerScore",      playerScore      )
-                SNAP_INT( "currentRank",      currentRank      )
-                SNAP_INT( "highestRank",      highestRank      )
-                SNAP_INT( "wins",             wins             )
-                SNAP_INT( "losses",           losses           )
-                SNAP_INT( "kills",            kills            )
-                SNAP_INT( "deaths",           deaths           )
-                SNAP_INT( "flagCaptures",     flagCaptures     )
-                SNAP_INT( "flagAssists",      flagAssists      )
-                SNAP_INT( "bestLapMs",        bestLapMs        )
-                SNAP_INT( "accuracyAwards",   accuracyAwards   )
-                SNAP_INT( "excellentAwards",  excellentAwards  )
-                SNAP_INT( "impressiveAwards", impressiveAwards )
-                SNAP_INT( "perfectAwards",    perfectAwards    )
-                SNAP_INT( "damageDealt",      damageDealt      )
-                SNAP_INT( "damageTaken",      damageTaken      )
-                SNAP_FLT( "distanceKm",       distanceKm       )
-                SNAP_FLT( "topSpeedKph",      topSpeedKph      )
-                SNAP_FLT( "fuelUsed",         fuelUsed         )
-                SNAP_STR( "mostUsedVehicle",  mostUsedVehicle  )
-                SNAP_INT( "gamesPlayed",      gamesPlayed      )
+                if ( !SV_LadderJsonAppendKey( builder, "valid", &profFirst ) ||
+                     !SV_LadderJsonAppendBoolean( builder, snap->valid ) ) {
+                        return qfalse;
+                }
 
-                /* ── GT_RACING ── */
-                SNAP_INT( "racingWins",       racingWins       )
-                SNAP_INT( "racingPodiums",    racingPodiums    )
-                SNAP_INT( "racingCompleted",  racingCompleted  )
-                SNAP_INT( "racingTotalMs",    racingTotalMs    )
+                if ( !snap->valid ) {
+                        if ( !SV_LadderJsonAppendChar( builder, '}' ) ) {
+                                return qfalse;
+                        }
+                } else {
+                        SNAP_INT( "snapshotEpoch",    snapshotEpoch    )
+                        SNAP_INT( "snapshotRevision", snapshotRevision )
+                        SNAP_INT( "playerScore",      playerScore      )
+                        SNAP_INT( "currentRank",      currentRank      )
+                        SNAP_INT( "highestRank",      highestRank      )
+                        SNAP_INT( "wins",             wins             )
+                        SNAP_INT( "losses",           losses           )
+                        SNAP_INT( "kills",            kills            )
+                        SNAP_INT( "deaths",           deaths           )
+                        SNAP_INT( "flagCaptures",     flagCaptures     )
+                        SNAP_INT( "flagAssists",      flagAssists      )
+                        SNAP_INT( "bestLapMs",        bestLapMs        )
+                        SNAP_INT( "accuracyAwards",   accuracyAwards   )
+                        SNAP_INT( "excellentAwards",  excellentAwards  )
+                        SNAP_INT( "impressiveAwards", impressiveAwards )
+                        SNAP_INT( "perfectAwards",    perfectAwards    )
+                        SNAP_INT( "damageDealt",      damageDealt      )
+                        SNAP_INT( "damageTaken",      damageTaken      )
+                        SNAP_FLT( "distanceKm",       distanceKm       )
+                        SNAP_FLT( "topSpeedKph",      topSpeedKph      )
+                        SNAP_FLT( "fuelUsed",         fuelUsed         )
+                        SNAP_STR( "mostUsedVehicle",  mostUsedVehicle  )
+                        SNAP_INT( "gamesPlayed",      gamesPlayed      )
 
-                /* ── GT_RACING_DM ── */
-                SNAP_INT( "racingDmWins",       racingDmWins       )
-                SNAP_INT( "racingDmPodiums",    racingDmPodiums    )
-                SNAP_INT( "racingDmCompleted",  racingDmCompleted  )
-                SNAP_INT( "racingDmTotalMs",    racingDmTotalMs    )
+                        /* ── GT_RACING ── */
+                        SNAP_INT( "racingWins",       racingWins       )
+                        SNAP_INT( "racingPodiums",    racingPodiums    )
+                        SNAP_INT( "racingCompleted",  racingCompleted  )
+                        SNAP_INT( "racingTotalMs",    racingTotalMs    )
 
-                /* ── GT_SPRINT ── */
-                SNAP_INT( "sprintWins",       sprintWins       )
-                SNAP_INT( "sprintCompleted",  sprintCompleted  )
-                SNAP_INT( "sprintBestMs",     sprintBestMs     )
+                        /* ── GT_RACING_DM ── */
+                        SNAP_INT( "racingDmWins",       racingDmWins       )
+                        SNAP_INT( "racingDmPodiums",    racingDmPodiums    )
+                        SNAP_INT( "racingDmCompleted",  racingDmCompleted  )
+                        SNAP_INT( "racingDmTotalMs",    racingDmTotalMs    )
 
-                /* ── GT_ELIMINATION ── */
-                SNAP_INT( "eliminationWins",              eliminationWins              )
-                SNAP_INT( "eliminationCompleted",         eliminationCompleted         )
-                SNAP_INT( "eliminationTotalRoundsLasted", eliminationTotalRoundsLasted )
+                        /* ── GT_SPRINT ── */
+                        SNAP_INT( "sprintWins",       sprintWins       )
+                        SNAP_INT( "sprintCompleted",  sprintCompleted  )
+                        SNAP_INT( "sprintBestMs",     sprintBestMs     )
 
-                /* ── GT_LCS ── */
-                SNAP_INT( "lcsWins",             lcsWins            )
-                SNAP_INT( "lcsCompleted",        lcsCompleted       )
-                SNAP_INT( "lcsTotalSurvivalMs",  lcsTotalSurvivalMs )
+                        /* ── GT_ELIMINATION ── */
+                        SNAP_INT( "eliminationWins",              eliminationWins              )
+                        SNAP_INT( "eliminationCompleted",         eliminationCompleted         )
+                        SNAP_INT( "eliminationTotalRoundsLasted", eliminationTotalRoundsLasted )
 
-                /* ── GT_DERBY ── */
-                SNAP_INT( "derbyWins",       derbyWins       )
-                SNAP_INT( "derbyCompleted",  derbyCompleted  )
-                SNAP_INT( "derbyKills",      derbyKills      )
+                        /* ── GT_LCS ── */
+                        SNAP_INT( "lcsWins",             lcsWins            )
+                        SNAP_INT( "lcsCompleted",        lcsCompleted       )
+                        SNAP_INT( "lcsTotalSurvivalMs",  lcsTotalSurvivalMs )
 
-                /* ── GT_DEATHMATCH ── */
-                SNAP_INT( "dmWins",       dmWins       )
-                SNAP_INT( "dmCompleted",  dmCompleted  )
-                SNAP_INT( "dmKills",      dmKills      )
+                        /* ── GT_DERBY ── */
+                        SNAP_INT( "derbyWins",       derbyWins       )
+                        SNAP_INT( "derbyCompleted",  derbyCompleted  )
+                        SNAP_INT( "derbyKills",      derbyKills      )
 
-                /* ── GT_CTF ── */
-                SNAP_INT( "ctfWins",       ctfWins       )
-                SNAP_INT( "ctfCompleted",  ctfCompleted  )
-                SNAP_INT( "ctfCaptures",   ctfCaptures   )
+                        /* ── GT_DEATHMATCH ── */
+                        SNAP_INT( "dmWins",       dmWins       )
+                        SNAP_INT( "dmCompleted",  dmCompleted  )
+                        SNAP_INT( "dmKills",      dmKills      )
 
-                /* ── GT_CTF4 ── */
-                SNAP_INT( "ctf4Wins",       ctf4Wins       )
-                SNAP_INT( "ctf4Completed",  ctf4Completed  )
-                SNAP_INT( "ctf4Captures",   ctf4Captures   )
+                        /* ── GT_CTF ── */
+                        SNAP_INT( "ctfWins",       ctfWins       )
+                        SNAP_INT( "ctfCompleted",  ctfCompleted  )
+                        SNAP_INT( "ctfCaptures",   ctfCaptures   )
 
-                /* ── GT_TEAM ── */
-                SNAP_INT( "teamWins",       teamWins       )
-                SNAP_INT( "teamCompleted",  teamCompleted  )
-                SNAP_INT( "teamKills",      teamKills      )
+                        /* ── GT_CTF4 ── */
+                        SNAP_INT( "ctf4Wins",       ctf4Wins       )
+                        SNAP_INT( "ctf4Completed",  ctf4Completed  )
+                        SNAP_INT( "ctf4Captures",   ctf4Captures   )
 
-                /* ── GT_TEAM_RACING ── */
-                SNAP_INT( "teamRacingWins",       teamRacingWins       )
-                SNAP_INT( "teamRacingCompleted",  teamRacingCompleted  )
-                SNAP_INT( "teamRacingPodiums",    teamRacingPodiums    )
+                        /* ── GT_TEAM ── */
+                        SNAP_INT( "teamWins",       teamWins       )
+                        SNAP_INT( "teamCompleted",  teamCompleted  )
+                        SNAP_INT( "teamKills",      teamKills      )
 
-                /* ── GT_TEAM_RACING_DM ── */
-                SNAP_INT( "teamRacingDmWins",       teamRacingDmWins       )
-                SNAP_INT( "teamRacingDmCompleted",  teamRacingDmCompleted  )
-                SNAP_INT( "teamRacingDmPodiums",    teamRacingDmPodiums    )
+                        /* ── GT_TEAM_RACING ── */
+                        SNAP_INT( "teamRacingWins",       teamRacingWins       )
+                        SNAP_INT( "teamRacingCompleted",  teamRacingCompleted  )
+                        SNAP_INT( "teamRacingPodiums",    teamRacingPodiums    )
 
-                /* ── GT_DOMINATION ── */
-                SNAP_INT( "dominationWins",        dominationWins        )
-                SNAP_INT( "dominationCompleted",   dominationCompleted   )
-                SNAP_INT( "dominationZoneHoldMs",  dominationZoneHoldMs  )
+                        /* ── GT_TEAM_RACING_DM ── */
+                        SNAP_INT( "teamRacingDmWins",       teamRacingDmWins       )
+                        SNAP_INT( "teamRacingDmCompleted",  teamRacingDmCompleted  )
+                        SNAP_INT( "teamRacingDmPodiums",    teamRacingDmPodiums    )
 
-                /* ── GT_KOTH ── */
-                SNAP_INT( "kothWins",        kothWins        )
-                SNAP_INT( "kothCompleted",   kothCompleted   )
-                SNAP_INT( "kothZoneHoldMs",  kothZoneHoldMs  )
+                        /* ── GT_DOMINATION ── */
+                        SNAP_INT( "dominationWins",        dominationWins        )
+                        SNAP_INT( "dominationCompleted",   dominationCompleted   )
+                        SNAP_INT( "dominationZoneHoldMs",  dominationZoneHoldMs  )
 
+                        /* ── GT_KOTH ── */
+                        SNAP_INT( "kothWins",        kothWins        )
+                        SNAP_INT( "kothCompleted",   kothCompleted   )
+                        SNAP_INT( "kothZoneHoldMs",  kothZoneHoldMs  )
+
+                        if ( !SV_LadderJsonAppendKey( builder, "achievementTiers", &profFirst ) ||
+                             !SV_LadderJsonAppendChar( builder, '[' ) ) {
+                                return qfalse;
+                        }
+                        for ( i = 0; i < (int)( sizeof( snap->achievementTiers ) / sizeof( snap->achievementTiers[0] ) ); ++i ) {
+                                if ( i > 0 && !SV_LadderJsonAppendChar( builder, ',' ) ) {
+                                        return qfalse;
+                                }
+                                if ( !SV_LadderJsonAppendInt( builder, snap->achievementTiers[i] ) ) {
+                                        return qfalse;
+                                }
+                        }
+                        if ( !SV_LadderJsonAppendChar( builder, ']' ) ||
+                             !SV_LadderJsonAppendChar( builder, '}' ) ) {
+                                return qfalse;
+                        }
+                }
+        }
 #undef SNAP_INT
 #undef SNAP_FLT
 #undef SNAP_STR
-
-                if ( !SV_LadderJsonAppendKey( builder, "achievementTiers", &profFirst ) ||
-                     !SV_LadderJsonAppendChar( builder, '[' ) ) {
-                        return qfalse;
-                }
-                for ( i = 0; i < (int)( sizeof( snap->achievementTiers ) / sizeof( snap->achievementTiers[0] ) ); ++i ) {
-                        if ( i > 0 && !SV_LadderJsonAppendChar( builder, ',' ) ) {
-                                return qfalse;
-                        }
-                        if ( !SV_LadderJsonAppendInt( builder, snap->achievementTiers[i] ) ) {
-                                return qfalse;
-                        }
-                }
-                if ( !SV_LadderJsonAppendChar( builder, ']' ) ||
-                     !SV_LadderJsonAppendChar( builder, '}' ) ) {
-                        return qfalse;
-                }
-        }
 
         if ( !SV_LadderJsonAppendChar( builder, '}' ) ) {
                 return qfalse;
