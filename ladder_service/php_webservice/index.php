@@ -4942,11 +4942,13 @@ function profile_upsert_from_payload(array $payload): void
 
     $mode = $payload['mode'] ?? '';
     $winnerClientNum = -1;
+    $hasWinnerClientNum = false;
     if (array_key_exists('winnerClientNum', $payload) &&
         (is_int($payload['winnerClientNum']) ||
          is_float($payload['winnerClientNum']) ||
          (is_string($payload['winnerClientNum']) && is_numeric($payload['winnerClientNum'])))) {
         $winnerClientNum = (int) $payload['winnerClientNum'];
+        $hasWinnerClientNum = true;
     } elseif (isset($payload['settings']) &&
               is_array($payload['settings']) &&
               array_key_exists('winnerClientNum', $payload['settings']) &&
@@ -4955,6 +4957,7 @@ function profile_upsert_from_payload(array $payload): void
                (is_string($payload['settings']['winnerClientNum']) && is_numeric($payload['settings']['winnerClientNum'])))) {
         // Legacy fallback: old payloads nested the winner in settings.
         $winnerClientNum = (int) $payload['settings']['winnerClientNum'];
+        $hasWinnerClientNum = true;
     }
 
     foreach ($players as $player) {
@@ -4984,14 +4987,16 @@ function profile_upsert_from_payload(array $payload): void
 
         // ── Win-Detection ──────────────────────────────────────────────
         $clientNum  = (int)($player['clientNum'] ?? -1);
-        $isRaceMode = mode_is_race($mode);
         $position   = (int)($player['position'] ?? 0);
-        $isWinner   = false;
-        if ($winnerClientNum >= 0 && $winnerClientNum === $clientNum) {
-            $isWinner = true;
-        } elseif ($isRaceMode && $position === 1) {
-            $isWinner = true;
-        }
+        $isRaceMode = mode_is_race($mode);
+        $isWinner   = $hasWinnerClientNum && $winnerClientNum >= 0 && $winnerClientNum === $clientNum;
+
+        error_log(sprintf(
+            '[profile_upsert_from_payload] winner-check mode=%s clientNum=%d winnerClientNum=%s',
+            (string) $mode,
+            $clientNum,
+            $hasWinnerClientNum ? (string) $winnerClientNum : 'missing'
+        ));
 
         // ── Accuracy Award ─────────────────────────────────────────────
         $accuracy      = (int)($player['accuracy'] ?? 0);
@@ -5035,7 +5040,8 @@ function profile_upsert_from_payload(array $payload): void
         };
 
         $derivedWins   = $isWinner ? 1 : 0;
-        $derivedLosses = $isWinner ? 0 : 1;
+        // Fallback-Regel: Ohne valide Winner-Information werden weder Win noch Loss inkrementiert.
+        $derivedLosses = $hasWinnerClientNum ? ($isWinner ? 0 : 1) : 0;
 
         $isDmMode = mode_is_deathmatch_like($mode);
         $racingWinDelta = 0;
