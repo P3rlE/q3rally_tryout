@@ -363,7 +363,7 @@ def test_php_profile_upsert_prefers_valid_snapshot(php_env: dict[str, Any]) -> N
     assert status == 201, created
 
     profile = _get_php_profile(php_env, player_id)
-    assert profile["wins"] == 11
+    assert profile["wins"] == 12
     assert profile["losses"] == 5
     assert profile["kills"] == 81
     assert profile["deaths"] == 44
@@ -463,6 +463,48 @@ def test_php_profile_missing_winner_field_is_graceful(php_env: dict[str, Any]) -
 
     profile = _get_php_profile(php_env, player_id)
     assert profile["wins"] == 0
-    assert profile["losses"] == 1
+    assert profile["losses"] == 0
     assert profile["dmWins"] == 0
     assert profile["dmCompleted"] == 1
+
+
+def test_php_profile_team_mode_applies_team_win_loss_delta(php_env: dict[str, Any]) -> None:
+    winner_id = "fdde3dae-c8c7-4c36-a60d-145b7ad95c25"
+    loser_id = "0dd4d0a4-80ef-4d7d-93bd-c4e9c4e8ab16"
+    payload = generate_golden_payload("GT_TEAM")
+    payload["matchId"] = "profile-team-delta-1"
+    payload["winnerClientNum"] = 1
+    payload["settings"]["winnerClientNum"] = 1
+    payload["players"] = [
+        {
+            "playerId": winner_id,
+            "clientNum": 1,
+            "displayName": "Winner",
+            "team": "red",
+            "kills": 3,
+            "deaths": 1,
+            "position": 1,
+            "profile": {"valid": True, "wins": 4, "losses": 2},
+        },
+        {
+            "playerId": loser_id,
+            "clientNum": 2,
+            "displayName": "Loser",
+            "team": "blue",
+            "kills": 1,
+            "deaths": 3,
+            "position": 2,
+            "profile": {"valid": True, "wins": 9, "losses": 1},
+        },
+    ]
+    payload["teams"] = [{"team": "red", "rawScore": 10}, {"team": "blue", "rawScore": 5}]
+
+    status, created = _post_php_match(php_env, payload)
+    assert status == 201, created
+
+    winner = _get_php_profile(php_env, winner_id)
+    loser = _get_php_profile(php_env, loser_id)
+    assert winner["wins"] == 5
+    assert winner["losses"] == 2
+    assert loser["wins"] == 9
+    assert loser["losses"] == 2

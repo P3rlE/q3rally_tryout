@@ -4941,6 +4941,8 @@ function profile_upsert_from_payload(array $payload): void
     }
 
     $mode = $payload['mode'] ?? '';
+    $teamModes = ['GT_TEAM', 'GT_TEAM_RACING', 'GT_TEAM_RACING_DM', 'GT_CTF', 'GT_CTF4', 'GT_DOMINATION', 'GT_KOTH'];
+    $isTeamMode = in_array($mode, $teamModes, true);
     $winnerClientNum = -1;
     $hasWinnerClientNum = false;
     if (array_key_exists('winnerClientNum', $payload) &&
@@ -4958,6 +4960,79 @@ function profile_upsert_from_payload(array $payload): void
         // Legacy fallback: old payloads nested the winner in settings.
         $winnerClientNum = (int) $payload['settings']['winnerClientNum'];
         $hasWinnerClientNum = true;
+    }
+
+    $humanPlayers = [];
+    foreach ($players as $candidate) {
+        if (!is_array($candidate) || !empty($candidate['isBot'])) {
+            continue;
+        }
+        $candidateClientNum = (int)($candidate['clientNum'] ?? -1);
+        $candidateTeam = isset($candidate['team']) && is_string($candidate['team']) ? strtolower(trim($candidate['team'])) : '';
+        $humanPlayers[] = [
+            'clientNum' => $candidateClientNum,
+            'team' => $candidateTeam,
+            'position' => (int)($candidate['position'] ?? 0),
+        ];
+    }
+
+    $winnerTeam = null;
+    if ($isTeamMode) {
+        if ($hasWinnerClientNum) {
+            foreach ($humanPlayers as $hp) {
+                if ($hp['clientNum'] === $winnerClientNum && $hp['team'] !== '') {
+                    $winnerTeam = $hp['team'];
+                    break;
+                }
+            }
+        }
+        if ($winnerTeam === null && isset($payload['teams']) && is_array($payload['teams'])) {
+            $topScore = null;
+            $topTeam = null;
+            $isTie = false;
+            foreach ($payload['teams'] as $teamEntry) {
+                if (!is_array($teamEntry)) {
+                    continue;
+                }
+                $teamName = isset($teamEntry['team']) && is_string($teamEntry['team']) ? strtolower(trim($teamEntry['team'])) : '';
+                if ($teamName === '') {
+                    continue;
+                }
+                $score = null;
+                foreach (['rawScore', 'score', 'points'] as $field) {
+                    if (array_key_exists($field, $teamEntry) &&
+                        (is_int($teamEntry[$field]) || is_float($teamEntry[$field]) ||
+                         (is_string($teamEntry[$field]) && is_numeric($teamEntry[$field])))) {
+                        $score = (float) $teamEntry[$field];
+                        break;
+                    }
+                }
+                if ($score === null) {
+                    continue;
+                }
+                if ($topScore === null || $score > $topScore) {
+                    $topScore = $score;
+                    $topTeam = $teamName;
+                    $isTie = false;
+                } elseif ($score === $topScore) {
+                    $isTie = true;
+                }
+            }
+            if (!$isTie && $topTeam !== null) {
+                $winnerTeam = $topTeam;
+            }
+        }
+    }
+
+    if (!$hasWinnerClientNum && !$isTeamMode) {
+        $positionOne = array_values(array_filter(
+            $humanPlayers,
+            static fn($hp) => (int)($hp['position'] ?? 0) === 1
+        ));
+        if (count($positionOne) === 1) {
+            $winnerClientNum = (int)$positionOne[0]['clientNum'];
+            $hasWinnerClientNum = $winnerClientNum >= 0;
+        }
     }
 
     foreach ($players as $player) {
@@ -4989,7 +5064,10 @@ function profile_upsert_from_payload(array $payload): void
         $clientNum  = (int)($player['clientNum'] ?? -1);
         $position   = (int)($player['position'] ?? 0);
         $isRaceMode = mode_is_race($mode);
-        $isWinner   = $hasWinnerClientNum && $winnerClientNum >= 0 && $winnerClientNum === $clientNum;
+        $playerTeam = isset($player['team']) && is_string($player['team']) ? strtolower(trim($player['team'])) : '';
+        $isWinnerByClient = $hasWinnerClientNum && $winnerClientNum >= 0 && $winnerClientNum === $clientNum;
+        $isWinnerByTeam = $isTeamMode && $winnerTeam !== null && $playerTeam !== '' && $playerTeam === $winnerTeam;
+        $isWinner = $isTeamMode ? $isWinnerByTeam : $isWinnerByClient;
 
         error_log(sprintf(
             '[profile_upsert_from_payload] winner-check mode=%s clientNum=%d winnerClientNum=%s',
@@ -5039,9 +5117,21 @@ function profile_upsert_from_payload(array $payload): void
             return $base + $delta;
         };
 
-        $derivedWins   = $isWinner ? 1 : 0;
-        // Fallback-Regel: Ohne valide Winner-Information werden weder Win noch Loss inkrementiert.
-        $derivedLosses = $hasWinnerClientNum ? ($isWinner ? 0 : 1) : 0;
+        $pickCareerWithBaselineDelta = function(string $key, int $delta = 0) use ($snap, $existing, $countThisMatch): int {
+            $base = (int)($existing[$key] ?? 0);
+            $snapValue = profile_snapshot_int($snap, $key);
+            if ($snapValue !== null) {
+                $base = max($base, $snapValue);
+            }
+            if (!$countThisMatch) {
+                return $base;
+            }
+            return $base + $delta;
+        };
+
+        $hasOutcome = $isTeamMode ? ($winnerTeam !== null) : ($hasWinnerClientNum && $winnerClientNum >= 0);
+        $derivedWins = ($hasOutcome && $isWinner) ? 1 : 0;
+        $derivedLosses = ($hasOutcome && !$isWinner) ? 1 : 0;
 
         $isDmMode = mode_is_deathmatch_like($mode);
         $racingWinDelta = 0;
@@ -5178,8 +5268,8 @@ function profile_upsert_from_payload(array $payload): void
             'gamesPlayed'     => (int)($existing['gamesPlayed'] ?? 0) + ($countThisMatch ? 1 : 0),
 
             // ── Allgemein ───────────────────────────────────────────────
-            'wins'            => $pickCareer('wins', $derivedWins),
-            'losses'          => $pickCareer('losses', $derivedLosses),
+            'wins'            => $pickCareerWithBaselineDelta('wins', $derivedWins),
+            'losses'          => $pickCareerWithBaselineDelta('losses', $derivedLosses),
             'kills'           => $pickCareer('kills', max(0, $matchKills)),
             'deaths'          => $pickCareer('deaths', max(0, $matchDeaths)),
             'flagCaptures'    => (int)($existing['flagCaptures'] ?? 0) + (int)($player['captures']    ?? 0),
