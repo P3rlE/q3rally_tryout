@@ -325,6 +325,11 @@ def _get_php_profile(php_env: dict[str, Any], player_id: str) -> dict[str, Any]:
     return data
 
 
+def _assert_profile_fields(profile: dict[str, Any], expected: dict[str, int]) -> None:
+    for key, value in expected.items():
+        assert profile[key] == value, f"{key}: expected {value}, got {profile[key]}"
+
+
 def _profile_payload(match_id: str, mode: str, player_id: str) -> dict[str, Any]:
     payload = generate_golden_payload(mode)
     payload["matchId"] = match_id
@@ -344,6 +349,111 @@ def _profile_payload(match_id: str, mode: str, player_id: str) -> dict[str, Any]
     )
     payload["teams"] = None
     return payload
+
+
+def test_php_profile_dm_single_match_winner_sets_win_loss(php_env: dict[str, Any]) -> None:
+    winner_id = "48b8e564-3e47-40a8-95ee-9611f88e6df0"
+    loser_id = "bb005b6a-c280-4dbf-b64e-8c67e058af00"
+    payload = _profile_payload("profile-dm-win-loss-1", "GT_DEATHMATCH", winner_id)
+    payload["players"] = [
+        {
+            "playerId": winner_id,
+            "clientNum": 1,
+            "displayName": "DMWinner",
+            "team": None,
+            "kills": 12,
+            "deaths": 4,
+            "position": 1,
+            "totalRaceMs": 0,
+        },
+        {
+            "playerId": loser_id,
+            "clientNum": 2,
+            "displayName": "DMLoser",
+            "team": None,
+            "kills": 4,
+            "deaths": 12,
+            "position": 2,
+            "totalRaceMs": 0,
+        },
+    ]
+
+    status, created = _post_php_match(php_env, payload)
+    assert status == 201, created
+
+    winner_profile = _get_php_profile(php_env, winner_id)
+    loser_profile = _get_php_profile(php_env, loser_id)
+
+    _assert_profile_fields(winner_profile, {"wins": 1, "losses": 0, "dmWins": 1, "dmCompleted": 1})
+    _assert_profile_fields(loser_profile, {"wins": 0, "losses": 1, "dmWins": 0, "dmCompleted": 1})
+
+
+def test_php_profile_racing_p1_updates_racing_counters(php_env: dict[str, Any]) -> None:
+    player_id = "d6d92cb6-b889-4d89-b672-a38f23a9746c"
+    payload = _profile_payload("profile-racing-p1-1", "GT_RACING", player_id)
+    payload["players"][0].pop("profile", None)
+    payload["players"][0]["position"] = 1
+    payload["players"][0]["kills"] = 0
+    payload["players"][0]["deaths"] = 0
+
+    status, created = _post_php_match(php_env, payload)
+    assert status == 201, created
+
+    profile = _get_php_profile(php_env, player_id)
+    _assert_profile_fields(profile, {"racingWins": 1, "racingCompleted": 1})
+
+
+def test_php_profile_combined_dm_and_racing_stats_are_separated(php_env: dict[str, Any]) -> None:
+    player_id = "7f6e7277-d5fe-4a36-bfa6-e5a5b2f3cf09"
+
+    dm_payload = _profile_payload("profile-combined-dm-race-dm", "GT_DEATHMATCH", player_id)
+    dm_payload["players"][0].pop("profile", None)
+    dm_status, dm_created = _post_php_match(php_env, dm_payload)
+    assert dm_status == 201, dm_created
+
+    race_payload = _profile_payload("profile-combined-dm-race-race", "GT_RACING", player_id)
+    race_payload["players"][0].pop("profile", None)
+    race_payload["players"][0]["position"] = 1
+    race_payload["players"][0]["kills"] = 0
+    race_payload["players"][0]["deaths"] = 0
+    race_status, race_created = _post_php_match(php_env, race_payload)
+    assert race_status == 201, race_created
+
+    profile = _get_php_profile(php_env, player_id)
+    _assert_profile_fields(
+        profile,
+        {
+            "wins": 2,
+            "losses": 0,
+            "dmWins": 1,
+            "dmCompleted": 1,
+            "racingWins": 1,
+            "racingCompleted": 1,
+        },
+    )
+
+
+def test_php_profile_reupload_same_match_id_does_not_double_count(php_env: dict[str, Any]) -> None:
+    player_id = "2ad63bf6-9a30-46bb-a6d6-a2693f5e9b8f"
+    payload = _profile_payload("profile-dedupe-match-id-1", "GT_DEATHMATCH", player_id)
+    payload["players"][0].pop("profile", None)
+
+    first_status, first_created = _post_php_match(php_env, payload)
+    assert first_status == 201, first_created
+    second_status, second_created = _post_php_match(php_env, payload)
+    assert second_status == 200, second_created
+
+    profile = _get_php_profile(php_env, player_id)
+    expected_golden_profile = {
+        "wins": 1,
+        "losses": 0,
+        "gamesPlayed": 1,
+        "dmWins": 1,
+        "dmCompleted": 1,
+        "racingWins": 0,
+        "racingCompleted": 0,
+    }
+    _assert_profile_fields(profile, expected_golden_profile)
 
 
 def test_php_profile_upsert_prefers_valid_snapshot(php_env: dict[str, Any]) -> None:
