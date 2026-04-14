@@ -33,7 +33,13 @@ const LADDER_RACE_MODES = [
     'GT_RACING', 'GT_RACING_DM', 'GT_SPRINT', 'GT_TEAM_RACING', 'GT_TEAM_RACING_DM',
 ];
 const LADDER_DEATHMATCH_MODES = [
-    'GT_DEATHMATCH', 'GT_TEAM', 'GT_DERBY', 'GT_LCS',
+    'GT_DEATHMATCH', 'GT_TEAM',
+];
+const LADDER_DERBY_MODES = [
+    'GT_DERBY',
+];
+const LADDER_SURVIVAL_MODES = [
+    'GT_LCS',
 ];
 const LADDER_OBJECTIVE_MODES = [
     'GT_CTF', 'GT_CTF4', 'GT_DOMINATION', 'GT_KOTH', 'GT_ELIMINATION',
@@ -1271,8 +1277,8 @@ try {
       { key: 'gt_racing', type: 'race' },
       { key: 'gt_racing_dm', type: 'race' },
       { key: 'gt_sprint', type: 'race' },
-      { key: 'gt_derby', type: 'objective' },
-      { key: 'gt_lcs', type: 'objective' },
+      { key: 'gt_derby', type: 'derby' },
+      { key: 'gt_lcs', type: 'survival' },
       { key: 'gt_elimination', type: 'objective' },
       { key: 'gt_deathmatch', type: 'deathmatch' },
       { key: 'gt_team', type: 'deathmatch' },
@@ -1647,7 +1653,9 @@ try {
 
     const RACE_MODE_KEYS = new Set(['gt_racing', 'gt_racing_dm', 'gt_sprint', 'gt_team_racing', 'gt_team_racing_dm']);
     const DEATHMATCH_MODE_KEYS = new Set(['gt_deathmatch', 'gt_team']);
-    const OBJECTIVE_MODE_KEYS = new Set(['gt_ctf', 'gt_ctf4', 'gt_elimination', 'gt_domination', 'gt_derby', 'gt_lcs']);
+    const DERBY_MODE_KEYS = new Set(['gt_derby']);
+    const SURVIVAL_MODE_KEYS = new Set(['gt_lcs']);
+    const OBJECTIVE_MODE_KEYS = new Set(['gt_ctf', 'gt_ctf4', 'gt_elimination', 'gt_domination']);
 
     const OBJECTIVE_METRIC_DEFINITIONS = {
       captures: {
@@ -1722,7 +1730,6 @@ try {
       gt_ctf4: ['captures', 'score', 'objectives', 'wins'],
       gt_elimination: ['wins', 'score', 'captures', 'objectives'],
       gt_domination: ['objectives', 'score', 'captures', 'wins'],
-      gt_derby: ['score', 'wins', 'objectives', 'captures'],
       gt_lcs: ['wins', 'score', 'captures', 'objectives']
     };
 
@@ -1744,6 +1751,8 @@ try {
         playerNames: new Set(),
         raceBest: new Map(),
         deathmatchBest: new Map(),
+        derbyBest: new Map(),
+        survivalBest: new Map(),
         objectiveBest: new Map(),
         eliminationBest: new Map()
       };
@@ -1756,6 +1765,8 @@ const state = {
   aggregationOffline: createEmptyAggregation(),
   leaderboard: [],
   deathmatchLeaderboard: [],
+  derbyLeaderboard: [],
+  survivalLeaderboard: [],
   objectiveLeaderboard: [],
   eliminationLeaderboard: [],
   modeData: new Map(),
@@ -2072,6 +2083,8 @@ function applyLanguage(lang) {
   updateModeTabsLanguage();
   buildRaceLeaderboard();
   buildDeathmatchLeaderboard();
+  buildDerbyLeaderboard();
+  buildSurvivalLeaderboard();
   buildObjectiveLeaderboard();
   prepareModeData();
   updateSummary();
@@ -2250,7 +2263,7 @@ function getColumnsForMode(config) {
       { key: 'recorded', labelKey: 'leaderboard.headers.recorded' }
     ];
   }
-  if (config.type === 'deathmatch') {
+  if (config.type === 'deathmatch' || config.type === 'derby') {
     return [
       { key: 'rank', labelKey: 'deathmatch.headers.rank' },
       { key: 'player', labelKey: 'deathmatch.headers.player' },
@@ -2258,6 +2271,15 @@ function getColumnsForMode(config) {
       { key: 'kills', labelKey: 'deathmatch.headers.kills' },
       { key: 'deaths', labelKey: 'deathmatch.headers.deaths' },
       { key: 'recorded', labelKey: 'deathmatch.headers.recorded' }
+    ];
+  }
+  if (config.type === 'survival') {
+    return [
+      { key: 'rank', labelKey: 'leaderboard.headers.rank' },
+      { key: 'player', labelKey: 'leaderboard.headers.player' },
+      { key: 'metric', labelKey: 'mode.headers.metric' },
+      { key: 'value', labelKey: 'ctf.headers.value' },
+      { key: 'recorded', labelKey: 'ctf.headers.recorded' }
     ];
   }
   return [
@@ -2824,6 +2846,12 @@ function prepareModeData() {
   for (const entry of state.deathmatchLeaderboard) {
     addEntry(entry.modeKey, entry);
   }
+  for (const entry of state.derbyLeaderboard) {
+    addEntry(entry.modeKey, entry);
+  }
+  for (const entry of state.survivalLeaderboard) {
+    addEntry(entry.modeKey, entry);
+  }
   for (const entry of state.objectiveLeaderboard) {
     addEntry(entry.modeKey, entry);
   }
@@ -2842,7 +2870,7 @@ function prepareModeData() {
           }
           return a.player.localeCompare(b.player, locale);
         });
-      } else if (config.type === 'deathmatch') {
+      } else if (config.type === 'deathmatch' || config.type === 'derby') {
         mapData.entries.sort((a, b) => {
           if (b.ratio !== a.ratio) {
             return b.ratio - a.ratio;
@@ -2928,6 +2956,63 @@ function buildDeathmatchLeaderboard() {
     return a.player.localeCompare(b.player, locale);
   });
   state.deathmatchLeaderboard = entries;
+}
+
+function buildDerbyLeaderboard() {
+  if (!state.aggregation) {
+    state.derbyLeaderboard = [];
+    return;
+  }
+  const locale = getLocale();
+  const entries = Array.from(state.aggregation.derbyBest.values());
+  entries.forEach((entry) => {
+    entry.mode = humanizeMode(entry.modeKey);
+  });
+  entries.sort((a, b) => {
+    if (b.ratio !== a.ratio) {
+      return b.ratio - a.ratio;
+    }
+    if (b.kills !== a.kills) {
+      return b.kills - a.kills;
+    }
+    if (a.deaths !== b.deaths) {
+      return a.deaths - b.deaths;
+    }
+    return a.player.localeCompare(b.player, locale);
+  });
+  state.derbyLeaderboard = entries;
+}
+
+function buildSurvivalLeaderboard() {
+  if (!state.aggregation) {
+    state.survivalLeaderboard = [];
+    return;
+  }
+  const locale = getLocale();
+  const entries = Array.from(state.aggregation.survivalBest.values());
+  entries.forEach((entry) => {
+    entry.mode = humanizeMode(entry.modeKey);
+  });
+  entries.sort((a, b) => {
+    if (b.value !== a.value) {
+      return b.value - a.value;
+    }
+    const priority = OBJECTIVE_MODE_PRIORITY.gt_lcs || OBJECTIVE_DEFAULT_PRIORITY;
+    const priorityA = priorityIndex(a.metricType, priority);
+    const priorityB = priorityIndex(b.metricType, priority);
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    const dateA = a.recordedAt || a.startedAt;
+    const dateB = b.recordedAt || b.startedAt;
+    const timeA = dateA instanceof Date ? dateA.getTime() : 0;
+    const timeB = dateB instanceof Date ? dateB.getTime() : 0;
+    if (timeA !== timeB) {
+      return timeB - timeA;
+    }
+    return a.player.localeCompare(b.player, locale);
+  });
+  state.survivalLeaderboard = entries;
 }
 
 function buildObjectiveLeaderboard() {
@@ -3132,6 +3217,8 @@ function rebuildForSource() {
   }
   buildRaceLeaderboard();
   buildDeathmatchLeaderboard();
+  buildDerbyLeaderboard();
+  buildSurvivalLeaderboard();
   buildObjectiveLeaderboard();
   prepareModeData();
   updateSummary();
@@ -3148,6 +3235,8 @@ async function loadMatches() {
     state.aggregationOffline = createEmptyAggregation();
     state.leaderboard = [];
     state.deathmatchLeaderboard = [];
+    state.derbyLeaderboard = [];
+    state.survivalLeaderboard = [];
     state.objectiveLeaderboard = [];
     state.eliminationLeaderboard = [];
     state.modeData = new Map();
@@ -3194,6 +3283,8 @@ async function loadMatches() {
     state.aggregation = createEmptyAggregation();
     state.leaderboard = [];
     state.deathmatchLeaderboard = [];
+    state.derbyLeaderboard = [];
+    state.survivalLeaderboard = [];
     state.objectiveLeaderboard = [];
     state.eliminationLeaderboard = [];
     state.modeData = new Map();
@@ -3261,6 +3352,10 @@ function ingestMatchInto(match, aggregation) {
     ingestRaceEntries(aggregation, entries, context);
   } else if (DEATHMATCH_MODE_KEYS.has(modeKey)) {
     ingestDeathmatchEntries(aggregation, entries, context);
+  } else if (DERBY_MODE_KEYS.has(modeKey)) {
+    ingestDerbyEntries(aggregation, entries, context);
+  } else if (SURVIVAL_MODE_KEYS.has(modeKey)) {
+    ingestSurvivalEntries(aggregation, entries, context);
   } else if (OBJECTIVE_MODE_KEYS.has(modeKey)) {
     ingestObjectiveEntries(aggregation, entries, context);
   }
@@ -3349,11 +3444,62 @@ function ingestDeathmatchEntries(aggregation, entries, context) {
   }
 }
 
-function ingestObjectiveEntries(aggregation, entries, context) {
+function ingestDerbyEntries(aggregation, entries, context) {
+  const { map, mapKey, modeKey, matchId, startedAt, recordedAt } = context;
+  for (const entry of entries) {
+    const player = extractLeaderboardPlayer(entry);
+    if (!player) {
+      continue;
+    }
+    const { kills, deaths } = extractKillDeath(entry);
+    if (kills === null && deaths === null) {
+      continue;
+    }
+    const safeKills = kills ?? 0;
+    const safeDeaths = deaths ?? 0;
+    const ratio = safeKills / Math.max(1, safeDeaths);
+    if (!Number.isFinite(ratio)) {
+      continue;
+    }
+    const playerLower = player.toLowerCase();
+    const key = `${modeKey}||${mapKey}||${playerLower}`;
+    const current = aggregation.derbyBest.get(key);
+    const shouldUpdate =
+      !current ||
+      ratio > current.ratio ||
+      (ratio === current.ratio && safeKills > current.kills) ||
+      (ratio === current.ratio && safeKills === current.kills && safeDeaths < current.deaths);
+    if (shouldUpdate) {
+      const isBot = extractIsBot(entry);
+      const derbyPlayerId = entry.playerId || '';
+      aggregation.derbyBest.set(key, {
+        player,
+        playerLower,
+        playerId: derbyPlayerId,
+        ratio,
+        kills: safeKills,
+        deaths: safeDeaths,
+        map,
+        mapKey,
+        modeKey,
+        matchId,
+        startedAt,
+        recordedAt,
+        isBot
+      });
+    }
+  }
+}
+
+function ingestSurvivalEntries(aggregation, entries, context) {
+  ingestObjectiveEntries(aggregation, entries, { ...context, modeKey: 'gt_lcs' }, aggregation.survivalBest);
+}
+
+function ingestObjectiveEntries(aggregation, entries, context, customTargetMap = null) {
   const { map, mapKey, modeKey, matchId, startedAt, recordedAt } = context;
   const priority = OBJECTIVE_MODE_PRIORITY[modeKey] || OBJECTIVE_DEFAULT_PRIORITY;
   const isElimination = modeKey === 'gt_elimination';
-  const targetMap = isElimination ? aggregation.eliminationBest : aggregation.objectiveBest;
+  const targetMap = customTargetMap || (isElimination ? aggregation.eliminationBest : aggregation.objectiveBest);
   const eliminationContext = isElimination ? prepareEliminationMetricContext(entries) : null;
 
   for (let index = 0; index < entries.length; index += 1) {
@@ -4891,7 +5037,7 @@ function profile_upsert_from_payload(array $payload): void
         $derivedWins   = $isWinner ? 1 : 0;
         $derivedLosses = $isWinner ? 0 : 1;
 
-        $isDmMode = mode_is_deathmatch_like($mode) || mode_is_objective($mode);
+        $isDmMode = mode_is_deathmatch_like($mode);
         $racingWinDelta = 0;
         $racingPodiumDelta = 0;
         $racingCompletedDelta = 0;
@@ -5192,6 +5338,16 @@ function mode_is_deathmatch_like(string $mode): bool
     return in_array($mode, LADDER_DEATHMATCH_MODES, true);
 }
 
+function mode_is_derby(string $mode): bool
+{
+    return in_array($mode, LADDER_DERBY_MODES, true);
+}
+
+function mode_is_survival(string $mode): bool
+{
+    return in_array($mode, LADDER_SURVIVAL_MODES, true);
+}
+
 function mode_is_objective(string $mode): bool
 {
     return in_array($mode, LADDER_OBJECTIVE_MODES, true);
@@ -5235,7 +5391,7 @@ function extract_player_kills(array $player, string $mode): int
         return (int) max(0, $kills);
     }
     // degraded mode for legacy payloads: kills were mirrored from score
-    if (mode_is_deathmatch_like($mode) || mode_is_objective($mode)) {
+    if (mode_is_deathmatch_like($mode) || mode_is_objective($mode) || mode_is_derby($mode)) {
         return extract_player_score($player);
     }
     return 0;
@@ -5261,7 +5417,7 @@ function extract_player_position(array $player, string $mode): int
 
 function extract_player_race_time(array $player, string $mode): int
 {
-    if (!mode_is_race($mode) && !mode_is_elimination($mode)) {
+    if (!mode_is_race($mode) && !mode_is_elimination($mode) && !mode_is_survival($mode)) {
         return 0;
     }
     $time = first_numeric_value($player, ['totalRaceMs', 'raceTimeMs', 'finishRaceTime', 'survivalMs']);
