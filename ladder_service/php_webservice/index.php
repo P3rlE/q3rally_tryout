@@ -4395,6 +4395,7 @@ function formatKm(km) {
 
 // ── Player Profile Overlay ────────────────────────────────────────────────────
 async function showPlayerProfile(playerId, playerName) {
+  const INGEST_STALE_THRESHOLD_MS = 30 * 60 * 1000;
   const frag = document.createDocumentFragment();
 
   const loading = document.createElement('div');
@@ -4437,6 +4438,33 @@ async function showPlayerProfile(playerId, playerName) {
         <div style="font-size:.95rem;font-weight:600;color:var(--text)">${((p.playerScore)||0).toLocaleString()}</div>
       </div>`;
     body.appendChild(rankStrip);
+
+    const ingestMatch = typeof p.lastIngestedMatchId === 'string' && p.lastIngestedMatchId
+      ? p.lastIngestedMatchId
+      : '–';
+    const ingestAtDate = p.lastIngestedAt ? new Date(p.lastIngestedAt) : null;
+    const ingestAtDisplay = ingestAtDate && !Number.isNaN(ingestAtDate.getTime())
+      ? ingestAtDate.toLocaleString()
+      : 'unbekannt';
+    const ingestMode = typeof p.lastIngestedMode === 'string' && p.lastIngestedMode
+      ? humanizeMode(p.lastIngestedMode)
+      : '';
+    const ingestSeq = Number.isFinite(Number(p.lastServerMatchSeq)) ? ` · Seq ${Number(p.lastServerMatchSeq)}` : '';
+
+    const ingestMeta = document.createElement('div');
+    ingestMeta.style.cssText = 'margin:-8px 0 16px;color:var(--text-muted);font-size:.82rem';
+    ingestMeta.textContent = `Stand: Match ${ingestMatch} um ${ingestAtDisplay}${ingestMode ? ` (${ingestMode}${ingestSeq})` : ingestSeq}`;
+    body.appendChild(ingestMeta);
+
+    if (ingestAtDate && !Number.isNaN(ingestAtDate.getTime())) {
+      const ageMs = Date.now() - ingestAtDate.getTime();
+      if (ageMs > INGEST_STALE_THRESHOLD_MS) {
+        const staleWarning = document.createElement('div');
+        staleWarning.style.cssText = 'margin:0 0 16px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,196,0,.35);background:rgba(255,196,0,.1);color:#ffd88a;font-size:.82rem';
+        staleWarning.textContent = 'Daten möglicherweise verzögert (letzter Ingest älter als 30 Minuten).';
+        body.appendChild(staleWarning);
+      }
+    }
 
     // Zweispaltiges Haupt-Layout
     const layout = document.createElement('div');
@@ -5027,6 +5055,26 @@ function profile_last_server_match_seq(array $profile): ?int
     return ladder_parse_server_match_seq($profile['_lastProcessedMatch']['serverMatchSeq']);
 }
 
+function profile_hydrate_ingest_metadata(array $profile): array
+{
+    if (!isset($profile['lastIngestedMatchId']) && isset($profile['_lastProcessedMatch']['matchId']) && is_string($profile['_lastProcessedMatch']['matchId'])) {
+        $profile['lastIngestedMatchId'] = $profile['_lastProcessedMatch']['matchId'];
+    }
+    if (!isset($profile['lastIngestedAt']) && isset($profile['_lastProcessedMatch']['timestamp']) && is_string($profile['_lastProcessedMatch']['timestamp'])) {
+        $profile['lastIngestedAt'] = $profile['_lastProcessedMatch']['timestamp'];
+    }
+    if (!isset($profile['lastIngestedMode']) && isset($profile['_lastProcessedMatch']['mode']) && is_string($profile['_lastProcessedMatch']['mode'])) {
+        $profile['lastIngestedMode'] = $profile['_lastProcessedMatch']['mode'];
+    }
+    if (!isset($profile['lastServerMatchSeq']) && isset($profile['_lastProcessedMatch']['serverMatchSeq'])) {
+        $legacySeq = ladder_parse_server_match_seq($profile['_lastProcessedMatch']['serverMatchSeq']);
+        if ($legacySeq !== null) {
+            $profile['lastServerMatchSeq'] = $legacySeq;
+        }
+    }
+    return $profile;
+}
+
 function profile_upsert_from_payload(array $payload): void
 {
     $players = $payload['players'] ?? [];
@@ -5153,6 +5201,9 @@ function profile_upsert_from_payload(array $payload): void
         $serverMatchSeq = array_key_exists('serverMatchSeq', $payload)
             ? ladder_parse_server_match_seq($payload['serverMatchSeq'])
             : null;
+        $receivedAt = is_string($payload['receivedAt'] ?? null) && $payload['receivedAt'] !== ''
+            ? $payload['receivedAt']
+            : gmdate('c');
         $processedMatchIds = profile_normalize_processed_match_ids($existing);
         $alreadyCounted = $matchId !== '' && in_array($matchId, $processedMatchIds, true);
         $lastServerMatchSeq = profile_last_server_match_seq($existing);
@@ -5468,9 +5519,21 @@ function profile_upsert_from_payload(array $payload): void
             'kothZoneHoldMs' => $pickCareer('kothZoneHoldMs', $careerDeltas['kothZoneHoldMsDelta']),
 
             'achievementTiers' => (array)($snap['achievementTiers'] ?? $existing['achievementTiers'] ?? []),
-            'lastSeen'         => $payload['receivedAt'] ?? gmdate('c'),
+            'lastSeen'         => $receivedAt,
             'vehicle'          => $mostUsed,
-            'registeredAt'     => $existing['registeredAt'] ?? ($payload['receivedAt'] ?? gmdate('c')),
+            'registeredAt'     => $existing['registeredAt'] ?? $receivedAt,
+            'lastIngestedMatchId' => ($isOutdatedBySeq && isset($existing['lastIngestedMatchId']) && is_string($existing['lastIngestedMatchId']))
+                ? $existing['lastIngestedMatchId']
+                : $matchId,
+            'lastIngestedAt' => ($isOutdatedBySeq && isset($existing['lastIngestedAt']) && is_string($existing['lastIngestedAt']))
+                ? $existing['lastIngestedAt']
+                : $receivedAt,
+            'lastIngestedMode' => ($isOutdatedBySeq && isset($existing['lastIngestedMode']) && is_string($existing['lastIngestedMode']))
+                ? $existing['lastIngestedMode']
+                : (string)$mode,
+            'lastServerMatchSeq' => ($isOutdatedBySeq && isset($existing['lastServerMatchSeq']) && ladder_parse_server_match_seq($existing['lastServerMatchSeq']) !== null)
+                ? (int)$existing['lastServerMatchSeq']
+                : $serverMatchSeq,
             '_processedMatchIds'=> (function() use ($processedMatchIds, $matchId, $countThisMatch): array {
                 if ($countThisMatch && $matchId !== '') {
                     $processedMatchIds[] = $matchId;
@@ -5486,7 +5549,10 @@ function profile_upsert_from_payload(array $payload): void
                     : $serverMatchSeq,
                 'timestamp' => ($isOutdatedBySeq && isset($existing['_lastProcessedMatch']['timestamp']) && is_string($existing['_lastProcessedMatch']['timestamp']))
                     ? $existing['_lastProcessedMatch']['timestamp']
-                    : ($payload['receivedAt'] ?? gmdate('c')),
+                    : $receivedAt,
+                'mode' => ($isOutdatedBySeq && isset($existing['_lastProcessedMatch']['mode']) && is_string($existing['_lastProcessedMatch']['mode']))
+                    ? $existing['_lastProcessedMatch']['mode']
+                    : (string)$mode,
                 'checksum' => ($isOutdatedBySeq && isset($existing['_lastProcessedMatch']['checksum']) && is_string($existing['_lastProcessedMatch']['checksum']))
                     ? $existing['_lastProcessedMatch']['checksum']
                     : ($matchId !== '' ? profile_match_checksum($matchId, (string)$mode, $player) : ''),
@@ -6083,6 +6149,7 @@ function handle_get(array $segments): void
         if ($profile === null) {
             send_error(404, 'Player not found.');
         }
+        $profile = profile_hydrate_ingest_metadata($profile);
         header('Content-Type: application/json');
         header('Cache-Control: public, max-age=60');
         echo json_encode($profile, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
