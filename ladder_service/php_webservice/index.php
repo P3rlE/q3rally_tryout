@@ -5274,6 +5274,30 @@ function profile_upsert_from_payload(array $payload): void
         };
 
         $pickCareerWithBaselineDelta = $pickCareer;
+        $mergeCareerCountField = function(string $field, int $deltaValue) use ($snap, $existing, $countThisMatch, $matchId): int {
+            $existingValue = (int)($existing[$field] ?? 0);
+            $snapshotValue = profile_snapshot_int($snap, $field);
+            $snapshotForCalc = $snapshotValue ?? $existingValue;
+            $baseline = max($existingValue, $snapshotForCalc);
+
+            if ($countThisMatch) {
+                $candidate = $baseline + $deltaValue;
+                $finalValue = max($candidate, $snapshotForCalc, $existingValue);
+            } else {
+                $finalValue = $baseline;
+            }
+
+            ladder_pipeline_log('php-profile_upsert-merge-field', [
+                'matchId' => $matchId,
+                'field' => $field,
+                'existing' => $existingValue,
+                'snapshot' => $snapshotValue,
+                'delta' => $deltaValue,
+                'final' => $finalValue,
+            ]);
+
+            return $finalValue;
+        };
 
         $hasOutcome = $isTeamMode ? ($winnerTeam !== null) : ($hasWinnerClientNum && $winnerClientNum >= 0);
         $derivedWins = ($hasOutcome && $isWinner) ? 1 : 0;
@@ -5496,9 +5520,9 @@ function profile_upsert_from_payload(array $payload): void
             // ── Allgemein ───────────────────────────────────────────────
             'wins'            => $pickCareerWithBaselineDelta('wins', $derivedWins),
             'losses'          => $pickCareerWithBaselineDelta('losses', $derivedLosses),
-            'kills'           => $pickCareer('kills', max(0, $matchKills)),
-            'deaths'          => $pickCareer('deaths', max(0, $matchDeaths)),
-            'flagCaptures'    => $pickCareer('flagCaptures', (int)($player['captures'] ?? 0)),
+            'kills'           => $mergeCareerCountField('kills', max(0, $matchKills)),
+            'deaths'          => $mergeCareerCountField('deaths', max(0, $matchDeaths)),
+            'flagCaptures'    => $mergeCareerCountField('flagCaptures', (int)($player['captures'] ?? 0)),
             'flagAssists'     => $pickCareer('flagAssists', (int)($player['assistCount'] ?? 0)),
             'bestLapMs'       => (function() use ($player, $existing, $snap, $isRaceCareerMode) {
                 $old = (int)($existing['bestLapMs'] ?? 0);
@@ -5560,17 +5584,17 @@ function profile_upsert_from_payload(array $payload): void
             // ── GT_DEATHMATCH ────────────────────────────────────────────
             'dmWins'      => $pickCareer('dmWins', $careerDeltas['dmWinsDelta']),
             'dmCompleted' => $pickCareer('dmCompleted', $careerDeltas['dmCompletedDelta']),
-            'dmKills'     => $pickCareer('dmKills', $careerDeltas['dmKillsDelta']),
+            'dmKills'     => $mergeCareerCountField('dmKills', $careerDeltas['dmKillsDelta']),
 
             // ── GT_CTF ──────────────────────────────────────────────────
             'ctfWins'      => $pickCareer('ctfWins', $careerDeltas['ctfWinsDelta']),
             'ctfCompleted' => $pickCareer('ctfCompleted', $careerDeltas['ctfCompletedDelta']),
-            'ctfCaptures'  => $pickCareer('ctfCaptures', $careerDeltas['ctfCapturesDelta']),
+            'ctfCaptures'  => $mergeCareerCountField('ctfCaptures', $careerDeltas['ctfCapturesDelta']),
 
             // ── GT_CTF4 ─────────────────────────────────────────────────
             'ctf4Wins'      => $pickCareer('ctf4Wins', $careerDeltas['ctf4WinsDelta']),
             'ctf4Completed' => $pickCareer('ctf4Completed', $careerDeltas['ctf4CompletedDelta']),
-            'ctf4Captures'  => $pickCareer('ctf4Captures', $careerDeltas['ctf4CapturesDelta']),
+            'ctf4Captures'  => $mergeCareerCountField('ctf4Captures', $careerDeltas['ctf4CapturesDelta']),
 
             // ── GT_TEAM ─────────────────────────────────────────────────
             'teamWins'      => $pickCareer('teamWins', $careerDeltas['teamWinsDelta']),
