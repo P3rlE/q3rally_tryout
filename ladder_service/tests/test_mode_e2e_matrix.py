@@ -403,6 +403,46 @@ def test_php_profile_racing_p1_updates_racing_counters(php_env: dict[str, Any]) 
     _assert_profile_fields(profile, {"racingWins": 1, "racingCompleted": 1})
 
 
+def test_php_profile_single_mode_regression_keeps_racing_keys_stable(php_env: dict[str, Any]) -> None:
+    dm_only_player = "fea4bdaa-4d9d-42ca-b7f1-0e0b3fc9a2aa"
+    race_only_player = "54d0f81f-0be8-463d-bc42-164c728ad623"
+
+    dm_payload = _profile_payload("profile-ui-single-mode-dm", "GT_DEATHMATCH", dm_only_player)
+    dm_payload["players"][0].pop("profile", None)
+    dm_status, dm_created = _post_php_match(php_env, dm_payload)
+    assert dm_status == 201, dm_created
+
+    dm_profile = _get_php_profile(php_env, dm_only_player)
+    for racing_key in (
+        "racingWins",
+        "racingPodiums",
+        "racingCompleted",
+        "racingTotalMs",
+        "racingDmWins",
+        "racingDmPodiums",
+        "racingDmCompleted",
+        "teamRacingWins",
+        "teamRacingPodiums",
+        "teamRacingCompleted",
+    ):
+        assert racing_key in dm_profile, f"missing profile key: {racing_key}"
+        assert dm_profile[racing_key] == 0, f"{racing_key} should remain zero for DM-only profile"
+
+    race_payload = _profile_payload("profile-ui-single-mode-racing", "GT_RACING", race_only_player)
+    race_payload["players"][0].pop("profile", None)
+    race_payload["players"][0]["position"] = 1
+    race_payload["players"][0]["kills"] = 0
+    race_payload["players"][0]["deaths"] = 0
+    race_status, race_created = _post_php_match(php_env, race_payload)
+    assert race_status == 201, race_created
+
+    race_profile = _get_php_profile(php_env, race_only_player)
+    assert race_profile["racingCompleted"] == 1
+    assert race_profile["racingWins"] == 1
+    assert race_profile["racingPodiums"] == 1
+    assert race_profile["dmCompleted"] == 0
+
+
 def test_php_profile_combined_dm_and_racing_stats_are_separated(php_env: dict[str, Any]) -> None:
     player_id = "7f6e7277-d5fe-4a36-bfa6-e5a5b2f3cf09"
 

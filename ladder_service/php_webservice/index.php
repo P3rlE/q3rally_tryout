@@ -4481,26 +4481,42 @@ async function showPlayerProfile(playerId, playerName) {
     const modeGroups = [
       { title: 'Deathmatch',      primaryStat: 'dmCompleted', fields: [['Wins','dmWins'],['Completed','dmCompleted'],['Kills','dmKills']] },
       { title: 'Derby',           primaryStat: 'derbyCompleted', fields: [['Wins','derbyWins'],['Completed','derbyCompleted'],['Kills','derbyKills']] },
-      { title: 'Racing',          primaryStat: 'racingCompleted', fields: [['Wins','racingWins'],['Podiums','racingPodiums'],['Completed','racingCompleted'],['Total Time',null,'racingTotalMs']] },
-      { title: 'Racing DM',       primaryStat: 'racingDmCompleted', fields: [['Wins','racingDmWins'],['Podiums','racingDmPodiums'],['Completed','racingDmCompleted']] },
-      { title: 'Sprint',          primaryStat: 'sprintCompleted', fields: [['Wins','sprintWins'],['Completed','sprintCompleted'],['Best Time',null,'sprintBestMs']] },
+      { title: 'Racing',          primaryStat: 'racingCompleted', alwaysVisibleWhenTracked: true, fields: [['Wins','racingWins'],['Podiums','racingPodiums'],['Completed','racingCompleted'],['Total Time',null,'racingTotalMs']] },
+      { title: 'Racing DM',       primaryStat: 'racingDmCompleted', alwaysVisibleWhenTracked: true, fields: [['Wins','racingDmWins'],['Podiums','racingDmPodiums'],['Completed','racingDmCompleted']] },
+      { title: 'Sprint',          primaryStat: 'sprintCompleted', alwaysVisibleWhenTracked: true, fields: [['Wins','sprintWins'],['Completed','sprintCompleted'],['Best Time',null,'sprintBestMs']] },
       { title: 'Elimination',     primaryStat: 'eliminationCompleted', fields: [['Wins','eliminationWins'],['Completed','eliminationCompleted'],['Rounds Lasted','eliminationTotalRoundsLasted']] },
       { title: 'LCS',             primaryStat: 'lcsCompleted', fields: [['Wins','lcsWins'],['Completed','lcsCompleted'],['Survival Time',null,'lcsTotalSurvivalMs']] },
       { title: 'CTF',             primaryStat: 'ctfCompleted', fields: [['Wins','ctfWins'],['Completed','ctfCompleted'],['Captures','ctfCaptures']] },
       { title: 'CTF 4-Team',      primaryStat: 'ctf4Completed', fields: [['Wins','ctf4Wins'],['Completed','ctf4Completed'],['Captures','ctf4Captures']] },
       { title: 'Team DM',         primaryStat: 'teamCompleted', fields: [['Wins','teamWins'],['Completed','teamCompleted'],['Kills','teamKills']] },
-      { title: 'Team Racing',     primaryStat: 'teamRacingCompleted', fields: [['Wins','teamRacingWins'],['Completed','teamRacingCompleted'],['Podiums','teamRacingPodiums']] },
-      { title: 'Team Racing DM',  primaryStat: 'teamRacingDmCompleted', fields: [['Wins','teamRacingDmWins'],['Completed','teamRacingDmCompleted'],['Podiums','teamRacingDmPodiums']] },
+      { title: 'Team Racing',     primaryStat: 'teamRacingCompleted', alwaysVisibleWhenTracked: true, fields: [['Wins','teamRacingWins'],['Completed','teamRacingCompleted'],['Podiums','teamRacingPodiums']] },
+      { title: 'Team Racing DM',  primaryStat: 'teamRacingDmCompleted', alwaysVisibleWhenTracked: true, fields: [['Wins','teamRacingDmWins'],['Completed','teamRacingDmCompleted'],['Podiums','teamRacingDmPodiums']] },
       { title: 'Domination',      primaryStat: 'dominationCompleted', fields: [['Wins','dominationWins'],['Completed','dominationCompleted'],['Zone Hold',null,'dominationZoneHoldMs']] },
       { title: 'King of the Hill', primaryStat: 'kothCompleted', fields: [['Wins','kothWins'],['Completed','kothCompleted'],['Zone Hold',null,'kothZoneHoldMs']] },
     ];
 
+    const hasTrackedField = (obj, field) => Object.prototype.hasOwnProperty.call(obj || {}, field);
+    const toIntStat = (obj, field) => {
+      const num = Number(obj?.[field]);
+      return Number.isFinite(num) ? num : 0;
+    };
+
     const activeModes = modeGroups.filter(g => {
-      const primaryActive = g.primaryStat ? (p[g.primaryStat] || 0) > 0 : false;
+      const primaryActive = g.primaryStat ? toIntStat(p, g.primaryStat) > 0 : false;
       if (primaryActive) {
         return true;
       }
-      return g.fields.some(([,key,msKey]) => (key && (p[key]||0) > 0) || (msKey && (p[msKey]||0) > 0));
+      const hasAnyPositiveField = g.fields.some(([,key,msKey]) => (key && toIntStat(p, key) > 0) || (msKey && toIntStat(p, msKey) > 0));
+      if (hasAnyPositiveField) {
+        return true;
+      }
+      if (g.alwaysVisibleWhenTracked) {
+        if (g.primaryStat && hasTrackedField(p, g.primaryStat)) {
+          return true;
+        }
+        return g.fields.some(([,key,msKey]) => (key && hasTrackedField(p, key)) || (msKey && hasTrackedField(p, msKey)));
+      }
+      return false;
     });
 
     if (activeModes.length > 0) {
@@ -4520,10 +4536,10 @@ async function showPlayerProfile(playerId, playerName) {
         group.fields.forEach(([label, key, msKey]) => {
           let val;
           if (msKey) {
-            const ms = p[msKey] || 0;
+            const ms = toIntStat(p, msKey);
             val = ms > 0 ? formatMs(ms) : '–';
           } else {
-            val = p[key] || 0;
+            val = String(toIntStat(p, key));
           }
           modeGrid.appendChild(statCard(label, val));
         });
