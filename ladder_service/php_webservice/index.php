@@ -5253,12 +5253,6 @@ function profile_upsert_from_payload(array $payload): void
         $vehicleName = $modelRaw !== '' ? explode('/', $modelRaw)[0]
                                         : ($existing['mostUsedVehicle'] ?? '');
 
-        // ── Score ──────────────────────────────────────────────────────
-        $newScore = $snap ? (int)($snap['playerScore'] ?? 0) : 0;
-        $oldScore = (int)($existing['playerScore'] ?? 0);
-        // Fallback: wenn kein Snapshot, Match-Score nur als Minimum nutzen
-        $matchScore = (int)($player['playerScore'] ?? 0);
-
         // ── Snapshot-Werte (lokal getrackt, absolut) ───────────────────
         $distanceKm  = $snap ? (float)($snap['distanceKm']  ?? $existing['distanceKm']  ?? 0.0)
                               : (float)($existing['distanceKm']  ?? 0.0);
@@ -5426,10 +5420,66 @@ function profile_upsert_from_payload(array $payload): void
                 break;
         }
 
+        // ── Score (Delta-Logik, idempotent bei Retries) ───────────────
+        $baseScore = max((int)($existing['playerScore'] ?? 0), (int)($snap['playerScore'] ?? 0));
+        $scoreDeltaFromPayload = null;
+        foreach (['playerScoreDelta', 'scoreDelta', 'matchScoreDelta', 'awardedScore', 'awardedPoints'] as $deltaField) {
+            $rawDelta = $player[$deltaField] ?? $payload[$deltaField] ?? null;
+            if (is_int($rawDelta) || is_float($rawDelta) || (is_string($rawDelta) && is_numeric($rawDelta))) {
+                $scoreDeltaFromPayload = (int)$rawDelta;
+                break;
+            }
+        }
+
+        $scoreDeltaDerived = 0;
+        switch ($mode) {
+            case 'GT_DEATHMATCH':
+            case 'GT_TEAM':
+            case 'GT_DERBY':
+                $scoreDeltaDerived = max(0, $matchKills);
+                break;
+            case 'GT_CTF':
+            case 'GT_CTF4':
+                $scoreDeltaDerived = max(0, (int)($player['captures'] ?? 0));
+                break;
+            case 'GT_DOMINATION':
+                $scoreDeltaDerived = max(0, (int)($player['zoneHoldMs'] ?? 0));
+                break;
+            case 'GT_KOTH':
+                $scoreDeltaDerived = max(0, (int)($player['zoneHoldMs'] ?? 0));
+                break;
+            case 'GT_LCS':
+                $scoreDeltaDerived = max(0, (int)($player['totalRaceMs'] ?? 0));
+                break;
+            case 'GT_ELIMINATION':
+                $scoreDeltaDerived = $isWinner ? 1 : 0;
+                break;
+            case 'GT_RACING':
+            case 'GT_RACING_DM':
+            case 'GT_SPRINT':
+            case 'GT_TEAM_RACING':
+            case 'GT_TEAM_RACING_DM':
+            default:
+                $scoreDeltaDerived = max(0, (int)($player['playerScore'] ?? $player['score'] ?? $player['rawScore'] ?? 0));
+                break;
+        }
+
+        $scoreDelta = $scoreDeltaFromPayload ?? $scoreDeltaDerived;
+        $finalScore = $baseScore + ($countThisMatch ? $scoreDelta : 0);
+
+        ladder_pipeline_log('php-profile_upsert-score', [
+            'matchId' => $matchId,
+            'playerId' => $playerId,
+            'baseScore' => $baseScore,
+            'scoreDelta' => $scoreDelta,
+            'countThisMatch' => $countThisMatch,
+            'finalScore' => $finalScore,
+        ]);
+
         $profile = [
             'playerId'        => $playerId,
             'cleanName'       => (string)($player['cleanName'] ?? $player['name'] ?? ''),
-            'playerScore'     => max($newScore, $oldScore, $matchScore),
+            'playerScore'     => max($finalScore, 0),
             'currentRank'     => $snap ? (int)($snap['currentRank'] ?? $existing['currentRank'] ?? 0)
                                        : (int)($player['rankTier'] ?? $existing['currentRank'] ?? 0),
             'highestRank'     => max(
