@@ -419,6 +419,46 @@ def test_php_profile_race_and_dm_wins_increment_separately(php_env: dict[str, An
     assert profile["dmWins"] == 1
 
 
+def test_php_profile_racing_dm_updates_racing_fields_not_dm_bucket(php_env: dict[str, Any]) -> None:
+    player_id = "b40f7ebf-036f-4d3f-81a5-a0f3f8195d5d"
+
+    payload = _profile_payload("profile-racing-dm-only-racing", "GT_RACING_DM", player_id)
+    payload["players"][0].pop("profile", None)
+    payload["players"][0]["position"] = 2
+    payload["players"][0]["bestLapMs"] = 65432
+
+    status, created = _post_php_match(php_env, payload)
+    assert status == 201, created
+
+    profile = _get_php_profile(php_env, player_id)
+    assert profile["racingDmWins"] == 1
+    assert profile["racingDmCompleted"] == 1
+    assert profile["racingDmPodiums"] == 1
+    assert profile["racingDmTotalMs"] == 77777
+    assert profile["dmWins"] == 0
+    assert profile["dmCompleted"] == 0
+    assert profile["dmKills"] == 0
+
+
+def test_php_profile_best_lap_updates_only_in_race_career_modes(php_env: dict[str, Any]) -> None:
+    player_id = "6164e8ce-cc2e-4cc0-b5a5-65f69f8f7f38"
+
+    race_payload = _profile_payload("profile-best-lap-race", "GT_RACING", player_id)
+    race_payload["players"][0].pop("profile", None)
+    race_payload["players"][0]["bestLapMs"] = 11111
+    race_status, race_created = _post_php_match(php_env, race_payload)
+    assert race_status == 201, race_created
+
+    dm_payload = _profile_payload("profile-best-lap-dm", "GT_DEATHMATCH", player_id)
+    dm_payload["players"][0].pop("profile", None)
+    dm_payload["players"][0]["bestLapMs"] = 999
+    dm_status, dm_created = _post_php_match(php_env, dm_payload)
+    assert dm_status == 201, dm_created
+
+    profile = _get_php_profile(php_env, player_id)
+    assert profile["bestLapMs"] == 11111
+
+
 def test_php_profile_dm_uses_top_level_winner_client_num(php_env: dict[str, Any]) -> None:
     player_id = "8ef82988-d418-443f-bb09-00143874ece1"
     payload = _profile_payload("profile-dm-top-level-winner", "GT_DEATHMATCH", player_id)
