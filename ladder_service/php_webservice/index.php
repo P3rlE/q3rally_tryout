@@ -1286,7 +1286,8 @@ try {
       { key: 'gt_team_racing_dm', type: 'race' },
       { key: 'gt_ctf', type: 'objective' },
       { key: 'gt_ctf4', type: 'objective' },
-      { key: 'gt_domination', type: 'objective' }
+      { key: 'gt_domination', type: 'objective' },
+      { key: 'gt_koth', type: 'objective' }
     ];
 
     const LEVELSHOT_EXTENSIONS = ['webp', 'png', 'jpg', 'jpeg', 'tga'];
@@ -1632,7 +1633,8 @@ try {
         gt_team_racing_dm: 'Team Racing Deathmatch',
         gt_ctf: 'Capture the Flag',
         gt_ctf4: '4-Teams-CTF',
-        gt_domination: 'Domination'
+        gt_domination: 'Domination',
+        gt_koth: 'King of the Hill'
       },
       en: {
         gt_racing: 'Racing',
@@ -1647,7 +1649,8 @@ try {
         gt_team_racing_dm: 'Team Racing Deathmatch',
         gt_ctf: 'Capture the Flag',
         gt_ctf4: '4-Team CTF',
-        gt_domination: 'Domination'
+        gt_domination: 'Domination',
+        gt_koth: 'King of the Hill'
       }
     };
 
@@ -1655,7 +1658,7 @@ try {
     const DEATHMATCH_MODE_KEYS = new Set(['gt_deathmatch', 'gt_team']);
     const DERBY_MODE_KEYS = new Set(['gt_derby']);
     const SURVIVAL_MODE_KEYS = new Set(['gt_lcs']);
-    const OBJECTIVE_MODE_KEYS = new Set(['gt_ctf', 'gt_ctf4', 'gt_elimination', 'gt_domination']);
+    const OBJECTIVE_MODE_KEYS = new Set(['gt_ctf', 'gt_ctf4', 'gt_elimination', 'gt_domination', 'gt_koth']);
 
     const OBJECTIVE_METRIC_DEFINITIONS = {
       captures: {
@@ -1730,6 +1733,7 @@ try {
       gt_ctf4: ['captures', 'score', 'objectives', 'wins'],
       gt_elimination: ['wins', 'score', 'captures', 'objectives'],
       gt_domination: ['objectives', 'score', 'captures', 'wins'],
+      gt_koth: ['objectives', 'score', 'captures', 'wins'],
       gt_lcs: ['wins', 'score', 'captures', 'objectives']
     };
 
@@ -2263,7 +2267,17 @@ function getColumnsForMode(config) {
       { key: 'recorded', labelKey: 'leaderboard.headers.recorded' }
     ];
   }
-  if (config.type === 'deathmatch' || config.type === 'derby') {
+  if (config.type === 'deathmatch') {
+    return [
+      { key: 'rank', labelKey: 'deathmatch.headers.rank' },
+      { key: 'player', labelKey: 'deathmatch.headers.player' },
+      { key: 'kdr', labelKey: 'deathmatch.headers.kdr' },
+      { key: 'kills', labelKey: 'deathmatch.headers.kills' },
+      { key: 'deaths', labelKey: 'deathmatch.headers.deaths' },
+      { key: 'recorded', labelKey: 'deathmatch.headers.recorded' }
+    ];
+  }
+  if (config.type === 'derby') {
     return [
       { key: 'rank', labelKey: 'deathmatch.headers.rank' },
       { key: 'player', labelKey: 'deathmatch.headers.player' },
@@ -4465,25 +4479,29 @@ async function showPlayerProfile(playerId, playerName) {
     const colRight = document.createElement('div');
 
     const modeGroups = [
-      { title: 'Deathmatch',      fields: [['Wins','dmWins'],['Completed','dmCompleted'],['Kills','dmKills']] },
-      { title: 'Derby',           fields: [['Wins','derbyWins'],['Completed','derbyCompleted'],['Kills','derbyKills']] },
-      { title: 'Racing',          fields: [['Wins','racingWins'],['Podiums','racingPodiums'],['Completed','racingCompleted'],['Total Time',null,'racingTotalMs']] },
-      { title: 'Racing DM',       fields: [['Wins','racingDmWins'],['Podiums','racingDmPodiums'],['Completed','racingDmCompleted']] },
-      { title: 'Sprint',          fields: [['Wins','sprintWins'],['Completed','sprintCompleted'],['Best Time',null,'sprintBestMs']] },
-      { title: 'Elimination',     fields: [['Wins','eliminationWins'],['Completed','eliminationCompleted'],['Rounds Lasted','eliminationTotalRoundsLasted']] },
-      { title: 'LCS',             fields: [['Wins','lcsWins'],['Completed','lcsCompleted'],['Survival Time',null,'lcsTotalSurvivalMs']] },
-      { title: 'CTF',             fields: [['Wins','ctfWins'],['Completed','ctfCompleted'],['Captures','ctfCaptures']] },
-      { title: 'CTF 4-Team',      fields: [['Wins','ctf4Wins'],['Completed','ctf4Completed'],['Captures','ctf4Captures']] },
-      { title: 'Team DM',         fields: [['Wins','teamWins'],['Completed','teamCompleted'],['Kills','teamKills']] },
-      { title: 'Team Racing',     fields: [['Wins','teamRacingWins'],['Completed','teamRacingCompleted'],['Podiums','teamRacingPodiums']] },
-      { title: 'Team Racing DM',  fields: [['Wins','teamRacingDmWins'],['Completed','teamRacingDmCompleted'],['Podiums','teamRacingDmPodiums']] },
-      { title: 'Domination',      fields: [['Wins','dominationWins'],['Completed','dominationCompleted'],['Zone Hold',null,'dominationZoneHoldMs']] },
-      { title: 'King of the Hill', fields: [['Wins','kothWins'],['Completed','kothCompleted'],['Zone Hold',null,'kothZoneHoldMs']] },
+      { title: 'Deathmatch',      primaryStat: 'dmCompleted', fields: [['Wins','dmWins'],['Completed','dmCompleted'],['Kills','dmKills']] },
+      { title: 'Derby',           primaryStat: 'derbyCompleted', fields: [['Wins','derbyWins'],['Completed','derbyCompleted'],['Kills','derbyKills']] },
+      { title: 'Racing',          primaryStat: 'racingCompleted', fields: [['Wins','racingWins'],['Podiums','racingPodiums'],['Completed','racingCompleted'],['Total Time',null,'racingTotalMs']] },
+      { title: 'Racing DM',       primaryStat: 'racingDmCompleted', fields: [['Wins','racingDmWins'],['Podiums','racingDmPodiums'],['Completed','racingDmCompleted']] },
+      { title: 'Sprint',          primaryStat: 'sprintCompleted', fields: [['Wins','sprintWins'],['Completed','sprintCompleted'],['Best Time',null,'sprintBestMs']] },
+      { title: 'Elimination',     primaryStat: 'eliminationCompleted', fields: [['Wins','eliminationWins'],['Completed','eliminationCompleted'],['Rounds Lasted','eliminationTotalRoundsLasted']] },
+      { title: 'LCS',             primaryStat: 'lcsCompleted', fields: [['Wins','lcsWins'],['Completed','lcsCompleted'],['Survival Time',null,'lcsTotalSurvivalMs']] },
+      { title: 'CTF',             primaryStat: 'ctfCompleted', fields: [['Wins','ctfWins'],['Completed','ctfCompleted'],['Captures','ctfCaptures']] },
+      { title: 'CTF 4-Team',      primaryStat: 'ctf4Completed', fields: [['Wins','ctf4Wins'],['Completed','ctf4Completed'],['Captures','ctf4Captures']] },
+      { title: 'Team DM',         primaryStat: 'teamCompleted', fields: [['Wins','teamWins'],['Completed','teamCompleted'],['Kills','teamKills']] },
+      { title: 'Team Racing',     primaryStat: 'teamRacingCompleted', fields: [['Wins','teamRacingWins'],['Completed','teamRacingCompleted'],['Podiums','teamRacingPodiums']] },
+      { title: 'Team Racing DM',  primaryStat: 'teamRacingDmCompleted', fields: [['Wins','teamRacingDmWins'],['Completed','teamRacingDmCompleted'],['Podiums','teamRacingDmPodiums']] },
+      { title: 'Domination',      primaryStat: 'dominationCompleted', fields: [['Wins','dominationWins'],['Completed','dominationCompleted'],['Zone Hold',null,'dominationZoneHoldMs']] },
+      { title: 'King of the Hill', primaryStat: 'kothCompleted', fields: [['Wins','kothWins'],['Completed','kothCompleted'],['Zone Hold',null,'kothZoneHoldMs']] },
     ];
 
-    const activeModes = modeGroups.filter(g =>
-      g.fields.some(([,key,msKey]) => (key && (p[key]||0) > 0) || (msKey && (p[msKey]||0) > 0))
-    );
+    const activeModes = modeGroups.filter(g => {
+      const primaryActive = g.primaryStat ? (p[g.primaryStat] || 0) > 0 : false;
+      if (primaryActive) {
+        return true;
+      }
+      return g.fields.some(([,key,msKey]) => (key && (p[key]||0) > 0) || (msKey && (p[msKey]||0) > 0));
+    });
 
     if (activeModes.length > 0) {
       const modeH = document.createElement('h3');
