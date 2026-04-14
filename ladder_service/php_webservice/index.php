@@ -4775,6 +4775,18 @@ function profile_is_valid_uuid(string $s): bool
     );
 }
 
+function profile_snapshot_int(?array $snapshot, string $key): ?int
+{
+    if (!is_array($snapshot) || !array_key_exists($key, $snapshot)) {
+        return null;
+    }
+    $value = $snapshot[$key];
+    if (is_int($value) || is_float($value) || (is_string($value) && is_numeric($value))) {
+        return (int) $value;
+    }
+    return null;
+}
+
 function profile_upsert_from_payload(array $payload): void
 {
     $players = $payload['players'] ?? [];
@@ -4801,21 +4813,32 @@ function profile_upsert_from_payload(array $payload): void
 
         $existing = profile_load($playerId) ?? [];
 
-        // ── Snapshot-first: wenn ein Profil-Snapshot mitgeschickt wurde,
-        //    dessen Werte direkt übernehmen (absolute Gesamtstände).
-        //    Nur für Felder die lokal getrackt werden (distanceKm etc.)
-        $snap = $player['profile'] ?? null;
+        // ── Snapshot-first: Nur valide Snapshots als Primärquelle nutzen.
+        $snap = (isset($player['profile']) && is_array($player['profile']) && !empty($player['profile']['valid']))
+            ? $player['profile']
+            : null;
+        $matchId = isset($payload['matchId']) && is_string($payload['matchId']) ? normalize_match_id($payload['matchId']) : '';
+        $processedMatchIds = array_values(array_filter((array)($existing['_processedMatchIds'] ?? []), 'is_string'));
+        $alreadyCounted = $matchId !== '' && in_array($matchId, $processedMatchIds, true);
+        $countThisMatch = !$alreadyCounted;
 
         // ── Win-Detection ──────────────────────────────────────────────
         $clientNum  = (int)($player['clientNum'] ?? -1);
-        $isRaceMode = in_array($mode, ['GT_RACING','GT_RACING_DM','GT_SPRINT',
-                                        'GT_ELIMINATION','GT_LCS'], true);
-        $isWinner   = !$isRaceMode && $winnerClientNum >= 0
-                      && $winnerClientNum === $clientNum;
+        $isRaceMode = mode_is_race($mode);
+        $position   = (int)($player['position'] ?? 0);
+        $isWinner   = false;
+        if ($winnerClientNum >= 0 && $winnerClientNum === $clientNum) {
+            $isWinner = true;
+        } elseif ($isRaceMode && $position === 1) {
+            $isWinner = true;
+        }
 
         // ── Accuracy Award ─────────────────────────────────────────────
         $accuracy      = (int)($player['accuracy'] ?? 0);
         $accuracyAward = ($accuracy >= 75) ? 1 : 0;
+        $matchKills    = (int)($player['kills'] ?? 0);
+        $matchDeaths   = (int)($player['deaths'] ?? 0);
+        $matchRaceMs   = (int)($player['totalRaceMs'] ?? 0);
 
         // ── Vehicle ────────────────────────────────────────────────────
         $modelRaw    = (string)($player['model'] ?? '');
@@ -4838,15 +4861,30 @@ function profile_upsert_from_payload(array $payload): void
         $mostUsed    = $snap ? ((string)($snap['mostUsedVehicle'] ?? '') ?: $vehicleName)
                               : $vehicleName;
 
-        // ── Helper: snapshot-int oder akkumuliert ──────────────────────
-        $si = function(string $key) use ($snap, $existing, $player): int {
-            if ($snap && isset($snap[$key])) return (int)$snap[$key];
-            return (int)($existing[$key] ?? 0) + (int)($player[$key] ?? 0);
+        // ── Helper: Snapshot (primär) -> Match-Ableitung (sekundär) -> Bestand (tertiär)
+        $pickCareer = function(string $key, int $delta = 0) use ($snap, $existing, $countThisMatch): int {
+            $snapValue = profile_snapshot_int($snap, $key);
+            if ($snapValue !== null) {
+                return $snapValue;
+            }
+            $base = (int)($existing[$key] ?? 0);
+            if (!$countThisMatch) {
+                return $base;
+            }
+            return $base + $delta;
         };
-        $se = function(string $key) use ($snap, $existing): int {
-            if ($snap && isset($snap[$key])) return (int)$snap[$key];
-            return (int)($existing[$key] ?? 0);
-        };
+
+        $derivedWins   = $isWinner ? 1 : 0;
+        $derivedLosses = $isWinner ? 0 : 1;
+
+        $isDmMode = mode_is_deathmatch_like($mode) || mode_is_objective($mode);
+        $racingWinDelta = ($isRaceMode && $isWinner) ? 1 : 0;
+        $racingPodiumDelta = ($isRaceMode && $position > 0 && $position <= 3) ? 1 : 0;
+        $racingCompletedDelta = $isRaceMode ? 1 : 0;
+        $racingTotalMsDelta = $isRaceMode ? max(0, $matchRaceMs) : 0;
+        $dmWinDelta = ($isDmMode && !$isRaceMode && $isWinner) ? 1 : 0;
+        $dmCompletedDelta = ($isDmMode && !$isRaceMode) ? 1 : 0;
+        $dmKillsDelta = ($isDmMode && !$isRaceMode) ? max(0, $matchKills) : 0;
 
         $profile = [
             'playerId'        => $playerId,
@@ -4863,13 +4901,13 @@ function profile_upsert_from_payload(array $payload): void
             // snapshot value. The snapshot reflects the local client counter which
             // is not synchronised with server matches. The ladder is the authoritative
             // source for how many matches have been reported.
-            'gamesPlayed'     => (int)($existing['gamesPlayed'] ?? 0) + 1,
+            'gamesPlayed'     => (int)($existing['gamesPlayed'] ?? 0) + ($countThisMatch ? 1 : 0),
 
             // ── Allgemein ───────────────────────────────────────────────
-            'wins'            => $se('wins'),
-            'losses'          => $se('losses'),
-            'kills'           => $se('kills'),
-            'deaths'          => $se('deaths'),
+            'wins'            => $pickCareer('wins', $derivedWins),
+            'losses'          => $pickCareer('losses', $derivedLosses),
+            'kills'           => $pickCareer('kills', max(0, $matchKills)),
+            'deaths'          => $pickCareer('deaths', max(0, $matchDeaths)),
             'flagCaptures'    => (int)($existing['flagCaptures'] ?? 0) + (int)($player['captures']    ?? 0),
             'flagAssists'     => (int)($existing['flagAssists']  ?? 0) + (int)($player['assistCount'] ?? 0),
             'bestLapMs'       => (function() use ($player, $existing, $snap) {
@@ -4890,20 +4928,20 @@ function profile_upsert_from_payload(array $payload): void
             'mostUsedVehicle' => $mostUsed,
 
             // ── GT_RACING ───────────────────────────────────────────────
-            'racingWins'      => $se('racingWins'),
-            'racingPodiums'   => $se('racingPodiums'),
-            'racingCompleted' => $se('racingCompleted'),
-            'racingTotalMs'   => $se('racingTotalMs'),
+            'racingWins'      => $pickCareer('racingWins', $racingWinDelta),
+            'racingPodiums'   => $pickCareer('racingPodiums', $racingPodiumDelta),
+            'racingCompleted' => $pickCareer('racingCompleted', $racingCompletedDelta),
+            'racingTotalMs'   => $pickCareer('racingTotalMs', $racingTotalMsDelta),
 
             // ── GT_RACING_DM ────────────────────────────────────────────
-            'racingDmWins'      => $se('racingDmWins'),
-            'racingDmPodiums'   => $se('racingDmPodiums'),
-            'racingDmCompleted' => $se('racingDmCompleted'),
-            'racingDmTotalMs'   => $se('racingDmTotalMs'),
+            'racingDmWins'      => $pickCareer('racingDmWins'),
+            'racingDmPodiums'   => $pickCareer('racingDmPodiums'),
+            'racingDmCompleted' => $pickCareer('racingDmCompleted'),
+            'racingDmTotalMs'   => $pickCareer('racingDmTotalMs'),
 
             // ── GT_SPRINT ───────────────────────────────────────────────
-            'sprintWins'      => $se('sprintWins'),
-            'sprintCompleted' => $se('sprintCompleted'),
+            'sprintWins'      => $pickCareer('sprintWins'),
+            'sprintCompleted' => $pickCareer('sprintCompleted'),
             'sprintBestMs'    => (function() use ($snap, $existing) {
                 $new = (int)($snap['sprintBestMs'] ?? 0);
                 $old = (int)($existing['sprintBestMs'] ?? 0);
@@ -4912,64 +4950,70 @@ function profile_upsert_from_payload(array $payload): void
             })(),
 
             // ── GT_ELIMINATION ──────────────────────────────────────────
-            'eliminationWins'              => $se('eliminationWins'),
-            'eliminationCompleted'         => $se('eliminationCompleted'),
-            'eliminationTotalRoundsLasted' => $se('eliminationTotalRoundsLasted'),
+            'eliminationWins'              => $pickCareer('eliminationWins'),
+            'eliminationCompleted'         => $pickCareer('eliminationCompleted'),
+            'eliminationTotalRoundsLasted' => $pickCareer('eliminationTotalRoundsLasted'),
 
             // ── GT_LCS ──────────────────────────────────────────────────
-            'lcsWins'            => $se('lcsWins'),
-            'lcsCompleted'       => $se('lcsCompleted'),
-            'lcsTotalSurvivalMs' => $se('lcsTotalSurvivalMs'),
+            'lcsWins'            => $pickCareer('lcsWins'),
+            'lcsCompleted'       => $pickCareer('lcsCompleted'),
+            'lcsTotalSurvivalMs' => $pickCareer('lcsTotalSurvivalMs'),
 
             // ── GT_DERBY ────────────────────────────────────────────────
-            'derbyWins'      => $se('derbyWins'),
-            'derbyCompleted' => $se('derbyCompleted'),
-            'derbyKills'     => $se('derbyKills'),
+            'derbyWins'      => $pickCareer('derbyWins'),
+            'derbyCompleted' => $pickCareer('derbyCompleted'),
+            'derbyKills'     => $pickCareer('derbyKills'),
 
             // ── GT_DEATHMATCH ────────────────────────────────────────────
-            'dmWins'      => $se('dmWins'),
-            'dmCompleted' => $se('dmCompleted'),
-            'dmKills'     => $se('dmKills'),
+            'dmWins'      => $pickCareer('dmWins', $dmWinDelta),
+            'dmCompleted' => $pickCareer('dmCompleted', $dmCompletedDelta),
+            'dmKills'     => $pickCareer('dmKills', $dmKillsDelta),
 
             // ── GT_CTF ──────────────────────────────────────────────────
-            'ctfWins'      => $se('ctfWins'),
-            'ctfCompleted' => $se('ctfCompleted'),
-            'ctfCaptures'  => $se('ctfCaptures'),
+            'ctfWins'      => $pickCareer('ctfWins'),
+            'ctfCompleted' => $pickCareer('ctfCompleted'),
+            'ctfCaptures'  => $pickCareer('ctfCaptures'),
 
             // ── GT_CTF4 ─────────────────────────────────────────────────
-            'ctf4Wins'      => $se('ctf4Wins'),
-            'ctf4Completed' => $se('ctf4Completed'),
-            'ctf4Captures'  => $se('ctf4Captures'),
+            'ctf4Wins'      => $pickCareer('ctf4Wins'),
+            'ctf4Completed' => $pickCareer('ctf4Completed'),
+            'ctf4Captures'  => $pickCareer('ctf4Captures'),
 
             // ── GT_TEAM ─────────────────────────────────────────────────
-            'teamWins'      => $se('teamWins'),
-            'teamCompleted' => $se('teamCompleted'),
-            'teamKills'     => $se('teamKills'),
+            'teamWins'      => $pickCareer('teamWins'),
+            'teamCompleted' => $pickCareer('teamCompleted'),
+            'teamKills'     => $pickCareer('teamKills'),
 
             // ── GT_TEAM_RACING ───────────────────────────────────────────
-            'teamRacingWins'      => $se('teamRacingWins'),
-            'teamRacingCompleted' => $se('teamRacingCompleted'),
-            'teamRacingPodiums'   => $se('teamRacingPodiums'),
+            'teamRacingWins'      => $pickCareer('teamRacingWins'),
+            'teamRacingCompleted' => $pickCareer('teamRacingCompleted'),
+            'teamRacingPodiums'   => $pickCareer('teamRacingPodiums'),
 
             // ── GT_TEAM_RACING_DM ────────────────────────────────────────
-            'teamRacingDmWins'      => $se('teamRacingDmWins'),
-            'teamRacingDmCompleted' => $se('teamRacingDmCompleted'),
-            'teamRacingDmPodiums'   => $se('teamRacingDmPodiums'),
+            'teamRacingDmWins'      => $pickCareer('teamRacingDmWins'),
+            'teamRacingDmCompleted' => $pickCareer('teamRacingDmCompleted'),
+            'teamRacingDmPodiums'   => $pickCareer('teamRacingDmPodiums'),
 
             // ── GT_DOMINATION ────────────────────────────────────────────
-            'dominationWins'       => $se('dominationWins'),
-            'dominationCompleted'  => $se('dominationCompleted'),
-            'dominationZoneHoldMs' => $se('dominationZoneHoldMs'),
+            'dominationWins'       => $pickCareer('dominationWins'),
+            'dominationCompleted'  => $pickCareer('dominationCompleted'),
+            'dominationZoneHoldMs' => $pickCareer('dominationZoneHoldMs'),
 
             // ── GT_KOTH ──────────────────────────────────────────────────
-            'kothWins'       => $se('kothWins'),
-            'kothCompleted'  => $se('kothCompleted'),
-            'kothZoneHoldMs' => $se('kothZoneHoldMs'),
+            'kothWins'       => $pickCareer('kothWins'),
+            'kothCompleted'  => $pickCareer('kothCompleted'),
+            'kothZoneHoldMs' => $pickCareer('kothZoneHoldMs'),
 
             'achievementTiers' => (array)($snap['achievementTiers'] ?? $existing['achievementTiers'] ?? []),
             'lastSeen'         => $payload['receivedAt'] ?? gmdate('c'),
             'vehicle'          => $mostUsed,
             'registeredAt'     => $existing['registeredAt'] ?? ($payload['receivedAt'] ?? gmdate('c')),
+            '_processedMatchIds'=> (function() use ($processedMatchIds, $matchId, $countThisMatch): array {
+                if ($countThisMatch && $matchId !== '') {
+                    $processedMatchIds[] = $matchId;
+                }
+                return array_slice(array_values(array_unique($processedMatchIds)), -200);
+            })(),
         ];
 
         profile_save($playerId, $profile);
