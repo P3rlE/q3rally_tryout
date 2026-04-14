@@ -328,6 +328,7 @@ def _get_php_profile(php_env: dict[str, Any], player_id: str) -> dict[str, Any]:
 def _profile_payload(match_id: str, mode: str, player_id: str) -> dict[str, Any]:
     payload = generate_golden_payload(mode)
     payload["matchId"] = match_id
+    payload["winnerClientNum"] = 1
     payload["settings"]["winnerClientNum"] = 1
     payload["players"][0].update(
         {
@@ -400,6 +401,7 @@ def test_php_profile_race_and_dm_wins_increment_separately(php_env: dict[str, An
     player_id = "1d3d02af-c23c-4f74-a20e-2f2f1cb2f60e"
 
     race_payload = _profile_payload("profile-race-dm-race", "GT_RACING", player_id)
+    race_payload["winnerClientNum"] = -1
     race_payload["settings"]["winnerClientNum"] = -1
     race_payload["players"][0]["position"] = 1
     race_payload["players"][0]["kills"] = 0
@@ -415,3 +417,52 @@ def test_php_profile_race_and_dm_wins_increment_separately(php_env: dict[str, An
     profile = _get_php_profile(php_env, player_id)
     assert profile["racingWins"] == 1
     assert profile["dmWins"] == 1
+
+
+def test_php_profile_dm_uses_top_level_winner_client_num(php_env: dict[str, Any]) -> None:
+    player_id = "8ef82988-d418-443f-bb09-00143874ece1"
+    payload = _profile_payload("profile-dm-top-level-winner", "GT_DEATHMATCH", player_id)
+    payload["players"][0].pop("profile", None)
+    payload["winnerClientNum"] = 1
+    payload["settings"]["winnerClientNum"] = 0
+
+    status, created = _post_php_match(php_env, payload)
+    assert status == 201, created
+
+    profile = _get_php_profile(php_env, player_id)
+    assert profile["wins"] == 1
+    assert profile["dmWins"] == 1
+
+
+def test_php_profile_racing_uses_top_level_winner_without_position_fallback(php_env: dict[str, Any]) -> None:
+    player_id = "01214b8a-e25f-4d26-bf77-160dca8a9dac"
+    payload = _profile_payload("profile-racing-top-level-winner", "GT_RACING", player_id)
+    payload["players"][0].pop("profile", None)
+    payload["winnerClientNum"] = 1
+    payload["settings"]["winnerClientNum"] = 0
+    payload["players"][0]["position"] = 2
+
+    status, created = _post_php_match(php_env, payload)
+    assert status == 201, created
+
+    profile = _get_php_profile(php_env, player_id)
+    assert profile["wins"] == 1
+    assert profile["racingWins"] == 1
+    assert profile["racingPodiums"] == 1
+
+
+def test_php_profile_missing_winner_field_is_graceful(php_env: dict[str, Any]) -> None:
+    player_id = "f2cbf5d4-b8f9-4548-b3d8-fc1dbec8f8f5"
+    payload = _profile_payload("profile-missing-winner", "GT_DEATHMATCH", player_id)
+    payload["players"][0].pop("profile", None)
+    payload.pop("winnerClientNum", None)
+    payload["settings"].pop("winnerClientNum", None)
+
+    status, created = _post_php_match(php_env, payload)
+    assert status == 201, created
+
+    profile = _get_php_profile(php_env, player_id)
+    assert profile["wins"] == 0
+    assert profile["losses"] == 1
+    assert profile["dmWins"] == 0
+    assert profile["dmCompleted"] == 1

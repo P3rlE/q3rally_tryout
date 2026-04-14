@@ -4794,8 +4794,22 @@ function profile_upsert_from_payload(array $payload): void
         return;
     }
 
-    $mode            = $payload['mode'] ?? '';
-    $winnerClientNum = (int)($payload['settings']['winnerClientNum'] ?? -1);
+    $mode = $payload['mode'] ?? '';
+    $winnerClientNum = -1;
+    if (array_key_exists('winnerClientNum', $payload) &&
+        (is_int($payload['winnerClientNum']) ||
+         is_float($payload['winnerClientNum']) ||
+         (is_string($payload['winnerClientNum']) && is_numeric($payload['winnerClientNum'])))) {
+        $winnerClientNum = (int) $payload['winnerClientNum'];
+    } elseif (isset($payload['settings']) &&
+              is_array($payload['settings']) &&
+              array_key_exists('winnerClientNum', $payload['settings']) &&
+              (is_int($payload['settings']['winnerClientNum']) ||
+               is_float($payload['settings']['winnerClientNum']) ||
+               (is_string($payload['settings']['winnerClientNum']) && is_numeric($payload['settings']['winnerClientNum'])))) {
+        // Legacy fallback: old payloads nested the winner in settings.
+        $winnerClientNum = (int) $payload['settings']['winnerClientNum'];
+    }
 
     foreach ($players as $player) {
         if (!is_array($player)) {
@@ -4878,13 +4892,121 @@ function profile_upsert_from_payload(array $payload): void
         $derivedLosses = $isWinner ? 0 : 1;
 
         $isDmMode = mode_is_deathmatch_like($mode) || mode_is_objective($mode);
-        $racingWinDelta = ($isRaceMode && $isWinner) ? 1 : 0;
-        $racingPodiumDelta = ($isRaceMode && $position > 0 && $position <= 3) ? 1 : 0;
-        $racingCompletedDelta = $isRaceMode ? 1 : 0;
-        $racingTotalMsDelta = $isRaceMode ? max(0, $matchRaceMs) : 0;
-        $dmWinDelta = ($isDmMode && !$isRaceMode && $isWinner) ? 1 : 0;
-        $dmCompletedDelta = ($isDmMode && !$isRaceMode) ? 1 : 0;
-        $dmKillsDelta = ($isDmMode && !$isRaceMode) ? max(0, $matchKills) : 0;
+        $racingWinDelta = 0;
+        $racingPodiumDelta = 0;
+        $racingCompletedDelta = 0;
+        $racingTotalMsDelta = 0;
+        $racingDmWinDelta = 0;
+        $racingDmPodiumDelta = 0;
+        $racingDmCompletedDelta = 0;
+        $racingDmTotalMsDelta = 0;
+        $sprintWinDelta = 0;
+        $sprintCompletedDelta = 0;
+        $eliminationWinDelta = 0;
+        $eliminationCompletedDelta = 0;
+        $lcsWinDelta = 0;
+        $lcsCompletedDelta = 0;
+        $lcsTotalSurvivalMsDelta = 0;
+        $derbyWinDelta = 0;
+        $derbyCompletedDelta = 0;
+        $derbyKillsDelta = 0;
+        $dmWinDelta = 0;
+        $dmCompletedDelta = 0;
+        $dmKillsDelta = 0;
+        $ctfWinDelta = 0;
+        $ctfCompletedDelta = 0;
+        $ctfCapturesDelta = 0;
+        $ctf4WinDelta = 0;
+        $ctf4CompletedDelta = 0;
+        $ctf4CapturesDelta = 0;
+        $teamWinDelta = 0;
+        $teamCompletedDelta = 0;
+        $teamKillsDelta = 0;
+        $teamRacingWinDelta = 0;
+        $teamRacingCompletedDelta = 0;
+        $teamRacingPodiumDelta = 0;
+        $teamRacingDmWinDelta = 0;
+        $teamRacingDmCompletedDelta = 0;
+        $teamRacingDmPodiumDelta = 0;
+        $dominationWinDelta = 0;
+        $dominationCompletedDelta = 0;
+        $dominationZoneHoldMsDelta = 0;
+        $kothWinDelta = 0;
+        $kothCompletedDelta = 0;
+        $kothZoneHoldMsDelta = 0;
+
+        switch ($mode) {
+            case 'GT_RACING':
+                $racingWinDelta = $isWinner ? 1 : 0;
+                $racingPodiumDelta = ($position > 0 && $position <= 3) ? 1 : 0;
+                $racingCompletedDelta = 1;
+                $racingTotalMsDelta = max(0, $matchRaceMs);
+                break;
+            case 'GT_RACING_DM':
+                $racingDmWinDelta = $isWinner ? 1 : 0;
+                $racingDmPodiumDelta = ($position > 0 && $position <= 3) ? 1 : 0;
+                $racingDmCompletedDelta = 1;
+                $racingDmTotalMsDelta = max(0, $matchRaceMs);
+                break;
+            case 'GT_SPRINT':
+                $sprintWinDelta = $isWinner ? 1 : 0;
+                $sprintCompletedDelta = 1;
+                break;
+            case 'GT_ELIMINATION':
+                $eliminationWinDelta = $isWinner ? 1 : 0;
+                $eliminationCompletedDelta = 1;
+                break;
+            case 'GT_LCS':
+                $lcsWinDelta = $isWinner ? 1 : 0;
+                $lcsCompletedDelta = 1;
+                $lcsTotalSurvivalMsDelta = max(0, $matchRaceMs);
+                break;
+            case 'GT_DERBY':
+                $derbyWinDelta = $isWinner ? 1 : 0;
+                $derbyCompletedDelta = 1;
+                $derbyKillsDelta = max(0, $matchKills);
+                break;
+            case 'GT_DEATHMATCH':
+                $dmWinDelta = ($isDmMode && !$isRaceMode && $isWinner) ? 1 : 0;
+                $dmCompletedDelta = ($isDmMode && !$isRaceMode) ? 1 : 0;
+                $dmKillsDelta = ($isDmMode && !$isRaceMode) ? max(0, $matchKills) : 0;
+                break;
+            case 'GT_CTF':
+                $ctfWinDelta = $isWinner ? 1 : 0;
+                $ctfCompletedDelta = 1;
+                $ctfCapturesDelta = (int)($player['captures'] ?? 0);
+                break;
+            case 'GT_CTF4':
+                $ctf4WinDelta = $isWinner ? 1 : 0;
+                $ctf4CompletedDelta = 1;
+                $ctf4CapturesDelta = (int)($player['captures'] ?? 0);
+                break;
+            case 'GT_TEAM':
+                $teamWinDelta = $isWinner ? 1 : 0;
+                $teamCompletedDelta = 1;
+                $teamKillsDelta = max(0, $matchKills);
+                break;
+            case 'GT_TEAM_RACING':
+                $teamRacingWinDelta = $isWinner ? 1 : 0;
+                $teamRacingCompletedDelta = 1;
+                $teamRacingPodiumDelta = ($position > 0 && $position <= 3) ? 1 : 0;
+                break;
+            case 'GT_TEAM_RACING_DM':
+                $teamRacingDmWinDelta = $isWinner ? 1 : 0;
+                $teamRacingDmCompletedDelta = 1;
+                $teamRacingDmPodiumDelta = ($position > 0 && $position <= 3) ? 1 : 0;
+                break;
+            case 'GT_DOMINATION':
+                $dominationWinDelta = $isWinner ? 1 : 0;
+                $dominationCompletedDelta = 1;
+                $dominationZoneHoldMsDelta = (int)($player['zoneHoldMs'] ?? 0);
+                break;
+            case 'GT_KOTH':
+                $kothWinDelta = $isWinner ? 1 : 0;
+                $kothCompletedDelta = 1;
+                $kothZoneHoldMsDelta = (int)($player['zoneHoldMs'] ?? 0);
+                break;
+        }
 
         $profile = [
             'playerId'        => $playerId,
@@ -4934,14 +5056,14 @@ function profile_upsert_from_payload(array $payload): void
             'racingTotalMs'   => $pickCareer('racingTotalMs', $racingTotalMsDelta),
 
             // ── GT_RACING_DM ────────────────────────────────────────────
-            'racingDmWins'      => $pickCareer('racingDmWins'),
-            'racingDmPodiums'   => $pickCareer('racingDmPodiums'),
-            'racingDmCompleted' => $pickCareer('racingDmCompleted'),
-            'racingDmTotalMs'   => $pickCareer('racingDmTotalMs'),
+            'racingDmWins'      => $pickCareer('racingDmWins', $racingDmWinDelta),
+            'racingDmPodiums'   => $pickCareer('racingDmPodiums', $racingDmPodiumDelta),
+            'racingDmCompleted' => $pickCareer('racingDmCompleted', $racingDmCompletedDelta),
+            'racingDmTotalMs'   => $pickCareer('racingDmTotalMs', $racingDmTotalMsDelta),
 
             // ── GT_SPRINT ───────────────────────────────────────────────
-            'sprintWins'      => $pickCareer('sprintWins'),
-            'sprintCompleted' => $pickCareer('sprintCompleted'),
+            'sprintWins'      => $pickCareer('sprintWins', $sprintWinDelta),
+            'sprintCompleted' => $pickCareer('sprintCompleted', $sprintCompletedDelta),
             'sprintBestMs'    => (function() use ($snap, $existing) {
                 $new = (int)($snap['sprintBestMs'] ?? 0);
                 $old = (int)($existing['sprintBestMs'] ?? 0);
@@ -4950,19 +5072,19 @@ function profile_upsert_from_payload(array $payload): void
             })(),
 
             // ── GT_ELIMINATION ──────────────────────────────────────────
-            'eliminationWins'              => $pickCareer('eliminationWins'),
-            'eliminationCompleted'         => $pickCareer('eliminationCompleted'),
+            'eliminationWins'              => $pickCareer('eliminationWins', $eliminationWinDelta),
+            'eliminationCompleted'         => $pickCareer('eliminationCompleted', $eliminationCompletedDelta),
             'eliminationTotalRoundsLasted' => $pickCareer('eliminationTotalRoundsLasted'),
 
             // ── GT_LCS ──────────────────────────────────────────────────
-            'lcsWins'            => $pickCareer('lcsWins'),
-            'lcsCompleted'       => $pickCareer('lcsCompleted'),
-            'lcsTotalSurvivalMs' => $pickCareer('lcsTotalSurvivalMs'),
+            'lcsWins'            => $pickCareer('lcsWins', $lcsWinDelta),
+            'lcsCompleted'       => $pickCareer('lcsCompleted', $lcsCompletedDelta),
+            'lcsTotalSurvivalMs' => $pickCareer('lcsTotalSurvivalMs', $lcsTotalSurvivalMsDelta),
 
             // ── GT_DERBY ────────────────────────────────────────────────
-            'derbyWins'      => $pickCareer('derbyWins'),
-            'derbyCompleted' => $pickCareer('derbyCompleted'),
-            'derbyKills'     => $pickCareer('derbyKills'),
+            'derbyWins'      => $pickCareer('derbyWins', $derbyWinDelta),
+            'derbyCompleted' => $pickCareer('derbyCompleted', $derbyCompletedDelta),
+            'derbyKills'     => $pickCareer('derbyKills', $derbyKillsDelta),
 
             // ── GT_DEATHMATCH ────────────────────────────────────────────
             'dmWins'      => $pickCareer('dmWins', $dmWinDelta),
@@ -4970,39 +5092,39 @@ function profile_upsert_from_payload(array $payload): void
             'dmKills'     => $pickCareer('dmKills', $dmKillsDelta),
 
             // ── GT_CTF ──────────────────────────────────────────────────
-            'ctfWins'      => $pickCareer('ctfWins'),
-            'ctfCompleted' => $pickCareer('ctfCompleted'),
-            'ctfCaptures'  => $pickCareer('ctfCaptures'),
+            'ctfWins'      => $pickCareer('ctfWins', $ctfWinDelta),
+            'ctfCompleted' => $pickCareer('ctfCompleted', $ctfCompletedDelta),
+            'ctfCaptures'  => $pickCareer('ctfCaptures', $ctfCapturesDelta),
 
             // ── GT_CTF4 ─────────────────────────────────────────────────
-            'ctf4Wins'      => $pickCareer('ctf4Wins'),
-            'ctf4Completed' => $pickCareer('ctf4Completed'),
-            'ctf4Captures'  => $pickCareer('ctf4Captures'),
+            'ctf4Wins'      => $pickCareer('ctf4Wins', $ctf4WinDelta),
+            'ctf4Completed' => $pickCareer('ctf4Completed', $ctf4CompletedDelta),
+            'ctf4Captures'  => $pickCareer('ctf4Captures', $ctf4CapturesDelta),
 
             // ── GT_TEAM ─────────────────────────────────────────────────
-            'teamWins'      => $pickCareer('teamWins'),
-            'teamCompleted' => $pickCareer('teamCompleted'),
-            'teamKills'     => $pickCareer('teamKills'),
+            'teamWins'      => $pickCareer('teamWins', $teamWinDelta),
+            'teamCompleted' => $pickCareer('teamCompleted', $teamCompletedDelta),
+            'teamKills'     => $pickCareer('teamKills', $teamKillsDelta),
 
             // ── GT_TEAM_RACING ───────────────────────────────────────────
-            'teamRacingWins'      => $pickCareer('teamRacingWins'),
-            'teamRacingCompleted' => $pickCareer('teamRacingCompleted'),
-            'teamRacingPodiums'   => $pickCareer('teamRacingPodiums'),
+            'teamRacingWins'      => $pickCareer('teamRacingWins', $teamRacingWinDelta),
+            'teamRacingCompleted' => $pickCareer('teamRacingCompleted', $teamRacingCompletedDelta),
+            'teamRacingPodiums'   => $pickCareer('teamRacingPodiums', $teamRacingPodiumDelta),
 
             // ── GT_TEAM_RACING_DM ────────────────────────────────────────
-            'teamRacingDmWins'      => $pickCareer('teamRacingDmWins'),
-            'teamRacingDmCompleted' => $pickCareer('teamRacingDmCompleted'),
-            'teamRacingDmPodiums'   => $pickCareer('teamRacingDmPodiums'),
+            'teamRacingDmWins'      => $pickCareer('teamRacingDmWins', $teamRacingDmWinDelta),
+            'teamRacingDmCompleted' => $pickCareer('teamRacingDmCompleted', $teamRacingDmCompletedDelta),
+            'teamRacingDmPodiums'   => $pickCareer('teamRacingDmPodiums', $teamRacingDmPodiumDelta),
 
             // ── GT_DOMINATION ────────────────────────────────────────────
-            'dominationWins'       => $pickCareer('dominationWins'),
-            'dominationCompleted'  => $pickCareer('dominationCompleted'),
-            'dominationZoneHoldMs' => $pickCareer('dominationZoneHoldMs'),
+            'dominationWins'       => $pickCareer('dominationWins', $dominationWinDelta),
+            'dominationCompleted'  => $pickCareer('dominationCompleted', $dominationCompletedDelta),
+            'dominationZoneHoldMs' => $pickCareer('dominationZoneHoldMs', $dominationZoneHoldMsDelta),
 
             // ── GT_KOTH ──────────────────────────────────────────────────
-            'kothWins'       => $pickCareer('kothWins'),
-            'kothCompleted'  => $pickCareer('kothCompleted'),
-            'kothZoneHoldMs' => $pickCareer('kothZoneHoldMs'),
+            'kothWins'       => $pickCareer('kothWins', $kothWinDelta),
+            'kothCompleted'  => $pickCareer('kothCompleted', $kothCompletedDelta),
+            'kothZoneHoldMs' => $pickCareer('kothZoneHoldMs', $kothZoneHoldMsDelta),
 
             'achievementTiers' => (array)($snap['achievementTiers'] ?? $existing['achievementTiers'] ?? []),
             'lastSeen'         => $payload['receivedAt'] ?? gmdate('c'),
