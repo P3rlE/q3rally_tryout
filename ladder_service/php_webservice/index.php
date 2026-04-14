@@ -4951,6 +4951,34 @@ function profile_snapshot_int(?array $snapshot, string $key): ?int
     return null;
 }
 
+function profile_match_checksum(string $matchId, string $mode, array $player): string
+{
+    $material = [
+        'matchId' => $matchId,
+        'mode' => $mode,
+        'playerId' => (string)($player['playerId'] ?? ''),
+        'clientNum' => (int)($player['clientNum'] ?? -1),
+        'score' => (int)($player['score'] ?? $player['rawScore'] ?? 0),
+        'kills' => (int)($player['kills'] ?? 0),
+        'deaths' => (int)($player['deaths'] ?? 0),
+        'position' => (int)($player['position'] ?? 0),
+    ];
+    return hash('sha256', json_encode($material, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '');
+}
+
+function profile_normalize_processed_match_ids(array $profile): array
+{
+    $ids = array_values(array_filter((array)($profile['_processedMatchIds'] ?? []), 'is_string'));
+    $ids = array_values(array_filter(array_map('normalize_match_id', $ids), static fn($v) => $v !== ''));
+    if (empty($ids) && isset($profile['_lastProcessedMatchId']) && is_string($profile['_lastProcessedMatchId'])) {
+        $legacy = normalize_match_id($profile['_lastProcessedMatchId']);
+        if ($legacy !== '') {
+            $ids[] = $legacy;
+        }
+    }
+    return array_slice(array_values(array_unique($ids)), -200);
+}
+
 function profile_upsert_from_payload(array $payload): void
 {
     $players = $payload['players'] ?? [];
@@ -5074,7 +5102,7 @@ function profile_upsert_from_payload(array $payload): void
             ? $player['profile']
             : null;
         $matchId = isset($payload['matchId']) && is_string($payload['matchId']) ? normalize_match_id($payload['matchId']) : '';
-        $processedMatchIds = array_values(array_filter((array)($existing['_processedMatchIds'] ?? []), 'is_string'));
+        $processedMatchIds = profile_normalize_processed_match_ids($existing);
         $alreadyCounted = $matchId !== '' && in_array($matchId, $processedMatchIds, true);
         $countThisMatch = !$alreadyCounted;
 
@@ -5293,8 +5321,8 @@ function profile_upsert_from_payload(array $payload): void
             'losses'          => $pickCareerWithBaselineDelta('losses', $derivedLosses),
             'kills'           => $pickCareer('kills', max(0, $matchKills)),
             'deaths'          => $pickCareer('deaths', max(0, $matchDeaths)),
-            'flagCaptures'    => (int)($existing['flagCaptures'] ?? 0) + (int)($player['captures']    ?? 0),
-            'flagAssists'     => (int)($existing['flagAssists']  ?? 0) + (int)($player['assistCount'] ?? 0),
+            'flagCaptures'    => $pickCareer('flagCaptures', (int)($player['captures'] ?? 0)),
+            'flagAssists'     => $pickCareer('flagAssists', (int)($player['assistCount'] ?? 0)),
             'bestLapMs'       => (function() use ($player, $existing, $snap, $isRaceCareerMode) {
                 $old = (int)($existing['bestLapMs'] ?? 0);
                 if (!$isRaceCareerMode) {
@@ -5304,12 +5332,12 @@ function profile_upsert_from_payload(array $payload): void
                 if ($new > 0 && ($old === 0 || $new < $old)) return $new;
                 return $old ?: $new;
             })(),
-            'accuracyAwards'  => (int)($existing['accuracyAwards']   ?? 0) + $accuracyAward,
-            'excellentAwards' => (int)($existing['excellentAwards']  ?? 0) + (int)($player['excellentCount']  ?? 0),
-            'impressiveAwards'=> (int)($existing['impressiveAwards'] ?? 0) + (int)($player['impressiveCount'] ?? 0),
-            'perfectAwards'   => (int)($existing['perfectAwards']    ?? 0) + (!empty($player['perfect']) ? 1 : 0),
-            'damageDealt'     => (int)($existing['damageDealt']      ?? 0) + (int)($player['damageDealt'] ?? 0),
-            'damageTaken'     => (int)($existing['damageTaken']      ?? 0) + (int)($player['damageTaken'] ?? 0),
+            'accuracyAwards'  => $pickCareer('accuracyAwards', $accuracyAward),
+            'excellentAwards' => $pickCareer('excellentAwards', (int)($player['excellentCount'] ?? 0)),
+            'impressiveAwards'=> $pickCareer('impressiveAwards', (int)($player['impressiveCount'] ?? 0)),
+            'perfectAwards'   => $pickCareer('perfectAwards', !empty($player['perfect']) ? 1 : 0),
+            'damageDealt'     => $pickCareer('damageDealt', (int)($player['damageDealt'] ?? 0)),
+            'damageTaken'     => $pickCareer('damageTaken', (int)($player['damageTaken'] ?? 0)),
             'distanceKm'      => $distanceKm,
             'topSpeedKph'     => $topSpeedKph,
             'fuelUsed'        => $fuelUsed,
@@ -5402,6 +5430,11 @@ function profile_upsert_from_payload(array $payload): void
                 }
                 return array_slice(array_values(array_unique($processedMatchIds)), -200);
             })(),
+            '_lastProcessedMatch' => [
+                'matchId' => $matchId,
+                'timestamp' => $payload['receivedAt'] ?? gmdate('c'),
+                'checksum' => $matchId !== '' ? profile_match_checksum($matchId, (string)$mode, $player) : '',
+            ],
         ];
 
         profile_save($playerId, $profile);
