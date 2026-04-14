@@ -142,6 +142,7 @@ vmCvar_t	g_debugIntroCam;
 vmCvar_t	g_rallyIgnoreBots;
 vmCvar_t	g_aiDmnetDebugExport;
 vmCvar_t	g_aiDmnetDebugExportPath;
+vmCvar_t	g_ladderMatchSeq;
 
 vmCvar_t	g_damageScale;
 vmCvar_t	g_vehicleDamageScale;
@@ -299,6 +300,7 @@ static cvarTable_t		gameCvarTable[] = {
 { &g_rallyIgnoreBots, "g_rallyIgnoreBots", "0", CVAR_ARCHIVE, 0, qfalse },
 { &g_aiDmnetDebugExport, "g_aiDmnetDebugExport", "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
 { &g_aiDmnetDebugExportPath, "g_aiDmnetDebugExportPath", "logs/ai_dmnet_debug.csv", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+{ &g_ladderMatchSeq, "sv_ladderMatchSeq", "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
 { &g_humanplayers, "g_humanplayers", "0", CVAR_ROM | CVAR_NORESTART, 0, qfalse },
 { &g_fuelKillReward, "g_fuelKillReward", "10", CVAR_ARCHIVE, 0, qfalse },
 { &g_useFuel, "g_useFuel", "1", CVAR_ARCHIVE | CVAR_SERVERINFO, 0, qfalse },
@@ -1253,6 +1255,17 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
 
         if ( level.ladderMatchId[0] ) {
                 Q_strncpyz( payload->matchId, level.ladderMatchId, sizeof( payload->matchId ) );
+        }
+        {
+                int nextServerMatchSeq = trap_Cvar_VariableIntegerValue( "sv_ladderMatchSeq" );
+                if ( nextServerMatchSeq < 0 ) {
+                        nextServerMatchSeq = 0;
+                }
+                nextServerMatchSeq++;
+                payload->serverMatchSeq = nextServerMatchSeq;
+                Com_sprintf( buffer, sizeof( buffer ), "%i", nextServerMatchSeq );
+                trap_Cvar_Set( "sv_ladderMatchSeq", buffer );
+                trap_Cvar_Update( &g_ladderMatchSeq );
         }
 
         payload->valid = qtrue;

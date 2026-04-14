@@ -981,6 +981,11 @@ static char *SV_LadderSerializeMatch( const ladderMatchPayload_t *payload, size_
                 Z_Free( builder.data );
                 return NULL;
         }
+        if ( !SV_LadderJsonAppendKey( &builder, "serverMatchSeq", &first ) ||
+             !SV_LadderJsonAppendInt( &builder, payload->serverMatchSeq ) ) {
+                Z_Free( builder.data );
+                return NULL;
+        }
         if ( !SV_LadderJsonAppendKey( &builder, "validationWarnings", &first ) ||
              !SV_LadderJsonAppendInt( &builder, payload->validationWarnings ) ) {
                 Z_Free( builder.data );

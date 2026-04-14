@@ -4995,6 +4995,38 @@ function profile_normalize_processed_match_ids(array $profile): array
     return array_slice(array_values(array_unique($ids)), -200);
 }
 
+function ladder_parse_server_match_seq($value): ?int
+{
+    if (is_int($value)) {
+        $seq = $value;
+    } elseif (is_float($value)) {
+        if (!is_finite($value)) {
+            return null;
+        }
+        if (floor($value) !== $value) {
+            return null;
+        }
+        $seq = (int)$value;
+    } elseif (is_string($value) && preg_match('/^\d+$/', $value)) {
+        $seq = (int)$value;
+    } else {
+        return null;
+    }
+
+    return $seq > 0 ? $seq : null;
+}
+
+function profile_last_server_match_seq(array $profile): ?int
+{
+    if (!isset($profile['_lastProcessedMatch']) || !is_array($profile['_lastProcessedMatch'])) {
+        return null;
+    }
+    if (!array_key_exists('serverMatchSeq', $profile['_lastProcessedMatch'])) {
+        return null;
+    }
+    return ladder_parse_server_match_seq($profile['_lastProcessedMatch']['serverMatchSeq']);
+}
+
 function profile_upsert_from_payload(array $payload): void
 {
     $players = $payload['players'] ?? [];
@@ -5118,9 +5150,19 @@ function profile_upsert_from_payload(array $payload): void
             ? $player['profile']
             : null;
         $matchId = isset($payload['matchId']) && is_string($payload['matchId']) ? normalize_match_id($payload['matchId']) : '';
+        $serverMatchSeq = array_key_exists('serverMatchSeq', $payload)
+            ? ladder_parse_server_match_seq($payload['serverMatchSeq'])
+            : null;
         $processedMatchIds = profile_normalize_processed_match_ids($existing);
         $alreadyCounted = $matchId !== '' && in_array($matchId, $processedMatchIds, true);
-        $countThisMatch = !$alreadyCounted;
+        $lastServerMatchSeq = profile_last_server_match_seq($existing);
+        $isOutdatedBySeq = $serverMatchSeq !== null &&
+                           $lastServerMatchSeq !== null &&
+                           $serverMatchSeq < $lastServerMatchSeq;
+        $isReplayBySeq = $serverMatchSeq !== null &&
+                         $lastServerMatchSeq !== null &&
+                         $serverMatchSeq <= $lastServerMatchSeq;
+        $countThisMatch = $isReplayBySeq ? false : !$alreadyCounted;
 
         // ── Win-Detection ──────────────────────────────────────────────
         $clientNum  = (int)($player['clientNum'] ?? -1);
@@ -5436,9 +5478,18 @@ function profile_upsert_from_payload(array $payload): void
                 return array_slice(array_values(array_unique($processedMatchIds)), -200);
             })(),
             '_lastProcessedMatch' => [
-                'matchId' => $matchId,
-                'timestamp' => $payload['receivedAt'] ?? gmdate('c'),
-                'checksum' => $matchId !== '' ? profile_match_checksum($matchId, (string)$mode, $player) : '',
+                'matchId' => ($isOutdatedBySeq && isset($existing['_lastProcessedMatch']['matchId']) && is_string($existing['_lastProcessedMatch']['matchId']))
+                    ? $existing['_lastProcessedMatch']['matchId']
+                    : $matchId,
+                'serverMatchSeq' => ($isOutdatedBySeq && isset($existing['_lastProcessedMatch']['serverMatchSeq']))
+                    ? $existing['_lastProcessedMatch']['serverMatchSeq']
+                    : $serverMatchSeq,
+                'timestamp' => ($isOutdatedBySeq && isset($existing['_lastProcessedMatch']['timestamp']) && is_string($existing['_lastProcessedMatch']['timestamp']))
+                    ? $existing['_lastProcessedMatch']['timestamp']
+                    : ($payload['receivedAt'] ?? gmdate('c')),
+                'checksum' => ($isOutdatedBySeq && isset($existing['_lastProcessedMatch']['checksum']) && is_string($existing['_lastProcessedMatch']['checksum']))
+                    ? $existing['_lastProcessedMatch']['checksum']
+                    : ($matchId !== '' ? profile_match_checksum($matchId, (string)$mode, $player) : ''),
             ],
         ];
 
@@ -5869,6 +5920,13 @@ function handle_post(array $segments): void
     $matchId = normalize_match_id($payload['matchId']);
     if ($matchId === '') {
         throw new LadderApiException(422, 'MATCH_ID_INVALID', 'matchId contains unsupported characters.');
+    }
+    if (array_key_exists('serverMatchSeq', $payload)) {
+        $serverMatchSeq = ladder_parse_server_match_seq($payload['serverMatchSeq']);
+        if ($serverMatchSeq === null) {
+            throw new LadderApiException(422, 'SERVER_MATCH_SEQ_INVALID', 'serverMatchSeq must be a positive integer.');
+        }
+        $payload['serverMatchSeq'] = $serverMatchSeq;
     }
 
     $playerCount = (int)($payload['playerCount'] ?? count((array)($payload['players'] ?? [])));
