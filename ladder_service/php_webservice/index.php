@@ -5093,6 +5093,61 @@ function profile_hydrate_ingest_metadata(array $profile): array
     return $profile;
 }
 
+function profile_normalize_team_label($value): string
+{
+    if (is_int($value) || is_float($value) || (is_string($value) && is_numeric($value))) {
+        $teamNum = (int)$value;
+        return match ($teamNum) {
+            1 => 'red',
+            2 => 'blue',
+            3 => 'green',
+            4 => 'yellow',
+            default => '',
+        };
+    }
+
+    if (!is_string($value)) {
+        return '';
+    }
+
+    $raw = strtolower(trim($value));
+    return match ($raw) {
+        '1', 'red' => 'red',
+        '2', 'blue' => 'blue',
+        '3', 'green' => 'green',
+        '4', 'yellow' => 'yellow',
+        default => '',
+    };
+}
+
+function profile_pick_winner_team_by_scores(array $scoresByTeam): ?string
+{
+    $topScore = null;
+    $topTeam = null;
+    $isTie = false;
+    foreach ($scoresByTeam as $team => $score) {
+        if (!in_array($team, ['red', 'blue', 'green', 'yellow'], true)) {
+            continue;
+        }
+        if (!is_int($score) && !is_float($score)) {
+            continue;
+        }
+        $scoreValue = (float)$score;
+        if ($topScore === null || $scoreValue > $topScore) {
+            $topScore = $scoreValue;
+            $topTeam = $team;
+            $isTie = false;
+        } elseif ($scoreValue === $topScore) {
+            $isTie = true;
+        }
+    }
+
+    if ($topTeam === null || $isTie) {
+        return null;
+    }
+    return $topTeam;
+}
+
 function profile_upsert_from_payload(array $payload): void
 {
     $players = $payload['players'] ?? [];
@@ -5128,7 +5183,7 @@ function profile_upsert_from_payload(array $payload): void
             continue;
         }
         $candidateClientNum = (int)($candidate['clientNum'] ?? -1);
-        $candidateTeam = isset($candidate['team']) && is_string($candidate['team']) ? strtolower(trim($candidate['team'])) : '';
+        $candidateTeam = profile_normalize_team_label($candidate['team'] ?? null);
         $humanPlayers[] = [
             'clientNum' => $candidateClientNum,
             'team' => $candidateTeam,
@@ -5147,14 +5202,12 @@ function profile_upsert_from_payload(array $payload): void
             }
         }
         if ($winnerTeam === null && isset($payload['teams']) && is_array($payload['teams'])) {
-            $topScore = null;
-            $topTeam = null;
-            $isTie = false;
+            $teamScores = [];
             foreach ($payload['teams'] as $teamEntry) {
                 if (!is_array($teamEntry)) {
                     continue;
                 }
-                $teamName = isset($teamEntry['team']) && is_string($teamEntry['team']) ? strtolower(trim($teamEntry['team'])) : '';
+                $teamName = profile_normalize_team_label($teamEntry['team'] ?? null);
                 if ($teamName === '') {
                     continue;
                 }
@@ -5170,17 +5223,36 @@ function profile_upsert_from_payload(array $payload): void
                 if ($score === null) {
                     continue;
                 }
-                if ($topScore === null || $score > $topScore) {
-                    $topScore = $score;
-                    $topTeam = $teamName;
-                    $isTie = false;
-                } elseif ($score === $topScore) {
-                    $isTie = true;
+                $teamScores[$teamName] = (float)$score;
+            }
+            $winnerTeam = profile_pick_winner_team_by_scores($teamScores);
+        }
+
+        if ($winnerTeam === null) {
+            $teamScores = [];
+            if (isset($payload['teamScores']) && is_array($payload['teamScores'])) {
+                foreach ($payload['teamScores'] as $teamKey => $scoreValue) {
+                    if (!is_int($scoreValue) && !is_float($scoreValue) && !(is_string($scoreValue) && is_numeric($scoreValue))) {
+                        continue;
+                    }
+                    $teamName = profile_normalize_team_label($teamKey);
+                    if ($teamName === '') {
+                        continue;
+                    }
+                    $teamScores[$teamName] = (float)$scoreValue;
                 }
             }
-            if (!$isTie && $topTeam !== null) {
-                $winnerTeam = $topTeam;
+
+            foreach (['red', 'blue', 'green', 'yellow'] as $teamName) {
+                $field = $teamName . 'Score';
+                if (array_key_exists($field, $payload) &&
+                    (is_int($payload[$field]) || is_float($payload[$field]) ||
+                     (is_string($payload[$field]) && is_numeric($payload[$field])))) {
+                    $teamScores[$teamName] = (float)$payload[$field];
+                }
             }
+
+            $winnerTeam = profile_pick_winner_team_by_scores($teamScores);
         }
     }
 
@@ -5236,7 +5308,7 @@ function profile_upsert_from_payload(array $payload): void
         // ── Win-Detection ──────────────────────────────────────────────
         $clientNum  = (int)($player['clientNum'] ?? -1);
         $position   = (int)($player['position'] ?? 0);
-        $playerTeam = isset($player['team']) && is_string($player['team']) ? strtolower(trim($player['team'])) : '';
+        $playerTeam = profile_normalize_team_label($player['team'] ?? null);
         $isWinnerByClient = $hasWinnerClientNum && $winnerClientNum >= 0 && $winnerClientNum === $clientNum;
         $isWinnerByTeam = $isTeamMode && $winnerTeam !== null && $playerTeam !== '' && $playerTeam === $winnerTeam;
         $isWinner = $isTeamMode ? $isWinnerByTeam : $isWinnerByClient;

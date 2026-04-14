@@ -698,3 +698,80 @@ def test_php_profile_team_mode_applies_team_win_loss_delta(php_env: dict[str, An
     assert winner["losses"] == 2
     assert loser["wins"] == 9
     assert loser["losses"] == 2
+
+
+@pytest.mark.parametrize("mode,win_field", [("GT_CTF", "ctfWins"), ("GT_CTF4", "ctf4Wins")])
+def test_php_profile_objective_team_int_with_teams_array(php_env: dict[str, Any], mode: str, win_field: str) -> None:
+    suffix = "1" if mode == "GT_CTF" else "4"
+    winner_id = f"11111111-1111-4111-8111-{suffix}00000000001"
+    loser_id = f"22222222-2222-4222-8222-{suffix}00000000002"
+    payload = generate_golden_payload(mode)
+    payload["matchId"] = f"profile-{mode.lower()}-int-team-with-teams"
+    payload.pop("winnerClientNum", None)
+    payload["settings"].pop("winnerClientNum", None)
+    payload["players"] = [
+        {"playerId": winner_id, "clientNum": 1, "displayName": "Winner", "team": 1, "captures": 2, "profile": {"valid": True}},
+        {"playerId": loser_id, "clientNum": 2, "displayName": "Loser", "team": 2, "captures": 0, "profile": {"valid": True}},
+    ]
+    payload["teams"] = [{"team": 1, "rawScore": 15}, {"team": 2, "rawScore": 9}]
+
+    status, created = _post_php_match(php_env, payload)
+    assert status == 201, created
+
+    winner = _get_php_profile(php_env, winner_id)
+    loser = _get_php_profile(php_env, loser_id)
+    assert winner["wins"] == 1
+    assert loser["losses"] == 1
+    assert winner[win_field] == 1
+
+
+@pytest.mark.parametrize("mode,win_field", [("GT_CTF", "ctfWins"), ("GT_CTF4", "ctf4Wins")])
+def test_php_profile_objective_team_string_without_teams_uses_team_scores(php_env: dict[str, Any], mode: str, win_field: str) -> None:
+    suffix = "1" if mode == "GT_CTF" else "4"
+    winner_id = f"33333333-3333-4333-8333-{suffix}00000000003"
+    loser_id = f"44444444-4444-4444-8444-{suffix}00000000004"
+    payload = generate_golden_payload(mode)
+    payload["matchId"] = f"profile-{mode.lower()}-string-team-no-teams"
+    payload.pop("winnerClientNum", None)
+    payload["settings"].pop("winnerClientNum", None)
+    payload["players"] = [
+        {"playerId": winner_id, "clientNum": 1, "displayName": "Winner", "team": "RED", "captures": 1, "profile": {"valid": True}},
+        {"playerId": loser_id, "clientNum": 2, "displayName": "Loser", "team": "blue", "captures": 0, "profile": {"valid": True}},
+    ]
+    payload["teams"] = None
+    payload["teamScores"] = {"RED": 8, "blue": 4}
+
+    status, created = _post_php_match(php_env, payload)
+    assert status == 201, created
+
+    winner = _get_php_profile(php_env, winner_id)
+    loser = _get_php_profile(php_env, loser_id)
+    assert winner["wins"] == 1
+    assert loser["losses"] == 1
+    assert winner[win_field] == 1
+
+
+@pytest.mark.parametrize("mode,win_field", [("GT_CTF", "ctfWins"), ("GT_CTF4", "ctf4Wins")])
+def test_php_profile_objective_winner_client_num_has_priority_over_team_scores(php_env: dict[str, Any], mode: str, win_field: str) -> None:
+    suffix = "1" if mode == "GT_CTF" else "4"
+    winner_id = f"55555555-5555-4555-8555-{suffix}00000000005"
+    loser_id = f"66666666-6666-4666-8666-{suffix}00000000006"
+    payload = generate_golden_payload(mode)
+    payload["matchId"] = f"profile-{mode.lower()}-winner-client-priority"
+    payload["winnerClientNum"] = 2
+    payload["settings"]["winnerClientNum"] = 1
+    payload["players"] = [
+        {"playerId": loser_id, "clientNum": 1, "displayName": "Loser", "team": "red", "captures": 0, "profile": {"valid": True}},
+        {"playerId": winner_id, "clientNum": 2, "displayName": "Winner", "team": 2, "captures": 3, "profile": {"valid": True}},
+    ]
+    payload["teams"] = [{"team": "red", "rawScore": 99}, {"team": "blue", "rawScore": 1}]
+    payload["teamScores"] = {"red": 99, "blue": 1}
+
+    status, created = _post_php_match(php_env, payload)
+    assert status == 201, created
+
+    winner = _get_php_profile(php_env, winner_id)
+    loser = _get_php_profile(php_env, loser_id)
+    assert winner["wins"] == 1
+    assert loser["losses"] == 1
+    assert winner[win_field] == 1
