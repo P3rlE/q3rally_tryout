@@ -4950,7 +4950,7 @@ function profile_upsert_from_payload(array $payload): void
          is_float($payload['winnerClientNum']) ||
          (is_string($payload['winnerClientNum']) && is_numeric($payload['winnerClientNum'])))) {
         $winnerClientNum = (int) $payload['winnerClientNum'];
-        $hasWinnerClientNum = true;
+        $hasWinnerClientNum = $winnerClientNum >= 0;
     } elseif (isset($payload['settings']) &&
               is_array($payload['settings']) &&
               array_key_exists('winnerClientNum', $payload['settings']) &&
@@ -4959,7 +4959,7 @@ function profile_upsert_from_payload(array $payload): void
                (is_string($payload['settings']['winnerClientNum']) && is_numeric($payload['settings']['winnerClientNum'])))) {
         // Legacy fallback: old payloads nested the winner in settings.
         $winnerClientNum = (int) $payload['settings']['winnerClientNum'];
-        $hasWinnerClientNum = true;
+        $hasWinnerClientNum = $winnerClientNum >= 0;
     }
 
     $humanPlayers = [];
@@ -5063,7 +5063,6 @@ function profile_upsert_from_payload(array $payload): void
         // ── Win-Detection ──────────────────────────────────────────────
         $clientNum  = (int)($player['clientNum'] ?? -1);
         $position   = (int)($player['position'] ?? 0);
-        $isRaceMode = mode_is_race($mode);
         $playerTeam = isset($player['team']) && is_string($player['team']) ? strtolower(trim($player['team'])) : '';
         $isWinnerByClient = $hasWinnerClientNum && $winnerClientNum >= 0 && $winnerClientNum === $clientNum;
         $isWinnerByTeam = $isTeamMode && $winnerTeam !== null && $playerTeam !== '' && $playerTeam === $winnerTeam;
@@ -5133,7 +5132,11 @@ function profile_upsert_from_payload(array $payload): void
         $derivedWins = ($hasOutcome && $isWinner) ? 1 : 0;
         $derivedLosses = ($hasOutcome && !$isWinner) ? 1 : 0;
 
-        $isDmMode = mode_is_deathmatch_like($mode);
+        $isRaceCareerMode = in_array($mode, ['GT_RACING', 'GT_RACING_DM', 'GT_SPRINT', 'GT_TEAM_RACING', 'GT_TEAM_RACING_DM'], true);
+        $racePosition = (int)($player['position'] ?? $player['rank'] ?? 0);
+        $isRacePodium = $racePosition > 0 && $racePosition <= 3;
+        $raceTotalMs = $isRaceCareerMode ? max(0, $matchRaceMs) : 0;
+
         $racingWinDelta = 0;
         $racingPodiumDelta = 0;
         $racingCompletedDelta = 0;
@@ -5180,15 +5183,15 @@ function profile_upsert_from_payload(array $payload): void
         switch ($mode) {
             case 'GT_RACING':
                 $racingWinDelta = $isWinner ? 1 : 0;
-                $racingPodiumDelta = ($position > 0 && $position <= 3) ? 1 : 0;
+                $racingPodiumDelta = $isRacePodium ? 1 : 0;
                 $racingCompletedDelta = 1;
-                $racingTotalMsDelta = max(0, $matchRaceMs);
+                $racingTotalMsDelta = $raceTotalMs;
                 break;
             case 'GT_RACING_DM':
                 $racingDmWinDelta = $isWinner ? 1 : 0;
-                $racingDmPodiumDelta = ($position > 0 && $position <= 3) ? 1 : 0;
+                $racingDmPodiumDelta = $isRacePodium ? 1 : 0;
                 $racingDmCompletedDelta = 1;
-                $racingDmTotalMsDelta = max(0, $matchRaceMs);
+                $racingDmTotalMsDelta = $raceTotalMs;
                 break;
             case 'GT_SPRINT':
                 $sprintWinDelta = $isWinner ? 1 : 0;
@@ -5209,9 +5212,9 @@ function profile_upsert_from_payload(array $payload): void
                 $derbyKillsDelta = max(0, $matchKills);
                 break;
             case 'GT_DEATHMATCH':
-                $dmWinDelta = ($isDmMode && !$isRaceMode && $isWinner) ? 1 : 0;
-                $dmCompletedDelta = ($isDmMode && !$isRaceMode) ? 1 : 0;
-                $dmKillsDelta = ($isDmMode && !$isRaceMode) ? max(0, $matchKills) : 0;
+                $dmWinDelta = $isWinner ? 1 : 0;
+                $dmCompletedDelta = 1;
+                $dmKillsDelta = max(0, $matchKills);
                 break;
             case 'GT_CTF':
                 $ctfWinDelta = $isWinner ? 1 : 0;
@@ -5231,12 +5234,12 @@ function profile_upsert_from_payload(array $payload): void
             case 'GT_TEAM_RACING':
                 $teamRacingWinDelta = $isWinner ? 1 : 0;
                 $teamRacingCompletedDelta = 1;
-                $teamRacingPodiumDelta = ($position > 0 && $position <= 3) ? 1 : 0;
+                $teamRacingPodiumDelta = $isRacePodium ? 1 : 0;
                 break;
             case 'GT_TEAM_RACING_DM':
                 $teamRacingDmWinDelta = $isWinner ? 1 : 0;
                 $teamRacingDmCompletedDelta = 1;
-                $teamRacingDmPodiumDelta = ($position > 0 && $position <= 3) ? 1 : 0;
+                $teamRacingDmPodiumDelta = $isRacePodium ? 1 : 0;
                 break;
             case 'GT_DOMINATION':
                 $dominationWinDelta = $isWinner ? 1 : 0;
@@ -5274,9 +5277,12 @@ function profile_upsert_from_payload(array $payload): void
             'deaths'          => $pickCareer('deaths', max(0, $matchDeaths)),
             'flagCaptures'    => (int)($existing['flagCaptures'] ?? 0) + (int)($player['captures']    ?? 0),
             'flagAssists'     => (int)($existing['flagAssists']  ?? 0) + (int)($player['assistCount'] ?? 0),
-            'bestLapMs'       => (function() use ($player, $existing, $snap) {
-                $new = (int)($snap['bestLapMs'] ?? $player['bestLapMs'] ?? 0);
+            'bestLapMs'       => (function() use ($player, $existing, $snap, $isRaceCareerMode) {
                 $old = (int)($existing['bestLapMs'] ?? 0);
+                if (!$isRaceCareerMode) {
+                    return $old;
+                }
+                $new = (int)($snap['bestLapMs'] ?? $player['bestLapMs'] ?? 0);
                 if ($new > 0 && ($old === 0 || $new < $old)) return $new;
                 return $old ?: $new;
             })(),
