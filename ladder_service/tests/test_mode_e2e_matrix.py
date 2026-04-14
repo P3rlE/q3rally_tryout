@@ -496,6 +496,125 @@ def test_php_profile_reupload_same_match_id_does_not_double_count(php_env: dict[
     _assert_profile_fields(profile, expected_golden_profile)
 
 
+def test_php_profile_dm_snapshot_delta_kills_count_once_per_match(php_env: dict[str, Any]) -> None:
+    player_id = "6b1f2505-c27c-4f19-b6df-8a92f049a5e3"
+
+    first_payload = _profile_payload("profile-dm-snapshot-delta-1", "GT_DEATHMATCH", player_id)
+    first_payload["players"][0]["profile"] = {"valid": True, "kills": 100, "wins": 10, "losses": 1}
+    first_payload["players"][0]["kills"] = 5
+    first_status, first_created = _post_php_match(php_env, first_payload)
+    assert first_status == 201, first_created
+
+    second_payload = _profile_payload("profile-dm-snapshot-delta-2", "GT_DEATHMATCH", player_id)
+    second_payload["players"][0]["profile"] = {"valid": True, "kills": 105, "wins": 11, "losses": 1}
+    second_payload["players"][0]["kills"] = 4
+    second_status, second_created = _post_php_match(php_env, second_payload)
+    assert second_status == 201, second_created
+
+    profile = _get_php_profile(php_env, player_id)
+    _assert_profile_fields(
+        profile,
+        {
+            "kills": 109,
+            "wins": 12,
+            "losses": 1,
+            "gamesPlayed": 2,
+            "dmWins": 2,
+            "dmCompleted": 2,
+        },
+    )
+    assert profile["_processedMatchIds"] == ["profile-dm-snapshot-delta-1", "profile-dm-snapshot-delta-2"]
+
+
+def test_php_profile_ctf_captures_snapshot_delta_counted_once(php_env: dict[str, Any]) -> None:
+    player_id = "de6fc0cf-9db9-4f9a-8578-4862dca5f7cc"
+    payload = generate_golden_payload("GT_CTF")
+    payload["matchId"] = "profile-ctf-captures-snapshot-delta-1"
+    payload["winnerClientNum"] = 1
+    payload["settings"]["winnerClientNum"] = 1
+    payload["players"] = [
+        {
+            "playerId": player_id,
+            "clientNum": 1,
+            "displayName": "CTFCarrier",
+            "team": 1,
+            "captures": 3,
+            "kills": 2,
+            "deaths": 1,
+            "profile": {"valid": True, "flagCaptures": 10, "ctfCaptures": 10, "wins": 5, "losses": 2},
+        }
+    ]
+    payload["teams"] = [{"team": 1, "rawScore": 5}, {"team": 2, "rawScore": 1}]
+
+    status, created = _post_php_match(php_env, payload)
+    assert status == 201, created
+
+    profile = _get_php_profile(php_env, player_id)
+    _assert_profile_fields(
+        profile,
+        {
+            "flagCaptures": 13,
+            "ctfCaptures": 13,
+            "wins": 6,
+            "losses": 2,
+            "ctfWins": 1,
+            "ctfCompleted": 1,
+            "gamesPlayed": 1,
+        },
+    )
+    assert profile["_processedMatchIds"] == ["profile-ctf-captures-snapshot-delta-1"]
+
+
+def test_php_profile_ctf_winner_client_num_with_numeric_team_ids_sets_win_loss(php_env: dict[str, Any]) -> None:
+    winner_id = "4f4ab6bd-88c1-45f3-a145-4779a2f5bf2e"
+    loser_id = "a2ff3f08-a789-4419-896f-8d03196d3574"
+    payload = generate_golden_payload("GT_CTF")
+    payload["matchId"] = "profile-ctf-winner-client-num-int-team-1"
+    payload["winnerClientNum"] = 8
+    payload["settings"]["winnerClientNum"] = 8
+    payload["players"] = [
+        {"playerId": winner_id, "clientNum": 8, "displayName": "Winner", "team": 1, "captures": 1, "profile": {"valid": True}},
+        {"playerId": loser_id, "clientNum": 9, "displayName": "Loser", "team": 2, "captures": 0, "profile": {"valid": True}},
+    ]
+    payload["teams"] = [{"team": 1, "rawScore": 3}, {"team": 2, "rawScore": 99}]
+
+    status, created = _post_php_match(php_env, payload)
+    assert status == 201, created
+
+    winner = _get_php_profile(php_env, winner_id)
+    loser = _get_php_profile(php_env, loser_id)
+    _assert_profile_fields(winner, {"wins": 1, "losses": 0, "ctfWins": 1, "gamesPlayed": 1})
+    _assert_profile_fields(loser, {"wins": 0, "losses": 1, "ctfWins": 0, "gamesPlayed": 1})
+    assert winner["_processedMatchIds"] == ["profile-ctf-winner-client-num-int-team-1"]
+    assert loser["_processedMatchIds"] == ["profile-ctf-winner-client-num-int-team-1"]
+
+
+def test_php_profile_retry_same_match_id_keeps_processed_match_ids_and_totals_stable(php_env: dict[str, Any]) -> None:
+    player_id = "47b3ef88-ee16-4446-9323-a89ad42d5311"
+    payload = _profile_payload("profile-retry-same-match-id-1", "GT_DEATHMATCH", player_id)
+    payload["players"][0].pop("profile", None)
+    payload["players"][0]["kills"] = 6
+
+    first_status, first_created = _post_php_match(php_env, payload)
+    assert first_status == 201, first_created
+
+    retry_status, retry_created = _post_php_match(php_env, payload)
+    assert retry_status == 200, retry_created
+
+    profile = _get_php_profile(php_env, player_id)
+    _assert_profile_fields(
+        profile,
+        {
+            "wins": 1,
+            "losses": 0,
+            "kills": 6,
+            "gamesPlayed": 1,
+            "dmWins": 1,
+            "dmCompleted": 1,
+        },
+    )
+    assert profile["_processedMatchIds"] == ["profile-retry-same-match-id-1"]
+
 def test_php_profile_upsert_prefers_valid_snapshot(php_env: dict[str, Any]) -> None:
     player_id = "f47ac10b-58cc-4372-a567-0e02b2c3d479"
     payload = _profile_payload("profile-snapshot-1", "GT_DEATHMATCH", player_id)
