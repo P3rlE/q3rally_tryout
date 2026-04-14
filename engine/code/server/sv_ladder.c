@@ -1830,6 +1830,38 @@ static qboolean SV_LadderStartRequest( ladderRequest_t *request ) {
         return qtrue;
 }
 
+static void SV_LadderLogSubmitSnapshot( const ladderMatchPayload_t *payload ) {
+        int i;
+
+        if ( !payload ) {
+                return;
+        }
+
+        for ( i = 0; i < payload->playerCount; ++i ) {
+                const ladderPlayerPayload_t *player = &payload->players[i];
+                int snapshotRevision = 0;
+                int snapshotEpoch = 0;
+
+                if ( !player->profileAttached ) {
+                        continue;
+                }
+
+                if ( player->profile.valid ) {
+                        snapshotRevision = player->profile.snapshotRevision;
+                        snapshotEpoch = player->profile.snapshotEpoch;
+                }
+
+                Com_Printf(
+                        "[ladder-pipeline] sv-submit matchId=%s mode=%s playerId(local)=%s snapshotRevision=%d snapshotEpoch=%d\n",
+                        payload->matchId[0] ? payload->matchId : "<unknown>",
+                        payload->mode[0] ? payload->mode : "<unknown>",
+                        player->playerId[0] ? player->playerId : "<unknown>",
+                        snapshotRevision,
+                        snapshotEpoch
+                );
+        }
+}
+
 static void SV_LadderHandleFailure( ladderRequest_t *request, const char *reason, long responseCode, qboolean retry ) {
         if ( retry ) {
                 int delay = SV_LadderComputeBackoff( ++request->attempt );
@@ -2495,6 +2527,8 @@ void SV_LadderSubmit( const ladderMatchPayload_t *payload ) {
                         validatedPayload.validationReason[0] ? validatedPayload.validationReason : "validation_failed" );
                 return;
         }
+
+        SV_LadderLogSubmitSnapshot( &validatedPayload );
 
         if ( sv_ladderUrl && sv_ladderUrl->string[0] ) {
                 sv_ladder.warnedNoUrl = qfalse;

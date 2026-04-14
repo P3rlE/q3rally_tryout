@@ -46,6 +46,7 @@ static const char *G_LadderModeForGametype( int gametype );
 static void G_LadderFormatIsoTime( const qtime_t *qt, char *buffer, size_t size );
 static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clientNum );
 static void G_LadderSubmitMatchReport( const char *reason );
+static void G_LadderLogSubmitSnapshot( const ladderMatchPayload_t *payload );
 static void G_ValidateDerbyDamageCvars( void );
 static ladderMatchPayload_t s_ladderMatchPayload;
 
@@ -1374,6 +1375,8 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
                 G_LadderPopulatePlayer( payload, i );
         }
 
+        G_LadderLogSubmitSnapshot( payload );
+
         if ( reason && reason[0] ) {
                 Com_Printf( "Ladder: submitting '%s' with reason '%s' (%d players)\n",
                         payload->matchId[0] ? payload->matchId : "<unknown>", reason, payload->playerCount );
@@ -1384,6 +1387,38 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
 
         if ( payload->playerCount > 0 || reason ) {
                 trap_LadderSubmit( payload );
+        }
+}
+
+static void G_LadderLogSubmitSnapshot( const ladderMatchPayload_t *payload ) {
+        int i;
+
+        if ( !payload ) {
+                return;
+        }
+
+        for ( i = 0; i < payload->playerCount; ++i ) {
+                const ladderPlayerPayload_t *player = &payload->players[i];
+                int snapshotRevision = 0;
+                int snapshotEpoch = 0;
+
+                if ( !player->profileAttached ) {
+                        continue;
+                }
+
+                if ( player->profile.valid ) {
+                        snapshotRevision = player->profile.snapshotRevision;
+                        snapshotEpoch = player->profile.snapshotEpoch;
+                }
+
+                Com_Printf(
+                        "[ladder-pipeline] engine-submit matchId=%s mode=%s playerId(local)=%s snapshotRevision=%d snapshotEpoch=%d\n",
+                        payload->matchId[0] ? payload->matchId : "<unknown>",
+                        payload->mode[0] ? payload->mode : "<unknown>",
+                        player->playerId[0] ? player->playerId : "<unknown>",
+                        snapshotRevision,
+                        snapshotEpoch
+                );
         }
 }
 

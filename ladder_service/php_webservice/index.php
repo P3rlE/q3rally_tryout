@@ -151,6 +151,24 @@ function ladder_read_body(): string
     return $body;
 }
 
+function ladder_pipeline_log(string $event, array $fields = []): void
+{
+    $parts = [];
+    foreach ($fields as $key => $value) {
+        if (is_bool($value)) {
+            $value = $value ? '1' : '0';
+        } elseif ($value === null) {
+            $value = 'null';
+        } elseif (is_array($value) || is_object($value)) {
+            $value = json_encode($value, JSON_UNESCAPED_SLASHES);
+        }
+        $parts[] = sprintf('%s=%s', (string)$key, (string)$value);
+    }
+
+    $suffix = $parts ? (' ' . implode(' ', $parts)) : '';
+    error_log('[ladder-pipeline] ' . $event . $suffix);
+}
+
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 // --- Minimal frontend for Q3Rally Ladder (HTML landing page) ---
@@ -5223,13 +5241,6 @@ function profile_upsert_from_payload(array $payload): void
         $isWinnerByTeam = $isTeamMode && $winnerTeam !== null && $playerTeam !== '' && $playerTeam === $winnerTeam;
         $isWinner = $isTeamMode ? $isWinnerByTeam : $isWinnerByClient;
 
-        error_log(sprintf(
-            '[profile_upsert_from_payload] winner-check mode=%s clientNum=%d winnerClientNum=%s',
-            (string) $mode,
-            $clientNum,
-            $hasWinnerClientNum ? (string) $winnerClientNum : 'missing'
-        ));
-
         // ── Accuracy Award ─────────────────────────────────────────────
         $accuracy      = (int)($player['accuracy'] ?? 0);
         $accuracyAward = ($accuracy >= 75) ? 1 : 0;
@@ -5273,6 +5284,24 @@ function profile_upsert_from_payload(array $payload): void
         $hasOutcome = $isTeamMode ? ($winnerTeam !== null) : ($hasWinnerClientNum && $winnerClientNum >= 0);
         $derivedWins = ($hasOutcome && $isWinner) ? 1 : 0;
         $derivedLosses = ($hasOutcome && !$isWinner) ? 1 : 0;
+        $snapshotPresent = $snap !== null;
+        $existingWins = (int)($existing['wins'] ?? 0);
+        $baseWins = $existingWins;
+        if ($snapshotPresent) {
+            $baseWins = max($baseWins, (int)($snap['wins'] ?? $baseWins));
+        }
+        $deltaWins = $countThisMatch ? $derivedWins : 0;
+        $newWins = $baseWins + $deltaWins;
+
+        ladder_pipeline_log('php-profile_upsert-player', [
+            'matchId' => $matchId,
+            'playerId' => $playerId,
+            'alreadyCounted' => $alreadyCounted,
+            'snapshotPresent' => $snapshotPresent,
+            'existingWins' => $existingWins,
+            'deltaWins' => $deltaWins,
+            'newWins' => $newWins,
+        ]);
 
         $isRaceCareerMode = in_array($mode, ['GT_RACING', 'GT_RACING_DM', 'GT_SPRINT', 'GT_TEAM_RACING', 'GT_TEAM_RACING_DM'], true);
         $racePosition = (int)($player['position'] ?? $player['rank'] ?? 0);
@@ -6025,6 +6054,34 @@ function handle_post(array $segments): void
 
     // Update leaderboard index
     index_append($payload);
+
+    if (isset($payload['players']) && is_array($payload['players'])) {
+        foreach ($payload['players'] as $player) {
+            if (!is_array($player)) {
+                continue;
+            }
+            $playerId = (string)($player['playerId'] ?? '');
+            if ($playerId === '' || !profile_is_valid_uuid($playerId)) {
+                continue;
+            }
+
+            $snapshotPresent = isset($player['profile']) && is_array($player['profile']) && !empty($player['profile']['valid']);
+            $existingProfile = profile_load($playerId) ?? [];
+            $existingWins = (int)($existingProfile['wins'] ?? 0);
+            $processedMatchIds = profile_normalize_processed_match_ids($existingProfile);
+            $alreadyCounted = $matchId !== '' && in_array($matchId, $processedMatchIds, true);
+
+            ladder_pipeline_log('php-handle_post-player', [
+                'matchId' => $matchId,
+                'playerId' => $playerId,
+                'alreadyCounted' => $alreadyCounted,
+                'snapshotPresent' => $snapshotPresent,
+                'existingWins' => $existingWins,
+                'deltaWins' => 0,
+                'newWins' => $existingWins,
+            ]);
+        }
+    }
 
     // Update player profiles
     profile_upsert_from_payload($payload);
