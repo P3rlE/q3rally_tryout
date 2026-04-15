@@ -21,7 +21,7 @@ if (!is_dir(PROFILES_DIR)) {
 // SECURITY CONFIGURATION
 // Per-server keys are managed via register.php / admin.php.
 // ─────────────────────────────────────────────────────────────────────────────
-const LADDER_VERSION        = '1.0.8';
+const LADDER_VERSION        = '1.0.9';
 const LADDER_MAX_BODY_BYTES    = 524288;  // 512 KB max POST body
 const LADDER_RATE_LIMIT_MAX    = 30;      // max requests per window per IP
 const LADDER_RATE_LIMIT_WINDOW = 60;      // window in seconds
@@ -4752,6 +4752,20 @@ async function showMatchDetails(matchId) {
 // ── Changelog ────────────────────────────────────────────────────────────────
 const LADDER_CHANGELOG = [
   {
+    version: '1.0.9',
+    date: '2026-04-14',
+    changes: [
+      'Fix: mergeCareerCountField no longer double-counts kills/captures when a snapshot is present – snapshot is authoritative cumulative total, delta only applied when no snapshot exists',
+      'Fix: playerScore drift resolved – local-client snapshot accepted as-is (monotone); delta derivation restricted to remote players without a snapshot',
+      'Fix: kills extraction in profile_upsert now mirrors extract_player_kills() fallback chain (kills ?? frags ?? elims ?? score), closing discrepancy for legacy payloads',
+      'Fix: eliminationTotalRoundsLasted now accumulates eliminationRound from payload instead of staying frozen at snapshot value',
+      'Fix: isReplayBySeq uses strict less-than; same serverMatchSeq after server restart no longer silently drops a match',
+      'Engine: GT_DOMINATION now populates zoneHoldMs per player – new dominationZoneHoldMs in gclient_t, accumulated in Sigil_Think, read in G_LadderPopulatePlayer',
+      'Engine: G_LadderModeForGametype returns GT_UNKNOWN for unrecognised gametypes instead of GT_ELIMINATION',
+      'Engine: G_RecordMatchOutcome() now called in LogExit() before G_Profile_FlushIfDirty() and G_LadderSubmitMatchReport() – fixes profile snapshots missing wins/ctfWins/dmWins etc. because they were serialised before the outcome was recorded',
+    ]
+  },
+  {
     version: '1.0.8',
     date: '2026-04-13',
     changes: [
@@ -5300,9 +5314,11 @@ function profile_upsert_from_payload(array $payload): void
         $isOutdatedBySeq = $serverMatchSeq !== null &&
                            $lastServerMatchSeq !== null &&
                            $serverMatchSeq < $lastServerMatchSeq;
-        $isReplayBySeq = $serverMatchSeq !== null &&
-                         $lastServerMatchSeq !== null &&
-                         $serverMatchSeq <= $lastServerMatchSeq;
+        // Use strict less-than only: a match with the same seq as the last seen
+        // one is NOT a replay – it can happen after a server restart that resets
+        // the counter. Exact-match deduplication is already handled by
+        // $alreadyCounted (matchId set membership).
+        $isReplayBySeq = $isOutdatedBySeq;
         $countThisMatch = $isReplayBySeq ? false : !$alreadyCounted;
 
         // ── Win-Detection ──────────────────────────────────────────────
@@ -5316,8 +5332,18 @@ function profile_upsert_from_payload(array $payload): void
         // ── Accuracy Award ─────────────────────────────────────────────
         $accuracy      = (int)($player['accuracy'] ?? 0);
         $accuracyAward = ($accuracy >= 75) ? 1 : 0;
-        $matchKills    = (int)($player['kills'] ?? 0);
-        $matchDeaths   = (int)($player['deaths'] ?? 0);
+        // Mirror the same fallback as extract_player_kills() so that profile
+        // upsert and the match index see the same kill value for legacy payloads
+        // that omit the dedicated kills field and mirror it from score.
+        $matchKills = (int)(
+            $player['kills']
+            ?? $player['frags']
+            ?? $player['elims']
+            ?? (mode_is_deathmatch_like($mode) || mode_is_objective($mode) || mode_is_derby($mode)
+                ? ($player['score'] ?? $player['rawScore'] ?? $player['playerScore'] ?? 0)
+                : 0)
+        );
+        $matchDeaths   = (int)($player['deaths'] ?? $player['deathCount'] ?? 0);
         $matchRaceMs   = (int)($player['totalRaceMs'] ?? 0);
 
         // ── Vehicle ────────────────────────────────────────────────────
@@ -5349,14 +5375,24 @@ function profile_upsert_from_payload(array $payload): void
         $mergeCareerCountField = function(string $field, int $deltaValue) use ($snap, $existing, $countThisMatch, $matchId): int {
             $existingValue = (int)($existing[$field] ?? 0);
             $snapshotValue = profile_snapshot_int($snap, $field);
-            $snapshotForCalc = $snapshotValue ?? $existingValue;
-            $baseline = max($existingValue, $snapshotForCalc);
 
-            if ($countThisMatch) {
-                $candidate = $baseline + $deltaValue;
-                $finalValue = max($candidate, $snapshotForCalc, $existingValue);
+            // The snapshot carries a cumulative total from the local client (same
+            // source as PERS_* counters). It must never be used as a baseline that
+            // we then add the delta on top of: doing so double-counts the event
+            // (once in the snapshot total, once as the new delta).
+            //
+            // Strategy:
+            //   • If a valid snapshot is present AND it is strictly higher than the
+            //     stored value, accept the snapshot as-is (the client advanced its
+            //     counter; the delta from this match is already included).
+            //   • Otherwise fall back to stored value + delta (no snapshot, or
+            //     snapshot is stale / equal).
+            if ($snapshotValue !== null && $snapshotValue > $existingValue) {
+                // Snapshot already incorporates this match's contribution.
+                $finalValue = $snapshotValue;
             } else {
-                $finalValue = $baseline;
+                // No snapshot (remote player) or snapshot is not ahead – use delta.
+                $finalValue = $existingValue + ($countThisMatch ? $deltaValue : 0);
             }
 
             ladder_pipeline_log('php-profile_upsert-merge-field', [
@@ -5516,8 +5552,21 @@ function profile_upsert_from_payload(array $payload): void
                 break;
         }
 
-        // ── Score (Delta-Logik, idempotent bei Retries) ───────────────
-        $baseScore = max((int)($existing['playerScore'] ?? 0), (int)($snap['playerScore'] ?? 0));
+        // ── Score (Snapshot-first; Delta nur für Nicht-Snapshot-Spieler) ────
+        //
+        // The local client embeds a profile snapshot whose playerScore is the
+        // cumulative career total as tracked on-device. This is authoritative:
+        // adding a derived delta on top would double-count every match the
+        // client already recorded locally.
+        //
+        // Priority:
+        //   1. Explicit delta field in payload  -> always use it (server override)
+        //   2. Valid snapshot present           -> accept snapshot total directly;
+        //                                         advance only when snapshot > stored
+        //   3. No snapshot (remote player)      -> derive delta from match stats
+        $existingScore = (int)($existing['playerScore'] ?? 0);
+        $snapshotScore = ($snap !== null) ? (int)($snap['playerScore'] ?? 0) : null;
+
         $scoreDeltaFromPayload = null;
         foreach (['playerScoreDelta', 'scoreDelta', 'matchScoreDelta', 'awardedScore', 'awardedPoints'] as $deltaField) {
             $rawDelta = $player[$deltaField] ?? $payload[$deltaField] ?? null;
@@ -5527,46 +5576,54 @@ function profile_upsert_from_payload(array $payload): void
             }
         }
 
-        $scoreDeltaDerived = 0;
-        switch ($mode) {
-            case 'GT_DEATHMATCH':
-            case 'GT_TEAM':
-            case 'GT_DERBY':
-                $scoreDeltaDerived = max(0, $matchKills);
-                break;
-            case 'GT_CTF':
-            case 'GT_CTF4':
-                $scoreDeltaDerived = max(0, (int)($player['captures'] ?? 0));
-                break;
-            case 'GT_DOMINATION':
-                $scoreDeltaDerived = max(0, (int)($player['zoneHoldMs'] ?? 0));
-                break;
-            case 'GT_KOTH':
-                $scoreDeltaDerived = max(0, (int)($player['zoneHoldMs'] ?? 0));
-                break;
-            case 'GT_LCS':
-                $scoreDeltaDerived = max(0, (int)($player['totalRaceMs'] ?? 0));
-                break;
-            case 'GT_ELIMINATION':
-                $scoreDeltaDerived = $isWinner ? 1 : 0;
-                break;
-            case 'GT_RACING':
-            case 'GT_RACING_DM':
-            case 'GT_SPRINT':
-            case 'GT_TEAM_RACING':
-            case 'GT_TEAM_RACING_DM':
-            default:
-                $scoreDeltaDerived = max(0, (int)($player['playerScore'] ?? $player['score'] ?? $player['rawScore'] ?? 0));
-                break;
+        if ($scoreDeltaFromPayload !== null) {
+            // Explicit server-supplied delta.
+            $finalScore = $existingScore + ($countThisMatch ? $scoreDeltaFromPayload : 0);
+        } elseif ($snapshotScore !== null) {
+            // Snapshot present: the client is authoritative; never go backwards.
+            $finalScore = max($existingScore, $snapshotScore);
+        } else {
+            // Remote player, no snapshot - derive delta from match payload.
+            $scoreDeltaDerived = 0;
+            switch ($mode) {
+                case 'GT_DEATHMATCH':
+                case 'GT_TEAM':
+                case 'GT_DERBY':
+                    $scoreDeltaDerived = max(0, $matchKills);
+                    break;
+                case 'GT_CTF':
+                case 'GT_CTF4':
+                    $scoreDeltaDerived = max(0, (int)($player['captures'] ?? 0));
+                    break;
+                case 'GT_DOMINATION':
+                case 'GT_KOTH':
+                    $scoreDeltaDerived = max(0, (int)($player['zoneHoldMs'] ?? 0));
+                    break;
+                case 'GT_LCS':
+                    $scoreDeltaDerived = max(0, (int)($player['totalRaceMs'] ?? 0));
+                    break;
+                case 'GT_ELIMINATION':
+                    $scoreDeltaDerived = $isWinner ? 1 : 0;
+                    break;
+                case 'GT_RACING':
+                case 'GT_RACING_DM':
+                case 'GT_SPRINT':
+                case 'GT_TEAM_RACING':
+                case 'GT_TEAM_RACING_DM':
+                default:
+                    $scoreDeltaDerived = max(0, (int)($player['playerScore'] ?? $player['score'] ?? $player['rawScore'] ?? 0));
+                    break;
+            }
+            $finalScore = $existingScore + ($countThisMatch ? $scoreDeltaDerived : 0);
         }
 
-        $scoreDelta = $scoreDeltaFromPayload ?? $scoreDeltaDerived;
-        $finalScore = $baseScore + ($countThisMatch ? $scoreDelta : 0);
+        $scoreDelta = $scoreDeltaFromPayload ?? ($snapshotScore !== null ? ($finalScore - $existingScore) : ($finalScore - $existingScore));
 
         ladder_pipeline_log('php-profile_upsert-score', [
             'matchId' => $matchId,
             'playerId' => $playerId,
-            'baseScore' => $baseScore,
+            'existingScore' => $existingScore,
+            'snapshotScore' => $snapshotScore,
             'scoreDelta' => $scoreDelta,
             'countThisMatch' => $countThisMatch,
             'finalScore' => $finalScore,
@@ -5641,7 +5698,8 @@ function profile_upsert_from_payload(array $payload): void
             // ── GT_ELIMINATION ──────────────────────────────────────────
             'eliminationWins'              => $pickCareer('eliminationWins', $careerDeltas['eliminationWinsDelta']),
             'eliminationCompleted'         => $pickCareer('eliminationCompleted', $careerDeltas['eliminationCompletedDelta']),
-            'eliminationTotalRoundsLasted' => $pickCareer('eliminationTotalRoundsLasted'),
+            // eliminationRound reflects how far the player survived; accumulate it.
+            'eliminationTotalRoundsLasted' => $pickCareer('eliminationTotalRoundsLasted', (int)($player['eliminationRound'] ?? 0)),
 
             // ── GT_LCS ──────────────────────────────────────────────────
             'lcsWins'            => $pickCareer('lcsWins', $careerDeltas['lcsWinsDelta']),

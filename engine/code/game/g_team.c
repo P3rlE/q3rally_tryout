@@ -333,8 +333,8 @@ void AddTeamScore(vec3_t origin, int team, int score) {
                                         statusSuffix = statusBuffer;
                                 }
 
-                                CenterPrint_All( va("%s%s^7 scores! ^7(%i)%s", TeamColorString(team), TeamName(team), newScore, statusSuffix) );
-                                PrintMsg( NULL, "%s%s^7 scores! ^7(%i)%s\n", TeamColorString(team), TeamName(team), newScore, statusSuffix );
+                                CenterPrint_All( va("%s%s^7 scores!%s", TeamColorString(team), TeamName(team), statusSuffix) );
+                                PrintMsg( NULL, "%s%s^7 scores!%s\n", TeamColorString(team), TeamName(team), statusSuffix );
                         }
 
                         return;
@@ -1149,7 +1149,18 @@ int Team_TouchOurFlag( gentity_t *ent, gentity_t *other, int team ) {
 	}
 	else {
 #endif
-	PrintMsg( NULL, "%s" S_COLOR_WHITE " captured the %s flag!\n", cl->pers.netname, TeamName(OtherTeam(team)));
+	if ( g_gametype.integer == GT_CTF4 ) {
+		// In CTF4 OtherTeam() only flips Red<->Blue, so we derive the captured
+		// flag's team name directly from the powerup the player was carrying.
+		const char *capturedFlagTeam = "UNKNOWN";
+		if      ( enemy_flag == PW_REDFLAG    ) capturedFlagTeam = TeamName( TEAM_RED    );
+		else if ( enemy_flag == PW_BLUEFLAG   ) capturedFlagTeam = TeamName( TEAM_BLUE   );
+		else if ( enemy_flag == PW_GREENFLAG  ) capturedFlagTeam = TeamName( TEAM_GREEN  );
+		else if ( enemy_flag == PW_YELLOWFLAG ) capturedFlagTeam = TeamName( TEAM_YELLOW );
+		PrintMsg( NULL, "%s" S_COLOR_WHITE " captured the %s flag!\n", cl->pers.netname, capturedFlagTeam );
+	} else {
+		PrintMsg( NULL, "%s" S_COLOR_WHITE " captured the %s flag!\n", cl->pers.netname, TeamName(OtherTeam(team)));
+	}
 #ifdef MISSIONPACK
 	}
 #endif
@@ -1361,6 +1372,22 @@ void Sigil_Think( gentity_t *ent ) {
 
   ent->count = 0;
   level.teamScores[team]++;
+
+  /* Accumulate zone-hold time for all living players on the owning team.
+   * This mirrors how KOTH_AddContestTimeForHillPlayers tracks kothContestTimeMs
+   * and gives G_LadderPopulatePlayer a per-player value to report. */
+  if ( g_dominationScoreInterval.integer > 0 ) {
+    int ci;
+    int intervalMs = g_dominationScoreInterval.integer;
+    for ( ci = 0; ci < level.maxclients; ci++ ) {
+      gclient_t *pl = &level.clients[ci];
+      if ( pl->pers.connected != CON_CONNECTED ) continue;
+      if ( pl->sess.sessionTeam != team ) continue;
+      if ( pl->ps.stats[STAT_HEALTH] <= 0 ) continue;
+      pl->dominationZoneHoldMs += intervalMs;
+    }
+  }
+
   ent->nextthink = level.time + g_dominationScoreInterval.integer;
 
   // refresh scoreboard

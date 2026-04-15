@@ -766,7 +766,12 @@ static const char *G_LadderModeForGametype( int gametype ) {
                 break;
         }
 
-        return "GT_ELIMINATION";
+        /* Return an explicit sentinel that the PHP webservice and JS frontend
+         * recognise as an unknown mode (canonicalMode() returns null, the match
+         * is counted under __unknown__ and excluded from all leaderboards).
+         * Using GT_ELIMINATION as the fallback was polluting the Elimination
+         * leaderboard with data from unrelated or future game modes. */
+        return "GT_UNKNOWN";
 }
 
 static qboolean G_LadderGametypeHasRaceFields( int gametype ) {
@@ -1075,6 +1080,8 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
         if ( zoneSemantics ) {
                 if ( g_gametype.integer == GT_KOTH ) {
                         player->zoneHoldMs = client->kothContestTimeMs;
+                } else if ( g_gametype.integer == GT_DOMINATION ) {
+                        player->zoneHoldMs = client->dominationZoneHoldMs;
                 } else {
                         player->zoneHoldMs = 0;
                 }
@@ -1566,6 +1573,16 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	G_RemapTeamShaders();
 
 	trap_SetConfigstring( CS_INTERMISSION, "" );
+
+        /* Explicitly initialise the extended team-score configstrings so that
+         * cgame never reads a stale SCORE_NOT_PRESENT (-9999) value for the
+         * green and yellow teams at the start of a new round.
+         * CS_SCORES1/2 are written by CalculateRanks() on the first tick, but
+         * CS_SCORES3/4 have no other write path in G_InitGame, so they keep
+         * whatever value the engine transmitted from the previous map until
+         * CalculateRanks() fires for the first time. */
+        trap_SetConfigstring( CS_SCORES3, "0" );
+        trap_SetConfigstring( CS_SCORES4, "0" );
 
 // STONELANCE
 /*
@@ -2519,6 +2536,15 @@ void LogExit( const char *string ) {
 
         }
 
+        /* Record match outcomes (wins/losses) BEFORE flushing the profile and
+         * serialising the ladder payload.  Previously this only happened in
+         * BeginIntermission(), which is called after LogExit(), meaning the
+         * profile snapshot embedded in the ladder payload was captured before
+         * wins/ctfWins/dmWins etc. were incremented.  The idempotency guard
+         * (profileMatchOutcomeRecorded) makes the subsequent call in
+         * BeginIntermission() a safe no-op. */
+        G_RecordMatchOutcome();
+
 	G_Profile_FlushIfDirty();
 
         if ( G_Profile_IsDirty() ) {
@@ -2933,6 +2959,22 @@ void CheckExitRules( void ) {
 			LogExit( "Capturelimit hit." );
 			return;
 		}
+
+		// Q3Rally Code Start - CTF4: also check Green and Yellow
+		if ( g_gametype.integer == GT_CTF4 ) {
+			if ( level.teamScores[TEAM_GREEN] >= g_capturelimit.integer ) {
+				trap_SendServerCommand( -1, "print \"Green hit the capturelimit.\n\"" );
+				LogExit( "Capturelimit hit." );
+				return;
+			}
+
+			if ( level.teamScores[TEAM_YELLOW] >= g_capturelimit.integer ) {
+				trap_SendServerCommand( -1, "print \"Yellow hit the capturelimit.\n\"" );
+				LogExit( "Capturelimit hit." );
+				return;
+			}
+		}
+		// Q3Rally Code END - CTF4
 	}
 
 	// Q3Rally Code Start - KOTH win condition
