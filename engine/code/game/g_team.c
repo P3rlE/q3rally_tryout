@@ -368,6 +368,60 @@ void AddTeamScore(vec3_t origin, int team, int score) {
                 }
         }
 
+        if ( g_gametype.integer == GT_DOMINATION ) {
+                int previousScore = level.teamScores[team];
+                int newScore = previousScore + score;
+                int maxOtherBefore = 0;
+                qboolean haveOpponent = qfalse;
+                int i;
+
+                for ( i = TEAM_RED; i < TEAM_NUM_TEAMS; ++i ) {
+                        if ( i == TEAM_FREE || i == TEAM_SPECTATOR || i == team ) {
+                                continue;
+                        }
+
+                        if ( !haveOpponent || level.teamScores[i] > maxOtherBefore ) {
+                                maxOtherBefore = level.teamScores[i];
+                                haveOpponent = qtrue;
+                        }
+                }
+
+                if ( !haveOpponent ) {
+                        maxOtherBefore = 0;
+                }
+
+                if ( haveOpponent && newScore == maxOtherBefore ) {
+                        te->s.eventParm = GTS_TEAMS_ARE_TIED;
+                } else if ( haveOpponent && newScore > maxOtherBefore && previousScore <= maxOtherBefore ) {
+                        if ( team == TEAM_RED ) {
+                                te->s.eventParm = GTS_REDTEAM_TOOK_LEAD;
+                        } else if ( team == TEAM_BLUE ) {
+                                te->s.eventParm = GTS_BLUETEAM_TOOK_LEAD;
+                        } else if ( team == TEAM_GREEN ) {
+                                te->s.eventParm = GTS_GREENTEAM_TOOK_LEAD;
+                        } else if ( team == TEAM_YELLOW ) {
+                                te->s.eventParm = GTS_YELLOWTEAM_TOOK_LEAD;
+                        } else {
+                                te->s.eventParm = GTS_TEAMS_ARE_TIED;
+                        }
+                } else {
+                        if ( team == TEAM_RED ) {
+                                te->s.eventParm = GTS_REDTEAM_SCORED;
+                        } else if ( team == TEAM_BLUE ) {
+                                te->s.eventParm = GTS_BLUETEAM_SCORED;
+                        } else if ( team == TEAM_GREEN ) {
+                                te->s.eventParm = GTS_GREENTEAM_SCORED;
+                        } else if ( team == TEAM_YELLOW ) {
+                                te->s.eventParm = GTS_YELLOWTEAM_SCORED;
+                        } else {
+                                te->s.eventParm = GTS_TEAMS_ARE_TIED;
+                        }
+                }
+
+                level.teamScores[team] = newScore;
+                return;
+        }
+
         level.teamScores[ team ] += score;
 }
 
@@ -1371,7 +1425,7 @@ void Sigil_Think( gentity_t *ent ) {
   }
 
   ent->count = 0;
-  level.teamScores[team]++;
+  AddTeamScore( ent->s.pos.trBase, team, 1 );
 
   /* Accumulate zone-hold time for all living players on the owning team.
    * This mirrors how KOTH_AddContestTimeForHillPlayers tracks kothContestTimeMs
@@ -1395,7 +1449,30 @@ void Sigil_Think( gentity_t *ent ) {
 }
 
 
-void CaptureSigil(gentity_t *ent, int sigilNum, sigilStatus_t status, powerup_t powerup) {
+static void Sigil_CaptureSound( gentity_t *ent, team_t team ) {
+    gentity_t *te = G_TempEntity( ent->s.pos.trBase, EV_GLOBAL_TEAM_SOUND );
+    te->r.svFlags |= SVF_BROADCAST;
+
+    switch ( team ) {
+        case TEAM_RED:
+            te->s.eventParm = GTS_REDTEAM_SCORED;
+            break;
+        case TEAM_BLUE:
+            te->s.eventParm = GTS_BLUETEAM_SCORED;
+            break;
+        case TEAM_GREEN:
+            te->s.eventParm = GTS_GREENTEAM_SCORED;
+            break;
+        case TEAM_YELLOW:
+            te->s.eventParm = GTS_YELLOWTEAM_SCORED;
+            break;
+        default:
+            te->s.eventParm = GTS_TEAMS_ARE_TIED;
+            break;
+    }
+}
+
+void CaptureSigil(gentity_t *ent, int sigilNum, sigilStatus_t status, powerup_t powerup, team_t team) {
     Team_SetSigilStatus(sigilNum, status);
     teamgame.sigilCaptureStart[sigilNum] = 0;
     teamgame.sigilCapturingTeam[sigilNum] = TEAM_FREE;
@@ -1404,6 +1481,7 @@ void CaptureSigil(gentity_t *ent, int sigilNum, sigilStatus_t status, powerup_t 
     ent->s.powerups = powerup;
     ent->s.modelindex = ITEM_INDEX( BG_FindItemForPowerup( powerup ) );
     ent->count = 1;
+    Sigil_CaptureSound( ent, team );
 }
 
 /*
@@ -1472,7 +1550,7 @@ int Sigil_Touch( gentity_t *ent, gentity_t *other ) {
     }
 
     if (ent->s.powerups != powerup) {
-        CaptureSigil(ent, sigilNum, status, powerup);
+        CaptureSigil(ent, sigilNum, status, powerup, team);
         G_Profile_RecordDominationCapture( cl );
     }
 
@@ -2588,4 +2666,3 @@ qboolean CheckObeliskAttack( gentity_t *obelisk, gentity_t *attacker ) {
 	return qfalse;
 }
 #endif
-
