@@ -1421,16 +1421,16 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 					break;
 #endif
 
-                                case GTS_REDTEAM_SCORED:
+                                case GTS_REDTEAM_SCORED:   // Team score/capture (CTF4, Domination)
                                         CG_AddBufferedSound(cgs.media.redScoredSound);
                                         break;
-                                case GTS_BLUETEAM_SCORED:
+                                case GTS_BLUETEAM_SCORED:  // Team score/capture (CTF4, Domination)
                                         CG_AddBufferedSound(cgs.media.blueScoredSound);
                                         break;
-                                case GTS_GREENTEAM_SCORED:
+                                case GTS_GREENTEAM_SCORED: // Team score/capture (CTF4, Domination)
                                         CG_AddBufferedSound(cgs.media.greenScoredSound);
                                         break;
-                                case GTS_YELLOWTEAM_SCORED:
+                                case GTS_YELLOWTEAM_SCORED:// Team score/capture (CTF4, Domination)
                                         CG_AddBufferedSound(cgs.media.yellowScoredSound);
                                         break;
                                 case GTS_REDTEAM_TOOK_LEAD:
