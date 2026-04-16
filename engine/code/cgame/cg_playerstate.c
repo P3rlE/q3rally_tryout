@@ -412,10 +412,10 @@ void CG_CheckLocalSounds( playerState_t *ps, playerState_t *ops ) {
 
 	// reward sounds
 	reward = qfalse;
-	/* KOTH: hill capture reward - sprite only, sound via cg_servercmds.c */
+	/* KOTH: local capture reward stays scoped to the capturing player. */
 	if ( cgs.gametype == GT_KOTH ) {
 		if (ps->persistant[PERS_CAPTURES] != ops->persistant[PERS_CAPTURES]) {
-			pushReward(0, cgs.media.medalKothCapture, ps->persistant[PERS_CAPTURES]);
+			pushReward(cgs.media.kothCaptureRewardSound, cgs.media.medalKothCapture, ps->persistant[PERS_CAPTURES]);
 			reward = qtrue;
 		}
 	} else {

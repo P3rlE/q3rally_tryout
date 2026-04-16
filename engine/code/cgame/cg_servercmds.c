@@ -489,9 +489,7 @@ static void CG_ParseKothStatus( void ) {
 	}
 
 	if ( oldOwner != cgs.kothOwner ) {
-		if ( cgs.kothOwner == localTeam ) {
-			trap_S_StartLocalSound( cgs.media.kothCaptureRewardSound, CHAN_ANNOUNCER );
-		} else if ( cgs.kothOwner != TEAM_FREE ) {
+		if ( cgs.kothOwner != TEAM_FREE ) {
 			trap_S_StartLocalSound( cgs.media.captureOpponentSound, CHAN_ANNOUNCER );
 			if ( oldOwner == localTeam ) {
 				cg.kothLossFlashUntil = cg.time + 600;
