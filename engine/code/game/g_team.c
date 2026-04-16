@@ -1016,7 +1016,7 @@ void Team_ReturnFlagSound( gentity_t *ent, int team ) {
         te->r.svFlags |= SVF_BROADCAST;
 }
 
-void Team_TakeFlagSound( gentity_t *ent, int team ) {
+void Team_TakeFlagSound( gentity_t *ent, int team, int attackingTeam ) {
 	gentity_t	*te;
 
 	if (ent == NULL) {
@@ -1051,6 +1051,9 @@ void Team_TakeFlagSound( gentity_t *ent, int team ) {
                 te->s.eventParm = GTS_BLUE_TAKEN;
                 break;
         }
+	// In CTF4 we also send the attacking team so clients can distinguish
+	// who took green/yellow flags (eventParm alone only identifies the victim).
+	te->s.otherEntityNum = attackingTeam;
         te->r.svFlags |= SVF_BROADCAST;
 }
 
@@ -1328,7 +1331,7 @@ int Team_TouchEnemyFlag( gentity_t *ent, gentity_t *other, int team ) {
 	AddScore(other, ent->r.currentOrigin, CTF_FLAG_BONUS);
 #endif
 	cl->pers.teamState.flagsince = level.time;
-	Team_TakeFlagSound( ent, team );
+	Team_TakeFlagSound( ent, team, other->client->sess.sessionTeam );
 
 	return -1; // Do not respawn this automatically, but do delete it if it was FL_DROPPED
 }

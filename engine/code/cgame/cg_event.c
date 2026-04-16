@@ -1393,9 +1393,20 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
                                         else if (cg.snap->ps.persistant[PERS_TEAM] == TEAM_GREEN) {
                                                 CG_AddBufferedSound( cgs.media.enemyTookYourFlagSound );
                                         } else {
-                                                // In CTF4 we can't know which team took the flag from this
-                                                // event alone, so use a neutral notification.
-                                                CG_AddBufferedSound( cgs.media.takenOpponentSound );
+                                                const int takingTeam = es->otherEntityNum;
+                                                if ( takingTeam >= TEAM_RED && takingTeam <= TEAM_YELLOW ) {
+                                                        if ( cg.snap->ps.persistant[PERS_TEAM] == takingTeam ) {
+                                                                // Play immediately (see GTS_RED_TAKEN) to avoid
+                                                                // buffering behind subsequent capture announcements.
+                                                                trap_S_StartLocalSound( cgs.media.yourTeamTookEnemyFlagSound, CHAN_ANNOUNCER );
+                                                        } else {
+                                                                CG_AddBufferedSound( cgs.media.takenOpponentSound );
+                                                        }
+                                                } else {
+                                                        // Backward-compatible fallback for demos/servers that
+                                                        // only provide eventParm without attacker payload.
+                                                        CG_AddBufferedSound( cgs.media.takenOpponentSound );
+                                                }
                                         }
                                         break;
                                 case GTS_YELLOW_TAKEN:
@@ -1405,7 +1416,18 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
                                         else if (cg.snap->ps.persistant[PERS_TEAM] == TEAM_YELLOW) {
                                                 CG_AddBufferedSound( cgs.media.enemyTookYourFlagSound );
                                         } else {
-                                                CG_AddBufferedSound( cgs.media.takenOpponentSound );
+                                                const int takingTeam = es->otherEntityNum;
+                                                if ( takingTeam >= TEAM_RED && takingTeam <= TEAM_YELLOW ) {
+                                                        if ( cg.snap->ps.persistant[PERS_TEAM] == takingTeam ) {
+                                                                // Play immediately (see GTS_RED_TAKEN).
+                                                                trap_S_StartLocalSound( cgs.media.yourTeamTookEnemyFlagSound, CHAN_ANNOUNCER );
+                                                        } else {
+                                                                CG_AddBufferedSound( cgs.media.takenOpponentSound );
+                                                        }
+                                                } else {
+                                                        // Backward-compatible fallback for older payloads.
+                                                        CG_AddBufferedSound( cgs.media.takenOpponentSound );
+                                                }
                                         }
                                         break;
 #ifdef MISSIONPACK
