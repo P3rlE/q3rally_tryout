@@ -181,6 +181,9 @@ vmCvar_t	car_body_elasticity;
 vmCvar_t	car_air_cof;
 vmCvar_t	car_air_frac_to_df;
 vmCvar_t	car_friction_scale;
+
+vmCvar_t	g_carImpactTransfer;
+vmCvar_t	g_carImpactElasticity;
 // END
 
 // bk001129 - made static to avoid aliasing
@@ -325,6 +328,12 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &car_air_cof, "car_air_cof", "0.31", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
 	{ &car_air_frac_to_df, "car_air_frac_to_df", "0.5", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
 	{ &car_friction_scale, "car_friction_scale", "1.1", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+
+	/* Vehicle vs. vehicle collision tuning. Both are LIVE (no LATCH) so they
+	 * can be tweaked from the console without a map change. Defaults give
+	 * roughly equal-mass elastic exchange in the normal direction. */
+	{ &g_carImpactTransfer,    "g_carImpactTransfer",    "0.5",  CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qfalse },
+	{ &g_carImpactElasticity,  "g_carImpactElasticity",  "0.25", CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qfalse },
 
         { &g_damageScale, "g_damageScale", "0.3", CVAR_ARCHIVE, 0, qfalse },
         { &g_vehicleDamageScale, "g_vehicleDamageScale", "5.0", CVAR_ARCHIVE, 0, qfalse },
