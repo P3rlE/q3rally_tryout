@@ -2127,6 +2127,13 @@ void CalculateRanks( void ) {
 				   are unique per player, so ties are extremely rare and
 				   only occur when two players genuinely share a position. */
 				newScore = cl->ps.stats[STAT_POSITION];
+			} else if ( g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS ) {
+				/* Derby/LCS: ranked by survival order (finishRaceTime + health),
+				   not by PERS_SCORE. Using PERS_SCORE would cause every player
+				   with 0 kills to be flagged RANK_TIED_FLAG at rank 0, making
+				   the scoreboard show "Position 1st" for everyone.
+				   Using the sort index i guarantees unique values and correct ranks. */
+				newScore = i;
 			} else {
 				newScore = cl->ps.persistant[PERS_SCORE];
 			}
@@ -2616,7 +2623,12 @@ void CheckIntermissionExit( void ) {
 		playerCount++;
 		if ( cl->readyToExit ) {
 			ready++;
-			if ( i < 16 ) {
+			/* readyMask is stored in STAT_CLIENTS_READY which is a 32-bit int,
+			   so bits 0-31 are usable.  The old guard of i < 16 silently ignored
+			   clients 16-31 on intermission display.  With MAX_CLIENTS=64 the
+			   upper 32 clients still cannot be represented in one bitmask; a
+			   second stats field would be needed to cover all 64 slots. */
+			if ( i < 32 ) {
 				readyMask |= 1 << i;
 			}
 		} else {
@@ -2703,6 +2715,13 @@ qboolean ScoreIsTied( void ) {
 
 		tied = qfalse;
 		winner = GetTeamAtRank(1) - TEAM_RED;
+		/* GetTeamAtRank() returns -1 when no valid team occupies rank 1
+		   (e.g. empty server or misconfigured gametype).  Subtracting
+		   TEAM_RED (1) gives -2, which would make level.teamTimes[-2+1]
+		   an out-of-bounds read.  Guard here before it reaches the array. */
+		if ( winner < 0 || winner >= 4 ) {
+			return qfalse;
+		}
 		for (i = 0; i < 4; i++){
 			if (i == winner) continue;
 			if (!TeamCount(-1, TEAM_RED + i)) continue;

@@ -757,6 +757,12 @@ static float PM_ApplyCollision( carBody_t *body, carPoint_t *points, vec3_t at, 
 		CrossProduct(cross2, arm, cross);
 //		Com_Printf( "oneOverMass %f, cross.normal %f\n", 1.0f / body->mass, DotProduct(cross, normal) );
 		impulseDen = 1.0f / body->mass + DotProduct(cross, normal);
+		/* Guard: if the inertia tensor projection exactly cancels 1/mass the
+		   denominator is 0 (or very near 0), which would produce an infinite
+		   impulse.  Skip the collision response in that degenerate case. */
+		if ( fabs( impulseDen ) < 1e-6f ) {
+			return 0.0f;
+		}
 
 		VectorScale(normal, impulseNum / impulseDen, impulse);
 	}

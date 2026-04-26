@@ -139,6 +139,10 @@ cg.scores[i].rankTier = atoi(CG_Argv(i * 21 + 26));
 	}
 
 	// Q3Rally Code Start
+	/* Zero out unused score slots so stale data is never displayed.
+	   Do NOT write back into cgs.clientinfo here: client==-1 gets clamped to 0,
+	   which would silently zero out client 0's cached score/position/powerups on
+	   every score packet even when client 0 is a real, active player. */
 	for ( ; i < MAX_CLIENTS ; i++ ) {
 		cg.scores[i].client = -1;
 		cg.scores[i].score = 0;
@@ -147,15 +151,7 @@ cg.scores[i].rankTier = atoi(CG_Argv(i * 21 + 26));
 		cg.scores[i].scoreFlags = -1;
 		cg.scores[i].position = -1;
 		cg.scores[i].rankTier = -1;
-		powerups = 0;
-
-			if ( cg.scores[i].client < 0 || cg.scores[i].client >= MAX_CLIENTS ) {
-				cg.scores[i].client = 0;
-			}
-			cgs.clientinfo[ cg.scores[i].client ].score = cg.scores[i].score;
-			cgs.clientinfo[ cg.scores[i].client ].powerups = powerups;
-			cgs.clientinfo[ cg.scores[i].client ].position = cg.scores[i].position;
-		}
+	}
 	// END
 
 #ifdef MISSIONPACK

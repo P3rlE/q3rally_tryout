@@ -58,7 +58,11 @@ DeathmatchScoreboardMessage
 */
 void DeathmatchScoreboardMessage( gentity_t *ent ) {
 	char		entry[1024];
-	char		string[1000];
+	/* Each reliable server command is stored in reliableCommands[][MAX_STRING_CHARS]
+	   (1024 bytes).  The va() header "scores N N N N N" takes up to ~36 bytes,
+	   leaving ~988 bytes for player data.  Keep the accumulation buffer under that
+	   limit so va() never silently truncates a partially-written player entry. */
+	char		string[MAX_STRING_CHARS - 64];
 	int			stringlength;
 	int			i, j;
 	gclient_t	*cl;

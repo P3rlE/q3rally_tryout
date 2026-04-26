@@ -2125,6 +2125,11 @@ static void CG_FeederSelection(float feederID, int index) {
 		}
 	} else {
 		cg.selectedScore = index;
+		/* Clamp: UI feeders can pass any index; guard against stale or
+		   out-of-range values before cg.scores[selectedScore] is read. */
+		if ( cg.selectedScore < 0 || cg.selectedScore >= cg.numScores ) {
+			cg.selectedScore = 0;
+		}
 	}
 }
 
