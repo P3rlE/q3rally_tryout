@@ -389,7 +389,7 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_thirdPerson, "cg_thirdPerson", "1", CVAR_ROM },
 	{ &cg_metricUnits, "cg_metricUnits", "0", CVAR_ARCHIVE },
         { &cg_speedometerMode, "cg_speedometerMode", "0", CVAR_ARCHIVE },
-	{ &cg_minSkidLength, "cg_minSkidLength", "12", CVAR_ARCHIVE },
+	{ &cg_minSkidLength, "cg_minSkidLength", "20", CVAR_ARCHIVE },
 	{ &cg_drawRearView, "cg_drawRearView", "0", CVAR_ARCHIVE },
 	{ &cg_drawMMap, "cg_drawMMap", "1", CVAR_ARCHIVE }, //TBB minimap - default on
 	{ &cg_mmap_fov, "cg_mmap_fov", "70", CVAR_ARCHIVE },
