@@ -34,4 +34,6 @@
   surf26="DIRT"
   surf27="METAL"
   surf28="SAND"
+
+  si_flags="1"
 />
