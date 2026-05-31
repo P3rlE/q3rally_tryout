@@ -207,9 +207,12 @@ and whenever the server updates any serverinfo flagged cvars
 */
 void CG_ParseServerinfo( void ) {
 	const char	*info;
+	const char	*sysinfo;
 	char	*mapname;
 
 	info = CG_ConfigString( CS_SERVERINFO );
+	// vehicle physics params are in SYSTEMINFO (too large for the 1024-byte SERVERINFO string)
+	sysinfo = CG_ConfigString( CS_SYSTEMINFO );
 	cgs.gametype = atoi( Info_ValueForKey( info, "g_gametype" ) );
 	trap_Cvar_Set("g_gametype", va("%i", cgs.gametype));
 	cgs.dmflags = atoi( Info_ValueForKey( info, "dmflags" ) );
@@ -229,72 +232,72 @@ void CG_ParseServerinfo( void ) {
 	trap_Cvar_Set("g_blueTeam", cgs.blueTeam);
 	cgs.eliminationWeapons = atoi( Info_ValueForKey( info, "g_eliminationWeapons" ) );
 
-	cgs.car_spring = atof( Info_ValueForKey( info, "car_spring" ) );
+	cgs.car_spring = atof( Info_ValueForKey( sysinfo, "car_spring" ) );
 	if ( cgs.car_spring <= 0.0f ) {
 		cgs.car_spring = 120.0f;
 	}
 
-	cgs.car_shock_up = atof( Info_ValueForKey( info, "car_shock_up" ) );
+	cgs.car_shock_up = atof( Info_ValueForKey( sysinfo, "car_shock_up" ) );
 	if ( cgs.car_shock_up <= 0.0f ) {
 		cgs.car_shock_up = 12.0f;
 	}
 
-	cgs.car_shock_down = atof( Info_ValueForKey( info, "car_shock_down" ) );
+	cgs.car_shock_down = atof( Info_ValueForKey( sysinfo, "car_shock_down" ) );
 	if ( cgs.car_shock_down <= 0.0f ) {
 		cgs.car_shock_down = 11.0f;
 	}
 
-	cgs.car_swaybar = atof( Info_ValueForKey( info, "car_swaybar" ) );
+	cgs.car_swaybar = atof( Info_ValueForKey( sysinfo, "car_swaybar" ) );
 	if ( cgs.car_swaybar <= 0.0f ) {
 		cgs.car_swaybar = 20.0f;
 	}
 
-	cgs.car_wheel = atof( Info_ValueForKey( info, "car_wheel" ) );
+	cgs.car_wheel = atof( Info_ValueForKey( sysinfo, "car_wheel" ) );
 	if ( cgs.car_wheel <= 0.0f ) {
 		cgs.car_wheel = 2400.0f;
 	}
 
-	cgs.car_wheel_damp = atof( Info_ValueForKey( info, "car_wheel_damp" ) );
+	cgs.car_wheel_damp = atof( Info_ValueForKey( sysinfo, "car_wheel_damp" ) );
 	if ( cgs.car_wheel_damp <= 0.0f ) {
 		cgs.car_wheel_damp = 140.0f;
 	}
 
-	cgs.car_frontweight_dist = atof( Info_ValueForKey( info, "car_frontweight_dist" ) );
+	cgs.car_frontweight_dist = atof( Info_ValueForKey( sysinfo, "car_frontweight_dist" ) );
 	if ( cgs.car_frontweight_dist <= 0.0f || cgs.car_frontweight_dist >= 1.0f ) {
 		cgs.car_frontweight_dist = 0.5f;
 	}
 
-	cgs.car_IT_xScale = atof( Info_ValueForKey( info, "car_IT_xScale" ) );
+	cgs.car_IT_xScale = atof( Info_ValueForKey( sysinfo, "car_IT_xScale" ) );
 	if ( cgs.car_IT_xScale <= 0.0f ) {
 		cgs.car_IT_xScale = 1.0f;
 	}
 
-	cgs.car_IT_yScale = atof( Info_ValueForKey( info, "car_IT_yScale" ) );
+	cgs.car_IT_yScale = atof( Info_ValueForKey( sysinfo, "car_IT_yScale" ) );
 	if ( cgs.car_IT_yScale <= 0.0f ) {
 		cgs.car_IT_yScale = 1.0f;
 	}
 
-	cgs.car_IT_zScale = atof( Info_ValueForKey( info, "car_IT_zScale" ) );
+	cgs.car_IT_zScale = atof( Info_ValueForKey( sysinfo, "car_IT_zScale" ) );
 	if ( cgs.car_IT_zScale <= 0.0f ) {
 		cgs.car_IT_zScale = 1.0f;
 	}
 
-	cgs.car_body_elasticity = atof( Info_ValueForKey( info, "car_body_elasticity" ) );
+	cgs.car_body_elasticity = atof( Info_ValueForKey( sysinfo, "car_body_elasticity" ) );
 	if ( cgs.car_body_elasticity <= 0.0f ) {
 		cgs.car_body_elasticity = 0.05f;
 	}
 
-	cgs.car_air_cof = atof( Info_ValueForKey( info, "car_air_cof" ) );
+	cgs.car_air_cof = atof( Info_ValueForKey( sysinfo, "car_air_cof" ) );
 	if ( cgs.car_air_cof <= 0.0f ) {
 		cgs.car_air_cof = 0.31f;
 	}
 
-	cgs.car_air_frac_to_df = atof( Info_ValueForKey( info, "car_air_frac_to_df" ) );
+	cgs.car_air_frac_to_df = atof( Info_ValueForKey( sysinfo, "car_air_frac_to_df" ) );
 	if ( cgs.car_air_frac_to_df <= 0.0f ) {
 		cgs.car_air_frac_to_df = 0.5f;
 	}
 
-	cgs.car_friction_scale = atof( Info_ValueForKey( info, "car_friction_scale" ) );
+	cgs.car_friction_scale = atof( Info_ValueForKey( sysinfo, "car_friction_scale" ) );
 	if ( cgs.car_friction_scale <= 0.0f ) {
 		cgs.car_friction_scale = 1.1f;
 	}
@@ -1049,7 +1052,7 @@ void CG_LoadVoiceChats( void ) {
 	CG_ParseVoiceChats( "scripts/male3.voice", &voiceChatLists[5], MAX_VOICECHATS );
 	CG_ParseVoiceChats( "scripts/male4.voice", &voiceChatLists[6], MAX_VOICECHATS );
 	CG_ParseVoiceChats( "scripts/male5.voice", &voiceChatLists[7], MAX_VOICECHATS );
-	CG_Printf("voice chat memory size = %d\n", size - trap_MemoryRemaining());
+	if (cg_developer.integer) CG_Printf("voice chat memory size = %d\n", size - trap_MemoryRemaining());
 }
 
 /*
@@ -1613,7 +1616,7 @@ static void CG_ParseGhostMeta( void ) {
         }
 
         if ( CG_LoadGhostFromFile( path, mapname, vehicle, bestTime ) ) {
-                CG_Printf( "Loaded base ghost for %s (%s) in %d ms\n", mapname, vehicle, cg.baseGhostBestTime );
+                if (cg_developer.integer) CG_Printf( "Loaded base ghost for %s (%s) in %d ms\n", mapname, vehicle, cg.baseGhostBestTime );
         }
 }
 

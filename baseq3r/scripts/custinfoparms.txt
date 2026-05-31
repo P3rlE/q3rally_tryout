@@ -6,8 +6,7 @@
 }
 
 //custom SURF_ flags
-// NOTE: Values match q3rally.game surf20-surf28 (bit 20-28).
-// Bit 19 (0x80000) is unused – the editor plugin reserves surf0-surf18 internally.
+// Values must match engine/code/qcommon/surfaceflags.h and tools/gamepacks/games/q3rally.game
 {
   SURF_SLICK   0x2
   SURF_GRASS   0x100000

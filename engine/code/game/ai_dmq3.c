@@ -5309,7 +5309,7 @@ void BotAIBlocked(bot_state_t *bs, bot_moveresult_t *moveresult, int activate) {
 // STONELANCE
 		// try backing up first
 		VectorInverse(hordir);
-		Com_Printf("attempting to backup\n");
+		if (bot_developer.integer) Com_Printf("attempting to backup\n");
 		trap_EA_MoveBack( bs->entitynum );
 // END
 		if (!trap_BotMoveInDirection(bs->ms, sideward, 400, movetype)) {

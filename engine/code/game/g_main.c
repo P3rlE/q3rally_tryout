@@ -311,23 +311,24 @@ static cvarTable_t		gameCvarTable[] = {
 
         // car variables
 	// vehicle handling values are latched so they stay deterministic during an active match;
-	// all values are also published via serverinfo for cgame prediction setup.
-	{ &car_spring, "car_spring", "120", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
-	{ &car_shock_up, "car_shock_up", "12", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
-	{ &car_shock_down, "car_shock_down", "11", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
-	{ &car_swaybar, "car_swaybar", "20", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
-	{ &car_wheel, "car_wheel", "2400", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
-	{ &car_wheel_damp, "car_wheel_damp", "140", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+	// published via SYSTEMINFO (not SERVERINFO) so they don't overflow the 1024-byte serverinfo string.
+	// cgame reads them from CS_SYSTEMINFO in CG_ParseServerinfo().
+	{ &car_spring, "car_spring", "120", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+	{ &car_shock_up, "car_shock_up", "12", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+	{ &car_shock_down, "car_shock_down", "11", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+	{ &car_swaybar, "car_swaybar", "20", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+	{ &car_wheel, "car_wheel", "2400", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+	{ &car_wheel_damp, "car_wheel_damp", "140", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
 
-	{ &car_frontweight_dist, "car_frontweight_dist", "0.5", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
-	{ &car_IT_xScale, "car_IT_xScale", "1.0", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
-	{ &car_IT_yScale, "car_IT_yScale", "1.0", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
-	{ &car_IT_zScale, "car_IT_zScale", "1.0", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
-	{ &car_body_elasticity, "car_body_elasticity", "0.05", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+	{ &car_frontweight_dist, "car_frontweight_dist", "0.5", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+	{ &car_IT_xScale, "car_IT_xScale", "1.0", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+	{ &car_IT_yScale, "car_IT_yScale", "1.0", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+	{ &car_IT_zScale, "car_IT_zScale", "1.0", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+	{ &car_body_elasticity, "car_body_elasticity", "0.05", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
 
-	{ &car_air_cof, "car_air_cof", "0.31", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
-	{ &car_air_frac_to_df, "car_air_frac_to_df", "0.5", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
-	{ &car_friction_scale, "car_friction_scale", "1.1", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+	{ &car_air_cof, "car_air_cof", "0.31", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+	{ &car_air_frac_to_df, "car_air_frac_to_df", "0.5", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+	{ &car_friction_scale, "car_friction_scale", "1.1", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
 
 	/* Vehicle vs. vehicle collision tuning. Both are LIVE (no LATCH) so they
 	 * can be tweaked from the console without a map change. Defaults give
@@ -1350,7 +1351,7 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
 
         payload->winnerClientNum = G_LadderWinnerForGametype( payload->gametype );
         if ( payload->winnerClientNum != level.winnerNumber ) {
-                Com_Printf( "Ladder: info - winnerClientNum adjusted for mode %s (%d -> %d)\n",
+                if (g_developer.integer) Com_Printf( "Ladder: info - winnerClientNum adjusted for mode %s (%d -> %d)\n",
                         payload->mode, level.winnerNumber, payload->winnerClientNum );
         }
 
@@ -1427,7 +1428,7 @@ static void G_LadderLogSubmitSnapshot( const ladderMatchPayload_t *payload ) {
                         snapshotEpoch = player->profile.snapshotEpoch;
                 }
 
-                Com_Printf(
+                if (g_developer.integer) Com_Printf(
                         "[ladder-pipeline] engine-submit matchId=%s mode=%s playerId(local)=%s snapshotRevision=%d snapshotEpoch=%d\n",
                         payload->matchId[0] ? payload->matchId : "<unknown>",
                         payload->mode[0] ? payload->mode : "<unknown>",

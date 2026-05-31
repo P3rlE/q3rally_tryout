@@ -2006,7 +2006,7 @@ void Cmd_SaveBPoints_f( gentity_t *other )
 	trap_GetServerinfo( serverinfo, sizeof(serverinfo) );
 
 	Com_sprintf( buffer, sizeof(buffer), "bezier/%s_bpd.txt", Info_ValueForKey( serverinfo, "mapname" ) );
-	Com_Printf( "Writing out bezier path information to: '%s'\n", buffer );
+	if (g_developer.integer) Com_Printf( "Writing out bezier path information to: '%s'\n", buffer );
 	trap_FS_FOpenFile( buffer, &f, FS_WRITE );
 
 	for (i = 1; i < 100; i++)
@@ -2048,7 +2048,7 @@ void Cmd_MoveBPoint_f( gentity_t *other )
 	trap_Argv( 4, buffer, sizeof( buffer ) );
 	delta[2] = atof(buffer);
 
-	Com_Printf( "Moving Checkpoint %i by (%f %f %f)\n", curCheckpoint, delta[0], delta[1], delta[2] );
+	if (g_developer.integer) Com_Printf( "Moving Checkpoint %i by (%f %f %f)\n", curCheckpoint, delta[0], delta[1], delta[2] );
 
 	while ((ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL) {
 		if ( ent->number == curCheckpoint )
@@ -2080,7 +2080,7 @@ void Cmd_MoveBHandle_f( gentity_t *other )
 	trap_Argv( 4, buffer, sizeof( buffer ) );
 	delta[2] = atof(buffer);
 
-	Com_Printf( "Moving Checkpoint %i by (%f %f %f)\n", curCheckpoint, delta[0], delta[1], delta[2] );
+	if (g_developer.integer) Com_Printf( "Moving Checkpoint %i by (%f %f %f)\n", curCheckpoint, delta[0], delta[1], delta[2] );
 
 	while ((ent = G_Find (ent, FOFS(classname), "rally_checkpoint")) != NULL) {
 		if ( ent->number == curCheckpoint )
