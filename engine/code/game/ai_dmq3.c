@@ -3101,7 +3101,9 @@ int BotWantsToChase(bot_state_t *bs) {
 			lcsThreatProximity > 0.52f && BotAggression(bs) >= aggressionThreshold ) {
 			return qtrue;
 		}
-		return qfalse;
+		// Q3Rally Fix: Nicht hartes qfalse – Bots mit ausreichend Aggression kämpfen auch
+		// in anderen Situationen, sodass sie die Startwaffe tatsächlich einsetzen.
+		// Bot_LcsShouldAvoidBattleEntry filtert gefahrenreiche Engagements weiterhin heraus.
 	}
 	//
 	if (BotAggression(bs) > 50)

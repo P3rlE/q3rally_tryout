@@ -950,7 +950,10 @@ void CG_CheckEliminationWarning( int playersRemaining ) {
 		myPos = cgs.clientinfo[clientNum].position;
 	}
 	if ( myPos <= 0 ) {
-		myPos = playersRemaining;
+		// Q3Rally Fix: Position unbekannt – kein Warning-Sound auslösen.
+		// Vorher fiel myPos auf playersRemaining zurück, was myPos == playersRemaining
+		// sofort als wahr auswertete und finallap.ogg beim ersten Frag spielte.
+		return;
 	}
 
 	if ( myPos == playersRemaining ) {
