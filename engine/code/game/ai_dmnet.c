@@ -241,6 +241,16 @@ static qboolean Bot_LcsShouldAvoidBattleEntry( bot_state_t *bs, const char **rea
 	return qfalse;
 }
 
+static qboolean Bot_LcsShouldIgnoreFoundEnemy( bot_state_t *bs ) {
+	const char *lcsReason = NULL;
+
+	if ( !bs || gametype != GT_LCS ) {
+		return qfalse;
+	}
+
+	return ( !BotWantsToChase( bs ) || Bot_LcsShouldAvoidBattleEntry( bs, &lcsReason ) );
+}
+
 static qboolean Bot_LcsShouldBreakEngagement( bot_state_t *bs, const botCollisionRisk_t *risk, const char **triggerOut ) {
 	float relativePosition = 0.5f;
 	float threatProximity = 0.0f;
@@ -2680,7 +2690,12 @@ int AINode_Seek_NBG(bot_state_t *bs) {
 	if (moveresult.flags & MOVERESULT_MOVEMENTWEAPON) bs->weaponnum = moveresult.weapon;
 	//if there is an enemy
 	if (BotFindEnemy(bs, -1)) {
-		if (BotWantsToRetreat(bs)) {
+		if ( Bot_LcsShouldIgnoreFoundEnemy( bs ) ) {
+			// LCS avoidance keeps the current item/route goal instead of
+			// bouncing through battle enter nodes back into this seek node.
+			bs->enemy = -1;
+		}
+		else if (BotWantsToRetreat(bs)) {
 			//keep the current long term goal and retreat
 			AIEnter_Battle_NBG(bs, "seek nbg: found enemy");
 		}
@@ -2776,7 +2791,12 @@ int AINode_Seek_LTG(bot_state_t *bs)
 //	if (BotFindEnemy(bs, -1)) {
    if ( BotFindEnemy(bs, -1) && gametype != GT_RACING && gametype != GT_SPRINT && gametype != GT_TEAM_RACING ) {
 // END
-		if (BotWantsToRetreat(bs)) {
+		if ( Bot_LcsShouldIgnoreFoundEnemy( bs ) ) {
+			// LCS avoidance keeps seeking the current long-term goal instead
+			// of entering battle only to immediately re-enter this node.
+			bs->enemy = -1;
+		}
+		else if (BotWantsToRetreat(bs)) {
 			//keep the current long term goal and retreat
 			AIEnter_Battle_Retreat(bs, "seek ltg: found enemy");
 			return qfalse;
