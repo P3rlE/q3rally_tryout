@@ -951,6 +951,89 @@ int BotNearbyGoal(bot_state_t *bs, int tfl, bot_goal_t *ltg, float range) {
 	return ret;
 }
 
+static void Bot_BiasCombatSupplyInventory( bot_state_t *bs, int *inventory ) {
+	if ( !bs || !inventory ) {
+		return;
+	}
+
+	memcpy( inventory, bs->inventory, sizeof( bs->inventory ) );
+
+	if ( bs->inventory[INVENTORY_BULLETS] < 45 ) {
+		inventory[INVENTORY_BULLETS] = 20;
+	}
+	if ( bs->inventory[INVENTORY_SHOTGUN] > 0 && bs->inventory[INVENTORY_SHELLS] <= 4 ) {
+		inventory[INVENTORY_SHELLS] = 20;
+	}
+	if ( bs->inventory[INVENTORY_GRENADELAUNCHER] > 0 && bs->inventory[INVENTORY_GRENADES] <= 3 ) {
+		inventory[INVENTORY_GRENADES] = 20;
+	}
+	if ( bs->inventory[INVENTORY_ROCKETLAUNCHER] > 0 && bs->inventory[INVENTORY_ROCKETS] <= 3 ) {
+		inventory[INVENTORY_ROCKETS] = 20;
+	}
+	if ( bs->inventory[INVENTORY_PLASMAGUN] > 0 && bs->inventory[INVENTORY_CELLS] <= 18 ) {
+		inventory[INVENTORY_CELLS] = 20;
+	}
+	if ( bs->inventory[INVENTORY_LIGHTNING] > 0 && bs->inventory[INVENTORY_LIGHTNINGAMMO] <= 18 ) {
+		inventory[INVENTORY_LIGHTNINGAMMO] = 20;
+	}
+	if ( bs->inventory[INVENTORY_RAILGUN] > 0 && bs->inventory[INVENTORY_SLUGS] <= 3 ) {
+		inventory[INVENTORY_SLUGS] = 20;
+	}
+	if ( bs->inventory[INVENTORY_BFG10K] > 0 && bs->inventory[INVENTORY_BFGAMMO] <= 3 ) {
+		inventory[INVENTORY_BFGAMMO] = 20;
+	}
+	if ( bs->inventory[INVENTORY_FLAMETHROWER] > 0 && bs->inventory[INVENTORY_FLAMETHROWERAMMO] <= 18 ) {
+		inventory[INVENTORY_FLAMETHROWERAMMO] = 20;
+	}
+
+	inventory[INVENTORY_SHOTGUN] = 1;
+	inventory[INVENTORY_GRENADELAUNCHER] = 1;
+	inventory[INVENTORY_ROCKETLAUNCHER] = 1;
+	inventory[INVENTORY_LIGHTNING] = 1;
+	inventory[INVENTORY_RAILGUN] = 1;
+	inventory[INVENTORY_PLASMAGUN] = 1;
+	inventory[INVENTORY_BFG10K] = 1;
+	inventory[INVENTORY_FLAMETHROWER] = 1;
+}
+
+static qboolean BotStartCombatSupplyLongTermGoal( bot_state_t *bs, int tfl, const char *reason ) {
+	int supplyInventory[MAX_ITEMS];
+	bot_goal_t goal;
+
+	if ( !bs || !BotNeedsCombatSupplies( bs ) ) {
+		return qfalse;
+	}
+	if ( BotCTFCarryingFlag( bs )
+#ifdef MISSIONPACK
+		|| Bot1FCTFCarryingFlag( bs ) || BotHarvesterCarryingCubes( bs )
+#endif
+		) {
+		return qfalse;
+	}
+
+	Bot_BiasCombatSupplyInventory( bs, supplyInventory );
+	trap_BotEmptyGoalStack( bs->gs );
+	if ( !trap_BotChooseLTGItem( bs->gs, bs->origin, supplyInventory, tfl ) ) {
+		trap_BotResetAvoidGoals( bs->gs );
+		if ( !trap_BotChooseLTGItem( bs->gs, bs->origin, supplyInventory, tfl ) ) {
+			return qfalse;
+		}
+	}
+	if ( !trap_BotGetTopGoal( bs->gs, &goal ) ) {
+		return qfalse;
+	}
+
+	bs->decisionmaker = bs->client;
+	bs->ordered = qfalse;
+	bs->teammessage_time = 0;
+	bs->ltgtype = LTG_GETITEM;
+	bs->teamgoal_time = FloatTime() + 35.0f;
+	bs->ltg_time = FloatTime() + 20.0f;
+	memcpy( &bs->teamgoal, &goal, sizeof( bot_goal_t ) );
+	AIEnter_Seek_LTG( bs, reason ? (char *)reason : "combat supplies" );
+	return qtrue;
+}
+
 /*
 ==================
 BotReachedGoal
@@ -2689,7 +2772,12 @@ int AINode_Seek_NBG(bot_state_t *bs) {
 	if (moveresult.flags & MOVERESULT_MOVEMENTWEAPON) bs->weaponnum = moveresult.weapon;
 	//if there is an enemy
 	if (BotFindEnemy(bs, -1)) {
-		if ( Bot_LcsShouldIgnoreFoundEnemy( bs ) ) {
+		if ( bs->ltgtype == LTG_GETITEM && BotNeedsCombatSupplies( bs ) &&
+				bs->teamgoal_time > FloatTime() ) {
+			// Keep moving to the supply goal instead of immediately re-entering
+			// the same fight with an empty or weak weapon.
+		}
+		else if ( Bot_LcsShouldIgnoreFoundEnemy( bs ) ) {
 			// LCS avoidance keeps the current item/route goal instead of
 			// bouncing through battle enter nodes back into this seek node.
 			bs->enemy = -1;
@@ -2904,7 +2992,12 @@ int AINode_Seek_LTG(bot_state_t *bs)
 //	if (BotFindEnemy(bs, -1)) {
    if ( BotFindEnemy(bs, -1) && gametype != GT_RACING && gametype != GT_SPRINT && gametype != GT_TEAM_RACING ) {
 // END
-		if ( Bot_LcsShouldIgnoreFoundEnemy( bs ) ) {
+		if ( bs->ltgtype == LTG_GETITEM && BotNeedsCombatSupplies( bs ) &&
+				bs->teamgoal_time > FloatTime() ) {
+			// Keep moving to the supply goal instead of immediately re-entering
+			// the same fight with an empty or weak weapon.
+		}
+		else if ( Bot_LcsShouldIgnoreFoundEnemy( bs ) ) {
 			// LCS avoidance keeps seeking the current long-term goal instead
 			// of entering battle only to immediately re-enter this node.
 			bs->enemy = -1;
@@ -3268,6 +3361,9 @@ int AINode_Battle_Fight(bot_state_t *bs) {
 			bs->nbg_time = FloatTime() + 6.5f;
 			trap_BotResetLastAvoidReach( bs->ms );
 			AIEnter_Battle_NBG( bs, "battle fight: combat supplies" );
+			return qfalse;
+		}
+		if ( BotStartCombatSupplyLongTermGoal( bs, bs->tfl, "battle fight: combat supply ltg" ) ) {
 			return qfalse;
 		}
 	}
