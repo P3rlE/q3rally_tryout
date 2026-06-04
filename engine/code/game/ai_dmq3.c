@@ -2118,6 +2118,17 @@ void BotChooseWeapon(bot_state_t *bs) {
 			}
 		}
 
+// Q3Rally Code Start
+		// trap_BotChooseBestFightWeapon can return 0 (WP_NONE) - e.g. in LCS,
+		// where the fuzzy weapon weights do not resolve to a car weapon. Selecting
+		// weapon 0 deselects the car gun (the bot stops firing) and spams
+		// "weapon number out of range". Fall back to the weapon the car actually
+		// holds so the bot keeps shooting. Derby is excluded: it rams by design.
+		if ( newweaponnum <= 0 && gametype != GT_DERBY ) {
+			newweaponnum = bs->cur_ps.weapon;
+		}
+// END
+
 		if (bs->weaponnum != newweaponnum) bs->weaponchange_time = FloatTime();
 		bs->weaponnum = newweaponnum;
 		//BotAI_Print(PRT_MESSAGE, "bs->weaponnum = %d\n", bs->weaponnum);
