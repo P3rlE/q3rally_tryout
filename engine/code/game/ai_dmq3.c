@@ -3250,6 +3250,64 @@ int BotHasPersistantPowerupAndWeapon(bot_state_t *bs) {
 
 /*
 ==================
+BotNeedsCombatSupplies
+==================
+*/
+int BotNeedsCombatSupplies(bot_state_t *bs) {
+	int weapon;
+	int hasStrongWeapon;
+
+	if ( !bs ) {
+		return qfalse;
+	}
+
+	weapon = BotFirstUsableFrontWeapon( &bs->cur_ps );
+	if ( weapon <= WP_GAUNTLET || weapon >= RWP_SMOKE ) {
+		return qtrue;
+	}
+
+	hasStrongWeapon = qfalse;
+	if ( bs->inventory[INVENTORY_BFG10K] > 0 && bs->inventory[INVENTORY_BFGAMMO] > 2 ) hasStrongWeapon = qtrue;
+	if ( bs->inventory[INVENTORY_RAILGUN] > 0 && bs->inventory[INVENTORY_SLUGS] > 2 ) hasStrongWeapon = qtrue;
+	if ( bs->inventory[INVENTORY_ROCKETLAUNCHER] > 0 && bs->inventory[INVENTORY_ROCKETS] > 2 ) hasStrongWeapon = qtrue;
+	if ( bs->inventory[INVENTORY_GRENADELAUNCHER] > 0 && bs->inventory[INVENTORY_GRENADES] > 3 ) hasStrongWeapon = qtrue;
+	if ( bs->inventory[INVENTORY_LIGHTNING] > 0 && bs->inventory[INVENTORY_LIGHTNINGAMMO] > 18 ) hasStrongWeapon = qtrue;
+	if ( bs->inventory[INVENTORY_PLASMAGUN] > 0 && bs->inventory[INVENTORY_CELLS] > 18 ) hasStrongWeapon = qtrue;
+	if ( bs->inventory[INVENTORY_FLAMETHROWER] > 0 && bs->inventory[INVENTORY_FLAMETHROWERAMMO] > 18 ) hasStrongWeapon = qtrue;
+	if ( bs->inventory[INVENTORY_SHOTGUN] > 0 && bs->inventory[INVENTORY_SHELLS] > 4 ) hasStrongWeapon = qtrue;
+
+	if ( !hasStrongWeapon && bs->inventory[INVENTORY_BULLETS] < 45 ) {
+		return qtrue;
+	}
+
+	switch ( bs->cur_ps.weapon ) {
+		case WP_MACHINEGUN:
+			return bs->inventory[INVENTORY_BULLETS] < 20;
+		case WP_SHOTGUN:
+			return bs->inventory[INVENTORY_SHELLS] <= 2;
+		case WP_GRENADE_LAUNCHER:
+			return bs->inventory[INVENTORY_GRENADES] <= 2;
+		case WP_ROCKET_LAUNCHER:
+			return bs->inventory[INVENTORY_ROCKETS] <= 2;
+		case WP_LIGHTNING:
+			return bs->inventory[INVENTORY_LIGHTNINGAMMO] <= 12;
+		case WP_RAILGUN:
+			return bs->inventory[INVENTORY_SLUGS] <= 2;
+		case WP_PLASMAGUN:
+			return bs->inventory[INVENTORY_CELLS] <= 12;
+		case WP_BFG:
+			return bs->inventory[INVENTORY_BFGAMMO] <= 2;
+		case WP_FLAME_THROWER:
+			return bs->inventory[INVENTORY_FLAMETHROWERAMMO] <= 12;
+		default:
+			break;
+	}
+
+	return qfalse;
+}
+
+/*
+==================
 BotGoCamp
 ==================
 */
@@ -3428,6 +3486,170 @@ void BotRoamGoal(bot_state_t *bs, vec3_t goal) {
 BotAttackMove
 ==================
 */
+#define RALLY_COMBAT_APPROACH		0
+#define RALLY_COMBAT_FIRE			1
+#define RALLY_COMBAT_BREAKAWAY		2
+#define RALLY_COMBAT_TURNAROUND		3
+
+static qboolean BotUseRallyCombatMovement( bot_state_t *bs ) {
+	if ( !bs ) {
+		return qfalse;
+	}
+	if ( gametype == GT_RACING || gametype == GT_SPRINT ||
+			gametype == GT_TEAM_RACING || gametype == GT_DERBY ) {
+		return qfalse;
+	}
+	if ( bs->cur_ps.pm_type != PM_NORMAL ) {
+		return qfalse;
+	}
+	return qtrue;
+}
+
+static void BotRallyCombatSetPhase( bot_state_t *bs, int phase ) {
+	if ( bs->rallyCombatPhase != phase ) {
+		bs->rallyCombatPhase = phase;
+		bs->rallyCombatPhaseTime = FloatTime();
+	}
+}
+
+static void BotRallyCombatSteerTowardYaw( bot_state_t *bs, float targetYaw, qboolean reverseSteer ) {
+	float yawDelta;
+
+	yawDelta = AngleSubtract( targetYaw, bs->cur_ps.viewangles[YAW] );
+	if ( reverseSteer ) {
+		yawDelta = -yawDelta;
+	}
+	if ( yawDelta > 6.0f ) {
+		trap_EA_MoveRight( bs->entitynum );
+	} else if ( yawDelta < -6.0f ) {
+		trap_EA_MoveLeft( bs->entitynum );
+	}
+}
+
+static bot_moveresult_t BotRallyCombatMove( bot_state_t *bs, int tfl ) {
+	aas_entityinfo_t entinfo;
+	bot_moveresult_t moveresult;
+	vec3_t toEnemy;
+	vec3_t flatToEnemy;
+	vec3_t angles;
+	vec3_t moveDelta;
+	float dist;
+	float yawToEnemy;
+	float yawDelta;
+	float phaseAge;
+	float speed;
+	float movedSq;
+	qboolean enemyVisible;
+
+	memset( &moveresult, 0, sizeof( bot_moveresult_t ) );
+	(void)tfl;
+
+	if ( bs->enemy < 0 ) {
+		return moveresult;
+	}
+
+	BotEntityInfo( bs->enemy, &entinfo );
+	if ( !entinfo.valid ) {
+		return moveresult;
+	}
+
+	if ( bs->rallyCombatEnemy != bs->enemy || bs->rallyCombatPhaseTime <= 0.0f ) {
+		bs->rallyCombatEnemy = bs->enemy;
+		bs->rallyCombatPhase = RALLY_COMBAT_APPROACH;
+		bs->rallyCombatPhaseTime = FloatTime();
+		bs->rallyCombatTurnDir = random() < 0.5f ? -1 : 1;
+		bs->rallyCombatLastHitCount = bs->cur_ps.persistant[PERS_HITS];
+		bs->rallyCombatLastHitTime = FloatTime();
+		VectorCopy( bs->cur_ps.origin, bs->rallyCombatLastMoveOrigin );
+		bs->rallyCombatLastMoveSampleTime = FloatTime();
+	}
+	if ( bs->rallyCombatTurnDir == 0 ) {
+		bs->rallyCombatTurnDir = random() < 0.5f ? -1 : 1;
+	}
+
+	if ( bs->cur_ps.persistant[PERS_HITS] > bs->rallyCombatLastHitCount ) {
+		bs->rallyCombatLastHitCount = bs->cur_ps.persistant[PERS_HITS];
+		bs->rallyCombatLastHitTime = FloatTime();
+	}
+
+	VectorSubtract( entinfo.origin, bs->origin, toEnemy );
+	VectorCopy( toEnemy, flatToEnemy );
+	flatToEnemy[2] = 0.0f;
+	dist = VectorNormalize( flatToEnemy );
+	vectoangles( flatToEnemy, angles );
+	yawToEnemy = angles[YAW];
+	yawDelta = fabs( AngleSubtract( yawToEnemy, bs->cur_ps.viewangles[YAW] ) );
+	phaseAge = FloatTime() - bs->rallyCombatPhaseTime;
+	speed = VectorLength( bs->cur_ps.velocity );
+	enemyVisible = BotEntityVisible( bs->entitynum, bs->eye, bs->cur_ps.viewangles, 120, bs->enemy ) > 0.0f;
+
+	if ( bs->rallyCombatLastMoveSampleTime <= 0.0f ||
+			FloatTime() - bs->rallyCombatLastMoveSampleTime > 0.75f ) {
+		VectorSubtract( bs->cur_ps.origin, bs->rallyCombatLastMoveOrigin, moveDelta );
+		movedSq = VectorLengthSquared( moveDelta );
+		if ( bs->rallyCombatLastMoveSampleTime > 0.0f && movedSq < Square( 90 ) && speed < 120.0f ) {
+			bs->rallyCombatTurnDir = -bs->rallyCombatTurnDir;
+			BotRallyCombatSetPhase( bs, RALLY_COMBAT_BREAKAWAY );
+		}
+		VectorCopy( bs->cur_ps.origin, bs->rallyCombatLastMoveOrigin );
+		bs->rallyCombatLastMoveSampleTime = FloatTime();
+	}
+
+	if ( !enemyVisible && bs->rallyCombatPhase == RALLY_COMBAT_FIRE ) {
+		BotRallyCombatSetPhase( bs, RALLY_COMBAT_TURNAROUND );
+	}
+	if ( dist < 180.0f && bs->rallyCombatPhase != RALLY_COMBAT_BREAKAWAY ) {
+		BotRallyCombatSetPhase( bs, RALLY_COMBAT_BREAKAWAY );
+	}
+	if ( FloatTime() - bs->rallyCombatLastHitTime > 3.2f &&
+			bs->rallyCombatPhase == RALLY_COMBAT_FIRE ) {
+		BotRallyCombatSetPhase( bs, RALLY_COMBAT_BREAKAWAY );
+	}
+	phaseAge = FloatTime() - bs->rallyCombatPhaseTime;
+
+	switch ( bs->rallyCombatPhase ) {
+		case RALLY_COMBAT_FIRE:
+			BotRallyCombatSteerTowardYaw( bs, yawToEnemy, qfalse );
+			if ( dist < 260.0f ) {
+				trap_EA_MoveBack( bs->entitynum );
+			} else {
+				trap_EA_MoveForward( bs->entitynum );
+			}
+			if ( phaseAge > 1.45f || yawDelta > 70.0f ) {
+				BotRallyCombatSetPhase( bs, RALLY_COMBAT_BREAKAWAY );
+			}
+			break;
+		case RALLY_COMBAT_BREAKAWAY:
+			angles[YAW] = AngleNormalize360( yawToEnemy + bs->rallyCombatTurnDir * 125.0f );
+			BotRallyCombatSteerTowardYaw( bs, angles[YAW], qfalse );
+			trap_EA_MoveForward( bs->entitynum );
+			if ( phaseAge > 1.05f || dist > 620.0f ) {
+				BotRallyCombatSetPhase( bs, RALLY_COMBAT_TURNAROUND );
+			}
+			break;
+		case RALLY_COMBAT_TURNAROUND:
+			BotRallyCombatSteerTowardYaw( bs, yawToEnemy, qfalse );
+			trap_EA_MoveForward( bs->entitynum );
+			if ( ( enemyVisible && yawDelta < 42.0f ) || phaseAge > 1.8f ) {
+				BotRallyCombatSetPhase( bs, RALLY_COMBAT_APPROACH );
+			}
+			break;
+		case RALLY_COMBAT_APPROACH:
+		default:
+			BotRallyCombatSteerTowardYaw( bs, yawToEnemy, qfalse );
+			trap_EA_MoveForward( bs->entitynum );
+			if ( enemyVisible && dist < 760.0f && yawDelta < 44.0f ) {
+				BotRallyCombatSetPhase( bs, RALLY_COMBAT_FIRE );
+			}
+			if ( dist < 230.0f ) {
+				BotRallyCombatSetPhase( bs, RALLY_COMBAT_BREAKAWAY );
+			}
+			break;
+	}
+
+	return moveresult;
+}
+
 bot_moveresult_t BotAttackMove(bot_state_t *bs, int tfl) {
 	int movetype, i, attackentity;
 	float attack_skill, jumper, croucher, dist, strafechange_time;
@@ -3438,6 +3660,9 @@ bot_moveresult_t BotAttackMove(bot_state_t *bs, int tfl) {
 	bot_goal_t goal;
 
 	attackentity = bs->enemy;
+	if ( BotUseRallyCombatMovement( bs ) ) {
+		return BotRallyCombatMove( bs, tfl );
+	}
 	//
 	if (bs->attackchase_time > FloatTime()) {
 		//create the chase goal

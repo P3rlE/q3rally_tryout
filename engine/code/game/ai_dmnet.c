@@ -933,6 +933,9 @@ int BotNearbyGoal(bot_state_t *bs, int tfl, bot_goal_t *ltg, float range) {
 			range = 220;
 		}
 	}
+	if ( BotNeedsCombatSupplies( bs ) && range < 650 ) {
+		range = 650;
+	}
 	//
 	ret = trap_BotChooseNBGItem(bs->gs, bs->origin, bs->inventory, tfl, ltg, range);
 	/*
@@ -3120,6 +3123,8 @@ int AINode_Battle_Fight(bot_state_t *bs) {
 	vec3_t target;
 	aas_entityinfo_t entinfo;
 	bot_moveresult_t moveresult;
+	bot_goal_t supplyGoal;
+	float supplyRange;
 
 // Q3Rally Code Start
 //	Com_Printf( "bot %i in AINode_Battle_Fight\n", bs->client );
@@ -3249,6 +3254,22 @@ int AINode_Battle_Fight(bot_state_t *bs) {
 	//
 	if (BotCanAndWantsToRocketJump(bs)) {
 		bs->tfl |= TFL_ROCKETJUMP;
+	}
+	if ( BotNeedsCombatSupplies( bs ) && bs->check_time < FloatTime() ) {
+		bs->check_time = FloatTime() + 0.8f;
+		memset( &supplyGoal, 0, sizeof( supplyGoal ) );
+		supplyGoal.entitynum = bs->enemy;
+		supplyGoal.areanum = bs->lastenemyareanum;
+		VectorCopy( bs->lastenemyorigin, supplyGoal.origin );
+		VectorSet( supplyGoal.mins, -8, -8, -8 );
+		VectorSet( supplyGoal.maxs, 8, 8, 8 );
+		supplyRange = 650.0f;
+		if ( BotNearbyGoal( bs, bs->tfl, &supplyGoal, supplyRange ) ) {
+			bs->nbg_time = FloatTime() + 6.5f;
+			trap_BotResetLastAvoidReach( bs->ms );
+			AIEnter_Battle_NBG( bs, "battle fight: combat supplies" );
+			return qfalse;
+		}
 	}
 	//choose the best weapon to fight with
 	BotChooseWeapon(bs);
