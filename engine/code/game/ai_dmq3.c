@@ -3253,11 +3253,31 @@ int BotHasPersistantPowerupAndWeapon(bot_state_t *bs) {
 BotNeedsCombatSupplies
 ==================
 */
+static qboolean BotIsRallyCombatMode( void ) {
+	switch ( gametype ) {
+		case GT_RACING:
+		case GT_RACING_DM:
+		case GT_SINGLE_PLAYER:
+		case GT_DERBY:
+		case GT_ELIMINATION:
+		case GT_SPRINT:
+		case GT_TEAM_RACING:
+		case GT_TEAM_RACING_DM:
+			return qfalse;
+		default:
+			break;
+	}
+	return qtrue;
+}
+
 int BotNeedsCombatSupplies(bot_state_t *bs) {
 	int weapon;
 	int hasStrongWeapon;
 
 	if ( !bs ) {
+		return qfalse;
+	}
+	if ( !BotIsRallyCombatMode() ) {
 		return qfalse;
 	}
 
@@ -3495,8 +3515,7 @@ static qboolean BotUseRallyCombatMovement( bot_state_t *bs ) {
 	if ( !bs ) {
 		return qfalse;
 	}
-	if ( gametype == GT_RACING || gametype == GT_SPRINT ||
-			gametype == GT_TEAM_RACING || gametype == GT_DERBY ) {
+	if ( !BotIsRallyCombatMode() ) {
 		return qfalse;
 	}
 	if ( bs->cur_ps.pm_type != PM_NORMAL ) {
