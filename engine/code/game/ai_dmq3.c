@@ -2060,6 +2060,7 @@ static int BotFirstUsableFrontWeapon( playerState_t *ps ) {
 
 	if ( ps->weapon > WP_NONE
 			&& ps->weapon < RWP_SMOKE
+			&& ps->weapon != WP_GAUNTLET
 			&& ( ps->stats[STAT_WEAPONS] & ( 1u << ps->weapon ) )
 			&& ps->ammo[ps->weapon] ) {
 		return ps->weapon;

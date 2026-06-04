@@ -1830,6 +1830,10 @@ if (client->ps.stats[STAT_WEAPONS] & (1u << i)) {
 					break;
 				}
 			}
+			if ( g_gametype.integer == GT_LCS &&
+					( client->ps.stats[STAT_WEAPONS] & ( 1u << WP_MACHINEGUN ) ) ) {
+				client->ps.weapon = WP_MACHINEGUN;
+			}
 			// positively link the client, even if the command times are weird
 			VectorCopy(ent->client->ps.origin, ent->r.currentOrigin);
 
@@ -1969,4 +1973,3 @@ void ClientDisconnect( int clientNum ) {
 		BotAIShutdownClient( clientNum, qfalse );
 	}
 }
-
