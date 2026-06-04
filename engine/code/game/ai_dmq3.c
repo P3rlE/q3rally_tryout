@@ -4445,10 +4445,13 @@ void BotCheckAttack(bot_state_t *bs) {
 		fov = 50;
 	//
 	vectoangles(dir, angles);
-// STONELANCE
-//	if (!InFieldOfVision(bs->viewangles, fov, angles))
-	if (!InFieldOfVision(bs->cur_ps.viewangles, fov, angles))
-// END
+	if ( gametype == GT_LCS ) {
+		angles[PITCH] = bs->viewangles[PITCH];
+		if ( fov < 90 ) {
+			fov = 90;
+		}
+	}
+	if (!InFieldOfVision(bs->viewangles, fov, angles))
 		return;
 	BotAI_Trace(&bsptrace, bs->eye, NULL, NULL, bs->aimtarget, bs->client, CONTENTS_SOLID|CONTENTS_PLAYERCLIP);
 	if (bsptrace.fraction < 1 && bsptrace.ent != attackentity)
@@ -4459,10 +4462,7 @@ void BotCheckAttack(bot_state_t *bs) {
 	//get the start point shooting from
 	VectorCopy(bs->origin, start);
 	start[2] += bs->cur_ps.viewheight;
-// STONELANCE
-//	AngleVectors(bs->viewangles, forward, right, NULL);
-	AngleVectors(bs->cur_ps.viewangles, forward, right, NULL);
-// END
+	AngleVectors(bs->viewangles, forward, right, NULL);
 	start[0] += forward[0] * wi.offset[0] + right[0] * wi.offset[1];
 	start[1] += forward[1] * wi.offset[0] + right[1] * wi.offset[1];
 	start[2] += forward[2] * wi.offset[0] + right[2] * wi.offset[1] + wi.offset[2];
