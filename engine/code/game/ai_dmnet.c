@@ -224,12 +224,8 @@ static qboolean Bot_LcsShouldAvoidBattleEntry( bot_state_t *bs, const char **rea
 			}
 			return qtrue;
 		}
-		if ( threatProximity > 0.45f && remainingOpponents > 1 ) {
-			if ( reasonOut ) {
-				*reasonOut = "lcs_avoid_cluster";
-			}
-			return qtrue;
-		}
+		// Q3Rally Fix: Proximity-Check entfernt – mit mehreren Gegnern in der Arena
+		// griff threatProximity > 0.45f praktisch immer, wodurch Bots NIE kämpften.
 		if ( remainingOpponents > 2 && relativePosition < 0.35f ) {
 			if ( reasonOut ) {
 				*reasonOut = "lcs_avoid_last_place_risk";
