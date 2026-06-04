@@ -134,7 +134,7 @@ extern int g_gametype;
 // Q3Rally specific game type not defined in botlib headers.
 // Keep this value aligned with gametype_t in game/bg_public.h.
 #ifndef GT_DERBY
-#define GT_DERBY 4
+#define GT_DERBY 3
 #endif
 
 //========================================================================

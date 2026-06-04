@@ -2043,6 +2043,39 @@ int BotSynonymContext(bot_state_t *bs) {
 BotChooseWeapon
 ==================
 */
+static int BotFirstUsableFrontWeapon( playerState_t *ps ) {
+	static const int weaponPriority[] = {
+		WP_BFG,
+		WP_ROCKET_LAUNCHER,
+		WP_RAILGUN,
+		WP_LIGHTNING,
+		WP_PLASMAGUN,
+		WP_FLAME_THROWER,
+		WP_GRENADE_LAUNCHER,
+		WP_SHOTGUN,
+		WP_MACHINEGUN,
+		WP_GAUNTLET
+	};
+	int i, weapon;
+
+	if ( ps->weapon > WP_NONE
+			&& ps->weapon < RWP_SMOKE
+			&& ( ps->stats[STAT_WEAPONS] & ( 1u << ps->weapon ) )
+			&& ps->ammo[ps->weapon] ) {
+		return ps->weapon;
+	}
+
+	for ( i = 0; i < ARRAY_LEN( weaponPriority ); i++ ) {
+		weapon = weaponPriority[i];
+		if ( ( ps->stats[STAT_WEAPONS] & ( 1u << weapon ) )
+				&& ps->ammo[weapon] ) {
+			return weapon;
+		}
+	}
+
+	return WP_NONE;
+}
+
 void BotChooseWeapon(bot_state_t *bs) {
 	int newweaponnum;
 	int availabilityIndex = -1;
@@ -2122,10 +2155,10 @@ void BotChooseWeapon(bot_state_t *bs) {
 		// trap_BotChooseBestFightWeapon can return 0 (WP_NONE) - e.g. in LCS,
 		// where the fuzzy weapon weights do not resolve to a car weapon. Selecting
 		// weapon 0 deselects the car gun (the bot stops firing) and spams
-		// "weapon number out of range". Fall back to the weapon the car actually
+		// "weapon number out of range". Fall back to a weapon the car actually
 		// holds so the bot keeps shooting. Derby is excluded: it rams by design.
 		if ( newweaponnum <= 0 && gametype != GT_DERBY ) {
-			newweaponnum = bs->cur_ps.weapon;
+			newweaponnum = BotFirstUsableFrontWeapon( &bs->cur_ps );
 		}
 // END
 
