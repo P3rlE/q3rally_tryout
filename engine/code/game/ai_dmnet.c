@@ -2714,6 +2714,120 @@ void AIEnter_Seek_LTG(bot_state_t *bs, char *s) {
 	bs->ainode = AINode_Seek_LTG;
 }
 
+// Q3Rally Code Start
+// Forward declaration: Bot_CheckForObstacles is defined later in this file.
+// The derby/LCS car-roam helpers below use it so cars steer around / brake for
+// walls instead of driving straight into the first obstacle.
+int Bot_CheckForObstacles( bot_state_t *bs, vec3_t angles, int throttleChange );
+
+/*
+==================
+Bot_IsCarBrawlMode
+
+Demolition derby and last-car-standing are arena car-combat modes that are NOT
+rally races, so their bots never enter AINode_MoveToNextCheckpoint (it is gated
+by isRallyRace()). They run in AINode_Seek_LTG instead, which is where the
+car-aware driving below has to be applied.
+==================
+*/
+static qboolean Bot_IsCarBrawlMode( void ) {
+	return ( gametype == GT_DERBY || gametype == GT_LCS ) ? qtrue : qfalse;
+}
+
+/*
+==================
+Bot_NearestOpponentOrigin
+
+World origin of the closest living opponent. Pure distance test, independent of
+AAS reachability, so it still works on large open arenas where the item-based
+long term goal finder returns nothing.
+==================
+*/
+static qboolean Bot_NearestOpponentOrigin( bot_state_t *bs, vec3_t out ) {
+	int i;
+	float bestDistSq = 1.0e18f;
+	qboolean found = qfalse;
+
+	for ( i = 0; i < level.maxclients; i++ ) {
+		gentity_t *other = &g_entities[i];
+		vec3_t toOther;
+		float distSq;
+
+		if ( i == bs->client ) {
+			continue;
+		}
+		if ( level.clients[i].pers.connected != CON_CONNECTED ) {
+			continue;
+		}
+		if ( level.clients[i].sess.sessionTeam == TEAM_SPECTATOR ) {
+			continue;
+		}
+		if ( !other->inuse || !other->client || other->health <= 0 ) {
+			continue;
+		}
+
+		VectorSubtract( other->client->ps.origin, bs->cur_ps.origin, toOther );
+		distSq = VectorLengthSquared( toOther );
+		if ( distSq < bestDistSq ) {
+			bestDistSq = distSq;
+			VectorCopy( other->client->ps.origin, out );
+			found = qtrue;
+		}
+	}
+
+	return found;
+}
+
+/*
+==================
+Bot_DerbyDriveToward
+
+Steers the car toward worldTarget and applies throttle, routing the heading
+through Bot_CheckForObstacles so the car brakes / swerves for walls instead of
+getting stuck on them.
+==================
+*/
+static void Bot_DerbyDriveToward( bot_state_t *bs, const vec3_t worldTarget ) {
+	vec3_t dir, angles;
+	int throttleChange;
+
+	VectorSubtract( worldTarget, bs->cur_ps.origin, dir );
+	dir[2] = 0.0f;
+	if ( VectorNormalize( dir ) < 0.001f ) {
+		AngleVectors( bs->cur_ps.viewangles, dir, NULL, NULL );
+		dir[2] = 0.0f;
+		VectorNormalize( dir );
+	}
+	vectoangles( dir, angles );
+
+	throttleChange = Bot_CheckForObstacles( bs, angles, 1 );
+	VectorCopy( angles, bs->ideal_viewangles );
+
+	if ( throttleChange > 0 ) {
+		trap_EA_MoveForward( bs->client );
+	} else if ( throttleChange < 0 ) {
+		trap_EA_MoveBack( bs->client );
+	}
+}
+
+/*
+==================
+Bot_DerbyRoamDrive
+
+No item long term goal exists (common on large open arenas). Instead of standing
+still, drive toward the nearest opponent, or wander with BotRoamGoal when alone.
+==================
+*/
+static void Bot_DerbyRoamDrive( bot_state_t *bs ) {
+	vec3_t target;
+
+	if ( !Bot_NearestOpponentOrigin( bs, target ) ) {
+		BotRoamGoal( bs, target );
+	}
+	Bot_DerbyDriveToward( bs, target );
+}
+// END
+
 /*
 ==================
 AINode_Seek_LTG
@@ -2794,6 +2908,14 @@ int AINode_Seek_LTG(bot_state_t *bs)
 	BotTeamGoals(bs, qfalse);
 	//get the current long term goal
 	if (!BotLongTermGoal(bs, bs->tfl, qfalse, &goal)) {
+// Q3Rally Code Start
+		// Derby/LCS arenas frequently have no reachable item-based long term
+		// goal, which would otherwise leave the car standing still. Keep it
+		// moving (toward the nearest opponent) with car-aware avoidance.
+		if ( Bot_IsCarBrawlMode() ) {
+			Bot_DerbyRoamDrive( bs );
+		}
+// END
 		return qtrue;
 	}
 	//check for nearby goals periodicly
@@ -2858,7 +2980,11 @@ int AINode_Seek_LTG(bot_state_t *bs)
 	trap_BotMoveToGoal(&moveresult, bs->ms, &goal, bs->tfl);
 
 // Q3Rally Code Start
-	trap_EA_MoveForward( bs->entitynum );
+	// For car-brawl modes the throttle is issued at the end of the function
+	// (after the heading is resolved) so it can run through obstacle avoidance.
+	if ( !Bot_IsCarBrawlMode() ) {
+		trap_EA_MoveForward( bs->entitynum );
+	}
 
 //	Com_Printf( "bot %i moveresult: blocked %i, fail %i, view angle %f, movedir (%f %f %f)\n", moveresult.blocked, moveresult.failure, moveresult.ideal_viewangles[YAW], moveresult.movedir );
 // END
@@ -2904,6 +3030,24 @@ int AINode_Seek_LTG(bot_state_t *bs)
 		}
 		bs->ideal_viewangles[2] *= 0.5;
 	}
+// Q3Rally Code Start
+	// Apply car-aware throttle and wall avoidance for derby/LCS, using the
+	// heading the movement code just resolved into bs->ideal_viewangles. This
+	// is what keeps the car from driving straight into the first obstacle.
+	if ( Bot_IsCarBrawlMode() ) {
+		vec3_t carAngles;
+		int carThrottle;
+
+		VectorCopy( bs->ideal_viewangles, carAngles );
+		carThrottle = Bot_CheckForObstacles( bs, carAngles, 1 );
+		VectorCopy( carAngles, bs->ideal_viewangles );
+		if ( carThrottle > 0 ) {
+			trap_EA_MoveForward( bs->client );
+		} else if ( carThrottle < 0 ) {
+			trap_EA_MoveBack( bs->client );
+		}
+	}
+// END
 	//if the weapon is used for the bot movement
 	if (moveresult.flags & MOVERESULT_MOVEMENTWEAPON) bs->weaponnum = moveresult.weapon;
 	//
