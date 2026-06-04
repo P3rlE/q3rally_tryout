@@ -3013,6 +3013,7 @@ int BotWantsToRetreat(bot_state_t *bs) {
 	float lcsRelativePosition = 0.5f;
 	float lcsThreatProximity = 0.0f;
 	int lcsRemainingOpponents = 0;
+	int lcsUsableWeapon = WP_NONE;
 
 	if (gametype == GT_CTF) {
 		//always retreat when carrying a CTF flag
@@ -3059,6 +3060,15 @@ int BotWantsToRetreat(bot_state_t *bs) {
 
 	if ( BotGetLcsRiskMetrics(bs, &lcsRelativePosition, &lcsThreatProximity, &lcsRemainingOpponents) ) {
 		float retreatThreshold = 58.0f + g_botLcsEvasionBias.value * 12.0f;
+		lcsUsableWeapon = BotFirstUsableFrontWeapon( &bs->cur_ps );
+		if ( lcsUsableWeapon > WP_GAUNTLET
+				&& lcsUsableWeapon < RWP_SMOKE
+				&& bs->inventory[INVENTORY_HEALTH] >= 62 ) {
+			if ( lcsRemainingOpponents > 2 && lcsRelativePosition < 0.35f ) {
+				return qtrue;
+			}
+			return qfalse;
+		}
 		if ( lcsThreatProximity > 0.38f ) {
 			return qtrue;
 		}
@@ -3085,6 +3095,7 @@ int BotWantsToChase(bot_state_t *bs) {
 	float lcsRelativePosition = 0.5f;
 	float lcsThreatProximity = 0.0f;
 	int lcsRemainingOpponents = 0;
+	int lcsUsableWeapon = WP_NONE;
 
 	if (gametype == GT_CTF) {
 		//never chase when carrying a CTF flag
@@ -3130,6 +3141,12 @@ int BotWantsToChase(bot_state_t *bs) {
 	if ( BotGetLcsRiskMetrics(bs, &lcsRelativePosition, &lcsThreatProximity, &lcsRemainingOpponents) ) {
 		float aggressionThreshold = 62.0f + g_botLcsEvasionBias.value * 10.0f;
 		qboolean closeOpportunity = ( bs->inventory[ENEMY_HORIZONTAL_DIST] > 0 && bs->inventory[ENEMY_HORIZONTAL_DIST] < 260 );
+		lcsUsableWeapon = BotFirstUsableFrontWeapon( &bs->cur_ps );
+		if ( lcsUsableWeapon > WP_GAUNTLET
+				&& lcsUsableWeapon < RWP_SMOKE
+				&& bs->inventory[INVENTORY_HEALTH] >= 62 ) {
+			return qtrue;
+		}
 		if ( lcsRemainingOpponents <= 2 && lcsRelativePosition > 0.45f && closeOpportunity &&
 			lcsThreatProximity > 0.52f && BotAggression(bs) >= aggressionThreshold ) {
 			return qtrue;
