@@ -3,21 +3,38 @@ on: [push, pull_request]
 
 jobs:
   linux:
-    name: Linux
+    name: Linux ${{ matrix.arch }}
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, x86]
     steps:
     - uses: actions/checkout@v4
     - name: Install Dependencies
       run: |
+        if [ "${{ matrix.arch }}" = "x86" ]; then
+          sudo dpkg --add-architecture i386
+        fi
         sudo apt-get update
-        sudo apt-get install libsdl2-dev libcurl4-openssl-dev
+        if [ "${{ matrix.arch }}" = "x86" ]; then
+          sudo apt-get install -y gcc-multilib pkg-config libsdl2-dev:i386 libcurl4-openssl-dev:i386
+        else
+          sudo apt-get install -y pkg-config libsdl2-dev libcurl4-openssl-dev
+        fi
     - name: Compile
-      run: make release -j$(nproc) -C engine USE_CURL=1 USE_CURL_DLOPEN=0
+      run: |
+        if [ "${{ matrix.arch }}" = "x86" ]; then
+          PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig:/usr/share/pkgconfig \
+            make release -j$(nproc) -C engine ARCH=${{ matrix.arch }} USE_CURL=1 USE_CURL_DLOPEN=0
+        else
+          make release -j$(nproc) -C engine ARCH=${{ matrix.arch }} USE_CURL=1 USE_CURL_DLOPEN=0
+        fi
       env:
         ARCHIVE: 1
     - uses: actions/upload-artifact@v4
       with:
-        name: Linux
+        name: Linux-${{ matrix.arch }}
         path: engine/build/*.zip
   linux-arm64:
     name: Linux ARM64
@@ -27,33 +44,47 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install gcc-aarch64-linux-gnu
+        sudo apt-get install -y gcc-aarch64-linux-gnu
     - name: Compile
       run: make release -j$(nproc) ARCH=arm64 BUILD_CLIENT=0 BUILD_RENDERER_OPENGL1=0 BUILD_RENDERER_OPENGL2=0 CC=aarch64-linux-gnu-gcc -C engine USE_CURL=1 USE_CURL_DLOPEN=1
       env:
         ARCHIVE: 1
   windows:
-    name: Windows
+    name: Windows ${{ matrix.arch }}
     runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: x86_64
+          msystem: MINGW64
+          package_prefix: mingw-w64-x86_64
+          windres: x86_64-w64-mingw32-windres
+        - arch: x86
+          msystem: MINGW32
+          package_prefix: mingw-w64-i686
+          windres: i686-w64-mingw32-windres
     steps:
     - uses: actions/checkout@v4
-    - name: Install Dependencies
-      run: choco install zip curl
-    - name: Bundle cURL
-      shell: pwsh
-      run: |
-        $curlDll = Get-ChildItem -Path "$env:ChocolateyInstall\lib\curl" -Recurse -Filter "libcurl*.dll" | Select-Object -First 1
-        if (!$curlDll) {
-          throw "Could not find libcurl DLL installed by Chocolatey curl package"
-        }
-        Copy-Item $curlDll.FullName engine\libcurl-4.dll
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: ${{ matrix.msystem }}
+        update: true
+        install: >-
+          base-devel
+          git
+          make
+          zip
+          ${{ matrix.package_prefix }}-gcc
+          ${{ matrix.package_prefix }}-binutils
     - name: Compile
-      run: make release -j $env:NUMBER_OF_PROCESSORS -C engine USE_CURL=1 USE_CURL_DLOPEN=1 CLIENT_EXTRA_FILES=libcurl-4.dll
+      shell: msys2 {0}
+      run: make release -j$(nproc) -C engine PLATFORM=mingw32 ARCH=${{ matrix.arch }} WINDRES=${{ matrix.windres }} USE_CURL=1 USE_CURL_DLOPEN=0
       env:
         ARCHIVE: 1
     - uses: actions/upload-artifact@v4
       with:
-        name: Windows
+        name: Windows-${{ matrix.arch }}
         path: engine/build/*.zip
   macos:
     name: macOS
