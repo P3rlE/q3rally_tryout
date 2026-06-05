@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Q3Rally Dev Notes — v0.7c</title>
+<title>Q3Rally Dev Notes — v0.7d</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 :root {
@@ -106,7 +106,7 @@ footer a:hover{color:#fff}
     <div class="header-sub">Internal Development Notes</div>
     <div class="header-meta">
       <span class="badge orange">Internal</span>
-      <span class="badge">v0.7c</span>
+      <span class="badge">v0.7d</span>
     </div>
   </div>
 </header>
@@ -412,6 +412,25 @@ footer a:hover{color:#fff}
     <div class="card-desc">See the <strong>Bot Waypoints</strong> tab for the full analysis and proposed fixes. Root issue: nearest-waypoint search without a progress hint can snap to the wrong track section at overlaps.</div>
   </div>
 
+  <h3>v0.7d - Combat Bot Fixes</h3>
+  <div class="card">
+    <div class="card-title">Combat bots not firing or resupplying reliably <span class="status-chip done">Fixed in v0.7d</span></div>
+    <div class="card-desc">
+      <p><strong>Symptom:</strong> Bots visibly chased enemies and carried front weapons, but often failed to fire. On large combat maps they also kept fighting with weak or empty weapons instead of searching for better weapons or ammunition.</p>
+      <p><strong>Root cause:</strong> Combat movement kept bots locked into circular chase patterns and the supply logic only looked for nearby goals. If no useful item was close enough, the bot immediately re-entered combat instead of selecting a longer-distance weapon or ammo goal.</p>
+      <p><strong>Fix:</strong> Combat bots now use a phase-based attack movement that can break off, turn around, and re-engage. When supplies are needed, bots first check nearby goals and then fall back to a proper <code>LTG_GETITEM</code> weapon/ammo goal. Objective carriers keep their flag/cube duties. Elimination remains excluded because it is handled as a race/survival mode, not a regular combat mode.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">False Final Lap warning after first frag <span class="status-chip done">Fixed in v0.7d</span></div>
+    <div class="card-desc">
+      <p><strong>Symptom:</strong> <code>finallap.ogg</code> could play immediately after the first frag before the player's elimination position was known.</p>
+      <p><strong>Root cause:</strong> <code>CG_CheckEliminationWarning</code> fell back to <code>myPos = playersRemaining</code> when the local player position had not been initialized yet.</p>
+      <p><strong>Fix:</strong> The warning now exits early while the player position is unknown, preventing the false Final Lap audio trigger.</p>
+    </div>
+  </div>
+
   <h3>v0.7c — Gametype Enum Shift</h3>
   <div class="card">
     <div class="card-title">DM dedicated server cycling maps immediately <span class="status-chip done">Fixed in v0.7c</span></div>
@@ -606,7 +625,7 @@ footer a:hover{color:#fff}
 </main>
 
 <footer>
-  Q3Rally v0.7c &nbsp;·&nbsp; Internal Dev Notes &nbsp;·&nbsp;
+  Q3Rally v0.7d &nbsp;·&nbsp; Internal Dev Notes &nbsp;·&nbsp;
   <a href="http://www.q3rally.com">q3rally.com</a> &nbsp;·&nbsp;
   <a href="https://discord.gg/rX8Sxmh">Discord</a>
 </footer>

@@ -107,7 +107,7 @@ footer a:hover{color:#fff}
     <div class="header-meta">
       <span class="badge green">PHP</span>
       <span class="badge orange">Python</span>
-      <span class="badge">v0.7c</span>
+      <span class="badge">v0.7d</span>
     </div>
   </div>
 </header>
@@ -367,15 +367,15 @@ echo -n "your-secret" &gt; /path/to/ladder/version.password</pre>
      -H "Content-Type: application/json" \
      -d '{
        "password":    "your-secret",
-       "version":     "v0.7c",
-       "downloadUrl": "https://downloads.example.com/q3rally-v0.7c.zip",
-       "message":     "Bugfix release — gametype enum fixed."
+       "version":     "v0.7d",
+       "downloadUrl": "https://downloads.example.com/q3rally-v0.7d.zip",
+       "message":     "Bugfix release with improved combat bot behaviour."
      }'</pre>
   <p><code>downloadUrl</code> and <code>message</code> are optional and can be overwritten or cleared at any time.</p>
 
   <h3>Static File Alternative</h3>
   <p>If you don't need the update endpoint, a plain static text file works too — just place <code>version.txt</code> on any HTTPS server with the version string on the first line:</p>
-<pre>v0.7c</pre>
+<pre>v0.7d</pre>
   <p>Point <code>cl_updateEndpoint</code> to its URL. The client handles both JSON and plain-text responses.</p>
 
   <h3>Client CVars</h3>
@@ -391,7 +391,7 @@ echo -n "your-secret" &gt; /path/to/ladder/version.password</pre>
 </main>
 
 <footer>
-  Q3Rally v0.7c &nbsp;·&nbsp; Ladder Service Documentation &nbsp;·&nbsp;
+  Q3Rally v0.7d &nbsp;·&nbsp; Ladder Service Documentation &nbsp;·&nbsp;
   <a href="http://www.q3rally.com">q3rally.com</a> &nbsp;·&nbsp;
   <a href="https://discord.gg/rX8Sxmh">Discord</a>
 </footer>
