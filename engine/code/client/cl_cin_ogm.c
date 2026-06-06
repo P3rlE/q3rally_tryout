@@ -976,6 +976,22 @@ unsigned char  *Cin_OGM_GetOutput(int *outWidth, int *outHeight)
 	return g_ogm.outputBuffer;
 }
 
+float Cin_OGM_GetAspectRatio(int width, int height)
+{
+	if(width <= 0 || height <= 0)
+		return 0.0f;
+
+#ifdef USE_CIN_THEORA
+	if(g_ogm.videoStreamIsTheora && g_ogm.th_info.aspect_numerator > 0 && g_ogm.th_info.aspect_denominator > 0)
+	{
+		return ((float)width * (float)g_ogm.th_info.aspect_numerator) /
+				((float)height * (float)g_ogm.th_info.aspect_denominator);
+	}
+#endif
+
+	return (float)width / (float)height;
+}
+
 void Cin_OGM_Shutdown()
 {
 #ifdef USE_CIN_XVID
@@ -1021,6 +1037,11 @@ int Cin_OGM_Run(int time)
 unsigned char *Cin_OGM_GetOutput(int *outWidth, int *outHeight)
 {
 	return 0;
+}
+
+float Cin_OGM_GetAspectRatio(int width, int height)
+{
+	return 0.0f;
 }
 
 void Cin_OGM_Shutdown(void)

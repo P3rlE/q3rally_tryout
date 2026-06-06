@@ -131,6 +131,7 @@ typedef struct {
 	long				drawX, drawY;
     filetype_t			fileType;
 	qboolean			audioInitialized;
+	float				aspectRatio;
 } cin_cache;
 
 static cinematics_t		cin;
@@ -701,12 +702,22 @@ void Frame_yuv_to_rgb24(const unsigned char *y, const unsigned char *u, const un
 *		strides are not guaranteed to match the visible width.
 *
 ******************************************************************************/
+static byte CIN_ClampByte( int value )
+{
+	if(value < 0)
+		return 0;
+	if(value > 255)
+		return 255;
+	return (byte)value;
+}
+
 void Frame_yuv_to_rgb24_cropped(const unsigned char *y, const unsigned char *u, const unsigned char *v,
 		int width, int height, int offsetX, int offsetY, int y_stride, int uv_stride,
 		int yWShift, int uvWShift, int yHShift, int uvHShift, unsigned int *output)
 {
 	int		i, j, srcX, srcY, uvI;
-	long	r, g, b, YY;
+	int		yValue, uValue, vValue;
+	int		r, g, b;
 
 	for(j = 0; j < height; ++j)
 	{
@@ -714,27 +725,16 @@ void Frame_yuv_to_rgb24_cropped(const unsigned char *y, const unsigned char *u, 
 		for(i = 0; i < width; ++i)
 		{
 			srcX = i + offsetX;
-			YY = (long)(ROQ_YY_tab[(y[(srcX >> yWShift) + (srcY >> yHShift) * y_stride])]);
+			yValue = y[(srcX >> yWShift) + (srcY >> yHShift) * y_stride];
 			uvI = (srcX >> uvWShift) + (srcY >> uvHShift) * uv_stride;
+			uValue = u[uvI];
+			vValue = v[uvI];
 
-			r = (YY + ROQ_VR_tab[v[uvI]]) >> 6;
-			g = (YY + ROQ_UG_tab[u[uvI]] + ROQ_VG_tab[v[uvI]]) >> 6;
-			b = (YY + ROQ_UB_tab[u[uvI]]) >> 6;
+			r = (1904000 * yValue + 2609823 * vValue - 363703744) / 1635200;
+			g = (3827562 * yValue - 1287801 * uValue - 2672387 * vValue + 447306710) / 3287200;
+			b = (952000 * yValue + 1649289 * uValue - 225932192) / 817600;
 
-			if(r < 0)
-				r = 0;
-			if(g < 0)
-				g = 0;
-			if(b < 0)
-				b = 0;
-			if(r > 255)
-				r = 255;
-			if(g > 255)
-				g = 255;
-			if(b > 255)
-				b = 255;
-
-			*output = LittleLong((r) | (g << 8) | (b << 16) | (255 << 24));
+			*output = LittleLong(CIN_ClampByte(r) | (CIN_ClampByte(g) << 8) | (CIN_ClampByte(b) << 16) | (255 << 24));
 			++output;
 		}
 	}
@@ -1527,6 +1527,7 @@ if (cinTable[currentHandle].fileType == FT_OGM)
 			qboolean	resolutionChange = qfalse;
 
 			cinTable[currentHandle].buf = Cin_OGM_GetOutput(&newW, &newH);
+			cinTable[currentHandle].aspectRatio = Cin_OGM_GetAspectRatio(newW, newH);
 
 			if (newW != cinTable[currentHandle].CIN_WIDTH)
         	{
@@ -1789,6 +1790,7 @@ int CIN_PlayCinematic( const char *arg, int x, int y, int w, int h, int systemBi
 		cinTable[currentHandle].playonwalls = 1;
 		cinTable[currentHandle].silent = (systemBits & CIN_silent) != 0;
 		cinTable[currentHandle].shader = (systemBits & CIN_shader) != 0;
+		cinTable[currentHandle].aspectRatio = 0.0f;
 
 /* we will set this info after the first xvid-frame
 		cinTable[currentHandle].CIN_HEIGHT = DEFAULT_CIN_HEIGHT;
@@ -1834,6 +1836,7 @@ int CIN_PlayCinematic( const char *arg, int x, int y, int w, int h, int systemBi
 	cinTable[currentHandle].playonwalls = 1;
 	cinTable[currentHandle].silent = (systemBits & CIN_silent) != 0;
 	cinTable[currentHandle].shader = (systemBits & CIN_shader) != 0;
+	cinTable[currentHandle].aspectRatio = 0.0f;
 
 	if (cinTable[currentHandle].alterGameState) {
 		// close the menu
@@ -1970,7 +1973,9 @@ void CIN_DrawCinematic (int handle) {
 
 	if (cinTable[handle].alterGameState && w > 0 && h > 0 &&
 			cinTable[handle].CIN_WIDTH > 0 && cinTable[handle].CIN_HEIGHT > 0) {
-		float srcAspect = (float)cinTable[handle].CIN_WIDTH / (float)cinTable[handle].CIN_HEIGHT;
+		float srcAspect = cinTable[handle].aspectRatio > 0.0f ?
+				cinTable[handle].aspectRatio :
+				(float)cinTable[handle].CIN_WIDTH / (float)cinTable[handle].CIN_HEIGHT;
 		float dstAspect = w / h;
 
 		if (srcAspect > dstAspect) {
