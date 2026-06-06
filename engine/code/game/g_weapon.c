@@ -263,6 +263,21 @@ static void Flame_AddImpactEvent( gentity_t *ent, const vec3_t start, const vec3
 	tent->s.weapon = WP_FLAME_THROWER;
 }
 
+static void Flame_SetWeaponAxis( gentity_t *ent ) {
+	vec3_t		flameAngles;
+
+	VectorCopy( ent->client->ps.viewangles, flameAngles );
+	flameAngles[PITCH] = 0;
+	flameAngles[ROLL] = 0;
+
+	AngleVectors( flameAngles, forward, right, up );
+
+	VectorCopy( ent->s.pos.trBase, muzzle );
+	VectorMA( muzzle, CAR_HEIGHT / 2, up, muzzle );
+	VectorMA( muzzle, 14, forward, muzzle );
+	SnapVector( muzzle );
+}
+
 static void Weapon_FlameCone( gentity_t *ent, float range, float coneCos, int damage,
 		int minDamage, float oilRadius ) {
 	vec3_t		mins;
@@ -345,6 +360,7 @@ static void Weapon_FlameCone( gentity_t *ent, float range, float coneCos, int da
 }
 
 void Weapon_fire_flame (gentity_t *ent ) {
+	Flame_SetWeaponAxis( ent );
 	Weapon_FlameCone( ent, FLAME_CONE_RANGE, FLAME_CONE_COS,
 		FLAME_CONE_DAMAGE, FLAME_CONE_MIN_DAMAGE, FLAME_CONE_OIL_RADIUS );
 }
@@ -358,6 +374,7 @@ FLAME THROWER SPREAD - Altfire
 */
 
 void Weapon_cluster_fire_flame (gentity_t *ent ) {
+	Flame_SetWeaponAxis( ent );
 	Weapon_FlameCone( ent, FLAME_ALT_CONE_RANGE, FLAME_ALT_CONE_COS,
 		FLAME_ALT_CONE_DAMAGE, FLAME_ALT_CONE_MIN_DAMAGE, FLAME_ALT_CONE_OIL_RADIUS );
 }

@@ -1140,10 +1140,12 @@ static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
 	cent->trailTime = cg.time;
 
 	if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
-		VectorCopy( cg.refdefViewAngles, angles );
+		VectorCopy( cg.predictedPlayerEntity.lerpAngles, angles );
 	} else {
 		VectorCopy( cent->lerpAngles, angles );
 	}
+	angles[PITCH] = 0;
+	angles[ROLL] = 0;
 	AngleVectors( angles, forward, right, up );
 
 	VectorMA( origin, 520.0f, forward, end );
