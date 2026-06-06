@@ -1110,6 +1110,7 @@ is added.
 #define FLAME_STREAM_INTERVAL	28
 #define FLAME_STREAM_PUFFS		10
 #define FLAME_STREAM_CORE_PUFFS	4
+#define FLAME_STREAM_FILL_PUFFS	5
 
 static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
 	trace_t trace;
@@ -1173,6 +1174,24 @@ static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
 			140, cg.time, 0, LEF_PUFF_DONT_SCALE, cgs.media.flameBallShader );
 	}
 
+	for ( i = 0; i < FLAME_STREAM_FILL_PUFFS; i++ ) {
+		frac = ( 0.16f + 0.08f * (float)i ) * trace.fraction;
+		VectorMA( origin, 520.0f * frac, forward, point );
+
+		jitter = 1.5f + 10.0f * frac;
+		VectorMA( point, crandom() * jitter, right, point );
+		VectorMA( point, crandom() * jitter * 0.45f, up, point );
+
+		VectorScale( forward, 65.0f + 45.0f * random(), velocity );
+		VectorMA( velocity, crandom() * 12.0f, right, velocity );
+		VectorMA( velocity, crandom() * 6.0f, up, velocity );
+
+		radius = 13.0f + 26.0f * frac;
+		CG_SmokePuff( point, velocity, radius,
+			1.0f, 0.76f + random() * 0.20f, 0.10f, 0.78f,
+			155, cg.time, 0, LEF_PUFF_DONT_SCALE, cgs.media.flameBallShader );
+	}
+
 	for ( i = 0; i < FLAME_STREAM_PUFFS; i++ ) {
 		frac = ( 0.04f + 0.09f * (float)i ) * trace.fraction;
 		VectorMA( origin, 520.0f * frac, forward, point );
@@ -1195,6 +1214,7 @@ static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
 #undef FLAME_STREAM_INTERVAL
 #undef FLAME_STREAM_PUFFS
 #undef FLAME_STREAM_CORE_PUFFS
+#undef FLAME_STREAM_FILL_PUFFS
 
 /*
 ================
