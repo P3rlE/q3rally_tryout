@@ -59,11 +59,9 @@ jobs:
         - arch: x86_64
           msystem: MINGW64
           package_prefix: mingw-w64-x86_64
-          windres: x86_64-w64-mingw32-windres
         - arch: x86
           msystem: MINGW32
           package_prefix: mingw-w64-i686
-          windres: i686-w64-mingw32-windres
     steps:
     - uses: actions/checkout@v4
     - uses: msys2/setup-msys2@v2
@@ -79,7 +77,9 @@ jobs:
           ${{ matrix.package_prefix }}-binutils
     - name: Compile
       shell: msys2 {0}
-      run: make release -j$(nproc) -C engine PLATFORM=mingw32 ARCH=${{ matrix.arch }} WINDRES=${{ matrix.windres }} USE_CURL=1 USE_CURL_DLOPEN=0
+      run: |
+        command -v windres
+        make release -j$(nproc) -C engine PLATFORM=mingw32 ARCH=${{ matrix.arch }} WINDRES=windres USE_CURL=1 USE_CURL_DLOPEN=0
       env:
         ARCHIVE: 1
     - uses: actions/upload-artifact@v4
