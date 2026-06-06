@@ -393,7 +393,7 @@ FLAME THROWER SIDE BURST - Altfire
 =======================================================================
 */
 
-void Weapon_cluster_fire_flame (gentity_t *ent ) {
+void Weapon_fire_flame_side_burst (gentity_t *ent ) {
 	Flame_SetSideWeaponAxis( ent, -1.0f );
 	Weapon_FlameCone( ent, FLAME_ALT_CONE_RANGE, FLAME_ALT_CONE_COS,
 		FLAME_ALT_CONE_DAMAGE, FLAME_ALT_CONE_MIN_DAMAGE, FLAME_ALT_CONE_OIL_RADIUS );
@@ -1840,7 +1840,7 @@ void FireAltWeapon( gentity_t *ent ) {
                weapon_bfg_alt_fire( ent );
                break;
     case WP_FLAME_THROWER:
-        Weapon_cluster_fire_flame( ent );
+        Weapon_fire_flame_side_burst( ent );
         break;
 
 #ifdef MISSIONPACK
