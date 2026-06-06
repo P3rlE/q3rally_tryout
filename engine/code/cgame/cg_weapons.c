@@ -1107,6 +1107,9 @@ reuses the existing fire trail assets until a dedicated flame chunk system
 is added.
 ========================================================================
 */
+#define FLAME_STREAM_INTERVAL	28
+#define FLAME_STREAM_PUFFS		10
+
 static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
 	trace_t trace;
 	vec3_t angles;
@@ -1132,9 +1135,9 @@ static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
 	}
 
 	if ( cent->trailTime <= 0 || cent->trailTime > cg.time || cg.time - cent->trailTime > 200 ) {
-		cent->trailTime = cg.time - 35;
+		cent->trailTime = cg.time - FLAME_STREAM_INTERVAL;
 	}
-	if ( cg.time - cent->trailTime < 35 ) {
+	if ( cg.time - cent->trailTime < FLAME_STREAM_INTERVAL ) {
 		return;
 	}
 	cent->trailTime = cg.time;
@@ -1151,24 +1154,27 @@ static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
 	VectorMA( origin, 520.0f, forward, end );
 	CG_Trace( &trace, origin, NULL, NULL, end, cent->currentState.number, MASK_SHOT );
 
-	for ( i = 0; i < 7; i++ ) {
-		frac = ( 0.08f + 0.12f * (float)i ) * trace.fraction;
+	for ( i = 0; i < FLAME_STREAM_PUFFS; i++ ) {
+		frac = ( 0.04f + 0.09f * (float)i ) * trace.fraction;
 		VectorMA( origin, 520.0f * frac, forward, point );
 
-		jitter = 2.0f + 18.0f * frac;
+		jitter = 1.5f + 14.0f * frac;
 		VectorMA( point, crandom() * jitter, right, point );
 		VectorMA( point, crandom() * jitter * 0.5f, up, point );
 
-		VectorScale( forward, 90.0f + 80.0f * random(), velocity );
-		VectorMA( velocity, crandom() * 20.0f, right, velocity );
-		VectorMA( velocity, crandom() * 10.0f, up, velocity );
+		VectorScale( forward, 75.0f + 55.0f * random(), velocity );
+		VectorMA( velocity, crandom() * 16.0f, right, velocity );
+		VectorMA( velocity, crandom() * 8.0f, up, velocity );
 
-		radius = 10.0f + 26.0f * frac;
+		radius = 12.0f + 30.0f * frac;
 		CG_SmokePuff( point, velocity, radius,
-			1.0f, 0.70f + random() * 0.25f, 0.10f, 0.75f,
-			160, cg.time, 0, LEF_PUFF_DONT_SCALE, cgs.media.flameBallShader );
+			1.0f, 0.70f + random() * 0.25f, 0.10f, 0.82f,
+			180, cg.time, 0, LEF_PUFF_DONT_SCALE, cgs.media.flameBallShader );
 	}
 }
+
+#undef FLAME_STREAM_INTERVAL
+#undef FLAME_STREAM_PUFFS
 
 /*
 ================
