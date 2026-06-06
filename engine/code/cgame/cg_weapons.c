@@ -1216,6 +1216,89 @@ static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
 #undef FLAME_STREAM_CORE_PUFFS
 #undef FLAME_STREAM_FILL_PUFFS
 
+#define FLAME_SIDE_BURST_RANGE	300.0f
+#define FLAME_SIDE_BURST_PUFFS	12
+
+static void CG_FlameThrowerSideBurstStream( centity_t *cent, const vec3_t carForward,
+		const vec3_t right, const vec3_t up, float side ) {
+	trace_t trace;
+	vec3_t origin;
+	vec3_t dir;
+	vec3_t end;
+	vec3_t point;
+	vec3_t velocity;
+	int i;
+	float frac;
+	float jitter;
+	float radius;
+
+	VectorCopy( cent->lerpOrigin, origin );
+	if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
+		VectorCopy( cg.predictedPlayerEntity.lerpOrigin, origin );
+	}
+
+	VectorMA( origin, CAR_HEIGHT / 2, up, origin );
+	VectorMA( origin, 8, carForward, origin );
+	VectorMA( origin, side * ( CAR_WIDTH / 2 + 4 ), right, origin );
+
+	if ( CG_PointContents( origin, cent->currentState.number ) & ( CONTENTS_WATER | CONTENTS_SLIME | CONTENTS_LAVA ) ) {
+		return;
+	}
+
+	VectorScale( right, side, dir );
+	VectorMA( origin, FLAME_SIDE_BURST_RANGE, dir, end );
+	CG_Trace( &trace, origin, NULL, NULL, end, cent->currentState.number, MASK_SHOT );
+
+	for ( i = 0; i < FLAME_SIDE_BURST_PUFFS; i++ ) {
+		frac = ( 0.03f + 0.075f * (float)i ) * trace.fraction;
+		VectorMA( origin, FLAME_SIDE_BURST_RANGE * frac, dir, point );
+
+		jitter = 1.5f + 13.0f * frac;
+		VectorMA( point, crandom() * jitter, carForward, point );
+		VectorMA( point, crandom() * jitter * 0.45f, up, point );
+
+		VectorScale( dir, 80.0f + 60.0f * random(), velocity );
+		VectorMA( velocity, crandom() * 14.0f, carForward, velocity );
+		VectorMA( velocity, crandom() * 7.0f, up, velocity );
+
+		radius = 12.0f + 26.0f * frac;
+		CG_SmokePuff( point, velocity, radius,
+			1.0f, 0.72f + random() * 0.22f, 0.10f, 0.82f,
+			170, cg.time, 0, LEF_PUFF_DONT_SCALE, cgs.media.flameBallShader );
+	}
+
+	trap_R_AddLightToScene( origin, 160 + ( rand() & 31 ), 1.0f, 0.45f, 0.12f );
+}
+
+static void CG_FlameThrowerSideBurst( centity_t *cent ) {
+	vec3_t angles;
+	vec3_t carForward;
+	vec3_t right;
+	vec3_t up;
+
+	if ( cent->currentState.weapon != WP_FLAME_THROWER ) {
+		return;
+	}
+	if ( cg_noProjectileTrail.integer ) {
+		return;
+	}
+
+	if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
+		VectorCopy( cg.predictedPlayerEntity.lerpAngles, angles );
+	} else {
+		VectorCopy( cent->lerpAngles, angles );
+	}
+	angles[PITCH] = 0;
+	angles[ROLL] = 0;
+	AngleVectors( angles, carForward, right, up );
+
+	CG_FlameThrowerSideBurstStream( cent, carForward, right, up, -1.0f );
+	CG_FlameThrowerSideBurstStream( cent, carForward, right, up, 1.0f );
+}
+
+#undef FLAME_SIDE_BURST_RANGE
+#undef FLAME_SIDE_BURST_PUFFS
+
 /*
 ================
 CG_LightningArc
@@ -1450,7 +1533,9 @@ void CG_AddPlayerWeapon( refEntity_t *parent, playerState_t *ps, centity_t *cent
 		cent->currentState.number != cg.predictedPlayerState.clientNum ) {
 		// add lightning bolt
 		CG_LightningBolt( nonPredictedCent, flash.origin );
-		CG_FlameThrowerStream( nonPredictedCent, flash.origin );
+		if ( nonPredictedCent->currentState.eFlags & EF_FIRING ) {
+			CG_FlameThrowerStream( nonPredictedCent, flash.origin );
+		}
 
 		if ( weapon->flashDlightColor[0] || weapon->flashDlightColor[1] || weapon->flashDlightColor[2] ) {
 			trap_R_AddLightToScene( flash.origin, 300 + (rand()&31), weapon->flashDlightColor[0],
@@ -1930,6 +2015,10 @@ void CG_FireAltWeapon( centity_t *cent ) {
 		{
 			trap_S_StartSound( NULL, ent->number, CHAN_WEAPON, weap->flashSound[c] );
 		}
+	}
+
+	if ( ent->weapon == WP_FLAME_THROWER ) {
+		CG_FlameThrowerSideBurst( cent );
 	}
 
 	// do brass ejection

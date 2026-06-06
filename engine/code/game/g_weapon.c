@@ -144,11 +144,11 @@ FLAME THROWER
 #define FLAME_CONE_MIN_DAMAGE         4
 #define FLAME_CONE_OIL_RADIUS         96.0f
 
-#define FLAME_ALT_CONE_RANGE          360.0f
-#define FLAME_ALT_CONE_COS            0.68f
-#define FLAME_ALT_CONE_DAMAGE         12
+#define FLAME_ALT_CONE_RANGE          300.0f
+#define FLAME_ALT_CONE_COS            0.72f
+#define FLAME_ALT_CONE_DAMAGE         9
 #define FLAME_ALT_CONE_MIN_DAMAGE     3
-#define FLAME_ALT_CONE_OIL_RADIUS     128.0f
+#define FLAME_ALT_CONE_OIL_RADIUS     92.0f
 
 static gentity_t *Flame_ResolveHitEntity( gentity_t *ent ) {
 	if ( ent && ( ent->flags & FL_EXTRA_BBOX ) ) {
@@ -278,6 +278,26 @@ static void Flame_SetWeaponAxis( gentity_t *ent ) {
 	SnapVector( muzzle );
 }
 
+static void Flame_SetSideWeaponAxis( gentity_t *ent, float side ) {
+	vec3_t		flameAngles;
+	vec3_t		carForward;
+	vec3_t		sideDir;
+
+	VectorCopy( ent->client->ps.viewangles, flameAngles );
+	flameAngles[PITCH] = 0;
+	flameAngles[ROLL] = 0;
+
+	AngleVectors( flameAngles, carForward, right, up );
+	VectorScale( right, side, sideDir );
+	VectorCopy( sideDir, forward );
+
+	VectorCopy( ent->s.pos.trBase, muzzle );
+	VectorMA( muzzle, CAR_HEIGHT / 2, up, muzzle );
+	VectorMA( muzzle, 8, carForward, muzzle );
+	VectorMA( muzzle, side * ( CAR_WIDTH / 2 + 4 ), right, muzzle );
+	SnapVector( muzzle );
+}
+
 static void Weapon_FlameCone( gentity_t *ent, float range, float coneCos, int damage,
 		int minDamage, float oilRadius ) {
 	vec3_t		mins;
@@ -368,13 +388,16 @@ void Weapon_fire_flame (gentity_t *ent ) {
 /*
 =======================================================================
 
-FLAME THROWER SPREAD - Altfire
+FLAME THROWER SIDE BURST - Altfire
 
 =======================================================================
 */
 
 void Weapon_cluster_fire_flame (gentity_t *ent ) {
-	Flame_SetWeaponAxis( ent );
+	Flame_SetSideWeaponAxis( ent, -1.0f );
+	Weapon_FlameCone( ent, FLAME_ALT_CONE_RANGE, FLAME_ALT_CONE_COS,
+		FLAME_ALT_CONE_DAMAGE, FLAME_ALT_CONE_MIN_DAMAGE, FLAME_ALT_CONE_OIL_RADIUS );
+	Flame_SetSideWeaponAxis( ent, 1.0f );
 	Weapon_FlameCone( ent, FLAME_ALT_CONE_RANGE, FLAME_ALT_CONE_COS,
 		FLAME_ALT_CONE_DAMAGE, FLAME_ALT_CONE_MIN_DAMAGE, FLAME_ALT_CONE_OIL_RADIUS );
 }
