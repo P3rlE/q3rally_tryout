@@ -1581,23 +1581,25 @@ qboolean CIN_TheCheckExtension(char *filename, int size)
 {
 	enum
 	{
+#if defined(USE_CODEC_VORBIS) && (defined(USE_CIN_XVID) || defined(USE_CIN_THEORA))
+		CIN_ogv,
+		CIN_ogm,
+#endif
 		CIN_RoQ,
 		CIN_roq,
-#if defined(USE_CODEC_VORBIS) && (defined(USE_CIN_XVID) || defined(USE_CIN_THEORA))
-		CIN_ogm,
-		CIN_ogv,
-#endif
 		CIN_MAX
 	};
-	const char cin_ext[CIN_MAX][4] = { "RoQ\0", "roq\0"
+	const char cin_ext[CIN_MAX][4] = {
 #if defined(USE_CODEC_VORBIS) && (defined(USE_CIN_XVID) || defined(USE_CIN_THEORA))
-		, "ogm\0", "ogv\0"
+		"ogv\0", "ogm\0",
 #endif
+		"RoQ\0", "roq\0"
 	};
-	qboolean skipCin[CIN_MAX] = { qfalse, qfalse
+	qboolean skipCin[CIN_MAX] = {
 #if defined(USE_CODEC_VORBIS) && (defined(USE_CIN_XVID) || defined(USE_CIN_THEORA))
-		, qfalse, qfalse
+		qfalse, qfalse,
 #endif
+		qfalse, qfalse
 	};
 	fileHandle_t hnd;
 	char fn[MAX_QPATH];
@@ -1613,14 +1615,20 @@ qboolean CIN_TheCheckExtension(char *filename, int size)
 		extptr = &fn[stringlen];
 
 		extptr[0] = '.';
+#if defined(USE_CODEC_VORBIS) && (defined(USE_CIN_XVID) || defined(USE_CIN_THEORA))
+		extptr[1] = 'o';
+		extptr[2] = 'g';
+		extptr[3] = 'v';
+		skipCin[CIN_ogv] = qtrue;
+#else
 		extptr[1] = 'R';
 		extptr[2] = 'o';
 		extptr[3] = 'Q';
+		skipCin[CIN_RoQ] = qtrue;
+#endif
 		extptr[4] = '\0';
 
 		stringlen += 4;
-
-		skipCin[CIN_RoQ] = qtrue;
 	}
 
 	FS_FOpenFileRead(fn, &hnd, qtrue);
@@ -1942,7 +1950,9 @@ void CL_PlayCinematic_f(void) {
 	arg = Cmd_Argv( 1 );
 	s = Cmd_Argv(2);
 
-	if ((s && s[0] == '1') || Q_stricmp(arg,"demoend.roq")==0 || Q_stricmp(arg,"end.roq")==0) {
+	if ((s && s[0] == '1') ||
+		Q_stricmp(arg, "demoend") == 0 || Q_stricmp(arg, "demoend.roq") == 0 || Q_stricmp(arg, "demoend.ogv") == 0 ||
+		Q_stricmp(arg, "end") == 0 || Q_stricmp(arg, "end.roq") == 0 || Q_stricmp(arg, "end.ogv") == 0) {
 		bits |= CIN_hold;
 	}
 	if (s && s[0] == '2') {
