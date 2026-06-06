@@ -1216,8 +1216,8 @@ static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
 #undef FLAME_STREAM_CORE_PUFFS
 #undef FLAME_STREAM_FILL_PUFFS
 
-#define FLAME_SIDE_BURST_RANGE	300.0f
-#define FLAME_SIDE_BURST_PUFFS	12
+#define FLAME_SIDE_BURST_RANGE	150.0f
+#define FLAME_SIDE_BURST_PUFFS	16
 
 static void CG_FlameThrowerSideBurstStream( centity_t *cent, const vec3_t carForward,
 		const vec3_t right, const vec3_t up, float side ) {
@@ -1250,20 +1250,20 @@ static void CG_FlameThrowerSideBurstStream( centity_t *cent, const vec3_t carFor
 	CG_Trace( &trace, origin, NULL, NULL, end, cent->currentState.number, MASK_SHOT );
 
 	for ( i = 0; i < FLAME_SIDE_BURST_PUFFS; i++ ) {
-		frac = ( 0.03f + 0.075f * (float)i ) * trace.fraction;
+		frac = ( 0.02f + 0.06f * (float)i ) * trace.fraction;
 		VectorMA( origin, FLAME_SIDE_BURST_RANGE * frac, dir, point );
 
-		jitter = 1.5f + 13.0f * frac;
+		jitter = 1.0f + 9.0f * frac;
 		VectorMA( point, crandom() * jitter, carForward, point );
 		VectorMA( point, crandom() * jitter * 0.45f, up, point );
 
-		VectorScale( dir, 80.0f + 60.0f * random(), velocity );
-		VectorMA( velocity, crandom() * 14.0f, carForward, velocity );
-		VectorMA( velocity, crandom() * 7.0f, up, velocity );
+		VectorScale( dir, 60.0f + 40.0f * random(), velocity );
+		VectorMA( velocity, crandom() * 10.0f, carForward, velocity );
+		VectorMA( velocity, crandom() * 5.0f, up, velocity );
 
-		radius = 12.0f + 26.0f * frac;
+		radius = 13.0f + 24.0f * frac;
 		CG_SmokePuff( point, velocity, radius,
-			1.0f, 0.72f + random() * 0.22f, 0.10f, 0.82f,
+			1.0f, 0.74f + random() * 0.22f, 0.10f, 0.86f,
 			170, cg.time, 0, LEF_PUFF_DONT_SCALE, cgs.media.flameBallShader );
 	}
 

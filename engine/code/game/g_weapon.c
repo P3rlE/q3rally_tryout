@@ -144,11 +144,11 @@ FLAME THROWER
 #define FLAME_CONE_MIN_DAMAGE         4
 #define FLAME_CONE_OIL_RADIUS         96.0f
 
-#define FLAME_ALT_CONE_RANGE          300.0f
+#define FLAME_ALT_CONE_RANGE          150.0f
 #define FLAME_ALT_CONE_COS            0.72f
 #define FLAME_ALT_CONE_DAMAGE         9
 #define FLAME_ALT_CONE_MIN_DAMAGE     3
-#define FLAME_ALT_CONE_OIL_RADIUS     92.0f
+#define FLAME_ALT_CONE_OIL_RADIUS     64.0f
 
 static gentity_t *Flame_ResolveHitEntity( gentity_t *ent ) {
 	if ( ent && ( ent->flags & FL_EXTRA_BBOX ) ) {
