@@ -694,6 +694,54 @@ void Frame_yuv_to_rgb24(const unsigned char *y, const unsigned char *u, const un
 
 /******************************************************************************
 *
+* Function:	Frame_yuv_to_rgb24_cropped
+*
+* Description: Used by the Theora(ogm) code. Theora frames can contain a
+*		larger encoded frame with a display rectangle inside it, and the plane
+*		strides are not guaranteed to match the visible width.
+*
+******************************************************************************/
+void Frame_yuv_to_rgb24_cropped(const unsigned char *y, const unsigned char *u, const unsigned char *v,
+		int width, int height, int offsetX, int offsetY, int y_stride, int uv_stride,
+		int yWShift, int uvWShift, int yHShift, int uvHShift, unsigned int *output)
+{
+	int		i, j, srcX, srcY, uvI;
+	long	r, g, b, YY;
+
+	for(j = 0; j < height; ++j)
+	{
+		srcY = j + offsetY;
+		for(i = 0; i < width; ++i)
+		{
+			srcX = i + offsetX;
+			YY = (long)(ROQ_YY_tab[(y[(srcX >> yWShift) + (srcY >> yHShift) * y_stride])]);
+			uvI = (srcX >> uvWShift) + (srcY >> uvHShift) * uv_stride;
+
+			r = (YY + ROQ_VR_tab[v[uvI]]) >> 6;
+			g = (YY + ROQ_UG_tab[u[uvI]] + ROQ_VG_tab[v[uvI]]) >> 6;
+			b = (YY + ROQ_UB_tab[u[uvI]]) >> 6;
+
+			if(r < 0)
+				r = 0;
+			if(g < 0)
+				g = 0;
+			if(b < 0)
+				b = 0;
+			if(r > 255)
+				r = 255;
+			if(g > 255)
+				g = 255;
+			if(b > 255)
+				b = 255;
+
+			*output = LittleLong((r) | (g << 8) | (b << 16) | (255 << 24));
+			++output;
+		}
+	}
+}
+
+/******************************************************************************
+*
 * Function:		
 *
 * Description:	
@@ -1919,6 +1967,23 @@ void CIN_DrawCinematic (int handle) {
 	w = cinTable[handle].width;
 	h = cinTable[handle].height;
 	buf = cinTable[handle].buf;
+
+	if (cinTable[handle].alterGameState && w > 0 && h > 0 &&
+			cinTable[handle].CIN_WIDTH > 0 && cinTable[handle].CIN_HEIGHT > 0) {
+		float srcAspect = (float)cinTable[handle].CIN_WIDTH / (float)cinTable[handle].CIN_HEIGHT;
+		float dstAspect = w / h;
+
+		if (srcAspect > dstAspect) {
+			float newH = w / srcAspect;
+			y += (h - newH) * 0.5f;
+			h = newH;
+		} else if (srcAspect < dstAspect) {
+			float newW = h * srcAspect;
+			x += (w - newW) * 0.5f;
+			w = newW;
+		}
+	}
+
 	SCR_AdjustFrom640( &x, &y, &w, &h );
 
 	if (cinTable[handle].dirty && (cinTable[handle].CIN_WIDTH != cinTable[handle].drawX || cinTable[handle].CIN_HEIGHT != cinTable[handle].drawY)) {
