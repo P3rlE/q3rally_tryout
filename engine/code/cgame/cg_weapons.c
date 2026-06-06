@@ -1108,8 +1108,6 @@ is added.
 ========================================================================
 */
 static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
-	static qboolean initialized = qfalse;
-	static qhandle_t shaders[3];
 	trace_t trace;
 	vec3_t angles;
 	vec3_t forward;
@@ -1117,9 +1115,11 @@ static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
 	vec3_t up;
 	vec3_t end;
 	vec3_t point;
+	vec3_t velocity;
 	int i;
 	float frac;
 	float jitter;
+	float radius;
 
 	if ( cent->currentState.weapon != WP_FLAME_THROWER ) {
 		return;
@@ -1131,17 +1131,10 @@ static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
 		return;
 	}
 
-	if ( !initialized ) {
-		shaders[0] = trap_R_RegisterShader( "models/rearfire/flametrail01" );
-		shaders[1] = trap_R_RegisterShader( "models/rearfire/flametrail02" );
-		shaders[2] = trap_R_RegisterShader( "models/rearfire/flametrail03" );
-		initialized = qtrue;
-	}
-
 	if ( cent->trailTime <= 0 || cent->trailTime > cg.time || cg.time - cent->trailTime > 200 ) {
-		cent->trailTime = cg.time - 50;
+		cent->trailTime = cg.time - 35;
 	}
-	if ( cg.time - cent->trailTime < 50 ) {
+	if ( cg.time - cent->trailTime < 35 ) {
 		return;
 	}
 	cent->trailTime = cg.time;
@@ -1156,15 +1149,22 @@ static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
 	VectorMA( origin, 520.0f, forward, end );
 	CG_Trace( &trace, origin, NULL, NULL, end, cent->currentState.number, MASK_SHOT );
 
-	for ( i = 0; i < 5; i++ ) {
-		frac = ( 0.18f + 0.15f * (float)i ) * trace.fraction;
+	for ( i = 0; i < 7; i++ ) {
+		frac = ( 0.08f + 0.12f * (float)i ) * trace.fraction;
 		VectorMA( origin, 520.0f * frac, forward, point );
 
-		jitter = 6.0f + 28.0f * frac;
+		jitter = 2.0f + 18.0f * frac;
 		VectorMA( point, crandom() * jitter, right, point );
 		VectorMA( point, crandom() * jitter * 0.5f, up, point );
 
-		CreateFireEntity( point, vec3_origin, cgs.media.fireModel, shaders[rand() % 3], 220 );
+		VectorScale( forward, 90.0f + 80.0f * random(), velocity );
+		VectorMA( velocity, crandom() * 20.0f, right, velocity );
+		VectorMA( velocity, crandom() * 10.0f, up, velocity );
+
+		radius = 10.0f + 26.0f * frac;
+		CG_SmokePuff( point, velocity, radius,
+			1.0f, 0.70f + random() * 0.25f, 0.10f, 0.75f,
+			160, cg.time, 0, LEF_PUFF_DONT_SCALE, cgs.media.flameBallShader );
 	}
 }
 
