@@ -1099,6 +1099,76 @@ static void CG_LightningBolt( centity_t *cent, vec3_t origin ) {
 }
 
 /*
+========================================================================
+CG_FlameThrowerStream
+
+Temporary stream rendering for the server-side flamethrower cone. This
+reuses the existing fire trail assets until a dedicated flame chunk system
+is added.
+========================================================================
+*/
+static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
+	static qboolean initialized = qfalse;
+	static qhandle_t shaders[3];
+	trace_t trace;
+	vec3_t angles;
+	vec3_t forward;
+	vec3_t right;
+	vec3_t up;
+	vec3_t end;
+	vec3_t point;
+	int i;
+	float frac;
+	float jitter;
+
+	if ( cent->currentState.weapon != WP_FLAME_THROWER ) {
+		return;
+	}
+	if ( cg_noProjectileTrail.integer ) {
+		return;
+	}
+	if ( CG_PointContents( origin, cent->currentState.number ) & ( CONTENTS_WATER | CONTENTS_SLIME | CONTENTS_LAVA ) ) {
+		return;
+	}
+
+	if ( !initialized ) {
+		shaders[0] = trap_R_RegisterShader( "models/rearfire/flametrail01" );
+		shaders[1] = trap_R_RegisterShader( "models/rearfire/flametrail02" );
+		shaders[2] = trap_R_RegisterShader( "models/rearfire/flametrail03" );
+		initialized = qtrue;
+	}
+
+	if ( cent->trailTime <= 0 || cent->trailTime > cg.time || cg.time - cent->trailTime > 200 ) {
+		cent->trailTime = cg.time - 50;
+	}
+	if ( cg.time - cent->trailTime < 50 ) {
+		return;
+	}
+	cent->trailTime = cg.time;
+
+	if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
+		VectorCopy( cg.refdefViewAngles, angles );
+	} else {
+		VectorCopy( cent->lerpAngles, angles );
+	}
+	AngleVectors( angles, forward, right, up );
+
+	VectorMA( origin, 520.0f, forward, end );
+	CG_Trace( &trace, origin, NULL, NULL, end, cent->currentState.number, MASK_SHOT );
+
+	for ( i = 0; i < 5; i++ ) {
+		frac = ( 0.18f + 0.15f * (float)i ) * trace.fraction;
+		VectorMA( origin, 520.0f * frac, forward, point );
+
+		jitter = 6.0f + 28.0f * frac;
+		VectorMA( point, crandom() * jitter, right, point );
+		VectorMA( point, crandom() * jitter * 0.5f, up, point );
+
+		CreateFireEntity( point, vec3_origin, cgs.media.fireModel, shaders[rand() % 3], 220 );
+	}
+}
+
+/*
 ================
 CG_LightningArc
 
@@ -1289,7 +1359,7 @@ void CG_AddPlayerWeapon( refEntity_t *parent, playerState_t *ps, centity_t *cent
 	}
 
 	// add the flash
-	if ( ( weaponNum == WP_LIGHTNING || weaponNum == WP_GAUNTLET )
+	if ( ( weaponNum == WP_LIGHTNING || weaponNum == WP_GAUNTLET || weaponNum == WP_FLAME_THROWER )
     
 		&& ( nonPredictedCent->currentState.eFlags & EF_FIRING ) ) 
 	{
@@ -1332,6 +1402,7 @@ void CG_AddPlayerWeapon( refEntity_t *parent, playerState_t *ps, centity_t *cent
 		cent->currentState.number != cg.predictedPlayerState.clientNum ) {
 		// add lightning bolt
 		CG_LightningBolt( nonPredictedCent, flash.origin );
+		CG_FlameThrowerStream( nonPredictedCent, flash.origin );
 
 		if ( weapon->flashDlightColor[0] || weapon->flashDlightColor[1] || weapon->flashDlightColor[2] ) {
 			trap_R_AddLightToScene( flash.origin, 300 + (rand()&31), weapon->flashDlightColor[0],
@@ -1376,6 +1447,7 @@ void CG_AddViewWeapon( playerState_t *ps ) {
 			VectorCopy( cg.refdef.vieworg, origin );
 			VectorMA( origin, -8, cg.refdef.viewaxis[2], origin );
 			CG_LightningBolt( &cg_entities[ps->clientNum], origin );
+			CG_FlameThrowerStream( &cg_entities[ps->clientNum], origin );
 		}
 		return;
 	}

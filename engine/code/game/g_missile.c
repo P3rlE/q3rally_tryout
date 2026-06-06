@@ -196,7 +196,7 @@ gentity_t *fire_flame (gentity_t *self, vec3_t start, vec3_t dir) {
 	bolt->splashDamage = 25;
 	bolt->splashRadius = 45;
 	bolt->methodOfDeath = MOD_FLAME_THROWER;
-	bolt->splashMethodOfDeath = MOD_PLASMA_SPLASH;
+	bolt->splashMethodOfDeath = MOD_FLAME_THROWER;
 	bolt->clipmask = MASK_SHOT;
 
 	bolt->s.pos.trType = TR_LINEAR;
@@ -235,7 +235,7 @@ gentity_t *fire_cluster_flame (gentity_t *self, vec3_t start, vec3_t dir) {
 	bolt->splashDamage = 5;
 	bolt->splashRadius = 25;
 	bolt->methodOfDeath = MOD_FLAME_THROWER;
-	bolt->splashMethodOfDeath = MOD_PLASMA_SPLASH;
+	bolt->splashMethodOfDeath = MOD_FLAME_THROWER;
 	bolt->clipmask = MASK_SHOT;
 
 	bolt->s.pos.trType = TR_LINEAR;
