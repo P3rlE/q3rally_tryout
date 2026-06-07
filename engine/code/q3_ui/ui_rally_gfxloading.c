@@ -248,13 +248,18 @@ static void DrawPanel(int x, int y, int w, int h) {
 static void DrawProgressSegments(float progress) {
     int segments = 18;
     int gap = 3;
-    int segW = (BAR_W - (segments - 1) * gap) / segments;
+    int usableW = BAR_W - (segments - 1) * gap;
     int x = BAR_X;
     int i;
+    int segW;
     float threshold;
     vec4_t color;
 
     for (i = 0; i < segments; i++) {
+        segW = usableW / segments;
+        if (i < usableW % segments) {
+            segW++;
+        }
         threshold = (float)(i + 1) / (float)segments;
         if (progress >= threshold) {
             color[0] = gfxAccentColor[0] + (gfxSuccessColor[0] - gfxAccentColor[0]) * threshold;

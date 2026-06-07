@@ -51,10 +51,10 @@ static void CG_DrawLoadingFrame( void ) {
 	CG_FillRect( 0, 286, SCREEN_WIDTH, SCREEN_HEIGHT - 286, loadingBottomScrimColor );
 
 	CG_FillRect( 0, 130, SCREEN_WIDTH, 2, loadingAccentColor );
-	CG_FillRect( 54, 146, 532, 126, loadingPanelColor );
-	CG_FillRect( 54, 146, 532, 22, loadingPanelBandColor );
-	CG_FillRect( 54, 146, 532, 2, loadingAccentColor );
-	CG_DrawRect( 54, 146, 532, 126, 1, loadingBorderColor );
+	CG_FillRect( 0, 146, SCREEN_WIDTH, 126, loadingPanelColor );
+	CG_FillRect( 0, 146, SCREEN_WIDTH, 22, loadingPanelBandColor );
+	CG_FillRect( 0, 146, SCREEN_WIDTH, 2, loadingAccentColor );
+	CG_DrawRect( 0, 146, SCREEN_WIDTH, 126, 1, loadingBorderColor );
 
 	UI_DrawProportionalString( 320, 152, "MAP DETAILS",
 		UI_CENTER|UI_SMALLFONT|UI_DROPSHADOW, loadingMutedTextColor );
