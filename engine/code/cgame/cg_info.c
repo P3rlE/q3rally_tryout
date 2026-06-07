@@ -68,6 +68,7 @@ CG_LoadingScreenDebugPause
 static void CG_LoadingScreenDebugPause( void ) {
 	int pause;
 	int endTime;
+	int nextUpdate;
 
 	pause = (int)trap_Cvar_VariableValue( "cg_loadingScreenPause" );
 	if ( pause <= 0 ) {
@@ -78,7 +79,12 @@ static void CG_LoadingScreenDebugPause( void ) {
 	}
 
 	endTime = trap_Milliseconds() + pause;
+	nextUpdate = 0;
 	while ( trap_Milliseconds() < endTime ) {
+		if ( trap_Milliseconds() >= nextUpdate ) {
+			trap_UpdateScreen();
+			nextUpdate = trap_Milliseconds() + 50;
+		}
 	}
 }
 
