@@ -51,7 +51,6 @@ static void UI_DrawConnectFrame( qboolean overlay ) {
 	}
 
 	UI_FillRect( -uis.bias, 0, SCREEN_WIDTH + uis.bias * 2, 132, connectTopScrimColor );
-	UI_FillRect( -uis.bias, 130, SCREEN_WIDTH + uis.bias * 2, 2, connectAccentColor );
 
 	UI_FillRect( 54, 104, 532, 140, connectPanelColor );
 	UI_FillRect( 54, 104, 532, 22, connectPanelBandColor );

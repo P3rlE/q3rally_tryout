@@ -99,17 +99,20 @@ CG_DrawLoadingIcons
 static void CG_DrawLoadingIcons( void ) {
 	int		n;
 	int		x, y;
+	int		col, row;
 
 	for( n = 0; n < loadingPlayerIconCount; n++ ) {
-		x = 16 + n * 78;
-		y = 324-40;
-		CG_DrawPic( x, y, 64, 64, loadingPlayerIcons[n] );
+		col = n % 8;
+		row = n / 8;
+		x = 32 + col * 74;
+		y = 282 + row * 54;
+		CG_DrawPic( x, y, 48, 48, loadingPlayerIcons[n] );
 	}
 
 	for( n = 0; n < loadingItemIconCount; n++ ) {
-		y = 400-40;
+		y = 396;
 		if( n >= 13 ) {
-			y += 40;
+			y += 36;
 		}
 		x = 16 + n % 13 * 48;
 		CG_DrawPic( x, y, 32, 32, loadingItemIcons[n] );
