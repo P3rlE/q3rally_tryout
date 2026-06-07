@@ -48,7 +48,7 @@ CG_DrawLoadingFrame
 */
 static void CG_DrawLoadingFrame( void ) {
 	CG_FillRect( 0, 0, SCREEN_WIDTH, 132, loadingTopScrimColor );
-	CG_FillRect( 0, 276, SCREEN_WIDTH, SCREEN_HEIGHT - 276, loadingBottomScrimColor );
+	CG_FillRect( 0, 286, SCREEN_WIDTH, SCREEN_HEIGHT - 286, loadingBottomScrimColor );
 
 	CG_FillRect( 0, 130, SCREEN_WIDTH, 2, loadingAccentColor );
 	CG_FillRect( 54, 146, 532, 126, loadingPanelColor );
@@ -105,7 +105,7 @@ static void CG_DrawLoadingIcons( void ) {
 		col = n % 8;
 		row = n / 8;
 		x = 32 + col * 74;
-		y = 282 + row * 54;
+		y = 290 + row * 54;
 		CG_DrawPic( x, y, 48, 48, loadingPlayerIcons[n] );
 	}
 
