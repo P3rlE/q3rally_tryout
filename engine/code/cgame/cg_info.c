@@ -33,6 +33,33 @@ static int			loadingItemIconCount;
 static qhandle_t	loadingPlayerIcons[MAX_LOADING_PLAYER_ICONS];
 static qhandle_t	loadingItemIcons[MAX_LOADING_ITEM_ICONS];
 
+static vec4_t loadingTopScrimColor    = { 0.00f, 0.00f, 0.00f, 0.58f };
+static vec4_t loadingBottomScrimColor = { 0.00f, 0.00f, 0.00f, 0.66f };
+static vec4_t loadingPanelColor       = { 0.04f, 0.05f, 0.08f, 0.72f };
+static vec4_t loadingPanelBandColor   = { 0.08f, 0.10f, 0.16f, 0.82f };
+static vec4_t loadingBorderColor      = { 0.34f, 0.48f, 0.76f, 0.72f };
+static vec4_t loadingAccentColor      = { 0.50f, 0.70f, 1.00f, 1.00f };
+static vec4_t loadingMutedTextColor   = { 0.60f, 0.66f, 0.77f, 1.00f };
+
+/*
+===================
+CG_DrawLoadingFrame
+===================
+*/
+static void CG_DrawLoadingFrame( void ) {
+	CG_FillRect( 0, 0, SCREEN_WIDTH, 132, loadingTopScrimColor );
+	CG_FillRect( 0, 334, SCREEN_WIDTH, SCREEN_HEIGHT - 334, loadingBottomScrimColor );
+
+	CG_FillRect( 0, 130, SCREEN_WIDTH, 2, loadingAccentColor );
+	CG_FillRect( 54, 146, 532, 126, loadingPanelColor );
+	CG_FillRect( 54, 146, 532, 22, loadingPanelBandColor );
+	CG_FillRect( 54, 146, 532, 2, loadingAccentColor );
+	CG_DrawRect( 54, 146, 532, 126, 1, loadingBorderColor );
+
+	UI_DrawProportionalString( 320, 152, "MAP DETAILS",
+		UI_CENTER|UI_SMALLFONT|UI_DROPSHADOW, loadingMutedTextColor );
+}
+
 
 /*
 ===================
@@ -168,7 +195,7 @@ void CG_DrawInformation( void ) {
 	sysInfo = CG_ConfigString( CS_SYSTEMINFO );
 
 	s = Info_ValueForKey( info, "mapname" );
-	levelshot = trap_R_RegisterShaderNoMip( va( "levelshots/%s.tga", s ) );
+	levelshot = trap_R_RegisterShaderNoMip( va( "levelshots/%s", s ) );
 	if ( !levelshot ) {
 		levelshot = trap_R_RegisterShaderNoMip( "menu/art/unknownmap" );
 	}
@@ -178,6 +205,8 @@ void CG_DrawInformation( void ) {
 	// blend a detail texture over it
 	detail = trap_R_RegisterShader( "levelShotDetail" );
 	trap_R_DrawStretchPic( 0, 0, cgs.glconfig.vidWidth, cgs.glconfig.vidHeight, 0, 0, 1, 1, detail );
+
+	CG_DrawLoadingFrame();
 
 	// draw the icons of things as they are loaded
 	CG_DrawLoadingIcons();
@@ -194,7 +223,7 @@ void CG_DrawInformation( void ) {
 
         // draw info string information
 
-        y = 180-32;
+        y = 178;
 
         // don't print server lines if playing a local game
 	trap_Cvar_VariableStringBuffer( "sv_running", buf, sizeof( buf ) );
