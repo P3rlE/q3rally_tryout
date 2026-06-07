@@ -42,6 +42,7 @@ Update dialog: integrated into loading screen with "Update Now" / "Skip" buttons
 
 #define MIN_STAGE_TIME      450     /* minimum milliseconds per stage */
 #define FINAL_DISPLAY_TIME  1200    /* time to display 100% before transition */
+#define MAX_DEBUG_PAUSE     15000   /* safety clamp for test-only loading pauses */
 
 #define NUM_STAGES          8       /* must match ARRAY_LEN(stages) */
 #define SMOOTH_LERP_SPEED   4.5f    /* units per second for framerate-independent smoothing */
@@ -317,6 +318,18 @@ static void UI_GFX_Loading_ExecuteStage(void) {
     s_gfxloading.cacheExecuted = qtrue;
 }
 
+static int UI_GFX_Loading_GetPause( const char *cvarName, int fallback ) {
+    int value = (int)trap_Cvar_VariableValue(cvarName);
+
+    if (value <= 0) {
+        return fallback;
+    }
+    if (value > MAX_DEBUG_PAUSE) {
+        return MAX_DEBUG_PAUSE;
+    }
+    return value;
+}
+
 /* -------------------------------------------------------------------------
    Progress update (timing + smooth interpolation)
    ------------------------------------------------------------------------- */
@@ -324,12 +337,13 @@ static void UI_GFX_Loading_ExecuteStage(void) {
 static void UI_GFX_Loading_UpdateProgress(void) {
     int   currentTime  = trap_Milliseconds();
     int   stageElapsed = currentTime - s_gfxloading.stageStartTime;
+    int   stageTime    = UI_GFX_Loading_GetPause("ui_gfxLoadingStagePause", MIN_STAGE_TIME);
     int   totalStages  = NUM_STAGES;
     float stageProgress;
 
     UI_GFX_Loading_ExecuteStage();
 
-    if (stageElapsed >= MIN_STAGE_TIME && s_gfxloading.currentCache < totalStages) {
+    if (stageElapsed >= stageTime && s_gfxloading.currentCache < totalStages) {
         s_gfxloading.loadPercent = (float)(s_gfxloading.currentCache + 1) / (float)totalStages;
         s_gfxloading.currentCache++;
         s_gfxloading.stageStartTime = currentTime;
@@ -341,7 +355,7 @@ static void UI_GFX_Loading_UpdateProgress(void) {
             s_gfxloading.finalDisplayStartTime = currentTime;
         }
     } else if (s_gfxloading.currentCache < totalStages) {
-        stageProgress = (float)stageElapsed / (float)MIN_STAGE_TIME;
+        stageProgress = (float)stageElapsed / (float)stageTime;
         if (stageProgress > 1.0f) stageProgress = 1.0f;
         s_gfxloading.loadPercent =
             ((float)s_gfxloading.currentCache + stageProgress) / (float)totalStages;
@@ -585,8 +599,9 @@ static void UI_GFX_Loading_MenuDraw(void) {
        ----------------------------------------------------------------------- */
 
     if (s_gfxloading.finalPhase) {
+        int finalDisplayTime = UI_GFX_Loading_GetPause("ui_gfxLoadingFinalPause", FINAL_DISPLAY_TIME);
         currentTime = trap_Milliseconds();
-        if (currentTime - s_gfxloading.finalDisplayStartTime >= FINAL_DISPLAY_TIME &&
+        if (currentTime - s_gfxloading.finalDisplayStartTime >= finalDisplayTime &&
             s_gfxloading.smoothProgress >= 0.98f) {
             if (s_gfxloading.requireUpdateAck && !s_gfxloading.updateAcked) {
                 return;

@@ -60,6 +60,28 @@ static void CG_DrawLoadingFrame( void ) {
 		UI_CENTER|UI_SMALLFONT|UI_DROPSHADOW, loadingMutedTextColor );
 }
 
+/*
+======================
+CG_LoadingScreenDebugPause
+======================
+*/
+static void CG_LoadingScreenDebugPause( void ) {
+	int pause;
+	int endTime;
+
+	pause = (int)trap_Cvar_VariableValue( "cg_loadingScreenPause" );
+	if ( pause <= 0 ) {
+		return;
+	}
+	if ( pause > 10000 ) {
+		pause = 10000;
+	}
+
+	endTime = trap_Milliseconds() + pause;
+	while ( trap_Milliseconds() < endTime ) {
+	}
+}
+
 
 /*
 ===================
@@ -97,6 +119,7 @@ void CG_LoadingString( const char *s ) {
 	Q_strncpyz( cg.infoScreenText, s, sizeof( cg.infoScreenText ) );
 
 	trap_UpdateScreen();
+	CG_LoadingScreenDebugPause();
 }
 
 /*
