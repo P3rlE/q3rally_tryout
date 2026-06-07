@@ -48,7 +48,7 @@ CG_DrawLoadingFrame
 */
 static void CG_DrawLoadingFrame( void ) {
 	CG_FillRect( 0, 0, SCREEN_WIDTH, 132, loadingTopScrimColor );
-	CG_FillRect( 0, 334, SCREEN_WIDTH, SCREEN_HEIGHT - 334, loadingBottomScrimColor );
+	CG_FillRect( 0, 276, SCREEN_WIDTH, SCREEN_HEIGHT - 276, loadingBottomScrimColor );
 
 	CG_FillRect( 0, 130, SCREEN_WIDTH, 2, loadingAccentColor );
 	CG_FillRect( 54, 146, 532, 126, loadingPanelColor );

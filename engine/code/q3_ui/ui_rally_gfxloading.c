@@ -399,6 +399,9 @@ static void UI_GFX_Loading_MenuDraw(void) {
     s_gfxloading.smoothProgress +=
         (s_gfxloading.loadPercent - s_gfxloading.smoothProgress)
         * (SMOOTH_LERP_SPEED * deltaTime);
+    if (s_gfxloading.loadPercent >= 1.0f && s_gfxloading.smoothProgress > 0.995f) {
+        s_gfxloading.smoothProgress = 1.0f;
+    }
 
     /* -----------------------------------------------------------------------
        HEADER
