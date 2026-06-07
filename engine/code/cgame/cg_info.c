@@ -69,8 +69,10 @@ static void CG_LoadingScreenDebugPause( void ) {
 	int pause;
 	int endTime;
 	int nextUpdate;
+	char pauseBuffer[16];
 
-	pause = (int)trap_Cvar_VariableValue( "cg_loadingScreenPause" );
+	trap_Cvar_VariableStringBuffer( "cg_loadingScreenPause", pauseBuffer, sizeof( pauseBuffer ) );
+	pause = atoi( pauseBuffer );
 	if ( pause <= 0 ) {
 		return;
 	}
