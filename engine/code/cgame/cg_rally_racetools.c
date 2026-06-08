@@ -70,6 +70,23 @@ static void CG_ChopNewline( char *value ) {
 	}
 }
 
+static qboolean CG_GhostLineMatchesKey( const char *line, const char *key ) {
+        int keyLen;
+        char delimiter;
+
+        if ( !line || !key || !key[0] ) {
+                return qfalse;
+        }
+
+        keyLen = strlen( key );
+        if ( Q_stricmpn( line, key, keyLen ) ) {
+                return qfalse;
+        }
+
+        delimiter = line[keyLen];
+        return delimiter == '\0' || delimiter == ' ' || delimiter == '\t' || delimiter == '\n' || delimiter == '\r';
+}
+
 
 static void CG_GetGhostTrackVariant( int *trackLengthOut, int *trackReversedOut ) {
         const char *serverInfo = CG_ConfigString( CS_SERVERINFO );
@@ -457,7 +474,7 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, int
 			goto nextLine;
 		}
 
-		if ( !Q_stricmpn( cursor, "map", 3 ) ) {
+		if ( CG_GhostLineMatchesKey( cursor, "map" ) ) {
 			const char *value = cursor + 3;
 			while ( *value == ' ' || *value == '\t' ) {
 				++value;
@@ -468,7 +485,7 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, int
 			goto nextLine;
 		}
 
-		if ( !Q_stricmpn( cursor, "vehicle", 7 ) ) {
+		if ( CG_GhostLineMatchesKey( cursor, "vehicle" ) ) {
 			const char *value = cursor + 7;
 			while ( *value == ' ' || *value == '\t' ) {
 				++value;
@@ -479,7 +496,7 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, int
 			goto nextLine;
 		}
 
-		if ( !Q_stricmpn( cursor, "track_length", 12 ) ) {
+		if ( CG_GhostLineMatchesKey( cursor, "track_length" ) ) {
 			const char *value = cursor + 12;
 			while ( *value == ' ' || *value == '\t' ) {
 				++value;
@@ -489,7 +506,7 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, int
 			goto nextLine;
 		}
 
-		if ( !Q_stricmpn( cursor, "track_reversed", 14 ) ) {
+		if ( CG_GhostLineMatchesKey( cursor, "track_reversed" ) ) {
 			const char *value = cursor + 14;
 			while ( *value == ' ' || *value == '\t' ) {
 				++value;
@@ -499,7 +516,7 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, int
 			goto nextLine;
 		}
 
-		if ( !Q_stricmpn( cursor, "best_time_ms", 12 ) ) {
+		if ( CG_GhostLineMatchesKey( cursor, "best_time_ms" ) ) {
 			const char *value = cursor + 12;
 			while ( *value == ' ' || *value == '\t' ) {
 				++value;
@@ -509,7 +526,7 @@ static qboolean CG_LoadGhostFile( const char *path, const char *expectedMap, int
 			goto nextLine;
 		}
 
-		if ( !Q_stricmpn( cursor, "frames", 6 ) ) {
+		if ( CG_GhostLineMatchesKey( cursor, "frames" ) ) {
 			goto nextLine;
 		}
 

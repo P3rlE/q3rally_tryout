@@ -170,6 +170,14 @@ static const char *build_ghost(const char *map, const char *vehicle, int best, i
     return buf[bi];
 }
 
+static const char *build_ghost_with_vehicle_path(const char *map, int best, int tl, int rev) {
+    static char buf[1024];
+    snprintf(buf, sizeof(buf),
+        "map %s\nvehicle_path ghosts/%s_tl%d_rev%d_fake.ghost\nbest_time_ms %d\ntrack_length %d\ntrack_reversed %d\nframes\n0 0 0 0\n100 50 0 0\n200 100 0 0\n",
+        map, map, tl, rev, best, tl, rev);
+    return buf;
+}
+
 static void reset_fs(void) {
     memset(s_files, 0, sizeof(s_files));
     s_fileCount = 0;
@@ -192,6 +200,23 @@ static void test_variant_matching_and_pool_selection(void) {
 
     assert(G_Ghost_GetBotRouteForVariant("unknown", &route) == qtrue);
     assert(strcmp(route->vehicleClass, "sport") == 0);
+}
+
+static void test_header_keys_require_delimiter(void) {
+    const ghostRecord_t *record;
+
+    reset_fs();
+    g_trackLength.integer = 1;
+    g_trackReversed.integer = 0;
+
+    add_file("ghosts/mymap_tl1_rev0_a.ghost", build_ghost_with_vehicle_path("mymap", 900, 1, 0));
+
+    G_Ghost_InitForMap("mymap");
+
+    assert(G_Ghost_Test_GetLevelGhostCount() == 1);
+    record = G_Ghost_Test_GetLevelGhost(0);
+    assert(record != NULL);
+    assert(record->vehicleClass[0] == '\0');
 }
 
 static void test_top5_retention_per_variant(void) {
@@ -267,6 +292,7 @@ static void test_stable_navigation_at_overlap(void) {
 
 int main(void) {
     test_variant_matching_and_pool_selection();
+    test_header_keys_require_delimiter();
     test_top5_retention_per_variant();
     test_legacy_ambiguity_ignored_for_bot_route();
     test_stable_navigation_at_overlap();

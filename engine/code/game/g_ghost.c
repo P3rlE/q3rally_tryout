@@ -73,6 +73,23 @@ static int G_Ghost_Strlen( const char *text ) {
     return len;
 }
 
+static qboolean G_Ghost_LineMatchesKey( const char *line, const char *key ) {
+    int keyLen;
+    char delimiter;
+
+    if ( !line || !key || !key[0] ) {
+        return qfalse;
+    }
+
+    keyLen = G_Ghost_Strlen( key );
+    if ( Q_stricmpn( line, key, keyLen ) ) {
+        return qfalse;
+    }
+
+    delimiter = line[keyLen];
+    return delimiter == '\0' || delimiter == ' ' || delimiter == '\t';
+}
+
 static int G_Ghost_ParseInt( const char *text ) {
     int value = 0;
 
@@ -300,46 +317,48 @@ static qboolean G_Ghost_ParseHeader( char *buffer, const char *expectedMap, int 
         return qfalse;
     }
 
+    Com_Memset( outRecord, 0, sizeof( *outRecord ) );
+
     cursor = buffer;
     while ( ( line = G_Ghost_NextLine( &cursor ) ) != NULL ) {
         if ( line[0] == '#' || line[0] == '\0' ) {
             continue;
         }
 
-        if ( !Q_stricmpn( line, "map", 3 ) ) {
+        if ( G_Ghost_LineMatchesKey( line, "map" ) ) {
             const char *value = line + 3;
             while ( *value == ' ' || *value == '\t' ) {
                 ++value;
             }
             Q_strncpyz( mapName, value, sizeof( mapName ) );
             hasMapHeader = qtrue;
-        } else if ( !Q_stricmpn( line, "vehicle", 7 ) ) {
+        } else if ( G_Ghost_LineMatchesKey( line, "vehicle" ) ) {
             const char *value = line + 7;
             while ( *value == ' ' || *value == '\t' ) {
                 ++value;
             }
             Q_strncpyz( outRecord->vehicleClass, value, sizeof( outRecord->vehicleClass ) );
-        } else if ( !Q_stricmpn( line, "best_time_ms", 12 ) ) {
+        } else if ( G_Ghost_LineMatchesKey( line, "best_time_ms" ) ) {
             const char *value = line + 12;
             while ( *value == ' ' || *value == '\t' ) {
                 ++value;
             }
             outRecord->bestTimeMs = G_Ghost_ParseInt( value );
-        } else if ( !Q_stricmpn( line, "track_length", 12 ) ) {
+        } else if ( G_Ghost_LineMatchesKey( line, "track_length" ) ) {
             const char *value = line + 12;
             while ( *value == ' ' || *value == '\t' ) {
                 ++value;
             }
             trackLength = G_Ghost_ParseInt( value );
             hasTrackLength = qtrue;
-        } else if ( !Q_stricmpn( line, "track_reversed", 14 ) ) {
+        } else if ( G_Ghost_LineMatchesKey( line, "track_reversed" ) ) {
             const char *value = line + 14;
             while ( *value == ' ' || *value == '\t' ) {
                 ++value;
             }
             trackReversed = G_Ghost_ParseInt( value ) ? 1 : 0;
             hasTrackReversed = qtrue;
-        } else if ( !Q_stricmpn( line, "frames", 6 ) ) {
+        } else if ( G_Ghost_LineMatchesKey( line, "frames" ) ) {
             break;
         }
     }
@@ -406,7 +425,7 @@ static qboolean G_Ghost_LoadBotRouteFromFile( const ghostRecord_t *record, ghost
             continue;
         }
 
-        if ( !Q_stricmpn( line, "map", 3 ) ) {
+        if ( G_Ghost_LineMatchesKey( line, "map" ) ) {
             const char *value = line + 3;
             while ( *value == ' ' || *value == '\t' ) {
                 ++value;
@@ -415,7 +434,7 @@ static qboolean G_Ghost_LoadBotRouteFromFile( const ghostRecord_t *record, ghost
             continue;
         }
 
-        if ( !Q_stricmpn( line, "vehicle", 7 ) ) {
+        if ( G_Ghost_LineMatchesKey( line, "vehicle" ) ) {
             const char *value = line + 7;
             while ( *value == ' ' || *value == '\t' ) {
                 ++value;
@@ -424,7 +443,7 @@ static qboolean G_Ghost_LoadBotRouteFromFile( const ghostRecord_t *record, ghost
             continue;
         }
 
-        if ( !Q_stricmpn( line, "best_time_ms", 12 ) ) {
+        if ( G_Ghost_LineMatchesKey( line, "best_time_ms" ) ) {
             const char *value = line + 12;
             while ( *value == ' ' || *value == '\t' ) {
                 ++value;
@@ -433,7 +452,7 @@ static qboolean G_Ghost_LoadBotRouteFromFile( const ghostRecord_t *record, ghost
             continue;
         }
 
-        if ( !Q_stricmpn( line, "frames", 6 ) ) {
+        if ( G_Ghost_LineMatchesKey( line, "frames" ) ) {
             continue;
         }
 
