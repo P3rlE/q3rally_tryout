@@ -654,11 +654,6 @@ nextLine:
 			return qfalse;
 	}
 
-	if ( expectedVehicle && expectedVehicle[0] && vehicle[0] && Q_stricmp( expectedVehicle, vehicle ) ) {
-		CG_Printf( "CG_Ghost: %s vehicle '%s' does not match '%s'\n", path, vehicle, expectedVehicle );
-		return qfalse;
-	}
-
 	if ( expectedTrackLength >= 0 && ( trackLength < 0 || trackLength != expectedTrackLength ) ) {
 		CG_Printf( "CG_Ghost: %s track_length '%d' does not match '%d'\n", path, trackLength, expectedTrackLength );
 		return qfalse;
@@ -697,11 +692,13 @@ nextLine:
 qboolean CG_LoadGhostFromFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime ) {
         int trackLength = 0;
         int trackReversed = 0;
+        (void)expectedVehicle;
+
         CG_ResetBaseGhost();
 
         CG_GetGhostTrackVariant( &trackLength, &trackReversed );
 
-        cg.baseGhostAvailable = CG_LoadGhostFile( path, expectedMap, trackLength, trackReversed, expectedVehicle, declaredBestTime, &cg.baseGhost, &cg.baseGhostBestTime, cg.baseGhostVehicle, sizeof( cg.baseGhostVehicle ), cg.baseGhostPath, sizeof( cg.baseGhostPath ) );
+        cg.baseGhostAvailable = CG_LoadGhostFile( path, expectedMap, trackLength, trackReversed, NULL, declaredBestTime, &cg.baseGhost, &cg.baseGhostBestTime, cg.baseGhostVehicle, sizeof( cg.baseGhostVehicle ), cg.baseGhostPath, sizeof( cg.baseGhostPath ) );
 
         return cg.baseGhostAvailable;
 }
@@ -743,7 +740,7 @@ void CG_RecordGhostFrame( void ) {
 		return;
 	}
 
-	if ( !( isRallyRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ) ) {
+	if ( !isRallyRace() ) {
 		return;
 	}
 
@@ -1120,7 +1117,7 @@ void CG_AddGhostEntity( void ) {
                 return;
         }
 
-        if ( !( isRallyRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ) ) {
+        if ( !isRallyRace() ) {
                 return;
         }
 
@@ -1395,8 +1392,14 @@ void CG_StartRace( int time ) {
                 player->lastStartLapTime = 0;
         }
 
-        CG_LoadPersonalGhost();
-        CG_BeginGhostRecording( time );
+        if ( isRallyRace() ) {
+                CG_LoadPersonalGhost();
+                CG_BeginGhostRecording( time );
+        } else {
+                CG_ResetPersonalGhost();
+                cg.ghostRecordingActive = qfalse;
+                cg.ghostRecording.valid = qfalse;
+        }
 
         cg.ghostSplitLastNextCheckpoint = 0;
         cg.ghostSplitLastLapStartTime = 0;

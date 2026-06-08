@@ -196,10 +196,12 @@ static void test_variant_matching_and_pool_selection(void) {
     G_Ghost_InitForMap("mymap");
 
     assert(G_Ghost_GetBotRouteForVariant("sport", &route) == qtrue);
-    assert(strcmp(route->vehicleClass, "sport") == 0);
+    assert(route->vehicleClass[0] == '\0');
+    assert(route->bestTimeMs == 900);
 
     assert(G_Ghost_GetBotRouteForVariant("unknown", &route) == qtrue);
-    assert(strcmp(route->vehicleClass, "sport") == 0);
+    assert(route->vehicleClass[0] == '\0');
+    assert(route->bestTimeMs == 900);
 }
 
 static void test_header_keys_require_delimiter(void) {
@@ -219,8 +221,8 @@ static void test_header_keys_require_delimiter(void) {
     assert(record->vehicleClass[0] == '\0');
 }
 
-static void test_top5_retention_per_variant(void) {
-    int sportCount = 0;
+static void test_top5_retention_per_track_variant(void) {
+    int recordCount;
     int worstBestTime = 0;
 
     reset_fs();
@@ -230,26 +232,24 @@ static void test_top5_retention_per_variant(void) {
     for (int i = 0; i < 7; ++i) {
         char path[128];
         snprintf(path, sizeof(path), "ghosts/mymap_tl1_rev0_%d.ghost", i);
-        add_file(strdup(path), build_ghost("mymap", "sport", 1000 + i * 100, 1, 1, 0));
+        add_file(strdup(path), build_ghost("mymap", i % 2 ? "sport" : "truck", 1000 + i * 100, 1, 1, 0));
     }
 
     G_Ghost_InitForMap("mymap");
 
-    for (int i = 0; i < G_Ghost_Test_GetLevelGhostCount(); ++i) {
+    recordCount = G_Ghost_Test_GetLevelGhostCount();
+    for (int i = 0; i < recordCount; ++i) {
         const ghostRecord_t *record = G_Ghost_Test_GetLevelGhost(i);
-        if (record && strcmp(record->vehicleClass, "sport") == 0) {
-            sportCount++;
-            if (record->bestTimeMs > worstBestTime) {
-                worstBestTime = record->bestTimeMs;
-            }
+        if (record && record->bestTimeMs > worstBestTime) {
+            worstBestTime = record->bestTimeMs;
         }
     }
 
-    assert(sportCount == 5);
+    assert(recordCount == 5);
     assert(worstBestTime == 1400);
 }
 
-static void test_legacy_ambiguity_ignored_for_bot_route(void) {
+static void test_legacy_ghosts_are_track_routes(void) {
     const ghostBotRoute_t *route = NULL;
 
     reset_fs();
@@ -264,10 +264,11 @@ static void test_legacy_ambiguity_ignored_for_bot_route(void) {
     assert(G_Ghost_Test_GetLevelGhostCount() == 2);
     for (int i = 0; i < 2; ++i) {
         const ghostRecord_t *record = G_Ghost_Test_GetLevelGhost(i);
-        assert(record->ambiguousLegacy == qtrue);
+        assert(record->ambiguousLegacy == qfalse);
     }
 
-    assert(G_Ghost_GetBotRouteForVariant("sport", &route) == qfalse);
+    assert(G_Ghost_GetBotRouteForVariant("sport", &route) == qtrue);
+    assert(route->bestTimeMs == 1500);
 }
 
 static void test_stable_navigation_at_overlap(void) {
@@ -293,8 +294,8 @@ static void test_stable_navigation_at_overlap(void) {
 int main(void) {
     test_variant_matching_and_pool_selection();
     test_header_keys_require_delimiter();
-    test_top5_retention_per_variant();
-    test_legacy_ambiguity_ignored_for_bot_route();
+    test_top5_retention_per_track_variant();
+    test_legacy_ghosts_are_track_routes();
     test_stable_navigation_at_overlap();
     puts("ok");
     return 0;
