@@ -44,7 +44,7 @@ static vec4_t loadingMutedTextColor   = { 0.60f, 0.66f, 0.77f, 1.00f };
 #define LOADING_DETAILS_Y              146
 #define LOADING_DETAILS_H              126
 #define LOADING_DETAILS_BAND_H          22
-#define LOADING_DETAILS_TEXT_Y         174
+#define LOADING_DETAILS_TEXT_Y         182
 #define LOADING_DETAILS_LINE_H          21
 #define LOADING_DETAILS_CHAR_W          12
 #define LOADING_DETAILS_CHAR_H          16
