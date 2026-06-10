@@ -46,6 +46,7 @@ static vec4_t loadingMutedTextColor   = { 0.60f, 0.66f, 0.77f, 1.00f };
 #define LOADING_DETAILS_BAND_H          22
 #define LOADING_DETAILS_TEXT_Y         182
 #define LOADING_DETAILS_LINE_H          21
+#define LOADING_DETAILS_TEXT_SCALE     0.68f
 
 /*
 ===================
@@ -57,8 +58,8 @@ static void CG_DrawLoadingDetailLine( int y, const char *text ) {
 		return;
 	}
 
-	UI_DrawProportionalString( 320, y, text,
-		UI_CENTER|UI_SMALLFONT|UI_DROPSHADOW, colorWhite );
+	UI_DrawProportionalStringScaled( 320, y, text,
+		UI_CENTER|UI_DROPSHADOW, colorWhite, LOADING_DETAILS_TEXT_SCALE );
 }
 
 /*
