@@ -5726,8 +5726,14 @@ function profile_upsert_from_payload(array $payload): void
             'gamesPlayed'     => (int)($existing['gamesPlayed'] ?? 0) + ($countThisMatch ? 1 : 0),
 
             // ── Allgemein ───────────────────────────────────────────────
-            'wins'            => $pickCareerWithBaselineDelta('wins', $derivedWins),
-            'losses'          => $pickCareerWithBaselineDelta('losses', $derivedLosses),
+            // wins/losses: C code (G_Profile_RecordWin/Loss) already writes the
+            // new cumulative total into the snapshot before the upload happens,
+            // so the snapshot is already ahead by 1. Using pickCareer would add
+            // derivedWins on top of the snapshot → double-count. Same pattern as
+            // damageDealt – use mergeCareerCountField which treats a strictly-ahead
+            // snapshot as authoritative and skips the delta.
+            'wins'            => $mergeCareerCountField('wins', $derivedWins),
+            'losses'          => $mergeCareerCountField('losses', $derivedLosses),
             'kills'           => $mergeCareerCountField('kills', max(0, $matchKills)),
             'deaths'          => $mergeCareerCountField('deaths', max(0, $matchDeaths)),
             'flagCaptures'    => $mergeCareerCountField('flagCaptures', (int)($player['captures'] ?? 0)),
@@ -6144,6 +6150,7 @@ function index_extract_entry(array $payload): array
         $kills = extract_player_kills($p, $mode);
         $players[] = [
             'name'        => (string)($p['cleanName'] ?? $p['name'] ?? $p['displayName'] ?? ''),
+            'playerId'    => (string)($p['playerId'] ?? ''),
             'score'       => $score,
             'playerScore' => (function() use ($p): int {
                 // Prefer inline profile snapshot
@@ -6651,6 +6658,24 @@ function handle_get(array $segments): void
             send_error(400, 'Player ID required.');
         }
         $profile = profile_load($playerId);
+
+        // If UUID lookup failed, try name-based fallback (e.g. when match index
+        // was built before playerId fields were added and still contains names).
+        if ($profile === null && !profile_is_valid_uuid($playerId)) {
+            $nameLower = mb_strtolower($playerId);
+            foreach (glob(PROFILES_DIR . '/*.json') ?: [] as $file) {
+                $raw = file_get_contents($file);
+                if ($raw === false) continue;
+                $candidate = json_decode($raw, true);
+                if (!is_array($candidate)) continue;
+                $cn = mb_strtolower((string)($candidate['cleanName'] ?? $candidate['displayName'] ?? $candidate['name'] ?? ''));
+                if ($cn === $nameLower) {
+                    $profile = $candidate;
+                    break;
+                }
+            }
+        }
+
         if ($profile === null) {
             send_error(404, 'Player not found.');
         }
