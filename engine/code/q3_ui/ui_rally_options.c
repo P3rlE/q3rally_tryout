@@ -32,6 +32,7 @@ qboolean isRaceObserver( int clientNum )
 #define ID_SKID_LENGTH          11
 #define ID_CONTROL_MODE         12
 #define ID_MANUAL_SHIFT         13
+#define ID_TRANSMISSION_MODE    14
 #define ID_ATMOSPHERIC_LEVEL	16
 #define ID_POSITION_SPRITES     17
 #define ID_CAM_TRACKING         18
@@ -68,6 +69,7 @@ typedef struct {
 	menulist_s		units;
         menulist_s              speedometer;
 	menulist_s		controlMode;
+	menulist_s		transmissionMode;
 	menulist_s		atomspheric;
 
 	menuradiobutton_s	manualShift;
@@ -115,6 +117,13 @@ static const char *q3roptions_speedometer_mode[] = {
 static const char *q3roptions_control_mode[] = {
 	"Mouse",
 	"Keyboard/Joystick",
+	0
+};
+
+static const char *q3roptions_transmission_mode[] = {
+	"Automatic",
+	"Manual",
+	"Manual + Clutch",
 	0
 };
 
@@ -170,6 +179,10 @@ static void Q3ROptions_MenuEvent( void* ptr, int event ) {
 		else
 			trap_Cmd_ExecuteText( EXEC_APPEND, "+strafe" );
 
+		break;
+
+	case ID_TRANSMISSION_MODE:
+		trap_Cvar_SetValue( "cg_transmissionMode", s_q3roptions.transmissionMode.curvalue );
 		break;
 
 	case ID_ATMOSPHERIC_LEVEL:
@@ -283,6 +296,15 @@ static void Q3ROptions_StatusBar( void *self )
 			text = "Keyboard/Joystick control maps the axis directly to the wheel angle.";
 		break;
 
+	case ID_TRANSMISSION_MODE:
+		if( s_q3roptions.transmissionMode.curvalue == 0 )
+			text = "Automatic keeps the existing gearbox and auto-shift behaviour.";
+		else if( s_q3roptions.transmissionMode.curvalue == 1 )
+			text = "Manual shifts gears R/N/1-6 with gear up and gear down.";
+		else
+			text = "Manual + Clutch requires the up/clutch key while shifting.";
+		break;
+
 	case ID_ATMOSPHERIC_LEVEL:
 		text = "Determines the relative number of environment particles to show.";
 		break;
@@ -291,9 +313,9 @@ static void Q3ROptions_StatusBar( void *self )
 
 	case ID_MANUAL_SHIFT:
 		if( s_q3roptions.manualShift.curvalue == 0 )
-			text = "The car will automatically shift from forward to reverse when you stop.";
+			text = "Automatic transmission switches between forward and reverse when you stop.";
 		else
-			text = "Use the gear up and gear down keys to switch between forward and reverse manually.";
+			text = "Automatic transmission uses gear up and gear down for forward/reverse.";
 		break;
 
 	case ID_POSITION_SPRITES:
@@ -376,6 +398,7 @@ void Q3ROptions_MenuInit( void ) {
         s_q3roptions.units.curvalue = ui_metricUnits.integer;
         s_q3roptions.speedometer.curvalue = ui_speedometerMode.integer;
 	s_q3roptions.controlMode.curvalue = ui_controlMode.integer;
+	s_q3roptions.transmissionMode.curvalue = (int)Com_Clamp( 0, 2, ui_transmissionMode.integer );
 	s_q3roptions.atomspheric.curvalue = ui_atmosphericLevel.integer;
 
 	s_q3roptions.manualShift.curvalue = ui_manualShift.integer;
@@ -448,11 +471,21 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.controlMode.generic.y			= LAY_TOP + LAY_STEP * 0;
 	s_q3roptions.controlMode.itemnames			= q3roptions_control_mode;
 
+	s_q3roptions.transmissionMode.generic.type		= MTYPE_SPINCONTROL;
+	s_q3roptions.transmissionMode.generic.name		= "Transmission:";
+	s_q3roptions.transmissionMode.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	s_q3roptions.transmissionMode.generic.callback	= Q3ROptions_MenuEvent;
+	s_q3roptions.transmissionMode.generic.statusbar	= Q3ROptions_StatusBar;
+	s_q3roptions.transmissionMode.generic.id		= ID_TRANSMISSION_MODE;
+	s_q3roptions.transmissionMode.generic.x			= LAY_L;
+	s_q3roptions.transmissionMode.generic.y			= LAY_TOP + LAY_STEP * 1;
+	s_q3roptions.transmissionMode.itemnames			= q3roptions_transmission_mode;
+
 	s_q3roptions.manualShift.generic.type		= MTYPE_RADIOBUTTON;
 	s_q3roptions.manualShift.generic.flags		= QMF_SMALLFONT;
 	s_q3roptions.manualShift.generic.x			= LAY_L;
-	s_q3roptions.manualShift.generic.y			= LAY_TOP + LAY_STEP * 1;
-	s_q3roptions.manualShift.generic.name		= "Manual Forward/Reverse:";
+	s_q3roptions.manualShift.generic.y			= LAY_TOP + LAY_STEP * 2;
+	s_q3roptions.manualShift.generic.name		= "Manual F/R Select:";
 	s_q3roptions.manualShift.generic.id			= ID_MANUAL_SHIFT;
 	s_q3roptions.manualShift.generic.callback	= Q3ROptions_MenuEvent;
 	s_q3roptions.manualShift.generic.statusbar	= Q3ROptions_StatusBar;
@@ -464,13 +497,13 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.atomspheric.generic.statusbar	= Q3ROptions_StatusBar;
 	s_q3roptions.atomspheric.generic.id			= ID_ATMOSPHERIC_LEVEL;
 	s_q3roptions.atomspheric.generic.x			= LAY_L;
-	s_q3roptions.atomspheric.generic.y			= LAY_TOP + LAY_STEP * 2;
+	s_q3roptions.atomspheric.generic.y			= LAY_TOP + LAY_STEP * 3;
 	s_q3roptions.atomspheric.itemnames			= q3roptions_atmospheric;
 
 	s_q3roptions.ghostPlayback.generic.type		= MTYPE_SPINCONTROL;
 	s_q3roptions.ghostPlayback.generic.flags	= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
 	s_q3roptions.ghostPlayback.generic.x		= LAY_L;
-	s_q3roptions.ghostPlayback.generic.y		= LAY_TOP + LAY_STEP * 3;
+	s_q3roptions.ghostPlayback.generic.y		= LAY_TOP + LAY_STEP * 4;
 	s_q3roptions.ghostPlayback.generic.name		= "Ghost Playback:";
 	s_q3roptions.ghostPlayback.generic.id		= ID_GHOST_PLAYBACK;
 	s_q3roptions.ghostPlayback.generic.callback	= Q3ROptions_MenuEvent;
@@ -480,7 +513,7 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.fuelConsumption.generic.type	= MTYPE_RADIOBUTTON;
 	s_q3roptions.fuelConsumption.generic.flags	= QMF_SMALLFONT;
 	s_q3roptions.fuelConsumption.generic.x		= LAY_L;
-	s_q3roptions.fuelConsumption.generic.y		= LAY_TOP + LAY_STEP * 4;
+	s_q3roptions.fuelConsumption.generic.y		= LAY_TOP + LAY_STEP * 5;
 	s_q3roptions.fuelConsumption.generic.name	= "Fuel Consumption:";
 	s_q3roptions.fuelConsumption.generic.id		= ID_FUEL_CONSUMPTION;
 	s_q3roptions.fuelConsumption.generic.callback	= Q3ROptions_MenuEvent;
@@ -490,7 +523,7 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.ladderOffline.generic.type		= MTYPE_RADIOBUTTON;
 	s_q3roptions.ladderOffline.generic.flags	= QMF_SMALLFONT;
 	s_q3roptions.ladderOffline.generic.x		= LAY_L;
-	s_q3roptions.ladderOffline.generic.y		= LAY_TOP + LAY_STEP * 5;
+	s_q3roptions.ladderOffline.generic.y		= LAY_TOP + LAY_STEP * 6;
 	s_q3roptions.ladderOffline.generic.name		= "Ladder Offline Tracking:";
 	s_q3roptions.ladderOffline.generic.id		= ID_LADDER_OFFLINE;
 	s_q3roptions.ladderOffline.generic.callback	= Q3ROptions_MenuEvent;
@@ -692,6 +725,7 @@ void Q3ROptions_MenuInit( void ) {
 
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.units );
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.controlMode );
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.transmissionMode );
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.atomspheric );
         Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.speedometer );
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.fuelConsumption );

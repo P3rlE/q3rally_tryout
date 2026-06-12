@@ -145,6 +145,7 @@ extern vmCvar_t	ui_metricUnits;
 extern vmCvar_t     ui_speedometerMode;
 extern vmCvar_t	ui_controlMode;
 extern vmCvar_t	ui_manualShift;
+extern vmCvar_t	ui_transmissionMode;
 extern vmCvar_t	ui_minSkidLength;
 extern vmCvar_t	ui_drawRearView;
 extern vmCvar_t	ui_checkpointArrowMode;

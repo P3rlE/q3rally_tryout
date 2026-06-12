@@ -314,7 +314,7 @@ static bind_t g_bindings[] =
 	{"+back", 			  "brake",			      ID_BRAKE,		      ANIM_BACK,		  's',	            K_DOWNARROW,		-1, -1},
 	{"+button14", 		"handbrake",		ID_HANDBRAKE,	ANIM_BACK,		K_SPACE,		K_CTRL,		-1, -1},
 	{"+speed", 			"turbo",			ID_TURBO,		ANIM_TURBO,		K_SHIFT,		-1,		-1,	-1},
-	{"+moveup",			"up",				ID_MOVEUP,		ANIM_JUMP,		'x',			-1,		-1, -1},
+	{"+moveup",			"up / clutch",		ID_MOVEUP,		ANIM_JUMP,		'x',			-1,		-1, -1},
 	{"+movedown",		"down",				ID_MOVEDOWN,	ANIM_CROUCH,	'c',			-1,		-1, -1},
 	{"+hud", 			"show HUD",			ID_SHOWHUD2,	0,				'q',			-1,		-1, -1},
 	{"+left", 			"turn left",		ID_LEFT,		ANIM_TURNLEFT,	'a',	K_LEFTARROW,		-1, -1},

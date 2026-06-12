@@ -111,46 +111,55 @@ static void PM_UpdateRPM(car_t *car, carPoint_t *points){
 
 //	Com_Printf("1 Gear: %i RPM temp: %f\n", car->gear, rpmTemp);
 
-		while ( rpmTemp < shiftDownRPM ){
-			if (car->gear > 1)
-				car->gear--;
-			else if ( rpmTemp < CP_RPM_MIN ){
-				rpmTemp = CP_RPM_MIN;
-				break;
-			}
-			else
-				break;
+		if (pm->transmissionMode == TR_AUTO) {
+			while ( rpmTemp < shiftDownRPM ){
+				if (car->gear > 1)
+					car->gear--;
+				else if ( rpmTemp < CP_RPM_MIN ){
+					rpmTemp = CP_RPM_MIN;
+					break;
+				}
+				else
+					break;
 
-			rpmTemp = PM_WheelSpeedtoRPM(car, points);
-			if (rpmTemp > CP_RPM_MAX)
-				rpmTemp = CP_RPM_MAX;
+				rpmTemp = PM_WheelSpeedtoRPM(car, points);
+				if (rpmTemp > CP_RPM_MAX)
+					rpmTemp = CP_RPM_MAX;
+			}
 		}
 
 //		Com_Printf("2 Gear: %i RPM temp: %f\n", car->gear, rpmTemp);
 
-		while ( rpmTemp > shiftUpRPM ){
-			if ( !points[2].onGround || !points[3].onGround || points[2].slipping || points[3].slipping ){
-				if ( rpmTemp > CP_RPM_MAX ){
+		if (pm->transmissionMode == TR_AUTO) {
+			while ( rpmTemp > shiftUpRPM ){
+				if ( !points[2].onGround || !points[3].onGround || points[2].slipping || points[3].slipping ){
+					if ( rpmTemp > CP_RPM_MAX ){
+						rpmTemp = CP_RPM_MAX;
+						break;
+					}
+					else if ( rpmTemp > shiftUpRPM )
+						break;
+				}
+
+				if (car->gear < 6){
+					if ( points[2].onGround && points[3].onGround && !points[2].slipping && !points[3].slipping )
+						car->gear++;
+				}
+				else if ( rpmTemp > CP_RPM_MAX ){
 					rpmTemp = CP_RPM_MAX;
 					break;
 				}
-				else if ( rpmTemp > shiftUpRPM )
-					break;
-			}
 
-                if (car->gear < 6){
-				if ( points[2].onGround && points[3].onGround && !points[2].slipping && !points[3].slipping )
-					car->gear++;
+				rpmTemp = PM_WheelSpeedtoRPM(car, points);
+				if (rpmTemp < CP_RPM_MIN)
+					rpmTemp = CP_RPM_MIN;
 			}
-			else if ( rpmTemp > CP_RPM_MAX ){
-				rpmTemp = CP_RPM_MAX;
-				break;
-			}
-
-			rpmTemp = PM_WheelSpeedtoRPM(car, points);
-			if (rpmTemp < CP_RPM_MIN)
-				rpmTemp = CP_RPM_MIN;
 		}
+
+		if (rpmTemp < CP_RPM_MIN)
+			rpmTemp = CP_RPM_MIN;
+		if (rpmTemp > CP_RPM_MAX)
+			rpmTemp = CP_RPM_MAX;
 
 		car->rpm = rpmTemp;
 	}
@@ -403,6 +412,8 @@ static void PM_TireEngineForces( car_t *car, carPoint_t *points, int i, vec3_t f
                 return;
 	if (car->fuel <= 0.0f)
 	return;
+	if (pm->transmissionMode == TR_MANUAL_CLUTCH && pm->cmd.upmove > 0)
+		return;
 
 	if (VectorLength(forward) == 0.0f){
 		if (pm->pDebug)
@@ -505,7 +516,7 @@ void PM_AddRoadForces(car_t *car, carBody_t *body, carPoint_t *points, float sec
 	if (pm->ps->stats[STAT_HEALTH] > 0){
 		car->throttle = pm->cmd.forwardmove / 127.0F;
 
-		if (!pm->manualShift){
+		if (pm->transmissionMode == TR_AUTO && !pm->manualShift){
 			if (car->gear < 0)
 				car->throttle *= -1.0f;
 
