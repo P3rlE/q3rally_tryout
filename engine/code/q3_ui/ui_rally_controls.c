@@ -50,10 +50,11 @@ typedef struct
 // control sections
 #define C_MOVEMENT		0
 #define C_LOOKING		1
-#define C_WEAPONS		2
-#define C_MISC			3
-#define C_DEVELOPER	4
-#define C_MAX			5
+#define C_COMBAT		2
+#define C_WEAPONS		3
+#define C_MISC			4
+#define C_DEVELOPER	5
+#define C_MAX			6
 
 #define ID_MOVEMENT		100
 #define ID_LOOKING		101
@@ -67,6 +68,7 @@ typedef struct
 #define ID_EXITCONFIRM_SAVE	109
 #define ID_EXITCONFIRM_DISCARD	110
 #define ID_EXITCONFIRM_CANCEL	111
+#define ID_COMBAT		112
 
 // bindable actions
 #define ID_SHOWSCORES	0
@@ -188,6 +190,7 @@ typedef struct
 	menubitmap_s		player;
 	menutext_s			movement;
 	menutext_s			looking;
+	menutext_s			combat;
 	menutext_s			weapons;
 	menutext_s			misc;
 	menutext_s			developer;
@@ -414,7 +417,7 @@ static menucommon_s *g_movement_controls[] = {
 	NULL,
 };
 
-static menucommon_s *g_weapons_controls[] = {
+static menucommon_s *g_combat_controls[] = {
 	(menucommon_s *)&s_controls.attack,
     (menucommon_s *)&s_controls.alt_attack,
 	(menucommon_s *)&s_controls.rearattack,
@@ -422,6 +425,10 @@ static menucommon_s *g_weapons_controls[] = {
 	(menucommon_s *)&s_controls.autodroprear,
 	(menucommon_s *)&s_controls.useitem,
 	(menucommon_s *)&s_controls.dropitem,
+	NULL,
+};
+
+static menucommon_s *g_weapons_controls[] = {
 	(menucommon_s *)&s_controls.nextweapon,
 	(menucommon_s *)&s_controls.prevweapon,
 	(menucommon_s *)&s_controls.autoswitch,    
@@ -494,6 +501,7 @@ static menucommon_s *g_developer_controls[] = {
 static menucommon_s **g_controls[] = {
 	g_movement_controls,
 	g_looking_controls,
+	g_combat_controls,
 	g_weapons_controls,
 	g_misc_controls,
 	g_developer_controls,
@@ -602,10 +610,17 @@ static const char* Controls_SectionTagForAction( int id )
 		}
 	}
 
-	controls = g_weapons_controls;
+	controls = g_combat_controls;
 	for ( i = 0; (control = controls[i]); i++ ) {
 		if ( control->id == id ) {
 			return "COMBAT";
+		}
+	}
+
+	controls = g_weapons_controls;
+	for ( i = 0; (control = controls[i]); i++ ) {
+		if ( control->id == id ) {
+			return "WEAPONS";
 		}
 	}
 
@@ -961,12 +976,14 @@ static void Controls_Update( void ) {
 	// makes sure flags are right on the group selection controls
 	s_controls.looking.generic.flags  &= ~(QMF_GRAYED|QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
 	s_controls.movement.generic.flags &= ~(QMF_GRAYED|QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
+	s_controls.combat.generic.flags   &= ~(QMF_GRAYED|QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
 	s_controls.weapons.generic.flags  &= ~(QMF_GRAYED|QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
 	s_controls.misc.generic.flags     &= ~(QMF_GRAYED|QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
 	s_controls.developer.generic.flags &= ~(QMF_GRAYED|QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
 
 	s_controls.looking.generic.flags  |= QMF_PULSEIFFOCUS;
 	s_controls.movement.generic.flags |= QMF_PULSEIFFOCUS;
+	s_controls.combat.generic.flags   |= QMF_PULSEIFFOCUS;
 	s_controls.weapons.generic.flags  |= QMF_PULSEIFFOCUS;
 	s_controls.misc.generic.flags     |= QMF_PULSEIFFOCUS;
 	s_controls.developer.generic.flags |= QMF_PULSEIFFOCUS;
@@ -981,6 +998,11 @@ static void Controls_Update( void ) {
 	case C_LOOKING:
 		s_controls.looking.generic.flags &= ~QMF_PULSEIFFOCUS;
 		s_controls.looking.generic.flags |= (QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
+		break;
+
+	case C_COMBAT:
+		s_controls.combat.generic.flags &= ~QMF_PULSEIFFOCUS;
+		s_controls.combat.generic.flags |= (QMF_HIGHLIGHT|QMF_HIGHLIGHT_IF_FOCUS);
 		break;
 	
 	case C_WEAPONS:
@@ -1670,6 +1692,14 @@ static void Controls_MenuEvent( void* ptr, int event )
 			}
 			break;
 
+		case ID_COMBAT:
+			if (event == QM_ACTIVATED)
+			{
+				s_controls.section = C_COMBAT;
+				Controls_Update();
+			}
+			break;
+
 		case ID_WEAPONS:
 			if (event == QM_ACTIVATED)
 			{
@@ -1890,12 +1920,28 @@ static void Controls_MenuInit( void )
 //	s_controls.movement.generic.x	    = 152;
 	s_controls.movement.generic.x	    = x;
 // END
-	s_controls.movement.generic.y	     = 240 - PROP_HEIGHT;
+	s_controls.movement.generic.y	     = 240 - 3 * PROP_HEIGHT;
 	s_controls.movement.string			= "DRIVE";
 	s_controls.movement.style			= UI_RIGHT;
 // STONELANCE
 //	s_controls.movement.color			= color_red;
 	s_controls.movement.color			= text_color_normal;
+// END
+
+	s_controls.combat.generic.type	    = MTYPE_PTEXT;
+	s_controls.combat.generic.flags    = QMF_RIGHT_JUSTIFY|QMF_PULSEIFFOCUS;
+	s_controls.combat.generic.id	    = ID_COMBAT;
+	s_controls.combat.generic.callback	= Controls_MenuEvent;
+// STONELANCE
+//	s_controls.combat.generic.x	    = 152;
+	s_controls.combat.generic.x	    = x;
+// END
+	s_controls.combat.generic.y	    = 240 - PROP_HEIGHT;
+	s_controls.combat.string			= "COMBAT";
+	s_controls.combat.style			= UI_RIGHT;
+// STONELANCE
+//	s_controls.combat.color			= color_red;
+	s_controls.combat.color			= text_color_normal;
 // END
 
 	s_controls.weapons.generic.type	    = MTYPE_PTEXT;
@@ -1907,7 +1953,7 @@ static void Controls_MenuInit( void )
 	s_controls.weapons.generic.x	    = x;
 // END
 	s_controls.weapons.generic.y	    = 240;
-	s_controls.weapons.string			= "COMBAT";
+	s_controls.weapons.string			= "WEAPONS";
 	s_controls.weapons.style			= UI_RIGHT;
 // STONELANCE
 //	s_controls.weapons.color			= color_red;
@@ -2538,8 +2584,9 @@ static void Controls_MenuInit( void )
 // END
 	Menu_AddItem( &s_controls.menu, &s_controls.player );
 
-	Menu_AddItem( &s_controls.menu, &s_controls.looking );
 	Menu_AddItem( &s_controls.menu, &s_controls.movement );
+	Menu_AddItem( &s_controls.menu, &s_controls.looking );
+	Menu_AddItem( &s_controls.menu, &s_controls.combat );
 	Menu_AddItem( &s_controls.menu, &s_controls.weapons );
 	Menu_AddItem( &s_controls.menu, &s_controls.misc );
 	Menu_AddItem( &s_controls.menu, &s_controls.developer );
