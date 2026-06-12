@@ -142,6 +142,8 @@ typedef struct
 #define ID_NEXT_BPOINT		70
 #define ID_TOGGLE_BOT_PATHS	71
 #define ID_SAVE_BPOINTS	72
+#define ID_GEARUP		73
+#define ID_GEARDOWN		74
 
 
 #define ANIM_IDLE		0
@@ -196,6 +198,8 @@ typedef struct
 	menuaction_s		brake;
 	menuaction_s		handbrake;
 	menuaction_s		turbo;
+	menuaction_s		gearup;
+	menuaction_s		geardown;
 
 	menuaction_s		moveup;
 	menuaction_s		movedown;
@@ -314,14 +318,16 @@ static bind_t g_bindings[] =
 	{"+back", 			  "brake",			      ID_BRAKE,		      ANIM_BACK,		  's',	            K_DOWNARROW,		-1, -1},
 	{"+button14", 		"handbrake",		ID_HANDBRAKE,	ANIM_BACK,		K_SPACE,		K_CTRL,		-1, -1},
 	{"+speed", 			"turbo",			ID_TURBO,		ANIM_TURBO,		K_SHIFT,		-1,		-1,	-1},
-	{"+moveup",			"up / clutch",		ID_MOVEUP,		ANIM_JUMP,		'x',			-1,		-1, -1},
+	{"gearUp",			"gear up",			ID_GEARUP,		ANIM_IDLE,		K_PGUP,			-1,		-1, -1},
+	{"gearDown",		"gear down",		ID_GEARDOWN,	ANIM_IDLE,		K_PGDN,			-1,		-1, -1},
+	{"+moveup",			"clutch / up",		ID_MOVEUP,		ANIM_JUMP,		'x',			-1,		-1, -1},
 	{"+movedown",		"down",				ID_MOVEDOWN,	ANIM_CROUCH,	'c',			-1,		-1, -1},
 	{"+hud", 			"show HUD",			ID_SHOWHUD2,	0,				'q',			-1,		-1, -1},
 	{"+left", 			"turn left",		ID_LEFT,		ANIM_TURNLEFT,	'a',	K_LEFTARROW,		-1, -1},
 	{"+right", 			"turn right",		ID_RIGHT,		ANIM_TURNRIGHT,	'd',	K_RIGHTARROW,		-1, -1},
 	{"+button12", 		"rear attack",		ID_REARATTACK,	ANIM_REARATTACK, K_KP_INS,		-1,		-1, -1},
-	{"+lookup", 		"look up",			ID_LOOKUP,		ANIM_LOOKUP,	K_PGDN,			-1,		-1, -1},
-	{"+lookdown", 		"look down",		ID_LOOKDOWN,	ANIM_LOOKDOWN,	K_DEL,			-1,		-1, -1},
+	{"+lookup", 		"look up",			ID_LOOKUP,		ANIM_LOOKUP,	-1,			-1,		-1, -1},
+	{"+lookdown", 		"look down",		ID_LOOKDOWN,	ANIM_LOOKDOWN,	-1,			-1,		-1, -1},
 	{"+mlook", 			"mouse look",		ID_MOUSELOOK,	ANIM_IDLE,		'/',			-1,		-1, -1},
 	{"centerview", 		"center view",		ID_CENTERVIEW,	ANIM_IDLE,		K_END,			-1,		-1, -1},
 	{"+zoom", 			"zoom view",		ID_ZOOMVIEW,	ANIM_IDLE,		K_MOUSE3,			-1,		-1, -1},
@@ -395,12 +401,16 @@ static configcvar_t g_configcvars[] =
 static menucommon_s *g_movement_controls[] = {
     (menucommon_s *)&s_controls.accel,
 	(menucommon_s *)&s_controls.brake,
+	(menucommon_s *)&s_controls.gearup,
+	(menucommon_s *)&s_controls.geardown,
+	(menucommon_s *)&s_controls.moveup,
 	(menucommon_s *)&s_controls.handbrake,      
 	(menucommon_s *)&s_controls.turbo,     
-	(menucommon_s *)&s_controls.moveup,        
 	(menucommon_s *)&s_controls.movedown,      
 	(menucommon_s *)&s_controls.turnleft,      
 	(menucommon_s *)&s_controls.turnright,    
+	(menucommon_s *)&s_controls.headlight,
+	(menucommon_s *)&s_controls.horn,
 	NULL,
 };
 
@@ -410,6 +420,8 @@ static menucommon_s *g_weapons_controls[] = {
 	(menucommon_s *)&s_controls.rearattack,
 	(menucommon_s *)&s_controls.droprear,
 	(menucommon_s *)&s_controls.autodroprear,
+	(menucommon_s *)&s_controls.useitem,
+	(menucommon_s *)&s_controls.dropitem,
 	(menucommon_s *)&s_controls.nextweapon,
 	(menucommon_s *)&s_controls.prevweapon,
 	(menucommon_s *)&s_controls.autoswitch,    
@@ -436,6 +448,7 @@ static menucommon_s *g_looking_controls[] = {
 	(menucommon_s *)&s_controls.freelook,
 	(menucommon_s *)&s_controls.centerview,
 	(menucommon_s *)&s_controls.zoomview,
+	(menucommon_s *)&s_controls.nextcamera,
 	(menucommon_s *)&s_controls.joyenable,
 	(menucommon_s *)&s_controls.joythreshold,
 	NULL,
@@ -443,8 +456,6 @@ static menucommon_s *g_looking_controls[] = {
 
 static menucommon_s *g_misc_controls[] = {
 	(menucommon_s *)&s_controls.showscores,
-	(menucommon_s *)&s_controls.useitem,
-	(menucommon_s *)&s_controls.dropitem,
 	(menucommon_s *)&s_controls.jukeboxPlay,
 	(menucommon_s *)&s_controls.jukeboxNext,
 	(menucommon_s *)&s_controls.jukeboxPrev,
@@ -455,11 +466,8 @@ static menucommon_s *g_misc_controls[] = {
 	(menucommon_s *)&s_controls.chat2,
 	(menucommon_s *)&s_controls.chat3,
 	(menucommon_s *)&s_controls.chat4,
-	(menucommon_s *)&s_controls.headlight,
-	(menucommon_s *)&s_controls.horn,
 	(menucommon_s *)&s_controls.startdemo,
 	(menucommon_s *)&s_controls.stopdemo,
-	(menucommon_s *)&s_controls.nextcamera,
 	NULL,
 };
 
@@ -583,28 +591,28 @@ static const char* Controls_SectionTagForAction( int id )
 	controls = g_movement_controls;
 	for ( i = 0; (control = controls[i]); i++ ) {
 		if ( control->id == id ) {
-			return "MOVEMENT";
+			return "DRIVE";
 		}
 	}
 
 	controls = g_looking_controls;
 	for ( i = 0; (control = controls[i]); i++ ) {
 		if ( control->id == id ) {
-			return "LOOKING";
+			return "VIEW";
 		}
 	}
 
 	controls = g_weapons_controls;
 	for ( i = 0; (control = controls[i]); i++ ) {
 		if ( control->id == id ) {
-			return "WEAPONS";
+			return "COMBAT";
 		}
 	}
 
 	controls = g_misc_controls;
 	for ( i = 0; (control = controls[i]); i++ ) {
 		if ( control->id == id ) {
-			return "MISC";
+			return "SYSTEM";
 		}
 	}
 
@@ -648,13 +656,6 @@ static void Controls_BuildGlobalSearchList( void )
 				s_globalSearchControls[s_globalSearchControlCount++] = control;
 
             }
-
-			if ( binding && Controls_StringContainsCaseInsensitive( binding->label, s_controlsSearchText ) ) {
-				if ( s_globalSearchControlCount < (int)ARRAY_LEN( s_globalSearchControls ) ) {
-					s_globalSearchControls[s_globalSearchControlCount++] = control;
-				}
-
-			}
 		}
 	}
 }
@@ -888,7 +889,7 @@ static void Controls_Update( void ) {
 	searchActive = Controls_SearchActive();
 
 	if ( s_controls.section == C_DEVELOPER && !Controls_ShowDeveloper() ) {
-		s_controls.section = C_LOOKING;
+		s_controls.section = C_MOVEMENT;
 	}
 
 	if ( Controls_ShowDeveloper() ) {
@@ -1758,7 +1759,8 @@ static void Controls_ActionEvent( void* ptr, int event )
 	}
 	else if (event == QM_GOTFOCUS)
 	{
-		Controls_UpdateModel( g_bindings[((menucommon_s*)ptr)->id].anim );
+		bind_t* binding = Controls_FindBindingById( ((menucommon_s*)ptr)->id );
+		Controls_UpdateModel( binding ? binding->anim : ANIM_IDLE );
 	}
 	else if ((event == QM_ACTIVATED) && !s_controls.waitingforkey)
 	{
@@ -1873,7 +1875,7 @@ static void Controls_MenuInit( void )
 	s_controls.looking.generic.x	    = x;
 // END
 	s_controls.looking.generic.y	    = 240 - 2 * PROP_HEIGHT;
-	s_controls.looking.string			= "LOOK";
+	s_controls.looking.string			= "VIEW";
 	s_controls.looking.style			= UI_RIGHT;
 // STONELANCE
 //	s_controls.looking.color			= color_red;
@@ -1889,7 +1891,7 @@ static void Controls_MenuInit( void )
 	s_controls.movement.generic.x	    = x;
 // END
 	s_controls.movement.generic.y	     = 240 - PROP_HEIGHT;
-	s_controls.movement.string			= "MOVE";
+	s_controls.movement.string			= "DRIVE";
 	s_controls.movement.style			= UI_RIGHT;
 // STONELANCE
 //	s_controls.movement.color			= color_red;
@@ -1905,7 +1907,7 @@ static void Controls_MenuInit( void )
 	s_controls.weapons.generic.x	    = x;
 // END
 	s_controls.weapons.generic.y	    = 240;
-	s_controls.weapons.string			= "SHOOT";
+	s_controls.weapons.string			= "COMBAT";
 	s_controls.weapons.style			= UI_RIGHT;
 // STONELANCE
 //	s_controls.weapons.color			= color_red;
@@ -1921,7 +1923,7 @@ static void Controls_MenuInit( void )
 	s_controls.misc.generic.x	    = x;
 // END
 	s_controls.misc.generic.y		 = 240 + PROP_HEIGHT;
-	s_controls.misc.string			= "MISC";
+	s_controls.misc.string			= "SYSTEM";
 	s_controls.misc.style			= UI_RIGHT;
 // STONELANCE
 //	s_controls.misc.color			= color_red;
@@ -2025,6 +2027,18 @@ static void Controls_MenuInit( void )
 	s_controls.turbo.generic.callback  = Controls_ActionEvent;
 	s_controls.turbo.generic.ownerdraw = Controls_DrawKeyBinding;
 	s_controls.turbo.generic.id        = ID_TURBO;
+
+	s_controls.gearup.generic.type	     = MTYPE_ACTION;
+	s_controls.gearup.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.gearup.generic.callback  = Controls_ActionEvent;
+	s_controls.gearup.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.gearup.generic.id 	     = ID_GEARUP;
+
+	s_controls.geardown.generic.type	   = MTYPE_ACTION;
+	s_controls.geardown.generic.flags     = QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_GRAYED|QMF_HIDDEN;
+	s_controls.geardown.generic.callback  = Controls_ActionEvent;
+	s_controls.geardown.generic.ownerdraw = Controls_DrawKeyBinding;
+	s_controls.geardown.generic.id 	   = ID_GEARDOWN;
 // END
 
 	s_controls.moveup.generic.type	    = MTYPE_ACTION;
@@ -2553,6 +2567,8 @@ static void Controls_MenuInit( void )
 //	Menu_AddItem( &s_controls.menu, &s_controls.stepright );
 	Menu_AddItem( &s_controls.menu, &s_controls.accel );
 	Menu_AddItem( &s_controls.menu, &s_controls.brake );
+	Menu_AddItem( &s_controls.menu, &s_controls.gearup );
+	Menu_AddItem( &s_controls.menu, &s_controls.geardown );
 	Menu_AddItem( &s_controls.menu, &s_controls.handbrake );
 	Menu_AddItem( &s_controls.menu, &s_controls.turbo );
 // END
@@ -2642,7 +2658,7 @@ static void Controls_MenuInit( void )
 	Controls_InitWeapons ();
 
 	// initial default section
-	s_controls.section = C_LOOKING;
+	s_controls.section = C_MOVEMENT;
 
 	// update the ui
 	Controls_Update();
