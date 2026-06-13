@@ -1230,6 +1230,54 @@ static void Controls_DrawSlider( void *self )
 	UI_DrawChar( (int)( x + 2*SMALLCHAR_WIDTH + (SLIDER_RANGE-1)*SMALLCHAR_WIDTH* s->range ), y, 131, UI_LEFT|style, color );
 }
 
+static void Controls_DrawSearchField( void *self )
+{
+	menufield_s* f;
+	int x;
+	int y;
+	int w;
+	int style;
+	int visibleChars;
+	int fillRight;
+	float* color;
+	qboolean focus;
+
+	f = (menufield_s*)self;
+	x = f->generic.x;
+	y = f->generic.y;
+	w = SMALLCHAR_WIDTH;
+	style = UI_SMALLFONT;
+	focus = (Menu_ItemAtCursor( f->generic.parent ) == f);
+
+	if ( focus ) {
+		style |= UI_PULSE;
+	}
+
+	if ( f->generic.flags & QMF_GRAYED ) {
+		color = text_color_disabled;
+	} else if ( focus ) {
+		color = text_color_highlight;
+	} else {
+		color = text_color_normal;
+	}
+
+	if ( focus ) {
+		visibleChars = strlen( f->field.buffer ) - f->field.scroll;
+		if ( visibleChars < 1 ) {
+			visibleChars = 1;
+		}
+		if ( visibleChars > f->field.widthInChars ) {
+			visibleChars = f->field.widthInChars;
+		}
+
+		fillRight = x + w + visibleChars * w + 2;
+		UI_FillRect( x - 2, f->generic.top, fillRight - x + 3, f->generic.bottom-f->generic.top+1, listbar_color );
+		UI_DrawChar( x, y, 13, UI_CENTER|UI_BLINK|style, color );
+	}
+
+	MField_Draw( &f->field, x + w, y, style, color );
+}
+
 
 /*
 =================
@@ -2675,7 +2723,8 @@ static void Controls_MenuInit( void )
 		s_controls.search.generic.type			= MTYPE_FIELD;
 		s_controls.search.generic.flags			= QMF_SMALLFONT;
 		s_controls.search.generic.x				= x + 6;
-		s_controls.search.generic.y				= s_controls.searchLabel.generic.y + PROP_HEIGHT;
+		s_controls.search.generic.y				= s_controls.searchLabel.generic.y;
+		s_controls.search.generic.ownerdraw	= Controls_DrawSearchField;
 		s_controls.search.field.widthInChars	= 24;
 		s_controls.search.field.maxchars		= sizeof( s_controlsSearchText ) - 1;
 		Controls_SearchFieldSyncFromState();
