@@ -455,8 +455,8 @@ void Q3ROptions_MenuInit( void ) {
 #define LAY_STEP   22
 #define LAY_L     200
 #define LAY_R     500
-#define LAY_RLY   290
-#define LAY_SLD_Y ( LAY_TOP + LAY_STEP * 6 + 10 )  /* Skid + Camera Tracking row */
+#define LAY_RLY   300
+#define LAY_SLD_Y ( LAY_TOP + LAY_STEP * 7 + 4 )   /* Skid + Camera Tracking row */
 #define LAY_HDG_Y ( LAY_RLY - 19 )                  /* Render level headings, 5px higher */
 
 	// ---- LEFT COLUMN: Gameplay ----
@@ -539,6 +539,7 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.skidlength.minvalue			= 4;
 	s_q3roptions.skidlength.maxvalue			= 24;
 	s_q3roptions.skidlength.generic.callback	= Q3ROptions_MenuEvent;
+	s_q3roptions.skidlength.generic.ownerdraw	= UI_RallySlider_Draw;
 	s_q3roptions.skidlength.generic.statusbar	= Q3ROptions_StatusBar;
 
 	// ---- RIGHT COLUMN: Visual / Audio ----
@@ -591,6 +592,7 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.camtracking.minvalue			= 0;
 	s_q3roptions.camtracking.maxvalue			= 5;
 	s_q3roptions.camtracking.generic.callback	= Q3ROptions_MenuEvent;
+	s_q3roptions.camtracking.generic.ownerdraw	= UI_RallySlider_Draw;
 	s_q3roptions.camtracking.generic.statusbar	= Q3ROptions_StatusBar;
 
 	// ---- RENDER LEVEL GROUPS (below both columns) ----
