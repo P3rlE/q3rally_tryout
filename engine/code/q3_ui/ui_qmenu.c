@@ -1904,7 +1904,7 @@ Menu_SetCursor
 */
 void Menu_SetCursor( menuframework_s *m, int cursor )
 {
-	if (((menucommon_s*)(m->items[cursor]))->flags & (QMF_GRAYED|QMF_INACTIVE))
+	if (((menucommon_s*)(m->items[cursor]))->flags & (QMF_GRAYED|QMF_MOUSEONLY|QMF_INACTIVE|QMF_HIDDEN))
 	{
 		// cursor can't go there
 		return;
@@ -1949,7 +1949,7 @@ void Menu_AdjustCursor( menuframework_s *m, int dir ) {
 wrap:
 	while ( m->cursor >= 0 && m->cursor < m->nitems ) {
 		item = ( menucommon_s * ) m->items[m->cursor];
-		if (( item->flags & (QMF_GRAYED|QMF_MOUSEONLY|QMF_INACTIVE) ) ) {
+		if (( item->flags & (QMF_GRAYED|QMF_MOUSEONLY|QMF_INACTIVE|QMF_HIDDEN) ) ) {
 			m->cursor += dir;
 		}
 		else {
@@ -2193,6 +2193,60 @@ static qboolean Menu_IsRightKey( int key )
 	return key == K_KP_RIGHTARROW || key == K_RIGHTARROW || key == K_PAD0_DPAD_RIGHT || key == K_PAD0_LEFTSTICK_RIGHT;
 }
 
+static qboolean Menu_IsGamepadNavigationKey( int key )
+{
+	switch ( key ) {
+		case K_PAD0_DPAD_UP:
+		case K_PAD0_DPAD_DOWN:
+		case K_PAD0_DPAD_LEFT:
+		case K_PAD0_DPAD_RIGHT:
+		case K_PAD0_LEFTSTICK_UP:
+		case K_PAD0_LEFTSTICK_DOWN:
+		case K_PAD0_LEFTSTICK_LEFT:
+		case K_PAD0_LEFTSTICK_RIGHT:
+			return qtrue;
+	}
+
+	return qfalse;
+}
+
+static int Menu_KeyDirX( int key )
+{
+	if ( Menu_IsLeftKey( key ) ) {
+		return -1;
+	}
+	if ( Menu_IsRightKey( key ) ) {
+		return 1;
+	}
+	return 0;
+}
+
+static int Menu_KeyDirY( int key )
+{
+	if ( Menu_IsUpKey( key ) ) {
+		return -1;
+	}
+	if ( Menu_IsDownKey( key ) ) {
+		return 1;
+	}
+	return 0;
+}
+
+static qboolean Menu_ItemCanFocus( menucommon_s *item )
+{
+	return !( item->flags & ( QMF_GRAYED | QMF_MOUSEONLY | QMF_INACTIVE | QMF_HIDDEN ) );
+}
+
+static int Menu_ItemCenterX( menucommon_s *item )
+{
+	return ( item->left + item->right ) / 2;
+}
+
+static int Menu_ItemCenterY( menucommon_s *item )
+{
+	return ( item->top + item->bottom ) / 2;
+}
+
 static qboolean Menu_ListNavigationExit( menucommon_s *item, int key, int *dir )
 {
 	menulist_s *list;
@@ -2244,6 +2298,97 @@ static sfxHandle_t Menu_MoveCursor( menuframework_s *m, int dir )
 	return menu_buzz_sound;
 }
 
+static sfxHandle_t Menu_MoveCursorSpatial( menuframework_s *m, int dirX, int dirY )
+{
+	menucommon_s	*current;
+	menucommon_s	*candidate;
+	int				i;
+	int				best;
+	int				bestScore;
+	int				score;
+	int				primary;
+	int				secondary;
+	int				currentX;
+	int				currentY;
+	int				candidateX;
+	int				candidateY;
+
+	if ( !m || m->cursor < 0 || m->cursor >= m->nitems ) {
+		return menu_buzz_sound;
+	}
+
+	current = (menucommon_s *)m->items[m->cursor];
+	currentX = Menu_ItemCenterX( current );
+	currentY = Menu_ItemCenterY( current );
+	best = -1;
+	bestScore = 0x7fffffff;
+
+	for ( i = 0; i < m->nitems; i++ ) {
+		if ( i == m->cursor ) {
+			continue;
+		}
+
+		candidate = (menucommon_s *)m->items[i];
+		if ( !Menu_ItemCanFocus( candidate ) ) {
+			continue;
+		}
+
+		candidateX = Menu_ItemCenterX( candidate );
+		candidateY = Menu_ItemCenterY( candidate );
+
+		if ( dirY < 0 ) {
+			if ( candidateY >= currentY ) {
+				continue;
+			}
+			primary = currentY - candidateY;
+			secondary = abs( candidateX - currentX );
+		}
+		else if ( dirY > 0 ) {
+			if ( candidateY <= currentY ) {
+				continue;
+			}
+			primary = candidateY - currentY;
+			secondary = abs( candidateX - currentX );
+		}
+		else if ( dirX < 0 ) {
+			if ( candidateX >= currentX ) {
+				continue;
+			}
+			primary = currentX - candidateX;
+			secondary = abs( candidateY - currentY );
+		}
+		else if ( dirX > 0 ) {
+			if ( candidateX <= currentX ) {
+				continue;
+			}
+			primary = candidateX - currentX;
+			secondary = abs( candidateY - currentY );
+		}
+		else {
+			continue;
+		}
+
+		score = primary * 2048 + secondary;
+		if ( score < bestScore ) {
+			bestScore = score;
+			best = i;
+		}
+	}
+
+	if ( best >= 0 ) {
+		m->cursor_prev = m->cursor;
+		m->cursor = best;
+		Menu_CursorMoved( m );
+		return menu_move_sound;
+	}
+
+	if ( dirY != 0 ) {
+		return Menu_MoveCursor( m, dirY );
+	}
+
+	return menu_buzz_sound;
+}
+
 /*
 =================
 Menu_DefaultKey
@@ -2284,6 +2429,9 @@ sfxHandle_t Menu_DefaultKey( menuframework_s *m, int key )
 	if (item && !(item->flags & (QMF_GRAYED|QMF_INACTIVE)))
 	{
 		if ( Menu_ListNavigationExit( item, key, &dir ) ) {
+			if ( Menu_IsGamepadNavigationKey( key ) ) {
+				return Menu_MoveCursorSpatial( m, Menu_KeyDirX( key ), Menu_KeyDirY( key ) );
+			}
 			return Menu_MoveCursor( m, dir );
 		}
 
@@ -2340,17 +2488,33 @@ sfxHandle_t Menu_DefaultKey( menuframework_s *m, int key )
 #endif
 		case K_KP_UPARROW:
 		case K_UPARROW:
-		case K_PAD0_DPAD_UP:
-		case K_PAD0_LEFTSTICK_UP:
 			sound = Menu_MoveCursor( m, -1 );
 			break;
 
 		case K_TAB:
 		case K_KP_DOWNARROW:
 		case K_DOWNARROW:
+			sound = Menu_MoveCursor( m, 1 );
+			break;
+
+		case K_PAD0_DPAD_UP:
+		case K_PAD0_LEFTSTICK_UP:
+			sound = Menu_MoveCursorSpatial( m, 0, -1 );
+			break;
+
 		case K_PAD0_DPAD_DOWN:
 		case K_PAD0_LEFTSTICK_DOWN:
-			sound = Menu_MoveCursor( m, 1 );
+			sound = Menu_MoveCursorSpatial( m, 0, 1 );
+			break;
+
+		case K_PAD0_DPAD_LEFT:
+		case K_PAD0_LEFTSTICK_LEFT:
+			sound = Menu_MoveCursorSpatial( m, -1, 0 );
+			break;
+
+		case K_PAD0_DPAD_RIGHT:
+		case K_PAD0_LEFTSTICK_RIGHT:
+			sound = Menu_MoveCursorSpatial( m, 1, 0 );
 			break;
 
 		case K_MOUSE1:
