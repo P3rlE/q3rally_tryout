@@ -506,8 +506,12 @@ static sfxHandle_t RadioButton_Key( menuradiobutton_s *rb, int key )
 		case K_KP_ENTER:
 		case K_KP_LEFTARROW:
 		case K_LEFTARROW:
+		case K_PAD0_DPAD_LEFT:
+		case K_PAD0_LEFTSTICK_LEFT:
 		case K_KP_RIGHTARROW:
 		case K_RIGHTARROW:
+		case K_PAD0_DPAD_RIGHT:
+		case K_PAD0_LEFTSTICK_RIGHT:
 			rb->curvalue = !rb->curvalue;
 			if ( rb->generic.callback )
 				rb->generic.callback( rb, QM_ACTIVATED );
@@ -626,6 +630,8 @@ static sfxHandle_t Slider_Key( menuslider_s *s, int key )
 
 		case K_KP_LEFTARROW:
 		case K_LEFTARROW:
+		case K_PAD0_DPAD_LEFT:
+		case K_PAD0_LEFTSTICK_LEFT:
 			if (s->curvalue > s->minvalue)
 			{
 				s->curvalue--;
@@ -637,6 +643,8 @@ static sfxHandle_t Slider_Key( menuslider_s *s, int key )
 
 		case K_KP_RIGHTARROW:
 		case K_RIGHTARROW:
+		case K_PAD0_DPAD_RIGHT:
+		case K_PAD0_LEFTSTICK_RIGHT:
 			if (s->curvalue < s->maxvalue)
 			{
 				s->curvalue++;
@@ -903,6 +911,8 @@ static sfxHandle_t SpinControl_Key( menulist_s *s, int key )
 	{
 		case K_KP_RIGHTARROW:
 		case K_RIGHTARROW:
+		case K_PAD0_DPAD_RIGHT:
+		case K_PAD0_LEFTSTICK_RIGHT:
 		case K_MOUSE1:
 			s->curvalue++;
 			if (s->curvalue >= s->numitems)
@@ -912,6 +922,8 @@ static sfxHandle_t SpinControl_Key( menulist_s *s, int key )
 		
 		case K_KP_LEFTARROW:
 		case K_LEFTARROW:
+		case K_PAD0_DPAD_LEFT:
+		case K_PAD0_LEFTSTICK_LEFT:
 			s->curvalue--;
 			if (s->curvalue < 0)
 				s->curvalue = s->numitems-1;
@@ -1158,6 +1170,7 @@ sfxHandle_t ListBox_Key( menulist_s *l, int key )
 		case K_KP_UPARROW:
 		case K_UPARROW:
 		case K_PAD0_DPAD_UP:
+		case K_PAD0_LEFTSTICK_UP:
 			if (l->generic.flags & QMF_HASMOUSEFOCUS)
 			{
 				// clicked up
@@ -1179,6 +1192,7 @@ sfxHandle_t ListBox_Key( menulist_s *l, int key )
 		case K_KP_DOWNARROW:
 		case K_DOWNARROW:
 		case K_PAD0_DPAD_DOWN:
+		case K_PAD0_LEFTSTICK_DOWN:
 			if (l->generic.flags & QMF_HASMOUSEFOCUS)
 			{
 				// clicked down
@@ -2272,6 +2286,7 @@ sfxHandle_t Menu_DefaultKey( menuframework_s *m, int key )
 		case K_KP_UPARROW:
 		case K_UPARROW:
 		case K_PAD0_DPAD_UP:
+		case K_PAD0_LEFTSTICK_UP:
 			cursor_prev    = m->cursor;
 			m->cursor_prev = m->cursor;
 			m->cursor--;
@@ -2286,6 +2301,7 @@ sfxHandle_t Menu_DefaultKey( menuframework_s *m, int key )
 		case K_KP_DOWNARROW:
 		case K_DOWNARROW:
 		case K_PAD0_DPAD_DOWN:
+		case K_PAD0_LEFTSTICK_DOWN:
 			cursor_prev    = m->cursor;
 			m->cursor_prev = m->cursor;
 			m->cursor++;
