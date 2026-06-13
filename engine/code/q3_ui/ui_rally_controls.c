@@ -929,7 +929,7 @@ static void Controls_Update( void ) {
 		y = ( SCREEN_HEIGHT - s_globalSearchControlCount * SMALLCHAR_HEIGHT ) / 2;
 		for ( j = 0; j < s_globalSearchControlCount; j++, y += SMALLCHAR_HEIGHT ) {
 			control = s_globalSearchControls[j];
-			control->x      = 300 + (int)(((y - 240) / 14.0F) * ((y - 240) / 14.0F));
+			control->x      = 410 + (int)(((y - 240) / 14.0F) * ((y - 240) / 14.0F));
 			control->y      = y;
 			control->left   = control->x - 19*SMALLCHAR_WIDTH;
 			control->right  = control->x + 21*SMALLCHAR_WIDTH;
@@ -2722,8 +2722,8 @@ static void Controls_MenuInit( void )
 
 		s_controls.search.generic.type			= MTYPE_FIELD;
 		s_controls.search.generic.flags			= QMF_SMALLFONT;
-		s_controls.search.generic.x				= x + 6;
-		s_controls.search.generic.y				= s_controls.searchLabel.generic.y;
+		s_controls.search.generic.x				= x + 24;
+		s_controls.search.generic.y				= s_controls.searchLabel.generic.y + 5;
 		s_controls.search.generic.ownerdraw	= Controls_DrawSearchField;
 		s_controls.search.field.widthInChars	= 24;
 		s_controls.search.field.maxchars		= sizeof( s_controlsSearchText ) - 1;
