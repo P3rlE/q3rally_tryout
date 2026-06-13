@@ -708,7 +708,7 @@ static char mapnamebuffer[MAPNAMEBUFFER_SIZE];
 	}
 
 	s_startserver.statlist.generic.type			= MTYPE_LISTBOX;
-	s_startserver.statlist.generic.flags		= QMF_HIGHLIGHT_IF_FOCUS | QMF_SCROLL_ONLY;
+	s_startserver.statlist.generic.flags		= QMF_HIGHLIGHT_IF_FOCUS | QMF_SCROLL_ONLY | QMF_MOUSEONLY;
 	s_startserver.statlist.scrollbarAlignment	= SB_RIGHT | SB_HIDE;
 	s_startserver.statlist.generic.x			= 290;
 	s_startserver.statlist.generic.y			= 272;
