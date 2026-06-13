@@ -146,6 +146,7 @@ typedef struct
 #define ID_SAVE_BPOINTS	72
 #define ID_GEARUP		73
 #define ID_GEARDOWN		74
+#define ID_JOYANALOG	75
 
 
 #define ANIM_IDLE		0
@@ -278,6 +279,7 @@ typedef struct
 	menuaction_s		saveBPoints;
 
 	menuradiobutton_s	joyenable;
+	menuradiobutton_s	joyanalog;
 	menuslider_s		joythreshold;
 	int					section;
 	qboolean			waitingforkey;
@@ -395,6 +397,7 @@ static configcvar_t g_configcvars[] =
 	{"cg_autoswitch",	0,					0},
 	{"sensitivity",		0,					0},
 	{"in_joystick",		0,					0},
+	{"in_joystickUseAnalog",	0,				0},
 	{"joy_threshold",	0,					0},
 	{"m_filter",		0,					0},
 	{"cl_freelook",		0,					0},
@@ -457,6 +460,7 @@ static menucommon_s *g_looking_controls[] = {
 	(menucommon_s *)&s_controls.zoomview,
 	(menucommon_s *)&s_controls.nextcamera,
 	(menucommon_s *)&s_controls.joyenable,
+	(menucommon_s *)&s_controls.joyanalog,
 	(menucommon_s *)&s_controls.joythreshold,
 	NULL,
 };
@@ -1434,6 +1438,7 @@ static void RallyControls_GetConfig( void )
 	s_controls.autoswitch.curvalue   = UI_ClampCvar( 0, 1, Controls_GetCvarValue( "cg_autoswitch" ) );
 	s_controls.sensitivity.curvalue  = UI_ClampCvar( 2, 30, Controls_GetCvarValue( "sensitivity" ) );
 	s_controls.joyenable.curvalue    = UI_ClampCvar( 0, 1, Controls_GetCvarValue( "in_joystick" ) );
+	s_controls.joyanalog.curvalue    = UI_ClampCvar( 0, 1, Controls_GetCvarValue( "in_joystickUseAnalog" ) );
 	s_controls.joythreshold.curvalue = UI_ClampCvar( 0.05, 0.75, Controls_GetCvarValue( "joy_threshold" ) );
         s_controls.freelook.curvalue     = UI_ClampCvar( 0, 1, Controls_GetCvarValue( "cl_freelook" ) );
 // STONELANCE
@@ -1479,6 +1484,7 @@ static void RallyControls_SetConfig( void )
 	trap_Cvar_SetValue( "cg_autoswitch", s_controls.autoswitch.curvalue );
 	trap_Cvar_SetValue( "sensitivity", s_controls.sensitivity.curvalue );
 	trap_Cvar_SetValue( "in_joystick", s_controls.joyenable.curvalue );
+	trap_Cvar_SetValue( "in_joystickUseAnalog", s_controls.joyanalog.curvalue );
 	trap_Cvar_SetValue( "joy_threshold", s_controls.joythreshold.curvalue );
         trap_Cvar_SetValue( "cl_freelook", s_controls.freelook.curvalue );
 // STONELANCE
@@ -1516,6 +1522,7 @@ static void RallyControls_SetDefaults( void )
 	s_controls.autoswitch.curvalue   = Controls_GetCvarDefault( "cg_autoswitch" );
 	s_controls.sensitivity.curvalue  = Controls_GetCvarDefault( "sensitivity" );
 	s_controls.joyenable.curvalue    = Controls_GetCvarDefault( "in_joystick" );
+	s_controls.joyanalog.curvalue    = Controls_GetCvarDefault( "in_joystickUseAnalog" );
 	s_controls.joythreshold.curvalue = Controls_GetCvarDefault( "joy_threshold" );
 	s_controls.freelook.curvalue     = Controls_GetCvarDefault( "cl_freelook" );
 // STONELANCE
@@ -1960,6 +1967,7 @@ static void Controls_MenuEvent( void* ptr, int event )
 		case ID_ALWAYSRUN:
 		case ID_AUTOSWITCH:
 		case ID_JOYENABLE:
+		case ID_JOYANALOG:
 		case ID_JOYTHRESHOLD:
 // STONELANCE
 		case ID_AUTODROP:
@@ -2745,6 +2753,15 @@ static void Controls_MenuInit( void )
 	s_controls.joyenable.generic.ownerdraw = Controls_DrawRadioButton;
 	s_controls.joyenable.generic.statusbar = Controls_StatusBar;
 
+	s_controls.joyanalog.generic.type      = MTYPE_RADIOBUTTON;
+	s_controls.joyanalog.generic.flags	   = QMF_SMALLFONT;
+	s_controls.joyanalog.generic.x	       = SCREEN_WIDTH/2;
+	s_controls.joyanalog.generic.name	   = "analog input";
+	s_controls.joyanalog.generic.id        = ID_JOYANALOG;
+	s_controls.joyanalog.generic.callback  = Controls_MenuEvent;
+	s_controls.joyanalog.generic.ownerdraw = Controls_DrawRadioButton;
+	s_controls.joyanalog.generic.statusbar = Controls_StatusBar;
+
 	s_controls.joythreshold.generic.type	  = MTYPE_SLIDER;
 	s_controls.joythreshold.generic.x		  = SCREEN_WIDTH/2;
 	s_controls.joythreshold.generic.flags	  = QMF_SMALLFONT;
@@ -2802,6 +2819,7 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.centerview );
 	Menu_AddItem( &s_controls.menu, &s_controls.zoomview );
 	Menu_AddItem( &s_controls.menu, &s_controls.joyenable );
+	Menu_AddItem( &s_controls.menu, &s_controls.joyanalog );
 	Menu_AddItem( &s_controls.menu, &s_controls.joythreshold );
 
 // STONELANCE
