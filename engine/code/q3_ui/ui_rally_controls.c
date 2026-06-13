@@ -1030,6 +1030,53 @@ static void Controls_Update( void ) {
 Controls_DrawKeyBinding
 =================
 */
+static void Controls_KeyNameForDisplay( int keynum, char *buf, int buflen )
+{
+	const char *name = NULL;
+
+	switch ( keynum ) {
+		case K_PAD0_A: name = "CROSS"; break;
+		case K_PAD0_B: name = "CIRCLE"; break;
+		case K_PAD0_X: name = "SQUARE"; break;
+		case K_PAD0_Y: name = "TRIANGLE"; break;
+		case K_PAD0_BACK: name = "CREATE"; break;
+		case K_PAD0_GUIDE: name = "PS"; break;
+		case K_PAD0_START: name = "OPTIONS"; break;
+		case K_PAD0_LEFTSTICK_CLICK: name = "L3"; break;
+		case K_PAD0_RIGHTSTICK_CLICK: name = "R3"; break;
+		case K_PAD0_LEFTSHOULDER: name = "L1"; break;
+		case K_PAD0_RIGHTSHOULDER: name = "R1"; break;
+		case K_PAD0_DPAD_UP: name = "D-UP"; break;
+		case K_PAD0_DPAD_DOWN: name = "D-DOWN"; break;
+		case K_PAD0_DPAD_LEFT: name = "D-LEFT"; break;
+		case K_PAD0_DPAD_RIGHT: name = "D-RIGHT"; break;
+		case K_PAD0_LEFTSTICK_LEFT: name = "LS LEFT"; break;
+		case K_PAD0_LEFTSTICK_RIGHT: name = "LS RIGHT"; break;
+		case K_PAD0_LEFTSTICK_UP: name = "LS UP"; break;
+		case K_PAD0_LEFTSTICK_DOWN: name = "LS DOWN"; break;
+		case K_PAD0_RIGHTSTICK_LEFT: name = "RS LEFT"; break;
+		case K_PAD0_RIGHTSTICK_RIGHT: name = "RS RIGHT"; break;
+		case K_PAD0_RIGHTSTICK_UP: name = "RS UP"; break;
+		case K_PAD0_RIGHTSTICK_DOWN: name = "RS DOWN"; break;
+		case K_PAD0_LEFTTRIGGER: name = "L2"; break;
+		case K_PAD0_RIGHTTRIGGER: name = "R2"; break;
+		case K_PAD0_MISC1: name = "MISC"; break;
+		case K_PAD0_PADDLE1: name = "PADDLE 1"; break;
+		case K_PAD0_PADDLE2: name = "PADDLE 2"; break;
+		case K_PAD0_PADDLE3: name = "PADDLE 3"; break;
+		case K_PAD0_PADDLE4: name = "PADDLE 4"; break;
+		case K_PAD0_TOUCHPAD: name = "TOUCHPAD"; break;
+	}
+
+	if ( name ) {
+		Q_strncpyz( buf, name, buflen );
+		return;
+	}
+
+	trap_Key_KeynumToStringBuf( keynum, buf, buflen );
+	Q_strupr( buf );
+}
+
 static void Controls_DrawKeyBinding( void *self )
 {
 	menuaction_s*	a;
@@ -1068,14 +1115,12 @@ static void Controls_DrawKeyBinding( void *self )
 		if (b2 == -1) {
 			strcpy(name, "-?-");
 		} else {
-			trap_Key_KeynumToStringBuf( b2, name, 32 );
-			Q_strupr(name);
+			Controls_KeyNameForDisplay( b2, name, sizeof( name ) );
 
 			b2 = g_bindings[b1].bind2;
 			if (b2 != -1) {
 				hasSecondaryBind = qtrue;
-				trap_Key_KeynumToStringBuf( b2, name2, 32 );
-				Q_strupr(name2);
+				Controls_KeyNameForDisplay( b2, name2, sizeof( name2 ) );
 				Com_sprintf( name, sizeof( name ), "%s / %s", name, name2 );
 			}
 		}

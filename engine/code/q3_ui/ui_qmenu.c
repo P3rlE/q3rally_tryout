@@ -2193,6 +2193,77 @@ static qboolean Menu_IsGamepadSelectKey( int key )
 	return qfalse;
 }
 
+static qboolean Menu_IsUpKey( int key )
+{
+	return key == K_KP_UPARROW || key == K_UPARROW || key == K_PAD0_DPAD_UP || key == K_PAD0_LEFTSTICK_UP;
+}
+
+static qboolean Menu_IsDownKey( int key )
+{
+	return key == K_TAB || key == K_KP_DOWNARROW || key == K_DOWNARROW || key == K_PAD0_DPAD_DOWN || key == K_PAD0_LEFTSTICK_DOWN;
+}
+
+static qboolean Menu_IsLeftKey( int key )
+{
+	return key == K_KP_LEFTARROW || key == K_LEFTARROW || key == K_PAD0_DPAD_LEFT || key == K_PAD0_LEFTSTICK_LEFT;
+}
+
+static qboolean Menu_IsRightKey( int key )
+{
+	return key == K_KP_RIGHTARROW || key == K_RIGHTARROW || key == K_PAD0_DPAD_RIGHT || key == K_PAD0_LEFTSTICK_RIGHT;
+}
+
+static qboolean Menu_ListNavigationExit( menucommon_s *item, int key, int *dir )
+{
+	menulist_s *list;
+
+	if ( item->type != MTYPE_SCROLLLIST && item->type != MTYPE_LISTBOX ) {
+		return qfalse;
+	}
+
+	list = (menulist_s *)item;
+
+	if ( Menu_IsUpKey( key ) && list->curvalue <= 0 ) {
+		*dir = -1;
+		return qtrue;
+	}
+
+	if ( Menu_IsDownKey( key ) && list->curvalue >= list->numitems - 1 ) {
+		*dir = 1;
+		return qtrue;
+	}
+
+	if ( list->columns <= 1 ) {
+		if ( Menu_IsLeftKey( key ) ) {
+			*dir = -1;
+			return qtrue;
+		}
+		if ( Menu_IsRightKey( key ) ) {
+			*dir = 1;
+			return qtrue;
+		}
+	}
+
+	return qfalse;
+}
+
+static sfxHandle_t Menu_MoveCursor( menuframework_s *m, int dir )
+{
+	int cursor_prev;
+
+	cursor_prev    = m->cursor;
+	m->cursor_prev = m->cursor;
+	m->cursor += dir;
+	Menu_AdjustCursor( m, dir );
+
+	if ( cursor_prev != m->cursor ) {
+		Menu_CursorMoved( m );
+		return menu_move_sound;
+	}
+
+	return menu_buzz_sound;
+}
+
 /*
 =================
 Menu_DefaultKey
@@ -2202,7 +2273,7 @@ sfxHandle_t Menu_DefaultKey( menuframework_s *m, int key )
 {
 	sfxHandle_t		sound = 0;
 	menucommon_s	*item;
-	int				cursor_prev;
+	int				dir;
 
 	// menu system keys
 	switch ( key )
@@ -2232,6 +2303,10 @@ sfxHandle_t Menu_DefaultKey( menuframework_s *m, int key )
 	item = Menu_ItemAtCursor( m );
 	if (item && !(item->flags & (QMF_GRAYED|QMF_INACTIVE)))
 	{
+		if ( Menu_ListNavigationExit( item, key, &dir ) ) {
+			return Menu_MoveCursor( m, dir );
+		}
+
 		switch (item->type)
 		{
 			case MTYPE_SPINCONTROL:
@@ -2287,14 +2362,7 @@ sfxHandle_t Menu_DefaultKey( menuframework_s *m, int key )
 		case K_UPARROW:
 		case K_PAD0_DPAD_UP:
 		case K_PAD0_LEFTSTICK_UP:
-			cursor_prev    = m->cursor;
-			m->cursor_prev = m->cursor;
-			m->cursor--;
-			Menu_AdjustCursor( m, -1 );
-			if ( cursor_prev != m->cursor ) {
-				Menu_CursorMoved( m );
-				sound = menu_move_sound;
-			}
+			sound = Menu_MoveCursor( m, -1 );
 			break;
 
 		case K_TAB:
@@ -2302,14 +2370,7 @@ sfxHandle_t Menu_DefaultKey( menuframework_s *m, int key )
 		case K_DOWNARROW:
 		case K_PAD0_DPAD_DOWN:
 		case K_PAD0_LEFTSTICK_DOWN:
-			cursor_prev    = m->cursor;
-			m->cursor_prev = m->cursor;
-			m->cursor++;
-			Menu_AdjustCursor( m, 1 );
-			if ( cursor_prev != m->cursor ) {
-				Menu_CursorMoved( m );
-				sound = menu_move_sound;
-			}
+			sound = Menu_MoveCursor( m, 1 );
 			break;
 
 		case K_MOUSE1:
