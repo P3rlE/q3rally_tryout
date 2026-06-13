@@ -1035,6 +1035,8 @@ static void Controls_DrawKeyBinding( void *self )
 	menuaction_s*	a;
 	int				x;
 	int				y;
+	int				fillLeft;
+	int				fillRight;
 	int				b1;
 	int				b2;
 	qboolean		c;
@@ -1087,7 +1089,9 @@ static void Controls_DrawKeyBinding( void *self )
 
 	if (c)
 	{
-		UI_FillRect( a->generic.left, a->generic.top, a->generic.right-a->generic.left+1, a->generic.bottom-a->generic.top+1, listbar_color ); 
+		fillLeft = x - SMALLCHAR_WIDTH - strlen( label ) * SMALLCHAR_WIDTH - 2;
+		fillRight = x + SMALLCHAR_WIDTH + strlen( name ) * SMALLCHAR_WIDTH + 2;
+		UI_FillRect( fillLeft, a->generic.top, fillRight - fillLeft + 1, a->generic.bottom-a->generic.top+1, listbar_color );
 
 		UI_DrawString( x - SMALLCHAR_WIDTH, y, label, UI_RIGHT|UI_SMALLFONT, text_color_highlight );
 		UI_DrawString( x + SMALLCHAR_WIDTH, y, name, UI_LEFT|UI_SMALLFONT|UI_PULSE, text_color_highlight );
@@ -1125,6 +1129,105 @@ static void Controls_DrawKeyBinding( void *self )
 			UI_DrawString( x + SMALLCHAR_WIDTH, y, name, UI_LEFT|UI_SMALLFONT, text_color_normal );
 		}
 	}
+}
+
+static void Controls_DrawRadioButton( void *self )
+{
+	menuradiobutton_s* rb;
+	int x;
+	int y;
+	int fillLeft;
+	int fillRight;
+	int style;
+	const char* value;
+	float* color;
+	qboolean focus;
+
+	rb = (menuradiobutton_s*)self;
+	x = rb->generic.x;
+	y = rb->generic.y;
+	value = rb->curvalue ? "on" : "off";
+	focus = (rb->generic.parent->cursor == rb->generic.menuPosition);
+
+	style = UI_LEFT|UI_SMALLFONT;
+	if ( rb->generic.flags & QMF_GRAYED ) {
+		color = text_color_disabled;
+	} else if ( focus ) {
+		color = text_color_highlight;
+		style |= UI_PULSE;
+	} else {
+		color = text_color_normal;
+	}
+
+	if ( focus ) {
+		fillLeft = x - SMALLCHAR_WIDTH - strlen( rb->generic.name ) * SMALLCHAR_WIDTH - 2;
+		fillRight = x + SMALLCHAR_WIDTH + 16 + strlen( value ) * SMALLCHAR_WIDTH + 2;
+		UI_FillRect( fillLeft, rb->generic.top, fillRight - fillLeft + 1, rb->generic.bottom-rb->generic.top+1, listbar_color );
+		UI_DrawChar( x, y, 13, UI_CENTER|UI_BLINK|UI_SMALLFONT, color );
+	}
+
+	UI_DrawString( x - SMALLCHAR_WIDTH, y, rb->generic.name, UI_RIGHT|UI_SMALLFONT, color );
+	UI_DrawHandlePic( x + SMALLCHAR_WIDTH, y + 2, 16, 16, rb->curvalue ? uis.rb_on : uis.rb_off );
+	UI_DrawString( x + SMALLCHAR_WIDTH + 16, y, value, style, color );
+}
+
+static void Controls_DrawSlider( void *self )
+{
+	menuslider_s* s;
+	int x;
+	int y;
+	int i;
+	int fillLeft;
+	int fillRight;
+	int style;
+	float* color;
+	qboolean focus;
+
+	s = (menuslider_s*)self;
+	x = s->generic.x;
+	y = s->generic.y;
+	focus = (s->generic.parent->cursor == s->generic.menuPosition);
+
+	style = UI_SMALLFONT;
+	if ( s->generic.flags & QMF_GRAYED ) {
+		color = text_color_disabled;
+	} else if ( focus ) {
+		color = text_color_highlight;
+		style |= UI_PULSE;
+	} else {
+		color = text_color_normal;
+	}
+
+	if ( focus ) {
+		fillLeft = x - SMALLCHAR_WIDTH - strlen( s->generic.name ) * SMALLCHAR_WIDTH - 2;
+		fillRight = x + (SLIDER_RANGE + 3) * SMALLCHAR_WIDTH + 2;
+		UI_FillRect( fillLeft, s->generic.top, fillRight - fillLeft + 1, s->generic.bottom-s->generic.top+1, listbar_color );
+		UI_DrawChar( x, y, 13, UI_CENTER|UI_BLINK|UI_SMALLFONT, color );
+	}
+
+	UI_DrawString( x - SMALLCHAR_WIDTH, y, s->generic.name, UI_RIGHT|style, color );
+	UI_DrawChar( x + SMALLCHAR_WIDTH, y, 128, UI_LEFT|style, color );
+	for ( i = 0; i < SLIDER_RANGE; i++ ) {
+		UI_DrawChar( x + (i+2)*SMALLCHAR_WIDTH, y, 129, UI_LEFT|style, color );
+	}
+	UI_DrawChar( x + (i+2)*SMALLCHAR_WIDTH, y, 130, UI_LEFT|style, color );
+
+	if (s->maxvalue > s->minvalue) {
+		s->range = ( s->curvalue - s->minvalue ) / ( float ) ( s->maxvalue - s->minvalue );
+		if ( s->range < 0 ) {
+			s->range = 0;
+		} else if ( s->range > 1 ) {
+			s->range = 1;
+		}
+	} else {
+		s->range = 0;
+	}
+
+	if ( style & UI_PULSE ) {
+		style &= ~UI_PULSE;
+		style |= UI_BLINK;
+	}
+	UI_DrawChar( (int)( x + 2*SMALLCHAR_WIDTH + (SLIDER_RANGE-1)*SMALLCHAR_WIDTH* s->range ), y, 131, UI_LEFT|style, color );
 }
 
 
@@ -2218,6 +2321,7 @@ static void Controls_MenuInit( void )
 	s_controls.autodroprear.generic.name	  = "autodrop rear weapons";
 	s_controls.autodroprear.generic.id        = ID_AUTODROP;
 	s_controls.autodroprear.generic.callback  = Controls_MenuEvent;
+	s_controls.autodroprear.generic.ownerdraw = Controls_DrawRadioButton;
 	s_controls.autodroprear.generic.statusbar = Controls_StatusBar;
 // END
 
@@ -2257,6 +2361,7 @@ static void Controls_MenuInit( void )
 	s_controls.freelook.generic.name		= "free look";
 	s_controls.freelook.generic.id			= ID_FREELOOK;
 	s_controls.freelook.generic.callback	= Controls_MenuEvent;
+	s_controls.freelook.generic.ownerdraw	= Controls_DrawRadioButton;
 	s_controls.freelook.generic.statusbar	= Controls_StatusBar;
 
 	s_controls.centerview.generic.type	    = MTYPE_ACTION;
@@ -2295,6 +2400,7 @@ static void Controls_MenuInit( void )
 	s_controls.invertmouse.generic.name	     = "invert mouse";
 	s_controls.invertmouse.generic.id        = ID_INVERTMOUSE;
 	s_controls.invertmouse.generic.callback  = Controls_MenuEvent;
+	s_controls.invertmouse.generic.ownerdraw = Controls_DrawRadioButton;
 	s_controls.invertmouse.generic.statusbar = Controls_StatusBar;
 
 	s_controls.smoothmouse.generic.type      = MTYPE_RADIOBUTTON;
@@ -2303,6 +2409,7 @@ static void Controls_MenuInit( void )
 	s_controls.smoothmouse.generic.name	     = "smooth mouse";
 	s_controls.smoothmouse.generic.id        = ID_SMOOTHMOUSE;
 	s_controls.smoothmouse.generic.callback  = Controls_MenuEvent;
+	s_controls.smoothmouse.generic.ownerdraw = Controls_DrawRadioButton;
 	s_controls.smoothmouse.generic.statusbar = Controls_StatusBar;
 
 // STONELANCE
@@ -2323,6 +2430,7 @@ static void Controls_MenuInit( void )
 	s_controls.autoswitch.generic.name	    = "autoswitch weapons";
 	s_controls.autoswitch.generic.id        = ID_AUTOSWITCH;
 	s_controls.autoswitch.generic.callback  = Controls_MenuEvent;
+	s_controls.autoswitch.generic.ownerdraw = Controls_DrawRadioButton;
 	s_controls.autoswitch.generic.statusbar = Controls_StatusBar;
 
 	s_controls.sensitivity.generic.type	     = MTYPE_SLIDER;
@@ -2331,6 +2439,7 @@ static void Controls_MenuInit( void )
 	s_controls.sensitivity.generic.name	     = "mouse speed";
 	s_controls.sensitivity.generic.id 	     = ID_MOUSESPEED;
 	s_controls.sensitivity.generic.callback  = Controls_MenuEvent;
+	s_controls.sensitivity.generic.ownerdraw = Controls_DrawSlider;
 	s_controls.sensitivity.minvalue		     = 2;
 	s_controls.sensitivity.maxvalue		     = 30;
 	s_controls.sensitivity.generic.statusbar = Controls_StatusBar;
@@ -2540,6 +2649,7 @@ static void Controls_MenuInit( void )
 	s_controls.joyenable.generic.name	   = "joystick";
 	s_controls.joyenable.generic.id        = ID_JOYENABLE;
 	s_controls.joyenable.generic.callback  = Controls_MenuEvent;
+	s_controls.joyenable.generic.ownerdraw = Controls_DrawRadioButton;
 	s_controls.joyenable.generic.statusbar = Controls_StatusBar;
 
 	s_controls.joythreshold.generic.type	  = MTYPE_SLIDER;
@@ -2548,21 +2658,16 @@ static void Controls_MenuInit( void )
 	s_controls.joythreshold.generic.name	  = "joystick threshold";
 	s_controls.joythreshold.generic.id 	      = ID_JOYTHRESHOLD;
 	s_controls.joythreshold.generic.callback  = Controls_MenuEvent;
+	s_controls.joythreshold.generic.ownerdraw = Controls_DrawSlider;
 	s_controls.joythreshold.minvalue		  = 0.05;
 	s_controls.joythreshold.maxvalue		  = 0.75;
 	s_controls.joythreshold.generic.statusbar = Controls_StatusBar;
 
 	{
-		int weaponsCount = 0;
-		while ( g_weapons_controls[weaponsCount] ) {
-			weaponsCount++;
-		}
-
-
 		s_controls.searchLabel.generic.type		= MTYPE_PTEXT;
 		s_controls.searchLabel.generic.flags		= QMF_RIGHT_JUSTIFY|QMF_INACTIVE;
 		s_controls.searchLabel.generic.x			= x;
-		s_controls.searchLabel.generic.y			= ( SCREEN_HEIGHT - weaponsCount * SMALLCHAR_HEIGHT ) / 2;
+		s_controls.searchLabel.generic.y			= 240 - 5 * PROP_HEIGHT;
 		s_controls.searchLabel.string				= "SEARCH";
 		s_controls.searchLabel.style				= UI_RIGHT;
 		s_controls.searchLabel.color				= text_color_normal;
@@ -2570,7 +2675,7 @@ static void Controls_MenuInit( void )
 		s_controls.search.generic.type			= MTYPE_FIELD;
 		s_controls.search.generic.flags			= QMF_SMALLFONT;
 		s_controls.search.generic.x				= x + 6;
-		s_controls.search.generic.y				= s_controls.searchLabel.generic.y + 6;
+		s_controls.search.generic.y				= s_controls.searchLabel.generic.y + PROP_HEIGHT;
 		s_controls.search.field.widthInChars	= 24;
 		s_controls.search.field.maxchars		= sizeof( s_controlsSearchText ) - 1;
 		Controls_SearchFieldSyncFromState();
