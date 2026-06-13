@@ -1123,93 +1123,73 @@ sfxHandle_t ListBox_Key( menulist_s *l, int key )
 
 		case K_PGUP:
 		case K_KP_PGUP:
-			if (l->generic.flags & QMF_HASMOUSEFOCUS)
-			{
-				// clicked pageup
-				if (l->curvalue == 0)
-					return (menu_buzz_sound);
+			if (l->curvalue == 0)
+				return (menu_buzz_sound);
 
-				l->curvalue -= l->height;
-				if (l->curvalue < 0)
-					l->curvalue = 0;
+			l->curvalue -= l->height;
+			if (l->curvalue < 0)
+				l->curvalue = 0;
 
-				if( l->top > l->curvalue )
-					l->top = l->curvalue;
-				if( l->top + l->height <= l->curvalue )
-					l->top = l->curvalue - l->height + 1;
-				if (l->generic.callback) {
-					l->generic.callback(l, QM_GOTFOCUS);
-				}
-				return (menu_move_sound);
+			if( l->top > l->curvalue )
+				l->top = l->curvalue;
+			if( l->top + l->height <= l->curvalue )
+				l->top = l->curvalue - l->height + 1;
+			if (l->generic.callback) {
+				l->generic.callback(l, QM_GOTFOCUS);
 			}
-			break;
+			return (menu_move_sound);
 
 		case K_PGDN:
 		case K_KP_PGDN:
-			if (l->generic.flags & QMF_HASMOUSEFOCUS)
-			{
-				// clicked pagedown
-				if (l->curvalue >= l->numitems-1)
-					return (menu_buzz_sound);
+			if (l->curvalue >= l->numitems-1)
+				return (menu_buzz_sound);
 
-				l->curvalue += l->height;
-				if (l->curvalue > l->numitems-1)
-					l->curvalue = l->numitems-1;
+			l->curvalue += l->height;
+			if (l->curvalue > l->numitems-1)
+				l->curvalue = l->numitems-1;
 
-				if( l->top > l->curvalue )
-					l->top = l->curvalue;
-				if( l->top + l->height <= l->curvalue )
-					l->top = l->curvalue - l->height + 1;
-				if (l->generic.callback) {
-					l->generic.callback(l, QM_GOTFOCUS);
-				}
-				return (menu_move_sound);
+			if( l->top > l->curvalue )
+				l->top = l->curvalue;
+			if( l->top + l->height <= l->curvalue )
+				l->top = l->curvalue - l->height + 1;
+			if (l->generic.callback) {
+				l->generic.callback(l, QM_GOTFOCUS);
 			}
-			break;
+			return (menu_move_sound);
 
 		case K_KP_UPARROW:
 		case K_UPARROW:
 		case K_PAD0_DPAD_UP:
 		case K_PAD0_LEFTSTICK_UP:
-			if (l->generic.flags & QMF_HASMOUSEFOCUS)
-			{
-				// clicked up
-				if (l->curvalue == 0)
+			if (l->curvalue == 0)
 				return (menu_buzz_sound);
 
-				l->curvalue--;
-				if( l->top > l->curvalue )
-					l->top = l->curvalue;
-				if( l->top + l->height <= l->curvalue )
-					l->top = l->curvalue - l->height + 1;
-				if (l->generic.callback) {
-					l->generic.callback(l, QM_GOTFOCUS);
-				}
-				return (menu_move_sound);
+			l->curvalue--;
+			if( l->top > l->curvalue )
+				l->top = l->curvalue;
+			if( l->top + l->height <= l->curvalue )
+				l->top = l->curvalue - l->height + 1;
+			if (l->generic.callback) {
+				l->generic.callback(l, QM_GOTFOCUS);
 			}
-			break;
+			return (menu_move_sound);
 
 		case K_KP_DOWNARROW:
 		case K_DOWNARROW:
 		case K_PAD0_DPAD_DOWN:
 		case K_PAD0_LEFTSTICK_DOWN:
-			if (l->generic.flags & QMF_HASMOUSEFOCUS)
-			{
-				// clicked down
-				if (l->curvalue >= l->numitems-1)
-					return (menu_buzz_sound);
+			if (l->curvalue >= l->numitems-1)
+				return (menu_buzz_sound);
 
-				l->curvalue++;
-				if( l->top > l->curvalue )
-					l->top = l->curvalue;
-				if( l->top + l->height <= l->curvalue )
-					l->top = l->curvalue - l->height + 1;
-				if (l->generic.callback) {
-					l->generic.callback(l, QM_GOTFOCUS);
-				}
-				return (menu_move_sound);
+			l->curvalue++;
+			if( l->top > l->curvalue )
+				l->top = l->curvalue;
+			if( l->top + l->height <= l->curvalue )
+				l->top = l->curvalue - l->height + 1;
+			if (l->generic.callback) {
+				l->generic.callback(l, QM_GOTFOCUS);
 			}
-			break;
+			return (menu_move_sound);
 	}
 
 		// cycle look for ascii key inside list items
