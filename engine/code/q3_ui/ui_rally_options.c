@@ -377,7 +377,7 @@ static void Q3ROptions_StatusBar( void *self )
 		break;
 	}
 
-	UI_DrawString( SCREEN_WIDTH * 0.50f, SCREEN_HEIGHT * 0.85f, text, UI_SMALLFONT|UI_CENTER, colorWhite );
+	UI_DrawString( SCREEN_WIDTH * 0.50f, SCREEN_HEIGHT * 0.90f, text, UI_SMALLFONT|UI_CENTER, colorWhite );
 }
 
 
