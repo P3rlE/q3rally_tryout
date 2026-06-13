@@ -455,8 +455,8 @@ void Q3ROptions_MenuInit( void ) {
 #define LAY_STEP   22
 #define LAY_L     200
 #define LAY_R     500
-#define LAY_RLY   300
-#define LAY_SLD_Y ( LAY_TOP + LAY_STEP * 7 + 4 )   /* Skid + Camera Tracking row */
+#define LAY_RLY   306
+#define LAY_SLD_Y ( LAY_TOP + LAY_STEP * 6 + 8 )   /* Skid + Camera Tracking row */
 #define LAY_HDG_Y ( LAY_RLY - 19 )                  /* Render level headings, 5px higher */
 
 	// ---- LEFT COLUMN: Gameplay ----
@@ -522,8 +522,8 @@ void Q3ROptions_MenuInit( void ) {
 	/* Q3RALLY LADDER START */
 	s_q3roptions.ladderOffline.generic.type		= MTYPE_RADIOBUTTON;
 	s_q3roptions.ladderOffline.generic.flags	= QMF_SMALLFONT;
-	s_q3roptions.ladderOffline.generic.x		= LAY_L;
-	s_q3roptions.ladderOffline.generic.y		= LAY_TOP + LAY_STEP * 6;
+	s_q3roptions.ladderOffline.generic.x		= LAY_R;
+	s_q3roptions.ladderOffline.generic.y		= LAY_TOP + LAY_STEP * 4;
 	s_q3roptions.ladderOffline.generic.name		= "Ladder Offline Tracking:";
 	s_q3roptions.ladderOffline.generic.id		= ID_LADDER_OFFLINE;
 	s_q3roptions.ladderOffline.generic.callback	= Q3ROptions_MenuEvent;
