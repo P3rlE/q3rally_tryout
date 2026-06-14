@@ -94,9 +94,73 @@ static float PM_WheelSpeedtoRPM( car_t *car, carPoint_t *points ){
 PM_UpdateRPM
 ================================================================================
 */
-static void PM_UpdateRPM(car_t *car, carPoint_t *points){
+static float PM_ClampRPM( float rpm )
+{
+	if ( rpm < CP_RPM_MIN ) {
+		return CP_RPM_MIN;
+	}
+	if ( rpm > CP_RPM_MAX ) {
+		return CP_RPM_MAX;
+	}
+	return rpm;
+}
+
+static qboolean PM_ClutchOpen( car_t *car )
+{
+	if ( car->gear == 0 ) {
+		return qtrue;
+	}
+
+	if ( pm->transmissionMode == TR_MANUAL_CLUTCH && pm->cmd.upmove > 0 ) {
+		return qtrue;
+	}
+
+	return qfalse;
+}
+
+static void PM_UpdateFreeEngineRPM( car_t *car, float sec )
+{
+	float throttle;
+	float targetRpm;
+	float rpmRate;
+
+	throttle = car->throttle;
+	if ( throttle < 0.0f || car->fuel <= 0.0f ) {
+		throttle = 0.0f;
+	}
+
+	targetRpm = CP_RPM_MIN + throttle * ( CP_RPM_MAX - CP_RPM_MIN );
+	if ( throttle > 0.01f ) {
+		rpmRate = 5200.0f + 2200.0f * throttle;
+	}
+	else {
+		rpmRate = 2600.0f;
+	}
+
+	if ( car->rpm < targetRpm ) {
+		car->rpm += rpmRate * sec;
+		if ( car->rpm > targetRpm ) {
+			car->rpm = targetRpm;
+		}
+	}
+	else if ( car->rpm > targetRpm ) {
+		car->rpm -= rpmRate * sec;
+		if ( car->rpm < targetRpm ) {
+			car->rpm = targetRpm;
+		}
+	}
+
+	car->rpm = PM_ClampRPM( car->rpm );
+}
+
+static void PM_UpdateRPM(car_t *car, carPoint_t *points, float sec){
 	float	rpmTemp;
 	float	shiftDownRPM, shiftUpRPM;
+
+	if ( PM_ClutchOpen( car ) ) {
+		PM_UpdateFreeEngineRPM( car, sec );
+		return;
+	}
 
 	shiftDownRPM = CP_RPM_MIN + (CP_RPM_MAX - CP_RPM_MIN) * (0.4f + 0.2f * car->throttle);
 	shiftUpRPM = CP_RPM_MIN + (CP_RPM_MAX - CP_RPM_MIN) * (0.8f + 0.2f * car->throttle);
@@ -156,24 +220,11 @@ static void PM_UpdateRPM(car_t *car, carPoint_t *points){
 			}
 		}
 
-		if (rpmTemp < CP_RPM_MIN)
-			rpmTemp = CP_RPM_MIN;
-		if (rpmTemp > CP_RPM_MAX)
-			rpmTemp = CP_RPM_MAX;
-
-		car->rpm = rpmTemp;
-	}
-	else if (car->gear == 0){
-		car->rpm = CP_RPM_MIN;
+		car->rpm = PM_ClampRPM( rpmTemp );
 	}
 	else {
 		rpmTemp = PM_WheelSpeedtoRPM(car, points);
-		if (rpmTemp < CP_RPM_MIN)
-			rpmTemp = CP_RPM_MIN;
-		if (rpmTemp > CP_RPM_MAX)
-			rpmTemp = CP_RPM_MAX;
-
-		car->rpm = rpmTemp;
+		car->rpm = PM_ClampRPM( rpmTemp );
 	}
 }
 
@@ -599,7 +650,7 @@ void PM_AddRoadForces(car_t *car, carBody_t *body, carPoint_t *points, float sec
 	else
 		pm->ps->extra_eFlags &= ~CF_BRAKE;
 
-	PM_UpdateRPM(car, points);
+	PM_UpdateRPM(car, points, sec);
 
 	PM_AirFrictionForces(car, body, points, sec);
 
