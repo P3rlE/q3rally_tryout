@@ -33,6 +33,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 static float CP_TORQUE_SLOPE = (float)(CP_RPM_HP_PEAK * M_PI * CP_TORQUE_PEAK - 16500 * CP_HP_PEAK) / (float)(CP_RPM_HP_PEAK * M_PI * (CP_RPM_HP_PEAK*CP_RPM_HP_PEAK - 2 * CP_RPM_HP_PEAK * CP_RPM_TORQUE_PEAK + CP_RPM_TORQUE_PEAK*CP_RPM_TORQUE_PEAK));
 static float CP_GEAR_RATIOS[] = {CP_GEAR1, CP_GEAR2, CP_GEAR3, CP_GEAR4, CP_GEAR5, CP_GEAR6};
 
+#define CP_RPM_LIMITER_CUT		CP_RPM_MAX
+#define CP_RPM_LIMITER_RESUME	( CP_RPM_MAX - 320.0f )
+
 
 #if 0
 /*
@@ -105,6 +108,31 @@ static float PM_ClampRPM( float rpm )
 	return rpm;
 }
 
+static float PM_ApplyRevLimiter( car_t *car, float requestedRpm, float sec )
+{
+	float rpm;
+
+	if ( car->throttle <= 0.01f || car->fuel <= 0.0f || requestedRpm < CP_RPM_LIMITER_CUT ) {
+		return PM_ClampRPM( requestedRpm );
+	}
+
+	rpm = car->rpm;
+	if ( rpm >= CP_RPM_LIMITER_CUT ) {
+		rpm -= 6200.0f * sec;
+		if ( rpm < CP_RPM_LIMITER_RESUME ) {
+			rpm = CP_RPM_LIMITER_RESUME;
+		}
+	}
+	else {
+		rpm += 4300.0f * sec;
+		if ( rpm > CP_RPM_LIMITER_CUT ) {
+			rpm = CP_RPM_LIMITER_CUT;
+		}
+	}
+
+	return PM_ClampRPM( rpm );
+}
+
 static qboolean PM_ClutchOpen( car_t *car )
 {
 	if ( car->gear == 0 ) {
@@ -130,12 +158,7 @@ static void PM_UpdateFreeEngineRPM( car_t *car, float sec )
 	}
 
 	targetRpm = CP_RPM_MIN + throttle * ( CP_RPM_MAX - CP_RPM_MIN );
-	if ( throttle > 0.01f ) {
-		rpmRate = 5200.0f + 2200.0f * throttle;
-	}
-	else {
-		rpmRate = 2600.0f;
-	}
+	rpmRate = throttle > 0.01f ? 5200.0f + 2200.0f * throttle : 2600.0f;
 
 	if ( car->rpm < targetRpm ) {
 		car->rpm += rpmRate * sec;
@@ -150,7 +173,7 @@ static void PM_UpdateFreeEngineRPM( car_t *car, float sec )
 		}
 	}
 
-	car->rpm = PM_ClampRPM( car->rpm );
+	car->rpm = PM_ApplyRevLimiter( car, car->rpm, sec );
 }
 
 static void PM_UpdateRPM(car_t *car, carPoint_t *points, float sec){
@@ -220,11 +243,11 @@ static void PM_UpdateRPM(car_t *car, carPoint_t *points, float sec){
 			}
 		}
 
-		car->rpm = PM_ClampRPM( rpmTemp );
+		car->rpm = PM_ApplyRevLimiter( car, rpmTemp, sec );
 	}
 	else {
 		rpmTemp = PM_WheelSpeedtoRPM(car, points);
-		car->rpm = PM_ClampRPM( rpmTemp );
+		car->rpm = PM_ApplyRevLimiter( car, rpmTemp, sec );
 	}
 }
 
