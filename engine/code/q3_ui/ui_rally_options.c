@@ -30,7 +30,6 @@ qboolean isRaceObserver( int clientNum )
 
 #define ID_UNITS                10
 #define ID_SKID_LENGTH          11
-#define ID_CONTROL_MODE         12
 #define ID_MANUAL_SHIFT         13
 #define ID_TRANSMISSION_MODE    14
 #define ID_ATMOSPHERIC_LEVEL	16
@@ -68,7 +67,6 @@ typedef struct {
 
 	menulist_s		units;
         menulist_s              speedometer;
-	menulist_s		controlMode;
 	menulist_s		transmissionMode;
 	menulist_s		atomspheric;
 
@@ -112,12 +110,6 @@ static const char *q3roptions_speedometer_mode[] = {
         "Analog",
         "Digital",
         0
-};
-
-static const char *q3roptions_control_mode[] = {
-	"Mouse/Keyboard",
-	"Controller",
-	0
 };
 
 static const char *q3roptions_transmission_mode[] = {
@@ -171,15 +163,6 @@ static void Q3ROptions_MenuEvent( void* ptr, int event ) {
         case ID_SPEEDOMETER_MODE:
                 trap_Cvar_SetValue( "cg_speedometerMode", s_q3roptions.speedometer.curvalue );
                 break;
-
-	case ID_CONTROL_MODE:
-		trap_Cvar_SetValue( "cg_controlMode", s_q3roptions.controlMode.curvalue );
-		if ( s_q3roptions.controlMode.curvalue == 0 )
-			trap_Cmd_ExecuteText( EXEC_APPEND, "-strafe" );
-		else
-			trap_Cmd_ExecuteText( EXEC_APPEND, "+strafe" );
-
-		break;
 
 	case ID_TRANSMISSION_MODE:
 		trap_Cvar_SetValue( "cg_transmissionMode", s_q3roptions.transmissionMode.curvalue );
@@ -289,13 +272,6 @@ static void Q3ROptions_StatusBar( void *self )
                 text = "Select analog or digital speedometer.";
                 break;
 
-	case ID_CONTROL_MODE:
-		if( s_q3roptions.controlMode.curvalue == 0 )
-			text = "Mouse/Keyboard control steers the car toward the view direction.";
-		else
-			text = "Controller control maps steering directly to the wheel angle.";
-		break;
-
 	case ID_TRANSMISSION_MODE:
 		if( s_q3roptions.transmissionMode.curvalue == 0 )
 			text = "Automatic keeps the existing gearbox and auto-shift behaviour.";
@@ -397,7 +373,6 @@ void Q3ROptions_MenuInit( void ) {
 	// load current values
         s_q3roptions.units.curvalue = ui_metricUnits.integer;
         s_q3roptions.speedometer.curvalue = ui_speedometerMode.integer;
-	s_q3roptions.controlMode.curvalue = ui_controlMode.integer;
 	s_q3roptions.transmissionMode.curvalue = (int)Com_Clamp( 0, 2, ui_transmissionMode.integer );
 	s_q3roptions.atomspheric.curvalue = ui_atmosphericLevel.integer;
 
@@ -461,16 +436,6 @@ void Q3ROptions_MenuInit( void ) {
 
 	// ---- LEFT COLUMN: Gameplay ----
 
-	s_q3roptions.controlMode.generic.type		= MTYPE_SPINCONTROL;
-	s_q3roptions.controlMode.generic.name		= "Control Mode:";
-	s_q3roptions.controlMode.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	s_q3roptions.controlMode.generic.callback	= Q3ROptions_MenuEvent;
-	s_q3roptions.controlMode.generic.statusbar	= Q3ROptions_StatusBar;
-	s_q3roptions.controlMode.generic.id			= ID_CONTROL_MODE;
-	s_q3roptions.controlMode.generic.x			= LAY_L;
-	s_q3roptions.controlMode.generic.y			= LAY_TOP + LAY_STEP * 0;
-	s_q3roptions.controlMode.itemnames			= q3roptions_control_mode;
-
 	s_q3roptions.transmissionMode.generic.type		= MTYPE_SPINCONTROL;
 	s_q3roptions.transmissionMode.generic.name		= "Transmission:";
 	s_q3roptions.transmissionMode.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
@@ -478,13 +443,13 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.transmissionMode.generic.statusbar	= Q3ROptions_StatusBar;
 	s_q3roptions.transmissionMode.generic.id		= ID_TRANSMISSION_MODE;
 	s_q3roptions.transmissionMode.generic.x			= LAY_L;
-	s_q3roptions.transmissionMode.generic.y			= LAY_TOP + LAY_STEP * 1;
+	s_q3roptions.transmissionMode.generic.y			= LAY_TOP + LAY_STEP * 0;
 	s_q3roptions.transmissionMode.itemnames			= q3roptions_transmission_mode;
 
 	s_q3roptions.manualShift.generic.type		= MTYPE_RADIOBUTTON;
 	s_q3roptions.manualShift.generic.flags		= QMF_SMALLFONT;
 	s_q3roptions.manualShift.generic.x			= LAY_L;
-	s_q3roptions.manualShift.generic.y			= LAY_TOP + LAY_STEP * 2;
+	s_q3roptions.manualShift.generic.y			= LAY_TOP + LAY_STEP * 1;
 	s_q3roptions.manualShift.generic.name		= "Manual F/R Select:";
 	s_q3roptions.manualShift.generic.id			= ID_MANUAL_SHIFT;
 	s_q3roptions.manualShift.generic.callback	= Q3ROptions_MenuEvent;
@@ -497,13 +462,13 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.atomspheric.generic.statusbar	= Q3ROptions_StatusBar;
 	s_q3roptions.atomspheric.generic.id			= ID_ATMOSPHERIC_LEVEL;
 	s_q3roptions.atomspheric.generic.x			= LAY_L;
-	s_q3roptions.atomspheric.generic.y			= LAY_TOP + LAY_STEP * 3;
+	s_q3roptions.atomspheric.generic.y			= LAY_TOP + LAY_STEP * 2;
 	s_q3roptions.atomspheric.itemnames			= q3roptions_atmospheric;
 
 	s_q3roptions.ghostPlayback.generic.type		= MTYPE_SPINCONTROL;
 	s_q3roptions.ghostPlayback.generic.flags	= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
 	s_q3roptions.ghostPlayback.generic.x		= LAY_L;
-	s_q3roptions.ghostPlayback.generic.y		= LAY_TOP + LAY_STEP * 4;
+	s_q3roptions.ghostPlayback.generic.y		= LAY_TOP + LAY_STEP * 3;
 	s_q3roptions.ghostPlayback.generic.name		= "Ghost Playback:";
 	s_q3roptions.ghostPlayback.generic.id		= ID_GHOST_PLAYBACK;
 	s_q3roptions.ghostPlayback.generic.callback	= Q3ROptions_MenuEvent;
@@ -513,7 +478,7 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.fuelConsumption.generic.type	= MTYPE_RADIOBUTTON;
 	s_q3roptions.fuelConsumption.generic.flags	= QMF_SMALLFONT;
 	s_q3roptions.fuelConsumption.generic.x		= LAY_L;
-	s_q3roptions.fuelConsumption.generic.y		= LAY_TOP + LAY_STEP * 5;
+	s_q3roptions.fuelConsumption.generic.y		= LAY_TOP + LAY_STEP * 4;
 	s_q3roptions.fuelConsumption.generic.name	= "Fuel Consumption:";
 	s_q3roptions.fuelConsumption.generic.id		= ID_FUEL_CONSUMPTION;
 	s_q3roptions.fuelConsumption.generic.callback	= Q3ROptions_MenuEvent;
@@ -726,7 +691,6 @@ void Q3ROptions_MenuInit( void ) {
 
 
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.units );
-	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.controlMode );
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.transmissionMode );
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.atomspheric );
         Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.speedometer );

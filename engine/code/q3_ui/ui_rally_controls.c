@@ -468,7 +468,6 @@ static menucommon_s *g_looking_controls[] = {
 	(menucommon_s *)&s_controls.centerview,
 	(menucommon_s *)&s_controls.zoomview,
 	(menucommon_s *)&s_controls.nextcamera,
-	(menucommon_s *)&s_controls.inputmode,
 	(menucommon_s *)&s_controls.joyenable,
 	(menucommon_s *)&s_controls.joyanalog,
 	(menucommon_s *)&s_controls.joythreshold,
@@ -2848,6 +2847,7 @@ static void Controls_MenuInit( void )
 	s_controls.inputmode.generic.type      = MTYPE_SPINCONTROL;
 	s_controls.inputmode.generic.flags	   = QMF_SMALLFONT;
 	s_controls.inputmode.generic.x	       = SCREEN_WIDTH/2;
+	s_controls.inputmode.generic.y	       = 240 - 4 * PROP_HEIGHT;
 	s_controls.inputmode.generic.name	   = "input mode";
 	s_controls.inputmode.generic.id        = ID_INPUTMODE;
 	s_controls.inputmode.generic.callback  = Controls_MenuEvent;
@@ -2918,6 +2918,7 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.developer );
 	Menu_AddItem( &s_controls.menu, &s_controls.searchLabel );
 	Menu_AddItem( &s_controls.menu, &s_controls.search );
+	Menu_AddItem( &s_controls.menu, &s_controls.inputmode );
 
 	Menu_AddItem( &s_controls.menu, &s_controls.sensitivity );
 	Menu_AddItem( &s_controls.menu, &s_controls.smoothmouse );
@@ -2928,7 +2929,6 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.freelook );
 	Menu_AddItem( &s_controls.menu, &s_controls.centerview );
 	Menu_AddItem( &s_controls.menu, &s_controls.zoomview );
-	Menu_AddItem( &s_controls.menu, &s_controls.inputmode );
 	Menu_AddItem( &s_controls.menu, &s_controls.joyenable );
 	Menu_AddItem( &s_controls.menu, &s_controls.joyanalog );
 	Menu_AddItem( &s_controls.menu, &s_controls.joythreshold );
