@@ -149,6 +149,9 @@ typedef struct
 #define ID_JOYANALOG	75
 #define ID_INPUTMODE	76
 
+#define CONTROLS_INPUT_KEYBOARD		0
+#define CONTROLS_INPUT_CONTROLLER	1
+#define CONTROLS_PROFILE_BINDINGS	128
 
 #define ANIM_IDLE		0
 #define ANIM_WALK		1
@@ -312,6 +315,12 @@ static char s_rebindConfirmQuestion[128];
 static char s_controlsSearchText[64];
 static menucommon_s* s_globalSearchControls[128];
 static int s_globalSearchControlCount;
+static int s_controlsProfileKeys[2][CONTROLS_PROFILE_BINDINGS];
+static float s_controlsProfileJoyEnable[2];
+static float s_controlsProfileJoyAnalog[2];
+static float s_controlsProfileJoyThreshold[2];
+static qboolean s_controlsProfileLoaded[2];
+static int s_controlsActiveProfileMode;
 
 static const char *s_controlsInputModes[] = {
 	"Mouse/Keyboard",
@@ -654,6 +663,22 @@ static const char* Controls_SectionTagForAction( int id )
 	return "UNKNOWN";
 }
 
+static qboolean Controls_ControlVisibleForInputMode( menucommon_s *control )
+{
+	if ( s_controls.inputmode.curvalue != CONTROLS_INPUT_CONTROLLER ) {
+		switch ( control->id ) {
+			case ID_JOYENABLE:
+			case ID_JOYANALOG:
+			case ID_JOYTHRESHOLD:
+				return qfalse;
+			default:
+				break;
+		}
+	}
+
+	return qtrue;
+}
+
 static void Controls_BuildGlobalSearchList( void )
 {
 	int i;
@@ -673,6 +698,10 @@ static void Controls_BuildGlobalSearchList( void )
 			bind_t* binding = Controls_FindBindingById( control->id );
 
 			qboolean match = qfalse;
+
+			if ( !Controls_ControlVisibleForInputMode( control ) ) {
+				continue;
+			}
 
 			if ( binding && Controls_StringContainsCaseInsensitive( binding->label, s_controlsSearchText ) ) {
 				match = qtrue;
@@ -762,80 +791,164 @@ static float Controls_GetCvarValue( char* name )
 	return (cvarptr->value);
 }
 
-static void Controls_SetBindingById( int id, int key )
+static int Controls_BindingCount( void )
 {
 	int i;
-	bind_t *bindptr;
 
-	for ( i = 0, bindptr = g_bindings; bindptr->label; i++, bindptr++ )
-	{
-		if ( bindptr->id == id )
-		{
-			bindptr->bind1 = key;
-			bindptr->bind2 = -1;
-			return;
-		}
+	for ( i = 0; g_bindings[i].label && i < CONTROLS_PROFILE_BINDINGS; i++ ) {
+	}
+
+	return i;
+}
+
+static const char *Controls_ProfileName( int mode )
+{
+	return mode == CONTROLS_INPUT_CONTROLLER ? "controller" : "keyboard";
+}
+
+static qboolean Controls_ProfileCvarsInitialized( int mode )
+{
+	return trap_Cvar_VariableValue( va( "q3r_ctrl_%s_init", Controls_ProfileName( mode ) ) ) != 0;
+}
+
+static int Controls_DefaultKeyForProfile( int mode, int id, int fallback )
+{
+	if ( mode != CONTROLS_INPUT_CONTROLLER ) {
+		return fallback;
+	}
+
+	switch ( id ) {
+		case ID_SHOWSCORES: return K_PAD0_TOUCHPAD;
+		case ID_ACCEL: return K_PAD0_RIGHTTRIGGER;
+		case ID_BRAKE: return K_PAD0_LEFTTRIGGER;
+		case ID_LEFT: return K_PAD0_LEFTSTICK_LEFT;
+		case ID_RIGHT: return K_PAD0_LEFTSTICK_RIGHT;
+		case ID_MOVEUP: return K_PAD0_A;
+		case ID_HANDBRAKE: return K_PAD0_B;
+		case ID_TURBO: return K_PAD0_Y;
+		case ID_GEARUP: return K_PAD0_RIGHTSHOULDER;
+		case ID_GEARDOWN: return K_PAD0_LEFTSHOULDER;
+		case ID_HEADLIGHT: return K_PAD0_DPAD_UP;
+		case ID_HORN: return K_PAD0_LEFTSTICK_CLICK;
+		case ID_NEXTCAMERA: return K_PAD0_RIGHTSTICK_CLICK;
+		case ID_USEITEM: return K_PAD0_X;
+		case ID_DROPITEM: return K_PAD0_DPAD_DOWN;
+		case ID_REARATTACK: return K_PAD0_DPAD_RIGHT;
+		case ID_DROP_REAR: return K_PAD0_DPAD_LEFT;
+		default: return -1;
 	}
 }
 
-static void Controls_ApplyKeyboardPreset( void )
+static void Controls_LoadDefaultProfile( int mode )
 {
 	int i;
-	bind_t *bindptr;
+	int count;
 
-	for ( i = 0, bindptr = g_bindings; bindptr->label; i++, bindptr++ )
-	{
-		bindptr->bind1 = bindptr->defaultbind1;
-		bindptr->bind2 = -1;
+	count = Controls_BindingCount();
+	for ( i = 0; i < count; i++ ) {
+		s_controlsProfileKeys[mode][i] = Controls_DefaultKeyForProfile( mode, g_bindings[i].id, g_bindings[i].defaultbind1 );
 	}
 
-	s_controls.inputmode.curvalue = 0;
-	s_controls.joyenable.curvalue = 0;
-	s_controls.joyanalog.curvalue = 0;
-	s_controls.joythreshold.curvalue = 0.15f;
+	s_controlsProfileJoyEnable[mode] = mode == CONTROLS_INPUT_CONTROLLER ? 1.0f : 0.0f;
+	s_controlsProfileJoyAnalog[mode] = mode == CONTROLS_INPUT_CONTROLLER ? 1.0f : 0.0f;
+	s_controlsProfileJoyThreshold[mode] = 0.15f;
+	s_controlsProfileLoaded[mode] = qtrue;
 }
 
-static void Controls_ApplyControllerPreset( void )
+static void Controls_StoreProfile( int mode )
 {
 	int i;
-	bind_t *bindptr;
+	int count;
 
-	for ( i = 0, bindptr = g_bindings; bindptr->label; i++, bindptr++ )
-	{
-		bindptr->bind1 = -1;
-		bindptr->bind2 = -1;
+	mode = mode == CONTROLS_INPUT_CONTROLLER ? CONTROLS_INPUT_CONTROLLER : CONTROLS_INPUT_KEYBOARD;
+	count = Controls_BindingCount();
+
+	for ( i = 0; i < count; i++ ) {
+		s_controlsProfileKeys[mode][i] = g_bindings[i].bind1;
 	}
 
-	Controls_SetBindingById( ID_SHOWSCORES, K_PAD0_TOUCHPAD );
-	Controls_SetBindingById( ID_ACCEL, K_PAD0_RIGHTTRIGGER );
-	Controls_SetBindingById( ID_BRAKE, K_PAD0_LEFTTRIGGER );
-	Controls_SetBindingById( ID_LEFT, K_PAD0_LEFTSTICK_LEFT );
-	Controls_SetBindingById( ID_RIGHT, K_PAD0_LEFTSTICK_RIGHT );
-	Controls_SetBindingById( ID_MOVEUP, K_PAD0_A );
-	Controls_SetBindingById( ID_HANDBRAKE, K_PAD0_B );
-	Controls_SetBindingById( ID_TURBO, K_PAD0_Y );
-	Controls_SetBindingById( ID_GEARUP, K_PAD0_RIGHTSHOULDER );
-	Controls_SetBindingById( ID_GEARDOWN, K_PAD0_LEFTSHOULDER );
-	Controls_SetBindingById( ID_HEADLIGHT, K_PAD0_DPAD_UP );
-	Controls_SetBindingById( ID_HORN, K_PAD0_LEFTSTICK_CLICK );
-	Controls_SetBindingById( ID_NEXTCAMERA, K_PAD0_RIGHTSTICK_CLICK );
-	Controls_SetBindingById( ID_USEITEM, K_PAD0_X );
-	Controls_SetBindingById( ID_DROPITEM, K_PAD0_DPAD_DOWN );
-	Controls_SetBindingById( ID_REARATTACK, K_PAD0_DPAD_RIGHT );
-	Controls_SetBindingById( ID_DROP_REAR, K_PAD0_DPAD_LEFT );
-
-	s_controls.inputmode.curvalue = 1;
-	s_controls.joyenable.curvalue = 1;
-	s_controls.joyanalog.curvalue = 1;
-	s_controls.joythreshold.curvalue = 0.15f;
+	s_controlsProfileJoyEnable[mode] = s_controls.joyenable.curvalue;
+	s_controlsProfileJoyAnalog[mode] = s_controls.joyanalog.curvalue;
+	s_controlsProfileJoyThreshold[mode] = s_controls.joythreshold.curvalue;
+	s_controlsProfileLoaded[mode] = qtrue;
 }
 
-static void Controls_ApplyInputModePreset( int mode )
+static void Controls_StoreCurrentProfile( void )
 {
-	if ( mode == 1 )
-		Controls_ApplyControllerPreset();
-	else
-		Controls_ApplyKeyboardPreset();
+	Controls_StoreProfile( s_controlsActiveProfileMode );
+}
+
+static void Controls_ApplyProfile( int mode )
+{
+	int i;
+	int count;
+
+	if ( !s_controlsProfileLoaded[mode] ) {
+		Controls_LoadDefaultProfile( mode );
+	}
+
+	count = Controls_BindingCount();
+	for ( i = 0; i < count; i++ ) {
+		g_bindings[i].bind1 = s_controlsProfileKeys[mode][i];
+		g_bindings[i].bind2 = -1;
+	}
+
+	s_controls.inputmode.curvalue = mode;
+	s_controls.joyenable.curvalue = s_controlsProfileJoyEnable[mode];
+	s_controls.joyanalog.curvalue = s_controlsProfileJoyAnalog[mode];
+	s_controls.joythreshold.curvalue = s_controlsProfileJoyThreshold[mode];
+	s_controlsActiveProfileMode = mode;
+}
+
+static void Controls_LoadProfileCvars( int mode )
+{
+	int i;
+	int count;
+
+	if ( !Controls_ProfileCvarsInitialized( mode ) ) {
+		Controls_LoadDefaultProfile( mode );
+		return;
+	}
+
+	count = Controls_BindingCount();
+	for ( i = 0; i < count; i++ ) {
+		int stored = (int)trap_Cvar_VariableValue( va( "q3r_ctrl_%s_%i", Controls_ProfileName( mode ), g_bindings[i].id ) );
+		s_controlsProfileKeys[mode][i] = stored > 0 ? stored - 2 : -1;
+	}
+
+	s_controlsProfileJoyEnable[mode] = UI_ClampCvar( 0, 1, trap_Cvar_VariableValue( va( "q3r_ctrl_%s_joyenable", Controls_ProfileName( mode ) ) ) );
+	s_controlsProfileJoyAnalog[mode] = UI_ClampCvar( 0, 1, trap_Cvar_VariableValue( va( "q3r_ctrl_%s_joyanalog", Controls_ProfileName( mode ) ) ) );
+	s_controlsProfileJoyThreshold[mode] = UI_ClampCvar( 0.05f, 0.75f, trap_Cvar_VariableValue( va( "q3r_ctrl_%s_joythreshold", Controls_ProfileName( mode ) ) ) );
+	s_controlsProfileLoaded[mode] = qtrue;
+}
+
+static void Controls_SaveProfileCvars( int mode )
+{
+	int i;
+	int count;
+
+	count = Controls_BindingCount();
+	for ( i = 0; i < count; i++ ) {
+		trap_Cmd_ExecuteText( EXEC_APPEND, va( "seta q3r_ctrl_%s_%i \"%i\"\n", Controls_ProfileName( mode ), g_bindings[i].id, s_controlsProfileKeys[mode][i] + 2 ) );
+	}
+
+	trap_Cmd_ExecuteText( EXEC_APPEND, va( "seta q3r_ctrl_%s_joyenable \"%i\"\n", Controls_ProfileName( mode ), (int)s_controlsProfileJoyEnable[mode] ) );
+	trap_Cmd_ExecuteText( EXEC_APPEND, va( "seta q3r_ctrl_%s_joyanalog \"%i\"\n", Controls_ProfileName( mode ), (int)s_controlsProfileJoyAnalog[mode] ) );
+	trap_Cmd_ExecuteText( EXEC_APPEND, va( "seta q3r_ctrl_%s_joythreshold \"%.3f\"\n", Controls_ProfileName( mode ), s_controlsProfileJoyThreshold[mode] ) );
+	trap_Cmd_ExecuteText( EXEC_APPEND, va( "seta q3r_ctrl_%s_init \"1\"\n", Controls_ProfileName( mode ) ) );
+}
+
+static void Controls_ApplyInputModeProfile( int mode )
+{
+	int oldMode;
+
+	mode = mode == CONTROLS_INPUT_CONTROLLER ? CONTROLS_INPUT_CONTROLLER : CONTROLS_INPUT_KEYBOARD;
+	oldMode = s_controlsActiveProfileMode == CONTROLS_INPUT_CONTROLLER ? CONTROLS_INPUT_CONTROLLER : CONTROLS_INPUT_KEYBOARD;
+
+	Controls_StoreProfile( oldMode );
+	if ( mode != oldMode ) {
+		Controls_ApplyProfile( mode );
+	}
 
 	s_controls.changesmade = qtrue;
 }
@@ -1046,19 +1159,27 @@ static void Controls_Update( void ) {
 		controls = g_controls[s_controls.section];
 
 		// enable controls in active group (and count number of items for vertical centering)
-		for( j = 0;	(control = controls[j]); j++ ) {
-			control->flags &= ~(QMF_GRAYED|QMF_HIDDEN|QMF_INACTIVE);
+		for( i = 0, j = 0; (control = controls[i]); i++ ) {
+			if ( Controls_ControlVisibleForInputMode( control ) ) {
+				control->flags &= ~(QMF_GRAYED|QMF_HIDDEN|QMF_INACTIVE);
+				j++;
+			}
 		}
 
 		// position controls
 		y = ( SCREEN_HEIGHT - j * SMALLCHAR_HEIGHT ) / 2;
-		for( j = 0;	(control = controls[j]); j++, y += SMALLCHAR_HEIGHT ) {
+		for( j = 0;	(control = controls[j]); j++ ) {
+			if ( !Controls_ControlVisibleForInputMode( control ) ) {
+				continue;
+			}
+
 			control->x      = 300 + (int)(((y - 240) / 14.0F) * ((y - 240) / 14.0F));
 			control->y      = y;
 			control->left   = control->x - 19*SMALLCHAR_WIDTH;
 			control->right  = control->x + 21*SMALLCHAR_WIDTH;
 			control->top    = y;
 			control->bottom = y + SMALLCHAR_HEIGHT;
+			y += SMALLCHAR_HEIGHT;
 		}
 	}
 
@@ -1503,6 +1624,8 @@ RallyControls_GetConfig
 static void RallyControls_GetConfig( void )
 {
 	int		i;
+	int		mode;
+	int		otherMode;
 	int		twokeys[2];
 	bind_t*	bindptr;
 
@@ -1534,6 +1657,18 @@ static void RallyControls_GetConfig( void )
 // STONELANCE
         s_controls.autodroprear.curvalue = UI_ClampCvar( 0, 1, Controls_GetCvarValue( "cg_autodrop" ) );
 // END
+
+	mode = s_controls.inputmode.curvalue == CONTROLS_INPUT_CONTROLLER ? CONTROLS_INPUT_CONTROLLER : CONTROLS_INPUT_KEYBOARD;
+	otherMode = mode == CONTROLS_INPUT_CONTROLLER ? CONTROLS_INPUT_KEYBOARD : CONTROLS_INPUT_CONTROLLER;
+
+	if ( Controls_ProfileCvarsInitialized( mode ) ) {
+		Controls_LoadProfileCvars( mode );
+	} else {
+		Controls_StoreProfile( mode );
+	}
+
+	Controls_LoadProfileCvars( otherMode );
+	Controls_ApplyProfile( mode );
 }
 
 /*
@@ -1545,6 +1680,10 @@ static void RallyControls_SetConfig( void )
 {
 	int		i;
 	bind_t*	bindptr;
+
+	Controls_StoreCurrentProfile();
+	Controls_SaveProfileCvars( CONTROLS_INPUT_KEYBOARD );
+	Controls_SaveProfileCvars( CONTROLS_INPUT_CONTROLLER );
 
 	// set the bindings from the local store
 	bindptr = g_bindings;
@@ -1591,35 +1730,11 @@ RallyControls_SetDefaults
 */
 static void RallyControls_SetDefaults( void )
 {
-	int	i;
-	bind_t*	bindptr;
+	int mode;
 
-	// set the bindings from the local store
-	bindptr = g_bindings;
-
-	// iterate each command, set its default binding
-	for (i=0; ;i++,bindptr++)
-	{
-		if (!bindptr->label)
-			break;
-
-		bindptr->bind1 = bindptr->defaultbind1;
-		bindptr->bind2 = -1;
-	}
-
-	s_controls.inputmode.curvalue    = Controls_GetCvarDefault( "cg_controlMode" );
-	s_controls.invertmouse.curvalue  = Controls_GetCvarDefault( "m_pitch" ) < 0;
-	s_controls.smoothmouse.curvalue  = Controls_GetCvarDefault( "m_filter" );
-	s_controls.alwaysrun.curvalue    = Controls_GetCvarDefault( "cl_run" );
-	s_controls.autoswitch.curvalue   = Controls_GetCvarDefault( "cg_autoswitch" );
-	s_controls.sensitivity.curvalue  = Controls_GetCvarDefault( "sensitivity" );
-	s_controls.joyenable.curvalue    = Controls_GetCvarDefault( "in_joystick" );
-	s_controls.joyanalog.curvalue    = Controls_GetCvarDefault( "in_joystickUseAnalog" );
-	s_controls.joythreshold.curvalue = Controls_GetCvarDefault( "joy_threshold" );
-	s_controls.freelook.curvalue     = Controls_GetCvarDefault( "cl_freelook" );
-// STONELANCE
-	s_controls.autodroprear.curvalue = Controls_GetCvarDefault( "cg_autodrop" );
-// END
+	mode = s_controls.inputmode.curvalue == CONTROLS_INPUT_CONTROLLER ? CONTROLS_INPUT_CONTROLLER : CONTROLS_INPUT_KEYBOARD;
+	Controls_LoadDefaultProfile( mode );
+	Controls_ApplyProfile( mode );
 }
 
 static bind_t* Controls_FindConflictingBinding( int key, int currentId )
@@ -2073,7 +2188,7 @@ static void Controls_MenuEvent( void* ptr, int event )
 		case ID_INPUTMODE:
 			if ( event == QM_ACTIVATED )
 			{
-				Controls_ApplyInputModePreset( s_controls.inputmode.curvalue );
+				Controls_ApplyInputModeProfile( s_controls.inputmode.curvalue );
 				Controls_Update();
 			}
 			break;
@@ -2160,6 +2275,12 @@ static void Controls_MenuInit( void )
 
 	// zero set all our globals
 	memset( &s_controls, 0 ,sizeof(controls_t) );
+	memset( s_controlsProfileKeys, 0, sizeof( s_controlsProfileKeys ) );
+	memset( s_controlsProfileLoaded, 0, sizeof( s_controlsProfileLoaded ) );
+	memset( s_controlsProfileJoyEnable, 0, sizeof( s_controlsProfileJoyEnable ) );
+	memset( s_controlsProfileJoyAnalog, 0, sizeof( s_controlsProfileJoyAnalog ) );
+	memset( s_controlsProfileJoyThreshold, 0, sizeof( s_controlsProfileJoyThreshold ) );
+	s_controlsActiveProfileMode = CONTROLS_INPUT_KEYBOARD;
 	s_controlsSearchText[0] = '\0';
 	s_globalSearchControlCount = 0;
 	Controls_SearchFieldSyncFromState();
