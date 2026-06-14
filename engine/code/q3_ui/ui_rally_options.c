@@ -687,23 +687,26 @@ void Q3ROptions_MenuInit( void ) {
 
 
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.banner );
-	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.back );
-
-
-	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.units );
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.transmissionMode );
-	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.atomspheric );
-        Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.speedometer );
-	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.fuelConsumption );
-	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.ladderOffline ); /* Q3RALLY LADDER */
-
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.manualShift );
-	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.positionSprites );
-	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.engineSounds );
-    Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.ghostPlayback );
-
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.atomspheric );
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.ghostPlayback );
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.fuelConsumption );
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.skidlength );
+
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.speedometer );
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.units );
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.engineSounds );
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.positionSprites );
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.ladderOffline ); /* Q3RALLY LADDER */
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.camtracking );
+
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.mvrl_heading );
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.mvrl_players );
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.mvrl_objects );
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.mvrl_smoke );
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.mvrl_marks );
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.mvrl_sparks );
 
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.rvrl_heading );
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.rvrl_players );
@@ -712,12 +715,7 @@ void Q3ROptions_MenuInit( void ) {
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.rvrl_marks );
 	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.rvrl_sparks );
 
-	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.mvrl_heading );
-	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.mvrl_players );
-	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.mvrl_objects );
-	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.mvrl_smoke );
-	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.mvrl_marks );
-	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.mvrl_sparks );
+	Menu_AddItem( &s_q3roptions.menu, ( void * ) &s_q3roptions.back );
 }
 
 
