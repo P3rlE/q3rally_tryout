@@ -430,7 +430,7 @@ void Q3ROptions_MenuInit( void ) {
 #define LAY_STEP   22
 #define LAY_L     200
 #define LAY_R     500
-#define LAY_RLY   306
+#define LAY_RLY   294
 #define LAY_SLD_Y ( LAY_TOP + LAY_STEP * 6 + 8 )   /* Skid + Camera Tracking row */
 #define LAY_HDG_Y ( LAY_RLY - 19 )                  /* Render level headings, 5px higher */
 
@@ -564,7 +564,7 @@ void Q3ROptions_MenuInit( void ) {
 
 	s_q3roptions.rvrl_heading.generic.type		= MTYPE_PTEXT;
 	s_q3roptions.rvrl_heading.generic.flags		= QMF_CENTER_JUSTIFY|QMF_INACTIVE;
-	s_q3roptions.rvrl_heading.generic.x			= LAY_L - 20;
+	s_q3roptions.rvrl_heading.generic.x			= LAY_R - 20;
 	s_q3roptions.rvrl_heading.generic.y			= LAY_HDG_Y;
 	s_q3roptions.rvrl_heading.generic.id		= 0;
 	s_q3roptions.rvrl_heading.generic.callback	= Q3ROptions_MenuEvent;
@@ -574,7 +574,7 @@ void Q3ROptions_MenuInit( void ) {
 
 	s_q3roptions.rvrl_players.generic.type		= MTYPE_RADIOBUTTON;
 	s_q3roptions.rvrl_players.generic.flags		= QMF_SMALLFONT;
-	s_q3roptions.rvrl_players.generic.x			= LAY_L;
+	s_q3roptions.rvrl_players.generic.x			= LAY_R;
 	s_q3roptions.rvrl_players.generic.y			= LAY_RLY + LAY_STEP * 0;
 	s_q3roptions.rvrl_players.generic.name		= "Players:";
 	s_q3roptions.rvrl_players.generic.id		= ID_RVRL_PLAYERS;
@@ -583,7 +583,7 @@ void Q3ROptions_MenuInit( void ) {
 
 	s_q3roptions.rvrl_objects.generic.type		= MTYPE_RADIOBUTTON;
 	s_q3roptions.rvrl_objects.generic.flags		= QMF_SMALLFONT;
-	s_q3roptions.rvrl_objects.generic.x			= LAY_L;
+	s_q3roptions.rvrl_objects.generic.x			= LAY_R;
 	s_q3roptions.rvrl_objects.generic.y			= LAY_RLY + LAY_STEP * 1;
 	s_q3roptions.rvrl_objects.generic.name		= "Objects:";
 	s_q3roptions.rvrl_objects.generic.id		= ID_RVRL_OBJECTS;
@@ -592,7 +592,7 @@ void Q3ROptions_MenuInit( void ) {
 
 	s_q3roptions.rvrl_smoke.generic.type		= MTYPE_RADIOBUTTON;
 	s_q3roptions.rvrl_smoke.generic.flags		= QMF_SMALLFONT;
-	s_q3roptions.rvrl_smoke.generic.x			= LAY_L;
+	s_q3roptions.rvrl_smoke.generic.x			= LAY_R;
 	s_q3roptions.rvrl_smoke.generic.y			= LAY_RLY + LAY_STEP * 2;
 	s_q3roptions.rvrl_smoke.generic.name		= "Smoke:";
 	s_q3roptions.rvrl_smoke.generic.id			= ID_RVRL_SMOKE;
@@ -601,7 +601,7 @@ void Q3ROptions_MenuInit( void ) {
 
 	s_q3roptions.rvrl_marks.generic.type		= MTYPE_RADIOBUTTON;
 	s_q3roptions.rvrl_marks.generic.flags		= QMF_SMALLFONT;
-	s_q3roptions.rvrl_marks.generic.x			= LAY_L;
+	s_q3roptions.rvrl_marks.generic.x			= LAY_R;
 	s_q3roptions.rvrl_marks.generic.y			= LAY_RLY + LAY_STEP * 3;
 	s_q3roptions.rvrl_marks.generic.name		= "Marks:";
 	s_q3roptions.rvrl_marks.generic.id			= ID_RVRL_MARKS;
@@ -610,7 +610,7 @@ void Q3ROptions_MenuInit( void ) {
 
 	s_q3roptions.rvrl_sparks.generic.type		= MTYPE_RADIOBUTTON;
 	s_q3roptions.rvrl_sparks.generic.flags		= QMF_SMALLFONT;
-	s_q3roptions.rvrl_sparks.generic.x			= LAY_L;
+	s_q3roptions.rvrl_sparks.generic.x			= LAY_R;
 	s_q3roptions.rvrl_sparks.generic.y			= LAY_RLY + LAY_STEP * 4;
 	s_q3roptions.rvrl_sparks.generic.name		= "Sparks:";
 	s_q3roptions.rvrl_sparks.generic.id			= ID_RVRL_SPARKS;
@@ -619,7 +619,7 @@ void Q3ROptions_MenuInit( void ) {
 
 	s_q3roptions.mvrl_heading.generic.type		= MTYPE_PTEXT;
 	s_q3roptions.mvrl_heading.generic.flags		= QMF_CENTER_JUSTIFY|QMF_INACTIVE;
-	s_q3roptions.mvrl_heading.generic.x			= LAY_R - 20;
+	s_q3roptions.mvrl_heading.generic.x			= LAY_L - 20;
 	s_q3roptions.mvrl_heading.generic.y			= LAY_HDG_Y;
 	s_q3roptions.mvrl_heading.generic.id		= 0;
 	s_q3roptions.mvrl_heading.generic.callback	= Q3ROptions_MenuEvent;
@@ -629,7 +629,7 @@ void Q3ROptions_MenuInit( void ) {
 
 	s_q3roptions.mvrl_players.generic.type		= MTYPE_RADIOBUTTON;
 	s_q3roptions.mvrl_players.generic.flags		= QMF_SMALLFONT;
-	s_q3roptions.mvrl_players.generic.x			= LAY_R;
+	s_q3roptions.mvrl_players.generic.x			= LAY_L;
 	s_q3roptions.mvrl_players.generic.y			= LAY_RLY + LAY_STEP * 0;
 	s_q3roptions.mvrl_players.generic.name		= "Players:";
 	s_q3roptions.mvrl_players.generic.id		= ID_MVRL_PLAYERS;
@@ -638,7 +638,7 @@ void Q3ROptions_MenuInit( void ) {
 
 	s_q3roptions.mvrl_objects.generic.type		= MTYPE_RADIOBUTTON;
 	s_q3roptions.mvrl_objects.generic.flags		= QMF_SMALLFONT;
-	s_q3roptions.mvrl_objects.generic.x			= LAY_R;
+	s_q3roptions.mvrl_objects.generic.x			= LAY_L;
 	s_q3roptions.mvrl_objects.generic.y			= LAY_RLY + LAY_STEP * 1;
 	s_q3roptions.mvrl_objects.generic.name		= "Objects:";
 	s_q3roptions.mvrl_objects.generic.id		= ID_MVRL_OBJECTS;
@@ -647,7 +647,7 @@ void Q3ROptions_MenuInit( void ) {
 
 	s_q3roptions.mvrl_smoke.generic.type		= MTYPE_RADIOBUTTON;
 	s_q3roptions.mvrl_smoke.generic.flags		= QMF_SMALLFONT;
-	s_q3roptions.mvrl_smoke.generic.x			= LAY_R;
+	s_q3roptions.mvrl_smoke.generic.x			= LAY_L;
 	s_q3roptions.mvrl_smoke.generic.y			= LAY_RLY + LAY_STEP * 2;
 	s_q3roptions.mvrl_smoke.generic.name		= "Smoke:";
 	s_q3roptions.mvrl_smoke.generic.id			= ID_MVRL_SMOKE;
@@ -656,7 +656,7 @@ void Q3ROptions_MenuInit( void ) {
 
 	s_q3roptions.mvrl_marks.generic.type		= MTYPE_RADIOBUTTON;
 	s_q3roptions.mvrl_marks.generic.flags		= QMF_SMALLFONT;
-	s_q3roptions.mvrl_marks.generic.x			= LAY_R;
+	s_q3roptions.mvrl_marks.generic.x			= LAY_L;
 	s_q3roptions.mvrl_marks.generic.y			= LAY_RLY + LAY_STEP * 3;
 	s_q3roptions.mvrl_marks.generic.name		= "Marks:";
 	s_q3roptions.mvrl_marks.generic.id			= ID_MVRL_MARKS;
@@ -665,7 +665,7 @@ void Q3ROptions_MenuInit( void ) {
 
 	s_q3roptions.mvrl_sparks.generic.type		= MTYPE_RADIOBUTTON;
 	s_q3roptions.mvrl_sparks.generic.flags		= QMF_SMALLFONT;
-	s_q3roptions.mvrl_sparks.generic.x			= LAY_R;
+	s_q3roptions.mvrl_sparks.generic.x			= LAY_L;
 	s_q3roptions.mvrl_sparks.generic.y			= LAY_RLY + LAY_STEP * 4;
 	s_q3roptions.mvrl_sparks.generic.name		= "Sparks:";
 	s_q3roptions.mvrl_sparks.generic.id			= ID_MVRL_SPARKS;
