@@ -147,6 +147,7 @@ typedef struct
 #define ID_GEARUP		73
 #define ID_GEARDOWN		74
 #define ID_JOYANALOG	75
+#define ID_INPUTMODE	76
 
 
 #define ANIM_IDLE		0
@@ -278,6 +279,7 @@ typedef struct
 	menuaction_s		toggleBotPaths;
 	menuaction_s		saveBPoints;
 
+	menulist_s			inputmode;
 	menuradiobutton_s	joyenable;
 	menuradiobutton_s	joyanalog;
 	menuslider_s		joythreshold;
@@ -310,6 +312,12 @@ static char s_rebindConfirmQuestion[128];
 static char s_controlsSearchText[64];
 static menucommon_s* s_globalSearchControls[128];
 static int s_globalSearchControlCount;
+
+static const char *s_controlsInputModes[] = {
+	"Mouse/Keyboard",
+	"Controller",
+	0
+};
 
 // static vec4_t controls_binding_color  = {1.00, 0.43, 0.00, 1.00};
 
@@ -396,6 +404,7 @@ static configcvar_t g_configcvars[] =
 	{"m_pitch",			0,					0},
 	{"cg_autoswitch",	0,					0},
 	{"sensitivity",		0,					0},
+	{"cg_controlMode",	0,					0},
 	{"in_joystick",		0,					0},
 	{"in_joystickUseAnalog",	0,				0},
 	{"joy_threshold",	0,					0},
@@ -459,6 +468,7 @@ static menucommon_s *g_looking_controls[] = {
 	(menucommon_s *)&s_controls.centerview,
 	(menucommon_s *)&s_controls.zoomview,
 	(menucommon_s *)&s_controls.nextcamera,
+	(menucommon_s *)&s_controls.inputmode,
 	(menucommon_s *)&s_controls.joyenable,
 	(menucommon_s *)&s_controls.joyanalog,
 	(menucommon_s *)&s_controls.joythreshold,
@@ -751,6 +761,99 @@ static float Controls_GetCvarValue( char* name )
 	}
 
 	return (cvarptr->value);
+}
+
+static void Controls_SetBindingById( int id, int key )
+{
+	int i;
+	bind_t *bindptr;
+
+	for ( i = 0, bindptr = g_bindings; bindptr->label; i++, bindptr++ )
+	{
+		if ( bindptr->id == id )
+		{
+			bindptr->bind1 = key;
+			bindptr->bind2 = -1;
+			return;
+		}
+	}
+}
+
+static void Controls_ApplyKeyboardPreset( void )
+{
+	int i;
+	bind_t *bindptr;
+
+	for ( i = 0, bindptr = g_bindings; bindptr->label; i++, bindptr++ )
+	{
+		bindptr->bind1 = bindptr->defaultbind1;
+		bindptr->bind2 = -1;
+	}
+
+	s_controls.inputmode.curvalue = 0;
+	s_controls.joyenable.curvalue = 0;
+	s_controls.joyanalog.curvalue = 0;
+	s_controls.joythreshold.curvalue = 0.15f;
+}
+
+static void Controls_ApplyControllerPreset( void )
+{
+	int i;
+	bind_t *bindptr;
+
+	for ( i = 0, bindptr = g_bindings; bindptr->label; i++, bindptr++ )
+	{
+		bindptr->bind1 = -1;
+		bindptr->bind2 = -1;
+	}
+
+	Controls_SetBindingById( ID_SHOWSCORES, K_PAD0_TOUCHPAD );
+	Controls_SetBindingById( ID_ACCEL, K_PAD0_RIGHTTRIGGER );
+	Controls_SetBindingById( ID_BRAKE, K_PAD0_LEFTTRIGGER );
+	Controls_SetBindingById( ID_LEFT, K_PAD0_LEFTSTICK_LEFT );
+	Controls_SetBindingById( ID_RIGHT, K_PAD0_LEFTSTICK_RIGHT );
+	Controls_SetBindingById( ID_MOVEUP, K_PAD0_A );
+	Controls_SetBindingById( ID_HANDBRAKE, K_PAD0_B );
+	Controls_SetBindingById( ID_TURBO, K_PAD0_Y );
+	Controls_SetBindingById( ID_GEARUP, K_PAD0_RIGHTSHOULDER );
+	Controls_SetBindingById( ID_GEARDOWN, K_PAD0_LEFTSHOULDER );
+	Controls_SetBindingById( ID_HEADLIGHT, K_PAD0_DPAD_UP );
+	Controls_SetBindingById( ID_HORN, K_PAD0_LEFTSTICK_CLICK );
+	Controls_SetBindingById( ID_NEXTCAMERA, K_PAD0_RIGHTSTICK_CLICK );
+	Controls_SetBindingById( ID_USEITEM, K_PAD0_X );
+	Controls_SetBindingById( ID_DROPITEM, K_PAD0_DPAD_DOWN );
+	Controls_SetBindingById( ID_REARATTACK, K_PAD0_DPAD_RIGHT );
+	Controls_SetBindingById( ID_DROP_REAR, K_PAD0_DPAD_LEFT );
+
+	s_controls.inputmode.curvalue = 1;
+	s_controls.joyenable.curvalue = 1;
+	s_controls.joyanalog.curvalue = 1;
+	s_controls.joythreshold.curvalue = 0.15f;
+}
+
+static void Controls_ApplyInputModePreset( int mode )
+{
+	if ( mode == 1 )
+		Controls_ApplyControllerPreset();
+	else
+		Controls_ApplyKeyboardPreset();
+
+	s_controls.changesmade = qtrue;
+}
+
+static void Controls_ClearCommandBindings( const char *command )
+{
+	int j;
+	char b[256];
+
+	for ( j = 0; j < MAX_KEYS; j++ )
+	{
+		trap_Key_GetBindingBuf( j, b, sizeof( b ) );
+		if ( *b && !Q_stricmp( b, command ) )
+		{
+			trap_Key_SetBinding( j, "" );
+		}
+	}
 }
 
 
@@ -1092,9 +1195,7 @@ static void Controls_DrawKeyBinding( void *self )
 	int				b2;
 	qboolean		c;
 	char			name[96];
-	char			name2[32];
 	char			label[96];
-	qboolean		hasSecondaryBind;
 
 	a = (menuaction_s*) self;
 
@@ -1102,7 +1203,6 @@ static void Controls_DrawKeyBinding( void *self )
 	y = a->generic.y;
 
 	c = (Menu_ItemAtCursor( a->generic.parent ) == a);
-	hasSecondaryBind = qfalse;
 
 	// find the binding
 	for (b1 = 0; g_bindings[b1].command; b1++) {
@@ -1120,13 +1220,6 @@ static void Controls_DrawKeyBinding( void *self )
 			strcpy(name, "-?-");
 		} else {
 			Controls_KeyNameForDisplay( b2, name, sizeof( name ) );
-
-			b2 = g_bindings[b1].bind2;
-			if (b2 != -1) {
-				hasSecondaryBind = qtrue;
-				Controls_KeyNameForDisplay( b2, name2, sizeof( name2 ) );
-				Com_sprintf( name, sizeof( name ), "%s / %s", name, name2 );
-			}
 		}
 
 		if ( Controls_SearchActive() ) {
@@ -1153,12 +1246,9 @@ static void Controls_DrawKeyBinding( void *self )
 		else
 		{
 			UI_DrawChar( x, y, 13, UI_CENTER|UI_BLINK|UI_SMALLFONT, text_color_highlight);
-			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.84, "You can assign two keys per action.", UI_SMALLFONT|UI_CENTER, colorWhite );
+			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.84, "One input per action.", UI_SMALLFONT|UI_CENTER, colorWhite );
 			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.88, "Enter/Click = rebind", UI_SMALLFONT|UI_CENTER, colorWhite );
 			UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.92, "Backspace = clear | Escape = cancel", UI_SMALLFONT|UI_CENTER, colorWhite );
-			if ( hasSecondaryBind ) {
-				UI_DrawString( x + SMALLCHAR_WIDTH + (strlen( name ) + 1) * SMALLCHAR_WIDTH, y, "Primary/Secondary", UI_LEFT|UI_SMALLFONT, text_color_highlight );
-			}
 		}
 		UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.95, "Type to search (across all categories)", UI_SMALLFONT|UI_CENTER, colorWhite );
 		if ( Controls_SearchActive() ) {
@@ -1335,7 +1425,7 @@ Controls_StatusBar
 */
 static void Controls_StatusBar( void *self )
 {
-	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.82, "You can assign two keys per action.", UI_SMALLFONT|UI_CENTER, colorWhite );
+	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.82, "One input per action.", UI_SMALLFONT|UI_CENTER, colorWhite );
 	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.86, "Enter/Click = rebind | Backspace = clear | Escape = cancel", UI_SMALLFONT|UI_CENTER, colorWhite );
 	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.90, "Use Arrow Keys or Click to change options", UI_SMALLFONT|UI_CENTER, colorWhite );
 	UI_DrawString(SCREEN_WIDTH * 0.50, SCREEN_HEIGHT * 0.94, "Type to search (across all categories)", UI_SMALLFONT|UI_CENTER, colorWhite );
@@ -1429,9 +1519,10 @@ static void RallyControls_GetConfig( void )
 		Controls_GetKeyAssignment(bindptr->command, twokeys);
 
 		bindptr->bind1 = twokeys[0];
-		bindptr->bind2 = twokeys[1];
+		bindptr->bind2 = -1;
 	}
 
+	s_controls.inputmode.curvalue    = UI_ClampCvar( 0, 1, Controls_GetCvarValue( "cg_controlMode" ) );
 	s_controls.invertmouse.curvalue  = Controls_GetCvarValue( "m_pitch" ) < 0;
 	s_controls.smoothmouse.curvalue  = UI_ClampCvar( 0, 1, Controls_GetCvarValue( "m_filter" ) );
 	s_controls.alwaysrun.curvalue    = UI_ClampCvar( 0, 1, Controls_GetCvarValue( "cl_run" ) );
@@ -1465,12 +1556,11 @@ static void RallyControls_SetConfig( void )
 		if (!bindptr->label)
 			break;
 
+		Controls_ClearCommandBindings( bindptr->command );
+
 		if (bindptr->bind1 != -1)
 		{	
 			trap_Key_SetBinding( bindptr->bind1, bindptr->command );
-
-			if (bindptr->bind2 != -1)
-				trap_Key_SetBinding( bindptr->bind2, bindptr->command );
 		}
 	}
 
@@ -1483,9 +1573,11 @@ static void RallyControls_SetConfig( void )
 	trap_Cvar_SetValue( "cl_run", s_controls.alwaysrun.curvalue );
 	trap_Cvar_SetValue( "cg_autoswitch", s_controls.autoswitch.curvalue );
 	trap_Cvar_SetValue( "sensitivity", s_controls.sensitivity.curvalue );
+	trap_Cvar_SetValue( "cg_controlMode", s_controls.inputmode.curvalue );
 	trap_Cvar_SetValue( "in_joystick", s_controls.joyenable.curvalue );
 	trap_Cvar_SetValue( "in_joystickUseAnalog", s_controls.joyanalog.curvalue );
 	trap_Cvar_SetValue( "joy_threshold", s_controls.joythreshold.curvalue );
+	trap_Cmd_ExecuteText( EXEC_APPEND, s_controls.inputmode.curvalue == 1 ? "+strafe\n" : "-strafe\n" );
         trap_Cvar_SetValue( "cl_freelook", s_controls.freelook.curvalue );
 // STONELANCE
         trap_Cvar_SetValue( "cg_autodrop", s_controls.autodroprear.curvalue );
@@ -1513,9 +1605,10 @@ static void RallyControls_SetDefaults( void )
 			break;
 
 		bindptr->bind1 = bindptr->defaultbind1;
-		bindptr->bind2 = bindptr->defaultbind2;
+		bindptr->bind2 = -1;
 	}
 
+	s_controls.inputmode.curvalue    = Controls_GetCvarDefault( "cg_controlMode" );
 	s_controls.invertmouse.curvalue  = Controls_GetCvarDefault( "m_pitch" ) < 0;
 	s_controls.smoothmouse.curvalue  = Controls_GetCvarDefault( "m_filter" );
 	s_controls.alwaysrun.curvalue    = Controls_GetCvarDefault( "cl_run" );
@@ -1574,7 +1667,7 @@ static qboolean Controls_ApplyBindingChange( int id, int key )
 
 			if ( bindptr->bind1 == key )
 			{
-				bindptr->bind1 = bindptr->bind2;
+				bindptr->bind1 = -1;
 				bindptr->bind2 = -1;
 			}
 		}
@@ -1603,14 +1696,14 @@ static qboolean Controls_ApplyBindingChange( int id, int key )
 			}
 			else if ( bindptr->bind1 == -1 ) {
 				bindptr->bind1 = key;
-			}
-			else if ( bindptr->bind1 != key && bindptr->bind2 == -1 ) {
-				bindptr->bind2 = key;
+				bindptr->bind2 = -1;
 			}
 			else
 			{
-				trap_Key_SetBinding( bindptr->bind1, "" );
-				trap_Key_SetBinding( bindptr->bind2, "" );
+				if ( bindptr->bind1 != -1 )
+					trap_Key_SetBinding( bindptr->bind1, "" );
+				if ( bindptr->bind2 != -1 )
+					trap_Key_SetBinding( bindptr->bind2, "" );
 				bindptr->bind1 = key;
 				bindptr->bind2 = -1;
 			}
@@ -1977,6 +2070,14 @@ static void Controls_MenuEvent( void* ptr, int event )
 				s_controls.changesmade = qtrue;
 			}
 			break;		
+
+		case ID_INPUTMODE:
+			if ( event == QM_ACTIVATED )
+			{
+				Controls_ApplyInputModePreset( s_controls.inputmode.curvalue );
+				Controls_Update();
+			}
+			break;
 	}
 }
 
@@ -2744,6 +2845,15 @@ static void Controls_MenuInit( void )
     
 // END
 
+	s_controls.inputmode.generic.type      = MTYPE_SPINCONTROL;
+	s_controls.inputmode.generic.flags	   = QMF_SMALLFONT;
+	s_controls.inputmode.generic.x	       = SCREEN_WIDTH/2;
+	s_controls.inputmode.generic.name	   = "input mode";
+	s_controls.inputmode.generic.id        = ID_INPUTMODE;
+	s_controls.inputmode.generic.callback  = Controls_MenuEvent;
+	s_controls.inputmode.generic.statusbar = Controls_StatusBar;
+	s_controls.inputmode.itemnames         = s_controlsInputModes;
+
 	s_controls.joyenable.generic.type      = MTYPE_RADIOBUTTON;
 	s_controls.joyenable.generic.flags	   = QMF_SMALLFONT;
 	s_controls.joyenable.generic.x	       = SCREEN_WIDTH/2;
@@ -2818,6 +2928,7 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.freelook );
 	Menu_AddItem( &s_controls.menu, &s_controls.centerview );
 	Menu_AddItem( &s_controls.menu, &s_controls.zoomview );
+	Menu_AddItem( &s_controls.menu, &s_controls.inputmode );
 	Menu_AddItem( &s_controls.menu, &s_controls.joyenable );
 	Menu_AddItem( &s_controls.menu, &s_controls.joyanalog );
 	Menu_AddItem( &s_controls.menu, &s_controls.joythreshold );

@@ -722,6 +722,38 @@ static int IN_ScaleAnalogAxisForCommand(int value, float scale)
 	return (int)scaled;
 }
 
+static int IN_ScaleGenericJoystickAxisForCommand(int axisIndex, int value)
+{
+	float scale = 0.0f;
+	int matches = 0;
+
+	if (axisIndex == j_yaw_axis->integer) {
+		scale = j_yaw->value;
+		matches++;
+	}
+	if (axisIndex == j_side_axis->integer) {
+		scale = j_side->value;
+		matches++;
+	}
+	if (axisIndex == j_forward_axis->integer) {
+		scale = j_forward->value;
+		matches++;
+	}
+	if (axisIndex == j_pitch_axis->integer) {
+		scale = j_pitch->value;
+		matches++;
+	}
+	if (axisIndex == j_up_axis->integer) {
+		scale = j_up->value;
+		matches++;
+	}
+
+	if (matches != 1)
+		return value;
+
+	return IN_ScaleAnalogAxisForCommand(value, scale);
+}
+
 static qboolean KeyToAxisAndSign(int keynum, int *outAxis, int *outSign, float *outScale)
 {
 	char *bind;
@@ -1108,6 +1140,7 @@ static void IN_JoyMove( void )
 				float f = ( (float) abs(axis) ) / 32767.0f;
 				
 				if( f < in_joystickThreshold->value ) axis = 0;
+				else axis = IN_ScaleGenericJoystickAxisForCommand(i, axis);
 
 				if ( axis != stick_state.oldaaxes[i] )
 				{
