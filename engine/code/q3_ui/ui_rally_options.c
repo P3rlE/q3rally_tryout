@@ -430,9 +430,9 @@ void Q3ROptions_MenuInit( void ) {
 #define LAY_STEP   22
 #define LAY_L     200
 #define LAY_R     500
-#define LAY_RLY   294
+#define LAY_RLY   306
 #define LAY_SLD_Y ( LAY_TOP + LAY_STEP * 6 + 8 )   /* Skid + Camera Tracking row */
-#define LAY_HDG_Y ( LAY_RLY - 19 )                  /* Render level headings, 5px higher */
+#define LAY_HDG_Y ( LAY_RLY - 26 )                  /* Render level headings */
 
 	// ---- LEFT COLUMN: Gameplay ----
 
