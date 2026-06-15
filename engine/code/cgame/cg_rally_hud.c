@@ -317,14 +317,14 @@ void CG_DrawFuelGauge( float x, float y, float w, float h ) {
 static float CG_RPMGaugeFraction( int rpm ) {
        float frac;
 
-       if ( rpm <= CP_RPM_MIN ) {
+       if ( rpm <= 0 ) {
                return 0.0f;
        }
        if ( rpm >= CP_RPM_MAX ) {
                return 1.0f;
        }
 
-       frac = ( rpm - CP_RPM_MIN ) / (float)( CP_RPM_MAX - CP_RPM_MIN );
+       frac = rpm / (float)CP_RPM_MAX;
        if ( frac < 0.0f ) {
                return 0.0f;
        }
