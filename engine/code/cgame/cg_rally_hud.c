@@ -312,7 +312,7 @@ void CG_DrawFuelGauge( float x, float y, float w, float h ) {
        }
 }
 
-#define RPM_GAUGE_SEGMENTS 18
+#define RPM_GAUGE_RED_FRACTION 0.85f
 
 static float CG_RPMGaugeFraction( int rpm ) {
        float frac;
@@ -334,42 +334,36 @@ static float CG_RPMGaugeFraction( int rpm ) {
        return frac;
 }
 
-static void CG_DrawRPMGaugeSegments( float x, float y, float width, float height, int rpm, float gap ) {
-       int i;
-       float segmentWidth;
-       float filledSegments;
+static void CG_DrawRPMGaugeBar( float x, float y, float width, float height, int rpm ) {
+       float frac;
+       float innerX, innerY, innerW, innerH;
+       float fillW, redStartW;
+       vec4_t backColor = {0.0f, 0.0f, 0.0f, 0.25f};
        vec4_t revColor = {1.0f, 0.12f, 0.02f, 1.0f};
 
-       if ( width <= 0.0f ) {
+       if ( width <= 2.0f || height <= 2.0f ) {
                return;
        }
 
-       segmentWidth = ( width - ( RPM_GAUGE_SEGMENTS - 1 ) * gap ) / RPM_GAUGE_SEGMENTS;
-       if ( segmentWidth < 1.0f ) {
-               segmentWidth = 1.0f;
+       frac = CG_RPMGaugeFraction( rpm );
+       innerX = x + 1.0f;
+       innerY = y + 1.0f;
+       innerW = width - 2.0f;
+       innerH = height - 2.0f;
+       fillW = innerW * frac;
+       redStartW = innerW * RPM_GAUGE_RED_FRACTION;
+
+       CG_DrawRect( x, y, width, height, 1, colorWhite );
+       CG_FillRect( innerX, innerY, innerW, innerH, backColor );
+
+       if ( fillW <= 0.0f ) {
+               return;
        }
-
-       filledSegments = CG_RPMGaugeFraction( rpm ) * RPM_GAUGE_SEGMENTS;
-
-       for ( i = 0; i < RPM_GAUGE_SEGMENTS; i++ ) {
-               float xPos;
-               float fill;
-               const float *fillColor;
-
-               xPos = x + i * ( segmentWidth + gap );
-               fill = filledSegments - i;
-               if ( fill < 0.0f ) {
-                       fill = 0.0f;
-               }
-               if ( fill > 1.0f ) {
-                       fill = 1.0f;
-               }
-
-               fillColor = ( i >= RPM_GAUGE_SEGMENTS - 3 ) ? revColor : colorWhite;
-               if ( fill > 0.0f ) {
-                       CG_FillRect( xPos, y, segmentWidth * fill, height, fillColor );
-               }
-               CG_DrawRect( xPos, y, segmentWidth, height, 1, colorWhite );
+       if ( fillW <= redStartW ) {
+               CG_FillRect( innerX, innerY, fillW, innerH, colorWhite );
+       } else {
+               CG_FillRect( innerX, innerY, redStartW, innerH, colorWhite );
+               CG_FillRect( innerX + redStartW, innerY, fillW - redStartW, innerH, revColor );
        }
 }
 
@@ -1049,7 +1043,6 @@ static float CG_DrawSpeed( float y ) {
 		float	bgColor[4] = {0.0f, 0.0f, 0.0f, 0.25f};
 		int		rpm;
                  const float segmentHeight = 8.0f;
-                 const float segmentGap = 4.0f;
                  const float gaugeHeight = 12.0f;
                 const float rpmIconSize = gaugeHeight * 2;
                 const float rpmIconOffset = rpmIconSize + 4;
@@ -1102,7 +1095,7 @@ static float CG_DrawSpeed( float y ) {
 			}
                         CG_DrawPic( x - rpmIconNudge, y, rpmIconSize, rpmIconSize, rpmIcon );
 		}
-               CG_DrawRPMGaugeSegments( x + rpmIconOffset, y, maxLen * GIANTCHAR_WIDTH, segmentHeight, rpm, segmentGap );
+               CG_DrawRPMGaugeBar( x + rpmIconOffset, y, maxLen * GIANTCHAR_WIDTH, segmentHeight, rpm );
 
                speedWidth = CG_DrawStrlen( speedStr ) * GIANTCHAR_WIDTH;
                gearWidth  = CG_DrawStrlen( gearStr )  * GIANTCHAR_WIDTH;
@@ -1216,7 +1209,6 @@ static float CG_DrawSpeed( float y ) {
 
                {
                        int rpm = cg.predictedPlayerState.stats[STAT_RPM];
-                       float segGap = 2.0f;
                        float segX = left + (blockWidth - fuelWidth) * 0.5f;
                        float segY = top + gaugeSize + gaugeSpacing + fuelHeight + rpmSpacing;
 
@@ -1234,7 +1226,7 @@ static float CG_DrawSpeed( float y ) {
 
                        CG_DrawPic( rpmIconX, rpmIconY, rpmIconSize, rpmIconSize, rpmIcon );
 
-                       CG_DrawRPMGaugeSegments( segX, segY, fuelWidth, rpmHeight, rpm, segGap );
+                       CG_DrawRPMGaugeBar( segX, segY, fuelWidth, rpmHeight, rpm );
                }
 
                y = yorg - 44 - blockHeight;
