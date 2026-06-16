@@ -31,6 +31,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define RALLY_INTRO_CAM_DURATION_MS 3000
 
+static int CountRaceGridStarts( void );
+
 static vec3_t rallyIntroGridOrigin[MAX_CLIENTS];
 static vec3_t rallyIntroGridAngles[MAX_CLIENTS];
 static qboolean rallyIntroGridSaved[MAX_CLIENTS];
@@ -82,7 +84,7 @@ static void G_RallySnapshotIntroGridPositions( void ) {
 	}
 }
 
-static void G_RallyIntroCountdownHandover( void ) {
+void G_RallyIntroCountdownHandover( void ) {
 	int i;
 	qboolean hasSnapshots = qfalse;
 
@@ -128,11 +130,10 @@ static void G_RallyIntroCountdownHandover( void ) {
 
 		if ( rallyIntroGridSaved[i] ) {
 			VectorCopy( rallyIntroGridOrigin[i], client->ps.origin );
-			VectorCopy( rallyIntroGridAngles[i], client->ps.viewangles );
-			VectorCopy( rallyIntroGridOrigin[i], player->s.origin );
-			VectorCopy( rallyIntroGridOrigin[i], player->r.currentOrigin );
-			VectorCopy( rallyIntroGridAngles[i], player->s.angles );
-			VectorCopy( rallyIntroGridAngles[i], player->r.currentAngles );
+			G_SetOrigin( player, rallyIntroGridOrigin[i] );
+			SetClientViewAngle( player, rallyIntroGridAngles[i] );
+			VectorClear( client->ps.velocity );
+			VectorClear( client->ps.angularMomentum );
 		}
 
 		G_Printf( "IntroHandover after: clientNum=%d sessionTeam=%d spectatorState=%d pm_flags=%d\n",
@@ -532,6 +533,14 @@ void RallyStarter_Think( gentity_t *ent ){
 	introDurationMs = level.raceIntroDurationMs > 0 ? level.raceIntroDurationMs : RALLY_INTRO_CAM_DURATION_MS;
 	ignoreBots = g_rallyIgnoreBots.integer;
 
+	if ( !ent->count ) {
+		int gridStarts = CountRaceGridStarts();
+		ent->count = 1;
+		if ( gridStarts < level.maxclients ) {
+			G_Printf( "Warning: Map has %i info_player_start entities, but sv_maxClients is %i; temporary grid slots may be required\n", gridStarts, level.maxclients );
+		}
+	}
+
 	if (level.startRaceTime){
 		{
 			int oldRaceState = level.raceState;
@@ -775,23 +784,16 @@ void RallyStarter_Think( gentity_t *ent ){
 	}
 }
 
-static int CountRaceGridStarts( void );
-
 void CreateRallyStarter( void ) {
 	gentity_t		*ent;
-	int			gridStarts;
 
 	ent = G_Spawn();
 
 	ent->think = RallyStarter_Think;
 	ent->nextthink = level.time + 2000;
 	ent->number = 0;
+	ent->count = 0;
 	ent->classname = "rally_starter";
-
-	gridStarts = CountRaceGridStarts();
-	if ( gridStarts < level.maxclients ) {
-		G_Printf( "Warning: Map has %i info_player_start entities, but sv_maxClients is %i; temporary grid slots may be required\n", gridStarts, level.maxclients );
-	}
 }
 
 

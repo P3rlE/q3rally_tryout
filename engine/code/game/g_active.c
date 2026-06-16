@@ -447,6 +447,10 @@ static qboolean G_IsIntroCamActive( void ) {
 	return ( level.raceState == RACE_STATE_INTRO_CAM && level.raceIntroEndTime > level.time );
 }
 
+static qboolean G_IsIntroCamPendingHandover( void ) {
+	return ( level.raceState == RACE_STATE_INTRO_CAM && level.raceIntroEndTime > 0 );
+}
+
 static qboolean G_BlockSpectatorButtonsDuringIntro( gentity_t *ent ) {
 	if ( !ent || !ent->client || level.raceState != RACE_STATE_INTRO_CAM ) {
 		return qfalse;
@@ -461,7 +465,7 @@ static qboolean G_BlockSpectatorButtonsDuringIntro( gentity_t *ent ) {
 }
 
 static qboolean G_ClientShouldUseIntroCam( gentity_t *ent ) {
-	if ( !ent || !ent->client || !G_IsIntroCamActive() ) {
+	if ( !ent || !ent->client || !G_IsIntroCamPendingHandover() ) {
 		return qfalse;
 	}
 
@@ -1190,6 +1194,11 @@ void ClientThink_real( gentity_t *ent ) {
 
 	if ( G_ClientShouldUseIntroCam( ent ) ) {
 		G_ApplyIntroInputLock( ent, ucmd );
+		if ( client->sess.sessionTeam != TEAM_SPECTATOR && !isRaceObserver( ent->s.number ) ) {
+			client->oldbuttons = client->buttons;
+			client->buttons = ucmd->buttons;
+			return;
+		}
 	}
 
 	// spectators don't do much
@@ -1975,7 +1984,7 @@ static qboolean G_IntroCam_DisableSequence( gentity_t *ent, const char *reason )
 	G_DebugRaceStateTransition( ent, "G_IntroCam_DisableSequence", oldRaceState, level.raceState );
 
 	if ( ent && ent->client ) {
-		ent->client->ps.pm_flags &= ~( PMF_FOLLOW | PMF_OBSERVE );
+		G_RallyIntroCountdownHandover();
 		ent->updateTime = 0;
 	}
 
@@ -2015,7 +2024,7 @@ static qboolean G_ApplyIntroCamSequence( gentity_t *ent ) {
 		int oldRaceState = level.raceState;
 		level.raceState = RACE_STATE_COUNTDOWN;
 		level.raceIntroEndTime = 0;
-		ent->client->ps.pm_flags &= ~( PMF_FOLLOW | PMF_OBSERVE );
+		G_RallyIntroCountdownHandover();
 		ent->updateTime = 0;
 		G_DebugRaceStateTransition( ent, "G_ApplyIntroCamSequence timeout", oldRaceState, level.raceState );
 		return qfalse;

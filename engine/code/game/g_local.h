@@ -984,6 +984,7 @@ void Cmd_RacePositions_f( void );
 void Cmd_Times_f( gentity_t *ent );
 gentity_t *SelectLastMarkerForSpawn( gentity_t *ent, vec3_t origin, vec3_t angles, qboolean isbot );
 gentity_t *SelectGridPositionSpawn( gentity_t *ent, vec3_t origin, vec3_t angles, qboolean isbot );
+void G_RallyIntroCountdownHandover( void );
 
 //
 // g_rally_rearweapon.c
