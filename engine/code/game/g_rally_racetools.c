@@ -861,6 +861,19 @@ static int CountRaceGridStarts( void ) {
 	return count;
 }
 
+static qboolean RaceGridHasNumberedStarts( void ) {
+	gentity_t *spot;
+
+	spot = NULL;
+	while ( ( spot = G_Find( spot, FOFS(classname), "info_player_start" ) ) != NULL ) {
+		if ( spot->number ) {
+			return qtrue;
+		}
+	}
+
+	return qfalse;
+}
+
 static void BuildTemporaryGridSlot( vec3_t baseOrigin, vec3_t baseAngles, int slotIndex, vec3_t outOrigin, vec3_t outAngles ) {
 	vec3_t forward, right;
 	float row;
@@ -978,21 +991,21 @@ gentity_t *SelectGridPositionSpawn( gentity_t *ent, vec3_t origin, vec3_t angles
 
 	spot = NULL;
 	firstGridSpot = NULL;
-	hasNumberedGridSpots = qfalse;
+	hasNumberedGridSpots = RaceGridHasNumberedStarts();
 	gridPosition = 1;
 	while ( gridPosition <= level.maxclients ) {
 		gentity_t *matchedSpot = NULL;
+		int unnumberedGridPosition = 1;
 		spot = NULL;
 
 		while ((spot = G_Find (spot, FOFS(classname), "info_player_start")) != NULL) {
 			if ( !firstGridSpot ) {
 				firstGridSpot = spot;
 			}
-			if ( spot->number ) {
-				hasNumberedGridSpots = qtrue;
-			}
 
-			if ( ( spot->number == gridPosition || ( !spot->number && gridPosition == 1 ) ) ) {
+			if ( ( spot->number == gridPosition ) ||
+				( !spot->number && !hasNumberedGridSpots && unnumberedGridPosition == gridPosition ) ||
+				( !spot->number && hasNumberedGridSpots && gridPosition == 1 ) ) {
 				matchedSpot = spot;
 				if ( !SpotWouldTelefrag( spot ) ) {
 					VectorCopy (spot->s.origin, origin);
@@ -1003,6 +1016,10 @@ gentity_t *SelectGridPositionSpawn( gentity_t *ent, vec3_t origin, vec3_t angles
 				}
 
 				break;
+			}
+
+			if ( !spot->number ) {
+				unnumberedGridPosition++;
 			}
 		}
 

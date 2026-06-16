@@ -6326,48 +6326,56 @@
 // entity 91
 {
 "classname" "info_player_start"
+"number" "1"
 "origin" "1680.72 -2115.53 280"
 "angle" "135"
 }
 // entity 92
 {
 "classname" "info_player_start"
+"number" "2"
 "origin" "1601.52 -2194.72 280"
 "angle" "135"
 }
 // entity 93
 {
 "classname" "info_player_start"
+"number" "3"
 "origin" "1566.17 -2000.97 280"
 "angle" "135"
 }
 // entity 94
 {
 "classname" "info_player_start"
+"number" "4"
 "origin" "1486.97 -2080.17 280"
 "angle" "135"
 }
 // entity 95
 {
 "classname" "info_player_start"
+"number" "5"
 "origin" "1453.02 -1887.83 280"
 "angle" "135"
 }
 // entity 96
 {
 "classname" "info_player_start"
+"number" "6"
 "origin" "1373.82 -1967.03 280"
 "angle" "135"
 }
 // entity 97
 {
 "classname" "info_player_start"
+"number" "7"
 "origin" "1338.47 -1773.28 280"
 "angle" "135"
 }
 // entity 98
 {
 "classname" "info_player_start"
+"number" "8"
 "origin" "1259.27 -1852.47 280"
 "angle" "135"
 }

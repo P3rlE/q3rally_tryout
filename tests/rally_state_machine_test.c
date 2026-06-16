@@ -503,6 +503,43 @@ void test_overflow_grid_spawn_skips_slots_without_ground(void) {
     assert(origin[2] > mockGroundZ);
 }
 
+void test_unnumbered_grid_starts_use_map_order_before_overflow(void) {
+    reset_environment();
+    g_gametype.integer = GT_RACING;
+
+    g_entities[1].inuse = qtrue;
+    g_entities[1].classname = "info_player_start";
+    VectorSet(g_entities[1].s.origin, 0.0f, 0.0f, 0.0f);
+    VectorSet(g_entities[1].s.angles, 0.0f, 180.0f, 0.0f);
+
+    g_entities[2].inuse = qtrue;
+    g_entities[2].classname = "info_player_start";
+    VectorSet(g_entities[2].s.origin, 192.0f, 0.0f, 0.0f);
+    VectorSet(g_entities[2].s.angles, 0.0f, 180.0f, 0.0f);
+
+    g_entities[3].inuse = qtrue;
+    g_entities[3].classname = "info_player_start";
+    VectorSet(g_entities[3].s.origin, 384.0f, 0.0f, 0.0f);
+    VectorSet(g_entities[3].s.angles, 0.0f, 180.0f, 0.0f);
+
+    g_entities[4].inuse = qtrue;
+    g_entities[4].classname = "player";
+    g_entities[4].client = &levelClients[4];
+    VectorSet(g_entities[4].s.origin, 0.0f, 0.0f, 0.0f);
+
+    g_entities[5].inuse = qtrue;
+    g_entities[5].classname = "player";
+    g_entities[5].client = &levelClients[5];
+
+    vec3_t origin;
+    vec3_t angles;
+    gentity_t *selected = SelectGridPositionSpawn(&g_entities[5], origin, angles, qfalse);
+
+    assert(selected == &g_entities[2]);
+    assert(origin[0] == g_entities[2].s.origin[0]);
+    assert(commandLogCount == 0);
+}
+
 int main(void) {
     test_elimination_configuration_initial_setup();
     test_elimination_configuration_minimum_laps();
@@ -513,6 +550,7 @@ int main(void) {
     test_checkpointless_map_starts_with_non_spectator_even_if_marked_observer();
     test_overflow_grid_spawn_adds_spacing_and_message();
     test_overflow_grid_spawn_skips_slots_without_ground();
+    test_unnumbered_grid_starts_use_map_order_before_overflow();
     printf("ok\n");
     return 0;
 }
