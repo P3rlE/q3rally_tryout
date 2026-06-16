@@ -843,6 +843,10 @@ static qboolean missingGridStartsNotified;
 
 #define OVERFLOW_GRID_COLUMNS			4
 #define OVERFLOW_GRID_SPACING			192.0f
+#define TEMP_GRID_GROUND_TRACE_UP		128.0f
+#define TEMP_GRID_GROUND_TRACE_DOWN		4096.0f
+#define TEMP_GRID_MIN_GROUND_NORMAL		0.3f
+#define TEMP_GRID_GROUND_CLEARANCE		1.0f
 
 static int CountRaceGridStarts( void ) {
 	gentity_t *spot;
@@ -873,6 +877,39 @@ static void BuildTemporaryGridSlot( vec3_t baseOrigin, vec3_t baseAngles, int sl
 	VectorCopy( baseAngles, outAngles );
 }
 
+static qboolean SnapTemporaryGridSlotToGround( vec3_t candidateOrigin, vec3_t outOrigin ) {
+	trace_t tr;
+	vec3_t start, end;
+	vec3_t mins, maxs;
+
+	VectorSet( mins, -CAR_WIDTH / 2.0f, -CAR_WIDTH / 2.0f, -CAR_HEIGHT / 2.0f );
+	VectorSet( maxs, CAR_WIDTH / 2.0f, CAR_WIDTH / 2.0f, CAR_HEIGHT / 2.0f );
+
+	VectorCopy( candidateOrigin, start );
+	start[2] += TEMP_GRID_GROUND_TRACE_UP;
+	VectorCopy( candidateOrigin, end );
+	end[2] -= TEMP_GRID_GROUND_TRACE_DOWN;
+
+	trap_Trace( &tr, start, mins, maxs, end, ENTITYNUM_NONE, MASK_PLAYERSOLID & ~CONTENTS_BODY );
+	if ( tr.allsolid || tr.startsolid || tr.fraction == 1.0f ) {
+		return qfalse;
+	}
+
+	if ( tr.plane.normal[2] < TEMP_GRID_MIN_GROUND_NORMAL ) {
+		return qfalse;
+	}
+
+	VectorCopy( tr.endpos, outOrigin );
+	outOrigin[2] += TEMP_GRID_GROUND_CLEARANCE;
+
+	trap_Trace( &tr, outOrigin, mins, maxs, outOrigin, ENTITYNUM_NONE, MASK_PLAYERSOLID & ~CONTENTS_BODY );
+	if ( tr.allsolid || tr.startsolid ) {
+		return qfalse;
+	}
+
+	return qtrue;
+}
+
 static qboolean FindTemporaryGridAnchor( vec3_t baseOrigin, vec3_t baseAngles ) {
 	gentity_t *spot;
 
@@ -896,18 +933,23 @@ static qboolean FindTemporaryGridAnchor( vec3_t baseOrigin, vec3_t baseAngles ) 
 }
 
 TESTABLE_STATIC gentity_t *SelectOverflowGridPosition( gentity_t *baseSpot, int overflowIndex, gentity_t *ent, vec3_t origin, vec3_t angles ) {
-	vec3_t			tempOrigin, tempAngles;
+	vec3_t			tempOrigin, tempAngles, groundedOrigin;
 	int				attempts = 0;
 	int				currentIndex = overflowIndex;
 
 	while ( attempts < 16 ) {
 		BuildTemporaryGridSlot( baseSpot->s.origin, baseSpot->s.angles, currentIndex, tempOrigin, tempAngles );
-		VectorCopy( tempOrigin, overflowSpot.s.origin );
+		if ( !SnapTemporaryGridSlotToGround( tempOrigin, groundedOrigin ) ) {
+			attempts++;
+			currentIndex++;
+			continue;
+		}
+
+		VectorCopy( groundedOrigin, overflowSpot.s.origin );
 		VectorCopy( tempAngles, overflowSpot.s.angles );
 
 		if ( !SpotWouldTelefrag( &overflowSpot ) ) {
 			VectorCopy( overflowSpot.s.origin, origin );
-			origin[2] += 9;
 			VectorCopy( overflowSpot.s.angles, angles );
 
 			if ( ent && ent->client ) {
@@ -932,6 +974,7 @@ gentity_t *SelectGridPositionSpawn( gentity_t *ent, vec3_t origin, vec3_t angles
 	qboolean		hasNumberedGridSpots;
 	int				gridPosition;
 	int				fallbackIndex;
+	vec3_t			groundedOrigin;
 
 	spot = NULL;
 	firstGridSpot = NULL;
@@ -1001,12 +1044,16 @@ gentity_t *SelectGridPositionSpawn( gentity_t *ent, vec3_t origin, vec3_t angles
 
 	for ( gridPosition = fallbackIndex; gridPosition < fallbackIndex + 256; gridPosition++ ) {
 		BuildTemporaryGridSlot( anchorOrigin, anchorAngles, gridPosition, overflowSpot.s.origin, overflowSpot.s.angles );
+		if ( !SnapTemporaryGridSlotToGround( overflowSpot.s.origin, groundedOrigin ) ) {
+			continue;
+		}
+
+		VectorCopy( groundedOrigin, overflowSpot.s.origin );
 		if ( SpotWouldTelefrag( &overflowSpot ) ) {
 			continue;
 		}
 
 		VectorCopy( overflowSpot.s.origin, origin );
-		origin[2] += 9;
 		VectorCopy( overflowSpot.s.angles, angles );
 		return &overflowSpot;
 	}
