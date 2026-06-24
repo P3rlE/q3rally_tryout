@@ -1150,6 +1150,8 @@ typedef struct {
 	qhandle_t	teleportEffectShader;
     qhandle_t	dustPuffShader;
     qhandle_t   snowPuffShader;
+    qhandle_t   waterSprayFanShader;
+    qhandle_t   waterSprayPuffShader;
     qhandle_t   sandPuffShader;
 
 

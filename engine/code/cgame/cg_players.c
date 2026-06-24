@@ -2952,6 +2952,23 @@ static float surfaceColors[4][4] = {
 		{ 0.4f, 0.05f, 0.0f, 0.3f }		// fleshy
 };
 
+static void CG_AddWaterSprayParticle( vec3_t origin, vec3_t dir, float speed, int radius, int duration, float r, float g, float b, float a, qhandle_t shader ) {
+	vec3_t			velocity;
+	localEntity_t	*le;
+
+	VectorNormalize2( dir, velocity );
+	velocity[0] += crandom() * 0.08f;
+	velocity[1] += crandom() * 0.08f;
+	velocity[2] += crandom() * 0.05f;
+	VectorNormalize( velocity );
+	VectorScale( velocity, speed, velocity );
+
+	le = CG_SmokePuff( origin, velocity, radius, r, g, b, a, duration, cg.time, 0, LEF_PUFF_DONT_SCALE, shader );
+	if ( le ) {
+		le->refEntity.rotation = crandom() * 12.0f;
+	}
+}
+
 /*
 ===============
 CG_AddWetTireSpray
@@ -2986,16 +3003,16 @@ static void CG_AddWetTireSpray( centity_t *cent, vec3_t origin, vec3_t up, int t
 	}
 
 	normalSpeed = Com_Clamp( 0.0f, 1.0f, ( speed - 80.0f ) / 520.0f );
-	radius = 5 + (int)( normalSpeed * 7.0f ) + ( skidding ? 4 : 0 );
-	duration = 280 + (int)( normalSpeed * 180.0f ) + ( skidding ? 120 : 0 );
-	particleSpeed = 14.0f + normalSpeed * 22.0f + ( skidding ? 10.0f : 0.0f );
-	alpha = 0.28f + normalSpeed * 0.22f + ( skidding ? 0.18f : 0.0f );
+	radius = 3 + (int)( normalSpeed * 5.0f ) + ( skidding ? 3 : 0 );
+	duration = 220 + (int)( normalSpeed * 140.0f ) + ( skidding ? 100 : 0 );
+	particleSpeed = 18.0f + normalSpeed * 28.0f + ( skidding ? 12.0f : 0.0f );
+	alpha = 0.18f + normalSpeed * 0.18f + ( skidding ? 0.14f : 0.0f );
 
 	VectorScale( flatVelocity, -0.55f, sprayDir );
 	VectorMA( sprayDir, 38.0f, up, sprayDir );
 	VectorNormalize( sprayDir );
 
-	CreateSmokeCloudEntity( origin, sprayDir, particleSpeed, radius, duration, 0.72f, 0.84f, 0.96f, alpha, cgs.media.snowPuffShader );
+	CG_AddWaterSprayParticle( origin, sprayDir, particleSpeed, radius, duration, 0.72f, 0.84f, 0.96f, alpha, cgs.media.waterSprayFanShader );
 	cent->wetSprayTime[tireNum] = cg.time + interval - (int)( normalSpeed * 25.0f );
 }
 
@@ -3175,7 +3192,7 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 			if ( cent->smokeTime[tireNum] < cg.time ) {
 				if ( wetSurface ) {
 					// wet surface: spray instead of smoke — fast, small, bluish-white, short-lived
-					CreateSmokeCloudEntity(tr.endpos, up, 22, 8, 400, 0.75f, 0.85f, 0.95f, 0.65f, cgs.media.snowPuffShader);
+					CG_AddWaterSprayParticle(tr.endpos, up, 22, 7, 320, 0.75f, 0.85f, 0.95f, 0.42f, cgs.media.waterSprayPuffShader);
 				} else if ( tr.surfaceFlags & SURF_DUST ) {
 					CreateSmokeCloudEntity(tr.endpos, up, 20, 48, 2000, surfaceColors[colorIndex][0], surfaceColors[colorIndex][1], surfaceColors[colorIndex][2], surfaceColors[colorIndex][3], cgs.media.smokePuffShader);
 				} else if ( tr.surfaceFlags & SURF_ICE ) {

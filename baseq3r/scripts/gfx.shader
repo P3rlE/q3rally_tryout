@@ -389,6 +389,30 @@ snowPuff
 	}
 }
 
+waterSprayFan
+{
+	cull none
+	entityMergable
+	{
+		map gfx/misc/watersprayfan.png
+		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		rgbGen		vertex
+		alphaGen	vertex
+	}
+}
+
+waterSprayPuff
+{
+	cull none
+	entityMergable
+	{
+		map gfx/misc/waterspraypuff.png
+		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		rgbGen		vertex
+		alphaGen	vertex
+	}
+}
+
 sandPuff
 {
 	cull none

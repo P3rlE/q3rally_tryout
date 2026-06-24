@@ -1289,6 +1289,8 @@ static void CG_RegisterGraphics( void ) {
 #endif
 	cgs.media.dustPuffShader = trap_R_RegisterShader("hasteSmokePuff" );
     cgs.media.snowPuffShader = trap_R_RegisterShader("snowPuff" );
+    cgs.media.waterSprayFanShader = trap_R_RegisterShader("waterSprayFan" );
+    cgs.media.waterSprayPuffShader = trap_R_RegisterShader("waterSprayPuff" );
     cgs.media.sandPuffShader = trap_R_RegisterShader("sandPuff" );
 //#endif
 // Q3Rally Code END
