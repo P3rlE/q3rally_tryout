@@ -2989,6 +2989,10 @@ static void CG_AddWetTireSpray( centity_t *cent, vec3_t origin, vec3_t up, int t
 	int			duration;
 	float		particleSpeed;
 	float		alpha;
+	float		backScale;
+	float		liftScale;
+	float		originLift;
+	qboolean	frontAxle;
 
 	VectorCopy( cent->currentState.pos.trDelta, flatVelocity );
 	VectorMA( flatVelocity, -DotProduct( flatVelocity, up ), up, flatVelocity );
@@ -3003,17 +3007,32 @@ static void CG_AddWetTireSpray( centity_t *cent, vec3_t origin, vec3_t up, int t
 		return;
 	}
 
+	frontAxle = ( tireNum < 2 );
 	normalSpeed = Com_Clamp( 0.0f, 1.0f, ( speed - 80.0f ) / 520.0f );
-	radius = 8 + (int)( normalSpeed * 8.0f ) + ( skidding ? 5 : 0 );
-	duration = 280 + (int)( normalSpeed * 160.0f ) + ( skidding ? 120 : 0 );
-	particleSpeed = 24.0f + normalSpeed * 34.0f + ( skidding ? 14.0f : 0.0f );
-	alpha = 0.42f + normalSpeed * 0.20f + ( skidding ? 0.16f : 0.0f );
 
-	VectorScale( flatVelocity, -0.55f, sprayDir );
-	VectorMA( sprayDir, 30.0f, up, sprayDir );
+	if ( frontAxle ) {
+		radius = 7 + (int)( normalSpeed * 6.0f ) + ( skidding ? 3 : 0 );
+		duration = 240 + (int)( normalSpeed * 120.0f ) + ( skidding ? 80 : 0 );
+		particleSpeed = 28.0f + normalSpeed * 38.0f + ( skidding ? 10.0f : 0.0f );
+		alpha = 0.34f + normalSpeed * 0.16f + ( skidding ? 0.10f : 0.0f );
+		backScale = -0.72f;
+		liftScale = 12.0f;
+		originLift = 3.0f + normalSpeed * 2.0f;
+	} else {
+		radius = 9 + (int)( normalSpeed * 9.0f ) + ( skidding ? 6 : 0 );
+		duration = 300 + (int)( normalSpeed * 170.0f ) + ( skidding ? 130 : 0 );
+		particleSpeed = 24.0f + normalSpeed * 34.0f + ( skidding ? 14.0f : 0.0f );
+		alpha = 0.44f + normalSpeed * 0.20f + ( skidding ? 0.16f : 0.0f );
+		backScale = -0.55f;
+		liftScale = 30.0f;
+		originLift = 6.0f + normalSpeed * 4.0f;
+	}
+
+	VectorScale( flatVelocity, backScale, sprayDir );
+	VectorMA( sprayDir, liftScale, up, sprayDir );
 	VectorNormalize( sprayDir );
 
-	VectorMA( origin, 6.0f + normalSpeed * 4.0f, up, sprayOrigin );
+	VectorMA( origin, originLift, up, sprayOrigin );
 	CG_AddWaterSprayParticle( sprayOrigin, sprayDir, particleSpeed, radius, duration, 0.88f, 0.94f, 1.0f, alpha, cgs.media.waterSprayFanShader );
 	cent->wetSprayTime[tireNum] = cg.time + interval - (int)( normalSpeed * 25.0f );
 }
