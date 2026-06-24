@@ -2954,6 +2954,53 @@ static float surfaceColors[4][4] = {
 
 /*
 ===============
+CG_AddWetTireSpray
+
+Adds road spray from a rolling tire on a wet surface.  This is deliberately
+independent from skid mark generation: a rain-wet road should throw a misty
+tail from normal rolling tires, while skidding only makes the spray heavier.
+===============
+*/
+static void CG_AddWetTireSpray( centity_t *cent, vec3_t origin, vec3_t up, int tireNum, qboolean skidding ) {
+	vec3_t		flatVelocity;
+	vec3_t		sprayDir;
+	float		speed;
+	float		normalSpeed;
+	int			interval;
+	int			radius;
+	int			duration;
+	float		particleSpeed;
+	float		alpha;
+
+	VectorCopy( cent->currentState.pos.trDelta, flatVelocity );
+	VectorMA( flatVelocity, -DotProduct( flatVelocity, up ), up, flatVelocity );
+	speed = VectorLength( flatVelocity );
+
+	if ( speed < 80.0f ) {
+		return;
+	}
+
+	interval = skidding ? 55 : 80;
+	if ( cent->wetSprayTime[tireNum] > cg.time ) {
+		return;
+	}
+
+	normalSpeed = Com_Clamp( 0.0f, 1.0f, ( speed - 80.0f ) / 520.0f );
+	radius = 5 + (int)( normalSpeed * 7.0f ) + ( skidding ? 4 : 0 );
+	duration = 280 + (int)( normalSpeed * 180.0f ) + ( skidding ? 120 : 0 );
+	particleSpeed = 14.0f + normalSpeed * 22.0f + ( skidding ? 10.0f : 0.0f );
+	alpha = 0.28f + normalSpeed * 0.22f + ( skidding ? 0.18f : 0.0f );
+
+	VectorScale( flatVelocity, -0.55f, sprayDir );
+	VectorMA( sprayDir, 38.0f, up, sprayDir );
+	VectorNormalize( sprayDir );
+
+	CreateSmokeCloudEntity( origin, sprayDir, particleSpeed, radius, duration, 0.72f, 0.84f, 0.96f, alpha, cgs.media.snowPuffShader );
+	cent->wetSprayTime[tireNum] = cg.time + interval - (int)( normalSpeed * 25.0f );
+}
+
+/*
+===============
 CG_AddSplash
 
 Ripped from CG_PlayerSplash.
@@ -3056,10 +3103,13 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 	qhandle_t		shader;
 	trace_t			tr;
 	qboolean		wetSurface;
+	qboolean		skidding;
 
 	VectorMA(curOrigin, -(WHEEL_RADIUS * 2.0f), up, end);
 	CG_Trace(&tr, curOrigin, NULL, NULL, end, cent->currentState.number, CONTENTS_SOLID);
 	wetSurface = ( tr.surfaceFlags & SURF_WET ) || CG_AtmosphericPointWet( tr.endpos );
+	VectorSubtract(cent->lastSkidOrigin[tireNum], curOrigin, delta);
+	skidding = cent->wheelSkidding[tireNum];
 
 	if (tr.surfaceFlags & SURF_SKY)
 		return;
@@ -3114,8 +3164,11 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 			colorIndex = 2;
 		}
 
-		VectorSubtract(cent->lastSkidOrigin[tireNum], curOrigin, delta);
-		if ( cent->wheelSkidding[tireNum] && shader >= 0 ){
+		if ( wetSurface ) {
+			CG_AddWetTireSpray( cent, tr.endpos, up, tireNum, skidding );
+		}
+
+		if ( skidding && shader >= 0 ){
 			length = VectorLength(delta) / 2;
 
 			// create smoke even if we arent moving because the car is being stopped from moving
@@ -3137,6 +3190,8 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 				return;
 			}
 
+			VectorMA(curOrigin, 1/2.0F, delta, origin);
+
 			trap_S_AddRealLoopingSound( cent->currentState.clientNum, origin, cent->currentState.pos.trDelta, cgs.media.skidSound );
 
 			if( cent->skidSoundTime + 500 < cg.time )
@@ -3145,7 +3200,6 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 				cent->skidSoundTime = cg.time;
 			}
 
-			VectorMA(curOrigin, 1/2.0F, delta, origin);
 			VectorNormalize(delta);
 
 			CG_SkidMark( shader, origin, tr.plane.normal, delta, 1,1,1,1, qfalse, 8.0F, length, qfalse );
@@ -3174,13 +3228,6 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 			if ( VectorLength(delta) > 5 && cent->smokeTime[tireNum] < cg.time ){
 				CreateSmokeCloudEntity( tr.endpos, up, 10, 8, 500, surfaceColors[colorIndex][0], surfaceColors[colorIndex][1], surfaceColors[colorIndex][2], 0.6f, cgs.media.snowPuffShader);
 				cent->smokeTime[tireNum] = cg.time + 100;
-			}
-		}
-		else if ( wetSurface ){
-			// fine spray mist from rolling tire on wet road
-			if ( VectorLength(delta) > 8 && cent->smokeTime[tireNum] < cg.time ){
-				CreateSmokeCloudEntity( tr.endpos, up, 18, 6, 350, 0.75f, 0.85f, 0.95f, 0.4f, cgs.media.snowPuffShader);
-				cent->smokeTime[tireNum] = cg.time + 80;
 			}
 		}
 	}

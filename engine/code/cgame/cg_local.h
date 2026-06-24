@@ -288,6 +288,7 @@ typedef struct centity_s {
 
 	vec3_t			lastSkidOrigin[4];
 	float			smokeTime[4];
+	int				wetSprayTime[4];
 	float			engineSmokeTime;
 	float			engineSoundFrac;
 
