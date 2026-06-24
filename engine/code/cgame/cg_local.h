@@ -2023,7 +2023,11 @@ void CG_CheckChangedPredictableEvents( playerState_t *ps );
 // cg_atmospheric.c
 //
 void CG_AddAtmosphericEffects( void );
-void CG_Atmospheric_SetParticles( int type, int numParticles, qboolean diableSplashes );
+void CG_Atmospheric_Init( void );
+void CG_Atmospheric_Shutdown( void );
+void CG_Atmospheric_AddWeatherZone( centity_t *cent );
+qboolean CG_AtmosphericPointInWeather( const vec3_t point, int type );
+qboolean CG_AtmosphericPointWet( const vec3_t point );
 
 //
 // cg_rally_scripted_objects.c
@@ -2076,7 +2080,7 @@ void CG_ResetEliminationTimeline( void );
 void CG_AddEliminationTimelineEvent( int clientNum, int round, int remaining, int timestamp );
 qboolean CG_IsActiveCompetitor( int clientNum );
 
-qboolean CG_InsideBox( vec3_t mins, vec3_t maxs, vec3_t pos );
+qboolean CG_InsideBox( const vec3_t mins, const vec3_t maxs, const vec3_t pos );
 
 
 //

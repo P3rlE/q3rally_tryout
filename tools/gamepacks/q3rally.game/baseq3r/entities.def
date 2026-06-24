@@ -2561,7 +2561,10 @@ SPAWNFLAGS
 
 SPAWNFLAGS
 
-disable_splash turns off splashes, improving framerates since there is not as much to calculate or draw. 
+disable_splash turns off visual impact splashes, improving framerates since there is not as much to calculate or draw.
+
+The rain volume also marks the road beneath it as dynamically wet at runtime:
+vehicle grip is reduced and tires emit spray without requiring SURF_WET on the road shader.
 */
 
 /*QUAKED item_armor_green (0 .7 0) (-16 -16 -16) (16 16 16) SUSPENDED

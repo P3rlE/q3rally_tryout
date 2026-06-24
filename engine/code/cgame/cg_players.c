@@ -3055,9 +3055,11 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 	float			length;
 	qhandle_t		shader;
 	trace_t			tr;
+	qboolean		wetSurface;
 
 	VectorMA(curOrigin, -(WHEEL_RADIUS * 2.0f), up, end);
 	CG_Trace(&tr, curOrigin, NULL, NULL, end, cent->currentState.number, CONTENTS_SOLID);
+	wetSurface = ( tr.surfaceFlags & SURF_WET ) || CG_AtmosphericPointWet( tr.endpos );
 
 	if (tr.surfaceFlags & SURF_SKY)
 		return;
@@ -3118,7 +3120,7 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 
 			// create smoke even if we arent moving because the car is being stopped from moving
 			if ( cent->smokeTime[tireNum] < cg.time ) {
-				if ( tr.surfaceFlags & SURF_WET ) {
+				if ( wetSurface ) {
 					// wet surface: spray instead of smoke — fast, small, bluish-white, short-lived
 					CreateSmokeCloudEntity(tr.endpos, up, 22, 8, 400, 0.75f, 0.85f, 0.95f, 0.65f, cgs.media.snowPuffShader);
 				} else if ( tr.surfaceFlags & SURF_DUST ) {
@@ -3174,7 +3176,7 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 				cent->smokeTime[tireNum] = cg.time + 100;
 			}
 		}
-		else if ( tr.surfaceFlags & SURF_WET ){
+		else if ( wetSurface ){
 			// fine spray mist from rolling tire on wet road
 			if ( VectorLength(delta) > 8 && cent->smokeTime[tireNum] < cg.time ){
 				CreateSmokeCloudEntity( tr.endpos, up, 18, 6, 350, 0.75f, 0.85f, 0.95f, 0.4f, cgs.media.snowPuffShader);

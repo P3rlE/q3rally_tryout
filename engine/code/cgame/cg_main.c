@@ -2306,6 +2306,7 @@ void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum ) {
 	memset( cg_entities, 0, sizeof(cg_entities) );
 	memset( cg_weapons, 0, sizeof(cg_weapons) );
 	memset( cg_items, 0, sizeof(cg_items) );
+	CG_Atmospheric_Init();
 
 	cg.clientNum = clientNum;
 	cg.showHUD = qtrue;	// modular HUD should be visible by default
@@ -2485,6 +2486,7 @@ Called before every level change or subsystem restart
 =================
 */
 void CG_Shutdown( void ) {
+	CG_Atmospheric_Shutdown();
 	CG_EngineAudio_Shutdown();
 
 	// some mods may need to do cleanup work here,
