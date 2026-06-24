@@ -2981,6 +2981,7 @@ tail from normal rolling tires, while skidding only makes the spray heavier.
 static void CG_AddWetTireSpray( centity_t *cent, vec3_t origin, vec3_t up, int tireNum, qboolean skidding ) {
 	vec3_t		flatVelocity;
 	vec3_t		sprayDir;
+	vec3_t		sprayOrigin;
 	float		speed;
 	float		normalSpeed;
 	int			interval;
@@ -2997,22 +2998,23 @@ static void CG_AddWetTireSpray( centity_t *cent, vec3_t origin, vec3_t up, int t
 		return;
 	}
 
-	interval = skidding ? 55 : 80;
+	interval = skidding ? 45 : 60;
 	if ( cent->wetSprayTime[tireNum] > cg.time ) {
 		return;
 	}
 
 	normalSpeed = Com_Clamp( 0.0f, 1.0f, ( speed - 80.0f ) / 520.0f );
-	radius = 3 + (int)( normalSpeed * 5.0f ) + ( skidding ? 3 : 0 );
-	duration = 220 + (int)( normalSpeed * 140.0f ) + ( skidding ? 100 : 0 );
-	particleSpeed = 18.0f + normalSpeed * 28.0f + ( skidding ? 12.0f : 0.0f );
-	alpha = 0.18f + normalSpeed * 0.18f + ( skidding ? 0.14f : 0.0f );
+	radius = 8 + (int)( normalSpeed * 8.0f ) + ( skidding ? 5 : 0 );
+	duration = 280 + (int)( normalSpeed * 160.0f ) + ( skidding ? 120 : 0 );
+	particleSpeed = 24.0f + normalSpeed * 34.0f + ( skidding ? 14.0f : 0.0f );
+	alpha = 0.42f + normalSpeed * 0.20f + ( skidding ? 0.16f : 0.0f );
 
 	VectorScale( flatVelocity, -0.55f, sprayDir );
-	VectorMA( sprayDir, 38.0f, up, sprayDir );
+	VectorMA( sprayDir, 30.0f, up, sprayDir );
 	VectorNormalize( sprayDir );
 
-	CG_AddWaterSprayParticle( origin, sprayDir, particleSpeed, radius, duration, 0.72f, 0.84f, 0.96f, alpha, cgs.media.waterSprayFanShader );
+	VectorMA( origin, 6.0f + normalSpeed * 4.0f, up, sprayOrigin );
+	CG_AddWaterSprayParticle( sprayOrigin, sprayDir, particleSpeed, radius, duration, 0.88f, 0.94f, 1.0f, alpha, cgs.media.waterSprayFanShader );
 	cent->wetSprayTime[tireNum] = cg.time + interval - (int)( normalSpeed * 25.0f );
 }
 
@@ -3192,7 +3194,8 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 			if ( cent->smokeTime[tireNum] < cg.time ) {
 				if ( wetSurface ) {
 					// wet surface: spray instead of smoke — fast, small, bluish-white, short-lived
-					CG_AddWaterSprayParticle(tr.endpos, up, 22, 7, 320, 0.75f, 0.85f, 0.95f, 0.42f, cgs.media.waterSprayPuffShader);
+					VectorMA( tr.endpos, 7.0f, up, origin );
+					CG_AddWaterSprayParticle(origin, up, 28, 13, 380, 0.88f, 0.94f, 1.0f, 0.58f, cgs.media.waterSprayPuffShader);
 				} else if ( tr.surfaceFlags & SURF_DUST ) {
 					CreateSmokeCloudEntity(tr.endpos, up, 20, 48, 2000, surfaceColors[colorIndex][0], surfaceColors[colorIndex][1], surfaceColors[colorIndex][2], surfaceColors[colorIndex][3], cgs.media.smokePuffShader);
 				} else if ( tr.surfaceFlags & SURF_ICE ) {
