@@ -1152,6 +1152,8 @@ typedef struct {
     qhandle_t   snowPuffShader;
     qhandle_t   waterSprayFanShader;
     qhandle_t   waterSprayPuffShader;
+    qhandle_t   snowSprayFanShader;
+    qhandle_t   snowSprayPuffShader;
     qhandle_t   sandPuffShader;
 
 
@@ -2031,6 +2033,7 @@ void CG_Atmospheric_Shutdown( void );
 void CG_Atmospheric_AddWeatherZone( centity_t *cent );
 qboolean CG_AtmosphericPointInWeather( const vec3_t point, int type );
 qboolean CG_AtmosphericPointWet( const vec3_t point );
+qboolean CG_AtmosphericPointSnow( const vec3_t point );
 
 //
 // cg_rally_scripted_objects.c

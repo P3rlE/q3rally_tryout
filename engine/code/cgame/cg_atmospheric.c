@@ -202,6 +202,11 @@ qboolean CG_AtmosphericPointWet( const vec3_t point )
 	return CG_AtmosphericPointInWeather( point, 0 );
 }
 
+qboolean CG_AtmosphericPointSnow( const vec3_t point )
+{
+	return CG_AtmosphericPointInWeather( point, 1 );
+}
+
 static qboolean CG_AtmosphericInViewCone( const vec3_t point, float conePadding )
 {
 	vec3_t distance;

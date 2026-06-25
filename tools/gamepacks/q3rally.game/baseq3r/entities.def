@@ -2554,6 +2554,9 @@ SPAWNFLAGS
 
 /*QUAKED rally_weather_snow (.5 .5 .5) ?
 "number"	number of particles to draw, usually 200-1000
+
+The snow volume also marks the road beneath it as dynamically snow-covered at runtime:
+vehicle grip uses packed-snow friction and tires emit snow spray without requiring SURF_SNOW on the road shader.
 */
 
 /*QUAKED rally_weather_rain (.5 .5 .5) ? DISABLE_SPLASH

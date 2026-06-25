@@ -1248,6 +1248,7 @@ extern	vmCvar_t	car_air_cof;
 extern	vmCvar_t	car_air_frac_to_df;
 extern	vmCvar_t	car_friction_scale;
 qboolean G_WeatherPointWet( const vec3_t point );
+qboolean G_WeatherPointSnow( const vec3_t point );
 
 extern	vmCvar_t	g_carImpactTransfer;
 extern	vmCvar_t	g_carImpactElasticity;

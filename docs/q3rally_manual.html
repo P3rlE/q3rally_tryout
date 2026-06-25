@@ -641,7 +641,7 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php"
     <tbody>
       <tr><td>rally_sun</td><td>Sun direction setter</td><td>Forwards sun position to clients for dynamic lighting.</td></tr>
       <tr><td>rally_weather_rain</td><td>Rain particle and dynamic wetness volume</td><td><code>number</code> = density. Roads inside the volume lose grip and generate tire spray. Spawnflag 1 disables visual impact splashes.</td></tr>
-      <tr><td>rally_weather_snow</td><td>Snow particle volume</td><td>Fixed type (<code>weapon = 1</code>). Extra spawnflags ignored.</td></tr>
+      <tr><td>rally_weather_snow</td><td>Snow particle and dynamic snow volume</td><td>Fixed type (<code>weapon = 1</code>). Roads inside the volume use packed-snow grip and generate tire snow spray. Extra spawnflags ignored.</td></tr>
     </tbody>
   </table></div>
 
@@ -665,7 +665,7 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php"
       <tr>
         <td>3</td>
         <td>Rain spawnflags</td>
-        <td>For rain, spawnflag 1 disables visual water/land impact splashes. It does not disable dynamic wet-road physics or tire spray. Snow splash is disabled by design regardless of spawnflags.</td>
+        <td>For rain, spawnflag 1 disables visual water/land impact splashes. It does not disable dynamic wet-road physics or tire spray. Snow volumes dynamically apply packed-snow tire grip and snow spray. Snow splash is disabled by design regardless of spawnflags.</td>
       </tr>
       <tr>
         <td>4</td>
@@ -710,7 +710,7 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php"
       <tr><td>SURF_GRASS</td><td>Green-tinted skidmarks, grass debris</td><td>textures/q3r_dirt_grass/grass01</td></tr>
       <tr><td>SURF_GRAVEL</td><td>Similar to dirt but with coarser particles</td><td>textures/q3r_dirt_grass/gravel01</td></tr>
       <tr><td>SURF_SAND</td><td>Loose sand, dust puffs, low traction</td><td>textures/q3r_dirt_grass/sand</td></tr>
-      <tr><td>SURF_SNOW</td><td>White skidmarks and snow spray</td><td>textures/q3r_ground/snowy01–04</td></tr>
+      <tr><td>SURF_SNOW</td><td>White skidmarks, packed-snow grip and snow spray</td><td>textures/q3r_ground/snowy01–04; also applied dynamically inside <code>rally_weather_snow</code> volumes</td></tr>
       <tr><td>SURF_ICE</td><td>Very low friction, optional sheen</td><td>textures/q3r_ground/ice01</td></tr>
       <tr><td>SURF_WET</td><td>Splash effects when tyres touch liquid</td><td>textures/q3r_liquids/q3r_water_01</td></tr>
       <tr><td>SURF_METAL</td><td>Metallic sparks on impact</td><td>Metal grates, pipes</td></tr>

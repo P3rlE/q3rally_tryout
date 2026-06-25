@@ -955,7 +955,7 @@ void SP_rally_weather_snow( gentity_t *ent ){
 	trap_LinkEntity (ent);
 }
 
-qboolean G_WeatherPointWet( const vec3_t point ){
+static qboolean G_WeatherPointInWeather( const vec3_t point, int type ){
 	int entityList[MAX_GENTITIES];
 	int numListedEntities;
 	vec3_t mins, maxs;
@@ -970,10 +970,18 @@ qboolean G_WeatherPointWet( const vec3_t point ){
 	numListedEntities = trap_EntitiesInBox( mins, maxs, entityList, MAX_GENTITIES );
 	for ( i = 0; i < numListedEntities; i++ ) {
 		ent = &g_entities[entityList[i]];
-		if ( ent->s.eType == ET_WEATHER && ent->s.weapon == 0 ) {
+		if ( ent->s.eType == ET_WEATHER && ent->s.weapon == type ) {
 			return qtrue;
 		}
 	}
 
 	return qfalse;
+}
+
+qboolean G_WeatherPointWet( const vec3_t point ){
+	return G_WeatherPointInWeather( point, 0 );
+}
+
+qboolean G_WeatherPointSnow( const vec3_t point ){
+	return G_WeatherPointInWeather( point, 1 );
 }

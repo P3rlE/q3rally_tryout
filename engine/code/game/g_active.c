@@ -1450,6 +1450,7 @@ void ClientThink_real( gentity_t *ent ) {
 	pm.pointcontents = trap_PointContents;
 	pm.frictionFunc = G_FrictionCalc;
 	pm.weatherWetFunc = G_WeatherPointWet;
+	pm.weatherSnowFunc = G_WeatherPointSnow;
 	pm.debugLevel = g_debugMove.integer;
 	pm.noFootsteps = ( g_dmflags.integer & DF_NO_FOOTSTEPS ) > 0;
 
