@@ -1188,6 +1188,8 @@ typedef struct {
 	sfxHandle_t	wearOffSound;
 	sfxHandle_t	turboSound;
 	sfxHandle_t	skidSound;
+	sfxHandle_t	weatherRainLoopSound;
+	sfxHandle_t	weatherSnowLoopSound;
 	sfxHandle_t	shieldSound;
 	sfxHandle_t	sfx_lghit1;
 	sfxHandle_t	sfx_lghit2;
@@ -1622,6 +1624,7 @@ extern      vmCvar_t                cg_distanceFormat;
 
 
 extern	vmCvar_t		cg_atmosphericLevel;
+extern	vmCvar_t		cg_weatherAudio;
 extern	vmCvar_t		cg_developer;
 
 extern	vmCvar_t		cg_fpsLimit;
@@ -2034,6 +2037,7 @@ void CG_Atmospheric_AddWeatherZone( centity_t *cent );
 qboolean CG_AtmosphericPointInWeather( const vec3_t point, int type );
 qboolean CG_AtmosphericPointWet( const vec3_t point );
 qboolean CG_AtmosphericPointSnow( const vec3_t point );
+void CG_AtmosphericAddLoopingSounds( void );
 
 //
 // cg_rally_scripted_objects.c

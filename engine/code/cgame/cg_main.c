@@ -270,6 +270,7 @@ vmCvar_t	cg_developer;
 
 // cutom variable used in modified atmospheric effects from q3f
 vmCvar_t	cg_atmosphericLevel;
+vmCvar_t	cg_weatherAudio;
 
 vmCvar_t	cg_fpsLimit;
 vmCvar_t	cg_autodrop;
@@ -414,9 +415,10 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_derbyVehicleHudScale, "cg_derbyVehicleHudScale", "1.0", CVAR_ARCHIVE },
 	{ &cg_derbyVehicleHudRoof, "cg_derbyVehicleHudRoof", "1", CVAR_ARCHIVE },
 
-        { &cg_developer, "developer", "0", 0 },
+	{ &cg_developer, "developer", "0", 0 },
 
 	{ &cg_atmosphericLevel, "cg_atmosphericLevel", "2", CVAR_ARCHIVE },
+	{ &cg_weatherAudio, "cg_weatherAudio", "1", CVAR_ARCHIVE },
 
 
 	{ &cg_rearViewRenderLevel, "cg_rearViewRenderLevel", "31", CVAR_ARCHIVE },
@@ -869,6 +871,8 @@ static void CG_RegisterSounds( void ) {
 // Q3Rally Code Start
 	cgs.media.turboSound = trap_S_RegisterSound( "sound/items/turbo_use.ogg", qfalse );
 	cgs.media.skidSound = trap_S_RegisterSound( "sound/rally/car/skid.ogg", qfalse );
+	cgs.media.weatherRainLoopSound = trap_S_RegisterSound( "sound/weather/rain_loop_heavy.wav", qfalse );
+	cgs.media.weatherSnowLoopSound = trap_S_RegisterSound( "sound/weather/snow_wind_loop.wav", qfalse );
 // Q3Rally Code END
 	cgs.media.wearOffSound = trap_S_RegisterSound( "sound/items/wearoff.ogg", qfalse );
 	cgs.media.useNothingSound = trap_S_RegisterSound( "sound/items/use_nothing.ogg", qfalse );

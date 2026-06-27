@@ -28,6 +28,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define MAX_ATMOSPHERIC_DISTANCE		30000  	// maximum distance from refdef origin that particles are visible
 #define MAX_ATMOSPHERIC_ZONES			64
 #define ATMOSPHERIC_SCENE_POLY_BUDGET	1800
+#define ATMOSPHERIC_RAIN_SOUND_ENTITY	(ENTITYNUM_WORLD - 12)
+#define ATMOSPHERIC_SNOW_SOUND_ENTITY	(ENTITYNUM_WORLD - 11)
 
 #define MAX_ATMOSPHERIC_HEIGHT			65536  	// maximum world height (FIXME: since 1.27 this should be 65536)
 #define MIN_ATMOSPHERIC_HEIGHT			-65536  	// minimum world height (FIXME: since 1.27 this should be -65536)
@@ -205,6 +207,27 @@ qboolean CG_AtmosphericPointWet( const vec3_t point )
 qboolean CG_AtmosphericPointSnow( const vec3_t point )
 {
 	return CG_AtmosphericPointInWeather( point, 1 );
+}
+
+void CG_AtmosphericAddLoopingSounds( void )
+{
+	qboolean inRain;
+	qboolean inSnow;
+
+	if ( !cg_weatherAudio.integer || cg_atmosphericLevel.integer <= 0 || !cg.snap ) {
+		return;
+	}
+
+	inRain = CG_AtmosphericPointWet( cg.refdef.vieworg ) || CG_AtmosphericPointWet( cg.predictedPlayerState.origin );
+	inSnow = CG_AtmosphericPointSnow( cg.refdef.vieworg ) || CG_AtmosphericPointSnow( cg.predictedPlayerState.origin );
+
+	if ( inRain && cgs.media.weatherRainLoopSound ) {
+		trap_S_AddRealLoopingSound( ATMOSPHERIC_RAIN_SOUND_ENTITY, cg.refdef.vieworg, vec3_origin, cgs.media.weatherRainLoopSound );
+	}
+
+	if ( inSnow && cgs.media.weatherSnowLoopSound ) {
+		trap_S_AddRealLoopingSound( ATMOSPHERIC_SNOW_SOUND_ENTITY, cg.refdef.vieworg, vec3_origin, cgs.media.weatherSnowLoopSound );
+	}
 }
 
 static qboolean CG_AtmosphericInViewCone( const vec3_t point, float conePadding )
