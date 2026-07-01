@@ -102,6 +102,7 @@ typedef struct cg_atmosphericZone_s {
 	int type;
 	int numParticles;
 	qboolean disableSplashes;
+	qboolean active;
 	vec3_t mins;
 	vec3_t maxs;
 } cg_atmosphericZone_t;
@@ -162,6 +163,9 @@ void CG_Atmospheric_AddWeatherZone( centity_t *cent )
 
 	for ( i = 0; i < cg_numAtmZones; i++ ) {
 		if ( cg_atmZones[i].entityNum == s1->number ) {
+			cg_atmZones[i].active = s1->generic1 != 0;
+			cg_atmZones[i].numParticles = s1->powerups;
+			cg_atmZones[i].disableSplashes = s1->legsAnim != 0;
 			CG_Atmospheric_SetParticles( s1->weapon, s1->powerups, s1->legsAnim != 0 );
 			return;
 		}
@@ -177,6 +181,7 @@ void CG_Atmospheric_AddWeatherZone( centity_t *cent )
 	zone->type = s1->weapon;
 	zone->numParticles = s1->powerups;
 	zone->disableSplashes = s1->legsAnim != 0;
+	zone->active = s1->generic1 != 0;
 
 	if ( s1->solid == SOLID_BMODEL ) {
 		model = cgs.inlineDrawModel[s1->modelindex];
@@ -247,7 +252,7 @@ static int CG_AtmosphericResolveZone( int type, const vec3_t point )
 	int i;
 
 	for ( i = 0; i < cg_numAtmZones; i++ ) {
-		if ( cg_atmZones[i].type != type ) {
+		if ( cg_atmZones[i].type != type || !cg_atmZones[i].active ) {
 			continue;
 		}
 
