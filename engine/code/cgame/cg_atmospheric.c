@@ -3,7 +3,7 @@
 Copyright (C) 1999-2005 Id Software, Inc.
 Copyright (C) 2002-2026 Q3Rally Team (Per Thormann - q3rally@gmail.com)
 
-This file is part of q3rally source code.
+This file is part of q3rally source code..
 
 q3rally source code is free software; you can redistribute it
 and/or modify it under the terms of the GNU General Public License as
