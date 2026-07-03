@@ -296,6 +296,7 @@ typedef struct {
         qboolean        manualShift;
         int                     transmissionMode;
         collisionDamage_t       damage;
+        collisionDamage_t       breakableDamage;
 
         qboolean        useFuel;
 

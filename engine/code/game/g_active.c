@@ -1763,6 +1763,26 @@ void ClientThink_real( gentity_t *ent ) {
 	}
 // END
 
+	if ( pm.breakableDamage.damage && pm.breakableDamage.otherEnt >= 0 &&
+		pm.breakableDamage.otherEnt < MAX_GENTITIES ) {
+		gentity_t	*hit;
+		float		damage;
+
+		hit = &g_entities[pm.breakableDamage.otherEnt];
+		damage = pm.breakableDamage.damage;
+
+		if( !(pm.breakableDamage.dflags & DAMAGE_NO_PROTECTION) ) {
+			if ( !( g_gametype.integer == GT_DERBY && g_derbyIgnoreDamageScale.integer ) ) {
+				damage *= g_damageScale.value;
+			}
+		}
+
+		if( damage > 0 && hit->inuse && hit->takedamage ) {
+			G_Damage( hit, ent, ent, pm.breakableDamage.dir, pm.breakableDamage.origin,
+				damage, pm.breakableDamage.dflags, pm.breakableDamage.mod );
+		}
+	}
+
 	// link entity now, after any personal teleporters have been used
 	trap_LinkEntity (ent);
 	if ( !ent->client->noclip ) {

@@ -2452,6 +2452,8 @@ void PmoveSingle (pmove_t *pmove) {
 	pm->numtouch = 0;
 	pm->watertype = 0;
 	pm->waterlevel = 0;
+	pm->breakableDamage.damage = 0;
+	pm->breakableDamage.otherEnt = -1;
 
 // STONELANCE
 /*
