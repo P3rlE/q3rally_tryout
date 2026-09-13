@@ -41,4 +41,15 @@ Copyright (C) 2002-2026 Q3Rally Team
 #define UI_THEME_STYLE_HINT_FONT        UI_SMALLFONT
 #define UI_THEME_STYLE_BUTTON_FONT      UI_SMALLFONT
 
+/* Main-menu frontend palette. Keep it separate from the blue wizard palette. */
+#define UI_FRONTEND_COLOR_SCRIM        { 0.01f, 0.02f, 0.03f, 0.64f }
+#define UI_FRONTEND_COLOR_PANEL        { 0.025f, 0.035f, 0.045f, 0.96f }
+#define UI_FRONTEND_COLOR_PANEL_ALT    { 0.055f, 0.075f, 0.085f, 0.96f }
+#define UI_FRONTEND_COLOR_BORDER       { 0.22f, 0.35f, 0.16f, 0.90f }
+#define UI_FRONTEND_COLOR_ACCENT       { 0.72f, 1.00f, 0.06f, 1.00f }
+#define UI_FRONTEND_COLOR_TEXT         { 0.90f, 0.95f, 0.94f, 1.00f }
+#define UI_FRONTEND_COLOR_MUTED        { 0.44f, 0.52f, 0.54f, 1.00f }
+#define UI_FRONTEND_COLOR_FOCUS_BG     { 0.12f, 0.19f, 0.14f, 0.98f }
+#define UI_FRONTEND_COLOR_STATUS       { 0.96f, 0.42f, 0.12f, 1.00f }
+
 #endif

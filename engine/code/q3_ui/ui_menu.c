@@ -31,6 +31,7 @@ MAIN MENU
 
 
 #include "ui_local.h"
+#include "ui_rally_theme.h"
 
 
 #define ID_SINGLEPLAYER                 10
@@ -80,12 +81,92 @@ typedef struct {
         char                    modelskin[MAX_QPATH];
         char                    rimskin[MAX_QPATH];
         char                    headskin[MAX_QPATH];
+        float                   visualAlpha;
 
 } mainmenu_t;
 
 
 static mainmenu_t s_main;
 static vec4_t s_profileActionColor;
+static vec4_t s_frontendScrim = UI_FRONTEND_COLOR_SCRIM;
+static vec4_t s_frontendPanel = UI_FRONTEND_COLOR_PANEL;
+static vec4_t s_frontendPanelAlt = UI_FRONTEND_COLOR_PANEL_ALT;
+static vec4_t s_frontendBorder = UI_FRONTEND_COLOR_BORDER;
+static vec4_t s_frontendAccent = UI_FRONTEND_COLOR_ACCENT;
+static vec4_t s_frontendText = UI_FRONTEND_COLOR_TEXT;
+static vec4_t s_frontendMuted = UI_FRONTEND_COLOR_MUTED;
+static vec4_t s_frontendFocus = UI_FRONTEND_COLOR_FOCUS_BG;
+static vec4_t s_frontendStatus = UI_FRONTEND_COLOR_STATUS;
+
+static void MainMenu_ColorWithAlpha( vec4_t out, const float *baseColor ) {
+        out[0] = baseColor[0];
+        out[1] = baseColor[1];
+        out[2] = baseColor[2];
+        out[3] = baseColor[3] * s_main.visualAlpha;
+}
+
+static void MainMenu_SetInteractiveBounds( menutext_s *item, int left, int right ) {
+        item->generic.left = left;
+        item->generic.right = right;
+        item->generic.top = item->generic.y - 9;
+        item->generic.bottom = item->generic.y + PROP_HEIGHT + 9;
+}
+
+static void MainMenu_DrawNavItem( void *self ) {
+        menutext_s *item;
+        qboolean focus;
+        vec4_t panelColor;
+        vec4_t borderColor;
+        vec4_t textColor;
+        int top;
+
+        item = (menutext_s *)self;
+        focus = ( Menu_ItemAtCursor( item->generic.parent ) == item );
+        top = item->generic.y - 9;
+
+        MainMenu_ColorWithAlpha( panelColor, focus ? s_frontendFocus : s_frontendPanelAlt );
+        MainMenu_ColorWithAlpha( borderColor, s_frontendBorder );
+        MainMenu_ColorWithAlpha( textColor, ( focus || ( item->generic.flags & QMF_GRAYED ) ) ? s_frontendAccent : s_frontendText );
+
+        UI_FillRect( 46, top, 158, 27, panelColor );
+        if ( focus ) {
+                UI_FillRect( 46, top, 3, 27, borderColor );
+                UI_DrawRect( 46, top, 158, 27, borderColor );
+        }
+
+        UI_DrawProportionalString( 68, item->generic.y, item->string,
+                                   UI_LEFT | UI_SMALLFONT | UI_DROPSHADOW,
+                                   textColor );
+}
+
+static void MainMenu_DrawProfileAction( void *self ) {
+        menutext_s *item;
+        qboolean focus;
+        vec4_t panelColor;
+        vec4_t borderColor;
+        vec4_t textColor;
+        vec4_t mutedColor;
+        int top;
+
+        item = (menutext_s *)self;
+        focus = ( Menu_ItemAtCursor( item->generic.parent ) == item );
+        top = item->generic.y - 16;
+
+        MainMenu_ColorWithAlpha( panelColor, s_frontendPanelAlt );
+        MainMenu_ColorWithAlpha( borderColor, focus ? s_frontendAccent : s_frontendBorder );
+        MainMenu_ColorWithAlpha( textColor, focus ? s_frontendAccent : s_frontendText );
+        MainMenu_ColorWithAlpha( mutedColor, s_frontendMuted );
+
+        UI_FillRect( 46, top, 158, 68, panelColor );
+        UI_DrawRect( 46, top, 158, 68, borderColor );
+        UI_FillRect( 58, top + 13, 6, 6, focus ? s_frontendAccent : s_frontendStatus );
+        UI_DrawString( 76, top + 9, "PROFILE", UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawProportionalString( 76, top + 23, item->string,
+                                   UI_LEFT | UI_SMALLFONT | UI_DROPSHADOW,
+                                   textColor );
+        UI_DrawString( 76, top + 41, s_main.profileRankLine, UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( 76, top + 53, s_main.profilePointsLine, UI_LEFT | UI_SMALLFONT, mutedColor );
+}
 
 static void MainMenu_UpdateProfileTexts( void ) {
         const profile_stats_t *activeProfileStats;
@@ -308,6 +389,8 @@ MainMenu_RunTransition
 ===============
 */
 void MainMenu_RunTransition( float frac ) {
+        s_main.visualAlpha = frac;
+
         uis.text_color[0] = text_color_normal[0];
         uis.text_color[1] = text_color_normal[1];
         uis.text_color[2] = text_color_normal[2];
@@ -336,7 +419,7 @@ void MainMenu_RunTransition( float frac ) {
         s_main.profileInfoLine1.color = uis.text_color;
         s_main.profileInfoLine2.color = uis.text_color;
 
-        s_main.carlogo.generic.x = (int)(640 - 440 * frac);
+        s_main.carlogo.generic.x = (int)(640 - 404 * frac);
 }
 
 /*
@@ -359,21 +442,53 @@ Main_MenuDraw
 ===============
 */
 static void Main_MenuDraw( void ) {
+        vec4_t scrimColor;
+        vec4_t panelColor;
+        vec4_t borderColor;
+        vec4_t accentColor;
+        vec4_t textColor;
+        vec4_t mutedColor;
 
         MainMenu_UpdateProfileTexts();
 
-        // standard menu drawing
+        MainMenu_ColorWithAlpha( scrimColor, s_frontendScrim );
+        MainMenu_ColorWithAlpha( panelColor, s_frontendPanel );
+        MainMenu_ColorWithAlpha( borderColor, s_frontendBorder );
+        MainMenu_ColorWithAlpha( accentColor, s_frontendAccent );
+        MainMenu_ColorWithAlpha( textColor, s_frontendText );
+        MainMenu_ColorWithAlpha( mutedColor, s_frontendMuted );
+
+        /* The existing menu shader remains the atmospheric hero background.
+         * These surfaces turn it into a readable, website-like composition. */
+        UI_FillRect( -uis.bias, 0, SCREEN_WIDTH + uis.bias * 2, SCREEN_HEIGHT, scrimColor );
+
+        UI_FillRect( 32, 32, 186, 410, panelColor );
+        UI_DrawRect( 32, 32, 186, 410, borderColor );
+        UI_FillRect( 32, 32, 3, 410, accentColor );
+
+        UI_FillRect( 230, 32, 378, 410, panelColor );
+        UI_DrawRect( 230, 32, 378, 410, borderColor );
+        UI_FillRect( 230, 32, 378, 2, accentColor );
+
+        UI_DrawString( 54, 76, "COMMAND CENTER", UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( 246, 52, "GARAGE / ACTIVE VEHICLE", UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( 574, 52, "ONLINE", UI_RIGHT | UI_SMALLFONT, accentColor );
+        UI_FillRect( 584, 48, 6, 6, accentColor );
 
         Menu_Draw( &s_main.menu );
 
+        UI_DrawString( 246, 370, "READY FOR THE NEXT RALLY", UI_LEFT | UI_SMALLFONT, textColor );
+        UI_DrawString( 246, 388, va( "MODEL // %s", s_main.modelskin ), UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( 246, 410, "Q3RALLY // 2002-2026", UI_LEFT | UI_SMALLFONT, mutedColor );
+
         if (uis.demoversion) {
 
-                UI_DrawProportionalString( 320, 432, "DEMO      FOR MATURE AUDIENCES      DEMO", UI_CENTER|UI_SMALLFONT, text_color_normal );
-                UI_DrawString( 320, 460, Q3_VERSION " | 2002 - 2026 | www.q3rally.com | It's damn fast baby!", UI_CENTER|UI_SMALLFONT, text_color_normal );
+                UI_DrawProportionalString( 320, 440, "DEMO      FOR MATURE AUDIENCES      DEMO", UI_CENTER|UI_SMALLFONT, text_color_normal );
+                UI_DrawString( 320, 456, Q3_VERSION " | www.q3rally.com | It's damn fast baby!", UI_CENTER|UI_SMALLFONT, text_color_normal );
 
         } else {
 
-                UI_DrawString( 365, 460, Q3_VERSION " | 2002 - 2026 | www.q3rally.com | It's damn fast baby!", UI_CENTER|UI_SMALLFONT, text_color_normal );
+                UI_DrawString( 320, 456, Q3_VERSION " | www.q3rally.com | It's damn fast baby!", UI_CENTER|UI_SMALLFONT, text_color_normal );
 
         }
 
@@ -455,8 +570,8 @@ and that local cinematics are killed
 */
 void UI_MainMenu( void ) {
 	
-	int x;
-	int y;
+        int x;
+        int y;
         int profileY;
         int profileInfoY;
         int numMusicFiles;
@@ -498,60 +613,61 @@ void UI_MainMenu( void ) {
         s_main.menu.changeMenu = MainMenu_ChangeMenu;
         s_main.banner.generic.type                      = MTYPE_BTEXT;
         s_main.banner.generic.flags                     = QMF_INACTIVE;
-        s_main.banner.generic.x                         = 320;
-        s_main.banner.generic.y                         = 17;
+        s_main.banner.generic.x                         = 125;
+        s_main.banner.generic.y                         = 48;
         s_main.banner.string                            = "Q3RALLY";
         s_main.banner.color                             = text_color_normal;
         s_main.banner.style                             = UI_CENTER|UI_DROPSHADOW;
 
-        x = 175;
+        x = 72;
         y = 75;
         // Q3RALLY DOWNLOADS: reduced from (MAIN_MENU_VERTICAL_SPACING - 5) = 45
         // to 40 to evenly fit the extra DOWNLOADS item without crowding.
         // 6 gaps x 40px = 240px from y=75 -> last item at y=315, profile block ~355.
-        menuSpacing = MAIN_MENU_VERTICAL_SPACING - 10;
+        menuSpacing = 34;
 
         
-	InitMenuText(&s_main.singleplayer, ID_SINGLEPLAYER, "OFFLINE", x - 10, y + 12);
+	InitMenuText(&s_main.singleplayer, ID_SINGLEPLAYER, "OFFLINE", x, y + 12);
 
 
 	y += menuSpacing;
-	InitMenuText(&s_main.multiplayer, ID_MULTIPLAYER, "ONLINE", x - 10, y + 12);
+	InitMenuText(&s_main.multiplayer, ID_MULTIPLAYER, "ONLINE", x, y + 12);
 
 
 	y += menuSpacing;
-	InitMenuText(&s_main.setup, ID_SETUP, "CONFIG", x - 10, y + 12);
+	InitMenuText(&s_main.setup, ID_SETUP, "CONFIG", x, y + 12);
 
 
 	y += menuSpacing;
-	InitMenuText(&s_main.rivals, ID_RIVALS, "RIVALS", x - 10, y + 12);
+	InitMenuText(&s_main.rivals, ID_RIVALS, "RIVALS", x, y + 12);
         
         
 	y += menuSpacing;
-	InitMenuText(&s_main.demos, ID_DEMOS, "DEMOS", x - 10, y + 12);
+	InitMenuText(&s_main.demos, ID_DEMOS, "DEMOS", x, y + 12);
 
         // Q3RALLY DOWNLOADS START
         y += menuSpacing;
-        InitMenuText(&s_main.downloads, ID_DOWNLOADS, "DOWNLOADS", x - 10, y + 12);
+        InitMenuText(&s_main.downloads, ID_DOWNLOADS, "DOWNLOADS", x, y + 12);
         // Q3RALLY DOWNLOADS END
 
         s_main.carlogo.generic.type                     = MTYPE_BITMAP;
         s_main.carlogo.generic.flags                    = QMF_INACTIVE;
         s_main.carlogo.generic.ownerdraw                = MainMenu_DrawPlayer;
-        s_main.carlogo.generic.x                        = 200;
-        s_main.carlogo.generic.y                        = 0;
-        s_main.carlogo.width                            = 480;
-        s_main.carlogo.height                           = 480;
+        s_main.carlogo.generic.x                        = 236;
+        s_main.carlogo.generic.y                        = 68;
+        s_main.carlogo.width                            = 366;
+        s_main.carlogo.height                           = 286;
         
 	y += menuSpacing;
-	InitMenuText(&s_main.exit, ID_EXIT, "QUIT", x - 10, y + 12);
+	InitMenuText(&s_main.exit, ID_EXIT, "QUIT", x, y + 12);
 
 
         y += menuSpacing;
         profileY = y + 22;
         profileInfoY = y + 16;
-        InitMenuText(&s_main.profileAction, ID_PROFILE_ACTION, "CREATE", x - 10, profileY);
+        InitMenuText(&s_main.profileAction, ID_PROFILE_ACTION, "CREATE", x, profileY);
         s_main.profileAction.generic.flags = QMF_RIGHT_JUSTIFY;
+        s_main.profileAction.generic.ownerdraw = MainMenu_DrawProfileAction;
 
         Q_strncpyz( s_main.profileRankLine, "RANK: -", sizeof( s_main.profileRankLine ) );
         Q_strncpyz( s_main.profilePointsLine, "POINTS: 0", sizeof( s_main.profilePointsLine ) );
@@ -572,8 +688,23 @@ void UI_MainMenu( void ) {
         // Q3RALLY DOWNLOADS END
         Menu_AddItem( &s_main.menu,     &s_main.exit );            
         Menu_AddItem( &s_main.menu,     &s_main.profileAction );
-        Menu_AddItem( &s_main.menu,     &s_main.profileInfoLine1 );
-        Menu_AddItem( &s_main.menu,     &s_main.profileInfoLine2 );
+
+        s_main.singleplayer.generic.ownerdraw = MainMenu_DrawNavItem;
+        s_main.multiplayer.generic.ownerdraw = MainMenu_DrawNavItem;
+        s_main.setup.generic.ownerdraw = MainMenu_DrawNavItem;
+        s_main.rivals.generic.ownerdraw = MainMenu_DrawNavItem;
+        s_main.demos.generic.ownerdraw = MainMenu_DrawNavItem;
+        s_main.downloads.generic.ownerdraw = MainMenu_DrawNavItem;
+        s_main.exit.generic.ownerdraw = MainMenu_DrawNavItem;
+
+        MainMenu_SetInteractiveBounds( &s_main.singleplayer, 46, 204 );
+        MainMenu_SetInteractiveBounds( &s_main.multiplayer, 46, 204 );
+        MainMenu_SetInteractiveBounds( &s_main.setup, 46, 204 );
+        MainMenu_SetInteractiveBounds( &s_main.rivals, 46, 204 );
+        MainMenu_SetInteractiveBounds( &s_main.demos, 46, 204 );
+        MainMenu_SetInteractiveBounds( &s_main.downloads, 46, 204 );
+        MainMenu_SetInteractiveBounds( &s_main.exit, 46, 204 );
+        MainMenu_SetInteractiveBounds( &s_main.profileAction, 46, 204 );
 
         trap_Key_SetCatcher( KEYCATCH_UI );
         uis.menusp = 0;
