@@ -913,6 +913,19 @@ static void UI_GFX_Loading_MenuDraw(void) {
                   va("BUILD %s", PRODUCT_VERSION),
                   UI_RIGHT | UI_SMALLFONT, gfxMutedTextColor);
 
+    if (s_gfxloading.finalPhase) {
+        int finalDisplayTime = UI_GFX_Loading_GetPause("ui_gfxLoadingFinalPause", FINAL_DISPLAY_TIME);
+
+        if (currentTime - s_gfxloading.finalDisplayStartTime >= finalDisplayTime &&
+            s_gfxloading.smoothProgress >= 0.98f) {
+            if (s_gfxloading.requireUpdateAck && !s_gfxloading.updateAcked) {
+                return;
+            }
+            UI_PopMenu();
+            UI_MainMenu();
+        }
+    }
+
     Menu_Draw(&s_gfxloading.menu);
 }
 
