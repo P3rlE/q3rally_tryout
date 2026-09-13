@@ -99,6 +99,45 @@ static vec4_t s_frontendMuted = UI_FRONTEND_COLOR_MUTED;
 static vec4_t s_frontendFocus = UI_FRONTEND_COLOR_FOCUS_BG;
 static vec4_t s_frontendStatus = UI_FRONTEND_COLOR_STATUS;
 
+static float MainMenu_ViewportLeft( void ) {
+        if ( uis.xscale <= 0.0f ) {
+                return 0.0f;
+        }
+        return -uis.bias / uis.xscale;
+}
+
+static float MainMenu_ViewportRight( void ) {
+        return SCREEN_WIDTH - MainMenu_ViewportLeft();
+}
+
+static float MainMenu_RailX( void ) {
+        return MainMenu_ViewportLeft() + 24.0f;
+}
+
+static float MainMenu_RailWidth( void ) {
+        return 210.0f;
+}
+
+static float MainMenu_NavX( void ) {
+        return MainMenu_RailX() + 14.0f;
+}
+
+static float MainMenu_NavWidth( void ) {
+        return MainMenu_RailWidth() - 28.0f;
+}
+
+static float MainMenu_HeroX( void ) {
+        return MainMenu_RailX() + MainMenu_RailWidth() + 16.0f;
+}
+
+static float MainMenu_HeroRight( void ) {
+        return MainMenu_ViewportRight() - 24.0f;
+}
+
+static float MainMenu_HeroWidth( void ) {
+        return MainMenu_HeroRight() - MainMenu_HeroX();
+}
+
 static void MainMenu_ColorWithAlpha( vec4_t out, const float *baseColor ) {
         out[0] = baseColor[0];
         out[1] = baseColor[1];
@@ -119,23 +158,27 @@ static void MainMenu_DrawNavItem( void *self ) {
         vec4_t panelColor;
         vec4_t borderColor;
         vec4_t textColor;
+        float navX;
+        float navWidth;
         int top;
 
         item = (menutext_s *)self;
         focus = ( Menu_ItemAtCursor( item->generic.parent ) == item );
+        navX = MainMenu_NavX();
+        navWidth = MainMenu_NavWidth();
         top = item->generic.y - 9;
 
         MainMenu_ColorWithAlpha( panelColor, focus ? s_frontendFocus : s_frontendPanelAlt );
         MainMenu_ColorWithAlpha( borderColor, s_frontendBorder );
         MainMenu_ColorWithAlpha( textColor, ( focus || ( item->generic.flags & QMF_GRAYED ) ) ? s_frontendAccent : s_frontendText );
 
-        UI_FillRect( 46, top, 158, 24, panelColor );
+        UI_FillRect( navX, top, navWidth, 24, panelColor );
         if ( focus ) {
-                UI_FillRect( 46, top, 3, 24, borderColor );
-                UI_DrawRect( 46, top, 158, 24, borderColor );
+                UI_FillRect( navX, top, 3, 24, borderColor );
+                UI_DrawRect( navX, top, navWidth, 24, borderColor );
         }
 
-        UI_DrawString( 68, item->generic.y, item->string,
+        UI_DrawString( (int)( navX + 22 ), item->generic.y, item->string,
                        UI_LEFT | UI_SMALLFONT | UI_DROPSHADOW,
                        textColor );
 }
@@ -147,10 +190,14 @@ static void MainMenu_DrawProfileAction( void *self ) {
         vec4_t borderColor;
         vec4_t textColor;
         vec4_t mutedColor;
+        float navX;
+        float navWidth;
         int top;
 
         item = (menutext_s *)self;
         focus = ( Menu_ItemAtCursor( item->generic.parent ) == item );
+        navX = MainMenu_NavX();
+        navWidth = MainMenu_NavWidth();
         top = item->generic.y - 16;
 
         MainMenu_ColorWithAlpha( panelColor, s_frontendPanelAlt );
@@ -158,28 +205,30 @@ static void MainMenu_DrawProfileAction( void *self ) {
         MainMenu_ColorWithAlpha( textColor, focus ? s_frontendAccent : s_frontendText );
         MainMenu_ColorWithAlpha( mutedColor, s_frontendMuted );
 
-        UI_FillRect( 46, top, 158, 68, panelColor );
-        UI_DrawRect( 46, top, 158, 68, borderColor );
-        UI_FillRect( 58, top + 13, 6, 6, focus ? s_frontendAccent : s_frontendStatus );
-        UI_DrawString( 76, top + 9, "PROFILE", UI_LEFT | UI_SMALLFONT, mutedColor );
-        UI_DrawString( 76, top + 23, item->string,
+        UI_FillRect( navX, top, navWidth, 82, panelColor );
+        UI_DrawRect( navX, top, navWidth, 82, borderColor );
+        UI_FillRect( navX + 12, top + 14, 6, 6, focus ? s_frontendAccent : s_frontendStatus );
+        UI_DrawString( (int)( navX + 30 ), top + 10, "PROFILE", UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( (int)( navX + 30 ), top + 27, item->string,
                        UI_LEFT | UI_SMALLFONT | UI_DROPSHADOW,
                        textColor );
-        UI_DrawString( 76, top + 41, s_main.profileRankLine, UI_LEFT | UI_SMALLFONT, mutedColor );
-        UI_DrawString( 76, top + 53, s_main.profilePointsLine, UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( (int)( navX + 30 ), top + 48, s_main.profileRankLine, UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( (int)( navX + 30 ), top + 63, s_main.profilePointsLine, UI_LEFT | UI_SMALLFONT, mutedColor );
 }
 
 static void MainMenu_DrawBrand( void *self ) {
         vec4_t accentColor;
         vec4_t textColor;
+        float railX;
 
         (void)self;
 
         MainMenu_ColorWithAlpha( accentColor, s_frontendAccent );
         MainMenu_ColorWithAlpha( textColor, s_frontendText );
+        railX = MainMenu_RailX();
 
-        UI_FillRect( 54, 50, 6, 6, accentColor );
-        UI_DrawString( 70, 48, "Q3RALLY", UI_LEFT | UI_BIGFONT | UI_DROPSHADOW, textColor );
+        UI_FillRect( railX + 22, 50, 6, 6, accentColor );
+        UI_DrawString( (int)( railX + 38 ), 48, "Q3RALLY", UI_LEFT | UI_BIGFONT | UI_DROPSHADOW, textColor );
 }
 
 static void MainMenu_UpdateProfileTexts( void ) {
@@ -433,7 +482,7 @@ void MainMenu_RunTransition( float frac ) {
         s_main.profileInfoLine1.color = uis.text_color;
         s_main.profileInfoLine2.color = uis.text_color;
 
-        s_main.carlogo.generic.x = (int)(640 - 404 * frac);
+        s_main.carlogo.generic.x = (int)(MainMenu_HeroX() + 6.0f - (1.0f - frac) * 120.0f);
 }
 
 /*
@@ -463,6 +512,11 @@ static void Main_MenuDraw( void ) {
         vec4_t accentColor;
         vec4_t textColor;
         vec4_t mutedColor;
+        float viewportLeft;
+        float viewportWidth;
+        float railX;
+        float heroX;
+        float heroWidth;
 
         MainMenu_UpdateProfileTexts();
 
@@ -474,31 +528,37 @@ static void Main_MenuDraw( void ) {
         MainMenu_ColorWithAlpha( textColor, s_frontendText );
         MainMenu_ColorWithAlpha( mutedColor, s_frontendMuted );
 
+        viewportLeft = MainMenu_ViewportLeft();
+        viewportWidth = MainMenu_ViewportRight() - viewportLeft;
+        railX = MainMenu_RailX();
+        heroX = MainMenu_HeroX();
+        heroWidth = MainMenu_HeroWidth();
+
         /* The existing menu shader remains the atmospheric hero background.
          * These surfaces turn it into a readable, website-like composition. */
-        UI_FillRect( -uis.bias, 0, SCREEN_WIDTH + uis.bias * 2, SCREEN_HEIGHT, scrimColor );
+        UI_FillRect( viewportLeft, 0, viewportWidth, SCREEN_HEIGHT, scrimColor );
 
-        UI_FillRect( 32, 32, 186, 410, panelColor );
-        UI_DrawRect( 32, 32, 186, 410, borderColor );
-        UI_FillRect( 32, 32, 3, 410, accentColor );
+        UI_FillRect( railX, 32, MainMenu_RailWidth(), 410, panelColor );
+        UI_DrawRect( railX, 32, MainMenu_RailWidth(), 410, borderColor );
+        UI_FillRect( railX, 32, 3, 410, accentColor );
 
         UI_SetColor( heroOverlayColor );
-        UI_DrawHandlePic( 230, 32, 378, 410, uis.menuBackShader );
+        UI_DrawHandlePic( heroX, 32, heroWidth, 410, uis.menuBackShader );
         UI_SetColor( NULL );
-        UI_FillRect( 230, 32, 378, 410, heroOverlayColor );
-        UI_DrawRect( 230, 32, 378, 410, borderColor );
-        UI_FillRect( 230, 32, 378, 2, accentColor );
+        UI_FillRect( heroX, 32, heroWidth, 410, heroOverlayColor );
+        UI_DrawRect( heroX, 32, heroWidth, 410, borderColor );
+        UI_FillRect( heroX, 32, heroWidth, 2, accentColor );
 
-        UI_DrawString( 54, 76, "COMMAND CENTER", UI_LEFT | UI_SMALLFONT, mutedColor );
-        UI_DrawString( 246, 52, "GARAGE / ACTIVE VEHICLE", UI_LEFT | UI_SMALLFONT, mutedColor );
-        UI_DrawString( 574, 52, "READY", UI_RIGHT | UI_SMALLFONT, accentColor );
-        UI_FillRect( 584, 48, 6, 6, accentColor );
+        UI_DrawString( (int)( railX + 22 ), 76, "COMMAND CENTER", UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( (int)( heroX + 16 ), 52, "GARAGE / ACTIVE VEHICLE", UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( (int)( heroX + heroWidth - 16 ), 52, "READY", UI_RIGHT | UI_SMALLFONT, accentColor );
+        UI_FillRect( heroX + heroWidth - 10, 48, 6, 6, accentColor );
 
         Menu_Draw( &s_main.menu );
 
-        UI_DrawString( 246, 370, "READY FOR THE NEXT RALLY", UI_LEFT | UI_SMALLFONT, textColor );
-        UI_DrawString( 246, 388, va( "MODEL // %s", s_main.modelskin ), UI_LEFT | UI_SMALLFONT, mutedColor );
-        UI_DrawString( 246, 410, "Q3RALLY // 2002-2026", UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( (int)( heroX + 16 ), 370, "READY FOR THE NEXT RALLY", UI_LEFT | UI_SMALLFONT, textColor );
+        UI_DrawString( (int)( heroX + 16 ), 388, va( "MODEL // %s", s_main.modelskin ), UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( (int)( heroX + 16 ), 410, "Q3RALLY // 2002-2026", UI_LEFT | UI_SMALLFONT, mutedColor );
 
         if (uis.demoversion) {
 
@@ -639,8 +699,8 @@ void UI_MainMenu( void ) {
         s_main.banner.color                             = text_color_normal;
         s_main.banner.style                             = UI_LEFT|UI_DROPSHADOW;
 
-        x = 72;
-        y = 75;
+        x = (int)MainMenu_NavX() + 8;
+        y = 90;
         // Keep the navigation compact so the brand, menu and profile card read
         // as one focused left rail on wide screens.
         menuSpacing = 28;
@@ -672,9 +732,9 @@ void UI_MainMenu( void ) {
         s_main.carlogo.generic.type                     = MTYPE_BITMAP;
         s_main.carlogo.generic.flags                    = QMF_INACTIVE;
         s_main.carlogo.generic.ownerdraw                = MainMenu_DrawPlayer;
-        s_main.carlogo.generic.x                        = 236;
+        s_main.carlogo.generic.x                        = (int)( MainMenu_HeroX() + 6.0f );
         s_main.carlogo.generic.y                        = 68;
-        s_main.carlogo.width                            = 366;
+        s_main.carlogo.width                            = (int)( MainMenu_HeroWidth() - 12.0f );
         s_main.carlogo.height                           = 286;
         
 	y += menuSpacing;
@@ -716,16 +776,16 @@ void UI_MainMenu( void ) {
         s_main.downloads.generic.ownerdraw = MainMenu_DrawNavItem;
         s_main.exit.generic.ownerdraw = MainMenu_DrawNavItem;
 
-        MainMenu_SetInteractiveBounds( &s_main.singleplayer, 46, 204 );
-        MainMenu_SetInteractiveBounds( &s_main.multiplayer, 46, 204 );
-        MainMenu_SetInteractiveBounds( &s_main.setup, 46, 204 );
-        MainMenu_SetInteractiveBounds( &s_main.rivals, 46, 204 );
-        MainMenu_SetInteractiveBounds( &s_main.demos, 46, 204 );
-        MainMenu_SetInteractiveBounds( &s_main.downloads, 46, 204 );
-        MainMenu_SetInteractiveBounds( &s_main.exit, 46, 204 );
-        MainMenu_SetInteractiveBounds( &s_main.profileAction, 46, 204 );
+        MainMenu_SetInteractiveBounds( &s_main.singleplayer, (int)MainMenu_NavX(), (int)( MainMenu_NavX() + MainMenu_NavWidth() ) );
+        MainMenu_SetInteractiveBounds( &s_main.multiplayer, (int)MainMenu_NavX(), (int)( MainMenu_NavX() + MainMenu_NavWidth() ) );
+        MainMenu_SetInteractiveBounds( &s_main.setup, (int)MainMenu_NavX(), (int)( MainMenu_NavX() + MainMenu_NavWidth() ) );
+        MainMenu_SetInteractiveBounds( &s_main.rivals, (int)MainMenu_NavX(), (int)( MainMenu_NavX() + MainMenu_NavWidth() ) );
+        MainMenu_SetInteractiveBounds( &s_main.demos, (int)MainMenu_NavX(), (int)( MainMenu_NavX() + MainMenu_NavWidth() ) );
+        MainMenu_SetInteractiveBounds( &s_main.downloads, (int)MainMenu_NavX(), (int)( MainMenu_NavX() + MainMenu_NavWidth() ) );
+        MainMenu_SetInteractiveBounds( &s_main.exit, (int)MainMenu_NavX(), (int)( MainMenu_NavX() + MainMenu_NavWidth() ) );
+        MainMenu_SetInteractiveBounds( &s_main.profileAction, (int)MainMenu_NavX(), (int)( MainMenu_NavX() + MainMenu_NavWidth() ) );
         s_main.profileAction.generic.top = profileY - 16;
-        s_main.profileAction.generic.bottom = profileY + 52;
+        s_main.profileAction.generic.bottom = profileY + 66;
 
         trap_Key_SetCatcher( KEYCATCH_UI );
         uis.menusp = 0;
