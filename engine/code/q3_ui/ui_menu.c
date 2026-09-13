@@ -82,6 +82,7 @@ typedef struct {
         char                    rimskin[MAX_QPATH];
         char                    headskin[MAX_QPATH];
         float                   visualAlpha;
+        qboolean                vehicleDragging;
 
 } mainmenu_t;
 
@@ -268,6 +269,10 @@ static void MainMenu_UpdateModel( void )
         VectorClear( viewangles );
         VectorClear( moveangles );
 
+        /* Keep the garage preview still until the player starts dragging it.
+         * A small fixed yaw gives us the requested three-quarter front view. */
+        moveangles[YAW] = 24.0f;
+
         trap_Cvar_VariableStringBuffer( "plate", plate, sizeof( plate ) );
         UI_PlayerInfo_SetModel( &s_main.playerinfo, s_main.modelskin, s_main.rimskin, s_main.headskin, plate);
         UI_PlayerInfo_SetInfo( &s_main.playerinfo, LEGS_IDLE, TORSO_STAND, viewangles, moveangles, WP_NONE, qfalse );
@@ -281,52 +286,49 @@ MainMenu_DrawPlayer
 */
 static void MainMenu_DrawPlayer( void *self ) {
         menubitmap_s    *b;
+        qboolean         cursorInVehicle;
+        qboolean         mouseDown;
+        int               deltaX;
 
         uis.mainMenu = 1;
 
         b = (menubitmap_s*) self;
+
+        cursorInVehicle = ( uis.cursorx >= b->generic.x &&
+                            uis.cursorx <= b->generic.x + b->width &&
+                            uis.cursory >= b->generic.y &&
+                            uis.cursory <= b->generic.y + b->height );
+        mouseDown = trap_Key_IsDown( K_MOUSE1 );
+
+        if ( !mouseDown ) {
+                s_main.vehicleDragging = qfalse;
+        } else if ( !s_main.vehicleDragging && cursorInVehicle ) {
+                s_main.vehicleDragging = qtrue;
+        }
+
+        if ( s_main.vehicleDragging ) {
+                deltaX = uis.cursorx - uis.cursorpx;
+                s_main.playerinfo.moveAngles[YAW] = AngleNormalize360(
+                        s_main.playerinfo.moveAngles[YAW] + deltaX * 0.75f );
+        }
+
         UI_DrawPlayer( b->generic.x, b->generic.y, b->width, b->height, &s_main.playerinfo, uis.realtime );
 }
 
 /*
 =================
-MainMenu_BuildList
+MainMenu_ReadActiveVehicle
 =================
 */
-static void MainMenu_BuildList( void )
+static void MainMenu_ReadActiveVehicle( void )
 {
-        int             numItems;
-        int             car, skin;
-        char    cars[MAX_PLAYERMODELS][MAX_QPATH];
-        char    carName[MAX_QPATH];
-        char    skinName[MAX_QPATH];
+        trap_Cvar_VariableStringBuffer( "model", s_main.modelskin, sizeof( s_main.modelskin ) );
 
-        // get car list
-        numItems = UI_BuildFileList("models/players", "md3", "body", qtrue, qtrue, qfalse, 0, cars);
-
-        // choose one from list randomly
-        if (numItems){
-               car = UI_RandomInt( numItems );
-                Q_strncpyz(carName, cars[car], sizeof(carName));
+        if ( !s_main.modelskin[0] ) {
+                Com_sprintf( s_main.modelskin, sizeof( s_main.modelskin ), "%s/%s", DEFAULT_MODEL, DEFAULT_SKIN );
+        } else if ( !strchr( s_main.modelskin, '/' ) ) {
+                Q_strcat( s_main.modelskin, sizeof( s_main.modelskin ), "/" DEFAULT_SKIN );
         }
-        else {
-                Q_strncpyz(carName, DEFAULT_MODEL, sizeof(carName));
-        }
-
-        // get skins for the choosen car
-        numItems = UI_BuildFileList( va("models/players/%s", carName), "skin", "", qtrue, qfalse, qfalse, 0, cars);
-
-        // choose a skin from the list randomly
-        if (numItems){
-               skin = UI_RandomInt( numItems );
-                Q_strncpyz(skinName, cars[skin], sizeof(skinName));
-        }
-        else {
-                Q_strncpyz(skinName, DEFAULT_SKIN, sizeof(skinName));
-        }
-
-        // FIXME: choose rim randomly?
-        Com_sprintf(s_main.modelskin, sizeof(s_main.modelskin), "%s/%s", carName, skinName);
 }
 
 
@@ -337,7 +339,7 @@ MainMenu_Update
 */
 void MainMenu_Update( void ){
 
-        MainMenu_BuildList();
+        MainMenu_ReadActiveVehicle();
 
         trap_Cvar_VariableStringBuffer( "rim", s_main.rimskin, sizeof( s_main.rimskin ) );
         trap_Cvar_VariableStringBuffer( "head", s_main.headskin, sizeof( s_main.headskin ) );
@@ -407,6 +409,8 @@ MainMenu_ChangeMenu
 */
 void MainMenu_ChangeMenu( int menuId ){
 
+        uis.mainMenu = 0;
+
         switch( menuId) {
         case ID_SINGLEPLAYER:
                 UI_StartServerMenu( qfalse );
@@ -417,7 +421,6 @@ void MainMenu_ChangeMenu( int menuId ){
                 break;
 
         case ID_SETUP:
-                uis.mainMenu = 0;
                 UI_SetupMenu();
                 break;
 
