@@ -50,7 +50,6 @@ MAIN MENU
 
 #define MAIN_BANNER_MODEL               "models/mapobjects/q3rtitle/q3rtitle.md3"
 #define MAIN_MENU_VERTICAL_SPACING      50
-#define MAX_PLAYERMODELS                256
 // END
 
 
@@ -81,6 +80,7 @@ typedef struct {
         char                    modelskin[MAX_QPATH];
         char                    rimskin[MAX_QPATH];
         char                    headskin[MAX_QPATH];
+        char                    plateskin[MAX_QPATH];
         float                   visualAlpha;
         qboolean                vehicleDragging;
 
@@ -270,10 +270,10 @@ static void MainMenu_UpdateModel( void )
         VectorClear( moveangles );
 
         /* Keep the garage preview still until the player starts dragging it.
-         * A small fixed yaw gives us the requested three-quarter front view. */
-        moveangles[YAW] = 24.0f;
+         * The active car faces the camera in a three-quarter front view. */
+        moveangles[YAW] = 204.0f;
 
-        trap_Cvar_VariableStringBuffer( "plate", plate, sizeof( plate ) );
+        Q_strncpyz( plate, s_main.plateskin, sizeof( plate ) );
         UI_PlayerInfo_SetModel( &s_main.playerinfo, s_main.modelskin, s_main.rimskin, s_main.headskin, plate);
         UI_PlayerInfo_SetInfo( &s_main.playerinfo, LEGS_IDLE, TORSO_STAND, viewangles, moveangles, WP_NONE, qfalse );
 }
@@ -343,7 +343,40 @@ void MainMenu_Update( void ){
 
         trap_Cvar_VariableStringBuffer( "rim", s_main.rimskin, sizeof( s_main.rimskin ) );
         trap_Cvar_VariableStringBuffer( "head", s_main.headskin, sizeof( s_main.headskin ) );
+        trap_Cvar_VariableStringBuffer( "plate", s_main.plateskin, sizeof( s_main.plateskin ) );
        
+        MainMenu_UpdateModel();
+}
+
+/*
+=================
+MainMenu_SyncActiveVehicle
+=================
+*/
+static void MainMenu_SyncActiveVehicle( void )
+{
+        char previousModel[MAX_QPATH];
+        char rim[MAX_QPATH];
+        char head[MAX_QPATH];
+        char plate[MAX_QPATH];
+
+        Q_strncpyz( previousModel, s_main.modelskin, sizeof( previousModel ) );
+        MainMenu_ReadActiveVehicle();
+
+        trap_Cvar_VariableStringBuffer( "rim", rim, sizeof( rim ) );
+        trap_Cvar_VariableStringBuffer( "head", head, sizeof( head ) );
+        trap_Cvar_VariableStringBuffer( "plate", plate, sizeof( plate ) );
+
+        if ( !Q_stricmp( previousModel, s_main.modelskin ) &&
+             !Q_stricmp( s_main.rimskin, rim ) &&
+             !Q_stricmp( s_main.headskin, head ) &&
+             !Q_stricmp( s_main.plateskin, plate ) ) {
+                return;
+        }
+
+        Q_strncpyz( s_main.rimskin, rim, sizeof( s_main.rimskin ) );
+        Q_strncpyz( s_main.headskin, head, sizeof( s_main.headskin ) );
+        Q_strncpyz( s_main.plateskin, plate, sizeof( s_main.plateskin ) );
         MainMenu_UpdateModel();
 }
 
@@ -521,6 +554,10 @@ static void Main_MenuDraw( void ) {
         float heroX;
         float heroWidth;
 
+        /* The player can change the vehicle in setup while this menu stays
+         * alive. Refresh the garage preview as soon as the menu is drawn
+         * again, without requiring a complete UI restart. */
+        MainMenu_SyncActiveVehicle();
         MainMenu_UpdateProfileTexts();
 
         MainMenu_ColorWithAlpha( scrimColor, s_frontendScrim );
