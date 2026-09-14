@@ -32,6 +32,7 @@ MAIN MENU
 
 #include "ui_local.h"
 #include "ui_rally_theme.h"
+#include "ui_rally_frontend.h"
 
 
 #define ID_SINGLEPLAYER                 10
@@ -90,14 +91,10 @@ typedef struct {
 static mainmenu_t s_main;
 static vec4_t s_profileActionColor;
 static vec4_t s_frontendScrim = UI_FRONTEND_COLOR_SCRIM;
-static vec4_t s_frontendPanel = UI_FRONTEND_COLOR_PANEL;
-static vec4_t s_frontendPanelAlt = UI_FRONTEND_COLOR_PANEL_ALT;
 static vec4_t s_frontendHeroOverlay = UI_FRONTEND_COLOR_HERO_OVERLAY;
-static vec4_t s_frontendBorder = UI_FRONTEND_COLOR_BORDER;
 static vec4_t s_frontendAccent = UI_FRONTEND_COLOR_ACCENT;
 static vec4_t s_frontendText = UI_FRONTEND_COLOR_TEXT;
 static vec4_t s_frontendMuted = UI_FRONTEND_COLOR_MUTED;
-static vec4_t s_frontendFocus = UI_FRONTEND_COLOR_FOCUS_BG;
 static vec4_t s_frontendStatus = UI_FRONTEND_COLOR_STATUS;
 
 static float MainMenu_ViewportLeft( void ) {
@@ -156,9 +153,6 @@ static void MainMenu_SetInteractiveBounds( menutext_s *item, int left, int right
 static void MainMenu_DrawNavItem( void *self ) {
         menutext_s *item;
         qboolean focus;
-        vec4_t panelColor;
-        vec4_t borderColor;
-        vec4_t textColor;
         float navX;
         float navWidth;
         int top;
@@ -169,26 +163,14 @@ static void MainMenu_DrawNavItem( void *self ) {
         navWidth = MainMenu_NavWidth();
         top = item->generic.y - 9;
 
-        MainMenu_ColorWithAlpha( panelColor, focus ? s_frontendFocus : s_frontendPanelAlt );
-        MainMenu_ColorWithAlpha( borderColor, s_frontendBorder );
-        MainMenu_ColorWithAlpha( textColor, ( focus || ( item->generic.flags & QMF_GRAYED ) ) ? s_frontendAccent : s_frontendText );
-
-        UI_FillRect( navX, top, navWidth, 24, panelColor );
-        if ( focus ) {
-                UI_FillRect( navX, top, 3, 24, borderColor );
-                UI_DrawRect( navX, top, navWidth, 24, borderColor );
-        }
-
-        UI_DrawString( (int)( navX + 22 ), item->generic.y, item->string,
-                       UI_LEFT | UI_SMALLFONT | UI_DROPSHADOW,
-                       textColor );
+        Frontend_DrawButton( (int)navX, top, (int)navWidth, 24,
+                             item->string, s_main.visualAlpha, focus,
+                             UI_FRONTEND_TEXT_LEFT );
 }
 
 static void MainMenu_DrawProfileAction( void *self ) {
         menutext_s *item;
         qboolean focus;
-        vec4_t panelColor;
-        vec4_t borderColor;
         vec4_t textColor;
         vec4_t mutedColor;
         float navX;
@@ -201,15 +183,14 @@ static void MainMenu_DrawProfileAction( void *self ) {
         navWidth = MainMenu_NavWidth();
         top = item->generic.y - 16;
 
-        MainMenu_ColorWithAlpha( panelColor, s_frontendPanelAlt );
-        MainMenu_ColorWithAlpha( borderColor, focus ? s_frontendAccent : s_frontendBorder );
+        Frontend_DrawCard( (int)navX, top, (int)navWidth, 82,
+                           s_main.visualAlpha, focus );
         MainMenu_ColorWithAlpha( textColor, focus ? s_frontendAccent : s_frontendText );
         MainMenu_ColorWithAlpha( mutedColor, s_frontendMuted );
 
-        UI_FillRect( navX, top, navWidth, 82, panelColor );
-        UI_DrawRect( navX, top, navWidth, 82, borderColor );
-        UI_FillRect( navX + 12, top + 14, 6, 6, focus ? s_frontendAccent : s_frontendStatus );
-        UI_DrawString( (int)( navX + 30 ), top + 10, "PROFILE", UI_LEFT | UI_SMALLFONT, mutedColor );
+        Frontend_DrawStatusChip( (int)navX + 12, top + 10, "Profile",
+                                 focus ? s_frontendAccent : s_frontendStatus,
+                                 s_main.visualAlpha );
         UI_DrawString( (int)( navX + 30 ), top + 27, item->string,
                        UI_LEFT | UI_SMALLFONT | UI_DROPSHADOW,
                        textColor );
@@ -542,10 +523,7 @@ Main_MenuDraw
 */
 static void Main_MenuDraw( void ) {
         vec4_t scrimColor;
-        vec4_t panelColor;
         vec4_t heroOverlayColor;
-        vec4_t borderColor;
-        vec4_t accentColor;
         vec4_t textColor;
         vec4_t mutedColor;
         float viewportLeft;
@@ -561,10 +539,7 @@ static void Main_MenuDraw( void ) {
         MainMenu_UpdateProfileTexts();
 
         MainMenu_ColorWithAlpha( scrimColor, s_frontendScrim );
-        MainMenu_ColorWithAlpha( panelColor, s_frontendPanel );
         MainMenu_ColorWithAlpha( heroOverlayColor, s_frontendHeroOverlay );
-        MainMenu_ColorWithAlpha( borderColor, s_frontendBorder );
-        MainMenu_ColorWithAlpha( accentColor, s_frontendAccent );
         MainMenu_ColorWithAlpha( textColor, s_frontendText );
         MainMenu_ColorWithAlpha( mutedColor, s_frontendMuted );
 
@@ -578,21 +553,19 @@ static void Main_MenuDraw( void ) {
          * These surfaces turn it into a readable, website-like composition. */
         UI_FillRect( viewportLeft, 0, viewportWidth, SCREEN_HEIGHT, scrimColor );
 
-        UI_FillRect( railX, 32, MainMenu_RailWidth(), 410, panelColor );
-        UI_DrawRect( railX, 32, MainMenu_RailWidth(), 410, borderColor );
-        UI_FillRect( railX, 32, 3, 410, accentColor );
+        Frontend_DrawSidebar( (int)railX, 32, (int)MainMenu_RailWidth(), 410,
+                              "Command center", s_main.visualAlpha );
 
         UI_SetColor( heroOverlayColor );
         UI_DrawHandlePic( heroX, 32, heroWidth, 410, uis.menuBackShader );
         UI_SetColor( NULL );
         UI_FillRect( heroX, 32, heroWidth, 410, heroOverlayColor );
-        UI_DrawRect( heroX, 32, heroWidth, 410, borderColor );
-        UI_FillRect( heroX, 32, heroWidth, 2, accentColor );
+        Frontend_DrawPanel( (int)heroX, 32, (int)heroWidth, 410,
+                            s_main.visualAlpha, UI_FRONTEND_STYLE_FRAME );
 
-        UI_DrawString( (int)( railX + 22 ), 76, "Command center", UI_LEFT | UI_SMALLFONT, mutedColor );
         UI_DrawString( (int)( heroX + 16 ), 52, "Garage / active vehicle", UI_LEFT | UI_SMALLFONT, mutedColor );
-        UI_DrawString( (int)( heroX + heroWidth - 16 ), 52, "Ready", UI_RIGHT | UI_SMALLFONT, accentColor );
-        UI_FillRect( heroX + heroWidth - 10, 48, 6, 6, accentColor );
+        Frontend_DrawStatusChip( (int)( heroX + heroWidth - 60 ), 52, "Ready",
+                                 s_frontendAccent, s_main.visualAlpha );
 
         Menu_Draw( &s_main.menu );
 

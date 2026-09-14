@@ -35,6 +35,7 @@ Update dialog: integrated into loading screen with "Update Now" / "Skip" buttons
 
 #include "ui_local.h"
 #include "ui_rally_theme.h"
+#include "ui_rally_frontend.h"
 
 /* -------------------------------------------------------------------------
    Constants
@@ -229,19 +230,10 @@ static vec4_t gfxAccentColor        = UI_FRONTEND_COLOR_ACCENT;
 static vec4_t gfxSuccessColor       = UI_FRONTEND_COLOR_ACCENT;
 static vec4_t gfxErrorColor         = { 0.96f, 0.30f, 0.16f, 1.00f };
 static vec4_t gfxWarningColor       = UI_FRONTEND_COLOR_STATUS;
-static vec4_t gfxProgressTrackColor = { 0.035f, 0.055f, 0.065f, 1.00f };
-static vec4_t gfxButtonBgColor      = UI_FRONTEND_COLOR_PANEL_ALT;
-static vec4_t gfxButtonBorderColor  = UI_FRONTEND_COLOR_BORDER;
-static vec4_t gfxButtonTextColor    = UI_FRONTEND_COLOR_TEXT;
-static vec4_t gfxButtonHoverBgColor     = UI_FRONTEND_COLOR_FOCUS_BG;
-static vec4_t gfxButtonHoverBorderColor = UI_FRONTEND_COLOR_ACCENT;
-static vec4_t gfxButtonHoverTextColor   = UI_FRONTEND_COLOR_ACCENT;
+static vec4_t gfxProgressTrackColor = UI_FRONTEND_COLOR_PROGRESS;
 static vec4_t gfxBackdropColor          = UI_FRONTEND_COLOR_SCRIM;
 static vec4_t gfxPanelColor             = UI_FRONTEND_COLOR_PANEL;
 static vec4_t gfxHeroOverlayColor       = UI_FRONTEND_COLOR_HERO_OVERLAY;
-static vec4_t gfxPanelShadowColor       = { 0.00f, 0.00f, 0.00f, 0.48f };
-static vec4_t gfxPanelBandColor         = UI_FRONTEND_COLOR_PANEL_ALT;
-static vec4_t gfxProgressGlowColor      = { 0.72f, 1.00f, 0.06f, 0.28f };
 
 static float GFX_ViewportLeft( void ) {
     if ( uis.xscale <= 0.0f ) {
@@ -278,14 +270,6 @@ static void DrawSeparator(float x, float width, int y) {
     UI_FillRect(x, y, width, 1, gfxSeparatorColor);
 }
 
-static void DrawPanel(int x, int y, int w, int h) {
-    UI_FillRect(x + 4, y + 5, w, h, gfxPanelShadowColor);
-    UI_FillRect(x, y, w, h, gfxPanelColor);
-    UI_FillRect(x, y, w, 24, gfxPanelBandColor);
-    UI_FillRect(x, y, w, 2, gfxAccentColor);
-    UI_DrawRect(x, y, w, h, gfxSeparatorColor);
-}
-
 static void DrawProgressSegments(int x, int y, int width, float progress) {
     int segments = 18;
     int gap = 3;
@@ -313,38 +297,6 @@ static void DrawProgressSegments(int x, int y, int width, float progress) {
         UI_FillRect(x, y, segW, GFX_PROGRESS_SEG_H, color);
         x += segW + gap;
     }
-}
-
-/* -------------------------------------------------------------------------
-   Helper: draw a styled button, returns qtrue if mouse is inside.
-   Hit test uses uis.cursorx / uis.cursory (standard Q3 UI cursor state).
-   ------------------------------------------------------------------------- */
-
-static qboolean DrawButton(int cx, int y, int w, int h,
-                            const char *label, qboolean highlighted) {
-    vec4_t bgColor, borderColor, textColor, shadow;
-    int    x = cx - w / 2;
-
-    if (highlighted) {
-        Vector4Copy(gfxButtonHoverBgColor, bgColor);
-        Vector4Copy(gfxButtonHoverBorderColor, borderColor);
-        Vector4Copy(gfxButtonHoverTextColor, textColor);
-    } else {
-        Vector4Copy(gfxButtonBgColor, bgColor);
-        Vector4Copy(gfxButtonBorderColor, borderColor);
-        Vector4Copy(gfxButtonTextColor, textColor);
-    }
-
-    shadow[0] = 0.0f; shadow[1] = 0.0f; shadow[2] = 0.0f; shadow[3] = 0.5f;
-    UI_FillRect(x + 3, y + 3, w, h, shadow);
-    UI_FillRect(x, y, w, h, bgColor);
-    UI_DrawRect(x, y, w, h, borderColor);
-
-    UI_DrawString(cx, y + (h - SMALLCHAR_HEIGHT) / 2,
-                  label, UI_CENTER | UI_THEME_STYLE_BUTTON_FONT, textColor);
-
-    return (uis.cursorx >= x && uis.cursorx <= x + w &&
-            uis.cursory >= y && uis.cursory <= y + h) ? qtrue : qfalse;
 }
 
 /* -------------------------------------------------------------------------
@@ -723,15 +675,15 @@ static void UI_GFX_Loading_MenuDraw(void) {
     Vector4Copy(gfxBackdropColor, color);
     UI_FillRect(viewportLeft, 0, viewportWidth, SCREEN_HEIGHT, color);
 
-    DrawPanel((int)railX, GFX_RAIL_Y, 210, GFX_RAIL_H);
-    UI_FillRect(railX, GFX_RAIL_Y, 3, GFX_RAIL_H, gfxAccentColor);
+    Frontend_DrawPanel((int)railX, GFX_RAIL_Y, 210, GFX_RAIL_H,
+                       1.0f, UI_FRONTEND_STYLE_SURFACE);
 
     UI_FillRect(contentX, GFX_CONTENT_Y, contentWidth, GFX_CONTENT_H, gfxPanelColor);
     UI_SetColor(NULL);
     UI_DrawHandlePic(contentX, GFX_CONTENT_Y, contentWidth, GFX_CONTENT_H, uis.menuBackShader);
     UI_FillRect(contentX, GFX_CONTENT_Y, contentWidth, GFX_CONTENT_H, gfxHeroOverlayColor);
-    UI_DrawRect(contentX, GFX_CONTENT_Y, contentWidth, GFX_CONTENT_H, gfxSeparatorColor);
-    UI_FillRect(contentX, GFX_CONTENT_Y, contentWidth, 2, gfxAccentColor);
+    Frontend_DrawPanel((int)contentX, GFX_CONTENT_Y, (int)contentWidth,
+                       GFX_CONTENT_H, 1.0f, UI_FRONTEND_STYLE_FRAME);
 
     /* Brand and status rail. */
     UI_FillRect(railX + 22, 50, 6, 6, gfxAccentColor);
@@ -740,8 +692,7 @@ static void UI_GFX_Loading_MenuDraw(void) {
     UI_DrawString((int)railX + 22, 94, "System boot",
                   UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);
 
-    UI_FillRect(railX + 14, 112, 182, 76, gfxPanelBandColor);
-    UI_DrawRect(railX + 14, 112, 182, 76, gfxSeparatorColor);
+    Frontend_DrawCard((int)railX + 14, 112, 182, 76, 1.0f, qfalse);
     UI_DrawString((int)railX + 28, 124, "Startup sequence",
                   UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);
     UI_DrawString((int)railX + 28, 145,
@@ -751,8 +702,7 @@ static void UI_GFX_Loading_MenuDraw(void) {
                   va("%.0f%% ready", s_gfxloading.smoothProgress * 100.0f),
                   UI_LEFT | UI_SMALLFONT, gfxAccentColor);
 
-    UI_FillRect(railX + 14, 348, 182, 64, gfxPanelBandColor);
-    UI_DrawRect(railX + 14, 348, 182, 64, gfxSeparatorColor);
+    Frontend_DrawCard((int)railX + 14, 348, 182, 64, 1.0f, qfalse);
     UI_FillRect(railX + 28, 363, 6, 6,
                 s_gfxloading.smoothProgress >= 1.0f ? gfxAccentColor : gfxWarningColor);
     UI_DrawString((int)railX + 44, 358, "Frontend",
@@ -785,25 +735,8 @@ static void UI_GFX_Loading_MenuDraw(void) {
                   va("%.0f%%", s_gfxloading.smoothProgress * 100.0f),
                   UI_RIGHT | UI_SMALLFONT, gfxAccentColor);
 
-    color[0] = 0.0f; color[1] = 0.0f; color[2] = 0.0f; color[3] = 0.75f;
-    UI_FillRect(progressX - 2, GFX_PROGRESS_Y - 2, progressW + 4,
-                GFX_PROGRESS_H + 4, color);
-    UI_FillRect(progressX, GFX_PROGRESS_Y, progressW, GFX_PROGRESS_H,
-                gfxProgressTrackColor);
-
-    if (s_gfxloading.smoothProgress > 0.0f) {
-        vec4_t fillColor;
-        int    fillW = (int)(progressW * s_gfxloading.smoothProgress);
-
-        fillColor[0] = gfxAccentColor[0] + (gfxSuccessColor[0] - gfxAccentColor[0]) * s_gfxloading.smoothProgress;
-        fillColor[1] = gfxAccentColor[1] + (gfxSuccessColor[1] - gfxAccentColor[1]) * s_gfxloading.smoothProgress;
-        fillColor[2] = gfxAccentColor[2] + (gfxSuccessColor[2] - gfxAccentColor[2]) * s_gfxloading.smoothProgress;
-        fillColor[3] = 1.0f;
-        UI_FillRect(progressX, GFX_PROGRESS_Y, fillW, GFX_PROGRESS_H, fillColor);
-        UI_FillRect(progressX, GFX_PROGRESS_Y, fillW, 2, gfxProgressGlowColor);
-    }
-
-    UI_DrawRect(progressX, GFX_PROGRESS_Y, progressW, GFX_PROGRESS_H, gfxSeparatorColor);
+    Frontend_DrawProgress(progressX, GFX_PROGRESS_Y, progressW, GFX_PROGRESS_H,
+                          s_gfxloading.smoothProgress, 1.0f);
     DrawProgressSegments(progressX, GFX_PROGRESS_SEG_Y, progressW, s_gfxloading.smoothProgress);
 
     /* Compact update status card. */
@@ -822,8 +755,7 @@ static void UI_GFX_Loading_MenuDraw(void) {
 
         trap_Cvar_VariableStringBuffer("cl_updateRemote", remoteVersion, sizeof(remoteVersion));
         trap_Cvar_VariableStringBuffer("cl_updateDate", remoteDate, sizeof(remoteDate));
-        UI_FillRect(updateX, textY - 10, updateW, 78, gfxPanelBandColor);
-        UI_DrawRect(updateX, textY - 10, updateW, 78, gfxSeparatorColor);
+        Frontend_DrawCard(updateX, textY - 10, updateW, 78, 1.0f, qfalse);
         UI_FillRect(updateX, textY - 10, 3, 78, gfxErrorColor);
         UI_DrawString(updateX + 14, textY, "Update available",
                       UI_LEFT | UI_SMALLFONT, gfxErrorColor);
@@ -843,10 +775,14 @@ static void UI_GFX_Loading_MenuDraw(void) {
                       UI_LEFT | UI_SMALLFONT, gfxWarningColor);
 
         if (!s_gfxloading.updateAcked) {
-            qboolean hoverNow = DrawButton(updateX + updateW - 134, textY + 43, 102, 24,
-                                           "UPDATE", qtrue);
-            qboolean hoverSkip = DrawButton(updateX + updateW - 48, textY + 43, 64, 24,
-                                            "SKIP", qfalse);
+            qboolean hoverNow = Frontend_DrawButton(updateX + updateW - 185,
+                                                     textY + 43, 102, 24,
+                                                     "Update", 1.0f, qfalse,
+                                                     UI_FRONTEND_TEXT_CENTER);
+            qboolean hoverSkip = Frontend_DrawButton(updateX + updateW - 80,
+                                                      textY + 43, 64, 24,
+                                                      "Skip", 1.0f, qfalse,
+                                                      UI_FRONTEND_TEXT_CENTER);
             if (hoverNow)       s_gfxloading.hoveredBtn = UPD_BTN_NOW;
             else if (hoverSkip) s_gfxloading.hoveredBtn = UPD_BTN_SKIP;
             else                s_gfxloading.hoveredBtn = UPD_BTN_NONE;
@@ -860,8 +796,7 @@ static void UI_GFX_Loading_MenuDraw(void) {
         s_gfxloading.requireUpdateAck = qfalse;
         s_gfxloading.updateAcked      = qfalse;
         trap_Cvar_VariableStringBuffer("cl_updateRemote", remoteVersion, sizeof(remoteVersion));
-        UI_FillRect(updateX, textY - 10, updateW, 46, gfxPanelBandColor);
-        UI_DrawRect(updateX, textY - 10, updateW, 46, gfxSeparatorColor);
+        Frontend_DrawCard(updateX, textY - 10, updateW, 46, 1.0f, qfalse);
         UI_FillRect(updateX, textY - 10, 3, 46, gfxAccentColor);
         UI_DrawString(updateX + 14, textY, "System check / up to date",
                       UI_LEFT | UI_SMALLFONT, gfxSuccessColor);
@@ -881,8 +816,7 @@ static void UI_GFX_Loading_MenuDraw(void) {
                        !Q_stricmp(updateState, "offline") ? "UPDATE SERVICE OFFLINE" : "UPDATE CHECK FAILED",
                        sizeof(errorMsg));
         }
-        UI_FillRect(updateX, textY - 10, updateW, 46, gfxPanelBandColor);
-        UI_DrawRect(updateX, textY - 10, updateW, 46, gfxSeparatorColor);
+        Frontend_DrawCard(updateX, textY - 10, updateW, 46, 1.0f, qfalse);
         UI_FillRect(updateX, textY - 10, 3, 46, gfxWarningColor);
         UI_DrawString(updateX + 14, textY, errorMsg,
                       UI_LEFT | UI_SMALLFONT, gfxWarningColor);
@@ -891,8 +825,7 @@ static void UI_GFX_Loading_MenuDraw(void) {
     } else {
         s_gfxloading.requireUpdateAck = qfalse;
         s_gfxloading.updateAcked      = qfalse;
-        UI_FillRect(updateX, textY - 10, updateW, 46, gfxPanelBandColor);
-        UI_DrawRect(updateX, textY - 10, updateW, 46, gfxSeparatorColor);
+        Frontend_DrawCard(updateX, textY - 10, updateW, 46, 1.0f, qfalse);
         UI_FillRect(updateX, textY - 10, 3, 46, gfxMutedTextColor);
         UI_DrawString(updateX + 14, textY, "Update check",
                       UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);

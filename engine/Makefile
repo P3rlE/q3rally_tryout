@@ -2971,6 +2971,7 @@ Q3UIOBJ_ = \
   $(B)/$(BASEGAME)/ui/ui_rally_credits.o \
   $(B)/$(BASEGAME)/ui/ui_rally_favorites.o \
   $(B)/$(BASEGAME)/ui/ui_rally_gfxloading.o \
+  $(B)/$(BASEGAME)/ui/ui_rally_frontend.o \
   $(B)/$(BASEGAME)/ui/ui_rally_profiles.o \
   $(B)/$(BASEGAME)/ui/ui_rally_options.o \
   $(B)/$(BASEGAME)/ui/ui_rally_ladder_wizard.o \
