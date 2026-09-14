@@ -51,6 +51,8 @@ MAIN MENU
 
 #define MAIN_BANNER_MODEL               "models/mapobjects/q3rtitle/q3rtitle.md3"
 #define MAIN_MENU_VERTICAL_SPACING      50
+#define MAIN_MENU_PROFILE_STAT_INTERVAL 4200
+#define MAIN_MENU_PROFILE_STAT_COUNT    8
 // END
 
 
@@ -237,6 +239,121 @@ static void MainMenu_UpdateProfileTexts( void ) {
 
         s_main.profileInfoLine1.string = s_main.profileRankLine;
         s_main.profileInfoLine2.string = s_main.profilePointsLine;
+}
+
+static int MainMenu_ProfileStatIndex( void ) {
+        const char *profileName;
+        int hash;
+        int cycle;
+
+        profileName = UI_Profile_GetActiveName();
+        hash = 17;
+        if ( profileName ) {
+                while ( *profileName ) {
+                        hash = ( hash * 33 + (unsigned char)*profileName ) & 0x7fffffff;
+                        profileName++;
+                }
+        }
+
+        cycle = uis.realtime / MAIN_MENU_PROFILE_STAT_INTERVAL;
+        return ( cycle + hash ) % MAIN_MENU_PROFILE_STAT_COUNT;
+}
+
+static float MainMenu_ProfileStatFade( void ) {
+        float phase;
+
+        phase = ( uis.realtime % MAIN_MENU_PROFILE_STAT_INTERVAL ) /
+                (float)MAIN_MENU_PROFILE_STAT_INTERVAL;
+        if ( phase < 0.16f ) {
+                return phase / 0.16f;
+        }
+        if ( phase > 0.84f ) {
+                return ( 1.0f - phase ) / 0.16f;
+        }
+        return 1.0f;
+}
+
+static void MainMenu_DrawProfileStat( float heroX, float heroWidth ) {
+        const profile_stats_t *stats;
+        vec4_t labelColor;
+        vec4_t valueColor;
+        char value[64];
+        const char *label;
+        int statIndex;
+        int statX;
+        int statY;
+        float fade;
+
+        if ( !UI_Profile_HasActiveProfile() ) {
+                return;
+        }
+
+        stats = UI_Profile_GetActiveStats();
+        if ( !stats ) {
+                return;
+        }
+
+        statIndex = MainMenu_ProfileStatIndex();
+        label = "Points";
+        value[0] = '\0';
+
+        switch ( statIndex ) {
+        case 0:
+                label = "Points";
+                Com_sprintf( value, sizeof( value ), "%d", stats->playerScore );
+                break;
+        case 1:
+                label = "Wins";
+                Com_sprintf( value, sizeof( value ), "%d", stats->wins );
+                break;
+        case 2:
+                label = "Races";
+                Com_sprintf( value, sizeof( value ), "%d", stats->gamesPlayed );
+                break;
+        case 3:
+                label = "Distance";
+                Com_sprintf( value, sizeof( value ), "%.1f km", stats->distanceKm );
+                break;
+        case 4:
+                label = "Top speed";
+                Com_sprintf( value, sizeof( value ), "%.0f km/h", stats->topSpeedKph );
+                break;
+        case 5:
+                label = "Best lap";
+                if ( stats->bestLapMs > 0 ) {
+                        Com_sprintf( value, sizeof( value ), "%d:%02d.%03d",
+                                     stats->bestLapMs / 60000,
+                                     ( stats->bestLapMs / 1000 ) % 60,
+                                     stats->bestLapMs % 1000 );
+                } else {
+                        Q_strncpyz( value, "-", sizeof( value ) );
+                }
+                break;
+        case 6:
+                label = "Podiums";
+                Com_sprintf( value, sizeof( value ), "%d", stats->racingPodiums );
+                break;
+        default:
+                label = "Fuel used";
+                Com_sprintf( value, sizeof( value ), "%.1f l", stats->fuelUsed );
+                break;
+        }
+
+        fade = MainMenu_ProfileStatFade() * s_main.visualAlpha;
+        statX = (int)( heroX + heroWidth - 144.0f );
+        statY = 354;
+        Frontend_DrawCard( statX, statY, 128, 72, fade, qfalse );
+        Frontend_DrawStatusChip( statX + 12, statY + 8, "Profile pulse",
+                                 s_frontendAccent, fade );
+
+        MainMenu_ColorWithAlpha( labelColor, s_frontendMuted );
+        MainMenu_ColorWithAlpha( valueColor, s_frontendAccent );
+        labelColor[3] *= fade;
+        valueColor[3] *= fade;
+        Frontend_DrawText( statX + 12, statY + 29, label,
+                           UI_LEFT | UI_SMALLFONT, labelColor );
+        Frontend_DrawText( statX + 12, statY + 44, value,
+                           UI_LEFT | UI_BIGFONT | UI_DROPSHADOW, valueColor );
 }
 
 /*
@@ -572,6 +689,8 @@ static void Main_MenuDraw( void ) {
                                  s_frontendAccent, s_main.visualAlpha );
 
         Menu_Draw( &s_main.menu );
+
+        MainMenu_DrawProfileStat( heroX, heroWidth );
 
         Frontend_DrawText( (int)( heroX + 16 ), 370, "Ready for the next rally",
                            UI_LEFT | UI_SMALLFONT, textColor );
