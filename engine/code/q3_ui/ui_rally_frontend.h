@@ -9,6 +9,9 @@ Copyright (C) 2002-2026 Q3Rally Team
 
 #include "ui_rally_theme.h"
 
+int Frontend_TextWidth( const char *text, int style );
+void Frontend_DrawText( int x, int y, const char *text, int style,
+                        const float *color );
 void Frontend_DrawPanel( int x, int y, int width, int height,
                          float alpha, int style );
 void Frontend_DrawCard( int x, int y, int width, int height,
@@ -16,6 +19,9 @@ void Frontend_DrawCard( int x, int y, int width, int height,
 qboolean Frontend_DrawButton( int x, int y, int width, int height,
                               const char *label, float alpha,
                               qboolean active, int textAlign );
+qboolean Frontend_DrawNavButton( int x, int y, int width, int height,
+                                 const char *label, float alpha,
+                                 qboolean active, int textAlign );
 void Frontend_DrawStatusChip( int x, int y, const char *label,
                               const float *statusColor, float alpha );
 void Frontend_DrawSidebar( int x, int y, int width, int height,

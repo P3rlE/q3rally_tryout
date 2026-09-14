@@ -163,9 +163,9 @@ static void MainMenu_DrawNavItem( void *self ) {
         navWidth = MainMenu_NavWidth();
         top = item->generic.y - 9;
 
-        Frontend_DrawButton( (int)navX, top, (int)navWidth, 24,
-                             item->string, s_main.visualAlpha, focus,
-                             UI_FRONTEND_TEXT_LEFT );
+        Frontend_DrawNavButton( (int)navX, top, (int)navWidth, 24,
+                                item->string, s_main.visualAlpha, focus,
+                                UI_FRONTEND_TEXT_LEFT );
 }
 
 static void MainMenu_DrawProfileAction( void *self ) {
@@ -191,11 +191,13 @@ static void MainMenu_DrawProfileAction( void *self ) {
         Frontend_DrawStatusChip( (int)navX + 12, top + 10, "Profile",
                                  focus ? s_frontendAccent : s_frontendStatus,
                                  s_main.visualAlpha );
-        UI_DrawString( (int)( navX + 30 ), top + 27, item->string,
-                       UI_LEFT | UI_SMALLFONT | UI_DROPSHADOW,
-                       textColor );
-        UI_DrawString( (int)( navX + 30 ), top + 48, s_main.profileRankLine, UI_LEFT | UI_SMALLFONT, mutedColor );
-        UI_DrawString( (int)( navX + 30 ), top + 63, s_main.profilePointsLine, UI_LEFT | UI_SMALLFONT, mutedColor );
+        Frontend_DrawText( (int)( navX + 30 ), top + 27, item->string,
+                           UI_LEFT | UI_SMALLFONT | UI_DROPSHADOW,
+                           textColor );
+        Frontend_DrawText( (int)( navX + 30 ), top + 48, s_main.profileRankLine,
+                           UI_LEFT | UI_SMALLFONT, mutedColor );
+        Frontend_DrawText( (int)( navX + 30 ), top + 63, s_main.profilePointsLine,
+                           UI_LEFT | UI_SMALLFONT, mutedColor );
 }
 
 static void MainMenu_DrawBrand( void *self ) {
@@ -210,7 +212,8 @@ static void MainMenu_DrawBrand( void *self ) {
         railX = MainMenu_RailX();
 
         UI_FillRect( railX + 22, 50, 6, 6, accentColor );
-        UI_DrawString( (int)( railX + 38 ), 48, "Q3RALLY", UI_LEFT | UI_BIGFONT | UI_DROPSHADOW, textColor );
+        Frontend_DrawText( (int)( railX + 38 ), 48, "Q3RALLY",
+                           UI_LEFT | UI_BIGFONT | UI_DROPSHADOW, textColor );
 }
 
 static void MainMenu_UpdateProfileTexts( void ) {
@@ -499,7 +502,7 @@ void MainMenu_RunTransition( float frac ) {
         s_main.profileInfoLine1.color = uis.text_color;
         s_main.profileInfoLine2.color = uis.text_color;
 
-        s_main.carlogo.generic.x = (int)(MainMenu_HeroX() + 6.0f - (1.0f - frac) * 120.0f);
+        s_main.carlogo.generic.x = (int)(MainMenu_HeroX() + 40.0f - (1.0f - frac) * 80.0f);
 }
 
 /*
@@ -563,24 +566,31 @@ static void Main_MenuDraw( void ) {
         Frontend_DrawPanel( (int)heroX, 32, (int)heroWidth, 410,
                             s_main.visualAlpha, UI_FRONTEND_STYLE_FRAME );
 
-        UI_DrawString( (int)( heroX + 16 ), 52, "Garage / active vehicle", UI_LEFT | UI_SMALLFONT, mutedColor );
+        Frontend_DrawText( (int)( heroX + 16 ), 52, "Garage / active vehicle",
+                           UI_LEFT | UI_SMALLFONT, mutedColor );
         Frontend_DrawStatusChip( (int)( heroX + heroWidth - 60 ), 52, "Ready",
                                  s_frontendAccent, s_main.visualAlpha );
 
         Menu_Draw( &s_main.menu );
 
-        UI_DrawString( (int)( heroX + 16 ), 370, "Ready for the next rally", UI_LEFT | UI_SMALLFONT, textColor );
-        UI_DrawString( (int)( heroX + 16 ), 388, va( "Model  -  %s", s_main.modelskin ), UI_LEFT | UI_SMALLFONT, mutedColor );
-        UI_DrawString( (int)( heroX + 16 ), 410, "Q3Rally  -  2002-2026", UI_LEFT | UI_SMALLFONT, mutedColor );
+        Frontend_DrawText( (int)( heroX + 16 ), 370, "Ready for the next rally",
+                           UI_LEFT | UI_SMALLFONT, textColor );
+        Frontend_DrawText( (int)( heroX + 16 ), 388,
+                           va( "Model  -  %s", s_main.modelskin ),
+                           UI_LEFT | UI_SMALLFONT, mutedColor );
+        Frontend_DrawText( (int)( heroX + 16 ), 410, "Q3Rally  -  2002-2026",
+                           UI_LEFT | UI_SMALLFONT, mutedColor );
 
         if (uis.demoversion) {
 
                 UI_DrawProportionalString( 320, 440, "DEMO      FOR MATURE AUDIENCES      DEMO", UI_CENTER|UI_SMALLFONT, text_color_normal );
-                UI_DrawString( 320, 456, Q3_VERSION " | www.q3rally.com | It's damn fast baby!", UI_CENTER|UI_SMALLFONT, text_color_normal );
+                Frontend_DrawText( 320, 456, Q3_VERSION " | www.q3rally.com | It's damn fast baby!",
+                                   UI_CENTER | UI_SMALLFONT, text_color_normal );
 
         } else {
 
-                UI_DrawString( 320, 456, Q3_VERSION " | www.q3rally.com | It's damn fast baby!", UI_CENTER|UI_SMALLFONT, text_color_normal );
+                Frontend_DrawText( 320, 456, Q3_VERSION " | www.q3rally.com | It's damn fast baby!",
+                                   UI_CENTER | UI_SMALLFONT, text_color_normal );
 
         }
 
@@ -745,10 +755,10 @@ void UI_MainMenu( void ) {
         s_main.carlogo.generic.type                     = MTYPE_BITMAP;
         s_main.carlogo.generic.flags                    = QMF_INACTIVE;
         s_main.carlogo.generic.ownerdraw                = MainMenu_DrawPlayer;
-        s_main.carlogo.generic.x                        = (int)( MainMenu_HeroX() + 6.0f );
-        s_main.carlogo.generic.y                        = 68;
-        s_main.carlogo.width                            = (int)( MainMenu_HeroWidth() - 12.0f );
-        s_main.carlogo.height                           = 286;
+        s_main.carlogo.generic.x                        = (int)( MainMenu_HeroX() + 40.0f );
+        s_main.carlogo.generic.y                        = 92;
+        s_main.carlogo.width                            = (int)( MainMenu_HeroWidth() - 120.0f );
+        s_main.carlogo.height                           = 228;
         
 	y += menuSpacing;
 	InitMenuText(&s_main.exit, ID_EXIT, "QUIT", x, y + 12);

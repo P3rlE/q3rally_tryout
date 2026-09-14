@@ -18,6 +18,173 @@ static vec4_t frontendShadowColor  = UI_FRONTEND_COLOR_SHADOW;
 static vec4_t frontendProgressColor = UI_FRONTEND_COLOR_PROGRESS;
 static vec4_t frontendHeroOverlayColor = UI_FRONTEND_COLOR_HERO_OVERLAY;
 
+/* The legacy UI text path treats every glyph as a full 8/16 pixel cell.
+ * The modern screens use the same atlas, but with a tighter advance and a
+ * slightly wider glyph quad. This keeps the type readable without the wide,
+ * arcade-menu tracking of the original renderer. */
+static int Frontend_TextHeight( int style ) {
+    if ( style & UI_SMALLFONT ) {
+        return SMALLCHAR_HEIGHT;
+    }
+    if ( style & UI_GIANTFONT ) {
+        return GIANTCHAR_HEIGHT;
+    }
+    return BIGCHAR_HEIGHT;
+}
+
+static int Frontend_TextAdvance( int ch, int style ) {
+    int advance;
+
+    if ( style & UI_SMALLFONT ) {
+        advance = 6;
+    } else if ( style & UI_GIANTFONT ) {
+        advance = 18;
+    } else {
+        advance = 12;
+    }
+
+    if ( ch == ' ' ) {
+        return ( advance + 1 ) / 2;
+    }
+
+    /* Give naturally narrow glyphs less horizontal room while keeping the
+     * atlas sampling simple and stable for every character. */
+    if ( ch == 'I' || ch == 'i' || ch == 'l' || ch == '!' ||
+         ch == '|' || ch == '.' || ch == ',' || ch == ':' || ch == ';' ) {
+        return ( advance + 1 ) / 2;
+    }
+
+    return advance;
+}
+
+static int Frontend_TextQuadWidth( int style ) {
+    if ( style & UI_SMALLFONT ) {
+        return 10;
+    }
+    if ( style & UI_GIANTFONT ) {
+        return 28;
+    }
+    return 20;
+}
+
+static int Frontend_TextWidthRaw( const char *text, int style ) {
+    const char *s;
+    int width;
+
+    if ( !text ) {
+        return 0;
+    }
+
+    width = 0;
+    for ( s = text; *s; s++ ) {
+        if ( Q_IsColorString( s ) ) {
+            s++;
+            continue;
+        }
+        width += Frontend_TextAdvance( *s & 255, style );
+    }
+    return width;
+}
+
+static void Frontend_DrawTextRaw( int x, int y, const char *text,
+                                  int style, const float *color ) {
+    const char *s;
+    int charHeight;
+    int quadWidth;
+    int cursorX;
+    vec4_t drawColor;
+
+    if ( !text || !text[0] ) {
+        return;
+    }
+
+    charHeight = Frontend_TextHeight( style );
+    quadWidth = Frontend_TextQuadWidth( style );
+    cursorX = x;
+    Vector4Copy( color, drawColor );
+
+    trap_R_SetColor( drawColor );
+    for ( s = text; *s; s++ ) {
+        int ch;
+        int advance;
+        float ax;
+        float ay;
+        float aw;
+        float ah;
+        float frow;
+        float fcol;
+
+        if ( Q_IsColorString( s ) ) {
+            s++;
+            continue;
+        }
+
+        ch = *s & 255;
+        advance = Frontend_TextAdvance( ch, style );
+        if ( ch == ' ' ) {
+            cursorX += advance;
+            continue;
+        }
+
+        ax = cursorX * uis.xscale + uis.bias;
+        ay = y * uis.yscale;
+        aw = quadWidth * uis.xscale;
+        ah = charHeight * uis.yscale;
+        frow = ( ch >> 4 ) * 0.0625f;
+        fcol = ( ch & 15 ) * 0.0625f;
+        trap_R_DrawStretchPic( ax, ay, aw, ah,
+                               fcol, frow, fcol + 0.0625f,
+                               frow + 0.0625f, uis.charset );
+        cursorX += advance;
+    }
+    trap_R_SetColor( NULL );
+}
+
+int Frontend_TextWidth( const char *text, int style ) {
+    return Frontend_TextWidthRaw( text, style );
+}
+
+void Frontend_DrawText( int x, int y, const char *text, int style,
+                        const float *color ) {
+    int width;
+    int format;
+    vec4_t drawColor;
+    vec4_t dropColor;
+
+    if ( !text || !color ) {
+        return;
+    }
+
+    Vector4Copy( color, drawColor );
+    if ( style & UI_PULSE ) {
+        vec4_t lowlight;
+
+        lowlight[0] = drawColor[0] * 0.8f;
+        lowlight[1] = drawColor[1] * 0.8f;
+        lowlight[2] = drawColor[2] * 0.8f;
+        lowlight[3] = drawColor[3] * 0.8f;
+        UI_LerpColor( drawColor, lowlight, drawColor,
+                      0.5f + 0.5f * sin( uis.realtime / PULSE_DIVISOR ) );
+    }
+
+    width = Frontend_TextWidthRaw( text, style );
+    format = style & UI_FORMATMASK;
+    if ( format == UI_CENTER ) {
+        x -= width / 2;
+    } else if ( format == UI_RIGHT ) {
+        x -= width;
+    }
+
+    if ( style & UI_DROPSHADOW ) {
+        dropColor[0] = 0.0f;
+        dropColor[1] = 0.0f;
+        dropColor[2] = 0.0f;
+        dropColor[3] = drawColor[3];
+        Frontend_DrawTextRaw( x + 2, y + 2, text, style, dropColor );
+    }
+    Frontend_DrawTextRaw( x, y, text, style, drawColor );
+}
+
 static void Frontend_ColorWithAlpha( vec4_t out, const float *baseColor,
                                      float alpha ) {
     out[0] = baseColor[0];
@@ -91,10 +258,39 @@ qboolean Frontend_DrawButton( int x, int y, int width, int height,
         Frontend_ColorWithAlpha( textColor, frontendTextColor, alpha );
     }
 
-    UI_DrawString( x + ( textAlign == UI_CENTER ? width / 2 : UI_FRONTEND_SPACE_MD ),
-                   y + ( height - SMALLCHAR_HEIGHT ) / 2,
-                   label, textAlign | UI_SMALLFONT | UI_DROPSHADOW, textColor );
+    Frontend_DrawText( x + ( textAlign == UI_CENTER ? width / 2 : UI_FRONTEND_SPACE_MD ),
+                       y + ( height - SMALLCHAR_HEIGHT ) / 2,
+                       label, textAlign | UI_SMALLFONT | UI_DROPSHADOW, textColor );
 
+    return hovered;
+}
+
+qboolean Frontend_DrawNavButton( int x, int y, int width, int height,
+                                 const char *label, float alpha,
+                                 qboolean active, int textAlign ) {
+    vec4_t textColor;
+    qboolean hovered;
+    qboolean highlighted;
+
+    hovered = ( uis.cursorx >= x && uis.cursorx <= x + width &&
+                uis.cursory >= y && uis.cursory <= y + height ) ? qtrue : qfalse;
+    highlighted = ( active || hovered ) ? qtrue : qfalse;
+
+    /* Navigation stays visually quiet until it is selected. */
+    if ( highlighted ) {
+        Frontend_DrawPanel( x, y, width, height, alpha,
+                            UI_FRONTEND_STYLE_ACTIVE );
+    }
+
+    if ( highlighted ) {
+        Frontend_ColorWithAlpha( textColor, frontendAccentColor, alpha );
+    } else {
+        Frontend_ColorWithAlpha( textColor, frontendMutedColor, alpha );
+    }
+
+    Frontend_DrawText( x + ( textAlign == UI_CENTER ? width / 2 : UI_FRONTEND_SPACE_MD ),
+                       y + ( height - SMALLCHAR_HEIGHT ) / 2,
+                       label, textAlign | UI_SMALLFONT | UI_DROPSHADOW, textColor );
     return hovered;
 }
 
@@ -106,8 +302,8 @@ void Frontend_DrawStatusChip( int x, int y, const char *label,
     Frontend_ColorWithAlpha( dotColor, statusColor, alpha );
     Frontend_ColorWithAlpha( textColor, frontendAccentColor, alpha );
     UI_FillRect( x, y + 3, UI_FRONTEND_STATUS_DOT, UI_FRONTEND_STATUS_DOT, dotColor );
-    UI_DrawString( x + UI_FRONTEND_STATUS_DOT + UI_FRONTEND_SPACE_SM, y,
-                   label, UI_LEFT | UI_SMALLFONT, textColor );
+    Frontend_DrawText( x + UI_FRONTEND_STATUS_DOT + UI_FRONTEND_SPACE_SM, y,
+                       label, UI_LEFT | UI_SMALLFONT, textColor );
 }
 
 void Frontend_DrawSidebar( int x, int y, int width, int height,
@@ -116,8 +312,8 @@ void Frontend_DrawSidebar( int x, int y, int width, int height,
 
     Frontend_DrawPanel( x, y, width, height, alpha, UI_FRONTEND_STYLE_SURFACE );
     Frontend_ColorWithAlpha( titleColor, frontendMutedColor, alpha );
-    UI_DrawString( x + UI_FRONTEND_SPACE_LG, y + 44, title,
-                   UI_LEFT | UI_SMALLFONT, titleColor );
+    Frontend_DrawText( x + UI_FRONTEND_SPACE_LG, y + 44, title,
+                       UI_LEFT | UI_SMALLFONT, titleColor );
 }
 
 void Frontend_DrawVehicleHero( int x, int y, int width, int height,
