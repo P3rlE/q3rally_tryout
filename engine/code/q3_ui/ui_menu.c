@@ -343,7 +343,7 @@ static void MainMenu_DrawProfileStat( float heroX, float heroWidth ) {
         statX = (int)( heroX + heroWidth - 144.0f );
         statY = 354;
         Frontend_DrawCard( statX, statY, 128, 72, fade, qfalse );
-        Frontend_DrawStatusChip( statX + 12, statY + 8, "Profile pulse",
+        Frontend_DrawStatusChip( statX + 12, statY + 8, "Profile Stats",
                                  s_frontendAccent, fade );
 
         MainMenu_ColorWithAlpha( labelColor, s_frontendMuted );
@@ -674,7 +674,7 @@ static void Main_MenuDraw( void ) {
         UI_FillRect( viewportLeft, 0, viewportWidth, SCREEN_HEIGHT, scrimColor );
 
         Frontend_DrawSidebar( (int)railX, 32, (int)MainMenu_RailWidth(), 410,
-                              "Command center", s_main.visualAlpha );
+                              NULL, s_main.visualAlpha );
 
         UI_SetColor( heroOverlayColor );
         UI_DrawHandlePic( heroX, 32, heroWidth, 410, uis.menuBackShader );
@@ -884,8 +884,10 @@ void UI_MainMenu( void ) {
 
 
         y += menuSpacing;
-        profileY = y + 22;
-        profileInfoY = y + 16;
+        /* Give the profile tile a little more breathing room below the
+         * navigation instead of making it feel like another menu item. */
+        profileY = y + 42;
+        profileInfoY = y + 36;
         InitMenuText(&s_main.profileAction, ID_PROFILE_ACTION, "CREATE", x, profileY);
         s_main.profileAction.generic.flags = QMF_RIGHT_JUSTIFY;
         s_main.profileAction.generic.ownerdraw = MainMenu_DrawProfileAction;
