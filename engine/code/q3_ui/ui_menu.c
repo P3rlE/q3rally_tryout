@@ -244,11 +244,11 @@ static void MainMenu_UpdateProfileTexts( void ) {
 
         activeProfileStats = UI_Profile_GetActiveStats();
         if ( activeProfileStats && UI_Profile_GetRank( activeProfileStats, &activeRank ) && activeRank.current && activeRank.current->name ) {
-                Com_sprintf( s_main.profileRankLine, sizeof( s_main.profileRankLine ), "RANK: %s", activeRank.current->name );
-                Com_sprintf( s_main.profilePointsLine, sizeof( s_main.profilePointsLine ), "POINTS: %d", activeProfileStats->playerScore );
+                Com_sprintf( s_main.profileRankLine, sizeof( s_main.profileRankLine ), "Rank: %s", activeRank.current->name );
+                Com_sprintf( s_main.profilePointsLine, sizeof( s_main.profilePointsLine ), "Points: %d", activeProfileStats->playerScore );
         } else {
-                Q_strncpyz( s_main.profileRankLine, "RANK: -", sizeof( s_main.profileRankLine ) );
-                Q_strncpyz( s_main.profilePointsLine, "POINTS: 0", sizeof( s_main.profilePointsLine ) );
+                Q_strncpyz( s_main.profileRankLine, "Rank: -", sizeof( s_main.profileRankLine ) );
+                Q_strncpyz( s_main.profilePointsLine, "Points: 0", sizeof( s_main.profilePointsLine ) );
         }
 
         s_main.profileInfoLine1.string = s_main.profileRankLine;
@@ -589,16 +589,16 @@ static void Main_MenuDraw( void ) {
         UI_DrawRect( heroX, 32, heroWidth, 410, borderColor );
         UI_FillRect( heroX, 32, heroWidth, 2, accentColor );
 
-        UI_DrawString( (int)( railX + 22 ), 76, "COMMAND CENTER", UI_LEFT | UI_SMALLFONT, mutedColor );
-        UI_DrawString( (int)( heroX + 16 ), 52, "GARAGE / ACTIVE VEHICLE", UI_LEFT | UI_SMALLFONT, mutedColor );
-        UI_DrawString( (int)( heroX + heroWidth - 16 ), 52, "READY", UI_RIGHT | UI_SMALLFONT, accentColor );
+        UI_DrawString( (int)( railX + 22 ), 76, "Command center", UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( (int)( heroX + 16 ), 52, "Garage / active vehicle", UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( (int)( heroX + heroWidth - 16 ), 52, "Ready", UI_RIGHT | UI_SMALLFONT, accentColor );
         UI_FillRect( heroX + heroWidth - 10, 48, 6, 6, accentColor );
 
         Menu_Draw( &s_main.menu );
 
-        UI_DrawString( (int)( heroX + 16 ), 370, "READY FOR THE NEXT RALLY", UI_LEFT | UI_SMALLFONT, textColor );
-        UI_DrawString( (int)( heroX + 16 ), 388, va( "MODEL // %s", s_main.modelskin ), UI_LEFT | UI_SMALLFONT, mutedColor );
-        UI_DrawString( (int)( heroX + 16 ), 410, "Q3RALLY // 2002-2026", UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( (int)( heroX + 16 ), 370, "Ready for the next rally", UI_LEFT | UI_SMALLFONT, textColor );
+        UI_DrawString( (int)( heroX + 16 ), 388, va( "Model  -  %s", s_main.modelskin ), UI_LEFT | UI_SMALLFONT, mutedColor );
+        UI_DrawString( (int)( heroX + 16 ), 410, "Q3Rally  -  2002-2026", UI_LEFT | UI_SMALLFONT, mutedColor );
 
         if (uis.demoversion) {
 
@@ -788,8 +788,8 @@ void UI_MainMenu( void ) {
         s_main.profileAction.generic.flags = QMF_RIGHT_JUSTIFY;
         s_main.profileAction.generic.ownerdraw = MainMenu_DrawProfileAction;
 
-        Q_strncpyz( s_main.profileRankLine, "RANK: -", sizeof( s_main.profileRankLine ) );
-        Q_strncpyz( s_main.profilePointsLine, "POINTS: 0", sizeof( s_main.profilePointsLine ) );
+        Q_strncpyz( s_main.profileRankLine, "Rank: -", sizeof( s_main.profileRankLine ) );
+        Q_strncpyz( s_main.profilePointsLine, "Points: 0", sizeof( s_main.profilePointsLine ) );
         InitMenuTextInfo(&s_main.profileInfoLine1, s_main.profileRankLine, x + 20, profileInfoY);
         InitMenuTextInfo(&s_main.profileInfoLine2, s_main.profilePointsLine, x + 20, profileInfoY + 16);
         MainMenu_UpdateProfileTexts();

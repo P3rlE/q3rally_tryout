@@ -737,49 +737,49 @@ static void UI_GFX_Loading_MenuDraw(void) {
     UI_FillRect(railX + 22, 50, 6, 6, gfxAccentColor);
     UI_DrawString((int)railX + 38, 48, "Q3RALLY",
                   UI_LEFT | UI_BIGFONT | UI_DROPSHADOW, gfxHeaderColor);
-    UI_DrawString((int)railX + 22, 94, "SYSTEM BOOT",
+    UI_DrawString((int)railX + 22, 94, "System boot",
                   UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);
 
     UI_FillRect(railX + 14, 112, 182, 76, gfxPanelBandColor);
     UI_DrawRect(railX + 14, 112, 182, 76, gfxSeparatorColor);
-    UI_DrawString((int)railX + 28, 124, "STARTUP SEQUENCE",
+    UI_DrawString((int)railX + 28, 124, "Startup sequence",
                   UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);
     UI_DrawString((int)railX + 28, 145,
-                  va("STAGE %02d / %02d", stageNumber, totalStages),
+                  va("Stage %02d / %02d", stageNumber, totalStages),
                   UI_LEFT | UI_SMALLFONT, gfxBodyTextColor);
     UI_DrawString((int)railX + 28, 165,
-                  va("%.0f%% READY", s_gfxloading.smoothProgress * 100.0f),
+                  va("%.0f%% ready", s_gfxloading.smoothProgress * 100.0f),
                   UI_LEFT | UI_SMALLFONT, gfxAccentColor);
 
     UI_FillRect(railX + 14, 348, 182, 64, gfxPanelBandColor);
     UI_DrawRect(railX + 14, 348, 182, 64, gfxSeparatorColor);
     UI_FillRect(railX + 28, 363, 6, 6,
                 s_gfxloading.smoothProgress >= 1.0f ? gfxAccentColor : gfxWarningColor);
-    UI_DrawString((int)railX + 44, 358, "FRONTEND",
+    UI_DrawString((int)railX + 44, 358, "Frontend",
                   UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);
     UI_DrawString((int)railX + 44, 376,
-                  s_gfxloading.smoothProgress >= 1.0f ? "SYSTEM READY" : "BOOT SEQUENCE",
+                  s_gfxloading.smoothProgress >= 1.0f ? "System ready" : "Boot sequence",
                   UI_LEFT | UI_SMALLFONT, gfxBodyTextColor);
-    UI_DrawString((int)railX + 44, 394, "Q3RALLY // 2002-2026",
+    UI_DrawString((int)railX + 44, 394, "Q3Rally  -  2002-2026",
                   UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);
 
     /* Workspace header and progress. */
     UI_DrawString((int)contentX + GFX_CONTENT_INSET, 52,
-                  "SYSTEM / GFX LOADING",
+                  "System / GFX loading",
                   UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);
     UI_DrawString((int)contentRight - GFX_CONTENT_INSET, 52,
-                  s_gfxloading.smoothProgress >= 1.0f ? "READY" : "LOADING",
+                  s_gfxloading.smoothProgress >= 1.0f ? "Ready" : "Loading",
                   UI_RIGHT | UI_SMALLFONT, gfxAccentColor);
     UI_FillRect(contentRight - 10, 48, 6, 6, gfxAccentColor);
 
-    UI_DrawString(progressX, 100, "RESOURCE CACHE",
+    UI_DrawString(progressX, 100, "Resource cache",
                   UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);
     UI_DrawString(progressX, 122, stageName,
                   UI_LEFT | UI_SMALLFONT | UI_DROPSHADOW, gfxBodyTextColor);
     UI_DrawString((int)contentRight - GFX_CONTENT_INSET, 122,
                   va("%02d / %02d", stageNumber, totalStages),
                   UI_RIGHT | UI_SMALLFONT, gfxMutedTextColor);
-    UI_DrawString(progressX, GFX_STATUS_Y, "CACHE PROGRESS",
+    UI_DrawString(progressX, GFX_STATUS_Y, "Cache progress",
                   UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);
     UI_DrawString((int)contentRight - GFX_CONTENT_INSET, GFX_STATUS_Y,
                   va("%.0f%%", s_gfxloading.smoothProgress * 100.0f),
@@ -825,19 +825,19 @@ static void UI_GFX_Loading_MenuDraw(void) {
         UI_FillRect(updateX, textY - 10, updateW, 78, gfxPanelBandColor);
         UI_DrawRect(updateX, textY - 10, updateW, 78, gfxSeparatorColor);
         UI_FillRect(updateX, textY - 10, 3, 78, gfxErrorColor);
-        UI_DrawString(updateX + 14, textY, "UPDATE AVAILABLE",
+        UI_DrawString(updateX + 14, textY, "Update available",
                       UI_LEFT | UI_SMALLFONT, gfxErrorColor);
 
         if (remoteVersion[0]) {
             if (remoteDate[0]) {
-                Com_sprintf(buf, sizeof(buf), "INSTALLED %s  /  LATEST %s (%s)",
+                Com_sprintf(buf, sizeof(buf), "Installed %s  /  latest %s (%s)",
                             PRODUCT_VERSION, remoteVersion, remoteDate);
             } else {
-                Com_sprintf(buf, sizeof(buf), "INSTALLED %s  /  LATEST %s",
+                Com_sprintf(buf, sizeof(buf), "Installed %s  /  latest %s",
                             PRODUCT_VERSION, remoteVersion);
             }
         } else {
-            Com_sprintf(buf, sizeof(buf), "INSTALLED %s  /  LATEST UNKNOWN", PRODUCT_VERSION);
+            Com_sprintf(buf, sizeof(buf), "Installed %s  /  latest unknown", PRODUCT_VERSION);
         }
         UI_DrawString(updateX + 14, textY + 18, buf,
                       UI_LEFT | UI_SMALLFONT, gfxWarningColor);
@@ -851,7 +851,7 @@ static void UI_GFX_Loading_MenuDraw(void) {
             else if (hoverSkip) s_gfxloading.hoveredBtn = UPD_BTN_SKIP;
             else                s_gfxloading.hoveredBtn = UPD_BTN_NONE;
         } else {
-            UI_DrawString(updateX + 14, textY + 43, "UPDATE ACKNOWLEDGED / CONTINUING",
+            UI_DrawString(updateX + 14, textY + 43, "Update acknowledged / continuing",
                           UI_LEFT | UI_SMALLFONT, gfxSuccessColor);
         }
     } else if (!Q_stricmp(updateState, "current")) {
@@ -863,7 +863,7 @@ static void UI_GFX_Loading_MenuDraw(void) {
         UI_FillRect(updateX, textY - 10, updateW, 46, gfxPanelBandColor);
         UI_DrawRect(updateX, textY - 10, updateW, 46, gfxSeparatorColor);
         UI_FillRect(updateX, textY - 10, 3, 46, gfxAccentColor);
-        UI_DrawString(updateX + 14, textY, "SYSTEM CHECK / UP TO DATE",
+        UI_DrawString(updateX + 14, textY, "System check / up to date",
                       UI_LEFT | UI_SMALLFONT, gfxSuccessColor);
         Com_sprintf(buf, sizeof(buf), "BUILD %s%s%s", PRODUCT_VERSION,
                     remoteVersion[0] ? "  /  LATEST " : "", remoteVersion);
@@ -886,7 +886,7 @@ static void UI_GFX_Loading_MenuDraw(void) {
         UI_FillRect(updateX, textY - 10, 3, 46, gfxWarningColor);
         UI_DrawString(updateX + 14, textY, errorMsg,
                       UI_LEFT | UI_SMALLFONT, gfxWarningColor);
-        UI_DrawString(updateX + 14, textY + 18, "CONTINUING WITHOUT UPDATE DATA",
+        UI_DrawString(updateX + 14, textY + 18, "Continuing without update data",
                       UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);
     } else {
         s_gfxloading.requireUpdateAck = qfalse;
@@ -894,20 +894,20 @@ static void UI_GFX_Loading_MenuDraw(void) {
         UI_FillRect(updateX, textY - 10, updateW, 46, gfxPanelBandColor);
         UI_DrawRect(updateX, textY - 10, updateW, 46, gfxSeparatorColor);
         UI_FillRect(updateX, textY - 10, 3, 46, gfxMutedTextColor);
-        UI_DrawString(updateX + 14, textY, "UPDATE CHECK",
+        UI_DrawString(updateX + 14, textY, "Update check",
                       UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);
-        UI_DrawString(updateX + 14, textY + 18, "WAITING FOR VERSION STATUS",
+        UI_DrawString(updateX + 14, textY + 18, "Waiting for version status",
                       UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);
     }
 
     DrawSeparator(contentX + GFX_CONTENT_INSET, progressW, GFX_TIP_SEPARATOR_Y);
-    UI_DrawString(progressX, GFX_TIP_LABEL_Y, "DRIVE TIP",
+    UI_DrawString(progressX, GFX_TIP_LABEL_Y, "Drive tip",
                   UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);
     UI_DrawString(progressX, GFX_TIP_TEXT_Y,
                   loadingTips[s_gfxloading.tipIndex],
                   UI_LEFT | UI_SMALLFONT, gfxBodyTextColor);
 
-    UI_DrawString(progressX, 458, "Q3RALLY // SYSTEM INITIALIZATION",
+    UI_DrawString(progressX, 458, "Q3Rally  -  system initialization",
                   UI_LEFT | UI_SMALLFONT, gfxMutedTextColor);
     UI_DrawString((int)contentRight - GFX_CONTENT_INSET, 458,
                   va("BUILD %s", PRODUCT_VERSION),
