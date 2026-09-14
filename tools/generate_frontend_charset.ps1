@@ -21,7 +21,7 @@ $bitmap = New-Object System.Drawing.Bitmap(
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 $font = New-Object System.Drawing.Font(
     "Segoe UI Semibold",
-    22,
+        24,
     [System.Drawing.FontStyle]::Regular,
     [System.Drawing.GraphicsUnit]::Pixel
 )
