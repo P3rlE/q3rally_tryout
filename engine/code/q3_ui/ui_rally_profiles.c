@@ -1360,7 +1360,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
     overlay->nameField.generic.id = ID_PROFILE_NAME;
     overlay->nameField.generic.flags = QMF_SMALLFONT | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
     overlay->nameField.generic.x = PROFILE_FRONTEND_CREATE_X + 28;
-    overlay->nameField.generic.y = PROFILE_FRONTEND_CREATE_Y + 72;
+    overlay->nameField.generic.y = PROFILE_FRONTEND_CREATE_Y + 86;
     overlay->nameField.generic.name = "Profile name";
     overlay->nameField.generic.callback = NULL;
     overlay->nameField.generic.ownerdraw = UI_ProfileOverlay_DrawNameField;
@@ -1427,7 +1427,7 @@ static void UI_ProfileOverlay_SetupMenu( void ) {
         overlay->list.height * ( PROFILE_FRONTEND_ROW_H + PROFILE_FRONTEND_ROW_GAP );
 
     overlay->nameField.generic.left = PROFILE_FRONTEND_CREATE_X + 20;
-    overlay->nameField.generic.top = PROFILE_FRONTEND_CREATE_Y + 48;
+    overlay->nameField.generic.top = PROFILE_FRONTEND_CREATE_Y + 72;
     overlay->nameField.generic.right = PROFILE_FRONTEND_CREATE_X + PROFILE_FRONTEND_CREATE_W - 20;
     overlay->nameField.generic.bottom = overlay->nameField.generic.top + 34;
 

@@ -33,7 +33,7 @@ static int Frontend_TextHeight( int style ) {
 }
 
 static qboolean Frontend_IsNarrowGlyph( int ch ) {
-    return ( ch == 'I' || ch == 'i' || ch == 'l' || ch == '!' ||
+    return ( ch == 'I' || ch == 'i' || ch == 'l' || ch == 'L' || ch == '!' ||
              ch == '|' || ch == '.' || ch == ',' || ch == ':' || ch == ';' )
                ? qtrue : qfalse;
 }
@@ -56,6 +56,9 @@ static int Frontend_TextAdvance( int ch, int style ) {
     /* Keep narrow glyphs compact, but do not collapse them into the next
      * character. Their draw quad is reduced by the matching function below. */
     if ( Frontend_IsNarrowGlyph( ch ) ) {
+        if ( ch == 'l' || ch == 'L' ) {
+            return advance - 1;
+        }
         return advance - 2;
     }
 
@@ -64,6 +67,15 @@ static int Frontend_TextAdvance( int ch, int style ) {
 
 static int Frontend_TextQuadWidth( int ch, int style ) {
     if ( Frontend_IsNarrowGlyph( ch ) ) {
+        if ( ch == 'l' || ch == 'L' ) {
+            if ( style & UI_SMALLFONT ) {
+                return 8;
+            }
+            if ( style & UI_GIANTFONT ) {
+                return 20;
+            }
+            return 16;
+        }
         if ( style & UI_SMALLFONT ) {
             return 6;
         }
