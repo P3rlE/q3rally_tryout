@@ -424,6 +424,42 @@ static void DL_FitText( char *out, int outSize, const char *text, int maxWidth )
     }
 }
 
+static int DL_WrapText( const char *text, int maxWidth,
+                        char *first, int firstSize,
+                        char *second, int secondSize ) {
+    char wrappedSecond[64];
+    int i;
+
+    if ( !first || firstSize <= 0 || !second || secondSize <= 0 ) {
+        return 0;
+    }
+
+    first[0] = '\0';
+    second[0] = '\0';
+    Q_strncpyz( first, text ? text : "", firstSize );
+
+    if ( !first[0] || Frontend_TextWidth( first, UI_SMALLFONT ) <= maxWidth ) {
+        return 1;
+    }
+
+    for ( i = strlen( first ) - 1; i > 0; --i ) {
+        if ( first[i] != ' ' ) {
+            continue;
+        }
+
+        first[i] = '\0';
+        if ( Frontend_TextWidth( first, UI_SMALLFONT ) <= maxWidth ) {
+            Q_strncpyz( wrappedSecond, text + i + 1, sizeof( wrappedSecond ) );
+            DL_FitText( second, secondSize, wrappedSecond, maxWidth );
+            return 2;
+        }
+        first[i] = ' ';
+    }
+
+    DL_FitText( first, firstSize, first, maxWidth );
+    return 1;
+}
+
 static void DL_DrawItemRow( int index, int y, qboolean selected ) {
     dlItem_t    *item;
     char        nameStr[80];
@@ -530,6 +566,11 @@ static qhandle_t DL_GetPreviewShader( const dlItem_t *item ) {
 
 static void DL_DrawPreviewPane( void ) {
     qhandle_t    previewShader = 0;
+    char         nameStr[80];
+    char         authorLine1[64];
+    char         authorLine2[64];
+    int          authorLines;
+    int          detailY;
     int          imageX        = DL_PREVIEW_X + 10;
     int          imageY        = DL_PREVIEW_Y + 40;
     int          imageW        = DL_PREVIEW_WIDTH - 20;
@@ -543,6 +584,11 @@ static void DL_DrawPreviewPane( void ) {
     if ( s_dl.selectedItem >= 0 && s_dl.selectedItem < s_dl.numItems ) {
         dlItem_t *item = &s_dl.items[s_dl.selectedItem];
         previewShader = DL_GetPreviewShader( item );
+        DL_FitText( nameStr, sizeof( nameStr ), item->name,
+                    DL_PREVIEW_WIDTH - 24 );
+        authorLines = DL_WrapText( item->author, DL_PREVIEW_WIDTH - 24,
+                                   authorLine1, sizeof( authorLine1 ),
+                                   authorLine2, sizeof( authorLine2 ) );
 
         Frontend_DrawStatusChip( DL_PREVIEW_X + 94, DL_PREVIEW_Y + 12,
                                  item->installed ? "Installed" : "Available",
@@ -557,15 +603,20 @@ static void DL_DrawPreviewPane( void ) {
                                UI_LEFT | UI_SMALLFONT, dlMutedColor );
         }
 
-        Frontend_DrawText( DL_PREVIEW_X + 12, DL_PREVIEW_Y + 158, item->name,
+        Frontend_DrawText( DL_PREVIEW_X + 12, DL_PREVIEW_Y + 158, nameStr,
                            UI_LEFT | UI_SMALLFONT, dlTextColor );
-        Frontend_DrawText( DL_PREVIEW_X + 12, DL_PREVIEW_Y + 178, item->author,
+        Frontend_DrawText( DL_PREVIEW_X + 12, DL_PREVIEW_Y + 178, authorLine1,
                            UI_LEFT | UI_SMALLFONT, dlMutedColor );
-        Frontend_DrawText( DL_PREVIEW_X + 12, DL_PREVIEW_Y + 198, item->type,
+        if ( authorLines > 1 ) {
+            Frontend_DrawText( DL_PREVIEW_X + 12, DL_PREVIEW_Y + 198, authorLine2,
+                               UI_LEFT | UI_SMALLFONT, dlMutedColor );
+        }
+        detailY = DL_PREVIEW_Y + 178 + authorLines * 20;
+        Frontend_DrawText( DL_PREVIEW_X + 12, detailY, item->type,
                            UI_LEFT | UI_SMALLFONT, dlMutedColor );
         if ( item->version[0] ) {
             Frontend_DrawText( DL_PREVIEW_X + DL_PREVIEW_WIDTH - 12,
-                               DL_PREVIEW_Y + 198, item->version,
+                               detailY, item->version,
                                UI_RIGHT | UI_SMALLFONT, dlMutedColor );
         }
     } else {
