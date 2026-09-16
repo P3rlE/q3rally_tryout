@@ -32,6 +32,12 @@ static int Frontend_TextHeight( int style ) {
     return BIGCHAR_HEIGHT;
 }
 
+static qboolean Frontend_IsNarrowGlyph( int ch ) {
+    return ( ch == 'I' || ch == 'i' || ch == 'l' || ch == '!' ||
+             ch == '|' || ch == '.' || ch == ',' || ch == ':' || ch == ';' )
+               ? qtrue : qfalse;
+}
+
 static int Frontend_TextAdvance( int ch, int style ) {
     int advance;
 
@@ -47,17 +53,26 @@ static int Frontend_TextAdvance( int ch, int style ) {
         return ( advance + 1 ) / 2;
     }
 
-    /* Give naturally narrow glyphs less horizontal room while keeping the
-     * atlas sampling simple and stable for every character. */
-    if ( ch == 'I' || ch == 'i' || ch == 'l' || ch == '!' ||
-         ch == '|' || ch == '.' || ch == ',' || ch == ':' || ch == ';' ) {
-        return ( advance + 1 ) / 2;
+    /* Keep narrow glyphs compact, but do not collapse them into the next
+     * character. Their draw quad is reduced by the matching function below. */
+    if ( Frontend_IsNarrowGlyph( ch ) ) {
+        return advance - 2;
     }
 
     return advance;
 }
 
-static int Frontend_TextQuadWidth( int style ) {
+static int Frontend_TextQuadWidth( int ch, int style ) {
+    if ( Frontend_IsNarrowGlyph( ch ) ) {
+        if ( style & UI_SMALLFONT ) {
+            return 6;
+        }
+        if ( style & UI_GIANTFONT ) {
+            return 16;
+        }
+        return 12;
+    }
+
     if ( style & UI_SMALLFONT ) {
         return 10;
     }
@@ -90,7 +105,6 @@ static void Frontend_DrawTextRaw( int x, int y, const char *text,
                                   int style, const float *color ) {
     const char *s;
     int charHeight;
-    int quadWidth;
     int cursorX;
     vec4_t drawColor;
 
@@ -99,7 +113,6 @@ static void Frontend_DrawTextRaw( int x, int y, const char *text,
     }
 
     charHeight = Frontend_TextHeight( style );
-    quadWidth = Frontend_TextQuadWidth( style );
     cursorX = x;
     Vector4Copy( color, drawColor );
 
@@ -107,6 +120,7 @@ static void Frontend_DrawTextRaw( int x, int y, const char *text,
     for ( s = text; *s; s++ ) {
         int ch;
         int advance;
+        int quadWidth;
         float ax;
         float ay;
         float aw;
@@ -121,6 +135,7 @@ static void Frontend_DrawTextRaw( int x, int y, const char *text,
 
         ch = *s & 255;
         advance = Frontend_TextAdvance( ch, style );
+        quadWidth = Frontend_TextQuadWidth( ch, style );
         if ( ch == ' ' ) {
             cursorX += advance;
             continue;
