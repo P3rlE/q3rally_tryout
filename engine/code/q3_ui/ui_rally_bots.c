@@ -249,28 +249,28 @@ static void UI_DrawWrappedProportional( int x, int y, int maxWidth, int lineHeig
 #define NAME_BUFSIZE 64
 #define DESC_BUFSIZE 256
 #define MAX_VISIBLE_BOTS 10
-#define DESC_MAXWIDTH 330
+#define DESC_MAXWIDTH 346
 #define DESC_LINEHEIGHT 18
 
 /* Modern rivals layout. Coordinates use the shared 640x480 virtual space. */
-#define RIVALS_FRAME_X       24
+#define RIVALS_FRAME_X       16
 #define RIVALS_FRAME_Y       20
-#define RIVALS_FRAME_W       592
+#define RIVALS_FRAME_W       608
 #define RIVALS_FRAME_H       440
-#define RIVALS_LIST_X        40
+#define RIVALS_LIST_X        32
 #define RIVALS_LIST_Y        100
-#define RIVALS_LIST_W        176
+#define RIVALS_LIST_W        192
 #define RIVALS_LIST_H        304
-#define RIVALS_ROW_X         52
+#define RIVALS_ROW_X         44
 #define RIVALS_ROW_Y         134
-#define RIVALS_ROW_W         152
+#define RIVALS_ROW_W         168
 #define RIVALS_ROW_H         22
 #define RIVALS_ROW_GAP       3
-#define RIVALS_HERO_X        232
+#define RIVALS_HERO_X        240
 #define RIVALS_HERO_Y        88
-#define RIVALS_HERO_W        368
+#define RIVALS_HERO_W        384
 #define RIVALS_HERO_H        328
-#define RIVALS_DETAIL_X      248
+#define RIVALS_DETAIL_X      256
 #define RIVALS_DETAIL_Y      316
 #define RIVALS_ACTION_Y      424
 #define RIVALS_ACTION_H      24
@@ -429,6 +429,36 @@ static void UI_BotsMenu_PrevPage(void *ptr, int event) {
 }
 
 static sfxHandle_t UI_BotsMenu_Key(int key) {
+    int row;
+    int index;
+
+    /* The legacy menu mouse router uses label-derived bounds for PText
+     * widgets. Rival rows are deliberately full-width custom cards, so map
+     * their hit area explicitly before the generic router can fall through
+     * to the Back action. */
+    if ( key == K_MOUSE1 &&
+         uis.cursorx >= RIVALS_ROW_X &&
+         uis.cursorx <= RIVALS_ROW_X + RIVALS_ROW_W &&
+         uis.cursory >= RIVALS_ROW_Y &&
+         uis.cursory < RIVALS_ROW_Y + MAX_VISIBLE_BOTS *
+             ( RIVALS_ROW_H + RIVALS_ROW_GAP ) ) {
+        row = ( uis.cursory - RIVALS_ROW_Y ) /
+              ( RIVALS_ROW_H + RIVALS_ROW_GAP );
+        if ( uis.cursory >= RIVALS_ROW_Y + row *
+             ( RIVALS_ROW_H + RIVALS_ROW_GAP ) + RIVALS_ROW_H ) {
+            return 0;
+        }
+
+        index = botPage * MAX_VISIBLE_BOTS + row;
+        if ( row >= 0 && row < MAX_VISIBLE_BOTS &&
+             index >= 0 && index < botCount ) {
+            botSelected = index;
+            UI_BotsMenu_SetRival( botSelected );
+            UI_BotsMenu_DrawBotPage();
+            return menu_move_sound;
+        }
+    }
+
     return Menu_DefaultKey(&s_bots.menu, key);
 }
 
@@ -656,7 +686,7 @@ static void UI_BotsMenu_DrawBotPage(void) {
         if (index < botCount) {
             botItems[i].string = botNames[index];
             botItems[i].color  = (index == botSelected) ? rivalsAccentColor : rivalsTextColor;
-            botItems[i].generic.flags = QMF_LEFT_JUSTIFY | QMF_PULSEIFFOCUS | QMF_MOUSEONLY;
+            botItems[i].generic.flags = QMF_LEFT_JUSTIFY | QMF_PULSEIFFOCUS;
             botItems[i].generic.left   = RIVALS_ROW_X;
             botItems[i].generic.top    = rowY;
             botItems[i].generic.right  = RIVALS_ROW_X + RIVALS_ROW_W;
@@ -712,7 +742,7 @@ static void UI_BotsMenu_Init(void) {
 
     for (i = 0; i < MAX_VISIBLE_BOTS; i++) {
         botItems[i].generic.type = MTYPE_PTEXT;
-        botItems[i].generic.flags = QMF_LEFT_JUSTIFY | QMF_PULSEIFFOCUS | QMF_MOUSEONLY;
+        botItems[i].generic.flags = QMF_LEFT_JUSTIFY | QMF_PULSEIFFOCUS;
         botItems[i].generic.x = RIVALS_ROW_X;
         botItems[i].generic.y = RIVALS_ROW_Y + i * ( RIVALS_ROW_H + RIVALS_ROW_GAP );
         botItems[i].generic.id = ID_BOT0 + i;
