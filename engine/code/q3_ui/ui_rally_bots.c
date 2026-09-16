@@ -249,32 +249,35 @@ static void UI_DrawWrappedProportional( int x, int y, int maxWidth, int lineHeig
 #define NAME_BUFSIZE 64
 #define DESC_BUFSIZE 256
 #define MAX_VISIBLE_BOTS 10
-#define DESC_MAXWIDTH 346
+#define DESC_MAXWIDTH 332
 #define DESC_LINEHEIGHT 18
 
 /* Modern rivals layout. Coordinates use the shared 640x480 virtual space. */
-#define RIVALS_FRAME_X       16
+#define RIVALS_FRAME_X       4
 #define RIVALS_FRAME_Y       20
-#define RIVALS_FRAME_W       608
+#define RIVALS_FRAME_W       632
 #define RIVALS_FRAME_H       440
-#define RIVALS_LIST_X        32
+#define RIVALS_LIST_X        20
 #define RIVALS_LIST_Y        100
-#define RIVALS_LIST_W        192
+#define RIVALS_LIST_W        204
 #define RIVALS_LIST_H        304
-#define RIVALS_ROW_X         44
+#define RIVALS_ROW_X         32
 #define RIVALS_ROW_Y         134
-#define RIVALS_ROW_W         168
+#define RIVALS_ROW_W         180
 #define RIVALS_ROW_H         22
 #define RIVALS_ROW_GAP       3
-#define RIVALS_HERO_X        240
+#define RIVALS_HERO_X        236
 #define RIVALS_HERO_Y        88
-#define RIVALS_HERO_W        384
+#define RIVALS_HERO_W        400
 #define RIVALS_HERO_H        328
-#define RIVALS_DETAIL_X      256
+#define RIVALS_DETAIL_X      252
 #define RIVALS_DETAIL_Y      316
 #define RIVALS_ACTION_Y      424
 #define RIVALS_ACTION_H      24
 #define RIVALS_ACTION_W      112
+#define RIVALS_BACK_X        20
+#define RIVALS_PREV_X        264
+#define RIVALS_NEXT_X        504
 
 /* control IDs */
 #define ID_BOT0  1000
@@ -340,6 +343,13 @@ static void UI_BotsMenu_SetRival( int index ) {
     if ( index < 0 || index >= botCount ) return;
 
     wp = botWeapons[index];
+    /* The Chainsaw is represented by WP_GAUNTLET for gameplay, but its
+     * hand-weapon preview is not meaningful on a car's tag_weapon mount.
+     * Keep the favorite weapon in the profile text/icon and render the car
+     * without an attached weapon to avoid entering that legacy path. */
+    if ( wp == WP_GAUNTLET ) {
+        wp = WP_NONE;
+    }
 
     /*
      * Reload/invalidate point for RIVALS:
@@ -356,7 +366,8 @@ static void UI_BotsMenu_SetRival( int index ) {
         if ( !plate[0] ) Q_strncpyz( plate, "usa_california", sizeof(plate) );
     }
 
-    UI_PlayerInfo_SetModel( &s_garagePlayerInfo, botModels[index], NULL, NULL, plate );
+    UI_PlayerInfo_SetModel( &s_garagePlayerInfo, botModels[index],
+                            DEFAULT_RIM, DEFAULT_HEAD, plate );
 
     /* Ensure plateShader points to the exact freshly-generated shader handle. */
     if ( botPlateShaders[index] ) {
@@ -736,7 +747,8 @@ static void UI_BotsMenu_Init(void) {
     s_bots.banner.generic.ownerdraw = UI_BotsMenu_DrawBanner;
 
     UI_BotsMenu_ParseBots();
-    UI_PlayerInfo_SetModel(&s_garagePlayerInfo, "roadster/blue", NULL, NULL, NULL);
+    UI_PlayerInfo_SetModel(&s_garagePlayerInfo, "roadster/blue",
+                           DEFAULT_RIM, DEFAULT_HEAD, DEFAULT_PLATE );
 
     Menu_AddItem(&s_bots.menu, &s_bots.banner);
 
@@ -791,17 +803,17 @@ static void UI_BotsMenu_Init(void) {
     Menu_AddItem(&s_bots.menu, &nextButton);
 
     /* Keep the three navigation actions on a shared flat button grid. */
-    s_bots.back.generic.left = RIVALS_FRAME_X + 16;
+    s_bots.back.generic.left = RIVALS_BACK_X;
     s_bots.back.generic.top = RIVALS_ACTION_Y;
-    s_bots.back.generic.right = RIVALS_FRAME_X + 16 + RIVALS_ACTION_W;
+    s_bots.back.generic.right = RIVALS_BACK_X + RIVALS_ACTION_W;
     s_bots.back.generic.bottom = RIVALS_ACTION_Y + RIVALS_ACTION_H;
-    prevButton.generic.left = 264;
+    prevButton.generic.left = RIVALS_PREV_X;
     prevButton.generic.top = RIVALS_ACTION_Y;
-    prevButton.generic.right = 264 + RIVALS_ACTION_W;
+    prevButton.generic.right = RIVALS_PREV_X + RIVALS_ACTION_W;
     prevButton.generic.bottom = RIVALS_ACTION_Y + RIVALS_ACTION_H;
-    nextButton.generic.left = 488;
+    nextButton.generic.left = RIVALS_NEXT_X;
     nextButton.generic.top = RIVALS_ACTION_Y;
-    nextButton.generic.right = 488 + RIVALS_ACTION_W;
+    nextButton.generic.right = RIVALS_NEXT_X + RIVALS_ACTION_W;
     nextButton.generic.bottom = RIVALS_ACTION_Y + RIVALS_ACTION_H;
 
     if (botCount > 0) {

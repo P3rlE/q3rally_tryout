@@ -1458,7 +1458,10 @@ void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int ti
 	//
 	// add the spinning barrel
 	//
-	if ( pi->realWeapon == WP_MACHINEGUN || pi->realWeapon == WP_GAUNTLET || pi->realWeapon == WP_BFG ) {
+	/* Some weapons (notably the Chainsaw/Gauntlet) do not have a barrel
+	 * submodel. Never submit an empty model handle to the renderer. */
+	if ( pi->barrelModel &&
+		( pi->realWeapon == WP_MACHINEGUN || pi->realWeapon == WP_GAUNTLET || pi->realWeapon == WP_BFG ) ) {
 		vec3_t	angles;
 
 		memset( &barrel, 0, sizeof(barrel) );
