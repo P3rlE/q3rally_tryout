@@ -82,7 +82,7 @@ written to ui_dl_indexpath so the UI can read it via trap_FS_FOpenFile.
 // Column X offsets within the list (relative to DL_LIST_X)
 #define DL_COL_NAME_X           12
 #define DL_COL_AUTHOR_X         172
-#define DL_COL_SIZE_X           274
+#define DL_COL_SIZE_X           250
 #define DL_COL_STATUS_X         ( DL_LIST_WIDTH - 12 )
 
 // Download states (mirrored from native side via ui_dl_state CVar)
@@ -397,8 +397,37 @@ static void DL_DrawProgressBar( float progress ) {
                            progress / 100.0f, 1.0f );
 }
 
+static void DL_FitText( char *out, int outSize, const char *text, int maxWidth ) {
+    int length;
+    int ellipsisWidth;
+
+    if ( !out || outSize <= 0 ) {
+        return;
+    }
+
+    Q_strncpyz( out, text ? text : "", outSize );
+    if ( !out[0] || Frontend_TextWidth( out, UI_SMALLFONT ) <= maxWidth ) {
+        return;
+    }
+
+    ellipsisWidth = Frontend_TextWidth( "...", UI_SMALLFONT );
+    length = strlen( out );
+    while ( length > 3 &&
+            Frontend_TextWidth( out, UI_SMALLFONT ) + ellipsisWidth > maxWidth ) {
+        out[--length] = '\0';
+    }
+
+    if ( length > 3 ) {
+        out[length - 3] = '.';
+        out[length - 2] = '.';
+        out[length - 1] = '.';
+    }
+}
+
 static void DL_DrawItemRow( int index, int y, qboolean selected ) {
     dlItem_t    *item;
+    char        nameStr[80];
+    char        authorStr[64];
     char        sizeStr[32];
     int         rowX;
     int         rowW;
@@ -411,11 +440,16 @@ static void DL_DrawItemRow( int index, int y, qboolean selected ) {
     Frontend_DrawNavButton( rowX, y, rowW, DL_ITEM_HEIGHT - 2,
                             "", 1.0f, selected, UI_FRONTEND_TEXT_LEFT );
 
-    Frontend_DrawText( DL_LIST_X + DL_COL_NAME_X, y + 4, item->name,
+    DL_FitText( nameStr, sizeof( nameStr ), item->name,
+                DL_COL_AUTHOR_X - DL_COL_NAME_X - 12 );
+    DL_FitText( authorStr, sizeof( authorStr ), item->author,
+                DL_COL_SIZE_X - DL_COL_AUTHOR_X - 10 );
+
+    Frontend_DrawText( DL_LIST_X + DL_COL_NAME_X, y + 4, nameStr,
                        UI_LEFT | UI_SMALLFONT,
                        selected ? dlAccentColor : dlTextColor );
 
-    Frontend_DrawText( DL_LIST_X + DL_COL_AUTHOR_X, y + 4, item->author,
+    Frontend_DrawText( DL_LIST_X + DL_COL_AUTHOR_X, y + 4, authorStr,
                        UI_LEFT | UI_SMALLFONT, dlMutedColor );
 
     // Size
@@ -1024,19 +1058,52 @@ void UI_Rally_DownloadsMenu( void ) {
 
     s_dl.back.generic.left = DL_FRAME_X + 16;
     s_dl.back.generic.top = btnY;
-    s_dl.back.generic.right = DL_FRAME_X + 126;
+    s_dl.back.generic.right = DL_FRAME_X + 128;
     s_dl.back.generic.bottom = btnY + DL_ACTION_HEIGHT;
-    s_dl.downloadBtn.generic.left = 252;
+    s_dl.downloadBtn.generic.left = 264;
     s_dl.downloadBtn.generic.top = btnY;
-    s_dl.downloadBtn.generic.right = 388;
+    s_dl.downloadBtn.generic.right = 376;
     s_dl.downloadBtn.generic.bottom = btnY + DL_ACTION_HEIGHT;
-    s_dl.refreshBtn.generic.left = 492;
+    s_dl.refreshBtn.generic.left = 488;
     s_dl.refreshBtn.generic.top = btnY;
     s_dl.refreshBtn.generic.right = 600;
     s_dl.refreshBtn.generic.bottom = btnY + DL_ACTION_HEIGHT;
     Menu_AddItem( &s_dl.menu, &s_dl.back );
     Menu_AddItem( &s_dl.menu, &s_dl.downloadBtn );
     Menu_AddItem( &s_dl.menu, &s_dl.refreshBtn );
+
+    /* PText_Init derives bounds from the label. Restore the shared hit and
+     * draw rectangles afterwards so the category tabs stay identical in
+     * width and the action row uses a consistent rhythm. */
+    s_dl.tabAll.generic.left = DL_LIST_X;
+    s_dl.tabAll.generic.top = DL_TAB_TOP;
+    s_dl.tabAll.generic.right = DL_LIST_X + DL_TAB_WIDTH - 2;
+    s_dl.tabAll.generic.bottom = DL_TAB_TOP + DL_TAB_HEIGHT;
+    s_dl.tabTracks.generic.left = DL_LIST_X + DL_TAB_WIDTH;
+    s_dl.tabTracks.generic.top = DL_TAB_TOP;
+    s_dl.tabTracks.generic.right = DL_LIST_X + 2 * DL_TAB_WIDTH - 2;
+    s_dl.tabTracks.generic.bottom = DL_TAB_TOP + DL_TAB_HEIGHT;
+    s_dl.tabVehicles.generic.left = DL_LIST_X + 2 * DL_TAB_WIDTH;
+    s_dl.tabVehicles.generic.top = DL_TAB_TOP;
+    s_dl.tabVehicles.generic.right = DL_LIST_X + 3 * DL_TAB_WIDTH - 2;
+    s_dl.tabVehicles.generic.bottom = DL_TAB_TOP + DL_TAB_HEIGHT;
+    s_dl.tabSkins.generic.left = DL_LIST_X + 3 * DL_TAB_WIDTH;
+    s_dl.tabSkins.generic.top = DL_TAB_TOP;
+    s_dl.tabSkins.generic.right = DL_LIST_X + DL_LIST_WIDTH - 2;
+    s_dl.tabSkins.generic.bottom = DL_TAB_TOP + DL_TAB_HEIGHT;
+
+    s_dl.back.generic.left = DL_FRAME_X + 16;
+    s_dl.back.generic.top = btnY;
+    s_dl.back.generic.right = DL_FRAME_X + 128;
+    s_dl.back.generic.bottom = btnY + DL_ACTION_HEIGHT;
+    s_dl.downloadBtn.generic.left = 264;
+    s_dl.downloadBtn.generic.top = btnY;
+    s_dl.downloadBtn.generic.right = 376;
+    s_dl.downloadBtn.generic.bottom = btnY + DL_ACTION_HEIGHT;
+    s_dl.refreshBtn.generic.left = 488;
+    s_dl.refreshBtn.generic.top = btnY;
+    s_dl.refreshBtn.generic.right = 600;
+    s_dl.refreshBtn.generic.bottom = btnY + DL_ACTION_HEIGHT;
 
 
     trap_Key_SetCatcher( KEYCATCH_UI );

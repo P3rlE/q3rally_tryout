@@ -268,6 +268,9 @@ void Frontend_DrawCard( int x, int y, int width, int height,
 qboolean Frontend_DrawButton( int x, int y, int width, int height,
                               const char *label, float alpha,
                               qboolean active, int textAlign ) {
+    vec4_t buttonColor;
+    vec4_t borderColor;
+    vec4_t accentColor;
     vec4_t textColor;
     qboolean hovered;
     qboolean highlighted;
@@ -276,8 +279,22 @@ qboolean Frontend_DrawButton( int x, int y, int width, int height,
                 uis.cursory >= y && uis.cursory <= y + height ) ? qtrue : qfalse;
     highlighted = ( active || hovered ) ? qtrue : qfalse;
 
-    Frontend_DrawPanel( x, y, width, height, alpha,
-                        highlighted ? UI_FRONTEND_STYLE_ACTIVE : UI_FRONTEND_STYLE_CARD );
+    if ( highlighted ) {
+        Frontend_ColorWithAlpha( buttonColor, frontendFocusColor, alpha );
+    } else {
+        Frontend_ColorWithAlpha( buttonColor, frontendProgressColor, alpha );
+    }
+    Frontend_ColorWithAlpha( borderColor, frontendBorderColor, alpha * 0.70f );
+    Frontend_ColorWithAlpha( accentColor, frontendAccentColor, alpha );
+
+    /* Buttons are intentionally flatter than cards. A single quiet edge and
+     * a slim active bar give them hierarchy without the old stacked-panel
+     * shadow treatment. */
+    UI_FillRect( x, y, width, height, buttonColor );
+    UI_FillRect( x, y, width, 1, borderColor );
+    if ( highlighted ) {
+        UI_FillRect( x, y, 2, height, accentColor );
+    }
 
     if ( highlighted ) {
         Frontend_ColorWithAlpha( textColor, frontendAccentColor, alpha );
@@ -287,7 +304,7 @@ qboolean Frontend_DrawButton( int x, int y, int width, int height,
 
     Frontend_DrawText( x + ( textAlign == UI_CENTER ? width / 2 : UI_FRONTEND_SPACE_MD ),
                        y + ( height - SMALLCHAR_HEIGHT ) / 2,
-                       label, textAlign | UI_SMALLFONT | UI_DROPSHADOW, textColor );
+                       label, textAlign | UI_SMALLFONT, textColor );
 
     return hovered;
 }
@@ -305,8 +322,10 @@ qboolean Frontend_DrawNavButton( int x, int y, int width, int height,
 
     /* Navigation stays visually quiet until it is selected. */
     if ( highlighted ) {
-        Frontend_DrawPanel( x, y, width, height, alpha,
-                            UI_FRONTEND_STYLE_ACTIVE );
+        Frontend_ColorWithAlpha( textColor, frontendFocusColor, alpha );
+        UI_FillRect( x, y, width, height, textColor );
+        Frontend_ColorWithAlpha( textColor, frontendAccentColor, alpha );
+        UI_FillRect( x, y, 2, height, textColor );
     }
 
     if ( highlighted ) {
@@ -317,7 +336,7 @@ qboolean Frontend_DrawNavButton( int x, int y, int width, int height,
 
     Frontend_DrawText( x + ( textAlign == UI_CENTER ? width / 2 : UI_FRONTEND_SPACE_MD ),
                        y + ( height - SMALLCHAR_HEIGHT ) / 2,
-                       label, textAlign | UI_SMALLFONT | UI_DROPSHADOW, textColor );
+                       label, textAlign | UI_SMALLFONT, textColor );
     return hovered;
 }
 
