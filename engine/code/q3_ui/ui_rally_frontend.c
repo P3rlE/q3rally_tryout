@@ -29,6 +29,15 @@ qhandle_t Frontend_BackgroundShader( void ) {
     return frontendBackgroundShader ? frontendBackgroundShader : uis.menuBackShader;
 }
 
+void Frontend_DrawBackground( const float *scrimColor ) {
+    UI_SetColor( NULL );
+    UI_DrawBackground( Frontend_BackgroundShader() );
+    if ( scrimColor ) {
+        UI_FillRect( -uis.bias, 0, SCREEN_WIDTH + uis.bias * 2,
+                     SCREEN_HEIGHT, scrimColor );
+    }
+}
+
 /* The legacy UI text path treats every glyph as a full 8/16 pixel cell.
  * The modern screens use the same atlas, but with a tighter advance and a
  * slightly wider glyph quad. This keeps the type readable without the wide,

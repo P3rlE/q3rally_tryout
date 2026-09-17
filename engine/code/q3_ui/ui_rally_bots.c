@@ -544,11 +544,7 @@ static void UI_BotsMenu_Draw(void) {
     char pageStr[32];
     const char *favoriteWeapon;
 
-    UI_SetColor( NULL );
-    UI_DrawHandlePic( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
-                      Frontend_BackgroundShader() );
-    UI_SetColor( NULL );
-    UI_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, scrimColor );
+    Frontend_DrawBackground( scrimColor );
 
     Frontend_DrawPanel( RIVALS_FRAME_X, RIVALS_FRAME_Y,
                         RIVALS_FRAME_W, RIVALS_FRAME_H, 1.0f,

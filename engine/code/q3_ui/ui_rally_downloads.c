@@ -776,11 +776,7 @@ static void DownloadsMenu_Draw( void ) {
         s_dl.lastStateCheck = now;
     }
 
-    UI_SetColor( NULL );
-    UI_DrawHandlePic( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
-                      Frontend_BackgroundShader() );
-    UI_SetColor( NULL );
-    UI_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, scrimColor );
+    Frontend_DrawBackground( scrimColor );
 
     Frontend_DrawPanel( DL_FRAME_X, DL_FRAME_Y, DL_FRAME_WIDTH, DL_FRAME_HEIGHT,
                         1.0f, UI_FRONTEND_STYLE_FRAME );

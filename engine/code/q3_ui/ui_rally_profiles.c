@@ -1632,12 +1632,7 @@ static void UI_ProfileOverlay_Draw( void ) {
     Vector4Copy( profileMutedColor, mutedColor );
     Vector4Copy( s_profileOverlay.statusColor, statusColor );
 
-    UI_SetColor( NULL );
-    UI_DrawHandlePic( 0, 0, PROFILE_OVERLAY_SCREEN_WIDTH,
-                      PROFILE_OVERLAY_SCREEN_HEIGHT, Frontend_BackgroundShader() );
-    UI_SetColor( NULL );
-    UI_FillRect( 0, 0, PROFILE_OVERLAY_SCREEN_WIDTH,
-                 PROFILE_OVERLAY_SCREEN_HEIGHT, scrimColor );
+    Frontend_DrawBackground( scrimColor );
 
     Frontend_DrawPanel( PROFILE_FRONTEND_PANEL_X, PROFILE_FRONTEND_PANEL_Y,
                         PROFILE_FRONTEND_PANEL_W, PROFILE_FRONTEND_PANEL_H,

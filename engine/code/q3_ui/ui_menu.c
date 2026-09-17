@@ -646,8 +646,6 @@ static void Main_MenuDraw( void ) {
         vec4_t heroOverlayColor;
         vec4_t textColor;
         vec4_t mutedColor;
-        float viewportLeft;
-        float viewportWidth;
         float railX;
         float heroX;
         float heroWidth;
@@ -663,19 +661,13 @@ static void Main_MenuDraw( void ) {
         MainMenu_ColorWithAlpha( textColor, s_frontendText );
         MainMenu_ColorWithAlpha( mutedColor, s_frontendMuted );
 
-        viewportLeft = MainMenu_ViewportLeft();
-        viewportWidth = MainMenu_ViewportRight() - viewportLeft;
         railX = MainMenu_RailX();
         heroX = MainMenu_HeroX();
         heroWidth = MainMenu_HeroWidth();
 
         /* The generated garage scene is the shared frontend backdrop. The
          * scrim keeps it atmospheric while leaving the subject visible. */
-        UI_SetColor( NULL );
-        UI_DrawHandlePic( viewportLeft, 0, viewportWidth, SCREEN_HEIGHT,
-                          Frontend_BackgroundShader() );
-        UI_SetColor( NULL );
-        UI_FillRect( viewportLeft, 0, viewportWidth, SCREEN_HEIGHT, scrimColor );
+        Frontend_DrawBackground( scrimColor );
 
         Frontend_DrawSidebar( (int)railX, 32, (int)MainMenu_RailWidth(), 410,
                               NULL, s_main.visualAlpha );

@@ -627,8 +627,6 @@ static void UI_GFX_Loading_MenuDraw(void) {
     int         textY;
     const char *stageName;
     float       deltaTime;
-    float       viewportLeft;
-    float       viewportWidth;
     float       railX;
     float       contentX;
     float       contentRight;
@@ -638,8 +636,6 @@ static void UI_GFX_Loading_MenuDraw(void) {
     vec4_t      color;
     static int  lastDrawTime = 0;
 
-    viewportLeft  = GFX_ViewportLeft();
-    viewportWidth = GFX_ViewportRight() - viewportLeft;
     railX         = GFX_RailX();
     contentX      = GFX_ContentX();
     contentRight  = GFX_ContentRight();
@@ -670,11 +666,8 @@ static void UI_GFX_Loading_MenuDraw(void) {
 
     /* Use the same full-width background, rail, and hero-panel language as
      * the main menu. */
-    UI_SetColor(NULL);
-    UI_DrawHandlePic(viewportLeft, 0, viewportWidth, SCREEN_HEIGHT,
-                     Frontend_BackgroundShader());
     Vector4Copy(gfxBackdropColor, color);
-    UI_FillRect(viewportLeft, 0, viewportWidth, SCREEN_HEIGHT, color);
+    Frontend_DrawBackground(color);
 
     Frontend_DrawPanel((int)railX, GFX_RAIL_Y, 210, GFX_RAIL_H,
                        1.0f, UI_FRONTEND_STYLE_SURFACE);
