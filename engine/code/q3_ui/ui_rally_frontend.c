@@ -16,14 +16,40 @@ static vec4_t frontendTextColor    = UI_FRONTEND_COLOR_TEXT;
 static vec4_t frontendMutedColor   = UI_FRONTEND_COLOR_MUTED;
 static vec4_t frontendProgressColor = UI_FRONTEND_COLOR_PROGRESS;
 static vec4_t frontendHeroOverlayColor = UI_FRONTEND_COLOR_HERO_OVERLAY;
+static const char *frontendBackgroundNames[] = {
+    "gfx/ui/q3rally_frontend_bg",
+    "gfx/ui/q3rally_frontend_bg_alt"
+};
+static qhandle_t frontendBackgroundShaders[ARRAY_LEN( frontendBackgroundNames )];
 static qhandle_t frontendBackgroundShader;
 static qboolean frontendBackgroundAttempted;
+static menuframework_s *frontendBackgroundMenu;
+static int frontendBackgroundIndex = -1;
 
 qhandle_t Frontend_BackgroundShader( void ) {
+    int i;
+    int nextIndex;
+
     if ( !frontendBackgroundAttempted ) {
         frontendBackgroundAttempted = qtrue;
-        frontendBackgroundShader = trap_R_RegisterShaderNoMip(
-            "gfx/ui/q3rally_frontend_bg" );
+        for ( i = 0; i < ARRAY_LEN( frontendBackgroundNames ); i++ ) {
+            frontendBackgroundShaders[i] = trap_R_RegisterShaderNoMip(
+                frontendBackgroundNames[i] );
+        }
+    }
+
+    /* Pick once when a frontend menu becomes active. This keeps the image
+     * stable while a screen is open, but gives each screen a fresh backdrop. */
+    if ( !frontendBackgroundShader || uis.activemenu != frontendBackgroundMenu ) {
+        frontendBackgroundMenu = uis.activemenu;
+
+        nextIndex = UI_RandomInt( ARRAY_LEN( frontendBackgroundNames ) );
+        if ( ARRAY_LEN( frontendBackgroundNames ) > 1 &&
+             nextIndex == frontendBackgroundIndex ) {
+            nextIndex = ( nextIndex + 1 ) % ARRAY_LEN( frontendBackgroundNames );
+        }
+        frontendBackgroundIndex = nextIndex;
+        frontendBackgroundShader = frontendBackgroundShaders[nextIndex];
     }
 
     return frontendBackgroundShader ? frontendBackgroundShader : uis.menuBackShader;
