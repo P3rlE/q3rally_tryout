@@ -18,7 +18,9 @@ static vec4_t frontendProgressColor = UI_FRONTEND_COLOR_PROGRESS;
 static vec4_t frontendHeroOverlayColor = UI_FRONTEND_COLOR_HERO_OVERLAY;
 static const char *frontendBackgroundNames[] = {
     "gfx/ui/q3rally_frontend_bg",
-    "gfx/ui/q3rally_frontend_bg_alt"
+    "gfx/ui/q3rally_frontend_bg_alt",
+    "gfx/ui/q3rally_frontend_bg_alt2",
+    "gfx/ui/q3rally_frontend_bg_alt3"
 };
 static qhandle_t frontendBackgroundShaders[ARRAY_LEN( frontendBackgroundNames )];
 static qhandle_t frontendBackgroundShader;
