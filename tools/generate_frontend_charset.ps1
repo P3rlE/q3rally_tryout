@@ -20,9 +20,9 @@ $bitmap = New-Object System.Drawing.Bitmap(
 )
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 $font = New-Object System.Drawing.Font(
-    "Segoe UI Semibold",
+    "Agency FB",
         24,
-    [System.Drawing.FontStyle]::Regular,
+    [System.Drawing.FontStyle]::Bold,
     [System.Drawing.GraphicsUnit]::Pixel
 )
 $brush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::White)
