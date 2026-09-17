@@ -43,17 +43,17 @@ Copyright (C) 2002-2026 Q3Rally Team
 
 /* Main-menu frontend palette. Keep it separate from the blue wizard palette. */
 #define UI_FRONTEND_COLOR_SCRIM        { 0.01f, 0.015f, 0.02f, 0.90f }
-#define UI_FRONTEND_COLOR_PANEL        { 0.025f, 0.032f, 0.040f, 0.97f }
-#define UI_FRONTEND_COLOR_PANEL_ALT    { 0.055f, 0.065f, 0.072f, 0.97f }
-#define UI_FRONTEND_COLOR_HERO_OVERLAY { 0.025f, 0.032f, 0.040f, 0.74f }
-#define UI_FRONTEND_COLOR_BORDER       { 0.15f, 0.19f, 0.19f, 0.62f }
+#define UI_FRONTEND_COLOR_PANEL        { 0.025f, 0.032f, 0.040f, 0.94f }
+#define UI_FRONTEND_COLOR_PANEL_ALT    { 0.055f, 0.065f, 0.072f, 0.88f }
+#define UI_FRONTEND_COLOR_HERO_OVERLAY { 0.025f, 0.032f, 0.040f, 0.60f }
+#define UI_FRONTEND_COLOR_BORDER       { 0.18f, 0.24f, 0.23f, 0.36f }
 #define UI_FRONTEND_COLOR_ACCENT       { 0.72f, 1.00f, 0.06f, 1.00f }
 #define UI_FRONTEND_COLOR_TEXT         { 0.92f, 0.96f, 0.95f, 1.00f }
-#define UI_FRONTEND_COLOR_MUTED        { 0.48f, 0.55f, 0.56f, 1.00f }
-#define UI_FRONTEND_COLOR_FOCUS_BG     { 0.10f, 0.16f, 0.115f, 0.98f }
+#define UI_FRONTEND_COLOR_MUTED        { 0.44f, 0.51f, 0.51f, 1.00f }
+#define UI_FRONTEND_COLOR_FOCUS_BG     { 0.10f, 0.18f, 0.12f, 0.72f }
 #define UI_FRONTEND_COLOR_STATUS       { 0.96f, 0.42f, 0.12f, 1.00f }
-#define UI_FRONTEND_COLOR_SHADOW       { 0.00f, 0.00f, 0.00f, 0.42f }
-#define UI_FRONTEND_COLOR_PROGRESS     { 0.11f, 0.14f, 0.15f, 1.00f }
+#define UI_FRONTEND_COLOR_SHADOW       { 0.00f, 0.00f, 0.00f, 0.18f }
+#define UI_FRONTEND_COLOR_PROGRESS     { 0.11f, 0.14f, 0.15f, 0.82f }
 
 /* Shared layout tokens. The UI still renders in the 640x480 virtual space. */
 #define UI_FRONTEND_SPACE_XS           4
@@ -62,8 +62,8 @@ Copyright (C) 2002-2026 Q3Rally Team
 #define UI_FRONTEND_SPACE_LG           24
 #define UI_FRONTEND_SPACE_XL           32
 #define UI_FRONTEND_PANEL_EDGE         1
-#define UI_FRONTEND_PANEL_TOPBAR       2
-#define UI_FRONTEND_PANEL_SHADOW       4
+#define UI_FRONTEND_PANEL_TOPBAR       1
+#define UI_FRONTEND_PANEL_SHADOW       0
 #define UI_FRONTEND_BUTTON_HEIGHT      24
 #define UI_FRONTEND_STATUS_DOT         6
 #define UI_FRONTEND_RADIUS             0 /* legacy renderer: use quiet edge styles */

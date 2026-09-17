@@ -14,7 +14,6 @@ static vec4_t frontendBorderColor  = UI_FRONTEND_COLOR_BORDER;
 static vec4_t frontendAccentColor  = UI_FRONTEND_COLOR_ACCENT;
 static vec4_t frontendTextColor    = UI_FRONTEND_COLOR_TEXT;
 static vec4_t frontendMutedColor   = UI_FRONTEND_COLOR_MUTED;
-static vec4_t frontendShadowColor  = UI_FRONTEND_COLOR_SHADOW;
 static vec4_t frontendProgressColor = UI_FRONTEND_COLOR_PROGRESS;
 static vec4_t frontendHeroOverlayColor = UI_FRONTEND_COLOR_HERO_OVERLAY;
 
@@ -225,14 +224,15 @@ void Frontend_DrawPanel( int x, int y, int width, int height,
     vec4_t fillColor;
     vec4_t borderColor;
     vec4_t accentColor;
-    vec4_t shadowColor;
 
     Frontend_ColorWithAlpha( borderColor, frontendBorderColor, alpha );
     Frontend_ColorWithAlpha( accentColor, frontendAccentColor, alpha );
 
     if ( style == UI_FRONTEND_STYLE_FRAME ) {
-        UI_DrawRect( x, y, width, height, borderColor );
+        /* Frames are intentionally open: one signal line gives the surface
+         * an edge without turning it into another boxed window. */
         UI_FillRect( x, y, width, UI_FRONTEND_PANEL_TOPBAR, accentColor );
+        UI_FillRect( x, y + height - 1, width, 1, borderColor );
         return;
     }
 
@@ -244,18 +244,14 @@ void Frontend_DrawPanel( int x, int y, int width, int height,
         Frontend_ColorWithAlpha( fillColor, frontendPanelColor, alpha );
     }
 
-    if ( style != UI_FRONTEND_STYLE_SURFACE ) {
-        Frontend_ColorWithAlpha( shadowColor, frontendShadowColor, alpha );
-        UI_FillRect( x + UI_FRONTEND_PANEL_SHADOW,
-                     y + UI_FRONTEND_PANEL_SHADOW,
-                     width, height, shadowColor );
-    }
-
     UI_FillRect( x, y, width, height, fillColor );
-    UI_FillRect( x, y, width, UI_FRONTEND_PANEL_TOPBAR, borderColor );
 
     if ( style == UI_FRONTEND_STYLE_ACTIVE ) {
-        UI_FillRect( x, y, UI_FRONTEND_PANEL_TOPBAR, height, accentColor );
+        UI_FillRect( x, y, 2, height, accentColor );
+    } else if ( style == UI_FRONTEND_STYLE_CARD ) {
+        /* Cards get one quiet hairline instead of a complete border. */
+        borderColor[3] *= 0.65f;
+        UI_FillRect( x, y, width, 1, borderColor );
     }
 }
 
@@ -279,21 +275,19 @@ qboolean Frontend_DrawButton( int x, int y, int width, int height,
                 uis.cursory >= y && uis.cursory <= y + height ) ? qtrue : qfalse;
     highlighted = ( active || hovered ) ? qtrue : qfalse;
 
-    if ( highlighted ) {
-        Frontend_ColorWithAlpha( buttonColor, frontendFocusColor, alpha );
-    } else {
-        Frontend_ColorWithAlpha( buttonColor, frontendProgressColor, alpha );
-    }
+    Frontend_ColorWithAlpha( buttonColor, frontendFocusColor, alpha );
     Frontend_ColorWithAlpha( borderColor, frontendBorderColor, alpha * 0.70f );
     Frontend_ColorWithAlpha( accentColor, frontendAccentColor, alpha );
 
-    /* Buttons are intentionally flatter than cards. A single quiet edge and
-     * a slim active bar give them hierarchy without the old stacked-panel
-     * shadow treatment. */
-    UI_FillRect( x, y, width, height, buttonColor );
-    UI_FillRect( x, y, width, 1, borderColor );
+    /* Flat controls are transparent at rest. Interaction is communicated by
+     * a soft wash and an underline, rather than a raised rectangle. */
     if ( highlighted ) {
-        UI_FillRect( x, y, 2, height, accentColor );
+        buttonColor[3] *= 0.58f;
+        UI_FillRect( x, y, width, height, buttonColor );
+    }
+    UI_FillRect( x, y + height - 1, width, 1, borderColor );
+    if ( highlighted ) {
+        UI_FillRect( x, y + height - 2, width, 2, accentColor );
     }
 
     if ( highlighted ) {
@@ -322,10 +316,10 @@ qboolean Frontend_DrawNavButton( int x, int y, int width, int height,
 
     /* Navigation stays visually quiet until it is selected. */
     if ( highlighted ) {
-        Frontend_ColorWithAlpha( textColor, frontendFocusColor, alpha );
+        Frontend_ColorWithAlpha( textColor, frontendFocusColor, alpha * 0.55f );
         UI_FillRect( x, y, width, height, textColor );
         Frontend_ColorWithAlpha( textColor, frontendAccentColor, alpha );
-        UI_FillRect( x, y, 2, height, textColor );
+        UI_FillRect( x, y + height - 2, width, 2, textColor );
     }
 
     if ( highlighted ) {
