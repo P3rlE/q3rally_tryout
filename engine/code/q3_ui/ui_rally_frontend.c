@@ -16,6 +16,18 @@ static vec4_t frontendTextColor    = UI_FRONTEND_COLOR_TEXT;
 static vec4_t frontendMutedColor   = UI_FRONTEND_COLOR_MUTED;
 static vec4_t frontendProgressColor = UI_FRONTEND_COLOR_PROGRESS;
 static vec4_t frontendHeroOverlayColor = UI_FRONTEND_COLOR_HERO_OVERLAY;
+static qhandle_t frontendBackgroundShader;
+static qboolean frontendBackgroundAttempted;
+
+qhandle_t Frontend_BackgroundShader( void ) {
+    if ( !frontendBackgroundAttempted ) {
+        frontendBackgroundAttempted = qtrue;
+        frontendBackgroundShader = trap_R_RegisterShaderNoMip(
+            "gfx/ui/q3rally_frontend_bg" );
+    }
+
+    return frontendBackgroundShader ? frontendBackgroundShader : uis.menuBackShader;
+}
 
 /* The legacy UI text path treats every glyph as a full 8/16 pixel cell.
  * The modern screens use the same atlas, but with a tighter advance and a

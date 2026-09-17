@@ -671,7 +671,8 @@ static void UI_GFX_Loading_MenuDraw(void) {
     /* Use the same full-width background, rail, and hero-panel language as
      * the main menu. */
     UI_SetColor(NULL);
-    UI_DrawHandlePic(viewportLeft, 0, viewportWidth, SCREEN_HEIGHT, uis.menuBackShader);
+    UI_DrawHandlePic(viewportLeft, 0, viewportWidth, SCREEN_HEIGHT,
+                     Frontend_BackgroundShader());
     Vector4Copy(gfxBackdropColor, color);
     UI_FillRect(viewportLeft, 0, viewportWidth, SCREEN_HEIGHT, color);
 
@@ -680,7 +681,8 @@ static void UI_GFX_Loading_MenuDraw(void) {
 
     UI_FillRect(contentX, GFX_CONTENT_Y, contentWidth, GFX_CONTENT_H, gfxPanelColor);
     UI_SetColor(NULL);
-    UI_DrawHandlePic(contentX, GFX_CONTENT_Y, contentWidth, GFX_CONTENT_H, uis.menuBackShader);
+    UI_DrawHandlePic(contentX, GFX_CONTENT_Y, contentWidth, GFX_CONTENT_H,
+                     Frontend_BackgroundShader());
     UI_FillRect(contentX, GFX_CONTENT_Y, contentWidth, GFX_CONTENT_H, gfxHeroOverlayColor);
     Frontend_DrawPanel((int)contentX, GFX_CONTENT_Y, (int)contentWidth,
                        GFX_CONTENT_H, 1.0f, UI_FRONTEND_STYLE_FRAME);

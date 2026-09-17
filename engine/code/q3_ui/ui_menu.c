@@ -669,15 +669,20 @@ static void Main_MenuDraw( void ) {
         heroX = MainMenu_HeroX();
         heroWidth = MainMenu_HeroWidth();
 
-        /* The existing menu shader remains the atmospheric hero background.
-         * These surfaces turn it into a readable, website-like composition. */
+        /* The generated garage scene is the shared frontend backdrop. The
+         * scrim keeps it atmospheric while leaving the subject visible. */
+        UI_SetColor( NULL );
+        UI_DrawHandlePic( viewportLeft, 0, viewportWidth, SCREEN_HEIGHT,
+                          Frontend_BackgroundShader() );
+        UI_SetColor( NULL );
         UI_FillRect( viewportLeft, 0, viewportWidth, SCREEN_HEIGHT, scrimColor );
 
         Frontend_DrawSidebar( (int)railX, 32, (int)MainMenu_RailWidth(), 410,
                               NULL, s_main.visualAlpha );
 
         UI_SetColor( heroOverlayColor );
-        UI_DrawHandlePic( heroX, 32, heroWidth, 410, uis.menuBackShader );
+        UI_DrawHandlePic( heroX, 32, heroWidth, 410,
+                          Frontend_BackgroundShader() );
         UI_SetColor( NULL );
         UI_FillRect( heroX, 32, heroWidth, 410, heroOverlayColor );
         Frontend_DrawPanel( (int)heroX, 32, (int)heroWidth, 410,

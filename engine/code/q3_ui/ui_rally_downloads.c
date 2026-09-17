@@ -776,8 +776,9 @@ static void DownloadsMenu_Draw( void ) {
         s_dl.lastStateCheck = now;
     }
 
-    UI_SetColor( scrimColor );
-    UI_DrawHandlePic( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, uis.menuBackShader );
+    UI_SetColor( NULL );
+    UI_DrawHandlePic( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
+                      Frontend_BackgroundShader() );
     UI_SetColor( NULL );
     UI_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, scrimColor );
 
