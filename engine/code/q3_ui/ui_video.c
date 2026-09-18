@@ -347,6 +347,7 @@ GRAPHICS OPTIONS MENU
 #define GRAPHICS_COLUMN_GAP	8
 #define GRAPHICS_COLUMN_LEFT_X	236
 #define GRAPHICS_COLUMN_RIGHT_X	420
+#define GRAPHICS_VALUE_OFFSET	112
 #define GRAPHICS_ACTION_Y		420
 #define GRAPHICS_ACTION_HEIGHT	24
 #define GRAPHICS_ACTION_WIDTH	120
@@ -899,9 +900,9 @@ static void GraphicsOptions_DrawSetting( void *self )
 	Frontend_DrawText( item->left + UI_FRONTEND_SPACE_SM,
 		item->top + ( item->bottom - item->top - SMALLCHAR_HEIGHT ) / 2,
 		item->name, UI_LEFT | UI_SMALLFONT, labelColor );
-	Frontend_DrawText( item->right - UI_FRONTEND_SPACE_SM,
+	Frontend_DrawText( item->left + GRAPHICS_VALUE_OFFSET,
 		item->top + ( item->bottom - item->top - SMALLCHAR_HEIGHT ) / 2,
-		value, UI_RIGHT | UI_SMALLFONT, valueColor );
+		value, UI_LEFT | UI_SMALLFONT, valueColor );
 }
 
 static void GraphicsOptions_DrawAction( void *self )
