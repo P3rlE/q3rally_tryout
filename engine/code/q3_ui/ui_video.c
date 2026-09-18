@@ -1750,6 +1750,41 @@ void GraphicsOptions_MenuInit( void )
 	s_graphicsoptions.apply.style					= UI_RIGHT | UI_SMALLFONT;
 // END
 
+// STONELANCE
+/*
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.framel );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.framer );
+*/
+// END
+
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.graphics );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.advanced_graphics );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.display );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.sound );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.network );
+
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.list );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.driver );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.allow_extensions );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.ratio );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.mode );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.colordepth );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.fs );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.lighting );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.geometry );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.tq );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.texturebits );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.filter );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.anisotropy );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.msaa );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.driverinfo );
+
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.back );
+	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.apply );
+
+	/* Menu_AddItem initializes the legacy widgets and overwrites their
+	 * default bounds. Apply the frontend layout after that initialization so
+	 * the custom ownerdraw positions are the ones used for drawing and input. */
 	GraphicsOptions_SetNavBounds( &s_graphicsoptions.graphics,
 		ID_GRAPHICS, "Graphics", 152 );
 	GraphicsOptions_SetNavBounds( &s_graphicsoptions.advanced_graphics,
@@ -1814,38 +1849,6 @@ void GraphicsOptions_MenuInit( void )
 	GraphicsOptions_SetBounds( &s_graphicsoptions.apply.generic, ID_APPLY,
 		GRAPHICS_FRAME_X + GRAPHICS_FRAME_WIDTH - GRAPHICS_ACTION_WIDTH,
 		GRAPHICS_ACTION_Y, GRAPHICS_ACTION_WIDTH, GRAPHICS_ACTION_HEIGHT, NULL );
-
-// STONELANCE
-/*
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.framel );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.framer );
-*/
-// END
-
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.graphics );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.advanced_graphics );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.display );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.sound );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.network );
-
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.list );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.driver );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.allow_extensions );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.ratio );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.mode );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.colordepth );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.fs );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.lighting );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.geometry );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.tq );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.texturebits );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.filter );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.anisotropy );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.msaa );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.driverinfo );
-
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.back );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.apply );
 
 	GraphicsOptions_SetMenuItems();
 	GraphicsOptions_GetInitialVideo();
