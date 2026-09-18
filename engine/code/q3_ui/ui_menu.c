@@ -797,6 +797,13 @@ void UI_MainMenu( void ) {
         char musicFiles[256][MAX_QPATH];
         char musicCommand[MAX_QPATH];
         int menuSpacing;
+        qboolean returnToConfig;
+
+
+        returnToConfig = trap_Cvar_VariableValue( "q3r_ui_return_config" ) != 0.0f;
+        if ( returnToConfig ) {
+                trap_Cvar_Set( "q3r_ui_return_config", "0" );
+        }
 
 
         numMusicFiles = UI_BuildFileList("music", "ogg", "menumusic", qtrue, qfalse, qfalse, 0, musicFiles);
@@ -946,6 +953,10 @@ void UI_MainMenu( void ) {
         /* Q3RALLY LADDER: show offline tracking wizard for existing players
          * who update to v0.8 and have not yet registered. */
         UI_LadderWizard_MaybeShow();
+
+        if ( returnToConfig && uis.activemenu == &s_main.menu ) {
+                UI_SetupMenu();
+        }
 
         if ( uis.activemenu == &s_main.menu ) {
                 uis.transitionIn = uis.realtime;

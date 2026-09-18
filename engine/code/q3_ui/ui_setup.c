@@ -52,7 +52,7 @@ logic remains unchanged while each screen is migrated separately.
 #define CONFIG_FRAME_WIDTH      592
 #define CONFIG_FRAME_HEIGHT     440
 #define CONFIG_LIST_X           40
-#define CONFIG_LIST_Y           132
+#define CONFIG_LIST_Y           148
 #define CONFIG_LIST_WIDTH       202
 #define CONFIG_LIST_HEIGHT      276
 #define CONFIG_ROW_X            ( CONFIG_LIST_X + 16 )
@@ -205,12 +205,12 @@ static void UI_SetupMenu_Draw( void ) {
                              CONFIG_FRAME_Y + 26, "Settings",
                              configAccentColor, 1.0f );
 
-    Frontend_DrawCard( CONFIG_LIST_X, CONFIG_LIST_Y - 28,
+    Frontend_DrawCard( CONFIG_LIST_X, CONFIG_LIST_Y - 44,
                        CONFIG_LIST_WIDTH, CONFIG_LIST_HEIGHT, 1.0f, qfalse );
     Frontend_DrawCard( CONFIG_DETAIL_X, CONFIG_DETAIL_Y,
                        CONFIG_DETAIL_WIDTH, CONFIG_DETAIL_HEIGHT, 1.0f,
                        qfalse );
-    Frontend_DrawText( CONFIG_LIST_X + 16, CONFIG_LIST_Y - 10,
+    Frontend_DrawText( CONFIG_LIST_X + 16, CONFIG_LIST_Y - 28,
                        "Categories", UI_LEFT | UI_SMALLFONT,
                        configMutedColor );
     Frontend_DrawText( CONFIG_DETAIL_X + 20, CONFIG_DETAIL_Y + 18,

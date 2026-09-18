@@ -875,7 +875,12 @@ static void GraphicsOptions_ApplyChanges( void *unused, int notification )
 		}
 	}
 
-	trap_Cmd_ExecuteText( EXEC_APPEND, "vid_restart\n" );
+	/* A video restart reloads the UI VM and therefore clears the menu stack.
+	 * Remember that this Apply came from Config so the freshly initialized
+	 * frontend can restore the user to the Config hub instead of the main
+	 * menu. */
+	trap_Cmd_ExecuteText( EXEC_APPEND,
+		"set q3r_ui_return_config 1\nvid_restart\n" );
 }
 
 /*
