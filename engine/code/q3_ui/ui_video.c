@@ -809,6 +809,23 @@ static const char *GraphicsOptions_ListValue( menulist_s *item )
 
 static const char *GraphicsOptions_CurrentValue( menucommon_s *item )
 {
+	if ( item->id == ID_LIST ) {
+		switch ( s_graphicsoptions.list.curvalue ) {
+		case 0:
+			return "Very high";
+		case 1:
+			return "High";
+		case 2:
+			return "Normal";
+		case 3:
+			return "Fast";
+		case 4:
+			return "Fastest";
+		default:
+			return "Custom";
+		}
+	}
+
 	if ( item->id == ID_TEXTUREDETAIL ) {
 		switch ( (int)s_graphicsoptions.tq.curvalue ) {
 		case 0:
