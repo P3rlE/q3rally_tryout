@@ -343,10 +343,10 @@ GRAPHICS OPTIONS MENU
 #define GRAPHICS_ROW_HEIGHT	24
 #define GRAPHICS_ROW_GAP		4
 #define GRAPHICS_ROW_START_Y	148
-#define GRAPHICS_COLUMN_WIDTH	164
+#define GRAPHICS_COLUMN_WIDTH	176
 #define GRAPHICS_COLUMN_GAP	8
 #define GRAPHICS_COLUMN_LEFT_X	236
-#define GRAPHICS_COLUMN_RIGHT_X	408
+#define GRAPHICS_COLUMN_RIGHT_X	420
 #define GRAPHICS_ACTION_Y		420
 #define GRAPHICS_ACTION_HEIGHT	24
 #define GRAPHICS_ACTION_WIDTH	120
@@ -1784,7 +1784,7 @@ void GraphicsOptions_MenuInit( void )
 		GRAPHICS_ROW_START_Y + 6 * ( GRAPHICS_ROW_HEIGHT + GRAPHICS_ROW_GAP ) );
 
 	GraphicsOptions_SetSettingBounds( &s_graphicsoptions.allow_extensions.generic,
-		ID_EXTENSIONS, "GL extensions", GRAPHICS_COLUMN_RIGHT_X,
+		ID_EXTENSIONS, "Extensions", GRAPHICS_COLUMN_RIGHT_X,
 		GRAPHICS_ROW_START_Y );
 	GraphicsOptions_SetSettingBounds( &s_graphicsoptions.lighting.generic,
 		ID_LIGHTING, "Lighting", GRAPHICS_COLUMN_RIGHT_X,
@@ -1796,10 +1796,10 @@ void GraphicsOptions_MenuInit( void )
 		ID_TEXTUREDETAIL, "Texture detail", GRAPHICS_COLUMN_RIGHT_X,
 		GRAPHICS_ROW_START_Y + 3 * ( GRAPHICS_ROW_HEIGHT + GRAPHICS_ROW_GAP ) );
 	GraphicsOptions_SetSettingBounds( &s_graphicsoptions.texturebits.generic,
-		ID_TEXTUREQUALITY, "Texture quality", GRAPHICS_COLUMN_RIGHT_X,
+		ID_TEXTUREQUALITY, "Tex. quality", GRAPHICS_COLUMN_RIGHT_X,
 		GRAPHICS_ROW_START_Y + 4 * ( GRAPHICS_ROW_HEIGHT + GRAPHICS_ROW_GAP ) );
 	GraphicsOptions_SetSettingBounds( &s_graphicsoptions.filter.generic,
-		ID_FILTER, "Texture filter", GRAPHICS_COLUMN_RIGHT_X,
+		ID_FILTER, "Tex. filter", GRAPHICS_COLUMN_RIGHT_X,
 		GRAPHICS_ROW_START_Y + 5 * ( GRAPHICS_ROW_HEIGHT + GRAPHICS_ROW_GAP ) );
 	GraphicsOptions_SetSettingBounds( &s_graphicsoptions.anisotropy.generic,
 		ID_ANISOTROPY, "Anisotropic", GRAPHICS_COLUMN_RIGHT_X,
