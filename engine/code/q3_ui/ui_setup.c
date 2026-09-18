@@ -52,17 +52,17 @@ logic remains unchanged while each screen is migrated separately.
 #define CONFIG_FRAME_WIDTH      592
 #define CONFIG_FRAME_HEIGHT     440
 #define CONFIG_LIST_X           40
-#define CONFIG_LIST_Y           104
+#define CONFIG_LIST_Y           132
 #define CONFIG_LIST_WIDTH       202
-#define CONFIG_LIST_HEIGHT      292
+#define CONFIG_LIST_HEIGHT      276
 #define CONFIG_ROW_X            ( CONFIG_LIST_X + 16 )
 #define CONFIG_ROW_WIDTH        ( CONFIG_LIST_WIDTH - 32 )
 #define CONFIG_ROW_HEIGHT       28
 #define CONFIG_ROW_GAP          4
 #define CONFIG_DETAIL_X         266
-#define CONFIG_DETAIL_Y         88
+#define CONFIG_DETAIL_Y         104
 #define CONFIG_DETAIL_WIDTH     334
-#define CONFIG_DETAIL_HEIGHT    308
+#define CONFIG_DETAIL_HEIGHT    292
 #define CONFIG_ACTION_Y         420
 #define CONFIG_ACTION_HEIGHT    24
 #define CONFIG_ACTION_WIDTH     144
@@ -247,8 +247,8 @@ static void UI_SetupMenu_Draw( void ) {
 }
 
 static void UI_SetupMenu_OpenCategory( int id ) {
-    UI_PopMenu();
-
+    /* Keep the hub on the menu stack. Child screens can then use their
+     * existing UI_PopMenu() Back action to return here. */
     switch ( id ) {
     case ID_CUSTOMIZEPLAYER:
         UI_PlayerSettingsMenu();
