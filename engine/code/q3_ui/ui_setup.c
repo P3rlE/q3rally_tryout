@@ -45,20 +45,21 @@ logic remains unchanged while each screen is migrated separately.
 #define ID_Q3ROPTIONS           16
 #define ID_DEFAULTS             17
 #define ID_BACK                 18
+#define ID_DISPLAY              19
 
-#define CONFIG_CATEGORY_COUNT   7
+#define CONFIG_CATEGORY_COUNT   8
 #define CONFIG_FRAME_X          24
 #define CONFIG_FRAME_Y          20
 #define CONFIG_FRAME_WIDTH      592
 #define CONFIG_FRAME_HEIGHT     440
 #define CONFIG_LIST_X           40
-#define CONFIG_LIST_Y           148
+#define CONFIG_LIST_Y           136
 #define CONFIG_LIST_WIDTH       202
-#define CONFIG_LIST_HEIGHT      276
+#define CONFIG_LIST_HEIGHT      260
 #define CONFIG_ROW_X            ( CONFIG_LIST_X + 16 )
 #define CONFIG_ROW_WIDTH        ( CONFIG_LIST_WIDTH - 32 )
-#define CONFIG_ROW_HEIGHT       28
-#define CONFIG_ROW_GAP          4
+#define CONFIG_ROW_HEIGHT       26
+#define CONFIG_ROW_GAP          2
 #define CONFIG_DETAIL_X         266
 #define CONFIG_DETAIL_Y         104
 #define CONFIG_DETAIL_WIDTH     334
@@ -83,6 +84,7 @@ static const int configCategoryIds[CONFIG_CATEGORY_COUNT] = {
     ID_CUSTOMIZEPLAYER,
     ID_CUSTOMIZECONTROLS,
     ID_GRAPHICS,
+    ID_DISPLAY,
     ID_AUDIO,
     ID_NETWORK,
     ID_GAME,
@@ -93,7 +95,8 @@ static const char *configCategoryLabels[CONFIG_CATEGORY_COUNT] = {
     "Profile & vehicle",
     "Controls",
     "Graphics",
-    "Audio",
+    "Display",
+    "Sound",
     "Network",
     "Game options",
     "Q3R options"
@@ -103,6 +106,7 @@ static const char *configCategoryDescriptions[CONFIG_CATEGORY_COUNT][2] = {
     { "Choose your driver profile and", "tune the active vehicle." },
     { "Configure bindings, mouse feel", "and input behavior." },
     { "Shape display mode, image quality", "and advanced rendering." },
+    { "Tune brightness, screen size", "and display framing." },
     { "Balance music, effects and", "voice feedback." },
     { "Set connection, rate and", "server behavior." },
     { "Adjust gameplay rules and", "match preferences." },
@@ -205,12 +209,12 @@ static void UI_SetupMenu_Draw( void ) {
                              CONFIG_FRAME_Y + 26, "Settings",
                              configAccentColor, 1.0f );
 
-    Frontend_DrawCard( CONFIG_LIST_X, CONFIG_LIST_Y - 44,
+    Frontend_DrawCard( CONFIG_LIST_X, CONFIG_LIST_Y - 32,
                        CONFIG_LIST_WIDTH, CONFIG_LIST_HEIGHT, 1.0f, qfalse );
     Frontend_DrawCard( CONFIG_DETAIL_X, CONFIG_DETAIL_Y,
                        CONFIG_DETAIL_WIDTH, CONFIG_DETAIL_HEIGHT, 1.0f,
                        qfalse );
-    Frontend_DrawText( CONFIG_LIST_X + 16, CONFIG_LIST_Y - 28,
+    Frontend_DrawText( CONFIG_LIST_X + 16, CONFIG_LIST_Y - 16,
                        "Categories", UI_LEFT | UI_SMALLFONT,
                        configMutedColor );
     Frontend_DrawText( CONFIG_DETAIL_X + 20, CONFIG_DETAIL_Y + 18,
@@ -258,6 +262,9 @@ static void UI_SetupMenu_OpenCategory( int id ) {
         break;
     case ID_GRAPHICS:
         UI_GraphicsOptionsMenu();
+        break;
+    case ID_DISPLAY:
+        UI_DisplayOptionsMenu();
         break;
     case ID_AUDIO:
         UI_SoundOptionsMenu();
