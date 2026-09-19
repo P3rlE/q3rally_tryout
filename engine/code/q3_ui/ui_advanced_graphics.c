@@ -350,29 +350,6 @@ static void UI_AdvancedGraphicsOptionsMenu_Event( void* ptr, int event ) {
 	}
 
 	switch( ((menucommon_s*)ptr)->id ) {
-	case ID_GRAPHICS:
-		UI_PopMenu();
-		UI_GraphicsOptionsMenu();
-		break;
-
-	case ID_ADVANCED_GRAPHICS:
-		break;
-
-	case ID_DISPLAY:
-		UI_PopMenu();
-		UI_DisplayOptionsMenu();
-		break;
-
-	case ID_SOUND:
-		UI_PopMenu();
-		UI_SoundOptionsMenu();
-		break;
-
-	case ID_NETWORK:
-		UI_PopMenu();
-		UI_NetworkOptionsMenu();
-		break;
-
 	case ID_PRESET:
 		UI_AdvancedGraphicsOptionsMenu_ApplyPreset( advancedGraphicsOptionsInfo.preset.curvalue );
 		break;
@@ -585,7 +562,9 @@ static void UI_AdvancedGraphicsOptionsMenu_Draw( void ) {
 	Frontend_DrawCard( ADV_DETAIL_X, ADV_DETAIL_Y,
 		ADV_DETAIL_WIDTH, ADV_DETAIL_HEIGHT, 1.0f, qfalse );
 	Frontend_DrawText( ADV_NAV_X + 16, ADV_NAV_Y + 22,
-		"Settings", UI_LEFT | UI_SMALLFONT, advancedMutedColor );
+		"Parent", UI_LEFT | UI_SMALLFONT, advancedMutedColor );
+	Frontend_DrawText( ADV_NAV_X + 16, ADV_NAV_Y + 54,
+		"Graphics", UI_LEFT | UI_SMALLFONT, advancedTextColor );
 	Frontend_DrawText( ADV_DETAIL_X + 16, ADV_DETAIL_Y + 22,
 		"Lighting & effects", UI_LEFT | UI_SMALLFONT, advancedMutedColor );
 
@@ -904,11 +883,6 @@ static void UI_AdvancedGraphicsOptionsMenu_Init( void ) {
 	advancedGraphicsOptionsInfo.back.color                = text_color_normal;
 	advancedGraphicsOptionsInfo.back.style                = UI_LEFT | UI_SMALLFONT;
 
-	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.graphics );
-	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.advanced_graphics );
-	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.display );
-	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.sound );
-	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.network );
 	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.preset );
 	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.hdr );
 	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.postprocess );
@@ -930,17 +904,6 @@ static void UI_AdvancedGraphicsOptionsMenu_Init( void ) {
 	/* Menu_AddItem initializes the legacy widgets and overwrites their
 	 * default bounds. Apply the frontend layout after that initialization so
 	 * the custom ownerdraw positions are the ones used for drawing and input. */
-	AdvancedGraphics_SetNavBounds( &advancedGraphicsOptionsInfo.graphics,
-		ID_GRAPHICS, "Graphics", 152 );
-	AdvancedGraphics_SetNavBounds( &advancedGraphicsOptionsInfo.advanced_graphics,
-		ID_ADVANCED_GRAPHICS, "Advanced graphics", 182 );
-	AdvancedGraphics_SetNavBounds( &advancedGraphicsOptionsInfo.display,
-		ID_DISPLAY, "Display", 212 );
-	AdvancedGraphics_SetNavBounds( &advancedGraphicsOptionsInfo.sound,
-		ID_SOUND, "Sound", 242 );
-	AdvancedGraphics_SetNavBounds( &advancedGraphicsOptionsInfo.network,
-		ID_NETWORK, "Network", 272 );
-
 	AdvancedGraphics_SetSettingBounds( &advancedGraphicsOptionsInfo.preset.generic,
 		ID_PRESET, "Preset", ADV_COLUMN_LEFT_X, ADV_ROW_START_Y );
 	AdvancedGraphics_SetSettingBounds( &advancedGraphicsOptionsInfo.hdr.generic,

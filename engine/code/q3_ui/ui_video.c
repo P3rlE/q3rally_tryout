@@ -1127,27 +1127,8 @@ static void GraphicsOptions_Event( void* ptr, int event ) {
 		UI_PopMenu();
 		break;
 
-	case ID_GRAPHICS:
-		break;
-
 	case ID_ADVANCED_GRAPHICS:
-		UI_PopMenu();
 		UI_AdvancedGraphicsOptionsMenu();
-		break;
-
-	case ID_DISPLAY:
-		UI_PopMenu();
-		UI_DisplayOptionsMenu();
-		break;
-
-	case ID_SOUND:
-		UI_PopMenu();
-		UI_SoundOptionsMenu();
-		break;
-
-	case ID_NETWORK:
-		UI_PopMenu();
-		UI_NetworkOptionsMenu();
 		break;
 	}
 }
@@ -1192,7 +1173,9 @@ void GraphicsOptions_MenuDraw (void)
 	Frontend_DrawCard( GRAPHICS_DETAIL_X, GRAPHICS_DETAIL_Y,
 		GRAPHICS_DETAIL_WIDTH, GRAPHICS_DETAIL_HEIGHT, 1.0f, qfalse );
 	Frontend_DrawText( GRAPHICS_NAV_X + 16, GRAPHICS_NAV_Y + 22,
-		"Settings", UI_LEFT | UI_SMALLFONT, graphicsMutedColor );
+		"Submenu", UI_LEFT | UI_SMALLFONT, graphicsMutedColor );
+	Frontend_DrawText( GRAPHICS_NAV_X + 16, GRAPHICS_NAV_Y + 54,
+		"Graphics", UI_LEFT | UI_SMALLFONT, graphicsTextColor );
 	Frontend_DrawText( GRAPHICS_DETAIL_X + 16, GRAPHICS_DETAIL_Y + 22,
 		"Display & quality", UI_LEFT | UI_SMALLFONT,
 		graphicsMutedColor );
@@ -1371,6 +1354,18 @@ static void GraphicsOptions_SetNavBounds( menutext_s *item, int id,
 	item->string = (char *)label;
 	item->style = UI_LEFT | UI_SMALLFONT;
 	item->generic.ownerdraw = GraphicsOptions_DrawNavItem;
+	GraphicsOptions_SetBounds( &item->generic, id, GRAPHICS_NAV_X + 16, y,
+		GRAPHICS_NAV_WIDTH - 32, GRAPHICS_ROW_HEIGHT, NULL );
+}
+
+static void GraphicsOptions_SetChildActionBounds( menutext_s *item,
+	int id, const char *label, int y )
+{
+	item->generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
+	item->generic.callback = GraphicsOptions_Event;
+	item->string = (char *)label;
+	item->style = UI_CENTER | UI_SMALLFONT;
+	item->generic.ownerdraw = GraphicsOptions_DrawAction;
 	GraphicsOptions_SetBounds( &item->generic, id, GRAPHICS_NAV_X + 16, y,
 		GRAPHICS_NAV_WIDTH - 32, GRAPHICS_ROW_HEIGHT, NULL );
 }
@@ -1774,11 +1769,7 @@ void GraphicsOptions_MenuInit( void )
 */
 // END
 
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.graphics );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.advanced_graphics );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.display );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.sound );
-	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.network );
 
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.list );
 	Menu_AddItem( &s_graphicsoptions.menu, ( void * ) &s_graphicsoptions.driver );
@@ -1802,18 +1793,10 @@ void GraphicsOptions_MenuInit( void )
 	/* Menu_AddItem initializes the legacy widgets and overwrites their
 	 * default bounds. Apply the frontend layout after that initialization so
 	 * the custom ownerdraw positions are the ones used for drawing and input. */
-	GraphicsOptions_SetNavBounds( &s_graphicsoptions.graphics,
-		ID_GRAPHICS, "Graphics", 152 );
-	GraphicsOptions_SetNavBounds( &s_graphicsoptions.advanced_graphics,
-		ID_ADVANCED_GRAPHICS, "Advanced graphics", 182 );
-	GraphicsOptions_SetNavBounds( &s_graphicsoptions.display,
-		ID_DISPLAY, "Display", 212 );
-	GraphicsOptions_SetNavBounds( &s_graphicsoptions.sound,
-		ID_SOUND, "Sound", 242 );
-	GraphicsOptions_SetNavBounds( &s_graphicsoptions.network,
-		ID_NETWORK, "Network", 272 );
-	GraphicsOptions_SetNavBounds( &s_graphicsoptions.driverinfo,
-		ID_DRIVERINFO, "Driver info", 316 );
+	GraphicsOptions_SetChildActionBounds( &s_graphicsoptions.advanced_graphics,
+		ID_ADVANCED_GRAPHICS, "Advanced graphics", 152 );
+	GraphicsOptions_SetChildActionBounds( &s_graphicsoptions.driverinfo,
+		ID_DRIVERINFO, "Driver info", 184 );
 
 	GraphicsOptions_SetSettingBounds( &s_graphicsoptions.list.generic,
 		ID_LIST, "Preset", GRAPHICS_COLUMN_LEFT_X, GRAPHICS_ROW_START_Y );
@@ -1909,5 +1892,5 @@ void UI_GraphicsOptionsMenu( void ) {
 
 	GraphicsOptions_MenuInit();
 	UI_PushMenu( &s_graphicsoptions.menu );
-	Menu_SetCursorToItem( &s_graphicsoptions.menu, &s_graphicsoptions.graphics );
+	Menu_SetCursorToItem( &s_graphicsoptions.menu, &s_graphicsoptions.list );
 }

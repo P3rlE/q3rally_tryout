@@ -59,9 +59,9 @@ DISPLAY OPTIONS MENU
 #define DISPLAY_NAV_Y               104
 #define DISPLAY_NAV_WIDTH           164
 #define DISPLAY_NAV_HEIGHT          292
-#define DISPLAY_DETAIL_X            220
+#define DISPLAY_DETAIL_X            40
 #define DISPLAY_DETAIL_Y            104
-#define DISPLAY_DETAIL_WIDTH        376
+#define DISPLAY_DETAIL_WIDTH        556
 #define DISPLAY_DETAIL_HEIGHT       292
 #define DISPLAY_ROW_HEIGHT          24
 #define DISPLAY_ROW_GAP             4
@@ -267,12 +267,8 @@ static void UI_DisplayOptionsMenu_Draw( void ) {
 	Frontend_DrawStatusChip( DISPLAY_FRAME_X + DISPLAY_FRAME_WIDTH - 104,
 		DISPLAY_FRAME_Y + 26, "Settings", displayAccentColor, 1.0f );
 
-	Frontend_DrawCard( DISPLAY_NAV_X, DISPLAY_NAV_Y,
-		DISPLAY_NAV_WIDTH, DISPLAY_NAV_HEIGHT, 1.0f, qfalse );
 	Frontend_DrawCard( DISPLAY_DETAIL_X, DISPLAY_DETAIL_Y,
 		DISPLAY_DETAIL_WIDTH, DISPLAY_DETAIL_HEIGHT, 1.0f, qfalse );
-	Frontend_DrawText( DISPLAY_NAV_X + 16, DISPLAY_NAV_Y + 22,
-		"Settings", UI_LEFT | UI_SMALLFONT, displayMutedColor );
 	Frontend_DrawText( DISPLAY_DETAIL_X + 16, DISPLAY_DETAIL_Y + 22,
 		"Display calibration", UI_LEFT | UI_SMALLFONT, displayMutedColor );
 
@@ -295,29 +291,6 @@ static void UI_DisplayOptionsMenu_Event( void* ptr, int event ) {
 	}
 
 	switch( ((menucommon_s*)ptr)->id ) {
-	case ID_GRAPHICS:
-		UI_PopMenu();
-		UI_GraphicsOptionsMenu();
-		break;
-
-	case ID_ADVANCED_GRAPHICS:
-		UI_PopMenu();
-		UI_AdvancedGraphicsOptionsMenu();
-		break;
-
-	case ID_DISPLAY:
-		break;
-
-	case ID_SOUND:
-		UI_PopMenu();
-		UI_SoundOptionsMenu();
-		break;
-
-	case ID_NETWORK:
-		UI_PopMenu();
-		UI_NetworkOptionsMenu();
-		break;
-
 	case ID_BRIGHTNESS:
 		trap_Cvar_SetValue( "r_gamma", displayOptionsInfo.brightness.curvalue / 10.0f );
 		break;
@@ -496,11 +469,6 @@ static void UI_DisplayOptionsMenu_Init( void ) {
 	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.framer );
 */
 // END
-	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.graphics );
-	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.advanced_graphics );
-	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.display );
-	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.sound );
-	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.network );
 	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.brightness );
 	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.screensize );
 	Menu_AddItem( &displayOptionsInfo.menu, ( void * ) &displayOptionsInfo.back );
@@ -510,17 +478,6 @@ static void UI_DisplayOptionsMenu_Init( void ) {
 
 	/* Menu_AddItem initializes the legacy widgets and overwrites their
 	 * default bounds. Apply the frontend layout after that initialization. */
-	Display_SetNavBounds( &displayOptionsInfo.graphics,
-		ID_GRAPHICS, "Graphics", 152 );
-	Display_SetNavBounds( &displayOptionsInfo.advanced_graphics,
-		ID_ADVANCED_GRAPHICS, "Advanced graphics", 182 );
-	Display_SetNavBounds( &displayOptionsInfo.display,
-		ID_DISPLAY, "Display", 212 );
-	Display_SetNavBounds( &displayOptionsInfo.sound,
-		ID_SOUND, "Sound", 242 );
-	Display_SetNavBounds( &displayOptionsInfo.network,
-		ID_NETWORK, "Network", 272 );
-
 	Display_SetSliderBounds( &displayOptionsInfo.brightness,
 		ID_BRIGHTNESS, "Brightness", DISPLAY_ROW_START_Y );
 	Display_SetSliderBounds( &displayOptionsInfo.screensize,
@@ -563,5 +520,5 @@ void UI_DisplayOptionsMenu( void ) {
 
 	UI_DisplayOptionsMenu_Init();
 	UI_PushMenu( &displayOptionsInfo.menu );
-	Menu_SetCursorToItem( &displayOptionsInfo.menu, &displayOptionsInfo.display );
+	Menu_SetCursorToItem( &displayOptionsInfo.menu, &displayOptionsInfo.brightness );
 }

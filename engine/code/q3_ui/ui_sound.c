@@ -65,9 +65,9 @@ SOUND OPTIONS MENU
 #define SOUND_NAV_Y                 104
 #define SOUND_NAV_WIDTH             164
 #define SOUND_NAV_HEIGHT            292
-#define SOUND_DETAIL_X              220
+#define SOUND_DETAIL_X              40
 #define SOUND_DETAIL_Y              104
-#define SOUND_DETAIL_WIDTH          376
+#define SOUND_DETAIL_WIDTH          556
 #define SOUND_DETAIL_HEIGHT         292
 #define SOUND_ROW_HEIGHT            24
 #define SOUND_ROW_GAP               4
@@ -368,28 +368,6 @@ static void UI_SoundOptionsMenu_Event( void* ptr, int event ) {
 	}
 
 	switch( ((menucommon_s*)ptr)->id ) {
-	case ID_GRAPHICS:
-		UI_PopMenu();
-		UI_GraphicsOptionsMenu();
-		break;
-
-	case ID_ADVANCED_GRAPHICS:
-		UI_PopMenu();
-		UI_AdvancedGraphicsOptionsMenu();
-		break;
-
-	case ID_DISPLAY:
-		UI_PopMenu();
-		UI_DisplayOptionsMenu();
-		break;
-
-	case ID_SOUND:
-		break;
-
-	case ID_NETWORK:
-		UI_PopMenu();
-		UI_NetworkOptionsMenu();
-		break;
 /*
 	case ID_A3D:
 		if( soundOptionsInfo.a3d.curvalue ) {
@@ -505,12 +483,8 @@ void SoundOptions_MenuDraw (void)
 	Frontend_DrawStatusChip( SOUND_FRAME_X + SOUND_FRAME_WIDTH - 104,
 		SOUND_FRAME_Y + 26, "Settings", soundAccentColor, 1.0f );
 
-	Frontend_DrawCard( SOUND_NAV_X, SOUND_NAV_Y,
-		SOUND_NAV_WIDTH, SOUND_NAV_HEIGHT, 1.0f, qfalse );
 	Frontend_DrawCard( SOUND_DETAIL_X, SOUND_DETAIL_Y,
 		SOUND_DETAIL_WIDTH, SOUND_DETAIL_HEIGHT, 1.0f, qfalse );
-	Frontend_DrawText( SOUND_NAV_X + 16, SOUND_NAV_Y + 22,
-		"Settings", UI_LEFT | UI_SMALLFONT, soundMutedColor );
 	Frontend_DrawText( SOUND_DETAIL_X + 16, SOUND_DETAIL_Y + 22,
 		"Audio mix", UI_LEFT | UI_SMALLFONT, soundMutedColor );
 
@@ -733,11 +707,6 @@ static void UI_SoundOptionsMenu_Init( void ) {
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.framer );
 */
 // END
-	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.graphics );
-	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.advanced_graphics );
-	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.display );
-	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.sound );
-	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.network );
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.sfxvolume );
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.musicvolume );
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.soundSystem );
@@ -770,17 +739,6 @@ static void UI_SoundOptionsMenu_Init( void ) {
 
 	/* Menu_AddItem initializes the legacy widgets and overwrites their
 	 * default bounds. Apply the frontend layout after that initialization. */
-	Sound_SetNavBounds( &soundOptionsInfo.graphics,
-		ID_GRAPHICS, "Graphics", 152 );
-	Sound_SetNavBounds( &soundOptionsInfo.advanced_graphics,
-		ID_ADVANCED_GRAPHICS, "Advanced graphics", 182 );
-	Sound_SetNavBounds( &soundOptionsInfo.display,
-		ID_DISPLAY, "Display", 212 );
-	Sound_SetNavBounds( &soundOptionsInfo.sound,
-		ID_SOUND, "Sound", 242 );
-	Sound_SetNavBounds( &soundOptionsInfo.network,
-		ID_NETWORK, "Network", 272 );
-
 	Sound_SetSliderBounds( &soundOptionsInfo.sfxvolume,
 		ID_EFFECTSVOLUME, "Effects volume", SOUND_ROW_START_Y );
 	Sound_SetSliderBounds( &soundOptionsInfo.musicvolume,
@@ -837,5 +795,5 @@ void UI_SoundOptionsMenu( void ) {
 
 	UI_SoundOptionsMenu_Init();
 	UI_PushMenu( &soundOptionsInfo.menu );
-	Menu_SetCursorToItem( &soundOptionsInfo.menu, &soundOptionsInfo.sound );
+	Menu_SetCursorToItem( &soundOptionsInfo.menu, &soundOptionsInfo.sfxvolume );
 }

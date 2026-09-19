@@ -58,9 +58,9 @@ NETWORK OPTIONS MENU
 #define NETWORK_NAV_Y               104
 #define NETWORK_NAV_WIDTH           164
 #define NETWORK_NAV_HEIGHT          292
-#define NETWORK_DETAIL_X            220
+#define NETWORK_DETAIL_X            40
 #define NETWORK_DETAIL_Y            104
-#define NETWORK_DETAIL_WIDTH        376
+#define NETWORK_DETAIL_WIDTH        556
 #define NETWORK_DETAIL_HEIGHT       292
 #define NETWORK_ROW_HEIGHT          24
 #define NETWORK_ROW_GAP             4
@@ -259,12 +259,8 @@ static void UI_NetworkOptionsMenu_Draw( void ) {
 	Frontend_DrawStatusChip( NETWORK_FRAME_X + NETWORK_FRAME_WIDTH - 104,
 		NETWORK_FRAME_Y + 26, "Settings", networkAccentColor, 1.0f );
 
-	Frontend_DrawCard( NETWORK_NAV_X, NETWORK_NAV_Y,
-		NETWORK_NAV_WIDTH, NETWORK_NAV_HEIGHT, 1.0f, qfalse );
 	Frontend_DrawCard( NETWORK_DETAIL_X, NETWORK_DETAIL_Y,
 		NETWORK_DETAIL_WIDTH, NETWORK_DETAIL_HEIGHT, 1.0f, qfalse );
-	Frontend_DrawText( NETWORK_NAV_X + 16, NETWORK_NAV_Y + 22,
-		"Settings", UI_LEFT | UI_SMALLFONT, networkMutedColor );
 	Frontend_DrawText( NETWORK_DETAIL_X + 16, NETWORK_DETAIL_Y + 22,
 		"Connection", UI_LEFT | UI_SMALLFONT, networkMutedColor );
 
@@ -287,29 +283,6 @@ static void UI_NetworkOptionsMenu_Event( void* ptr, int event ) {
 	}
 
 	switch( ((menucommon_s*)ptr)->id ) {
-	case ID_GRAPHICS:
-		UI_PopMenu();
-		UI_GraphicsOptionsMenu();
-		break;
-
-	case ID_ADVANCED_GRAPHICS:
-		UI_PopMenu();
-		UI_AdvancedGraphicsOptionsMenu();
-		break;
-
-	case ID_DISPLAY:
-		UI_PopMenu();
-		UI_DisplayOptionsMenu();
-		break;
-
-	case ID_SOUND:
-		UI_PopMenu();
-		UI_SoundOptionsMenu();
-		break;
-
-	case ID_NETWORK:
-		break;
-
 	case ID_RATE:
 		if( networkOptionsInfo.rate.curvalue == 0 ) {
 			trap_Cvar_SetValue( "rate", 2500 );
@@ -483,11 +456,6 @@ static void UI_NetworkOptionsMenu_Init( void ) {
 	Menu_AddItem( &networkOptionsInfo.menu, ( void * ) &networkOptionsInfo.framer );
 */
 // END
-	Menu_AddItem( &networkOptionsInfo.menu, ( void * ) &networkOptionsInfo.graphics );
-	Menu_AddItem( &networkOptionsInfo.menu, ( void * ) &networkOptionsInfo.advanced_graphics );
-	Menu_AddItem( &networkOptionsInfo.menu, ( void * ) &networkOptionsInfo.display );
-	Menu_AddItem( &networkOptionsInfo.menu, ( void * ) &networkOptionsInfo.sound );
-	Menu_AddItem( &networkOptionsInfo.menu, ( void * ) &networkOptionsInfo.network );
 	Menu_AddItem( &networkOptionsInfo.menu, ( void * ) &networkOptionsInfo.rate );
 	Menu_AddItem( &networkOptionsInfo.menu, ( void * ) &networkOptionsInfo.back );
 
@@ -510,17 +478,6 @@ static void UI_NetworkOptionsMenu_Init( void ) {
 
 	/* Menu_AddItem initializes the legacy widgets and overwrites their
 	 * default bounds. Apply the frontend layout after that initialization. */
-	Network_SetNavBounds( &networkOptionsInfo.graphics,
-		ID_GRAPHICS, "Graphics", 152 );
-	Network_SetNavBounds( &networkOptionsInfo.advanced_graphics,
-		ID_ADVANCED_GRAPHICS, "Advanced graphics", 182 );
-	Network_SetNavBounds( &networkOptionsInfo.display,
-		ID_DISPLAY, "Display", 212 );
-	Network_SetNavBounds( &networkOptionsInfo.sound,
-		ID_SOUND, "Sound", 242 );
-	Network_SetNavBounds( &networkOptionsInfo.network,
-		ID_NETWORK, "Network", 272 );
-
 	Network_SetSettingBounds( &networkOptionsInfo.rate,
 		ID_RATE, "Data rate", NETWORK_ROW_START_Y );
 	Network_SetBounds( &networkOptionsInfo.back.generic, ID_BACK,
@@ -559,5 +516,5 @@ void UI_NetworkOptionsMenu( void ) {
 
 	UI_NetworkOptionsMenu_Init();
 	UI_PushMenu( &networkOptionsInfo.menu );
-	Menu_SetCursorToItem( &networkOptionsInfo.menu, &networkOptionsInfo.network );
+	Menu_SetCursorToItem( &networkOptionsInfo.menu, &networkOptionsInfo.rate );
 }

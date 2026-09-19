@@ -39,7 +39,7 @@ logic remains unchanged while each screen is migrated separately.
 #define ID_CUSTOMIZEPLAYER      10
 #define ID_CUSTOMIZECONTROLS    11
 #define ID_GRAPHICS             12
-#define ID_AUDIO                13
+#define ID_SOUND                13
 #define ID_NETWORK              14
 #define ID_GAME                 15
 #define ID_Q3ROPTIONS           16
@@ -85,7 +85,7 @@ static const int configCategoryIds[CONFIG_CATEGORY_COUNT] = {
     ID_CUSTOMIZECONTROLS,
     ID_GRAPHICS,
     ID_DISPLAY,
-    ID_AUDIO,
+    ID_SOUND,
     ID_NETWORK,
     ID_GAME,
     ID_Q3ROPTIONS
@@ -266,7 +266,7 @@ static void UI_SetupMenu_OpenCategory( int id ) {
     case ID_DISPLAY:
         UI_DisplayOptionsMenu();
         break;
-    case ID_AUDIO:
+    case ID_SOUND:
         UI_SoundOptionsMenu();
         break;
     case ID_NETWORK:
