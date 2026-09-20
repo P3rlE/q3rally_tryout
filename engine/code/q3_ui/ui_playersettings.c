@@ -98,9 +98,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ID_BIRTH_YEAR		43
 
 #define TAB_PROFILE		0
-#define TAB_STATS		1
-#define TAB_ACHIEVEMENTS	2
-#define TAB_VEHICLE		3
+#define TAB_VEHICLE		1
+#define TAB_STATS		2
+#define TAB_ACHIEVEMENTS	3
 
 #define PLAYERSETTINGS_TAB_COUNT		4
 #define PLAYERSETTINGS_FRAME_X		24
@@ -119,10 +119,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_PROFILE_PANEL_WIDTH		544
 #define PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN	8
 #define PLAYERSETTINGS_PROFILE_PANEL_BOTTOM_EXTRA	12
+#define PLAYERSETTINGS_PROFILE_FORM_X		48
+#define PLAYERSETTINGS_PROFILE_FORM_Y		126
+#define PLAYERSETTINGS_PROFILE_FORM_WIDTH		292
+#define PLAYERSETTINGS_PROFILE_FORM_HEIGHT		294
+#define PLAYERSETTINGS_PROFILE_FORM_RIGHT		( PLAYERSETTINGS_PROFILE_FORM_X + PLAYERSETTINGS_PROFILE_FORM_WIDTH - 8 )
+#define PLAYERSETTINGS_PROFILE_PRESENCE_X		356
+#define PLAYERSETTINGS_PROFILE_PRESENCE_Y		126
+#define PLAYERSETTINGS_PROFILE_PRESENCE_WIDTH	236
+#define PLAYERSETTINGS_PROFILE_PRESENCE_HEIGHT	294
 #define PLAYERSETTINGS_PROFILE_FIELD_LEFT		( PLAYERSETTINGS_PROFILE_PANEL_LEFT + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN )
 #define PLAYERSETTINGS_PROFILE_ROW_RIGHT		( PLAYERSETTINGS_PROFILE_PANEL_LEFT + PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN )
 #define PLAYERSETTINGS_PROFILE_LABEL_OFFSET	16
-#define PLAYERSETTINGS_PROFILE_VALUE_OFFSET	180
+#define PLAYERSETTINGS_PROFILE_VALUE_OFFSET	128
 #define PLAYERSETTINGS_PROFILE_VALUE_BASELINE	18
 #define PLAYERSETTINGS_PROFILE_FIELD_HEIGHT	32
 #define PLAYERSETTINGS_PROFILE_ROW_HEIGHT		36
@@ -181,6 +190,7 @@ static vec4_t avatarImageMissingColor = { 0.6f, 0.2f, 0.2f, 1.0f };
 static vec4_t playerSettingsScrimColor = UI_FRONTEND_COLOR_SCRIM;
 static vec4_t playerSettingsTextColor = UI_FRONTEND_COLOR_TEXT;
 static vec4_t playerSettingsMutedColor = UI_FRONTEND_COLOR_MUTED;
+static vec4_t playerSettingsAccentColor = UI_FRONTEND_COLOR_ACCENT;
 static vec4_t playerSettingsStatusColor = UI_FRONTEND_COLOR_ACCENT;
 
 typedef struct {
@@ -354,6 +364,10 @@ static const playersettingsPaginationInfo_t *PlayerSettings_UpdateStatsPaginatio
 static const playersettingsPaginationInfo_t *PlayerSettings_UpdateAchievementsPaginationInfo( void );
 static void PlayerSettings_DrawBackItem( void *self );
 static void PlayerSettings_DrawPlateItem( void *self );
+static void PlayerSettings_DrawModernField( void *self );
+static void PlayerSettings_DrawModernChoice( void *self );
+static void PlayerSettings_DrawModernBirthDate( void *self );
+static void PlayerSettings_DrawModernEffects( void *self );
 
 static const char *const s_achievementMedalLockedPaths[PLAYERSETTINGS_ACHIEVEMENT_ICON_COUNT] = {
         ART_MEDAL_DRIVEN_LOCKED,
@@ -992,6 +1006,128 @@ static void PlayerSettings_DrawProfileField( void *self ) {
 	}
 }
 
+static qboolean PlayerSettings_ItemHasFocus( menucommon_s *item ) {
+	return ( item && Menu_ItemAtCursor( item->parent ) == item ) ? qtrue : qfalse;
+}
+
+static void PlayerSettings_DrawModernField( void *self ) {
+	menufield_s *field;
+	qboolean focus;
+	vec4_t labelColor;
+	vec4_t valueColor;
+	const char *label;
+
+	field = (menufield_s *)self;
+	focus = PlayerSettings_ItemHasFocus( &field->generic );
+	label = field->generic.name ? field->generic.name : "";
+	Vector4Copy( focus ? playerSettingsAccentColor : playerSettingsMutedColor, labelColor );
+	Vector4Copy( ( field->generic.flags & QMF_GRAYED ) ? playerSettingsMutedColor : playerSettingsTextColor, valueColor );
+
+	Frontend_DrawText( field->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+	                   field->generic.y, label, UI_LEFT | UI_SMALLFONT,
+	                   labelColor );
+	Frontend_DrawText( field->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET,
+	                   field->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE,
+	                   field->field.buffer, UI_LEFT | UI_SMALLFONT,
+	                   valueColor );
+
+	if ( focus ) {
+		UI_FillRect( field->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET,
+		             field->generic.bottom - 2,
+		             field->generic.right - field->generic.x - PLAYERSETTINGS_PROFILE_VALUE_OFFSET,
+		             2, playerSettingsAccentColor );
+		UI_DrawChar( field->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET +
+		             field->field.cursor * SMALLCHAR_WIDTH,
+		             field->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE,
+		             trap_Key_GetOverstrikeMode() ? 11 : 10,
+		             UI_BLINK | UI_SMALLFONT, playerSettingsAccentColor );
+	}
+}
+
+static void PlayerSettings_DrawModernChoice( void *self ) {
+	menulist_s *choice;
+	qboolean focus;
+	vec4_t labelColor;
+	vec4_t valueColor;
+	const char *value;
+	char buffer[96];
+
+	choice = (menulist_s *)self;
+	focus = PlayerSettings_ItemHasFocus( &choice->generic );
+	value = "-";
+	if ( choice->itemnames && choice->curvalue >= 0 && choice->curvalue < choice->numitems &&
+	     choice->itemnames[choice->curvalue] ) {
+		value = choice->itemnames[choice->curvalue];
+	}
+	Com_sprintf( buffer, sizeof( buffer ), "< %s >", value );
+	Vector4Copy( focus ? playerSettingsAccentColor : playerSettingsMutedColor, labelColor );
+	Vector4Copy( ( choice->generic.flags & QMF_GRAYED ) ? playerSettingsMutedColor : playerSettingsTextColor, valueColor );
+
+	Frontend_DrawText( choice->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+	                   choice->generic.y, choice->generic.name ? choice->generic.name : "",
+	                   UI_LEFT | UI_SMALLFONT, labelColor );
+	Frontend_DrawText( choice->generic.right - PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+	                   choice->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE,
+	                   buffer, UI_RIGHT | UI_SMALLFONT, valueColor );
+	if ( focus ) {
+		UI_FillRect( choice->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+		             choice->generic.bottom - 2,
+		             choice->generic.right - choice->generic.x - PLAYERSETTINGS_PROFILE_LABEL_OFFSET * 2,
+		             2, playerSettingsAccentColor );
+	}
+}
+
+static void PlayerSettings_DrawModernBirthDate( void *self ) {
+	menulist_s *choice;
+	qboolean focus;
+	vec4_t labelColor;
+	vec4_t valueColor;
+	const char *value;
+	char buffer[48];
+
+	choice = (menulist_s *)self;
+	focus = PlayerSettings_ItemHasFocus( &choice->generic );
+	value = "-";
+	if ( choice->itemnames && choice->curvalue >= 0 && choice->curvalue < choice->numitems &&
+	     choice->itemnames[choice->curvalue] ) {
+		value = choice->itemnames[choice->curvalue];
+	}
+	Com_sprintf( buffer, sizeof( buffer ), "< %s >", value );
+	Vector4Copy( focus ? playerSettingsAccentColor : playerSettingsMutedColor, labelColor );
+	Vector4Copy( playerSettingsTextColor, valueColor );
+
+	Frontend_DrawText( choice->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+	                   choice->generic.y - PLAYERSETTINGS_PROFILE_VALUE_BASELINE,
+	                   choice->generic.name ? choice->generic.name : "",
+	                   UI_LEFT | UI_SMALLFONT, labelColor );
+	Frontend_DrawText( choice->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+	                   choice->generic.y, buffer, UI_LEFT | UI_SMALLFONT,
+	                   valueColor );
+}
+
+static void PlayerSettings_DrawModernEffects( void *self ) {
+	menulist_s *choice;
+	qboolean focus;
+	vec4_t labelColor;
+	char buffer[32];
+
+	choice = (menulist_s *)self;
+	focus = PlayerSettings_ItemHasFocus( &choice->generic );
+	Vector4Copy( focus ? playerSettingsAccentColor : playerSettingsMutedColor, labelColor );
+	Com_sprintf( buffer, sizeof( buffer ), "%d / %d", choice->curvalue + 1, choice->numitems );
+
+	Frontend_DrawText( choice->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+	                   choice->generic.y, "Effects", UI_LEFT | UI_SMALLFONT,
+	                   labelColor );
+	Frontend_DrawProgress( choice->generic.x + 80,
+	                       choice->generic.y + 8, 72, 4,
+	                       choice->numitems > 1 ? (float)choice->curvalue / (float)( choice->numitems - 1 ) : 0.0f,
+	                       uis.tFrac );
+	Frontend_DrawText( choice->generic.right - PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+	                   choice->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE,
+	                   buffer, UI_RIGHT | UI_SMALLFONT, playerSettingsTextColor );
+}
+
 
 static void PlayerSettings_SetAvatarProfileName( const char *profileName ) {
 	if ( !profileName ) {
@@ -1105,7 +1241,6 @@ static void PlayerSettings_DrawAvatarImage( void *self ) {
 	vec4_t border;
 	const char *line1;
 	const char *line2;
-	char derivedPath[MAX_OSPATH];
 	char combinedLine[MAX_OSPATH + 64];
 
 	inactive = ( qboolean )( f->generic.flags & QMF_INACTIVE );
@@ -1119,11 +1254,14 @@ static void PlayerSettings_DrawAvatarImage( void *self ) {
 		color = text_color_highlight;
 	}
 
-	UI_DrawProportionalString( f->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET, f->generic.y, f->generic.name ? f->generic.name : "", style, color );
+	Frontend_DrawText( f->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+	                   f->generic.y, f->generic.name ? f->generic.name : "",
+	                   UI_LEFT | UI_SMALLFONT,
+	                   focus ? playerSettingsAccentColor : playerSettingsMutedColor );
 
 	PlayerSettings_EnsureAvatarShader();
 
-	basex = f->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET;
+	basex = f->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
 	y = f->generic.y;
 	rowHeight = f->generic.bottom - f->generic.top;
 	rightEdge = f->generic.right - 8;
@@ -1175,9 +1313,13 @@ static void PlayerSettings_DrawAvatarImage( void *self ) {
 			trap_R_SetColor( NULL );
 			UI_DrawHandlePic( imageX, imageY, imageSize, imageSize, s_playersettings.avatarShader );
 		} else if ( s_playersettings.profileInfo.avatar[0] ) {
-			UI_DrawProportionalString( imageX + imageSize / 2, imageY + imageSize / 2 - 6, "Missing", UI_CENTER | UI_SMALLFONT, avatarImageMissingColor );
+			Frontend_DrawText( imageX + imageSize / 2, imageY + imageSize / 2 - 6,
+			                   "Missing", UI_CENTER | UI_SMALLFONT,
+			                   avatarImageMissingColor );
 		} else {
-			UI_DrawProportionalString( imageX + imageSize / 2, imageY + imageSize / 2 - 6, "No Avatar", UI_CENTER | UI_SMALLFONT, text_color_disabled );
+			Frontend_DrawText( imageX + imageSize / 2, imageY + imageSize / 2 - 6,
+			                   "No avatar", UI_CENTER | UI_SMALLFONT,
+			                   playerSettingsMutedColor );
 		}
 
 		UI_DrawRect( imageX, imageY, imageSize, imageSize, border );
@@ -1192,15 +1334,7 @@ static void PlayerSettings_DrawAvatarImage( void *self ) {
 
 	textLineY = y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE;
 	if ( s_playersettings.avatarProfileName[0] ) {
-		const char *avatarPath;
-		if ( s_playersettings.avatarDisplayPath[0] ) {
-			avatarPath = s_playersettings.avatarDisplayPath;
-		} else {
-			Com_sprintf( derivedPath, sizeof( derivedPath ), "baseq3r/gfx/avatars/%s.tga", s_playersettings.avatarProfileName );
-			avatarPath = derivedPath;
-		}
-
-		Com_sprintf( combinedLine, sizeof( combinedLine ), "Avatar file: %s", avatarPath );
+		Com_sprintf( combinedLine, sizeof( combinedLine ), "Preset: %s", s_playersettings.avatarProfileName );
 		line1 = combinedLine;
 		line2 = "";
 	} else {
@@ -1209,12 +1343,14 @@ static void PlayerSettings_DrawAvatarImage( void *self ) {
 		line2 = "";
 	}
 
-	PlayerSettings_DrawClippedSmallString( basex, textLineY, textRight, line1, style, color );
+	Frontend_DrawText( basex, textLineY, line1, UI_LEFT | UI_SMALLFONT,
+	                   focus ? playerSettingsAccentColor : playerSettingsTextColor );
 
 	secondaryStyle = UI_LEFT | UI_SMALLFONT;
 	secondaryColor = disabled ? text_color_disabled : text_color_normal;
 	if ( line2[0] ) {
-		PlayerSettings_DrawClippedSmallString( basex, textLineY + SMALLCHAR_HEIGHT + 2, textRight, line2, secondaryStyle, secondaryColor );
+		Frontend_DrawText( basex, textLineY + SMALLCHAR_HEIGHT + 2, line2,
+		                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 	}
 }
 
@@ -1554,49 +1690,30 @@ static void PlayerSettings_GetProfileRowBounds( int row, int *top, int *bottom )
 
 
 static void PlayerSettings_DrawProfilePanelBackground( void ) {
-	int panelTop;
-	int panelBottom;
-	int i;
-
-	panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
-	PlayerSettings_GetProfileRowBounds( PROFILE_ROW_EFFECTS, NULL, &panelBottom );
-	panelBottom += PLAYERSETTINGS_PROFILE_PANEL_BOTTOM_EXTRA;
-	if ( panelBottom <= panelTop ) {
-		panelBottom = panelTop + PLAYERSETTINGS_PROFILE_ROW_HEIGHT * PROFILE_ROW_COUNT;
-	}
-	if ( panelBottom > 440 ) {
-		panelBottom = 440;
-	}
-
-	Frontend_DrawCard( PLAYERSETTINGS_PROFILE_PANEL_LEFT, panelTop,
-	                   PLAYERSETTINGS_PROFILE_PANEL_WIDTH,
-	                   panelBottom - panelTop, uis.tFrac, qfalse );
-	Frontend_DrawText( PLAYERSETTINGS_PROFILE_PANEL_LEFT + 16,
-	                   panelTop + 16, "Driver profile",
-	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
-
-	for ( i = 0; i < PROFILE_ROW_COUNT; ++i ) {
-		int rowTop;
-		int rowBottom;
-
-		PlayerSettings_GetProfileRowBounds( i, &rowTop, &rowBottom );
-		rowTop -= 2;
-		rowBottom += 2;
-
-		if ( rowTop < panelTop + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN ) {
-			rowTop = panelTop + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
-		}
-		if ( rowBottom > panelBottom - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN ) {
-			rowBottom = panelBottom - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
-		}
-		if ( rowBottom <= rowTop ) {
-			continue;
-		}
-
-		UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT, rowBottom - 1,
-			PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-			1, playerSettingsMutedColor );
-	}
+	Frontend_DrawCard( PLAYERSETTINGS_PROFILE_FORM_X,
+	                   PLAYERSETTINGS_PROFILE_FORM_Y,
+	                   PLAYERSETTINGS_PROFILE_FORM_WIDTH,
+	                   PLAYERSETTINGS_PROFILE_FORM_HEIGHT,
+	                   uis.tFrac, qfalse );
+	Frontend_DrawCard( PLAYERSETTINGS_PROFILE_PRESENCE_X,
+	                   PLAYERSETTINGS_PROFILE_PRESENCE_Y,
+	                   PLAYERSETTINGS_PROFILE_PRESENCE_WIDTH,
+	                   PLAYERSETTINGS_PROFILE_PRESENCE_HEIGHT,
+	                   uis.tFrac, qfalse );
+	Frontend_DrawText( PLAYERSETTINGS_PROFILE_FORM_X + 16,
+	                   PLAYERSETTINGS_PROFILE_FORM_Y + 18,
+	                   "Identity", UI_LEFT | UI_SMALLFONT,
+	                   playerSettingsMutedColor );
+	Frontend_DrawText( PLAYERSETTINGS_PROFILE_PRESENCE_X + 16,
+	                   PLAYERSETTINGS_PROFILE_PRESENCE_Y + 18,
+	                   "Presence", UI_LEFT | UI_SMALLFONT,
+	                   playerSettingsMutedColor );
+	Frontend_DrawStatusChip( PLAYERSETTINGS_PROFILE_PRESENCE_X +
+	                         PLAYERSETTINGS_PROFILE_PRESENCE_WIDTH - 92,
+	                         PLAYERSETTINGS_PROFILE_PRESENCE_Y + 16,
+	                         UI_Profile_HasActiveProfile() ? "Active" : "Empty",
+	                         UI_Profile_HasActiveProfile() ? playerSettingsStatusColor : playerSettingsMutedColor,
+	                         uis.tFrac );
 }
 
 
@@ -3037,7 +3154,7 @@ showVehicle = ( tab == TAB_VEHICLE );
 
 	PlayerSettings_SetWidgetVisible( &s_playersettings.name.generic, showProfile );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.gender.generic, showProfile );
-	PlayerSettings_SetWidgetVisible( &s_playersettings.birthDateLabel.generic, showProfile );
+	/* Birth date labels are drawn by the three modern date controls. */
 	PlayerSettings_SetWidgetVisible( &s_playersettings.birthDay.generic, showProfile );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.birthMonth.generic, showProfile );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.birthYear.generic, showProfile );
@@ -3916,18 +4033,19 @@ static void PlayerSettings_MenuInit( void ) {
 
 //	y = 144;
 	y = PLAYERSETTINGS_CONTENT_TOP;
-	profileY = PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 36;
+	profileY = PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 30;
 // END
 	s_playersettings.name.generic.type			= MTYPE_FIELD;
 	s_playersettings.name.generic.flags			= QMF_NODEFAULTINIT;
-	s_playersettings.name.generic.ownerdraw		= PlayerSettings_DrawName;
+	s_playersettings.name.generic.ownerdraw		= PlayerSettings_DrawModernField;
+	s_playersettings.name.generic.name			= "Name";
 	s_playersettings.name.field.widthInChars	= MAX_NAMELENGTH;
 	s_playersettings.name.field.maxchars		= MAX_NAMELENGTH;
 			s_playersettings.name.generic.x				= PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.name.generic.y				= profileY;
 	s_playersettings.name.generic.left			= PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.name.generic.top			= profileY;
-	s_playersettings.name.generic.right		= PLAYERSETTINGS_PROFILE_ROW_RIGHT;
+	s_playersettings.name.generic.right		= PLAYERSETTINGS_PROFILE_FORM_RIGHT;
 	s_playersettings.name.generic.bottom		= profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 	s_playersettings.name.generic.flags |= QMF_INACTIVE | QMF_GRAYED;
 
@@ -3935,14 +4053,14 @@ static void PlayerSettings_MenuInit( void ) {
 
 	s_playersettings.gender.generic.type = MTYPE_SPINCONTROL;
 	s_playersettings.gender.generic.flags = QMF_NODEFAULTINIT;
-	s_playersettings.gender.generic.ownerdraw = PlayerSettings_DrawProfileList;
+	s_playersettings.gender.generic.ownerdraw = PlayerSettings_DrawModernChoice;
 	s_playersettings.gender.generic.id = ID_GENDER;
 	s_playersettings.gender.generic.name = "Gender";
 	s_playersettings.gender.generic.x = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.gender.generic.y = profileY;
 	s_playersettings.gender.generic.left = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.gender.generic.top = profileY;
-	s_playersettings.gender.generic.right = PLAYERSETTINGS_PROFILE_ROW_RIGHT;
+	s_playersettings.gender.generic.right = PLAYERSETTINGS_PROFILE_FORM_RIGHT;
 	s_playersettings.gender.generic.bottom = profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 	s_playersettings.gender.itemnames = (const char **)s_genderItems;
 	s_playersettings.gender.numitems = 0;
@@ -3953,22 +4071,22 @@ static void PlayerSettings_MenuInit( void ) {
 	profileY += PLAYERSETTINGS_PROFILE_ROW_HEIGHT;
 
 	s_playersettings.birthDateLabel.generic.type = MTYPE_TEXT;
-	s_playersettings.birthDateLabel.generic.flags = QMF_INACTIVE | QMF_NODEFAULTINIT;
+	s_playersettings.birthDateLabel.generic.flags = QMF_INACTIVE | QMF_NODEFAULTINIT | QMF_HIDDEN;
 	s_playersettings.birthDateLabel.generic.x = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
 	s_playersettings.birthDateLabel.generic.y = profileY;
 	s_playersettings.birthDateLabel.generic.left = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.birthDateLabel.generic.top = profileY;
-	s_playersettings.birthDateLabel.generic.right = PLAYERSETTINGS_PROFILE_ROW_RIGHT;
+	s_playersettings.birthDateLabel.generic.right = PLAYERSETTINGS_PROFILE_FORM_RIGHT;
 	s_playersettings.birthDateLabel.generic.bottom = profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 	s_playersettings.birthDateLabel.string = "Birth date";
 	s_playersettings.birthDateLabel.style = UI_LEFT | UI_SMALLFONT;
 	s_playersettings.birthDateLabel.color = uis.text_color;
 
 	{
-		const int birthDayWidth = 120;
-		const int birthMonthWidth = 210;
-		const int birthYearWidth = 150;
-		const int birthColumnGap = 18;
+		const int birthDayWidth = 70;
+		const int birthMonthWidth = 110;
+		const int birthYearWidth = 76;
+		const int birthColumnGap = 10;
 		const int birthDayX = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 		const int birthMonthX = birthDayX + birthDayWidth + birthColumnGap;
 		const int birthYearX = birthMonthX + birthMonthWidth + birthColumnGap;
@@ -3976,7 +4094,7 @@ static void PlayerSettings_MenuInit( void ) {
 
 		s_playersettings.birthDay.generic.type = MTYPE_SPINCONTROL;
 		s_playersettings.birthDay.generic.flags = QMF_NODEFAULTINIT;
-		s_playersettings.birthDay.generic.ownerdraw = PlayerSettings_DrawBirthDateComponent;
+		s_playersettings.birthDay.generic.ownerdraw = PlayerSettings_DrawModernBirthDate;
 		s_playersettings.birthDay.generic.id = ID_BIRTH_DAY;
 		s_playersettings.birthDay.generic.name = "Day";
 		s_playersettings.birthDay.generic.x = birthDayX;
@@ -3991,7 +4109,7 @@ static void PlayerSettings_MenuInit( void ) {
 
 		s_playersettings.birthMonth.generic.type = MTYPE_SPINCONTROL;
 		s_playersettings.birthMonth.generic.flags = QMF_NODEFAULTINIT;
-		s_playersettings.birthMonth.generic.ownerdraw = PlayerSettings_DrawBirthDateComponent;
+		s_playersettings.birthMonth.generic.ownerdraw = PlayerSettings_DrawModernBirthDate;
 		s_playersettings.birthMonth.generic.id = ID_BIRTH_MONTH;
 		s_playersettings.birthMonth.generic.name = "Month";
 		s_playersettings.birthMonth.generic.x = birthMonthX;
@@ -4008,7 +4126,7 @@ static void PlayerSettings_MenuInit( void ) {
 
 		s_playersettings.birthYear.generic.type = MTYPE_SPINCONTROL;
 		s_playersettings.birthYear.generic.flags = QMF_NODEFAULTINIT;
-		s_playersettings.birthYear.generic.ownerdraw = PlayerSettings_DrawBirthDateComponent;
+		s_playersettings.birthYear.generic.ownerdraw = PlayerSettings_DrawModernBirthDate;
 		s_playersettings.birthYear.generic.id = ID_BIRTH_YEAR;
 		s_playersettings.birthYear.generic.name = "Year";
 		s_playersettings.birthYear.generic.x = birthYearX;
@@ -4041,7 +4159,7 @@ static void PlayerSettings_MenuInit( void ) {
 
 	s_playersettings.country.generic.type = MTYPE_FIELD;
 	s_playersettings.country.generic.flags = QMF_NODEFAULTINIT;
-	s_playersettings.country.generic.ownerdraw = PlayerSettings_DrawProfileField;
+	s_playersettings.country.generic.ownerdraw = PlayerSettings_DrawModernField;
 	s_playersettings.country.generic.name = "Country";
 	s_playersettings.country.field.widthInChars = PROFILE_MAX_COUNTRY - 1;
 	s_playersettings.country.field.maxchars = PROFILE_MAX_COUNTRY - 1;
@@ -4049,7 +4167,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.country.generic.y = profileY;
 	s_playersettings.country.generic.left = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.country.generic.top = profileY;
-	s_playersettings.country.generic.right = PLAYERSETTINGS_PROFILE_ROW_RIGHT;
+	s_playersettings.country.generic.right = PLAYERSETTINGS_PROFILE_FORM_RIGHT;
 	s_playersettings.country.generic.bottom = profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 
 	profileY += PLAYERSETTINGS_PROFILE_ROW_HEIGHT;
@@ -4059,7 +4177,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.handicap.generic.type			= MTYPE_SPINCONTROL;
 	s_playersettings.handicap.generic.flags		= QMF_NODEFAULTINIT;
 	s_playersettings.handicap.generic.id			= ID_HANDICAP;
-	s_playersettings.handicap.generic.ownerdraw	= PlayerSettings_DrawHandicap;
+	s_playersettings.handicap.generic.ownerdraw	= PlayerSettings_DrawModernChoice;
 // STONELANCE
 /*
 	s_playersettings.handicap.generic.x			= 192;
@@ -4073,7 +4191,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.handicap.generic.y			= profileY;
 	s_playersettings.handicap.generic.left		= PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.handicap.generic.top		= profileY;
-	s_playersettings.handicap.generic.right		= PLAYERSETTINGS_PROFILE_ROW_RIGHT;
+	s_playersettings.handicap.generic.right		= PLAYERSETTINGS_PROFILE_FORM_RIGHT;
 	s_playersettings.handicap.generic.bottom	= profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 // END
 	s_playersettings.handicap.numitems			= 20;
@@ -4086,7 +4204,7 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.effects.generic.type			= MTYPE_SPINCONTROL;
 	s_playersettings.effects.generic.flags		= QMF_NODEFAULTINIT;
 	s_playersettings.effects.generic.id			= ID_EFFECTS;
-	s_playersettings.effects.generic.ownerdraw	= PlayerSettings_DrawEffects;
+	s_playersettings.effects.generic.ownerdraw	= PlayerSettings_DrawModernEffects;
 // STONELANCE
 /*
 	s_playersettings.effects.generic.x			= 192;
@@ -4100,10 +4218,31 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.effects.generic.y			= profileY;
 	s_playersettings.effects.generic.left		= PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	s_playersettings.effects.generic.top		= profileY;
-	s_playersettings.effects.generic.right		= PLAYERSETTINGS_PROFILE_ROW_RIGHT;
+	s_playersettings.effects.generic.right		= PLAYERSETTINGS_PROFILE_FORM_RIGHT;
 	s_playersettings.effects.generic.bottom	= profileY + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 // END
 	s_playersettings.effects.numitems			= 7;
+
+	/* Profile is intentionally two-column: editable identity on the left,
+	 * avatar and appearance controls on the right. */
+	s_playersettings.avatar.generic.x = PLAYERSETTINGS_PROFILE_PRESENCE_X + 8;
+	s_playersettings.avatar.generic.y = PLAYERSETTINGS_PROFILE_PRESENCE_Y + 38;
+	s_playersettings.avatar.generic.left = s_playersettings.avatar.generic.x;
+	s_playersettings.avatar.generic.top = s_playersettings.avatar.generic.y;
+	s_playersettings.avatar.generic.right = PLAYERSETTINGS_PROFILE_PRESENCE_X + PLAYERSETTINGS_PROFILE_PRESENCE_WIDTH - 8;
+	s_playersettings.avatar.generic.bottom = s_playersettings.avatar.generic.y + 108;
+	s_playersettings.country.generic.y = PLAYERSETTINGS_PROFILE_FORM_Y + 146;
+	s_playersettings.country.generic.top = s_playersettings.country.generic.y;
+	s_playersettings.country.generic.bottom = s_playersettings.country.generic.y + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
+	s_playersettings.handicap.generic.y = PLAYERSETTINGS_PROFILE_FORM_Y + 182;
+	s_playersettings.handicap.generic.top = s_playersettings.handicap.generic.y;
+	s_playersettings.handicap.generic.bottom = s_playersettings.handicap.generic.y + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
+	s_playersettings.effects.generic.x = PLAYERSETTINGS_PROFILE_PRESENCE_X + 8;
+	s_playersettings.effects.generic.y = PLAYERSETTINGS_PROFILE_PRESENCE_Y + 174;
+	s_playersettings.effects.generic.left = s_playersettings.effects.generic.x;
+	s_playersettings.effects.generic.top = s_playersettings.effects.generic.y;
+	s_playersettings.effects.generic.right = PLAYERSETTINGS_PROFILE_PRESENCE_X + PLAYERSETTINGS_PROFILE_PRESENCE_WIDTH - 8;
+	s_playersettings.effects.generic.bottom = s_playersettings.effects.generic.y + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 
 // STONELANCE
 /*
@@ -4281,9 +4420,9 @@ static void PlayerSettings_MenuInit( void ) {
 
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.banner );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.tabProfile );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.tabVehicle );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.tabStats );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.tabAchievements );
-	Menu_AddItem( &s_playersettings.menu, &s_playersettings.tabVehicle );
 // STONELANCE
 /*
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.framel );
