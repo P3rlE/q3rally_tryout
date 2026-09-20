@@ -74,11 +74,13 @@ qboolean isRaceObserver( int clientNum )
 #define Q3R_OPTIONS_ROW_WIDTH        ( Q3R_OPTIONS_CARD_WIDTH - 24 )
 #define Q3R_OPTIONS_ROW_HEIGHT       18
 #define Q3R_OPTIONS_ROW_STEP         20
-#define Q3R_OPTIONS_TOP_ROW_Y        138
-#define Q3R_OPTIONS_MAIN_HEADING_Y   282
-#define Q3R_OPTIONS_MAIN_ROW_Y       294
-#define Q3R_OPTIONS_REAR_HEADING_Y   252
-#define Q3R_OPTIONS_REAR_ROW_Y       264
+#define Q3R_OPTIONS_TOP_ROW_Y        148
+#define Q3R_OPTIONS_MAIN_HEADING_Y   288
+#define Q3R_OPTIONS_MAIN_ROW_Y       310
+#define Q3R_OPTIONS_MAIN_ROW_STEP    18
+#define Q3R_OPTIONS_REAR_HEADING_Y   260
+#define Q3R_OPTIONS_REAR_ROW_Y       280
+#define Q3R_OPTIONS_REAR_ROW_STEP    18
 #define Q3R_OPTIONS_ACTION_Y         420
 
 static vec4_t q3rOptionsScrimColor = UI_FRONTEND_COLOR_SCRIM;
@@ -553,11 +555,6 @@ static void Q3ROptions_MenuDraw( void ) {
 	Frontend_DrawText( Q3R_OPTIONS_RIGHT_X + 12,
 		Q3R_OPTIONS_REAR_HEADING_Y, "Rear view",
 		UI_LEFT | UI_SMALLFONT, q3rOptionsMutedColor );
-	Frontend_DrawText( Q3R_OPTIONS_FRAME_X + 24,
-		Q3R_OPTIONS_FRAME_Y + 384,
-		"Select an option   Left / right adjust   Esc back",
-		UI_LEFT | UI_SMALLFONT, q3rOptionsMutedColor );
-
 	Menu_Draw( &s_q3roptions.menu );
 }
 
@@ -975,19 +972,19 @@ void Q3ROptions_MenuInit( void ) {
 		Q3R_OPTIONS_ROW_WIDTH, Q3R_OPTIONS_ROW_HEIGHT, "Players" );
 	Q3ROptions_SetBounds( &s_q3roptions.mvrl_objects.generic,
 		Q3R_OPTIONS_LEFT_X + Q3R_OPTIONS_ROW_X_INSET,
-		Q3R_OPTIONS_MAIN_ROW_Y + 1 * Q3R_OPTIONS_ROW_STEP,
+		Q3R_OPTIONS_MAIN_ROW_Y + 1 * Q3R_OPTIONS_MAIN_ROW_STEP,
 		Q3R_OPTIONS_ROW_WIDTH, Q3R_OPTIONS_ROW_HEIGHT, "Objects" );
 	Q3ROptions_SetBounds( &s_q3roptions.mvrl_smoke.generic,
 		Q3R_OPTIONS_LEFT_X + Q3R_OPTIONS_ROW_X_INSET,
-		Q3R_OPTIONS_MAIN_ROW_Y + 2 * Q3R_OPTIONS_ROW_STEP,
+		Q3R_OPTIONS_MAIN_ROW_Y + 2 * Q3R_OPTIONS_MAIN_ROW_STEP,
 		Q3R_OPTIONS_ROW_WIDTH, Q3R_OPTIONS_ROW_HEIGHT, "Smoke" );
 	Q3ROptions_SetBounds( &s_q3roptions.mvrl_marks.generic,
 		Q3R_OPTIONS_LEFT_X + Q3R_OPTIONS_ROW_X_INSET,
-		Q3R_OPTIONS_MAIN_ROW_Y + 3 * Q3R_OPTIONS_ROW_STEP,
+		Q3R_OPTIONS_MAIN_ROW_Y + 3 * Q3R_OPTIONS_MAIN_ROW_STEP,
 		Q3R_OPTIONS_ROW_WIDTH, Q3R_OPTIONS_ROW_HEIGHT, "Marks" );
 	Q3ROptions_SetBounds( &s_q3roptions.mvrl_sparks.generic,
 		Q3R_OPTIONS_LEFT_X + Q3R_OPTIONS_ROW_X_INSET,
-		Q3R_OPTIONS_MAIN_ROW_Y + 4 * Q3R_OPTIONS_ROW_STEP,
+		Q3R_OPTIONS_MAIN_ROW_Y + 4 * Q3R_OPTIONS_MAIN_ROW_STEP,
 		Q3R_OPTIONS_ROW_WIDTH, Q3R_OPTIONS_ROW_HEIGHT, "Sparks" );
 
 	Q3ROptions_SetBounds( &s_q3roptions.rvrl_players.generic,
@@ -995,19 +992,19 @@ void Q3ROptions_MenuInit( void ) {
 		Q3R_OPTIONS_ROW_WIDTH, Q3R_OPTIONS_ROW_HEIGHT, "Players" );
 	Q3ROptions_SetBounds( &s_q3roptions.rvrl_objects.generic,
 		Q3R_OPTIONS_RIGHT_X + Q3R_OPTIONS_ROW_X_INSET,
-		Q3R_OPTIONS_REAR_ROW_Y + 1 * Q3R_OPTIONS_ROW_STEP,
+		Q3R_OPTIONS_REAR_ROW_Y + 1 * Q3R_OPTIONS_REAR_ROW_STEP,
 		Q3R_OPTIONS_ROW_WIDTH, Q3R_OPTIONS_ROW_HEIGHT, "Objects" );
 	Q3ROptions_SetBounds( &s_q3roptions.rvrl_smoke.generic,
 		Q3R_OPTIONS_RIGHT_X + Q3R_OPTIONS_ROW_X_INSET,
-		Q3R_OPTIONS_REAR_ROW_Y + 2 * Q3R_OPTIONS_ROW_STEP,
+		Q3R_OPTIONS_REAR_ROW_Y + 2 * Q3R_OPTIONS_REAR_ROW_STEP,
 		Q3R_OPTIONS_ROW_WIDTH, Q3R_OPTIONS_ROW_HEIGHT, "Smoke" );
 	Q3ROptions_SetBounds( &s_q3roptions.rvrl_marks.generic,
 		Q3R_OPTIONS_RIGHT_X + Q3R_OPTIONS_ROW_X_INSET,
-		Q3R_OPTIONS_REAR_ROW_Y + 3 * Q3R_OPTIONS_ROW_STEP,
+		Q3R_OPTIONS_REAR_ROW_Y + 3 * Q3R_OPTIONS_REAR_ROW_STEP,
 		Q3R_OPTIONS_ROW_WIDTH, Q3R_OPTIONS_ROW_HEIGHT, "Marks" );
 	Q3ROptions_SetBounds( &s_q3roptions.rvrl_sparks.generic,
 		Q3R_OPTIONS_RIGHT_X + Q3R_OPTIONS_ROW_X_INSET,
-		Q3R_OPTIONS_REAR_ROW_Y + 4 * Q3R_OPTIONS_ROW_STEP,
+		Q3R_OPTIONS_REAR_ROW_Y + 4 * Q3R_OPTIONS_REAR_ROW_STEP,
 		Q3R_OPTIONS_ROW_WIDTH, Q3R_OPTIONS_ROW_HEIGHT, "Sparks" );
 
 	s_q3roptions.transmissionMode.generic.ownerdraw = Q3ROptions_DrawChoice;
@@ -1043,6 +1040,7 @@ void Q3ROptions_MenuInit( void ) {
 	Q3ROptions_SetBounds( &s_q3roptions.back.generic,
 		Q3R_OPTIONS_FRAME_X + 24, Q3R_OPTIONS_ACTION_Y, 120, 24, NULL );
 	s_q3roptions.back.string = "Back";
+	s_q3roptions.back.generic.statusbar = Q3ROptions_StatusBar;
 	s_q3roptions.back.generic.ownerdraw = Q3ROptions_DrawAction;
 }
 
