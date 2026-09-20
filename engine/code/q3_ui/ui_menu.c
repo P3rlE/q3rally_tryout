@@ -342,14 +342,15 @@ static void MainMenu_DrawProfileStat( float heroX, float heroWidth ) {
         fade = MainMenu_ProfileStatFade() * s_main.visualAlpha;
         statX = (int)( heroX + heroWidth - 144.0f );
         statY = 354;
-        Frontend_DrawCard( statX, statY, 128, 72, fade, qfalse );
+        MainMenu_ColorWithAlpha( valueColor, s_frontendAccent );
+        valueColor[3] *= fade;
+        UI_FillRect( statX, statY, 128, 1, valueColor );
+        UI_FillRect( statX, statY, 2, 58, valueColor );
         Frontend_DrawStatusChip( statX + 12, statY + 8, "Profile Stats",
                                  s_frontendAccent, fade );
 
         MainMenu_ColorWithAlpha( labelColor, s_frontendMuted );
-        MainMenu_ColorWithAlpha( valueColor, s_frontendAccent );
         labelColor[3] *= fade;
-        valueColor[3] *= fade;
         Frontend_DrawText( statX + 12, statY + 29, label,
                            UI_LEFT | UI_SMALLFONT, labelColor );
         Frontend_DrawText( statX + 12, statY + 44, value,

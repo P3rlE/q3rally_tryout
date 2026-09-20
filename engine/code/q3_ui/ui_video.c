@@ -842,22 +842,6 @@ static const char *GraphicsOptions_CurrentValue( menucommon_s *item )
 	return GraphicsOptions_ListValue( (menulist_s *)item );
 }
 
-static void GraphicsOptions_DrawNavItem( void *self )
-{
-	menutext_s *text;
-	menucommon_s *item;
-	qboolean focus;
-	qboolean active;
-
-	text = (menutext_s *)self;
-	item = &text->generic;
-	focus = ( Menu_ItemAtCursor( item->parent ) == item );
-	active = ( item->id == ID_GRAPHICS );
-	Frontend_DrawNavButton( item->left, item->top,
-		item->right - item->left, item->bottom - item->top,
-		text->string, 1.0f, active || focus, UI_LEFT );
-}
-
 static void GraphicsOptions_DrawSetting( void *self )
 {
 	menucommon_s *item;
@@ -1174,8 +1158,6 @@ void GraphicsOptions_MenuDraw (void)
 		GRAPHICS_DETAIL_WIDTH, GRAPHICS_DETAIL_HEIGHT, 1.0f, qfalse );
 	Frontend_DrawText( GRAPHICS_NAV_X + 16, GRAPHICS_NAV_Y + 22,
 		"Submenu", UI_LEFT | UI_SMALLFONT, graphicsMutedColor );
-	Frontend_DrawText( GRAPHICS_NAV_X + 16, GRAPHICS_NAV_Y + 54,
-		"Graphics", UI_LEFT | UI_SMALLFONT, graphicsTextColor );
 	Frontend_DrawText( GRAPHICS_DETAIL_X + 16, GRAPHICS_DETAIL_Y + 22,
 		"Display & quality", UI_LEFT | UI_SMALLFONT,
 		graphicsMutedColor );
@@ -1344,18 +1326,6 @@ static void GraphicsOptions_SetBounds( menucommon_s *item, int id,
 	if ( label ) {
 		item->name = (char *)label;
 	}
-}
-
-static void GraphicsOptions_SetNavBounds( menutext_s *item, int id,
-	const char *label, int y )
-{
-	item->generic.flags = QMF_LEFT_JUSTIFY | QMF_PULSEIFFOCUS;
-	item->generic.callback = GraphicsOptions_Event;
-	item->string = (char *)label;
-	item->style = UI_LEFT | UI_SMALLFONT;
-	item->generic.ownerdraw = GraphicsOptions_DrawNavItem;
-	GraphicsOptions_SetBounds( &item->generic, id, GRAPHICS_NAV_X + 16, y,
-		GRAPHICS_NAV_WIDTH - 32, GRAPHICS_ROW_HEIGHT, NULL );
 }
 
 static void GraphicsOptions_SetChildActionBounds( menutext_s *item,
