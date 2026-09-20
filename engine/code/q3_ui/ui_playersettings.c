@@ -86,6 +86,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ID_LEFT			19
 #define ID_RIGHT		20
 #define ID_PLATE		21
+#define ID_COUNTRY		22
 // END
 
 #define ID_TAB_PROFILE		30
@@ -3787,6 +3788,11 @@ static void PlayerSettings_MenuEvent( void* ptr, int event ) {
 		PlayerSettings_SetTab( TAB_ACHIEVEMENTS );
 		break;
 
+	case ID_COUNTRY:
+		/* Keep mouse activation explicit for the owner-drawn text field. */
+		Menu_SetCursorToItem( &s_playersettings.menu, &s_playersettings.country );
+		break;
+
 	case ID_HANDICAP:
 		trap_Cvar_Set( "handicap", va( "%i", 100 - 25 * s_playersettings.handicap.curvalue ) );
 		break;
@@ -4158,7 +4164,9 @@ static void PlayerSettings_MenuInit( void ) {
 	profileY += PLAYERSETTINGS_PROFILE_ROW_HEIGHT;
 
 	s_playersettings.country.generic.type = MTYPE_FIELD;
-	s_playersettings.country.generic.flags = QMF_NODEFAULTINIT;
+	s_playersettings.country.generic.flags = QMF_NODEFAULTINIT | QMF_PULSEIFFOCUS;
+	s_playersettings.country.generic.id = ID_COUNTRY;
+	s_playersettings.country.generic.callback = PlayerSettings_MenuEvent;
 	s_playersettings.country.generic.ownerdraw = PlayerSettings_DrawModernField;
 	s_playersettings.country.generic.name = "Country";
 	s_playersettings.country.field.widthInChars = PROFILE_MAX_COUNTRY - 1;
@@ -4175,9 +4183,10 @@ static void PlayerSettings_MenuInit( void ) {
 //	 y += 3 * PROP_HEIGHT;
 // END
 	s_playersettings.handicap.generic.type			= MTYPE_SPINCONTROL;
-	s_playersettings.handicap.generic.flags		= QMF_NODEFAULTINIT;
+	s_playersettings.handicap.generic.flags		= QMF_NODEFAULTINIT | QMF_PULSEIFFOCUS;
 	s_playersettings.handicap.generic.id			= ID_HANDICAP;
 	s_playersettings.handicap.generic.ownerdraw	= PlayerSettings_DrawModernChoice;
+	s_playersettings.handicap.generic.name		= "Handicap";
 // STONELANCE
 /*
 	s_playersettings.handicap.generic.x			= 192;
@@ -4233,6 +4242,16 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.avatar.generic.bottom = s_playersettings.avatar.generic.y + 108;
 	s_playersettings.country.generic.y = PLAYERSETTINGS_PROFILE_FORM_Y + 146;
 	s_playersettings.country.generic.top = s_playersettings.country.generic.y;
+	s_playersettings.country.generic.bottom = s_playersettings.country.generic.y + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
+	/* QMF_NODEFAULTINIT is intentional because this field is owner-drawn,
+	 * but it also skips the normal text-field state initialization.  Initialize
+	 * the editing state once, then restore the modern full-row hitbox. */
+	MenuField_Init( &s_playersettings.country );
+	s_playersettings.country.generic.x = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
+	s_playersettings.country.generic.y = PLAYERSETTINGS_PROFILE_FORM_Y + 146;
+	s_playersettings.country.generic.left = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
+	s_playersettings.country.generic.top = s_playersettings.country.generic.y;
+	s_playersettings.country.generic.right = PLAYERSETTINGS_PROFILE_FORM_RIGHT;
 	s_playersettings.country.generic.bottom = s_playersettings.country.generic.y + PLAYERSETTINGS_PROFILE_FIELD_HEIGHT;
 	s_playersettings.handicap.generic.y = PLAYERSETTINGS_PROFILE_FORM_Y + 182;
 	s_playersettings.handicap.generic.top = s_playersettings.handicap.generic.y;
