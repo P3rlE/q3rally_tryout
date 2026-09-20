@@ -188,6 +188,7 @@ typedef struct
 #define ID_GEARDOWN		74
 #define ID_JOYANALOG	75
 #define ID_INPUTMODE	76
+#define ID_SEARCH	113
 
 #define CONTROLS_INPUT_KEYBOARD		0
 #define CONTROLS_INPUT_CONTROLLER	1
@@ -366,6 +367,7 @@ static void Controls_MenuDraw( void );
 static void Controls_DrawSection( void *self );
 static void Controls_DrawAction( void *self );
 static void Controls_DrawInputMode( void *self );
+static void Controls_SearchFieldEvent( void *self, int event );
 
 static const char *s_controlsInputModes[] = {
 	"Mouse/Keyboard",
@@ -1613,20 +1615,24 @@ static void Controls_DrawSearchField( void *self )
 	qboolean focus;
 	vec4_t textColor;
 	const char *label;
+	int drawTop;
+	int drawBottom;
 
 	field = (menufield_s *)self;
 	item = &field->generic;
 	focus = ( Menu_ItemAtCursor( item->parent ) == item );
+	drawTop = CONTROLS_SEARCH_Y;
+	drawBottom = CONTROLS_SEARCH_Y + CONTROLS_SEARCH_HEIGHT;
 
 	if ( focus ) {
-		UI_FillRect( item->left, item->top,
-			item->right - item->left, item->bottom - item->top,
+		UI_FillRect( CONTROLS_SEARCH_X, drawTop,
+			CONTROLS_SEARCH_WIDTH, CONTROLS_SEARCH_HEIGHT,
 			controlsFocusColor );
-		UI_FillRect( item->left, item->top, 2,
-			item->bottom - item->top, controlsAccentColor );
+		UI_FillRect( CONTROLS_SEARCH_X, drawTop, 2,
+			CONTROLS_SEARCH_HEIGHT, controlsAccentColor );
 	}
-	UI_FillRect( item->left, item->bottom - 1,
-		item->right - item->left, 1, controlsBorderColor );
+	UI_FillRect( CONTROLS_SEARCH_X, drawBottom - 1,
+		CONTROLS_SEARCH_WIDTH, 1, controlsBorderColor );
 
 	if ( field->field.buffer[0] ) {
 		label = field->field.buffer;
@@ -1634,12 +1640,19 @@ static void Controls_DrawSearchField( void *self )
 		label = "Search controls";
 	}
 	Vector4Copy( focus ? controlsTextColor : controlsMutedColor, textColor );
-	Frontend_DrawText( item->left + 12,
-		item->top + ( item->bottom - item->top - SMALLCHAR_HEIGHT ) / 2,
+	Frontend_DrawText( CONTROLS_SEARCH_X + 12,
+		drawTop + ( CONTROLS_SEARCH_HEIGHT - SMALLCHAR_HEIGHT ) / 2,
 		label, UI_LEFT | UI_SMALLFONT, textColor );
 	if ( focus ) {
-		UI_FillRect( item->left + 12 + Frontend_TextWidth( label,
-			UI_LEFT | UI_SMALLFONT ), item->top + 6, 1, 12, controlsAccentColor );
+		UI_FillRect( CONTROLS_SEARCH_X + 12 + Frontend_TextWidth( label,
+			UI_LEFT | UI_SMALLFONT ), drawTop + 6, 1, 12, controlsAccentColor );
+	}
+}
+
+static void Controls_SearchFieldEvent( void *self, int event )
+{
+	if ( event == QM_ACTIVATED ) {
+		Menu_SetCursorToItem( &s_controls.menu, &s_controls.search );
 	}
 }
 
@@ -3170,12 +3183,14 @@ static void Controls_MenuInit( void )
 
 		s_controls.search.generic.type			= MTYPE_FIELD;
 		s_controls.search.generic.flags			= QMF_SMALLFONT;
-		s_controls.search.generic.x				= CONTROLS_SEARCH_X + 12;
-		s_controls.search.generic.y				= CONTROLS_SEARCH_Y + 2;
+		s_controls.search.generic.x				= CONTROLS_SEARCH_X;
+		s_controls.search.generic.y				= CONTROLS_SEARCH_Y;
 		s_controls.search.generic.left			= CONTROLS_SEARCH_X;
 		s_controls.search.generic.top			= CONTROLS_SEARCH_Y;
 		s_controls.search.generic.right			= CONTROLS_SEARCH_X + CONTROLS_SEARCH_WIDTH;
 		s_controls.search.generic.bottom			= CONTROLS_SEARCH_Y + CONTROLS_SEARCH_HEIGHT;
+		s_controls.search.generic.id				= ID_SEARCH;
+		s_controls.search.generic.callback		= Controls_SearchFieldEvent;
 		s_controls.search.generic.ownerdraw	= Controls_DrawSearchField;
 		s_controls.search.field.widthInChars	= 24;
 		s_controls.search.field.maxchars		= sizeof( s_controlsSearchText ) - 1;
@@ -3197,6 +3212,12 @@ static void Controls_MenuInit( void )
 	Menu_AddItem( &s_controls.menu, &s_controls.misc );
 	Menu_AddItem( &s_controls.menu, &s_controls.developer );
 	Menu_AddItem( &s_controls.menu, &s_controls.search );
+	/* MenuField_Init calculates a legacy text-sized hitbox. Replace it with
+	 * the complete modern search control, including its small label area. */
+	s_controls.search.generic.left	= CONTROLS_SEARCH_X;
+	s_controls.search.generic.top	= CONTROLS_SEARCH_Y - 20;
+	s_controls.search.generic.right	= CONTROLS_SEARCH_X + CONTROLS_SEARCH_WIDTH;
+	s_controls.search.generic.bottom	= CONTROLS_SEARCH_Y + CONTROLS_SEARCH_HEIGHT;
 	Menu_AddItem( &s_controls.menu, &s_controls.inputmode );
 
 	Menu_AddItem( &s_controls.menu, &s_controls.sensitivity );
