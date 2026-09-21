@@ -21,6 +21,9 @@ void Frontend_DrawCard( int x, int y, int width, int height,
 qboolean Frontend_DrawButton( int x, int y, int width, int height,
                               const char *label, float alpha,
                               qboolean active, int textAlign );
+qboolean Frontend_DrawButtonFocused( int x, int y, int width, int height,
+                                     const char *label, float alpha,
+                                     qboolean active, int textAlign );
 qboolean Frontend_DrawNavButton( int x, int y, int width, int height,
                                  const char *label, float alpha,
                                  qboolean active, int textAlign );

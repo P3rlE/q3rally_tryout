@@ -310,9 +310,10 @@ void Frontend_DrawCard( int x, int y, int width, int height,
                         active ? UI_FRONTEND_STYLE_ACTIVE : UI_FRONTEND_STYLE_CARD );
 }
 
-qboolean Frontend_DrawButton( int x, int y, int width, int height,
-                              const char *label, float alpha,
-                              qboolean active, int textAlign ) {
+static qboolean Frontend_DrawButtonInternal( int x, int y, int width, int height,
+                                             const char *label, float alpha,
+                                             qboolean active, qboolean allowHover,
+                                             int textAlign ) {
     vec4_t buttonColor;
     vec4_t borderColor;
     vec4_t accentColor;
@@ -322,7 +323,7 @@ qboolean Frontend_DrawButton( int x, int y, int width, int height,
 
     hovered = ( uis.cursorx >= x && uis.cursorx <= x + width &&
                 uis.cursory >= y && uis.cursory <= y + height ) ? qtrue : qfalse;
-    highlighted = ( active || hovered ) ? qtrue : qfalse;
+    highlighted = ( active || ( allowHover && hovered ) ) ? qtrue : qfalse;
 
     Frontend_ColorWithAlpha( buttonColor, frontendFocusColor, alpha );
     Frontend_ColorWithAlpha( borderColor, frontendBorderColor, alpha * 0.70f );
@@ -350,6 +351,20 @@ qboolean Frontend_DrawButton( int x, int y, int width, int height,
                        label, textAlign | UI_SMALLFONT, textColor );
 
     return hovered;
+}
+
+qboolean Frontend_DrawButton( int x, int y, int width, int height,
+                              const char *label, float alpha,
+                              qboolean active, int textAlign ) {
+    return Frontend_DrawButtonInternal( x, y, width, height, label, alpha,
+                                        active, qtrue, textAlign );
+}
+
+qboolean Frontend_DrawButtonFocused( int x, int y, int width, int height,
+                                     const char *label, float alpha,
+                                     qboolean active, int textAlign ) {
+    return Frontend_DrawButtonInternal( x, y, width, height, label, alpha,
+                                        active, qfalse, textAlign );
 }
 
 qboolean Frontend_DrawNavButton( int x, int y, int width, int height,

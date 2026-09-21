@@ -777,7 +777,7 @@ ifdef MINGW
   ifneq ("$(CC)", $(findstring "$(CC)", "clang" "clang++"))
     CLIENT_LDFLAGS += -mwindows
   endif
-  CLIENT_LIBS = -lgdi32 -lole32
+	CLIENT_LIBS = -lgdi32 -lole32 -lcomdlg32
   SERVER_LIBS =
   RENDERER_LIBS = -lgdi32 -lole32 -static-libgcc
 
