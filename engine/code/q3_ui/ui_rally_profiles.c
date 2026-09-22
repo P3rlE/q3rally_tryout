@@ -91,6 +91,7 @@ typedef struct {
 } profileOverlay_t;
 
 static profileOverlay_t s_profileOverlay;
+static char s_profileDeleteName[PROFILE_MAX_NAME];
 //static qboolean s_profileOverlaySessionInitialized = qfalse;
 
 static void UI_ProfileOverlay_Draw( void );
@@ -1321,6 +1322,8 @@ static void UI_ProfileOverlay_DrawAction( void *self ) {
 static void UI_ProfileOverlay_MenuEvent( void *ptr, int event );
 static qboolean UI_ProfileOverlay_HandleCreate( void );
 static qboolean UI_ProfileOverlay_HandleDelete( void );
+static qboolean UI_ProfileOverlay_DeleteNow( const char *name );
+static void UI_ProfileOverlay_DeleteConfirmAction( qboolean result );
 static qboolean UI_ProfileOverlay_HandleSelect( void );
 
 static void UI_ProfileOverlay_SetupMenu( void ) {
@@ -1519,22 +1522,20 @@ static qboolean UI_ProfileOverlay_HandleCreate( void ) {
         }
     }
 
-    UI_ProfileOverlay_SetStatus( "Profile created", statusInfoColor );
-    UI_ProfileOverlay_RememberRecent( name );
+    /* A newly-created profile is the user's next active identity. Activate it
+     * immediately so its UUID, settings and ladder state are all associated
+     * with the new profile rather than the previously selected one. The
+    * ladder wizard is profile-scoped and will now open for this profile. */
+    UI_Profile_ActivateProfile( name );
+    UI_PopMenu();
+    UI_LadderWizard_MaybeShow();
     return qtrue;
 }
 
-static qboolean UI_ProfileOverlay_HandleDelete( void ) {
-    const char *name;
+static qboolean UI_ProfileOverlay_DeleteNow( const char *name ) {
     char path[MAX_QPATH];
     fileHandle_t file;
 
-    if ( s_profileOverlay.profileCount <= 0 ) {
-        UI_ProfileOverlay_SetStatus( "Nothing to delete", statusErrorColor );
-        return qfalse;
-    }
-
-    name = s_profileOverlay.profileNames[ s_profileOverlay.list.curvalue ];
     if ( !name || !name[0] ) {
         UI_ProfileOverlay_SetStatus( "Invalid selection", statusErrorColor );
         return qfalse;
@@ -1548,6 +1549,9 @@ static qboolean UI_ProfileOverlay_HandleDelete( void ) {
     }
     trap_FS_FCloseFile( file );
 
+    trap_Cmd_ExecuteText( EXEC_NOW,
+                          va( "ladder_profile_forget \"%s\"\n", name ) );
+
     if ( !Q_stricmp( uis.activeProfile, name ) ) {
         uis.activeProfile[0] = '\0';
         trap_Cvar_Set( "profile_active", "" );
@@ -1559,6 +1563,48 @@ static qboolean UI_ProfileOverlay_HandleDelete( void ) {
     UI_ProfileOverlay_LoadProfiles();
     UI_ProfileOverlay_SetStatus( "Profile deleted", statusInfoColor );
     return qtrue;
+}
+
+static void UI_ProfileOverlay_DeleteConfirmAction( qboolean result ) {
+    if ( result ) {
+        UI_ProfileOverlay_DeleteNow( s_profileDeleteName );
+    }
+    s_profileDeleteName[0] = '\0';
+}
+
+static qboolean UI_ProfileOverlay_HandleDelete( void ) {
+    const char *name;
+
+    if ( s_profileOverlay.profileCount <= 0 ) {
+        UI_ProfileOverlay_SetStatus( "Nothing to delete", statusErrorColor );
+        return qfalse;
+    }
+
+    name = s_profileOverlay.profileNames[ s_profileOverlay.list.curvalue ];
+    if ( !name || !name[0] ) {
+        UI_ProfileOverlay_SetStatus( "Invalid selection", statusErrorColor );
+        return qfalse;
+    }
+
+    Q_strncpyz( s_profileDeleteName, name, sizeof( s_profileDeleteName ) );
+    UI_ConfirmMenu( va( "DELETE PROFILE %s?", name ), NULL,
+                    UI_ProfileOverlay_DeleteConfirmAction );
+    return qtrue;
+}
+
+static void UI_Profile_ApplyLadderState( const char *name ) {
+    char command[PROFILE_MAX_NAME + 48];
+    char safeName[PROFILE_MAX_NAME];
+
+    if ( !name || !UI_Profile_NameIsValid( name, NULL, 0 ) ) {
+        safeName[0] = '\0';
+    } else {
+        Q_strncpyz( safeName, name, sizeof( safeName ) );
+    }
+
+    Com_sprintf( command, sizeof( command ), "ladder_profile_activate \"%s\"\n",
+                 safeName );
+    trap_Cmd_ExecuteText( EXEC_NOW, command );
 }
 
 void UI_Profile_ActivateProfile( const char *name ) {
@@ -1577,6 +1623,7 @@ void UI_Profile_ActivateProfile( const char *name ) {
     }
 
     trap_Cvar_Set( "profile_active", name );
+    UI_Profile_ApplyLadderState( name );
     trap_Cvar_Update( &ui_profileActive );
     Q_strncpyz( uis.activeProfile, name, sizeof( uis.activeProfile ) );
     uis.profileOverlayShown = qtrue;
@@ -1909,6 +1956,11 @@ void UI_ProfileOverlay_InitSession( void ) {
             }
         }
     }
+
+    /* Restore the active profile's Ladder key before any game or pending
+     * outbox request can be submitted. An empty profile intentionally clears
+     * the previous profile's global server key. */
+    UI_Profile_ApplyLadderState( uis.activeProfile );
 }
 
 void UI_ProfileOverlay_ClearState( void ) {

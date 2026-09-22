@@ -297,6 +297,7 @@ typedef struct {
         int                     transmissionMode;
         collisionDamage_t       damage;
         collisionDamage_t       breakableDamage;
+        qboolean        collisionDetected;      // meaningful wall or car/car impact this move
 
         qboolean        useFuel;
 
@@ -425,6 +426,10 @@ typedef enum {
         PW_NUM_POWERUPS
 
 } powerup_t;
+
+#define RALLY_TURBO_MAX_MSEC             25000
+#define RALLY_TURBO_ITEM_MSEC             5000
+#define RALLY_TURBO_CLEAN_SPLIT_MSEC      500
 
 typedef enum {
         HI_NONE,

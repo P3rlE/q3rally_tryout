@@ -20,8 +20,8 @@ $bitmap = New-Object System.Drawing.Bitmap(
 )
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 $font = New-Object System.Drawing.Font(
-    "Agency FB",
-        24,
+    "Bahnschrift SemiCondensed",
+        26,
     [System.Drawing.FontStyle]::Bold,
     [System.Drawing.GraphicsUnit]::Pixel
 )

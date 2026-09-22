@@ -67,6 +67,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define RANK_DISPLAY_TIME               3600
 #define RANK_FADE_TIME                  400
 #define RANK_MAX_QUEUE                  4
+#define HUD_TOAST_QUEUE_SIZE            12
+#define HUD_TOAST_DISPLAY_TIME          1100
+#define HUD_TOAST_FADE_TIME             300
+#define HUD_TOAST_CLEAN_SECTOR_ITEM     -1
 #define ELIM_TIMELINE_MAX_EVENTS         5
 
 #define	PULSE_SCALE			1.5			// amount to scale up the icons when activating
@@ -93,6 +97,12 @@ typedef struct {
     qboolean rankUp;
     int startTime;
 } cgRankAnnouncement_t;
+
+typedef struct {
+    int itemNum;
+    int startTime;
+    int eventTime;
+} cgHudToast_t;
 
 
 #define	MAX_VERTS_ON_POLY	10
@@ -819,6 +829,8 @@ typedef struct {
         int                     achievementQueueCount;
         cgRankAnnouncement_t    rankQueue[RANK_MAX_QUEUE];
         int                     rankQueueCount;
+        cgHudToast_t            hudToastQueue[HUD_TOAST_QUEUE_SIZE];
+        int                     hudToastQueueCount;
 
 	// sound buffer mainly for announcer sounds
 	int			soundBufferIn;
@@ -913,6 +925,8 @@ typedef struct {
 // stored in the clientInfo_t, itemInfo_t, weaponInfo_t, and powerupInfo_t
 typedef struct {
 	qhandle_t	charsetShader;
+	qhandle_t	frontendCharset;
+	qhandle_t	ingameCharset;
 	qhandle_t	charsetProp;
 	qhandle_t	charsetPropGlow;
 	qhandle_t	charsetPropB;
@@ -2056,6 +2070,15 @@ void CG_DrawTinyDigitalStringColor( int x, int y, const char *s, vec4_t color );
 
 void CG_DrawTinyString( int x, int y, const char *s, float alpha );
 void CG_DrawTinyStringColor( int x, int y, const char *s, vec4_t color );
+int  CG_FrontendStringWidth( const char *text, int style, float scale );
+void CG_DrawFrontendString( int x, int y, const char *text, int style,
+	                        float scale, const float *color );
+int  CG_IngameStringWidth( const char *text, int style, float scale );
+void CG_DrawIngameString( int x, int y, const char *text, int style,
+	                        float scale, const float *color );
+void CG_DrawIngameSmallString( int x, int y, const char *text,
+	                             const float *color );
+void CG_QueueHudToast( int itemNum );
 
 //
 // cg_rally_tools.c
@@ -2097,6 +2120,9 @@ qboolean CG_InsideBox( const vec3_t mins, const vec3_t maxs, const vec3_t pos );
 // cg_rally_race_tools.c
 //
 void CG_NewLapTime( int client, int lap, int time );
+void CG_RecordRaceSplit( int client, int lap, int checkpoint, int time );
+qboolean CG_GetRaceSplitGap( int aheadClient, int behindClient, int *gapMs );
+qboolean CG_RaceOrderIsActive( void );
 void CG_UpdateGhostSplitDelta( void );
 void CG_FinishedRace( int client, int time );
 void CG_StartRace( int time );

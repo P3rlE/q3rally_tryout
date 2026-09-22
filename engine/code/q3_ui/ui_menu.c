@@ -48,6 +48,7 @@ MAIN MENU
 // Q3RALLY DOWNLOADS START
 #define ID_DOWNLOADS                    19
 // Q3RALLY DOWNLOADS END
+#define ID_PROFILE_STATS                20
 
 #define MAIN_BANNER_MODEL               "models/mapobjects/q3rtitle/q3rtitle.md3"
 #define MAIN_MENU_VERTICAL_SPACING      50
@@ -71,6 +72,7 @@ typedef struct {
         // Q3RALLY DOWNLOADS END
         menutext_s              exit;
         menutext_s              profileAction;
+        menutext_s              profileStatsAction;
         menutext_s              profileInfoLine1;
         menutext_s              profileInfoLine2;
         char                    profileRankLine[64];
@@ -273,7 +275,8 @@ static float MainMenu_ProfileStatFade( void ) {
         return 1.0f;
 }
 
-static void MainMenu_DrawProfileStat( float heroX, float heroWidth ) {
+static void MainMenu_DrawProfileStat( float heroX, float heroWidth,
+                                      qboolean focus ) {
         const profile_stats_t *stats;
         vec4_t labelColor;
         vec4_t valueColor;
@@ -347,7 +350,8 @@ static void MainMenu_DrawProfileStat( float heroX, float heroWidth ) {
         UI_FillRect( statX, statY, 128, 1, valueColor );
         UI_FillRect( statX, statY, 2, 58, valueColor );
         Frontend_DrawStatusChip( statX + 12, statY + 8, "Profile Stats",
-                                 s_frontendAccent, fade );
+                                 focus ? s_frontendAccent : s_frontendStatus,
+                                 fade );
 
         MainMenu_ColorWithAlpha( labelColor, s_frontendMuted );
         labelColor[3] *= fade;
@@ -355,6 +359,15 @@ static void MainMenu_DrawProfileStat( float heroX, float heroWidth ) {
                            UI_LEFT | UI_SMALLFONT, labelColor );
         Frontend_DrawText( statX + 12, statY + 44, value,
                            UI_LEFT | UI_BIGFONT | UI_DROPSHADOW, valueColor );
+}
+
+static void MainMenu_DrawProfileStatAction( void *self ) {
+        menutext_s *item;
+        qboolean focus;
+
+        item = (menutext_s *)self;
+        focus = ( Menu_ItemAtCursor( item->generic.parent ) == item );
+        MainMenu_DrawProfileStat( MainMenu_HeroX(), MainMenu_HeroWidth(), focus );
 }
 
 /*
@@ -531,6 +544,12 @@ void Main_MenuEvent (void* ptr, int event) {
                 UI_ProfileOverlay_Open( qfalse );
                 break;
 
+        case ID_PROFILE_STATS:
+                if ( UI_Profile_HasActiveProfile() ) {
+                        UI_PlayerStatsMenu();
+                }
+                break;
+
         case ID_EXIT:
                 UI_ConfirmMenu( "EXIT GAME?", 0, MainMenu_ExitAction );
                 break;
@@ -687,8 +706,6 @@ static void Main_MenuDraw( void ) {
                                  s_frontendAccent, s_main.visualAlpha );
 
         Menu_Draw( &s_main.menu );
-
-        MainMenu_DrawProfileStat( heroX, heroWidth );
 
         Frontend_DrawText( (int)( heroX + 16 ), 370, "Ready for the next rally",
                            UI_LEFT | UI_SMALLFONT, textColor );
@@ -903,6 +920,20 @@ void UI_MainMenu( void ) {
         InitMenuTextInfo(&s_main.profileInfoLine2, s_main.profilePointsLine, x + 20, profileInfoY + 16);
         MainMenu_UpdateProfileTexts();
 
+        s_main.profileStatsAction.generic.type = MTYPE_PTEXT;
+        s_main.profileStatsAction.generic.flags = QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
+        s_main.profileStatsAction.generic.id = ID_PROFILE_STATS;
+        s_main.profileStatsAction.generic.callback = Main_MenuEvent;
+        s_main.profileStatsAction.generic.ownerdraw = MainMenu_DrawProfileStatAction;
+        s_main.profileStatsAction.generic.x = (int)( MainMenu_HeroX() + MainMenu_HeroWidth() - 144.0f );
+        s_main.profileStatsAction.generic.y = 354;
+        s_main.profileStatsAction.generic.left = s_main.profileStatsAction.generic.x;
+        s_main.profileStatsAction.generic.top = s_main.profileStatsAction.generic.y;
+        s_main.profileStatsAction.generic.right = s_main.profileStatsAction.generic.x + 128;
+        s_main.profileStatsAction.generic.bottom = s_main.profileStatsAction.generic.y + 58;
+        s_main.profileStatsAction.string = "PROFILE STATS";
+        s_main.profileStatsAction.style = UI_LEFT | UI_SMALLFONT;
+
 
         Menu_AddItem( &s_main.menu,     &s_main.banner );
         Menu_AddItem( &s_main.menu,     &s_main.carlogo );
@@ -916,6 +947,7 @@ void UI_MainMenu( void ) {
         // Q3RALLY DOWNLOADS END
         Menu_AddItem( &s_main.menu,     &s_main.exit );            
         Menu_AddItem( &s_main.menu,     &s_main.profileAction );
+        Menu_AddItem( &s_main.menu,     &s_main.profileStatsAction );
 
         s_main.singleplayer.generic.ownerdraw = MainMenu_DrawNavItem;
         s_main.multiplayer.generic.ownerdraw = MainMenu_DrawNavItem;

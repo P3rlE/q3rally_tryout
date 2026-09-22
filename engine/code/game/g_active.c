@@ -1563,6 +1563,10 @@ void ClientThink_real( gentity_t *ent ) {
 		}
 	} /* end fuel snapshot block */
 
+	if ( pm.collisionDetected ) {
+		client->cleanCheckpointSegment = qfalse;
+	}
+
 // STONELANCE
 	AnglesSubtract( client->ps.viewangles, oldAngles, ent->s.apos.trDelta );
 	VectorScale( ent->s.apos.trDelta, 1000.0f / ( client->ps.commandTime - oldTime ), ent->s.apos.trDelta );

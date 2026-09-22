@@ -1332,6 +1332,7 @@ void ClientBegin( int clientNum ) {
 	client->buttons = 0;
 	client->oldbuttons = 0;
 	client->lastCheckpointTime = 0;
+	client->cleanCheckpointSegment = qfalse;
 	client->pers.profileRacePlacementPenalized = qfalse;
 	client->pers.profileRacePlacementRecorded = qfalse;
 	client->pers.profileMatchOutcomeRecorded = qfalse;

@@ -827,12 +827,14 @@ static void CG_MapRestart( void ) {
 	cg.levelShot = qfalse;
 	cg.achievementQueueCount = 0;
 	cg.rankQueueCount = 0;
+	cg.hudToastQueueCount = 0;
 	cg.soundBufferIn = 0;
 	cg.soundBufferOut = 0;
 	cg.soundTime = 0;
 	memset( cg.soundBuffer, 0, sizeof( cg.soundBuffer ) );
 	memset( cg.achievementQueue, 0, sizeof( cg.achievementQueue ) );
 	memset( cg.rankQueue, 0, sizeof( cg.rankQueue ) );
+	memset( cg.hudToastQueue, 0, sizeof( cg.hudToastQueue ) );
 
 	cgs.voteTime = 0;
 
@@ -1441,6 +1443,15 @@ static void CG_ParsePositions( void ) {
 //			cgs.clientinfo[atoi(CG_Argv(i*2 + 2))].name, atoi(CG_Argv(i*2 + 3)));
 	}
 }
+
+static void CG_ParseRaceSplit( void ) {
+	if ( trap_Argc() < 5 ) {
+		return;
+	}
+
+	CG_RecordRaceSplit( atoi( CG_Argv( 1 ) ), atoi( CG_Argv( 2 ) ),
+	                    atoi( CG_Argv( 3 ) ), atoi( CG_Argv( 4 ) ) );
+}
 // END
 
 
@@ -1744,6 +1755,10 @@ static void CG_ServerCommand( void ) {
 		// server claimed the command
 		return;
 	}
+	if ( !strcmp( cmd, "cleanSector" ) ) {
+		CG_QueueHudToast( HUD_TOAST_CLEAN_SECTOR_ITEM );
+		return;
+	}
 
         if ( !strcmp( cmd, "achv" ) ) {
                 CG_ParseAchievementUnlock();
@@ -1981,6 +1996,11 @@ static void CG_ServerCommand( void ) {
 
 	if ( !strcmp( cmd, "positions" ) ) {
 		CG_ParsePositions();
+		return;
+	}
+
+	if ( !strcmp( cmd, "raceSplit" ) ) {
+		CG_ParseRaceSplit();
 		return;
 	}
 

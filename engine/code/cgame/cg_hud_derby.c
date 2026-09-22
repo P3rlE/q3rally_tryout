@@ -214,7 +214,8 @@ void CG_DrawHUD_DerbyVehicleState( void ) {
 		}
 	}
 
-	CG_DrawTinyStringColor( (int)(x + 8.0f*scale), (int)(y + 6.0f*scale), "INTEGRITY", colorWhite );
+	CG_DrawIngameString( (int)(x + 8.0f*scale), (int)(y + 5.0f*scale),
+	                     "INTEGRITY", UI_SMALLFONT, 0.75f * scale, colorWhite );
 
 	/* Critical pulse border */
 	if ( critical ) {
@@ -226,7 +227,8 @@ void CG_DrawHUD_DerbyVehicleState( void ) {
 		CG_DrawRect( x - 1.0f*scale, y - 1.0f*scale,
 		             panelW + 2.0f*scale, panelH + 2.0f*scale,
 		             2.0f*scale, pulseColor );
-		CG_DrawBigStringColor( (int)(x + 18.0f*scale), (int)(y + 30.0f*scale), "!", pulseColor );
+		CG_DrawIngameString( (int)(x + 18.0f*scale), (int)(y + 30.0f*scale),
+		                     "!", UI_LEFT, 0.8f * scale, pulseColor );
 		if ( cgs.media.derbyHudWarningShader ) {
 			trap_R_SetColor( pulseColor );
 			CG_DrawPic( x + 90.0f*scale, y + 6.0f*scale,
@@ -252,9 +254,9 @@ void CG_DrawHUD_DerbyList( float x, float y ) {
 
 	/* Header row */
 	CG_FillRect( x, y, 120, 16, bgColor );
-	CG_DrawTinyStringColor( x + 0,  y + 4, "PLAYER:",   colorWhite );
-	CG_DrawTinyStringColor( x + 60,  y + 4, "DD:",  colorWhite );
-	CG_DrawTinyStringColor( x + 90, y + 4, "DT:",  colorWhite );
+	CG_DrawIngameSmallString( x + 0,  y + 2, "PLAYER:", colorWhite );
+	CG_DrawIngameSmallString( x + 60, y + 2, "DD:",     colorWhite );
+	CG_DrawIngameSmallString( x + 90, y + 2, "DT:",     colorWhite );
 	y += 16;
 
 	/* Top-8 player rows */
@@ -275,10 +277,13 @@ void CG_DrawHUD_DerbyList( float x, float y ) {
 			Vector4Copy( colorMdGrey, color );
 		}
 
-		CG_DrawTinyStringColor( x + 2,   y + 4, va("%i",  i + 1),                              color );
-		CG_DrawTinyStringColor( x + 16,  y + 4, cgs.clientinfo[cg.scores[i].client].name,       color );
-		CG_DrawTinyStringColor( x + 65,  y + 4, va("%i",  cg.scores[i].damageDealt),            color );
-		CG_DrawTinyStringColor( x + 95, y + 4, va("%i",  cg.scores[i].damageTaken),            color );
+		CG_DrawIngameSmallString( x + 2,  y + 2, va("%i", i + 1), color );
+		CG_DrawIngameSmallString( x + 16, y + 2,
+		                          cgs.clientinfo[cg.scores[i].client].name, color );
+		CG_DrawIngameSmallString( x + 65, y + 2,
+		                          va("%i", cg.scores[i].damageDealt), color );
+		CG_DrawIngameSmallString( x + 95, y + 2,
+		                          va("%i", cg.scores[i].damageTaken), color );
 
 		y += 16;
 	}

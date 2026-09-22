@@ -42,6 +42,12 @@ static void G_RallyRecordSplitTime( gentity_t *ent, int timestamp ) {
 		return;
 	}
 
+	/* Keep a short shared split history on clients for leaderboard time gaps. */
+	if ( isRallyRace() && ent->currentLap > 0 && ent->number > 0 ) {
+		trap_SendServerCommand( -1, va( "raceSplit %i %i %i %i",
+			ent->s.clientNum, ent->currentLap, ent->number, timestamp ) );
+	}
+
 	splitDuration = timestamp - client->lastCheckpointTime;
 	if ( splitDuration < 0 ) {
 		splitDuration = 0;
@@ -56,6 +62,45 @@ static void G_RallyRecordSplitTime( gentity_t *ent, int timestamp ) {
 
 	client->lapTimes[ client->lapTimeCount ] = splitDuration;
 	client->lapTimeCount++;
+}
+
+static void G_RallyCompleteCleanSegment( gentity_t *ent ) {
+	gclient_t *client;
+	int turboValue;
+	int turboRemaining;
+	qboolean awardedNos;
+
+	if ( !ent || !ent->client ) {
+		return;
+	}
+
+	client = ent->client;
+	if ( client->lastCheckpointTime > 0 && client->cleanCheckpointSegment ) {
+		turboValue = client->ps.powerups[PW_TURBO];
+		if ( turboValue > level.time ) {
+			turboRemaining = turboValue - level.time;
+		} else if ( turboValue < 0 ) {
+			turboRemaining = -turboValue;
+		} else {
+			turboRemaining = 0;
+		}
+
+		awardedNos = turboRemaining < RALLY_TURBO_MAX_MSEC;
+		turboRemaining += RALLY_TURBO_CLEAN_SPLIT_MSEC;
+		if ( turboRemaining > RALLY_TURBO_MAX_MSEC ) {
+			turboRemaining = RALLY_TURBO_MAX_MSEC;
+		}
+		if ( turboValue > level.time ) {
+			client->ps.powerups[PW_TURBO] = level.time + turboRemaining;
+		} else {
+			client->ps.powerups[PW_TURBO] = -turboRemaining;
+		}
+		if ( awardedNos ) {
+			trap_SendServerCommand( ent->s.number, "cleanSector" );
+		}
+	}
+
+	client->cleanCheckpointSegment = qtrue;
 }
 
 static void G_RallyCompleteLap( gentity_t *ent, int timestamp, qboolean allowRankProgress ) {
@@ -380,6 +425,7 @@ void Touch_Start (gentity_t *self, gentity_t *other, trace_t *trace ){
         G_RallyRecordSplitTime( other, level.time );
         other->client->lapStartTime = level.time;
         other->client->lastCheckpointTime = level.time;
+        other->client->cleanCheckpointSegment = qtrue;
         other->number = 1;
         other->client->ps.stats[STAT_NEXT_CHECKPOINT] = other->number;
         other->client->ps.stats[STAT_FRAC_TO_NEXT_CHECKPOINT] = FLOAT2SHORT(0.1f);
@@ -514,6 +560,7 @@ void Touch_Finish (gentity_t *self, gentity_t *other, trace_t *trace ){
                 return;
         }
 
+        G_RallyCompleteCleanSegment( other );
         G_RallyRecordSplitTime( other, level.time );
         G_RallyCompleteLap( other, level.time, qtrue );
         other->client->lastCheckpointTime = level.time;
@@ -574,6 +621,7 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
 	}
 
         if (self->number == other->number){
+                G_RallyCompleteCleanSegment( other );
                 G_RallyRecordSplitTime( other, level.time );
                 {
                         qboolean allowRankProgress = ( level.numberOfLaps > 0 && other->currentLap >= level.numberOfLaps );
@@ -833,6 +881,7 @@ void Touch_Checkpoint (gentity_t *self, gentity_t *other, trace_t *trace ){
 		G_Printf( "Client %i touched checkpoint number %i\n", other->s.clientNum, self->number );
 
 	if (self->number == other->number){
+		G_RallyCompleteCleanSegment( other );
 		G_RallyRecordSplitTime( other, level.time );
 		other->client->lastCheckpointTime = level.time;
 		other->number++;	// FIXME: get rid of number? use s.weapon instead?

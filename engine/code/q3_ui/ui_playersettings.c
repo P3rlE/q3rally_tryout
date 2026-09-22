@@ -154,23 +154,24 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP           18.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP   24.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP           32.0f
-#define PLAYERSETTINGS_ACHIEVEMENT_TEXT_GAP             24.0f
-#define PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT     20.0f
-#define PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER        0.52f
+#define PLAYERSETTINGS_ACHIEVEMENT_TEXT_GAP             16.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE  (( PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE + PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE - 1 ) / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE )
 #define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT           ( PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + ( PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP )
-#define PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE       PLAYERSETTINGS_PROFILE_VALUE_BASELINE
 
-#define PLAYERSETTINGS_STATS_ROW_HEIGHT		40
+#define PLAYERSETTINGS_STATS_ROW_HEIGHT		36
 #define PLAYERSETTINGS_STATS_ROW_GAP		4
 #define PLAYERSETTINGS_STATS_VALUE_OFFSET		260
 #define PLAYERSETTINGS_STATS_VALUE_BASELINE		PLAYERSETTINGS_PROFILE_VALUE_BASELINE
+#define PLAYERSETTINGS_STATS_CARD_BOTTOM		PLAYERSETTINGS_BACK_BUTTON_Y
+#define PLAYERSETTINGS_STATS_CARD_CONTENT_HEIGHT \
+	( PLAYERSETTINGS_STATS_CARD_BOTTOM - PLAYERSETTINGS_PROFILE_PANEL_TOP \
+	  - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN - 2 \
+	  - PLAYERSETTINGS_PROFILE_PANEL_BOTTOM_EXTRA )
 
 #define PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT       BG_ACHIEVEMENT_CATEGORY_COUNT
-#define PLAYERSETTINGS_ACHIEVEMENT_HEADER_ROW           0
-#define PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW    ( PLAYERSETTINGS_ACHIEVEMENT_HEADER_ROW + 1 )
+#define PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW    0
 #define PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT        ( PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT * 2 )
-#define PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT            ( PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT + 1 )
+#define PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT            PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT
 #define PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN	0.0f
 
 #define MAX_NAMELENGTH	20
@@ -184,9 +185,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // END
 
 
-static vec4_t achievementUnlockedColor = { 0.6f, 1.0f, 0.6f, 1.0f };
-static vec4_t achievementLockedColor = { 0.7f, 0.7f, 0.7f, 1.0f };
-static vec4_t profilePanelFillColor = { 0.03f, 0.03f, 0.03f, 0.80f };
 static vec4_t profileRowEvenFillColor = { 0.10f, 0.10f, 0.10f, 0.60f };
 static vec4_t profileRowOddFillColor = { 0.14f, 0.14f, 0.14f, 0.60f };
 static vec4_t profileRowBorderColor = { 0.35f, 0.35f, 0.35f, 0.85f };
@@ -482,8 +480,8 @@ static char s_birthYearStrings[BIRTH_YEAR_COUNT][5];
 
 static qboolean s_birthDateListsInitialized;
 
-static const char *s_statsLabelCurrentRank = "CURRENT RANK";
-static const char *s_statsLabelNextRank = "NEXT RANK";
+static const char *s_statsLabelCurrentRank = "Current rank";
+static const char *s_statsLabelNextRank = "Next rank";
 
 typedef enum {
         PROFILE_ROW_NAME = 0,
@@ -582,6 +580,34 @@ STATS_ROW_KOTH_WINS,
 STATS_ROW_KOTH_COMPLETED,
 STATS_ROW_COUNT
 } statsRow_t;
+
+typedef struct {
+	const char *title;
+	int firstRow;
+	int lastRow;
+} playersettingsStatsCategory_t;
+
+/* Keep each category short enough to fit as a focused, single page. */
+static const playersettingsStatsCategory_t s_statsCategories[] = {
+	{ "Overview", STATS_ROW_PLAYER_SCORE, STATS_ROW_FUEL },
+	{ "Performance", STATS_ROW_TOP_SPEED, STATS_ROW_BEST_LAP },
+	{ "Combat", STATS_ROW_KILLS, STATS_ROW_WINS },
+	{ "Objectives", STATS_ROW_FLAGS_CAPTURED, STATS_ROW_VEHICLE },
+	{ "Racing", STATS_ROW_RACING_WINS, STATS_ROW_RACING_COMPLETED },
+	{ "Racing DM", STATS_ROW_RACING_DM_WINS, STATS_ROW_RACING_DM_COMPLETED },
+	{ "Sprint", STATS_ROW_SPRINT_WINS, STATS_ROW_SPRINT_BEST },
+	{ "Derby", STATS_ROW_DERBY_WINS, STATS_ROW_DERBY_KILLS },
+	{ "Last Car Standing", STATS_ROW_LCS_WINS, STATS_ROW_LCS_COMPLETED },
+	{ "Elimination", STATS_ROW_ELIM_WINS, STATS_ROW_ELIM_ROUNDS },
+	{ "Deathmatch", STATS_ROW_DM_WINS, STATS_ROW_DM_KILLS },
+	{ "Team Deathmatch", STATS_ROW_TEAM_WINS, STATS_ROW_TEAM_KILLS },
+	{ "Team Racing", STATS_ROW_TEAM_RACING_WINS, STATS_ROW_TEAM_RACING_COMPLETED },
+	{ "Team Racing DM", STATS_ROW_TEAM_RACING_DM_WINS, STATS_ROW_TEAM_RACING_DM_COMPLETED },
+	{ "Capture the Flag", STATS_ROW_CTF_WINS, STATS_ROW_CTF_CAPTURES },
+	{ "4-Team CTF", STATS_ROW_CTF4_WINS, STATS_ROW_CTF4_CAPTURES },
+	{ "Domination", STATS_ROW_DOM_WINS, STATS_ROW_DOM_COMPLETED },
+	{ "King of the Hill", STATS_ROW_KOTH_WINS, STATS_ROW_KOTH_COMPLETED }
+};
 
 typedef struct {
 	menuframework_s		menu;
@@ -1279,6 +1305,80 @@ static void PlayerSettings_DrawClippedSmallString( int x, int y, int maxX, const
 	}
 }
 
+static void PlayerSettings_DrawAchievementText( int x, int y, int maxX,
+	const char *text, const float *color ) {
+	char clipped[128];
+	int length;
+
+	if ( !text || !text[0] || maxX <= x ) {
+		return;
+	}
+
+	Q_strncpyz( clipped, text, sizeof( clipped ) );
+	length = 0;
+	while ( clipped[length] ) {
+		++length;
+	}
+	while ( length > 0 && x + Frontend_TextWidth( clipped, UI_SMALLFONT ) > maxX ) {
+		clipped[--length] = '\0';
+	}
+
+	if ( clipped[0] ) {
+		Frontend_DrawText( x, y, clipped, UI_LEFT | UI_SMALLFONT, color );
+	}
+}
+
+static void PlayerSettings_DrawAchievementDescription( int x, int y, int maxX,
+	const char *text, const float *color ) {
+	const char *cursor;
+	int line;
+
+	if ( !text || !text[0] || maxX <= x ) {
+		return;
+	}
+
+	cursor = text;
+	for ( line = 0; line < 2 && cursor[0]; ++line ) {
+		char buffer[128];
+		int length;
+		int consumed;
+		int lastSpace;
+
+		length = 0;
+		consumed = 0;
+		lastSpace = -1;
+		while ( cursor[consumed] && length < (int)sizeof( buffer ) - 1 ) {
+			buffer[length] = cursor[consumed];
+			buffer[length + 1] = '\0';
+			if ( x + Frontend_TextWidth( buffer, UI_SMALLFONT ) > maxX ) {
+				break;
+			}
+			if ( cursor[consumed] == ' ' ) {
+				lastSpace = length;
+			}
+			++length;
+			++consumed;
+		}
+
+		if ( length <= 0 ) {
+			buffer[0] = cursor[0];
+			buffer[1] = '\0';
+			length = 1;
+			consumed = 1;
+		} else if ( cursor[consumed] && lastSpace >= 0 ) {
+			buffer[lastSpace] = '\0';
+			consumed = lastSpace + 1;
+		}
+
+		Frontend_DrawText( x, y + line * 12, buffer,
+		                   UI_LEFT | UI_SMALLFONT, color );
+		while ( cursor[consumed] == ' ' ) {
+			++consumed;
+		}
+		cursor += consumed;
+	}
+}
+
 
 static void PlayerSettings_DrawAvatarImage( void *self ) {
 	menufield_s *f = (menufield_s *)self;
@@ -1870,10 +1970,24 @@ static void PlayerSettings_DrawProfilePanelBackground( void ) {
 
 
 static float PlayerSettings_GetScrollContentTop( void ) {
+	if ( s_playersettings.currentTab == TAB_STATS ) {
+		return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 22;
+	}
+	if ( s_playersettings.currentTab == TAB_ACHIEVEMENTS ) {
+		return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 48;
+	}
+
 	return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 2;
 }
 
 static float PlayerSettings_GetScrollViewportTop( void ) {
+	if ( s_playersettings.currentTab == TAB_STATS ) {
+		return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 20;
+	}
+	if ( s_playersettings.currentTab == TAB_ACHIEVEMENTS ) {
+		return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 46;
+	}
+
 	return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
 }
 
@@ -1929,14 +2043,6 @@ static void PlayerSettings_GetPaginatedViewportBounds( float contentHeight, floa
 	}
 }
 
-static float PlayerSettings_GetPaginatedViewportHeight( float contentHeight, float reservedHeight ) {
-	float viewportTop;
-	float viewportBottom;
-
-	PlayerSettings_GetPaginatedViewportBounds( contentHeight, reservedHeight, &viewportTop, &viewportBottom );
-	return viewportBottom - viewportTop;
-}
-
 static float PlayerSettings_GetStatsRowSpacing( void ) {
 	return PLAYERSETTINGS_STATS_ROW_HEIGHT + PLAYERSETTINGS_STATS_ROW_GAP;
 }
@@ -1945,22 +2051,28 @@ static float PlayerSettings_GetAchievementsRowSpacing( void ) {
 	return PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP;
 }
 
-static float PlayerSettings_GetStatsContentHeight( void ) {
-	if ( STATS_ROW_COUNT <= 0 ) {
-		return 0.0f;
+static const playersettingsStatsCategory_t *PlayerSettings_GetStatsCategory( void ) {
+	int page;
+
+	page = s_playersettings.statsPagination.currentPage;
+	if ( page < 0 ) {
+		page = 0;
+	}
+	if ( page >= ARRAY_LEN( s_statsCategories ) ) {
+		page = ARRAY_LEN( s_statsCategories ) - 1;
 	}
 
-	return PLAYERSETTINGS_STATS_ROW_HEIGHT * STATS_ROW_COUNT
-			+ PLAYERSETTINGS_STATS_ROW_GAP * ( STATS_ROW_COUNT - 1 );
+	return &s_statsCategories[page];
+}
+
+static float PlayerSettings_GetStatsPageContentHeight( void ) {
+	/* The card and its footer stay fixed while the category changes. */
+	return PLAYERSETTINGS_STATS_CARD_CONTENT_HEIGHT;
 }
 
 static float PlayerSettings_GetAchievementsContentHeight( void ) {
-        if ( PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT <= 0 ) {
-                return 0.0f;
-        }
-
-        return PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT * PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT
-                        + PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP * ( PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT - 1 );
+	/* One achievement track is shown per page inside the shared fixed card. */
+	return PLAYERSETTINGS_STATS_CARD_CONTENT_HEIGHT;
 }
 
 static int PlayerSettings_GetAchievementTierPagesForCount( int tierCount ) {
@@ -2037,121 +2149,60 @@ static qboolean PlayerSettings_RectContainsCursor( const playersettingsRect_t *r
 	return UI_CursorInRect( (int)rect->x, (int)rect->y, (int)rect->w, (int)rect->h );
 }
 
-static void PlayerSettings_BuildPaginationInfo(
-        playersettingsPaginationState_t *state,
-        int rowCount,
-        float rowHeight,
-        float rowGap,
-        float contentHeight,
-        float reservedHeight,
-        playersettingsPaginationInfo_t *outInfo ) {
-	playersettingsPaginationInfo_t info;
-	float spacing;
-	float viewportHeight;
-	int rowsPerPage;
-	int totalPages;
-	int firstRow;
-	int lastRow;
-
-	Com_Memset( &info, 0, sizeof( info ) );
-	info.rowCount = rowCount;
-	info.lastRow = -1;
-	info.totalPages = 1;
-
-	if ( rowCount <= 0 || !outInfo ) {
-		if ( outInfo ) {
-			*outInfo = info;
-		}
-		return;
-	}
-
-	spacing = rowHeight + rowGap;
-	if ( spacing <= 0.0f ) {
-		spacing = ( rowHeight > 0.0f ) ? rowHeight : 1.0f;
-	}
-
-        viewportHeight = PlayerSettings_GetPaginatedViewportHeight( contentHeight, reservedHeight );
-	if ( viewportHeight < rowHeight ) {
-		viewportHeight = rowHeight;
-	}
-
-	rowsPerPage = (int)( ( viewportHeight + rowGap ) / spacing );
-	if ( rowsPerPage < 1 ) {
-		rowsPerPage = 1;
-	}
-	if ( rowsPerPage > rowCount ) {
-		rowsPerPage = rowCount;
-	}
-
-	totalPages = ( rowCount + rowsPerPage - 1 ) / rowsPerPage;
-	if ( totalPages < 1 ) {
-		totalPages = 1;
-	}
-
-	if ( state ) {
-		if ( state->currentPage < 0 ) {
-			state->currentPage = 0;
-		}
-		if ( state->currentPage >= totalPages ) {
-			state->currentPage = totalPages - 1;
-		}
-	}
-
-	if ( !state ) {
-		static playersettingsPaginationState_t dummyState;
-		state = &dummyState;
-	}
-
-	firstRow = state->currentPage * rowsPerPage;
-	if ( firstRow >= rowCount ) {
-		firstRow = rowCount - rowsPerPage;
-		if ( firstRow < 0 ) {
-			firstRow = 0;
-		}
-	}
-
-	lastRow = firstRow + rowsPerPage - 1;
-	if ( lastRow >= rowCount ) {
-		lastRow = rowCount - 1;
-	}
-
-	info.rowsPerPage = rowsPerPage;
-	info.totalPages = totalPages;
-	info.firstRow = firstRow;
-	info.lastRow = lastRow;
-	info.rowOffset = firstRow * spacing;
-
-	*outInfo = info;
-}
-
 static const playersettingsPaginationInfo_t *PlayerSettings_UpdateStatsPaginationInfo( void ) {
-	float contentHeight;
+	const playersettingsStatsCategory_t *category;
+	int categoryCount;
 
-	contentHeight = PlayerSettings_GetStatsContentHeight();
-                PlayerSettings_BuildPaginationInfo(
-                        &s_playersettings.statsPagination,
-                        STATS_ROW_COUNT,
-                        PLAYERSETTINGS_STATS_ROW_HEIGHT,
-                        PLAYERSETTINGS_STATS_ROW_GAP,
-                        contentHeight,
-                        PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT,
-                        &s_playersettings.statsPaginationInfo );
+	categoryCount = ARRAY_LEN( s_statsCategories );
+	if ( categoryCount <= 0 ) {
+		Com_Memset( &s_playersettings.statsPaginationInfo, 0,
+		            sizeof( s_playersettings.statsPaginationInfo ) );
+		return &s_playersettings.statsPaginationInfo;
+	}
+
+	if ( s_playersettings.statsPagination.currentPage < 0 ) {
+		s_playersettings.statsPagination.currentPage = 0;
+	}
+	if ( s_playersettings.statsPagination.currentPage >= categoryCount ) {
+		s_playersettings.statsPagination.currentPage = categoryCount - 1;
+	}
+
+	category = PlayerSettings_GetStatsCategory();
+	s_playersettings.statsPaginationInfo.rowCount = STATS_ROW_COUNT;
+	s_playersettings.statsPaginationInfo.rowsPerPage = category->lastRow - category->firstRow + 1;
+	s_playersettings.statsPaginationInfo.totalPages = categoryCount;
+	s_playersettings.statsPaginationInfo.firstRow = category->firstRow;
+	s_playersettings.statsPaginationInfo.lastRow = category->lastRow;
+	s_playersettings.statsPaginationInfo.rowOffset =
+		category->firstRow * PlayerSettings_GetStatsRowSpacing();
 
 	return &s_playersettings.statsPaginationInfo;
 }
 
 static const playersettingsPaginationInfo_t *PlayerSettings_UpdateAchievementsPaginationInfo( void ) {
-	float contentHeight;
+	int sectionCount;
 
-	contentHeight = PlayerSettings_GetAchievementsContentHeight();
-	PlayerSettings_BuildPaginationInfo(
-		&s_playersettings.achievementsPagination,
-		PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT,
-		PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT,
-		PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP,
-		contentHeight,
-		PLAYERSETTINGS_ACHIEVEMENTS_PAGINATION_RESERVED_HEIGHT,
-		&s_playersettings.achievementsPaginationInfo );
+	sectionCount = PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT;
+	if ( sectionCount <= 0 ) {
+		Com_Memset( &s_playersettings.achievementsPaginationInfo, 0,
+		            sizeof( s_playersettings.achievementsPaginationInfo ) );
+		return &s_playersettings.achievementsPaginationInfo;
+	}
+
+	if ( s_playersettings.achievementsPagination.currentPage < 0 ) {
+		s_playersettings.achievementsPagination.currentPage = 0;
+	}
+	if ( s_playersettings.achievementsPagination.currentPage >= sectionCount ) {
+		s_playersettings.achievementsPagination.currentPage = sectionCount - 1;
+	}
+
+	s_playersettings.achievementsPaginationInfo.rowCount = sectionCount;
+	s_playersettings.achievementsPaginationInfo.rowsPerPage = 1;
+	s_playersettings.achievementsPaginationInfo.totalPages = sectionCount;
+	s_playersettings.achievementsPaginationInfo.firstRow = s_playersettings.achievementsPagination.currentPage;
+	s_playersettings.achievementsPaginationInfo.lastRow = s_playersettings.achievementsPagination.currentPage;
+	s_playersettings.achievementsPaginationInfo.rowOffset =
+		s_playersettings.achievementsPagination.currentPage * PlayerSettings_GetAchievementsRowSpacing();
 
 	return &s_playersettings.achievementsPaginationInfo;
 }
@@ -2253,34 +2304,20 @@ static qboolean PlayerSettings_HandlePaginationClick(
 }
 
 static void PlayerSettings_DrawPaginationButton( const char *label, const playersettingsRect_t *rect, qboolean enabled, qboolean hovered ) {
-	vec4_t fillColor;
-	vec4_t borderColor;
-	vec4_t textColor;
-	float textY;
-
 	if ( !rect || rect->w <= 0.0f || rect->h <= 0.0f ) {
 		return;
 	}
 
-	Vector4Copy( enabled ? profileRowEvenFillColor : profileRowOddFillColor, fillColor );
-	fillColor[3] = enabled ? 0.6f : 0.2f;
-	if ( hovered && enabled ) {
-		fillColor[3] = 0.85f;
-	}
-	UI_FillRect( rect->x, rect->y, rect->w, rect->h, fillColor );
-
-	Vector4Copy( profileRowBorderColor, borderColor );
-	borderColor[3] *= enabled ? 1.0f : 0.5f;
-	UI_DrawRect( rect->x, rect->y, rect->w, rect->h, borderColor );
-
 	if ( enabled ) {
-		Vector4Copy( hovered ? text_color_highlight : text_color_normal, textColor );
+		Frontend_DrawButton( (int)rect->x, (int)rect->y,
+		                     (int)rect->w, (int)rect->h, label,
+		                     uis.tFrac, hovered, UI_CENTER );
 	} else {
-		Vector4Copy( text_color_disabled, textColor );
+		Frontend_DrawText( (int)( rect->x + rect->w * 0.5f ),
+		                   (int)( rect->y + ( rect->h - SMALLCHAR_HEIGHT ) * 0.5f ),
+		                   label, UI_CENTER | UI_SMALLFONT,
+		                   playerSettingsMutedColor );
 	}
-
-	textY = rect->y + ( rect->h - SMALLCHAR_HEIGHT ) * 0.5f;
-	UI_DrawString( (int)( rect->x + rect->w * 0.5f ), (int)textY, label, UI_CENTER | UI_SMALLFONT, textColor );
 }
 
 static void PlayerSettings_DrawPaginationControls(
@@ -2348,12 +2385,10 @@ float viewportTop;
 	PlayerSettings_DrawPaginationButton( "Next >>", nextRect, ( state->currentPage < info->totalPages - 1 ), nextHover );
 
 	Com_sprintf( pageBuffer, sizeof( pageBuffer ), "Page %d / %d", state->currentPage + 1, info->totalPages );
-	UI_DrawString(
+	Frontend_DrawText(
 		(int)centerX,
 		(int)( y + ( PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT - SMALLCHAR_HEIGHT ) * 0.5f ),
-		pageBuffer,
-		UI_CENTER | UI_SMALLFONT,
-		text_color_highlight );
+		pageBuffer, UI_CENTER | UI_SMALLFONT, playerSettingsAccentColor );
 }
 
 static void PlayerSettings_DrawStatsPaginationControls( void ) {
@@ -2363,7 +2398,7 @@ static void PlayerSettings_DrawStatsPaginationControls( void ) {
 	PlayerSettings_DrawPaginationControls(
 		&s_playersettings.statsPagination,
 		info,
-		PlayerSettings_GetStatsContentHeight(),
+		PlayerSettings_GetStatsPageContentHeight(),
 		PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT,
 		&s_playersettings.statsPrevPageButton,
 		&s_playersettings.statsNextPageButton );
@@ -2389,21 +2424,7 @@ static void PlayerSettings_GetStatsRowBounds( int row, int *top, int *bottom ) {
 	float contentTop;
 	float offset;
 
-	if ( s_playersettings.statsPaginationInfo.rowCount != STATS_ROW_COUNT ) {
-		PlayerSettings_UpdateStatsPaginationInfo();
-	}
-
-	if ( s_playersettings.statsPaginationInfo.rowCount != STATS_ROW_COUNT ) {
-		PlayerSettings_UpdateStatsPaginationInfo();
-	}
-
-	if ( s_playersettings.statsPaginationInfo.rowCount != STATS_ROW_COUNT ) {
-		PlayerSettings_UpdateStatsPaginationInfo();
-	}
-
-if ( s_playersettings.statsPaginationInfo.rowCount != STATS_ROW_COUNT ) {
-PlayerSettings_UpdateStatsPaginationInfo();
-}
+	PlayerSettings_UpdateStatsPaginationInfo();
 
 if ( row < 0 ) {
 row = 0;
@@ -2429,9 +2450,9 @@ if ( row >= STATS_ROW_COUNT ) {
 
 
 static void PlayerSettings_DrawStatsPanelBackground( void ) {
-vec4_t panelColor;
-vec4_t rowColor;
 vec4_t borderColor;
+vec4_t titleColor;
+vec4_t titleAccentColor;
 float contentHeight;
 float viewportTop;
 float viewportBottom;
@@ -2439,16 +2460,33 @@ int panelTop;
 int panelBottom;
 int i;
 const playersettingsPaginationInfo_t *info;
+const playersettingsStatsCategory_t *category;
 
-contentHeight = PlayerSettings_GetStatsContentHeight();
+contentHeight = PlayerSettings_GetStatsPageContentHeight();
 info = PlayerSettings_UpdateStatsPaginationInfo();
+category = PlayerSettings_GetStatsCategory();
 
 panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
 panelBottom = (int)PlayerSettings_GetPanelBottomForContent( contentHeight );
 
-Vector4Copy( profilePanelFillColor, panelColor );
-panelColor[3] *= uis.tFrac;
-UI_FillRect( PLAYERSETTINGS_PROFILE_PANEL_LEFT, panelTop, PLAYERSETTINGS_PROFILE_PANEL_WIDTH, panelBottom - panelTop, panelColor );
+Frontend_DrawPanel( PLAYERSETTINGS_PROFILE_PANEL_LEFT, panelTop,
+                    PLAYERSETTINGS_PROFILE_PANEL_WIDTH,
+                    panelBottom - panelTop, uis.tFrac,
+                    UI_FRONTEND_STYLE_SURFACE );
+
+Vector4Copy( playerSettingsTextColor, titleColor );
+titleColor[3] *= uis.tFrac;
+Vector4Copy( playerSettingsAccentColor, titleAccentColor );
+titleAccentColor[3] *= uis.tFrac;
+UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 16, panelTop + 10,
+             UI_FRONTEND_STATUS_DOT, UI_FRONTEND_STATUS_DOT, titleAccentColor );
+Frontend_DrawText( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32,
+                   panelTop + 4,
+                   category->title, UI_LEFT | UI_BIGFONT,
+                   titleColor );
+UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32, panelTop + 24,
+             Frontend_TextWidth( category->title, UI_BIGFONT ), 2,
+             titleAccentColor );
 
 Vector4Copy( profileRowBorderColor, borderColor );
 borderColor[3] *= uis.tFrac;
@@ -2479,22 +2517,18 @@ if ( rowBottom <= rowTop ) {
 continue;
 }
 
-Vector4Copy( ( i & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
-rowColor[3] *= uis.tFrac;
+if ( i & 1 ) {
+        vec4_t rowColor;
+        Vector4Copy( profileRowOddFillColor, rowColor );
+        rowColor[3] *= uis.tFrac * 0.55f;
+        UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT, rowTop,
+                     PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
+                     rowBottom - rowTop, rowColor );
+}
 
-UI_FillRect(
-PLAYERSETTINGS_PROFILE_FIELD_LEFT,
-rowTop,
-PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-rowBottom - rowTop,
-rowColor );
-
-UI_DrawRect(
-PLAYERSETTINGS_PROFILE_FIELD_LEFT,
-rowTop,
-PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-rowBottom - rowTop,
-borderColor );
+UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT, rowBottom - 1,
+             PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
+             1, borderColor );
 }
 }
 
@@ -2773,7 +2807,7 @@ static void PlayerSettings_DrawStatsLabelValueWithColors( int row, const char *l
 
         PlayerSettings_GetStatsRowBounds( row, &rowTop, &rowBottom );
         PlayerSettings_GetPaginatedViewportBounds(
-                PlayerSettings_GetStatsContentHeight(),
+                PlayerSettings_GetStatsPageContentHeight(),
                 PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT,
                 &viewportTop,
                 &viewportBottom );
@@ -2785,19 +2819,25 @@ static void PlayerSettings_DrawStatsLabelValueWithColors( int row, const char *l
 
 	Vector4Copy( labelColor, mutableLabelColor );
 	Vector4Copy( valueColor, mutableValueColor );
+	if ( label && label[0] == '-' && label[1] == '-' ) {
+		Vector4Copy( playerSettingsAccentColor, mutableLabelColor );
+	}
 
 	if ( label && label[0] ) {
-		UI_DrawProportionalString( labelX, y, label, UI_LEFT | UI_SMALLFONT, mutableLabelColor );
+		Frontend_DrawText( labelX, y, label, UI_LEFT | UI_SMALLFONT,
+		                   mutableLabelColor );
 	}
 
 	if ( value && value[0] ) {
-		UI_DrawProportionalString( valueX, y, value, UI_LEFT | UI_SMALLFONT, mutableValueColor );
+		Frontend_DrawText( valueX, y, value, UI_LEFT | UI_SMALLFONT,
+		                   mutableValueColor );
 	}
 }
 
 
 static void PlayerSettings_DrawStatsLabelValue( int row, const char *label, const char *value ) {
-	PlayerSettings_DrawStatsLabelValueWithColors( row, label, text_color_highlight, value, text_color_normal );
+	PlayerSettings_DrawStatsLabelValueWithColors( row, label, playerSettingsMutedColor,
+	                                             value, playerSettingsTextColor );
 }
 
 
@@ -2817,7 +2857,7 @@ static void PlayerSettings_DrawStatsMessage( int row, const char *message ) {
 
         PlayerSettings_GetStatsRowBounds( row, &rowTop, &rowBottom );
         PlayerSettings_GetPaginatedViewportBounds(
-                PlayerSettings_GetStatsContentHeight(),
+                PlayerSettings_GetStatsPageContentHeight(),
                 PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT,
                 &viewportTop,
                 &viewportBottom );
@@ -2827,7 +2867,8 @@ static void PlayerSettings_DrawStatsMessage( int row, const char *message ) {
 
 	y = rowTop + PLAYERSETTINGS_STATS_VALUE_BASELINE;
 
-	UI_DrawProportionalString( x, y, message, UI_LEFT | UI_SMALLFONT, text_color_normal );
+	Frontend_DrawText( x, y, message, UI_LEFT | UI_SMALLFONT,
+	                   playerSettingsTextColor );
 }
 
 
@@ -2847,7 +2888,7 @@ static void PlayerSettings_DrawBackShaders( void ) {
                             UI_FRONTEND_STYLE_FRAME );
         Frontend_DrawText( PLAYERSETTINGS_FRAME_X + 24,
                            PLAYERSETTINGS_FRAME_Y + 24,
-                           "Profile & vehicle", UI_LEFT | UI_BIGFONT,
+                           "Driver", UI_LEFT | UI_BIGFONT,
                            playerSettingsTextColor );
         Frontend_DrawText( PLAYERSETTINGS_FRAME_X + 24,
                            PLAYERSETTINGS_FRAME_Y + 48,
@@ -2931,9 +2972,10 @@ static void PlayerSettings_GetAchievementRowBounds( int row, int *top, int *bott
 }
 
 static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
-vec4_t panelColor;
-vec4_t rowColor;
 vec4_t borderColor;
+vec4_t titleColor;
+vec4_t titleAccentColor;
+vec4_t rowColor;
 float contentHeight;
 float viewportTop;
 float viewportBottom;
@@ -2948,9 +2990,24 @@ info = PlayerSettings_UpdateAchievementsPaginationInfo();
 panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
 panelBottom = (int)PlayerSettings_GetPanelBottomForContent( contentHeight );
 
-Vector4Copy( profilePanelFillColor, panelColor );
-panelColor[3] *= uis.tFrac;
-UI_FillRect( PLAYERSETTINGS_PROFILE_PANEL_LEFT, panelTop, PLAYERSETTINGS_PROFILE_PANEL_WIDTH, panelBottom - panelTop, panelColor );
+Frontend_DrawPanel( PLAYERSETTINGS_PROFILE_PANEL_LEFT, panelTop,
+                    PLAYERSETTINGS_PROFILE_PANEL_WIDTH,
+                    panelBottom - panelTop, uis.tFrac,
+                    UI_FRONTEND_STYLE_SURFACE );
+
+Vector4Copy( playerSettingsTextColor, titleColor );
+titleColor[3] *= uis.tFrac;
+Vector4Copy( playerSettingsAccentColor, titleAccentColor );
+titleAccentColor[3] *= uis.tFrac;
+UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 16, panelTop + 10,
+             UI_FRONTEND_STATUS_DOT, UI_FRONTEND_STATUS_DOT, titleAccentColor );
+Frontend_DrawText( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32,
+                   panelTop + 4,
+                   "Achievements", UI_LEFT | UI_BIGFONT,
+                   titleColor );
+UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32, panelTop + 24,
+             Frontend_TextWidth( "Achievements", UI_BIGFONT ), 2,
+             titleAccentColor );
 
 Vector4Copy( profileRowBorderColor, borderColor );
 borderColor[3] *= uis.tFrac;
@@ -2962,41 +3019,33 @@ PlayerSettings_GetPaginatedViewportBounds(
 		&viewportBottom );
 
 if ( !info || info->lastRow < info->firstRow ) {
-return;
+	return;
 }
 
 for ( i = info->firstRow; i <= info->lastRow; ++i ) {
-int rowTop;
-int rowBottom;
+	int rowTop;
+	int rowBottom;
 
-PlayerSettings_GetAchievementRowBounds( i, &rowTop, &rowBottom );
+	PlayerSettings_GetAchievementRowBounds( i, &rowTop, &rowBottom );
 
-if ( rowTop < (int)viewportTop ) {
-rowTop = (int)viewportTop;
-}
-if ( rowBottom > (int)viewportBottom ) {
-rowBottom = (int)viewportBottom;
-}
-if ( rowBottom <= rowTop ) {
-continue;
-}
+	if ( rowTop < (int)viewportTop ) {
+		rowTop = (int)viewportTop;
+	}
+	if ( rowBottom > (int)viewportBottom ) {
+		rowBottom = (int)viewportBottom;
+	}
+	if ( rowBottom <= rowTop ) {
+		continue;
+	}
 
-Vector4Copy( ( i & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
-rowColor[3] *= uis.tFrac;
-
-UI_FillRect(
-PLAYERSETTINGS_PROFILE_FIELD_LEFT,
-rowTop,
-PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-rowBottom - rowTop,
-rowColor );
-
-UI_DrawRect(
-PLAYERSETTINGS_PROFILE_FIELD_LEFT,
-rowTop,
-PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-rowBottom - rowTop,
-borderColor );
+	Vector4Copy( ( i & 1 ) ? profileRowOddFillColor : profileRowEvenFillColor, rowColor );
+	rowColor[3] *= uis.tFrac * 0.55f;
+	UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT, rowTop,
+	             PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
+	             rowBottom - rowTop, rowColor );
+	UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT, rowBottom - 1,
+	             PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
+	             1, borderColor );
 }
 }
 
@@ -3062,10 +3111,11 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
         titleY = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET;
 
         if ( visible ) {
-                UI_DrawProportionalString( titleX, titleY, title, UI_LEFT | UI_SMALLFONT, text_color_highlight );
+                Frontend_DrawText( titleX, titleY, title, UI_LEFT | UI_SMALLFONT,
+                                   playerSettingsAccentColor );
         }
 
-        areaLeft = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_VALUE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN - 15;
+        areaLeft = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
         areaRight = PLAYERSETTINGS_PROFILE_ROW_RIGHT - PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN;
         if ( areaRight <= areaLeft ) {
                 areaRight = areaLeft + 1.0f;
@@ -3113,8 +3163,6 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
         }
 
         if ( visible ) {
-                const float textScale = UI_ProportionalSizeScale( UI_SMALLFONT ) * PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER;
-                const float textLineHeight = PLAYERSETTINGS_ACHIEVEMENT_TEXT_LINE_HEIGHT * PLAYERSETTINGS_ACHIEVEMENT_TEXT_SCALE_MULTIPLIER;
                 for ( i = startTier; i < count && i < endTier; ++i ) {
                         int column;
                         int tierRow;
@@ -3146,27 +3194,17 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 
                         name = tiers[i].name;
                         description = tiers[i].description;
-                        nameY = entryTop + 12.0f;
-                        descriptionY = nameY + textLineHeight;
+                        nameY = entryTop + 8.0f;
+                        descriptionY = nameY + 14.0f;
 
-                        if ( name && name[0] ) {
-                                UI_DrawScaledProportionalString(
-                                        ( int )textX,
-                                        ( int )nameY,
-                                        name,
-                                        UI_LEFT | UI_SMALLFONT,
-                                        entryUnlocked[i] ? text_color_highlight : achievementLockedColor,
-                                        textScale );
-                        }
-                        if ( description && description[0] ) {
-                                UI_DrawScaledProportionalString(
-                                        ( int )textX,
-                                        ( int )descriptionY,
-                                        description,
-                                        UI_LEFT | UI_SMALLFONT,
-                                        entryUnlocked[i] ? achievementUnlockedColor : achievementLockedColor,
-                                        textScale );
-                        }
+                        PlayerSettings_DrawAchievementText(
+                                (int)textX, (int)nameY,
+                                (int)( entryLeft + columnWidth ), name,
+                                entryUnlocked[i] ? playerSettingsAccentColor : playerSettingsMutedColor );
+                        PlayerSettings_DrawAchievementDescription(
+                                (int)textX, (int)descriptionY,
+                                (int)( entryLeft + columnWidth ), description,
+                                entryUnlocked[i] ? playerSettingsTextColor : playerSettingsMutedColor );
                 }
         }
 
@@ -3175,14 +3213,10 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 
 static void PlayerSettings_DrawAchievementsTab( void ) {
 const profile_stats_t *stats;
-int unlockedAchievements;
+    int unlockedAchievements;
 int displayTotalAchievements;
 char progressBuffer[32];
 char headerBuffer[64];
-    int headerTop;
-    int headerBottom;
-    int headerY;
-    int descriptionY;
     int row;
     int winTierCount;
     int winFirstPageCount;
@@ -3190,8 +3224,6 @@ char headerBuffer[64];
     int sprintTierCount;
     int sprintFirstPageCount;
     int sprintSecondPageCount;
-    float viewportTop;
-    float viewportBottom;
     const playersettingsPaginationInfo_t *paginationInfo;
 
 paginationInfo = PlayerSettings_UpdateAchievementsPaginationInfo();
@@ -3201,8 +3233,10 @@ PlayerSettings_ClampAchievementTierPage();
                 int messageX;
 
                 messageX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
-                UI_DrawProportionalString( messageX, 208, "No active profile selected.", UI_LEFT | UI_SMALLFONT, text_color_normal );
-                UI_DrawProportionalString( messageX, 236, "Create or select a profile from the main menu.", UI_LEFT | UI_SMALLFONT, text_color_normal );
+                Frontend_DrawText( messageX, 216, "No active profile selected.",
+                                   UI_LEFT | UI_SMALLFONT, playerSettingsTextColor );
+                Frontend_DrawText( messageX, 240, "Create or select a profile from the main menu.",
+                                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
                 return;
         }
 
@@ -3211,7 +3245,8 @@ PlayerSettings_ClampAchievementTierPage();
                 int messageX;
 
                 messageX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
-                UI_DrawProportionalString( messageX, 220, "Unable to read profile statistics.", UI_LEFT | UI_SMALLFONT, text_color_normal );
+                Frontend_DrawText( messageX, 220, "Unable to read profile statistics.",
+                                   UI_LEFT | UI_SMALLFONT, playerSettingsTextColor );
                 return;
         }
 
@@ -3258,28 +3293,14 @@ PlayerSettings_ClampAchievementTierPage();
         Com_sprintf( progressBuffer, sizeof( progressBuffer ), "%d/%d", unlockedAchievements, displayTotalAchievements );
         Com_sprintf( headerBuffer, sizeof( headerBuffer ), "Achievements %s", progressBuffer );
 
-        PlayerSettings_GetAchievementRowBounds( PLAYERSETTINGS_ACHIEVEMENT_HEADER_ROW, &headerTop, &headerBottom );
-PlayerSettings_GetPaginatedViewportBounds(
-PlayerSettings_GetAchievementsContentHeight(),
-PLAYERSETTINGS_ACHIEVEMENTS_PAGINATION_RESERVED_HEIGHT,
-&viewportTop,
-&viewportBottom );
-if ( headerBottom > (int)viewportTop && headerTop < (int)viewportBottom ) {
-headerY = headerTop + PLAYERSETTINGS_ACHIEVEMENT_VALUE_BASELINE;
-UI_DrawProportionalString(
-PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
-headerY,
-headerBuffer,
-UI_LEFT | UI_SMALLFONT,
-text_color_highlight );
-descriptionY = headerY + PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT;
-UI_DrawProportionalString(
-PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
-descriptionY,
-"Complete challenges to unlock new medals.",
-UI_LEFT | UI_SMALLFONT,
-text_color_normal );
-}
+        Frontend_DrawText( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32,
+                           PLAYERSETTINGS_PROFILE_PANEL_TOP + 28,
+                           headerBuffer, UI_LEFT | UI_SMALLFONT,
+                           playerSettingsAccentColor );
+        Frontend_DrawText( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32,
+                           PLAYERSETTINGS_PROFILE_PANEL_TOP + 42,
+                           "Complete challenges to unlock new medals.",
+                           UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 }
 
 static void PlayerSettings_SetTab( int tab ) {
@@ -4965,6 +4986,12 @@ UI_PlayerSettingsMenu
 */
 void UI_PlayerSettingsMenu( void ) {
 	PlayerSettings_MenuInit();
+	UI_PushMenu( &s_playersettings.menu );
+}
+
+void UI_PlayerStatsMenu( void ) {
+	PlayerSettings_MenuInit();
+	PlayerSettings_SetTab( TAB_STATS );
 	UI_PushMenu( &s_playersettings.menu );
 }
 

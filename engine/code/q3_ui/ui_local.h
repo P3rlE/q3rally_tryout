@@ -465,7 +465,9 @@ extern void UI_Rally_DownloadsMenu( void );
 // ui_rally_ladder_wizard.c
 extern void UI_LadderWizardMenu( void );
 extern void UI_LadderWizard_MaybeShow( void );
-extern void UI_LadderWizard_OnSuccess( const char *key );
+extern void UI_LadderWizard_MarkProfileRegistered( void );
+extern void UI_LadderWizard_MarkProfileDismissed( void );
+extern void UI_LadderWizard_OnSuccess( void );
 extern void UI_LadderWizard_OnError( const char *msg );
 
 /* Profile creation wizard */
@@ -570,6 +572,7 @@ extern void PlayerModel_Cache( void );
 // ui_playersettings.c
 //
 extern void UI_PlayerSettingsMenu( void );
+extern void UI_PlayerStatsMenu( void );
 extern void PlayerSettings_Cache( void );
 extern int trap_UI_ImportAvatarPath( const char *profileName, const char *sourcePath,
 								char *shaderPath, int shaderPathSize );

@@ -92,7 +92,7 @@ static const int configCategoryIds[CONFIG_CATEGORY_COUNT] = {
 };
 
 static const char *configCategoryLabels[CONFIG_CATEGORY_COUNT] = {
-    "Profile & vehicle",
+    "Driver",
     "Controls",
     "Graphics",
     "Display",
@@ -141,9 +141,9 @@ static void Setup_ResetDefaults_Action( qboolean result ) {
 static void Setup_ResetDefaults_Draw( void ) {
     vec4_t warningColor = { 0.90f, 0.78f, 0.33f, 1.00f };
 
-    Frontend_DrawText( 320, 356, "Reset all settings?",
-                       UI_CENTER | UI_BIGFONT, warningColor );
-    Frontend_DrawText( 320, 384, "This restores the default configuration.",
+    Frontend_DrawText( 320, 222, "Reset all settings?",
+                       UI_CENTER | UI_SMALLFONT, warningColor );
+    Frontend_DrawText( 320, 244, "This restores the default configuration.",
                        UI_CENTER | UI_SMALLFONT, configMutedColor );
 }
 

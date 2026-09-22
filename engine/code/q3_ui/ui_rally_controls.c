@@ -2010,7 +2010,10 @@ static void Controls_RebindConflict_Action( qboolean result )
 
 static void Controls_RebindConflict_Draw( void )
 {
-	UI_DrawString( SCREEN_WIDTH / 2, 210, s_rebindConfirmQuestion, UI_CENTER|UI_SMALLFONT, text_color_normal );
+	vec4_t warningColor = UI_THEME_COLOR_WARNING;
+
+	Frontend_DrawText( 320, 222, s_rebindConfirmQuestion,
+		UI_CENTER | UI_SMALLFONT, warningColor );
 }
 
 static void Controls_ExitConfirm_MenuEvent( void* ptr, int event )
@@ -2235,8 +2238,13 @@ Controls_ResetDefaults_Draw
 =================
 */
 static void Controls_ResetDefaults_Draw( void ) {
-	UI_DrawProportionalString( SCREEN_WIDTH/2, 356 + PROP_HEIGHT * 0, "WARNING: This will reset all", UI_CENTER|UI_SMALLFONT, color_yellow );
-	UI_DrawProportionalString( SCREEN_WIDTH/2, 356 + PROP_HEIGHT * 1, "controls to their default values.", UI_CENTER|UI_SMALLFONT, color_yellow );
+	vec4_t warningColor = UI_THEME_COLOR_WARNING;
+	vec4_t mutedColor = UI_FRONTEND_COLOR_MUTED;
+
+	Frontend_DrawText( 320, 222, "This will reset all controls.",
+		UI_CENTER | UI_SMALLFONT, warningColor );
+	Frontend_DrawText( 320, 244, "Default bindings will be restored.",
+		UI_CENTER | UI_SMALLFONT, mutedColor );
 }
 
 /*

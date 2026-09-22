@@ -115,13 +115,13 @@ float CG_GetEliminationColumnWidth( void ) {
     static float columnWidth = 0.0f;
 
     if ( columnWidth <= 0.0f ) {
-        const float charWidth  = (float)TINYCHAR_WIDTH;
         const float insetWidth = HUD_TEXT_INSET * 2.0f;
-        float       maxWidth   = insetWidth + charWidth * CG_DrawStrlen( "T: 00:00.000" );
+        float       maxWidth   = insetWidth +
+            CG_IngameStringWidth( "T: 00:00.000", UI_SMALLFONT, 0.75f );
         float       candidate;
 
 #define CHECK_CANDIDATE(str) \
-        candidate = insetWidth + charWidth * CG_DrawStrlen( str ); \
+        candidate = insetWidth + CG_IngameStringWidth( str, UI_SMALLFONT, 0.75f ); \
         if ( candidate > maxWidth ) { maxWidth = candidate; }
 
         CHECK_CANDIDATE( "L: 00:00.000" )
@@ -132,7 +132,7 @@ float CG_GetEliminationColumnWidth( void ) {
         CHECK_CANDIDATE( "DIST: 100.0%" )
         CHECK_CANDIDATE( "D: +00.000" )
         CHECK_CANDIDATE( "PLAYERS LEFT: 000" )
-        CHECK_CANDIDATE( "R99 LEFT63 Name (99)" )
+        CHECK_CANDIDATE( "R99 LEFT63 Name (99s)" )
 #undef CHECK_CANDIDATE
 
         columnWidth = maxWidth;
@@ -173,11 +173,11 @@ float CG_GetEliminationColumnWidth( void ) {
 #define HUDOPT_TITLE_H      18.0f   /* BIGCHAR title row                      */
 #define HUDOPT_HINT_H       12.0f   /* TINYCHAR hint row                      */
 #define HUDOPT_SEC_H        16.0f   /* section header height                  */
-#define HUDOPT_TITLE_SCALE   0.66f
-#define HUDOPT_HINT_SCALE    0.40f
-#define HUDOPT_SECTION_SCALE 0.46f
-#define HUDOPT_ENTRY_SCALE   0.46f
-#define HUDOPT_SLIDER_SCALE  0.40f
+#define HUDOPT_TITLE_SCALE   0.72f
+#define HUDOPT_HINT_SCALE    0.50f
+#define HUDOPT_SECTION_SCALE 0.58f
+#define HUDOPT_ENTRY_SCALE   0.58f
+#define HUDOPT_SLIDER_SCALE  0.50f
 #define HUDOPT_SLIDER_TRACK_X ( HUDOPT_COL_R_X + 128.0f )
 #define HUDOPT_SLIDER_TRACK_W ( HUDOPT_COL_W - 182.0f )
 #define HUDOPT_MMAP_SLIDERS   2
@@ -207,28 +207,28 @@ typedef struct {
 
 static const hudToggleEntry_t hudToggleTable[] = {
     /* ---- Racing (left column, indices 0-9) ---- */
-    { "Times Panel",         "cg_hudShowTimes",          &cg_hudShowTimes,          1, -1,       qfalse },
-    { "Lap Counter",         "cg_hudShowLaps",           &cg_hudShowLaps,           1, -1,       qfalse },
-    { "Race Position",       "cg_hudShowPosition",       &cg_hudShowPosition,       1, -1,       qfalse },
-    { "Distance to Finish",  "cg_hudShowDistToFinish",   &cg_hudShowDistToFinish,   1, -1,       qfalse },
-    { "Ghost Delta",         "cg_ghostPlayback",         &cg_ghostPlayback,         1, -1,       qfalse },
-    { "Checkpoint Arrow",    "cg_checkpointArrowMode",   &cg_checkpointArrowMode,   2, -1,       qtrue  },
-    { "Cars Ahead/Behind",   "cg_hudShowCarAheadBehind", &cg_hudShowCarAheadBehind, 1, -1,       qfalse },
-    { "Elim. Timeline",      "cg_elimTimeline",          &cg_elimTimeline,          1, -1,       qfalse },
-    { "Opponent List",       "cg_hudShowOpponentList",   &cg_hudShowOpponentList,   1, -1,       qfalse },
-    { "Scores Panel",        "cg_hudShowScores",         &cg_hudShowScores,         1, -2,       qfalse },
+    { "TIMES PANEL",         "cg_hudShowTimes",          &cg_hudShowTimes,          1, -1,       qfalse },
+    { "LAP COUNTER",         "cg_hudShowLaps",           &cg_hudShowLaps,           1, -1,       qfalse },
+    { "RACE POSITION",       "cg_hudShowPosition",       &cg_hudShowPosition,       1, -1,       qfalse },
+    { "DISTANCE TO FINISH",  "cg_hudShowDistToFinish",   &cg_hudShowDistToFinish,   1, -1,       qfalse },
+    { "GHOST DELTA",         "cg_ghostPlayback",         &cg_ghostPlayback,         1, -1,       qfalse },
+    { "CHECKPOINT ARROW",    "cg_checkpointArrowMode",   &cg_checkpointArrowMode,   2, -1,       qtrue  },
+    { "CARS AHEAD/BEHIND",   "cg_hudShowCarAheadBehind", &cg_hudShowCarAheadBehind, 1, -1,       qfalse },
+    { "ELIM. TIMELINE",      "cg_elimTimeline",          &cg_elimTimeline,          1, -1,       qfalse },
+    { "OPPONENT LIST",       "cg_hudShowOpponentList",   &cg_hudShowOpponentList,   1, -1,       qfalse },
+    { "SCORES PANEL",        "cg_hudShowScores",         &cg_hudShowScores,         1, -2,       qfalse },
     /* ---- Derby (right column top, indices 10-12) ---- */
-    { "Derby Vehicle State", "cg_hudShowDerbyVehicle",   &cg_hudShowDerbyVehicle,   1, GT_DERBY, qfalse },
-    { "Derby Scoreboard",    "cg_hudShowDerbyList",      &cg_hudShowDerbyList,      1, GT_DERBY, qfalse },
-    { "Derby Hit Impact",    "cg_derbyHitFxEnable",      &cg_derbyHitFxEnable,      1, GT_DERBY, qfalse },
+    { "DERBY VEHICLE STATE", "cg_hudShowDerbyVehicle",  &cg_hudShowDerbyVehicle,   1, GT_DERBY, qfalse },
+    { "DERBY SCOREBOARD",    "cg_hudShowDerbyList",      &cg_hudShowDerbyList,      1, GT_DERBY, qfalse },
+    { "DERBY HIT IMPACT",    "cg_derbyHitFxEnable",      &cg_derbyHitFxEnable,      1, GT_DERBY, qfalse },
     /* ---- KOTH (right column middle, indices 13-14) ---- */
-    { "KOTH Hill Status",   "cg_hudShowKothHillStatus",  &cg_hudShowKothHillStatus,  1, GT_KOTH,  qfalse },
-    { "KOTH Respawn Wave",  "cg_hudShowKothRespawnWave", &cg_hudShowKothRespawnWave, 1, GT_KOTH,  qfalse },
+    { "KOTH HILL STATUS",   "cg_hudShowKothHillStatus",  &cg_hudShowKothHillStatus,  1, GT_KOTH,  qfalse },
+    { "KOTH RESPAWN WAVE",  "cg_hudShowKothRespawnWave", &cg_hudShowKothRespawnWave, 1, GT_KOTH,  qfalse },
     /* ---- Vehicle (right column bottom, indices 15-17) ---- */
-    { "Speedometer",         "cg_hudShowSpeed",          &cg_hudShowSpeed,          1, -1,       qfalse },
+    { "SPEEDOMETER",         "cg_hudShowSpeed",          &cg_hudShowSpeed,          1, -1,       qfalse },
     /* Fuel Gauge is part of Speedometer – hidden when Speedometer is OFF */
-    { "Rear-View Mirror",    "cg_drawRearView",          &cg_drawRearView,          1, -1,       qfalse },
-    { "Mini-Map",            "cg_drawMMap",              &cg_drawMMap,              1, -1,       qfalse },
+    { "REAR-VIEW MIRROR",    "cg_drawRearView",          &cg_drawRearView,          1, -1,       qfalse },
+    { "MINI-MAP",            "cg_drawMMap",              &cg_drawMMap,              1, -1,       qfalse },
 };
 
 #define HUDOPT_NUM_ENTRIES  ( (int)( sizeof(hudToggleTable) / sizeof(hudToggleTable[0]) ) )
@@ -238,17 +238,18 @@ static int      g_hudOptHoverRow  = -1;
 static int      g_hudOptHoverSlider = HUDOPT_SLIDER_NONE;
 
 static void HUDOpt_DrawText( int x, int y, const char *text, vec4_t color, float scale ) {
-    UI_DrawProportionalStringScaled( x, y, text, UI_LEFT|UI_DROPSHADOW, color, scale );
+    CG_DrawIngameString( x, y, text, UI_LEFT|UI_DROPSHADOW|UI_SMALLFONT,
+                         scale, color );
 }
 
 static void HUDOpt_DrawCenteredText( float x, float width, int y, const char *text, vec4_t color, float scale ) {
-    UI_DrawProportionalStringScaled( (int)( x + width * 0.5f ), y, text,
-        UI_CENTER|UI_DROPSHADOW, color, scale );
+    CG_DrawIngameString( (int)( x + width * 0.5f ), y, text,
+                         UI_CENTER|UI_DROPSHADOW|UI_SMALLFONT, scale, color );
 }
 
 static void HUDOpt_DrawRightText( float right, int y, const char *text, vec4_t color, float scale ) {
-    UI_DrawProportionalStringScaled( (int)right, y, text,
-        UI_RIGHT|UI_DROPSHADOW, color, scale );
+    CG_DrawIngameString( (int)right, y, text,
+                         UI_RIGHT|UI_DROPSHADOW|UI_SMALLFONT, scale, color );
 }
 
 static float HUDOpt_ClampFloat( float value, float minValue, float maxValue ) {
@@ -297,6 +298,7 @@ static void HUDOpt_DrawSlider( float x, float y, const char *label, float value,
 
     if ( g_hudOptHoverSlider == hoverId ) {
         CG_FillRect( x - 2.0f, y, HUDOPT_COL_W + 4.0f, HUDOPT_ROW_H, hoverColor );
+        CG_FillRect( x - 2.0f, y, 2.0f, HUDOPT_ROW_H, fillColor );
     }
 
     if ( hoverId == HUDOPT_SLIDER_ZOOM_ID ) {
@@ -338,13 +340,13 @@ Returns the badge string for a given entry, reflecting cycler states.
 static const char *HUDEntry_BadgeLabel( const hudToggleEntry_t *e ) {
     if ( e->isCycler ) {
         switch ( e->cvar->integer ) {
-        case 0:  return "[ OFF ]";
-        case 1:  return "[ON HUD]";
-        case 2:  return "[ABCAR]";
-        default: return "[ ??? ]";
+        case 0:  return "OFF";
+        case 1:  return "ON HUD";
+        case 2:  return "AB CAR";
+        default: return "?";
         }
     }
-    return e->cvar->integer ? "[ ON ]" : "[ OFF]";
+    return e->cvar->integer ? "ON" : "OFF";
 }
 
 /*
@@ -559,21 +561,21 @@ void CG_DrawHUDOptionsMenu( void ) {
        Colour palette
        ---------------------------------------------------------------- */
     {
-        static vec4_t bgColor     = { 0.04f, 0.05f, 0.08f, 0.78f };
-        static vec4_t bandColor   = { 0.08f, 0.10f, 0.16f, 0.86f };
-        static vec4_t borderColor = { 0.34f, 0.48f, 0.76f, 0.72f };
-        static vec4_t accentColor = { 0.50f, 0.70f, 1.00f, 1.00f };
-        static vec4_t titleColor  = { 0.78f, 0.84f, 0.95f, 1.00f };
-        static vec4_t secColor    = { 0.50f, 0.70f, 1.00f, 1.00f };
-        static vec4_t labelColor  = { 1.00f, 1.00f, 1.00f, 1.00f };
-        static vec4_t hoverColor  = { 0.18f, 0.28f, 0.44f, 0.62f };
-        static vec4_t onColor     = { 0.40f, 1.00f, 0.58f, 1.00f };
-        static vec4_t offColor    = { 0.60f, 0.66f, 0.77f, 1.00f };
-        static vec4_t cycColor    = { 0.95f, 0.82f, 0.35f, 1.00f };
-        static vec4_t naColor     = { 0.34f, 0.38f, 0.46f, 1.00f };
-        static vec4_t greyColor   = { 0.34f, 0.38f, 0.46f, 1.00f };
-        static vec4_t hintColor   = { 0.60f, 0.66f, 0.77f, 1.00f };
-        static vec4_t divColor    = { 0.34f, 0.48f, 0.76f, 0.55f };
+        static vec4_t bgColor     = { 0.008f, 0.012f, 0.016f, 0.88f };
+        static vec4_t bandColor   = { 0.008f, 0.012f, 0.016f, 0.96f };
+        static vec4_t borderColor = { 0.24f, 0.34f, 0.36f, 0.72f };
+        static vec4_t accentColor = { 0.72f, 1.00f, 0.06f, 1.00f };
+        static vec4_t titleColor  = { 0.90f, 0.95f, 0.94f, 1.00f };
+        static vec4_t secColor    = { 0.47f, 0.62f, 0.61f, 1.00f };
+        static vec4_t labelColor  = { 0.90f, 0.95f, 0.94f, 1.00f };
+        static vec4_t hoverColor  = { 0.07f, 0.15f, 0.10f, 0.78f };
+        static vec4_t onColor     = { 0.72f, 1.00f, 0.06f, 1.00f };
+        static vec4_t offColor    = { 0.47f, 0.62f, 0.61f, 1.00f };
+        static vec4_t cycColor    = { 0.30f, 0.66f, 0.96f, 1.00f };
+        static vec4_t naColor     = { 0.29f, 0.37f, 0.38f, 1.00f };
+        static vec4_t greyColor   = { 0.34f, 0.42f, 0.42f, 1.00f };
+        static vec4_t hintColor   = { 0.47f, 0.62f, 0.61f, 1.00f };
+        static vec4_t divColor    = { 0.24f, 0.34f, 0.36f, 0.62f };
 
 		/* Panel height: title + hint + max(leftH, rightH) + padding
 		 * Right col has 3 sections: Derby + KOTH + Vehicle         */
@@ -598,16 +600,18 @@ void CG_DrawHUDOptionsMenu( void ) {
         CG_FillRect( panelX, panelY, HUDOPT_PNL_W + HUDOPT_PAD * 2.0f, 2.0f, accentColor );
         CG_DrawRect( panelX, panelY, HUDOPT_PNL_W + HUDOPT_PAD * 2.0f, panelH, 1.0f, borderColor );
 
-        /* Title – BIGCHAR, centred */
+        /* Title – in-game charset, centred */
         {
             const char *title = "HUD ELEMENTS";
-            HUDOpt_DrawCenteredText( HUDOPT_PNL_X, HUDOPT_PNL_W, (int)( HUDOPT_PNL_Y - 2 ),
-                                     title, titleColor, HUDOPT_TITLE_SCALE );
+            CG_DrawIngameString( (int)( HUDOPT_PNL_X + HUDOPT_PNL_W * 0.5f ),
+                                 (int)( HUDOPT_PNL_Y - 2 ), title,
+                                 UI_CENTER|UI_DROPSHADOW, HUDOPT_TITLE_SCALE,
+                                 titleColor );
         }
 
-        /* Hint – TINYCHAR, centred */
+        /* Hint – in-game charset, centred */
         {
-            const char *hint = "Click to toggle  |  Shift+H to open/close";
+            const char *hint = "CLICK / ENTER TO TOGGLE  |  ESC TO CLOSE";
             HUDOpt_DrawCenteredText( HUDOPT_PNL_X, HUDOPT_PNL_W,
                                      (int)( HUDOPT_PNL_Y + HUDOPT_TITLE_H ),
                                      hint, hintColor, HUDOPT_HINT_SCALE );
@@ -634,16 +638,19 @@ void CG_DrawHUDOptionsMenu( void ) {
             int                     bx;
 
             if ( i == g_hudOptHoverRow && !unavail )
+            {
                 CG_FillRect( HUDOPT_COL_L_X - 2.0f, rowY, HUDOPT_COL_W + 4.0f, HUDOPT_ROW_H, hoverColor );
+                CG_FillRect( HUDOPT_COL_L_X - 2.0f, rowY, 2.0f, HUDOPT_ROW_H, accentColor );
+            }
 
             if ( unavail ) {
-                badge = "[ n/a]";  badgeClr = naColor;  entryClr = greyColor;
+                badge = "N/A";  badgeClr = naColor;  entryClr = greyColor;
             } else if ( e->isCycler ) {
                 badge    = HUDEntry_BadgeLabel( e );
                 badgeClr = e->cvar->integer ? cycColor : offColor;
                 entryClr = labelColor;
             } else {
-                badge    = e->cvar->integer ? "[ ON ]" : "[ OFF]";
+                badge    = e->cvar->integer ? "ON" : "OFF";
                 badgeClr = e->cvar->integer ? onColor : offColor;
                 entryClr = labelColor;
             }
@@ -670,9 +677,12 @@ void CG_DrawHUDOptionsMenu( void ) {
             int                     bx;
 
             if ( i == g_hudOptHoverRow && !unavail )
+            {
                 CG_FillRect( HUDOPT_COL_R_X - 2.0f, rowY, HUDOPT_COL_W + 4.0f, HUDOPT_ROW_H, hoverColor );
+                CG_FillRect( HUDOPT_COL_R_X - 2.0f, rowY, 2.0f, HUDOPT_ROW_H, accentColor );
+            }
 
-            badge    = unavail ? "[ n/a]" : ( e->cvar->integer ? "[ ON ]" : "[ OFF]" );
+            badge    = unavail ? "N/A" : ( e->cvar->integer ? "ON" : "OFF" );
             badgeClr = unavail ? naColor : ( e->cvar->integer ? onColor : offColor );
             entryClr = unavail ? greyColor : labelColor;
 
@@ -704,9 +714,12 @@ void CG_DrawHUDOptionsMenu( void ) {
             int                     bx;
 
             if ( i == g_hudOptHoverRow && !unavail )
+            {
                 CG_FillRect( HUDOPT_COL_R_X - 2.0f, rowY, HUDOPT_COL_W + 4.0f, HUDOPT_ROW_H, hoverColor );
+                CG_FillRect( HUDOPT_COL_R_X - 2.0f, rowY, 2.0f, HUDOPT_ROW_H, accentColor );
+            }
 
-            badge    = unavail ? "[ n/a]" : ( e->cvar->integer ? "[ ON ]" : "[ OFF]" );
+            badge    = unavail ? "N/A" : ( e->cvar->integer ? "ON" : "OFF" );
             badgeClr = unavail ? naColor : ( e->cvar->integer ? onColor : offColor );
             entryClr = unavail ? greyColor : labelColor;
 
@@ -738,9 +751,12 @@ void CG_DrawHUDOptionsMenu( void ) {
             int                     bx;
 
             if ( i == g_hudOptHoverRow && !unavail )
+            {
                 CG_FillRect( HUDOPT_COL_R_X - 2.0f, rowY, HUDOPT_COL_W + 4.0f, HUDOPT_ROW_H, hoverColor );
+                CG_FillRect( HUDOPT_COL_R_X - 2.0f, rowY, 2.0f, HUDOPT_ROW_H, accentColor );
+            }
 
-            badge    = unavail ? "[ n/a]" : ( e->cvar->integer ? "[ ON ]" : "[ OFF]" );
+            badge    = unavail ? "N/A" : ( e->cvar->integer ? "ON" : "OFF" );
             badgeClr = unavail ? naColor : ( e->cvar->integer ? onColor : offColor );
             entryClr = unavail ? greyColor : labelColor;
 
@@ -752,12 +768,12 @@ void CG_DrawHUDOptionsMenu( void ) {
             rowY += HUDOPT_ROW_H;
         }
 
-        HUDOpt_DrawSlider( HUDOPT_COL_R_X, rowY, "Minimap Scale", cg_mmap_size.value,
+        HUDOpt_DrawSlider( HUDOPT_COL_R_X, rowY, "MINI-MAP SCALE", cg_mmap_size.value,
                            0.40f, 2.00f, HUDOPT_SLIDER_SCALE_ID,
                            labelColor, offColor, divColor, accentColor, hoverColor );
         rowY += HUDOPT_ROW_H;
 
-        HUDOpt_DrawSlider( HUDOPT_COL_R_X, rowY, "Minimap Zoom", cg_mmap_fov.value,
+        HUDOpt_DrawSlider( HUDOPT_COL_R_X, rowY, "MINI-MAP ZOOM", cg_mmap_fov.value,
                            30.0f, 120.0f, HUDOPT_SLIDER_ZOOM_ID,
                            labelColor, offColor, divColor, accentColor, hoverColor );
         rowY += HUDOPT_ROW_H;
@@ -781,10 +797,208 @@ void CG_DrawHUDOptionsMenu( void ) {
    MAIN HUD ENTRY POINT
    ======================================================================= */
 
+/* -----------------------------------------------------------------------
+   Shared in-game surface styling.  The frontend uses quiet dark surfaces,
+   a thin lime signal colour, and a very restrained amount of text.  Keep
+   the same language here so the HUD feels like part of the same product.
+   ----------------------------------------------------------------------- */
+#if 0 /* superseded by the flat telemetry strip */
+static const vec4_t rallyHudPanelColor = { 0.018f, 0.025f, 0.030f, 0.82f };
+static const vec4_t rallyHudRowColor   = { 0.050f, 0.070f, 0.070f, 0.64f };
+static const vec4_t rallyHudLineColor  = { 0.250f, 0.330f, 0.320f, 0.56f };
+static const vec4_t rallyHudAccent     = { 0.720f, 1.000f, 0.060f, 1.00f };
+static const vec4_t rallyHudText       = { 0.900f, 0.950f, 0.940f, 1.00f };
+static const vec4_t rallyHudMuted      = { 0.470f, 0.570f, 0.560f, 1.00f };
+static const vec4_t rallyHudGood       = { 0.480f, 1.000f, 0.420f, 1.00f };
+static const vec4_t rallyHudBad        = { 1.000f, 0.350f, 0.300f, 1.00f };
+
+#define RALLY_HUD_PANEL_X       428
+#define RALLY_HUD_PANEL_W       208
+#define RALLY_HUD_HEADER_H       25
+#define RALLY_HUD_ROW_H          19
+#define RALLY_HUD_TEXT_STYLE     ( UI_SMALLFONT | UI_DROPSHADOW )
+
+static void CG_RallyHUDPanel( int x, int y, int width, int height,
+                              const char *title ) {
+    CG_FillRect( x, y, width, height, rallyHudPanelColor );
+    CG_DrawRect( x, y, width, height, 1.0f, rallyHudLineColor );
+    CG_FillRect( x, y, width, 2.0f, rallyHudAccent );
+    CG_FillRect( x, y, 3.0f, height, rallyHudAccent );
+    CG_FillRect( x + 6, y + RALLY_HUD_HEADER_H - 2,
+                 width - 12, 1.0f, rallyHudLineColor );
+    CG_DrawFrontendString( x + 11, y + 5, title, RALLY_HUD_TEXT_STYLE,
+                           1.0f, rallyHudAccent );
+}
+
+static void CG_RallyHUDRow( int x, int y, int width, const char *label,
+                            const char *value, const float *valueColor,
+                            qboolean active ) {
+    vec4_t rowColor;
+
+    Vector4Copy( rallyHudRowColor, rowColor );
+    if ( active ) {
+        rowColor[0] = 0.080f;
+        rowColor[1] = 0.150f;
+        rowColor[2] = 0.095f;
+        rowColor[3] = 0.82f;
+    }
+
+    CG_FillRect( x + 6, y, width - 12, RALLY_HUD_ROW_H - 1, rowColor );
+    CG_FillRect( x + 6, y + RALLY_HUD_ROW_H - 1,
+                 width - 12, 1.0f, rallyHudLineColor );
+    CG_DrawFrontendString( x + 13, y + 2, label, RALLY_HUD_TEXT_STYLE,
+                           1.0f, rallyHudMuted );
+    CG_DrawFrontendString( x + width - 13, y + 2, value,
+                           UI_RIGHT | UI_SMALLFONT | UI_DROPSHADOW,
+                           1.0f, valueColor ? valueColor : rallyHudText );
+}
+
+static int CG_RallyHUDRaceRowCount( void ) {
+    int rows;
+
+    rows = 0;
+    if ( cg_hudShowTimes.integer ) {
+        if ( cgs.laplimit > 1 ) {
+            rows += 2;
+        }
+        rows++;
+    }
+    if ( cg_ghostPlayback.integer && cg.ghostSplitDeltaValid ) {
+        rows++;
+    }
+    if ( cg_hudShowLaps.integer ) {
+        rows++;
+    }
+    if ( cg_hudShowPosition.integer ) {
+        rows++;
+    }
+    if ( cg_hudShowDistToFinish.integer ) {
+        rows++;
+    }
+    return rows;
+}
+
+static float CG_DrawModernRaceHUD( float y ) {
+    centity_t *cent;
+    int rowCount;
+    int panelHeight;
+    int rowY;
+    int lapTime;
+    int totalTime;
+    int pos;
+    char value[64];
+    const char *time;
+    vec4_t deltaColor;
+
+    if ( !cg.snap || CG_IntroCam_IsActive() ) {
+        return y;
+    }
+
+    cent = &cg_entities[cg.snap->ps.clientNum];
+    if ( cent->finishRaceTime ) {
+        lapTime = cent->finishRaceTime - cent->startLapTime;
+        totalTime = cent->finishRaceTime - cent->startRaceTime;
+    } else if ( cent->startRaceTime ) {
+        lapTime = cg.time - cent->startLapTime;
+        totalTime = cg.time - cent->startRaceTime;
+    } else {
+        lapTime = 0;
+        totalTime = 0;
+    }
+
+    rowCount = CG_RallyHUDRaceRowCount();
+    if ( rowCount <= 0 ) {
+        return y;
+    }
+
+    panelHeight = RALLY_HUD_HEADER_H + rowCount * RALLY_HUD_ROW_H + 7;
+    CG_RallyHUDPanel( RALLY_HUD_PANEL_X, 8, RALLY_HUD_PANEL_W,
+                      panelHeight, "RACE STATUS" );
+    rowY = 8 + RALLY_HUD_HEADER_H + 3;
+
+    if ( cg_hudShowTimes.integer ) {
+        if ( cgs.laplimit > 1 ) {
+            time = getStringForTime( cent->bestLapTime );
+            Com_sprintf( value, sizeof(value), "%s", time );
+            CG_RallyHUDRow( RALLY_HUD_PANEL_X, rowY, RALLY_HUD_PANEL_W,
+                            "BEST LAP", value, rallyHudText, qfalse );
+            rowY += RALLY_HUD_ROW_H;
+
+            time = getStringForTime( lapTime );
+            Com_sprintf( value, sizeof(value), "%s", time );
+            CG_RallyHUDRow( RALLY_HUD_PANEL_X, rowY, RALLY_HUD_PANEL_W,
+                            "LAP TIME", value, rallyHudText, qfalse );
+            rowY += RALLY_HUD_ROW_H;
+        }
+
+        time = getStringForTime( totalTime );
+        Com_sprintf( value, sizeof(value), "%s", time );
+        CG_RallyHUDRow( RALLY_HUD_PANEL_X, rowY, RALLY_HUD_PANEL_W,
+                        "TOTAL", value, rallyHudText, qfalse );
+        rowY += RALLY_HUD_ROW_H;
+    }
+
+    if ( cg_ghostPlayback.integer && cg.ghostSplitDeltaValid ) {
+        if ( cg.ghostSplitDeltaMs < 0 ) {
+            Vector4Copy( rallyHudGood, deltaColor );
+        } else if ( cg.ghostSplitDeltaMs > 0 ) {
+            Vector4Copy( rallyHudBad, deltaColor );
+        } else {
+            Vector4Copy( rallyHudText, deltaColor );
+        }
+
+        Com_sprintf( value, sizeof(value), "%c%d.%03d",
+                     cg.ghostSplitDeltaMs < 0 ? '-' : '+',
+                     abs( cg.ghostSplitDeltaMs ) / 1000,
+                     abs( cg.ghostSplitDeltaMs ) % 1000 );
+        CG_RallyHUDRow( RALLY_HUD_PANEL_X, rowY, RALLY_HUD_PANEL_W,
+                        "GHOST DELTA", value, deltaColor, qfalse );
+        rowY += RALLY_HUD_ROW_H;
+    }
+
+    if ( cg_hudShowLaps.integer ) {
+        if ( cgs.gametype == GT_SPRINT ) {
+            Q_strncpyz( value, "SPRINT", sizeof(value) );
+        } else if ( cgs.laplimit > 1 ) {
+            Com_sprintf( value, sizeof(value), "%d / %d",
+                         cent->currentLap, cgs.laplimit );
+        } else {
+            Com_sprintf( value, sizeof(value), "%d", cent->currentLap );
+        }
+        CG_RallyHUDRow( RALLY_HUD_PANEL_X, rowY, RALLY_HUD_PANEL_W,
+                        "LAPS", value, rallyHudText, qfalse );
+        rowY += RALLY_HUD_ROW_H;
+    }
+
+    if ( cg_hudShowPosition.integer ) {
+        pos = cent->currentPosition;
+        Com_sprintf( value, sizeof(value), "%d / %d", pos, cgs.numRacers );
+        CG_RallyHUDRow( RALLY_HUD_PANEL_X, rowY, RALLY_HUD_PANEL_W,
+                        "POSITION", value, rallyHudAccent, qtrue );
+        rowY += RALLY_HUD_ROW_H;
+    }
+
+    if ( cg_hudShowDistToFinish.integer ) {
+        if ( cg_distanceFormat.integer == 1 && cgs.trackLength > 0.0f ) {
+            Com_sprintf( value, sizeof(value), "%.1f%%",
+                         cg.snap->ps.stats[STAT_DISTANCE_REMAIN] /
+                         cgs.trackLength * 100.0f );
+        } else {
+            Com_sprintf( value, sizeof(value), "%dm",
+                         (int)cg.snap->ps.stats[STAT_DISTANCE_REMAIN] );
+        }
+        CG_RallyHUDRow( RALLY_HUD_PANEL_X, rowY, RALLY_HUD_PANEL_W,
+                        "TO FINISH", value, rallyHudText, qfalse );
+    }
+
+    return y + panelHeight;
+}
+#endif
+
 /*
 ================
 CG_DrawUpperRightHUD
-Draws the legacy right-side racing info stack.
+Draws the modern right-side race status card.
 ================
 */
 float CG_DrawUpperRightHUD( float y ) {
@@ -808,43 +1022,18 @@ float CG_DrawUpperRightHUD( float y ) {
     }
 
     if ( isRallyRace() ) {
-        float timesStart = y;
-        float timesY     = y;
-
         if ( cg_checkpointArrowMode.integer ) {
-            y = CG_DrawArrowToCheckpoint( y );
-            timesStart = y;
-            timesY     = y;
+            CG_DrawArrowToCheckpoint( y );
         }
 
         CG_UpdateGhostSplitDelta();
-
-        if ( cg_hudShowTimes.integer )        timesY = CG_DrawTimes( timesY );
-        if ( cg_ghostPlayback.integer )       timesY = CG_DrawGhostSplitDelta( timesY );
-        if ( cg_hudShowLaps.integer )         timesY = CG_DrawLaps( timesY );
-        if ( cg_hudShowDistToFinish.integer ) timesY = CG_DrawDistanceToFinish( timesY );
-        if ( cg_elimTimeline.integer )        timesY = CG_DrawEliminationTimeline( timesY );
-
-        if ( cg_hudShowPosition.integer ) {
-            CG_DrawCurrentPosition( timesStart );
-        }
-
-        if ( cg_hudShowCarAheadBehind.integer ) {
-            y = CG_DrawCarAheadAndBehind( timesY );
-        } else {
-            y = timesY;
-        }
-    } else if ( cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ) {
-        float timesStart = y;
-
-        if ( cg_hudShowTimes.integer ) {
-            y = CG_DrawTimes( y );
-        }
-
-        if ( cgs.gametype == GT_LCS && cg_hudShowPosition.integer ) {
-            CG_DrawCurrentPosition( timesStart );
-        }
-    }
+        /* Race timing and position now live in the flat telemetry strip.
+           Do not draw the former stacked card over the world view. */
+	} else if ( cgs.gametype == GT_DERBY ) {
+		if ( cg_hudShowTimes.integer ) {
+			y = CG_DrawTimes( y );
+		}
+	}
 
     if ( !isRallyNonDMRace() && cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS ) {
         if ( cg_hudShowScores.integer ) {
@@ -862,11 +1051,7 @@ CG_DrawLowerRightHUD
 ================
 */
 float CG_DrawLowerRightHUD( float y ) {
-    if ( cgs.clientinfo[cg.snap->ps.clientNum].team != TEAM_SPECTATOR ) {
-        if ( cg_hudShowSpeed.integer ) {
-            y = CG_DrawSpeed( y );
-        }
-    }
+    /* The common telemetry strip owns speed, gear, fuel and RPM. */
     return y;
 }
 
@@ -892,6 +1077,187 @@ float CG_DrawLowerLeftHUD( float y ) {
 }
 
 
+/* -----------------------------------------------------------------------
+   Compact race order panel. Gaps to the leader are measured at the latest
+   checkpoint passed by both drivers, rather than guessed from their speed.
+   ----------------------------------------------------------------------- */
+#define RACE_ORDER_MAX_ROWS   9
+#define RACE_ORDER_PANEL_W    160.0f
+#define RACE_ORDER_ROW_H       16.0f
+#define RACE_ORDER_TEXT_SCALE  0.52f
+
+static float CG_DrawRacingOrderHUD( float top ) {
+    int clientAtPosition[MAX_CLIENTS + 1];
+    int i, position, maxPosition, localPosition;
+    int firstPosition, lastPosition, rowCount, clientNum, leaderClient;
+    int gapMs, absGapMs, nameLength;
+    float panelX, panelY, panelH, rowY;
+    screenPlacement_e savedHorizontalPlacement;
+    screenPlacement_e savedVerticalPlacement;
+    char name[32];
+    char gapText[16];
+    vec4_t panelColor = { 0.008f, 0.012f, 0.016f, 0.42f };
+    vec4_t headerColor = { 0.008f, 0.012f, 0.016f, 0.72f };
+    vec4_t rowColor = { 0.018f, 0.027f, 0.031f, 0.28f };
+    vec4_t selectedColor = { 0.060f, 0.140f, 0.088f, 0.45f };
+    vec4_t borderColor = { 0.24f, 0.34f, 0.36f, 0.52f };
+    vec4_t accentColor = { 0.72f, 1.00f, 0.06f, 1.00f };
+    vec4_t textColor = { 0.90f, 0.95f, 0.94f, 1.00f };
+    vec4_t mutedColor = { 0.47f, 0.62f, 0.61f, 1.00f };
+    vec4_t gapColor = { 0.36f, 0.70f, 0.96f, 1.00f };
+    vec4_t negativeGapColor = { 1.00f, 0.38f, 0.30f, 1.00f };
+
+    if ( !cg.snap || !CG_RaceOrderIsActive() ) {
+        return top;
+    }
+
+    for ( i = 0; i <= MAX_CLIENTS; i++ ) {
+        clientAtPosition[i] = -1;
+    }
+    maxPosition = 0;
+    localPosition = 0;
+
+    for ( i = 0; i < cgs.maxclients && i < MAX_CLIENTS; i++ ) {
+        if ( !cgs.clientinfo[i].infoValid ||
+             cgs.clientinfo[i].team == TEAM_SPECTATOR ) {
+            continue;
+        }
+
+        position = cg_entities[i].currentPosition;
+        if ( position <= 0 ) {
+            position = cgs.clientinfo[i].position;
+        }
+        if ( position <= 0 || position > MAX_CLIENTS ||
+             clientAtPosition[position] >= 0 ) {
+            continue;
+        }
+
+        clientAtPosition[position] = i;
+        if ( position > maxPosition ) {
+            maxPosition = position;
+        }
+        if ( i == cg.snap->ps.clientNum ) {
+            localPosition = position;
+        }
+    }
+
+    if ( maxPosition <= 0 ) {
+        return top;
+    }
+
+    rowCount = maxPosition < RACE_ORDER_MAX_ROWS ? maxPosition : RACE_ORDER_MAX_ROWS;
+    firstPosition = 1;
+    if ( maxPosition > rowCount ) {
+        if ( localPosition <= 0 ) {
+            localPosition = 1;
+        }
+        firstPosition = localPosition - rowCount / 2;
+        if ( firstPosition < 1 ) {
+            firstPosition = 1;
+        }
+        if ( firstPosition > maxPosition - rowCount + 1 ) {
+            firstPosition = maxPosition - rowCount + 1;
+        }
+    }
+    lastPosition = firstPosition + rowCount - 1;
+
+    panelX = 640.0f - RACE_ORDER_PANEL_W;
+    panelY = top;
+    panelH = 34.0f + rowCount * RACE_ORDER_ROW_H + 6.0f;
+    savedHorizontalPlacement = CG_GetScreenHorizontalPlacement();
+    savedVerticalPlacement = CG_GetScreenVerticalPlacement();
+    CG_SetScreenPlacement( PLACE_RIGHT, PLACE_TOP );
+
+    CG_FillRect( panelX, panelY, RACE_ORDER_PANEL_W, panelH, panelColor );
+    CG_FillRect( panelX, panelY, RACE_ORDER_PANEL_W, 2.0f, accentColor );
+    CG_FillRect( panelX, panelY, RACE_ORDER_PANEL_W, 20.0f, headerColor );
+    CG_DrawRect( panelX, panelY, RACE_ORDER_PANEL_W, panelH, 1.0f, borderColor );
+    CG_FillRect( panelX + 7.0f, panelY + 19.0f, RACE_ORDER_PANEL_W - 14.0f,
+                 1.0f, borderColor );
+
+    CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( panelY + 5.0f ),
+                         "RACE ORDER", UI_SMALLFONT, 0.56f, accentColor );
+    CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( panelY + 23.0f ),
+                         "POS", UI_SMALLFONT, 0.44f, mutedColor );
+    CG_DrawIngameString( (int)( panelX + 32.0f ), (int)( panelY + 23.0f ),
+                         "DRIVER", UI_SMALLFONT, 0.44f, mutedColor );
+    CG_DrawIngameString( (int)( panelX + RACE_ORDER_PANEL_W - 8.0f ),
+                         (int)( panelY + 23.0f ), "TO LEAD", UI_RIGHT | UI_SMALLFONT,
+                         0.44f, mutedColor );
+
+    rowY = panelY + 34.0f;
+    for ( position = firstPosition; position <= lastPosition; position++ ) {
+        clientNum = clientAtPosition[position];
+        if ( clientNum < 0 ) {
+            rowY += RACE_ORDER_ROW_H;
+            continue;
+        }
+
+        if ( clientNum == cg.snap->ps.clientNum ) {
+            CG_FillRect( panelX + 1.0f, rowY, RACE_ORDER_PANEL_W - 2.0f,
+                         RACE_ORDER_ROW_H, selectedColor );
+            CG_FillRect( panelX + 1.0f, rowY, 2.0f, RACE_ORDER_ROW_H, accentColor );
+        } else {
+            CG_FillRect( panelX + 1.0f, rowY, RACE_ORDER_PANEL_W - 2.0f,
+                         RACE_ORDER_ROW_H, rowColor );
+        }
+
+        CG_DrawIngameString( (int)( panelX + 8.0f ), (int)( rowY + 3.0f ),
+                             va( "%02d", position ), UI_SMALLFONT,
+                             RACE_ORDER_TEXT_SCALE,
+                             position == 1 ? accentColor : mutedColor );
+
+        Q_strncpyz( name, cgs.clientinfo[clientNum].name, sizeof( name ) );
+        while ( CG_IngameStringWidth( name, UI_SMALLFONT, RACE_ORDER_TEXT_SCALE ) > 72 ) {
+            nameLength = strlen( name );
+            if ( nameLength <= 1 ) {
+                break;
+            }
+            if ( nameLength >= 2 && name[nameLength - 2] == '^' ) {
+                name[nameLength - 2] = '\0';
+            } else {
+                name[nameLength - 1] = '\0';
+            }
+        }
+        CG_DrawIngameString( (int)( panelX + 32.0f ), (int)( rowY + 3.0f ),
+                             name, UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
+                             clientNum == cg.snap->ps.clientNum ? accentColor : textColor );
+
+        if ( position == 1 ) {
+            Q_strncpyz( gapText, "LEADER", sizeof( gapText ) );
+            CG_DrawIngameString( (int)( panelX + RACE_ORDER_PANEL_W - 8.0f ),
+                                 (int)( rowY + 3.0f ), gapText,
+                                 UI_RIGHT | UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
+                                 accentColor );
+        } else {
+            leaderClient = clientAtPosition[1];
+            if ( leaderClient >= 0 &&
+                 CG_GetRaceSplitGap( leaderClient, clientNum, &gapMs ) ) {
+                absGapMs = gapMs < 0 ? -gapMs : gapMs;
+                Com_sprintf( gapText, sizeof( gapText ), "%c%d.%02d",
+                             gapMs < 0 ? '-' : '+', absGapMs / 1000,
+                             ( absGapMs % 1000 ) / 10 );
+                CG_DrawIngameString( (int)( panelX + RACE_ORDER_PANEL_W - 8.0f ),
+                                     (int)( rowY + 3.0f ), gapText,
+                                     UI_RIGHT | UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
+                                     gapMs < 0 ? negativeGapColor : gapColor );
+            } else {
+                CG_DrawIngameString( (int)( panelX + RACE_ORDER_PANEL_W - 8.0f ),
+                                     (int)( rowY + 3.0f ), "--",
+                                     UI_RIGHT | UI_SMALLFONT, RACE_ORDER_TEXT_SCALE,
+                                     mutedColor );
+            }
+        }
+
+        CG_FillRect( panelX + 7.0f, rowY + RACE_ORDER_ROW_H - 1.0f,
+                     RACE_ORDER_PANEL_W - 14.0f, 1.0f, borderColor );
+        rowY += RACE_ORDER_ROW_H;
+    }
+
+    CG_SetScreenPlacement( savedHorizontalPlacement, savedVerticalPlacement );
+    return panelY + panelH;
+}
+
 /*
 ================================
 CG_DrawHUD
@@ -899,6 +1265,8 @@ Main HUD dispatcher, called each frame from CG_DrawActive().
 ================================
 */
 qboolean CG_DrawHUD( void ) {
+    float raceOrderBottom;
+
     /* Update all HUD toggle cvars from engine each frame */
     trap_Cvar_Update( &cg_hudOptionsOpen );
     trap_Cvar_Update( &cg_hudShowTimes );
@@ -939,6 +1307,11 @@ qboolean CG_DrawHUD( void ) {
         trap_SendClientCommand( "score" );
     }
 
+    raceOrderBottom = 130.0f;
+    if ( isRallyRace() && cg_hudShowOpponentList.integer ) {
+        raceOrderBottom = CG_DrawRacingOrderHUD( 10.0f );
+    }
+
     switch ( cgs.gametype ) {
 
     default:
@@ -949,8 +1322,12 @@ qboolean CG_DrawHUD( void ) {
         break;
 
     case GT_ELIMINATION:
-        /* Rendered via legacy upper-right stack (CG_DrawUpperRightHUD). */
+	{
+		if ( cg_elimTimeline.integer ) {
+			CG_DrawEliminationTimeline( raceOrderBottom + 4.0f );
+		}
         break;
+	}
 
     case GT_RACING_DM:
     case GT_TEAM_RACING_DM:
@@ -974,14 +1351,21 @@ qboolean CG_DrawHUD( void ) {
     // Q3Rally Code END - KOTH
 
     case GT_DERBY:
-        if ( cg_hudShowDerbyVehicle.integer )   CG_DrawHUD_DerbyVehicleState();
         if ( cg_hudShowDerbyList.integer )      CG_DrawHUD_DerbyList( 440, 16 );
         if ( cg_derbyHitFxEnable.integer )     CG_DrawHUD_DerbyHitImpact();
         break;
 
     case GT_LCS:
-        if ( cg_hudShowOpponentList.integer )   CG_DrawCarAheadAndBehind( 130 );
+	{
+		float y = 130.0f;
+		if ( cg_hudShowOpponentList.integer ) {
+			y = CG_DrawCarAheadAndBehind( y );
+		}
+		if ( cg_elimTimeline.integer ) {
+			CG_DrawEliminationTimeline( y + 4.0f );
+		}
         break;
+	}
     }
 
     // CG_DrawHUD draws overlays but is not the scoreboard visibility gate.
