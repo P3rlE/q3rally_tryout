@@ -2522,7 +2522,33 @@ Q3Rally Entities
 //
 
 /*QUAKED rally_scripted_object (0 .9 .1) ?
+Map-authored renderable and collidable prop. Place this point entity in the map.
 
+"model" path to a model file, for example models/mapobjects/barrels/barrel01.md3.
+             Required when no "script" is set. When used with a script, this
+             map model overrides the model supplied by the script.
+"script" optional path to a scripted-object file. The .script extension may be
+             omitted. The file must contain a rally_scripted_object section.
+             If omitted, the object is created directly from the map properties.
+"physics"  "static" or "dynamic". Dynamic objects fall, bounce, and respond to
+             collisions. If omitted, a scripted object's moveable setting is
+             retained; a model-only object is static by default.
+"mass"     mass used by dynamic-object physics; default 100, range 1-100000.
+"elasticity" bounce response; default 0.1, range 0-1.
+"friction" surface friction; default 0.6, range 0-4.
+"health"   hit points; default 0 (indestructible). A value greater than 0
+             makes the object damageable.
+"mins"     collision-box minimum relative to the entity origin, as "x y z".
+"maxs"     collision-box maximum relative to the entity origin, as "x y z".
+             Set both together. Without script bounds, the default box is
+             (-16 -16 -16) to (16 16 16). Invalid bounds fall back to that box.
+"origin"   standard Quake III entity origin.
+"angle"    standard Quake III yaw; "angles" may be used for full orientation.
+
+Map values override the corresponding script properties. Physics, mass,
+elasticity, friction, health, and collision bounds are applied by the server.
+Legacy maps may use "moveable" 0/1 instead of "physics"; prefer "physics" for
+new maps.
 */
 
 /*QUAKED rally_startfinish (0 .9 .1) ?
