@@ -258,11 +258,13 @@ struct gentity_s {
 	vec3_t		lastNonZeroVelocity;
 	vec3_t		netForce;
 	vec3_t		netMoment;
+	int			physicsAccumulatorMsec;
 
 	// general scripted objects
 	qboolean	moveable;
 	int			mass;
 	float		elasticity;
+	float		friction;
 	char		*script;
 	int			maxHealth;
 

@@ -24,6 +24,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "g_local.h"
 
 #define		MAX_SCRIPT_TEXT		8192
+#define SCRIPTED_OBJECT_PHYSICS_STEP_MSEC	10
+#define SCRIPTED_OBJECT_MAX_SUBSTEPS		10
+#define SCRIPTED_OBJECT_MAX_FRAME_MSEC		100
 
 /* collision types */
 #define		CT_BOX			0
@@ -32,6 +35,29 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 /* Global temporary force vector for testing */
 vec3_t		tempForce;
+
+static qboolean G_ParseScriptVector( char **text_p, vec3_t value ) {
+	char *token;
+	int parsed;
+	int i;
+
+	token = COM_Parse( text_p );
+	if ( !token || !token[0] )
+		return qfalse;
+
+	parsed = sscanf( token, "%f %f %f", &value[0], &value[1], &value[2] );
+	if ( parsed == 3 )
+		return qtrue;
+
+	value[0] = atof( token );
+	for ( i = 1; i < 3; i++ ) {
+		token = COM_Parse( text_p );
+		if ( !token || !token[0] )
+			return qfalse;
+		value[i] = atof( token );
+	}
+	return qtrue;
+}
 
 qboolean SeekToSection( char **pointer, char *str ){
 	char		*token;
@@ -71,7 +97,7 @@ qboolean SeekToSection( char **pointer, char *str ){
 
 qboolean G_ParseScriptedObject( gentity_t *ent ){
 	char		*text_p;
-	int			len, i;
+	int			len;
 	char		*token;
 	char		text[MAX_SCRIPT_TEXT];
 	char		filename[MAX_QPATH];
@@ -79,16 +105,20 @@ qboolean G_ParseScriptedObject( gentity_t *ent ){
 
 	/* setup defaults */
 	ent->takedamage = qfalse;
-	VectorLength(ent->r.mins);
-	VectorLength(ent->r.maxs);
+	VectorSet( ent->r.mins, -16.0f, -16.0f, -16.0f );
+	VectorSet( ent->r.maxs,  16.0f,  16.0f,  16.0f );
 	ent->elasticity = 0.1f;
+	ent->friction = 0.6f;
 	ent->mass = 100;
 	ent->moveable = qfalse;
 	ent->number = 0;
+	ent->health = 0;
+	ent->maxHealth = 0;
+	ent->s.modelindex = 0;
 
 	if (!ent->script || ent->script[0] == 0){
-		Com_Printf("No Script file specified\n");
-		return qfalse;
+		/* A direct model key is enough for a basic map-authored physics prop. */
+		return ( ent->model && ent->model[0] ) ? qtrue : qfalse;
 	}
 
 	/* for debugging only load one object */
@@ -208,29 +238,27 @@ qboolean G_ParseScriptedObject( gentity_t *ent ){
 			}
 
 			ent->maxHealth = ent->health = atoi(token);
-			if (ent->health >= 0)
-				ent->takedamage = qtrue;
+			ent->takedamage = ( ent->health > 0 ) ? qtrue : qfalse;
 
 			continue;
 		}
 		else if ( !Q_stricmp( token, "mins" ) ){
-			for (i = 0; i < 3; i++){
-				token = COM_Parse( &text_p );
-				if ( !token ) break;
-
-				ent->r.mins[i] = atof(token);
-			}
+			if ( !G_ParseScriptVector( &text_p, ent->r.mins ) )
+				return qfalse;
 
 			continue;
 		}
 		else if ( !Q_stricmp( token, "maxs" ) ){
-			for (i = 0; i < 3; i++){
-				token = COM_Parse( &text_p );
-				if ( !token ) break;
+			if ( !G_ParseScriptVector( &text_p, ent->r.maxs ) )
+				return qfalse;
 
-				ent->r.maxs[i] = atof(token);
-			}
-
+			continue;
+		}
+		else if ( !Q_stricmp( token, "friction" ) ){
+			token = COM_Parse( &text_p );
+			if ( !token )
+				break;
+			ent->friction = atof( token );
 			continue;
 		}
 		else if ( !Q_stricmp( token, "hitsound" ) ){
@@ -283,58 +311,71 @@ void G_ScriptedObject_Destroy( gentity_t *self, gentity_t *inflictor, gentity_t 
 	if (g_developer.integer) Com_Printf("Destroying scripted map object %s\n", self->classname);
 
 	self->s.eFlags |= EF_DEAD;
+	self->takedamage = qfalse;
+	self->moveable = qfalse;
+	self->r.contents = 0;
+	self->think = NULL;
+	self->nextthink = 0;
+	trap_LinkEntity( self );
 }
 
 void G_ScriptedObject_Touch ( gentity_t *self, gentity_t *other, trace_t *trace ){
-	vec3_t		dir;
-	float		dot;
+	vec3_t		vehicleVelocity;
+	vec3_t		relativeVelocity;
+	vec3_t	outwardNormal;
+	float		closingSpeed;
 
-	/* Invert collision normal */
-	VectorInverse( trace->plane.normal );
+	if ( !self->moveable || !other || !trace )
+		return;
 
-	/* Calculate relative velocity */
-	VectorMA( self->s.pos.trDelta, -1, other->s.pos.trDelta, dir );
+	/* ClientImpacts builds this from contact toward the touched prop; it is the
+	 * outward direction in which the car should impart momentum. */
+	VectorCopy( trace->plane.normal, outwardNormal );
+	if ( VectorNormalize( outwardNormal ) == 0.0f )
+		return;
 
-	/* Apply collision response with elasticity */
-	dot = DotProduct( trace->plane.normal, dir );
-	VectorMA( dir, -dot * ( 1.0f + self->elasticity ), trace->plane.normal, dir );
-	VectorAdd( other->s.pos.trDelta, dir, self->s.pos.trDelta );
+	VectorCopy( other->s.pos.trDelta, vehicleVelocity );
+	VectorSubtract( self->s.pos.trDelta, vehicleVelocity, relativeVelocity );
+	closingSpeed = DotProduct( relativeVelocity, outwardNormal );
+	if ( closingSpeed >= -0.01f )
+		return;
 
-        /* Optional: Apply advanced collision physics */
-        /* G_RallyObject_ApplyCollision( self, trace->endpos, trace->plane.normal, self->elasticity ); */
+	/* Resolve the contact in the prop's frame; the heavier car acts as a
+	 * moving kinematic body. The impulse also contributes angular momentum. */
+	VectorCopy( relativeVelocity, self->s.pos.trDelta );
+	G_RallyObject_ApplyCollision( self, trace->endpos, outwardNormal, self->elasticity );
+	VectorAdd( self->s.pos.trDelta, vehicleVelocity, self->s.pos.trDelta );
+	VectorCopy( self->s.pos.trDelta, self->lastNonZeroVelocity );
 }
 
 void G_ScriptedObject_Think ( gentity_t *self ){
-	/* Apply gravity as default force */
-	VectorSet( self->netForce, 0, 0, -CP_CURRENT_GRAVITY * self->mass );
-	VectorClear( self->netMoment );
+	int elapsedMsec;
+	int steps;
 
-	/* Optional: Add random impulse force every 5 seconds for testing */
-	/*
-	if( level.time % 5000 < 1000 )
-	{
-		if( tempForce[0] == 0 && tempForce[1] == 0 && tempForce[2] == 0 )
-		{
-			tempForce[0] = crandom();
-			tempForce[1] = crandom();
-			tempForce[2] = random() * 1.5f;
-		}
-		VectorMA( self->netForce, CP_CURRENT_GRAVITY * self->mass, tempForce, self->netForce );
-	}
-	else
-	{
-		VectorClear( tempForce );
-	}
-	*/
+	if ( !self->moveable )
+		return;
 
-	/* Only run physics simulation if object is moveable */
-	if( self->moveable )
-	{
-                /* Check for collisions and apply collision response */
-                G_RallyObject_TracePhysics( self, 0.050f );
+	elapsedMsec = level.time - self->updateTime;
+	if ( elapsedMsec < 0 )
+		elapsedMsec = 0;
+	if ( elapsedMsec > SCRIPTED_OBJECT_MAX_FRAME_MSEC )
+		elapsedMsec = SCRIPTED_OBJECT_MAX_FRAME_MSEC;
+	self->updateTime = level.time;
+	self->physicsAccumulatorMsec += elapsedMsec;
 
-                /* Integrate physics - update position and rotation */
-                G_RallyObject_IntegratePhysics( self, 0.050f );
+	steps = 0;
+	while ( self->physicsAccumulatorMsec >= SCRIPTED_OBJECT_PHYSICS_STEP_MSEC &&
+		steps < SCRIPTED_OBJECT_MAX_SUBSTEPS ) {
+		float stepSeconds;
+
+		stepSeconds = SCRIPTED_OBJECT_PHYSICS_STEP_MSEC * 0.001f;
+		VectorSet( self->netForce, 0.0f, 0.0f, -CP_CURRENT_GRAVITY * self->mass );
+		VectorClear( self->netMoment );
+		G_RallyObject_IntegratePhysics( self, stepSeconds );
+		G_RallyObject_TracePhysics( self, stepSeconds );
+
+		self->physicsAccumulatorMsec -= SCRIPTED_OBJECT_PHYSICS_STEP_MSEC;
+		steps++;
 	}
 
 	/* Update entity position and angles for rendering */
@@ -346,9 +387,8 @@ void G_ScriptedObject_Think ( gentity_t *self ){
 	/* Link entity into world for collision detection */
 	trap_LinkEntity( self );
 
-	/* Schedule next physics update in 50ms */
-	self->nextthink = level.time + 50;
-	self->updateTime = level.time;
+	/* Accumulated fixed 10 ms steps make server frame jitter irrelevant. */
+	self->nextthink = level.time + SCRIPTED_OBJECT_PHYSICS_STEP_MSEC;
 }
 
 void G_ScriptedObject_Pain ( gentity_t *self, gentity_t *attacker, int damage ){
@@ -363,6 +403,74 @@ void G_ScriptedObject_Pain ( gentity_t *self, gentity_t *attacker, int damage ){
 	/* Com_Printf("Scripted map object %s was hit\n", self->classname); */
 }
 
+static void G_ApplyScriptedObjectMapProperties( gentity_t *ent ) {
+	char *physics;
+	int value;
+	float floatValue;
+	vec3_t vectorValue;
+	qboolean physicsSpecified;
+
+	physicsSpecified = G_SpawnString( "physics", NULL, &physics );
+	if ( physicsSpecified ) {
+		if ( !Q_stricmp( physics, "dynamic" ) || !Q_stricmp( physics, "movable" ) ) {
+			ent->moveable = qtrue;
+		} else if ( !Q_stricmp( physics, "static" ) ) {
+			ent->moveable = qfalse;
+		} else {
+			Com_Printf( "rally_scripted_object: unknown physics mode '%s' (use static or dynamic)\n", physics );
+		}
+	} else if ( G_SpawnInt( "moveable", "0", &value ) ) {
+		/* Legacy spelling remains supported; map keys override the archetype. */
+		ent->moveable = value ? qtrue : qfalse;
+	}
+
+	if ( G_SpawnInt( "mass", "100", &value ) ) {
+		if ( value < 1 ) value = 1;
+		if ( value > 100000 ) value = 100000;
+		ent->mass = value;
+	}
+	if ( G_SpawnFloat( "elasticity", "0.1", &floatValue ) ) {
+		ent->elasticity = Com_Clamp( 0.0f, 1.0f, floatValue );
+	}
+	if ( G_SpawnFloat( "friction", "0.6", &floatValue ) ) {
+		ent->friction = Com_Clamp( 0.0f, 4.0f, floatValue );
+	}
+	if ( G_SpawnInt( "health", "0", &value ) ) {
+		ent->health = value > 0 ? value : 0;
+		ent->maxHealth = ent->health;
+		ent->takedamage = ent->health > 0 ? qtrue : qfalse;
+	} else if ( ent->health <= 0 ) {
+		/* Both legacy -1 and documented 0 mean indestructible. */
+		ent->health = 0;
+		ent->maxHealth = 0;
+		ent->takedamage = qfalse;
+	}
+	if ( G_SpawnVector( "mins", "0 0 0", vectorValue ) )
+		VectorCopy( vectorValue, ent->r.mins );
+	if ( G_SpawnVector( "maxs", "0 0 0", vectorValue ) )
+		VectorCopy( vectorValue, ent->r.maxs );
+	if ( ent->mass < 1 ) ent->mass = 1;
+	if ( ent->mass > 100000 ) ent->mass = 100000;
+	ent->elasticity = Com_Clamp( 0.0f, 1.0f, ent->elasticity );
+	ent->friction = Com_Clamp( 0.0f, 4.0f, ent->friction );
+
+	if ( ent->model && ent->model[0] ) {
+		/* Radiant's standard model key overrides the archetype model. */
+		ent->s.modelindex2 = G_ModelIndex( ent->model );
+	}
+
+	for ( value = 0; value < 3; value++ ) {
+		if ( ent->r.mins[value] >= ent->r.maxs[value] ||
+			ent->r.mins[value] < -4096.0f || ent->r.mins[value] > 4096.0f ||
+			ent->r.maxs[value] < -4096.0f || ent->r.maxs[value] > 4096.0f ) {
+			Com_Printf( "rally_scripted_object: invalid collision bounds; using a 32-unit box\n" );
+			VectorSet( ent->r.mins, -16.0f, -16.0f, -16.0f );
+			VectorSet( ent->r.maxs,  16.0f,  16.0f,  16.0f );
+			break;
+		}
+	}
+}
+
 void SP_rally_scripted_object( gentity_t *ent ){
 	/* Check if script file can be loaded and parsed */
 	if ( !G_ParseScriptedObject( ent ) ){
@@ -370,31 +478,33 @@ void SP_rally_scripted_object( gentity_t *ent ){
 		G_FreeEntity(ent);
 		return;
 	}
+	G_ApplyScriptedObjectMapProperties( ent );
 
 	/* Set entity type for client-side rendering */
 	ent->s.eType = ET_SCRIPTED;
 
-	/* Set collision properties - non-moveable objects block movement */
-	if (!ent->moveable)
-		ent->r.contents = CONTENTS_BODY;
+	/* Static and dynamic props both participate in vehicle body traces. */
+	ent->r.contents = CONTENTS_BODY;
+	ent->clipmask = MASK_PLAYERSOLID;
 
 	/* Set up entity callbacks */
 	ent->die = G_ScriptedObject_Destroy;
 	ent->touch = G_ScriptedObject_Touch;    /* Enable collision with vehicles */
 	ent->pain = G_ScriptedObject_Pain;
-	ent->think = G_ScriptedObject_Think;
+	ent->think = ent->moveable ? G_ScriptedObject_Think : NULL;
 	
-	/* Schedule first think in 1 second */
-	ent->nextthink = level.time + 1000;
-	ent->updateTime = ent->nextthink;
+	/* Static props remain asleep; dynamic props start on the next simulation step. */
+	ent->nextthink = ent->moveable ? level.time + SCRIPTED_OBJECT_PHYSICS_STEP_MSEC : 0;
+	ent->updateTime = level.time;
+	ent->physicsAccumulatorMsec = 0;
 
 	/* Initialize physics state */
 	VectorClear( ent->netForce );
 	VectorClear( ent->netMoment );
 	VectorClear( ent->angularMomentum );
 
-	/* Set trajectory types for interpolation */
-	ent->s.pos.trType = TR_LINEAR;
+	/* Positions are authoritative on the server and interpolated from snapshots. */
+	ent->s.pos.trType = TR_INTERPOLATE;
 	ent->s.apos.trType = TR_INTERPOLATE;
 
 	/* Initialize velocity tracking */
@@ -412,4 +522,3 @@ void SP_rally_scripted_object( gentity_t *ent ){
 	/* Link entity into world */
 	trap_LinkEntity (ent);
 }
-
