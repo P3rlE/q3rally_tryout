@@ -26,6 +26,8 @@ This file is part of q3rally source code.
 static const vec4_t vehicleHudPanel  = { 0.018f, 0.025f, 0.030f, 0.78f };
 static const vec4_t vehicleHudLine   = { 0.250f, 0.330f, 0.320f, 0.58f };
 static const vec4_t vehicleHudAccent = { 0.720f, 1.000f, 0.060f, 1.00f };
+static const vec4_t vehicleHudLabel  = { 0.57f, 0.70f, 0.74f, 0.90f };
+static const vec4_t vehicleHudFrame  = { 0.30f, 0.43f, 0.49f, 0.82f };
 
 static void CG_DrawVehicleHudFrame( float x, float y, float w, float h,
                                     const char *title ) {
@@ -324,8 +326,10 @@ void CG_AddObjectsToScene( int renderLevel ) {
    CG_DrawRearviewMirror
    ----------------------------------------------------------------------- */
 void CG_DrawRearviewMirror( float x, float y, float w, float h ) {
-	float mx, my, mw, mh;
 	int   tmp;
+	float labelX, labelY;
+	float frameX, frameY, frameW, frameH;
+	screenPlacement_e savedHorizontalPlacement, savedVerticalPlacement;
 
 	if ( !cg_drawRearView.integer )
 		return;
@@ -334,12 +338,15 @@ void CG_DrawRearviewMirror( float x, float y, float w, float h ) {
 	if ( cgs.clientinfo[cg.snap->ps.clientNum].team == TEAM_SPECTATOR )
 		return;
 
-	mx = x - 8;
-	my = y - 7;
-	mw = w * 1.0534f;
-	mh = h * 1.2f;
-	CG_DrawVehicleHudFrame( mx, my, mw, mh, "REAR VIEW" );
-
+	savedHorizontalPlacement = CG_GetScreenHorizontalPlacement();
+	savedVerticalPlacement = CG_GetScreenVerticalPlacement();
+	CG_SetScreenPlacement( PLACE_CENTER, PLACE_TOP );
+	frameX = x - 1.0f;
+	frameY = y - 1.0f;
+	frameW = w + 2.0f;
+	frameH = h + 2.0f;
+	labelX = x + 5.0f;
+	labelY = y + 3.0f;
 	CG_AdjustFrom640( &x, &y, &w, &h );
 
 	cg.mirrorRefdef.x      = x;
@@ -354,10 +361,11 @@ void CG_DrawRearviewMirror( float x, float y, float w, float h ) {
 
 	CG_AddObjectsToScene( cg_rearViewRenderLevel.integer );
 	trap_R_RenderScene( &cg.mirrorRefdef );
-	CG_DrawPic( mx, my, mw, mh, cgs.media.rearviewMirrorShader );
-	CG_DrawIngameString( (int)( mx + 9.0f ), (int)( my + 4.0f ),
+	CG_DrawRect( frameX, frameY, frameW, frameH, 1.0f, vehicleHudFrame );
+	CG_DrawIngameString( (int)labelX, (int)labelY,
 	                     "REAR VIEW", UI_SMALLFONT | UI_DROPSHADOW,
-	                     0.75f, vehicleHudAccent );
+	                     0.58f, vehicleHudLabel );
+	CG_SetScreenPlacement( savedHorizontalPlacement, savedVerticalPlacement );
 }
 
 
@@ -366,8 +374,9 @@ void CG_DrawRearviewMirror( float x, float y, float w, float h ) {
    Top-down minimap overlay.
    ----------------------------------------------------------------------- */
 void CG_DrawMMap( float x, float y, float w, float h ) {
-	float overlay_x, overlay_y, overlay_w, overlay_h;
+	float overlay_x, overlay_y, frameX, frameY, frameW, frameH;
 	float tmp;
+	screenPlacement_e savedHorizontalPlacement, savedVerticalPlacement;
 
 	if ( !cg_drawMMap.integer )
 		return;
@@ -376,13 +385,15 @@ void CG_DrawMMap( float x, float y, float w, float h ) {
 	if ( cgs.clientinfo[cg.snap->ps.clientNum].team == TEAM_SPECTATOR )
 		return;
 
+	savedHorizontalPlacement = CG_GetScreenHorizontalPlacement();
+	savedVerticalPlacement = CG_GetScreenVerticalPlacement();
+	CG_SetScreenPlacement( PLACE_LEFT, PLACE_TOP );
 	overlay_x = x;
 	overlay_y = y;
-	overlay_w = w * cg_mmap_size.value;
-	overlay_h = h * cg_mmap_size.value;
-	CG_DrawVehicleHudFrame( overlay_x - 3.0f, overlay_y - 3.0f,
-	                        overlay_w + 6.0f, overlay_h + 6.0f, "MAP" );
-
+	frameX = x - 1.0f;
+	frameY = y - 1.0f;
+	frameW = w * cg_mmap_size.value + 2.0f;
+	frameH = h * cg_mmap_size.value + 2.0f;
 	CG_AdjustFrom640( &x, &y, &w, &h );
 
 	cg.mmapRefdef.x       = x;
@@ -402,10 +413,11 @@ void CG_DrawMMap( float x, float y, float w, float h ) {
 		CG_AddCEntity( &cg_entities[cg.snap->ps.clientNum] );
 
 	trap_R_RenderScene( &cg.mmapRefdef );
-	CG_DrawPic( overlay_x, overlay_y, overlay_w, overlay_h, cgs.media.MMapShader );
+	CG_DrawRect( frameX, frameY, frameW, frameH, 1.0f, vehicleHudFrame );
 	CG_DrawIngameString( (int)( overlay_x + 7.0f ), (int)( overlay_y + 4.0f ),
 	                     "MAP", UI_SMALLFONT | UI_DROPSHADOW,
-	                     0.75f, vehicleHudAccent );
+	                     0.58f, vehicleHudLabel );
+	CG_SetScreenPlacement( savedHorizontalPlacement, savedVerticalPlacement );
 }
 
 

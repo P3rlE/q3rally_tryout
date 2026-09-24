@@ -345,7 +345,7 @@ float CG_DrawEliminationTimeline( float y ) {
 	const float	rowHeight   = HUD_ROW_HEIGHT;
 
 	if ( !cg_elimTimeline.integer )                                       return y;
-	if ( cgs.gametype != GT_ELIMINATION && cgs.gametype != GT_LCS )       return y;
+	if ( cgs.gametype != GT_LCS )                                        return y;
 	if ( cg.elimTimelineCount <= 0 )                                      return y;
 
 	x = HUD_RIGHT_EDGE - columnWidth;

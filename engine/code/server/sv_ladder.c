@@ -846,7 +846,8 @@ static qboolean SV_LadderJsonAppendLapArray( ladderJsonBuilder_t *builder, const
         return qtrue;
 }
 
-static qboolean SV_LadderJsonAppendPlayer( ladderJsonBuilder_t *builder, const ladderPlayerPayload_t *player ) {
+static qboolean SV_LadderJsonAppendPlayer( ladderJsonBuilder_t *builder,
+        const ladderPlayerPayload_t *player, qboolean isKoth ) {
         qboolean first = qtrue;
         const char *teamName = SV_LadderTeamName( player->team );
 
@@ -1014,6 +1015,11 @@ static qboolean SV_LadderJsonAppendPlayer( ladderJsonBuilder_t *builder, const l
         }
         if ( !SV_LadderJsonAppendKey( builder, "zoneHoldMs", &first ) ||
              !SV_LadderJsonAppendInt( builder, player->zoneHoldMs ) ) {
+                return qfalse;
+        }
+        if ( isKoth &&
+             ( !SV_LadderJsonAppendKey( builder, "kothContestTimeMs", &first ) ||
+               !SV_LadderJsonAppendInt( builder, player->kothContestTimeMs ) ) ) {
                 return qfalse;
         }
         if ( !SV_LadderJsonAppendKey( builder, "zoneActiveSigil", &first ) ||
@@ -1416,6 +1422,12 @@ static char *SV_LadderSerializeMatch( const ladderMatchPayload_t *payload, size_
                 Z_Free( builder.data );
                 return NULL;
         }
+        if ( payload->gametype == GT_KOTH &&
+             ( !SV_LadderJsonAppendKey( &builder, "teamHoldMs", &first ) ||
+               !SV_LadderJsonAppendTeamArray( &builder, payload->teamHoldMs, TEAM_NUM_TEAMS ) ) ) {
+                Z_Free( builder.data );
+                return NULL;
+        }
 
         {
                 int playerCount = payload->playerCount;
@@ -1447,7 +1459,8 @@ static char *SV_LadderSerializeMatch( const ladderMatchPayload_t *payload, size_
                                         return NULL;
                                 }
                         }
-                        if ( !SV_LadderJsonAppendPlayer( &builder, &payload->players[i] ) ) {
+                        if ( !SV_LadderJsonAppendPlayer( &builder, &payload->players[i],
+                                payload->gametype == GT_KOTH ? qtrue : qfalse ) ) {
                                 Z_Free( builder.data );
                                 return NULL;
                         }

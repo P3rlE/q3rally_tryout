@@ -575,20 +575,6 @@ static void CG_ForceModelChange( void ) {
 	}
 }
 
-static void CG_DisableGhostPlaybackOutsideRacing( void ) {
-	if ( !cg.snap ) {
-		return;
-	}
-
-	if ( isRallyRace() ) {
-		return;
-	}
-
-	if ( cg_ghostPlayback.integer != 0 ) {
-		trap_Cvar_Set( "cg_ghostPlayback", "0" );
-	}
-}
-
 /*
 =================
 CG_UpdateCvars
@@ -601,8 +587,6 @@ void CG_UpdateCvars( void ) {
 	for ( i = 0, cv = cvarTable ; i < cvarTableSize ; i++, cv++ ) {
 		trap_Cvar_Update( cv->vmCvar );
 	}
-
-	CG_DisableGhostPlaybackOutsideRacing();
 
 	// check for modications here
 

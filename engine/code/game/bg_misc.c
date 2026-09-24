@@ -699,7 +699,7 @@ Refills vehicle fuel.
 		"holdable_medkit", 
 		"sound/items/holdable.ogg",
         { 
-		"models/powerups/holdable/medkit.md3", 
+		"models/powerups/holdable/repairkit.md3",
 		"models/powerups/holdable/medkit_sphere.md3",
 		NULL, NULL},
 /* icon */		"icons/medkit",

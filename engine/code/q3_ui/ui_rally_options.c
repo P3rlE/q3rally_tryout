@@ -165,8 +165,8 @@ static const char *q3roptions_atmospheric[] = {
 
 static const char *q3roptions_ghostPlayback[] = {
         "Off",
-        "Personal ghost",
-        "Base ghost",
+        "Personal",
+        "Server base",
         0
 };
 
@@ -337,6 +337,10 @@ static void Q3ROptions_StatusBar( void *self )
 
 	case ID_ENGINE_SOUNDS:
 		text = "Choose off, legacy or experimental engine audio.";
+		break;
+
+	case ID_GHOST_PLAYBACK:
+		text = "Personal uses a saved ghost for this vehicle; Server base uses the route provided by the server.";
 		break;
 
 	case ID_FUEL_CONSUMPTION:

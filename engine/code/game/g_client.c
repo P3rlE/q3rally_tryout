@@ -734,7 +734,7 @@ team_t LowestTeamCount( int ignoreClientNum ){
 	}
 	if ( counts[TEAM_YELLOW] <= counts[TEAM_RED]
 		&& counts[TEAM_YELLOW] <= counts[TEAM_GREEN]
-		&& counts[TEAM_YELLOW] <= counts[TEAM_YELLOW]) {
+		&& counts[TEAM_YELLOW] <= counts[TEAM_BLUE]) {
 		return TEAM_YELLOW;
 	}
 
@@ -765,7 +765,7 @@ team_t LowestTeamScore( void ){
 	}
 	if ( level.teamScores[TEAM_YELLOW] <= level.teamScores[TEAM_RED]
 		&& level.teamScores[TEAM_YELLOW] <= level.teamScores[TEAM_GREEN]
-		&& level.teamScores[TEAM_YELLOW] <= level.teamScores[TEAM_YELLOW]) {
+		&& level.teamScores[TEAM_YELLOW] <= level.teamScores[TEAM_BLUE]) {
 		return TEAM_YELLOW;
 	}
 
@@ -1352,6 +1352,7 @@ void ClientBegin( int clientNum ) {
 	client->pers.teamState.state = TEAM_BEGIN;
 	client->kothHillKills = 0;
 	client->kothContestTimeMs = 0;
+	client->kothHoldTimeMs = 0;
 	client->dominationZoneHoldMs = 0;
 
 	// save eflags around this, because changing teams will

@@ -119,6 +119,14 @@ static void StartServer_MenuEvent( void *ptr, int event );
 static void StartServer_Update( void );
 static const char *gametype_items[15];
 
+static int StartServer_CvarIntOrDefault( const char *name, int defaultValue ) {
+	char value[32];
+	trap_Cvar_VariableStringBuffer( name, value, sizeof( value ) );
+	return value[0] ? atoi( value ) : defaultValue;
+}
+
+static qboolean StartServer_IsKothSelection( void );
+
 static void StartServer_FitText( char *out, int outSize, const char *text,
                                  int maxWidth ) {
         int len;
@@ -186,7 +194,9 @@ static void StartServer_DrawMapList( void *self ) {
         list = (menulist_s *)self;
         if ( !s_startserver.nummaps ) {
                 Frontend_DrawText( STARTSERVER_ROW_X,
-                        STARTSERVER_LIST_Y + 16, "No maps found",
+                        STARTSERVER_LIST_Y + 16,
+                        StartServer_IsKothSelection() ?
+                                "No KOTH-ready maps; add a hill zone to a map." : "No maps found",
                         UI_LEFT | UI_SMALLFONT, startServerMutedColor );
                 return;
         }
@@ -1177,7 +1187,7 @@ SERVER OPTIONS MENU *****
 #define SERVEROPT_OPTION_WIDTH        272
 #define SERVEROPT_OPTION_HEIGHT       286
 #define SERVEROPT_OPTION_START_Y      212
-#define SERVEROPT_OPTION_ROW_HEIGHT   22
+#define SERVEROPT_OPTION_ROW_HEIGHT   19
 #define SERVEROPT_OPTION_ROW_GAP      1
 #define SERVEROPT_OPTION_COLUMN_WIDTH 240
 #define SERVEROPT_BOT_X               40
@@ -1233,7 +1243,6 @@ typedef struct {
 	char				playerNameBuffers[PLAYER_SLOTS][16];
 
 	int					ghostPlaybackRestore;
-	qboolean			ghostPlaybackStored;
 
 	qboolean			newBot;
 	int					newBotIndex;
@@ -1277,6 +1286,12 @@ static const char *playerTeam_list[] = {
 	"Yellow",
 	0
 };
+
+static qboolean StartServer_IsKothSelection( void ) {
+	int index = s_startserver.gametype.curvalue;
+	return ( index >= 0 && index < sizeof( gametype_remap ) / sizeof( gametype_remap[0] ) &&
+		gametype_remap[index] == GT_KOTH ) ? qtrue : qfalse;
+}
 
 static const char *playerTeam_twoTeam_list[] = {
 	"Blue",
@@ -1326,7 +1341,8 @@ static int ServerOptions_TrackLengthIndexFromValue( int trackLengthValue ) {
 }
 
 static qboolean ServerOptions_AllowsFourTeams( void ) {
-	return ( s_serveroptions.gametype == GT_CTF4 ) ? qtrue : qfalse;
+	return ( s_serveroptions.gametype == GT_CTF4 ||
+		s_serveroptions.gametype == GT_DOMINATION ) ? qtrue : qfalse;
 }
 
 static void ServerOptions_ClampPlayerTeams( void ) {
@@ -1345,12 +1361,23 @@ static void ServerOptions_ClampPlayerTeams( void ) {
 
 static void ServerOptions_UpdatePlayerTeamLists( void ) {
 	int n;
+	int teamCount;
 	const char **teamList;
 
 	teamList = ServerOptions_AllowsFourTeams() ? playerTeam_list : playerTeam_twoTeam_list;
+	// Menu_AddItem caches numitems before the gametype-specific list is set.
+	teamCount = 0;
+	while ( teamList[teamCount] ) {
+		teamCount++;
+	}
 
 	for ( n = 0; n < PLAYER_SLOTS; n++ ) {
 		s_serveroptions.playerTeam[n].itemnames = teamList;
+		s_serveroptions.playerTeam[n].numitems = teamCount;
+		if ( s_serveroptions.playerTeam[n].curvalue < 0 ||
+			s_serveroptions.playerTeam[n].curvalue >= teamCount ) {
+			s_serveroptions.playerTeam[n].curvalue = 0;
+		}
 	}
 
 	ServerOptions_ClampPlayerTeams();
@@ -1494,57 +1521,42 @@ default:
 		break;
 		
 	    // Q3Rally Code Start - KOTH
-	    case GT_KOTH:
-		{
-			int kothScoreWin = flaglimit;
-			int kothTick = kothPtsTick;
-			int kothCapture = kothPtsCapture;
-			int kothDefend = kothPtsDefend;
-			int kothOtEnabled = kothOvertime;
-			int kothOtHoldMs = kothOvertimeHoldSec * 1000;
-			if ( kothScoreWin <= 0 ) {
-				kothScoreWin = (int)trap_Cvar_VariableValue( "ui_koth_scorelimit" );
-			}
-			if ( kothScoreWin <= 0 ) {
-				kothScoreWin = 100;
-			}
+	case GT_KOTH:
+	{
+		int kothScoreWin = flaglimit;
+		int kothTick = kothPtsTick;
+		int kothCapture = kothPtsCapture;
+		int kothDefend = kothPtsDefend;
+		int kothOtEnabled = kothOvertime;
+		int kothOtHoldMs = kothOvertimeHoldSec * 1000;
 
-			if ( kothTick < 0 ) {
-				kothTick = (int)trap_Cvar_VariableValue( "ui_koth_pts_tick" );
-			}
-			if ( kothCapture < 0 ) {
-				kothCapture = (int)trap_Cvar_VariableValue( "ui_koth_pts_capture" );
-			}
-			if ( kothDefend < 0 ) {
-				kothDefend = (int)trap_Cvar_VariableValue( "ui_koth_pts_defend" );
-			}
-			if ( kothOtHoldMs <= 0 ) {
-				kothOtHoldMs = (int)trap_Cvar_VariableValue( "ui_koth_overtime_hold" );
-			}
-			if ( kothOtHoldMs <= 0 ) {
-				kothOtHoldMs = (int)trap_Cvar_VariableValue( "koth_overtime_hold" );
-			}
-			if ( kothOtHoldMs <= 0 ) {
-				kothOtHoldMs = 10000;
-			}
+		if ( kothScoreWin <= 0 ) kothScoreWin = 100;
+		if ( kothOtHoldMs <= 0 ) kothOtHoldMs = 10000;
 
-			trap_Cvar_SetValue( "g_kothScoreWin",    Com_Clamp( 1, 9999, kothScoreWin ) );
-			trap_Cvar_SetValue( "g_kothCaptureTime", 3000 );
-			trap_Cvar_SetValue( "g_kothRespawnWave", 5000 );
-			trap_Cvar_SetValue( "koth_pts_tick", Com_Clamp( 0, 999, kothTick ) );
-			trap_Cvar_SetValue( "koth_pts_capture", Com_Clamp( 0, 999, kothCapture ) );
-			trap_Cvar_SetValue( "koth_pts_defend", Com_Clamp( 0, 999, kothDefend ) );
-			trap_Cvar_SetValue( "koth_overtime", Com_Clamp( 0, 1, kothOtEnabled ) );
-			trap_Cvar_SetValue( "koth_overtime_hold", Com_Clamp( 1000, 120000, kothOtHoldMs ) );
-			trap_Cvar_SetValue( "ui_koth_scorelimit", kothScoreWin );
-			trap_Cvar_SetValue( "ui_koth_pts_tick", Com_Clamp( 0, 999, kothTick ) );
-			trap_Cvar_SetValue( "ui_koth_pts_capture", Com_Clamp( 0, 999, kothCapture ) );
-			trap_Cvar_SetValue( "ui_koth_pts_defend", Com_Clamp( 0, 999, kothDefend ) );
-			trap_Cvar_SetValue( "ui_koth_overtime", Com_Clamp( 0, 1, kothOtEnabled ) );
-			trap_Cvar_SetValue( "ui_koth_overtime_hold", Com_Clamp( 1000, 120000, kothOtHoldMs ) );
-			trap_Cvar_SetValue( "ui_koth_timelimit",  timelimit );
-			trap_Cvar_SetValue( "ui_koth_friendly",   friendlyfire );
-			break;
+		kothScoreWin = (int)Com_Clamp( 1, 999, kothScoreWin );
+		kothTick = (int)Com_Clamp( 0, 999, kothTick );
+		kothCapture = (int)Com_Clamp( 0, 999, kothCapture );
+		kothDefend = (int)Com_Clamp( 0, 999, kothDefend );
+		kothOtEnabled = (int)Com_Clamp( 0, 1, kothOtEnabled );
+		kothOtHoldMs = (int)Com_Clamp( 1000, 120000, kothOtHoldMs );
+
+		trap_Cvar_SetValue( "g_kothScoreWin", kothScoreWin );
+		trap_Cvar_SetValue( "g_kothCaptureTime", 3000 );
+		trap_Cvar_SetValue( "g_kothRespawnWave", 5000 );
+		trap_Cvar_SetValue( "g_kothPtsTick", kothTick );
+		trap_Cvar_SetValue( "g_kothPtsCapture", kothCapture );
+		trap_Cvar_SetValue( "g_kothPtsDefend", kothDefend );
+		trap_Cvar_SetValue( "g_kothOvertime", kothOtEnabled );
+		trap_Cvar_SetValue( "g_kothOvertimeHoldTime", kothOtHoldMs );
+		trap_Cvar_SetValue( "ui_koth_scorelimit", kothScoreWin );
+		trap_Cvar_SetValue( "ui_koth_pts_tick", kothTick );
+		trap_Cvar_SetValue( "ui_koth_pts_capture", kothCapture );
+		trap_Cvar_SetValue( "ui_koth_pts_defend", kothDefend );
+		trap_Cvar_SetValue( "ui_koth_overtime", kothOtEnabled );
+		trap_Cvar_SetValue( "ui_koth_overtime_hold", kothOtHoldMs );
+		trap_Cvar_SetValue( "ui_koth_timelimit", timelimit );
+		trap_Cvar_SetValue( "ui_koth_friendly", friendlyfire );
+		break;
 	}
     // Q3Rally Code END - KOTH
 
@@ -1584,12 +1596,9 @@ default:
 
 			playbackValue = s_serveroptions.ghostPlaybackRestore > 0 ? s_serveroptions.ghostPlaybackRestore : 1;
 			trap_Cvar_SetValue( "cg_ghostPlayback", playbackValue );
-		} else {
-			trap_Cvar_SetValue( "cg_ghostPlayback", 0 );
 		}
 	} else {
 		trap_Cvar_SetValue( "ui_ghostonly", 0 );
-		trap_Cvar_SetValue( "cg_ghostPlayback", 0 );
 	}
 
         if ( s_serveroptions.gametype == GT_ELIMINATION ) {
@@ -1775,7 +1784,7 @@ static void ServerOptions_Event( void* ptr, int event ) {
 			ServerOptions_InitPlayerItems();
 		}
 		else {
-			trap_Cvar_SetValue( "cg_ghostPlayback", 0 );
+			trap_Cvar_SetValue( "cg_ghostPlayback", s_serveroptions.ghostPlaybackRestore );
 			ServerOptions_InitPlayerItems();
 			ServerOptions_InitBotNames();
 		}
@@ -1819,6 +1828,11 @@ ServerOptions_StatusBar
 */
 static void ServerOptions_StatusBar( void* ptr ) {
 	UI_DrawString( 320, 440, "0 = NO LIMIT", UI_CENTER|UI_SMALLFONT, colorWhite );
+}
+
+static void ServerOptions_GhostOnlyStatusBar( void* ptr ) {
+	(void)ptr;
+	UI_DrawString( 320, 440, "Starts without AI drivers and enables the selected ghost playback.", UI_CENTER|UI_SMALLFONT, colorWhite );
 }
 
 /*
@@ -2085,6 +2099,11 @@ static void ServerOptions_SetMenuItems( void ) {
 	case GT_KOTH:
 	{
 		int kothScoreLimit = (int)trap_Cvar_VariableValue( "ui_koth_scorelimit" );
+		int kothTick;
+		int kothCapture;
+		int kothDefend;
+		int kothOtEnable;
+		int kothOtHoldMs;
 		if ( kothScoreLimit <= 0 ) {
 			kothScoreLimit = (int)trap_Cvar_VariableValue( "g_kothScoreWin" );
 		}
@@ -2094,45 +2113,37 @@ static void ServerOptions_SetMenuItems( void ) {
 			kothScoreLimit = (int)Com_Clamp( 1, 999, kothScoreLimit );
 			trap_Cvar_SetValue( "ui_koth_scorelimit", kothScoreLimit );
 			Com_sprintf( s_serveroptions.flaglimit.field.buffer, 4, "%i", kothScoreLimit );
-			{
-				int kothTick = (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_koth_pts_tick" ) );
-				int kothCapture = (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_koth_pts_capture" ) );
-				int kothDefend = (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_koth_pts_defend" ) );
+			kothTick = StartServer_CvarIntOrDefault( "ui_koth_pts_tick", -1 );
+			if ( kothTick < 0 ) kothTick = StartServer_CvarIntOrDefault( "koth_pts_tick", -1 );
+			if ( kothTick < 0 ) kothTick = StartServer_CvarIntOrDefault( "g_kothPtsTick", 1 );
+			kothCapture = StartServer_CvarIntOrDefault( "ui_koth_pts_capture", -1 );
+			if ( kothCapture < 0 ) kothCapture = StartServer_CvarIntOrDefault( "koth_pts_capture", -1 );
+			if ( kothCapture < 0 ) kothCapture = StartServer_CvarIntOrDefault( "g_kothPtsCapture", 5 );
+			kothDefend = StartServer_CvarIntOrDefault( "ui_koth_pts_defend", -1 );
+			if ( kothDefend < 0 ) kothDefend = StartServer_CvarIntOrDefault( "koth_pts_defend", -1 );
+			if ( kothDefend < 0 ) kothDefend = StartServer_CvarIntOrDefault( "g_kothPtsDefend", 3 );
+		kothTick = (int)Com_Clamp( 0, 999, kothTick );
+		kothCapture = (int)Com_Clamp( 0, 999, kothCapture );
+		kothDefend = (int)Com_Clamp( 0, 999, kothDefend );
+		trap_Cvar_SetValue( "ui_koth_pts_tick", kothTick );
+		trap_Cvar_SetValue( "ui_koth_pts_capture", kothCapture );
+		trap_Cvar_SetValue( "ui_koth_pts_defend", kothDefend );
+		Com_sprintf( s_serveroptions.kothPtsTick.field.buffer, 4, "%i", kothTick );
+		Com_sprintf( s_serveroptions.kothPtsCapture.field.buffer, 4, "%i", kothCapture );
+		Com_sprintf( s_serveroptions.kothPtsDefend.field.buffer, 4, "%i", kothDefend );
 
-				if ( kothTick == 0 && trap_Cvar_VariableValue( "koth_pts_tick" ) > 0 ) {
-					kothTick = (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "koth_pts_tick" ) );
-				}
-				if ( kothCapture == 0 && trap_Cvar_VariableValue( "koth_pts_capture" ) > 0 ) {
-					kothCapture = (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "koth_pts_capture" ) );
-				}
-				if ( kothDefend == 0 && trap_Cvar_VariableValue( "koth_pts_defend" ) > 0 ) {
-					kothDefend = (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "koth_pts_defend" ) );
-				}
-
-				if ( kothTick == 0 ) kothTick = 1;
-				if ( kothCapture == 0 ) kothCapture = 5;
-				if ( kothDefend == 0 ) kothDefend = 3;
-
-				trap_Cvar_SetValue( "ui_koth_pts_tick", kothTick );
-				trap_Cvar_SetValue( "ui_koth_pts_capture", kothCapture );
-				trap_Cvar_SetValue( "ui_koth_pts_defend", kothDefend );
-				Com_sprintf( s_serveroptions.kothPtsTick.field.buffer, 4, "%i", kothTick );
-				Com_sprintf( s_serveroptions.kothPtsCapture.field.buffer, 4, "%i", kothCapture );
-				Com_sprintf( s_serveroptions.kothPtsDefend.field.buffer, 4, "%i", kothDefend );
-			}
-			{
-				int kothOtEnable = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_koth_overtime" ) );
-				int kothOtHoldMs = (int)Com_Clamp( 1000, 120000, trap_Cvar_VariableValue( "ui_koth_overtime_hold" ) );
-
-				if ( trap_Cvar_VariableValue( "ui_koth_overtime_hold" ) <= 0 ) {
-					kothOtHoldMs = (int)Com_Clamp( 1000, 120000, trap_Cvar_VariableValue( "koth_overtime_hold" ) );
-				}
-
-				trap_Cvar_SetValue( "ui_koth_overtime", kothOtEnable );
-				trap_Cvar_SetValue( "ui_koth_overtime_hold", kothOtHoldMs );
-				s_serveroptions.kothOvertime.curvalue = kothOtEnable;
-				Com_sprintf( s_serveroptions.kothOvertimeHold.field.buffer, 4, "%i", kothOtHoldMs / 1000 );
-			}
+		kothOtEnable = StartServer_CvarIntOrDefault( "ui_koth_overtime", -1 );
+		if ( kothOtEnable < 0 ) kothOtEnable = StartServer_CvarIntOrDefault( "koth_overtime", -1 );
+		if ( kothOtEnable < 0 ) kothOtEnable = StartServer_CvarIntOrDefault( "g_kothOvertime", 1 );
+		kothOtEnable = (int)Com_Clamp( 0, 1, kothOtEnable );
+		kothOtHoldMs = StartServer_CvarIntOrDefault( "ui_koth_overtime_hold", -1 );
+		if ( kothOtHoldMs <= 0 ) kothOtHoldMs = StartServer_CvarIntOrDefault( "koth_overtime_hold", -1 );
+		if ( kothOtHoldMs <= 0 ) kothOtHoldMs = StartServer_CvarIntOrDefault( "g_kothOvertimeHoldTime", 10000 );
+		kothOtHoldMs = (int)Com_Clamp( 1000, 120000, kothOtHoldMs );
+		trap_Cvar_SetValue( "ui_koth_overtime", kothOtEnable );
+		trap_Cvar_SetValue( "ui_koth_overtime_hold", kothOtHoldMs );
+		s_serveroptions.kothOvertime.curvalue = kothOtEnable;
+		Com_sprintf( s_serveroptions.kothOvertimeHold.field.buffer, 4, "%i", kothOtHoldMs / 1000 );
 			Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_koth_timelimit" ) ) );
 			s_serveroptions.friendlyfire.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_koth_friendly" ) );
 			break;
@@ -2159,14 +2170,11 @@ static void ServerOptions_SetMenuItems( void ) {
 	s_serveroptions.pure.curvalue = Com_Clamp( 0, 1, trap_Cvar_VariableValue( "sv_pure" ) );
 	s_serveroptions.trackLength.curvalue = ServerOptions_TrackLengthIndexFromValue( (int)trap_Cvar_VariableValue( "ui_racing_tracklength" ) );
 	s_serveroptions.reversed.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_racing_trackreversed" ) );
+	s_serveroptions.ghostPlaybackRestore = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "cg_ghostPlayback" ) );
 	if ( ServerOptions_IsRacingGametype( s_serveroptions.gametype ) ) {
 		s_serveroptions.ghostOnly.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_ghostonly" ) );
-		s_serveroptions.ghostPlaybackRestore = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "cg_ghostPlayback" ) );
-		s_serveroptions.ghostPlaybackStored = qfalse;
 	} else {
 		s_serveroptions.ghostOnly.curvalue = 0;
-		s_serveroptions.ghostPlaybackRestore = 0;
-		s_serveroptions.ghostPlaybackStored = qfalse;
 	}
 
 	// set the map pic
@@ -2498,6 +2506,10 @@ static void ServerOptions_LayoutFrontend( void ) {
                         continue;
                 }
 
+                if ( item->flags & QMF_HIDDEN ) {
+                        continue;
+                }
+
                 if ( ServerOptions_PlayerSlotForItem( item, 0 ) >= 0 ||
                      ServerOptions_PlayerSlotForItem( item, 1 ) >= 0 ||
                      ServerOptions_PlayerSlotForItem( item, 2 ) >= 0 ) {
@@ -2803,9 +2815,10 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
                 s_serveroptions.ghostOnly.generic.flags         = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
                 s_serveroptions.ghostOnly.generic.x                     = OPTIONS_X;
                 s_serveroptions.ghostOnly.generic.y                     = y;
-                s_serveroptions.ghostOnly.generic.name          = "Ghost Mode:";
+                s_serveroptions.ghostOnly.generic.name          = "Ghost-Only Race:";
                 s_serveroptions.ghostOnly.generic.id                    = ID_GHOST_ONLY;
                 s_serveroptions.ghostOnly.generic.callback      = ServerOptions_Event;
+                s_serveroptions.ghostOnly.generic.statusbar     = ServerOptions_GhostOnlyStatusBar;
         } else {
                 s_serveroptions.ghostOnly.generic.type                  = MTYPE_RADIOBUTTON;
                 s_serveroptions.ghostOnly.generic.flags         = QMF_INACTIVE|QMF_HIDDEN;

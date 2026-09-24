@@ -171,6 +171,26 @@ static void G_TriggerEliminationExplosion( gentity_t *ent ) {
         }
 }
 
+static void G_HideEliminatedVehicle( gentity_t *ent ) {
+        if ( !ent || !ent->client ) {
+                return;
+        }
+
+        ent->client->ps.eFlags |= EF_NODRAW;
+        ent->s.eFlags |= EF_NODRAW;
+        ent->r.contents = 0;
+        trap_LinkEntity( ent );
+
+        if ( ent->frontBounds ) {
+                ent->frontBounds->r.contents = 0;
+                trap_UnlinkEntity( ent->frontBounds );
+        }
+        if ( ent->rearBounds ) {
+                ent->rearBounds->r.contents = 0;
+                trap_UnlinkEntity( ent->rearBounds );
+        }
+}
+
 static void G_CompleteElimination( gentity_t *ent ) {
         if ( !ent || !ent->client || !ent->inuse ) {
                 return;
@@ -184,6 +204,7 @@ static void G_CompleteElimination( gentity_t *ent ) {
         }
 
         SetTeam( ent, "racerSpectator" );
+	G_HideEliminatedVehicle( ent );
 }
 
 static void G_SendEliminationTimelineEvent( int clientNum, int round, int remaining ) {
@@ -347,6 +368,7 @@ static void G_EliminationProcessLap( gentity_t *finisher, int completedLap ) {
 
         // Trigger a big explosion before moving the player to the scoreboard.
         G_TriggerEliminationExplosion( last );
+	G_HideEliminatedVehicle( last );
 
         // Keep the player frozen until they are moved to the scoreboard.
         VectorClear( last->client->ps.velocity );
@@ -719,6 +741,14 @@ void Think_StartFinish( gentity_t *self ){
 		self->target = 0;
 	}
 
+	// Cache the route endpoints before publishing its distance. For Sprint,
+	// the two separate entities define the open start-to-finish route.
+	if ( self->touch == Touch_Start ) {
+		level.startEnt = self;
+	} else {
+		level.finishEnt = self;
+	}
+
 	if( self->s.origin2[0] == 0.0f &&
 		self->s.origin2[1] == 0.0f &&
 		self->s.origin2[2] == 0.0f && 
@@ -756,6 +786,7 @@ void Think_StartFinish( gentity_t *self ){
         }
 
         level.trackLength = 0.0f;
+        level.sprintFinishDistance = 0.0f;
         if ( level.numCheckpoints > 0 ) {
                 vec3_t last, first, delta, center;
                 int i;
@@ -778,22 +809,32 @@ void Think_StartFinish( gentity_t *self ){
                         level.cpDist[i] = level.cpDist[i-1] + VectorLength( delta );
                         VectorCopy( center, last );
                 }
-                CP_BOUNDS_CENTER( level.checkpoints[0], center );
-                VectorSubtract( last, center, delta );
-                level.trackLength = level.cpDist[level.numCheckpoints-1] + VectorLength( delta );
+
+                if ( g_gametype.integer == GT_SPRINT && level.startEnt && level.finishEnt ) {
+                        vec3_t startCenter, finishCenter;
+
+                        CP_BOUNDS_CENTER( level.finishEnt, finishCenter );
+                        VectorSubtract( finishCenter, last, delta );
+                        level.sprintFinishDistance = VectorLength( delta );
+
+                        CP_BOUNDS_CENTER( level.startEnt, startCenter );
+                        VectorSubtract( first, startCenter, delta );
+                        level.trackLength = VectorLength( delta ) +
+                                            level.cpDist[level.numCheckpoints-1] +
+                                            level.sprintFinishDistance;
+                } else {
+                        CP_BOUNDS_CENTER( level.checkpoints[0], center );
+                        VectorSubtract( last, center, delta );
+                        level.trackLength = level.cpDist[level.numCheckpoints-1] + VectorLength( delta );
+                }
 
 #undef CP_BOUNDS_CENTER
-        }
-
-        // Cache the finish entity for the final-segment distance display in g_active.c.
-        // rally_start (A2B) uses Touch_Start and is not a valid finish target.
-        if ( self->touch != Touch_Start ) {
-                level.finishEnt = self;
         }
 
         trap_SetConfigstring( CS_TRACKLENGTH, va( "%i", (int)( level.trackLength / CP_M_2_QU ) ) );
 
         self->s.weapon = self->number;
+	G_Ghost_BuildBotRoutes();
 }
 
 void Think_Finish( gentity_t *self ){
@@ -834,6 +875,8 @@ void SP_rally_startfinish( gentity_t *ent ) {
 
 void SP_rally_start( gentity_t *ent ) {
 trap_SetBrushModel( ent, ent->model );
+
+level.startEnt = ent;
 
 level.numberOfLaps = 1;
 trap_Cvar_Set( "laplimit", "1" );

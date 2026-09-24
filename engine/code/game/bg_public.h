@@ -51,6 +51,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define LIGHTNING_RANGE         768
 
 #define SCORE_NOT_PRESENT       -9999   // for the CS_SCORES[12] when only one player is present
+#define SCOREBOARD_FIELDS_PER_CLIENT 23 // scores server-command fields per player
 
 #define VOTE_TIME                       30000   // 30 seconds before vote times out
 
