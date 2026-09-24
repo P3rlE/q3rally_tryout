@@ -405,13 +405,14 @@ void G_ScriptedObject_Pain ( gentity_t *self, gentity_t *attacker, int damage ){
 
 static void G_ApplyScriptedObjectMapProperties( gentity_t *ent ) {
 	char *physics;
+	char *mapValue;
 	int value;
 	float floatValue;
 	vec3_t vectorValue;
 	qboolean physicsSpecified;
 
 	physicsSpecified = G_SpawnString( "physics", NULL, &physics );
-	if ( physicsSpecified ) {
+	if ( physicsSpecified && physics && physics[0] ) {
 		if ( !Q_stricmp( physics, "dynamic" ) || !Q_stricmp( physics, "movable" ) ) {
 			ent->moveable = qtrue;
 		} else if ( !Q_stricmp( physics, "static" ) ) {
@@ -424,18 +425,22 @@ static void G_ApplyScriptedObjectMapProperties( gentity_t *ent ) {
 		ent->moveable = value ? qtrue : qfalse;
 	}
 
-	if ( G_SpawnInt( "mass", "100", &value ) ) {
+	if ( G_SpawnString( "mass", NULL, &mapValue ) && mapValue && mapValue[0] ) {
+		value = atoi( mapValue );
 		if ( value < 1 ) value = 1;
 		if ( value > 100000 ) value = 100000;
 		ent->mass = value;
 	}
-	if ( G_SpawnFloat( "elasticity", "0.1", &floatValue ) ) {
+	if ( G_SpawnString( "elasticity", NULL, &mapValue ) && mapValue && mapValue[0] &&
+		G_SpawnFloat( "elasticity", "0.1", &floatValue ) ) {
 		ent->elasticity = Com_Clamp( 0.0f, 1.0f, floatValue );
 	}
-	if ( G_SpawnFloat( "friction", "0.6", &floatValue ) ) {
+	if ( G_SpawnString( "friction", NULL, &mapValue ) && mapValue && mapValue[0] &&
+		G_SpawnFloat( "friction", "0.6", &floatValue ) ) {
 		ent->friction = Com_Clamp( 0.0f, 4.0f, floatValue );
 	}
-	if ( G_SpawnInt( "health", "0", &value ) ) {
+	if ( G_SpawnString( "health", NULL, &mapValue ) && mapValue && mapValue[0] ) {
+		value = atoi( mapValue );
 		ent->health = value > 0 ? value : 0;
 		ent->maxHealth = ent->health;
 		ent->takedamage = ent->health > 0 ? qtrue : qfalse;
@@ -445,9 +450,11 @@ static void G_ApplyScriptedObjectMapProperties( gentity_t *ent ) {
 		ent->maxHealth = 0;
 		ent->takedamage = qfalse;
 	}
-	if ( G_SpawnVector( "mins", "0 0 0", vectorValue ) )
+	if ( G_SpawnString( "mins", NULL, &mapValue ) && mapValue && mapValue[0] &&
+		G_SpawnVector( "mins", "0 0 0", vectorValue ) )
 		VectorCopy( vectorValue, ent->r.mins );
-	if ( G_SpawnVector( "maxs", "0 0 0", vectorValue ) )
+	if ( G_SpawnString( "maxs", NULL, &mapValue ) && mapValue && mapValue[0] &&
+		G_SpawnVector( "maxs", "0 0 0", vectorValue ) )
 		VectorCopy( vectorValue, ent->r.maxs );
 	if ( ent->mass < 1 ) ent->mass = 1;
 	if ( ent->mass > 100000 ) ent->mass = 100000;
