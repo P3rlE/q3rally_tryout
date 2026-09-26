@@ -202,6 +202,10 @@ ifndef USE_CODEC_OPUS
 USE_CODEC_OPUS=1
 endif
 
+ifndef USE_CODEC_MP3
+USE_CODEC_MP3=1
+endif
+
 ifndef USE_CODEC_THEORA
 USE_CODEC_THEORA=1
 endif
@@ -288,6 +292,9 @@ Q3UIDIR=$(MOUNT_DIR)/q3_ui
 JPDIR=$(MOUNT_DIR)/jpeg-8c
 OGGDIR=$(MOUNT_DIR)/libogg-1.3.3
 VORBISDIR=$(MOUNT_DIR)/libvorbis-1.3.6
+MADDIR=$(MOUNT_DIR)/thirdparty/libmad-0.15.1b
+MAD_SOURCES=$(wildcard $(MADDIR)/*.c)
+MAD_OBJECTS=$(patsubst $(MADDIR)/%.c,$(B)/client/libmad/%.o,$(MAD_SOURCES))
 
 # Bullet 3.25 is linked into the native engine server only.  Game modules,
 # including QVM builds, communicate with it through game syscalls.
@@ -1357,6 +1364,10 @@ ifeq ($(USE_CODEC_OPUS),1)
   NEED_OPUS=1
 endif
 
+ifeq ($(USE_CODEC_MP3),1)
+  CLIENT_CFLAGS += -DUSE_CODEC_MP3 -DUSE_INTERNAL_MP3 -DFPM_DEFAULT -I$(MADDIR)/include -I$(MADDIR)
+endif
+
 ifeq ($(NEED_OPUS),1)
   ifeq ($(USE_INTERNAL_OPUS),1)
     OPUS_CFLAGS = -DOPUS_BUILD -DHAVE_LRINTF -DFLOATING_POINT -DFLOAT_APPROX -DUSE_ALLOCA \
@@ -1725,6 +1736,7 @@ endif
 makedirs:
 	@$(MKDIR) $(B)/autoupdater
 	@$(MKDIR) $(B)/client/opus
+	@$(MKDIR) $(B)/client/libmad
 	@$(MKDIR) $(B)/client/theora
 	@$(MKDIR) $(B)/client/vorbis
 	@$(MKDIR) $(B)/renderergl1
@@ -2308,6 +2320,10 @@ ifeq ($(ARCH),x86_64)
 endif
 endif
 endif
+ifeq ($(USE_CODEC_MP3),1)
+Q3OBJ += $(B)/client/snd_codec_mp3.o $(MAD_OBJECTS)
+endif
+
 ifeq ($(NEED_OPUS),1)
 ifeq ($(USE_INTERNAL_OPUS),1)
 Q3OBJ += \
@@ -3076,6 +3092,9 @@ $(B)/client/snd_altivec.o: $(CDIR)/snd_altivec.c
 	$(DO_CC_ALTIVEC)
 
 $(B)/client/%.o: $(CDIR)/%.c
+	$(DO_CC)
+
+$(B)/client/libmad/%.o: $(MADDIR)/%.c
 	$(DO_CC)
 
 $(B)/client/%.o: $(SDIR)/%.c

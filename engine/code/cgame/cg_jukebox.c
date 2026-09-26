@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "cg_local.h"
 
 #define CG_JUKEBOX_MAX_TRACKS          64
+#define CG_JUKEBOX_MAX_SCAN_ENTRIES    (CG_JUKEBOX_MAX_TRACKS * 2)
 #define CG_JUKEBOX_FILELIST_SIZE       8192
 #define CG_JUKEBOX_DISPLAY_TIME        15000
 #define CG_JUKEBOX_DIRECTORY           "music/jukebox"
@@ -50,6 +51,7 @@ typedef struct {
 } cgJukeboxState_t;
 
 static cgJukeboxState_t cg_jukebox;
+static char cg_jukebox_scanNames[CG_JUKEBOX_MAX_SCAN_ENTRIES][MAX_QPATH];
 
 typedef enum {
     JUKEBOX_REPEAT_OFF = 0,
@@ -179,31 +181,41 @@ static int CG_JukeboxCompareEntries( const void *a, const void *b ) {
 static void CG_JukeboxScan( void ) {
     char fileList[CG_JUKEBOX_FILELIST_SIZE];
     const char *entry;
-    const char *rawEntries[CG_JUKEBOX_MAX_TRACKS];
+    const char *rawEntries[CG_JUKEBOX_MAX_SCAN_ENTRIES];
+    static const char *extensions[] = { "ogg", "mp3" };
     int listed;
+    int totalListed = 0;
     int rawCount;
+    int extensionIndex;
     int i;
 
     cg_jukebox.scanned = qtrue;
     cg_jukebox.trackCount = 0;
 
-    listed = trap_FS_GetFileList( CG_JUKEBOX_DIRECTORY, "ogg", fileList, sizeof( fileList ) );
-    entry = fileList;
     rawCount = 0;
 
-    for ( i = 0 ; i < listed ; i++ ) {
-        int len = strlen( entry );
+    for ( extensionIndex = 0; extensionIndex < ARRAY_LEN( extensions ); extensionIndex++ ) {
+        listed = trap_FS_GetFileList( CG_JUKEBOX_DIRECTORY, extensions[extensionIndex], fileList, sizeof( fileList ) );
+        totalListed += listed;
+        entry = fileList;
 
-        if ( len > 0 && rawCount < CG_JUKEBOX_MAX_TRACKS ) {
-            rawEntries[rawCount++] = entry;
+        for ( i = 0; i < listed; i++ ) {
+            int len = strlen( entry );
+
+            if ( len > 0 && rawCount < CG_JUKEBOX_MAX_SCAN_ENTRIES ) {
+                Q_strncpyz( cg_jukebox_scanNames[rawCount], entry, sizeof( cg_jukebox_scanNames[rawCount] ) );
+                rawEntries[rawCount] = cg_jukebox_scanNames[rawCount];
+                rawCount++;
+            }
+
+            entry += len + 1;
         }
-
-        entry += len + 1;
     }
 
     qsort( rawEntries, rawCount, sizeof( rawEntries[0] ), CG_JukeboxCompareEntries );
 
     for ( i = 0 ; i < rawCount && cg_jukebox.trackCount < CG_JUKEBOX_MAX_TRACKS ; i++ ) {
+        int trackIndex = cg_jukebox.trackCount;
         int len = strlen( rawEntries[i] );
 
         if ( len > 0 ) {
@@ -212,21 +224,21 @@ static void CG_JukeboxScan( void ) {
             if ( totalLen >= MAX_QPATH ) {
                 CG_Printf( "Jukebox: Title path too long: %s/%s\n", CG_JUKEBOX_DIRECTORY, rawEntries[i] );
             } else {
-                char *path = cg_jukebox.trackPaths[cg_jukebox.trackCount];
-                char *name = cg_jukebox.trackNames[cg_jukebox.trackCount];
-                char *title = cg_jukebox.trackTitles[cg_jukebox.trackCount];
-                char *artist = cg_jukebox.trackArtists[cg_jukebox.trackCount];
+                char *path = cg_jukebox.trackPaths[trackIndex];
+                char *name = cg_jukebox.trackNames[trackIndex];
+                char *title = cg_jukebox.trackTitles[trackIndex];
+                char *artist = cg_jukebox.trackArtists[trackIndex];
 
                 Com_sprintf( path, MAX_QPATH, "%s/%s", CG_JUKEBOX_DIRECTORY, rawEntries[i] );
                 CG_JukeboxFormatName( rawEntries[i], name, MAX_QPATH );
                 trap_S_GetStreamMetadata( path, title, CG_JUKEBOX_META_FIELD_LEN, artist, CG_JUKEBOX_META_FIELD_LEN, NULL, 0 );
-                cg_jukebox.trackDurations[cg_jukebox.trackCount] = trap_S_GetStreamLength( path );
+                cg_jukebox.trackDurations[trackIndex] = trap_S_GetStreamLength( path );
                 cg_jukebox.trackCount++;
             }
         }
     }
 
-    if ( listed > CG_JUKEBOX_MAX_TRACKS ) {
+    if ( totalListed > CG_JUKEBOX_MAX_TRACKS ) {
         CG_Printf( "Jukebox: Only the first %i Titles after sorting will be used\n", CG_JUKEBOX_MAX_TRACKS );
     }
 
@@ -243,8 +255,8 @@ static qboolean CG_JukeboxEnsureTracks( void ) {
     }
 
     if ( cg_jukebox.trackCount <= 0 ) {
-        CG_JukeboxSetDisplay( "Jukebox: no Titles found", "Drop .ogg-Files in baseq3r/music/jukebox" );
-        CG_Printf( "Jukebox: No .ogg-Dateien in %s\n", CG_JUKEBOX_DIRECTORY );
+        CG_JukeboxSetDisplay( "Jukebox: no Titles found", "Drop .ogg or .mp3 files in baseq3r/music/jukebox" );
+        CG_Printf( "Jukebox: No .ogg or .mp3 files in %s\n", CG_JUKEBOX_DIRECTORY );
         return qfalse;
     }
 

@@ -132,6 +132,10 @@ void S_CodecInit()
 	S_CodecRegister(&ogg_codec);
 #endif
 
+#ifdef USE_CODEC_MP3
+	S_CodecRegister(&mp3_codec);
+#endif
+
 // Register wav codec last so that it is always tried first when a file extension was not found
 	S_CodecRegister(&wav_codec);
 }
@@ -239,8 +243,11 @@ qboolean S_CodecGetMetadata( const char *filename,
         if ( ext && !Q_stricmp( ext, "ogg" ) ) {
                 return S_OGG_CodecGetMetadata( filename, title, titleSize, artist, artistSize, album, albumSize );
         }
-#else
-        (void)ext;
+#endif
+#ifdef USE_CODEC_MP3
+	if ( ext && !Q_stricmp( ext, "mp3" ) ) {
+		return S_MP3_CodecGetMetadata( filename, title, titleSize, artist, artistSize, album, albumSize );
+	}
 #endif
 
         return qfalse;
