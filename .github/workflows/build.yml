@@ -44,11 +44,18 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu zip
     - name: Compile
       run: make release -j$(nproc) ARCH=arm64 BUILD_CLIENT=0 BUILD_RENDERER_OPENGL1=0 BUILD_RENDERER_OPENGL2=0 CC=aarch64-linux-gnu-gcc -C engine USE_CURL=1 USE_CURL_DLOPEN=1
       env:
         ARCHIVE: 1
+    - name: Verify package
+      run: test -s engine/build/release-linux-arm64.zip
+    - uses: actions/upload-artifact@v4
+      with:
+        name: Linux-arm64
+        path: engine/build/release-linux-arm64.zip
+        if-no-files-found: error
   windows:
     name: Windows ${{ matrix.arch }}
     runs-on: windows-2022

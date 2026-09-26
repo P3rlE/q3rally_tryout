@@ -303,7 +303,10 @@ BULLET_COMPONENTS=BulletCollision BulletDynamics LinearMath
 BULLET_SOURCES=$(shell find $(addprefix $(BULLET_SRC_DIR)/,$(BULLET_COMPONENTS)) -type f -name '*.cpp')
 BULLET_OBJECTS=$(patsubst $(BULLET_SRC_DIR)/%.cpp,$(B)/bullet/%.o,$(BULLET_SOURCES))
 BULLET_CXX=$(if $(filter %gcc,$(CC)),$(patsubst %gcc,%g++,$(CC)),$(CXX))
-BULLET_TARGET_FLAGS=$(filter -m32 -m64 -arch% -DWINVER%,$(BASE_CFLAGS)) -DARCH_STRING=\\\"$(ARCH)\\\"
+BULLET_TARGET_FLAGS=$(filter -m32 -m64 -DWINVER%,$(BASE_CFLAGS)) -DARCH_STRING=\\\"$(ARCH)\\\"
+ifeq ($(PLATFORM),darwin)
+BULLET_TARGET_FLAGS += -arch $(MACOSX_ARCH)
+endif
 ifeq ($(PLATFORM),darwin)
 BULLET_LINK_LIBS=-lc++
 else ifneq ($(findstring mingw,$(PLATFORM)),)
