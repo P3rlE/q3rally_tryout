@@ -303,7 +303,7 @@ BULLET_COMPONENTS=BulletCollision BulletDynamics LinearMath
 BULLET_SOURCES=$(shell find $(addprefix $(BULLET_SRC_DIR)/,$(BULLET_COMPONENTS)) -type f -name '*.cpp')
 BULLET_OBJECTS=$(patsubst $(BULLET_SRC_DIR)/%.cpp,$(B)/bullet/%.o,$(BULLET_SOURCES))
 BULLET_CXX=$(if $(filter %gcc,$(CC)),$(patsubst %gcc,%g++,$(CC)),$(CXX))
-BULLET_TARGET_FLAGS=$(filter -m32 -m64 -arch% -DWINVER%,$(BASE_CFLAGS))
+BULLET_TARGET_FLAGS=$(filter -m32 -m64 -arch% -DWINVER%,$(BASE_CFLAGS)) -DARCH_STRING=\\\"$(ARCH)\\\"
 ifeq ($(PLATFORM),darwin)
 BULLET_LINK_LIBS=-lc++
 else ifneq ($(findstring mingw,$(PLATFORM)),)
@@ -839,6 +839,14 @@ ifdef MINGW
   # libmingw32 must be linked before libSDLmain
   CLIENT_LIBS += -lmingw32
   RENDERER_LIBS += -lmingw32
+
+  # Recent MinGW runtimes may make engine binaries depend on this DLL. Include
+  # it in the package so Windows builds run outside the MSYS2 shell.
+  MINGW_COMPILER_DIR=$(dir $(call bin_path,$(CC)))
+  MINGW_WINPTHREAD_DLL=$(MINGW_COMPILER_DIR)libwinpthread-1.dll
+  ifneq ($(wildcard $(MINGW_WINPTHREAD_DLL)),)
+    EXTRA_FILES += $(MINGW_WINPTHREAD_DLL)
+  endif
 
   ifeq ($(USE_LOCAL_HEADERS),1)
     CLIENT_CFLAGS += -I$(SDLHDIR)/include

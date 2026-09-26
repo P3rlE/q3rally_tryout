@@ -18,7 +18,7 @@ jobs:
         fi
         sudo apt-get update
         if [ "${{ matrix.arch }}" = "x86" ]; then
-          sudo apt-get install -y gcc-multilib pkg-config libsdl2-dev:i386 libcurl4-openssl-dev:i386
+          sudo apt-get install -y gcc-multilib g++-multilib pkg-config libsdl2-dev:i386 libcurl4-openssl-dev:i386
         else
           sudo apt-get install -y pkg-config libsdl2-dev libcurl4-openssl-dev
         fi
@@ -44,7 +44,7 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu
+        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
     - name: Compile
       run: make release -j$(nproc) ARCH=arm64 BUILD_CLIENT=0 BUILD_RENDERER_OPENGL1=0 BUILD_RENDERER_OPENGL2=0 CC=aarch64-linux-gnu-gcc -C engine USE_CURL=1 USE_CURL_DLOPEN=1
       env:
