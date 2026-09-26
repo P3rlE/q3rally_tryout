@@ -941,9 +941,9 @@ typedef struct {
 // Other media that can be tied to clients, weapons, or items are
 // stored in the clientInfo_t, itemInfo_t, weaponInfo_t, and powerupInfo_t
 typedef enum {
+	RALLY_FONT_ATLAS_256,
 	RALLY_FONT_ATLAS_512,
 	RALLY_FONT_ATLAS_1024,
-	RALLY_FONT_ATLAS_2048,
 	RALLY_FONT_ATLAS_COUNT
 } rallyFontAtlas_t;
 

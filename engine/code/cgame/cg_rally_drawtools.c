@@ -227,8 +227,9 @@ int CG_FrontendStringWidth( const char *text, int style, float scale ) {
 CG_RallyFontAtlas
 
 Select a bitmap atlas whose source glyph resolution is appropriate for the
-final on-screen glyph height.  Larger variants are registered lazily so
-ordinary display sizes only keep the 512 atlas resident.
+final on-screen glyph height.  256 and 1024 variants are registered lazily;
+the 1024 variant is the largest runtime atlas because 2048 RGBA textures can
+exhaust the engine's main zone during map startup.
 ==============================
 */
 static qhandle_t CG_RallyFontAtlas( qhandle_t *atlases, const char *fontName,
@@ -238,20 +239,17 @@ static qhandle_t CG_RallyFontAtlas( qhandle_t *atlases, const char *fontName,
 	char shaderName[MAX_QPATH];
 
 	tier = RALLY_FONT_ATLAS_512;
-	if ( glyphHeight > baseRasterHeight * 2.0f ) {
-		tier = RALLY_FONT_ATLAS_2048;
-	} else if ( glyphHeight > baseRasterHeight ) {
+	if ( glyphHeight < baseRasterHeight * 0.70710678f ) {
+		tier = RALLY_FONT_ATLAS_256;
+	} else if ( glyphHeight > baseRasterHeight * 1.41421356f ) {
 		tier = RALLY_FONT_ATLAS_1024;
 	}
 
-	while ( tier >= RALLY_FONT_ATLAS_512 ) {
+	while ( tier >= RALLY_FONT_ATLAS_256 ) {
 		shader = atlases[tier];
-		if ( !shader && tier > RALLY_FONT_ATLAS_512 ) {
-			if ( tier == RALLY_FONT_ATLAS_2048 ) {
-				Com_sprintf( shaderName, sizeof( shaderName ), "gfx/ui/%s_charset_2048.png", fontName );
-			} else {
-				Com_sprintf( shaderName, sizeof( shaderName ), "gfx/ui/%s_charset_1024.png", fontName );
-			}
+		if ( !shader && tier != RALLY_FONT_ATLAS_512 ) {
+			Com_sprintf( shaderName, sizeof( shaderName ), "gfx/ui/%s_charset_%d.png",
+			             fontName, tier == RALLY_FONT_ATLAS_256 ? 256 : 1024 );
 			shader = trap_R_RegisterShaderNoMip( shaderName );
 			atlases[tier] = shader;
 		}
