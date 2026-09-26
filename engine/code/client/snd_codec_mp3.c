@@ -94,9 +94,17 @@ int S_MP3_ReadData(snd_stream_t *stream, struct mad_stream *madstream, byte *enc
 	if(!stream)
 		return -1;
 
-	leftover =  madstream->bufend - madstream->next_frame;
-	if(leftover > 0)
-		memmove(encbuf, madstream->this_frame, leftover);
+	leftover = 0;
+	if(madstream->bufend && madstream->next_frame &&
+	   madstream->next_frame <= madstream->bufend)
+	{
+		leftover = madstream->bufend - madstream->next_frame;
+		if(leftover > encbufsize)
+			return -1;
+
+		if(leftover > 0)
+			memmove(encbuf, madstream->next_frame, leftover);
+	}
 
 
 	// Fill the buffer right to the end
