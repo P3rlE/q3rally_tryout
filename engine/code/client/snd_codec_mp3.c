@@ -122,12 +122,26 @@ int S_MP3_ReadData(snd_stream_t *stream, struct mad_stream *madstream, byte *enc
 	return retval;
 }
 
+static qboolean S_MP3_ResyncAfterFalseFrame(struct mad_stream *madstream)
+{
+	if(!madstream || !madstream->this_frame || !madstream->bufend ||
+	   madstream->this_frame >= madstream->bufend)
+		return qfalse;
+
+	// False MPEG syncs can occur inside ID3 tags and compressed frame data.
+	// Resume one byte after the candidate instead of trusting its frame size.
+	madstream->next_frame = madstream->this_frame + 1;
+	madstream->skiplen = 0;
+	madstream->sync = 1;
+	return qtrue;
+}
+
 
 /*
 =================
 S_MP3_Scanfile
 
-to determine the samplecount, we apparently must get *all* headers :(
+Scan the complete stream to determine its sample count and stable format.
 I basically used the xmms-mad plugin source to see how this stuff works.
 
 returns a value < 0 on error.
@@ -137,9 +151,10 @@ returns a value < 0 on error.
 int S_MP3_Scanfile(snd_stream_t *stream)
 {
 	struct mad_stream madstream;
-	struct mad_header madheader;
+	struct mad_frame madframe;
 	int retval;
 	int samplecount;
+	int scanError = 0;
 	byte encbuf[MP3_DATA_BUFSIZ];
 
 	// error out on invalid input.
@@ -147,78 +162,102 @@ int S_MP3_Scanfile(snd_stream_t *stream)
 		return -1;
 
 	mad_stream_init(&madstream);
-	mad_header_init(&madheader);
+	mad_frame_init(&madframe);
 
 	while(1)
 	{
 		retval = S_MP3_ReadData(stream, &madstream, encbuf, sizeof(encbuf));
 		if(retval < 0)
-			return -1;
+		{
+			scanError = -1;
+			break;
+		}
 		else if(retval == 0)
 			break;
 
-		// Start decoding the headers.
+		// Decode complete frames so sync-like bytes inside tags/audio cannot
+		// masquerade as a valid MP3 header and poison the stream format.
 		while(1)
 		{
-			if((retval = mad_header_decode(&madheader, &madstream)) < 0)
+			if(mad_frame_decode(&madframe, &madstream) < 0)
 			{
 				if(madstream.error == MAD_ERROR_BUFLEN)
-				{
-					// We need to read more data
 					break;
-				}
 
-				if(!MAD_RECOVERABLE (madstream.error))
+				if(MAD_RECOVERABLE(madstream.error))
 				{
-					// unrecoverable error... we must bail out.
-					return retval;
+					mad_stream_skip(&madstream, madstream.skiplen);
+					continue;
 				}
 
-				mad_stream_skip(&madstream, madstream.skiplen);
-				continue;
+				if(S_MP3_ResyncAfterFalseFrame(&madstream))
+					continue;
+
+				scanError = -1;
+				break;
 			}
 
-			// we got a valid header.
-
-			if(madheader.layer != MAD_LAYER_III)
+			if(madframe.header.layer != MAD_LAYER_III)
 			{
-				// we don't support non-mp3s
-				return -1;
+				if(S_MP3_ResyncAfterFalseFrame(&madstream))
+					continue;
+
+				scanError = -1;
+				break;
 			}
 
 			if(!stream->info.samples)
 			{
-				// This here is the very first frame. Set initial values now,
-				// that we expect to stay constant throughout the whole mp3.
-
-				stream->info.rate = madheader.samplerate;
+				// Capture the stable format from the first fully decoded frame.
+				stream->info.rate = madframe.header.samplerate;
 				stream->info.width = MP3_SAMPLE_WIDTH;
-				stream->info.channels = MAD_NCHANNELS(&madheader);
+				stream->info.channels = MAD_NCHANNELS(&madframe.header);
 				stream->info.samples = 0;
-				stream->info.size = 0;				// same here.
+				stream->info.size = 0;
 				stream->info.dataofs = 0;
 			}
-			else
+			else if(stream->info.rate != madframe.header.samplerate ||
+			        stream->info.channels != MAD_NCHANNELS(&madframe.header))
 			{
-				// Check whether something changed that shouldn't.
+				// This is usually another false sync in arbitrary file bytes.
+				if(S_MP3_ResyncAfterFalseFrame(&madstream))
+					continue;
 
-				if(stream->info.rate != madheader.samplerate ||
-				   stream->info.channels != MAD_NCHANNELS(&madheader))
-					return -1;
+				scanError = -1;
+				break;
 			}
 
-			// Update the counters
-			samplecount = MAD_NSBSAMPLES(&madheader) * MP3_PCMSAMPLES_PERSLICE;
+			// Count only frames libmad decoded successfully.
+			samplecount = MAD_NSBSAMPLES(&madframe.header) * MP3_PCMSAMPLES_PERSLICE;
 			stream->info.samples += samplecount;
 			stream->info.size += samplecount * stream->info.channels * stream->info.width;
 		}
+
+		if(scanError < 0)
+			break;
 	}
+
+	mad_frame_finish(&madframe);
+	mad_stream_finish(&madstream);
+	if(scanError < 0)
+		return scanError;
 
 	// Reset the file pointer so we can do the real decoding.
 	FS_Seek(stream->file, 0, FS_SEEK_SET);
 
 	return 0;
 }
+
+/*
+=================
+S_MP3_Scanfile
+
+Scan the complete stream to determine its sample count and stable format.
+I basically used the xmms-mad plugin source to see how this stuff works.
+
+returns a value < 0 on error.
+=================
+*/
 
 /************************ dithering functions ***************************/
 
@@ -442,31 +481,44 @@ int S_MP3_Decode(snd_stream_t *stream)
 	madstream = &mp3info->madstream;
 	madframe = &mp3info->madframe;
 
-	if(mad_frame_decode(madframe, madstream))
+	while(1)
 	{
-		if(madstream->error == MAD_ERROR_BUFLEN)
+		if(mad_frame_decode(madframe, madstream) < 0)
 		{
-			// we need more data. Read another chunk.
-			retval = S_MP3_ReadData(stream, madstream, mp3info->encbuf, sizeof(mp3info->encbuf));
+			if(madstream->error == MAD_ERROR_BUFLEN)
+			{
+				// We need more data. Read another chunk and retry.
+				retval = S_MP3_ReadData(stream, madstream, mp3info->encbuf, sizeof(mp3info->encbuf));
+				if(retval <= 0)
+					return retval;
+				continue;
+			}
 
-			// call myself again now that buffer is full.
-			if(retval > 0)
-				retval = S_MP3_Decode(stream);
+			if(MAD_RECOVERABLE(madstream->error))
+			{
+				mad_stream_skip(madstream, madstream->skiplen);
+				continue;
+			}
+
+			if(S_MP3_ResyncAfterFalseFrame(madstream))
+				continue;
+
+			return -1;
 		}
-		else if(MAD_RECOVERABLE(madstream->error))
+
+		// Ignore false MPEG headers found in ID3 tags or compressed data.
+		if(madframe->header.layer != MAD_LAYER_III ||
+		   madframe->header.samplerate != stream->info.rate ||
+		   MAD_NCHANNELS(&madframe->header) != stream->info.channels)
 		{
-			mad_stream_skip(madstream, madstream->skiplen);
-			return S_MP3_Decode(stream);
-		}
-		else
-			retval = -1;
+			if(S_MP3_ResyncAfterFalseFrame(madstream))
+				continue;
 
-		return retval;
+			return -1;
+		}
+
+		break;
 	}
-
-	// check whether this really is an mp3
-	if(madframe->header.layer != MAD_LAYER_III)
-		return -1;
 
 	// generate pcm data
 	madsynth = &mp3info->madsynth;
@@ -474,13 +526,6 @@ int S_MP3_Decode(snd_stream_t *stream)
 
 	pcm = &madsynth->pcm;
 
-	// perform a few checks to see whether something changed that shouldn't.
-
-	if(stream->info.rate != pcm->samplerate ||
-	   stream->info.channels != pcm->channels)
-	{
-		return -1;
-	}
 	// see whether we have got enough data now.
 	cursize = pcm->length * pcm->channels * stream->info.width;
 	needcount = mp3info->destsize - mp3info->destlen;

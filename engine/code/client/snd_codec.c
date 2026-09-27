@@ -39,12 +39,12 @@ static void *S_CodecGetSound(const char *filename, snd_info_t *info)
 	snd_codec_t *codec;
 	snd_codec_t *orgCodec = NULL;
 	qboolean	orgNameFailed = qfalse;
-	char		localName[ MAX_QPATH ];
+	char		localName[ MAX_OSPATH ];
 	const char	*ext;
-	char		altName[ MAX_QPATH ];
+	char		altName[ MAX_OSPATH ];
 	void		*rtn = NULL;
 
-	Q_strncpyz(localName, filename, MAX_QPATH);
+	Q_strncpyz(localName, filename, sizeof(localName));
 
 	ext = COM_GetExtension(localName);
 
@@ -73,7 +73,7 @@ static void *S_CodecGetSound(const char *filename, snd_info_t *info)
 				// try again without the extension
 				orgNameFailed = qtrue;
 				orgCodec = codec;
-				COM_StripExtension( filename, localName, MAX_QPATH );
+				COM_StripExtension( filename, localName, sizeof(localName) );
 			}
 			else
 			{

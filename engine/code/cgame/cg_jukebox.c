@@ -24,7 +24,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define CG_JUKEBOX_MAX_TRACKS          64
 #define CG_JUKEBOX_MAX_SCAN_ENTRIES    (CG_JUKEBOX_MAX_TRACKS * 2)
-#define CG_JUKEBOX_FILELIST_SIZE       8192
+#define CG_JUKEBOX_PATH_SIZE           256
+#define CG_JUKEBOX_FILELIST_SIZE       (CG_JUKEBOX_MAX_SCAN_ENTRIES * CG_JUKEBOX_PATH_SIZE + 1)
 #define CG_JUKEBOX_DISPLAY_TIME        15000
 #define CG_JUKEBOX_DIRECTORY           "music/jukebox"
 #define CG_JUKEBOX_PROGRESS_MARGIN     9.0f
@@ -38,8 +39,8 @@ typedef struct {
     int         trackCount;
     int         currentTrack;
     int         trackDurations[CG_JUKEBOX_MAX_TRACKS];
-    char        trackPaths[CG_JUKEBOX_MAX_TRACKS][MAX_QPATH];
-    char        trackNames[CG_JUKEBOX_MAX_TRACKS][MAX_QPATH];
+    char        trackPaths[CG_JUKEBOX_MAX_TRACKS][CG_JUKEBOX_PATH_SIZE];
+    char        trackNames[CG_JUKEBOX_MAX_TRACKS][CG_JUKEBOX_PATH_SIZE];
     char        trackTitles[CG_JUKEBOX_MAX_TRACKS][CG_JUKEBOX_META_FIELD_LEN];
     char        trackArtists[CG_JUKEBOX_MAX_TRACKS][CG_JUKEBOX_META_FIELD_LEN];
     int         trackStartTime;
@@ -49,7 +50,8 @@ typedef struct {
 } cgJukeboxState_t;
 
 static cgJukeboxState_t cg_jukebox;
-static char cg_jukebox_scanNames[CG_JUKEBOX_MAX_SCAN_ENTRIES][MAX_QPATH];
+static char cg_jukebox_scanNames[CG_JUKEBOX_MAX_SCAN_ENTRIES][CG_JUKEBOX_PATH_SIZE];
+static char cg_jukebox_fileList[CG_JUKEBOX_FILELIST_SIZE];
 
 typedef enum {
     JUKEBOX_REPEAT_OFF = 0,
@@ -212,7 +214,6 @@ static int CG_JukeboxCompareEntries( const void *a, const void *b ) {
 }
 
 static void CG_JukeboxScan( void ) {
-    char fileList[CG_JUKEBOX_FILELIST_SIZE];
     const char *entry;
     const char *rawEntries[CG_JUKEBOX_MAX_SCAN_ENTRIES];
     static const char *extensions[] = { "ogg", "mp3" };
@@ -228,9 +229,10 @@ static void CG_JukeboxScan( void ) {
     rawCount = 0;
 
     for ( extensionIndex = 0; extensionIndex < ARRAY_LEN( extensions ); extensionIndex++ ) {
-        listed = trap_FS_GetFileList( CG_JUKEBOX_DIRECTORY, extensions[extensionIndex], fileList, sizeof( fileList ) );
+        listed = trap_FS_GetFileList( CG_JUKEBOX_DIRECTORY, extensions[extensionIndex],
+                                      cg_jukebox_fileList, sizeof( cg_jukebox_fileList ) );
         totalListed += listed;
-        entry = fileList;
+        entry = cg_jukebox_fileList;
 
         for ( i = 0; i < listed; i++ ) {
             int len = strlen( entry );
@@ -254,16 +256,17 @@ static void CG_JukeboxScan( void ) {
         if ( len > 0 ) {
             int totalLen = strlen( CG_JUKEBOX_DIRECTORY ) + 1 + len;
 
-            if ( totalLen >= MAX_QPATH ) {
-                CG_Printf( "Jukebox: Title path too long: %s/%s\n", CG_JUKEBOX_DIRECTORY, rawEntries[i] );
+            if ( totalLen >= CG_JUKEBOX_PATH_SIZE ) {
+                CG_Printf( "Jukebox: Title path exceeds %i characters: %s/%s\n",
+                    CG_JUKEBOX_PATH_SIZE - 1, CG_JUKEBOX_DIRECTORY, rawEntries[i] );
             } else {
                 char *path = cg_jukebox.trackPaths[trackIndex];
                 char *name = cg_jukebox.trackNames[trackIndex];
                 char *title = cg_jukebox.trackTitles[trackIndex];
                 char *artist = cg_jukebox.trackArtists[trackIndex];
 
-                Com_sprintf( path, MAX_QPATH, "%s/%s", CG_JUKEBOX_DIRECTORY, rawEntries[i] );
-                CG_JukeboxFormatName( rawEntries[i], name, MAX_QPATH );
+                Com_sprintf( path, CG_JUKEBOX_PATH_SIZE, "%s/%s", CG_JUKEBOX_DIRECTORY, rawEntries[i] );
+                CG_JukeboxFormatName( rawEntries[i], name, CG_JUKEBOX_PATH_SIZE );
                 trap_S_GetStreamMetadata( path, title, CG_JUKEBOX_META_FIELD_LEN, artist, CG_JUKEBOX_META_FIELD_LEN, NULL, 0 );
                 cg_jukebox.trackDurations[trackIndex] = trap_S_GetStreamLength( path );
                 cg_jukebox.trackCount++;
@@ -299,7 +302,7 @@ static qboolean CG_JukeboxEnsureTracks( void ) {
 static void CG_JukeboxPlayIndex( int index ) {
     char statusBuffer[sizeof( cg_jukebox.statusLine )];
     char subtitleBuffer[sizeof( cg_jukebox.subtitleLine )];
-    char displayName[MAX_QPATH];
+    char displayName[CG_JUKEBOX_PATH_SIZE];
 
     if ( !CG_JukeboxEnsureTracks() ) {
         return;
@@ -441,7 +444,7 @@ void CG_JukeboxFrame( void ) {
 void CG_JukeboxDraw( float x, float y, float w, float h ) {
     vec4_t backgroundColor = { 0.008f, 0.012f, 0.016f, 0.82f };
     vec4_t borderColor = { 0.300f, 0.390f, 0.430f, 0.78f };
-    vec4_t accentColor = { 0.720f, 1.000f, 0.060f, 0.96f };
+    vec4_t accentColor = { 0.580f, 0.760f, 0.120f, 0.78f };
     vec4_t textColor = { 0.900f, 0.960f, 0.980f, 1.00f };
     vec4_t mutedColor = { 0.480f, 0.640f, 0.680f, 1.00f };
     vec4_t progressBackgroundColor = { 0.040f, 0.060f, 0.065f, 0.96f };
@@ -468,7 +471,7 @@ void CG_JukeboxDraw( float x, float y, float w, float h ) {
 
     CG_FillRect( x, y, w, h, backgroundColor );
     CG_DrawRect( x, y, w, h, 1.0f, borderColor );
-    CG_FillRect( x, y, w, 2.0f, accentColor );
+    CG_FillRect( x, y, w, 1.0f, accentColor );
 
     textX = (int)( x + CG_JUKEBOX_TEXT_MARGIN );
     headerY = (int)( y + 4.0f );
