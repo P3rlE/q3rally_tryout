@@ -564,6 +564,7 @@ void RallyStarter_Think( gentity_t *ent ){
 		for ( i = 0; i < MAX_CLIENTS; i++ ) {
 			player = &g_entities[i];
 			if ( !player->inuse || !player->client ) continue;
+			player->client->introCamSkipSent = qfalse;
 			if ( player->client->sess.sessionTeam == TEAM_SPECTATOR ) continue;
 			if ( (player->r.svFlags & SVF_BOT) && ignoreBots ) continue;
 			introCount++;

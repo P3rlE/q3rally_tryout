@@ -3813,6 +3813,11 @@ static void CG_DrawDisconnect( void ) {
 	const char		*s;
 	int			w;
 
+	/* The intro camera is an intentional pre-race pause, not a connection loss. */
+	if ( CG_IntroCam_IsActive() ) {
+		return;
+	}
+
 	// draw the phone jack if we are completely past our buffers
 	cmdNum = trap_GetCurrentCmdNumber() - CMD_BACKUP + 1;
 	trap_GetUserCmd( cmdNum, &cmd );
@@ -4735,6 +4740,22 @@ void CG_DrawTimedMenus( void ) {
 CG_Draw2D
 =========
 */
+static void CG_DrawIntroCamOverlay( void ) {
+	static const vec4_t accentColor = { 0.70f, 0.94f, 0.08f, 0.96f };
+	static const vec4_t mutedColor = { 0.63f, 0.80f, 0.84f, 0.92f };
+	int secondsLeft;
+
+	secondsLeft = CG_IntroCam_RemainingSeconds();
+	CG_DrawIngameString( 320, 38, "TRACK PREVIEW",
+		UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, 0.82f, accentColor );
+	if ( secondsLeft > 0 ) {
+		CG_DrawIngameString( 320, 57, va( "RACE STARTS IN %02d", secondsLeft ),
+			UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, 0.52f, mutedColor );
+	}
+	CG_DrawIngameString( 320, 434, "PRESS FIRE TO SKIP",
+		UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, 0.68f, mutedColor );
+}
+
 static void CG_Draw2D(stereoFrame_t stereoFrame)
 {
 #ifdef MISSIONPACK
@@ -4753,6 +4774,15 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 
 	if ( cg.snap->ps.pm_type == PM_INTERMISSION ) {
 		CG_DrawIntermission( stereoFrame );
+		return;
+	}
+
+	/* During the cinematic, replace the entire gameplay HUD with two
+	 * unobtrusive custom-font prompts. */
+	if ( CG_IntroCam_IsActive() ) {
+		if ( stereoFrame == STEREO_CENTER ) {
+			CG_DrawIntroCamOverlay();
+		}
 		return;
 	}
 
@@ -4882,10 +4912,12 @@ void CG_DrawActive( stereoFrame_t stereoView ) {
 	trap_R_RenderScene( &cg.refdef );
 
 // Q3Rally Code Start
-	if ( !cg.scoreBoardShowing )
-		CG_DrawRearviewMirror( 170, 10, 300, 75);
-	
-	CG_DrawMMap( 0, 0, 160, 120); //TBB draw minimap function
+	if ( !CG_IntroCam_IsActive() ) {
+		if ( !cg.scoreBoardShowing )
+			CG_DrawRearviewMirror( 170, 10, 300, 75);
+
+		CG_DrawMMap( 0, 0, 160, 120); //TBB draw minimap function
+	}
 		
 // Q3Rally Code END
 

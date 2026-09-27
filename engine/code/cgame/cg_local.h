@@ -2205,7 +2205,9 @@ void CG_DropBio( centity_t *cent );
 //
 void        CG_IntroCam_ParseConfigstring( void );
 void        CG_IntroCam_SetStartTime( int serverTime );
+void        CG_IntroCam_Skip( void );
 qboolean    CG_IntroCam_IsActive( void );
+int         CG_IntroCam_RemainingSeconds( void );
 qboolean    CG_IntroCam_CalcView( vec3_t originOut, vec3_t anglesOut, float *fovOut );
 
 // Q3Rally Code END

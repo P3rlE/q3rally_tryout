@@ -2113,6 +2113,11 @@ static void CG_ServerCommand( void ) {
 		CG_IntroCam_SetStartTime( atoi( CG_Argv( 1 ) ) );
 		return;
 	}
+
+	if ( !strcmp( cmd, "introCamSkip" ) ) {
+		CG_IntroCam_Skip();
+		return;
+	}
 // END
 
 	CG_Printf( "Unknown client game command: %s\n", cmd );
