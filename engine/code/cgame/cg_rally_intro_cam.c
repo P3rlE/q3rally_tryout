@@ -410,11 +410,15 @@ void CG_IntroCam_Skip( void ) {
 /* Active query                                                        */
 /* ------------------------------------------------------------------ */
 
-qboolean CG_IntroCam_IsActive( void ) {
+qboolean CG_IntroCam_IsRaceIntroPending( void ) {
 	int elapsed;
-	if ( s_skipped || !s_hasSequence || ( !s_useGhostRoute && s_nodeCount <= 0 ) || s_startTime <= 0 ) return qfalse;
+	if ( !s_hasSequence || ( !s_useGhostRoute && s_nodeCount <= 0 ) || s_startTime <= 0 ) return qfalse;
 	elapsed = cg.time - s_startTime;
 	return ( elapsed >= 0 && elapsed < s_totalDurationMs ) ? qtrue : qfalse;
+}
+
+qboolean CG_IntroCam_IsActive( void ) {
+	return ( !s_skipped && CG_IntroCam_IsRaceIntroPending() ) ? qtrue : qfalse;
 }
 
 int CG_IntroCam_RemainingSeconds( void ) {

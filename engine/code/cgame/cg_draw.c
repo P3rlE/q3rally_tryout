@@ -3814,7 +3814,7 @@ static void CG_DrawDisconnect( void ) {
 	int			w;
 
 	/* The intro camera is an intentional pre-race pause, not a connection loss. */
-	if ( CG_IntroCam_IsActive() ) {
+	if ( CG_IntroCam_IsRaceIntroPending() ) {
 		return;
 	}
 

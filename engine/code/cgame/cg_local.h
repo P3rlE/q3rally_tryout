@@ -2207,6 +2207,7 @@ void        CG_IntroCam_ParseConfigstring( void );
 void        CG_IntroCam_SetStartTime( int serverTime );
 void        CG_IntroCam_Skip( void );
 qboolean    CG_IntroCam_IsActive( void );
+qboolean    CG_IntroCam_IsRaceIntroPending( void );
 int         CG_IntroCam_RemainingSeconds( void );
 qboolean    CG_IntroCam_CalcView( vec3_t originOut, vec3_t anglesOut, float *fovOut );
 
