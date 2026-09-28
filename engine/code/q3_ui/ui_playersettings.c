@@ -139,10 +139,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE  (( PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE + PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE - 1 ) / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE )
 #define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT           ( PLAYERSETTINGS_ACHIEVEMENT_SUMMARY_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + ( PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP )
 
-#define PLAYERSETTINGS_STATS_ROW_HEIGHT		36
-#define PLAYERSETTINGS_STATS_ROW_GAP		4
-#define PLAYERSETTINGS_STATS_VALUE_OFFSET		260
-#define PLAYERSETTINGS_STATS_VALUE_BASELINE		PLAYERSETTINGS_PROFILE_VALUE_BASELINE
+#define PLAYERSETTINGS_STATS_OVERVIEW_COLUMNS		4
+#define PLAYERSETTINGS_STATS_OVERVIEW_TILE_HEIGHT	50.0f
+#define PLAYERSETTINGS_STATS_OVERVIEW_TILE_GAP		8.0f
+#define PLAYERSETTINGS_STATS_MODES_COLUMNS		3
+#define PLAYERSETTINGS_STATS_MODE_TILE_HEIGHT		42.0f
+#define PLAYERSETTINGS_STATS_MODE_TILE_GAP		6.0f
 #define PLAYERSETTINGS_STATS_CARD_BOTTOM		PLAYERSETTINGS_BACK_BUTTON_Y
 #define PLAYERSETTINGS_STATS_CARD_CONTENT_HEIGHT \
 	( PLAYERSETTINGS_STATS_CARD_BOTTOM - PLAYERSETTINGS_PROFILE_PANEL_TOP \
@@ -544,26 +546,10 @@ typedef struct {
 	int lastRow;
 } playersettingsStatsCategory_t;
 
-/* Keep each category short enough to fit as a focused, single page. */
+/* Keep core career stats and per-mode records on two compact dashboard pages. */
 static const playersettingsStatsCategory_t s_statsCategories[] = {
-	{ "Overview", STATS_ROW_PLAYER_SCORE, STATS_ROW_FUEL },
-	{ "Performance", STATS_ROW_TOP_SPEED, STATS_ROW_BEST_LAP },
-	{ "Combat", STATS_ROW_KILLS, STATS_ROW_WINS },
-	{ "Objectives", STATS_ROW_FLAGS_CAPTURED, STATS_ROW_VEHICLE },
-	{ "Racing", STATS_ROW_RACING_WINS, STATS_ROW_RACING_COMPLETED },
-	{ "Racing DM", STATS_ROW_RACING_DM_WINS, STATS_ROW_RACING_DM_COMPLETED },
-	{ "Sprint", STATS_ROW_SPRINT_WINS, STATS_ROW_SPRINT_BEST },
-	{ "Derby", STATS_ROW_DERBY_WINS, STATS_ROW_DERBY_KILLS },
-	{ "Last Car Standing", STATS_ROW_LCS_WINS, STATS_ROW_LCS_COMPLETED },
-	{ "Elimination", STATS_ROW_ELIM_WINS, STATS_ROW_ELIM_ROUNDS },
-	{ "Deathmatch", STATS_ROW_DM_WINS, STATS_ROW_DM_KILLS },
-	{ "Team Deathmatch", STATS_ROW_TEAM_WINS, STATS_ROW_TEAM_KILLS },
-	{ "Team Racing", STATS_ROW_TEAM_RACING_WINS, STATS_ROW_TEAM_RACING_COMPLETED },
-	{ "Team Racing DM", STATS_ROW_TEAM_RACING_DM_WINS, STATS_ROW_TEAM_RACING_DM_COMPLETED },
-	{ "Capture the Flag", STATS_ROW_CTF_WINS, STATS_ROW_CTF_CAPTURES },
-	{ "4-Team CTF", STATS_ROW_CTF4_WINS, STATS_ROW_CTF4_CAPTURES },
-	{ "Domination", STATS_ROW_DOM_WINS, STATS_ROW_DOM_COMPLETED },
-	{ "King of the Hill", STATS_ROW_KOTH_WINS, STATS_ROW_KOTH_COMPLETED }
+	{ "Career Overview", STATS_ROW_PLAYER_SCORE, STATS_ROW_VEHICLE },
+	{ "Game Modes", STATS_ROW_RACING_HEADER, STATS_ROW_COUNT - 1 }
 };
 
 typedef struct {
@@ -1286,6 +1272,29 @@ static void PlayerSettings_DrawAchievementText( int x, int y, int maxX,
 	}
 }
 
+static void PlayerSettings_DrawClippedStatsText( int x, int y, int maxX,
+	const char *text, int font, const float *color ) {
+	char clipped[128];
+	int length;
+
+	if ( !text || !text[0] || maxX <= x ) {
+		return;
+	}
+
+	Q_strncpyz( clipped, text, sizeof( clipped ) );
+	length = 0;
+	while ( clipped[length] ) {
+		++length;
+	}
+	while ( length > 0 && x + Frontend_TextWidth( clipped, font ) > maxX ) {
+		clipped[--length] = '\0';
+	}
+
+	if ( clipped[0] ) {
+		Frontend_DrawText( x, y, clipped, UI_LEFT | font, color );
+	}
+}
+
 static void PlayerSettings_DrawAchievementDescription( int x, int y, int maxX,
 	const char *text, const float *color ) {
 	const char *cursor;
@@ -2001,10 +2010,6 @@ static void PlayerSettings_GetPaginatedViewportBounds( float contentHeight, floa
 	}
 }
 
-static float PlayerSettings_GetStatsRowSpacing( void ) {
-	return PLAYERSETTINGS_STATS_ROW_HEIGHT + PLAYERSETTINGS_STATS_ROW_GAP;
-}
-
 static float PlayerSettings_GetAchievementsRowSpacing( void ) {
 	return PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP;
 }
@@ -2131,8 +2136,7 @@ static const playersettingsPaginationInfo_t *PlayerSettings_UpdateStatsPaginatio
 	s_playersettings.statsPaginationInfo.totalPages = categoryCount;
 	s_playersettings.statsPaginationInfo.firstRow = category->firstRow;
 	s_playersettings.statsPaginationInfo.lastRow = category->lastRow;
-	s_playersettings.statsPaginationInfo.rowOffset =
-		category->firstRow * PlayerSettings_GetStatsRowSpacing();
+	s_playersettings.statsPaginationInfo.rowOffset = 0.0f;
 
 	return &s_playersettings.statsPaginationInfo;
 }
@@ -2376,56 +2380,43 @@ static void PlayerSettings_DrawAchievementsPaginationControls( void ) {
 }
 
 static void PlayerSettings_GetStatsRowBounds( int row, int *top, int *bottom ) {
+	const playersettingsStatsCategory_t *category;
+	int tileIndex;
+	int tileRow;
 	float rowTop;
-	float rowBottom;
-	float spacing;
 	float contentTop;
-	float offset;
 
-	PlayerSettings_UpdateStatsPaginationInfo();
-
-if ( row < 0 ) {
-row = 0;
-}
-if ( row >= STATS_ROW_COUNT ) {
-		row = STATS_ROW_COUNT - 1;
+	category = PlayerSettings_GetStatsCategory();
+	tileIndex = row - category->firstRow;
+	if ( tileIndex < 0 ) {
+		tileIndex = 0;
 	}
-
-	spacing = PlayerSettings_GetStatsRowSpacing();
-	contentTop = PlayerSettings_GetScrollContentTop();
-	offset = s_playersettings.statsPaginationInfo.rowOffset;
-	rowTop = contentTop + row * spacing - offset;
-	rowBottom = rowTop + PLAYERSETTINGS_STATS_ROW_HEIGHT;
+	tileRow = tileIndex / PLAYERSETTINGS_STATS_OVERVIEW_COLUMNS;
+	contentTop = PlayerSettings_GetScrollContentTop() + 2.0f;
+	rowTop = contentTop + tileRow * ( PLAYERSETTINGS_STATS_OVERVIEW_TILE_HEIGHT + PLAYERSETTINGS_STATS_OVERVIEW_TILE_GAP );
 
 	if ( top ) {
 		*top = (int)rowTop;
 	}
 	if ( bottom ) {
-		*bottom = (int)rowBottom;
+		*bottom = (int)( rowTop + PLAYERSETTINGS_STATS_OVERVIEW_TILE_HEIGHT );
 	}
 }
 
 
 
 static void PlayerSettings_DrawStatsPanelBackground( void ) {
-vec4_t borderColor;
 vec4_t titleColor;
 vec4_t titleAccentColor;
-float contentHeight;
-float viewportTop;
-float viewportBottom;
 int panelTop;
 int panelBottom;
-int i;
-const playersettingsPaginationInfo_t *info;
 const playersettingsStatsCategory_t *category;
 
-contentHeight = PlayerSettings_GetStatsPageContentHeight();
-info = PlayerSettings_UpdateStatsPaginationInfo();
+PlayerSettings_UpdateStatsPaginationInfo();
 category = PlayerSettings_GetStatsCategory();
 
 panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
-panelBottom = (int)PlayerSettings_GetPanelBottomForContent( contentHeight );
+panelBottom = (int)PlayerSettings_GetPanelBottomForContent( PlayerSettings_GetStatsPageContentHeight() );
 
 Frontend_DrawPanel( PLAYERSETTINGS_PROFILE_PANEL_LEFT, panelTop,
                     PLAYERSETTINGS_PROFILE_PANEL_WIDTH,
@@ -2445,49 +2436,129 @@ Frontend_DrawText( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32,
 UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32, panelTop + 24,
              Frontend_TextWidth( category->title, UI_BIGFONT ), 2,
              titleAccentColor );
-
-Vector4Copy( profileRowBorderColor, borderColor );
-borderColor[3] *= uis.tFrac;
-
-PlayerSettings_GetPaginatedViewportBounds(
-        contentHeight,
-        PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT,
-        &viewportTop,
-        &viewportBottom );
-
-if ( !info || info->lastRow < info->firstRow ) {
-return;
 }
 
-for ( i = info->firstRow; i <= info->lastRow; ++i ) {
-int rowTop;
-int rowBottom;
+static void PlayerSettings_DrawStatsModeTile( int index, const char *title,
+	const char *line1, const char *line2 ) {
+	int column;
+	int row;
+	int x;
+	int y;
+	float tileWidth;
+	float tileHeight;
+	float gap;
+	float gridLeft;
+	float gridTop;
+	float gridWidth;
 
-PlayerSettings_GetStatsRowBounds( i, &rowTop, &rowBottom );
+	column = index % PLAYERSETTINGS_STATS_MODES_COLUMNS;
+	row = index / PLAYERSETTINGS_STATS_MODES_COLUMNS;
+	gap = PLAYERSETTINGS_STATS_MODE_TILE_GAP;
+	gridLeft = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
+	gridWidth = PLAYERSETTINGS_PROFILE_ROW_RIGHT - gridLeft;
+	tileWidth = ( gridWidth - gap * ( PLAYERSETTINGS_STATS_MODES_COLUMNS - 1 ) ) /
+	            PLAYERSETTINGS_STATS_MODES_COLUMNS;
+	tileHeight = PLAYERSETTINGS_STATS_MODE_TILE_HEIGHT;
+	gridTop = PlayerSettings_GetScrollContentTop() + 2.0f;
+	if ( row == 4 && index >= 12 ) {
+		x = (int)( gridLeft + ( gridWidth - ( tileWidth * 2.0f + gap ) ) * 0.5f +
+		           column * ( tileWidth + gap ) );
+	} else {
+		x = (int)( gridLeft + column * ( tileWidth + gap ) );
+	}
+	y = (int)( gridTop + row * ( tileHeight + gap ) );
 
-if ( rowTop < (int)viewportTop ) {
-rowTop = (int)viewportTop;
-}
-if ( rowBottom > (int)viewportBottom ) {
-rowBottom = (int)viewportBottom;
-}
-if ( rowBottom <= rowTop ) {
-continue;
-}
-
-if ( i & 1 ) {
-        vec4_t rowColor;
-        Vector4Copy( profileRowOddFillColor, rowColor );
-        rowColor[3] *= uis.tFrac * 0.55f;
-        UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT, rowTop,
-                     PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-                     rowBottom - rowTop, rowColor );
+	Frontend_DrawPanel( x, y, (int)tileWidth, (int)tileHeight,
+	                    uis.tFrac, UI_FRONTEND_STYLE_SURFACE );
+	PlayerSettings_DrawClippedStatsText( x + 8, y + 3, x + (int)tileWidth - 8,
+	                                     title, UI_SMALLFONT, playerSettingsAccentColor );
+	PlayerSettings_DrawClippedStatsText( x + 8, y + 15, x + (int)tileWidth - 8,
+	                                     line1, UI_SMALLFONT, playerSettingsTextColor );
+	PlayerSettings_DrawClippedStatsText( x + 8, y + 27, x + (int)tileWidth - 8,
+	                                     line2, UI_SMALLFONT, playerSettingsMutedColor );
 }
 
-UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT, rowBottom - 1,
-             PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2,
-             1, borderColor );
+static void PlayerSettings_FormatStatsTime( char *buffer, int bufferSize, int timeMs ) {
+	if ( timeMs > 0 ) {
+		int minutes;
+		int seconds;
+		int millis;
+
+		minutes = timeMs / 60000;
+		seconds = ( timeMs % 60000 ) / 1000;
+		millis = timeMs % 1000;
+		Com_sprintf( buffer, bufferSize, "%02d:%02d.%03d", minutes, seconds, millis );
+	} else {
+		Q_strncpyz( buffer, "--", bufferSize );
+	}
 }
+
+static void PlayerSettings_DrawStatsModesDashboard( const profile_stats_t *stats ) {
+	char line1[64];
+	char line2[64];
+	char timeBuffer[16];
+	int tile;
+
+	if ( !stats || s_playersettings.statsPagination.currentPage != 1 ) {
+		return;
+	}
+
+	tile = 0;
+	Com_sprintf( line1, sizeof( line1 ), "W %d   POD %d", stats->racingWins, stats->racingPodiums );
+	Com_sprintf( line2, sizeof( line2 ), "RACES %d", stats->racingCompleted );
+	PlayerSettings_DrawStatsModeTile( tile++, "RACING", line1, line2 );
+
+	Com_sprintf( line1, sizeof( line1 ), "W %d   POD %d", stats->racingDmWins, stats->racingDmPodiums );
+	Com_sprintf( line2, sizeof( line2 ), "RACES %d", stats->racingDmCompleted );
+	PlayerSettings_DrawStatsModeTile( tile++, "RACING DM", line1, line2 );
+
+	Com_sprintf( line1, sizeof( line1 ), "W %d   RACES %d", stats->sprintWins, stats->sprintCompleted );
+	PlayerSettings_FormatStatsTime( timeBuffer, sizeof( timeBuffer ), stats->sprintBestMs );
+	Com_sprintf( line2, sizeof( line2 ), "BEST %s", timeBuffer );
+	PlayerSettings_DrawStatsModeTile( tile++, "SPRINT", line1, line2 );
+
+	Com_sprintf( line1, sizeof( line1 ), "W %d   K %d", stats->derbyWins, stats->derbyKills );
+	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->derbyCompleted );
+	PlayerSettings_DrawStatsModeTile( tile++, "DERBY", line1, line2 );
+
+	Com_sprintf( line1, sizeof( line1 ), "W %d   MATCHES %d", stats->lcsWins, stats->lcsCompleted );
+	PlayerSettings_DrawStatsModeTile( tile++, "LAST CAR STANDING", line1, "" );
+
+	Com_sprintf( line1, sizeof( line1 ), "W %d   ROUNDS %d", stats->eliminationWins, stats->eliminationTotalRoundsLasted );
+	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->eliminationCompleted );
+	PlayerSettings_DrawStatsModeTile( tile++, "ELIMINATION", line1, line2 );
+
+	Com_sprintf( line1, sizeof( line1 ), "W %d   K %d", stats->dmWins, stats->dmKills );
+	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->dmCompleted );
+	PlayerSettings_DrawStatsModeTile( tile++, "DEATHMATCH", line1, line2 );
+
+	Com_sprintf( line1, sizeof( line1 ), "W %d   K %d", stats->teamWins, stats->teamKills );
+	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->teamCompleted );
+	PlayerSettings_DrawStatsModeTile( tile++, "TEAM DEATHMATCH", line1, line2 );
+
+	Com_sprintf( line1, sizeof( line1 ), "W %d   POD %d", stats->teamRacingWins, stats->teamRacingPodiums );
+	Com_sprintf( line2, sizeof( line2 ), "RACES %d", stats->teamRacingCompleted );
+	PlayerSettings_DrawStatsModeTile( tile++, "TEAM RACING", line1, line2 );
+
+	Com_sprintf( line1, sizeof( line1 ), "W %d   POD %d", stats->teamRacingDmWins, stats->teamRacingDmPodiums );
+	Com_sprintf( line2, sizeof( line2 ), "RACES %d", stats->teamRacingDmCompleted );
+	PlayerSettings_DrawStatsModeTile( tile++, "TEAM RACING DM", line1, line2 );
+
+	Com_sprintf( line1, sizeof( line1 ), "W %d   CAPS %d", stats->ctfWins, stats->ctfCaptures );
+	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->ctfCompleted );
+	PlayerSettings_DrawStatsModeTile( tile++, "CAPTURE THE FLAG", line1, line2 );
+
+	Com_sprintf( line1, sizeof( line1 ), "W %d   CAPS %d", stats->ctf4Wins, stats->ctf4Captures );
+	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->ctf4Completed );
+	PlayerSettings_DrawStatsModeTile( tile++, "4-TEAM CTF", line1, line2 );
+
+	Com_sprintf( line1, sizeof( line1 ), "W %d", stats->dominationWins );
+	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->dominationCompleted );
+	PlayerSettings_DrawStatsModeTile( tile++, "DOMINATION", line1, line2 );
+
+	Com_sprintf( line1, sizeof( line1 ), "W %d", stats->kothWins );
+	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->kothCompleted );
+	PlayerSettings_DrawStatsModeTile( tile++, "KING OF THE HILL", line1, line2 );
 }
 
 static void PlayerSettings_DrawStatsTab( void ) {
@@ -2527,7 +2598,7 @@ Q_strncpyz( buffer, "--", sizeof( buffer ) );
 PlayerSettings_DrawStatsLabelValue( STATS_ROW_CURRENT_RANK, s_statsLabelCurrentRank, buffer );
 
 if ( hasRank && rank.next ) {
-Com_sprintf( buffer, sizeof( buffer ), "%s (%d)", rank.next->name, rank.next->minimumScore - stats->playerScore );
+Com_sprintf( buffer, sizeof( buffer ), "%s +%d", rank.next->name, rank.next->minimumScore - stats->playerScore );
 } else {
 Q_strncpyz( buffer, "--", sizeof( buffer ) );
 }
@@ -2567,10 +2638,12 @@ PlayerSettings_DrawStatsLabelValue( STATS_ROW_FUEL, "Fuel Used", buffer );
 Com_sprintf( buffer, sizeof( buffer ), "%d / %d", stats->wins, stats->losses );
 PlayerSettings_DrawStatsLabelValue( STATS_ROW_WINS, "Wins / Losses", buffer );
 
-Com_sprintf( buffer, sizeof( buffer ), "%d / %d", stats->flagCaptures, stats->flagAssists );
-PlayerSettings_DrawStatsLabelValue( STATS_ROW_FLAGS_CAPTURED, "Flags Cap / Assists", buffer );
+Com_sprintf( buffer, sizeof( buffer ), "%d", stats->flagCaptures );
+PlayerSettings_DrawStatsLabelValue( STATS_ROW_FLAGS_CAPTURED, "Flag Captures", buffer );
+Com_sprintf( buffer, sizeof( buffer ), "%d", stats->flagAssists );
+PlayerSettings_DrawStatsLabelValue( STATS_ROW_FLAG_ASSISTS, "Flag Assists", buffer );
 
-Com_sprintf( buffer, sizeof( buffer ), "Acc: %d  Exc: %d  Imp: %d  Perf: %d",
+Com_sprintf( buffer, sizeof( buffer ), "A %d  E %d  I %d  P %d",
         stats->accuracyAwards, stats->excellentAwards,
         stats->impressiveAwards, stats->perfectAwards );
 PlayerSettings_DrawStatsLabelValue( STATS_ROW_AWARDS, "Awards", buffer );
@@ -2594,7 +2667,7 @@ PlayerSettings_DrawStatsLabelValue( STATS_ROW_AWARDS, "Awards", buffer );
         } else {
                 Q_strncpyz( buffer, "--", sizeof( buffer ) );
         }
-        PlayerSettings_DrawStatsLabelValue( STATS_ROW_VEHICLE, "Most Used Vehicle", buffer );
+        PlayerSettings_DrawStatsLabelValue( STATS_ROW_VEHICLE, "Top Vehicle / Time", buffer );
 
 /* ── Racing ──────────────────────────────────────────────────────── */
 PlayerSettings_DrawStatsLabelValue( STATS_ROW_RACING_HEADER, "--- RACING ---", "" );
@@ -2722,6 +2795,8 @@ Com_sprintf( buffer, sizeof( buffer ), "%d", stats->kothWins );
 PlayerSettings_DrawStatsLabelValue( STATS_ROW_KOTH_WINS, "Wins", buffer );
 Com_sprintf( buffer, sizeof( buffer ), "%d", stats->kothCompleted );
 PlayerSettings_DrawStatsLabelValue( STATS_ROW_KOTH_COMPLETED, "Completed", buffer );
+
+PlayerSettings_DrawStatsModesDashboard( stats );
 }
 
 
@@ -2732,6 +2807,9 @@ static qboolean PlayerSettings_IsStatsRowVisible( int row ) {
         if ( row < 0 || row >= STATS_ROW_COUNT ) {
                 return qfalse;
         }
+	if ( s_playersettings.statsPagination.currentPage != 0 ) {
+		return qfalse;
+	}
 
         info = &s_playersettings.statsPaginationInfo;
         if ( info->rowCount != STATS_ROW_COUNT ) {
@@ -2748,20 +2826,35 @@ static qboolean PlayerSettings_IsStatsRowVisible( int row ) {
 static void PlayerSettings_DrawStatsLabelValueWithColors( int row, const char *label, const vec4_t labelColor, const char *value, const vec4_t valueColor ) {
         int rowTop;
         int rowBottom;
-        int y;
+        int tileIndex;
+        int column;
         int labelX;
-        int valueX;
+        int valueY;
+        int valueFont;
+        float tileX;
+        float tileWidth;
+        float tileGap;
         vec4_t mutableLabelColor;
         vec4_t mutableValueColor;
         float viewportTop;
         float viewportBottom;
+        const playersettingsStatsCategory_t *category;
 
         if ( !PlayerSettings_IsStatsRowVisible( row ) ) {
                 return;
         }
 
-        labelX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
-        valueX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_STATS_VALUE_OFFSET;
+        category = PlayerSettings_GetStatsCategory();
+        tileIndex = row - category->firstRow;
+        if ( tileIndex < 0 ) {
+                return;
+        }
+        column = tileIndex % PLAYERSETTINGS_STATS_OVERVIEW_COLUMNS;
+        tileGap = PLAYERSETTINGS_STATS_OVERVIEW_TILE_GAP;
+        tileWidth = ( PLAYERSETTINGS_PROFILE_ROW_RIGHT - PLAYERSETTINGS_PROFILE_FIELD_LEFT -
+                      tileGap * ( PLAYERSETTINGS_STATS_OVERVIEW_COLUMNS - 1 ) ) /
+                    PLAYERSETTINGS_STATS_OVERVIEW_COLUMNS;
+        tileX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + column * ( tileWidth + tileGap );
 
         PlayerSettings_GetStatsRowBounds( row, &rowTop, &rowBottom );
         PlayerSettings_GetPaginatedViewportBounds(
@@ -2773,7 +2866,11 @@ static void PlayerSettings_DrawStatsLabelValueWithColors( int row, const char *l
 		return;
 	}
 
-	y = rowTop + PLAYERSETTINGS_STATS_VALUE_BASELINE;
+	Frontend_DrawPanel( (int)tileX, rowTop, (int)tileWidth,
+	                    rowBottom - rowTop, uis.tFrac,
+	                    UI_FRONTEND_STYLE_SURFACE );
+	labelX = (int)tileX + 8;
+	valueY = rowTop + 17;
 
 	Vector4Copy( labelColor, mutableLabelColor );
 	Vector4Copy( valueColor, mutableValueColor );
@@ -2782,12 +2879,18 @@ static void PlayerSettings_DrawStatsLabelValueWithColors( int row, const char *l
 	}
 
 	if ( label && label[0] ) {
-		Frontend_DrawText( labelX, y, label, UI_LEFT | UI_SMALLFONT,
+		PlayerSettings_DrawClippedStatsText( labelX, rowTop + 3,
+		                   (int)( tileX + tileWidth - 7 ), label, UI_SMALLFONT,
 		                   mutableLabelColor );
 	}
 
 	if ( value && value[0] ) {
-		Frontend_DrawText( valueX, y, value, UI_LEFT | UI_SMALLFONT,
+		valueFont = UI_BIGFONT;
+		if ( Frontend_TextWidth( value, UI_BIGFONT ) > tileWidth - 14.0f ) {
+			valueFont = UI_SMALLFONT;
+		}
+		PlayerSettings_DrawClippedStatsText( labelX, valueY,
+		                   (int)( tileX + tileWidth - 7 ), value, valueFont,
 		                   mutableValueColor );
 	}
 }
@@ -2800,33 +2903,11 @@ static void PlayerSettings_DrawStatsLabelValue( int row, const char *label, cons
 
 
 static void PlayerSettings_DrawStatsMessage( int row, const char *message ) {
-        int rowTop;
-        int rowBottom;
-        int y;
         int x;
-        float viewportTop;
-        float viewportBottom;
-
-        if ( !PlayerSettings_IsStatsRowVisible( row ) ) {
-                return;
-        }
 
         x = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
-
-        PlayerSettings_GetStatsRowBounds( row, &rowTop, &rowBottom );
-        PlayerSettings_GetPaginatedViewportBounds(
-                PlayerSettings_GetStatsPageContentHeight(),
-                PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT,
-                &viewportTop,
-                &viewportBottom );
-	if ( rowBottom <= (int)viewportTop || rowTop >= (int)viewportBottom ) {
-		return;
-	}
-
-	y = rowTop + PLAYERSETTINGS_STATS_VALUE_BASELINE;
-
-	Frontend_DrawText( x, y, message, UI_LEFT | UI_SMALLFONT,
-	                   playerSettingsTextColor );
+        Frontend_DrawText( x, PLAYERSETTINGS_PROFILE_PANEL_TOP + 102 + ( row * 18 ),
+                           message, UI_LEFT | UI_SMALLFONT, playerSettingsTextColor );
 }
 
 
