@@ -1485,7 +1485,7 @@ static void PlayerSettings_DrawAvatarImage( void *self ) {
 	                   focus ? playerSettingsAccentColor : playerSettingsTextColor );
 	actionLine = s_playersettings.avatarActionLine;
 	if ( !disabled && actionLine[0] ) {
-		Frontend_DrawText( basex, textLineY + SMALLCHAR_HEIGHT + 4, actionLine,
+		Frontend_DrawText( basex, textLineY + Frontend_TextHeight( UI_SMALLFONT ) + 4, actionLine,
 		                   UI_LEFT | UI_SMALLFONT,
 		                   focus ? playerSettingsAccentColor : playerSettingsMutedColor );
 	}
@@ -1493,7 +1493,7 @@ static void PlayerSettings_DrawAvatarImage( void *self ) {
 	secondaryStyle = UI_LEFT | UI_SMALLFONT;
 	secondaryColor = disabled ? text_color_disabled : text_color_normal;
 	if ( line2[0] ) {
-		Frontend_DrawText( basex, textLineY + SMALLCHAR_HEIGHT + 2, line2,
+		Frontend_DrawText( basex, textLineY + Frontend_TextHeight( UI_SMALLFONT ) + 2, line2,
 		                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 	}
 }
@@ -2281,7 +2281,7 @@ static void PlayerSettings_DrawPaginationButton( const char *label, const player
 		                     uis.tFrac, hovered, UI_CENTER );
 	} else {
 		Frontend_DrawText( (int)( rect->x + rect->w * 0.5f ),
-		                   (int)( rect->y + ( rect->h - SMALLCHAR_HEIGHT ) * 0.5f ),
+		                   (int)( rect->y + ( rect->h - Frontend_TextHeight( UI_SMALLFONT ) ) * 0.5f ),
 		                   label, UI_CENTER | UI_SMALLFONT,
 		                   playerSettingsMutedColor );
 	}
@@ -2354,7 +2354,7 @@ float viewportTop;
 	Com_sprintf( pageBuffer, sizeof( pageBuffer ), "Page %d / %d", state->currentPage + 1, info->totalPages );
 	Frontend_DrawText(
 		(int)centerX,
-		(int)( y + ( PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT - SMALLCHAR_HEIGHT ) * 0.5f ),
+		(int)( y + ( PLAYERSETTINGS_PAGINATION_BUTTON_HEIGHT - Frontend_TextHeight( UI_SMALLFONT ) ) * 0.5f ),
 		pageBuffer, UI_CENTER | UI_SMALLFONT, playerSettingsAccentColor );
 }
 

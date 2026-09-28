@@ -66,80 +66,45 @@ void Frontend_DrawBackground( const float *scrimColor ) {
     }
 }
 
-/* The legacy UI text path treats every glyph as a full 8/16 pixel cell.
- * The modern screens use the same atlas, but with a tighter advance and a
- * slightly wider glyph quad. This keeps the type readable without the wide,
- * arcade-menu tracking of the original renderer. */
-static int Frontend_TextHeight( int style ) {
+/* Match the in-game rally font's square glyph cells and tracking. Small and
+ * regular text use the same 14/24px cells as CG_DrawIngameString; giant text
+ * stays a 2x regular cell, matching the UI's established hierarchy. */
+int Frontend_TextHeight( int style ) {
     if ( style & UI_SMALLFONT ) {
-        return SMALLCHAR_HEIGHT;
+        return 14;
     }
     if ( style & UI_GIANTFONT ) {
-        return GIANTCHAR_HEIGHT;
+        return 48;
     }
-    return BIGCHAR_HEIGHT;
-}
-
-static qboolean Frontend_IsNarrowGlyph( int ch ) {
-    return ( ch == 'I' || ch == 'i' || ch == 'l' || ch == 'L' || ch == '!' ||
-             ch == '|' || ch == '.' || ch == ',' || ch == ':' || ch == ';' )
-               ? qtrue : qfalse;
+    return 24;
 }
 
 static int Frontend_TextAdvance( int ch, int style ) {
     int advance;
 
     if ( style & UI_SMALLFONT ) {
-        advance = 6;
+        advance = 14;
     } else if ( style & UI_GIANTFONT ) {
-        advance = 18;
+        advance = 48;
     } else {
-        advance = 12;
+        advance = 24;
     }
 
     if ( ch == ' ' ) {
         return ( advance + 1 ) / 2;
     }
-
-    /* Keep narrow glyphs compact, but do not collapse them into the next
-     * character. Their draw quad is reduced by the matching function below. */
-    if ( Frontend_IsNarrowGlyph( ch ) ) {
-        if ( ch == 'l' || ch == 'L' ) {
-            return advance - 1;
-        }
-        return advance - 2;
-    }
-
     return advance;
 }
 
 static int Frontend_TextQuadWidth( int ch, int style ) {
-    if ( Frontend_IsNarrowGlyph( ch ) ) {
-        if ( ch == 'l' || ch == 'L' ) {
-            if ( style & UI_SMALLFONT ) {
-                return 8;
-            }
-            if ( style & UI_GIANTFONT ) {
-                return 20;
-            }
-            return 16;
-        }
-        if ( style & UI_SMALLFONT ) {
-            return 6;
-        }
-        if ( style & UI_GIANTFONT ) {
-            return 16;
-        }
-        return 12;
-    }
-
+    (void)ch;
     if ( style & UI_SMALLFONT ) {
-        return 10;
+        return 14;
     }
     if ( style & UI_GIANTFONT ) {
-        return 28;
+        return 48;
     }
-    return 20;
+    return 24;
 }
 
 static int Frontend_TextWidthRaw( const char *text, int style ) {
@@ -369,6 +334,12 @@ static qboolean Frontend_DrawButtonInternal( int x, int y, int width, int height
     vec4_t textColor;
     qboolean hovered;
     qboolean highlighted;
+    int textWidth;
+    int textHeight;
+    int textX;
+    int textY;
+    int availableWidth;
+    float textScale;
 
     hovered = ( uis.cursorx >= x && uis.cursorx <= x + width &&
                 uis.cursory >= y && uis.cursory <= y + height ) ? qtrue : qfalse;
@@ -395,9 +366,18 @@ static qboolean Frontend_DrawButtonInternal( int x, int y, int width, int height
         Frontend_ColorWithAlpha( textColor, frontendTextColor, alpha );
     }
 
-    Frontend_DrawText( x + ( textAlign == UI_CENTER ? width / 2 : UI_FRONTEND_SPACE_MD ),
-                       y + ( height - SMALLCHAR_HEIGHT ) / 2,
-                       label, textAlign | UI_SMALLFONT, textColor );
+    availableWidth = width - 2 * UI_FRONTEND_SPACE_MD;
+    if ( availableWidth < 1 ) {
+        availableWidth = 1;
+    }
+    textWidth = Frontend_TextVisualWidth( label, UI_SMALLFONT );
+    textScale = ( textWidth > availableWidth )
+                    ? (float)availableWidth / (float)textWidth : 1.0f;
+    textHeight = (int)( Frontend_TextHeight( UI_SMALLFONT ) * textScale + 0.5f );
+    textX = ( textAlign == UI_CENTER ) ? x + width / 2 : x + UI_FRONTEND_SPACE_MD;
+    textY = y + ( height - textHeight ) / 2;
+    Frontend_DrawTextScaled( textX, textY, label, textAlign | UI_SMALLFONT,
+                             textScale, textColor );
 
     return hovered;
 }
@@ -422,6 +402,12 @@ qboolean Frontend_DrawNavButton( int x, int y, int width, int height,
     vec4_t textColor;
     qboolean hovered;
     qboolean highlighted;
+    int textWidth;
+    int textHeight;
+    int textX;
+    int textY;
+    int availableWidth;
+    float textScale;
 
     hovered = ( uis.cursorx >= x && uis.cursorx <= x + width &&
                 uis.cursory >= y && uis.cursory <= y + height ) ? qtrue : qfalse;
@@ -441,9 +427,18 @@ qboolean Frontend_DrawNavButton( int x, int y, int width, int height,
         Frontend_ColorWithAlpha( textColor, frontendMutedColor, alpha );
     }
 
-    Frontend_DrawText( x + ( textAlign == UI_CENTER ? width / 2 : UI_FRONTEND_SPACE_MD ),
-                       y + ( height - SMALLCHAR_HEIGHT ) / 2,
-                       label, textAlign | UI_SMALLFONT, textColor );
+    availableWidth = width - 2 * UI_FRONTEND_SPACE_MD;
+    if ( availableWidth < 1 ) {
+        availableWidth = 1;
+    }
+    textWidth = Frontend_TextVisualWidth( label, UI_SMALLFONT );
+    textScale = ( textWidth > availableWidth )
+                    ? (float)availableWidth / (float)textWidth : 1.0f;
+    textHeight = (int)( Frontend_TextHeight( UI_SMALLFONT ) * textScale + 0.5f );
+    textX = ( textAlign == UI_CENTER ) ? x + width / 2 : x + UI_FRONTEND_SPACE_MD;
+    textY = y + ( height - textHeight ) / 2;
+    Frontend_DrawTextScaled( textX, textY, label, textAlign | UI_SMALLFONT,
+                             textScale, textColor );
     return hovered;
 }
 

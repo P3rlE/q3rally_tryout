@@ -11,6 +11,7 @@ Copyright (C) 2002-2026 Q3Rally Team
 
 int Frontend_TextWidth( const char *text, int style );
 int Frontend_TextVisualWidth( const char *text, int style );
+int Frontend_TextHeight( int style );
 qhandle_t Frontend_BackgroundShader( void );
 void Frontend_DrawBackground( const float *scrimColor );
 void Frontend_DrawText( int x, int y, const char *text, int style,
