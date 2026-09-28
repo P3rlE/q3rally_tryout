@@ -39,7 +39,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define COL_SCORE_WIDTH         80   /* For frags/points */
 #define COL_DEATHS_WIDTH        60   /* For deaths */
 #define COL_LAPTIME_WIDTH       100  /* Best lap time */
-#define COL_DELTA_WIDTH         90   /* Local ghost split delta */
+#define COL_DELTA_WIDTH         90   /* Gap to the race leader */
 #define COL_TOTALTIME_WIDTH     120  /* Total time */
 #define COL_PING_WIDTH          60   /* Ping */
 #define COL_STATUS_WIDTH        96   /* Status (race result / ready) */
@@ -69,7 +69,7 @@ typedef enum {
     SBCOL_SCORE,      /* Frags/Points */
     SBCOL_DEATHS,     /* Deaths */
     SBCOL_LAPTIME,    /* Best lap time */
-    SBCOL_DELTA,      /* Local ghost split delta */
+    SBCOL_DELTA,      /* Gap to the race leader */
     SBCOL_TOTALTIME,  /* Total/Race time */
     SBCOL_PING,       /* Network ping */
     SBCOL_STATUS,     /* Ready status, etc */
@@ -154,7 +154,6 @@ static void CG_InitScoreboardColumns(void) {
     int minimumScoreboardWidth;
     qboolean showScore, showDeaths, showTimes, showLapTimes, showDelta;
     qboolean isRacing, isTeam;
-    qboolean ghostDeltaEnabled;
     
     /* Clear all columns first */
     for (i = 0; i < SBCOL_MAX; i++) {
@@ -165,7 +164,6 @@ static void CG_InitScoreboardColumns(void) {
     /* Determine gametype characteristics */
     isRacing = CG_IsRacingGametype();
     isTeam = CG_IsTeamGametype();
-    ghostDeltaEnabled = (cg_ghostPlayback.integer != 0);
     
     /* Determine what to show based on gametype */
     showScore = qfalse;
@@ -182,7 +180,7 @@ static void CG_InitScoreboardColumns(void) {
             /* Pure racing - only times matter */
             showTimes = qtrue;
             showLapTimes = qtrue;
-            showDelta = ghostDeltaEnabled;
+            showDelta = qtrue;
             break;
             
         case GT_DEATHMATCH:
@@ -206,7 +204,7 @@ static void CG_InitScoreboardColumns(void) {
             showScore = qtrue;
             showTimes = qtrue;
             showLapTimes = qtrue;
-            showDelta = ghostDeltaEnabled;
+            showDelta = qtrue;
             /* No deaths in racing modes typically */
             break;
             
@@ -626,6 +624,66 @@ static void CG_DrawModernTeamHeaderRow(int y, team_t team, int rank, int score, 
     }
 }
 
+static int CG_GetScoreboardRaceLeaderClient( void ) {
+    int i;
+    int clientNum;
+    int position;
+    int bestPosition;
+    int leaderClient;
+
+    bestPosition = MAX_CLIENTS + 1;
+    leaderClient = -1;
+    for ( i = 0; i < cg.numScores; i++ ) {
+        clientNum = cg.scores[i].client;
+        if ( clientNum < 0 || clientNum >= cgs.maxclients ||
+             cgs.clientinfo[clientNum].team == TEAM_SPECTATOR ) {
+            continue;
+        }
+
+        position = cg.scores[i].position;
+        if ( position <= 0 ) {
+            position = cg_entities[clientNum].currentPosition;
+        }
+        if ( position <= 0 ) {
+            position = cgs.clientinfo[clientNum].position;
+        }
+        if ( position > 0 && position < bestPosition ) {
+            bestPosition = position;
+            leaderClient = clientNum;
+        }
+    }
+
+    return leaderClient;
+}
+
+static qboolean CG_GetScoreboardRaceDelta( int leaderClient, int clientNum,
+                                           int *deltaMs ) {
+    centity_t *leader;
+    centity_t *client;
+    int leaderTime;
+    int clientTime;
+
+    if ( !deltaMs || leaderClient < 0 || leaderClient >= cgs.maxclients ||
+         clientNum < 0 || clientNum >= cgs.maxclients ||
+         leaderClient == clientNum ) {
+        return qfalse;
+    }
+
+    leader = &cg_entities[leaderClient];
+    client = &cg_entities[clientNum];
+    if ( leader->finishRaceTime > 0 && leader->startRaceTime > 0 &&
+         client->finishRaceTime > 0 && client->startRaceTime > 0 ) {
+        leaderTime = leader->finishRaceTime - leader->startRaceTime;
+        clientTime = client->finishRaceTime - client->startRaceTime;
+        if ( leaderTime >= 0 && clientTime >= 0 ) {
+            *deltaMs = clientTime - leaderTime;
+            return qtrue;
+        }
+    }
+
+    return CG_GetRaceSplitGap( leaderClient, clientNum, deltaMs );
+}
+
 /*
 =================
 CG_DrawColumnData
@@ -638,14 +696,14 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
     clientInfo_t *ci;
     char buffer[32];
     int totalTime, lapTime, avatarSize, rowHeight;
-    int deltaMs, absMs;
-    char sign;
+    int deltaMs, absMs, leaderClient;
     char *timeStr, *lapTimeStr;
     vec4_t textColor;
     vec4_t rankColor;
     vec4_t teamColor;
     vec4_t botColor;
     vec4_t readyColor;
+    vec4_t deltaColor;
     qboolean isRacingMode;
     
     if (score->client < 0 || score->client >= cgs.maxclients) {
@@ -749,16 +807,26 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
         case SBCOL_DELTA:
             if (ci->team == TEAM_SPECTATOR) {
                 CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
-            } else if (cg.snap && score->client == cg.snap->ps.clientNum && cg.ghostSplitDeltaValid) {
-                deltaMs = cg.ghostSplitDeltaMs;
-                sign = deltaMs < 0 ? '-' : '+';
+            } else if ( ( leaderClient = CG_GetScoreboardRaceLeaderClient() ) == score->client ) {
+                deltaColor[0] = 0.72f; deltaColor[1] = 1.0f;
+                deltaColor[2] = 0.06f; deltaColor[3] = fade;
+                CG_DrawModernText(x, y, "LEADER", 1, width, deltaColor, qfalse);
+            } else if ( leaderClient >= 0 &&
+                        CG_GetScoreboardRaceDelta( leaderClient, score->client, &deltaMs ) ) {
                 absMs = deltaMs < 0 ? -deltaMs : deltaMs;
-                Com_sprintf(buffer, sizeof(buffer), "%c%d.%03d", sign, absMs / 1000, absMs % 1000);
-                CG_DrawModernText(x, y, buffer, 1, width, textColor, qfalse);
-            } else if (cg.snap && score->client == cg.snap->ps.clientNum) {
-                CG_DrawModernText(x, y, "- - -", 1, width, textColor, qfalse);
+                Com_sprintf(buffer, sizeof(buffer), "%c%d.%03d",
+                            deltaMs < 0 ? '-' : '+', absMs / 1000, absMs % 1000);
+                if ( deltaMs < 0 ) {
+                    deltaColor[0] = 1.0f; deltaColor[1] = 0.38f;
+                    deltaColor[2] = 0.30f;
+                } else {
+                    deltaColor[0] = 0.36f; deltaColor[1] = 0.70f;
+                    deltaColor[2] = 0.96f;
+                }
+                deltaColor[3] = fade;
+                CG_DrawModernText(x, y, buffer, 1, width, deltaColor, qfalse);
             } else {
-                CG_DrawModernText(x, y, "- - -", 1, width, textColor, qfalse);
+                CG_DrawModernText(x, y, "--", 1, width, textColor, qfalse);
             }
             break;
             
