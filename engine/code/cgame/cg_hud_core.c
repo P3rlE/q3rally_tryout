@@ -62,9 +62,6 @@ vmCvar_t  cg_hudShowDistToFinish;
 vmCvar_t  cg_hudShowOpponentList;
 vmCvar_t  cg_hudShowScores;
 
-vmCvar_t  cg_hudShowSpeed;
-vmCvar_t  cg_hudShowFuelGauge;
-
 vmCvar_t  cg_hudShowDerbyVehicle;
 vmCvar_t  cg_hudShowDerbyList;
 vmCvar_t  cg_hudShowKothHillStatus;
@@ -88,10 +85,6 @@ void CG_HUD_RegisterCvars( void ) {
     trap_Cvar_Register( &cg_hudShowDistToFinish,   "cg_hudShowDistToFinish",   "1", CVAR_ARCHIVE );
     trap_Cvar_Register( &cg_hudShowOpponentList,   "cg_hudShowOpponentList",   "1", CVAR_ARCHIVE );
     trap_Cvar_Register( &cg_hudShowScores,         "cg_hudShowScores",         "1", CVAR_ARCHIVE );
-
-    /* Vehicle */
-    trap_Cvar_Register( &cg_hudShowSpeed,          "cg_hudShowSpeed",          "1", CVAR_ARCHIVE );
-    trap_Cvar_Register( &cg_hudShowFuelGauge,      "cg_hudShowFuelGauge",      "1", CVAR_ARCHIVE );
 
     /* Derby */
     trap_Cvar_Register( &cg_hudShowDerbyVehicle,   "cg_hudShowDerbyVehicle",   "1", CVAR_ARCHIVE );
@@ -162,7 +155,7 @@ float CG_GetEliminationColumnWidth( void ) {
 #define HUDOPT_SLIDER_ZOOM_ID  2
 /* Text sizes reuse the engine's built-in char constants:
  * Title  → BIGCHAR,  sections/entries → SMALLCHAR / TINYCHAR               */
-/* Left col: Racing (9 entries, indices 0-8)
+/* Left col: Racing/match (9 entries, indices 0-8)
  * Right col: Derby (3, indices 9-11) + KOTH (2, indices 12-13) + Vehicle (3, indices 14-16) */
 #define HUDOPT_LEFT_COUNT    9
 #define HUDOPT_DERBY_START   9
@@ -172,38 +165,53 @@ float CG_GetEliminationColumnWidth( void ) {
 #define HUDOPT_VEH_START    14
 #define HUDOPT_VEH_COUNT     3
 
+#define HUDOPT_MODE_ANY                 -1
+#define HUDOPT_MODE_SCORE_PANEL         -2
+#define HUDOPT_MODE_RALLY_RACE          -3
+#define HUDOPT_MODE_RACE_OR_LCS         -4
+#define HUDOPT_MODE_RACE_LCS_DERBY      -5
+#define HUDOPT_MODE_RACE_WITH_LAPS      -6
+
 typedef struct {
     const char  *label;
     const char  *cvarName;
     vmCvar_t    *cvar;
     int          onValue;       /* value to set when toggling ON; also max cycle value */
-    int          gameTypeOnly;  /* GT_* value, or -1 for always visible                */
+    int          gameTypeOnly;  /* exact GT_* value or negative mode-group selector     */
     qboolean     isCycler;      /* qtrue: cycle 0..onValue instead of simple toggle    */
+    const char *const *cycleLabels; /* state badge text when cycling                   */
 } hudToggleEntry_t;
 
+static const char *const hudGhostPlaybackLabels[] = {
+    "OFF", "PERSONAL", "SERVER BASE", NULL
+};
+
+static const char *const hudCheckpointArrowLabels[] = {
+    "OFF", "ON HUD", "ABOVE CAR", NULL
+};
+
 static const hudToggleEntry_t hudToggleTable[] = {
-    /* ---- Racing (left column, indices 0-9) ---- */
-    { "TIMES PANEL",         "cg_hudShowTimes",          &cg_hudShowTimes,          1, -1,       qfalse },
-    { "LAP COUNTER",         "cg_hudShowLaps",           &cg_hudShowLaps,           1, -1,       qfalse },
-    { "RACE POSITION",       "cg_hudShowPosition",       &cg_hudShowPosition,       1, -1,       qfalse },
-    { "DISTANCE TO FINISH",  "cg_hudShowDistToFinish",   &cg_hudShowDistToFinish,   1, -1,       qfalse },
-    { "GHOST DELTA",         "cg_ghostPlayback",         &cg_ghostPlayback,         1, -1,       qfalse },
-    { "CHECKPOINT ARROW",    "cg_checkpointArrowMode",   &cg_checkpointArrowMode,   2, -1,       qtrue  },
-    { "ELIM. TIMELINE",      "cg_elimTimeline",          &cg_elimTimeline,          1, -1,       qfalse },
-    { "OPPONENT LIST",       "cg_hudShowOpponentList",   &cg_hudShowOpponentList,   1, -1,       qfalse },
-    { "SCORES PANEL",        "cg_hudShowScores",         &cg_hudShowScores,         1, -2,       qfalse },
-    /* ---- Derby (right column top, indices 10-12) ---- */
-    { "DERBY VEHICLE STATE", "cg_hudShowDerbyVehicle",  &cg_hudShowDerbyVehicle,   1, GT_DERBY, qfalse },
-    { "DERBY SCOREBOARD",    "cg_hudShowDerbyList",      &cg_hudShowDerbyList,      1, GT_DERBY, qfalse },
-    { "DERBY HIT IMPACT",    "cg_derbyHitFxEnable",      &cg_derbyHitFxEnable,      1, GT_DERBY, qfalse },
-    /* ---- KOTH (right column middle, indices 13-14) ---- */
-    { "KOTH HILL STATUS",   "cg_hudShowKothHillStatus",  &cg_hudShowKothHillStatus,  1, GT_KOTH,  qfalse },
-    { "KOTH RESPAWN WAVE",  "cg_hudShowKothRespawnWave", &cg_hudShowKothRespawnWave, 1, GT_KOTH,  qfalse },
-    /* ---- Vehicle (right column bottom, indices 15-17) ---- */
-    { "SPEEDOMETER",         "cg_hudShowSpeed",          &cg_hudShowSpeed,          1, -1,       qfalse },
-    /* Fuel Gauge is part of Speedometer – hidden when Speedometer is OFF */
-    { "REAR-VIEW MIRROR",    "cg_drawRearView",          &cg_drawRearView,          1, -1,       qfalse },
-    { "MINI-MAP",            "cg_drawMMap",              &cg_drawMMap,              1, -1,       qfalse },
+    /* ---- Race / match (left column, indices 0-8) ---- */
+    { "TIMES PANEL",         "cg_hudShowTimes",          &cg_hudShowTimes,          1, HUDOPT_MODE_RACE_LCS_DERBY,      qfalse, NULL },
+    { "LAP COUNTER",         "cg_hudShowLaps",           &cg_hudShowLaps,           1, HUDOPT_MODE_RACE_WITH_LAPS,      qfalse, NULL },
+    { "RACE POSITION",       "cg_hudShowPosition",       &cg_hudShowPosition,       1, HUDOPT_MODE_RALLY_RACE,           qfalse, NULL },
+    { "DISTANCE TO FINISH",  "cg_hudShowDistToFinish",   &cg_hudShowDistToFinish,   1, GT_SPRINT,                       qfalse, NULL },
+    { "GHOST PLAYBACK",      "cg_ghostPlayback",         &cg_ghostPlayback,         2, HUDOPT_MODE_RALLY_RACE,           qtrue,  hudGhostPlaybackLabels },
+    { "CHECKPOINT ARROW",    "cg_checkpointArrowMode",   &cg_checkpointArrowMode,   2, HUDOPT_MODE_RALLY_RACE,           qtrue,  hudCheckpointArrowLabels },
+    { "ELIM. TIMELINE",      "cg_elimTimeline",          &cg_elimTimeline,          1, GT_LCS,                           qfalse, NULL },
+    { "OPPONENT LIST",       "cg_hudShowOpponentList",   &cg_hudShowOpponentList,   1, HUDOPT_MODE_RACE_OR_LCS,          qfalse, NULL },
+    { "SCORES PANEL",        "cg_hudShowScores",         &cg_hudShowScores,         1, HUDOPT_MODE_SCORE_PANEL,           qfalse, NULL },
+    /* ---- Derby (right column top, indices 9-11) ---- */
+    { "DERBY VEHICLE STATE", "cg_hudShowDerbyVehicle",   &cg_hudShowDerbyVehicle,   1, GT_DERBY, qfalse, NULL },
+    { "DERBY SCOREBOARD",    "cg_hudShowDerbyList",      &cg_hudShowDerbyList,      1, GT_DERBY, qfalse, NULL },
+    { "DERBY HIT IMPACT",    "cg_derbyHitFxEnable",      &cg_derbyHitFxEnable,      1, GT_DERBY, qfalse, NULL },
+    /* ---- KOTH (right column middle, indices 12-13) ---- */
+    { "KOTH HILL STATUS",    "cg_hudShowKothHillStatus",  &cg_hudShowKothHillStatus,  1, GT_KOTH, qfalse, NULL },
+    { "KOTH RESPAWN WAVE",   "cg_hudShowKothRespawnWave", &cg_hudShowKothRespawnWave, 1, GT_KOTH, qfalse, NULL },
+    /* ---- Vehicle (right column bottom, indices 14-16) ---- */
+    { "STATUS HUD",          "cg_drawStatus",            &cg_drawStatus,            1, HUDOPT_MODE_ANY, qfalse, NULL },
+    { "REAR-VIEW MIRROR",    "cg_drawRearView",          &cg_drawRearView,          1, HUDOPT_MODE_ANY, qfalse, NULL },
+    { "MINI-MAP",            "cg_drawMMap",              &cg_drawMMap,              1, HUDOPT_MODE_ANY, qfalse, NULL },
 };
 
 #define HUDOPT_NUM_ENTRIES  ( (int)( sizeof(hudToggleTable) / sizeof(hudToggleTable[0]) ) )
@@ -293,16 +301,26 @@ static void HUDOpt_DrawSlider( float x, float y, const char *label, float value,
 ================
 HUDEntry_IsUnavail
 Returns qtrue when a toggle entry is not applicable in the current gametype.
-  gameTypeOnly == -1  : always available
-  gameTypeOnly == -2  : only in non-race DM modes (FFA, Team, etc.)
-  gameTypeOnly >= 0   : only when cgs.gametype matches exactly
+  -1 is always available; -2 applies where the score panel is drawn.
+  -3 is rally race, -4 rally race/LCS, -5 race/LCS/Derby, -6 race with laps.
+  Non-negative values are exact GT_* matches.
 ================
 */
 static qboolean HUDEntry_IsUnavail( const hudToggleEntry_t *e ) {
-    if ( e->gameTypeOnly == -1 )
+    if ( e->gameTypeOnly == HUDOPT_MODE_ANY )
         return qfalse;
-    if ( e->gameTypeOnly == -2 )
-        return ( isRallyNonDMRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS );
+    if ( e->gameTypeOnly == HUDOPT_MODE_SCORE_PANEL )
+        return ( ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT ||
+                   cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_SINGLE_PLAYER ) ||
+                 cgs.gametype == GT_DERBY );
+    if ( e->gameTypeOnly == HUDOPT_MODE_RALLY_RACE )
+        return !isRallyRace();
+    if ( e->gameTypeOnly == HUDOPT_MODE_RACE_OR_LCS )
+        return ( !isRallyRace() && cgs.gametype != GT_LCS );
+    if ( e->gameTypeOnly == HUDOPT_MODE_RACE_LCS_DERBY )
+        return ( !isRallyRace() && cgs.gametype != GT_LCS && cgs.gametype != GT_DERBY );
+    if ( e->gameTypeOnly == HUDOPT_MODE_RACE_WITH_LAPS )
+        return ( !isRallyRace() || cgs.gametype == GT_ELIMINATION );
     return ( cgs.gametype != e->gameTypeOnly );
 }
 
@@ -314,12 +332,12 @@ Returns the badge string for a given entry, reflecting cycler states.
 */
 static const char *HUDEntry_BadgeLabel( const hudToggleEntry_t *e ) {
     if ( e->isCycler ) {
-        switch ( e->cvar->integer ) {
-        case 0:  return "OFF";
-        case 1:  return "ON HUD";
-        case 2:  return "AB CAR";
-        default: return "?";
+        int state = e->cvar->integer;
+        if ( e->cycleLabels && state >= 0 && state <= e->onValue &&
+             e->cycleLabels[state] ) {
+            return e->cycleLabels[state];
         }
+        return "?";
     }
     return e->cvar->integer ? "ON" : "OFF";
 }
@@ -520,14 +538,16 @@ void CG_DrawHUDOptionsMenu( void ) {
     trap_Cvar_Update( &cg_elimTimeline );
     trap_Cvar_Update( &cg_hudShowOpponentList );
     trap_Cvar_Update( &cg_hudShowScores );
-    trap_Cvar_Update( &cg_hudShowSpeed );
-    trap_Cvar_Update( &cg_hudShowFuelGauge );
+    trap_Cvar_Update( &cg_drawStatus );
     trap_Cvar_Update( &cg_drawRearView );
     trap_Cvar_Update( &cg_drawMMap );
     trap_Cvar_Update( &cg_mmap_size );
     trap_Cvar_Update( &cg_mmap_fov );
     trap_Cvar_Update( &cg_hudShowDerbyVehicle );
     trap_Cvar_Update( &cg_hudShowDerbyList );
+    trap_Cvar_Update( &cg_derbyHitFxEnable );
+    trap_Cvar_Update( &cg_hudShowKothHillStatus );
+    trap_Cvar_Update( &cg_hudShowKothRespawnWave );
 
     CG_SetScreenPlacement( PLACE_CENTER, PLACE_CENTER );
 
@@ -599,7 +619,7 @@ void CG_DrawHUDOptionsMenu( void ) {
 
         /* ===================== LEFT COLUMN: RACING ===================== */
         {
-            const char *sec  = "RACING";
+            const char *sec  = "RACE / MATCH";
             HUDOpt_DrawCenteredText( HUDOPT_COL_L_X, HUDOPT_COL_W, (int)( secY + 2 ),
                                      sec, secColor, HUDOPT_SECTION_SCALE );
         }
@@ -1874,8 +1894,7 @@ qboolean CG_DrawHUD( void ) {
 
     trap_Cvar_Update( &cg_hudShowOpponentList );
     trap_Cvar_Update( &cg_hudShowScores );
-    trap_Cvar_Update( &cg_hudShowSpeed );
-    trap_Cvar_Update( &cg_hudShowFuelGauge );
+    trap_Cvar_Update( &cg_drawStatus );
     trap_Cvar_Update( &cg_drawRearView );
     trap_Cvar_Update( &cg_drawMMap );
     trap_Cvar_Update( &cg_hudShowDerbyVehicle );

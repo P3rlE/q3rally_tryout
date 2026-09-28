@@ -44,13 +44,14 @@ extern vmCvar_t  cg_hudShowOpponentList;   /* Racing/elimination order list    *
 extern vmCvar_t  cg_hudShowScores;         /* DM/team scores panel             */
 
 /* --- Vehicle HUD --- */
-extern vmCvar_t  cg_hudShowSpeed;          /* Speedometer / RPM gauge          */
 /* cg_hudShowRearView removed – use native cg_drawRearView */
 /* cg_hudShowMiniMap removed – use native cg_drawMMap */
 
 /* --- Derby HUD --- */
 extern vmCvar_t  cg_hudShowDerbyVehicle;   /* Vehicle state panel (Derby)      */
 extern vmCvar_t  cg_hudShowDerbyList;      /* Derby scoreboard                 */
+
+/* --- KOTH HUD --- */
 extern vmCvar_t  cg_hudShowKothHillStatus; /* KOTH hill status panel           */
 extern vmCvar_t  cg_hudShowKothRespawnWave;/* KOTH respawn wave timer          */
 
@@ -79,8 +80,6 @@ void  CG_DrawHUD_DerbyHitImpact( void );
 void  CG_DrawHUD_DerbyVehicleState( void );
 
 /* cg_hud_vehicle.c */
-float CG_DrawSpeed( float y );
-void  CG_DrawFuelGauge( float x, float y, float w, float h );
 void  CG_DrawRearviewMirror( float x, float y, float w, float h );
 void  CG_DrawMMap( float x, float y, float w, float h );
 void  CG_AddObjectsToScene( int renderLevel );
