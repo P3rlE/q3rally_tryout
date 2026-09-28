@@ -195,13 +195,18 @@ static void MainMenu_DrawProfileAction( void *self ) {
         Frontend_DrawStatusChip( (int)navX + 12, top + 10, "Profile",
                                  focus ? s_frontendAccent : s_frontendStatus,
                                  s_main.visualAlpha );
-        Frontend_DrawText( (int)( navX + 30 ), top + 27, item->string,
+        Frontend_DrawTextTierFitted( (int)( navX + 30 ), top + 27,
+                           (int)navWidth - 42, item->string,
                            UI_LEFT | UI_SMALLFONT | UI_DROPSHADOW,
-                           textColor );
-        Frontend_DrawText( (int)( navX + 30 ), top + 48, s_main.profileRankLine,
-                           UI_LEFT | UI_SMALLFONT, mutedColor );
-        Frontend_DrawText( (int)( navX + 30 ), top + 63, s_main.profilePointsLine,
-                           UI_LEFT | UI_SMALLFONT, mutedColor );
+                           FRONTEND_TEXT_TIER_LABEL, textColor );
+        Frontend_DrawTextTierFitted( (int)( navX + 30 ), top + 48,
+                           (int)navWidth - 42, s_main.profileRankLine,
+                           UI_LEFT | UI_SMALLFONT, FRONTEND_TEXT_TIER_MICRO,
+                           mutedColor );
+        Frontend_DrawTextTierFitted( (int)( navX + 30 ), top + 63,
+                           (int)navWidth - 42, s_main.profilePointsLine,
+                           UI_LEFT | UI_SMALLFONT, FRONTEND_TEXT_TIER_MICRO,
+                           mutedColor );
 }
 
 static void MainMenu_DrawBrand( void *self ) {
@@ -355,10 +360,12 @@ static void MainMenu_DrawProfileStat( float heroX, float heroWidth,
 
         MainMenu_ColorWithAlpha( labelColor, s_frontendMuted );
         labelColor[3] *= fade;
-        Frontend_DrawText( statX + 12, statY + 29, label,
-                           UI_LEFT | UI_SMALLFONT, labelColor );
-        Frontend_DrawText( statX + 12, statY + 44, value,
-                           UI_LEFT | UI_BIGFONT | UI_DROPSHADOW, valueColor );
+        Frontend_DrawTextTierFitted( statX + 12, statY + 29, 104, label,
+                           UI_LEFT | UI_SMALLFONT, FRONTEND_TEXT_TIER_LABEL,
+                           labelColor );
+        Frontend_DrawTextTierFitted( statX + 12, statY + 44, 104, value,
+                           UI_LEFT | UI_BIGFONT | UI_DROPSHADOW,
+                           FRONTEND_TEXT_TIER_VALUE, valueColor );
 }
 
 static void MainMenu_DrawProfileStatAction( void *self ) {
@@ -718,13 +725,19 @@ static void Main_MenuDraw( void ) {
         if (uis.demoversion) {
 
                 UI_DrawProportionalString( 320, 440, "DEMO      FOR MATURE AUDIENCES      DEMO", UI_CENTER|UI_SMALLFONT, text_color_normal );
-                Frontend_DrawText( 320, 456, Q3_VERSION " | www.q3rally.com | It's damn fast baby!",
-                                   UI_CENTER | UI_SMALLFONT, text_color_normal );
+                Frontend_DrawTextTierFitted( 320, 456,
+                                   (int)( MainMenu_ViewportRight() - MainMenu_ViewportLeft() - 48 ),
+                                   Q3_VERSION " | www.q3rally.com | It's damn fast baby!",
+                                   UI_CENTER | UI_SMALLFONT,
+                                   FRONTEND_TEXT_TIER_LABEL, text_color_normal );
 
         } else {
 
-                Frontend_DrawText( 320, 456, Q3_VERSION " | www.q3rally.com | It's damn fast baby!",
-                                   UI_CENTER | UI_SMALLFONT, text_color_normal );
+                Frontend_DrawTextTierFitted( 320, 456,
+                                   (int)( MainMenu_ViewportRight() - MainMenu_ViewportLeft() - 48 ),
+                                   Q3_VERSION " | www.q3rally.com | It's damn fast baby!",
+                                   UI_CENTER | UI_SMALLFONT,
+                                   FRONTEND_TEXT_TIER_LABEL, text_color_normal );
 
         }
 

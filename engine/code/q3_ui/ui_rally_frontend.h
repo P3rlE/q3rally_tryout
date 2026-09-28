@@ -9,15 +9,32 @@ Copyright (C) 2002-2026 Q3Rally Team
 
 #include "ui_rally_theme.h"
 
+typedef enum {
+	FRONTEND_TEXT_TIER_MICRO,
+	FRONTEND_TEXT_TIER_LABEL,
+	FRONTEND_TEXT_TIER_BODY,
+	FRONTEND_TEXT_TIER_VALUE,
+	FRONTEND_TEXT_TIER_HEADING,
+	FRONTEND_TEXT_TIER_DISPLAY
+} frontendTextTier_t;
+
 int Frontend_TextWidth( const char *text, int style );
 int Frontend_TextVisualWidth( const char *text, int style );
 int Frontend_TextHeight( int style );
+float Frontend_TextDefaultScale( int style );
 qhandle_t Frontend_BackgroundShader( void );
 void Frontend_DrawBackground( const float *scrimColor );
 void Frontend_DrawText( int x, int y, const char *text, int style,
                         const float *color );
 void Frontend_DrawTextScaled( int x, int y, const char *text, int style,
                               float scale, const float *color );
+void Frontend_DrawTextTier( int x, int y, const char *text, int style,
+                            frontendTextTier_t tier, const float *color );
+void Frontend_DrawTextFitted( int x, int y, int maxWidth, const char *text,
+                              int style, const float *color );
+void Frontend_DrawTextTierFitted( int x, int y, int maxWidth, const char *text,
+                                  int style, frontendTextTier_t tier,
+                                  const float *color );
 void Frontend_DrawPanel( int x, int y, int width, int height,
                          float alpha, int style );
 void Frontend_DrawCard( int x, int y, int width, int height,

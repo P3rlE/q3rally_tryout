@@ -202,9 +202,10 @@ static void UI_SetupMenu_Draw( void ) {
                         UI_FRONTEND_STYLE_FRAME );
     Frontend_DrawText( CONFIG_FRAME_X + 24, CONFIG_FRAME_Y + 24,
                        "Config", UI_LEFT | UI_BIGFONT, configTextColor );
-    Frontend_DrawText( CONFIG_FRAME_X + 24, CONFIG_FRAME_Y + 48,
-                       "Tune your ride, controls and system",
-                       UI_LEFT | UI_SMALLFONT, configMutedColor );
+    Frontend_DrawTextTier( CONFIG_FRAME_X + 24, CONFIG_FRAME_Y + 48,
+                           "Tune your ride, controls and system",
+                           UI_LEFT | UI_SMALLFONT,
+                           FRONTEND_TEXT_TIER_LABEL, configMutedColor );
     Frontend_DrawStatusChip( CONFIG_FRAME_X + CONFIG_FRAME_WIDTH - 104,
                              CONFIG_FRAME_Y + 26, "Settings",
                              configAccentColor, 1.0f );
@@ -228,26 +229,35 @@ static void UI_SetupMenu_Draw( void ) {
     Frontend_DrawText( CONFIG_DETAIL_X + 20, CONFIG_DETAIL_Y + 100,
                        configCategoryLabels[selected],
                        UI_LEFT | UI_BIGFONT, configTextColor );
-    Frontend_DrawText( CONFIG_DETAIL_X + 20, CONFIG_DETAIL_Y + 140,
+    Frontend_DrawTextTierFitted( CONFIG_DETAIL_X + 20,
+                       CONFIG_DETAIL_Y + 140, CONFIG_DETAIL_WIDTH - 40,
                        configCategoryDescriptions[selected][0],
-                       UI_LEFT | UI_SMALLFONT, configMutedColor );
-    Frontend_DrawText( CONFIG_DETAIL_X + 20, CONFIG_DETAIL_Y + 162,
+                       UI_LEFT | UI_SMALLFONT, FRONTEND_TEXT_TIER_MICRO,
+                       configMutedColor );
+    Frontend_DrawTextTierFitted( CONFIG_DETAIL_X + 20,
+                       CONFIG_DETAIL_Y + 162, CONFIG_DETAIL_WIDTH - 40,
                        configCategoryDescriptions[selected][1],
-                       UI_LEFT | UI_SMALLFONT, configMutedColor );
-    Frontend_DrawText( CONFIG_DETAIL_X + 20, CONFIG_DETAIL_Y + 222,
+                       UI_LEFT | UI_SMALLFONT, FRONTEND_TEXT_TIER_MICRO,
+                       configMutedColor );
+    Frontend_DrawTextTierFitted( CONFIG_DETAIL_X + 20,
+                       CONFIG_DETAIL_Y + 222, CONFIG_DETAIL_WIDTH - 40,
                        "Changes use the existing game settings",
-                       UI_LEFT | UI_SMALLFONT, configMutedColor );
-    Frontend_DrawText( CONFIG_DETAIL_X + 20, CONFIG_DETAIL_Y + 244,
+                       UI_LEFT | UI_SMALLFONT, FRONTEND_TEXT_TIER_MICRO,
+                       configMutedColor );
+    Frontend_DrawTextTierFitted( CONFIG_DETAIL_X + 20,
+                       CONFIG_DETAIL_Y + 244, CONFIG_DETAIL_WIDTH - 40,
                        "and apply through the original menus.",
-                       UI_LEFT | UI_SMALLFONT, configMutedColor );
+                       UI_LEFT | UI_SMALLFONT, FRONTEND_TEXT_TIER_MICRO,
+                       configMutedColor );
 
-    Frontend_DrawText( CONFIG_FRAME_X + 24, CONFIG_FRAME_Y + 384,
+    Frontend_DrawTextTier( CONFIG_FRAME_X + 24, CONFIG_FRAME_Y + 384,
                        "Select a category to continue",
-                       UI_LEFT | UI_SMALLFONT, configMutedColor );
-    Frontend_DrawText( CONFIG_FRAME_X + CONFIG_FRAME_WIDTH - 24,
+                       UI_LEFT | UI_SMALLFONT, FRONTEND_TEXT_TIER_MICRO,
+                       configMutedColor );
+    Frontend_DrawTextTier( CONFIG_FRAME_X + CONFIG_FRAME_WIDTH - 24,
                        CONFIG_FRAME_Y + 384,
                        "Enter open   Esc back", UI_RIGHT | UI_SMALLFONT,
-                       configMutedColor );
+                       FRONTEND_TEXT_TIER_MICRO, configMutedColor );
 }
 
 static void UI_SetupMenu_OpenCategory( int id ) {

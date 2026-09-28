@@ -27,6 +27,12 @@ static qhandle_t frontendBackgroundShader;
 static qboolean frontendBackgroundAttempted;
 static menuframework_s *frontendBackgroundMenu;
 static int frontendBackgroundIndex = -1;
+static qhandle_t frontendFontAtlases[3];
+
+#define FRONTEND_FONT_ATLAS_256 0
+#define FRONTEND_FONT_ATLAS_512 1
+#define FRONTEND_FONT_ATLAS_1024 2
+#define FRONTEND_FONT_BASE_RASTER_HEIGHT 29.0f
 
 qhandle_t Frontend_BackgroundShader( void ) {
     int i;
@@ -69,7 +75,7 @@ void Frontend_DrawBackground( const float *scrimColor ) {
 /* Match the in-game rally font's square glyph cells and tracking. Small and
  * regular text use the same 14/24px cells as CG_DrawIngameString; giant text
  * stays a 2x regular cell, matching the UI's established hierarchy. */
-int Frontend_TextHeight( int style ) {
+static int Frontend_TextBaseHeight( int style ) {
     if ( style & UI_SMALLFONT ) {
         return 14;
     }
@@ -77,6 +83,48 @@ int Frontend_TextHeight( int style ) {
         return 48;
     }
     return 24;
+}
+
+static float Frontend_TextTierHeight( frontendTextTier_t tier ) {
+	switch ( tier ) {
+	case FRONTEND_TEXT_TIER_MICRO:
+		return 7.0f;
+	case FRONTEND_TEXT_TIER_LABEL:
+		return 8.5f;
+	case FRONTEND_TEXT_TIER_BODY:
+		return 10.0f;
+	case FRONTEND_TEXT_TIER_VALUE:
+		return 14.0f;
+	case FRONTEND_TEXT_TIER_HEADING:
+		return 18.0f;
+	case FRONTEND_TEXT_TIER_DISPLAY:
+	default:
+		return 24.0f;
+	}
+}
+
+float Frontend_TextDefaultScale( int style ) {
+	frontendTextTier_t tier;
+
+	if ( style & UI_SMALLFONT ) {
+		tier = FRONTEND_TEXT_TIER_BODY;
+	} else if ( style & UI_GIANTFONT ) {
+		tier = FRONTEND_TEXT_TIER_DISPLAY;
+	} else {
+		tier = FRONTEND_TEXT_TIER_HEADING;
+	}
+	return Frontend_TextTierHeight( tier ) /
+	       (float)Frontend_TextBaseHeight( style );
+}
+
+int Frontend_TextHeight( int style ) {
+	return (int)( Frontend_TextBaseHeight( style ) *
+	              Frontend_TextDefaultScale( style ) + 0.5f );
+}
+
+static float Frontend_TextTierScale( int style, frontendTextTier_t tier ) {
+	return Frontend_TextTierHeight( tier ) /
+	       (float)Frontend_TextBaseHeight( style );
 }
 
 static int Frontend_TextAdvance( int ch, int style ) {
@@ -126,6 +174,35 @@ static int Frontend_TextWidthRaw( const char *text, int style ) {
     return width;
 }
 
+static qhandle_t Frontend_FontAtlas( float scale, int style ) {
+	float glyphHeight;
+	int tier;
+	qhandle_t shader;
+	char shaderName[MAX_QPATH];
+
+	if ( !frontendFontAtlases[FRONTEND_FONT_ATLAS_512] ) {
+		frontendFontAtlases[FRONTEND_FONT_ATLAS_512] = uis.charset;
+	}
+
+	glyphHeight = Frontend_TextBaseHeight( style ) * scale * uis.yscale;
+	tier = FRONTEND_FONT_ATLAS_512;
+	if ( glyphHeight < FRONTEND_FONT_BASE_RASTER_HEIGHT * 0.70710678f ) {
+		tier = FRONTEND_FONT_ATLAS_256;
+	} else if ( glyphHeight > FRONTEND_FONT_BASE_RASTER_HEIGHT * 1.41421356f ) {
+		tier = FRONTEND_FONT_ATLAS_1024;
+	}
+
+	shader = frontendFontAtlases[tier];
+	if ( !shader && tier != FRONTEND_FONT_ATLAS_512 ) {
+		Com_sprintf( shaderName, sizeof( shaderName ),
+		             "gfx/ui/ingame_charset_%d.png",
+		             tier == FRONTEND_FONT_ATLAS_256 ? 256 : 1024 );
+		shader = trap_R_RegisterShaderNoMip( shaderName );
+		frontendFontAtlases[tier] = shader;
+	}
+	return shader ? shader : frontendFontAtlases[FRONTEND_FONT_ATLAS_512];
+}
+
 static int Frontend_TextVisualWidthRaw( const char *text, int style ) {
     const char *s;
     int cursorX;
@@ -168,13 +245,18 @@ static void Frontend_DrawTextRaw( float x, int y, const char *text,
     const char *s;
     float charHeight;
     float cursorX;
+    qhandle_t charset;
     vec4_t drawColor;
 
     if ( !text || !text[0] ) {
         return;
     }
 
-    charHeight = Frontend_TextHeight( style ) * scale;
+    charHeight = Frontend_TextBaseHeight( style ) * scale;
+    charset = Frontend_FontAtlas( scale, style );
+    if ( !charset ) {
+        return;
+    }
     cursorX = x;
     Vector4Copy( color, drawColor );
 
@@ -211,18 +293,20 @@ static void Frontend_DrawTextRaw( float x, int y, const char *text,
         fcol = ( ch & 15 ) * 0.0625f;
         trap_R_DrawStretchPic( ax, ay, aw, ah,
                                fcol, frow, fcol + 0.0625f,
-                               frow + 0.0625f, uis.charset );
+                               frow + 0.0625f, charset );
         cursorX += advance;
     }
     trap_R_SetColor( NULL );
 }
 
 int Frontend_TextWidth( const char *text, int style ) {
-    return Frontend_TextWidthRaw( text, style );
+    return (int)( Frontend_TextWidthRaw( text, style ) *
+                  Frontend_TextDefaultScale( style ) + 0.5f );
 }
 
 int Frontend_TextVisualWidth( const char *text, int style ) {
-    return Frontend_TextVisualWidthRaw( text, style );
+    return (int)( Frontend_TextVisualWidthRaw( text, style ) *
+                  Frontend_TextDefaultScale( style ) + 0.5f );
 }
 
 void Frontend_DrawTextScaled( int x, int y, const char *text, int style,
@@ -271,7 +355,49 @@ void Frontend_DrawTextScaled( int x, int y, const char *text, int style,
 
 void Frontend_DrawText( int x, int y, const char *text, int style,
                         const float *color ) {
-    Frontend_DrawTextScaled( x, y, text, style, 1.0f, color );
+    Frontend_DrawTextScaled( x, y, text, style,
+                             Frontend_TextDefaultScale( style ), color );
+}
+
+void Frontend_DrawTextTier( int x, int y, const char *text, int style,
+                            frontendTextTier_t tier, const float *color ) {
+	Frontend_DrawTextScaled( x, y, text, style,
+	                         Frontend_TextTierScale( style, tier ), color );
+}
+
+void Frontend_DrawTextFitted( int x, int y, int maxWidth, const char *text,
+                              int style, const float *color ) {
+	float scale;
+	int textWidth;
+
+	if ( !text || !text[0] || maxWidth <= 0 ) {
+		return;
+	}
+
+	scale = Frontend_TextDefaultScale( style );
+	textWidth = Frontend_TextWidth( text, style );
+	if ( textWidth > maxWidth ) {
+		scale *= (float)maxWidth / (float)textWidth;
+	}
+	Frontend_DrawTextScaled( x, y, text, style, scale, color );
+}
+
+void Frontend_DrawTextTierFitted( int x, int y, int maxWidth, const char *text,
+                                  int style, frontendTextTier_t tier,
+                                  const float *color ) {
+	float scale;
+	int textWidth;
+
+	if ( !text || !text[0] || maxWidth <= 0 ) {
+		return;
+	}
+
+	scale = Frontend_TextTierScale( style, tier );
+	textWidth = (int)( Frontend_TextWidthRaw( text, style ) * scale + 0.5f );
+	if ( textWidth > maxWidth ) {
+		scale *= (float)maxWidth / (float)textWidth;
+	}
+	Frontend_DrawTextScaled( x, y, text, style, scale, color );
 }
 
 static void Frontend_ColorWithAlpha( vec4_t out, const float *baseColor,
@@ -371,9 +497,11 @@ static qboolean Frontend_DrawButtonInternal( int x, int y, int width, int height
         availableWidth = 1;
     }
     textWidth = Frontend_TextVisualWidth( label, UI_SMALLFONT );
-    textScale = ( textWidth > availableWidth )
-                    ? (float)availableWidth / (float)textWidth : 1.0f;
-    textHeight = (int)( Frontend_TextHeight( UI_SMALLFONT ) * textScale + 0.5f );
+    textScale = Frontend_TextDefaultScale( UI_SMALLFONT );
+    if ( textWidth > availableWidth ) {
+        textScale *= (float)availableWidth / (float)textWidth;
+    }
+    textHeight = (int)( Frontend_TextBaseHeight( UI_SMALLFONT ) * textScale + 0.5f );
     textX = ( textAlign == UI_CENTER ) ? x + width / 2 : x + UI_FRONTEND_SPACE_MD;
     textY = y + ( height - textHeight ) / 2;
     Frontend_DrawTextScaled( textX, textY, label, textAlign | UI_SMALLFONT,
@@ -432,9 +560,11 @@ qboolean Frontend_DrawNavButton( int x, int y, int width, int height,
         availableWidth = 1;
     }
     textWidth = Frontend_TextVisualWidth( label, UI_SMALLFONT );
-    textScale = ( textWidth > availableWidth )
-                    ? (float)availableWidth / (float)textWidth : 1.0f;
-    textHeight = (int)( Frontend_TextHeight( UI_SMALLFONT ) * textScale + 0.5f );
+    textScale = Frontend_TextDefaultScale( UI_SMALLFONT );
+    if ( textWidth > availableWidth ) {
+        textScale *= (float)availableWidth / (float)textWidth;
+    }
+    textHeight = (int)( Frontend_TextBaseHeight( UI_SMALLFONT ) * textScale + 0.5f );
     textX = ( textAlign == UI_CENTER ) ? x + width / 2 : x + UI_FRONTEND_SPACE_MD;
     textY = y + ( height - textHeight ) / 2;
     Frontend_DrawTextScaled( textX, textY, label, textAlign | UI_SMALLFONT,
@@ -450,8 +580,9 @@ void Frontend_DrawStatusChip( int x, int y, const char *label,
     Frontend_ColorWithAlpha( dotColor, statusColor, alpha );
     Frontend_ColorWithAlpha( textColor, frontendAccentColor, alpha );
     UI_FillRect( x, y + 3, UI_FRONTEND_STATUS_DOT, UI_FRONTEND_STATUS_DOT, dotColor );
-    Frontend_DrawText( x + UI_FRONTEND_STATUS_DOT + UI_FRONTEND_SPACE_SM, y,
-                       label, UI_LEFT | UI_SMALLFONT, textColor );
+    Frontend_DrawTextTier( x + UI_FRONTEND_STATUS_DOT + UI_FRONTEND_SPACE_SM,
+                           y, label, UI_LEFT | UI_SMALLFONT,
+                           FRONTEND_TEXT_TIER_LABEL, textColor );
 }
 
 void Frontend_DrawSidebar( int x, int y, int width, int height,

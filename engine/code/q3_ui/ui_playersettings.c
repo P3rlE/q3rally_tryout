@@ -1049,6 +1049,10 @@ static void PlayerSettings_DrawModernField( void *self ) {
 	vec4_t labelColor;
 	vec4_t valueColor;
 	const char *label;
+	int labelX;
+	int valueX;
+	int labelMaxWidth;
+	int valueMaxWidth;
 
 	field = (menufield_s *)self;
 	focus = PlayerSettings_ItemHasFocus( &field->generic );
@@ -1056,13 +1060,16 @@ static void PlayerSettings_DrawModernField( void *self ) {
 	Vector4Copy( focus ? playerSettingsAccentColor : playerSettingsMutedColor, labelColor );
 	Vector4Copy( ( field->generic.flags & QMF_GRAYED ) ? playerSettingsMutedColor : playerSettingsTextColor, valueColor );
 
-	Frontend_DrawText( field->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
-	                   field->generic.y, label, UI_LEFT | UI_SMALLFONT,
-	                   labelColor );
-	Frontend_DrawText( field->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET,
-	                   field->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE,
-	                   field->field.buffer, UI_LEFT | UI_SMALLFONT,
-	                   valueColor );
+	labelX = field->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
+	valueX = field->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET;
+	labelMaxWidth = valueX - labelX - 8;
+	valueMaxWidth = field->generic.right - valueX - PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
+	Frontend_DrawTextFitted( labelX, field->generic.y, labelMaxWidth, label,
+	                         UI_LEFT | UI_SMALLFONT, labelColor );
+	Frontend_DrawTextFitted( valueX,
+	                         field->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE,
+	                         valueMaxWidth, field->field.buffer,
+	                         UI_LEFT | UI_SMALLFONT, valueColor );
 
 	if ( focus ) {
 		UI_FillRect( field->generic.x + PLAYERSETTINGS_PROFILE_VALUE_OFFSET,
@@ -1084,6 +1091,7 @@ static void PlayerSettings_DrawModernChoice( void *self ) {
 	vec4_t valueColor;
 	const char *value;
 	char buffer[96];
+	int textMaxWidth;
 
 	choice = (menulist_s *)self;
 	focus = PlayerSettings_ItemHasFocus( &choice->generic );
@@ -1096,12 +1104,16 @@ static void PlayerSettings_DrawModernChoice( void *self ) {
 	Vector4Copy( focus ? playerSettingsAccentColor : playerSettingsMutedColor, labelColor );
 	Vector4Copy( ( choice->generic.flags & QMF_GRAYED ) ? playerSettingsMutedColor : playerSettingsTextColor, valueColor );
 
-	Frontend_DrawText( choice->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
-	                   choice->generic.y, choice->generic.name ? choice->generic.name : "",
-	                   UI_LEFT | UI_SMALLFONT, labelColor );
-	Frontend_DrawText( choice->generic.right - PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
-	                   choice->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE,
-	                   buffer, UI_RIGHT | UI_SMALLFONT, valueColor );
+	textMaxWidth = ( choice->generic.right - choice->generic.x -
+	                 PLAYERSETTINGS_PROFILE_LABEL_OFFSET * 2 ) / 2 - 8;
+	Frontend_DrawTextFitted( choice->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+	                         choice->generic.y, textMaxWidth,
+	                         choice->generic.name ? choice->generic.name : "",
+	                         UI_LEFT | UI_SMALLFONT, labelColor );
+	Frontend_DrawTextFitted( choice->generic.right - PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+	                         choice->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE,
+	                         textMaxWidth, buffer,
+	                         UI_RIGHT | UI_SMALLFONT, valueColor );
 	if ( focus ) {
 		UI_FillRect( choice->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
 		             choice->generic.bottom + 1,
@@ -1117,6 +1129,7 @@ static void PlayerSettings_DrawModernBirthDate( void *self ) {
 	vec4_t valueColor;
 	const char *value;
 	char buffer[48];
+	int textMaxWidth;
 
 	choice = (menulist_s *)self;
 	focus = PlayerSettings_ItemHasFocus( &choice->generic );
@@ -1129,13 +1142,16 @@ static void PlayerSettings_DrawModernBirthDate( void *self ) {
 	Vector4Copy( focus ? playerSettingsAccentColor : playerSettingsMutedColor, labelColor );
 	Vector4Copy( playerSettingsTextColor, valueColor );
 
-	Frontend_DrawText( choice->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
-	                   choice->generic.y - PLAYERSETTINGS_PROFILE_VALUE_BASELINE,
-	                   choice->generic.name ? choice->generic.name : "",
-	                   UI_LEFT | UI_SMALLFONT, labelColor );
-	Frontend_DrawText( choice->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
-	                   choice->generic.y, buffer, UI_LEFT | UI_SMALLFONT,
-	                   valueColor );
+	textMaxWidth = choice->generic.right - choice->generic.x -
+	               PLAYERSETTINGS_PROFILE_LABEL_OFFSET * 2;
+	Frontend_DrawTextFitted( choice->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+	                         choice->generic.y - PLAYERSETTINGS_PROFILE_VALUE_BASELINE,
+	                         textMaxWidth,
+	                         choice->generic.name ? choice->generic.name : "",
+	                         UI_LEFT | UI_SMALLFONT, labelColor );
+	Frontend_DrawTextFitted( choice->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+	                         choice->generic.y, textMaxWidth, buffer,
+	                         UI_LEFT | UI_SMALLFONT, valueColor );
 }
 
 static void PlayerSettings_DrawModernEffects( void *self ) {
@@ -1149,15 +1165,17 @@ static void PlayerSettings_DrawModernEffects( void *self ) {
 	Vector4Copy( focus ? playerSettingsAccentColor : playerSettingsMutedColor, labelColor );
 	Com_sprintf( buffer, sizeof( buffer ), "%d / %d", choice->curvalue + 1, choice->numitems );
 
-	Frontend_DrawText( choice->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
-	                   choice->generic.y, "Effects", UI_LEFT | UI_SMALLFONT,
-	                   labelColor );
+	Frontend_DrawTextTierFitted( choice->generic.x + PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+	                   choice->generic.y, 56, "Effects", UI_LEFT | UI_SMALLFONT,
+	                   FRONTEND_TEXT_TIER_LABEL, labelColor );
 	Frontend_DrawProgress( choice->generic.x + 80,
 	                       choice->generic.y + 8, 72, 4,
 	                       choice->numitems > 1 ? (float)choice->curvalue / (float)( choice->numitems - 1 ) : 0.0f,
 	                       uis.tFrac );
-	Frontend_DrawText( choice->generic.right - PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
+	Frontend_DrawTextFitted( choice->generic.right - PLAYERSETTINGS_PROFILE_LABEL_OFFSET,
 	                   choice->generic.y + PLAYERSETTINGS_PROFILE_VALUE_BASELINE,
+	                   choice->generic.right - choice->generic.x -
+	                   PLAYERSETTINGS_PROFILE_LABEL_OFFSET * 2,
 	                   buffer, UI_RIGHT | UI_SMALLFONT, playerSettingsTextColor );
 }
 
@@ -1293,9 +1311,9 @@ static void PlayerSettings_DrawFittedStatsText( int x, int y, int maxX,
 		textWidth = Frontend_TextVisualWidth( text, drawFont );
 	}
 
-	scale = 1.0f;
+	scale = Frontend_TextDefaultScale( drawFont );
 	if ( textWidth > availableWidth ) {
-		scale = availableWidth / (float)textWidth;
+		scale *= availableWidth / (float)textWidth;
 	}
 	Frontend_DrawTextScaled( x, y, text, UI_LEFT | drawFont, scale, color );
 }
@@ -1481,20 +1499,24 @@ static void PlayerSettings_DrawAvatarImage( void *self ) {
 		line2 = "";
 	}
 
-	Frontend_DrawText( basex, textLineY, line1, UI_LEFT | UI_SMALLFONT,
-	                   focus ? playerSettingsAccentColor : playerSettingsTextColor );
+	Frontend_DrawTextFitted( basex, textLineY, textRight - basex, line1,
+	                         UI_LEFT | UI_SMALLFONT,
+	                         focus ? playerSettingsAccentColor : playerSettingsTextColor );
 	actionLine = s_playersettings.avatarActionLine;
 	if ( !disabled && actionLine[0] ) {
-		Frontend_DrawText( basex, textLineY + Frontend_TextHeight( UI_SMALLFONT ) + 4, actionLine,
-		                   UI_LEFT | UI_SMALLFONT,
+		Frontend_DrawTextFitted( basex,
+		                   textLineY + Frontend_TextHeight( UI_SMALLFONT ) + 4,
+		                   textRight - basex, actionLine, UI_LEFT | UI_SMALLFONT,
 		                   focus ? playerSettingsAccentColor : playerSettingsMutedColor );
 	}
 
 	secondaryStyle = UI_LEFT | UI_SMALLFONT;
 	secondaryColor = disabled ? text_color_disabled : text_color_normal;
 	if ( line2[0] ) {
-		Frontend_DrawText( basex, textLineY + Frontend_TextHeight( UI_SMALLFONT ) + 2, line2,
-		                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
+		Frontend_DrawTextFitted( basex,
+		                   textLineY + Frontend_TextHeight( UI_SMALLFONT ) + 2,
+		                   textRight - basex, line2, UI_LEFT | UI_SMALLFONT,
+		                   playerSettingsMutedColor );
 	}
 }
 
@@ -1679,23 +1701,26 @@ static void PlayerSettings_DrawVehiclePanelBackground( void ) {
 
 	Frontend_DrawText( 80, 168, "Showroom", UI_LEFT | UI_SMALLFONT,
 	                   playerSettingsMutedColor );
-	Frontend_DrawText( 229, 168, modelName, UI_CENTER | UI_SMALLFONT,
-	                   playerSettingsTextColor );
+	Frontend_DrawTextFitted( 229, 168, 130, modelName,
+	                         UI_CENTER | UI_SMALLFONT,
+	                         playerSettingsTextColor );
 
-	Frontend_DrawText( 426, 168, "Vehicle details", UI_LEFT | UI_SMALLFONT,
-	                   playerSettingsMutedColor );
+	Frontend_DrawTextFitted( 426, 168, 134, "Vehicle details",
+	                         UI_LEFT | UI_SMALLFONT,
+	                         playerSettingsMutedColor );
 	Frontend_DrawText( 426, 198, "Model", UI_LEFT | UI_SMALLFONT,
 	                   playerSettingsMutedColor );
-	Frontend_DrawText( 560, 198, modelName, UI_RIGHT | UI_SMALLFONT,
-	                   playerSettingsTextColor );
+	Frontend_DrawTextFitted( 560, 198, 118, modelName,
+	                         UI_RIGHT | UI_SMALLFONT,
+	                         playerSettingsTextColor );
 	Frontend_DrawText( 426, 222, "Skin", UI_LEFT | UI_SMALLFONT,
 	                   playerSettingsMutedColor );
-	Frontend_DrawText( 560, 222, s_playersettings.modelskin,
-	                   UI_RIGHT | UI_SMALLFONT, playerSettingsTextColor );
+	Frontend_DrawTextFitted( 560, 222, 118, s_playersettings.modelskin,
+	                         UI_RIGHT | UI_SMALLFONT, playerSettingsTextColor );
 	Frontend_DrawText( 426, 246, "Rim", UI_LEFT | UI_SMALLFONT,
 	                   playerSettingsMutedColor );
-	Frontend_DrawText( 560, 246, s_playersettings.rimskin,
-	                   UI_RIGHT | UI_SMALLFONT, playerSettingsTextColor );
+	Frontend_DrawTextFitted( 560, 246, 118, s_playersettings.rimskin,
+	                         UI_RIGHT | UI_SMALLFONT, playerSettingsTextColor );
 
 	Frontend_DrawText( 64, 340, "Saved setups", UI_LEFT | UI_SMALLFONT,
 	                   playerSettingsMutedColor );
