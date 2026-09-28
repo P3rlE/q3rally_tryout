@@ -161,26 +161,63 @@ static int Frontend_TextWidthRaw( const char *text, int style ) {
     return width;
 }
 
-static void Frontend_DrawTextRaw( int x, int y, const char *text,
-                                  int style, const float *color ) {
+static int Frontend_TextVisualWidthRaw( const char *text, int style ) {
     const char *s;
-    int charHeight;
     int cursorX;
+    int visualWidth;
+
+    if ( !text ) {
+        return 0;
+    }
+
+    cursorX = 0;
+    visualWidth = 0;
+    for ( s = text; *s; s++ ) {
+        int ch;
+        int glyphRight;
+
+        if ( Q_IsColorString( s ) ) {
+            s++;
+            continue;
+        }
+
+        ch = *s & 255;
+        if ( ch != ' ' ) {
+            glyphRight = cursorX + Frontend_TextQuadWidth( ch, style );
+            if ( glyphRight > visualWidth ) {
+                visualWidth = glyphRight;
+            }
+        }
+        cursorX += Frontend_TextAdvance( ch, style );
+    }
+
+    if ( cursorX > visualWidth ) {
+        visualWidth = cursorX;
+    }
+    return visualWidth;
+}
+
+static void Frontend_DrawTextRaw( float x, int y, const char *text,
+                                  int style, float scale,
+                                  const float *color ) {
+    const char *s;
+    float charHeight;
+    float cursorX;
     vec4_t drawColor;
 
     if ( !text || !text[0] ) {
         return;
     }
 
-    charHeight = Frontend_TextHeight( style );
+    charHeight = Frontend_TextHeight( style ) * scale;
     cursorX = x;
     Vector4Copy( color, drawColor );
 
     trap_R_SetColor( drawColor );
     for ( s = text; *s; s++ ) {
         int ch;
-        int advance;
-        int quadWidth;
+        float advance;
+        float quadWidth;
         float ax;
         float ay;
         float aw;
@@ -194,8 +231,8 @@ static void Frontend_DrawTextRaw( int x, int y, const char *text,
         }
 
         ch = *s & 255;
-        advance = Frontend_TextAdvance( ch, style );
-        quadWidth = Frontend_TextQuadWidth( ch, style );
+        advance = Frontend_TextAdvance( ch, style ) * scale;
+        quadWidth = Frontend_TextQuadWidth( ch, style ) * scale;
         if ( ch == ' ' ) {
             cursorX += advance;
             continue;
@@ -219,14 +256,19 @@ int Frontend_TextWidth( const char *text, int style ) {
     return Frontend_TextWidthRaw( text, style );
 }
 
-void Frontend_DrawText( int x, int y, const char *text, int style,
-                        const float *color ) {
-    int width;
+int Frontend_TextVisualWidth( const char *text, int style ) {
+    return Frontend_TextVisualWidthRaw( text, style );
+}
+
+void Frontend_DrawTextScaled( int x, int y, const char *text, int style,
+                              float scale, const float *color ) {
+    float width;
     int format;
+    float drawX;
     vec4_t drawColor;
     vec4_t dropColor;
 
-    if ( !text || !color ) {
+    if ( !text || !color || scale <= 0.0f ) {
         return;
     }
 
@@ -242,12 +284,13 @@ void Frontend_DrawText( int x, int y, const char *text, int style,
                       0.5f + 0.5f * sin( uis.realtime / PULSE_DIVISOR ) );
     }
 
-    width = Frontend_TextWidthRaw( text, style );
+    width = Frontend_TextWidthRaw( text, style ) * scale;
     format = style & UI_FORMATMASK;
+    drawX = (float)x;
     if ( format == UI_CENTER ) {
-        x -= width / 2;
+        drawX -= width * 0.5f;
     } else if ( format == UI_RIGHT ) {
-        x -= width;
+        drawX -= width;
     }
 
     if ( style & UI_DROPSHADOW ) {
@@ -255,9 +298,15 @@ void Frontend_DrawText( int x, int y, const char *text, int style,
         dropColor[1] = 0.0f;
         dropColor[2] = 0.0f;
         dropColor[3] = drawColor[3];
-        Frontend_DrawTextRaw( x + 2, y + 2, text, style, dropColor );
+        Frontend_DrawTextRaw( drawX + 2.0f, y + 2, text, style,
+                              scale, dropColor );
     }
-    Frontend_DrawTextRaw( x, y, text, style, drawColor );
+    Frontend_DrawTextRaw( drawX, y, text, style, scale, drawColor );
+}
+
+void Frontend_DrawText( int x, int y, const char *text, int style,
+                        const float *color ) {
+    Frontend_DrawTextScaled( x, y, text, style, 1.0f, color );
 }
 
 static void Frontend_ColorWithAlpha( vec4_t out, const float *baseColor,

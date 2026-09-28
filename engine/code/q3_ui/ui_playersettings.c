@@ -143,8 +143,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_STATS_OVERVIEW_TILE_HEIGHT	50.0f
 #define PLAYERSETTINGS_STATS_OVERVIEW_TILE_GAP		8.0f
 #define PLAYERSETTINGS_STATS_MODES_COLUMNS		3
-#define PLAYERSETTINGS_STATS_MODE_TILE_HEIGHT		42.0f
-#define PLAYERSETTINGS_STATS_MODE_TILE_GAP		6.0f
+#define PLAYERSETTINGS_STATS_MODE_TILE_HEIGHT		72.0f
+#define PLAYERSETTINGS_STATS_MODE_TILE_GAP		8.0f
+#define PLAYERSETTINGS_STATS_MODES_FIRST_PAGE_COUNT	5
 #define PLAYERSETTINGS_STATS_CARD_BOTTOM		PLAYERSETTINGS_BACK_BUTTON_Y
 #define PLAYERSETTINGS_STATS_CARD_CONTENT_HEIGHT \
 	( PLAYERSETTINGS_STATS_CARD_BOTTOM - PLAYERSETTINGS_PROFILE_PANEL_TOP \
@@ -546,10 +547,11 @@ typedef struct {
 	int lastRow;
 } playersettingsStatsCategory_t;
 
-/* Keep core career stats and per-mode records on two compact dashboard pages. */
+/* Keep the overview separate, then split mode records into readable groups. */
 static const playersettingsStatsCategory_t s_statsCategories[] = {
 	{ "Career Overview", STATS_ROW_PLAYER_SCORE, STATS_ROW_VEHICLE },
-	{ "Game Modes", STATS_ROW_RACING_HEADER, STATS_ROW_COUNT - 1 }
+	{ "Racing Modes", STATS_ROW_RACING_HEADER, STATS_ROW_TEAM_RACING_DM_COMPLETED },
+	{ "Arena & Team Modes", STATS_ROW_DERBY_HEADER, STATS_ROW_COUNT - 1 }
 };
 
 typedef struct {
@@ -1272,27 +1274,30 @@ static void PlayerSettings_DrawAchievementText( int x, int y, int maxX,
 	}
 }
 
-static void PlayerSettings_DrawClippedStatsText( int x, int y, int maxX,
+static void PlayerSettings_DrawFittedStatsText( int x, int y, int maxX,
 	const char *text, int font, const float *color ) {
-	char clipped[128];
-	int length;
+	int drawFont;
+	int textWidth;
+	float availableWidth;
+	float scale;
 
 	if ( !text || !text[0] || maxX <= x ) {
 		return;
 	}
 
-	Q_strncpyz( clipped, text, sizeof( clipped ) );
-	length = 0;
-	while ( clipped[length] ) {
-		++length;
-	}
-	while ( length > 0 && x + Frontend_TextWidth( clipped, font ) > maxX ) {
-		clipped[--length] = '\0';
+	availableWidth = (float)( maxX - x );
+	drawFont = font;
+	textWidth = Frontend_TextVisualWidth( text, drawFont );
+	if ( textWidth > availableWidth && drawFont != UI_SMALLFONT ) {
+		drawFont = UI_SMALLFONT;
+		textWidth = Frontend_TextVisualWidth( text, drawFont );
 	}
 
-	if ( clipped[0] ) {
-		Frontend_DrawText( x, y, clipped, UI_LEFT | font, color );
+	scale = 1.0f;
+	if ( textWidth > availableWidth ) {
+		scale = availableWidth / (float)textWidth;
 	}
+	Frontend_DrawTextScaled( x, y, text, UI_LEFT | drawFont, scale, color );
 }
 
 static void PlayerSettings_DrawAchievementDescription( int x, int y, int maxX,
@@ -2438,10 +2443,13 @@ UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32, panelTop + 24,
              titleAccentColor );
 }
 
-static void PlayerSettings_DrawStatsModeTile( int index, const char *title,
-	const char *line1, const char *line2 ) {
+static void PlayerSettings_DrawStatsModeTile( int index, int itemCount,
+	const char *title, const char *value, const char *detail ) {
 	int column;
 	int row;
+	int rowCount;
+	int rowItems;
+	int maxRows;
 	int x;
 	int y;
 	float tileWidth;
@@ -2450,32 +2458,43 @@ static void PlayerSettings_DrawStatsModeTile( int index, const char *title,
 	float gridLeft;
 	float gridTop;
 	float gridWidth;
+	float verticalOffset;
 
 	column = index % PLAYERSETTINGS_STATS_MODES_COLUMNS;
 	row = index / PLAYERSETTINGS_STATS_MODES_COLUMNS;
+	rowCount = ( itemCount + PLAYERSETTINGS_STATS_MODES_COLUMNS - 1 ) /
+	            PLAYERSETTINGS_STATS_MODES_COLUMNS;
 	gap = PLAYERSETTINGS_STATS_MODE_TILE_GAP;
 	gridLeft = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
 	gridWidth = PLAYERSETTINGS_PROFILE_ROW_RIGHT - gridLeft;
 	tileWidth = ( gridWidth - gap * ( PLAYERSETTINGS_STATS_MODES_COLUMNS - 1 ) ) /
 	            PLAYERSETTINGS_STATS_MODES_COLUMNS;
 	tileHeight = PLAYERSETTINGS_STATS_MODE_TILE_HEIGHT;
-	gridTop = PlayerSettings_GetScrollContentTop() + 2.0f;
-	if ( row == 4 && index >= 12 ) {
-		x = (int)( gridLeft + ( gridWidth - ( tileWidth * 2.0f + gap ) ) * 0.5f +
-		           column * ( tileWidth + gap ) );
-	} else {
-		x = (int)( gridLeft + column * ( tileWidth + gap ) );
+	maxRows = (int)( ( PLAYERSETTINGS_STATS_CARD_CONTENT_HEIGHT -
+	                    PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT + gap ) /
+	                  ( tileHeight + gap ) );
+	if ( maxRows < rowCount ) {
+		maxRows = rowCount;
 	}
+	verticalOffset = ( maxRows - rowCount ) * ( tileHeight + gap ) * 0.5f;
+	gridTop = PlayerSettings_GetScrollContentTop() + 2.0f + verticalOffset;
+	rowItems = itemCount - row * PLAYERSETTINGS_STATS_MODES_COLUMNS;
+	if ( rowItems > PLAYERSETTINGS_STATS_MODES_COLUMNS ) {
+		rowItems = PLAYERSETTINGS_STATS_MODES_COLUMNS;
+	}
+	x = (int)( gridLeft + ( gridWidth -
+	     ( rowItems * tileWidth + ( rowItems - 1 ) * gap ) ) * 0.5f +
+	     column * ( tileWidth + gap ) );
 	y = (int)( gridTop + row * ( tileHeight + gap ) );
 
 	Frontend_DrawPanel( x, y, (int)tileWidth, (int)tileHeight,
 	                    uis.tFrac, UI_FRONTEND_STYLE_SURFACE );
-	PlayerSettings_DrawClippedStatsText( x + 8, y + 3, x + (int)tileWidth - 8,
-	                                     title, UI_SMALLFONT, playerSettingsAccentColor );
-	PlayerSettings_DrawClippedStatsText( x + 8, y + 15, x + (int)tileWidth - 8,
-	                                     line1, UI_SMALLFONT, playerSettingsTextColor );
-	PlayerSettings_DrawClippedStatsText( x + 8, y + 27, x + (int)tileWidth - 8,
-	                                     line2, UI_SMALLFONT, playerSettingsMutedColor );
+	PlayerSettings_DrawFittedStatsText( x + 8, y + 4, x + (int)tileWidth - 8,
+	                                    title, UI_SMALLFONT, playerSettingsAccentColor );
+	PlayerSettings_DrawFittedStatsText( x + 8, y + 23, x + (int)tileWidth - 8,
+	                                    value, UI_BIGFONT, playerSettingsTextColor );
+	PlayerSettings_DrawFittedStatsText( x + 8, y + 51, x + (int)tileWidth - 8,
+	                                    detail, UI_SMALLFONT, playerSettingsMutedColor );
 }
 
 static void PlayerSettings_FormatStatsTime( char *buffer, int bufferSize, int timeMs ) {
@@ -2493,72 +2512,106 @@ static void PlayerSettings_FormatStatsTime( char *buffer, int bufferSize, int ti
 	}
 }
 
+static const char *PlayerSettings_ModePlural( int count,
+	const char *singular, const char *plural ) {
+	return count == 1 ? singular : plural;
+}
+
+static void PlayerSettings_DrawStatsModeCountTile( int index, int itemCount,
+	const char *title, int valueCount, const char *valueSingular,
+	const char *valuePlural, int detailCount, const char *detailSingular,
+	const char *detailPlural, int extraCount, const char *extraSingular,
+	const char *extraPlural ) {
+	char value[64];
+	char detail[96];
+
+	Com_sprintf( value, sizeof( value ), "%d %s", valueCount,
+	             PlayerSettings_ModePlural( valueCount, valueSingular, valuePlural ) );
+	if ( detailCount >= 0 && extraCount >= 0 ) {
+		Com_sprintf( detail, sizeof( detail ), "%d %s  /  %d %s",
+		             detailCount,
+	             PlayerSettings_ModePlural( detailCount, detailSingular, detailPlural ),
+		             extraCount,
+		             PlayerSettings_ModePlural( extraCount, extraSingular, extraPlural ) );
+	} else if ( detailCount >= 0 ) {
+		Com_sprintf( detail, sizeof( detail ), "%d %s", detailCount,
+		             PlayerSettings_ModePlural( detailCount, detailSingular, detailPlural ) );
+	} else {
+		detail[0] = '\0';
+	}
+
+	PlayerSettings_DrawStatsModeTile( index, itemCount, title, value, detail );
+}
+
 static void PlayerSettings_DrawStatsModesDashboard( const profile_stats_t *stats ) {
-	char line1[64];
-	char line2[64];
+	char value[64];
+	char detail[96];
 	char timeBuffer[16];
 	int tile;
+	int modePage;
+	int itemCount;
 
-	if ( !stats || s_playersettings.statsPagination.currentPage != 1 ) {
+	if ( !stats || s_playersettings.statsPagination.currentPage < 1 ||
+	     s_playersettings.statsPagination.currentPage >= ARRAY_LEN( s_statsCategories ) ) {
 		return;
 	}
 
+	modePage = s_playersettings.statsPagination.currentPage - 1;
 	tile = 0;
-	Com_sprintf( line1, sizeof( line1 ), "W %d   POD %d", stats->racingWins, stats->racingPodiums );
-	Com_sprintf( line2, sizeof( line2 ), "RACES %d", stats->racingCompleted );
-	PlayerSettings_DrawStatsModeTile( tile++, "RACING", line1, line2 );
+	if ( modePage == 0 ) {
+		itemCount = PLAYERSETTINGS_STATS_MODES_FIRST_PAGE_COUNT;
+		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Racing",
+			stats->racingWins, "win", "wins", stats->racingPodiums,
+			"podium", "podiums", stats->racingCompleted, "race", "races" );
+		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Racing DM",
+			stats->racingDmWins, "win", "wins", stats->racingDmPodiums,
+			"podium", "podiums", stats->racingDmCompleted, "race", "races" );
 
-	Com_sprintf( line1, sizeof( line1 ), "W %d   POD %d", stats->racingDmWins, stats->racingDmPodiums );
-	Com_sprintf( line2, sizeof( line2 ), "RACES %d", stats->racingDmCompleted );
-	PlayerSettings_DrawStatsModeTile( tile++, "RACING DM", line1, line2 );
+		Com_sprintf( value, sizeof( value ), "%d %s", stats->sprintWins,
+		             PlayerSettings_ModePlural( stats->sprintWins, "win", "wins" ) );
+		PlayerSettings_FormatStatsTime( timeBuffer, sizeof( timeBuffer ), stats->sprintBestMs );
+		Com_sprintf( detail, sizeof( detail ), "%d %s  /  best %s",
+		             stats->sprintCompleted,
+		             PlayerSettings_ModePlural( stats->sprintCompleted, "race", "races" ),
+		             timeBuffer );
+		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "Sprint", value, detail );
 
-	Com_sprintf( line1, sizeof( line1 ), "W %d   RACES %d", stats->sprintWins, stats->sprintCompleted );
-	PlayerSettings_FormatStatsTime( timeBuffer, sizeof( timeBuffer ), stats->sprintBestMs );
-	Com_sprintf( line2, sizeof( line2 ), "BEST %s", timeBuffer );
-	PlayerSettings_DrawStatsModeTile( tile++, "SPRINT", line1, line2 );
-
-	Com_sprintf( line1, sizeof( line1 ), "W %d   K %d", stats->derbyWins, stats->derbyKills );
-	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->derbyCompleted );
-	PlayerSettings_DrawStatsModeTile( tile++, "DERBY", line1, line2 );
-
-	Com_sprintf( line1, sizeof( line1 ), "W %d   MATCHES %d", stats->lcsWins, stats->lcsCompleted );
-	PlayerSettings_DrawStatsModeTile( tile++, "LAST CAR STANDING", line1, "" );
-
-	Com_sprintf( line1, sizeof( line1 ), "W %d   ROUNDS %d", stats->eliminationWins, stats->eliminationTotalRoundsLasted );
-	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->eliminationCompleted );
-	PlayerSettings_DrawStatsModeTile( tile++, "ELIMINATION", line1, line2 );
-
-	Com_sprintf( line1, sizeof( line1 ), "W %d   K %d", stats->dmWins, stats->dmKills );
-	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->dmCompleted );
-	PlayerSettings_DrawStatsModeTile( tile++, "DEATHMATCH", line1, line2 );
-
-	Com_sprintf( line1, sizeof( line1 ), "W %d   K %d", stats->teamWins, stats->teamKills );
-	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->teamCompleted );
-	PlayerSettings_DrawStatsModeTile( tile++, "TEAM DEATHMATCH", line1, line2 );
-
-	Com_sprintf( line1, sizeof( line1 ), "W %d   POD %d", stats->teamRacingWins, stats->teamRacingPodiums );
-	Com_sprintf( line2, sizeof( line2 ), "RACES %d", stats->teamRacingCompleted );
-	PlayerSettings_DrawStatsModeTile( tile++, "TEAM RACING", line1, line2 );
-
-	Com_sprintf( line1, sizeof( line1 ), "W %d   POD %d", stats->teamRacingDmWins, stats->teamRacingDmPodiums );
-	Com_sprintf( line2, sizeof( line2 ), "RACES %d", stats->teamRacingDmCompleted );
-	PlayerSettings_DrawStatsModeTile( tile++, "TEAM RACING DM", line1, line2 );
-
-	Com_sprintf( line1, sizeof( line1 ), "W %d   CAPS %d", stats->ctfWins, stats->ctfCaptures );
-	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->ctfCompleted );
-	PlayerSettings_DrawStatsModeTile( tile++, "CAPTURE THE FLAG", line1, line2 );
-
-	Com_sprintf( line1, sizeof( line1 ), "W %d   CAPS %d", stats->ctf4Wins, stats->ctf4Captures );
-	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->ctf4Completed );
-	PlayerSettings_DrawStatsModeTile( tile++, "4-TEAM CTF", line1, line2 );
-
-	Com_sprintf( line1, sizeof( line1 ), "W %d", stats->dominationWins );
-	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->dominationCompleted );
-	PlayerSettings_DrawStatsModeTile( tile++, "DOMINATION", line1, line2 );
-
-	Com_sprintf( line1, sizeof( line1 ), "W %d", stats->kothWins );
-	Com_sprintf( line2, sizeof( line2 ), "MATCHES %d", stats->kothCompleted );
-	PlayerSettings_DrawStatsModeTile( tile++, "KING OF THE HILL", line1, line2 );
+		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Team Racing",
+			stats->teamRacingWins, "win", "wins", stats->teamRacingPodiums,
+			"podium", "podiums", stats->teamRacingCompleted, "race", "races" );
+		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Team Racing DM",
+			stats->teamRacingDmWins, "win", "wins", stats->teamRacingDmPodiums,
+			"podium", "podiums", stats->teamRacingDmCompleted, "race", "races" );
+	} else {
+		itemCount = 9;
+		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Derby",
+			stats->derbyWins, "win", "wins", stats->derbyKills,
+			"kill", "kills", stats->derbyCompleted, "match", "matches" );
+		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Last Car Standing",
+			stats->lcsWins, "win", "wins", stats->lcsCompleted,
+			"match", "matches", -1, NULL, NULL );
+		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Elimination",
+			stats->eliminationWins, "win", "wins", stats->eliminationTotalRoundsLasted,
+			"round", "rounds", stats->eliminationCompleted, "match", "matches" );
+		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Deathmatch",
+			stats->dmWins, "win", "wins", stats->dmKills,
+			"kill", "kills", stats->dmCompleted, "match", "matches" );
+		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Team Deathmatch",
+			stats->teamWins, "win", "wins", stats->teamKills,
+			"kill", "kills", stats->teamCompleted, "match", "matches" );
+		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Capture the Flag",
+			stats->ctfWins, "win", "wins", stats->ctfCaptures,
+			"capture", "captures", stats->ctfCompleted, "match", "matches" );
+		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "4-Team CTF",
+			stats->ctf4Wins, "win", "wins", stats->ctf4Captures,
+			"capture", "captures", stats->ctf4Completed, "match", "matches" );
+		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Domination",
+			stats->dominationWins, "win", "wins", stats->dominationCompleted,
+			"match", "matches", -1, NULL, NULL );
+		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "King of the Hill",
+			stats->kothWins, "win", "wins", stats->kothCompleted,
+			"match", "matches", -1, NULL, NULL );
+	}
 }
 
 static void PlayerSettings_DrawStatsTab( void ) {
@@ -2830,7 +2883,6 @@ static void PlayerSettings_DrawStatsLabelValueWithColors( int row, const char *l
         int column;
         int labelX;
         int valueY;
-        int valueFont;
         float tileX;
         float tileWidth;
         float tileGap;
@@ -2879,18 +2931,14 @@ static void PlayerSettings_DrawStatsLabelValueWithColors( int row, const char *l
 	}
 
 	if ( label && label[0] ) {
-		PlayerSettings_DrawClippedStatsText( labelX, rowTop + 3,
+		PlayerSettings_DrawFittedStatsText( labelX, rowTop + 3,
 		                   (int)( tileX + tileWidth - 7 ), label, UI_SMALLFONT,
 		                   mutableLabelColor );
 	}
 
 	if ( value && value[0] ) {
-		valueFont = UI_BIGFONT;
-		if ( Frontend_TextWidth( value, UI_BIGFONT ) > tileWidth - 14.0f ) {
-			valueFont = UI_SMALLFONT;
-		}
-		PlayerSettings_DrawClippedStatsText( labelX, valueY,
-		                   (int)( tileX + tileWidth - 7 ), value, valueFont,
+		PlayerSettings_DrawFittedStatsText( labelX, valueY,
+		                   (int)( tileX + tileWidth - 7 ), value, UI_BIGFONT,
 		                   mutableValueColor );
 	}
 }
