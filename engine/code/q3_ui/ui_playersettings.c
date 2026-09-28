@@ -125,17 +125,20 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS            8
 #define PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE            2
-#define PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE            4
-#define PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE           60.0f
-#define PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP              16
-#define PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET         6
-#define PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT   32.0f
-#define PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP           18.0f
-#define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP   24.0f
-#define PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP           32.0f
-#define PLAYERSETTINGS_ACHIEVEMENT_TEXT_GAP             16.0f
+#define PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE            PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS
+#define PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE           32.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP              8
+#define PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET         4
+#define PLAYERSETTINGS_ACHIEVEMENT_SUMMARY_HEIGHT        60.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_PROGRESS_BAR_OFFSET  20.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_PROGRESS_BAR_HEIGHT  7.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_PROGRESS_TEXT_OFFSET 31.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_NEXT_TEXT_OFFSET     44.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP   8.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP           28.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_TEXT_GAP             10.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE  (( PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE + PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE - 1 ) / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE )
-#define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT           ( PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + ( PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP )
+#define PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT           ( PLAYERSETTINGS_ACHIEVEMENT_SUMMARY_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE * PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE + ( PLAYERSETTINGS_ACHIEVEMENT_ENTRY_ROWS_PER_PAGE - 1 ) * PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP )
 
 #define PLAYERSETTINGS_STATS_ROW_HEIGHT		36
 #define PLAYERSETTINGS_STATS_ROW_GAP		4
@@ -149,7 +152,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT       BG_ACHIEVEMENT_CATEGORY_COUNT
 #define PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW    0
-#define PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT        ( PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT * 2 )
+#define PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT        PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT
 #define PLAYERSETTINGS_ACHIEVEMENT_ROW_COUNT            PLAYERSETTINGS_ACHIEVEMENT_SECTION_COUNT
 #define PLAYERSETTINGS_ACHIEVEMENT_CONTENT_MARGIN	0.0f
 
@@ -2027,7 +2030,7 @@ static float PlayerSettings_GetStatsPageContentHeight( void ) {
 }
 
 static float PlayerSettings_GetAchievementsContentHeight( void ) {
-	/* One achievement track is shown per page inside the shared fixed card. */
+	/* One complete achievement category is shown per page in the fixed card. */
 	return PLAYERSETTINGS_STATS_CARD_CONTENT_HEIGHT;
 }
 
@@ -2917,7 +2920,7 @@ static void PlayerSettings_GetAchievementRowBounds( int row, int *top, int *bott
 	contentTop = PlayerSettings_GetScrollContentTop();
 	offset = paginationInfo ? paginationInfo->rowOffset : s_playersettings.achievementsPaginationInfo.rowOffset;
 	rowTop = contentTop + row * spacing - offset;
-	rowBottom = rowTop + PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT + 40;
+	rowBottom = rowTop + PLAYERSETTINGS_ACHIEVEMENT_ROW_HEIGHT;
 
 	if ( top ) {
 		*top = (int)rowTop;
@@ -3005,6 +3008,87 @@ for ( i = info->firstRow; i <= info->lastRow; ++i ) {
 }
 }
 
+static float PlayerSettings_DrawAchievementTierProgress( int rowTop, float areaLeft,
+	float areaRight, const playersettingsAchievementTierDef_t *tiers, int count,
+	double progress, int unlockedCount ) {
+	vec4_t trackColor;
+	vec4_t earnedColor;
+	vec4_t currentColor;
+	vec4_t fillColor;
+	float barWidth;
+	float segmentGap;
+	float segmentWidth;
+	float barY;
+	float fillFraction;
+	float thresholdStart;
+	float thresholdNext;
+	int i;
+
+	if ( count <= 0 || areaRight <= areaLeft ) {
+		return 0.0f;
+	}
+
+	fillFraction = 0.0f;
+	if ( unlockedCount < count ) {
+		thresholdStart = ( unlockedCount > 0 ) ? tiers[unlockedCount - 1].threshold : 0.0;
+		thresholdNext = tiers[unlockedCount].threshold;
+		if ( thresholdNext > thresholdStart ) {
+			fillFraction = (float)( ( progress - thresholdStart ) / ( thresholdNext - thresholdStart ) );
+			if ( fillFraction < 0.0f ) {
+				fillFraction = 0.0f;
+			} else if ( fillFraction > 1.0f ) {
+				fillFraction = 1.0f;
+			}
+		}
+	} else {
+		fillFraction = 1.0f;
+	}
+
+	Vector4Copy( playerSettingsMutedColor, trackColor );
+	trackColor[3] *= uis.tFrac * 0.30f;
+	Vector4Copy( playerSettingsAccentColor, earnedColor );
+	earnedColor[3] *= uis.tFrac;
+	Vector4Copy( playerSettingsTextColor, currentColor );
+	currentColor[3] *= uis.tFrac * 0.9f;
+
+	barWidth = areaRight - areaLeft;
+	segmentGap = 4.0f;
+	segmentWidth = ( barWidth - segmentGap * ( count - 1 ) ) / count;
+	if ( segmentWidth < 1.0f ) {
+		segmentWidth = 1.0f;
+	}
+	barY = rowTop + PLAYERSETTINGS_ACHIEVEMENT_PROGRESS_BAR_OFFSET;
+
+	for ( i = 0; i < count; ++i ) {
+		float segmentX;
+		float segmentFill;
+		float fillWidth;
+
+		segmentX = areaLeft + i * ( segmentWidth + segmentGap );
+		UI_FillRect( segmentX, barY, segmentWidth, PLAYERSETTINGS_ACHIEVEMENT_PROGRESS_BAR_HEIGHT, trackColor );
+
+		segmentFill = 0.0f;
+		if ( i < unlockedCount ) {
+			segmentFill = 1.0f;
+			Vector4Copy( earnedColor, fillColor );
+		} else if ( i == unlockedCount && unlockedCount < count ) {
+			segmentFill = fillFraction;
+			Vector4Copy( currentColor, fillColor );
+		}
+
+		if ( segmentFill > 0.0f ) {
+			fillWidth = ( segmentWidth - 2.0f ) * segmentFill;
+			if ( fillWidth > 0.0f ) {
+				UI_FillRect( segmentX + 1.0f, barY + 1.0f, fillWidth,
+				             PLAYERSETTINGS_ACHIEVEMENT_PROGRESS_BAR_HEIGHT - 2.0f,
+				             fillColor );
+			}
+		}
+	}
+
+	return fillFraction;
+}
+
 static int PlayerSettings_DrawAchievementSection( int row, const char *title, const playersettingsAchievementTierDef_t *tiers, int count, double progress, playersettingsAchievementIcon_t iconIndex, int firstTierIndex, const playersettingsPaginationInfo_t *paginationInfo ) {
         int i;
         int rowTop;
@@ -3029,6 +3113,9 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
         int pageIndex;
         int startTier;
         int endTier;
+        float nextTierProgress;
+        char currentTierBuffer[128];
+        char nextTierBuffer[128];
 
         if ( count > PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS ) {
                 count = PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS;
@@ -3087,7 +3174,44 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
                 columnWidth = PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE;
         }
 
-        gridTop = rowTop + PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET + PLAYERSETTINGS_ACHIEVEMENT_HEADER_LINE_HEIGHT + PLAYERSETTINGS_ACHIEVEMENT_HEADER_GAP;
+        nextTierProgress = 0.0f;
+        if ( unlockedCount > 0 ) {
+                Com_sprintf( currentTierBuffer, sizeof( currentTierBuffer ),
+                             "CURRENT: TIER %d / %d  %s",
+                             unlockedCount, count, tiers[unlockedCount - 1].name );
+        } else {
+                Com_sprintf( currentTierBuffer, sizeof( currentTierBuffer ),
+                             "CURRENT: NO TIER YET" );
+        }
+
+        if ( unlockedCount < count ) {
+                if ( visible ) {
+                        nextTierProgress = PlayerSettings_DrawAchievementTierProgress(
+                                rowTop, areaLeft, areaRight, tiers, count, progress, unlockedCount );
+                }
+                Com_sprintf( nextTierBuffer, sizeof( nextTierBuffer ),
+                             "NEXT: TIER %d  %s  %d%%",
+                             unlockedCount + 1, tiers[unlockedCount].name,
+                             (int)( nextTierProgress * 100.0f + 0.5f ) );
+        } else {
+                if ( visible ) {
+                        PlayerSettings_DrawAchievementTierProgress(
+                                rowTop, areaLeft, areaRight, tiers, count, progress, unlockedCount );
+                }
+                Com_sprintf( nextTierBuffer, sizeof( nextTierBuffer ),
+                             "ALL %d TIERS COMPLETE", count );
+        }
+
+        if ( visible ) {
+                Frontend_DrawText( titleX, rowTop + PLAYERSETTINGS_ACHIEVEMENT_PROGRESS_TEXT_OFFSET,
+                                   currentTierBuffer, UI_LEFT | UI_SMALLFONT,
+                                   playerSettingsTextColor );
+                Frontend_DrawText( titleX, rowTop + PLAYERSETTINGS_ACHIEVEMENT_NEXT_TEXT_OFFSET,
+                                   nextTierBuffer, UI_LEFT | UI_SMALLFONT,
+                                   playerSettingsMutedColor );
+        }
+
+        gridTop = rowTop + PLAYERSETTINGS_ACHIEVEMENT_SUMMARY_HEIGHT;
 
         tiersPerPage = PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE;
         if ( tiersPerPage <= 0 ) {
@@ -3167,8 +3291,8 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
 
                         name = tiers[i].name;
                         description = tiers[i].description;
-                        nameY = entryTop + 8.0f;
-                        descriptionY = nameY + 14.0f;
+                        nameY = entryTop + 1.0f;
+                        descriptionY = nameY + 12.0f;
 
                         PlayerSettings_DrawAchievementText(
                                 (int)textX, (int)nameY,
@@ -3191,12 +3315,6 @@ int displayTotalAchievements;
 char progressBuffer[32];
 char headerBuffer[64];
     int row;
-    int winTierCount;
-    int winFirstPageCount;
-    int winSecondPageCount;
-    int sprintTierCount;
-    int sprintFirstPageCount;
-    int sprintSecondPageCount;
     const playersettingsPaginationInfo_t *paginationInfo;
 
 paginationInfo = PlayerSettings_UpdateAchievementsPaginationInfo();
@@ -3226,38 +3344,18 @@ PlayerSettings_ClampAchievementTierPage();
         unlockedAchievements = 0;
         displayTotalAchievements = PLAYERSETTINGS_DISPLAY_ACHIEVEMENT_TOTAL;
 
-        winTierCount = ARRAY_LEN( s_winAchievementTiers );
-        winFirstPageCount = winTierCount < PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE ? winTierCount : PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE;
-        winSecondPageCount = winTierCount - winFirstPageCount;
-
-        sprintTierCount = ARRAY_LEN( s_sprintWinAchievementTiers );
-        sprintFirstPageCount = sprintTierCount < PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE ? sprintTierCount : PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE;
-        sprintSecondPageCount = sprintTierCount - sprintFirstPageCount;
-
         row = PLAYERSETTINGS_ACHIEVEMENT_FIRST_SECTION_ROW;
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Distance Driven (1/2)", s_distanceAchievementTiers, 4, stats->distanceKm, PLAYERSETTINGS_ACHIEVEMENT_ICON_DRIVEN, 0, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Distance Driven (2/2)", &s_distanceAchievementTiers[4], 4, stats->distanceKm, PLAYERSETTINGS_ACHIEVEMENT_ICON_DRIVEN, 4, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Kills (1/2)", s_killAchievementTiers, 4, (double)stats->kills, PLAYERSETTINGS_ACHIEVEMENT_ICON_KILLS, 0, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Kills (2/2)", &s_killAchievementTiers[4], 4, (double)stats->kills, PLAYERSETTINGS_ACHIEVEMENT_ICON_KILLS, 4, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Races Won (1/2)", s_winAchievementTiers, winFirstPageCount, (double)stats->wins, PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS, 0, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Races Won (2/2)", &s_winAchievementTiers[winFirstPageCount], winSecondPageCount, (double)stats->wins, PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS, winFirstPageCount, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Sprint Wins (1/2)", s_sprintWinAchievementTiers, sprintFirstPageCount, (double)stats->sprintWins, PLAYERSETTINGS_ACHIEVEMENT_ICON_SPRINT, 0, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Sprint Wins (2/2)", &s_sprintWinAchievementTiers[sprintFirstPageCount], sprintSecondPageCount, (double)stats->sprintWins, PLAYERSETTINGS_ACHIEVEMENT_ICON_SPRINT, sprintFirstPageCount, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flags Captured (1/2)", s_flagCaptureAchievementTiers, 4, (double)stats->flagCaptures, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAGS, 0, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flags Captured (2/2)", &s_flagCaptureAchievementTiers[4], 4, (double)stats->flagCaptures, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAGS, 4, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flag Assists (1/2)", s_flagAssistAchievementTiers, 4, (double)stats->flagAssists, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAG_ASSISTS, 0, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flag Assists (2/2)", &s_flagAssistAchievementTiers[4], 4, (double)stats->flagAssists, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAG_ASSISTS, 4, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Fuel Consumed (1/2)", s_fuelAchievementTiers, 4, stats->fuelUsed, PLAYERSETTINGS_ACHIEVEMENT_ICON_FUEL, 0, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Fuel Consumed (2/2)", &s_fuelAchievementTiers[4], 4, stats->fuelUsed, PLAYERSETTINGS_ACHIEVEMENT_ICON_FUEL, 4, paginationInfo );
-
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Accuracy (1/2)", s_accuracyAchievementTiers, 4, (double)stats->accuracyAwards, PLAYERSETTINGS_ACHIEVEMENT_ICON_ACCURACY, 0, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Accuracy (2/2)", &s_accuracyAchievementTiers[4], 4, (double)stats->accuracyAwards, PLAYERSETTINGS_ACHIEVEMENT_ICON_ACCURACY, 4, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Excellent (1/2)", s_excellentAchievementTiers, 4, (double)stats->excellentAwards, PLAYERSETTINGS_ACHIEVEMENT_ICON_EXCELLENT, 0, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Excellent (2/2)", &s_excellentAchievementTiers[4], 4, (double)stats->excellentAwards, PLAYERSETTINGS_ACHIEVEMENT_ICON_EXCELLENT, 4, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Impressive (1/2)", s_impressiveAchievementTiers, 4, (double)stats->impressiveAwards, PLAYERSETTINGS_ACHIEVEMENT_ICON_IMPRESSIVE, 0, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Impressive (2/2)", &s_impressiveAchievementTiers[4], 4, (double)stats->impressiveAwards, PLAYERSETTINGS_ACHIEVEMENT_ICON_IMPRESSIVE, 4, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Perfect (1/2)", s_perfectAchievementTiers, 4, (double)stats->perfectAwards, PLAYERSETTINGS_ACHIEVEMENT_ICON_PERFECT, 0, paginationInfo );
-        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Perfect (2/2)", &s_perfectAchievementTiers[4], 4, (double)stats->perfectAwards, PLAYERSETTINGS_ACHIEVEMENT_ICON_PERFECT, 4, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Distance Driven", s_distanceAchievementTiers, ARRAY_LEN( s_distanceAchievementTiers ), stats->distanceKm, PLAYERSETTINGS_ACHIEVEMENT_ICON_DRIVEN, 0, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Kills", s_killAchievementTiers, ARRAY_LEN( s_killAchievementTiers ), (double)stats->kills, PLAYERSETTINGS_ACHIEVEMENT_ICON_KILLS, 0, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Races Won", s_winAchievementTiers, ARRAY_LEN( s_winAchievementTiers ), (double)stats->wins, PLAYERSETTINGS_ACHIEVEMENT_ICON_WINS, 0, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Sprint Wins", s_sprintWinAchievementTiers, ARRAY_LEN( s_sprintWinAchievementTiers ), (double)stats->sprintWins, PLAYERSETTINGS_ACHIEVEMENT_ICON_SPRINT, 0, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flags Captured", s_flagCaptureAchievementTiers, ARRAY_LEN( s_flagCaptureAchievementTiers ), (double)stats->flagCaptures, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAGS, 0, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Flag Assists", s_flagAssistAchievementTiers, ARRAY_LEN( s_flagAssistAchievementTiers ), (double)stats->flagAssists, PLAYERSETTINGS_ACHIEVEMENT_ICON_FLAG_ASSISTS, 0, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Fuel Consumed", s_fuelAchievementTiers, ARRAY_LEN( s_fuelAchievementTiers ), stats->fuelUsed, PLAYERSETTINGS_ACHIEVEMENT_ICON_FUEL, 0, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Accuracy", s_accuracyAchievementTiers, ARRAY_LEN( s_accuracyAchievementTiers ), (double)stats->accuracyAwards, PLAYERSETTINGS_ACHIEVEMENT_ICON_ACCURACY, 0, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Excellent", s_excellentAchievementTiers, ARRAY_LEN( s_excellentAchievementTiers ), (double)stats->excellentAwards, PLAYERSETTINGS_ACHIEVEMENT_ICON_EXCELLENT, 0, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Impressive", s_impressiveAchievementTiers, ARRAY_LEN( s_impressiveAchievementTiers ), (double)stats->impressiveAwards, PLAYERSETTINGS_ACHIEVEMENT_ICON_IMPRESSIVE, 0, paginationInfo );
+        unlockedAchievements += PlayerSettings_DrawAchievementSection( row++, "Perfect", s_perfectAchievementTiers, ARRAY_LEN( s_perfectAchievementTiers ), (double)stats->perfectAwards, PLAYERSETTINGS_ACHIEVEMENT_ICON_PERFECT, 0, paginationInfo );
 
         if ( unlockedAchievements > displayTotalAchievements ) {
                 unlockedAchievements = displayTotalAchievements;
