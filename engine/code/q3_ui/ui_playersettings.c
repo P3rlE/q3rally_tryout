@@ -171,7 +171,7 @@ static vec4_t playerSettingsScrimColor = UI_FRONTEND_COLOR_SCRIM;
 static vec4_t playerSettingsTextColor = UI_FRONTEND_COLOR_TEXT;
 static vec4_t playerSettingsMutedColor = UI_FRONTEND_COLOR_MUTED;
 static vec4_t playerSettingsAccentColor = UI_FRONTEND_COLOR_ACCENT;
-static vec4_t playerSettingsStatusColor = UI_FRONTEND_COLOR_ACCENT;
+static vec4_t playerSettingsStatusColor = UI_THEME_COLOR_SUCCESS;
 
 typedef struct playersettings_pagination_state_s {
 	int	currentPage;

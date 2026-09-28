@@ -610,7 +610,7 @@ static void CG_DrawKOTH_RespawnWave_Internal( void ) {
 	char msg[32];
 	vec4_t panelColor = { 0.008f, 0.012f, 0.016f, 0.78f };
 	vec4_t lineColor = { 0.24f, 0.34f, 0.36f, 0.85f };
-	vec4_t accentColor = { 0.72f, 1.00f, 0.06f, 1.00f };
+	vec4_t accentColor = Q3RALLY_ACCENT_COLOR;
 
 	if ( cgs.gametype != GT_KOTH ) return;
 	if ( !cg_hudShowKothRespawnWave.integer ) return;
@@ -1133,7 +1133,8 @@ static void CG_DrawHudToast( void ) {
 	char message[128];
 	vec4_t panelColor = { 0.008f, 0.012f, 0.016f, 0.76f };
 	vec4_t borderColor = { 0.24f, 0.34f, 0.36f, 0.78f };
-	vec4_t accentColor = { 0.58f, 0.76f, 0.12f, 0.78f };
+	vec4_t accentColor = { Q3RALLY_ACCENT_RED, Q3RALLY_ACCENT_GREEN,
+	                        Q3RALLY_ACCENT_BLUE, 0.78f };
 	vec4_t textColor = { 0.88f, 0.95f, 0.97f, 1.00f };
 	vec4_t iconColor = { 1.00f, 1.00f, 1.00f, 1.00f };
 
@@ -1281,7 +1282,7 @@ static void CG_DrawRallyTelemetryHud( void ) {
 	vec4_t lineColor = { 0.300f, 0.390f, 0.430f, 0.78f };
 	vec4_t healthDividerColor = { 0.300f, 0.390f, 0.430f, 0.42f };
 	vec4_t mutedColor = { 0.480f, 0.610f, 0.650f, 1.00f };
-	vec4_t accentColor = { 0.720f, 1.000f, 0.060f, 1.00f };
+	vec4_t accentColor = Q3RALLY_ACCENT_COLOR;
 	vec4_t blueColor = { 0.380f, 0.650f, 1.000f, 1.00f };
 	vec4_t dangerColor = { 1.000f, 0.150f, 0.080f, 1.00f };
 	vec4_t healthColor;
@@ -2111,9 +2112,9 @@ static void CG_DrawRallyStatusBar( void ) {
 		break;
 	
 	default:
-		statusAccentColor[0] = 0.720f;
-		statusAccentColor[1] = 1.000f;
-		statusAccentColor[2] = 0.060f;
+		statusAccentColor[0] = Q3RALLY_ACCENT_RED;
+		statusAccentColor[1] = Q3RALLY_ACCENT_GREEN;
+		statusAccentColor[2] = Q3RALLY_ACCENT_BLUE;
 		statusAccentColor[3] = 1.00f;
 	}
 
@@ -3512,7 +3513,8 @@ static void CG_DrawHoldableItem( void ) {
 	screenPlacement_e savedHorizontalPlacement;
 	screenPlacement_e savedVerticalPlacement;
 	vec4_t panelColor = { 0.008f, 0.012f, 0.016f, 0.50f };
-	vec4_t accentColor = { 0.58f, 0.76f, 0.12f, 0.78f };
+	vec4_t accentColor = { Q3RALLY_ACCENT_RED, Q3RALLY_ACCENT_GREEN,
+	                        Q3RALLY_ACCENT_BLUE, 0.78f };
 	vec4_t useColor = { 0.650f, 0.780f, 0.810f, 0.90f };
 
 	value = cg.snap->ps.stats[STAT_HOLDABLE_ITEM];
@@ -4765,7 +4767,8 @@ CG_Draw2D
 =========
 */
 static void CG_DrawIntroCamOverlay( void ) {
-	static const vec4_t accentColor = { 0.70f, 0.94f, 0.08f, 0.96f };
+	static const vec4_t accentColor = { Q3RALLY_ACCENT_RED, Q3RALLY_ACCENT_GREEN,
+	                                    Q3RALLY_ACCENT_BLUE, 0.96f };
 	static const vec4_t mutedColor = { 0.63f, 0.80f, 0.84f, 0.92f };
 	int secondsLeft;
 

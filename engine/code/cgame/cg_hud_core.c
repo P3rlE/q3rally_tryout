@@ -564,12 +564,12 @@ void CG_DrawHUDOptionsMenu( void ) {
         static vec4_t bgColor     = { 0.008f, 0.012f, 0.016f, 0.88f };
         static vec4_t bandColor   = { 0.008f, 0.012f, 0.016f, 0.96f };
         static vec4_t borderColor = { 0.24f, 0.34f, 0.36f, 0.72f };
-        static vec4_t accentColor = { 0.72f, 1.00f, 0.06f, 1.00f };
+        static vec4_t accentColor = Q3RALLY_ACCENT_COLOR;
         static vec4_t titleColor  = { 0.90f, 0.95f, 0.94f, 1.00f };
         static vec4_t secColor    = { 0.47f, 0.62f, 0.61f, 1.00f };
         static vec4_t labelColor  = { 0.90f, 0.95f, 0.94f, 1.00f };
-        static vec4_t hoverColor  = { 0.07f, 0.15f, 0.10f, 0.78f };
-        static vec4_t onColor     = { 0.72f, 1.00f, 0.06f, 1.00f };
+        static vec4_t hoverColor  = { 0.07f, 0.11f, 0.17f, 0.78f };
+        static vec4_t onColor     = Q3RALLY_ACCENT_COLOR;
         static vec4_t offColor    = { 0.47f, 0.62f, 0.61f, 1.00f };
         static vec4_t cycColor    = { 0.30f, 0.66f, 0.96f, 1.00f };
         static vec4_t naColor     = { 0.29f, 0.37f, 0.38f, 1.00f };
@@ -799,14 +799,14 @@ void CG_DrawHUDOptionsMenu( void ) {
 
 /* -----------------------------------------------------------------------
    Shared in-game surface styling.  The frontend uses quiet dark surfaces,
-   a thin lime signal colour, and a very restrained amount of text.  Keep
+   a thin steel-blue signal colour, and a very restrained amount of text.  Keep
    the same language here so the HUD feels like part of the same product.
    ----------------------------------------------------------------------- */
 #if 0 /* superseded by the flat telemetry strip */
 static const vec4_t rallyHudPanelColor = { 0.018f, 0.025f, 0.030f, 0.82f };
 static const vec4_t rallyHudRowColor   = { 0.050f, 0.070f, 0.070f, 0.64f };
 static const vec4_t rallyHudLineColor  = { 0.250f, 0.330f, 0.320f, 0.56f };
-static const vec4_t rallyHudAccent     = { 0.720f, 1.000f, 0.060f, 1.00f };
+static const vec4_t rallyHudAccent     = Q3RALLY_ACCENT_COLOR;
 static const vec4_t rallyHudText       = { 0.900f, 0.950f, 0.940f, 1.00f };
 static const vec4_t rallyHudMuted      = { 0.470f, 0.570f, 0.560f, 1.00f };
 static const vec4_t rallyHudGood       = { 0.480f, 1.000f, 0.420f, 1.00f };
@@ -1135,9 +1135,9 @@ static float CG_DrawRacingOrderHUD( float top ) {
     vec4_t panelColor = { 0.008f, 0.012f, 0.016f, 0.42f };
     vec4_t headerColor = { 0.008f, 0.012f, 0.016f, 0.72f };
     vec4_t rowColor = { 0.018f, 0.027f, 0.031f, 0.28f };
-    vec4_t selectedColor = { 0.060f, 0.140f, 0.088f, 0.45f };
+    vec4_t selectedColor = { 0.060f, 0.100f, 0.160f, 0.45f };
     vec4_t borderColor = { 0.24f, 0.34f, 0.36f, 0.52f };
-    vec4_t accentColor = { 0.72f, 1.00f, 0.06f, 1.00f };
+    vec4_t accentColor = Q3RALLY_ACCENT_COLOR;
     vec4_t textColor = { 0.90f, 0.95f, 0.94f, 1.00f };
     vec4_t mutedColor = { 0.47f, 0.62f, 0.61f, 1.00f };
     vec4_t gapColor = { 0.36f, 0.70f, 0.96f, 1.00f };
@@ -1403,9 +1403,9 @@ static void CG_DrawDeathmatchOrderHUD( float top ) {
     vec4_t panelColor = { 0.008f, 0.012f, 0.016f, 0.42f };
     vec4_t headerColor = { 0.008f, 0.012f, 0.016f, 0.72f };
     vec4_t rowColor = { 0.018f, 0.027f, 0.031f, 0.28f };
-    vec4_t selectedColor = { 0.060f, 0.140f, 0.088f, 0.45f };
+    vec4_t selectedColor = { 0.060f, 0.100f, 0.160f, 0.45f };
     vec4_t borderColor = { 0.24f, 0.34f, 0.36f, 0.52f };
-    vec4_t accentColor = { 0.72f, 1.00f, 0.06f, 1.00f };
+    vec4_t accentColor = Q3RALLY_ACCENT_COLOR;
     vec4_t textColor = { 0.90f, 0.95f, 0.94f, 1.00f };
     vec4_t mutedColor = { 0.47f, 0.62f, 0.61f, 1.00f };
 
@@ -1578,9 +1578,9 @@ static void CG_DrawTeamDeathmatchOrderHUD( float top ) {
     vec4_t panelColor = { 0.008f, 0.012f, 0.016f, 0.42f };
     vec4_t headerColor = { 0.008f, 0.012f, 0.016f, 0.72f };
     vec4_t rowColor = { 0.018f, 0.027f, 0.031f, 0.28f };
-    vec4_t selectedColor = { 0.060f, 0.140f, 0.088f, 0.45f };
+    vec4_t selectedColor = { 0.060f, 0.100f, 0.160f, 0.45f };
     vec4_t borderColor = { 0.24f, 0.34f, 0.36f, 0.52f };
-    vec4_t accentColor = { 0.72f, 1.00f, 0.06f, 1.00f };
+    vec4_t accentColor = Q3RALLY_ACCENT_COLOR;
     vec4_t textColor = { 0.90f, 0.95f, 0.94f, 1.00f };
     vec4_t mutedColor = { 0.47f, 0.62f, 0.61f, 1.00f };
     vec4_t teamColor;
@@ -1803,9 +1803,9 @@ static void CG_DrawCTFOrderHUD( float top ) {
     vec4_t panelColor = { 0.008f, 0.012f, 0.016f, 0.42f };
     vec4_t headerColor = { 0.008f, 0.012f, 0.016f, 0.72f };
     vec4_t rowColor = { 0.018f, 0.027f, 0.031f, 0.28f };
-    vec4_t selectedColor = { 0.060f, 0.140f, 0.088f, 0.45f };
+    vec4_t selectedColor = { 0.060f, 0.100f, 0.160f, 0.45f };
     vec4_t borderColor = { 0.24f, 0.34f, 0.36f, 0.52f };
-    vec4_t accentColor = { 0.72f, 1.00f, 0.06f, 1.00f };
+    vec4_t accentColor = Q3RALLY_ACCENT_COLOR;
     vec4_t textColor = { 0.90f, 0.95f, 0.94f, 1.00f };
     vec4_t mutedColor = { 0.47f, 0.62f, 0.61f, 1.00f };
     vec4_t flagColor;

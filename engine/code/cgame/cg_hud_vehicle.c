@@ -25,7 +25,7 @@ This file is part of q3rally source code.
 
 static const vec4_t vehicleHudPanel  = { 0.018f, 0.025f, 0.030f, 0.78f };
 static const vec4_t vehicleHudLine   = { 0.250f, 0.330f, 0.320f, 0.58f };
-static const vec4_t vehicleHudAccent = { 0.720f, 1.000f, 0.060f, 1.00f };
+static const vec4_t vehicleHudAccent = Q3RALLY_ACCENT_COLOR;
 static const vec4_t vehicleHudLabel  = { 0.57f, 0.70f, 0.74f, 0.90f };
 static const vec4_t vehicleHudFrame  = { 0.30f, 0.43f, 0.49f, 0.82f };
 

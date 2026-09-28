@@ -392,8 +392,10 @@ static void CG_DrawModernBackground(int x, int y, int width, int height,
     vec4_t accentColor;
     float fillAlpha;
     
-    accentColor[0] = 0.72f; accentColor[1] = 1.0f;
-    accentColor[2] = 0.06f; accentColor[3] = alpha;
+    accentColor[0] = Q3RALLY_ACCENT_RED;
+    accentColor[1] = Q3RALLY_ACCENT_GREEN;
+    accentColor[2] = Q3RALLY_ACCENT_BLUE;
+    accentColor[3] = alpha;
     if (isHeader) {
         bgColor[0] = 0.008f; bgColor[1] = 0.012f;
         bgColor[2] = 0.016f; bgColor[3] = alpha;
@@ -808,8 +810,10 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
             if (ci->team == TEAM_SPECTATOR) {
                 CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
             } else if ( ( leaderClient = CG_GetScoreboardRaceLeaderClient() ) == score->client ) {
-                deltaColor[0] = 0.72f; deltaColor[1] = 1.0f;
-                deltaColor[2] = 0.06f; deltaColor[3] = fade;
+                deltaColor[0] = Q3RALLY_ACCENT_RED;
+                deltaColor[1] = Q3RALLY_ACCENT_GREEN;
+                deltaColor[2] = Q3RALLY_ACCENT_BLUE;
+                deltaColor[3] = fade;
                 CG_DrawModernText(x, y, "LEADER", 1, width, deltaColor, qfalse);
             } else if ( leaderClient >= 0 &&
                         CG_GetScoreboardRaceDelta( leaderClient, score->client, &deltaMs ) ) {
@@ -978,10 +982,12 @@ static void CG_DrawModernPlayerRow(int y, score_t *score, int rank,
     }
     
     /* Initialize highlight color */
-    localHighlight[0] = 0.06f; localHighlight[1] = 0.14f;
-    localHighlight[2] = 0.08f; localHighlight[3] = 0.32f * fade;
-    localAccent[0] = 0.72f; localAccent[1] = 1.0f;
-    localAccent[2] = 0.06f; localAccent[3] = fade;
+    localHighlight[0] = 0.06f; localHighlight[1] = 0.10f;
+    localHighlight[2] = 0.16f; localHighlight[3] = 0.32f * fade;
+    localAccent[0] = Q3RALLY_ACCENT_RED;
+    localAccent[1] = Q3RALLY_ACCENT_GREEN;
+    localAccent[2] = Q3RALLY_ACCENT_BLUE;
+    localAccent[3] = fade;
 
     isLocalPlayer = (score->client == cg.snap->ps.clientNum);
     rowHeight = isCompact ? MODERN_SB_COMPACT_HEIGHT : MODERN_SB_ROW_HEIGHT;
@@ -1050,8 +1056,10 @@ static void CG_DrawModernGameInfo(int y, float fade,
     int remainingY;
     
     /* Initialize title color */
-    titleColor[0] = 0.72f; titleColor[1] = 1.0f;
-    titleColor[2] = 0.06f; titleColor[3] = fade;
+    titleColor[0] = Q3RALLY_ACCENT_RED;
+    titleColor[1] = Q3RALLY_ACCENT_GREEN;
+    titleColor[2] = Q3RALLY_ACCENT_BLUE;
+    titleColor[3] = fade;
     
     isRacing = CG_IsRacingGametype();
     isEliminationMode = (cgs.gametype == GT_ELIMINATION ||

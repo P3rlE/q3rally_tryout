@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	Quake's menu framework system.
 **********************************************************************/
 #include "ui_local.h"
+#include "../qcommon/rally_colors.h"
 
 sfxHandle_t menu_in_sound;
 sfxHandle_t menu_move_sound;
@@ -63,11 +64,11 @@ vec4_t text_color_highlight = {1.00, 1.00, 0.00, 1.00};	// bright yellow
 vec4_t listbar_color        = {1.00, 0.43, 0.00, 0.30};	// transluscent orange
 vec4_t text_color_status    = {1.00, 1.00, 1.00, 1.00};	// bright white	
 */
-vec4_t pulse_color          = {0.00, 1.00, 0.00, 0.80};
+vec4_t pulse_color          = {Q3RALLY_ACCENT_RED, Q3RALLY_ACCENT_GREEN, Q3RALLY_ACCENT_BLUE, 0.80};
 vec4_t text_color_disabled  = {0.50, 0.50, 0.50, 1.00};	// light gray
 vec4_t text_color_normal	= {1.00, 1.00, 1.00, 1.00};	// white
-vec4_t text_color_highlight = {0.00, 1.00, 0.00, 0.80};	// bright green
-vec4_t listbar_color        = {0.00, 1.00, 0.00, 0.30};	// transluscent green
+vec4_t text_color_highlight = {Q3RALLY_ACCENT_RED, Q3RALLY_ACCENT_GREEN, Q3RALLY_ACCENT_BLUE, 0.80};	// blue accent
+vec4_t listbar_color        = {Q3RALLY_ACCENT_RED, Q3RALLY_ACCENT_GREEN, Q3RALLY_ACCENT_BLUE, 0.30};	// translucent blue
 vec4_t text_color_status    = {1.00, 1.00, 1.00, 1.00};	// bright white	
 // END
 
