@@ -2703,8 +2703,10 @@ if ( s_playersettings.statsPagination.currentPage == 0 ) {
 	return;
 }
 
-PlayerSettings_DrawStatsModesDashboard( stats );
-return;
+if ( s_playersettings.statsPagination.currentPage > 0 ) {
+	PlayerSettings_DrawStatsModesDashboard( stats );
+	return;
+}
 
 /* ── General ─────────────────────────────────────────────────────── */
 Com_sprintf( buffer, sizeof( buffer ), "%d", stats->playerScore );
@@ -3581,8 +3583,8 @@ PlayerSettings_ClampAchievementTierPage();
 
 static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 	static const char *const categoryLabels[PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT] = {
-		"Distance", "Kills", "Races Won", "Sprint Wins", "Flags", "Assists",
-		"Fuel", "Accuracy", "Excellent", "Impressive", "Perfect"
+		"Distance", "Kills", "Race Wins", "Sprint", "Flags", "Assists",
+		"Fuel", "Accuracy", "Excellent", "Impress.", "Perfect"
 	};
 	int totalUnlocked;
 	int totalTiers;
@@ -3677,7 +3679,7 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 			unlocked = BG_AchievementUnlockedTiers( category, progress );
 		}
 		Com_sprintf( tierCount, sizeof( tierCount ), "%d/%d", unlocked, category->tierCount );
-		Frontend_DrawText( (int)( rect->x + rect->w - 23 ), (int)rect->y + 5,
+		Frontend_DrawText( (int)( rect->x + rect->w - 4 ), (int)rect->y + 5,
 		                   tierCount, UI_RIGHT | UI_SMALLFONT,
 		                   i == s_playersettings.achievementsPagination.currentPage ?
 	                   playerSettingsAccentColor : playerSettingsMutedColor );

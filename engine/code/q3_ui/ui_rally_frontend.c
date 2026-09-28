@@ -66,10 +66,8 @@ void Frontend_DrawBackground( const float *scrimColor ) {
     }
 }
 
-/* The legacy UI text path treats every glyph as a full 8/16 pixel cell.
- * The modern screens use the same atlas, but with a tighter advance and a
- * slightly wider glyph quad. This keeps the type readable without the wide,
- * arcade-menu tracking of the original renderer. */
+/* Use the same fixed glyph cells as UI_DrawString. Drawing a glyph wider than
+ * its advance distorts narrow letters and causes adjacent glyphs to overlap. */
 static int Frontend_TextHeight( int style ) {
     if ( style & UI_SMALLFONT ) {
         return SMALLCHAR_HEIGHT;
@@ -80,66 +78,14 @@ static int Frontend_TextHeight( int style ) {
     return BIGCHAR_HEIGHT;
 }
 
-static qboolean Frontend_IsNarrowGlyph( int ch ) {
-    return ( ch == 'I' || ch == 'i' || ch == 'l' || ch == 'L' || ch == '!' ||
-             ch == '|' || ch == '.' || ch == ',' || ch == ':' || ch == ';' )
-               ? qtrue : qfalse;
-}
-
-static int Frontend_TextAdvance( int ch, int style ) {
-    int advance;
-
+static int Frontend_TextCellWidth( int style ) {
     if ( style & UI_SMALLFONT ) {
-        advance = 6;
-    } else if ( style & UI_GIANTFONT ) {
-        advance = 18;
-    } else {
-        advance = 12;
-    }
-
-    if ( ch == ' ' ) {
-        return ( advance + 1 ) / 2;
-    }
-
-    /* Keep narrow glyphs compact, but do not collapse them into the next
-     * character. Their draw quad is reduced by the matching function below. */
-    if ( Frontend_IsNarrowGlyph( ch ) ) {
-        if ( ch == 'l' || ch == 'L' ) {
-            return advance - 1;
-        }
-        return advance - 2;
-    }
-
-    return advance;
-}
-
-static int Frontend_TextQuadWidth( int ch, int style ) {
-    if ( Frontend_IsNarrowGlyph( ch ) ) {
-        if ( ch == 'l' || ch == 'L' ) {
-            if ( style & UI_SMALLFONT ) {
-                return 8;
-            }
-            if ( style & UI_GIANTFONT ) {
-                return 20;
-            }
-            return 16;
-        }
-        if ( style & UI_SMALLFONT ) {
-            return 6;
-        }
-        if ( style & UI_GIANTFONT ) {
-            return 16;
-        }
-        return 12;
-    }
-
-    if ( style & UI_SMALLFONT ) {
-        return 10;
+        return SMALLCHAR_WIDTH;
     }
     if ( style & UI_GIANTFONT ) {
-        return 28;
+        return GIANTCHAR_WIDTH;
     }
-    return 20;
+    return BIGCHAR_WIDTH;
 }
 
 static int Frontend_TextWidthRaw( const char *text, int style ) {
@@ -156,7 +102,7 @@ static int Frontend_TextWidthRaw( const char *text, int style ) {
             s++;
             continue;
         }
-        width += Frontend_TextAdvance( *s & 255, style );
+        width += Frontend_TextCellWidth( style );
     }
     return width;
 }
@@ -183,12 +129,12 @@ static int Frontend_TextVisualWidthRaw( const char *text, int style ) {
 
         ch = *s & 255;
         if ( ch != ' ' ) {
-            glyphRight = cursorX + Frontend_TextQuadWidth( ch, style );
+            glyphRight = cursorX + Frontend_TextCellWidth( style );
             if ( glyphRight > visualWidth ) {
                 visualWidth = glyphRight;
             }
         }
-        cursorX += Frontend_TextAdvance( ch, style );
+        cursorX += Frontend_TextCellWidth( style );
     }
 
     if ( cursorX > visualWidth ) {
@@ -231,8 +177,8 @@ static void Frontend_DrawTextRaw( float x, int y, const char *text,
         }
 
         ch = *s & 255;
-        advance = Frontend_TextAdvance( ch, style ) * scale;
-        quadWidth = Frontend_TextQuadWidth( ch, style ) * scale;
+        advance = Frontend_TextCellWidth( style ) * scale;
+        quadWidth = advance;
         if ( ch == ' ' ) {
             cursorX += advance;
             continue;
