@@ -1096,6 +1096,22 @@ static const char *CG_GetRewardToastLabel( qhandle_t icon ) {
 	return "MEDAL EARNED";
 }
 
+static qhandle_t CG_GetAchievementTierMedal( bgAchievementIcon_t icon, int tierIndex ) {
+	qhandle_t *handle;
+
+	if ( icon < 0 || icon >= BG_ACHIEVEMENT_ICON_COUNT ||
+	     tierIndex < 0 || tierIndex >= BG_ACHIEVEMENT_MAX_TIERS ) {
+		return 0;
+	}
+
+	handle = &cgs.media.achievementMedalTiers[icon][tierIndex];
+	if ( !*handle ) {
+		*handle = trap_R_RegisterShaderNoMip( bg_achievementMedalTierPaths[icon][tierIndex] );
+	}
+
+	return *handle;
+}
+
 static void CG_DrawHudToast( void ) {
 	cgHudToast_t *toast;
 	gitem_t *item;
@@ -1191,7 +1207,10 @@ static void CG_DrawHudToast( void ) {
 		if ( category->icon >= 0 && category->icon < BG_ACHIEVEMENT_ICON_COUNT ) {
 			icon = ( elapsed < ACHIEVEMENT_LOCKED_TIME ) ?
 			       cgs.media.achievementMedalLocked[category->icon] :
-			       cgs.media.achievementMedalUnlocked[category->icon];
+			       CG_GetAchievementTierMedal( category->icon, toast->achievementTier );
+			if ( !icon ) {
+				icon = cgs.media.achievementMedalUnlocked[category->icon];
+			}
 		}
 		break;
 	case CG_HUD_TOAST_RANK:
@@ -3659,7 +3678,12 @@ static void CG_DrawAchievementNotifications( void ) {
     CG_FillRect( x, y, width, height, bgColor );
     CG_DrawRect( x, y, width, height, 1.0f, borderColor );
 
-    icon = ( elapsed < ACHIEVEMENT_LOCKED_TIME ) ? cgs.media.achievementMedalLocked[category->icon] : cgs.media.achievementMedalUnlocked[category->icon];
+    icon = ( elapsed < ACHIEVEMENT_LOCKED_TIME ) ?
+           cgs.media.achievementMedalLocked[category->icon] :
+           CG_GetAchievementTierMedal( category->icon, announcement->tierIndex );
+    if ( !icon ) {
+        icon = cgs.media.achievementMedalUnlocked[category->icon];
+    }
     if ( icon ) {
         CG_DrawPic( x + 10.0f, y + ( height - iconSize ) * 0.5f, iconSize, iconSize, icon );
     }

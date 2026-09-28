@@ -1211,6 +1211,7 @@ typedef struct {
 	qhandle_t	medalCapture;
         qhandle_t       achievementMedalLocked[BG_ACHIEVEMENT_ICON_COUNT];
         qhandle_t       achievementMedalUnlocked[BG_ACHIEVEMENT_ICON_COUNT];
+        qhandle_t       achievementMedalTiers[BG_ACHIEVEMENT_ICON_COUNT][BG_ACHIEVEMENT_MAX_TIERS];
 	qhandle_t	headLightGlow;
 	qhandle_t	brakeLightGlow;
 	qhandle_t	reverseLightGlow;
