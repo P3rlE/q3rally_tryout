@@ -82,23 +82,60 @@ static int Frontend_TextCellWidth( int style ) {
     return Frontend_TextHeight( style );
 }
 
+static int Frontend_TextAdvance( int ch, int style ) {
+    int cellWidth;
+    int tracking;
+
+    cellWidth = Frontend_TextCellWidth( style );
+    if ( ch == ' ' ) {
+        return ( cellWidth + 1 ) / 2;
+    }
+
+    if ( style & UI_SMALLFONT ) {
+        tracking = 2;
+    } else if ( style & UI_GIANTFONT ) {
+        tracking = 5;
+    } else {
+        tracking = 3;
+    }
+
+    return cellWidth - tracking;
+}
+
 static int Frontend_TextWidthRaw( const char *text, int style ) {
     const char *s;
-    int width;
+    int cursorX;
+    int visualWidth;
 
     if ( !text ) {
         return 0;
     }
 
-    width = 0;
+    cursorX = 0;
+    visualWidth = 0;
     for ( s = text; *s; s++ ) {
+        int ch;
+        int glyphRight;
+
         if ( Q_IsColorString( s ) ) {
             s++;
             continue;
         }
-        width += Frontend_TextCellWidth( style );
+
+        ch = *s & 255;
+        if ( ch != ' ' ) {
+            glyphRight = cursorX + Frontend_TextCellWidth( style );
+            if ( glyphRight > visualWidth ) {
+                visualWidth = glyphRight;
+            }
+        }
+        cursorX += Frontend_TextAdvance( ch, style );
     }
-    return width;
+
+    if ( cursorX > visualWidth ) {
+        visualWidth = cursorX;
+    }
+    return visualWidth;
 }
 
 static int Frontend_TextVisualWidthRaw( const char *text, int style ) {
@@ -128,7 +165,7 @@ static int Frontend_TextVisualWidthRaw( const char *text, int style ) {
                 visualWidth = glyphRight;
             }
         }
-        cursorX += Frontend_TextCellWidth( style );
+        cursorX += Frontend_TextAdvance( ch, style );
     }
 
     if ( cursorX > visualWidth ) {
@@ -171,8 +208,8 @@ static void Frontend_DrawTextRaw( float x, int y, const char *text,
         }
 
         ch = *s & 255;
-        advance = Frontend_TextCellWidth( style ) * scale;
-        quadWidth = advance;
+        advance = Frontend_TextAdvance( ch, style ) * scale;
+        quadWidth = Frontend_TextCellWidth( style ) * scale;
         if ( ch == ' ' ) {
             cursorX += advance;
             continue;
