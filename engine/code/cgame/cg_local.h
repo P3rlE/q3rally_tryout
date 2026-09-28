@@ -2168,13 +2168,12 @@ void CG_DrawRaceCountDown( void );
 void CG_RaceCountDown( const char *str, int secondsLeft );
 
 //
-// cg_rally_hud.c
+// Modular HUD interfaces (cg_hud_core.c and HUD element modules)
 //
 
 extern float colors[4][4];
 void CG_DrawRearviewMirror( float x, float y, float w, float h);
 float CG_DrawUpperRightHUD( float y );
-float CG_DrawLowerRightHUD( float y );
 float CG_DrawLowerLeftHUD( float y );
 void CG_DrawMMap( float x, float y, float w, float h );
 void CG_DrawHUD_DerbyList(float x, float y);
@@ -2184,7 +2183,7 @@ void CG_DrawKOTH_RespawnWave( void ); /* Q3Rally KOTH */
 
 
 //
-// cg_rally_hud2.c
+// Main HUD dispatcher
 //
 qboolean CG_DrawHUD( void );
 

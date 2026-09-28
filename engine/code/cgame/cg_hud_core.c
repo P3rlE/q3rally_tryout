@@ -28,8 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   Central HUD dispatcher:
     - Cvar registration for all HUD element toggles
     - CG_DrawHUD()          : main entry point called each frame
-    - CG_DrawUpperRightHUD(): legacy right-side racing panels
-    - CG_DrawLowerRightHUD(): speedometer area
+    - CG_DrawUpperRightHUD(): checkpoint arrow and score overlay
     - CG_DrawLowerLeftHUD() : rear-weapon ammo area
     - CG_DrawHUDOptionsMenu(): in-game overlay to toggle elements
 ===========================================================================
@@ -39,12 +38,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "cg_hud_elements.h"
 
 /* -----------------------------------------------------------------------
-   Shared constants used across all HUD modules
+   LCS timeline sizing
    ----------------------------------------------------------------------- */
-#define HUD_RIGHT_EDGE          636.0f
-#define HUD_COLUMN_SPACING        4.0f
 #define HUD_TEXT_INSET            6.0f
-#define HUD_ROW_HEIGHT          ((float)TINYCHAR_HEIGHT + 4.0f)
 
 /* -----------------------------------------------------------------------
    Shared colour palette (also used by racing / derby / vehicle modules)
@@ -63,7 +59,6 @@ vmCvar_t  cg_hudShowTimes;
 vmCvar_t  cg_hudShowLaps;
 vmCvar_t  cg_hudShowPosition;
 vmCvar_t  cg_hudShowDistToFinish;
-vmCvar_t  cg_hudShowCarAheadBehind;
 vmCvar_t  cg_hudShowOpponentList;
 vmCvar_t  cg_hudShowScores;
 
@@ -91,7 +86,6 @@ void CG_HUD_RegisterCvars( void ) {
     trap_Cvar_Register( &cg_hudShowLaps,           "cg_hudShowLaps",           "1", CVAR_ARCHIVE );
     trap_Cvar_Register( &cg_hudShowPosition,       "cg_hudShowPosition",       "1", CVAR_ARCHIVE );
     trap_Cvar_Register( &cg_hudShowDistToFinish,   "cg_hudShowDistToFinish",   "1", CVAR_ARCHIVE );
-    trap_Cvar_Register( &cg_hudShowCarAheadBehind, "cg_hudShowCarAheadBehind", "1", CVAR_ARCHIVE );
     trap_Cvar_Register( &cg_hudShowOpponentList,   "cg_hudShowOpponentList",   "1", CVAR_ARCHIVE );
     trap_Cvar_Register( &cg_hudShowScores,         "cg_hudShowScores",         "1", CVAR_ARCHIVE );
 
@@ -116,26 +110,8 @@ float CG_GetEliminationColumnWidth( void ) {
 
     if ( columnWidth <= 0.0f ) {
         const float insetWidth = HUD_TEXT_INSET * 2.0f;
-        float       maxWidth   = insetWidth +
-            CG_IngameStringWidth( "T: 00:00.000", UI_SMALLFONT, 0.75f );
-        float       candidate;
-
-#define CHECK_CANDIDATE(str) \
-        candidate = insetWidth + CG_IngameStringWidth( str, UI_SMALLFONT, 0.75f ); \
-        if ( candidate > maxWidth ) { maxWidth = candidate; }
-
-        CHECK_CANDIDATE( "L: 00:00.000" )
-        CHECK_CANDIDATE( "B: 00:00.000" )
-        CHECK_CANDIDATE( "LAP: 00/00" )
-        CHECK_CANDIDATE( "POS: 00/00" )
-        CHECK_CANDIDATE( "DIST: 0000m" )
-        CHECK_CANDIDATE( "DIST: 100.0%" )
-        CHECK_CANDIDATE( "D: +00.000" )
-        CHECK_CANDIDATE( "PLAYERS LEFT: 000" )
-        CHECK_CANDIDATE( "R99 LEFT63 Name (99s)" )
-#undef CHECK_CANDIDATE
-
-        columnWidth = maxWidth;
+        columnWidth = insetWidth + CG_IngameStringWidth(
+            "R99 LEFT63 Name (99s)", UI_SMALLFONT, 0.75f );
     }
 
     return columnWidth;
@@ -186,14 +162,14 @@ float CG_GetEliminationColumnWidth( void ) {
 #define HUDOPT_SLIDER_ZOOM_ID  2
 /* Text sizes reuse the engine's built-in char constants:
  * Title  → BIGCHAR,  sections/entries → SMALLCHAR / TINYCHAR               */
-/* Left col: Racing (10 entries, indices 0-9)
- * Right col: Derby (3, indices 10-12) + KOTH (2, indices 13-14) + Vehicle (3, indices 15-17) */
-#define HUDOPT_LEFT_COUNT   10
-#define HUDOPT_DERBY_START  10
+/* Left col: Racing (9 entries, indices 0-8)
+ * Right col: Derby (3, indices 9-11) + KOTH (2, indices 12-13) + Vehicle (3, indices 14-16) */
+#define HUDOPT_LEFT_COUNT    9
+#define HUDOPT_DERBY_START   9
 #define HUDOPT_DERBY_COUNT   3
-#define HUDOPT_KOTH_START   13
+#define HUDOPT_KOTH_START   12
 #define HUDOPT_KOTH_COUNT    2
-#define HUDOPT_VEH_START    15
+#define HUDOPT_VEH_START    14
 #define HUDOPT_VEH_COUNT     3
 
 typedef struct {
@@ -213,7 +189,6 @@ static const hudToggleEntry_t hudToggleTable[] = {
     { "DISTANCE TO FINISH",  "cg_hudShowDistToFinish",   &cg_hudShowDistToFinish,   1, -1,       qfalse },
     { "GHOST DELTA",         "cg_ghostPlayback",         &cg_ghostPlayback,         1, -1,       qfalse },
     { "CHECKPOINT ARROW",    "cg_checkpointArrowMode",   &cg_checkpointArrowMode,   2, -1,       qtrue  },
-    { "CARS AHEAD/BEHIND",   "cg_hudShowCarAheadBehind", &cg_hudShowCarAheadBehind, 1, -1,       qfalse },
     { "ELIM. TIMELINE",      "cg_elimTimeline",          &cg_elimTimeline,          1, -1,       qfalse },
     { "OPPONENT LIST",       "cg_hudShowOpponentList",   &cg_hudShowOpponentList,   1, -1,       qfalse },
     { "SCORES PANEL",        "cg_hudShowScores",         &cg_hudShowScores,         1, -2,       qfalse },
@@ -542,7 +517,6 @@ void CG_DrawHUDOptionsMenu( void ) {
     trap_Cvar_Update( &cg_hudShowDistToFinish );
     trap_Cvar_Update( &cg_ghostPlayback );
     trap_Cvar_Update( &cg_checkpointArrowMode );
-    trap_Cvar_Update( &cg_hudShowCarAheadBehind );
     trap_Cvar_Update( &cg_elimTimeline );
     trap_Cvar_Update( &cg_hudShowOpponentList );
     trap_Cvar_Update( &cg_hudShowScores );
@@ -802,203 +776,11 @@ void CG_DrawHUDOptionsMenu( void ) {
    a thin steel-blue signal colour, and a very restrained amount of text.  Keep
    the same language here so the HUD feels like part of the same product.
    ----------------------------------------------------------------------- */
-#if 0 /* superseded by the flat telemetry strip */
-static const vec4_t rallyHudPanelColor = { 0.018f, 0.025f, 0.030f, 0.82f };
-static const vec4_t rallyHudRowColor   = { 0.050f, 0.070f, 0.070f, 0.64f };
-static const vec4_t rallyHudLineColor  = { 0.250f, 0.330f, 0.320f, 0.56f };
-static const vec4_t rallyHudAccent     = Q3RALLY_ACCENT_COLOR;
-static const vec4_t rallyHudText       = { 0.900f, 0.950f, 0.940f, 1.00f };
-static const vec4_t rallyHudMuted      = { 0.470f, 0.570f, 0.560f, 1.00f };
-static const vec4_t rallyHudGood       = { 0.480f, 1.000f, 0.420f, 1.00f };
-static const vec4_t rallyHudBad        = { 1.000f, 0.350f, 0.300f, 1.00f };
-
-#define RALLY_HUD_PANEL_X       428
-#define RALLY_HUD_PANEL_W       208
-#define RALLY_HUD_HEADER_H       25
-#define RALLY_HUD_ROW_H          19
-#define RALLY_HUD_TEXT_STYLE     ( UI_SMALLFONT | UI_DROPSHADOW )
-
-static void CG_RallyHUDPanel( int x, int y, int width, int height,
-                              const char *title ) {
-    CG_FillRect( x, y, width, height, rallyHudPanelColor );
-    CG_DrawRect( x, y, width, height, 1.0f, rallyHudLineColor );
-    CG_FillRect( x, y, width, 2.0f, rallyHudAccent );
-    CG_FillRect( x, y, 3.0f, height, rallyHudAccent );
-    CG_FillRect( x + 6, y + RALLY_HUD_HEADER_H - 2,
-                 width - 12, 1.0f, rallyHudLineColor );
-    CG_DrawFrontendString( x + 11, y + 5, title, RALLY_HUD_TEXT_STYLE,
-                           1.0f, rallyHudAccent );
-}
-
-static void CG_RallyHUDRow( int x, int y, int width, const char *label,
-                            const char *value, const float *valueColor,
-                            qboolean active ) {
-    vec4_t rowColor;
-
-    Vector4Copy( rallyHudRowColor, rowColor );
-    if ( active ) {
-        rowColor[0] = 0.080f;
-        rowColor[1] = 0.150f;
-        rowColor[2] = 0.095f;
-        rowColor[3] = 0.82f;
-    }
-
-    CG_FillRect( x + 6, y, width - 12, RALLY_HUD_ROW_H - 1, rowColor );
-    CG_FillRect( x + 6, y + RALLY_HUD_ROW_H - 1,
-                 width - 12, 1.0f, rallyHudLineColor );
-    CG_DrawFrontendString( x + 13, y + 2, label, RALLY_HUD_TEXT_STYLE,
-                           1.0f, rallyHudMuted );
-    CG_DrawFrontendString( x + width - 13, y + 2, value,
-                           UI_RIGHT | UI_SMALLFONT | UI_DROPSHADOW,
-                           1.0f, valueColor ? valueColor : rallyHudText );
-}
-
-static int CG_RallyHUDRaceRowCount( void ) {
-    int rows;
-
-    rows = 0;
-    if ( cg_hudShowTimes.integer ) {
-        if ( cgs.laplimit > 1 ) {
-            rows += 2;
-        }
-        rows++;
-    }
-    if ( cg_ghostPlayback.integer && cg.ghostSplitDeltaValid ) {
-        rows++;
-    }
-    if ( cg_hudShowLaps.integer ) {
-        rows++;
-    }
-    if ( cg_hudShowPosition.integer ) {
-        rows++;
-    }
-    if ( cg_hudShowDistToFinish.integer ) {
-        rows++;
-    }
-    return rows;
-}
-
-static float CG_DrawModernRaceHUD( float y ) {
-    centity_t *cent;
-    int rowCount;
-    int panelHeight;
-    int rowY;
-    int lapTime;
-    int totalTime;
-    int pos;
-    char value[64];
-    const char *time;
-    vec4_t deltaColor;
-
-    if ( !cg.snap || CG_IntroCam_IsActive() ) {
-        return y;
-    }
-
-    cent = &cg_entities[cg.snap->ps.clientNum];
-    if ( cent->finishRaceTime ) {
-        lapTime = cent->finishRaceTime - cent->startLapTime;
-        totalTime = cent->finishRaceTime - cent->startRaceTime;
-    } else if ( cent->startRaceTime ) {
-        lapTime = cg.time - cent->startLapTime;
-        totalTime = cg.time - cent->startRaceTime;
-    } else {
-        lapTime = 0;
-        totalTime = 0;
-    }
-
-    rowCount = CG_RallyHUDRaceRowCount();
-    if ( rowCount <= 0 ) {
-        return y;
-    }
-
-    panelHeight = RALLY_HUD_HEADER_H + rowCount * RALLY_HUD_ROW_H + 7;
-    CG_RallyHUDPanel( RALLY_HUD_PANEL_X, 8, RALLY_HUD_PANEL_W,
-                      panelHeight, "RACE STATUS" );
-    rowY = 8 + RALLY_HUD_HEADER_H + 3;
-
-    if ( cg_hudShowTimes.integer ) {
-        if ( cgs.laplimit > 1 ) {
-            time = getStringForTime( cent->bestLapTime );
-            Com_sprintf( value, sizeof(value), "%s", time );
-            CG_RallyHUDRow( RALLY_HUD_PANEL_X, rowY, RALLY_HUD_PANEL_W,
-                            "BEST LAP", value, rallyHudText, qfalse );
-            rowY += RALLY_HUD_ROW_H;
-
-            time = getStringForTime( lapTime );
-            Com_sprintf( value, sizeof(value), "%s", time );
-            CG_RallyHUDRow( RALLY_HUD_PANEL_X, rowY, RALLY_HUD_PANEL_W,
-                            "LAP TIME", value, rallyHudText, qfalse );
-            rowY += RALLY_HUD_ROW_H;
-        }
-
-        time = getStringForTime( totalTime );
-        Com_sprintf( value, sizeof(value), "%s", time );
-        CG_RallyHUDRow( RALLY_HUD_PANEL_X, rowY, RALLY_HUD_PANEL_W,
-                        "TOTAL", value, rallyHudText, qfalse );
-        rowY += RALLY_HUD_ROW_H;
-    }
-
-    if ( cg_ghostPlayback.integer && cg.ghostSplitDeltaValid ) {
-        if ( cg.ghostSplitDeltaMs < 0 ) {
-            Vector4Copy( rallyHudGood, deltaColor );
-        } else if ( cg.ghostSplitDeltaMs > 0 ) {
-            Vector4Copy( rallyHudBad, deltaColor );
-        } else {
-            Vector4Copy( rallyHudText, deltaColor );
-        }
-
-        Com_sprintf( value, sizeof(value), "%c%d.%03d",
-                     cg.ghostSplitDeltaMs < 0 ? '-' : '+',
-                     abs( cg.ghostSplitDeltaMs ) / 1000,
-                     abs( cg.ghostSplitDeltaMs ) % 1000 );
-        CG_RallyHUDRow( RALLY_HUD_PANEL_X, rowY, RALLY_HUD_PANEL_W,
-                        "GHOST DELTA", value, deltaColor, qfalse );
-        rowY += RALLY_HUD_ROW_H;
-    }
-
-    if ( cg_hudShowLaps.integer ) {
-        if ( cgs.gametype == GT_SPRINT ) {
-            Q_strncpyz( value, "SPRINT", sizeof(value) );
-        } else if ( cgs.laplimit > 1 ) {
-            Com_sprintf( value, sizeof(value), "%d / %d",
-                         cent->currentLap, cgs.laplimit );
-        } else {
-            Com_sprintf( value, sizeof(value), "%d", cent->currentLap );
-        }
-        CG_RallyHUDRow( RALLY_HUD_PANEL_X, rowY, RALLY_HUD_PANEL_W,
-                        "LAPS", value, rallyHudText, qfalse );
-        rowY += RALLY_HUD_ROW_H;
-    }
-
-    if ( cg_hudShowPosition.integer ) {
-        pos = cent->currentPosition;
-        Com_sprintf( value, sizeof(value), "%d / %d", pos, cgs.numRacers );
-        CG_RallyHUDRow( RALLY_HUD_PANEL_X, rowY, RALLY_HUD_PANEL_W,
-                        "POSITION", value, rallyHudAccent, qtrue );
-        rowY += RALLY_HUD_ROW_H;
-    }
-
-    if ( cg_hudShowDistToFinish.integer ) {
-        if ( cg_distanceFormat.integer == 1 && cgs.trackLength > 0.0f ) {
-            Com_sprintf( value, sizeof(value), "%.1f%%",
-                         cg.snap->ps.stats[STAT_DISTANCE_REMAIN] /
-                         cgs.trackLength * 100.0f );
-        } else {
-            Com_sprintf( value, sizeof(value), "%dm",
-                         (int)cg.snap->ps.stats[STAT_DISTANCE_REMAIN] );
-        }
-        CG_RallyHUDRow( RALLY_HUD_PANEL_X, rowY, RALLY_HUD_PANEL_W,
-                        "TO FINISH", value, rallyHudText, qfalse );
-    }
-
-    return y + panelHeight;
-}
-#endif
 
 /*
 ================
 CG_DrawUpperRightHUD
-Draws the modern right-side race status card.
+Draws the checkpoint arrow and applicable upper-right score panel.
 ================
 */
 float CG_DrawUpperRightHUD( float y ) {
@@ -1042,17 +824,6 @@ float CG_DrawUpperRightHUD( float y ) {
         }
     }
 
-    return y;
-}
-
-
-/*
-================
-CG_DrawLowerRightHUD
-================
-*/
-float CG_DrawLowerRightHUD( float y ) {
-    /* The common telemetry strip owns speed, gear, fuel and RPM. */
     return y;
 }
 
@@ -2099,7 +1870,6 @@ qboolean CG_DrawHUD( void ) {
     trap_Cvar_Update( &cg_hudShowDistToFinish );
     trap_Cvar_Update( &cg_ghostPlayback );
     trap_Cvar_Update( &cg_checkpointArrowMode );
-    trap_Cvar_Update( &cg_hudShowCarAheadBehind );
     trap_Cvar_Update( &cg_elimTimeline );
 
     trap_Cvar_Update( &cg_hudShowOpponentList );
@@ -2155,7 +1925,7 @@ qboolean CG_DrawHUD( void ) {
     case GT_RACING:
     case GT_SPRINT:
     case GT_TEAM_RACING:
-        /* Rendered via legacy upper-right stack (CG_DrawUpperRightHUD). */
+        /* Race telemetry is rendered in the bottom status strip. */
         break;
 
     case GT_ELIMINATION:
@@ -2164,14 +1934,14 @@ qboolean CG_DrawHUD( void ) {
 
     case GT_RACING_DM:
     case GT_TEAM_RACING_DM:
-        /* Rendered via legacy upper-right stack (CG_DrawUpperRightHUD). */
+        /* Race telemetry is rendered in the bottom status strip. */
         break;
 
     case GT_DEATHMATCH:
     case GT_TEAM:
     case GT_CTF:
     case GT_CTF4:
-        /* Rendered via legacy upper-right stack (CG_DrawUpperRightHUD). */
+        /* Mode statistics are rendered in the bottom status strip. */
         break;
 
     case GT_DOMINATION:
