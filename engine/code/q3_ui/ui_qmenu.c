@@ -2398,10 +2398,13 @@ Menu_Cache
 */
 void Menu_Cache( void )
 {
-	/* The frontend uses a clean UI font atlas instead of the stock Q3
-	 * bitmap charset. Keep the original as a safe fallback for installations
-	 * that do not yet contain the new asset. */
-	uis.charset			= trap_R_RegisterShaderNoMip( "gfx/ui/frontend_charset.png" );
+	/* Share the in-game HUD face with menu text for a consistent Q3Rally
+	 * identity. Fall back to the frontend atlas for older or incomplete asset
+	 * installs, then to the stock Q3 charset. */
+	uis.charset			= trap_R_RegisterShaderNoMip( "gfx/ui/ingame_charset.png" );
+	if ( !uis.charset ) {
+		uis.charset		= trap_R_RegisterShaderNoMip( "gfx/ui/frontend_charset.png" );
+	}
 	if ( !uis.charset ) {
 		uis.charset		= trap_R_RegisterShaderNoMip( "gfx/2d/bigchars" );
 	}
