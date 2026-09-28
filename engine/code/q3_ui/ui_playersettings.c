@@ -126,14 +126,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS            8
 #define PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE            2
 #define PLAYERSETTINGS_ACHIEVEMENTS_PER_PAGE            PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS
-#define PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE           32.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE           36.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_ROW_GAP              8
 #define PLAYERSETTINGS_ACHIEVEMENT_TITLE_OFFSET         4
-#define PLAYERSETTINGS_ACHIEVEMENT_SUMMARY_HEIGHT        60.0f
+#define PLAYERSETTINGS_ACHIEVEMENT_SUMMARY_HEIGHT        54.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_PROGRESS_BAR_OFFSET  20.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_PROGRESS_BAR_HEIGHT  7.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_PROGRESS_TEXT_OFFSET 31.0f
-#define PLAYERSETTINGS_ACHIEVEMENT_NEXT_TEXT_OFFSET     44.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_ENTRY_VERTICAL_GAP   8.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP           28.0f
 #define PLAYERSETTINGS_ACHIEVEMENT_TEXT_GAP             10.0f
@@ -1933,7 +1932,7 @@ static float PlayerSettings_GetScrollContentTop( void ) {
 		return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 22;
 	}
 	if ( s_playersettings.currentTab == TAB_ACHIEVEMENTS ) {
-		return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 48;
+		return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 36;
 	}
 
 	return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 2;
@@ -1944,7 +1943,7 @@ static float PlayerSettings_GetScrollViewportTop( void ) {
 		return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 20;
 	}
 	if ( s_playersettings.currentTab == TAB_ACHIEVEMENTS ) {
-		return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 46;
+		return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN + 34;
 	}
 
 	return PLAYERSETTINGS_PROFILE_PANEL_TOP + PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN;
@@ -3095,6 +3094,7 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
         int rowBottom;
         int titleX;
         int titleY;
+        float summaryMid;
         float areaLeft;
         float areaRight;
         float availableWidth;
@@ -3165,6 +3165,7 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
         }
 
         availableWidth = areaRight - areaLeft;
+        summaryMid = areaLeft + availableWidth * 0.5f;
         columnGap = ( PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE > 1 ) ? PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP : 0.0f;
         columnWidth = availableWidth - columnGap * ( PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE - 1 );
         if ( PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE > 0 ) {
@@ -3177,11 +3178,11 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
         nextTierProgress = 0.0f;
         if ( unlockedCount > 0 ) {
                 Com_sprintf( currentTierBuffer, sizeof( currentTierBuffer ),
-                             "CURRENT: TIER %d / %d  %s",
+                             "TIER %d/%d  %s",
                              unlockedCount, count, tiers[unlockedCount - 1].name );
         } else {
                 Com_sprintf( currentTierBuffer, sizeof( currentTierBuffer ),
-                             "CURRENT: NO TIER YET" );
+                             "TIER 0/%d  NOT STARTED", count );
         }
 
         if ( unlockedCount < count ) {
@@ -3190,7 +3191,7 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
                                 rowTop, areaLeft, areaRight, tiers, count, progress, unlockedCount );
                 }
                 Com_sprintf( nextTierBuffer, sizeof( nextTierBuffer ),
-                             "NEXT: TIER %d  %s  %d%%",
+                             "NEXT %d  %s  %d%%",
                              unlockedCount + 1, tiers[unlockedCount].name,
                              (int)( nextTierProgress * 100.0f + 0.5f ) );
         } else {
@@ -3199,16 +3200,18 @@ static int PlayerSettings_DrawAchievementSection( int row, const char *title, co
                                 rowTop, areaLeft, areaRight, tiers, count, progress, unlockedCount );
                 }
                 Com_sprintf( nextTierBuffer, sizeof( nextTierBuffer ),
-                             "ALL %d TIERS COMPLETE", count );
+                             "ALL TIERS COMPLETE" );
         }
 
         if ( visible ) {
-                Frontend_DrawText( titleX, rowTop + PLAYERSETTINGS_ACHIEVEMENT_PROGRESS_TEXT_OFFSET,
-                                   currentTierBuffer, UI_LEFT | UI_SMALLFONT,
-                                   playerSettingsTextColor );
-                Frontend_DrawText( titleX, rowTop + PLAYERSETTINGS_ACHIEVEMENT_NEXT_TEXT_OFFSET,
-                                   nextTierBuffer, UI_LEFT | UI_SMALLFONT,
-                                   playerSettingsMutedColor );
+                PlayerSettings_DrawAchievementText(
+                        titleX, rowTop + PLAYERSETTINGS_ACHIEVEMENT_PROGRESS_TEXT_OFFSET,
+                        (int)( summaryMid - PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP * 0.5f ),
+                        currentTierBuffer, playerSettingsTextColor );
+                PlayerSettings_DrawAchievementText(
+                        (int)( summaryMid + PLAYERSETTINGS_ACHIEVEMENT_COLUMN_GAP * 0.5f ),
+                        rowTop + PLAYERSETTINGS_ACHIEVEMENT_PROGRESS_TEXT_OFFSET,
+                        (int)areaRight, nextTierBuffer, playerSettingsMutedColor );
         }
 
         gridTop = rowTop + PLAYERSETTINGS_ACHIEVEMENT_SUMMARY_HEIGHT;
@@ -3312,6 +3315,9 @@ static void PlayerSettings_DrawAchievementsTab( void ) {
 const profile_stats_t *stats;
     int unlockedAchievements;
 int displayTotalAchievements;
+int headerX;
+int headerY;
+int headerNextX;
 char progressBuffer[32];
 char headerBuffer[64];
     int row;
@@ -3364,14 +3370,17 @@ PlayerSettings_ClampAchievementTierPage();
         Com_sprintf( progressBuffer, sizeof( progressBuffer ), "%d/%d", unlockedAchievements, displayTotalAchievements );
         Com_sprintf( headerBuffer, sizeof( headerBuffer ), "Achievements %s", progressBuffer );
 
-        Frontend_DrawText( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32,
-                           PLAYERSETTINGS_PROFILE_PANEL_TOP + 28,
+        headerX = PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32;
+        headerY = PLAYERSETTINGS_PROFILE_PANEL_TOP + 28;
+        headerNextX = headerX + Frontend_TextWidth( headerBuffer, UI_SMALLFONT ) + 12;
+        Frontend_DrawText( headerX, headerY,
                            headerBuffer, UI_LEFT | UI_SMALLFONT,
                            playerSettingsAccentColor );
-        Frontend_DrawText( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32,
-                           PLAYERSETTINGS_PROFILE_PANEL_TOP + 42,
-                           "Complete challenges to unlock new medals.",
-                           UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
+        PlayerSettings_DrawAchievementText(
+                headerNextX, headerY,
+                PLAYERSETTINGS_PROFILE_ROW_RIGHT,
+                "Complete challenges to unlock medals.",
+                playerSettingsMutedColor );
 }
 
 static void PlayerSettings_SetTab( int tab ) {
