@@ -91,7 +91,7 @@ Alle hier aufgeführten CVars sind `CVAR_ARCHIVE`; die Defaults stehen in der Ta
 ### Fahrzeug
 | CVar | Standard | Beschreibung |
 |---|---|---|
-| `cg_hudShowSpeed` | 1 | Tachometer/RPM |
+| `cg_hudShowSpeed` | 1 | Digitale Geschwindigkeits- und RPM-Anzeige |
 | `cg_hudShowFuelGauge` | 1 | Tankanzeige |
 | `cg_drawRearView` | 0 | Rückspiegel |
 | `cg_drawMMap` | 1 | Mini-Karte |

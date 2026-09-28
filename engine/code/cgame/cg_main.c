@@ -253,7 +253,6 @@ vmCvar_t	cg_obeliskRespawnDelay;
 
 // Q3Rally Code Start
 vmCvar_t	cg_metricUnits;
-vmCvar_t        cg_speedometerMode;
 vmCvar_t	cg_controlMode;
 vmCvar_t	cg_manualShift;
 vmCvar_t	cg_transmissionMode;
@@ -390,7 +389,6 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_thirdPersonAngle, "cg_thirdPersonAngle", "0", 0 },
 	{ &cg_thirdPerson, "cg_thirdPerson", "1", CVAR_ROM },
 	{ &cg_metricUnits, "cg_metricUnits", "0", CVAR_ARCHIVE },
-        { &cg_speedometerMode, "cg_speedometerMode", "0", CVAR_ARCHIVE },
 	{ &cg_minSkidLength, "cg_minSkidLength", "20", CVAR_ARCHIVE },
 	{ &cg_drawRearView, "cg_drawRearView", "0", CVAR_ARCHIVE },
 	{ &cg_drawMMap, "cg_drawMMap", "1", CVAR_ARCHIVE }, //TBB minimap - default on
@@ -1171,8 +1169,6 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.SMIceShader = trap_R_RegisterShader("gfx/skidmarks/ice" );
 
 	cgs.media.checkpointArrow = trap_R_RegisterModel("gfx/hud/arrow.md3");
-    cgs.media.gaugeImperial = trap_R_RegisterShaderNoMip("gfx/hud/gauge01" );
-    cgs.media.gaugeMetric = trap_R_RegisterShaderNoMip("gfx/hud/gauge_metric" );
 	cgs.media.derbyHudPanelShader = trap_R_RegisterShaderNoMip("gfx/hud/derby_panel");
 	cgs.media.derbyHudVehicleShader = trap_R_RegisterShaderNoMip("gfx/hud/derby_vehicle");
 	cgs.media.derbyHudWarningShader = trap_R_RegisterShaderNoMip("gfx/hud/derby_warning");

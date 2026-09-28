@@ -16,7 +16,7 @@ This file is part of q3rally source code.
     - CG_DrawRearviewMirror   : rear-view 3D render + overlay shader
     - CG_DrawMMap             : top-down minimap render
     - CG_DrawFuelGauge        : fuel bar + warning text
-    - CG_DrawSpeed            : speedometer (digital bar-graph or analog dial)
+    - CG_DrawSpeed            : digital speedometer, fuel and RPM bars
 ===========================================================================
 */
 
@@ -533,28 +533,21 @@ static void CG_DrawRPMGaugeBar( float x, float y, float width, float height, int
 
 /* -----------------------------------------------------------------------
    CG_DrawSpeed
-   Speedometer: digital bar-graph (cg_speedometerMode 1) or
-                analog dial with needle (cg_speedometerMode 0).
-   Both modes also render the fuel gauge and RPM bar.
+   Digital speedometer, fuel gauge and RPM bar.
    ----------------------------------------------------------------------- */
 float CG_DrawSpeed( float y ) {
 	playerState_t *ps;
 	int    vel_speed;
-	vec3_t forward, origin, angles, mins, maxs;
+	vec3_t forward;
 	int    x, yorg;
-	float  x2, y2, w, h;
-	refdef_t   refdef;
-	refEntity_t ent;
 
-	x    = 630;
 	yorg = y;
 
 	ps = &cg.predictedPlayerState;
 	AngleVectors( ps->viewangles, forward, NULL, NULL );
 	vel_speed = (int)fabs( Q3VelocityToRL( DotProduct( ps->velocity, forward ) ) );
 
-	/* ---- Digital bar-graph mode ---------------------------------------- */
-	if ( cg_speedometerMode.integer ) {
+	{
 		char  speedStr[32], gearStr[16], gearLabel[4];
 		int   maxLen, len, rpm;
 		float bgClr[4] = { 0.0f, 0.0f, 0.0f, 0.25f };
@@ -621,113 +614,6 @@ float CG_DrawSpeed( float y ) {
 		                     0.75f, colorWhite );
 		y += 12;
 		CG_DrawFuelGauge( x + iconOffset, y, barWidth, gaugeHeight );
-
-		y = yorg - 44 - blockHeight;
-		return y;
-	}
-
-	/* ---- Analog dial mode ---------------------------------------------- */
-	{
-		const float gaugeSize   = 96.0f;
-		const float fuelWidth   = 90.0f;
-		const float fuelHeight  = 8.0f;
-		const float gaugeSpacing= 4.0f;
-		const float rpmHeight   = 8.0f;
-		const float rpmSpacing  = 4.0f;
-		float blockWidth  = gaugeSize;
-		float blockHeight = gaugeSize + gaugeSpacing + fuelHeight + rpmSpacing + rpmHeight;
-		float left, top;
-		int   speedWidth;
-		float speedX, speedY;
-		float centerX, centerY;
-		char gearText[8];
-
-		left = 640 - blockWidth - 8;
-		blockHeight += 18.0f;
-		top  = y - blockHeight;
-
-		CG_DrawVehicleHudFrame( left - 4, top - 4, blockWidth + 8,
-		                        blockHeight + 8, "SPEED" );
-		top += 18.0f;
-		CG_DrawPic( left, top, gaugeSize, gaugeSize,
-		            cg_metricUnits.integer ? cgs.media.gaugeMetric : cgs.media.gaugeImperial );
-
-		speedWidth = CG_IngameStringWidth( va("%i", vel_speed),
-		                                  UI_SMALLFONT, 0.75f );
-		speedX = left + (gaugeSize - speedWidth) * 0.5f;
-		speedY = top  + gaugeSize - 35;
-		CG_DrawIngameString( (int)speedX, (int)speedY, va("%i", vel_speed),
-		                     UI_SMALLFONT | UI_DROPSHADOW, 0.75f, colorWhite );
-
-		x2 = left;  y2 = top;  w = h = gaugeSize;
-		CG_AdjustFrom640( &x2, &y2, &w, &h );
-
-		memset( &refdef, 0, sizeof(refdef) );
-		memset( &ent,    0, sizeof(ent   ) );
-
-		ent.hModel        = trap_R_RegisterModel( "gfx/hud/needle.md3" );
-		ent.customShader  = trap_R_RegisterShader( "gfx/hud/needle01" );
-		ent.renderfx      = RF_NOSHADOW;
-
-		trap_R_ModelBounds( ent.hModel, mins, maxs );
-		origin[2] = 0;
-		origin[1] = 0.5f * ( mins[1] + maxs[1] );
-		origin[0] = ( maxs[2] - mins[2] ) / 0.268f;
-
-		VectorClear( angles );
-		angles[YAW]   = -90;
-		angles[PITCH] = -150.0f + (300.0f * vel_speed / 200.0f);
-		AnglesToAxis( angles, ent.axis );
-		VectorCopy( origin, ent.origin );
-
-		refdef.rdflags = RDF_NOWORLDMODEL;
-		AxisClear( refdef.viewaxis );
-		refdef.fov_x   = 30;  refdef.fov_y   = 30;
-		refdef.x       = x2;  refdef.y       = y2;
-		refdef.width   = w;   refdef.height  = h;
-		refdef.time    = cg.time;
-
-		trap_R_ClearScene();
-		trap_R_AddRefEntityToScene( &ent );
-		trap_R_RenderScene( &refdef );
-
-		centerX = left + gaugeSize * 0.5f - 12.0f;
-		centerY = top  + gaugeSize * 0.5f - 12.0f;
-		CG_DrawPic( centerX, centerY, 24, 24, trap_R_RegisterShaderNoMip("gfx/hud/center01") );
-
-		if      ( cg.predictedPlayerState.stats[STAT_GEAR] == -1 )
-			Q_strncpyz( gearText, "R", sizeof(gearText) );
-		else if ( cg.predictedPlayerState.stats[STAT_GEAR] ==  0 )
-			Q_strncpyz( gearText, "N", sizeof(gearText) );
-		else
-			Com_sprintf( gearText, sizeof(gearText), "%i",
-			             cg.predictedPlayerState.stats[STAT_GEAR] );
-		CG_DrawIngameString( (int)( centerX + 12.0f ),
-		                     (int)( centerY + 5.0f ), gearText,
-		                     UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW,
-		                     0.75f, colorWhite );
-
-		CG_DrawFuelGauge( left + (blockWidth - fuelWidth) * 0.5f,
-		                  top + gaugeSize + gaugeSpacing,
-		                  fuelWidth, fuelHeight );
-
-		{
-			int   rpm      = cg.predictedPlayerState.stats[STAT_RPM];
-			float segX     = left + (blockWidth - fuelWidth) * 0.5f;
-			float segY     = top + gaugeSize + gaugeSpacing + fuelHeight + rpmSpacing;
-			float rpmIconSize, rpmIconX, rpmIconY;
-			const float rpmIconNudge = 3.0f;
-			static qhandle_t rpmIcon;
-
-			if ( !rpmIcon ) rpmIcon = trap_R_RegisterShaderNoMip( "icons/rpm" );
-
-			rpmIconSize = rpmHeight * (4.0f / 3.0f);
-			rpmIconX    = segX - rpmIconSize - 4 - rpmIconNudge;
-			rpmIconY    = segY + (rpmHeight - rpmIconSize) * 0.5f;
-			CG_DrawPic( rpmIconX, rpmIconY, rpmIconSize, rpmIconSize, rpmIcon );
-
-			CG_DrawRPMGaugeBar( segX, segY, fuelWidth, rpmHeight, rpm );
-		}
 
 		y = yorg - 44 - blockHeight;
 		return y;

@@ -1371,8 +1371,6 @@ sfxHandle_t neutralFlagReturnedSound;
 
 // Q3Rally Code Start
 
-    qhandle_t       gaugeImperial;
-    qhandle_t       gaugeMetric;
 	// car sounds
 	sfxHandle_t	damage100[2];
 	sfxHandle_t	damage75[2];
@@ -1649,7 +1647,6 @@ extern	vmCvar_t		cg_obeliskRespawnDelay;
 #endif
 // Q3Rally Code Start
 extern	vmCvar_t		cg_metricUnits;
-extern  vmCvar_t                cg_speedometerMode;
 extern	vmCvar_t		cg_minSkidLength;
 extern	vmCvar_t		cg_controlMode;
 extern	vmCvar_t		cg_manualShift;
