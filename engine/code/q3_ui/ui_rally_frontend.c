@@ -66,11 +66,11 @@ void Frontend_DrawBackground( const float *scrimColor ) {
     }
 }
 
-/* Use the same fixed glyph cells as UI_DrawString. Drawing a glyph wider than
- * its advance distorts narrow letters and causes adjacent glyphs to overlap. */
+/* The legacy UI small cell is 6x16, which visibly stretches this square-cell
+ * atlas vertically. Frontend text uses square cells at every size instead. */
 static int Frontend_TextHeight( int style ) {
     if ( style & UI_SMALLFONT ) {
-        return SMALLCHAR_HEIGHT;
+        return UI_FRONTEND_SMALL_GLYPH_SIZE;
     }
     if ( style & UI_GIANTFONT ) {
         return GIANTCHAR_HEIGHT;
@@ -79,13 +79,7 @@ static int Frontend_TextHeight( int style ) {
 }
 
 static int Frontend_TextCellWidth( int style ) {
-    if ( style & UI_SMALLFONT ) {
-        return SMALLCHAR_WIDTH;
-    }
-    if ( style & UI_GIANTFONT ) {
-        return GIANTCHAR_WIDTH;
-    }
-    return BIGCHAR_WIDTH;
+    return Frontend_TextHeight( style );
 }
 
 static int Frontend_TextWidthRaw( const char *text, int style ) {
@@ -342,7 +336,7 @@ static qboolean Frontend_DrawButtonInternal( int x, int y, int width, int height
     }
 
     Frontend_DrawText( x + ( textAlign == UI_CENTER ? width / 2 : UI_FRONTEND_SPACE_MD ),
-                       y + ( height - SMALLCHAR_HEIGHT ) / 2,
+                       y + ( height - Frontend_TextHeight( UI_SMALLFONT ) ) / 2,
                        label, textAlign | UI_SMALLFONT, textColor );
 
     return hovered;
@@ -388,7 +382,7 @@ qboolean Frontend_DrawNavButton( int x, int y, int width, int height,
     }
 
     Frontend_DrawText( x + ( textAlign == UI_CENTER ? width / 2 : UI_FRONTEND_SPACE_MD ),
-                       y + ( height - SMALLCHAR_HEIGHT ) / 2,
+                       y + ( height - Frontend_TextHeight( UI_SMALLFONT ) ) / 2,
                        label, textAlign | UI_SMALLFONT, textColor );
     return hovered;
 }

@@ -3583,8 +3583,8 @@ PlayerSettings_ClampAchievementTierPage();
 
 static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 	static const char *const categoryLabels[PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT] = {
-		"Distance", "Kills", "Race Wins", "Sprint", "Flags", "Assists",
-		"Fuel", "Accuracy", "Excellent", "Impress.", "Perfect"
+		"Driven", "Kills", "Race", "Sprint", "Flags", "Assist",
+		"Fuel", "Accur.", "Excel.", "Impr.", "Perfect"
 	};
 	int totalUnlocked;
 	int totalTiers;
@@ -3659,6 +3659,9 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 		int unlocked;
 		double progress;
 		int y;
+		qboolean selected;
+		qboolean hovered;
+		vec4_t categoryColor;
 
 		category = BG_AchievementGetCategory( i );
 		if ( !category ) continue;
@@ -3668,21 +3671,28 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 		rect->y = y;
 		rect->w = PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_WIDTH - 8;
 		rect->h = PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_ROW_HEIGHT - 1;
+		selected = ( i == s_playersettings.achievementsPagination.currentPage );
+		hovered = PlayerSettings_RectContainsCursor( rect );
 		Frontend_DrawNavButton( (int)rect->x, (int)rect->y,
 		                        (int)rect->w, (int)rect->h,
-	                        categoryLabels[i], uis.tFrac,
-		                        i == s_playersettings.achievementsPagination.currentPage,
+	                        "", uis.tFrac, selected,
 		                        UI_LEFT );
+		Vector4Copy( ( selected || hovered ) ? playerSettingsAccentColor :
+		             playerSettingsMutedColor, categoryColor );
+		categoryColor[3] *= uis.tFrac;
+		Frontend_DrawText( (int)rect->x + 8,
+		                   (int)rect->y + ( (int)rect->h - UI_FRONTEND_SMALL_GLYPH_SIZE ) / 2,
+		                   categoryLabels[i], UI_LEFT | UI_SMALLFONT, categoryColor );
 		unlocked = 0;
 		if ( stats ) {
 			progress = PlayerSettings_GetAchievementProgress( stats, i );
 			unlocked = BG_AchievementUnlockedTiers( category, progress );
 		}
 		Com_sprintf( tierCount, sizeof( tierCount ), "%d/%d", unlocked, category->tierCount );
-		Frontend_DrawText( (int)( rect->x + rect->w - 4 ), (int)rect->y + 5,
+		Frontend_DrawText( (int)( rect->x + rect->w - 4 ),
+		                   (int)rect->y + ( (int)rect->h - UI_FRONTEND_SMALL_GLYPH_SIZE ) / 2,
 		                   tierCount, UI_RIGHT | UI_SMALLFONT,
-		                   i == s_playersettings.achievementsPagination.currentPage ?
-	                   playerSettingsAccentColor : playerSettingsMutedColor );
+		                   ( selected ? playerSettingsAccentColor : playerSettingsMutedColor ) );
 	}
 
 	Com_sprintf( summary, sizeof( summary ), "CATEGORY %d / %d  |  UP / DOWN TO BROWSE",

@@ -56,6 +56,7 @@ Copyright (C) 2002-2026 Q3Rally Team
 #define UI_FRONTEND_COLOR_PROGRESS     { 0.11f, 0.14f, 0.15f, 0.82f }
 
 /* Shared layout tokens. The UI still renders in the 640x480 virtual space. */
+#define UI_FRONTEND_SMALL_GLYPH_SIZE  8
 #define UI_FRONTEND_SPACE_XS           4
 #define UI_FRONTEND_SPACE_SM           8
 #define UI_FRONTEND_SPACE_MD           16
