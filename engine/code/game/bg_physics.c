@@ -2200,6 +2200,8 @@ PM_Trace_Points
 static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoints, float time ){
 	vec3_t	maxs, mins;
 	vec3_t	start, dest, dir;
+	vec3_t	worldDelta, worldOffset;
+	float	worldPenetration, worldCorrectionDepth;
 #ifdef QAGAME
 	qboolean	scriptedObjectPlane;
 	qboolean	hitScriptedObject;
@@ -2251,6 +2253,8 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 
 		sPoint = &sPoints[i];
 		tPoint = &tPoints[i];
+		worldCorrectionDepth = 0.0f;
+		VectorClear( worldOffset );
 
 		VectorSet( mins, -sPoint->radius, -sPoint->radius, -sPoint->radius );
 		VectorSet( maxs,  sPoint->radius,  sPoint->radius,  sPoint->radius );
@@ -2408,20 +2412,43 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 				pm->collisionDetected = qtrue;
 			}
 
+			/* The old point traces clipped only their temporary velocity; the
+			 * rigid target could still cross the brush and start the next frame
+			 * inside solid. A trace can report startsolid and still provide a
+			 * usable exit/contact plane, so only allsolid or a missing plane makes
+			 * positional projection impossible here. Leave wheel contacts to the
+			 * suspension solver. */
+			if ( i >= LAST_FRAME_POINT && trace.fraction < 1.0f &&
+				!trace.allsolid &&
+				!( trace.contents & CONTENTS_BODY ) &&
+				VectorLengthSquared( trace.plane.normal ) > 0.0f ) {
+				VectorSubtract( tPoint->r, trace.endpos, worldDelta );
+				worldPenetration = -DotProduct( worldDelta,
+					trace.plane.normal );
+				if ( worldPenetration > worldCorrectionDepth + 0.01f ) {
+					worldCorrectionDepth = worldPenetration;
+					VectorScale( trace.plane.normal, worldPenetration,
+						worldOffset );
+				}
+			}
+
 #ifdef QAGAME
-			/* Keep one useful map-wall trace after a car impact. The matching
-			 * impact state is logged after Pmove; this line gives the brush side,
-			 * contact point, and car state at the first post-impact wall hit. */
+			/* Keep one useful chassis/world trace after a car impact. The matching
+			 * impact state is logged after Pmove; this line gives the trace plane,
+			 * contact point, correction, and car state at the first world hit. */
 			if ( pm->vehicleCollisionLog && pm->vehicleCollision.valid &&
 				!pm->vehicleWorldContactLogged &&
+				i >= LAST_FRAME_POINT &&
 				!( trace.contents & CONTENTS_BODY ) &&
-				( trace.fraction < 1.0f || trace.startsolid || trace.allsolid ) &&
-				( trace.startsolid || trace.allsolid ||
-				  fabs( trace.plane.normal[2] ) < PM_CLEAN_WALL_NORMAL_Z_MAX ) ) {
+				( ( trace.fraction < 1.0f && !trace.allsolid &&
+					VectorLengthSquared( trace.plane.normal ) > 0.0f ) ||
+				  ( trace.allsolid && i >= LAST_FRAME_POINT &&
+					trace.entityNum != ENTITYNUM_NONE ) ) ) {
 				Com_Printf( "Derby post-impact world trace: time=%d self=%d other=%d "
 					"impulse=%.1f pointIndex=%d fraction=%.3f startsolid=%d allsolid=%d "
 					"entity=%d contents=0x%x traceEnd=(%.1f %.1f %.1f) "
-					"normal=(%.3f %.3f %.3f) car=(%.1f %.1f %.1f) "
+					"normal=(%.3f %.3f %.3f) correction=(%.1f %.1f %.1f) "
+					"car=(%.1f %.1f %.1f) "
 					"velocity=(%.1f %.1f %.1f)\n",
 					pm->cmd.serverTime, pm->ps->clientNum,
 					pm->vehicleCollision.otherEnt,
@@ -2430,6 +2457,7 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 					trace.contents, trace.endpos[0], trace.endpos[1],
 					trace.endpos[2], trace.plane.normal[0],
 					trace.plane.normal[1], trace.plane.normal[2],
+					worldOffset[0], worldOffset[1], worldOffset[2],
 					car->sBody.r[0], car->sBody.r[1], car->sBody.r[2],
 					car->sBody.v[0], car->sBody.v[1], car->sBody.v[2] );
 				pm->vehicleWorldContactLogged = qtrue;
@@ -2453,8 +2481,7 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 
 #ifdef QAGAME
 			/* Identify movable scripted props before advancing the traced point;
-			 * the response below needs the exact contact position, not the legacy
-			 * world-origin-scaled endpoint used for static surfaces. */
+			 * the response below needs the exact contact position. */
 			if ( trace.fraction < 1.0f && ( trace.contents & CONTENTS_BODY ) &&
 				trace.entityNum >= 0 && trace.entityNum < ENTITYNUM_MAX_NORMAL ) {
 				hitFirst = trace.entityNum;
@@ -2472,13 +2499,7 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 
 			if (trace.fraction > 0) {
 				// actually covered some distance
-//				VectorCopy ( trace.endpos, start );
-#ifdef QAGAME
-				if ( scriptedObjectPlane || hitScriptedObject )
-					VectorCopy( trace.endpos, start );
-				else
-#endif
-					VectorScale ( trace.endpos, 0.999f, start );
+				VectorCopy( trace.endpos, start );
 			}
 
 			if ( trace.fraction == 1 ) {
@@ -2695,6 +2716,13 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 			}
 		}
 #endif
+
+		if ( worldCorrectionDepth > 0.01f ) {
+			VectorAdd( car->tBody.r, worldOffset, car->tBody.r );
+			VectorAdd( car->tBody.CoM, worldOffset, car->tBody.CoM );
+			for ( j = 0; j < NUM_CAR_POINTS; j++ )
+				VectorAdd( tPoints[j].r, worldOffset, tPoints[j].r );
+		}
 
 		PM_SetFluidDensity( tPoints, i );
 	}
