@@ -1247,6 +1247,8 @@ static float G_DerbyCollisionZoneWeight( carHitZone_t zone ) {
 	}
 }
 
+#define DERBY_COLLISION_DAMAGE_THRESHOLD 300.0f
+#define DERBY_COLLISION_DAMAGE_DIVISOR 250.0f
 #define DERBY_MAX_COLLISION_DAMAGE 15.0f
 
 /* Derby damage follows the solver's actual normal impulse. Physics already
@@ -1256,7 +1258,9 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 	gentity_t *other;
 	float selfImpactSpeed, otherImpactSpeed;
 	float selfDamage, otherDamage, damageScale;
+	float selfZoneWeight, otherZoneWeight;
 	int selfDamageInt, otherDamageInt;
+	int selfAppliedDamage, otherAppliedDamage;
 	vec3_t selfNormal, otherNormal, collisionPoint;
 
 	if ( g_gametype.integer != GT_DERBY || !level.startRaceTime ||
@@ -1284,30 +1288,44 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 		return;
 
 	/* The per-car velocity change is impulse / mass. Only the part above the
-	 * 400-unit threshold causes damage. The 250-unit divisor keeps the previous
-	 * damage rate reduced, while the 15-point per-contact cap lets heavy hits
-	 * register without allowing an extreme solver impulse to wreck a healthy car. */
+	 * threshold causes damage. The divisor controls the damage rate, while the
+	 * 15-point per-contact cap prevents an extreme solver impulse from wrecking
+	 * a healthy car in one hit. */
 	selfImpactSpeed = contact->normalImpulse / self->client->car.sBody.mass;
 	otherImpactSpeed = contact->normalImpulse / other->client->car.sBody.mass;
-	if ( selfImpactSpeed <= 400.0f && otherImpactSpeed <= 400.0f )
+	damageScale = g_derbyDamageFactor.value;
+	if ( !g_derbyIgnoreDamageScale.integer )
+		damageScale *= g_damageScale.value;
+	if ( selfImpactSpeed <= DERBY_COLLISION_DAMAGE_THRESHOLD &&
+		otherImpactSpeed <= DERBY_COLLISION_DAMAGE_THRESHOLD ) {
+		if ( g_derbyCollisionLog.integer ) {
+			G_Printf( "Derby collision below threshold: %d <-> %d, impulse %.1f, "
+				"mass %.1f/%.1f, dV %.1f/%.1f, transfer %.2f, elasticity %.2f, "
+				"threshold %.1f, factor %.2f, globalScale %.2f, ignoreGlobal %d\n",
+				self->s.number, other->s.number, contact->normalImpulse,
+				self->client->car.sBody.mass, other->client->car.sBody.mass,
+				selfImpactSpeed, otherImpactSpeed,
+				g_carImpactTransfer.value, g_carImpactElasticity.value,
+				DERBY_COLLISION_DAMAGE_THRESHOLD, g_derbyDamageFactor.value,
+				g_damageScale.value, g_derbyIgnoreDamageScale.integer );
+		}
 		return;
+	}
 
 	level.vehicleCollisionDamageFrame[self->s.number][other->s.number] =
 		level.framenum;
 	level.vehicleCollisionDamageFrame[other->s.number][self->s.number] =
 		level.framenum;
 
-	damageScale = g_derbyDamageFactor.value;
-	if ( !g_derbyIgnoreDamageScale.integer )
-		damageScale *= g_damageScale.value;
-
-	selfDamage = selfImpactSpeed > 400.0f
-		? ( ( selfImpactSpeed - 400.0f ) / 250.0f ) *
-			G_DerbyCollisionZoneWeight( contact->selfZone ) * damageScale
+	selfZoneWeight = G_DerbyCollisionZoneWeight( contact->selfZone );
+	otherZoneWeight = G_DerbyCollisionZoneWeight( contact->otherZone );
+	selfDamage = selfImpactSpeed > DERBY_COLLISION_DAMAGE_THRESHOLD
+		? ( ( selfImpactSpeed - DERBY_COLLISION_DAMAGE_THRESHOLD ) /
+			DERBY_COLLISION_DAMAGE_DIVISOR ) * selfZoneWeight * damageScale
 		: 0.0f;
-	otherDamage = otherImpactSpeed > 400.0f
-		? ( ( otherImpactSpeed - 400.0f ) / 250.0f ) *
-			G_DerbyCollisionZoneWeight( contact->otherZone ) * damageScale
+	otherDamage = otherImpactSpeed > DERBY_COLLISION_DAMAGE_THRESHOLD
+		? ( ( otherImpactSpeed - DERBY_COLLISION_DAMAGE_THRESHOLD ) /
+			DERBY_COLLISION_DAMAGE_DIVISOR ) * otherZoneWeight * damageScale
 		: 0.0f;
 	if ( selfDamage > DERBY_MAX_COLLISION_DAMAGE )
 		selfDamage = DERBY_MAX_COLLISION_DAMAGE;
@@ -1317,6 +1335,8 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 	otherDamageInt = otherDamage >= 0.0f ? (int)( otherDamage + 0.5f ) : 0;
 	if ( selfDamageInt > 9999 ) selfDamageInt = 9999;
 	if ( otherDamageInt > 9999 ) otherDamageInt = 9999;
+	selfAppliedDamage = 0;
+	otherAppliedDamage = 0;
 
 	VectorCopy( contact->normal, selfNormal );
 	VectorScale( selfNormal, -1.0f, otherNormal );
@@ -1330,6 +1350,7 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 			selfDamageInt, DAMAGE_NO_KNOCKBACK, MOD_VEHICLE_COLLISION );
 		appliedDamage = self->client->damage_blood + self->client->damage_armor -
 			previousDamage;
+		selfAppliedDamage = appliedDamage;
 		if ( appliedDamage > self->client->derbyDamageZoneDamage ) {
 			self->client->derbyDamageZone = contact->selfZone;
 			self->client->derbyDamageZoneDamage = appliedDamage;
@@ -1344,6 +1365,7 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 			otherDamageInt, DAMAGE_NO_KNOCKBACK, MOD_VEHICLE_COLLISION );
 		appliedDamage = other->client->damage_blood + other->client->damage_armor -
 			previousDamage;
+		otherAppliedDamage = appliedDamage;
 		if ( appliedDamage > other->client->derbyDamageZoneDamage ) {
 			other->client->derbyDamageZone = contact->otherZone;
 			other->client->derbyDamageZoneDamage = appliedDamage;
@@ -1351,10 +1373,20 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 	}
 
 	if ( g_derbyCollisionLog.integer ) {
-		G_Printf( "Derby collision: %d(%s) <-> %d(%s), impulse %.0f, damage %d/%d\n",
+		G_Printf( "Derby collision: %d(%s) <-> %d(%s), impulse %.1f, "
+			"mass %.1f/%.1f, dV %.1f/%.1f, transfer %.2f, elasticity %.2f, "
+			"weights %.2f/%.2f, threshold %.1f, factor %.2f, globalScale %.2f, "
+			"ignoreGlobal %d, damage %.2f/%.2f -> %d/%d, applied %d/%d\n",
 			self->s.number, G_DerbyCollisionZoneName( contact->selfZone ),
 			other->s.number, G_DerbyCollisionZoneName( contact->otherZone ),
-			contact->normalImpulse, selfDamageInt, otherDamageInt );
+			contact->normalImpulse, self->client->car.sBody.mass,
+			other->client->car.sBody.mass, selfImpactSpeed, otherImpactSpeed,
+			g_carImpactTransfer.value, g_carImpactElasticity.value,
+			selfZoneWeight, otherZoneWeight, DERBY_COLLISION_DAMAGE_THRESHOLD,
+			g_derbyDamageFactor.value,
+			g_damageScale.value, g_derbyIgnoreDamageScale.integer,
+			selfDamage, otherDamage, selfDamageInt, otherDamageInt,
+			selfAppliedDamage, otherAppliedDamage );
 	}
 }
 
@@ -1967,6 +1999,11 @@ void ClientThink_real( gentity_t *ent ) {
 	/* Convert this Pmove's strongest rigid-body contact into a single Derby
 	 * damage event, weighted by the struck zone on each vehicle. */
 	G_ApplyDerbyVehicleCollisionDamage( ent, &pm.vehicleCollision );
+	if ( g_derbyCollisionLog.integer && g_gametype.integer == GT_DERBY &&
+		pm.collisionDetected && !pm.vehicleCollision.valid ) {
+		G_Printf( "Derby collision detected for %d but no body-body impulse was recorded\n",
+			ent->s.number );
+	}
 
 // STONELANCE - do damage from pmove
 

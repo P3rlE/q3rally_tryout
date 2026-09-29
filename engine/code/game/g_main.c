@@ -347,7 +347,7 @@ static cvarTable_t		gameCvarTable[] = {
         { &g_vehicleDamageScale, "g_vehicleDamageScale", "5.0", CVAR_ARCHIVE, 0, qfalse },
         { &g_vehicleDamageOffset, "g_vehicleDamageOffset", "0", CVAR_ARCHIVE, 0, qfalse },
         { &g_vehicleHealth, "g_vehicleHealth", "100", CVAR_ARCHIVE, 0, qfalse },
-        { &g_derbyDamageFactor, "g_derbyDamageFactor", "5.0", CVAR_ARCHIVE, 0, qfalse },
+        { &g_derbyDamageFactor, "g_derbyDamageFactor", "15.0", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyIgnoreDamageScale, "g_derbyIgnoreDamageScale", "0", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyCollisionFrontWeight, "g_derbyCollisionFrontWeight", "1.0", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyCollisionSideWeight, "g_derbyCollisionSideWeight", "0.65", CVAR_ARCHIVE, 0, qfalse },

@@ -19,14 +19,18 @@ on:
 
 jobs:
   build-macos:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        arch: [x86_64, arm64]  # Intel und Apple Silicon
+        include:
+        - arch: x86_64
+          runner: macos-15-intel
+        - arch: arm64
+          runner: macos-15
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         submodules: recursive
     
@@ -65,7 +69,7 @@ jobs:
         echo "Commit: ${{ github.sha }}" >> BUILD_INFO.txt
     
     - name: Upload macOS Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: q3rally-macos-${{ matrix.arch }}
         path: releases/macos-${{ matrix.arch }}
@@ -74,18 +78,18 @@ jobs:
   # Optional: Create combined release package
   package-universal:
     needs: build-macos
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     
     steps:
     - name: Download Intel build
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v7
       with:
         name: q3rally-macos-x86_64
         path: intel-build
     
     - name: Download ARM build  
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v7
       with:
         name: q3rally-macos-arm64
         path: arm-build
@@ -114,7 +118,7 @@ jobs:
         echo "Build Date: $(date)" >> universal-build/UNIVERSAL_BUILD.txt
     
     - name: Upload Universal Build
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: q3rally-macos-universal
         path: universal-build

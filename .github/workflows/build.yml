@@ -10,7 +10,7 @@ jobs:
       matrix:
         arch: [x86_64, x86]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Install Dependencies
       run: |
         if [ "${{ matrix.arch }}" = "x86" ]; then
@@ -32,7 +32,7 @@ jobs:
         fi
       env:
         ARCHIVE: 1
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: Linux-${{ matrix.arch }}
         path: engine/build/*.zip
@@ -40,7 +40,7 @@ jobs:
     name: Linux ARM64
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Install Dependencies
       run: |
         sudo apt-get update
@@ -51,7 +51,7 @@ jobs:
         ARCHIVE: 1
     - name: Verify package
       run: test -s engine/build/release-linux-arm64.zip
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: Linux-arm64
         path: engine/build/release-linux-arm64.zip
@@ -64,16 +64,19 @@ jobs:
       matrix:
         include:
         - arch: x86_64
-          msystem: MINGW64
-          package_prefix: mingw-w64-x86_64
+          msystem: UCRT64
+          package_prefix: mingw-w64-ucrt-x86_64
+          suppress_deprecation_warnings: ''
         - arch: x86
           msystem: MINGW32
           package_prefix: mingw-w64-i686
+          suppress_deprecation_warnings: msystem-mingw32
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: msys2/setup-msys2@v2
       with:
         msystem: ${{ matrix.msystem }}
+        suppress-deprecation-warnings: ${{ matrix.suppress_deprecation_warnings }}
         update: true
         install: >-
           base-devel
@@ -89,7 +92,7 @@ jobs:
         make release -j$(nproc) -C engine PLATFORM=mingw32 ARCH=${{ matrix.arch }} WINDRES=windres USE_CURL=1 USE_CURL_DLOPEN=0
       env:
         ARCHIVE: 1
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: Windows-${{ matrix.arch }}
         path: engine/build/*.zip
@@ -97,20 +100,20 @@ jobs:
     name: macOS
     runs-on: macos-15
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Compile
       run: make release -j$(sysctl -n hw.logicalcpu) -C engine USE_CURL=1 USE_CURL_DLOPEN=1
       env:
         ARCHIVE: 1
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: macOS
         path: engine/build/*.zip
   web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
+    - uses: actions/checkout@v7
       with:
         repository: emscripten-core/emsdk
         path: emsdk
@@ -125,7 +128,7 @@ jobs:
       run: |
         source emsdk/emsdk_env.sh
         emmake make release -j$(nproc) -C engine USE_CURL=1
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: Web
         path: engine/build/*.zip
