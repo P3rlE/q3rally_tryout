@@ -2090,10 +2090,11 @@ static float CG_DrawFPS( float y ) {
 		s = va( "FPS %i", fps );
 		savedHorizontalPlacement = CG_GetScreenHorizontalPlacement();
 		savedVerticalPlacement = CG_GetScreenVerticalPlacement();
-		/* Pin the readout to the unused left edge of the bottom telemetry
-		 * strip instead of leaving it detached near the middle of the view. */
-		CG_SetScreenPlacement( PLACE_CENTER, PLACE_BOTTOM );
-		CG_DrawIngameString( 8, 418, s, UI_SMALLFONT, 0.42f, fpsColor );
+		/* Keep the small readout in the upper-right margin, above the driver
+		 * order panel, and clear of the bottom telemetry strip. */
+		CG_SetScreenPlacement( PLACE_RIGHT, PLACE_TOP );
+		CG_DrawIngameString( 632, 0, s, UI_SMALLFONT | UI_RIGHT,
+		                     0.42f, fpsColor );
 		CG_SetScreenPlacement( savedHorizontalPlacement, savedVerticalPlacement );
 	}
 
