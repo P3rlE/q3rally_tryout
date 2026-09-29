@@ -847,6 +847,46 @@ static float PM_ApplyCollision( carBody_t *body, carPoint_t *points, vec3_t at, 
 
 
 #ifdef QAGAME
+/* Classify the contacted face in this vehicle's local frame. At rounded
+ * corners, use the contact point's normalized local position to break a
+ * near-equal normal projection, so opposite cars can resolve different zones
+ * from the same world-space contact. */
+static carHitZone_t PM_ClassifyCarHitZone( const carBody_t *body,
+										 const vec3_t contactPoint,
+										 const vec3_t outwardNormal ) {
+	vec3_t	contactOffset;
+	float	forwardDot, rightDot, upDot;
+	float	forwardPosition, rightPosition;
+
+	if ( !body || VectorLengthSquared( outwardNormal ) < 1e-6f )
+		return CAR_HIT_ZONE_NONE;
+
+	forwardDot = DotProduct( outwardNormal, body->forward );
+	rightDot = DotProduct( outwardNormal, body->right );
+	upDot = DotProduct( outwardNormal, body->up );
+
+	if ( fabs( upDot ) >= fabs( forwardDot ) &&
+		 fabs( upDot ) >= fabs( rightDot ) ) {
+		return upDot >= 0.0f ? CAR_HIT_ZONE_ROOF : CAR_HIT_ZONE_UNDERBODY;
+	}
+
+	if ( fabs( forwardDot ) > fabs( rightDot ) + 0.15f )
+		return forwardDot >= 0.0f ? CAR_HIT_ZONE_FRONT : CAR_HIT_ZONE_REAR;
+	if ( fabs( rightDot ) > fabs( forwardDot ) + 0.15f )
+		return rightDot >= 0.0f ? CAR_HIT_ZONE_RIGHT : CAR_HIT_ZONE_LEFT;
+
+	/* A diagonal corner normal is ambiguous. Resolve it using the contact's
+	 * position relative to each vehicle, scaled to the common physics hull. */
+	VectorSubtract( contactPoint, body->r, contactOffset );
+	forwardPosition = fabs( DotProduct( contactOffset, body->forward ) ) /
+		( CAR_LENGTH * 0.5f );
+	rightPosition = fabs( DotProduct( contactOffset, body->right ) ) /
+		( CAR_WIDTH * 0.5f );
+	if ( forwardPosition >= rightPosition )
+		return forwardDot >= 0.0f ? CAR_HIT_ZONE_FRONT : CAR_HIT_ZONE_REAR;
+	return rightDot >= 0.0f ? CAR_HIT_ZONE_RIGHT : CAR_HIT_ZONE_LEFT;
+}
+
 /*
 ================================================================================
 PM_ApplyBodyBodyCollision
@@ -861,19 +901,22 @@ Find:  the new linear and angular velocities of the two objects as a result of t
   in QAGAME so cgame builds don't emit -Wunused-function for this static.
 ================================================================================
 */
-static float PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, carBody_t *body2, carPoint_t *points2, vec3_t at, vec3_t normal, float elasticity ){
+static void PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, carBody_t *body2, carPoint_t *points2, vec3_t at, vec3_t normal, float elasticity, float *normalImpulse ){
 	vec3_t	arm1, arm2, pointVelocity1, pointVelocity2;
 	vec3_t	relativeVelocity, impulse, cross, cross2, angularResponse;
 	vec3_t	impulseMoment, deltaVelocity, oldAngularVelocity, deltaAngularVelocity;
 	float	closingSpeed, impulseDenominator, impulseMagnitude, responseScale;
 	int		i;
 
+	if ( normalImpulse )
+		*normalImpulse = 0.0f;
+
 	/* The trace normal points from body2 toward body1. Resolve only closing
 	 * velocity along this normal, using both contact-point velocities. */
 	if ( !body1 || !body2 || body1->mass <= 0.0f || body2->mass <= 0.0f )
-		return 0.0f;
+		return;
 	if ( VectorNormalize( normal ) == 0.0f )
-		return 0.0f;
+		return;
 
 	VectorSubtract( at, body1->CoM, arm1 );
 	VectorSubtract( at, body2->CoM, arm2 );
@@ -884,7 +927,7 @@ static float PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, c
 	VectorSubtract( pointVelocity1, pointVelocity2, relativeVelocity );
 	closingSpeed = -DotProduct( relativeVelocity, normal );
 	if ( closingSpeed <= 0.01f )
-		return 0.0f;
+		return;
 
 	/* Effective inverse mass along the normal, including both angular
 	 * responses about the contact point. */
@@ -898,7 +941,7 @@ static float PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, c
 	CrossProduct( cross2, arm2, angularResponse );
 	impulseDenominator += DotProduct( angularResponse, normal );
 	if ( impulseDenominator <= 1e-6f )
-		return 0.0f;
+		return;
 
 	/* Keep the legacy tuning control as a pair-wide response scale. Applying
 	 * it to both sides preserves equal-and-opposite momentum. */
@@ -910,6 +953,8 @@ static float PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, c
 	impulseMagnitude = ( 1.0f + elasticity ) * closingSpeed /
 		impulseDenominator * responseScale;
 	VectorScale( normal, impulseMagnitude, impulse );
+	if ( normalImpulse )
+		*normalImpulse = impulseMagnitude;
 
 	/* Apply opposite impulses at the shared contact point. Angular momentum is
 	 * generated from each body's actual lever arm, so corner contacts can rotate
@@ -944,8 +989,6 @@ static float PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, c
 		VectorAdd( points2[i].v, cross2, points2[i].v );
 	}
 	PM_UpdateFrameVelocities( body2, points2 );
-
-	return 0.0f;
 }
 #endif /* QAGAME */
 
@@ -2330,7 +2373,8 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 #ifdef QAGAME
 	if ( count && hitEnt >= 0 && hitEnt < MAX_CLIENTS && pm->cars && pm->cars[hitEnt] )
 	{
-		float	impulseDamage;
+		float	impactStrength;
+		vec3_t	selfNormal;
 		pm->collisionDetected = qtrue;
 
 //		G_LogPrintf( "minTrace %f\n", minTrace );
@@ -2355,7 +2399,28 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 			if ( carCarElasticity < 0.0f || carCarElasticity > 1.0f ) {
 				carCarElasticity = 0.25f;
 			}
-			impulseDamage = PM_ApplyBodyBodyCollision(&car->tBody, car->tPoints, &pm->cars[hitEnt]->sBody, pm->cars[hitEnt]->sPoints, hitOrigin, normal, carCarElasticity);
+			PM_ApplyBodyBodyCollision(&car->tBody, car->tPoints,
+				&pm->cars[hitEnt]->sBody, pm->cars[hitEnt]->sPoints,
+				hitOrigin, normal, carCarElasticity, &impactStrength);
+		}
+
+		/* Preserve the strongest impact from this user move. The trace normal
+		 * points from the other car toward this car, so each participant's
+		 * outward contact normal is classified in its own vehicle frame. */
+		if ( impactStrength > 0.0f &&
+			( !pm->vehicleCollision.valid ||
+			  impactStrength > pm->vehicleCollision.normalImpulse ) ) {
+			VectorCopy( normal, selfNormal );
+			VectorInverse( selfNormal );
+			pm->vehicleCollision.valid = qtrue;
+			pm->vehicleCollision.otherEnt = hitEnt;
+			pm->vehicleCollision.normalImpulse = impactStrength;
+			VectorCopy( hitOrigin, pm->vehicleCollision.point );
+			VectorCopy( normal, pm->vehicleCollision.normal );
+			pm->vehicleCollision.selfZone = PM_ClassifyCarHitZone(
+				&car->tBody, hitOrigin, selfNormal );
+			pm->vehicleCollision.otherZone = PM_ClassifyCarHitZone(
+				&pm->cars[hitEnt]->sBody, hitOrigin, normal );
 		}
 
 		// NOTE: the original code wrote into tPoints[hitEnt].normals here,
@@ -2364,17 +2429,6 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 		// bounds access whenever hitEnt >= NUM_CAR_POINTS. We deliberately
 		// drop that loop; the normal information is no longer required for
 		// the body-body impulse below to work.
-
-		// damage stuff
-
-		VectorCopy(hitOrigin, pm->damage.origin);
-		VectorCopy(normal, pm->damage.dir);
-		pm->damage.dflags = DAMAGE_NO_KNOCKBACK;
-		pm->damage.mod = MOD_VEHICLE_COLLISION;
-		pm->damage.otherEnt = hitEnt;
-		if ( impulseDamage > 0.0f ) {
-			pm->damage.damage += impulseDamage / 25.0f;
-		}
 
 		PM_CopyTargetToSource(&car->tBody, &car->sBody, tPoints, sPoints);
 

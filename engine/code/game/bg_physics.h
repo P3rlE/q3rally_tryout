@@ -244,6 +244,29 @@ typedef struct {
 	vec3_t	dir;
 } collisionDamage_t;
 
+/* Coarse vehicle regions for collision damage and Derby gameplay. */
+typedef enum {
+	CAR_HIT_ZONE_NONE,
+	CAR_HIT_ZONE_FRONT,
+	CAR_HIT_ZONE_REAR,
+	CAR_HIT_ZONE_LEFT,
+	CAR_HIT_ZONE_RIGHT,
+	CAR_HIT_ZONE_ROOF,
+	CAR_HIT_ZONE_UNDERBODY
+} carHitZone_t;
+
+/* Server-authoritative contact data for the strongest car-to-car impact in
+ * one Pmove call. The normal points from otherEnt toward this vehicle. */
+typedef struct {
+	qboolean	valid;
+	int			otherEnt;
+	float		normalImpulse;
+	vec3_t		point;
+	vec3_t		normal;
+	carHitZone_t	selfZone;
+	carHitZone_t	otherZone;
+} vehicleCollisionContact_t;
+
 
 typedef struct {
 	float	inverseWorldInertiaTensor[3][3];

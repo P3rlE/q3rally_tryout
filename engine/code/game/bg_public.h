@@ -300,6 +300,7 @@ typedef struct {
         int                     transmissionMode;
         collisionDamage_t       damage;
         collisionDamage_t       breakableDamage;
+        vehicleCollisionContact_t vehicleCollision;
         qboolean        collisionDetected;      // meaningful wall or car/car impact this move
 
         qboolean        useFuel;
