@@ -390,9 +390,10 @@ char	*modNames[] = {
 	"MOD_MINE",
 	"MOD_POISON",
 	"MOD_FIRE",
-	"MOD_FLAME_THROWER",
 // Q3Rally Code END
-	"MOD_GRAPPLE"
+	"MOD_GRAPPLE",
+	"MOD_BREAKABLE_SPLASH",
+	"MOD_DERBY_NO_RAM"
         };
 
 #ifdef MISSIONPACK

@@ -1072,6 +1072,8 @@ static float PM_ClipCarPositionCorrection( const carBody_t *body,
 static void PM_RecordVehicleCollision( int otherEnt, float normalImpulse,
 										 const vec3_t point,
 										 const vec3_t normal,
+										 qboolean selfWasRamming,
+										 qboolean otherWasRamming,
 										 const carBody_t *selfBody,
 										 const carBody_t *otherBody ) {
 	vec3_t selfNormal;
@@ -1091,6 +1093,8 @@ static void PM_RecordVehicleCollision( int otherEnt, float normalImpulse,
 		selfBody, point, selfNormal );
 	pm->vehicleCollision.otherZone = PM_ClassifyCarHitZone(
 		otherBody, point, normal );
+	pm->vehicleCollision.selfWasRamming = selfWasRamming;
+	pm->vehicleCollision.otherWasRamming = otherWasRamming;
 }
 
 static void PM_LinkCorrectedCar( int clientNum, car_t *car ) {
@@ -1238,15 +1242,20 @@ Find:  the new linear and angular velocities of the two objects as a result of t
   in QAGAME so cgame builds don't emit -Wunused-function for this static.
 ================================================================================
 */
-static void PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, carBody_t *body2, carPoint_t *points2, vec3_t at, vec3_t normal, float elasticity, float *normalImpulse ){
+static void PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, carBody_t *body2, carPoint_t *points2, vec3_t at, vec3_t normal, float elasticity, float *normalImpulse, qboolean *body1WasRamming, qboolean *body2WasRamming ){
 	vec3_t	arm1, arm2, pointVelocity1, pointVelocity2;
 	vec3_t	relativeVelocity, impulse, cross, cross2, angularResponse;
 	vec3_t	impulseMoment, deltaVelocity, oldAngularVelocity, deltaAngularVelocity;
 	float	closingSpeed, impulseDenominator, impulseMagnitude, responseScale;
+	float	body1ApproachSpeed, body2ApproachSpeed;
 	int		i;
 
 	if ( normalImpulse )
 		*normalImpulse = 0.0f;
+	if ( body1WasRamming )
+		*body1WasRamming = qfalse;
+	if ( body2WasRamming )
+		*body2WasRamming = qfalse;
 
 	/* The contact normal points from body2 toward body1. Resolve only closing
 	 * velocity along this normal, using both contact-point velocities. */
@@ -1261,6 +1270,12 @@ static void PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, ca
 	VectorAdd( body1->v, cross, pointVelocity1 );
 	CrossProduct( body2->w, arm2, cross );
 	VectorAdd( body2->v, cross, pointVelocity2 );
+	body1ApproachSpeed = -DotProduct( pointVelocity1, normal );
+	body2ApproachSpeed = DotProduct( pointVelocity2, normal );
+	if ( body1WasRamming && body1ApproachSpeed > 0.0f )
+		*body1WasRamming = qtrue;
+	if ( body2WasRamming && body2ApproachSpeed > 0.0f )
+		*body2WasRamming = qtrue;
 	VectorSubtract( pointVelocity1, pointVelocity2, relativeVelocity );
 	closingSpeed = -DotProduct( relativeVelocity, normal );
 	if ( closingSpeed <= 0.01f )
@@ -2735,6 +2750,7 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 		float	selfRadius, otherRadius, selfTravel, otherTravel, broadphaseRange;
 		vec3_t	contactNormal, contactPoint, centerDelta, travelDelta;
 		vec3_t	selfHalfExtents, otherHalfExtents;
+		qboolean selfWasRamming, otherWasRamming;
 		qboolean impactApplied[MAX_CLIENTS];
 		car_t	*otherCar;
 
@@ -2815,13 +2831,17 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 			carCarElasticity = pm->car_impact_elasticity;
 			if ( carCarElasticity < 0.0f || carCarElasticity > 1.0f )
 				carCarElasticity = 0.25f;
+			selfWasRamming = qfalse;
+			otherWasRamming = qfalse;
 			PM_ApplyBodyBodyCollision( &car->tBody, car->tPoints,
 				&otherCar->sBody, otherCar->sPoints, contactPoint,
-				contactNormal, carCarElasticity, &impactStrength );
+				contactNormal, carCarElasticity, &impactStrength,
+				&selfWasRamming, &otherWasRamming );
 			if ( impactStrength > 0.0f ) {
 				impactApplied[candidate] = qtrue;
 				PM_RecordVehicleCollision( carHitEntities[candidate],
 					impactStrength, contactPoint, contactNormal,
+					selfWasRamming, otherWasRamming,
 					&car->tBody, &otherCar->sBody );
 				PM_LinkCorrectedCar( carHitEntities[candidate], otherCar );
 			}
@@ -2851,13 +2871,17 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 				carCarElasticity = pm->car_impact_elasticity;
 				if ( carCarElasticity < 0.0f || carCarElasticity > 1.0f )
 					carCarElasticity = 0.25f;
+				selfWasRamming = qfalse;
+				otherWasRamming = qfalse;
 				PM_ApplyBodyBodyCollision( &car->tBody, car->tPoints,
 					&otherCar->sBody, otherCar->sPoints, contactPoint,
-					contactNormal, carCarElasticity, &impactStrength );
+					contactNormal, carCarElasticity, &impactStrength,
+					&selfWasRamming, &otherWasRamming );
 				if ( impactStrength > 0.0f ) {
 					impactApplied[candidate] = qtrue;
 					PM_RecordVehicleCollision( carHitEntities[candidate],
 						impactStrength, contactPoint, contactNormal,
+						selfWasRamming, otherWasRamming,
 						&car->tBody, &otherCar->sBody );
 					PM_LinkCorrectedCar( carHitEntities[candidate], otherCar );
 				}

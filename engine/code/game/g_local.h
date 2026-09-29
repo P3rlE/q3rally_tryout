@@ -496,6 +496,8 @@ struct gclient_s {
 	// Exact zone and applied amount of the strongest Derby car impact this frame.
 	carHitZone_t derbyDamageZone;
 	int derbyDamageZoneDamage;
+	int derbyLastRamTime;
+	int derbyNoRamWarningSecond;
 
 	// sum up damage over an entire frame, so
 	// shotgun blasts give a single big kick
@@ -611,6 +613,8 @@ typedef struct {
 	/* Pairwise frame stamps prevent duplicate Derby collision damage when both
 	 * drivers' Pmoves report the same contact, including crowded multi-car hits. */
 	int			vehicleCollisionDamageFrame[MAX_CLIENTS][MAX_CLIENTS];
+	/* Last impact frame per pair; consecutive contacts form one ram event. */
+	int			vehicleCollisionImpactFrame[MAX_CLIENTS][MAX_CLIENTS];
 	int			time;					// in msec
 	int			previousTime;			// so movers can back up when blocked
 
@@ -1290,6 +1294,9 @@ extern  vmCvar_t        g_derbyCollisionFrontWeight;
 extern  vmCvar_t        g_derbyCollisionSideWeight;
 extern  vmCvar_t        g_derbyCollisionRearWeight;
 extern  vmCvar_t        g_derbyCollisionLog;
+extern  vmCvar_t        g_derbyHitFuelReward;
+extern  vmCvar_t        g_derbyHitNosReward;
+extern  vmCvar_t        g_derbyNoRamTime;
 extern  vmCvar_t        g_fuelKillReward;
 extern  vmCvar_t        g_useFuel;
 

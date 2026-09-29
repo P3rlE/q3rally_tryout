@@ -366,7 +366,9 @@ typedef enum {
         STAT_POSITION,
         STAT_FRAC_TO_NEXT_CHECKPOINT,
         STAT_DISTANCE_REMAIN,
-        STAT_FUEL
+        STAT_FUEL,
+        /* Derby reuses the race-only fraction slot to preserve the wire layout. */
+        STAT_DERBY_NORAM = STAT_FRAC_TO_NEXT_CHECKPOINT
 // END
 } statIndex_t;
 
@@ -816,7 +818,8 @@ typedef enum {
         MOD_POISON,
         MOD_FIRE,
         MOD_GRAPPLE,
-        MOD_BREAKABLE_SPLASH
+        MOD_BREAKABLE_SPLASH,
+        MOD_DERBY_NO_RAM
 } meansOfDeath_t;
 
 #define MOD_CAR_COLLISION MOD_VEHICLE_COLLISION

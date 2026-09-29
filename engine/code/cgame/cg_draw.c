@@ -1713,6 +1713,18 @@ static void CG_DrawRallyTelemetryHud( void ) {
 	if ( fuelFrac > 0.0f ) {
 		CG_FillRect( HUD_X(450), 454, fuelBarWidth * fuelFrac * spreadFactor, 5, blueColor );
 	}
+	if ( cgs.gametype == GT_DERBY && ps->stats[STAT_DERBY_NORAM] > 0 ) {
+		vec4_t ramTimerColor;
+		int ramSeconds;
+
+		ramSeconds = ps->stats[STAT_DERBY_NORAM];
+		Vector4Copy( ramSeconds <= 10 ? dangerColor : mutedColor,
+			ramTimerColor );
+		CG_DrawIngameSmallString( HUD_X(548), 435, "NO RAM",
+			ramTimerColor );
+		CG_DrawIngameString( HUD_X(548), 451, va( "%d", ramSeconds ),
+			UI_CENTER, 0.85f, ramTimerColor );
+	}
 	CG_DrawIngameString( HUD_X(450), 466, "RPM", UI_SMALLFONT,
 	                     0.75f, mutedColor );
 	segmentW = 8.0f * spreadFactor;

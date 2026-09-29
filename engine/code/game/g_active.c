@@ -1251,6 +1251,53 @@ static float G_DerbyCollisionZoneWeight( carHitZone_t zone ) {
 #define DERBY_COLLISION_DAMAGE_DIVISOR 250.0f
 #define DERBY_MAX_COLLISION_DAMAGE 15.0f
 
+static qboolean G_DerbyRegisterImpactEvent( int client1, int client2 ) {
+	int lastImpactFrame;
+	qboolean isNewImpact;
+
+	lastImpactFrame = level.vehicleCollisionImpactFrame[client1][client2];
+	isNewImpact = lastImpactFrame < level.framenum - 1;
+	level.vehicleCollisionImpactFrame[client1][client2] = level.framenum;
+	level.vehicleCollisionImpactFrame[client2][client1] = level.framenum;
+	return isNewImpact;
+}
+
+static void G_DerbyAwardRamBonus( gentity_t *rammer ) {
+	int turboValue, turboRemaining, turboBonus;
+	float fuelBonus;
+
+	if ( !rammer || !rammer->client )
+		return;
+
+	fuelBonus = rammer->client->car.maxFuel *
+		g_derbyHitFuelReward.value / 100.0f;
+	if ( fuelBonus > 0.0f && rammer->client->car.maxFuel > 0.0f ) {
+		rammer->client->car.fuel += fuelBonus;
+		if ( rammer->client->car.fuel > rammer->client->car.maxFuel )
+			rammer->client->car.fuel = rammer->client->car.maxFuel;
+		rammer->client->ps.stats[STAT_FUEL] =
+			(int)rammer->client->car.fuel;
+	}
+
+	turboBonus = g_derbyHitNosReward.integer;
+	if ( turboBonus <= 0 )
+		return;
+	turboValue = rammer->client->ps.powerups[PW_TURBO];
+	if ( turboValue > level.time )
+		turboRemaining = turboValue - level.time;
+	else if ( turboValue < 0 )
+		turboRemaining = -turboValue;
+	else
+		turboRemaining = 0;
+	turboRemaining += turboBonus;
+	if ( turboRemaining > RALLY_TURBO_MAX_MSEC )
+		turboRemaining = RALLY_TURBO_MAX_MSEC;
+	if ( turboValue > level.time )
+		rammer->client->ps.powerups[PW_TURBO] = level.time + turboRemaining;
+	else
+		rammer->client->ps.powerups[PW_TURBO] = -turboRemaining;
+}
+
 /* Derby damage follows the solver's actual normal impulse. Physics already
  * changed both cars' velocities, so damage must not add another knockback. */
 static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
@@ -1286,6 +1333,25 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 	if ( self->client->car.sBody.mass <= 0.0f ||
 		other->client->car.sBody.mass <= 0.0f )
 		return;
+
+	/* One event spans continuous contact. Reward only after a new impact edge,
+	 * even when both drivers' Pmoves report the same pair in this frame. */
+	if ( G_DerbyRegisterImpactEvent( self->s.number, other->s.number ) ) {
+		if ( contact->selfWasRamming ) {
+			self->client->derbyLastRamTime = level.time;
+			self->client->derbyNoRamWarningSecond = -1;
+			self->client->ps.stats[STAT_DERBY_NORAM] =
+				g_derbyNoRamTime.integer;
+			G_DerbyAwardRamBonus( self );
+		}
+		if ( contact->otherWasRamming ) {
+			other->client->derbyLastRamTime = level.time;
+			other->client->derbyNoRamWarningSecond = -1;
+			other->client->ps.stats[STAT_DERBY_NORAM] =
+				g_derbyNoRamTime.integer;
+			G_DerbyAwardRamBonus( other );
+		}
+	}
 
 	if ( g_derbyCollisionLog.integer ) {
 		carBody_t *selfBody, *otherBody;

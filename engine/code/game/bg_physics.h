@@ -265,6 +265,8 @@ typedef struct {
 	vec3_t		normal;
 	carHitZone_t	selfZone;
 	carHitZone_t	otherZone;
+	qboolean	selfWasRamming;
+	qboolean	otherWasRamming;
 } vehicleCollisionContact_t;
 
 
