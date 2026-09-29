@@ -343,9 +343,9 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &car_friction_scale, "car_friction_scale", "1.1", CVAR_SYSTEMINFO | CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
 
 	/* Vehicle vs. vehicle collision tuning. Both are LIVE (no LATCH) so they
-	 * can be tweaked from the console without a map change. Defaults give
-	 * roughly equal-mass elastic exchange in the normal direction. */
-	{ &g_carImpactTransfer,    "g_carImpactTransfer",    "0.5",  CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qfalse },
+	 * can be tweaked from the console without a map change. Transfer is now a
+	 * pair-wide impulse scale (1.0 = full response); elasticity controls bounce. */
+	{ &g_carImpactTransfer,    "g_carImpactTransfer",    "1.0",  CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qfalse },
 	{ &g_carImpactElasticity,  "g_carImpactElasticity",  "0.25", CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qfalse },
 
         { &g_damageScale, "g_damageScale", "0.3", CVAR_ARCHIVE, 0, qfalse },

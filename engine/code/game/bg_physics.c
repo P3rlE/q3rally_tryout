@@ -851,8 +851,7 @@ static float PM_ApplyCollision( carBody_t *body, carPoint_t *points, vec3_t at, 
 ================================================================================
 PM_ApplyBodyBodyCollision
 
-  This function is a hacked up version of PM_ApplyCollision to try to simulate
-  the collision between two cars.
+  Resolves a normal impulse between two moving car bodies.
 
 Given: 2 rigid bodies, impact origin, impact normal, and elasticity
 Find:  the new linear and angular velocities of the two objects as a result of the impact.
@@ -863,159 +862,90 @@ Find:  the new linear and angular velocities of the two objects as a result of t
 ================================================================================
 */
 static float PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, carBody_t *body2, carPoint_t *points2, vec3_t at, vec3_t normal, float elasticity ){
-	//vec3_t	arm1, arm2;
-	vec3_t	vP1, vP2;
-	//vec3_t	impulse, impulseMoment;
-	//vec3_t	cross, cross2;
-	vec3_t	diff1, diff2, delta;
-	vec3_t	diff1Normal, diff2Normal;
-	float	diff1Dot, diff2Dot;
-	//float	impulseNum, oppositeImpulseNum, impulseDen;
-	//float	totalMass;
+	vec3_t	arm1, arm2, pointVelocity1, pointVelocity2;
+	vec3_t	relativeVelocity, impulse, cross, cross2, angularResponse;
+	vec3_t	impulseMoment, deltaVelocity, oldAngularVelocity, deltaAngularVelocity;
+	float	closingSpeed, impulseDenominator, impulseMagnitude, responseScale;
 	int		i;
 
-/*
-	totalMass = body1->mass + body2->mass;
+	/* The trace normal points from body2 toward body1. Resolve only closing
+	 * velocity along this normal, using both contact-point velocities. */
+	if ( !body1 || !body2 || body1->mass <= 0.0f || body2->mass <= 0.0f )
+		return 0.0f;
+	if ( VectorNormalize( normal ) == 0.0f )
+		return 0.0f;
 
-	VectorSubtract(at, body1->CoM, arm1);
-	VectorSubtract(at, body2->CoM, arm2);
+	VectorSubtract( at, body1->CoM, arm1 );
+	VectorSubtract( at, body2->CoM, arm2 );
+	CrossProduct( body1->w, arm1, cross );
+	VectorAdd( body1->v, cross, pointVelocity1 );
+	CrossProduct( body2->w, arm2, cross );
+	VectorAdd( body2->v, cross, pointVelocity2 );
+	VectorSubtract( pointVelocity1, pointVelocity2, relativeVelocity );
+	closingSpeed = -DotProduct( relativeVelocity, normal );
+	if ( closingSpeed <= 0.01f )
+		return 0.0f;
 
-	if (pm->pDebug){
-		Com_Printf("PM_ApplyBodyBodyCollision: arm1 %0.3f, %0.3f, %0.3f\n", arm1[0], arm1[1], arm1[2]);
-		Com_Printf("PM_ApplyBodyBodyCollision: arm2 %0.3f, %0.3f, %0.3f\n", arm2[0], arm2[1], arm2[2]);
-		Com_Printf("PM_ApplyBodyBodyCollision: normal %0.3f, %0.3f, %0.3f\n", normal[0], normal[1], normal[2]);
+	/* Effective inverse mass along the normal, including both angular
+	 * responses about the contact point. */
+	impulseDenominator = 1.0f / body1->mass + 1.0f / body2->mass;
+	CrossProduct( arm1, normal, cross );
+	VectorRotate( cross, body1->inverseWorldInertiaTensor, cross2 );
+	CrossProduct( cross2, arm1, angularResponse );
+	impulseDenominator += DotProduct( angularResponse, normal );
+	CrossProduct( arm2, normal, cross );
+	VectorRotate( cross, body2->inverseWorldInertiaTensor, cross2 );
+	CrossProduct( cross2, arm2, angularResponse );
+	impulseDenominator += DotProduct( angularResponse, normal );
+	if ( impulseDenominator <= 1e-6f )
+		return 0.0f;
+
+	/* Keep the legacy tuning control as a pair-wide response scale. Applying
+	 * it to both sides preserves equal-and-opposite momentum. */
+	responseScale = pm->car_impact_transfer;
+	if ( responseScale <= 0.0f )
+		responseScale = 1.0f;
+	if ( responseScale > 1.0f )
+		responseScale = 1.0f;
+	impulseMagnitude = ( 1.0f + elasticity ) * closingSpeed /
+		impulseDenominator * responseScale;
+	VectorScale( normal, impulseMagnitude, impulse );
+
+	/* Apply opposite impulses at the shared contact point. Angular momentum is
+	 * generated from each body's actual lever arm, so corner contacts can rotate
+	 * both cars according to their inertia. */
+	VectorCopy( body1->w, oldAngularVelocity );
+	VectorScale( impulse, 1.0f / body1->mass, deltaVelocity );
+	VectorAdd( body1->v, deltaVelocity, body1->v );
+	CrossProduct( arm1, impulse, impulseMoment );
+	VectorAdd( body1->L, impulseMoment, body1->L );
+	VectorRotate( body1->L, body1->inverseWorldInertiaTensor, body1->w );
+	VectorSubtract( body1->w, oldAngularVelocity, deltaAngularVelocity );
+	for ( i = 0; i < FIRST_FRAME_POINT; i++ ) {
+		VectorSubtract( points1[i].r, body1->CoM, cross );
+		CrossProduct( deltaAngularVelocity, cross, cross2 );
+		VectorAdd( points1[i].v, deltaVelocity, points1[i].v );
+		VectorAdd( points1[i].v, cross2, points1[i].v );
 	}
+	PM_UpdateFrameVelocities( body1, points1 );
 
-	CrossProduct(body1->w, arm1, cross);
-	VectorAdd(body1->v, cross, vP1);
-
-	CrossProduct(body2->w, arm2, cross);
-	VectorAdd(body2->v, cross, vP2);
-*/
-
-	// hacked up physics — improved to preserve tangential velocity
-	// Only transfer the normal component of the velocity change,
-	// so cars don't abruptly stop when colliding at an angle.
-	//
-	// The "wall trick" (PM_ApplyCollision on body1 against the contact
-	// normal) makes body1 lose (1+e_wall) * v_normal. Naively re-adding
-	// that whole delta to body2 double-counts the impulse and launches
-	// the target body 1-2 car widths sideways on a glancing hit. For two
-	// roughly equal masses we want body2 to gain ~(1+e)/2 * v_normal of
-	// the closing speed, hence the transferScale below (default 0.5 from
-	// g_carImpactTransfer). The attacker (body1) keeps the original
-	// half-elasticity bounce so the rammer's recoil doesn't change.
-	{
-		float	transferScale;
-
-		transferScale = pm->car_impact_transfer;
-		/* defensive: fall back to a sensible default if cvar is unset */
-		if ( transferScale <= 0.0f ) {
-			transferScale = 0.5f;
-		}
-
-		VectorCopy( body1->v, vP1 );
-		VectorCopy( body1->L, vP2 );
-		PM_ApplyCollision( body1, points1, at, normal, elasticity / 2.0f );
-
-		VectorSubtract( vP1, body1->v, diff1 );
-		VectorSubtract( vP2, body1->L, diff2 );
-
-		// Project diff onto collision normal — only transfer normal
-		// component, scaled by the mass-split factor.
-		diff1Dot = DotProduct( diff1, normal ) * transferScale;
-		VectorScale( normal, diff1Dot, diff1Normal );
-
-		diff2Dot = DotProduct( diff2, normal ) * transferScale;
-		VectorScale( normal, diff2Dot, diff2Normal );
-	}
-
-	VectorAdd( body2->v, diff1Normal, body2->v );
-	VectorAdd( body2->L, diff2Normal, body2->L );
-
-	// compute affected auxiliary quantities
+	VectorInverse( impulse );
+	VectorCopy( body2->w, oldAngularVelocity );
+	VectorScale( impulse, 1.0f / body2->mass, deltaVelocity );
+	VectorAdd( body2->v, deltaVelocity, body2->v );
+	CrossProduct( arm2, impulse, impulseMoment );
+	VectorAdd( body2->L, impulseMoment, body2->L );
 	VectorRotate( body2->L, body2->inverseWorldInertiaTensor, body2->w );
-
-	// temp to help wheel movement when hitting walls
-	// FIXME: is this still needed?
-	VectorMA( diff1Normal, -DotProduct(diff1Normal, body2->up), body2->up, delta );
-	for ( i = 0; i < FIRST_FRAME_POINT; i++ ){
-		VectorAdd( points2[i].v, delta, points2[i].v );
+	VectorSubtract( body2->w, oldAngularVelocity, deltaAngularVelocity );
+	for ( i = 0; i < FIRST_FRAME_POINT; i++ ) {
+		VectorSubtract( points2[i].r, body2->CoM, cross );
+		CrossProduct( deltaAngularVelocity, cross, cross2 );
+		VectorAdd( points2[i].v, deltaVelocity, points2[i].v );
+		VectorAdd( points2[i].v, cross2, points2[i].v );
 	}
-
 	PM_UpdateFrameVelocities( body2, points2 );
 
-//	VectorInverse( normal );
-//	PM_ApplyCollision( body2, points2, at, normal, elasticity );
-//	VectorMA( body2->v, body1->mass / totalMass, vP1, body2->v );
-
-//	Com_Printf( "PM_ApplyBodyBodyCollision: v after %0.3f, %0.3f, %0.3f\n", body2->v[0], body2->v[1], body2->v[2] );
-
-	return 0;
-
-/*
-	VectorSubtract(vP1, vP2, vP1);
-
-	// added from collision
-	VectorClear(impulse);
-//	if (DotProduct(normal, vP1) < 0){
-//		massFraction = (2.0f * body1->mass) / (body1->mass + body2->mass);
-//		impulseNum = massFraction * DotProduct(normal, vP1);
-//		massFraction = ((1.0f + elasticity) * body1->mass) / (body1->mass + body2->mass);
-		impulseNum = -(1 + elasticity) * DotProduct(normal, vP1);
-		oppositeImpulseNum = -(1.0f - elasticity) * DotProduct(normal, vP1);
-
-//		impulseDen = 1.0f / body1->mass;
-		impulseDen = 1.0f / body1->mass + 1.0f / body2->mass;
-		CrossProduct(arm1, normal, cross);
-		VectorRotate(cross, body1->inverseWorldInertiaTensor, cross2);
-		CrossProduct(cross2, arm1, cross);
-		//impulseDen = 1.0f / body1->mass + DotProduct(cross, normal);
-		impulseDen += DotProduct(cross, normal);
-
-		CrossProduct(arm2, normal, cross);
-		VectorRotate(cross, body2->inverseWorldInertiaTensor, cross2);
-		CrossProduct(cross2, arm2, cross);
-		impulseDen += DotProduct(cross, normal);
-
-		VectorScale(normal, impulseNum / impulseDen, impulse);
-
-//	}
-//	else {
-//		// not hitting surface
-//		return;
-//	}
-
-	// apply impulse to primary quantities
-	VectorMA(body1->v, 1.0 / body1->mass, impulse, body1->v);
-	CrossProduct(arm1, impulse, impulseMoment);
-	VectorAdd(body1->L, impulseMoment, body1->L);
-    
-    // compute affected auxiliary quantities
-	VectorRotate(body1->L, body1->inverseWorldInertiaTensor, body1->w);
-
-	// apply impulse to primary quantities of second object
-	VectorInverse(impulse);
-	VectorMA(body2->v, 1.0 / body2->mass, impulse, body2->v);
-	CrossProduct(arm2, impulse, impulseMoment);
-	VectorAdd(body2->L, impulseMoment, body2->L);
-
-	// compute affected auxiliary quantities of second object
-	VectorRotate(body2->L, body2->inverseWorldInertiaTensor, body2->w);
-
-	// temp to help wheel movement when hitting walls
-//	VectorMA(impulse, -DotProduct(impulse, body->up), body->up, delta);
-//	for (i = 0; i < FIRST_FRAME_POINT; i++){
-//		VectorMA(points[i].v, 1.0 / body->mass, delta, points[i].v);
-//	}
-
-	PM_UpdateFrameVelocities(body1, points1);
-
-	if (fabs(oppositeImpulseNum / impulseDen) > 5000.0f)
-		return fabs(oppositeImpulseNum / impulseDen);
-	else
-		return 0;
-*/
+	return 0.0f;
 }
 #endif /* QAGAME */
 
@@ -1924,6 +1854,8 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 	qboolean	scriptedObjectPlane;
 	qboolean	hitScriptedObject;
 	vec3_t	pointCorrection;
+	vec3_t	contactPoint;
+	float	contactOffset;
 #endif
 	
 	numbumps = 4;
@@ -2219,12 +2151,29 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 						{
 							minTrace = trace.fraction;
 							VectorClear(hitOrigin);
+							VectorClear(normal);
 							count = 0;
+							hitEnt = -1;
 						}
 
-						if (trace.fraction == minTrace)
+						if (trace.fraction == minTrace &&
+							( hitEnt < 0 || hitEnt == hitFirst ))
 						{
-							VectorAdd(hitOrigin, trace.endpos, hitOrigin);
+							/* trace.endpos is the center of the swept point box.
+							 * Move it to the box support point on the contacted face. */
+							contactOffset = sPoint->radius *
+								( fabs( trace.plane.normal[0] ) +
+								  fabs( trace.plane.normal[1] ) );
+							if ( i >= LAST_FRAME_POINT )
+								contactOffset += ( sPoint->radius / 1.5f ) *
+									fabs( trace.plane.normal[2] );
+							else
+								contactOffset += sPoint->radius *
+									fabs( trace.plane.normal[2] );
+							VectorMA( trace.endpos, -contactOffset,
+								trace.plane.normal, contactPoint );
+							VectorAdd(hitOrigin, contactPoint, hitOrigin);
+							VectorAdd(normal, trace.plane.normal, normal);
 							count++;
 							hitEnt = hitFirst;
 
@@ -2397,7 +2346,6 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 		PM_CalculateTargetBody(car, &car->sBody, &car->tBody, car->sPoints, car->tPoints, time * minTrace);
 
 //		VectorSubtract(car->tBody.r, pm->cars[hitEnt]->sBody.r, normal);
-		VectorSubtract(hitOrigin, pm->cars[hitEnt]->sBody.r, normal);
 		VectorNormalize(normal);
 
 		{

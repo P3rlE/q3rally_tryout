@@ -325,7 +325,7 @@ typedef struct {
         float           car_air_frac_to_df;
         float           car_friction_scale;
 
-        float           car_impact_transfer;   /* mass-split factor for vehicle vs. vehicle impulse */
+        float           car_impact_transfer;   /* pair-wide scale for vehicle impact impulse */
         float           car_impact_elasticity; /* elasticity of vehicle vs. vehicle bounce */
 // END
 } pmove_t;
