@@ -3620,7 +3620,7 @@ static qboolean CG_DrawFollow( void ) {
 		return qfalse;
 	}
 
-	/* Don't show "following <player>" during the intro camera sequence */
+	/* Don't show "following <player>" during the intro route preview. */
 	if ( CG_IntroCam_IsActive() ) {
 		return qfalse;
 	}
@@ -3854,6 +3854,20 @@ static void CG_DrawIntroCamOverlay( void ) {
 		UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, 0.68f, mutedColor );
 }
 
+static void CG_DrawIntroCamFade( void ) {
+	vec4_t fadeColor = { 0.0f, 0.0f, 0.0f, 0.0f };
+	float alpha = CG_IntroCam_FadeAlpha();
+
+	if ( alpha <= 0.0f ) {
+		return;
+	}
+
+	fadeColor[3] = alpha;
+	trap_R_SetColor( fadeColor );
+	CG_DrawPic( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, cgs.media.whiteShader );
+	trap_R_SetColor( NULL );
+}
+
 static void CG_Draw2D(stereoFrame_t stereoFrame)
 {
 #ifdef MISSIONPACK
@@ -4008,6 +4022,7 @@ void CG_DrawActive( stereoFrame_t stereoView ) {
 
 	// draw 3D view
 	trap_R_RenderScene( &cg.refdef );
+	CG_DrawIntroCamFade();
 
 // Q3Rally Code Start
 	if ( !CG_IntroCam_IsActive() ) {
