@@ -4023,7 +4023,6 @@ void CG_DrawActive( stereoFrame_t stereoView ) {
 
 	// draw 3D view
 	trap_R_RenderScene( &cg.refdef );
-	CG_DrawIntroCamFade();
 
 // Q3Rally Code Start
 	if ( !CG_IntroCam_IsActive() ) {
@@ -4037,4 +4036,5 @@ void CG_DrawActive( stereoFrame_t stereoView ) {
 
 	// draw status bar and other floating elements
  	CG_Draw2D(stereoView);
+	CG_DrawIntroCamFade();
 }

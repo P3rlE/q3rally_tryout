@@ -427,7 +427,7 @@ float CG_IntroCam_FadeAlpha( void ) {
 
 	elapsed = cg.time - s_startTime;
 	if ( elapsed < 0 ) {
-		return 0.0f;
+		return 1.0f;
 	}
 	if ( elapsed >= s_previewDurationMs ) {
 		transition = (float)( elapsed - s_previewDurationMs ) / (float)revealDurationMs;
