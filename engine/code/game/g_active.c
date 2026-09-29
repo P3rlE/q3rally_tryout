@@ -1287,6 +1287,25 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 		other->client->car.sBody.mass <= 0.0f )
 		return;
 
+	if ( g_derbyCollisionLog.integer ) {
+		carBody_t *selfBody, *otherBody;
+
+		selfBody = &self->client->car.sBody;
+		otherBody = &other->client->car.sBody;
+		G_Printf( "Derby collision state: %d r=(%.1f %.1f %.1f) v=(%.1f %.1f %.1f) w=(%.3f %.3f %.3f), "
+			"%d r=(%.1f %.1f %.1f) v=(%.1f %.1f %.1f) w=(%.3f %.3f %.3f), "
+			"impulse=%.1f point=(%.1f %.1f %.1f) normal=(%.3f %.3f %.3f)\n",
+			self->s.number, selfBody->r[0], selfBody->r[1], selfBody->r[2],
+			selfBody->v[0], selfBody->v[1], selfBody->v[2],
+			selfBody->w[0], selfBody->w[1], selfBody->w[2],
+			other->s.number, otherBody->r[0], otherBody->r[1], otherBody->r[2],
+			otherBody->v[0], otherBody->v[1], otherBody->v[2],
+			otherBody->w[0], otherBody->w[1], otherBody->w[2],
+			contact->normalImpulse, contact->point[0], contact->point[1],
+			contact->point[2], contact->normal[0], contact->normal[1],
+			contact->normal[2] );
+	}
+
 	/* The per-car velocity change is impulse / mass. Only the part above the
 	 * threshold causes damage. The divisor controls the damage rate, while the
 	 * 15-point per-contact cap prevents an extreme solver impulse from wrecking
@@ -1742,6 +1761,8 @@ void ClientThink_real( gentity_t *ent ) {
 	pm.car = &client->car;
 	pm.cars = level.cars;
 	pm.pDebug = ent->pDebug;
+	pm.vehicleCollisionLog = g_derbyCollisionLog.integer &&
+		g_gametype.integer == GT_DERBY;
 
 	pm.controlMode = client->pers.controlMode;
 	pm.manualShift = client->pers.manualShift;

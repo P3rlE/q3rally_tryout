@@ -302,6 +302,8 @@ typedef struct {
         collisionDamage_t       breakableDamage;
         vehicleCollisionContact_t vehicleCollision;
         qboolean        collisionDetected;      // meaningful wall or car/car impact this move
+        qboolean        vehicleCollisionLog;     // server-side derby physics diagnostics enabled
+        qboolean        vehicleWorldContactLogged; // one post-impact wall trace per Pmove
 
         qboolean        useFuel;
 

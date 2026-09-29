@@ -2804,6 +2804,7 @@ void Pmove (pmove_t *pmove) {
 	pmove->vehicleCollision.otherZone = CAR_HIT_ZONE_NONE;
 	VectorClear( pmove->vehicleCollision.point );
 	VectorClear( pmove->vehicleCollision.normal );
+	pmove->vehicleWorldContactLogged = qfalse;
 
 	finalTime = pmove->cmd.serverTime;
 
