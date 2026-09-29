@@ -194,6 +194,8 @@ void P_DamageFeedback( gentity_t *player ) {
 	// total points of damage shot at the player this frame
 	count = client->damage_blood + client->damage_armor;
 	if ( count == 0 ) {
+		client->derbyDamageZone = CAR_HIT_ZONE_NONE;
+		client->derbyDamageZoneDamage = 0;
 		return;		// didn't take any damage
 	}
 
@@ -205,6 +207,7 @@ void P_DamageFeedback( gentity_t *player ) {
 	   Send the actual source direction so impacts can be mapped to the correct
 	   vehicle side without guessing from the car's current motion. */
 	if ( g_gametype.integer == GT_DERBY ) {
+		client->ps.damageZone = client->derbyDamageZone;
 		if ( client->damage_fromWorld ) {
 			client->ps.damagePitch = 255;
 			client->ps.damageYaw = 255;
@@ -217,6 +220,8 @@ void P_DamageFeedback( gentity_t *player ) {
 		client->ps.damageCount = (int)count;
 		client->ps.damageEvent++;
 	}
+	client->derbyDamageZone = CAR_HIT_ZONE_NONE;
+	client->derbyDamageZoneDamage = 0;
 
 	// send the information to the client
 
@@ -1273,9 +1278,9 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 		other->client->car.sBody.mass <= 0.0f )
 		return;
 
-	/* The per-car velocity change is impulse / mass. Keep the same 400-unit
-	 * impact threshold and 1 damage per 25 units used by the old chassis-impact
-	 * path, then scale by the receiving vehicle's struck zone. */
+	/* The per-car velocity change is impulse / mass. Keep the old 400-unit
+	 * impact threshold, but halve its damage rate to 1 per 50 units, then scale
+	 * by the receiving vehicle's struck zone. */
 	selfImpactSpeed = contact->normalImpulse / self->client->car.sBody.mass;
 	otherImpactSpeed = contact->normalImpulse / other->client->car.sBody.mass;
 	if ( selfImpactSpeed <= 400.0f && otherImpactSpeed <= 400.0f )
@@ -1291,11 +1296,11 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 		damageScale *= g_damageScale.value;
 
 	selfDamage = selfImpactSpeed > 400.0f
-		? ( selfImpactSpeed / 25.0f ) *
+		? ( selfImpactSpeed / 50.0f ) *
 			G_DerbyCollisionZoneWeight( contact->selfZone ) * damageScale
 		: 0.0f;
 	otherDamage = otherImpactSpeed > 400.0f
-		? ( otherImpactSpeed / 25.0f ) *
+		? ( otherImpactSpeed / 50.0f ) *
 			G_DerbyCollisionZoneWeight( contact->otherZone ) * damageScale
 		: 0.0f;
 	selfDamageInt = selfDamage >= 0.0f ? (int)( selfDamage + 0.5f ) : 0;
@@ -1307,12 +1312,32 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 	VectorScale( selfNormal, -1.0f, otherNormal );
 	VectorCopy( contact->point, collisionPoint );
 	if ( selfDamageInt > 0 ) {
+		int previousDamage;
+		int appliedDamage;
+
+		previousDamage = self->client->damage_blood + self->client->damage_armor;
 		G_Damage( self, other, other, selfNormal, collisionPoint,
 			selfDamageInt, DAMAGE_NO_KNOCKBACK, MOD_VEHICLE_COLLISION );
+		appliedDamage = self->client->damage_blood + self->client->damage_armor -
+			previousDamage;
+		if ( appliedDamage > self->client->derbyDamageZoneDamage ) {
+			self->client->derbyDamageZone = contact->selfZone;
+			self->client->derbyDamageZoneDamage = appliedDamage;
+		}
 	}
 	if ( otherDamageInt > 0 ) {
+		int previousDamage;
+		int appliedDamage;
+
+		previousDamage = other->client->damage_blood + other->client->damage_armor;
 		G_Damage( other, self, self, otherNormal, collisionPoint,
 			otherDamageInt, DAMAGE_NO_KNOCKBACK, MOD_VEHICLE_COLLISION );
+		appliedDamage = other->client->damage_blood + other->client->damage_armor -
+			previousDamage;
+		if ( appliedDamage > other->client->derbyDamageZoneDamage ) {
+			other->client->derbyDamageZone = contact->otherZone;
+			other->client->derbyDamageZoneDamage = appliedDamage;
+		}
 	}
 
 	if ( g_derbyCollisionLog.integer ) {

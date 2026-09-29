@@ -493,6 +493,10 @@ struct gclient_s {
 
 	vec3_t		oldOrigin;
 
+	// Exact zone and applied amount of the strongest Derby car impact this frame.
+	carHitZone_t derbyDamageZone;
+	int derbyDamageZoneDamage;
+
 	// sum up damage over an entire frame, so
 	// shotgun blasts give a single big kick
 	int			damage_armor;            // damage absorbed by armor

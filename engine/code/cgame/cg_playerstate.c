@@ -44,10 +44,19 @@ static derbyHitIntensity_t CG_DerbyHitIntensityForDamage( int damage ) {
 	return DERBY_HIT_LIGHT;
 }
 
-static int CG_DerbyHitSegmentForDamage( int yawByte, int pitchByte ) {
+static int CG_DerbyHitSegmentForDamage( int zone, int yawByte, int pitchByte ) {
 	vec3_t incomingAngles, incomingDir, sourceDir, vehicleAngles;
 	vec3_t vehicleForward, vehicleRight;
 	float frontDot, rightDot;
+
+	switch ( zone ) {
+	case CAR_HIT_ZONE_FRONT: return 0;
+	case CAR_HIT_ZONE_LEFT: return 1;
+	case CAR_HIT_ZONE_RIGHT: return 2;
+	case CAR_HIT_ZONE_REAR: return 3;
+	case CAR_HIT_ZONE_ROOF:
+	case CAR_HIT_ZONE_UNDERBODY: return -2;
+	}
 
 	if ( yawByte == 255 && pitchByte == 255 ) {
 		return -1;
@@ -70,7 +79,7 @@ static int CG_DerbyHitSegmentForDamage( int yawByte, int pitchByte ) {
 	return rightDot >= 0.0f ? 2 : 1; /* right / left */
 }
 
-static void CG_ApplyDerbyHitImpact( int damage, int yawByte, int pitchByte ) {
+static void CG_ApplyDerbyHitImpact( int damage, int zone, int yawByte, int pitchByte ) {
 	float shakeScale;
 	derbyHitIntensity_t intensity;
 
@@ -82,7 +91,7 @@ static void CG_ApplyDerbyHitImpact( int damage, int yawByte, int pitchByte ) {
 	cg.derbyHitFxTime = cg.time;
 	cg.derbyHitFxDamage = damage;
 	cg.derbyHitFxLevel = intensity;
-	cg.derbyHitFxDir = CG_DerbyHitSegmentForDamage( yawByte, pitchByte );
+	cg.derbyHitFxDir = CG_DerbyHitSegmentForDamage( zone, yawByte, pitchByte );
 
 	shakeScale = cg_derbyHitShakeScale.value;
 	if ( shakeScale < 0.0f ) {
@@ -635,7 +644,8 @@ void CG_TransitionPlayerState( playerState_t *ps, playerState_t *ops ) {
 	// damage events (player is getting wounded)
 	if ( ps->damageEvent != ops->damageEvent && ps->damageCount ) {
 
-		CG_ApplyDerbyHitImpact( ps->damageCount, ps->damageYaw, ps->damagePitch );
+		CG_ApplyDerbyHitImpact( ps->damageCount, ps->damageZone,
+			ps->damageYaw, ps->damagePitch );
 	}
 
 	// Q3Rally KOTH: remember when local player died so client can show wave-respawn ETA

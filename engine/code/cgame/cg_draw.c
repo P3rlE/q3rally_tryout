@@ -1207,8 +1207,8 @@ static void CG_DrawRallyTelemetryHud( void ) {
 			 * world impacts light the whole diagram instead of silently vanishing. */
 			derbyHitElapsed = cg.time - cg.derbyHitFxTime;
 			derbyHitLabel = NULL;
-			if ( cg.derbyHitFxTime > 0 && derbyHitElapsed >= 0 && derbyHitElapsed < 1100 ) {
-				derbyHitAlpha = 0.96f * ( 1.0f - (float)derbyHitElapsed / 1100.0f );
+			if ( cg.derbyHitFxTime > 0 && derbyHitElapsed >= 0 && derbyHitElapsed < 2200 ) {
+				derbyHitAlpha = 0.96f * ( 1.0f - (float)derbyHitElapsed / 2200.0f );
 				zoneColor[0] = 1.0f;
 				zoneColor[1] = 0.36f;
 				zoneColor[2] = 0.08f;
