@@ -1247,7 +1247,7 @@ static float G_DerbyCollisionZoneWeight( carHitZone_t zone ) {
 	}
 }
 
-#define DERBY_MAX_COLLISION_DAMAGE 4.0f
+#define DERBY_MAX_COLLISION_DAMAGE 15.0f
 
 /* Derby damage follows the solver's actual normal impulse. Physics already
  * changed both cars' velocities, so damage must not add another knockback. */
@@ -1284,9 +1284,9 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 		return;
 
 	/* The per-car velocity change is impulse / mass. Only the part above the
-	 * 400-unit threshold causes damage. The 250-unit divisor cuts the previous
-	 * damage rate by a further factor of five, and the per-contact cap prevents
-	 * an extreme solver impulse from instantly wrecking a healthy car. */
+	 * 400-unit threshold causes damage. The 250-unit divisor keeps the previous
+	 * damage rate reduced, while the 15-point per-contact cap lets heavy hits
+	 * register without allowing an extreme solver impulse to wreck a healthy car. */
 	selfImpactSpeed = contact->normalImpulse / self->client->car.sBody.mass;
 	otherImpactSpeed = contact->normalImpulse / other->client->car.sBody.mass;
 	if ( selfImpactSpeed <= 400.0f && otherImpactSpeed <= 400.0f )
