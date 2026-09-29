@@ -156,12 +156,7 @@ vmCvar_t	g_vehicleDamageScale;
 vmCvar_t        g_vehicleDamageOffset;
 vmCvar_t	g_vehicleHealth;
 vmCvar_t        g_derbyDamageFactor;
-vmCvar_t        g_derbyRammerDamageRatio;
 vmCvar_t        g_derbyIgnoreDamageScale;
-vmCvar_t        g_derbyRamRadius;
-vmCvar_t        g_derbyRamDamage;
-vmCvar_t        g_derbyRamDamageScale;
-vmCvar_t        g_derbyRamDamageMax;
 vmCvar_t        g_derbyCollisionFrontWeight;
 vmCvar_t        g_derbyCollisionSideWeight;
 vmCvar_t        g_derbyCollisionRearWeight;
@@ -353,12 +348,7 @@ static cvarTable_t		gameCvarTable[] = {
         { &g_vehicleDamageOffset, "g_vehicleDamageOffset", "0", CVAR_ARCHIVE, 0, qfalse },
         { &g_vehicleHealth, "g_vehicleHealth", "100", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyDamageFactor, "g_derbyDamageFactor", "1.0", CVAR_ARCHIVE, 0, qfalse },
-        { &g_derbyRammerDamageRatio, "g_derbyRammerDamageRatio", "1.0", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyIgnoreDamageScale, "g_derbyIgnoreDamageScale", "0", CVAR_ARCHIVE, 0, qfalse },
-        { &g_derbyRamRadius, "g_derbyRamRadius", "0", CVAR_ARCHIVE, 0, qfalse },
-        { &g_derbyRamDamage, "g_derbyRamDamage", "100", CVAR_ARCHIVE, 0, qfalse },
-        { &g_derbyRamDamageScale, "g_derbyRamDamageScale", "0.05", CVAR_ARCHIVE, 0, qfalse },
-        { &g_derbyRamDamageMax, "g_derbyRamDamageMax", "50", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyCollisionFrontWeight, "g_derbyCollisionFrontWeight", "1.0", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyCollisionSideWeight, "g_derbyCollisionSideWeight", "0.65", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyCollisionRearWeight, "g_derbyCollisionRearWeight", "0.35", CVAR_ARCHIVE, 0, qfalse },
@@ -613,27 +603,6 @@ G_UpdateCvars
 */
 static void G_ValidateDerbyDamageCvars( void ) {
         float clamped;
-
-        clamped = Com_Clamp( 0.0f, 2.0f, g_derbyRammerDamageRatio.value );
-        if ( clamped != g_derbyRammerDamageRatio.value ) {
-                trap_Cvar_Set( "g_derbyRammerDamageRatio", va( "%.3f", clamped ) );
-                trap_Cvar_Update( &g_derbyRammerDamageRatio );
-        }
-
-        if ( g_derbyRamDamage.value < 0.0f ) {
-                trap_Cvar_Set( "g_derbyRamDamage", "0" );
-                trap_Cvar_Update( &g_derbyRamDamage );
-        }
-
-        if ( g_derbyRamDamageScale.value < 0.0f ) {
-                trap_Cvar_Set( "g_derbyRamDamageScale", "0" );
-                trap_Cvar_Update( &g_derbyRamDamageScale );
-        }
-
-        if ( g_derbyRamDamageMax.value < 1.0f ) {
-                trap_Cvar_Set( "g_derbyRamDamageMax", "1" );
-                trap_Cvar_Update( &g_derbyRamDamageMax );
-        }
 
         if ( g_derbyDamageFactor.value < 0.0f ) {
                 trap_Cvar_Set( "g_derbyDamageFactor", "0" );

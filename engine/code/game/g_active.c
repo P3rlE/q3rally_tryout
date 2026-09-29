@@ -1981,6 +1981,16 @@ void ClientThink_real( gentity_t *ent ) {
 			}
 		}
 
+		/* Derby vehicle contacts are already handled from the solver's contact
+		 * impulse above. Keep incidental Pmove collision damage bounded too;
+		 * MOD_HIGH_FORCES uses DAMAGE_NO_PROTECTION and remains an intentional
+		 * fatal recovery path for invalid rigid-body state. */
+		if ( g_gametype.integer == GT_DERBY &&
+			!( pm.damage.dflags & DAMAGE_NO_PROTECTION ) &&
+			pm.damage.damage > DERBY_MAX_COLLISION_DAMAGE ) {
+			pm.damage.damage = DERBY_MAX_COLLISION_DAMAGE;
+		}
+
 		if( pm.damage.damage > 0 )
 		{
 			if (pm.damage.otherEnt >= 0){
@@ -2132,10 +2142,6 @@ void ClientThink_real( gentity_t *ent ) {
 
         // perform once-a-second actions
         ClientTimerActions( ent, msec );
-
-       if ( g_gametype.integer == GT_DERBY ) {
-               Weapon_DerbyRam( ent );
-       }
 
 // STONELANCE - UPDATE: enable this (use flags instead?)
 /*

@@ -903,7 +903,7 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
                     wreckedColor[1] = 0.38f;
                     wreckedColor[2] = 0.20f;
                     wreckedColor[3] = fade;
-                    CG_DrawModernText(x, y, "OUT", 1, width, wreckedColor, qfalse);
+                    CG_DrawModernText(x, y, "WRECKED", 1, width, wreckedColor, qfalse);
                 } else {
                     CG_DrawModernText(x, y, "ALIVE", 1, width, readyColor, qfalse);
                 }
