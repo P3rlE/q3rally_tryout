@@ -458,6 +458,9 @@ typedef struct {
 	qboolean	manualShift;		// shift manually?
 	int			transmissionMode;	// automatic/manual gearbox mode
 	char                    vehicleClass[MAX_QPATH];
+	vec3_t                  vehicleCollisionMins;
+	vec3_t                  vehicleCollisionMaxs;
+	qboolean                vehicleCollisionBoundsFromMD3;
         qboolean        profileRacePlacementPenalized; // profile penalty for poor race placement already applied
         qboolean        profileRacePlacementRecorded;  // race placement score/podium already processed for this match
         qboolean        profileMatchOutcomeRecorded;   // win/loss scoring already processed for this match

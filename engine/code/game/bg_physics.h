@@ -290,6 +290,10 @@ typedef struct {
 	vec3_t	forward;
 	vec3_t	right;
 	vec3_t	up;
+	/* Server-side OBB proxy fitted from the selected body.md3 bounds. The
+	 * center offset remains in model-local (forward, left, up) coordinates. */
+	vec3_t	collisionHalfExtents;
+	vec3_t	collisionCenterOffset;
 
 	float	curSpringLengths[FIRST_FRAME_POINT];
 

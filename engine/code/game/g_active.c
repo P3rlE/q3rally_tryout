@@ -50,6 +50,66 @@ static __attribute__ ((format (printf, 1, 2))) void QDECL Com_LogPrintf( const c
 	trap_FS_FCloseFile( logFile );
 }
 
+static void G_UpdateCarCollisionBounds( gentity_t *ent ) {
+	carBody_t *body;
+	vec3_t halfExtents, center, origin;
+	float frontOffset, worldExtent;
+	int axis;
+
+	if ( !ent || !ent->client )
+		return;
+	body = &ent->client->car.sBody;
+	if ( VectorLengthSquared( body->forward ) < 0.5f ||
+		VectorLengthSquared( body->right ) < 0.5f ||
+		VectorLengthSquared( body->up ) < 0.5f )
+		return;
+	for ( axis = 0; axis < 3; axis++ ) {
+		halfExtents[axis] = body->collisionHalfExtents[axis];
+		if ( halfExtents[axis] <= 0.0f ) {
+			VectorSet( halfExtents, CAR_LENGTH * 0.5f,
+				CAR_WIDTH * 0.5f, CAR_HEIGHT * 0.5f );
+			VectorClear( body->collisionCenterOffset );
+			break;
+		}
+	}
+
+	VectorCopy( body->r, center );
+	VectorMA( center, body->collisionCenterOffset[0], body->forward, center );
+	VectorMA( center, -body->collisionCenterOffset[1], body->right, center );
+	VectorMA( center, body->collisionCenterOffset[2], body->up, center );
+	frontOffset = halfExtents[0] - halfExtents[1];
+
+	for ( axis = 0; axis < 3; axis++ ) {
+		worldExtent = halfExtents[0] * fabs( body->forward[axis] ) +
+			halfExtents[1] * fabs( body->right[axis] ) +
+			halfExtents[2] * fabs( body->up[axis] );
+		ent->r.mins[axis] = center[axis] - ent->r.currentOrigin[axis] -
+			worldExtent;
+		ent->r.maxs[axis] = center[axis] - ent->r.currentOrigin[axis] +
+			worldExtent;
+	}
+
+	if ( ent->frontBounds && ent->frontBounds->inuse ) {
+		VectorSet( ent->frontBounds->r.mins,
+			-halfExtents[1], -halfExtents[1], -halfExtents[2] );
+		VectorSet( ent->frontBounds->r.maxs,
+			halfExtents[1], halfExtents[1], halfExtents[2] );
+		VectorMA( center, frontOffset, body->forward, origin );
+		G_SetOrigin( ent->frontBounds, origin );
+		trap_LinkEntity( ent->frontBounds );
+	}
+
+	if ( ent->rearBounds && ent->rearBounds->inuse ) {
+		VectorSet( ent->rearBounds->r.mins,
+			-halfExtents[1], -halfExtents[1], -halfExtents[2] );
+		VectorSet( ent->rearBounds->r.maxs,
+			halfExtents[1], halfExtents[1], halfExtents[2] );
+		VectorMA( center, -frontOffset, body->forward, origin );
+		G_SetOrigin( ent->rearBounds, origin );
+		trap_LinkEntity( ent->rearBounds );
+	}
+}
+
 /*
 ================================================================================
 G_DebugDynamics
@@ -1158,7 +1218,6 @@ void ClientThink_real( gentity_t *ent ) {
 	int			msec;
 	usercmd_t	*ucmd;
 // STONELANCE
-	vec3_t		origin, forward;
 	int			i;
 	int			start;
 	vec3_t		oldAngles;
@@ -1608,20 +1667,6 @@ void ClientThink_real( gentity_t *ent ) {
 
 //	Com_Printf("Average pmoveTime %f, Instantanious pmoveTime %d, n=%d\n", client->pmoveTime, (trap_Milliseconds() - start), client->frameNum);
 
-	AngleVectors(client->ps.viewangles, forward, NULL, NULL);
-
-	if ( ent->frontBounds ){
-		VectorMA( client->ps.origin, (CAR_LENGTH - CAR_WIDTH) / 2, forward, origin );
-		G_SetOrigin( ent->frontBounds, origin );
-		trap_LinkEntity ( ent->frontBounds );
-	}
-
-	if ( ent->rearBounds ){
-		VectorMA( client->ps.origin, -(CAR_LENGTH - CAR_WIDTH) / 2, forward, origin );
-		G_SetOrigin( ent->rearBounds, origin );
-		trap_LinkEntity ( ent->rearBounds );
-	}
-
 	if (ent->pDebug > 0){
 		Com_LogPrintf("Target\n");
 		G_DebugDynamics(&pm.car->tBody, pm.car->tPoints, ent->pDebug-1);
@@ -1764,6 +1809,7 @@ void ClientThink_real( gentity_t *ent ) {
 
 	VectorCopy (pm.mins, ent->r.mins);
 	VectorCopy (pm.maxs, ent->r.maxs);
+	G_UpdateCarCollisionBounds( ent );
 
 	ent->waterlevel = pm.waterlevel;
 	ent->watertype = pm.watertype;
