@@ -1686,7 +1686,8 @@ static void CG_DrawRallyTelemetryHud( void ) {
 	else Com_sprintf( gearText, sizeof(gearText), "%d", gear );
 	Com_sprintf( fuelText, sizeof(fuelText), "FUEL %d%%", fuel );
 	Com_sprintf( speedText, sizeof(speedText), "%d", speedValue );
-	speedRight = HUD_X(594);
+	/* Derby needs a clear center-right slot for its no-ram countdown. */
+	speedRight = HUD_X( cgs.gametype == GT_DERBY ? 630 : 594 );
 	vehicleInfoRight = HUD_X(630);
 	CG_DrawIngameString( speedRight, 415, speedText, UI_RIGHT,
 	                     1.2f, colorWhite );
@@ -1720,10 +1721,10 @@ static void CG_DrawRallyTelemetryHud( void ) {
 		ramSeconds = ps->stats[STAT_DERBY_NORAM];
 		Vector4Copy( ramSeconds <= 10 ? dangerColor : mutedColor,
 			ramTimerColor );
-		CG_DrawIngameSmallString( HUD_X(548), 435, "NO RAM",
-			ramTimerColor );
-		CG_DrawIngameString( HUD_X(548), 451, va( "%d", ramSeconds ),
-			UI_CENTER, 0.85f, ramTimerColor );
+		CG_DrawIngameString( HUD_X(548), 418, "NO RAM",
+			UI_CENTER | UI_SMALLFONT, 0.58f, ramTimerColor );
+		CG_DrawIngameString( HUD_X(548), 435, va( "%d", ramSeconds ),
+			UI_CENTER, 0.90f, ramTimerColor );
 	}
 	CG_DrawIngameString( HUD_X(450), 466, "RPM", UI_SMALLFONT,
 	                     0.75f, mutedColor );
