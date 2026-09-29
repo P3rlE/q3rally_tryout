@@ -268,7 +268,7 @@ qboolean S_ValidateEngineAudioPreset( const engineAudioPreset_t *preset ) {
         return qfalse;
     }
 
-    if ( preset->cylinderCount <= 0 ) {
+    if ( preset->cylinderCount <= 0 || preset->cylinderCount > MAX_ENGINE_AUDIO_FIRING_ORDER ) {
         return qfalse;
     }
 

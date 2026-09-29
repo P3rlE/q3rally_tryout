@@ -53,6 +53,9 @@
     <ClCompile Include="..\..\code\cgame\cg_main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\code\cgame\cg_engine_audio.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\code\cgame\cg_marks.c">
       <Filter>Source Files</Filter>
     </ClCompile>

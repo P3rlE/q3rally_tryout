@@ -2,9 +2,8 @@
 ===========================================================================
   cg_engine_audio.c
 
-  Draft client-side vehicle audio control collection for the procedural
-  engine audio system. This file is intentionally not integrated into the
-  build yet; it documents the proposed runtime API and control flow.
+  Client-side vehicle audio control collection for the procedural engine
+  audio system.
 ===========================================================================
 */
 

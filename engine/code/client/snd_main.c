@@ -34,6 +34,7 @@ cvar_t *s_doppler;
 cvar_t *s_backend;
 cvar_t *s_muteWhenMinimized;
 cvar_t *s_muteWhenUnfocused;
+cvar_t *s_engineAudioWaveguideEnable;
 cvar_t *s_engineAudioGain;
 cvar_t *s_engineAudioExhaustGainScale;
 cvar_t *s_engineAudioIntakeGainScale;
@@ -512,6 +513,7 @@ void S_Init( void )
 	s_backend = Cvar_Get( "s_backend", "", CVAR_ROM );
 	s_muteWhenMinimized = Cvar_Get( "s_muteWhenMinimized", "0", CVAR_ARCHIVE );
 	s_muteWhenUnfocused = Cvar_Get( "s_muteWhenUnfocused", "0", CVAR_ARCHIVE );
+	s_engineAudioWaveguideEnable = Cvar_Get( "s_engineAudioWaveguideEnable", "1", CVAR_ARCHIVE );
 	s_engineAudioGain = Cvar_Get( "s_engineAudioGain", "1", CVAR_ARCHIVE );
 	s_engineAudioExhaustGainScale = Cvar_Get( "s_engineAudioExhaustGainScale", "1", CVAR_ARCHIVE );
 	s_engineAudioIntakeGainScale = Cvar_Get( "s_engineAudioIntakeGainScale", "1", CVAR_ARCHIVE );

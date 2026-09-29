@@ -2,9 +2,7 @@
 ===========================================================================
   snd_engine_audio.c
 
-  Draft procedural engine audio emitter management and mixer entry points.
-  This file is intentionally not wired into the build yet; it exists as a
-  concrete starting point for implementation.
+  Procedural engine audio emitter management and mixer entry points.
 ===========================================================================
 */
 
@@ -127,7 +125,10 @@ void S_RegisterEngineEmitter( int entityNum, int presetHandle ) {
     em->lastUpdateFrame = s_engineAudioFrameCounter;
 
     if ( !em->initialized ) {
-        S_EngineDSP_Reset( &em->synth, dma.speed > 0 ? (float)dma.speed : 44100.0f );
+        float sampleRate = ( dma.speed > 0 ) ? (float)dma.speed : 44100.0f;
+
+        S_EngineDSP_Reset( &em->synth, sampleRate );
+        S_EngineDSP_InitWaveguide( &em->synth, em->pub.preset, sampleRate );
         em->initialized = qtrue;
     }
 }
@@ -184,6 +185,12 @@ void S_SetEngineEmitterPreset( int entityNum, int presetHandle ) {
     if ( em && preset ) {
         em->lastUpdateFrame = s_engineAudioFrameCounter;
         em->pub.preset = preset;
+        if ( em->initialized ) {
+            S_EngineDSP_InitWaveguide(
+                &em->synth,
+                preset,
+                dma.speed > 0 ? (float)dma.speed : 44100.0f );
+        }
     }
 }
 
