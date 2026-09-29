@@ -559,6 +559,7 @@ void RallyStarter_Think( gentity_t *ent ){
 			level.raceState = RACE_STATE_INTRO_CAM;
 			level.raceIntroEndTime = level.time + introDurationMs;
 			level.raceIntroFallback = qtrue;  /* prevent re-trigger after expiry */
+			G_RallyIntroRoute_SetPending( qfalse );
 			G_DebugRaceStateTransitionRally( ent, "RallyRace_Stage early intro -> INTRO_CAM", oldRaceState, level.raceState );
 			trap_SendServerCommand( -1, va( "introCamStart %d", level.time ) );
 			G_RallySnapshotIntroGridPositions();

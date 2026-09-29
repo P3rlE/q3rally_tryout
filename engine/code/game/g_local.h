@@ -948,6 +948,7 @@ void G_StartKamikaze( gentity_t *ent );
 gentity_t *FindBestObserverSpot( gentity_t *self, gentity_t *target, vec3_t spot, vec3_t angles);
 void UpdateObserverSpot( gentity_t *ent, qboolean forceUpdate );
 void G_RallyIntroRoute_Init( void );
+void G_RallyIntroRoute_SetPending( qboolean pending );
 
 //
 // g_rally_mapobjects.c

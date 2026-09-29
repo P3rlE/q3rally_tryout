@@ -24,7 +24,7 @@ framerate while the server owns the shared race-start countdown.
 
 CONFIGSTRING FORMAT (CS_INTRO_ROUTE)
 ------------------------------------
-  "ghost <route-file> <preview-duration-ms> <effective-reversed>"
+  "ghost <route-file> <preview-duration-ms> <effective-reversed> <pending-start>"
 
 Routes live in the packaged intro_routes folder. The route file contains
 only timed positions and angles; it contains no player identity, vehicle,
@@ -36,7 +36,7 @@ PUBLIC API
   CG_IntroCam_SetStartTime(t)        called for the synchronized server time
   CG_IntroCam_IsActive()             true while this client's preview runs
   CG_IntroCam_CalcView(o,a,fov)      evaluates the current camera view
-  CG_IntroCam_FadeAlpha()            returns the black transition alpha
+  CG_IntroCam_FadeAlpha()            returns the black transition alpha; holds black while a race intro is pending
 ===========================================================================
 */
 
@@ -66,6 +66,7 @@ typedef struct {
 static int					s_previewDurationMs = 0;
 static int					s_startTime       = 0;
 static qboolean				s_hasRoute          = qfalse;
+static qboolean				s_waitingForStart    = qfalse;
 static qboolean				s_skipped         = qfalse;
 static cgIntroGhostRouteFrame_t s_routeFrames[CG_MAX_INTRO_GHOST_ROUTE_FRAMES];
 static int					s_routeFrameCount = 0;
@@ -230,9 +231,11 @@ void CG_IntroCam_ParseConfigstring( void ) {
 	char routePath[MAX_QPATH];
 	int previewDurationMs;
 	int expectedTrackReversed;
+	qboolean waitingForStart;
 
 	s_previewDurationMs = 0;
 	s_hasRoute = qfalse;
+	s_waitingForStart = qfalse;
 	s_routeFrameCount = 0;
 	s_routeDurationMs = 0;
 	/* A late-joining client may receive the route config after the start command. */
@@ -255,7 +258,12 @@ void CG_IntroCam_ParseConfigstring( void ) {
 		return;
 	}
 	expectedTrackReversed = atoi( token ) ? 1 : 0;
+	waitingForStart = qfalse;
+	if ( CG_IntroCam_NextToken( &p, token, sizeof( token ) ) ) {
+		waitingForStart = atoi( token ) ? qtrue : qfalse;
+	}
 	CG_IntroCam_LoadGhostRoute( routePath, previewDurationMs, expectedTrackReversed );
+	s_waitingForStart = waitingForStart;
 }
 /* ------------------------------------------------------------------ */
 /* Start time                                                          */
@@ -269,6 +277,7 @@ so serverTime is used directly as the elapsed-time base.
 */
 void CG_IntroCam_SetStartTime( int serverTime ) {
 	s_startTime = serverTime;
+	s_waitingForStart = qfalse;
 	s_skipped = qfalse;
 	if (cg_developer.integer) CG_Printf( "CG_IntroCam: startTime=%d cg.time=%d\n", s_startTime, cg.time );
 }
@@ -416,12 +425,21 @@ qboolean CG_IntroCam_CalcView( vec3_t originOut, vec3_t anglesOut, float *fovOut
 }
 
 float CG_IntroCam_FadeAlpha( void ) {
-	const int fadeDurationMs = 1000;
-	const int revealDurationMs = 500;
+	const int fadeDurationMs = 2500;
+	const int revealDurationMs = 2500;
 	int elapsed;
 	float fadeIn, fadeOut, alpha, transition;
 
-	if ( !s_hasRoute || s_startTime <= 0 || s_skipped ) {
+	if ( !s_hasRoute || s_skipped ) {
+		return 0.0f;
+	}
+	if ( s_waitingForStart ) {
+		if ( cg.snap && cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR ) {
+			return 0.0f;
+		}
+		return 1.0f;
+	}
+	if ( s_startTime <= 0 ) {
 		return 0.0f;
 	}
 

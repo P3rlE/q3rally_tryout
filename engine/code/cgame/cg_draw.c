@@ -4010,6 +4010,7 @@ void CG_DrawActive( stereoFrame_t stereoView ) {
 	// optionally draw the info screen instead
 	if ( !cg.snap ) {
 		CG_DrawInformation();
+		CG_DrawIntroCamFade();
 		return;
 	}
 

@@ -128,11 +128,35 @@ static qboolean G_RallyIntroRoute_Find( void ) {
 	return qtrue;
 }
 
-void G_RallyIntroRoute_Init( void ) {
+static qboolean G_RallyIntroRoute_UsesRaceState( void ) {
+	return ( g_gametype.integer == GT_RACING
+		|| g_gametype.integer == GT_RACING_DM
+		|| g_gametype.integer == GT_TEAM_RACING
+		|| g_gametype.integer == GT_TEAM_RACING_DM
+		|| g_gametype.integer == GT_SPRINT
+		|| g_gametype.integer == GT_ELIMINATION ) ? qtrue : qfalse;
+}
+
+void G_RallyIntroRoute_SetPending( qboolean pending ) {
 	char configString[MAX_INFO_STRING];
 	int configLength;
 	int trackReversed;
 
+	if ( !level.raceIntroHasRoute ) {
+		return;
+	}
+
+	trackReversed = ( g_trackReversed.integer && level.trackIsReversable ) ? 1 : 0;
+	configLength = Com_sprintf( configString, sizeof( configString ), "ghost %s %d %d %d",
+		level.raceIntroRoute, level.raceIntroDurationMs, trackReversed, pending ? 1 : 0 );
+	if ( configLength < 0 || configLength >= sizeof( configString ) ) {
+		return;
+	}
+
+	trap_SetConfigstring( CS_INTRO_ROUTE, configString );
+}
+
+void G_RallyIntroRoute_Init( void ) {
 	level.raceIntroDurationMs = 0;
 	level.raceIntroHasRoute = qfalse;
 	level.raceIntroRoute[0] = '\0';
@@ -144,19 +168,8 @@ void G_RallyIntroRoute_Init( void ) {
 		return;
 	}
 
-	trackReversed = ( g_trackReversed.integer && level.trackIsReversable ) ? 1 : 0;
-	configLength = Com_sprintf( configString, sizeof( configString ), "ghost %s %d %d",
-		level.raceIntroRoute, level.raceIntroDurationMs, trackReversed );
-	if ( configLength < 0 || configLength >= sizeof( configString ) ) {
-		level.raceIntroRoute[0] = '\0';
-		level.raceIntroDurationMs = 0;
-		level.raceIntroFallback = qtrue;
-		G_Printf( "Warning: intro Ghost route configstring overflow; using countdown fallback.\n" );
-		return;
-	}
-
 	level.raceIntroHasRoute = qtrue;
-	trap_SetConfigstring( CS_INTRO_ROUTE, configString );
+	G_RallyIntroRoute_SetPending( !level.raceIntroFallback && G_RallyIntroRoute_UsesRaceState() );
 	G_Printf( "Info: using packaged Ghost route '%s' (%d ms) for the automatic track preview.\n",
 		level.raceIntroRoute, level.raceIntroDurationMs );
 }
