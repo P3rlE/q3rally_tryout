@@ -1069,6 +1069,62 @@ static float PM_ClipCarPositionCorrection( const carBody_t *body,
 	return trace.fraction;
 }
 
+/* A vehicle-to-vehicle impulse can send either car into a nearby map wall
+ * before the next rigid-body frame has a chance to process the brush contact.
+ * Probe the affected body's contact points along their post-impact velocities
+ * and immediately remove velocity into the earliest vertical world surface.
+ * Keep the regular wheel/suspension response for floor and ramp contacts. */
+static void PM_ClipCarImpactAgainstWorld( carBody_t *body,
+										 carPoint_t *points,
+										 int passEntityNum, float time ) {
+	trace_t trace;
+	vec3_t start, end, mins, maxs, normal, contactPoint;
+	float bestFraction, radius, verticalRadius, supportDistance;
+	int i;
+
+	if ( !body || !points || time <= 0.0f )
+		return;
+
+	bestFraction = 1.0f;
+	for ( i = 0; i < NUM_CAR_POINTS; i++ ) {
+		if ( i >= FIRST_FRAME_POINT && i < LAST_FRAME_POINT )
+			continue;
+
+		radius = points[i].radius;
+		if ( radius <= 0.0f )
+			continue;
+		VectorSet( mins, -radius, -radius, -radius );
+		VectorSet( maxs, radius, radius, radius );
+		verticalRadius = radius;
+		if ( i >= LAST_FRAME_POINT ) {
+			mins[2] /= 1.5f;
+			maxs[2] /= 1.5f;
+			verticalRadius /= 1.5f;
+		}
+
+		VectorCopy( points[i].r, start );
+		VectorMA( start, time, points[i].v, end );
+		pm->trace( &trace, start, mins, maxs, end, passEntityNum,
+			pm->tracemask & ~CONTENTS_BODY );
+		if ( trace.startsolid || trace.allsolid || trace.fraction >= bestFraction ||
+			trace.fraction >= 1.0f ||
+			VectorLengthSquared( trace.plane.normal ) <= 1e-6f ||
+			fabs( trace.plane.normal[2] ) >= PM_CLEAN_WALL_NORMAL_Z_MAX ||
+			DotProduct( points[i].v, trace.plane.normal ) >= -0.01f )
+			continue;
+
+		bestFraction = trace.fraction;
+		VectorCopy( trace.plane.normal, normal );
+		supportDistance = radius *
+			( fabs( normal[0] ) + fabs( normal[1] ) ) +
+			verticalRadius * fabs( normal[2] );
+		VectorMA( trace.endpos, -supportDistance, normal, contactPoint );
+	}
+
+	if ( bestFraction < 1.0f )
+		PM_ApplyCollision( body, points, contactPoint, normal, 0.0f );
+}
+
 static void PM_RecordVehicleCollision( int otherEnt, float normalImpulse,
 										 const vec3_t point,
 										 const vec3_t normal,
@@ -2767,6 +2823,10 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 				PM_RecordVehicleCollision( carHitEntities[candidate],
 					impactStrength, contactPoint, contactNormal,
 					&car->tBody, &otherCar->sBody );
+				PM_ClipCarImpactAgainstWorld( &car->tBody, car->tPoints,
+					pm->ps->clientNum, time );
+				PM_ClipCarImpactAgainstWorld( &otherCar->sBody,
+					otherCar->sPoints, carHitEntities[candidate], time );
 				PM_LinkCorrectedCar( carHitEntities[candidate], otherCar );
 			}
 		}
@@ -2803,6 +2863,10 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 					PM_RecordVehicleCollision( carHitEntities[candidate],
 						impactStrength, contactPoint, contactNormal,
 						&car->tBody, &otherCar->sBody );
+					PM_ClipCarImpactAgainstWorld( &car->tBody, car->tPoints,
+						pm->ps->clientNum, time );
+					PM_ClipCarImpactAgainstWorld( &otherCar->sBody,
+						otherCar->sPoints, carHitEntities[candidate], time );
 					PM_LinkCorrectedCar( carHitEntities[candidate], otherCar );
 				}
 			}
