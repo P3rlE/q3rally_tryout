@@ -975,7 +975,6 @@ static void CG_DrawRallyTelemetryHud( void ) {
 	float fuelFrac;
 	float rpmFrac;
 	float turboFrac;
-	float damageFrac;
 	float speed;
 	float raceProgress;
 	float raceDistanceTotal;
@@ -1000,8 +999,6 @@ static void CG_DrawRallyTelemetryHud( void ) {
 	int vehicleInfoRight;
 	int gearValueWidth;
 	int gearPrefixWidth;
-	int damageTaken;
-	int damageDealt;
 	int gear;
 	int position;
 	int racers;
@@ -1015,6 +1012,7 @@ static void CG_DrawRallyTelemetryHud( void ) {
 	int raceLaps;
 	int i;
 	int derbyHitElapsed;
+	int ramSeconds;
 	int zoneCounts[5];
 	int zoneCount;
 	int zoneIndex;
@@ -1082,8 +1080,6 @@ static void CG_DrawRallyTelemetryHud( void ) {
 	fuel = ps->stats[STAT_FUEL];
 	rpm = ps->stats[STAT_RPM];
 	turboValue = ps->powerups[PW_TURBO];
-	damageTaken = ps->stats[STAT_DAMAGE_TAKEN];
-	damageDealt = ps->stats[STAT_DAMAGE_DEALT];
 	gear = ps->stats[STAT_GEAR];
 	position = cent->currentPosition;
 	racers = cgs.numRacers > 0 ? cgs.numRacers : 1;
@@ -1187,9 +1183,10 @@ static void CG_DrawRallyTelemetryHud( void ) {
 	}
 
 	if ( cgs.gametype == GT_DERBY ) {
-		CG_DrawIngameSmallString( HUD_X(190), 418, "ZONES", mutedColor );
+		CG_DrawIngameString( HUD_X(239), 418, "ZONES",
+			UI_CENTER | UI_SMALLFONT, 0.75f, mutedColor );
 		centerX = 208.0f;
-		centerY = 431.0f;
+		centerY = 428.0f;
 		zoneColorAlpha = 0.82f;
 		{
 			vec4_t zoneColor;
@@ -1243,16 +1240,18 @@ static void CG_DrawRallyTelemetryHud( void ) {
 				                     UI_CENTER | UI_SMALLFONT, 0.36f, hitLabelColor );
 			}
 		}
-		damageFrac = damageTaken / 100.0f;
-		if ( damageFrac < 0.0f ) damageFrac = 0.0f;
-		if ( damageFrac > 1.0f ) damageFrac = 1.0f;
-		CG_DrawIngameSmallString( HUD_X(284), 418, "DAMAGE", mutedColor );
-		CG_FillRect( HUD_X(284), 432, 126 * spreadFactor, 5, darkSegment );
-		CG_FillRect( HUD_X(284), 432, 126 * damageFrac * spreadFactor, 5, dangerColor );
-		CG_DrawIngameString( HUD_X(284), 441, va("IN %d", damageTaken),
-		                     UI_SMALLFONT, 0.6f, colorWhite );
-		CG_DrawIngameString( HUD_X(410), 441, va("OUT %d", damageDealt),
-		                     UI_RIGHT | UI_SMALLFONT, 0.6f, dangerColor );
+		ramSeconds = ps->stats[STAT_DERBY_NORAM];
+		if ( ramSeconds > 0 ) {
+			vec4_t ramTimerColor;
+
+			Vector4Copy( ramSeconds <= 10 ? dangerColor : blueColor,
+				ramTimerColor );
+			CG_DrawIngameSmallString( HUD_X(347), 418, "NO RAM",
+				ramTimerColor );
+			CG_DrawIngameString( HUD_X(347), 435,
+				va( "%d SEC", ramSeconds ), UI_CENTER, 1.0f,
+				ramTimerColor );
+		}
 		if ( cg_hudShowScores.integer ) {
 			Com_sprintf( raceText, sizeof(raceText), "SCORE %d", ps->persistant[PERS_SCORE] );
 			CG_DrawIngameString( HUD_X(347), 459, raceText,
@@ -1686,8 +1685,8 @@ static void CG_DrawRallyTelemetryHud( void ) {
 	else Com_sprintf( gearText, sizeof(gearText), "%d", gear );
 	Com_sprintf( fuelText, sizeof(fuelText), "FUEL %d%%", fuel );
 	Com_sprintf( speedText, sizeof(speedText), "%d", speedValue );
-	/* Derby needs a clear center-right slot for its no-ram countdown. */
-	speedRight = HUD_X( cgs.gametype == GT_DERBY ? 630 : 594 );
+	/* Keep the speed display aligned with its previous right-hand layout. */
+	speedRight = HUD_X(594);
 	vehicleInfoRight = HUD_X(630);
 	CG_DrawIngameString( speedRight, 415, speedText, UI_RIGHT,
 	                     1.2f, colorWhite );
@@ -1713,18 +1712,6 @@ static void CG_DrawRallyTelemetryHud( void ) {
 	CG_FillRect( HUD_X(450), 454, fuelBarWidth * spreadFactor, 5, darkSegment );
 	if ( fuelFrac > 0.0f ) {
 		CG_FillRect( HUD_X(450), 454, fuelBarWidth * fuelFrac * spreadFactor, 5, blueColor );
-	}
-	if ( cgs.gametype == GT_DERBY && ps->stats[STAT_DERBY_NORAM] > 0 ) {
-		vec4_t ramTimerColor;
-		int ramSeconds;
-
-		ramSeconds = ps->stats[STAT_DERBY_NORAM];
-		Vector4Copy( ramSeconds <= 10 ? dangerColor : mutedColor,
-			ramTimerColor );
-		CG_DrawIngameString( HUD_X(548), 418, "NO RAM",
-			UI_CENTER | UI_SMALLFONT, 0.58f, ramTimerColor );
-		CG_DrawIngameString( HUD_X(548), 435, va( "%d", ramSeconds ),
-			UI_CENTER, 0.90f, ramTimerColor );
 	}
 	CG_DrawIngameString( HUD_X(450), 466, "RPM", UI_SMALLFONT,
 	                     0.75f, mutedColor );
