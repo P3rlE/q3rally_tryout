@@ -3864,7 +3864,8 @@ static void CG_DrawIntroCamFade( void ) {
 
 	fadeColor[3] = alpha;
 	trap_R_SetColor( fadeColor );
-	CG_DrawPic( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, cgs.media.whiteShader );
+	trap_R_DrawStretchPic( 0, 0, cgs.glconfig.vidWidth, cgs.glconfig.vidHeight,
+		0, 0, 1, 1, cgs.media.whiteShader );
 	trap_R_SetColor( NULL );
 }
 
