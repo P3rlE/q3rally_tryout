@@ -938,10 +938,9 @@ static float CG_DrawRacingOrderHUD( float top ) {
 
     isTeamRaceDM = cgs.gametype == GT_TEAM_RACING_DM;
     isTeamRace = cgs.gametype == GT_TEAM_RACING || isTeamRaceDM;
-    if ( !cg.snap || !CG_RaceOrderIsActive() ||
-         ( isTeamRace && ( cg.showScores ||
-           cg.predictedPlayerState.pm_type == PM_INTERMISSION ||
-           cg.snap->ps.pm_type == PM_INTERMISSION ) ) ) {
+    if ( !cg.snap || !CG_RaceOrderIsActive() || cg.showScores ||
+         cg.predictedPlayerState.pm_type == PM_INTERMISSION ||
+         cg.snap->ps.pm_type == PM_INTERMISSION ) {
         return top;
     }
 
@@ -953,6 +952,11 @@ static float CG_DrawRacingOrderHUD( float top ) {
     }
     maxPosition = 0;
     localPosition = 0;
+    if ( isElimination &&
+         cg.snap->ps.persistant[PERS_TEAM] != TEAM_SPECTATOR &&
+         !cg_entities[cg.snap->ps.clientNum].eliminationOut ) {
+        localPosition = cg.snap->ps.stats[STAT_POSITION];
+    }
 
     for ( i = 0; i < cgs.maxclients && i < MAX_CLIENTS; i++ ) {
         if ( !cgs.clientinfo[i].infoValid ) {
@@ -974,8 +978,22 @@ static float CG_DrawRacingOrderHUD( float top ) {
         }
 
         position = cg_entities[i].currentPosition;
+        if ( isElimination && i == cg.snap->ps.clientNum &&
+             !cg_entities[i].eliminationOut &&
+             cg.snap->ps.stats[STAT_POSITION] > 0 ) {
+            /* The local playerState is carried in every snapshot and is the
+             * freshest source for our own place; mirrored positions can
+             * briefly leave the local row one update behind. */
+            position = cg.snap->ps.stats[STAT_POSITION];
+        }
         if ( position <= 0 ) {
             position = cgs.clientinfo[i].position;
+        }
+        if ( isElimination && i != cg.snap->ps.clientNum &&
+             localPosition > 0 && position == localPosition ) {
+            /* Prefer the authoritative local snapshot if an older mirrored
+             * position temporarily collides with it. */
+            continue;
         }
         if ( position <= 0 || position > MAX_CLIENTS ||
              clientAtPosition[position] >= 0 ) {

@@ -729,7 +729,7 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
             if (ci->team == TEAM_SPECTATOR) {
                 Com_sprintf(buffer, sizeof(buffer), "SPEC");
                 CG_DrawModernText(x, y, buffer, 1, width, textColor, qfalse);
-            } else if (isRacingMode &&
+            } else if (isRacingMode && cgs.gametype != GT_ELIMINATION &&
                        cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS &&
                        score->position > 0) {
                 /* Pure racing modes: use STAT_POSITION set by server */
@@ -867,8 +867,17 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
                     CG_DrawModernText(x, y, "OUT", 1, width, outColor, qfalse);
                 } else if (ci->team == TEAM_SPECTATOR) {
                     CG_DrawModernText(x, y, "SPEC", 1, width, textColor, qfalse);
-                } else if (cg.predictedPlayerState.pm_type == PM_INTERMISSION && rank == 1) {
-                    CG_DrawModernText(x, y, "WINNER", 1, width, readyColor, qfalse);
+                } else if (cg.predictedPlayerState.pm_type == PM_INTERMISSION) {
+                    if (rank == 1) {
+                        CG_DrawModernText(x, y, "WINNER", 1, width, readyColor, qfalse);
+                    } else {
+                        vec4_t outColor;
+                        outColor[0] = 1.0f;
+                        outColor[1] = 0.25f;
+                        outColor[2] = 0.20f;
+                        outColor[3] = fade;
+                        CG_DrawModernText(x, y, "OUT", 1, width, outColor, qfalse);
+                    }
                 } else {
                     CG_DrawModernText(x, y, "ALIVE", 1, width, readyColor, qfalse);
                 }

@@ -2058,13 +2058,15 @@ CG_DrawFPS
 #define	FPS_FRAMES	4
 static float CG_DrawFPS( float y ) {
 	char		*s;
-	int			w;
 	static int	previousTimes[FPS_FRAMES];
 	static int	index;
 	int		i, total;
 	int		fps;
 	static	int	previous;
 	int		t, frameTime;
+	screenPlacement_e savedHorizontalPlacement;
+	screenPlacement_e savedVerticalPlacement;
+	vec4_t fpsColor = { 0.480f, 0.610f, 0.650f, 0.90f };
 
 	// don't use serverTime, because that will be drifting to
 	// correct for internet lag changes, timescales, timedemos, etc
@@ -2085,10 +2087,14 @@ static float CG_DrawFPS( float y ) {
 		}
 		fps = 1000 * FPS_FRAMES / total;
 
-		s = va( "%ifps", fps );
-		w = CG_DrawStrlen( s ) * BIGCHAR_WIDTH;
-
-		CG_DrawBigString( 621 - w, 355 - 25 + 2, s, 1.0F );
+		s = va( "FPS %i", fps );
+		savedHorizontalPlacement = CG_GetScreenHorizontalPlacement();
+		savedVerticalPlacement = CG_GetScreenVerticalPlacement();
+		/* Pin the readout to the unused left edge of the bottom telemetry
+		 * strip instead of leaving it detached near the middle of the view. */
+		CG_SetScreenPlacement( PLACE_CENTER, PLACE_BOTTOM );
+		CG_DrawIngameString( 8, 418, s, UI_SMALLFONT, 0.42f, fpsColor );
+		CG_SetScreenPlacement( savedHorizontalPlacement, savedVerticalPlacement );
 	}
 
 	return y + BIGCHAR_HEIGHT + 4;
