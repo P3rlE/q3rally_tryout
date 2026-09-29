@@ -1217,19 +1217,19 @@ static void CG_DrawRallyTelemetryHud( void ) {
 				switch ( cg.derbyHitFxDir ) {
 				case 0:
 					CG_FillRect( centerX + 11, centerY, 40, 7, zoneColor );
-					derbyHitLabel = "FRONT HIT";
+					derbyHitLabel = "RIGHT HIT";
 					break;
 				case 1:
 					CG_FillRect( centerX, centerY + 7, 8, 19, zoneColor );
-					derbyHitLabel = "LEFT HIT";
+					derbyHitLabel = "FRONT HIT";
 					break;
 				case 2:
 					CG_FillRect( centerX + 54, centerY + 7, 8, 19, zoneColor );
-					derbyHitLabel = "RIGHT HIT";
+					derbyHitLabel = "REAR HIT";
 					break;
 				case 3:
 					CG_FillRect( centerX + 11, centerY + 26, 40, 7, zoneColor );
-					derbyHitLabel = "REAR HIT";
+					derbyHitLabel = "LEFT HIT";
 					break;
 				default:
 					CG_FillRect( centerX + 11, centerY, 40, 7, zoneColor );

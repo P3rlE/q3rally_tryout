@@ -884,11 +884,17 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
             } else if (ci->team == TEAM_SPECTATOR) {
                 CG_DrawModernText(x, y, "SPEC", 1, width, textColor, qfalse);
             } else if (cgs.gametype == GT_DERBY) {
-				qboolean wrecked = (score->integrity == 0 ||
-				                    (cg_entities[score->client].currentState.eFlags & EF_DEAD) ||
-				                    (score->client == cg.snap->ps.clientNum &&
-				                     (cg.snap->ps.pm_type == PM_DEAD ||
-				                      cg.snap->ps.stats[STAT_HEALTH] <= 0)));
+				qboolean matchEnded;
+				qboolean wrecked;
+
+				matchEnded = cg.predictedPlayerState.pm_type == PM_INTERMISSION;
+				wrecked = (score->integrity == 0 ||
+				           (cg_entities[score->client].currentState.eFlags & EF_DEAD) ||
+				           (score->client == cg.snap->ps.clientNum &&
+				            (cg.snap->ps.pm_type == PM_DEAD ||
+				             cg.snap->ps.stats[STAT_HEALTH] <= 0)) ||
+				           (cg_entities[score->client].finishRaceTime > 0 &&
+				            !(matchEnded && rank == 1)));
                 if (cg.predictedPlayerState.pm_type == PM_INTERMISSION && rank == 1 && !wrecked) {
                     CG_DrawModernText(x, y, "WINNER", 1, width, readyColor, qfalse);
                 } else if (wrecked) {
@@ -897,7 +903,7 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
                     wreckedColor[1] = 0.38f;
                     wreckedColor[2] = 0.20f;
                     wreckedColor[3] = fade;
-                    CG_DrawModernText(x, y, "WRECKED", 1, width, wreckedColor, qfalse);
+                    CG_DrawModernText(x, y, "OUT", 1, width, wreckedColor, qfalse);
                 } else {
                     CG_DrawModernText(x, y, "ALIVE", 1, width, readyColor, qfalse);
                 }

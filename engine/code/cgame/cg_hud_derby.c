@@ -367,7 +367,7 @@ void CG_DrawHUD_DerbyList( float x, float y ) {
 	const float labelsH = 14.0f;
 	const float rowH = 16.0f;
 	const int maxRows = 8;
-	int i, rows, panelH, totalTime;
+	int i, rows, panelH, totalTime, rank;
 	float rowY, integrity, barW;
 	qboolean isDead, isSpectator, isLocal;
 	char name[MAX_QPATH];
@@ -439,10 +439,13 @@ void CG_DrawHUD_DerbyList( float x, float y ) {
 		cent = &cg_entities[cg.scores[i].client];
 		isLocal = cg.scores[i].client == cg.snap->ps.clientNum;
 		isSpectator = ci->team == TEAM_SPECTATOR;
+		rank = cg.scores[i].position > 0 ? cg.scores[i].position : i + 1;
 		isDead = !isSpectator && ( cg.scores[i].integrity == 0 ||
 		                             ( cent->currentState.eFlags & EF_DEAD ) ||
 		                             ( isLocal && ( cg.snap->ps.pm_type == PM_DEAD ||
-		                                            cg.snap->ps.stats[STAT_HEALTH] <= 0 ) ) );
+		                                            cg.snap->ps.stats[STAT_HEALTH] <= 0 ) ) ||
+		                             ( cent->finishRaceTime > 0 &&
+		                               !( cg.predictedPlayerState.pm_type == PM_INTERMISSION && rank == 1 ) ) );
 
 		if ( isSpectator ) {
 			stateText = "SPEC";
@@ -472,8 +475,8 @@ void CG_DrawHUD_DerbyList( float x, float y ) {
 			Vector4Copy( colorWhite, nameColor );
 		}
 
-		CG_DrawIngameString( (int)(x + 8.0f), (int)(rowY + 3.0f), va("%02d", i + 1),
-		                     UI_SMALLFONT, 0.52f, ( i == 0 ) ? accentColor : mutedColor );
+		CG_DrawIngameString( (int)(x + 8.0f), (int)(rowY + 3.0f), va("%02d", rank),
+		                     UI_SMALLFONT, 0.52f, ( rank == 1 ) ? accentColor : mutedColor );
 		if ( ci->modelIcon ) {
 			CG_DrawPic( x + 26.0f, rowY + 2.0f, 12.0f, 12.0f, ci->modelIcon );
 		}

@@ -1247,7 +1247,7 @@ static float G_DerbyCollisionZoneWeight( carHitZone_t zone ) {
 	}
 }
 
-#define DERBY_MAX_COLLISION_DAMAGE 20.0f
+#define DERBY_MAX_COLLISION_DAMAGE 4.0f
 
 /* Derby damage follows the solver's actual normal impulse. Physics already
  * changed both cars' velocities, so damage must not add another knockback. */
@@ -1284,10 +1284,9 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 		return;
 
 	/* The per-car velocity change is impulse / mass. Only the part above the
-	 * 400-unit threshold causes damage; cap one solver contact so a single
-	 * high-speed frame cannot instantly wreck a healthy car. Side panels take
-	 * more damage than the reinforced front, which distinguishes a T-bone from
-	 * a front-to-front collision. */
+	 * 400-unit threshold causes damage. The 250-unit divisor cuts the previous
+	 * damage rate by a further factor of five, and the per-contact cap prevents
+	 * an extreme solver impulse from instantly wrecking a healthy car. */
 	selfImpactSpeed = contact->normalImpulse / self->client->car.sBody.mass;
 	otherImpactSpeed = contact->normalImpulse / other->client->car.sBody.mass;
 	if ( selfImpactSpeed <= 400.0f && otherImpactSpeed <= 400.0f )
@@ -1303,11 +1302,11 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 		damageScale *= g_damageScale.value;
 
 	selfDamage = selfImpactSpeed > 400.0f
-		? ( ( selfImpactSpeed - 400.0f ) / 50.0f ) *
+		? ( ( selfImpactSpeed - 400.0f ) / 250.0f ) *
 			G_DerbyCollisionZoneWeight( contact->selfZone ) * damageScale
 		: 0.0f;
 	otherDamage = otherImpactSpeed > 400.0f
-		? ( ( otherImpactSpeed - 400.0f ) / 50.0f ) *
+		? ( ( otherImpactSpeed - 400.0f ) / 250.0f ) *
 			G_DerbyCollisionZoneWeight( contact->otherZone ) * damageScale
 		: 0.0f;
 	if ( selfDamage > DERBY_MAX_COLLISION_DAMAGE )
