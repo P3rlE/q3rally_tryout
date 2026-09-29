@@ -121,6 +121,18 @@ static void CG_ApplyDerbyHitImpact( int damage, int zone, int yawByte, int pitch
 	}
 }
 
+/* Consume damage from authoritative snapshots, independently of client-side
+ * movement prediction. Predicted player states do not copy all damage fields,
+ * and prediction can return early when no movement command was processed. */
+void CG_ApplyDerbyDamageEvent( const playerState_t *ps, const playerState_t *ops ) {
+	if ( !ps || !ops || ps->damageEvent == ops->damageEvent || !ps->damageCount ) {
+		return;
+	}
+
+	CG_ApplyDerbyHitImpact( ps->damageCount, ps->damageZone,
+		ps->damageYaw, ps->damagePitch );
+}
+
 /*
 ==============
 CG_CheckAmmo
@@ -640,13 +652,6 @@ void CG_TransitionPlayerState( playerState_t *ps, playerState_t *ops ) {
 
        cg.predictedPlayerState.stats[STAT_FUEL] = ps->stats[STAT_FUEL];
        cg.car.fuel = ps->stats[STAT_FUEL];
-
-	// damage events (player is getting wounded)
-	if ( ps->damageEvent != ops->damageEvent && ps->damageCount ) {
-
-		CG_ApplyDerbyHitImpact( ps->damageCount, ps->damageZone,
-			ps->damageYaw, ps->damagePitch );
-	}
 
 	// Q3Rally KOTH: remember when local player died so client can show wave-respawn ETA
 	if ( cgs.gametype == GT_KOTH && ps->pm_type == PM_DEAD && ops->pm_type != PM_DEAD ) {

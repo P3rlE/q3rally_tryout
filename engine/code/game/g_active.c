@@ -1231,18 +1231,23 @@ static const char *G_DerbyCollisionZoneName( carHitZone_t zone ) {
 static float G_DerbyCollisionZoneWeight( carHitZone_t zone ) {
 	switch ( zone ) {
 	case CAR_HIT_ZONE_FRONT:
-		return g_derbyCollisionFrontWeight.value;
+		/* Front structures absorb a head-on hit better than the side panels. */
+		return 0.65f * g_derbyCollisionFrontWeight.value;
 	case CAR_HIT_ZONE_REAR:
-		return g_derbyCollisionRearWeight.value;
+		return 0.50f * ( g_derbyCollisionRearWeight.value / 0.35f );
 	case CAR_HIT_ZONE_LEFT:
 	case CAR_HIT_ZONE_RIGHT:
+		/* Normalize legacy archived defaults (0.65) to the new side-hit baseline. */
+		return g_derbyCollisionSideWeight.value / 0.65f;
 	case CAR_HIT_ZONE_ROOF:
 	case CAR_HIT_ZONE_UNDERBODY:
-		return g_derbyCollisionSideWeight.value;
+		return 0.75f * ( g_derbyCollisionSideWeight.value / 0.65f );
 	default:
 		return 1.0f;
 	}
 }
+
+#define DERBY_MAX_COLLISION_DAMAGE 20.0f
 
 /* Derby damage follows the solver's actual normal impulse. Physics already
  * changed both cars' velocities, so damage must not add another knockback. */
@@ -1278,9 +1283,11 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 		other->client->car.sBody.mass <= 0.0f )
 		return;
 
-	/* The per-car velocity change is impulse / mass. Keep the old 400-unit
-	 * impact threshold, but halve its damage rate to 1 per 50 units, then scale
-	 * by the receiving vehicle's struck zone. */
+	/* The per-car velocity change is impulse / mass. Only the part above the
+	 * 400-unit threshold causes damage; cap one solver contact so a single
+	 * high-speed frame cannot instantly wreck a healthy car. Side panels take
+	 * more damage than the reinforced front, which distinguishes a T-bone from
+	 * a front-to-front collision. */
 	selfImpactSpeed = contact->normalImpulse / self->client->car.sBody.mass;
 	otherImpactSpeed = contact->normalImpulse / other->client->car.sBody.mass;
 	if ( selfImpactSpeed <= 400.0f && otherImpactSpeed <= 400.0f )
@@ -1296,13 +1303,17 @@ static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
 		damageScale *= g_damageScale.value;
 
 	selfDamage = selfImpactSpeed > 400.0f
-		? ( selfImpactSpeed / 50.0f ) *
+		? ( ( selfImpactSpeed - 400.0f ) / 50.0f ) *
 			G_DerbyCollisionZoneWeight( contact->selfZone ) * damageScale
 		: 0.0f;
 	otherDamage = otherImpactSpeed > 400.0f
-		? ( otherImpactSpeed / 50.0f ) *
+		? ( ( otherImpactSpeed - 400.0f ) / 50.0f ) *
 			G_DerbyCollisionZoneWeight( contact->otherZone ) * damageScale
 		: 0.0f;
+	if ( selfDamage > DERBY_MAX_COLLISION_DAMAGE )
+		selfDamage = DERBY_MAX_COLLISION_DAMAGE;
+	if ( otherDamage > DERBY_MAX_COLLISION_DAMAGE )
+		otherDamage = DERBY_MAX_COLLISION_DAMAGE;
 	selfDamageInt = selfDamage >= 0.0f ? (int)( selfDamage + 0.5f ) : 0;
 	otherDamageInt = otherDamage >= 0.0f ? (int)( otherDamage + 0.5f ) : 0;
 	if ( selfDamageInt > 9999 ) selfDamageInt = 9999;

@@ -440,7 +440,9 @@ void CG_DrawHUD_DerbyList( float x, float y ) {
 		isLocal = cg.scores[i].client == cg.snap->ps.clientNum;
 		isSpectator = ci->team == TEAM_SPECTATOR;
 		isDead = !isSpectator && ( cg.scores[i].integrity == 0 ||
-		                             ( cent->currentState.eFlags & EF_DEAD ) );
+		                             ( cent->currentState.eFlags & EF_DEAD ) ||
+		                             ( isLocal && ( cg.snap->ps.pm_type == PM_DEAD ||
+		                                            cg.snap->ps.stats[STAT_HEALTH] <= 0 ) ) );
 
 		if ( isSpectator ) {
 			stateText = "SPEC";
