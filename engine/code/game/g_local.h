@@ -541,7 +541,6 @@ struct gclient_s {
 
 // STONELANCE
 	car_t		car;
-
 	gentity_t	*carPoints[4];
 
 	int			frameNum;
@@ -605,6 +604,9 @@ typedef struct {
 	int			maxclients;
 
 	int			framenum;
+	/* Pairwise frame stamps prevent duplicate Derby collision damage when both
+	 * drivers' Pmoves report the same contact, including crowded multi-car hits. */
+	int			vehicleCollisionDamageFrame[MAX_CLIENTS][MAX_CLIENTS];
 	int			time;					// in msec
 	int			previousTime;			// so movers can back up when blocked
 

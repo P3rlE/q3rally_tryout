@@ -1211,6 +1211,118 @@ If "g_synchronousClients 1" is set, this will be called exactly
 once for each server frame, which makes for smooth demo recording.
 ==============
 */
+static const char *G_DerbyCollisionZoneName( carHitZone_t zone ) {
+	switch ( zone ) {
+	case CAR_HIT_ZONE_FRONT: return "front";
+	case CAR_HIT_ZONE_REAR: return "rear";
+	case CAR_HIT_ZONE_LEFT: return "left";
+	case CAR_HIT_ZONE_RIGHT: return "right";
+	case CAR_HIT_ZONE_ROOF: return "roof";
+	case CAR_HIT_ZONE_UNDERBODY: return "underbody";
+	default: return "unknown";
+	}
+}
+
+static float G_DerbyCollisionZoneWeight( carHitZone_t zone ) {
+	switch ( zone ) {
+	case CAR_HIT_ZONE_FRONT:
+		return g_derbyCollisionFrontWeight.value;
+	case CAR_HIT_ZONE_REAR:
+		return g_derbyCollisionRearWeight.value;
+	case CAR_HIT_ZONE_LEFT:
+	case CAR_HIT_ZONE_RIGHT:
+	case CAR_HIT_ZONE_ROOF:
+	case CAR_HIT_ZONE_UNDERBODY:
+		return g_derbyCollisionSideWeight.value;
+	default:
+		return 1.0f;
+	}
+}
+
+/* Derby damage follows the solver's actual normal impulse. Physics already
+ * changed both cars' velocities, so damage must not add another knockback. */
+static void G_ApplyDerbyVehicleCollisionDamage( gentity_t *self,
+												 const vehicleCollisionContact_t *contact ) {
+	gentity_t *other;
+	float selfImpactSpeed, otherImpactSpeed;
+	float selfDamage, otherDamage, damageScale;
+	int selfDamageInt, otherDamageInt;
+	vec3_t selfNormal, otherNormal, collisionPoint;
+
+	if ( g_gametype.integer != GT_DERBY || !level.startRaceTime ||
+		level.finishRaceTime || !self || !self->client || !contact ||
+		!contact->valid || contact->otherEnt < 0 ||
+		contact->otherEnt >= MAX_CLIENTS || contact->otherEnt == self->s.number ||
+		contact->normalImpulse <= 0.0f || contact->normalImpulse >= 1.0e9f )
+		return;
+
+	other = &g_entities[contact->otherEnt];
+	if ( !other->inuse || !other->client || !other->takedamage ||
+		other->client->ps.pm_type == PM_DEAD || other->health <= 0 ||
+		other->client->sess.sessionTeam == TEAM_SPECTATOR ||
+		self->client->ps.pm_type == PM_DEAD || self->health <= 0 )
+		return;
+
+	/* A car can hit several opponents in one frame, so remember each pair
+	 * independently rather than keeping only the most recent partner. */
+	if ( level.vehicleCollisionDamageFrame[self->s.number][other->s.number] ==
+		level.framenum )
+		return;
+
+	if ( self->client->car.sBody.mass <= 0.0f ||
+		other->client->car.sBody.mass <= 0.0f )
+		return;
+
+	/* The per-car velocity change is impulse / mass. Keep the same 400-unit
+	 * impact threshold and 1 damage per 25 units used by the old chassis-impact
+	 * path, then scale by the receiving vehicle's struck zone. */
+	selfImpactSpeed = contact->normalImpulse / self->client->car.sBody.mass;
+	otherImpactSpeed = contact->normalImpulse / other->client->car.sBody.mass;
+	if ( selfImpactSpeed <= 400.0f && otherImpactSpeed <= 400.0f )
+		return;
+
+	level.vehicleCollisionDamageFrame[self->s.number][other->s.number] =
+		level.framenum;
+	level.vehicleCollisionDamageFrame[other->s.number][self->s.number] =
+		level.framenum;
+
+	damageScale = g_derbyDamageFactor.value;
+	if ( !g_derbyIgnoreDamageScale.integer )
+		damageScale *= g_damageScale.value;
+
+	selfDamage = selfImpactSpeed > 400.0f
+		? ( selfImpactSpeed / 25.0f ) *
+			G_DerbyCollisionZoneWeight( contact->selfZone ) * damageScale
+		: 0.0f;
+	otherDamage = otherImpactSpeed > 400.0f
+		? ( otherImpactSpeed / 25.0f ) *
+			G_DerbyCollisionZoneWeight( contact->otherZone ) * damageScale
+		: 0.0f;
+	selfDamageInt = selfDamage >= 0.0f ? (int)( selfDamage + 0.5f ) : 0;
+	otherDamageInt = otherDamage >= 0.0f ? (int)( otherDamage + 0.5f ) : 0;
+	if ( selfDamageInt > 9999 ) selfDamageInt = 9999;
+	if ( otherDamageInt > 9999 ) otherDamageInt = 9999;
+
+	VectorCopy( contact->normal, selfNormal );
+	VectorScale( selfNormal, -1.0f, otherNormal );
+	VectorCopy( contact->point, collisionPoint );
+	if ( selfDamageInt > 0 ) {
+		G_Damage( self, other, other, selfNormal, collisionPoint,
+			selfDamageInt, DAMAGE_NO_KNOCKBACK, MOD_VEHICLE_COLLISION );
+	}
+	if ( otherDamageInt > 0 ) {
+		G_Damage( other, self, self, otherNormal, collisionPoint,
+			otherDamageInt, DAMAGE_NO_KNOCKBACK, MOD_VEHICLE_COLLISION );
+	}
+
+	if ( g_derbyCollisionLog.integer ) {
+		G_Printf( "Derby collision: %d(%s) <-> %d(%s), impulse %.0f, damage %d/%d\n",
+			self->s.number, G_DerbyCollisionZoneName( contact->selfZone ),
+			other->s.number, G_DerbyCollisionZoneName( contact->otherZone ),
+			contact->normalImpulse, selfDamageInt, otherDamageInt );
+	}
+}
+
 void ClientThink_real( gentity_t *ent ) {
 	gclient_t	*client;
 	pmove_t		pm;
@@ -1816,6 +1928,10 @@ void ClientThink_real( gentity_t *ent ) {
 
 	// execute client events
 	ClientEvents( ent, oldEventSequence );
+
+	/* Convert this Pmove's strongest rigid-body contact into a single Derby
+	 * damage event, weighted by the struck zone on each vehicle. */
+	G_ApplyDerbyVehicleCollisionDamage( ent, &pm.vehicleCollision );
 
 // STONELANCE - do damage from pmove
 
