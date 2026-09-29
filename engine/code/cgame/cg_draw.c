@@ -1688,7 +1688,7 @@ static void CG_DrawRallyTelemetryHud( void ) {
 	/* Keep the speed display aligned with its previous right-hand layout. */
 	speedRight = HUD_X(594);
 	vehicleInfoRight = HUD_X(630);
-	CG_DrawIngameString( speedRight, 415, speedText, UI_RIGHT,
+	CG_DrawIngameString( speedRight, 421, speedText, UI_RIGHT,
 	                     1.2f, colorWhite );
 	CG_DrawIngameString( vehicleInfoRight, 433,
 	                     cg_metricUnits.integer ? "KPH" : "MPH",

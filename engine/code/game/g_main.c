@@ -356,7 +356,7 @@ static cvarTable_t		gameCvarTable[] = {
         { &g_derbyCollisionSideWeight, "g_derbyCollisionSideWeight", "0.65", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyCollisionRearWeight, "g_derbyCollisionRearWeight", "0.35", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyCollisionLog, "g_derbyCollisionLog", "0", 0, 0, qfalse },
-        { &g_derbyHitFuelReward, "g_derbyHitFuelReward", "1.0", CVAR_ARCHIVE, 0, qfalse },
+        { &g_derbyHitFuelReward, "g_derbyHitFuelReward", "2.0", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyHitNosReward, "g_derbyHitNosReward", "500", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyNoRamTime, "g_derbyNoRamTime", "45", CVAR_ARCHIVE, 0, qfalse },
         // END
