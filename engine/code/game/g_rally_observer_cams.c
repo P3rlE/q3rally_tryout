@@ -25,9 +25,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define INTRO_GHOST_ROUTE_MAX_FILE_SIZE ( 64 * 1024 )
 #define INTRO_GHOST_ROUTE_MAX_FRAMES 256
-/* Track-length values 0/1/2 preview for 10/15/20 seconds. */
+/* Fallback duration by track class, used only if checkpoint distance is missing. */
 #define INTRO_GHOST_CAM_BASE_DURATION_MS 10000
 #define INTRO_GHOST_CAM_DURATION_STEP_MS 5000
+#define INTRO_GHOST_CAM_MIN_DURATION_MS 10000
+#define INTRO_GHOST_CAM_MAX_DURATION_MS 30000
+#define INTRO_GHOST_CAM_MS_PER_METER 30.0f
 
 /*
  * Intro routes are camera-only derivatives of Ghost recordings. The client
@@ -128,6 +131,26 @@ static qboolean G_RallyIntroRoute_Find( void ) {
 	return qtrue;
 }
 
+void G_RallyIntroRoute_UpdateDuration( void ) {
+	float trackLengthMeters;
+	int durationMs;
+
+	if ( !level.raceIntroHasRoute || level.trackLength <= 0.0f ) {
+		return;
+	}
+
+	trackLengthMeters = level.trackLength / CP_M_2_QU;
+	durationMs = (int)( trackLengthMeters * INTRO_GHOST_CAM_MS_PER_METER + 0.5f );
+	if ( durationMs < INTRO_GHOST_CAM_MIN_DURATION_MS ) {
+		durationMs = INTRO_GHOST_CAM_MIN_DURATION_MS;
+	} else if ( durationMs > INTRO_GHOST_CAM_MAX_DURATION_MS ) {
+		durationMs = INTRO_GHOST_CAM_MAX_DURATION_MS;
+	}
+	level.raceIntroDurationMs = durationMs;
+	G_Printf( "Info: intro Ghost route duration %d ms for %.0f m track.\n",
+		durationMs, trackLengthMeters );
+}
+
 static qboolean G_RallyIntroRoute_UsesRaceState( void ) {
 	return ( g_gametype.integer == GT_RACING
 		|| g_gametype.integer == GT_RACING_DM
@@ -170,8 +193,8 @@ void G_RallyIntroRoute_Init( void ) {
 
 	level.raceIntroHasRoute = qtrue;
 	G_RallyIntroRoute_SetPending( !level.raceIntroFallback && G_RallyIntroRoute_UsesRaceState() );
-	G_Printf( "Info: using packaged Ghost route '%s' (%d ms) for the automatic track preview.\n",
-		level.raceIntroRoute, level.raceIntroDurationMs );
+	G_Printf( "Info: using packaged Ghost route '%s' for the automatic track preview.\n",
+		level.raceIntroRoute );
 }
 
 /* Observer spots remain for live spectating; race intros use packaged routes. */

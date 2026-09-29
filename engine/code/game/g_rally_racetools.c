@@ -556,6 +556,8 @@ void RallyStarter_Think( gentity_t *ent ){
 		}
 		if ( introCount > 0 ) {
 			int oldRaceState = level.raceState;
+			G_RallyIntroRoute_UpdateDuration();
+			introDurationMs = level.raceIntroDurationMs;
 			level.raceState = RACE_STATE_INTRO_CAM;
 			level.raceIntroEndTime = level.time + introDurationMs;
 			level.raceIntroFallback = qtrue;  /* prevent re-trigger after expiry */

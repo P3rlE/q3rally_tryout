@@ -949,6 +949,7 @@ gentity_t *FindBestObserverSpot( gentity_t *self, gentity_t *target, vec3_t spot
 void UpdateObserverSpot( gentity_t *ent, qboolean forceUpdate );
 void G_RallyIntroRoute_Init( void );
 void G_RallyIntroRoute_SetPending( qboolean pending );
+void G_RallyIntroRoute_UpdateDuration( void );
 
 //
 // g_rally_mapobjects.c
