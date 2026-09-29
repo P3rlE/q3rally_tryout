@@ -1247,7 +1247,7 @@ static float G_DerbyCollisionZoneWeight( carHitZone_t zone ) {
 	}
 }
 
-#define DERBY_COLLISION_DAMAGE_THRESHOLD 200.0f
+#define DERBY_COLLISION_DAMAGE_THRESHOLD 135.0f
 #define DERBY_COLLISION_DAMAGE_DIVISOR 250.0f
 #define DERBY_MAX_COLLISION_DAMAGE 15.0f
 
