@@ -887,6 +887,263 @@ static carHitZone_t PM_ClassifyCarHitZone( const carBody_t *body,
 	return rightDot >= 0.0f ? CAR_HIT_ZONE_RIGHT : CAR_HIT_ZONE_LEFT;
 }
 
+#define PM_CAR_CONTACT_SLOP                 0.5f
+#define PM_CAR_MAX_POSITION_CORRECTION      12.0f
+#define PM_CAR_POSITION_CORRECTION_ITERATIONS 8
+
+/* Test one separating axis for two oriented boxes. The small negative
+ * tolerance keeps contacts stable around floating-point touching. */
+static qboolean PM_TestCarBoxAxis( const carBody_t *body1,
+								  const carBody_t *body2,
+								  const vec3_t testAxis,
+								  float *minimumPenetration,
+								  vec3_t contactNormal ) {
+	vec3_t	axis, centerDelta;
+	float	halfLength, halfWidth, halfHeight;
+	float	radius1, radius2, distance, penetration;
+
+	VectorCopy( testAxis, axis );
+	if ( VectorNormalize( axis ) < 1e-4f )
+		return qtrue;
+
+	halfLength = CAR_LENGTH * 0.5f;
+	halfWidth = CAR_WIDTH * 0.5f;
+	halfHeight = CAR_HEIGHT * 0.5f;
+	radius1 = halfLength * fabs( DotProduct( axis, body1->forward ) ) +
+		halfWidth * fabs( DotProduct( axis, body1->right ) ) +
+		halfHeight * fabs( DotProduct( axis, body1->up ) );
+	radius2 = halfLength * fabs( DotProduct( axis, body2->forward ) ) +
+		halfWidth * fabs( DotProduct( axis, body2->right ) ) +
+		halfHeight * fabs( DotProduct( axis, body2->up ) );
+
+	VectorSubtract( body1->r, body2->r, centerDelta );
+	distance = DotProduct( centerDelta, axis );
+	penetration = radius1 + radius2 - fabs( distance );
+	if ( penetration < -PM_CAR_CONTACT_SLOP )
+		return qfalse;
+
+	if ( penetration < *minimumPenetration ) {
+		*minimumPenetration = penetration;
+		if ( distance < 0.0f )
+			VectorScale( axis, -1.0f, contactNormal );
+		else
+			VectorCopy( axis, contactNormal );
+	}
+
+	return qtrue;
+}
+
+/* Oriented-box narrow phase using all 15 SAT axes. The returned normal points
+ * from body2 toward body1, matching the vehicle impulse convention. */
+static qboolean PM_GetCarBoxContact( const carBody_t *body1,
+									const carBody_t *body2,
+									vec3_t normal, vec3_t contactPoint,
+									float *penetration ) {
+	vec3_t	axes[15], cross, support1, support2;
+	vec3_t	body1Axes[3], body2Axes[3];
+	float	minimumPenetration;
+	int		i, j;
+
+	VectorCopy( body1->forward, body1Axes[0] );
+	VectorCopy( body1->right, body1Axes[1] );
+	VectorCopy( body1->up, body1Axes[2] );
+	VectorCopy( body2->forward, body2Axes[0] );
+	VectorCopy( body2->right, body2Axes[1] );
+	VectorCopy( body2->up, body2Axes[2] );
+	for ( i = 0; i < 3; i++ ) {
+		VectorCopy( body1Axes[i], axes[i] );
+		VectorCopy( body2Axes[i], axes[i + 3] );
+	}
+	for ( i = 0; i < 3; i++ ) {
+		for ( j = 0; j < 3; j++ ) {
+			CrossProduct( body1Axes[i], body2Axes[j], cross );
+			VectorCopy( cross, axes[6 + i * 3 + j] );
+		}
+	}
+
+	minimumPenetration = 1e30f;
+	for ( i = 0; i < 15; i++ ) {
+		if ( !PM_TestCarBoxAxis( body1, body2, axes[i],
+				&minimumPenetration, normal ) )
+			return qfalse;
+	}
+
+	if ( penetration )
+		*penetration = minimumPenetration;
+
+	/* Average the two support points along the minimum-penetration axis. */
+	VectorCopy( body1->r, support1 );
+	VectorCopy( body2->r, support2 );
+	{
+		vec3_t direction;
+		float extents[3];
+
+		VectorScale( normal, -1.0f, direction );
+		extents[0] = CAR_LENGTH * 0.5f;
+		extents[1] = CAR_WIDTH * 0.5f;
+		extents[2] = CAR_HEIGHT * 0.5f;
+		for ( i = 0; i < 3; i++ )
+			VectorMA( support1, DotProduct( direction, body1Axes[i] ) >= 0.0f ?
+				extents[i] : -extents[i], body1Axes[i], support1 );
+
+		VectorScale( normal, 1.0f, direction );
+		for ( i = 0; i < 3; i++ )
+			VectorMA( support2, DotProduct( direction, body2Axes[i] ) >= 0.0f ?
+				extents[i] : -extents[i], body2Axes[i], support2 );
+	}
+	VectorAdd( support1, support2, contactPoint );
+	VectorScale( contactPoint, 0.5f, contactPoint );
+	return qtrue;
+}
+
+static void PM_TranslateCarState( car_t *car, const vec3_t offset ) {
+	int i;
+
+	VectorAdd( car->sBody.r, offset, car->sBody.r );
+	VectorAdd( car->sBody.CoM, offset, car->sBody.CoM );
+	VectorAdd( car->tBody.r, offset, car->tBody.r );
+	VectorAdd( car->tBody.CoM, offset, car->tBody.CoM );
+	for ( i = 0; i < NUM_CAR_POINTS; i++ ) {
+		VectorAdd( car->sPoints[i].r, offset, car->sPoints[i].r );
+		VectorAdd( car->tPoints[i].r, offset, car->tPoints[i].r );
+	}
+}
+
+static float PM_ClipCarPositionCorrection( const carBody_t *body,
+										 const vec3_t offset,
+										 int passEntityNum ) {
+	trace_t trace;
+	vec3_t mins, maxs, end;
+	float halfLength, halfWidth, halfHeight;
+
+	halfLength = CAR_LENGTH * 0.5f;
+	halfWidth = CAR_WIDTH * 0.5f;
+	halfHeight = CAR_HEIGHT * 0.5f;
+	mins[0] = -( halfLength * fabs( body->forward[0] ) +
+		halfWidth * fabs( body->right[0] ) +
+		halfHeight * fabs( body->up[0] ) );
+	mins[1] = -( halfLength * fabs( body->forward[1] ) +
+		halfWidth * fabs( body->right[1] ) +
+		halfHeight * fabs( body->up[1] ) );
+	mins[2] = -( halfLength * fabs( body->forward[2] ) +
+		halfWidth * fabs( body->right[2] ) +
+		halfHeight * fabs( body->up[2] ) );
+	maxs[0] = -mins[0];
+	maxs[1] = -mins[1];
+	maxs[2] = -mins[2];
+	VectorAdd( body->r, offset, end );
+	pm->trace( &trace, body->r, mins, maxs, end, passEntityNum,
+		pm->tracemask & ~CONTENTS_BODY );
+	if ( trace.startsolid || trace.allsolid )
+		return 0.0f;
+	return trace.fraction;
+}
+
+static void PM_RecordVehicleCollision( int otherEnt, float normalImpulse,
+										 const vec3_t point,
+										 const vec3_t normal,
+										 const carBody_t *selfBody,
+										 const carBody_t *otherBody ) {
+	vec3_t selfNormal;
+
+	if ( normalImpulse <= 0.0f ||
+		( pm->vehicleCollision.valid && normalImpulse <=
+		  pm->vehicleCollision.normalImpulse ) )
+		return;
+
+	VectorScale( normal, -1.0f, selfNormal );
+	pm->vehicleCollision.valid = qtrue;
+	pm->vehicleCollision.otherEnt = otherEnt;
+	pm->vehicleCollision.normalImpulse = normalImpulse;
+	VectorCopy( point, pm->vehicleCollision.point );
+	VectorCopy( normal, pm->vehicleCollision.normal );
+	pm->vehicleCollision.selfZone = PM_ClassifyCarHitZone(
+		selfBody, point, selfNormal );
+	pm->vehicleCollision.otherZone = PM_ClassifyCarHitZone(
+		otherBody, point, normal );
+}
+
+static void PM_LinkCorrectedCar( int clientNum, car_t *car ) {
+	gentity_t *ent;
+	vec3_t origin;
+
+	if ( clientNum < 0 || clientNum >= MAX_CLIENTS )
+		return;
+	ent = &g_entities[clientNum];
+	if ( !ent->inuse || !ent->client )
+		return;
+
+	VectorCopy( car->sBody.r, ent->client->ps.origin );
+	VectorCopy( car->sBody.v, ent->client->ps.velocity );
+	VectorCopy( car->sBody.L, ent->client->ps.angularMomentum );
+	OrientationToAngles( car->sBody.t, ent->client->ps.viewangles );
+	G_SetOrigin( ent, car->sBody.r );
+	trap_LinkEntity( ent );
+
+	if ( ent->frontBounds && ent->frontBounds->inuse ) {
+		VectorMA( car->sBody.r, ( CAR_LENGTH - CAR_WIDTH ) * 0.5f,
+			car->sBody.forward, origin );
+		G_SetOrigin( ent->frontBounds, origin );
+		trap_LinkEntity( ent->frontBounds );
+	}
+	if ( ent->rearBounds && ent->rearBounds->inuse ) {
+		VectorMA( car->sBody.r, -( CAR_LENGTH - CAR_WIDTH ) * 0.5f,
+			car->sBody.forward, origin );
+		G_SetOrigin( ent->rearBounds, origin );
+		trap_LinkEntity( ent->rearBounds );
+	}
+}
+
+/* Resolve overlap after the remaining substep has run. Positional correction
+ * is split by inverse mass, clipped against world geometry, and does not add
+ * artificial velocity. */
+static void PM_ResolveCarBoxPenetration( car_t *car1, car_t *car2,
+										 int client1, int client2 ) {
+	int			iteration;
+	vec3_t		normal, contactPoint, offset1, offset2;
+	float		penetration, inverseMass1, inverseMass2, inverseMassSum;
+	float		correction, move1, move2, fraction1, fraction2;
+
+	if ( !car1 || !car2 || car1->tBody.mass <= 0.0f ||
+		car2->sBody.mass <= 0.0f )
+		return;
+
+	for ( iteration = 0; iteration < PM_CAR_POSITION_CORRECTION_ITERATIONS;
+		iteration++ ) {
+		if ( !PM_GetCarBoxContact( &car1->tBody, &car2->sBody,
+				normal, contactPoint, &penetration ) ||
+			penetration <= PM_CAR_CONTACT_SLOP )
+			break;
+
+		correction = penetration - PM_CAR_CONTACT_SLOP;
+		if ( correction > PM_CAR_MAX_POSITION_CORRECTION )
+			correction = PM_CAR_MAX_POSITION_CORRECTION;
+		inverseMass1 = 1.0f / car1->tBody.mass;
+		inverseMass2 = 1.0f / car2->sBody.mass;
+		inverseMassSum = inverseMass1 + inverseMass2;
+		if ( inverseMassSum <= 1e-6f )
+			break;
+
+		move1 = correction * inverseMass1 / inverseMassSum;
+		move2 = correction * inverseMass2 / inverseMassSum;
+		VectorScale( normal, move1, offset1 );
+		VectorScale( normal, -move2, offset2 );
+		fraction1 = PM_ClipCarPositionCorrection( &car1->tBody,
+			offset1, client1 );
+		fraction2 = PM_ClipCarPositionCorrection( &car2->sBody,
+			offset2, client2 );
+		VectorScale( offset1, fraction1, offset1 );
+		VectorScale( offset2, fraction2, offset2 );
+		if ( VectorLengthSquared( offset1 ) < 1e-6f &&
+			VectorLengthSquared( offset2 ) < 1e-6f )
+			break;
+
+		PM_TranslateCarState( car1, offset1 );
+		PM_TranslateCarState( car2, offset2 );
+		PM_LinkCorrectedCar( client2, car2 );
+	}
+}
+
 /*
 ================================================================================
 PM_ApplyBodyBodyCollision
@@ -911,7 +1168,7 @@ static void PM_ApplyBodyBodyCollision( carBody_t *body1, carPoint_t *points1, ca
 	if ( normalImpulse )
 		*normalImpulse = 0.0f;
 
-	/* The trace normal points from body2 toward body1. Resolve only closing
+	/* The contact normal points from body2 toward body1. Resolve only closing
 	 * velocity along this normal, using both contact-point velocities. */
 	if ( !body1 || !body2 || body1->mass <= 0.0f || body2->mass <= 0.0f )
 		return;
@@ -1864,7 +2121,9 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 	vec3_t	maxs, mins;
 	vec3_t	start, dest, dir;
 #ifdef QAGAME
-	vec3_t	normal;
+	qboolean	scriptedObjectPlane;
+	qboolean	hitScriptedObject;
+	vec3_t	pointCorrection;
 #endif
 	trace_t	trace;
 	int		i, j;
@@ -1879,8 +2138,6 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 	int		count = 0;
 	int		savedTracemask;
 #endif
-	vec3_t	hitOrigin;
-
 // new stuff
 	int			bumpcount, numbumps;
 	float		d;
@@ -1894,17 +2151,10 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 	vec3_t		clipPlanes[MAX_CLIP_PLANES];
 	int			contactPlaneCount;
 #ifdef QAGAME
-	qboolean	scriptedObjectPlane;
-	qboolean	hitScriptedObject;
-	vec3_t	pointCorrection;
-	vec3_t	contactPoint;
-	float	contactOffset;
 #endif
 	
 	numbumps = 4;
 // end
-
-	VectorClear(hitOrigin);
 
 #ifdef QAGAME
 	// snapshot tracemask so the in-frame "skip cars after first contact"
@@ -2188,50 +2438,21 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 //						Com_Printf("all solid and hit CONTENTS_BODY\n");
 
 					// need to make it at least a tiny ways
-					if (trace.fraction != 0.0f)
+					if (trace.fraction < minTrace)
 					{
-						if (trace.fraction < minTrace)
-						{
-							minTrace = trace.fraction;
-							VectorClear(hitOrigin);
-							VectorClear(normal);
-							count = 0;
-							hitEnt = -1;
-						}
-
-						if (trace.fraction == minTrace &&
-							( hitEnt < 0 || hitEnt == hitFirst ))
-						{
-							/* trace.endpos is the center of the swept point box.
-							 * Move it to the box support point on the contacted face. */
-							contactOffset = sPoint->radius *
-								( fabs( trace.plane.normal[0] ) +
-								  fabs( trace.plane.normal[1] ) );
-							if ( i >= LAST_FRAME_POINT )
-								contactOffset += ( sPoint->radius / 1.5f ) *
-									fabs( trace.plane.normal[2] );
-							else
-								contactOffset += sPoint->radius *
-									fabs( trace.plane.normal[2] );
-							VectorMA( trace.endpos, -contactOffset,
-								trace.plane.normal, contactPoint );
-							VectorAdd(hitOrigin, contactPoint, hitOrigin);
-							VectorAdd(normal, trace.plane.normal, normal);
-							count++;
-							hitEnt = hitFirst;
-
-							tPoints[i].onGround = qtrue;
-
-//							PM_CheckSurfaceFlags( &trace, &tPoints[i] );
-						}
-
-//						PM_SetFluidDensity(tPoints, i);
-//						continue;
+						minTrace = trace.fraction;
+						count = 0;
+						hitEnt = -1;
 					}
-					else
+
+					if (trace.fraction == minTrace &&
+						( hitEnt < 0 || hitEnt == hitFirst ))
 					{
-						// inside another car
-//						Com_Printf("fraction == 0 and hit CONTENTS_BODY\n");
+						/* Keep the earliest candidate from the engine's broad phase.
+						 * The oriented-box narrow phase below supplies the real contact. */
+						count++;
+						hitEnt = hitFirst;
+						tPoints[i].onGround = qtrue;
 					}
 
 					// trace the frame to target position but skip other cars
@@ -2373,69 +2594,69 @@ static void PM_Trace_Points( car_t *car, carPoint_t *sPoints, carPoint_t *tPoint
 #ifdef QAGAME
 	if ( count && hitEnt >= 0 && hitEnt < MAX_CLIENTS && pm->cars && pm->cars[hitEnt] )
 	{
-		float	impactStrength;
-		vec3_t	selfNormal;
+		float	impactStrength, carCarElasticity, penetration;
+		vec3_t	contactNormal, contactPoint;
+		qboolean impactApplied;
+		car_t	*otherCar;
 		pm->collisionDetected = qtrue;
+		otherCar = pm->cars[hitEnt];
+		impactApplied = qfalse;
 
 //		G_LogPrintf( "minTrace %f\n", minTrace );
 //		G_LogPrintf("count = %d\n", count);
 //		G_LogPrintf("pml.physicsSplit = %d\n", pml.physicsSplit);
 
-		// calculate car position at collision
-//		G_LogPrintf( "car was hit with %f traced\n", minTrace );
-		VectorScale(hitOrigin, 1.0f / count, hitOrigin);
-
-//		G_LogPrintf("hitOrigin = %f, %f, %f\n", hitOrigin[0], hitOrigin[1], hitOrigin[2]);
-
+		/* Stop at the broad-phase candidate, then finish the remaining part of
+		 * this substep without the oversized CONTENTS_BODY boxes. The OBB solver
+		 * below detects and resolves the actual vehicle overlap at the end. */
 		PM_CalculateTargetBody(car, &car->sBody, &car->tBody, car->sPoints, car->tPoints, time * minTrace);
 
-//		VectorSubtract(car->tBody.r, pm->cars[hitEnt]->sBody.r, normal);
-		VectorNormalize(normal);
-
-		{
-			float carCarElasticity = pm->car_impact_elasticity;
-			/* defensive: clamp to the original 0.25 if the cvar is unset
-			 * or out of a sane range */
-			if ( carCarElasticity < 0.0f || carCarElasticity > 1.0f ) {
+		/* If the oriented hull has already reached contact at the candidate
+		 * fraction, resolve its impulse before simulating the remaining time. */
+		if ( PM_GetCarBoxContact( &car->tBody, &otherCar->sBody,
+				contactNormal, contactPoint, &penetration ) ) {
+			carCarElasticity = pm->car_impact_elasticity;
+			if ( carCarElasticity < 0.0f || carCarElasticity > 1.0f )
 				carCarElasticity = 0.25f;
+
+			PM_ApplyBodyBodyCollision( &car->tBody, car->tPoints,
+				&otherCar->sBody, otherCar->sPoints, contactPoint,
+				contactNormal, carCarElasticity, &impactStrength );
+			if ( impactStrength > 0.0f ) {
+				impactApplied = qtrue;
+				PM_RecordVehicleCollision( hitEnt, impactStrength,
+					contactPoint, contactNormal, &car->tBody, &otherCar->sBody );
+				PM_LinkCorrectedCar( hitEnt, otherCar );
 			}
-			PM_ApplyBodyBodyCollision(&car->tBody, car->tPoints,
-				&pm->cars[hitEnt]->sBody, pm->cars[hitEnt]->sPoints,
-				hitOrigin, normal, carCarElasticity, &impactStrength);
 		}
-
-		/* Preserve the strongest impact from this user move. The trace normal
-		 * points from the other car toward this car, so each participant's
-		 * outward contact normal is classified in its own vehicle frame. */
-		if ( impactStrength > 0.0f &&
-			( !pm->vehicleCollision.valid ||
-			  impactStrength > pm->vehicleCollision.normalImpulse ) ) {
-			VectorCopy( normal, selfNormal );
-			VectorInverse( selfNormal );
-			pm->vehicleCollision.valid = qtrue;
-			pm->vehicleCollision.otherEnt = hitEnt;
-			pm->vehicleCollision.normalImpulse = impactStrength;
-			VectorCopy( hitOrigin, pm->vehicleCollision.point );
-			VectorCopy( normal, pm->vehicleCollision.normal );
-			pm->vehicleCollision.selfZone = PM_ClassifyCarHitZone(
-				&car->tBody, hitOrigin, selfNormal );
-			pm->vehicleCollision.otherZone = PM_ClassifyCarHitZone(
-				&pm->cars[hitEnt]->sBody, hitOrigin, normal );
-		}
-
-		// NOTE: the original code wrote into tPoints[hitEnt].normals here,
-		// but hitEnt is an entity number (0..MAX_CLIENTS), while tPoints is
-		// indexed by carPoint slot (0..NUM_CAR_POINTS-1). That was an out-of-
-		// bounds access whenever hitEnt >= NUM_CAR_POINTS. We deliberately
-		// drop that loop; the normal information is no longer required for
-		// the body-body impulse below to work.
 
 		PM_CopyTargetToSource(&car->tBody, &car->sBody, tPoints, sPoints);
 
-		// run physics again but remove CONTENTS_BODY first so it cant collide with cars
+		// Run the remaining substep without coarse car boxes to avoid repeating
+		// the same broad-phase hit before positional correction can separate them.
 		pml.physicsSplit++;
 		pm->tracemask &= ~CONTENTS_BODY;
 		PM_DriveMove(car, time * (1.0f - minTrace), qfalse);
+
+		if ( PM_GetCarBoxContact( &car->tBody, &otherCar->sBody,
+				contactNormal, contactPoint, &penetration ) ) {
+			if ( !impactApplied ) {
+				carCarElasticity = pm->car_impact_elasticity;
+				if ( carCarElasticity < 0.0f || carCarElasticity > 1.0f )
+					carCarElasticity = 0.25f;
+
+				PM_ApplyBodyBodyCollision( &car->tBody, car->tPoints,
+					&otherCar->sBody, otherCar->sPoints, contactPoint,
+					contactNormal, carCarElasticity, &impactStrength );
+				PM_RecordVehicleCollision( hitEnt, impactStrength,
+					contactPoint, contactNormal, &car->tBody, &otherCar->sBody );
+				if ( impactStrength > 0.0f )
+					PM_LinkCorrectedCar( hitEnt, otherCar );
+			}
+
+			PM_ResolveCarBoxPenetration( car, otherCar,
+				pm->ps->clientNum, hitEnt );
+		}
 	}
 
 	// Restore tracemask so we never silently disable car-vs-car collision
