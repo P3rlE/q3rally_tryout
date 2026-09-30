@@ -307,6 +307,9 @@ typedef struct centity_s {
 	int				skidSoundTime;
 	int				engineSoundEntity;
 	int				engineSoundIndex;
+	int				engineSoundActiveIndex;
+	int				engineSoundNextIndex;
+	int				engineSoundTransitionTime;
 
 	// scripted object variables
 	qboolean		scriptLoadAttempted;
@@ -2304,6 +2307,7 @@ void		trap_S_AddLoopingSound( int entityNum, const vec3_t origin, const vec3_t v
 void		trap_S_AddRealLoopingSound( int entityNum, const vec3_t origin, const vec3_t velocity, sfxHandle_t sfx );
 void		trap_S_UpdateEntityPosition( int entityNum, const vec3_t origin );
 void		trap_S_SetEntityPitch( int entityNum, float pitch );
+void		trap_S_SetEntityVolume( int entityNum, float volume );
 
 // respatialize recalculates the volumes of sound as they should be heard by the
 // given entityNum and position

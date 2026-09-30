@@ -2648,6 +2648,24 @@ static void CG_UpdateEngineSoundState( centity_t *cent, float targetFrac,
 	*pitch = 0.75f + 0.9f * cent->engineSoundFrac;
 }
 
+#define CG_ENGINE_SOUND_CROSSFADE_MSEC 120
+// Keep both motor voices off player/skid loop IDs and ordinary map entities.
+#define CG_ENGINE_SOUND_ENTITY_0 ENTITYNUM_WORLD
+#define CG_ENGINE_SOUND_ENTITY_1 ENTITYNUM_NONE
+
+static int CG_EngineSoundOtherEntity( int entityNum ) {
+	return ( entityNum == CG_ENGINE_SOUND_ENTITY_0 ) ?
+		CG_ENGINE_SOUND_ENTITY_1 : CG_ENGINE_SOUND_ENTITY_0;
+}
+
+static void CG_AddEngineSoundLoop( int entityNum, int clientNum, int soundIndex,
+	const vec3_t origin, const vec3_t velocity, float pitch, float volume ) {
+	trap_S_AddRealLoopingSound( entityNum, origin, velocity,
+		cgs.clientinfo[clientNum].sounds[soundIndex] );
+	trap_S_SetEntityPitch( entityNum, pitch );
+	trap_S_SetEntityVolume( entityNum, volume );
+}
+
 /*
 ===============
 CG_PlayerSprites
@@ -3848,17 +3866,56 @@ void CG_Player( centity_t *cent ) {
        {
                float rpmFrac;
                float pitch;
+               float fade;
                int index;
+               int clientNum;
 
-               cent->engineSoundEntity = cg.predictedPlayerState.clientNum;
+               clientNum = cg.predictedPlayerState.clientNum;
                rpmFrac = CG_CalcEngineSoundFrac( cg.predictedPlayerState.stats[STAT_RPM] );
                CG_UpdateEngineSoundState( cent, rpmFrac, &index, &pitch );
-               trap_S_AddRealLoopingSound( cent->engineSoundEntity,
-                               cg.predictedPlayerState.origin,
-                               cg.predictedPlayerState.velocity,
-                               cgs.clientinfo[cent->engineSoundEntity].sounds[index] );
 
-               trap_S_SetEntityPitch( cent->engineSoundEntity, pitch );
+               if ( cent->engineSoundEntity != CG_ENGINE_SOUND_ENTITY_0 &&
+                       cent->engineSoundEntity != CG_ENGINE_SOUND_ENTITY_1 ) {
+                       cent->engineSoundEntity = CG_ENGINE_SOUND_ENTITY_0;
+               }
+               if ( cent->engineSoundActiveIndex < 0 ) {
+                       cent->engineSoundActiveIndex = index;
+                       cent->engineSoundNextIndex = -1;
+               }
+               if ( cent->engineSoundNextIndex < 0 &&
+                       index != cent->engineSoundActiveIndex ) {
+                       cent->engineSoundNextIndex = index;
+                       cent->engineSoundTransitionTime = cg.time;
+               }
+
+               if ( cent->engineSoundNextIndex >= 0 ) {
+                       fade = (float)( cg.time - cent->engineSoundTransitionTime ) /
+                               (float)CG_ENGINE_SOUND_CROSSFADE_MSEC;
+                       if ( fade < 0.0f ) {
+                               fade = 0.0f;
+                       }
+                       if ( fade >= 1.0f ) {
+                               cent->engineSoundActiveIndex = cent->engineSoundNextIndex;
+                               cent->engineSoundNextIndex = -1;
+                               cent->engineSoundEntity = CG_EngineSoundOtherEntity( cent->engineSoundEntity );
+                       } else {
+                               // Smoothstep crossfade keeps the total level steady at both ends.
+                               fade = fade * fade * ( 3.0f - 2.0f * fade );
+                               CG_AddEngineSoundLoop( cent->engineSoundEntity, clientNum,
+                                       cent->engineSoundActiveIndex, cg.predictedPlayerState.origin,
+                                       cg.predictedPlayerState.velocity, pitch, 1.0f - fade );
+                               CG_AddEngineSoundLoop( CG_EngineSoundOtherEntity( cent->engineSoundEntity ),
+                                       clientNum, cent->engineSoundNextIndex,
+                                       cg.predictedPlayerState.origin, cg.predictedPlayerState.velocity,
+                                       pitch, fade );
+                       }
+               }
+
+               if ( cent->engineSoundNextIndex < 0 ) {
+                       CG_AddEngineSoundLoop( cent->engineSoundEntity, clientNum,
+                               cent->engineSoundActiveIndex, cg.predictedPlayerState.origin,
+                               cg.predictedPlayerState.velocity, pitch, 1.0f );
+               }
        }
 
 
@@ -4486,6 +4543,10 @@ void CG_ResetPlayerEntity( centity_t *cent ) {
 	cent->extrapolated = qfalse;	
 	cent->engineSoundFrac = 0.0f;
 	cent->engineSoundIndex = -1;
+	cent->engineSoundEntity = CG_ENGINE_SOUND_ENTITY_0;
+	cent->engineSoundActiveIndex = -1;
+	cent->engineSoundNextIndex = -1;
+	cent->engineSoundTransitionTime = 0;
 
 // SKWID( removed functions )
 //	CG_ClearLerpFrame( &cgs.clientinfo[ cent->currentState.clientNum ], &cent->pe.legs, cent->currentState.legsAnim );

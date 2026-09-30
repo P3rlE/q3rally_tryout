@@ -605,6 +605,8 @@ typedef struct sentity_s
 	alSrcPriority_t	loopPriority;
 	sfxHandle_t			loopSfx;
 	qboolean				startLoopingSound;
+	float				loopPitch;
+	float				loopVolume;
 } sentity_t;
 
 static sentity_t entityList[MAX_GENTITIES];
@@ -650,6 +652,12 @@ Adapt the gain if necessary to get a quicker fadeout when the source is too far 
 static void S_AL_ScaleGain(src_t *chksrc, vec3_t origin)
 {
 	float distance;
+	float gain;
+
+	gain = chksrc->curGain;
+	if ( chksrc->isLooping && chksrc->entity >= 0 && chksrc->entity < MAX_GENTITIES ) {
+		gain *= entityList[chksrc->entity].loopVolume;
+	}
 	
 	if(!chksrc->local)
 		distance = Distance(origin, lastListenerOrigin);
@@ -665,7 +673,7 @@ static void S_AL_ScaleGain(src_t *chksrc, vec3_t origin)
 		else
 			scaleFactor = 1.0f - distance / s_alGraceDistance->value;
 		
-		scaleFactor *= chksrc->curGain;
+		scaleFactor *= gain;
 		
 		if(chksrc->scaleGain != scaleFactor)
 		{
@@ -673,9 +681,9 @@ static void S_AL_ScaleGain(src_t *chksrc, vec3_t origin)
 			S_AL_Gain(chksrc->alSource, chksrc->scaleGain);
 		}
 	}
-	else if(chksrc->scaleGain != chksrc->curGain)
+	else if(chksrc->scaleGain != gain)
 	{
-		chksrc->scaleGain = chksrc->curGain;
+		chksrc->scaleGain = gain;
 		S_AL_Gain(chksrc->alSource, chksrc->scaleGain);
 	}
 }
@@ -1188,13 +1196,31 @@ static void S_AL_SetEntityPitch( int entityNum, float pitch )
         if( entityNum < 0 || entityNum >= MAX_GENTITIES )
                 return;
 
+	if ( pitch < 0.1f )
+		pitch = 0.1f;
+	entityList[entityNum].loopPitch = pitch;
+
         if( !entityList[entityNum].srcAllocated )
                 return;
 
-        if( pitch < 0.1f )
-                pitch = 0.1f;
-
         qalSourcef( srcList[ entityList[entityNum].srcIndex ].alSource, AL_PITCH, pitch );
+}
+
+static void S_AL_SetEntityVolume( int entityNum, float volume )
+{
+	if ( entityNum < 0 || entityNum >= MAX_GENTITIES )
+		return;
+	if ( volume < 0.0f )
+		volume = 0.0f;
+	else if ( volume > 1.0f )
+		volume = 1.0f;
+
+	entityList[entityNum].loopVolume = volume;
+	if ( !entityList[entityNum].srcAllocated )
+		return;
+
+	S_AL_ScaleGain( &srcList[entityList[entityNum].srcIndex],
+		srcList[entityList[entityNum].srcIndex].loopSpeakerPos );
 }
 
 /*
@@ -1346,6 +1372,8 @@ static void S_AL_SrcLoop( alSrcPriority_t priority, sfxHandle_t sfx,
 	// Do we need to allocate a new source for this entity
 	if( !sent->srcAllocated )
 	{
+		sent->loopPitch = 1.0f;
+		sent->loopVolume = 1.0f;
 		// Try to get a channel
 		src = S_AL_SrcAlloc( priority, entityNum, -1 );
 		if( src == -1 )
@@ -1512,6 +1540,7 @@ void S_AL_SrcUpdate( void )
 					S_AL_SrcSetup(i, sent->loopSfx, sent->loopPriority,
 							entityNum, -1, curSource->local);
 					curSource->isLooping = qtrue;
+					qalSourcef(curSource->alSource, AL_PITCH, sent->loopPitch);
 					
 					knownSfx[curSource->sfx].loopCnt++;
 					sent->startLoopingSound = qfalse;
@@ -2730,6 +2759,7 @@ qboolean S_AL_Init( soundInterface_t *si )
         si->Respatialize = S_AL_Respatialize;
         si->UpdateEntityPosition = S_AL_UpdateEntityPosition;
         si->SetEntityPitch = S_AL_SetEntityPitch;
+        si->SetEntityVolume = S_AL_SetEntityVolume;
         si->Update = S_AL_Update;
         si->DisableSounds = S_AL_DisableSounds;
 	si->BeginRegistration = S_AL_BeginRegistration;

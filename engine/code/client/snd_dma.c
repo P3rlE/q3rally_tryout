@@ -795,6 +795,7 @@ void S_Base_AddLoopingSound( int entityNum, const vec3_t origin, const vec3_t ve
 	loopSounds[entityNum].oldDopplerScale = 1.0;
 	loopSounds[entityNum].dopplerScale = 1.0;
 	loopSounds[entityNum].sfx = sfx;
+	loopSounds[entityNum].volume = 1.0f;
 
 	if (s_doppler->integer && VectorLengthSquared(velocity)>0.0) {
 		vec3_t	out;
@@ -855,6 +856,7 @@ void S_Base_AddRealLoopingSound( int entityNum, const vec3_t origin, const vec3_
 	loopSounds[entityNum].active = qtrue;
 	loopSounds[entityNum].kill = qfalse;
 	loopSounds[entityNum].doppler = qfalse;
+	loopSounds[entityNum].volume = 1.0f;
 }
 
 
@@ -892,6 +894,8 @@ void S_AddLoopSounds (void) {
 		} else {
 			S_SpatializeOrigin( loop->origin, 90,  &left_total, &right_total);			// sphere
 		}
+		left_total = (int)( left_total * loop->volume );
+		right_total = (int)( right_total * loop->volume );
 
 		loop->sfx->lastTimeUsed = time;
 
@@ -909,8 +913,8 @@ void S_AddLoopSounds (void) {
 			}
 
 			loop2->sfx->lastTimeUsed = time;
-			left_total += left;
-			right_total += right;
+			left_total += (int)( left * loop2->volume );
+			right_total += (int)( right * loop2->volume );
 		}
 		if (left_total == 0 && right_total == 0) {
 			continue;		// not audible
@@ -1118,6 +1122,18 @@ S_Base_SetEntityPitch
 */
 void S_Base_SetEntityPitch( int entityNum, float pitch ) {
         // base sound backend does not support pitch adjustment
+}
+
+void S_Base_SetEntityVolume( int entityNum, float volume ) {
+	if ( entityNum < 0 || entityNum >= MAX_GENTITIES ) {
+		return;
+	}
+	if ( volume < 0.0f ) {
+		volume = 0.0f;
+	} else if ( volume > 1.0f ) {
+		volume = 1.0f;
+	}
+	loopSounds[entityNum].volume = volume;
 }
 
 
@@ -1609,6 +1625,7 @@ qboolean S_Base_Init( soundInterface_t *si ) {
         si->Respatialize = S_Base_Respatialize;
         si->UpdateEntityPosition = S_Base_UpdateEntityPosition;
         si->SetEntityPitch = S_Base_SetEntityPitch;
+        si->SetEntityVolume = S_Base_SetEntityVolume;
         si->Update = S_Base_Update;
         si->DisableSounds = S_Base_DisableSounds;
 	si->BeginRegistration = S_Base_BeginRegistration;

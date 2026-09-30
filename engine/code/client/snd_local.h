@@ -85,6 +85,7 @@ typedef struct loopSound_s {
 	vec3_t		origin;
 	vec3_t		velocity;
 	sfx_t		*sfx;
+	float		volume;
 	int			mergeFrame;
 	qboolean	active;
 	qboolean	kill;
@@ -142,6 +143,7 @@ typedef struct
         void (*Respatialize)( int entityNum, const vec3_t origin, vec3_t axis[3], int inwater );
         void (*UpdateEntityPosition)( int entityNum, const vec3_t origin );
         void (*SetEntityPitch)( int entityNum, float pitch );
+        void (*SetEntityVolume)( int entityNum, float volume );
         void (*Update)( void );
         void (*DisableSounds)( void );
 	void (*BeginRegistration)( void );

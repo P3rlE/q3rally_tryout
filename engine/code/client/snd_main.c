@@ -237,6 +237,18 @@ void S_SetEntityPitch( int entityNum, float pitch )
 
 /*
 =================
+S_SetEntityVolume
+=================
+*/
+void S_SetEntityVolume( int entityNum, float volume )
+{
+        if( si.SetEntityVolume ) {
+                si.SetEntityVolume( entityNum, volume );
+        }
+}
+
+/*
+=================
 S_Update
 =================
 */

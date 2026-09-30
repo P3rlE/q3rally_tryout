@@ -222,6 +222,10 @@ void    trap_S_SetEntityPitch( int entityNum, float pitch ) {
         syscall( CG_S_SETENTITYPITCH, entityNum, PASSFLOAT( pitch ) );
 }
 
+void    trap_S_SetEntityVolume( int entityNum, float volume ) {
+        syscall( CG_S_SETENTITYVOLUME, entityNum, PASSFLOAT( volume ) );
+}
+
 void	trap_S_Respatialize( int entityNum, const vec3_t origin, vec3_t axis[3], int inwater ) {
 	syscall( CG_S_RESPATIALIZE, entityNum, origin, axis, inwater );
 }
