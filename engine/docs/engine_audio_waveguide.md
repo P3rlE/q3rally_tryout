@@ -24,3 +24,7 @@ cg_engineSounds 1
 cg_engineAudioMode 2
 s_engineAudioWaveguideEnable 1
 ```
+
+The recorded-sample prototype is available as `cg_engineAudioMode 3`; see
+[`engine_audio_recorded.md`](engine_audio_recorded.md) for its sample map and
+asset provenance.

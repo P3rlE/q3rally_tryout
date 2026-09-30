@@ -36,6 +36,7 @@ cvar_t *s_muteWhenMinimized;
 cvar_t *s_muteWhenUnfocused;
 cvar_t *s_engineAudioWaveguideEnable;
 cvar_t *s_engineAudioGain;
+cvar_t *s_engineAudioSampleGain;
 cvar_t *s_engineAudioExhaustGainScale;
 cvar_t *s_engineAudioIntakeGainScale;
 cvar_t *s_engineAudioMechanicalGainScale;
@@ -515,6 +516,7 @@ void S_Init( void )
 	s_muteWhenUnfocused = Cvar_Get( "s_muteWhenUnfocused", "0", CVAR_ARCHIVE );
 	s_engineAudioWaveguideEnable = Cvar_Get( "s_engineAudioWaveguideEnable", "1", CVAR_ARCHIVE );
 	s_engineAudioGain = Cvar_Get( "s_engineAudioGain", "1", CVAR_ARCHIVE );
+	s_engineAudioSampleGain = Cvar_Get( "s_engineAudioSampleGain", "4", CVAR_ARCHIVE );
 	s_engineAudioExhaustGainScale = Cvar_Get( "s_engineAudioExhaustGainScale", "1", CVAR_ARCHIVE );
 	s_engineAudioIntakeGainScale = Cvar_Get( "s_engineAudioIntakeGainScale", "1", CVAR_ARCHIVE );
 	s_engineAudioMechanicalGainScale = Cvar_Get( "s_engineAudioMechanicalGainScale", "1", CVAR_ARCHIVE );

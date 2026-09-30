@@ -220,6 +220,7 @@ extern cvar_t *s_doppler;
 extern cvar_t *s_testsound;
 extern cvar_t *s_engineAudioWaveguideEnable;
 extern cvar_t *s_engineAudioGain;
+extern cvar_t *s_engineAudioSampleGain;
 extern cvar_t *s_engineAudioExhaustGainScale;
 extern cvar_t *s_engineAudioIntakeGainScale;
 extern cvar_t *s_engineAudioMechanicalGainScale;

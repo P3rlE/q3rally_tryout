@@ -9,10 +9,36 @@
 #include "snd_engine_audio.h"
 #include "snd_engine_dsp.h"
 #include "snd_engine_presets.h"
+#include "snd_codec.h"
+
+#include <math.h>
+
+#define ENGINE_AUDIO_RECORDED_ACCEL_CLIPS 4
+#define ENGINE_AUDIO_RECORDED_CLIP_COUNT ( ENGINE_AUDIO_RECORDED_ACCEL_CLIPS + 1 )
+
+typedef struct engineAudioRecordedClip_s {
+    short *monoSamples;
+    int frameCount;
+    int sampleRate;
+    int loopStart;
+    int loopEnd;
+    int crossfadeFrames;
+    float sourceRpm;
+    qboolean loaded;
+} engineAudioRecordedClip_t;
 
 typedef struct engineAudioEmitterInternal_s {
     engineAudioEmitterPublicState_t pub;
     engineAudioSynthState_t synth;
+    float recordedPhase[ENGINE_AUDIO_RECORDED_CLIP_COUNT];
+    float recordedRate[ENGINE_AUDIO_RECORDED_CLIP_COUNT];
+    float recordedLoad;
+    float recordedAccelBlend;
+    float recordedLowpass;
+    float recordedGain;
+    int recordedAccelLow;
+    int recordedAccelHigh;
+    qboolean previousBackfireEvent;
 
     qboolean initialized;
     int generation;
@@ -20,6 +46,10 @@ typedef struct engineAudioEmitterInternal_s {
 } engineAudioEmitterInternal_t;
 
 static engineAudioEmitterInternal_t s_engineEmitters[MAX_ENGINE_AUDIO_EMITTERS];
+static engineAudioRecordedClip_t s_engineRecordedClips[ENGINE_AUDIO_RECORDED_CLIP_COUNT];
+static sfxHandle_t s_engineRecordedGearShift = -1;
+static sfxHandle_t s_engineRecordedBackfires[5] = { -1, -1, -1, -1, -1 };
+static int s_engineRecordedBackfireIndex;
 static int s_engineAudioFrameCounter;
 static int s_engineAudioNextDebugPrintTime;
 
@@ -58,6 +88,131 @@ static engineAudioEmitterInternal_t *S_AllocEngineEmitter( int entityNum ) {
     return NULL;
 }
 
+static void S_FreeEngineRecordedClip( engineAudioRecordedClip_t *clip ) {
+    if ( !clip ) {
+        return;
+    }
+
+    if ( clip->monoSamples ) {
+        Z_Free( clip->monoSamples );
+    }
+    Com_Memset( clip, 0, sizeof( *clip ) );
+}
+
+static qboolean S_LoadEngineRecordedClip(
+    engineAudioRecordedClip_t *clip,
+    const char *path,
+    float sourceRpm ) {
+    snd_info_t info;
+    short *sourceSamples;
+    int i;
+
+    if ( !clip || !path || !path[0] ) {
+        return qfalse;
+    }
+
+    Com_Memset( &info, 0, sizeof( info ) );
+    sourceSamples = (short *)S_CodecLoad( path, &info );
+    if ( !sourceSamples ) {
+        Com_Printf( S_COLOR_YELLOW "EngineAudio: could not load recorded sample %s\n", path );
+        return qfalse;
+    }
+
+    if ( info.width != 2 || info.channels < 1 || info.channels > 2 ||
+         info.samples <= 0 || info.rate <= 0 ) {
+        Com_Printf( S_COLOR_YELLOW "EngineAudio: unsupported recorded sample format %s\n", path );
+        Hunk_FreeTempMemory( sourceSamples );
+        return qfalse;
+    }
+
+    clip->monoSamples = (short *)Z_Malloc( info.samples * sizeof( short ) );
+    clip->frameCount = info.samples;
+    clip->sampleRate = info.rate;
+    clip->sourceRpm = sourceRpm;
+
+    for ( i = 0; i < info.samples; ++i ) {
+        int sample;
+
+        if ( info.channels == 2 ) {
+            sample = ( (int)sourceSamples[i * 2] + (int)sourceSamples[i * 2 + 1] ) / 2;
+        }
+        else {
+            sample = sourceSamples[i];
+        }
+
+        clip->monoSamples[i] = (short)sample;
+    }
+
+    Hunk_FreeTempMemory( sourceSamples );
+
+    clip->loopStart = (int)( info.rate * 0.10f );
+    clip->loopEnd = info.samples - (int)( info.rate * 0.10f );
+    clip->crossfadeFrames = (int)( info.rate * 0.12f );
+
+    if ( clip->loopEnd - clip->loopStart < clip->crossfadeFrames * 2 ) {
+        clip->loopStart = 0;
+        clip->loopEnd = info.samples;
+        clip->crossfadeFrames = info.rate / 20;
+    }
+
+    if ( clip->loopEnd <= clip->loopStart || clip->crossfadeFrames <= 0 ) {
+        S_FreeEngineRecordedClip( clip );
+        return qfalse;
+    }
+
+    clip->loaded = qtrue;
+    Com_Printf( "EngineAudio: loaded %s (%d Hz, %d frames, source RPM %.0f)\n",
+        path, clip->sampleRate, clip->frameCount, clip->sourceRpm );
+    return qtrue;
+}
+
+static void S_InitEngineRecordedAudio( void ) {
+    static const char *clipPaths[ENGINE_AUDIO_RECORDED_CLIP_COUNT] = {
+        "sound/engine_audio/prototype_golf_r/engine_idle.wav",
+        "sound/engine_audio/prototype_golf_r/engine_accel_01.wav",
+        "sound/engine_audio/prototype_golf_r/engine_accel_03.wav",
+        "sound/engine_audio/prototype_golf_r/engine_accel_04.wav",
+        "sound/engine_audio/prototype_golf_r/engine_accel_02.wav"
+    };
+    /* Initial pitch anchors estimated from the supplied recordings. */
+    static const float clipSourceRpm[ENGINE_AUDIO_RECORDED_CLIP_COUNT] = {
+        2080.0f, 2200.0f, 2300.0f, 2860.0f, 3400.0f
+    };
+    static const char *backfirePaths[5] = {
+        "sound/engine_audio/prototype_golf_r/backfire_01.wav",
+        "sound/engine_audio/prototype_golf_r/backfire_02.wav",
+        "sound/engine_audio/prototype_golf_r/backfire_03.wav",
+        "sound/engine_audio/prototype_golf_r/backfire_04.wav",
+        "sound/engine_audio/prototype_golf_r/backfire_05.wav"
+    };
+    int i;
+
+    for ( i = 0; i < ENGINE_AUDIO_RECORDED_CLIP_COUNT; ++i ) {
+        S_FreeEngineRecordedClip( &s_engineRecordedClips[i] );
+        S_LoadEngineRecordedClip( &s_engineRecordedClips[i], clipPaths[i], clipSourceRpm[i] );
+    }
+
+    s_engineRecordedGearShift = S_RegisterSound(
+        "sound/engine_audio/prototype_golf_r/gear_shift.wav", qfalse );
+    for ( i = 0; i < 5; ++i ) {
+        s_engineRecordedBackfires[i] = S_RegisterSound( backfirePaths[i], qfalse );
+    }
+    s_engineRecordedBackfireIndex = 0;
+}
+
+static void S_ShutdownEngineRecordedAudio( void ) {
+    int i;
+
+    for ( i = 0; i < ENGINE_AUDIO_RECORDED_CLIP_COUNT; ++i ) {
+        S_FreeEngineRecordedClip( &s_engineRecordedClips[i] );
+    }
+
+    s_engineRecordedGearShift = -1;
+    for ( i = 0; i < 5; ++i ) {
+        s_engineRecordedBackfires[i] = -1;
+    }
+}
+
 static void S_FreeEngineEmitter( engineAudioEmitterInternal_t *em ) {
     if ( !em ) {
         return;
@@ -71,9 +226,11 @@ void S_EngineAudio_Init( void ) {
     s_engineAudioFrameCounter = 0;
     s_engineAudioNextDebugPrintTime = 0;
     S_LoadEngineAudioPresets();
+    S_InitEngineRecordedAudio();
 }
 
 void S_EngineAudio_Shutdown( void ) {
+    S_ShutdownEngineRecordedAudio();
     Com_Memset( s_engineEmitters, 0, sizeof( s_engineEmitters ) );
     s_engineAudioFrameCounter = 0;
     s_engineAudioNextDebugPrintTime = 0;
@@ -150,6 +307,7 @@ void S_UpdateEngineEmitterState(
     const vec3_t velocity,
     engineAudioQualityTier_t quality ) {
     engineAudioEmitterInternal_t *em;
+    vec3_t eventOrigin;
 
     if ( !state ) {
         return;
@@ -163,6 +321,33 @@ void S_UpdateEngineEmitterState(
         }
     }
 
+    if ( state->recordedSampleMode ) {
+        VectorCopy( exhaustOrigin, eventOrigin );
+        if ( em->pub.control.recordedSampleMode &&
+             em->pub.control.gear > 0 && state->gear > 0 &&
+             em->pub.control.gear != state->gear && state->rpm > 1400.0f &&
+             s_engineRecordedGearShift > 0 ) {
+            S_StartSound( eventOrigin, entityNum, CHAN_AUTO, s_engineRecordedGearShift );
+        }
+
+        if ( em->pub.control.recordedSampleMode &&
+             state->backfireEvent && !em->previousBackfireEvent ) {
+            int backfireIndex;
+            sfxHandle_t backfireSound;
+
+            backfireIndex = ( s_engineRecordedBackfireIndex + entityNum ) % 5;
+            s_engineRecordedBackfireIndex = ( s_engineRecordedBackfireIndex + 1 ) % 5;
+            if ( backfireIndex < 0 ) {
+                backfireIndex += 5;
+            }
+            backfireSound = s_engineRecordedBackfires[backfireIndex];
+            if ( backfireSound > 0 ) {
+                S_StartSound( eventOrigin, entityNum, CHAN_AUTO, backfireSound );
+            }
+        }
+    }
+
+    em->previousBackfireEvent = state->backfireEvent;
     em->lastUpdateFrame = s_engineAudioFrameCounter;
     em->pub.control = *state;
     em->pub.quality = quality;
@@ -327,6 +512,281 @@ static void S_ComputeEngineEmitterSpatialGains(
     *rightGain = rightVol / 255.0f;
 }
 
+static float S_ClampEngineAudioFloat( float value, float minimum, float maximum ) {
+    if ( value < minimum ) {
+        return minimum;
+    }
+    if ( value > maximum ) {
+        return maximum;
+    }
+    return value;
+}
+
+static float S_SmoothEngineAudioStep( float value ) {
+    value = S_ClampEngineAudioFloat( value, 0.0f, 1.0f );
+    return value * value * ( 3.0f - 2.0f * value );
+}
+
+static float S_InterpolateEngineRecordedSample(
+    const engineAudioRecordedClip_t *clip,
+    float framePosition ) {
+    int frame0;
+    int frame1;
+    float fraction;
+
+    frame0 = (int)framePosition;
+    fraction = framePosition - (float)frame0;
+    frame1 = frame0 + 1;
+    if ( frame0 < 0 ) {
+        frame0 = 0;
+    }
+    if ( frame0 >= clip->frameCount ) {
+        frame0 = clip->frameCount - 1;
+    }
+    if ( frame1 >= clip->frameCount ) {
+        frame1 = clip->frameCount - 1;
+    }
+
+    return (float)clip->monoSamples[frame0] +
+        ( (float)clip->monoSamples[frame1] - (float)clip->monoSamples[frame0] ) * fraction;
+}
+
+static float S_ReadEngineRecordedClip(
+    const engineAudioRecordedClip_t *clip,
+    float *phase,
+    float rate ) {
+    float framePosition;
+    float sample;
+    float outputRate;
+    float step;
+    int crossfadeStart;
+
+    if ( !clip || !clip->loaded || !phase || clip->frameCount <= 0 ) {
+        return 0.0f;
+    }
+
+    if ( *phase < clip->loopStart || *phase >= clip->loopEnd ) {
+        *phase = (float)clip->loopStart;
+    }
+
+    framePosition = *phase;
+    sample = S_InterpolateEngineRecordedSample( clip, framePosition );
+    crossfadeStart = clip->loopEnd - clip->crossfadeFrames;
+    if ( framePosition >= crossfadeStart ) {
+        float blend;
+        float headPosition;
+        float headSample;
+
+        blend = ( framePosition - (float)crossfadeStart ) / (float)clip->crossfadeFrames;
+        headPosition = (float)clip->loopStart + ( framePosition - (float)crossfadeStart );
+        headSample = S_InterpolateEngineRecordedSample( clip, headPosition );
+        sample += ( headSample - sample ) * blend;
+    }
+
+    outputRate = dma.speed > 0 ? (float)dma.speed : 44100.0f;
+    step = ( (float)clip->sampleRate / outputRate ) * rate;
+    if ( step < 0.01f ) {
+        step = 0.01f;
+    }
+    *phase += step;
+
+    if ( *phase >= clip->loopEnd ) {
+        float loopSpan;
+        loopSpan = (float)( clip->loopEnd - clip->loopStart - clip->crossfadeFrames );
+        if ( loopSpan < 1.0f ) {
+            loopSpan = 1.0f;
+        }
+        while ( *phase >= clip->loopEnd ) {
+            *phase -= loopSpan;
+        }
+    }
+
+    return sample / 32768.0f;
+}
+
+static void S_GetEngineRecordedAccelBlend(
+    float rpm,
+    int *lowIndex,
+    int *highIndex,
+    float *blend ) {
+    int i;
+    int first;
+    int previous;
+    int next;
+
+    *lowIndex = -1;
+    *highIndex = -1;
+    *blend = 0.0f;
+    first = -1;
+    previous = -1;
+
+    for ( i = 1; i < ENGINE_AUDIO_RECORDED_CLIP_COUNT; ++i ) {
+        if ( !s_engineRecordedClips[i].loaded ) {
+            continue;
+        }
+        if ( first < 0 ) {
+            first = i;
+        }
+        if ( rpm <= s_engineRecordedClips[i].sourceRpm ) {
+            if ( previous < 0 ) {
+                *lowIndex = *highIndex = i;
+            }
+            else {
+                next = i;
+                *lowIndex = previous;
+                *highIndex = next;
+                *blend = ( rpm - s_engineRecordedClips[previous].sourceRpm ) /
+                    ( s_engineRecordedClips[next].sourceRpm - s_engineRecordedClips[previous].sourceRpm );
+                *blend = S_SmoothEngineAudioStep( *blend );
+            }
+            return;
+        }
+        previous = i;
+    }
+
+    if ( previous >= 0 ) {
+        *lowIndex = *highIndex = previous;
+    }
+    else if ( first >= 0 ) {
+        *lowIndex = *highIndex = first;
+    }
+}
+
+static void S_RenderRecordedEngineVoice(
+    engineAudioEmitterInternal_t *em,
+    portable_samplepair_t *buffer,
+    int sampleCount,
+    float leftGain,
+    float rightGain,
+    const int paintbufferClamp,
+    const float mixScale ) {
+    float targetRpm;
+    float targetLoad;
+    float targetGain;
+    float lowpassAlpha;
+    float outputRate;
+    float clipRates[ENGINE_AUDIO_RECORDED_CLIP_COUNT];
+    float accelBlend;
+    float idleWeight;
+    int accelLow;
+    int accelHigh;
+    int i;
+
+    if ( !em || !buffer || sampleCount <= 0 ) {
+        return;
+    }
+
+    if ( !s_engineRecordedClips[0].loaded ) {
+        return;
+    }
+
+    targetRpm = em->pub.control.rpm;
+    if ( targetRpm <= 0.0f ) {
+        targetRpm = em->pub.preset ? em->pub.preset->idleRpm : 950.0f;
+    }
+    targetRpm = S_ClampEngineAudioFloat(
+        targetRpm,
+        em->pub.preset ? em->pub.preset->idleRpm : 950.0f,
+        em->pub.preset ? em->pub.preset->redlineRpm : 8000.0f );
+
+    targetLoad = S_SmoothEngineAudioStep( ( em->pub.control.load - 0.08f ) / 0.48f );
+    S_GetEngineRecordedAccelBlend( targetRpm, &accelLow, &accelHigh, &accelBlend );
+    if ( accelLow < 1 || accelHigh < 1 ) {
+        targetLoad = 0.0f;
+    }
+    if ( em->recordedAccelLow != accelLow || em->recordedAccelHigh != accelHigh ) {
+        em->recordedAccelLow = accelLow;
+        em->recordedAccelHigh = accelHigh;
+        em->recordedAccelBlend = accelBlend;
+    }
+
+    outputRate = dma.speed > 0 ? (float)dma.speed : 44100.0f;
+    for ( i = 0; i < ENGINE_AUDIO_RECORDED_CLIP_COUNT; ++i ) {
+        const engineAudioRecordedClip_t *clip = &s_engineRecordedClips[i];
+        float targetRate;
+
+        targetRate = clip->loaded ? targetRpm / clip->sourceRpm : 1.0f;
+        targetRate = S_ClampEngineAudioFloat( targetRate, 0.35f, 4.0f );
+        if ( em->recordedRate[i] <= 0.0f ) {
+            em->recordedRate[i] = targetRate;
+        }
+        clipRates[i] = targetRate;
+    }
+
+    targetGain = ( s_engineAudioSampleGain ? s_engineAudioSampleGain->value : 4.0f ) *
+        ( s_engineAudioGain ? s_engineAudioGain->value : 1.0f ) *
+        ( 0.70f + 0.30f * em->pub.control.throttle );
+    targetGain = S_ClampEngineAudioFloat( targetGain, 0.0f, 8.0f );
+
+    {
+        float cutoff;
+        cutoff = em->pub.control.exteriorView ? 10000.0f :
+            ( em->pub.preset ? em->pub.preset->cockpitLowpassHz : 2500.0f );
+        cutoff = S_ClampEngineAudioFloat( cutoff, 500.0f, outputRate * 0.45f );
+        lowpassAlpha = 1.0f - expf( -6.28318530718f * cutoff / outputRate );
+    }
+
+    for ( i = 0; i < sampleCount; ++i ) {
+        float idleSample;
+        float accelA;
+        float accelB;
+        float accelSample;
+        float sample;
+        int l;
+        int r;
+        int j;
+
+        idleSample = S_ReadEngineRecordedClip(
+            &s_engineRecordedClips[0], &em->recordedPhase[0], em->recordedRate[0] );
+
+        accelA = 0.0f;
+        accelB = 0.0f;
+        for ( j = 1; j < ENGINE_AUDIO_RECORDED_CLIP_COUNT; ++j ) {
+            float clipSample;
+
+            if ( j != accelLow && j != accelHigh ) {
+                continue;
+            }
+
+            em->recordedRate[j] += ( clipRates[j] - em->recordedRate[j] ) * 0.0005f;
+            clipSample = S_ReadEngineRecordedClip(
+                &s_engineRecordedClips[j], &em->recordedPhase[j], em->recordedRate[j] );
+            if ( j == accelLow ) {
+                accelA = clipSample;
+            }
+            if ( j == accelHigh ) {
+                accelB = clipSample;
+            }
+        }
+
+        em->recordedRate[0] += ( clipRates[0] - em->recordedRate[0] ) * 0.0005f;
+        em->recordedLoad += ( targetLoad - em->recordedLoad ) * 0.0005f;
+        em->recordedAccelBlend += ( accelBlend - em->recordedAccelBlend ) * 0.0005f;
+        idleWeight = 1.0f - em->recordedLoad;
+        accelSample = accelA + ( accelB - accelA ) * em->recordedAccelBlend;
+        sample = idleSample * idleWeight + accelSample * em->recordedLoad;
+
+        em->recordedGain += ( targetGain - em->recordedGain ) * 0.0005f;
+        if ( !em->pub.control.exteriorView ) {
+            em->recordedLowpass += ( sample - em->recordedLowpass ) * lowpassAlpha;
+            sample = em->recordedLowpass;
+        }
+        else {
+            em->recordedLowpass = sample;
+        }
+
+        sample *= em->recordedGain;
+        l = buffer[i].left + (int)( sample * leftGain * mixScale );
+        r = buffer[i].right + (int)( sample * rightGain * mixScale );
+        if ( l > paintbufferClamp ) l = paintbufferClamp;
+        if ( l < -paintbufferClamp ) l = -paintbufferClamp;
+        if ( r > paintbufferClamp ) r = paintbufferClamp;
+        if ( r < -paintbufferClamp ) r = -paintbufferClamp;
+        buffer[i].left = l;
+        buffer[i].right = r;
+    }
+}
+
 void S_RenderEngineAudio( portable_samplepair_t *buffer, int sampleCount ) {
     int i;
     const int paintbufferClamp = 0x00ffff00;
@@ -367,6 +827,22 @@ void S_RenderEngineAudio( portable_samplepair_t *buffer, int sampleCount ) {
         S_ComputeEngineEmitterSpatialGains( em->pub.engineBayOrigin, em->pub.quality, &engineBayLeftGain, &engineBayRightGain );
         if ( exhaustLeftGain <= 0.0f && exhaustRightGain <= 0.0f &&
              engineBayLeftGain <= 0.0f && engineBayRightGain <= 0.0f ) {
+            continue;
+        }
+
+        if ( em->pub.control.recordedSampleMode && s_engineRecordedClips[0].loaded ) {
+            if ( em->pub.control.exteriorView ) {
+                S_RenderRecordedEngineVoice(
+                    em, buffer, sampleCount,
+                    exhaustLeftGain, exhaustRightGain,
+                    paintbufferClamp, mixScale );
+            }
+            else {
+                S_RenderRecordedEngineVoice(
+                    em, buffer, sampleCount,
+                    engineBayLeftGain, engineBayRightGain,
+                    paintbufferClamp, mixScale );
+            }
             continue;
         }
 

@@ -35,6 +35,7 @@ typedef struct vehicleAudioState_s {
     qboolean backfireEvent;
     qboolean damaged;
     qboolean exteriorView;
+    qboolean recordedSampleMode;
     int sourceType;
 } vehicleAudioState_t;
 

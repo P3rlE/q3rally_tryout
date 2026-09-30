@@ -378,6 +378,7 @@ qboolean CG_BuildVehicleAudioState( centity_t *cent, vehicleAudioState_t *outSta
     outState->limiterActive = ( rpm > 7800.0f ) ? qtrue : qfalse;
     outState->backfireEvent = qfalse;
     outState->damaged = qfalse;
+    outState->recordedSampleMode = ( cg_engineAudioMode.integer == 3 ) ? qtrue : qfalse;
 
     if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
         float throttleDrop;
@@ -506,7 +507,8 @@ void CG_EngineAudio_Frame( void ) {
 
     localClientNum = cg.predictedPlayerState.clientNum;
 
-    if ( !cg_engineSounds.integer || cg_engineAudioMode.integer != 2 ) {
+    if ( !cg_engineSounds.integer ||
+         ( cg_engineAudioMode.integer != 2 && cg_engineAudioMode.integer != 3 ) ) {
         trap_S_RemoveEngineEmitter( localClientNum );
 
         for ( i = 0; i < cg.snap->numEntities; ++i ) {
