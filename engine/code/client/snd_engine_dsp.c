@@ -241,9 +241,9 @@ static void S_EngineDSP_WaveguideRenderSample(
     intakeNoise = S_EngineDSP_WaveguideLowpass(
         &state->intakeNoise,
         S_EngineDSP_NextNoise( synth ),
-        11000.0f,
+        8500.0f,
         state->sampleRate );
-    intakeNoise *= ( 0.08f + 0.92f * sqrtf( throttle ) ) * ( 0.35f + 0.65f * load );
+    intakeNoise *= 0.45f * ( 0.08f + 0.92f * sqrtf( throttle ) ) * ( 0.35f + 0.65f * load );
     if ( rpm < 25.0f ) {
         intakeNoise = 0.0f;
     }
@@ -490,6 +490,8 @@ void S_EngineDSP_RenderVehicle(
     float stereoWidth;
     float outputMakeupGain;
     float cockpitLowpassAlpha;
+    float limiterAttackAlpha;
+    float limiterReleaseAlpha;
     float toneLowpassAlpha[2];
     float exhaustSourceGain[2];
     float intakeSourceGain[2];
@@ -529,7 +531,7 @@ void S_EngineDSP_RenderVehicle(
     pulseHz = max( 12.0f, ( rpm / 60.0f ) * cylPerRev );
     phaseStep = pulseHz / sr;
 
-    gainScale = 0.45f;
+    gainScale = 0.58f;
     exhaustLayerScale = s_engineAudioExhaustGainScale ? s_engineAudioExhaustGainScale->value : 1.0f;
     intakeLayerScale = s_engineAudioIntakeGainScale ? s_engineAudioIntakeGainScale->value : 1.0f;
     mechanicalLayerScale = s_engineAudioMechanicalGainScale ? s_engineAudioMechanicalGainScale->value : 1.0f;
@@ -565,6 +567,8 @@ void S_EngineDSP_RenderVehicle(
     exteriorView = control->exteriorView;
     cockpitView = ( quality == EA_QUALITY_HERO && !exteriorView ) ? qtrue : qfalse;
     cockpitLowpassAlpha = S_EngineDSP_ComputeLowpassAlpha( preset->cockpitLowpassHz, sr );
+    limiterAttackAlpha = S_EngineDSP_ComputeLowpassAlpha( 25.0f, sr );
+    limiterReleaseAlpha = S_EngineDSP_ComputeLowpassAlpha( 5.0f, sr );
     toneLowpassAlpha[EA_SOURCE_EXHAUST] = S_EngineDSP_ComputeLowpassAlpha( 3400.0f, sr );
     toneLowpassAlpha[EA_SOURCE_ENGINE_BAY] = S_EngineDSP_ComputeLowpassAlpha( 2500.0f, sr );
     exhaustSourceGain[EA_SOURCE_EXHAUST] = 1.22f * ( s_engineAudioExhaustSourceGainScale ? s_engineAudioExhaustSourceGainScale->value : 1.0f );
@@ -779,15 +783,15 @@ void S_EngineDSP_RenderVehicle(
         }
 
         if ( control->limiterActive ) {
-            synth->limiterEnvelope += ( 1.0f - synth->limiterEnvelope ) * 0.12f;
+            synth->limiterEnvelope += ( 1.0f - synth->limiterEnvelope ) * limiterAttackAlpha;
         }
         else {
-            synth->limiterEnvelope *= 0.92f;
+            synth->limiterEnvelope += ( 0.0f - synth->limiterEnvelope ) * limiterReleaseAlpha;
         }
 
         limiterBuzz = 0.0f;
         if ( !s_engineAudioLimiterEnable || s_engineAudioLimiterEnable->integer ) {
-            limiterBuzz = noise * synth->limiterEnvelope * preset->limiterGain * 0.08f;
+            limiterBuzz = noise * synth->limiterEnvelope * preset->limiterGain * 0.025f;
         }
 
         backfire = 0.0f;
@@ -806,14 +810,15 @@ void S_EngineDSP_RenderVehicle(
 
         fuelCutCrackle = 0.0f;
         if ( control->fuelCut ) {
-            fuelCutCrackle = S_EngineDSP_NextNoise( synth ) * ( 0.025f + 0.060f * rpmNorm ) *
+            fuelCutCrackle = S_EngineDSP_NextNoise( synth ) * ( 0.010f + 0.025f * rpmNorm ) *
                 ( 0.55f + 0.45f * load ) * ( exteriorView ? 1.35f : 0.85f );
             fuelCutCrackle += expf( -12.0f * combustionPhase ) * ( 0.015f + 0.020f * overrunBurbleStrength );
         }
 
         ignitionCutChatter = 0.0f;
         if ( control->ignitionCut ) {
-            ignitionCutChatter = noise * preset->limiterGain * ( 0.030f + 0.030f * rpmNorm );
+            ignitionCutChatter = noise * preset->limiterGain * ( 0.010f + 0.012f * rpmNorm ) *
+                ( control->limiterActive ? synth->limiterEnvelope : 1.0f );
             if ( exteriorView ) {
                 ignitionCutChatter *= 1.20f;
             }
@@ -862,8 +867,8 @@ void S_EngineDSP_RenderVehicle(
             sourceDamageRattle = damageRattle * ( 0.65f * eventSourceGain[sourceIndex] + 0.35f * mechanicalSourceGain[sourceIndex] );
 
             body[sourceIndex] =
-                sourceExhaustColor * preset->exhaustGain * exhaustLayerScale * 0.55f +
-                sourceIntakeColor * preset->intakeGain * intakeLayerScale * 0.35f +
+                sourceExhaustColor * preset->exhaustGain * exhaustLayerScale * 0.60f +
+                sourceIntakeColor * preset->intakeGain * intakeLayerScale * 0.30f +
                 sourceMechanical * preset->mechanicalGain * mechanicalLayerScale * 0.40f +
                 sourceTransmission * preset->transmissionGain * transmissionLayerScale * 0.30f +
                 slipNoise + limiterBuzz + backfire + overrunPop +
