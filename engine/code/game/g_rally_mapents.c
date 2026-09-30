@@ -231,6 +231,7 @@ static void G_SendEliminationTimelineEvent( int clientNum, int round, int remain
 
 #define CHECKPOINT_SOUNDS		1
 #define CHECKPOINT_MESSAGES		2
+#define CHECKPOINT_SILENT		4
 
 static const char *G_RallyPlaceString( int position ) {
 	switch ( position ) {
@@ -932,7 +933,10 @@ void Touch_Checkpoint (gentity_t *self, gentity_t *other, trace_t *trace ){
 		other->client->ps.stats[STAT_FRAC_TO_NEXT_CHECKPOINT] = FLOAT2SHORT(0.1f);
 //		Com_Printf( "resetting frac, cp\n" );
 
-		if (self->spawnflags & CHECKPOINT_SOUNDS)
+		// Existing maps leave spawnflags unset; keep their checkpoints audible by default.
+		if ( !( self->spawnflags & CHECKPOINT_SILENT ) &&
+			( ( self->spawnflags & CHECKPOINT_SOUNDS ) ||
+			!( self->spawnflags & CHECKPOINT_MESSAGES ) ) )
 			Rally_Sound( self, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/checkpoint.ogg") );
 
 		if ( self->spawnflags & CHECKPOINT_MESSAGES && self->s.otherEntityNum != -1 &&
@@ -996,7 +1000,7 @@ void Think_Checkpoint( gentity_t *self ){
 	self->s.weapon = self->number;
 }
 
-//	spawnflag 1 enable messages, spawn flag 2 enable sound, 3 is enable both
+//	spawnflag 1 enables sound, 2 enables messages, 3 enables both; no flags defaults to sound, 4 is silent
 void SP_rally_checkpoint( gentity_t *ent ) {
 	trap_SetBrushModel( ent, ent->model );
 
