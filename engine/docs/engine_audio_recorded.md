@@ -16,6 +16,8 @@ s_engineAudioSampleGain 4
 
 Mode `2` remains the procedural/waveguide path. The recorded path is mode `3`.
 `s_engineAudioSampleGain` controls the sample engine level independently.
+The recorded WAVs and event sounds load on first use of mode `3`, after normal
+sound registration has completed.
 
 ## Current sample map
 

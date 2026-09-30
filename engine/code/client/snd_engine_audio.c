@@ -50,6 +50,8 @@ static engineAudioRecordedClip_t s_engineRecordedClips[ENGINE_AUDIO_RECORDED_CLI
 static sfxHandle_t s_engineRecordedGearShift = -1;
 static sfxHandle_t s_engineRecordedBackfires[5] = { -1, -1, -1, -1, -1 };
 static int s_engineRecordedBackfireIndex;
+static qboolean s_engineRecordedSamplesInitialized;
+static qboolean s_engineRecordedEventsInitialized;
 static int s_engineAudioFrameCounter;
 static int s_engineAudioNextDebugPrintTime;
 
@@ -166,7 +168,7 @@ static qboolean S_LoadEngineRecordedClip(
     return qtrue;
 }
 
-static void S_InitEngineRecordedAudio( void ) {
+static void S_InitEngineRecordedSamples( void ) {
     static const char *clipPaths[ENGINE_AUDIO_RECORDED_CLIP_COUNT] = {
         "sound/engine_audio/prototype_golf_r/engine_idle.wav",
         "sound/engine_audio/prototype_golf_r/engine_accel_01.wav",
@@ -178,6 +180,23 @@ static void S_InitEngineRecordedAudio( void ) {
     static const float clipSourceRpm[ENGINE_AUDIO_RECORDED_CLIP_COUNT] = {
         2080.0f, 2200.0f, 2300.0f, 2860.0f, 3400.0f
     };
+    int i;
+
+    if ( s_engineRecordedSamplesInitialized ) {
+        return;
+    }
+
+    for ( i = 0; i < ENGINE_AUDIO_RECORDED_CLIP_COUNT; ++i ) {
+        S_FreeEngineRecordedClip( &s_engineRecordedClips[i] );
+        S_LoadEngineRecordedClip( &s_engineRecordedClips[i], clipPaths[i], clipSourceRpm[i] );
+    }
+
+    s_engineRecordedSamplesInitialized = qtrue;
+}
+
+/* Sound registration is deferred until the first mode-3 frame. S_Init runs
+ * before S_BeginRegistration, when the base mixer has not built its sound pool. */
+static void S_InitEngineRecordedEvents( void ) {
     static const char *backfirePaths[5] = {
         "sound/engine_audio/prototype_golf_r/backfire_01.wav",
         "sound/engine_audio/prototype_golf_r/backfire_02.wav",
@@ -187,9 +206,8 @@ static void S_InitEngineRecordedAudio( void ) {
     };
     int i;
 
-    for ( i = 0; i < ENGINE_AUDIO_RECORDED_CLIP_COUNT; ++i ) {
-        S_FreeEngineRecordedClip( &s_engineRecordedClips[i] );
-        S_LoadEngineRecordedClip( &s_engineRecordedClips[i], clipPaths[i], clipSourceRpm[i] );
+    if ( s_engineRecordedEventsInitialized ) {
+        return;
     }
 
     s_engineRecordedGearShift = S_RegisterSound(
@@ -198,6 +216,7 @@ static void S_InitEngineRecordedAudio( void ) {
         s_engineRecordedBackfires[i] = S_RegisterSound( backfirePaths[i], qfalse );
     }
     s_engineRecordedBackfireIndex = 0;
+    s_engineRecordedEventsInitialized = qtrue;
 }
 
 static void S_ShutdownEngineRecordedAudio( void ) {
@@ -211,6 +230,8 @@ static void S_ShutdownEngineRecordedAudio( void ) {
     for ( i = 0; i < 5; ++i ) {
         s_engineRecordedBackfires[i] = -1;
     }
+    s_engineRecordedSamplesInitialized = qfalse;
+    s_engineRecordedEventsInitialized = qfalse;
 }
 
 static void S_FreeEngineEmitter( engineAudioEmitterInternal_t *em ) {
@@ -222,11 +243,12 @@ static void S_FreeEngineEmitter( engineAudioEmitterInternal_t *em ) {
 }
 
 void S_EngineAudio_Init( void ) {
+    S_ShutdownEngineRecordedAudio();
     Com_Memset( s_engineEmitters, 0, sizeof( s_engineEmitters ) );
     s_engineAudioFrameCounter = 0;
     s_engineAudioNextDebugPrintTime = 0;
+    s_engineRecordedBackfireIndex = 0;
     S_LoadEngineAudioPresets();
-    S_InitEngineRecordedAudio();
 }
 
 void S_EngineAudio_Shutdown( void ) {
@@ -322,6 +344,8 @@ void S_UpdateEngineEmitterState(
     }
 
     if ( state->recordedSampleMode ) {
+        S_InitEngineRecordedSamples();
+        S_InitEngineRecordedEvents();
         VectorCopy( exhaustOrigin, eventOrigin );
         if ( em->pub.control.recordedSampleMode &&
              em->pub.control.gear > 0 && state->gear > 0 &&
