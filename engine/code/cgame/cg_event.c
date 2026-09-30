@@ -1280,6 +1280,19 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
                 }
                 break;
 
+	case EV_GLOBAL_ANNOUNCER_SOUND:
+		DEBUGNAME("EV_GLOBAL_ANNOUNCER_SOUND");
+		if ( cgs.gameSounds[ es->eventParm ] ) {
+			trap_S_StartLocalSound( cgs.gameSounds[ es->eventParm ], CHAN_ANNOUNCER );
+		} else {
+			s = CG_ConfigString( CS_SOUNDS + es->eventParm );
+			sfx = CG_CustomSound( es->number, s );
+			if ( sfx ) {
+				trap_S_StartLocalSound( sfx, CHAN_ANNOUNCER );
+			}
+		}
+		break;
+
 	case EV_GLOBAL_TEAM_SOUND:	// play from the player's head so it never diminishes
 		{
 			DEBUGNAME("EV_GLOBAL_TEAM_SOUND");

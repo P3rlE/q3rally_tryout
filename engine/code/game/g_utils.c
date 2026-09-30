@@ -662,9 +662,18 @@ void G_Sound( gentity_t *ent, int channel, int soundIndex ) {
 // STONELANCE
 void Rally_Sound( gentity_t *ent, int event, int channel, int soundIndex ) {
 	gentity_t	*te;
+	int soundEvent;
 
-	te = G_TempEntity( ent->r.currentOrigin, event );
+	soundEvent = event;
+	if ( event == EV_GLOBAL_SOUND && channel == CHAN_ANNOUNCER ) {
+		soundEvent = EV_GLOBAL_ANNOUNCER_SOUND;
+	}
+
+	te = G_TempEntity( ent->r.currentOrigin, soundEvent );
 	te->s.eventParm = soundIndex;
+	if ( soundEvent == EV_GLOBAL_SOUND || soundEvent == EV_GLOBAL_ANNOUNCER_SOUND ) {
+		te->r.svFlags |= SVF_BROADCAST;
+	}
 }
 // END
 
