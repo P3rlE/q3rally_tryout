@@ -2608,20 +2608,17 @@ static float CG_CalcEngineSoundFrac( int rpm ) {
 =================
 CG_UpdateEngineSoundState
 
-Smooth the RPM input and add hysteresis to loop changes. This gives
-OpenAL a steadier pitch curve and acts as a clear fallback for the base
-backend, which cannot pitch-shift a running loop at all.
+Smooth the RPM input and return the continuously interpolated sound
+position and pitch.
 =================
 */
 static void CG_UpdateEngineSoundState( centity_t *cent, float targetFrac,
-	int *soundIndex, float *pitch ) {
+	float *soundPosition, float *pitch ) {
 	float frameScale;
-	float targetIndex;
-	float hysteresis;
 
-	if ( cent->engineSoundIndex < 0 ) {
+	if ( !cent->engineSoundInitialized ) {
 		cent->engineSoundFrac = targetFrac;
-		cent->engineSoundIndex = (int)( targetFrac * 10.0f + 0.5f );
+		cent->engineSoundInitialized = qtrue;
 	}
 
 	frameScale = (float)( cg.frametime > 0 ? cg.frametime : 16 ) / 1000.0f;
@@ -2631,30 +2628,18 @@ static void CG_UpdateEngineSoundState( centity_t *cent, float targetFrac,
 	}
 
 	cent->engineSoundFrac += ( targetFrac - cent->engineSoundFrac ) * frameScale;
-	targetIndex = cent->engineSoundFrac * 10.0f;
-	hysteresis = 0.35f;
-
-	while ( cent->engineSoundIndex < 10 &&
-		targetIndex > cent->engineSoundIndex + 1.0f - hysteresis ) {
-		cent->engineSoundIndex++;
-	}
-
-	while ( cent->engineSoundIndex > 0 &&
-		targetIndex < cent->engineSoundIndex - hysteresis ) {
-		cent->engineSoundIndex--;
-	}
-
-	*soundIndex = cent->engineSoundIndex;
+	*soundPosition = cent->engineSoundFrac * 10.0f;
 	*pitch = 0.75f + 0.9f * cent->engineSoundFrac;
 }
 
-#define CG_ENGINE_SOUND_CROSSFADE_MSEC 120
-// Keep both motor voices off player/skid loop IDs and ordinary map entities.
+// Keep the two motor voices off player/skid loop IDs and ordinary map entities.
 #define CG_ENGINE_SOUND_ENTITY_0 ENTITYNUM_WORLD
 #define CG_ENGINE_SOUND_ENTITY_1 ENTITYNUM_NONE
 
-static int CG_EngineSoundOtherEntity( int entityNum ) {
-	return ( entityNum == CG_ENGINE_SOUND_ENTITY_0 ) ?
+static int CG_EngineSoundEntityForIndex( int soundIndex ) {
+	// Keep a shared RPM sample on the same sound entity when it changes
+	// from the upper voice to the lower voice at an anchor point.
+	return ( soundIndex & 1 ) ?
 		CG_ENGINE_SOUND_ENTITY_1 : CG_ENGINE_SOUND_ENTITY_0;
 }
 
@@ -3865,56 +3850,50 @@ void CG_Player( centity_t *cent ) {
                cg_engineSounds.integer )
        {
                float rpmFrac;
+               float soundPosition;
                float pitch;
-               float fade;
-               int index;
+               float blend;
+               float angle;
+               float lowerVolume;
+               float upperVolume;
+               int lowerIndex;
+               int upperIndex;
                int clientNum;
 
                clientNum = cg.predictedPlayerState.clientNum;
                rpmFrac = CG_CalcEngineSoundFrac( cg.predictedPlayerState.stats[STAT_RPM] );
-               CG_UpdateEngineSoundState( cent, rpmFrac, &index, &pitch );
+               CG_UpdateEngineSoundState( cent, rpmFrac, &soundPosition, &pitch );
 
-               if ( cent->engineSoundEntity != CG_ENGINE_SOUND_ENTITY_0 &&
-                       cent->engineSoundEntity != CG_ENGINE_SOUND_ENTITY_1 ) {
-                       cent->engineSoundEntity = CG_ENGINE_SOUND_ENTITY_0;
-               }
-               if ( cent->engineSoundActiveIndex < 0 ) {
-                       cent->engineSoundActiveIndex = index;
-                       cent->engineSoundNextIndex = -1;
-               }
-               if ( cent->engineSoundNextIndex < 0 &&
-                       index != cent->engineSoundActiveIndex ) {
-                       cent->engineSoundNextIndex = index;
-                       cent->engineSoundTransitionTime = cg.time;
+               if ( soundPosition >= 10.0f ) {
+                       lowerIndex = 10;
+                       upperIndex = 10;
+                       blend = 0.0f;
+               } else {
+                       lowerIndex = (int)soundPosition;
+                       upperIndex = lowerIndex + 1;
+                       blend = soundPosition - (float)lowerIndex;
                }
 
-               if ( cent->engineSoundNextIndex >= 0 ) {
-                       fade = (float)( cg.time - cent->engineSoundTransitionTime ) /
-                               (float)CG_ENGINE_SOUND_CROSSFADE_MSEC;
-                       if ( fade < 0.0f ) {
-                               fade = 0.0f;
-                       }
-                       if ( fade >= 1.0f ) {
-                               cent->engineSoundActiveIndex = cent->engineSoundNextIndex;
-                               cent->engineSoundNextIndex = -1;
-                               cent->engineSoundEntity = CG_EngineSoundOtherEntity( cent->engineSoundEntity );
-                       } else {
-                               // Smoothstep crossfade keeps the total level steady at both ends.
-                               fade = fade * fade * ( 3.0f - 2.0f * fade );
-                               CG_AddEngineSoundLoop( cent->engineSoundEntity, clientNum,
-                                       cent->engineSoundActiveIndex, cg.predictedPlayerState.origin,
-                                       cg.predictedPlayerState.velocity, pitch, 1.0f - fade );
-                               CG_AddEngineSoundLoop( CG_EngineSoundOtherEntity( cent->engineSoundEntity ),
-                                       clientNum, cent->engineSoundNextIndex,
-                                       cg.predictedPlayerState.origin, cg.predictedPlayerState.velocity,
-                                       pitch, fade );
-                       }
-               }
-
-               if ( cent->engineSoundNextIndex < 0 ) {
-                       CG_AddEngineSoundLoop( cent->engineSoundEntity, clientNum,
-                               cent->engineSoundActiveIndex, cg.predictedPlayerState.origin,
+               if ( lowerIndex == upperIndex ) {
+                       CG_AddEngineSoundLoop(
+                               CG_EngineSoundEntityForIndex( lowerIndex ), clientNum,
+                               lowerIndex, cg.predictedPlayerState.origin,
                                cg.predictedPlayerState.velocity, pitch, 1.0f );
+               } else {
+                       // Equal-power blending keeps perceived loudness steadier
+                       // between adjacent RPM samples.
+                       angle = blend * (float)( M_PI * 0.5 );
+                       lowerVolume = cosf( angle );
+                       upperVolume = sinf( angle );
+
+                       CG_AddEngineSoundLoop(
+                               CG_EngineSoundEntityForIndex( lowerIndex ), clientNum,
+                               lowerIndex, cg.predictedPlayerState.origin,
+                               cg.predictedPlayerState.velocity, pitch, lowerVolume );
+                       CG_AddEngineSoundLoop(
+                               CG_EngineSoundEntityForIndex( upperIndex ), clientNum,
+                               upperIndex, cg.predictedPlayerState.origin,
+                               cg.predictedPlayerState.velocity, pitch, upperVolume );
                }
        }
 
@@ -4542,11 +4521,7 @@ void CG_ResetPlayerEntity( centity_t *cent ) {
 	cent->errorTime = -99999;		// guarantee no error decay added
 	cent->extrapolated = qfalse;	
 	cent->engineSoundFrac = 0.0f;
-	cent->engineSoundIndex = -1;
-	cent->engineSoundEntity = CG_ENGINE_SOUND_ENTITY_0;
-	cent->engineSoundActiveIndex = -1;
-	cent->engineSoundNextIndex = -1;
-	cent->engineSoundTransitionTime = 0;
+	cent->engineSoundInitialized = qfalse;
 
 // SKWID( removed functions )
 //	CG_ClearLerpFrame( &cgs.clientinfo[ cent->currentState.clientNum ], &cent->pe.legs, cent->currentState.legsAnim );

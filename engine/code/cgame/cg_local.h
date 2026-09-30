@@ -303,13 +303,9 @@ typedef struct centity_s {
 	int				wetSprayTime[4];
 	float			engineSmokeTime;
 	float			engineSoundFrac;
+	qboolean		engineSoundInitialized;
 
 	int				skidSoundTime;
-	int				engineSoundEntity;
-	int				engineSoundIndex;
-	int				engineSoundActiveIndex;
-	int				engineSoundNextIndex;
-	int				engineSoundTransitionTime;
 
 	// scripted object variables
 	qboolean		scriptLoadAttempted;
