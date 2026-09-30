@@ -3883,8 +3883,8 @@ void CG_Player( centity_t *cent ) {
                        // Equal-power blending keeps perceived loudness steadier
                        // between adjacent RPM samples.
                        angle = blend * (float)( M_PI * 0.5 );
-                       lowerVolume = cosf( angle );
-                       upperVolume = sinf( angle );
+                       lowerVolume = cos( angle );
+                       upperVolume = sin( angle );
 
                        CG_AddEngineSoundLoop(
                                CG_EngineSoundEntityForIndex( lowerIndex ), clientNum,
