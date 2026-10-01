@@ -64,6 +64,9 @@ typedef struct {
 	engineSample_t	on[MAX_ENGINE_SAMPLES];		// sorted by f0
 	float			curveLo, curveHi;			// f_target at rpmFrac 0 and 1
 	float			vIdle, vMax, gamma, vOff;	// loudness curve
+	float			filterOff, filterOn;		// low-pass cutoff in Hz at load 0 / 1, 0 = no filter
+	float			whineLevel, whineTeeth;		// gear whine, mesh frequency = rpm / 60 * teeth
+	float			turboLevel, turboPitch, turboSpool;	// turbo whistle, 0 level = no turbo
 } engineDef_t;
 
 typedef struct {
@@ -79,6 +82,14 @@ typedef struct {
 	float				curVol;
 	double				phase[MAX_ENGINE_SAMPLES];
 	float				gain[MAX_ENGINE_SAMPLES];
+	// load filter, gear whine, turbo (state at the end of the last block)
+	float				lpA, lpB, lpCoef;
+	double				whinePhase;
+	float				whineFreq, whineAmp;
+	float				boost;
+	double				turboPhase;
+	float				turboFreq, turboAmp, hiss;
+	unsigned int		noiseSeed;
 	// debug
 	int					dbgA, dbgB;
 	float				dbgT;
@@ -93,12 +104,15 @@ static int		engineNanCount;
 static cvar_t	*s_engineVolume;
 static cvar_t	*s_engineDebug;
 static cvar_t	*s_engineRemote;
+static cvar_t	*s_engineWhine;
 #define ENGINE_VOLUME	( s_engineVolume ? s_engineVolume->value : 1.0f )
 #define ENGINE_DEBUG	( s_engineDebug ? s_engineDebug->integer : 0 )
 #define ENGINE_DOPPLER	( s_doppler ? s_doppler->integer : 1 )
 #define ENGINE_REMOTE	( s_engineRemote ? s_engineRemote->integer : 1 )
+#define ENGINE_WHINE	( s_engineWhine ? s_engineWhine->value : 1.0f )
 #else
 #define ENGINE_REMOTE	1
+#define ENGINE_WHINE	1.0f
 #define ENGINE_VOLUME	1.0f
 #define ENGINE_DEBUG	0
 #define ENGINE_DOPPLER	1
@@ -144,6 +158,13 @@ static void S_Engine_SetDefaults( engineDef_t *def ) {
 	def->vMax = 1.0f;
 	def->gamma = 1.3f;
 	def->vOff = 0.6f;
+	def->filterOff = 1600.0f;	// dull and dark off throttle
+	def->filterOn = 9000.0f;	// practically open under load
+	def->whineLevel = 0.0f;
+	def->whineTeeth = 22.0f;
+	def->turboLevel = 0.0f;
+	def->turboPitch = 3200.0f;
+	def->turboSpool = 0.35f;
 }
 
 /*
@@ -452,9 +473,131 @@ Renders all emitters into a mono buffer, together with their spatialization.
 Used by both backends.
 =================
 */
+/*
+=================
+S_Engine_Extras
+
+Load filter over the engine voices, then gear whine and turbo whistle on top.
+Every parameter ramps linearly over the block.
+=================
+*/
+static float S_Engine_Noise( engineEmitter_t *e ) {
+	e->noiseSeed = e->noiseSeed * 1664525u + 1013904223u;
+	return (float)( ( e->noiseSeed >> 9 ) & 0x7fff ) / 16384.0f - 1.0f;
+}
+
+static void S_Engine_Extras( engineEmitter_t *e, float *mono, int count, int outRate ) {
+	const engineDef_t *def = &engineDefs[e->def];
+	float load, n, doppler, gate, inv;
+	int k;
+
+	if ( count <= 0 || !def->valid ) {
+		return;
+	}
+	inv = 1.0f / (float)count;
+	load = S_Engine_Clamp( e->params.load, 0.0f, 1.0f );
+	n = S_Engine_Clamp( e->params.rpmFrac, 0.0f, 1.0f );
+	doppler = ( ENGINE_DOPPLER && e->params.doppler > 0.0f ) ? S_Engine_Clamp( e->params.doppler, 0.8f, 1.25f ) : 1.0f;
+	// fades with the car and dips with the ignition cut, like the engine voices
+	gate = e->presence * S_Engine_Clamp( e->params.volume, 0.0f, 2.0f );
+
+	// load filter: two one-pole low-passes, cutoff between filterOff and filterOn
+	if ( def->filterOff > 0.0f && def->filterOn > 0.0f ) {
+		float fc = def->filterOff * pow( def->filterOn / def->filterOff, load );
+		float a1, a0 = e->lpCoef;
+
+		if ( fc > 0.45f * outRate ) {
+			fc = 0.45f * outRate;
+		}
+		a1 = 1.0f - exp( -2.0 * M_PI * fc / outRate );
+		if ( a0 <= 0.0f ) {
+			a0 = a1;
+		}
+		for ( k = 0; k < count; k++ ) {
+			float a = a0 + ( a1 - a0 ) * (float)( k + 1 ) * inv;
+
+			e->lpA += a * ( mono[k] - e->lpA );
+			e->lpB += a * ( e->lpA - e->lpB );
+			mono[k] = e->lpB;
+		}
+		e->lpCoef = a1;
+	}
+
+	// gear whine (straight-cut gearbox): mesh frequency follows the engine
+	if ( def->whineLevel > 0.0f && e->params.rank <= ENGINE_RANK_NEAR ) {
+		static const float gearGain[8] = { 1.2f, 0.0f, 1.0f, 0.8f, 0.65f, 0.5f, 0.4f, 0.35f };	// R, N, 1..6
+		int g = e->params.gear + 1;
+		float speed = sqrt( e->params.velocity[0] * e->params.velocity[0] +
+			e->params.velocity[1] * e->params.velocity[1] + e->params.velocity[2] * e->params.velocity[2] );
+		float amp1, freq1, amp0, freq0;
+
+		if ( g < 0 ) {
+			g = 0;
+		} else if ( g > 7 ) {
+			g = 7;
+		}
+		amp1 = def->whineLevel * ENGINE_WHINE * gearGain[g] * S_Engine_Clamp( speed / 200.0f, 0.0f, 1.0f ) *
+			( 0.55f + 0.45f * fabs( 2.0f * load - 1.0f ) ) * gate;
+		freq1 = e->params.rpm / 60.0f * def->whineTeeth * doppler;
+		amp0 = e->whineAmp;
+		freq0 = ( e->whineFreq > 0.0f ) ? e->whineFreq : freq1;
+
+		if ( amp0 > 0.0f || amp1 > 0.0f ) {
+			for ( k = 0; k < count; k++ ) {
+				float frac = (float)( k + 1 ) * inv;
+				float amp = amp0 + ( amp1 - amp0 ) * frac;
+				double ph;
+
+				e->whinePhase += 2.0 * M_PI * ( freq0 + ( freq1 - freq0 ) * frac ) / outRate;
+				if ( e->whinePhase > 2.0 * M_PI ) {
+					e->whinePhase -= 2.0 * M_PI;
+				}
+				ph = e->whinePhase;
+				mono[k] += amp * (float)( sin( ph ) + 0.4 * sin( 2.0 * ph ) + 0.15 * sin( 3.0 * ph ) );
+			}
+		}
+		e->whineAmp = amp1;
+		e->whineFreq = freq1;
+	} else {
+		e->whineAmp = 0.0f;
+	}
+
+	// turbo: boost builds with load above ~20 % rpm, whistle rises with boost
+	if ( def->turboLevel > 0.0f && e->params.rank <= ENGINE_RANK_NEAR ) {
+		float target = load * S_Engine_Clamp( ( n - 0.2f ) / 0.4f, 0.0f, 1.0f );
+		float dt = (float)count / (float)outRate;
+		float tau = ( target > e->boost ) ? def->turboSpool : def->turboSpool * 0.6f;
+		float amp1, freq1, amp0, freq0;
+
+		e->boost += ( target - e->boost ) * ( dt / ( tau + dt ) );
+		amp1 = def->turboLevel * e->boost * e->boost * gate;
+		freq1 = def->turboPitch * ( 0.35f + 0.65f * e->boost ) * doppler;
+		amp0 = e->turboAmp;
+		freq0 = ( e->turboFreq > 0.0f ) ? e->turboFreq : freq1;
+
+		if ( amp0 > 0.0f || amp1 > 0.0f ) {
+			for ( k = 0; k < count; k++ ) {
+				float frac = (float)( k + 1 ) * inv;
+				float amp = amp0 + ( amp1 - amp0 ) * frac;
+				float noise = S_Engine_Noise( e );
+
+				e->turboPhase += 2.0 * M_PI * ( freq0 + ( freq1 - freq0 ) * frac ) / outRate;
+				if ( e->turboPhase > 2.0 * M_PI ) {
+					e->turboPhase -= 2.0 * M_PI;
+				}
+				e->hiss += 0.2f * ( noise - e->hiss );	// high-passed noise = noise - low-pass
+				mono[k] += amp * ( (float)sin( e->turboPhase ) + 0.25f * ( noise - e->hiss ) );
+			}
+		}
+		e->turboAmp = amp1;
+		e->turboFreq = freq1;
+	}
+}
+
 static int S_Engine_RenderOne( engineEmitter_t *e, float *mono, int count, int outRate, int now ) {
 	Com_Memset( mono, 0, count * sizeof( float ) );
 	S_Engine_RenderEmitter( e, mono, count, outRate, now );
+	S_Engine_Extras( e, mono, count, outRate );
 	return count;
 }
 
@@ -736,6 +879,42 @@ static qboolean S_Engine_ParseConfig( engineDef_t *def, const char *dir ) {
 		} else if ( !Q_stricmp( token, "curve" ) ) {
 			def->curveLo = atof( COM_ParseExt( &lp, qfalse ) );
 			def->curveHi = atof( COM_ParseExt( &lp, qfalse ) );
+		} else if ( !Q_stricmp( token, "filter" ) || !Q_stricmp( token, "whine" ) || !Q_stricmp( token, "turbo" ) ) {
+			char block[16];
+
+			Q_strncpyz( block, token, sizeof( block ) );
+			while ( 1 ) {
+				char key[32];
+				float v;
+
+				token = COM_ParseExt( &lp, qfalse );
+				if ( !token[0] ) {
+					break;
+				}
+				Q_strncpyz( key, token, sizeof( key ) );
+				v = atof( COM_ParseExt( &lp, qfalse ) );
+				if ( !Q_stricmp( block, "filter" ) ) {
+					if ( !Q_stricmp( key, "off" ) ) {
+						def->filterOff = v;
+					} else if ( !Q_stricmp( key, "on" ) ) {
+						def->filterOn = v;
+					}
+				} else if ( !Q_stricmp( block, "whine" ) ) {
+					if ( !Q_stricmp( key, "level" ) ) {
+						def->whineLevel = v;
+					} else if ( !Q_stricmp( key, "teeth" ) ) {
+						def->whineTeeth = v;
+					}
+				} else {
+					if ( !Q_stricmp( key, "level" ) ) {
+						def->turboLevel = v;
+					} else if ( !Q_stricmp( key, "pitch" ) ) {
+						def->turboPitch = v;
+					} else if ( !Q_stricmp( key, "spool" ) ) {
+						def->turboSpool = ( v > 0.05f ) ? v : 0.05f;
+					}
+				}
+			}
 		} else if ( !Q_stricmp( token, "volume" ) ) {
 			while ( 1 ) {
 				char key[32];
@@ -856,6 +1035,7 @@ void S_Engine_Init( void ) {
 	s_engineVolume = Cvar_Get( "s_engineVolume", "1.0", CVAR_ARCHIVE );
 	s_engineDebug = Cvar_Get( "s_engineDebug", "0", CVAR_TEMP );
 	s_engineRemote = Cvar_Get( "s_engineRemote", "1", CVAR_TEMP );
+	s_engineWhine = Cvar_Get( "s_engineWhine", "1", CVAR_ARCHIVE );
 }
 
 void S_Engine_Shutdown( void ) {

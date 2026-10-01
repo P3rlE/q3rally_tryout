@@ -61,6 +61,7 @@ SOUND OPTIONS MENU
 #define ID_WEATHERVOLUME	24
 #define ID_CHECKPOINTSOUND	25
 #define ID_ANNOUNCERVOLUME	26
+#define ID_ENGINESOUNDS		27
 
 #define SOUND_FRAME_X               24
 #define SOUND_FRAME_Y               20
@@ -75,8 +76,11 @@ SOUND OPTIONS MENU
 #define SOUND_DETAIL_WIDTH          556
 #define SOUND_DETAIL_HEIGHT         292
 #define SOUND_ROW_HEIGHT            24
-#define SOUND_ROW_GAP               3
-#define SOUND_ROW_START_Y           148
+#define SOUND_ROW_GAP               2
+#define SOUND_ROW_START_Y           120
+#define SOUND_GROUP_GAP             8
+// row index and group index (Volume, Engine & callouts, Output) to y
+#define SOUND_ROW_Y( row, group )   ( SOUND_ROW_START_Y + ( row ) * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) + ( group ) * SOUND_GROUP_GAP )
 #define SOUND_COLUMN_X              236
 #define SOUND_COLUMN_WIDTH          344
 #define SOUND_ACTION_Y              420
@@ -134,6 +138,7 @@ typedef struct {
 	menuslider_s		ambientvolume;
 	menuslider_s		weathervolume;
 	menuslider_s		announcervolume;
+	menulist_s			engineSounds;
 	menulist_s			checkpointSound;
 	menulist_s  		soundSystem;
 	menulist_s			quality;
@@ -152,6 +157,7 @@ typedef struct {
 	float				ambientvolume_original;
 	float				weathervolume_original;
 	float				announcervolume_original;
+	int					engineSounds_original;
 	int					checkpointSound_original;
 	int					soundSystem_original;
 	int					quality_original;
@@ -421,6 +427,9 @@ static void UI_SoundOptionsMenu_Event( void* ptr, int event ) {
 		trap_Cvar_SetValue( "s_announcerVolume", soundOptionsInfo.announcervolume.curvalue / 10 );
 		soundOptionsInfo.announcervolume_original = soundOptionsInfo.announcervolume.curvalue;
 
+		trap_Cvar_SetValue( "cg_engineSounds", soundOptionsInfo.engineSounds.curvalue );
+		soundOptionsInfo.engineSounds_original = soundOptionsInfo.engineSounds.curvalue;
+
 		trap_Cvar_SetValue( "cg_checkpointSound", soundOptionsInfo.checkpointSound.curvalue );
 		soundOptionsInfo.checkpointSound_original = soundOptionsInfo.checkpointSound.curvalue;
 
@@ -490,6 +499,7 @@ static void SoundOptions_UpdateMenuItems( void )
 		soundOptionsInfo.ambientvolume_original != soundOptionsInfo.ambientvolume.curvalue ||
 		soundOptionsInfo.weathervolume_original != soundOptionsInfo.weathervolume.curvalue ||
 		soundOptionsInfo.announcervolume_original != soundOptionsInfo.announcervolume.curvalue ||
+		soundOptionsInfo.engineSounds_original != soundOptionsInfo.engineSounds.curvalue ||
 		soundOptionsInfo.checkpointSound_original != soundOptionsInfo.checkpointSound.curvalue )
 	{
 		soundOptionsInfo.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
@@ -520,15 +530,20 @@ void SoundOptions_MenuDraw (void)
 	Frontend_DrawText( SOUND_FRAME_X + 24, SOUND_FRAME_Y + 24,
 		"Sound", UI_LEFT | UI_BIGFONT, soundTextColor );
 	Frontend_DrawText( SOUND_FRAME_X + 24, SOUND_FRAME_Y + 48,
-		"Balance music, effects and output",
+		"Volumes, engine sounds and output",
 		UI_LEFT | UI_SMALLFONT, soundMutedColor );
 	Frontend_DrawStatusChip( SOUND_FRAME_X + SOUND_FRAME_WIDTH - 104,
 		SOUND_FRAME_Y + 26, "Settings", soundAccentColor, 1.0f );
 
 	Frontend_DrawCard( SOUND_DETAIL_X, SOUND_DETAIL_Y,
 		SOUND_DETAIL_WIDTH, SOUND_DETAIL_HEIGHT, 1.0f, qfalse );
-	Frontend_DrawText( SOUND_DETAIL_X + 16, SOUND_DETAIL_Y + 22,
-		"Audio mix", UI_LEFT | UI_SMALLFONT, soundMutedColor );
+	// group titles left of their rows
+	Frontend_DrawText( SOUND_DETAIL_X + 16, SOUND_ROW_Y( 0, 0 ) + 4,
+		"Volume", UI_LEFT | UI_SMALLFONT, soundMutedColor );
+	Frontend_DrawText( SOUND_DETAIL_X + 16, SOUND_ROW_Y( 6, 1 ) + 4,
+		"Engine & callouts", UI_LEFT | UI_SMALLFONT, soundMutedColor );
+	Frontend_DrawText( SOUND_DETAIL_X + 16, SOUND_ROW_Y( 8, 2 ) + 4,
+		"Output", UI_LEFT | UI_SMALLFONT, soundMutedColor );
 
 	Menu_Draw( &soundOptionsInfo.menu );
 
@@ -718,6 +733,16 @@ static void UI_SoundOptionsMenu_Init( void ) {
 	soundOptionsInfo.announcervolume.maxvalue			= 10;
 
 	y += BIGCHAR_HEIGHT+2;
+	soundOptionsInfo.engineSounds.generic.type		= MTYPE_SPINCONTROL;
+	soundOptionsInfo.engineSounds.generic.name		= "Engine Sounds:";
+	soundOptionsInfo.engineSounds.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	soundOptionsInfo.engineSounds.generic.callback	= UI_SoundOptionsMenu_Event;
+	soundOptionsInfo.engineSounds.generic.id		= ID_ENGINESOUNDS;
+	soundOptionsInfo.engineSounds.generic.x			= 400;
+	soundOptionsInfo.engineSounds.generic.y			= y;
+	soundOptionsInfo.engineSounds.itemnames			= onoff_items;
+
+	y += BIGCHAR_HEIGHT+2;
 	soundOptionsInfo.checkpointSound.generic.type		= MTYPE_SPINCONTROL;
 	soundOptionsInfo.checkpointSound.generic.name		= "Checkpoint Callout:";
 	soundOptionsInfo.checkpointSound.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
@@ -814,6 +839,7 @@ static void UI_SoundOptionsMenu_Init( void ) {
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.ambientvolume );
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.weathervolume );
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.announcervolume );
+	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.engineSounds );
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.checkpointSound );
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.soundSystem );
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.quality );
@@ -829,6 +855,8 @@ static void UI_SoundOptionsMenu_Init( void ) {
 	soundOptionsInfo.announcervolume.curvalue = soundOptionsInfo.announcervolume_original = trap_Cvar_VariableValue( "s_announcerVolume" ) * 10;
 	// cgame owns this cvar; make sure it exists with its default before the first map
 	trap_Cvar_Register( NULL, "cg_checkpointSound", "1", CVAR_ARCHIVE );
+	soundOptionsInfo.engineSounds.curvalue = soundOptionsInfo.engineSounds_original =
+		trap_Cvar_VariableValue( "cg_engineSounds" ) ? 1 : 0;
 	soundOptionsInfo.checkpointSound.curvalue = soundOptionsInfo.checkpointSound_original =
 		trap_Cvar_VariableValue( "cg_checkpointSound" ) ? 1 : 0;
 
@@ -854,31 +882,25 @@ static void UI_SoundOptionsMenu_Init( void ) {
 	/* Menu_AddItem initializes the legacy widgets and overwrites their
 	 * default bounds. Apply the frontend layout after that initialization. */
 	Sound_SetSliderBounds( &soundOptionsInfo.sfxvolume,
-		ID_EFFECTSVOLUME, "Effects volume", SOUND_ROW_START_Y );
+		ID_EFFECTSVOLUME, "Effects", SOUND_ROW_Y( 0, 0 ) );
 	Sound_SetSliderBounds( &soundOptionsInfo.musicvolume,
-		ID_MUSICVOLUME, "Music volume",
-		SOUND_ROW_START_Y + SOUND_ROW_HEIGHT + SOUND_ROW_GAP );
+		ID_MUSICVOLUME, "Music", SOUND_ROW_Y( 1, 0 ) );
 	Sound_SetSliderBounds( &soundOptionsInfo.enginevolume,
-		ID_ENGINEVOLUME, "Engine volume",
-		SOUND_ROW_START_Y + 2 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
+		ID_ENGINEVOLUME, "Engines", SOUND_ROW_Y( 2, 0 ) );
 	Sound_SetSliderBounds( &soundOptionsInfo.ambientvolume,
-		ID_AMBIENTVOLUME, "Ambience volume",
-		SOUND_ROW_START_Y + 3 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
+		ID_AMBIENTVOLUME, "Ambience", SOUND_ROW_Y( 3, 0 ) );
 	Sound_SetSliderBounds( &soundOptionsInfo.weathervolume,
-		ID_WEATHERVOLUME, "Weather volume",
-		SOUND_ROW_START_Y + 4 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
+		ID_WEATHERVOLUME, "Weather", SOUND_ROW_Y( 4, 0 ) );
 	Sound_SetSliderBounds( &soundOptionsInfo.announcervolume,
-		ID_ANNOUNCERVOLUME, "Announcer volume",
-		SOUND_ROW_START_Y + 5 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
+		ID_ANNOUNCERVOLUME, "Announcer", SOUND_ROW_Y( 5, 0 ) );
+	Sound_SetSettingBounds( &soundOptionsInfo.engineSounds.generic,
+		ID_ENGINESOUNDS, "Engine sounds", SOUND_ROW_Y( 6, 1 ) );
 	Sound_SetSettingBounds( &soundOptionsInfo.checkpointSound.generic,
-		ID_CHECKPOINTSOUND, "Checkpoint callout",
-		SOUND_ROW_START_Y + 6 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
+		ID_CHECKPOINTSOUND, "Checkpoint callout", SOUND_ROW_Y( 7, 1 ) );
 	Sound_SetSettingBounds( &soundOptionsInfo.soundSystem.generic,
-		ID_SOUNDSYSTEM, "Sound system",
-		SOUND_ROW_START_Y + 7 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
+		ID_SOUNDSYSTEM, "Sound system", SOUND_ROW_Y( 8, 2 ) );
 	Sound_SetSettingBounds( &soundOptionsInfo.quality.generic,
-		ID_QUALITY, "SDL quality",
-		SOUND_ROW_START_Y + 8 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
+		ID_QUALITY, "SDL quality", SOUND_ROW_Y( 9, 2 ) );
 
 	Sound_SetBounds( &soundOptionsInfo.back.generic, ID_BACK,
 		SOUND_NAV_X, SOUND_ACTION_Y, SOUND_ACTION_WIDTH,
