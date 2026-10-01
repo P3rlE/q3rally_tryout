@@ -26,17 +26,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 char	*cg_customSoundNames[MAX_CUSTOM_SOUNDS] = {
 // Q3Rally Code Start
-	"*engine0.wav",
-	"*engine1.wav",
-	"*engine2.wav",
-	"*engine3.wav",
-	"*engine4.wav",
-	"*engine5.wav",
-	"*engine6.wav",
-	"*engine7.wav",
-        "*engine8.wav",
-        "*engine9.wav",
-        "*engine10.wav",
         "*horn.wav",
 // END
         "*death1.wav",
@@ -1061,13 +1050,14 @@ static void CG_LoadClientInfo( int clientNum, clientInfo_t *ci ) {
 	}
 
 // Q3Rally Code Start
-	// engine sound: engine.cfg or engine0..engine10 of the car, else of the default car
+	// engine sound: the car's own engine.cfg (or legacy engine0..engine10),
+	// else the shared default engine
 	ci->engineSound = 0;
 	if ( modelloaded ) {
 		ci->engineSound = trap_S_RegisterEngine( va( "sound/player/%s", dir ) );
 	}
 	if ( !ci->engineSound ) {
-		ci->engineSound = trap_S_RegisterEngine( va( "sound/player/%s", DEFAULT_MODEL ) );
+		ci->engineSound = trap_S_RegisterEngine( CG_DEFAULT_ENGINE_SOUND );
 	}
 // END
 

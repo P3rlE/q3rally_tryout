@@ -140,6 +140,7 @@ typedef struct {
 // Q3Rally Code Start - update to sidepipe
 // #define	DEFAULT_MODEL			"sarge"
 #define	DEFAULT_MODEL			"sidepipe"
+#define	CG_DEFAULT_ENGINE_SOUND	"sound/engines/default"	// used by every car without its own engine.cfg
 #define	DEFAULT_SKIN			"red"
 // Q3Rally Code END
 #ifdef MISSIONPACK

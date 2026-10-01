@@ -650,6 +650,12 @@ Stock engine0..engine10: one sample resampled in semitone steps.
 static qboolean S_Engine_LoadLegacy( engineDef_t *def, const char *dir ) {
 	int i;
 
+	// stay silent for cars that simply have no engine sound of their own
+	if ( FS_ReadFile( va( "%s/engine0.wav", dir ), NULL ) <= 0 &&
+		FS_ReadFile( va( "%s/engine0.ogg", dir ), NULL ) <= 0 ) {
+		return qfalse;
+	}
+
 	for ( i = 0; i < ENGINE_LEGACY_SAMPLES; i++ ) {
 		float f0 = ENGINE_LEGACY_BASE_HZ * pow( 2.0, i / 12.0 );
 
