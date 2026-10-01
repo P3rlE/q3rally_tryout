@@ -2316,31 +2316,47 @@ void S_AL_Respatialize( int entityNum, const vec3_t origin, vec3_t axis[3], int 
 =================
 S_AL_EngineStreamUpdate
 
-Keeps a few blocks of the software-mixed engine sounds queued.
+Streams every engine sound emitter on its own source: the own car
+unspatialized, other cars tracking their entity. Keeps a few blocks queued.
 =================
 */
 #define ENGINE_STREAM_RATE		44100
 #define ENGINE_STREAM_BLOCK		1024	// ~23 ms
 #define ENGINE_STREAM_QUEUED	4
+static int engineStreamEntity[ENGINE_MAX_EMITTERS];
 static void S_AL_EngineStreamUpdate( void )
 {
 	static short engineBlock[ENGINE_STREAM_BLOCK];
-	ALint queued = 0;
+	int i, stream, entityNum, wantEntity;
+	qboolean local;
+	ALint queued;
 
-	if( !S_Engine_Active( ) )
-		return;
-
-	if( streamSourceHandles[ENGINE_RAW_STREAM] != -1 )
-		qalGetSourcei( streamSources[ENGINE_RAW_STREAM], AL_BUFFERS_QUEUED, &queued );
-
-	while( queued < ENGINE_STREAM_QUEUED )
+	for( i = 0; i < ENGINE_MAX_EMITTERS; i++ )
 	{
-		S_Engine_RenderPCM16( engineBlock, ENGINE_STREAM_BLOCK, ENGINE_STREAM_RATE );
-		S_AL_RawSamples( ENGINE_RAW_STREAM, ENGINE_STREAM_BLOCK, ENGINE_STREAM_RATE, 2, 1,
-			(const byte *)engineBlock, 1.0f, -1 );
-		if( streamSourceHandles[ENGINE_RAW_STREAM] == -1 )
-			break;
-		queued++;
+		if( !S_Engine_EmitterInfo( i, &entityNum, &local ) )
+			continue;	// inactive: the stream runs dry and is released
+
+		stream = ENGINE_RAW_STREAM_BASE + i;
+		wantEntity = local ? -1 : entityNum;
+
+		// emitter slot now plays another car: restart its stream
+		if( streamSourceHandles[stream] != -1 && engineStreamEntity[i] != wantEntity )
+			S_AL_StreamDie( stream );
+		engineStreamEntity[i] = wantEntity;
+
+		queued = 0;
+		if( streamSourceHandles[stream] != -1 )
+			qalGetSourcei( streamSources[stream], AL_BUFFERS_QUEUED, &queued );
+
+		while( queued < ENGINE_STREAM_QUEUED )
+		{
+			S_Engine_RenderEmitterPCM16( i, engineBlock, ENGINE_STREAM_BLOCK, ENGINE_STREAM_RATE );
+			S_AL_RawSamples( stream, ENGINE_STREAM_BLOCK, ENGINE_STREAM_RATE, 2, 1,
+				(const byte *)engineBlock, 1.0f, wantEntity );
+			if( streamSourceHandles[stream] == -1 )
+				break;
+			queued++;
+		}
 	}
 }
 

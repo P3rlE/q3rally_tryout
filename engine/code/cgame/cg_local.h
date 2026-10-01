@@ -307,6 +307,15 @@ typedef struct centity_s {
 	float			engineSoundFrac;
 	qboolean		engineSoundInitialized;
 	float			engineLoad;
+	float			engineDoppler;
+	float			engineLastRpm;
+	float			engineLastThrottle;
+	int				engineLastGear;
+	int				engineCutTime;		// ignition cut after a gear change ends here
+	int				enginePopsLeft;
+	int				enginePopTime;
+	int				engineLastPop;
+	int				engineHeardTime;	// last frame this car was handed to the mixer
 
 	int				skidSoundTime;
 
@@ -604,6 +613,10 @@ typedef struct {
 
 	sfxHandle_t		sounds[MAX_CUSTOM_SOUNDS];
 	int				engineSound;		// Q3Rally engine sound handle, 0 = none
+	sfxHandle_t		enginePops[4];		// backfires, sound/.../pop1..4.wav
+	int				engineNumPops;
+	sfxHandle_t		engineShift[2];		// gear change clack, shift1..2.wav
+	int				engineNumShift;
 
 // Q3Rally Code Start
 	int				clientNum;
@@ -1895,6 +1908,7 @@ void CG_AddCEntity( centity_t *cent );
 
 void CG_SetEntitySoundPosition( centity_t *cent );
 void CG_AddPacketEntities( void );
+void CG_EngineSoundFrame( void );
 void CG_Beam( centity_t *cent );
 void CG_AdjustPositionForMover(const vec3_t in, int moverNum, int fromTime, int toTime, vec3_t out, vec3_t angles_in, vec3_t angles_out);
 

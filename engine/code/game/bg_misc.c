@@ -2255,3 +2255,47 @@ void BG_PlayerStateToEntityStateExtraPolate( playerState_t *ps, entityState_t *s
 	s->loopSound = ps->loopSound;
 	s->generic1 = ps->generic1;
 }
+
+/*
+=================
+BG_PackEngineState / BG_UnpackEngineState
+
+Engine sound state of a car for remote clients (entityState_t.time2).
+=================
+*/
+int BG_PackEngineState( float rpm, float throttle, int gear ) {
+	int r, t, g;
+
+	r = (int)( rpm / ENGINE_STATE_RPM_STEP + 0.5f );
+	if ( r < 0 ) {
+		r = 0;
+	} else if ( r > 255 ) {
+		r = 255;
+	}
+
+	t = (int)( throttle * 15.0f + 0.5f );
+	if ( t < 0 ) {
+		t = 0;
+	} else if ( t > 15 ) {
+		t = 15;
+	}
+
+	g = gear + 1;
+	if ( g < 0 ) {
+		g = 0;
+	} else if ( g > 7 ) {
+		g = 7;
+	}
+
+	return r | ( t << 8 ) | ( g << 12 ) | ENGINE_STATE_VALID;
+}
+
+qboolean BG_UnpackEngineState( int packed, float *rpm, float *throttle, int *gear ) {
+	if ( !( packed & ENGINE_STATE_VALID ) ) {
+		return qfalse;
+	}
+	*rpm = (float)( packed & 0xff ) * ENGINE_STATE_RPM_STEP;
+	*throttle = (float)( ( packed >> 8 ) & 0xf ) / 15.0f;
+	*gear = ( ( packed >> 12 ) & 0x7 ) - 1;
+	return qtrue;
+}

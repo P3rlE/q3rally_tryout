@@ -20,6 +20,13 @@ or (at your option) any later version.
 #define ENGINE_SOUND_LIMITER	0x0002
 #define ENGINE_SOUND_SHIFTING	0x0004
 
+// engineSoundParams_t.rank: how many voices the mixer spends on a car
+#define ENGINE_RANK_FULL		0		// own car: full model
+#define ENGINE_RANK_NEAR		1		// nearest opponents: both neighbouring loops
+#define ENGINE_RANK_FAR			2		// further opponents: one loop
+
+#define ENGINE_MAX_EMITTERS		16		// cars the mixer can play at once, incl. fading ones
+
 // Passed from cgame to the client every frame for every audible car.
 // Layout is shared with the QVM: only 4-byte members.
 typedef struct {
@@ -30,7 +37,9 @@ typedef struct {
 	int		flags;			// ENGINE_SOUND_*
 	vec3_t	origin;
 	vec3_t	velocity;
-	int		rank;			// 0 = full model (Phase 2: reduced voices for higher ranks)
+	int		rank;			// ENGINE_RANK_*
+	float	doppler;		// pitch factor from relative motion, 1 = none
+	float	volume;			// extra volume factor (ignition cut while shifting), 1 = normal
 } engineSoundParams_t;
 
 #endif

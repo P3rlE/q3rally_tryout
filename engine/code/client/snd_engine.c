@@ -40,7 +40,8 @@ GNU General Public License for more details.
 
 #define MAX_ENGINE_DEFS			32
 #define MAX_ENGINE_SAMPLES		16
-#define MAX_ENGINE_EMITTERS		16
+#define MAX_ENGINE_EMITTERS		ENGINE_MAX_EMITTERS
+#define ENGINE_FADE_SEC			0.15f	// fade in/out when a car starts or stops being heard
 #define ENGINE_TIMEOUT_MSEC		100
 #define ENGINE_MIN_PITCH		0.5f
 #define ENGINE_MAX_PITCH		2.0f
@@ -72,6 +73,7 @@ typedef struct {
 	engineSoundParams_t	params;
 	// mixer state
 	qboolean			primed;
+	float				presence;	// 0..1, fades over ENGINE_FADE_SEC
 	float				curFreq;
 	float				curVol;
 	double				phase[MAX_ENGINE_SAMPLES];
@@ -89,9 +91,11 @@ static cvar_t	*s_engineVolume;
 static cvar_t	*s_engineDebug;
 #define ENGINE_VOLUME	( s_engineVolume ? s_engineVolume->value : 1.0f )
 #define ENGINE_DEBUG	( s_engineDebug ? s_engineDebug->integer : 0 )
+#define ENGINE_DOPPLER	( s_doppler ? s_doppler->integer : 1 )
 #else
 #define ENGINE_VOLUME	1.0f
 #define ENGINE_DEBUG	0
+#define ENGINE_DOPPLER	1
 #endif
 
 static float S_Engine_Clamp( float v, float lo, float hi ) {
@@ -163,7 +167,7 @@ S_Engine_Targets
 Target frequency, overall volume and per sample gains for the given parameters.
 =================
 */
-static void S_Engine_Targets( engineEmitter_t *e, const engineDef_t *def, float alive,
+static void S_Engine_Targets( engineEmitter_t *e, const engineDef_t *def,
 	float *freq, float *vol, float *gains ) {
 	float n, load, f, t;
 	int i, a, last;
@@ -192,8 +196,17 @@ static void S_Engine_Targets( engineEmitter_t *e, const engineDef_t *def, float 
 		}
 		t = ( f - def->on[a].f0 ) / ( def->on[a + 1].f0 - def->on[a].f0 );
 		t = S_Engine_Clamp( t, 0.0f, 1.0f );
-		gains[a] = cos( t * M_PI * 0.5 );
-		gains[a + 1] = sin( t * M_PI * 0.5 );
+		if ( e->params.rank >= ENGINE_RANK_FAR ) {
+			// distant car: only the nearest loop, the block ramp smooths the switch
+			if ( t < 0.5f ) {
+				gains[a] = 1.0f;
+			} else {
+				gains[a + 1] = 1.0f;
+			}
+		} else {
+			gains[a] = cos( t * M_PI * 0.5 );
+			gains[a + 1] = sin( t * M_PI * 0.5 );
+		}
 	}
 	e->dbgA = a;
 	e->dbgB = ( a < last && t > 0.0f ) ? a + 1 : a;
@@ -201,7 +214,8 @@ static void S_Engine_Targets( engineEmitter_t *e, const engineDef_t *def, float 
 
 	*freq = f;
 	*vol = ( def->vIdle + ( def->vMax - def->vIdle ) * pow( n, def->gamma ) ) *
-		( def->vOff + ( 1.0f - def->vOff ) * load ) * alive;
+		( def->vOff + ( 1.0f - def->vOff ) * load ) *
+		S_Engine_Clamp( e->params.volume, 0.0f, 2.0f );
 }
 
 /*
@@ -224,18 +238,35 @@ static void S_Engine_RenderEmitter( engineEmitter_t *e, float *out, int count, i
 	}
 
 	alive = ( now - e->lastUpdate <= ENGINE_TIMEOUT_MSEC ) ? 1.0f : 0.0f;
-	S_Engine_Targets( e, def, alive, &tFreq, &tVol, tGains );
+	S_Engine_Targets( e, def, &tFreq, &tVol, tGains );
+
+	if ( ENGINE_DOPPLER && e->params.doppler > 0.0f ) {
+		tFreq *= S_Engine_Clamp( e->params.doppler, 0.8f, 1.25f );
+	}
 
 	if ( !e->primed ) {
 		// fade in from silence, start every loop at its beginning
 		e->curFreq = tFreq;
 		e->curVol = 0.0f;
+		e->presence = 0.0f;
 		for ( i = 0; i < def->numOn; i++ ) {
 			e->gain[i] = tGains[i];
 			e->phase[i] = 0.0;
 		}
 		e->primed = qtrue;
 	}
+
+	// presence fades towards alive within ENGINE_FADE_SEC
+	{
+		float step = (float)count / (float)outRate / ENGINE_FADE_SEC;
+
+		if ( e->presence < alive ) {
+			e->presence = ( e->presence + step < alive ) ? e->presence + step : alive;
+		} else if ( e->presence > alive ) {
+			e->presence = ( e->presence - step > alive ) ? e->presence - step : alive;
+		}
+	}
+	tVol *= e->presence;
 
 	inv = 1.0f / (float)count;
 
@@ -287,8 +318,8 @@ static void S_Engine_RenderEmitter( engineEmitter_t *e, float *out, int count, i
 	e->curFreq = tFreq;
 	e->curVol = tVol;
 
-	if ( alive <= 0.0f ) {
-		// faded out completely during this block
+	if ( alive <= 0.0f && e->presence <= 0.0f ) {
+		// faded out completely
 		e->active = qfalse;
 	}
 }
@@ -394,17 +425,43 @@ static int S_Engine_RenderOne( engineEmitter_t *e, float *mono, int count, int o
 
 /*
 =================
-S_Engine_RenderPCM16
+S_Engine_EmitterInfo
 
-Mixes all emitters, not spatialized, into 16 bit mono PCM (OpenAL stream).
+For the OpenAL backend, which streams every car separately.
 =================
 */
-void S_Engine_RenderPCM16( short *out, int count, int outRate ) {
-	static float mix[ENGINE_MIX_CHUNK];
-	static float mono[ENGINE_MIX_CHUNK];
-	int i, k, done, n, now;
-	float scale;
+qboolean S_Engine_EmitterInfo( int index, int *entityNum, qboolean *local ) {
+	engineEmitter_t *e;
 
+	if ( index < 0 || index >= MAX_ENGINE_EMITTERS ) {
+		return qfalse;
+	}
+	e = &engineEmitters[index];
+	if ( !e->active ) {
+		return qfalse;
+	}
+	*entityNum = e->entityNum;
+	*local = ( e->params.flags & ENGINE_SOUND_LOCAL ) ? qtrue : qfalse;
+	return qtrue;
+}
+
+/*
+=================
+S_Engine_RenderEmitterPCM16
+
+Renders one car into 16 bit mono PCM (OpenAL stream).
+=================
+*/
+void S_Engine_RenderEmitterPCM16( int index, short *out, int count, int outRate ) {
+	static float mono[ENGINE_MIX_CHUNK];
+	int k, done, n, now;
+	float scale;
+	engineEmitter_t *e;
+
+	if ( index < 0 || index >= MAX_ENGINE_EMITTERS ) {
+		return;
+	}
+	e = &engineEmitters[index];
 	now = ENG_Milliseconds();
 	scale = 32767.0f * 0.5f * ENGINE_VOLUME;
 
@@ -413,18 +470,13 @@ void S_Engine_RenderPCM16( short *out, int count, int outRate ) {
 		if ( n > ENGINE_MIX_CHUNK ) {
 			n = ENGINE_MIX_CHUNK;
 		}
-		Com_Memset( mix, 0, n * sizeof( float ) );
-		for ( i = 0; i < MAX_ENGINE_EMITTERS; i++ ) {
-			if ( !engineEmitters[i].active ) {
-				continue;
-			}
-			S_Engine_RenderOne( &engineEmitters[i], mono, n, outRate, now );
-			for ( k = 0; k < n; k++ ) {
-				mix[k] += mono[k];
-			}
+		if ( e->active ) {
+			S_Engine_RenderOne( e, mono, n, outRate, now );
+		} else {
+			Com_Memset( mono, 0, n * sizeof( float ) );
 		}
 		for ( k = 0; k < n; k++ ) {
-			float v = mix[k] * scale;
+			float v = mono[k] * scale;
 			if ( v > 32767.0f ) {
 				v = 32767.0f;
 			} else if ( v < -32768.0f ) {
