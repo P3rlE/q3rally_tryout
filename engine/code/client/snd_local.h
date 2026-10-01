@@ -209,7 +209,9 @@ extern	dma_t	dma;
 // this as a power of two. 32768 sample-pairs buffer ~743 ms at 44.1 kHz,
 // which keeps cinematic/audio preload safely above 500 ms.
 #define	MAX_RAW_SAMPLES	32768
-#define MAX_RAW_STREAMS (MAX_CLIENTS * 2 + 1)
+// VoIP uses streams 1 .. 2 * MAX_CLIENTS, so the engine stream sits behind them
+#define MAX_RAW_STREAMS (MAX_CLIENTS * 2 + 3)
+#define ENGINE_RAW_STREAM (MAX_RAW_STREAMS - 2)
 #define CIN_RAW_STREAM (MAX_RAW_STREAMS - 1)
 extern	portable_samplepair_t s_rawsamples[MAX_RAW_STREAMS][MAX_RAW_SAMPLES];
 extern	int		s_rawend[MAX_RAW_STREAMS];
@@ -233,6 +235,14 @@ void S_PaintChannels(int endtime);
 void S_memoryLoad(sfx_t *sfx);
 
 void S_SpatializeOrigin( vec3_t origin, int master_vol, int *left_vol, int *right_vol );
+
+// Q3Rally engine sounds (snd_engine.c)
+void S_Engine_Init( void );
+void S_Engine_Shutdown( void );
+void S_Engine_StopAll( void );
+qboolean S_Engine_Active( void );
+void S_Engine_PaintDMA( portable_samplepair_t *paintbuffer, int count, int sndVol );
+void S_Engine_RenderPCM16( short *out, int count, int outRate );
 
 // spatializes a channel
 void S_Spatialize(channel_t *ch);

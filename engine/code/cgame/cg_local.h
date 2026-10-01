@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/rally_plate_tools.h"
 #include "../renderercommon/tr_types.h"
 #include "../game/bg_public.h"
+#include "../qcommon/q_engine_sound.h"
 #include "../game/bg_achievements.h"
 #include "../game/profile_shared.h"
 #include "cg_public.h"
@@ -304,6 +305,7 @@ typedef struct centity_s {
 	float			engineSmokeTime;
 	float			engineSoundFrac;
 	qboolean		engineSoundInitialized;
+	float			engineLoad;
 
 	int				skidSoundTime;
 
@@ -600,6 +602,7 @@ typedef struct {
 	animation_t		animations[MAX_TOTALANIMATIONS];
 
 	sfxHandle_t		sounds[MAX_CUSTOM_SOUNDS];
+	int				engineSound;		// Q3Rally engine sound handle, 0 = none
 
 // Q3Rally Code Start
 	int				clientNum;
@@ -2304,6 +2307,8 @@ void		trap_S_AddRealLoopingSound( int entityNum, const vec3_t origin, const vec3
 void		trap_S_UpdateEntityPosition( int entityNum, const vec3_t origin );
 void		trap_S_SetEntityPitch( int entityNum, float pitch );
 void		trap_S_SetEntityVolume( int entityNum, float volume );
+int		trap_S_RegisterEngine( const char *dir );
+void		trap_S_UpdateEngine( int entityNum, int handle, const engineSoundParams_t *params );
 
 // respatialize recalculates the volumes of sound as they should be heard by the
 // given entityNum and position

@@ -2314,6 +2314,38 @@ void S_AL_Respatialize( int entityNum, const vec3_t origin, vec3_t axis[3], int 
 
 /*
 =================
+S_AL_EngineStreamUpdate
+
+Keeps a few blocks of the software-mixed engine sounds queued.
+=================
+*/
+#define ENGINE_STREAM_RATE		44100
+#define ENGINE_STREAM_BLOCK		1024	// ~23 ms
+#define ENGINE_STREAM_QUEUED	4
+static void S_AL_EngineStreamUpdate( void )
+{
+	static short engineBlock[ENGINE_STREAM_BLOCK];
+	ALint queued = 0;
+
+	if( !S_Engine_Active( ) )
+		return;
+
+	if( streamSourceHandles[ENGINE_RAW_STREAM] != -1 )
+		qalGetSourcei( streamSources[ENGINE_RAW_STREAM], AL_BUFFERS_QUEUED, &queued );
+
+	while( queued < ENGINE_STREAM_QUEUED )
+	{
+		S_Engine_RenderPCM16( engineBlock, ENGINE_STREAM_BLOCK, ENGINE_STREAM_RATE );
+		S_AL_RawSamples( ENGINE_RAW_STREAM, ENGINE_STREAM_BLOCK, ENGINE_STREAM_RATE, 2, 1,
+			(const byte *)engineBlock, 1.0f, -1 );
+		if( streamSourceHandles[ENGINE_RAW_STREAM] == -1 )
+			break;
+		queued++;
+	}
+}
+
+/*
+=================
 S_AL_Update
 =================
 */
@@ -2340,6 +2372,7 @@ void S_AL_Update( void )
 	// Update streams
 	for (i = 0; i < MAX_RAW_STREAMS; i++)
 		S_AL_StreamUpdate(i);
+	S_AL_EngineStreamUpdate();
 	S_AL_MusicUpdate();
 
 	// Doppler

@@ -428,7 +428,7 @@ static cvarTable_t cvarTable[] = {
 
         { &cg_debugpredict, "cg_debugpredict", "0", 0 },
 
-        { &cg_engineSounds, "cg_engineSounds", "0", CVAR_ARCHIVE },
+        { &cg_engineSounds, "cg_engineSounds", "1", CVAR_ARCHIVE },
         { &cg_ghostPlayback, "cg_ghostPlayback", "0", CVAR_ARCHIVE },
 	{ &cg_ghostAlpha, "cg_ghostAlpha", "160", CVAR_ARCHIVE },
 	{ &cg_ghostDebug, "cg_ghostDebug", "0", CVAR_TEMP },

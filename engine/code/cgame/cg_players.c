@@ -1060,6 +1060,17 @@ static void CG_LoadClientInfo( int clientNum, clientInfo_t *ci ) {
 		}
 	}
 
+// Q3Rally Code Start
+	// engine sound: engine.cfg or engine0..engine10 of the car, else of the default car
+	ci->engineSound = 0;
+	if ( modelloaded ) {
+		ci->engineSound = trap_S_RegisterEngine( va( "sound/player/%s", dir ) );
+	}
+	if ( !ci->engineSound ) {
+		ci->engineSound = trap_S_RegisterEngine( va( "sound/player/%s", DEFAULT_MODEL ) );
+	}
+// END
+
 	ci->deferred = qfalse;
 
 	// reset any existing players and bodies, because they might be in bad
@@ -1109,6 +1120,7 @@ static void CG_CopyClientInfoModel( clientInfo_t *from, clientInfo_t *to ) {
 //	memcpy( to->animations, from->animations, sizeof( to->animations ) );
 // END
 	memcpy( to->sounds, from->sounds, sizeof( to->sounds ) );
+	to->engineSound = from->engineSound;
 }
 
 /*
@@ -2604,53 +2616,96 @@ static float CG_CalcEngineSoundFrac( int rpm ) {
 	return frac;
 }
 
+#define CG_ENGINE_RPM_TAU		0.03f	// seconds
+#define CG_ENGINE_LOAD_ATTACK	0.05f
+#define CG_ENGINE_LOAD_RELEASE	0.15f
+#define CG_ENGINE_FOLLOW_LOAD	0.7f	// no usercmd when following another player
+
+static float CG_EngineSmooth( float cur, float target, float tau ) {
+	float dt;
+
+	dt = (float)( cg.frametime > 0 ? cg.frametime : 16 ) / 1000.0f;
+	return cur + ( target - cur ) * ( dt / ( tau + dt ) );
+}
+
 /*
 =================
-CG_UpdateEngineSoundState
+CG_EngineSoundLoad
 
-Smooth the RPM input and return the continuously interpolated sound
-position and pitch.
+Throttle of the local player from the current usercmd (as in PM_AddRoadForces).
 =================
 */
-static void CG_UpdateEngineSoundState( centity_t *cent, float targetFrac,
-	float *soundPosition, float *pitch ) {
-	float frameScale;
+static float CG_EngineSoundLoad( const playerState_t *ps ) {
+	usercmd_t cmd;
+	float throttle;
+
+	if ( ps->stats[STAT_HEALTH] <= 0 ) {
+		return 0.0f;
+	}
+	if ( cg.demoPlayback || ( ps->pm_flags & PMF_FOLLOW ) ) {
+		return CG_ENGINE_FOLLOW_LOAD;
+	}
+	if ( !trap_GetUserCmd( trap_GetCurrentCmdNumber(), &cmd ) ) {
+		return 0.0f;
+	}
+
+	throttle = cmd.forwardmove / 127.0f;
+	if ( ps->stats[STAT_GEAR] < 0 ) {
+		// reverse: either pedal direction drives the engine
+		throttle = fabs( throttle );
+	}
+	if ( throttle < 0.0f ) {
+		return 0.0f;	// braking
+	}
+	if ( throttle > 1.0f ) {
+		return 1.0f;
+	}
+	return throttle;
+}
+
+/*
+=================
+CG_UpdateEngineSound
+
+Hands the smoothed engine state of the local car to the engine sound mixer.
+=================
+*/
+static void CG_UpdateEngineSound( centity_t *cent, clientInfo_t *ci ) {
+	const playerState_t *ps = &cg.predictedPlayerState;
+	engineSoundParams_t params;
+	float targetFrac, targetLoad;
+
+	if ( !ci->engineSound ) {
+		return;
+	}
+
+	targetFrac = CG_CalcEngineSoundFrac( ps->stats[STAT_RPM] );
+	targetLoad = CG_EngineSoundLoad( ps );
 
 	if ( !cent->engineSoundInitialized ) {
 		cent->engineSoundFrac = targetFrac;
+		cent->engineLoad = targetLoad;
 		cent->engineSoundInitialized = qtrue;
 	}
 
-	frameScale = (float)( cg.frametime > 0 ? cg.frametime : 16 ) / 1000.0f;
-	frameScale *= 8.0f;
-	if ( frameScale > 1.0f ) {
-		frameScale = 1.0f;
+	cent->engineSoundFrac = CG_EngineSmooth( cent->engineSoundFrac, targetFrac, CG_ENGINE_RPM_TAU );
+	cent->engineLoad = CG_EngineSmooth( cent->engineLoad, targetLoad,
+		targetLoad > cent->engineLoad ? CG_ENGINE_LOAD_ATTACK : CG_ENGINE_LOAD_RELEASE );
+
+	memset( &params, 0, sizeof( params ) );
+	params.rpm = ps->stats[STAT_RPM];
+	params.rpmFrac = cent->engineSoundFrac;
+	params.load = cent->engineLoad;
+	params.gear = ps->stats[STAT_GEAR];
+	params.flags = ENGINE_SOUND_LOCAL;
+	if ( ps->stats[STAT_RPM] >= CP_RPM_MAX ) {
+		params.flags |= ENGINE_SOUND_LIMITER;
 	}
+	VectorCopy( ps->origin, params.origin );
+	VectorCopy( ps->velocity, params.velocity );
+	params.rank = 0;
 
-	cent->engineSoundFrac += ( targetFrac - cent->engineSoundFrac ) * frameScale;
-	*soundPosition = cent->engineSoundFrac * 10.0f;
-	*pitch = 0.75f + 0.9f * cent->engineSoundFrac;
-}
-
-// Keep the two motor voices off player/skid loop IDs and ordinary map entities.
-#define CG_ENGINE_SOUND_ENTITY_0 ENTITYNUM_WORLD
-#define CG_ENGINE_SOUND_ENTITY_1 ENTITYNUM_NONE
-#define CG_ENGINE_BLEND_START 0.35f
-#define CG_ENGINE_BLEND_END   0.65f
-
-static int CG_EngineSoundEntityForIndex( int soundIndex ) {
-	// Keep a shared RPM sample on the same sound entity when it changes
-	// from the upper voice to the lower voice at an anchor point.
-	return ( soundIndex & 1 ) ?
-		CG_ENGINE_SOUND_ENTITY_1 : CG_ENGINE_SOUND_ENTITY_0;
-}
-
-static void CG_AddEngineSoundLoop( int entityNum, int clientNum, int soundIndex,
-	const vec3_t origin, const vec3_t velocity, float pitch, float volume ) {
-	trap_S_AddRealLoopingSound( entityNum, origin, velocity,
-		cgs.clientinfo[clientNum].sounds[soundIndex] );
-	trap_S_SetEntityPitch( entityNum, pitch );
-	trap_S_SetEntityVolume( entityNum, volume );
+	trap_S_UpdateEngine( cent->currentState.number, ci->engineSound, &params );
 }
 
 /*
@@ -3846,68 +3901,11 @@ void CG_Player( centity_t *cent ) {
 		CG_AddRefEntityWithPowerups( &body, &cent->currentState, ci->team );
 
 
-	// engine sounds
-
-       if( cent->currentState.clientNum == cg.predictedPlayerState.clientNum &&
-               cg_engineSounds.integer )
-       {
-               float rpmFrac;
-               float soundPosition;
-               float pitch;
-               float blend;
-               float lowerVolume;
-               float upperVolume;
-               int lowerIndex;
-               int upperIndex;
-               int clientNum;
-
-               clientNum = cg.predictedPlayerState.clientNum;
-               rpmFrac = CG_CalcEngineSoundFrac( cg.predictedPlayerState.stats[STAT_RPM] );
-               CG_UpdateEngineSoundState( cent, rpmFrac, &soundPosition, &pitch );
-
-               if ( soundPosition >= 10.0f ) {
-                       lowerIndex = 10;
-                       upperIndex = 10;
-                       blend = 0.0f;
-               } else {
-                       lowerIndex = (int)soundPosition;
-                       upperIndex = lowerIndex + 1;
-                       blend = soundPosition - (float)lowerIndex;
-               }
-
-               if ( lowerIndex == upperIndex ) {
-                       CG_AddEngineSoundLoop(
-                               CG_EngineSoundEntityForIndex( lowerIndex ), clientNum,
-                               lowerIndex, cg.predictedPlayerState.origin,
-                               cg.predictedPlayerState.velocity, pitch, 1.0f );
-               } else {
-                       if ( blend <= CG_ENGINE_BLEND_START ) {
-                               lowerVolume = 1.0f;
-                               upperVolume = 0.0f;
-                       } else if ( blend >= CG_ENGINE_BLEND_END ) {
-                               lowerVolume = 0.0f;
-                               upperVolume = 1.0f;
-                       } else {
-                               float crossfade;
-
-                               crossfade = ( blend - CG_ENGINE_BLEND_START ) /
-                                       ( CG_ENGINE_BLEND_END - CG_ENGINE_BLEND_START );
-                               crossfade = crossfade * crossfade *
-                                       ( 3.0f - 2.0f * crossfade );
-                               lowerVolume = 1.0f - crossfade;
-                               upperVolume = crossfade;
-                       }
-
-                       CG_AddEngineSoundLoop(
-                               CG_EngineSoundEntityForIndex( lowerIndex ), clientNum,
-                               lowerIndex, cg.predictedPlayerState.origin,
-                               cg.predictedPlayerState.velocity, pitch, lowerVolume );
-                       CG_AddEngineSoundLoop(
-                               CG_EngineSoundEntityForIndex( upperIndex ), clientNum,
-                               upperIndex, cg.predictedPlayerState.origin,
-                               cg.predictedPlayerState.velocity, pitch, upperVolume );
-               }
-       }
+	// engine sounds (Phase 1: the local car only)
+	if ( cent->currentState.clientNum == cg.predictedPlayerState.clientNum &&
+		cg_engineSounds.integer ) {
+		CG_UpdateEngineSound( cent, ci );
+	}
 
 
 	if (ci->controlMode == CT_MOUSE){
@@ -4533,6 +4531,7 @@ void CG_ResetPlayerEntity( centity_t *cent ) {
 	cent->errorTime = -99999;		// guarantee no error decay added
 	cent->extrapolated = qfalse;	
 	cent->engineSoundFrac = 0.0f;
+	cent->engineLoad = 0.0f;
 	cent->engineSoundInitialized = qfalse;
 
 // SKWID( removed functions )
