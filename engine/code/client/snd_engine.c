@@ -395,7 +395,7 @@ void S_Engine_Update( int entityNum, int handle, const engineSoundParams_t *para
 	e->lastUpdate = now;
 	e->params = *params;
 
-	if ( ENGINE_DEBUG ) {
+	if ( ENGINE_DEBUG == 1 ) {
 		static int nextPrint;
 		const engineDef_t *def = &engineDefs[e->def];
 
@@ -405,6 +405,22 @@ void S_Engine_Update( int entityNum, int handle, const engineSoundParams_t *para
 				entityNum, params->rpm, params->rpmFrac, params->load, params->gear, e->curFreq,
 				e->dbgA, def->on[e->dbgA].f0, e->gain[e->dbgA],
 				e->dbgB, def->on[e->dbgB].f0, e->gain[e->dbgB] );
+		}
+	} else if ( ENGINE_DEBUG >= 2 ) {
+		static int nextList;
+
+		if ( now >= nextList ) {
+			nextList = now + 500;
+			for ( i = 0; i < MAX_ENGINE_EMITTERS; i++ ) {
+				engineEmitter_t *d = &engineEmitters[i];
+
+				if ( !d->active ) {
+					continue;
+				}
+				ENG_Printf( "emitter %2i: ent %3i rank %i rpm %4.0f load %.2f dopp %.2f vol %.2f presence %.2f age %i ms\n",
+					i, d->entityNum, d->params.rank, d->params.rpm, d->params.load, d->params.doppler,
+					d->curVol, d->presence, now - d->lastUpdate );
+			}
 		}
 	}
 }
@@ -430,7 +446,7 @@ S_Engine_EmitterInfo
 For the OpenAL backend, which streams every car separately.
 =================
 */
-qboolean S_Engine_EmitterInfo( int index, int *entityNum, qboolean *local ) {
+qboolean S_Engine_EmitterInfo( int index, int *entityNum, qboolean *local, vec3_t origin ) {
 	engineEmitter_t *e;
 
 	if ( index < 0 || index >= MAX_ENGINE_EMITTERS ) {
@@ -442,6 +458,9 @@ qboolean S_Engine_EmitterInfo( int index, int *entityNum, qboolean *local ) {
 	}
 	*entityNum = e->entityNum;
 	*local = ( e->params.flags & ENGINE_SOUND_LOCAL ) ? qtrue : qfalse;
+	if ( origin ) {
+		VectorCopy( e->params.origin, origin );
+	}
 	return qtrue;
 }
 

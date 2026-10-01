@@ -2660,6 +2660,10 @@ static float CG_CalcEngineSoundFrac( int rpm ) {
 #define CG_ENGINE_REMOTE_TAU	0.06f	// seconds, other cars (snapshot data)
 #define CG_ENGINE_LOAD_ATTACK	0.05f
 #define CG_ENGINE_LOAD_RELEASE	0.15f
+#define CG_ENGINE_REMOTE_ATTACK	0.15f	// bots pump the throttle: smooth other cars more
+#define CG_ENGINE_REMOTE_RELEASE	0.30f
+#define CG_ENGINE_SHIFT_DEBOUNCE	300		// msec, ignore gear hunting
+#define CG_ENGINE_POP_COOLDOWN	1500	// msec between two backfire bursts of one car
 #define CG_ENGINE_DOPPLER_TAU	0.10f
 #define CG_ENGINE_FOLLOW_LOAD	0.7f	// no usercmd when following another player
 #define CG_ENGINE_SOUND_SPEED	9000.0f	// units per second, same as s_alDopplerSpeed
@@ -2737,12 +2741,18 @@ CG_EngineEvents
 Gear change (ignition cut + clack) and backfires on lift-off.
 =================
 */
-static void CG_EngineEvents( centity_t *cent, clientInfo_t *ci, float rpm, float throttle, int gear ) {
+static void CG_EngineEvents( centity_t *cent, clientInfo_t *ci, float rpm, float throttle, int gear, int rank ) {
+	qboolean audible;
 	int pop;
 
-	if ( gear != cent->engineLastGear && gear > 0 && cent->engineLastGear > 0 ) {
+	// one-shots only for the own car and the nearest opponents
+	audible = ( rank <= ENGINE_RANK_NEAR ) ? qtrue : qfalse;
+
+	if ( gear != cent->engineLastGear && gear > 0 && cent->engineLastGear > 0 &&
+		cg.time - cent->engineLastShift > CG_ENGINE_SHIFT_DEBOUNCE ) {
+		cent->engineLastShift = cg.time;
 		cent->engineCutTime = cg.time + CG_ENGINE_CUT_MSEC;
-		if ( ci->engineNumShift ) {
+		if ( audible && ci->engineNumShift ) {
 			trap_S_StartSound( NULL, cent->currentState.number, CHAN_AUTO,
 				ci->engineShift[rand() % ci->engineNumShift] );
 		}
@@ -2750,10 +2760,11 @@ static void CG_EngineEvents( centity_t *cent, clientInfo_t *ci, float rpm, float
 
 	if ( throttle > 0.5f ) {
 		cent->enginePopsLeft = 0;
-	} else if ( ci->engineNumPops && !cent->enginePopsLeft && cent->engineLastThrottle >= 0.8f &&
-		throttle <= 0.1f && CG_CalcEngineSoundFrac( rpm ) >= 0.6f ) {
+	} else if ( audible && ci->engineNumPops && !cent->enginePopsLeft && cg.time >= cent->engineNextBurst &&
+		cent->engineLastThrottle >= 0.8f && throttle <= 0.1f && CG_CalcEngineSoundFrac( rpm ) >= 0.6f ) {
 		cent->enginePopsLeft = 1 + rand() % 3;
 		cent->enginePopTime = cg.time + 30 + rand() % 80;
+		cent->engineNextBurst = cg.time + CG_ENGINE_POP_COOLDOWN;
 	}
 
 	if ( cent->enginePopsLeft > 0 && ci->engineNumPops && cg.time >= cent->enginePopTime ) {
@@ -2796,14 +2807,17 @@ static void CG_EngineSoundCar( centity_t *cent, clientInfo_t *ci, qboolean local
 		cent->engineLastGear = gear;
 		cent->engineCutTime = 0;
 		cent->enginePopsLeft = 0;
+		cent->engineLastShift = 0;
+		cent->engineNextBurst = 0;
 		cent->engineSoundInitialized = qtrue;
 	}
 	cent->engineHeardTime = cg.time;
 
-	CG_EngineEvents( cent, ci, rpm, throttle, gear );
+	CG_EngineEvents( cent, ci, rpm, throttle, gear, rank );
 
 	// rev limiter: the falling half of the saw tooth is a fuel cut
-	limiterCut = ( rpm >= CP_RPM_MAX - CG_ENGINE_LIMITER_BAND && rpm < cent->engineLastRpm - 1.0f &&
+	// (own car only: snapshot rpm of other cars is too coarse and would cut all the time)
+	limiterCut = ( local && rpm >= CP_RPM_MAX - CG_ENGINE_LIMITER_BAND && rpm < cent->engineLastRpm - 1.0f &&
 		throttle > 0.01f ) ? qtrue : qfalse;
 	shifting = ( cg.time < cent->engineCutTime ) ? qtrue : qfalse;
 
@@ -2815,8 +2829,13 @@ static void CG_EngineSoundCar( centity_t *cent, clientInfo_t *ci, qboolean local
 	if ( limiterCut || shifting ) {
 		cent->engineLoad = 0.0f;	// a cut is instant, the mixer ramps it over one block
 	} else {
-		cent->engineLoad = CG_EngineSmooth( cent->engineLoad, targetLoad,
-			targetLoad > cent->engineLoad ? CG_ENGINE_LOAD_ATTACK : CG_ENGINE_LOAD_RELEASE );
+		if ( local ) {
+			cent->engineLoad = CG_EngineSmooth( cent->engineLoad, targetLoad,
+				targetLoad > cent->engineLoad ? CG_ENGINE_LOAD_ATTACK : CG_ENGINE_LOAD_RELEASE );
+		} else {
+			cent->engineLoad = CG_EngineSmooth( cent->engineLoad, targetLoad,
+				targetLoad > cent->engineLoad ? CG_ENGINE_REMOTE_ATTACK : CG_ENGINE_REMOTE_RELEASE );
+		}
 	}
 
 	// doppler from the motion of car and listener along the line between them

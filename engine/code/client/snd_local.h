@@ -243,7 +243,7 @@ void S_Engine_Shutdown( void );
 void S_Engine_StopAll( void );
 qboolean S_Engine_Active( void );
 void S_Engine_PaintDMA( portable_samplepair_t *paintbuffer, int count, int sndVol );
-qboolean S_Engine_EmitterInfo( int index, int *entityNum, qboolean *local );
+qboolean S_Engine_EmitterInfo( int index, int *entityNum, qboolean *local, vec3_t origin );
 void S_Engine_RenderEmitterPCM16( int index, short *out, int count, int outRate );
 
 // spatializes a channel

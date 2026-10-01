@@ -316,6 +316,8 @@ typedef struct centity_s {
 	int				enginePopTime;
 	int				engineLastPop;
 	int				engineHeardTime;	// last frame this car was handed to the mixer
+	int				engineLastShift;
+	int				engineNextBurst;	// no new backfire burst before this time
 
 	int				skidSoundTime;
 

@@ -2317,24 +2317,50 @@ void S_AL_Respatialize( int entityNum, const vec3_t origin, vec3_t axis[3], int 
 S_AL_EngineStreamUpdate
 
 Streams every engine sound emitter on its own source: the own car
-unspatialized, other cars tracking their entity. Keeps a few blocks queued.
+unspatialized, other cars positioned at their car. The sources are locked,
+so one-shot sounds can't steal them, and the queue grows with the frame
+time, so long frames (busy server, many bots) don't run the streams dry.
 =================
 */
-#define ENGINE_STREAM_RATE		44100
-#define ENGINE_STREAM_BLOCK		1024	// ~23 ms
-#define ENGINE_STREAM_QUEUED	4
+#define ENGINE_STREAM_RATE			44100
+#define ENGINE_STREAM_BLOCK			1024	// ~23 ms
+#define ENGINE_STREAM_MIN_QUEUED	3
+#define ENGINE_STREAM_MAX_QUEUED	12		// < MAX_STREAM_BUFFERS
 static int engineStreamEntity[ENGINE_MAX_EMITTERS];
+static qboolean engineStreamWasActive[ENGINE_MAX_EMITTERS];
+static cvar_t *s_engineDebugAL;
+static int engineStreamUnderruns;
 static void S_AL_EngineStreamUpdate( void )
 {
 	static short engineBlock[ENGINE_STREAM_BLOCK];
-	int i, stream, entityNum, wantEntity;
+	static int lastTime, maxGap, nextDebug;
+	int i, stream, entityNum, wantEntity, now, gap, target, handle;
 	qboolean local;
+	vec3_t origin;
 	ALint queued;
+
+	// frame gap, slowly forgotten: the queue must outlast the longest recent frame
+	now = Sys_Milliseconds( );
+	gap = lastTime ? now - lastTime : 0;
+	lastTime = now;
+	if( gap > 1000 )
+		gap = 1000;
+	maxGap = ( gap > maxGap ) ? gap : maxGap - 1;
+	if( maxGap < 0 )
+		maxGap = 0;
+	target = ( 2 * maxGap + 30 ) * ENGINE_STREAM_RATE / ( 1000 * ENGINE_STREAM_BLOCK ) + 1;
+	if( target < ENGINE_STREAM_MIN_QUEUED )
+		target = ENGINE_STREAM_MIN_QUEUED;
+	else if( target > ENGINE_STREAM_MAX_QUEUED )
+		target = ENGINE_STREAM_MAX_QUEUED;
 
 	for( i = 0; i < ENGINE_MAX_EMITTERS; i++ )
 	{
-		if( !S_Engine_EmitterInfo( i, &entityNum, &local ) )
-			continue;	// inactive: the stream runs dry and is released
+		if( !S_Engine_EmitterInfo( i, &entityNum, &local, origin ) )
+		{
+			engineStreamWasActive[i] = qfalse;	// inactive: the stream runs dry and is released
+			continue;
+		}
 
 		stream = ENGINE_RAW_STREAM_BASE + i;
 		wantEntity = local ? -1 : entityNum;
@@ -2346,9 +2372,18 @@ static void S_AL_EngineStreamUpdate( void )
 
 		queued = 0;
 		if( streamSourceHandles[stream] != -1 )
-			qalGetSourcei( streamSources[stream], AL_BUFFERS_QUEUED, &queued );
+		{
+			ALint state;
 
-		while( queued < ENGINE_STREAM_QUEUED )
+			qalGetSourcei( streamSources[stream], AL_BUFFERS_QUEUED, &queued );
+			qalGetSourcei( streamSources[stream], AL_SOURCE_STATE, &state );
+			if( state == AL_STOPPED && engineStreamWasActive[i] )
+				engineStreamUnderruns++;
+		}
+		else if( engineStreamWasActive[i] )
+			engineStreamUnderruns++;
+
+		while( queued < target )
 		{
 			S_Engine_RenderEmitterPCM16( i, engineBlock, ENGINE_STREAM_BLOCK, ENGINE_STREAM_RATE );
 			S_AL_RawSamples( stream, ENGINE_STREAM_BLOCK, ENGINE_STREAM_RATE, 2, 1,
@@ -2357,6 +2392,25 @@ static void S_AL_EngineStreamUpdate( void )
 				break;
 			queued++;
 		}
+
+		handle = streamSourceHandles[stream];
+		engineStreamWasActive[i] = ( handle != -1 ) ? qtrue : qfalse;
+		if( handle == -1 || wantEntity < 0 )
+			continue;
+
+		// other cars: keep the source to ourselves and place it at the car
+		if( !srcList[handle].isLocked )
+			S_AL_SrcLock( handle );
+		S_AL_SanitiseVector( origin );
+		qalSource3f( streamSources[stream], AL_POSITION, origin[0], origin[1], origin[2] );
+		S_AL_Gain( streamSources[stream], s_volume->value * s_alGain->value );
+	}
+
+	if( s_engineDebugAL && s_engineDebugAL->integer >= 2 && now >= nextDebug )
+	{
+		nextDebug = now + 500;
+		Com_Printf( "engine streams: queue %i blocks (max frame gap %i ms), underruns %i\n",
+			target, maxGap, engineStreamUnderruns );
 	}
 }
 
@@ -2605,6 +2659,7 @@ qboolean S_AL_Init( soundInterface_t *si )
 	s_alPrecache = Cvar_Get( "s_alPrecache", "1", CVAR_ARCHIVE );
 	s_alGain = Cvar_Get( "s_alGain", "1.0", CVAR_ARCHIVE );
 	s_alSources = Cvar_Get( "s_alSources", "96", CVAR_ARCHIVE );
+	s_engineDebugAL = Cvar_Get( "s_engineDebug", "0", CVAR_TEMP );
 	s_alDopplerFactor = Cvar_Get( "s_alDopplerFactor", "1.0", CVAR_ARCHIVE );
 	s_alDopplerSpeed = Cvar_Get( "s_alDopplerSpeed", "9000", CVAR_ARCHIVE );
 	s_alMinDistance = Cvar_Get( "s_alMinDistance", "120", CVAR_CHEAT );
