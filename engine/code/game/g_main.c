@@ -1302,6 +1302,12 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
 		return;
 	}
 
+	/* Ghost races are solo time trials without opponents; they never
+	   produce a ladder result. */
+	if ( g_gametype.integer == GT_GHOST ) {
+		return;
+	}
+
         if ( trap_Cvar_VariableIntegerValue( "sv_ladderEnabled" ) == 0 ) {
                 return;
         }

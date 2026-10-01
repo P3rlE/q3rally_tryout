@@ -2178,6 +2178,7 @@ void CG_AddGhostEntity( void );
 void CG_ResetBaseGhost( void );
 qboolean CG_LoadGhostFromFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime );
 void CG_LoadPersonalGhost( void );
+int CG_GhostPlaybackMode( void );
 void CG_AttemptSavePersonalGhost( int finishTime );
 void CG_DrawRaceCountDown( void );
 void CG_RaceCountDown( const char *str, int secondsLeft );

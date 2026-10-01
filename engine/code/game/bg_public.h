@@ -157,7 +157,8 @@ typedef enum {
         GT_ELIMINATION     =  5,    // elimination race
         GT_DEATHMATCH      =  6,    // free-for-all deathmatch
         GT_SPRINT          =  7,    // point-to-point sprint race
-        // 8-15: reserved for future non-team modes
+        GT_GHOST           =  8,    // ghost race: solo laps against a ghost, no bots
+        // 9-15: reserved for future non-team modes
 
         // --- team gametypes (16+) ---
         GT_TEAM            = 16,    // team deathmatch
@@ -975,6 +976,17 @@ qboolean BG_UnpackEngineState( int packed, float *rpm, float *throttle, int *gea
 // END
 
 qboolean        BG_PlayerTouchesItem( playerState_t *ps, entityState_t *item, int atTime );
+
+// Q3Rally gametype classification (bg_misc.c).
+// Register new gametypes here instead of extending hard-coded lists in
+// game, cgame and ui.
+qboolean        BG_GametypeIsRace( int gametype );
+qboolean        BG_GametypeIsTimedRace( int gametype );
+qboolean        BG_GametypeIsNonDMRace( int gametype, qboolean eliminationWeapons );
+qboolean        BG_GametypeHasRaceFinish( int gametype );
+qboolean        BG_GametypeAllowsBots( int gametype );
+const char      *BG_GametypeEntityName( int gametype );
+const char      *BG_GametypeDisplayName( int gametype );
 
 
 #define ARENAS_PER_TIER         4

@@ -1387,6 +1387,11 @@ char *ClientConnect( int clientNum, qboolean firstTime, qboolean isBot ) {
 // END
 
 	if( isBot ) {
+		// Q3Rally: bots carried over from a previous map are rejected in
+		// human-only gametypes (GT_GHOST)
+		if ( !BG_GametypeAllowsBots( g_gametype.integer ) ) {
+			return "Bots are not allowed in this gametype.";
+		}
 		ent->r.svFlags |= SVF_BOT;
 		ent->inuse = qtrue;
 		if( !G_BotConnect( clientNum, !firstTime ) ) {

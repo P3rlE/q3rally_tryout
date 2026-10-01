@@ -165,6 +165,7 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
     <div class="mode-card"><div class="mode-num">g_gametype 5</div><div class="mode-name">Elimination</div><div class="mode-tag">GT_ELIMINATION</div><div class="mode-desc">Lap racing with knockout waves at set intervals. Maps must carry <code>elimination "1"</code>.</div></div>
     <div class="mode-card"><div class="mode-num">g_gametype 6</div><div class="mode-name">Deathmatch</div><div class="mode-tag">GT_DEATHMATCH</div><div class="mode-desc">Classic FFA. Kills +1, suicides −1. Ends at frag or time limit.</div></div>
     <div class="mode-card"><div class="mode-num">g_gametype 7</div><div class="mode-name">Sprint</div><div class="mode-tag">GT_SPRINT</div><div class="mode-desc">Point-to-point single-lap race. <code>laplimit</code> is forced to 1 automatically.</div></div>
+    <div class="mode-card"><div class="mode-num">g_gametype 8</div><div class="mode-name">Ghost Race</div><div class="mode-tag">GT_GHOST</div><div class="mode-desc">Lap racing against your ghost, no AI drivers (bots are rejected). Ghost playback is on by default: your personal ghost, otherwise the server base ghost. Every lap is recorded and feeds the bot racing lines. No wins, losses or ladder results.</div></div>
   </div>
 
   <h3>Team Modes</h3>
@@ -185,6 +186,7 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
       <tr><td>Racing / Team Racing</td><td>Best race time / progress</td><td>No effect</td><td>No effect</td></tr>
       <tr><td>Racing DM / Team Racing DM</td><td>Best adjusted time</td><td>−500 ms from time</td><td>No effect</td></tr>
       <tr><td>Sprint</td><td>Fastest point-to-point</td><td>No effect</td><td>No effect</td></tr>
+      <tr><td>Ghost Race</td><td>None (solo time trial)</td><td>No effect</td><td>No effect</td></tr>
       <tr><td>Elimination</td><td>Last survivor</td><td>No effect</td><td>—</td></tr>
       <tr><td>Derby / LCS</td><td>Last car alive</td><td>+1</td><td>−1</td></tr>
       <tr><td>Deathmatch / Team DM</td><td>Frag or time limit</td><td>+1</td><td>−1</td></tr>
@@ -366,7 +368,8 @@ docker run --rm -it -p 27960:27960/udp \
       <tr><td>GT_ELIMINATION</td><td>Elimination</td><td class="same">5</td><td class="bad-val">6 ⚠️</td><td class="same">5</td></tr>
       <tr><td>GT_DEATHMATCH</td><td>Deathmatch</td><td class="same">6</td><td class="bad-val">7 ⚠️</td><td class="same">6</td></tr>
       <tr><td>GT_SPRINT</td><td>Sprint</td><td class="same">—</td><td class="bad-val">2 ⚠️</td><td class="new-val">7 (new)</td></tr>
-      <tr><td colspan="5" style="font-size:11px;color:var(--text-muted);font-style:italic;padding:6px 16px">8–15 reserved for future non-team modes</td></tr>
+      <tr><td>GT_GHOST</td><td>Ghost Race</td><td class="same">—</td><td class="same">—</td><td class="new-val">8 (new)</td></tr>
+      <tr><td colspan="5" style="font-size:11px;color:var(--text-muted);font-style:italic;padding:6px 16px">9–15 reserved for future non-team modes</td></tr>
       <tr><td>GT_TEAM</td><td>Team DM</td><td class="changed">7</td><td class="bad-val">8 ⚠️</td><td class="new-val">16</td></tr>
       <tr><td>GT_TEAM_RACING</td><td>Team Racing</td><td class="changed">8</td><td class="bad-val">9 ⚠️</td><td class="new-val">17</td></tr>
       <tr><td>GT_TEAM_RACING_DM</td><td>Team Racing DM</td><td class="changed">9</td><td class="bad-val">10 ⚠️</td><td class="new-val">18</td></tr>

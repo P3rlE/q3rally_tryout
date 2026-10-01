@@ -104,25 +104,14 @@ Helper function to determine if current gametype is racing-based
 =================
 */
 static qboolean CG_IsRacingGametype(void) {
-    return (cgs.gametype == GT_RACING ||
-            cgs.gametype == GT_SPRINT ||
-            cgs.gametype == GT_TEAM_RACING ||
-            cgs.gametype == GT_RACING_DM ||
-            cgs.gametype == GT_TEAM_RACING_DM ||
-            cgs.gametype == GT_ELIMINATION ||
-            cgs.gametype == GT_LCS ||
-            cgs.gametype == GT_DERBY ||
-            cgs.gametype == GT_SINGLE_PLAYER);
+    return ( BG_GametypeIsRace( cgs.gametype ) ||
+             cgs.gametype == GT_LCS ||
+             cgs.gametype == GT_DERBY );
 }
 
 /* Gametypes where finishRaceTime means a race finish, not an elimination. */
 static qboolean CG_HasRaceFinishStatus(void) {
-    return (cgs.gametype == GT_RACING ||
-            cgs.gametype == GT_SPRINT ||
-            cgs.gametype == GT_TEAM_RACING ||
-            cgs.gametype == GT_RACING_DM ||
-            cgs.gametype == GT_TEAM_RACING_DM ||
-            cgs.gametype == GT_SINGLE_PLAYER);
+    return BG_GametypeHasRaceFinish( cgs.gametype );
 }
 
 /*
@@ -177,6 +166,7 @@ static void CG_InitScoreboardColumns(void) {
         case GT_SPRINT:
         case GT_TEAM_RACING:
         case GT_SINGLE_PLAYER:
+        case GT_GHOST:
             /* Pure racing - only times matter */
             showTimes = qtrue;
             showLapTimes = qtrue;
@@ -291,7 +281,7 @@ static void CG_InitScoreboardColumns(void) {
         columns[SBCOL_TOTALTIME].width = COL_TOTALTIME_WIDTH;
         
         /* Different header based on racing type */
-        if (cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_SINGLE_PLAYER) {
+        if (BG_GametypeIsTimedRace(cgs.gametype)) {
             columns[SBCOL_TOTALTIME].header = "RACE TIME";
         } else {
             columns[SBCOL_TOTALTIME].header = "TOTAL";
@@ -1222,7 +1212,7 @@ qboolean CG_DrawModernScoreboard(void) {
         /* Different message based on gametype */
         if (cgs.gametype == GT_DERBY) {
             fragMsg = va("Wrecked by %s", cg.killerName);
-        } else if (cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_TEAM_RACING) {
+        } else if (cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_GHOST) {
             fragMsg = va("Crashed by %s", cg.killerName);
         } else {
             fragMsg = va("Eliminated by %s", cg.killerName);
@@ -1469,6 +1459,7 @@ void CG_DrawScoreboardGameModeInfo(void) {
         case GT_RACING:           gametypeName = "Racing"; break;
         case GT_RACING_DM:        gametypeName = "Racing Deathmatch"; break;
         case GT_SPRINT:           gametypeName = "Sprint"; break;
+        case GT_GHOST:            gametypeName = "Ghost Race"; break;
         case GT_DERBY:            gametypeName = "Demolition Derby"; break;
         case GT_DEATHMATCH:       gametypeName = "Deathmatch"; break;
         case GT_LCS:              gametypeName = "Last Car Standing"; break;
@@ -1527,6 +1518,7 @@ const char* CG_GetGametypeScoreLabel(void) {
         case GT_RACING:
         case GT_SPRINT:
         case GT_TEAM_RACING:
+        case GT_GHOST:
             return "TIME";
         case GT_RACING_DM:
         case GT_TEAM_RACING_DM:

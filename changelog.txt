@@ -1,5 +1,36 @@
 !!! --- Q3Rally Changelog --- !!!
 
+unreleased
+
+Added:
+
+- New gametype Ghost Race (GT_GHOST, g_gametype 8). Replaces the "Ghost-Only Race"
+  checkbox of the start-server menu. Lap racing against a ghost without AI drivers;
+  works on dedicated servers, via console and in map rotations (q3r_ghost.cfg).
+  Ghost recording, personal/server-base playback, split times, intro camera and the
+  ghost-based bot racing lines work exactly as in the other race modes.
+- Bots are rejected server-side in Ghost Race (addbot, bot_minplayers, bots carried
+  over from the previous map).
+- With cg_ghostPlayback 0, Ghost Race automatically shows the personal ghost and falls
+  back to the server base ghost ("AUTO" in the HUD options).
+- Central gametype classification in bg_misc.c (BG_GametypeIsRace and friends).
+
+Changed:
+
+- The start-server menu no longer overwrites the archived cg_ghostPlayback setting.
+- Ghost Race counts no wins/losses and no rank score and is never sent to the ladder;
+  best lap times are still recorded.
+- tools/startserver/cli.py now uses the real g_gametype values (sprint 7, team modes
+  16+, koth 22, ghost 8).
+
+Fixed:
+
+- Map entity "gametype" filter used a table that did not match the GT_* values
+  (wrong names from Single Player on, out-of-bounds read for team modes).
+- callvote g_gametype read past the end of an old Quake III name table and accepted
+  unused gametype numbers.
+- Server browser game type labels were looked up by index and wrong for most modes.
+
 new in v0.8a
 
 Added:

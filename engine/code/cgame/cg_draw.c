@@ -1058,9 +1058,7 @@ static void CG_DrawRallyTelemetryHud( void ) {
 
 	ps = &cg.snap->ps;
 	cent = &cg_entities[ps->clientNum];
-	raceMode = ( cgs.gametype == GT_RACING || cgs.gametype == GT_RACING_DM ||
-	             cgs.gametype == GT_SPRINT || cgs.gametype == GT_TEAM_RACING ||
-	             cgs.gametype == GT_TEAM_RACING_DM || cgs.gametype == GT_SINGLE_PLAYER );
+	raceMode = BG_GametypeHasRaceFinish( cgs.gametype );
 	raceCombatMode = ( cgs.gametype == GT_RACING_DM ||
 	                   cgs.gametype == GT_TEAM_RACING_DM );
 	showWeaponTelemetry = raceCombatMode || cgs.gametype == GT_LCS ||
@@ -1449,19 +1447,20 @@ static void CG_DrawRallyTelemetryHud( void ) {
 		} else {
 			Q_strncpyz( modeTitle,
 			            ( cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM )
-			            ? "RACE COMBAT" : "RACE STATUS", sizeof(modeTitle) );
+			            ? "RACE COMBAT"
+			            : ( cgs.gametype == GT_GHOST ? "GHOST RACE" : "RACE STATUS" ), sizeof(modeTitle) );
 			if ( cgs.laplimit > 1 )
 				Com_sprintf( modeValue, sizeof(modeValue), "LAP %d/%d", lap, cgs.laplimit );
 			else
 				Com_sprintf( modeValue, sizeof(modeValue), "LAP %d", lap );
 		}
 		CG_DrawIngameSmallString( 190, 418, modeTitle, mutedColor );
-		if ( cg_ghostPlayback.integer ) {
+		if ( CG_GhostPlaybackMode() ) {
 			const char *ghostStatus;
 			vec4_t ghostStatusColor;
 
 			Vector4Copy( mutedColor, ghostStatusColor );
-			if ( cg_ghostPlayback.integer == 1 ) {
+			if ( CG_GhostPlaybackMode() == 1 ) {
 				CG_LoadPersonalGhost();
 				if ( cg.personalGhostAvailable ) {
 					ghostStatus = "PERSONAL GHOST";
@@ -1472,7 +1471,7 @@ static void CG_DrawRallyTelemetryHud( void ) {
 				} else {
 					ghostStatus = "SEARCHING GHOST";
 				}
-			} else if ( cg_ghostPlayback.integer == 2 ) {
+			} else if ( CG_GhostPlaybackMode() == 2 ) {
 				if ( cg.baseGhostAvailable ) {
 					ghostStatus = "SERVER BASE";
 					Vector4Copy( blueColor, ghostStatusColor );
@@ -1842,11 +1841,7 @@ static float CG_DrawRallyPowerups( float y ) {
 	}
 
 	// draw the icons and timers
-	raceTelemetryMode = ( cgs.gametype == GT_RACING ||
-		cgs.gametype == GT_RACING_DM || cgs.gametype == GT_SPRINT ||
-		cgs.gametype == GT_TEAM_RACING ||
-		cgs.gametype == GT_TEAM_RACING_DM ||
-		cgs.gametype == GT_SINGLE_PLAYER );
+	raceTelemetryMode = BG_GametypeHasRaceFinish( cgs.gametype );
 	loadoutTelemetryMode = ( cgs.gametype == GT_DEATHMATCH ||
 		cgs.gametype == GT_RACING_DM ||
 		cgs.gametype == GT_TEAM_RACING_DM ||

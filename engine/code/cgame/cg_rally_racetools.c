@@ -331,8 +331,36 @@ static qboolean CG_SelectGhostFrames( ghostRecording_t *recording, int targetOff
         return qtrue;
 }
 
+/*
+=================
+CG_GhostPlaybackMode
+
+Effective ghost playback mode: 0 off, 1 personal, 2 server base.
+cg_ghostPlayback is the player's archived preference and is never rewritten
+by the game. In GT_GHOST a value of 0 means "automatic": the personal ghost
+for the current car, falling back to the server base ghost when no personal
+ghost exists.
+=================
+*/
+int CG_GhostPlaybackMode( void ) {
+        int mode = cg_ghostPlayback.integer;
+
+        if ( mode < 0 || mode > 2 ) {
+                mode = 0;
+        }
+
+        if ( mode == 0 && cgs.gametype == GT_GHOST ) {
+                if ( cg.personalGhostSearchValid && !cg.personalGhostSearchFound && cg.baseGhostAvailable ) {
+                        return 2;
+                }
+                return 1;
+        }
+
+        return mode;
+}
+
 static ghostRecording_t *CG_GetActiveGhostRecording( void ) {
-        switch ( cg_ghostPlayback.integer ) {
+        switch ( CG_GhostPlaybackMode() ) {
         case 1:
                 return cg.ghostPlayback.valid ? &cg.ghostPlayback : NULL;
         case 2:
@@ -1293,7 +1321,7 @@ void CG_AddGhostEntity( void ) {
 	int i;
 	byte ghostAlpha;
 
-        if ( cg_ghostPlayback.integer <= 0 ) {
+        if ( CG_GhostPlaybackMode() <= 0 ) {
                 return;
         }
 
@@ -1301,7 +1329,7 @@ void CG_AddGhostEntity( void ) {
                 return;
         }
 
-        if ( cg_ghostPlayback.integer == 1 && !cg.personalGhostAvailable ) {
+        if ( CG_GhostPlaybackMode() == 1 && !cg.personalGhostAvailable ) {
                 CG_LoadPersonalGhost();
         }
 

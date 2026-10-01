@@ -310,8 +310,7 @@ static qboolean HUDEntry_IsUnavail( const hudToggleEntry_t *e ) {
     if ( e->gameTypeOnly == HUDOPT_MODE_ANY )
         return qfalse;
     if ( e->gameTypeOnly == HUDOPT_MODE_SCORE_PANEL )
-        return ( ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT ||
-                   cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_SINGLE_PLAYER ) ||
+        return ( BG_GametypeIsTimedRace( cgs.gametype ) ||
                  cgs.gametype == GT_DERBY );
     if ( e->gameTypeOnly == HUDOPT_MODE_RALLY_RACE )
         return !isRallyRace();
@@ -333,6 +332,10 @@ Returns the badge string for a given entry, reflecting cycler states.
 static const char *HUDEntry_BadgeLabel( const hudToggleEntry_t *e ) {
     if ( e->isCycler ) {
         int state = e->cvar->integer;
+        /* In Ghost Race "off" means automatic selection (see CG_GhostPlaybackMode). */
+        if ( e->cvar == &cg_ghostPlayback && cgs.gametype == GT_GHOST && state == 0 ) {
+            return "AUTO";
+        }
         if ( e->cycleLabels && state >= 0 && state <= e->onValue &&
              e->cycleLabels[state] ) {
             return e->cycleLabels[state];
