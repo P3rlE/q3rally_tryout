@@ -661,6 +661,9 @@ static void S_AL_ScaleGain(src_t *chksrc, vec3_t origin)
 	if ( chksrc->sfx >= 0 ) {
 		gain *= S_SfxGroupGain( chksrc->sfx );	// Q3Rally volume groups
 	}
+	if ( chksrc->channel == CHAN_ANNOUNCER ) {
+		gain *= S_AnnouncerVolume();
+	}
 	
 	if(!chksrc->local)
 		distance = Distance(origin, lastListenerOrigin);
@@ -1270,6 +1273,7 @@ void S_AL_StartLocalSound(sfxHandle_t sfx, int channel)
 
 	// Set up the effect
 	S_AL_SrcSetup(src, sfx, SRCPRI_LOCAL, -1, channel, qtrue);
+	S_AL_ScaleGain(&srcList[src], lastListenerOrigin);	// Q3Rally: group and announcer volume
 
 	// Start it playing
 	srcList[src].isPlaying = qtrue;

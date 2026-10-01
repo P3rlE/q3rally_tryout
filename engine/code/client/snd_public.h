@@ -64,6 +64,7 @@ int S_Engine_Register( const char *dir );
 void S_SetSfxGroup( sfxHandle_t sfx, int group );
 float S_SfxGroupGain( int sfx );
 float S_MusicVolume( void );
+float S_AnnouncerVolume( void );
 void S_Engine_Update( int entityNum, int handle, const engineSoundParams_t *params );
 
 void S_Update( void );

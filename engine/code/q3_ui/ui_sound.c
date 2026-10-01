@@ -60,6 +60,7 @@ SOUND OPTIONS MENU
 #define ID_AMBIENTVOLUME	23
 #define ID_WEATHERVOLUME	24
 #define ID_CHECKPOINTSOUND	25
+#define ID_ANNOUNCERVOLUME	26
 
 #define SOUND_FRAME_X               24
 #define SOUND_FRAME_Y               20
@@ -74,7 +75,7 @@ SOUND OPTIONS MENU
 #define SOUND_DETAIL_WIDTH          556
 #define SOUND_DETAIL_HEIGHT         292
 #define SOUND_ROW_HEIGHT            24
-#define SOUND_ROW_GAP               4
+#define SOUND_ROW_GAP               3
 #define SOUND_ROW_START_Y           148
 #define SOUND_COLUMN_X              236
 #define SOUND_COLUMN_WIDTH          344
@@ -132,6 +133,7 @@ typedef struct {
 	menuslider_s		enginevolume;
 	menuslider_s		ambientvolume;
 	menuslider_s		weathervolume;
+	menuslider_s		announcervolume;
 	menulist_s			checkpointSound;
 	menulist_s  		soundSystem;
 	menulist_s			quality;
@@ -149,6 +151,7 @@ typedef struct {
 	float				enginevolume_original;
 	float				ambientvolume_original;
 	float				weathervolume_original;
+	float				announcervolume_original;
 	int					checkpointSound_original;
 	int					soundSystem_original;
 	int					quality_original;
@@ -415,6 +418,9 @@ static void UI_SoundOptionsMenu_Event( void* ptr, int event ) {
 		trap_Cvar_SetValue( "s_weatherVolume", soundOptionsInfo.weathervolume.curvalue / 10 );
 		soundOptionsInfo.weathervolume_original = soundOptionsInfo.weathervolume.curvalue;
 
+		trap_Cvar_SetValue( "s_announcerVolume", soundOptionsInfo.announcervolume.curvalue / 10 );
+		soundOptionsInfo.announcervolume_original = soundOptionsInfo.announcervolume.curvalue;
+
 		trap_Cvar_SetValue( "cg_checkpointSound", soundOptionsInfo.checkpointSound.curvalue );
 		soundOptionsInfo.checkpointSound_original = soundOptionsInfo.checkpointSound.curvalue;
 
@@ -483,6 +489,7 @@ static void SoundOptions_UpdateMenuItems( void )
 	if ( soundOptionsInfo.enginevolume_original != soundOptionsInfo.enginevolume.curvalue ||
 		soundOptionsInfo.ambientvolume_original != soundOptionsInfo.ambientvolume.curvalue ||
 		soundOptionsInfo.weathervolume_original != soundOptionsInfo.weathervolume.curvalue ||
+		soundOptionsInfo.announcervolume_original != soundOptionsInfo.announcervolume.curvalue ||
 		soundOptionsInfo.checkpointSound_original != soundOptionsInfo.checkpointSound.curvalue )
 	{
 		soundOptionsInfo.apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
@@ -699,6 +706,18 @@ static void UI_SoundOptionsMenu_Init( void ) {
 	soundOptionsInfo.weathervolume.maxvalue			= 10;
 
 	y += BIGCHAR_HEIGHT+2;
+	soundOptionsInfo.announcervolume.generic.type		= MTYPE_SLIDER;
+	soundOptionsInfo.announcervolume.generic.name		= "Announcer Volume:";
+	soundOptionsInfo.announcervolume.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+	soundOptionsInfo.announcervolume.generic.callback	= UI_SoundOptionsMenu_Event;
+	soundOptionsInfo.announcervolume.generic.ownerdraw	= UI_RallySlider_Draw;
+	soundOptionsInfo.announcervolume.generic.id			= ID_ANNOUNCERVOLUME;
+	soundOptionsInfo.announcervolume.generic.x			= 400;
+	soundOptionsInfo.announcervolume.generic.y			= y;
+	soundOptionsInfo.announcervolume.minvalue			= 0;
+	soundOptionsInfo.announcervolume.maxvalue			= 10;
+
+	y += BIGCHAR_HEIGHT+2;
 	soundOptionsInfo.checkpointSound.generic.type		= MTYPE_SPINCONTROL;
 	soundOptionsInfo.checkpointSound.generic.name		= "Checkpoint Callout:";
 	soundOptionsInfo.checkpointSound.generic.flags		= QMF_PULSEIFFOCUS|QMF_SMALLFONT;
@@ -794,6 +813,7 @@ static void UI_SoundOptionsMenu_Init( void ) {
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.enginevolume );
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.ambientvolume );
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.weathervolume );
+	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.announcervolume );
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.checkpointSound );
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.soundSystem );
 	Menu_AddItem( &soundOptionsInfo.menu, ( void * ) &soundOptionsInfo.quality );
@@ -806,6 +826,7 @@ static void UI_SoundOptionsMenu_Init( void ) {
 	soundOptionsInfo.enginevolume.curvalue = soundOptionsInfo.enginevolume_original = trap_Cvar_VariableValue( "s_engineVolume" ) * 10;
 	soundOptionsInfo.ambientvolume.curvalue = soundOptionsInfo.ambientvolume_original = trap_Cvar_VariableValue( "s_ambientVolume" ) * 10;
 	soundOptionsInfo.weathervolume.curvalue = soundOptionsInfo.weathervolume_original = trap_Cvar_VariableValue( "s_weatherVolume" ) * 10;
+	soundOptionsInfo.announcervolume.curvalue = soundOptionsInfo.announcervolume_original = trap_Cvar_VariableValue( "s_announcerVolume" ) * 10;
 	// cgame owns this cvar; make sure it exists with its default before the first map
 	trap_Cvar_Register( NULL, "cg_checkpointSound", "1", CVAR_ARCHIVE );
 	soundOptionsInfo.checkpointSound.curvalue = soundOptionsInfo.checkpointSound_original =
@@ -846,15 +867,18 @@ static void UI_SoundOptionsMenu_Init( void ) {
 	Sound_SetSliderBounds( &soundOptionsInfo.weathervolume,
 		ID_WEATHERVOLUME, "Weather volume",
 		SOUND_ROW_START_Y + 4 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
+	Sound_SetSliderBounds( &soundOptionsInfo.announcervolume,
+		ID_ANNOUNCERVOLUME, "Announcer volume",
+		SOUND_ROW_START_Y + 5 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
 	Sound_SetSettingBounds( &soundOptionsInfo.checkpointSound.generic,
 		ID_CHECKPOINTSOUND, "Checkpoint callout",
-		SOUND_ROW_START_Y + 5 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
+		SOUND_ROW_START_Y + 6 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
 	Sound_SetSettingBounds( &soundOptionsInfo.soundSystem.generic,
 		ID_SOUNDSYSTEM, "Sound system",
-		SOUND_ROW_START_Y + 6 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
+		SOUND_ROW_START_Y + 7 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
 	Sound_SetSettingBounds( &soundOptionsInfo.quality.generic,
 		ID_QUALITY, "SDL quality",
-		SOUND_ROW_START_Y + 7 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
+		SOUND_ROW_START_Y + 8 * ( SOUND_ROW_HEIGHT + SOUND_ROW_GAP ) );
 
 	Sound_SetBounds( &soundOptionsInfo.back.generic, ID_BACK,
 		SOUND_NAV_X, SOUND_ACTION_Y, SOUND_ACTION_WIDTH,

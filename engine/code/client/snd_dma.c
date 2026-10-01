@@ -645,6 +645,16 @@ static void S_Base_StartSoundEx( vec3_t origin, int entityNum, int entchannel, s
 	ch->rightvol = ch->master_vol;		// unless the game isn't running
 	ch->doppler = qfalse;
 	ch->fullVolume = fullVolume;
+	// Q3Rally: apply volume groups right away, not only at the next spatialize
+	{
+		float groupGain = S_SfxGroupGain( (int)( sfx - s_knownSfx ) );
+
+		if ( entchannel == CHAN_ANNOUNCER ) {
+			groupGain *= S_AnnouncerVolume();
+		}
+		ch->leftvol = (int)( ch->leftvol * groupGain );
+		ch->rightvol = (int)( ch->rightvol * groupGain );
+	}
 }
 
 /*
@@ -1181,6 +1191,10 @@ void S_Base_Respatialize( int entityNum, const vec3_t head, vec3_t axis[3], int 
 		// Q3Rally volume groups (ambience, weather)
 		{
 			float groupGain = S_SfxGroupGain( (int)( ch->thesfx - s_knownSfx ) );
+
+			if ( ch->entchannel == CHAN_ANNOUNCER ) {
+				groupGain *= S_AnnouncerVolume();
+			}
 
 			if ( groupGain < 1.0f ) {
 				ch->leftvol = (int)( ch->leftvol * groupGain );

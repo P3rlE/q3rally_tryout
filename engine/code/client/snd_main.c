@@ -31,6 +31,7 @@ cvar_t *s_muted;
 cvar_t *s_musicVolume;
 cvar_t *s_ambientVolume;
 cvar_t *s_weatherVolume;
+cvar_t *s_announcerVolume;
 
 // Q3Rally volume groups, indexed by sfx handle (both backends use indices < 4096)
 #define MAX_SFX_GROUPS	4096
@@ -145,6 +146,12 @@ float S_SfxGroupGain( int sfx )
 		default:
 			return 1.0f;
 	}
+}
+
+// everything played on CHAN_ANNOUNCER (countdown, lap and checkpoint calls, awards)
+float S_AnnouncerVolume( void )
+{
+	return S_GroupVolume( s_announcerVolume );
 }
 
 float S_MusicVolume( void )
@@ -564,6 +571,7 @@ void S_Init( void )
 	s_musicVolume = Cvar_Get( "s_musicvolume", "0.5", CVAR_ARCHIVE );
 	s_ambientVolume = Cvar_Get( "s_ambientVolume", "1", CVAR_ARCHIVE );
 	s_weatherVolume = Cvar_Get( "s_weatherVolume", "1", CVAR_ARCHIVE );
+	s_announcerVolume = Cvar_Get( "s_announcerVolume", "1", CVAR_ARCHIVE );
 	s_muted = Cvar_Get("s_muted", "0", CVAR_ROM);
 	s_doppler = Cvar_Get( "s_doppler", "1", CVAR_ARCHIVE );
 	s_backend = Cvar_Get( "s_backend", "", CVAR_ROM );
