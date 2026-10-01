@@ -36,6 +36,7 @@ GNU General Public License for more details.
 #define ENG_Free(ptr)		Z_Free(ptr)
 #define ENG_Printf			Com_Printf
 #define ENG_Milliseconds	Com_Milliseconds
+extern int s_soundtime;
 #endif
 
 #define MAX_ENGINE_DEFS			32
@@ -86,13 +87,18 @@ typedef struct {
 static engineDef_t		engineDefs[MAX_ENGINE_DEFS];
 static engineEmitter_t	engineEmitters[MAX_ENGINE_EMITTERS];
 
+static int		engineNanCount;
+
 #ifndef SND_ENGINE_STANDALONE
 static cvar_t	*s_engineVolume;
 static cvar_t	*s_engineDebug;
+static cvar_t	*s_engineRemote;
 #define ENGINE_VOLUME	( s_engineVolume ? s_engineVolume->value : 1.0f )
 #define ENGINE_DEBUG	( s_engineDebug ? s_engineDebug->integer : 0 )
 #define ENGINE_DOPPLER	( s_doppler ? s_doppler->integer : 1 )
+#define ENGINE_REMOTE	( s_engineRemote ? s_engineRemote->integer : 1 )
 #else
+#define ENGINE_REMOTE	1
 #define ENGINE_VOLUME	1.0f
 #define ENGINE_DEBUG	0
 #define ENGINE_DOPPLER	1
@@ -303,7 +309,17 @@ static void S_Engine_RenderEmitter( engineEmitter_t *e, float *out, int count, i
 			float c2 = xm1 - 2.5f * x0 + 2.0f * x1 - 0.5f * x2;
 			float c3 = 0.5f * ( x2 - xm1 ) + 1.5f * ( x0 - x1 );
 
-			out[k] += g * ( ( ( c3 * fr + c2 ) * fr + c1 ) * fr + x0 );
+			{
+				float v = g * ( ( ( c3 * fr + c2 ) * fr + c1 ) * fr + x0 );
+
+				if ( v != v ) {
+					// never let a NaN reach the mixer: restart this emitter
+					engineNanCount++;
+					e->primed = qfalse;
+					return;
+				}
+				out[k] += v;
+			}
 
 			pos += p * rateScale;
 			while ( pos >= len ) {
@@ -362,6 +378,9 @@ void S_Engine_Update( int entityNum, int handle, const engineSoundParams_t *para
 
 	if ( handle <= 0 || handle > MAX_ENGINE_DEFS || !engineDefs[handle - 1].valid || !params ) {
 		return;
+	}
+	if ( !ENGINE_REMOTE && !( params->flags & ENGINE_SOUND_LOCAL ) ) {
+		return;	// s_engineRemote 0: only the own car (for testing)
 	}
 
 	now = ENG_Milliseconds();
@@ -517,6 +536,8 @@ Adds all engine voices into the DMA paint buffer (same scale as S_PaintChannelFr
 */
 void S_Engine_PaintDMA( portable_samplepair_t *paintbuffer, int count, int sndVol ) {
 	static float mono[ENGINE_MIX_CHUNK];
+	static int statCalls, statSamples, statClipped, statNextPrint;
+	static float statEnginePeak, statTotalPeak;
 	int i, k, done, n, now, leftvol, rightvol;
 	float scaleL, scaleR;
 
@@ -548,9 +569,41 @@ void S_Engine_PaintDMA( portable_samplepair_t *paintbuffer, int count, int sndVo
 			}
 			S_Engine_RenderOne( e, mono, n, dma.speed, now );
 			for ( k = 0; k < n; k++ ) {
-				paintbuffer[done + k].left += (int)( mono[k] * scaleL );
-				paintbuffer[done + k].right += (int)( mono[k] * scaleR );
+				int l = (int)( mono[k] * scaleL );
+				int r = (int)( mono[k] * scaleR );
+
+				paintbuffer[done + k].left += l;
+				paintbuffer[done + k].right += r;
+				if ( ENGINE_DEBUG >= 3 ) {
+					float a = (float)abs( l ) / ( 32768.0f * 256.0f );
+					if ( a > statEnginePeak ) {
+						statEnginePeak = a;
+					}
+				}
 			}
+		}
+	}
+
+	if ( ENGINE_DEBUG >= 3 ) {
+		statCalls++;
+		statSamples += count;
+		for ( k = 0; k < count; k++ ) {
+			float a = (float)abs( paintbuffer[k].left ) / ( 32768.0f * 256.0f );
+
+			if ( a > statTotalPeak ) {
+				statTotalPeak = a;
+			}
+			if ( a >= 1.0f ) {
+				statClipped++;
+			}
+		}
+		if ( now >= statNextPrint ) {
+			statNextPrint = now + 1000;
+			ENG_Printf( "engine dma: %i paints, %i samples (%i Hz), ahead %i ms, engine peak %.2f, total peak %.2f, clipped %.1f%%, nan %i\n",
+				statCalls, statSamples, dma.speed, ( s_paintedtime - s_soundtime ) * 1000 / dma.speed,
+				statEnginePeak, statTotalPeak, statSamples ? 100.0f * statClipped / statSamples : 0.0f, engineNanCount );
+			statCalls = statSamples = statClipped = 0;
+			statEnginePeak = statTotalPeak = 0.0f;
 		}
 	}
 }
@@ -802,6 +855,7 @@ S_Engine_Init / S_Engine_Shutdown
 void S_Engine_Init( void ) {
 	s_engineVolume = Cvar_Get( "s_engineVolume", "1.0", CVAR_ARCHIVE );
 	s_engineDebug = Cvar_Get( "s_engineDebug", "0", CVAR_TEMP );
+	s_engineRemote = Cvar_Get( "s_engineRemote", "1", CVAR_TEMP );
 }
 
 void S_Engine_Shutdown( void ) {
