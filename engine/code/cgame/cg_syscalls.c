@@ -234,6 +234,10 @@ void    trap_S_UpdateEngine( int entityNum, int handle, const engineSoundParams_
         syscall( CG_S_UPDATEENGINE, entityNum, handle, params );
 }
 
+void    trap_S_SetSfxGroup( sfxHandle_t sfx, int group ) {
+        syscall( CG_S_SETSFXGROUP, sfx, group );
+}
+
 void	trap_S_Respatialize( int entityNum, const vec3_t origin, vec3_t axis[3], int inwater ) {
 	syscall( CG_S_RESPATIALIZE, entityNum, origin, axis, inwater );
 }

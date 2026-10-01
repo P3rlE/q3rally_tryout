@@ -894,8 +894,8 @@ void S_AddLoopSounds (void) {
 		} else {
 			S_SpatializeOrigin( loop->origin, 90,  &left_total, &right_total);			// sphere
 		}
-		left_total = (int)( left_total * loop->volume );
-		right_total = (int)( right_total * loop->volume );
+		left_total = (int)( left_total * loop->volume * S_SfxGroupGain( (int)( loop->sfx - s_knownSfx ) ) );
+		right_total = (int)( right_total * loop->volume * S_SfxGroupGain( (int)( loop->sfx - s_knownSfx ) ) );
 
 		loop->sfx->lastTimeUsed = time;
 
@@ -913,8 +913,8 @@ void S_AddLoopSounds (void) {
 			}
 
 			loop2->sfx->lastTimeUsed = time;
-			left_total += (int)( left * loop2->volume );
-			right_total += (int)( right * loop2->volume );
+			left_total += (int)( left * loop2->volume * S_SfxGroupGain( (int)( loop2->sfx - s_knownSfx ) ) );
+			right_total += (int)( right * loop2->volume * S_SfxGroupGain( (int)( loop2->sfx - s_knownSfx ) ) );
 		}
 		if (left_total == 0 && right_total == 0) {
 			continue;		// not audible
@@ -1177,6 +1177,15 @@ void S_Base_Respatialize( int entityNum, const vec3_t head, vec3_t axis[3], int 
 			}
 
 			S_SpatializeOrigin (origin, ch->master_vol, &ch->leftvol, &ch->rightvol);
+		}
+		// Q3Rally volume groups (ambience, weather)
+		{
+			float groupGain = S_SfxGroupGain( (int)( ch->thesfx - s_knownSfx ) );
+
+			if ( groupGain < 1.0f ) {
+				ch->leftvol = (int)( ch->leftvol * groupGain );
+				ch->rightvol = (int)( ch->rightvol * groupGain );
+			}
 		}
 	}
 
@@ -1465,7 +1474,7 @@ void S_UpdateBackgroundTrack( void ) {
 	}
 
 	// don't bother playing anything if musicvolume is 0
-	if ( s_musicVolume->value <= 0 ) {
+	if ( S_MusicVolume() <= 0 ) {
 		return;
 	}
 
@@ -1501,7 +1510,7 @@ void S_UpdateBackgroundTrack( void ) {
 		{
 			// add to raw buffer
 			S_Base_RawSamples(0, fileSamples, s_backgroundStream->info.rate,
-				s_backgroundStream->info.width, s_backgroundStream->info.channels, raw, s_musicVolume->value, -1);
+				s_backgroundStream->info.width, s_backgroundStream->info.channels, raw, S_MusicVolume(), -1);
 		}
 		else
 		{

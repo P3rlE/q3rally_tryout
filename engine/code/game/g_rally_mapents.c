@@ -455,7 +455,7 @@ void Touch_Start (gentity_t *self, gentity_t *other, trace_t *trace ){
 
         trap_SendServerCommand( -1, va("newLapTime %i %i %i", other->s.clientNum, 1, level.time) );
 
-        Rally_Sound( self, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/checkpoint.ogg") );
+        Rally_PlayerAnnouncerSound( self, other, G_SoundIndex("sound/rally/race/checkpoint.ogg") );
 }
 
 /*
@@ -707,10 +707,10 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
 		
 		if (other->currentLap == level.numberOfLaps ){
 			trap_SendServerCommand( other->s.number, "cp \"Final lap\n\"");
-			Rally_Sound( self, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/finallap.ogg") );
+			Rally_PlayerAnnouncerSound( self, other, G_SoundIndex("sound/rally/race/finallap.ogg") );
 		}
 		else {
-			Rally_Sound( self, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/checkpoint.ogg") );
+			Rally_PlayerAnnouncerSound( self, other, G_SoundIndex("sound/rally/race/checkpoint.ogg") );
 		}
 	}
 }
@@ -937,7 +937,7 @@ void Touch_Checkpoint (gentity_t *self, gentity_t *other, trace_t *trace ){
 		if ( !( self->spawnflags & CHECKPOINT_SILENT ) &&
 			( ( self->spawnflags & CHECKPOINT_SOUNDS ) ||
 			!( self->spawnflags & CHECKPOINT_MESSAGES ) ) )
-			Rally_Sound( self, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex("sound/rally/race/checkpoint.ogg") );
+			Rally_PlayerAnnouncerSound( self, other, G_SoundIndex("sound/rally/race/checkpoint.ogg") );
 
 		if ( self->spawnflags & CHECKPOINT_MESSAGES && self->s.otherEntityNum != -1 &&
 			self->s.otherEntityNum != other->s.number )

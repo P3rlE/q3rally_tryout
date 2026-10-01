@@ -61,6 +61,9 @@ void S_SetEntityVolume( int entityNum, float volume );
 // Q3Rally engine sounds: dir is e.g. "sound/player/sidepipe", 0 = no engine sound
 #include "../qcommon/q_engine_sound.h"
 int S_Engine_Register( const char *dir );
+void S_SetSfxGroup( sfxHandle_t sfx, int group );
+float S_SfxGroupGain( int sfx );
+float S_MusicVolume( void );
 void S_Engine_Update( int entityNum, int handle, const engineSoundParams_t *params );
 
 void S_Update( void );

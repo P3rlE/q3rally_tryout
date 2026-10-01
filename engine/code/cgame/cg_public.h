@@ -175,6 +175,7 @@ typedef enum {
         CG_S_SETENTITYVOLUME,
         CG_S_REGISTERENGINE,
         CG_S_UPDATEENGINE,
+        CG_S_SETSFXGROUP,
 
 /*
 	CG_LOADCAMERA,

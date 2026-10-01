@@ -658,6 +658,9 @@ static void S_AL_ScaleGain(src_t *chksrc, vec3_t origin)
 	if ( chksrc->isLooping && chksrc->entity >= 0 && chksrc->entity < MAX_GENTITIES ) {
 		gain *= entityList[chksrc->entity].loopVolume;
 	}
+	if ( chksrc->sfx >= 0 ) {
+		gain *= S_SfxGroupGain( chksrc->sfx );	// Q3Rally volume groups
+	}
 	
 	if(!chksrc->local)
 		distance = Distance(origin, lastListenerOrigin);
@@ -2196,7 +2199,7 @@ void S_AL_StartBackgroundTrack( const char *intro, const char *loop )
 	qalSourceQueueBuffers(musicSource, NUM_MUSIC_BUFFERS, musicBuffers);
 
 	// Set the initial gain property
-	S_AL_Gain(musicSource, s_alGain->value * s_musicVolume->value);
+	S_AL_Gain(musicSource, s_alGain->value * S_MusicVolume());
 	
 	// Start playing
 	qalSourcePlay(musicSource);
@@ -2239,7 +2242,7 @@ void S_AL_MusicUpdate( void )
 	}
 
 	// Set the gain property
-	S_AL_Gain(musicSource, s_alGain->value * s_musicVolume->value);
+	S_AL_Gain(musicSource, s_alGain->value * S_MusicVolume());
 }
 
 

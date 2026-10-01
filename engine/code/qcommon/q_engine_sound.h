@@ -27,6 +27,11 @@ or (at your option) any later version.
 
 #define ENGINE_MAX_EMITTERS		16		// cars the mixer can play at once, incl. fading ones
 
+// volume groups a sound effect can be tagged with (trap_S_SetSfxGroup)
+#define SOUND_GROUP_EFFECTS		0		// s_volume only
+#define SOUND_GROUP_AMBIENT		1		// map speakers and map ambience track: s_ambientVolume
+#define SOUND_GROUP_WEATHER		2		// rain, snow, wind: s_weatherVolume
+
 // Passed from cgame to the client every frame for every audible car.
 // Layout is shared with the QVM: only 4-byte members.
 typedef struct {

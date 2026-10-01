@@ -1674,6 +1674,7 @@ extern	vmCvar_t		cg_mmap_fov;
 extern	vmCvar_t		cg_mmap_size;
 extern	vmCvar_t		cg_mmap_renderLevel;
 extern	vmCvar_t		cg_checkpointArrowMode;
+extern	vmCvar_t		cg_checkpointSound;
 extern      vmCvar_t                cg_distanceFormat;
 
 
@@ -2326,6 +2327,7 @@ void		trap_S_SetEntityPitch( int entityNum, float pitch );
 void		trap_S_SetEntityVolume( int entityNum, float volume );
 int		trap_S_RegisterEngine( const char *dir );
 void		trap_S_UpdateEngine( int entityNum, int handle, const engineSoundParams_t *params );
+void		trap_S_SetSfxGroup( sfxHandle_t sfx, int group );
 
 // respatialize recalculates the volumes of sound as they should be heard by the
 // given entityNum and position
