@@ -2635,6 +2635,8 @@ static void CG_UpdateEngineSoundState( centity_t *cent, float targetFrac,
 // Keep the two motor voices off player/skid loop IDs and ordinary map entities.
 #define CG_ENGINE_SOUND_ENTITY_0 ENTITYNUM_WORLD
 #define CG_ENGINE_SOUND_ENTITY_1 ENTITYNUM_NONE
+#define CG_ENGINE_BLEND_START 0.35f
+#define CG_ENGINE_BLEND_END   0.65f
 
 static int CG_EngineSoundEntityForIndex( int soundIndex ) {
 	// Keep a shared RPM sample on the same sound entity when it changes
@@ -3853,7 +3855,6 @@ void CG_Player( centity_t *cent ) {
                float soundPosition;
                float pitch;
                float blend;
-               float angle;
                float lowerVolume;
                float upperVolume;
                int lowerIndex;
@@ -3880,11 +3881,22 @@ void CG_Player( centity_t *cent ) {
                                lowerIndex, cg.predictedPlayerState.origin,
                                cg.predictedPlayerState.velocity, pitch, 1.0f );
                } else {
-                       // Equal-power blending keeps perceived loudness steadier
-                       // between adjacent RPM samples.
-                       angle = blend * (float)( M_PI * 0.5 );
-                       lowerVolume = cos( angle );
-                       upperVolume = sin( angle );
+                       if ( blend <= CG_ENGINE_BLEND_START ) {
+                               lowerVolume = 1.0f;
+                               upperVolume = 0.0f;
+                       } else if ( blend >= CG_ENGINE_BLEND_END ) {
+                               lowerVolume = 0.0f;
+                               upperVolume = 1.0f;
+                       } else {
+                               float crossfade;
+
+                               crossfade = ( blend - CG_ENGINE_BLEND_START ) /
+                                       ( CG_ENGINE_BLEND_END - CG_ENGINE_BLEND_START );
+                               crossfade = crossfade * crossfade *
+                                       ( 3.0f - 2.0f * crossfade );
+                               lowerVolume = 1.0f - crossfade;
+                               upperVolume = crossfade;
+                       }
 
                        CG_AddEngineSoundLoop(
                                CG_EngineSoundEntityForIndex( lowerIndex ), clientNum,
