@@ -1408,8 +1408,12 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
                 payload->eliminationInterval = g_eliminationInterval.integer;
                 payload->eliminationWarning = g_eliminationWarning.integer;
         } else {
-                if ( g_eliminationStartDelay.integer || g_eliminationInterval.integer || g_eliminationWarning.integer ) {
-                        Com_Printf( "Ladder: warning - elimination settings present in mode %s; emitting optional neutral values\n",
+                /* The g_elimination* cvars are global and non-zero by default, so
+                   this is the normal case for every non-elimination match. The
+                   values are neutralised below; only mention it for developers. */
+                if ( g_developer.integer &&
+                     ( g_eliminationStartDelay.integer || g_eliminationInterval.integer || g_eliminationWarning.integer ) ) {
+                        Com_Printf( "Ladder: info - elimination settings ignored in mode %s; emitting neutral values\n",
                                 payload->mode );
                 }
                 payload->eliminationStartDelay = 0;
