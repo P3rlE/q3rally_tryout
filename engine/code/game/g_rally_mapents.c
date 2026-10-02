@@ -811,7 +811,7 @@ void Think_StartFinish( gentity_t *self ){
                         VectorCopy( center, last );
                 }
 
-                if ( g_gametype.integer == GT_SPRINT && level.startEnt && level.finishEnt ) {
+                if ( G_IsSprintTrack() && level.startEnt && level.finishEnt ) {
                         vec3_t startCenter, finishCenter;
 
                         CP_BOUNDS_CENTER( level.finishEnt, finishCenter );
@@ -832,7 +832,9 @@ void Think_StartFinish( gentity_t *self ){
 #undef CP_BOUNDS_CENTER
         }
 
-        trap_SetConfigstring( CS_TRACKLENGTH, va( "%i", (int)( level.trackLength / CP_M_2_QU ) ) );
+        // "<length in metres> <sprint track 0|1>"; older cgames read only the length
+        trap_SetConfigstring( CS_TRACKLENGTH, va( "%i %i", (int)( level.trackLength / CP_M_2_QU ),
+                G_IsSprintTrack() ? 1 : 0 ) );
 
         self->s.weapon = self->number;
 	G_Ghost_BuildBotRoutes();
@@ -878,9 +880,15 @@ void SP_rally_start( gentity_t *ent ) {
 trap_SetBrushModel( ent, ent->model );
 
 level.startEnt = ent;
+level.sprintTrack = qtrue;
 
 level.numberOfLaps = 1;
-trap_Cvar_Set( "laplimit", "1" );
+// Q3Rally: Ghost Race rotations mix lap and A2B tracks. Keep the archived
+// laplimit there so the next lap track does not inherit "1"; the A2B course
+// itself always runs one lap via level.numberOfLaps.
+if ( g_gametype.integer != GT_GHOST ) {
+	trap_Cvar_Set( "laplimit", "1" );
+}
 
 ent->r.svFlags |= SVF_BROADCAST;
 ent->s.eType = ET_CHECKPOINT;

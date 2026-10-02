@@ -288,6 +288,18 @@ qboolean isRallyNonDMRace( void ){
 	return BG_GametypeIsNonDMRace( g_gametype.integer, g_eliminationWeapons.integer ? qtrue : qfalse );
 }
 
+/*
+=================
+G_IsSprintTrack
+
+True for point-to-point (A2B) courses: always in GT_SPRINT, and in any other
+gametype (e.g. GT_GHOST) when the map has a separate rally_start entity.
+=================
+*/
+qboolean G_IsSprintTrack( void ){
+	return ( g_gametype.integer == GT_SPRINT || level.sprintTrack ) ? qtrue : qfalse;
+}
+
 qboolean isRallyDMRace( void ){
         if ( g_gametype.integer == GT_RACING_DM
                 || g_gametype.integer == GT_TEAM_RACING_DM ){

@@ -2186,7 +2186,7 @@ void ClientThink_real( gentity_t *ent ) {
                                 dist = VectorLength( v );
                                 segs = level.cpDist[level.numCheckpoints-1] - level.cpDist[next-1];
                                 dist += segs;
-                                if ( g_gametype.integer == GT_SPRINT ) {
+                                if ( G_IsSprintTrack() ) {
                                         dist += level.sprintFinishDistance;
                                 } else if ( level.numberOfLaps && ent->currentLap < level.numberOfLaps ) {
                                         int lapsRemaining = level.numberOfLaps - ent->currentLap;

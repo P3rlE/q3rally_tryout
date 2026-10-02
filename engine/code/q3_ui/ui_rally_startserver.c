@@ -652,6 +652,27 @@ static int GametypeBits( char *string ) {
         return bits;
 }
 
+/*
+=================
+ServerOptions_IsGhostSprintMap
+
+Ghost Race on an A2B map (Sprint layout, no lap layout): the server runs it
+as a single lap, so the menu does not offer a lap limit.
+=================
+*/
+static qboolean ServerOptions_IsGhostSprintMap( int gametype ) {
+	int bits;
+
+	if ( gametype != GT_GHOST ) {
+		return qfalse;
+	}
+	if ( s_startserver.currentmap < 0 || s_startserver.currentmap >= s_startserver.nummaps ) {
+		return qfalse;
+	}
+	bits = s_startserver.mapGamebits[s_startserver.currentmap];
+	return ( ( bits & ( 1 << GT_SPRINT ) ) && !( bits & ( 1 << GT_RACING ) ) ) ? qtrue : qfalse;
+}
+
 
 /*
 =================
@@ -732,9 +753,10 @@ static void StartServer_GametypeEvent( void* ptr, int event ) {
 	count = UI_GetNumArenas();
 	s_startserver.nummaps = 0;
 	matchbits = 1 << gametype_remap[s_startserver.gametype.curvalue];
-	// Ghost Race runs on every lap track; maps may also opt in with "q3r_ghost".
+	// Ghost Race runs on every lap and Sprint (A2B) track; maps may also opt in
+	// with "q3r_ghost".
 	if ( gametype_remap[s_startserver.gametype.curvalue] == GT_GHOST ) {
-		matchbits |= 1 << GT_RACING;
+		matchbits |= ( 1 << GT_RACING ) | ( 1 << GT_SPRINT );
 	}
 
         for( i = 0; i < count; i++ ) {
@@ -2637,7 +2659,7 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 			s_serveroptions.gametype == GT_RACING_DM ||
 			s_serveroptions.gametype == GT_TEAM_RACING ||
 			s_serveroptions.gametype == GT_TEAM_RACING_DM ||
-			s_serveroptions.gametype == GT_GHOST ) {
+			( s_serveroptions.gametype == GT_GHOST && !ServerOptions_IsGhostSprintMap( s_serveroptions.gametype ) ) ) {
 
 		s_serveroptions.fraglimit.generic.type		= MTYPE_FIELD;
 		s_serveroptions.fraglimit.generic.name		= "Laps:";
@@ -2650,7 +2672,8 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 
 		limitFieldAdded = qtrue;
 	}
-	else if( s_serveroptions.gametype != GT_DERBY && s_serveroptions.gametype != GT_LCS && s_serveroptions.gametype != GT_SPRINT ) {
+	else if( s_serveroptions.gametype != GT_DERBY && s_serveroptions.gametype != GT_LCS && s_serveroptions.gametype != GT_SPRINT &&
+			s_serveroptions.gametype != GT_GHOST ) {
 
 		s_serveroptions.fraglimit.generic.type		= MTYPE_FIELD;
 		s_serveroptions.fraglimit.generic.name		= "Frag Limit:";
@@ -2965,7 +2988,8 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 	if( s_serveroptions.gametype == GT_CTF || s_serveroptions.gametype == GT_CTF4 || s_serveroptions.gametype == GT_DOMINATION || s_serveroptions.gametype == GT_KOTH ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.flaglimit );
 	}
-	else if( s_serveroptions.gametype != GT_DERBY && s_serveroptions.gametype != GT_LCS && s_serveroptions.gametype != GT_SPRINT ) {
+	else if( s_serveroptions.gametype != GT_DERBY && s_serveroptions.gametype != GT_LCS && s_serveroptions.gametype != GT_SPRINT &&
+			!ServerOptions_IsGhostSprintMap( s_serveroptions.gametype ) ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.fraglimit );
 	}
 

@@ -696,6 +696,7 @@ typedef struct {
         float                   trackLength;
         float                   sprintFinishDistance; // final checkpoint-to-finish leg for A2B sprint
         gentity_t               *startEnt;            // separate rally_start for A2B sprint
+        qboolean                sprintTrack;          // map has a separate rally_start (A2B layout), any gametype
         gentity_t               *finishEnt;     // rally_startfinish or rally_finish entity, cached in Think_StartFinish
 
         qtime_t         ladderStartTime;
@@ -973,6 +974,7 @@ void CenterPrint_All( const char *s );
 qboolean isRallyRace( void );
 qboolean isRallyNonDMRace( void );
 qboolean isRallyDMRace( void );
+qboolean G_IsSprintTrack( void );
 qboolean isRaceObserver( int clientNum );
 void G_PrintMapStats( gentity_t *player, qboolean generateArenaFile, char *longname );
 void G_Ghost_InitForMap( const char *mapname );

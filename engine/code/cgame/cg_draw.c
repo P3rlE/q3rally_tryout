@@ -1164,10 +1164,7 @@ static void CG_DrawRallyTelemetryHud( void ) {
 	raceProgress = 0.0f;
 	raceDistanceTotal = 0.0f;
 	raceDistanceRemain = ps->stats[STAT_DISTANCE_REMAIN];
-	raceLaps = cgs.laplimit;
-	if ( cgs.gametype == GT_SPRINT && raceLaps <= 0 ) {
-		raceLaps = 1;
-	}
+	raceLaps = CG_RaceLapLimit();
 	raceDistanceTotal = cgs.trackLength * raceLaps;
 	showRaceProgress = raceMode && raceDistanceTotal > 0.0f;
 	if ( showRaceProgress ) {
@@ -1440,8 +1437,8 @@ static void CG_DrawRallyTelemetryHud( void ) {
 		} else {
 			lapTime = totalTime = 0;
 		}
-		if ( cgs.gametype == GT_SPRINT ) {
-			Q_strncpyz( modeTitle, "SPRINT", sizeof(modeTitle) );
+		if ( CG_IsSprintTrack() ) {
+			Q_strncpyz( modeTitle, cgs.gametype == GT_GHOST ? "GHOST SPRINT" : "SPRINT", sizeof(modeTitle) );
 			Com_sprintf( modeValue, sizeof(modeValue), "DIST %dM",
 			             (int)ps->stats[STAT_DISTANCE_REMAIN] );
 		} else {
@@ -1497,7 +1494,7 @@ static void CG_DrawRallyTelemetryHud( void ) {
 			Com_sprintf( modeExtra, sizeof(modeExtra), "POS %d/%d", position, racers );
 		else
 			Q_strncpyz( modeExtra, "POS --", sizeof(modeExtra) );
-		if ( cgs.gametype == GT_SPRINT ? cg_hudShowDistToFinish.integer
+		if ( CG_IsSprintTrack() ? cg_hudShowDistToFinish.integer
 		                               : cg_hudShowLaps.integer ) {
 			CG_DrawIngameSmallString( 190, 432, modeValue, colorWhite );
 		}
@@ -1505,7 +1502,7 @@ static void CG_DrawRallyTelemetryHud( void ) {
 			CG_DrawIngameString( 410, 432, modeExtra,
 			                     UI_RIGHT | UI_SMALLFONT, 0.75f, accentColor );
 		}
-		if ( cgs.gametype == GT_SPRINT ) {
+		if ( CG_IsSprintTrack() ) {
 			Q_strncpyz( timeText, getStringForTime( totalTime ), sizeof(timeText) );
 			Q_strncpyz( bestText, getStringForTime( cent->bestLapTime ), sizeof(bestText) );
 			Com_sprintf( modeValue, sizeof(modeValue), "TIME %s", timeText );

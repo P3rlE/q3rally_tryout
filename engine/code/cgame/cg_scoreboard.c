@@ -213,7 +213,7 @@ static void CG_InitScoreboardColumns(void) {
     }
 
     /* Hide lap time column for A-to-B style races */
-    if (cgs.laplimit <= 1) {
+    if (CG_RaceLapLimit() <= 1) {
         showLapTimes = qfalse;
     }
 

@@ -1527,6 +1527,7 @@ typedef struct {
 // Q3Rally Code Start
 	int				numRacers;
         float                   trackLength;
+        qboolean                sprintTrack;    // A2B course (second token of CS_TRACKLENGTH)
 // Q3Rally Code END
 
 } cgs_t;
@@ -2151,6 +2152,9 @@ float Q3VelocityToRL(float length);
 float Q3DistanceToRL(float length);
 qboolean isRallyRace( void );
 qboolean isRallyNonDMRace( void );
+qboolean CG_IsSprintTrack( void );
+int CG_RaceLapLimit( void );
+void CG_ParseTrackLength( const char *str );
 qboolean isRaceObserver( int clientNum );
 int CG_GetPlayersRemaining( int *lastClientNum );
 void CG_CheckEliminationWarning( int playersRemaining );

@@ -14,6 +14,11 @@ Added:
 - With cg_ghostPlayback 0, Ghost Race automatically shows the personal ghost and falls
   back to the server base ghost ("AUTO" in the HUD options).
 - Central gametype classification in bg_misc.c (BG_GametypeIsRace and friends).
+- Ghost Race also runs on Sprint (A2B) maps. A2B courses are now detected from the map
+  (separate rally_start); track length, distance to finish, the SPRINT HUD and the
+  single-lap handling follow the map instead of only GT_SPRINT. In Ghost Race the
+  archived laplimit is not overwritten on A2B maps, so mixed rotations keep their lap
+  count on the following lap tracks.
 
 Changed:
 
