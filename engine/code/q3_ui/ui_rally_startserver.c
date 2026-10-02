@@ -73,6 +73,8 @@ START SERVER MENU *****
 #define STARTSERVER_ROW_HEIGHT       UI_FRONTEND_BUTTON_HEIGHT
 #define STARTSERVER_ROW_GAP          3
 #define STARTSERVER_VISIBLE_ROWS     8
+#define STARTSERVER_SCROLL_WIDTH     3
+#define STARTSERVER_SCROLL_X         ( STARTSERVER_ROW_X + STARTSERVER_BUTTON_WIDTH + 3 )
 #define STARTSERVER_DETAIL_X         320
 #define STARTSERVER_DETAIL_Y         88
 #define STARTSERVER_DETAIL_WIDTH     256
@@ -222,11 +224,82 @@ static void StartServer_DrawMapList( void *self ) {
                         name, 1.0f, index == list->curvalue,
                         UI_FRONTEND_TEXT_LEFT );
         }
+
+        /* More tracks than rows: show a scrollbar and a "first-last / total"
+           counter so tracks below the visible rows can be found. */
+        if ( s_startserver.nummaps > STARTSERVER_VISIBLE_ROWS ) {
+                static vec4_t trackColor = { 0.44f, 0.51f, 0.51f, 0.35f };
+                char countText[32];
+                int trackHeight;
+                int thumbHeight;
+                int thumbY;
+                int maxTop;
+                int last;
+
+                trackHeight = STARTSERVER_VISIBLE_ROWS *
+                        ( STARTSERVER_ROW_HEIGHT + STARTSERVER_ROW_GAP ) -
+                        STARTSERVER_ROW_GAP;
+                thumbHeight = trackHeight * STARTSERVER_VISIBLE_ROWS /
+                        s_startserver.nummaps;
+                if ( thumbHeight < 12 ) {
+                        thumbHeight = 12;
+                }
+                maxTop = s_startserver.nummaps - STARTSERVER_VISIBLE_ROWS;
+                thumbY = STARTSERVER_LIST_Y +
+                        ( trackHeight - thumbHeight ) * list->top / maxTop;
+
+                UI_FillRect( STARTSERVER_SCROLL_X, STARTSERVER_LIST_Y,
+                        STARTSERVER_SCROLL_WIDTH, trackHeight, trackColor );
+                UI_FillRect( STARTSERVER_SCROLL_X, thumbY,
+                        STARTSERVER_SCROLL_WIDTH, thumbHeight,
+                        startServerAccentColor );
+
+                last = list->top + STARTSERVER_VISIBLE_ROWS;
+                if ( last > s_startserver.nummaps ) {
+                        last = s_startserver.nummaps;
+                }
+                Com_sprintf( countText, sizeof( countText ), "%d-%d / %d",
+                        list->top + 1, last, s_startserver.nummaps );
+                Frontend_DrawText( STARTSERVER_LIST_X + STARTSERVER_LIST_WIDTH - 16,
+                        STARTSERVER_LIST_Y - 20, countText,
+                        UI_RIGHT | UI_SMALLFONT, startServerMutedColor );
+        }
+}
+
+/* Mouse wheel scrolls the track list without changing the selection. */
+static sfxHandle_t StartServer_ScrollMapList( int delta ) {
+        int top;
+        int maxTop;
+
+        maxTop = s_startserver.nummaps - STARTSERVER_VISIBLE_ROWS;
+        if ( maxTop < 0 ) {
+                maxTop = 0;
+        }
+        top = s_startserver.list.top + delta;
+        if ( top < 0 ) {
+                top = 0;
+        }
+        if ( top > maxTop ) {
+                top = maxTop;
+        }
+        if ( top == s_startserver.list.top ) {
+                return menu_null_sound;
+        }
+        s_startserver.list.top = top;
+        s_startserver.top = top;
+        return menu_move_sound;
 }
 
 static sfxHandle_t StartServer_MenuKey( int key ) {
         int row;
         int index;
+
+        if ( key == K_MWHEELUP || key == K_MOUSE4 ) {
+                return StartServer_ScrollMapList( -1 );
+        }
+        if ( key == K_MWHEELDOWN || key == K_MOUSE5 ) {
+                return StartServer_ScrollMapList( 1 );
+        }
 
         if ( key == K_MOUSE1 &&
              uis.cursorx >= STARTSERVER_ROW_X &&

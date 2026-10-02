@@ -19,6 +19,9 @@ Added:
   single-lap handling follow the map instead of only GT_SPRINT. In Ghost Race the
   archived laplimit is not overwritten on A2B maps, so mixed rotations keep their lap
   count on the following lap tracks.
+- Create-server track list shows a scrollbar and a "first-last / total" counter when
+  there are more than eight tracks, and scrolls with the mouse wheel. Tracks below the
+  visible rows (e.g. the Sprint maps in Ghost Race on Windows) were easy to miss.
 
 Changed:
 
