@@ -37,13 +37,14 @@ if (!is_dir(PROFILES_DIR)) {
 // SECURITY CONFIGURATION
 // Per-server keys are managed via register.php / admin.php.
 // ─────────────────────────────────────────────────────────────────────────────
-const LADDER_VERSION        = '1.0.9';
+const LADDER_VERSION        = '1.0.10';
 const LADDER_MAX_BODY_BYTES    = 524288;  // 512 KB max POST body
 const LADDER_RATE_LIMIT_MAX    = 30;      // max requests per window per IP
 const LADDER_RATE_LIMIT_WINDOW = 60;      // window in seconds
 const LADDER_RATE_FILE_PREFIX  = 'rl_';   // rate-limit state file prefix
 
 require_once __DIR__ . '/keys.php';
+require_once __DIR__ . '/ghosts.php';
 
 const LADDER_RACE_MODES = [
     'GT_RACING', 'GT_RACING_DM', 'GT_SPRINT', 'GT_TEAM_RACING', 'GT_TEAM_RACING_DM',
@@ -4768,6 +4769,17 @@ async function showMatchDetails(matchId) {
 // ── Changelog ────────────────────────────────────────────────────────────────
 const LADDER_CHANGELOG = [
   {
+    version: '1.0.10',
+    date: '2026-10-02',
+    changes: [
+      'New: lap ghosts – POST /api/v1/ghosts stores the best lap ghost per player, map, track variant and vehicle',
+      'New: GET /api/v1/ghosts?map=&tl=&rev=&vehicle= ranking list, GET /api/v1/ghosts/{ghostId} single ghost (?format=raw for the .ghost text)',
+      'Ghosts are grouped by physics version and map checksum; older recordings stay archived but are not ranked against current ones',
+      'Plausibility checks on uploads: lap start/finish, sample gaps, segment and average speed, driven distance vs. course length',
+      'Server keys count ghost uploads separately (ghostCount) instead of matchCount',
+    ]
+  },
+  {
     version: '1.0.9',
     date: '2026-04-14',
     changes: [
@@ -6444,6 +6456,11 @@ function handle_post(array $segments): void
         return;
     }
 
+    if ($segments === ['ghosts']) {
+        handle_ghost_post();
+        return;
+    }
+
     if ($segments !== ['matches']) {
         send_error(404, 'Endpoint not found.');
     }
@@ -6606,6 +6623,16 @@ function handle_get(array $segments): void
         header('Cache-Control: public, max-age=300');
         echo json_encode($manifest, JSON_UNESCAPED_SLASHES);
         exit;
+    }
+
+    // Lap ghosts: ranking list and single ghost (see ghosts.php)
+    if ($segments === ['ghosts']) {
+        handle_ghost_list();
+        return;
+    }
+    if (count($segments) === 2 && $segments[0] === 'ghosts') {
+        handle_ghost_get($segments[1]);
+        return;
     }
 
     // Fast leaderboard index endpoint – returns only fields needed by the frontend

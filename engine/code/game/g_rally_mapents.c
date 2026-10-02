@@ -139,6 +139,9 @@ static void G_RallyCompleteLap( gentity_t *ent, int timestamp, qboolean allowRan
                         client->bestLapMs = lapDuration;
                         G_Profile_RecordBestLap( client, lapDuration );
                 }
+
+                // Q3Rally: upload the lap ghost if it is a new session best
+                G_GhostRecord_LapComplete( ent, client->lapStartTime, timestamp );
         }
 
 	client->lapStartTime = timestamp;

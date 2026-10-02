@@ -975,6 +975,12 @@ qboolean isRallyRace( void );
 qboolean isRallyNonDMRace( void );
 qboolean isRallyDMRace( void );
 qboolean G_IsSprintTrack( void );
+
+// g_ghost_record.c -- server-side best-lap ghost recording for the ladder
+void G_GhostRecord_Init( void );
+void G_GhostRecord_ClientFrame( gentity_t *ent );
+void G_GhostRecord_LapComplete( gentity_t *ent, int lapStartTime, int timestamp );
+void G_GhostRecord_ClientDisconnect( int clientNum );
 qboolean isRaceObserver( int clientNum );
 void G_PrintMapStats( gentity_t *player, qboolean generateArenaFile, char *longname );
 void G_Ghost_InitForMap( const char *mapname );
@@ -1260,6 +1266,7 @@ extern	vmCvar_t	g_rallyIntroCamClients;
 extern	vmCvar_t	g_debugIntroCam;
 void G_RallyUpdateAllTeamTimes( void );
 extern	vmCvar_t	g_rallyIgnoreBots;
+extern	vmCvar_t	g_ghostUpload;
 extern	vmCvar_t	g_aiDmnetDebugExport;
 extern	vmCvar_t	g_aiDmnetDebugExportPath;
 extern	vmCvar_t	g_ladderMatchSeq;
@@ -1317,6 +1324,7 @@ void	trap_FS_FCloseFile( fileHandle_t f );
 int		trap_FS_GetFileList( const char *path, const char *extension, char *listbuf, int bufsize );
 int		trap_FS_Seek( fileHandle_t f, long offset, int origin ); // fsOrigin_t
 void	trap_LadderSubmit( const ladderMatchPayload_t *payload );
+void	trap_LadderSubmitGhost( const ladderGhostMeta_t *meta, const char *data );
 void	trap_SendConsoleCommand( int exec_when, const char *text );
 void	trap_Cvar_Register( vmCvar_t *cvar, const char *var_name, const char *value, int flags );
 void	trap_Cvar_Update( vmCvar_t *cvar );

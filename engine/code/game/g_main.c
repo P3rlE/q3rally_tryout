@@ -147,6 +147,7 @@ vmCvar_t	g_derbyMinPlayers;
 vmCvar_t	g_rallyIntroCamClients;
 vmCvar_t	g_debugIntroCam;
 vmCvar_t	g_rallyIgnoreBots;
+vmCvar_t	g_ghostUpload;
 vmCvar_t	g_aiDmnetDebugExport;
 vmCvar_t	g_aiDmnetDebugExportPath;
 vmCvar_t	g_ladderMatchSeq;
@@ -312,6 +313,7 @@ static cvarTable_t		gameCvarTable[] = {
 { &g_rallyIntroCamClients, "g_rallyIntroCamClients", "1", CVAR_ARCHIVE, 0, qfalse },
 { &g_debugIntroCam, "g_debugIntroCam", "0", CVAR_ARCHIVE, 0, qfalse },
 { &g_rallyIgnoreBots, "g_rallyIgnoreBots", "0", CVAR_ARCHIVE, 0, qfalse },
+{ &g_ghostUpload, "g_ghostUpload", "1", CVAR_ARCHIVE, 0, qfalse },
 { &g_aiDmnetDebugExport, "g_aiDmnetDebugExport", "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
 { &g_aiDmnetDebugExportPath, "g_aiDmnetDebugExportPath", "logs/ai_dmnet_debug.csv", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
 { &g_ladderMatchSeq, "sv_ladderMatchSeq", "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
@@ -1574,6 +1576,7 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 		trap_Cvar_VariableStringBuffer( "mapname", mapname, sizeof( mapname ) );
 		G_Ghost_InitForMap( mapname );
 	}
+	G_GhostRecord_Init();
 
 	// initialize all entities for this game
 	memset( g_entities, 0, MAX_GENTITIES * sizeof(g_entities[0]) );

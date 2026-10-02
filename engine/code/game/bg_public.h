@@ -977,6 +977,12 @@ qboolean BG_UnpackEngineState( int packed, float *rpm, float *throttle, int *gea
 
 qboolean        BG_PlayerTouchesItem( playerState_t *ps, entityState_t *item, int atTime );
 
+// Q3Rally physics version. Bump this whenever vehicle handling, physics
+// constants or anything else changes that makes previously recorded lap
+// ghosts unachievable or unfair to compare. The ladder only offers ghosts
+// recorded with the current physics version (and the same map checksum).
+#define BG_PHYSICS_VERSION      1
+
 // Q3Rally gametype classification (bg_misc.c).
 // Register new gametypes here instead of extending hard-coded lists in
 // game, cgame and ui.

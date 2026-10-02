@@ -224,4 +224,33 @@ typedef struct ladderMatchPayload_s {
         ladderPlayerPayload_t players[MAX_CLIENTS];
 } ladderMatchPayload_t;
 
+/* ── Ghost upload ────────────────────────────────────────────────────────────
+ * Best-lap recording of one driver, recorded by the game module on the
+ * server and sent to the ladder via trap_LadderSubmitGhost(). The ghost
+ * itself travels as text in the regular .ghost file format; this struct
+ * carries the metadata. Only ints and char arrays: the layout must be the
+ * same for the QVM and the native engine. */
+#define LADDER_GHOST_MAX_DATA           ( 448 * 1024 )
+#define LADDER_GHOST_MAX_ID             96
+#define LADDER_GHOST_MAX_NAME           64
+
+typedef struct ladderGhostMeta_s {
+        int             valid;
+        char            ghostId[LADDER_GHOST_MAX_ID];
+        char            map[MAX_QPATH];
+        char            vehicle[LADDER_MAX_VEHICLE];
+        char            playerId[LADDER_MAX_PLAYER_ID];
+        char            playerName[LADDER_GHOST_MAX_NAME];
+        int             trackLength;            /* g_trackLength variant 0..2 */
+        int             trackReversed;          /* 0/1 */
+        int             lapMs;
+        int             frameCount;
+        int             gametype;
+        int             physicsVersion;         /* BG_PHYSICS_VERSION */
+        int             mapChecksum;            /* sv_mapChecksum */
+        int             courseLengthUnits;      /* lap / A2B course length in game units */
+        int             sprintTrack;            /* 1 = A2B course */
+        int             dataLength;             /* bytes of ghost text */
+} ladderGhostMeta_t;
+
 #endif // BG_LADDER_H

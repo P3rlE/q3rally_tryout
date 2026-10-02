@@ -240,6 +240,7 @@ typedef enum {
 	G_RALLY_PHYSICS_GET_BODY_STATE,
 	G_RALLY_PHYSICS_VEHICLE_CONTACT,
 	G_RALLY_PHYSICS_APPLY_IMPULSE,
+	G_LADDER_SUBMIT_GHOST,	// ( const ladderGhostMeta_t *meta, const char *data );
 
         BOTLIB_SETUP = 200,				// ( void );
 	BOTLIB_SHUTDOWN,				// ( void );

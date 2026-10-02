@@ -2033,6 +2033,9 @@ void ClientDisconnect( int clientNum ) {
 	// hasn't spawned yet
 	G_RemoveQueuedBotBegin( clientNum );
 
+	// Q3Rally: drop any lap ghost being recorded for this slot
+	G_GhostRecord_ClientDisconnect( clientNum );
+
 	ent = g_entities + clientNum;
 	if (!ent->client || ent->client->pers.connected == CON_DISCONNECTED) {
 		return;

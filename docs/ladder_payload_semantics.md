@@ -144,6 +144,29 @@ mit aktualisieren (inkl. Modus-Status, Datenquelle, Semantik, Fallback).
 
 ---
 
+## 4) `ladderGhostMeta_t` (Runden-Ghost, `POST .../ghosts`)
+
+Eigener Endpunkt, unabhängig von Match-Reports. Wird vom Game-Modul gefüllt
+(`g_ghost_record.c`), von `SV_LadderSubmitGhost` als JSON serialisiert und von
+`ghosts.php` geprüft. Gilt für Racing, Sprint, Team Racing und Ghost Race
+(`BG_GametypeIsTimedRace`), nur für menschliche Fahrer mit Profil-UUID und
+`cg_ghostShare` ≠ 0.
+
+| JSON-Feld | Quelle | Semantik |
+|---|---|---|
+| `ghostId` | `map-uuid8-lapMs` | Nur für Logs/Spool; die Ladder vergibt die öffentliche ID selbst |
+| `server.name` / `server.dedicated` | registrierter Name / `com_dedicated` | Muss zum Key passen; `dedicated` → `source` online/offline |
+| `player.id` / `player.name` | `pers.uuid` / `pers.netname` (ohne Farbcodes, ASCII) | UUID Pflicht |
+| `map`, `vehicle` | `mapname`, Modell ohne Skin (klein) | Bucket-Schlüssel |
+| `trackLength`, `trackReversed` | `g_trackLength` (0–2), `g_trackReversed` | Bucket-Schlüssel |
+| `lapMs` | Rundenzeit des Servers | Muss `best_time_ms` und letztem Frame entsprechen |
+| `frames` | Anzahl Messpunkte | Muss zur Zahl der Datenzeilen passen |
+| `physicsVersion` | `BG_PHYSICS_VERSION` | Bucket-Schlüssel; bei Handling-Änderungen erhöhen |
+| `mapChecksum` | `sv_mapChecksum` | Bucket-Schlüssel; erkennt Map-Updates |
+| `courseLengthUnits` | `level.trackLength` (Units) | Plausibilität der gefahrenen Strecke |
+| `sprintTrack`, `gametype` | `G_IsSprintTrack()`, `g_gametype` | Information |
+| `data` | `.ghost`-Text | Gleiches Format wie persönliche Ghosts, zusätzliche Kopfzeilen `physics_version`, `map_checksum`, `player`, `player_id` |
+
 ## Review-Gate-Regeln (verbindlich)
 
 1. **Kein Feld ohne Status:** Neue Felder müssen vor Merge in diese Spezifikation mit Modusstatus aufgenommen werden.

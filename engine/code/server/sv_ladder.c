@@ -66,6 +66,7 @@ typedef struct ladderJsonBuilder_s {
 
 typedef struct ladderRequest_s {
         struct ladderRequest_s *next;
+        qboolean        isGhost;                /* POST to .../ghosts instead of .../matches */
         ladderMatchPayload_t    payload;
         char            *json;
         size_t  jsonLength;
@@ -1514,8 +1515,40 @@ static void SV_LadderBuildSpoolName( ladderRequest_t *request ) {
 
         SV_LadderSanitizeComponent( request->matchId, safeId, sizeof( safeId ) );
         id = sv_ladder.nextFileId++;
+        /* The prefix tells SV_LadderLoadSpool which endpoint a stored request
+         * belongs to. */
         Com_sprintf( request->spoolName, sizeof( request->spoolName ),
-                "match-%08x-%02d-%s.json", Sys_Milliseconds(), id & 0xff, safeId );
+                "%s-%08x-%02d-%s.json", request->isGhost ? "ghost" : "match",
+                Sys_Milliseconds(), id & 0xff, safeId );
+}
+
+/* Request kind for log messages. */
+static const char *SV_LadderRequestKind( const ladderRequest_t *request ) {
+        return ( request && request->isGhost ) ? "ghost" : "match";
+}
+
+/* sv_ladderUrl points at .../matches; ghosts go to the sibling .../ghosts. */
+static void SV_LadderBuildRequestUrl( const ladderRequest_t *request, char *out, size_t outSize ) {
+        const char *base = sv_ladderUrl ? sv_ladderUrl->string : "";
+        const char *found = NULL;
+        const char *cursor = base;
+
+        if ( !request || !request->isGhost ) {
+                Q_strncpyz( out, base, outSize );
+                return;
+        }
+
+        while ( ( cursor = strstr( cursor, "/matches" ) ) != NULL ) {
+                found = cursor;
+                cursor += 8;
+        }
+
+        if ( !found ) {
+                Q_strncpyz( out, base, outSize );
+                return;
+        }
+
+        Com_sprintf( out, outSize, "%.*s/ghosts%s", (int)( found - base ), base, found + 8 );
 }
 
 static qboolean SV_LadderEnsureSpoolDirectory( void ) {
@@ -1551,7 +1584,7 @@ static qboolean SV_LadderEnsureSpoolDirectory( void ) {
 }
 
 static void SV_LadderExtractMatchIdFromJson( ladderRequest_t *request ) {
-        const char *needle = "\"matchId\":\"";
+        const char *needle = request->isGhost ? "\"ghostId\":\"" : "\"matchId\":\"";
         char *found;
 
         if ( !request->json ) {
@@ -1889,6 +1922,7 @@ static void SV_LadderLoadSpool( void ) {
                 }
 
                 Q_strncpyz( request->spoolName, files[i], sizeof( request->spoolName ) );
+                request->isGhost = ( Q_stricmpn( files[i], "ghost-", 6 ) == 0 ) ? qtrue : qfalse;
                 Com_sprintf( path, sizeof( path ), "%s%c%s", sv_ladder.spoolDirectory, PATH_SEP, files[i] );
                 Q_strncpyz( request->spoolPath, path, sizeof( request->spoolPath ) );
 
@@ -2137,10 +2171,11 @@ static qboolean SV_LadderStartRequest( ladderRequest_t *request ) {
         CURLcode code;
         struct curl_slist *headers = NULL;
         char authHeader[256];
-        const char *url = sv_ladderUrl ? sv_ladderUrl->string : "";
+        char url[MAX_STRING_CHARS];
         const char *apiKey;
 
-        if ( !url || !url[0] ) {
+        SV_LadderBuildRequestUrl( request, url, sizeof( url ) );
+        if ( !url[0] ) {
                 return qfalse;
         }
 
@@ -2294,12 +2329,14 @@ static void SV_LadderHandleFailure( ladderRequest_t *request, const char *reason
         if ( retry ) {
                 int delay = SV_LadderComputeBackoff( ++request->attempt );
                 request->nextAttemptTime = Sys_Milliseconds() + delay;
-                Com_Printf( "Ladder: upload failed for match %s (%s, HTTP %ld), retrying in %.1f s\n",
+                Com_Printf( "Ladder: upload failed for %s %s (%s, HTTP %ld), retrying in %.1f s\n",
+                        SV_LadderRequestKind( request ),
                         request->matchId[0] ? request->matchId : "<unknown>",
                         reason ? reason : "error", responseCode, delay / 1000.0f );
                 SV_LadderQueuePush( request );
         } else {
-                Com_Printf( "Ladder: upload dropped for match %s (%s, HTTP %ld)\n",
+                Com_Printf( "Ladder: upload dropped for %s %s (%s, HTTP %ld)\n",
+                        SV_LadderRequestKind( request ),
                         request->matchId[0] ? request->matchId : "<unknown>",
                         reason ? reason : "error", responseCode );
                 SV_LadderFreeRequest( request, qfalse );
@@ -2311,7 +2348,8 @@ static void SV_LadderCompleteRequest( ladderRequest_t *request, CURLcode result,
         qboolean retry = qfalse;
 
         if ( result == CURLE_OK && responseCode >= 200 && responseCode < 300 ) {
-                Com_Printf( "Ladder: uploaded match %s (HTTP %ld)\n",
+                Com_Printf( "Ladder: uploaded %s %s (HTTP %ld)\n",
+                        SV_LadderRequestKind( request ),
                         request->matchId[0] ? request->matchId : "<unknown>", responseCode );
                 SV_LadderFreeRequest( request, qfalse );
                 return;
@@ -3078,6 +3116,185 @@ void SV_LadderSubmit( const ladderMatchPayload_t *payload ) {
                         validatedPayload.matchId[0] ? validatedPayload.matchId : "<unknown>" );
                 sv_ladder.warnedNoCurl = qtrue;
         }
+        SV_LadderFreeRequest( request, qfalse );
+        return;
+#else
+        SV_LadderQueuePush( request );
+        SV_LadderActivateNext();
+#endif
+}
+
+/*
+=================
+SV_LadderSerializeGhost
+
+JSON body for POST .../ghosts. The ghost text (regular .ghost format) is sent
+as the "data" string.
+=================
+*/
+static char *SV_LadderSerializeGhost( const ladderGhostMeta_t *meta, const char *data,
+                                      const char *serverName, size_t *lengthOut ) {
+        ladderJsonBuilder_t builder;
+        qboolean ok;
+
+        if ( !SV_LadderJsonInit( &builder, (size_t)meta->dataLength + 4096 ) ) {
+                return NULL;
+        }
+
+        ok = SV_LadderJsonAppendRaw( &builder, "{\"ghostId\":", 11 )
+                && SV_LadderJsonAppendString( &builder, meta->ghostId )
+                && SV_LadderJsonAppendRaw( &builder, ",\"server\":{\"name\":", 18 )
+                && SV_LadderJsonAppendString( &builder, serverName )
+                && SV_LadderJsonAppendRaw( &builder, ",\"dedicated\":", 13 )
+                && SV_LadderJsonAppendBoolean( &builder, ( com_dedicated && com_dedicated->integer ) ? qtrue : qfalse )
+                && SV_LadderJsonAppendRaw( &builder, ",\"build\":", 9 )
+                && SV_LadderJsonAppendString( &builder, Q3_VERSION )
+                && SV_LadderJsonAppendRaw( &builder, "},\"player\":{\"id\":", 17 )
+                && SV_LadderJsonAppendString( &builder, meta->playerId )
+                && SV_LadderJsonAppendRaw( &builder, ",\"name\":", 8 )
+                && SV_LadderJsonAppendString( &builder, meta->playerName )
+                && SV_LadderJsonAppendRaw( &builder, "},\"map\":", 8 )
+                && SV_LadderJsonAppendString( &builder, meta->map )
+                && SV_LadderJsonAppendRaw( &builder, ",\"vehicle\":", 11 )
+                && SV_LadderJsonAppendString( &builder, meta->vehicle )
+                && SV_LadderJsonAppendRaw( &builder, ",\"trackLength\":", 15 )
+                && SV_LadderJsonAppendInt( &builder, meta->trackLength )
+                && SV_LadderJsonAppendRaw( &builder, ",\"trackReversed\":", 17 )
+                && SV_LadderJsonAppendInt( &builder, meta->trackReversed )
+                && SV_LadderJsonAppendRaw( &builder, ",\"lapMs\":", 9 )
+                && SV_LadderJsonAppendInt( &builder, meta->lapMs )
+                && SV_LadderJsonAppendRaw( &builder, ",\"frames\":", 10 )
+                && SV_LadderJsonAppendInt( &builder, meta->frameCount )
+                && SV_LadderJsonAppendRaw( &builder, ",\"gametype\":", 12 )
+                && SV_LadderJsonAppendInt( &builder, meta->gametype )
+                && SV_LadderJsonAppendRaw( &builder, ",\"physicsVersion\":", 18 )
+                && SV_LadderJsonAppendInt( &builder, meta->physicsVersion )
+                && SV_LadderJsonAppendRaw( &builder, ",\"mapChecksum\":", 15 )
+                && SV_LadderJsonAppendInt( &builder, meta->mapChecksum )
+                && SV_LadderJsonAppendRaw( &builder, ",\"courseLengthUnits\":", 21 )
+                && SV_LadderJsonAppendInt( &builder, meta->courseLengthUnits )
+                && SV_LadderJsonAppendRaw( &builder, ",\"sprintTrack\":", 15 )
+                && SV_LadderJsonAppendBoolean( &builder, meta->sprintTrack ? qtrue : qfalse )
+                && SV_LadderJsonAppendRaw( &builder, ",\"data\":", 8 )
+                && SV_LadderJsonAppendString( &builder, data )
+                && SV_LadderJsonAppendChar( &builder, '}' );
+
+        if ( !ok ) {
+                Z_Free( builder.data );
+                return NULL;
+        }
+
+        *lengthOut = builder.length;
+        return builder.data;
+}
+
+/*
+=================
+SV_LadderSubmitGhost
+
+Queues a lap ghost recorded by the game module. Uses the same credentials,
+queue, spool and retry logic as match reports.
+=================
+*/
+void SV_LadderSubmitGhost( const ladderGhostMeta_t *meta, const char *data ) {
+        ladderRequest_t *request;
+        char activeProfile[PROFILE_MAX_NAME];
+        char profileApiKey[LADDER_REGISTER_KEY_MAX];
+        char serverName[68];
+        char *text;
+        char *json;
+        size_t length = 0;
+        size_t dataLength;
+        int total;
+
+        if ( !sv_ladder.initialized ) {
+                SV_LadderInit();
+        }
+        if ( !sv_ladder.initialized || !sv_ladderEnabled || !sv_ladderEnabled->integer ) {
+                return;
+        }
+        if ( !meta || !meta->valid || !data ) {
+                return;
+        }
+        if ( meta->dataLength <= 0 || meta->dataLength >= LADDER_GHOST_MAX_DATA ) {
+                Com_Printf( "Ladder: ghost %s has an invalid size, dropped\n", meta->ghostId );
+                return;
+        }
+        if ( !sv_ladderUrl || !sv_ladderUrl->string[0] ) {
+                return;
+        }
+
+        /* Same credential rules as SV_LadderSubmit: the active (offline)
+         * profile's registered key, otherwise the server key. */
+        Cvar_VariableStringBuffer( "profile_active", activeProfile, sizeof( activeProfile ) );
+        profileApiKey[0] = '\0';
+        if ( activeProfile[0] ) {
+                if ( !SV_LadderLoadProfileCredentials( activeProfile,
+                                                       profileApiKey, sizeof( profileApiKey ),
+                                                       serverName, sizeof( serverName ) ) ) {
+                        Com_DPrintf( "Ladder: no registered credentials for active profile; skipping ghost %s\n",
+                                meta->ghostId );
+                        return;
+                }
+        } else {
+                if ( !sv_ladderApiKey || !sv_ladderApiKey->string[0] ) {
+                        return;
+                }
+                Cvar_VariableStringBuffer( "sv_hostname", serverName, sizeof( serverName ) );
+        }
+
+        SV_LadderRefreshQueueLimit();
+        total = sv_ladder.queueSize + ( sv_ladder.active ? 1 : 0 );
+        if ( total >= sv_ladder.maxQueue ) {
+                Com_Printf( "Ladder: queue full, dropping ghost %s\n", meta->ghostId );
+                return;
+        }
+
+        /* Copy the ghost text out of game memory, bounded and terminated. */
+        dataLength = (size_t)meta->dataLength;
+        text = Z_Malloc( dataLength + 1 );
+        if ( !text ) {
+                return;
+        }
+        Com_Memcpy( text, data, dataLength );
+        text[dataLength] = '\0';
+
+        json = SV_LadderSerializeGhost( meta, text, serverName, &length );
+        Z_Free( text );
+        if ( !json || !length ) {
+                Com_Printf( "Ladder: failed to serialize ghost %s\n", meta->ghostId );
+                if ( json ) {
+                        Z_Free( json );
+                }
+                return;
+        }
+
+        request = SV_LadderAllocRequest();
+        if ( !request ) {
+                Z_Free( json );
+                return;
+        }
+
+        request->isGhost = qtrue;
+        request->json = json;
+        request->jsonLength = length;
+        Q_strncpyz( request->matchId, meta->ghostId, sizeof( request->matchId ) );
+        Q_strncpyz( request->profileName, activeProfile, sizeof( request->profileName ) );
+        Q_strncpyz( request->serverName, serverName, sizeof( request->serverName ) );
+        if ( activeProfile[0] ) {
+                Q_strncpyz( request->apiKey, profileApiKey, sizeof( request->apiKey ) );
+        } else {
+                Q_strncpyz( request->apiKey, sv_ladderApiKey->string, sizeof( request->apiKey ) );
+        }
+
+        if ( sv_ladder.spoolReady ) {
+                if ( !SV_LadderWriteSpool( request ) ) {
+                        request->spoolName[0] = '\0';
+                        request->spoolPath[0] = '\0';
+                }
+        }
+
+#ifndef USE_CURL
         SV_LadderFreeRequest( request, qfalse );
         return;
 #else

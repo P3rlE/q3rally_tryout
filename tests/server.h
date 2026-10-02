@@ -240,10 +240,40 @@ typedef struct ladderMatchPayload_s {
         ladderPlayerPayload_t players[MAX_CLIENTS];
 } ladderMatchPayload_t;
 
+/* Mirrors ladderGhostMeta_t from bg_ladder.h */
+#define LADDER_GHOST_MAX_DATA           ( 448 * 1024 )
+#define LADDER_GHOST_MAX_ID             96
+#define LADDER_GHOST_MAX_NAME           64
+
+typedef struct ladderGhostMeta_s {
+        int             valid;
+        char            ghostId[LADDER_GHOST_MAX_ID];
+        char            map[MAX_QPATH];
+        char            vehicle[LADDER_MAX_VEHICLE];
+        char            playerId[LADDER_MAX_PLAYER_ID];
+        char            playerName[LADDER_GHOST_MAX_NAME];
+        int             trackLength;
+        int             trackReversed;
+        int             lapMs;
+        int             frameCount;
+        int             gametype;
+        int             physicsVersion;
+        int             mapChecksum;
+        int             courseLengthUnits;
+        int             sprintTrack;
+        int             dataLength;
+} ladderGhostMeta_t;
+
+#ifndef Q3_VERSION
+#define Q3_VERSION "q3rally-test"
+#endif
+
 typedef struct cvar_s {
         int integer;
         char string[128];
 } cvar_t, vmCvar_t;
+
+static cvar_t *com_dedicated = NULL;
 
 static inline cvar_t *Cvar_Get( const char *name, const char *value, int flags ) {
         static cvar_t stub;

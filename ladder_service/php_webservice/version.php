@@ -6,9 +6,18 @@
 
 declare(strict_types=1);
 
-const LADDER_VERSION = '1.0.8';
+const LADDER_VERSION = '1.0.10';
 
 const LADDER_CHANGELOG = [
+    '1.0.10' => [
+        'date'    => '2026-10-02',
+        'changes' => [
+            'New: lap ghosts – POST /api/v1/ghosts stores the best lap ghost per player, map, track variant and vehicle',
+            'New: GET /api/v1/ghosts ranking list and GET /api/v1/ghosts/{ghostId} (?format=raw for the .ghost text)',
+            'Ghosts are grouped by physics version and map checksum',
+            'Plausibility checks on ghost uploads; key usage counted as ghostCount',
+        ],
+    ],
     '1.0.8' => [
         'date'    => '2026-04-13',
         'changes' => [

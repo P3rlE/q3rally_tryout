@@ -2662,6 +2662,9 @@ void ClientEndFrame( gentity_t *ent ) {
 	}
 	SendPendingPredictableEvents( &ent->client->ps );
 
+	// Q3Rally: sample the driver's line for the ladder lap ghost
+	G_GhostRecord_ClientFrame( ent );
+
 /*
 	if( g_entities[0].client )
 	{

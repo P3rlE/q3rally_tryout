@@ -22,12 +22,25 @@ Added:
 - Create-server track list shows a scrollbar and a "first-last / total" counter when
   there are more than eight tracks, and scrolls with the mouse wheel. Tracks below the
   visible rows (e.g. the Sprint maps in Ghost Race on Windows) were easy to miss.
+- Lap ghosts on the ladder. The server records every driver's laps (Racing, Sprint,
+  Team Racing, Ghost Race; humans with a profile UUID) and uploads a lap to the ladder
+  when it is the driver's best of the session (POST .../ghosts, same key, queue, spool
+  and retries as match reports). The ladder keeps the best ghost per player, map,
+  track variant and vehicle. Laps with resets/teleports are discarded.
+- Ghosts carry BG_PHYSICS_VERSION (bg_public.h) and the BSP checksum; the ladder ranks
+  only ghosts of the same physics version and map build. Bump BG_PHYSICS_VERSION when
+  handling changes make old laps incomparable.
+- cg_ghostShare (default 1, "Share Lap Ghosts" in the Q3Rally options) lets drivers opt
+  out of ghost uploads; g_ghostUpload 0 disables uploads on a server.
+- PHP ladder webservice 1.0.10: POST /api/v1/ghosts with plausibility checks,
+  GET /api/v1/ghosts?map=&tl=&rev=&vehicle= ranking list, GET /api/v1/ghosts/{ghostId}
+  (?format=raw returns the .ghost text). New file ghosts.php.
 
 Changed:
 
 - The start-server menu no longer overwrites the archived cg_ghostPlayback setting.
-- Ghost Race counts no wins/losses and no rank score and is never sent to the ladder;
-  best lap times are still recorded.
+- Ghost Race counts no wins/losses and no rank score and sends no match report to the
+  ladder; best lap times are still recorded and lap ghosts are uploaded.
 - tools/startserver/cli.py now uses the real g_gametype values (sprint 7, team modes
   16+, koth 22, ghost 8).
 

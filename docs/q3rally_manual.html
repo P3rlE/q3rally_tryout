@@ -606,6 +606,7 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php"
 <div class="cvar-group-label">Ladder</div>
 <table class="cvar-table">
 <tr><td class="cvar-name">sv_ladderEnabled</td><td class="cvar-default">0</td><td class="cvar-desc">Globally enable the HTTP match reporter.</td></tr>
+<tr><td class="cvar-name">g_ghostUpload</td><td class="cvar-default">1</td><td class="cvar-desc">Upload drivers' best lap ghosts to the ladder (requires sv_ladderEnabled and a registered key). 0 disables ghost uploads on this server.</td></tr>
 <tr><td class="cvar-name">sv_ladderUrl</td><td class="cvar-default">—</td><td class="cvar-desc">Target endpoint URL for <code>POST /api/v1/matches</code>.</td></tr>
 <tr><td class="cvar-name">sv_ladderApiKey</td><td class="cvar-default">—</td><td class="cvar-desc">Bearer token. Protected — never logged or saved to disk.</td></tr>
 </table>
@@ -615,6 +616,7 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php"
 <tr><td class="cvar-name">cl_updateCheck</td><td class="cvar-default">1</td><td class="cvar-desc">Enable automatic version check on startup. Checks against <code>cl_updateEndpoint</code> on UI load.</td></tr>
 <tr><td class="cvar-name">cl_updateEndpoint</td><td class="cvar-default">ladder URL</td><td class="cvar-desc">URL of the version text file. Default: <code>https://ladder.q3rally.com/version.txt</code></td></tr>
 <tr><td class="cvar-name">cg_ghostAlpha</td><td class="cvar-default">160</td><td class="cvar-desc">Transparency of ghost vehicles and their wheels (0–255). Lower = more transparent.</td></tr>
+<tr><td class="cvar-name">cg_ghostShare</td><td class="cvar-default">1</td><td class="cvar-desc">Share your best lap ghosts with the Q3Rally Ladder (sent in userinfo). Set to 0 to opt out. Menu: Q3Rally options, "Share Lap Ghosts".</td></tr>
 <tr><td class="cvar-name">ui_menuBackEnable</td><td class="cvar-default">1</td><td class="cvar-desc">Enable remote background image download for the main menu.</td></tr>
 <tr><td class="cvar-name">ui_menuBackUrl</td><td class="cvar-default">ladder URL</td><td class="cvar-desc">HTTP(S) URL of the background image (PNG/JPG/TGA, max 5 MiB, max 4096×4096).</td></tr>
 <tr><td class="cvar-name">ui_menuBackRefreshSec</td><td class="cvar-default">0</td><td class="cvar-desc">Auto-refresh interval in seconds for the menu background. 0 = disabled.</td></tr>
