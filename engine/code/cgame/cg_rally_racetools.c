@@ -1742,6 +1742,8 @@ void CG_FinishedRace( int client, int time ) {
         cent->finishRaceTime = time;
 
         if ( client == cg.snap->ps.clientNum ) {
+                /* Before the personal ghost is replaced by this run. */
+                CG_GhostRace_EvaluateFinish( cent->bestLapTime );
                 CG_EndGhostRecording( time );
                 CG_AttemptSavePersonalGhost( time );
         }
@@ -1772,6 +1774,7 @@ void CG_StartRace( int time ) {
 	s_raceOrderActive = qtrue;
 	memset( s_raceSplitHistory, 0, sizeof( s_raceSplitHistory ) );
 	CG_LadderGhost_ClosePicker();
+	CG_GhostRace_ResetResult();
 
         for (i = 0; i < MAX_CLIENTS; i++){
                 player = &cg_entities[i];

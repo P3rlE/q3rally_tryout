@@ -3607,6 +3607,7 @@ static void CG_DrawIntermission( stereoFrame_t stereoFrame ) {
 	cg.scoreBoardShowing = CG_DrawHUD();
 	CG_DrawHUDOptionsMenu();
 	CG_LadderGhost_DrawPicker();
+	CG_GhostRace_DrawResultBanner();
 
 	if ( stereoFrame == STEREO_CENTER ) {
 		CG_JukeboxFrame();
@@ -4000,6 +4001,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 	cg.scoreBoardShowing = CG_DrawHUD();
 	CG_DrawHUDOptionsMenu();
 	CG_LadderGhost_DrawPicker();
+	CG_GhostRace_DrawResultBanner();
 
 	// don't draw center string if scoreboard is up
 

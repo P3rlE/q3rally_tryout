@@ -83,6 +83,8 @@ void CG_SetScreenPlacement( screenPlacement_e hpos, screenPlacement_e vpos ) { (
 void CG_FillRect( float x, float y, float w, float h, const float *color ) { (void)x; (void)y; (void)w; (void)h; (void)color; }
 void CG_DrawRect( float x, float y, float w, float h, float size, const float *color ) { (void)x; (void)y; (void)w; (void)h; (void)size; (void)color; }
 static int s_drawn;
+static int s_playbackMode = 3;
+int CG_GhostPlaybackMode( void ) { return s_playbackMode; }
 void CG_DrawIngameString( int x, int y, const char *text, int style, float scale, const float *color ) {
 	(void)x; (void)y; (void)text; (void)style; (void)scale; (void)color;
 	s_drawn++;
@@ -235,6 +237,62 @@ int main( void ) {
 	assert( !cg.ladderPickerOpen );
 
 	assert( !CG_LadderGhost_ServerCommand( "ghostmeta" ) );
+
+	/* Result against the ghost: best lap vs. the ghost's lap. */
+	cg_ghostPlayback.integer = 0;
+	CG_LadderGhost_Reset();
+	SendList();
+	CG_LadderGhost_Pick( 1 );              /* Gamma Ray, 59500 */
+	Server( "lghostmeta 1 59500 2" );
+	Server( "lghostdata 0 2 0 0 0 0 0 0 0 59500 10 0 0 0 0 0" );
+	Server( "lghostdone 1" );
+	assert( cg.ladderGhostAvailable );
+	{
+		char name[40];
+		int ghostMs = 0, playerMs = 0;
+		qboolean finished = qtrue;
+
+		/* Live, before the finish: current best lap. */
+		cg_entities[0].bestLapTime = 60100;
+		assert( CG_GhostRace_ScoreboardGhost( name, sizeof( name ), &ghostMs, &playerMs, &finished ) );
+		assert( !strcmp( name, "Gamma Ray" ) && ghostMs == 59500 && playerMs == 60100 && !finished );
+
+		CG_GhostRace_EvaluateFinish( 59321 );
+		assert( cg.ghostResultValid && cg.ghostResultWon );
+		assert( cg.ghostResultPlayerMs == 59321 && cg.ghostResultGhostMs == 59500 );
+		assert( CG_GhostRace_ScoreboardGhost( name, sizeof( name ), &ghostMs, &playerMs, &finished ) );
+		assert( finished && playerMs == 59321 );
+
+		s_drawn = 0;
+		s_snap.ps.pm_type = PM_INTERMISSION;
+		CG_GhostRace_DrawResultBanner();
+		assert( s_drawn == 2 );
+
+		CG_GhostRace_EvaluateFinish( 59500 );   /* equal is not a win */
+		assert( cg.ghostResultValid && !cg.ghostResultWon );
+
+		/* Banner disappears after a while outside intermission. */
+		s_snap.ps.pm_type = PM_NORMAL;
+		cg.time = cg.ghostResultTime + 9000;
+		s_drawn = 0;
+		CG_GhostRace_DrawResultBanner();
+		assert( s_drawn == 0 );
+
+		/* Personal / server ghost and no ghost. */
+		s_playbackMode = 1;
+		cg.personalGhostAvailable = qtrue;
+		cg.personalGhostBestTime = 61000;
+		CG_GhostRace_EvaluateFinish( 60000 );
+		assert( cg.ghostResultWon && !strcmp( cg.ghostResultName, "Personal Ghost" ) );
+		s_playbackMode = 0;
+		CG_GhostRace_EvaluateFinish( 60000 );
+		assert( !cg.ghostResultValid );
+		cgs.gametype = GT_RACING;
+		s_playbackMode = 3;
+		CG_GhostRace_EvaluateFinish( 1000 );
+		assert( !cg.ghostResultValid );
+		assert( !CG_GhostRace_ScoreboardGhost( name, sizeof( name ), &ghostMs, &playerMs, &finished ) );
+	}
 	puts( "ok" );
 	return 0;
 }

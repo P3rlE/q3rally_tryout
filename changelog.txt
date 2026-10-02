@@ -49,6 +49,11 @@ Added:
 - cg_ghostPlayback 3 "Ladder opponent" (Q3Rally options / HUD options "LADDER"):
   opens the picker in Ghost Race like automatic mode; outside Ghost Race it plays
   the personal ghost. g_ghostDownload 0 turns ladder ghosts off on a server.
+- Ghost Race result: at the finish the best lap (A2B: the whole run) is compared with
+  the lap of the ghost you raced (ladder, personal or server ghost). A banner shows
+  "GHOST BEATEN BY 0.420" or "GHOST WINS BY ..." with both times and stays on the
+  intermission scoreboard. The scoreboard lists the ghost as its own row (name, lap
+  time, gap, BEATEN/WINNER) right above or below you.
 - PHP ladder webservice 1.0.11: GET /api/v1/ghosts accepts perVehicle=K (best K per
   vehicle) and format=text (tab separated list for the game engine).
 

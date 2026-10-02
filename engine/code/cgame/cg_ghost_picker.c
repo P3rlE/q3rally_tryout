@@ -644,3 +644,185 @@ const char *CG_LadderGhost_StatusText( qboolean *isError ) {
 	}
 	return "LOADING GHOST";
 }
+
+/* -------------------------------------------------------------------------
+   Result against the ghost
+   The ghost is one best lap, so the race counts as won when the player's
+   best lap (A2B: the whole run) is faster than the ghost's lap.
+   ------------------------------------------------------------------------- */
+
+#define GHOST_RESULT_BANNER_MS  8000
+
+/*
+=================
+CG_GhostRace_Opponent
+
+Name and lap time of the ghost the player races against in Ghost Race.
+=================
+*/
+qboolean CG_GhostRace_Opponent( char *name, int nameSize, int *lapMs ) {
+	if ( cgs.gametype != GT_GHOST ) {
+		return qfalse;
+	}
+
+	switch ( CG_GhostPlaybackMode() ) {
+	case 1:
+		if ( !cg.personalGhostAvailable || cg.personalGhostBestTime <= 0 ) {
+			return qfalse;
+		}
+		Q_strncpyz( name, "Personal Ghost", nameSize );
+		*lapMs = cg.personalGhostBestTime;
+		return qtrue;
+	case 2:
+		if ( !cg.baseGhostAvailable || cg.baseGhostBestTime <= 0 ) {
+			return qfalse;
+		}
+		Q_strncpyz( name, "Server Ghost", nameSize );
+		*lapMs = cg.baseGhostBestTime;
+		return qtrue;
+	case 3:
+		if ( !cg.ladderGhostAvailable || cg.ladderGhostSelected < 0 ||
+		     cg.ladderGhostSelected >= cg.ladderGhostEntryCount ) {
+			return qfalse;
+		}
+		Q_strncpyz( name, cg.ladderGhostEntries[cg.ladderGhostSelected].name, nameSize );
+		*lapMs = cg.ladderGhostEntries[cg.ladderGhostSelected].lapMs;
+		return *lapMs > 0;
+	default:
+		return qfalse;
+	}
+}
+
+/* Called from CG_StartRace. */
+void CG_GhostRace_ResetResult( void ) {
+	cg.ghostResultValid = qfalse;
+	cg.ghostResultWon = qfalse;
+	cg.ghostResultPlayerMs = 0;
+	cg.ghostResultGhostMs = 0;
+	cg.ghostResultTime = 0;
+	cg.ghostResultName[0] = '\0';
+}
+
+/*
+=================
+CG_GhostRace_EvaluateFinish
+
+Called from CG_FinishedRace for the local player after the best lap was
+updated and before a new personal ghost is saved (which would replace the
+personal ghost's lap time with this run).
+=================
+*/
+void CG_GhostRace_EvaluateFinish( int bestLapMs ) {
+	char name[40];
+	int ghostMs;
+
+	CG_GhostRace_ResetResult();
+	if ( bestLapMs <= 0 || !CG_GhostRace_Opponent( name, sizeof( name ), &ghostMs ) ) {
+		return;
+	}
+	cg.ghostResultValid = qtrue;
+	cg.ghostResultWon = bestLapMs < ghostMs ? qtrue : qfalse;
+	cg.ghostResultPlayerMs = bestLapMs;
+	cg.ghostResultGhostMs = ghostMs;
+	cg.ghostResultTime = cg.time;
+	Q_strncpyz( cg.ghostResultName, name, sizeof( cg.ghostResultName ) );
+	{
+		char playerText[24];
+
+		Q_strncpyz( playerText, getStringForTimePrecise( bestLapMs ), sizeof( playerText ) );
+		CG_Printf( "%s against %s: best lap %s vs %s\n",
+			cg.ghostResultWon ? "Won" : "Lost", name, playerText,
+			getStringForTimePrecise( ghostMs ) );
+	}
+}
+
+/*
+=================
+CG_GhostRace_ScoreboardGhost
+
+Data for the ghost row of the scoreboard: the result after the finish,
+otherwise the live comparison with the current best lap.
+=================
+*/
+qboolean CG_GhostRace_ScoreboardGhost( char *name, int nameSize, int *ghostMs, int *playerMs, qboolean *finished ) {
+	if ( cgs.gametype != GT_GHOST || !cg.snap ) {
+		return qfalse;
+	}
+	if ( cg.ghostResultValid ) {
+		Q_strncpyz( name, cg.ghostResultName, nameSize );
+		*ghostMs = cg.ghostResultGhostMs;
+		*playerMs = cg.ghostResultPlayerMs;
+		*finished = qtrue;
+		return qtrue;
+	}
+	if ( !CG_GhostRace_Opponent( name, nameSize, ghostMs ) ) {
+		return qfalse;
+	}
+	*playerMs = cg_entities[cg.snap->ps.clientNum].bestLapTime;
+	*finished = qfalse;
+	return qtrue;
+}
+
+static void CG_GhostRace_FormatGap( int ms, char *out, int outSize ) {
+	int absMs = ms < 0 ? -ms : ms;
+	Com_sprintf( out, outSize, "%d.%03d", absMs / 1000, absMs % 1000 );
+}
+
+/*
+=================
+CG_GhostRace_DrawResultBanner
+
+Big result line after the finish; stays visible on the intermission
+scoreboard.
+=================
+*/
+void CG_GhostRace_DrawResultBanner( void ) {
+	static vec4_t wonColor  = { 0.35f, 0.90f, 0.45f, 1.00f };
+	static vec4_t lostColor = { 1.00f, 0.32f, 0.22f, 1.00f };
+	static vec4_t subColor  = { 0.90f, 0.95f, 0.94f, 1.00f };
+	static vec4_t shade     = { 0.008f, 0.012f, 0.016f, 0.70f };
+	vec4_t color;
+	vec4_t subtitleColor;
+	vec4_t shadeColor;
+	char gap[24];
+	char line[128];
+	char name[24];
+	char playerText[24];
+	char ghostText[24];
+	float alpha = 1.0f;
+	int elapsed;
+
+	if ( !cg.ghostResultValid || cgs.gametype != GT_GHOST || !cg.snap ) {
+		return;
+	}
+	elapsed = cg.time - cg.ghostResultTime;
+	if ( cg.snap->ps.pm_type != PM_INTERMISSION ) {
+		if ( elapsed < 0 || elapsed > GHOST_RESULT_BANNER_MS ) {
+			return;
+		}
+		if ( elapsed > GHOST_RESULT_BANNER_MS - 1000 ) {
+			alpha = (float)( GHOST_RESULT_BANNER_MS - elapsed ) / 1000.0f;
+		}
+	}
+
+	Vector4Copy( cg.ghostResultWon ? wonColor : lostColor, color );
+	Vector4Copy( subColor, subtitleColor );
+	Vector4Copy( shade, shadeColor );
+	color[3] *= alpha;
+	subtitleColor[3] *= alpha;
+	shadeColor[3] *= alpha;
+
+	CG_SetScreenPlacement( PLACE_CENTER, PLACE_TOP );
+	CG_FillRect( 120, 22, 400, 50, shadeColor );
+
+	CG_GhostRace_FormatGap( cg.ghostResultGhostMs - cg.ghostResultPlayerMs, gap, sizeof( gap ) );
+	Com_sprintf( line, sizeof( line ), cg.ghostResultWon ? "GHOST BEATEN BY %s" : "GHOST WINS BY %s", gap );
+	CG_DrawIngameString( 320, 28, line, UI_CENTER | UI_DROPSHADOW, 0.95f, color );
+
+	Q_strncpyz( name, cg.ghostResultName, sizeof( name ) );
+	Q_strupr( name );
+	Q_strncpyz( playerText, getStringForTimePrecise( cg.ghostResultPlayerMs ), sizeof( playerText ) );
+	Q_strncpyz( ghostText, getStringForTimePrecise( cg.ghostResultGhostMs ), sizeof( ghostText ) );
+	Com_sprintf( line, sizeof( line ), "BEST LAP %s  -  %s %s", playerText, name, ghostText );
+	CG_DrawIngameString( 320, 54, line, UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, 0.50f, subtitleColor );
+}

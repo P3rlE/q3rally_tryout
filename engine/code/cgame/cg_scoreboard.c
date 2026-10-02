@@ -1045,6 +1045,94 @@ static void CG_DrawModernPlayerRow(int y, score_t *score, int rank,
 
 /*
 =================
+CG_DrawGhostRaceRow
+Ghost Race: the ghost the local player races against, as its own row.
+=================
+*/
+static void CG_DrawGhostRaceRow(int y, qboolean isCompact, float fade,
+                                const char *name, int ghostMs, int playerMs,
+                                qboolean finished) {
+    int rowHeight, textY, i;
+    vec4_t tint, accent, ghostColor, mutedColor, resultColor;
+    char buffer[64];
+    qboolean playerAhead;
+
+    rowHeight = isCompact ? MODERN_SB_COMPACT_HEIGHT : MODERN_SB_ROW_HEIGHT;
+    textY = y + (rowHeight - (int)(14 * MODERN_SB_TEXT_SCALE)) / 2;
+    playerAhead = (playerMs > 0 && playerMs < ghostMs) ? qtrue : qfalse;
+
+    tint[0] = 0.30f; tint[1] = 0.55f; tint[2] = 0.95f; tint[3] = 0.16f * fade;
+    accent[0] = 0.38f; accent[1] = 0.65f; accent[2] = 1.0f; accent[3] = fade;
+    ghostColor[0] = 0.62f; ghostColor[1] = 0.80f; ghostColor[2] = 1.0f; ghostColor[3] = fade;
+    mutedColor[0] = 0.47f; mutedColor[1] = 0.62f; mutedColor[2] = 0.61f; mutedColor[3] = fade;
+    if (playerAhead) {
+        resultColor[0] = 0.35f; resultColor[1] = 0.90f; resultColor[2] = 0.45f;
+    } else {
+        resultColor[0] = 1.0f; resultColor[1] = 0.38f; resultColor[2] = 0.30f;
+    }
+    resultColor[3] = fade;
+
+    CG_DrawModernBackground(scoreboardX, y, currentScoreboardWidth, rowHeight,
+                            MODERN_SB_ALPHA * fade, qfalse);
+    CG_FillRect(scoreboardX, y, currentScoreboardWidth, rowHeight, tint);
+    CG_FillRect(scoreboardX, y, 2, rowHeight, accent);
+
+    for (i = 0; i < SBCOL_MAX; i++) {
+        int x = columns[i].x;
+        int width = columns[i].width;
+
+        if (!columns[i].visible) {
+            continue;
+        }
+
+        switch (columns[i].type) {
+            case SBCOL_RANK:
+                CG_DrawModernText(x, textY, "G", 1, width, ghostColor, qfalse);
+                break;
+            case SBCOL_NAME:
+                Q_strncpyz(buffer, name, 19);   /* leave room for the tag */
+                CG_DrawModernText(x, textY, buffer, 0, width, ghostColor, qfalse);
+                CG_DrawSmallStringColor(x + width - 48, textY, "GHOST", accent);
+                break;
+            case SBCOL_LAPTIME:
+                CG_DrawModernText(x, textY, getStringForTimePrecise(ghostMs), 1, width, ghostColor, qfalse);
+                break;
+            case SBCOL_DELTA:
+                /* Ghost relative to the player's best lap, like the other rows. */
+                if (playerMs > 0) {
+                    int deltaMs = ghostMs - playerMs;
+                    int absMs = deltaMs < 0 ? -deltaMs : deltaMs;
+                    Com_sprintf(buffer, sizeof(buffer), "%c%d.%03d",
+                                deltaMs < 0 ? '-' : '+', absMs / 1000, absMs % 1000);
+                    CG_DrawModernText(x, textY, buffer, 1, width, resultColor, qfalse);
+                } else {
+                    CG_DrawModernText(x, textY, "--", 1, width, mutedColor, qfalse);
+                }
+                break;
+            case SBCOL_TOTALTIME:
+                /* A2B: the ghost's lap is the whole run. */
+                if (CG_RaceLapLimit() <= 1) {
+                    CG_DrawModernText(x, textY, getStringForTimePrecise(ghostMs), 1, width, ghostColor, qfalse);
+                } else {
+                    CG_DrawModernText(x, textY, "-", 1, width, mutedColor, qfalse);
+                }
+                break;
+            case SBCOL_STATUS:
+                if (!finished) {
+                    CG_DrawModernText(x, textY, "-", 1, width, mutedColor, qfalse);
+                } else {
+                    CG_DrawModernText(x, textY, playerAhead ? "BEATEN" : "WINNER",
+                                      1, width, resultColor, qfalse);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+/*
+=================
 CG_DrawModernGameInfo
 Draw game information header with gametype-specific info
 =================
@@ -1380,16 +1468,42 @@ qboolean CG_DrawModernScoreboard(void) {
             drawnClients++;
         }
     } else {
-        /* Free-for-all scoreboard */
+        /* Free-for-all scoreboard. Ghost Race adds the local player's ghost
+         * as its own row, right above or below the player by best lap. */
+        char ghostName[40];
+        int ghostMs = 0, ghostPlayerMs = 0;
+        qboolean ghostFinished = qfalse;
+        qboolean hasGhostRow;
+
+        hasGhostRow = CG_GhostRace_ScoreboardGhost(ghostName, sizeof(ghostName),
+                                                   &ghostMs, &ghostPlayerMs, &ghostFinished);
+
         for (i = 0; i < cg.numScores && drawnClients < maxClients; i++) {
+            qboolean isLocal;
+            qboolean ghostAhead;
+
             score = &cg.scores[i];
             ci = &cgs.clientinfo[score->client];
+            isLocal = (score->client == cg.snap->ps.clientNum) ? qtrue : qfalse;
+            ghostAhead = !(ghostPlayerMs > 0 && ghostPlayerMs < ghostMs);
+
+            if (hasGhostRow && isLocal && ghostAhead) {
+                CG_DrawGhostRaceRow(y, isCompact, fade, ghostName, ghostMs,
+                                    ghostPlayerMs, ghostFinished);
+                y += rowHeight + rowSpacing;
+            }
 
             CG_DrawModernPlayerRow(y, score, i + 1, isCompact, fade,
                                    lastPlaceClient, lastPlacePosition,
                                    playersRemaining);
             y += rowHeight + rowSpacing;
             drawnClients++;
+
+            if (hasGhostRow && isLocal && !ghostAhead) {
+                CG_DrawGhostRaceRow(y, isCompact, fade, ghostName, ghostMs,
+                                    ghostPlayerMs, ghostFinished);
+                y += rowHeight + rowSpacing;
+            }
         }
     }
 

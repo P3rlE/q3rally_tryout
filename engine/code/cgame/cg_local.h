@@ -957,6 +957,13 @@ typedef struct {
 	int			ladderGhostTransferExpected;
 	int			ladderGhostTransferReceived;
 	qboolean	ladderPickerOpen;
+	// Ghost Race: result of the finished run against the ghost
+	qboolean	ghostResultValid;
+	qboolean	ghostResultWon;
+	int			ghostResultPlayerMs;
+	int			ghostResultGhostMs;
+	int			ghostResultTime;
+	char		ghostResultName[40];
 	qboolean	ladderPickerManual;		// opened with "ghostpicker": stays open in the race
 	qboolean	ladderPickerAutoShown;
 	qboolean	ladderPickerAllVehicles;
@@ -2225,6 +2232,11 @@ void CG_LadderGhost_CatcherCleared( void );
 qboolean CG_LadderGhost_KeyEvent( int key );
 void CG_LadderGhost_DrawPicker( void );
 const char *CG_LadderGhost_StatusText( qboolean *isError );
+qboolean CG_GhostRace_Opponent( char *name, int nameSize, int *lapMs );
+void CG_GhostRace_ResetResult( void );
+void CG_GhostRace_EvaluateFinish( int bestLapMs );
+qboolean CG_GhostRace_ScoreboardGhost( char *name, int nameSize, int *ghostMs, int *playerMs, qboolean *finished );
+void CG_GhostRace_DrawResultBanner( void );
 void CG_AttemptSavePersonalGhost( int finishTime );
 void CG_DrawRaceCountDown( void );
 void CG_RaceCountDown( const char *str, int secondsLeft );
