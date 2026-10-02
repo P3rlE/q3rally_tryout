@@ -35,6 +35,22 @@ Added:
 - PHP ladder webservice 1.0.10: POST /api/v1/ghosts with plausibility checks,
   GET /api/v1/ghosts?map=&tl=&rev=&vehicle= ranking list, GET /api/v1/ghosts/{ghostId}
   (?format=raw returns the .ghost text). New file ghosts.php.
+- Ladder ghosts as opponents in Ghost Race. The server fetches the ladder ranking of the
+  map, track variant and physics/map bucket and sends it to the clients. Before the
+  race an overlay lists the ghosts of your own car (TAB: all cars); ENTER picks one,
+  the first row goes back to the personal / server base ghost. The picked ghost is
+  streamed with position and angles (up to 2048 samples). The HUD shows "VS <name>"
+  and the gap at the last checkpoint ("GAP -0.42"). Console command "ghostpicker"
+  reopens the overlay; the pick is kept for vid_restart and map restarts.
+- The engine stores the ladder list and every downloaded ghost in
+  baseq3r/ghosts/ladder/, so the ghosts stay available offline or when the ladder is
+  down. Downloads run on their own curl handle, without the ladder key and without
+  sv_ladderEnabled (sv_ladderUrl is used to find the ladder).
+- cg_ghostPlayback 3 "Ladder opponent" (Q3Rally options / HUD options "LADDER"):
+  opens the picker in Ghost Race like automatic mode; outside Ghost Race it plays
+  the personal ghost. g_ghostDownload 0 turns ladder ghosts off on a server.
+- PHP ladder webservice 1.0.11: GET /api/v1/ghosts accepts perVehicle=K (best K per
+  vehicle) and format=text (tab separated list for the game engine).
 
 Changed:
 

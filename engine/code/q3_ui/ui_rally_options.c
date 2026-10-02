@@ -159,6 +159,7 @@ static const char *q3roptions_ghostPlayback[] = {
         "Off",
         "Personal",
         "Server base",
+        "Ladder opponent",
         0
 };
 
@@ -309,7 +310,7 @@ static void Q3ROptions_StatusBar( void *self )
 		break;
 
 	case ID_GHOST_PLAYBACK:
-		text = "Personal uses a saved ghost for this vehicle; Server base uses the route provided by the server.";
+		text = "Personal: your saved ghost; Server base: server route; Ladder: pick a ladder ghost in Ghost Race.";
 		break;
 
 	case ID_FUEL_CONSUMPTION:
@@ -561,7 +562,7 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.skidlength.curvalue = ui_minSkidLength.integer;
 	s_q3roptions.camtracking.curvalue = ui_tightCamTracking.integer;
 
-	s_q3roptions.ghostPlayback.curvalue = Com_Clamp( 0, 2, ui_ghostPlayback.integer );
+	s_q3roptions.ghostPlayback.curvalue = Com_Clamp( 0, 3, ui_ghostPlayback.integer );
 	s_q3roptions.fuelConsumption.curvalue = ui_useFuel.integer;
 	s_q3roptions.ladderOffline.curvalue = trap_Cvar_VariableValue( "sv_ladderEnabled" ) != 0 ? 1 : 0;
 	s_q3roptions.ghostShare.curvalue = trap_Cvar_VariableValue( "cg_ghostShare" ) != 0 ? 1 : 0;

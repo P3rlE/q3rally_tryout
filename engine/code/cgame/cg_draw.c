@@ -1483,6 +1483,14 @@ static void CG_DrawRallyTelemetryHud( void ) {
 				} else {
 					ghostStatus = "WAITING FOR BASE";
 				}
+			} else if ( CG_GhostPlaybackMode() == 3 ) {
+				qboolean ladderError;
+
+				ghostStatus = CG_LadderGhost_StatusText( &ladderError );
+				Vector4Copy( ladderError ? dangerColor : blueColor, ghostStatusColor );
+				if ( !ladderError && !cg.ladderGhostAvailable ) {
+					Vector4Copy( mutedColor, ghostStatusColor );
+				}
 			} else {
 				ghostStatus = "GHOST OFF";
 			}
@@ -1498,7 +1506,18 @@ static void CG_DrawRallyTelemetryHud( void ) {
 		                               : cg_hudShowLaps.integer ) {
 			CG_DrawIngameSmallString( 190, 432, modeValue, colorWhite );
 		}
-		if ( cg_hudShowPosition.integer ) {
+		if ( cgs.gametype == GT_GHOST && CG_GhostPlaybackMode() && cg.ghostSplitDeltaValid ) {
+			/* Ghost Race: gap to the ghost at the last checkpoint instead of
+			 * the (always 1/1) position. Negative = ahead of the ghost. */
+			static vec4_t aheadColor = { 0.35f, 0.85f, 0.45f, 1.00f };
+			int gap = cg.ghostSplitDeltaMs;
+			int absGap = gap < 0 ? -gap : gap;
+
+			Com_sprintf( modeExtra, sizeof(modeExtra), "GAP %c%d.%02d", gap < 0 ? '-' : '+',
+			             absGap / 1000, ( absGap % 1000 ) / 10 );
+			CG_DrawIngameString( 410, 432, modeExtra,
+			                     UI_RIGHT | UI_SMALLFONT, 0.75f, gap < 0 ? aheadColor : dangerColor );
+		} else if ( cg_hudShowPosition.integer ) {
 			CG_DrawIngameString( 410, 432, modeExtra,
 			                     UI_RIGHT | UI_SMALLFONT, 0.75f, accentColor );
 		}
@@ -3587,6 +3606,7 @@ static void CG_DrawIntermission( stereoFrame_t stereoFrame ) {
 // Q3Rally Code Start
 	cg.scoreBoardShowing = CG_DrawHUD();
 	CG_DrawHUDOptionsMenu();
+	CG_LadderGhost_DrawPicker();
 
 	if ( stereoFrame == STEREO_CENTER ) {
 		CG_JukeboxFrame();
@@ -3976,6 +3996,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 
 	cg.scoreBoardShowing = CG_DrawHUD();
 	CG_DrawHUDOptionsMenu();
+	CG_LadderGhost_DrawPicker();
 
 	// don't draw center string if scoreboard is up
 

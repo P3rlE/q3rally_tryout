@@ -335,18 +335,29 @@ static qboolean CG_SelectGhostFrames( ghostRecording_t *recording, int targetOff
 =================
 CG_GhostPlaybackMode
 
-Effective ghost playback mode: 0 off, 1 personal, 2 server base.
+Effective ghost playback mode: 0 off, 1 personal, 2 server base,
+3 ladder opponent.
 cg_ghostPlayback is the player's archived preference and is never rewritten
 by the game. In GT_GHOST a value of 0 means "automatic": the personal ghost
 for the current car, falling back to the server base ghost when no personal
-ghost exists.
+ghost exists. A ladder ghost picked in the Ghost Race picker always wins;
+cg_ghostPlayback 3 ("ladder opponent") opens the picker like automatic mode
+and falls back to it while nothing is picked (outside Ghost Race: personal).
 =================
 */
 int CG_GhostPlaybackMode( void ) {
         int mode = cg_ghostPlayback.integer;
 
-        if ( mode < 0 || mode > 2 ) {
+        if ( mode < 0 || mode > 3 ) {
                 mode = 0;
+        }
+
+        if ( cgs.gametype == GT_GHOST && cg.ladderGhostSelected >= 0 ) {
+                return 3;
+        }
+
+        if ( mode == 3 ) {
+                mode = ( cgs.gametype == GT_GHOST ) ? 0 : 1;
         }
 
         if ( mode == 0 && cgs.gametype == GT_GHOST ) {
@@ -365,6 +376,8 @@ static ghostRecording_t *CG_GetActiveGhostRecording( void ) {
                 return cg.ghostPlayback.valid ? &cg.ghostPlayback : NULL;
         case 2:
                 return cg.baseGhost.valid ? &cg.baseGhost : NULL;
+        case 3:
+                return cg.ladderGhost.valid ? &cg.ladderGhost : NULL;
         default:
                 return NULL;
         }
@@ -796,6 +809,26 @@ nextLine:
 
 	return qtrue;
 }
+/*
+=================
+CG_LoadLadderGhostFile
+
+Loads a cached ladder ghost (ghosts/ladder/...) into cg.ladderGhost. Any
+vehicle is accepted: the player picked this ghost on purpose.
+=================
+*/
+qboolean CG_LoadLadderGhostFile( const char *path, int lapMs ) {
+        char mapname[MAX_QPATH];
+        int trackLength = 0;
+        int trackReversed = 0;
+        int bestTime = 0;
+
+        COM_StripExtension( COM_SkipPath( cgs.mapname ), mapname, sizeof( mapname ) );
+        CG_GetGhostTrackVariant( &trackLength, &trackReversed );
+        return CG_LoadGhostFile( path, mapname, trackLength, trackReversed, NULL, lapMs,
+                &cg.ladderGhost, &bestTime, NULL, 0, NULL, 0 );
+}
+
 qboolean CG_LoadGhostFromFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime ) {
         int trackLength = 0;
         int trackReversed = 0;
@@ -1738,6 +1771,7 @@ void CG_StartRace( int time ) {
 
 	s_raceOrderActive = qtrue;
 	memset( s_raceSplitHistory, 0, sizeof( s_raceSplitHistory ) );
+	CG_LadderGhost_ClosePicker();
 
         for (i = 0; i < MAX_CLIENTS; i++){
                 player = &cg_entities[i];

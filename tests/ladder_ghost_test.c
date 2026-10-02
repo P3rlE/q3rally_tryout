@@ -94,6 +94,90 @@ int main( void ) {
 	SV_LadderBuildSpoolName( &request );
 	assert( !strncmp( request.spoolName, "match-", 6 ) );
 
+	/* Ghost download: URLs, list conversion, cache names and file writes. */
+	{
+		ladderGhostFetch_t fetch;
+		char url[MAX_STRING_CHARS];
+		char list[8192];
+		char cacheA[MAX_QPATH];
+		char cacheB[MAX_QPATH];
+		const char *body =
+			"q3r_valley.tl1_rev0.evo.p1_c-5.1234abcd-0000-4000-8000-000000000001\t61234\tevo\tDriver \"Q\"; x\n"
+			"bad id!\t5000\tevo\tNope\n"
+			"q3r_valley.tl1_rev0.sidepipe.p1_c-5.1234abcd-0000-4000-8000-000000000002\t0\tsidepipe\tZero\n"
+			"q3r_valley.tl1_rev0.sidepipe.p1_c-5.1234abcd-0000-4000-8000-000000000003\t62000\tsidepipe\t\n";
+		int count;
+
+		Com_Memset( &fetch, 0, sizeof( fetch ) );
+		fetch.kind = LADDER_FETCH_LIST;
+		fetch.requestId = 7;
+		Q_strncpyz( fetch.map, "q3r_valley", sizeof( fetch.map ) );
+		fetch.trackLength = 1;
+		fetch.physicsVersion = 1;
+		fetch.mapChecksum = -5;
+		Q_strncpyz( fetch.target, "ghosts/ladder/q3r_valley_tl1_rev0.list", sizeof( fetch.target ) );
+		Q_strncpyz( s_urlCvar.string, "https://ladder.q3rally.com/index.php/api/v1/matches", sizeof( s_urlCvar.string ) );
+		sv_ladderUrl = &s_urlCvar;
+		SV_LadderFetchBuildUrl( &fetch, url, sizeof( url ) );
+		assert( !strcmp( url, "https://ladder.q3rally.com/index.php/api/v1/ghosts?map=q3r_valley&tl=1&rev=0"
+			"&physics=1&checksum=-5&perVehicle=5&limit=100&format=text" ) );
+
+		fetch.kind = LADDER_FETCH_GHOST;
+		Q_strncpyz( fetch.ghostId, "q3r_valley.tl1_rev0.evo.p1_c-5.abc", sizeof( fetch.ghostId ) );
+		SV_LadderFetchBuildUrl( &fetch, url, sizeof( url ) );
+		assert( !strcmp( url, "https://ladder.q3rally.com/index.php/api/v1/ghosts/q3r_valley.tl1_rev0.evo.p1_c-5.abc?format=raw" ) );
+
+		Q_strncpyz( s_urlCvar.string, "https://example.com/other", sizeof( s_urlCvar.string ) );
+		SV_LadderFetchBuildUrl( &fetch, url, sizeof( url ) );
+		assert( url[0] == '\0' );
+
+		SV_LadderFetchCacheName( "q3r_valley", "a.b", 1000, cacheA, sizeof( cacheA ) );
+		SV_LadderFetchCacheName( "q3r_valley", "a.b", 999, cacheB, sizeof( cacheB ) );
+		assert( !strncmp( cacheA, "ghosts/ladder/q3r_valley/", 25 ) );
+		assert( strlen( cacheA ) == 25 + 16 + 6 );
+		assert( strcmp( cacheA, cacheB ) );
+
+		count = SV_LadderFetchBuildList( "q3r_valley", body, list, sizeof( list ) );
+		assert( count == 2 );
+		assert( strstr( list, "\tq3r_valley.tl1_rev0.evo.p1_c-5.1234abcd-0000-4000-8000-000000000001\t61234\tevo\tDriver Q x\n" ) != NULL );
+		assert( strstr( list, "\t62000\tsidepipe\tPlayer\n" ) != NULL );
+		assert( !strncmp( list, "ghosts/ladder/q3r_valley/", 25 ) );
+		assert( SV_LadderFetchBuildList( "q3r_valley", body, list, 40 ) == -1 );
+		assert( SV_LadderFetchBuildList( "q3r_valley", "", list, sizeof( list ) ) == 0 );
+
+		/* Targets outside ghosts/ladder/ are refused. */
+		assert( SV_LadderFetchTargetIsSafe( "ghosts/ladder/x.list" ) );
+		assert( !SV_LadderFetchTargetIsSafe( "ghosts/ladder/../q3config.cfg" ) );
+		assert( !SV_LadderFetchTargetIsSafe( "vm/qagame.qvm" ) );
+
+		/* Finished list: written to the target, status cvar set. */
+		fetch.kind = LADDER_FETCH_LIST;
+		test_fsWriteCount = 0;
+		SV_LadderFetchFinish( &fetch, body, 200 );
+		assert( test_fsWriteCount == 1 );
+		assert( !strcmp( test_fsLastPath, "ghosts/ladder/q3r_valley_tl1_rev0.list" ) );
+		assert( !strcmp( test_cvarSetName, "sv_ladderGhostList" ) );
+		assert( !strcmp( test_cvarSetValue, "7 ok 2" ) );
+
+		SV_LadderFetchFinish( &fetch, NULL, 503 );
+		assert( !strcmp( test_cvarSetValue, "7 fail 0" ) );
+		assert( test_fsWriteCount == 1 );
+
+		/* Finished ghost: only plausible .ghost text reaches the cache. */
+		fetch.kind = LADDER_FETCH_GHOST;
+		fetch.requestId = 9;
+		Q_strncpyz( fetch.target, cacheA, sizeof( fetch.target ) );
+		SV_LadderFetchFinish( &fetch, "{\"error\":1}", 200 );
+		assert( test_fsWriteCount == 1 );
+		assert( !strcmp( test_cvarSetName, "sv_ladderGhostFile" ) );
+		assert( !strcmp( test_cvarSetValue, "9 fail 0" ) );
+		SV_LadderFetchFinish( &fetch, data, 200 );
+		assert( test_fsWriteCount == 2 );
+		assert( !strcmp( test_fsLastPath, cacheA ) );
+		assert( !strcmp( test_fsLastData, data ) );
+		assert( !strcmp( test_cvarSetValue, "9 ok 1" ) );
+	}
+
 	puts( "ok" );
 	return 0;
 }

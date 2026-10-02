@@ -36,7 +36,7 @@ kurzen Pfade ohne Prefix, `/api/v1` ist aber die empfohlene Form.
 | `GET` | `/api/v1/matches/index` | nein | Liefert den kompakten Frontend-Index. |
 | `GET` | `/api/v1/players/{playerId}` | nein | Liefert ein öffentliches Spielerprofil. |
 | `POST` | `/api/v1/ghosts` | Bearer-Key | Speichert einen Runden-Ghost (nur wenn schneller als der bisherige Ghost des Spielers). |
-| `GET` | `/api/v1/ghosts?map=&tl=&rev=&vehicle=&physics=&checksum=&limit=` | nein | Rangliste der Ghosts einer Strecken-Variante, ohne Ghost-Daten. |
+| `GET` | `/api/v1/ghosts?map=&tl=&rev=&vehicle=&physics=&checksum=&limit=&perVehicle=&format=` | nein | Rangliste der Ghosts einer Strecken-Variante, ohne Ghost-Daten. `perVehicle=K`: beste K je Fahrzeug; `format=text`: eine Zeile je Ghost (`ghostId`, `lapMs`, Fahrzeug, Name, tab-getrennt) für die Spiel-Engine. |
 | `GET` | `/api/v1/ghosts/{ghostId}` | nein | Ein Ghost inkl. Daten; `?format=raw` liefert die `.ghost`-Datei als Text. |
 | `DELETE` | `/api/v1/matches/{matchId}` | Bearer-Key | Löscht ein Match dauerhaft. |
 
@@ -84,6 +84,12 @@ Plausibilitätsprüfungen beim Upload (HTTP 422 bei Verstoß):
 * Durchschnittsgeschwindigkeit plausibel, gefahrene Strecke 0,6- bis 4-fach der Kurslänge
 
 Uploads zählen beim Server-Key als `ghostCount`, nicht als `matchCount`.
+
+Im Spielmodus Ghost Race holt der Spielserver die Rangliste mit
+`?map=…&tl=…&rev=…&physics=…&checksum=…&perVehicle=5&limit=100&format=text`
+und einzelne Ghosts mit `/ghosts/{ghostId}?format=raw` (ohne Key). Beides legt er
+unter `baseq3r/ghosts/ladder/` ab und nutzt den Cache, wenn die Ladder nicht
+erreichbar ist.
 
 ## Datenablage
 

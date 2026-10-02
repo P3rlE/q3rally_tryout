@@ -167,6 +167,25 @@ Eigener Endpunkt, unabhängig von Match-Reports. Wird vom Game-Modul gefüllt
 | `sprintTrack`, `gametype` | `G_IsSprintTrack()`, `g_gametype` | Information |
 | `data` | `.ghost`-Text | Gleiches Format wie persönliche Ghosts, zusätzliche Kopfzeilen `physics_version`, `map_checksum`, `player`, `player_id` |
 
+### 4.1 Ghost-Download (`ladderGhostFetch_t`, `GET .../ghosts`)
+
+Nur Ghost Race (`g_ghostDownload`). Das Game-Modul (`g_ghost_ladder.c`) beauftragt die
+Engine über `trap_LadderFetchGhosts`; `sv_ladder.c` lädt sequentiell über einen eigenen
+curl-Multi-Handle, ohne Key und ohne `sv_ladderEnabled`.
+
+| Feld | Semantik |
+|---|---|
+| `kind` | `LADDER_FETCH_LIST` (Rangliste) oder `LADDER_FETCH_GHOST` (ein Ghost) |
+| `requestId` | Kennung für die Statusmeldung |
+| `map`, `trackLength`, `trackReversed`, `physicsVersion`, `mapChecksum` | Bucket der Rangliste (wie beim Upload) |
+| `ghostId` | öffentliche Ghost-ID der Ladder (nur `LADDER_FETCH_GHOST`) |
+| `target` | Zieldatei, muss unter `ghosts/ladder/` liegen |
+
+Ergebnis: Liste in `ghosts/ladder/<map>_tl<n>_rev<r>_p<physik>_c<prüfsumme>.list`
+(Zeilen `cacheFile⇥ghostId⇥lapMs⇥vehicle⇥name`), Ghosts in
+`ghosts/ladder/<map>/<hash>.ghost` (Hash aus ID und Rundenzeit). Status in den Cvars
+`sv_ladderGhostList` / `sv_ladderGhostFile` als `"<requestId> ok|fail <anzahl>"`.
+
 ## Review-Gate-Regeln (verbindlich)
 
 1. **Kein Feld ohne Status:** Neue Felder müssen vor Merge in diese Spezifikation mit Modusstatus aufgenommen werden.

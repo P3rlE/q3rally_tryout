@@ -19,6 +19,10 @@
  * Endpoints (wired up in index.php):
  *   POST /api/v1/ghosts            upload (Bearer key)
  *   GET  /api/v1/ghosts?map=...    ranking list without ghost data
+ *                                  (&perVehicle=K: best K per vehicle,
+ *                                   &format=text: one ghost per line,
+ *                                   ghostId<TAB>lapMs<TAB>vehicle<TAB>playerName;
+ *                                   used by the game engine)
  *   GET  /api/v1/ghosts/<ghostId>  one ghost incl. data (?format=raw: .ghost text)
  */
 
@@ -40,6 +44,7 @@ const LADDER_GHOST_MAX_COURSE_RATIO   = 4.0;
 const LADDER_GHOST_MAX_PER_BUCKET     = 200;
 const LADDER_GHOST_LIST_DEFAULT       = 10;
 const LADDER_GHOST_LIST_MAX           = 100;
+const LADDER_GHOST_PER_VEHICLE_MAX    = 20;
 
 // ── Keys and paths ───────────────────────────────────────────────────────────
 
@@ -105,6 +110,13 @@ function ghost_clean_name(string $name): string
         $name = 'Player';
     }
     return substr($name, 0, 36);
+}
+
+/** Single text-list field: printable ASCII without tabs, quotes or backslashes. */
+function ghost_text_field(string $value): string
+{
+    $value = preg_replace('/[^\x20-\x7e]|["\\\\;]/', '', $value) ?? '';
+    return trim($value);
 }
 
 // ── Validation ───────────────────────────────────────────────────────────────
@@ -458,7 +470,38 @@ function handle_ghost_list(): void
             }
         }
     }
-    $entries = array_slice(ghost_sort_entries($entries), 0, $limit);
+    $entries = ghost_sort_entries($entries);
+
+    // Best K per vehicle, so one fast car class cannot push every other
+    // vehicle out of the list.
+    $perVehicle = isset($_GET['perVehicle']) ? (int)$_GET['perVehicle'] : 0;
+    $perVehicle = max(0, min(LADDER_GHOST_PER_VEHICLE_MAX, $perVehicle));
+    if ($perVehicle > 0) {
+        $seen = [];
+        $kept = [];
+        foreach ($entries as $entry) {
+            $vehicleKey = (string)($entry['vehicle'] ?? '');
+            $seen[$vehicleKey] = ($seen[$vehicleKey] ?? 0) + 1;
+            if ($seen[$vehicleKey] <= $perVehicle) {
+                $kept[] = $entry;
+            }
+        }
+        $entries = $kept;
+    }
+    $entries = array_slice($entries, 0, $limit);
+
+    if (($_GET['format'] ?? '') === 'text') {
+        http_response_code(200);
+        header('Content-Type: text/plain; charset=us-ascii');
+        header('Cache-Control: public, max-age=30');
+        foreach ($entries as $entry) {
+            echo ghost_text_field((string)($entry['ghostId'] ?? '')), "\t",
+                (int)($entry['lapMs'] ?? 0), "\t",
+                ghost_text_field((string)($entry['vehicle'] ?? '')), "\t",
+                ghost_text_field(ghost_clean_name((string)($entry['playerName'] ?? ''))), "\n";
+        }
+        exit;
+    }
 
     $result = [];
     foreach ($entries as $i => $entry) {

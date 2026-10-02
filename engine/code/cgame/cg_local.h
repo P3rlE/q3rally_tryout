@@ -424,6 +424,14 @@ typedef enum {
 // ghost playback ---------------------------------------------------------------
 #define MAX_GHOST_FRAMES 16384
 #define MAX_BASE_GHOST_TRANSFER_FRAMES 512
+#define MAX_LADDER_GHOST_ENTRIES 64
+
+typedef struct ladderGhostEntry_s {
+        int                     lapMs;
+        char            vehicle[32];
+        char            name[40];
+        char            cacheFile[MAX_QPATH];
+} ladderGhostEntry_t;
 
 typedef struct ghostFrame_s {
         int                     timeOffset;
@@ -934,6 +942,25 @@ typedef struct {
 	int			baseGhostBestTime;
 	char			baseGhostVehicle[MAX_QPATH];
 	char			baseGhostPath[MAX_QPATH];
+
+	// Ghost Race: ladder ghost picked as opponent (cg_ghost_picker.c)
+	ghostRecording_t	ladderGhost;
+	ladderGhostEntry_t	ladderGhostEntries[MAX_LADDER_GHOST_ENTRIES];
+	int			ladderGhostEntryCount;
+	int			ladderGhostListExpected;
+	qboolean	ladderGhostListReady;
+	qboolean	ladderGhostListFromCache;
+	int			ladderGhostSelected;		// entry index, -1 = none
+	qboolean	ladderGhostAvailable;
+	qboolean	ladderGhostPending;
+	qboolean	ladderGhostFailed;
+	int			ladderGhostTransferExpected;
+	int			ladderGhostTransferReceived;
+	qboolean	ladderPickerOpen;
+	qboolean	ladderPickerAutoShown;
+	qboolean	ladderPickerAllVehicles;
+	int			ladderPickerCursor;
+	int			ladderPickerScroll;
 	qboolean	personalGhostAvailable;
 	int			personalGhostBestTime;
 	char			personalGhostVehicle[MAX_QPATH];
@@ -2183,6 +2210,20 @@ void CG_ResetBaseGhost( void );
 qboolean CG_LoadGhostFromFile( const char *path, const char *expectedMap, const char *expectedVehicle, int declaredBestTime );
 void CG_LoadPersonalGhost( void );
 int CG_GhostPlaybackMode( void );
+qboolean CG_LoadLadderGhostFile( const char *path, int lapMs );
+
+// cg_ghost_picker.c
+void CG_LadderGhost_Reset( void );
+void CG_LadderGhost_RequestList( void );
+void CG_LadderGhost_Pick( int entryIndex );
+qboolean CG_LadderGhost_ServerCommand( const char *cmd );
+qboolean CG_LadderGhost_PickerIsOpen( void );
+void CG_LadderGhost_ClosePicker( void );
+void CG_LadderGhost_TogglePicker_f( void );
+void CG_LadderGhost_CatcherCleared( void );
+qboolean CG_LadderGhost_KeyEvent( int key );
+void CG_LadderGhost_DrawPicker( void );
+const char *CG_LadderGhost_StatusText( qboolean *isError );
 void CG_AttemptSavePersonalGhost( int finishTime );
 void CG_DrawRaceCountDown( void );
 void CG_RaceCountDown( const char *str, int secondsLeft );

@@ -253,4 +253,28 @@ typedef struct ladderGhostMeta_s {
         int             dataLength;             /* bytes of ghost text */
 } ladderGhostMeta_t;
 
+/* ── Ghost download ──────────────────────────────────────────────────────────
+ * The game module asks the engine to fetch ghost data from the ladder
+ * (trap_LadderFetchGhosts). The engine writes the results into the
+ * ghosts/ladder/ cache below the game directory, so the game can read them
+ * with trap_FS_* and they keep working offline later.
+ *   LADDER_FETCH_LIST : ranking for map/variant/bucket -> list file `target`,
+ *                       status in cvar sv_ladderGhostList "<requestId> ok|fail <n>"
+ *   LADDER_FETCH_GHOST: one ghost (raw .ghost text) -> file `target` */
+#define LADDER_FETCH_LIST               1
+#define LADDER_FETCH_GHOST              2
+#define LADDER_FETCH_MAX_ID             160
+
+typedef struct ladderGhostFetch_s {
+        int             kind;
+        int             requestId;
+        char            map[MAX_QPATH];
+        int             trackLength;
+        int             trackReversed;
+        int             physicsVersion;
+        int             mapChecksum;
+        char            ghostId[LADDER_FETCH_MAX_ID];
+        char            target[MAX_QPATH];
+} ladderGhostFetch_t;
+
 #endif // BG_LADDER_H

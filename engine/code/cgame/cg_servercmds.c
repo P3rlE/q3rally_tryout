@@ -1873,6 +1873,10 @@ static void CG_ServerCommand( void ) {
                 return;
         }
 
+        if ( !Q_stricmpn( cmd, "lghost", 6 ) && CG_LadderGhost_ServerCommand( cmd ) ) {
+                return;
+        }
+
         if ( !strcmp( cmd, "ghostdata" ) ) {
                 CG_ParseGhostData();
                 return;

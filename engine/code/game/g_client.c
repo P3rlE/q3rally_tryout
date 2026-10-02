@@ -1534,6 +1534,7 @@ void ClientBegin( int clientNum ) {
         G_LogPrintf( "ClientBegin: %i\n", clientNum );
 
         G_Ghost_AnnounceForClient( ent );
+        G_GhostLadder_ClientBegin( clientNum );
 
         // count current clients and rank for scoreboard
         CalculateRanks();
@@ -2035,6 +2036,7 @@ void ClientDisconnect( int clientNum ) {
 
 	// Q3Rally: drop any lap ghost being recorded for this slot
 	G_GhostRecord_ClientDisconnect( clientNum );
+	G_GhostLadder_ClientDisconnect( clientNum );
 
 	ent = g_entities + clientNum;
 	if (!ent->client || ent->client->pers.connected == CON_DISCONNECTED) {

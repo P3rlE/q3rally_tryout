@@ -171,3 +171,31 @@ def test_ghost_upload_requires_key(ladder):
     assert status == 401
     status, _ = _request(base + "/ghosts", _ghost(), key="b" * 64)
     assert status == 401
+
+
+PLAYER_C = "0a1b2c3d-1111-4222-8333-aaaabbbbcccc"
+
+
+def test_ghost_list_text_format_per_vehicle(ladder):
+    """The game engine reads the ranking as tab separated text, best K per vehicle."""
+    base, _ = ladder
+    for player, lap, vehicle in [(PLAYER_A, 58000, "evo"), (PLAYER_B, 59000, "evo"),
+                                 (PLAYER_C, 60000, "evo"), (PLAYER_A, 61000, "sidepipe")]:
+        status, body = _request(base + "/ghosts", _ghost(player_id=player, lap_ms=lap, vehicle=vehicle))
+        assert status == 201, body
+
+    query = "/ghosts?map=q3r_testtrack&tl=1&rev=0&physics=1&checksum=4242"
+    status, body = _request(base + query + "&perVehicle=2&format=text", key=None)
+    assert status == 200, body
+    lines = [line.split("\t") for line in body.splitlines()]
+    assert [(f[1], f[2]) for f in lines] == [("58000", "evo"), ("59000", "evo"), ("61000", "sidepipe")]
+    assert lines[0][0] == f"q3r_testtrack.tl1_rev0.evo.p1_c4242.{PLAYER_A}"
+    assert lines[0][3] == "FastDriver"
+    assert all(len(f) == 4 for f in lines)
+
+    status, body = _request(base + query + "&limit=2&format=text", key=None)
+    assert [line.split("\t")[1] for line in body.splitlines()] == ["58000", "59000"]
+
+    # JSON stays the default and honours perVehicle as well.
+    status, body = _request(base + query + "&perVehicle=1", key=None)
+    assert [g["lapMs"] for g in json.loads(body)["ghosts"]] == [58000, 61000]

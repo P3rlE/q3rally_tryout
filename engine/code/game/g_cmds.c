@@ -2172,6 +2172,10 @@ void ClientCommand( int clientNum ) {
 		Cmd_Tell_f ( ent );
 		return;
 	}
+	// Q3Rally: ladder ghost list / pick (Ghost Race)
+	if ( G_GhostLadder_ClientCommand( ent, cmd ) ) {
+		return;
+	}
 #ifdef MISSIONPACK
 	if (Q_stricmp (cmd, "vsay") == 0) {
 		Cmd_Voice_f (ent, SAY_ALL, qfalse, qfalse);

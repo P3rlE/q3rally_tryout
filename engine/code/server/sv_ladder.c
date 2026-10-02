@@ -2107,7 +2107,10 @@ static qboolean SV_LadderEnsureCurl( void ) {
         return qtrue;
 }
 
+static void SV_LadderFetchShutdown( void );
+
 static void SV_LadderShutdownCurl( void ) {
+        SV_LadderFetchShutdown();
         if ( sv_ladder.multi ) {
                 sv_curl_multi_cleanup( sv_ladder.multi );
                 sv_ladder.multi = NULL;
@@ -3303,6 +3306,483 @@ void SV_LadderSubmitGhost( const ladderGhostMeta_t *meta, const char *data ) {
 #endif
 }
 
+/*
+===============================================================================
+
+GHOST DOWNLOAD
+
+The game module (Ghost Race) asks for the ghost ranking of the current map and
+for single ghosts. Requests run one after another on their own curl multi
+handle; SV_LadderPollActive treats every handle on sv_ladder.multi as an
+upload or a registration, so downloads stay away from it.
+
+Results land in the ghosts/ladder/ cache below the game directory:
+  list   ghosts/ladder/<map>_tl<n>_rev<r>.list  (path chosen by the game)
+         one line per ghost: cacheFile<TAB>ghostId<TAB>lapMs<TAB>vehicle<TAB>name
+  ghost  ghosts/ladder/<map>/<hash>.ghost       (cacheFile from the list)
+The cache file name depends on ghost id and lap time, so a faster ghost of the
+same player gets a new file and old files never go stale.
+
+===============================================================================
+*/
+
+#define LADDER_FETCH_QUEUE_MAX          8
+#define LADDER_FETCH_BODY_MAX           ( 1024 * 1024 )
+#define LADDER_FETCH_LIST_MAX_ENTRIES   100
+#define LADDER_FETCH_LIST_LINE_MAX      ( MAX_QPATH + LADDER_FETCH_MAX_ID + 128 )
+
+typedef struct {
+        ladderGhostFetch_t      queue[LADDER_FETCH_QUEUE_MAX];
+        int                     queueCount;
+        qboolean                active;
+        ladderGhostFetch_t      current;
+        char                    *body;
+        size_t                  bodyLength;
+        size_t                  bodyCapacity;
+        qboolean                bodyOverflow;
+#ifdef USE_CURL
+        CURLM                   *multi;
+        CURL                    *easy;
+        char                    errorBuffer[CURL_ERROR_SIZE];
+#endif
+} svLadderFetchState_t;
+
+static svLadderFetchState_t sv_ladderFetch;
+
+static unsigned int SV_LadderFetchHash( const char *text, unsigned int hash ) {
+        while ( *text ) {
+                hash ^= (unsigned char)*text++;
+                hash *= 16777619u;
+        }
+        return hash;
+}
+
+/* ghosts/ladder/<map>/<16 hex>.ghost for one ghost id + lap time. */
+static void SV_LadderFetchCacheName( const char *map, const char *ghostId, int lapMs,
+                                     char *out, size_t outSize ) {
+        char safeMap[MAX_QPATH];
+        char key[LADDER_FETCH_MAX_ID + 16];
+
+        SV_LadderSanitizeComponent( map, safeMap, sizeof( safeMap ) );
+        Com_sprintf( key, sizeof( key ), "%s|%d", ghostId, lapMs );
+        Com_sprintf( out, outSize, "ghosts/ladder/%s/%08x%08x.ghost", safeMap,
+                SV_LadderFetchHash( key, 2166136261u ),
+                SV_LadderFetchHash( key, 0x9e3779b9u ) );
+}
+
+static qboolean SV_LadderFetchIsIdChar( char c ) {
+        return ( c >= 'a' && c <= 'z' ) || ( c >= 'A' && c <= 'Z' ) ||
+               ( c >= '0' && c <= '9' ) || c == '-' || c == '_' || c == '.';
+}
+
+/* Copies one tab separated field; quotes, backslashes, semicolons and
+ * control characters are dropped so the game can pass names on in server
+ * commands without further escaping. */
+static const char *SV_LadderFetchField( const char *cursor, const char *lineEnd,
+                                        char *out, size_t outSize ) {
+        size_t written = 0;
+
+        while ( cursor < lineEnd && *cursor != '\t' ) {
+                char c = *cursor++;
+                if ( (unsigned char)c < 0x20 || (unsigned char)c > 0x7e ||
+                     c == '"' || c == '\\' || c == ';' ) {
+                        continue;
+                }
+                if ( written + 1 < outSize ) {
+                        out[written++] = c;
+                }
+        }
+        out[written] = '\0';
+        if ( cursor < lineEnd && *cursor == '\t' ) {
+                cursor++;
+        }
+        return cursor;
+}
+
+/* Converts the text ranking from GET /ghosts?format=text into the list file.
+ * Returns the number of usable entries, -1 when the output buffer is too
+ * small. */
+static int SV_LadderFetchBuildList( const char *map, const char *body,
+                                    char *out, size_t outSize ) {
+        const char *cursor = body ? body : "";
+        size_t used = 0;
+        int count = 0;
+
+        if ( !out || !outSize ) {
+                return -1;
+        }
+        out[0] = '\0';
+
+        while ( *cursor && count < LADDER_FETCH_LIST_MAX_ENTRIES ) {
+                const char *lineEnd = cursor;
+                const char *field;
+                char ghostId[LADDER_FETCH_MAX_ID];
+                char lapText[16];
+                char vehicle[64];
+                char name[64];
+                char cacheName[MAX_QPATH];
+                char line[LADDER_FETCH_LIST_LINE_MAX];
+                int lapMs;
+                int length;
+                int i;
+                qboolean validId;
+
+                while ( *lineEnd && *lineEnd != '\n' ) {
+                        lineEnd++;
+                }
+
+                field = SV_LadderFetchField( cursor, lineEnd, ghostId, sizeof( ghostId ) );
+                field = SV_LadderFetchField( field, lineEnd, lapText, sizeof( lapText ) );
+                field = SV_LadderFetchField( field, lineEnd, vehicle, sizeof( vehicle ) );
+                SV_LadderFetchField( field, lineEnd, name, sizeof( name ) );
+
+                cursor = *lineEnd ? lineEnd + 1 : lineEnd;
+
+                validId = ghostId[0] != '\0';
+                for ( i = 0; ghostId[i]; i++ ) {
+                        if ( !SV_LadderFetchIsIdChar( ghostId[i] ) ) {
+                                validId = qfalse;
+                                break;
+                        }
+                }
+                lapMs = atoi( lapText );
+                if ( !validId || lapMs <= 0 || !vehicle[0] ) {
+                        continue;
+                }
+                for ( i = 0; vehicle[i]; i++ ) {
+                        if ( vehicle[i] == ' ' ) {
+                                vehicle[i] = '_';
+                        }
+                }
+                if ( !name[0] ) {
+                        Q_strncpyz( name, "Player", sizeof( name ) );
+                }
+
+                SV_LadderFetchCacheName( map, ghostId, lapMs, cacheName, sizeof( cacheName ) );
+                length = Com_sprintf( line, sizeof( line ), "%s\t%s\t%d\t%s\t%s\n",
+                        cacheName, ghostId, lapMs, vehicle, name );
+                if ( length <= 0 || used + (size_t)length + 1 > outSize ) {
+                        return -1;
+                }
+                Com_Memcpy( out + used, line, (size_t)length );
+                used += (size_t)length;
+                out[used] = '\0';
+                count++;
+        }
+
+        return count;
+}
+
+/* GET URL for one request; empty when sv_ladderUrl has no /matches part. */
+static void SV_LadderFetchBuildUrl( const ladderGhostFetch_t *request, char *out, size_t outSize ) {
+        const char *base = sv_ladderUrl ? sv_ladderUrl->string : "";
+        const char *found = NULL;
+        const char *cursor = base;
+        char root[MAX_STRING_CHARS];
+        char encoded[LADDER_FETCH_MAX_ID * 3 + 1];
+
+        out[0] = '\0';
+        if ( !request || !base[0] ) {
+                return;
+        }
+
+        while ( ( cursor = strstr( cursor, "/matches" ) ) != NULL ) {
+                found = cursor;
+                cursor += 8;
+        }
+        if ( !found ) {
+                return;
+        }
+        Com_sprintf( root, sizeof( root ), "%.*s/ghosts", (int)( found - base ), base );
+
+        if ( request->kind == LADDER_FETCH_LIST ) {
+                SV_LadderUrlEncode( request->map, encoded, sizeof( encoded ) );
+                Com_sprintf( out, outSize,
+                        "%s?map=%s&tl=%d&rev=%d&physics=%d&checksum=%d&perVehicle=5&limit=%d&format=text",
+                        root, encoded, request->trackLength, request->trackReversed ? 1 : 0,
+                        request->physicsVersion, request->mapChecksum, LADDER_FETCH_LIST_MAX_ENTRIES );
+        } else if ( request->kind == LADDER_FETCH_GHOST ) {
+                SV_LadderUrlEncode( request->ghostId, encoded, sizeof( encoded ) );
+                Com_sprintf( out, outSize, "%s/%s?format=raw", root, encoded );
+        }
+}
+
+/* Only paths below ghosts/ladder/ without ".." may be written. */
+static qboolean SV_LadderFetchTargetIsSafe( const char *target ) {
+        if ( !target || Q_stricmpn( target, "ghosts/ladder/", 14 ) ) {
+                return qfalse;
+        }
+        if ( strstr( target, ".." ) || strchr( target, ':' ) || strchr( target, '\\' ) ) {
+                return qfalse;
+        }
+        return qtrue;
+}
+
+static qboolean SV_LadderFetchWriteFile( const char *path, const char *data, size_t length ) {
+        fileHandle_t f;
+        int written = 0;
+
+        if ( !SV_LadderFetchTargetIsSafe( path ) ) {
+                return qfalse;
+        }
+        f = FS_FOpenFileWrite( path );
+        if ( !f ) {
+                return qfalse;
+        }
+        if ( length > 0 ) {
+                written = FS_Write( data, (int)length, f );
+        }
+        FS_FCloseFile( f );
+        return written == (int)length;
+}
+
+/* A ghost body must look like a .ghost file before it reaches the cache. */
+static qboolean SV_LadderFetchLooksLikeGhost( const char *body ) {
+        return body && strstr( body, "\nframes " ) != NULL && strstr( body, "map " ) != NULL;
+}
+
+static void SV_LadderFetchSetStatus( const ladderGhostFetch_t *request, qboolean ok, int count ) {
+        Cvar_Set( request->kind == LADDER_FETCH_LIST ? "sv_ladderGhostList" : "sv_ladderGhostFile",
+                va( "%d %s %d", request->requestId, ok ? "ok" : "fail", count ) );
+}
+
+/* Handles a finished download; body may be NULL on transport errors. */
+static void SV_LadderFetchFinish( const ladderGhostFetch_t *request, const char *body, long responseCode ) {
+        if ( responseCode != 200 || !body ) {
+                Com_Printf( "Ladder: ghost %s download failed (HTTP %ld)\n",
+                        request->kind == LADDER_FETCH_LIST ? "list" : "data", responseCode );
+                SV_LadderFetchSetStatus( request, qfalse, 0 );
+                return;
+        }
+
+        if ( request->kind == LADDER_FETCH_LIST ) {
+                size_t outSize = (size_t)LADDER_FETCH_LIST_MAX_ENTRIES * LADDER_FETCH_LIST_LINE_MAX + 1;
+                char *list = Z_Malloc( (int)outSize );
+                int count;
+
+                if ( !list ) {
+                        SV_LadderFetchSetStatus( request, qfalse, 0 );
+                        return;
+                }
+                count = SV_LadderFetchBuildList( request->map, body, list, outSize );
+                if ( count < 0 || !SV_LadderFetchWriteFile( request->target, list, strlen( list ) ) ) {
+                        Z_Free( list );
+                        SV_LadderFetchSetStatus( request, qfalse, 0 );
+                        return;
+                }
+                Z_Free( list );
+                Com_DPrintf( "Ladder: %d ladder ghosts listed for %s\n", count, request->map );
+                SV_LadderFetchSetStatus( request, qtrue, count );
+                return;
+        }
+
+        if ( !SV_LadderFetchLooksLikeGhost( body ) ||
+             !SV_LadderFetchWriteFile( request->target, body, strlen( body ) ) ) {
+                Com_Printf( "Ladder: ghost %s could not be stored\n", request->ghostId );
+                SV_LadderFetchSetStatus( request, qfalse, 0 );
+                return;
+        }
+        Com_DPrintf( "Ladder: ghost %s cached as %s\n", request->ghostId, request->target );
+        SV_LadderFetchSetStatus( request, qtrue, 1 );
+}
+
+#ifdef USE_CURL
+static size_t SV_LadderFetchWriteCallback( void *buffer, size_t size, size_t nmemb, void *userdata ) {
+        size_t bytes = size * nmemb;
+        (void)userdata;
+
+        if ( sv_ladderFetch.bodyOverflow ) {
+                return 0;
+        }
+        if ( sv_ladderFetch.bodyLength + bytes + 1 > LADDER_FETCH_BODY_MAX ) {
+                sv_ladderFetch.bodyOverflow = qtrue;
+                return 0;
+        }
+        if ( sv_ladderFetch.bodyLength + bytes + 1 > sv_ladderFetch.bodyCapacity ) {
+                size_t capacity = sv_ladderFetch.bodyCapacity ? sv_ladderFetch.bodyCapacity : 16 * 1024;
+                char *grown;
+
+                while ( capacity < sv_ladderFetch.bodyLength + bytes + 1 ) {
+                        capacity *= 2;
+                }
+                if ( capacity > LADDER_FETCH_BODY_MAX ) {
+                        capacity = LADDER_FETCH_BODY_MAX;
+                }
+                grown = Z_Malloc( (int)capacity );
+                if ( !grown ) {
+                        sv_ladderFetch.bodyOverflow = qtrue;
+                        return 0;
+                }
+                if ( sv_ladderFetch.body ) {
+                        Com_Memcpy( grown, sv_ladderFetch.body, sv_ladderFetch.bodyLength );
+                        Z_Free( sv_ladderFetch.body );
+                }
+                sv_ladderFetch.body = grown;
+                sv_ladderFetch.bodyCapacity = capacity;
+        }
+
+        Com_Memcpy( sv_ladderFetch.body + sv_ladderFetch.bodyLength, buffer, bytes );
+        sv_ladderFetch.bodyLength += bytes;
+        sv_ladderFetch.body[sv_ladderFetch.bodyLength] = '\0';
+        return bytes;
+}
+
+static void SV_LadderFetchReleaseHandle( void ) {
+        if ( sv_ladderFetch.easy ) {
+                if ( sv_ladderFetch.multi ) {
+                        sv_curl_multi_remove_handle( sv_ladderFetch.multi, sv_ladderFetch.easy );
+                }
+                sv_curl_easy_cleanup( sv_ladderFetch.easy );
+                sv_ladderFetch.easy = NULL;
+        }
+        if ( sv_ladderFetch.body ) {
+                Z_Free( sv_ladderFetch.body );
+        }
+        sv_ladderFetch.body = NULL;
+        sv_ladderFetch.bodyLength = 0;
+        sv_ladderFetch.bodyCapacity = 0;
+        sv_ladderFetch.bodyOverflow = qfalse;
+        sv_ladderFetch.active = qfalse;
+}
+
+static qboolean SV_LadderFetchStart( const ladderGhostFetch_t *request ) {
+        char url[MAX_STRING_CHARS];
+        CURL *easy;
+
+        SV_LadderFetchBuildUrl( request, url, sizeof( url ) );
+        if ( !url[0] ) {
+                return qfalse;
+        }
+        if ( !SV_LadderLoadCurlLibrary() ) {
+                return qfalse;
+        }
+        if ( !sv_ladderFetch.multi ) {
+                sv_ladderFetch.multi = sv_curl_multi_init();
+                if ( !sv_ladderFetch.multi ) {
+                        return qfalse;
+                }
+        }
+
+        easy = sv_curl_easy_init();
+        if ( !easy ) {
+                return qfalse;
+        }
+        sv_ladderFetch.easy = easy;
+        sv_ladderFetch.current = *request;
+        sv_ladderFetch.errorBuffer[0] = '\0';
+        sv_ladderFetch.bodyLength = 0;
+        sv_ladderFetch.bodyOverflow = qfalse;
+
+        if ( sv_curl_easy_setopt( easy, CURLOPT_URL, url ) != CURLE_OK ||
+             sv_curl_easy_setopt( easy, CURLOPT_HTTPGET, 1L ) != CURLE_OK ||
+             sv_curl_easy_setopt( easy, CURLOPT_ERRORBUFFER, sv_ladderFetch.errorBuffer ) != CURLE_OK ||
+             sv_curl_easy_setopt( easy, CURLOPT_WRITEFUNCTION, SV_LadderFetchWriteCallback ) != CURLE_OK ||
+             sv_curl_easy_setopt( easy, CURLOPT_WRITEDATA, &sv_ladderFetch ) != CURLE_OK ||
+             sv_curl_easy_setopt( easy, CURLOPT_FOLLOWLOCATION, 1L ) != CURLE_OK ||
+             sv_curl_easy_setopt( easy, CURLOPT_MAXREDIRS, 5L ) != CURLE_OK ||
+             sv_curl_easy_setopt( easy, CURLOPT_CONNECTTIMEOUT, 8L ) != CURLE_OK ||
+             sv_curl_easy_setopt( easy, CURLOPT_TIMEOUT, 20L ) != CURLE_OK ||
+             sv_curl_easy_setopt( easy, CURLOPT_NOSIGNAL, 1L ) != CURLE_OK ||
+             sv_curl_easy_setopt( easy, CURLOPT_USERAGENT, Q3_VERSION ) != CURLE_OK ||
+             sv_curl_multi_add_handle( sv_ladderFetch.multi, easy ) != CURLM_OK ) {
+                sv_curl_easy_cleanup( easy );
+                sv_ladderFetch.easy = NULL;
+                return qfalse;
+        }
+
+        sv_ladderFetch.active = qtrue;
+        Com_DPrintf( "Ladder: fetching %s\n", url );
+        return qtrue;
+}
+
+static void SV_LadderFetchPoll( void ) {
+        CURLMsg *msg;
+        int messages;
+        int running = 0;
+
+        while ( !sv_ladderFetch.active && sv_ladderFetch.queueCount > 0 ) {
+                ladderGhostFetch_t next = sv_ladderFetch.queue[0];
+
+                sv_ladderFetch.queueCount--;
+                memmove( &sv_ladderFetch.queue[0], &sv_ladderFetch.queue[1],
+                        sizeof( sv_ladderFetch.queue[0] ) * sv_ladderFetch.queueCount );
+                if ( !SV_LadderFetchStart( &next ) ) {
+                        SV_LadderFetchSetStatus( &next, qfalse, 0 );
+                }
+        }
+
+        if ( !sv_ladderFetch.active || !sv_ladderFetch.multi ) {
+                return;
+        }
+
+        sv_curl_multi_perform( sv_ladderFetch.multi, &running );
+        while ( ( msg = sv_curl_multi_info_read( sv_ladderFetch.multi, &messages ) ) != NULL ) {
+                long responseCode = 0;
+                ladderGhostFetch_t request;
+
+                if ( msg->msg != CURLMSG_DONE || msg->easy_handle != sv_ladderFetch.easy ) {
+                        continue;
+                }
+                request = sv_ladderFetch.current;
+                sv_curl_easy_getinfo( sv_ladderFetch.easy, CURLINFO_RESPONSE_CODE, &responseCode );
+                if ( msg->data.result != CURLE_OK ) {
+                        Com_Printf( "Ladder: ghost download error: %s\n",
+                                sv_ladderFetch.errorBuffer[0] ? sv_ladderFetch.errorBuffer :
+                                sv_curl_easy_strerror( msg->data.result ) );
+                        SV_LadderFetchFinish( &request, NULL, responseCode );
+                } else {
+                        SV_LadderFetchFinish( &request,
+                                sv_ladderFetch.body ? sv_ladderFetch.body : "", responseCode );
+                }
+                SV_LadderFetchReleaseHandle();
+                break;
+        }
+}
+
+static void SV_LadderFetchShutdown( void ) {
+        SV_LadderFetchReleaseHandle();
+        if ( sv_ladderFetch.multi ) {
+                sv_curl_multi_cleanup( sv_ladderFetch.multi );
+                sv_ladderFetch.multi = NULL;
+        }
+        sv_ladderFetch.queueCount = 0;
+        sv_ladderFetch.active = qfalse;
+}
+#endif
+
+void SV_LadderFetchGhosts( const ladderGhostFetch_t *request ) {
+        ladderGhostFetch_t copy;
+
+        if ( !request ) {
+                return;
+        }
+        copy = *request;
+        copy.map[sizeof( copy.map ) - 1] = '\0';
+        copy.ghostId[sizeof( copy.ghostId ) - 1] = '\0';
+        copy.target[sizeof( copy.target ) - 1] = '\0';
+
+        if ( ( copy.kind != LADDER_FETCH_LIST && copy.kind != LADDER_FETCH_GHOST ) ||
+             !SV_LadderFetchTargetIsSafe( copy.target ) ) {
+                Com_Printf( "Ladder: rejected ghost download request\n" );
+                SV_LadderFetchSetStatus( &copy, qfalse, 0 );
+                return;
+        }
+
+#ifndef USE_CURL
+        SV_LadderFetchSetStatus( &copy, qfalse, 0 );
+#else
+        if ( !sv_ladder.initialized ) {
+                SV_LadderInit();
+        }
+        if ( sv_ladderFetch.queueCount >= LADDER_FETCH_QUEUE_MAX ) {
+                SV_LadderFetchSetStatus( &copy, qfalse, 0 );
+                return;
+        }
+        sv_ladderFetch.queue[sv_ladderFetch.queueCount++] = copy;
+        SV_LadderFetchPoll();
+#endif
+}
+
 void SV_LadderFrame( void ) {
         if ( !sv_ladder.initialized ) {
                 /* Initialise early if a registration is pending so the
@@ -3326,6 +3806,11 @@ void SV_LadderFrame( void ) {
                              (int)sv_ladder.reg.active,
                              (int)( sv_ladder.active != NULL ) );
                 SV_LadderPollActive();
+        }
+
+        /* Ghost downloads are public reads and run without sv_ladderEnabled. */
+        if ( sv_ladderFetch.active || sv_ladderFetch.queueCount > 0 ) {
+                SV_LadderFetchPoll();
         }
 #endif
 

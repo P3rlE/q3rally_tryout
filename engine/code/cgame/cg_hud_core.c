@@ -184,7 +184,7 @@ typedef struct {
 } hudToggleEntry_t;
 
 static const char *const hudGhostPlaybackLabels[] = {
-    "OFF", "PERSONAL", "SERVER BASE", NULL
+    "OFF", "PERSONAL", "SERVER BASE", "LADDER", NULL
 };
 
 static const char *const hudCheckpointArrowLabels[] = {
@@ -197,7 +197,7 @@ static const hudToggleEntry_t hudToggleTable[] = {
     { "LAP COUNTER",         "cg_hudShowLaps",           &cg_hudShowLaps,           1, HUDOPT_MODE_RACE_WITH_LAPS,      qfalse, NULL },
     { "RACE POSITION",       "cg_hudShowPosition",       &cg_hudShowPosition,       1, HUDOPT_MODE_RALLY_RACE,           qfalse, NULL },
     { "DISTANCE TO FINISH",  "cg_hudShowDistToFinish",   &cg_hudShowDistToFinish,   1, HUDOPT_MODE_SPRINT_TRACK,        qfalse, NULL },
-    { "GHOST PLAYBACK",      "cg_ghostPlayback",         &cg_ghostPlayback,         2, HUDOPT_MODE_RALLY_RACE,           qtrue,  hudGhostPlaybackLabels },
+    { "GHOST PLAYBACK",      "cg_ghostPlayback",         &cg_ghostPlayback,         3, HUDOPT_MODE_RALLY_RACE,           qtrue,  hudGhostPlaybackLabels },
     { "CHECKPOINT ARROW",    "cg_checkpointArrowMode",   &cg_checkpointArrowMode,   2, HUDOPT_MODE_RALLY_RACE,           qtrue,  hudCheckpointArrowLabels },
     { "ELIM. TIMELINE",      "cg_elimTimeline",          &cg_elimTimeline,          1, GT_LCS,                           qfalse, NULL },
     { "OPPONENT LIST",       "cg_hudShowOpponentList",   &cg_hudShowOpponentList,   1, HUDOPT_MODE_RACE_OR_LCS,          qfalse, NULL },

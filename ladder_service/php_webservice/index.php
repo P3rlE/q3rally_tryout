@@ -37,7 +37,7 @@ if (!is_dir(PROFILES_DIR)) {
 // SECURITY CONFIGURATION
 // Per-server keys are managed via register.php / admin.php.
 // ─────────────────────────────────────────────────────────────────────────────
-const LADDER_VERSION        = '1.0.10';
+const LADDER_VERSION        = '1.0.11';
 const LADDER_MAX_BODY_BYTES    = 524288;  // 512 KB max POST body
 const LADDER_RATE_LIMIT_MAX    = 30;      // max requests per window per IP
 const LADDER_RATE_LIMIT_WINDOW = 60;      // window in seconds
@@ -4768,6 +4768,14 @@ async function showMatchDetails(matchId) {
 
 // ── Changelog ────────────────────────────────────────────────────────────────
 const LADDER_CHANGELOG = [
+  {
+    version: '1.0.11',
+    date: '2026-10-03',
+    changes: [
+      'GET /api/v1/ghosts: perVehicle=K returns the best K ghosts per vehicle',
+      'GET /api/v1/ghosts: format=text returns a tab separated list for the game engine (Ghost Race opponents)',
+    ],
+  },
   {
     version: '1.0.10',
     date: '2026-10-02',

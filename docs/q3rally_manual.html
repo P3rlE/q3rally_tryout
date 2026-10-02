@@ -165,7 +165,7 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
     <div class="mode-card"><div class="mode-num">g_gametype 5</div><div class="mode-name">Elimination</div><div class="mode-tag">GT_ELIMINATION</div><div class="mode-desc">Lap racing with knockout waves at set intervals. Maps must carry <code>elimination "1"</code>.</div></div>
     <div class="mode-card"><div class="mode-num">g_gametype 6</div><div class="mode-name">Deathmatch</div><div class="mode-tag">GT_DEATHMATCH</div><div class="mode-desc">Classic FFA. Kills +1, suicides −1. Ends at frag or time limit.</div></div>
     <div class="mode-card"><div class="mode-num">g_gametype 7</div><div class="mode-name">Sprint</div><div class="mode-tag">GT_SPRINT</div><div class="mode-desc">Point-to-point single-lap race. <code>laplimit</code> is forced to 1 automatically.</div></div>
-    <div class="mode-card"><div class="mode-num">g_gametype 8</div><div class="mode-name">Ghost Race</div><div class="mode-tag">GT_GHOST</div><div class="mode-desc">Racing against your ghost on lap and Sprint (A2B) tracks, no AI drivers (bots are rejected). Ghost playback is on by default: your personal ghost, otherwise the server base ghost. Every lap is recorded and feeds the bot racing lines. No wins, losses or ladder results.</div></div>
+    <div class="mode-card"><div class="mode-num">g_gametype 8</div><div class="mode-name">Ghost Race</div><div class="mode-tag">GT_GHOST</div><div class="mode-desc">Racing against your ghost on lap and Sprint (A2B) tracks, no AI drivers (bots are rejected). Ghost playback is on by default: your personal ghost, otherwise the server base ghost. Every lap is recorded and feeds the bot racing lines. Before the start you can pick a ladder ghost of another player as opponent (own car or all cars); the HUD shows the gap at each checkpoint. No wins, losses or ladder results.</div></div>
   </div>
 
   <h3>Team Modes</h3>
@@ -606,6 +606,7 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php"
 <div class="cvar-group-label">Ladder</div>
 <table class="cvar-table">
 <tr><td class="cvar-name">sv_ladderEnabled</td><td class="cvar-default">0</td><td class="cvar-desc">Globally enable the HTTP match reporter.</td></tr>
+<tr><td class="cvar-name">g_ghostDownload</td><td class="cvar-default">1</td><td class="cvar-desc">Ghost Race only: fetch the ladder ghost ranking of the current track and let players race a ladder ghost. Lists and ghosts are cached in <code>ghosts/ladder/</code> and used when the ladder cannot be reached. 0 disables ladder ghosts on this server.</td></tr>
 <tr><td class="cvar-name">g_ghostUpload</td><td class="cvar-default">1</td><td class="cvar-desc">Upload drivers' best lap ghosts to the ladder (requires sv_ladderEnabled and a registered key). 0 disables ghost uploads on this server.</td></tr>
 <tr><td class="cvar-name">sv_ladderUrl</td><td class="cvar-default">—</td><td class="cvar-desc">Target endpoint URL for <code>POST /api/v1/matches</code>.</td></tr>
 <tr><td class="cvar-name">sv_ladderApiKey</td><td class="cvar-default">—</td><td class="cvar-desc">Bearer token. Protected — never logged or saved to disk.</td></tr>
@@ -616,6 +617,7 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php"
 <tr><td class="cvar-name">cl_updateCheck</td><td class="cvar-default">1</td><td class="cvar-desc">Enable automatic version check on startup. Checks against <code>cl_updateEndpoint</code> on UI load.</td></tr>
 <tr><td class="cvar-name">cl_updateEndpoint</td><td class="cvar-default">ladder URL</td><td class="cvar-desc">URL of the version text file. Default: <code>https://ladder.q3rally.com/version.txt</code></td></tr>
 <tr><td class="cvar-name">cg_ghostAlpha</td><td class="cvar-default">160</td><td class="cvar-desc">Transparency of ghost vehicles and their wheels (0–255). Lower = more transparent.</td></tr>
+<tr><td class="cvar-name">cg_ghostPlayback</td><td class="cvar-default">0</td><td class="cvar-desc">Ghost shown while racing: 0 off (Ghost Race: automatic), 1 personal ghost, 2 server base ghost, 3 ladder opponent. In Ghost Race, 0 and 3 open the ladder ghost picker before the race (console command <code>ghostpicker</code> reopens it; TAB switches between your car and all cars). Ladder ghosts are drawn with your own car model.</td></tr>
 <tr><td class="cvar-name">cg_ghostShare</td><td class="cvar-default">1</td><td class="cvar-desc">Share your best lap ghosts with the Q3Rally Ladder (sent in userinfo). Set to 0 to opt out. Menu: Q3Rally options, "Share Lap Ghosts".</td></tr>
 <tr><td class="cvar-name">ui_menuBackEnable</td><td class="cvar-default">1</td><td class="cvar-desc">Enable remote background image download for the main menu.</td></tr>
 <tr><td class="cvar-name">ui_menuBackUrl</td><td class="cvar-default">ladder URL</td><td class="cvar-desc">HTTP(S) URL of the background image (PNG/JPG/TGA, max 5 MiB, max 4096×4096).</td></tr>
