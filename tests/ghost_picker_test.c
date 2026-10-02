@@ -211,10 +211,20 @@ int main( void ) {
 	assert( cg.ladderPickerOpen );
 	CG_LadderGhost_CatcherCleared();
 	assert( !cg.ladderPickerOpen );
-	CG_LadderGhost_TogglePicker_f();
+	s_catcher = 0;
+	CG_LadderGhost_Reset();
+	SendList();
+	CG_LadderGhost_DrawPicker();
+	assert( cg.ladderPickerOpen && !cg.ladderPickerManual );
 	cg_entities[0].startRaceTime = 5000;
 	CG_LadderGhost_DrawPicker();
 	assert( !cg.ladderPickerOpen && !( s_catcher & KEYCATCH_CGAME ) );
+	/* Opened by hand during the race: stays open. */
+	CG_LadderGhost_TogglePicker_f();
+	CG_LadderGhost_DrawPicker();
+	assert( cg.ladderPickerOpen && cg.ladderPickerManual );
+	CG_LadderGhost_TogglePicker_f();
+	assert( !cg.ladderPickerOpen );
 
 	/* Explicit personal / base playback: no automatic picker. */
 	cg_entities[0].startRaceTime = 0;

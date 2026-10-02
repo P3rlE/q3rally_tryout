@@ -395,6 +395,7 @@ void CG_LadderGhost_TogglePicker_f( void ) {
 		return;
 	}
 	CG_LadderGhost_SetPickerOpen( !cg.ladderPickerOpen );
+	cg.ladderPickerManual = cg.ladderPickerOpen;
 }
 
 /* The ESC key clears the catcher in the engine and lands here. */
@@ -496,7 +497,7 @@ static void CG_LadderGhost_Frame( void ) {
 		return;
 	}
 	if ( cg.ladderPickerOpen ) {
-		if ( CG_LadderGhost_RaceStarted() ) {
+		if ( !cg.ladderPickerManual && CG_LadderGhost_RaceStarted() ) {
 			CG_LadderGhost_SetPickerOpen( qfalse );
 		}
 		return;
@@ -517,6 +518,7 @@ static void CG_LadderGhost_Frame( void ) {
 		return;
 	}
 	cg.ladderPickerAutoShown = qtrue;
+	cg.ladderPickerManual = qfalse;
 	CG_LadderGhost_SetPickerOpen( qtrue );
 }
 

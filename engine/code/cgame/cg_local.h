@@ -957,6 +957,7 @@ typedef struct {
 	int			ladderGhostTransferExpected;
 	int			ladderGhostTransferReceived;
 	qboolean	ladderPickerOpen;
+	qboolean	ladderPickerManual;		// opened with "ghostpicker": stays open in the race
 	qboolean	ladderPickerAutoShown;
 	qboolean	ladderPickerAllVehicles;
 	int			ladderPickerCursor;

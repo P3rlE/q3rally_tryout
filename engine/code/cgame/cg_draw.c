@@ -3908,6 +3908,9 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 		if ( stereoFrame == STEREO_CENTER ) {
 			CG_DrawIntroCamOverlay();
 		}
+		/* Ghost Race: the ladder ghost is picked while the intro runs; the
+		 * race usually starts right when the intro ends. */
+		CG_LadderGhost_DrawPicker();
 		return;
 	}
 
