@@ -1045,6 +1045,32 @@ static void CG_DrawModernPlayerRow(int y, score_t *score, int rank,
 
 /*
 =================
+CG_FitModernText
+Shortens text with "..." until it fits into maxWidth.
+=================
+*/
+static void CG_FitModernText(const char *in, char *out, int outSize, int maxWidth) {
+    char candidate[64];
+    int len;
+
+    Q_strncpyz(out, in, outSize);
+    if (CG_IngameStringWidth(out, UI_SMALLFONT, MODERN_SB_TEXT_SCALE) <= maxWidth) {
+        return;
+    }
+    len = strlen(out);
+    while (len > 1) {
+        len--;
+        out[len] = '\0';
+        Com_sprintf(candidate, sizeof(candidate), "%s...", out);
+        if (CG_IngameStringWidth(candidate, UI_SMALLFONT, MODERN_SB_TEXT_SCALE) <= maxWidth) {
+            Q_strncpyz(out, candidate, outSize);
+            return;
+        }
+    }
+}
+
+/*
+=================
 CG_DrawGhostRaceRow
 Ghost Race: the ghost the local player races against, as its own row.
 =================
@@ -1090,9 +1116,10 @@ static void CG_DrawGhostRaceRow(int y, qboolean isCompact, float fade,
                 CG_DrawModernText(x, textY, "G", 1, width, ghostColor, qfalse);
                 break;
             case SBCOL_NAME:
-                Q_strncpyz(buffer, name, 19);   /* leave room for the tag */
+                /* The blue row and the "G" rank mark the ghost; the name
+                 * must stay inside its column. */
+                CG_FitModernText(name, buffer, sizeof(buffer), width - 2 * MODERN_SB_PADDING);
                 CG_DrawModernText(x, textY, buffer, 0, width, ghostColor, qfalse);
-                CG_DrawSmallStringColor(x + width - 48, textY, "GHOST", accent);
                 break;
             case SBCOL_LAPTIME:
                 CG_DrawModernText(x, textY, getStringForTimePrecise(ghostMs), 1, width, ghostColor, qfalse);

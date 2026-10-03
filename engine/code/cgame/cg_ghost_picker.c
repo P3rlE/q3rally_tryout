@@ -652,6 +652,8 @@ const char *CG_LadderGhost_StatusText( qboolean *isError ) {
    ------------------------------------------------------------------------- */
 
 #define GHOST_RESULT_BANNER_MS  8000
+#define BANNER_TITLE_SCALE      0.95f
+#define BANNER_LINE_SCALE       0.50f
 
 /*
 =================
@@ -785,8 +787,13 @@ void CG_GhostRace_DrawResultBanner( void ) {
 	vec4_t subtitleColor;
 	vec4_t shadeColor;
 	char gap[24];
+	char title[64];
 	char line[128];
 	char name[24];
+	int titleWidth;
+	int lineWidth;
+	int boxWidth;
+	int top;
 	char playerText[24];
 	char ghostText[24];
 	float alpha = 1.0f;
@@ -812,17 +819,29 @@ void CG_GhostRace_DrawResultBanner( void ) {
 	subtitleColor[3] *= alpha;
 	shadeColor[3] *= alpha;
 
-	CG_SetScreenPlacement( PLACE_CENTER, PLACE_TOP );
-	CG_FillRect( 120, 22, 400, 50, shadeColor );
-
 	CG_GhostRace_FormatGap( cg.ghostResultGhostMs - cg.ghostResultPlayerMs, gap, sizeof( gap ) );
-	Com_sprintf( line, sizeof( line ), cg.ghostResultWon ? "GHOST BEATEN BY %s" : "GHOST WINS BY %s", gap );
-	CG_DrawIngameString( 320, 28, line, UI_CENTER | UI_DROPSHADOW, 0.95f, color );
+	Com_sprintf( title, sizeof( title ), cg.ghostResultWon ? "GHOST BEATEN BY %s" : "GHOST WINS BY %s", gap );
 
 	Q_strncpyz( name, cg.ghostResultName, sizeof( name ) );
 	Q_strupr( name );
 	Q_strncpyz( playerText, getStringForTimePrecise( cg.ghostResultPlayerMs ), sizeof( playerText ) );
 	Q_strncpyz( ghostText, getStringForTimePrecise( cg.ghostResultGhostMs ), sizeof( ghostText ) );
 	Com_sprintf( line, sizeof( line ), "BEST LAP %s  -  %s %s", playerText, name, ghostText );
-	CG_DrawIngameString( 320, 54, line, UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, 0.50f, subtitleColor );
+
+	/* Box fits the longer line. While driving the banner sits below the
+	 * rear-view mirror (y 10-85) and the minimap (up to y 120), at the height
+	 * of the other center prints; with the scoreboard up it moves above the
+	 * table (the mirror and minimap are not drawn then). */
+	titleWidth = CG_IngameStringWidth( title, 0, BANNER_TITLE_SCALE );
+	lineWidth = CG_IngameStringWidth( line, UI_SMALLFONT, BANNER_LINE_SCALE );
+	boxWidth = ( titleWidth > lineWidth ? titleWidth : lineWidth ) + 32;
+	if ( boxWidth > SCREEN_WIDTH - 16 ) {
+		boxWidth = SCREEN_WIDTH - 16;
+	}
+	top = ( cg.snap->ps.pm_type == PM_INTERMISSION || cg.showScores ) ? 22 : 128;
+
+	CG_SetScreenPlacement( PLACE_CENTER, PLACE_TOP );
+	CG_FillRect( ( SCREEN_WIDTH - boxWidth ) * 0.5f, top, boxWidth, 52, shadeColor );
+	CG_DrawIngameString( SCREEN_WIDTH / 2, top + 6, title, UI_CENTER | UI_DROPSHADOW, BANNER_TITLE_SCALE, color );
+	CG_DrawIngameString( SCREEN_WIDTH / 2, top + 33, line, UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, BANNER_LINE_SCALE, subtitleColor );
 }

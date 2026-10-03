@@ -83,6 +83,10 @@ void CG_SetScreenPlacement( screenPlacement_e hpos, screenPlacement_e vpos ) { (
 void CG_FillRect( float x, float y, float w, float h, const float *color ) { (void)x; (void)y; (void)w; (void)h; (void)color; }
 void CG_DrawRect( float x, float y, float w, float h, float size, const float *color ) { (void)x; (void)y; (void)w; (void)h; (void)size; (void)color; }
 static int s_drawn;
+int CG_IngameStringWidth( const char *text, int style, float scale ) {
+	(void)style;
+	return (int)( strlen( text ) * 20 * scale );
+}
 static int s_playbackMode = 3;
 int CG_GhostPlaybackMode( void ) { return s_playbackMode; }
 void CG_DrawIngameString( int x, int y, const char *text, int style, float scale, const float *color ) {
