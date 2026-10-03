@@ -75,6 +75,13 @@ Added:
 
 Changed:
 
+- PHP ladder webservice 1.0.13 (security): server keys moved to data/private/ (deny-all
+  .htaccess, data/server_keys.json is moved automatically) and no longer readable via
+  GET /api/v1/matches/server_keys; match ids cannot name internal files.
+  POST /api/v1/register always creates a pending key request (offline keys were active
+  at once). DELETE /api/v1/matches/{id} only for the key that reported the match, never
+  for offline keys. Offline keys always report offline matches and ghosts. Key storage
+  is locked and written atomically; 10 key requests per IP and hour.
 - The start-server menu no longer overwrites the archived cg_ghostPlayback setting.
 - Ghost Race counts no wins/losses and no rank score and sends no match report to the
   ladder; best lap times are still recorded and lap ghosts are uploaded.

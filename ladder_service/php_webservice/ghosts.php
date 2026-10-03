@@ -356,9 +356,13 @@ function handle_ghost_post(): void
     }
 
     $serverName = is_string($payload['server']['name'] ?? null) ? $payload['server']['name'] : '';
-    keys_require_auth($serverName, false);
+    $keyRecord = keys_require_auth($serverName, false);
 
     $record = ghost_validate_payload($payload);
+    if (keys_is_offline($keyRecord)) {
+        // Offline keys run their own server: never an online ghost.
+        $record['source'] = 'offline';
+    }
     $variant = ghost_variant_name($record['trackLength'], $record['trackReversed']);
     $bucket = ghost_bucket_name($record['physicsVersion'], $record['mapChecksum']);
     $dir = ghost_bucket_dir($record['map'], $variant, $record['vehicle'], $bucket);
@@ -628,6 +632,7 @@ function handle_ghost_get(string $ghostId): void
     if (($_GET['format'] ?? '') === 'raw') {
         http_response_code(200);
         header('Content-Type: text/plain; charset=us-ascii');
+        header('X-Content-Type-Options: nosniff');
         header('Cache-Control: public, max-age=300');
         if (!empty($_GET['download'])) {
             // Websites on other origins cannot force a download with <a download>.

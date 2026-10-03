@@ -4,7 +4,12 @@
  * keys.php
  *
  * Manages per-server API keys. Stored as a single JSON file:
- *   data/server_keys.json
+ *   data/private/server_keys.json
+ * data/private/ is not reachable via HTTP (.htaccess, see README for nginx).
+ * A key file in the old location data/server_keys.json is moved there
+ * automatically. Every change runs under an exclusive lock and replaces the
+ * file atomically (write temp file + rename), so concurrent requests can
+ * neither lose updates nor read a half written file.
  *
  * Key record structure:
  * {
@@ -23,7 +28,12 @@
 
 declare(strict_types=1);
 
-const KEYS_FILE              = __DIR__ . '/data/server_keys.json';
+const KEYS_DIR               = __DIR__ . '/data/private';
+const KEYS_FILE              = KEYS_DIR . '/server_keys.json';
+const KEYS_LOCK_FILE         = KEYS_DIR . '/server_keys.lock';
+const KEYS_LEGACY_FILE       = __DIR__ . '/data/server_keys.json';
+const KEYS_REGISTER_LIMIT    = 10;   // registrations per IP and window
+const KEYS_REGISTER_WINDOW   = 3600; // seconds
 const KEYS_INACTIVITY_DAYS   = 90;   // auto-suspend after N days without upload
 const KEYS_ADMIN_PASSWORD    = '';   // set via env LADDER_ADMIN_PASSWORD
 const KEYS_NOTIFY_EMAIL      = '';   // set via env LADDER_NOTIFY_EMAIL (new registrations)
@@ -32,6 +42,7 @@ const KEYS_NOTIFY_EMAIL      = '';   // set via env LADDER_NOTIFY_EMAIL (new reg
 
 function keys_load(): array
 {
+    keys_prepare_storage();
     if (!is_file(KEYS_FILE)) {
         return [];
     }
@@ -43,13 +54,103 @@ function keys_load(): array
     return is_array($data) ? $data : [];
 }
 
+/**
+ * Creates data/private/ with a deny-all .htaccess and moves a key file from
+ * the old, web-reachable location data/server_keys.json into it.
+ */
+function keys_prepare_storage(): void
+{
+    static $prepared = false;
+    if ($prepared) {
+        return;
+    }
+    if (!is_dir(KEYS_DIR) && !mkdir(KEYS_DIR, 0770, true) && !is_dir(KEYS_DIR)) {
+        throw new RuntimeException('Unable to create key storage.');
+    }
+    $htaccess = KEYS_DIR . '/.htaccess';
+    if (!is_file($htaccess)) {
+        @file_put_contents($htaccess,
+            "<IfModule mod_authz_core.c>\n    Require all denied\n</IfModule>\n"
+            . "<IfModule !mod_authz_core.c>\n    Order deny,allow\n    Deny from all\n</IfModule>\n");
+    }
+    $prepared = true;
+
+    if (!is_file(KEYS_FILE) && is_file(KEYS_LEGACY_FILE)) {
+        $lock = keys_lock();
+        try {
+            if (!is_file(KEYS_FILE) && is_file(KEYS_LEGACY_FILE) && !rename(KEYS_LEGACY_FILE, KEYS_FILE)) {
+                throw new RuntimeException('Unable to move the key file into data/private/.');
+            }
+        } finally {
+            keys_unlock($lock);
+        }
+    }
+}
+
+/** @return resource */
+function keys_lock()
+{
+    $handle = fopen(KEYS_LOCK_FILE, 'c');
+    if ($handle === false || !flock($handle, LOCK_EX)) {
+        throw new RuntimeException('Unable to lock key storage.');
+    }
+    return $handle;
+}
+
+/** @param resource $handle */
+function keys_unlock($handle): void
+{
+    flock($handle, LOCK_UN);
+    fclose($handle);
+}
+
+/** Writes the key list to a temp file and renames it over the key file. */
+function keys_write_atomic(array $keys): void
+{
+    $json = json_encode(array_values($keys), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
+        throw new RuntimeException('Unable to encode key storage.');
+    }
+    $tmp = KEYS_FILE . '.' . bin2hex(random_bytes(6)) . '.tmp';
+    if (file_put_contents($tmp, $json . "\n") === false || !rename($tmp, KEYS_FILE)) {
+        @unlink($tmp);
+        throw new RuntimeException('Unable to write key storage.');
+    }
+}
+
+/**
+ * Read-modify-write under the exclusive lock. The mutator gets the key list
+ * by reference; the file is only rewritten when the list changed.
+ * Returns whatever the mutator returns.
+ */
+function keys_mutate(callable $mutator)
+{
+    keys_prepare_storage();
+    $lock = keys_lock();
+    try {
+        $keys = keys_load();
+        $before = $keys;
+        $result = $mutator($keys);
+        if ($keys !== $before) {
+            keys_write_atomic($keys);
+        }
+        return $result;
+    } finally {
+        keys_unlock($lock);
+    }
+}
+
+/** Short, non-secret id of a key (stored with matches to know who reported them). */
+function keys_key_id(string $key): string
+{
+    return substr(hash('sha256', $key), 0, 16);
+}
+
 function keys_save(array $keys): void
 {
-    $dir = dirname(KEYS_FILE);
-    if (!is_dir($dir)) {
-        mkdir($dir, 0775, true);
-    }
-    file_put_contents(KEYS_FILE, json_encode($keys, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n", LOCK_EX);
+    keys_mutate(static function (array &$current) use ($keys): void {
+        $current = array_values($keys);
+    });
 }
 
 // ── Lookup ────────────────────────────────────────────────────────────────────
@@ -98,7 +199,7 @@ function keys_normalize_server_name(string $name): string
  * Authenticate an incoming API request.
  * Returns the matching key record or exits with 401/403.
  */
-function keys_require_auth(string $incomingServerName, bool $countMatch = true): array
+function keys_require_auth(string $incomingServerName, bool $countMatch = true, bool $countUsage = true): array
 {
     $header   = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     $provided = strncasecmp($header, 'Bearer ', 7) === 0 ? trim(substr($header, 7)) : '';
@@ -144,8 +245,9 @@ function keys_require_auth(string $incomingServerName, bool $countMatch = true):
         exit;
     }
 
-    // Update last-used metadata (ghost uploads do not count as matches)
-    keys_touch($provided, $countMatch);
+    // Update last-used metadata (ghost uploads do not count as matches,
+    // other requests such as DELETE count nothing)
+    keys_touch($provided, $countMatch, $countUsage);
 
     return $record;
 }
@@ -153,60 +255,53 @@ function keys_require_auth(string $incomingServerName, bool $countMatch = true):
 /**
  * Update lastUsedAt, lastUsedIp and matchCount (or ghostCount) for a key.
  */
-function keys_touch(string $key, bool $countMatch = true): void
+function keys_touch(string $key, bool $countMatch = true, bool $countUsage = true): void
 {
-    $keys = keys_load();
-    $idx  = -1;
-    foreach ($keys as $i => $record) {
-        if (isset($record['key']) && hash_equals($record['key'], $key)) {
-            $idx = $i;
-            break;
+    keys_mutate(static function (array &$keys) use ($key, $countMatch, $countUsage): void {
+        foreach ($keys as $i => $record) {
+            if (!isset($record['key']) || !hash_equals((string)$record['key'], $key)) {
+                continue;
+            }
+            $keys[$i]['lastUsedAt'] = gmdate('c');
+            $keys[$i]['lastUsedIp'] = $_SERVER['REMOTE_ADDR'] ?? null;
+            if ($countUsage) {
+                if ($countMatch) {
+                    $keys[$i]['matchCount'] = (int)($keys[$i]['matchCount'] ?? 0) + 1;
+                } else {
+                    $keys[$i]['ghostCount'] = (int)($keys[$i]['ghostCount'] ?? 0) + 1;
+                }
+            }
+            return;
         }
-    }
-    if ($idx === -1) {
-        return;
-    }
-    $keys[$idx]['lastUsedAt']  = gmdate('c');
-    $keys[$idx]['lastUsedIp']  = $_SERVER['REMOTE_ADDR'] ?? null;
-    if ($countMatch) {
-        $keys[$idx]['matchCount'] = (int)($keys[$idx]['matchCount'] ?? 0) + 1;
-    } else {
-        $keys[$idx]['ghostCount'] = (int)($keys[$idx]['ghostCount'] ?? 0) + 1;
-    }
-    keys_save($keys);
+    });
 }
 
 // ── Auto-suspend inactive keys ────────────────────────────────────────────────
 
 function keys_suspend_inactive(): void
 {
-    $keys    = keys_load();
-    $changed = false;
-    $cutoff  = time() - (KEYS_INACTIVITY_DAYS * 86400);
+    $cutoff = time() - (KEYS_INACTIVITY_DAYS * 86400);
 
-    foreach ($keys as &$record) {
-        if (($record['status'] ?? '') !== 'active') {
-            continue;
+    keys_mutate(static function (array &$keys) use ($cutoff): void {
+        foreach ($keys as &$record) {
+            if (($record['status'] ?? '') !== 'active') {
+                continue;
+            }
+            $lastUsed = $record['lastUsedAt'] ?? null;
+            // If never used and approved more than N days ago → suspend
+            $ref = $lastUsed ?? ($record['approvedAt'] ?? null);
+            if ($ref === null) {
+                continue;
+            }
+            $ts = strtotime((string)$ref);
+            if ($ts !== false && $ts < $cutoff) {
+                $record['status']        = 'suspended';
+                $record['suspendedAt']   = gmdate('c');
+                $record['suspendReason'] = 'auto: inactivity > ' . KEYS_INACTIVITY_DAYS . ' days';
+            }
         }
-        $lastUsed = $record['lastUsedAt'] ?? null;
-        // If never used and approved more than N days ago → suspend
-        $ref = $lastUsed ?? ($record['approvedAt'] ?? null);
-        if ($ref === null) {
-            continue;
-        }
-        $ts = strtotime($ref);
-        if ($ts !== false && $ts < $cutoff) {
-            $record['status']      = 'suspended';
-            $record['suspendedAt'] = gmdate('c');
-            $record['suspendReason'] = 'auto: inactivity > ' . KEYS_INACTIVITY_DAYS . ' days';
-            $changed = true;
-        }
-    }
-    unset($record);
-
-    if ($changed) {
-        keys_save($keys);
-    }
+        unset($record);
+    });
 }
 
 // ── Registration ──────────────────────────────────────────────────────────────
@@ -228,9 +323,7 @@ function keys_register(string $serverName, string $ownerName, string $ownerEmail
         'matchCount'  => 0,
     ];
 
-    $keys   = keys_load();
-    $keys[] = $record;
-    keys_save($keys);
+    keys_append($record);
 
     // Notify admin
     $notifyEmail = getenv('LADDER_NOTIFY_EMAIL') ?: KEYS_NOTIFY_EMAIL;
@@ -306,8 +399,52 @@ function keys_require_admin(): void
  */
 function keys_is_offline(array $record): bool
 {
-    $name = keys_strip_color_codes($record['serverName'] ?? '');
+    if (strtolower((string)($record['type'] ?? '')) === 'offline') {
+        return true;
+    }
+    $name = keys_strip_color_codes((string)($record['serverName'] ?? ''));
     return (bool) preg_match('/_OFFLINE$/i', trim($name));
+}
+
+/** Adds one key record. */
+function keys_append(array $record): void
+{
+    keys_mutate(static function (array &$keys) use ($record): void {
+        $keys[] = $record;
+    });
+}
+
+/**
+ * Registration throttle per IP (register.php and POST /api/v1/register).
+ * Returns false when the IP registered too often in the current window.
+ */
+function keys_register_rate_ok(): bool
+{
+    keys_prepare_storage();
+    $ip = preg_replace('/[^a-fA-F0-9:.]/', '_', (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+    $file = KEYS_DIR . '/rl_register_' . $ip . '.json';
+    $now = time();
+
+    $handle = fopen($file, 'c+');
+    if ($handle === false || !flock($handle, LOCK_EX)) {
+        return true;
+    }
+    try {
+        $decoded = json_decode((string)stream_get_contents($handle), true);
+        $hits = array_values(array_filter(is_array($decoded) ? $decoded : [],
+            static fn($t) => is_int($t) && $t > $now - KEYS_REGISTER_WINDOW));
+        if (count($hits) >= KEYS_REGISTER_LIMIT) {
+            return false;
+        }
+        $hits[] = $now;
+        ftruncate($handle, 0);
+        rewind($handle);
+        fwrite($handle, (string)json_encode($hits));
+        return true;
+    } finally {
+        flock($handle, LOCK_UN);
+        fclose($handle);
+    }
 }
 
 // ── Delete ────────────────────────────────────────────────────────────────────
@@ -318,52 +455,46 @@ function keys_is_offline(array $record): bool
  */
 function keys_delete(string $key): bool
 {
-    $keys    = keys_load();
-    $initial = count($keys);
-
-    $keys = array_values(array_filter($keys, static function ($record) use ($key) {
-        if (!isset($record['key'])) {
-            return true;
-        }
-        if (!hash_equals($record['key'], $key)) {
-            return true;
-        }
-        // Only allow deletion of revoked keys
-        return ($record['status'] ?? '') !== 'revoked';
-    }));
-
-    if (count($keys) === $initial) {
-        return false; // nothing was removed
-    }
-
-    keys_save($keys);
-    return true;
+    return (bool)keys_mutate(static function (array &$keys) use ($key): bool {
+        $initial = count($keys);
+        $keys = array_values(array_filter($keys, static function ($record) use ($key) {
+            if (!isset($record['key'])) {
+                return true;
+            }
+            if (!hash_equals((string)$record['key'], $key)) {
+                return true;
+            }
+            // Only allow deletion of revoked keys
+            return ($record['status'] ?? '') !== 'revoked';
+        }));
+        return count($keys) !== $initial;
+    });
 }
 
 function keys_approve(string $key): bool
 {
-    $keys = keys_load();
-    foreach ($keys as &$record) {
-        if (isset($record['key']) && hash_equals($record['key'], $key)) {
-            $record['status']     = 'active';
-            $record['approvedAt'] = gmdate('c');
-            keys_save($keys);
-            return true;
+    return (bool)keys_mutate(static function (array &$keys) use ($key): bool {
+        foreach ($keys as &$record) {
+            if (isset($record['key']) && hash_equals((string)$record['key'], $key)) {
+                $record['status']     = 'active';
+                $record['approvedAt'] = gmdate('c');
+                return true;
+            }
         }
-    }
-    return false;
+        return false;
+    });
 }
 
 function keys_revoke(string $key): bool
 {
-    $keys = keys_load();
-    foreach ($keys as &$record) {
-        if (isset($record['key']) && hash_equals($record['key'], $key)) {
-            $record['status']    = 'revoked';
-            $record['revokedAt'] = gmdate('c');
-            keys_save($keys);
-            return true;
+    return (bool)keys_mutate(static function (array &$keys) use ($key): bool {
+        foreach ($keys as &$record) {
+            if (isset($record['key']) && hash_equals((string)$record['key'], $key)) {
+                $record['status']    = 'revoked';
+                $record['revokedAt'] = gmdate('c');
+                return true;
+            }
         }
-    }
-    return false;
+        return false;
+    });
 }

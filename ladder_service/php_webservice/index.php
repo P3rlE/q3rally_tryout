@@ -37,7 +37,7 @@ if (!is_dir(PROFILES_DIR)) {
 // SECURITY CONFIGURATION
 // Per-server keys are managed via register.php / admin.php.
 // ─────────────────────────────────────────────────────────────────────────────
-const LADDER_VERSION        = '1.0.12';
+const LADDER_VERSION        = '1.0.13';
 const LADDER_MAX_BODY_BYTES    = 524288;  // 512 KB max POST body
 const LADDER_RATE_LIMIT_MAX    = 30;      // max requests per window per IP
 const LADDER_RATE_LIMIT_WINDOW = 60;      // window in seconds
@@ -45,6 +45,14 @@ const LADDER_RATE_FILE_PREFIX  = 'rl_';   // rate-limit state file prefix
 
 require_once __DIR__ . '/keys.php';
 require_once __DIR__ . '/ghosts.php';
+
+// Move a key file from the old, web-reachable location data/server_keys.json
+// into data/private/ on the first request after an update.
+try {
+    keys_prepare_storage();
+} catch (RuntimeException $e) {
+    error_log('[ladder] key storage: ' . $e->getMessage());
+}
 
 const LADDER_RACE_MODES = [
     'GT_RACING', 'GT_RACING_DM', 'GT_SPRINT', 'GT_TEAM_RACING', 'GT_TEAM_RACING_DM',
@@ -4844,6 +4852,15 @@ async function showMatchDetails(matchId) {
 // ── Changelog ────────────────────────────────────────────────────────────────
 const LADDER_CHANGELOG = [
   {
+    version: '1.0.13',
+    date: '2026-10-04',
+    changes: [
+      'Security: server keys moved to data/private/ (no HTTP access), match ids can no longer name internal files',
+      'Security: POST /api/v1/register always creates a pending key request; only the reporting server may delete a match, offline keys never',
+      'Offline keys always report offline matches and ghosts; key storage is locked and written atomically'
+    ],
+  },
+  {
     version: '1.0.12',
     date: '2026-10-03',
     changes: [
@@ -5483,8 +5500,8 @@ try {
             handle_get($segments);
             break;
         case 'DELETE':
-            keys_require_auth('');
-            handle_delete($segments);
+            $deleteKey = keys_require_auth('', false, false);
+            handle_delete($segments, $deleteKey);
             break;
         default:
             send_error(405, 'Method not allowed.');
@@ -6667,8 +6684,10 @@ function index_extract_entry(array $payload): array
 {
     $mode = normalize_mode_value($payload['mode'] ?? '');
     $dedicated = $payload['server']['dedicated'] ?? null;
-    $source    = ($dedicated === true || $dedicated === 1 || $dedicated === '1')
-        ? 'online' : ($payload['source'] ?? 'offline');
+    $source    = $payload['source'] ?? null;
+    if ($source !== 'online' && $source !== 'offline') {
+        $source = ($dedicated === true || $dedicated === 1 || $dedicated === '1') ? 'online' : 'offline';
+    }
 
     $winnerInfo = index_derive_winner($payload, $mode);
 
@@ -6887,28 +6906,36 @@ function handle_register_json(): void
 
     $serverName = trim((string)($data['serverName'] ?? ''));
     $ownerName  = trim((string)($data['ownerName']  ?? ''));
-    $type       = strtolower(trim((string)($data['type'] ?? 'server')));
+    $ownerEmail = trim((string)($data['ownerEmail'] ?? ''));
+    $type       = strtolower(trim((string)($data['type'] ?? 'server'))) === 'offline' ? 'offline' : 'server';
 
     if ($serverName === '') { send_error(400, 'serverName is required.'); }
     if ($ownerName  === '') { send_error(400, 'ownerName is required.'); }
+    if (strlen($serverName) > 64 || strlen($ownerName) > 64 || strlen($ownerEmail) > 254) {
+        send_error(400, 'Field too long.', 'FIELD_TOO_LONG');
+    }
+    if (!keys_register_rate_ok()) {
+        send_error(429, 'Too many registrations. Try again later.', 'RATE_LIMITED');
+    }
 
+    // Every key starts as a request the admin has to approve (admin.php).
+    // Keys that were active right after registration could report and
+    // delete matches without anybody having looked at them.
     $key    = bin2hex(random_bytes(32));
     $record = [
         'key'        => $key,
         'serverName' => $serverName,
         'ownerName'  => $ownerName,
-        'ownerEmail' => (string)($data['ownerEmail'] ?? ''),
+        'ownerEmail' => $ownerEmail,
         'type'       => $type,
-        'status'     => ($type === 'offline') ? 'active' : 'pending',
+        'status'     => 'pending',
         'createdAt'  => gmdate('c'),
-        'approvedAt' => ($type === 'offline') ? gmdate('c') : null,
+        'approvedAt' => null,
         'lastUsedAt' => null,
         'lastUsedIp' => null,
         'matchCount' => 0,
     ];
-    $keys   = keys_load();
-    $keys[] = $record;
-    keys_save($keys);
+    keys_append($record);
 
     header('Content-Type: application/json');
     http_response_code(201);
@@ -6997,15 +7024,15 @@ function handle_post(array $segments): void
     if (isset($payload['server']['name']) && is_string($payload['server']['name'])) {
         $serverName = $payload['server']['name'];
     }
-    keys_require_auth($serverName);
+    $keyRecord = keys_require_auth($serverName);
 
     if (!isset($payload['matchId']) || !is_string($payload['matchId']) || trim($payload['matchId']) === '') {
         throw new LadderApiException(422, 'MATCH_ID_REQUIRED', 'matchId is required.');
     }
 
     $matchId = normalize_match_id($payload['matchId']);
-    if ($matchId === '') {
-        throw new LadderApiException(422, 'MATCH_ID_INVALID', 'matchId contains unsupported characters.');
+    if (!match_id_is_allowed($matchId)) {
+        throw new LadderApiException(422, 'MATCH_ID_INVALID', 'matchId contains unsupported characters or is reserved.');
     }
     if (array_key_exists('serverMatchSeq', $payload)) {
         $serverMatchSeq = ladder_parse_server_match_seq($payload['serverMatchSeq']);
@@ -7028,11 +7055,17 @@ function handle_post(array $segments): void
 
     $payload['receivedAt'] = gmdate('c');
 
-    // Normalize dedicated flag → source field for frontend filtering
+    // Normalize dedicated flag → source field for frontend filtering.
+    // Offline keys (in-game wizard) always report offline matches, whatever
+    // the payload claims.
     $dedicated = $payload['server']['dedicated'] ?? null;
-    $payload['source'] = ($dedicated === true || $dedicated === 1 || $dedicated === '1')
+    $payload['source'] = (!keys_is_offline($keyRecord)
+        && ($dedicated === true || $dedicated === 1 || $dedicated === '1'))
         ? 'online'
         : 'offline';
+    // Which key reported the match (non-secret id, never published):
+    // only that key may delete it again.
+    $payload['ingestKeyId'] = keys_key_id((string)($keyRecord['key'] ?? ''));
 
     $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     if ($json === false) {
@@ -7238,41 +7271,42 @@ function handle_get(array $segments): void
 
     if (count($segments) === 2 && $segments[0] === 'matches') {
         $matchId = normalize_match_id($segments[1]);
-        $matchPath = DATA_DIR . '/' . $matchId . '.json';
-        if (!is_readable($matchPath)) {
+        $payload = match_load_stored($matchId);
+        if ($payload === null) {
             send_error(404, 'Match not found.');
         }
 
-        $json = file_get_contents($matchPath);
-        if ($json === false) {
-            throw new RuntimeException('Failed to read match.');
-        }
-
-        $payload = json_decode($json, true);
-        if (!is_array($payload)) {
-            throw new RuntimeException('Stored match is corrupted.');
-        }
-
-        send_json($payload, 200);
+        send_json(sanitize_public_match_payload($payload), 200);
         return;
     }
 
     send_error(404, 'Endpoint not found.');
 }
 
-function handle_delete(array $segments): void
+function handle_delete(array $segments, array $keyRecord): void
 {
     if (count($segments) !== 2 || $segments[0] !== 'matches') {
         send_error(404, 'Endpoint not found.');
     }
 
+    if (keys_is_offline($keyRecord)) {
+        send_error(403, 'Offline keys cannot delete matches.', 'DELETE_FORBIDDEN');
+    }
+
     $matchId = normalize_match_id($segments[1]);
-    $matchPath = DATA_DIR . '/' . $matchId . '.json';
-    if (!file_exists($matchPath)) {
+    $payload = match_load_stored($matchId);
+    if ($payload === null) {
         send_error(404, 'Match not found.');
     }
 
-    if (!unlink($matchPath)) {
+    // Only the key that reported the match may delete it. Matches stored
+    // before 1.0.13 carry no reporter and can only be removed on the server.
+    $owner = (string)($payload['ingestKeyId'] ?? '');
+    if ($owner === '' || !hash_equals($owner, keys_key_id((string)($keyRecord['key'] ?? '')))) {
+        send_error(403, 'Only the server that reported a match can delete it.', 'DELETE_FORBIDDEN');
+    }
+
+    if (!unlink(DATA_DIR . '/' . $matchId . '.json')) {
         throw new RuntimeException('Failed to delete match.');
     }
 
@@ -7580,6 +7614,8 @@ function decode_match_file(string $file): ?array
  */
 function sanitize_public_match_payload(array $payload): array
 {
+    unset($payload['ingestKeyId']);
+
     if (isset($payload['server']) && is_array($payload['server'])) {
         unset($payload['server']['key']);
     }
@@ -7599,6 +7635,44 @@ function normalize_match_id(string $raw): string
 {
     $normalized = preg_replace('/[^A-Za-z0-9._-]/', '_', $raw);
     return trim((string) $normalized);
+}
+
+/**
+ * Match ids become data/<id>.json. Ids that name one of the service's own
+ * files in data/ (index, rate limit state, old key file location) or start
+ * with a dot are never a match.
+ */
+function match_id_is_allowed(string $matchId): bool
+{
+    if ($matchId === '' || strlen($matchId) > 200 || $matchId[0] === '.') {
+        return false;
+    }
+    $lower = strtolower($matchId);
+    if (in_array($lower, ['server_keys', 'match_index', 'version'], true)) {
+        return false;
+    }
+    return strncmp($lower, LADDER_RATE_FILE_PREFIX, strlen(LADDER_RATE_FILE_PREFIX)) !== 0;
+}
+
+/** A stored match by normalized id, or null when there is no such match. */
+function match_load_stored(string $matchId): ?array
+{
+    if (!match_id_is_allowed($matchId)) {
+        return null;
+    }
+    $matchPath = DATA_DIR . '/' . $matchId . '.json';
+    if (!is_file($matchPath) || !is_readable($matchPath)) {
+        return null;
+    }
+    $json = file_get_contents($matchPath);
+    if ($json === false) {
+        throw new RuntimeException('Failed to read match.');
+    }
+    $payload = json_decode($json, true);
+    if (!is_array($payload) || !isset($payload['matchId']) || !is_string($payload['matchId'])) {
+        return null;
+    }
+    return $payload;
 }
 
 function normalize_map_key(string $raw): string

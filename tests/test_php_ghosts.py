@@ -148,7 +148,7 @@ def test_ghost_upload_ranking_and_download(ladder):
     status, body = _request(base + "/ghosts?map=q3r_testtrack&tl=1&rev=0&vehicle=evo&physics=1&checksum=4242", key=None)
     assert [g["lapMs"] for g in json.loads(body)["ghosts"]] == [58000, 59000]
 
-    keys = json.loads((root / "data" / "server_keys.json").read_text())
+    keys = json.loads((root / "data" / "private" / "server_keys.json").read_text())
     assert keys[0]["matchCount"] == 0 and keys[0]["ghostCount"] == 5
 
 

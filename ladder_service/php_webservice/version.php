@@ -6,9 +6,22 @@
 
 declare(strict_types=1);
 
-const LADDER_VERSION = '1.0.12';
+const LADDER_VERSION = '1.0.13';
 
 const LADDER_CHANGELOG = [
+    '1.0.13' => [
+        'date'    => '2026-10-04',
+        'changes' => [
+            'Security: server keys moved to data/private/ (deny-all .htaccess); data/server_keys.json is moved there automatically',
+            'Security: match ids can no longer name internal files (server_keys, match_index, version, rl_*)',
+            'Security: POST /api/v1/register always creates a pending key request (offline keys were active immediately)',
+            'Security: DELETE /api/v1/matches/{id} only for the key that reported the match, never for offline keys',
+            'Offline keys always report offline matches and ghosts, independent of server.dedicated',
+            'Key storage changes run under an exclusive lock and are written atomically',
+            'Registration throttle: 10 key requests per IP and hour (register.php and /api/v1/register)',
+            'GET /api/v1/matches/{id} returns the public match view (no guid, profile snapshot or reporter id)',
+        ],
+    ],
     '1.0.12' => [
         'date'    => '2026-10-03',
         'changes' => [

@@ -15,6 +15,27 @@ Die aktuelle Contract-Version ist **v1.0.8** (Release-Datum **2026-04-13**).
 2. Sicherstellen, dass PHP 8.0 oder neuer aktiviert ist.
 3. Dem Webserver Schreibrechte für `data/` geben.
 4. Optional `register.php` und `admin.php` für Server-Key-Registrierung und Administration konfigurieren.
+5. `data/` darf nicht direkt per HTTP erreichbar sein. Für Apache liegt
+   `data/.htaccess` bei, die Server-Keys liegen zusätzlich in `data/private/`
+   (eigene `.htaccess`). Unter nginx stattdessen:
+
+   ```nginx
+   location ^~ /data/ { deny all; return 404; }
+   ```
+
+   Prüfen: `curl -I https://example.com/data/match_index.json` muss 403 oder 404 liefern.
+
+### Server-Keys
+
+Die Keys liegen ab 1.0.13 in `data/private/server_keys.json`. Eine vorhandene
+`data/server_keys.json` wird beim ersten Request automatisch dorthin
+verschoben. Jede Änderung läuft unter einer exklusiven Sperre und ersetzt die
+Datei atomar. Neue Keys (Formular, In-Game-Assistent, `POST /api/v1/register`)
+sind immer Anträge im Status `pending`, bis sie in `admin.php` freigegeben werden;
+pro IP sind 10 Anträge pro Stunde erlaubt.
+
+Offline-Keys (Typ `offline` oder Servername mit `_OFFLINE`) melden Matches und
+Ghosts immer als `offline`, unabhängig von `server.dedicated`.
 
 Nach dem Upload ist die Oberfläche unter der Basis-URL erreichbar, zum Beispiel
 `https://example.com/ladder/index.php`.
@@ -29,7 +50,7 @@ kurzen Pfade ohne Prefix, `/api/v1` ist aber die empfohlene Form.
 
 | Methode | Pfad | Auth | Beschreibung |
 | --- | --- | --- | --- |
-| `POST` | `/api/v1/register` | nein | Registriert einen Server-Key-Antrag. |
+| `POST` | `/api/v1/register` | nein | Registriert einen Server-Key-Antrag (immer `pending`, Freigabe in `admin.php`). |
 | `POST` | `/api/v1/matches` | Bearer-Key | Speichert ein Match. Bereits vorhandene IDs werden idempotent mit HTTP 200 quittiert. |
 | `GET` | `/api/v1/matches` | Bearer-Key | Liefert gespeicherte Matches, optional mit `mode`, `limit` und `offset`. |
 | `GET` | `/api/v1/matches/{matchId}` | nein | Gibt das öffentliche Match-JSON zu einer Match-ID zurück. |
@@ -39,7 +60,7 @@ kurzen Pfade ohne Prefix, `/api/v1` ist aber die empfohlene Form.
 | `GET` | `/api/v1/ghosts?map=&tl=&rev=&vehicle=&physics=&checksum=&limit=&perVehicle=&format=` | nein | Rangliste der Ghosts einer Strecken-Variante, ohne Ghost-Daten. `perVehicle=K`: beste K je Fahrzeug; `format=text`: eine Zeile je Ghost (`ghostId`, `lapMs`, Fahrzeug, Name, tab-getrennt) für die Spiel-Engine. |
 | `GET` | `/api/v1/ghosts/catalog` | nein | Übersicht für die Ranglisten-Seite: Maps, Streckenvarianten, Map-Versionen (Physik + Prüfsumme, aktuelle zuerst) und Fahrzeuge mit Anzahl. |
 | `GET` | `/api/v1/ghosts/{ghostId}` | nein | Ein Ghost inkl. Daten; `?format=raw` liefert die `.ghost`-Datei als Text. |
-| `DELETE` | `/api/v1/matches/{matchId}` | Bearer-Key | Löscht ein Match dauerhaft. |
+| `DELETE` | `/api/v1/matches/{matchId}` | Bearer-Key | Löscht ein Match dauerhaft. Nur mit dem Key, der das Match gemeldet hat; Offline-Keys nie. Matches vor 1.0.13 nur direkt auf dem Server. |
 
 ## Beispiel-Aufrufe
 
