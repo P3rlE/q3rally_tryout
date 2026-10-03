@@ -65,6 +65,8 @@ Added:
   result to everyone. The scoreboard column "VS GHOST" shows WON/LOST per driver;
   the server log gets a "GhostRace:" line.
 - Ghost Race without a ghost shows a neutral finish banner ("FINISHED", best lap).
+- Lap ghosts (ghosts/, ghosts/ladder/) are read from disk on pure servers too, so
+  personal and ladder ghosts work with sv_pure 1 (engine, files.c).
 - PHP ladder webservice 1.0.11: GET /api/v1/ghosts accepts perVehicle=K (best K per
   vehicle) and format=text (tab separated list for the game engine).
 
@@ -78,6 +80,8 @@ Changed:
 
 Fixed:
 
+- Unit tests test_ctf4_team_score and test_rally_state_machine build again (stubs for
+  newer functions, new Team_TakeFlagSound signature).
 - Map entity "gametype" filter used a table that did not match the GT_* values
   (wrong names from Single Player on, out-of-bounds read for team modes).
 - callvote g_gametype read past the end of an old Quake III name table and accepted
