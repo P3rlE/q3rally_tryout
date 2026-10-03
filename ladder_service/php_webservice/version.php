@@ -6,9 +6,17 @@
 
 declare(strict_types=1);
 
-const LADDER_VERSION = '1.0.11';
+const LADDER_VERSION = '1.0.12';
 
 const LADDER_CHANGELOG = [
+    '1.0.12' => [
+        'date'    => '2026-10-03',
+        'changes' => [
+            'New tab "Ghosts": fastest lap ghosts per map, track variant, vehicle and map version, with ghost download',
+            'New: GET /api/v1/ghosts/catalog lists maps, variants, map builds and vehicles that have ghosts',
+            'Fix: wide tables scroll inside their box on small screens instead of widening the page',
+        ],
+    ],
     '1.0.11' => [
         'date'    => '2026-10-03',
         'changes' => [

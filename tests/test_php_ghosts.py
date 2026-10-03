@@ -137,6 +137,11 @@ def test_ghost_upload_ranking_and_download(ladder):
     status, body = _request(base + "/ghosts/" + ghost_id + "?format=raw", key=None)
     assert status == 200 and body.startswith("# Q3Rally server ghost")
 
+    # Download variant for the website: attachment with a readable file name.
+    with urllib.request.urlopen(base + "/ghosts/" + ghost_id + "?format=raw&download=1", timeout=10) as resp:
+        assert resp.headers["Content-Disposition"] == 'attachment; filename="q3r_testtrack_tl1_rev0_evo_58000.ghost"'
+        assert resp.headers["Access-Control-Allow-Origin"] == "https://www.q3rally.com"
+
     # Other physics version / map build: separate bucket, filtered out.
     status, body = _request(base + "/ghosts", _ghost(lap_ms=50000, physics=2))
     assert status == 201
@@ -199,3 +204,35 @@ def test_ghost_list_text_format_per_vehicle(ladder):
     # JSON stays the default and honours perVehicle as well.
     status, body = _request(base + query + "&perVehicle=1", key=None)
     assert [g["lapMs"] for g in json.loads(body)["ghosts"]] == [58000, 61000]
+
+
+def test_ghost_catalog_lists_maps_variants_builds_and_vehicles(ladder):
+    """Overview for the ranking page on the ladder website."""
+    base, _ = ladder
+    status, body = _request(base + "/ghosts/catalog", key=None)
+    assert status == 200 and json.loads(body) == {"maps": []}
+
+    for player, lap, vehicle, checksum in [(PLAYER_A, 58000, "evo", 4242), (PLAYER_B, 59000, "evo", 4242),
+                                           (PLAYER_A, 61000, "sidepipe", 4242)]:
+        status, body = _request(base + "/ghosts", _ghost(player_id=player, lap_ms=lap, vehicle=vehicle, checksum=checksum))
+        assert status == 201, body
+    time.sleep(1.1)  # the newer map build appears later
+    status, body = _request(base + "/ghosts", _ghost(player_id=PLAYER_C, lap_ms=57000, checksum=5555))
+    assert status == 201, body
+
+    status, body = _request(base + "/ghosts/catalog", key=None)
+    assert status == 200, body
+    maps = json.loads(body)["maps"]
+    assert [m["map"] for m in maps] == ["q3r_testtrack"]
+    variant = maps[0]["variants"][0]
+    assert variant["variant"] == "tl1_rev0" and variant["trackLength"] == 1 and variant["trackReversed"] == 0
+    assert variant["count"] == 4
+    # Current build (first ghost newest) first, with vehicles per build.
+    assert [b["bucket"] for b in variant["buckets"]] == ["p1_c5555", "p1_c4242"]
+    old = variant["buckets"][1]
+    assert old["physicsVersion"] == 1 and old["mapChecksum"] == 4242
+    assert old["vehicles"] == {"evo": 2, "sidepipe": 1} and old["count"] == 3
+
+    # The catalog path is not mistaken for a ghost id.
+    status, body = _request(base + "/ghosts/catalog?format=raw", key=None)
+    assert status == 200 and body.startswith("{")

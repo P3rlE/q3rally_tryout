@@ -65,6 +65,9 @@ Added:
   result to everyone. The scoreboard column "VS GHOST" shows WON/LOST per driver;
   the server log gets a "GhostRace:" line.
 - Ghost Race without a ghost shows a neutral finish banner ("FINISHED", best lap).
+- PHP ladder webservice 1.0.12: new "Ghosts" tab on the ladder page with the fastest
+  lap ghosts per map, track variant, vehicle and map version (download as .ghost);
+  GET /api/v1/ghosts/catalog. Wide tables no longer widen the page on phones.
 - Lap ghosts (ghosts/, ghosts/ladder/) are read from disk on pure servers too, so
   personal and ladder ghosts work with sv_pure 1 (engine, files.c).
 - PHP ladder webservice 1.0.11: GET /api/v1/ghosts accepts perVehicle=K (best K per

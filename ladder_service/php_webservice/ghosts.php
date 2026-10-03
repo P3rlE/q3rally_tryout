@@ -23,6 +23,8 @@
  *                                   &format=text: one ghost per line,
  *                                   ghostId<TAB>lapMs<TAB>vehicle<TAB>playerName;
  *                                   used by the game engine)
+ *   GET  /api/v1/ghosts/catalog    maps, track variants, map builds and vehicles
+ *                                  that have ghosts (for the ghost ranking page)
  *   GET  /api/v1/ghosts/<ghostId>  one ghost incl. data (?format=raw: .ghost text)
  */
 
@@ -512,6 +514,99 @@ function handle_ghost_list(): void
     send_json(['ghosts' => $result, 'count' => count($result)], 200);
 }
 
+/**
+ * Overview for the ranking page: every map with its track variants, the map
+ * builds/physics versions (buckets, newest first) and the vehicles per bucket.
+ */
+function handle_ghost_catalog(): void
+{
+    $maps = [];
+    foreach (glob(GHOSTS_DIR . '/*/tl*_rev*/*/p*_c*/index.json') ?: [] as $indexFile) {
+        $bucketDir = dirname($indexFile);
+        $bucket = basename($bucketDir);
+        $vehicle = basename(dirname($bucketDir));
+        $variant = basename(dirname($bucketDir, 2));
+        $map = basename(dirname($bucketDir, 3));
+        if (!preg_match('/^tl([0-2])_rev([01])$/', $variant, $vm) || !preg_match('/^p(\d+)_c(-?\d+)$/', $bucket, $bm)) {
+            continue;
+        }
+        $entries = ghost_index_read($bucketDir);
+        if (!$entries) {
+            continue;
+        }
+        $last = '';
+        $first = '';
+        foreach ($entries as $entry) {
+            $received = (string)($entry['receivedAt'] ?? '');
+            if ($received > $last) {
+                $last = $received;
+            }
+            if ($received !== '' && ($first === '' || $received < $first)) {
+                $first = $received;
+            }
+        }
+
+        $variantRef = &$maps[$map][$variant];
+        if (!isset($variantRef)) {
+            $variantRef = [
+                'variant'       => $variant,
+                'trackLength'   => (int)$vm[1],
+                'trackReversed' => (int)$vm[2],
+                'count'         => 0,
+                'buckets'       => [],
+            ];
+        }
+        $bucketRef = &$variantRef['buckets'][$bucket];
+        if (!isset($bucketRef)) {
+            $bucketRef = [
+                'bucket'         => $bucket,
+                'physicsVersion' => (int)$bm[1],
+                'mapChecksum'    => (int)$bm[2],
+                'count'          => 0,
+                'firstReceivedAt' => '',
+                'lastReceivedAt' => '',
+                'vehicles'       => [],
+            ];
+        }
+        $bucketRef['vehicles'][$vehicle] = count($entries);
+        $bucketRef['count'] += count($entries);
+        if ($last > $bucketRef['lastReceivedAt']) {
+            $bucketRef['lastReceivedAt'] = $last;
+        }
+        if ($first !== '' && ($bucketRef['firstReceivedAt'] === '' || $first < $bucketRef['firstReceivedAt'])) {
+            $bucketRef['firstReceivedAt'] = $first;
+        }
+        $variantRef['count'] += count($entries);
+        unset($variantRef, $bucketRef);
+    }
+
+    ksort($maps, SORT_NATURAL);
+    $result = [];
+    foreach ($maps as $map => $variants) {
+        ksort($variants, SORT_NATURAL);
+        $variantList = [];
+        foreach ($variants as $variant) {
+            $buckets = array_values($variant['buckets']);
+            // Current build first: highest physics version, then the build that
+            // appeared last (its first ghost is the newest). Late uploads from
+            // clients with an old map build do not make that build current.
+            usort($buckets, static function (array $a, array $b): int {
+                return [$b['physicsVersion'], $b['firstReceivedAt']] <=> [$a['physicsVersion'], $a['firstReceivedAt']];
+            });
+            foreach ($buckets as &$bucket) {
+                ksort($bucket['vehicles'], SORT_NATURAL);
+            }
+            unset($bucket);
+            $variant['buckets'] = $buckets;
+            $variantList[] = $variant;
+        }
+        $result[] = ['map' => $map, 'variants' => $variantList];
+    }
+
+    header('Cache-Control: public, max-age=60');
+    send_json(['maps' => $result], 200);
+}
+
 function handle_ghost_get(string $ghostId): void
 {
     $parts = ghost_parse_id(strtolower($ghostId));
@@ -534,6 +629,12 @@ function handle_ghost_get(string $ghostId): void
         http_response_code(200);
         header('Content-Type: text/plain; charset=us-ascii');
         header('Cache-Control: public, max-age=300');
+        if (!empty($_GET['download'])) {
+            // Websites on other origins cannot force a download with <a download>.
+            $fileName = $parts['map'] . '_' . $parts['variant'] . '_' . $parts['vehicle'] . '_'
+                . (int)($record['lapMs'] ?? 0) . '.ghost';
+            header('Content-Disposition: attachment; filename="' . $fileName . '"');
+        }
         echo (string)($record['data'] ?? '');
         exit;
     }
