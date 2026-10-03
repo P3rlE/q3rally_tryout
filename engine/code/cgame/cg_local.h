@@ -929,6 +929,14 @@ typedef struct {
 	qboolean	ghostRecordingOverflowed;
 	int			ghostRecordingLastSampleTime;
 	int			ghostRecordingLastCheckpoint;
+	// resets/teleports during the recording (time offsets): such laps are not
+	// "clean" and are not preferred as bot routes
+	int			ghostIncidentTimes[16];
+	int			ghostIncidentCount;
+	qboolean	ghostIncidentHavePrev;
+	int			ghostIncidentPrevTime;
+	int			ghostIncidentPrevTeleport;
+	vec3_t		ghostIncidentPrevOrigin;
 	vec3_t		ghostRecordingLastSampleOrigin;
 	vec3_t		ghostRecordingLastSampleAngles;
 	qboolean	baseGhostAvailable;
@@ -964,6 +972,16 @@ typedef struct {
 	int			ghostResultGhostMs;
 	int			ghostResultTime;
 	char		ghostResultName[40];
+	qboolean	ghostFinishOnly;	// finished without a ghost: neutral banner
+	// Ghost Race results of every driver, from the server ("lghostresult")
+	struct {
+		qboolean	valid;
+		qboolean	won;
+		int			playerMs;
+		int			ghostMs;
+		char		name[40];
+	} ghostRaceResults[MAX_CLIENTS];
+	char		ghostOpponentReported[64];	// last "ghostopp" sent
 	qboolean	ladderPickerManual;		// opened with "ghostpicker": stays open in the race
 	qboolean	ladderPickerAutoShown;
 	qboolean	ladderPickerAllVehicles;
@@ -2219,6 +2237,7 @@ qboolean CG_LoadGhostFromFile( const char *path, const char *expectedMap, const 
 void CG_LoadPersonalGhost( void );
 int CG_GhostPlaybackMode( void );
 qboolean CG_LoadLadderGhostFile( const char *path, int lapMs );
+void CG_PrecacheGhostVehicle( const char *vehicle );
 
 // cg_ghost_picker.c
 void CG_LadderGhost_Reset( void );
@@ -2234,9 +2253,12 @@ void CG_LadderGhost_DrawPicker( void );
 const char *CG_LadderGhost_StatusText( qboolean *isError );
 qboolean CG_GhostRace_Opponent( char *name, int nameSize, int *lapMs );
 void CG_GhostRace_ResetResult( void );
+void CG_GhostRace_ResetRace( void );
 void CG_GhostRace_EvaluateFinish( int bestLapMs );
 qboolean CG_GhostRace_ScoreboardGhost( char *name, int nameSize, int *ghostMs, int *playerMs, qboolean *finished );
 void CG_GhostRace_DrawResultBanner( void );
+void CG_GhostRace_ReportOpponent( void );
+qboolean CG_GhostRace_ClientResult( int clientNum, qboolean *won );
 void CG_AttemptSavePersonalGhost( int finishTime );
 void CG_DrawRaceCountDown( void );
 void CG_RaceCountDown( const char *str, int secondsLeft );

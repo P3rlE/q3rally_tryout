@@ -167,6 +167,8 @@ void CG_LadderGhost_Pick( int entryIndex ) {
 	entry = &cg.ladderGhostEntries[entryIndex];
 	cg.ladderGhostSelected = entryIndex;
 	CG_LadderGhost_Remember( entryIndex );
+	/* Load the ghost's car now, not in the middle of the race. */
+	CG_PrecacheGhostVehicle( entry->vehicle );
 
 	/* Local server or picked before: the cache already holds the ghost. */
 	length = trap_FS_FOpenFile( entry->cacheFile, &f, FS_READ );
@@ -175,6 +177,7 @@ void CG_LadderGhost_Pick( int entryIndex ) {
 	}
 	if ( length > 0 && CG_LoadLadderGhostFile( entry->cacheFile, entry->lapMs ) ) {
 		cg.ladderGhostAvailable = qtrue;
+		CG_GhostRace_ReportOpponent();
 		return;
 	}
 
@@ -342,6 +345,32 @@ qboolean CG_LadderGhost_ServerCommand( const char *cmd ) {
 		cg.ladderGhostFailed = qfalse;
 		if ( cg_developer.integer ) {
 			CG_Printf( "Received ladder ghost (%d samples).\n", cg.ladderGhost.frameCount );
+		}
+		CG_GhostRace_ReportOpponent();
+		return qtrue;
+	}
+
+	if ( !Q_stricmp( cmd, "lghostresult" ) ) {
+		int client = atoi( CG_Argv( 1 ) );
+
+		if ( client >= 0 && client < MAX_CLIENTS && trap_Argc() >= 6 ) {
+			cg.ghostRaceResults[client].valid = qtrue;
+			cg.ghostRaceResults[client].won = atoi( CG_Argv( 2 ) ) ? qtrue : qfalse;
+			cg.ghostRaceResults[client].playerMs = atoi( CG_Argv( 3 ) );
+			cg.ghostRaceResults[client].ghostMs = atoi( CG_Argv( 4 ) );
+			Q_strncpyz( cg.ghostRaceResults[client].name, CG_Argv( 5 ), sizeof( cg.ghostRaceResults[client].name ) );
+			/* The server's lap times are authoritative for the own banner. */
+			if ( cg.snap && client == cg.snap->ps.clientNum ) {
+				if ( !cg.ghostResultValid ) {
+					cg.ghostResultTime = cg.time;
+				}
+				cg.ghostResultValid = qtrue;
+				cg.ghostFinishOnly = qfalse;
+				cg.ghostResultWon = cg.ghostRaceResults[client].won;
+				cg.ghostResultPlayerMs = cg.ghostRaceResults[client].playerMs;
+				cg.ghostResultGhostMs = cg.ghostRaceResults[client].ghostMs;
+				Q_strncpyz( cg.ghostResultName, cg.ghostRaceResults[client].name, sizeof( cg.ghostResultName ) );
+			}
 		}
 		return qtrue;
 	}
@@ -695,8 +724,62 @@ qboolean CG_GhostRace_Opponent( char *name, int nameSize, int *lapMs ) {
 	}
 }
 
-/* Called from CG_StartRace. */
+/*
+=================
+CG_GhostRace_ReportOpponent
+
+Tells the server which ghost this driver races (name + lap time), so the
+server can rate every driver at the finish. Sent only on changes: the
+server ignores more than one client command per second.
+=================
+*/
+void CG_GhostRace_ReportOpponent( void ) {
+	char name[40];
+	char report[64];
+	int lapMs = 0;
+
+	if ( cgs.gametype != GT_GHOST ) {
+		return;
+	}
+	if ( !CG_GhostRace_Opponent( name, sizeof( name ), &lapMs ) ) {
+		Q_strncpyz( name, "-", sizeof( name ) );
+		lapMs = 0;
+	}
+	Com_sprintf( report, sizeof( report ), "%d %s", lapMs, name );
+	if ( !strcmp( report, cg.ghostOpponentReported ) ) {
+		return;
+	}
+	Q_strncpyz( cg.ghostOpponentReported, report, sizeof( cg.ghostOpponentReported ) );
+	trap_SendClientCommand( va( "ghostopp %d \"%s\"", lapMs, name ) );
+}
+
+/* Result of one driver from the server; the local driver falls back to
+ * the own evaluation until the server result arrives. */
+qboolean CG_GhostRace_ClientResult( int clientNum, qboolean *won ) {
+	if ( clientNum < 0 || clientNum >= MAX_CLIENTS || cgs.gametype != GT_GHOST ) {
+		return qfalse;
+	}
+	if ( cg.ghostRaceResults[clientNum].valid ) {
+		*won = cg.ghostRaceResults[clientNum].won;
+		return qtrue;
+	}
+	if ( cg.snap && clientNum == cg.snap->ps.clientNum && cg.ghostResultValid ) {
+		*won = cg.ghostResultWon;
+		return qtrue;
+	}
+	return qfalse;
+}
+
+/* Called from CG_StartRace: forget all results, report the ghost again. */
+void CG_GhostRace_ResetRace( void ) {
+	memset( cg.ghostRaceResults, 0, sizeof( cg.ghostRaceResults ) );
+	cg.ghostOpponentReported[0] = '\0';
+	CG_GhostRace_ResetResult();
+}
+
+/* Own result only. */
 void CG_GhostRace_ResetResult( void ) {
+	cg.ghostFinishOnly = qfalse;
 	cg.ghostResultValid = qfalse;
 	cg.ghostResultWon = qfalse;
 	cg.ghostResultPlayerMs = 0;
@@ -719,7 +802,16 @@ void CG_GhostRace_EvaluateFinish( int bestLapMs ) {
 	int ghostMs;
 
 	CG_GhostRace_ResetResult();
-	if ( bestLapMs <= 0 || !CG_GhostRace_Opponent( name, sizeof( name ), &ghostMs ) ) {
+	if ( bestLapMs <= 0 ) {
+		return;
+	}
+	if ( !CG_GhostRace_Opponent( name, sizeof( name ), &ghostMs ) ) {
+		/* Ghost Race without a ghost: neutral finish banner. */
+		if ( cgs.gametype == GT_GHOST ) {
+			cg.ghostFinishOnly = qtrue;
+			cg.ghostResultPlayerMs = bestLapMs;
+			cg.ghostResultTime = cg.time;
+		}
 		return;
 	}
 	cg.ghostResultValid = qtrue;
@@ -782,6 +874,7 @@ void CG_GhostRace_DrawResultBanner( void ) {
 	static vec4_t wonColor  = { 0.35f, 0.90f, 0.45f, 1.00f };
 	static vec4_t lostColor = { 1.00f, 0.32f, 0.22f, 1.00f };
 	static vec4_t subColor  = { 0.90f, 0.95f, 0.94f, 1.00f };
+	static vec4_t finishColor = Q3RALLY_ACCENT_COLOR;
 	static vec4_t shade     = { 0.008f, 0.012f, 0.016f, 0.70f };
 	vec4_t color;
 	vec4_t subtitleColor;
@@ -799,7 +892,7 @@ void CG_GhostRace_DrawResultBanner( void ) {
 	float alpha = 1.0f;
 	int elapsed;
 
-	if ( !cg.ghostResultValid || cgs.gametype != GT_GHOST || !cg.snap ) {
+	if ( ( !cg.ghostResultValid && !cg.ghostFinishOnly ) || cgs.gametype != GT_GHOST || !cg.snap ) {
 		return;
 	}
 	elapsed = cg.time - cg.ghostResultTime;
@@ -812,21 +905,31 @@ void CG_GhostRace_DrawResultBanner( void ) {
 		}
 	}
 
-	Vector4Copy( cg.ghostResultWon ? wonColor : lostColor, color );
+	if ( cg.ghostResultValid ) {
+		Vector4Copy( cg.ghostResultWon ? wonColor : lostColor, color );
+	} else {
+		Vector4Copy( finishColor, color );
+	}
 	Vector4Copy( subColor, subtitleColor );
 	Vector4Copy( shade, shadeColor );
 	color[3] *= alpha;
 	subtitleColor[3] *= alpha;
 	shadeColor[3] *= alpha;
 
-	CG_GhostRace_FormatGap( cg.ghostResultGhostMs - cg.ghostResultPlayerMs, gap, sizeof( gap ) );
-	Com_sprintf( title, sizeof( title ), cg.ghostResultWon ? "GHOST BEATEN BY %s" : "GHOST WINS BY %s", gap );
-
-	Q_strncpyz( name, cg.ghostResultName, sizeof( name ) );
-	Q_strupr( name );
 	Q_strncpyz( playerText, getStringForTimePrecise( cg.ghostResultPlayerMs ), sizeof( playerText ) );
-	Q_strncpyz( ghostText, getStringForTimePrecise( cg.ghostResultGhostMs ), sizeof( ghostText ) );
-	Com_sprintf( line, sizeof( line ), "BEST LAP %s  -  %s %s", playerText, name, ghostText );
+	if ( cg.ghostResultValid ) {
+		CG_GhostRace_FormatGap( cg.ghostResultGhostMs - cg.ghostResultPlayerMs, gap, sizeof( gap ) );
+		Com_sprintf( title, sizeof( title ), cg.ghostResultWon ? "GHOST BEATEN BY %s" : "GHOST WINS BY %s", gap );
+
+		Q_strncpyz( name, cg.ghostResultName, sizeof( name ) );
+		Q_strupr( name );
+		Q_strncpyz( ghostText, getStringForTimePrecise( cg.ghostResultGhostMs ), sizeof( ghostText ) );
+		Com_sprintf( line, sizeof( line ), "BEST LAP %s  -  %s %s", playerText, name, ghostText );
+	} else {
+		/* Raced without a ghost: same banner, neutral. */
+		Q_strncpyz( title, "FINISHED", sizeof( title ) );
+		Com_sprintf( line, sizeof( line ), "BEST LAP %s  -  NO GHOST", playerText );
+	}
 
 	/* Box fits the longer line. While driving the banner sits below the
 	 * rear-view mirror (y 10-85) and the minimap (up to y 120), at the height

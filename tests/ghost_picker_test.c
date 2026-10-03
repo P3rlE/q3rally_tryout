@@ -89,6 +89,8 @@ int CG_IngameStringWidth( const char *text, int style, float scale ) {
 }
 static int s_playbackMode = 3;
 int CG_GhostPlaybackMode( void ) { return s_playbackMode; }
+static char s_precached[64];
+void CG_PrecacheGhostVehicle( const char *vehicle ) { Q_strncpyz( s_precached, vehicle, sizeof( s_precached ) ); }
 void CG_DrawIngameString( int x, int y, const char *text, int style, float scale, const float *color ) {
 	(void)x; (void)y; (void)text; (void)style; (void)scale; (void)color;
 	s_drawn++;
@@ -139,6 +141,7 @@ int main( void ) {
 	assert( !cg.ladderPickerOpen && !( s_catcher & KEYCATCH_CGAME ) );
 	assert( cg.ladderGhostSelected == 2 && cg.ladderGhostPending );
 	assert( !strcmp( s_sent[s_sentCount - 1], "lghostpick 2" ) );
+	assert( !strcmp( s_precached, "evo" ) );
 	assert( !strcmp( s_lastPick, "q3r_testtrack|61000|evo|Beta" ) );
 	assert( !CG_LadderGhost_KeyEvent( K_ENTER ) );
 
@@ -175,7 +178,9 @@ int main( void ) {
 	s_localFileExists = 1;
 	i = s_sentCount;
 	CG_LadderGhost_Pick( 0 );
-	assert( s_sentCount == i && s_localLoads == 1 && cg.ladderGhostAvailable );
+	assert( s_localLoads == 1 && cg.ladderGhostAvailable );
+	/* No pick command, only the opponent report for the server. */
+	assert( s_sentCount == i + 1 && !strcmp( s_sent[( s_sentCount - 1 ) & 15], "ghostopp 59000 \"Alpha\"" ) );
 	s_localFileExists = 0;
 
 	/* map_restart: list again, the loaded ghost stays without a new transfer. */
@@ -291,10 +296,54 @@ int main( void ) {
 		s_playbackMode = 0;
 		CG_GhostRace_EvaluateFinish( 60000 );
 		assert( !cg.ghostResultValid );
+		/* No ghost in Ghost Race: neutral banner, no ghost row, no result. */
+		assert( cg.ghostFinishOnly && cg.ghostResultPlayerMs == 60000 );
+		s_snap.ps.pm_type = PM_INTERMISSION;
+		s_drawn = 0;
+		CG_GhostRace_DrawResultBanner();
+		assert( s_drawn == 2 );
+		assert( !CG_GhostRace_ScoreboardGhost( name, sizeof( name ), &ghostMs, &playerMs, &finished ) );
+		{
+			qboolean won;
+			assert( !CG_GhostRace_ClientResult( 0, &won ) );
+		}
+		s_snap.ps.pm_type = PM_NORMAL;
+
+		/* Opponent report: once per change, again after a new race start. */
+		s_playbackMode = 3;
+		s_sentCount = 0;
+		CG_GhostRace_ResetRace();      /* race start */
+		CG_GhostRace_ReportOpponent();
+		assert( s_sentCount == 1 && !strcmp( s_sent[0], "ghostopp 59500 \"Gamma Ray\"" ) );
+		CG_GhostRace_ReportOpponent();
+		assert( s_sentCount == 1 );
+		CG_GhostRace_ResetRace();
+		CG_GhostRace_ReportOpponent();
+		assert( s_sentCount == 2 );
+		s_playbackMode = 0;
+		CG_GhostRace_ReportOpponent();
+		assert( s_sentCount == 3 && !strcmp( s_sent[2], "ghostopp 0 \"-\"" ) );
+
+		/* Server results for every driver; own result is overwritten. */
+		Server( "lghostresult 3 1 58000 59000 \"Other Ghost\"" );
+		Server( "lghostresult 0 0 61000 60000 \"Gamma Ray\"" );
+		{
+			qboolean won = qfalse;
+			assert( CG_GhostRace_ClientResult( 3, &won ) && won );
+			assert( CG_GhostRace_ClientResult( 0, &won ) && !won );
+			assert( !CG_GhostRace_ClientResult( 4, &won ) );
+		}
+		assert( cg.ghostResultValid && !cg.ghostResultWon && cg.ghostResultPlayerMs == 61000 );
+		CG_GhostRace_ResetRace();
+		{
+			qboolean won;
+			assert( !CG_GhostRace_ClientResult( 3, &won ) );
+		}
+
 		cgs.gametype = GT_RACING;
 		s_playbackMode = 3;
 		CG_GhostRace_EvaluateFinish( 1000 );
-		assert( !cg.ghostResultValid );
+		assert( !cg.ghostResultValid && !cg.ghostFinishOnly );
 		assert( !CG_GhostRace_ScoreboardGhost( name, sizeof( name ), &ghostMs, &playerMs, &finished ) );
 	}
 	puts( "ok" );

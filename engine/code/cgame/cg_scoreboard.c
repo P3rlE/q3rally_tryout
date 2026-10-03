@@ -329,7 +329,7 @@ static void CG_InitScoreboardColumns(void) {
         cgs.gametype != GT_KOTH) {
         columns[SBCOL_STATUS].type = SBCOL_STATUS;
         columns[SBCOL_STATUS].width = COL_STATUS_WIDTH;
-        columns[SBCOL_STATUS].header = "STATUS";
+        columns[SBCOL_STATUS].header = (cgs.gametype == GT_GHOST) ? "VS GHOST" : "STATUS";
         columns[SBCOL_STATUS].visible = qtrue;
     }
     
@@ -697,6 +697,7 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
     vec4_t readyColor;
     vec4_t deltaColor;
     qboolean isRacingMode;
+    qboolean ghostWon = qfalse;
     
     if (score->client < 0 || score->client >= cgs.maxclients) {
         return;
@@ -897,6 +898,17 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
                 } else {
                     CG_DrawModernText(x, y, "ALIVE", 1, width, readyColor, qfalse);
                 }
+            } else if (cgs.gametype == GT_GHOST &&
+                       CG_GhostRace_ClientResult(score->client, &ghostWon)) {
+                /* Ghost Race: each driver against the ghost he raced. */
+                vec4_t ghostResultColor;
+                if (ghostWon) {
+                    ghostResultColor[0] = 0.35f; ghostResultColor[1] = 0.90f; ghostResultColor[2] = 0.45f;
+                } else {
+                    ghostResultColor[0] = 1.0f; ghostResultColor[1] = 0.38f; ghostResultColor[2] = 0.30f;
+                }
+                ghostResultColor[3] = fade;
+                CG_DrawModernText(x, y, ghostWon ? "WON" : "LOST", 1, width, ghostResultColor, qfalse);
             } else if (CG_HasRaceFinishStatus() &&
                        cg_entities[score->client].startRaceTime > 0) {
                 if (cg_entities[score->client].finishRaceTime > 0) {

@@ -32,6 +32,9 @@ or (at your option) any later version.
 // client -> server:
 //   lghostlistreq           send the list again (cgame restart)
 //   lghostpick <idx>        stream this ghost
+//   ghostopp <lapMs> "<name>"  the ghost this driver races (any ghost type)
+// Result at the finish (server -> all clients):
+//   lghostresult <client> <won 0|1> <bestLapMs> <ghostLapMs> "<name>"
 
 #include "g_local.h"
 
@@ -87,6 +90,8 @@ typedef enum {
 } lghostPickState_t;
 
 typedef struct {
+	int             opponentLapMs;          // ghost lap the driver races, 0 = none
+	char            opponentName[40];
 	qboolean        listWanted;             // send the list when it is ready
 	int             listNext;               // -1 = header not sent yet
 	lghostPickState_t pickState;
@@ -752,6 +757,58 @@ void G_GhostLadder_ClientDisconnect( int clientNum ) {
 	G_GhostLadder_ResetClient( clientNum );
 }
 
+/* Name for a server command argument: printable, no quotes or separators. */
+static void G_GhostLadder_SafeName( const char *in, char *out, int outSize ) {
+	int n = 0;
+
+	for ( ; *in && n < outSize - 1; in++ ) {
+		if ( (unsigned char)*in < 0x20 || (unsigned char)*in > 0x7e ||
+		     *in == '"' || *in == '\\' || *in == ';' ) {
+			continue;
+		}
+		out[n++] = *in;
+	}
+	out[n] = '\0';
+	if ( !out[0] ) {
+		Q_strncpyz( out, "Ghost", outSize );
+	}
+}
+
+/*
+=================
+G_GhostLadder_ClientFinished
+
+Ghost Race result at the finish line: the driver's best lap (A2B: the whole
+run) against the lap of the ghost the driver reported with "ghostopp".
+Sent to every client so the scoreboard shows all results.
+=================
+*/
+void G_GhostLadder_ClientFinished( gentity_t *ent ) {
+	int clientNum;
+	lghostClient_t *state;
+	int bestLapMs;
+	qboolean won;
+
+	if ( g_gametype.integer != GT_GHOST || !ent || !ent->client ) {
+		return;
+	}
+	clientNum = ent - g_entities;
+	if ( clientNum < 0 || clientNum >= MAX_CLIENTS ) {
+		return;
+	}
+	state = &s_clients[clientNum];
+	bestLapMs = ent->client->bestLapMs;
+	if ( state->opponentLapMs <= 0 || bestLapMs <= 0 ) {
+		return;
+	}
+
+	won = bestLapMs < state->opponentLapMs ? qtrue : qfalse;
+	trap_SendServerCommand( -1, va( "lghostresult %d %d %d %d \"%s\"", clientNum, won ? 1 : 0,
+		bestLapMs, state->opponentLapMs, state->opponentName ) );
+	G_LogPrintf( "GhostRace: %d %s %s: %d vs %d\n", clientNum,
+		won ? "beat" : "lost to", state->opponentName, bestLapMs, state->opponentLapMs );
+}
+
 /*
 =================
 G_GhostLadder_ClientCommand
@@ -764,6 +821,25 @@ qboolean G_GhostLadder_ClientCommand( gentity_t *ent, const char *cmd ) {
 	lghostClient_t *client;
 	char arg[16];
 	int entry;
+
+	if ( !Q_stricmp( cmd, "ghostopp" ) ) {
+		char name[64];
+		int lapMs;
+
+		if ( clientNum < 0 || clientNum >= MAX_CLIENTS || g_gametype.integer != GT_GHOST ) {
+			return qtrue;
+		}
+		trap_Argv( 1, arg, sizeof( arg ) );
+		trap_Argv( 2, name, sizeof( name ) );
+		lapMs = atoi( arg );
+		if ( lapMs < 1000 || lapMs > 3600000 ) {
+			lapMs = 0;
+		}
+		s_clients[clientNum].opponentLapMs = lapMs;
+		G_GhostLadder_SafeName( name, s_clients[clientNum].opponentName,
+			sizeof( s_clients[clientNum].opponentName ) );
+		return qtrue;
+	}
 
 	if ( Q_stricmp( cmd, "lghostlistreq" ) && Q_stricmp( cmd, "lghostpick" ) ) {
 		return qfalse;

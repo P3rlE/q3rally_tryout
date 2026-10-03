@@ -600,6 +600,7 @@ void Touch_Finish (gentity_t *self, gentity_t *other, trace_t *trace ){
         }
 
         trap_SendServerCommand( -1, va("raceFinishTime %i %i", other->s.clientNum, other->client->finishRaceTime) );
+        G_GhostLadder_ClientFinished( other );
 
         if ( !level.finishRaceTime ){
                 other->client->ps.stats[STAT_POSITION] = 1;
@@ -673,6 +674,7 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
 			}
 
 			trap_SendServerCommand( -1, va("raceFinishTime %i %i", other->s.clientNum, other->client->finishRaceTime) );
+			G_GhostLadder_ClientFinished( other );
 
 			if (!level.finishRaceTime){
 				other->client->ps.stats[STAT_POSITION] = 1; // make sure the player is first

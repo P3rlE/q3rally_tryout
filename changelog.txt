@@ -54,6 +54,17 @@ Added:
   "GHOST BEATEN BY 0.420" or "GHOST WINS BY ..." with both times and stays on the
   intermission scoreboard. The scoreboard lists the ghost as its own row (name, lap
   time, gap, BEATEN/WINNER) right above or below you.
+- Ghost Race: drivers do not collide with each other (cars pass through).
+- Personal ghost files store "gametype" and "clean" (no reset/teleport during the lap).
+  Bot routes and the top-5 ghost pool prefer clean Ghost Race laps over faster laps
+  with resets or from races with other cars.
+- Ghosts of another car (ladder ghosts) are drawn with that car's body and wheels;
+  the model is loaded when the ghost is picked. Unknown cars fall back to your own.
+- Ghost Race results for all drivers: each client reports the ghost it races
+  ("ghostopp"), the server rates every finish with its own lap times and sends the
+  result to everyone. The scoreboard column "VS GHOST" shows WON/LOST per driver;
+  the server log gets a "GhostRace:" line.
+- Ghost Race without a ghost shows a neutral finish banner ("FINISHED", best lap).
 - PHP ladder webservice 1.0.11: GET /api/v1/ghosts accepts perVehicle=K (best K per
   vehicle) and format=text (tab separated list for the game engine).
 

@@ -23,6 +23,7 @@ vmCvar_t g_trackReversed;
 void QDECL Com_Error( int level, const char *fmt, ... ) { (void)level; (void)fmt; assert( 0 ); }
 void QDECL Com_Printf( const char *fmt, ... ) { (void)fmt; }
 void QDECL G_Printf( const char *fmt, ... ) { (void)fmt; }
+void QDECL G_LogPrintf( const char *fmt, ... ) { (void)fmt; }
 
 /* ---- in-memory files ---------------------------------------------------- */
 #define TEST_FILES 8
@@ -71,6 +72,7 @@ static char s_fileStatus[64];
 static ladderGhostFetch_t s_requests[16];
 static int s_requestCount;
 static char s_argv1[32];
+static char s_argv2[64];
 
 void trap_Cvar_VariableStringBuffer( const char *name, char *buffer, int size ) {
 	if ( !strcmp( name, "mapname" ) ) {
@@ -97,7 +99,7 @@ void trap_LadderFetchGhosts( const ladderGhostFetch_t *request ) {
 	s_requests[s_requestCount++] = *request;
 }
 void trap_Argv( int n, char *buffer, int bufferLength ) {
-	Q_strncpyz( buffer, n == 1 ? s_argv1 : "", bufferLength );
+	Q_strncpyz( buffer, n == 1 ? s_argv1 : ( n == 2 ? s_argv2 : "" ), bufferLength );
 }
 
 /* ---- server commands ----------------------------------------------------- */
@@ -105,7 +107,7 @@ static char s_commands[512][MAX_STRING_CHARS];
 static int s_commandCount;
 
 void trap_SendServerCommand( int clientNum, const char *text ) {
-	assert( clientNum == 0 );
+	assert( clientNum == 0 || clientNum == -1 );
 	assert( s_commandCount < 512 );
 	assert( strlen( text ) < MAX_STRING_CHARS - 1 );
 	Q_strncpyz( s_commands[s_commandCount++], text, MAX_STRING_CHARS );
@@ -287,6 +289,25 @@ int main( void ) {
 	assert( G_GhostLadder_ClientCommand( &g_entities[0], "lghostpick" ) );
 	RunFrames( 6 );
 	assert( FindPrefix( "lghostfail 0 download" ) != NULL );
+
+	/* Result at the finish: best lap against the reported ghost, to all. */
+	s_commandCount = 0;
+	strcpy( s_argv1, "59500" );
+	strcpy( s_argv2, "Gamma \"Ray\";" );
+	assert( G_GhostLadder_ClientCommand( &g_entities[0], "ghostopp" ) );
+	assert( s_clients[0].opponentLapMs == 59500 && !strcmp( s_clients[0].opponentName, "Gamma Ray" ) );
+	s_testClients[0].bestLapMs = 59000;
+	G_GhostLadder_ClientFinished( &g_entities[0] );
+	assert( !strcmp( s_commands[0], "lghostresult 0 1 59000 59500 \"Gamma Ray\"" ) );
+	s_testClients[0].bestLapMs = 60000;
+	G_GhostLadder_ClientFinished( &g_entities[0] );
+	assert( !strcmp( s_commands[1], "lghostresult 0 0 60000 59500 \"Gamma Ray\"" ) );
+	/* No ghost reported ("ghostopp 0"): no result. */
+	strcpy( s_argv1, "0" );
+	strcpy( s_argv2, "-" );
+	assert( G_GhostLadder_ClientCommand( &g_entities[0], "ghostopp" ) );
+	G_GhostLadder_ClientFinished( &g_entities[0] );
+	assert( s_commandCount == 2 );
 
 	/* Other gametypes do nothing. */
 	s_commandCount = 0;

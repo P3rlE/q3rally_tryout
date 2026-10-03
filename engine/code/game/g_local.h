@@ -297,6 +297,7 @@ typedef struct ghostRecord_s {
         int     bestTimeMs;
         qboolean hasVariantData;
         qboolean ambiguousLegacy;
+        qboolean clean;         // "clean 1": Ghost Race lap without reset (preferred route)
 } ghostRecord_t;
 
 #define MAX_GHOST_BOT_WAYPOINTS 4096
@@ -333,6 +334,7 @@ typedef struct ghostBotRoute_s {
 	int	numWaypoints;
 	int	numSegments;
 	qboolean valid;
+	qboolean clean;
 	ghostWaypoint_t waypoints[MAX_GHOST_BOT_WAYPOINTS];
 	ghostRouteSegment_t segments[MAX_GHOST_BOT_WAYPOINTS - 1];
 } ghostBotRoute_t;
@@ -988,6 +990,7 @@ void G_GhostLadder_Frame( void );
 void G_GhostLadder_ClientBegin( int clientNum );
 void G_GhostLadder_ClientDisconnect( int clientNum );
 qboolean G_GhostLadder_ClientCommand( gentity_t *ent, const char *cmd );
+void G_GhostLadder_ClientFinished( gentity_t *ent );
 qboolean isRaceObserver( int clientNum );
 void G_PrintMapStats( gentity_t *player, qboolean generateArenaFile, char *longname );
 void G_Ghost_InitForMap( const char *mapname );
