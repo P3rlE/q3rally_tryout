@@ -607,7 +607,10 @@ void Touch_Finish (gentity_t *self, gentity_t *other, trace_t *trace ){
                 level.winnerNumber = other->s.clientNum;
 level.finishRaceTime = level.time;
 trap_SendServerCommand( -1, va("print \"%s won the race!\n\"", other->client->pers.netname ));
-trap_SendServerCommand( level.winnerNumber, "cp \"You won the race!\n\"");
+/* Ghost Race: the cgame shows the result against the ghost instead. */
+if ( g_gametype.integer != GT_GHOST ) {
+	trap_SendServerCommand( level.winnerNumber, "cp \"You won the race!\n\"");
+}
 }
 else {
 place = G_RallyPlaceString( other->client->ps.stats[STAT_POSITION] );
@@ -681,7 +684,10 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
 					trap_SendServerCommand( level.winnerNumber, "cp \"You won the elimination!\n\"");
 				} else {
 					trap_SendServerCommand( -1, va("print \"%s won the race!\n\"", other->client->pers.netname ));
-					trap_SendServerCommand( level.winnerNumber, "cp \"You won the race!\n\"");
+					/* Ghost Race: the cgame shows the result against the ghost instead. */
+					if ( g_gametype.integer != GT_GHOST ) {
+						trap_SendServerCommand( level.winnerNumber, "cp \"You won the race!\n\"");
+					}
 				}
 			}
 			else {
