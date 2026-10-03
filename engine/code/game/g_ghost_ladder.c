@@ -29,10 +29,15 @@ or (at your option) any later version.
 //   lghostdata <first> <count> ( <t> <x> <y> <z> <pitch> <yaw> <roll> )*  (whole units/degrees)
 //   lghostdone <idx>
 //   lghostfail <idx> <reason>
-// client -> server:
-//   lghostlistreq           send the list again (cgame restart)
+//   lghostpickok <idx>      pick taken (meta/data or fail follow)
+//   lghostoppok <lapMs>     "ghostopp" taken (echoes the client's lap time)
+// client -> server (the client repeats them until the answer arrives,
+// a dedicated server drops commands that come within a second):
+//   lghostlistreq           send the list again (cgame restart), answer: lghostlist
 //   lghostpick <idx>        stream this ghost
-//   ghostopp <lapMs> "<name>"  the ghost this driver races (any ghost type)
+//   ghostopp <lapMs> "<name>" [<idx>]  the ghost this driver races (any ghost
+//                           type); idx >= 0: ladder entry, the server uses the
+//                           lap time and name of its own list
 // Result at the finish (server -> all clients):
 //   lghostresult <client> <won 0|1> <bestLapMs> <ghostLapMs> "<name>"
 
@@ -824,20 +829,34 @@ qboolean G_GhostLadder_ClientCommand( gentity_t *ent, const char *cmd ) {
 
 	if ( !Q_stricmp( cmd, "ghostopp" ) ) {
 		char name[64];
+		int reportedMs;
 		int lapMs;
+		int ladderEntry = -1;
 
 		if ( clientNum < 0 || clientNum >= MAX_CLIENTS || g_gametype.integer != GT_GHOST ) {
 			return qtrue;
 		}
 		trap_Argv( 1, arg, sizeof( arg ) );
 		trap_Argv( 2, name, sizeof( name ) );
-		lapMs = atoi( arg );
+		reportedMs = atoi( arg );
+		lapMs = reportedMs;
+		if ( trap_Argc() > 3 ) {
+			trap_Argv( 3, arg, sizeof( arg ) );
+			ladderEntry = atoi( arg );
+		}
 		if ( lapMs < 1000 || lapMs > 3600000 ) {
 			lapMs = 0;
+		}
+		if ( lapMs > 0 && ladderEntry >= 0 && ladderEntry < s_entryCount && s_listState == LGHOST_LIST_READY ) {
+			/* Ladder ghost: lap time and name from the server's list, not
+			 * from the client. */
+			lapMs = s_entries[ladderEntry].lapMs;
+			Q_strncpyz( name, s_entries[ladderEntry].name, sizeof( name ) );
 		}
 		s_clients[clientNum].opponentLapMs = lapMs;
 		G_GhostLadder_SafeName( name, s_clients[clientNum].opponentName,
 			sizeof( s_clients[clientNum].opponentName ) );
+		trap_SendServerCommand( clientNum, va( "lghostoppok %d", reportedMs ) );
 		return qtrue;
 	}
 
@@ -865,6 +884,12 @@ qboolean G_GhostLadder_ClientCommand( gentity_t *ent, const char *cmd ) {
 	entry = atoi( arg );
 	if ( s_listState != LGHOST_LIST_READY || entry < 0 || entry >= s_entryCount ) {
 		G_GhostLadder_SendFail( clientNum, entry, "invalid" );
+		return qtrue;
+	}
+
+	trap_SendServerCommand( clientNum, va( "lghostpickok %d", entry ) );
+	if ( client->pickState != LGHOST_PICK_IDLE && client->pickEntry == entry ) {
+		/* The client repeated the pick: the running one goes on. */
 		return qtrue;
 	}
 

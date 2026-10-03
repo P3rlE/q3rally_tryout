@@ -1068,6 +1068,9 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 	// let the client system know what our weapon and zoom settings are
 	trap_SetUserCmdValue( cg.weaponSelect, cg.zoomSensitivity );
 
+	// Ghost Race: (re)send ghost commands the server has not answered yet
+	CG_LadderGhost_NetFrame();
+
 	// this counter will be bumped for every valid scene we generate
 	cg.clientFrame++;
 

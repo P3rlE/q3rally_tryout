@@ -75,6 +75,15 @@ Added:
 
 Changed:
 
+- Ghost Race on dedicated servers: picking a ladder ghost, reporting the raced ghost
+  and asking for the ghost list after vid_restart no longer get lost. A dedicated
+  server drops a client command that comes within a second of the previous one
+  (sv_floodProtect), e.g. right after the HUD's score request; the picker then stayed
+  at "LOADING GHOST" and the VS GHOST result was missing. These commands now keep a
+  gap to the previous command and are repeated until the server answers
+  (lghostpickok, lghostoppok, lghostlist). A pick without ghost data fails after 45 s.
+- Ghost Race result against a ladder ghost uses the lap time and name from the
+  server's ladder list instead of the values sent by the client.
 - PHP ladder webservice 1.0.13 (security): server keys moved to data/private/ (deny-all
   .htaccess, data/server_keys.json is moved automatically) and no longer readable via
   GET /api/v1/matches/server_keys; match ids cannot name internal files.

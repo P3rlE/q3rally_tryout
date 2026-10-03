@@ -110,6 +110,7 @@ int main( void ) {
 	Q_strncpyz( cgs.mapname, "maps/q3r_testtrack.bsp", sizeof( cgs.mapname ) );
 	cg.clientNum = 0;
 	cg.snap = &s_snap;
+	cg.time = 100000;
 	Q_strncpyz( cgs.clientinfo[0].modelName, "Evo", sizeof( cgs.clientinfo[0].modelName ) );
 	CG_LadderGhost_Reset();
 
@@ -176,11 +177,13 @@ int main( void ) {
 
 	/* Cached locally: loaded without asking the server. */
 	s_localFileExists = 1;
+	cg.time += 1300;
 	i = s_sentCount;
 	CG_LadderGhost_Pick( 0 );
 	assert( s_localLoads == 1 && cg.ladderGhostAvailable );
-	/* No pick command, only the opponent report for the server. */
-	assert( s_sentCount == i + 1 && !strcmp( s_sent[( s_sentCount - 1 ) & 15], "ghostopp 59000 \"Alpha\"" ) );
+	/* No pick command, only the opponent report for the server (with the
+	 * ladder entry, so the server can check the lap time). */
+	assert( s_sentCount == i + 1 && !strcmp( s_sent[( s_sentCount - 1 ) & 15], "ghostopp 59000 \"Alpha\" 0" ) );
 	s_localFileExists = 0;
 
 	/* map_restart: list again, the loaded ghost stays without a new transfer. */
@@ -313,16 +316,19 @@ int main( void ) {
 		s_playbackMode = 3;
 		s_sentCount = 0;
 		CG_GhostRace_ResetRace();      /* race start */
+		cg.time += 1300;
 		CG_GhostRace_ReportOpponent();
-		assert( s_sentCount == 1 && !strcmp( s_sent[0], "ghostopp 59500 \"Gamma Ray\"" ) );
+		assert( s_sentCount == 1 && !strcmp( s_sent[0], "ghostopp 59500 \"Gamma Ray\" 1" ) );
 		CG_GhostRace_ReportOpponent();
 		assert( s_sentCount == 1 );
 		CG_GhostRace_ResetRace();
+		cg.time += 1300;
 		CG_GhostRace_ReportOpponent();
 		assert( s_sentCount == 2 );
 		s_playbackMode = 0;
+		cg.time += 1300;
 		CG_GhostRace_ReportOpponent();
-		assert( s_sentCount == 3 && !strcmp( s_sent[2], "ghostopp 0 \"-\"" ) );
+		assert( s_sentCount == 3 && !strcmp( s_sent[2], "ghostopp 0 \"-\" -1" ) );
 
 		/* Server results for every driver; own result is overwritten. */
 		Server( "lghostresult 3 1 58000 59000 \"Other Ghost\"" );
@@ -346,6 +352,95 @@ int main( void ) {
 		assert( !cg.ghostResultValid && !cg.ghostFinishOnly );
 		assert( !CG_GhostRace_ScoreboardGhost( name, sizeof( name ), &ghostMs, &playerMs, &finished ) );
 	}
+
+	/* Dedicated servers drop a client command within a second of the
+	 * previous one: one ghost command per gap, repeated until answered. */
+	cgs.gametype = GT_GHOST;
+	s_playbackMode = 3;
+	cg_ghostPlayback.integer = 0;
+	s_lastPick[0] = '\0';
+	s_localFileExists = 0;
+	CG_LadderGhost_Reset();
+	cg.time += 5000;
+	SendList();
+	s_sentCount = 0;
+	cg.scoresRequestTime = cg.time - 300;      /* the HUD just asked for "score" */
+	CG_LadderGhost_Pick( 2 );
+	assert( s_sentCount == 0 && cg.ladderGhostPending );
+	cg.time += 600;
+	CG_LadderGhost_NetFrame();
+	assert( s_sentCount == 0 );
+	cg.time += 400;                             /* 1300 ms after "score" */
+	CG_LadderGhost_NetFrame();
+	assert( s_sentCount == 1 && !strcmp( s_sent[0], "lghostpick 2" ) );
+	/* The next "score" request waits for the gap as well. */
+	assert( cg.scoresRequestTime + 2000 >= cg.time + 1200 );
+	/* No answer: repeated after the retry time. */
+	cg.time += 2000;
+	CG_LadderGhost_NetFrame();
+	assert( s_sentCount == 1 );
+	cg.time += 1000;
+	CG_LadderGhost_NetFrame();
+	assert( s_sentCount == 2 && !strcmp( s_sent[1], "lghostpick 2" ) );
+	/* Taken by the server: no more repeats while the download runs ... */
+	Server( "lghostpickok 2" );
+	cg.time += 10000;
+	CG_LadderGhost_NetFrame();
+	assert( s_sentCount == 2 && cg.ladderGhostPending && !cg.ladderGhostFailed );
+	/* ... but the ghost has to come at some point. */
+	cg.time += 40000;
+	CG_LadderGhost_NetFrame();
+	assert( cg.ladderGhostFailed && !cg.ladderGhostPending );
+	/* Never answered: the pick fails after five tries. */
+	CG_LadderGhost_Pick( 2 );
+	assert( s_sentCount == 3 );
+	for ( i = 0; i < 10; i++ ) {
+		cg.time += 3000;
+		CG_LadderGhost_NetFrame();
+	}
+	assert( s_sentCount == 7 && cg.ladderGhostFailed && !cg.ladderGhostPending );
+	/* The streamed ghost answers a pick as well; a repeated pick that crosses
+	 * the finished transfer does not throw the ghost away. */
+	cg.time += 3000;
+	CG_LadderGhost_Pick( 2 );
+	assert( s_sentCount == 8 );
+	Server( "lghostmeta 2 61000 2" );
+	Server( "lghostdata 0 2 0 0 0 0 0 0 0 61000 10 0 0 0 0 0" );
+	Server( "lghostdone 2" );
+	assert( cg.ladderGhostAvailable );
+	for ( i = 0; i < 4; i++ ) {
+		cg.time += 3000;
+		CG_LadderGhost_NetFrame();
+	}
+	/* Only the opponent report went out (and is repeated, no answer yet). */
+	assert( !strcmp( s_sent[8 & 15], "ghostopp 61000 \"Beta\" 2" ) );
+	Server( "lghostmeta 2 61000 2" );
+	assert( cg.ladderGhostAvailable && cg.ladderGhost.valid && cg.ladderGhost.frameCount == 2 );
+	/* Opponent report: only the matching answer stops the repeats. */
+	i = s_sentCount;
+	Server( "lghostoppok 1234" );
+	cg.time += 3000;
+	CG_LadderGhost_NetFrame();
+	assert( s_sentCount == i + 1 && !strcmp( s_sent[( s_sentCount - 1 ) & 15], "ghostopp 61000 \"Beta\" 2" ) );
+	Server( "lghostoppok 61000" );
+	cg.time += 3000;
+	CG_LadderGhost_NetFrame();
+	assert( s_sentCount == i + 1 );
+	/* List request after a cgame restart, answered by the list. */
+	cg.time += 3000;
+	i = s_sentCount;
+	CG_LadderGhost_RequestList();
+	assert( s_sentCount == i + 1 && !strcmp( s_sent[( s_sentCount - 1 ) & 15], "lghostlistreq" ) );
+	s_lastPick[0] = '\0';
+	SendList();
+	cg.time += 3000;
+	CG_LadderGhost_NetFrame();
+	assert( s_sentCount == i + 1 );
+	/* Outside Ghost Race nothing is sent. */
+	cgs.gametype = GT_RACING;
+	CG_LadderGhost_RequestList();
+	CG_LadderGhost_NetFrame();
+	assert( s_sentCount == i + 1 );
 	puts( "ok" );
 	return 0;
 }
