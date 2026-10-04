@@ -38,7 +38,7 @@ def ladder(tmp_path):
     (root / "data").mkdir()
     (root / "data" / "server_keys.json").write_text(json.dumps([{
         "key": API_KEY, "serverName": SERVER_NAME, "ownerName": "Test", "ownerEmail": "",
-        "type": "offline", "status": "active", "createdAt": "2026-01-01T00:00:00Z",
+        "type": "server", "status": "active", "createdAt": "2026-01-01T00:00:00Z",
         "approvedAt": "2026-01-01T00:00:00Z", "lastUsedAt": None, "lastUsedIp": None, "matchCount": 0,
     }]))
     port = _free_port()

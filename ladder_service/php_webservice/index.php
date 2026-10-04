@@ -37,7 +37,7 @@ if (!is_dir(PROFILES_DIR)) {
 // SECURITY CONFIGURATION
 // Per-server keys are managed via register.php / admin.php.
 // ─────────────────────────────────────────────────────────────────────────────
-const LADDER_VERSION        = '1.0.13';
+const LADDER_VERSION        = '1.0.14';
 const LADDER_MAX_BODY_BYTES    = 524288;  // 512 KB max POST body
 const LADDER_RATE_LIMIT_MAX    = 30;      // max requests per window per IP
 const LADDER_RATE_LIMIT_WINDOW = 60;      // window in seconds
@@ -4495,7 +4495,7 @@ function createOverlay(content, title) {
 function statCard(label, value) {
   const card = document.createElement('div');
   card.className = 'q3-stat-card';
-  card.innerHTML = `<dt>${label}</dt><dd>${value}</dd>`;
+  card.innerHTML = `<dt>${escapeHtml(String(label))}</dt><dd>${escapeHtml(String(value))}</dd>`;
   return card;
 }
 
@@ -4546,14 +4546,14 @@ async function showPlayerProfile(playerId, playerName) {
     rankStrip.innerHTML = `
       <div style="flex:1;min-width:160px">
         <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:4px">Rank</div>
-        <div style="font-size:.95rem;font-weight:600;color:var(--text)">${rankName}</div>
+        <div style="font-size:.95rem;font-weight:600;color:var(--text)">${escapeHtml(String(rankName))}</div>
         <div class="q3-rank-bar" style="margin-top:6px">
           <div class="q3-rank-bar-fill" style="width:${rankPct}%"></div>
         </div>
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:4px">Score</div>
-        <div style="font-size:.95rem;font-weight:600;color:var(--text)">${((p.playerScore)||0).toLocaleString()}</div>
+        <div style="font-size:.95rem;font-weight:600;color:var(--text)">${escapeHtml((Number(p.playerScore) || 0).toLocaleString())}</div>
       </div>`;
     body.appendChild(rankStrip);
 
@@ -4714,10 +4714,10 @@ async function showPlayerProfile(playerId, playerName) {
         const div = document.createElement('div');
         div.className = 'q3-achv' + (tiers > 0 ? ' unlocked' : '');
         div.innerHTML = `
-          <div class="q3-achv-name">${name}</div>
-          <div class="q3-achv-tier">${tiers > 0 ? `Tier ${tiers} / ${ACHIEVEMENT_MAX_TIERS}` : 'Locked'}</div>
+          <div class="q3-achv-name">${escapeHtml(String(name))}</div>
+          <div class="q3-achv-tier">${tiers > 0 ? `Tier ${escapeHtml(String(tiers))} / ${ACHIEVEMENT_MAX_TIERS}` : 'Locked'}</div>
           <div class="q3-achv-progress">
-            <div class="q3-achv-progress-fill" style="width:${pct}%"></div>
+            <div class="q3-achv-progress-fill" style="width:${Number.isFinite(pct) ? pct : 0}%"></div>
           </div>`;
         achvGrid.appendChild(div);
       });
@@ -4770,14 +4770,14 @@ async function showMatchDetails(matchId) {
     const matchTitle = document.createElement('div');
     matchTitle.style.cssText = 'margin-bottom:6px';
     matchTitle.innerHTML = `
-      <div style="font-size:1.1rem;font-weight:700;color:var(--text)">${displayMode}</div>
-      <div style="font-size:.88rem;color:var(--text-muted);margin-top:2px">${displayMap}</div>`;
+      <div style="font-size:1.1rem;font-weight:700;color:var(--text)">${escapeHtml(String(displayMode))}</div>
+      <div style="font-size:.88rem;color:var(--text-muted);margin-top:2px">${escapeHtml(String(displayMap))}</div>`;
     body.appendChild(matchTitle);
 
     // Meta row: date, server, ID
     const meta = document.createElement('div');
     meta.style.cssText = 'font-size:.82rem;color:var(--text-muted);margin-bottom:20px;margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.07)';
-    meta.innerHTML = `<span>📅 ${date}</span><span>🖥 ${server}</span><span>🆔 ${matchId}</span>`;
+    meta.innerHTML = `<span>📅 ${escapeHtml(String(date))}</span><span>🖥 ${escapeHtml(String(server))}</span><span>🆔 ${escapeHtml(String(matchId))}</span>`;
     body.appendChild(meta);
 
     // Players
@@ -4805,9 +4805,9 @@ async function showMatchDetails(matchId) {
         const row = document.createElement('div');
         row.className = 'q3-match-player';
         row.innerHTML = `
-          <span class="pos">${pos}</span>
-          <span class="pname">${name}${p.isBot ? ' <span class="bot-tag">Bot</span>' : ''}</span>
-          <span class="pstats">${stats.join(' · ') || '–'}</span>`;
+          <span class="pos">${escapeHtml(String(pos))}</span>
+          <span class="pname">${escapeHtml(String(name))}${p.isBot ? ' <span class="bot-tag">Bot</span>' : ''}</span>
+          <span class="pstats">${escapeHtml(stats.join(' · ') || '–')}</span>`;
 
         if (p.playerId && !p.isBot) {
           row.querySelector('.pname').style.cursor = 'pointer';
@@ -4851,6 +4851,17 @@ async function showMatchDetails(matchId) {
 
 // ── Changelog ────────────────────────────────────────────────────────────────
 const LADDER_CHANGELOG = [
+  {
+    version: '1.0.14',
+    date: '2026-10-04',
+    changes: [
+      'Security: ladder page escapes player names, server names, modes, maps and profile values in the match and profile views (stored XSS)',
+      'Security admin.php: form tokens against cross-site requests (CSRF), new session id after login, session cookie HttpOnly + SameSite=Strict (+ Secure on HTTPS)',
+      'Security admin.php: failed logins limited (5 per IP, 30 overall per 15 minutes), no framing, no caching',
+      'admin.php shows and posts a short key id instead of the key; logout button',
+      'Offline keys belong to one player: the first upload binds the key to its player id; afterwards only that player is credited (other players stay in the match without profile credit, foreign ghosts are refused); admin.php shows the binding and can release it'
+    ],
+  },
   {
     version: '1.0.13',
     date: '2026-10-04',
@@ -7053,6 +7064,10 @@ function handle_post(array $segments): void
         return;
     }
 
+    if (keys_is_offline($keyRecord)) {
+        $payload = offline_match_restrict_players($payload, $keyRecord, $matchId);
+    }
+
     $payload['receivedAt'] = gmdate('c');
 
     // Normalize dedicated flag → source field for frontend filtering.
@@ -7111,6 +7126,48 @@ function handle_post(array $segments): void
     profile_upsert_from_payload($payload);
 
     send_json(['matchId' => $payload['matchId']], 201);
+}
+
+/**
+ * Offline keys report for their own player only (keys_offline_player): a
+ * match with exactly one human player binds an unbound key to that player.
+ * Human players other than the bound one stay in the match, but without
+ * player id and profile snapshot, so no profile is credited for them.
+ */
+function offline_match_restrict_players(array $payload, array $keyRecord, string $matchId): array
+{
+    $humans = [];
+    foreach ((array)($payload['players'] ?? []) as $player) {
+        if (!is_array($player) || !empty($player['isBot'])) {
+            continue;
+        }
+        $id = strtolower((string)($player['playerId'] ?? ''));
+        if (profile_is_valid_uuid($id)) {
+            $humans[$id] = true;
+        }
+    }
+    $candidate = count($humans) === 1 ? (string)array_key_first($humans) : '';
+    $bound = keys_offline_player($keyRecord, $candidate);
+
+    $dropped = 0;
+    foreach ($payload['players'] as $i => $player) {
+        if (!is_array($player) || !empty($player['isBot'])) {
+            continue;
+        }
+        $id = strtolower((string)($player['playerId'] ?? ''));
+        if ($id !== '' && $id !== $bound) {
+            unset($payload['players'][$i]['playerId'], $payload['players'][$i]['profile'], $payload['players'][$i]['guid']);
+            $dropped++;
+        }
+    }
+    if ($dropped > 0) {
+        ladder_pipeline_log('php-offline-player-dropped', [
+            'matchId' => $matchId,
+            'dropped' => $dropped,
+            'bound'   => $bound !== '' ? 'yes' : 'no',
+        ]);
+    }
+    return $payload;
 }
 
 function normalize_api_segments(array $segments): array

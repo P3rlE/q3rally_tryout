@@ -75,6 +75,18 @@ Added:
 
 Changed:
 
+- Windows builds use libcurl 8.22.0 instead of the vendored 7.54.0 from 2017. The GitHub
+  Actions build compiles a static libcurl with Windows Schannel TLS and no other
+  libraries (engine/misc/build-curl-mingw.sh, version and sha256 pinned there) and links
+  it via CURL_PREFIX. The curl headers are updated to 8.22.0 (engine/code/curl-8.22.0);
+  the old headers and libs/win*/libcurl.a are gone. Ladder requests and their redirects
+  only use http/https.
+- PHP ladder webservice 1.0.14 (security): the ladder page escapes player names and other
+  match/profile values (stored XSS); admin.php has CSRF tokens, a new session id after
+  login, a SameSite=Strict/HttpOnly cookie, limited failed logins, key ids instead of keys
+  and a logout button. Offline keys belong to one player: the first upload binds the key,
+  afterwards only that player is credited and ghosts of other players are refused; the
+  admin page shows and releases the binding.
 - Ladder results only with standard rules: match reports and lap ghosts are not sent
   when sv_cheats is on, timescale is not 1, fixedtime is set or a physics cvar differs
   from its default (g_speed, g_gravity, pmove_fixed, pmove_msec, car_*,

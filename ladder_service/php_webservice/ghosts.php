@@ -360,8 +360,12 @@ function handle_ghost_post(): void
 
     $record = ghost_validate_payload($payload);
     if (keys_is_offline($keyRecord)) {
-        // Offline keys run their own server: never an online ghost.
+        // Offline keys run their own server: never an online ghost, and only
+        // ghosts of the player the key belongs to (keys_offline_player).
         $record['source'] = 'offline';
+        if (keys_offline_player($keyRecord, $record['playerId']) !== $record['playerId']) {
+            throw new LadderApiException(403, 'GHOST_PLAYER_MISMATCH', 'This offline key belongs to another player.');
+        }
     }
     $variant = ghost_variant_name($record['trackLength'], $record['trackReversed']);
     $bucket = ghost_bucket_name($record['physicsVersion'], $record['mapChecksum']);

@@ -64,7 +64,6 @@ jobs:
       matrix:
         include:
         - arch: x86_64
-          # The vendored win64 libcurl.a is built for the MINGW64/MSVCRT ABI.
           msystem: MINGW64
           package_prefix: mingw-w64-x86_64
           suppress_deprecation_warnings: msystem-mingw64
@@ -86,11 +85,16 @@ jobs:
           zip
           ${{ matrix.package_prefix }}-gcc
           ${{ matrix.package_prefix }}-binutils
+          ${{ matrix.package_prefix }}-cmake
+          ${{ matrix.package_prefix }}-ninja
+    - name: Build libcurl
+      shell: msys2 {0}
+      run: sh engine/misc/build-curl-mingw.sh ${{ matrix.arch }} "$PWD/curl-${{ matrix.arch }}"
     - name: Compile
       shell: msys2 {0}
       run: |
         command -v windres
-        make release -j$(nproc) -C engine PLATFORM=mingw32 ARCH=${{ matrix.arch }} WINDRES=windres USE_CURL=1 USE_CURL_DLOPEN=0
+        make release -j$(nproc) -C engine PLATFORM=mingw32 ARCH=${{ matrix.arch }} WINDRES=windres USE_CURL=1 USE_CURL_DLOPEN=0 CURL_PREFIX="$PWD/curl-${{ matrix.arch }}"
       env:
         ARCHIVE: 1
     - uses: actions/upload-artifact@v7

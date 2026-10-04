@@ -6,9 +6,19 @@
 
 declare(strict_types=1);
 
-const LADDER_VERSION = '1.0.13';
+const LADDER_VERSION = '1.0.14';
 
 const LADDER_CHANGELOG = [
+    '1.0.14' => [
+        'date'    => '2026-10-04',
+        'changes' => [
+            'Security: ladder page escapes player names, server names, modes, maps and profile values in the match and profile views (stored XSS)',
+            'Security admin.php: form tokens against cross-site requests (CSRF), new session id after login, session cookie HttpOnly + SameSite=Strict (+ Secure on HTTPS)',
+            'Security admin.php: failed logins limited (5 per IP, 30 overall per 15 minutes), no framing, no caching',
+            'admin.php shows and posts a short key id instead of the key; logout button',
+            'Offline keys belong to one player: the first upload binds the key to its player id; afterwards only that player is credited (other players stay in the match without profile credit, foreign ghosts are refused); admin.php shows the binding and can release it',
+        ],
+    ],
     '1.0.13' => [
         'date'    => '2026-10-04',
         'changes' => [

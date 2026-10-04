@@ -34,6 +34,9 @@ const KEYS_LOCK_FILE         = KEYS_DIR . '/server_keys.lock';
 const KEYS_LEGACY_FILE       = __DIR__ . '/data/server_keys.json';
 const KEYS_REGISTER_LIMIT    = 10;   // registrations per IP and window
 const KEYS_REGISTER_WINDOW   = 3600; // seconds
+const KEYS_ADMIN_FAIL_LIMIT  = 5;    // failed admin logins per IP and window
+const KEYS_ADMIN_FAIL_GLOBAL = 30;   // failed admin logins from all IPs per window
+const KEYS_ADMIN_FAIL_WINDOW = 900;  // seconds
 const KEYS_INACTIVITY_DAYS   = 90;   // auto-suspend after N days without upload
 const KEYS_ADMIN_PASSWORD    = '';   // set via env LADDER_ADMIN_PASSWORD
 const KEYS_NOTIFY_EMAIL      = '';   // set via env LADDER_NOTIFY_EMAIL (new registrations)
@@ -352,17 +355,33 @@ function keys_require_admin(): void
         exit;
     }
 
-    session_start();
+    keys_admin_session_start();
+    header('X-Frame-Options: DENY');
+    header("Content-Security-Policy: frame-ancestors 'none'");
+    header('Cache-Control: no-store');
+    header('Referrer-Policy: no-referrer');
+
     if (!empty($_SESSION['ladder_admin_authed'])) {
         return;
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
-        if (hash_equals($configured, $_POST['password'])) {
+        $password = is_string($_POST['password']) ? $_POST['password'] : '';
+        if (keys_ip_counter('admin', KEYS_ADMIN_FAIL_WINDOW) >= KEYS_ADMIN_FAIL_LIMIT
+            || keys_ip_counter('admin', KEYS_ADMIN_FAIL_WINDOW, '', false) >= KEYS_ADMIN_FAIL_GLOBAL) {
+            $_SESSION['ladder_admin_error'] = 'Too many failed logins. Please try again in 15 minutes.';
+        } elseif ($password !== '' && hash_equals($configured, $password)) {
+            // New session id after the login (no session fixation).
+            session_regenerate_id(true);
             $_SESSION['ladder_admin_authed'] = true;
+            keys_ip_counter('admin', KEYS_ADMIN_FAIL_WINDOW, 'clear');
             return;
+        } else {
+            keys_ip_counter('admin', KEYS_ADMIN_FAIL_WINDOW, 'add');
+            keys_ip_counter('admin', KEYS_ADMIN_FAIL_WINDOW, 'add', false);
+            usleep(500000);
+            $_SESSION['ladder_admin_error'] = 'Wrong password.';
         }
-        $_SESSION['ladder_admin_error'] = 'Wrong password.';
     }
 
     // Show login form
@@ -384,7 +403,7 @@ function keys_require_admin(): void
         echo '<p class="err">' . htmlspecialchars($error) . '</p>';
     }
     echo <<<HTML
-    <input type="password" name="password" placeholder="Admin password" autofocus>
+    <input type="password" name="password" placeholder="Admin password" autocomplete="current-password" autofocus>
     <button type="submit">Login</button></form></body></html>
     HTML;
     exit;
@@ -406,6 +425,60 @@ function keys_is_offline(array $record): bool
     return (bool) preg_match('/_OFFLINE$/i', trim($name));
 }
 
+/**
+ * Offline keys belong to one player: the profile that ran the in-game
+ * registration (the key is stored with that profile). The first upload binds
+ * the key to the player's id; afterwards the key only reports results for that
+ * player, and no other offline key can take the same id. $candidate is the
+ * player id of this upload ('' = no single player to bind). Returns the bound
+ * player id, '' when the key is (still) unbound or the id belongs to another key.
+ */
+function keys_offline_player(array $keyRecord, string $candidate): string
+{
+    $key = (string)($keyRecord['key'] ?? '');
+    $candidate = strtolower(trim($candidate));
+
+    return (string)keys_mutate(static function (array &$keys) use ($key, $candidate): string {
+        $index = -1;
+        foreach ($keys as $i => $record) {
+            if ($key !== '' && hash_equals((string)($record['key'] ?? ''), $key)) {
+                $index = $i;
+                break;
+            }
+        }
+        if ($index < 0) {
+            return '';
+        }
+        $bound = strtolower((string)($keys[$index]['playerId'] ?? ''));
+        if ($bound !== '' || $candidate === '') {
+            return $bound;
+        }
+        foreach ($keys as $i => $record) {
+            if ($i !== $index && ($record['status'] ?? '') !== 'revoked'
+                && strtolower((string)($record['playerId'] ?? '')) === $candidate) {
+                return '';
+            }
+        }
+        $keys[$index]['playerId'] = $candidate;
+        $keys[$index]['playerBoundAt'] = gmdate('c');
+        return $candidate;
+    });
+}
+
+/** Admin: release the player binding of a key (new install, wrong binding). */
+function keys_unbind_player(string $key): bool
+{
+    return (bool)keys_mutate(static function (array &$keys) use ($key): bool {
+        foreach ($keys as &$record) {
+            if (isset($record['key']) && hash_equals((string)$record['key'], $key) && isset($record['playerId'])) {
+                unset($record['playerId'], $record['playerBoundAt']);
+                return true;
+            }
+        }
+        return false;
+    });
+}
+
 /** Adds one key record. */
 function keys_append(array $record): void
 {
@@ -420,31 +493,96 @@ function keys_append(array $record): void
  */
 function keys_register_rate_ok(): bool
 {
+    if (keys_ip_counter('register', KEYS_REGISTER_WINDOW) >= KEYS_REGISTER_LIMIT) {
+        return false;
+    }
+    keys_ip_counter('register', KEYS_REGISTER_WINDOW, 'add');
+    return true;
+}
+
+/**
+ * Timestamps within $window stored in data/private/rl_<bucket>_<ip>.json
+ * (or rl_<bucket>_all.json with $perIp = false). $mode: '' only counts,
+ * 'add' adds now, 'clear' empties the list. Returns the count before the change.
+ */
+function keys_ip_counter(string $bucket, int $window, string $mode = '', bool $perIp = true): int
+{
     keys_prepare_storage();
-    $ip = preg_replace('/[^a-fA-F0-9:.]/', '_', (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
-    $file = KEYS_DIR . '/rl_register_' . $ip . '.json';
+    $ip = $perIp ? preg_replace('/[^a-fA-F0-9:.]/', '_', (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown')) : 'all';
+    $file = KEYS_DIR . '/rl_' . $bucket . '_' . $ip . '.json';
     $now = time();
 
     $handle = fopen($file, 'c+');
     if ($handle === false || !flock($handle, LOCK_EX)) {
-        return true;
+        return 0;
     }
     try {
         $decoded = json_decode((string)stream_get_contents($handle), true);
         $hits = array_values(array_filter(is_array($decoded) ? $decoded : [],
-            static fn($t) => is_int($t) && $t > $now - KEYS_REGISTER_WINDOW));
-        if (count($hits) >= KEYS_REGISTER_LIMIT) {
-            return false;
+            static fn($t) => is_int($t) && $t > $now - $window));
+        $count = count($hits);
+        if ($mode === 'add') {
+            $hits[] = $now;
+        } elseif ($mode === 'clear') {
+            $hits = [];
         }
-        $hits[] = $now;
         ftruncate($handle, 0);
         rewind($handle);
         fwrite($handle, (string)json_encode($hits));
-        return true;
+        return $count;
     } finally {
         flock($handle, LOCK_UN);
         fclose($handle);
     }
+}
+
+/** Full key for the short key id used in admin forms, NULL if unknown. */
+function keys_key_by_id(string $keyId): ?string
+{
+    if ($keyId === '') {
+        return null;
+    }
+    foreach (keys_load() as $record) {
+        $key = (string)($record['key'] ?? '');
+        if ($key !== '' && hash_equals(keys_key_id($key), $keyId)) {
+            return $key;
+        }
+    }
+    return null;
+}
+
+/** Admin session: own cookie name, HttpOnly, SameSite=Strict, Secure on HTTPS. */
+function keys_admin_session_start(): void
+{
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        return;
+    }
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+    session_name('q3r_ladder_admin');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path'     => '/',
+        'secure'   => $https,
+        'httponly' => true,
+        'samesite' => 'Strict',
+    ]);
+    session_start();
+}
+
+/** Per-session token for the admin forms. */
+function keys_admin_csrf_token(): string
+{
+    if (empty($_SESSION['ladder_admin_csrf']) || !is_string($_SESSION['ladder_admin_csrf'])) {
+        $_SESSION['ladder_admin_csrf'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['ladder_admin_csrf'];
+}
+
+function keys_admin_csrf_ok(): bool
+{
+    $sent = $_POST['csrf'] ?? '';
+    return is_string($sent) && $sent !== '' && hash_equals(keys_admin_csrf_token(), $sent);
 }
 
 // ── Delete ────────────────────────────────────────────────────────────────────

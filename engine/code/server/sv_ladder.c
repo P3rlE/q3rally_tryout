@@ -49,7 +49,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #ifdef USE_CURL
 #ifdef USE_LOCAL_HEADERS
-#include "../curl-7.54.0/include/curl/curl.h"
+#include "../curl-8.22.0/include/curl/curl.h"
 #else
 #include <curl/curl.h>
 #endif
@@ -2140,6 +2140,25 @@ static void SV_LadderShutdownCurl( void ) {
         sv_ladder.curlLoaded = qfalse;
 }
 
+/* Ladder requests and their redirects use http/https only (no file://,
+ * ftp://, ... via a redirect). The *_STR options exist since libcurl
+ * 7.85; an older system libcurl (dlopen) gets the bit masks. */
+#if defined( __GNUC__ )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"     /* the bit mask fallback */
+#endif
+static void SV_LadderRestrictProtocols( CURL *easy ) {
+        if ( sv_curl_easy_setopt( easy, CURLOPT_PROTOCOLS_STR, "http,https" ) != CURLE_OK ) {
+                sv_curl_easy_setopt( easy, CURLOPT_PROTOCOLS, (long)( CURLPROTO_HTTP | CURLPROTO_HTTPS ) );
+        }
+        if ( sv_curl_easy_setopt( easy, CURLOPT_REDIR_PROTOCOLS_STR, "http,https" ) != CURLE_OK ) {
+                sv_curl_easy_setopt( easy, CURLOPT_REDIR_PROTOCOLS, (long)( CURLPROTO_HTTP | CURLPROTO_HTTPS ) );
+        }
+}
+#if defined( __GNUC__ )
+#pragma GCC diagnostic pop
+#endif
+
 static size_t SV_LadderCurlWriteCallback( void *buffer, size_t size, size_t nmemb, void *userdata ) {
         ladderRequest_t *request = (ladderRequest_t *)userdata;
         size_t bytes = size * nmemb;
@@ -2240,6 +2259,7 @@ static qboolean SV_LadderStartRequest( ladderRequest_t *request ) {
         if ( code != CURLE_OK ) {
                 return qfalse;
         }
+        SV_LadderRestrictProtocols( easy );
 
         code = sv_curl_easy_setopt( easy, CURLOPT_MAXREDIRS, 5L );
         if ( code != CURLE_OK ) {
@@ -2909,6 +2929,7 @@ void SV_LadderRegister_f( void ) {
         sv_curl_easy_setopt( easy, CURLOPT_WRITEDATA,      reg );
         sv_curl_easy_setopt( easy, CURLOPT_FOLLOWLOCATION, 1L );
         sv_curl_easy_setopt( easy, CURLOPT_MAXREDIRS,      5L );
+        SV_LadderRestrictProtocols( easy );
         sv_curl_easy_setopt( easy, CURLOPT_CONNECTTIMEOUT, 15L );
         sv_curl_easy_setopt( easy, CURLOPT_TIMEOUT,        30L );
         sv_curl_easy_setopt( easy, CURLOPT_NOSIGNAL,       1L );
@@ -3690,6 +3711,7 @@ static qboolean SV_LadderFetchStart( const ladderGhostFetch_t *request ) {
                 return qfalse;
         }
 
+        SV_LadderRestrictProtocols( easy );
         sv_ladderFetch.active = qtrue;
         Com_DPrintf( "Ladder: fetching %s\n", url );
         return qtrue;

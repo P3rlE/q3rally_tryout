@@ -37,6 +37,28 @@ pro IP sind 10 Anträge pro Stunde erlaubt.
 Offline-Keys (Typ `offline` oder Servername mit `_OFFLINE`) melden Matches und
 Ghosts immer als `offline`, unabhängig von `server.dedicated`.
 
+Ein Offline-Key gehört einem Spieler (dem Profil, das ihn im Spiel registriert
+hat). Der erste Upload mit genau einem menschlichen Spieler bindet den Key an
+dessen Spieler-ID; eine ID kann nur an einen Offline-Key gebunden sein. Danach
+zählen Matches dieses Keys nur für diesen Spieler (andere Menschen bleiben ohne
+Profil-Gutschrift im Match), Ghosts anderer Spieler werden mit 403
+`GHOST_PLAYER_MISMATCH` abgelehnt. In `admin.php` steht die Bindung beim Key,
+"Unbind player" löst sie (z. B. nach Neuinstallation).
+
+### Admin-Oberfläche
+
+`admin.php` braucht `LADDER_ADMIN_PASSWORD` (Umgebungsvariable). Formulare
+tragen ein Sitzungs-Token (CSRF), die Sitzung bekommt nach dem Login eine neue
+ID, das Cookie ist HttpOnly und SameSite=Strict. Fehlversuche beim Login: 5 pro
+IP und 30 insgesamt in 15 Minuten. Die Seite zeigt und sendet nur eine kurze
+Key-ID, nie den Key selbst.
+
+Hinter Cloudflare sieht PHP ohne `mod_remoteip` nur Cloudflare-Adressen
+(`REMOTE_ADDR`). Dann gelten die IP-Grenzen pro Cloudflare-Knoten, und
+`lastUsedIp` zeigt Cloudflare. Mit `mod_remoteip` und
+`RemoteIPHeader CF-Connecting-IP` (nur für die Cloudflare-Bereiche als
+`RemoteIPTrustedProxy`) bekommt PHP die echte Adresse.
+
 Nach dem Upload ist die Oberfläche unter der Basis-URL erreichbar, zum Beispiel
 `https://example.com/ladder/index.php`.
 
