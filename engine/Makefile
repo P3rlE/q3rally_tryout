@@ -2984,7 +2984,6 @@ $(B)/$(MISSIONPACK)/vm/qagame.qvm: $(MPGVMOBJ) $(GDIR)/g_syscalls.asm $(Q3ASM)
 ## Q3RALLY UI
 #############################################################################
 
-#  $(B)/$(BASEGAME)/ui/ui_controls2.o
 #  $(B)/$(BASEGAME)/ui/ui_servers2.o
 #  $(B)/$(BASEGAME)/ui/ui_startserver.o
 

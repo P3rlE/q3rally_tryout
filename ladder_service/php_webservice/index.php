@@ -15,7 +15,7 @@ if (in_array($origin, $allowedOrigins, true)) {
 header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Upload-Token');
 header('Access-Control-Max-Age: 86400');
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
@@ -37,10 +37,12 @@ if (!is_dir(PROFILES_DIR)) {
 // SECURITY CONFIGURATION
 // Per-server keys are managed via register.php / admin.php.
 // ─────────────────────────────────────────────────────────────────────────────
-const LADDER_VERSION        = '1.0.14';
+const LADDER_VERSION        = '1.0.15';
 const LADDER_MAX_BODY_BYTES    = 524288;  // 512 KB max POST body
-const LADDER_RATE_LIMIT_MAX    = 30;      // max requests per window per IP
+const LADDER_RATE_LIMIT_MAX    = 30;      // max POST requests per window per IP
+const LADDER_RATE_LIMIT_SERVER_MAX = 120; // max POST requests per window per approved server key
 const LADDER_RATE_LIMIT_WINDOW = 60;      // window in seconds
+const LADDER_WRITE_LOCK_FILE   = __DIR__ . '/data/ladder_write.lock';
 const LADDER_RATE_FILE_PREFIX  = 'rl_';   // rate-limit state file prefix
 
 require_once __DIR__ . '/keys.php';
@@ -107,38 +109,101 @@ final class LadderApiException extends RuntimeException
 
 function ladder_check_rate_limit(): void
 {
-    $ip      = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    $safeIp  = preg_replace('/[^a-fA-F0-9:.]/', '_', $ip);
-    $rlFile  = DATA_DIR . '/' . LADDER_RATE_FILE_PREFIX . $safeIp . '.json';
-    $now     = time();
-    $windowStart = $now - LADDER_RATE_LIMIT_WINDOW;
-
-    $state = ['hits' => []];
-    if (is_file($rlFile)) {
-        $raw = file_get_contents($rlFile);
-        if ($raw !== false) {
-            $decoded = json_decode($raw, true);
-            if (is_array($decoded)) {
-                $state = $decoded;
-            }
+    // Approved (active, non-offline) server keys get their own, larger bucket
+    // per key: a busy dedicated server uploads matches and a ghost for every
+    // new session best and must not share the per-IP limit for players.
+    // The key is only looked up here; keys_require_auth() still checks it.
+    $header   = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $provided = strncasecmp($header, 'Bearer ', 7) === 0 ? trim(substr($header, 7)) : '';
+    $bucket   = 'post';
+    $limit    = LADDER_RATE_LIMIT_MAX;
+    $perIp    = true;
+    if ($provided !== '') {
+        $record = keys_find_by_key($provided);
+        if ($record !== null && ($record['status'] ?? '') === 'active' && !keys_is_offline($record)) {
+            $bucket = 'post_key_' . keys_key_id($provided);
+            $limit  = LADDER_RATE_LIMIT_SERVER_MAX;
+            $perIp  = false;
         }
     }
 
-    $state['hits'] = array_values(array_filter(
-        $state['hits'] ?? [],
-        static fn($t) => is_int($t) && $t > $windowStart
-    ));
-
-    if (count($state['hits']) >= LADDER_RATE_LIMIT_MAX) {
+    // Locked read-modify-write; a request over the limit is not counted.
+    $count = keys_ip_counter($bucket, LADDER_RATE_LIMIT_WINDOW, 'add', $perIp, $limit);
+    if ($count >= $limit) {
         http_response_code(429);
         header('Content-Type: application/json');
         header('Retry-After: ' . LADDER_RATE_LIMIT_WINDOW);
         echo json_encode(['error' => 'Rate limit exceeded. Try again later.']);
         exit;
     }
+}
 
-    $state['hits'][] = $now;
-    file_put_contents($rlFile, json_encode($state), LOCK_EX);
+/**
+ * Write a file atomically (temporary file + rename): readers see either the
+ * old or the new content, never a truncated or half-written file.
+ * The temporary name does not end in .json, so globs over data/ skip it.
+ */
+function ladder_write_atomic(string $path, string $data): bool
+{
+    $tmp = $path . '.' . bin2hex(random_bytes(4)) . '.tmp';
+    if (file_put_contents($tmp, $data) === false) {
+        @unlink($tmp);
+        return false;
+    }
+    if (!rename($tmp, $path)) {
+        @unlink($tmp);
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Global write lock for match files, the match index and profiles.
+ * Re-entrant within one request; released at the end of the request even
+ * if a handler exits early.
+ */
+function ladder_lock_acquire(): void
+{
+    if (($GLOBALS['ladderWriteLockDepth'] ?? 0) > 0) {
+        $GLOBALS['ladderWriteLockDepth']++;
+        return;
+    }
+    if (!is_dir(DATA_DIR)) {
+        @mkdir(DATA_DIR, 0775, true);
+    }
+    $handle = fopen(LADDER_WRITE_LOCK_FILE, 'c');
+    if ($handle === false || !flock($handle, LOCK_EX)) {
+        throw new RuntimeException('Unable to lock ladder data.');
+    }
+    $GLOBALS['ladderWriteLock'] = $handle;
+    $GLOBALS['ladderWriteLockDepth'] = 1;
+}
+
+function ladder_lock_release(): void
+{
+    $depth = ($GLOBALS['ladderWriteLockDepth'] ?? 0) - 1;
+    if ($depth > 0) {
+        $GLOBALS['ladderWriteLockDepth'] = $depth;
+        return;
+    }
+    $GLOBALS['ladderWriteLockDepth'] = 0;
+    $handle = $GLOBALS['ladderWriteLock'] ?? null;
+    $GLOBALS['ladderWriteLock'] = null;
+    if (is_resource($handle)) {
+        flock($handle, LOCK_UN);
+        fclose($handle);
+    }
+}
+
+/** Run $fn while holding the ladder write lock. */
+function ladder_locked(callable $fn)
+{
+    ladder_lock_acquire();
+    try {
+        return $fn();
+    } finally {
+        ladder_lock_release();
+    }
 }
 
 function ladder_read_body(): string
@@ -192,6 +257,12 @@ function ladder_pipeline_log(string $event, array $fields = []): void
 
     $suffix = $parts ? (' ' . implode(' ', $parts)) : '';
     error_log('[ladder-pipeline] ' . $event . $suffix);
+}
+
+// Command line tools (merge_player.php) load this file for its functions
+// only: no frontend, no API routing.
+if (defined('LADDER_LIBRARY_ONLY')) {
+    return;
 }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -2537,7 +2608,7 @@ function renderModeTable(modeKey) {
             link.title = 'View player profile';
             link.addEventListener('click', (e) => {
               e.preventDefault();
-              showPlayerProfile(entry.playerId, entry.player);
+              showPlayerProfile(profileIdFor(entry), entry.player);
             });
             strong.appendChild(link);
           } else {
@@ -3428,6 +3499,33 @@ async function loadMatches() {
   }
 }
 
+// Newest player id per name. A player whose id changed (new profile id on
+// the client) has matches under both ids; leaderboard rows are grouped by
+// name and keep the id of the match with the best value, so their links would
+// open the old profile. Rows link the newest id instead.
+const latestPlayerIds = new Map();
+
+function rememberPlayerId(entry, time) {
+  if (!entry || typeof entry !== 'object' || extractIsBot(entry)) {
+    return;
+  }
+  const id = typeof entry.playerId === 'string' ? entry.playerId : '';
+  const name = extractLeaderboardPlayer(entry).toLowerCase();
+  if (!id || !name) {
+    return;
+  }
+  const known = latestPlayerIds.get(name);
+  if (!known || time >= known.time) {
+    latestPlayerIds.set(name, { id, time });
+  }
+}
+
+function profileIdFor(entry) {
+  const name = String(entry.playerLower || entry.player || '').toLowerCase();
+  const latest = name ? latestPlayerIds.get(name) : null;
+  return (latest && latest.id) || entry.playerId;
+}
+
 function ingestMatchInto(match, aggregation) {
   if (!aggregation) {
     return;
@@ -3467,6 +3565,10 @@ function ingestMatchInto(match, aggregation) {
   const entries = extractScoreboardEntries(match);
   if (!entries.length) {
     return;
+  }
+  {
+    const when = (effectiveDate instanceof Date && !Number.isNaN(effectiveDate.getTime())) ? effectiveDate.getTime() : 0;
+    entries.forEach((entry) => rememberPlayerId(entry, when));
   }
 
   const map = extractMap(match);
@@ -4852,6 +4954,17 @@ async function showMatchDetails(matchId) {
 // ── Changelog ────────────────────────────────────────────────────────────────
 const LADDER_CHANGELOG = [
   {
+    version: '1.0.15',
+    date: '2026-10-04',
+    changes: [
+      'Match files, the match index and profiles are written under one lock and atomically (parallel uploads lost index entries, readers could see half-written files)',
+      'Approved server keys get their own POST limit (120 per minute per key); players and unknown keys keep 30 per minute per IP; rate-limit files moved to data/private/',
+      'Ghosts: a new ghost that is slower than the slowest one in a full bucket is refused with stored:false / BUCKET_FULL instead of being stored and dropped again',
+      'Ghosts: GET /ghosts without physics/checksum lists only the current bucket (highest physics version, newest map build) instead of mixing incomparable lap times',
+      'merge_player.php --apply holds the ladder lock while merging'
+    ],
+  },
+  {
     version: '1.0.14',
     date: '2026-10-04',
     changes: [
@@ -4859,6 +4972,8 @@ const LADDER_CHANGELOG = [
       'Security admin.php: form tokens against cross-site requests (CSRF), new session id after login, session cookie HttpOnly + SameSite=Strict (+ Secure on HTTPS)',
       'Security admin.php: failed logins limited (5 per IP, 30 overall per 15 minutes), no framing, no caching',
       'admin.php shows and posts a short key id instead of the key; logout button',
+      'Leaderboard rows link the newest player id of a name (a player whose id changed opened the old profile)',
+      'New command line tool merge_player.php: moves matches, ghosts, key binding and profile of an old player id to the new one (dry run by default)',
       'Offline keys belong to one player: the first upload binds the key to its player id; afterwards only that player is credited (other players stay in the match without profile credit, foreign ghosts are refused); admin.php shows the binding and can release it'
     ],
   },
@@ -5505,14 +5620,18 @@ try {
     switch ($method) {
         case 'POST':
             ladder_check_rate_limit();
-            handle_post($segments);
+            ladder_locked(static function () use ($segments): void {
+                handle_post($segments);
+            });
             break;
         case 'GET':
             handle_get($segments);
             break;
         case 'DELETE':
             $deleteKey = keys_require_auth('', false, false);
-            handle_delete($segments, $deleteKey);
+            ladder_locked(static function () use ($segments, $deleteKey): void {
+                handle_delete($segments, $deleteKey);
+            });
             break;
         default:
             send_error(405, 'Method not allowed.');
@@ -5570,11 +5689,10 @@ function profile_save(string $playerId, array $data): void
     if (!is_dir(PROFILES_DIR)) {
         mkdir(PROFILES_DIR, 0775, true);
     }
-    file_put_contents(
-        profile_path($playerId),
-        json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-        LOCK_EX
-    );
+    $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    if ($json === false || !ladder_write_atomic(profile_path($playerId), $json)) {
+        error_log('Ladder: failed to save profile ' . $playerId);
+    }
 }
 
 /**
@@ -6817,7 +6935,7 @@ function index_save(array $entries): bool
     if ($json === false) {
         return false;
     }
-    return file_put_contents(INDEX_FILE, $json, LOCK_EX) !== false;
+    return ladder_write_atomic(INDEX_FILE, $json);
 }
 
 function index_append(array $payload): void
@@ -6852,6 +6970,11 @@ function index_remove(string $matchId): void
  * Returns the rebuilt entries array.
  */
 function index_rebuild(): array
+{
+    return ladder_locked('index_rebuild_unlocked');
+}
+
+function index_rebuild_unlocked(): array
 {
     $files   = glob(DATA_DIR . '/*.json');
     $entries = [];
@@ -7087,7 +7210,7 @@ function handle_post(array $segments): void
         throw new LadderApiException(500, 'ENCODE_FAILED', 'Failed to encode payload.');
     }
 
-    if (file_put_contents($matchPath, $json . "\n") === false) {
+    if (!ladder_write_atomic($matchPath, $json . "\n")) {
         throw new LadderApiException(500, 'PERSIST_FAILED', 'Unable to persist match.');
     }
 

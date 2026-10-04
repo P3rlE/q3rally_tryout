@@ -505,7 +505,7 @@ function keys_register_rate_ok(): bool
  * (or rl_<bucket>_all.json with $perIp = false). $mode: '' only counts,
  * 'add' adds now, 'clear' empties the list. Returns the count before the change.
  */
-function keys_ip_counter(string $bucket, int $window, string $mode = '', bool $perIp = true): int
+function keys_ip_counter(string $bucket, int $window, string $mode = '', bool $perIp = true, int $limit = 0): int
 {
     keys_prepare_storage();
     $ip = $perIp ? preg_replace('/[^a-fA-F0-9:.]/', '_', (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown')) : 'all';
@@ -521,7 +521,7 @@ function keys_ip_counter(string $bucket, int $window, string $mode = '', bool $p
         $hits = array_values(array_filter(is_array($decoded) ? $decoded : [],
             static fn($t) => is_int($t) && $t > $now - $window));
         $count = count($hits);
-        if ($mode === 'add') {
+        if ($mode === 'add' && ($limit <= 0 || $count < $limit)) {
             $hits[] = $now;
         } elseif ($mode === 'clear') {
             $hits = [];

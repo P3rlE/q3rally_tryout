@@ -10,6 +10,9 @@
 
 #include "../engine/code/game/g_ghost_record.c"
 
+/* Shared ghost text buffer, defined in g_ghost.c in the game module. */
+char g_ghostTextBuffer[G_GHOST_TEXT_BUFFER_SIZE];
+
 level_locals_t level;
 gentity_t g_entities[MAX_GENTITIES];
 static gclient_t s_clients[2];

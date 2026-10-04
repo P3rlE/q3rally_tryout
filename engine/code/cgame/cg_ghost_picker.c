@@ -706,7 +706,7 @@ void CG_LadderGhost_DrawPicker( void ) {
 	}
 
 	CG_SetScreenPlacement( PLACE_CENTER, PLACE_CENTER );
-	h = 62.0f + LADDER_PICKER_ROWS * LADDER_PICKER_ROW_H + 22.0f;
+	h = 62.0f + LADDER_PICKER_ROWS * LADDER_PICKER_ROW_H + 38.0f;
 	CG_FillRect( x, y, w, h, bgColor );
 	CG_FillRect( x, y, w, 26.0f, bandColor );
 	CG_FillRect( x, y, w, 2.0f, accentColor );
@@ -768,6 +768,27 @@ void CG_LadderGhost_DrawPicker( void ) {
 		CG_DrawIngameString( (int)( x + w * 0.5f ), (int)( y + 50.0f + LADDER_PICKER_ROW_H * 1.5f ),
 			cg.ladderPickerAllVehicles ? "NO LADDER GHOSTS FOR THIS TRACK" : "NO GHOSTS FOR YOUR CAR - TAB: ALL CARS",
 			UI_CENTER | UI_SMALLFONT, 0.45f, mutedColor );
+	}
+
+	/* The centre print ("Press FIRE or USE when ready to race.") would sit
+	 * on top of the panel: while the picker is open it is shown here, small,
+	 * above the key help (CG_DrawCenterString skips it). */
+	if ( cg.centerPrintTime && CG_FadeColor( cg.centerPrintTime, (int)( 1000 * cg_centertime.value ) ) ) {
+		char hint[96];
+		int i;
+
+		Q_strncpyz( hint, cg.centerPrint, sizeof( hint ) );
+		for ( i = 0; hint[i]; i++ ) {
+			if ( hint[i] == '\n' ) {
+				hint[i] = '\0';
+				break;
+			}
+		}
+		Q_strupr( hint );
+		if ( hint[0] ) {
+			CG_DrawIngameString( (int)( x + w * 0.5f ), (int)( y + h - 34 ), hint,
+				UI_CENTER | UI_SMALLFONT, 0.45f, accentColor );
+		}
 	}
 
 	CG_DrawIngameString( (int)( x + w * 0.5f ), (int)( y + h - 16 ),

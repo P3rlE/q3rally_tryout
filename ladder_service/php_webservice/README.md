@@ -45,6 +45,25 @@ Profil-Gutschrift im Match), Ghosts anderer Spieler werden mit 403
 `GHOST_PLAYER_MISMATCH` abgelehnt. In `admin.php` steht die Bindung beim Key,
 "Unbind player" löst sie (z. B. nach Neuinstallation).
 
+### Spieler-IDs zusammenführen
+
+Bekommt ein Spieler im Spiel eine neue Profil-ID, führt die Ladder zwei Profile.
+`php merge_player.php <alteId> <neueId>` zeigt, was sich ändern würde; mit
+`--apply` werden Matches, Ghosts (pro Bucket bleibt der schnellere), die
+Offline-Key-Bindung und das Profil auf die neue ID umgestellt und Profil und
+Index neu aufgebaut. Vorher wird alles Geänderte nach `data/private/merge-<Zeit>/`
+kopiert. Kommandozeilen-Tools als Webserver-User starten
+(`sudo -u www-data php …`), sonst gehören neu geschriebene Dateien root.
+
+### Schreibzugriffe und Limits
+
+Uploads und Löschungen von Matches laufen unter einer gemeinsamen Sperre
+(`data/ladder_write.lock`); Match-Dateien, `match_index.json`, Profile und
+Ghost-Dateien werden atomar geschrieben (temporäre Datei + rename).
+POST-Limit: 30 pro Minute und IP für Spieler und unbekannte Keys, 120 pro
+Minute je freigegebenem Server-Key. Die Zähler liegen in `data/private/rl_*`;
+alte `data/rl_*.json` aus früheren Versionen können gelöscht werden.
+
 ### Admin-Oberfläche
 
 `admin.php` braucht `LADDER_ADMIN_PASSWORD` (Umgebungsvariable). Formulare

@@ -19,6 +19,8 @@
  * Endpoints (wired up in index.php):
  *   POST /api/v1/ghosts            upload (Bearer key)
  *   GET  /api/v1/ghosts?map=...    ranking list without ghost data
+ *                                  (&physics=&checksum=: that bucket, without
+ *                                   them only the current bucket)
  *                                  (&perVehicle=K: best K per vehicle,
  *                                   &format=text: one ghost per line,
  *                                   ghostId<TAB>lapMs<TAB>vehicle<TAB>playerName;
@@ -402,11 +404,25 @@ function handle_ghost_post(): void
             ], 200);
         }
 
+        // Full bucket: a new player's ghost must beat the slowest one,
+        // otherwise it would be stored and dropped again right away.
+        if ($previous === null && count($entries) >= LADDER_GHOST_MAX_PER_BUCKET) {
+            $slowest = ghost_sort_entries($entries)[count($entries) - 1];
+            if ((int)$slowest['lapMs'] <= $record['lapMs']) {
+                send_json([
+                    'ghostId'      => $ghostId,
+                    'stored'       => false,
+                    'reason'       => 'BUCKET_FULL',
+                    'slowestLapMs' => (int)$slowest['lapMs'],
+                ], 200);
+            }
+        }
+
         $record['ghostId'] = $ghostId;
         $record['receivedAt'] = gmdate('c');
 
         $json = json_encode($record, JSON_UNESCAPED_SLASHES);
-        if ($json === false || file_put_contents($dir . '/' . $record['playerId'] . '.json', $json . "\n", LOCK_EX) === false) {
+        if ($json === false || !ladder_write_atomic($dir . '/' . $record['playerId'] . '.json', $json . "\n")) {
             throw new LadderApiException(500, 'PERSIST_FAILED', 'Unable to persist ghost.');
         }
 
@@ -415,9 +431,14 @@ function handle_ghost_post(): void
         $entries[] = $entry;
         $entries = ghost_sort_entries($entries);
 
-        // Keep the bucket bounded: drop the slowest ghosts beyond the limit.
+        // Keep the bucket bounded: drop the slowest ghosts beyond the limit
+        // (never the new one, see the BUCKET_FULL check above).
         while (count($entries) > LADDER_GHOST_MAX_PER_BUCKET) {
             $dropped = array_pop($entries);
+            if ($dropped['playerId'] === $record['playerId']) {
+                $entries[] = $dropped;
+                break;
+            }
             @unlink($dir . '/' . $dropped['playerId'] . '.json');
         }
 
@@ -429,7 +450,7 @@ function handle_ghost_post(): void
             }
         }
 
-        if (file_put_contents($dir . '/index.json', json_encode($entries, JSON_UNESCAPED_SLASHES) . "\n", LOCK_EX) === false) {
+        if (!ladder_write_atomic($dir . '/index.json', json_encode($entries, JSON_UNESCAPED_SLASHES) . "\n")) {
             throw new LadderApiException(500, 'PERSIST_FAILED', 'Unable to update ghost index.');
         }
     } finally {
@@ -464,16 +485,26 @@ function handle_ghost_list(): void
     $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : LADDER_GHOST_LIST_DEFAULT;
     $limit = max(1, min(LADDER_GHOST_LIST_MAX, $limit));
 
-    $bucket = '*';
+    $bucket = '';
     if (isset($_GET['physics']) && isset($_GET['checksum'])) {
         $bucket = ghost_bucket_name((int)$_GET['physics'], (int)$_GET['checksum']);
     }
 
     $pattern = GHOSTS_DIR . '/' . $map . '/' . ghost_variant_name($trackLength, $trackReversed)
-        . '/' . ($vehicle !== '' ? $vehicle : '*') . '/' . $bucket . '/index.json';
+        . '/' . ($vehicle !== '' ? $vehicle : '*') . '/' . ($bucket !== '' ? $bucket : 'p*_c*') . '/index.json';
+    $indexFiles = glob($pattern) ?: [];
+
+    // Without physics/checksum only the current bucket is listed: lap times
+    // from another physics version or map build are not comparable.
+    if ($bucket === '') {
+        $bucket = ghost_current_bucket($indexFiles);
+    }
 
     $entries = [];
-    foreach (glob($pattern) ?: [] as $indexFile) {
+    foreach ($indexFiles as $indexFile) {
+        if (basename(dirname($indexFile)) !== $bucket) {
+            continue;
+        }
         foreach (ghost_index_read(dirname($indexFile)) as $entry) {
             if (is_array($entry)) {
                 $entries[] = $entry;
@@ -519,7 +550,39 @@ function handle_ghost_list(): void
     }
 
     header('Cache-Control: public, max-age=30');
-    send_json(['ghosts' => $result, 'count' => count($result)], 200);
+    send_json(['ghosts' => $result, 'count' => count($result), 'bucket' => $bucket], 200);
+}
+
+/**
+ * Current bucket among the given bucket index files, as on the ranking page:
+ * highest physics version, then the map build whose first ghost is newest.
+ * Returns '' when there is none.
+ */
+function ghost_current_bucket(array $indexFiles): string
+{
+    $buckets = [];
+    foreach ($indexFiles as $indexFile) {
+        $name = basename(dirname($indexFile));
+        if (!preg_match('/^p(\d+)_c(-?\d+)$/', $name, $m)) {
+            continue;
+        }
+        $first = $buckets[$name]['first'] ?? '';
+        foreach (ghost_index_read(dirname($indexFile)) as $entry) {
+            $received = is_array($entry) ? (string)($entry['receivedAt'] ?? '') : '';
+            if ($received !== '' && ($first === '' || $received < $first)) {
+                $first = $received;
+            }
+        }
+        $buckets[$name] = ['physics' => (int)$m[1], 'first' => $first];
+    }
+    $best = '';
+    foreach ($buckets as $name => $info) {
+        if ($best === ''
+            || [$info['physics'], $info['first']] > [$buckets[$best]['physics'], $buckets[$best]['first']]) {
+            $best = (string)$name;
+        }
+    }
+    return $best;
 }
 
 /**

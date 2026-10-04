@@ -197,3 +197,34 @@ def test_key_usage_counts_survive_parallel_requests(ladder):
     online = next(k for k in keys if k["key"] == ONLINE_KEY)
     assert online["matchCount"] == 20
     assert len(keys) == 3
+
+
+def test_parallel_matches_keep_index_and_profiles_complete(ladder):
+    """Match file, index and profile are written under one lock (no lost updates)."""
+    base, root = ladder
+    from concurrent.futures import ThreadPoolExecutor
+
+    def report(i):
+        return _request(base + "/matches", _match(f"m-idx-{i}", "Online Server"), ONLINE_KEY)[0]
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        statuses = list(pool.map(report, range(24)))
+    assert statuses.count(201) == 24
+    index = json.loads((root / "data" / "match_index.json").read_text())
+    assert sorted(e["matchId"] for e in index) == sorted(f"m-idx-{i}" for i in range(24))
+    assert not list((root / "data").glob("*.tmp"))
+
+
+def test_approved_servers_have_their_own_rate_limit(ladder):
+    """30 POST/min per IP for players and unknown keys, 120 per approved server key."""
+    base, _ = ladder
+    for i in range(35):
+        status, body = _request(base + "/matches", _match(f"m-rl-{i}", "Online Server"), ONLINE_KEY)
+        assert status == 201, (i, body)
+
+    statuses = [_request(base + "/matches", _match(f"m-bad-{i}", "x"), "f" * 64)[0] for i in range(31)]
+    assert statuses[:30] == [401] * 30
+    assert statuses[30] == 429
+    # The approved server is not affected by the exhausted per-IP bucket.
+    status, _ = _request(base + "/matches", _match("m-rl-after", "Online Server"), ONLINE_KEY)
+    assert status == 201

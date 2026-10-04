@@ -1330,6 +1330,12 @@ extern	vmCvar_t	g_carImpactElasticity;
 void	trap_Print( const char *text );
 void	trap_Error( const char *text ) __attribute__((noreturn));
 int		trap_Milliseconds( void );
+// Shared text buffer for ghost files (g_ghost.c, g_ghost_record.c,
+// g_ghost_ladder.c). Each user fills and consumes it within one call,
+// never across frames, so one 2 MB buffer serves all three.
+#define G_GHOST_TEXT_BUFFER_SIZE ( 2 * 1024 * 1024 + 1 )
+extern char g_ghostTextBuffer[G_GHOST_TEXT_BUFFER_SIZE];
+
 int	trap_RealTime( qtime_t *qtime );
 int		trap_Argc( void );
 void	trap_Argv( int n, char *buffer, int bufferLength );

@@ -15,6 +15,12 @@ cgs_t cgs;
 centity_t cg_entities[MAX_GENTITIES];
 vmCvar_t cg_developer;
 vmCvar_t cg_ghostPlayback;
+vmCvar_t cg_centertime;
+static float s_fadeColor[4] = { 1, 1, 1, 1 };
+float *CG_FadeColor( int startMsec, int totalMsec ) {
+	return ( startMsec && cg.time - startMsec < totalMsec ) ? s_fadeColor : NULL;
+}
+static char s_lastDrawn[256];
 static snapshot_t s_snap;
 
 /* ---- command tokenizer (quotes like Cmd_TokenizeString) ----------------- */
@@ -92,7 +98,8 @@ int CG_GhostPlaybackMode( void ) { return s_playbackMode; }
 static char s_precached[64];
 void CG_PrecacheGhostVehicle( const char *vehicle ) { Q_strncpyz( s_precached, vehicle, sizeof( s_precached ) ); }
 void CG_DrawIngameString( int x, int y, const char *text, int style, float scale, const float *color ) {
-	(void)x; (void)y; (void)text; (void)style; (void)scale; (void)color;
+	(void)x; (void)y; (void)style; (void)scale; (void)color;
+	Q_strncpyz( s_lastDrawn, text, sizeof( s_lastDrawn ) );
 	s_drawn++;
 }
 
@@ -132,6 +139,17 @@ int main( void ) {
 	s_drawn = 0;
 	CG_LadderGhost_DrawPicker();
 	assert( s_drawn > 5 );
+	/* The "ready" centre print moves into the panel, above the key help. */
+	{
+		int withoutHint = s_drawn;
+		cg_centertime.value = 3;
+		cg.centerPrintTime = cg.time;
+		Q_strncpyz( cg.centerPrint, "Press FIRE or USE when ready to race.\n", sizeof( cg.centerPrint ) );
+		s_drawn = 0;
+		CG_LadderGhost_DrawPicker();
+		assert( s_drawn == withoutHint + 1 );
+		cg.centerPrintTime = 0;
+	}
 
 	/* Down to "Beta" (row 2 of own car), ENTER: not cached -> server pick. */
 	assert( CG_LadderGhost_KeyEvent( K_DOWNARROW ) );

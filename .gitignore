@@ -20,3 +20,7 @@ Cygwin64 Terminal.lnk
 __pycache__/
 .pytest_cache/
 build.log
+
+# Local build output and assistant scratch
+dist/
+Claude outputs/

@@ -127,6 +127,42 @@ Fixed:
 - callvote g_gametype read past the end of an old Quake III name table and accepted
   unused gametype numbers.
 - Server browser game type labels were looked up by index and wrong for most modes.
+- Profile wizard: entering the name of an existing profile overwrote it with a new
+  profile (new UUID = new ladder identity, all stats reset). The wizard now continues
+  the existing profile and UI_Profile_WriteDefaultFile never overwrites one.
+- Every UUID change (created, restored from cl_uuid, newly generated) is appended to
+  profiles/uuid_history.log, which survives restarts (qconsole.log does not), and a
+  newly generated UUID is printed as a warning.
+- "Unknown command ladder_profile_activate" after leaving a game: the ladder profile and
+  registration commands stay registered after a server shutdown. A ladder registration
+  started from the menu after a game is no longer wiped by the ladder re-init.
+- Ladder ghost list and cache file names for long map names exceeded MAX_QPATH and were
+  cut off; long names are now shortened with a hash.
+- Ladder ghost downloads: the status cvar keeps the last results, so a queued download
+  no longer hides the result of the one before it (the game waited for the timeout).
+  Download bodies use the heap instead of the zone (max 512 KB). The per-map ghost cache
+  is pruned to the current ranking once it holds more than 64 ghosts.
+- Ghost recording works for all clients (was 16 slots): frames come from a shared pool
+  in chunks. Recorder, ladder ghost cache and ghost loader share one text buffer
+  (about 2 MB less static memory in qagame).
+- "give all" no longer hands out weapons in Ghost Race (and other timed races).
+- Builds without curl: missing SV_LadderLogSubmitSnapshot.
+- Client downloads use the non-deprecated curl progress callback and restrict
+  redirects to http/https/ftp/ftps.
+
+Changed:
+
+- bg_wheel_forces.c: the engine braking condition is written as what it always did
+  (throttle < 0.01, also while braking) instead of fabs(throttle < 0.01); driving
+  physics unchanged.
+- Removed never built sources: g_rankings, cg_ladder, cg_rankings, ui_ladder, ui_login,
+  ui_rankings, ui_rankstatus, ui_signup, ui_specifyleague, ui_spreset, ui_controls2.
+- Unit tests build into a temporary directory instead of tests/; CI runs the test suite
+  (new "Unit tests" job).
+- Ladder webservice 1.0.15: one write lock and atomic writes for matches, index and
+  profiles; own rate limit for approved servers; full ghost buckets refuse slower new
+  ghosts (BUCKET_FULL); the ghost list without physics/checksum shows the current
+  bucket only.
 
 new in v0.8a
 
