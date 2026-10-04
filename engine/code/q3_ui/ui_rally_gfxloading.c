@@ -44,10 +44,13 @@ release gets a card with "Update" / "Skip" in place of the drive tip.
    Timing (milliseconds)
    ------------------------------------------------------------------------- */
 
-#define GFX_STAGE_TIME          350     /* minimum time per stage */
-#define GFX_GO_TIME             900     /* from 100% until the lights turn green */
+/* Deliberately unhurried: on a fast PC the cache work takes a few dozen
+ * milliseconds, these minimums let the timing sheet and the lights play out.
+ * Slower machines simply take longer per stage. */
+#define GFX_STAGE_TIME          550     /* minimum time per stage */
+#define GFX_GO_TIME            1200     /* from 100% until the lights turn green */
 #define GFX_UPDATE_WAIT_TIME   2500     /* extra wait for a still-running version check */
-#define GFX_GO_HOLD             300     /* green shown before the fade-out */
+#define GFX_GO_HOLD             450     /* green shown before the fade-out */
 #define GFX_FADE_IN_TIME        500
 #define GFX_FADE_OUT_TIME       350
 #define GFX_CAR_SLIDE_TIME      450
@@ -796,7 +799,7 @@ static void GFX_DrawStartLights( int right, float a, int currentTime ) {
 
     for ( i = 0; i < GFX_NUM_LIGHTS; i++ ) {
         int x  = right - ( GFX_NUM_LIGHTS - i ) * GFX_LIGHT_SIZE - ( GFX_NUM_LIGHTS - 1 - i ) * GFX_LIGHT_GAP;
-        int on = goDelay * ( 120 + i * 150 ) / GFX_GO_TIME;
+        int on = goDelay * ( 1 + i ) / ( GFX_NUM_LIGHTS + 1 );   /* evenly spaced, green follows */
 
         if ( s_gfxloading.goTime ) {
             GFX_Color( color, gfxSuccessColor, a );
