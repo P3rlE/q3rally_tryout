@@ -385,18 +385,6 @@ static cvarTable_t		gameCvarTable[] = {
 
 static int gameCvarTableSize = ARRAY_LEN( gameCvarTable );
 
-/* Default value of a game cvar, NULL for cvars outside the game table. */
-const char *G_CvarDefault( const char *name ) {
-	int i;
-
-	for ( i = 0; i < gameCvarTableSize; i++ ) {
-		if ( gameCvarTable[i].cvarName && !Q_stricmp( gameCvarTable[i].cvarName, name ) ) {
-			return gameCvarTable[i].defaultString;
-		}
-	}
-	return NULL;
-}
-
 
 void G_InitGame( int levelTime, int randomSeed, int restart );
 void G_RunFrame( int levelTime );
@@ -574,6 +562,19 @@ void G_RemapTeamShaders( void ) {
 #endif
 }
 
+
+/* Default value of a game cvar, NULL for cvars outside the game table.
+ * Must stay below vmMain: in the QVM the first function is the entry point. */
+const char *G_CvarDefault( const char *name ) {
+	int i;
+
+	for ( i = 0; i < gameCvarTableSize; i++ ) {
+		if ( gameCvarTable[i].cvarName && !Q_stricmp( gameCvarTable[i].cvarName, name ) ) {
+			return gameCvarTable[i].defaultString;
+		}
+	}
+	return NULL;
+}
 
 /*
 =================
