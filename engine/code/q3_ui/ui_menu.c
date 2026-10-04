@@ -95,7 +95,6 @@ typedef struct {
 static mainmenu_t s_main;
 static vec4_t s_profileActionColor;
 static vec4_t s_frontendScrim = UI_FRONTEND_COLOR_SCRIM;
-static vec4_t s_frontendHeroOverlay = UI_FRONTEND_COLOR_HERO_OVERLAY;
 static vec4_t s_frontendAccent = UI_FRONTEND_COLOR_ACCENT;
 static vec4_t s_frontendText = UI_FRONTEND_COLOR_TEXT;
 static vec4_t s_frontendMuted = UI_FRONTEND_COLOR_MUTED;
@@ -639,7 +638,16 @@ void MainMenu_RunTransition( float frac ) {
         s_main.profileInfoLine1.color = uis.text_color;
         s_main.profileInfoLine2.color = uis.text_color;
 
-        s_main.carlogo.generic.x = (int)(MainMenu_HeroX() + 40.0f - (1.0f - frac) * 80.0f);
+        /* Coming from the loading screen the car is already on screen at
+         * this spot, so it stays put instead of sliding in. */
+        if ( uis.frontendHandoff ) {
+                s_main.carlogo.generic.x = (int)MainMenu_HeroX() + 40;
+                if ( frac >= 1.0f ) {
+                        uis.frontendHandoff = qfalse;
+                }
+        } else {
+                s_main.carlogo.generic.x = (int)(MainMenu_HeroX() + 40.0f - (1.0f - frac) * 80.0f);
+        }
 }
 
 /*
@@ -695,7 +703,6 @@ Main_MenuDraw
 */
 static void Main_MenuDraw( void ) {
         vec4_t scrimColor;
-        vec4_t heroOverlayColor;
         vec4_t textColor;
         vec4_t mutedColor;
         float railX;
@@ -708,8 +715,9 @@ static void Main_MenuDraw( void ) {
         MainMenu_SyncActiveVehicle();
         MainMenu_UpdateProfileTexts();
 
-        MainMenu_ColorWithAlpha( scrimColor, s_frontendScrim );
-        MainMenu_ColorWithAlpha( heroOverlayColor, s_frontendHeroOverlay );
+        /* The scrim stays at full strength during the fade-in, otherwise the
+         * backdrop flashes bright before the panels appear. */
+        Vector4Copy( s_frontendScrim, scrimColor );
         MainMenu_ColorWithAlpha( textColor, s_frontendText );
         MainMenu_ColorWithAlpha( mutedColor, s_frontendMuted );
 
@@ -724,13 +732,8 @@ static void Main_MenuDraw( void ) {
         Frontend_DrawSidebar( (int)railX, 32, (int)MainMenu_RailWidth(), 410,
                               NULL, s_main.visualAlpha );
 
-        UI_SetColor( heroOverlayColor );
-        UI_DrawHandlePic( heroX, 32, heroWidth, 410,
-                          Frontend_BackgroundShader() );
-        UI_SetColor( NULL );
-        UI_FillRect( heroX, 32, heroWidth, 410, heroOverlayColor );
-        Frontend_DrawPanel( (int)heroX, 32, (int)heroWidth, 410,
-                            s_main.visualAlpha, UI_FRONTEND_STYLE_FRAME );
+        Frontend_DrawHeroSurface( (int)heroX, 32, (int)heroWidth, 410,
+                                  s_main.visualAlpha );
 
         Frontend_DrawText( (int)( heroX + 16 ), 52, "Garage / active vehicle",
                            UI_LEFT | UI_SMALLFONT, mutedColor );
@@ -828,6 +831,28 @@ static void InitMenuTextInfo(menutext_s *item, char *label, int x, int y) {
 
 /*
 ===============
+UI_StartMenuMusic
+
+Plays one of music/menumusic*.ogg at random.
+===============
+*/
+void UI_StartMenuMusic( void ) {
+        int numMusicFiles;
+        int selectedMusic;
+        char musicFiles[256][MAX_QPATH];
+        char musicCommand[MAX_QPATH];
+
+        numMusicFiles = UI_BuildFileList("music", "ogg", "menumusic", qtrue, qfalse, qfalse, 0, musicFiles);
+
+        if (numMusicFiles > 0) {
+                selectedMusic = UI_RandomInt( numMusicFiles );
+                Com_sprintf(musicCommand, sizeof(musicCommand), "music music/menumusic%s\n", musicFiles[selectedMusic]);
+                trap_Cmd_ExecuteText(EXEC_APPEND, musicCommand);
+        }
+}
+
+/*
+===============
 UI_MainMenu
 
 The main menu only comes up when not in a game,
@@ -841,10 +866,6 @@ void UI_MainMenu( void ) {
         int y;
         int profileY;
         int profileInfoY;
-        int numMusicFiles;
-        int selectedMusic;
-        char musicFiles[256][MAX_QPATH];
-        char musicCommand[MAX_QPATH];
         int menuSpacing;
         qboolean returnToConfig;
 
@@ -855,12 +876,11 @@ void UI_MainMenu( void ) {
         }
 
 
-        numMusicFiles = UI_BuildFileList("music", "ogg", "menumusic", qtrue, qfalse, qfalse, 0, musicFiles);
-
-        if (numMusicFiles > 0) {
-                selectedMusic = UI_RandomInt( numMusicFiles );
-                Com_sprintf(musicCommand, sizeof(musicCommand), "music music/menumusic%s\n", musicFiles[selectedMusic]);
-                trap_Cmd_ExecuteText(EXEC_APPEND, musicCommand);
+        if ( uis.menuMusicCarryOver ) {
+                /* started by the loading screen - let it play on */
+                uis.menuMusicCarryOver = qfalse;
+        } else {
+                UI_StartMenuMusic();
         }
 
 	trap_Cvar_Set( "sv_killserver", "1" );
