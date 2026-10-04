@@ -991,6 +991,12 @@ void G_GhostLadder_ClientBegin( int clientNum );
 void G_GhostLadder_ClientDisconnect( int clientNum );
 qboolean G_GhostLadder_ClientCommand( gentity_t *ent, const char *cmd );
 void G_GhostLadder_ClientFinished( gentity_t *ent );
+
+// g_ladder_rules.c -- ladder results only with standard rules
+const char *G_LadderRulesViolation( void );
+void G_LadderRules_Init( void );
+void G_LadderRules_ClientBegin( int clientNum );
+const char *G_CvarDefault( const char *name );     // g_main.c
 qboolean isRaceObserver( int clientNum );
 void G_PrintMapStats( gentity_t *player, qboolean generateArenaFile, char *longname );
 void G_Ghost_InitForMap( const char *mapname );

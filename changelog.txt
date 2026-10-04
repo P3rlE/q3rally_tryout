@@ -75,6 +75,15 @@ Added:
 
 Changed:
 
+- Ladder results only with standard rules: match reports and lap ghosts are not sent
+  when sv_cheats is on, timescale is not 1, fixedtime is set or a physics cvar differs
+  from its default (g_speed, g_gravity, pmove_fixed, pmove_msec, car_*,
+  g_carImpactTransfer, g_carImpactElasticity). Applies to dedicated servers and offline
+  games. The server console says so at map start, joining drivers get a console note.
+  A lap is checked every frame, so a change anywhere in the lap keeps it off the ladder
+  (new file game/g_ladder_rules.c).
+- Lap ghosts whose recording started more than a second after the lap start are no
+  longer uploaded (the ladder refused them anyway).
 - Ghost Race on dedicated servers: picking a ladder ghost, reporting the raced ghost
   and asking for the ghost list after vid_restart no longer get lost. A dedicated
   server drops a client command that comes within a second of the previous one

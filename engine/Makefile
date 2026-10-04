@@ -2883,6 +2883,7 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/game/g_ghost.o \
   $(B)/$(BASEGAME)/game/g_ghost_record.o \
   $(B)/$(BASEGAME)/game/g_ghost_ladder.o \
+  $(B)/$(BASEGAME)/game/g_ladder_rules.o \
   $(B)/$(BASEGAME)/game/g_cmds.o \
   $(B)/$(BASEGAME)/game/g_combat.o \
   $(B)/$(BASEGAME)/game/g_items.o \

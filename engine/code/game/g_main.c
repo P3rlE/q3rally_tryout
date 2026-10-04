@@ -385,6 +385,18 @@ static cvarTable_t		gameCvarTable[] = {
 
 static int gameCvarTableSize = ARRAY_LEN( gameCvarTable );
 
+/* Default value of a game cvar, NULL for cvars outside the game table. */
+const char *G_CvarDefault( const char *name ) {
+	int i;
+
+	for ( i = 0; i < gameCvarTableSize; i++ ) {
+		if ( gameCvarTable[i].cvarName && !Q_stricmp( gameCvarTable[i].cvarName, name ) ) {
+			return gameCvarTable[i].defaultString;
+		}
+	}
+	return NULL;
+}
+
 
 void G_InitGame( int levelTime, int randomSeed, int restart );
 void G_RunFrame( int levelTime );
@@ -1316,6 +1328,15 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
                 return;
         }
 
+        /* Cheats, timescale or changed physics: no ladder result. */
+        {
+                const char *rules = G_LadderRulesViolation();
+                if ( rules ) {
+                        Com_Printf( "Ladder: match not reported, non-standard rules (%s)\n", rules );
+                        return;
+                }
+        }
+
         // Flag whether this is a dedicated server or a local/offline game.
         // Both are allowed – the ladder displays them in separate lists.
 
@@ -1584,6 +1605,7 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	}
 	G_GhostRecord_Init();
 	G_GhostLadder_Init();
+	G_LadderRules_Init();
 
 	// initialize all entities for this game
 	memset( g_entities, 0, MAX_GENTITIES * sizeof(g_entities[0]) );

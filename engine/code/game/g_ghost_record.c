@@ -34,6 +34,7 @@ or (at your option) any later version.
 #define GHOST_REC_TELEPORT_SPEED        6000.0f // units/s between samples => reset/teleport
 #define GHOST_REC_TELEPORT_MIN_DISTANCE 256.0f
 #define GHOST_REC_MIN_LAP_MS            5000
+#define GHOST_REC_MAX_START_OFFSET      1000    // ms; the ladder refuses later first samples
 
 typedef struct {
 	int             timeOffset;
@@ -129,6 +130,11 @@ static qboolean G_GhostRecord_ClientEligible( gentity_t *ent ) {
 	if ( !trap_Cvar_VariableIntegerValue( "sv_ladderEnabled" ) ) {
 		return qfalse;
 	}
+	/* Cheats, timescale or changed physics (g_ladder_rules.c). Checked
+	 * every frame: a lap with a change anywhere in it is never uploaded. */
+	if ( G_LadderRulesViolation() ) {
+		return qfalse;
+	}
 	if ( !BG_GametypeIsTimedRace( g_gametype.integer ) ) {
 		return qfalse;
 	}
@@ -197,6 +203,11 @@ static void G_GhostRecord_BeginLap( ghostRecSlot_t *slot, gclient_t *client ) {
 	offset = level.time - client->lapStartTime;
 	if ( offset < 0 ) {
 		offset = 0;
+	}
+	/* Recording started in the middle of the lap (driver became eligible
+	 * late, e.g. after the rules went back to standard): never uploaded. */
+	if ( offset > GHOST_REC_MAX_START_OFFSET ) {
+		slot->invalid = qtrue;
 	}
 	G_GhostRecord_StoreFrame( slot, client, offset );
 }
