@@ -658,6 +658,38 @@ void MainMenu_Prepare( void ) {
 
 /*
 ===============
+MainMenu_DrawStatusChip
+
+Top-right status of the hero panel. Shows a persistent hint when the online
+version check found a newer release, so the notice is not lost if it arrived
+after the loading screen closed.
+===============
+*/
+static void MainMenu_DrawStatusChip( float heroX, float heroWidth ) {
+        char        updateState[32];
+        char        remoteVersion[64];
+        const char *label;
+        const float *statusColor;
+        int         chipWidth;
+
+        trap_Cvar_VariableStringBuffer( "cl_updateState", updateState, sizeof( updateState ) );
+        if ( !Q_stricmp( updateState, "outdated" ) ) {
+                trap_Cvar_VariableStringBuffer( "cl_updateRemote", remoteVersion, sizeof( remoteVersion ) );
+                label = remoteVersion[0] ? va( "Update %s available", remoteVersion ) : "Update available";
+                statusColor = s_frontendStatus;
+        } else {
+                label = "Ready";
+                statusColor = s_frontendAccent;
+        }
+
+        chipWidth = UI_FRONTEND_STATUS_DOT + UI_FRONTEND_SPACE_SM +
+                    Frontend_TextWidth( label, UI_SMALLFONT );
+        Frontend_DrawStatusChip( (int)( heroX + heroWidth ) - UI_FRONTEND_SPACE_MD - chipWidth, 52,
+                                 label, statusColor, s_main.visualAlpha );
+}
+
+/*
+===============
 Main_MenuDraw
 ===============
 */
@@ -702,8 +734,7 @@ static void Main_MenuDraw( void ) {
 
         Frontend_DrawText( (int)( heroX + 16 ), 52, "Garage / active vehicle",
                            UI_LEFT | UI_SMALLFONT, mutedColor );
-        Frontend_DrawStatusChip( (int)( heroX + heroWidth - 60 ), 52, "Ready",
-                                 s_frontendAccent, s_main.visualAlpha );
+        MainMenu_DrawStatusChip( heroX, heroWidth );
 
         Menu_Draw( &s_main.menu );
 
