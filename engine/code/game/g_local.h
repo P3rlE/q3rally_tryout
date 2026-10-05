@@ -1325,6 +1325,9 @@ qboolean G_WeatherPointSnow( const vec3_t point );
 
 extern	vmCvar_t	g_carImpactTransfer;
 extern	vmCvar_t	g_carImpactElasticity;
+extern	vmCvar_t	g_slipstream;
+extern	vmCvar_t	g_slipstreamStrength;
+extern	vmCvar_t	g_slipstreamDistance;
 // END
 
 void	trap_Print( const char *text );

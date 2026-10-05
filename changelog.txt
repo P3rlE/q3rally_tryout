@@ -4,6 +4,17 @@ unreleased
 
 Added:
 
+- Slipstream (drafting) in the race modes (not in Ghost Race). A car close behind
+  another one loses part of its air drag and gets faster on the straights; since the
+  down force follows the drag, it also has less grip in corners ("dirty air"). The
+  wake is about 42 m long, widens with the distance, needs both cars moving fast in
+  the same direction and is blocked by world geometry. The server measures the wake
+  and sends a target in the new STAT_SLIPSTREAM; pmove ramps the value (0.5 s in,
+  0.25 s out), so client prediction stays exact. Server cvars: g_slipstream (1),
+  g_slipstreamStrength (0.25 = up to 25 % less drag), g_slipstreamDistance (1500 qu),
+  all three part of the ladder rules. Laps driven in another car's slipstream are not
+  uploaded as ladder ghosts. HUD gauge above the telemetry strip, cg_hudShowSlipstream
+  (also in the HUD options).
 - New gametype Ghost Race (GT_GHOST, g_gametype 8). Replaces the "Ghost-Only Race"
   checkbox of the start-server menu. Lap racing against a ghost without AI drivers;
   works on dedicated servers, via console and in map rotations (q3r_ghost.cfg).
