@@ -131,6 +131,12 @@ Changed:
 
 Fixed:
 
+- "ERROR: Can't allocate streaming streamSource" on q3r_downtown (OpenAL): about 190
+  looping crowd speakers also auto-triggered the same 16 s sample every few seconds and
+  filled all sound sources, so the engine sounds of other cars dropped out and the error
+  repeated every frame. Looping speakers no longer auto-trigger, opponent engine streams
+  outrank one-shot sounds, inaudible one-shots are skipped again when sources run short
+  (the ioq3 check could never trigger), and the error is printed once per stream.
 - Unit tests test_ctf4_team_score and test_rally_state_machine build again (stubs for
   newer functions, new Team_TakeFlagSound signature).
 - Map entity "gametype" filter used a table that did not match the GT_* values
