@@ -171,6 +171,10 @@ vmCvar_t        g_autoballVerticalScale;
 vmCvar_t        g_autoballLift;
 vmCvar_t        g_autoballMass;
 vmCvar_t        g_autoballElasticity;
+vmCvar_t        g_autoballKickoffDelay;
+vmCvar_t        g_autoballGoalDelay;
+vmCvar_t        g_autoballStartTurbo;
+vmCvar_t        g_autoballWeapons;
 vmCvar_t        g_derbyNoRamTime;
 vmCvar_t  g_humanplayers;
 vmCvar_t        g_fuelKillReward;
@@ -385,6 +389,10 @@ static cvarTable_t		gameCvarTable[] = {
         { &g_autoballLift, "g_autoballLift", "0.15", 0, 0, qfalse },
         { &g_autoballMass, "g_autoballMass", "400", 0, 0, qfalse },
         { &g_autoballElasticity, "g_autoballElasticity", "0.6", 0, 0, qfalse },
+        { &g_autoballKickoffDelay, "g_autoballKickoffDelay", "3", CVAR_ARCHIVE, 0, qfalse },
+        { &g_autoballGoalDelay, "g_autoballGoalDelay", "4", CVAR_ARCHIVE, 0, qfalse },
+        { &g_autoballStartTurbo, "g_autoballStartTurbo", "5000", CVAR_ARCHIVE, 0, qfalse },
+        { &g_autoballWeapons, "g_autoballWeapons", "0", CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
         // END
 
         { &g_rankings, "g_rankings", "0", 0, 0, qfalse},
@@ -1680,6 +1688,8 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	// general initialization
 	G_FindTeams();
 
+	G_Autoball_InitGame();
+
 	// make sure we have flags for CTF, etc
 	if( g_gametype.integer >= GT_TEAM ) {
 		G_CheckTeamItems();
@@ -2958,6 +2968,10 @@ void CheckExitRules( void ) {
 
 	if ( g_timelimit.integer && !level.warmupTime ) {
 		if ( level.time - level.startTime >= g_timelimit.integer*60000 ) {
+			/* Autoball: let a ball in the air land and a goal celebration finish */
+			if ( g_gametype.integer == GT_AUTOBALL && G_Autoball_HoldMatchEnd() ) {
+				return;
+			}
 			trap_SendServerCommand( -1, "print \"Timelimit hit.\n\"");
 			LogExit( "Timelimit hit." );
 			return;

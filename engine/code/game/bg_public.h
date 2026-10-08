@@ -110,6 +110,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define CS_SIGILSTATUS                  30
 #define CS_TRACKLENGTH                  31
 #define CS_KOTHSTATUS                   32  // "owner contested capture_pct [x y z]" for KOTH hill state
+// Autoball shares the KOTH slot; both modes never run at the same time.
+// "state kickoffEnd ballEntity goalTeam scorerClient goalSpeedKmh"
+#define CS_AUTOBALLSTATUS               CS_KOTHSTATUS
 #define CS_INTRO_ROUTE                  33  // packaged Ghost route path, preview duration, and direction
 // Q3Rally Code END
 
@@ -168,7 +171,8 @@ typedef enum {
         GT_CTF4            = 20,    // 4-team capture the flag
         GT_DOMINATION      = 21,    // domination
         GT_KOTH            = 22,    // king of the hill
-        // 23+: reserved for future team modes
+        GT_AUTOBALL        = 23,    // autoball: car football, two goals and a physics ball
+        // 24+: reserved for future team modes
 
 // Q3Rally Code END
         GT_MAX_GAME_TYPE
@@ -440,6 +444,14 @@ typedef enum {
 #define RALLY_TURBO_MAX_MSEC             25000
 #define RALLY_TURBO_ITEM_MSEC             5000
 #define RALLY_TURBO_CLEAN_SPLIT_MSEC      500
+
+// Autoball match states (CS_AUTOBALLSTATUS)
+typedef enum {
+        AUTOBALL_STATE_WAITING,         // warmup, no ball or no players yet
+        AUTOBALL_STATE_KICKOFF,         // cars frozen on their kick-off spots, countdown running
+        AUTOBALL_STATE_LIVE,            // ball in play
+        AUTOBALL_STATE_GOAL             // goal celebration, then the next kick-off
+} autoballState_t;
 
 // ET_SCRIPTED entityState_t.generic1 flags
 #define SCRIPTED_GENERIC1_NO_PREDICT      1   // skip in client movement prediction (Autoball ball)

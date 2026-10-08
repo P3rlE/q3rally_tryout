@@ -273,6 +273,8 @@ struct gentity_s {
 	float		vehicleLift;		/* minimum upward share of a car contact, 0..1 */
 	float		vehicleVerticalScale;	/* scales the upward share of a car contact, 1 = unchanged */
 	vec3_t		ballHome;			/* reset position (kick-off spot) */
+	int			ballLastToucher;	/* client number of the last car touch, -1 = none */
+	int			ballLastTouchTime;	/* level.time of that touch */
 	int			ballDebugLogTime;	/* rate limit for g_autoballDebug */
 	vec3_t		*collisionHullVerts;
 	int		collisionHullVertCount;
@@ -612,6 +614,16 @@ typedef struct {
 	int			startTime;				// level.time the map was started
 
 	int			teamScores[TEAM_NUM_TEAMS];
+	// Autoball match flow (g_autoball.c)
+	int			autoballState;			// autoballState_t
+	int			autoballStateEnd;		// level.time the goal celebration ends
+	int			autoballKickoffEnd;		// cars are released at this server time
+	int			autoballCountdown;		// last countdown second announced
+	int			autoballBallNum;		// entity number of the match ball, -1 = none
+	int			autoballGoalTeam;		// team that scored the last goal
+	int			autoballScorer;			// client who scored it, -1 = none / own goal
+	int			autoballGoalSpeed;		// ball speed at the goal in km/h
+	int			autoballPublished;		// ball number last sent to clients
 	int			kothTeamHoldTimeMs[TEAM_NUM_TEAMS];
 	qboolean	kothMapInvalid;
 // STONELANCE
@@ -1104,6 +1116,14 @@ void Svcmd_BallSpawnAt_f( void );
 void Svcmd_BallKick_f( void );
 void Svcmd_BallInfo_f( void );
 void G_Autoball_RunFrame( void );
+void G_Autoball_InitGame( void );
+void G_Autoball_BallTouched( gentity_t *ball, gentity_t *other );
+void G_Autoball_ClientSpawn( gentity_t *ent );
+qboolean G_Autoball_CarsFrozen( int serverTime );
+qboolean G_Autoball_HoldMatchEnd( void );
+qboolean G_Autoball_ItemDisabled( gitem_t *item );
+void SP_autoball_goal( gentity_t *ent );
+void Svcmd_BallGoalAdd_f( void );
 
 
 //
@@ -1334,6 +1354,10 @@ extern  vmCvar_t        g_autoballVerticalScale;
 extern  vmCvar_t        g_autoballLift;
 extern  vmCvar_t        g_autoballMass;
 extern  vmCvar_t        g_autoballElasticity;
+extern  vmCvar_t        g_autoballKickoffDelay;
+extern  vmCvar_t        g_autoballGoalDelay;
+extern  vmCvar_t        g_autoballStartTurbo;
+extern  vmCvar_t        g_autoballWeapons;
 extern  vmCvar_t        g_derbyNoRamTime;
 extern  vmCvar_t        g_fuelKillReward;
 extern  vmCvar_t        g_useFuel;

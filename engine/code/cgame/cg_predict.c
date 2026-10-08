@@ -1005,6 +1005,8 @@ void CG_PredictPlayerState( void ) {
 			cg_pmove.cmd.upmove = 0;
 		}
 
+		CG_Autoball_FreezeCommand( &cg_pmove.cmd );
+
 		if (cg_entities[cg.snap->ps.clientNum].finishRaceTime &&
 			cg_entities[cg.snap->ps.clientNum].finishRaceTime + 500 < cg.time &&
 			!cg.intermissionStarted){

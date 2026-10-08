@@ -22,11 +22,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 /*
 ===========================================================================
-Autoball, phase 1: physics prototype.
+Autoball: car football.
 
-A ball is an ordinary dynamic rally_scripted_object with a sphere-shaped
-Bullet body that never sleeps and has a speed cap. Nothing here knows about
-teams, goals or scoring yet; that is phase 2 (GT_AUTOBALL).
+The ball is an ordinary dynamic rally_scripted_object with a sphere-shaped
+Bullet body that never sleeps and has a speed cap. In GT_AUTOBALL the match
+flow below adds kick-offs, goals (autoball_goal), the score and the
+publishing of the match state to clients (CS_AUTOBALLSTATUS).
 
 Ways to get a ball:
   - map entity "autoball_ball" (all rally_scripted_object keys apply), or
@@ -84,11 +85,15 @@ static void G_Autoball_ApplyDefaults( gentity_t *ent ) {
 	ent->health = 0;
 	ent->maxHealth = 0;
 	ent->takedamage = qfalse;
+	ent->ballLastToucher = -1;
+	ent->ballLastTouchTime = 0;
 	/* impact scale 1.6, vertical scale 0.45 (contacts point 35-45 deg up,
 	 * this flattens them to ~20 deg), lift 0.15, mass 400, elasticity 0.6 */
 	G_Autoball_ApplyTuning( ent );
 	/* the client must not predict the car against the ball (see cg_predict.c) */
 	ent->s.generic1 |= SCRIPTED_GENERIC1_NO_PREDICT;
+	/* always in every snapshot: the HUD indicator and ball camera need it */
+	ent->r.svFlags |= SVF_BROADCAST;
 }
 
 static void G_Autoball_WarnLegacySolver( void ) {
@@ -167,6 +172,8 @@ void G_Autoball_ResetBall( gentity_t *ball ) {
 	ball->physicsAccumulatorMsec = 0;
 	ball->physicsQuietSince = -1;
 	ball->physicsSleeping = qfalse;
+	ball->ballLastToucher = -1;
+	ball->ballLastTouchTime = 0;
 	/* clients snap to the new spot instead of interpolating across the map */
 	ball->s.eFlags ^= EF_TELEPORT_BIT;
 	trap_LinkEntity( ball );
@@ -175,6 +182,8 @@ void G_Autoball_ResetBall( gentity_t *ball ) {
 /*
 Applies changed g_autoball* cvars to every ball, once per change.
 */
+static void G_Autoball_MatchFrame( void );
+
 void G_Autoball_RunFrame( void ) {
 	static int tuningStamp = -1;
 	static int bodyStamp = -1;
@@ -185,6 +194,8 @@ void G_Autoball_RunFrame( void ) {
 	newBodyStamp = g_autoballMass.modificationCount + g_autoballElasticity.modificationCount;
 	newTuningStamp = newBodyStamp + g_autoballImpactScale.modificationCount +
 		g_autoballVerticalScale.modificationCount + g_autoballLift.modificationCount;
+	G_Autoball_MatchFrame();
+
 	if ( tuningStamp < 0 ) {
 		/* balls spawned this level already used the current values */
 		tuningStamp = newTuningStamp;
@@ -391,4 +402,351 @@ void Svcmd_BallInfo_f( void ) {
 	}
 	if ( !count )
 		G_Printf( "No balls. Use ball_spawn (client, cheats) or ball_spawn_at <x> <y> <z>.\n" );
+	if ( g_gametype.integer == GT_AUTOBALL ) {
+		static const char *stateNames[] = { "waiting", "kick-off", "live", "goal" };
+		int state = level.autoballState;
+		G_Printf( "match: %s, red %i : %i blue, ball %i, kick-off ends in %i ms\n",
+			( state >= 0 && state <= AUTOBALL_STATE_GOAL ) ? stateNames[state] : "?",
+			level.teamScores[TEAM_RED], level.teamScores[TEAM_BLUE], level.autoballBallNum,
+			level.autoballState == AUTOBALL_STATE_KICKOFF ? level.autoballKickoffEnd - level.time : 0 );
+	}
+}
+
+
+/*
+===========================================================================
+
+Match flow (GT_AUTOBALL)
+
+  WAITING  -> KICKOFF   warmup over, a ball exists and somebody plays
+  KICKOFF  -> LIVE      countdown done; cars were frozen on team_CTF_*player
+  LIVE     -> GOAL      ball centre inside an autoball_goal volume
+  GOAL     -> KICKOFF   after g_autoballGoalDelay seconds
+
+Timelimit, capturelimit and sudden death (golden goal) come from the regular
+team-game rules in CheckExitRules; G_Autoball_HoldMatchEnd only delays the
+end while the ball is in the air or a goal is being celebrated.
+===========================================================================
+*/
+
+#define AUTOBALL_GOAL_CLASSNAME		"autoball_goal"
+#define AUTOBALL_GOAL_POINTS		100		/* personal score for a goal */
+#define AUTOBALL_SCORER_WINDOW		10000	/* a touch older than this scores no one */
+#define AUTOBALL_AIRBORNE_HEIGHT	40.0f	/* above its rest height the ball is "in play" */
+
+static int G_Autoball_OpposingTeam( int team ) {
+	return team == TEAM_RED ? TEAM_BLUE : TEAM_RED;
+}
+
+static gentity_t *G_Autoball_MainBall( void ) {
+	return G_Find( NULL, FOFS( classname ), AUTOBALL_CLASSNAME );
+}
+
+static void G_Autoball_Publish( void ) {
+	trap_SetConfigstring( CS_AUTOBALLSTATUS, va( "%i %i %i %i %i %i",
+		level.autoballState, level.autoballKickoffEnd, level.autoballBallNum,
+		level.autoballGoalTeam, level.autoballScorer, level.autoballGoalSpeed ) );
+	level.autoballPublished = level.autoballBallNum;
+}
+
+static void G_Autoball_SetState( int state ) {
+	level.autoballState = state;
+	G_Autoball_Publish();
+}
+
+/*
+QUAKED autoball_goal (1 .5 0) ?
+Goal volume, one per team. "team" is the team that DEFENDS this goal
+("red" or "blue"); when the ball's centre enters it, the other team scores.
+Start the brush one ball radius behind the goal line so the whole ball must
+be over the line.
+*/
+void SP_autoball_goal( gentity_t *ent ) {
+	char *team;
+
+	G_SpawnString( "team", "red", &team );
+	ent->count = ( !Q_stricmp( team, "blue" ) ) ? TEAM_BLUE : TEAM_RED;
+	trap_SetBrushModel( ent, ent->model );
+	ent->r.contents = 0;			/* the ball is tested by hand each frame */
+	ent->r.svFlags = SVF_NOCLIENT;
+	trap_LinkEntity( ent );
+}
+
+/* ball_goal_add <red|blue> <x1> <y1> <z1> <x2> <y2> <z2>: goal box on any map */
+void Svcmd_BallGoalAdd_f( void ) {
+	char buffer[MAX_TOKEN_CHARS];
+	vec3_t a, b;
+	gentity_t *goal;
+	int i;
+
+	if ( trap_Argc() < 8 ) {
+		G_Printf( "usage: ball_goal_add <red|blue> <x1> <y1> <z1> <x2> <y2> <z2>  (team = defender)\n" );
+		return;
+	}
+	trap_Argv( 1, buffer, sizeof( buffer ) );
+	goal = G_Spawn();
+	goal->classname = AUTOBALL_GOAL_CLASSNAME;
+	goal->count = ( !Q_stricmp( buffer, "blue" ) ) ? TEAM_BLUE : TEAM_RED;
+	for ( i = 0; i < 3; i++ ) {
+		trap_Argv( 2 + i, buffer, sizeof( buffer ) );
+		a[i] = atof( buffer );
+		trap_Argv( 5 + i, buffer, sizeof( buffer ) );
+		b[i] = atof( buffer );
+		goal->r.absmin[i] = a[i] < b[i] ? a[i] : b[i];
+		goal->r.absmax[i] = a[i] < b[i] ? b[i] : a[i];
+	}
+	/* not linked: only its bounds matter, and linking would recompute them */
+	G_Printf( "%s goal %d added (%.0f %.0f %.0f) - (%.0f %.0f %.0f)\n",
+		goal->count == TEAM_BLUE ? "Blue" : "Red", goal->s.number,
+		goal->r.absmin[0], goal->r.absmin[1], goal->r.absmin[2],
+		goal->r.absmax[0], goal->r.absmax[1], goal->r.absmax[2] );
+}
+
+void G_Autoball_InitGame( void ) {
+	gentity_t *goal = NULL;
+	int red = 0, blue = 0;
+
+	level.autoballState = AUTOBALL_STATE_WAITING;
+	level.autoballKickoffEnd = 0;
+	level.autoballStateEnd = 0;
+	level.autoballCountdown = -1;
+	level.autoballBallNum = -1;
+	level.autoballGoalTeam = TEAM_FREE;
+	level.autoballScorer = -1;
+	level.autoballGoalSpeed = 0;
+	level.autoballPublished = -2;
+
+	if ( g_gametype.integer != GT_AUTOBALL )
+		return;
+
+	while ( ( goal = G_Find( goal, FOFS( classname ), AUTOBALL_GOAL_CLASSNAME ) ) != NULL ) {
+		if ( goal->count == TEAM_BLUE )
+			blue++;
+		else
+			red++;
+	}
+	if ( !G_Autoball_MainBall() || !red || !blue ) {
+		G_Printf( S_COLOR_YELLOW "AUTOBALL: this map has %s and %d red / %d blue autoball_goal. "
+			"Use ball_spawn_at and ball_goal_add to test anyway.\n",
+			G_Autoball_MainBall() ? "a ball" : "no autoball_ball", red, blue );
+	}
+	G_Autoball_Publish();
+}
+
+void G_Autoball_BallTouched( gentity_t *ball, gentity_t *other ) {
+	if ( !ball || !other || !other->client )
+		return;
+	if ( Q_stricmp( ball->classname, AUTOBALL_CLASSNAME ) )
+		return;
+	ball->ballLastToucher = other->s.number;
+	ball->ballLastTouchTime = level.time;
+}
+
+void G_Autoball_ClientSpawn( gentity_t *ent ) {
+	gclient_t *client;
+	int turbo;
+
+	if ( g_gametype.integer != GT_AUTOBALL || !ent || !ent->client )
+		return;
+	client = ent->client;
+	if ( !g_autoballWeapons.integer ) {
+		client->ps.stats[STAT_WEAPONS] = 0;
+		client->ps.weapon = WP_NONE;
+	}
+	/* a negative value is stored turbo that BUTTON_TURBO releases */
+	turbo = g_autoballStartTurbo.integer;
+	if ( turbo < 0 )
+		turbo = 0;
+	if ( turbo > RALLY_TURBO_MAX_MSEC )
+		turbo = RALLY_TURBO_MAX_MSEC;
+	client->ps.powerups[PW_TURBO] = turbo ? -turbo : 0;
+}
+
+qboolean G_Autoball_CarsFrozen( int serverTime ) {
+	return ( level.autoballState == AUTOBALL_STATE_KICKOFF &&
+		serverTime < level.autoballKickoffEnd ) ? qtrue : qfalse;
+}
+
+/* Without g_autoballWeapons only turbo pickups stay in the arena. */
+qboolean G_Autoball_ItemDisabled( gitem_t *item ) {
+	if ( g_gametype.integer != GT_AUTOBALL || g_autoballWeapons.integer || !item )
+		return qfalse;
+	if ( item->giType == IT_POWERUP && item->giTag == PW_TURBO )
+		return qfalse;
+	if ( item->giType == IT_HOLDABLE && item->giTag == HI_TURBO )
+		return qfalse;
+	return qtrue;
+}
+
+qboolean G_Autoball_HoldMatchEnd( void ) {
+	gentity_t *ball;
+
+	if ( level.autoballState == AUTOBALL_STATE_GOAL )
+		return qtrue;
+	if ( level.autoballState != AUTOBALL_STATE_LIVE )
+		return qfalse;
+	ball = G_Autoball_MainBall();
+	if ( !ball )
+		return qfalse;
+	return ( ball->r.currentOrigin[2] > ball->ballHome[2] + AUTOBALL_AIRBORNE_HEIGHT ) ? qtrue : qfalse;
+}
+
+static void G_Autoball_StartKickoff( gentity_t *ball ) {
+	int i, delay;
+
+	if ( ball )
+		G_Autoball_ResetBall( ball );
+
+	/* everybody back to a kick-off spot (team_CTF_redplayer / blueplayer) */
+	for ( i = 0; i < level.maxclients; i++ ) {
+		gentity_t *ent = &g_entities[i];
+		gclient_t *client = ent->client;
+
+		if ( !ent->inuse || !client || client->pers.connected != CON_CONNECTED )
+			continue;
+		if ( client->sess.sessionTeam != TEAM_RED && client->sess.sessionTeam != TEAM_BLUE )
+			continue;
+		client->pers.teamState.state = TEAM_BEGIN;
+		ClientSpawn( ent );
+	}
+
+	delay = g_autoballKickoffDelay.integer;
+	if ( delay < 0 )
+		delay = 0;
+	if ( delay > 10 )
+		delay = 10;
+	level.autoballKickoffEnd = level.time + delay * 1000;
+	level.autoballCountdown = -1;
+	G_Autoball_SetState( AUTOBALL_STATE_KICKOFF );
+}
+
+static void G_Autoball_Countdown( gentity_t *ball ) {
+	int secondsLeft;
+	static char *countSounds[4] = { NULL, "sound/rally/race/one.ogg",
+		"sound/rally/race/two.ogg", "sound/rally/race/three.ogg" };
+
+	if ( level.time >= level.autoballKickoffEnd ) {
+		trap_SendServerCommand( -1, "rc \"GO!\" 0" );
+		if ( ball )
+			Rally_Sound( ball, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex( "sound/rally/race/go.ogg" ) );
+		G_Autoball_SetState( AUTOBALL_STATE_LIVE );
+		return;
+	}
+	secondsLeft = ( level.autoballKickoffEnd - level.time + 999 ) / 1000;
+	if ( secondsLeft == level.autoballCountdown || secondsLeft > 3 )
+		return;
+	level.autoballCountdown = secondsLeft;
+	trap_SendServerCommand( -1, va( "rc \"%i\" %i", secondsLeft, secondsLeft ) );
+	if ( ball && secondsLeft >= 1 && secondsLeft <= 3 )
+		Rally_Sound( ball, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex( countSounds[secondsLeft] ) );
+}
+
+static void G_Autoball_ScoreGoal( gentity_t *ball, gentity_t *goal ) {
+	int scoringTeam, delay;
+	gentity_t *scorer = NULL;
+	gentity_t *te;
+	qboolean ownGoal = qfalse;
+
+	scoringTeam = G_Autoball_OpposingTeam( goal->count );
+	if ( ball->ballLastToucher >= 0 && ball->ballLastToucher < level.maxclients &&
+		level.time - ball->ballLastTouchTime <= AUTOBALL_SCORER_WINDOW ) {
+		scorer = &g_entities[ball->ballLastToucher];
+		if ( !scorer->inuse || !scorer->client ||
+			scorer->client->pers.connected != CON_CONNECTED ) {
+			scorer = NULL;
+		} else if ( scorer->client->sess.sessionTeam != scoringTeam ) {
+			ownGoal = qtrue;
+		}
+	}
+
+	level.autoballGoalTeam = scoringTeam;
+	level.autoballScorer = ( scorer && !ownGoal ) ? scorer->s.number : -1;
+	level.autoballGoalSpeed = (int)( VectorLength( ball->s.pos.trDelta ) / CP_M_2_QU * 3.6f + 0.5f );
+
+	AddTeamScore( ball->r.currentOrigin, scoringTeam, 1 );
+	if ( scorer && !ownGoal )
+		AddScore( scorer, ball->r.currentOrigin, AUTOBALL_GOAL_POINTS );
+	CalculateRanks();
+
+	te = G_TempEntity( ball->r.currentOrigin, EV_EXPLOSION );
+	te->r.svFlags |= SVF_BROADCAST;
+
+	if ( scorer && !ownGoal ) {
+		trap_SendServerCommand( -1, va( "print \"%s%s^7 scores: %s^7 (%i km/h)\n\"",
+			TeamColorString( scoringTeam ), TeamName( scoringTeam ),
+			scorer->client->pers.netname, level.autoballGoalSpeed ) );
+	} else if ( scorer ) {
+		trap_SendServerCommand( -1, va( "print \"%s%s^7 scores: own goal by %s^7 (%i km/h)\n\"",
+			TeamColorString( scoringTeam ), TeamName( scoringTeam ),
+			scorer->client->pers.netname, level.autoballGoalSpeed ) );
+	} else {
+		trap_SendServerCommand( -1, va( "print \"%s%s^7 scores (%i km/h)\n\"",
+			TeamColorString( scoringTeam ), TeamName( scoringTeam ), level.autoballGoalSpeed ) );
+	}
+	G_LogPrintf( "AutoballGoal: %i %i %i %i: %s scores\n", scoringTeam,
+		level.autoballScorer, ownGoal, level.autoballGoalSpeed, TeamName( scoringTeam ) );
+
+	delay = g_autoballGoalDelay.integer;
+	if ( delay < 1 )
+		delay = 1;
+	if ( delay > 15 )
+		delay = 15;
+	level.autoballStateEnd = level.time + delay * 1000;
+	G_Autoball_SetState( AUTOBALL_STATE_GOAL );
+}
+
+static gentity_t *G_Autoball_GoalContaining( const vec3_t point ) {
+	gentity_t *goal = NULL;
+
+	while ( ( goal = G_Find( goal, FOFS( classname ), AUTOBALL_GOAL_CLASSNAME ) ) != NULL ) {
+		if ( point[0] >= goal->r.absmin[0] && point[0] <= goal->r.absmax[0] &&
+			point[1] >= goal->r.absmin[1] && point[1] <= goal->r.absmax[1] &&
+			point[2] >= goal->r.absmin[2] && point[2] <= goal->r.absmax[2] )
+			return goal;
+	}
+	return NULL;
+}
+
+static void G_Autoball_MatchFrame( void ) {
+	gentity_t *ball, *goal;
+
+	if ( g_gametype.integer != GT_AUTOBALL )
+		return;
+	if ( level.intermissiontime || level.intermissionQueued )
+		return;
+
+	ball = G_Autoball_MainBall();
+	level.autoballBallNum = ball ? ball->s.number : -1;
+	if ( level.autoballBallNum != level.autoballPublished )
+		G_Autoball_Publish();
+
+	switch ( level.autoballState ) {
+	case AUTOBALL_STATE_WAITING:
+		if ( ball && !level.warmupTime && level.numPlayingClients > 0 )
+			G_Autoball_StartKickoff( ball );
+		break;
+
+	case AUTOBALL_STATE_KICKOFF:
+		G_Autoball_Countdown( ball );
+		break;
+
+	case AUTOBALL_STATE_LIVE:
+		if ( !ball ) {
+			G_Autoball_SetState( AUTOBALL_STATE_WAITING );
+			break;
+		}
+		goal = G_Autoball_GoalContaining( ball->r.currentOrigin );
+		if ( goal )
+			G_Autoball_ScoreGoal( ball, goal );
+		break;
+
+	case AUTOBALL_STATE_GOAL:
+		if ( level.time >= level.autoballStateEnd )
+			G_Autoball_StartKickoff( ball );
+		break;
+
+	default:
+		G_Autoball_SetState( AUTOBALL_STATE_WAITING );
+		break;
+	}
 }

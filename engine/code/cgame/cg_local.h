@@ -1551,6 +1551,14 @@ typedef struct {
 	int				redflag, blueflag, greenflag, yellowflag;		// flag status from configstrings
 	int				flagStatus;
     int             sigil[MAX_SIGILS];
+    /* Autoball - parsed from CS_AUTOBALLSTATUS */
+    int             autoballState;      /* autoballState_t */
+    int             autoballKickoffEnd; /* server time the cars are released */
+    int             autoballBallNum;    /* match ball entity, -1 = none */
+    int             autoballGoalTeam;
+    int             autoballScorer;     /* client number, -1 = own goal / unknown */
+    int             autoballGoalSpeed;  /* km/h */
+    int             autoballGoalTime;   /* cg.time the goal state arrived */
     /* Q3Rally KOTH - parsed from CS_KOTHSTATUS */
     int             kothOwner;      /* TEAM_FREE / TEAM_RED / TEAM_BLUE */
     int             kothContested;  /* qtrue when both teams in hill */
@@ -1741,6 +1749,18 @@ extern	vmCvar_t		cg_obeliskRespawnDelay;
 // Q3Rally Code Start
 extern	vmCvar_t		cg_metricUnits;
 extern	vmCvar_t		cg_autoballPredict;
+extern	vmCvar_t		cg_autoballCam;
+extern	vmCvar_t		cg_autoballIndicator;
+
+//
+// cg_autoball.c
+//
+centity_t *CG_Autoball_FindBall( void );
+void CG_ParseAutoballStatus( void );
+void CG_Autoball_FreezeCommand( usercmd_t *cmd );
+void CG_Autoball_ToggleCam_f( void );
+void CG_Autoball_ApplyBallCam( void );
+void CG_Autoball_Draw2D( void );
 extern	vmCvar_t		cg_minSkidLength;
 extern	vmCvar_t		cg_controlMode;
 extern	vmCvar_t		cg_manualShift;

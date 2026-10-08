@@ -119,7 +119,7 @@ static startserver_t s_startserver;
 
 static void StartServer_MenuEvent( void *ptr, int event );
 static void StartServer_Update( void );
-static const char *gametype_items[16];
+static const char *gametype_items[17];
 
 static int StartServer_CvarIntOrDefault( const char *name, int defaultValue ) {
 	char value[32];
@@ -422,6 +422,7 @@ static const char *gametype_items[] = {
 	"4-Team CTF",
 	"Domination",
     "King of the Hill",
+    "Autoball",
 	0
 };
 
@@ -429,7 +430,7 @@ static const char *gametype_items[] = {
 // gametype_remap maps display-list index -> raw GT_ value (used when starting server)
 // gametype_remap2 maps raw GT_ value -> gametype_items display index
 // Team gametypes start at GT_TEAM=16; indices 9-15 are unused gaps filled with 0.
-static int gametype_remap[] = {GT_RACING, GT_RACING_DM, GT_SPRINT, GT_GHOST, GT_DERBY, GT_LCS, GT_ELIMINATION, GT_DEATHMATCH, GT_TEAM, GT_TEAM_RACING, GT_TEAM_RACING_DM, GT_CTF, GT_CTF4, GT_DOMINATION, GT_KOTH};
+static int gametype_remap[] = {GT_RACING, GT_RACING_DM, GT_SPRINT, GT_GHOST, GT_DERBY, GT_LCS, GT_ELIMINATION, GT_DEATHMATCH, GT_TEAM, GT_TEAM_RACING, GT_TEAM_RACING_DM, GT_CTF, GT_CTF4, GT_DOMINATION, GT_KOTH, GT_AUTOBALL};
 static int gametype_remap2[] = {
 	0,  // GT_RACING          = 0
 	1,  // GT_RACING_DM       = 1
@@ -454,6 +455,7 @@ static int gametype_remap2[] = {
 	12, // GT_CTF4            = 20
 	13, // GT_DOMINATION      = 21
 	14, // GT_KOTH            = 22
+	15, // GT_AUTOBALL        = 23
 };
 
 
@@ -694,6 +696,7 @@ static const struct {
         { "q3r_ctf4", GT_CTF4 },
         { "q3r_dom", GT_DOMINATION },
         { "q3r_koth", GT_KOTH }, /* Q3Rally KOTH */
+        { "q3r_autoball", GT_AUTOBALL },
 };
 
 /*
@@ -1645,6 +1648,12 @@ default:
 	}
     // Q3Rally Code END - KOTH
 
+	case GT_AUTOBALL:
+		trap_Cvar_SetValue( "ui_autoball_capturelimit", flaglimit );
+		trap_Cvar_SetValue( "ui_autoball_timelimit", timelimit );
+		trap_Cvar_SetValue( "ui_autoball_friendly", friendlyfire );
+		break;
+
     case GT_DOMINATION:
 		trap_Cvar_SetValue( "g_dominationSpawnStyle", Com_Clamp( 0, 1, dominationSpawnStyle ) );
 		trap_Cvar_SetValue( "g_dominationScoreInterval", Com_Clamp( 0, 99999, dominationScoreInterval * 1000 ) );
@@ -2198,6 +2207,15 @@ static void ServerOptions_SetMenuItems( void ) {
 			break;
 		}
 
+	case GT_AUTOBALL:
+		/* goal limit 0 (off) and 5 minutes until the player picks something else */
+		Com_sprintf( s_serveroptions.flaglimit.field.buffer, 4, "%i",
+			(int)Com_Clamp( 0, 100, StartServer_CvarIntOrDefault( "ui_autoball_capturelimit", 0 ) ) );
+		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i",
+			(int)Com_Clamp( 0, 999, StartServer_CvarIntOrDefault( "ui_autoball_timelimit", 5 ) ) );
+		s_serveroptions.friendlyfire.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_autoball_friendly" ) );
+		break;
+
 	case GT_DOMINATION:
 		Com_sprintf( s_serveroptions.flaglimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 100, trap_Cvar_VariableValue( "ui_dom_capturelimit" ) ) );
 		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_dom_timelimit" ) ) );
@@ -2716,9 +2734,10 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 
 		limitFieldAdded = qtrue;
 	}
-	else if( s_serveroptions.gametype == GT_CTF || s_serveroptions.gametype == GT_CTF4 || s_serveroptions.gametype == GT_DOMINATION ) {
+	else if( s_serveroptions.gametype == GT_CTF || s_serveroptions.gametype == GT_CTF4 || s_serveroptions.gametype == GT_DOMINATION ||
+		s_serveroptions.gametype == GT_AUTOBALL ) {
 		s_serveroptions.flaglimit.generic.type		= MTYPE_FIELD;
-		s_serveroptions.flaglimit.generic.name		= "Capture Limit:";
+		s_serveroptions.flaglimit.generic.name		= ( s_serveroptions.gametype == GT_AUTOBALL ) ? "Goal Limit:" : "Capture Limit:";
 		s_serveroptions.flaglimit.generic.flags		= QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
 		s_serveroptions.flaglimit.generic.x			= OPTIONS_X;
 		s_serveroptions.flaglimit.generic.y			= y;
@@ -3058,7 +3077,8 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 		}
 	}
 
-	if( s_serveroptions.gametype == GT_CTF || s_serveroptions.gametype == GT_CTF4 || s_serveroptions.gametype == GT_DOMINATION || s_serveroptions.gametype == GT_KOTH ) {
+	if( s_serveroptions.gametype == GT_CTF || s_serveroptions.gametype == GT_CTF4 || s_serveroptions.gametype == GT_DOMINATION || s_serveroptions.gametype == GT_KOTH ||
+		s_serveroptions.gametype == GT_AUTOBALL ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.flaglimit );
 	}
 	else if( s_serveroptions.gametype != GT_DERBY && s_serveroptions.gametype != GT_LCS && s_serveroptions.gametype != GT_SPRINT &&

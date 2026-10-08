@@ -235,6 +235,7 @@ static const char *ArenaServers_GametypeShortName( int gametype ) {
         case GT_CTF4:           return "CTF4";
         case GT_DOMINATION:     return "Domination";
         case GT_KOTH:           return "KOTH";
+        case GT_AUTOBALL:       return "Autoball";
         default:                return "???";
         }
 }

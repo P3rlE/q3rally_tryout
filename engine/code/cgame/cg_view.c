@@ -928,6 +928,8 @@ static int CG_CalcViewValues( void ) {
 	{
 // END
 		if ( cg.renderingThirdPerson ) {
+			// Autoball: turn the chase camera towards the ball
+			CG_Autoball_ApplyBallCam();
 			// back away from character
 			CG_OffsetThirdPersonView();
 		} else {

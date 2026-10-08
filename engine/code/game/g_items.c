@@ -1063,6 +1063,8 @@ void G_SpawnItem (gentity_t *ent, gitem_t *item) {
 	RegisterItem( item );
 	if ( G_ItemDisabled(item) )
 		return;
+	if ( G_Autoball_ItemDisabled( item ) )
+		return;
 
 	ent->item = item;
 	// some movers spawn on the second frame, so delay item

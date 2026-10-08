@@ -2673,6 +2673,14 @@ Needs the Bullet backend (g_scriptedObjectBullet 1). Test commands: ball_spawn, 
 model="models/autoball/ball.md3"*/
 
 
+/*QUAKED autoball_goal (1 .5 0) ?
+Autoball goal volume (brush entity, use common/trigger). The team that SCORES is the other team: a ball whose centre enters a "red" goal counts for blue.
+Build one per team. Start the brush one ball radius (75 units) behind the goal line so the whole ball has to cross the line.
+Kick-off spots: team_CTF_redplayer / team_CTF_blueplayer. Respawn after a reset: team_CTF_redspawn / team_CTF_bluespawn.
+-------- KEYS --------
+"team" team that defends this goal: red or blue (default red)*/
+
+
 //ROADSIDE OBJECTS
 
 /*QUAKED rally_misc_cone (1 .5 0) (-6 -6 -7) (6 6 7)

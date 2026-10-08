@@ -1802,6 +1802,13 @@ void ClientThink_real( gentity_t *ent ) {
 	// check for car reset
 	G_ResetCar( ent );
 
+	// Autoball kick-off: hold every car on its spot until the countdown ends
+	if ( g_gametype.integer == GT_AUTOBALL && G_Autoball_CarsFrozen( ucmd->serverTime ) ) {
+		ucmd->buttons = BUTTON_HANDBRAKE;
+		ucmd->forwardmove = 0;
+		ucmd->upmove = 0;
+	}
+
 	if (!level.startRaceTime &&	(isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS)){
 		if ( ucmd->buttons & ( BUTTON_ATTACK | BUTTON_USE_HOLDABLE ) && !ent->ready ) {
 			trap_SendServerCommand( ent->s.clientNum, "cp \"Waiting for other players...\n\"");
@@ -2044,7 +2051,7 @@ void ClientThink_real( gentity_t *ent ) {
         pm.car_friction_scale = car_friction_scale.value;
         pm.car_impact_transfer = g_carImpactTransfer.value;
         pm.car_impact_elasticity = g_carImpactElasticity.value;
-        pm.useFuel = g_useFuel.integer ? qtrue : qfalse;
+        pm.useFuel = ( g_useFuel.integer && g_gametype.integer != GT_AUTOBALL ) ? qtrue : qfalse;
 // END
 
         VectorCopy( client->ps.origin, client->oldOrigin );

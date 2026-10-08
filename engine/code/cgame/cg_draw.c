@@ -1156,7 +1156,8 @@ static void CG_DrawRallyTelemetryHud( void ) {
 	/* Centre: use the mode's objective as the primary telemetry. */
 	team = ps->persistant[PERS_TEAM];
 	teamMode = ( cgs.gametype == GT_TEAM || cgs.gametype == GT_CTF ||
-	             cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION );
+	             cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION ||
+	             cgs.gametype == GT_AUTOBALL );
 
 	/* STAT_DISTANCE_REMAIN and CS_TRACKLENGTH are both expressed in metres.
 	 * Loop races use full-lap distance; Sprint publishes its open start-finish
@@ -1557,6 +1558,9 @@ static void CG_DrawRallyTelemetryHud( void ) {
 			break;
 		case GT_TEAM:
 			Q_strncpyz( modeTitle, "TEAM COMBAT", sizeof(modeTitle) );
+			break;
+		case GT_AUTOBALL:
+			Q_strncpyz( modeTitle, "AUTOBALL", sizeof(modeTitle) );
 			break;
 		default:
 			Q_strncpyz( modeTitle, "DEATHMATCH", sizeof(modeTitle) );
@@ -4029,6 +4033,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 
 	CG_DrawKOTH_RespawnWave_Internal();
 	CG_DrawKOTH_LossFlash();
+	CG_Autoball_Draw2D();
 
 	if ( cgs.gametype >= GT_TEAM ) {
 #ifndef MISSIONPACK

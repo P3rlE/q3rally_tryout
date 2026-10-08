@@ -77,7 +77,8 @@ void AddScore( gentity_t *ent, vec3_t origin, int score ) {
 	// capture), so AddScore must not also increment level.teamScores for those modes
 	// or each capture adds both the CTF_CAPTURE_BONUS (5) AND the explicit +1 from
 	// AddTeamScore to the team score.
-	if (g_gametype.integer >= GT_TEAM && g_gametype.integer != GT_CTF && g_gametype.integer != GT_CTF4 && g_gametype.integer != GT_KOTH){
+	if (g_gametype.integer >= GT_TEAM && g_gametype.integer != GT_CTF && g_gametype.integer != GT_CTF4 && g_gametype.integer != GT_KOTH &&
+		g_gametype.integer != GT_AUTOBALL){	// Autoball team scores are goals only
 		if (!isRallyRace() || level.startRaceTime)
 			level.teamScores[ ent->client->ps.persistant[PERS_TEAM] ] += score;
 	}

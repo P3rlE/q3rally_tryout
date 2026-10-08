@@ -713,6 +713,7 @@ void G_ScriptedObject_TouchWithVelocity ( gentity_t *self, gentity_t *other, tra
 	if ( !self->moveable || !other || !trace )
 		return;
 	G_RallyObject_Wake( self );
+	G_Autoball_BallTouched( self, other );
 
 	/* ClientImpacts builds this from contact toward the touched prop; it is the
 	 * outward direction in which the car should impart momentum. */

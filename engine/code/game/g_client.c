@@ -1808,6 +1808,9 @@ trap_GetUserinfo( index, userinfo, sizeof(userinfo) );
                 client->ps.ammo[WP_DERBY_RAM] = -1;
         }
 
+        // Autoball: no weapons by default, start turbo for every kick-off
+        G_Autoball_ClientSpawn( ent );
+
 	// health will count down towards max_health
 
        ent->health = client->ps.stats[STAT_HEALTH] = client->ps.stats[STAT_MAX_HEALTH] + 25;

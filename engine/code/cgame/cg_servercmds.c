@@ -590,6 +590,9 @@ if( cgs.gametype == GT_CTF ) {
 		CG_ParseKothStatus();
 	}
 	// Q3Rally Code END - KOTH
+	else if ( cgs.gametype == GT_AUTOBALL ) {
+		CG_ParseAutoballStatus();
+	}
 
 #ifdef MISSIONPACK
 	else if( cgs.gametype == GT_1FCTF ) {
@@ -742,6 +745,9 @@ static void CG_ConfigStringModified( void ) {
 	else if ( num == CS_KOTHSTATUS ) {
 		if ( cgs.gametype == GT_KOTH ) {
 			CG_ParseKothStatus();
+		} else if ( cgs.gametype == GT_AUTOBALL ) {
+			/* CS_AUTOBALLSTATUS shares this slot */
+			CG_ParseAutoballStatus();
 		}
 	}
 	// Q3Rally Code END - KOTH

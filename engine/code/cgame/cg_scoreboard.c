@@ -127,7 +127,8 @@ static qboolean CG_IsTeamGametype(void) {
             cgs.gametype == GT_CTF ||
             cgs.gametype == GT_CTF4 ||
             cgs.gametype == GT_DOMINATION ||
-            cgs.gametype == GT_KOTH); /* Q3Rally KOTH */
+            cgs.gametype == GT_KOTH || /* Q3Rally KOTH */
+            cgs.gametype == GT_AUTOBALL);
 }
 
 /*
@@ -184,6 +185,7 @@ static void CG_InitScoreboardColumns(void) {
             break;
 
         case GT_KOTH: /* Q3Rally KOTH */
+        case GT_AUTOBALL:
             showScore = qtrue;
             showDeaths = qfalse;
             break;
@@ -1624,6 +1626,7 @@ void CG_DrawScoreboardGameModeInfo(void) {
         case GT_CTF4:             gametypeName = "4-Team CTF"; break;
         case GT_DOMINATION:       gametypeName = "Domination"; break;
         case GT_KOTH:              gametypeName = "King of the Hill"; break; /* Q3Rally KOTH */
+        case GT_AUTOBALL:          gametypeName = "Autoball"; break;
         default:                  gametypeName = "Unknown"; break;
     }
     

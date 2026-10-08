@@ -3,8 +3,9 @@
 Generates baseq3r/maps/q3r_autoball_test.map, the Autoball phase-1 test arena.
 
 Closed box field with two goals, 45-degree ramps along the boards (stand-ins
-for quarter pipes), a sky ceiling, an autoball_ball on the centre spot, eight
-deathmatch spawns and four turbo pickups. Dimensions follow the design doc and
+for quarter pipes), a sky ceiling, an autoball_ball on the centre spot, two
+autoball_goal volumes, team kick-off and respawn spots (red defends -X, blue
+defends +X), eight deathmatch spawns and four turbo pickups. Dimensions follow the design doc and
 are meant to be tweaked here, then recompiled in Q3RallyRadiant / q3map2:
 
     q3map2 -meta maps/q3r_autoball_test.map
@@ -25,12 +26,14 @@ GOAL_HALF_W = 512      # goal mouth 1024 wide
 GOAL_H = 320           # goal mouth height
 GOAL_D = 512           # goal depth
 RAMP = 192             # 45-degree board ramp, height = depth
+BALL_RADIUS = 75       # the goal volume starts one radius behind the line
 
 FLOOR_TEX = "base_floor/concretefloor1"
 WALL_TEX = "base_wall/concrete"
 RAMP_TEX = "base_floor/concrete"
 GOAL_TEX = "base_wall/concrete"
 SKY_TEX = "skies/ely_sunset"
+TRIGGER_TEX = "common/trigger"
 
 
 def cross(a, b):
@@ -164,8 +167,37 @@ def format_brush(faces, index):
     return "\n".join(lines)
 
 
-def entity(fields):
-    return "{\n" + "\n".join(f'"{k}" "{v}"' for k, v in fields) + "\n}"
+def entity(fields, brushes=None):
+    body = "\n".join(f'"{k}" "{v}"' for k, v in fields)
+    if brushes:
+        body += "\n" + "\n".join(format_brush(b, i) for i, b in enumerate(brushes))
+    return "{\n" + body + "\n}"
+
+
+def goal_entities():
+    """Red defends the goal at -X, blue the one at +X."""
+    X, G, GH, D = HALF_X, GOAL_HALF_W, GOAL_H, GOAL_D
+    ents = []
+    for team, s in (("red", -1), ("blue", 1)):
+        x1, x2 = sorted((s * (X + BALL_RADIUS), s * (X + D)))
+        ents.append(entity([("classname", "autoball_goal"), ("team", team)],
+                           [box((x1, -G, 0), (x2, G, GH), TRIGGER_TEX)]))
+    return ents
+
+
+def team_spawns():
+    """Kick-off spots (team_CTF_*player) as in the design doc, respawns near the own goal."""
+    kickoff = [(-730, 640), (-730, -640), (-1550, 0), (-2150, 300)]
+    respawn = [(-2200, 1100), (-2200, -1100), (-2200, 600), (-2200, -600)]
+    ents = []
+    for team, s, angle in (("red", 1, 0), ("blue", -1, 180)):
+        for x, y in kickoff:
+            ents.append(entity([("classname", f"team_CTF_{team}player"),
+                                ("origin", f"{s * x} {s * y} 48"), ("angle", str(angle))]))
+        for x, y in respawn:
+            ents.append(entity([("classname", f"team_CTF_{team}spawn"),
+                                ("origin", f"{s * x} {s * y} 48"), ("angle", str(angle))]))
+    return ents
 
 
 def point_entities():
@@ -181,7 +213,7 @@ def point_entities():
     for x in (-1600, 0, 1600):
         for y in (-1000, 0, 1000):
             ents.append(entity([("classname", "light"), ("origin", f"{x} {y} 760"), ("light", "1400")]))
-    return ents
+    return ents + team_spawns() + goal_entities()
 
 
 def main():
