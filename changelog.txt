@@ -4,6 +4,15 @@ unreleased
 
 Added:
 
+- Racing line (cg_racingLine, HUD options "Racing Line", all race modes): a band on
+  the road ahead of the car along the best known lap of this track variant, the
+  personal ghost or the server's ghost route, whichever is faster. Green = throttle,
+  yellow = off the throttle, red = braking; taken from the recorded inputs of a
+  personal ghost, from the speed change along the server route. Drawn for
+  cg_racingLineDistance metres (150, 30-500), faded in under the car and out at the
+  far end; a lap with a reset is not joined across the jump. Outside Ghost Race the
+  client asks the server for its route with the new client command "ghostroutereq".
+  New shader gfx/misc/racingline (scripts/gfx.shader, gfx/misc/racingline.tga).
 - Slipstream (drafting) in the race modes (not in Ghost Race). A car close behind
   another one loses part of its air drag and gets faster on the straights; since the
   down force follows the drag, it also has less grip in corners ("dirty air"). The
@@ -89,7 +98,8 @@ Changed:
 - Ghosts are only shown in Ghost Race. Other race modes no longer play back a
   personal or server base ghost (laps are still recorded for bot routes and the
   ladder); the HUD option "Ghost Playback" is only offered in Ghost Race and the
-  server sends the base ghost route only there.
+  server sends the base ghost route on its own only there (elsewhere only when the
+  racing line asks for it).
 - Windows builds use libcurl 8.22.0 instead of the vendored 7.54.0 from 2017. The GitHub
   Actions build compiles a static libcurl with Windows Schannel TLS and no other
   libraries (engine/misc/build-curl-mingw.sh, version and sha256 pinned there) and links

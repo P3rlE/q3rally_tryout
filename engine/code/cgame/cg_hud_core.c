@@ -157,14 +157,14 @@ float CG_GetEliminationColumnWidth( void ) {
 #define HUDOPT_SLIDER_ZOOM_ID  2
 /* Text sizes reuse the engine's built-in char constants:
  * Title  → BIGCHAR,  sections/entries → SMALLCHAR / TINYCHAR               */
-/* Left col: Racing/match (9 entries, indices 0-8)
- * Right col: Derby (3, indices 9-11) + KOTH (2, indices 12-13) + Vehicle (4, indices 14-17) */
-#define HUDOPT_LEFT_COUNT    9
-#define HUDOPT_DERBY_START   9
+/* Left col: Racing/match (10 entries, indices 0-9)
+ * Right col: Derby (3, indices 10-12) + KOTH (2, indices 13-14) + Vehicle (4, indices 15-18) */
+#define HUDOPT_LEFT_COUNT   10
+#define HUDOPT_DERBY_START  10
 #define HUDOPT_DERBY_COUNT   3
-#define HUDOPT_KOTH_START   12
+#define HUDOPT_KOTH_START   13
 #define HUDOPT_KOTH_COUNT    2
-#define HUDOPT_VEH_START    14
+#define HUDOPT_VEH_START    15
 #define HUDOPT_VEH_COUNT     4
 
 #define HUDOPT_MODE_ANY                 -1
@@ -194,24 +194,25 @@ static const char *const hudCheckpointArrowLabels[] = {
 };
 
 static const hudToggleEntry_t hudToggleTable[] = {
-    /* ---- Race / match (left column, indices 0-8) ---- */
+    /* ---- Race / match (left column, indices 0-9) ---- */
     { "TIMES PANEL",         "cg_hudShowTimes",          &cg_hudShowTimes,          1, HUDOPT_MODE_RACE_LCS_DERBY,      qfalse, NULL },
     { "LAP COUNTER",         "cg_hudShowLaps",           &cg_hudShowLaps,           1, HUDOPT_MODE_RACE_WITH_LAPS,      qfalse, NULL },
     { "RACE POSITION",       "cg_hudShowPosition",       &cg_hudShowPosition,       1, HUDOPT_MODE_RALLY_RACE,           qfalse, NULL },
     { "DISTANCE TO FINISH",  "cg_hudShowDistToFinish",   &cg_hudShowDistToFinish,   1, HUDOPT_MODE_SPRINT_TRACK,        qfalse, NULL },
     { "GHOST PLAYBACK",      "cg_ghostPlayback",         &cg_ghostPlayback,         3, GT_GHOST,                         qtrue,  hudGhostPlaybackLabels },
     { "CHECKPOINT ARROW",    "cg_checkpointArrowMode",   &cg_checkpointArrowMode,   2, HUDOPT_MODE_RALLY_RACE,           qtrue,  hudCheckpointArrowLabels },
+    { "RACING LINE",         "cg_racingLine",            &cg_racingLine,            1, HUDOPT_MODE_RALLY_RACE,           qfalse, NULL },
     { "ELIM. TIMELINE",      "cg_elimTimeline",          &cg_elimTimeline,          1, GT_LCS,                           qfalse, NULL },
     { "OPPONENT LIST",       "cg_hudShowOpponentList",   &cg_hudShowOpponentList,   1, HUDOPT_MODE_RACE_OR_LCS,          qfalse, NULL },
     { "SCORES PANEL",        "cg_hudShowScores",         &cg_hudShowScores,         1, HUDOPT_MODE_SCORE_PANEL,           qfalse, NULL },
-    /* ---- Derby (right column top, indices 9-11) ---- */
+    /* ---- Derby (right column top, indices 10-12) ---- */
     { "DERBY VEHICLE STATE", "cg_hudShowDerbyVehicle",   &cg_hudShowDerbyVehicle,   1, GT_DERBY, qfalse, NULL },
     { "DERBY SCOREBOARD",    "cg_hudShowDerbyList",      &cg_hudShowDerbyList,      1, GT_DERBY, qfalse, NULL },
     { "DERBY HIT IMPACT",    "cg_derbyHitFxEnable",      &cg_derbyHitFxEnable,      1, GT_DERBY, qfalse, NULL },
-    /* ---- KOTH (right column middle, indices 12-13) ---- */
+    /* ---- KOTH (right column middle, indices 13-14) ---- */
     { "KOTH HILL STATUS",    "cg_hudShowKothHillStatus",  &cg_hudShowKothHillStatus,  1, GT_KOTH, qfalse, NULL },
     { "KOTH RESPAWN WAVE",   "cg_hudShowKothRespawnWave", &cg_hudShowKothRespawnWave, 1, GT_KOTH, qfalse, NULL },
-    /* ---- Vehicle (right column bottom, indices 14-17) ---- */
+    /* ---- Vehicle (right column bottom, indices 15-18) ---- */
     { "STATUS HUD",          "cg_drawStatus",            &cg_drawStatus,            1, HUDOPT_MODE_ANY, qfalse, NULL },
     { "REAR-VIEW MIRROR",    "cg_drawRearView",          &cg_drawRearView,          1, HUDOPT_MODE_ANY, qfalse, NULL },
     { "MINI-MAP",            "cg_drawMMap",              &cg_drawMMap,              1, HUDOPT_MODE_ANY, qfalse, NULL },

@@ -1230,7 +1230,9 @@ void G_Ghost_AnnounceForClient( gentity_t *ent ) {
         return;
     }
 
-    /* Ghosts are only shown in Ghost Race; the route stays server-side for bots. */
+    /* Ghosts are only shown in Ghost Race; elsewhere the route stays
+     * server-side for bots unless the client asks for it (racing line,
+     * G_Ghost_RequestRouteForClient). */
     if ( g_gametype.integer != GT_GHOST ) {
         return;
     }
@@ -1240,6 +1242,34 @@ void G_Ghost_AnnounceForClient( gentity_t *ent ) {
         return;
     }
 
+    s_clientGhostTransferPending[clientNum] = qtrue;
+    s_clientGhostTransferStarted[clientNum] = qfalse;
+    s_clientGhostTransferNext[clientNum] = 0;
+    s_clientGhostTransferQueuedAt[clientNum] = level.time;
+}
+
+/*
+Client command "ghostroutereq": the client wants the route for its racing
+line (cg_racingLine). Works in every race mode; outside races the answer is
+"ghostmeta none 0". A request while the route is being sent is ignored; a
+later one (cgame restart) sends it again.
+*/
+void G_Ghost_RequestRouteForClient( gentity_t *ent ) {
+    int clientNum;
+
+    if ( !ent || !ent->client || ent->client->pers.connected != CON_CONNECTED ) {
+        return;
+    }
+    clientNum = ent - g_entities;
+    if ( clientNum < 0 || clientNum >= MAX_CLIENTS || s_clientGhostTransferPending[clientNum] ) {
+        return;
+    }
+    if ( !BG_GametypeIsRace( g_gametype.integer ) ) {
+        trap_SendServerCommand( clientNum, "ghostmeta none 0" );
+        return;
+    }
+
+    s_clientGhostTransferSent[clientNum] = qfalse;
     s_clientGhostTransferPending[clientNum] = qtrue;
     s_clientGhostTransferStarted[clientNum] = qfalse;
     s_clientGhostTransferNext[clientNum] = 0;
