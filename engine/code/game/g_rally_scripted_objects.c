@@ -82,7 +82,7 @@ void G_RallyPhysics_Shutdown( void ) {
 	rallyBulletPhysicsActive = qfalse;
 }
 
-static qboolean G_RallyPhysics_CreateEntity( gentity_t *ent ) {
+qboolean G_RallyPhysics_CreateEntity( gentity_t *ent ) {
 	rallyPhysicsBodyDesc_t desc;
 	const vec3_t *vertices = NULL;
 	int numVertices = 0;

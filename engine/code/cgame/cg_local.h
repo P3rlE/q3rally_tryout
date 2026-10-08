@@ -1740,6 +1740,7 @@ extern	vmCvar_t		cg_obeliskRespawnDelay;
 #endif
 // Q3Rally Code Start
 extern	vmCvar_t		cg_metricUnits;
+extern	vmCvar_t		cg_autoballPredict;
 extern	vmCvar_t		cg_minSkidLength;
 extern	vmCvar_t		cg_controlMode;
 extern	vmCvar_t		cg_manualShift;

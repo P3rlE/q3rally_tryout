@@ -166,6 +166,11 @@ vmCvar_t        g_derbyCollisionLog;
 vmCvar_t        g_derbyHitFuelReward;
 vmCvar_t        g_derbyHitNosReward;
 vmCvar_t        g_autoballDebug;
+vmCvar_t        g_autoballImpactScale;
+vmCvar_t        g_autoballVerticalScale;
+vmCvar_t        g_autoballLift;
+vmCvar_t        g_autoballMass;
+vmCvar_t        g_autoballElasticity;
 vmCvar_t        g_derbyNoRamTime;
 vmCvar_t  g_humanplayers;
 vmCvar_t        g_fuelKillReward;
@@ -375,6 +380,11 @@ static cvarTable_t		gameCvarTable[] = {
         { &g_derbyHitNosReward, "g_derbyHitNosReward", "500", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyNoRamTime, "g_derbyNoRamTime", "45", CVAR_ARCHIVE, 0, qfalse },
         { &g_autoballDebug, "g_autoballDebug", "0", 0, 0, qfalse },
+        { &g_autoballImpactScale, "g_autoballImpactScale", "1.6", 0, 0, qfalse },
+        { &g_autoballVerticalScale, "g_autoballVerticalScale", "0.45", 0, 0, qfalse },
+        { &g_autoballLift, "g_autoballLift", "0.15", 0, 0, qfalse },
+        { &g_autoballMass, "g_autoballMass", "400", 0, 0, qfalse },
+        { &g_autoballElasticity, "g_autoballElasticity", "0.6", 0, 0, qfalse },
         // END
 
         { &g_rankings, "g_rankings", "0", 0, 0, qfalse},
@@ -3595,6 +3605,7 @@ void G_RunFrame( int levelTime ) {
 
 	// get any cvar changes
 	G_UpdateCvars();
+	G_Autoball_RunFrame();
 	G_Ghost_ProcessClientTransfers();
 	G_GhostLadder_Frame();
 

@@ -1082,6 +1082,7 @@ void G_RallyPhysics_Init( void );
 void G_RallyPhysics_Shutdown( void );
 void G_RallyPhysics_RunFrame( void );
 qboolean G_RallyPhysics_Enabled( void );
+qboolean G_RallyPhysics_CreateEntity( gentity_t *ent );
 void G_ScriptedObject_ApplyWeaponImpact( gentity_t *target, gentity_t *inflictor,
 	gentity_t *attacker, const vec3_t direction, const vec3_t point, int damage );
 qboolean G_ParseScriptedObject( gentity_t *ent );
@@ -1102,6 +1103,7 @@ void Cmd_BallRemove_f( gentity_t *ent );
 void Svcmd_BallSpawnAt_f( void );
 void Svcmd_BallKick_f( void );
 void Svcmd_BallInfo_f( void );
+void G_Autoball_RunFrame( void );
 
 
 //
@@ -1327,6 +1329,11 @@ extern  vmCvar_t        g_derbyCollisionLog;
 extern  vmCvar_t        g_derbyHitFuelReward;
 extern  vmCvar_t        g_derbyHitNosReward;
 extern  vmCvar_t        g_autoballDebug;
+extern  vmCvar_t        g_autoballImpactScale;
+extern  vmCvar_t        g_autoballVerticalScale;
+extern  vmCvar_t        g_autoballLift;
+extern  vmCvar_t        g_autoballMass;
+extern  vmCvar_t        g_autoballElasticity;
 extern  vmCvar_t        g_derbyNoRamTime;
 extern  vmCvar_t        g_fuelKillReward;
 extern  vmCvar_t        g_useFuel;

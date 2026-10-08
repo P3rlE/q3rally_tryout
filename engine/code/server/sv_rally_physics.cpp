@@ -254,6 +254,10 @@ static void AddBrushWorld( void ) {
 		btRigidBody::btRigidBodyConstructionInfo info( 0.0f, NULL, rallyWorld->brushes );
 		rallyWorld->brushBody = new btRigidBody( info );
 		rallyWorld->brushBody->setUserIndex( -1 );
+		/* Bullet multiplies the restitution of both bodies. With the default 0
+		 * on the world nothing ever bounced off map geometry, whatever the
+		 * object's elasticity; 1.0 makes the object's own value decide. */
+		rallyWorld->brushBody->setRestitution( 1.0f );
 		rallyWorld->world->addRigidBody( rallyWorld->brushBody );
 	}
 	Com_Printf( "rally_bullet: world BSP brush hulls=%d of %d referenced brushes\n",
@@ -367,6 +371,7 @@ static void AddPatchWorld( void ) {
 		btRigidBody::btRigidBodyConstructionInfo info( 0.0f, NULL, rallyWorld->patchShape );
 		rallyWorld->patchBody = new btRigidBody( info );
 		rallyWorld->patchBody->setUserIndex( -1 );
+		rallyWorld->patchBody->setRestitution( 1.0f );	/* see AddBrushWorld */
 		rallyWorld->world->addRigidBody( rallyWorld->patchBody );
 		Com_Printf( "rally_bullet: BSP patch collision facets=%d triangles=%d\n",
 			patchCount, triangleCount );

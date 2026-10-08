@@ -441,6 +441,9 @@ typedef enum {
 #define RALLY_TURBO_ITEM_MSEC             5000
 #define RALLY_TURBO_CLEAN_SPLIT_MSEC      500
 
+// ET_SCRIPTED entityState_t.generic1 flags
+#define SCRIPTED_GENERIC1_NO_PREDICT      1   // skip in client movement prediction (Autoball ball)
+
 typedef enum {
         HI_NONE,
 

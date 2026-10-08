@@ -32,6 +32,11 @@ Ways to get a ball:
   - map entity "autoball_ball" (all rally_scripted_object keys apply), or
   - cheat commands on any map: ball_spawn, ball_reset, ball_remove.
 Set g_autoballDebug 1 to print car and ball speed for every touch.
+
+Live tuning (applied to every ball as soon as a value changes, overriding
+map keys): g_autoballImpactScale, g_autoballVerticalScale, g_autoballLift,
+g_autoballMass, g_autoballElasticity. Mass and elasticity rebuild the Bullet
+body; the ball keeps its position and velocity.
 ===========================================================================
 */
 
@@ -40,10 +45,18 @@ Set g_autoballDebug 1 to print car and ball speed for every touch.
 #define AUTOBALL_CLASSNAME			"autoball_ball"
 #define AUTOBALL_MODEL				"models/autoball/ball.md3"	/* radius 75 */
 #define AUTOBALL_DEFAULT_RADIUS		75.0f
-#define AUTOBALL_DEFAULT_MASS		400
 #define AUTOBALL_DEFAULT_MAX_SPEED	3000.0f
 #define AUTOBALL_SPAWN_DISTANCE		400.0f
 #define AUTOBALL_MAX_TEST_BALLS		4
+
+/* The five values players tune most, taken from the g_autoball* cvars. */
+static void G_Autoball_ApplyTuning( gentity_t *ent ) {
+	ent->vehicleImpactScale = Com_Clamp( 0.0f, 2.0f, g_autoballImpactScale.value );
+	ent->vehicleVerticalScale = Com_Clamp( 0.0f, 1.0f, g_autoballVerticalScale.value );
+	ent->vehicleLift = Com_Clamp( 0.0f, 0.9f, g_autoballLift.value );
+	ent->mass = (int)Com_Clamp( 1.0f, 100000.0f, g_autoballMass.value );
+	ent->elasticity = Com_Clamp( 0.0f, 1.0f, g_autoballElasticity.value );
+}
 
 /*
 Starting values from the design document. Map keys on autoball_ball
@@ -57,25 +70,25 @@ static void G_Autoball_ApplyDefaults( gentity_t *ent ) {
 	const float radius = AUTOBALL_DEFAULT_RADIUS;
 
 	ent->moveable = qtrue;
-	ent->mass = AUTOBALL_DEFAULT_MASS;
 	ent->inertiaShape = RALLY_OBJECT_INERTIA_SPHERE;
 	ent->collisionShape = RALLY_PHYSICS_SHAPE_SPHERE;
 	ent->ballRadius = radius;
 	VectorSet( ent->r.mins, -radius, -radius, -radius );
 	VectorSet( ent->r.maxs, radius, radius, radius );
-	ent->elasticity = 0.6f;
 	ent->friction = 0.4f;
 	ent->rollingFriction = 0.02f;
 	ent->spinningFriction = 0.02f;
-	ent->vehicleImpactScale = 1.0f;
 	ent->weaponImpactScale = 1.0f;
 	ent->neverSleep = qtrue;
 	ent->maxSpeed = AUTOBALL_DEFAULT_MAX_SPEED;
-	ent->vehicleVerticalScale = 0.45f;	/* measured contacts point 35-45 deg up; this gives ~15-20 deg */
-	ent->vehicleLift = 0.15f;
 	ent->health = 0;
 	ent->maxHealth = 0;
 	ent->takedamage = qfalse;
+	/* impact scale 1.6, vertical scale 0.45 (contacts point 35-45 deg up,
+	 * this flattens them to ~20 deg), lift 0.15, mass 400, elasticity 0.6 */
+	G_Autoball_ApplyTuning( ent );
+	/* the client must not predict the car against the ball (see cg_predict.c) */
+	ent->s.generic1 |= SCRIPTED_GENERIC1_NO_PREDICT;
 }
 
 static void G_Autoball_WarnLegacySolver( void ) {
@@ -157,6 +170,52 @@ void G_Autoball_ResetBall( gentity_t *ball ) {
 	/* clients snap to the new spot instead of interpolating across the map */
 	ball->s.eFlags ^= EF_TELEPORT_BIT;
 	trap_LinkEntity( ball );
+}
+
+/*
+Applies changed g_autoball* cvars to every ball, once per change.
+*/
+void G_Autoball_RunFrame( void ) {
+	static int tuningStamp = -1;
+	static int bodyStamp = -1;
+	int newTuningStamp, newBodyStamp, count = 0;
+	qboolean rebuild;
+	gentity_t *ball = NULL;
+
+	newBodyStamp = g_autoballMass.modificationCount + g_autoballElasticity.modificationCount;
+	newTuningStamp = newBodyStamp + g_autoballImpactScale.modificationCount +
+		g_autoballVerticalScale.modificationCount + g_autoballLift.modificationCount;
+	if ( tuningStamp < 0 ) {
+		/* balls spawned this level already used the current values */
+		tuningStamp = newTuningStamp;
+		bodyStamp = newBodyStamp;
+		return;
+	}
+	if ( newTuningStamp == tuningStamp )
+		return;
+	rebuild = ( newBodyStamp != bodyStamp ) ? qtrue : qfalse;
+	tuningStamp = newTuningStamp;
+	bodyStamp = newBodyStamp;
+
+	while ( ( ball = G_Find( ball, FOFS( classname ), AUTOBALL_CLASSNAME ) ) != NULL ) {
+		G_Autoball_ApplyTuning( ball );
+		if ( rebuild && G_RallyPhysics_Enabled() ) {
+			vec3_t velocity;
+			VectorCopy( ball->s.pos.trDelta, velocity );
+			if ( G_RallyPhysics_CreateEntity( ball ) )
+				trap_RallyPhysicsResetBody( ball->s.number, ball->r.currentOrigin,
+					ball->r.currentAngles, velocity );
+		}
+		count++;
+	}
+	if ( count ) {
+		G_Printf( "autoball: tuning applied to %d ball(s): impact %.2f, vertical %.2f, lift %.2f, mass %d, elasticity %.2f\n",
+			count, Com_Clamp( 0.0f, 2.0f, g_autoballImpactScale.value ),
+			Com_Clamp( 0.0f, 1.0f, g_autoballVerticalScale.value ),
+			Com_Clamp( 0.0f, 0.9f, g_autoballLift.value ),
+			(int)Com_Clamp( 1.0f, 100000.0f, g_autoballMass.value ),
+			Com_Clamp( 0.0f, 1.0f, g_autoballElasticity.value ) );
+	}
 }
 
 /* G_FreeEntity does not know about Bullet, so the body must go first. */

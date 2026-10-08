@@ -151,6 +151,16 @@ void CG_BuildSolidList( void ) {
 			continue;
 		}
 
+		/* Autoball: the ball is simulated only on the server and drawn one
+		 * snapshot late, as a box on this side. Predicting the car against
+		 * that stale box makes the car bump into thin air and then snap back
+		 * when the server's sphere contact arrives. Let the server decide. */
+		if ( cent->nextState.eType == ET_SCRIPTED &&
+			( cent->nextState.generic1 & SCRIPTED_GENERIC1_NO_PREDICT ) &&
+			!cg_autoballPredict.integer ) {
+			continue;
+		}
+
 		if ( cent->nextState.solid ) {
 			cg_solidEntities[cg_numSolidEntities] = cent;
 			cg_numSolidEntities++;
