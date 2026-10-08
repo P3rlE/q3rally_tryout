@@ -1230,6 +1230,11 @@ void G_Ghost_AnnounceForClient( gentity_t *ent ) {
         return;
     }
 
+    /* Ghosts are only shown in Ghost Race; the route stays server-side for bots. */
+    if ( g_gametype.integer != GT_GHOST ) {
+        return;
+    }
+
     clientNum = ent - g_entities;
     if ( clientNum < 0 || clientNum >= MAX_CLIENTS || s_clientGhostTransferSent[clientNum] || s_clientGhostTransferPending[clientNum] ) {
         return;

@@ -10,6 +10,7 @@
 level_locals_t level;
 gentity_t g_entities[MAX_GENTITIES];
 vmCvar_t g_trackLength;
+vmCvar_t g_gametype;   /* base ghost transfer to clients only in GT_GHOST */
 vmCvar_t g_trackReversed;
 
 vec_t VectorNormalize( vec3_t vector ) {
