@@ -768,10 +768,14 @@ void G_ScriptedObject_TouchWithVelocity ( gentity_t *self, gentity_t *other, tra
 			VectorLengthSquared( objectImpulse ) > 0.0f &&
 			level.time >= self->ballDebugLogTime ) {
 			vec3_t ballVelocityAfter;
+			float carSpeed;
 			VectorMA( self->s.pos.trDelta, 1.0f / (float)self->mass, objectImpulse,
 				ballVelocityAfter );
-			G_Printf( "autoball: hit by %s  car %.0f km/h -> ball %.0f km/h (was %.0f)  up %.2f  impulse %.0f\n",
+			/* ps.velocity is what the HUD speedometer shows */
+			carSpeed = other->client ? VectorLength( other->client->ps.velocity ) : 0.0f;
+			G_Printf( "autoball: hit by %s  car %.0f km/h (%.0f mph), contact %.0f km/h -> ball %.0f km/h (was %.0f)  up %.2f  impulse %.0f\n",
 				other->client ? other->client->pers.netname : "?",
+				carSpeed / CP_M_2_QU * 3.6f, carSpeed / CP_M_2_QU * 2.23694f,
 				VectorLength( vehicleVelocity ) / CP_M_2_QU * 3.6f,
 				VectorLength( ballVelocityAfter ) / CP_M_2_QU * 3.6f,
 				VectorLength( self->s.pos.trDelta ) / CP_M_2_QU * 3.6f,
