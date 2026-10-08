@@ -2879,6 +2879,7 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/game/bg_wheel_forces.o \
   $(B)/$(BASEGAME)/game/g_active.o \
   $(B)/$(BASEGAME)/game/g_arenas.o \
+  $(B)/$(BASEGAME)/game/g_autoball.o \
   $(B)/$(BASEGAME)/game/g_bot.o \
   $(B)/$(BASEGAME)/game/g_botpath.o \
   $(B)/$(BASEGAME)/game/g_client.o \

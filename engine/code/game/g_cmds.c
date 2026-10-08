@@ -2230,6 +2230,19 @@ void ClientCommand( int clientNum ) {
 		Cmd_Notarget_f (ent);
 	else if (Q_stricmp (cmd, "noclip") == 0)
 		Cmd_Noclip_f (ent);
+	// Autoball prototype: test-ball commands, cheat-protected like noclip
+	else if (Q_stricmp (cmd, "ball_spawn") == 0) {
+		if ( CheatsOk( ent ) )
+			Cmd_BallSpawn_f (ent);
+	}
+	else if (Q_stricmp (cmd, "ball_reset") == 0) {
+		if ( CheatsOk( ent ) )
+			Cmd_BallReset_f (ent);
+	}
+	else if (Q_stricmp (cmd, "ball_remove") == 0) {
+		if ( CheatsOk( ent ) )
+			Cmd_BallRemove_f (ent);
+	}
 	else if (Q_stricmp (cmd, "kill") == 0)
 		Cmd_Kill_f (ent);
 	else if (Q_stricmp (cmd, "teamtask") == 0)

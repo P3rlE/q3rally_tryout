@@ -265,6 +265,15 @@ struct gentity_s {
 	float		spinningFriction;
 	float		vehicleImpactScale;
 	float		weaponImpactScale;
+	/* Autoball / ball-style scripted objects (Bullet backend) */
+	int			collisionShape;		/* rallyPhysicsShape_t */
+	float		ballRadius;			/* sphere radius in units, 0 = unused */
+	qboolean	neverSleep;			/* keep the body awake permanently */
+	float		maxSpeed;			/* linear speed cap in units/s, 0 = none */
+	float		vehicleLift;		/* minimum upward share of a car contact, 0..1 */
+	float		vehicleVerticalScale;	/* scales the upward share of a car contact, 1 = unchanged */
+	vec3_t		ballHome;			/* reset position (kick-off spot) */
+	int			ballDebugLogTime;	/* rate limit for g_autoballDebug */
 	vec3_t		*collisionHullVerts;
 	int		collisionHullVertCount;
 	vec3_t	collisionHullMins;
@@ -1075,7 +1084,24 @@ void G_RallyPhysics_RunFrame( void );
 qboolean G_RallyPhysics_Enabled( void );
 void G_ScriptedObject_ApplyWeaponImpact( gentity_t *target, gentity_t *inflictor,
 	gentity_t *attacker, const vec3_t direction, const vec3_t point, int damage );
+qboolean G_ParseScriptedObject( gentity_t *ent );
+void G_ApplyScriptedObjectMapProperties( gentity_t *ent );
+void G_ScriptedObject_FinishSpawn( gentity_t *ent );
 // END
+
+//
+// g_autoball.c
+//
+void SP_autoball_ball( gentity_t *ent );
+gentity_t *G_Autoball_SpawnBall( const vec3_t origin );
+void G_Autoball_ResetBall( gentity_t *ball );
+void G_Autoball_RemoveBall( gentity_t *ball );
+void Cmd_BallSpawn_f( gentity_t *ent );
+void Cmd_BallReset_f( gentity_t *ent );
+void Cmd_BallRemove_f( gentity_t *ent );
+void Svcmd_BallSpawnAt_f( void );
+void Svcmd_BallKick_f( void );
+void Svcmd_BallInfo_f( void );
 
 
 //
@@ -1300,6 +1326,7 @@ extern  vmCvar_t        g_derbyCollisionRearWeight;
 extern  vmCvar_t        g_derbyCollisionLog;
 extern  vmCvar_t        g_derbyHitFuelReward;
 extern  vmCvar_t        g_derbyHitNosReward;
+extern  vmCvar_t        g_autoballDebug;
 extern  vmCvar_t        g_derbyNoRamTime;
 extern  vmCvar_t        g_fuelKillReward;
 extern  vmCvar_t        g_useFuel;
@@ -1385,6 +1412,8 @@ void trap_RallyPhysicsVehicleContact( int entityNum, const vec3_t point,
 	float impactScale, vec3_t objectImpulse );
 void trap_RallyPhysicsApplyImpulse( int entityNum, const vec3_t point,
 	const vec3_t impulse );
+void trap_RallyPhysicsResetBody( int entityNum, const vec3_t origin,
+	const vec3_t angles, const vec3_t linearVelocity );
 // STONELANCE
 void	trap_TraceCapsule( trace_t *results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, int passEntityNum, int contentmask );
 // END

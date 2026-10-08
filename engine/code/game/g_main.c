@@ -165,6 +165,7 @@ vmCvar_t        g_derbyCollisionRearWeight;
 vmCvar_t        g_derbyCollisionLog;
 vmCvar_t        g_derbyHitFuelReward;
 vmCvar_t        g_derbyHitNosReward;
+vmCvar_t        g_autoballDebug;
 vmCvar_t        g_derbyNoRamTime;
 vmCvar_t  g_humanplayers;
 vmCvar_t        g_fuelKillReward;
@@ -373,6 +374,7 @@ static cvarTable_t		gameCvarTable[] = {
         { &g_derbyHitFuelReward, "g_derbyHitFuelReward", "2.0", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyHitNosReward, "g_derbyHitNosReward", "500", CVAR_ARCHIVE, 0, qfalse },
         { &g_derbyNoRamTime, "g_derbyNoRamTime", "45", CVAR_ARCHIVE, 0, qfalse },
+        { &g_autoballDebug, "g_autoballDebug", "0", 0, 0, qfalse },
         // END
 
         { &g_rankings, "g_rankings", "0", 0, 0, qfalse},

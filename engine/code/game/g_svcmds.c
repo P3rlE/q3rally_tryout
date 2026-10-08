@@ -475,6 +475,28 @@ qboolean	ConsoleCommand( void ) {
 		return qtrue;
 	}
 
+	// Autoball prototype test commands
+	if ( Q_stricmp (cmd, "ball_spawn_at") == 0 ) {
+		Svcmd_BallSpawnAt_f();
+		return qtrue;
+	}
+	if ( Q_stricmp (cmd, "ball_kick") == 0 ) {
+		Svcmd_BallKick_f();
+		return qtrue;
+	}
+	if ( Q_stricmp (cmd, "ball_info") == 0 ) {
+		Svcmd_BallInfo_f();
+		return qtrue;
+	}
+	if ( Q_stricmp (cmd, "ball_reset") == 0 ) {
+		Cmd_BallReset_f( NULL );
+		return qtrue;
+	}
+	if ( Q_stricmp (cmd, "ball_remove") == 0 ) {
+		Cmd_BallRemove_f( NULL );
+		return qtrue;
+	}
+
 	if ( Q_stricmp (cmd, "forceteam") == 0 ) {
 		Svcmd_ForceTeam_f();
 		return qtrue;
