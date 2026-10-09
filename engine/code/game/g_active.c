@@ -2282,6 +2282,7 @@ void ClientThink_real( gentity_t *ent ) {
 	/* Convert this Pmove's strongest rigid-body contact into a single Derby
 	 * damage event, weighted by the struck zone on each vehicle. */
 	G_ApplyDerbyVehicleCollisionDamage( ent, &pm.vehicleCollision );
+	G_Autoball_VehicleContact( ent, &pm.vehicleCollision );
 	if ( g_derbyCollisionLog.integer && g_gametype.integer == GT_DERBY &&
 		pm.collisionDetected && !pm.vehicleCollision.valid ) {
 		G_Printf( "Derby collision detected for %d but no body-body impulse was recorded\n",
@@ -2427,6 +2428,12 @@ void ClientThink_real( gentity_t *ent ) {
 			nextWave = ( ( client->respawnTime + waveMs - 1 ) / waveMs ) * waveMs;
 			canRespawn = ( level.time >= nextWave );
 			kothWaveRespawn = qtrue;
+		}
+
+		// Autoball: demolished cars come back by themselves after 3 seconds
+		if ( G_Autoball_ForceRespawn( ent ) ) {
+			ClientRespawn( ent );
+			return;
 		}
 
 		// wait for the attack button to be pressed

@@ -50,6 +50,22 @@ body; the ball keeps its position and velocity.
 #define AUTOBALL_SPAWN_DISTANCE		400.0f
 #define AUTOBALL_MAX_TEST_BALLS		4
 
+static gentity_t *G_Autoball_MainBall( void );
+
+static void G_Autoball_ClearTouches( gentity_t *ball ) {
+	int i;
+
+	ball->ballLastToucher = -1;
+	ball->ballLastTouchTime = 0;
+	for ( i = 0; i < 4; i++ ) {
+		ball->ballTouchClient[i] = -1;
+		ball->ballTouchTime[i] = 0;
+	}
+	ball->ballPendingClient = -1;
+	ball->ballPendingTime = 0;
+	ball->ballPendingThreat = TEAM_FREE;
+}
+
 /* The five values players tune most, taken from the g_autoball* cvars. */
 static void G_Autoball_ApplyTuning( gentity_t *ent ) {
 	ent->vehicleImpactScale = Com_Clamp( 0.0f, 2.0f, g_autoballImpactScale.value );
@@ -85,8 +101,7 @@ static void G_Autoball_ApplyDefaults( gentity_t *ent ) {
 	ent->health = 0;
 	ent->maxHealth = 0;
 	ent->takedamage = qfalse;
-	ent->ballLastToucher = -1;
-	ent->ballLastTouchTime = 0;
+	G_Autoball_ClearTouches( ent );
 	/* impact scale 1.6, vertical scale 0.45 (contacts point 35-45 deg up,
 	 * this flattens them to ~20 deg), lift 0.15, mass 400, elasticity 0.6 */
 	G_Autoball_ApplyTuning( ent );
@@ -172,8 +187,7 @@ void G_Autoball_ResetBall( gentity_t *ball ) {
 	ball->physicsAccumulatorMsec = 0;
 	ball->physicsQuietSince = -1;
 	ball->physicsSleeping = qfalse;
-	ball->ballLastToucher = -1;
-	ball->ballLastTouchTime = 0;
+	G_Autoball_ClearTouches( ball );
 	/* clients snap to the new spot instead of interpolating across the map */
 	ball->s.eFlags ^= EF_TELEPORT_BIT;
 	trap_LinkEntity( ball );
@@ -386,6 +400,56 @@ void Svcmd_BallKick_f( void ) {
 		VectorLength( velocity ) / CP_M_2_QU * 3.6f );
 }
 
+/* ball_turbo <client> <ms>: lights that car's turbo (for demolition tests) */
+void Svcmd_BallTurbo_f( void ) {
+	char buffer[MAX_TOKEN_CHARS];
+	gentity_t *ent;
+	int clientNum, ms;
+
+	if ( trap_Argc() < 3 ) {
+		G_Printf( "usage: ball_turbo <clientnum> <ms>\n" );
+		return;
+	}
+	trap_Argv( 1, buffer, sizeof( buffer ) );
+	clientNum = atoi( buffer );
+	trap_Argv( 2, buffer, sizeof( buffer ) );
+	ms = atoi( buffer );
+	if ( clientNum < 0 || clientNum >= level.maxclients || ms <= 0 )
+		return;
+	ent = &g_entities[clientNum];
+	if ( !ent->inuse || !ent->client )
+		return;
+	ent->client->ps.powerups[PW_TURBO] = level.time + ms;
+	G_Printf( "ball_turbo: %s burns turbo for %i ms\n", ent->client->pers.netname, ms );
+}
+
+/* ball_touch <client>: counts as a touch of the match ball by that client
+   (for testing shot/save/assist without driving) */
+void Svcmd_BallTouch_f( void ) {
+	char buffer[MAX_TOKEN_CHARS];
+	gentity_t *ball, *ent;
+	int clientNum;
+
+	if ( trap_Argc() < 2 ) {
+		G_Printf( "usage: ball_touch <clientnum>\n" );
+		return;
+	}
+	trap_Argv( 1, buffer, sizeof( buffer ) );
+	clientNum = atoi( buffer );
+	ball = G_Autoball_MainBall();
+	if ( !ball || clientNum < 0 || clientNum >= level.maxclients ) {
+		G_Printf( "ball_touch: no ball or bad client\n" );
+		return;
+	}
+	ent = &g_entities[clientNum];
+	if ( !ent->inuse || !ent->client ) {
+		G_Printf( "ball_touch: client %i not in game\n", clientNum );
+		return;
+	}
+	G_Autoball_BallTouched( ball, ent );
+	G_Printf( "ball_touch: %s touched the ball\n", ent->client->pers.netname );
+}
+
 void Svcmd_BallInfo_f( void ) {
 	gentity_t *ball = NULL;
 	int count = 0;
@@ -433,6 +497,22 @@ end while the ball is in the air or a goal is being celebrated.
 #define AUTOBALL_GOAL_POINTS		100		/* personal score for a goal */
 #define AUTOBALL_SCORER_WINDOW		10000	/* a touch older than this scores no one */
 #define AUTOBALL_AIRBORNE_HEIGHT	40.0f	/* above its rest height the ball is "in play" */
+#define AUTOBALL_ASSIST_POINTS		50
+#define AUTOBALL_SAVE_POINTS		50
+#define AUTOBALL_SHOT_POINTS		20
+#define AUTOBALL_TOUCH_POINTS		2
+#define AUTOBALL_ASSIST_WINDOW		5000	/* teammate touch this close before the goal assists */
+#define AUTOBALL_PREDICT_MSEC		3000	/* "heading for a goal" looks this far ahead */
+#define AUTOBALL_PREDICT_STEP		0.05f
+#define AUTOBALL_TOUCH_POINT_DELAY	2000	/* touch points at most this often per player */
+#define AUTOBALL_SHOT_DELAY			2000
+#define AUTOBALL_SAVE_DELAY			1000
+#define AUTOBALL_DEMO_TURBO_BONUS	1000	/* ms of turbo for a demolition */
+#define AUTOBALL_DEMO_RESPAWN		3000
+#define AUTOBALL_GOAL_PUSH_RADIUS	900.0f	/* goal explosion pushes cars within this */
+#define AUTOBALL_GOAL_PUSH_SPEED	900.0f	/* units/s at the centre, fading to 0 */
+
+static gentity_t *G_Autoball_GoalContaining( const vec3_t point );
 
 static int G_Autoball_OpposingTeam( int team ) {
 	return team == TEAM_RED ? TEAM_BLUE : TEAM_RED;
@@ -533,13 +613,257 @@ void G_Autoball_InitGame( void ) {
 	G_Autoball_Publish();
 }
 
+/*
+================
+G_Autoball_PredictGoal
+
+Where is the ball going? Flies it ballistically for AUTOBALL_PREDICT_MSEC with
+simple floor bounces and stops at map geometry. Returns the team that DEFENDS
+the goal it would enter, or TEAM_FREE. Cars and other balls are ignored.
+================
+*/
+static int G_Autoball_PredictGoal( gentity_t *ball, const vec3_t origin, const vec3_t velocity ) {
+	vec3_t pos, vel, next;
+	trace_t trace;
+	gentity_t *goal;
+	float t, restZ;
+
+	VectorCopy( origin, pos );
+	VectorCopy( velocity, vel );
+	restZ = ball->ballHome[2];
+	for ( t = 0.0f; t < AUTOBALL_PREDICT_MSEC * 0.001f; t += AUTOBALL_PREDICT_STEP ) {
+		vel[2] -= g_gravity.value * AUTOBALL_PREDICT_STEP;
+		VectorMA( pos, AUTOBALL_PREDICT_STEP, vel, next );
+		if ( next[2] < restZ ) {
+			next[2] = restZ;
+			if ( vel[2] < 0.0f )
+				vel[2] = -vel[2] * ball->elasticity;
+		}
+		goal = G_Autoball_GoalContaining( next );
+		if ( goal )
+			return goal->count;
+		trap_Trace( &trace, pos, NULL, NULL, next, ball->s.number, MASK_SOLID );
+		if ( trace.fraction < 1.0f || trace.startsolid )
+			return TEAM_FREE;		/* a wall, post or ramp is in the way */
+		VectorCopy( next, pos );
+	}
+	return TEAM_FREE;
+}
+
 void G_Autoball_BallTouched( gentity_t *ball, gentity_t *other ) {
+	int i, client;
+
 	if ( !ball || !other || !other->client )
 		return;
 	if ( Q_stricmp( ball->classname, AUTOBALL_CLASSNAME ) )
 		return;
-	ball->ballLastToucher = other->s.number;
+	client = other->s.number;
+	ball->ballLastToucher = client;
 	ball->ballLastTouchTime = level.time;
+
+	/* distinct touchers, newest first; a repeat touch only refreshes the time */
+	if ( ball->ballTouchClient[0] != client ) {
+		for ( i = 3; i > 0; i-- ) {
+			ball->ballTouchClient[i] = ball->ballTouchClient[i - 1];
+			ball->ballTouchTime[i] = ball->ballTouchTime[i - 1];
+		}
+		ball->ballTouchClient[0] = client;
+	}
+	ball->ballTouchTime[0] = level.time;
+
+	/* Shot/save are judged next frame once Bullet has the new velocity; keep
+	 * the threat from before the FIRST touch of a dribble. */
+	if ( g_gametype.integer == GT_AUTOBALL && level.autoballState == AUTOBALL_STATE_LIVE &&
+		ball->ballPendingClient != client ) {
+		ball->ballPendingClient = client;
+		ball->ballPendingThreat = G_Autoball_PredictGoal( ball, ball->r.currentOrigin, ball->s.pos.trDelta );
+	}
+	ball->ballPendingTime = level.time;
+}
+
+/* Contact sound, louder material for harder hits. */
+void G_Autoball_BallHit( gentity_t *ball, gentity_t *other, const vec3_t impulse ) {
+	float deltaV;
+
+	if ( !ball || Q_stricmp( ball->classname, AUTOBALL_CLASSNAME ) || ball->mass <= 0 )
+		return;
+	if ( level.time < ball->ballHitSoundTime )
+		return;
+	deltaV = VectorLength( impulse ) / (float)ball->mass;
+	if ( deltaV < 60.0f )
+		return;
+	G_AddEvent( ball, EV_GENERAL_SOUND, G_SoundIndex( deltaV > 700.0f ?
+		"sound/plastic/plastichit.ogg" : "sound/plastic/conehit.ogg" ) );
+	ball->ballHitSoundTime = level.time + 120;
+}
+
+static void G_Autoball_Award( gentity_t *ent, int points, int persistant ) {
+	if ( !ent || !ent->client )
+		return;
+	AddScore( ent, ent->r.currentOrigin, points );
+	if ( persistant >= 0 )
+		ent->client->ps.persistant[persistant]++;	/* reward sound and medal on the client */
+}
+
+/* Judges the pending touch now that the ball flies with its new velocity. */
+static void G_Autoball_JudgeTouch( gentity_t *ball ) {
+	gentity_t *ent;
+	gclient_t *client;
+	int team, opponent, threat;
+
+	if ( ball->ballPendingClient < 0 || level.time <= ball->ballPendingTime )
+		return;
+	ent = &g_entities[ball->ballPendingClient];
+	ball->ballPendingClient = -1;
+	if ( !ent->inuse || !ent->client || ent->client->pers.connected != CON_CONNECTED )
+		return;
+	client = ent->client;
+	team = client->sess.sessionTeam;
+	if ( team != TEAM_RED && team != TEAM_BLUE )
+		return;
+	opponent = G_Autoball_OpposingTeam( team );
+	threat = G_Autoball_PredictGoal( ball, ball->r.currentOrigin, ball->s.pos.trDelta );
+	if ( g_autoballDebug.integer ) {
+		G_Printf( "autoball: touch by %s (%s): heading for %s goal before, %s goal after\n",
+			client->pers.netname, TeamName( team ),
+			ball->ballPendingThreat == TEAM_FREE ? "no" : TeamName( ball->ballPendingThreat ),
+			threat == TEAM_FREE ? "no" : TeamName( threat ) );
+	}
+
+	if ( ball->ballPendingThreat == team && threat != team &&
+		level.time - client->pers.autoballSaveTime >= AUTOBALL_SAVE_DELAY ) {
+		client->pers.autoballSaveTime = level.time;
+		client->pers.autoballSaves++;
+		G_Autoball_Award( ent, AUTOBALL_SAVE_POINTS, PERS_DEFEND_COUNT );
+		trap_SendServerCommand( -1, va( "print \"%s^7 saves!\n\"", client->pers.netname ) );
+		return;
+	}
+	if ( threat == opponent && ball->ballPendingThreat != opponent &&
+		level.time - client->pers.autoballShotTime >= AUTOBALL_SHOT_DELAY ) {
+		client->pers.autoballShotTime = level.time;
+		client->pers.autoballShots++;
+		G_Autoball_Award( ent, AUTOBALL_SHOT_POINTS, -1 );
+		return;
+	}
+	if ( level.time - client->pers.autoballTouchPointTime >= AUTOBALL_TOUCH_POINT_DELAY ) {
+		client->pers.autoballTouchPointTime = level.time;
+		G_Autoball_Award( ent, AUTOBALL_TOUCH_POINTS, -1 );
+	}
+}
+
+static void G_Autoball_PushCar( gentity_t *ent, const vec3_t deltaV ) {
+	car_t *car;
+	int i;
+
+	car = &ent->client->car;
+	VectorAdd( car->sBody.v, deltaV, car->sBody.v );
+	VectorAdd( car->tBody.v, deltaV, car->tBody.v );
+	for ( i = 0; i < NUM_CAR_POINTS; i++ ) {
+		VectorAdd( car->sPoints[i].v, deltaV, car->sPoints[i].v );
+		VectorAdd( car->tPoints[i].v, deltaV, car->tPoints[i].v );
+	}
+	VectorAdd( ent->client->ps.velocity, deltaV, ent->client->ps.velocity );
+}
+
+/* The goal explosion shoves nearby cars away from the ball. */
+static void G_Autoball_GoalPush( const vec3_t origin ) {
+	int i;
+
+	for ( i = 0; i < level.maxclients; i++ ) {
+		gentity_t *ent = &g_entities[i];
+		vec3_t dir;
+		float dist, speed;
+
+		if ( !ent->inuse || !ent->client || ent->client->ps.pm_type == PM_DEAD ||
+			ent->client->sess.sessionTeam == TEAM_SPECTATOR )
+			continue;
+		VectorSubtract( ent->client->ps.origin, origin, dir );
+		dist = VectorNormalize( dir );
+		if ( dist > AUTOBALL_GOAL_PUSH_RADIUS )
+			continue;
+		speed = AUTOBALL_GOAL_PUSH_SPEED * ( 1.0f - dist / AUTOBALL_GOAL_PUSH_RADIUS );
+		dir[2] += 0.35f;	/* a little lift looks like a blast */
+		VectorNormalize( dir );
+		VectorScale( dir, speed, dir );
+		G_Autoball_PushCar( ent, dir );
+	}
+}
+
+/* A rammer on turbo above g_autoballDemoSpeed destroys an opponent. */
+void G_Autoball_VehicleContact( gentity_t *self, const vehicleCollisionContact_t *contact ) {
+	gentity_t *other, *rammer, *victim;
+	float minSpeed;
+	int turbo;
+
+	if ( g_gametype.integer != GT_AUTOBALL || level.autoballState != AUTOBALL_STATE_LIVE ||
+		g_autoballDemoSpeed.value <= 0.0f || !self || !self->client || !contact ||
+		!contact->valid || contact->otherEnt < 0 || contact->otherEnt >= MAX_CLIENTS ||
+		contact->otherEnt == self->s.number )
+		return;
+	other = &g_entities[contact->otherEnt];
+	if ( !other->inuse || !other->client ||
+		other->client->sess.sessionTeam == self->client->sess.sessionTeam )
+		return;
+
+	minSpeed = g_autoballDemoSpeed.value * CP_M_2_QU / 3.6f;
+	rammer = victim = NULL;
+	if ( contact->selfWasRamming ) {
+		rammer = self;
+		victim = other;
+	} else if ( contact->otherWasRamming ) {
+		rammer = other;
+		victim = self;
+	}
+	if ( !rammer || rammer->client->ps.pm_type == PM_DEAD || rammer->health <= 0 ||
+		victim->client->ps.pm_type == PM_DEAD || victim->health <= 0 )
+		return;
+	if ( g_autoballDebug.integer && level.time >= level.autoballRamLogTime ) {
+		level.autoballRamLogTime = level.time + 250;
+		G_Printf( "autoball: %s rams %s at %.0f km/h, turbo %s (needs %.0f km/h + turbo)\n",
+			rammer->client->pers.netname, victim->client->pers.netname,
+			VectorLength( rammer->client->ps.velocity ) / CP_M_2_QU * 3.6f,
+			rammer->client->ps.powerups[PW_TURBO] > level.time ? "on" : "off",
+			g_autoballDemoSpeed.value );
+	}
+	if ( rammer->client->ps.powerups[PW_TURBO] <= level.time )
+		return;		/* turbo must be burning */
+	if ( VectorLength( rammer->client->ps.velocity ) < minSpeed )
+		return;
+
+	rammer->client->pers.autoballDemos++;
+	G_Damage( victim, rammer, rammer, NULL, NULL, 100000, DAMAGE_NO_PROTECTION, MOD_AUTOBALL_DEMOLITION );
+
+	/* a second of extra turbo for the demolition, capped like a pickup */
+	turbo = rammer->client->ps.powerups[PW_TURBO] - level.time + AUTOBALL_DEMO_TURBO_BONUS;
+	if ( turbo > RALLY_TURBO_MAX_MSEC )
+		turbo = RALLY_TURBO_MAX_MSEC;
+	rammer->client->ps.powerups[PW_TURBO] = level.time + turbo;
+}
+
+/* Collisions and stray weapon fire do not hurt cars in Autoball. */
+qboolean G_Autoball_BlockDamage( gentity_t *targ, int mod ) {
+	if ( g_gametype.integer != GT_AUTOBALL || !targ || !targ->client )
+		return qfalse;
+	switch ( mod ) {
+	case MOD_AUTOBALL_DEMOLITION:
+	case MOD_TRIGGER_HURT:
+	case MOD_LAVA:
+	case MOD_SLIME:
+	case MOD_WATER:
+	case MOD_CRUSH:
+	case MOD_TELEFRAG:
+	case MOD_SUICIDE:
+	case MOD_FALLING:
+		return qfalse;
+	default:
+		return g_autoballWeapons.integer ? qfalse : qtrue;
+	}
+}
+
+qboolean G_Autoball_ForceRespawn( gentity_t *ent ) {
+	if ( g_gametype.integer != GT_AUTOBALL || !ent || !ent->client )
+		return qfalse;
+	return ( level.time >= ent->client->respawnTime - 1700 + AUTOBALL_DEMO_RESPAWN ) ? qtrue : qfalse;
 }
 
 void G_Autoball_ClientSpawn( gentity_t *ent ) {
@@ -664,8 +988,33 @@ static void G_Autoball_ScoreGoal( gentity_t *ball, gentity_t *goal ) {
 	level.autoballGoalSpeed = (int)( VectorLength( ball->s.pos.trDelta ) / CP_M_2_QU * 3.6f + 0.5f );
 
 	AddTeamScore( ball->r.currentOrigin, scoringTeam, 1 );
-	if ( scorer && !ownGoal )
+	if ( scorer && !ownGoal ) {
+		int i;
+
+		scorer->client->pers.autoballGoals++;
 		AddScore( scorer, ball->r.currentOrigin, AUTOBALL_GOAL_POINTS );
+		/* newest teammate touch before the scorer's, within the window */
+		for ( i = 0; i < 4; i++ ) {
+			gentity_t *mate;
+			int num = ball->ballTouchClient[i];
+
+			if ( num < 0 || num == scorer->s.number )
+				continue;
+			if ( level.time - ball->ballTouchTime[i] > AUTOBALL_ASSIST_WINDOW )
+				break;
+			mate = &g_entities[num];
+			if ( !mate->inuse || !mate->client || mate->client->pers.connected != CON_CONNECTED ||
+				mate->client->sess.sessionTeam != scoringTeam )
+				continue;
+			mate->client->pers.autoballAssists++;
+			G_Autoball_Award( mate, AUTOBALL_ASSIST_POINTS, PERS_ASSIST_COUNT );
+			trap_SendServerCommand( -1, va( "print \"Assist: %s^7\n\"", mate->client->pers.netname ) );
+			break;
+		}
+	}
+	ball->ballPendingClient = -1;	/* the goal itself is the result of that touch */
+	G_Autoball_GoalPush( ball->r.currentOrigin );
+	Rally_Sound( ball, EV_GLOBAL_SOUND, CHAN_AUTO, G_SoundIndex( "sound/world/crowds.ogg" ) );
 	CalculateRanks();
 
 	te = G_TempEntity( ball->r.currentOrigin, EV_EXPLOSION );
@@ -738,6 +1087,8 @@ static void G_Autoball_MatchFrame( void ) {
 		goal = G_Autoball_GoalContaining( ball->r.currentOrigin );
 		if ( goal )
 			G_Autoball_ScoreGoal( ball, goal );
+		else
+			G_Autoball_JudgeTouch( ball );
 		break;
 
 	case AUTOBALL_STATE_GOAL:

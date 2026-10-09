@@ -69,7 +69,8 @@ int Pickup_Powerup( gentity_t *ent, gentity_t *other ) {
 		} else {
 			turboRemaining = 0;
 		}
-		turboRemaining += RALLY_TURBO_ITEM_MSEC;
+		/* "count" on a rally_item_turbo is the amount in milliseconds */
+		turboRemaining += ent->count > 0 ? ent->count : RALLY_TURBO_ITEM_MSEC;
 		if ( turboRemaining > RALLY_TURBO_MAX_MSEC ) {
 			turboRemaining = RALLY_TURBO_MAX_MSEC;
 		}

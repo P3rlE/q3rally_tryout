@@ -5,7 +5,7 @@ Generates baseq3r/maps/q3r_autoball_test.map, the Autoball phase-1 test arena.
 Closed box field with two goals, 45-degree ramps along the boards (stand-ins
 for quarter pipes), a sky ceiling, an autoball_ball on the centre spot, two
 autoball_goal volumes, team kick-off and respawn spots (red defends -X, blue
-defends +X), eight deathmatch spawns and four turbo pickups. Dimensions follow the design doc and
+defends +X), eight deathmatch spawns, four big and six small turbo pickups. Dimensions follow the design doc and
 are meant to be tweaked here, then recompiled in Q3RallyRadiant / q3map2:
 
     q3map2 -meta maps/q3r_autoball_test.map
@@ -206,10 +206,16 @@ def point_entities():
         for y in (-900, -300, 300, 900):
             ents.append(entity([("classname", "info_player_deathmatch"),
                                 ("origin", f"{sx * 1800} {y} 48"), ("angle", str(angle))]))
+    # big turbo pads in the corners: 5 s, back after 10 s
     for sx in (-1, 1):
         for sy in (-1, 1):
             ents.append(entity([("classname", "rally_item_turbo"),
-                                ("origin", f"{sx * (HALF_X - 360)} {sy * (HALF_Y - 360)} 48")]))
+                                ("origin", f"{sx * (HALF_X - 360)} {sy * (HALF_Y - 360)} 48"),
+                                ("count", "5000"), ("wait", "10")]))
+    # small ones on the centre line and the halves: 1.5 s, back after 4 s
+    for x, y in ((0, 1300), (0, -1300), (-1280, 1240), (1280, 1240), (-1280, -1240), (1280, -1240)):
+        ents.append(entity([("classname", "rally_item_turbo"), ("origin", f"{x} {y} 48"),
+                            ("count", "1500"), ("wait", "4")]))
     for x in (-1600, 0, 1600):
         for y in (-1000, 0, 1000):
             ents.append(entity([("classname", "light"), ("origin", f"{x} {y} 760"), ("light", "1400")]))

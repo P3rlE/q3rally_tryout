@@ -761,6 +761,7 @@ void G_ScriptedObject_TouchWithVelocity ( gentity_t *self, gentity_t *other, tra
 		}
 		G_ScriptedObject_ApplyVehicleCounterImpulse( other, objectImpulse,
 			carDeltaVelocity );
+		G_Autoball_BallHit( self, other, objectImpulse );
 		if ( other->client )
 			VectorCopy( other->client->car.sBody.v, carVelocityAfter );
 		else

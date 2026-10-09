@@ -175,6 +175,7 @@ vmCvar_t        g_autoballKickoffDelay;
 vmCvar_t        g_autoballGoalDelay;
 vmCvar_t        g_autoballStartTurbo;
 vmCvar_t        g_autoballWeapons;
+vmCvar_t        g_autoballDemoSpeed;
 vmCvar_t        g_derbyNoRamTime;
 vmCvar_t  g_humanplayers;
 vmCvar_t        g_fuelKillReward;
@@ -393,6 +394,7 @@ static cvarTable_t		gameCvarTable[] = {
         { &g_autoballGoalDelay, "g_autoballGoalDelay", "4", CVAR_ARCHIVE, 0, qfalse },
         { &g_autoballStartTurbo, "g_autoballStartTurbo", "5000", CVAR_ARCHIVE, 0, qfalse },
         { &g_autoballWeapons, "g_autoballWeapons", "0", CVAR_ARCHIVE | CVAR_LATCH, 0, qfalse },
+        { &g_autoballDemoSpeed, "g_autoballDemoSpeed", "110", CVAR_ARCHIVE, 0, qfalse },
         // END
 
         { &g_rankings, "g_rankings", "0", 0, 0, qfalse},

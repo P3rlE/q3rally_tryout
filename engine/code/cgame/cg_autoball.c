@@ -360,6 +360,35 @@ static void CG_Autoball_DrawIndicator( void ) {
 	CG_PopScreenPlacement();
 }
 
+/*
+================
+CG_Autoball_BallShadow
+
+Dark disc straight below the ball, smaller and fainter the higher it flies,
+so players can judge where an airborne ball will land.
+================
+*/
+#define AUTOBALL_SHADOW_RANGE	1600.0f
+
+void CG_Autoball_BallShadow( centity_t *cent ) {
+	trace_t trace;
+	vec3_t end;
+	float height, frac;
+
+	if ( !cgs.media.shadowMarkShader )
+		return;
+	VectorCopy( cent->lerpOrigin, end );
+	end[2] -= AUTOBALL_SHADOW_RANGE;
+	CG_Trace( &trace, cent->lerpOrigin, NULL, NULL, end, cent->currentState.number, MASK_SOLID );
+	if ( trace.fraction >= 1.0f || trace.startsolid )
+		return;
+	height = trace.fraction * AUTOBALL_SHADOW_RANGE;
+	frac = 1.0f - height / AUTOBALL_SHADOW_RANGE;
+	CG_ImpactMark( cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal, 0,
+		1.0f, 1.0f, 1.0f, 0.35f + 0.5f * frac, qfalse,
+		AUTOBALL_BALL_RADIUS * ( 0.6f + 0.5f * frac ), qtrue );
+}
+
 void CG_Autoball_Draw2D( void ) {
 	if ( !cg.snap || cg.showScores )
 		return;

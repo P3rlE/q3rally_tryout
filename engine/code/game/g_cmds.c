@@ -184,6 +184,23 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 		trap_SendServerCommand( ent-g_entities,
 			va( "derbyIntegrity %i%s", j, string ) );
 	}
+
+	/* Autoball stats ride in their own command, like the Derby integrity,
+	   so the `scores` row format stays unchanged. */
+	if ( g_gametype.integer == GT_AUTOBALL ) {
+		string[0] = '\0';
+		stringlength = 0;
+		for ( j = 0; j < i; j++ ) {
+			cl = &level.clients[level.sortedClients[j]];
+			Com_sprintf( entry, sizeof(entry), " %i %i %i %i %i %i", level.sortedClients[j],
+				cl->pers.autoballGoals, cl->pers.autoballAssists, cl->pers.autoballSaves,
+				cl->pers.autoballShots, cl->pers.autoballDemos );
+			if ( stringlength + strlen(entry) >= sizeof(string) ) break;
+			strcpy( string + stringlength, entry );
+			stringlength += strlen(entry);
+		}
+		trap_SendServerCommand( ent-g_entities, va( "abStats %i%s", j, string ) );
+	}
 }
 
 

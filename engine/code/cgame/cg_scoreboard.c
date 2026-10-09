@@ -78,6 +78,10 @@ typedef enum {
     SBCOL_KOTH_HILL_KILLS,
     SBCOL_KOTH_CONTEST_TIME,
     SBCOL_KOTH_HOLD_TIME,
+    SBCOL_AB_GOALS,      /* Autoball: goals */
+    SBCOL_AB_ASSISTS,    /* Autoball: assists */
+    SBCOL_AB_SAVES,      /* Autoball: saves */
+    SBCOL_AB_SHOTS,      /* Autoball: shots on goal */
     SBCOL_MAX
 } sbColumn_t;
 
@@ -326,6 +330,35 @@ static void CG_InitScoreboardColumns(void) {
         columns[SBCOL_KOTH_HOLD_TIME].visible = qtrue;
     }
 
+    /* Autoball: goals, assists, saves and shots, always visible. Compact
+     * cells keep the table inside the 640px canvas with the status column. */
+    if (cgs.gametype == GT_AUTOBALL) {
+        columns[SBCOL_RANK].width = 42;
+        columns[SBCOL_AVATAR].width = 34;
+        columns[SBCOL_NAME].width = 140;
+        columns[SBCOL_SCORE].width = 56;
+
+        columns[SBCOL_AB_GOALS].type    = SBCOL_AB_GOALS;
+        columns[SBCOL_AB_GOALS].width   = 42;
+        columns[SBCOL_AB_GOALS].header  = "G";
+        columns[SBCOL_AB_GOALS].visible = qtrue;
+
+        columns[SBCOL_AB_ASSISTS].type    = SBCOL_AB_ASSISTS;
+        columns[SBCOL_AB_ASSISTS].width   = 42;
+        columns[SBCOL_AB_ASSISTS].header  = "A";
+        columns[SBCOL_AB_ASSISTS].visible = qtrue;
+
+        columns[SBCOL_AB_SAVES].type    = SBCOL_AB_SAVES;
+        columns[SBCOL_AB_SAVES].width   = 42;
+        columns[SBCOL_AB_SAVES].header  = "SV";
+        columns[SBCOL_AB_SAVES].visible = qtrue;
+
+        columns[SBCOL_AB_SHOTS].type    = SBCOL_AB_SHOTS;
+        columns[SBCOL_AB_SHOTS].width   = 42;
+        columns[SBCOL_AB_SHOTS].header  = "SH";
+        columns[SBCOL_AB_SHOTS].visible = qtrue;
+    }
+
     /* Status column only in intermission - no ping column */
     if (cg.predictedPlayerState.pm_type == PM_INTERMISSION &&
         cgs.gametype != GT_KOTH) {
@@ -485,6 +518,10 @@ static void CG_DrawModernHeader(int y, float fade) {
             case SBCOL_KOTH_HILL_KILLS:
             case SBCOL_KOTH_CONTEST_TIME:
             case SBCOL_KOTH_HOLD_TIME:
+            case SBCOL_AB_GOALS:
+            case SBCOL_AB_ASSISTS:
+            case SBCOL_AB_SAVES:
+            case SBCOL_AB_SHOTS:
                 /* Center-aligned columns */
                 CG_DrawModernText(columns[i].x,
                                  y + (MODERN_SB_HEADER_HEIGHT - (int)(24 * MODERN_SB_HEADING_SCALE)) / 2,
@@ -929,6 +966,22 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
                 CG_DrawModernText(x, y, "WAIT", 1, width, textColor, qfalse);
             } else {
                 CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
+            }
+            break;
+
+        case SBCOL_AB_GOALS:
+        case SBCOL_AB_ASSISTS:
+        case SBCOL_AB_SAVES:
+        case SBCOL_AB_SHOTS:
+            if (ci->team == TEAM_SPECTATOR) {
+                CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
+            } else {
+                int value = colType == SBCOL_AB_GOALS ? score->autoballGoals :
+                            colType == SBCOL_AB_ASSISTS ? score->autoballAssists :
+                            colType == SBCOL_AB_SAVES ? score->autoballSaves :
+                            score->autoballShots;
+                Com_sprintf(buffer, sizeof(buffer), "%d", value);
+                CG_DrawModernText(x, y, buffer, 1, width, textColor, qfalse);
             }
             break;
 

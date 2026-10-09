@@ -519,6 +519,12 @@ typedef struct {
 				int				kothContestTimeMs;
 				int				kothHoldTimeMs;
 				int				rankTier;
+	/* Autoball, from the "abStats" command */
+	int				autoballGoals;
+	int				autoballAssists;
+	int				autoballSaves;
+	int				autoballShots;
+	int				autoballDemos;
 } score_t;
 
 // each client has an associated clientInfo_t
@@ -1761,6 +1767,7 @@ void CG_Autoball_FreezeCommand( usercmd_t *cmd );
 void CG_Autoball_ToggleCam_f( void );
 void CG_Autoball_ApplyBallCam( void );
 void CG_Autoball_Draw2D( void );
+void CG_Autoball_BallShadow( centity_t *cent );
 extern	vmCvar_t		cg_minSkidLength;
 extern	vmCvar_t		cg_controlMode;
 extern	vmCvar_t		cg_manualShift;

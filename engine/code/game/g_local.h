@@ -275,6 +275,12 @@ struct gentity_s {
 	vec3_t		ballHome;			/* reset position (kick-off spot) */
 	int			ballLastToucher;	/* client number of the last car touch, -1 = none */
 	int			ballLastTouchTime;	/* level.time of that touch */
+	int			ballTouchClient[4];	/* recent distinct touchers, newest first, -1 = empty */
+	int			ballTouchTime[4];
+	int			ballPendingClient;	/* touch whose shot/save result is judged next frame */
+	int			ballPendingTime;
+	int			ballPendingThreat;	/* goal (defending team) the ball was heading for before it */
+	int			ballHitSoundTime;
 	int			ballDebugLogTime;	/* rate limit for g_autoballDebug */
 	vec3_t		*collisionHullVerts;
 	int		collisionHullVertCount;
@@ -459,6 +465,15 @@ typedef struct {
         qboolean        profileMatchOutcomeRecorded;   // win/loss scoring already processed for this match
         char            uuid[PROFILE_MAX_UUID];         // cl_uuid aus dem Userinfo; leer wenn kein UUID-Client
 // END
+	// Autoball match stats and rate limits (survive respawns, reset per map)
+	int			autoballGoals;
+	int			autoballAssists;
+	int			autoballSaves;
+	int			autoballShots;
+	int			autoballDemos;
+	int			autoballTouchPointTime;	// last time a ball touch earned points
+	int			autoballShotTime;		// last shot award
+	int			autoballSaveTime;		// last save award
 } clientPersistant_t;
 
 
@@ -624,6 +639,7 @@ typedef struct {
 	int			autoballScorer;			// client who scored it, -1 = none / own goal
 	int			autoballGoalSpeed;		// ball speed at the goal in km/h
 	int			autoballPublished;		// ball number last sent to clients
+	int			autoballRamLogTime;		// g_autoballDebug rate limit
 	int			kothTeamHoldTimeMs[TEAM_NUM_TEAMS];
 	qboolean	kothMapInvalid;
 // STONELANCE
@@ -1115,9 +1131,15 @@ void Cmd_BallRemove_f( gentity_t *ent );
 void Svcmd_BallSpawnAt_f( void );
 void Svcmd_BallKick_f( void );
 void Svcmd_BallInfo_f( void );
+void Svcmd_BallTouch_f( void );
+void Svcmd_BallTurbo_f( void );
 void G_Autoball_RunFrame( void );
 void G_Autoball_InitGame( void );
 void G_Autoball_BallTouched( gentity_t *ball, gentity_t *other );
+void G_Autoball_BallHit( gentity_t *ball, gentity_t *other, const vec3_t impulse );
+void G_Autoball_VehicleContact( gentity_t *self, const vehicleCollisionContact_t *contact );
+qboolean G_Autoball_BlockDamage( gentity_t *targ, int mod );
+qboolean G_Autoball_ForceRespawn( gentity_t *ent );
 void G_Autoball_ClientSpawn( gentity_t *ent );
 qboolean G_Autoball_CarsFrozen( int serverTime );
 qboolean G_Autoball_HoldMatchEnd( void );
@@ -1358,6 +1380,7 @@ extern  vmCvar_t        g_autoballKickoffDelay;
 extern  vmCvar_t        g_autoballGoalDelay;
 extern  vmCvar_t        g_autoballStartTurbo;
 extern  vmCvar_t        g_autoballWeapons;
+extern  vmCvar_t        g_autoballDemoSpeed;
 extern  vmCvar_t        g_derbyNoRamTime;
 extern  vmCvar_t        g_fuelKillReward;
 extern  vmCvar_t        g_useFuel;

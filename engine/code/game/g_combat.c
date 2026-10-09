@@ -394,7 +394,8 @@ char	*modNames[] = {
 // Q3Rally Code END
 	"MOD_GRAPPLE",
 	"MOD_BREAKABLE_SPLASH",
-	"MOD_DERBY_NO_RAM"
+	"MOD_DERBY_NO_RAM",
+	"MOD_AUTOBALL_DEMOLITION"
         };
 
 #ifdef MISSIONPACK
@@ -612,7 +613,9 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
                 if ( attacker == self || OnSameTeam (self, attacker ) ) {
                         AddScore( attacker, self->r.currentOrigin, -1 );
 		} else {
-			AddScore( attacker, self->r.currentOrigin, 1 );
+			/* Autoball: a demolition is worth 10, crashes and the like nothing extra */
+			AddScore( attacker, self->r.currentOrigin,
+				meansOfDeath == MOD_AUTOBALL_DEMOLITION ? 10 : 1 );
 
 			if ( g_gametype.integer == GT_KOTH && KOTH_IsClientInHill( attacker->s.number ) ) {
 				attacker->client->kothHillKills++;
@@ -968,6 +971,11 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker,
 #endif
 
 	if (!targ->takedamage) {
+		return;
+	}
+
+	// Autoball: cars only die from a demolition or the map (lava, hurt triggers)
+	if ( G_Autoball_BlockDamage( targ, mod ) ) {
 		return;
 	}
 

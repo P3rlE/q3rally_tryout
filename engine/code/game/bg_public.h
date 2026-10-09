@@ -837,7 +837,8 @@ typedef enum {
         MOD_FIRE,
         MOD_GRAPPLE,
         MOD_BREAKABLE_SPLASH,
-        MOD_DERBY_NO_RAM
+        MOD_DERBY_NO_RAM,
+        MOD_AUTOBALL_DEMOLITION
 } meansOfDeath_t;
 
 #define MOD_CAR_COLLISION MOD_VEHICLE_COLLISION

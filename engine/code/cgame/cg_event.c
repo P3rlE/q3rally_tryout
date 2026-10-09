@@ -463,6 +463,9 @@ static void CG_Obituary( entityState_t *ent ) {
                         message = "got rammed by";
                         message2 = "'s vehicle";
                         break;
+		case MOD_AUTOBALL_DEMOLITION:
+			message = "was demolished by";
+			break;
 // Q3Rally Code END
 		default:
 			message = "was killed by";

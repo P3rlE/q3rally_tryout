@@ -497,6 +497,10 @@ void CG_Scripted_Object( centity_t *cent ){
 	// convert angles to axis
 	CG_ScriptedObject_LerpAxis( cent, ent.axis );
 
+	// Autoball: a shadow on the ground shows where the ball will come down
+	if ( s1->generic1 & SCRIPTED_GENERIC1_NO_PREDICT )
+		CG_Autoball_BallShadow( cent );
+
 	// add to refresh list
 	trap_R_AddRefEntityToScene (&ent);
 }

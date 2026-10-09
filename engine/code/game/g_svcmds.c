@@ -484,6 +484,14 @@ qboolean	ConsoleCommand( void ) {
 		Svcmd_BallKick_f();
 		return qtrue;
 	}
+	if ( Q_stricmp (cmd, "ball_turbo") == 0 ) {
+		Svcmd_BallTurbo_f();
+		return qtrue;
+	}
+	if ( Q_stricmp (cmd, "ball_touch") == 0 ) {
+		Svcmd_BallTouch_f();
+		return qtrue;
+	}
 	if ( Q_stricmp (cmd, "ball_goal_add") == 0 ) {
 		Svcmd_BallGoalAdd_f();
 		return qtrue;

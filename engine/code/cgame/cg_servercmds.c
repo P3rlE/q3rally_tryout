@@ -181,6 +181,33 @@ cg.scores[i].kothHoldTimeMs = atoi(CG_Argv(i * SCOREBOARD_FIELDS_PER_CLIENT + 28
 
 }
 
+/* "abStats <count> (<client> <goals> <assists> <saves> <shots> <demos>)*" */
+static void CG_ParseAutoballStats( void ) {
+	int count, i, clientNum, scoreIndex, base;
+
+	if ( trap_Argc() < 2 ) return;
+	count = atoi( CG_Argv( 1 ) );
+	if ( count < 0 ) return;
+	if ( count > ( trap_Argc() - 2 ) / 6 ) {
+		count = ( trap_Argc() - 2 ) / 6;
+	}
+	for ( i = 0; i < count; i++ ) {
+		base = i * 6 + 2;
+		clientNum = atoi( CG_Argv( base ) );
+		if ( clientNum < 0 || clientNum >= MAX_CLIENTS ) continue;
+		for ( scoreIndex = 0; scoreIndex < cg.numScores; scoreIndex++ ) {
+			score_t *score = &cg.scores[scoreIndex];
+			if ( score->client != clientNum ) continue;
+			score->autoballGoals = atoi( CG_Argv( base + 1 ) );
+			score->autoballAssists = atoi( CG_Argv( base + 2 ) );
+			score->autoballSaves = atoi( CG_Argv( base + 3 ) );
+			score->autoballShots = atoi( CG_Argv( base + 4 ) );
+			score->autoballDemos = atoi( CG_Argv( base + 5 ) );
+			break;
+		}
+	}
+}
+
 static void CG_ParseDerbyIntegrity( void ) {
 	int count, i, clientNum, integrity, scoreIndex;
 
@@ -2049,6 +2076,11 @@ static void CG_ServerCommand( void ) {
 
 	if ( !strcmp( cmd, "derbyIntegrity" ) ) {
 		CG_ParseDerbyIntegrity();
+		return;
+	}
+
+	if ( !strcmp( cmd, "abStats" ) ) {
+		CG_ParseAutoballStats();
 		return;
 	}
 
