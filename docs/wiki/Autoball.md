@@ -83,7 +83,7 @@ Changes apply live, so you can tune during a match.
 
 ### Mutators
 
-Mutators are **not** saved in the config, so every map starts normal unless your server config sets them.
+Mutators are **not** saved in the config, so every map starts normal unless your server config sets them. For a local game they are in the Start Server menu: **Balls** (1-3), **Ball Size** (Small 0.7, Normal, Big 1.4, Giant 2) and **Ball Gravity** (Light 0.6, Moon 0.35, Normal, Heavy 1.5).
 
 | Cvar | Default | Description |
 |---|---|---|

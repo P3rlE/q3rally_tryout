@@ -1309,6 +1309,9 @@ typedef struct {
 	menufield_s			kothPtsDefend;
 	menuradiobutton_s	kothOvertime;
 	menufield_s			kothOvertimeHold;
+	menulist_s			autoballBalls;
+	menulist_s			autoballBallSize;
+	menulist_s			autoballBallGravity;
 	menuradiobutton_s	friendlyfire;
 	menufield_s			hostname;
     menulist_s          dominationSpawnStyle;
@@ -1397,6 +1400,14 @@ static const char *botSkill_list[] = {
 	"Nightmare!",
 	0
 };
+
+// Autoball mutators: menu entries and the cvar values behind them
+static const char *autoball_balls_list[] = { "1", "2", "3", 0 };
+static const char *autoball_size_list[] = { "Normal", "Small", "Big", "Giant", 0 };
+static const float autoball_size_values[] = { 1.0f, 0.7f, 1.4f, 2.0f };
+static const char *autoball_gravity_list[] = { "Normal", "Light", "Moon", "Heavy", 0 };
+static const float autoball_gravity_values[] = { 1.0f, 0.6f, 0.35f, 1.5f };
+#define AUTOBALL_UI_CHOICES 4
 
 // for dominationSpawnStyle
 static const char *dtfspawn_list[] = {
@@ -1649,10 +1660,23 @@ default:
     // Q3Rally Code END - KOTH
 
 	case GT_AUTOBALL:
+	{
+		int balls = (int)Com_Clamp( 0, 2, s_serveroptions.autoballBalls.curvalue );
+		int size = (int)Com_Clamp( 0, AUTOBALL_UI_CHOICES - 1, s_serveroptions.autoballBallSize.curvalue );
+		int gravity = (int)Com_Clamp( 0, AUTOBALL_UI_CHOICES - 1, s_serveroptions.autoballBallGravity.curvalue );
+
 		trap_Cvar_SetValue( "ui_autoball_capturelimit", flaglimit );
 		trap_Cvar_SetValue( "ui_autoball_timelimit", timelimit );
 		trap_Cvar_SetValue( "ui_autoball_friendly", friendlyfire );
+		trap_Cvar_SetValue( "ui_autoball_balls", balls );
+		trap_Cvar_SetValue( "ui_autoball_size", size );
+		trap_Cvar_SetValue( "ui_autoball_gravity", gravity );
+		/* mutators; balls and size are latched and take effect with the map */
+		trap_Cvar_SetValue( "g_autoballBalls", balls + 1 );
+		trap_Cvar_SetValue( "g_autoballBallScale", autoball_size_values[size] );
+		trap_Cvar_SetValue( "g_autoballBallGravity", autoball_gravity_values[gravity] );
 		break;
+	}
 
     case GT_DOMINATION:
 		trap_Cvar_SetValue( "g_dominationSpawnStyle", Com_Clamp( 0, 1, dominationSpawnStyle ) );
@@ -2214,6 +2238,11 @@ static void ServerOptions_SetMenuItems( void ) {
 		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i",
 			(int)Com_Clamp( 0, 999, StartServer_CvarIntOrDefault( "ui_autoball_timelimit", 5 ) ) );
 		s_serveroptions.friendlyfire.curvalue = (int)Com_Clamp( 0, 1, trap_Cvar_VariableValue( "ui_autoball_friendly" ) );
+		s_serveroptions.autoballBalls.curvalue = (int)Com_Clamp( 0, 2, trap_Cvar_VariableValue( "ui_autoball_balls" ) );
+		s_serveroptions.autoballBallSize.curvalue = (int)Com_Clamp( 0, AUTOBALL_UI_CHOICES - 1,
+			trap_Cvar_VariableValue( "ui_autoball_size" ) );
+		s_serveroptions.autoballBallGravity.curvalue = (int)Com_Clamp( 0, AUTOBALL_UI_CHOICES - 1,
+			trap_Cvar_VariableValue( "ui_autoball_gravity" ) );
 		break;
 
 	case GT_DOMINATION:
@@ -2832,6 +2861,32 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 		y += BIGCHAR_HEIGHT+2;
 	}
 
+	if ( s_serveroptions.gametype == GT_AUTOBALL ) {
+		s_serveroptions.autoballBalls.generic.type       = MTYPE_SPINCONTROL;
+		s_serveroptions.autoballBalls.generic.flags      = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+		s_serveroptions.autoballBalls.generic.x          = OPTIONS_X;
+		s_serveroptions.autoballBalls.generic.y          = y;
+		s_serveroptions.autoballBalls.generic.name       = "Balls:";
+		s_serveroptions.autoballBalls.itemnames          = autoball_balls_list;
+		y += BIGCHAR_HEIGHT+2;
+
+		s_serveroptions.autoballBallSize.generic.type    = MTYPE_SPINCONTROL;
+		s_serveroptions.autoballBallSize.generic.flags   = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+		s_serveroptions.autoballBallSize.generic.x       = OPTIONS_X;
+		s_serveroptions.autoballBallSize.generic.y       = y;
+		s_serveroptions.autoballBallSize.generic.name    = "Ball Size:";
+		s_serveroptions.autoballBallSize.itemnames       = autoball_size_list;
+		y += BIGCHAR_HEIGHT+2;
+
+		s_serveroptions.autoballBallGravity.generic.type  = MTYPE_SPINCONTROL;
+		s_serveroptions.autoballBallGravity.generic.flags = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+		s_serveroptions.autoballBallGravity.generic.x     = OPTIONS_X;
+		s_serveroptions.autoballBallGravity.generic.y     = y;
+		s_serveroptions.autoballBallGravity.generic.name  = "Ball Gravity:";
+		s_serveroptions.autoballBallGravity.itemnames     = autoball_gravity_list;
+		y += BIGCHAR_HEIGHT+2;
+	}
+
 	s_serveroptions.timelimit.generic.type       = MTYPE_FIELD;
 	s_serveroptions.timelimit.generic.name       = "Time Limit:";
 	s_serveroptions.timelimit.generic.flags      = QMF_NUMBERSONLY|QMF_PULSEIFFOCUS|QMF_SMALLFONT;
@@ -3092,6 +3147,12 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.kothPtsDefend );
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.kothOvertime );
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.kothOvertimeHold );
+	}
+
+	if( s_serveroptions.gametype == GT_AUTOBALL ) {
+		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.autoballBalls );
+		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.autoballBallSize );
+		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.autoballBallGravity );
 	}
 
 	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.timelimit );
