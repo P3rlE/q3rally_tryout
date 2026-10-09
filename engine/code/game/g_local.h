@@ -281,6 +281,7 @@ struct gentity_s {
 	int			ballPendingTime;
 	int			ballPendingThreat;	/* goal (defending team) the ball was heading for before it */
 	int			ballHitSoundTime;
+	vec3_t		ballPrevVelocity;	/* last frame, for wall/floor bounce sounds */
 	int			ballDebugLogTime;	/* rate limit for g_autoballDebug */
 	vec3_t		*collisionHullVerts;
 	int		collisionHullVertCount;
@@ -1382,6 +1383,10 @@ extern  vmCvar_t        g_autoballStartTurbo;
 extern  vmCvar_t        g_autoballWeapons;
 extern  vmCvar_t        g_autoballDemoSpeed;
 extern  vmCvar_t        g_autoballGoalPush;
+extern  vmCvar_t        g_autoballBalls;
+extern  vmCvar_t        g_autoballBallScale;
+extern  vmCvar_t        g_autoballBallGravity;
+extern  vmCvar_t        g_autoballStats;
 extern  vmCvar_t        g_derbyNoRamTime;
 extern  vmCvar_t        g_fuelKillReward;
 extern  vmCvar_t        g_useFuel;

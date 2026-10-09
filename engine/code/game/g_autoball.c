@@ -44,11 +44,23 @@ body; the ball keeps its position and velocity.
 #include "g_local.h"
 
 #define AUTOBALL_CLASSNAME			"autoball_ball"
+
+/* made by tools/autoball/make_sounds.py */
+#define AUTOBALL_SOUND_HIT_SOFT		"sound/autoball/hit_soft.ogg"
+#define AUTOBALL_SOUND_HIT_HARD		"sound/autoball/hit_hard.ogg"
+#define AUTOBALL_SOUND_BOUNCE		"sound/autoball/bounce.ogg"
+#define AUTOBALL_SOUND_GOAL_HORN	"sound/autoball/goal_horn.ogg"
+#define AUTOBALL_SOUND_WHISTLE		"sound/autoball/whistle.ogg"
+#define AUTOBALL_BOUNCE_SOUND_DV	280.0f	/* u/s velocity change that counts as a bounce */
 #define AUTOBALL_MODEL				"models/autoball/ball.md3"	/* radius 75 */
 #define AUTOBALL_DEFAULT_RADIUS		75.0f
 #define AUTOBALL_DEFAULT_MAX_SPEED	3000.0f
 #define AUTOBALL_SPAWN_DISTANCE		400.0f
 #define AUTOBALL_MAX_TEST_BALLS		4
+#define AUTOBALL_MIN_SCALE			0.5f
+#define AUTOBALL_MAX_SCALE			2.0f
+#define AUTOBALL_MAX_MATCH_BALLS	3
+#define AUTOBALL_EXTRA_BALL_SPACING	520.0f	/* extra balls sit beside the centre spot */
 
 static gentity_t *G_Autoball_MainBall( void );
 
@@ -57,6 +69,7 @@ static void G_Autoball_ClearTouches( gentity_t *ball ) {
 
 	ball->ballLastToucher = -1;
 	ball->ballLastTouchTime = 0;
+	ball->s.generic1 &= ~SCRIPTED_GENERIC1_TEAM_MASK;
 	for ( i = 0; i < 4; i++ ) {
 		ball->ballTouchClient[i] = -1;
 		ball->ballTouchTime[i] = 0;
@@ -111,6 +124,51 @@ static void G_Autoball_ApplyDefaults( gentity_t *ent ) {
 	ent->r.svFlags |= SVF_BROADCAST;
 }
 
+/*
+Mutator g_autoballBallScale: scales the ball (physics radius and model).
+Lifts the spawn point so a bigger ball does not start inside the floor.
+Clients read the radius from s.time2 and the model scale from s.angles2[0].
+*/
+static float G_Autoball_BallScale( void ) {
+	return Com_Clamp( AUTOBALL_MIN_SCALE, AUTOBALL_MAX_SCALE,
+		g_autoballBallScale.value > 0.0f ? g_autoballBallScale.value : 1.0f );
+}
+
+static void G_Autoball_ApplyScale( gentity_t *ent ) {
+	float scale = G_Autoball_BallScale();
+	float radius = ent->ballRadius > 0.0f ? ent->ballRadius : AUTOBALL_DEFAULT_RADIUS;
+	vec3_t origin;
+
+	if ( scale != 1.0f ) {
+		VectorCopy( ent->s.pos.trBase, origin );
+		origin[2] += radius * ( scale - 1.0f );
+		G_SetOrigin( ent, origin );
+		VectorCopy( origin, ent->s.origin );
+		radius *= scale;
+		ent->ballRadius = radius;
+		VectorSet( ent->r.mins, -radius, -radius, -radius );
+		VectorSet( ent->r.maxs, radius, radius, radius );
+	}
+	ent->s.time2 = (int)( radius + 0.5f );
+	ent->s.angles2[0] = scale;
+}
+
+/* Mutator g_autoballBallGravity: Bullet has one world gravity, so a lighter
+   or heavier ball gets the difference as an impulse every frame. */
+static void G_Autoball_BallGravity( gentity_t *ball ) {
+	float scale, frameSec;
+	vec3_t impulse;
+
+	scale = Com_Clamp( 0.1f, 2.0f, g_autoballBallGravity.value );
+	if ( scale == 1.0f || !G_RallyPhysics_Enabled() || ball->mass <= 0 )
+		return;
+	frameSec = ( level.time - level.previousTime ) * 0.001f;
+	if ( frameSec <= 0.0f || frameSec > 0.25f )
+		return;
+	VectorSet( impulse, 0.0f, 0.0f, ball->mass * g_gravity.value * ( 1.0f - scale ) * frameSec );
+	trap_RallyPhysicsApplyImpulse( ball->s.number, ball->r.currentOrigin, impulse );
+}
+
 static void G_Autoball_WarnLegacySolver( void ) {
 	if ( !G_RallyPhysics_Enabled() ) {
 		G_Printf( S_COLOR_YELLOW "autoball: Bullet backend is off (g_scriptedObjectBullet 0); "
@@ -135,6 +193,7 @@ void SP_autoball_ball( gentity_t *ent ) {
 	G_Autoball_ApplyDefaults( ent );
 	/* map keys override the ball defaults and register the model */
 	G_ApplyScriptedObjectMapProperties( ent );
+	G_Autoball_ApplyScale( ent );
 	G_Autoball_WarnLegacySolver();
 	G_ScriptedObject_FinishSpawn( ent );
 	VectorCopy( ent->s.pos.trBase, ent->ballHome );
@@ -157,6 +216,7 @@ gentity_t *G_Autoball_SpawnBall( const vec3_t origin ) {
 	}
 	G_Autoball_ApplyDefaults( ent );
 	ent->s.modelindex2 = G_ModelIndex( ent->model );
+	G_Autoball_ApplyScale( ent );
 	G_Autoball_WarnLegacySolver();
 	G_ScriptedObject_FinishSpawn( ent );
 	VectorCopy( ent->s.pos.trBase, ent->ballHome );
@@ -188,6 +248,8 @@ void G_Autoball_ResetBall( gentity_t *ball ) {
 	ball->physicsQuietSince = -1;
 	ball->physicsSleeping = qfalse;
 	G_Autoball_ClearTouches( ball );
+	VectorClear( ball->ballPrevVelocity );
+	ball->ballHitSoundTime = level.time + 500;
 	/* clients snap to the new spot instead of interpolating across the map */
 	ball->s.eFlags ^= EF_TELEPORT_BIT;
 	trap_LinkEntity( ball );
@@ -197,6 +259,7 @@ void G_Autoball_ResetBall( gentity_t *ball ) {
 Applies changed g_autoball* cvars to every ball, once per change.
 */
 static void G_Autoball_MatchFrame( void );
+static void G_Autoball_BounceSounds( void );
 
 void G_Autoball_RunFrame( void ) {
 	static int tuningStamp = -1;
@@ -209,6 +272,9 @@ void G_Autoball_RunFrame( void ) {
 	newTuningStamp = newBodyStamp + g_autoballImpactScale.modificationCount +
 		g_autoballVerticalScale.modificationCount + g_autoballLift.modificationCount;
 	G_Autoball_MatchFrame();
+	G_Autoball_BounceSounds();
+	while ( ( ball = G_Find( ball, FOFS( classname ), AUTOBALL_CLASSNAME ) ) != NULL )
+		G_Autoball_BallGravity( ball );
 
 	if ( tuningStamp < 0 ) {
 		/* balls spawned this level already used the current values */
@@ -592,6 +658,66 @@ void Svcmd_BallGoalAdd_f( void ) {
 		goal->r.absmax[0], goal->r.absmax[1], goal->r.absmax[2] );
 }
 
+/*
+Mutator g_autoballBalls: extra match balls beside the centre spot, on the
+line across the field so both teams have the same distance to them.
+*/
+static void G_Autoball_SpawnExtraBalls( void ) {
+	gentity_t *main, *goal = NULL, *extra;
+	vec3_t redGoal, blueGoal, axis, across, spot, mins, maxs;
+	int count, i, haveRed = 0, haveBlue = 0;
+	float side, radius;
+	trace_t trace;
+
+	count = g_autoballBalls.integer;
+	if ( count > AUTOBALL_MAX_MATCH_BALLS )
+		count = AUTOBALL_MAX_MATCH_BALLS;
+	main = G_Autoball_MainBall();
+	if ( count <= 1 || !main )
+		return;
+	VectorClear( redGoal );
+	VectorClear( blueGoal );
+
+	while ( ( goal = G_Find( goal, FOFS( classname ), AUTOBALL_GOAL_CLASSNAME ) ) != NULL ) {
+		vec3_t centre;
+		VectorAdd( goal->r.absmin, goal->r.absmax, centre );
+		VectorScale( centre, 0.5f, centre );
+		if ( goal->count == TEAM_BLUE ) {
+			VectorCopy( centre, blueGoal );
+			haveBlue = 1;
+		} else {
+			VectorCopy( centre, redGoal );
+			haveRed = 1;
+		}
+	}
+	if ( haveRed && haveBlue ) {
+		VectorSubtract( blueGoal, redGoal, axis );
+		axis[2] = 0.0f;
+		VectorNormalize( axis );
+	} else {
+		VectorSet( axis, 1.0f, 0.0f, 0.0f );
+	}
+	VectorSet( across, -axis[1], axis[0], 0.0f );
+
+	radius = main->ballRadius > 0.0f ? main->ballRadius : AUTOBALL_DEFAULT_RADIUS;
+	VectorSet( mins, -radius, -radius, -radius );
+	VectorSet( maxs, radius, radius, radius );
+	for ( i = 1; i < count; i++ ) {
+		/* 2 balls: one beside the centre; 3 balls: one on each side */
+		side = ( i & 1 ) ? 1.0f : -1.0f;
+		VectorMA( main->ballHome, side * ( AUTOBALL_EXTRA_BALL_SPACING + radius ), across, spot );
+		trap_Trace( &trace, main->ballHome, mins, maxs, spot, main->s.number, MASK_SOLID );
+		if ( trace.fraction < 1.0f )
+			VectorCopy( trace.endpos, spot );
+		/* SpawnBall applies the size mutator again; undo the lift it adds */
+		spot[2] -= radius - radius / G_Autoball_BallScale();
+		extra = G_Autoball_SpawnBall( spot );
+		if ( !extra )
+			break;
+	}
+	G_Printf( "autoball: %d match balls\n", G_Autoball_CountBalls() );
+}
+
 void G_Autoball_InitGame( void ) {
 	gentity_t *goal = NULL;
 	int red = 0, blue = 0;
@@ -615,6 +741,11 @@ void G_Autoball_InitGame( void ) {
 		else
 			red++;
 	}
+	G_Autoball_SpawnExtraBalls();
+	if ( G_Autoball_BallScale() != 1.0f || g_autoballBallGravity.value != 1.0f || g_autoballBalls.integer > 1 )
+		G_Printf( "autoball mutators: %d ball(s), size %.2fx, ball gravity %.2fx\n",
+			G_Autoball_CountBalls(), G_Autoball_BallScale(),
+			Com_Clamp( 0.1f, 2.0f, g_autoballBallGravity.value ) );
 	if ( !G_Autoball_MainBall() || !red || !blue ) {
 		G_Printf( S_COLOR_YELLOW "AUTOBALL: this map has %s and %d red / %d blue autoball_goal. "
 			"Use ball_spawn_at and ball_goal_add to test anyway.\n",
@@ -642,7 +773,7 @@ static int G_Autoball_PredictGoal( gentity_t *ball, const vec3_t origin, const v
 	VectorCopy( velocity, vel );
 	restZ = ball->ballHome[2];
 	for ( t = 0.0f; t < AUTOBALL_PREDICT_MSEC * 0.001f; t += AUTOBALL_PREDICT_STEP ) {
-		vel[2] -= g_gravity.value * AUTOBALL_PREDICT_STEP;
+		vel[2] -= g_gravity.value * Com_Clamp( 0.1f, 2.0f, g_autoballBallGravity.value ) * AUTOBALL_PREDICT_STEP;
 		VectorMA( pos, AUTOBALL_PREDICT_STEP, vel, next );
 		if ( next[2] < restZ ) {
 			next[2] = restZ;
@@ -670,6 +801,11 @@ void G_Autoball_BallTouched( gentity_t *ball, gentity_t *other ) {
 	client = other->s.number;
 	ball->ballLastToucher = client;
 	ball->ballLastTouchTime = level.time;
+	/* clients colour the ball's seams with the last toucher's team */
+	ball->s.generic1 &= ~SCRIPTED_GENERIC1_TEAM_MASK;
+	if ( other->client->sess.sessionTeam == TEAM_RED || other->client->sess.sessionTeam == TEAM_BLUE )
+		ball->s.generic1 |= ( other->client->sess.sessionTeam << SCRIPTED_GENERIC1_TEAM_SHIFT ) &
+			SCRIPTED_GENERIC1_TEAM_MASK;
 
 	/* distinct touchers, newest first; a repeat touch only refreshes the time */
 	if ( ball->ballTouchClient[0] != client ) {
@@ -703,8 +839,28 @@ void G_Autoball_BallHit( gentity_t *ball, gentity_t *other, const vec3_t impulse
 	if ( deltaV < 60.0f )
 		return;
 	G_AddEvent( ball, EV_GENERAL_SOUND, G_SoundIndex( deltaV > 700.0f ?
-		"sound/plastic/plastichit.ogg" : "sound/plastic/conehit.ogg" ) );
+		AUTOBALL_SOUND_HIT_HARD : AUTOBALL_SOUND_HIT_SOFT ) );
 	ball->ballHitSoundTime = level.time + 120;
+}
+
+/* Bullet bounces the ball off walls, floor and ceiling without telling the
+   game, so a sudden velocity change without a car touch is a bounce. */
+static void G_Autoball_BounceSounds( void ) {
+	gentity_t *ball = NULL;
+	vec3_t delta;
+	float dv;
+
+	while ( ( ball = G_Find( ball, FOFS( classname ), AUTOBALL_CLASSNAME ) ) != NULL ) {
+		VectorSubtract( ball->s.pos.trDelta, ball->ballPrevVelocity, delta );
+		dv = VectorLength( delta );
+		VectorCopy( ball->s.pos.trDelta, ball->ballPrevVelocity );
+		if ( dv < AUTOBALL_BOUNCE_SOUND_DV || level.time < ball->ballHitSoundTime )
+			continue;
+		if ( ball->ballLastTouchTime && level.time - ball->ballLastTouchTime < 150 )
+			continue;	/* a car hit, that has its own sound */
+		G_AddEvent( ball, EV_GENERAL_SOUND, G_SoundIndex( AUTOBALL_SOUND_BOUNCE ) );
+		ball->ballHitSoundTime = level.time + 150;
+	}
 }
 
 static void G_Autoball_Award( gentity_t *ent, int points, int persistant ) {
@@ -740,12 +896,17 @@ static void G_Autoball_JudgeTouch( gentity_t *ball ) {
 			threat == TEAM_FREE ? "no" : TeamName( threat ) );
 	}
 
+	G_LogPrintf( "AutoballTouch: %i %i %i %i\n", ent->s.number, team,
+		(int)( VectorLength( client->ps.velocity ) / CP_M_2_QU * 3.6f ),
+		(int)( VectorLength( ball->s.pos.trDelta ) / CP_M_2_QU * 3.6f ) );
+
 	if ( ball->ballPendingThreat == team && threat != team &&
 		level.time - client->pers.autoballSaveTime >= AUTOBALL_SAVE_DELAY ) {
 		client->pers.autoballSaveTime = level.time;
 		client->pers.autoballSaves++;
 		G_Autoball_Award( ent, AUTOBALL_SAVE_POINTS, PERS_DEFEND_COUNT );
 		trap_SendServerCommand( -1, va( "print \"%s^7 saves!\n\"", client->pers.netname ) );
+		G_LogPrintf( "AutoballSave: %i %i\n", ent->s.number, team );
 		return;
 	}
 	if ( threat == opponent && ball->ballPendingThreat != opponent &&
@@ -753,6 +914,7 @@ static void G_Autoball_JudgeTouch( gentity_t *ball ) {
 		client->pers.autoballShotTime = level.time;
 		client->pers.autoballShots++;
 		G_Autoball_Award( ent, AUTOBALL_SHOT_POINTS, -1 );
+		G_LogPrintf( "AutoballShot: %i %i\n", ent->s.number, team );
 		return;
 	}
 	if ( level.time - client->pers.autoballTouchPointTime >= AUTOBALL_TOUCH_POINT_DELAY ) {
@@ -852,6 +1014,8 @@ void G_Autoball_VehicleContact( gentity_t *self, const vehicleCollisionContact_t
 		return;
 
 	rammer->client->pers.autoballDemos++;
+	G_LogPrintf( "AutoballDemo: %i %i %i\n", rammer->s.number, victim->s.number,
+		(int)( VectorLength( rammer->client->ps.velocity ) / CP_M_2_QU * 3.6f ) );
 	G_Damage( victim, rammer, rammer, NULL, NULL, 100000, DAMAGE_NO_PROTECTION, MOD_AUTOBALL_DEMOLITION );
 
 	/* a second of extra turbo for the demolition, capped like a pickup */
@@ -930,17 +1094,25 @@ qboolean G_Autoball_HoldMatchEnd( void ) {
 		return qtrue;
 	if ( level.autoballState != AUTOBALL_STATE_LIVE )
 		return qfalse;
-	ball = G_Autoball_MainBall();
-	if ( !ball )
-		return qfalse;
-	return ( ball->r.currentOrigin[2] > ball->ballHome[2] + AUTOBALL_AIRBORNE_HEIGHT ) ? qtrue : qfalse;
+	ball = NULL;
+	while ( ( ball = G_Find( ball, FOFS( classname ), AUTOBALL_CLASSNAME ) ) != NULL ) {
+		if ( ball->r.currentOrigin[2] > ball->ballHome[2] + AUTOBALL_AIRBORNE_HEIGHT )
+			return qtrue;
+	}
+	return qfalse;
 }
 
 static void G_Autoball_StartKickoff( gentity_t *ball ) {
 	int i, delay;
+	gentity_t *other = NULL;
 
 	if ( ball )
 		G_Autoball_ResetBall( ball );
+	/* extra match balls (g_autoballBalls) go back to their spots too */
+	while ( ( other = G_Find( other, FOFS( classname ), AUTOBALL_CLASSNAME ) ) != NULL ) {
+		if ( other != ball )
+			G_Autoball_ResetBall( other );
+	}
 
 	/* everybody back to a kick-off spot (team_CTF_redplayer / blueplayer) */
 	for ( i = 0; i < level.maxclients; i++ ) {
@@ -963,6 +1135,7 @@ static void G_Autoball_StartKickoff( gentity_t *ball ) {
 	level.autoballKickoffEnd = level.time + delay * 1000;
 	level.autoballCountdown = -1;
 	G_Autoball_SetState( AUTOBALL_STATE_KICKOFF );
+	G_LogPrintf( "AutoballKickoff: %i %i\n", level.teamScores[TEAM_RED], level.teamScores[TEAM_BLUE] );
 }
 
 static void G_Autoball_Countdown( gentity_t *ball ) {
@@ -973,8 +1146,9 @@ static void G_Autoball_Countdown( gentity_t *ball ) {
 	if ( level.time >= level.autoballKickoffEnd ) {
 		trap_SendServerCommand( -1, "rc \"GO!\" 0" );
 		if ( ball )
-			Rally_Sound( ball, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex( "sound/rally/race/go.ogg" ) );
+			Rally_Sound( ball, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex( AUTOBALL_SOUND_WHISTLE ) );
 		G_Autoball_SetState( AUTOBALL_STATE_LIVE );
+		G_LogPrintf( "AutoballLive:\n" );
 		return;
 	}
 	secondsLeft = ( level.autoballKickoffEnd - level.time + 999 ) / 1000;
@@ -1030,12 +1204,14 @@ static void G_Autoball_ScoreGoal( gentity_t *ball, gentity_t *goal ) {
 			mate->client->pers.autoballAssists++;
 			G_Autoball_Award( mate, AUTOBALL_ASSIST_POINTS, PERS_ASSIST_COUNT );
 			trap_SendServerCommand( -1, va( "print \"Assist: %s^7\n\"", mate->client->pers.netname ) );
+			G_LogPrintf( "AutoballAssist: %i %i\n", num, scoringTeam );
 			break;
 		}
 	}
 	ball->ballPendingClient = -1;	/* the goal itself is the result of that touch */
 	G_Autoball_GoalPush( ball->r.currentOrigin );
 	Rally_Sound( ball, EV_GLOBAL_SOUND, CHAN_AUTO, G_SoundIndex( "sound/world/crowds.ogg" ) );
+	Rally_Sound( ball, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex( AUTOBALL_SOUND_GOAL_HORN ) );
 	CalculateRanks();
 
 	te = G_TempEntity( ball->r.currentOrigin, EV_EXPLOSION );
@@ -1078,6 +1254,47 @@ static gentity_t *G_Autoball_GoalContaining( const vec3_t point ) {
 	return NULL;
 }
 
+/*
+g_autoballStats 1: once a second a sample line for tools/autoball/analyze_log.py
+  AutoballSample: <ball km/h> <ball height above its spot> <ball x> <ball y>
+                  <red avg turbo ms> <blue avg turbo ms> <red avg km/h> <blue avg km/h>
+*/
+static void G_Autoball_StatsSample( gentity_t *ball ) {
+	static int nextSample;
+	int i, team, turbo[TEAM_NUM_TEAMS], cars[TEAM_NUM_TEAMS];
+	float speed[TEAM_NUM_TEAMS];
+
+	if ( !g_autoballStats.integer || !ball || level.autoballState != AUTOBALL_STATE_LIVE )
+		return;
+	if ( level.time < nextSample && nextSample - level.time <= 1000 )
+		return;
+	nextSample = level.time + 1000;
+	memset( turbo, 0, sizeof( turbo ) );
+	memset( cars, 0, sizeof( cars ) );
+	memset( speed, 0, sizeof( speed ) );
+	for ( i = 0; i < level.maxclients; i++ ) {
+		gentity_t *ent = &g_entities[i];
+		int t;
+		if ( !ent->inuse || !ent->client || ent->client->pers.connected != CON_CONNECTED )
+			continue;
+		team = ent->client->sess.sessionTeam;
+		if ( team != TEAM_RED && team != TEAM_BLUE )
+			continue;
+		t = ent->client->ps.powerups[PW_TURBO];
+		turbo[team] += t > level.time ? t - level.time : ( t < 0 ? -t : 0 );
+		speed[team] += VectorLength( ent->client->ps.velocity ) / CP_M_2_QU * 3.6f;
+		cars[team]++;
+	}
+	G_LogPrintf( "AutoballSample: %i %i %i %i %i %i %i %i\n",
+		(int)( VectorLength( ball->s.pos.trDelta ) / CP_M_2_QU * 3.6f ),
+		(int)( ball->r.currentOrigin[2] - ball->ballHome[2] ),
+		(int)ball->r.currentOrigin[0], (int)ball->r.currentOrigin[1],
+		cars[TEAM_RED] ? turbo[TEAM_RED] / cars[TEAM_RED] : 0,
+		cars[TEAM_BLUE] ? turbo[TEAM_BLUE] / cars[TEAM_BLUE] : 0,
+		cars[TEAM_RED] ? (int)( speed[TEAM_RED] / cars[TEAM_RED] ) : 0,
+		cars[TEAM_BLUE] ? (int)( speed[TEAM_BLUE] / cars[TEAM_BLUE] ) : 0 );
+}
+
 static void G_Autoball_MatchFrame( void ) {
 	gentity_t *ball, *goal;
 
@@ -1090,6 +1307,7 @@ static void G_Autoball_MatchFrame( void ) {
 	level.autoballBallNum = ball ? ball->s.number : -1;
 	if ( level.autoballBallNum != level.autoballPublished )
 		G_Autoball_Publish();
+	G_Autoball_StatsSample( ball );
 
 	switch ( level.autoballState ) {
 	case AUTOBALL_STATE_WAITING:
@@ -1106,11 +1324,17 @@ static void G_Autoball_MatchFrame( void ) {
 			G_Autoball_SetState( AUTOBALL_STATE_WAITING );
 			break;
 		}
-		goal = G_Autoball_GoalContaining( ball->r.currentOrigin );
-		if ( goal )
-			G_Autoball_ScoreGoal( ball, goal );
-		else
-			G_Autoball_JudgeTouch( ball );
+		{
+			gentity_t *any = NULL;
+			while ( ( any = G_Find( any, FOFS( classname ), AUTOBALL_CLASSNAME ) ) != NULL ) {
+				goal = G_Autoball_GoalContaining( any->r.currentOrigin );
+				if ( goal ) {
+					G_Autoball_ScoreGoal( any, goal );
+					break;
+				}
+				G_Autoball_JudgeTouch( any );
+			}
+		}
 		break;
 
 	case AUTOBALL_STATE_GOAL:

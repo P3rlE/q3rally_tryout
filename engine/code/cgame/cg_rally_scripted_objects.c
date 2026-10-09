@@ -497,9 +497,19 @@ void CG_Scripted_Object( centity_t *cent ){
 	// convert angles to axis
 	CG_ScriptedObject_LerpAxis( cent, ent.axis );
 
-	// Autoball: a shadow on the ground shows where the ball will come down
-	if ( s1->generic1 & SCRIPTED_GENERIC1_NO_PREDICT )
+	// Autoball: a shadow on the ground shows where the ball will come down,
+	// the seams glow in the colour of the last team that touched the ball
+	if ( s1->generic1 & SCRIPTED_GENERIC1_NO_PREDICT ) {
 		CG_Autoball_BallShadow( cent );
+		CG_Autoball_BallColor( s1, ent.shaderRGBA );
+		// g_autoballBallScale: the model was made for the default size
+		if ( s1->angles2[0] > 0.0f && s1->angles2[0] != 1.0f ) {
+			VectorScale( ent.axis[0], s1->angles2[0], ent.axis[0] );
+			VectorScale( ent.axis[1], s1->angles2[0], ent.axis[1] );
+			VectorScale( ent.axis[2], s1->angles2[0], ent.axis[2] );
+			ent.nonNormalizedAxes = qtrue;
+		}
+	}
 
 	// add to refresh list
 	trap_R_AddRefEntityToScene (&ent);

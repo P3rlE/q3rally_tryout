@@ -275,6 +275,11 @@ On screen: four corner brackets around the ball. Off screen: a marker on the
 screen edge in the ball's direction, with the distance.
 ================
 */
+/* ball radius from the server (g_autoballBallScale), 75 for old servers */
+static float CG_Autoball_Radius( const centity_t *cent ) {
+	return cent->currentState.time2 > 0 ? (float)cent->currentState.time2 : AUTOBALL_BALL_RADIUS;
+}
+
 static void CG_Autoball_DrawIndicator( void ) {
 	centity_t *ball;
 	vec3_t delta;
@@ -301,7 +306,7 @@ static void CG_Autoball_DrawIndicator( void ) {
 		sx = 320.0f - left / forward * focalX;
 		sy = 240.0f - up / forward * focalY;
 		if ( sx > 24.0f && sx < 616.0f && sy > 24.0f && sy < 456.0f ) {
-			float r = AUTOBALL_BALL_RADIUS / forward * focalX * 1.15f;
+			float r = CG_Autoball_Radius( ball ) / forward * focalX * 1.15f;
 			float len;
 			if ( r < 8.0f )
 				r = 8.0f;
@@ -389,7 +394,21 @@ void CG_Autoball_BallShadow( centity_t *cent ) {
 	frac = 1.0f - height / AUTOBALL_SHADOW_RANGE;
 	CG_ImpactMark( cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal, 0,
 		1.0f, 1.0f, 1.0f, 0.35f + 0.5f * frac, qfalse,
-		AUTOBALL_BALL_RADIUS * ( 0.6f + 0.5f * frac ), qtrue );
+		CG_Autoball_Radius( cent ) * ( 0.6f + 0.5f * frac ), qtrue );
+}
+
+/* seam glow colour of the ball: last touching team, dim white for none */
+void CG_Autoball_BallColor( const entityState_t *s, byte *rgba ) {
+	int team = ( s->generic1 & SCRIPTED_GENERIC1_TEAM_MASK ) >> SCRIPTED_GENERIC1_TEAM_SHIFT;
+
+	if ( team == TEAM_RED ) {
+		rgba[0] = 255; rgba[1] = 60; rgba[2] = 40;
+	} else if ( team == TEAM_BLUE ) {
+		rgba[0] = 50; rgba[1] = 110; rgba[2] = 255;
+	} else {
+		rgba[0] = rgba[1] = rgba[2] = 80;
+	}
+	rgba[3] = 255;
 }
 
 void CG_Autoball_Draw2D( void ) {

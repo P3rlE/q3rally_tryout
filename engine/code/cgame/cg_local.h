@@ -1769,6 +1769,7 @@ void CG_Autoball_ToggleCam_f( void );
 void CG_Autoball_ApplyBallCam( void );
 void CG_Autoball_Draw2D( void );
 void CG_Autoball_BallShadow( centity_t *cent );
+void CG_Autoball_BallColor( const entityState_t *s, byte *rgba );
 void CG_Autoball_GoalExplosion( vec3_t origin, int team );
 void CG_Autoball_ApplyShake( void );
 extern	vmCvar_t		cg_minSkidLength;
