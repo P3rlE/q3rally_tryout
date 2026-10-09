@@ -466,6 +466,17 @@ void Svcmd_BallInfo_f( void ) {
 	}
 	if ( !count )
 		G_Printf( "No balls. Use ball_spawn (client, cheats) or ball_spawn_at <x> <y> <z>.\n" );
+	if ( g_autoballDebug.integer ) {
+		int i;
+		for ( i = 0; i < level.maxclients; i++ ) {
+			gentity_t *ent = &g_entities[i];
+			if ( !ent->inuse || !ent->client || ent->client->pers.connected != CON_CONNECTED )
+				continue;
+			G_Printf( "car %i %s: pos (%.0f %.0f %.0f) speed %.0f km/h\n", i, ent->client->pers.netname,
+				ent->client->ps.origin[0], ent->client->ps.origin[1], ent->client->ps.origin[2],
+				VectorLength( ent->client->ps.velocity ) / CP_M_2_QU * 3.6f );
+		}
+	}
 	if ( g_gametype.integer == GT_AUTOBALL ) {
 		static const char *stateNames[] = { "waiting", "kick-off", "live", "goal" };
 		int state = level.autoballState;
@@ -509,8 +520,7 @@ end while the ball is in the air or a goal is being celebrated.
 #define AUTOBALL_SAVE_DELAY			1000
 #define AUTOBALL_DEMO_TURBO_BONUS	1000	/* ms of turbo for a demolition */
 #define AUTOBALL_DEMO_RESPAWN		3000
-#define AUTOBALL_GOAL_PUSH_RADIUS	900.0f	/* goal explosion pushes cars within this */
-#define AUTOBALL_GOAL_PUSH_SPEED	900.0f	/* units/s at the centre, fading to 0 */
+#define AUTOBALL_GOAL_PUSH_RADIUS	1200.0f	/* goal explosion pushes cars within this */
 
 static gentity_t *G_Autoball_GoalContaining( const vec3_t point );
 
@@ -779,13 +789,24 @@ static void G_Autoball_GoalPush( const vec3_t origin ) {
 			continue;
 		VectorSubtract( ent->client->ps.origin, origin, dir );
 		dist = VectorNormalize( dir );
-		if ( dist > AUTOBALL_GOAL_PUSH_RADIUS )
+		if ( dist > AUTOBALL_GOAL_PUSH_RADIUS ) {
+			if ( g_autoballDebug.integer )
+				G_Printf( "autoball: goal blast misses %s (%.0f units away)\n", ent->client->pers.netname, dist );
 			continue;
-		speed = AUTOBALL_GOAL_PUSH_SPEED * ( 1.0f - dist / AUTOBALL_GOAL_PUSH_RADIUS );
-		dir[2] += 0.35f;	/* a little lift looks like a blast */
+		}
+		/* square-root falloff: still a real shove halfway out */
+		speed = g_autoballGoalPush.value * sqrt( 1.0f - dist / AUTOBALL_GOAL_PUSH_RADIUS );
+		if ( speed <= 0.0f )
+			continue;
+		dir[2] += 0.5f;		/* lift: cars should fly, not slide */
 		VectorNormalize( dir );
 		VectorScale( dir, speed, dir );
 		G_Autoball_PushCar( ent, dir );
+		if ( g_autoballDebug.integer ) {
+			G_Printf( "autoball: goal blast pushes %s (%.0f units away) with %.0f km/h, car now %.0f km/h\n",
+				ent->client->pers.netname, dist, speed / CP_M_2_QU * 3.6f,
+				VectorLength( ent->client->ps.velocity ) / CP_M_2_QU * 3.6f );
+		}
 	}
 }
 

@@ -2398,6 +2398,7 @@ static void CG_DrawUpperRight(stereoFrame_t stereoFrame)
 	if ( cgs.gametype != GT_CTF && cgs.gametype != GT_CTF4 &&
 	     cgs.gametype != GT_DOMINATION &&
 	     cgs.gametype != GT_KOTH &&
+	     cgs.gametype != GT_AUTOBALL &&
 	     cgs.gametype > GT_TEAM &&
 	     cg_drawTeamOverlay.integer == 1 ) {
 		y = CG_DrawTeamOverlay( y, qtrue, qtrue );
@@ -3740,6 +3741,10 @@ static void CG_DrawAmmoWarning( void ) {
 
 // Q3Rally Code Start
 	if (isRallyNonDMRace() || cgs.gametype == GT_DERBY){
+		return;
+	}
+	/* Autoball is played without weapons by default: nothing to run out of */
+	if ( cgs.gametype == GT_AUTOBALL && !cg.snap->ps.stats[STAT_WEAPONS] ) {
 		return;
 	}
 // Q3Rally Code END

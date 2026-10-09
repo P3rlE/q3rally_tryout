@@ -1381,6 +1381,7 @@ extern  vmCvar_t        g_autoballGoalDelay;
 extern  vmCvar_t        g_autoballStartTurbo;
 extern  vmCvar_t        g_autoballWeapons;
 extern  vmCvar_t        g_autoballDemoSpeed;
+extern  vmCvar_t        g_autoballGoalPush;
 extern  vmCvar_t        g_derbyNoRamTime;
 extern  vmCvar_t        g_fuelKillReward;
 extern  vmCvar_t        g_useFuel;
