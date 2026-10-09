@@ -1110,6 +1110,7 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 		CG_AddMarks();
 		CG_AddParticles ();
 		CG_AddLocalEntities();
+		CG_Autoball_AddSceneEffects();	// Autoball goal lights
 // Q3Rally Code Start
 		// used for q3f atmospheric effects
 		CG_AddAtmosphericEffects();

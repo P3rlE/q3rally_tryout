@@ -1758,6 +1758,7 @@ extern	vmCvar_t		cg_autoballPredict;
 extern	vmCvar_t		cg_autoballCam;
 extern	vmCvar_t		cg_autoballIndicator;
 extern	vmCvar_t		cg_autoballShake;
+extern	vmCvar_t		cg_autoballTrail;
 
 //
 // cg_autoball.c
@@ -1772,6 +1773,8 @@ void CG_Autoball_BallShadow( centity_t *cent );
 void CG_Autoball_BallColor( const entityState_t *s, byte *rgba );
 void CG_Autoball_GoalExplosion( vec3_t origin, int team );
 void CG_Autoball_ApplyShake( void );
+void CG_Autoball_BallTrail( centity_t *cent );
+void CG_Autoball_AddSceneEffects( void );
 extern	vmCvar_t		cg_minSkidLength;
 extern	vmCvar_t		cg_controlMode;
 extern	vmCvar_t		cg_manualShift;

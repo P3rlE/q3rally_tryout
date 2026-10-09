@@ -501,6 +501,7 @@ void CG_Scripted_Object( centity_t *cent ){
 	// the seams glow in the colour of the last team that touched the ball
 	if ( s1->generic1 & SCRIPTED_GENERIC1_NO_PREDICT ) {
 		CG_Autoball_BallShadow( cent );
+		CG_Autoball_BallTrail( cent );
 		CG_Autoball_BallColor( s1, ent.shaderRGBA );
 		// g_autoballBallScale: the model was made for the default size
 		if ( s1->angles2[0] > 0.0f && s1->angles2[0] != 1.0f ) {

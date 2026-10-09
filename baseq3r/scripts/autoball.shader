@@ -13,3 +13,17 @@ models/autoball/ball
 		rgbGen entity
 	}
 }
+
+// Ball trail puffs (cg_autoball.c). Additive; cgame sets colour and fade.
+autoballTrail
+{
+	nopicmip
+	cull none
+	entityMergable
+	{
+		map models/autoball/trail.tga
+		blendFunc GL_SRC_ALPHA GL_ONE
+		rgbGen vertex
+		alphaGen vertex
+	}
+}

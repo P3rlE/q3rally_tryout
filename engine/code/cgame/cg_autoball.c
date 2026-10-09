@@ -32,6 +32,7 @@ any map.
 Cvars:  cg_autoballCam        0/1, the "ballcam" command toggles it
         cg_autoballIndicator  0/1, arrow/bracket that shows where the ball is
         cg_autoballShake      camera shake strength on goal blasts (0 = off)
+        cg_autoballTrail      0/1, glowing trail behind a fast ball, fire above 150 km/h
 ===========================================================================
 */
 
@@ -512,6 +513,181 @@ void CG_Autoball_ApplyShake( void ) {
 		sin( sec * 2.0f * M_PI * 9.0f + ab_shakePhase[0] ), axis[1], cg.refdef.vieworg );
 }
 
+/*
+===========================================================================
+Ball trail and goal lights
+===========================================================================
+*/
+
+#define AB_TRAIL_MIN_KMH        100.0f   /* trail starts here */
+#define AB_TRAIL_FIRE_KMH       150.0f   /* fire on top of the trail */
+#define AB_TRAIL_SPACING        22.0f    /* units between two trail puffs */
+#define AB_TRAIL_MAX_STEPS      10
+
+#define AB_GOAL_LIGHT_TIME      3000
+#define AB_GOAL_LIGHT_SIDE      380.0f   /* side lights, from the goal centre */
+
+static vec3_t ab_trailLast[MAX_GENTITIES];
+static int    ab_trailTime[MAX_GENTITIES];
+static qhandle_t ab_trailShader;
+
+static int   ab_goalLightStart;
+static vec3_t ab_goalLightOrigin;
+static vec3_t ab_goalLightSide;
+static vec3_t ab_goalLightColor;
+
+/* full-strength colour of the last touching team, white for nobody */
+static void CG_Autoball_TrailColor( const entityState_t *s, vec3_t out ) {
+	int team = ( s->generic1 & SCRIPTED_GENERIC1_TEAM_MASK ) >> SCRIPTED_GENERIC1_TEAM_SHIFT;
+
+	if ( team == TEAM_RED ) {
+		VectorSet( out, 1.0f, 0.25f, 0.15f );
+	} else if ( team == TEAM_BLUE ) {
+		VectorSet( out, 0.2f, 0.45f, 1.0f );
+	} else {
+		VectorSet( out, 0.85f, 0.85f, 0.85f );
+	}
+}
+
+void CG_Autoball_BallTrail( centity_t *cent ) {
+	int num = cent->currentState.number;
+	float kmh, dist, f, radius, frac;
+	vec3_t color, pos, delta, vel;
+	int i, steps;
+
+	kmh = VectorLength( cent->currentState.pos.trDelta ) / CP_M_2_QU * 3.6f;
+	VectorSubtract( cent->lerpOrigin, ab_trailLast[num], delta );
+	dist = VectorLength( delta );
+
+	/* off, too slow, or the ball jumped (kick-off reset, first frame) */
+	if ( !cg_autoballTrail.integer || kmh < AB_TRAIL_MIN_KMH || cg.time - ab_trailTime[num] > 250 ||
+		dist > 600.0f ) {
+		VectorCopy( cent->lerpOrigin, ab_trailLast[num] );
+		ab_trailTime[num] = cg.time;
+		return;
+	}
+	if ( dist < AB_TRAIL_SPACING )
+		return;
+	if ( !ab_trailShader )
+		ab_trailShader = trap_R_RegisterShader( "autoballTrail" );
+
+	CG_Autoball_TrailColor( &cent->currentState, color );
+	f = ( kmh - AB_TRAIL_MIN_KMH ) / ( AB_TRAIL_FIRE_KMH - AB_TRAIL_MIN_KMH );
+	if ( f > 1.0f )
+		f = 1.0f;
+	radius = cent->currentState.time2 > 0 ? (float)cent->currentState.time2 : AUTOBALL_BALL_RADIUS;
+
+	steps = (int)( dist / AB_TRAIL_SPACING );
+	if ( steps > AB_TRAIL_MAX_STEPS )
+		steps = AB_TRAIL_MAX_STEPS;
+	VectorClear( vel );
+	for ( i = 1; i <= steps; i++ ) {
+		frac = (float)i / steps;
+		VectorMA( ab_trailLast[num], frac, delta, pos );
+
+		/* glow in team colour, longer and brighter the faster the ball */
+		CG_SmokePuff( pos, vel, radius * ( 0.55f + 0.25f * f ),
+			color[0], color[1], color[2], 0.3f + 0.35f * f,
+			220.0f + 260.0f * f, cg.time, 0, LEF_PUFF_DONT_SCALE, ab_trailShader );
+
+		if ( kmh >= AB_TRAIL_FIRE_KMH ) {
+			/* fire core and a little smoke */
+			CG_SmokePuff( pos, vel, radius * 0.75f, 1.0f, 0.55f, 0.12f, 0.75f,
+				320.0f, cg.time, 0, LEF_PUFF_DONT_SCALE, ab_trailShader );
+			if ( ( i & 3 ) == 0 ) {
+				vec3_t up;
+				VectorSet( up, crandom() * 20.0f, crandom() * 20.0f, 40.0f );
+				CG_SmokePuff( pos, up, radius * 0.9f, 0.25f, 0.25f, 0.25f, 0.4f,
+					750.0f, cg.time, 0, 0, cgs.media.smokePuffShader );
+			}
+		}
+	}
+	if ( kmh >= AB_TRAIL_FIRE_KMH )
+		trap_R_AddLightToScene( cent->lerpOrigin, 180.0f + 60.0f * random(), 1.0f, 0.6f, 0.2f );
+
+	VectorCopy( cent->lerpOrigin, ab_trailLast[num] );
+	ab_trailTime[num] = cg.time;
+}
+
+/* the ball nearest to point (the one that just scored) */
+static centity_t *CG_Autoball_BallNear( const vec3_t point ) {
+	centity_t *best = NULL;
+	float d, bestDist = 1.0e18f;
+	int i;
+
+	if ( !cg.snap )
+		return NULL;
+	for ( i = 0; i < cg.snap->numEntities; i++ ) {
+		entityState_t *es = &cg.snap->entities[i];
+		if ( es->eType != ET_SCRIPTED || !( es->generic1 & SCRIPTED_GENERIC1_NO_PREDICT ) )
+			continue;
+		d = DistanceSquared( cg_entities[es->number].lerpOrigin, point );
+		if ( d < bestDist ) {
+			bestDist = d;
+			best = &cg_entities[es->number];
+		}
+	}
+	return best;
+}
+
+static void CG_Autoball_StartGoalLights( const vec3_t origin, const vec4_t color ) {
+	centity_t *ball = CG_Autoball_BallNear( origin );
+	vec3_t into;
+
+	ab_goalLightStart = cg.time;
+	VectorCopy( origin, ab_goalLightOrigin );
+	ab_goalLightOrigin[2] += 120.0f;
+	VectorCopy( color, ab_goalLightColor );
+
+	/* the ball flies into the goal: the goal line is across its path */
+	VectorClear( ab_goalLightSide );
+	if ( ball ) {
+		VectorCopy( ball->currentState.pos.trDelta, into );
+		into[2] = 0.0f;
+		if ( VectorNormalize( into ) > 0.1f )
+			VectorSet( ab_goalLightSide, -into[1], into[0], 0.0f );
+	}
+}
+
+/* strobing team-coloured lights at the goal, called every frame */
+void CG_Autoball_AddSceneEffects( void ) {
+	int elapsed;
+	float env, strobe, intensity;
+	vec3_t pos;
+	qboolean flip;
+
+	if ( !ab_goalLightStart )
+		return;
+	elapsed = cg.time - ab_goalLightStart;
+	if ( elapsed < 0 || elapsed > AB_GOAL_LIGHT_TIME ) {
+		ab_goalLightStart = 0;
+		return;
+	}
+	env = 1.0f - (float)elapsed / AB_GOAL_LIGHT_TIME;
+	env = sqrt( env );
+	flip = ( ( elapsed / 140 ) & 1 ) ? qtrue : qfalse;
+	strobe = flip ? 1.0f : 0.35f;
+
+	/* centre: team colour, pulsing */
+	intensity = ( 380.0f + 220.0f * strobe ) * env;
+	trap_R_AddLightToScene( ab_goalLightOrigin, intensity,
+		ab_goalLightColor[0], ab_goalLightColor[1], ab_goalLightColor[2] );
+
+	/* posts: alternate left/right, white flashes between the colour */
+	if ( VectorLengthSquared( ab_goalLightSide ) > 0.0f ) {
+		VectorMA( ab_goalLightOrigin, AB_GOAL_LIGHT_SIDE, ab_goalLightSide, pos );
+		if ( flip )
+			trap_R_AddLightToScene( pos, 320.0f * env, ab_goalLightColor[0], ab_goalLightColor[1], ab_goalLightColor[2] );
+		else
+			trap_R_AddLightToScene( pos, 260.0f * env, 1.0f, 1.0f, 1.0f );
+		VectorMA( ab_goalLightOrigin, -AB_GOAL_LIGHT_SIDE, ab_goalLightSide, pos );
+		if ( !flip )
+			trap_R_AddLightToScene( pos, 320.0f * env, ab_goalLightColor[0], ab_goalLightColor[1], ab_goalLightColor[2] );
+		else
+			trap_R_AddLightToScene( pos, 260.0f * env, 1.0f, 1.0f, 1.0f );
+	}
+}
+
 void CG_Autoball_GoalExplosion( vec3_t origin, int team ) {
 	localEntity_t *ex;
 	vec3_t up, pos, vel;
@@ -521,6 +697,7 @@ void CG_Autoball_GoalExplosion( vec3_t origin, int team ) {
 
 	VectorSet( up, 0, 0, 1 );
 	CG_Autoball_TeamColor( team, 1.0f, col );
+	CG_Autoball_StartGoalLights( origin, col );
 
 	/* sound: the crowd comes from the server, add the bang here */
 	trap_S_StartLocalSound( cgs.media.sfx_rockexp, CHAN_LOCAL_SOUND );

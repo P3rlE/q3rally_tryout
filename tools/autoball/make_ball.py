@@ -9,6 +9,7 @@
   ball_glow.tga  additive mask (seams + pentagons). The shader adds it with
                  rgbGen entity; cgame colours it with the team of the last
                  car that touched the ball (white when nobody has).
+  trail.tga      soft round glow sprite for the ball trail (autoballTrail)
 
 The panel layout is computed per texel from the exact 3D direction, so the
 equirectangular mapping does not distort the pattern. Needs numpy.
@@ -101,6 +102,14 @@ def make_textures():
 
     return (base.reshape(TEX_H, TEX_W, 3).astype(np.uint8),
             glow.reshape(TEX_H, TEX_W).astype(np.uint8))
+
+
+def make_trail_sprite(size=64):
+    """soft radial glow, white on black; the shader colours it per puff"""
+    c = (np.arange(size) + 0.5) / size * 2 - 1
+    r = np.sqrt(c[None, :] ** 2 + c[:, None] ** 2)
+    glow = np.exp(-(r / 0.42) ** 2) * (1 - smoothstep(0.85, 1.0, r))
+    return (np.clip(glow, 0, 1) * 255).astype(np.uint8)
 
 
 def write_tga(path, img):
@@ -213,6 +222,7 @@ def main():
     base, glow = make_textures()
     write_tga(os.path.join(args.out, "ball.tga"), base)
     write_tga(os.path.join(args.out, "ball_glow.tga"), glow)
+    write_tga(os.path.join(args.out, "trail.tga"), make_trail_sprite())
     print(f"ball.md3: {nv} verts, {nt} tris, radius {args.radius:g}; textures {TEX_W}x{TEX_H}")
 
 
