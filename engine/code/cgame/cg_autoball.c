@@ -192,7 +192,7 @@ static void CG_Autoball_DrawScoreBug( void ) {
 	vec4_t red, blue, center, white, accent;
 	int msec, seconds;
 	qboolean overtime = qfalse;
-	const char *clock;
+	char clock[16];
 	const float y = 6.0f, h = 30.0f, teamW = 56.0f, clockW = 84.0f;
 	float x = 320.0f - ( teamW + clockW / 2.0f );
 
@@ -213,7 +213,9 @@ static void CG_Autoball_DrawScoreBug( void ) {
 	if ( msec < 0 )
 		msec = 0;
 	seconds = msec / 1000;
-	clock = va( "%s%i:%02i", overtime ? "+" : "", seconds / 60, seconds % 60 );
+	/* own buffer: va() only rotates two buffers, the score va() calls below
+	   would overwrite the clock text */
+	Com_sprintf( clock, sizeof( clock ), "%s%i:%02i", overtime ? "+" : "", seconds / 60, seconds % 60 );
 
 	CG_FillRect( x, y, teamW, h, red );
 	CG_FillRect( x + teamW, y, clockW, h, center );
