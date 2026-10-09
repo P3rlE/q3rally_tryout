@@ -644,6 +644,7 @@ typedef struct {
 	int			autoballRamLogTime;		// g_autoballDebug rate limit
 	int			autoballIntroDone;		// the first kick-off (with intro flight) happened
 	int			autoballIntroEnd;		// level.time the intro flight ends, 0 = no intro
+	int			autoballClockStarted;	// the match clock was restarted at the first whistle
 	int			kothTeamHoldTimeMs[TEAM_NUM_TEAMS];
 	qboolean	kothMapInvalid;
 // STONELANCE

@@ -216,7 +216,10 @@ static void CG_Autoball_DrawScoreBug( void ) {
 	AB_SET4( white, 1.0f, 1.0f, 1.0f, 1.0f );
 	AB_SET4( accent, 1.0f, 0.78f, 0.2f, 1.0f );
 
+	/* before the first whistle the clock stands (start time lies ahead) */
 	msec = cg.time - cgs.levelStartTime;
+	if ( msec < 0 || cgs.autoballState == AUTOBALL_STATE_WAITING )
+		msec = 0;
 	if ( cgs.timelimit > 0 ) {
 		msec = cgs.timelimit * 60000 - msec;
 		if ( msec < 0 ) {

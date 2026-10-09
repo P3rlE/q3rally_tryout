@@ -1179,6 +1179,9 @@ static void G_Autoball_StartKickoff( gentity_t *ball ) {
 			level.autoballKickoffEnd += AUTOBALL_INTRO_MSEC;
 			level.autoballIntroEnd = level.time + AUTOBALL_INTRO_MSEC;
 		}
+		/* the clients' match clock starts at the first whistle; level.startTime
+		   itself (time limit) follows in G_Autoball_Countdown */
+		trap_SetConfigstring( CS_LEVEL_START_TIME, va( "%i", level.autoballKickoffEnd ) );
 	}
 	level.autoballCountdown = -1;
 	G_Autoball_SetState( AUTOBALL_STATE_KICKOFF );
@@ -1194,6 +1197,13 @@ static void G_Autoball_Countdown( gentity_t *ball ) {
 		trap_SendServerCommand( -1, "rc \"GO!\" 0" );
 		if ( ball )
 			Rally_Sound( ball, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex( AUTOBALL_SOUND_WHISTLE ) );
+		/* the match (and its time limit) starts with the first whistle,
+		   not with the map load, the intro flight or the countdown */
+		if ( !level.autoballClockStarted ) {
+			level.autoballClockStarted = 1;
+			level.startTime = level.time;
+			trap_SetConfigstring( CS_LEVEL_START_TIME, va( "%i", level.startTime ) );
+		}
 		G_Autoball_SetState( AUTOBALL_STATE_LIVE );
 		G_LogPrintf( "AutoballLive:\n" );
 		return;

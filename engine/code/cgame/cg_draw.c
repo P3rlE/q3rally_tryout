@@ -2190,6 +2190,8 @@ static float CG_DrawTimer( float y ) {
 	int			msec;
 
 	msec = cg.time - cgs.levelStartTime;
+	if ( msec < 0 )
+		msec = 0;	/* Autoball: the match clock starts at the first whistle */
 
 	seconds = msec / 1000;
 	mins = seconds / 60;
