@@ -940,6 +940,9 @@ static int CG_CalcViewValues( void ) {
 	}
 // END
 
+	// Autoball goal blast camera shake
+	CG_Autoball_ApplyShake();
+
 	// position eye relative to origin
 	AnglesToAxis( cg.refdefViewAngles, cg.refdef.viewaxis );
 

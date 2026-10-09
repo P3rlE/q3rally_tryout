@@ -1039,6 +1039,7 @@ static void G_Autoball_ScoreGoal( gentity_t *ball, gentity_t *goal ) {
 	CalculateRanks();
 
 	te = G_TempEntity( ball->r.currentOrigin, EV_EXPLOSION );
+	te->s.eventParm = EXPLOSION_PARM_AUTOBALL_GOAL | ( scoringTeam & 0x0F );
 	te->r.svFlags |= SVF_BROADCAST;
 
 	if ( scorer && !ownGoal ) {

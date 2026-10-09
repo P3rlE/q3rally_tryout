@@ -255,6 +255,7 @@ vmCvar_t	cg_metricUnits;
 vmCvar_t	cg_autoballPredict;
 vmCvar_t	cg_autoballCam;
 vmCvar_t	cg_autoballIndicator;
+vmCvar_t	cg_autoballShake;
 vmCvar_t	cg_controlMode;
 vmCvar_t	cg_manualShift;
 vmCvar_t	cg_transmissionMode;
@@ -395,6 +396,7 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_autoballPredict, "cg_autoballPredict", "0", 0 },
 	{ &cg_autoballCam, "cg_autoballCam", "0", CVAR_ARCHIVE },
 	{ &cg_autoballIndicator, "cg_autoballIndicator", "1", CVAR_ARCHIVE },
+	{ &cg_autoballShake, "cg_autoballShake", "1", CVAR_ARCHIVE },
 	{ &cg_minSkidLength, "cg_minSkidLength", "20", CVAR_ARCHIVE },
 	{ &cg_drawRearView, "cg_drawRearView", "0", CVAR_ARCHIVE },
 	{ &cg_drawMMap, "cg_drawMMap", "1", CVAR_ARCHIVE }, //TBB minimap - default on

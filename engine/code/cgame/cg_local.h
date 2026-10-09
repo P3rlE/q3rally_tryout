@@ -1757,6 +1757,7 @@ extern	vmCvar_t		cg_metricUnits;
 extern	vmCvar_t		cg_autoballPredict;
 extern	vmCvar_t		cg_autoballCam;
 extern	vmCvar_t		cg_autoballIndicator;
+extern	vmCvar_t		cg_autoballShake;
 
 //
 // cg_autoball.c
@@ -1768,6 +1769,8 @@ void CG_Autoball_ToggleCam_f( void );
 void CG_Autoball_ApplyBallCam( void );
 void CG_Autoball_Draw2D( void );
 void CG_Autoball_BallShadow( centity_t *cent );
+void CG_Autoball_GoalExplosion( vec3_t origin, int team );
+void CG_Autoball_ApplyShake( void );
 extern	vmCvar_t		cg_minSkidLength;
 extern	vmCvar_t		cg_controlMode;
 extern	vmCvar_t		cg_manualShift;
@@ -2118,6 +2121,7 @@ void CG_ScorePlum( int client, vec3_t org, int score );
 void CG_ShowDebris( vec3_t srcOrigin, int count, int evType );
 void CG_StartEarthquake(int intensity, int duration);
 void CG_Earthquake(void);
+void CG_Particles( vec3_t origin, int count, int speed, int lifetime, int radius, int type, byte r, byte g, byte b );
 void CG_ParticlesFromEntityState( vec3_t origin, int type, entityState_t *es);
 
 

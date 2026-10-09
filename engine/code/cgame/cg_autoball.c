@@ -31,6 +31,7 @@ any map.
 
 Cvars:  cg_autoballCam        0/1, the "ballcam" command toggles it
         cg_autoballIndicator  0/1, arrow/bracket that shows where the ball is
+        cg_autoballShake      camera shake strength on goal blasts (0 = off)
 ===========================================================================
 */
 
@@ -404,4 +405,160 @@ void CG_Autoball_Draw2D( void ) {
 	CG_SetScreenPlacement( PLACE_CENTER, PLACE_CENTER );
 	CG_Autoball_DrawGoalBanner();
 	CG_PopScreenPlacement();
+}
+
+
+/*
+===========================================================================
+Goal blast: a large explosion in the scoring team's colour plus a camera
+shake that fades with distance. Triggered by EV_EXPLOSION carrying
+EXPLOSION_PARM_AUTOBALL_GOAL.
+===========================================================================
+*/
+
+#define AUTOBALL_SHAKE_DURATION   1400
+#define AUTOBALL_SHAKE_NEAR       1200.0f
+#define AUTOBALL_SHAKE_FAR        6000.0f
+#define AUTOBALL_SHAKE_MIN        0.30f
+#define AUTOBALL_SHAKE_ANGLE      4.0f    /* degrees at full strength */
+#define AUTOBALL_SHAKE_OFFSET     8.0f    /* units at full strength */
+
+static int   ab_shakeStart;
+static float ab_shakeAmp;
+static float ab_shakePhase[4];
+
+static void CG_Autoball_StartShake( const vec3_t origin ) {
+	vec3_t delta;
+	float dist, amp;
+	int i;
+
+	if ( cg_autoballShake.value <= 0.0f )
+		return;
+
+	VectorSubtract( origin, cg.refdef.vieworg, delta );
+	dist = VectorLength( delta );
+	if ( dist <= AUTOBALL_SHAKE_NEAR ) {
+		amp = 1.0f;
+	} else if ( dist >= AUTOBALL_SHAKE_FAR ) {
+		amp = AUTOBALL_SHAKE_MIN;
+	} else {
+		amp = 1.0f - ( 1.0f - AUTOBALL_SHAKE_MIN ) *
+			( dist - AUTOBALL_SHAKE_NEAR ) / ( AUTOBALL_SHAKE_FAR - AUTOBALL_SHAKE_NEAR );
+	}
+	amp *= cg_autoballShake.value;
+
+	/* a running shake is only replaced by a stronger one */
+	if ( ab_shakeStart && cg.time - ab_shakeStart < AUTOBALL_SHAKE_DURATION ) {
+		float t = (float)( cg.time - ab_shakeStart ) / AUTOBALL_SHAKE_DURATION;
+		float current = ab_shakeAmp * ( 1.0f - t ) * ( 1.0f - t );
+		if ( current > amp )
+			return;
+	}
+	ab_shakeStart = cg.time;
+	ab_shakeAmp = amp;
+	for ( i = 0; i < 4; i++ )
+		ab_shakePhase[i] = random() * 2.0f * M_PI;
+}
+
+void CG_Autoball_ApplyShake( void ) {
+	float t, env, sec;
+	vec3_t axis[3];
+
+	if ( !ab_shakeStart )
+		return;
+	if ( cg_autoballShake.value <= 0.0f || cg.time < ab_shakeStart
+		|| cg.time - ab_shakeStart >= AUTOBALL_SHAKE_DURATION ) {
+		ab_shakeStart = 0;
+		return;
+	}
+
+	t = (float)( cg.time - ab_shakeStart ) / AUTOBALL_SHAKE_DURATION;
+	env = ab_shakeAmp * ( 1.0f - t ) * ( 1.0f - t );
+	sec = cg.time * 0.001f;
+
+	/* layered sines instead of per-frame noise: rough but not flickering */
+	cg.refdefViewAngles[PITCH] += env * AUTOBALL_SHAKE_ANGLE *
+		( 0.7f * sin( sec * 2.0f * M_PI * 11.0f + ab_shakePhase[0] ) + 0.3f * sin( sec * 2.0f * M_PI * 23.0f ) );
+	cg.refdefViewAngles[YAW] += env * AUTOBALL_SHAKE_ANGLE * 0.6f *
+		sin( sec * 2.0f * M_PI * 8.0f + ab_shakePhase[1] );
+	cg.refdefViewAngles[ROLL] += env * AUTOBALL_SHAKE_ANGLE * 0.8f *
+		sin( sec * 2.0f * M_PI * 6.0f + ab_shakePhase[2] );
+
+	AnglesToAxis( cg.refdefViewAngles, axis );
+	VectorMA( cg.refdef.vieworg, env * AUTOBALL_SHAKE_OFFSET *
+		sin( sec * 2.0f * M_PI * 14.0f + ab_shakePhase[3] ), axis[2], cg.refdef.vieworg );
+	VectorMA( cg.refdef.vieworg, env * AUTOBALL_SHAKE_OFFSET * 0.5f *
+		sin( sec * 2.0f * M_PI * 9.0f + ab_shakePhase[0] ), axis[1], cg.refdef.vieworg );
+}
+
+void CG_Autoball_GoalExplosion( vec3_t origin, int team ) {
+	localEntity_t *ex;
+	vec3_t up, pos, vel;
+	vec4_t col;
+	float ang;
+	int i;
+
+	VectorSet( up, 0, 0, 1 );
+	CG_Autoball_TeamColor( team, 1.0f, col );
+
+	/* sound: the crowd comes from the server, add the bang here */
+	trap_S_StartLocalSound( cgs.media.sfx_rockexp, CHAN_LOCAL_SOUND );
+
+	/* fireball: a cluster of large sprite explosions */
+	for ( i = 0; i < 5; i++ ) {
+		VectorCopy( origin, pos );
+		if ( i > 0 ) {
+			pos[0] += crandom() * 90.0f;
+			pos[1] += crandom() * 90.0f;
+			pos[2] += random() * 110.0f;
+		}
+		ex = CG_MakeExplosion( pos, up, cgs.media.dishFlashModel,
+			cgs.media.rocketExplosionShader, 900 + i * 150, qtrue );
+		ex->radius = ( i == 0 ) ? 340.0f : 170.0f + random() * 90.0f;
+		if ( i == 0 ) {
+			ex->light = 900;
+			ex->lightColor[0] = 0.6f + 0.4f * col[0];
+			ex->lightColor[1] = 0.45f + 0.35f * col[1];
+			ex->lightColor[2] = 0.2f + 0.6f * col[2];
+		}
+	}
+
+	/* rising plume */
+	if ( cg_oldRocket.integer == 0 ) {
+		VectorSet( vel, 0, 0, 60 );
+		CG_ParticleExplosion( "explode1", origin, vel, 1800, 90, 240 );
+		for ( i = 0; i < 3; i++ ) {
+			VectorCopy( origin, pos );
+			pos[0] += crandom() * 70.0f;
+			pos[1] += crandom() * 70.0f;
+			VectorSet( vel, crandom() * 40.0f, crandom() * 40.0f, 90.0f );
+			CG_ParticleExplosion( "explode1", pos, vel, 1400, 60, 170 );
+		}
+	}
+
+	/* ground shock ring */
+	for ( i = 0; i < 28; i++ ) {
+		ang = i * ( 2.0f * M_PI / 28.0f );
+		VectorSet( vel, cos( ang ) * 950.0f, sin( ang ) * 950.0f, 40.0f );
+		VectorCopy( origin, pos );
+		CG_SmokePuff( pos, vel, 70.0f, 0.85f, 0.85f, 0.85f, 0.6f,
+			850.0f, cg.time, 0, 0, cgs.media.smokePuffShader );
+	}
+
+	/* lingering smoke column */
+	for ( i = 0; i < 10; i++ ) {
+		VectorCopy( origin, pos );
+		pos[0] += crandom() * 60.0f;
+		pos[1] += crandom() * 60.0f;
+		VectorSet( vel, crandom() * 25.0f, crandom() * 25.0f, 60.0f + random() * 60.0f );
+		CG_SmokePuff( pos, vel, 90.0f + random() * 60.0f, 0.35f, 0.35f, 0.35f, 0.55f,
+			2600.0f + random() * 800.0f, cg.time, 0, 0, cgs.media.smokePuffShader );
+	}
+
+	/* confetti sparks in the scoring team's colour, plus white ones */
+	CG_Particles( origin, 90, 700, 1600, 7, PT_GRAVITY,
+		(byte)( col[0] * 255 ), (byte)( col[1] * 255 ), (byte)( col[2] * 255 ) );
+	CG_Particles( origin, 40, 550, 1200, 5, PT_GRAVITY, 255, 230, 160 );
+
+	CG_Autoball_StartShake( origin );
 }

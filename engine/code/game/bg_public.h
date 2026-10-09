@@ -455,6 +455,7 @@ typedef enum {
 
 // ET_SCRIPTED entityState_t.generic1 flags
 #define SCRIPTED_GENERIC1_NO_PREDICT      1   // skip in client movement prediction (Autoball ball)
+#define EXPLOSION_PARM_AUTOBALL_GOAL      0x40 // EV_EXPLOSION eventParm: Autoball goal blast, low bits = scoring team
 
 typedef enum {
         HI_NONE,
