@@ -833,8 +833,14 @@ static int    ab_tvLastTime;
 static float  ab_tvAxial;
 static vec3_t ab_tvLook;
 
+/* frame-rate independent smoothing factor. Not exp(): the QVM's bg_lib
+   exp() only covers 0..1 and returns 1 for negative input. */
 static float CG_Autoball_Smooth( float rate, float dt ) {
-	return 1.0f - exp( -rate * dt );
+	float x = rate * dt;
+
+	if ( x <= 0.0f )
+		return 0.0f;
+	return x / ( 1.0f + x );
 }
 
 /* move a camera from 'from' towards 'to', stopping in front of walls */
