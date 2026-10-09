@@ -21,7 +21,11 @@ import struct
 import numpy as np
 
 TEX_W, TEX_H = 1024, 512
-SEGMENTS, RINGS = 40, 28
+# The renderer refuses MD3 surfaces with SHADER_MAX_VERTEXES (1000) verts or
+# more, or SHADER_MAX_INDEXES (6000) indexes or more: the model is then not
+# drawn at all. 32 x 24 gives 825 verts and 1472 triangles.
+SEGMENTS, RINGS = 32, 24
+MAX_VERTS, MAX_INDEXES = 1000, 6000
 SHADER = "models/autoball/ball"
 
 
@@ -161,6 +165,9 @@ def make_mesh(radius):
 def write_md3(path, radius):
     verts, sts, tris = make_mesh(radius)
     nv, nt = len(verts), len(tris)
+    if nv >= MAX_VERTS or nt * 3 >= MAX_INDEXES:
+        raise SystemExit(f"mesh too big for the renderer: {nv} verts, {nt} tris "
+                         f"(limit {MAX_VERTS - 1} verts, {MAX_INDEXES // 3 - 1} tris)")
 
     def name(s, n):
         return s.encode("ascii")[:n - 1].ljust(n, b"\0")

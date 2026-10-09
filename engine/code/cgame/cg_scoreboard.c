@@ -1281,8 +1281,11 @@ static void CG_DrawModernGameInfo(int y, float fade,
             default:          teamName = "Unknown Team"; break;
         }
         
+        /* at the end of the match the leader is the winner */
         if (TiedWinner()) {
             gameInfo = va("Teams tied");
+        } else if (cg.snap->ps.pm_type == PM_INTERMISSION) {
+            gameInfo = va("%s wins", teamName);
         } else {
             gameInfo = va("%s in lead", teamName);
         }
