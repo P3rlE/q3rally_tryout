@@ -475,6 +475,7 @@ typedef struct {
 	int			autoballTouchPointTime;	// last time a ball touch earned points
 	int			autoballShotTime;		// last shot award
 	int			autoballSaveTime;		// last save award
+	int			autoballBestShot;		// hardest ball speed after a touch, km/h
 } clientPersistant_t;
 
 
@@ -641,6 +642,8 @@ typedef struct {
 	int			autoballGoalSpeed;		// ball speed at the goal in km/h
 	int			autoballPublished;		// ball number last sent to clients
 	int			autoballRamLogTime;		// g_autoballDebug rate limit
+	int			autoballIntroDone;		// the first kick-off (with intro flight) happened
+	int			autoballIntroEnd;		// level.time the intro flight ends, 0 = no intro
 	int			kothTeamHoldTimeMs[TEAM_NUM_TEAMS];
 	qboolean	kothMapInvalid;
 // STONELANCE
@@ -1387,6 +1390,7 @@ extern  vmCvar_t        g_autoballBalls;
 extern  vmCvar_t        g_autoballBallScale;
 extern  vmCvar_t        g_autoballBallGravity;
 extern  vmCvar_t        g_autoballStats;
+extern  vmCvar_t        g_autoballIntro;
 extern  vmCvar_t        g_derbyNoRamTime;
 extern  vmCvar_t        g_fuelKillReward;
 extern  vmCvar_t        g_useFuel;

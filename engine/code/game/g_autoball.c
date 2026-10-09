@@ -61,6 +61,7 @@ body; the ball keeps its position and velocity.
 #define AUTOBALL_MIN_SCALE			0.5f
 #define AUTOBALL_MAX_SCALE			2.0f
 #define AUTOBALL_MAX_MATCH_BALLS	3
+#define AUTOBALL_INTRO_MSEC			4000	/* extra wait at the first kick-off (bg_public.h mirrors it) */
 #define AUTOBALL_EXTRA_BALL_SPACING	520.0f	/* extra balls sit beside the centre spot */
 
 static gentity_t *G_Autoball_MainBall( void );
@@ -599,10 +600,39 @@ static gentity_t *G_Autoball_MainBall( void ) {
 	return G_Find( NULL, FOFS( classname ), AUTOBALL_CLASSNAME );
 }
 
+/* centre of the goal volume defended by team; qfalse if there is none */
+static qboolean G_Autoball_GoalCentre( int team, vec3_t out ) {
+	gentity_t *goal = NULL;
+
+	while ( ( goal = G_Find( goal, FOFS( classname ), AUTOBALL_GOAL_CLASSNAME ) ) != NULL ) {
+		if ( goal->count != team )
+			continue;
+		VectorAdd( goal->r.absmin, goal->r.absmax, out );
+		VectorScale( out, 0.5f, out );
+		return qtrue;
+	}
+	VectorClear( out );
+	return qfalse;
+}
+
+/*
+CS_AUTOBALLSTATUS: "state kickoffEnd ball goalTeam scorer kmh  rx ry rz  bx by bz  introEnd"
+rx..bz are the red and blue goal centres (TV camera, goal lights), all zero
+when the map has no goals. introEnd: server time the kick-off camera flight
+ends, 0 when this kick-off has none.
+*/
 static void G_Autoball_Publish( void ) {
-	trap_SetConfigstring( CS_AUTOBALLSTATUS, va( "%i %i %i %i %i %i",
+	vec3_t red, blue;
+
+	if ( !G_Autoball_GoalCentre( TEAM_RED, red ) || !G_Autoball_GoalCentre( TEAM_BLUE, blue ) ) {
+		VectorClear( red );
+		VectorClear( blue );
+	}
+	trap_SetConfigstring( CS_AUTOBALLSTATUS, va( "%i %i %i %i %i %i %i %i %i %i %i %i %i",
 		level.autoballState, level.autoballKickoffEnd, level.autoballBallNum,
-		level.autoballGoalTeam, level.autoballScorer, level.autoballGoalSpeed ) );
+		level.autoballGoalTeam, level.autoballScorer, level.autoballGoalSpeed,
+		(int)red[0], (int)red[1], (int)red[2], (int)blue[0], (int)blue[1], (int)blue[2],
+		level.autoballIntroEnd ) );
 	level.autoballPublished = level.autoballBallNum;
 }
 
@@ -653,6 +683,7 @@ void Svcmd_BallGoalAdd_f( void ) {
 		goal->r.absmax[i] = a[i] < b[i] ? b[i] : a[i];
 	}
 	/* not linked: only its bounds matter, and linking would recompute them */
+	G_Autoball_Publish();	/* clients learn the new goal position */
 	G_Printf( "%s goal %d added (%.0f %.0f %.0f) - (%.0f %.0f %.0f)\n",
 		goal->count == TEAM_BLUE ? "Blue" : "Red", goal->s.number,
 		goal->r.absmin[0], goal->r.absmin[1], goal->r.absmin[2],
@@ -900,6 +931,11 @@ static void G_Autoball_JudgeTouch( gentity_t *ball ) {
 	G_LogPrintf( "AutoballTouch: %i %i %i %i\n", ent->s.number, team,
 		(int)( VectorLength( client->ps.velocity ) / CP_M_2_QU * 3.6f ),
 		(int)( VectorLength( ball->s.pos.trDelta ) / CP_M_2_QU * 3.6f ) );
+	{
+		int kmh = (int)( VectorLength( ball->s.pos.trDelta ) / CP_M_2_QU * 3.6f + 0.5f );
+		if ( kmh > client->pers.autoballBestShot )
+			client->pers.autoballBestShot = kmh;
+	}
 
 	if ( ball->ballPendingThreat == team && threat != team &&
 		level.time - client->pers.autoballSaveTime >= AUTOBALL_SAVE_DELAY ) {
@@ -1134,6 +1170,16 @@ static void G_Autoball_StartKickoff( gentity_t *ball ) {
 	if ( delay > 10 )
 		delay = 10;
 	level.autoballKickoffEnd = level.time + delay * 1000;
+	/* the first kick-off of a match waits for the clients' camera flight
+	   over the arena (cg_autoball.c); they detect it from the longer wait */
+	level.autoballIntroEnd = 0;
+	if ( !level.autoballIntroDone ) {
+		level.autoballIntroDone = 1;
+		if ( g_autoballIntro.integer ) {
+			level.autoballKickoffEnd += AUTOBALL_INTRO_MSEC;
+			level.autoballIntroEnd = level.time + AUTOBALL_INTRO_MSEC;
+		}
+	}
 	level.autoballCountdown = -1;
 	G_Autoball_SetState( AUTOBALL_STATE_KICKOFF );
 	G_LogPrintf( "AutoballKickoff: %i %i\n", level.teamScores[TEAM_RED], level.teamScores[TEAM_BLUE] );
@@ -1296,6 +1342,21 @@ static void G_Autoball_StatsSample( gentity_t *ball ) {
 		cars[TEAM_BLUE] ? (int)( speed[TEAM_BLUE] / cars[TEAM_BLUE] ) : 0 );
 }
 
+/* The first kick-off (with its camera flight) waits for players that are
+   still loading the map, but not longer than 15 s. */
+static qboolean G_Autoball_HumansLoading( void ) {
+	int i;
+
+	if ( level.autoballIntroDone || level.time - level.startTime > 15000 )
+		return qfalse;
+	for ( i = 0; i < level.maxclients; i++ ) {
+		if ( level.clients[i].pers.connected == CON_CONNECTING &&
+			!( g_entities[i].r.svFlags & SVF_BOT ) )
+			return qtrue;
+	}
+	return qfalse;
+}
+
 static void G_Autoball_MatchFrame( void ) {
 	gentity_t *ball, *goal;
 
@@ -1312,7 +1373,7 @@ static void G_Autoball_MatchFrame( void ) {
 
 	switch ( level.autoballState ) {
 	case AUTOBALL_STATE_WAITING:
-		if ( ball && !level.warmupTime && level.numPlayingClients > 0 )
+		if ( ball && !level.warmupTime && level.numPlayingClients > 0 && !G_Autoball_HumansLoading() )
 			G_Autoball_StartKickoff( ball );
 		break;
 

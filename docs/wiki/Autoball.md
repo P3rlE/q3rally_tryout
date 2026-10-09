@@ -12,17 +12,17 @@
 
 | Phase | What happens |
 |---|---|
-| **Kick-off** | Every car is put back on a kick-off spot and frozen. A 3-2-1 countdown, then the whistle. |
+| **Kick-off** | Every car is put back on a kick-off spot and frozen. A 3-2-1 countdown, then the whistle. Before the first kick-off of a match the camera flies once over the arena. |
 | **Live** | Hit the ball. When the **whole ball** crosses a goal line, the other team scores. |
-| **Goal** | Explosion, horn and crowd. Cars near the goal are blown away. A few seconds later: next kick-off. |
-| **End** | Goal limit or time limit. If the score is tied when time runs out, the next goal wins (golden goal). The clock waits while the ball is in the air. |
+| **Goal** | Explosion, flashing goal lights, horn and crowd. Cars near the goal are blown away. A few seconds later: next kick-off. |
+| **End** | Goal limit or time limit. If the score is tied when time runs out, the next goal wins (golden goal). The clock waits while the ball is in the air. Under the final scoreboard: **MVP**, **Top Scorer**, **Best Keeper** and **Hardest Shot**. |
 
 ### Tips
 
 * **Turbo** is your boost. You start every life with 5 seconds stored. Hold **Turbo** (default `Shift`) to burn it, let go to keep the rest. Turbo pickups are spread around the arena; they are the only items in Autoball.
 * **Aim with the side of your car.** Hitting the ball straight on just pushes it; hitting it off-centre sends it sideways.
 * **Demolition:** ram an opponent while burning turbo at **110 km/h** or more and their car is wrecked. They respawn after 3 seconds and you get an extra second of turbo.
-* **The ball's seams glow** in the colour of the team that touched it last.
+* **The ball's seams glow** in the colour of the team that touched it last. Above 100 km/h the ball leaves a trail in that colour; above 150 km/h it catches fire.
 * **Own goals count.** A ball in your own goal is a point for the other team, whoever touched it last.
 
 ### Points
@@ -45,6 +45,7 @@ The scoreboard shows goals, assists, saves and shots for every player. On the [l
 * A **score bug** at the top shows both scores and the match clock (`+` = golden goal time).
 * An **arrow** at the screen edge points to the ball when it is off-screen, with its distance.
 * `ballcam` toggles the **ball camera**: the chase camera looks at the ball instead of along your car. Bind it to a key, e.g. `\bind c ballcam`.
+* **Spectators** and wrecked cars waiting to respawn get a **TV camera**: it follows the ball from the sideline and cuts to a camera in the goal when a shot is on its way and during the goal celebration. Follow a player as usual with Fire.
 
 All Autoball client settings are listed in [Client Settings → Autoball](Client-Settings#autoball-).
 

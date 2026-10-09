@@ -940,7 +940,8 @@ static int CG_CalcViewValues( void ) {
 	}
 // END
 
-	// Autoball goal blast camera shake
+	// Autoball kick-off flight / TV camera, then the goal blast camera shake
+	CG_Autoball_OverrideView();
 	CG_Autoball_ApplyShake();
 
 	// position eye relative to origin

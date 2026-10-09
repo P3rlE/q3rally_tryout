@@ -525,6 +525,7 @@ typedef struct {
 	int				autoballSaves;
 	int				autoballShots;
 	int				autoballDemos;
+	int				autoballBestShot;	/* km/h */
 } score_t;
 
 // each client has an associated clientInfo_t
@@ -1565,6 +1566,9 @@ typedef struct {
     int             autoballScorer;     /* client number, -1 = own goal / unknown */
     int             autoballGoalSpeed;  /* km/h */
     int             autoballGoalTime;   /* cg.time the goal state arrived */
+    qboolean        autoballHaveGoals;  /* goal centres below are valid */
+    vec3_t          autoballGoal[2];    /* [0] red goal, [1] blue goal (centres) */
+    int             autoballIntroEnd;   /* server time the kick-off camera flight ends, 0 = none */
     /* Q3Rally KOTH - parsed from CS_KOTHSTATUS */
     int             kothOwner;      /* TEAM_FREE / TEAM_RED / TEAM_BLUE */
     int             kothContested;  /* qtrue when both teams in hill */
@@ -1759,6 +1763,8 @@ extern	vmCvar_t		cg_autoballCam;
 extern	vmCvar_t		cg_autoballIndicator;
 extern	vmCvar_t		cg_autoballShake;
 extern	vmCvar_t		cg_autoballTrail;
+extern	vmCvar_t		cg_autoballTVCam;
+extern	vmCvar_t		cg_autoballIntro;
 
 //
 // cg_autoball.c
@@ -1775,6 +1781,8 @@ void CG_Autoball_GoalExplosion( vec3_t origin, int team );
 void CG_Autoball_ApplyShake( void );
 void CG_Autoball_BallTrail( centity_t *cent );
 void CG_Autoball_AddSceneEffects( void );
+void CG_Autoball_OverrideView( void );
+void CG_Autoball_DrawAwards( int y, float fade );
 extern	vmCvar_t		cg_minSkidLength;
 extern	vmCvar_t		cg_controlMode;
 extern	vmCvar_t		cg_manualShift;

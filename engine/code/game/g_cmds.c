@@ -192,9 +192,9 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 		stringlength = 0;
 		for ( j = 0; j < i; j++ ) {
 			cl = &level.clients[level.sortedClients[j]];
-			Com_sprintf( entry, sizeof(entry), " %i %i %i %i %i %i", level.sortedClients[j],
+			Com_sprintf( entry, sizeof(entry), " %i %i %i %i %i %i %i", level.sortedClients[j],
 				cl->pers.autoballGoals, cl->pers.autoballAssists, cl->pers.autoballSaves,
-				cl->pers.autoballShots, cl->pers.autoballDemos );
+				cl->pers.autoballShots, cl->pers.autoballDemos, cl->pers.autoballBestShot );
 			if ( stringlength + strlen(entry) >= sizeof(string) ) break;
 			strcpy( string + stringlength, entry );
 			stringlength += strlen(entry);

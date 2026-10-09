@@ -101,6 +101,19 @@ void CG_ParseAutoballStatus( void ) {
 	cgs.autoballGoalSpeed = values[5];
 	if ( cgs.autoballState == AUTOBALL_STATE_GOAL && oldState != AUTOBALL_STATE_GOAL )
 		cgs.autoballGoalTime = cg.time;
+
+	/* optional: goal centres (red x y z, blue x y z), intro end */
+	cgs.autoballHaveGoals = qfalse;
+	cgs.autoballIntroEnd = 0;
+	for ( i = 0; i < 6; i++ ) {
+		char *token = COM_Parse( &cursor );
+		if ( !token[0] )
+			return;
+		cgs.autoballGoal[i / 3][i % 3] = atof( token );
+	}
+	if ( Distance( cgs.autoballGoal[0], cgs.autoballGoal[1] ) > 64.0f )
+		cgs.autoballHaveGoals = qtrue;
+	cgs.autoballIntroEnd = atoi( COM_Parse( &cursor ) );
 }
 
 /* Kick-off: hold the predicted car exactly like the server does. */
@@ -630,7 +643,7 @@ static centity_t *CG_Autoball_BallNear( const vec3_t point ) {
 	return best;
 }
 
-static void CG_Autoball_StartGoalLights( const vec3_t origin, const vec4_t color ) {
+static void CG_Autoball_StartGoalLights( const vec3_t origin, int team, const vec4_t color ) {
 	centity_t *ball = CG_Autoball_BallNear( origin );
 	vec3_t into;
 
@@ -638,9 +651,23 @@ static void CG_Autoball_StartGoalLights( const vec3_t origin, const vec4_t color
 	VectorCopy( origin, ab_goalLightOrigin );
 	ab_goalLightOrigin[2] += 120.0f;
 	VectorCopy( color, ab_goalLightColor );
-
-	/* the ball flies into the goal: the goal line is across its path */
 	VectorClear( ab_goalLightSide );
+
+	/* the server tells us where the goals are: light the goal that was hit */
+	if ( cgs.autoballHaveGoals ) {
+		const float *hit = cgs.autoballGoal[team == TEAM_RED ? 1 : 0];
+		const float *other = cgs.autoballGoal[team == TEAM_RED ? 0 : 1];
+		VectorCopy( hit, ab_goalLightOrigin );
+		ab_goalLightOrigin[2] += 60.0f;
+		VectorSubtract( hit, other, into );
+		into[2] = 0.0f;
+		if ( VectorNormalize( into ) > 0.1f ) {
+			VectorSet( ab_goalLightSide, -into[1], into[0], 0.0f );
+			return;
+		}
+	}
+
+	/* otherwise: the ball flies into the goal, the goal line is across its path */
 	if ( ball ) {
 		VectorCopy( ball->currentState.pos.trDelta, into );
 		into[2] = 0.0f;
@@ -697,7 +724,7 @@ void CG_Autoball_GoalExplosion( vec3_t origin, int team ) {
 
 	VectorSet( up, 0, 0, 1 );
 	CG_Autoball_TeamColor( team, 1.0f, col );
-	CG_Autoball_StartGoalLights( origin, col );
+	CG_Autoball_StartGoalLights( origin, team, col );
 
 	/* sound: the crowd comes from the server, add the bang here */
 	trap_S_StartLocalSound( cgs.media.sfx_rockexp, CHAN_LOCAL_SOUND );
@@ -759,4 +786,422 @@ void CG_Autoball_GoalExplosion( vec3_t origin, int team ) {
 	CG_Particles( origin, 40, 550, 1200, 5, PT_GRAVITY, 255, 230, 160 );
 
 	CG_Autoball_StartShake( origin );
+}
+
+
+/*
+===========================================================================
+Cameras
+
+Both run at the end of CG_CalcViewValues, after the normal view is known,
+and replace cg.refdef.vieworg / cg.refdefViewAngles.
+
+  Kick-off flight  First kick-off of a match: the server adds a few seconds
+                   to the wait (g_autoballIntro) and sends when they end.
+                   Until then the camera circles the field and finally
+                   blends into the player's own view. cg_autoballIntro 0
+                   skips it.
+  TV director      Free spectators and wrecked cars waiting to respawn
+                   (cg_autoballTVCam): a sideline camera follows the ball;
+                   when the ball races towards a goal, and during the goal
+                   celebration, a camera in that goal takes over.
+===========================================================================
+*/
+
+#define AB_INTRO_BLEND          1300    /* ms: the flight blends into the normal view */
+#define AB_INTRO_SWEEP          210.0f  /* degrees the flight circles the field */
+#define AB_TV_GOALCAM_HOLD      1800    /* ms a goal camera is kept at least */
+#define AB_TV_GOALCAM_SPEED     350.0f  /* u/s: slower balls are no "shot" */
+
+typedef struct {
+	qboolean valid;
+	vec3_t  goal0, goal1;   /* goal centres the field was built from */
+	vec3_t  centre;
+	vec3_t  axis;           /* red goal -> blue goal */
+	vec3_t  side;           /* across the field, towards the TV camera */
+	float   halfLength;
+	float   sideDist;       /* TV camera distance from the axis */
+	float   height;         /* TV camera height above the centre */
+} abField_t;
+
+static abField_t ab_field;
+
+static int    ab_introStart, ab_introFor;
+static int    ab_tvShot;            /* -1 sideline, 0 / 1 goal camera */
+static int    ab_tvShotSince;
+static int    ab_tvLastTime;
+static float  ab_tvAxial;
+static vec3_t ab_tvLook;
+
+static float CG_Autoball_Smooth( float rate, float dt ) {
+	return 1.0f - exp( -rate * dt );
+}
+
+/* move a camera from 'from' towards 'to', stopping in front of walls */
+static void CG_Autoball_ClampCam( const vec3_t from, const vec3_t to, vec3_t out ) {
+	trace_t tr;
+	vec3_t mins, maxs, dir;
+
+	VectorSet( mins, -8, -8, -8 );
+	VectorSet( maxs, 8, 8, 8 );
+	CG_Trace( &tr, from, mins, maxs, to, cg.snap ? cg.snap->ps.clientNum : -1, MASK_SOLID );
+	if ( tr.fraction >= 1.0f ) {
+		VectorCopy( to, out );
+		return;
+	}
+	VectorSubtract( to, from, dir );
+	VectorNormalize( dir );
+	VectorMA( tr.endpos, -24.0f, dir, out );
+}
+
+/* field geometry from the goal centres the server sends */
+static void CG_Autoball_SetupField( void ) {
+	trace_t tr;
+	vec3_t start, end, mins, maxs, cam;
+	float plus, minus;
+
+	if ( !cgs.autoballHaveGoals ) {
+		ab_field.valid = qfalse;
+		return;
+	}
+	if ( ab_field.valid && VectorCompare( ab_field.goal0, cgs.autoballGoal[0] ) &&
+		VectorCompare( ab_field.goal1, cgs.autoballGoal[1] ) )
+		return;
+
+	VectorCopy( cgs.autoballGoal[0], ab_field.goal0 );
+	VectorCopy( cgs.autoballGoal[1], ab_field.goal1 );
+	VectorAdd( ab_field.goal0, ab_field.goal1, ab_field.centre );
+	VectorScale( ab_field.centre, 0.5f, ab_field.centre );
+	VectorSubtract( ab_field.goal1, ab_field.goal0, ab_field.axis );
+	ab_field.axis[2] = 0.0f;
+	ab_field.halfLength = VectorNormalize( ab_field.axis ) * 0.5f;
+	VectorSet( ab_field.side, -ab_field.axis[1], ab_field.axis[0], 0.0f );
+
+	/* sideline: the wider side, a bit inside the wall */
+	VectorSet( mins, -16, -16, -16 );
+	VectorSet( maxs, 16, 16, 16 );
+	VectorCopy( ab_field.centre, start );
+	start[2] += 150.0f;
+	VectorMA( start, 8000.0f, ab_field.side, end );
+	CG_Trace( &tr, start, mins, maxs, end, -1, MASK_SOLID );
+	plus = tr.fraction * 8000.0f;
+	VectorMA( start, -8000.0f, ab_field.side, end );
+	CG_Trace( &tr, start, mins, maxs, end, -1, MASK_SOLID );
+	minus = tr.fraction * 8000.0f;
+	if ( minus > plus ) {
+		VectorScale( ab_field.side, -1.0f, ab_field.side );
+		plus = minus;
+	}
+	ab_field.sideDist = Com_Clamp( 500.0f, 5000.0f, plus - 260.0f );
+
+	/* height: under the ceiling, if there is one */
+	VectorMA( start, ab_field.sideDist, ab_field.side, cam );
+	VectorCopy( cam, end );
+	end[2] += 2000.0f;
+	CG_Trace( &tr, cam, mins, maxs, end, -1, MASK_SOLID );
+	ab_field.height = Com_Clamp( 200.0f, 900.0f, tr.fraction * 2000.0f - 120.0f ) + 150.0f;
+	ab_field.valid = qtrue;
+}
+
+static void CG_Autoball_LookAt( const vec3_t origin, const vec3_t target ) {
+	vec3_t dir;
+
+	VectorCopy( origin, cg.refdef.vieworg );
+	VectorSubtract( target, origin, dir );
+	vectoangles( dir, cg.refdefViewAngles );
+}
+
+/* first kick-off: circle the field, end in the player's own view */
+static qboolean CG_Autoball_IntroView( void ) {
+	centity_t *ball;
+	vec3_t centre, normalOrg, normalAng, toView, pos, start, look;
+	float t, ease, blend, endYaw, yaw, radius, endRadius, height, endHeight;
+	int duration;
+
+	if ( !cg_autoballIntro.integer || cgs.autoballState != AUTOBALL_STATE_KICKOFF ||
+		!cgs.autoballIntroEnd || cg.time >= cgs.autoballIntroEnd ) {
+		ab_introFor = 0;
+		return qfalse;
+	}
+	if ( ab_introFor != cgs.autoballIntroEnd ) {
+		ab_introFor = cgs.autoballIntroEnd;
+		ab_introStart = cg.time;
+	}
+	duration = cgs.autoballIntroEnd - ab_introStart;
+	if ( duration < 500 )
+		return qfalse;	/* joined at the very end */
+
+	ball = CG_Autoball_FindBall();
+	if ( ab_field.valid )
+		VectorCopy( ab_field.centre, centre );
+	else if ( ball )
+		VectorCopy( ball->lerpOrigin, centre );
+	else
+		return qfalse;
+	if ( ball )
+		centre[2] = ball->lerpOrigin[2] + 60.0f;
+
+	VectorCopy( cg.refdef.vieworg, normalOrg );
+	VectorCopy( cg.refdefViewAngles, normalAng );
+
+	t = (float)( cg.time - ab_introStart ) / duration;
+	if ( t > 1.0f )
+		t = 1.0f;
+	ease = t * t * ( 3.0f - 2.0f * t );
+
+	/* the orbit ends where the player's own camera is */
+	VectorSubtract( normalOrg, centre, toView );
+	endHeight = toView[2];
+	toView[2] = 0.0f;
+	endRadius = VectorLength( toView );
+	endYaw = ( endRadius > 1.0f ) ? atan2( toView[1], toView[0] ) * 180.0f / M_PI : 0.0f;
+	yaw = endYaw - AB_INTRO_SWEEP * ( 1.0f - ease );
+	radius = ( ab_field.valid ? ab_field.halfLength * 1.1f : 2200.0f ) * ( 1.0f - ease ) + endRadius * ease;
+	height = 900.0f * ( 1.0f - ease ) + endHeight * ease;
+
+	VectorSet( pos, centre[0] + cos( DEG2RAD( yaw ) ) * radius,
+		centre[1] + sin( DEG2RAD( yaw ) ) * radius, centre[2] + height );
+	VectorCopy( centre, start );
+	start[2] += 100.0f;
+	CG_Autoball_ClampCam( start, pos, pos );
+	VectorCopy( centre, look );
+	CG_Autoball_LookAt( pos, look );
+
+	/* last part: hand over to the normal view */
+	blend = (float)( cg.time - ( cgs.autoballIntroEnd - AB_INTRO_BLEND ) ) / AB_INTRO_BLEND;
+	if ( blend > 0.0f ) {
+		int i;
+		if ( blend > 1.0f )
+			blend = 1.0f;
+		blend = blend * blend * ( 3.0f - 2.0f * blend );
+		for ( i = 0; i < 3; i++ ) {
+			cg.refdef.vieworg[i] += ( normalOrg[i] - cg.refdef.vieworg[i] ) * blend;
+			cg.refdefViewAngles[i] = LerpAngle( cg.refdefViewAngles[i], normalAng[i], blend );
+		}
+	}
+	return qtrue;
+}
+
+static qboolean CG_Autoball_WantsTVCam( void ) {
+	const playerState_t *ps = &cg.snap->ps;
+
+	if ( !cg_autoballTVCam.integer || !ab_field.valid || ps->pm_type == PM_INTERMISSION )
+		return qfalse;
+	if ( ps->persistant[PERS_TEAM] == TEAM_SPECTATOR && !( ps->pm_flags & PMF_FOLLOW ) )
+		return qtrue;		/* free spectator */
+	if ( ps->stats[STAT_HEALTH] <= 0 )
+		return qtrue;		/* wrecked, waiting to respawn */
+	return qfalse;
+}
+
+/* goal camera wanted? returns the goal index or -1 */
+static int CG_Autoball_TVGoalShot( const vec3_t ballPos, const vec3_t ballVel ) {
+	vec3_t toGoal, vel;
+	float dist, speed;
+	int i;
+
+	if ( cgs.autoballState == AUTOBALL_STATE_GOAL )
+		return cgs.autoballGoalTeam == TEAM_RED ? 1 : 0;	/* the goal that was hit */
+	VectorCopy( ballVel, vel );
+	vel[2] = 0.0f;
+	speed = VectorNormalize( vel );
+	if ( speed < AB_TV_GOALCAM_SPEED )
+		return -1;
+	for ( i = 0; i < 2; i++ ) {
+		VectorSubtract( i ? ab_field.goal1 : ab_field.goal0, ballPos, toGoal );
+		toGoal[2] = 0.0f;
+		dist = VectorNormalize( toGoal );
+		if ( dist < ab_field.halfLength * 0.7f && DotProduct( vel, toGoal ) > 0.55f )
+			return i;
+	}
+	return -1;
+}
+
+static qboolean CG_Autoball_TVView( void ) {
+	centity_t *ball;
+	vec3_t ballPos, pos, out, start;
+	float dt, axial, target;
+	int shot;
+	qboolean cut = qfalse;
+
+	if ( !CG_Autoball_WantsTVCam() ) {
+		ab_tvLastTime = 0;
+		return qfalse;
+	}
+	ball = CG_Autoball_FindBall();
+	if ( !ball )
+		return qfalse;
+	VectorCopy( ball->lerpOrigin, ballPos );
+
+	dt = ( cg.time - ab_tvLastTime ) * 0.001f;
+	if ( !ab_tvLastTime || dt < 0.0f || dt > 0.5f ) {
+		/* (re)start: no smoothing from stale values */
+		ab_tvShot = -1;
+		ab_tvShotSince = cg.time;
+		ab_tvAxial = DotProduct( ballPos, ab_field.axis ) - DotProduct( ab_field.centre, ab_field.axis );
+		cut = qtrue;
+		dt = 0.0f;
+	}
+	ab_tvLastTime = cg.time;
+
+	/* director: switch shots, keep a goal camera for a moment */
+	shot = CG_Autoball_TVGoalShot( ballPos, ball->currentState.pos.trDelta );
+	if ( shot != ab_tvShot ) {
+		if ( ab_tvShot < 0 || shot >= 0 || cg.time - ab_tvShotSince > AB_TV_GOALCAM_HOLD ) {
+			ab_tvShot = shot;
+			ab_tvShotSince = cg.time;
+			cut = qtrue;
+		}
+	}
+
+	if ( ab_tvShot >= 0 ) {
+		/* inside the goal, above the bar height, looking out at the play */
+		const float *goal = ab_tvShot ? ab_field.goal1 : ab_field.goal0;
+		VectorSubtract( goal, ab_field.centre, out );
+		out[2] = 0.0f;
+		VectorNormalize( out );
+		VectorCopy( goal, start );
+		start[2] += 40.0f;
+		VectorMA( goal, 80.0f, out, pos );
+		pos[2] += 170.0f;
+		CG_Autoball_ClampCam( start, pos, pos );
+	} else {
+		/* sideline: slides along with the ball, a little behind it */
+		target = DotProduct( ballPos, ab_field.axis ) - DotProduct( ab_field.centre, ab_field.axis );
+		target = Com_Clamp( -ab_field.halfLength * 0.75f, ab_field.halfLength * 0.75f, target );
+		ab_tvAxial += ( target - ab_tvAxial ) * CG_Autoball_Smooth( 2.5f, dt );
+		axial = ab_tvAxial * 0.9f;
+		VectorMA( ab_field.centre, axial, ab_field.axis, pos );
+		VectorMA( pos, ab_field.sideDist, ab_field.side, pos );
+		pos[2] += ab_field.height;
+	}
+
+	if ( cut )
+		VectorCopy( ballPos, ab_tvLook );
+	else {
+		int i;
+		float k = CG_Autoball_Smooth( 7.0f, dt );
+		for ( i = 0; i < 3; i++ )
+			ab_tvLook[i] += ( ballPos[i] - ab_tvLook[i] ) * k;
+	}
+	CG_Autoball_LookAt( pos, ab_tvLook );
+	return qtrue;
+}
+
+void CG_Autoball_OverrideView( void ) {
+	if ( cgs.gametype != GT_AUTOBALL || !cg.snap )
+		return;
+	CG_Autoball_SetupField();
+	if ( CG_Autoball_IntroView() )
+		return;
+	CG_Autoball_TVView();
+}
+
+
+/*
+===========================================================================
+Awards under the end-of-match scoreboard
+===========================================================================
+*/
+
+#define AB_AWARD_W      150.0f
+#define AB_AWARD_H      50.0f
+#define AB_AWARD_GAP    8.0f
+
+static void CG_Autoball_DrawAward( float x, float y, const char *title, int client,
+	const char *value, float fade ) {
+	vec4_t bg, bar, white, accent;
+	char name[MAX_NAME_LENGTH];
+	int team;
+
+	team = cgs.clientinfo[client].team;
+	AB_SET4( bg, 0.02f, 0.03f, 0.04f, 0.72f * fade );
+	CG_Autoball_TeamColor( team == TEAM_BLUE ? TEAM_BLUE : TEAM_RED, 0.9f * fade, bar );
+	AB_SET4( white, 1.0f, 1.0f, 1.0f, fade );
+	AB_SET4( accent, 1.0f, 0.78f, 0.2f, fade );
+
+	CG_FillRect( x, y, AB_AWARD_W, AB_AWARD_H, bg );
+	CG_FillRect( x, y, AB_AWARD_W, 3.0f, bar );
+	Q_strncpyz( name, cgs.clientinfo[client].name, sizeof( name ) );
+	Q_CleanStr( name );
+	if ( strlen( name ) > 14 )
+		name[14] = '\0';
+	CG_DrawIngameString( (int)( x + AB_AWARD_W / 2 ), (int)( y + 6 ), title,
+		UI_CENTER | UI_SMALLFONT, 0.6f, accent );
+	CG_DrawIngameString( (int)( x + AB_AWARD_W / 2 ), (int)( y + 18 ), name,
+		UI_CENTER | UI_SMALLFONT, 0.75f, white );
+	CG_DrawIngameString( (int)( x + AB_AWARD_W / 2 ), (int)( y + 34 ), value,
+		UI_CENTER | UI_SMALLFONT, 0.6f, white );
+}
+
+/* MVP, top scorer, best keeper, hardest shot; only the ones somebody earned */
+void CG_Autoball_DrawAwards( int y, float fade ) {
+	int i, count;
+	int mvp = -1, scorer = -1, keeper = -1, shooter = -1;
+	const char *titles[4];
+	char values[4][32];	/* not va(): it only has two buffers */
+	int clients[4];
+	float x, top;
+
+	if ( cgs.gametype != GT_AUTOBALL || !cg.snap || cg.snap->ps.pm_type != PM_INTERMISSION )
+		return;
+
+	for ( i = 0; i < cg.numScores; i++ ) {
+		score_t *s = &cg.scores[i];
+		if ( s->client < 0 || s->client >= MAX_CLIENTS )
+			continue;
+		if ( cgs.clientinfo[s->client].team != TEAM_RED && cgs.clientinfo[s->client].team != TEAM_BLUE )
+			continue;
+		if ( mvp < 0 || s->score > cg.scores[mvp].score )
+			mvp = i;
+		if ( s->autoballGoals > 0 && ( scorer < 0 || s->autoballGoals > cg.scores[scorer].autoballGoals ||
+			( s->autoballGoals == cg.scores[scorer].autoballGoals &&
+			s->autoballAssists > cg.scores[scorer].autoballAssists ) ) )
+			scorer = i;
+		if ( s->autoballSaves > 0 && ( keeper < 0 || s->autoballSaves > cg.scores[keeper].autoballSaves ) )
+			keeper = i;
+		if ( s->autoballBestShot > 0 && ( shooter < 0 || s->autoballBestShot > cg.scores[shooter].autoballBestShot ) )
+			shooter = i;
+	}
+
+	count = 0;
+	if ( mvp >= 0 ) {
+		titles[count] = "MVP";
+		clients[count] = cg.scores[mvp].client;
+		Com_sprintf( values[count], sizeof( values[count] ), "%i points", cg.scores[mvp].score );
+		count++;
+	}
+	if ( scorer >= 0 ) {
+		titles[count] = "TOP SCORER";
+		clients[count] = cg.scores[scorer].client;
+		Com_sprintf( values[count], sizeof( values[count] ), "%i goal%s", cg.scores[scorer].autoballGoals,
+			cg.scores[scorer].autoballGoals == 1 ? "" : "s" );
+		count++;
+	}
+	if ( keeper >= 0 ) {
+		titles[count] = "BEST KEEPER";
+		clients[count] = cg.scores[keeper].client;
+		Com_sprintf( values[count], sizeof( values[count] ), "%i save%s", cg.scores[keeper].autoballSaves,
+			cg.scores[keeper].autoballSaves == 1 ? "" : "s" );
+		count++;
+	}
+	if ( shooter >= 0 ) {
+		titles[count] = "HARDEST SHOT";
+		clients[count] = cg.scores[shooter].client;
+		Q_strncpyz( values[count], CG_Autoball_SpeedText( cg.scores[shooter].autoballBestShot ),
+			sizeof( values[count] ) );
+		count++;
+	}
+	if ( !count )
+		return;
+
+	/* below the scoreboard, but never off the screen */
+	top = (float)y + 10.0f;
+	if ( top > 480.0f - AB_AWARD_H - 8.0f )
+		top = 480.0f - AB_AWARD_H - 8.0f;
+	x = 320.0f - ( count * AB_AWARD_W + ( count - 1 ) * AB_AWARD_GAP ) / 2.0f;
+	for ( i = 0; i < count; i++ ) {
+		CG_Autoball_DrawAward( x, top, titles[i], clients[i], values[i], fade );
+		x += AB_AWARD_W + AB_AWARD_GAP;
+	}
 }

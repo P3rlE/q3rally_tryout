@@ -181,6 +181,7 @@ vmCvar_t        g_autoballBalls;
 vmCvar_t        g_autoballBallScale;
 vmCvar_t        g_autoballBallGravity;
 vmCvar_t        g_autoballStats;
+vmCvar_t        g_autoballIntro;
 vmCvar_t        g_derbyNoRamTime;
 vmCvar_t  g_humanplayers;
 vmCvar_t        g_fuelKillReward;
@@ -406,6 +407,7 @@ static cvarTable_t		gameCvarTable[] = {
         { &g_autoballBallScale, "g_autoballBallScale", "1", CVAR_SERVERINFO | CVAR_LATCH, 0, qfalse },
         { &g_autoballBallGravity, "g_autoballBallGravity", "1", CVAR_SERVERINFO, 0, qfalse },
         { &g_autoballStats, "g_autoballStats", "0", CVAR_ARCHIVE, 0, qfalse },
+        { &g_autoballIntro, "g_autoballIntro", "1", CVAR_ARCHIVE, 0, qfalse },
         // END
 
         { &g_rankings, "g_rankings", "0", 0, 0, qfalse},

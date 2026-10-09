@@ -1632,6 +1632,9 @@ qboolean CG_DrawModernScoreboard(void) {
         }
     }
     
+    /* Autoball: MVP, top scorer, keeper, hardest shot at the end */
+    CG_Autoball_DrawAwards(localClientDrawn ? y : y + rowHeight, fade);
+
     /* Load deferred models */
     if (++cg.deferredPlayerLoading > 10) {
         CG_LoadDeferredPlayers();

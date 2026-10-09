@@ -181,18 +181,18 @@ cg.scores[i].kothHoldTimeMs = atoi(CG_Argv(i * SCOREBOARD_FIELDS_PER_CLIENT + 28
 
 }
 
-/* "abStats <count> (<client> <goals> <assists> <saves> <shots> <demos>)*" */
+/* "abStats <count> (<client> <goals> <assists> <saves> <shots> <demos> <bestShotKmh>)*" */
 static void CG_ParseAutoballStats( void ) {
 	int count, i, clientNum, scoreIndex, base;
 
 	if ( trap_Argc() < 2 ) return;
 	count = atoi( CG_Argv( 1 ) );
 	if ( count < 0 ) return;
-	if ( count > ( trap_Argc() - 2 ) / 6 ) {
-		count = ( trap_Argc() - 2 ) / 6;
+	if ( count > ( trap_Argc() - 2 ) / 7 ) {
+		count = ( trap_Argc() - 2 ) / 7;
 	}
 	for ( i = 0; i < count; i++ ) {
-		base = i * 6 + 2;
+		base = i * 7 + 2;
 		clientNum = atoi( CG_Argv( base ) );
 		if ( clientNum < 0 || clientNum >= MAX_CLIENTS ) continue;
 		for ( scoreIndex = 0; scoreIndex < cg.numScores; scoreIndex++ ) {
@@ -203,6 +203,7 @@ static void CG_ParseAutoballStats( void ) {
 			score->autoballSaves = atoi( CG_Argv( base + 3 ) );
 			score->autoballShots = atoi( CG_Argv( base + 4 ) );
 			score->autoballDemos = atoi( CG_Argv( base + 5 ) );
+			score->autoballBestShot = atoi( CG_Argv( base + 6 ) );
 			break;
 		}
 	}
