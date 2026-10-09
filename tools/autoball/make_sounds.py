@@ -9,6 +9,9 @@ Writes mono 44.1 kHz Ogg Vorbis files (needs numpy and ffmpeg with libvorbis):
     bounce.ogg      ball bounces off a wall, the floor or the ceiling
     goal_horn.ogg   stadium horn after a goal
     whistle.ogg     referee whistle at kick-off
+    crowd_cheer.ogg goal cheer: sound/world/crowds.ogg cut to 7 s with a
+                    3 s fade-out, so it dies away before the kick-off
+                    whistle instead of stopping hard (needs that file)
 Every sound is generated from a fixed random seed, so re-running the script
 reproduces the same files.
 """
@@ -162,6 +165,24 @@ def write_ogg(samples, path):
         os.unlink(wav_path)
 
 
+CROWD_LENGTH = 7.0      # goal celebration (4 s) + kick-off countdown (3 s)
+CROWD_FADE = 3.0
+
+
+def crowd_cheer(sound_dir, path):
+    """fade the stock crowd sample out instead of letting it end at full volume"""
+    source = os.path.join(sound_dir, "..", "world", "crowds.ogg")
+    if not os.path.exists(source):
+        print(f"skipped {path}: {source} not found")
+        return
+    fade_start = CROWD_LENGTH - CROWD_FADE
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", source,
+                    "-af", f"atrim=0:{CROWD_LENGTH},afade=t=in:d=0.08,"
+                           f"afade=t=out:st={fade_start}:d={CROWD_FADE}:curve=qsin",
+                    "-c:a", "libvorbis", "-q:a", "4", path], check=True)
+    print(f"{path}  ({os.path.getsize(path)} bytes)")
+
+
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     default_out = os.path.normpath(os.path.join(here, "..", "..", "baseq3r", "sound", "autoball"))
@@ -173,6 +194,7 @@ def main():
         path = os.path.join(args.out, name + ".ogg")
         write_ogg(make(), path)
         print(f"{path}  ({os.path.getsize(path)} bytes)")
+    crowd_cheer(args.out, os.path.join(args.out, "crowd_cheer.ogg"))
 
 
 if __name__ == "__main__":

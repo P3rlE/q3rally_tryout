@@ -51,6 +51,7 @@ body; the ball keeps its position and velocity.
 #define AUTOBALL_SOUND_BOUNCE		"sound/autoball/bounce.ogg"
 #define AUTOBALL_SOUND_GOAL_HORN	"sound/autoball/goal_horn.ogg"
 #define AUTOBALL_SOUND_WHISTLE		"sound/autoball/whistle.ogg"
+#define AUTOBALL_SOUND_CROWD		"sound/autoball/crowd_cheer.ogg"	/* crowds.ogg, faded out */
 #define AUTOBALL_BOUNCE_SOUND_DV	280.0f	/* u/s velocity change that counts as a bounce */
 #define AUTOBALL_MODEL				"models/autoball/ball.md3"	/* radius 75 */
 #define AUTOBALL_DEFAULT_RADIUS		75.0f
@@ -1210,7 +1211,7 @@ static void G_Autoball_ScoreGoal( gentity_t *ball, gentity_t *goal ) {
 	}
 	ball->ballPendingClient = -1;	/* the goal itself is the result of that touch */
 	G_Autoball_GoalPush( ball->r.currentOrigin );
-	Rally_Sound( ball, EV_GLOBAL_SOUND, CHAN_AUTO, G_SoundIndex( "sound/world/crowds.ogg" ) );
+	Rally_Sound( ball, EV_GLOBAL_SOUND, CHAN_AUTO, G_SoundIndex( AUTOBALL_SOUND_CROWD ) );
 	Rally_Sound( ball, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex( AUTOBALL_SOUND_GOAL_HORN ) );
 	CalculateRanks();
 
