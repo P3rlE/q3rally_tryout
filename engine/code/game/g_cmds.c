@@ -868,6 +868,7 @@ void SetTeam( gentity_t *ent, const char *s ) {
 		AddTournamentQueue(client);
 
 	client->sess.sessionTeam = team;
+	G_Autoball_ForgetClient( clientNum );	// touches before the switch don't count for the new team
 	client->sess.spectatorState = specState;
 	client->sess.spectatorClient = specClient;
 // STONELANCE

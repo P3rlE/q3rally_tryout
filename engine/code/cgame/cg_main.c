@@ -1404,6 +1404,9 @@ static void CG_RegisterGraphics( void ) {
 
 // Q3Rally Code Start - need to load it right away cause car uses it when it explodes
 	cgs.media.rocketExplosionShader = trap_R_RegisterShader( "rocketExplosion" );
+	if ( cgs.gametype == GT_AUTOBALL ) {
+		trap_R_RegisterShader( "autoballTrail" );	// cached now, not at the first fast shot
+	}
 
 	// also used for sparks now
 	cgs.media.railCoreShader = trap_R_RegisterShader( "railCore" );

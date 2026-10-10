@@ -165,8 +165,10 @@ static void G_Autoball_BallGravity( gentity_t *ball ) {
 	if ( scale == 1.0f || !G_RallyPhysics_Enabled() || ball->mass <= 0 )
 		return;
 	frameSec = ( level.time - level.previousTime ) * 0.001f;
-	if ( frameSec <= 0.0f || frameSec > 0.25f )
+	if ( frameSec <= 0.0f )
 		return;
+	if ( frameSec > 0.1f )
+		frameSec = 0.1f;	/* G_RallyPhysics_RunFrame simulates at most 100 ms per frame */
 	VectorSet( impulse, 0.0f, 0.0f, ball->mass * g_gravity.value * ( 1.0f - scale ) * frameSec );
 	trap_RallyPhysicsApplyImpulse( ball->s.number, ball->r.currentOrigin, impulse );
 }
@@ -576,6 +578,7 @@ end while the ball is in the air or a goal is being celebrated.
 #define AUTOBALL_GOAL_POINTS		100		/* personal score for a goal */
 #define AUTOBALL_SCORER_WINDOW		10000	/* a touch older than this scores no one */
 #define AUTOBALL_AIRBORNE_HEIGHT	40.0f	/* above its rest height the ball is "in play" */
+#define AUTOBALL_HOLD_MAX			10000	/* ms the time limit waits for a ball in the air */
 #define AUTOBALL_ASSIST_POINTS		50
 #define AUTOBALL_SAVE_POINTS		50
 #define AUTOBALL_SHOT_POINTS		20
@@ -683,7 +686,8 @@ void Svcmd_BallGoalAdd_f( void ) {
 		goal->r.absmax[i] = a[i] < b[i] ? b[i] : a[i];
 	}
 	/* not linked: only its bounds matter, and linking would recompute them */
-	G_Autoball_Publish();	/* clients learn the new goal position */
+	if ( g_gametype.integer == GT_AUTOBALL )
+		G_Autoball_Publish();	/* clients learn the new goal position (CS shared with KOTH) */
 	G_Printf( "%s goal %d added (%.0f %.0f %.0f) - (%.0f %.0f %.0f)\n",
 		goal->count == TEAM_BLUE ? "Blue" : "Red", goal->s.number,
 		goal->r.absmin[0], goal->r.absmin[1], goal->r.absmin[2],
@@ -812,12 +816,12 @@ static int G_Autoball_PredictGoal( gentity_t *ball, const vec3_t origin, const v
 			if ( vel[2] < 0.0f )
 				vel[2] = -vel[2] * ball->elasticity;
 		}
-		goal = G_Autoball_GoalContaining( next );
-		if ( goal )
-			return goal->count;
 		trap_Trace( &trace, pos, NULL, NULL, next, ball->s.number, MASK_SOLID );
 		if ( trace.fraction < 1.0f || trace.startsolid )
 			return TEAM_FREE;		/* a wall, post or ramp is in the way */
+		goal = G_Autoball_GoalContaining( next );
+		if ( goal )
+			return goal->count;
 		VectorCopy( next, pos );
 	}
 	return TEAM_FREE;
@@ -857,6 +861,24 @@ void G_Autoball_BallTouched( gentity_t *ball, gentity_t *other ) {
 		ball->ballPendingThreat = G_Autoball_PredictGoal( ball, ball->r.currentOrigin, ball->s.pos.trDelta );
 	}
 	ball->ballPendingTime = level.time;
+}
+
+/* A client left or changed teams: drop it from every ball's touch history,
+   so the slot's next owner or the other team gets no goal/assist credit. */
+void G_Autoball_ForgetClient( int clientNum ) {
+	gentity_t *ball = NULL;
+	int i;
+
+	while ( ( ball = G_Find( ball, FOFS( classname ), AUTOBALL_CLASSNAME ) ) != NULL ) {
+		if ( ball->ballLastToucher == clientNum )
+			ball->ballLastToucher = -1;
+		if ( ball->ballPendingClient == clientNum )
+			ball->ballPendingClient = -1;
+		for ( i = 0; i < 4; i++ ) {
+			if ( ball->ballTouchClient[i] == clientNum )
+				ball->ballTouchClient[i] = -1;
+		}
+	}
 }
 
 /* Contact sound, louder material for harder hits. */
@@ -1050,10 +1072,14 @@ void G_Autoball_VehicleContact( gentity_t *self, const vehicleCollisionContact_t
 	if ( VectorLength( rammer->client->ps.velocity ) < minSpeed )
 		return;
 
+	if ( level.intermissionQueued || level.intermissiontime )
+		return;
+	G_Damage( victim, rammer, rammer, NULL, NULL, 100000, DAMAGE_NO_PROTECTION, MOD_AUTOBALL_DEMOLITION );
+	if ( victim->health > 0 )
+		return;		/* nothing happened (god mode, battle suit with weapons on) */
 	rammer->client->pers.autoballDemos++;
 	G_LogPrintf( "AutoballDemo: %i %i %i\n", rammer->s.number, victim->s.number,
 		(int)( VectorLength( rammer->client->ps.velocity ) / CP_M_2_QU * 3.6f ) );
-	G_Damage( victim, rammer, rammer, NULL, NULL, 100000, DAMAGE_NO_PROTECTION, MOD_AUTOBALL_DEMOLITION );
 
 	/* a second of extra turbo for the demolition, capped like a pickup */
 	turbo = rammer->client->ps.powerups[PW_TURBO] - level.time + AUTOBALL_DEMO_TURBO_BONUS;
@@ -1073,10 +1099,13 @@ qboolean G_Autoball_BlockDamage( gentity_t *targ, int mod ) {
 	case MOD_SLIME:
 	case MOD_WATER:
 	case MOD_CRUSH:
-	case MOD_TELEFRAG:
 	case MOD_SUICIDE:
 	case MOD_FALLING:
 		return qfalse;
+	case MOD_TELEFRAG:
+		/* kick-off respawns put cars back while the others are still
+		   linked; a car on its own spawn spot would telefrag itself */
+		return qtrue;
 	default:
 		return g_autoballWeapons.integer ? qfalse : qtrue;
 	}
@@ -1131,10 +1160,16 @@ qboolean G_Autoball_HoldMatchEnd( void ) {
 		return qtrue;
 	if ( level.autoballState != AUTOBALL_STATE_LIVE )
 		return qfalse;
+	/* never longer than AUTOBALL_HOLD_MAX past the time limit, e.g. when a
+	   ball lies on top of a goal where no car can reach it */
+	if ( g_timelimit.integer &&
+		level.time - level.startTime > g_timelimit.integer * 60000 + AUTOBALL_HOLD_MAX )
+		return qfalse;
 	ball = NULL;
 	while ( ( ball = G_Find( ball, FOFS( classname ), AUTOBALL_CLASSNAME ) ) != NULL ) {
-		if ( ball->r.currentOrigin[2] > ball->ballHome[2] + AUTOBALL_AIRBORNE_HEIGHT )
-			return qtrue;
+		if ( ball->r.currentOrigin[2] > ball->ballHome[2] + AUTOBALL_AIRBORNE_HEIGHT &&
+			VectorLength( ball->s.pos.trDelta ) > 40.0f )
+			return qtrue;	/* in the air and moving */
 	}
 	return qfalse;
 }
@@ -1151,7 +1186,15 @@ static void G_Autoball_StartKickoff( gentity_t *ball ) {
 			G_Autoball_ResetBall( other );
 	}
 
-	/* everybody back to a kick-off spot (team_CTF_redplayer / blueplayer) */
+	/* everybody back to a kick-off spot (team_CTF_redplayer / blueplayer).
+	   Unlink all cars first, so the spawn spot search doesn't see them at
+	   their old positions. */
+	for ( i = 0; i < level.maxclients; i++ ) {
+		gentity_t *ent = &g_entities[i];
+		if ( ent->inuse && ent->client && ent->client->pers.connected == CON_CONNECTED &&
+			( ent->client->sess.sessionTeam == TEAM_RED || ent->client->sess.sessionTeam == TEAM_BLUE ) )
+			trap_UnlinkEntity( ent );
+	}
 	for ( i = 0; i < level.maxclients; i++ ) {
 		gentity_t *ent = &g_entities[i];
 		gclient_t *client = ent->client;
@@ -1236,7 +1279,8 @@ static void G_Autoball_ScoreGoal( gentity_t *ball, gentity_t *goal ) {
 	}
 
 	level.autoballGoalTeam = scoringTeam;
-	level.autoballScorer = ( scorer && !ownGoal ) ? scorer->s.number : -1;
+	/* scorer for the clients: client number, -2 own goal, -1 nobody credited */
+	level.autoballScorer = ownGoal ? -2 : ( scorer ? scorer->s.number : -1 );
 	level.autoballGoalSpeed = (int)( VectorLength( ball->s.pos.trDelta ) / CP_M_2_QU * 3.6f + 0.5f );
 
 	AddTeamScore( ball->r.currentOrigin, scoringTeam, 1 );

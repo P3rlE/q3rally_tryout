@@ -645,6 +645,7 @@ typedef struct {
 	int			autoballIntroDone;		// the first kick-off (with intro flight) happened
 	int			autoballIntroEnd;		// level.time the intro flight ends, 0 = no intro
 	int			autoballClockStarted;	// the match clock was restarted at the first whistle
+	qboolean	matchOutcomeRecorded;	// G_RecordMatchOutcome ran for this match
 	int			kothTeamHoldTimeMs[TEAM_NUM_TEAMS];
 	qboolean	kothMapInvalid;
 // STONELANCE
@@ -1147,6 +1148,7 @@ qboolean G_Autoball_BlockDamage( gentity_t *targ, int mod );
 qboolean G_Autoball_ForceRespawn( gentity_t *ent );
 void G_Autoball_ClientSpawn( gentity_t *ent );
 qboolean G_Autoball_CarsFrozen( int serverTime );
+void G_Autoball_ForgetClient( int clientNum );
 qboolean G_Autoball_HoldMatchEnd( void );
 qboolean G_Autoball_ItemDisabled( gitem_t *item );
 void SP_autoball_goal( gentity_t *ent );

@@ -267,21 +267,29 @@ static void CG_Autoball_DrawGoalBanner( void ) {
 	if ( alpha <= 0.0f )
 		return;
 	/* a short punch-in, then steady */
-	scale = elapsed < 250 ? 1.0f + ( 250 - elapsed ) / 250.0f * 0.6f : 1.0f;
+	scale = elapsed < 250 ? 1.0f + ( 250 - elapsed ) / 250.0f * 0.25f : 1.0f;	/* stays inside 4:3 */
 
 	CG_Autoball_TeamColor( cgs.autoballGoalTeam, alpha, color );
 	AB_SET4( white, 1.0f, 1.0f, 1.0f, alpha );
 	CG_DrawIngameString( 320, 140, cgs.autoballGoalTeam == TEAM_BLUE ? "BLUE SCORES!" : "RED SCORES!",
 		UI_CENTER | UI_DROPSHADOW, 1.6f * scale, color );
 
+	/* scorer: client number, -2 own goal, -1 nobody credited (old touch) */
 	if ( cgs.autoballScorer >= 0 && cgs.autoballScorer < MAX_CLIENTS &&
 		cgs.clientinfo[cgs.autoballScorer].infoValid ) {
 		who = cgs.clientinfo[cgs.autoballScorer].name;
-	} else {
+	} else if ( cgs.autoballScorer == -2 ) {
 		who = "Own goal";
+	} else {
+		who = NULL;
 	}
-	CG_DrawIngameString( 320, 184, va( "%s^7  -  %s", who, CG_Autoball_SpeedText( cgs.autoballGoalSpeed ) ),
-		UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, 1.0f, white );
+	if ( who ) {
+		CG_DrawIngameString( 320, 184, va( "%s^7  -  %s", who, CG_Autoball_SpeedText( cgs.autoballGoalSpeed ) ),
+			UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, 1.0f, white );
+	} else {
+		CG_DrawIngameString( 320, 184, CG_Autoball_SpeedText( cgs.autoballGoalSpeed ),
+			UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, 1.0f, white );
+	}
 }
 
 /*
@@ -398,19 +406,22 @@ so players can judge where an airborne ball will land.
 void CG_Autoball_BallShadow( centity_t *cent ) {
 	trace_t trace;
 	vec3_t end;
-	float height, frac;
+	float height, frac, alpha;
 
 	if ( !cgs.media.shadowMarkShader )
 		return;
 	VectorCopy( cent->lerpOrigin, end );
 	end[2] -= AUTOBALL_SHADOW_RANGE;
-	CG_Trace( &trace, cent->lerpOrigin, NULL, NULL, end, cent->currentState.number, MASK_SOLID );
+	/* world only: a car under the ball must not swallow the shadow */
+	trap_CM_BoxTrace( &trace, cent->lerpOrigin, end, vec3_origin, vec3_origin, 0, MASK_SOLID );
 	if ( trace.fraction >= 1.0f || trace.startsolid )
 		return;
 	height = trace.fraction * AUTOBALL_SHADOW_RANGE;
 	frac = 1.0f - height / AUTOBALL_SHADOW_RANGE;
+	/* the shadow shader darkens by colour, not alpha */
+	alpha = 0.35f + 0.5f * frac;
 	CG_ImpactMark( cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal, 0,
-		1.0f, 1.0f, 1.0f, 0.35f + 0.5f * frac, qfalse,
+		alpha, alpha, alpha, 1.0f, qfalse,
 		CG_Autoball_Radius( cent ) * ( 0.6f + 0.5f * frac ), qtrue );
 }
 
@@ -853,7 +864,7 @@ static void CG_Autoball_ClampCam( const vec3_t from, const vec3_t to, vec3_t out
 
 	VectorSet( mins, -8, -8, -8 );
 	VectorSet( maxs, 8, 8, 8 );
-	CG_Trace( &tr, from, mins, maxs, to, cg.snap ? cg.snap->ps.clientNum : -1, MASK_SOLID );
+	trap_CM_BoxTrace( &tr, from, to, mins, maxs, 0, MASK_SOLID );	/* world only */
 	if ( tr.fraction >= 1.0f ) {
 		VectorCopy( to, out );
 		return;
@@ -892,23 +903,33 @@ static void CG_Autoball_SetupField( void ) {
 	VectorCopy( ab_field.centre, start );
 	start[2] += 150.0f;
 	VectorMA( start, 8000.0f, ab_field.side, end );
-	CG_Trace( &tr, start, mins, maxs, end, -1, MASK_SOLID );
+	trap_CM_BoxTrace( &tr, start, end, mins, maxs, 0, MASK_SOLID );
 	plus = tr.fraction * 8000.0f;
 	VectorMA( start, -8000.0f, ab_field.side, end );
-	CG_Trace( &tr, start, mins, maxs, end, -1, MASK_SOLID );
+	trap_CM_BoxTrace( &tr, start, end, mins, maxs, 0, MASK_SOLID );
 	minus = tr.fraction * 8000.0f;
 	if ( minus > plus ) {
 		VectorScale( ab_field.side, -1.0f, ab_field.side );
 		plus = minus;
 	}
-	ab_field.sideDist = Com_Clamp( 500.0f, 5000.0f, plus - 260.0f );
+	/* measured distance wins over the minimum: never behind the wall */
+	ab_field.sideDist = plus - 260.0f;
+	if ( ab_field.sideDist < plus * 0.6f )
+		ab_field.sideDist = plus * 0.6f;
+	if ( ab_field.sideDist > 5000.0f )
+		ab_field.sideDist = 5000.0f;
 
 	/* height: under the ceiling, if there is one */
 	VectorMA( start, ab_field.sideDist, ab_field.side, cam );
 	VectorCopy( cam, end );
 	end[2] += 2000.0f;
-	CG_Trace( &tr, cam, mins, maxs, end, -1, MASK_SOLID );
-	ab_field.height = Com_Clamp( 200.0f, 900.0f, tr.fraction * 2000.0f - 120.0f ) + 150.0f;
+	trap_CM_BoxTrace( &tr, cam, end, mins, maxs, 0, MASK_SOLID );
+	ab_field.height = tr.fraction * 2000.0f - 120.0f;
+	if ( ab_field.height > 900.0f )
+		ab_field.height = 900.0f;
+	if ( ab_field.height < 0.0f )
+		ab_field.height = 0.0f;
+	ab_field.height += 150.0f;	/* the measurement started 150 above the centre */
 	ab_field.valid = qtrue;
 }
 
@@ -918,6 +939,13 @@ static void CG_Autoball_LookAt( const vec3_t origin, const vec3_t target ) {
 	VectorCopy( origin, cg.refdef.vieworg );
 	VectorSubtract( target, origin, dir );
 	vectoangles( dir, cg.refdefViewAngles );
+}
+
+/* true while the kick-off flight runs (the HUD stays hidden) */
+qboolean CG_Autoball_IntroActive( void ) {
+	return ( cgs.gametype == GT_AUTOBALL && cg_autoballIntro.integer &&
+		cgs.autoballState == AUTOBALL_STATE_KICKOFF && cgs.autoballIntroEnd &&
+		cg.time < cgs.autoballIntroEnd - AB_INTRO_BLEND / 2 ) ? qtrue : qfalse;
 }
 
 /* first kick-off: circle the field, end in the player's own view */
@@ -1081,8 +1109,12 @@ static qboolean CG_Autoball_TVView( void ) {
 		ab_tvAxial += ( target - ab_tvAxial ) * CG_Autoball_Smooth( 2.5f, dt );
 		axial = ab_tvAxial * 0.9f;
 		VectorMA( ab_field.centre, axial, ab_field.axis, pos );
+		VectorCopy( pos, start );
+		start[2] += 150.0f;
 		VectorMA( pos, ab_field.sideDist, ab_field.side, pos );
 		pos[2] += ab_field.height;
+		/* the wall may come closer away from the halfway line */
+		CG_Autoball_ClampCam( start, pos, pos );
 	}
 
 	if ( cut )

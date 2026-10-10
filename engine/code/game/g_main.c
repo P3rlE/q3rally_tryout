@@ -2000,6 +2000,14 @@ static void G_RecordMatchOutcome( void ) {
 		return;
 	}
 
+	/* LogExit and BeginIntermission both call this. Only RecordWin/Loss
+	   guard themselves; sess.wins, zone hold, Autoball goals and the match
+	   achievements would otherwise be counted twice. */
+	if ( level.matchOutcomeRecorded ) {
+		return;
+	}
+	level.matchOutcomeRecorded = qtrue;
+
         if ( level.numPlayingClients <= 0 ) {
                 return;
         }

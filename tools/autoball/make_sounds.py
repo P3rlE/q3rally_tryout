@@ -169,9 +169,10 @@ CROWD_LENGTH = 7.0      # goal celebration (4 s) + kick-off countdown (3 s)
 CROWD_FADE = 3.0
 
 
-def crowd_cheer(sound_dir, path):
+def crowd_cheer(path):
     """fade the stock crowd sample out instead of letting it end at full volume"""
-    source = os.path.join(sound_dir, "..", "world", "crowds.ogg")
+    here = os.path.dirname(os.path.abspath(__file__))
+    source = os.path.normpath(os.path.join(here, "..", "..", "baseq3r", "sound", "world", "crowds.ogg"))
     if not os.path.exists(source):
         print(f"skipped {path}: {source} not found")
         return
@@ -194,7 +195,7 @@ def main():
         path = os.path.join(args.out, name + ".ogg")
         write_ogg(make(), path)
         print(f"{path}  ({os.path.getsize(path)} bytes)")
-    crowd_cheer(args.out, os.path.join(args.out, "crowd_cheer.ogg"))
+    crowd_cheer(os.path.join(args.out, "crowd_cheer.ogg"))
 
 
 if __name__ == "__main__":

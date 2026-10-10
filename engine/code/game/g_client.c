@@ -2041,6 +2041,7 @@ void ClientDisconnect( int clientNum ) {
 	// Q3Rally: drop any lap ghost being recorded for this slot
 	G_GhostRecord_ClientDisconnect( clientNum );
 	G_GhostLadder_ClientDisconnect( clientNum );
+	G_Autoball_ForgetClient( clientNum );	// no goal credit for a slot's next owner
 
 	ent = g_entities + clientNum;
 	if (!ent->client || ent->client->pers.connected == CON_DISCONNECTED) {

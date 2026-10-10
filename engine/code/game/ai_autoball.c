@@ -69,6 +69,8 @@ static int   ab_turbo[MAX_CLIENTS];
 static float ab_slowSince[MAX_CLIENTS];
 static float ab_reverseUntil[MAX_CLIENTS];
 static float ab_reverseYaw[MAX_CLIENTS];
+static int   ab_drive[MAX_CLIENTS];		/* asked for throttle this frame */
+static float ab_lastThink[MAX_CLIENTS];
 static vec3_t ab_aimError[MAX_CLIENTS];
 static float ab_aimErrorTime[MAX_CLIENTS];
 
@@ -86,6 +88,10 @@ static float BotAutoball_Skill( bot_state_t *bs ) {
 /* read by BotUpdateInput (ai_main.c): hold BUTTON_TURBO this frame */
 qboolean BotAutoball_WantsTurbo( int client ) {
 	if ( client < 0 || client >= MAX_CLIENTS || gametype != GT_AUTOBALL )
+		return qfalse;
+	/* only while the bot is actually driving Autoball (not dead, not in
+	   another AI node, not a new bot in an old slot) */
+	if ( FloatTime() - ab_lastThink[client] > 0.25f )
 		return qfalse;
 	return ab_turbo[client] ? qtrue : qfalse;
 }
@@ -267,10 +273,12 @@ static float BotAutoball_Steer( bot_state_t *bs, const vec3_t target, int thrott
 	if ( throttle > 0 && err > 75.0f && speed > 1100.0f )
 		throttle = 0;
 
-	if ( throttle > 0 )
+	if ( throttle > 0 ) {
 		trap_EA_MoveForward( bs->client );
-	else if ( throttle < 0 )
+		ab_drive[bs->client] = 1;
+	} else if ( throttle < 0 ) {
 		trap_EA_MoveBack( bs->client );
+	}
 	return err;
 }
 
@@ -388,6 +396,13 @@ qboolean BotAutoball_Think( bot_state_t *bs ) {
 
 	now = FloatTime();
 
+	/* first think after a respawn or a pause: no stale stuck state */
+	if ( now - ab_lastThink[client] > 0.5f ) {
+		ab_slowSince[client] = 0.0f;
+		ab_reverseUntil[client] = 0.0f;
+	}
+	ab_lastThink[client] = now;
+
 	/* stuck against a wall or another car: back off with a turn */
 	if ( ab_reverseUntil[client] > now ) {
 		vec3_t angles;
@@ -396,18 +411,7 @@ qboolean BotAutoball_Think( bot_state_t *bs ) {
 		trap_EA_MoveBack( client );
 		return qtrue;
 	}
-	speed = VectorLength( bs->cur_ps.velocity );
-	if ( speed < 70.0f ) {
-		if ( !ab_slowSince[client] ) {
-			ab_slowSince[client] = now;
-		} else if ( now - ab_slowSince[client] > AB_BOT_STUCK_TIME ) {
-			ab_reverseUntil[client] = now + AB_BOT_REVERSE_TIME;
-			ab_reverseYaw[client] = AngleMod( bs->cur_ps.damageAngles[YAW] + ( random() < 0.5f ? 50.0f : -50.0f ) );
-			ab_slowSince[client] = 0.0f;
-		}
-	} else {
-		ab_slowSince[client] = 0.0f;
-	}
+	ab_drive[client] = 0;
 
 	/* push direction: towards the opponent goal, or simply away from our
 	   own goal when the ball is in our danger zone */
@@ -461,5 +465,20 @@ qboolean BotAutoball_Think( bot_state_t *bs ) {
 
 	if ( turbo && BotAutoball_TurboStored( &bs->cur_ps ) > 0 )
 		ab_turbo[client] = 1;
+
+	/* stuck: wants to drive but doesn't move (a car waiting on its spot
+	   brakes on purpose and is not stuck) */
+	speed = VectorLength( bs->cur_ps.velocity );
+	if ( ab_drive[client] && speed < 70.0f ) {
+		if ( !ab_slowSince[client] ) {
+			ab_slowSince[client] = now;
+		} else if ( now - ab_slowSince[client] > AB_BOT_STUCK_TIME ) {
+			ab_reverseUntil[client] = now + AB_BOT_REVERSE_TIME;
+			ab_reverseYaw[client] = AngleMod( bs->cur_ps.damageAngles[YAW] + ( random() < 0.5f ? 50.0f : -50.0f ) );
+			ab_slowSince[client] = 0.0f;
+		}
+	} else {
+		ab_slowSince[client] = 0.0f;
+	}
 	return qtrue;
 }

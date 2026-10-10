@@ -1782,6 +1782,7 @@ void CG_Autoball_ApplyShake( void );
 void CG_Autoball_BallTrail( centity_t *cent );
 void CG_Autoball_AddSceneEffects( void );
 void CG_Autoball_OverrideView( void );
+qboolean CG_Autoball_IntroActive( void );
 void CG_Autoball_DrawAwards( int y, float fade );
 extern	vmCvar_t		cg_minSkidLength;
 extern	vmCvar_t		cg_controlMode;

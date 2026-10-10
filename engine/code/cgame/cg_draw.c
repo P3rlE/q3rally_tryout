@@ -3980,6 +3980,11 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 		return;
 	}
 
+	/* Autoball kick-off flight: no HUD over the camera */
+	if ( CG_Autoball_IntroActive() ) {
+		return;
+	}
+
 	/* During the cinematic, replace the entire gameplay HUD with two
 	 * unobtrusive custom-font prompts. */
 	if ( CG_IntroCam_IsActive() ) {
