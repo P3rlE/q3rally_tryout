@@ -408,7 +408,11 @@ void CG_Autoball_BallShadow( centity_t *cent ) {
 	vec3_t end;
 	float height, frac, alpha;
 
-	if ( !cgs.media.shadowMarkShader )
+	static qhandle_t shadowShader;
+
+	if ( !shadowShader )
+		shadowShader = trap_R_RegisterShader( "autoballShadow" );	/* round, not the car's box */
+	if ( !shadowShader )
 		return;
 	VectorCopy( cent->lerpOrigin, end );
 	end[2] -= AUTOBALL_SHADOW_RANGE;
@@ -420,9 +424,10 @@ void CG_Autoball_BallShadow( centity_t *cent ) {
 	frac = 1.0f - height / AUTOBALL_SHADOW_RANGE;
 	/* the shadow shader darkens by colour, not alpha */
 	alpha = 0.35f + 0.5f * frac;
-	CG_ImpactMark( cgs.media.shadowMarkShader, trace.endpos, trace.plane.normal, 0,
+	CG_ImpactMark( shadowShader, trace.endpos, trace.plane.normal, 0,
 		alpha, alpha, alpha, 1.0f, qfalse,
-		CG_Autoball_Radius( cent ) * ( 0.6f + 0.5f * frac ), qtrue );
+		/* the soft round sprite fades out early: a bigger mark, same visible size */
+		CG_Autoball_Radius( cent ) * ( 0.9f + 0.75f * frac ), qtrue );
 }
 
 /* seam glow colour of the ball: last touching team, dim white for none */
@@ -444,7 +449,10 @@ void CG_Autoball_Draw2D( void ) {
 		return;
 	if ( cg.snap->ps.pm_type == PM_INTERMISSION )
 		return;
-	if ( cg_autoballIndicator.integer )
+	/* the ball arrow is for drivers: not for spectators (free, following or
+	   on the TV camera) and not while a wrecked car waits for its respawn */
+	if ( cg_autoballIndicator.integer && cg.snap->ps.persistant[PERS_TEAM] != TEAM_SPECTATOR &&
+		!( cg.snap->ps.pm_flags & PMF_FOLLOW ) && cg.snap->ps.stats[STAT_HEALTH] > 0 )
 		CG_Autoball_DrawIndicator();
 	if ( cgs.gametype != GT_AUTOBALL )
 		return;

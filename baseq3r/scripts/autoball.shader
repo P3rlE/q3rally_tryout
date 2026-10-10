@@ -27,3 +27,16 @@ autoballTrail
 		alphaGen vertex
 	}
 }
+
+// Round ball shadow (the stock markShadow is the cars' rectangular one).
+// Darkens by the white centre of the soft trail sprite; cgame sets the
+// strength through the vertex colour.
+autoballShadow
+{
+	polygonOffset
+	{
+		map models/autoball/trail.tga
+		blendFunc GL_ZERO GL_ONE_MINUS_SRC_COLOR
+		rgbGen exactVertex
+	}
+}

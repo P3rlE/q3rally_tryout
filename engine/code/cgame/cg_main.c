@@ -1406,6 +1406,7 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.rocketExplosionShader = trap_R_RegisterShader( "rocketExplosion" );
 	if ( cgs.gametype == GT_AUTOBALL ) {
 		trap_R_RegisterShader( "autoballTrail" );	// cached now, not at the first fast shot
+		trap_R_RegisterShader( "autoballShadow" );
 	}
 
 	// also used for sparks now

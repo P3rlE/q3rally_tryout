@@ -1124,6 +1124,16 @@ void G_Autoball_ClientSpawn( gentity_t *ent ) {
 	if ( g_gametype.integer != GT_AUTOBALL || !ent || !ent->client )
 		return;
 	client = ent->client;
+
+	/* Cars go to every client, like the ball. The server picks what a client
+	   sees from its real position; a free spectator watching through the TV
+	   camera (cg_autoball.c) may float where the field is not visible and
+	   would see the ball without cars. An arena has few cars, so it's cheap. */
+	if ( client->sess.sessionTeam == TEAM_RED || client->sess.sessionTeam == TEAM_BLUE )
+		ent->r.svFlags |= SVF_BROADCAST;
+	else
+		ent->r.svFlags &= ~SVF_BROADCAST;
+
 	if ( !g_autoballWeapons.integer ) {
 		client->ps.stats[STAT_WEAPONS] = 0;
 		client->ps.weapon = WP_NONE;
