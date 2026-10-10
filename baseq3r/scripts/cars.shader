@@ -3811,6 +3811,24 @@ models/players/sidepipe/red
 }
 
 
+//RALLY13 (white livery, orange and blue stripes, number 13)
+
+models/players/sidepipe/rally13
+{
+	{
+		map $dynamicreflection
+		tcGen environment
+		rgbGen identity
+	}
+	{
+		map models/players/sidepipe/rally13.tga
+		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		depthWrite
+		rgbGen lightingdiffuse
+	}
+}
+
+
 
 //BLUE
 
