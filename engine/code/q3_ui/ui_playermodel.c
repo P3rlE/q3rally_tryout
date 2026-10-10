@@ -138,6 +138,10 @@ static char* playermodel_artlist[] =
 #define ID_FAVORITE4		109
 #define ID_PREVHEADPAGE		110
 #define ID_NEXTHEADPAGE		111
+#define ID_PREVRIMBRAND		112
+#define ID_NEXTRIMBRAND		113
+
+#define MAX_RIM_BRANDS		64
 // END
 
 #define PLAYERMODEL_FRAME_X             24
@@ -216,6 +220,8 @@ typedef struct
 	menutext_s		rimname;
 	menutext_s		rimPrev;
 	menutext_s		rimNext;
+	menutext_s		rimBrandPrev;
+	menutext_s		rimBrandNext;
 
 	menubitmap_s	headports[MAX_HEADSPERPAGE];
 	menubitmap_s	headpics[MAX_HEADSPERPAGE];
@@ -254,6 +260,11 @@ typedef struct
 	int				numRimPages;
 	char			rimskin[MAX_QPATH];
 	int				selectedRim;
+	/* wheels are grouped by manufacturer (file name prefix before '_') */
+	int				numRimBrands;
+	int				rimBrand;
+	int				rimBrandStart[MAX_RIM_BRANDS];
+	int				rimBrandCount[MAX_RIM_BRANDS];
 
 	int				numHeads;
 	char			headList[MAX_HEADMODELS][MAX_QPATH];
@@ -272,6 +283,173 @@ static playermodel_t s_playermodel;
 
 static void PlayerModel_MenuEvent( void *ptr, int event );
 
+
+/*
+=================
+Wheel manufacturers
+
+Rim skins are named <brand>_<model> (bbs_rk, oz_superturismo, q3r_stage6).
+Names without a brand prefix are the original car-specific wheels.
+=================
+*/
+typedef struct {
+	const char *key;
+	const char *name;
+} rimBrandName_t;
+
+static const rimBrandName_t rimBrandNames[] = {
+	{ "q3r", "Q3Rally" },
+	{ "oz", "OZ" },
+	{ "teamloco", "Team Loco" },
+	{ "carlsson", "Carlsson" },
+	{ "zagato", "Zagato" },
+	{ "sport", "Sport" },
+	{ "", "Stock" },
+	{ NULL, NULL }
+};
+
+static void UI_RimBrandKey( const char *rim, char *out, int outSize ) {
+	const char *sep;
+	int len;
+
+	out[0] = '\0';
+	if ( !rim ) {
+		return;
+	}
+	sep = strchr( rim, '_' );
+	if ( !sep ) {
+		return;		/* stock wheel */
+	}
+	len = sep - rim;
+	if ( len >= outSize ) {
+		len = outSize - 1;
+	}
+	Q_strncpyz( out, rim, len + 1 );
+	Q_strlwr( out );
+}
+
+/* Display name of a rim's manufacturer, e.g. "bbs_rk" -> "BBS". */
+const char *UI_RimBrandName( const char *rim ) {
+	static char upper[4][32];
+	static int next;
+	char key[32];
+	char *out;
+	int i;
+
+	UI_RimBrandKey( rim, key, sizeof( key ) );
+	for ( i = 0; rimBrandNames[i].key; i++ ) {
+		if ( !Q_stricmp( rimBrandNames[i].key, key ) ) {
+			return rimBrandNames[i].name;
+		}
+	}
+	out = upper[next++ & 3];
+	Q_strncpyz( out, key, sizeof( upper[0] ) );
+	Q_strupr( out );
+	return out;
+}
+
+/* Readable rim name: "bbs_rk_ii" -> "RK II", "viper" -> "Viper". */
+void UI_RimModelName( const char *rim, char *out, int outSize ) {
+	const char *sep;
+	int i;
+
+	out[0] = '\0';
+	if ( !rim || !rim[0] ) {
+		return;
+	}
+	sep = strchr( rim, '_' );
+	if ( !sep ) {
+		Q_strncpyz( out, rim, outSize );
+		if ( out[0] >= 'a' && out[0] <= 'z' ) {
+			out[0] -= 'a' - 'A';
+		}
+		return;
+	}
+	Q_strncpyz( out, sep + 1, outSize );
+	for ( i = 0; out[i]; i++ ) {
+		if ( out[i] == '_' ) {
+			out[i] = ' ';
+		} else if ( out[i] >= 'a' && out[i] <= 'z' ) {
+			out[i] -= 'a' - 'A';
+		}
+	}
+}
+
+/* Brand first, stock wheels last, then alphabetical. */
+static int QDECL PlayerModel_CompareRims( const void *a, const void *b ) {
+	char ka[32], kb[32];
+	int c;
+
+	UI_RimBrandKey( (const char *)a, ka, sizeof( ka ) );
+	UI_RimBrandKey( (const char *)b, kb, sizeof( kb ) );
+	if ( !ka[0] != !kb[0] ) {
+		return ka[0] ? -1 : 1;
+	}
+	c = Q_stricmp( ka, kb );
+	if ( c ) {
+		return c;
+	}
+	return Q_stricmp( (const char *)a, (const char *)b );
+}
+
+static void PlayerModel_GroupRims( void ) {
+	char key[32];
+	char last[32];
+	int i;
+
+	qsort( s_playermodel.rimList, s_playermodel.numRims,
+	       sizeof( s_playermodel.rimList[0] ), PlayerModel_CompareRims );
+
+	s_playermodel.numRimBrands = 0;
+	last[0] = '\x01';
+	last[1] = '\0';
+	for ( i = 0; i < s_playermodel.numRims; i++ ) {
+		UI_RimBrandKey( s_playermodel.rimList[i], key, sizeof( key ) );
+		if ( Q_stricmp( key, last ) || s_playermodel.numRimBrands == 0 ) {
+			if ( s_playermodel.numRimBrands >= MAX_RIM_BRANDS ) {
+				s_playermodel.rimBrandCount[MAX_RIM_BRANDS - 1]++;
+				continue;
+			}
+			s_playermodel.rimBrandStart[s_playermodel.numRimBrands] = i;
+			s_playermodel.rimBrandCount[s_playermodel.numRimBrands] = 0;
+			s_playermodel.numRimBrands++;
+			Q_strncpyz( last, key, sizeof( last ) );
+		}
+		s_playermodel.rimBrandCount[s_playermodel.numRimBrands - 1]++;
+	}
+}
+
+static int PlayerModel_RimBrandStart( void ) {
+	if ( s_playermodel.numRimBrands <= 0 ) {
+		return 0;
+	}
+	return s_playermodel.rimBrandStart[s_playermodel.rimBrand];
+}
+
+static int PlayerModel_RimBrandCount( void ) {
+	if ( s_playermodel.numRimBrands <= 0 ) {
+		return s_playermodel.numRims;
+	}
+	return s_playermodel.rimBrandCount[s_playermodel.rimBrand];
+}
+
+/* Show the brand (and page) that contains rim index i. */
+static void PlayerModel_ShowRim( int i ) {
+	int b;
+
+	for ( b = 0; b < s_playermodel.numRimBrands; b++ ) {
+		if ( i >= s_playermodel.rimBrandStart[b] &&
+		     i < s_playermodel.rimBrandStart[b] + s_playermodel.rimBrandCount[b] ) {
+			s_playermodel.rimBrand = b;
+			s_playermodel.rimPage = ( i - s_playermodel.rimBrandStart[b] ) / MAX_RIMSPERPAGE;
+			break;
+		}
+	}
+	s_playermodel.numRimPages = ( PlayerModel_RimBrandCount() + MAX_RIMSPERPAGE - 1 ) / MAX_RIMSPERPAGE;
+	if ( s_playermodel.numRimPages < 1 ) {
+		s_playermodel.numRimPages = 1;
+	}
+}
 
 static qboolean PlayerModel_ItemFocused( int id ) {
 	menucommon_s *item;
@@ -437,10 +615,17 @@ static void PlayerModel_ApplyLayout( void ) {
 		"PREV", 500, 108, PLAYERMODEL_PAGE_BUTTON_WIDTH );
 	PlayerModel_InitPageButton( &s_playermodel.paintNext, ID_NEXTPAGE,
 		"NEXT", 546, 108, PLAYERMODEL_PAGE_BUTTON_WIDTH );
+	PlayerModel_InitPageButton( &s_playermodel.rimBrandPrev, ID_PREVRIMBRAND,
+		"<", 452, 244, 26 );
+	PlayerModel_InitPageButton( &s_playermodel.rimBrandNext, ID_NEXTRIMBRAND,
+		">", 570, 244, 26 );
+	/* pages within the brand: small arrows around "1 / 3" at the bottom right */
 	PlayerModel_InitPageButton( &s_playermodel.rimPrev, ID_PREVRIMPAGE,
-		"PREV", 500, 244, PLAYERMODEL_PAGE_BUTTON_WIDTH );
+		"<", 518, 333, 22 );
 	PlayerModel_InitPageButton( &s_playermodel.rimNext, ID_NEXTRIMPAGE,
-		"NEXT", 546, 244, PLAYERMODEL_PAGE_BUTTON_WIDTH );
+		">", 574, 333, 22 );
+	s_playermodel.rimPrev.generic.bottom = 353;
+	s_playermodel.rimNext.generic.bottom = 353;
 	PlayerModel_InitPageButton( &s_playermodel.headPrev, ID_PREVHEADPAGE,
 		"PREV", 500, 368, PLAYERMODEL_PAGE_BUTTON_WIDTH );
 	PlayerModel_InitPageButton( &s_playermodel.headNext, ID_NEXTHEADPAGE,
@@ -516,11 +701,16 @@ static void PlayerModel_DrawBackShaders( void ) {
 		PLAYERMODEL_RIMS_WIDTH, PLAYERMODEL_RIMS_HEIGHT, uis.tFrac, qfalse );
 	Frontend_DrawText( PLAYERMODEL_RIMS_X + 16, PLAYERMODEL_RIMS_Y + 12,
 		"WHEELS", UI_LEFT | UI_SMALLFONT, playerModelMutedColor );
-	Frontend_DrawText( PLAYERMODEL_RIMS_X + 142,
-		PLAYERMODEL_RIMS_Y + 12,
-		va( "%d / %d", s_playermodel.rimPage + 1,
-			s_playermodel.numRimPages ), UI_RIGHT | UI_SMALLFONT,
-		playerModelMutedColor );
+	if ( s_playermodel.numRims > 0 ) {
+		Frontend_DrawText( 524, PLAYERMODEL_RIMS_Y + 12,
+			UI_RimBrandName( s_playermodel.rimList[PlayerModel_RimBrandStart()] ),
+			UI_CENTER | UI_SMALLFONT, playerModelTextColor );
+	}
+	if ( s_playermodel.numRimPages > 1 ) {
+		Frontend_DrawText( 557, PLAYERMODEL_RIMS_Y + PLAYERMODEL_RIMS_HEIGHT - 18,
+			va( "%d/%d", s_playermodel.rimPage + 1, s_playermodel.numRimPages ),
+			UI_CENTER | UI_SMALLFONT, playerModelMutedColor );
+	}
 
 	Frontend_DrawCard( PLAYERMODEL_HEADS_X, PLAYERMODEL_HEADS_Y,
 		PLAYERMODEL_HEADS_WIDTH, PLAYERMODEL_HEADS_HEIGHT,
@@ -557,16 +747,22 @@ static void PlayerModel_DrawBackShaders( void ) {
 		if ( !s_playermodel.rimIcons[i][0] ) {
 			continue;
 		}
-		selected = ( s_playermodel.selectedRim / MAX_RIMSPERPAGE ==
-			s_playermodel.rimPage &&
-			s_playermodel.selectedRim % MAX_RIMSPERPAGE == i );
+		selected = ( s_playermodel.selectedRim ==
+			PlayerModel_RimBrandStart() + s_playermodel.rimPage * MAX_RIMSPERPAGE + i );
 		PlayerModel_DrawSelectionTile( x, y, 48, 48,
 			ID_RIMPIC0 + i, selected );
 	}
-	Frontend_DrawText( PLAYERMODEL_RIMS_X + 16,
-		PLAYERMODEL_RIMS_Y + PLAYERMODEL_RIMS_HEIGHT - 18,
-		s_playermodel.rimname.string ? s_playermodel.rimname.string : "",
-		UI_LEFT | UI_SMALLFONT, playerModelTextColor );
+	{
+		char rimLabel[MAX_QPATH];
+		char full[MAX_QPATH];
+		char fitted[MAX_QPATH];
+		UI_RimModelName( s_playermodel.rimskin, rimLabel, sizeof( rimLabel ) );
+		Com_sprintf( full, sizeof( full ), "%s  %s", UI_RimBrandName( s_playermodel.rimskin ), rimLabel );
+		Frontend_FitText( fitted, sizeof( fitted ), full, 506 - ( PLAYERMODEL_RIMS_X + 16 ), UI_SMALLFONT );
+		Frontend_DrawText( PLAYERMODEL_RIMS_X + 16,
+			PLAYERMODEL_RIMS_Y + PLAYERMODEL_RIMS_HEIGHT - 18,
+			fitted, UI_LEFT | UI_SMALLFONT, playerModelTextColor );
+	}
 
 	for ( i = 0; i < MAX_HEADSPERPAGE; i++ ) {
 		x = 360 + i * 54;
@@ -750,10 +946,16 @@ static void PlayerModel_UpdateRimGrid( void )
 	int	i;
     int	j;
 
-	j = s_playermodel.rimPage * MAX_RIMSPERPAGE;
+	s_playermodel.numRimPages = ( PlayerModel_RimBrandCount() + MAX_RIMSPERPAGE - 1 ) / MAX_RIMSPERPAGE;
+	if ( s_playermodel.numRimPages < 1 )
+		s_playermodel.numRimPages = 1;
+	if ( s_playermodel.rimPage >= s_playermodel.numRimPages )
+		s_playermodel.rimPage = s_playermodel.numRimPages - 1;
+
+	j = PlayerModel_RimBrandStart() + s_playermodel.rimPage * MAX_RIMSPERPAGE;
 	for (i=0; i<RIMGRID_ROWS*RIMGRID_COLS; i++,j++)
 	{
-		if (j < s_playermodel.numRims)
+		if (j < PlayerModel_RimBrandStart() + PlayerModel_RimBrandCount())
 		{ 
 			// rim portrait
 			Com_sprintf( s_playermodel.rimIcons[i], sizeof(s_playermodel.rimIcons[i]), "models/players/wheels/icon_%s", s_playermodel.rimList[j]);
@@ -772,10 +974,10 @@ static void PlayerModel_UpdateRimGrid( void )
  		s_playermodel.rimpicbuttons[i].generic.flags |= QMF_PULSEIFFOCUS;
 	}
 
-	if (s_playermodel.selectedRim / MAX_RIMSPERPAGE == s_playermodel.rimPage)
+	i = s_playermodel.selectedRim - PlayerModel_RimBrandStart() - s_playermodel.rimPage * MAX_RIMSPERPAGE;
+	if (i >= 0 && i < MAX_RIMSPERPAGE)
 	{
 		// set selected rim
-		i = s_playermodel.selectedRim % MAX_RIMSPERPAGE;
 
 		s_playermodel.rimports[i].generic.flags       |= QMF_HIGHLIGHT;
 		s_playermodel.rimpicbuttons[i].generic.flags &= ~QMF_PULSEIFFOCUS;
@@ -807,6 +1009,20 @@ static void PlayerModel_UpdateRimGrid( void )
 		s_playermodel.rimNext.generic.flags &= ~QMF_INACTIVE;
 	else
 		s_playermodel.rimNext.generic.flags |= QMF_INACTIVE;
+	if (s_playermodel.numRimPages > 1) {
+		s_playermodel.rimPrev.generic.flags &= ~QMF_HIDDEN;
+		s_playermodel.rimNext.generic.flags &= ~QMF_HIDDEN;
+	} else {
+		s_playermodel.rimPrev.generic.flags |= QMF_HIDDEN | QMF_INACTIVE;
+		s_playermodel.rimNext.generic.flags |= QMF_HIDDEN | QMF_INACTIVE;
+	}
+	if (s_playermodel.numRimBrands > 1) {
+		s_playermodel.rimBrandPrev.generic.flags &= ~QMF_INACTIVE;
+		s_playermodel.rimBrandNext.generic.flags &= ~QMF_INACTIVE;
+	} else {
+		s_playermodel.rimBrandPrev.generic.flags |= QMF_INACTIVE;
+		s_playermodel.rimBrandNext.generic.flags |= QMF_INACTIVE;
+	}
 }
 // END
 
@@ -992,6 +1208,24 @@ static void PlayerModel_MenuEvent( void* ptr, int event )
 			UI_PopMenu();
 			break;
 */
+
+		case ID_PREVRIMBRAND:
+		case ID_NEXTRIMBRAND:
+			if (s_playermodel.numRimBrands > 1)
+			{
+				int sel = s_playermodel.selectedRim;
+				int start;
+				s_playermodel.rimBrand += ((menucommon_s*)ptr)->id == ID_NEXTRIMBRAND ? 1 : -1;
+				s_playermodel.rimBrand = (s_playermodel.rimBrand + s_playermodel.numRimBrands) % s_playermodel.numRimBrands;
+				start = PlayerModel_RimBrandStart();
+				/* open the page of the fitted wheel if it is from this brand */
+				if (sel >= start && sel < start + PlayerModel_RimBrandCount())
+					s_playermodel.rimPage = (sel - start) / MAX_RIMSPERPAGE;
+				else
+					s_playermodel.rimPage = 0;
+				PlayerModel_UpdateRimGrid();
+			}
+			break;
 
 		case ID_PREVRIMPAGE:
 			if (s_playermodel.rimPage > 0)
@@ -1397,7 +1631,7 @@ static void PlayerModel_RimPicEvent( void* ptr, int event )
 	s_playermodel.rimpicbuttons[i].generic.flags &= ~QMF_PULSEIFFOCUS;
 
 	// get model and strip icon_
-	modelnum = s_playermodel.rimPage*MAX_RIMSPERPAGE + i;
+	modelnum = PlayerModel_RimBrandStart() + s_playermodel.rimPage*MAX_RIMSPERPAGE + i;
 
 	Q_strncpyz( s_playermodel.rimskin, s_playermodel.rimList[modelnum], sizeof(s_playermodel.rimskin) );
 	s_playermodel.selectedRim = modelnum;
@@ -1465,6 +1699,8 @@ static void PlayerModel_BuildRimList( void )
 	s_playermodel.rimPage = 0;
 
 	s_playermodel.numRims = UI_BuildFileList("models/players/wheels", "skin", "", qtrue, qfalse, qtrue, 0, s_playermodel.rimList);
+	PlayerModel_GroupRims();
+	s_playermodel.rimBrand = 0;
 
 	s_playermodel.numRimPages = s_playermodel.numRims / MAX_RIMSPERPAGE;
 	if (s_playermodel.numRims % MAX_RIMSPERPAGE)
@@ -1641,7 +1877,7 @@ static void PlayerModel_SetMenuItems( void )
 		if (!Q_stricmp( s_playermodel.rimskin, s_playermodel.rimList[i] )){
 			// found pic, set selection here		
 			s_playermodel.selectedRim = i;
-			s_playermodel.rimPage     = i / MAX_RIMSPERPAGE;
+			PlayerModel_ShowRim( i );
 			break;
 		}
 	}
@@ -2155,6 +2391,8 @@ static void PlayerModel_MenuInit( void )
 		Menu_AddItem( &s_playermodel.menu, &s_playermodel.rimpicbuttons[i] );
 		Menu_AddItem( &s_playermodel.menu, &s_playermodel.rimpics[i] );
 	}
+	Menu_AddItem( &s_playermodel.menu, &s_playermodel.rimBrandPrev );
+	Menu_AddItem( &s_playermodel.menu, &s_playermodel.rimBrandNext );
 	Menu_AddItem( &s_playermodel.menu, &s_playermodel.rimPrev );
 	Menu_AddItem( &s_playermodel.menu, &s_playermodel.rimNext );
 

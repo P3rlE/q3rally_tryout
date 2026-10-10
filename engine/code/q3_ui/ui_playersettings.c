@@ -65,6 +65,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ID_LEFT			19
 #define ID_RIGHT		20
 #define ID_PLATE		21
+#define ID_SETUP_ROW	22
 #define ID_COUNTRY		22
 #define ID_AVATAR		23
 // END
@@ -122,6 +123,23 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_PROFILE_ROW_HEIGHT		36
 
 #define PLAYERSETTINGS_BACK_BUTTON_LEFT			48
+
+/* Vehicle tab: showroom card (left) and setup card (right), like the profile cards. */
+#define VEHICLE_SHOW_X			48
+#define VEHICLE_SHOW_W			344
+#define VEHICLE_SETUP_X			408
+#define VEHICLE_SETUP_W			184
+#define VEHICLE_CARD_Y			126
+#define VEHICLE_CARD_H			294
+#define VEHICLE_PREVIEW_X		( VEHICLE_SHOW_X + 8 )
+#define VEHICLE_PREVIEW_Y		( VEHICLE_CARD_Y + 30 )
+#define VEHICLE_PREVIEW_W		( VEHICLE_SHOW_W - 16 )
+#define VEHICLE_PREVIEW_H		138
+#define VEHICLE_NAME_Y			( VEHICLE_PREVIEW_Y + VEHICLE_PREVIEW_H + 8 )
+#define VEHICLE_SAVED_Y			( VEHICLE_CARD_Y + 232 )
+#define VEHICLE_ROW_Y			( VEHICLE_CARD_Y + 30 )
+#define VEHICLE_ROW_H			44
+#define VEHICLE_ROW_GAP			4
 #define PLAYERSETTINGS_BACK_BUTTON_Y			440
 
 #define PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS            BG_ACHIEVEMENT_MAX_TIERS
@@ -468,6 +486,7 @@ typedef struct {
 	menutext_s			back;
 	menutext_s			customize;
 	menutext_s			plate;
+	menutext_s			setupRows[3];	/* paint, wheels, driver */
 
 	menubitmap_s		left;
 	menutext_s			modelname;
@@ -1510,80 +1529,159 @@ static void PlayerSettings_DrawBackItem( void *self ) {
 static void PlayerSettings_DrawVehicleControl( void *self ) {
 	menubitmap_s *item;
 	qboolean focus;
-	const char *label;
 
 	item = (menubitmap_s *)self;
 	focus = ( Menu_ItemAtCursor( item->generic.parent ) == &item->generic );
-	label = item->generic.id == ID_LEFT ? "<  Previous" : "Next  >";
 	Frontend_DrawButtonFocused( item->generic.left, item->generic.top,
 	                     item->generic.right - item->generic.left,
 	                     item->generic.bottom - item->generic.top,
-	                     label, uis.tFrac, focus, UI_CENTER );
+	                     item->generic.id == ID_LEFT ? "<" : ">", uis.tFrac, focus, UI_CENTER );
 }
 
 static void PlayerSettings_DrawFavoriteButton( void *self ) {
 	menubitmap_s *item;
 	qboolean focus;
-	qboolean disabled;
+	qboolean hovered;
+	qboolean empty;
 	int slot;
-	char label[32];
+	int x, y, w, h;
+	qhandle_t icon;
+	vec4_t line;
 
 	item = (menubitmap_s *)self;
 	focus = ( Menu_ItemAtCursor( item->generic.parent ) == &item->generic );
-	disabled = ( qboolean )( item->generic.flags & ( QMF_GRAYED | QMF_INACTIVE ) );
-	slot = item->generic.id - ID_FAVORITE1 + 1;
-	Com_sprintf( label, sizeof( label ), "Favorite %d", slot );
+	empty = ( qboolean )( item->generic.flags & ( QMF_GRAYED | QMF_INACTIVE ) );
+	slot = item->generic.id - ID_FAVORITE1;
+	x = item->generic.left; y = item->generic.top;
+	w = item->generic.right - x; h = item->generic.bottom - y;
+	hovered = !empty && UI_CursorInRect( x, y, w, h );
 
-	if ( disabled ) {
-		Frontend_DrawText( ( item->generic.left + item->generic.right ) / 2,
-		                   item->generic.top + 8, "Empty",
+	/* A saved setup is shown by its car, an empty slot as an outline. */
+	if ( empty ) {
+		Vector4Copy( playerSettingsMutedColor, line );
+		line[3] = 0.35f * uis.tFrac;
+		UI_FillRect( x, y + h - 1, w, 1, line );
+		Frontend_DrawText( x + w / 2, y + ( h - SMALLCHAR_HEIGHT ) / 2, "Empty",
 		                   UI_CENTER | UI_SMALLFONT, playerSettingsMutedColor );
 		return;
 	}
 
-	Frontend_DrawButtonFocused( item->generic.left, item->generic.top,
-	                     item->generic.right - item->generic.left,
-	                     item->generic.bottom - item->generic.top,
-	                     label, uis.tFrac, focus, UI_CENTER );
+	Frontend_DrawPanel( x, y, w, h, uis.tFrac,
+	                    ( focus || hovered ) ? UI_FRONTEND_STYLE_ACTIVE : UI_FRONTEND_STYLE_CARD );
+	icon = s_playersettings.favIcons[slot][0] ?
+	       trap_R_RegisterShaderNoMip( s_playersettings.favIcons[slot] ) : 0;
+	if ( icon ) {
+		trap_R_SetColor( NULL );
+		UI_DrawHandlePic( x + ( w - h ) / 2, y, h, h, icon );
+	}
+	Frontend_DrawText( x + 4, y + 3, va( "%d", slot + 1 ), UI_LEFT | UI_SMALLFONT,
+	                   ( focus || hovered ) ? playerSettingsAccentColor : playerSettingsMutedColor );
+}
+
+/*
+=================
+PlayerSettings_DrawSetupRow
+
+Paint / Wheels / Driver: icon, label and current choice. Selecting a row
+opens Customize vehicle.
+=================
+*/
+static void PlayerSettings_DrawSetupRow( void *self ) {
+	static const char *const labels[3] = { "Paint", "Wheels", "Driver" };
+	menutext_s *item;
+	qboolean focus;
+	qboolean hovered;
+	int row;
+	int x, y, w, h;
+	char model[MAX_QPATH];
+	char value[MAX_QPATH];
+	char iconPath[MAX_QPATH];
+	char *slash;
+	qhandle_t icon;
+	vec4_t line;
+
+	item = (menutext_s *)self;
+	row = item - s_playersettings.setupRows;
+	if ( row < 0 || row > 2 ) {
+		return;
+	}
+	focus = ( Menu_ItemAtCursor( item->generic.parent ) == &item->generic );
+	x = item->generic.left; y = item->generic.top;
+	w = item->generic.right - x; h = item->generic.bottom - y;
+	hovered = UI_CursorInRect( x, y, w, h );
+
+	if ( focus || hovered ) {
+		Frontend_DrawPanel( x, y, w, h, uis.tFrac, UI_FRONTEND_STYLE_ACTIVE );
+	}
+	Vector4Copy( playerSettingsMutedColor, line );
+	line[3] = 0.3f * uis.tFrac;
+	UI_FillRect( x, y + h - 1, w, 1, line );
+
+	value[0] = '\0';
+	iconPath[0] = '\0';
+	if ( row == 0 ) {
+		Q_strncpyz( model, s_playersettings.modelskin, sizeof( model ) );
+		slash = strchr( model, '/' );
+		if ( slash ) {
+			*slash = '\0';
+			Q_strncpyz( value, slash + 1, sizeof( value ) );
+			Com_sprintf( iconPath, sizeof( iconPath ), "models/players/%s/icon_%s", model, slash + 1 );
+		}
+	} else if ( row == 1 ) {
+		char rimModel[MAX_QPATH];
+		UI_RimModelName( s_playersettings.rimskin, rimModel, sizeof( rimModel ) );
+		Com_sprintf( value, sizeof( value ), "%s %s", UI_RimBrandName( s_playersettings.rimskin ), rimModel );
+		Com_sprintf( iconPath, sizeof( iconPath ), "models/players/wheels/icon_%s", s_playersettings.rimskin );
+	} else {
+		Q_strncpyz( value, s_playersettings.headskin, sizeof( value ) );
+		Com_sprintf( iconPath, sizeof( iconPath ), "models/players/heads/icon_%s", s_playersettings.headskin );
+	}
+
+	icon = iconPath[0] ? trap_R_RegisterShaderNoMip( iconPath ) : 0;
+	if ( icon ) {
+		trap_R_SetColor( NULL );
+		UI_DrawHandlePic( x + 4, y + 4, h - 8, h - 8, icon );
+	}
+	Frontend_DrawText( x + h + 4, y + 8, labels[row], UI_LEFT | UI_SMALLFONT,
+	                   ( focus || hovered ) ? playerSettingsAccentColor : playerSettingsMutedColor );
+	PlayerSettings_DrawFittedStatsText( x + h + 4, y + 23, x + w - 6,
+	                                    value[0] ? value : "--", UI_SMALLFONT,
+	                                    playerSettingsTextColor );
 }
 
 static void PlayerSettings_DrawVehiclePanelBackground( void ) {
+	char name[MAX_QPATH];
 	const char *modelName;
 
 	modelName = s_playersettings.modelname.string;
 	if ( !modelName || !modelName[0] ) {
 		modelName = "Unknown vehicle";
 	}
+	Q_strncpyz( name, modelName, sizeof( name ) );
+	if ( name[0] >= 'a' && name[0] <= 'z' ) {
+		name[0] -= 'a' - 'A';
+	}
 
-	Frontend_DrawCard( PLAYERSETTINGS_PROFILE_PANEL_LEFT,
-	                   PLAYERSETTINGS_PROFILE_PANEL_TOP,
-	                   PLAYERSETTINGS_PROFILE_PANEL_WIDTH, 294,
+	/* Showroom: the car, its name between the arrows, saved setups below. */
+	Frontend_DrawCard( VEHICLE_SHOW_X, VEHICLE_CARD_Y, VEHICLE_SHOW_W, VEHICLE_CARD_H,
 	                   uis.tFrac, qfalse );
-	Frontend_DrawCard( 64, 150, 330, 168, uis.tFrac, qfalse );
-	Frontend_DrawCard( 410, 150, 166, 194, uis.tFrac, qfalse );
+	Frontend_DrawText( VEHICLE_SHOW_X + 16, VEHICLE_CARD_Y + 18, "Showroom",
+	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
+	if ( s_playersettings.numModels > 0 ) {
+		Frontend_DrawText( VEHICLE_SHOW_X + VEHICLE_SHOW_W - 16, VEHICLE_CARD_Y + 18,
+		                   va( "%d / %d", s_playersettings.selectedModel + 1, s_playersettings.numModels ),
+		                   UI_RIGHT | UI_SMALLFONT, playerSettingsMutedColor );
+	}
+	Frontend_DrawText( VEHICLE_SHOW_X + VEHICLE_SHOW_W / 2, VEHICLE_NAME_Y + 4, name,
+	                   UI_CENTER | UI_BIGFONT, playerSettingsTextColor );
+	Frontend_DrawText( VEHICLE_SHOW_X + 16, VEHICLE_SAVED_Y, "Saved setups",
+	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 
-	Frontend_DrawText( 80, 168, "Showroom", UI_LEFT | UI_SMALLFONT,
-	                   playerSettingsMutedColor );
-	Frontend_DrawText( 229, 168, modelName, UI_CENTER | UI_SMALLFONT,
-	                   playerSettingsTextColor );
-
-	Frontend_DrawText( 426, 168, "Vehicle details", UI_LEFT | UI_SMALLFONT,
-	                   playerSettingsMutedColor );
-	Frontend_DrawText( 426, 198, "Model", UI_LEFT | UI_SMALLFONT,
-	                   playerSettingsMutedColor );
-	Frontend_DrawText( 560, 198, modelName, UI_RIGHT | UI_SMALLFONT,
-	                   playerSettingsTextColor );
-	Frontend_DrawText( 426, 222, "Skin", UI_LEFT | UI_SMALLFONT,
-	                   playerSettingsMutedColor );
-	Frontend_DrawText( 560, 222, s_playersettings.modelskin,
-	                   UI_RIGHT | UI_SMALLFONT, playerSettingsTextColor );
-	Frontend_DrawText( 426, 246, "Rim", UI_LEFT | UI_SMALLFONT,
-	                   playerSettingsMutedColor );
-	Frontend_DrawText( 560, 246, s_playersettings.rimskin,
-	                   UI_RIGHT | UI_SMALLFONT, playerSettingsTextColor );
-
-	Frontend_DrawText( 64, 340, "Saved setups", UI_LEFT | UI_SMALLFONT,
-	                   playerSettingsMutedColor );
+	/* Setup: what is fitted, each row opens Customize vehicle. */
+	Frontend_DrawCard( VEHICLE_SETUP_X, VEHICLE_CARD_Y, VEHICLE_SETUP_W, VEHICLE_CARD_H,
+	                   uis.tFrac, qfalse );
+	Frontend_DrawText( VEHICLE_SETUP_X + 16, VEHICLE_CARD_Y + 18, "Setup",
+	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 }
 
 static void PlayerSettings_SetWidgetVisible( menucommon_s *item, qboolean visible ) {
@@ -3908,6 +4006,9 @@ showVehicle = ( tab == TAB_VEHICLE );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.modelname.generic, qfalse );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.customize.generic, showVehicle );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.plate.generic, showVehicle );
+	for ( i = 0; i < 3; ++i ) {
+		PlayerSettings_SetWidgetVisible( &s_playersettings.setupRows[i].generic, showVehicle );
+	}
 
 	s_playersettings.tabProfile.color = ( tab == TAB_PROFILE ) ? text_color_highlight : uis.text_color;
 	s_playersettings.tabVehicle.color = ( tab == TAB_VEHICLE ) ? text_color_highlight : uis.text_color;
@@ -5496,12 +5597,30 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.customize.generic.flags	= QMF_NODEFAULTINIT;
 	s_playersettings.customize.generic.id		= ID_CUSTOMIZE;
 	s_playersettings.customize.generic.ownerdraw= PlayerSettings_DrawCustomize;
-	s_playersettings.customize.generic.x		= 410;
-	s_playersettings.customize.generic.y		= 272;
-	s_playersettings.customize.generic.left		= 410;
-	s_playersettings.customize.generic.top		= 272;
-	s_playersettings.customize.generic.right	= 576;
-	s_playersettings.customize.generic.bottom	= 302;
+	s_playersettings.customize.generic.x		= VEHICLE_SETUP_X + 8;
+	s_playersettings.customize.generic.y		= VEHICLE_ROW_Y + 3 * ( VEHICLE_ROW_H + VEHICLE_ROW_GAP ) + 8;
+	s_playersettings.customize.generic.left		= VEHICLE_SETUP_X + 8;
+	s_playersettings.customize.generic.top		= s_playersettings.customize.generic.y;
+	s_playersettings.customize.generic.right	= VEHICLE_SETUP_X + VEHICLE_SETUP_W - 8;
+	s_playersettings.customize.generic.bottom	= s_playersettings.customize.generic.y + 28;
+
+	for ( j = 0; j < 3; j++ ) {
+		menutext_s *row = &s_playersettings.setupRows[j];
+		row->generic.type		= MTYPE_PTEXT;
+		row->generic.flags		= QMF_NODEFAULTINIT;
+		row->generic.id			= ID_CUSTOMIZE;
+		row->generic.ownerdraw	= PlayerSettings_DrawSetupRow;
+		row->generic.callback	= PlayerSettings_MenuEvent;
+		row->generic.left		= VEHICLE_SETUP_X + 8;
+		row->generic.right		= VEHICLE_SETUP_X + VEHICLE_SETUP_W - 8;
+		row->generic.top		= VEHICLE_ROW_Y + j * ( VEHICLE_ROW_H + VEHICLE_ROW_GAP );
+		row->generic.bottom		= row->generic.top + VEHICLE_ROW_H;
+		row->generic.x			= row->generic.left;
+		row->generic.y			= row->generic.top;
+		row->string				= "";
+		row->color				= text_color_normal;
+		row->style				= UI_LEFT | UI_SMALLFONT;
+	}
 	s_playersettings.customize.generic.callback	= PlayerSettings_MenuEvent; 
 	s_playersettings.customize.color			= text_color_normal;
 	s_playersettings.customize.style			= UI_RIGHT;
@@ -5517,10 +5636,10 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.player.width				= 32*10;
 	s_playersettings.player.height				= 56*10;
 */
-	s_playersettings.player.generic.x	       = 94;
-	s_playersettings.player.generic.y	       = 184;
-	s_playersettings.player.width	           = 270;
-	s_playersettings.player.height             = 82;
+	s_playersettings.player.generic.x	       = VEHICLE_PREVIEW_X;
+	s_playersettings.player.generic.y	       = VEHICLE_PREVIEW_Y;
+	s_playersettings.player.width	           = VEHICLE_PREVIEW_W;
+	s_playersettings.player.height             = VEHICLE_PREVIEW_H;
 
 
 	y = 148;
@@ -5538,14 +5657,14 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.left.generic.ownerdraw		= PlayerSettings_DrawVehicleControl;
 	s_playersettings.left.generic.callback		= PlayerSettings_MenuEvent;
 	s_playersettings.left.generic.id			= ID_LEFT;
-	s_playersettings.left.generic.x				= 74;
-	s_playersettings.left.generic.y				= 274;
-	s_playersettings.left.generic.left			= 74;
-	s_playersettings.left.generic.top			= 274;
-	s_playersettings.left.generic.right			= 224;
-	s_playersettings.left.generic.bottom			= 306;
-	s_playersettings.left.width  				= 150;
-	s_playersettings.left.height  				= 32;
+	s_playersettings.left.generic.x				= VEHICLE_SHOW_X + 16;
+	s_playersettings.left.generic.y				= VEHICLE_NAME_Y;
+	s_playersettings.left.generic.left			= VEHICLE_SHOW_X + 16;
+	s_playersettings.left.generic.top			= VEHICLE_NAME_Y;
+	s_playersettings.left.generic.right			= VEHICLE_SHOW_X + 16 + 44;
+	s_playersettings.left.generic.bottom			= VEHICLE_NAME_Y + 28;
+	s_playersettings.left.width  				= 44;
+	s_playersettings.left.height  				= 28;
 	s_playersettings.left.focuspic				= ART_LEFT1;
 	
 	s_playersettings.right.generic.type			= MTYPE_BITMAP;
@@ -5554,14 +5673,14 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.right.generic.ownerdraw		= PlayerSettings_DrawVehicleControl;
 	s_playersettings.right.generic.callback		= PlayerSettings_MenuEvent;
 	s_playersettings.right.generic.id			= ID_RIGHT;
-	s_playersettings.right.generic.x			= 234;
-	s_playersettings.right.generic.y			= 274;
-	s_playersettings.right.generic.left			= 234;
-	s_playersettings.right.generic.top			= 274;
-	s_playersettings.right.generic.right			= 384;
-	s_playersettings.right.generic.bottom			= 306;
-	s_playersettings.right.width  				= 150;
-	s_playersettings.right.height  				= 32;
+	s_playersettings.right.generic.x			= VEHICLE_SHOW_X + VEHICLE_SHOW_W - 16 - 44;
+	s_playersettings.right.generic.y			= VEHICLE_NAME_Y;
+	s_playersettings.right.generic.left			= VEHICLE_SHOW_X + VEHICLE_SHOW_W - 16 - 44;
+	s_playersettings.right.generic.top			= VEHICLE_NAME_Y;
+	s_playersettings.right.generic.right			= VEHICLE_SHOW_X + VEHICLE_SHOW_W - 16;
+	s_playersettings.right.generic.bottom			= VEHICLE_NAME_Y + 28;
+	s_playersettings.right.width  				= 44;
+	s_playersettings.right.height  				= 28;
 	s_playersettings.right.focuspic				= ART_RIGHT1;
 
 	s_playersettings.favorites.generic.type   = MTYPE_PTEXT;
@@ -5572,8 +5691,8 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.favorites.style		  = UI_CENTER|UI_SMALLFONT;
 	s_playersettings.favorites.color          = text_color_normal;
 
-	x =	64;
-	y = 356;
+	x =	VEHICLE_SHOW_X + 16;
+	y = VEHICLE_SAVED_Y + 14;
 	for (j=0; j<NUM_FAVORITES; j++)
 	{
 		s_playersettings.ports[j].generic.type		= MTYPE_BITMAP;
@@ -5602,25 +5721,25 @@ static void PlayerSettings_MenuInit( void ) {
 		s_playersettings.favpicbuttons[j].generic.y			= y;
 		s_playersettings.favpicbuttons[j].generic.left		= x;
 		s_playersettings.favpicbuttons[j].generic.top		= y;
-		s_playersettings.favpicbuttons[j].generic.right		= x + 120;
-		s_playersettings.favpicbuttons[j].generic.bottom	= y + 28;
-		s_playersettings.favpicbuttons[j].width  		    = 120;
-		s_playersettings.favpicbuttons[j].height  			= 28;
+		s_playersettings.favpicbuttons[j].generic.right		= x + 72;
+		s_playersettings.favpicbuttons[j].generic.bottom	= y + 40;
+		s_playersettings.favpicbuttons[j].width  		    = 72;
+		s_playersettings.favpicbuttons[j].height  			= 40;
 		s_playersettings.favpicbuttons[j].focuspic  		= ART_SELECT;
 		s_playersettings.favpicbuttons[j].focuscolor  		= text_color_highlight;
 
-		x += 128;
+		x += 80;
 	}
 
 	s_playersettings.plate.generic.type				= MTYPE_PTEXT;
 	s_playersettings.plate.generic.flags			= QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS|QMF_NODEFAULTINIT;
 	s_playersettings.plate.generic.ownerdraw			= PlayerSettings_DrawPlateItem;
-	s_playersettings.plate.generic.x				= 410;
-	s_playersettings.plate.generic.y				= 310;
-	s_playersettings.plate.generic.left			    = 410;
-	s_playersettings.plate.generic.top				= 310;
-	s_playersettings.plate.generic.right			= 576;
-	s_playersettings.plate.generic.bottom			= 340;
+	s_playersettings.plate.generic.x				= VEHICLE_SETUP_X + 8;
+	s_playersettings.plate.generic.y				= s_playersettings.customize.generic.bottom + 6;
+	s_playersettings.plate.generic.left			    = VEHICLE_SETUP_X + 8;
+	s_playersettings.plate.generic.top				= s_playersettings.plate.generic.y;
+	s_playersettings.plate.generic.right			= VEHICLE_SETUP_X + VEHICLE_SETUP_W - 8;
+	s_playersettings.plate.generic.bottom			= s_playersettings.plate.generic.y + 28;
 	s_playersettings.plate.generic.id				= ID_PLATE;
 	s_playersettings.plate.generic.callback			= PlayerSettings_MenuEvent; 
 	s_playersettings.plate.string					= "CHANGE PLATE";
@@ -5701,6 +5820,8 @@ static void PlayerSettings_MenuInit( void ) {
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.left );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.right );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.modelname );
+	for (i = 0; i < 3; i++)
+		Menu_AddItem( &s_playersettings.menu, &s_playersettings.setupRows[i] );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.customize );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.plate );
 // END

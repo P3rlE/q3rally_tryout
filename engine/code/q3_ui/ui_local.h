@@ -578,6 +578,8 @@ extern void PlayerModel_Cache( void );
 extern void UI_PlayerSettingsMenu( void );
 extern void UI_PlayerStatsMenu( void );
 extern void PlayerSettings_Cache( void );
+extern const char *UI_RimBrandName( const char *rim );
+extern void UI_RimModelName( const char *rim, char *out, int outSize );
 extern int trap_UI_ImportAvatarPath( const char *profileName, const char *sourcePath,
 								char *shaderPath, int shaderPathSize );
 // STONELANCE
@@ -948,6 +950,7 @@ int				trap_FS_Seek( fileHandle_t f, long offset, int origin ); // fsOrigin_t
 int				trap_UI_ImportAvatar( const char *profileName, char *shaderPath, int shaderPathSize );
 int				trap_UI_TakeDroppedFile( char *path, int pathSize );
 qhandle_t		trap_R_RegisterModel( const char *name );
+void			trap_R_ModelBounds( clipHandle_t model, vec3_t mins, vec3_t maxs );
 qhandle_t		trap_R_RegisterSkin( const char *name );
 qhandle_t		trap_R_RegisterShader( const char *name );
 qhandle_t		trap_R_RegisterShaderNoMip( const char *name );
