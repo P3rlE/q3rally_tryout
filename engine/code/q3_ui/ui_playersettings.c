@@ -126,15 +126,36 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_MAX_ACHIEVEMENT_TIERS            BG_ACHIEVEMENT_MAX_TIERS
 #define PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE            2
 #define PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_ROW_HEIGHT  22
-#define PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_LEFT         56
-#define PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_WIDTH       104
-#define PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT           168
-#define PLAYERSETTINGS_ACHIEVEMENT_DETAIL_WIDTH          416
+#define PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_LEFT         PLAYERSETTINGS_SPLIT_NAV_X
+#define PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_WIDTH       PLAYERSETTINGS_SPLIT_NAV_WIDTH
+#define PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT           PLAYERSETTINGS_SPLIT_DETAIL_X
+#define PLAYERSETTINGS_ACHIEVEMENT_DETAIL_WIDTH          PLAYERSETTINGS_SPLIT_DETAIL_WIDTH
 #define PLAYERSETTINGS_ACHIEVEMENT_TIER_ROW_HEIGHT       46
 #define PLAYERSETTINGS_ACHIEVEMENT_TIER_ROW_GAP          4
 #define PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE            28
-#define PLAYERSETTINGS_ACHIEVEMENT_BODY_TOP              158
-#define PLAYERSETTINGS_ACHIEVEMENT_BODY_BOTTOM           412
+#define PLAYERSETTINGS_ACHIEVEMENT_BODY_TOP              PLAYERSETTINGS_SPLIT_BODY_TOP
+#define PLAYERSETTINGS_ACHIEVEMENT_BODY_BOTTOM           PLAYERSETTINGS_SPLIT_BODY_BOTTOM
+#define PLAYERSETTINGS_ACHIEVEMENT_TIER_TOP              ( PLAYERSETTINGS_SPLIT_BODY_TOP + 30 )
+
+/* Stats and achievements use the split layout of the settings menus
+ * (Config, Graphics): a category card on the left and a detail card on the
+ * right, aligned with the two profile cards so switching tabs keeps the
+ * same frame. */
+#define PLAYERSETTINGS_SPLIT_TOP			126
+#define PLAYERSETTINGS_SPLIT_HEIGHT			294
+#define PLAYERSETTINGS_SPLIT_BOTTOM			( PLAYERSETTINGS_SPLIT_TOP + PLAYERSETTINGS_SPLIT_HEIGHT )
+#define PLAYERSETTINGS_SPLIT_NAV_X			48
+#define PLAYERSETTINGS_SPLIT_NAV_WIDTH		112
+#define PLAYERSETTINGS_SPLIT_DETAIL_X		176
+#define PLAYERSETTINGS_SPLIT_DETAIL_WIDTH		416
+#define PLAYERSETTINGS_SPLIT_LABEL_INSET		16
+#define PLAYERSETTINGS_SPLIT_LABEL_Y			( PLAYERSETTINGS_SPLIT_TOP + 18 )
+#define PLAYERSETTINGS_SPLIT_BODY_TOP		( PLAYERSETTINGS_SPLIT_TOP + 32 )
+#define PLAYERSETTINGS_SPLIT_BODY_BOTTOM		( PLAYERSETTINGS_SPLIT_BOTTOM - 8 )
+/* Cells pad their text by 8, so cell text lines up with the card label. */
+#define PLAYERSETTINGS_SPLIT_BODY_LEFT		( PLAYERSETTINGS_SPLIT_DETAIL_X + 8 )
+#define PLAYERSETTINGS_SPLIT_BODY_RIGHT		( PLAYERSETTINGS_SPLIT_DETAIL_X + PLAYERSETTINGS_SPLIT_DETAIL_WIDTH - 8 )
+#define PLAYERSETTINGS_SPLIT_NAV_ROW_HEIGHT		21
 
 #define PLAYERSETTINGS_STATS_OVERVIEW_COLUMNS		4
 #define PLAYERSETTINGS_STATS_OVERVIEW_TILE_HEIGHT	50.0f
@@ -143,7 +164,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 /* Pages with more tiles than fit in three rows switch to a wider grid. */
 #define PLAYERSETTINGS_STATS_MODES_WIDE_COLUMNS	4
 #define PLAYERSETTINGS_STATS_MODES_MAX_NARROW_ITEMS	9
-#define PLAYERSETTINGS_STATS_MODE_TILE_HEIGHT		80.0f
+#define PLAYERSETTINGS_STATS_MODE_TILE_HEIGHT		76.0f
+#define PLAYERSETTINGS_STATS_MODE_TILE_ROW_GAP		6.0f
 #define PLAYERSETTINGS_STATS_MODE_TILE_GAP		8.0f
 #define PLAYERSETTINGS_STATS_MODES_FIRST_PAGE_COUNT	5
 #define PLAYERSETTINGS_STATS_CARD_BOTTOM		PLAYERSETTINGS_BACK_BUTTON_Y
@@ -168,6 +190,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 static vec4_t profileRowEvenFillColor = { 0.10f, 0.10f, 0.10f, 0.60f };
 static vec4_t profileRowOddFillColor = { 0.14f, 0.14f, 0.14f, 0.60f };
 static vec4_t profileRowBorderColor = { 0.35f, 0.35f, 0.35f, 0.85f };
+static vec4_t playerSettingsBorderColor = UI_FRONTEND_COLOR_BORDER;
 static vec4_t avatarImageBackgroundColor = { 0.05f, 0.05f, 0.05f, 0.80f };
 static vec4_t avatarImageMissingColor = { 0.6f, 0.2f, 0.2f, 1.0f };
 static vec4_t playerSettingsScrimColor = UI_FRONTEND_COLOR_SCRIM;
@@ -398,10 +421,10 @@ typedef struct {
 
 /* Keep the overview separate, then split mode records into readable groups. */
 static const playersettingsStatsCategory_t s_statsCategories[] = {
-	{ "Career Overview", STATS_ROW_PLAYER_SCORE, STATS_ROW_VEHICLE },
-	{ "Racing Modes", STATS_ROW_RACING_HEADER, STATS_ROW_TEAM_RACING_DM_COMPLETED },
-	{ "Arena & Team Modes", STATS_ROW_DERBY_HEADER, STATS_ROW_COUNT - 1 },
-	{ "Awards & Records", STATS_ROW_AWARDS, STATS_ROW_AWARDS }
+	{ "Career overview", STATS_ROW_PLAYER_SCORE, STATS_ROW_VEHICLE },
+	{ "Racing modes", STATS_ROW_RACING_HEADER, STATS_ROW_TEAM_RACING_DM_COMPLETED },
+	{ "Arena & team modes", STATS_ROW_DERBY_HEADER, STATS_ROW_COUNT - 1 },
+	{ "Awards & records", STATS_ROW_AWARDS, STATS_ROW_AWARDS }
 };
 
 #define PLAYERSETTINGS_RANK_ENTRY( name, threshold ) { name, threshold },
@@ -2030,58 +2053,96 @@ static void PlayerSettings_GetStatsRowBounds( int row, int *top, int *bottom ) {
 
 
 
-static void PlayerSettings_DrawStatsPanelBackground( void ) {
-static const char *const pageLabels[] = { "OVERVIEW", "RACING", "ARENA", "RECORDS" };
-vec4_t titleColor;
-vec4_t titleAccentColor;
-int panelTop;
-int panelBottom;
-int navWidth;
-int navGap;
-int navLeft;
-int i;
-const playersettingsStatsCategory_t *category;
+/*
+=================
+PlayerSettings_DrawSplitCards
 
-PlayerSettings_UpdateStatsPaginationInfo();
-category = PlayerSettings_GetStatsCategory();
-
-panelTop = PLAYERSETTINGS_PROFILE_PANEL_TOP;
-panelBottom = (int)PlayerSettings_GetPanelBottomForContent( PlayerSettings_GetStatsPageContentHeight() );
-
-Frontend_DrawPanel( PLAYERSETTINGS_PROFILE_PANEL_LEFT, panelTop,
-                    PLAYERSETTINGS_PROFILE_PANEL_WIDTH,
-                    panelBottom - panelTop, uis.tFrac,
-                    UI_FRONTEND_STYLE_SURFACE );
-
-Vector4Copy( playerSettingsTextColor, titleColor );
-titleColor[3] *= uis.tFrac;
-Vector4Copy( playerSettingsAccentColor, titleAccentColor );
-titleAccentColor[3] *= uis.tFrac;
-UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 16, panelTop + 10,
-             UI_FRONTEND_STATUS_DOT, UI_FRONTEND_STATUS_DOT, titleAccentColor );
-Frontend_DrawText( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32,
-                   panelTop + 4,
-                   category->title, UI_LEFT | UI_BIGFONT,
-                   titleColor );
-UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32, panelTop + 24,
-             Frontend_TextWidth( category->title, UI_BIGFONT ), 2,
-             titleAccentColor );
-
-navLeft = PLAYERSETTINGS_PROFILE_PANEL_LEFT + PLAYERSETTINGS_PROFILE_PANEL_WIDTH - 300;
-navWidth = 72;
-navGap = 4;
-for ( i = 0; i < ARRAY_LEN( pageLabels ); ++i ) {
-	playersettingsRect_t *rect;
-	rect = &s_playersettings.statsCategoryRects[i];
-	rect->x = navLeft + i * ( navWidth + navGap );
-	rect->y = panelTop + 6;
-	rect->w = navWidth;
-	rect->h = 20;
-	Frontend_DrawNavButton( (int)rect->x, (int)rect->y, (int)rect->w, (int)rect->h,
-	                        pageLabels[i], uis.tFrac,
-	                        i == s_playersettings.statsPagination.currentPage,
-	                        UI_CENTER );
+Left category card and right detail card, each with a quiet section label,
+matching the profile cards and the settings menus.
+=================
+*/
+static void PlayerSettings_DrawSplitCards( const char *navLabel, const char *detailLabel ) {
+	Frontend_DrawCard( PLAYERSETTINGS_SPLIT_NAV_X, PLAYERSETTINGS_SPLIT_TOP,
+	                   PLAYERSETTINGS_SPLIT_NAV_WIDTH, PLAYERSETTINGS_SPLIT_HEIGHT,
+	                   uis.tFrac, qfalse );
+	Frontend_DrawCard( PLAYERSETTINGS_SPLIT_DETAIL_X, PLAYERSETTINGS_SPLIT_TOP,
+	                   PLAYERSETTINGS_SPLIT_DETAIL_WIDTH, PLAYERSETTINGS_SPLIT_HEIGHT,
+	                   uis.tFrac, qfalse );
+	if ( navLabel && navLabel[0] ) {
+		Frontend_DrawText( PLAYERSETTINGS_SPLIT_NAV_X + PLAYERSETTINGS_SPLIT_LABEL_INSET,
+		                   PLAYERSETTINGS_SPLIT_LABEL_Y, navLabel,
+		                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
+	}
+	if ( detailLabel && detailLabel[0] ) {
+		PlayerSettings_DrawFittedStatsText(
+			PLAYERSETTINGS_SPLIT_DETAIL_X + PLAYERSETTINGS_SPLIT_LABEL_INSET,
+			PLAYERSETTINGS_SPLIT_LABEL_Y,
+			PLAYERSETTINGS_SPLIT_DETAIL_X + PLAYERSETTINGS_SPLIT_DETAIL_WIDTH - PLAYERSETTINGS_SPLIT_LABEL_INSET,
+			detailLabel, UI_SMALLFONT, playerSettingsMutedColor );
+	}
 }
+
+/*
+=================
+PlayerSettings_DrawSplitNavEntry
+
+One row of the category list. Stores the hit rect for mouse selection.
+=================
+*/
+static void PlayerSettings_DrawSplitNavEntry( playersettingsRect_t *rect, int index,
+	const char *label, const char *count, qboolean selected ) {
+	qboolean hovered;
+	vec4_t color;
+	int textY;
+
+	rect->x = PLAYERSETTINGS_SPLIT_NAV_X + 8;
+	rect->y = PLAYERSETTINGS_SPLIT_BODY_TOP + index * PLAYERSETTINGS_SPLIT_NAV_ROW_HEIGHT;
+	rect->w = PLAYERSETTINGS_SPLIT_NAV_WIDTH - 16;
+	rect->h = PLAYERSETTINGS_SPLIT_NAV_ROW_HEIGHT - 1;
+	hovered = PlayerSettings_RectContainsCursor( rect );
+
+	Frontend_DrawNavButton( (int)rect->x, (int)rect->y, (int)rect->w, (int)rect->h,
+	                        "", uis.tFrac, selected, UI_LEFT );
+	Vector4Copy( ( selected || hovered ) ? playerSettingsAccentColor :
+	             playerSettingsMutedColor, color );
+	color[3] *= uis.tFrac;
+	textY = (int)rect->y + ( (int)rect->h - UI_FRONTEND_SMALL_GLYPH_SIZE ) / 2;
+	Frontend_DrawText( (int)rect->x + 8, textY, label, UI_LEFT | UI_SMALLFONT, color );
+	if ( count && count[0] ) {
+		Frontend_DrawText( (int)( rect->x + rect->w - 4 ), textY, count,
+		                   UI_RIGHT | UI_SMALLFONT, color );
+	}
+}
+
+/*
+=================
+PlayerSettings_DrawStatsCell
+
+Open cell with a hairline underneath, like the rows of the settings menus.
+=================
+*/
+static void PlayerSettings_DrawStatsCell( int x, int y, int width, int height ) {
+	vec4_t lineColor;
+
+	Vector4Copy( playerSettingsBorderColor, lineColor );
+	lineColor[3] = 0.55f * uis.tFrac;
+	UI_FillRect( x, y + height - 1, width, 1, lineColor );
+}
+
+static void PlayerSettings_DrawStatsPanelBackground( void ) {
+	static const char *const pageLabels[] = { "Overview", "Racing", "Arena", "Records" };
+	const playersettingsStatsCategory_t *category;
+	int i;
+
+	PlayerSettings_UpdateStatsPaginationInfo();
+	category = PlayerSettings_GetStatsCategory();
+
+	PlayerSettings_DrawSplitCards( "Categories", category->title );
+	for ( i = 0; i < (int)ARRAY_LEN( pageLabels ) &&
+	            i < (int)ARRAY_LEN( s_playersettings.statsCategoryRects ); ++i ) {
+		PlayerSettings_DrawSplitNavEntry( &s_playersettings.statsCategoryRects[i], i,
+			pageLabels[i], NULL, i == s_playersettings.statsPagination.currentPage );
+	}
 }
 
 static void PlayerSettings_DrawStatsModeTile( int index, int itemCount,
@@ -2089,56 +2150,46 @@ static void PlayerSettings_DrawStatsModeTile( int index, int itemCount,
 	int columns;
 	int column;
 	int row;
-	int rowCount;
 	int rowItems;
-	int maxRows;
 	int x;
 	int y;
 	float tileWidth;
 	float tileHeight;
 	float gap;
+	float rowGap;
 	float gridLeft;
-	float gridTop;
 	float gridWidth;
-	float verticalOffset;
 
 	columns = ( itemCount > PLAYERSETTINGS_STATS_MODES_MAX_NARROW_ITEMS ) ?
 	          PLAYERSETTINGS_STATS_MODES_WIDE_COLUMNS : PLAYERSETTINGS_STATS_MODES_COLUMNS;
 	column = index % columns;
 	row = index / columns;
-	rowCount = ( itemCount + columns - 1 ) / columns;
 	gap = PLAYERSETTINGS_STATS_MODE_TILE_GAP;
-	gridLeft = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
-	gridWidth = PLAYERSETTINGS_PROFILE_ROW_RIGHT - gridLeft;
+	rowGap = PLAYERSETTINGS_STATS_MODE_TILE_ROW_GAP;
+	gridLeft = PLAYERSETTINGS_SPLIT_BODY_LEFT;
+	gridWidth = PLAYERSETTINGS_SPLIT_BODY_RIGHT - gridLeft;
 	tileWidth = ( gridWidth - gap * ( columns - 1 ) ) / columns;
 	tileHeight = PLAYERSETTINGS_STATS_MODE_TILE_HEIGHT;
-	maxRows = (int)( ( PLAYERSETTINGS_STATS_CARD_CONTENT_HEIGHT -
-	                    PLAYERSETTINGS_STATS_PAGINATION_RESERVED_HEIGHT + gap ) /
-	                  ( tileHeight + gap ) );
-	if ( maxRows < rowCount ) {
-		maxRows = rowCount;
-	}
-	verticalOffset = ( maxRows - rowCount ) * ( tileHeight + gap ) * 0.5f;
-	gridTop = PlayerSettings_GetScrollContentTop() + 2.0f + verticalOffset;
 	rowItems = itemCount - row * columns;
 	if ( rowItems > columns ) {
 		rowItems = columns;
 	}
+	/* Grid starts at the top like the settings rows; a short last row is
+	 * centred so it does not hang off to one side. */
 	x = (int)( gridLeft + ( gridWidth -
 	     ( rowItems * tileWidth + ( rowItems - 1 ) * gap ) ) * 0.5f +
 	     column * ( tileWidth + gap ) );
-	y = (int)( gridTop + row * ( tileHeight + gap ) );
+	y = (int)( PLAYERSETTINGS_SPLIT_BODY_TOP + row * ( tileHeight + rowGap ) );
 
-	Frontend_DrawPanel( x, y, (int)tileWidth, (int)tileHeight,
-	                    uis.tFrac, UI_FRONTEND_STYLE_SURFACE );
+	PlayerSettings_DrawStatsCell( x, y, (int)tileWidth, (int)tileHeight );
 	PlayerSettings_DrawFittedStatsText( x + 8, y + 4, x + (int)tileWidth - 8,
-	                                    title, UI_SMALLFONT, playerSettingsAccentColor );
+	                                    title, UI_SMALLFONT, playerSettingsMutedColor );
 	PlayerSettings_DrawFittedStatsText( x + 8, y + 20, x + (int)tileWidth - 8,
 	                                    value, UI_BIGFONT, playerSettingsTextColor );
 	PlayerSettings_DrawFittedStatsText( x + 8, y + 44, x + (int)tileWidth - 8,
 	                                    detail, UI_SMALLFONT, playerSettingsMutedColor );
-	PlayerSettings_DrawFittedStatsText( x + 8, y + 59, x + (int)tileWidth - 8,
-	                                    footnote, UI_SMALLFONT, playerSettingsAccentColor );
+	PlayerSettings_DrawFittedStatsText( x + 8, y + 58, x + (int)tileWidth - 8,
+	                                    footnote, UI_SMALLFONT, playerSettingsMutedColor );
 }
 
 static void PlayerSettings_FormatStatsTime( char *buffer, int bufferSize, int timeMs ) {
@@ -2168,10 +2219,18 @@ static void PlayerSettings_DrawStatsModeCountTile( int index, int itemCount,
 	const char *extraPlural, const char *footnote ) {
 	char value[64];
 	char detail[96];
+	char extra[64];
 
 	Com_sprintf( value, sizeof( value ), "%d %s", valueCount,
 	             PlayerSettings_ModePlural( valueCount, valueSingular, valuePlural ) );
-	if ( detailCount >= 0 && extraCount >= 0 ) {
+	if ( detailCount >= 0 && extraCount >= 0 && !footnote ) {
+		/* Narrow arena tiles: second count goes on the footnote line. */
+		Com_sprintf( detail, sizeof( detail ), "%d %s", detailCount,
+		             PlayerSettings_ModePlural( detailCount, detailSingular, detailPlural ) );
+		Com_sprintf( extra, sizeof( extra ), "%d %s", extraCount,
+		             PlayerSettings_ModePlural( extraCount, extraSingular, extraPlural ) );
+		footnote = extra;
+	} else if ( detailCount >= 0 && extraCount >= 0 ) {
 		Com_sprintf( detail, sizeof( detail ), "%d %s  /  %d %s",
 		             detailCount,
 	             PlayerSettings_ModePlural( detailCount, detailSingular, detailPlural ),
@@ -2208,12 +2267,12 @@ static void PlayerSettings_DrawStatsModesDashboard( const profile_stats_t *stats
 	if ( modePage == 0 ) {
 		itemCount = PLAYERSETTINGS_STATS_MODES_FIRST_PAGE_COUNT;
 		PlayerSettings_FormatStatsTime( timeBuffer, sizeof( timeBuffer ), stats->racingTotalMs );
-		Com_sprintf( detail, sizeof( detail ), "TOTAL %s", timeBuffer );
+		Com_sprintf( detail, sizeof( detail ), "Total %s", timeBuffer );
 		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Racing",
 			stats->racingWins, "win", "wins", stats->racingPodiums,
 			"podium", "podiums", stats->racingCompleted, "race", "races", detail );
 		PlayerSettings_FormatStatsTime( timeBuffer, sizeof( timeBuffer ), stats->racingDmTotalMs );
-		Com_sprintf( detail, sizeof( detail ), "TOTAL %s", timeBuffer );
+		Com_sprintf( detail, sizeof( detail ), "Total %s", timeBuffer );
 		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Racing DM",
 			stats->racingDmWins, "win", "wins", stats->racingDmPodiums,
 			"podium", "podiums", stats->racingDmCompleted, "race", "races", detail );
@@ -2241,7 +2300,7 @@ static void PlayerSettings_DrawStatsModesDashboard( const profile_stats_t *stats
 			stats->derbyWins, "win", "wins", stats->derbyKills,
 			"kill", "kills", stats->derbyCompleted, "match", "matches", NULL );
 		PlayerSettings_FormatStatsTime( timeBuffer, sizeof( timeBuffer ), stats->lcsTotalSurvivalMs );
-		Com_sprintf( detail, sizeof( detail ), "SURVIVED %s", timeBuffer );
+		Com_sprintf( detail, sizeof( detail ), "Survived %s", timeBuffer );
 		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Last Car Standing",
 			stats->lcsWins, "win", "wins", stats->lcsCompleted,
 			"match", "matches", -1, NULL, NULL, detail );
@@ -2261,12 +2320,12 @@ static void PlayerSettings_DrawStatsModesDashboard( const profile_stats_t *stats
 			stats->ctf4Wins, "win", "wins", stats->ctf4Captures,
 			"capture", "captures", stats->ctf4Completed, "match", "matches", NULL );
 		PlayerSettings_FormatStatsTime( timeBuffer, sizeof( timeBuffer ), stats->dominationZoneHoldMs );
-		Com_sprintf( detail, sizeof( detail ), "ZONE TIME %s", timeBuffer );
+		Com_sprintf( detail, sizeof( detail ), "Zone time %s", timeBuffer );
 		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "Domination",
 			stats->dominationWins, "win", "wins", stats->dominationCompleted,
 			"match", "matches", -1, NULL, NULL, detail );
 		PlayerSettings_FormatStatsTime( timeBuffer, sizeof( timeBuffer ), stats->kothZoneHoldMs );
-		Com_sprintf( detail, sizeof( detail ), "ZONE TIME %s", timeBuffer );
+		Com_sprintf( detail, sizeof( detail ), "Zone time %s", timeBuffer );
 		PlayerSettings_DrawStatsModeCountTile( tile++, itemCount, "King of the Hill",
 			stats->kothWins, "win", "wins", stats->kothCompleted,
 			"match", "matches", -1, NULL, NULL, detail );
@@ -2277,27 +2336,27 @@ static void PlayerSettings_DrawStatsModesDashboard( const profile_stats_t *stats
 		itemCount = 8;
 
 		Com_sprintf( value, sizeof( value ), "%d", stats->damageDealt );
-		Com_sprintf( detail, sizeof( detail ), "TAKEN %d", stats->damageTaken );
-		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "DAMAGE DEALT", value, detail, NULL );
+		Com_sprintf( detail, sizeof( detail ), "Taken %d", stats->damageTaken );
+		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "Damage dealt", value, detail, NULL );
 
 		Com_sprintf( value, sizeof( value ), "%d", stats->accuracyAwards );
-		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "ACCURACY AWARDS", value,
-		                                  "75% ACCURACY MATCHES", NULL );
+		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "Accuracy awards", value,
+		                                  "75% accuracy matches", NULL );
 		Com_sprintf( value, sizeof( value ), "%d", stats->excellentAwards );
-		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "EXCELLENT", value,
-		                                  "DOUBLE KILL AWARDS", NULL );
+		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "Excellent", value,
+		                                  "Double kill awards", NULL );
 		Com_sprintf( value, sizeof( value ), "%d", stats->impressiveAwards );
-		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "IMPRESSIVE", value,
-		                                  "RAIL AWARDS", NULL );
+		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "Impressive", value,
+		                                  "Rail awards", NULL );
 		Com_sprintf( value, sizeof( value ), "%d", stats->perfectAwards );
-		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "PERFECT", value,
-		                                  "DEATH-FREE MATCHES", NULL );
+		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "Perfect", value,
+		                                  "Death-free matches", NULL );
 		Com_sprintf( value, sizeof( value ), "%d", stats->flagCaptures );
-		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "FLAGS CAPTURED", value,
-		                                  "TEAM OBJECTIVES", NULL );
+		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "Flags captured", value,
+		                                  "Team objectives", NULL );
 		Com_sprintf( value, sizeof( value ), "%d", stats->flagAssists );
-		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "FLAG ASSISTS", value,
-		                                  "TEAM SUPPORT", NULL );
+		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "Flag assists", value,
+		                                  "Team support", NULL );
 
 		if ( stats->mostUsedVehicle[0] ) {
 			Q_strncpyz( vehicleName, stats->mostUsedVehicle, sizeof( vehicleName ) );
@@ -2321,8 +2380,8 @@ static void PlayerSettings_DrawStatsModesDashboard( const profile_stats_t *stats
 		} else {
 			Q_strncpyz( timeBuffer, "--", sizeof( timeBuffer ) );
 		}
-		Com_sprintf( detail, sizeof( detail ), "DRIVEN %s", timeBuffer );
-		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "TOP VEHICLE",
+		Com_sprintf( detail, sizeof( detail ), "Driven %s", timeBuffer );
+		PlayerSettings_DrawStatsModeTile( tile++, itemCount, "Top vehicle",
 		                                  vehicleName, detail, NULL );
 	}
 }
@@ -2361,24 +2420,24 @@ static void PlayerSettings_DrawCareerRank( const profile_stats_t *stats, int x, 
 	vec4_t partialColor;
 	vec4_t emptyColor;
 
-	Frontend_DrawPanel( x, y, width, 42, uis.tFrac, UI_FRONTEND_STYLE_SURFACE );
+	PlayerSettings_DrawStatsCell( x, y, width, 42 );
 	if ( !UI_Profile_GetRank( stats, &rank ) || !rank.current ) {
-		Frontend_DrawText( x + 10, y + 14, "Rank unavailable", UI_LEFT | UI_SMALLFONT,
+		Frontend_DrawText( x + 8, y + 14, "Rank unavailable", UI_LEFT | UI_SMALLFONT,
 		                   playerSettingsMutedColor );
 		return;
 	}
 
-	Com_sprintf( rankLine, sizeof( rankLine ), "RANK %d / %d  |  %d POINTS",
+	Com_sprintf( rankLine, sizeof( rankLine ), "Rank %d / %d  |  %d points",
 	             rank.index + 1, (int)ARRAY_LEN( s_playerSettingsRankTable ), stats->playerScore );
-	Frontend_DrawText( x + 10, y + 4, rankLine, UI_LEFT | UI_SMALLFONT,
+	Frontend_DrawText( x + 8, y + 4, rankLine, UI_LEFT | UI_SMALLFONT,
 	                   playerSettingsMutedColor );
-	PlayerSettings_DrawFittedStatsText( x + 10, y + 17, x + 184,
+	PlayerSettings_DrawFittedStatsText( x + 8, y + 17, x + 176,
 	                                    rank.current->name, UI_BIGFONT,
 	                                    playerSettingsTextColor );
 
-	segmentX = x + 196.0f;
+	segmentX = x + 188.0f;
 	segmentGap = 2.0f;
-	segmentWidth = ( width - 206.0f - segmentGap * ( ARRAY_LEN( s_playerSettingsRankTable ) - 1 ) ) /
+	segmentWidth = ( width - 196.0f - segmentGap * ( ARRAY_LEN( s_playerSettingsRankTable ) - 1 ) ) /
 	                ARRAY_LEN( s_playerSettingsRankTable );
 	if ( segmentWidth < 1.0f ) {
 		segmentWidth = 1.0f;
@@ -2420,25 +2479,25 @@ static void PlayerSettings_DrawCareerRank( const profile_stats_t *stats, int x, 
 	}
 
 	if ( rank.next ) {
-		Com_sprintf( nextLine, sizeof( nextLine ), "NEXT: %s  |  %d TO GO",
+		Com_sprintf( nextLine, sizeof( nextLine ), "Next: %s  |  %d to go",
 		             rank.next->name, rank.next->minimumScore - stats->playerScore );
 	} else {
-		Q_strncpyz( nextLine, "TOP RANK REACHED", sizeof( nextLine ) );
+		Q_strncpyz( nextLine, "Top rank reached", sizeof( nextLine ) );
 	}
-	PlayerSettings_DrawFittedStatsText( x + 196, y + 25, x + width - 8,
+	PlayerSettings_DrawFittedStatsText( x + 188, y + 25, x + width - 8,
 	                                    nextLine, UI_SMALLFONT,
-	                                    playerSettingsAccentColor );
+	                                    playerSettingsMutedColor );
 }
 
 static void PlayerSettings_DrawCareerMetric( int x, int y, int width,
 	const char *label, const char *value, const char *detail ) {
-	Frontend_DrawPanel( x, y, width, 45, uis.tFrac, UI_FRONTEND_STYLE_SURFACE );
-	PlayerSettings_DrawFittedStatsText( x + 7, y + 3, x + width - 7,
+	PlayerSettings_DrawStatsCell( x, y, width, 45 );
+	PlayerSettings_DrawFittedStatsText( x + 8, y + 3, x + width - 8,
 	                                    label, UI_SMALLFONT, playerSettingsMutedColor );
-	PlayerSettings_DrawFittedStatsText( x + 7, y + 15, x + width - 7,
+	PlayerSettings_DrawFittedStatsText( x + 8, y + 15, x + width - 8,
 	                                    value, UI_BIGFONT, playerSettingsTextColor );
-	PlayerSettings_DrawFittedStatsText( x + 7, y + 34, x + width - 7,
-	                                    detail, UI_SMALLFONT, playerSettingsAccentColor );
+	PlayerSettings_DrawFittedStatsText( x + 8, y + 33, x + width - 8,
+	                                    detail, UI_SMALLFONT, playerSettingsMutedColor );
 }
 
 static void PlayerSettings_DrawClosestAchievement( const profile_stats_t *stats,
@@ -2458,29 +2517,28 @@ static void PlayerSettings_DrawClosestAchievement( const profile_stats_t *stats,
 	progress = PlayerSettings_GetAchievementProgress( stats, categoryIndex );
 	unlocked = BG_AchievementUnlockedTiers( category, progress );
 	if ( unlocked >= category->tierCount ) {
-		Com_sprintf( detail, sizeof( detail ), "%d / %d COMPLETE",
+		Com_sprintf( detail, sizeof( detail ), "%d / %d complete",
 		             unlocked, category->tierCount );
 	} else {
 		double remaining;
 		remaining = category->tiers[unlocked].threshold - progress;
 		if ( remaining < 0.0 ) remaining = 0.0;
 		if ( categoryIndex == BG_ACHIEVEMENT_DISTANCE ) {
-			Com_sprintf( remainingText, sizeof( remainingText ), "%.1f KM", remaining );
+			Com_sprintf( remainingText, sizeof( remainingText ), "%.1f km", remaining );
 		} else if ( categoryIndex == BG_ACHIEVEMENT_FUEL ) {
 			Com_sprintf( remainingText, sizeof( remainingText ), "%.1f L", remaining );
 		} else {
-			Com_sprintf( remainingText, sizeof( remainingText ), "%.0f LEFT", remaining );
+			Com_sprintf( remainingText, sizeof( remainingText ), "%.0f left", remaining );
 		}
 		Com_sprintf( detail, sizeof( detail ), "%s - %s",
 		             category->tiers[unlocked].name, remainingText );
 	}
 	Com_sprintf( percent, sizeof( percent ), "%d%%", (int)( fraction * 100.0f + 0.5f ) );
-	PlayerSettings_DrawFittedStatsText( x, y, x + width - 28,
+	PlayerSettings_DrawFittedStatsText( x, y, x + width - 34,
 	                                    category->title, UI_SMALLFONT,
 	                                    playerSettingsTextColor );
-	PlayerSettings_DrawFittedStatsText( x + width - 28, y, x + width,
-	                                    percent, UI_SMALLFONT,
-	                                    playerSettingsAccentColor );
+	Frontend_DrawText( x + width, y, percent, UI_RIGHT | UI_SMALLFONT,
+	                   playerSettingsAccentColor );
 	PlayerSettings_DrawFittedStatsText( x, y + 10, x + width,
 	                                    detail, UI_SMALLFONT,
 	                                    playerSettingsMutedColor );
@@ -2558,63 +2616,75 @@ static void PlayerSettings_DrawModeProgressChip( int x, int y, int width,
 	char value[32];
 	float progress;
 
-	Frontend_DrawPanel( x, y, width, 62, uis.tFrac, UI_FRONTEND_STYLE_SURFACE );
+	PlayerSettings_DrawStatsCell( x, y, width, 46 );
 	PlayerSettings_DrawFittedStatsText( x + 6, y + 4, x + width - 6,
-	                                    title, UI_SMALLFONT, playerSettingsAccentColor );
+	                                    title, UI_SMALLFONT, playerSettingsMutedColor );
 	Com_sprintf( value, sizeof( value ), "%d W / %d", wins, completed );
-	PlayerSettings_DrawFittedStatsText( x + 6, y + 20, x + width - 6,
+	PlayerSettings_DrawFittedStatsText( x + 6, y + 18, x + width - 6,
 	                                    value, UI_SMALLFONT, playerSettingsTextColor );
 	progress = completed > 0 ? (float)wins / completed : 0.0f;
-	Frontend_DrawProgress( x + 6, y + 44, width - 12, 4, progress, uis.tFrac );
+	Frontend_DrawProgress( x + 6, y + 34, width - 12, 4, progress, uis.tFrac );
 }
 
 static void PlayerSettings_DrawCareerDashboard( const profile_stats_t *stats ) {
+	static const char *const modeTitles[] = {
+		"Racing", "Sprint", "Derby", "Deathmatch", "CTF", "Elimination"
+	};
 	char value[64];
 	char detail[64];
 	char timeBuffer[16];
 	float fractions[PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT];
 	qboolean used[PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT];
+	int modeWins[ARRAY_LEN( modeTitles )];
+	int modeCompleted[ARRAY_LEN( modeTitles )];
 	int categoryCount;
 	int bestIndex;
 	float bestFraction;
-	float tileGap;
-	float tileWidth;
+	int gap;
+	int columnWidth;
 	int left;
 	int right;
-	int gridTop;
+	int metricsTop;
+	int closeTop;
+	int modesTop;
+	int modeWidth;
+	int modeGap;
 	int i;
 
-	left = PLAYERSETTINGS_PROFILE_FIELD_LEFT;
-	right = PLAYERSETTINGS_PROFILE_ROW_RIGHT;
-	gridTop = 204;
-	PlayerSettings_DrawCareerRank( stats, left, 156,
-	                              PLAYERSETTINGS_PROFILE_PANEL_WIDTH - PLAYERSETTINGS_PROFILE_PANEL_INNER_MARGIN * 2 );
+	/* One column of content inside the detail card:
+	 * rank, two rows of three metrics, closest achievements, mode record. */
+	left = PLAYERSETTINGS_SPLIT_BODY_LEFT;
+	right = PLAYERSETTINGS_SPLIT_BODY_RIGHT;
+	gap = 8;
+	columnWidth = ( right - left - gap * 2 ) / 3;
+	metricsTop = PLAYERSETTINGS_SPLIT_BODY_TOP + 46;
+	closeTop = metricsTop + 49 * 2 + 6;
+	modesTop = closeTop + 44;
 
-	tileGap = 6.0f;
-	tileWidth = ( 365.0f - tileGap ) / 2.0f;
+	PlayerSettings_DrawCareerRank( stats, left, PLAYERSETTINGS_SPLIT_BODY_TOP, right - left );
+
 	Com_sprintf( value, sizeof( value ), "%.1f km", stats->distanceKm );
-	PlayerSettings_DrawCareerMetric( left, gridTop, (int)tileWidth,
-	                                 "DISTANCE DRIVEN", value, "CAREER TOTAL" );
+	PlayerSettings_DrawCareerMetric( left, metricsTop, columnWidth,
+	                                 "Distance driven", value, "Career total" );
 	Com_sprintf( value, sizeof( value ), "%.1f L", stats->fuelUsed );
-	PlayerSettings_DrawCareerMetric( left + (int)( tileWidth + tileGap ), gridTop, (int)tileWidth,
-	                                 "FUEL USED", value, "CAREER TOTAL" );
+	PlayerSettings_DrawCareerMetric( left + columnWidth + gap, metricsTop, columnWidth,
+	                                 "Fuel used", value, "Career total" );
+	Com_sprintf( value, sizeof( value ), "%.0f km/h", stats->topSpeedKph );
+	PlayerSettings_DrawCareerMetric( left + ( columnWidth + gap ) * 2, metricsTop, columnWidth,
+	                                 "Top speed", value, "Personal record" );
 
 	Com_sprintf( value, sizeof( value ), "%d / %d", stats->kills, stats->deaths );
 	Com_sprintf( detail, sizeof( detail ), "K/D %.2f",
 	             stats->deaths > 0 ? (float)stats->kills / stats->deaths : (float)stats->kills );
-	PlayerSettings_DrawCareerMetric( left, gridTop + 49, (int)tileWidth,
-	                                 "KILLS / DEATHS", value, detail );
+	PlayerSettings_DrawCareerMetric( left, metricsTop + 49, columnWidth,
+	                                 "Kills / deaths", value, detail );
 	Com_sprintf( value, sizeof( value ), "%d / %d", stats->wins, stats->losses );
-	Com_sprintf( detail, sizeof( detail ), "%d MATCHES", stats->gamesPlayed );
-	PlayerSettings_DrawCareerMetric( left + (int)( tileWidth + tileGap ), gridTop + 49, (int)tileWidth,
-	                                 "WINS / LOSSES", value, detail );
-
-	Com_sprintf( value, sizeof( value ), "%.0f km/h", stats->topSpeedKph );
-	PlayerSettings_DrawCareerMetric( left, gridTop + 98, (int)tileWidth,
-	                                 "TOP SPEED", value, "PERSONAL RECORD" );
+	Com_sprintf( detail, sizeof( detail ), "%d matches", stats->gamesPlayed );
+	PlayerSettings_DrawCareerMetric( left + columnWidth + gap, metricsTop + 49, columnWidth,
+	                                 "Wins / losses", value, detail );
 	PlayerSettings_FormatStatsTime( timeBuffer, sizeof( timeBuffer ), stats->bestLapMs );
-	PlayerSettings_DrawCareerMetric( left + (int)( tileWidth + tileGap ), gridTop + 98, (int)tileWidth,
-	                                 "BEST LAP", timeBuffer, "PERSONAL RECORD" );
+	PlayerSettings_DrawCareerMetric( left + ( columnWidth + gap ) * 2, metricsTop + 49, columnWidth,
+	                                 "Best lap", timeBuffer, "Personal record" );
 
 	categoryCount = BG_AchievementCategoryCount();
 	if ( categoryCount > PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT ) {
@@ -2628,10 +2698,8 @@ static void PlayerSettings_DrawCareerDashboard( const profile_stats_t *stats ) {
 			category, PlayerSettings_GetAchievementProgress( stats, i ) );
 	}
 
-	Frontend_DrawPanel( left + 371, gridTop, right - left - 371, 147,
-	                    uis.tFrac, UI_FRONTEND_STYLE_SURFACE );
-	Frontend_DrawText( left + 379, gridTop + 5, "CLOSE TO NEXT",
-	                   UI_LEFT | UI_SMALLFONT, playerSettingsAccentColor );
+	Frontend_DrawText( left + 8, closeTop, "Close to next",
+	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 	for ( i = 0; i < 3; ++i ) {
 		int j;
 		bestIndex = -1;
@@ -2651,39 +2719,30 @@ static void PlayerSettings_DrawCareerDashboard( const profile_stats_t *stats ) {
 		}
 		if ( bestIndex < 0 ) break;
 		used[bestIndex] = qtrue;
-		PlayerSettings_DrawClosestAchievement( stats, left + 379,
-			gridTop + 21 + i * 40, right - ( left + 379 ) - 8,
-			bestIndex, fractions[bestIndex] );
+		PlayerSettings_DrawClosestAchievement( stats,
+			left + i * ( columnWidth + gap ) + 8, closeTop + 13,
+			columnWidth - 16, bestIndex, fractions[bestIndex] );
 	}
 
-	{
-		static const char *const modeTitles[] = {
-			"RACING", "SPRINT", "DERBY", "DEATHMATCH", "CTF", "ELIMINATION"
-		};
-		int modeWins[ARRAY_LEN( modeTitles )];
-		int modeCompleted[ARRAY_LEN( modeTitles )];
-		int modeWidth;
-		int modeGap;
-
-		modeWins[0] = stats->racingWins;
-		modeCompleted[0] = stats->racingCompleted;
-		modeWins[1] = stats->sprintWins;
-		modeCompleted[1] = stats->sprintCompleted;
-		modeWins[2] = stats->derbyWins;
-		modeCompleted[2] = stats->derbyCompleted;
-		modeWins[3] = stats->dmWins;
-		modeCompleted[3] = stats->dmCompleted;
-		modeWins[4] = stats->ctfWins;
-		modeCompleted[4] = stats->ctfCompleted;
-		modeWins[5] = stats->eliminationWins;
-		modeCompleted[5] = stats->eliminationCompleted;
-		modeGap = 5;
-		modeWidth = ( right - left - modeGap * ( ARRAY_LEN( modeTitles ) - 1 ) ) / ARRAY_LEN( modeTitles );
-		for ( i = 0; i < ARRAY_LEN( modeTitles ); ++i ) {
-			PlayerSettings_DrawModeProgressChip( left + i * ( modeWidth + modeGap ),
-				gridTop + 147 + 6, modeWidth, modeTitles[i],
-				modeWins[i], modeCompleted[i] );
-		}
+	modeWins[0] = stats->racingWins;
+	modeCompleted[0] = stats->racingCompleted;
+	modeWins[1] = stats->sprintWins;
+	modeCompleted[1] = stats->sprintCompleted;
+	modeWins[2] = stats->derbyWins;
+	modeCompleted[2] = stats->derbyCompleted;
+	modeWins[3] = stats->dmWins;
+	modeCompleted[3] = stats->dmCompleted;
+	modeWins[4] = stats->ctfWins;
+	modeCompleted[4] = stats->ctfCompleted;
+	modeWins[5] = stats->eliminationWins;
+	modeCompleted[5] = stats->eliminationCompleted;
+	modeGap = 4;
+	modeWidth = ( right - left - modeGap * ( (int)ARRAY_LEN( modeTitles ) - 1 ) ) /
+	            (int)ARRAY_LEN( modeTitles );
+	for ( i = 0; i < (int)ARRAY_LEN( modeTitles ); ++i ) {
+		PlayerSettings_DrawModeProgressChip( left + i * ( modeWidth + modeGap ),
+			modesTop, modeWidth, modeTitles[i],
+			modeWins[i], modeCompleted[i] );
 	}
 }
 
@@ -3043,8 +3102,8 @@ static void PlayerSettings_DrawStatsLabelValue( int row, const char *label, cons
 static void PlayerSettings_DrawStatsMessage( int row, const char *message ) {
         int x;
 
-        x = PLAYERSETTINGS_PROFILE_FIELD_LEFT + PLAYERSETTINGS_PROFILE_LABEL_OFFSET;
-        Frontend_DrawText( x, PLAYERSETTINGS_PROFILE_PANEL_TOP + 102 + ( row * 18 ),
+        x = PLAYERSETTINGS_SPLIT_DETAIL_X + PLAYERSETTINGS_SPLIT_LABEL_INSET;
+        Frontend_DrawText( x, PLAYERSETTINGS_SPLIT_BODY_TOP + 8 + ( row * 18 ),
                            message, UI_LEFT | UI_SMALLFONT, playerSettingsTextColor );
 }
 
@@ -3607,121 +3666,47 @@ static void PlayerSettings_DrawAchievementsPanelBackground( void ) {
 		"Driven", "Kills", "Race", "Sprint", "Flags", "Assist",
 		"Fuel", "Accur.", "Excel.", "Impr.", "Perfect"
 	};
+	const bgAchievementCategoryDef_t *current;
+	const profile_stats_t *stats;
 	int totalUnlocked;
 	int totalTiers;
 	int i;
-	int headerValueX;
 	char summary[48];
-	vec4_t titleColor;
-	vec4_t accentColor;
-	const profile_stats_t *stats;
-	PlayerSettings_UpdateAchievementsPaginationInfo();
 
-	Frontend_DrawPanel( PLAYERSETTINGS_PROFILE_PANEL_LEFT,
-	                    PLAYERSETTINGS_PROFILE_PANEL_TOP,
-	                    PLAYERSETTINGS_PROFILE_PANEL_WIDTH,
-	                    PLAYERSETTINGS_STATS_CARD_BOTTOM - PLAYERSETTINGS_PROFILE_PANEL_TOP,
-	                    uis.tFrac, UI_FRONTEND_STYLE_SURFACE );
-	Vector4Copy( playerSettingsTextColor, titleColor );
-	titleColor[3] *= uis.tFrac;
-	Vector4Copy( playerSettingsAccentColor, accentColor );
-	accentColor[3] *= uis.tFrac;
-	UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 16,
-	             PLAYERSETTINGS_PROFILE_PANEL_TOP + 10,
-	             UI_FRONTEND_STATUS_DOT, UI_FRONTEND_STATUS_DOT, accentColor );
-	Frontend_DrawText( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32,
-	                   PLAYERSETTINGS_PROFILE_PANEL_TOP + 4,
-	                   "Achievements", UI_LEFT | UI_BIGFONT, titleColor );
-	UI_FillRect( PLAYERSETTINGS_PROFILE_FIELD_LEFT + 32,
-	             PLAYERSETTINGS_PROFILE_PANEL_TOP + 24,
-	             Frontend_TextWidth( "Achievements", UI_BIGFONT ), 2, accentColor );
+	PlayerSettings_UpdateAchievementsPaginationInfo();
+	current = BG_AchievementGetCategory( s_playersettings.achievementsPagination.currentPage );
+	PlayerSettings_DrawSplitCards( "Categories", current ? current->title : NULL );
 
 	stats = UI_Profile_GetActiveStats();
 	totalUnlocked = 0;
 	totalTiers = 0;
-	if ( stats ) {
-		for ( i = 0; i < BG_AchievementCategoryCount(); ++i ) {
-			const bgAchievementCategoryDef_t *category;
-			category = BG_AchievementGetCategory( i );
-			if ( !category ) continue;
-			totalUnlocked += BG_AchievementUnlockedTiers(
-				category, PlayerSettings_GetAchievementProgress( stats, i ) );
-			totalTiers += category->tierCount;
-		}
-	} else {
-		for ( i = 0; i < BG_AchievementCategoryCount(); ++i ) {
-			const bgAchievementCategoryDef_t *category;
-			category = BG_AchievementGetCategory( i );
-			if ( category ) totalTiers += category->tierCount;
-		}
-	}
-	Com_sprintf( summary, sizeof( summary ), "%d / %d UNLOCKED", totalUnlocked, totalTiers );
-	headerValueX = PLAYERSETTINGS_PROFILE_PANEL_LEFT + PLAYERSETTINGS_PROFILE_PANEL_WIDTH - 150;
-	PlayerSettings_DrawFittedStatsText( headerValueX,
-		PLAYERSETTINGS_PROFILE_PANEL_TOP + 9,
-		PLAYERSETTINGS_PROFILE_PANEL_LEFT + PLAYERSETTINGS_PROFILE_PANEL_WIDTH - 16,
-		summary, UI_SMALLFONT, playerSettingsAccentColor );
-
-	Frontend_DrawPanel( PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_LEFT,
-	                    PLAYERSETTINGS_ACHIEVEMENT_BODY_TOP,
-	                    PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_WIDTH,
-	                    PLAYERSETTINGS_ACHIEVEMENT_BODY_BOTTOM - PLAYERSETTINGS_ACHIEVEMENT_BODY_TOP,
-	                    uis.tFrac, UI_FRONTEND_STYLE_SURFACE );
-	Frontend_DrawPanel( PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT,
-	                    PLAYERSETTINGS_ACHIEVEMENT_BODY_TOP,
-	                    PLAYERSETTINGS_ACHIEVEMENT_DETAIL_WIDTH,
-	                    PLAYERSETTINGS_ACHIEVEMENT_BODY_BOTTOM - PLAYERSETTINGS_ACHIEVEMENT_BODY_TOP,
-	                    uis.tFrac, UI_FRONTEND_STYLE_SURFACE );
-
 	for ( i = 0; i < PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT; ++i ) {
 		const bgAchievementCategoryDef_t *category;
-		playersettingsRect_t *rect;
 		char tierCount[16];
 		int unlocked;
-		double progress;
-		int y;
-		qboolean selected;
-		qboolean hovered;
-		vec4_t categoryColor;
 
 		category = BG_AchievementGetCategory( i );
 		if ( !category ) continue;
-		y = PLAYERSETTINGS_ACHIEVEMENT_BODY_TOP + 5 + i * PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_ROW_HEIGHT;
-		rect = &s_playersettings.achievementsCategoryRects[i];
-		rect->x = PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_LEFT + 4;
-		rect->y = y;
-		rect->w = PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_WIDTH - 8;
-		rect->h = PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_ROW_HEIGHT - 1;
-		selected = ( i == s_playersettings.achievementsPagination.currentPage );
-		hovered = PlayerSettings_RectContainsCursor( rect );
-		Frontend_DrawNavButton( (int)rect->x, (int)rect->y,
-		                        (int)rect->w, (int)rect->h,
-	                        "", uis.tFrac, selected,
-		                        UI_LEFT );
-		Vector4Copy( ( selected || hovered ) ? playerSettingsAccentColor :
-		             playerSettingsMutedColor, categoryColor );
-		categoryColor[3] *= uis.tFrac;
-		Frontend_DrawText( (int)rect->x + 8,
-		                   (int)rect->y + ( (int)rect->h - UI_FRONTEND_SMALL_GLYPH_SIZE ) / 2,
-		                   categoryLabels[i], UI_LEFT | UI_SMALLFONT, categoryColor );
 		unlocked = 0;
 		if ( stats ) {
-			progress = PlayerSettings_GetAchievementProgress( stats, i );
-			unlocked = BG_AchievementUnlockedTiers( category, progress );
+			unlocked = BG_AchievementUnlockedTiers( category,
+				PlayerSettings_GetAchievementProgress( stats, i ) );
 		}
+		totalUnlocked += unlocked;
+		totalTiers += category->tierCount;
 		Com_sprintf( tierCount, sizeof( tierCount ), "%d/%d", unlocked, category->tierCount );
-		Frontend_DrawText( (int)( rect->x + rect->w - 4 ),
-		                   (int)rect->y + ( (int)rect->h - UI_FRONTEND_SMALL_GLYPH_SIZE ) / 2,
-		                   tierCount, UI_RIGHT | UI_SMALLFONT,
-		                   ( selected ? playerSettingsAccentColor : playerSettingsMutedColor ) );
+		PlayerSettings_DrawSplitNavEntry( &s_playersettings.achievementsCategoryRects[i], i,
+			categoryLabels[i], tierCount,
+			i == s_playersettings.achievementsPagination.currentPage );
 	}
 
-	Com_sprintf( summary, sizeof( summary ), "CATEGORY %d / %d  |  UP / DOWN TO BROWSE",
-	             s_playersettings.achievementsPagination.currentPage + 1,
-	             PLAYERSETTINGS_ACHIEVEMENT_CATEGORY_COUNT );
-	PlayerSettings_DrawFittedStatsText( PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT + 4,
-		PLAYERSETTINGS_ACHIEVEMENT_BODY_BOTTOM + 3,
-		PLAYERSETTINGS_PROFILE_ROW_RIGHT, summary, UI_SMALLFONT, playerSettingsMutedColor );
+	/* Overall progress closes the category list, the sum of the counts above. */
+	Com_sprintf( summary, sizeof( summary ), "%d / %d unlocked", totalUnlocked, totalTiers );
+	PlayerSettings_DrawFittedStatsText(
+		PLAYERSETTINGS_SPLIT_NAV_X + PLAYERSETTINGS_SPLIT_LABEL_INSET,
+		PLAYERSETTINGS_SPLIT_BOTTOM - 20,
+		PLAYERSETTINGS_SPLIT_NAV_X + PLAYERSETTINGS_SPLIT_NAV_WIDTH - 8,
+		summary, UI_SMALLFONT, playerSettingsMutedColor );
 }
 
 static void PlayerSettings_DrawAchievementTierCard( int categoryIndex,
@@ -3750,9 +3735,12 @@ static void PlayerSettings_DrawAchievementTierCard( int categoryIndex,
 		                s_playersettings.achievementMedalLocked[iconIndex];
 	}
 
-	Frontend_DrawPanel( x, y, width, PLAYERSETTINGS_ACHIEVEMENT_TIER_ROW_HEIGHT,
-	                    uis.tFrac,
-	                    earned ? UI_FRONTEND_STYLE_ACTIVE : UI_FRONTEND_STYLE_SURFACE );
+	/* Earned tiers use the selection wash of the menus; open tiers are plain rows. */
+	if ( earned ) {
+		Frontend_DrawPanel( x, y, width, PLAYERSETTINGS_ACHIEVEMENT_TIER_ROW_HEIGHT,
+		                    uis.tFrac, UI_FRONTEND_STYLE_ACTIVE );
+	}
+	PlayerSettings_DrawStatsCell( x, y, width, PLAYERSETTINGS_ACHIEVEMENT_TIER_ROW_HEIGHT );
 	if ( icon ) {
 		UI_DrawHandlePic( x + 6, y + 8, PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE,
 		                  PLAYERSETTINGS_ACHIEVEMENT_MEDAL_SIZE, icon );
@@ -3789,17 +3777,20 @@ static void PlayerSettings_DrawAchievementsTab( void ) {
 	if ( !category ) return;
 
 	if ( !UI_Profile_HasActiveProfile() ) {
-		Frontend_DrawText( PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT + 12, 216,
+		Frontend_DrawText( PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT + PLAYERSETTINGS_SPLIT_LABEL_INSET,
+		                   PLAYERSETTINGS_SPLIT_BODY_TOP + 8,
 		                   "No active profile selected.", UI_LEFT | UI_SMALLFONT,
 		                   playerSettingsTextColor );
-		Frontend_DrawText( PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT + 12, 238,
+		Frontend_DrawText( PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT + PLAYERSETTINGS_SPLIT_LABEL_INSET,
+		                   PLAYERSETTINGS_SPLIT_BODY_TOP + 26,
 		                   "Create or select a profile from the main menu.",
 		                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 		return;
 	}
 	stats = UI_Profile_GetActiveStats();
 	if ( !stats ) {
-		Frontend_DrawText( PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT + 12, 224,
+		Frontend_DrawText( PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT + PLAYERSETTINGS_SPLIT_LABEL_INSET,
+		                   PLAYERSETTINGS_SPLIT_BODY_TOP + 8,
 		                   "Unable to read profile statistics.", UI_LEFT | UI_SMALLFONT,
 		                   playerSettingsTextColor );
 		return;
@@ -3810,25 +3801,28 @@ static void PlayerSettings_DrawAchievementsTab( void ) {
 	if ( unlocked < 0 ) unlocked = 0;
 	if ( unlocked > category->tierCount ) unlocked = category->tierCount;
 
-	Frontend_DrawText( PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT + 10, 163,
-	                   category->title, UI_LEFT | UI_BIGFONT, playerSettingsTextColor );
+	/* The category name is the card label; the body starts with the progress line. */
 	if ( unlocked < category->tierCount ) {
 		int remaining;
 		remaining = (int)( category->tiers[unlocked].threshold - progress + 0.999 );
 		if ( remaining < 0 ) remaining = 0;
-		Com_sprintf( summary, sizeof( summary ), "TIER %d / %d  |  NEXT: %s  |  %d TO GO",
+		Com_sprintf( summary, sizeof( summary ), "Tier %d / %d  |  Next: %s  |  %d to go",
 		             unlocked, category->tierCount, category->tiers[unlocked].name, remaining );
 	} else {
-		Com_sprintf( summary, sizeof( summary ), "ALL %d TIERS COMPLETE", category->tierCount );
+		Com_sprintf( summary, sizeof( summary ), "All %d tiers complete", category->tierCount );
 	}
-	PlayerSettings_DrawFittedStatsText( PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT + 10,
-		180, PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT + PLAYERSETTINGS_ACHIEVEMENT_DETAIL_WIDTH - 10,
-		summary, UI_SMALLFONT, playerSettingsMutedColor );
+	PlayerSettings_DrawFittedStatsText(
+		PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT + PLAYERSETTINGS_SPLIT_LABEL_INSET,
+		PLAYERSETTINGS_SPLIT_BODY_TOP + 2,
+		PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT + PLAYERSETTINGS_ACHIEVEMENT_DETAIL_WIDTH - PLAYERSETTINGS_SPLIT_LABEL_INSET,
+		summary, UI_SMALLFONT, playerSettingsTextColor );
 	PlayerSettings_DrawAchievementMilestoneBar(
-		category, progress, PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT + 10, 195,
-		PLAYERSETTINGS_ACHIEVEMENT_DETAIL_WIDTH - 20, 6 );
+		category, progress,
+		PLAYERSETTINGS_SPLIT_BODY_LEFT,
+		PLAYERSETTINGS_SPLIT_BODY_TOP + 16,
+		PLAYERSETTINGS_SPLIT_BODY_RIGHT - PLAYERSETTINGS_SPLIT_BODY_LEFT, 6 );
 
-	left = PLAYERSETTINGS_ACHIEVEMENT_DETAIL_LEFT + 8;
+	left = PLAYERSETTINGS_SPLIT_BODY_LEFT;
 	innerWidth = PLAYERSETTINGS_ACHIEVEMENT_DETAIL_WIDTH - 16;
 	tileGap = 6;
 	tileWidth = ( innerWidth - tileGap ) / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE;
@@ -3845,7 +3839,7 @@ static void PlayerSettings_DrawAchievementsTab( void ) {
 		column = i % PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE;
 		row = i / PLAYERSETTINGS_ACHIEVEMENTS_PER_LINE;
 		x = left + column * ( tileWidth + tileGap );
-		y = 207 + row * ( PLAYERSETTINGS_ACHIEVEMENT_TIER_ROW_HEIGHT +
+		y = PLAYERSETTINGS_ACHIEVEMENT_TIER_TOP + row * ( PLAYERSETTINGS_ACHIEVEMENT_TIER_ROW_HEIGHT +
 		                   PLAYERSETTINGS_ACHIEVEMENT_TIER_ROW_GAP );
 		PlayerSettings_DrawAchievementTierCard( categoryIndex, i, x, y, tileWidth, unlocked );
 	}
