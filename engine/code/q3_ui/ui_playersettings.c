@@ -80,6 +80,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ID_AVATAR_IMPORT_PATH	50
 #define ID_AVATAR_IMPORT_CONFIRM	51
 #define ID_AVATAR_IMPORT_CANCEL	52
+#define ID_AVATAR_IMPORT_BROWSE	53
 
 #define TAB_PROFILE		0
 #define TAB_VEHICLE		1
@@ -239,6 +240,8 @@ static void PlayerSettings_AvatarImportMenuEvent( void *ptr, int event );
 static sfxHandle_t PlayerSettings_AvatarImportKey( int key );
 static void PlayerSettings_AvatarImportDraw( void );
 static void PlayerSettings_OpenAvatarImport( void );
+static void PlayerSettings_PollDroppedAvatar( qboolean uploadScreen );
+static void PlayerSettings_DiscardDroppedFile( void );
 static void PlayerSettings_DrawVehicleControl( void *self );
 static void PlayerSettings_DrawFavoriteButton( void *self );
 static void PlayerSettings_DrawVehiclePanelBackground( void );
@@ -505,10 +508,12 @@ typedef struct {
 	char		avatarDisplayPath[MAX_OSPATH];
 	char		avatarActionLine[64];
 	menuframework_s	avatarImportMenu;
+	menutext_s		avatarImportBrowse;
 	menufield_s		avatarImportPath;
 	menutext_s		avatarImportConfirm;
 	menutext_s		avatarImportCancel;
 	char		avatarImportStatus[128];
+	int			avatarImportResult;
 	playersettingsPaginationState_t	statsPagination;
 	playersettingsPaginationState_t	achievementsPagination;
 	playersettingsPaginationInfo_t	statsPaginationInfo;
@@ -1350,18 +1355,24 @@ static void PlayerSettings_DrawAvatarImage( void *self ) {
 		line1 = combinedLine;
 		line2 = "";
 	} else {
-		Com_sprintf( combinedLine, sizeof( combinedLine ), "No active profile. Create or select a profile to display an avatar." );
+		Q_strncpyz( combinedLine, "No active profile", sizeof( combinedLine ) );
 		line1 = combinedLine;
 		line2 = "";
 	}
 
-	Frontend_DrawText( basex, textLineY, line1, UI_LEFT | UI_SMALLFONT,
-	                   focus ? playerSettingsAccentColor : playerSettingsTextColor );
+	/* Text stays left of the preview box (textRight) instead of running into it. */
+	PlayerSettings_DrawFittedStatsText( basex, textLineY, textRight, line1, UI_SMALLFONT,
+	                                    focus ? playerSettingsAccentColor : playerSettingsTextColor );
 	actionLine = s_playersettings.avatarActionLine;
-	if ( !disabled && actionLine[0] ) {
-		Frontend_DrawText( basex, textLineY + SMALLCHAR_HEIGHT + 4, actionLine,
-		                   UI_LEFT | UI_SMALLFONT,
-		                   focus ? playerSettingsAccentColor : playerSettingsMutedColor );
+	if ( actionLine[0] ) {
+		PlayerSettings_DrawFittedStatsText( basex, textLineY + SMALLCHAR_HEIGHT + 6, textRight,
+		                                    actionLine, UI_SMALLFONT,
+		                                    focus ? playerSettingsAccentColor : playerSettingsMutedColor );
+	}
+	if ( !disabled && UI_Profile_HasActiveProfile() ) {
+		PlayerSettings_DrawFittedStatsText( basex, textLineY + SMALLCHAR_HEIGHT * 2 + 12, textRight,
+		                                    "or drop a file here", UI_SMALLFONT,
+		                                    playerSettingsMutedColor );
 	}
 
 	secondaryStyle = UI_LEFT | UI_SMALLFONT;
@@ -3158,6 +3169,8 @@ static void PlayerSettings_DrawBackShaders( void ) {
         default:
                 statusLabel = "Driver";
                 PlayerSettings_DrawProfilePanelBackground();
+                /* An image dropped onto the window becomes the avatar. */
+                PlayerSettings_PollDroppedAvatar( qfalse );
                 break;
         }
 
@@ -4367,7 +4380,7 @@ static void PlayerSettings_SetMenuItems( void ) {
 		PlayerSettings_UpdateBirthDateDayItems();
 
 		s_playersettings.avatar.field.buffer[0] = '\0';
-		Q_strncpyz( s_playersettings.avatarActionLine, "Open import dialog",
+		Q_strncpyz( s_playersettings.avatarActionLine, "Upload image",
 		            sizeof( s_playersettings.avatarActionLine ) );
 		PlayerSettings_SetAvatarProfileName( UI_Profile_GetActiveName() );
 		PlayerSettings_EnsureAvatarShader();
@@ -4500,44 +4513,162 @@ static void PlayerSettings_PicEvent( void* ptr, int event )
 // END
 
 
-static qboolean PlayerSettings_ImportAvatarFromPath( const char *sourcePath ) {
-	char shaderPath[MAX_QPATH];
+/*
+=================
+Avatar upload
+
+Three ways in, one result path: the native file dialog (Browse), a file
+dropped onto the game window, or a typed path. The engine copies the image
+into the game folder and returns its game path or an AVATAR_IMPORT_* code.
+=================
+*/
+
+#define AVATAR_IMPORT_ERR_PROFILE	-100	/* UI side: profile could not be saved */
+
+#define AVATAR_IMPORT_FRAME_X		92
+#define AVATAR_IMPORT_FRAME_Y		84
+#define AVATAR_IMPORT_FRAME_W		456
+#define AVATAR_IMPORT_FRAME_H		312
+#define AVATAR_IMPORT_CARD_X		120
+#define AVATAR_IMPORT_CARD_Y		164
+#define AVATAR_IMPORT_CARD_W		400
+#define AVATAR_IMPORT_CARD_H		194
+#define AVATAR_IMPORT_DROP_X		136
+#define AVATAR_IMPORT_DROP_Y		178
+#define AVATAR_IMPORT_DROP_W		252
+#define AVATAR_IMPORT_DROP_H		78
+#define AVATAR_IMPORT_PREVIEW_SIZE	96
+#define AVATAR_IMPORT_PREVIEW_X		( AVATAR_IMPORT_CARD_X + AVATAR_IMPORT_CARD_W - 16 - AVATAR_IMPORT_PREVIEW_SIZE )
+#define AVATAR_IMPORT_PREVIEW_Y		AVATAR_IMPORT_DROP_Y
+#define AVATAR_IMPORT_PATH_Y		318
+
+static const char *PlayerSettings_AvatarResultText( int result, qboolean compact ) {
+	switch ( result ) {
+	case AVATAR_IMPORT_OK:
+		return compact ? "Custom image ready" : "Avatar updated";
+	case AVATAR_IMPORT_ERR_FORMAT:
+		return compact ? "Not a PNG, JPG or TGA" : "That file is not a PNG, JPG or TGA image";
+	case AVATAR_IMPORT_ERR_OPEN:
+		return compact ? "File not readable" : "File not found or not readable";
+	case AVATAR_IMPORT_ERR_SIZE:
+		return compact ? "Larger than 8 MB" : "The image is larger than 8 MB";
+	case AVATAR_IMPORT_ERR_DATA:
+		return compact ? "File is empty" : "The file is empty";
+	case AVATAR_IMPORT_ERR_WRITE:
+		return compact ? "Could not save image" : "The image could not be saved";
+	case AVATAR_IMPORT_ERR_NO_DIALOG:
+		return compact ? "No file dialog" : "No file dialog here - drop the file or type its path";
+	case AVATAR_IMPORT_ERR_PROFILE:
+		return compact ? "Profile not saved" : "The profile could not be updated";
+	default:
+		return "";
+	}
+}
+
+/* Stores the copied image in the active profile and refreshes the preview. */
+static int PlayerSettings_ApplyImportedAvatar( const char *shaderPath ) {
 	const profile_info_t *activeInfo;
 	profile_info_t info;
 
-	if ( !UI_Profile_HasActiveProfile() || !sourcePath || !sourcePath[0] ) {
-		return qfalse;
-	}
-
-	if ( !trap_UI_ImportAvatarPath( UI_Profile_GetActiveName(), sourcePath,
-								shaderPath, sizeof( shaderPath ) ) ) {
-		return qfalse;
-	}
-
 	activeInfo = UI_Profile_GetActiveInfo();
 	if ( !activeInfo ) {
-		return qfalse;
+		return AVATAR_IMPORT_ERR_PROFILE;
 	}
 
 	info = *activeInfo;
 	Q_strncpyz( info.avatar, shaderPath, sizeof( info.avatar ) );
 	if ( !UI_Profile_SaveActiveInfo( &info ) ) {
-		return qfalse;
+		return AVATAR_IMPORT_ERR_PROFILE;
 	}
 
 	s_playersettings.profileInfo = info;
 	s_playersettings.avatarShader = 0;
 	s_playersettings.avatarShaderInitialized = qfalse;
 	s_playersettings.avatarShaderName[0] = '\0';
-	Q_strncpyz( s_playersettings.avatarActionLine, "Custom image ready",
-	            sizeof( s_playersettings.avatarActionLine ) );
 	PlayerSettings_EnsureAvatarShader();
-	return qtrue;
+	return AVATAR_IMPORT_OK;
+}
+
+/* sourcePath NULL opens the native file dialog. */
+static int PlayerSettings_ImportAvatar( const char *sourcePath ) {
+	char shaderPath[MAX_QPATH];
+	int result;
+
+	if ( !UI_Profile_HasActiveProfile() ) {
+		return AVATAR_IMPORT_ERR_PROFILE;
+	}
+
+	if ( sourcePath ) {
+		if ( !sourcePath[0] ) {
+			return AVATAR_IMPORT_ERR_OPEN;
+		}
+		result = trap_UI_ImportAvatarPath( UI_Profile_GetActiveName(), sourcePath,
+		                                   shaderPath, sizeof( shaderPath ) );
+	} else {
+		result = trap_UI_ImportAvatar( UI_Profile_GetActiveName(),
+		                               shaderPath, sizeof( shaderPath ) );
+	}
+	if ( result != AVATAR_IMPORT_OK ) {
+		return result;
+	}
+
+	result = PlayerSettings_ApplyImportedAvatar( shaderPath );
+	if ( result == AVATAR_IMPORT_OK ) {
+		Q_strncpyz( s_playersettings.avatarActionLine,
+		            PlayerSettings_AvatarResultText( AVATAR_IMPORT_OK, qtrue ),
+		            sizeof( s_playersettings.avatarActionLine ) );
+	}
+	return result;
+}
+
+static void PlayerSettings_SetAvatarImportStatus( int result ) {
+	s_playersettings.avatarImportResult = result;
+	Q_strncpyz( s_playersettings.avatarImportStatus,
+	            PlayerSettings_AvatarResultText( result, qfalse ),
+	            sizeof( s_playersettings.avatarImportStatus ) );
+}
+
+/*
+=================
+PlayerSettings_PollDroppedAvatar
+
+Called every frame while the profile card or the upload screen is visible.
+=================
+*/
+static void PlayerSettings_PollDroppedAvatar( qboolean uploadScreen ) {
+	char path[MAX_OSPATH];
+	int result;
+
+	if ( !trap_UI_TakeDroppedFile( path, sizeof( path ) ) ) {
+		return;
+	}
+	if ( !UI_Profile_HasActiveProfile() ) {
+		return;
+	}
+
+	result = PlayerSettings_ImportAvatar( path );
+	if ( uploadScreen ) {
+		PlayerSettings_SetAvatarImportStatus( result );
+	} else if ( result != AVATAR_IMPORT_OK ) {
+		Q_strncpyz( s_playersettings.avatarActionLine,
+		            PlayerSettings_AvatarResultText( result, qtrue ),
+		            sizeof( s_playersettings.avatarActionLine ) );
+	}
+	trap_S_StartLocalSound( result == AVATAR_IMPORT_OK ? menu_move_sound : menu_buzz_sound,
+	                        CHAN_LOCAL_SOUND );
+}
+
+/* Drops made while no avatar target was on screen are discarded. */
+static void PlayerSettings_DiscardDroppedFile( void ) {
+	char path[MAX_OSPATH];
+
+	trap_UI_TakeDroppedFile( path, sizeof( path ) );
 }
 
 static void PlayerSettings_DrawAvatarImportField( void *self ) {
 	menufield_s *field;
 	qboolean focus;
+	qboolean hovered;
 	vec4_t textColor;
 	vec4_t placeholderColor;
 	char visible[96];
@@ -4549,21 +4680,24 @@ static void PlayerSettings_DrawAvatarImportField( void *self ) {
 	int fieldX;
 	int fieldY;
 	int fieldW;
+	int fieldH;
 
 	field = (menufield_s *)self;
 	focus = ( Menu_ItemAtCursor( field->generic.parent ) == &field->generic );
-	fieldX = field->generic.x;
-	fieldY = field->generic.y;
+	hovered = UI_CursorInRect( field->generic.left, field->generic.top,
+	                           field->generic.right - field->generic.left,
+	                           field->generic.bottom - field->generic.top );
+	fieldX = field->generic.left;
+	fieldY = field->generic.top;
 	fieldW = field->generic.right - field->generic.left;
+	fieldH = field->generic.bottom - field->generic.top;
 
-	Vector4Copy( focus ? playerSettingsAccentColor : playerSettingsTextColor, textColor );
+	Vector4Copy( playerSettingsTextColor, textColor );
 	Vector4Copy( playerSettingsMutedColor, placeholderColor );
 	placeholderColor[3] = 0.75f;
 
-	Frontend_DrawText( fieldX, fieldY - 22, "Image path",
-	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
-	Frontend_DrawPanel( fieldX - 8, fieldY, fieldW, 30, 1.0f,
-	                    focus ? UI_FRONTEND_STYLE_ACTIVE : UI_FRONTEND_STYLE_CARD );
+	Frontend_DrawPanel( fieldX, fieldY, fieldW, fieldH, 1.0f,
+	                    ( focus || hovered ) ? UI_FRONTEND_STYLE_ACTIVE : UI_FRONTEND_STYLE_CARD );
 
 	start = field->field.scroll;
 	if ( start < 0 ) {
@@ -4587,22 +4721,22 @@ static void PlayerSettings_DrawAvatarImportField( void *self ) {
 	}
 
 	if ( !visible[0] ) {
-		Frontend_DrawText( fieldX, fieldY + 7,
+		Frontend_DrawText( fieldX + 8, fieldY + ( fieldH - SMALLCHAR_HEIGHT ) / 2,
 		                   "D:/Pictures/avatar.png",
 		                   UI_LEFT | UI_SMALLFONT, placeholderColor );
 	} else {
-		Frontend_DrawText( fieldX, fieldY + 7, visible,
+		Frontend_DrawText( fieldX + 8, fieldY + ( fieldH - SMALLCHAR_HEIGHT ) / 2, visible,
 		                   UI_LEFT | UI_SMALLFONT, textColor );
 	}
 
 	if ( focus && ( ( uis.realtime / 400 ) & 1 ) ) {
 		prefix[0] = '\0';
-		for ( i = start; i < cursor && i < (int)sizeof( prefix ) - 1; ++i ) {
+		for ( i = start; i < cursor && i - start < (int)sizeof( prefix ) - 1; ++i ) {
 			prefix[i - start] = field->field.buffer[i];
 			prefix[i - start + 1] = '\0';
 		}
-		UI_FillRect( fieldX + Frontend_TextWidth( prefix, UI_LEFT | UI_SMALLFONT ),
-		             fieldY + 6, 1, 13, playerSettingsAccentColor );
+		UI_FillRect( fieldX + 8 + Frontend_TextWidth( prefix, UI_LEFT | UI_SMALLFONT ),
+		             fieldY + 5, 1, fieldH - 10, playerSettingsAccentColor );
 	}
 }
 
@@ -4618,33 +4752,104 @@ static void PlayerSettings_DrawAvatarImportButton( void *self ) {
 	                     button->string, 1.0f, focus, UI_CENTER );
 }
 
+/* Dashed outline: the usual cue for "drop files here". */
+static void PlayerSettings_DrawDashedRect( int x, int y, int w, int h, const float *color ) {
+	int dash;
+	int gap;
+	int i;
+
+	dash = 6;
+	gap = 4;
+	for ( i = 0; i < w; i += dash + gap ) {
+		int len = ( i + dash > w ) ? w - i : dash;
+		UI_FillRect( x + i, y, len, 1, color );
+		UI_FillRect( x + i, y + h - 1, len, 1, color );
+	}
+	for ( i = 0; i < h; i += dash + gap ) {
+		int len = ( i + dash > h ) ? h - i : dash;
+		UI_FillRect( x, y + i, 1, len, color );
+		UI_FillRect( x + w - 1, y + i, 1, len, color );
+	}
+}
+
 static void PlayerSettings_AvatarImportDraw( void ) {
+	vec4_t dashColor;
+	vec4_t background;
+	vec4_t border;
+	const float *statusColor;
+	int centerX;
+
+	PlayerSettings_PollDroppedAvatar( qtrue );
+
 	Frontend_DrawBackground( playerSettingsScrimColor );
-	Frontend_DrawPanel( 92, 84, 456, 312, 1.0f, UI_FRONTEND_STYLE_FRAME );
-	Frontend_DrawText( 120, 112, "Import avatar", UI_LEFT | UI_BIGFONT,
-	                   playerSettingsTextColor );
-	Frontend_DrawStatusChip( 462, 114, "Profile", playerSettingsAccentColor, 1.0f );
-	Frontend_DrawText( 120, 142,
+	Frontend_DrawPanel( AVATAR_IMPORT_FRAME_X, AVATAR_IMPORT_FRAME_Y,
+	                    AVATAR_IMPORT_FRAME_W, AVATAR_IMPORT_FRAME_H, 1.0f,
+	                    UI_FRONTEND_STYLE_FRAME );
+	Frontend_DrawText( AVATAR_IMPORT_FRAME_X + 28, AVATAR_IMPORT_FRAME_Y + 28,
+	                   "Upload avatar", UI_LEFT | UI_BIGFONT, playerSettingsTextColor );
+	Frontend_DrawStatusChip( AVATAR_IMPORT_FRAME_X + AVATAR_IMPORT_FRAME_W - 86,
+	                         AVATAR_IMPORT_FRAME_Y + 30, "Profile",
+	                         playerSettingsAccentColor, 1.0f );
+	Frontend_DrawText( AVATAR_IMPORT_FRAME_X + 28, AVATAR_IMPORT_FRAME_Y + 56,
 	                   "Add a custom image to the active driver profile",
 	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 
-	Frontend_DrawCard( 120, 174, 400, 180, 1.0f, qfalse );
-	Frontend_DrawText( 136, 198,
-	                   "PNG, JPG or TGA up to 8 MB",
-	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
-	Frontend_DrawText( 136, 224,
-	                   "Type the full path to the image on your computer.",
-	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
+	Frontend_DrawCard( AVATAR_IMPORT_CARD_X, AVATAR_IMPORT_CARD_Y,
+	                   AVATAR_IMPORT_CARD_W, AVATAR_IMPORT_CARD_H, 1.0f, qfalse );
+
+	/* Drop zone */
+	Vector4Copy( playerSettingsMutedColor, dashColor );
+	dashColor[3] = 0.7f;
+	PlayerSettings_DrawDashedRect( AVATAR_IMPORT_DROP_X, AVATAR_IMPORT_DROP_Y,
+	                               AVATAR_IMPORT_DROP_W, AVATAR_IMPORT_DROP_H, dashColor );
+	centerX = AVATAR_IMPORT_DROP_X + AVATAR_IMPORT_DROP_W / 2;
+	Frontend_DrawText( centerX, AVATAR_IMPORT_DROP_Y + 24,
+	                   "Drop an image onto the game window",
+	                   UI_CENTER | UI_SMALLFONT, playerSettingsTextColor );
+	Frontend_DrawText( centerX, AVATAR_IMPORT_DROP_Y + 44,
+	                   "PNG, JPG or TGA, up to 8 MB",
+	                   UI_CENTER | UI_SMALLFONT, playerSettingsMutedColor );
+
+	/* Preview of the current avatar */
+	PlayerSettings_EnsureAvatarShader();
+	Vector4Copy( avatarImageBackgroundColor, background );
+	Vector4Copy( profileRowBorderColor, border );
+	UI_FillRect( AVATAR_IMPORT_PREVIEW_X, AVATAR_IMPORT_PREVIEW_Y,
+	             AVATAR_IMPORT_PREVIEW_SIZE, AVATAR_IMPORT_PREVIEW_SIZE, background );
+	if ( s_playersettings.avatarShader ) {
+		trap_R_SetColor( NULL );
+		UI_DrawHandlePic( AVATAR_IMPORT_PREVIEW_X, AVATAR_IMPORT_PREVIEW_Y,
+		                  AVATAR_IMPORT_PREVIEW_SIZE, AVATAR_IMPORT_PREVIEW_SIZE,
+		                  s_playersettings.avatarShader );
+	} else {
+		Frontend_DrawText( AVATAR_IMPORT_PREVIEW_X + AVATAR_IMPORT_PREVIEW_SIZE / 2,
+		                   AVATAR_IMPORT_PREVIEW_Y + AVATAR_IMPORT_PREVIEW_SIZE / 2 - 4,
+		                   "No avatar", UI_CENTER | UI_SMALLFONT, playerSettingsMutedColor );
+	}
+	UI_DrawRect( AVATAR_IMPORT_PREVIEW_X, AVATAR_IMPORT_PREVIEW_Y,
+	             AVATAR_IMPORT_PREVIEW_SIZE, AVATAR_IMPORT_PREVIEW_SIZE, border );
+	Frontend_DrawText( AVATAR_IMPORT_PREVIEW_X + AVATAR_IMPORT_PREVIEW_SIZE / 2,
+	                   AVATAR_IMPORT_PREVIEW_Y + AVATAR_IMPORT_PREVIEW_SIZE + 8,
+	                   "Current", UI_CENTER | UI_SMALLFONT, playerSettingsMutedColor );
+
+	/* Path fallback */
+	Frontend_DrawText( AVATAR_IMPORT_DROP_X, AVATAR_IMPORT_PATH_Y - 14,
+	                   "Or type the full path", UI_LEFT | UI_SMALLFONT,
+	                   playerSettingsMutedColor );
 
 	Menu_Draw( &s_playersettings.avatarImportMenu );
 
 	if ( s_playersettings.avatarImportStatus[0] ) {
-		Frontend_DrawText( 120, 366, s_playersettings.avatarImportStatus,
-		                   UI_LEFT | UI_SMALLFONT, avatarImageMissingColor );
+		statusColor = ( s_playersettings.avatarImportResult == AVATAR_IMPORT_OK ) ?
+		              playerSettingsStatusColor : avatarImageMissingColor;
+		Frontend_DrawText( AVATAR_IMPORT_CARD_X, AVATAR_IMPORT_CARD_Y + AVATAR_IMPORT_CARD_H + 8,
+		                   s_playersettings.avatarImportStatus,
+		                   UI_LEFT | UI_SMALLFONT, statusColor );
+	} else {
+		Frontend_DrawText( AVATAR_IMPORT_CARD_X, AVATAR_IMPORT_CARD_Y + AVATAR_IMPORT_CARD_H + 8,
+		                   "Enter select     Tab switch     Esc back",
+		                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 	}
-	Frontend_DrawText( 120, 382,
-	                   "Enter import     Tab switch     Esc back",
-	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 }
 
 static void PlayerSettings_AvatarImportMenuEvent( void *ptr, int event ) {
@@ -4656,21 +4861,28 @@ static void PlayerSettings_AvatarImportMenuEvent( void *ptr, int event ) {
 
 	item = (menucommon_s *)ptr;
 	switch ( item->id ) {
+	case ID_AVATAR_IMPORT_BROWSE:
+		{
+			int result = PlayerSettings_ImportAvatar( NULL );
+			if ( result == AVATAR_IMPORT_CANCELLED ) {
+				s_playersettings.avatarImportStatus[0] = '\0';
+			} else {
+				PlayerSettings_SetAvatarImportStatus( result );
+			}
+		}
+		break;
+
 	case ID_AVATAR_IMPORT_PATH:
 	case ID_AVATAR_IMPORT_CONFIRM:
 		if ( !s_playersettings.avatarImportPath.field.buffer[0] ) {
+			s_playersettings.avatarImportResult = AVATAR_IMPORT_ERR_OPEN;
 			Q_strncpyz( s_playersettings.avatarImportStatus,
-			            "Enter an image path first",
+			            "Type the path to an image first",
 			            sizeof( s_playersettings.avatarImportStatus ) );
 			return;
 		}
-		if ( PlayerSettings_ImportAvatarFromPath( s_playersettings.avatarImportPath.field.buffer ) ) {
-			UI_PopMenu();
-			return;
-		}
-		Q_strncpyz( s_playersettings.avatarImportStatus,
-		            "Import failed — check the path and format",
-		            sizeof( s_playersettings.avatarImportStatus ) );
+		PlayerSettings_SetAvatarImportStatus(
+			PlayerSettings_ImportAvatar( s_playersettings.avatarImportPath.field.buffer ) );
 		break;
 
 	case ID_AVATAR_IMPORT_CANCEL:
@@ -4688,11 +4900,28 @@ static sfxHandle_t PlayerSettings_AvatarImportKey( int key ) {
 	return Menu_DefaultKey( &s_playersettings.avatarImportMenu, key );
 }
 
+static void PlayerSettings_InitAvatarImportButton( menutext_s *button, int id,
+	const char *label, int left, int top, int right, int bottom ) {
+	button->generic.type = MTYPE_PTEXT;
+	button->generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
+	button->generic.id = id;
+	button->generic.callback = PlayerSettings_AvatarImportMenuEvent;
+	button->generic.ownerdraw = PlayerSettings_DrawAvatarImportButton;
+	button->generic.left = left;
+	button->generic.top = top;
+	button->generic.right = right;
+	button->generic.bottom = bottom;
+	button->string = (char *)label;
+}
+
 static void PlayerSettings_OpenAvatarImport( void ) {
 	menuframework_s *menu;
+	int pathRight;
 
 	menu = &s_playersettings.avatarImportMenu;
 	Com_Memset( menu, 0, sizeof( *menu ) );
+	Com_Memset( &s_playersettings.avatarImportBrowse, 0,
+	            sizeof( s_playersettings.avatarImportBrowse ) );
 	Com_Memset( &s_playersettings.avatarImportPath, 0,
 	            sizeof( s_playersettings.avatarImportPath ) );
 	Com_Memset( &s_playersettings.avatarImportConfirm, 0,
@@ -4700,53 +4929,52 @@ static void PlayerSettings_OpenAvatarImport( void ) {
 	Com_Memset( &s_playersettings.avatarImportCancel, 0,
 	            sizeof( s_playersettings.avatarImportCancel ) );
 	s_playersettings.avatarImportStatus[0] = '\0';
+	s_playersettings.avatarImportResult = AVATAR_IMPORT_CANCELLED;
+	PlayerSettings_DiscardDroppedFile();
 
 	menu->fullscreen = qtrue;
-	menu->wrapAround = qfalse;
+	menu->wrapAround = qtrue;
 	menu->draw = PlayerSettings_AvatarImportDraw;
 	menu->key = PlayerSettings_AvatarImportKey;
 
+	PlayerSettings_InitAvatarImportButton( &s_playersettings.avatarImportBrowse,
+		ID_AVATAR_IMPORT_BROWSE, "Browse files",
+		AVATAR_IMPORT_DROP_X, AVATAR_IMPORT_DROP_Y + AVATAR_IMPORT_DROP_H + 8,
+		AVATAR_IMPORT_DROP_X + AVATAR_IMPORT_DROP_W,
+		AVATAR_IMPORT_DROP_Y + AVATAR_IMPORT_DROP_H + 34 );
+
+	pathRight = AVATAR_IMPORT_CARD_X + AVATAR_IMPORT_CARD_W - 16;
 	s_playersettings.avatarImportPath.generic.type = MTYPE_FIELD;
 	s_playersettings.avatarImportPath.generic.flags = QMF_SMALLFONT | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
 	s_playersettings.avatarImportPath.generic.id = ID_AVATAR_IMPORT_PATH;
-	s_playersettings.avatarImportPath.generic.x = 144;
-	s_playersettings.avatarImportPath.generic.y = 260;
+	s_playersettings.avatarImportPath.generic.x = AVATAR_IMPORT_DROP_X + 8;
+	s_playersettings.avatarImportPath.generic.y = AVATAR_IMPORT_PATH_Y;
 	s_playersettings.avatarImportPath.generic.callback = PlayerSettings_AvatarImportMenuEvent;
 	s_playersettings.avatarImportPath.generic.ownerdraw = PlayerSettings_DrawAvatarImportField;
-	s_playersettings.avatarImportPath.field.widthInChars = 48;
+	s_playersettings.avatarImportPath.field.widthInChars = 40;
 	s_playersettings.avatarImportPath.field.maxchars = MAX_EDIT_LINE - 1;
 	MenuField_Init( &s_playersettings.avatarImportPath );
-	s_playersettings.avatarImportPath.generic.left = 144;
-	s_playersettings.avatarImportPath.generic.top = 260;
-	s_playersettings.avatarImportPath.generic.right = 496;
-	s_playersettings.avatarImportPath.generic.bottom = 290;
+	s_playersettings.avatarImportPath.generic.left = AVATAR_IMPORT_DROP_X;
+	s_playersettings.avatarImportPath.generic.top = AVATAR_IMPORT_PATH_Y;
+	s_playersettings.avatarImportPath.generic.right = pathRight - 88;
+	s_playersettings.avatarImportPath.generic.bottom = AVATAR_IMPORT_PATH_Y + 26;
 
-	s_playersettings.avatarImportConfirm.generic.type = MTYPE_PTEXT;
-	s_playersettings.avatarImportConfirm.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
-	s_playersettings.avatarImportConfirm.generic.id = ID_AVATAR_IMPORT_CONFIRM;
-	s_playersettings.avatarImportConfirm.generic.callback = PlayerSettings_AvatarImportMenuEvent;
-	s_playersettings.avatarImportConfirm.generic.ownerdraw = PlayerSettings_DrawAvatarImportButton;
-	s_playersettings.avatarImportConfirm.generic.left = 144;
-	s_playersettings.avatarImportConfirm.generic.top = 304;
-	s_playersettings.avatarImportConfirm.generic.right = 312;
-	s_playersettings.avatarImportConfirm.generic.bottom = 332;
-	s_playersettings.avatarImportConfirm.string = "Import";
+	PlayerSettings_InitAvatarImportButton( &s_playersettings.avatarImportConfirm,
+		ID_AVATAR_IMPORT_CONFIRM, "Import",
+		pathRight - 80, AVATAR_IMPORT_PATH_Y, pathRight, AVATAR_IMPORT_PATH_Y + 26 );
 
-	s_playersettings.avatarImportCancel.generic.type = MTYPE_PTEXT;
-	s_playersettings.avatarImportCancel.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
-	s_playersettings.avatarImportCancel.generic.id = ID_AVATAR_IMPORT_CANCEL;
-	s_playersettings.avatarImportCancel.generic.callback = PlayerSettings_AvatarImportMenuEvent;
-	s_playersettings.avatarImportCancel.generic.ownerdraw = PlayerSettings_DrawAvatarImportButton;
-	s_playersettings.avatarImportCancel.generic.left = 328;
-	s_playersettings.avatarImportCancel.generic.top = 304;
-	s_playersettings.avatarImportCancel.generic.right = 496;
-	s_playersettings.avatarImportCancel.generic.bottom = 332;
-	s_playersettings.avatarImportCancel.string = "Cancel";
+	PlayerSettings_InitAvatarImportButton( &s_playersettings.avatarImportCancel,
+		ID_AVATAR_IMPORT_CANCEL, "Back",
+		AVATAR_IMPORT_CARD_X + AVATAR_IMPORT_CARD_W - 80,
+		AVATAR_IMPORT_CARD_Y + AVATAR_IMPORT_CARD_H + 4,
+		AVATAR_IMPORT_CARD_X + AVATAR_IMPORT_CARD_W,
+		AVATAR_IMPORT_CARD_Y + AVATAR_IMPORT_CARD_H + 26 );
 
+	Menu_AddItem( menu, &s_playersettings.avatarImportBrowse );
 	Menu_AddItem( menu, &s_playersettings.avatarImportPath );
 	Menu_AddItem( menu, &s_playersettings.avatarImportConfirm );
 	Menu_AddItem( menu, &s_playersettings.avatarImportCancel );
-	Menu_SetCursorToItem( menu, &s_playersettings.avatarImportPath );
+	Menu_SetCursorToItem( menu, &s_playersettings.avatarImportBrowse );
 
 	/* The avatar dialog is a lightweight menu overlay. Clear any transition
 	 * timer left by the profile screen so the field is immediately editable. */
@@ -5549,11 +5777,13 @@ UI_PlayerSettingsMenu
 */
 void UI_PlayerSettingsMenu( void ) {
 	PlayerSettings_MenuInit();
+	PlayerSettings_DiscardDroppedFile();
 	UI_PushMenu( &s_playersettings.menu );
 }
 
 void UI_PlayerStatsMenu( void ) {
 	PlayerSettings_MenuInit();
+	PlayerSettings_DiscardDroppedFile();
 	PlayerSettings_SetTab( TAB_STATS );
 	UI_PushMenu( &s_playersettings.menu );
 }
