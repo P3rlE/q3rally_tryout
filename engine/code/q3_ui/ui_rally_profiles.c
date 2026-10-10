@@ -823,6 +823,12 @@ qboolean UI_Profile_ReadData( const char *name, profile_info_t *outInfo, profile
             outStats->racingDmPodiums     = UI_Profile_ParseInt( buffer, "racingDmPodiums", 0 );
             outStats->racingDmCompleted   = UI_Profile_ParseInt( buffer, "racingDmCompleted", 0 );
             outStats->racingDmTotalMs     = UI_Profile_ParseInt( buffer, "racingDmTotalMs", 0 );
+            /* Older profiles counted only lost races as completed; add the wins once.
+             * UI_Profile_WriteFile stores the revision, so this runs a single time. */
+            if ( UI_Profile_ParseInt( buffer, "statsRevision", 0 ) < PROFILE_STATS_REVISION ) {
+                outStats->racingCompleted   += outStats->racingWins;
+                outStats->racingDmCompleted += outStats->racingDmWins;
+            }
         /* ── GT_SPRINT ───────────────────────────────────────────────── */
             outStats->sprintCompleted     = UI_Profile_ParseInt( buffer, "sprintCompleted", 0 );
             outStats->sprintBestMs        = UI_Profile_ParseInt( buffer, "sprintBestMs", 0 );
@@ -1007,6 +1013,9 @@ qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *info, con
         off += Com_sprintf( buffer + off, sizeof(buffer) - off,
             "\t\t\"mostUsedVehicle\": \"%s\",\n\t\t\"mostUsedVehicleTimeMs\": %d,\n\t\t\"gamesPlayed\": %d,\n",
             stats->mostUsedVehicle, stats->mostUsedVehicleTimeMs, stats->gamesPlayed );
+
+        off += Com_sprintf( buffer + off, sizeof(buffer) - off,
+            "\t\t\"statsRevision\": %d,\n", PROFILE_STATS_REVISION );
 
         /* GT_RACING */
         off += Com_sprintf( buffer + off, sizeof(buffer) - off,

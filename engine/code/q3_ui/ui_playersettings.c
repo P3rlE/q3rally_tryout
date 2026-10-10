@@ -2611,19 +2611,31 @@ static void PlayerSettings_DrawAchievementMilestoneBar(
 	}
 }
 
-static void PlayerSettings_DrawModeProgressChip( int x, int y, int width,
+/*
+=================
+PlayerSettings_DrawModeRecordRow
+
+One plain row "Mode ...... 12 / 28", like a settings row. No bar, so it
+does not read as achievement progress.
+=================
+*/
+static void PlayerSettings_DrawModeRecordRow( int x, int y, int width,
 	const char *title, int wins, int completed ) {
 	char value[32];
-	float progress;
+	int valueWidth;
 
-	PlayerSettings_DrawStatsCell( x, y, width, 46 );
-	PlayerSettings_DrawFittedStatsText( x + 6, y + 4, x + width - 6,
-	                                    title, UI_SMALLFONT, playerSettingsMutedColor );
-	Com_sprintf( value, sizeof( value ), "%d W / %d", wins, completed );
-	PlayerSettings_DrawFittedStatsText( x + 6, y + 18, x + width - 6,
-	                                    value, UI_SMALLFONT, playerSettingsTextColor );
-	progress = completed > 0 ? (float)wins / completed : 0.0f;
-	Frontend_DrawProgress( x + 6, y + 34, width - 12, 4, progress, uis.tFrac );
+	PlayerSettings_DrawStatsCell( x, y, width, 16 );
+	if ( completed >= wins ) {
+		Com_sprintf( value, sizeof( value ), "%d / %d", wins, completed );
+	} else {
+		/* Older profiles did not count won races as played. */
+		Com_sprintf( value, sizeof( value ), "%d won", wins );
+	}
+	valueWidth = Frontend_TextWidth( value, UI_SMALLFONT );
+	Frontend_DrawText( x + width - 8, y + 4, value, UI_RIGHT | UI_SMALLFONT,
+	                   playerSettingsMutedColor );
+	PlayerSettings_DrawFittedStatsText( x + 8, y + 4, x + width - 14 - valueWidth,
+	                                    title, UI_SMALLFONT, playerSettingsTextColor );
 }
 
 static void PlayerSettings_DrawCareerDashboard( const profile_stats_t *stats ) {
@@ -2647,8 +2659,6 @@ static void PlayerSettings_DrawCareerDashboard( const profile_stats_t *stats ) {
 	int metricsTop;
 	int closeTop;
 	int modesTop;
-	int modeWidth;
-	int modeGap;
 	int i;
 
 	/* One column of content inside the detail card:
@@ -2659,7 +2669,7 @@ static void PlayerSettings_DrawCareerDashboard( const profile_stats_t *stats ) {
 	columnWidth = ( right - left - gap * 2 ) / 3;
 	metricsTop = PLAYERSETTINGS_SPLIT_BODY_TOP + 46;
 	closeTop = metricsTop + 49 * 2 + 6;
-	modesTop = closeTop + 44;
+	modesTop = closeTop + 50;
 
 	PlayerSettings_DrawCareerRank( stats, left, PLAYERSETTINGS_SPLIT_BODY_TOP, right - left );
 
@@ -2698,7 +2708,7 @@ static void PlayerSettings_DrawCareerDashboard( const profile_stats_t *stats ) {
 			category, PlayerSettings_GetAchievementProgress( stats, i ) );
 	}
 
-	Frontend_DrawText( left + 8, closeTop, "Close to next",
+	Frontend_DrawText( left + 8, closeTop, "Next achievements",
 	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 	for ( i = 0; i < 3; ++i ) {
 		int j;
@@ -2736,12 +2746,12 @@ static void PlayerSettings_DrawCareerDashboard( const profile_stats_t *stats ) {
 	modeCompleted[4] = stats->ctfCompleted;
 	modeWins[5] = stats->eliminationWins;
 	modeCompleted[5] = stats->eliminationCompleted;
-	modeGap = 4;
-	modeWidth = ( right - left - modeGap * ( (int)ARRAY_LEN( modeTitles ) - 1 ) ) /
-	            (int)ARRAY_LEN( modeTitles );
+	/* Same three columns as the metrics and achievements above. */
+	Frontend_DrawText( left + 8, modesTop, "Wins by mode  (won / played)",
+	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 	for ( i = 0; i < (int)ARRAY_LEN( modeTitles ); ++i ) {
-		PlayerSettings_DrawModeProgressChip( left + i * ( modeWidth + modeGap ),
-			modesTop, modeWidth, modeTitles[i],
+		PlayerSettings_DrawModeRecordRow( left + ( i % 3 ) * ( columnWidth + gap ),
+			modesTop + 12 + ( i / 3 ) * 17, columnWidth, modeTitles[i],
 			modeWins[i], modeCompleted[i] );
 	}
 }
