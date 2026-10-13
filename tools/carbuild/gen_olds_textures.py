@@ -17,6 +17,20 @@ R = 1024                                         # painted at 2x, saved at 512
 # ---------------- texel -> position on the decimated paint ---------------------------
 m = md3.load(OUT + '/body.md3')
 pos = np.zeros((R, R, 3), np.float32); nrm = np.zeros((R, R, 3), np.float32); used = np.zeros((R, R), bool)
+# several paint faces can project onto the same texels (headlight brow and the
+# buckets behind it): keep the outermost one, as seen from its atlas region
+depth = np.full((R, R), -1e9, np.float32)
+OUTWARD = {'F': (1, 0, 0), 'B': (-1, 0, 0), 'L': (0, 1, 0), 'R': (0, -1, 0), 'T': (0, 0, 1), 'U': (0, 0, -1)}
+def paint_region(n):                       # same rule as build_olds.py
+    nx, ny, nz = n
+    ax = max(abs(nx), abs(ny), abs(nz))
+    if nz < -0.55:
+        if abs(ny) > 0.25: return 'L' if ny > 0 else 'R'
+        if abs(nx) > 0.25: return 'F' if nx > 0 else 'B'
+        return 'U'
+    if ax == abs(nz): return 'T'
+    if ax == abs(ny): return 'L' if ny > 0 else 'R'
+    return 'F' if nx > 0 else 'B'
 for s in m.surfs:
     if not s.name.startswith('paint'): continue
     V = np.array([[c/64 for c in v[:3]] for v in s.frames[0]]); ST = np.array(s.st)
@@ -32,7 +46,11 @@ for s in m.surfs:
         a = ((vb-vc)*(gx-uc) + (uc-ub)*(gy-vc))/den; b = ((vc-va)*(gx-uc) + (ua-uc)*(gy-vc))/den; c = 1-a-b
         ins = (a >= -0.04) & (b >= -0.04) & (c >= -0.04)
         w = np.stack([a, b, c], -1)
-        pos[y0:y1+1, x0:x1+1][ins] = (w @ p)[ins]; nrm[y0:y1+1, x0:x1+1][ins] = n
+        wp = w @ p
+        d = wp @ np.array(OUTWARD[paint_region(n)], np.float32)
+        ins &= d > depth[y0:y1+1, x0:x1+1]
+        depth[y0:y1+1, x0:x1+1][ins] = d[ins]
+        pos[y0:y1+1, x0:x1+1][ins] = wp[ins]; nrm[y0:y1+1, x0:x1+1][ins] = n
         used[y0:y1+1, x0:x1+1] |= ins
 
 # ---------------- ambient occlusion bake ------------------------------------------------
