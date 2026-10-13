@@ -2,7 +2,6 @@ paint,models/players/cutlass/rally44_main.tga
 paint2,models/players/cutlass/rally44_main.tga
 paint3,models/players/cutlass/rally44_main.tga
 paint4,models/players/cutlass/rally44_main.tga
-paint5,models/players/cutlass/rally44_main.tga
 black,models/players/cutlass/black.tga
 black2,models/players/cutlass/black.tga
 chrome,models/players/cutlass/chrome.tga
@@ -11,9 +10,12 @@ chrome3,models/players/cutlass/chrome.tga
 chrome4,models/players/cutlass/chrome.tga
 chrome5,models/players/cutlass/chrome.tga
 chrome6,models/players/cutlass/chrome.tga
+chrome7,models/players/cutlass/chrome.tga
+chrome8,models/players/cutlass/chrome.tga
+chrome9,models/players/cutlass/chrome.tga
+chrome10,models/players/cutlass/chrome.tga
 glass,models/players/cutlass/glass.tga
 lights,models/players/cutlass/lights.tga
-lights2,models/players/cutlass/lights.tga
 tag_weapon,
 tag_wheelfr,
 tag_wheelfl,

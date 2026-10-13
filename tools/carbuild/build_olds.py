@@ -36,14 +36,32 @@ def q3(v):
 
 # (model, material) -> (surface, decimate to this fraction of triangles or None)
 KEEP = {
-    ('body', 'M_Paint'): ('paint', 0.16), ('body', 'M_Black'): ('black', 0.35),
+    ('body', 'M_Paint'): ('paint', 0.13), ('body', 'M_Black'): ('black', 0.35),
     ('black', 'M_Black'): ('black', 0.35), ('chrome', 'M_Black'): ('black', None),
-    ('chrome', 'M_Chrome'): ('chrome', 0.11), ('trim', 'M_Badge'): ('chrome', 0.14),
+    ('chrome', 'M_Chrome'): ('chrome', 0.07), ('trim', 'M_Badge'): ('chrome', 0.10),
     ('door_handle', 'M_Chrome'): ('chrome', 0.12),
     ('glass', 'M_Glass'): ('glass', None), ('glass2', 'M_Glass'): ('glass', None),
     ('lights', 'M_Lights'): ('lights', None),     # the clear lenses (lights-glass) would hide the lamps
     ('trim2', 'M_Lights'): ('lights', None),
 }
+MINTRI = 48
+
+def components(pts, fcs):
+    """split a welded mesh into connected parts"""
+    parent = np.arange(len(pts))
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]; a = parent[a]
+        return a
+    for a, b, c in fcs:
+        ra, rb, rc = find(a), find(b), find(c)
+        parent[rb] = ra; parent[find(rc)] = ra
+    root = np.array([find(i) for i in range(len(pts))])
+    lab = root[fcs[:, 0]]
+    for r in np.unique(lab):
+        f = fcs[lab == r]; used = np.unique(f); remap = -np.ones(len(pts), int); remap[used] = np.arange(len(used))
+        yield pts[used].astype(np.float32), remap[f].astype(np.int32)
+
 groups = {}          # surface -> list of (positions(n,3), tris(m,3), uv(m,3,2) or None)
 paint_src = []
 for p in parts:
@@ -64,15 +82,37 @@ for p in parts:
             key_ = np.round(pts, 3); uniq, inv = np.unique(key_, axis=0, return_inverse=True)
             pts = uniq.astype(np.float32); fcs = inv.reshape(-1)[fcs]
             fcs = fcs[(fcs[:, 0] != fcs[:, 1]) & (fcs[:, 1] != fcs[:, 2]) & (fcs[:, 0] != fcs[:, 2])]
-            pts2, fcs2 = fast_simplification.simplify(pts, fcs, target_reduction=1 - frac)
-            groups.setdefault(sname, []).append((np.asarray(pts2, float), np.asarray(fcs2), None))
+            # the grille bars are kept as they are: decimated they turn into a zigzag
+            cen = pts[fcs].mean(1)
+            gbox = (cen[:, 0] > 53.5) & (np.abs(cen[:, 1]) < 13.9) & (cen[:, 2] > -4.6) & (cen[:, 2] < 2.3)
+            if gbox.any():
+                groups.setdefault(sname, []).append((pts.astype(float), fcs[gbox], None))
+                fcs = fcs[~gbox]
+            for cpts, cfcs in components(pts, fcs):
+                n = len(cfcs)
+                # thin parts (mouldings, window trims) collapse into blobs when decimated hard:
+                # every part keeps at least MINTRI triangles
+                keep = min(n, max(int(n*frac), MINTRI))
+                if keep >= n:
+                    groups.setdefault(sname, []).append((cpts.astype(float), cfcs, None)); continue
+                pts2, fcs2 = fast_simplification.simplify(cpts, cfcs, target_reduction=1 - keep/n)
+                groups.setdefault(sname, []).append((np.asarray(pts2, float), np.asarray(fcs2), None))
         else:
             groups.setdefault(sname, []).append((Vw, T, UVc))
+
+# the grille has no engine bay behind it: a black backing panel closes it
+GX, GY, GZ0, GZ1 = 54.8, 13.6, -4.4, 1.8
+grille = np.array([[GX, -GY, GZ0], [GX, GY, GZ0], [GX, GY, GZ1], [GX, -GY, GZ1]])
+groups.setdefault('black', []).append((grille, np.array([[0, 2, 1], [0, 3, 2]]), None))
 
 def paint_region(n):
     nx, ny, nz = n
     ax = max(abs(nx), abs(ny), abs(nz))
-    if nz < -0.55: return 'U'
+    if nz < -0.55:
+        # downward lips (wheel arches, hood and fender edges) keep a real place in the atlas
+        if abs(ny) > 0.25: return 'L' if ny > 0 else 'R'
+        if abs(nx) > 0.25: return 'F' if nx > 0 else 'B'
+        return 'U'
     if ax == abs(nz): return 'T'
     if ax == abs(ny): return 'L' if ny > 0 else 'R'
     return 'F' if nx > 0 else 'B'

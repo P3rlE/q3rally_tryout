@@ -72,6 +72,8 @@ for grp in np.split(order, split):
     tx = np.clip((uv[:, 0] % 1)*2047, 0, 2047).astype(int); ty = np.clip((1 - uv[:, 1] % 1)*2047, 0, 2047).astype(int)
     ao[grp] = AO[ty, tx]
 AOmap = np.ones((R, R), np.float32); AOmap[ys, xs] = 0.35 + 0.65*np.clip(ao, 0, 1)
+ux, uy = int(layout.R_UNDER[0]*R/layout.A), int(layout.R_UNDER[1]*R/layout.A)
+AOmap[uy:, ux:] = 0.8                     # the flat underside patch is too small for a meaningful bake
 
 x, y, z = pos[..., 0], pos[..., 1], pos[..., 2]
 nx, ny, nz = nrm[..., 0], nrm[..., 1], nrm[..., 2]
