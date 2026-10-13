@@ -19,6 +19,10 @@ finished cars in `baseq3r/models/players/`:
 * **sheriff** (`PoliceCar_3ds.zip`: rusty sheriff muscle car with a
   supercharger, 3DS with two hand painted textures and own wheels whose tyre
   shows a brand name)
+* **cutlass** ("Oldsmobile Cutlass Supreme Sedan '71" by Barbo,
+  https://skfb.ly/6QVZt, CC BY 4.0: Sketchfab FBX with ~65k triangles and PBR
+  textures; credits and the list of changes in
+  `baseq3r/models/players/cutlass/CREDITS.txt`)
 
 | Script | Purpose |
 | --- | --- |
@@ -41,6 +45,9 @@ finished cars in `baseq3r/models/players/`:
 | `tds.py` | Minimal Autodesk 3DS reader. |
 | `build_police.py` | Sheriff car: drops the own wheels and uses their centres for the wheel tags, smoothed normals, lights and plate from texture features, smoke on the supercharger. |
 | `gen_police_textures.py` | Sheriff car: clears unused texels, original 'sheriff' livery, colour skins tinting the white panels over the rust, rally skins with the sheriff decals painted out, stripes and a roof number. |
+| `fbx.py`, `fbxmesh.py` | Minimal binary FBX reader; triangulated, transformed meshes with UVs and per-triangle materials. |
+| `build_olds.py` | Cutlass: keeps paint, trim, chrome, glass and lights, drops badges, lettering, plate, tyres and interior, decimates with quadric edge collapse (`pip install fast-simplification`), atlas UVs, tags from the original wheels, lights and plate. |
+| `gen_olds_textures.py` | Cutlass: bakes the source's ambient occlusion onto the new paint atlas (nearest original triangle per texel), liveries, trim/chrome/glass, original light texture. |
 | `render3d.py` | Small software renderer for previews and the menu icons (`icon_<skin>.tga`). |
 
 ## Rebuild

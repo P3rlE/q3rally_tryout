@@ -1,0 +1,19 @@
+Cutlass (Q3Rally car)
+
+Based on "Oldsmobile Cutlass Supreme Sedan '71" (https://skfb.ly/6QVZt)
+by Barbo, licensed under Creative Commons Attribution 4.0
+(http://creativecommons.org/licenses/by/4.0/).
+
+Changes for Q3Rally:
+- converted from FBX to MD3, scaled and re-oriented, mesh decimated
+  (paint, trim and chrome) from ~65k to ~8.9k triangles
+- removed badges and script lettering, licence plate, tyres, interior
+  and the clear light lenses
+- new paint texture atlas with the original ambient occlusion baked in;
+  new liveries (plain colours and Q3Rally rally schemes), flat trim,
+  chrome and glass textures; the light texture is the original one
+- tags for wheels, lights, weapon, plate, turbo and smoke added; the
+  shared Q3Rally wheel replaces the original wheels
+
+The scripts that did the conversion are in tools/carbuild
+(build_olds.py, gen_olds_textures.py).
