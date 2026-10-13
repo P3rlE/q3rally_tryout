@@ -6226,3 +6226,183 @@ models/players/stockcar/rally88
 		rgbGen lightingdiffuse
 	}
 }
+
+// ------------------------------------------------------------
+// SHERIFF
+// ------------------------------------------------------------
+
+models/players/sheriff/sheriff
+{
+	{
+		map $dynamicreflection
+		tcGen environment
+		rgbGen lightingdiffuse
+	}
+
+	{
+		map models/players/sheriff/sheriff.tga
+		blendFunc	GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		depthWrite
+		rgbGen lightingdiffuse
+	}
+}
+
+models/players/sheriff/red
+{
+	{
+		map $dynamicreflection
+		tcGen environment
+		rgbGen lightingdiffuse
+	}
+
+	{
+		map models/players/sheriff/red.tga
+		blendFunc	GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		depthWrite
+		rgbGen lightingdiffuse
+	}
+}
+
+models/players/sheriff/blue
+{
+	{
+		map $dynamicreflection
+		tcGen environment
+		rgbGen lightingdiffuse
+	}
+
+	{
+		map models/players/sheriff/blue.tga
+		blendFunc	GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		depthWrite
+		rgbGen lightingdiffuse
+	}
+}
+
+models/players/sheriff/green
+{
+	{
+		map $dynamicreflection
+		tcGen environment
+		rgbGen lightingdiffuse
+	}
+
+	{
+		map models/players/sheriff/green.tga
+		blendFunc	GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		depthWrite
+		rgbGen lightingdiffuse
+	}
+}
+
+models/players/sheriff/yellow
+{
+	{
+		map $dynamicreflection
+		tcGen environment
+		rgbGen lightingdiffuse
+	}
+
+	{
+		map models/players/sheriff/yellow.tga
+		blendFunc	GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		depthWrite
+		rgbGen lightingdiffuse
+	}
+}
+
+models/players/sheriff/rally01
+{
+	{
+		map $dynamicreflection
+		tcGen environment
+		rgbGen lightingdiffuse
+	}
+
+	{
+		map models/players/sheriff/rally01.tga
+		blendFunc	GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		depthWrite
+		rgbGen lightingdiffuse
+	}
+}
+
+models/players/sheriff/rally07
+{
+	{
+		map $dynamicreflection
+		tcGen environment
+		rgbGen lightingdiffuse
+	}
+
+	{
+		map models/players/sheriff/rally07.tga
+		blendFunc	GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		depthWrite
+		rgbGen lightingdiffuse
+	}
+}
+
+models/players/sheriff/rally13
+{
+	{
+		map $dynamicreflection
+		tcGen environment
+		rgbGen lightingdiffuse
+	}
+
+	{
+		map models/players/sheriff/rally13.tga
+		blendFunc	GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		depthWrite
+		rgbGen lightingdiffuse
+	}
+}
+
+models/players/sheriff/rally27
+{
+	{
+		map $dynamicreflection
+		tcGen environment
+		rgbGen lightingdiffuse
+	}
+
+	{
+		map models/players/sheriff/rally27.tga
+		blendFunc	GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		depthWrite
+		rgbGen lightingdiffuse
+	}
+}
+
+models/players/sheriff/rally44
+{
+	{
+		map $dynamicreflection
+		tcGen environment
+		rgbGen lightingdiffuse
+	}
+
+	{
+		map models/players/sheriff/rally44.tga
+		blendFunc	GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		depthWrite
+		rgbGen lightingdiffuse
+	}
+}
+
+models/players/sheriff/rally88
+{
+	{
+		map $dynamicreflection
+		tcGen environment
+		rgbGen lightingdiffuse
+	}
+
+	{
+		map models/players/sheriff/rally88.tga
+		blendFunc	GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		depthWrite
+		rgbGen lightingdiffuse
+	}
+}

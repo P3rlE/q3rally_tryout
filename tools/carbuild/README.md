@@ -16,6 +16,9 @@ finished cars in `baseq3r/models/players/`:
   wheels)
 * **stockcar** (`stockcar_ready_for_tagging.ms3d`: clean 444 triangle shell at
   1/12 scale with a UV layout but a lost STOCKCAR.BMP, no wheels, no tags)
+* **sheriff** (`PoliceCar_3ds.zip`: rusty sheriff muscle car with a
+  supercharger, 3DS with two hand painted textures and own wheels whose tyre
+  shows a brand name)
 
 | Script | Purpose |
 | --- | --- |
@@ -35,6 +38,9 @@ finished cars in `baseq3r/models/players/`:
 | `measure.py` | Orthographic side depth map and wheel arch circle fit. |
 | `build_stockcar.py` | Stock car: scale/axes, unique atlas UVs (the source UVs mirror the left and right halves of roof, hood and tail), wheel tags from fitted arches (body lowered so the shared Viper wheel stands like on the other cars), light/plate/roof tags by ray casts. |
 | `gen_stockcar_textures.py` | Stock car: paints through a texel -> model position map (windows as whole greenhouse triangles, sticker headlights, grille, tail lights, stripes, door/roof numbers). |
+| `tds.py` | Minimal Autodesk 3DS reader. |
+| `build_police.py` | Sheriff car: drops the own wheels and uses their centres for the wheel tags, smoothed normals, lights and plate from texture features, smoke on the supercharger. |
+| `gen_police_textures.py` | Sheriff car: clears unused texels, original 'sheriff' livery, colour skins tinting the white panels over the rust, rally skins with the sheriff decals painted out, stripes and a roof number. |
 | `render3d.py` | Small software renderer for previews and the menu icons (`icon_<skin>.tga`). |
 
 ## Rebuild
