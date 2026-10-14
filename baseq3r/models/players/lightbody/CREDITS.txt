@@ -10,8 +10,8 @@ Changes for Q3Rally:
   load bed kept as they are) from ~37k to ~16.5k triangles, UVs of the
   decimated parts transferred from the original mesh
 - the empty grille opening is closed by a new honeycomb grille panel
-- removed the radiator bits in the grille opening, the interior, steering wheel, badges, licence plate and the
-  original tyres
+- removed the radiator bits in the grille opening, the interior,
+  steering wheel, badges, licence plate and the original tyres
 - new paint texture atlas with new liveries (plain colours, an 80s
   two-tone and Q3Rally rally schemes); frame/lift kit and lamps use the
   original textures (downscaled), new glass texture
