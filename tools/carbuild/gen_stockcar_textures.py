@@ -271,19 +271,23 @@ def nascar(name, L):
     Lf, Rf = used & (ny > 0.3) & ~glass, used & (ny < -0.3) & ~glass      # a bit wider than 'side': creases
     topm = used & top & ~glass
     num = slab_number(sc_num[name], *L['num'])
-    # sponsor on the rear quarters
+    def by_height(msk, u0, zc, hgt, rgba, U, maxw=None):
+        ys_, xs_ = np.nonzero(rgba[..., 3] > 8)                      # crop to the visible part
+        rgba = rgba[ys_.min():ys_.max()+1, xs_.min():xs_.max()+1]
+        h, w = rgba.shape[:2]; width = hgt*w/h
+        if maxw and width > maxw: width = maxw
+        decal(img, msk, u0, -zc, width, rgba, U, -z)
+    # the flank above the rear arch is only a thin strip (z 0.6 .. ~2, then the tumblehome
+    # crease) where any lettering gets cut: number on the door, sponsor along the rocker
+    DX = 1.0
+    by_height(Lf, -DX, -2.0, 10.0, num, -x, 18); by_height(Rf, DX, -2.0, 10.0, num, x, 18)
     if L.get('oval'):
         logo = oval_logo(L['word'][0], (248, 200, 30), (20, 20, 24), (204, 36, 30), sub='RACING FUEL')
-        decal(img, Lf, 33.0, -0.6, 14.0, logo, -x, -z); decal(img, Rf, -33.0, -0.6, 14.0, logo, x, -z)
+        by_height(Lf, -DX, -10.1, 4.6, logo, -x); by_height(Rf, DX, -10.1, 4.6, logo, x)
     else:
-        # rear quarter strip between the arch top and the tumblehome crease; the sub line goes on the door
+        # wide band along the rocker between the wheel arches
         word = txt(L['word'][0], L['wordcol'], 170, FONT_WORDI, 6, tuple(int(c) for c in (base*0.5)))
-        decal(img, Lf, 31.0, -2.15, 20.0, word, -x, -z); decal(img, Rf, -31.0, -2.15, 20.0, word, x, -z)     # z 0.6 (arch) .. 3.8 (crease)
-    if L['word'][1]:
-        sub = txt(L['word'][1], L['wordcol'], 90, FONT_SMALL)
-        decal(img, Lf, 15.0, 4.6, 15.0, sub, -x, -z); decal(img, Rf, -15.0, 4.6, 15.0, sub, x, -z)
-    # door number, big, slightly forward
-    decal(img, Lf, -3.0, 2.0, 17.0, num, -x, -z); decal(img, Rf, 3.0, 2.0, 17.0, num, x, -z)
+        by_height(Lf, -DX, -10.4, 3.2, word, -x, 34); by_height(Rf, DX, -10.4, 3.2, word, x, 34)
     # contingency block behind the front wheels, series badge at the A pillar
     decal(img, Lf, -22.5, 3.5, 7.0, CONT, -x, -z); decal(img, Rf, 22.5, 3.5, 7.0, CONT, x, -z)
     decal(img, Lf, -15.0, -3.6, 4.6, BADGE, -x, -z); decal(img, Rf, 15.0, -3.6, 4.6, BADGE, x, -z)
@@ -294,9 +298,11 @@ def nascar(name, L):
     decal(img, topm & (np.abs(x + 4) < 9), 0.0, 4.0, 15.0, num, -y, -x)
     # rear: sponsor on the tail panel and the deck lid, small number by the lights
     tailp = used & (nx < -0.5) & ~glass & ~tail
-    decal(img, tailp, 0.0, 4.5, 15.0, txt(L['word'][0], L['wordcol'] if not L.get('oval') else (248, 200, 30), 140, FONT_WORDI, 5,
-                                         tuple(int(c) for c in (base*0.5))), -y, -z)
-    decal(img, topm & (x < -40), 0.0, 47.0, 22.0, txt('Q3RALLY CUP', tuple(int(c) for c in L['accent']), 120, FONT_WORDI), -y, -x)
+    # tail: between the lights, above the game's licence plate (z -6)
+    tw = txt(L['word'][0], L['wordcol'] if not L.get('oval') else (248, 200, 30), 140, FONT_WORDI, 5, tuple(int(c) for c in (base*0.5)))
+    th, twd = tw.shape[:2]
+    decal(img, tailp, 0.0, 1.0, min(15.0, 2.4*twd/th), tw, -y, -z)
+    decal(img, topm & (x < -40) & (np.abs(y) < 9), 0.0, 47.0, 16.0, txt('Q3RALLY CUP', tuple(int(c) for c in L['accent']), 120, FONT_WORDI), -y, -x)
     img[~used] = img[used].reshape(-1, 4).mean(0)
     Image.fromarray(np.clip(img, 0, 255).astype(np.uint8), 'RGBA').resize((R//2, R//2), Image.LANCZOS).save(f'{OUT}/{name}.tga')
 
