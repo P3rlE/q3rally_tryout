@@ -22,6 +22,7 @@ dark15,models/players/lightbody/dark.tga
 dark16,models/players/lightbody/dark.tga
 glass,models/players/lightbody/glass.tga
 lights,models/players/lightbody/lights.tga
+grille,models/players/lightbody/grille.tga
 tag_weapon,
 tag_wheelfr,
 tag_wheelfl,

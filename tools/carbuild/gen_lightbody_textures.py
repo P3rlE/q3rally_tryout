@@ -100,6 +100,14 @@ for n, sc in RALLY.items(): paint(n, sc['body'], sc)
 
 Image.open(os.path.join(TEXDIR, 'UCB_BOTTOM_DIF.jpg')).convert('RGB').resize((512, 512), Image.LANCZOS).save(f'{OUT}/dark.tga')
 Image.open(os.path.join(TEXDIR, 'UCB_Lights_and_Glass_Dif.jpg')).convert('RGB').resize((512, 512), Image.LANCZOS).save(f'{OUT}/lights.tga')
+# grille: black honeycomb, 2:1 like the opening (y 22.8 x z 5.9 units)
+gi = Image.new('RGB', (512, 128), (10, 10, 12)); d = ImageDraw.Draw(gi)
+for row in range(9):
+    for col in range(34):
+        cx = col*15.5 + (7.7 if row % 2 else 0) + 4; cy = row*14 + 8
+        d.ellipse([cx-6, cy-5, cx+6, cy+5], fill=(40, 40, 46))
+d.rectangle([0, 0, 511, 127], outline=(70, 70, 76), width=4)
+gi.save(f'{OUT}/grille.tga')
 yy = np.linspace(0, 1, 128)[:, None]*np.ones((1, 128))
 g = np.zeros((128, 128, 4), np.uint8)
 g[..., 0] = 16 + 26*(1-yy); g[..., 1] = 20 + 30*(1-yy); g[..., 2] = 28 + 36*(1-yy); g[..., 3] = 165

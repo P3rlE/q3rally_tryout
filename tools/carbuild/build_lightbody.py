@@ -24,6 +24,7 @@ S = 24.0                                   # metres -> Q3 units (length ~118)
 WR = 8.4                                   # shared wheel radius (source tyres 0.35 m)
 MAXV = 990
 MINTRI = 40
+GX, GY, GZ0, GZ1 = 53.9, 11.4, 1.0, 6.9         # grille opening (closed by a panel)
 MINTRI_DARK = 10                          # the lift kit is many small parts
 
 def q3(v):
@@ -35,7 +36,7 @@ PRE = 'krmlgtbdy85_'
 KEEP = {
     'Body': ('paint', None), 'Bumper_Front': ('paint', None), 'Hood': ('paint', None), 'Trunkdoor': ('paint', None),
     'Bumper_Rear': ('dark', None), 'Lifted_Suspension': ('dark', 0.05), 'Bottom': ('dark', 0.05),
-    'Lifted_Trim': ('dark', None), 'Bullbar': ('dark', 0.3), 'Extra_A': ('dark', 0.35),
+    'Lifted_Trim': ('dark', None), 'Bullbar': ('dark', None), 'Extra_A': ('dark', 0.35),
     'Trunk_door_inner': ('dark', None), 'Hood_inner': ('dark', None), 'Bumper_front_inner': ('dark', None),
     'Body_Glass': ('glass', None), 'Glass_Rear': ('glass', None), 'Windshield': ('glass', None),
     'Glass_Driver': ('glass', None), 'Glass_Passanger': ('glass', None),
@@ -79,6 +80,11 @@ for name, (sname, frac) in KEEP.items():
     p = parts[name]
     T = p['tris'][:, [0, 2, 1]]; UVc = p['uv'][:, [0, 2, 1]]          # FBX CCW -> md3 CW
     Vw = q3(p['pos'])
+    if sname == 'dark' and name != 'Bullbar':
+        # radiator bits in the grille opening: hidden by the grille panel, in front of it they show as shards
+        c = Vw[T].mean(1)
+        inside = (c[:, 0] > GX - 8) & (np.abs(c[:, 1]) < GY) & (c[:, 2] > GZ0) & (c[:, 2] < GZ1)
+        T, UVc = T[~inside], UVc[~inside]
     if not frac:
         groups.setdefault(sname, []).append((Vw, T, UVc)); continue
     used = np.unique(T); remap = -np.ones(len(Vw), int); remap[used] = np.arange(len(used))
@@ -101,6 +107,10 @@ for name, (sname, frac) in KEEP.items():
         uvn = transfer_uv(cpts, cfcs, Vw, T, UVc) if sname == 'dark' else None
         groups.setdefault(sname, []).append((cpts, cfcs, uvn))
 
+# the grille opening between the headlights is empty in the source: close it
+groups['grille'] = [(np.array([[GX, -GY, GZ0], [GX, GY, GZ0], [GX, GY, GZ1], [GX, -GY, GZ1]]),
+                     np.array([[0, 2, 1], [0, 3, 2]]), None)]
+
 def paint_region(n):
     nx, ny, nz = n
     ax = max(abs(nx), abs(ny), abs(nz))
@@ -112,7 +122,7 @@ def paint_region(n):
     if ax == abs(ny): return 'L' if ny > 0 else 'R'
     return 'F' if nx > 0 else 'B'
 
-TEX = {'paint': 'red_main', 'dark': 'dark', 'glass': 'glass', 'lights': 'lights'}
+TEX = {'paint': 'red_main', 'dark': 'dark', 'glass': 'glass', 'lights': 'lights', 'grille': 'grille'}
 m = md3.Model(); m.name = P + 'body.md3'; m.flags = 0; m.surfs = []
 COS = math.cos(math.radians(45)); stats = {}
 for sname in TEX:
@@ -131,6 +141,7 @@ for sname in TEX:
                 acc = sum(fn[fj]*fa[fj] for fj in by_pos[tuple(np.round(V[vi], 3))] if fn[fi] @ fn[fj] > COS)
                 n = acc/(np.linalg.norm(acc) or 1)
                 if sname == 'paint': uv = atlas(reg, V[vi])
+                elif sname == 'grille': uv = [(V[vi][1] + GY)/(2*GY), (GZ1 - V[vi][2])/(GZ1 - GZ0)]
                 elif UVc is not None: uv = [UVc[fi, k, 0], 1 - UVc[fi, k, 1]]
                 else: uv = [0.5 + V[vi][0]/250, 0.5 - V[vi][2]/60]
                 tri.append((V[vi], n, uv))
