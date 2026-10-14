@@ -31,7 +31,7 @@ RALLY = {
     'rally44': dict(num='44', body=(56, 178, 80),   stripe=(244, 226, 40),  edge=(18, 40, 24),    ring=(230, 220, 30),  ink=(20, 30, 22)),
     'rally88': dict(num='88', body=(100, 56, 180),  stripe=(240, 118, 196), edge=(245, 245, 250), ring=(232, 80, 170),  ink=(36, 16, 70)),
 }
-ALPHA = 205                             # paint over the reflection, like the other cars
+ALPHA = 238                             # paint over the reflection; satin, less glossy than the other cars
 
 
 def P(region, x=0, y=0, z=0):
@@ -121,13 +121,13 @@ def paint(name, base, sc=None):
         st, ed = sc['stripe'], sc['edge']
         # twin stripes over nose, bonnet, roof, boot and tail, offset like the Mustang's
         for y0, y1, c in ((-1.4, 7.2, st), (-3.8, -2.4, ed)):
-            rect(dr, 'T', (X0, y0), (X1, y1), c + (215,))
-            rect(dr, 'F', (y0, -8.0), (y1, Z1), c + (215,))
-            rect(dr, 'B', (-y1, -6.0), (-y0, Z1), c + (215,))
+            rect(dr, 'T', (X0, y0), (X1, y1), c + (ALPHA,))
+            rect(dr, 'F', (y0, -8.0), (y1, Z1), c + (ALPHA,))
+            rect(dr, 'B', (y0, -6.0), (y1, Z1), c + (ALPHA,))    # same world y as on the boot lid
         # side stripe from the front wheel arch to the rear wheel arch, rising to the back
         for side in 'LR':
-            poly(dr, side, [(25.0, -6.2), (-24.0, -5.2), (-24.0, -7.6), (25.0, -8.6)], st + (215,))
-            poly(dr, side, [(25.0, -9.2), (-24.0, -8.2), (-24.0, -8.9), (25.0, -9.9)], ed + (215,))
+            poly(dr, side, [(25.0, -6.2), (-24.0, -5.2), (-24.0, -7.6), (25.0, -8.6)], st + (ALPHA,))
+            poly(dr, side, [(25.0, -9.2), (-24.0, -8.2), (-24.0, -8.9), (25.0, -9.9)], ed + (ALPHA,))
     # underside patch
     dr.rectangle([R_UNDER[0] * K, R_UNDER[1] * K, N, N], fill=(20, 20, 22, 250))
 

@@ -206,14 +206,15 @@ def mid(pts):
 ti, to = mid(inner), mid(outer)
 ex, _ = centre('Material.004', lambda p: p[0] < -40 and p[2] < -5)   # exhaust tip
 roof = max(to_q3(V[i])[2] for i in body_ids)
-rear_x = min(to_q3(V[i])[0] for i in body_ids)
 front_x = max(to_q3(V[i])[0] for i in body_ids)
+# rearmost point of the bumper face behind the plate (plate_usa is 9.7 x 4.7 units)
+plate_x = min(p[0] for p in (to_q3(V[i]) for i in body_ids) if abs(p[1]) < 4.9 and -6.9 < p[2] < -2.1)
 
 tags = [
     ('tag_wheelfl', [FX, WY, WZ], WL), ('tag_wheelfr', [FX, -WY, WZ], WR),
     ('tag_wheelrl', [RX, WY, WZ], WL), ('tag_wheelrr', [RX, -WY, WZ], WR),
     ('tag_weapon', [-8.0, 0.0, roof], ID),                        # roof
-    ('tag_plate', [rear_x + 1.4, 0.0, -4.3], ID),                 # rear bumper plate recess
+    ('tag_plate', [plate_x - 0.2, 0.0, -4.5], ID),                # just off the flat bumper face
     ('tag_turbo', [ex[0] - 1.0, ex[1], ex[2]], BACKWARD),         # exhaust
     ('tag_smoke', [front_x - 18.0, 0.0, 4.5], BACKWARD),          # hood
     ('tag_hlite1', [hl[0] + 0.5, hl[1], hl[2]], ID), ('tag_hlite2', [hl[0] + 0.5, -hl[1], hl[2]], ID),
