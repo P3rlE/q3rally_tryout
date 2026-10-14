@@ -95,3 +95,21 @@ python3 gtr/gen_textures.py $D
 python3 md3info.py $D/body.md3 $D/wheel.md3
 # icons as for the Skyline (render3d.py with Q3R_FIT=1)
 ```
+
+## Ridgeback – FBX with textures
+
+`ridgeback/` builds `baseq3r/models/players/ridgeback/` from the project's
+"lightbody lifted 85" model (`source/krmlgtbdy.fbx` + `textures/`; not in the
+repo). Same steps as the GT-R, but small enough to keep all visible triangles
+(no decimation), and every part except the paint keeps its own UVs and
+textures (chassis, interior, lights).
+
+```sh
+cd tools/carbuild
+D=../../baseq3r/models/players/ridgeback
+python3 ridgeback/build_model.py <zip>/source/krmlgtbdy.fbx <zip>/textures $D /tmp/rb_cache
+python3 ridgeback/gen_textures.py $D
+python3 ground_fix.py --dry-run $D          # reports "ok"
+```
+
+`ground_fix.py` puts the tyres of any car on the ground (see `carlib.wheel_tag_z`).
