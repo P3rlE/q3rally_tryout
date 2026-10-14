@@ -12,6 +12,8 @@ incomplete tags, the Mini's wheel) into the finished car in
 | `build_model.py` | Collapses to one frame, centres the body on the origin, generates UVs (atlas projection for the paint, box projection for lights/glass), renames `tlights` -> `ilights`, writes all 14 tags, scales the wheel to fill the arches. |
 | `gen_textures.py` | Paints the `*_main.tga` atlases (red/blue/green/yellow + rally01/07/13/27/44/88 in the house rally colours) and the shared glass, chrome, light and underside textures. |
 | `render3d.py` | Small software renderer for previews and the menu icons (`icon_<skin>.tga`). |
+| `md3info.py` | Per-surface vertex/triangle counts against the engine limit (exit code 1 if a model would be rejected). |
+| `subdivide.py` | Splits every triangle into four per pass; smooth edges follow PN-triangle curves, hard edges stay sharp. For high-poly tests and smoothing low-poly bodies. |
 
 ## Rebuild
 
@@ -28,3 +30,18 @@ Q3R_FIT=1 python3 render3d.py $D rally13 svt_cobra /tmp/icon_rally13.png 384 200
 
 The icons are written as PNG; convert them to 32-bit TGA (e.g. with Pillow)
 before copying them next to the skins.
+
+## Polygon limit
+
+The renderer rejects a whole model if one surface has 10000 or more vertices
+or 20000 or more triangles (`SHADER_MAX_VERTEXES` in
+`engine/code/qcommon/qfiles.h`). Engines before that change stopped at 1000
+vertices / 2000 triangles, and fall back to the default car. There is no
+limit for the whole model, but every surface is one draw call, so prefer few
+large surfaces over many small ones.
+
+```sh
+python3 md3info.py ../../baseq3r/models/players/*/body.md3
+# high-poly test version of a car, 2 passes = 16x the triangles
+python3 subdivide.py $D/body.md3 /tmp/body_hp.md3 2
+```
