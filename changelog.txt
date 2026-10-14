@@ -173,6 +173,13 @@ Changed:
 
 Fixed:
 
+- Skyline, GT-R, Ridgeback: the light glows sat in the wrong place, mostly at
+  the edges of the lamps or beside the car. The light tags were inside the
+  lamp housings (GT-R headlights on the reflectors behind the lenses), so the
+  body hid the glow sprites. The build scripts now put every head, brake and
+  reverse light tag just in front of the lamp surface (carlib.snap_lights),
+  like the original cars (0.3-0.8 units, more on curved lamps).
+
 - All cars: the tyres now stand on the ground. Most cars sank into the ground
   (Camaro up to 2.4 units, GT-R 2.6, Skyline 1.4, Mini, Viper, Murcielago,
   Mustang, Alpine), some floated above it (Macdaddy, Raptor, Sidepipe,

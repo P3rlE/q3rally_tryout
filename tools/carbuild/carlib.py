@@ -60,6 +60,60 @@ class Builder:
         return self.s
 
 
+def snap_lights(tags, builders, gap=0.5, around=1.0, reach=1.0):
+    """Move the light tags just outside the car along X.
+
+    The game draws a glow sprite (gfx/flares, 13.2 units across, autosprite:
+    always facing the camera, depth tested) on every tag_hlite*/blite*/rlite*.
+    A tag inside the lamp housing hides the sprite in the body except for the
+    bits that stick out at the edges, and on a curved nose or tail the panels
+    next to the lamp hide its centre as soon as the camera looks from an angle.
+    So rays along X at the tag's Y/Z and around it (within `around` units) find
+    the outermost surface of the written model near the lamp (front for
+    headlights, rear for brake and reverse lights); the tag goes gap units in
+    front of that. Surfaces more than `reach` units out from the lamp (a bull
+    bar, a wing) are not counted. Tags whose rays all miss the car stay where
+    they are.
+    """
+    import numpy as np
+    tris = []
+    for b in builders:
+        P = np.array([[c / 64 for c in v[:3]] for v in b.verts])
+        if len(b.s.tris):
+            tris.append(P[np.array(b.s.tris)])
+    T = np.concatenate(tris)
+    a, bb, c = T[:, 0], T[:, 1], T[:, 2]
+    d = (bb[:, 1] - a[:, 1]) * (c[:, 2] - a[:, 2]) - (c[:, 1] - a[:, 1]) * (bb[:, 2] - a[:, 2])
+    ok = np.abs(d) > 1e-9
+    d = np.where(ok, d, 1)
+
+    def ray(y, z):
+        u = ((y - a[:, 1]) * (c[:, 2] - a[:, 2]) - (c[:, 1] - a[:, 1]) * (z - a[:, 2])) / d
+        v = ((bb[:, 1] - a[:, 1]) * (z - a[:, 2]) - (y - a[:, 1]) * (bb[:, 2] - a[:, 2])) / d
+        hit = ok & (u >= 0) & (v >= 0) & (u + v <= 1)
+        return (a[:, 0] + u * (bb[:, 0] - a[:, 0]) + v * (c[:, 0] - a[:, 0]))[hit]
+
+    offsets = [(dy, dz) for dy in np.linspace(-around, around, 5) for dz in np.linspace(-around, around, 5)
+               if dy * dy + dz * dz <= around * around + 1e-9]
+    out = []
+    for name, o, axis in tags:
+        front = name.startswith('tag_hlite')
+        if not (front or name.startswith('tag_blite') or name.startswith('tag_rlite')):
+            out.append((name, o, axis))
+            continue
+        lamp = ray(o[1], o[2])
+        if not len(lamp):
+            out.append((name, o, axis))
+            continue
+        # the lamp: the surface on the tag's own ray closest to the old tag
+        x0 = lamp[np.argmin(np.abs(lamp - o[0]))]
+        xs = np.concatenate([ray(o[1] + dy, o[2] + dz) for dy, dz in offsets])
+        xs = xs[(xs - x0) * (1 if front else -1) <= reach]           # not the bull bar in front
+        xs = np.append(xs, x0)
+        out.append((name, [float(xs.max() + gap) if front else float(xs.min() - gap), o[1], o[2]], axis))
+    return out
+
+
 def save(path, name, surfs, tags, frame_name):
     """write a single-frame md3 with bounds computed from the surfaces"""
     m = md3.Model()

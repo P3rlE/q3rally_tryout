@@ -26,7 +26,7 @@ import numpy as np
 import cull
 import fbx
 import mesh
-from carlib import BACKWARD, ID, WL, WR, Builder, build_wheel, save, tri_normal, wheel_tag_z
+from carlib import BACKWARD, ID, WL, WR, Builder, build_wheel, save, snap_lights, tri_normal, wheel_tag_z
 from layout import atlas, region, X0, X1, Y0, Y1, Z0, Z1
 
 SRC, OUT = sys.argv[1], sys.argv[2]
@@ -242,6 +242,7 @@ tags = [
     ('tag_rlite1', [ti[0] - 0.5, -ti[1], ti[2]], ID), ('tag_rlite2', [ti[0] - 0.5, ti[1], ti[2]], ID),
 ]
 tags = [(n, [float(o[0]), float(o[1]), float(o[2]) + LIFT[2]], a) for n, o, a in tags]
+tags = snap_lights(tags, [surfs[n] for n in ORDER])   # glow sprites in front of the lenses
 bmn, bmx, rad = save(os.path.join(OUT, 'body.md3'), P + 'body.md3',
                      [surfs[n].done() for n in ORDER], tags, b'gtr')
 print('scale %.2f  body bounds %s %s radius %.1f' % (S, [round(c, 1) for c in bmn], [round(c, 1) for c in bmx], rad))
