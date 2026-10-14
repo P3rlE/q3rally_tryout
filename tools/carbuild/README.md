@@ -45,3 +45,28 @@ python3 md3info.py ../../baseq3r/models/players/*/body.md3
 # high-poly test version of a car, 2 passes = 16x the triangles
 python3 subdivide.py $D/body.md3 /tmp/body_hp.md3 2
 ```
+
+## Skyline (R34) – OBJ to MD3
+
+`r34/` builds `baseq3r/models/players/skyline/` from the Sketchfab model
+"Nissan Skyline R34 GT-R" by Lexyc16 (https://skfb.ly/6TxFX, CC BY 4.0, see
+the `CREDITS.txt` in the model folder). The source zip is not in the repo.
+
+| Script | Purpose |
+| --- | --- |
+| `obj.py` | Minimal OBJ reader (objects, materials, uvs, normals). |
+| `r34/layout.py` | 1024x1024 paint atlas layout of the Skyline. |
+| `r34/build_model.py` | OBJ -> `body.md3` (full detail, paint split into four surfaces, tags) and `wheel.md3` (the R34 tyre with UVs for the shared rim/tread textures). |
+| `r34/gen_textures.py` | Paint atlases, trim/glass/chrome textures, lamp and grille textures from the source, skins. |
+
+```sh
+cd tools/carbuild
+D=../../baseq3r/models/players/skyline
+unzip nissan-skyline-r34-gt-r.zip -d /tmp/r34 && unzip /tmp/r34/source/*.zip -d /tmp/r34
+python3 r34/build_model.py /tmp/r34/r34.obj $D
+python3 r34/gen_textures.py /tmp/r34/textures $D
+Q3R_FIT=1 python3 render3d.py $D red amg_163 /tmp/icon_red.png 384 200,60,45
+Q3R_FIT=1 python3 render3d.py $D rally13 amg_163 /tmp/icon_rally13.png 384 200,60,45 \
+    ../../baseq3r/models/players/viper/icon_rally13.tga
+python3 md3info.py $D/body.md3 $D/wheel.md3
+```

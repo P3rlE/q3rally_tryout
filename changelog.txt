@@ -4,6 +4,13 @@ unreleased
 
 Added:
 
+- New car: Skyline (models/players/skyline), the first high-poly car: 38,624
+  triangles body at the full detail of the source model, a 3,744 triangle tyre
+  that keeps the rim selection working. Skins red/blue/green/yellow and
+  rally01/07/13/27/44/88 with menu icons. Needs the raised polygon limit.
+  Model: "Nissan Skyline R34 GT-R" by Lexyc16 (https://skfb.ly/6TxFX), CC BY 4.0,
+  see models/players/skyline/CREDITS.txt; converter in tools/carbuild/r34.
+
 - Racing line (cg_racingLine, HUD options "Racing Line", all race modes): a band on
   the road ahead of the car along the best known lap of this track variant, the
   personal ghost or the server's ghost route, whichever is faster. Green = throttle,
