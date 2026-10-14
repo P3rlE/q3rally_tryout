@@ -17,7 +17,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, HERE)            # r34/layout.py before ../layout.py
 import obj
-from carlib import BACKWARD, ID, WL, WR, Builder, build_wheel, save, tri_normal, wheel_tag_z
+from carlib import BACKWARD, ID, WL, WR, Builder, build_wheel, save, snap_lights, tri_normal, wheel_tag_z
 from layout import atlas, region, X0, X1, Y0, Y1, Z0, Z1
 
 SRC, OUT = sys.argv[1], sys.argv[2]
@@ -185,6 +185,7 @@ tags = [
 ]
 
 tags = [(n, [o[0], o[1], o[2] + LIFT[2]], a) for n, o, a in tags]
+tags = snap_lights(tags, [surfs[n] for n in ORDER if n in surfs])   # glow sprites in front of the lenses
 bmn, bmx, rad = save(os.path.join(OUT, 'body.md3'), P + 'body.md3',
                      [surfs[n].done() for n in ORDER if n in surfs], tags, b'skyline')
 print('scale %.2f  body bounds %s %s radius %.1f' % (S, [round(c, 1) for c in bmn], [round(c, 1) for c in bmx], rad))
