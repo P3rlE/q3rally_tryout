@@ -23,9 +23,10 @@ def meshes(path):
         mats = [name(byid[s]) for s, d in links if d == mdst and s in byid and byid[s].name == 'Material']
         p = fbx.props70(mdl)
         T = np.array(p.get('Lcl Translation', [0, 0, 0]), float)
-        R = euler_xyz(*p.get('Lcl Rotation', [0, 0, 0]))
+        R = euler_xyz(*p.get('PreRotation', [0, 0, 0])) @ euler_xyz(*p.get('Lcl Rotation', [0, 0, 0]))
         S = np.array(p.get('Lcl Scaling', [1, 1, 1]), float)
-        V = g.first('Vertices').props[0].reshape(-1, 3)
+        GT = np.array(p.get('GeometricTranslation', [0, 0, 0]), float)      # 3ds Max pivot offsets
+        V = g.first('Vertices').props[0].reshape(-1, 3) + GT
         W = (R @ (V*S).T).T + T
         pvi = g.first('PolygonVertexIndex').props[0]
         uvl = g.first('LayerElementUV')
