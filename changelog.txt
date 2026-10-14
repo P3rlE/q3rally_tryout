@@ -165,6 +165,12 @@ Changed:
 
 Fixed:
 
+- Skyline and GT-R: the cars sat too low, the tyres sank into the ground
+  (1.4 / 2.6 units). The models are raised so the tyres stand on the ground:
+  the wheel tags now sit at tyre radius - 16.2, the height at which the drawn
+  wheel matches the physics wheel (radius 8, cg_players.c draws it 8.2 above
+  the spring end).
+
 - "ERROR: Can't allocate streaming streamSource" on q3r_downtown (OpenAL): about 190
   looping crowd speakers also auto-triggered the same 16 s sample every few seconds and
   filled all sound sources, so the engine sounds of other cars dropped out and the error

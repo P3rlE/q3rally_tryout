@@ -26,7 +26,7 @@ import numpy as np
 import cull
 import fbx
 import mesh
-from carlib import BACKWARD, ID, WL, WR, Builder, build_wheel, save, tri_normal
+from carlib import BACKWARD, ID, WL, WR, Builder, build_wheel, save, tri_normal, wheel_tag_z
 from layout import atlas, region, X0, X1, Y0, Y1, Z0, Z1
 
 SRC, OUT = sys.argv[1], sys.argv[2]
@@ -34,7 +34,7 @@ CACHE = sys.argv[3] if len(sys.argv) > 3 else OUT
 P = 'models/players/gtr/'
 
 LENGTH = 113.5            # world units; the Skyline is 112 for a 4.6 m car, the R35 is 4.67 m
-WHEEL_Z = -9.7            # wheel centre height of the other cars
+WHEEL_Z = -9.7            # wheel centre height the model is laid out at (paint atlas, decals)
 TARGET = 100000           # body triangles after decimation
 TIRE_TARGET = 3000        # triangles of the tyre before the rim disc is added
 KEEP_SMALL = 200          # parts below this many triangles are not decimated
@@ -81,6 +81,8 @@ for name, sel in (('fl', left & front), ('fr', ~left & front), ('rl', left & ~fr
     p = V[np.unique(tire_t[sel])]
     wheels[name] = ((p.min(0) + p.max(0)) / 2, (p.max(0)[1] - p.min(0)[1]) / 2, tire_t[sel])
 CY = np.mean([w[0][1] for w in wheels.values()]) - WHEEL_Z / S
+# the written model is raised so the tyres stand on the ground (carlib.wheel_tag_z)
+LIFT = (0.0, 0.0, wheel_tag_z(wheels['fl'][1] * S) - WHEEL_Z)
 
 
 def to_q3(p):
@@ -128,7 +130,7 @@ def surf(group, tex):
         name = '%s%d' % (group, n)
         b = None
     if b is None:
-        b = surfs[name] = Builder(name, P + tex + '.tga')
+        b = surfs[name] = Builder(name, P + tex + '.tga', LIFT)
         current[group] = name
     return b
 
@@ -226,7 +228,7 @@ tags = [
     ('tag_blite1', [to[0] - 0.5, -to[1], to[2]], ID), ('tag_blite2', [to[0] - 0.5, to[1], to[2]], ID),
     ('tag_rlite1', [ti[0] - 0.5, -ti[1], ti[2]], ID), ('tag_rlite2', [ti[0] - 0.5, ti[1], ti[2]], ID),
 ]
-tags = [(n, [float(c) for c in o], a) for n, o, a in tags]
+tags = [(n, [float(o[0]), float(o[1]), float(o[2]) + LIFT[2]], a) for n, o, a in tags]
 bmn, bmx, rad = save(os.path.join(OUT, 'body.md3'), P + 'body.md3',
                      [surfs[n].done() for n in ORDER], tags, b'gtr')
 print('scale %.2f  body bounds %s %s radius %.1f' % (S, [round(c, 1) for c in bmn], [round(c, 1) for c in bmx], rad))
