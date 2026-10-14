@@ -10,15 +10,14 @@ below the engine's per-surface limit.
 OBJ axes: x = width (+x is the car's left), y = up, z = length (+z front).
 Q3 axes:  X = forward, Y = left, Z = up.
 """
-import math
 import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, HERE)            # r34/layout.py before ../layout.py
-import md3
 import obj
+from carlib import BACKWARD, ID, WL, WR, Builder, build_wheel, save, tri_normal
 from layout import atlas, region, X0, X1, Y0, Y1, Z0, Z1
 
 SRC, OUT = sys.argv[1], sys.argv[2]
@@ -72,41 +71,6 @@ def to_q3(p):
 
 def nrm_q3(n):
     return (n[2], n[0], n[1])
-
-
-def tri_normal(pts):
-    a, b, c = pts
-    u = [b[k] - a[k] for k in range(3)]
-    v = [c[k] - a[k] for k in range(3)]
-    n = (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
-    l = math.sqrt(sum(x * x for x in n)) or 1.0
-    return tuple(x / l for x in n)
-
-
-class Builder:
-    """collects one md3 surface; vertices are unique per (pos, normal, uv)"""
-
-    def __init__(self, name, shader):
-        self.s = md3.Surf()
-        self.s.name, self.s.flags, self.s.shaders = name, 0, [(shader, 0)]
-        self.s.tris, self.s.st, self.verts, self.idx = [], [], [], {}
-
-    def vert(self, pos, n, uv):
-        q = [int(round(c * 64)) for c in pos]
-        key = (tuple(q), md3.enc_normal(*n), round(uv[0], 5), round(uv[1], 5))
-        if key not in self.idx:
-            self.idx[key] = len(self.verts)
-            self.verts.append(q + [key[1]])
-            self.s.st.append([uv[0], uv[1]])
-        return self.idx[key]
-
-    def tri(self, corners):
-        # md3 triangles run the other way round than OBJ faces
-        self.s.tris.append([corners[0], corners[2], corners[1]])
-
-    def done(self):
-        self.s.frames = [self.verts]
-        return self.s
 
 
 def corner(c):
@@ -176,10 +140,6 @@ def wheel_pos(o):
     return [(min(p[k] for p in pts) + max(p[k] for p in pts)) / 2 for k in range(3)]
 
 
-ID = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-BACKWARD = [[-1, 0, 0], [0, -1, 0], [0, 0, 1]]
-WL = [[0, 1, 0], [1, 0, 0], [0, 0, -1]]          # left wheels: model +x points out of the car
-WR = [[0, -1, 0], [-1, 0, 0], [0, 0, -1]]        # right wheels
 wheels = {o: wheel_pos(o) for o in WHEEL_OBJECTS}
 front = [w for w in wheels.values() if w[0] > 0]
 rear = [w for w in wheels.values() if w[0] < 0]
@@ -222,16 +182,8 @@ tags = [
     ('tag_rlite1', [ti[0] - 0.5, -ti[1], ti[2]], ID), ('tag_rlite2', [ti[0] - 0.5, ti[1], ti[2]], ID),
 ]
 
-m = md3.Model()
-m.name, m.flags = P + 'body.md3', 0
-m.surfs = [surfs[n].done() for n in ORDER if n in surfs]
-m.tags = [[[n, list(o), [list(r) for r in a]] for n, o, a in tags]]
-allp = [[c / 64 for c in v[:3]] for s in m.surfs for v in s.frames[0]]
-bmn = [min(p[k] for p in allp) for k in range(3)]
-bmx = [max(p[k] for p in allp) for k in range(3)]
-rad = max(math.sqrt(sum(c * c for c in p)) for p in allp)
-m.frames = [bmn + bmx + [0.0, 0.0, 0.0, rad, b'skyline']]
-md3.save(m, os.path.join(OUT, 'body.md3'))
+bmn, bmx, rad = save(os.path.join(OUT, 'body.md3'), P + 'body.md3',
+                     [surfs[n].done() for n in ORDER if n in surfs], tags, b'skyline')
 print('scale %.2f  body bounds %s %s radius %.1f' % (S, [round(c, 1) for c in bmn], [round(c, 1) for c in bmx], rad))
 for n, o, a in tags:
     print('  %-12s %s' % (n, [round(c, 2) for c in o]))
@@ -251,80 +203,8 @@ def wn(n):
     return (n[0], n[2], -n[1])
 
 
-tread = Builder('w_tread', 'models/players/wheels/tread.tga')
-rim = Builder('w_rim', 'models/players/wheels/rim_mm_m11_2.tga')
-R = W_R
-
-
-def rim_uv(p):
-    return [0.5 - p[1] / (2 * R), 0.5 + p[2] / (2 * R)]
-
-
-tire_tris = [t for (o, m), tris in G if o == WHEEL_SRC and m == TIRE_MTL for t in tris]
-wx = [to_wheel(V[c[0]])[0] for t in tire_tris for c in t]
-XMIN, XMAX = min(wx), max(wx)
-open_out = open_in = R
-for t in tire_tris:
-    pts = [to_wheel(V[c[0]]) for c in t]
-    ns = [wn(VN[c[2]]) for c in t]
-    fn = tri_normal(pts)
-    if abs(fn[0]) < 0.6:                          # tread and shoulders
-        ang = [math.atan2(p[2], p[1]) for p in pts]
-        for k in (1, 2):                          # keep the triangle on one branch
-            while ang[k] - ang[0] > math.pi:
-                ang[k] -= 2 * math.pi
-            while ang[k] - ang[0] < -math.pi:
-                ang[k] += 2 * math.pi
-        # tread.tga repeats twice around the wheel; u runs with the angle
-        uvs = [[a / math.pi + 1.0, (p[0] - XMIN) / (XMAX - XMIN)] for a, p in zip(ang, pts)]
-        tread.tri([tread.vert(p, n, uv) for p, n, uv in zip(pts, ns, uvs)])
-    else:                                         # sidewalls
-        rim.tri([rim.vert(p, n, rim_uv(p)) for p, n in zip(pts, ns)])
-        for p in pts:
-            r = math.hypot(p[1], p[2])
-            if p[0] > 0:
-                open_out = min(open_out, r)
-            else:
-                open_in = min(open_in, r)
-
-
-def disc(x_edge, r_edge, depth, outward):
-    """fine dished disc closing the rim opening; outward = +1 (outer face) or -1"""
-    SEG, RINGS = 96, 6
-    n_face = (outward, 0.0, 0.0)
-    rings = []
-    for i in range(RINGS + 1):
-        f = 1 - i / RINGS                          # 1 at the tyre, 0 in the centre
-        r = (r_edge + 0.15) * f
-        x = x_edge - outward * depth * (1 - f * f)
-        rings.append([(x, r * math.cos(2 * math.pi * j / SEG), r * math.sin(2 * math.pi * j / SEG))
-                      for j in range(SEG)])
-    for i in range(RINGS):
-        for j in range(SEG):
-            a, b = rings[i][j], rings[i][(j + 1) % SEG]
-            c, d = rings[i + 1][j], rings[i + 1][(j + 1) % SEG]
-            quad = [(a, b, d), (a, d, c)] if outward > 0 else [(a, d, b), (a, c, d)]
-            for tri in quad:
-                if tri_normal(tri)[0] * outward < 0:
-                    tri = (tri[0], tri[2], tri[1])
-                rim.tri([rim.vert(p, n_face, rim_uv(p)) for p in tri])
-
-
-x_out = max(to_wheel(V[c[0]])[0] for t in tire_tris for c in t
-            if math.hypot(*to_wheel(V[c[0]])[1:]) < open_out + 0.3)
-x_in = min(to_wheel(V[c[0]])[0] for t in tire_tris for c in t
-           if math.hypot(*to_wheel(V[c[0]])[1:]) < open_in + 0.3)
-disc(x_out, open_out, 1.2, +1)
-disc(x_in, open_in, 0.0, -1)
-
-w = md3.Model()
-w.name, w.flags = P + 'wheel.md3', 0
-w.surfs = [tread.done(), rim.done()]
-w.tags = []
-wp = [[c / 64 for c in v[:3]] for s in w.surfs for v in s.frames[0]]
-wmn = [min(p[k] for p in wp) for k in range(3)]
-wmx = [max(p[k] for p in wp) for k in range(3)]
-w.frames = [wmn + wmx + [0.0, 0.0, 0.0, max(math.sqrt(sum(c * c for c in p)) for p in wp), b'wheel']]
-md3.save(w, os.path.join(OUT, 'wheel.md3'))
+tire = [([to_wheel(V[c[0]]) for c in t], [wn(VN[c[2]]) for c in t])
+        for (o, m), tris in G if o == WHEEL_SRC and m == TIRE_MTL for t in tris]
+open_out, open_in, wmn, wmx = build_wheel(tire, W_R, os.path.join(OUT, 'wheel.md3'), P + 'wheel.md3')
 print('wheel radius %.2f, opening out %.2f in %.2f, bounds %s %s'
-      % (R, open_out, open_in, [round(c, 2) for c in wmn], [round(c, 2) for c in wmx]))
+      % (W_R, open_out, open_in, [round(c, 2) for c in wmn], [round(c, 2) for c in wmx]))

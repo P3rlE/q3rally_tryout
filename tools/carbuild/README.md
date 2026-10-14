@@ -70,3 +70,28 @@ Q3R_FIT=1 python3 render3d.py $D rally13 amg_163 /tmp/icon_rally13.png 384 200,6
     ../../baseq3r/models/players/viper/icon_rally13.tga
 python3 md3info.py $D/body.md3 $D/wheel.md3
 ```
+
+## GT-R (R35) – FBX to MD3 with culling and decimation
+
+`gtr/` builds `baseq3r/models/players/gtr/` from the project's NissanGT-R.fbx
+(757,016 triangles incl. interior and engine; not in the repo).
+
+| Script | Purpose |
+| --- | --- |
+| `fbx.py` | Binary FBX 7.x reader (meshes, materials, model transforms). |
+| `cull.py` | Keeps the triangles visible from outside (z-buffer from 81 directions). Slow on big models (~25 min here), so `build_model.py` caches the result. |
+| `mesh.py` | Welding, quadric decimation via pyfqmr with fixed borders, crease-angle normals. |
+| `carlib.py` | md3 surface builder/writer and the wheel builder for the shared rim selection (also used by `r34/`). |
+| `paint.py` | Projection-atlas painter with per-car decal positions, shared part textures, skins (also used by `r34/`). |
+| `gtr/build_model.py` | FBX -> `body.md3` (~100k triangles, big surface groups split below the engine limit), `wheel.md3`, `parts.tga` (material colour palette), tags. |
+| `gtr/gen_textures.py` | Paint atlases and skins; run after `build_model.py`. |
+
+```sh
+pip install pyfqmr
+cd tools/carbuild
+D=../../baseq3r/models/players/gtr
+python3 gtr/build_model.py NissanGT-R.fbx $D /tmp/gtr_cache
+python3 gtr/gen_textures.py $D
+python3 md3info.py $D/body.md3 $D/wheel.md3
+# icons as for the Skyline (render3d.py with Q3R_FIT=1)
+```
