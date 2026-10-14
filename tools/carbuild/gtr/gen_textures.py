@@ -2,8 +2,8 @@
 
 usage: gen_textures.py <outdir>
 
-The paint atlases follow layout.py; parts.tga (the palette of the other
-materials) is written by build_model.py.
+Run after build_model.py: it writes body.md3 and parts.tga (the palette of the
+other materials) into the same directory. The paint atlases follow layout.py.
 """
 import os
 import sys
@@ -12,6 +12,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, HERE)            # gtr/layout.py before ../layout.py
 import layout
+import md3
 import paint
 
 OUT = sys.argv[1]
@@ -33,8 +34,10 @@ DECALS = {
 
 paint.Painter(layout, DECALS, ALPHA).paint_all(OUT)
 paint.shared_parts(OUT, ('glass', 'chrome'))
-paint.write_skins(OUT, 'models/players/gtr/',
-                  [('glass', 'glass'), ('chrome', 'chrome'), ('parts', 'parts')],
-                  ('body_fl', 'body_fr', 'body_rl', 'body_rr'),
-                  [('hlights', 'parts'), ('rlights', 'parts')])
+# skins list the surfaces of body.md3 (build_model.py splits big groups into group2, group3, ...)
+TEX = {'glass': 'glass', 'chrome': 'chrome', 'parts': 'parts', 'hlights': 'parts', 'rlights': 'parts'}
+names = [s.name for s in md3.load(os.path.join(OUT, 'body.md3')).surfs]
+paint.write_skins(OUT, 'models/players/gtr/', [],
+                  [n for n in names if n.startswith('body_')],
+                  [(n, TEX[n.rstrip('0123456789')]) for n in names if not n.startswith('body_')])
 print('ok')

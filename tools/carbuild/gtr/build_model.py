@@ -44,8 +44,8 @@ KIND = {
     'Glass': 'glass', 'dark_glassw': 'glass',
     'chrome': 'chrome', 'aluminium': 'chrome', 'mirror': 'chrome',
     'aluminium_engine_1': 'chrome', 'aluminium_engine_2': 'chrome', 'aluminium_engine_4': 'chrome',
-    'WhiteLightGlass': 'hlights', 'chrome_light': 'hlights', 'side_light': 'hlights',
-    'RedightGlass': 'rlights', 'RedLights': 'rlights',
+    'chrome_light': 'hlights', 'side_light': 'hlights',               # headlamps, side markers
+    'RedightGlass': 'rlights', 'RedLights': 'rlights', 'WhiteLightGlass': 'rlights',   # tail and reversing lamps
 }
 DROP = {'tire', 'wheel', 'Default_Material', 'stop_red',             # wheels, brake discs, calipers
         'symbol_white', 'symbol_gray', 'symbol_Gray', 'symbol_red'}  # manufacturer badges
@@ -95,7 +95,11 @@ for c in root.find('Objects').all('Material'):
     p = fbx.props70(c)
     colour[c.props[1].split('\x00')[0]] = p.get('DiffuseColor', [0.5, 0.5, 0.5])[:3]
 PAL_N = 8                                                 # 8 x 8 cells
-palette = sorted({m for m in set(MAT[body]) if m != PAINT})
+# lamps get brighter colours than the dark source materials, so they read as lamps in game
+colour.update({'headlamp': (0.86, 0.88, 0.92),          # headlamp lenses: part of 'Glass' in the source
+               'RedightGlass': (0.62, 0.02, 0.02), 'RedLights': (0.80, 0.03, 0.03),
+               'WhiteLightGlass': (0.85, 0.86, 0.88)})
+palette = sorted({m for m in set(MAT[body]) if m != PAINT} | {'headlamp'})
 cell = {m: i for i, m in enumerate(palette)}
 assert len(palette) <= PAL_N * PAL_N
 
@@ -108,13 +112,25 @@ def pal_uv(m):
 # ---------------- decimate and build the body surfaces -------------------------------------
 total = int(body.sum())
 ratio = min(1.0, TARGET / total)
-surfs = {}
+surfs = {}                # surface name -> builder, in creation order
+current = {}              # group name -> name of the surface being filled
+MAX_VERTS = 9000          # start the next surface of a group well below the engine limit
 
 
-def surf(name, tex):
-    if name not in surfs:
-        surfs[name] = Builder(name, P + tex + '.tga')
-    return surfs[name]
+def surf(group, tex):
+    """builder of a surface group; a full surface continues as group2, group3, ..."""
+    name = current.get(group, group)
+    b = surfs.get(name)
+    if b is not None and (len(b.verts) > MAX_VERTS or len(b.s.tris) > 19000):
+        n = 2
+        while '%s%d' % (group, n) in surfs:
+            n += 1
+        name = '%s%d' % (group, n)
+        b = None
+    if b is None:
+        b = surfs[name] = Builder(name, P + tex + '.tga')
+        current[group] = name
+    return b
 
 
 box = {'X': (X0, X1), 'Y': (Y0, Y1), 'Z': (Z0, Z1)}
@@ -150,6 +166,9 @@ for m in sorted(set(MAT[body])):
             b = surf('body_%s%s' % ('f' if cx >= 0 else 'r', 'l' if cy >= 0 else 'r'), 'red_main')
             reg = region(fn)
             uvs = [atlas(reg, p) for p in pts]
+        elif kind == 'glass' and sum(p[0] for p in pts) / 3 > 40 and sum(p[2] for p in pts) / 3 < 6:
+            b = surf('hlights', 'parts')                  # headlamp lens
+            uvs = [pal_uv('headlamp')] * 3
         elif kind in ('glass', 'chrome'):
             b = surf(kind, kind)
             reg = region(fn)
@@ -159,11 +178,12 @@ for m in sorted(set(MAT[body])):
             uvs = [pal_uv(m)] * 3
         b.tri([b.vert(pts[k], ns[k], uvs[k]) for k in range(3)])
 
-ORDER = ['body_fl', 'body_fr', 'body_rl', 'body_rr', 'glass', 'chrome', 'parts', 'hlights', 'rlights']
+GROUPS = ['body_fl', 'body_fr', 'body_rl', 'body_rr', 'glass', 'chrome', 'parts', 'hlights', 'rlights']
+ORDER = sorted(surfs, key=lambda n: (GROUPS.index(n.rstrip('0123456789')), n))
 
 # ---------------- tags --------------------------------------------------------------------------
-def pts_of(mats, sel=lambda p: np.ones(len(p), bool)):
-    p = to_q3(V[np.unique(T[body & np.isin(MAT, mats)])])
+def pts_of(mats, sel=lambda p: np.ones(len(p), bool), only_visible=True):
+    p = to_q3(V[np.unique(T[(body if only_visible else True) & np.isin(MAT, mats)])])
     return p[sel(p)]
 
 
@@ -180,9 +200,10 @@ allp = to_q3(bp)
 roof = allp[:, 2].max()
 front_x, rear_x = allp[:, 0].max(), allp[:, 0].min()
 
-hl = mid(pts_of(['WhiteLightGlass'], lambda p: p[:, 1] > 0))
-# the four round tail lamps: split the left ones at the widest gap across the car
-tl = pts_of(['RedightGlass', 'RedLights'], lambda p: p[:, 1] > 0)
+hl = mid(pts_of(['chrome_light'], lambda p: p[:, 1] > 0, only_visible=False))   # reflectors behind the lenses
+# the four round tail lamps (not the high centre brake light): split the left ones
+# at the widest gap across the car
+tl = pts_of(['RedightGlass', 'RedLights'], lambda p: (p[:, 1] > 0) & (p[:, 2] < 6.0))
 ys = np.unique(np.round(tl[:, 1], 1))
 gap = ys[np.argmax(np.diff(ys))] + np.max(np.diff(ys)) / 2
 ti, to = mid(tl[tl[:, 1] < gap]), mid(tl[tl[:, 1] >= gap])
@@ -207,7 +228,7 @@ tags = [
 ]
 tags = [(n, [float(c) for c in o], a) for n, o, a in tags]
 bmn, bmx, rad = save(os.path.join(OUT, 'body.md3'), P + 'body.md3',
-                     [surfs[n].done() for n in ORDER if n in surfs], tags, b'gtr')
+                     [surfs[n].done() for n in ORDER], tags, b'gtr')
 print('scale %.2f  body bounds %s %s radius %.1f' % (S, [round(c, 1) for c in bmn], [round(c, 1) for c in bmx], rad))
 print('visible %d of %d triangles, decimated to %d' % (total, len(T), sum(c[1] for c in counts.values())))
 for m, (a, b) in sorted(counts.items(), key=lambda x: -x[1][0]):

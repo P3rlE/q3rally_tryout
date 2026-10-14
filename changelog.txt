@@ -4,6 +4,13 @@ unreleased
 
 Added:
 
+- New car: GT-R (models/players/gtr), a Nissan GT-R (R35) from the project's own
+  757,016 triangle model: only the parts visible from outside are kept (no
+  interior or engine), decimated to a 100,007 triangle body and a 5,304 triangle
+  tyre that keeps the rim selection working. Skins red/blue/green/yellow and
+  rally01/07/13/27/44/88 with menu icons. Needs the raised polygon limit.
+  Converter in tools/carbuild/gtr (FBX reader, visibility culling, decimation).
+
 - New car: Skyline (models/players/skyline), the first high-poly car: 38,624
   triangles body at the full detail of the source model, a 3,744 triangle tyre
   that keeps the rim selection working. Skins red/blue/green/yellow and
