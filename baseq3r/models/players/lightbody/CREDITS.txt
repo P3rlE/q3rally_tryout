@@ -5,12 +5,12 @@ by Daniel Zhabotinsky, licensed under Creative Commons Attribution 4.0
 (http://creativecommons.org/licenses/by/4.0/).
 
 Changes for Q3Rally:
-- converted from FBX to MD3, scaled and re-oriented; paint, frame, lift
-  kit, bull bar and roll bar decimated (load bed kept as is) from ~37k
-  to ~10.9k triangles, UVs of the decimated parts transferred from the
-  original mesh
-- removed the interior, steering wheel, badges, licence plate, the clear
-  lamp covers and the original tyres
+- converted from FBX to MD3, scaled and re-oriented; frame, suspension,
+  bull bar and roll bar decimated (body panels, bumpers, flares and load
+  bed kept as they are) from ~37k to ~15.4k triangles, UVs of the
+  decimated parts transferred from the original mesh
+- removed the interior, steering wheel, badges, licence plate and the
+  original tyres
 - new paint texture atlas with new liveries (plain colours, an 80s
   two-tone and Q3Rally rally schemes); frame/lift kit and lamps use the
   original textures (downscaled), new glass texture

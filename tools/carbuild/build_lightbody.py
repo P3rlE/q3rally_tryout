@@ -8,7 +8,9 @@ texture (frame, lift kit, fender flares, bull bar, roll bar with lamps, rear
 bumper), window glass and the lamps. Dropped: interior, steering wheel, badges,
 licence plate (the game adds its own), the clear lamp covers (they hide the
 lamps) and the branded tyres (the shared wheel goes on their centres).
-Decimated parts get their UVs back from the nearest original triangle."""
+The paint panels are not decimated (their borders would open gaps between
+hood, fenders and bumpers); the lamp covers are kept, they also close the
+lamp housings. Decimated parts get their UVs back from the nearest original triangle."""
 import os, sys, math, copy
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import md3, fbxmesh, layout
@@ -31,13 +33,13 @@ def q3(v):
 PRE = 'krmlgtbdy85_'
 # part -> (surface, keep fraction or None)
 KEEP = {
-    'Body': ('paint', 0.45), 'Bumper_Front': ('paint', 0.45), 'Hood': ('paint', 0.6), 'Trunkdoor': ('paint', 0.6),
-    'Bumper_Rear': ('dark', 0.5), 'Lifted_Suspension': ('dark', 0.08), 'Bottom': ('dark', 0.08),
-    'Lifted_Trim': ('dark', 0.45), 'Bullbar': ('dark', 0.3), 'Extra_A': ('dark', 0.35),
-    'Trunk_door_inner': ('dark', 0.6), 'Hood_inner': ('dark', 0.6), 'Bumper_front_inner': ('dark', 0.6),
+    'Body': ('paint', None), 'Bumper_Front': ('paint', None), 'Hood': ('paint', None), 'Trunkdoor': ('paint', None),
+    'Bumper_Rear': ('dark', None), 'Lifted_Suspension': ('dark', 0.05), 'Bottom': ('dark', 0.05),
+    'Lifted_Trim': ('dark', None), 'Bullbar': ('dark', 0.3), 'Extra_A': ('dark', 0.35),
+    'Trunk_door_inner': ('dark', None), 'Hood_inner': ('dark', None), 'Bumper_front_inner': ('dark', None),
     'Body_Glass': ('glass', None), 'Glass_Rear': ('glass', None), 'Windshield': ('glass', None),
     'Glass_Driver': ('glass', None), 'Glass_Passanger': ('glass', None),
-    'Headlights': ('lights', None), 'Blinkers': ('lights', None), 'Brakelights': ('lights', None), 'Reverse': ('lights', None),
+    'Headlights': ('lights', None), 'Headlights_Glass': ('lights', None), 'Taillights_Glass': ('lights', None), 'Blinkers': ('lights', None), 'Brakelights': ('lights', None), 'Reverse': ('lights', None),
 }
 parts = {p['model'][len(PRE):]: p for p in fbxmesh.meshes(SRC)}
 
@@ -176,7 +178,7 @@ pmn, pmx, _ = bbox('Numberplates_Rear')
 _, _, rb = bbox('Bumper_Rear')
 tags += [
     ('tag_weapon',  [roof_x, 0.0, float(roof) + 0.4], ID),
-    ('tag_plate',   [float(pmn[0]) - 0.1, 0.0, float((pmn[2] + pmx[2])/2)], ID),
+    ('tag_plate',   [float(pmn[0]) - 0.1, float((pmn[1] + pmx[1])/2), float((pmn[2] + pmx[2])/2)], ID),
     ('tag_turbo',   [float(rb[:, 0].min()) - 0.3, 0.0, float(rb[:, 2].min()) - 1.0], BACKWARD),
     ('tag_smoke',   [42.0, 0.0, float(hood) + 0.3], BACKWARD),
     ('tag_hlite1',  side('Headlights', 1, True), ID), ('tag_hlite2', side('Headlights', -1, True), ID),

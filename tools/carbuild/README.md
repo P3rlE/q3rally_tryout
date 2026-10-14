@@ -51,9 +51,9 @@ finished cars in `baseq3r/models/players/`:
 | `fbx.py`, `fbxmesh.py` | Minimal binary FBX reader; triangulated, transformed meshes with UVs and per-triangle materials. |
 | `build_olds.py` | Cutlass: keeps paint, trim, chrome, glass and lights, drops badges, lettering, plate, tyres and interior, decimates with quadric edge collapse (`pip install fast-simplification`), atlas UVs, tags from the original wheels, lights and plate. |
 | `gen_olds_textures.py` | Cutlass: bakes the source's ambient occlusion onto the new paint atlas (nearest original triangle per texel), liveries, trim/chrome/glass, original light texture. |
-| `build_lightbody.py` | Lightbody: keeps paint, frame/lift kit/bull bar/roll bar (own texture, UVs transferred after decimation, load bed kept as is), glass and lamps; drops interior, badges, plate, lamp covers and tyres; tags incl. the roll bar lamps (`tag_hlite3`). |
+| `build_lightbody.py` | Lightbody: keeps paint, frame/lift kit/bull bar/roll bar (own texture, UVs transferred after decimation; body panels, bumpers, flares and load bed kept as they are), glass, lamps and lamp covers; drops interior, badges, plate and tyres; tags incl. the roll bar lamps (`tag_hlite3`). |
 | `gen_lightbody_textures.py` | Lightbody liveries (plain, 80s two-tone 'sunset', rally) with the depth tested texel map; source textures for frame and lamps. |
-| `render3d.py` | Small software renderer for previews and the menu icons (`icon_<skin>.tga`). |
+| `render3d.py` | Small software renderer for previews and the menu icons (`icon_<skin>.tga`); `Q3R_CULL=1` culls back faces like the game. |
 
 ## Rebuild
 

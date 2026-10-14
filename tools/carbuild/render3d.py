@@ -10,6 +10,7 @@ SIZE = int(sys.argv[5]) if len(sys.argv) > 5 else 384
 CAM = np.array([float(c) for c in sys.argv[6].split(',')]) if len(sys.argv) > 6 else np.array([200., 60., 45.])
 BADGE = sys.argv[7] if len(sys.argv) > 7 else None
 SS = 2; W = SIZE*SS
+CULL = bool(os.environ.get('Q3R_CULL'))           # back-face culling as in the game
 
 def load_skin(path):
     d = {}
@@ -69,6 +70,9 @@ for V, Nn, ST, T, TX, tp in items:
     th, tw = TX.shape[:2]
     for t in T:
         a, b, c = t
+        if CULL:                                  # like the engine: md3 front faces are clockwise
+            fnrm = np.cross(V[c] - V[a], V[b] - V[a])
+            if fnrm @ (CAM - V[a]) <= 0: continue
         xs = np.array([sx[a], sx[b], sx[c]]); ys = np.array([sy[a], sy[b], sy[c]])
         den = (ys[1]-ys[2])*(xs[0]-xs[2]) + (xs[2]-xs[1])*(ys[0]-ys[2])
         if abs(den) < 1e-9: continue
