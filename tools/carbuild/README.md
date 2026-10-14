@@ -44,7 +44,7 @@ finished cars in `baseq3r/models/players/`:
 | `gen_gtr_textures.py` | GT-R paint atlases (plain, silver, rally), grille, trim, glass, chrome and round tail light textures. |
 | `measure.py` | Orthographic side depth map and wheel arch circle fit. |
 | `build_stockcar.py` | Stock car: scale/axes, unique atlas UVs (the source UVs mirror the left and right halves of roof, hood and tail), wheel tags from fitted arches (body lowered so the shared Viper wheel stands like on the other cars), light/plate/roof tags by ray casts. |
-| `gen_stockcar_textures.py` | Stock car: paints through a texel -> model position map (windows as whole greenhouse triangles, sticker headlights, grille, tail lights, stripes, door/roof numbers). |
+| `gen_stockcar_textures.py` | Stock car: paints through a texel -> model position map (windows as whole greenhouse triangles, sticker headlights, grille, tail lights); the rally skins are NASCAR Cup style liveries with made-up sponsors (two-tone splits, rear quarter and hood wordmarks, outlined slab numbers, windscreen banner, contingency block, series badge, window net). |
 | `tds.py` | Minimal Autodesk 3DS reader. |
 | `build_police.py` | Sheriff car: drops the own wheels and uses their centres for the wheel tags, smoothed normals, lights and plate from texture features, smoke on the supercharger. |
 | `gen_police_textures.py` | Sheriff car: clears unused texels, original 'sheriff' livery, colour skins tinting the white panels over the rust, rally skins with the sheriff decals painted out, stripes and a roof number. |

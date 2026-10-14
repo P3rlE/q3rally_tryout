@@ -127,9 +127,184 @@ def paint(name, base, sc=None):
     out = Image.fromarray(np.clip(img, 0, 255).astype(np.uint8), 'RGBA').resize((R//2, R//2), Image.LANCZOS)
     out.save(f'{OUT}/{name}.tga')
 
+
+# ---------------- NASCAR style liveries for the rally skins ------------------------------------
+# Design patterns of current Cup cars (two-tone splits, huge sponsor wordmarks on the rear
+# quarters and the hood, outlined slab numbers, windscreen banner, contingency decal block,
+# window net); all sponsors are made up.
+FONT_SLAB = '/usr/share/fonts/opentype/inter/InterDisplay-BlackItalic.otf'
+FONT_WORD = '/usr/share/fonts/opentype/inter/Inter-Black.otf'
+FONT_WORDI = '/usr/share/fonts/opentype/inter/Inter-BlackItalic.otf'
+FONT_SMALL = '/usr/share/fonts/opentype/inter/Inter-ExtraBoldItalic.otf'
+
+def txt(t, col, h=160, font=FONT_WORD, stroke=0, scol=(0, 0, 0), sub=None, subcol=None, track=0):
+    f = ImageFont.truetype(font, int(h*0.82))
+    w = int(f.getlength(t)) + 2*stroke + 40 + track*len(t)
+    hh = h + (int(h*0.42) if sub else 0) + 2*stroke + 10
+    im = Image.new('RGBA', (w, hh), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    d.text((w/2, h/2 + stroke + 4), t, font=f, fill=col + (255,), anchor='mm', stroke_width=stroke, stroke_fill=scol + (255,))
+    if sub:
+        fs = ImageFont.truetype(FONT_SMALL, int(h*0.28))
+        d.text((w/2, h + stroke + int(h*0.18)), sub, font=fs, fill=(subcol or col) + (255,), anchor='mm')
+    return np.asarray(im)
+
+def slab_number(numtxt, fill, outline, outline2, h=300):
+    f = ImageFont.truetype(FONT_SLAB, int(h*0.9))
+    w = int(f.getlength(numtxt)) + 120
+    im = Image.new('RGBA', (w, h + 60), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    c = (w/2, (h + 60)/2)
+    d.text((c[0] + 10, c[1] + 10), numtxt, font=f, fill=(0, 0, 0, 120), anchor='mm', stroke_width=26, stroke_fill=(0, 0, 0, 120))   # drop shadow
+    d.text(c, numtxt, font=f, fill=outline2 + (255,), anchor='mm', stroke_width=26, stroke_fill=outline2 + (255,))
+    d.text(c, numtxt, font=f, fill=outline + (255,), anchor='mm', stroke_width=14, stroke_fill=outline + (255,))
+    d.text(c, numtxt, font=f, fill=fill + (255,), anchor='mm')
+    return np.asarray(im)
+
+def oval_logo(t, fill, ring, ink, w=560, h=300, sub=None):
+    im = Image.new('RGBA', (w, h), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    d.ellipse([4, 4, w-4, h-4], fill=ring + (255,)); d.ellipse([22, 22, w-22, h-22], fill=fill + (255,))
+    f = ImageFont.truetype(FONT_WORD, int(h*0.26)); d.text((w/2, h*0.46), t, font=f, fill=ink + (255,), anchor='mm')
+    if sub:
+        fs = ImageFont.truetype(FONT_SMALL, int(h*0.11)); d.text((w/2, h*0.72), sub, font=fs, fill=ink + (255,), anchor='mm')
+    return np.asarray(im)
+
+CONTINGENCY = [('Q3R', (200, 20, 20), (255, 255, 255)), ('HASTE', (250, 200, 0), (20, 20, 20)), ('BFG', (20, 20, 20), (120, 230, 40)),
+               ('REGEN', (30, 90, 200), (255, 255, 255)), ('QUAD', (60, 40, 160), (255, 255, 255)), ('BATTLESUIT', (240, 240, 240), (200, 120, 0)),
+               ('ARMOR', (230, 120, 20), (20, 20, 20)), ('FLIGHT', (240, 240, 240), (30, 60, 160))]
+def contingency_img():
+    cw, ch, gap = 150, 62, 10
+    im = Image.new('RGBA', (2*cw + gap, 4*(ch + gap)), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    for i, (t, bg, fg) in enumerate(CONTINGENCY):
+        x0 = (i % 2)*(cw + gap); y0 = (i//2)*(ch + gap)
+        d.rounded_rectangle([x0, y0, x0 + cw, y0 + ch], radius=8, fill=bg + (255,), outline=(255, 255, 255, 255), width=3)
+        f = ImageFont.truetype(FONT_SMALL, 30 if len(t) < 7 else 21)
+        d.text((x0 + cw/2, y0 + ch/2), t, font=f, fill=fg + (255,), anchor='mm')
+    return np.asarray(im)
+def series_badge():
+    im = Image.new('RGBA', (300, 170), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    d.rounded_rectangle([2, 2, 298, 168], radius=14, fill=(250, 250, 250, 255), outline=(20, 20, 20, 255), width=6)
+    d.rectangle([14, 14, 286, 70], fill=(200, 20, 20, 255)); d.rectangle([14, 70, 286, 110], fill=(30, 60, 160, 255))
+    d.text((150, 44), 'Q3RALLY', font=ImageFont.truetype(FONT_WORDI, 44), fill=(255, 255, 255, 255), anchor='mm')
+    d.text((150, 92), 'CUP SERIES', font=ImageFont.truetype(FONT_SMALL, 30), fill=(255, 255, 255, 255), anchor='mm')
+    d.text((150, 138), 'OFFICIAL ENTRY', font=ImageFont.truetype(FONT_SMALL, 24), fill=(20, 20, 20, 255), anchor='mm')
+    return np.asarray(im)
+CONT, BADGE = contingency_img(), series_badge()
+
+def jagged(xv, base, amp, period):
+    """saw-tooth mountain line"""
+    t = (xv/period) % 1.0
+    return base + amp*(1 - 2*np.abs(t - 0.5)*2).clip(-1, 1)
+
+LIVERIES = {
+    # rally01: black / white diagonal split, gold number
+    'rally01': dict(base=(26, 26, 30), second=(238, 238, 240), split='diag', accent=(222, 176, 70),
+                    num=((238, 238, 240), (26, 26, 30), (222, 176, 70)), word=('RAILGUN', 'Oil & Lubricants'),
+                    wordcol=(222, 176, 70), hoodcol=(238, 238, 240), banner=((26, 26, 30), (222, 176, 70), 'SARGE')),
+    # rally07: navy with light blue lower band, gold outlined number
+    'rally07': dict(base=(26, 58, 140), second=(120, 190, 235), split='lower', accent=(255, 255, 255),
+                    num=((150, 210, 245), (255, 255, 255), (200, 160, 70)), word=('QUAD DAMAGE', 'Energy Drink & Power Snacks'),
+                    wordcol=(255, 255, 255), hoodcol=(255, 255, 255), banner=((255, 255, 255), (26, 58, 140), 'XAERO')),
+    # rally13: white with an orange/blue mountain line along the lower body
+    'rally13': dict(base=(236, 238, 242), second=(236, 112, 30), split='jag', accent=(30, 60, 150),
+                    num=((30, 60, 150), (255, 255, 255), (30, 60, 150)), word=('MEGA HEALTH', None),
+                    wordcol=(30, 60, 150), hoodcol=(30, 60, 150), banner=((30, 60, 150), (255, 255, 255), 'KLESK')),
+    # rally27: red with a yellow nose and an oval logo on the quarters
+    'rally27': dict(base=(204, 36, 30), second=(248, 200, 30), split='nose', accent=(20, 20, 24),
+                    num=((248, 200, 30), (20, 20, 24), (248, 248, 248)), word=('ROCKET FUEL', None), oval=True,
+                    wordcol=(248, 200, 30), hoodcol=(204, 36, 30), banner=((248, 200, 30), (204, 36, 30), 'HUNTER')),
+    # rally44: green with yellow speed slashes
+    'rally44': dict(base=(40, 150, 70), second=(240, 220, 40), split='slash', accent=(20, 40, 24),
+                    num=((255, 255, 255), (20, 40, 24), (240, 220, 40)), word=('FRAG FORCE', 'Tools for the Arena'),
+                    wordcol=(255, 255, 255), hoodcol=(240, 220, 40), banner=((20, 40, 24), (240, 220, 40), 'MAJOR')),
+    # rally88: purple fading into pink towards the rear
+    'rally88': dict(base=(96, 50, 176), second=(236, 90, 170), split='fade', accent=(255, 255, 255),
+                    num=((255, 255, 255), (60, 20, 110), (236, 90, 170)), word=('PLASMA COLA', 'Charged with Energy'),
+                    wordcol=(255, 255, 255), hoodcol=(255, 255, 255), banner=((236, 90, 170), (255, 255, 255), 'ORBB')),
+}
+
+def nascar(name, L):
+    img = np.zeros((R, R, 4), np.float32)
+    k = (0.82 + 0.20*np.clip((z + 14)/22, 0, 1))[..., None]
+    base, sec = np.array(L['base'], np.float32), np.array(L['second'], np.float32)
+    col = np.broadcast_to(base, (R, R, 3)).copy()
+    split = L['split']
+    if split == 'diag':          # front (nose to door) in the second colour, rear in the base
+        m2 = x > 4.0 + 1.1*z
+    elif split == 'lower':
+        m2 = (side & (z < -6.5)) | ((front | rear) & ~top & (z < -6.5))
+    elif split == 'jag':
+        m2 = (~top) & (z < jagged(x, -8.0, 3.2, 11.0))
+        acc = (~top) & (np.abs(z - jagged(x, -8.0, 3.2, 11.0)) < 0.55)
+    elif split == 'nose':
+        m2 = (x > 30 - 0.5*z) | ((~top) & (z < -10.5))
+    elif split == 'slash':
+        t = (x - 0.9*z)
+        m2 = (~top) & (x < 10) & (x > -54) & (((t + 60) % 13) < 3.2)
+    elif split == 'fade':
+        w = np.clip((-x + 20)/70, 0, 1)[..., None]
+        col = base*(1 - w) + sec*w; m2 = np.zeros((R, R), bool)
+    col[m2] = sec
+    if split == 'jag': col[acc] = np.array(L['accent'], np.float32)
+    img[..., :3] = col*k; img[..., 3] = 212
+    img[sill, :3] = (24, 24, 26); img[sill, 3] = 240
+    img[glass, :3] = np.array((22, 26, 34), np.float32)*np.clip(1.0 + 0.05*(z[glass] - 6), 0.8, 1.3)[..., None]
+    img[glass, 3] = 165
+    # window net on the driver's side (left)
+    net = glass & side & (y > 0) & (x > -2) & (x < 15) & ((np.abs(((x + z)*1.5) % 1.0 - 0.5) < 0.1) | (np.abs(((x - z)*1.5) % 1.0 - 0.5) < 0.1))
+    img[net, :3] = (14, 14, 16); img[net, 3] = 235
+    # windscreen banner with the driver's name
+    bcol, btxt, bname = L['banner']
+    ban = glass & front & (z > 9.6)
+    img[ban, :3] = bcol; img[ban, 3] = 245
+    decal(img, ban, 0.0, -10.3, 13.0, txt(bname, btxt, 120, FONT_WORDI), y, -z)
+    # sticker headlights, grille, tail lights (as on the plain skins)
+    img[headl, :3] = (238, 238, 222); img[headl, 3] = 255
+    ring = used & front & ~glass & ((((np.abs(y) - hl[1])/3.4)**2 + ((z - hl[2])/1.8)**2) > 0.72) & headl
+    img[ring, :3] = (60, 60, 64)
+    img[grille, :3] = (16, 16, 18); img[grille, 3] = 245
+    mesh = grille & ((np.floor(y*1.4) + np.floor(z*1.8)) % 2 == 0)
+    img[mesh, :3] = (46, 46, 52)
+    img[tail, :3] = (18, 18, 20); img[tail, 3] = 255
+    lamp = tail & (np.abs(z - bl[2]) < 1.05) & (np.abs(np.abs(y) - (bl[1] + rl[1])/2 - 0.6) < 3.1)
+    img[lamp, :3] = (215, 20, 16)
+    img[reverse & (np.abs(z - bl[2]) < 1.05), :3] = (238, 238, 232)
+
+    Lf, Rf = used & (ny > 0.3) & ~glass, used & (ny < -0.3) & ~glass      # a bit wider than 'side': creases
+    topm = used & top & ~glass
+    num = slab_number(sc_num[name], *L['num'])
+    # sponsor on the rear quarters
+    if L.get('oval'):
+        logo = oval_logo(L['word'][0], (248, 200, 30), (20, 20, 24), (204, 36, 30), sub='RACING FUEL')
+        decal(img, Lf, 33.0, -0.6, 14.0, logo, -x, -z); decal(img, Rf, -33.0, -0.6, 14.0, logo, x, -z)
+    else:
+        # rear quarter strip between the arch top and the tumblehome crease; the sub line goes on the door
+        word = txt(L['word'][0], L['wordcol'], 170, FONT_WORDI, 6, tuple(int(c) for c in (base*0.5)))
+        decal(img, Lf, 31.0, -2.15, 20.0, word, -x, -z); decal(img, Rf, -31.0, -2.15, 20.0, word, x, -z)     # z 0.6 (arch) .. 3.8 (crease)
+    if L['word'][1]:
+        sub = txt(L['word'][1], L['wordcol'], 90, FONT_SMALL)
+        decal(img, Lf, 15.0, 4.6, 15.0, sub, -x, -z); decal(img, Rf, -15.0, 4.6, 15.0, sub, x, -z)
+    # door number, big, slightly forward
+    decal(img, Lf, -3.0, 2.0, 17.0, num, -x, -z); decal(img, Rf, 3.0, 2.0, 17.0, num, x, -z)
+    # contingency block behind the front wheels, series badge at the A pillar
+    decal(img, Lf, -22.5, 3.5, 7.0, CONT, -x, -z); decal(img, Rf, 22.5, 3.5, 7.0, CONT, x, -z)
+    decal(img, Lf, -15.0, -3.6, 4.6, BADGE, -x, -z); decal(img, Rf, 15.0, -3.6, 4.6, BADGE, x, -z)
+    # hood sponsor, readable from the front; roof number readable from the chase cam
+    hood = topm & (x > 18)
+    hw = txt(L['word'][0], L['hoodcol'], 170, FONT_WORDI, 6, tuple(int(c) for c in (base*0.5)))
+    decal(img, hood, 0.0, 34.0, 30.0, hw, y, x)
+    decal(img, topm & (np.abs(x + 4) < 9), 0.0, 4.0, 15.0, num, -y, -x)
+    # rear: sponsor on the tail panel and the deck lid, small number by the lights
+    tailp = used & (nx < -0.5) & ~glass & ~tail
+    decal(img, tailp, 0.0, 4.5, 15.0, txt(L['word'][0], L['wordcol'] if not L.get('oval') else (248, 200, 30), 140, FONT_WORDI, 5,
+                                         tuple(int(c) for c in (base*0.5))), -y, -z)
+    decal(img, topm & (x < -40), 0.0, 47.0, 22.0, txt('Q3RALLY CUP', tuple(int(c) for c in L['accent']), 120, FONT_WORDI), -y, -x)
+    img[~used] = img[used].reshape(-1, 4).mean(0)
+    Image.fromarray(np.clip(img, 0, 255).astype(np.uint8), 'RGBA').resize((R//2, R//2), Image.LANCZOS).save(f'{OUT}/{name}.tga')
+
+sc_num = {n: sc['num'] for n, sc in RALLY.items()}
+
 for n, c in PLAIN.items(): paint(n, c)
 paint('white', (232, 232, 236))
-for n, sc in RALLY.items(): paint(n, sc['body'], sc)
+for n in RALLY: nascar(n, LIVERIES[n])
 u = (np.random.RandomState(zlib.crc32(b'under') % 1000).rand(32, 32)*10 + 20).astype(np.uint8)
 Image.fromarray(np.dstack([u, u, u])).save(f'{OUT}/under.tga')
 print('ok')
