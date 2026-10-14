@@ -165,6 +165,16 @@ Changed:
 
 Fixed:
 
+- All cars: the tyres now stand on the ground. Most cars sank into the ground
+  (Camaro up to 2.4 units, GT-R 2.6, Skyline 1.4, Mini, Viper, Murcielago,
+  Mustang, Alpine), some floated above it (Macdaddy, Raptor, Sidepipe,
+  Roadster, Slingshot, Reaper). Each body.md3 is moved up or down as a whole so
+  its wheel tags sit at tyre radius - 16.2, the height at which the drawn wheel
+  matches the physics wheel (radius 8; cg_players.c draws it 8.2 above the
+  spring end). The old models are patched in place
+  (tools/carbuild/ground_fix.py), Skyline, GT-R and Mustang through their
+  build scripts.
+
 - "ERROR: Can't allocate streaming streamSource" on q3r_downtown (OpenAL): about 190
   looping crowd speakers also auto-triggered the same 16 s sample every few seconds and
   filled all sound sources, so the engine sounds of other cars dropped out and the error

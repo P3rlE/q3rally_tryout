@@ -13,6 +13,16 @@ BACKWARD = [[-1, 0, 0], [0, -1, 0], [0, 0, 1]]   # same as the other cars' turbo
 WL = [[0, 1, 0], [1, 0, 0], [0, 0, -1]]          # left wheels: wheel model +x points out of the car
 WR = [[0, -1, 0], [-1, 0, 0], [0, 0, -1]]        # right wheels
 
+# The physics puts the wheel centres one spring length below the body origin and
+# lets them touch the ground with WHEEL_RADIUS 8 (bg_physics.h); cgame draws a
+# wheel at its tag moved up by 8.2 - spring length (cg_players.c). A tyre of
+# radius r therefore stands on the ground when its tag is at Z = r - GROUND.
+GROUND = 16.2
+
+
+def wheel_tag_z(radius):
+    return radius - GROUND
+
 
 def tri_normal(pts):
     a, b, c = pts
@@ -26,13 +36,14 @@ def tri_normal(pts):
 class Builder:
     """collects one md3 surface; vertices are unique per (pos, normal, uv)"""
 
-    def __init__(self, name, shader):
+    def __init__(self, name, shader, offset=(0.0, 0.0, 0.0)):
+        self.offset = offset                       # added to every position when it is written
         self.s = md3.Surf()
         self.s.name, self.s.flags, self.s.shaders = name, 0, [(shader, 0)]
         self.s.tris, self.s.st, self.verts, self.idx = [], [], [], {}
 
     def vert(self, pos, n, uv):
-        q = [int(round(c * 64)) for c in pos]
+        q = [int(round((c + o) * 64)) for c, o in zip(pos, self.offset)]
         key = (tuple(q), md3.enc_normal(*n), round(uv[0], 5), round(uv[1], 5))
         if key not in self.idx:
             self.idx[key] = len(self.verts)

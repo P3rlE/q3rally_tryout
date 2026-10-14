@@ -17,14 +17,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, HERE)            # r34/layout.py before ../layout.py
 import obj
-from carlib import BACKWARD, ID, WL, WR, Builder, build_wheel, save, tri_normal
+from carlib import BACKWARD, ID, WL, WR, Builder, build_wheel, save, tri_normal, wheel_tag_z
 from layout import atlas, region, X0, X1, Y0, Y1, Z0, Z1
 
 SRC, OUT = sys.argv[1], sys.argv[2]
 P = 'models/players/skyline/'
 
 LENGTH = 112.0            # world units, like the other cars
-WHEEL_Z = -9.7            # wheel centre height of the other cars
+WHEEL_Z = -9.7            # wheel centre height the model is laid out at (paint atlas, decals)
 
 # material -> surface name; None = dropped
 SURF = {
@@ -63,6 +63,8 @@ tire = [V[c[0]] for (o, m), tris in G if o == WHEEL_SRC and m == TIRE_MTL for t 
 W_C = [(min(p[k] for p in tire) + max(p[k] for p in tire)) / 2 for k in range(3)]   # wheel centre (obj)
 W_R = (max(p[1] for p in tire) - min(p[1] for p in tire)) / 2 * S                    # tyre radius (world)
 CY = W_C[1] - WHEEL_Z / S
+# the written model is raised so the tyres stand on the ground (carlib.wheel_tag_z)
+LIFT = (0.0, 0.0, wheel_tag_z(W_R) - WHEEL_Z)
 
 
 def to_q3(p):
@@ -83,7 +85,7 @@ surfs = {}
 
 def surf(name, tex):
     if name not in surfs:
-        surfs[name] = Builder(name, P + tex + '.tga')
+        surfs[name] = Builder(name, P + tex + '.tga', LIFT)
     return surfs[name]
 
 
@@ -182,6 +184,7 @@ tags = [
     ('tag_rlite1', [ti[0] - 0.5, -ti[1], ti[2]], ID), ('tag_rlite2', [ti[0] - 0.5, ti[1], ti[2]], ID),
 ]
 
+tags = [(n, [o[0], o[1], o[2] + LIFT[2]], a) for n, o, a in tags]
 bmn, bmx, rad = save(os.path.join(OUT, 'body.md3'), P + 'body.md3',
                      [surfs[n].done() for n in ORDER if n in surfs], tags, b'skyline')
 print('scale %.2f  body bounds %s %s radius %.1f' % (S, [round(c, 1) for c in bmn], [round(c, 1) for c in bmx], rad))
