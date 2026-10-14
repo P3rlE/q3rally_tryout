@@ -81,8 +81,21 @@ for name, sel in (('fl', left & front), ('fr', ~left & front), ('rl', left & ~fr
     p = V[np.unique(tire_t[sel])]
     wheels[name] = ((p.min(0) + p.max(0)) / 2, (p.max(0)[1] - p.min(0)[1]) / 2, tire_t[sel])
 CY = np.mean([w[0][1] for w in wheels.values()]) - WHEEL_Z / S
-# the written model is raised so the tyres stand on the ground (carlib.wheel_tag_z)
-LIFT = (0.0, 0.0, wheel_tag_z(wheels['fl'][1] * S) - WHEEL_Z)
+
+# tyre for wheel.md3: the front left one, decimated (built at the end)
+c, r, tt = wheels['fl']
+
+
+def to_wheel(p):
+    # model x = out of the car (left wheel), y = forward, z = down (see WL)
+    return np.stack([(p[..., 0] - c[0]) * S, (p[..., 2] - c[2]) * S, -(p[..., 1] - c[1]) * S], -1)
+
+
+wv, wf = mesh.weld(to_wheel(V), tt)
+wv, wf = mesh.decimate(wv, wf, TIRE_TARGET)
+# the written model is raised so the tyres stand on the ground (carlib.wheel_tag_z);
+# measured on the decimated tyre, which is a little rounder than the source's bounds
+LIFT = (0.0, 0.0, wheel_tag_z(np.hypot(wv[:, 1], wv[:, 2]).max()) - WHEEL_Z)
 
 
 def to_q3(p):
@@ -247,16 +260,6 @@ for m, i in cell.items():
 Image.fromarray(pal).save(os.path.join(OUT, 'parts.tga'), compression='tga_rle')
 
 # ---------------- wheel ---------------------------------------------------------------------------
-c, r, tt = wheels['fl']
-
-
-def to_wheel(p):
-    # model x = out of the car (left wheel), y = forward, z = down (see WL)
-    return np.stack([(p[..., 0] - c[0]) * S, (p[..., 2] - c[2]) * S, -(p[..., 1] - c[1]) * S], -1)
-
-
-wv, wf = mesh.weld(to_wheel(V), tt)
-wv, wf = mesh.decimate(wv, wf, TIRE_TARGET)
 wn = mesh.corner_normals(wv, wf, 30.0)
 tire = [([tuple(wv[i]) for i in face], [tuple(n) for n in wn[f]]) for f, face in enumerate(wf)]
 open_out, open_in, wmn, wmx = build_wheel(tire, r * S, os.path.join(OUT, 'wheel.md3'), P + 'wheel.md3')

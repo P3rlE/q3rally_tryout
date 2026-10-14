@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); import md3
 SRC, WSRC, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 P = 'models/players/mustang/'
 DX = -626            # shift in 1/64 units: centres the body on the origin (-9.78 units)
+DZ = 42              # shift in 1/64 units: tyres on the ground (ground_fix.py, carlib.wheel_tag_z)
 
 from layout import *
 def paint_region(n):
@@ -56,7 +57,7 @@ m.name = P + 'body.md3'
 m.frames = m.frames[:1]; m.tags = m.tags[:1]
 for s in m.surfs:
     s.frames = s.frames[:1]
-    for v in s.frames[0]: v[0] += DX
+    for v in s.frames[0]: v[0] += DX; v[2] += DZ
 
 RENAME = {'tlights': 'ilights'}   # front indicators, not tail lights
 TEX = {'glass': 'glass', 'bumpers': 'chrome', 'body': 'red_main', 'roof': 'red_main', 'ldoor': 'red_main',
@@ -89,7 +90,7 @@ BACKWARD = [[-1, 0, 0], [0, -1, 0], [0, 0, 1]]          # same as the other cars
 WL = [[0, 1, 0], [1, 0, 0], [0, 0, -1]]                  # left wheels  (alpine convention)
 WR = [[0, -1, 0], [-1, 0, 0], [0, 0, -1]]                # right wheels
 FX, RX = 44.15 + DX/64, -21.65 + DX/64                   # wheel arch centres measured from the mesh
-WY, WZ = 18.25, -9.6
+WY, WZ = 18.25, -8.95                                     # tyre radius 7.25 - 16.2
 tags = [
     ('tag_wheelfl', [FX,  WY, WZ], WL), ('tag_wheelfr', [FX, -WY, WZ], WR),
     ('tag_wheelrl', [RX,  WY, WZ], WL), ('tag_wheelrr', [RX, -WY, WZ], WR),
@@ -101,7 +102,7 @@ tags = [
     ('tag_blite1',  [-54.4, -16.6, -0.5], ID), ('tag_blite2', [-54.4, 16.6, -0.5], ID),   # outer tail light bars
     ('tag_rlite1',  [-54.4, -13.5, -0.5], ID), ('tag_rlite2', [-54.4, 13.5, -0.5], ID),   # inner tail light bars
 ]
-m.tags = [[[n, list(o), copy.deepcopy(a)] for n, o, a in tags]]
+m.tags = [[[n, [o[0], o[1], o[2] + (0 if n.startswith('tag_wheel') else DZ/64)], copy.deepcopy(a)] for n, o, a in tags]]
 
 # ---------------- frame bounds ------------------------------------------------
 allp = [p for s in m.surfs for p in verts(s)]
