@@ -4,6 +4,14 @@ unreleased
 
 Added:
 
+- New car: Ridgeback (models/players/ridgeback), a lifted 1985 pickup with bull
+  bar, roll bar and light bar, from the project's "lightbody lifted 85" model:
+  everything visible from outside at full detail (22,889 triangles), chassis,
+  bed and lamps with the model's own textures, a 3,476 triangle wheel that keeps
+  the rim selection working. The light bar carries two extra headlights
+  (tag_hlite3/4). Skins red/blue/green/yellow and rally01/07/13/27/44/88 with
+  menu icons. Converter in tools/carbuild/ridgeback.
+
 - New car: GT-R (models/players/gtr), a Nissan GT-R (R35) from the project's own
   757,016 triangle model: only the parts visible from outside are kept (no
   interior or engine), decimated to a 100,007 triangle body and a 5,304 triangle

@@ -5,13 +5,14 @@ Decimation needs pyfqmr (pip install pyfqmr).
 import numpy as np
 
 
-def weld(P, T, eps=1e-5):
-    """merge vertices closer than eps; returns (verts, faces) without degenerate faces"""
+def weld(P, T, eps=1e-5, keep_mask=False):
+    """merge vertices closer than eps; returns (verts, faces) without degenerate faces,
+    plus the mask of the triangles of T that were kept if keep_mask is set"""
     q = np.round(P[T.reshape(-1)] / eps).astype(np.int64)
     uq, inv = np.unique(q, axis=0, return_inverse=True)
     faces = inv.reshape(-1, 3)
     ok = (faces[:, 0] != faces[:, 1]) & (faces[:, 1] != faces[:, 2]) & (faces[:, 0] != faces[:, 2])
-    return uq * eps, faces[ok]
+    return (uq * eps, faces[ok], ok) if keep_mask else (uq * eps, faces[ok])
 
 
 def decimate(verts, faces, target):
