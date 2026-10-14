@@ -95,6 +95,12 @@ Added:
 
 Changed:
 
+- Higher polygon limit for models (cars): a single model surface may now have up to
+  9999 vertices and 19999 triangles (was 999 / 1999), in both renderers and for MD3,
+  MDR and IQM (SHADER_MAX_VERTEXES 1000 -> 10000). Models above the old limit no
+  longer fail to load with "has more than 999 verts". Large per-vertex work arrays
+  in the renderers were moved off the stack.
+
 - Ghosts are only shown in Ghost Race. Other race modes no longer play back a
   personal or server base ghost (laps are still recorded for bot routes and the
   ladder); the HUD option "Ghost Playback" is only offered in Ghost Race and the
