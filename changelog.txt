@@ -4,6 +4,23 @@ unreleased
 
 Added:
 
+- Secret cars: Bountyhunter, Cutlass, Ridgeback, Mustang, GT500, Skyline and
+  GT-R unlock with the odd profile ranks (Street Newbie, Track Learner, Street
+  Racer, Pro Racer, Track Dominator, Racing Legend, Grand Champion), between
+  the secret paints. Locked cars stay in the showroom after the regular cars,
+  dimmed with a padlock and the rank that unlocks them; they can't be chosen,
+  customised or loaded from a saved setup, and a locked car in the model cvars
+  falls back to the default car. The lock is in the menu only: bots and
+  servers use every car (uiSecretCars in q3_ui/ui_rally_profiles.c). A car
+  picked in the showroom starts with its own default paint where it has no red
+  one (Bountyhunter: sheriff).
+
+- Secret paints for the new cars: Retro, Camo, Carbon, Chrome, Neon, Hot Rod
+  and Gold for Mustang, Skyline, GT-R, Ridgeback, Cutlass, GT500 and
+  Bountyhunter in zz_secret_skins.pk3, with tint, glow and flame stages and
+  menu icons like on the original cars. Generator in
+  tools/carbuild/secret_paints.py.
+
 - New car: GT500 (models/players/gt500), a Shelby GT500 with rear wing from the
   project's own 348,009 triangle model: only the parts visible from outside are
   kept (no interior, engine or most of the suspension, 57,799 triangles), panels

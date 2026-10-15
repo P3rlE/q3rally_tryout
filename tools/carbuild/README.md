@@ -168,3 +168,33 @@ python3 gt500/build_model.py upload.fbx $D /tmp/gt500_cache
 python3 gt500/gen_textures.py $D
 # icons as for the Skyline (render3d.py with Q3R_FIT=1, rim svt_cobra)
 ```
+
+## Secret paints of the new cars
+
+The 13 original cars carry seven secret paints in `baseq3r/zz_secret_skins.pk3`
+(Retro, Camo, Carbon, Chrome, Neon, Hot Rod, Gold; unlocked by the profile
+rank, see `uiSecretSkins` in `q3_ui/ui_rally_profiles.c`). `secret_paints.py`
+makes the same seven paints for the cars built here.
+
+The patterns are painted in world space: the projection cars get the world
+position of every texel from their atlas layout, the Bountyhunter from its
+body surface rasterised in texture space, so stripes and camouflage run on
+across the atlas seams. The plain red atlas (the Bountyhunter: `sheriff_main`)
+is the reference: its red is paint, everything else (panel gaps, grilles,
+markers, rust, the underside patch) is kept, and the brightness of the red
+carries the shading over. Chrome and Gold get a tint texture for the
+reflection, Neon a pulsing glow, Hot Rod six flame frames, as on the old cars;
+the icons get the star badge of the matching Sidepipe icon.
+
+```sh
+cd tools/carbuild
+# badges: the secret icons of the Sidepipe, e.g. unpacked from the pk3
+unzip ../../baseq3r/zz_secret_skins.pk3 'models/players/sidepipe/icon_*' -d /tmp/sec
+Q3R_BADGES=/tmp/sec/models/players/sidepipe python3 secret_paints.py ../../baseq3r /tmp/secret_new
+# Q3R_NO_ICONS=1 skips the (slow) icon renders; car names limit the run: ... /tmp/secret_new gtr
+python3 merge_secret_pk3.py ../../baseq3r/zz_secret_skins.pk3 /tmp/secret_new
+```
+
+`merge_secret_pk3.py` adds the files to the pk3 and appends
+`scripts/cars_secret_newcars.shader` to `scripts/cars_secret.shader` inside
+it (shaders of an earlier run are replaced).
