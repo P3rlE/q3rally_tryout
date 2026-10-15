@@ -4,6 +4,13 @@ unreleased
 
 Added:
 
+- New car: Cutlass (models/players/cutlass), a 1971 Oldsmobile Cutlass Supreme
+  sedan from the project's model: everything visible from outside at full detail
+  (35,372 triangles), chrome bumpers and mouldings, the original lamps, all four
+  headlights lit (tag_hlite1-4), a 5,303 triangle wheel that keeps the rim
+  selection working. Skins red/blue/green/yellow and rally01/07/13/27/44/88 with
+  menu icons. Converter in tools/carbuild/cutlass.
+
 - New car: Ridgeback (models/players/ridgeback), a lifted 1985 pickup with bull
   bar, roll bar and light bar, from the project's "lightbody lifted 85" model:
   everything visible from outside at full detail (22,889 triangles), chassis,
