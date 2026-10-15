@@ -8,9 +8,9 @@ to the size of the other cars, normals with a crease angle, tags. The lamps
 are painted into the texture, so the light, plate and exhaust tags are found
 by looking up where the painted parts sit on the model (uv -> 3d).
 
-The wheel keeps its own painted rusty steel rim and white-wall tyre: it
-carries tag_polygonwheel, which tells cgame to draw it with its own textures
-instead of the selected rim skin.
+The wheel is a tyre turned on a lathe from the source wheel's outline with
+the shared tread and rim textures, so the rim selection works like on the
+other cars.
 
 3ds axes: x = width (+x is the car's left), y = length (front at -y), z = up.
 Q3 axes:  X = forward, Y = left, Z = up.
@@ -24,7 +24,7 @@ import numpy as np
 from PIL import Image
 import mesh
 import tds
-from carlib import BACKWARD, ID, WL, WR, Builder, save, snap_lights, tri_normal, wheel_tag_z
+from carlib import BACKWARD, ID, WL, WR, Builder, build_wheel, save, snap_lights, tri_normal, wheel_tag_z
 
 SRC, TEX_DIR, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 P = 'models/players/bountyhunter/'
@@ -155,8 +155,14 @@ print('scale %.4f  body bounds %s %s radius %.1f' % (S, [round(v, 1) for v in bm
 for n, o, a in tags:
     print('  %-12s %s' % (n, [round(v, 2) for v in o]))
 
-# ---------------- wheel: the front left one, its own textures ----------------------------------
+# ---------------- wheel: the shared rim selection ------------------------------------------------
+# The source wheel is a low-poly cylinder with the rim painted on. The tyre is
+# turned on a lathe from its outline (tread, the bevel on the outer side) with
+# sidewalls down to a rim opening of RIM_OPEN x the radius; build_wheel maps the
+# shared tread and rim textures onto it, so every rim of the game fits.
 c, r, t = wheels['fl']
+TIRE_SEG = 48
+RIM_OPEN = 0.78
 
 
 def to_wheel(p):
@@ -165,19 +171,27 @@ def to_wheel(p):
     return np.stack([(q[..., 1] - c[1]) * S, (q[..., 0] - c[0]) * S, -(q[..., 2] - c[2]) * S], -1)
 
 
-WV = to_wheel(V)
-T = np.array([[x[0] for x in tr] for tr in t])
-verts, faces, kept = mesh.weld(WV, T, keep_mask=True)
-cn = mesh.corner_normals(verts, faces, 35.0)
-wb = Builder('w_body', P + 'wheel.tga')
-for tri, ns in zip(np.array(t)[kept], cn):
-    pts = [tuple(WV[x[0]]) for x in tri]
-    uvs = [(VT[x[1]][0], 1 - VT[x[1]][1]) for x in tri]
-    wb.tri([wb.vert(pts[k], tuple(ns[k]), uvs[k]) for k in range(3)])
-wmn, wmx, _ = save(os.path.join(OUT, 'wheel.md3'), P + 'wheel.md3', [wb.done()],
-                   [('tag_polygonwheel', [0.0, 0.0, 0.0], ID)], b'wheel')
-print('wheel radius %.2f, bounds %s %s' % (r * S, [round(v, 2) for v in wmn], [round(v, 2) for v in wmx]))
+wp = to_wheel(V[np.unique([x[0] for tr in t for x in tr])])
+wx, wr = wp[:, 0], np.hypot(wp[:, 1], wp[:, 2])
+XI, XO = wx.min(), wx.max()                                     # inner and outer face
+tread_out = wx[np.isclose(wr, R, atol=1e-3)].max()              # where the bevel starts
+bevel_r = wr[np.isclose(wx, XO, atol=1e-3)].max()
+shoulder = (XO - XI) * 0.06
+outline = [(XI, R * RIM_OPEN), (XI, R - shoulder), (XI + shoulder, R), (tread_out, R),
+           (XO, bevel_r), (XO, R * RIM_OPEN)]
+ang = 2 * np.pi * np.arange(TIRE_SEG) / TIRE_SEG
+wv = np.array([(x, rr * np.cos(a_), rr * np.sin(a_)) for x, rr in outline for a_ in ang])
+wf = []
+for i in range(len(outline) - 1):
+    for j in range(TIRE_SEG):
+        a0, b0 = i * TIRE_SEG + j, i * TIRE_SEG + (j + 1) % TIRE_SEG
+        wf += [(a0, b0 + TIRE_SEG, a0 + TIRE_SEG), (a0, b0, b0 + TIRE_SEG)]   # counter-clockwise seen from outside
+wf = np.array(wf)
+wn = mesh.corner_normals(wv, wf, 30.0)
+tire = [([tuple(wv[i]) for i in face], [tuple(n) for n in wn[f]]) for f, face in enumerate(wf)]
+open_out, open_in, wmn, wmx = build_wheel(tire, R, os.path.join(OUT, 'wheel.md3'), P + 'wheel.md3')
+print('wheel radius %.2f, opening out %.2f in %.2f, bounds %s %s'
+      % (R, open_out, open_in, [round(v, 2) for v in wmn], [round(v, 2) for v in wmx]))
 
 # ---------------- source textures ----------------------------------------------------------------
 Image.open(os.path.join(TEX_DIR, 'sferiffi.jpg')).convert('RGB').save(os.path.join(OUT, 'parts.tga'), compression='tga_rle')
-Image.open(os.path.join(TEX_DIR, 'sferiff.jpg')).convert('RGB').save(os.path.join(OUT, 'wheel.tga'), compression='tga_rle')

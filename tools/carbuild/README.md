@@ -136,8 +136,9 @@ python3 tagview.py $D red /tmp/cutlass_tags.png   # check the light tags
 `PoliceCar.3DS` + `sferiff.jpg`/`sferiffi.jpg` (not in the repo; `tds.py` reads
 .3ds files). The car keeps its geometry and painted textures; the lamp, plate
 and exhaust tags are placed where the painted parts sit on the model (uv -> 3d).
-The wheel keeps its own texture: `tag_polygonwheel` in wheel.md3 makes cgame
-skip the rim skin. The extra liveries recolour only the unsaturated paint.
+The wheel is a tyre turned from the source wheel's outline with the shared
+tread and rim textures (`carlib.build_wheel`), so the rim selection works. The
+extra liveries recolour only the unsaturated paint.
 
 ```sh
 cd tools/carbuild
