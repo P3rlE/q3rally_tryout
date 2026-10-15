@@ -42,6 +42,9 @@ def surfaces(m, skin, xf):
 
 body = md3.load(CARDIR + '/body.md3'); wheel = md3.load(CARDIR + '/wheel.md3')
 skin = load_skin(f'{CARDIR}/{SKIN}.skin'); wskin = load_skin(f'{ROOT}models/players/wheels/{WSKIN}.skin')
+if wheel.tags and any(t[0] == 'tag_polygonwheel' for t in wheel.tags[0]):
+    # like cgame: a wheel with tag_polygonwheel keeps its own textures, not the rim skin
+    wskin = {s.name.lower(): s.shaders[0][0] for s in wheel.surfs}
 items = surfaces(body, skin, lambda V, N: (V, N))
 for n, o, ax in body.tags[0]:
     if n.startswith('tag_wheel'):

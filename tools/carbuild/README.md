@@ -129,3 +129,19 @@ python3 cutlass/build_model.py <zip>/source/cutlass-sketchfab.fbx <zip>/textures
 python3 cutlass/gen_textures.py $D
 python3 tagview.py $D red /tmp/cutlass_tags.png   # check the light tags
 ```
+
+## Bountyhunter – 3DS, original low-poly model
+
+`bountyhunter/` builds `baseq3r/models/players/bountyhunter/` from the project's
+`PoliceCar.3DS` + `sferiff.jpg`/`sferiffi.jpg` (not in the repo; `tds.py` reads
+.3ds files). The car keeps its geometry and painted textures; the lamp, plate
+and exhaust tags are placed where the painted parts sit on the model (uv -> 3d).
+The wheel keeps its own texture: `tag_polygonwheel` in wheel.md3 makes cgame
+skip the rim skin. The extra liveries recolour only the unsaturated paint.
+
+```sh
+cd tools/carbuild
+D=../../baseq3r/models/players/bountyhunter
+python3 bountyhunter/build_model.py <zip>/PoliceCar.3DS <zip> $D
+python3 bountyhunter/gen_textures.py <zip> $D
+```
