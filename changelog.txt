@@ -4,6 +4,14 @@ unreleased
 
 Added:
 
+- New car: GT500 (models/players/gt500), a Shelby GT500 with rear wing from the
+  project's own 348,009 triangle model: only the parts visible from outside are
+  kept (no interior, engine or most of the suspension, 57,799 triangles), panels
+  wound inside out in the source turned round, badges and lettering left out, a
+  lathe-turned 1,792 triangle tyre that keeps the rim selection working. Skins
+  red/blue/green/yellow and rally01/07/13/27/44/88 with menu icons. Needs the
+  raised polygon limit. Converter in tools/carbuild/gt500.
+
 - New car: Bountyhunter (models/players/bountyhunter), a rusty sheriff muscle
   car with a blower V8 through the bonnet, from the project's PoliceCar.3DS:
   original low-poly model and hand-painted textures, its own rusty steel wheels

@@ -145,3 +145,24 @@ D=../../baseq3r/models/players/bountyhunter
 python3 bountyhunter/build_model.py <zip>/PoliceCar.3DS <zip> $D
 python3 bountyhunter/gen_textures.py <zip> $D
 ```
+
+## GT500 – FBX with culling, without textures
+
+`gt500/` builds `baseq3r/models/players/gt500/` from the project's Shelby GT500
+model (`upload.fbx`, 348,009 triangles with interior, engine and suspension;
+not in the repo), the same way as the GT-R: only what is visible from outside
+is kept, the paint gets the projection atlas, the other parts a colour
+palette, the wheel the shared rim textures. The visible part fits the budget,
+so nothing is decimated except the tyre. The source's ground plane is left out
+before culling, the manufacturer badges and lettering are dropped, and panels
+wound inside out in the source (the top of the front wings) are turned the
+right way round with `cull.visible_facing`.
+
+```sh
+pip install pyfqmr
+cd tools/carbuild
+D=../../baseq3r/models/players/gt500
+python3 gt500/build_model.py upload.fbx $D /tmp/gt500_cache
+python3 gt500/gen_textures.py $D
+# icons as for the Skyline (render3d.py with Q3R_FIT=1, rim svt_cobra)
+```
