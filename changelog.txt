@@ -14,8 +14,9 @@ Added:
 
 - New car: Bountyhunter (models/players/bountyhunter), a rusty sheriff muscle
   car with a blower V8 through the bonnet, from the project's PoliceCar.3DS:
-  original low-poly model and hand-painted textures, its own rusty steel wheels
-  (no rim selection, tag_polygonwheel). Skins sheriff (original), highway,
+  original low-poly model and hand-painted textures, a tyre turned from the
+  source wheel's outline that takes every rim of the rim selection. Skins
+  sheriff (original), highway,
   redline, desert and ghost, recoloured from the original so rust and details
   stay. Converter in tools/carbuild/bountyhunter (with a 3ds reader, tds.py).
 
