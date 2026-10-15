@@ -15,8 +15,9 @@ body.md3, wheel.md3, parts.tga
     - the source has no textures: the paint gets a five-sided projection
       atlas, the other parts their material colours from a palette
       (parts.tga), lamp colours brightened
-    - wheel: the source tyre decimated to 3,000 triangles with UVs for the
-      shared Q3Rally rim and tread textures, the rim opening closed with a
+    - wheel: a tyre turned on a lathe from the outline of the source tyre
+      (1,792 triangles) with UVs for the shared Q3Rally rim and tread
+      textures, the rim opening closed with a
       dished disc; the modelled rims and brakes are not used
     - tags for wheels, lights, plate, exhaust, roof and bonnet
 

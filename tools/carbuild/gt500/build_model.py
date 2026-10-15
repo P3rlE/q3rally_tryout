@@ -5,9 +5,9 @@ usage: build_model.py <upload.fbx> <outdir> [cachedir]
 The source (348,009 triangles, a Shelby GT500 with roll cage and supercharger)
 carries a full interior, engine and suspension. Only what
 can be seen from outside is kept (cull.py; the result is cached in cachedir
-because it takes a while), then every material is decimated on its own to a
-total of about TARGET triangles with its borders kept in place, so parts do
-not separate. The source has no textures: the paint gets the projection atlas
+because it takes a while). More than TARGET visible triangles would be
+decimated per material with the borders kept in place; this model stays
+below it. The tyre is turned on a lathe from the source tyre's outline. The source has no textures: the paint gets the projection atlas
 of layout.py, all other parts take their material colour from a palette.
 
 Requires pyfqmr (pip install pyfqmr).

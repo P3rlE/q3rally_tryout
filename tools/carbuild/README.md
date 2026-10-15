@@ -153,7 +153,8 @@ model (`upload.fbx`, 348,009 triangles with interior, engine and suspension;
 not in the repo), the same way as the GT-R: only what is visible from outside
 is kept, the paint gets the projection atlas, the other parts a colour
 palette, the wheel the shared rim textures. The visible part fits the budget,
-so nothing is decimated except the tyre. The source's ground plane is left out
+so nothing is decimated; the tyre, whose separate tread blocks do not
+decimate, is turned on a lathe from the source tyre's outline. The source's ground plane is left out
 before culling, the manufacturer badges and lettering are dropped, and panels
 wound inside out in the source (the top of the front wings) are turned the
 right way round with `cull.visible_facing`.
