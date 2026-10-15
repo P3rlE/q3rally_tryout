@@ -180,6 +180,11 @@ Changed:
 
 Fixed:
 
+- Gravelord and Gremlin did not load on Linux (or any case-sensitive file
+  system): their model was body.MD3, the game asks for body.md3, so players
+  got the default car. Renamed to body.md3; their tyres now also stand on the
+  ground like the other cars' (missed by the earlier fix because of the name).
+
 - Skyline, GT-R, Ridgeback: the light glows sat in the wrong place, mostly at
   the edges of the lamps or beside the car. The light tags were inside the
   lamp housings (GT-R headlights on the reflectors behind the lenses), so the
