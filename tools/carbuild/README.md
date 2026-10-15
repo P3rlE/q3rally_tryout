@@ -113,3 +113,19 @@ python3 ground_fix.py --dry-run $D          # reports "ok"
 ```
 
 `ground_fix.py` puts the tyres of any car on the ground (see `carlib.wheel_tag_z`).
+
+## Cutlass – FBX with textures
+
+`cutlass/` builds `baseq3r/models/players/cutlass/` from the project's
+`cutlass-sketchfab.fbx` + `textures/` (not in the repo), like the Ridgeback:
+all visible triangles of the body, the wheel decimated to 3,000 triangles
+(needs pyfqmr), chrome and glass with the shared textures, mouldings and lamps
+with their own.
+
+```sh
+cd tools/carbuild
+D=../../baseq3r/models/players/cutlass
+python3 cutlass/build_model.py <zip>/source/cutlass-sketchfab.fbx <zip>/textures $D /tmp/cl_cache
+python3 cutlass/gen_textures.py $D
+python3 tagview.py $D red /tmp/cutlass_tags.png   # check the light tags
+```
