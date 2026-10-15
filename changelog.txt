@@ -4,6 +4,13 @@ unreleased
 
 Added:
 
+- New car: Bountyhunter (models/players/bountyhunter), a rusty sheriff muscle
+  car with a blower V8 through the bonnet, from the project's PoliceCar.3DS:
+  original low-poly model and hand-painted textures, its own rusty steel wheels
+  (no rim selection, tag_polygonwheel). Skins sheriff (original), highway,
+  redline, desert and ghost, recoloured from the original so rust and details
+  stay. Converter in tools/carbuild/bountyhunter (with a 3ds reader, tds.py).
+
 - New car: Cutlass (models/players/cutlass), a 1971 Oldsmobile Cutlass Supreme
   sedan from the project's model: everything visible from outside at full detail
   (35,372 triangles), chrome bumpers and mouldings, the original lamps, all four
@@ -179,6 +186,11 @@ Changed:
   16+, koth 22, ghost 8).
 
 Fixed:
+
+- Gravelord and Gremlin did not load on Linux (or any case-sensitive file
+  system): their model was body.MD3, the game asks for body.md3, so players
+  got the default car. Renamed to body.md3; their tyres now also stand on the
+  ground like the other cars' (missed by the earlier fix because of the name).
 
 - Skyline, GT-R, Ridgeback: the light glows sat in the wrong place, mostly at
   the edges of the lamps or beside the car. The light tags were inside the
