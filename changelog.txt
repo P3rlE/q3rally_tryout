@@ -15,6 +15,11 @@ Added:
   picked in the showroom starts with its own default paint where it has no red
   one (Bountyhunter: sheriff).
 
+- Bots drive the secret cars too: Steve (Bountyhunter), Dean (Cutlass), Tobias
+  (Ridgeback), Bee (Mustang), Carla (GT500), Alexandra (Skyline) and Ivan (GT-R),
+  taken from cars that had several drivers; every original car keeps at least
+  one bot.
+
 - Secret paints for the new cars: Retro, Camo, Carbon, Chrome, Neon, Hot Rod
   and Gold for Mustang, Skyline, GT-R, Ridgeback, Cutlass, GT500 and
   Bountyhunter in zz_secret_skins.pk3, with tint, glow and flame stages and
