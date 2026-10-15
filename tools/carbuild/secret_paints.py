@@ -4,7 +4,7 @@ usage: secret_paints.py <baseq3r dir> <outdir> [car ...]
 
 The 13 original cars got their secret paints in zz_secret_skins.pk3; this
 script makes the same seven paints for the cars built with carbuild
-(Mustang, Skyline, GT-R, Ridgeback, Cutlass, GT500, Bountyhunter). It writes
+(Mustang, Skyline, GT-R, Ridgeback, Cutlass, GT500, DB12, Bountyhunter). It writes
 into <outdir>, laid out like the pk3:
 
   models/players/<car>/<paint>_main.tga      paint atlas
@@ -63,6 +63,7 @@ CARS = {
     'ridgeback': ('ridgeback/layout.py', 'ridgeback/gen_textures.py', 'amg_163'),
     'cutlass': ('cutlass/layout.py', 'cutlass/gen_textures.py', 'amg_163'),
     'gt500': ('gt500/layout.py', 'gt500/gen_textures.py', 'svt_cobra'),
+    'db12': ('db12/layout.py', 'db12/gen_textures.py', 'amg_163'),
     'bountyhunter': (None, None, 'amg_163'),
 }
 # Bountyhunter: world-space decal positions (it has no atlas layout)

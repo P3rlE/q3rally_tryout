@@ -198,3 +198,29 @@ python3 merge_secret_pk3.py ../../baseq3r/zz_secret_skins.pk3 /tmp/secret_new
 `merge_secret_pk3.py` adds the files to the pk3 and appends
 `scripts/cars_secret_newcars.shader` to `scripts/cars_secret.shader` inside
 it (shaders of an earlier run are replaced).
+
+## DB12 – OBJ with culling and decimation
+
+`db12/` builds `baseq3r/models/players/db12/` from `Aston Martin DB12 2024.obj`
+(1,859,182 triangles with interior, brakes and very detailed wheels; not in the
+repo; `db12/objnp.py` reads the OBJ into numpy arrays and caches them). Like the
+GT-R: the wheels are dropped (shared rims, lathe-turned tyre), badges, plates,
+the lamp lenses and the inner window glass are left out of the culling (the
+lenses are one glass shell over all lamps, so the lamps behind them count as
+visible), the rest is decimated to about 106,000 triangles. Black trim that
+culling cut into many bordered pieces is decimated a second time with moving
+borders. The source's textures are ambient-occlusion maps; the parts take their
+material colour (or the flat colour texture) from a palette.
+
+`cull.py` works through the triangles in blocks (bounded memory) and takes
+`views=` so `db12/build_model.py` can split the 81 views over CULL_JOBS
+processes (default 2; ~1 h with two cores).
+
+```sh
+pip install pyfqmr
+cd tools/carbuild
+D=../../baseq3r/models/players/db12
+python3 db12/build_model.py "<zip>/Aston Martin DB12 2024.obj" $D /tmp/db12_cache
+python3 db12/gen_textures.py $D
+# icons as for the Skyline (render3d.py with Q3R_FIT=1, rim amg_163)
+```

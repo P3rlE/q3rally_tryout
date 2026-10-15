@@ -64,11 +64,13 @@ def visible(V, T, up=1, res=1024, progress=None):
     return visible_facing(V, T, up, res, progress)[0]
 
 
-def visible_facing(V, T, up=1, res=1024, progress=None):
+def visible_facing(V, T, up=1, res=1024, progress=None, views=None):
     """like visible(), plus the side each triangle is seen from: the number of
     samples where it is the nearest surface with its front (counter-clockwise
     side) towards the camera minus those showing its back. A negative count on a
-    closed outer surface means the triangle's winding is flipped in the source."""
+    closed outer surface means the triangle's winding is flipped in the source.
+    views: indices of the directions to render (all by default), so the work can
+    be split over processes and the results combined (seen: or, facing: sum)."""
     V = np.asarray(V, float)
     T = np.asarray(T, int)
     P = V[T]                                            # tris x 3 x 3
@@ -80,21 +82,33 @@ def visible_facing(V, T, up=1, res=1024, progress=None):
     dirs = _directions()
     rel = (P - centre).astype(np.float32)
     normal = np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0])
+    chunk = 150000                                      # triangles per block: bounds the sample memory
     for n, d in enumerate(dirs):
+        if views is not None and n not in views:
+            continue
         u, v = _basis(d, up)
         px = np.stack([rel @ u.astype(np.float32), rel @ v.astype(np.float32)], -1) * np.float32(scale) + res / 2
         depth = rel @ np.asarray(d, np.float32)         # larger = nearer to the camera
-        ids, bc = _samples(px)
-        bc = bc.astype(np.float32)
-        sx = np.einsum('nk,nkc->nc', bc, px[ids])
-        sd = np.einsum('nk,nk->n', bc, depth[ids])
-        pix = np.clip(sx[:, 1].astype(np.int64), 0, res - 1) * res + np.clip(sx[:, 0].astype(np.int64), 0, res - 1)
-        del sx, bc
         zbuf = np.full(res * res, -np.inf, np.float32)
-        np.maximum.at(zbuf, pix, sd)                    # z-buffer: nearest depth per pixel
-        win = ids[sd >= zbuf[pix]]
-        seen[win] = True
-        np.add.at(facing, win, np.where(normal[win] @ np.asarray(d) > 0, 1, -1))
+        blocks, total = [], 0
+        for c0 in range(0, len(T), chunk):
+            ids, bc = _samples(px[c0:c0 + chunk])
+            bc = bc.astype(np.float32)
+            ids = ids.astype(np.int32) + c0
+            sx = np.einsum('nk,nkc->nc', bc, px[ids])
+            sd = np.einsum('nk,nk->n', bc, depth[ids])
+            del bc
+            pix = (np.clip(sx[:, 1].astype(np.int32), 0, res - 1) * res
+                   + np.clip(sx[:, 0].astype(np.int32), 0, res - 1))
+            del sx
+            np.maximum.at(zbuf, pix, sd)                # z-buffer: nearest depth per pixel
+            blocks.append((ids, pix, sd))
+            total += len(ids)
+        for ids, pix, sd in blocks:
+            win = ids[sd >= zbuf[pix]]
+            seen[win] = True
+            np.add.at(facing, win, np.where(normal[win] @ np.asarray(d) > 0, 1, -1))
+        del blocks
         if progress:
-            progress(n + 1, len(dirs), len(ids), int(seen.sum()))
+            progress(n + 1, len(dirs), total, int(seen.sum()))
     return seen, facing

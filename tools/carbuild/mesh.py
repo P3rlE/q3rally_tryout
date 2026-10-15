@@ -15,15 +15,16 @@ def weld(P, T, eps=1e-5, keep_mask=False):
     return (uq * eps, faces[ok], ok) if keep_mask else (uq * eps, faces[ok])
 
 
-def decimate(verts, faces, target):
+def decimate(verts, faces, target, keep_border=True):
     """quadric edge collapse down to about target faces; open borders stay where they are,
-    so parts that meet other parts along a border do not open up gaps"""
+    so parts that meet other parts along a border do not open up gaps (keep_border=False
+    lets them move too, for parts whose holes left by culling are mostly border)"""
     if len(faces) <= target:
         return verts, faces
     import pyfqmr
     s = pyfqmr.Simplify()
     s.setMesh(np.ascontiguousarray(verts, np.float64), np.ascontiguousarray(faces, np.int32))
-    s.simplify_mesh(target_count=int(target), aggressiveness=7, preserve_border=True, verbose=False)
+    s.simplify_mesh(target_count=int(target), aggressiveness=7, preserve_border=bool(keep_border), verbose=False)
     v, f, _ = s.getMesh()
     return np.asarray(v, float), np.asarray(f, int)
 
