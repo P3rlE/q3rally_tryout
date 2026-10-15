@@ -213,6 +213,15 @@ Changed:
 
 Fixed:
 
+- Crash to desktop in both renderers when a shader was registered in the
+  middle of a frame (e.g. a paint icon in the showroom, browsing from a secret
+  car back to the regular cars): FixRenderCommandList walked on past the
+  commands of the current frame into the leftovers of the previous one and
+  read garbage as draw surfaces. It now stops at the end of the used part.
+
+- Menus: hidden items (other tabs) no longer catch the mouse cursor, so the
+  left arrow of the vehicle showroom can be clicked again.
+
 - Gravelord and Gremlin did not load on Linux (or any case-sensitive file
   system): their model was body.MD3, the game asks for body.md3, so players
   got the default car. Renamed to body.md3; their tyres now also stand on the
