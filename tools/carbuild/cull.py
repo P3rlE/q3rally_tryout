@@ -1,6 +1,7 @@
 """Keep only the triangles that can be seen from outside the car.
 
 visible(V, T, up=1, res=1024) -> bool array, one entry per triangle
+visible_facing(...) -> (that array, the side each triangle is seen from)
 
 The mesh is rendered orthographically from a ring of directions around the
 car (elevations from straight above down to slightly below the sills, not
@@ -60,6 +61,14 @@ def _samples(tri_px):
 
 
 def visible(V, T, up=1, res=1024, progress=None):
+    return visible_facing(V, T, up, res, progress)[0]
+
+
+def visible_facing(V, T, up=1, res=1024, progress=None):
+    """like visible(), plus the side each triangle is seen from: the number of
+    samples where it is the nearest surface with its front (counter-clockwise
+    side) towards the camera minus those showing its back. A negative count on a
+    closed outer surface means the triangle's winding is flipped in the source."""
     V = np.asarray(V, float)
     T = np.asarray(T, int)
     P = V[T]                                            # tris x 3 x 3
@@ -67,8 +76,10 @@ def visible(V, T, up=1, res=1024, progress=None):
     radius = np.linalg.norm(V.max(0) - V.min(0)) / 2
     scale = res / (2 * radius)
     seen = np.zeros(len(T), bool)
+    facing = np.zeros(len(T), np.int64)
     dirs = _directions()
     rel = (P - centre).astype(np.float32)
+    normal = np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0])
     for n, d in enumerate(dirs):
         u, v = _basis(d, up)
         px = np.stack([rel @ u.astype(np.float32), rel @ v.astype(np.float32)], -1) * np.float32(scale) + res / 2
@@ -81,7 +92,9 @@ def visible(V, T, up=1, res=1024, progress=None):
         del sx, bc
         zbuf = np.full(res * res, -np.inf, np.float32)
         np.maximum.at(zbuf, pix, sd)                    # z-buffer: nearest depth per pixel
-        seen[ids[sd >= zbuf[pix]]] = True
+        win = ids[sd >= zbuf[pix]]
+        seen[win] = True
+        np.add.at(facing, win, np.where(normal[win] @ np.asarray(d) > 0, 1, -1))
         if progress:
             progress(n + 1, len(dirs), len(ids), int(seen.sum()))
-    return seen
+    return seen, facing
