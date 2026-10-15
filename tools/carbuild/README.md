@@ -207,9 +207,15 @@ repo; `db12/objnp.py` reads the OBJ into numpy arrays and caches them). Like the
 GT-R: the wheels are dropped (shared rims, lathe-turned tyre), badges, plates,
 the lamp lenses and the inner window glass are left out of the culling (the
 lenses are one glass shell over all lamps, so the lamps behind them count as
-visible), the rest is decimated to about 106,000 triangles. Black trim that
-culling cut into many bordered pieces is decimated a second time with moving
-borders. The source's textures are ambient-occlusion maps; the parts take their
+visible). Parts seen only through narrow openings (grille, gills, vents, lamp
+housings) are missed by the culling at its resolution and kept whole
+(`KEEP_ALL`), otherwise the openings show the background. The paint keeps about
+a third of its triangles, the rest shares what is left of about 117,000. Black
+trim that culling cut into many bordered pieces is decimated a second time with
+moving borders, and the palette parts are drawn two-sided (`cull none` in
+cars.shader), so slats and lips seen from behind do not vanish. `render3d.py`
+with Q3R_CULL=1 draws like the game (no back faces; Q3R_TWOSIDED=parts exempts
+two-sided textures), which shows such holes. The source's textures are ambient-occlusion maps; the parts take their
 material colour (or the flat colour texture) from a palette.
 
 `cull.py` works through the triangles in blocks (bounded memory) and takes

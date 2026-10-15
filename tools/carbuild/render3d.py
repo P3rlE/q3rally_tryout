@@ -93,7 +93,12 @@ for V, Nn, ST, T, TX, tp in items:
         n = pw @ Nn[[a, b, c]]; n /= np.linalg.norm(n, axis=-1, keepdims=True)+1e-9
         p = pw @ V[[a, b, c]]
         vdir = p - CAM; vdir /= np.linalg.norm(vdir, axis=-1, keepdims=True)
-        if (n*vdir).sum(-1).mean() > 0.2: n = -n            # two sided safety
+        if os.environ.get('Q3R_CULL') and not any(k and k in tp for k in os.environ.get('Q3R_TWOSIDED', '').split(',')):
+            # like the game: faces seen from behind are not drawn (md3 faces are clockwise)
+            fn = np.cross(V[b] - V[a], V[c] - V[a])
+            if fn @ (V[a] - CAM) < 0:
+                continue
+        elif (n*vdir).sum(-1).mean() > 0.2: n = -n            # two sided safety
         diff = np.clip(n @ L, 0, 1)[..., None]
         rgb = texel[..., :3]*(0.42 + 0.68*diff)
         if reflective:

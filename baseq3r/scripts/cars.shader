@@ -6582,3 +6582,12 @@ models/players/db12/chrome
 		rgbGen lightingdiffuse
 	}
 }
+
+models/players/db12/parts
+{
+	cull none
+	{
+		map models/players/db12/parts.tga
+		rgbGen lightingdiffuse
+	}
+}

@@ -10,8 +10,9 @@ body.md3, wheel.md3, parts.tga
     Changes for Q3Rally (tools/carbuild/db12):
     - only the triangles visible from outside are kept (cull.py): the
       interior, the brakes and the inner glass of the source are left out;
-      317,243 of 1,859,182 triangles remain, decimated to about 106,000
-      (mesh.py, pyfqmr)
+      the parts seen only through narrow openings (grille, the gills behind
+      the front wheels, vents, lamps) are kept whole; 568,654 of 1,859,182
+      triangles remain, decimated to about 117,000 (mesh.py, pyfqmr)
     - scaled to the size of the other cars and centred on the origin
     - manufacturer badges and lettering, the number plates and their holders
       left out (the game draws its own plate)

@@ -58,6 +58,14 @@ TIRE = 'Material_#18'
 LENSES = ('UId09',)              # one glass shell over all lamps: clear, so the lamps behind it count
 INNER_GLASS = ('vidrio-interior',)   # the windows' inner face, a second layer behind the outer glass
 JOBS = int(os.environ.get('CULL_JOBS', '2'))
+# parts seen only through narrow openings (grille slats, the gills behind the front
+# wheels, the hood vents, the lamps behind their lenses): culling misses them at its
+# resolution and the openings would show the background, so they are kept whole
+KEEP_ALL = ('UId18', 'UId06', 'UId41',                        # grille, its frame and what is behind it
+            'UId07', 'UId60',                                  # gills behind the front wheels
+            'UId15', 'UId27',                                  # vent meshes (hood, bumper)
+            'UId03', 'UId42', 'UId43', 'UId44', 'UId45', 'UId46', 'UId57', 'UId58',   # headlamps
+            'UId10', 'UId47', 'UId48', 'UId49', 'UId50', 'UId51')                     # tail lamps
 
 # ---------------- load and cull --------------------------------------------------------
 d = objnp.load(SRC, CACHE)
@@ -97,7 +105,7 @@ flip = (facing < 0) & ~DROP
 T[flip] = T[flip][:, ::-1]
 
 # ---------------- placement ----------------------------------------------------------------
-body = vis & ~DROP & ~BADGE
+body = (vis | np.isin(OBJ, KEEP_ALL)) & ~DROP & ~BADGE
 bp = V[np.unique(T[body])]
 mn, mx = bp.min(0), bp.max(0)
 S = LENGTH / (mx[2] - mn[2])
@@ -184,7 +192,9 @@ def pal_uv(m):
 
 # ---------------- decimate and build the body surfaces -------------------------------------
 total = int(body.sum())
-ratio = min(1.0, TARGET / total)
+PAINT_RATIO = 0.32        # the paint keeps about a third: coarser panels show as dents and holes
+n_paint = int((body & np.isin(MAT, PAINT)).sum())
+ratio = min(1.0, (TARGET - n_paint * PAINT_RATIO) / max(1, total - n_paint))
 surfs = {}                # surface name -> builder, in creation order
 current = {}              # group name -> name of the surface being filled
 MAX_VERTS = 9000          # start the next surface of a group well below the engine limit
@@ -223,8 +233,9 @@ for m in sorted(set(MAT[body])):
     verts, faces = mesh.weld(to_q3(V), T[sel])
     n0 = len(faces)
     if n0 > KEEP_SMALL:
-        verts, faces = mesh.decimate(verts, faces, max(KEEP_SMALL, round(n0 * ratio)))
-        goal = max(KEEP_SMALL, round(n0 * ratio))
+        r = PAINT_RATIO if m in PAINT else ratio
+        verts, faces = mesh.decimate(verts, faces, max(KEEP_SMALL, round(n0 * r)))
+        goal = max(KEEP_SMALL, round(n0 * r))
         if m not in PAINT and len(faces) > 1.5 * goal:
             # black trim: culling cut it into pieces whose borders cannot move; small
             # gaps along them do not show on black parts
