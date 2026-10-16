@@ -149,7 +149,7 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
   <h2>Hidden Graphics Features</h2>
   <p>CVars present in the renderer code but not exposed in any menu (neither the classic graphics menu nor the Advanced Graphics menu). Audit compares <code>ui_video.c</code>, <code>ui_advanced_graphics.c</code> against <code>renderergl1/tr_init.c</code> and <code>renderergl2/tr_init.c</code>.</p>
 
-  <div class="callout green"><strong>Already in Menu</strong>Classic: Resolution, Fullscreen, Colour depth, Texture bits, LOD, Texture Filter, Aniso, MSAA, Sun Shadows, Shadow Quality. Advanced: HDR, PostProcess, ToneMap, AutoExposure, SSAO, Sun Rays, Dynamic Reflections.</div>
+  <div class="callout green"><strong>Already in Menu</strong>Classic: Resolution, Fullscreen, Colour depth, Texture bits, LOD, Texture Filter, Aniso, MSAA, Sun Shadows, Shadow Quality. Advanced: HDR, PostProcess, ToneMap, AutoExposure, SSAO, Sun Rays. (Dynamic Reflections was removed in v0.7d: the old <code>r_dynamicReflections</code> path rendered six nested scenes per frame, dropped the main view's entities and never reached the <code>$dynamicreflection</code> stages.)</div>
 
   <h3>Tier 1 — High-Impact Visual Upgrades (GL2 only)</h3>
   <p>These CVars have the largest visible effect on rendering quality. Strong candidates for future Advanced Graphics menu integration.</p>
@@ -263,6 +263,19 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
   </table></div>
 
   <div class="callout"><strong>Takeaway</strong>Biggest bang for effort: expose the GL2 material system (Normal/Specular/Parallax/PBR), shadow cascade controls, cubemap reflections, and image upsampling in a future Advanced Graphics panel.</div>
+
+  <h3>Reflective Water (q3r_water) — Implementation</h3>
+  <p>GL2-only water with a rippled planar reflection. Mapper usage is in the Manual (Mapping Reference &rarr; Reflective Water). Cvar <code>r_water</code> (archive, latched, default 1).</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Part</th><th>Where</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>Shader keywords</td><td><code>renderergl2/tr_shader.c</code> (<code>ParseWaterParm</code>, <code>FinishWater</code>)</td><td>Reads <code>q3r_water*</code>. The water is only switched on when the reflection FBO, the water GLSL program and the normal map exist; then <code>shader.isWater</code> is set, vertex deforms are dropped (flat mirror plane) and the sort becomes <code>SS_UNDERWATER</code> (after the opaque world, so the floor shows through). Otherwise the shader's stages are used. A water shader may have no stages at all. GL1 skips the keywords (<code>renderergl1/tr_shader.c</code>).</td></tr>
+      <tr><td>Mirror view</td><td><code>renderergl2/tr_main.c</code> (<code>R_SortDrawSurfs</code>, <code>R_GetWaterOrientations</code>)</td><td>If no classic portal was drawn, the first visible <code>isWater</code> surface renders a mirror view of its own plane (no <code>misc_portal_surface</code> needed), flagged <code>VPF_WATERREFLECTION</code>. PVS origin = viewer projected onto the plane, 8 units above it. One reflection per view.</td></tr>
+      <tr><td>Reflection texture</td><td><code>tr_image.c</code>, <code>tr_fbo.c</code>, <code>tr_backend.c</code></td><td><code>tr.waterReflectionImage</code>/<code>Fbo</code> (screen size, HDR format). At the end of the mirror view <code>RB_DrawSurfs</code> blits the render target into it and sets <code>backEnd.waterReflectionReady</code> (reset in <code>RB_SwapBuffers</code>). Needs <code>framebufferBlit</code>; works with and without <code>r_hdr</code>/MSAA.</td></tr>
+      <tr><td>Water pass</td><td><code>tr_shade.c</code> (<code>RB_WaterPass</code>), <code>glsl/water_vp.glsl</code>, <code>glsl/water_fp.glsl</code></td><td>Replaces <code>RB_IterateStagesGeneric</code> for water surfaces; skipped inside portal views. Normal map projected along the surface's main axis, two scrolling layers; reflection looked up in screen space (<code>gl_FragCoord * u_InvTexRes</code>) with an offset that fades with distance; Fresnel mix with the water colour, alpha from Fresnel; sun glint from <code>tr.sunLight</code>/<code>tr.sunDirection</code>. Reuses existing uniforms (<code>u_NormalScale</code>, <code>u_SpecularScale</code>, <code>u_Color</code>, <code>u_PrimaryLight*</code>).</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout orange"><strong>Open ideas</strong>Refraction of the floor (copy of the scene before the water pass), one reflection per water plane instead of per view, a time-sliced cubemap for car paint (as in noire-ioq3) to replace the removed dynamic reflections, and an Advanced Graphics menu entry for <code>r_water</code>.</div>
 </section>
 
 <!-- ═══════════════ ANISO & MSAA PLAN ═══════════════ -->

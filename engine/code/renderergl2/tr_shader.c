@@ -1871,6 +1871,9 @@ static void FinishWater( void )
 		shader.waterTile = 1.0f;
 
 	shader.isWater = qtrue;
+	// the water plane must stay flat for the mirror view; the waves come
+	// from the normal map, so vertex deforms meant for the stages are dropped
+	shader.numDeforms = 0;
 	// drawn after the opaque world so the pool floor shows through
 	shader.sort = SS_UNDERWATER;
 	// mirrors cull by distance only through portalRange

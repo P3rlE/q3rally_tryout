@@ -13,7 +13,9 @@ Added:
   [speed] [distortion], q3r_waterColor, q3r_waterFresnel, q3r_waterSpecular;
   r_water 0 switches it off. OpenGL1 draws the shader's normal stages instead.
   Example: textures/q3r_liquids/q3r_water_mirror (normal map water_normal.tga)
-  in the test map q3r_watertest.
+  in the test map q3r_watertest. The pool in q3r_valley (dip_valley/water)
+  uses it too; on water surfaces deformVertexes only applies to the OpenGL1
+  stages.
 
 - New car: DB12 (models/players/db12), an Aston Martin DB12 from a 1,859,182
   triangle OBJ: only what is visible from outside is kept (no interior, brakes
@@ -253,6 +255,26 @@ Changed:
   and effects of the main view. Car glass keeps the static reflection texture.
 
 Fixed:
+
+- Linux/macOS (case-sensitive file systems): 50 files had a different upper/
+  lower case than the maps, shaders, models or code ask for and were not
+  found there; renamed to lower case. Affected: q3r_valley (rock walls, rails,
+  waterfall, sky), q3r_downtown and q3r_nightcity (building textures),
+  q3r_ctf_01 (video camera model), q3r_country01 (music), the debug spheres
+  (models/test), mapobject vehicles and gauntlet skins. q3r_citydom.bsp now
+  asks for the lower-case names too.
+
+- Missing map textures: 75 images that maps, models or the game code still
+  use (removed by the 2021 texture cleanup) restored from the mapping kit,
+  e.g. base_light, evil*, q3r_layout, q3r_tech, the CTF team-status textures
+  and the Xaero statue. q3r_ctf_04 gets its night sky (oasisnight), spotlamp
+  and grate shaders back (scripts/q3r_ctf_04.shader). calm_pool_bgtess
+  (listed in q3r_david4) no longer uses the missing pool3 image.
+  Restored images without alpha are stored as JPG (7.3 MB -> 0.6 MB).
+
+- Shader scripts cleaned up: 671 entries whose images no longer exist and
+  that no map, model, skin or code uses were removed (about 16,800 lines).
+  common.shader (mapper tool shaders) was left untouched.
 
 - Network messages that end exactly at the buffer size are flagged as
   overflowed (ioquake3). Userinfo with control characters is rejected; names

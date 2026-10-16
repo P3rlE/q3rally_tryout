@@ -30822,28 +30822,28 @@
 {
 "classname" "misc_model"
 "origin" "-1092.38 -736.005 66.75"
-"model" "models/mapobjects/Videocamera/videocamera.md3"
+"model" "models/mapobjects/videocamera/videocamera.md3"
 "angle" "28.254"
 }
 // entity 392
 {
 "classname" "misc_model"
 "origin" "-1092.38 992 66.75"
-"model" "models/mapobjects/Videocamera/videocamera.md3"
+"model" "models/mapobjects/videocamera/videocamera.md3"
 "angle" "-28.337"
 }
 // entity 393
 {
 "classname" "misc_model"
 "origin" "1503.38 -736 66.75"
-"model" "models/mapobjects/Videocamera/videocamera.md3"
+"model" "models/mapobjects/videocamera/videocamera.md3"
 "angle" "151.663"
 }
 // entity 394
 {
 "classname" "misc_model"
 "origin" "1503.38 992 66.75"
-"model" "models/mapobjects/Videocamera/videocamera.md3"
+"model" "models/mapobjects/videocamera/videocamera.md3"
 "angle" "-151.746"
 }
 // entity 395

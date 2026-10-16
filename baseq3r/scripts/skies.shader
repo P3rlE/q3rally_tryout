@@ -40,7 +40,6 @@ textures/skies/nightsky_xian_dm1
 
 	qer_editorimage textures/skies/xnight2_up.tga
 
-
 	skyparms env/xnight2 - -
 }
 
@@ -57,41 +56,6 @@ textures/skies/nightsky_xian_dm15
 	q3map_surfacelight 900
 	q3map_sun 1 1 1 100 -58 58
 	skyparms env/xnight2 - -
-
-
-}
-
-// ------------------------------------------------------------
-// 4.skies (kc_dm10sky)
-// ------------------------------------------------------------
-
-textures/skies/kc_dm10sky
-{
-	q3map_lightimage textures/skies/pjbasesky.tga
-	q3map_lightsubdivide 512 
-	q3map_globaltexture
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	
-	q3map_sun	.5 .6 .8 90 225 55
-	q3map_surfacelight 150
-
-	qer_editorimage textures/skies/bluetopclouds.tga
-
-	skyparms - 512 -
-
-	{
-		map textures/skies/bluedimclouds.tga
-		tcMod scale 3 2
-		tcMod scroll 0.15 0.15
-	}
-	{
-		map textures/skies/topclouds.tga
-		blendFunc GL_ONE GL_ONE
-		tcMod scale 3 3
-		tcMod scroll 0.05 0.05
-	}
-
 
 }
 
@@ -118,7 +82,7 @@ textures/q3r_skies/env/trainyard/trainyard
 
 textures/q3r_skies/clouds
 {
-	qer_editorimage textures/q3r_skies/clouds.tga
+	qer_editorimage textures/q3r_skies/clouds.jpg
 	surfaceparm noimpact
 	surfaceparm nomarks
 	surfaceparm nolightmap
@@ -128,7 +92,7 @@ textures/q3r_skies/clouds
 	skyparms - 512 -
 
 	{
-		map textures/q3r_skies/clouds.tga
+		map textures/q3r_skies/clouds.jpg
 		tcMod scroll 0.05 0
 		tcMod scale 2 2
 		depthWrite
@@ -183,23 +147,6 @@ textures/q3r_skies/env/mp_us/mp_us
 }
 
 // ------------------------------------------------------------
-// 9.skies (sincity)
-// ------------------------------------------------------------
-
-textures/q3r_skies/env/sincity/sincity
-{
-	qer_editorimage textures/q3r_skies/env/sincity/sincity_ft.tga
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	q3map_globaltexture
-	q3map_lightsubdivide 256
-	q3map_surfacelight 100
-	surfaceparm sky
-	q3map_sun 1 1 1 100 0 90
-	skyparms textures/q3r_skies/env/sincity/sincity - -
-}
-
-// ------------------------------------------------------------
 // 10.skies (night01)
 // ------------------------------------------------------------
 
@@ -214,25 +161,6 @@ textures/stecki/night01
 	q3map_surfacelight 5
 
         skyparms textures/stecki/night01 512 textures/stecki/night01
-
-}
-
-// ------------------------------------------------------------
-// 11.skies (desert)
-// ------------------------------------------------------------
-
-textures/stecki/desert
-{
-	qer_editorimage textures/stecki/desert_rt.tga
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	surfaceparm sky
-//        q3map_lightimage textures/stecki/desert_up.tga
-	q3map_sun	1 1 1 100 30 60
-	q3map_surfacelight 80
-
-        skyparms textures/stecki/desert 512 textures/stecki/desert
-
 
 }
 
@@ -252,110 +180,6 @@ textures/stecki/sub01
 
         skyparms textures/stecki/sub01 512 textures/stecki/sub01
 
-
-}
-
-// ------------------------------------------------------------
-// 13.skies (mkart1)
-// ------------------------------------------------------------
-
-textures/q3r_skies/env/mkart1/mkart1
-{
-	qer_editorimage textures/q3r_skies/env/mkart1/mkart1_ft.tga
-	surfaceparm sky
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	q3map_surfacelight 32
-	q3map_lightsubdivide 512
-	q3map_sun 1 1 1 64 90 90	
-	skyparms textures/q3r_skies/env/mkart1/mkart1 - -
-}
-
-// ------------------------------------------------------------
-// 14.skies (mkart2)
-// ------------------------------------------------------------
-
-textures/q3r_skies/env/mkart2/mkart2
-{
-	qer_editorimage textures/q3r_skies/env/mkart2/mkart2_ft.tga
-	surfaceparm sky
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	q3map_surfacelight 32
-	q3map_lightsubdivide 512
-	q3map_sun .1 .1 1 100 90 90	
-	skyparms textures/q3r_skies/env/mkart2/mkart2 - -
-}
-
-// ------------------------------------------------------------
-// 15.skies (mkart3)
-// ------------------------------------------------------------
-
-textures/q3r_skies/env/mkart3/mkart3
-{
-	qer_editorimage textures/q3r_skies/env/mkart3/mkart3_ft.tga
-	surfaceparm sky
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	q3map_surfacelight 32
-	q3map_lightsubdivide 512
-	q3map_sun 1 1 1 92	90 90	
-	skyparms textures/q3r_skies/env/mkart3/mkart3 - -
-}
-
-// ------------------------------------------------------------
-// 16.skies (mkart4)
-// ------------------------------------------------------------
-
-textures/q3r_skies/env/mkart4/mkart4
-{
-	qer_editorimage textures/q3r_skies/env/mkart4/mkart4_ft.tga
-	surfaceparm sky
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	q3map_surfacelight 32
-	q3map_lightsubdivide 512
-	q3map_sun 1 1 1 64 90 90	
-	skyparms textures/q3r_skies/env/mkart4/mkart4 - -
-}
-
-// ------------------------------------------------------------
-// 17.skies (mkart5)
-// ------------------------------------------------------------
-
-textures/q3r_skies/env/mkart5/mkart5
-{
-	qer_editorimage textures/q3r_skies/env/mkart5/mkart5_bk.tga
-	surfaceparm sky
-	surfaceparm noimpact
-	surfaceparm nolightmap
-	surfaceparm nomarks
-	//q3map_surfacelight 32
-	q3map_lightsubdivide 512
-	//q3map_sun .36 .28 .13 64 90 90	//brown
-	q3map_sun 0 .5 .39 64 90 90	//teal? dark greenish?
-	skyparms textures/q3r_skies/env/mkart5/mkart5 - -
-}
-
-// ------------------------------------------------------------
-// 18.skies (q3r_curtainwide)
-// ------------------------------------------------------------
-
-textures/q3r_skies/env/q3r_curtainwide/q3r_curtainwide
-{
-	qer_editorimage textures/q3r_skies/env/q3r_curtainwide/q3r_curtainwide_ft.tga
-	q3map_globaltexture
-	q3map_lightsubdivide 1024
-	q3map_sun 1 1 1 32 90 90
-	surfaceparm nomarks
-	surfaceparm nodlight
-	surfaceparm nolightmap
-	surfaceparm sky
-	skyparms textures/q3r_skies/env/q3r_curtainwide/q3r_curtainwide - -
 }
 
 // ------------------------------------------------------------
