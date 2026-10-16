@@ -3014,5 +3014,12 @@ void RE_LoadWorldMap( const char *name ) {
 		R_RenderMissingCubemaps();
 	}
 
+	// Q3Rally: tell cgame whether this map draws real-time sun shadows
+	// (the sky shader has q3gl2_sun, or r_forceSun), so it can soften the
+	// blob shadow under the cars
+	ri.Cvar_Set( "r_sunShadowsActive",
+		( glRefConfig.framebufferObject && r_sunlightMode->integer && r_shadowCascadeZFar->integer
+		  && ( tr.sunShadows || r_forceSun->integer ) ) ? "1" : "0" );
+
     ri.FS_FreeFile( buffer.v );
 }

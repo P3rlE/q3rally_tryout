@@ -2455,6 +2455,14 @@ void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum ) {
 	// Q3Rally: waterfall spray and other map effects (rally_fx_*)
 	CG_InitRallyFX();
 
+	// Q3Rally: set by the renderer when the world was loaded
+	{
+		char buf[16];
+
+		trap_Cvar_VariableStringBuffer( "r_sunShadowsActive", buf, sizeof( buf ) );
+		cgs.sunShadows = atoi( buf ) != 0;
+	}
+
 // Q3Rally Code Start
 	size = trap_MemoryRemaining();
 	if( size < 1000000 )

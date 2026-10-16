@@ -1623,6 +1623,10 @@ typedef struct {
         qboolean                sprintTrack;    // A2B course (second token of CS_TRACKLENGTH)
 // Q3Rally Code END
 
+	// Q3Rally: the renderer draws real-time sun shadows on this map
+	// (r_sunShadowsActive), the blob under the cars is then only a soft
+	// contact shadow
+	qboolean		sunShadows;
 } cgs_t;
 
 //==============================================================================

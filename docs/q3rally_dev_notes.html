@@ -277,6 +277,21 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
   </table></div>
   <div class="callout orange"><strong>Open ideas</strong>Refraction of the floor (copy of the scene before the water pass), one reflection per water plane instead of per view, a time-sliced cubemap for car paint (as in noire-ioq3) to replace the removed dynamic reflections, and an Advanced Graphics menu entry for <code>r_water</code>.</div>
 
+  <h3>Real-Time Sun Shadows — Implementation</h3>
+  <p>Builds on the ioquake3 OpenGL2 cascaded sun shadow maps (<code>r_sunlightMode 1</code>, <code>r_sunShadows 1</code>, enabled per map by <code>q3gl2_sun</code>). Stock ioquake3 renders the whole map into every cascade and multiplies the result onto the lightmap, which darkens all baked shadow a second time and redraws the map four times per frame. Q3Rally changes that with <code>r_sunShadowCasters 1</code> (default, archive, latched; 0 = stock). It only applies with <code>r_sunlightMode 1</code>; mode 2 adds the sun in the shader and needs the map in the shadow maps.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Part</th><th>Where</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>Casters</td><td><code>tr_main.c</code> (<code>R_RenderSunShadowMaps</code>)</td><td>Camera cascades 0–2 get only entity surfaces (cars, props, items). Cascade 3 (the whole level, cached until the sun direction changes, i.e. once per map) gets only the world. Its image is at least 2048² (<code>tr_image.c</code>); its world units per texel are stored in <code>tr.sunShadowWorldTexel</code>.</td></tr>
+      <tr><td>Shadow mask</td><td><code>glsl/shadowmask_fp.glsl</code> (<code>USE_SHADOW_MODELS_ONLY</code>), uniform <code>u_ShadowParams</code></td><td>Model shadow from the first cascade that contains the pixel; world sunlight from cascade 3, sampled 3 texels towards the sun (no self-shadowing) and counted as sunlit when half of the PCF taps are lit. Result = 1 − (1 − model) × sun: a car shadow only where the map is in the sun.</td></tr>
+      <tr><td>Lighting</td><td><code>glsl/lightall_fp.glsl</code> (<code>SHADOWMAP_MODELS_ONLY</code>)</td><td>The stock “surfaces facing away from the sun are shadowed” term is replaced by a fade of the mask on those surfaces, because the baked light already contains it. Shadowed light = light × <code>q3gl2_sun</code> strength.</td></tr>
+      <tr><td>Blob</td><td><code>tr_bsp.c</code> sets the ROM cvar <code>r_sunShadowsActive</code> after loading the world; <code>cg_main.c</code> reads it into <code>cgs.sunShadows</code>; <code>cg_players.c</code> (<code>CG_PlayerShadow</code>)</td><td>With sun shadows the blob is drawn at half strength as a contact shadow.</td></tr>
+      <tr><td>Menu</td><td><code>q3_ui/ui_advanced_graphics.c</code></td><td>Sunlight Mode items are Off / Shadows / Deluxe; the Ultra preset now uses Shadows (mode 2 adds the sun on top of the lightmap and is only for maps compiled with deluxemaps).</td></tr>
+      <tr><td>OpenGL1</td><td><code>renderergl1/tr_shader.c</code></td><td>Skips <code>q3gl2_sun</code> without a warning. Also maps <code>$dynamicreflection</code> to <code>textures/reflect/reflect.jpg</code>; before, every car shader using it failed and the cars were black in OpenGL1.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout orange"><strong>Open ideas</strong>Fade the shadows out at the end of the last cascade instead of cutting them off, use a model LOD for the shadow pass, and headlight shadows at night (dlight cubemap shadows, <code>r_dlightMode 2</code>).</div>
+
   <h3>Map Effects (rally_fx_spray) — Implementation</h3>
   <p>Client-side particle emitters placed by mappers; first user is the waterfall in <code>q3r_valley</code>. Mapper usage is in the Manual (Mapping Reference &rarr; Waterfall Spray). Cvar <code>cg_mapEffects</code> (archive, default 1, density 0..2).</p>
   <div class="table-wrap"><table>

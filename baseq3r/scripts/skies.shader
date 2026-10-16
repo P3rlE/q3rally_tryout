@@ -15,6 +15,7 @@ textures/skies/hellsky
 	surfaceparm nolightmap
 
 	q3map_sun 4 3 3 65 290 75
+	q3gl2_sun 4 3 3 65 290 75 0.6
 	q3map_surfacelight 50
 	skyparms - 512 -
 
@@ -176,6 +177,7 @@ textures/stecki/sub01
 	surfaceparm sky
 //        q3map_lightimage textures/stecki/sub01_up.tga
 	q3map_sun	1 1 1 120 180 60
+	q3gl2_sun 1 1 1 120 180 60 0.5
 	q3map_surfacelight 320
 
         skyparms textures/stecki/sub01 512 textures/stecki/sub01
@@ -219,6 +221,7 @@ textures/skies/tim_dm3_red
 	surfaceparm sky
 
 	q3map_sun .5 .37 .19 70 30 70
+	q3gl2_sun .5 .37 .19 70 30 70 0.6
 
 	//q3map_sun 1 .37 .19 70 30 70
 	q3map_surfacelight 80
@@ -261,5 +264,6 @@ textures/vsky/vsky
 	q3map_globaltexture
 	
 	q3map_sun 0.980392 0.67451 0.372549 100 334 57
+	q3gl2_sun 0.980392 0.67451 0.372549 100 334 57 0.5
 	skyparms textures/vsky/vsky - -
 }

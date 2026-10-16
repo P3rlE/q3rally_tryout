@@ -785,6 +785,28 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php/matches"
 
   <div class="callout orange"><strong>Limits</strong>Only one reflection is drawn per view: if several water planes at different heights are visible at once, they all show the reflection of the first one. Objects under water are tinted but not refracted. <code>deformVertexes</code> is ignored on <code>q3r_water</code> surfaces in OpenGL2 (the plane must stay flat; waves come from the normal map) and only applies to the fallback stages. The reflection renders the scene a second time, so keep large water areas out of busy sections. A custom normal map must tile seamlessly; it is used as a plain RGB image (x/y in red/green).</div>
 
+  <h3>Real-Time Sun Shadows — Mapper Guide</h3>
+  <p>With the OpenGL2 renderer, cars, props and items cast real-time shadows from the map's sun. The map's own shadows stay baked in the lightmap: a car's shadow is only drawn where the sun reaches the ground, so a car in the shade of a cliff gets no second shadow and shaded areas are not darkened twice. The blob shadow under the cars stays as a lighter contact shadow. OpenGL1 keeps the blob shadow only.</p>
+  <div class="callout"><strong>Switching it on</strong>Add a <code>q3gl2_sun</code> line to the map's sky shader, with the same values as its <code>q3map_sun</code> line plus the shadow strength. No recompile is needed. Enabled so far: <code>textures/vsky/vsky</code> (q3r_valley), <code>textures/stecki/sub01</code> (q3r_country01), <code>textures/skies/ame_desert</code> (q3r_lcs1, q3r_mk), <code>textures/skies/ely_sunset</code> (q3r_dirtyfun), <code>textures/arctic/arc_skybox3</code> (q3r_ridgeracer), <code>textures/skies/tim_dm3_red</code> (q3r_lavafalls) and <code>textures/skies/hellsky</code> (q3r_sk1).</div>
+
+<pre>textures/vsky/vsky
+{
+	...
+	q3map_sun 0.980392 0.67451 0.372549 100 334 57
+	q3gl2_sun 0.980392 0.67451 0.372549 100 334 57 0.5
+	skyparms textures/vsky/vsky - -
+}</pre>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>Parameter</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>r g b intensity degrees elevation</td><td>Exactly as in <code>q3map_sun</code>. The direction must match the sun the lightmap was compiled with, otherwise the car shadows point the wrong way.</td></tr>
+      <tr><td>shadow strength (last value)</td><td>Brightness left in a car shadow: 0.5 for a strong sun, 0.6–0.7 for a weak or coloured one. 1 = no visible shadow.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout orange"><strong>When not to use it</strong>Suns straight overhead (elevation near 90, e.g. the trainyard and nebula skies) only darken the ground under the car, which the blob already does. Night maps with a weak moon gain little. Maps compiled with a different sun than the one in the shader get shadows in the wrong direction.</div>
+
   <h3>Waterfall Spray — Mapper Guide</h3>
   <p>A <code>rally_fx_spray</code> entity puts spray, drifting mist and droplets where a waterfall hits the water. It also works for rapids, fountains or steam. The effect is purely client side: the server ignores the entity, cgame reads it from the map at load time and simulates the particles itself, so it uses no entity slot, no network traffic and works in demos. The mist colour is multiplied with the light grid at the origin, so it is not glowing white in a shady gorge or at night. It runs with OpenGL1 and OpenGL2.</p>
   <div class="callout"><strong>Example</strong><code>q3r_valley</code> has three emitters along the foot of its waterfall and a looping <code>target_speaker</code> with <code>sound/world/waterfall.ogg</code>. Like any point entity, the spray can be added to a finished map by editing only the entity lump; the geometry does not need a recompile.</div>
@@ -1107,6 +1129,8 @@ docker run --rm -it -p 27960:27960/udp \
     <li>Changed invalid default pk3 checksums to use <code>sv_pure 0</code></li>
     <li>Added <code>baseq3r</code> pk3 checksums</li>
     <li>OpenGL2: GLSL water with rippled real-time reflections for <code>q3r_water</code> shaders (cvar <code>r_water</code>)</li>
+    <li>OpenGL2: real-time sun shadows cast only by cars and other models; the map's shadows stay baked and moving shadows only appear where the map is in the sun (cvar <code>r_sunShadowCasters</code>)</li>
+    <li>OpenGL1: <code>$dynamicreflection</code> stages use the static reflection image (car shaders no longer fall back to black)</li>
   </ul>
 
   <h3>Run Without Installing</h3>

@@ -2608,16 +2608,32 @@ void R_RenderSunShadowMaps(const refdef_t *fd, int level)
 
 			R_SetupProjectionOrtho(&tr.viewParms, lightviewBounds);
 
-			R_AddWorldSurfaces ();
+			// Q3Rally: r_sunShadowCasters 1 keeps the map out of the camera
+			// cascades (its shadows are baked into the lightmap) and keeps the
+			// models out of the cached level 3 cascade, which is the map only
+			// and is used to find the places the sun reaches
+			if ( !R_SunShadowModelsOnly() || level == 3 )
+			{
+				R_AddWorldSurfaces ();
 
-			R_AddPolygonSurfaces();
+				R_AddPolygonSurfaces();
+			}
 
-			R_AddEntitySurfaces ();
+			if ( !R_SunShadowModelsOnly() || level != 3 )
+			{
+				R_AddEntitySurfaces ();
+			}
 
 			R_SortDrawSurfs( tr.refdef.drawSurfs + firstDrawSurf, tr.refdef.numDrawSurfs - firstDrawSurf );
 		}
 
 		Mat4Multiply(tr.viewParms.projectionMatrix, tr.viewParms.world.modelMatrix, tr.refdef.sunShadowMvp[level]);
+
+		if (level == 3)
+		{
+			tr.sunShadowWorldTexel = MAX(lightviewBounds[1][1] - lightviewBounds[0][1], lightviewBounds[1][2] - lightviewBounds[0][2])
+				/ (float)tr.sunShadowFbo[level]->width;
+		}
 	}
 }
 

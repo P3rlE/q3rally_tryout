@@ -647,6 +647,7 @@ typedef enum
 	UNIFORM_SHADOWMVP2,
 	UNIFORM_SHADOWMVP3,
 	UNIFORM_SHADOWMVP4,
+	UNIFORM_SHADOWPARAMS,	// Q3Rally: xyz = world shadow bias (sun dir * units), w = model shadow bias
 
 	UNIFORM_ENABLETEXTURES,
 
@@ -1655,6 +1656,7 @@ typedef struct {
 	vec3_t					sunDirection;
 	vec3_t                  lastCascadeSunDirection;
 	float                   lastCascadeSunMvp[16];
+	float                   sunShadowWorldTexel;	// Q3Rally: world units per texel of the level 3 cascade
 
 	frontEndCounters_t		pc;
 	int						frontEndMsec;		// not in pc due to clearing issue
@@ -1842,6 +1844,13 @@ extern  cvar_t  *r_forceSunAmbientScale;
 extern  cvar_t  *r_sunlightMode;
 extern  cvar_t  *r_drawSunRays;
 extern  cvar_t  *r_sunShadows;
+extern  cvar_t  *r_sunShadowCasters;
+extern  cvar_t  *r_sunShadowsActive;
+
+// Q3Rally: models-only sun shadow casters (r_sunShadowCasters) need baked
+// sunlight, i.e. r_sunlightMode 1; mode 2 adds the sun in the shader and
+// takes the map's shadows from the shadow maps
+#define R_SunShadowModelsOnly() ( r_sunShadowCasters->integer && r_sunlightMode->integer == 1 )
 extern  cvar_t  *r_shadowFilter;
 extern  cvar_t  *r_shadowBlur;
 extern  cvar_t  *r_shadowMapSize;

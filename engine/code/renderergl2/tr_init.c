@@ -158,6 +158,8 @@ cvar_t  *r_forceSunAmbientScale;
 cvar_t  *r_sunlightMode;
 cvar_t  *r_drawSunRays;
 cvar_t  *r_sunShadows;
+cvar_t  *r_sunShadowCasters;
+cvar_t  *r_sunShadowsActive;
 cvar_t  *r_shadowFilter;
 cvar_t  *r_shadowBlur;
 cvar_t  *r_shadowMapSize;
@@ -1334,6 +1336,10 @@ void R_Register( void )
 	r_sunlightMode = ri.Cvar_Get( "r_sunlightMode", "1", CVAR_ARCHIVE | CVAR_LATCH );
 
 	r_sunShadows = ri.Cvar_Get( "r_sunShadows", "1", CVAR_ARCHIVE | CVAR_LATCH );
+	r_sunShadowCasters = ri.Cvar_Get( "r_sunShadowCasters", "1", CVAR_ARCHIVE | CVAR_LATCH );
+	ri.Cvar_SetDescription( r_sunShadowCasters, "Q3Rally: what casts real-time sun shadows. 1 = only cars and other models; the shadows of the map come from its lightmap and moving shadows are only drawn where the map is in the sun. 0 = everything (ioquake3 default, darkens shadowed areas twice). Only with r_sunlightMode 1" );
+	r_sunShadowsActive = ri.Cvar_Get( "r_sunShadowsActive", "0", CVAR_ROM );
+	ri.Cvar_SetDescription( r_sunShadowsActive, "Q3Rally: 1 while the loaded map draws real-time sun shadows (read by cgame to soften the blob shadow)" );
 	r_shadowFilter = ri.Cvar_Get( "r_shadowFilter", "1", CVAR_ARCHIVE | CVAR_LATCH );
 	r_shadowBlur = ri.Cvar_Get("r_shadowBlur", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_shadowMapSize = ri.Cvar_Get("r_shadowMapSize", "1024", CVAR_ARCHIVE | CVAR_LATCH);
@@ -1605,6 +1611,8 @@ void RE_Shutdown( qboolean destroyWindow ) {
 	ri.Cmd_RemoveCommand( "gfxmeminfo" );
 	ri.Cmd_RemoveCommand( "exportCubemaps" );
 
+
+	ri.Cvar_Set( "r_sunShadowsActive", "0" );
 
 	if ( tr.registered ) {
 		R_IssuePendingRenderCommands();

@@ -345,8 +345,14 @@ void main()
 	vec2 shadowTex = gl_FragCoord.xy * r_FBufScale;
 	float shadowValue = texture2D(u_ShadowMap, shadowTex).r;
 
+    #if defined(SHADOWMAP_MODELS_ONLY)
+	// Q3Rally: the baked light already knows which side faces away from the
+	// sun; a model shadow only shows on surfaces the sun reaches
+	shadowValue = mix(1.0, shadowValue, clamp(dot(N, var_PrimaryLightDir.xyz) * 4.0, 0.0, 1.0));
+    #else
 	// surfaces not facing the light are always shadowed
 	shadowValue *= clamp(dot(N, var_PrimaryLightDir.xyz), 0.0, 1.0);
+    #endif
 
     #if defined(SHADOWMAP_MODULATE)
 	lightColor *= shadowValue * (1.0 - u_PrimaryLightAmbient.r) + u_PrimaryLightAmbient.r;

@@ -10,5 +10,6 @@ textures/skies/ely_sunset
 	surfaceparm sky
 	q3map_surfacelight 50
 	q3map_sun 1 0.7 0.7 80 350 10
+	q3gl2_sun 1 0.7 0.7 80 350 10 0.5
 	skyparms env/ely_sunset/sunset - -
 }

@@ -17,6 +17,19 @@ Added:
   uses it too; on water surfaces deformVertexes only applies to the OpenGL1
   stages.
 
+- Real-time sun shadows (OpenGL2): cars, props and items cast shadows from
+  the map's sun that move with them. Only models are rendered into the camera
+  shadow cascades; the map's own shadows stay baked, and a car shadow is only
+  drawn where the map is in the sun (no second shadow in the shade, shaded
+  areas are no longer darkened twice, and the map is not redrawn for the
+  shadows every frame). New cvar r_sunShadowCasters (1 = models only, 0 =
+  ioquake3 behaviour). The blob under the cars stays as a lighter contact
+  shadow. Switched on through q3gl2_sun in the sky shaders of q3r_valley,
+  q3r_country01, q3r_lcs1, q3r_mk, q3r_dirtyfun, q3r_ridgeracer, q3r_lavafalls
+  and q3r_sk1. The Ultra graphics preset uses sunlight mode 1 instead of 2
+  (mode 2 adds the sun on top of the lightmap); the modes are now called
+  Off / Shadows / Deluxe.
+
 - Waterfall spray: the new rally_fx_spray entity puts spray, drifting mist and
   droplets where a waterfall hits the water. It runs only on the client (the
   server drops the entity at spawn, cgame reads it from the map), so it costs
@@ -272,6 +285,9 @@ Fixed:
   q3r_ctf_01 (video camera model), q3r_country01 (music), the debug spheres
   (models/test), mapobject vehicles and gauntlet skins. q3r_citydom.bsp now
   asks for the lower-case names too.
+
+- OpenGL1: cars were drawn black. The car shaders reflect $dynamicreflection,
+  which only OpenGL2 knew; OpenGL1 now uses the static reflection image for it.
 
 - Bots on q3r_citydom: the AAS file's BSP checksum matches the map again (the
   case fix of the shader names had changed the BSP, the bot library then

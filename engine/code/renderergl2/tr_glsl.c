@@ -87,6 +87,7 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_ShadowMvp2", GLSL_MAT16 },
 	{ "u_ShadowMvp3", GLSL_MAT16 },
 	{ "u_ShadowMvp4", GLSL_MAT16 },
+	{ "u_ShadowParams", GLSL_VEC4 },
 
 	{ "u_EnableTextures", GLSL_VEC4 },
 
@@ -1251,6 +1252,9 @@ void GLSL_InitGPUShaders(void)
 				Q_strcat(extradefines, 1024, "#define SHADOWMAP_MODULATE\n");
 			else if (r_sunlightMode->integer == 2)
 				Q_strcat(extradefines, 1024, "#define USE_PRIMARY_LIGHT\n");
+
+			if (R_SunShadowModelsOnly())
+				Q_strcat(extradefines, 1024, "#define SHADOWMAP_MODELS_ONLY\n");
 		}
 
 		if (i & LIGHTDEF_USE_TCGEN_AND_TCMOD)
@@ -1453,6 +1457,9 @@ void GLSL_InitGPUShaders(void)
 
 		if (r_shadowCascadeZFar->integer != 0)
 			Q_strcat(extradefines, 1024, "#define USE_SHADOW_CASCADE\n");
+
+		if (R_SunShadowModelsOnly())
+			Q_strcat(extradefines, 1024, "#define USE_SHADOW_MODELS_ONLY\n");
 
 		Q_strcat(extradefines, 1024, va("#define r_shadowMapSize %f\n", r_shadowMapSize->value));
 		Q_strcat(extradefines, 1024, va("#define r_shadowCascadeZFar %f\n", r_shadowCascadeZFar->value));

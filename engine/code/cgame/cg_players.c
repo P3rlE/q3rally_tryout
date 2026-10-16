@@ -3094,6 +3094,12 @@ static qboolean CG_PlayerShadow( centity_t *cent, float *shadowPlane ) {
 	// fade the shadow out with height
 	alpha = 1.0 - trace.fraction;
 
+	// Q3Rally: with real-time sun shadows the blob only darkens the ground
+	// right under the car (contact shadow)
+	if ( cgs.sunShadows ) {
+		alpha *= 0.5f;
+	}
+
 	// hack / FPE - bogus planes?
 	//assert( DotProduct( trace.plane.normal, trace.plane.normal ) != 0.0f ) 
 

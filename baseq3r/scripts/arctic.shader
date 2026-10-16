@@ -18,6 +18,7 @@ textures/arctic/arc_skybox3
 	surfaceparm nolightmap
 	surfaceparm sky
 	q3map_sun .9 .9 1 45 0 70
+	q3gl2_sun .9 .9 1 45 0 70 0.5
 	q3map_surfacelight 25
 	skyparms env/arcsky/arcsky2 1024 -
 

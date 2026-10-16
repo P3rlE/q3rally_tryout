@@ -624,6 +624,16 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 				stage->bundle[0].image[0] = tr.whiteImage;
 				continue;
 			}
+			// Q3Rally: the car shaders reflect $dynamicreflection; OpenGL2
+			// maps it to the static reflection image, OpenGL1 did not know
+			// it and dropped the whole shader (black cars)
+			else if ( !Q_stricmp( token, "$dynamicreflection" ) )
+			{
+				stage->bundle[0].image[0] = R_FindImageFile( "textures/reflect/reflect.jpg", IMGTYPE_COLORALPHA, IMGFLAG_MIPMAP );
+				if ( !stage->bundle[0].image[0] )
+					stage->bundle[0].image[0] = tr.whiteImage;
+				continue;
+			}
 			else if ( !Q_stricmp( token, "$lightmap" ) )
 			{
 				stage->bundle[0].isLightmap = qtrue;
@@ -1537,6 +1547,11 @@ static qboolean ParseShader( char **text )
 			tr.sunDirection[1] = sin( a ) * cos( b );
 			tr.sunDirection[2] = sin( b );
 
+			SkipRestOfLine( text );
+			continue;
+		}
+		// Q3Rally: real-time sun shadows of the OpenGL2 renderer
+		else if ( !Q_stricmp( token, "q3gl2_sun" ) ) {
 			SkipRestOfLine( text );
 			continue;
 		}

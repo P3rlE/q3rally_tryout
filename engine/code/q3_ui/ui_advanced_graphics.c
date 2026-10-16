@@ -119,7 +119,7 @@ static const char *pshadow_dist_items[] = {
 };
 
 static const char *sunlight_mode_items[] = {
-	"Off", "Mode 1", "Mode 2", NULL
+	"Off", "Shadows", "Deluxe", NULL
 };
 
 typedef struct {
@@ -246,7 +246,7 @@ static void UI_AdvancedGraphicsOptionsMenu_SyncPreset( void ) {
 		advancedGraphicsOptionsInfo.shadowcascade_far.curvalue == 2 &&
 		advancedGraphicsOptionsInfo.shadowcascade_bias.curvalue == 2 &&
 		advancedGraphicsOptionsInfo.pshadowdist.curvalue == 2 &&
-		advancedGraphicsOptionsInfo.sunlightmode.curvalue == 2) {
+		advancedGraphicsOptionsInfo.sunlightmode.curvalue == 1) {
 		advancedGraphicsOptionsInfo.preset.curvalue = ADV_PRESET_ULTRA;
 		return;
 	}
@@ -318,7 +318,9 @@ static void UI_AdvancedGraphicsOptionsMenu_ApplyPreset( int preset ) {
 		advancedGraphicsOptionsInfo.shadowcascade_far.curvalue = 2;
 		advancedGraphicsOptionsInfo.shadowcascade_bias.curvalue = 2;
 		advancedGraphicsOptionsInfo.pshadowdist.curvalue = 2;
-		advancedGraphicsOptionsInfo.sunlightmode.curvalue = 2;
+		// Q3Rally: mode 2 adds the sun on top of the lightmap and is only
+		// meant for maps compiled with deluxemaps; ours bake the sun
+		advancedGraphicsOptionsInfo.sunlightmode.curvalue = 1;
 		break;
 	default:
 		return;

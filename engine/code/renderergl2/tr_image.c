@@ -2983,7 +2983,15 @@ void R_CreateBuiltinImages( void ) {
 		{
 			for ( x = 0; x < 4; x++)
 			{
-				tr.sunShadowDepthImage[x] = R_CreateImage(va("*sunshadowdepth%i", x), NULL, r_shadowMapSize->integer, r_shadowMapSize->integer, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH_COMPONENT24);
+				int size = r_shadowMapSize->integer;
+
+				// Q3Rally: with model-only casters the last cascade holds the
+				// whole map once per level (it tells baked shadow from sun), so
+				// it gets more texels; it is only rendered when the sun changes
+				if ( x == 3 && R_SunShadowModelsOnly() && size < 2048 )
+					size = 2048;
+
+				tr.sunShadowDepthImage[x] = R_CreateImage(va("*sunshadowdepth%i", x), NULL, size, size, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH_COMPONENT24);
 				qglTextureParameterfEXT(tr.sunShadowDepthImage[x]->texnum, GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
 				qglTextureParameterfEXT(tr.sunShadowDepthImage[x]->texnum, GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 			}

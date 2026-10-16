@@ -1013,6 +1013,18 @@ const void	*RB_DrawSurfs( const void *data ) {
 				}
 
 				GLSL_SetUniformVec3(&tr.shadowmaskShader, UNIFORM_VIEWORIGIN, backEnd.refdef.vieworg);
+
+				if (R_SunShadowModelsOnly())
+				{
+					// Q3Rally: move the sample towards the sun so the map does not
+					// shadow itself in the coarse level 3 cascade (3 texels), and a
+					// little for the model cascades
+					vec4_t shadowParams;
+
+					VectorScale(backEnd.refdef.sunDir, MAX(3.0f * tr.sunShadowWorldTexel, 1.0f), shadowParams);
+					shadowParams[3] = 2.0f;
+					GLSL_SetUniformVec4(&tr.shadowmaskShader, UNIFORM_SHADOWPARAMS, shadowParams);
+				}
 				{
 					vec3_t viewVector;
 
