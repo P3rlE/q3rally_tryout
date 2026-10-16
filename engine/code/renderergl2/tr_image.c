@@ -2928,6 +2928,10 @@ void R_CreateBuiltinImages( void ) {
 
 		tr.renderImage = R_CreateImage("_render", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
 
+		// Q3Rally: the mirror view of a q3r_water surface is copied here
+		if (r_water->integer && glRefConfig.framebufferBlit)
+			tr.waterReflectionImage = R_CreateImage("*waterReflection", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
+
 		if (r_shadowBlur->integer || r_hdr->integer)
 			tr.screenScratchImage = R_CreateImage("screenScratch", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, rgbFormat);
 

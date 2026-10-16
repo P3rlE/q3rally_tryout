@@ -1947,3 +1947,61 @@ deformVertexes wave 512 sin 0 7 0 0.4
       fogparms ( .76 .73 .54 ) 30000
  
 }
+
+// ------------------------------------------------------------
+// Mirror water (test)
+// OpenGL2 (r_water 1): q3r_water draws GLSL water with a rippled real-time
+// reflection, see-through from above and mirror-like at grazing angles. The
+// mirror view is built from the water plane itself.
+// OpenGL1 / r_water 0: the stages below are drawn instead, a plain mirror
+// through "portal"; that needs a misc_portal_surface entity without target
+// within 64 units of the water surface.
+// Only one reflection is drawn per view, so use it for one water plane
+// per area.
+//
+// q3r_water <normalmap> [tile size] [speed] [distortion]
+// q3r_waterColor <r> <g> <b> [opacity looking straight down]
+// q3r_waterFresnel <bias> <power>
+// q3r_waterSpecular <sun glint strength>
+// ------------------------------------------------------------
+
+textures/q3r_liquids/q3r_water_mirror
+{
+	qer_editorimage textures/q3r_liquids/water.tga
+	qer_trans 0.6
+	portal
+	q3r_water textures/q3r_liquids/water_normal.tga 320 0.03 0.03
+	q3r_waterColor 0.02 0.07 0.08 0.7
+	q3r_waterFresnel 0.12 4
+	q3r_waterSpecular 1.5
+	surfaceparm nomarks
+	surfaceparm trans
+	surfaceparm nonsolid
+	surfaceparm water
+	surfaceparm nolightmap
+	surfaceparm SURF_WET
+	{
+		// distance fade: reflection fully visible nearby, dark water at the
+		// portal range (the mirror view is not drawn beyond it)
+		map $whiteimage
+		rgbGen const ( 0.04 0.10 0.13 )
+		alphaGen portal 3072
+		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		depthWrite
+	}
+	{
+		// constant water tint over the reflection
+		map $whiteimage
+		rgbGen const ( 0.04 0.10 0.13 )
+		alphaGen const 0.25
+		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+	}
+	{
+		// moving highlights
+		map textures/q3r_liquids/water.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 0.05 0.06 0.07 )
+		tcMod scale 0.5 0.5
+		tcMod scroll 0.02 0.01
+	}
+}

@@ -4,6 +4,17 @@ unreleased
 
 Added:
 
+- Water with real-time reflections (OpenGL2 renderer): shaders with the new
+  q3r_water keyword are drawn by a GLSL program that mirrors the scene in the
+  water plane, ripples the reflection with two scrolling normal maps, mixes it
+  with the water colour by a Fresnel term (see-through from above, mirror at
+  grazing angles) and adds a sun glint from the map's q3map_sun. No
+  misc_portal_surface is needed for it. Keywords: q3r_water <normalmap> [tile]
+  [speed] [distortion], q3r_waterColor, q3r_waterFresnel, q3r_waterSpecular;
+  r_water 0 switches it off. OpenGL1 draws the shader's normal stages instead.
+  Example: textures/q3r_liquids/q3r_water_mirror (normal map water_normal.tga)
+  in the test map q3r_watertest.
+
 - New car: DB12 (models/players/db12), an Aston Martin DB12 from a 1,859,182
   triangle OBJ: only what is visible from outside is kept (no interior, brakes
   or inner glass; the lamps stay visible behind their lenses, the parts behind

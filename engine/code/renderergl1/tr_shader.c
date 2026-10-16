@@ -1634,6 +1634,13 @@ static qboolean ParseShader( char **text )
 			shader.sort = SS_PORTAL;
 			continue;
 		}
+		// Q3Rally: q3r_water* keywords are for the OpenGL2 renderer only;
+		// here the shader's normal stages (e.g. a portal mirror) are drawn
+		else if ( !Q_stricmpn( token, "q3r_water", 9 ) )
+		{
+			SkipRestOfLine( text );
+			continue;
+		}
 		// skyparms <cloudheight> <outerbox> <innerbox>
 		else if ( !Q_stricmp( token, "skyparms" ) )
 		{

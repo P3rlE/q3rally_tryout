@@ -1769,6 +1769,117 @@ static void ParseSurfaceParm( char **text ) {
 
 /*
 =================
+ParseWaterParm
+
+Q3Rally: reads the q3r_water* keywords. The water itself is only switched
+on in FinishShader, when the renderer has the reflection target; otherwise
+the shader's normal stages are drawn (e.g. a plain portal mirror).
+=================
+*/
+static char waterNormalName[MAX_QPATH];
+
+static float ParseWaterFloat( char **text, float defaultValue )
+{
+	char *token = COM_ParseExt( text, qfalse );
+
+	if ( !token[0] )
+		return defaultValue;
+
+	return atof( token );
+}
+
+static void ParseWaterParm( const char *keyword, char **text )
+{
+	char *token;
+
+	if ( !Q_stricmp( keyword, "q3r_water" ) )
+	{
+		token = COM_ParseExt( text, qfalse );
+		if ( !token[0] )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing normal map for 'q3r_water' in shader '%s'\n", shader.name );
+			return;
+		}
+		Q_strncpyz( waterNormalName, token, sizeof( waterNormalName ) );
+		shader.waterTile = ParseWaterFloat( text, shader.waterTile );
+		shader.waterSpeed = ParseWaterFloat( text, shader.waterSpeed );
+		shader.waterDistortion = ParseWaterFloat( text, shader.waterDistortion );
+	}
+	else if ( !Q_stricmp( keyword, "q3r_waterColor" ) )
+	{
+		shader.waterColor[0] = ParseWaterFloat( text, shader.waterColor[0] );
+		shader.waterColor[1] = ParseWaterFloat( text, shader.waterColor[1] );
+		shader.waterColor[2] = ParseWaterFloat( text, shader.waterColor[2] );
+		shader.waterColor[3] = ParseWaterFloat( text, shader.waterColor[3] );
+	}
+	else if ( !Q_stricmp( keyword, "q3r_waterFresnel" ) )
+	{
+		shader.waterFresnelBias = ParseWaterFloat( text, shader.waterFresnelBias );
+		shader.waterFresnelPower = ParseWaterFloat( text, shader.waterFresnelPower );
+	}
+	else if ( !Q_stricmp( keyword, "q3r_waterSpecular" ) )
+	{
+		shader.waterSpecular = ParseWaterFloat( text, shader.waterSpecular );
+	}
+	else
+	{
+		ri.Printf( PRINT_WARNING, "WARNING: unknown water parameter '%s' in shader '%s'\n", keyword, shader.name );
+	}
+
+	SkipRestOfLine( text );
+}
+
+static void SetWaterDefaults( void )
+{
+	waterNormalName[0] = '\0';
+	shader.waterTile = 256.0f;
+	shader.waterSpeed = 0.03f;
+	shader.waterDistortion = 0.02f;
+	VectorSet4( shader.waterColor, 0.03f, 0.09f, 0.11f, 0.55f );
+	shader.waterFresnelBias = 0.15f;
+	shader.waterFresnelPower = 4.0f;
+	shader.waterSpecular = 1.0f;
+}
+
+/*
+=================
+FinishWater
+
+Q3Rally: switch the GLSL water on when everything it needs is there.
+=================
+*/
+static void FinishWater( void )
+{
+	if ( !waterNormalName[0] || shader.defaultShader )
+		return;
+
+	if ( !r_water->integer || !tr.waterReflectionFbo || !tr.waterShader.program )
+	{
+		ri.Printf( PRINT_DEVELOPER, "q3r_water in '%s': using shader stages (r_water %d, reflection target %s, water program %s)\n",
+			shader.name, r_water->integer, tr.waterReflectionFbo ? "ok" : "missing", tr.waterShader.program ? "ok" : "missing" );
+		return;
+	}
+
+	shader.waterNormalImage = R_FindImageFile( waterNormalName, IMGTYPE_COLORALPHA, IMGFLAG_MIPMAP | IMGFLAG_NOLIGHTSCALE | IMGFLAG_NO_COMPRESSION );
+	if ( !shader.waterNormalImage )
+	{
+		ri.Printf( PRINT_WARNING, "WARNING: q3r_water normal map '%s' not found in shader '%s'\n", waterNormalName, shader.name );
+		return;
+	}
+
+	if ( shader.waterTile < 1.0f )
+		shader.waterTile = 1.0f;
+
+	shader.isWater = qtrue;
+	// drawn after the opaque world so the pool floor shows through
+	shader.sort = SS_UNDERWATER;
+	// mirrors cull by distance only through portalRange
+	if ( shader.portalRange <= 0.0f )
+		shader.portalRange = 65536.0f;
+}
+
+/*
+=================
 ParseShader
 
 The current text pointer is at the explicit text definition of the
@@ -1782,6 +1893,8 @@ static qboolean ParseShader( char **text )
 	int s;
 
 	s = 0;
+
+	SetWaterDefaults();
 
 	token = COM_ParseExt( text, qtrue );
 	if ( token[0] != '{' )
@@ -1993,6 +2106,16 @@ static qboolean ParseShader( char **text )
 			shader.isPortal = qtrue;
 			continue;
 		}
+		// Q3Rally water:
+		// q3r_water <normalmap> [tile size] [speed] [distortion]
+		// q3r_waterColor <r> <g> <b> [opacity]
+		// q3r_waterFresnel <bias> <power>
+		// q3r_waterSpecular <strength>
+		else if ( !Q_stricmpn( token, "q3r_water", 9 ) )
+		{
+			ParseWaterParm( token, text );
+			continue;
+		}
 		// skyparms <cloudheight> <outerbox> <innerbox>
 		else if ( !Q_stricmp( token, "skyparms" ) )
 		{
@@ -2045,7 +2168,7 @@ static qboolean ParseShader( char **text )
 	//
 	// ignore shaders that don't have any stages, unless it is a sky or fog
 	//
-	if ( s == 0 && !shader.isSky && !(shader.contentFlags & CONTENTS_FOG ) ) {
+	if ( s == 0 && !shader.isSky && !(shader.contentFlags & CONTENTS_FOG ) && !waterNormalName[0] ) {
 		return qfalse;
 	}
 
@@ -3262,6 +3385,10 @@ static shader_t *FinishShader( void ) {
 	// fogonly shaders don't have any normal passes
 	if (stage == 0 && !shader.isSky)
 		shader.sort = SS_FOG;
+
+	// Q3Rally: GLSL water replaces the stages when it can run
+	FinishWater();
+	waterNormalName[0] = '\0';
 
 	// determine which stage iterator function is appropriate
 	ComputeStageIteratorFunc();

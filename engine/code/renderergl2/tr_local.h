@@ -469,6 +469,17 @@ typedef struct shader_s {
 	float		portalRange;			// distance to fog out at
 	qboolean	isPortal;
 
+	// Q3Rally: q3r_water surfaces (GLSL water with a reflection texture)
+	qboolean	isWater;				// active water path (needs FBOs)
+	image_t		*waterNormalImage;
+	float		waterTile;				// world units per normal map repeat
+	float		waterSpeed;				// normal map repeats per second
+	float		waterDistortion;		// screen-space reflection offset
+	vec4_t		waterColor;				// rgb tint, a = opacity looking straight down
+	float		waterFresnelBias;
+	float		waterFresnelPower;
+	float		waterSpecular;			// sun glint strength
+
 	cullType_t	cullType;				// CT_FRONT_SIDED, CT_BACK_SIDED, or CT_TWO_SIDED
 	qboolean	polygonOffset;			// set for decals and other items that must be offset 
 	qboolean	noMipMaps;				// for console fonts, 2D elements, etc.
@@ -821,7 +832,8 @@ typedef enum {
 	VPF_ORTHOGRAPHIC    = 0x10,
 	VPF_USESUNLIGHT     = 0x20,
 	VPF_FARPLANEFRUSTUM = 0x40,
-	VPF_NOCUBEMAPS      = 0x80
+	VPF_NOCUBEMAPS      = 0x80,
+	VPF_WATERREFLECTION = 0x100		// Q3Rally: copy this mirror view into tr.waterReflectionImage
 } viewParmFlags_t;
 
 typedef struct {
@@ -1494,6 +1506,7 @@ typedef struct {
 	FBO_t *last2DFBO;
 	qboolean    colorMask[4];
 	qboolean    depthFill;
+	qboolean    waterReflectionReady;	// Q3Rally: reflection texture was rendered this frame
 } backEndState_t;
 
 /*
@@ -1538,6 +1551,7 @@ typedef struct {
 	
 
 	image_t					*renderImage;
+	image_t					*waterReflectionImage;	// Q3Rally
 	image_t					*sunRaysImage;
 	image_t					*renderDepthImage;
 	image_t					*pshadowMaps[MAX_DRAWN_PSHADOWS];
@@ -1558,6 +1572,7 @@ typedef struct {
 	image_t					*textureDepthImage;
 
 	FBO_t					*renderFbo;
+	FBO_t					*waterReflectionFbo;	// Q3Rally
 	FBO_t					*msaaResolveFbo;
 	FBO_t					*sunRaysFbo;
 	FBO_t					*depthFbo;
@@ -1603,6 +1618,7 @@ typedef struct {
 	//
 	shaderProgram_t genericShader[GENERICDEF_COUNT];
 	shaderProgram_t textureColorShader;
+	shaderProgram_t waterShader;			// Q3Rally
 	shaderProgram_t fogShader[FOGDEF_COUNT];
 	shaderProgram_t dlightShader[DLIGHTDEF_COUNT];
 	shaderProgram_t lightallShader[LIGHTDEF_COUNT];
@@ -1803,6 +1819,7 @@ extern  cvar_t  *r_parallaxMapping;
 extern  cvar_t  *r_parallaxMapOffset;
 extern  cvar_t  *r_parallaxMapShadows;
 extern  cvar_t  *r_cubeMapping;
+extern  cvar_t  *r_water;
 extern  cvar_t  *r_cubemapSize;
 extern  cvar_t  *r_deluxeSpecular;
 extern  cvar_t  *r_pbr;

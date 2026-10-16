@@ -310,6 +310,14 @@ void FBO_Init(void)
 		qglClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	}
 
+	// Q3Rally: target for the mirror view of q3r_water surfaces
+	if (tr.waterReflectionImage)
+	{
+		tr.waterReflectionFbo = FBO_Create("_waterReflection", tr.waterReflectionImage->width, tr.waterReflectionImage->height);
+		FBO_AttachImage(tr.waterReflectionFbo, tr.waterReflectionImage, GL_COLOR_ATTACHMENT0, 0);
+		R_CheckFBO(tr.waterReflectionFbo);
+	}
+
 	if (tr.screenScratchImage)
 	{
 		tr.screenScratchFbo = FBO_Create("screenScratch", tr.screenScratchImage->width, tr.screenScratchImage->height);

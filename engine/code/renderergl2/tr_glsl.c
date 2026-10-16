@@ -52,6 +52,8 @@ extern const char *fallbackShader_texturecolor_vp;
 extern const char *fallbackShader_texturecolor_fp;
 extern const char *fallbackShader_tonemap_vp;
 extern const char *fallbackShader_tonemap_fp;
+extern const char *fallbackShader_water_vp;
+extern const char *fallbackShader_water_fp;
 
 typedef struct uniformInfo_s
 {
@@ -1048,6 +1050,29 @@ void GLSL_InitGPUShaders(void)
 
 	numEtcShaders++;
 
+	// Q3Rally: water. Optional, q3r_water shaders fall back to their stages.
+	if (r_water->integer && glRefConfig.framebufferObject && glRefConfig.framebufferBlit)
+	{
+		attribs = ATTR_POSITION | ATTR_NORMAL;
+		extradefines[0] = '\0';
+
+		if (GLSL_InitGPUShader(&tr.waterShader, "water", attribs, qtrue, extradefines, qtrue, fallbackShader_water_vp, fallbackShader_water_fp))
+		{
+			GLSL_InitUniforms(&tr.waterShader);
+
+			GLSL_SetUniformInt(&tr.waterShader, UNIFORM_SCREENIMAGEMAP, TB_COLORMAP);
+			GLSL_SetUniformInt(&tr.waterShader, UNIFORM_NORMALMAP, TB_NORMALMAP);
+
+			GLSL_FinishGPUShader(&tr.waterShader);
+
+			numEtcShaders++;
+		}
+		else
+		{
+			ri.Printf(PRINT_WARNING, "WARNING: could not load water shader, q3r_water surfaces use their shader stages\n");
+		}
+	}
+
 	for (i = 0; i < FOGDEF_COUNT; i++)
 	{
 		if ((i & FOGDEF_USE_VERTEX_ANIMATION) && (i & FOGDEF_USE_BONE_ANIMATION))
@@ -1553,6 +1578,7 @@ void GLSL_ShutdownGPUShaders(void)
 		GLSL_DeleteGPUShader(&tr.genericShader[i]);
 
 	GLSL_DeleteGPUShader(&tr.textureColorShader);
+	GLSL_DeleteGPUShader(&tr.waterShader);
 
 	for ( i = 0; i < FOGDEF_COUNT; i++)
 		GLSL_DeleteGPUShader(&tr.fogShader[i]);

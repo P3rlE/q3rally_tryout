@@ -1511,6 +1511,81 @@ static void RB_RenderShadowmap( shaderCommands_t *input )
 /*
 ** RB_StageIteratorGeneric
 */
+/*
+===================
+RB_WaterPass
+
+Q3Rally: draws a q3r_water surface with the water GLSL program. The
+reflection texture holds the mirror view rendered for this frame; without
+it the water is drawn with its colour only.
+===================
+*/
+static void RB_WaterPass( shaderCommands_t *input )
+{
+	shader_t *shader = input->shader;
+	shaderProgram_t *sp = &tr.waterShader;
+	vec4_t vec;
+	vec3_t sunColor;
+	vec2_t invRes;
+	float maxSun;
+
+	// nothing to show inside mirror and portal views (the water plane is
+	// the mirror plane there)
+	if ( backEnd.viewParms.isPortal )
+		return;
+
+	GLSL_BindProgram(sp);
+
+	GLSL_SetUniformMat4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
+	// world surfaces are already in world space (transformMatrix is only
+	// set up for entities)
+	if ( backEnd.currentEntity && backEnd.currentEntity != &tr.worldEntity )
+	{
+		GLSL_SetUniformMat4(sp, UNIFORM_MODELMATRIX, backEnd.or.transformMatrix);
+	}
+	else
+	{
+		mat4_t identity;
+
+		Mat4Identity(identity);
+		GLSL_SetUniformMat4(sp, UNIFORM_MODELMATRIX, identity);
+	}
+	GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.or.origin);
+	GLSL_SetUniformFloat(sp, UNIFORM_TIME, input->shaderTime);
+
+	invRes[0] = 1.0f / tr.waterReflectionImage->width;
+	invRes[1] = 1.0f / tr.waterReflectionImage->height;
+	GLSL_SetUniformVec2(sp, UNIFORM_INVTEXRES, invRes);
+
+	GLSL_SetUniformVec4(sp, UNIFORM_COLOR, shader->waterColor);
+
+	VectorSet4(vec, 1.0f / shader->waterTile, shader->waterSpeed, shader->waterDistortion,
+		backEnd.waterReflectionReady ? 1.0f : 0.0f);
+	GLSL_SetUniformVec4(sp, UNIFORM_NORMALSCALE, vec);
+
+	VectorSet4(vec, shader->waterFresnelBias, shader->waterFresnelPower, shader->waterSpecular, 0.0f);
+	GLSL_SetUniformVec4(sp, UNIFORM_SPECULARSCALE, vec);
+
+	// sun glint from the map's q3map_sun, brightest channel scaled to 1
+	maxSun = MAX(tr.sunLight[0], MAX(tr.sunLight[1], tr.sunLight[2]));
+	if (maxSun > 0.0f)
+		VectorScale(tr.sunLight, 1.0f / maxSun, sunColor);
+	else
+		VectorClear(sunColor);
+	GLSL_SetUniformVec3(sp, UNIFORM_PRIMARYLIGHTCOLOR, sunColor);
+
+	VectorCopy(tr.sunDirection, vec);
+	vec[3] = 0.0f;
+	GLSL_SetUniformVec4(sp, UNIFORM_PRIMARYLIGHTORIGIN, vec);
+
+	GL_BindToTMU(tr.waterReflectionImage, TB_COLORMAP);
+	GL_BindToTMU(shader->waterNormalImage, TB_NORMALMAP);
+
+	GL_State(GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA);
+
+	R_DrawElements(input->numIndexes, input->firstIndex);
+}
+
 void RB_StageIteratorGeneric( void )
 {
 	shaderCommands_t *input;
@@ -1623,6 +1698,18 @@ void RB_StageIteratorGeneric( void )
 	//
 	// call shader function
 	//
+	if ( input->shader->isWater )
+	{
+		RB_WaterPass( input );
+
+		if ( input->shader->polygonOffset )
+		{
+			qglDisable( GL_POLYGON_OFFSET_FILL );
+		}
+
+		return;
+	}
+
 	RB_IterateStagesGeneric( input );
 
 	//

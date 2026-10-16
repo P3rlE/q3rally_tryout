@@ -1294,13 +1294,55 @@ static qboolean SurfIsOffscreen( const drawSurf_t *drawSurf, vec4_t clipDest[128
 }
 
 /*
+=================
+R_GetWaterOrientations
+
+Q3Rally: a q3r_water surface is always a mirror of its own plane, so it
+needs no misc_portal_surface entity.
+=================
+*/
+static void R_GetWaterOrientations( drawSurf_t *drawSurf, int entityNum,
+							 orientation_t *surface, orientation_t *camera,
+							 vec3_t pvsOrigin ) {
+	cplane_t	plane;
+	float		d;
+
+	R_PlaneForSurface( drawSurf->surface, &plane );
+
+	if ( entityNum != REFENTITYNUM_WORLD ) {
+		vec3_t normal;
+
+		tr.currentEntityNum = entityNum;
+		tr.currentEntity = &tr.refdef.entities[entityNum];
+		R_RotateForEntity( tr.currentEntity, &tr.viewParms, &tr.or );
+		R_LocalNormalToWorld( plane.normal, normal );
+		VectorCopy( normal, plane.normal );
+		plane.dist = plane.dist + DotProduct( plane.normal, tr.or.origin );
+	}
+
+	VectorCopy( plane.normal, surface->axis[0] );
+	PerpendicularVector( surface->axis[1], surface->axis[0] );
+	CrossProduct( surface->axis[0], surface->axis[1], surface->axis[2] );
+
+	VectorScale( plane.normal, plane.dist, surface->origin );
+	VectorCopy( surface->origin, camera->origin );
+	VectorSubtract( vec3_origin, surface->axis[0], camera->axis[0] );
+	VectorCopy( surface->axis[1], camera->axis[1] );
+	VectorCopy( surface->axis[2], camera->axis[2] );
+
+	// see the world from just above the water, below the viewer
+	d = DotProduct( tr.viewParms.or.origin, plane.normal ) - plane.dist;
+	VectorMA( tr.viewParms.or.origin, 8.0f - d, plane.normal, pvsOrigin );
+}
+
+/*
 ========================
 R_MirrorViewBySurface
 
 Returns qtrue if another view has been rendered
 ========================
 */
-qboolean R_MirrorViewBySurface (drawSurf_t *drawSurf, int entityNum) {
+qboolean R_MirrorViewBySurface (drawSurf_t *drawSurf, int entityNum, qboolean water) {
 	vec4_t			clipDest[128];
 	viewParms_t		newParms;
 	viewParms_t		oldParms;
@@ -1328,7 +1370,11 @@ qboolean R_MirrorViewBySurface (drawSurf_t *drawSurf, int entityNum) {
 	newParms.isPortal = qtrue;
 	newParms.zFar = 0.0f;
 	newParms.flags &= ~VPF_FARPLANEFRUSTUM;
-	if ( !R_GetPortalOrientations( drawSurf, entityNum, &surface, &camera, 
+	if ( water ) {
+		R_GetWaterOrientations( drawSurf, entityNum, &surface, &camera, newParms.pvsOrigin );
+		newParms.isMirror = qtrue;
+		newParms.flags |= VPF_WATERREFLECTION;
+	} else if ( !R_GetPortalOrientations( drawSurf, entityNum, &surface, &camera, 
 		newParms.pvsOrigin, &newParms.isMirror ) ) {
 		return qfalse;		// bad portal, no portalentity
 	}
@@ -1501,6 +1547,7 @@ void R_SortDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	int				dlighted;
 	int             pshadowed;
 	int				i;
+	qboolean		mirrored = qfalse;
 
 	//ri.Printf(PRINT_ALL, "firstDrawSurf %d numDrawSurfs %d\n", (int)(drawSurfs - tr.refdef.drawSurfs), numDrawSurfs);
 
@@ -1536,12 +1583,38 @@ void R_SortDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 		}
 
 		// if the mirror was completely clipped away, we may need to check another surface
-		if ( R_MirrorViewBySurface( (drawSurfs+i), entityNum) ) {
+		if ( R_MirrorViewBySurface( (drawSurfs+i), entityNum, qfalse) ) {
 			// this is a debug option to see exactly what is being mirrored
 			if ( r_portalOnly->integer ) {
 				return;
 			}
+			mirrored = qtrue;
 			break;		// only one mirror view at a time
+		}
+	}
+
+	// Q3Rally: q3r_water surfaces are sorted after the opaque world; the
+	// first visible one renders the mirror view into the reflection texture
+	if ( !mirrored && tr.waterReflectionFbo && !tr.viewParms.isPortal ) {
+		for ( i = 0 ; i < numDrawSurfs ; i++ ) {
+			R_DecomposeSort( (drawSurfs+i)->sort, &entityNum, &shader, &fogNum, &dlighted, &pshadowed );
+
+			if ( shader->sort < SS_UNDERWATER ) {
+				continue;
+			}
+			if ( shader->sort > SS_UNDERWATER ) {
+				break;
+			}
+			if ( !shader->isWater ) {
+				continue;
+			}
+
+			if ( R_MirrorViewBySurface( (drawSurfs+i), entityNum, qtrue ) ) {
+				if ( r_portalOnly->integer ) {
+					return;
+				}
+				break;	// one reflection per view
+			}
 		}
 	}
 

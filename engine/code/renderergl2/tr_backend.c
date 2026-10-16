@@ -1181,6 +1181,17 @@ const void	*RB_DrawSurfs( const void *data ) {
 		RB_RenderFlares();
 	}
 
+	// Q3Rally: keep the mirror view of a q3r_water surface for the water pass
+	// of the main view, which is drawn over it next
+	if (tr.waterReflectionFbo && (backEnd.viewParms.flags & VPF_WATERREFLECTION))
+	{
+		FBO_t *srcFbo = backEnd.viewParms.targetFbo ? backEnd.viewParms.targetFbo : tr.renderFbo;
+
+		FBO_FastBlit(srcFbo, NULL, tr.waterReflectionFbo, NULL, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		FBO_Bind(srcFbo);
+		backEnd.waterReflectionReady = qtrue;
+	}
+
 	if (glRefConfig.framebufferObject && tr.renderCubeFbo && backEnd.viewParms.targetFbo == tr.renderCubeFbo)
 	{
 		cubemap_t *cubemap = &tr.cubemaps[backEnd.viewParms.targetFboCubemapIndex];
@@ -1371,6 +1382,9 @@ const void	*RB_SwapBuffers( const void *data ) {
 	if ( tess.numIndexes ) {
 		RB_EndSurface();
 	}
+
+	// Q3Rally: the water reflection is only valid for the frame it was drawn in
+	backEnd.waterReflectionReady = qfalse;
 
 	// texture swapping test
 	if ( r_showImages->integer ) {
