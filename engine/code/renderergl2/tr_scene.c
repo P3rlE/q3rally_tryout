@@ -517,15 +517,24 @@ void RE_RenderScene( const refdef_t *fd ) {
 		}
 	}
 
-        // update dynamic reflection cubemap if enabled
-        if ( glRefConfig.framebufferObject && r_dynamicReflections->integer && !( fd->rdflags & RDF_NOWORLDMODEL ) )
-        {
-                R_GenerateReflectionCubemap( tr.refdef.vieworg );
-        }
-        else
-        {
-                tr.dynamicReflectionImage = tr.defaultReflectImage;
-        }
+	// playing with cube maps
+	// this is where dynamic cubemaps would be rendered
+	// Q3Rally: the former r_dynamicReflections path was removed here. It
+	// rendered six nested scenes per frame (dropping the main view's entities)
+	// and its result never reached the $dynamicreflection stages. A
+	// time-sliced subscene cubemap will replace it.
+	if (0) //(glRefConfig.framebufferObject && !( fd->rdflags & RDF_NOWORLDMODEL ))
+	{
+		int i, j;
+
+		for (i = 0; i < tr.numCubemaps; i++)
+		{
+			for (j = 0; j < 6; j++)
+			{
+				R_RenderCubemapSide(i, j, qtrue);
+			}
+		}
+	}
 
 	// setup view parms for the initial view
 	//

@@ -44,7 +44,6 @@ ADVANCED GRAPHICS OPTIONS MENU
 #define ID_AUTOEXPOSURE             19
 #define ID_SSAO                     20
 #define ID_SUNRAYS                  21
-#define ID_DYNAMIC_REFLECTIONS      22
 #define ID_PRESET                   23
 #define ID_SUNSHADOWS               24
 #define ID_SHADOWQUALITY            25
@@ -140,7 +139,6 @@ typedef struct {
 	menulist_s      autoexposure;
 	menulist_s      ssao;
 	menulist_s      sunrays;
-	menulist_s      dynamic_reflections;
 	menulist_s      sunshadows;
 	menulist_s      shadowquality;
 	menulist_s      shadowblur;
@@ -187,7 +185,6 @@ static void UI_AdvancedGraphicsOptionsMenu_SyncPreset( void ) {
 		advancedGraphicsOptionsInfo.autoexposure.curvalue == 0 &&
 		advancedGraphicsOptionsInfo.ssao.curvalue == 0 &&
 		advancedGraphicsOptionsInfo.sunrays.curvalue == 0 &&
-		advancedGraphicsOptionsInfo.dynamic_reflections.curvalue == 0 &&
 		advancedGraphicsOptionsInfo.sunshadows.curvalue == 0 &&
 		advancedGraphicsOptionsInfo.shadowquality.curvalue == 0 &&
 		advancedGraphicsOptionsInfo.shadowblur.curvalue == 0 &&
@@ -206,7 +203,6 @@ static void UI_AdvancedGraphicsOptionsMenu_SyncPreset( void ) {
 		advancedGraphicsOptionsInfo.autoexposure.curvalue == 1 &&
 		advancedGraphicsOptionsInfo.ssao.curvalue == 0 &&
 		advancedGraphicsOptionsInfo.sunrays.curvalue == 0 &&
-		advancedGraphicsOptionsInfo.dynamic_reflections.curvalue == 0 &&
 		advancedGraphicsOptionsInfo.sunshadows.curvalue == 0 &&
 		advancedGraphicsOptionsInfo.shadowquality.curvalue == 0 &&
 		advancedGraphicsOptionsInfo.shadowblur.curvalue == 0 &&
@@ -225,7 +221,6 @@ static void UI_AdvancedGraphicsOptionsMenu_SyncPreset( void ) {
 		advancedGraphicsOptionsInfo.autoexposure.curvalue == 1 &&
 		advancedGraphicsOptionsInfo.ssao.curvalue == 1 &&
 		advancedGraphicsOptionsInfo.sunrays.curvalue == 0 &&
-		advancedGraphicsOptionsInfo.dynamic_reflections.curvalue == 0 &&
 		advancedGraphicsOptionsInfo.sunshadows.curvalue == 1 &&
 		advancedGraphicsOptionsInfo.shadowquality.curvalue == 1 &&
 		advancedGraphicsOptionsInfo.shadowblur.curvalue == 0 &&
@@ -244,7 +239,6 @@ static void UI_AdvancedGraphicsOptionsMenu_SyncPreset( void ) {
 		advancedGraphicsOptionsInfo.autoexposure.curvalue == 1 &&
 		advancedGraphicsOptionsInfo.ssao.curvalue == 1 &&
 		advancedGraphicsOptionsInfo.sunrays.curvalue == 1 &&
-		advancedGraphicsOptionsInfo.dynamic_reflections.curvalue == 1 &&
 		advancedGraphicsOptionsInfo.sunshadows.curvalue == 1 &&
 		advancedGraphicsOptionsInfo.shadowquality.curvalue == 2 &&
 		advancedGraphicsOptionsInfo.shadowblur.curvalue == 1 &&
@@ -269,7 +263,6 @@ static void UI_AdvancedGraphicsOptionsMenu_ApplyPreset( int preset ) {
 		advancedGraphicsOptionsInfo.autoexposure.curvalue = 0;
 		advancedGraphicsOptionsInfo.ssao.curvalue = 0;
 		advancedGraphicsOptionsInfo.sunrays.curvalue = 0;
-		advancedGraphicsOptionsInfo.dynamic_reflections.curvalue = 0;
 		advancedGraphicsOptionsInfo.sunshadows.curvalue = 0;
 		advancedGraphicsOptionsInfo.shadowquality.curvalue = 0;
 		advancedGraphicsOptionsInfo.shadowblur.curvalue = 0;
@@ -286,7 +279,6 @@ static void UI_AdvancedGraphicsOptionsMenu_ApplyPreset( int preset ) {
 		advancedGraphicsOptionsInfo.autoexposure.curvalue = 1;
 		advancedGraphicsOptionsInfo.ssao.curvalue = 0;
 		advancedGraphicsOptionsInfo.sunrays.curvalue = 0;
-		advancedGraphicsOptionsInfo.dynamic_reflections.curvalue = 0;
 		advancedGraphicsOptionsInfo.sunshadows.curvalue = 0;
 		advancedGraphicsOptionsInfo.shadowquality.curvalue = 0;
 		advancedGraphicsOptionsInfo.shadowblur.curvalue = 0;
@@ -303,7 +295,6 @@ static void UI_AdvancedGraphicsOptionsMenu_ApplyPreset( int preset ) {
 		advancedGraphicsOptionsInfo.autoexposure.curvalue = 1;
 		advancedGraphicsOptionsInfo.ssao.curvalue = 1;
 		advancedGraphicsOptionsInfo.sunrays.curvalue = 0;
-		advancedGraphicsOptionsInfo.dynamic_reflections.curvalue = 0;
 		advancedGraphicsOptionsInfo.sunshadows.curvalue = 1;
 		advancedGraphicsOptionsInfo.shadowquality.curvalue = 1;
 		advancedGraphicsOptionsInfo.shadowblur.curvalue = 0;
@@ -320,7 +311,6 @@ static void UI_AdvancedGraphicsOptionsMenu_ApplyPreset( int preset ) {
 		advancedGraphicsOptionsInfo.autoexposure.curvalue = 1;
 		advancedGraphicsOptionsInfo.ssao.curvalue = 1;
 		advancedGraphicsOptionsInfo.sunrays.curvalue = 1;
-		advancedGraphicsOptionsInfo.dynamic_reflections.curvalue = 1;
 		advancedGraphicsOptionsInfo.sunshadows.curvalue = 1;
 		advancedGraphicsOptionsInfo.shadowquality.curvalue = 2;
 		advancedGraphicsOptionsInfo.shadowblur.curvalue = 1;
@@ -340,7 +330,6 @@ static void UI_AdvancedGraphicsOptionsMenu_ApplyPreset( int preset ) {
 	trap_Cvar_SetValue( "r_autoExposure", advancedGraphicsOptionsInfo.autoexposure.curvalue );
 	trap_Cvar_SetValue( "r_ssao", advancedGraphicsOptionsInfo.ssao.curvalue );
 	trap_Cvar_SetValue( "r_drawSunRays", advancedGraphicsOptionsInfo.sunrays.curvalue );
-	trap_Cvar_SetValue( "r_dynamicReflections", advancedGraphicsOptionsInfo.dynamic_reflections.curvalue );
 	UI_AdvancedGraphicsOptionsMenu_ApplyShadowCvars();
 }
 
@@ -381,11 +370,6 @@ static void UI_AdvancedGraphicsOptionsMenu_Event( void* ptr, int event ) {
 
 	case ID_SUNRAYS:
 		trap_Cvar_SetValue( "r_drawSunRays", advancedGraphicsOptionsInfo.sunrays.curvalue );
-		UI_AdvancedGraphicsOptionsMenu_SyncPreset();
-		break;
-
-	case ID_DYNAMIC_REFLECTIONS:
-		trap_Cvar_SetValue( "r_dynamicReflections", advancedGraphicsOptionsInfo.dynamic_reflections.curvalue );
 		UI_AdvancedGraphicsOptionsMenu_SyncPreset();
 		break;
 
@@ -732,17 +716,6 @@ static void UI_AdvancedGraphicsOptionsMenu_Init( void ) {
 	advancedGraphicsOptionsInfo.sunrays.curvalue          = trap_Cvar_VariableValue( "r_drawSunRays" ) != 0;
 
 	y += BIGCHAR_HEIGHT + 2;
-	advancedGraphicsOptionsInfo.dynamic_reflections.generic.type      = MTYPE_SPINCONTROL;
-	advancedGraphicsOptionsInfo.dynamic_reflections.generic.name      = "Dynamic Reflections:";
-	advancedGraphicsOptionsInfo.dynamic_reflections.generic.flags     = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
-	advancedGraphicsOptionsInfo.dynamic_reflections.generic.callback  = UI_AdvancedGraphicsOptionsMenu_Event;
-	advancedGraphicsOptionsInfo.dynamic_reflections.generic.id        = ID_DYNAMIC_REFLECTIONS;
-	advancedGraphicsOptionsInfo.dynamic_reflections.generic.x         = 400;
-	advancedGraphicsOptionsInfo.dynamic_reflections.generic.y         = y;
-	advancedGraphicsOptionsInfo.dynamic_reflections.itemnames         = enabled_items;
-	advancedGraphicsOptionsInfo.dynamic_reflections.curvalue          = trap_Cvar_VariableValue( "r_dynamicReflections" ) != 0;
-
-	y += BIGCHAR_HEIGHT + 2;
 	advancedGraphicsOptionsInfo.sunshadows.generic.type      = MTYPE_SPINCONTROL;
 	advancedGraphicsOptionsInfo.sunshadows.generic.name      = "Sun Shadows:";
 	advancedGraphicsOptionsInfo.sunshadows.generic.flags     = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
@@ -890,7 +863,6 @@ static void UI_AdvancedGraphicsOptionsMenu_Init( void ) {
 	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.autoexposure );
 	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.ssao );
 	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.sunrays );
-	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.dynamic_reflections );
 	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.sunshadows );
 	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.shadowquality );
 	Menu_AddItem( &advancedGraphicsOptionsInfo.menu, ( void * ) &advancedGraphicsOptionsInfo.shadowblur );
@@ -924,9 +896,6 @@ static void UI_AdvancedGraphicsOptionsMenu_Init( void ) {
 	AdvancedGraphics_SetSettingBounds( &advancedGraphicsOptionsInfo.sunrays.generic,
 		ID_SUNRAYS, "Sun rays", ADV_COLUMN_LEFT_X,
 		ADV_ROW_START_Y + 6 * ( ADV_ROW_HEIGHT + ADV_ROW_GAP ) );
-	AdvancedGraphics_SetSettingBounds( &advancedGraphicsOptionsInfo.dynamic_reflections.generic,
-		ID_DYNAMIC_REFLECTIONS, "Dynamic refl.", ADV_COLUMN_LEFT_X,
-		ADV_ROW_START_Y + 7 * ( ADV_ROW_HEIGHT + ADV_ROW_GAP ) );
 
 	AdvancedGraphics_SetSettingBounds( &advancedGraphicsOptionsInfo.sunshadows.generic,
 		ID_SUNSHADOWS, "Sun shadows", ADV_COLUMN_RIGHT_X, ADV_ROW_START_Y );

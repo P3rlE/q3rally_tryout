@@ -227,8 +227,27 @@ Changed:
   ladder; best lap times are still recorded and lap ghosts are uploaded.
 - tools/startserver/cli.py now uses the real g_gametype values (sprint 7, team modes
   16+, koth 22, ghost 8).
+- Engine libraries updated from ioquake3: zlib 1.2.3 -> 1.3.1, libjpeg 8c -> 9f,
+  libogg 1.3.6, libvorbis 1.3.7, opus 1.5.2, opusfile 0.12, SDL2 2.24 -> 2.32.8
+  (headers and Windows/macOS binaries) and OpenAL headers 1.24.3. Windows 64-bit
+  now ships SDL2.dll instead of SDL264.dll; the macOS build needs macOS 11 or
+  later (code/libs/macos replaces macosx-ub/macosx-ub2).
+- Merged ioquake3 fixes from 2025/2026: com_zoneMegs default 24 -> 48, twice the
+  render command buffer (with a warning when a command is dropped),
+  MAX_PATCH_PLANES 2048 -> 4096, explicit SDL gamepad button mapping, open file
+  limit raised on Linux/macOS, sv_master2 points to directory.ioquake3.org.
+- Advanced graphics: the "Dynamic refl." option and the r_dynamicReflections
+  cvar were removed. The option had no effect without r_cubeMapping 1, and with
+  it the renderer drew six extra nested scenes per frame that dropped the cars
+  and effects of the main view. Car glass keeps the static reflection texture.
 
 Fixed:
+
+- Network messages that end exactly at the buffer size are flagged as
+  overflowed (ioquake3). Userinfo with control characters is rejected; names
+  with umlauts stay valid. Info keys are removed case-insensitively, rehashbans
+  works while no map is running, flares are hidden correctly in mirrors, and
+  trap_BotFreeItemWeights maps to the right QVM syscall (ioquake3).
 
 - Crash to desktop in both renderers when a shader was registered in the
   middle of a frame (e.g. a paint icon in the showroom, browsing from a secret
