@@ -17,6 +17,15 @@ Added:
   uses it too; on water surfaces deformVertexes only applies to the OpenGL1
   stages.
 
+- Waterfall spray: the new rally_fx_spray entity puts spray, drifting mist and
+  droplets where a waterfall hits the water. It runs only on the client (the
+  server drops the entity at spawn, cgame reads it from the map), so it costs
+  no entity slots or bandwidth; the mist is tinted by the light grid at its
+  origin. Keys radius, height, size, rate, droplets, angle, push, _color,
+  alpha, range; cg_mapEffects scales the density (0 = off, 2 = double).
+  q3r_valley has three emitters at the foot of its waterfall and now plays
+  sound/world/waterfall.ogg there (entity lump only, AAS checksum updated).
+
 - New car: DB12 (models/players/db12), an Aston Martin DB12 from a 1,859,182
   triangle OBJ: only what is visible from outside is kept (no interior, brakes
   or inner glass; the lamps stay visible behind their lenses, the parts behind
@@ -263,6 +272,10 @@ Fixed:
   q3r_ctf_01 (video camera model), q3r_country01 (music), the debug spheres
   (models/test), mapobject vehicles and gauntlet skins. q3r_citydom.bsp now
   asks for the lower-case names too.
+
+- Bots on q3r_citydom: the AAS file's BSP checksum matches the map again (the
+  case fix of the shader names had changed the BSP, the bot library then
+  refuses the AAS file as out of date).
 
 - Missing map textures: 75 images that maps, models or the game code still
   use (removed by the 2021 texture cleanup) restored from the mapping kit,

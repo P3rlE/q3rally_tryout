@@ -785,6 +785,61 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php/matches"
 
   <div class="callout orange"><strong>Limits</strong>Only one reflection is drawn per view: if several water planes at different heights are visible at once, they all show the reflection of the first one. Objects under water are tinted but not refracted. <code>deformVertexes</code> is ignored on <code>q3r_water</code> surfaces in OpenGL2 (the plane must stay flat; waves come from the normal map) and only applies to the fallback stages. The reflection renders the scene a second time, so keep large water areas out of busy sections. A custom normal map must tile seamlessly; it is used as a plain RGB image (x/y in red/green).</div>
 
+  <h3>Waterfall Spray — Mapper Guide</h3>
+  <p>A <code>rally_fx_spray</code> entity puts spray, drifting mist and droplets where a waterfall hits the water. It also works for rapids, fountains or steam. The effect is purely client side: the server ignores the entity, cgame reads it from the map at load time and simulates the particles itself, so it uses no entity slot, no network traffic and works in demos. The mist colour is multiplied with the light grid at the origin, so it is not glowing white in a shady gorge or at night. It runs with OpenGL1 and OpenGL2.</p>
+  <div class="callout"><strong>Example</strong><code>q3r_valley</code> has three emitters along the foot of its waterfall and a looping <code>target_speaker</code> with <code>sound/world/waterfall.ogg</code>. Like any point entity, the spray can be added to a finished map by editing only the entity lump; the geometry does not need a recompile.</div>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Step</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Place the entity</td>
+        <td>Put the origin on the water surface where the water lands, a few units in front of the cliff. If the origin ends up inside a rock, the game moves it up and prints a warning. A wide fall looks best with two or three emitters along its foot, the main one with the most particles where most water lands.</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Point it away from the wall</td>
+        <td>Set <code>angle</code> to the direction away from the cliff and <code>push</code> to how hard the spray is thrown that way. This also keeps the mist sprites from cutting into the rock face.</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Scale it to the fall</td>
+        <td><code>radius</code> = spread at the foot, <code>height</code> = how high the mist rises, <code>size</code> = puff size. A small cascade needs about half the defaults, a big fall more <code>rate</code> and <code>height</code>.</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Add sound</td>
+        <td>A <code>target_speaker</code> with <code>"noise" "sound/world/waterfall.ogg"</code> and spawnflag <code>LOOPED_ON</code> (1) near the foot of the fall.</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>QA / validation</td>
+        <td>Check it from the road and from close up, and with <code>cg_mapEffects 0</code>, <code>1</code> and <code>2</code>. Bot support stays intact: the AAS file does not depend on these entities (after editing only the entity lump, the AAS header checksum must match the new BSP; <code>bspc</code> or the Toolbox AAS step updates it).</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <h4 style="font-size:12px;font-weight:600;color:var(--text);margin:16px 0 8px">rally_fx_spray keys</h4>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Key</th><th>Default</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td><code>radius</code></td><td>64</td><td>Horizontal spread of the spray at the foot.</td></tr>
+      <tr><td><code>height</code></td><td>160</td><td>How high the mist rises.</td></tr>
+      <tr><td><code>size</code></td><td>96</td><td>Size of a mist puff.</td></tr>
+      <tr><td><code>rate</code></td><td>30</td><td>Mist puffs per second.</td></tr>
+      <tr><td><code>droplets</code></td><td>50</td><td>Droplets per second; they fly up and fall back into the water.</td></tr>
+      <tr><td><code>angle</code></td><td>all directions</td><td>Yaw the spray is thrown towards, usually away from the cliff.</td></tr>
+      <tr><td><code>push</code></td><td>60</td><td>Speed of the throw in that direction.</td></tr>
+      <tr><td><code>_color</code></td><td>0.92 0.96 1</td><td>Tint (0..1 or 0..255), multiplied with the light grid.</td></tr>
+      <tr><td><code>alpha</code></td><td>0.4</td><td>Opacity of the mist.</td></tr>
+      <tr><td><code>range</code></td><td>3000</td><td>No new particles beyond this view distance; beyond 40% of it the spray thins out.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Players can scale the density with <code>cg_mapEffects</code> (0 = off, 1 = default, 2 = double, archived).</p>
+
+  <div class="callout orange"><strong>Limits</strong>The particles are flat sprites: very close to a wall or the water surface they show a straight edge where they cut into it (no soft particles). At most 32 emitters per map and 640 particles at the same time; nothing is spawned outside the view distance or when the emitter is not in the PVS.</div>
+
   <h3>Utilities &amp; Hazards</h3>
   <div class="table-wrap"><table>
     <thead><tr><th>Entity</th><th>Purpose</th><th>Notes</th></tr></thead>

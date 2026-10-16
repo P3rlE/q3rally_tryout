@@ -276,6 +276,19 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
     </tbody>
   </table></div>
   <div class="callout orange"><strong>Open ideas</strong>Refraction of the floor (copy of the scene before the water pass), one reflection per water plane instead of per view, a time-sliced cubemap for car paint (as in noire-ioq3) to replace the removed dynamic reflections, and an Advanced Graphics menu entry for <code>r_water</code>.</div>
+
+  <h3>Map Effects (rally_fx_spray) — Implementation</h3>
+  <p>Client-side particle emitters placed by mappers; first user is the waterfall in <code>q3r_valley</code>. Mapper usage is in the Manual (Mapping Reference &rarr; Waterfall Spray). Cvar <code>cg_mapEffects</code> (archive, default 1, density 0..2).</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Part</th><th>Where</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>Server side</td><td><code>game/g_spawn.c</code></td><td><code>rally_fx_spray</code> maps to <code>SP_info_null</code>: the entity is freed at spawn, so it costs no entity slot and no snapshot data.</td></tr>
+      <tr><td>Parsing</td><td><code>cgame/cg_rally_fx.c</code> (<code>CG_InitRallyFX</code>, called in <code>CG_Init</code> after the world is loaded)</td><td>Walks the map's entity string once with <code>trap_GetEntityToken</code> (first use of that syscall in cgame) and builds up to 32 emitters. An origin inside solid is moved up (the PVS test would otherwise fail at random, <code>R_inPVS</code> does not check for cluster -1). Shaders are only registered when the map has emitters.</td></tr>
+      <tr><td>Simulation</td><td><code>CG_AddRallyFX</code>, called in <code>CG_DrawActiveFrame</code> after the local entities</td><td>Own pool of 640 particles (independent of the 1024 local entities used by tyre smoke). Emission per emitter only within <code>range</code> and when in the PVS, thinned with distance, scaled by <code>cg_mapEffects</code>, max 24 spawns per frame. Mist: drag, no gravity, a third stays low; droplets: gravity 600, removed when they fall back below the origin. Colour = key tint &times; light grid (<code>trap_R_LightForPoint</code>, sampled once, floor 0.5).</td></tr>
+      <tr><td>Drawing</td><td><code>trap_R_AddPolysToScene</code>, <code>scripts/q3r_fx.shader</code></td><td>Camera-facing quads, one batch per shader (<code>gfx/misc/q3r_mist</code>, <code>gfx/misc/q3r_droplet</code>, <code>rgbGen/alphaGen vertex</code>). Polys instead of refEntities, so the 1023 refEntity limit is not touched; they share <code>r_maxpolys</code> (2400) with marks and weather.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout orange"><strong>Open ideas</strong>More <code>rally_fx_*</code> types on the same code path (dust devils, steam vents, sparks from a grinder), a foam decal on the water at the foot of the fall, soft particles (depth fade) in GL2.</div>
 </section>
 
 <!-- ═══════════════ ANISO & MSAA PLAN ═══════════════ -->

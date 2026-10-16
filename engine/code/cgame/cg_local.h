@@ -1799,6 +1799,7 @@ extern      vmCvar_t                cg_distanceFormat;
 
 
 extern	vmCvar_t		cg_atmosphericLevel;
+extern	vmCvar_t		cg_mapEffects;
 extern	vmCvar_t		cg_weatherAudio;
 extern	vmCvar_t		cg_developer;
 
@@ -2205,6 +2206,12 @@ void CG_CheckChangedPredictableEvents( playerState_t *ps );
 
 
 // Q3Rally Code Start
+//
+// cg_rally_fx.c
+//
+void CG_InitRallyFX( void );
+void CG_AddRallyFX( void );
+
 //
 // cg_atmospheric.c
 //

@@ -276,6 +276,7 @@ vmCvar_t	cg_developer;
 
 // cutom variable used in modified atmospheric effects from q3f
 vmCvar_t	cg_atmosphericLevel;
+vmCvar_t	cg_mapEffects;
 vmCvar_t	cg_weatherAudio;
 
 vmCvar_t	cg_fpsLimit;
@@ -431,6 +432,7 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_developer, "developer", "0", 0 },
 
 	{ &cg_atmosphericLevel, "cg_atmosphericLevel", "2", CVAR_ARCHIVE },
+	{ &cg_mapEffects, "cg_mapEffects", "1", CVAR_ARCHIVE },
 	{ &cg_weatherAudio, "cg_weatherAudio", "1", CVAR_ARCHIVE },
 
 
@@ -2449,6 +2451,9 @@ void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum ) {
 	CG_InitLocalEntities();
 
 	CG_InitMarkPolys();
+
+	// Q3Rally: waterfall spray and other map effects (rally_fx_*)
+	CG_InitRallyFX();
 
 // Q3Rally Code Start
 	size = trap_MemoryRemaining();

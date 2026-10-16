@@ -2604,6 +2604,26 @@ g_dynamicWeather 1/0, g_weatherInitialChance, g_weatherOnMinTime, g_weatherOnMax
 g_weatherOffMinTime and g_weatherOffMaxTime.
 */
 
+/*QUAKED rally_fx_spray (.6 .8 1) (-16 -16 -8) (16 16 16)
+Spray, mist and droplets where a waterfall hits the water (also works for
+rapids, fountains or steam). Purely client side: no entity slot, no network
+traffic. Place the origin on the water surface where the water lands; a
+long waterfall looks best with two or three of these along its foot.
+Players can scale or switch it off with cg_mapEffects (0 = off, 1, 2).
+
+-------- KEYS --------
+"radius"	horizontal spread of the spray (default 64)
+"height"	how high the mist rises (default 160)
+"size"	size of a mist puff (default 96)
+"rate"	mist puffs per second (default 30)
+"droplets"	droplets per second (default 50)
+"angle"	yaw the spray is thrown towards, usually away from the cliff (default: all directions)
+"push"	speed of that throw (default 60)
+"_color"	tint, multiplied with the light grid at the origin (default .92 .96 1)
+"alpha"	opacity of the mist (default 0.4)
+"range"	view distance beyond which no new particles spawn (default 3000)
+*/
+
 /*QUAKED item_armor_green (0 .7 0) (-16 -16 -16) (16 16 16) SUSPENDED
 */
 

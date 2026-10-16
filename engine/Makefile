@@ -2725,6 +2725,7 @@ Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_rally_racingline.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_rearweapons.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_scripted_objects.o \
+  $(B)/$(BASEGAME)/cgame/cg_rally_fx.o \
   $(B)/$(BASEGAME)/cgame/cg_autoball.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_tools.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_intro_cam.o \
