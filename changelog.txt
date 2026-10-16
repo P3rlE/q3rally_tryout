@@ -7,8 +7,9 @@ Added:
 - New car: DB12 (models/players/db12), an Aston Martin DB12 from a 1,859,182
   triangle OBJ: only what is visible from outside is kept (no interior, brakes
   or inner glass; the lamps stay visible behind their lenses, the parts behind
-  grille, gills and vents are kept whole and the trim is drawn two-sided, so
-  no opening shows the background), decimated to about 117,000 triangles, badges, lettering and plates left out, a
+  grille, gills and vents are kept whole and thin parts carry a reversed copy
+  of their triangles, so no opening shows the background; diffuser and rear
+  trim black), about 139,000 triangles, badges, lettering and plates left out, a
   lathe-turned tyre for the rim selection. Skins red/blue/green/yellow and
   rally01/07/13/27/44/88 with menu icons, the seven secret paints in
   zz_secret_skins.pk3. Needs the raised polygon limit. Converter in

@@ -12,7 +12,9 @@ body.md3, wheel.md3, parts.tga
       interior, the brakes and the inner glass of the source are left out;
       the parts seen only through narrow openings (grille, the gills behind
       the front wheels, vents, lamps) are kept whole; 568,654 of 1,859,182
-      triangles remain, decimated to about 117,000 (mesh.py, pyfqmr)
+      triangles remain, decimated to about 139,000 (mesh.py, pyfqmr); thin
+      parts seen from both sides (grille, gills, vents, diffuser) carry a
+      reversed copy of their triangles
     - scaled to the size of the other cars and centred on the origin
     - manufacturer badges and lettering, the number plates and their holders
       left out (the game draws its own plate)

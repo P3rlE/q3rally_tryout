@@ -210,10 +210,12 @@ lenses are one glass shell over all lamps, so the lamps behind them count as
 visible). Parts seen only through narrow openings (grille, gills, vents, lamp
 housings) are missed by the culling at its resolution and kept whole
 (`KEEP_ALL`), otherwise the openings show the background. The paint keeps about
-a third of its triangles, the rest shares what is left of about 117,000. Black
+a third of its triangles, the rest shares what is left of about 85,000. Black
 trim that culling cut into many bordered pieces is decimated a second time with
-moving borders, and the palette parts are drawn two-sided (`cull none` in
-cars.shader), so slats and lips seen from behind do not vanish. `render3d.py`
+moving borders. Thin parts seen from both sides (grille, gills, vents, diffuser:
+`TWO_SIDED`) get a reversed copy of their triangles with the normals turned round
+(about 139,000 triangles in all); `cull none` would light their backs with the
+front's normal, and undersides facing up flash white in game. `render3d.py`
 with Q3R_CULL=1 draws like the game (no back faces; Q3R_TWOSIDED=parts exempts
 two-sided textures), which shows such holes. The source's textures are ambient-occlusion maps; the parts take their
 material colour (or the flat colour texture) from a palette.

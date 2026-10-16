@@ -40,7 +40,7 @@ P = 'models/players/db12/'
 
 LENGTH = 116.5            # world units; the GT500 is 117 for 4.8 m, the DB12 is 4.73 m
 WHEEL_Z = -9.7            # wheel centre height the model is laid out at (paint atlas, decals)
-TARGET = 100000           # body triangles after decimation, like the GT-R
+TARGET = 85000            # body triangles after decimation; the two-sided parts add their backs on top
 TIRE_SEG, TIRE_BINS = 64, 16   # tyre lathe: segments around, profile steps across the tread
 KEEP_SMALL = 200          # parts below this many triangles are not decimated
 
@@ -66,6 +66,12 @@ KEEP_ALL = ('UId18', 'UId06', 'UId41',                        # grille, its fram
             'UId15', 'UId27',                                  # vent meshes (hood, bumper)
             'UId03', 'UId42', 'UId43', 'UId44', 'UId45', 'UId46', 'UId57', 'UId58',   # headlamps
             'UId10', 'UId47', 'UId48', 'UId49', 'UId50', 'UId51')                     # tail lamps
+# thin parts that are seen from both sides (grille slats, gill and vent blades): they
+# get a second, reversed copy of every triangle with the normals turned round, so the
+# back is lit like a back (cull none would light it with the front's normal, and
+# undersides facing up would flash white)
+TWO_SIDED = ('UId18', 'UId06', 'UId41', 'UId07', 'UId60', 'UId15', 'UId27',
+             'UId52', 'UId54', 'UId55', 'UId56', 'UId04')     # diffuser, tail pipe surrounds, spoiler lip
 
 # ---------------- load and cull --------------------------------------------------------
 d = objnp.load(SRC, CACHE)
@@ -179,7 +185,8 @@ PAL_N = 8                                                 # 8 x 8 cells
 colour.update({'Material_#5': (0.95, 0.95, 0.92), 'ledlamp': (0.98, 0.98, 1.0), 'led_dark': (0.30, 0.30, 0.32),
                'Material_#7': (0.72, 0.02, 0.02), 'Material_#14': (0.60, 0.02, 0.02),
                'Material_#4': (0.025, 0.025, 0.028), 'Material_#9': (0.03, 0.03, 0.03),
-               'Material_#8': (0.04, 0.04, 0.045), 'Material_#13': (0.05, 0.05, 0.055)})
+               'Material_#8': (0.04, 0.04, 0.045), 'Material_#13': (0.05, 0.05, 0.055),
+               'Material_#12': (0.03, 0.03, 0.032), 'Material_#11': (0.035, 0.035, 0.038)})   # diffuser, rear trim: black, not the AO-lit grey
 palette = sorted({m for m in set(MAT[body]) if m not in PAINT})
 cell = {m: i for i, m in enumerate(palette)}
 assert len(palette) <= PAL_N * PAL_N
@@ -228,19 +235,24 @@ def box_uv(reg, p):
 
 
 counts = {}
+TS = np.isin(OBJ, TWO_SIDED)
 for m in sorted(set(MAT[body])):
-    sel = body & (MAT == m)
+  for two in (False, True):
+    sel = body & (MAT == m) & (TS == two)
+    if not sel.any():
+        continue
     verts, faces = mesh.weld(to_q3(V), T[sel])
     n0 = len(faces)
     if n0 > KEEP_SMALL:
-        r = PAINT_RATIO if m in PAINT else ratio
-        verts, faces = mesh.decimate(verts, faces, max(KEEP_SMALL, round(n0 * r)))
-        goal = max(KEEP_SMALL, round(n0 * r))
+        rt = PAINT_RATIO if m in PAINT else ratio   # (r is the tyre radius further down)
+        verts, faces = mesh.decimate(verts, faces, max(KEEP_SMALL, round(n0 * rt)))
+        goal = max(KEEP_SMALL, round(n0 * rt))
         if m not in PAINT and len(faces) > 1.5 * goal:
             # black trim: culling cut it into pieces whose borders cannot move; small
             # gaps along them do not show on black parts
             verts, faces = mesh.decimate(verts, faces, goal, keep_border=False)
-    counts[m] = (n0, len(faces))
+    a0, b0 = counts.get(m, (0, 0))
+    counts[m] = (a0 + n0, b0 + len(faces) * (2 if two else 1))
     cn = mesh.corner_normals(verts, faces)
     kind = 'paint' if m in PAINT else KIND.get(m, 'parts')
     for f, face in enumerate(faces):
@@ -263,6 +275,9 @@ for m in sorted(set(MAT[body])):
             b = surf(kind, 'parts')
             uvs = [pal_uv(m)] * 3
         b.tri([b.vert(pts[k], ns[k], uvs[k]) for k in range(3)])
+        if two:
+            back = [b.vert(pts[k], tuple(-c for c in ns[k]), uvs[k]) for k in range(3)]
+            b.tri([back[0], back[2], back[1]])
 
 GROUPS = ['body_fl', 'body_fr', 'body_rl', 'body_rr', 'glass', 'chrome', 'parts', 'hlights', 'rlights']
 ORDER = sorted(surfs, key=lambda n: (GROUPS.index(n.rstrip('0123456789')), n))
