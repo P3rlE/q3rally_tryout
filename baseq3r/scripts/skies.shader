@@ -143,7 +143,9 @@ textures/q3r_skies/env/mp_us/mp_us
 	q3map_lightsubdivide 256
 	q3map_surfacelight 100
 	surfaceparm sky
-	q3map_sun 1 1 1 100 0 90
+	// sun tilted for real-time shadows (was 1 1 1 100 0 90, straight down); map relit
+	q3map_sun 1 1 1 100 300 50
+	q3gl2_sun 1 1 1 100 300 50 0.5
 	skyparms textures/q3r_skies/env/mp_us/urbansp - -
 }
 
