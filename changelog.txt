@@ -414,6 +414,11 @@ Changed:
 
 Fixed:
 
+- The give command could crash the server ("BG_CanItemBeGrabbed: index out
+  of range") when the item placed at the car started inside the ground: the
+  item was removed and then picked up anyway. Given items are no longer
+  dropped to the floor.
+
 - Breakables a car drives on (the ramps and bridge decks in q3r_ctf_01)
   broke as soon as a car touched them, whatever their health: every hard
   wheel or chassis contact counted as a crash, several times per second.
