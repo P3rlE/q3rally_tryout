@@ -167,6 +167,8 @@ cvar_t  *r_bloom;
 cvar_t  *r_bloomIntensity;
 cvar_t  *r_bloomThreshold;
 cvar_t  *r_fxaa;
+cvar_t  *r_motionBlur;
+cvar_t  *r_motionBlurNos;
 cvar_t  *r_headlights;
 cvar_t  *r_headlightShadows;
 cvar_t  *r_headlightShadowMapSize;
@@ -1375,6 +1377,12 @@ void R_Register( void )
 	r_fxaa = ri.Cvar_Get( "r_fxaa", "1", CVAR_ARCHIVE );
 	ri.Cvar_CheckRange( r_fxaa, 0, 1, qtrue );
 	ri.Cvar_SetDescription( r_fxaa, "Q3Rally: smooth jagged edges with FXAA (needs r_postProcess 1; works together with r_ext_multisample)" );
+	r_motionBlur = ri.Cvar_Get( "r_motionBlur", "0.35", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_motionBlur, 0, 1, qfalse );
+	ri.Cvar_SetDescription( r_motionBlur, "Q3Rally: motion blur of the surroundings when the camera moves, as a share of a 1/60 s frame (0 = off, 0-1)" );
+	r_motionBlurNos = ri.Cvar_Get( "r_motionBlurNos", "1", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_motionBlurNos, 0, 2, qfalse );
+	ri.Cvar_SetDescription( r_motionBlurNos, "Q3Rally: motion blur while the viewed car burns NOS (0-2, needs r_motionBlur above 0)" );
 
 	r_headlights = ri.Cvar_Get( "r_headlights", "1", CVAR_ARCHIVE );
 	ri.Cvar_CheckRange( r_headlights, 0, 1, qtrue );

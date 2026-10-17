@@ -1134,6 +1134,10 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 		CG_AddTestModel();
 	}
 	cg.refdef.time = cg.time;
+	// Q3Rally: the viewed car burns NOS (stronger motion blur in OpenGL2)
+	if ( cg.snap->ps.powerups[PW_TURBO] > cg.snap->serverTime ) {
+		cg.refdef.rdflags |= RDF_NOS;
+	}
 	memcpy( cg.refdef.areamask, cg.snap->areamask, sizeof( cg.refdef.areamask ) );
 
 	// warning sounds when powerup is wearing off

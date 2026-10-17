@@ -1390,7 +1390,6 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.debrisstone5 = trap_R_RegisterModel( "models/debris/stone_5.md3" );
 
 	cgs.media.fireModel = trap_R_RegisterModel( "models/rearfire/flametrail.md3" );
-	cgs.media.turboModel = trap_R_RegisterModel( "models/powerups/turbo/turbocar.md3" );
 
 	cgs.media.headLightGlow = trap_R_RegisterModel( "gfx/flares/h_lite.md3" );
 	cgs.media.brakeLightGlow = trap_R_RegisterModel( "gfx/flares/b_lite.md3" );

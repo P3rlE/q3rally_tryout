@@ -768,7 +768,6 @@ typedef struct {
 	qboolean		headLights;
 	qboolean		brake;
 	qboolean		reverse;
-	qboolean		turbo;
 	char			plateName[MAX_QPATH];
 // END
 } playerInfo_t;
@@ -842,7 +841,6 @@ typedef struct {
 	qhandle_t			headLightGlow;
 	qhandle_t			brakeLightGlow;
 	qhandle_t			reverseLightGlow;
-	qhandle_t			turboModel;
 
 	// menu graphics
 	qhandle_t			port;

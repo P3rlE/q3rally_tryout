@@ -81,6 +81,24 @@ Added:
   r_carReflectionSize (256, latched) and r_carReflectionStrength (1).
   OpenGL1 keeps the fixed reflection.
 
+- Motion blur (OpenGL2): the surroundings blur slightly with the camera
+  motion at speed and in fast turns; the own car and everything near the
+  camera stays sharp. Every pixel is traced back to where it was on the
+  screen in the previous frame (depth and last frame's camera), so the
+  blur follows the real motion and looks the same at any frame rate. It
+  gets stronger while the viewed car burns NOS (new refdef flag RDF_NOS
+  from the cgame, blended in and out over 0.3 s). New cvars r_motionBlur
+  (0.35, share of a 1/60 s frame, 0 = off) and r_motionBlurNos (1).
+
+Changed:
+
+- NOS: the rocket flame model on the car (models/powerups/turbo/
+  turbocar.md3 on tag_turbo) is gone, in game and in the menu preview;
+  burning NOS now shows as stronger motion blur. The pickup, the bot item
+  name, the controls menu, the loading tip and the manual say NOS instead
+  of Turbo. Internal names stay as they are (rally_item_turbo in the maps,
+  PW_TURBO, BUTTON_TURBO, tag_turbo, g_autoballStartTurbo, ball_turbo).
+
 - Bloom and anti-aliasing (OpenGL2): bright lights, lamps, lava, tail lights
   and sun glints get a soft glow (a tight one from a 1/4 size copy of the
   image and a wide one from a 1/16 size copy); the glow grows from

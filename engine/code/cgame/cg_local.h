@@ -1317,7 +1317,6 @@ typedef struct {
 	qhandle_t	reverseLightGlow;
 	qhandle_t	rearviewMirrorShader;
 	qhandle_t	MMapShader;
-	qhandle_t	turboModel;
 
 	// sounds
 	sfxHandle_t	quadSound;

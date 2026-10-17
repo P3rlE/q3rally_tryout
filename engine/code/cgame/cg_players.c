@@ -4754,22 +4754,9 @@ skip_brakelights:;
 skip_reverselights:;
 
 
-	//
-	// add turbo flame
-	//
-	if (cent->currentState.powerups & ( 1 << PW_TURBO ) && CG_TagExists(ci->bodyModel, "tag_turbo")){
-		turbo.hModel = cgs.media.turboModel;
-		if (!turbo.hModel) {
-			return;
-		}
-
-		VectorCopy( cent->lerpOrigin, turbo.lightingOrigin );
-		CG_PositionEntityOnTag( &turbo, &body, ci->bodyModel, "tag_turbo");
-		turbo.shadowPlane = shadowPlane;
-		turbo.renderfx = renderfx;
-
-		trap_R_AddRefEntityToScene( &turbo );
-	}
+	// Q3Rally: no rocket flame on tag_turbo any more while burning NOS, the
+	// renderer blurs the view of the car's driver more strongly instead
+	// (RDF_NOS, r_motionBlurNos)
 
 	// floating arrow to checkpoint
 	if (cg_checkpointArrowMode.integer == 2 && cent->currentState.clientNum == cg.snap->ps.clientNum){

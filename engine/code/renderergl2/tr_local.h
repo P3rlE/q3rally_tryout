@@ -1692,6 +1692,7 @@ typedef struct {
 	shaderProgram_t fxaaShader;			// Q3Rally
 	shaderProgram_t spotlightShader;	// Q3Rally: headlight pass
 	shaderProgram_t carReflectShader;	// Q3Rally: car paint reflection
+	shaderProgram_t motionBlurShader;	// Q3Rally: camera motion blur
 	shaderProgram_t ssaoShader;
 	shaderProgram_t depthBlurShader[4];
 	shaderProgram_t testcubeShader;
@@ -1921,6 +1922,8 @@ extern  cvar_t  *r_bloom;
 extern  cvar_t  *r_bloomIntensity;
 extern  cvar_t  *r_bloomThreshold;
 extern  cvar_t  *r_fxaa;
+extern  cvar_t  *r_motionBlur;
+extern  cvar_t  *r_motionBlurNos;
 extern  cvar_t  *r_headlights;
 extern  cvar_t  *r_headlightShadows;
 extern  cvar_t  *r_headlightShadowMapSize;

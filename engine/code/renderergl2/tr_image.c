@@ -2932,7 +2932,7 @@ void R_CreateBuiltinImages( void ) {
 		if (r_water->integer && glRefConfig.framebufferBlit)
 			tr.waterReflectionImage = R_CreateImage("*waterReflection", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
 
-		if (r_shadowBlur->integer || r_hdr->integer || r_fxaa->integer)
+		if (r_shadowBlur->integer || r_hdr->integer || r_fxaa->integer || r_motionBlur->value > 0.0f)
 			tr.screenScratchImage = R_CreateImage("screenScratch", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, rgbFormat);
 
 		if (r_shadowBlur->integer || r_ssao->integer)

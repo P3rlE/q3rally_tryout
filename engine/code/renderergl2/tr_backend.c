@@ -1644,8 +1644,11 @@ const void *RB_PostProcess(const void *data)
 		}
 	}
 
-	// Q3Rally: bloom and FXAA only for the main view (the rear view and the
-	// minimap are small extra views drawn on top of it)
+	// Q3Rally: motion blur, bloom and FXAA only for the main view (the rear
+	// view and the minimap are small extra views drawn on top of it)
+	if (r_motionBlur->value > 0.0f && backEnd.viewParms.viewportWidth >= glConfig.vidWidth / 2 && !(backEnd.refdef.rdflags & RDF_NOWORLDMODEL))
+		RB_MotionBlur(srcFbo, srcBox);
+
 	if (r_bloom->integer && backEnd.viewParms.viewportWidth >= glConfig.vidWidth / 2)
 		RB_Bloom(srcFbo, srcBox);
 

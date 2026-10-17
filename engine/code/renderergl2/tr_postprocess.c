@@ -556,3 +556,138 @@ void RB_Fxaa(FBO_t *srcFbo, ivec4_t srcBox)
 	FBO_Blit(srcFbo, srcBox, NULL, tr.screenScratchFbo, srcBox, &tr.fxaaShader, NULL, 0);
 	FBO_FastBlit(tr.screenScratchFbo, srcBox, srcFbo, srcBox, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }
+
+/*
+=============
+Q3Rally: camera motion blur
+
+Every pixel of the main view is moved back to where it was on the screen in
+the previous frame (depth + the previous view-projection matrix) and the
+image is blurred along that way. Only the camera motion counts, so pixels
+near the camera (the own car in front of the chase camera) are left sharp
+and are not smeared into the surroundings. The blur length is a share of a
+1/60 s frame (r_motionBlur, independent of the frame rate) and goes up to
+r_motionBlurNos while the viewed car burns NOS (RDF_NOS from the cgame).
+=============
+*/
+#define MOTIONBLUR_MASK_NEAR	250.0f	// closer than this: no blur
+#define MOTIONBLUR_MASK_FAR		450.0f	// full blur from here
+#define MOTIONBLUR_MAX			0.025f	// longest blur, share of the screen
+#define MOTIONBLUR_MAX_NOS		0.06f
+#define MOTIONBLUR_NOS_FADE		300.0f	// ms to blend in and out of NOS
+
+static qboolean Mat4InverseD( const double m[16], double inv[16] )
+{
+	double det;
+	int i;
+
+	inv[0] = m[5]*m[10]*m[15] - m[5]*m[11]*m[14] - m[9]*m[6]*m[15] + m[9]*m[7]*m[14] + m[13]*m[6]*m[11] - m[13]*m[7]*m[10];
+	inv[4] = -m[4]*m[10]*m[15] + m[4]*m[11]*m[14] + m[8]*m[6]*m[15] - m[8]*m[7]*m[14] - m[12]*m[6]*m[11] + m[12]*m[7]*m[10];
+	inv[8] = m[4]*m[9]*m[15] - m[4]*m[11]*m[13] - m[8]*m[5]*m[15] + m[8]*m[7]*m[13] + m[12]*m[5]*m[11] - m[12]*m[7]*m[9];
+	inv[12] = -m[4]*m[9]*m[14] + m[4]*m[10]*m[13] + m[8]*m[5]*m[14] - m[8]*m[6]*m[13] - m[12]*m[5]*m[10] + m[12]*m[6]*m[9];
+	inv[1] = -m[1]*m[10]*m[15] + m[1]*m[11]*m[14] + m[9]*m[2]*m[15] - m[9]*m[3]*m[14] - m[13]*m[2]*m[11] + m[13]*m[3]*m[10];
+	inv[5] = m[0]*m[10]*m[15] - m[0]*m[11]*m[14] - m[8]*m[2]*m[15] + m[8]*m[3]*m[14] + m[12]*m[2]*m[11] - m[12]*m[3]*m[10];
+	inv[9] = -m[0]*m[9]*m[15] + m[0]*m[11]*m[13] + m[8]*m[1]*m[15] - m[8]*m[3]*m[13] - m[12]*m[1]*m[11] + m[12]*m[3]*m[9];
+	inv[13] = m[0]*m[9]*m[14] - m[0]*m[10]*m[13] - m[8]*m[1]*m[14] + m[8]*m[2]*m[13] + m[12]*m[1]*m[10] - m[12]*m[2]*m[9];
+	inv[2] = m[1]*m[6]*m[15] - m[1]*m[7]*m[14] - m[5]*m[2]*m[15] + m[5]*m[3]*m[14] + m[13]*m[2]*m[7] - m[13]*m[3]*m[6];
+	inv[6] = -m[0]*m[6]*m[15] + m[0]*m[7]*m[14] + m[4]*m[2]*m[15] - m[4]*m[3]*m[14] - m[12]*m[2]*m[7] + m[12]*m[3]*m[6];
+	inv[10] = m[0]*m[5]*m[15] - m[0]*m[7]*m[13] - m[4]*m[1]*m[15] + m[4]*m[3]*m[13] + m[12]*m[1]*m[7] - m[12]*m[3]*m[5];
+	inv[14] = -m[0]*m[5]*m[14] + m[0]*m[6]*m[13] + m[4]*m[1]*m[14] - m[4]*m[2]*m[13] - m[12]*m[1]*m[6] + m[12]*m[2]*m[5];
+	inv[3] = -m[1]*m[6]*m[11] + m[1]*m[7]*m[10] + m[5]*m[2]*m[11] - m[5]*m[3]*m[10] - m[9]*m[2]*m[7] + m[9]*m[3]*m[6];
+	inv[7] = m[0]*m[6]*m[11] - m[0]*m[7]*m[10] - m[4]*m[2]*m[11] + m[4]*m[3]*m[10] + m[8]*m[2]*m[7] - m[8]*m[3]*m[6];
+	inv[11] = -m[0]*m[5]*m[11] + m[0]*m[7]*m[9] + m[4]*m[1]*m[11] - m[4]*m[3]*m[9] - m[8]*m[1]*m[7] + m[8]*m[3]*m[5];
+	inv[15] = m[0]*m[5]*m[10] - m[0]*m[6]*m[9] - m[4]*m[1]*m[10] + m[4]*m[2]*m[9] + m[8]*m[1]*m[6] - m[8]*m[2]*m[5];
+
+	det = m[0]*inv[0] + m[1]*inv[4] + m[2]*inv[8] + m[3]*inv[12];
+	if ( fabs( det ) < 1e-30 )
+		return qfalse;
+
+	det = 1.0 / det;
+	for ( i = 0; i < 16; i++ )
+		inv[i] *= det;
+	return qtrue;
+}
+
+// column-major, out = a * b
+static void Mat4MultiplyD( const double a[16], const double b[16], double out[16] )
+{
+	int i, j;
+
+	for ( i = 0; i < 4; i++ )
+		for ( j = 0; j < 4; j++ )
+			out[j * 4 + i] = a[i] * b[j * 4] + a[4 + i] * b[j * 4 + 1] + a[8 + i] * b[j * 4 + 2] + a[12 + i] * b[j * 4 + 3];
+}
+
+void RB_MotionBlur(FBO_t *srcFbo, ivec4_t srcBox)
+{
+	static double	prevViewProj[16];
+	static vec3_t	prevOrigin;
+	static int		prevTime;
+	static qboolean	prevValid = qfalse;
+	static float	nosBlend = 0.0f;
+
+	double		proj[16], view[16], viewProj[16], invViewProj[16], reproject[16];
+	mat4_t		reprojectF;
+	vec4_t		params, viewInfo;
+	int			i, dt;
+	float		strength, maxLength;
+	qboolean	blur;
+
+	if (!tr.motionBlurShader.program || !tr.screenScratchFbo || !tr.renderDepthImage)
+		return;
+
+	for (i = 0; i < 16; i++)
+	{
+		proj[i] = backEnd.viewParms.projectionMatrix[i];
+		view[i] = backEnd.viewParms.world.modelMatrix[i];
+	}
+	Mat4MultiplyD(proj, view, viewProj);
+
+	dt = backEnd.refdef.time - prevTime;
+
+	// NOS blends in and out over MOTIONBLUR_NOS_FADE ms
+	if (dt > 0)
+	{
+		float target = (backEnd.refdef.rdflags & RDF_NOS) ? 1.0f : 0.0f;
+		float step = MIN(1.0f, dt / MOTIONBLUR_NOS_FADE);
+
+		nosBlend += (target - nosBlend) * step;
+	}
+
+	// no blur on the first frame, after a pause or hitch, a teleport or a
+	// camera cut, or when the game time did not move
+	blur = prevValid && dt > 0 && dt < 100 && Distance(prevOrigin, backEnd.viewParms.or.origin) < 400.0f
+		&& Mat4InverseD(viewProj, invViewProj);
+
+	if (blur)
+	{
+		Mat4MultiplyD(prevViewProj, invViewProj, reproject);
+		for (i = 0; i < 16; i++)
+			reprojectF[i] = reproject[i];
+
+		strength = r_motionBlur->value + (MAX(r_motionBlur->value, r_motionBlurNos->value) - r_motionBlur->value) * nosBlend;
+		maxLength = MOTIONBLUR_MAX + (MOTIONBLUR_MAX_NOS - MOTIONBLUR_MAX) * nosBlend;
+
+		// x = scale of the screen motion of one frame (a share of a 1/60 s
+		// frame, so the same at any frame rate), y = longest blur,
+		// z/w = depth range in which the blur fades in
+		VectorSet4(params, strength * (1000.0f / 60.0f) / dt, maxLength, MOTIONBLUR_MASK_NEAR, MOTIONBLUR_MASK_FAR);
+		VectorSet4(viewInfo, backEnd.viewParms.zNear, backEnd.viewParms.zFar, 0.0f, 0.0f);
+
+		GLSL_SetUniformMat4(&tr.motionBlurShader, UNIFORM_MODELMATRIX, reprojectF);
+		GLSL_SetUniformVec4(&tr.motionBlurShader, UNIFORM_VIEWINFO, viewInfo);
+		GL_BindToTMU(tr.renderDepthImage, TB_LIGHTMAP);
+
+		FBO_Blit(srcFbo, srcBox, NULL, tr.screenScratchFbo, srcBox, &tr.motionBlurShader, params, 0);
+		FBO_FastBlit(tr.screenScratchFbo, srcBox, srcFbo, srcBox, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	}
+
+	if (dt != 0 || !prevValid)
+	{
+		for (i = 0; i < 16; i++)
+			prevViewProj[i] = viewProj[i];
+		VectorCopy(backEnd.viewParms.or.origin, prevOrigin);
+		prevTime = backEnd.refdef.time;
+		prevValid = qtrue;
+	}
+}

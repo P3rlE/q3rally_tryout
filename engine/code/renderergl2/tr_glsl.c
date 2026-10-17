@@ -56,6 +56,8 @@ extern const char *fallbackShader_spotlight_vp;
 extern const char *fallbackShader_spotlight_fp;
 extern const char *fallbackShader_carreflect_vp;
 extern const char *fallbackShader_carreflect_fp;
+extern const char *fallbackShader_motionblur_vp;
+extern const char *fallbackShader_motionblur_fp;
 extern const char *fallbackShader_ssao_vp;
 extern const char *fallbackShader_ssao_fp;
 extern const char *fallbackShader_texturecolor_vp;
@@ -1605,6 +1607,25 @@ void GLSL_InitGPUShaders(void)
 		numEtcShaders++;
 	}
 
+	// Q3Rally: camera motion blur
+	if (glRefConfig.framebufferObject)
+	{
+		attribs = ATTR_POSITION | ATTR_TEXCOORD;
+		extradefines[0] = '\0';
+
+		if (!GLSL_InitGPUShader(&tr.motionBlurShader, "motionblur", attribs, qtrue, extradefines, qtrue, fallbackShader_motionblur_vp, fallbackShader_motionblur_fp))
+		{
+			ri.Error(ERR_FATAL, "Could not load motionblur shader!");
+		}
+
+		GLSL_InitUniforms(&tr.motionBlurShader);
+		GLSL_SetUniformInt(&tr.motionBlurShader, UNIFORM_TEXTUREMAP, TB_COLORMAP);
+		GLSL_SetUniformInt(&tr.motionBlurShader, UNIFORM_SCREENDEPTHMAP, TB_LIGHTMAP);
+		GLSL_FinishGPUShader(&tr.motionBlurShader);
+
+		numEtcShaders++;
+	}
+
 
 	// GLSL 1.10+ or GL_OES_standard_derivatives extension are required for dFdx() and dFdy() GLSL functions
 	if (glRefConfig.glslMajorVersion > 1 || (glRefConfig.glslMajorVersion == 1 && glRefConfig.glslMinorVersion >= 10)
@@ -1737,6 +1758,7 @@ void GLSL_ShutdownGPUShaders(void)
 	GLSL_DeleteGPUShader(&tr.fxaaShader);
 	GLSL_DeleteGPUShader(&tr.spotlightShader);
 	GLSL_DeleteGPUShader(&tr.carReflectShader);
+	GLSL_DeleteGPUShader(&tr.motionBlurShader);
 	GLSL_DeleteGPUShader(&tr.ssaoShader);
 
 	for ( i = 0; i < 4; i++)
