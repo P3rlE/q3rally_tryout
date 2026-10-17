@@ -879,7 +879,8 @@ typedef enum {
 	VPF_USESUNLIGHT     = 0x20,
 	VPF_FARPLANEFRUSTUM = 0x40,
 	VPF_NOCUBEMAPS      = 0x80,
-	VPF_WATERREFLECTION = 0x100		// Q3Rally: copy this mirror view into tr.waterReflectionImage
+	VPF_WATERREFLECTION = 0x100,	// Q3Rally: copy this mirror view into tr.waterReflectionImage
+	VPF_CARREFLECT      = 0x200		// Q3Rally: a side of the car reflection cube map
 } viewParmFlags_t;
 
 typedef struct {
@@ -1627,6 +1628,9 @@ typedef struct {
 	FBO_t					*bloomFbo[4];		// Q3Rally
 	image_t					*spotShadowImage[MAX_SPOT_SHADOWS];	// Q3Rally: headlight shadow maps
 	FBO_t					*spotShadowFbo[MAX_SPOT_SHADOWS];
+	image_t					*carReflectImage;	// Q3Rally: cube map around the camera for the car paint
+	FBO_t					*carReflectFbo;
+	int						carReflectSide;		// next side to render
 	FBO_t					*depthFbo;
 	FBO_t					*pshadowFbos[MAX_DRAWN_PSHADOWS];
 	FBO_t					*screenScratchFbo;
@@ -1687,6 +1691,7 @@ typedef struct {
 	shaderProgram_t bloomShader[2];		// Q3Rally: 0 = bright pass / downsample, 1 = blur
 	shaderProgram_t fxaaShader;			// Q3Rally
 	shaderProgram_t spotlightShader;	// Q3Rally: headlight pass
+	shaderProgram_t carReflectShader;	// Q3Rally: car paint reflection
 	shaderProgram_t ssaoShader;
 	shaderProgram_t depthBlurShader[4];
 	shaderProgram_t testcubeShader;
@@ -1920,6 +1925,9 @@ extern  cvar_t  *r_headlights;
 extern  cvar_t  *r_headlightShadows;
 extern  cvar_t  *r_headlightShadowMapSize;
 extern  cvar_t  *r_headlightIntensity;
+extern  cvar_t  *r_carReflections;
+extern  cvar_t  *r_carReflectionSize;
+extern  cvar_t  *r_carReflectionStrength;
 
 // Q3Rally: models-only sun shadow casters (r_sunShadowCasters) need baked
 // sunlight, i.e. r_sunlightMode 1; mode 2 adds the sun in the shader and
@@ -2385,6 +2393,12 @@ void RE_AddLightToScene( const vec3_t org, float intensity, float r, float g, fl
 void RE_AddAdditiveLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void RE_AddSpotLightToScene( const vec3_t org, const vec3_t dir, float radius, float coneAngle, float r, float g, float b, int flags );
 void R_RenderSpotShadowMaps( void );
+void R_RenderCarReflection( void );
+#define CAR_REFLECT_EXCLUDE	300.0f		// Q3Rally: models this near the camera are not in the car reflection
+#define CAR_REFLECT_FACING	0.5f		// Q3Rally: car reflection stage seen straight on (1 at the edges)
+#define CAR_REFLECT_BLUR	1.5f		// Q3Rally: mip level of the car reflection stage
+#define CAR_REFLECT_COAT	0.7f		// Q3Rally: clear coat on top of the car paint
+#define CAR_REFLECT_COAT_FACING	0.04f	// Q3Rally: clear coat seen straight on (1 at the edges)
 void RE_BeginScene( const refdef_t *fd );
 void RE_RenderScene( const refdef_t *fd );
 void RE_EndScene( void );

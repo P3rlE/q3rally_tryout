@@ -454,6 +454,15 @@ void FBO_Init(void)
 		R_CheckFBO(tr.screenSsaoFbo);
 	}
 
+	// Q3Rally: car reflection cube map, the side is attached when it is rendered
+	if (tr.carReflectImage)
+	{
+		tr.carReflectFbo = FBO_Create("_carReflectFbo", tr.carReflectImage->width, tr.carReflectImage->height);
+		FBO_AttachImage(tr.carReflectFbo, tr.carReflectImage, GL_COLOR_ATTACHMENT0, 0);
+		FBO_CreateBuffer(tr.carReflectFbo, GL_DEPTH_COMPONENT24_ARB, 0, 0);
+		R_CheckFBO(tr.carReflectFbo);
+	}
+
 	if (tr.renderCubeImage)
 	{
 		tr.renderCubeFbo = FBO_Create("_renderCubeFbo", tr.renderCubeImage->width, tr.renderCubeImage->height);

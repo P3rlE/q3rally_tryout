@@ -351,6 +351,12 @@ void RB_BeginDrawingView (void) {
 			FBO_AttachImage(fbo, cubemap->image, GL_COLOR_ATTACHMENT0_EXT, backEnd.viewParms.targetFboLayer);
 		}
 
+		// Q3Rally: a side of the car reflection cube map
+		if (tr.carReflectFbo && fbo == tr.carReflectFbo)
+		{
+			FBO_AttachImage(fbo, tr.carReflectImage, GL_COLOR_ATTACHMENT0_EXT, backEnd.viewParms.targetFboLayer);
+		}
+
 		FBO_Bind(fbo);
 	}
 
@@ -375,6 +381,10 @@ void RB_BeginDrawingView (void) {
 
 	// clear to black for cube maps
 	if (tr.renderCubeFbo && backEnd.viewParms.targetFbo == tr.renderCubeFbo)
+	{
+		clearBits |= GL_COLOR_BUFFER_BIT;
+	}
+	if (tr.carReflectFbo && backEnd.viewParms.targetFbo == tr.carReflectFbo)
 	{
 		clearBits |= GL_COLOR_BUFFER_BIT;
 	}
@@ -1259,6 +1269,13 @@ const void	*RB_DrawSurfs( const void *data ) {
 		FBO_FastBlit(srcFbo, NULL, tr.waterReflectionFbo, NULL, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		FBO_Bind(srcFbo);
 		backEnd.waterReflectionReady = qtrue;
+	}
+
+	// Q3Rally: mip maps of the car reflection cube map (rough reflections)
+	if (glRefConfig.framebufferObject && tr.carReflectFbo && backEnd.viewParms.targetFbo == tr.carReflectFbo)
+	{
+		FBO_Bind(NULL);
+		qglGenerateTextureMipmapEXT(tr.carReflectImage->texnum, GL_TEXTURE_CUBE_MAP);
 	}
 
 	if (glRefConfig.framebufferObject && tr.renderCubeFbo && backEnd.viewParms.targetFbo == tr.renderCubeFbo)

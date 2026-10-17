@@ -1123,6 +1123,68 @@ static unsigned int RB_CalcShaderVertexAttribs( shaderCommands_t *input )
 	return vertexAttribs;
 }
 
+/*
+===================
+RB_CarReflectionStage
+
+Q3Rally: a $dynamicreflection stage (car paint and glass, tcGen environment)
+reflects the cube map around the camera (R_RenderCarReflection) instead of
+the fixed sphere map. The stage keeps its blend, so the paint layer on top
+still decides how much of the reflection shows. Shaders with an opaque such
+stage (paint) get a clear coat pass on top as well, see the end of
+RB_IterateStagesGeneric. qfalse = draw the stage the old way.
+===================
+*/
+static qboolean RB_CarReflectionUsable( shaderCommands_t *input )
+{
+	if ( !r_carReflections->integer || !tr.carReflectImage || !tr.carReflectShader.program ) {
+		return qfalse;
+	}
+	// cars far away inside the cube map itself, bone animated or deformed models
+	if ( glState.currentFBO == tr.carReflectFbo || glState.boneAnimation || input->shader->numDeforms ) {
+		return qfalse;
+	}
+	return qtrue;
+}
+
+static void RB_DrawCarReflection( shaderCommands_t *input, float strength, float facing, float mip, int stateBits )
+{
+	shaderProgram_t *sp = &tr.carReflectShader;
+	vec4_t vec;
+
+	GLSL_BindProgram( sp );
+
+	GLSL_SetUniformMat4( sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection );
+	if ( backEnd.currentEntity && backEnd.currentEntity != &tr.worldEntity ) {
+		GLSL_SetUniformMat4( sp, UNIFORM_MODELMATRIX, backEnd.or.transformMatrix );
+	} else {
+		mat4_t identity;
+		Mat4Identity( identity );
+		GLSL_SetUniformMat4( sp, UNIFORM_MODELMATRIX, identity );
+	}
+	GLSL_SetUniformVec3( sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.or.origin );
+	GLSL_SetUniformFloat( sp, UNIFORM_VERTEXLERP, glState.vertexAnimation ? glState.vertexAttribsInterpolation : 0.0f );
+
+	// x = strength, y = reflection seen straight on (more towards the
+	// edges, Fresnel), z = mip level (rougher)
+	VectorSet4( vec, strength, facing, mip, 0.0f );
+	GLSL_SetUniformVec4( sp, UNIFORM_COLOR, vec );
+
+	GL_BindToTMU( tr.carReflectImage, TB_CUBEMAP );
+	GL_State( stateBits );
+
+	R_DrawElements( input->numIndexes, input->firstIndex );
+}
+
+static qboolean RB_CarReflectionStage( shaderCommands_t *input, shaderStage_t *pStage )
+{
+	if ( pStage->bundle[0].image[0] != tr.dynamicReflectionImage || !RB_CarReflectionUsable( input ) ) {
+		return qfalse;
+	}
+	RB_DrawCarReflection( input, r_carReflectionStrength->value, CAR_REFLECT_FACING, CAR_REFLECT_BLUR, pStage->stateBits );
+	return qtrue;
+}
+
 static void RB_IterateStagesGeneric( shaderCommands_t *input )
 {
 	int stage;
@@ -1134,6 +1196,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 	vec5_t deformParams;
 
 	qboolean renderToCubemap = tr.renderCubeFbo && glState.currentFBO == tr.renderCubeFbo;
+	qboolean clearCoat = qfalse;	// Q3Rally: car paint gets a clear coat pass
 
 	ComputeDeformValues(&deformGen, deformParams);
 
@@ -1148,6 +1211,16 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 		if ( !pStage )
 		{
 			break;
+		}
+
+		// Q3Rally: car paint reflection
+		if ( !backEnd.depthFill && RB_CarReflectionStage( input, pStage ) )
+		{
+			if ( !( pStage->stateBits & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) )
+			{
+				clearCoat = qtrue;
+			}
+			continue;
 		}
 
 		if (backEnd.depthFill)
@@ -1544,6 +1617,14 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 
 		if (backEnd.depthFill)
 			break;
+	}
+
+	// Q3Rally: clear coat of the car paint, the sharp reflection on top of
+	// the paint layer (weak seen straight on, strong at the edges)
+	if ( clearCoat && !backEnd.depthFill )
+	{
+		RB_DrawCarReflection( input, r_carReflectionStrength->value * CAR_REFLECT_COAT, CAR_REFLECT_COAT_FACING, 0.0f,
+			GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_EQUAL );
 	}
 }
 

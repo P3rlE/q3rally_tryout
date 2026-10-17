@@ -54,6 +54,8 @@ extern const char *fallbackShader_fxaa_vp;
 extern const char *fallbackShader_fxaa_fp;
 extern const char *fallbackShader_spotlight_vp;
 extern const char *fallbackShader_spotlight_fp;
+extern const char *fallbackShader_carreflect_vp;
+extern const char *fallbackShader_carreflect_fp;
 extern const char *fallbackShader_ssao_vp;
 extern const char *fallbackShader_ssao_fp;
 extern const char *fallbackShader_texturecolor_vp;
@@ -1585,6 +1587,24 @@ void GLSL_InitGPUShaders(void)
 		numEtcShaders++;
 	}
 
+	// Q3Rally: car paint reflection (cube map around the camera)
+	if (glRefConfig.framebufferObject)
+	{
+		attribs = ATTR_POSITION | ATTR_NORMAL | ATTR_POSITION2 | ATTR_NORMAL2;
+		extradefines[0] = '\0';
+
+		if (!GLSL_InitGPUShader(&tr.carReflectShader, "carreflect", attribs, qtrue, extradefines, qtrue, fallbackShader_carreflect_vp, fallbackShader_carreflect_fp))
+		{
+			ri.Error(ERR_FATAL, "Could not load carreflect shader!");
+		}
+
+		GLSL_InitUniforms(&tr.carReflectShader);
+		GLSL_SetUniformInt(&tr.carReflectShader, UNIFORM_CUBEMAP, TB_CUBEMAP);
+		GLSL_FinishGPUShader(&tr.carReflectShader);
+
+		numEtcShaders++;
+	}
+
 
 	// GLSL 1.10+ or GL_OES_standard_derivatives extension are required for dFdx() and dFdy() GLSL functions
 	if (glRefConfig.glslMajorVersion > 1 || (glRefConfig.glslMajorVersion == 1 && glRefConfig.glslMinorVersion >= 10)
@@ -1716,6 +1736,7 @@ void GLSL_ShutdownGPUShaders(void)
 	GLSL_DeleteGPUShader(&tr.bloomShader[1]);
 	GLSL_DeleteGPUShader(&tr.fxaaShader);
 	GLSL_DeleteGPUShader(&tr.spotlightShader);
+	GLSL_DeleteGPUShader(&tr.carReflectShader);
 	GLSL_DeleteGPUShader(&tr.ssaoShader);
 
 	for ( i = 0; i < 4; i++)

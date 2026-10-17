@@ -3036,6 +3036,9 @@ void R_CreateBuiltinImages( void ) {
 			}
 		}
 
+		// Q3Rally: cube map the car paint reflects
+		tr.carReflectImage = R_CreateImage("*carReflect", NULL, r_carReflectionSize->integer, r_carReflectionSize->integer, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, hdrFormat);
+
 		if (r_cubeMapping->integer)
 		{
 			tr.renderCubeImage = R_CreateImage("*renderCube", NULL, r_cubemapSize->integer, r_cubemapSize->integer, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, rgbFormat);

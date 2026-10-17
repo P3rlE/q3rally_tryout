@@ -171,6 +171,9 @@ cvar_t  *r_headlights;
 cvar_t  *r_headlightShadows;
 cvar_t  *r_headlightShadowMapSize;
 cvar_t  *r_headlightIntensity;
+cvar_t  *r_carReflections;
+cvar_t  *r_carReflectionSize;
+cvar_t  *r_carReflectionStrength;
 cvar_t  *r_shadowFilter;
 cvar_t  *r_shadowBlur;
 cvar_t  *r_shadowMapSize;
@@ -1385,6 +1388,15 @@ void R_Register( void )
 	r_headlightIntensity = ri.Cvar_Get( "r_headlightIntensity", "2.5", CVAR_ARCHIVE );
 	ri.Cvar_CheckRange( r_headlightIntensity, 0, 4, qfalse );
 	ri.Cvar_SetDescription( r_headlightIntensity, "Q3Rally: brightness of the headlights (0-4)" );
+	r_carReflections = ri.Cvar_Get( "r_carReflections", "1", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_carReflections, 0, 2, qtrue );
+	ri.Cvar_SetDescription( r_carReflections, "Q3Rally: car paint reflects the surroundings: 0 = old fixed reflection map, 1 = live cube map (one side per frame), 2 = live cube map (all sides every frame)" );
+	r_carReflectionSize = ri.Cvar_Get( "r_carReflectionSize", "256", CVAR_ARCHIVE | CVAR_LATCH );
+	ri.Cvar_CheckRange( r_carReflectionSize, 64, 1024, qtrue );
+	ri.Cvar_SetDescription( r_carReflectionSize, "Q3Rally: resolution of a side of the car reflection cube map (64-1024)" );
+	r_carReflectionStrength = ri.Cvar_Get( "r_carReflectionStrength", "1", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_carReflectionStrength, 0, 2, qfalse );
+	ri.Cvar_SetDescription( r_carReflectionStrength, "Q3Rally: brightness of the car paint reflection (0-2)" );
 
 	r_shadowFilter = ri.Cvar_Get( "r_shadowFilter", "1", CVAR_ARCHIVE | CVAR_LATCH );
 	r_shadowBlur = ri.Cvar_Get("r_shadowBlur", "0", CVAR_ARCHIVE | CVAR_LATCH);

@@ -1568,6 +1568,13 @@ void R_SortDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 		return;
 	}
 
+	// Q3Rally: no mirrors, portals or water reflections in the car
+	// reflection cube map
+	if ( tr.viewParms.flags & VPF_CARREFLECT ) {
+		R_AddDrawSurfCmd( drawSurfs, numDrawSurfs );
+		return;
+	}
+
 	// check for any pass through drawing, which
 	// may cause another view to be rendered first
 	for ( i = 0 ; i < numDrawSurfs ; i++ ) {
@@ -1713,8 +1720,19 @@ void R_AddEntitySurfaces (void) {
 		return;
 	}
 
-	for ( i = 0; i < tr.refdef.num_entities; i++)
+	for ( i = 0; i < tr.refdef.num_entities; i++) {
+		// Q3Rally: the car reflection cube map leaves out the models near
+		// the camera (the own car would cover a whole side) and sprites
+		if ( tr.viewParms.flags & VPF_CARREFLECT ) {
+			const refEntity_t *e = &tr.refdef.entities[i].e;
+
+			if ( e->reType != RT_MODEL || ( e->renderfx & ( RF_FIRST_PERSON | RF_DEPTHHACK ) )
+				|| DistanceSquared( e->origin, tr.viewParms.or.origin ) < CAR_REFLECT_EXCLUDE * CAR_REFLECT_EXCLUDE ) {
+				continue;
+			}
+		}
 		R_AddEntitySurface(i);
+	}
 }
 
 
@@ -2997,6 +3015,93 @@ void R_RenderSpotShadowMaps( void ) {
 
 		Mat4Multiply( tr.viewParms.projectionMatrix, tr.viewParms.world.modelMatrix, dl->spotShadowMvp );
 		dl->spotShadow = j;
+	}
+}
+
+/*
+=================
+R_RenderCarReflection
+
+Q3Rally: the cube map the car paint reflects ($dynamicreflection stages,
+see RB_CarReflectionStage), rendered around the camera of the main view.
+r_carReflections 1 renders one side per frame (the whole cube every six
+frames), 2 all six. It holds the map, the sky and the models further than
+CAR_REFLECT_EXCLUDE from the camera, without dynamic lights, lamp shadows,
+polys (smoke, marks) or mirror views.
+=================
+*/
+void R_RenderCarReflection( void ) {
+	// the sides in the order and orientation of R_RenderCubemapSide
+	static const float axes[6][3][3] = {
+		{ { -1,  0,  0 }, {  0,  0, -1 }, {  0,  1,  0 } },
+		{ {  1,  0,  0 }, {  0,  0,  1 }, {  0,  1,  0 } },
+		{ {  0, -1,  0 }, {  1,  0,  0 }, {  0,  0, -1 } },
+		{ {  0,  1,  0 }, {  1,  0,  0 }, {  0,  0,  1 } },
+		{ {  0,  0, -1 }, {  1,  0,  0 }, {  0,  1,  0 } },
+		{ {  0,  0,  1 }, { -1,  0,  0 }, {  0,  1,  0 } }
+	};
+	static int	lastFrame = -1;
+	viewParms_t	parms;
+	int			numDlights, spotMask, numLampShadows, numPolys;
+	int			i, n, sides;
+
+	if ( !r_carReflections->integer || !tr.carReflectFbo || !tr.world || !glRefConfig.framebufferObject ) {
+		return;
+	}
+	if ( tr.refdef.rdflags & RDF_NOWORLDMODEL ) {
+		return;
+	}
+	// main view only (not the rear view or minimap), once per frame
+	if ( tr.refdef.width < glConfig.vidWidth / 2 || lastFrame == tr.frameCount ) {
+		return;
+	}
+	lastFrame = tr.frameCount;
+
+	numDlights = tr.refdef.num_dlights;
+	spotMask = tr.refdef.spotMask;
+	numLampShadows = tr.refdef.numLampShadows;
+	numPolys = tr.refdef.numPolys;
+	tr.refdef.num_dlights = 0;
+	tr.refdef.spotMask = 0;
+	tr.refdef.numLampShadows = 0;
+	tr.refdef.numPolys = 0;
+
+	sides = r_carReflections->integer >= 2 ? 6 : 1;
+	for ( n = 0; n < sides; n++ ) {
+		int side = tr.carReflectSide;
+
+		tr.carReflectSide = ( side + 1 ) % 6;
+
+		Com_Memset( &parms, 0, sizeof( parms ) );
+		parms.viewportWidth = tr.carReflectFbo->width;
+		parms.viewportHeight = tr.carReflectFbo->height;
+		parms.isPortal = qfalse;
+		parms.isMirror = qtrue;		// the cube map sides are mirrored
+		parms.flags = VPF_NOVIEWMODEL | VPF_NOCUBEMAPS | VPF_CARREFLECT;
+		parms.fovX = 90;
+		parms.fovY = 90;
+
+		VectorCopy( tr.refdef.vieworg, parms.or.origin );
+		VectorCopy( axes[side][0], parms.or.axis[0] );
+		VectorCopy( axes[side][1], parms.or.axis[1] );
+		VectorCopy( axes[side][2], parms.or.axis[2] );
+		VectorCopy( tr.refdef.vieworg, parms.pvsOrigin );
+
+		parms.targetFbo = tr.carReflectFbo;
+		parms.targetFboLayer = side;
+
+		R_RenderView( &parms );
+	}
+
+	tr.refdef.num_dlights = numDlights;
+	tr.refdef.spotMask = spotMask;
+	tr.refdef.numLampShadows = numLampShadows;
+	tr.refdef.numPolys = numPolys;
+
+	// the models were lit without the dynamic lights, light them again in
+	// the main view
+	for ( i = 0; i < tr.refdef.num_entities; i++ ) {
+		tr.refdef.entities[i].lightingCalculated = qfalse;
 	}
 }
 

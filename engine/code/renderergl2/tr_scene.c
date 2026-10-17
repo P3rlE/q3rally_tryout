@@ -597,6 +597,10 @@ void RE_RenderScene( const refdef_t *fd ) {
 			R_RenderSpotShadowMaps();
 	}
 
+	// Q3Rally: the cube map the car paint reflects (before the lamp shadows,
+	// it renders without them)
+	R_RenderCarReflection();
+
 	// Q3Rally: lamps of the map cast model shadows
 	R_SelectLampShadows();
 	if (tr.refdef.numLampShadows)

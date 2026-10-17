@@ -69,6 +69,18 @@ Added:
   light flag SPOTLIGHT_NOSHADOW). OpenGL1 and r_headlights 0 draw one
   additive point light behind the car instead of one per lamp.
 
+- Car paint reflections (OpenGL2): car paint and glass now reflect the real
+  surroundings instead of a fixed picture. A cube map around the camera is
+  rendered from the map, the sky and the cars further away (one side per
+  frame, the whole cube every six frames) and the $dynamicreflection stages
+  of the car shaders look it up along the reflected view direction, with a
+  Fresnel term (stronger towards the edges). Car paint also gets a clear
+  coat: a sharp reflection on top of the paint, weak seen straight on and
+  strong at grazing angles. New cvars r_carReflections (0 = the old fixed
+  reflection, 1 = one side per frame, 2 = all sides every frame),
+  r_carReflectionSize (256, latched) and r_carReflectionStrength (1).
+  OpenGL1 keeps the fixed reflection.
+
 - Bloom and anti-aliasing (OpenGL2): bright lights, lamps, lava, tail lights
   and sun glints get a soft glow (a tight one from a 1/4 size copy of the
   image and a wide one from a 1/16 size copy); the glow grows from

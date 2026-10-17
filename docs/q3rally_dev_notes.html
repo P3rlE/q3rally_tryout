@@ -308,6 +308,18 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
   </table></div>
   <div class="callout orange"><strong>Notes</strong>Surfaces with GPU vertex deforms get no headlight (the depth test of the extra pass does not match). Fog volumes do not fog the headlight pass. A light origin inside a wall (car pushed against it) shadows everything.</div>
 
+  <h3>Car Paint Reflections — Implementation</h3>
+  <p>OpenGL2 only. Cvars: <code>r_carReflections</code> (archive, 1; 0 = old fixed sphere map, 2 = all six sides every frame), <code>r_carReflectionSize</code> (archive, latched, 256), <code>r_carReflectionStrength</code> (archive, 1). The car shaders are unchanged: every stage with <code>map $dynamicreflection</code> (tcGen environment) is the reflection.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Part</th><th>Where</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>Cube map</td><td><code>tr_image.c</code> (<code>*carReflect</code>, HDR format, mip mapped), <code>tr_fbo.c</code> (<code>_carReflectFbo</code>)</td><td>Created whenever FBOs are available.</td></tr>
+      <tr><td>Rendering</td><td><code>tr_main.c</code> (<code>R_RenderCarReflection</code>), called from <code>RE_RenderScene</code> after the headlight shadow maps</td><td>Main view only, once per frame. One side per frame (<code>tr.carReflectSide</code>), centred on the camera, same side order and axes as <code>R_RenderCubemapSide</code>. View flag <code>VPF_CARREFLECT</code>: no mirrors/portals/water reflections, only RT_MODEL entities further than <code>CAR_REFLECT_EXCLUDE</code> (300) from the camera (the own car would cover a side). Dynamic lights, spot lights, lamp shadows and polys are switched off for these views; the entities are lit again for the main view afterwards. The backend attaches the side, clears it and builds the mip maps (<code>tr_backend.c</code>).</td></tr>
+      <tr><td>Shading</td><td><code>tr_shade.c</code> (<code>RB_CarReflectionStage</code>, <code>RB_DrawCarReflection</code>), <code>glsl/carreflect_vp/fp.glsl</code></td><td>The <code>$dynamicreflection</code> stage keeps its blend (the paint layer above still sets how much shows) but samples the cube map at mip 1.5 along the reflected view direction &times; Schlick Fresnel from 0.5 seen straight on. Shaders whose reflection stage is opaque (paint) get a clear coat pass after all stages: additive, depth func equal, mip 0, Fresnel from 0.04, &times; 0.7. Constants <code>CAR_REFLECT_*</code> in <code>tr_local.h</code>. Not used inside the cube views themselves, for bone animated or deformed models.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout orange"><strong>Notes</strong>The sides are stored like the ioq3 cube maps: direction d holds the view along &minus;d, so the shader samples <code>-R</code> (lightall samples <code>reflect(E, N)</code> for the same reason). One cube for all cars, centred on the camera, so the reflections on cars far away are approximate. Cost: one extra 90&deg; view of the map per frame at 256&times;256.</div>
+
   <h3>Bloom &amp; FXAA — Implementation</h3>
   <p>Post-processing passes of the OpenGL2 renderer, run in <code>RB_PostProcess</code> (<code>tr_backend.c</code>) for the main view only (viewport at least half the screen wide). Cvars: <code>r_bloom</code> (archive, latched, 1), <code>r_bloomIntensity</code> (archive, 0.4), <code>r_bloomThreshold</code> (archive, 0.85), <code>r_fxaa</code> (archive, 1). All need <code>r_postProcess 1</code>.</p>
   <div class="table-wrap"><table>
