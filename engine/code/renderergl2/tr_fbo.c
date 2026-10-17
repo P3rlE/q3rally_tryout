@@ -376,6 +376,18 @@ void FBO_Init(void)
 		}
 	}
 
+	// Q3Rally: headlight shadow maps
+	if (tr.spotShadowImage[0])
+	{
+		for (i = 0; i < MAX_SPOT_SHADOWS; i++)
+		{
+			tr.spotShadowFbo[i] = FBO_Create(va("_spotshadow%d", i), tr.spotShadowImage[i]->width, tr.spotShadowImage[i]->height);
+			FBO_CreateBuffer(tr.spotShadowFbo[i], GL_RGBA8, 0, 0);
+			FBO_AttachImage(tr.spotShadowFbo[i], tr.spotShadowImage[i], GL_DEPTH_ATTACHMENT, 0);
+			R_CheckFBO(tr.spotShadowFbo[i]);
+		}
+	}
+
 	if (tr.screenShadowImage)
 	{
 		tr.screenShadowFbo = FBO_Create("_screenshadow", tr.screenShadowImage->width, tr.screenShadowImage->height);

@@ -261,6 +261,61 @@ void RE_AddDynamicLightToScene( const vec3_t org, float intensity, float r, floa
 	dl->color[1] = g;
 	dl->color[2] = b;
 	dl->additive = additive;
+	dl->spotCosOuter = -2.0f;
+	dl->spotShadow = -1;
+}
+
+/*
+=====================
+RE_AddSpotLightToScene
+
+Q3Rally: a spot light (car headlights). Lit like a dlight with the surface
+colours (an extra pass per surface, tr_shade.c), cone shaped, and the
+nearest ones cast shadows. With r_headlights 0 it falls back to three
+additive point lights along the beam, the look of the old headlights.
+=====================
+*/
+void RE_AddSpotLightToScene( const vec3_t org, const vec3_t dir, float radius, float coneAngle, float r, float g, float b, int flags ) {
+	dlight_t	*dl;
+	vec3_t		d, pos;
+	float		half;
+
+	if ( !tr.registered || radius <= 0.0f ) {
+		return;
+	}
+
+	VectorCopy( dir, d );
+	if ( VectorNormalize( d ) < 0.001f ) {
+		return;
+	}
+
+	if ( !r_headlights->integer || !tr.spotlightShader.program ) {
+		VectorMA( org, 50, d, pos );
+		RE_AddDynamicLightToScene( pos, 100, r * 1.2f, g * 1.2f, b * 1.2f, qtrue );
+		VectorMA( org, 150, d, pos );
+		RE_AddDynamicLightToScene( pos, 200, r * 0.8f, g * 0.8f, b * 0.8f, qtrue );
+		VectorMA( org, 250, d, pos );
+		RE_AddDynamicLightToScene( pos, 300, r * 0.5f, g * 0.5f, b * 0.5f, qtrue );
+		return;
+	}
+
+	if ( r_numdlights >= MAX_DLIGHTS ) {
+		return;
+	}
+
+	dl = &backEndData->dlights[r_numdlights++];
+	VectorCopy( org, dl->origin );
+	dl->radius = radius;
+	dl->color[0] = r;
+	dl->color[1] = g;
+	dl->color[2] = b;
+	dl->additive = qfalse;
+
+	half = Com_Clamp( 5.0f, 85.0f, coneAngle * 0.5f );
+	VectorCopy( d, dl->spotDir );
+	dl->spotCosOuter = cos( DEG2RAD( half ) );
+	dl->spotCosInner = cos( DEG2RAD( half * 0.55f ) );
+	dl->spotShadow = -1;
 }
 
 /*
@@ -515,6 +570,23 @@ void RE_RenderScene( const refdef_t *fd ) {
 		{
 			Mat4Copy(tr.lastCascadeSunMvp, tr.refdef.sunShadowMvp[3]);
 		}
+	}
+
+	// Q3Rally: spot lights (headlights): which ones they are, and the shadow
+	// maps of the nearest
+	{
+		int i;
+
+		tr.refdef.spotMask = 0;
+		for (i = 0; i < tr.refdef.num_dlights && i < 32; i++)
+		{
+			tr.refdef.dlights[i].spotShadow = -1;
+			if (tr.refdef.dlights[i].spotCosOuter > -1.0f)
+				tr.refdef.spotMask |= 1 << i;
+		}
+
+		if (tr.refdef.spotMask && !( fd->rdflags & RDF_NOWORLDMODEL ))
+			R_RenderSpotShadowMaps();
 	}
 
 	// Q3Rally: lamps of the map cast model shadows

@@ -4515,12 +4515,15 @@ void CG_Player( centity_t *cent ) {
 		trap_R_AddRefEntityToScene( &plate );
 	}
 
-/* Add the headlights (Variant A: tag provides only position; beam uses vehicle forward axis) */
+/* Add the headlights: a glow model on each tag_hlite tag and one spot light
+   per car from the middle of them along the car's forward axis (Q3Rally:
+   the OpenGL2 renderer lights the road in a cone with the surface colours
+   and shadows; OpenGL1 and r_headlights 0 draw it as point lights) */
 if ( (cent->currentState.eFlags & EF_HEADLIGHTS) &&
      !(cent->currentState.powerups & (1 << PW_INVIS)) ) {
 
-    vec3_t fwd;      /* vehicle forward direction from body axis */
-    int    i;
+    vec3_t fwd, center, lightDir;
+    int    i, numLights = 0;
 
     headlight.hModel = cgs.media.headLightGlow;
     if ( !headlight.hModel ) {
@@ -4533,9 +4536,9 @@ if ( (cent->currentState.eFlags & EF_HEADLIGHTS) &&
 
     /* body.axis was built earlier from the car angles via AnglesToAxis, so axis[0] is forward */
     VectorCopy( body.axis[0], fwd );
+    VectorClear( center );
 
     for ( i = 0; i < 4; i++ ) {
-        vec3_t beamPos;
         char   tagname[32];
 
         Com_sprintf( tagname, sizeof(tagname), "tag_hlite%d", i + 1 );
@@ -4545,19 +4548,21 @@ if ( (cent->currentState.eFlags & EF_HEADLIGHTS) &&
 
         /* Position the glow model on the tag (we ignore the tag's local forward axis for the beam) */
         CG_PositionEntityOnTag( &headlight, &body, ci->bodyModel, tagname );
-
-        /* Three additive lights cast strictly along the vehicle forward axis */
-        VectorMA( headlight.origin,  50, fwd, beamPos );
-        trap_R_AddAdditiveLightToScene( beamPos, 100, 0.8f, 0.8f, 0.8f );
-
-        VectorMA( headlight.origin, 150, fwd, beamPos );
-        trap_R_AddAdditiveLightToScene( beamPos, 200, 0.5f, 0.5f, 0.5f );
-
-        VectorMA( headlight.origin, 250, fwd, beamPos );
-        trap_R_AddAdditiveLightToScene( beamPos, 300, 0.3f, 0.3f, 0.3f );
+        VectorAdd( center, headlight.origin, center );
+        numLights++;
 
         /* Render the headlight glow model itself at the tag */
         trap_R_AddRefEntityToScene( &headlight );
+    }
+
+    if ( numLights ) {
+        VectorScale( center, 1.0f / numLights, center );
+        /* start a bit ahead of the bumper (the car itself is not lit or
+           shadowed by its own lights), aim slightly down at the road */
+        VectorMA( center, 12.0f, fwd, center );
+        VectorMA( fwd, -0.10f, body.axis[2], lightDir );
+        VectorNormalize( lightDir );
+        trap_R_AddSpotLightToScene( center, lightDir, 1600.0f, 64.0f, 1.0f, 0.95f, 0.85f, 0 );
     }
 }
 skip_headlights:;

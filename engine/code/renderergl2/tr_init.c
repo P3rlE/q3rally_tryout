@@ -167,6 +167,10 @@ cvar_t  *r_bloom;
 cvar_t  *r_bloomIntensity;
 cvar_t  *r_bloomThreshold;
 cvar_t  *r_fxaa;
+cvar_t  *r_headlights;
+cvar_t  *r_headlightShadows;
+cvar_t  *r_headlightShadowMapSize;
+cvar_t  *r_headlightIntensity;
 cvar_t  *r_shadowFilter;
 cvar_t  *r_shadowBlur;
 cvar_t  *r_shadowMapSize;
@@ -1369,6 +1373,19 @@ void R_Register( void )
 	ri.Cvar_CheckRange( r_fxaa, 0, 1, qtrue );
 	ri.Cvar_SetDescription( r_fxaa, "Q3Rally: smooth jagged edges with FXAA (needs r_postProcess 1; works together with r_ext_multisample)" );
 
+	r_headlights = ri.Cvar_Get( "r_headlights", "1", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_headlights, 0, 1, qtrue );
+	ri.Cvar_SetDescription( r_headlights, "Q3Rally: car headlights as real spot lights (lit with the textures' colours, cone shaped). 0 = the old round additive lights" );
+	r_headlightShadows = ri.Cvar_Get( "r_headlightShadows", "2", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_headlightShadows, 0, MAX_SPOT_SHADOWS, qtrue );
+	ri.Cvar_SetDescription( r_headlightShadows, "Q3Rally: how many headlights (the ones nearest to the camera) cast shadows at the same time (0-2)" );
+	r_headlightShadowMapSize = ri.Cvar_Get( "r_headlightShadowMapSize", "1024", CVAR_ARCHIVE | CVAR_LATCH );
+	ri.Cvar_CheckRange( r_headlightShadowMapSize, 256, 2048, qtrue );
+	ri.Cvar_SetDescription( r_headlightShadowMapSize, "Q3Rally: resolution of the headlight shadow maps (256-2048)" );
+	r_headlightIntensity = ri.Cvar_Get( "r_headlightIntensity", "2.5", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_headlightIntensity, 0, 4, qfalse );
+	ri.Cvar_SetDescription( r_headlightIntensity, "Q3Rally: brightness of the headlights (0-4)" );
+
 	r_shadowFilter = ri.Cvar_Get( "r_shadowFilter", "1", CVAR_ARCHIVE | CVAR_LATCH );
 	r_shadowBlur = ri.Cvar_Get("r_shadowBlur", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_shadowMapSize = ri.Cvar_Get("r_shadowMapSize", "1024", CVAR_ARCHIVE | CVAR_LATCH);
@@ -1751,6 +1768,7 @@ refexport_t *GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 	re.inPVS = R_inPVS;
 
 	re.TakeVideoFrame = RE_TakeVideoFrame;
+	re.AddSpotLightToScene = RE_AddSpotLightToScene;
 
 	return &re;
 }

@@ -1383,6 +1383,7 @@ refexport_t *GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 	re.inPVS = R_inPVS;
 
 	re.TakeVideoFrame = RE_TakeVideoFrame;
+	re.AddSpotLightToScene = RE_AddSpotLightToScene;
 
 	return &re;
 }

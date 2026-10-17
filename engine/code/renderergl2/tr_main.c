@@ -1864,6 +1864,10 @@ void R_RenderDlightCubemaps(const refdef_t *fd)
 		if ((1 << i) & tr.refdef.dlightMask)
 			continue;
 
+		// Q3Rally: spot lights have their own shadow maps
+		if (tr.refdef.dlights[i].spotCosOuter > -1.0f)
+			continue;
+
 		Com_Memset( &shadowParms, 0, sizeof( shadowParms ) );
 
 		shadowParms.viewportX = tr.refdef.x;
@@ -2881,6 +2885,118 @@ void R_RenderLampShadowMaps( void ) {
 		}
 
 		R_RenderLampShadowView( l, tr.lampShadowFbo[j], qfalse, tr.refdef.lampShadowMvp[n] );
+	}
+}
+
+/*
+=================
+R_RenderSpotShadowMaps
+
+Q3Rally: shadow maps of the headlights nearest to the camera. Each one is a
+perspective depth view from the light along its cone with the map and the
+models (the car the light belongs to is behind the light). Rendered every
+frame, as the lights move with the cars.
+=================
+*/
+void R_RenderSpotShadowMaps( void ) {
+	int		order[MAX_DLIGHTS];
+	float	dist[MAX_DLIGHTS];
+	int		num = 0, max, i, j;
+
+	max = MIN( r_headlightShadows->integer, MAX_SPOT_SHADOWS );
+	if ( max <= 0 || !tr.spotShadowFbo[0] || !glRefConfig.framebufferObject ) {
+		return;
+	}
+
+	// main view only (not the rear view or minimap)
+	if ( tr.refdef.width < glConfig.vidWidth / 2 ) {
+		return;
+	}
+
+	for ( i = 0; i < tr.refdef.num_dlights; i++ ) {
+		dlight_t *dl = &tr.refdef.dlights[i];
+		float d;
+
+		if ( !( tr.refdef.spotMask & ( 1 << i ) ) ) {
+			continue;
+		}
+
+		d = Distance( dl->origin, tr.refdef.vieworg );
+		if ( d > dl->radius + 1000.0f ) {
+			continue;
+		}
+
+		// insertion sort by distance
+		for ( j = num; j > 0 && dist[j - 1] > d; j-- ) {
+			dist[j] = dist[j - 1];
+			order[j] = order[j - 1];
+		}
+		dist[j] = d;
+		order[j] = i;
+		num++;
+	}
+
+	for ( j = 0; j < num && j < max; j++ ) {
+		dlight_t	*dl = &tr.refdef.dlights[order[j]];
+		viewParms_t	parms;
+		vec3_t		right;
+		int			firstDrawSurf;
+
+		Com_Memset( &parms, 0, sizeof( parms ) );
+
+		parms.viewportWidth  = tr.spotShadowFbo[j]->width;
+		parms.viewportHeight = tr.spotShadowFbo[j]->height;
+		parms.fovX = parms.fovY = RAD2DEG( acos( dl->spotCosOuter ) ) * 2.0f + 4.0f;
+		parms.targetFbo = tr.spotShadowFbo[j];
+		parms.flags = VPF_DEPTHSHADOW | VPF_NOVIEWMODEL;
+		parms.zFar = dl->radius;
+
+		VectorCopy( dl->origin, parms.or.origin );
+		VectorCopy( dl->spotDir, parms.or.axis[0] );
+		MakeNormalVectors( parms.or.axis[0], right, parms.or.axis[2] );
+		VectorNegate( right, parms.or.axis[1] );
+		VectorCopy( dl->origin, parms.pvsOrigin );
+
+		tr.viewCount++;
+
+		tr.viewParms = parms;
+		tr.viewParms.frameSceneNum = tr.frameSceneNum;
+		tr.viewParms.frameCount = tr.frameCount;
+
+		firstDrawSurf = tr.refdef.numDrawSurfs;
+
+		tr.viewCount++;
+
+		R_RotateForViewer();
+		R_SetupProjection( &tr.viewParms, r_zproj->value, tr.viewParms.zFar, qtrue );
+		R_SetupProjectionZ( &tr.viewParms );
+
+		R_AddWorldSurfaces();
+
+		// models in front of the light only: the car the light belongs to
+		// (and its headlight glow) sits behind it and would cover the map
+		if ( r_drawentities->integer ) {
+			int e;
+
+			for ( e = 0; e < tr.refdef.num_entities; e++ ) {
+				trRefEntity_t *ent = &tr.refdef.entities[e];
+				vec3_t delta;
+
+				if ( ent->e.reType != RT_MODEL ) {
+					continue;
+				}
+				VectorSubtract( ent->e.origin, dl->origin, delta );
+				if ( DotProduct( delta, dl->spotDir ) < 16.0f ) {
+					continue;
+				}
+				R_AddEntitySurface( e );
+			}
+		}
+
+		R_SortDrawSurfs( tr.refdef.drawSurfs + firstDrawSurf, tr.refdef.numDrawSurfs - firstDrawSurf );
+
+		Mat4Multiply( tr.viewParms.projectionMatrix, tr.viewParms.world.modelMatrix, dl->spotShadowMvp );
+		dl->spotShadow = j;
 	}
 }
 

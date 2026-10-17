@@ -67,6 +67,7 @@ typedef unsigned int vaoCacheGlIndex_t;
 // Q3Rally: lamp shadows (r_lampShadows)
 #define MAX_LAMPS             1024
 #define MAX_LAMP_SHADOWS      4
+#define MAX_SPOT_SHADOWS      2		// Q3Rally: headlights with shadows per frame
 // share of a lamp in the baked light at distance d: sqrt( light * LAMP_LIGHT_SCALE / d^2 ),
 // q3map2 point lights fall off with 1 / d^2, the square root stands for the
 // gamma our maps are compiled with (-gamma 2)
@@ -93,6 +94,13 @@ typedef struct dlight_s {
 
 	vec3_t	transformed;		// origin in local coordinate system
 	int		additive;			// texture detail is lost tho when the lightmap is dark
+
+	// Q3Rally: spot light (car headlights), spotCosOuter > -1 = spot
+	vec3_t	spotDir;
+	float	spotCosOuter;
+	float	spotCosInner;
+	int		spotShadow;			// shadow map slot, -1 = no shadow
+	float	spotShadowMvp[16];
 } dlight_t;
 
 
@@ -657,6 +665,7 @@ typedef enum
 	UNIFORM_SHADOWMVP3,
 	UNIFORM_SHADOWMVP4,
 	UNIFORM_SHADOWPARAMS,	// Q3Rally: xyz = world shadow bias (sun dir * units), w = model shadow bias
+	UNIFORM_SPOTDIR,		// Q3Rally: spot light direction, w = cos of the outer cone
 
 	UNIFORM_ENABLETEXTURES,
 
@@ -793,6 +802,7 @@ typedef struct {
 
 	// Q3Rally: lamp shadows of this frame (see R_SelectLampShadows)
 	int         numLampShadows;
+	int         spotMask;			// Q3Rally: dlights that are spot lights
 	int         lampShadowSlot[MAX_LAMP_SHADOWS];
 	float       lampShadowMvp[MAX_LAMP_SHADOWS][16];
 	vec4_t      lampShadowOrigin[MAX_LAMP_SHADOWS];	// xyz, w = light * LAMP_LIGHT_SCALE
@@ -1614,6 +1624,8 @@ typedef struct {
 	FBO_t					*msaaResolveFbo;
 	FBO_t					*sunRaysFbo;
 	FBO_t					*bloomFbo[4];		// Q3Rally
+	image_t					*spotShadowImage[MAX_SPOT_SHADOWS];	// Q3Rally: headlight shadow maps
+	FBO_t					*spotShadowFbo[MAX_SPOT_SHADOWS];
 	FBO_t					*depthFbo;
 	FBO_t					*pshadowFbos[MAX_DRAWN_PSHADOWS];
 	FBO_t					*screenScratchFbo;
@@ -1673,6 +1685,7 @@ typedef struct {
 	shaderProgram_t lampShadowShader;	// Q3Rally
 	shaderProgram_t bloomShader[2];		// Q3Rally: 0 = bright pass / downsample, 1 = blur
 	shaderProgram_t fxaaShader;			// Q3Rally
+	shaderProgram_t spotlightShader;	// Q3Rally: headlight pass
 	shaderProgram_t ssaoShader;
 	shaderProgram_t depthBlurShader[4];
 	shaderProgram_t testcubeShader;
@@ -1902,6 +1915,10 @@ extern  cvar_t  *r_bloom;
 extern  cvar_t  *r_bloomIntensity;
 extern  cvar_t  *r_bloomThreshold;
 extern  cvar_t  *r_fxaa;
+extern  cvar_t  *r_headlights;
+extern  cvar_t  *r_headlightShadows;
+extern  cvar_t  *r_headlightShadowMapSize;
+extern  cvar_t  *r_headlightIntensity;
 
 // Q3Rally: models-only sun shadow casters (r_sunShadowCasters) need baked
 // sunlight, i.e. r_sunlightMode 1; mode 2 adds the sun in the shader and
@@ -2365,6 +2382,8 @@ void RE_AddRefEntityToScene( const refEntity_t *ent );
 void RE_AddPolyToScene( qhandle_t hShader , int numVerts, const polyVert_t *verts, int num );
 void RE_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void RE_AddAdditiveLightToScene( const vec3_t org, float intensity, float r, float g, float b );
+void RE_AddSpotLightToScene( const vec3_t org, const vec3_t dir, float radius, float coneAngle, float r, float g, float b, int flags );
+void R_RenderSpotShadowMaps( void );
 void RE_BeginScene( const refdef_t *fd );
 void RE_RenderScene( const refdef_t *fd );
 void RE_EndScene( void );

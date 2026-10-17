@@ -52,6 +52,8 @@ extern const char *fallbackShader_bloom_vp;
 extern const char *fallbackShader_bloom_fp;
 extern const char *fallbackShader_fxaa_vp;
 extern const char *fallbackShader_fxaa_fp;
+extern const char *fallbackShader_spotlight_vp;
+extern const char *fallbackShader_spotlight_fp;
 extern const char *fallbackShader_ssao_vp;
 extern const char *fallbackShader_ssao_fp;
 extern const char *fallbackShader_texturecolor_vp;
@@ -94,6 +96,7 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_ShadowMvp3", GLSL_MAT16 },
 	{ "u_ShadowMvp4", GLSL_MAT16 },
 	{ "u_ShadowParams", GLSL_VEC4 },
+	{ "u_SpotDir", GLSL_VEC4 },
 
 	{ "u_EnableTextures", GLSL_VEC4 },
 
@@ -1555,6 +1558,33 @@ void GLSL_InitGPUShaders(void)
 		numEtcShaders++;
 	}
 
+	// Q3Rally: headlights
+	if (glRefConfig.glslMajorVersion > 1 || (glRefConfig.glslMajorVersion == 1 && glRefConfig.glslMinorVersion >= 10)
+	    || glRefConfig.shadowSamplers)
+	{
+		attribs = ATTR_POSITION | ATTR_NORMAL | ATTR_TEXCOORD;
+		extradefines[0] = '\0';
+
+		if (qglesMajorVersion < 3 && glRefConfig.shadowSamplers)
+		{
+			Q_strcat(extradefines, 1024, "#extension GL_EXT_shadow_samplers : enable\n");
+		}
+
+		Q_strcat(extradefines, 1024, va("#define r_headlightShadowMapSize %f\n", r_headlightShadowMapSize->value));
+
+		if (!GLSL_InitGPUShader(&tr.spotlightShader, "spotlight", attribs, qtrue, extradefines, qtrue, fallbackShader_spotlight_vp, fallbackShader_spotlight_fp))
+		{
+			ri.Error(ERR_FATAL, "Could not load spotlight shader!");
+		}
+
+		GLSL_InitUniforms(&tr.spotlightShader);
+		GLSL_SetUniformInt(&tr.spotlightShader, UNIFORM_DIFFUSEMAP, TB_DIFFUSEMAP);
+		GLSL_SetUniformInt(&tr.spotlightShader, UNIFORM_SHADOWMAP, TB_SHADOWMAP);
+		GLSL_FinishGPUShader(&tr.spotlightShader);
+
+		numEtcShaders++;
+	}
+
 
 	// GLSL 1.10+ or GL_OES_standard_derivatives extension are required for dFdx() and dFdy() GLSL functions
 	if (glRefConfig.glslMajorVersion > 1 || (glRefConfig.glslMajorVersion == 1 && glRefConfig.glslMinorVersion >= 10)
@@ -1685,6 +1715,7 @@ void GLSL_ShutdownGPUShaders(void)
 	GLSL_DeleteGPUShader(&tr.bloomShader[0]);
 	GLSL_DeleteGPUShader(&tr.bloomShader[1]);
 	GLSL_DeleteGPUShader(&tr.fxaaShader);
+	GLSL_DeleteGPUShader(&tr.spotlightShader);
 	GLSL_DeleteGPUShader(&tr.ssaoShader);
 
 	for ( i = 0; i < 4; i++)

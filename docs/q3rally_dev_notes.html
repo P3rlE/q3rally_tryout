@@ -292,6 +292,21 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
   </table></div>
   <div class="callout orange"><strong>Open ideas</strong>Fade the shadows out at the end of the last cascade instead of cutting them off, use a model LOD for the shadow pass, and headlight shadows at night (dlight cubemap shadows, <code>r_dlightMode 2</code>).</div>
 
+  <h3>Headlights (Spot Lights) — Implementation</h3>
+  <p>One spot light per car with its lights on, OpenGL2 only. Cvars: <code>r_headlights</code> (archive, 1; 0 = old point lights), <code>r_headlightIntensity</code> (archive, 2.5), <code>r_headlightShadows</code> (archive, 0..2, default 2), <code>r_headlightShadowMapSize</code> (archive, latched, 1024).</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Part</th><th>Where</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>API</td><td><code>renderercommon/tr_public.h</code> (<code>AddSpotLightToScene</code>, last member of <code>refexport_t</code>), <code>client/cl_cgame.c</code>, <code>cgame/cg_public.h</code> (<code>CG_R_ADDSPOTLIGHTTOSCENE</code> = 98), <code>cg_syscalls.c</code>, <code>cg_syscalls.asm</code> (-99)</td><td><code>trap_R_AddSpotLightToScene(org, dir, radius, coneAngle, r, g, b, flags)</code>. OpenGL1 (and OpenGL2 with <code>r_headlights 0</code>) turns it into the three additive point lights the headlights used before.</td></tr>
+      <tr><td>cgame</td><td><code>cg_players.c</code> (headlight block)</td><td>Glow model on every <code>tag_hlite*</code> tag as before; one spot from the middle of the tags, 12 units ahead of them, aimed along the car's forward axis tilted 0.1 down: radius 1600, cone 64&deg;, colour 1 0.95 0.85.</td></tr>
+      <tr><td>Light</td><td><code>tr_local.h</code> (<code>dlight_t</code>: <code>spotDir</code>, <code>spotCosOuter/Inner</code>, <code>spotShadow</code>, <code>spotShadowMvp</code>), <code>tr_scene.c</code> (<code>RE_AddSpotLightToScene</code>, <code>refdef.spotMask</code>)</td><td>A spot is a dlight with a direction, so the world surface and bmodel culling of dlights is reused. Inner cone = 0.55 &times; outer.</td></tr>
+      <tr><td>Shading</td><td><code>tr_shade.c</code> (<code>ForwardSpotLights</code>), <code>glsl/spotlight_vp/fp.glsl</code></td><td>Spot bits are taken out of the normal dlight passes; one additive pass per spot (depth func equal) with the first texture stage that is not the lightmap as surface colour (tcGen texture, tcMods applied): colour &times; smoothstep cone &times; (1 &minus; d&sup2;/r&sup2;)&sup2; &times; sqrt(N&middot;L) (headlights hit the road at a grazing angle) &times; shadow. Normals use the lightall convention (visible side = GL back face). World surfaces get an identity model matrix (their <code>transformMatrix</code> is not set).</td></tr>
+      <tr><td>Shadows</td><td><code>tr_main.c</code> (<code>R_RenderSpotShadowMaps</code>), images <code>*spotshadow0..1</code></td><td>Main view only. The spots nearest to the camera (within radius + 1000) get a perspective depth view every frame: world + RT_MODEL entities whose origin is at least 16 units in front of the light (the own car and its glow are behind it). PCF with 4 taps, sample moved towards the light and off the surface.</td></tr>
+      <tr><td>Models</td><td><code>tr_light.c</code> (<code>R_SetupEntityLighting</code>)</td><td>Spots light models only inside the cone and radius (no shadow); the old point light formula is not used for them.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout orange"><strong>Notes</strong>Surfaces with GPU vertex deforms get no headlight (the depth test of the extra pass does not match). Fog volumes do not fog the headlight pass. A light origin inside a wall (car pushed against it) shadows everything.</div>
+
   <h3>Bloom &amp; FXAA — Implementation</h3>
   <p>Post-processing passes of the OpenGL2 renderer, run in <code>RB_PostProcess</code> (<code>tr_backend.c</code>) for the main view only (viewport at least half the screen wide). Cvars: <code>r_bloom</code> (archive, latched, 1), <code>r_bloomIntensity</code> (archive, 0.4), <code>r_bloomThreshold</code> (archive, 0.85), <code>r_fxaa</code> (archive, 1). All need <code>r_postProcess 1</code>.</p>
   <div class="table-wrap"><table>

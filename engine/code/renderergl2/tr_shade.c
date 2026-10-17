@@ -853,6 +853,111 @@ static void ForwardDlight( void ) {
 }
 
 
+/*
+===================
+ForwardSpotLights
+
+Q3Rally: headlights (spot lights). One additive pass per light on the
+surfaces it reaches: surface colour (the first texture stage that is not
+the lightmap) * light colour * cone * falloff * N.L * shadow.
+===================
+*/
+static void ForwardSpotLights( int spotBits ) {
+	shaderProgram_t	*sp = &tr.spotlightShader;
+	shaderStage_t	*pStage = NULL;
+	vec4_t			texMatrix[8];
+	vec4_t			vector;
+	int				i, l;
+
+	if ( !sp->program ) {
+		return;
+	}
+
+	for ( i = 0; i < MAX_SHADER_STAGES; i++ ) {
+		shaderStage_t *st = tess.xstages[i];
+
+		if ( !st ) {
+			break;
+		}
+		if ( st->bundle[0].image[0] && !st->bundle[0].isLightmap && st->bundle[0].tcGen == TCGEN_TEXTURE ) {
+			pStage = st;
+			break;
+		}
+	}
+
+	GLSL_BindProgram( sp );
+
+	GLSL_SetUniformMat4( sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection );
+	// world surfaces are in world space (their transformMatrix is not set)
+	if ( backEnd.currentEntity && backEnd.currentEntity != &tr.worldEntity ) {
+		GLSL_SetUniformMat4( sp, UNIFORM_MODELMATRIX, backEnd.or.transformMatrix );
+	} else {
+		mat4_t identity;
+		Mat4Identity( identity );
+		GLSL_SetUniformMat4( sp, UNIFORM_MODELMATRIX, identity );
+	}
+
+	if ( pStage ) {
+		R_BindAnimatedImageToTMU( &pStage->bundle[0], TB_DIFFUSEMAP );
+		ComputeTexMods( pStage, TB_DIFFUSEMAP, texMatrix );
+	} else {
+		GL_BindToTMU( tr.whiteImage, TB_DIFFUSEMAP );
+		for ( i = 0; i < 8; i++ ) {
+			VectorSet4( texMatrix[i], ( i & 1 ) ? 0.0f : 1.0f, ( i & 1 ) ? 1.0f : 0.0f, 0.0f, 0.0f );
+		}
+	}
+
+	GLSL_SetUniformVec4( sp, UNIFORM_DIFFUSETEXMATRIX0, texMatrix[0] );
+	GLSL_SetUniformVec4( sp, UNIFORM_DIFFUSETEXMATRIX1, texMatrix[1] );
+	GLSL_SetUniformVec4( sp, UNIFORM_DIFFUSETEXMATRIX2, texMatrix[2] );
+	GLSL_SetUniformVec4( sp, UNIFORM_DIFFUSETEXMATRIX3, texMatrix[3] );
+	GLSL_SetUniformVec4( sp, UNIFORM_DIFFUSETEXMATRIX4, texMatrix[4] );
+	GLSL_SetUniformVec4( sp, UNIFORM_DIFFUSETEXMATRIX5, texMatrix[5] );
+	GLSL_SetUniformVec4( sp, UNIFORM_DIFFUSETEXMATRIX6, texMatrix[6] );
+	GLSL_SetUniformVec4( sp, UNIFORM_DIFFUSETEXMATRIX7, texMatrix[7] );
+
+	// include GLS_DEPTHFUNC_EQUAL so alpha tested surfaces don't add light
+	// where they aren't rendered
+	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_EQUAL );
+
+	for ( l = 0; l < backEnd.refdef.num_dlights; l++ ) {
+		dlight_t *dl;
+
+		if ( !( spotBits & ( 1 << l ) ) ) {
+			continue;
+		}
+
+		dl = &backEnd.refdef.dlights[l];
+
+		VectorScale( dl->color, r_headlightIntensity->value, vector );
+		vector[3] = 1.0f;
+		GLSL_SetUniformVec4( sp, UNIFORM_COLOR, vector );
+
+		VectorCopy( dl->origin, vector );
+		vector[3] = dl->radius;
+		GLSL_SetUniformVec4( sp, UNIFORM_LIGHTORIGIN, vector );
+
+		VectorCopy( dl->spotDir, vector );
+		vector[3] = dl->spotCosOuter;
+		GLSL_SetUniformVec4( sp, UNIFORM_SPOTDIR, vector );
+
+		VectorSet4( vector, dl->spotCosInner, dl->spotShadow >= 0 ? 1.0f : 0.0f, 0.0f, 0.0f );
+		GLSL_SetUniformVec4( sp, UNIFORM_SHADOWPARAMS, vector );
+
+		if ( dl->spotShadow >= 0 ) {
+			GL_BindToTMU( tr.spotShadowImage[dl->spotShadow], TB_SHADOWMAP );
+			GLSL_SetUniformMat4( sp, UNIFORM_SHADOWMVP, dl->spotShadowMvp );
+		}
+
+		R_DrawElements( tess.numIndexes, tess.firstIndex );
+
+		backEnd.pc.c_totalIndexes += tess.numIndexes;
+		backEnd.pc.c_dlightIndexes += tess.numIndexes;
+		backEnd.pc.c_dlightVertexes += tess.numVertexes;
+	}
+}
+
+
 static void ProjectPshadowVBOGLSL( void ) {
 	int		l;
 	vec3_t	origin;
@@ -1726,15 +1831,27 @@ void RB_StageIteratorGeneric( void )
 	//
 	if ( tess.dlightBits && tess.shader->sort <= SS_OPAQUE && r_lightmap->integer == 0
 		&& !(tess.shader->surfaceFlags & (SURF_NODLIGHT | SURF_SKY) ) ) {
-		if (tess.shader->numUnfoggedPasses == 1 && tess.xstages[0]->glslShaderGroup == tr.lightallShader
-			&& (tess.xstages[0]->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK) && r_dlightMode->integer)
+		// Q3Rally: spot lights (headlights) have their own pass
+		int allBits = tess.dlightBits;
+		int spotBits = allBits & backEnd.refdef.spotMask;
+
+		tess.dlightBits = allBits & ~spotBits;
+		if (tess.dlightBits)
 		{
-			ForwardDlight();
+			if (tess.shader->numUnfoggedPasses == 1 && tess.xstages[0]->glslShaderGroup == tr.lightallShader
+				&& (tess.xstages[0]->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK) && r_dlightMode->integer)
+			{
+				ForwardDlight();
+			}
+			else
+			{
+				ProjectDlightTexture();
+			}
 		}
-		else
-		{
-			ProjectDlightTexture();
-		}
+		tess.dlightBits = allBits;
+
+		if (spotBits)
+			ForwardSpotLights(spotBits);
 	}
 
 	//

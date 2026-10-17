@@ -47,6 +47,19 @@ Added:
   q3r_lavafalls, q3r_dd_02, q3r_ctf_01, q3r_david4 and q3r_dm02 (AAS
   checksums updated). The rear view and the minimap do not draw lamp shadows.
 
+- Headlights (OpenGL2): each car with its lights on now has one real spot
+  light instead of a row of round additive glows. The road, walls and other
+  cars are lit in a cone with their own colours (an extra pass per surface
+  that multiplies the light with the surface texture), and the headlights
+  nearest to the camera cast shadows of the map and the cars (a shadow map
+  per light, rendered every frame; the car the light belongs to is behind it
+  and not included). New cvars r_headlights (0 = the old look),
+  r_headlightIntensity (2.5), r_headlightShadows (how many lights cast
+  shadows, 0-2, default 2) and r_headlightShadowMapSize (1024, latched).
+  New cgame import trap_R_AddSpotLightToScene (CG_R_ADDSPOTLIGHTTOSCENE = 98);
+  OpenGL1 draws such a light as three point lights along the beam, as
+  before. Engine, both renderers and cgame must be updated together.
+
 - Bloom and anti-aliasing (OpenGL2): bright lights, lamps, lava, tail lights
   and sun glints get a soft glow (a tight one from a 1/4 size copy of the
   image and a wide one from a 1/16 size copy); the glow grows from

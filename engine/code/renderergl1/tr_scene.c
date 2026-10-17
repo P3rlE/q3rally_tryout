@@ -270,6 +270,19 @@ RE_AddAdditiveLightToScene
 
 =====================
 */
+void RE_AddSpotLightToScene( const vec3_t org, const vec3_t dir, float radius, float coneAngle, float r, float g, float b, int flags ) {
+	vec3_t	pos;
+
+	// Q3Rally: no spot lights here; three additive point lights along the
+	// beam, as the headlights looked before
+	VectorMA( org, 50, dir, pos );
+	RE_AddDynamicLightToScene( pos, 100, r * 1.2f, g * 1.2f, b * 1.2f, qtrue );
+	VectorMA( org, 150, dir, pos );
+	RE_AddDynamicLightToScene( pos, 200, r * 0.8f, g * 0.8f, b * 0.8f, qtrue );
+	VectorMA( org, 250, dir, pos );
+	RE_AddDynamicLightToScene( pos, 300, r * 0.5f, g * 0.5f, b * 0.5f, qtrue );
+}
+
 void RE_AddAdditiveLightToScene( const vec3_t org, float intensity, float r, float g, float b ) {
 	RE_AddDynamicLightToScene( org, intensity, r, g, b, qtrue );
 }

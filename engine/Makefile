@@ -2121,6 +2121,8 @@ Q3R2STRINGOBJ = \
   $(B)/renderergl2/glsl/bloom_vp.o \
   $(B)/renderergl2/glsl/fxaa_fp.o \
   $(B)/renderergl2/glsl/fxaa_vp.o \
+  $(B)/renderergl2/glsl/spotlight_fp.o \
+  $(B)/renderergl2/glsl/spotlight_vp.o \
   $(B)/renderergl2/glsl/ssao_fp.o \
   $(B)/renderergl2/glsl/ssao_vp.o \
   $(B)/renderergl2/glsl/texturecolor_fp.o \
