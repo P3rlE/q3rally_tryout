@@ -46,6 +46,10 @@ void main()
 		float fragZ  = 2.0 * n * f / (f + n - (2.0 * gl_FragCoord.z - 1.0) * (f - n));
 		float fade = clamp((sceneZ - fragZ) / u_SoftParticle.x, 0.0, 1.0);
 
+		// no depth there (copy missing or empty): leave the particle as it is
+		if (sceneDepth <= 0.0)
+			fade = 1.0;
+
 		if (u_SoftParticle.y < 0.5)
 			gl_FragColor.a *= fade;
 		else if (u_SoftParticle.y < 1.5)

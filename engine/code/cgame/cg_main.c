@@ -1472,6 +1472,13 @@ static void CG_RegisterGraphics( void ) {
 // can be used by HUD so always load it
 	CG_RegisterItemVisuals( 6 /* item_health_large */ );
 
+	// Q3Rally: rear weapons can be handed out without a pickup in the map
+	// (give, game modes); their models and effects (mine explosion, smoke)
+	// must be there before the first shot
+	for ( i = RWP_SMOKE ; i < WP_NUM_WEAPONS ; i++ ) {
+		CG_RegisterWeapon( i );
+	}
+
 // wall marks
 	cgs.media.bulletMarkShader = trap_R_RegisterShader( "gfx/damage/bullet_mrk" );
 	cgs.media.burnMarkShader = trap_R_RegisterShader( "gfx/damage/burn_med_mrk" );

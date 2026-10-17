@@ -1339,7 +1339,8 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 		}
 
 		// Q3Rally: soft particles, sprites and polys fade out where they
-		// cut into the opaque scene (depth copied after the depth prepass)
+		// cut into the opaque scene (tr.hdrDepthImage, copied after the
+		// depth prepass)
 		if (pStage->glslShaderGroup != tr.lightallShader)
 		{
 			vec4_t soft;
@@ -1360,12 +1361,12 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 					soft[1] = 1.0f;		// additive: fade the colour
 				else
 					soft[1] = 2.0f;		// filter: fade towards white
-				soft[2] = 1.0f / tr.softDepthImage->width;
-				soft[3] = 1.0f / tr.softDepthImage->height;
+				soft[2] = 1.0f / tr.hdrDepthImage->width;
+				soft[3] = 1.0f / tr.hdrDepthImage->height;
 
 				VectorSet4(viewInfo, backEnd.viewParms.zNear, backEnd.viewParms.zFar, 0.0f, 0.0f);
 				GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
-				GL_BindToTMU(tr.softDepthImage, TB_SHADOWMAP);
+				GL_BindToTMU(tr.hdrDepthImage, TB_SPECULARMAP);
 			}
 			GLSL_SetUniformVec4(sp, UNIFORM_SOFTPARTICLE, soft);
 		}

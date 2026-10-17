@@ -1043,7 +1043,7 @@ void GLSL_InitGPUShaders(void)
 
 		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_DIFFUSEMAP, TB_DIFFUSEMAP);
 		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_LIGHTMAP,   TB_LIGHTMAP);
-		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_SCREENDEPTHMAP, TB_SHADOWMAP);	// Q3Rally: soft particles
+		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_SCREENDEPTHMAP, TB_SPECULARMAP);	// Q3Rally: soft particles (a unit that never holds a shadow map with depth compare)
 
 		GLSL_FinishGPUShader(&tr.genericShader[i]);
 

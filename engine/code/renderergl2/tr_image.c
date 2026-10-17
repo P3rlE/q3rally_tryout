@@ -2935,7 +2935,8 @@ void R_CreateBuiltinImages( void ) {
 		if (r_shadowBlur->integer || r_hdr->integer || r_fxaa->integer || r_motionBlur->value > 0.0f)
 			tr.screenScratchImage = R_CreateImage("screenScratch", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, rgbFormat);
 
-		if (r_shadowBlur->integer || r_ssao->integer)
+		// Q3Rally: the soft particles read the depth from here as well
+		if (r_shadowBlur->integer || r_ssao->integer || r_softParticles->value > 0.0f)
 			tr.hdrDepthImage = R_CreateImage("*hdrDepth", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_R32F);
 
 		if (r_drawSunRays->integer)
@@ -3035,9 +3036,6 @@ void R_CreateBuiltinImages( void ) {
 				qglTextureParameterfEXT(tr.spotShadowImage[x]->texnum, GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 			}
 		}
-
-		// Q3Rally: copy of the opaque depth, read by the soft particles
-		tr.softDepthImage = R_CreateImage("*softDepth", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH_COMPONENT24);
 
 		// Q3Rally: cube map the car paint reflects
 		tr.carReflectImage = R_CreateImage("*carReflect", NULL, r_carReflectionSize->integer, r_carReflectionSize->integer, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, hdrFormat);

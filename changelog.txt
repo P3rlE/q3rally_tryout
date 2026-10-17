@@ -104,9 +104,16 @@ Added:
   up to 2 = denser). Snow, wet road and ice keep their sprays.
 - Soft particles (OpenGL2): smoke, dust, spray and other sprites and
   particle polys fade out where they cut into the ground and walls instead
-  of showing a hard edge (the opaque depth is copied after the depth
-  prepass and read in the generic shader). New cvar r_softParticles (24 =
-  fade distance in units, 0 = off; needs r_depthPrepass 1).
+  of showing a hard edge (they read the depth copy the renderer already
+  makes after the depth prepass, tr.hdrDepthImage; a missing depth leaves
+  them as they are). New cvar r_softParticles (24 = fade distance in
+  units, 0 = off; needs r_depthPrepass 1).
+- Rear weapons: the smoke screen is a thick, lit cloud that hangs on the
+  track for several seconds (it was a few faint puffs), and a mine
+  explosion throws up dark smoke and dirt. All rear weapons are now
+  registered at map load: a weapon handed out without a pickup in the map
+  (give, game modes) showed no mine model and a missing-texture square
+  instead of the explosion.
 
 Changed:
 

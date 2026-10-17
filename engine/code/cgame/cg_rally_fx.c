@@ -46,8 +46,8 @@ cg_mapEffects scales the density (0 = off, 1 = default, 2 = double).
 
 Tyre smoke and dust
 -------------------
-CG_FX_TireSmoke puts the smoke of skidding tyres and the dust thrown up on
-loose ground into the same particle pool: soft billowing puffs that grow,
+CG_FX_TireSmoke puts the smoke of skidding tyres, the dust thrown up on
+loose ground and the rear weapon smoke screen into the same particle pool: soft billowing puffs that grow,
 turn, slow down (drag), rise or settle, take a part of the car's speed and
 are tinted with the light grid where they start (no glowing smoke at
 night). With r_softParticles (OpenGL2) they fade out where they cut into
@@ -89,7 +89,9 @@ static const fxSmokeKind_t fxSmokeKinds[FX_SMOKE_NUM_KINDS] = {
 	{ { 0.50f, 0.41f, 0.30f }, 0.45f, 12, 80, 1800, 600,    8, 1.6f, 40,  40, 0.25f },	// FX_SMOKE_DIRT
 	{ { 0.60f, 0.57f, 0.52f }, 0.32f, 10, 62, 1400, 500,   10, 1.8f, 35,  30, 0.20f },	// FX_SMOKE_GRAVEL
 	{ { 0.80f, 0.70f, 0.50f }, 0.50f, 14, 92, 2000, 800,    4, 1.3f, 45,  40, 0.25f },	// FX_SMOKE_SAND
-	{ { 0.40f, 0.38f, 0.24f }, 0.30f, 10, 55, 1200, 400,   12, 2.0f, 35,  30, 0.20f }	// FX_SMOKE_GRASS
+	{ { 0.40f, 0.38f, 0.24f }, 0.30f, 10, 55, 1200, 400,   12, 2.0f, 35,  30, 0.20f },	// FX_SMOKE_GRASS
+	{ { 0.70f, 0.70f, 0.72f }, 0.92f, 40, 230, 7000, 3000,  -5, 1.5f, 90,  30, 0.00f },	// FX_SMOKE_SCREEN
+	{ { 0.24f, 0.23f, 0.22f }, 0.85f, 30, 150, 3500, 1500, -45, 1.8f, 220, 170, 0.00f }	// FX_SMOKE_BLAST
 };
 
 typedef struct {
@@ -441,12 +443,13 @@ void CG_FX_TireSmoke( const vec3_t origin, const vec3_t up, const vec3_t carVel,
 	if ( kind < 0 || kind >= FX_SMOKE_NUM_KINDS || !fxSmokeShader ) {
 		return;
 	}
-	density = Com_Clamp( 0.0f, 2.0f, cg_tireSmoke.value );
+	// the smoke screen is a weapon, it must not depend on cg_tireSmoke
+	density = ( kind == FX_SMOKE_SCREEN || kind == FX_SMOKE_BLAST ) ? 1.0f : Com_Clamp( 0.0f, 2.0f, cg_tireSmoke.value );
 	if ( density <= 0.0f ) {
 		return;
 	}
-	// thin out with distance, skip far away puffs
-	if ( DistanceSquared( origin, cg.refdef.vieworg ) > 4000.0f * 4000.0f ) {
+	// skip far away puffs
+	if ( DistanceSquared( origin, cg.refdef.vieworg ) > ( kind == FX_SMOKE_SCREEN ? 8000.0f * 8000.0f : 4000.0f * 4000.0f ) ) {
 		return;
 	}
 	if ( density < 1.0f && random() > density ) {

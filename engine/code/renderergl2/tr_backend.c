@@ -941,15 +941,6 @@ const void	*RB_DrawSurfs( const void *data ) {
 
 		if (!isShadowView)
 		{
-			// Q3Rally: soft particles, main view only
-			if (tr.softDepthFbo && r_softParticles->value > 0.0f && glRefConfig.framebufferBlit
-				&& backEnd.viewParms.viewportWidth >= glConfig.vidWidth / 2 && backEnd.viewParms.targetFbo == NULL)
-			{
-				FBO_FastBlit(glState.currentFBO, NULL, tr.softDepthFbo, NULL, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-				FBO_Bind(oldFbo);
-				backEnd.softDepthReady = qtrue;
-			}
-
 			if (tr.msaaResolveFbo)
 			{
 				// If we're using multisampling, resolve the depth first
@@ -971,6 +962,10 @@ const void	*RB_DrawSurfs( const void *data ) {
 				VectorSet4(srcTexCoords, 0.0f, 0.0f, 1.0f, 1.0f);
 
 				FBO_BlitFromTexture(tr.renderDepthImage, srcTexCoords, NULL, tr.hdrDepthFbo, NULL, NULL, NULL, 0);
+
+				// Q3Rally: the soft particles of this view read it (not for
+				// views into their own FBO, e.g. the car reflection)
+				backEnd.softDepthReady = r_softParticles->value > 0.0f && backEnd.viewParms.targetFbo == NULL;
 			}
 
 			if (r_sunlightMode->integer && backEnd.viewParms.flags & VPF_USESUNLIGHT)

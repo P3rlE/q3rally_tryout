@@ -2225,6 +2225,8 @@ typedef enum {
 	FX_SMOKE_GRAVEL,
 	FX_SMOKE_SAND,
 	FX_SMOKE_GRASS,
+	FX_SMOKE_SCREEN,	// rear weapon smoke screen: thick, big, long
+	FX_SMOKE_BLAST,		// dark smoke of an explosion (mine)
 	FX_SMOKE_NUM_KINDS
 } fxSmokeKindNum_t;
 

@@ -1557,7 +1557,7 @@ typedef struct {
 	qboolean    colorMask[4];
 	qboolean    depthFill;
 	qboolean    waterReflectionReady;	// Q3Rally: reflection texture was rendered this frame
-	qboolean    softDepthReady;			// Q3Rally: tr.softDepthImage holds this view's opaque depth
+	qboolean    softDepthReady;			// Q3Rally: tr.hdrDepthImage holds this view's opaque depth (soft particles)
 } backEndState_t;
 
 /*
@@ -1633,8 +1633,6 @@ typedef struct {
 	image_t					*spotShadowImage[MAX_SPOT_SHADOWS];	// Q3Rally: headlight shadow maps
 	FBO_t					*spotShadowFbo[MAX_SPOT_SHADOWS];
 	image_t					*carReflectImage;	// Q3Rally: cube map around the camera for the car paint
-	image_t					*softDepthImage;	// Q3Rally: copy of the opaque depth for soft particles
-	FBO_t					*softDepthFbo;
 	FBO_t					*carReflectFbo;
 	int						carReflectSide;		// next side to render
 	FBO_t					*depthFbo;
