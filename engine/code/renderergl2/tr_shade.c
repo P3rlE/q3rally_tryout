@@ -170,6 +170,7 @@ void RB_BeginSurface( shader_t *shader, int fogNum, int cubemapIndex ) {
 	tess.currentStageIteratorFunc = state->optimalStageIteratorFunc;
 	tess.useInternalVao = qtrue;
 	tess.useCacheVao = qfalse;
+	tess.softParticle = qfalse;
 
 	tess.shaderTime = backEnd.refdef.floatTime - tess.shader->timeOffset;
 	if (tess.shader->clampTime && tess.shaderTime >= tess.shader->clampTime) {
@@ -1335,6 +1336,38 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 			GLSL_SetUniformVec4(sp, UNIFORM_FOGDISTANCE, fogDistanceVector);
 			GLSL_SetUniformVec4(sp, UNIFORM_FOGDEPTH, fogDepthVector);
 			GLSL_SetUniformFloat(sp, UNIFORM_FOGEYET, eyeT);
+		}
+
+		// Q3Rally: soft particles, sprites and polys fade out where they
+		// cut into the opaque scene (depth copied after the depth prepass)
+		if (pStage->glslShaderGroup != tr.lightallShader)
+		{
+			vec4_t soft;
+			int blend = pStage->stateBits & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS );
+
+			VectorSet4(soft, 0.0f, 0.0f, 0.0f, 0.0f);
+			if (tess.softParticle && backEnd.softDepthReady && blend && !(pStage->stateBits & GLS_DEPTHMASK_TRUE)
+				&& !input->shader->polygonOffset && input->shader->sort > SS_DECAL)
+			{
+				int src = pStage->stateBits & GLS_SRCBLEND_BITS;
+				int dst = pStage->stateBits & GLS_DSTBLEND_BITS;
+				vec4_t viewInfo;
+
+				soft[0] = r_softParticles->value;
+				if (src == GLS_SRCBLEND_SRC_ALPHA || dst == GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA)
+					soft[1] = 0.0f;		// alpha blend: fade the alpha
+				else if (dst == GLS_DSTBLEND_ONE)
+					soft[1] = 1.0f;		// additive: fade the colour
+				else
+					soft[1] = 2.0f;		// filter: fade towards white
+				soft[2] = 1.0f / tr.softDepthImage->width;
+				soft[3] = 1.0f / tr.softDepthImage->height;
+
+				VectorSet4(viewInfo, backEnd.viewParms.zNear, backEnd.viewParms.zFar, 0.0f, 0.0f);
+				GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
+				GL_BindToTMU(tr.softDepthImage, TB_SHADOWMAP);
+			}
+			GLSL_SetUniformVec4(sp, UNIFORM_SOFTPARTICLE, soft);
 		}
 
 		GL_State( pStage->stateBits );

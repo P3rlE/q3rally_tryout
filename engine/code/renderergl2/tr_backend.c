@@ -919,6 +919,8 @@ const void	*RB_DrawSurfs( const void *data ) {
 	// clear the z buffer, set the modelview, etc
 	RB_BeginDrawingView ();
 
+	backEnd.softDepthReady = qfalse;
+
 	if (glRefConfig.framebufferObject && (backEnd.viewParms.flags & VPF_DEPTHCLAMP) && glRefConfig.depthClamp)
 	{
 		qglEnable(GL_DEPTH_CLAMP);
@@ -939,6 +941,15 @@ const void	*RB_DrawSurfs( const void *data ) {
 
 		if (!isShadowView)
 		{
+			// Q3Rally: soft particles, main view only
+			if (tr.softDepthFbo && r_softParticles->value > 0.0f && glRefConfig.framebufferBlit
+				&& backEnd.viewParms.viewportWidth >= glConfig.vidWidth / 2 && backEnd.viewParms.targetFbo == NULL)
+			{
+				FBO_FastBlit(glState.currentFBO, NULL, tr.softDepthFbo, NULL, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+				FBO_Bind(oldFbo);
+				backEnd.softDepthReady = qtrue;
+			}
+
 			if (tr.msaaResolveFbo)
 			{
 				// If we're using multisampling, resolve the depth first

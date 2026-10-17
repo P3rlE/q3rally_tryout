@@ -43,20 +43,54 @@ The tint is multiplied with the light grid at the origin, so the spray is
 not glowing white in a dark gorge or at night.
 
 cg_mapEffects scales the density (0 = off, 1 = default, 2 = double).
+
+Tyre smoke and dust
+-------------------
+CG_FX_TireSmoke puts the smoke of skidding tyres and the dust thrown up on
+loose ground into the same particle pool: soft billowing puffs that grow,
+turn, slow down (drag), rise or settle, take a part of the car's speed and
+are tinted with the light grid where they start (no glowing smoke at
+night). With r_softParticles (OpenGL2) they fade out where they cut into
+the ground instead of showing a hard edge. cg_tireSmoke scales them
+(0 = off, 1 = default, 2 = double).
 ===========================================================================
 */
 
 #include "cg_local.h"
 
 #define FX_MAX_EMITTERS         32
-#define FX_MAX_PARTICLES        640
+#define FX_MAX_PARTICLES        1024
 #define FX_MAX_SPAWN_PER_FRAME  24
 #define FX_MAX_KEYS             32
 
 typedef enum {
 	FXP_MIST,
-	FXP_DROPLET
+	FXP_DROPLET,
+	FXP_SMOKE			// tyre smoke and dust
 } fxParticleType_t;
+
+// tyre smoke and dust, see CG_FX_TireSmoke
+typedef struct {
+	vec3_t	color;
+	float	alpha;
+	float	size0, size1;		// start and end radius
+	int		life, lifeRand;		// msec
+	float	gravity;			// < 0 rises
+	float	drag;
+	float	spread;				// sideways speed
+	float	upSpeed;
+	float	carShare;			// share of the car's velocity
+} fxSmokeKind_t;
+
+static const fxSmokeKind_t fxSmokeKinds[FX_SMOKE_NUM_KINDS] = {
+	// colour                alpha size0 size1 life lifeRand grav  drag spread up  car
+	{ { 0.92f, 0.92f, 0.93f }, 0.42f, 12, 78, 2200, 900,  -14, 1.4f, 30,  22, 0.15f },	// FX_SMOKE_TIRE
+	{ { 0.66f, 0.55f, 0.40f }, 0.55f, 16, 105, 2600, 1000,  -4, 1.0f, 50,  45, 0.30f },	// FX_SMOKE_DUST
+	{ { 0.50f, 0.41f, 0.30f }, 0.45f, 12, 80, 1800, 600,    8, 1.6f, 40,  40, 0.25f },	// FX_SMOKE_DIRT
+	{ { 0.60f, 0.57f, 0.52f }, 0.32f, 10, 62, 1400, 500,   10, 1.8f, 35,  30, 0.20f },	// FX_SMOKE_GRAVEL
+	{ { 0.80f, 0.70f, 0.50f }, 0.50f, 14, 92, 2000, 800,    4, 1.3f, 45,  40, 0.25f },	// FX_SMOKE_SAND
+	{ { 0.40f, 0.38f, 0.24f }, 0.30f, 10, 55, 1200, 400,   12, 2.0f, 35,  30, 0.20f }	// FX_SMOKE_GRASS
+};
 
 typedef struct {
 	vec3_t		origin;
@@ -100,10 +134,12 @@ static fxParticle_t	fxParticles[FX_MAX_PARTICLES];
 static int			fxNextParticle;
 static qhandle_t	fxMistShader;
 static qhandle_t	fxDropShader;
+static qhandle_t	fxSmokeShader;
 
 // kept static, the QVM stack is small
 static polyVert_t	fxMistVerts[FX_MAX_PARTICLES * 4];
 static polyVert_t	fxDropVerts[FX_MAX_PARTICLES * 4];
+static polyVert_t	fxSmokeVerts[FX_MAX_PARTICLES * 4];
 
 static char			fxKeys[FX_MAX_KEYS][2][MAX_TOKEN_CHARS];
 static int			fxNumKeys;
@@ -244,6 +280,8 @@ void CG_InitRallyFX( void ) {
 	fxNextParticle = 0;
 
 	CG_FX_ParseEntities();
+
+	fxSmokeShader = trap_R_RegisterShader( "gfx/misc/q3r_smoke" );
 
 	if ( fxNumEmitters ) {
 		fxMistShader = trap_R_RegisterShader( "gfx/misc/q3r_mist" );
@@ -386,6 +424,77 @@ static void CG_FX_SpawnDroplet( fxEmitter_t *e ) {
 
 /*
 =================
+CG_FX_TireSmoke
+
+One puff of tyre smoke or dust (kind FX_SMOKE_*) at origin, the contact
+point of the tyre; up is the ground normal, carVel the car's velocity.
+strength scales the size and opacity (1 = normal).
+=================
+*/
+void CG_FX_TireSmoke( const vec3_t origin, const vec3_t up, const vec3_t carVel, int kind, float strength ) {
+	const fxSmokeKind_t	*k;
+	fxParticle_t		*p;
+	vec3_t				ambient, directed, dir, probe;
+	float				density, scale, ang;
+	int					i;
+
+	if ( kind < 0 || kind >= FX_SMOKE_NUM_KINDS || !fxSmokeShader ) {
+		return;
+	}
+	density = Com_Clamp( 0.0f, 2.0f, cg_tireSmoke.value );
+	if ( density <= 0.0f ) {
+		return;
+	}
+	// thin out with distance, skip far away puffs
+	if ( DistanceSquared( origin, cg.refdef.vieworg ) > 4000.0f * 4000.0f ) {
+		return;
+	}
+	if ( density < 1.0f && random() > density ) {
+		return;
+	}
+
+	p = CG_FX_Alloc();
+	if ( !p ) {
+		return;
+	}
+	k = &fxSmokeKinds[kind];
+	scale = Com_Clamp( 0.3f, 2.0f, strength ) * ( density > 1.0f ? 1.0f + ( density - 1.0f ) * 0.4f : 1.0f );
+
+	p->type = FXP_SMOKE;
+	VectorMA( origin, k->size0 * 0.5f + 4.0f, up, p->org );
+
+	ang = random() * 2.0f * M_PI;
+	for ( i = 0; i < 3; i++ ) {
+		p->vel[i] = carVel[i] * k->carShare + up[i] * k->upSpeed * ( 0.6f + random() * 0.8f );
+	}
+	p->vel[0] += cos( ang ) * k->spread * random();
+	p->vel[1] += sin( ang ) * k->spread * random();
+
+	p->gravity   = k->gravity;
+	p->drag      = k->drag;
+	p->startTime = cg.time;
+	p->endTime   = cg.time + k->life + (int)( random() * k->lifeRand );
+	p->size0     = k->size0 * scale;
+	p->size1     = k->size1 * scale * ( 0.8f + random() * 0.4f );
+	p->alpha     = k->alpha * Com_Clamp( 0.3f, 1.0f, strength ) * ( 0.75f + random() * 0.25f );
+	p->rotation  = random() * 360.0f;
+	p->rotSpeed  = crandom() * 40.0f;
+	p->floorZ    = -1.0e9f;
+
+	// light grid at the start, so the smoke is not glowing in the dark
+	VectorCopy( k->color, p->color );
+	VectorMA( origin, 24.0f, up, probe );
+	if ( trap_R_LightForPoint( probe, ambient, directed, dir ) ) {
+		for ( i = 0; i < 3; i++ ) {
+			float l = ( ambient[i] + directed[i] * 0.6f ) / 170.0f;
+
+			p->color[i] = k->color[i] * Com_Clamp( 0.3f, 1.1f, l );
+		}
+	}
+}
+
+/*
+=================
 CG_FX_Quad
 =================
 */
@@ -435,11 +544,7 @@ Spawns, moves and draws the map effect particles. Called every frame.
 */
 void CG_AddRallyFX( void ) {
 	float	dt, density;
-	int		i, n, numMist, numDrop;
-
-	if ( !fxNumEmitters ) {
-		return;
-	}
+	int		i, n, numMist, numDrop, numSmoke;
 
 	density = Com_Clamp( 0.0f, 2.0f, cg_mapEffects.value );
 	dt = Com_Clamp( 0.0f, 0.1f, cg.frametime * 0.001f );
@@ -480,7 +585,7 @@ void CG_AddRallyFX( void ) {
 	}
 
 	// move and draw
-	numMist = numDrop = 0;
+	numMist = numDrop = numSmoke = 0;
 	for ( i = 0; i < FX_MAX_PARTICLES; i++ ) {
 		fxParticle_t	*p = &fxParticles[i];
 		float			t, a, size, drag;
@@ -508,13 +613,24 @@ void CG_AddRallyFX( void ) {
 
 		t = (float)( cg.time - p->startTime ) / (float)( p->endTime - p->startTime );
 		a = p->alpha * ( 1.0f - t );
-		if ( t < 0.15f ) {
+		if ( p->type == FXP_SMOKE ) {
+			// quick to appear, slow to thin out
+			a = p->alpha * ( 1.0f - t ) * ( 1.0f - t );
+			if ( t < 0.06f ) {
+				a *= t / 0.06f;
+			}
+		} else if ( t < 0.15f ) {
 			a *= t / 0.15f;
 		}
 		size = p->size0 + ( p->size1 - p->size0 ) * ( 1.0f - ( 1.0f - t ) * ( 1.0f - t ) );
 		p->rotation += p->rotSpeed * dt;
 
-		if ( p->type == FXP_MIST ) {
+		if ( p->type == FXP_SMOKE ) {
+			// slows down as it grows
+			p->rotSpeed *= 1.0f - 0.5f * dt;
+			CG_FX_Quad( &fxSmokeVerts[numSmoke * 4], p->org, size, p->rotation, p->color, a );
+			numSmoke++;
+		} else if ( p->type == FXP_MIST ) {
 			CG_FX_Quad( &fxMistVerts[numMist * 4], p->org, size, p->rotation, p->color, a );
 			numMist++;
 		} else {
@@ -528,5 +644,8 @@ void CG_AddRallyFX( void ) {
 	}
 	if ( numDrop ) {
 		trap_R_AddPolysToScene( fxDropShader, 4, fxDropVerts, numDrop );
+	}
+	if ( numSmoke ) {
+		trap_R_AddPolysToScene( fxSmokeShader, 4, fxSmokeVerts, numSmoke );
 	}
 }

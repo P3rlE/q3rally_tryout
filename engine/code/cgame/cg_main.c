@@ -277,6 +277,7 @@ vmCvar_t	cg_developer;
 // cutom variable used in modified atmospheric effects from q3f
 vmCvar_t	cg_atmosphericLevel;
 vmCvar_t	cg_mapEffects;
+vmCvar_t	cg_tireSmoke;
 vmCvar_t	cg_weatherAudio;
 
 vmCvar_t	cg_fpsLimit;
@@ -433,6 +434,7 @@ static cvarTable_t cvarTable[] = {
 
 	{ &cg_atmosphericLevel, "cg_atmosphericLevel", "2", CVAR_ARCHIVE },
 	{ &cg_mapEffects, "cg_mapEffects", "1", CVAR_ARCHIVE },
+	{ &cg_tireSmoke, "cg_tireSmoke", "1", CVAR_ARCHIVE },
 	{ &cg_weatherAudio, "cg_weatherAudio", "1", CVAR_ARCHIVE },
 
 

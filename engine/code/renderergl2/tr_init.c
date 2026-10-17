@@ -172,6 +172,7 @@ cvar_t  *r_motionBlurNos;
 cvar_t  *r_motionBlurMax;
 cvar_t  *r_motionBlurMaxNos;
 cvar_t  *r_motionBlurNear;
+cvar_t  *r_softParticles;
 cvar_t  *r_headlights;
 cvar_t  *r_headlightShadows;
 cvar_t  *r_headlightShadowMapSize;
@@ -1392,6 +1393,9 @@ void R_Register( void )
 	r_motionBlurMaxNos = ri.Cvar_Get( "r_motionBlurMaxNos", "0.12", CVAR_ARCHIVE );
 	ri.Cvar_CheckRange( r_motionBlurMaxNos, 0, 0.25f, qfalse );
 	ri.Cvar_SetDescription( r_motionBlurMaxNos, "Q3Rally: longest motion blur while burning NOS, share of the screen (0-0.25)" );
+	r_softParticles = ri.Cvar_Get( "r_softParticles", "24", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_softParticles, 0, 200, qfalse );
+	ri.Cvar_SetDescription( r_softParticles, "Q3Rally: smoke, dust and other particles fade out over this distance where they cut into walls and the ground, instead of a hard edge (0 = off; needs r_depthPrepass 1)" );
 	r_motionBlurNear = ri.Cvar_Get( "r_motionBlurNear", "120", CVAR_ARCHIVE );
 	ri.Cvar_CheckRange( r_motionBlurNear, 0, 1000, qfalse );
 	ri.Cvar_SetDescription( r_motionBlurNear, "Q3Rally: the motion blur fades in up to this distance from the camera (the car in front of the camera is left sharp anyway)" );

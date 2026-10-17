@@ -3036,6 +3036,9 @@ void R_CreateBuiltinImages( void ) {
 			}
 		}
 
+		// Q3Rally: copy of the opaque depth, read by the soft particles
+		tr.softDepthImage = R_CreateImage("*softDepth", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH_COMPONENT24);
+
 		// Q3Rally: cube map the car paint reflects
 		tr.carReflectImage = R_CreateImage("*carReflect", NULL, r_carReflectionSize->integer, r_carReflectionSize->integer, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, hdrFormat);
 

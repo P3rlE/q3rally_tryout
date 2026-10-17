@@ -1804,6 +1804,7 @@ extern      vmCvar_t                cg_distanceFormat;
 
 extern	vmCvar_t		cg_atmosphericLevel;
 extern	vmCvar_t		cg_mapEffects;
+extern	vmCvar_t		cg_tireSmoke;
 extern	vmCvar_t		cg_weatherAudio;
 extern	vmCvar_t		cg_developer;
 
@@ -2215,6 +2216,19 @@ void CG_CheckChangedPredictableEvents( playerState_t *ps );
 //
 void CG_InitRallyFX( void );
 void CG_AddRallyFX( void );
+
+// Q3Rally: kinds of tyre smoke and dust for CG_FX_TireSmoke
+typedef enum {
+	FX_SMOKE_TIRE,		// burnout on asphalt
+	FX_SMOKE_DUST,		// dusty track
+	FX_SMOKE_DIRT,
+	FX_SMOKE_GRAVEL,
+	FX_SMOKE_SAND,
+	FX_SMOKE_GRASS,
+	FX_SMOKE_NUM_KINDS
+} fxSmokeKindNum_t;
+
+void CG_FX_TireSmoke( const vec3_t origin, const vec3_t up, const vec3_t carVel, int kind, float strength );
 
 //
 // cg_atmospheric.c

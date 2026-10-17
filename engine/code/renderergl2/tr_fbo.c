@@ -454,6 +454,16 @@ void FBO_Init(void)
 		R_CheckFBO(tr.screenSsaoFbo);
 	}
 
+	// Q3Rally: soft particles read the opaque depth from here (a copy, the
+	// depth buffer itself is in use while they are drawn)
+	if (tr.softDepthImage)
+	{
+		tr.softDepthFbo = FBO_Create("_softDepth", tr.softDepthImage->width, tr.softDepthImage->height);
+		FBO_CreateBuffer(tr.softDepthFbo, GL_RGBA8, 0, 0);
+		FBO_AttachImage(tr.softDepthFbo, tr.softDepthImage, GL_DEPTH_ATTACHMENT, 0);
+		R_CheckFBO(tr.softDepthFbo);
+	}
+
 	// Q3Rally: car reflection cube map, the side is attached when it is rendered
 	if (tr.carReflectImage)
 	{

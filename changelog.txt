@@ -93,6 +93,21 @@ Added:
   r_motionBlurMax / r_motionBlurMaxNos (longest blur, 0.05 / 0.12 of the
   screen) and r_motionBlurNear (120, fade-in distance from the camera).
 
+- Tyre smoke and dust: skidding tyres and tyres rolling over loose ground
+  throw up soft, billowing puffs (new texture gfx/misc/q3r_smoke.tga) that
+  grow, turn, slow down, rise (smoke) or settle (dust), carry along a part
+  of the car's speed and are tinted with the light of the map where they
+  start, so smoke no longer glows in the dark. Own colours and behaviour
+  for asphalt (white smoke), dust, dirt, gravel, sand and grass; sand now
+  dusts at speed as well. They run in the client effect particle pool
+  (cg_rally_fx.c, now 1024 particles); new cvar cg_tireSmoke (1, 0 = off,
+  up to 2 = denser). Snow, wet road and ice keep their sprays.
+- Soft particles (OpenGL2): smoke, dust, spray and other sprites and
+  particle polys fade out where they cut into the ground and walls instead
+  of showing a hard edge (the opaque depth is copied after the depth
+  prepass and read in the generic shader). New cvar r_softParticles (24 =
+  fade distance in units, 0 = off; needs r_depthPrepass 1).
+
 Changed:
 
 - NOS: the rocket flame model on the car (models/powerups/turbo/

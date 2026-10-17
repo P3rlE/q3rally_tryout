@@ -667,6 +667,7 @@ typedef enum
 	UNIFORM_SHADOWMVP4,
 	UNIFORM_SHADOWPARAMS,	// Q3Rally: xyz = world shadow bias (sun dir * units), w = model shadow bias
 	UNIFORM_SPOTDIR,		// Q3Rally: spot light direction, w = cos of the outer cone
+	UNIFORM_SOFTPARTICLE,	// Q3Rally: x = fade distance (0 = off), y = blend mode, zw = 1 / depth texture size
 
 	UNIFORM_ENABLETEXTURES,
 
@@ -1556,6 +1557,7 @@ typedef struct {
 	qboolean    colorMask[4];
 	qboolean    depthFill;
 	qboolean    waterReflectionReady;	// Q3Rally: reflection texture was rendered this frame
+	qboolean    softDepthReady;			// Q3Rally: tr.softDepthImage holds this view's opaque depth
 } backEndState_t;
 
 /*
@@ -1631,6 +1633,8 @@ typedef struct {
 	image_t					*spotShadowImage[MAX_SPOT_SHADOWS];	// Q3Rally: headlight shadow maps
 	FBO_t					*spotShadowFbo[MAX_SPOT_SHADOWS];
 	image_t					*carReflectImage;	// Q3Rally: cube map around the camera for the car paint
+	image_t					*softDepthImage;	// Q3Rally: copy of the opaque depth for soft particles
+	FBO_t					*softDepthFbo;
 	FBO_t					*carReflectFbo;
 	int						carReflectSide;		// next side to render
 	FBO_t					*depthFbo;
@@ -1929,6 +1933,7 @@ extern  cvar_t  *r_motionBlurNos;
 extern  cvar_t  *r_motionBlurMax;
 extern  cvar_t  *r_motionBlurMaxNos;
 extern  cvar_t  *r_motionBlurNear;
+extern  cvar_t  *r_softParticles;
 extern  cvar_t  *r_headlights;
 extern  cvar_t  *r_headlightShadows;
 extern  cvar_t  *r_headlightShadowMapSize;
@@ -2190,6 +2195,7 @@ typedef struct shaderCommands_s
 	double		shaderTime;
 	int			fogNum;
 	int         cubemapIndex;
+	qboolean    softParticle;	// Q3Rally: sprites and polys, faded where they cut into the scene
 
 	int			dlightBits;	// or together of all vertexDlightBits
 	int         pshadowBits;

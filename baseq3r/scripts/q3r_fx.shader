@@ -28,3 +28,16 @@ gfx/misc/q3r_droplet
 		alphaGen vertex
 	}
 }
+
+// Q3Rally: tyre smoke and dust (CG_FX_TireSmoke), coloured and lit per puff
+gfx/misc/q3r_smoke
+{
+	nopicmip
+	cull none
+	{
+		map gfx/misc/q3r_smoke.tga
+		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		rgbGen vertex
+		alphaGen vertex
+	}
+}

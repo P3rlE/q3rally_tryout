@@ -101,6 +101,7 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_ShadowMvp4", GLSL_MAT16 },
 	{ "u_ShadowParams", GLSL_VEC4 },
 	{ "u_SpotDir", GLSL_VEC4 },
+	{ "u_SoftParticle", GLSL_VEC4 },
 
 	{ "u_EnableTextures", GLSL_VEC4 },
 
@@ -1042,6 +1043,7 @@ void GLSL_InitGPUShaders(void)
 
 		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_DIFFUSEMAP, TB_DIFFUSEMAP);
 		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_LIGHTMAP,   TB_LIGHTMAP);
+		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_SCREENDEPTHMAP, TB_SHADOWMAP);	// Q3Rally: soft particles
 
 		GLSL_FinishGPUShader(&tr.genericShader[i]);
 

@@ -332,6 +332,16 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
     </tbody>
   </table></div>
 
+  <h3>Tyre Smoke, Dust &amp; Soft Particles — Implementation</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Part</th><th>Where</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>Spawning</td><td><code>cg_players.c</code> (skid code, <code>CG_TireSmokeKind</code>)</td><td>Skidding tyres: one puff every 60 ms per tyre, kind from the surface flags (dust, sand, grass, gravel, dirt, else asphalt smoke). Rolling over SURF_DUST / DIRT / GRAVEL / SAND: dust every 80&ndash;160 ms, stronger with speed. Snow, wet and ice keep their sprays and puffs.</td></tr>
+      <tr><td>Particles</td><td><code>cg_rally_fx.c</code> (<code>CG_FX_TireSmoke</code>, <code>fxSmokeKinds</code>, <code>FXP_SMOKE</code>)</td><td>Same pool as <code>rally_fx_spray</code> (1024). Per kind: colour, alpha, start/end size, life, gravity (&lt; 0 rises), drag, spread, upward speed and share of the car velocity. Grows with an ease-out, fades in over 6 % of its life and out quadratically, slows its spin. Colour &times; light grid 24 units above the start (clamped 0.3&ndash;1.1). No puffs beyond 4000 units; <code>cg_tireSmoke</code> thins (&lt; 1) or thickens (&gt; 1). Drawn as polys with <code>gfx/misc/q3r_smoke</code> (<code>scripts/q3r_fx.shader</code>).</td></tr>
+      <tr><td>Soft particles</td><td><code>tr_backend.c</code> (after the depth prepass), <code>tr_surface.c</code>, <code>tr_shade.c</code>, <code>glsl/generic_fp.glsl</code></td><td>Main view only: the opaque depth is blitted to <code>*softDepth</code> (<code>backEnd.softDepthReady</code>). Sprites and polys set <code>tess.softParticle</code>; blended stages without depth write, polygon offset or decal sort get <code>u_SoftParticle</code> = (<code>r_softParticles</code>, blend mode, 1 / size): fade = (scene depth &minus; fragment depth) / distance, applied to alpha, colour (additive) or towards white (filter).</td></tr>
+    </tbody>
+  </table></div>
+
   <h3>Bloom &amp; FXAA — Implementation</h3>
   <p>Post-processing passes of the OpenGL2 renderer, run in <code>RB_PostProcess</code> (<code>tr_backend.c</code>) for the main view only (viewport at least half the screen wide). Cvars: <code>r_bloom</code> (archive, latched, 1), <code>r_bloomIntensity</code> (archive, 0.4), <code>r_bloomThreshold</code> (archive, 0.85), <code>r_fxaa</code> (archive, 1). All need <code>r_postProcess 1</code>.</p>
   <div class="table-wrap"><table>
