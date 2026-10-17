@@ -292,6 +292,17 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
   </table></div>
   <div class="callout orange"><strong>Open ideas</strong>Fade the shadows out at the end of the last cascade instead of cutting them off, use a model LOD for the shadow pass, and headlight shadows at night (dlight cubemap shadows, <code>r_dlightMode 2</code>).</div>
 
+  <h3>Bloom &amp; FXAA — Implementation</h3>
+  <p>Post-processing passes of the OpenGL2 renderer, run in <code>RB_PostProcess</code> (<code>tr_backend.c</code>) for the main view only (viewport at least half the screen wide). Cvars: <code>r_bloom</code> (archive, latched, 1), <code>r_bloomIntensity</code> (archive, 0.4), <code>r_bloomThreshold</code> (archive, 0.85), <code>r_fxaa</code> (archive, 1). All need <code>r_postProcess 1</code>.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Part</th><th>Where</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>Bloom</td><td><code>tr_postprocess.c</code> (<code>RB_Bloom</code>), <code>glsl/bloom_fp.glsl</code>, images <code>*bloom0..3</code> (<code>tr_image.c</code>, <code>tr_fbo.c</code>)</td><td>Runs after tone mapping on the LDR image. Bright pass + 4&times; downsample to 1/4 size (four bilinear taps, each weighted with smoothstep(threshold, 1, max(r,g,b))&sup2; so small lamps survive the averaging), 9-tap gaussian blur (5 bilinear taps) horizontally and vertically, downsample to 1/16 and blur again; both levels are added to the image (weights 0.8 and 0.4 &times; intensity). In Q3 content the lamp textures are not brighter than white, so a bright pass on the HDR image before tone mapping caught almost nothing; working on the clipped LDR image is what separates lamps from walls.</td></tr>
+      <tr><td>FXAA</td><td><code>RB_Fxaa</code>, <code>glsl/fxaa_fp.glsl</code></td><td>FXAA 3.11 (Timothy Lottes), PC quality path, 8 search steps per side, luma from the colour. Last pass before the 2D drawing: renderFbo &rarr; <code>screenScratchFbo</code> (now also created when <code>r_fxaa</code> is set) &rarr; back.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout orange"><strong>Open ideas</strong>SMAA instead of FXAA (sharper textures, needs the area/search lookup textures), a lens dirt texture for the bloom, per-map bloom settings in the worldspawn.</div>
+
   <h3>Lamp Shadows — Implementation</h3>
   <p>Real-time model shadows from the map's light entities (OpenGL2, needs <code>r_sunlightMode</code> &ge; 1 for the shadow mask and the depth images). Cvars: <code>r_lampShadows</code> (archive, 0..4 lamps per frame, default 2), <code>r_lampShadowStrength</code> (archive, 0.7), <code>r_lampShadowMapSize</code> (archive, latched, 512). Mapper usage is in the Manual (Lamp Shadows).</p>
   <div class="table-wrap"><table>

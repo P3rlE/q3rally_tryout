@@ -163,6 +163,10 @@ cvar_t  *r_sunShadowsActive;
 cvar_t  *r_lampShadows;
 cvar_t  *r_lampShadowStrength;
 cvar_t  *r_lampShadowMapSize;
+cvar_t  *r_bloom;
+cvar_t  *r_bloomIntensity;
+cvar_t  *r_bloomThreshold;
+cvar_t  *r_fxaa;
 cvar_t  *r_shadowFilter;
 cvar_t  *r_shadowBlur;
 cvar_t  *r_shadowMapSize;
@@ -1349,7 +1353,22 @@ void R_Register( void )
 	ri.Cvar_SetDescription( r_lampShadowStrength, "Q3Rally: how much of a lamp's light a model shadow takes away (0-1)" );
 	r_lampShadowMapSize = ri.Cvar_Get( "r_lampShadowMapSize", "512", CVAR_ARCHIVE | CVAR_LATCH );
 	ri.Cvar_CheckRange( r_lampShadowMapSize, 128, 2048, qtrue );
+	ri.Cvar_SetDescription( r_lampShadowMapSize, "Q3Rally: resolution of the lamp shadow maps (128-2048)" );
 	ri.Cvar_SetDescription( r_sunShadowsActive, "Q3Rally: 1 while the loaded map draws real-time sun shadows (read by cgame to soften the blob shadow)" );
+
+	r_bloom = ri.Cvar_Get( "r_bloom", "1", CVAR_ARCHIVE | CVAR_LATCH );
+	ri.Cvar_CheckRange( r_bloom, 0, 1, qtrue );
+	ri.Cvar_SetDescription( r_bloom, "Q3Rally: glow around bright lights, lamps, lava and sun reflections (needs r_postProcess 1)" );
+	r_bloomIntensity = ri.Cvar_Get( "r_bloomIntensity", "0.4", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_bloomIntensity, 0, 2, qfalse );
+	ri.Cvar_SetDescription( r_bloomIntensity, "Q3Rally: strength of the bloom glow (0-2)" );
+	r_bloomThreshold = ri.Cvar_Get( "r_bloomThreshold", "0.85", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_bloomThreshold, 0, 0.99f, qfalse );
+	ri.Cvar_SetDescription( r_bloomThreshold, "Q3Rally: brightness from which a pixel starts to glow; the glow grows towards full white (0-0.99, lower = more glow)" );
+	r_fxaa = ri.Cvar_Get( "r_fxaa", "1", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_fxaa, 0, 1, qtrue );
+	ri.Cvar_SetDescription( r_fxaa, "Q3Rally: smooth jagged edges with FXAA (needs r_postProcess 1; works together with r_ext_multisample)" );
+
 	r_shadowFilter = ri.Cvar_Get( "r_shadowFilter", "1", CVAR_ARCHIVE | CVAR_LATCH );
 	r_shadowBlur = ri.Cvar_Get("r_shadowBlur", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_shadowMapSize = ri.Cvar_Get("r_shadowMapSize", "1024", CVAR_ARCHIVE | CVAR_LATCH);

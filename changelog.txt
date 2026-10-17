@@ -47,6 +47,16 @@ Added:
   q3r_lavafalls, q3r_dd_02, q3r_ctf_01, q3r_david4 and q3r_dm02 (AAS
   checksums updated). The rear view and the minimap do not draw lamp shadows.
 
+- Bloom and anti-aliasing (OpenGL2): bright lights, lamps, lava, tail lights
+  and sun glints get a soft glow (a tight one from a 1/4 size copy of the
+  image and a wide one from a 1/16 size copy); the glow grows from
+  r_bloomThreshold (0.85) to full white, so clipped highlights glow much more
+  than a merely bright wall. FXAA 3.11 smooths jagged edges of the whole
+  image (fences, bridge trusses, car outlines) after tone mapping and bloom,
+  before the HUD. New cvars r_bloom (latched), r_bloomIntensity (0.4),
+  r_bloomThreshold and r_fxaa; both are on by default, need r_postProcess 1
+  and are only applied to the main view (not the rear view or minimap).
+
 - Sun shadows for the maps with a sun straight overhead: the trainyard sky
   (q3r_downtown, q3r_citydom, q3r_ctf_01) and the nebula sky
   textures/skies/ame_nebula (q3r_battlecanyon, q3r_david4) got a tilted sun

@@ -1627,6 +1627,11 @@ const void *RB_PostProcess(const void *data)
 		}
 	}
 
+	// Q3Rally: bloom and FXAA only for the main view (the rear view and the
+	// minimap are small extra views drawn on top of it)
+	if (r_bloom->integer && backEnd.viewParms.viewportWidth >= glConfig.vidWidth / 2)
+		RB_Bloom(srcFbo, srcBox);
+
 	if (r_drawSunRays->integer)
 		RB_SunRays(srcFbo, srcBox, srcFbo, srcBox);
 
@@ -1634,6 +1639,9 @@ const void *RB_PostProcess(const void *data)
 		RB_BokehBlur(srcFbo, srcBox, srcFbo, srcBox, backEnd.refdef.blurFactor);
 	else
 		RB_GaussianBlur(srcFbo, srcFbo, backEnd.refdef.blurFactor);
+
+	if (r_fxaa->integer && backEnd.viewParms.viewportWidth >= glConfig.vidWidth / 2)
+		RB_Fxaa(srcFbo, srcBox);
 
 	if (srcFbo != dstFbo)
 		FBO_FastBlit(srcFbo, srcBox, dstFbo, dstBox, GL_COLOR_BUFFER_BIT, GL_NEAREST);

@@ -48,6 +48,10 @@ extern const char *fallbackShader_shadowmask_vp;
 extern const char *fallbackShader_shadowmask_fp;
 extern const char *fallbackShader_lampshadow_vp;
 extern const char *fallbackShader_lampshadow_fp;
+extern const char *fallbackShader_bloom_vp;
+extern const char *fallbackShader_bloom_fp;
+extern const char *fallbackShader_fxaa_vp;
+extern const char *fallbackShader_fxaa_fp;
 extern const char *fallbackShader_ssao_vp;
 extern const char *fallbackShader_ssao_fp;
 extern const char *fallbackShader_texturecolor_vp;
@@ -1514,6 +1518,43 @@ void GLSL_InitGPUShaders(void)
 		numEtcShaders++;
 	}
 
+	// Q3Rally: bloom (bright pass / downsample and blur) and FXAA
+	for (i = 0; i < 2; i++)
+	{
+		attribs = ATTR_POSITION | ATTR_TEXCOORD;
+		extradefines[0] = '\0';
+
+		if (i == 1)
+			Q_strcat(extradefines, 1024, "#define USE_BLUR\n");
+
+		if (!GLSL_InitGPUShader(&tr.bloomShader[i], "bloom", attribs, qtrue, extradefines, qtrue, fallbackShader_bloom_vp, fallbackShader_bloom_fp))
+		{
+			ri.Error(ERR_FATAL, "Could not load bloom shader!");
+		}
+
+		GLSL_InitUniforms(&tr.bloomShader[i]);
+		GLSL_SetUniformInt(&tr.bloomShader[i], UNIFORM_DIFFUSEMAP, TB_DIFFUSEMAP);
+		GLSL_FinishGPUShader(&tr.bloomShader[i]);
+
+		numEtcShaders++;
+	}
+
+	{
+		attribs = ATTR_POSITION | ATTR_TEXCOORD;
+		extradefines[0] = '\0';
+
+		if (!GLSL_InitGPUShader(&tr.fxaaShader, "fxaa", attribs, qtrue, extradefines, qtrue, fallbackShader_fxaa_vp, fallbackShader_fxaa_fp))
+		{
+			ri.Error(ERR_FATAL, "Could not load fxaa shader!");
+		}
+
+		GLSL_InitUniforms(&tr.fxaaShader);
+		GLSL_SetUniformInt(&tr.fxaaShader, UNIFORM_DIFFUSEMAP, TB_DIFFUSEMAP);
+		GLSL_FinishGPUShader(&tr.fxaaShader);
+
+		numEtcShaders++;
+	}
+
 
 	// GLSL 1.10+ or GL_OES_standard_derivatives extension are required for dFdx() and dFdy() GLSL functions
 	if (glRefConfig.glslMajorVersion > 1 || (glRefConfig.glslMajorVersion == 1 && glRefConfig.glslMinorVersion >= 10)
@@ -1641,6 +1682,9 @@ void GLSL_ShutdownGPUShaders(void)
 
 	GLSL_DeleteGPUShader(&tr.shadowmaskShader);
 	GLSL_DeleteGPUShader(&tr.lampShadowShader);
+	GLSL_DeleteGPUShader(&tr.bloomShader[0]);
+	GLSL_DeleteGPUShader(&tr.bloomShader[1]);
+	GLSL_DeleteGPUShader(&tr.fxaaShader);
 	GLSL_DeleteGPUShader(&tr.ssaoShader);
 
 	for ( i = 0; i < 4; i++)

@@ -483,3 +483,76 @@ void RB_GaussianBlur(FBO_t *srcFbo, FBO_t *dstFbo, float blur)
 		FBO_Blit(tr.textureScratchFbo[0], srcBox, NULL, dstFbo, dstBox, NULL, color, GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA);
 	}
 }
+
+
+/*
+=============
+RB_Bloom
+
+Q3Rally: glow around the bright parts of the final (tone mapped) image.
+The bright pass also downsamples to 1/4 of the screen; that level is
+blurred, downsampled again to 1/16 and blurred, and both levels are added
+back: the small one gives the tight glow around a lamp, the big one the
+wide haze.
+=============
+*/
+void RB_Bloom(FBO_t *srcFbo, ivec4_t srcBox)
+{
+	vec4_t color;
+	vec2_t dirH, dirV;
+	float intensity, threshold;
+	int i;
+
+	if (!tr.bloomFbo[0] || !tr.bloomShader[0].program || !tr.bloomShader[1].program)
+		return;
+
+	intensity = r_bloomIntensity->value;
+	if (intensity <= 0.0f)
+		return;
+
+	threshold = Com_Clamp(0.0f, 0.99f, r_bloomThreshold->value);
+
+	VectorSet2(dirH, 1.0f, 0.0f);
+	VectorSet2(dirV, 0.0f, 1.0f);
+
+	// bright pass + downsample to 1/4
+	VectorSet4(color, threshold, 1.0f, 0.0f, 1.0f);
+	FBO_Blit(srcFbo, srcBox, NULL, tr.bloomFbo[0], NULL, &tr.bloomShader[0], color, 0);
+
+	for (i = 0; i < 4; i += 2)
+	{
+		if (i)
+		{
+			// plain downsample of the blurred 1/4 level to 1/16
+			VectorSet4(color, 0.0f, 0.0f, 0.0f, 0.0f);
+			FBO_Blit(tr.bloomFbo[0], NULL, NULL, tr.bloomFbo[2], NULL, &tr.bloomShader[0], color, 0);
+		}
+
+		FBO_Blit(tr.bloomFbo[i], NULL, dirH, tr.bloomFbo[i + 1], NULL, &tr.bloomShader[1], NULL, 0);
+		FBO_Blit(tr.bloomFbo[i + 1], NULL, dirV, tr.bloomFbo[i], NULL, &tr.bloomShader[1], NULL, 0);
+	}
+
+	// add both levels to the image
+	VectorSet4(color, intensity * 0.8f, intensity * 0.8f, intensity * 0.8f, 1.0f);
+	FBO_Blit(tr.bloomFbo[0], NULL, NULL, srcFbo, srcBox, NULL, color, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE);
+	VectorSet4(color, intensity * 0.4f, intensity * 0.4f, intensity * 0.4f, 1.0f);
+	FBO_Blit(tr.bloomFbo[2], NULL, NULL, srcFbo, srcBox, NULL, color, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE);
+}
+
+
+/*
+=============
+RB_Fxaa
+
+Q3Rally: FXAA on the final image (after tone mapping and bloom, before the
+2D drawing).
+=============
+*/
+void RB_Fxaa(FBO_t *srcFbo, ivec4_t srcBox)
+{
+	if (!tr.fxaaShader.program || !tr.screenScratchFbo)
+		return;
+
+	FBO_Blit(srcFbo, srcBox, NULL, tr.screenScratchFbo, srcBox, &tr.fxaaShader, NULL, 0);
+	FBO_FastBlit(tr.screenScratchFbo, srcBox, srcFbo, srcBox, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+}

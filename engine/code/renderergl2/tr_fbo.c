@@ -407,6 +407,17 @@ void FBO_Init(void)
 		R_CheckFBO(tr.targetLevelsFbo);
 	}
 
+	// Q3Rally: bloom
+	if (tr.bloomImage[0])
+	{
+		for (i = 0; i < 4; i++)
+		{
+			tr.bloomFbo[i] = FBO_Create(va("_bloom%d", i), tr.bloomImage[i]->width, tr.bloomImage[i]->height);
+			FBO_AttachImage(tr.bloomFbo[i], tr.bloomImage[i], GL_COLOR_ATTACHMENT0, 0);
+			R_CheckFBO(tr.bloomFbo[i]);
+		}
+	}
+
 	if (tr.quarterImage[0])
 	{
 		for (i = 0; i < 2; i++)

@@ -1588,6 +1588,7 @@ typedef struct {
 	image_t					*renderImage;
 	image_t					*waterReflectionImage;	// Q3Rally
 	image_t					*sunRaysImage;
+	image_t					*bloomImage[4];		// Q3Rally: 1/4 and 1/16 size, two each for the blur
 	image_t					*renderDepthImage;
 	image_t					*pshadowMaps[MAX_DRAWN_PSHADOWS];
 	image_t					*screenScratchImage;
@@ -1612,6 +1613,7 @@ typedef struct {
 	FBO_t					*waterReflectionFbo;	// Q3Rally
 	FBO_t					*msaaResolveFbo;
 	FBO_t					*sunRaysFbo;
+	FBO_t					*bloomFbo[4];		// Q3Rally
 	FBO_t					*depthFbo;
 	FBO_t					*pshadowFbos[MAX_DRAWN_PSHADOWS];
 	FBO_t					*screenScratchFbo;
@@ -1669,6 +1671,8 @@ typedef struct {
 	shaderProgram_t calclevels4xShader[2];
 	shaderProgram_t shadowmaskShader;
 	shaderProgram_t lampShadowShader;	// Q3Rally
+	shaderProgram_t bloomShader[2];		// Q3Rally: 0 = bright pass / downsample, 1 = blur
+	shaderProgram_t fxaaShader;			// Q3Rally
 	shaderProgram_t ssaoShader;
 	shaderProgram_t depthBlurShader[4];
 	shaderProgram_t testcubeShader;
@@ -1894,6 +1898,10 @@ extern  cvar_t  *r_sunShadowsActive;
 extern  cvar_t  *r_lampShadows;
 extern  cvar_t  *r_lampShadowStrength;
 extern  cvar_t  *r_lampShadowMapSize;
+extern  cvar_t  *r_bloom;
+extern  cvar_t  *r_bloomIntensity;
+extern  cvar_t  *r_bloomThreshold;
+extern  cvar_t  *r_fxaa;
 
 // Q3Rally: models-only sun shadow casters (r_sunShadowCasters) need baked
 // sunlight, i.e. r_sunlightMode 1; mode 2 adds the sun in the shader and

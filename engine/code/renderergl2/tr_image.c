@@ -2932,7 +2932,7 @@ void R_CreateBuiltinImages( void ) {
 		if (r_water->integer && glRefConfig.framebufferBlit)
 			tr.waterReflectionImage = R_CreateImage("*waterReflection", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
 
-		if (r_shadowBlur->integer || r_hdr->integer)
+		if (r_shadowBlur->integer || r_hdr->integer || r_fxaa->integer)
 			tr.screenScratchImage = R_CreateImage("screenScratch", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, rgbFormat);
 
 		if (r_shadowBlur->integer || r_ssao->integer)
@@ -2940,6 +2940,16 @@ void R_CreateBuiltinImages( void ) {
 
 		if (r_drawSunRays->integer)
 			tr.sunRaysImage = R_CreateImage("*sunRays", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, rgbFormat);
+
+		// Q3Rally: bloom levels (1/4 and 1/16 of the screen)
+		if (r_bloom->integer)
+		{
+			for (x = 0; x < 4; x++)
+			{
+				int div = x < 2 ? 4 : 16;
+				tr.bloomImage[x] = R_CreateImage(va("*bloom%d", x), NULL, MAX(width / div, 1), MAX(height / div, 1), IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
+			}
+		}
 
 		tr.renderDepthImage  = R_CreateImage("*renderdepth",  NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH_COMPONENT24);
 		tr.textureDepthImage = R_CreateImage("*texturedepth", NULL, PSHADOW_MAP_SIZE, PSHADOW_MAP_SIZE, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH_COMPONENT24);
