@@ -294,7 +294,7 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
   <div class="table-wrap"><table>
     <thead><tr><th>Pickup</th><th>Duration</th><th>Effect</th></tr></thead>
     <tbody>
-      <tr><td>NOS</td><td>5 s</td><td>Nitrous oxide — temporary boost to acceleration and top speed, burned while the NOS key is held.</td></tr>
+      <tr><td>NOS</td><td>5 s</td><td>Nitrous oxide — temporary boost to acceleration and top speed, burned while the NOS key is held. The car glows light blue while burning it.</td></tr>
       <tr><td>Quad Damage</td><td>30 s</td><td>Quadruples all outgoing weapon damage.</td></tr>
       <tr><td>Environmental Protection</td><td>30 s</td><td>Mitigates lava, acid, and environmental hazards.</td></tr>
       <tr><td>Haste</td><td>30 s</td><td>Raises fire rate and reduces reload speed.</td></tr>
@@ -1152,7 +1152,7 @@ docker run --rm -it -p 27960:27960/udp \
     <li>OpenGL2: real-time lamp shadows: the map's lamps make cars and models cast shadows (cvars <code>r_lampShadows</code>, <code>r_lampShadowStrength</code>, <code>r_lampShadowMapSize</code>)</li>
     <li>OpenGL2: headlights are real light cones that light the road with its colours, and the nearest ones cast shadows; tail, brake and reverse lights light the road behind the car the same way (cvars <code>r_headlights</code>, <code>r_headlightIntensity</code>, <code>r_headlightShadows</code>, <code>r_headlightShadowMapSize</code>)</li>
     <li>OpenGL2: car paint and glass reflect the real surroundings with a clear coat on the paint (cvars <code>r_carReflections</code>, <code>r_carReflectionSize</code>, <code>r_carReflectionStrength</code>)</li>
-    <li>OpenGL2: motion blur at speed (the car itself stays sharp), much stronger while burning NOS (cvars <code>r_motionBlur</code>, <code>r_motionBlurNos</code>, <code>r_motionBlurMax</code>, <code>r_motionBlurMaxNos</code>, <code>r_motionBlurNear</code>); the rocket flame on the car while burning NOS is gone</li>
+    <li>OpenGL2: motion blur at speed (the car itself stays sharp), much stronger while burning NOS (cvars <code>r_motionBlur</code>, <code>r_motionBlurNos</code>, <code>r_motionBlurMax</code>, <code>r_motionBlurMaxNos</code>, <code>r_motionBlurNear</code>); a car burning NOS glows in a pulsing light blue shell instead of the old rocket flame</li>
     <li>OpenGL2: bloom (glow around bright lights) and FXAA edge smoothing (cvars <code>r_bloom</code>, <code>r_bloomIntensity</code>, <code>r_bloomThreshold</code>, <code>r_fxaa</code>)</li>
     <li><code>q3r_ctf_01</code>: reflective pool, running water in the pipe, waterfall with spray and sound; new shaders <code>q3r_waterfall</code> and <code>q3r_waterflow</code></li>
     <li>Sun shadows on maps that had a sun straight overhead (q3r_dd_02, q3r_downtown, q3r_citydom, q3r_ctf_01, q3r_battlecanyon, q3r_david4; maps relit)</li>

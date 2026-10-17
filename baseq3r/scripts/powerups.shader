@@ -77,6 +77,20 @@ models/powerups/shield/shield
 	}
 }
 
+// Q3Rally: shell of a car burning NOS (light blue, pulsing)
+powerups/nos
+{
+	deformVertexes wave 100 sin 3 0 0 0
+	{
+		map textures/effects/nosmap.jpg
+		blendfunc GL_ONE GL_ONE
+		tcGen environment
+		tcmod rotate 30
+		tcmod scroll 1.5 .2
+		rgbGen wave sin 0.75 0.25 0 3
+	}
+}
+
 powerups/shield
 {
 	deformVertexes wave 100 sin 3 0 0 0
@@ -1339,4 +1353,4 @@ icons/iconf_yell3
 		map icons/iconf_yell3.tga
 		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
 	}
-}
+}

@@ -1200,6 +1200,7 @@ static void CG_RegisterGraphics( void ) {
 // Q3Rally Code Start
 	cgs.media.hasteShader = trap_R_RegisterShader("powerups/haste" );
 	cgs.media.shieldShader = trap_R_RegisterShader("powerups/shield" );
+	cgs.media.nosShader = trap_R_RegisterShader("powerups/nos" );
 // Q3Rally Code END
 	cgs.media.battleWeaponShader = trap_R_RegisterShader("powerups/battleWeapon" );
 	cgs.media.invisShader = trap_R_RegisterShader("powerups/invisibility" );

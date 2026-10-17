@@ -3258,6 +3258,12 @@ void CG_AddRefEntityWithPowerups( refEntity_t *ent, entityState_t *state, int te
 			ent->customShader = cgs.media.shieldShader;
 			trap_R_AddRefEntityToScene( ent );
 		}
+
+		// light blue shell while burning NOS, visible to everyone
+		if ( state->powerups & ( 1 << PW_TURBO ) ) {
+			ent->customShader = cgs.media.nosShader;
+			trap_R_AddRefEntityToScene( ent );
+		}
 // END
 		if ( state->powerups & ( 1 << PW_BATTLESUIT ) ) {
 			ent->customShader = cgs.media.battleSuitShader;

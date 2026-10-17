@@ -1249,6 +1249,7 @@ typedef struct {
 	qhandle_t	battleSuitShader;
 	qhandle_t	hasteShader;
 	qhandle_t	shieldShader;
+	qhandle_t	nosShader;		// Q3Rally: shell of a car burning NOS
 
 
 	qhandle_t	battleWeaponShader;
