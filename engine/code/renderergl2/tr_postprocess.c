@@ -563,17 +563,13 @@ Q3Rally: camera motion blur
 
 Every pixel of the main view is moved back to where it was on the screen in
 the previous frame (depth + the previous view-projection matrix) and the
-image is blurred along that way. Only the camera motion counts, so pixels
-near the camera (the own car in front of the chase camera) are left sharp
-and are not smeared into the surroundings. The blur length is a share of a
+image is blurred along that way. Only the camera motion counts, so the car
+in front of the chase camera (R_ComputeMotionMask) and anything nearer than
+r_motionBlurNear is left sharp and is not smeared into the surroundings. The blur length is a share of a
 1/60 s frame (r_motionBlur, independent of the frame rate) and goes up to
 r_motionBlurNos while the viewed car burns NOS (RDF_NOS from the cgame).
 =============
 */
-#define MOTIONBLUR_MASK_NEAR	250.0f	// closer than this: no blur
-#define MOTIONBLUR_MASK_FAR		450.0f	// full blur from here
-#define MOTIONBLUR_MAX			0.025f	// longest blur, share of the screen
-#define MOTIONBLUR_MAX_NOS		0.06f
 #define MOTIONBLUR_NOS_FADE		300.0f	// ms to blend in and out of NOS
 
 static qboolean Mat4InverseD( const double m[16], double inv[16] )
@@ -666,16 +662,19 @@ void RB_MotionBlur(FBO_t *srcFbo, ivec4_t srcBox)
 			reprojectF[i] = reproject[i];
 
 		strength = r_motionBlur->value + (MAX(r_motionBlur->value, r_motionBlurNos->value) - r_motionBlur->value) * nosBlend;
-		maxLength = MOTIONBLUR_MAX + (MOTIONBLUR_MAX_NOS - MOTIONBLUR_MAX) * nosBlend;
+		maxLength = r_motionBlurMax->value + (MAX(r_motionBlurMax->value, r_motionBlurMaxNos->value) - r_motionBlurMax->value) * nosBlend;
 
 		// x = scale of the screen motion of one frame (a share of a 1/60 s
 		// frame, so the same at any frame rate), y = longest blur,
-		// z/w = depth range in which the blur fades in
-		VectorSet4(params, strength * (1000.0f / 60.0f) / dt, maxLength, MOTIONBLUR_MASK_NEAR, MOTIONBLUR_MASK_FAR);
+		// z = distance up to which the blur fades in, w = farthest view
+		// distance of the car in front of the camera (0 = none)
+		VectorSet4(params, strength * (1000.0f / 60.0f) / dt, maxLength, MAX(1.0f, r_motionBlurNear->value), backEnd.refdef.motionMaskFar);
 		VectorSet4(viewInfo, backEnd.viewParms.zNear, backEnd.viewParms.zFar, 0.0f, 0.0f);
 
 		GLSL_SetUniformMat4(&tr.motionBlurShader, UNIFORM_MODELMATRIX, reprojectF);
 		GLSL_SetUniformVec4(&tr.motionBlurShader, UNIFORM_VIEWINFO, viewInfo);
+		// screen rect of that car
+		GLSL_SetUniformVec4(&tr.motionBlurShader, UNIFORM_SHADOWPARAMS, backEnd.refdef.motionMaskRect);
 		GL_BindToTMU(tr.renderDepthImage, TB_LIGHTMAP);
 
 		FBO_Blit(srcFbo, srcBox, NULL, tr.screenScratchFbo, srcBox, &tr.motionBlurShader, params, 0);

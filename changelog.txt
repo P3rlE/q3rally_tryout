@@ -81,14 +81,17 @@ Added:
   r_carReflectionSize (256, latched) and r_carReflectionStrength (1).
   OpenGL1 keeps the fixed reflection.
 
-- Motion blur (OpenGL2): the surroundings blur slightly with the camera
-  motion at speed and in fast turns; the own car and everything near the
-  camera stays sharp. Every pixel is traced back to where it was on the
-  screen in the previous frame (depth and last frame's camera), so the
-  blur follows the real motion and looks the same at any frame rate. It
-  gets stronger while the viewed car burns NOS (new refdef flag RDF_NOS
+- Motion blur (OpenGL2): the surroundings blur with the camera motion at
+  speed and in fast turns, the road right next to the car included; the
+  car in front of the camera stays sharp (its screen rectangle and depth
+  are left out). Every pixel is traced back to where it was on the screen
+  in the previous frame (depth and last frame's camera), so the blur
+  follows the real motion and looks the same at any frame rate. It gets
+  much stronger while the viewed car burns NOS (new refdef flag RDF_NOS
   from the cgame, blended in and out over 0.3 s). New cvars r_motionBlur
-  (0.35, share of a 1/60 s frame, 0 = off) and r_motionBlurNos (1).
+  (0.5, share of a 1/60 s frame, 0-2, 0 = off), r_motionBlurNos (1.5, 0-4),
+  r_motionBlurMax / r_motionBlurMaxNos (longest blur, 0.05 / 0.12 of the
+  screen) and r_motionBlurNear (120, fade-in distance from the camera).
 
 Changed:
 

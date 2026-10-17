@@ -659,6 +659,9 @@ void RE_RenderScene( const refdef_t *fd ) {
 
 	R_RenderView( &parms );
 
+	// Q3Rally: where the car in front of the camera is (no motion blur there)
+	R_ComputeMotionMask();
+
 	if(!( fd->rdflags & RDF_NOWORLDMODEL ))
 		R_AddPostProcessCmd();
 

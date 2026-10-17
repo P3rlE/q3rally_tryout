@@ -804,6 +804,8 @@ typedef struct {
 	// Q3Rally: lamp shadows of this frame (see R_SelectLampShadows)
 	int         numLampShadows;
 	int         spotMask;			// Q3Rally: dlights that are spot lights
+	vec4_t      motionMaskRect;		// Q3Rally: screen rect (uv min xy, max xy) of the models at the camera, no motion blur there
+	float       motionMaskFar;		// Q3Rally: their farthest view distance, 0 = none
 	int         lampShadowSlot[MAX_LAMP_SHADOWS];
 	float       lampShadowMvp[MAX_LAMP_SHADOWS][16];
 	vec4_t      lampShadowOrigin[MAX_LAMP_SHADOWS];	// xyz, w = light * LAMP_LIGHT_SCALE
@@ -1924,6 +1926,9 @@ extern  cvar_t  *r_bloomThreshold;
 extern  cvar_t  *r_fxaa;
 extern  cvar_t  *r_motionBlur;
 extern  cvar_t  *r_motionBlurNos;
+extern  cvar_t  *r_motionBlurMax;
+extern  cvar_t  *r_motionBlurMaxNos;
+extern  cvar_t  *r_motionBlurNear;
 extern  cvar_t  *r_headlights;
 extern  cvar_t  *r_headlightShadows;
 extern  cvar_t  *r_headlightShadowMapSize;
@@ -2397,6 +2402,7 @@ void RE_AddAdditiveLightToScene( const vec3_t org, float intensity, float r, flo
 void RE_AddSpotLightToScene( const vec3_t org, const vec3_t dir, float radius, float coneAngle, float r, float g, float b, int flags );
 void R_RenderSpotShadowMaps( void );
 void R_RenderCarReflection( void );
+void R_ComputeMotionMask( void );
 #define CAR_REFLECT_EXCLUDE	300.0f		// Q3Rally: models this near the camera are not in the car reflection
 #define CAR_REFLECT_FACING	0.5f		// Q3Rally: car reflection stage seen straight on (1 at the edges)
 #define CAR_REFLECT_BLUR	1.5f		// Q3Rally: mip level of the car reflection stage

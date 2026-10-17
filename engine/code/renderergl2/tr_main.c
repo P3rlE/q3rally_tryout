@@ -3105,6 +3105,90 @@ void R_RenderCarReflection( void ) {
 	}
 }
 
+/*
+=================
+R_ComputeMotionMask
+
+Q3Rally: the motion blur follows the camera motion, but the car in front of
+the chase camera moves with the camera and has to stay sharp. This finds
+the screen rectangle and the farthest view distance of the models near the
+camera (the car, its wheels and lights); the motion blur shader leaves out
+the pixels inside the rectangle that are not further away than that.
+=================
+*/
+#define MOTIONMASK_RANGE	400.0f	// models this near the camera
+
+void R_ComputeMotionMask( void ) {
+	mat4_t	viewProj;
+	vec2_t	mins, maxs;
+	float	farDist = 0.0f;
+	int		i, c;
+
+	tr.refdef.motionMaskFar = 0.0f;
+	VectorSet4( tr.refdef.motionMaskRect, 0.0f, 0.0f, 0.0f, 0.0f );
+
+	if ( !r_motionBlur->value || ( tr.refdef.rdflags & RDF_NOWORLDMODEL ) ) {
+		return;
+	}
+
+	Mat4Multiply( tr.viewParms.projectionMatrix, tr.viewParms.world.modelMatrix, viewProj );
+	mins[0] = mins[1] = 1.0f;
+	maxs[0] = maxs[1] = 0.0f;
+
+	for ( i = 0; i < tr.refdef.num_entities; i++ ) {
+		const refEntity_t *e = &tr.refdef.entities[i].e;
+		model_t *model;
+		vec3_t bounds[2];
+
+		if ( e->reType != RT_MODEL || DistanceSquared( e->origin, tr.refdef.vieworg ) > MOTIONMASK_RANGE * MOTIONMASK_RANGE ) {
+			continue;
+		}
+		model = R_GetModelByHandle( e->hModel );
+		if ( !model || model->type == MOD_BAD || model->type == MOD_BRUSH ) {
+			continue;
+		}
+		R_ModelBounds( e->hModel, bounds[0], bounds[1] );
+
+		for ( c = 0; c < 8; c++ ) {
+			vec3_t p;
+			vec4_t in, clip;
+			float dist;
+
+			VectorCopy( e->origin, p );
+			VectorMA( p, bounds[ c & 1 ][0], e->axis[0], p );
+			VectorMA( p, bounds[ ( c >> 1 ) & 1 ][1], e->axis[1], p );
+			VectorMA( p, bounds[ ( c >> 2 ) & 1 ][2], e->axis[2], p );
+
+			VectorSet4( in, p[0], p[1], p[2], 1.0f );
+			Mat4Transform( viewProj, in, clip );
+
+			dist = ( p[0] - tr.refdef.vieworg[0] ) * tr.refdef.viewaxis[0][0]
+				 + ( p[1] - tr.refdef.vieworg[1] ) * tr.refdef.viewaxis[0][1]
+				 + ( p[2] - tr.refdef.vieworg[2] ) * tr.refdef.viewaxis[0][2];
+			farDist = MAX( farDist, dist );
+
+			if ( clip[3] < 1.0f ) {
+				// corner behind or at the camera: the rect covers the screen
+				mins[0] = mins[1] = 0.0f;
+				maxs[0] = maxs[1] = 1.0f;
+				continue;
+			}
+			mins[0] = MIN( mins[0], clip[0] / clip[3] * 0.5f + 0.5f );
+			mins[1] = MIN( mins[1], clip[1] / clip[3] * 0.5f + 0.5f );
+			maxs[0] = MAX( maxs[0], clip[0] / clip[3] * 0.5f + 0.5f );
+			maxs[1] = MAX( maxs[1], clip[1] / clip[3] * 0.5f + 0.5f );
+		}
+	}
+
+	if ( farDist <= 0.0f || mins[0] > maxs[0] ) {
+		return;
+	}
+
+	// a little margin around it
+	VectorSet4( tr.refdef.motionMaskRect, mins[0] - 0.01f, mins[1] - 0.01f, maxs[0] + 0.01f, maxs[1] + 0.01f );
+	tr.refdef.motionMaskFar = farDist + 16.0f;
+}
+
 void R_RenderCubemapSide( int cubemapIndex, int cubemapSide, qboolean subscene )
 {
 	refdef_t refdef;
