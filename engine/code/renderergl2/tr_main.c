@@ -2917,7 +2917,7 @@ void R_RenderSpotShadowMaps( void ) {
 		dlight_t *dl = &tr.refdef.dlights[i];
 		float d;
 
-		if ( !( tr.refdef.spotMask & ( 1 << i ) ) ) {
+		if ( !( tr.refdef.spotMask & ( 1 << i ) ) || ( dl->spotFlags & SPOTLIGHT_NOSHADOW ) ) {
 			continue;
 		}
 

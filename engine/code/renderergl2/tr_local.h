@@ -100,6 +100,7 @@ typedef struct dlight_s {
 	float	spotCosOuter;
 	float	spotCosInner;
 	int		spotShadow;			// shadow map slot, -1 = no shadow
+	int		spotFlags;			// SPOTLIGHT_*
 	float	spotShadowMvp[16];
 } dlight_t;
 

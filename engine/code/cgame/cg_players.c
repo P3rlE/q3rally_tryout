@@ -4015,6 +4015,68 @@ int CG_LightVerts( vec3_t normal, int numVerts, polyVert_t *verts )
 CG_Player
 ===============
 */
+// Q3Rally: reach (units) and full cone angle (degrees) of the rear lights
+#define TAILLIGHT_RADIUS		420.0f
+#define TAILLIGHT_CONE			150.0f
+#define BRAKELIGHT_RADIUS		640.0f
+#define BRAKELIGHT_CONE			140.0f
+#define REVERSELIGHT_RADIUS		760.0f
+#define REVERSELIGHT_CONE		110.0f
+
+/*
+===============
+CG_LightTagCenter
+
+Q3Rally: average position of the light tags <prefix>1..<count> on the car
+body (e.g. tag_blite1..3), qfalse if the model has none of them.
+===============
+*/
+static qboolean CG_LightTagCenter( clientInfo_t *ci, const refEntity_t *body, const char *prefix, int count, vec3_t out ) {
+	refEntity_t	tag;
+	char		tagname[32];
+	int			i, num = 0;
+
+	VectorClear( out );
+	for ( i = 0; i < count; i++ ) {
+		Com_sprintf( tagname, sizeof(tagname), "%s%d", prefix, i + 1 );
+		if ( !CG_TagExists( ci->bodyModel, tagname ) ) {
+			continue;
+		}
+		memset( &tag, 0, sizeof(tag) );
+		CG_PositionEntityOnTag( &tag, body, ci->bodyModel, tagname );
+		VectorAdd( out, tag.origin, out );
+		num++;
+	}
+	if ( !num ) {
+		return qfalse;
+	}
+	VectorScale( out, 1.0f / num, out );
+	return qtrue;
+}
+
+/*
+===============
+CG_RearLight
+
+Q3Rally: one wide spot light from just behind the given rear light tags,
+backwards and slightly down onto the road (renderer: no shadow map, those
+are kept for the headlights).
+===============
+*/
+static void CG_RearLight( clientInfo_t *ci, const refEntity_t *body, const char *prefix, int count,
+						  float radius, float coneAngle, float r, float g, float b ) {
+	vec3_t	org, dir;
+
+	if ( !CG_LightTagCenter( ci, body, prefix, count, org ) ) {
+		return;
+	}
+	VectorScale( body->axis[0], -1.0f, dir );
+	VectorMA( org, 8.0f, dir, org );
+	VectorMA( dir, -0.45f, body->axis[2], dir );
+	VectorNormalize( dir );
+	trap_R_AddSpotLightToScene( org, dir, radius, coneAngle, r, g, b, SPOTLIGHT_NOSHADOW );
+}
+
 void CG_Player( centity_t *cent ) {
 	clientInfo_t	*ci;
 // SKWID( replaced player with car )
@@ -4567,28 +4629,27 @@ if ( (cent->currentState.eFlags & EF_HEADLIGHTS) &&
 }
 skip_headlights:;
 
-/* Ruecklichter — dim red glow whenever headlights are on */
+/* Ruecklichter — dim red glow whenever headlights are on, and a weak red
+   spot light onto the road behind the car (the brake light spot replaces it
+   while braking) */
 if ( (cent->currentState.eFlags & EF_HEADLIGHTS) &&
      !(cent->currentState.powerups & (1 << PW_INVIS)) ) {
     int i;
-    vec3_t back;
     backlight.hModel = cgs.media.brakeLightGlow;
     if ( backlight.hModel ) {
         VectorCopy( cent->lerpOrigin, backlight.lightingOrigin );
         backlight.shadowPlane = shadowPlane;
         backlight.renderfx    = renderfx;
-        VectorScale( body.axis[0], -1, back );
         for ( i = 0; i < 3; i++ ) {
-            vec3_t beamPos;
             char   tagname[32];
             Com_sprintf( tagname, sizeof(tagname), "tag_blite%d", i + 1 );
             if ( !CG_TagExists( ci->bodyModel, tagname ) ) continue;
             CG_PositionEntityOnTag( &backlight, &body, ci->bodyModel, tagname );
             trap_R_AddRefEntityToScene( &backlight );
-            /* Dim additive red — standlicht, weaker than brakelights */
-            VectorMA( backlight.origin, 40, back, beamPos );
-            trap_R_AddAdditiveLightToScene( beamPos, 50, 0.4f, 0.0f, 0.0f );
         }
+    }
+    if ( !(cg_entities[cent->currentState.clientNum].currentState.eFlags & EF_BRAKE) ) {
+        CG_RearLight( ci, &body, "tag_blite", 3, TAILLIGHT_RADIUS, TAILLIGHT_CONE, 0.15f, 0.0f, 0.0f );
     }
 }
 
@@ -4654,17 +4715,14 @@ skip_yellowlight:;
 		brakelight.renderfx = renderfx;
 
 		for (i = 0; i < 3; i++){
-			vec3_t brakeback, brakebeam;
 			Com_sprintf(filename, sizeof(filename), "tag_blite%d", i+1);
 			if (!CG_TagExists(ci->bodyModel, filename)) continue;
 
 			CG_PositionEntityOnTag( &brakelight, &body, ci->bodyModel, filename);
 			trap_R_AddRefEntityToScene( &brakelight );
-			/* Additive red light behind the vehicle */
-			VectorScale( body.axis[0], -1, brakeback );
-			VectorMA( brakelight.origin, 40, brakeback, brakebeam );
-			trap_R_AddAdditiveLightToScene( brakebeam, 100, 0.8f, 0.0f, 0.0f );
 		}
+		/* red spot light onto the road behind the vehicle */
+		CG_RearLight( ci, &body, "tag_blite", 3, BRAKELIGHT_RADIUS, BRAKELIGHT_CONE, 0.60f, 0.02f, 0.0f );
 	}
 skip_brakelights:;
 
@@ -4679,12 +4737,9 @@ skip_brakelights:;
 			goto skip_reverselights;
 		}
 
-		{
-		vec3_t revback, revbeam;
 		VectorCopy( cent->lerpOrigin, reverselight.lightingOrigin );
 		reverselight.shadowPlane = shadowPlane;
 		reverselight.renderfx = renderfx;
-		VectorScale( body.axis[0], -1, revback );
 
 		for (i = 0; i < 2; i++){
 			Com_sprintf(filename, sizeof(filename), "tag_rlite%d", i+1);
@@ -4692,11 +4747,9 @@ skip_brakelights:;
 
 			CG_PositionEntityOnTag( &reverselight, &body, ci->bodyModel, filename);
 			trap_R_AddRefEntityToScene( &reverselight );
-			/* White additive light behind vehicle when reversing */
-			VectorMA( reverselight.origin, 40, revback, revbeam );
-			trap_R_AddAdditiveLightToScene( revbeam, 80, 0.7f, 0.7f, 0.7f );
 		}
-		}
+		/* white spot light onto the road behind the vehicle */
+		CG_RearLight( ci, &body, "tag_rlite", 2, REVERSELIGHT_RADIUS, REVERSELIGHT_CONE, 0.40f, 0.40f, 0.37f );
 	}
 skip_reverselights:;
 

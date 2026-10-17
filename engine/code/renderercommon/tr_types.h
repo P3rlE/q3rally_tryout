@@ -59,6 +59,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define RDF_NOWORLDMODEL	0x0001		// used for player configuration screen
 #define RDF_HYPERSPACE		0x0004		// teleportation effect
 
+// Q3Rally: AddSpotLightToScene flags
+#define SPOTLIGHT_NOSHADOW	0x0001		// never gets a shadow map (tail, brake and reverse lights)
+
 typedef struct {
 	vec3_t		xyz;
 	float		st[2];

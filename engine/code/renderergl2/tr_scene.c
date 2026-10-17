@@ -263,16 +263,17 @@ void RE_AddDynamicLightToScene( const vec3_t org, float intensity, float r, floa
 	dl->additive = additive;
 	dl->spotCosOuter = -2.0f;
 	dl->spotShadow = -1;
+	dl->spotFlags = 0;
 }
 
 /*
 =====================
 RE_AddSpotLightToScene
 
-Q3Rally: a spot light (car headlights). Lit like a dlight with the surface
+Q3Rally: a spot light (car head, tail, brake and reverse lights). Lit like a dlight with the surface
 colours (an extra pass per surface, tr_shade.c), cone shaped, and the
-nearest ones cast shadows. With r_headlights 0 it falls back to three
-additive point lights along the beam, the look of the old headlights.
+nearest ones cast shadows (not with SPOTLIGHT_NOSHADOW). With r_headlights 0
+it falls back to additive point lights, the look of the old lights.
 =====================
 */
 void RE_AddSpotLightToScene( const vec3_t org, const vec3_t dir, float radius, float coneAngle, float r, float g, float b, int flags ) {
@@ -290,6 +291,12 @@ void RE_AddSpotLightToScene( const vec3_t org, const vec3_t dir, float radius, f
 	}
 
 	if ( !r_headlights->integer || !tr.spotlightShader.program ) {
+		if ( radius < 1000.0f ) {
+			// short lights (tail, brake, reverse): one point light behind the car
+			VectorMA( org, 40, d, pos );
+			RE_AddDynamicLightToScene( pos, radius * 0.22f, r * 2.0f, g * 2.0f, b * 2.0f, qtrue );
+			return;
+		}
 		VectorMA( org, 50, d, pos );
 		RE_AddDynamicLightToScene( pos, 100, r * 1.2f, g * 1.2f, b * 1.2f, qtrue );
 		VectorMA( org, 150, d, pos );
@@ -316,6 +323,7 @@ void RE_AddSpotLightToScene( const vec3_t org, const vec3_t dir, float radius, f
 	dl->spotCosOuter = cos( DEG2RAD( half ) );
 	dl->spotCosInner = cos( DEG2RAD( half * 0.55f ) );
 	dl->spotShadow = -1;
+	dl->spotFlags = flags;
 }
 
 /*

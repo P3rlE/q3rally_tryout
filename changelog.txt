@@ -60,6 +60,15 @@ Added:
   OpenGL1 draws such a light as three point lights along the beam, as
   before. Engine, both renderers and cgame must be updated together.
 
+- Tail, brake and reverse lights (OpenGL2) use the same spot lights: one
+  wide cone per car from behind the rear light tags onto the road, walls and
+  the car behind, with their colours (red light on green grass stays dark,
+  as it should). The tail light glows weakly while the headlights are on,
+  the brake light replaces it when braking, the reverse light is white.
+  They cast no shadows, the shadow maps stay with the headlights (new spot
+  light flag SPOTLIGHT_NOSHADOW). OpenGL1 and r_headlights 0 draw one
+  additive point light behind the car instead of one per lamp.
+
 - Bloom and anti-aliasing (OpenGL2): bright lights, lamps, lava, tail lights
   and sun glints get a soft glow (a tight one from a 1/4 size copy of the
   image and a wide one from a 1/16 size copy); the glow grows from
