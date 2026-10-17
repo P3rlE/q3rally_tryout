@@ -517,6 +517,13 @@ void RE_RenderScene( const refdef_t *fd ) {
 		}
 	}
 
+	// Q3Rally: lamps of the map cast model shadows
+	R_SelectLampShadows();
+	if (tr.refdef.numLampShadows)
+	{
+		R_RenderLampShadowMaps();
+	}
+
 	// playing with cube maps
 	// this is where dynamic cubemaps would be rendered
 	// Q3Rally: the former r_dynamicReflections path was removed here. It
@@ -561,7 +568,7 @@ void RE_RenderScene( const refdef_t *fd ) {
 
 	VectorCopy( fd->vieworg, parms.pvsOrigin );
 
-	if(!( fd->rdflags & RDF_NOWORLDMODEL ) && r_depthPrepass->value && ((r_forceSun->integer) || tr.sunShadows))
+	if(!( fd->rdflags & RDF_NOWORLDMODEL ) && r_depthPrepass->value && ((r_forceSun->integer) || tr.sunShadows || tr.refdef.numLampShadows))
 	{
 		parms.flags = VPF_USESUNLIGHT;
 	}

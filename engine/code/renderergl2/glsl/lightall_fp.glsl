@@ -357,6 +357,13 @@ void main()
     #if defined(SHADOWMAP_MODULATE)
 	lightColor *= shadowValue * (1.0 - u_PrimaryLightAmbient.r) + u_PrimaryLightAmbient.r;
     #endif
+
+    #if !defined(USE_LIGHT_VECTOR)
+	// Q3Rally: model shadows of the map's lamps (green channel, 1 = lit).
+	// Only on the map: models get their lamp light from the light grid, a
+	// coarse lamp shadow on the car body would only add noise
+	lightColor *= texture2D(u_ShadowMap, shadowTex).g;
+    #endif
   #endif
 
   #if defined(USE_PARALLAXMAP) && defined(USE_PARALLAXMAP_SHADOWS)

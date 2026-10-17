@@ -63,6 +63,15 @@ typedef unsigned int vaoCacheGlIndex_t;
 #define MAX_SHADERS		(1<<SHADERNUM_BITS)
 
 #define	MAX_FBOS      64
+
+// Q3Rally: lamp shadows (r_lampShadows)
+#define MAX_LAMPS             1024
+#define MAX_LAMP_SHADOWS      4
+// share of a lamp in the baked light at distance d: sqrt( light * LAMP_LIGHT_SCALE / d^2 ),
+// q3map2 point lights fall off with 1 / d^2, the square root stands for the
+// gamma our maps are compiled with (-gamma 2)
+#define LAMP_LIGHT_SCALE      117.0f
+#define LAMP_MIN_LIT          0.0225f	// below this (before the square root) a lamp is ignored
 #define MAX_VISCOUNTS 5
 #define MAX_VAOS      4096
 
@@ -781,6 +790,14 @@ typedef struct {
 	struct pshadow_s *pshadows;
 
 	float       sunShadowMvp[4][16];
+
+	// Q3Rally: lamp shadows of this frame (see R_SelectLampShadows)
+	int         numLampShadows;
+	int         lampShadowSlot[MAX_LAMP_SHADOWS];
+	float       lampShadowMvp[MAX_LAMP_SHADOWS][16];
+	vec4_t      lampShadowOrigin[MAX_LAMP_SHADOWS];	// xyz, w = light * LAMP_LIGHT_SCALE
+	vec4_t      lampShadowParams[MAX_LAMP_SHADOWS];	// x = strength * fade
+
 	float       sunDir[4];
 	float       sunCol[4];
 	float       sunAmbCol[4];
@@ -788,6 +805,23 @@ typedef struct {
 	float       autoExposureMinMax[2];
 	float       toneMinAvgMaxLinear[3];
 } trRefdef_t;
+
+// Q3Rally: a lamp of the map that can cast model shadows
+typedef struct {
+	vec3_t		origin;
+	vec3_t		axis[3];	// shadow frustum, axis[0] = direction
+	float		fov;
+	float		light;		// q3map2 light value
+	float		radius;		// beyond this the lamp adds less than LAMP_MIN_LIT
+} lamp_t;
+
+typedef struct {
+	int			lamp;		// index into tr.lamps, -1 = free
+	int			startTime;	// for the fade in
+	int			lastUsed;
+	qboolean	worldDone;	// world shadow map rendered for this lamp
+	float		score;
+} lampSlot_t;
 
 
 //=================================================================================
@@ -1563,6 +1597,8 @@ typedef struct {
 	image_t					*targetLevelsImage;
 	image_t					*fixedLevelsImage;
 	image_t					*sunShadowDepthImage[4];
+	image_t					*lampShadowImage[MAX_LAMP_SHADOWS];	// Q3Rally: models seen from the lamp
+	image_t					*lampWorldImage[MAX_LAMP_SHADOWS];	// Q3Rally: the map seen from the lamp (cached)
 	image_t                 *screenShadowImage;
 	image_t                 *screenSsaoImage;
 	image_t					*hdrDepthImage;
@@ -1584,6 +1620,8 @@ typedef struct {
 	FBO_t					*calcLevelsFbo;
 	FBO_t					*targetLevelsFbo;
 	FBO_t					*sunShadowFbo[4];
+	FBO_t					*lampShadowFbo[MAX_LAMP_SHADOWS];
+	FBO_t					*lampWorldFbo[MAX_LAMP_SHADOWS];
 	FBO_t					*screenShadowFbo;
 	FBO_t					*screenSsaoFbo;
 	FBO_t					*hdrDepthFbo;
@@ -1630,6 +1668,7 @@ typedef struct {
 	shaderProgram_t tonemapShader;
 	shaderProgram_t calclevels4xShader[2];
 	shaderProgram_t shadowmaskShader;
+	shaderProgram_t lampShadowShader;	// Q3Rally
 	shaderProgram_t ssaoShader;
 	shaderProgram_t depthBlurShader[4];
 	shaderProgram_t testcubeShader;
@@ -1657,6 +1696,12 @@ typedef struct {
 	vec3_t                  lastCascadeSunDirection;
 	float                   lastCascadeSunMvp[16];
 	float                   sunShadowWorldTexel;	// Q3Rally: world units per texel of the level 3 cascade
+
+	// Q3Rally: lamps of the map ("light" entities kept in the BSP) and the
+	// shadow map slots they are assigned to
+	int                     numLamps;
+	lamp_t                  *lamps;
+	lampSlot_t              lampSlots[MAX_LAMP_SHADOWS];
 
 	frontEndCounters_t		pc;
 	int						frontEndMsec;		// not in pc due to clearing issue
@@ -1846,6 +1891,9 @@ extern  cvar_t  *r_drawSunRays;
 extern  cvar_t  *r_sunShadows;
 extern  cvar_t  *r_sunShadowCasters;
 extern  cvar_t  *r_sunShadowsActive;
+extern  cvar_t  *r_lampShadows;
+extern  cvar_t  *r_lampShadowStrength;
+extern  cvar_t  *r_lampShadowMapSize;
 
 // Q3Rally: models-only sun shadow casters (r_sunShadowCasters) need baked
 // sunlight, i.e. r_sunlightMode 1; mode 2 adds the sun in the shader and
@@ -1912,6 +1960,9 @@ void R_RenderView( viewParms_t *parms );
 void R_RenderDlightCubemaps(const refdef_t *fd);
 void R_RenderPshadowMaps(const refdef_t *fd);
 void R_RenderSunShadowMaps(const refdef_t *fd, int level);
+void R_LoadLamps( void );
+void R_SelectLampShadows( void );
+void R_RenderLampShadowMaps( void );
 void R_RenderCubemapSide( int cubemapIndex, int cubemapSide, qboolean subscene );
 
 void R_AddMD3Surfaces( trRefEntity_t *e );

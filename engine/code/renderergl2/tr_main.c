@@ -2637,6 +2637,253 @@ void R_RenderSunShadowMaps(const refdef_t *fd, int level)
 	}
 }
 
+/*
+=================
+R_SelectLampShadows
+
+Q3Rally: picks the lamps that cast model shadows this frame. A lamp scores
+by how strongly it lights the models near the camera (inside its shadow
+frustum). The chosen lamps keep their shadow map slot while they still
+matter, so the cached map shadow (lampWorldImage) is rendered only once per
+lamp, and new shadows fade in instead of popping.
+=================
+*/
+#define LAMP_FADE_MSEC	300
+
+static float R_LampLit( const lamp_t *l, const vec3_t point, qboolean inFrustum ) {
+	vec3_t	dir;
+	float	d2, d, lit;
+
+	VectorSubtract( point, l->origin, dir );
+	d2 = DotProduct( dir, dir );
+	if ( d2 > l->radius * l->radius || d2 < 1.0f ) {
+		return 0.0f;
+	}
+
+	d = sqrt( d2 );
+	if ( inFrustum && DotProduct( dir, l->axis[0] ) < d * cos( DEG2RAD( l->fov * 0.5f ) ) ) {
+		return 0.0f;
+	}
+
+	lit = l->light * LAMP_LIGHT_SCALE / d2;
+	return lit > 1.0f ? 1.0f : sqrt( lit );
+}
+
+void R_SelectLampShadows( void ) {
+	static float	score[MAX_LAMPS];
+	int				max, i, j;
+	float			strength;
+
+	tr.refdef.numLampShadows = 0;
+
+	max = r_lampShadows->integer;
+	if ( max > MAX_LAMP_SHADOWS ) {
+		max = MAX_LAMP_SHADOWS;
+	}
+
+	if ( max <= 0 || !tr.numLamps || !tr.lampShadowFbo[0] || !r_sunlightMode->integer
+		|| !glRefConfig.framebufferObject || ( tr.refdef.rdflags & RDF_NOWORLDMODEL ) ) {
+		return;
+	}
+
+	// only the main view: small extra views (rear view, minimap) would
+	// steal the slots from it every frame and cost extra shadow passes
+	if ( tr.refdef.width < glConfig.vidWidth / 2 ) {
+		return;
+	}
+
+	// score every lamp by the models it lights
+	for ( i = 0; i < tr.numLamps; i++ ) {
+		lamp_t	*l = &tr.lamps[i];
+
+		score[i] = 0.0f;
+		if ( Distance( l->origin, tr.refdef.vieworg ) > l->radius + 3000.0f ) {
+			continue;
+		}
+
+		for ( j = 0; j < tr.refdef.num_entities; j++ ) {
+			trRefEntity_t	*ent = &tr.refdef.entities[j];
+			float			lit;
+
+			if ( ent->e.reType != RT_MODEL || ( ent->e.renderfx & ( RF_FIRST_PERSON | RF_DEPTHHACK ) ) ) {
+				continue;
+			}
+
+			lit = R_LampLit( l, ent->e.origin, qtrue );
+			if ( lit > 0.0f ) {
+				score[i] += lit / ( 1.0f + Distance( ent->e.origin, tr.refdef.vieworg ) / 1000.0f );
+			}
+		}
+	}
+
+	// slots: keep lamps that still matter, free the others
+	for ( j = 0; j < MAX_LAMP_SHADOWS; j++ ) {
+		lampSlot_t *s = &tr.lampSlots[j];
+
+		if ( s->lamp >= 0 && ( j >= max || score[s->lamp] < 0.01f ) ) {
+			s->lamp = -1;
+		}
+		if ( s->lamp >= 0 ) {
+			s->score = score[s->lamp];
+		}
+	}
+
+	// fill free slots with the best unassigned lamps, and replace a weak
+	// slot only by a clearly better lamp (no flicker between two lamps)
+	while ( 1 ) {
+		int		best = -1, weakest = -1;
+		float	bestScore = 0.01f;
+
+		for ( i = 0; i < tr.numLamps; i++ ) {
+			qboolean used = qfalse;
+
+			if ( score[i] <= bestScore ) {
+				continue;
+			}
+			for ( j = 0; j < max; j++ ) {
+				if ( tr.lampSlots[j].lamp == i ) {
+					used = qtrue;
+					break;
+				}
+			}
+			if ( !used ) {
+				best = i;
+				bestScore = score[i];
+			}
+		}
+		if ( best < 0 ) {
+			break;
+		}
+
+		for ( j = 0; j < max; j++ ) {
+			if ( tr.lampSlots[j].lamp < 0 ) {
+				weakest = j;
+				break;
+			}
+			if ( weakest < 0 || tr.lampSlots[j].score < tr.lampSlots[weakest].score ) {
+				weakest = j;
+			}
+		}
+		if ( weakest < 0 || ( tr.lampSlots[weakest].lamp >= 0 && bestScore < tr.lampSlots[weakest].score * 2.0f ) ) {
+			break;
+		}
+
+		tr.lampSlots[weakest].lamp = best;
+		tr.lampSlots[weakest].score = bestScore;
+		tr.lampSlots[weakest].startTime = tr.refdef.time;
+		tr.lampSlots[weakest].worldDone = qfalse;
+	}
+
+	strength = Com_Clamp( 0.0f, 1.0f, r_lampShadowStrength->value );
+
+	for ( j = 0; j < max; j++ ) {
+		lampSlot_t	*s = &tr.lampSlots[j];
+		lamp_t		*l;
+		float		fade;
+		int			n;
+
+		if ( s->lamp < 0 ) {
+			continue;
+		}
+
+		l = &tr.lamps[s->lamp];
+		n = tr.refdef.numLampShadows++;
+
+		fade = ( tr.refdef.time - s->startTime ) / (float)LAMP_FADE_MSEC;
+		if ( fade < 0.0f || fade > 1.0f ) {
+			fade = 1.0f;
+		}
+
+		tr.refdef.lampShadowSlot[n] = j;
+		VectorCopy( l->origin, tr.refdef.lampShadowOrigin[n] );
+		tr.refdef.lampShadowOrigin[n][3] = l->light * LAMP_LIGHT_SCALE;
+		VectorSet4( tr.refdef.lampShadowParams[n], strength * fade, 0.0f, 0.0f, 0.0f );
+	}
+}
+
+/*
+=================
+R_RenderLampShadowView
+
+Renders the map or the models as seen from a lamp into a depth map.
+=================
+*/
+static void R_RenderLampShadowView( const lamp_t *l, FBO_t *fbo, qboolean world, float *mvp ) {
+	viewParms_t	parms;
+	int			firstDrawSurf;
+
+	Com_Memset( &parms, 0, sizeof( parms ) );
+
+	parms.viewportX = 0;
+	parms.viewportY = 0;
+	parms.viewportWidth  = fbo->width;
+	parms.viewportHeight = fbo->height;
+	parms.isPortal = qfalse;
+	parms.isMirror = qfalse;
+	parms.fovX = l->fov;
+	parms.fovY = l->fov;
+	parms.targetFbo = fbo;
+	parms.flags = VPF_DEPTHSHADOW | VPF_NOVIEWMODEL;
+	parms.zFar = l->radius;
+
+	VectorCopy( l->origin, parms.or.origin );
+	VectorCopy( l->axis[0], parms.or.axis[0] );
+	VectorCopy( l->axis[1], parms.or.axis[1] );
+	VectorCopy( l->axis[2], parms.or.axis[2] );
+	VectorCopy( l->origin, parms.pvsOrigin );
+
+	tr.viewCount++;
+
+	tr.viewParms = parms;
+	tr.viewParms.frameSceneNum = tr.frameSceneNum;
+	tr.viewParms.frameCount = tr.frameCount;
+
+	firstDrawSurf = tr.refdef.numDrawSurfs;
+
+	tr.viewCount++;
+
+	R_RotateForViewer();
+	R_SetupProjection( &tr.viewParms, r_zproj->value, tr.viewParms.zFar, qtrue );
+	R_SetupProjectionZ( &tr.viewParms );
+
+	if ( world ) {
+		R_AddWorldSurfaces();
+	} else {
+		R_AddEntitySurfaces();
+	}
+
+	R_SortDrawSurfs( tr.refdef.drawSurfs + firstDrawSurf, tr.refdef.numDrawSurfs - firstDrawSurf );
+
+	if ( mvp ) {
+		Mat4Multiply( tr.viewParms.projectionMatrix, tr.viewParms.world.modelMatrix, mvp );
+	}
+}
+
+/*
+=================
+R_RenderLampShadowMaps
+
+The map shadow of a lamp is rendered once when the lamp gets its slot, the
+models every frame.
+=================
+*/
+void R_RenderLampShadowMaps( void ) {
+	int n;
+
+	for ( n = 0; n < tr.refdef.numLampShadows; n++ ) {
+		int			j = tr.refdef.lampShadowSlot[n];
+		lampSlot_t	*s = &tr.lampSlots[j];
+		lamp_t		*l = &tr.lamps[s->lamp];
+
+		if ( !s->worldDone ) {
+			R_RenderLampShadowView( l, tr.lampWorldFbo[j], qtrue, NULL );
+			s->worldDone = qtrue;
+		}
+
+		R_RenderLampShadowView( l, tr.lampShadowFbo[j], qfalse, tr.refdef.lampShadowMvp[n] );
+	}
+}
+
 void R_RenderCubemapSide( int cubemapIndex, int cubemapSide, qboolean subscene )
 {
 	refdef_t refdef;

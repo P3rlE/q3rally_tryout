@@ -292,6 +292,22 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
   </table></div>
   <div class="callout orange"><strong>Open ideas</strong>Fade the shadows out at the end of the last cascade instead of cutting them off, use a model LOD for the shadow pass, and headlight shadows at night (dlight cubemap shadows, <code>r_dlightMode 2</code>).</div>
 
+  <h3>Lamp Shadows — Implementation</h3>
+  <p>Real-time model shadows from the map's light entities (OpenGL2, needs <code>r_sunlightMode</code> &ge; 1 for the shadow mask and the depth images). Cvars: <code>r_lampShadows</code> (archive, 0..4 lamps per frame, default 2), <code>r_lampShadowStrength</code> (archive, 0.7), <code>r_lampShadowMapSize</code> (archive, latched, 512). Mapper usage is in the Manual (Lamp Shadows).</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Part</th><th>Where</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>Lamps</td><td><code>tr_bsp.c</code> (<code>R_LoadLamps</code>, end of <code>RE_LoadWorldMap</code>)</td><td>Parses the entity string for <code>light</code> entities (skips <code>_sun</code>). Spotlights aim at <code>_q3r_spotorigin</code> or their target; cone = 2&middot;atan(radius/dist)&middot;1.25, clamped 30..150&deg;. Point lights look down with 120&deg;. Range = sqrt(light &middot; 117 / 0.0225).</td></tr>
+      <tr><td>Brightness</td><td><code>tr_local.h</code> (<code>LAMP_LIGHT_SCALE</code>, <code>LAMP_MIN_LIT</code>)</td><td>Estimate of q3map2's 1/d&sup2; falloff with <code>-gamma 2</code>: lit = sqrt(min(1, light &middot; 117 / d&sup2;)). Used for the lamp choice and the shadow strength.</td></tr>
+      <tr><td>Choice</td><td><code>tr_main.c</code> (<code>R_SelectLampShadows</code>), called in <code>RE_RenderScene</code></td><td>Score = sum over RT_MODEL entities in the lamp's frustum of lit / (1 + camera distance / 1000). Slots (<code>tr.lampSlots</code>) keep their lamp while its score is &ge; 0.01; a lamp replaces a slot only with twice its score (no flicker); new shadows fade in over 300 ms. Only views at least half the screen wide (no rear view / minimap).</td></tr>
+      <tr><td>Depth maps</td><td><code>tr_main.c</code> (<code>R_RenderLampShadowMaps</code>), <code>tr_image.c</code>, <code>tr_fbo.c</code></td><td>Per slot a perspective depth view (<code>VPF_DEPTHSHADOW</code>): <code>lampworld%i</code> with the world surfaces, rendered once when the slot gets its lamp, and <code>lampshadow%i</code> with the entities, every frame.</td></tr>
+      <tr><td>Mask</td><td><code>tr_backend.c</code>, <code>glsl/lampshadow_fp.glsl</code></td><td>One full-screen pass per lamp, multiplied into the <b>green</b> channel of <code>screenShadowImage</code> (the sun mask is in red; without a sun the mask is cleared to white). Position from the depth buffer, 4-tap PCF on both maps; shadow = strength &middot; lit &middot; (1 &minus; model) &middot; worldLit, i.e. only where the lamp reaches the pixel.</td></tr>
+      <tr><td>Lighting</td><td><code>glsl/lightall_fp.glsl</code></td><td>Lightmapped surfaces (not <code>USE_LIGHT_VECTOR</code>, so not the models) multiply their light by the green channel. <code>VPF_USESUNLIGHT</code> is also set when lamp shadows are active (<code>tr_scene.c</code>).</td></tr>
+      <tr><td>Maps</td><td><code>tools/maptools/inject_lights.py</code>, <code>q3bsp.py</code></td><td>Copies the lights from the .map into the BSP entity lump and patches the BSP checksum in the AAS header (<code>aas_set_checksum</code>, XOR obfuscation of AAS version 5).</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout orange"><strong>Open ideas</strong>Headlight shadows (the cars' own lights as spot shadow casters), shadows of lamps onto other cars, one cube map for point lights instead of the downward frustum, and a Graphics menu entry for <code>r_lampShadows</code>.</div>
+
   <h3>Map Effects (rally_fx_spray) — Implementation</h3>
   <p>Client-side particle emitters placed by mappers; first user is the waterfall in <code>q3r_valley</code>. Mapper usage is in the Manual (Mapping Reference &rarr; Waterfall Spray). Cvar <code>cg_mapEffects</code> (archive, default 1, density 0..2).</p>
   <div class="table-wrap"><table>

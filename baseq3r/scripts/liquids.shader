@@ -44,6 +44,12 @@ textures/q3r_liquids/q3r_water_03
 	cull disable
 	deformVertexes wave 512 sin 0 7 0 0.4
 	fogparms ( 0.215686 0.278431 0.333333 ) 1024
+	// OpenGL2: rippled real-time reflection (pool of q3r_ctf_01); the
+	// stages below are the OpenGL1 / r_water 0 look
+	q3r_water textures/q3r_liquids/water_normal.tga 320 0.03 0.03
+	q3r_waterColor 0.08 0.16 0.20 0.55
+	q3r_waterFresnel 0.12 4
+	q3r_waterSpecular 1.2
 	{
 		map textures/q3r_liquids/water_11.tga
 		blendfunc filter
@@ -325,5 +331,79 @@ textures/q3r_liquids/q3r_water_mirror
 		rgbGen const ( 0.05 0.06 0.07 )
 		tcMod scale 0.5 0.5
 		tcMod scroll 0.02 0.01
+	}
+}
+
+// ------------------------------------------------------------
+// Flowing and falling water (Q3Rally)
+// The streaks run along the texture's t axis and move towards +t, i.e.
+// down the texture. Align the texture so that its top points upstream:
+// on a wall that is the default (top = up); on a floor, rotate it so the
+// top points against the flow. Texture scale 0.5 = one repeat per
+// 64 x 128 units. No lightmap: the water keeps its brightness in shade.
+// Example: the pipe and the waterfall into the pool of q3r_ctf_01.
+// ------------------------------------------------------------
+
+textures/q3r_liquids/q3r_waterfall
+{
+	qer_editorimage textures/q3r_liquids/waterfall_body.jpg
+	qer_trans 0.7
+	surfaceparm nonsolid
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	cull disable
+	{
+		map textures/q3r_liquids/waterfall_body.jpg
+		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		rgbGen identity
+		alphaGen const 0.72
+		tcMod turb 0 0.012 0 0.6
+		tcMod scroll 0 -1.1
+	}
+	{
+		map textures/q3r_liquids/waterfall_streaks.tga
+		blendFunc GL_SRC_ALPHA GL_ONE
+		rgbGen identity
+		tcMod scroll 0 -2.4
+	}
+	{
+		map textures/q3r_liquids/waterfall_streaks.tga
+		blendFunc GL_SRC_ALPHA GL_ONE
+		rgbGen const ( 0.6 0.7 0.8 )
+		tcMod scale 1.3 0.8
+		tcMod scroll 0.06 -1.7
+	}
+}
+
+textures/q3r_liquids/q3r_waterflow
+{
+	qer_editorimage textures/q3r_liquids/waterfall_body.jpg
+	qer_trans 0.7
+	surfaceparm nonsolid
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	cull disable
+	{
+		map textures/q3r_liquids/waterfall_body.jpg
+		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+		rgbGen identity
+		alphaGen const 0.78
+		tcMod turb 0 0.02 0 0.3
+		tcMod scroll 0 -0.45
+	}
+	{
+		map textures/q3r_liquids/waterfall_streaks.tga
+		blendFunc GL_SRC_ALPHA GL_ONE
+		rgbGen const ( 0.55 0.65 0.75 )
+		tcMod scale 1 0.6
+		tcMod scroll 0 -0.8
+	}
+	{
+		map textures/q3r_liquids/water.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 0.2 0.2 0.2 )
+		tcGen environment
 	}
 }

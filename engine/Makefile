@@ -2115,6 +2115,8 @@ Q3R2STRINGOBJ = \
   $(B)/renderergl2/glsl/shadowfill_vp.o \
   $(B)/renderergl2/glsl/shadowmask_fp.o \
   $(B)/renderergl2/glsl/shadowmask_vp.o \
+  $(B)/renderergl2/glsl/lampshadow_fp.o \
+  $(B)/renderergl2/glsl/lampshadow_vp.o \
   $(B)/renderergl2/glsl/ssao_fp.o \
   $(B)/renderergl2/glsl/ssao_vp.o \
   $(B)/renderergl2/glsl/texturecolor_fp.o \

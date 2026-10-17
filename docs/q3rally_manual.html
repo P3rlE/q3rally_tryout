@@ -787,7 +787,7 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php/matches"
 
   <h3>Real-Time Sun Shadows — Mapper Guide</h3>
   <p>With the OpenGL2 renderer, cars, props and items cast real-time shadows from the map's sun. The map's own shadows stay baked in the lightmap: a car's shadow is only drawn where the sun reaches the ground, so a car in the shade of a cliff gets no second shadow and shaded areas are not darkened twice. The blob shadow under the cars stays as a lighter contact shadow. OpenGL1 keeps the blob shadow only.</p>
-  <div class="callout"><strong>Switching it on</strong>Add a <code>q3gl2_sun</code> line to the map's sky shader, with the same values as its <code>q3map_sun</code> line plus the shadow strength. No recompile is needed. Enabled so far: <code>textures/vsky/vsky</code> (q3r_valley), <code>textures/stecki/sub01</code> (q3r_country01), <code>textures/skies/ame_desert</code> (q3r_lcs1, q3r_mk), <code>textures/skies/ely_sunset</code> (q3r_dirtyfun), <code>textures/arctic/arc_skybox3</code> (q3r_ridgeracer), <code>textures/skies/tim_dm3_red</code> (q3r_lavafalls) and <code>textures/skies/hellsky</code> (q3r_sk1).</div>
+  <div class="callout"><strong>Switching it on</strong>Add a <code>q3gl2_sun</code> line to the map's sky shader, with the same values as its <code>q3map_sun</code> line plus the shadow strength. No recompile is needed. Enabled so far: <code>textures/vsky/vsky</code> (q3r_valley), <code>textures/stecki/sub01</code> (q3r_country01), <code>textures/skies/ame_desert</code> (q3r_lcs1, q3r_mk), <code>textures/skies/ely_sunset</code> (q3r_dirtyfun), <code>textures/arctic/arc_skybox3</code> (q3r_ridgeracer), <code>textures/skies/tim_dm3_red</code> (q3r_lavafalls), <code>textures/skies/hellsky</code> (q3r_sk1), <code>textures/q3r_skies/env/mp_us/mp_us</code> (q3r_dd_02), <code>textures/q3r_skies/env/trainyard/trainyard</code> (q3r_downtown, q3r_citydom, q3r_ctf_01) and <code>textures/skies/ame_nebula</code> (q3r_battlecanyon, q3r_david4).</div>
 
 <pre>textures/vsky/vsky
 {
@@ -805,7 +805,21 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php/matches"
     </tbody>
   </table></div>
 
-  <div class="callout orange"><strong>When not to use it</strong>Suns straight overhead (elevation near 90, e.g. the trainyard and nebula skies) only darken the ground under the car, which the blob already does. Night maps with a weak moon gain little. Maps compiled with a different sun than the one in the shader get shadows in the wrong direction.</div>
+  <div class="callout orange"><strong>When not to use it</strong>A sun straight overhead (elevation near 90) only darkens the ground under the car, which the blob already does. Tilt it first (elevation 45&ndash;60, the azimuth where the sun is in the sky images) and relight the map: q3map2 needs the full <code>-bsp</code>, <code>-vis</code> and <code>-light</code> run for that, with the options stored in the BSP's worldspawn key <code>_q3map2_cmdline</code>. The trainyard, nebula and mp_us skies were changed this way. Check the result: a map lit through an opening in a roof (q3r_dm02) gets dark when the sun is tilted; keep the sun straight down there and use lamp shadows. Night maps with a weak moon gain little; use lamp shadows there. Maps compiled with a different sun than the one in the shader get shadows in the wrong direction.</div>
+
+  <h3>Lamp Shadows &mdash; Mapper Guide</h3>
+  <p>With the OpenGL2 renderer, the map's lamps also make cars, props and items cast real-time shadows. The renderer picks the lamps that light the models near the camera most (up to <code>r_lampShadows</code>, default 2) and lays their shadows onto the map. Like the sun shadows, a lamp shadow only falls onto the map (not onto other cars), only where the lamp's light reaches, and gets weaker with the distance to the lamp. Point lights cast downwards (a cone of 120&deg;), spotlights along their cone.</p>
+  <div class="callout"><strong>Keep the lights in the BSP</strong>q3map2 removes the <code>light</code> entities after the light stage, so the game would not know where the lamps are. Add them to the compiled map with <code>python3 tools/maptools/inject_lights.py maps/mymap.map</code>. (<code>q3map2 -bsp -keeplights</code> keeps them too, but spotlights aimed at an <code>info_null</code> lose their direction, because q3map2 removes the info_null.) The tool copies the lights from the .map into the .bsp (only the entity lump changes, the lighting stays as it is), stores the target point of spotlights in <code>_q3r_spotorigin</code> and fixes the checksum in the .aas file so the bots keep working. It can be run again after every recompile. The game frees the light entities at spawn, so they cost no entity slots.</div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Light key</th><th>Used for</th></tr></thead>
+    <tbody>
+      <tr><td><code>origin</code></td><td>Position of the shadow camera. Place the light where the lamp's bulb is; a light inside a solid brush casts no shadow.</td></tr>
+      <tr><td><code>light</code> / <code>_light</code></td><td>Brightness (default 300) &mdash; how far and how dark the shadow is. Weak fill lights rarely win against a real lamp.</td></tr>
+      <tr><td><code>target</code> + <code>radius</code></td><td>Spotlight: the shadow points at the target, the cone width follows the radius (default 64).</td></tr>
+      <tr><td><code>_sun</code></td><td>Lights with <code>_sun 1</code> are skipped (they are a sun, not a lamp).</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout orange"><strong>Tips</strong>Fill lights hidden in the ceiling cast shadows like real lamps. If a map has many of them, a car can get several faint shadows in odd directions; keep fill lights weak or high up. Daylight maps with a sun gain little from lamp shadows. Maps with lamp shadows so far: q3r_nightcity, q3r_demobowl, q3r_babel, q3r_ctf_04, q3r_david5, q3r_lavafalls, q3r_dd_02, q3r_ctf_01, q3r_david4, q3r_dm02.</div>
 
   <h3>Waterfall Spray — Mapper Guide</h3>
   <p>A <code>rally_fx_spray</code> entity puts spray, drifting mist and droplets where a waterfall hits the water. It also works for rapids, fountains or steam. The effect is purely client side: the server ignores the entity, cgame reads it from the map at load time and simulates the particles itself, so it uses no entity slot, no network traffic and works in demos. The mist colour is multiplied with the light grid at the origin, so it is not glowing white in a shady gorge or at night. It runs with OpenGL1 and OpenGL2.</p>
@@ -861,6 +875,11 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php/matches"
   <p>Players can scale the density with <code>cg_mapEffects</code> (0 = off, 1 = default, 2 = double, archived).</p>
 
   <div class="callout orange"><strong>Limits</strong>The particles are flat sprites: very close to a wall or the water surface they show a straight edge where they cut into it (no soft particles). At most 32 emitters per map and 640 particles at the same time; nothing is spawned outside the view distance or when the emitter is not in the PVS.</div>
+
+  <h3>Flowing &amp; Falling Water — Mapper Guide</h3>
+  <p>Two ready-made shaders in <code>scripts/liquids.shader</code> make water visibly run: <code>textures/q3r_liquids/q3r_waterfall</code> for falling water (a waterfall sheet, the jet out of a pipe) and <code>textures/q3r_liquids/q3r_waterflow</code> for water running along a channel or pipe. Both scroll a blue water layer and two layers of bright streaks (<code>waterfall_body.jpg</code>, <code>waterfall_streaks.tga</code>) in the direction of the flow, are see-through, non-solid and have no lightmap, so they keep their brightness in the shade. They work with OpenGL1 and OpenGL2.</p>
+  <div class="callout"><strong>Alignment</strong>The water runs towards the bottom of the texture. On a wall that is the default alignment (the texture's top is up). On a floor, rotate the texture so its top points upstream. Texture scale 0.5 gives one repeat per 64 &times; 128 units. Put a <code>rally_fx_spray</code> where the water lands and a looping <code>target_speaker</code> with <code>sound/world/waterfall.ogg</code> next to it.</div>
+  <div class="callout"><strong>Example</strong><code>q3r_ctf_01</code>: the water in the pipe uses <code>q3r_waterflow</code>, the jet into the pool <code>q3r_waterfall</code>, two spray emitters and a speaker sit at its foot, and the pool (<code>textures/q3r_liquids/q3r_water_03</code>) reflects with <code>q3r_water</code>.</div>
 
   <h3>Utilities &amp; Hazards</h3>
   <div class="table-wrap"><table>
@@ -1130,6 +1149,9 @@ docker run --rm -it -p 27960:27960/udp \
     <li>Added <code>baseq3r</code> pk3 checksums</li>
     <li>OpenGL2: GLSL water with rippled real-time reflections for <code>q3r_water</code> shaders (cvar <code>r_water</code>)</li>
     <li>OpenGL2: real-time sun shadows cast only by cars and other models; the map's shadows stay baked and moving shadows only appear where the map is in the sun (cvar <code>r_sunShadowCasters</code>)</li>
+    <li>OpenGL2: real-time lamp shadows: the map's lamps make cars and models cast shadows (cvars <code>r_lampShadows</code>, <code>r_lampShadowStrength</code>, <code>r_lampShadowMapSize</code>)</li>
+    <li><code>q3r_ctf_01</code>: reflective pool, running water in the pipe, waterfall with spray and sound; new shaders <code>q3r_waterfall</code> and <code>q3r_waterflow</code></li>
+    <li>Sun shadows on maps that had a sun straight overhead (q3r_dd_02, q3r_downtown, q3r_citydom, q3r_ctf_01, q3r_battlecanyon, q3r_david4; maps relit)</li>
     <li>OpenGL1: <code>$dynamicreflection</code> stages use the static reflection image (car shaders no longer fall back to black)</li>
   </ul>
 

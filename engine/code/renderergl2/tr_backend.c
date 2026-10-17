@@ -988,88 +988,145 @@ const void	*RB_DrawSurfs( const void *data ) {
 				VectorSet4(quadVerts[2], box[2], box[1], 0, 1);
 				VectorSet4(quadVerts[3], box[0], box[1], 0, 1);
 
-				GL_State(GLS_DEPTHTEST_DISABLE);
-
-				GLSL_BindProgram(&tr.shadowmaskShader);
-
-				GL_BindToTMU(tr.renderDepthImage, TB_COLORMAP);
-
-				if (r_shadowCascadeZFar->integer != 0)
+				if (!(tr.sunShadows || r_forceSun->integer))
 				{
-					GL_BindToTMU(tr.sunShadowDepthImage[0], TB_SHADOWMAP);
-					GL_BindToTMU(tr.sunShadowDepthImage[1], TB_SHADOWMAP2);
-					GL_BindToTMU(tr.sunShadowDepthImage[2], TB_SHADOWMAP3);
-					GL_BindToTMU(tr.sunShadowDepthImage[3], TB_SHADOWMAP4);
-
-					GLSL_SetUniformMat4(&tr.shadowmaskShader, UNIFORM_SHADOWMVP, backEnd.refdef.sunShadowMvp[0]);
-					GLSL_SetUniformMat4(&tr.shadowmaskShader, UNIFORM_SHADOWMVP2, backEnd.refdef.sunShadowMvp[1]);
-					GLSL_SetUniformMat4(&tr.shadowmaskShader, UNIFORM_SHADOWMVP3, backEnd.refdef.sunShadowMvp[2]);
-					GLSL_SetUniformMat4(&tr.shadowmaskShader, UNIFORM_SHADOWMVP4, backEnd.refdef.sunShadowMvp[3]);
+					// Q3Rally: lamp shadows only (no sun shadows on this map):
+					// start from a fully lit mask
+					qglClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+					qglClear(GL_COLOR_BUFFER_BIT);
 				}
 				else
 				{
-					GL_BindToTMU(tr.sunShadowDepthImage[3], TB_SHADOWMAP);
-					GLSL_SetUniformMat4(&tr.shadowmaskShader, UNIFORM_SHADOWMVP, backEnd.refdef.sunShadowMvp[3]);
+					GL_State(GLS_DEPTHTEST_DISABLE);
+
+					GLSL_BindProgram(&tr.shadowmaskShader);
+
+					GL_BindToTMU(tr.renderDepthImage, TB_COLORMAP);
+
+					if (r_shadowCascadeZFar->integer != 0)
+					{
+						GL_BindToTMU(tr.sunShadowDepthImage[0], TB_SHADOWMAP);
+						GL_BindToTMU(tr.sunShadowDepthImage[1], TB_SHADOWMAP2);
+						GL_BindToTMU(tr.sunShadowDepthImage[2], TB_SHADOWMAP3);
+						GL_BindToTMU(tr.sunShadowDepthImage[3], TB_SHADOWMAP4);
+
+						GLSL_SetUniformMat4(&tr.shadowmaskShader, UNIFORM_SHADOWMVP, backEnd.refdef.sunShadowMvp[0]);
+						GLSL_SetUniformMat4(&tr.shadowmaskShader, UNIFORM_SHADOWMVP2, backEnd.refdef.sunShadowMvp[1]);
+						GLSL_SetUniformMat4(&tr.shadowmaskShader, UNIFORM_SHADOWMVP3, backEnd.refdef.sunShadowMvp[2]);
+						GLSL_SetUniformMat4(&tr.shadowmaskShader, UNIFORM_SHADOWMVP4, backEnd.refdef.sunShadowMvp[3]);
+					}
+					else
+					{
+						GL_BindToTMU(tr.sunShadowDepthImage[3], TB_SHADOWMAP);
+						GLSL_SetUniformMat4(&tr.shadowmaskShader, UNIFORM_SHADOWMVP, backEnd.refdef.sunShadowMvp[3]);
+					}
+
+					GLSL_SetUniformVec3(&tr.shadowmaskShader, UNIFORM_VIEWORIGIN, backEnd.refdef.vieworg);
+
+					if (R_SunShadowModelsOnly())
+					{
+						// Q3Rally: move the sample towards the sun so the map does not
+						// shadow itself in the coarse level 3 cascade (3 texels), and a
+						// little for the model cascades
+						vec4_t shadowParams;
+
+						VectorScale(backEnd.refdef.sunDir, MAX(3.0f * tr.sunShadowWorldTexel, 1.0f), shadowParams);
+						shadowParams[3] = 2.0f;
+						GLSL_SetUniformVec4(&tr.shadowmaskShader, UNIFORM_SHADOWPARAMS, shadowParams);
+					}
+					{
+						vec3_t viewVector;
+
+						float zmax = backEnd.viewParms.zFar;
+						float ymax = zmax * tan(backEnd.viewParms.fovY * M_PI / 360.0f);
+						float xmax = zmax * tan(backEnd.viewParms.fovX * M_PI / 360.0f);
+
+						VectorScale(backEnd.refdef.viewaxis[0], zmax, viewVector);
+						GLSL_SetUniformVec3(&tr.shadowmaskShader, UNIFORM_VIEWFORWARD, viewVector);
+						VectorScale(backEnd.refdef.viewaxis[1], xmax, viewVector);
+						GLSL_SetUniformVec3(&tr.shadowmaskShader, UNIFORM_VIEWLEFT, viewVector);
+						VectorScale(backEnd.refdef.viewaxis[2], ymax, viewVector);
+						GLSL_SetUniformVec3(&tr.shadowmaskShader, UNIFORM_VIEWUP, viewVector);
+
+						GLSL_SetUniformVec4(&tr.shadowmaskShader, UNIFORM_VIEWINFO, viewInfo);
+					}
+
+					RB_InstantQuad2(quadVerts, texCoords); //, color, shaderProgram, invTexRes);
+
+					if (r_shadowBlur->integer)
+					{
+						viewInfo[2] = 1.0f / (float)(tr.screenScratchFbo->width);
+						viewInfo[3] = 1.0f / (float)(tr.screenScratchFbo->height);
+
+						FBO_Bind(tr.screenScratchFbo);
+
+						GLSL_BindProgram(&tr.depthBlurShader[0]);
+
+						GL_BindToTMU(tr.screenShadowImage, TB_COLORMAP);
+						GL_BindToTMU(tr.hdrDepthImage, TB_LIGHTMAP);
+
+						GLSL_SetUniformVec4(&tr.depthBlurShader[0], UNIFORM_VIEWINFO, viewInfo);
+
+						RB_InstantQuad2(quadVerts, texCoords);
+
+						FBO_Bind(tr.screenShadowFbo);
+
+						GLSL_BindProgram(&tr.depthBlurShader[1]);
+
+						GL_BindToTMU(tr.screenScratchImage, TB_COLORMAP);
+						GL_BindToTMU(tr.hdrDepthImage, TB_LIGHTMAP);
+
+						GLSL_SetUniformVec4(&tr.depthBlurShader[1], UNIFORM_VIEWINFO, viewInfo);
+
+						RB_InstantQuad2(quadVerts, texCoords);
+					}
 				}
 
-				GLSL_SetUniformVec3(&tr.shadowmaskShader, UNIFORM_VIEWORIGIN, backEnd.refdef.vieworg);
-
-				if (R_SunShadowModelsOnly())
+				// Q3Rally: lamp shadows, multiplied into the green channel
+				if (backEnd.refdef.numLampShadows)
 				{
-					// Q3Rally: move the sample towards the sun so the map does not
-					// shadow itself in the coarse level 3 cascade (3 texels), and a
-					// little for the model cascades
-					vec4_t shadowParams;
+					int n;
+					vec4_t color;
 
-					VectorScale(backEnd.refdef.sunDir, MAX(3.0f * tr.sunShadowWorldTexel, 1.0f), shadowParams);
-					shadowParams[3] = 2.0f;
-					GLSL_SetUniformVec4(&tr.shadowmaskShader, UNIFORM_SHADOWPARAMS, shadowParams);
-				}
-				{
-					vec3_t viewVector;
+					GL_State(GLS_DEPTHTEST_DISABLE | GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO);
+					qglColorMask(GL_FALSE, GL_TRUE, GL_FALSE, GL_FALSE);
 
-					float zmax = backEnd.viewParms.zFar;
-					float ymax = zmax * tan(backEnd.viewParms.fovY * M_PI / 360.0f);
-					float xmax = zmax * tan(backEnd.viewParms.fovX * M_PI / 360.0f);
+					GLSL_BindProgram(&tr.lampShadowShader);
+					GL_BindToTMU(tr.renderDepthImage, TB_COLORMAP);
 
-					VectorScale(backEnd.refdef.viewaxis[0], zmax, viewVector);
-					GLSL_SetUniformVec3(&tr.shadowmaskShader, UNIFORM_VIEWFORWARD, viewVector);
-					VectorScale(backEnd.refdef.viewaxis[1], xmax, viewVector);
-					GLSL_SetUniformVec3(&tr.shadowmaskShader, UNIFORM_VIEWLEFT, viewVector);
-					VectorScale(backEnd.refdef.viewaxis[2], ymax, viewVector);
-					GLSL_SetUniformVec3(&tr.shadowmaskShader, UNIFORM_VIEWUP, viewVector);
+					GLSL_SetUniformVec3(&tr.lampShadowShader, UNIFORM_VIEWORIGIN, backEnd.refdef.vieworg);
+					GLSL_SetUniformVec4(&tr.lampShadowShader, UNIFORM_VIEWINFO, viewInfo);
+					{
+						vec3_t viewVector;
 
-					GLSL_SetUniformVec4(&tr.shadowmaskShader, UNIFORM_VIEWINFO, viewInfo);
-				}
+						float zmax = backEnd.viewParms.zFar;
+						float ymax = zmax * tan(backEnd.viewParms.fovY * M_PI / 360.0f);
+						float xmax = zmax * tan(backEnd.viewParms.fovX * M_PI / 360.0f);
 
-				RB_InstantQuad2(quadVerts, texCoords); //, color, shaderProgram, invTexRes);
+						VectorScale(backEnd.refdef.viewaxis[0], zmax, viewVector);
+						GLSL_SetUniformVec3(&tr.lampShadowShader, UNIFORM_VIEWFORWARD, viewVector);
+						VectorScale(backEnd.refdef.viewaxis[1], xmax, viewVector);
+						GLSL_SetUniformVec3(&tr.lampShadowShader, UNIFORM_VIEWLEFT, viewVector);
+						VectorScale(backEnd.refdef.viewaxis[2], ymax, viewVector);
+						GLSL_SetUniformVec3(&tr.lampShadowShader, UNIFORM_VIEWUP, viewVector);
+					}
 
-				if (r_shadowBlur->integer)
-				{
-					viewInfo[2] = 1.0f / (float)(tr.screenScratchFbo->width);
-					viewInfo[3] = 1.0f / (float)(tr.screenScratchFbo->height);
+					for (n = 0; n < backEnd.refdef.numLampShadows; n++)
+					{
+						int slot = backEnd.refdef.lampShadowSlot[n];
 
-					FBO_Bind(tr.screenScratchFbo);
+						GL_BindToTMU(tr.lampShadowImage[slot], TB_SHADOWMAP);
+						GL_BindToTMU(tr.lampWorldImage[slot], TB_SHADOWMAP2);
 
-					GLSL_BindProgram(&tr.depthBlurShader[0]);
+						GLSL_SetUniformMat4(&tr.lampShadowShader, UNIFORM_SHADOWMVP, backEnd.refdef.lampShadowMvp[n]);
+						GLSL_SetUniformVec4(&tr.lampShadowShader, UNIFORM_SHADOWPARAMS, backEnd.refdef.lampShadowOrigin[n]);
+						VectorSet4(color, backEnd.refdef.lampShadowParams[n][0], 0.0f, 0.0f, 0.0f);
+						GLSL_SetUniformVec4(&tr.lampShadowShader, UNIFORM_COLOR, color);
 
-					GL_BindToTMU(tr.screenShadowImage, TB_COLORMAP);
-					GL_BindToTMU(tr.hdrDepthImage, TB_LIGHTMAP);
+						RB_InstantQuad2(quadVerts, texCoords);
+					}
 
-					GLSL_SetUniformVec4(&tr.depthBlurShader[0], UNIFORM_VIEWINFO, viewInfo);
-
-					RB_InstantQuad2(quadVerts, texCoords);
-
-					FBO_Bind(tr.screenShadowFbo);
-
-					GLSL_BindProgram(&tr.depthBlurShader[1]);
-
-					GL_BindToTMU(tr.screenScratchImage, TB_COLORMAP);
-					GL_BindToTMU(tr.hdrDepthImage, TB_LIGHTMAP);
-
-					GLSL_SetUniformVec4(&tr.depthBlurShader[1], UNIFORM_VIEWINFO, viewInfo);
-
-					RB_InstantQuad2(quadVerts, texCoords);
+					qglColorMask(!backEnd.colorMask[0], !backEnd.colorMask[1], !backEnd.colorMask[2], !backEnd.colorMask[3]);
 				}
 			}
 

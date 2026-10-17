@@ -2996,6 +2996,20 @@ void R_CreateBuiltinImages( void ) {
 				qglTextureParameterfEXT(tr.sunShadowDepthImage[x]->texnum, GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 			}
 
+			// Q3Rally: lamp shadow maps (models, and the map cached per lamp)
+			for ( x = 0; x < MAX_LAMP_SHADOWS; x++ )
+			{
+				int size = r_lampShadowMapSize->integer;
+
+				tr.lampShadowImage[x] = R_CreateImage(va("*lampshadow%i", x), NULL, size, size, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH_COMPONENT24);
+				qglTextureParameterfEXT(tr.lampShadowImage[x]->texnum, GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+				qglTextureParameterfEXT(tr.lampShadowImage[x]->texnum, GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
+				tr.lampWorldImage[x] = R_CreateImage(va("*lampworld%i", x), NULL, size, size, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH_COMPONENT24);
+				qglTextureParameterfEXT(tr.lampWorldImage[x]->texnum, GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+				qglTextureParameterfEXT(tr.lampWorldImage[x]->texnum, GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+			}
+
 			tr.screenShadowImage = R_CreateImage("*screenShadow", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RGBA8);
 		}
 

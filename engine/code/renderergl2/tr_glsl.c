@@ -46,6 +46,8 @@ extern const char *fallbackShader_shadowfill_vp;
 extern const char *fallbackShader_shadowfill_fp;
 extern const char *fallbackShader_shadowmask_vp;
 extern const char *fallbackShader_shadowmask_fp;
+extern const char *fallbackShader_lampshadow_vp;
+extern const char *fallbackShader_lampshadow_fp;
 extern const char *fallbackShader_ssao_vp;
 extern const char *fallbackShader_ssao_fp;
 extern const char *fallbackShader_texturecolor_vp;
@@ -1482,6 +1484,36 @@ void GLSL_InitGPUShaders(void)
 		numEtcShaders++;
 	}
 
+	// Q3Rally: lamp shadows
+	if (glRefConfig.glslMajorVersion > 1 || (glRefConfig.glslMajorVersion == 1 && glRefConfig.glslMinorVersion >= 10)
+	    || glRefConfig.shadowSamplers)
+	{
+		attribs = ATTR_POSITION | ATTR_TEXCOORD;
+		extradefines[0] = '\0';
+
+		if (qglesMajorVersion < 3 && glRefConfig.shadowSamplers)
+		{
+			Q_strcat(extradefines, 1024, "#extension GL_EXT_shadow_samplers : enable\n");
+		}
+
+		Q_strcat(extradefines, 1024, va("#define r_lampShadowMapSize %f\n", r_lampShadowMapSize->value));
+
+		if (!GLSL_InitGPUShader(&tr.lampShadowShader, "lampshadow", attribs, qtrue, extradefines, qtrue, fallbackShader_lampshadow_vp, fallbackShader_lampshadow_fp))
+		{
+			ri.Error(ERR_FATAL, "Could not load lampshadow shader!");
+		}
+
+		GLSL_InitUniforms(&tr.lampShadowShader);
+
+		GLSL_SetUniformInt(&tr.lampShadowShader, UNIFORM_SCREENDEPTHMAP, TB_COLORMAP);
+		GLSL_SetUniformInt(&tr.lampShadowShader, UNIFORM_SHADOWMAP,  TB_SHADOWMAP);
+		GLSL_SetUniformInt(&tr.lampShadowShader, UNIFORM_SHADOWMAP2, TB_SHADOWMAP2);
+
+		GLSL_FinishGPUShader(&tr.lampShadowShader);
+
+		numEtcShaders++;
+	}
+
 
 	// GLSL 1.10+ or GL_OES_standard_derivatives extension are required for dFdx() and dFdy() GLSL functions
 	if (glRefConfig.glslMajorVersion > 1 || (glRefConfig.glslMajorVersion == 1 && glRefConfig.glslMinorVersion >= 10)
@@ -1608,6 +1640,7 @@ void GLSL_ShutdownGPUShaders(void)
 		GLSL_DeleteGPUShader(&tr.calclevels4xShader[i]);
 
 	GLSL_DeleteGPUShader(&tr.shadowmaskShader);
+	GLSL_DeleteGPUShader(&tr.lampShadowShader);
 	GLSL_DeleteGPUShader(&tr.ssaoShader);
 
 	for ( i = 0; i < 4; i++)

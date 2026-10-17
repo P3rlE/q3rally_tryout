@@ -897,7 +897,7 @@
 {
 ( -53.0890045166 728 448 ) ( 53.0890045166 728 448 ) ( 35.4049987793 728 417.3939819336 ) common/watercaulk 0 0 -0 2 2 0 0 0
 ( 0 936 404.3880004883 ) ( 35.4049987793 936 417.3939819336 ) ( 53.0890045166 936 448 ) common/watercaulk 0 0 0 0.25 0.25 0 0 0
-( 53.0890045166 728 448 ) ( -53.0890045166 728 448 ) ( -53.0890045166 936 448 ) q3r_liquids/q3r_water_01 0 0 -0 2 2 0 0 0
+( 53.0890045166 728 448 ) ( -53.0890045166 728 448 ) ( -53.0890045166 936 448 ) q3r_liquids/q3r_waterflow 0 0 0 0.5 0.5 0 0 0
 ( 53.0890045166 936 448 ) ( 35.4049987793 936 417.3939819336 ) ( 35.4049987793 728 417.3939819336 ) common/watercaulk 0 0 0 0.25 0.25 0 0 0
 ( 35.4049987793 936 417.3939819336 ) ( 0 936 404.3880004883 ) ( 0 728 404.3880004883 ) common/watercaulk 0 0 0 0.25 0.25 0 0 0
 ( -53.0890045166 728 448 ) ( -35.4049987793 728 417.3939819336 ) ( -35.4049987793 936 417.3939819336 ) common/watercaulk 0 0 0 0.25 0.25 0 0 0
@@ -908,8 +908,8 @@
 ( -56 711.3330078125 240 ) ( -56 719.3330078125 240 ) ( -56 728 448 ) common/watercaulk 0 0 0 2 2 0 0 0
 ( 56 719.3330078125 240 ) ( 56 711.3330078125 240 ) ( 56 720 448 ) common/watercaulk 0 0 -0 2 2 0 0 0
 ( -60 719.3330078125 248 ) ( -60 711.3330078125 248 ) ( 52 711.3330078125 248 ) common/watercaulk 0 0 0 2 2 0 0 0
-( -56 720 448 ) ( -56 728 448 ) ( 56 728 448 ) q3r_liquids/q3r_water_01 0 0 -0 2 2 0 0 0
-( 56 720 448 ) ( 56 711.3330078125 240 ) ( -56 711.3330078125 240 ) q3r_liquids/q3r_water_01 0 0 -0 2 2 0 0 0
+( -56 720 448 ) ( -56 728 448 ) ( 56 728 448 ) q3r_liquids/q3r_waterflow 0 0 0 0.5 0.5 0 0 0
+( 56 720 448 ) ( 56 711.3330078125 240 ) ( -56 711.3330078125 240 ) q3r_liquids/q3r_waterfall 0 0 0 0.5 0.5 0 0 0
 ( -56 728 448 ) ( -56 719.3330078125 240 ) ( 56 719.3330078125 240 ) common/watercaulk 0 0 0 2 2 0 0 0
 }
 // brush 96
@@ -7856,13 +7856,13 @@
 // entity 21
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nbsnow.md3"
+"model" "models/mapobjects/GR_trees/nbsnow.md3"
 "origin" "760 -344 272"
 }
 // entity 22
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree6.md3"
+"model" "models/mapobjects/GR_trees/tree6.md3"
 "origin" "680 -416 272"
 }
 // entity 23
@@ -7873,19 +7873,19 @@
 // entity 24
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nbsnow.md3"
+"model" "models/mapobjects/GR_trees/nbsnow.md3"
 "origin" "-3704 72 280"
 }
 // entity 25
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 "origin" "-3280 -272 272"
 }
 // entity 26
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 "origin" "-3608 424 272"
 }
 // entity 27
@@ -7910,24 +7910,24 @@
 {
 "classname" "misc_model"
 "origin" "3000 -144 272"
-"model" "models/mapobjects/gr_trees/small4.md3"
+"model" "models/mapobjects/GR_trees/small4.md3"
 }
 // entity 31
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3200 520 272"
 }
 // entity 32
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "2880 400 272"
 }
 // entity 33
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "2888 288 272"
 }
 // entity 34
@@ -7957,13 +7957,13 @@
 // entity 38
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 "origin" "3408 688 272"
 }
 // entity 39
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 "origin" "3560 688 272"
 }
 // entity 40
@@ -7974,19 +7974,19 @@
 // entity 41
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nadelbaum2.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum2.md3"
 "origin" "3400 -248 272"
 }
 // entity 42
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/small4.md3"
+"model" "models/mapobjects/GR_trees/small4.md3"
 "origin" "3552 -432 272"
 }
 // entity 43
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 "origin" "3512 -208 272"
 }
 // entity 44
@@ -8204,241 +8204,241 @@
 {
 "classname" "misc_model"
 "origin" "3720 256 272"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 }
 // entity 79
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 "origin" "3640 168 272"
 }
 // entity 80
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 "origin" "3680 48 272"
 }
 // entity 81
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 "origin" "3712 -104 272"
 }
 // entity 82
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 "origin" "3680 -32 272"
 }
 // entity 83
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 "origin" "3568 72 272"
 }
 // entity 84
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 "origin" "3648 -224 272"
 }
 // entity 85
 {
 "classname" "misc_model"
 "origin" "3552 -280 272"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 }
 // entity 86
 {
 "classname" "misc_model"
 "origin" "3568 -40 272"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 }
 // entity 87
 {
 "classname" "misc_model"
 "origin" "3600 -240 272"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 }
 // entity 88
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 "origin" "3496 24 272"
 }
 // entity 89
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 "origin" "3616 16 272"
 }
 // entity 90
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 "origin" "3472 -24 272"
 }
 // entity 91
 {
 "classname" "misc_model"
 "origin" "3480 -240 272"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 }
 // entity 92
 {
 "classname" "misc_model"
 "origin" "3648 -328 272"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 }
 // entity 93
 {
 "classname" "misc_model"
 "origin" "3576 -384 272"
-"model" "models/mapobjects/gr_trees/tree6.md3"
+"model" "models/mapobjects/GR_trees/tree6.md3"
 }
 // entity 94
 {
 "classname" "misc_model"
 "origin" "3648 -440 272"
-"model" "models/mapobjects/gr_trees/tree6.md3"
+"model" "models/mapobjects/GR_trees/tree6.md3"
 }
 // entity 95
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree6.md3"
+"model" "models/mapobjects/GR_trees/tree6.md3"
 "origin" "3464 -432 272"
 }
 // entity 96
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree6.md3"
+"model" "models/mapobjects/GR_trees/tree6.md3"
 "origin" "3448 -336 272"
 }
 // entity 97
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree6.md3"
+"model" "models/mapobjects/GR_trees/tree6.md3"
 "origin" "3360 -432 272"
 }
 // entity 98
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 "origin" "3672 352 272"
 }
 // entity 99
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 "origin" "3536 440 272"
 }
 // entity 100
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 "origin" "3632 432 272"
 }
 // entity 101
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 "origin" "3720 448 272"
 }
 // entity 102
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 "origin" "3584 608 272"
 }
 // entity 103
 {
 "classname" "misc_model"
 "origin" "3640 712 272"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 }
 // entity 104
 {
 "classname" "misc_model"
 "origin" "3664 624 272"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 }
 // entity 105
 {
 "classname" "misc_model"
 "origin" "3472 472 272"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 }
 // entity 106
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 "origin" "3576 344 272"
 }
 // entity 107
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 "origin" "3512 328 272"
 }
 // entity 108
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 "origin" "3536 216 272"
 }
 // entity 109
 {
 "classname" "misc_model"
 "origin" "3720 680 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 110
 {
 "classname" "misc_model"
 "origin" "3672 576 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 111
 {
 "classname" "misc_model"
 "origin" "3576 392 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 112
 {
 "classname" "misc_model"
 "origin" "3712 376 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 113
 {
 "classname" "misc_model"
 "origin" "3632 296 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 114
 {
 "classname" "misc_model"
 "origin" "3568 264 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 115
 {
 "classname" "misc_model"
 "origin" "3488 672 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 116
 {
 "classname" "misc_model"
 "origin" "3472 400 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 117
 {
 "classname" "misc_model"
 "origin" "3664 488 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 118
 {
@@ -8449,468 +8449,468 @@
 {
 "classname" "misc_model"
 "origin" "2864 -32 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 120
 {
 "classname" "misc_model"
 "origin" "3000 352 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 121
 {
 "classname" "misc_model"
 "origin" "3008 480 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 122
 {
 "classname" "misc_model"
 "origin" "3280 424 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 123
 {
 "classname" "misc_model"
 "origin" "3120 432 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 124
 {
 "classname" "misc_model"
 "origin" "3200 376 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 125
 {
 "classname" "misc_model"
 "origin" "3240 632 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 126
 {
 "classname" "misc_model"
 "origin" "3312 688 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 127
 {
 "classname" "misc_model"
 "origin" "2984 680 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 128
 {
 "classname" "misc_model"
 "origin" "3056 576 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 129
 {
 "classname" "misc_model"
 "origin" "3128 680 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 130
 {
 "classname" "misc_model"
 "origin" "3144 560 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 131
 {
 "classname" "misc_model"
 "origin" "2960 -96 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 132
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3192 -208 272"
 }
 // entity 133
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3072 -144 272"
 }
 // entity 134
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3176 -112 272"
 }
 // entity 135
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "2872 -168 272"
 }
 // entity 136
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3000 -224 272"
 }
 // entity 137
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3104 -280 272"
 }
 // entity 138
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3024 -328 272"
 }
 // entity 139
 {
 "classname" "misc_model"
 "origin" "3200 520 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 140
 {
 "classname" "misc_model"
 "origin" "3400 -248 272"
-"model" "models/mapobjects/gr_trees/nadelbaum2.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum2.md3"
 }
 // entity 141
 {
 "classname" "misc_model"
 "origin" "3512 -208 272"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 }
 // entity 142
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 "origin" "3720 256 272"
 }
 // entity 143
 {
 "classname" "misc_model"
 "origin" "3640 168 272"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 }
 // entity 144
 {
 "classname" "misc_model"
 "origin" "3680 48 272"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 }
 // entity 145
 {
 "classname" "misc_model"
 "origin" "3712 -104 272"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 }
 // entity 146
 {
 "classname" "misc_model"
 "origin" "3680 -32 272"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 }
 // entity 147
 {
 "classname" "misc_model"
 "origin" "3568 72 272"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 }
 // entity 148
 {
 "classname" "misc_model"
 "origin" "3648 -224 272"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 }
 // entity 149
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 "origin" "3552 -280 272"
 }
 // entity 150
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree1.md3"
+"model" "models/mapobjects/GR_trees/tree1.md3"
 "origin" "3568 -40 272"
 }
 // entity 151
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 "origin" "3600 -240 272"
 }
 // entity 152
 {
 "classname" "misc_model"
 "origin" "3496 24 272"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 }
 // entity 153
 {
 "classname" "misc_model"
 "origin" "3616 16 272"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 }
 // entity 154
 {
 "classname" "misc_model"
 "origin" "3472 -24 272"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 }
 // entity 155
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 "origin" "3480 -240 272"
 }
 // entity 156
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 "origin" "3648 -328 272"
 }
 // entity 157
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree6.md3"
+"model" "models/mapobjects/GR_trees/tree6.md3"
 "origin" "3576 -384 272"
 }
 // entity 158
 {
 "classname" "misc_model"
 "origin" "3448 -336 272"
-"model" "models/mapobjects/gr_trees/tree6.md3"
+"model" "models/mapobjects/GR_trees/tree6.md3"
 }
 // entity 159
 {
 "classname" "misc_model"
 "origin" "3672 352 272"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 }
 // entity 160
 {
 "classname" "misc_model"
 "origin" "3536 440 272"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 }
 // entity 161
 {
 "classname" "misc_model"
 "origin" "3632 432 272"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 }
 // entity 162
 {
 "classname" "misc_model"
 "origin" "3720 448 272"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 }
 // entity 163
 {
 "classname" "misc_model"
 "origin" "3584 608 272"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 }
 // entity 164
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 "origin" "3664 624 272"
 }
 // entity 165
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 "origin" "3472 472 272"
 }
 // entity 166
 {
 "classname" "misc_model"
 "origin" "3576 344 272"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 }
 // entity 167
 {
 "classname" "misc_model"
 "origin" "3512 328 272"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 }
 // entity 168
 {
 "classname" "misc_model"
 "origin" "3536 216 272"
-"model" "models/mapobjects/gr_trees/nbsnow2.md3"
+"model" "models/mapobjects/GR_trees/nbsnow2.md3"
 }
 // entity 169
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 "origin" "3720 680 272"
 }
 // entity 170
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 "origin" "3672 576 272"
 }
 // entity 171
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 "origin" "3576 392 272"
 }
 // entity 172
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 "origin" "3712 376 272"
 }
 // entity 173
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 "origin" "3632 296 272"
 }
 // entity 174
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 "origin" "3568 264 272"
 }
 // entity 175
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 "origin" "3488 672 272"
 }
 // entity 176
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 "origin" "3472 400 272"
 }
 // entity 177
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 "origin" "3664 488 272"
 }
 // entity 178
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3000 352 272"
 }
 // entity 179
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3008 480 272"
 }
 // entity 180
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3280 424 272"
 }
 // entity 181
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3120 432 272"
 }
 // entity 182
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3200 376 272"
 }
 // entity 183
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3240 632 272"
 }
 // entity 184
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "2984 680 272"
 }
 // entity 185
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3056 576 272"
 }
 // entity 186
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3128 680 272"
 }
 // entity 187
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 "origin" "3144 560 272"
 }
 // entity 188
 {
 "classname" "misc_model"
 "origin" "3192 -208 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 189
 {
 "classname" "misc_model"
 "origin" "3072 -144 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 190
 {
 "classname" "misc_model"
 "origin" "3176 -112 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 191
 {
 "classname" "misc_model"
 "origin" "3000 -224 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 192
 {
 "classname" "misc_model"
 "origin" "3104 -280 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 193
 {
 "classname" "misc_model"
 "origin" "3024 -328 272"
-"model" "models/mapobjects/gr_trees/tree4.md3"
+"model" "models/mapobjects/GR_trees/tree4.md3"
 }
 // entity 194
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/small4.md3"
+"model" "models/mapobjects/GR_trees/small4.md3"
 "origin" "2968 -232 272"
 }
 // entity 195
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/small4.md3"
+"model" "models/mapobjects/GR_trees/small4.md3"
 "origin" "3056 408 272"
 }
 // entity 196
 {
 "classname" "misc_model"
-"model" "models/mapobjects/gr_trees/small4.md3"
+"model" "models/mapobjects/GR_trees/small4.md3"
 "origin" "3096 504 272"
 }
 // entity 197
@@ -8985,229 +8985,229 @@
 {
 "classname" "misc_model"
 "origin" "-3448 704 272"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 }
 // entity 208
 {
 "classname" "misc_model"
 "origin" "-3592 608 272"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 }
 // entity 209
 {
 "classname" "misc_model"
 "origin" "-3360 496 272"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 }
 // entity 210
 {
 "classname" "misc_model"
 "origin" "-3768 456 272"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 }
 // entity 211
 {
 "classname" "misc_model"
 "origin" "-3192 680 272"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 }
 // entity 212
 {
 "classname" "misc_model"
 "origin" "-3144 496 272"
-"model" "models/mapobjects/gr_trees/nadelbaum.md3"
+"model" "models/mapobjects/GR_trees/nadelbaum.md3"
 }
 // entity 213
 {
 "classname" "misc_model"
 "origin" "-3112 -272 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 214
 {
 "classname" "misc_model"
 "origin" "-3472 -416 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 215
 {
 "classname" "misc_model"
 "origin" "-3520 -248 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 216
 {
 "classname" "misc_model"
 "origin" "-3032 440 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 217
 {
 "classname" "misc_model"
 "origin" "-3688 464 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 218
 {
 "classname" "misc_model"
 "origin" "-3752 152 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 219
 {
 "classname" "misc_model"
 "origin" "-3752 40 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 220
 {
 "classname" "misc_model"
 "origin" "-3664 96 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 221
 {
 "classname" "misc_model"
 "origin" "-3520 352 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 222
 {
 "classname" "misc_model"
 "origin" "-3312 -416 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 223
 {
 "classname" "misc_model"
 "origin" "-2832 -96 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 224
 {
 "classname" "misc_model"
 "origin" "-3192 -376 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 225
 {
 "classname" "misc_model"
 "origin" "-3760 -72 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 226
 {
 "classname" "misc_model"
 "origin" "-3680 24 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 227
 {
 "classname" "misc_model"
 "origin" "-3608 328 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 228
 {
 "classname" "misc_model"
 "origin" "-3744 -184 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 229
 {
 "classname" "misc_model"
 "origin" "-3672 -88 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 230
 {
 "classname" "misc_model"
 "origin" "-3624 176 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 231
 {
 "classname" "misc_model"
 "origin" "-3656 -216 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 232
 {
 "classname" "misc_model"
 "origin" "-3568 -136 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 233
 {
 "classname" "misc_model"
 "origin" "-2928 -136 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 234
 {
 "classname" "misc_model"
 "origin" "-3440 -120 272"
-"model" "models/mapobjects/gr_trees/tree3.md3"
+"model" "models/mapobjects/GR_trees/tree3.md3"
 }
 // entity 235
 {
 "classname" "misc_model"
 "origin" "-3712 -16 280"
-"model" "models/mapobjects/gr_trees/nbsnow.md3"
+"model" "models/mapobjects/GR_trees/nbsnow.md3"
 }
 // entity 236
 {
 "classname" "misc_model"
 "origin" "-3640 -136 280"
-"model" "models/mapobjects/gr_trees/nbsnow.md3"
+"model" "models/mapobjects/GR_trees/nbsnow.md3"
 }
 // entity 237
 {
 "classname" "misc_model"
 "origin" "-3760 392 280"
-"model" "models/mapobjects/gr_trees/nbsnow.md3"
+"model" "models/mapobjects/GR_trees/nbsnow.md3"
 }
 // entity 238
 {
 "classname" "misc_model"
 "origin" "-3496 -136 280"
-"model" "models/mapobjects/gr_trees/nbsnow.md3"
+"model" "models/mapobjects/GR_trees/nbsnow.md3"
 }
 // entity 239
 {
 "classname" "misc_model"
 "origin" "-3344 -224 280"
-"model" "models/mapobjects/gr_trees/nbsnow.md3"
+"model" "models/mapobjects/GR_trees/nbsnow.md3"
 }
 // entity 240
 {
 "classname" "misc_model"
 "origin" "-3304 488 280"
-"model" "models/mapobjects/gr_trees/nbsnow.md3"
+"model" "models/mapobjects/GR_trees/nbsnow.md3"
 }
 // entity 241
 {
 "classname" "misc_model"
 "origin" "704 -280 272"
-"model" "models/mapobjects/gr_trees/tree6.md3"
+"model" "models/mapobjects/GR_trees/tree6.md3"
 }
 // entity 242
 {
 "classname" "misc_model"
 "origin" "824 -424 272"
-"model" "models/mapobjects/gr_trees/tree6.md3"
+"model" "models/mapobjects/GR_trees/tree6.md3"
 }
 // entity 243
 {
 "classname" "misc_model"
 "origin" "928 -424 272"
-"model" "models/mapobjects/gr_trees/nbsnow.md3"
+"model" "models/mapobjects/GR_trees/nbsnow.md3"
 }
 // entity 244
 {
 "classname" "misc_model"
 "origin" "864 -320 272"
-"model" "models/mapobjects/gr_trees/nbsnow.md3"
+"model" "models/mapobjects/GR_trees/nbsnow.md3"
 }
 // entity 245
 {
@@ -17042,14 +17042,14 @@
 ( -240 732 486 ) ( -240 936 486 ) ( 0 936 440 ) q3r_dirt_grass/rock01 0 0 0 0.5 0.5 0 0 0
 ( -240 762 440 ) ( -240 732 486 ) ( 0 744 440 ) q3r_dirt_grass/rock01 0 0 0 0.5 0.5 0 0 0
 ( -3840 900 872 ) ( -3600 900 -64 ) ( -3600 900 872 ) common/caulk 0 0 0 0.5 0.5 0 0 0
-( -53.0890045166 936 448 ) ( -53.0890045166 728 448 ) ( 53.0890045166 728 448 ) q3r_liquids/q3r_water_01 0 0 -0 2 2 0 0 0
+( -53.0890045166 936 448 ) ( -53.0890045166 728 448 ) ( 53.0890045166 728 448 ) q3r_liquids/q3r_waterflow 0 0 0 0.5 0.5 0 0 0
 ( -66.9279937744 936 452.5020141602 ) ( -66.9279937744 728 452.5020141602 ) ( -61.3170013428 728 484.6380004883 ) q3r_building/concrete01 56 59.8244018555 0.0138197504 0.25 0.25 0 0 0
 }
 // brush 346
 {
 ( -240 762 440 ) ( -240 732 486 ) ( 0 744 440 ) q3r_dirt_grass/rock01 0 0 0 0.5 0.5 0 0 0
 ( -3840 900 872 ) ( -3600 900 -64 ) ( -3600 900 872 ) q3r_dirt_grass/rock01 0 0 0 0.5 0.5 0 0 0
-( -53.0890045166 936 448 ) ( -53.0890045166 728 448 ) ( 53.0890045166 728 448 ) q3r_liquids/q3r_water_01 0 0 -0 2 2 0 0 0
+( -53.0890045166 936 448 ) ( -53.0890045166 728 448 ) ( 53.0890045166 728 448 ) q3r_liquids/q3r_waterflow 0 0 0 0.5 0.5 0 0 0
 ( -61.3170013428 728 484.6380004883 ) ( -66.9279937744 728 452.5020141602 ) ( -66.9279937744 936 452.5020141602 ) q3r_building/concrete01 56 59.8244018555 0.0138197504 0.25 0.25 0 0 0
 ( -56.9409942627 936 435.3359985352 ) ( -56.9409942627 728 435.3359985352 ) ( -66.9279937744 728 452.5020141602 ) q3r_building/concrete01 56 60 0 0.25 0.25 0 0 0
 }
@@ -17059,7 +17059,7 @@
 ( 0 744 440 ) ( 0 936 440 ) ( -240 936 440 ) q3r_dirt_grass/rock01 0 0 0 0.5 0.5 0 0 0
 ( -240 762 440 ) ( -240 732 486 ) ( 0 744 440 ) q3r_dirt_grass/rock01 0 0 0 0.5 0.5 0 0 0
 ( -3840 900 872 ) ( -3600 900 -64 ) ( -3600 900 872 ) common/caulk 0 0 0 0.5 0.5 0 0 0
-( 53.0890045166 728 448 ) ( -53.0890045166 728 448 ) ( -53.0890045166 936 448 ) q3r_liquids/q3r_water_01 0 0 -0 2 2 0 0 0
+( 53.0890045166 728 448 ) ( -53.0890045166 728 448 ) ( -53.0890045166 936 448 ) q3r_liquids/q3r_waterflow 0 0 0 0.5 0.5 0 0 0
 ( -66.9279937744 936 452.5020141602 ) ( -66.9279937744 728 452.5020141602 ) ( -61.3170013428 728 484.6380004883 ) q3r_building/concrete01 56 59.8244018555 0.0138197504 0.25 0.25 0 0 0
 }
 // brush 348
@@ -17067,7 +17067,7 @@
 ( 0 744 440 ) ( 0 936 440 ) ( -240 936 440 ) q3r_dirt_grass/rock01 0 0 0 0.5 0.5 0 0 0
 ( -240 762 440 ) ( -240 732 486 ) ( 0 744 440 ) q3r_dirt_grass/rock01 0 0 0 0.5 0.5 0 0 0
 ( -3840 900 872 ) ( -3600 900 -64 ) ( -3600 900 872 ) q3r_dirt_grass/rock01 0 0 0 0.5 0.5 0 0 0
-( 53.0890045166 728 448 ) ( -53.0890045166 728 448 ) ( -53.0890045166 936 448 ) q3r_liquids/q3r_water_01 0 0 -0 2 2 0 0 0
+( 53.0890045166 728 448 ) ( -53.0890045166 728 448 ) ( -53.0890045166 936 448 ) q3r_liquids/q3r_waterflow 0 0 0 0.5 0.5 0 0 0
 ( -61.3170013428 728 484.6380004883 ) ( -66.9279937744 728 452.5020141602 ) ( -66.9279937744 936 452.5020141602 ) q3r_building/concrete01 56 59.8244018555 0.0138197504 0.25 0.25 0 0 0
 ( -56.9409942627 936 435.3359985352 ) ( -56.9409942627 728 435.3359985352 ) ( -66.9279937744 728 452.5020141602 ) q3r_building/concrete01 56 60 0 0.25 0.25 0 0 0
 }
@@ -20264,7 +20264,7 @@
 ( 240 732 440 ) ( 240 936 440 ) ( 0 936 440 ) q3r_dirt_grass/rock01 0 0 0 0.5 0.5 0 0 0
 ( 0 744 440 ) ( 240 752 486 ) ( 240 732 440 ) q3r_dirt_grass/rock01 0 0 0 0.5 0.5 0 0 0
 ( 0 900 872 ) ( 240 900 -64 ) ( 240 900 872 ) common/caulk 0 0 0 0.5 0.5 0 0 0
-( 53.0890045166 728 448 ) ( -53.0890045166 728 448 ) ( -53.0890045166 936 448 ) q3r_liquids/q3r_water_01 0 0 -0 2 2 0 0 0
+( 53.0890045166 728 448 ) ( -53.0890045166 728 448 ) ( -53.0890045166 936 448 ) q3r_liquids/q3r_waterflow 0 0 0 0.5 0.5 0 0 0
 ( 49.5180053711 728 422.5780029297 ) ( 49.5180053711 936 422.5780029297 ) ( 66.9279937744 936 452.5020141602 ) q3r_building/concrete01 56 60 -0 0.25 0.25 0 0 0
 }
 // brush 326
@@ -20273,7 +20273,7 @@
 ( 240 752 486 ) ( 240 936 486 ) ( 240 936 440 ) q3r_dirt_grass/rock01 0 0 0 0.5 0.5 0 0 0
 ( 0 744 440 ) ( 240 752 486 ) ( 240 732 440 ) q3r_dirt_grass/rock01 0 0 0 0.5 0.5 0 0 0
 ( 0 900 872 ) ( 240 900 -64 ) ( 240 900 872 ) common/caulk 0 0 0 0.5 0.5 0 0 0
-( -53.0890045166 936 448 ) ( -53.0890045166 728 448 ) ( 53.0890045166 728 448 ) q3r_liquids/q3r_water_01 0 0 -0 2 2 0 0 0
+( -53.0890045166 936 448 ) ( -53.0890045166 728 448 ) ( 53.0890045166 728 448 ) q3r_liquids/q3r_waterflow 0 0 0 0.5 0.5 0 0 0
 ( 49.5180053711 728 422.5780029297 ) ( 49.5180053711 936 422.5780029297 ) ( 66.9279937744 936 452.5020141602 ) q3r_building/concrete01 56 60 -0 0.25 0.25 0 0 0
 }
 // brush 327
@@ -30891,4 +30891,33 @@
 {
 "classname" "item_fuelcan"
 "origin" "1472 960 -208"
+}
+// entity 403
+{
+"classname" "rally_fx_spray"
+"origin" "0 704 252"
+"radius" "44"
+"rate" "22"
+"height" "130"
+"angle" "270"
+"push" "45"
+}
+// entity 404
+{
+"classname" "rally_fx_spray"
+"origin" "0 696 256"
+"radius" "30"
+"rate" "10"
+"droplets" "26"
+"height" "110"
+"size" "72"
+"angle" "270"
+"push" "40"
+}
+// entity 405
+{
+"classname" "target_speaker"
+"origin" "0 690 300"
+"noise" "sound/world/waterfall.ogg"
+"spawnflags" "1"
 }

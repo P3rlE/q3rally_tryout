@@ -359,6 +359,23 @@ void FBO_Init(void)
 		}
 	}
 
+	// Q3Rally: lamp shadow maps
+	if (tr.lampShadowImage[0])
+	{
+		for (i = 0; i < MAX_LAMP_SHADOWS; i++)
+		{
+			tr.lampShadowFbo[i] = FBO_Create("_lampshadow", tr.lampShadowImage[i]->width, tr.lampShadowImage[i]->height);
+			FBO_CreateBuffer(tr.lampShadowFbo[i], GL_RGBA8, 0, 0);
+			FBO_AttachImage(tr.lampShadowFbo[i], tr.lampShadowImage[i], GL_DEPTH_ATTACHMENT, 0);
+			R_CheckFBO(tr.lampShadowFbo[i]);
+
+			tr.lampWorldFbo[i] = FBO_Create("_lampworld", tr.lampWorldImage[i]->width, tr.lampWorldImage[i]->height);
+			FBO_CreateBuffer(tr.lampWorldFbo[i], GL_RGBA8, 0, 0);
+			FBO_AttachImage(tr.lampWorldFbo[i], tr.lampWorldImage[i], GL_DEPTH_ATTACHMENT, 0);
+			R_CheckFBO(tr.lampWorldFbo[i]);
+		}
+	}
+
 	if (tr.screenShadowImage)
 	{
 		tr.screenShadowFbo = FBO_Create("_screenshadow", tr.screenShadowImage->width, tr.screenShadowImage->height);

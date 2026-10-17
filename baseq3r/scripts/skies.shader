@@ -73,7 +73,9 @@ textures/q3r_skies/env/trainyard/trainyard
 	surfaceparm nomarks
 	q3map_surfacelight 500
 	q3map_lightsubdivide 512
-	q3map_sun 1 1 1 32	90 90	
+	// sun tilted for real-time shadows (was 1 1 1 32 90 90, straight down); maps relit
+	q3map_sun 1 1 1 32 240 50
+	q3gl2_sun 1 1 1 32 240 50 0.5
 	skyparms textures/q3r_skies/env/trainyard/trainyard - -
 }
 
@@ -205,7 +207,9 @@ textures/skies/ame_nebula
 	qer_editorimage textures/q3r_skies/env/ame_nebula/purplenebula_ft.tga
 	surfaceparm noimpact
 	surfaceparm nolightmap
-	q3map_sun 1.00 0.90 1.00 70 90 90
+	// sun tilted for real-time shadows (was 1.00 0.90 1.00 70 90 90, straight down); maps relit
+	q3map_sun 1.00 0.90 1.00 70 68 55
+	q3gl2_sun 1.00 0.90 1.00 70 68 55 0.5
 	q3map_surfacelight 70
 	skyparms textures/q3r_skies/env/ame_nebula/purplenebula - -
 }
