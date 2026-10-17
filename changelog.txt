@@ -77,6 +77,10 @@ Added:
   runs towards the bottom of the texture. The BSP was edited in place (two
   surfaces got the new shaders, two rally_fx_spray and a target_speaker were
   added, AAS checksum updated); q3r_ctf_01.map has the same changes.
+  The rust, concrete, brick and gravel textures that were stretched to 2
+  units per texel (texture scale 2: blurry rust on the bridges, grainy
+  bridge pillars) now use scale 0.5 like the rest of the map (BSP texture
+  coordinates and .map; no recompile, lighting unchanged).
 
 - tools/maptools: q3bsp.py (read and replace the entity lump of a BSP, BSP
   checksum, patch the checksum in an AAS header) and inject_lights.py (copies
