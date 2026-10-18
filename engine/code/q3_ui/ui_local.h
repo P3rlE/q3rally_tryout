@@ -1066,6 +1066,52 @@ void UI_SaveConfigMenu( void );
 void UI_AdvancedGraphicsOptionsMenu_Cache( void );
 void UI_AdvancedGraphicsOptionsMenu( void );
 
+#define GFXROW_RESTART		1	// latched cvar: needs a renderer restart (Apply)
+#define GFXROW_GL2			2	// greyed out unless cl_renderer is opengl2
+#define GFX_NUM_PRESETS		4	// low, medium, high, ultra
+
+typedef struct gfxRow_s {
+	const char	*label;
+	const char	**names;			// NULL terminated
+	const char	**sets;				// per choice: "cvar=value;cvar=value"
+	int			flags;
+	int			(*read)( void );	// optional: current choice, -1 = custom
+	void		(*apply)( int choice );	// optional: replaces sets
+} gfxRow_t;
+
+typedef struct {
+	const char	*label;
+	void		(*open)( void );	// NULL: just go back
+	qboolean	replace;			// pop the current page first
+} gfxNav_t;
+
+typedef struct {
+	const char		*title;
+	const char		*subtitle;
+	const char		*section;
+	const gfxRow_t	*rows;
+	int				numRows;
+	int				leftRows;		// rows in the left column
+	const gfxNav_t	*nav;
+	int				numNav;
+	int				slot;			// 0 graphics, 1 effects, 2 lighting
+	qboolean		gl2Only;
+} gfxPageDef_t;
+
+extern const char *gfx_preset_names[];	// Low ... Ultra, NULL
+void UI_GfxPage_Push( const gfxPageDef_t *def );
+int UI_GfxPreset_Detect( void );
+void UI_GfxPreset_Apply( int level );
+void UI_GfxMarkRestart( void );
+void UI_GfxSetCvar( const char *name, const char *value );
+void UI_GfxSetCvarValue( const char *name, float value );
+void UI_GfxGetCvar( const char *name, char *buf, int size );
+float UI_GfxCvarValue( const char *name );
+int UI_GfxMsaa_Read( void );
+void UI_GfxMsaa_Set( int samples );
+void UI_GfxEffectsMenu( void );
+void UI_GfxLightingMenu( void );
+
 //
 // ui_display.c
 //

@@ -203,6 +203,22 @@ Added:
 
 Changed:
 
+- Graphics menu reorganised into three pages: Graphics (preset, renderer,
+  resolution, aspect ratio, fullscreen, anti-aliasing, texture detail,
+  texture filter, geometry), Effects (bloom, motion blur, reflections,
+  water, wet roads, haze, colour look, ambient occlusion, surface relief,
+  tyre smoke, soft particles, skid marks, tone curve) and Lighting &
+  shadows (HDR, sun shadows and their quality, lamp shadows, headlights,
+  headlight shadows, shadow detail, dynamic lights). One preset (Low,
+  Medium, High, Ultra) sets everything on all three pages; changing a
+  single option shows "Custom". Options take effect at once; those that
+  need a renderer restart show the Apply button. Options that only work in
+  OpenGL2 are greyed out in OpenGL1. In OpenGL2 anti-aliasing multisamples
+  the frame buffer (r_ext_framebuffer_multisample) and no longer also the
+  window. Colour depth, extensions, texture bits, vertex lighting, sun
+  rays, the shadow cascade values, projected shadows and the Voodoo driver
+  option are no longer in the menu; their cvars still work.
+
 - r_marksOnTriangleMeshes defaults to 1: the maps are compiled with -meta,
   so most ground is triangle meshes and without it skid marks, bullet
   holes and scorch marks did not appear there. Configs that saved 0 keep
