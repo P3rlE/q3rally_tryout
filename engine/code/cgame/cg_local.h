@@ -301,6 +301,13 @@ typedef struct centity_s {
 	qboolean		wheelSkidding[4];
 
 	vec3_t			lastSkidOrigin[4];
+	// Q3Rally: skid mark ribbon of each tyre (CG_SkidRibbon)
+	qboolean		skidRibbon[4];
+	vec3_t			skidRibbonPoint[4];
+	vec3_t			skidRibbonSide[4];
+	float			skidRibbonDist[4];
+	qhandle_t		skidRibbonShader[4];
+	int				skidRibbonTime[4];		// last time the tyre skidded
 	float			smokeTime[4];
 	int				wetSprayTime[4];
 	float			engineSmokeTime;
@@ -354,6 +361,7 @@ typedef struct markPoly_s {
 	int			time;
 	qhandle_t	markShader;
 	qboolean	alphaFade;		// fade alpha instead of rgb
+	int			lifeTime;		// Q3Rally: msec, 0 = MARK_TOTAL_TIME
 	float		color[4];
 	poly_t		poly;
 	polyVert_t	verts[MAX_VERTS_ON_POLY];
@@ -2112,6 +2120,8 @@ void	CG_SkidMark( qhandle_t markShader,
 					float red, float green, float blue, float alpha,
 					qboolean alphaFade,
 					float width, float length, qboolean temporary );
+void	CG_SkidRibbon( centity_t *cent, int tire, qhandle_t shader, const vec3_t point, const vec3_t normal );
+void	CG_SkidRibbonStop( centity_t *cent, int tire );
 // Q3Rally Code END
 
 //

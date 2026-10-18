@@ -3536,6 +3536,7 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 	qboolean		wetSurface;
 	qboolean		snowSurface;
 	qboolean		skidding;
+	qboolean		ribbon = qfalse;
 
 	VectorMA(curOrigin, -(WHEEL_RADIUS * 2.0f), up, end);
 	CG_Trace(&tr, curOrigin, NULL, NULL, end, cent->currentState.number, CONTENTS_SOLID);
@@ -3544,8 +3545,10 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 	VectorSubtract(cent->lastSkidOrigin[tireNum], curOrigin, delta);
 	skidding = cent->wheelSkidding[tireNum];
 
-	if (tr.surfaceFlags & SURF_SKY)
+	if (tr.surfaceFlags & SURF_SKY) {
+		CG_SkidRibbonStop( cent, tireNum );
 		return;
+	}
 
 	// teleportFlag - teleported so dont use old skid origin
 	if ( !CG_AddSplash(cent, curOrigin) && tr.fraction != 1.0 && !cent->teleportFlag ){
@@ -3606,6 +3609,10 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 		if ( skidding && shader >= 0 ){
 			length = VectorLength(delta) / 2;
 
+			// Q3Rally: continuous skid mark ribbon
+			CG_SkidRibbon( cent, tireNum, shader, tr.endpos, tr.plane.normal );
+			ribbon = qtrue;
+
 			// create smoke even if we arent moving because the car is being stopped from moving
 			if ( cent->smokeTime[tireNum] < cg.time ) {
 				if ( snowSurface ) {
@@ -3626,7 +3633,7 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 			}
 
 			if (length < cg_minSkidLength.integer){
-				return;
+				return;		// (the ribbon keeps going, see above)
 			}
 
 			VectorMA(curOrigin, 1/2.0F, delta, origin);
@@ -3639,9 +3646,6 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 				cent->skidSoundTime = cg.time;
 			}
 
-			VectorNormalize(delta);
-
-			CG_SkidMark( shader, origin, tr.plane.normal, delta, 1,1,1,1, qfalse, 8.0F, length, qfalse );
 		}
 		else if ( wetSurface ) {
 			// Q3Rally: wet ground makes no dust, only the spray above
@@ -3680,6 +3684,10 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 				cent->smokeTime[tireNum] = cg.time + 100;
 			}
 		}
+	}
+
+	if ( !ribbon ) {
+		CG_SkidRibbonStop( cent, tireNum );
 	}
 
 	VectorCopy(curOrigin, cent->lastSkidOrigin[tireNum]);

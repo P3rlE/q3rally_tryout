@@ -1658,7 +1658,7 @@ gfx/skidmarks/sand
 {
         polygonOffset
         {
-                map gfx/skidmarks/sand.png
+                map gfx/skidmarks/sand.tga
                 blendFunc GL_ZERO GL_ONE_MINUS_SRC_COLOR
                 rgbGen exactVertex
         }
@@ -1667,7 +1667,7 @@ gfx/skidmarks/snow
 {
         polygonOffset
         {
-                map gfx/skidmarks/snow.png
+                map gfx/skidmarks/snow.tga
                 blendFunc GL_ZERO GL_ONE_MINUS_SRC_COLOR
                 rgbGen exactVertex
         }
@@ -1676,7 +1676,7 @@ gfx/skidmarks/ice
 {
         polygonOffset
         {
-                map gfx/skidmarks/ice.png
+                map gfx/skidmarks/ice.tga
                 blendFunc GL_ZERO GL_ONE_MINUS_SRC_COLOR
                 rgbGen exactVertex
         }

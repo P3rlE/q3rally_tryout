@@ -1144,7 +1144,7 @@ void R_Register( void )
 	r_noportals = ri.Cvar_Get ("r_noportals", "0", CVAR_CHEAT);
 	r_shadows = ri.Cvar_Get( "cg_shadows", "1", 0 );
 
-	r_marksOnTriangleMeshes = ri.Cvar_Get("r_marksOnTriangleMeshes", "0", CVAR_ARCHIVE);
+	r_marksOnTriangleMeshes = ri.Cvar_Get("r_marksOnTriangleMeshes", "1", CVAR_ARCHIVE);	// Q3Rally: maps are compiled with -meta
 
 	r_aviMotionJpegQuality = ri.Cvar_Get("r_aviMotionJpegQuality", "90", CVAR_ARCHIVE);
 	r_screenshotJpegQuality = ri.Cvar_Get("r_screenshotJpegQuality", "90", CVAR_ARCHIVE);

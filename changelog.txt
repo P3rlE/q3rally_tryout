@@ -139,8 +139,20 @@ Added:
   textures/q3r_liquids/q3r_water_pool, the old pool look stays for
   OpenGL1 and r_water 0; liquids/calm_poollight itself is unchanged for
   q3r_ctf_04 and q3r_david4).
+- Skid marks are continuous tracks: each tyre lays one ribbon that follows
+  the line it drives (also in tight circles), with a tread pattern along
+  the track, instead of a row of overlapping square stamps with gaps and
+  dark overlaps. Own textures for asphalt, dirt, grass, sand, snow and ice
+  (the snow, sand and ice marks were drawn as black bands); short breaks
+  of the wheel slip no longer cut the track. Marks stay 20 seconds and
+  fade out over the last 4 seconds; more marks at once (8192 polys).
 
 Changed:
+
+- r_marksOnTriangleMeshes defaults to 1: the maps are compiled with -meta,
+  so most ground is triangle meshes and without it skid marks, bullet
+  holes and scorch marks did not appear there. Configs that saved 0 keep
+  it; set it to 1 by hand.
 
 - NOS: the rocket flame model on the car (models/powerups/turbo/
   turbocar.md3 on tag_turbo) is gone, in game and in the menu preview;

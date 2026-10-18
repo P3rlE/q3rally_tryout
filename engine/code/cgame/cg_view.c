@@ -1145,10 +1145,12 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 		CG_AddRacingLine();
 		CG_AddPacketEntities();			// adter calcViewValues, so predicted player state is correct
 		CG_EngineSoundFrame();			// Q3Rally: engine sounds of all audible cars
+		// Q3Rally: the particles first, so the many skid mark polys can never
+		// use up the renderer's poly budget before them
+		CG_AddRallyFX();				// Q3Rally: rally_fx_spray, tyre smoke, spray
 		CG_AddMarks();
 		CG_AddParticles ();
 		CG_AddLocalEntities();
-		CG_AddRallyFX();				// Q3Rally: rally_fx_spray etc.
 		CG_Autoball_AddSceneEffects();	// Autoball goal lights
 // Q3Rally Code Start
 		// used for q3f atmospheric effects
