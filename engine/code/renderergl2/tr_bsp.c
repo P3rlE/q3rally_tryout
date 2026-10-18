@@ -2346,6 +2346,12 @@ void R_LoadEntities( lump_t *l ) {
 			continue;
 		}
 
+		// Q3Rally: colour grading look of the map
+		if (!Q_stricmp(keyname, "colorlut") || !Q_stricmp(keyname, "_colorlut")) {
+			Q_strncpyz(tr.worldColorLut, value, sizeof(tr.worldColorLut));
+			continue;
+		}
+
 		// check for auto exposure
 		if (!Q_stricmp(keyname, "autoExposureMinMax")) {
 			sscanf(value, "%f %f", &tr.autoExposureMinMax[0], &tr.autoExposureMinMax[1]);
@@ -2878,6 +2884,10 @@ void RE_LoadWorldMap( const char *name ) {
 	// set default autoexposure settings
 	tr.autoExposureMinMax[0] = -2.0f;
 	tr.autoExposureMinMax[1] = 2.0f;
+
+	// Q3Rally: the map's colour grading comes from its worldspawn or sky shader
+	tr.worldColorLut[0] = '\0';
+	tr.shaderColorLut[0] = '\0';
 
 	// set default tone mapping settings
 	tr.toneMinAvgMaxLevel[0] = -8.0f;

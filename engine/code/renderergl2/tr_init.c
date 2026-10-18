@@ -115,6 +115,11 @@ cvar_t  *r_floatLightmap;
 cvar_t  *r_postProcess;
 
 cvar_t  *r_toneMap;
+cvar_t  *r_toneMapCurve;
+cvar_t  *r_filmicExposure;
+cvar_t  *r_filmicWhite;
+cvar_t  *r_colorGrade;
+cvar_t  *r_colorLut;
 cvar_t  *r_forceToneMap;
 cvar_t  *r_forceToneMapMin;
 cvar_t  *r_forceToneMapAvg;
@@ -1310,6 +1315,22 @@ void R_Register( void )
 	r_postProcess = ri.Cvar_Get( "r_postProcess", "1", CVAR_ARCHIVE );
 
 	r_toneMap = ri.Cvar_Get( "r_toneMap", "1", CVAR_ARCHIVE );
+
+	// Q3Rally: filmic tone mapping and colour grading
+	r_toneMapCurve = ri.Cvar_Get( "r_toneMapCurve", "1", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_toneMapCurve, 0, 1, qtrue );
+	ri.Cvar_SetDescription( r_toneMapCurve, "Q3Rally: tone curve with r_hdr 1 and r_toneMap 1: 0 = classic (bright parts clip), 1 = filmic (ACES, bright parts roll off softly)" );
+	r_filmicExposure = ri.Cvar_Get( "r_filmicExposure", "1.25", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_filmicExposure, 0.25f, 4.0f, qfalse );
+	ri.Cvar_SetDescription( r_filmicExposure, "Q3Rally: brightness of the filmic tone curve (r_toneMapCurve 1)" );
+	r_filmicWhite = ri.Cvar_Get( "r_filmicWhite", "2", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_filmicWhite, 1.0f, 8.0f, qfalse );
+	ri.Cvar_SetDescription( r_filmicWhite, "Q3Rally: how much brighter than white the filmic tone curve still shows before it is pure white" );
+	r_colorGrade = ri.Cvar_Get( "r_colorGrade", "1", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_colorGrade, 0.0f, 1.0f, qfalse );
+	ri.Cvar_SetDescription( r_colorGrade, "Q3Rally: strength of the colour grading (look of the map, 0 = off); needs r_hdr 1 and r_toneMap 1" );
+	r_colorLut = ri.Cvar_Get( "r_colorLut", "", CVAR_ARCHIVE );
+	ri.Cvar_SetDescription( r_colorLut, "Q3Rally: colour grading look for every map instead of the map's own, e.g. gfx/luts/warm; empty = the map's, none = no grading" );
 	r_forceToneMap = ri.Cvar_Get( "r_forceToneMap", "0", CVAR_CHEAT );
 	r_forceToneMapMin = ri.Cvar_Get( "r_forceToneMapMin", "-8.0", CVAR_CHEAT );
 	r_forceToneMapAvg = ri.Cvar_Get( "r_forceToneMapAvg", "-2.0", CVAR_CHEAT );

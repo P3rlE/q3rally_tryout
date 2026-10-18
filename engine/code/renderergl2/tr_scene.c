@@ -555,6 +555,56 @@ Rendering a scene may require multiple views to be rendered
 to handle mirrors,
 @@@@@@@@@@@@@@@@@@@@@
 */
+/*
+=================
+R_UpdateColorLut
+
+Q3Rally: the colour grading LUT for the tone mapping: r_colorLut, else the
+map's (worldspawn "colorlut", else q3r_colorLut in the sky shader), else
+the default look. A LUT is a strip of N slices of N x N (N*N wide, N high):
+red across a slice, green down, blue from slice to slice.
+=================
+*/
+#define DEFAULT_COLOR_LUT	"gfx/luts/q3r_default"
+
+void R_UpdateColorLut( void ) {
+	const char *name;
+	image_t *image;
+
+	if ( r_colorLut->string[0] ) {
+		name = r_colorLut->string;
+	} else if ( tr.worldColorLut[0] ) {
+		name = tr.worldColorLut;
+	} else if ( tr.shaderColorLut[0] ) {
+		name = tr.shaderColorLut;
+	} else {
+		name = DEFAULT_COLOR_LUT;
+	}
+
+	if ( !Q_stricmp( name, tr.colorLutName ) ) {
+		return;
+	}
+	Q_strncpyz( tr.colorLutName, name, sizeof( tr.colorLutName ) );
+	tr.colorLutImage = NULL;
+
+	if ( !Q_stricmp( name, "none" ) ) {
+		return;
+	}
+
+	image = R_FindImageFile( name, IMGTYPE_COLORALPHA, IMGFLAG_NOLIGHTSCALE | IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE );
+	if ( !image ) {
+		ri.Printf( PRINT_WARNING, "WARNING: colour grading LUT '%s' not found\n", name );
+		return;
+	}
+	if ( image->height < 2 || image->height > 64 || image->width != image->height * image->height ) {
+		ri.Printf( PRINT_WARNING, "WARNING: colour grading LUT '%s' is %ix%i, needs N*N x N\n", name, image->width, image->height );
+		return;
+	}
+
+	tr.colorLutImage = image;
+	ri.Printf( PRINT_DEVELOPER, "colour grading LUT: %s\n", name );
+}
+
 void RE_RenderScene( const refdef_t *fd ) {
 	viewParms_t		parms;
 	int				startTime;
@@ -566,6 +616,10 @@ void RE_RenderScene( const refdef_t *fd ) {
 
 	if ( r_norefresh->integer ) {
 		return;
+	}
+
+	if ( tr.world ) {
+		R_UpdateColorLut();		// Q3Rally
 	}
 
 	startTime = ri.Milliseconds();

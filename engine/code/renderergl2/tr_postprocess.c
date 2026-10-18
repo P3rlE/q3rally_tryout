@@ -90,6 +90,26 @@ void RB_ToneMap(FBO_t *hdrFbo, ivec4_t hdrBox, FBO_t *ldrFbo, ivec4_t ldrBox, in
 	else
 		GL_BindToTMU(tr.fixedLevelsImage, TB_LEVELSMAP);
 
+	// Q3Rally: tone curve and colour grading
+	{
+		vec4_t params;
+
+		VectorSet4(params, r_toneMapCurve->integer ? 1.0f : 0.0f, r_filmicExposure->value, r_filmicWhite->value, 0.0f);
+		GLSL_SetUniformVec4(&tr.tonemapShader, UNIFORM_TONEPARAMS, params);
+
+		if (tr.colorLutImage && r_colorGrade->value > 0.0f)
+		{
+			VectorSet4(params, MIN(r_colorGrade->value, 1.0f), tr.colorLutImage->height, 0.0f, 0.0f);
+			GL_BindToTMU(tr.colorLutImage, TB_NORMALMAP);
+		}
+		else
+		{
+			VectorSet4(params, 0.0f, 0.0f, 0.0f, 0.0f);
+			GL_BindToTMU(tr.whiteImage, TB_NORMALMAP);
+		}
+		GLSL_SetUniformVec4(&tr.tonemapShader, UNIFORM_LUTPARAMS, params);
+	}
+
 	FBO_Blit(hdrFbo, hdrBox, NULL, ldrFbo, ldrBox, &tr.tonemapShader, color, 0);
 }
 

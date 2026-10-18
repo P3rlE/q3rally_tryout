@@ -826,6 +826,31 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php/matches"
   </table></div>
   <div class="callout orange"><strong>Tips</strong>Fill lights hidden in the ceiling cast shadows like real lamps. If a map has many of them, a car can get several faint shadows in odd directions; keep fill lights weak or high up. Daylight maps with a sun gain little from lamp shadows. Maps with lamp shadows so far: q3r_nightcity, q3r_demobowl, q3r_babel, q3r_ctf_04, q3r_david5, q3r_lavafalls, q3r_dd_02, q3r_ctf_01, q3r_david4, q3r_dm02.</div>
 
+  <h3>Colour Grading &mdash; Mapper Guide</h3>
+  <p>With the OpenGL2 renderer (<code>r_hdr 1</code>, <code>r_toneMap 1</code>) every frame goes through a filmic tone curve and then through a colour grading LUT: the look of the map. Without a setting a map gets the subtle default look <code>gfx/luts/q3r_default</code>.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Where</th><th>How</th></tr></thead>
+    <tbody>
+      <tr><td>Sky shader</td><td><code>q3r_colorLut gfx/luts/warm</code> next to <code>q3gl2_sun</code>. Works on compiled maps, no recompile.</td></tr>
+      <tr><td>Worldspawn</td><td>Key <code>colorlut</code>, value <code>gfx/luts/warm</code>. Wins over the sky shader.</td></tr>
+      <tr><td>Player</td><td><code>r_colorLut gfx/luts/vivid</code> uses one look on every map, <code>r_colorLut none</code> switches the grading off, <code>r_colorGrade</code> sets its strength (0&ndash;1).</td></tr>
+    </tbody>
+  </table></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Look</th><th>For</th></tr></thead>
+    <tbody>
+      <tr><td><code>q3r_default</code></td><td>Default: a little more contrast and colour, slightly cool shadows and warm light.</td></tr>
+      <tr><td><code>warm</code></td><td>Desert, canyon, afternoon sun.</td></tr>
+      <tr><td><code>cold</code></td><td>Snow, winter, early morning: cooler, less colour, soft blacks.</td></tr>
+      <tr><td><code>night</code></td><td>Night city: teal shadows, orange street lights.</td></tr>
+      <tr><td><code>vivid</code></td><td>Arcade: strong colours and contrast.</td></tr>
+      <tr><td><code>overcast</code></td><td>Grey sky, rain: less colour and contrast.</td></tr>
+      <tr><td><code>dusk</code></td><td>Sunset: violet shadows, golden light.</td></tr>
+      <tr><td><code>neutral</code></td><td>No change (for comparisons).</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout"><strong>Own looks</strong>A LUT is a 1024&times;32 TGA: 32 slices of 32&times;32 side by side, red across a slice, green from top to bottom, blue from slice to slice. Add a function to <code>tools/maptools/make_color_luts.py</code> and run it, or grade a screenshot in an image editor together with <code>gfx/luts/neutral.tga</code> using the same adjustments and save the graded neutral LUT under a new name. <code>developer 1</code> prints which LUT a map uses.</div>
+
   <h3>Waterfall Spray — Mapper Guide</h3>
   <p>A <code>rally_fx_spray</code> entity puts spray, drifting mist and droplets where a waterfall hits the water. It also works for rapids, fountains or steam. The effect is purely client side: the server ignores the entity, cgame reads it from the map at load time and simulates the particles itself, so it uses no entity slot, no network traffic and works in demos. The mist colour is multiplied with the light grid at the origin, so it is not glowing white in a shady gorge or at night. It runs with OpenGL1 and OpenGL2.</p>
   <div class="callout"><strong>Example</strong><code>q3r_valley</code> has three emitters along the foot of its waterfall and a looping <code>target_speaker</code> with <code>sound/world/waterfall.ogg</code>. Like any point entity, the spray can be added to a finished map by editing only the entity lump; the geometry does not need a recompile.</div>
@@ -1162,6 +1187,7 @@ docker run --rm -it -p 27960:27960/udp \
     <li>The smoke screen is a thick cloud that hangs on the track, mines explode with dark smoke and dirt</li>
     <li>OpenGL2: wet ground inside rain zones: darker, with reflections of the surroundings, lights and cars, and puddles that mirror like water (muddy on loose ground, with rain drop rings); it gets wet within about 20 seconds and dries within about 2 minutes (cvar <code>r_wetGround</code>, 2 = finer reflections); tyre spray and powder snow are soft, lit clouds</li>
     <li>Skid marks are continuous tracks with a tread pattern that follow the line each tyre drives, with their own look on asphalt, dirt, grass, sand, snow and ice; they fade out after 20 seconds (needs <code>r_marksOnTriangleMeshes 1</code>, now the default)</li>
+    <li>OpenGL2: filmic tone mapping (soft highlights, deeper shadows) and colour grading with a look per map (cvars <code>r_toneMapCurve</code>, <code>r_filmicExposure</code>, <code>r_filmicWhite</code>, <code>r_colorGrade</code>, <code>r_colorLut</code>)</li>
     <li>OpenGL2: bloom (glow around bright lights) and FXAA edge smoothing (cvars <code>r_bloom</code>, <code>r_bloomIntensity</code>, <code>r_bloomThreshold</code>, <code>r_fxaa</code>)</li>
     <li><code>q3r_ctf_01</code>: reflective pool, running water in the pipe, waterfall with spray and sound; new shaders <code>q3r_waterfall</code> and <code>q3r_waterflow</code></li>
     <li>Sun shadows on maps that had a sun straight overhead (q3r_dd_02, q3r_downtown, q3r_citydom, q3r_ctf_01, q3r_battlecanyon, q3r_david4; maps relit)</li>

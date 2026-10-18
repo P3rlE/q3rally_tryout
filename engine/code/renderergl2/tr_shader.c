@@ -2119,6 +2119,18 @@ static qboolean ParseShader( char **text )
 			ParseWaterParm( token, text );
 			continue;
 		}
+		// Q3Rally: q3r_colorLut <image>, colour grading look of the map (in
+		// the sky shader, like q3gl2_sun)
+		else if ( !Q_stricmp( token, "q3r_colorLut" ) )
+		{
+			token = COM_ParseExt( text, qfalse );
+			if ( !token[0] ) {
+				ri.Printf( PRINT_WARNING, "WARNING: missing image for 'q3r_colorLut' in shader '%s'\n", shader.name );
+				continue;
+			}
+			Q_strncpyz( tr.shaderColorLut, token, sizeof( tr.shaderColorLut ) );
+			continue;
+		}
 		// skyparms <cloudheight> <outerbox> <innerbox>
 		else if ( !Q_stricmp( token, "skyparms" ) )
 		{

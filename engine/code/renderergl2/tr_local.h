@@ -673,6 +673,9 @@ typedef enum
 	UNIFORM_PREVVIEWPROJ,	// Q3Rally: world -> clip space of the frame in tr.wetSceneImage
 	UNIFORM_WETZONES,		// Q3Rally: rain zones, per zone mins + wetness, maxs + rain
 	UNIFORM_WETZONECOUNT,
+	UNIFORM_COLORLUTMAP,	// Q3Rally: colour grading LUT of the tone mapping
+	UNIFORM_TONEPARAMS,		// Q3Rally: x = curve (0 classic, 1 filmic), y = filmic exposure, z = filmic white
+	UNIFORM_LUTPARAMS,		// Q3Rally: x = LUT strength, y = LUT size (0 = none)
 
 	UNIFORM_ENABLETEXTURES,
 
@@ -1704,6 +1707,12 @@ typedef struct {
 	shaderProgram_t down4xShader;
 	shaderProgram_t bokehShader;
 	shaderProgram_t tonemapShader;
+
+	// Q3Rally: colour grading (R_UpdateColorLut)
+	image_t					*colorLutImage;
+	char					colorLutName[MAX_QPATH];	// what colorLutImage was loaded for
+	char					worldColorLut[MAX_QPATH];	// worldspawn "colorlut"
+	char					shaderColorLut[MAX_QPATH];	// q3r_colorLut in the sky shader
 	shaderProgram_t calclevels4xShader[2];
 	shaderProgram_t shadowmaskShader;
 	shaderProgram_t lampShadowShader;	// Q3Rally
@@ -1888,6 +1897,11 @@ extern  cvar_t  *r_floatLightmap;
 extern  cvar_t  *r_postProcess;
 
 extern  cvar_t  *r_toneMap;
+extern  cvar_t  *r_toneMapCurve;
+extern  cvar_t  *r_filmicExposure;
+extern  cvar_t  *r_filmicWhite;
+extern  cvar_t  *r_colorGrade;
+extern  cvar_t  *r_colorLut;
 extern  cvar_t  *r_forceToneMap;
 extern  cvar_t  *r_forceToneMapMin;
 extern  cvar_t  *r_forceToneMapAvg;
@@ -2432,6 +2446,7 @@ void R_ComputeMotionMask( void );
 #define CAR_REFLECT_COAT	0.7f		// Q3Rally: clear coat on top of the car paint
 #define CAR_REFLECT_COAT_FACING	0.04f	// Q3Rally: clear coat seen straight on (1 at the edges)
 void RE_BeginScene( const refdef_t *fd );
+void R_UpdateColorLut( void );
 void RE_RenderScene( const refdef_t *fd );
 void RE_EndScene( void );
 

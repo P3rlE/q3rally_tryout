@@ -108,6 +108,9 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_PrevViewProj", GLSL_MAT16 },
 	{ "u_WetZones", GLSL_VEC4_WETZONES },
 	{ "u_WetZoneCount", GLSL_INT },
+	{ "u_ColorLutMap", GLSL_INT },
+	{ "u_ToneParams", GLSL_VEC4 },
+	{ "u_LutParams", GLSL_VEC4 },
 
 	{ "u_EnableTextures", GLSL_VEC4 },
 
@@ -1463,6 +1466,7 @@ void GLSL_InitGPUShaders(void)
 
 	GLSL_SetUniformInt(&tr.tonemapShader, UNIFORM_TEXTUREMAP, TB_COLORMAP);
 	GLSL_SetUniformInt(&tr.tonemapShader, UNIFORM_LEVELSMAP,  TB_LEVELSMAP);
+	GLSL_SetUniformInt(&tr.tonemapShader, UNIFORM_COLORLUTMAP, TB_NORMALMAP);	// Q3Rally
 
 	GLSL_FinishGPUShader(&tr.tonemapShader);
 

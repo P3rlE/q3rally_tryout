@@ -148,6 +148,19 @@ Added:
   (the snow, sand and ice marks were drawn as black bands); short breaks
   of the wheel slip no longer cut the track. Marks stay 20 seconds and
   fade out over the last 4 seconds; more marks at once (8192 polys).
+- Filmic tone mapping and colour grading (OpenGL2, r_hdr 1 and r_toneMap
+  1): a new tone curve (ACES, in linear light) gives deeper shadows, more
+  depth in the mid tones and bright parts that roll off softly instead of
+  clipping (sunlit concrete, lamps, yellow city walls keep their detail).
+  After it every pixel goes through a colour grading LUT, the look of the
+  map. Looks in gfx/luts: q3r_default (subtle, used when the map sets
+  none), warm, cold, night, vivid, overcast, dusk and neutral. A map picks
+  its look with the worldspawn key "colorlut" or with
+  "q3r_colorLut <image>" in its sky shader (no recompile needed). New
+  cvars r_toneMapCurve (1 = filmic, 0 = the old curve), r_filmicExposure
+  (1.25), r_filmicWhite (2), r_colorGrade (strength, 1, 0 = off) and
+  r_colorLut (one look for every map, "none" = off). New looks are made
+  with tools/maptools/make_color_luts.py.
 
 Changed:
 

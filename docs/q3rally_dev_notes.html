@@ -356,6 +356,18 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
   </table></div>
   <div class="callout orange"><strong>Open ideas</strong>SMAA instead of FXAA (sharper textures, needs the area/search lookup textures), a lens dirt texture for the bloom, per-map bloom settings in the worldspawn.</div>
 
+  <h3>Filmic Tone Mapping &amp; Colour Grading — Implementation</h3>
+  <p>Part of the tone mapping pass (<code>RB_ToneMap</code> in <code>tr_postprocess.c</code>, <code>glsl/tonemap_fp.glsl</code>), so it needs <code>r_hdr 1</code> and <code>r_toneMap 1</code> and runs before bloom and FXAA. Cvars (all archive): <code>r_toneMapCurve</code> (1), <code>r_filmicExposure</code> (1.25), <code>r_filmicWhite</code> (2), <code>r_colorGrade</code> (1), <code>r_colorLut</code> ("").</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Part</th><th>Where</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>Tone curve</td><td><code>tonemap_fp.glsl</code>, <code>u_ToneParams</code></td><td>After the auto exposure (unchanged) the colour is taken to linear light (pow 2.2; with <code>USE_PBR</code> it already is), scaled by <code>r_filmicExposure</code> and put through the ACES fit of Narkowicz, normalised so that <code>r_filmicWhite</code> times the old white (max &minus; min level) becomes 1, then back to gamma. <code>r_toneMapCurve 0</code> keeps the old per-channel Hable curve (<code>var_InvWhite</code>), which clips everything above the white level.</td></tr>
+      <tr><td>LUT</td><td><code>tonemap_fp.glsl</code> (<code>ColorLut</code>), <code>u_ColorLutMap</code> on <code>TB_NORMALMAP</code>, <code>u_LutParams</code> (strength, size)</td><td>On the final display colour: a 3D LUT stored as N slices of N&times;N side by side (N*N wide, N high, any N from 2 to 64; the shipped ones are 32). Red and green are filtered by the texture, blue by mixing two slices. Mixed with the original by <code>r_colorGrade</code>.</td></tr>
+      <tr><td>Choosing the LUT</td><td><code>R_UpdateColorLut</code> (<code>tr_scene.c</code>, called from <code>RE_RenderScene</code> once a world is loaded), <code>tr_bsp.c</code> (worldspawn <code>colorlut</code> / <code>_colorlut</code>), <code>tr_shader.c</code> (<code>q3r_colorLut</code>)</td><td><code>r_colorLut</code> &gt; worldspawn &gt; sky shader keyword &gt; <code>gfx/luts/q3r_default</code>; <code>none</code> = off. Loaded with <code>R_FindImageFile</code> (no mip maps, no compression, no light scale, clamped) when the name changes; a missing or wrongly sized image gives a warning and no grading. <code>tr.worldColorLut</code> / <code>tr.shaderColorLut</code> are cleared in <code>RE_LoadWorldMap</code> before the BSP is read.</td></tr>
+      <tr><td>Looks</td><td><code>baseq3r/gfx/luts/*.tga</code>, <code>tools/maptools/make_color_luts.py</code></td><td>Built from small colour operations (white balance, S-curve contrast, saturation around the luma, split toning of shadows and highlights, black/white lift) on the identity cube.</td></tr>
+    </tbody>
+  </table></div>
+
   <h3>Lamp Shadows — Implementation</h3>
   <p>Real-time model shadows from the map's light entities (OpenGL2, needs <code>r_sunlightMode</code> &ge; 1 for the shadow mask and the depth images). Cvars: <code>r_lampShadows</code> (archive, 0..4 lamps per frame, default 2), <code>r_lampShadowStrength</code> (archive, 0.7), <code>r_lampShadowMapSize</code> (archive, latched, 512). Mapper usage is in the Manual (Lamp Shadows).</p>
   <div class="table-wrap"><table>
