@@ -813,6 +813,10 @@ void R_SetupProjectionZ(viewParms_t *dest)
 	zNear = r_znear->value;
 	zFar	= dest->zFar;
 
+	// Q3Rally: was never stored; the soft particles and the motion blur
+	// linearize the depth buffer with it (0 made every depth 0)
+	dest->zNear = zNear;
+
 	depth	= zFar - zNear;
 
 	dest->projectionMatrix[2] = 0;

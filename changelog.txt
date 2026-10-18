@@ -419,6 +419,12 @@ Fixed:
   item was removed and then picked up anyway. Given items are no longer
   dropped to the floor.
 
+- Soft particles made every particle invisible with r_depthPrepass 1 (the
+  default), and the motion blur only blurred the sky: the view's near
+  plane distance was never stored, so both turned every depth into 0.
+  With it fixed the motion blur also works on the map and the cars, so it
+  is clearly stronger than before at the same r_motionBlur value.
+
 - Breakables a car drives on (the ramps and bridge decks in q3r_ctf_01)
   broke as soon as a car touched them, whatever their health: every hard
   wheel or chassis contact counted as a crash, several times per second.
