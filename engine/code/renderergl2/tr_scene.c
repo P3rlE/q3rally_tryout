@@ -374,6 +374,35 @@ void RE_BeginScene(const refdef_t *fd)
 		tr.refdef.wetness = 1.0f;
 	}
 
+	// the rain zones (r_wetness tests the whole map)
+	tr.refdef.numWetZones = 0;
+	if ( r_wetness->value < 0.0f && fd->numWetZones > 0 ) {
+		int i, j, n = MIN( fd->numWetZones, MAX_WET_ZONES );
+
+		for ( i = 0; i < n; i++ ) {
+			const float *z = fd->wetZones[i];
+			float *mins = tr.refdef.wetZones[tr.refdef.numWetZones * 2];
+			float *maxs = tr.refdef.wetZones[tr.refdef.numWetZones * 2 + 1];
+
+			if ( !( z[3] > 0.0f ) ) {
+				continue;		// dry (or NaN)
+			}
+			for ( j = 0; j < 3; j++ ) {
+				if ( !( z[j] <= z[4 + j] ) ) {
+					break;
+				}
+			}
+			if ( j < 3 ) {
+				continue;		// no box
+			}
+			VectorCopy( z, mins );
+			mins[3] = MIN( z[3], 1.0f );
+			VectorCopy( z + 4, maxs );
+			maxs[3] = z[7] > 0.0f ? 1.0f : 0.0f;
+			tr.refdef.numWetZones++;
+		}
+	}
+
 	// copy the areamask data over and note if it has changed, which
 	// will force a reset of the visible leafs even if the view hasn't moved
 	tr.refdef.areamaskModified = qfalse;

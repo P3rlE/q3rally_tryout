@@ -1224,8 +1224,8 @@ static void RB_WetGroundPass( shaderCommands_t *input )
 	if ( shader->surfaceFlags & SURF_WET ) {
 		wetness = 1.0f;		// always wet (puddles, wet spots in the map)
 	}
-	if ( wetness <= 0.0f ) {
-		return;
+	if ( wetness <= 0.0f && !backEnd.refdef.numWetZones ) {
+		return;		// dry, and no rain zone
 	}
 
 	// reflection of the surface itself, darkening, how much water it holds
@@ -1266,8 +1266,12 @@ static void RB_WetGroundPass( shaderCommands_t *input )
 	VectorSet4( vec, wetness, reflection, darken, puddles );
 	GLSL_SetUniformVec4( sp, UNIFORM_WETPARAMS, vec );
 
-	VectorSet4( vec, tint[0], tint[1], tint[2], ( backEnd.refdef.rdflags & RDF_RAIN ) ? 1.0f : 0.0f );
+	VectorSet4( vec, tint[0], tint[1], tint[2], 0.0f );
 	GLSL_SetUniformVec4( sp, UNIFORM_COLOR, vec );
+
+	// the rain zones: wet (and with drop rings while it rains) inside
+	GLSL_SetUniformInt( sp, UNIFORM_WETZONECOUNT, backEnd.refdef.numWetZones );
+	GLSL_SetUniformWetZones( sp, UNIFORM_WETZONES, backEnd.refdef.wetZones, backEnd.refdef.numWetZones );
 	GLSL_SetUniformFloat( sp, UNIFORM_TIME, backEnd.refdef.floatTime );
 
 	if ( ssr ) {

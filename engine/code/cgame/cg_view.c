@@ -1027,37 +1027,14 @@ static void CG_PlayBufferedSounds( void ) {
 =================
 CG_UpdateWetness
 
-Q3Rally: how wet the ground is, for the OpenGL2 renderer (refdef.wetness).
-In an active rain zone it gets wet within WET_RAIN_TIME, afterwards it dries
-within WET_DRY_TIME down to the map's own wetness (worldspawn "wetness").
+Q3Rally: how wet the ground is, for the OpenGL2 renderer: the whole map has
+its own wetness (worldspawn "wetness"), rain zones get wet while it rains
+in them (CG_AtmosphericWetZones).
 =================
 */
-#define WET_RAIN_TIME	20.0f	// seconds
-#define WET_DRY_TIME	120.0f
-
 void CG_UpdateWetness( void ) {
-	float target, dt;
-
-	target = Com_Clamp( 0.0f, 1.0f, cgs.mapWetness );
-	if ( CG_AtmosphericPointWet( cg.refdef.vieworg ) || CG_AtmosphericPointWet( cg.predictedPlayerState.origin ) ) {
-		target = 1.0f;
-		cg.refdef.rdflags |= RDF_RAIN;		// drop rings in the puddles
-	}
-
-	// a race that starts in the rain starts on a wet track
-	if ( !cg.wetnessStarted ) {
-		cg.wetness = target;
-		cg.wetnessStarted = qtrue;
-	}
-
-	dt = Com_Clamp( 0.0f, 0.2f, cg.frametime * 0.001f );
-	if ( cg.wetness < target ) {
-		cg.wetness = MIN( target, cg.wetness + dt / WET_RAIN_TIME );
-	} else if ( cg.wetness > target ) {
-		cg.wetness = MAX( target, cg.wetness - dt / WET_DRY_TIME );
-	}
-
-	cg.refdef.wetness = cg.wetness;
+	cg.refdef.wetness = Com_Clamp( 0.0f, 1.0f, cgs.mapWetness );
+	CG_AtmosphericWetZones( &cg.refdef );
 }
 
 /*

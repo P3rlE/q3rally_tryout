@@ -638,7 +638,8 @@ enum
 	GLSL_VEC3,
 	GLSL_VEC4,
 	GLSL_MAT16,
-	GLSL_MAT16_BONEMATRIX
+	GLSL_MAT16_BONEMATRIX,
+	GLSL_VEC4_WETZONES		// Q3Rally: vec4[ MAX_WET_ZONES * 2 ]
 };
 
 typedef enum
@@ -670,6 +671,8 @@ typedef enum
 	UNIFORM_SOFTPARTICLE,	// Q3Rally: x = fade distance (0 = off), y = blend mode, zw = 1 / depth texture size
 	UNIFORM_WETPARAMS,		// Q3Rally: wet ground, x = wetness, y = reflection, z = darkening, w = puddles
 	UNIFORM_PREVVIEWPROJ,	// Q3Rally: world -> clip space of the frame in tr.wetSceneImage
+	UNIFORM_WETZONES,		// Q3Rally: rain zones, per zone mins + wetness, maxs + rain
+	UNIFORM_WETZONECOUNT,
 
 	UNIFORM_ENABLETEXTURES,
 
@@ -810,6 +813,8 @@ typedef struct {
 	vec4_t      motionMaskRect;		// Q3Rally: screen rect (uv min xy, max xy) of the models at the camera, no motion blur there
 	float       motionMaskFar;		// Q3Rally: their farthest view distance, 0 = none
 	float       wetness;			// Q3Rally: wet ground, 0 = dry, 1 = soaked
+	int         numWetZones;		// Q3Rally: rain zones, see refdef_t
+	vec4_t      wetZones[MAX_WET_ZONES * 2];
 	int         lampShadowSlot[MAX_LAMP_SHADOWS];
 	float       lampShadowMvp[MAX_LAMP_SHADOWS][16];
 	vec4_t      lampShadowOrigin[MAX_LAMP_SHADOWS];	// xyz, w = light * LAMP_LIGHT_SCALE
@@ -2398,6 +2403,7 @@ void GLSL_SetUniformVec3(shaderProgram_t *program, int uniformNum, const vec3_t 
 void GLSL_SetUniformVec4(shaderProgram_t *program, int uniformNum, const vec4_t v);
 void GLSL_SetUniformMat4(shaderProgram_t *program, int uniformNum, const mat4_t matrix);
 void GLSL_SetUniformMat4BoneMatrix(shaderProgram_t *program, int uniformNum, /*const*/ mat4_t *matrix, int numMatricies);
+void GLSL_SetUniformWetZones(shaderProgram_t *program, int uniformNum, const vec4_t *v, int numZones);
 
 shaderProgram_t *GLSL_GetGenericShaderProgram(int stage);
 

@@ -18,13 +18,16 @@ uniform mat4   u_PrevViewProj;
 uniform vec3   u_ViewOrigin;
 uniform vec4   u_ViewInfo;		// x = zNear, y = zFar, z = steps, w = highest mip level
 uniform vec4   u_WetParams;		// x = wetness, y = reflection, z = darkening, w = puddles
-uniform vec4   u_Color;			// rgb = tint of the puddle water (muddy on loose ground), a = rain (drop rings)
+uniform vec4   u_Color;			// rgb = tint of the puddle water (muddy on loose ground)
 uniform float  u_Time;
+uniform vec4   u_WetZones[16];	// rain zones: mins + wetness, maxs + rain (drop rings)
+uniform int    u_WetZoneCount;
 
 varying vec3   var_Position;
 varying vec3   var_Normal;
 
 #define MAX_STEPS 40
+#define MAX_WET_ZONES 8
 
 float Hash(vec2 p)
 {
@@ -74,6 +77,32 @@ vec3 SampleScene(vec2 uv, float mip)
 void main()
 {
 	float wet = u_WetParams.x;
+	float rain = 0.0;
+	int   z;
+
+	// rain zones: wet inside the box, soft at the sides; the ground may lie
+	// a little below the bottom of the zone
+	for (z = 0; z < MAX_WET_ZONES; z++)
+	{
+		if (z >= u_WetZoneCount)
+			break;
+
+		vec4  lo = u_WetZones[z * 2];
+		vec4  hi = u_WetZones[z * 2 + 1];
+		vec2  d2 = min(var_Position.xy - lo.xy, hi.xy - var_Position.xy);
+		float f = smoothstep(-16.0, 16.0, min(d2.x, d2.y))
+		        * step(lo.z - 64.0, var_Position.z) * step(var_Position.z, hi.z);
+
+		wet = max(wet, lo.w * f);
+		rain = max(rain, hi.w * f);
+	}
+
+	if (wet <= 0.001)
+	{
+		gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);	// dry here
+		return;
+	}
+
 	vec3  N = normalize(var_Normal);
 	vec3  V = normalize(var_Position - u_ViewOrigin);
 
@@ -91,7 +120,7 @@ void main()
 	N = normalize(N + vec3(wobble * 0.05 * (1.0 - puddle), 0.0));
 
 	// rain drops make rings on the puddles: one drop per cell at a time
-	if (u_Color.a > 0.0 && puddle > 0.0)
+	if (rain > 0.0 && puddle > 0.0)
 	{
 		vec2  cell = floor(var_Position.xy / 26.0);
 		float h = Hash(cell);
@@ -100,7 +129,7 @@ void main()
 		vec2  d = var_Position.xy - centre;
 		float dist = length(d);
 		float ring = sin((dist - t * 13.0) * 1.6) * exp(-abs(dist - t * 13.0) * 0.5) * (1.0 - t);
-		N = normalize(N + vec3(d / max(dist, 0.01) * ring * 0.18 * u_Color.a * puddle, 0.0));
+		N = normalize(N + vec3(d / max(dist, 0.01) * ring * 0.18 * rain * puddle, 0.0));
 	}
 
 	float cosT = clamp(-dot(V, N), 0.0, 1.0);

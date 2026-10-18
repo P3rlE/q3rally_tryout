@@ -114,8 +114,10 @@ Added:
   registered at map load: a weapon handed out without a pickup in the map
   (give, game modes) showed no mine model and a missing-texture square
   instead of the explosion.
-- Wet ground (OpenGL2): in the rain the ground gets wet within about 20
-  seconds and dries within about 2 minutes after the rain stops. Wet
+- Wet ground (OpenGL2): inside a rain zone (rally_weather_rain) the ground
+  gets wet within about 20 seconds while it rains there and dries within
+  about 2 minutes after the rain stops; outside the rain zones it stays
+  dry (each zone has its own wetness, soft at its sides). Wet
   ground is darker and reflects the scene (screen space reflections:
   the reflected view ray is stepped through the depth of the frame and the
   colour is taken from the previous frame), with Fresnel (strong at

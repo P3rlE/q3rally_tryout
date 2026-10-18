@@ -1634,7 +1634,7 @@ const void *RB_PostProcess(const void *data)
 	{
 		tr.wetSceneValid = qfalse;
 
-		if (srcFbo && tr.wetSceneFbo && backEnd.refdef.wetness > 0.0f)
+		if (srcFbo && tr.wetSceneFbo && ( backEnd.refdef.wetness > 0.0f || backEnd.refdef.numWetZones > 0 ))
 		{
 			FBO_FastBlit(srcFbo, srcBox, tr.wetSceneFbo, NULL, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 			qglGenerateTextureMipmapEXT(tr.wetSceneImage->texnum, GL_TEXTURE_2D);

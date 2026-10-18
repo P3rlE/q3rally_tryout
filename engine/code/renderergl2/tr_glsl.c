@@ -106,6 +106,8 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_SoftParticle", GLSL_VEC4 },
 	{ "u_WetParams", GLSL_VEC4 },
 	{ "u_PrevViewProj", GLSL_MAT16 },
+	{ "u_WetZones", GLSL_VEC4_WETZONES },
+	{ "u_WetZoneCount", GLSL_INT },
 
 	{ "u_EnableTextures", GLSL_VEC4 },
 
@@ -733,6 +735,9 @@ void GLSL_InitUniforms(shaderProgram_t *program)
 			case GLSL_MAT16_BONEMATRIX:
 				size += sizeof(vec_t) * 16 * glRefConfig.glslMaxAnimatedBones;
 				break;
+			case GLSL_VEC4_WETZONES:
+				size += sizeof(vec4_t) * MAX_WET_ZONES * 2;
+				break;
 			default:
 				break;
 		}
@@ -946,6 +951,37 @@ void GLSL_SetUniformMat4BoneMatrix(shaderProgram_t *program, int uniformNum, /*c
 	Com_Memcpy(compare, matrix, numMatricies * sizeof(mat4_t));
 
 	qglProgramUniformMatrix4fvEXT(program->program, uniforms[uniformNum], numMatricies, GL_FALSE, &matrix[0][0]);
+}
+
+// Q3Rally: the rain zones of the wet ground pass, two vec4 per zone
+void GLSL_SetUniformWetZones(shaderProgram_t *program, int uniformNum, const vec4_t *v, int numZones)
+{
+	GLint *uniforms = program->uniforms;
+	vec_t *compare = (float *)(program->uniformBuffer + program->uniformBufferOffsets[uniformNum]);
+
+	if (uniforms[uniformNum] == -1 || numZones <= 0) {
+		return;
+	}
+
+	if (uniformsInfo[uniformNum].type != GLSL_VEC4_WETZONES)
+	{
+		ri.Printf( PRINT_WARNING, "GLSL_SetUniformWetZones: wrong type for uniform %i in program %s\n", uniformNum, program->name);
+		return;
+	}
+
+	if (numZones > MAX_WET_ZONES) {
+		numZones = MAX_WET_ZONES;
+	}
+
+	if (!memcmp(v, compare, numZones * 2 * sizeof(vec4_t)))
+	{
+		return;
+	}
+
+	Com_Memcpy(compare, v, numZones * 2 * sizeof(vec4_t));
+
+	GL_UseProgram(program->program);
+	qglUniform4fv(uniforms[uniformNum], numZones * 2, v[0]);
 }
 
 void GLSL_DeleteGPUShader(shaderProgram_t *program)
