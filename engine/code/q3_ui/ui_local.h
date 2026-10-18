@@ -664,6 +664,7 @@ extern void ServerInfo_Cache( void );
 extern void UI_GraphicsOptionsMenu( void );
 extern void GraphicsOptions_Cache( void );
 extern void DriverInfo_Cache( void );
+extern void UI_DriverInfoMenu( void );
 
 //
 // ui_players.c
@@ -1080,20 +1081,12 @@ typedef struct gfxRow_s {
 } gfxRow_t;
 
 typedef struct {
-	const char	*label;
-	void		(*open)( void );	// NULL: just go back
-	qboolean	replace;			// pop the current page first
-} gfxNav_t;
-
-typedef struct {
 	const char		*title;
 	const char		*subtitle;
 	const char		*section;
 	const gfxRow_t	*rows;
 	int				numRows;
 	int				leftRows;		// rows in the left column
-	const gfxNav_t	*nav;
-	int				numNav;
 	int				slot;			// 0 graphics, 1 effects, 2 lighting
 	qboolean		gl2Only;
 } gfxPageDef_t;

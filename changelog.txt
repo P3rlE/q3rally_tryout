@@ -209,7 +209,10 @@ Changed:
   water, wet roads, haze, colour look, ambient occlusion, surface relief,
   tyre smoke, soft particles, skid marks, tone curve) and Lighting &
   shadows (HDR, sun shadows and their quality, lamp shadows, headlights,
-  headlight shadows, shadow detail, dynamic lights). One preset (Low,
+  headlight shadows, shadow detail, dynamic lights). The sub menu on the
+  left is the same on every page (the three pages and Driver info, the
+  current page highlighted); switching pages replaces the page, so Back
+  always returns to the Config menu. One preset (Low,
   Medium, High, Ultra) sets everything on all three pages; changing a
   single option shows "Custom". Options take effect at once; those that
   need a renderer restart show the Apply button. Options that only work in

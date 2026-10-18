@@ -65,7 +65,6 @@ once; when a changed cvar needs a renderer restart, the pages show "Apply"
 
 #define GFX_MAX_PAGES			3
 #define GFX_MAX_ROWS			16
-#define GFX_MAX_NAV				4
 
 #define ID_GFX_ROW				100
 #define ID_GFX_NAV				200
@@ -83,10 +82,29 @@ typedef struct {
 	menuframework_s		menu;		// first, menu items point back to it
 	const gfxPageDef_t	*def;
 	menulist_s			rows[GFX_MAX_ROWS];
-	menutext_s			nav[GFX_MAX_NAV];
+	menutext_s			nav[4];		// gfxNav
 	menutext_s			back;
 	menutext_s			apply;
 } gfxPage_t;
+
+static void UI_GfxEffects_Open( void );
+static void UI_GfxLighting_Open( void );
+
+typedef struct {
+	const char	*label;
+	void		(*open)( void );
+	qboolean	replace;		// a sibling page: replaces the current one
+} gfxNav_t;
+
+// the sub menu, the same on every page; the first entries in page slot order
+static const gfxNav_t gfxNav[] = {
+	{ "Graphics", UI_GraphicsOptionsMenu, qtrue },
+	{ "Effects", UI_GfxEffects_Open, qtrue },
+	{ "Lighting & shadows", UI_GfxLighting_Open, qtrue },
+	{ "Driver info", UI_DriverInfoMenu, qfalse }
+};
+
+#define GFX_NUM_NAV		ARRAY_LEN( gfxNav )
 
 static gfxPage_t	gfxPages[GFX_MAX_PAGES];
 static qboolean		gfxRestart;		// a changed cvar needs vid_restart
@@ -393,6 +411,9 @@ static void Gfx_Event( void *ptr, int event ) {
 		const gfxRow_t *row = &page->def->rows[id - ID_GFX_ROW];
 		int choice = page->rows[id - ID_GFX_ROW].curvalue;
 
+		if ( choice == Gfx_ReadRow( row ) ) {
+			return;		// activated without a change (Enter)
+		}
 		if ( choice < 0 ) {
 			choice = 0;
 		}
@@ -408,15 +429,19 @@ static void Gfx_Event( void *ptr, int event ) {
 		return;
 	}
 
-	if ( id >= ID_GFX_NAV && id < ID_GFX_NAV + page->def->numNav ) {
-		const gfxNav_t *nav = &page->def->nav[id - ID_GFX_NAV];
+	if ( id >= ID_GFX_NAV && id < ID_GFX_NAV + GFX_NUM_NAV ) {
+		int index = id - ID_GFX_NAV;
 
-		if ( nav->replace || !nav->open ) {
-			UI_PopMenu();
+		if ( index == page->def->slot ) {
+			return;		// already here
 		}
-		if ( nav->open ) {
-			nav->open();
+		if ( gfxNav[index].replace && uis.menusp > 0 ) {
+			// the pages replace each other, so Back always leaves the graphics
+			// settings; take this page off the stack without UI_PopMenu, which
+			// would play the back sound or close the UI
+			uis.menusp--;
 		}
+		gfxNav[index].open();
 		return;
 	}
 
@@ -492,9 +517,11 @@ static void Gfx_DrawSetting( void *self ) {
 static void Gfx_DrawNav( void *self ) {
 	menutext_s *text = (menutext_s *)self;
 	menucommon_s *item = &text->generic;
+	gfxPage_t *page = (gfxPage_t *)item->parent;
+	qboolean active = ( item->id - ID_GFX_NAV == page->def->slot );
 
-	Frontend_DrawButton( item->left, item->top, item->right - item->left, item->bottom - item->top,
-		text->string, 1.0f, Menu_ItemAtCursor( item->parent ) == item, UI_CENTER );
+	Frontend_DrawNavButton( item->left, item->top, item->right - item->left, item->bottom - item->top,
+		text->string, 1.0f, active || Menu_ItemAtCursor( item->parent ) == item, UI_LEFT );
 }
 
 static void Gfx_DrawAction( void *self ) {
@@ -606,19 +633,20 @@ void UI_GfxPage_Push( const gfxPageDef_t *def ) {
 	page->menu.draw = Gfx_MenuDraw;
 	page->menu.key = Gfx_MenuKey;
 
-	for ( i = 0; i < def->numNav && i < GFX_MAX_NAV; i++ ) {
+	// the same sub menu on every page, the current page highlighted
+	for ( i = 0; i < GFX_NUM_NAV; i++ ) {
 		menutext_s *nav = &page->nav[i];
 
 		nav->generic.type = MTYPE_PTEXT;
-		nav->generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
+		nav->generic.flags = QMF_LEFT_JUSTIFY | QMF_PULSEIFFOCUS;
 		nav->generic.callback = Gfx_Event;
-		nav->string = (char *)def->nav[i].label;
-		nav->style = UI_CENTER | UI_SMALLFONT;
+		nav->string = (char *)gfxNav[i].label;
+		nav->style = UI_LEFT | UI_SMALLFONT;
 		nav->color = text_color_normal;
 		Menu_AddItem( &page->menu, nav );
 		nav->generic.ownerdraw = Gfx_DrawNav;
 		Gfx_SetBounds( &nav->generic, ID_GFX_NAV + i, GFX_NAV_X + 16,
-			GFX_NAV_Y + 48 + i * 32, GFX_NAV_WIDTH - 32, GFX_ROW_HEIGHT );
+			GFX_NAV_Y + 48 + i * 32 + ( gfxNav[i].replace ? 0 : 16 ), GFX_NAV_WIDTH - 32, GFX_ROW_HEIGHT );
 	}
 
 	for ( i = 0; i < def->numRows && i < GFX_MAX_ROWS; i++ ) {
@@ -684,7 +712,7 @@ static const char *gfx_onoff_fine[] = { "Off", "On", "Fine", NULL };
 static const char *bloom_sets[] = { "r_bloom=0", "r_bloom=1" };
 static const char *motionblur_names[] = { "Off", "Low", "Medium", "High", NULL };
 static const char *motionblur_sets[] = { "r_motionBlur=0", "r_motionBlur=0.3", "r_motionBlur=0.5", "r_motionBlur=0.8" };
-static const char *carrefl_names[] = { "Static", "Live", "Live, every frame", NULL };
+static const char *carrefl_names[] = { "Static", "Live", "Every frame", NULL };
 static const char *carrefl_sets[] = { "r_carReflections=0", "r_carReflections=1", "r_carReflections=2" };
 static const char *water_sets[] = { "r_water=0", "r_water=1" };
 static const char *wet_sets[] = { "r_wetGround=0", "r_wetGround=1", "r_wetGround=2" };
@@ -752,39 +780,26 @@ static const char *detail_sets[] = {
 static const char *dlight_sets[] = { "r_dynamiclight=0", "r_dynamiclight=1" };
 
 static const gfxRow_t gfxLightingRows[] = {
+	// left: picture and sun
 	{ "HDR", gfx_onoff, hdr_sets, GFXROW_RESTART | GFXROW_GL2 },
 	{ "Sun shadows", gfx_onoff, sun_sets, GFXROW_RESTART | GFXROW_GL2 },
-	{ "Sun shadow qual.", quality_names, shadowq_sets, GFXROW_RESTART | GFXROW_GL2 },
-	{ "Lamp shadows", lamp_names, lamp_sets, GFXROW_GL2 },
+	{ "Sun quality", quality_names, shadowq_sets, GFXROW_RESTART | GFXROW_GL2 },
+	{ "Dynamic lights", gfx_onoff, dlight_sets, 0 },
+	// right: headlights and lamps
 	{ "Headlights", headlight_names, headlight_sets, GFXROW_GL2 },
 	{ "Headlight shad.", hlshadow_names, hlshadow_sets, GFXROW_GL2 },
-	{ "Shadow detail", detail_names, detail_sets, GFXROW_RESTART | GFXROW_GL2 },
-	{ "Dynamic lights", gfx_onoff, dlight_sets, 0 }
-};
-
-static void UI_GfxEffects_Open( void );
-static void UI_GfxLighting_Open( void );
-
-static const gfxNav_t gfxEffectsNav[] = {
-	{ "Graphics", NULL, qtrue },
-	{ "Lighting & shadows", UI_GfxLighting_Open, qtrue }
-};
-
-static const gfxNav_t gfxLightingNav[] = {
-	{ "Graphics", NULL, qtrue },
-	{ "Effects", UI_GfxEffects_Open, qtrue }
+	{ "Lamp shadows", lamp_names, lamp_sets, GFXROW_GL2 },
+	{ "Shadow detail", detail_names, detail_sets, GFXROW_RESTART | GFXROW_GL2 }
 };
 
 static const gfxPageDef_t gfxEffectsPage = {
 	"Effects", "Reflections, weather, particles and the look of the picture", "Effects",
-	gfxEffectsRows, ARRAY_LEN( gfxEffectsRows ), 7,
-	gfxEffectsNav, ARRAY_LEN( gfxEffectsNav ), 1, qtrue
+	gfxEffectsRows, ARRAY_LEN( gfxEffectsRows ), 7, 1, qtrue
 };
 
 static const gfxPageDef_t gfxLightingPage = {
 	"Lighting & shadows", "HDR, sun, lamp and headlight shadows", "Lighting & shadows",
-	gfxLightingRows, ARRAY_LEN( gfxLightingRows ), 4,
-	gfxLightingNav, ARRAY_LEN( gfxLightingNav ), 2, qtrue
+	gfxLightingRows, ARRAY_LEN( gfxLightingRows ), 4, 2, qtrue
 };
 
 static void UI_GfxEffects_Open( void ) {

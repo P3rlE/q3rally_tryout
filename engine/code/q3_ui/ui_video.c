@@ -741,7 +741,7 @@ static int GraphicsOptions_ReadPreset( void )
 	return ( level >= GFX_NUM_PRESETS ) ? -1 : level;
 }
 
-static void UI_DriverInfo_Open( void )
+void UI_DriverInfoMenu( void )
 {
 	UI_DriverInfo_Menu();
 }
@@ -818,16 +818,9 @@ static gfxRow_t graphicsRows[NUM_GRAPHICSROWS] = {
 	{ "Geometry", geometry_names, geometry_sets, GFXROW_RESTART }
 };
 
-static const gfxNav_t graphicsNav[] = {
-	{ "Effects", UI_GfxEffectsMenu, qfalse },
-	{ "Lighting & shadows", UI_GfxLightingMenu, qfalse },
-	{ "Driver info", UI_DriverInfo_Open, qfalse }
-};
-
 static const gfxPageDef_t graphicsPage = {
 	"Graphics", "Quality preset, display mode and textures", "Display & quality",
-	graphicsRows, NUM_GRAPHICSROWS, 5,
-	graphicsNav, ARRAY_LEN( graphicsNav ), 0, qfalse
+	graphicsRows, NUM_GRAPHICSROWS, 5, 0, qfalse
 };
 
 
