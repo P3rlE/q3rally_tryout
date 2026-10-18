@@ -18,6 +18,7 @@ textures/skies/hellsky
 	q3gl2_sun 4 3 3 65 290 75 0.6
 	q3map_surfacelight 50
 	skyparms - 512 -
+	q3r_colorLut gfx/luts/warm	// Q3Rally: colour grading look of the maps with this sky
 
 	{
 		map textures/skies/dimclouds.tga
@@ -149,6 +150,7 @@ textures/q3r_skies/env/mp_us/mp_us
 	q3map_sun 1 1 1 100 300 50
 	q3gl2_sun 1 1 1 100 300 50 0.5
 	skyparms textures/q3r_skies/env/mp_us/urbansp - -
+	q3r_colorLut gfx/luts/dusk	// Q3Rally: colour grading look of the maps with this sky
 }
 
 // ------------------------------------------------------------
@@ -166,6 +168,7 @@ textures/stecki/night01
 	q3map_surfacelight 5
 
         skyparms textures/stecki/night01 512 textures/stecki/night01
+        q3r_colorLut gfx/luts/night	// Q3Rally: colour grading look of the maps with this sky
 
 }
 
@@ -200,6 +203,7 @@ textures/q3r_skies/env/ame_nebula
 	q3map_sun 1.00 0.90 1.00 70 90 90
 	q3map_surfacelight 70
 	skyparms textures/q3r_skies/env/ame_nebula/purplenebula - -
+	q3r_colorLut gfx/luts/night	// Q3Rally: colour grading look of the maps with this sky
 }
 
 textures/skies/ame_nebula
@@ -212,6 +216,7 @@ textures/skies/ame_nebula
 	q3gl2_sun 1.00 0.90 1.00 70 68 55 0.5
 	q3map_surfacelight 70
 	skyparms textures/q3r_skies/env/ame_nebula/purplenebula - -
+	q3r_colorLut gfx/luts/night	// Q3Rally: colour grading look of the maps with this sky
 }
 
 // ------------------------------------------------------------
@@ -232,6 +237,7 @@ textures/skies/tim_dm3_red
 	//q3map_sun 1 .37 .19 70 30 70
 	q3map_surfacelight 80
 	skyparms - 512 -
+	q3r_colorLut gfx/luts/warm	// Q3Rally: colour grading look of the maps with this sky
 
 	//cloudparms 512 full
 	//lightning
@@ -258,6 +264,7 @@ textures/skies/night_dark
 	q3map_surfacelight 35
 	q3map_sun 0.545098 0.690196 0.705882 15 319 58
 	skyParms env/xnight2 128 -
+	q3r_colorLut gfx/luts/night	// Q3Rally: colour grading look of the maps with this sky
 }
 
 textures/vsky/vsky
@@ -272,4 +279,5 @@ textures/vsky/vsky
 	q3map_sun 0.980392 0.67451 0.372549 100 334 57
 	q3gl2_sun 0.980392 0.67451 0.372549 100 334 57 0.5
 	skyparms textures/vsky/vsky - -
+	q3r_colorLut gfx/luts/warm	// Q3Rally: colour grading look of the maps with this sky
 }

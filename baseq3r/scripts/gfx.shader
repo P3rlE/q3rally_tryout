@@ -1528,6 +1528,7 @@ textures/stecki/night01
 	q3map_surfacelight 5
 
         skyparms textures/stecki/night01 512 textures/stecki/night01
+        q3r_colorLut gfx/luts/night	// Q3Rally: colour grading look of the maps with this sky
 
 }
 

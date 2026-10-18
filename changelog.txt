@@ -160,7 +160,12 @@ Added:
   cvars r_toneMapCurve (1 = filmic, 0 = the old curve), r_filmicExposure
   (1.25), r_filmicWhite (2), r_colorGrade (strength, 1, 0 = off) and
   r_colorLut (one look for every map, "none" = off). New looks are made
-  with tools/maptools/make_color_luts.py.
+  with tools/maptools/make_color_luts.py. Looks set in the sky shaders:
+  warm for q3r_sk1, q3r_lcs1, q3r_mk, q3r_valley and q3r_lavafalls; night
+  for q3r_nightcity, q3r_babel, q3r_demobowl, q3r_ctf_04, q3r_dm02,
+  q3r_battlecanyon and q3r_david4; dusk for q3r_dirtyfun and q3r_dd_02;
+  cold for q3r_ridgeracer (and q3r_watertest). The other maps use
+  q3r_default.
 
 Changed:
 

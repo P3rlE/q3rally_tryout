@@ -1650,8 +1650,9 @@ static qboolean ParseShader( char **text )
 			continue;
 		}
 		// Q3Rally: q3r_water* keywords are for the OpenGL2 renderer only;
-		// here the shader's normal stages (e.g. a portal mirror) are drawn
-		else if ( !Q_stricmpn( token, "q3r_water", 9 ) )
+		// here the shader's normal stages (e.g. a portal mirror) are drawn.
+		// q3r_colorLut (colour grading) is OpenGL2 only as well
+		else if ( !Q_stricmpn( token, "q3r_water", 9 ) || !Q_stricmp( token, "q3r_colorLut" ) )
 		{
 			SkipRestOfLine( text );
 			continue;

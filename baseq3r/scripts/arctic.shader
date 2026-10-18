@@ -21,6 +21,7 @@ textures/arctic/arc_skybox3
 	q3gl2_sun .9 .9 1 45 0 70 0.5
 	q3map_surfacelight 25
 	skyparms env/arcsky/arcsky2 1024 -
+	q3r_colorLut gfx/luts/cold	// Q3Rally: colour grading look of the maps with this sky
 
 	{
 		map textures/skies/dimclouds.tga
