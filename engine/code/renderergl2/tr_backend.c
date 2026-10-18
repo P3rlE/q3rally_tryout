@@ -427,6 +427,27 @@ void RB_BeginDrawingView (void) {
 
 /*
 ==================
+RB_InDepthPrepass
+
+Q3Rally: alpha tested surfaces that write depth (trees, fences, grates)
+belong in the depth prepass even when they blend, so the effects that read
+its depth (haze, ambient occlusion, soft particles) see them
+==================
+*/
+static qboolean RB_InDepthPrepass( const shader_t *shader )
+{
+	const shaderStage_t *stage = shader->stages[0];
+
+	if ( shader->sort == SS_OPAQUE || shader->sort == SS_PORTAL ) {
+		return qtrue;
+	}
+
+	return stage && ( stage->stateBits & GLS_DEPTHMASK_TRUE ) && ( stage->stateBits & GLS_ATEST_BITS )
+		&& !shader->isSky && !shader->isWater;
+}
+
+/*
+==================
 RB_RenderDrawSurfList
 ==================
 */
@@ -465,7 +486,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 
 	for (i = 0, drawSurf = drawSurfs ; i < numDrawSurfs ; i++, drawSurf++) {
 		if ( drawSurf->sort == oldSort && drawSurf->cubemapIndex == oldCubemapIndex) {
-			if (backEnd.depthFill && shader && (shader->sort != SS_OPAQUE && shader->sort != SS_PORTAL))
+			if (backEnd.depthFill && shader && !RB_InDepthPrepass(shader))
 				continue;
 
 			// fast path, same as previous sort
@@ -494,7 +515,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 			oldCubemapIndex = cubemapIndex;
 		}
 
-		if (backEnd.depthFill && shader && (shader->sort != SS_OPAQUE && shader->sort != SS_PORTAL))
+		if (backEnd.depthFill && shader && !RB_InDepthPrepass(shader))
 			continue;
 
 		//
@@ -1651,6 +1672,13 @@ const void *RB_PostProcess(const void *data)
 			tr.wetSceneTime = backEnd.refdef.time;
 			tr.wetSceneValid = qtrue;
 		}
+	}
+
+	// Q3Rally: distance and ground haze of the map
+	if (srcFbo && r_haze->integer && tr.hazeSet && backEnd.viewParms.viewportWidth >= glConfig.vidWidth / 2
+		&& !(backEnd.refdef.rdflags & RDF_NOWORLDMODEL))
+	{
+		RB_Haze(srcFbo, srcBox);
 	}
 
 	if (srcFbo)

@@ -60,6 +60,8 @@ extern const char *fallbackShader_motionblur_vp;
 extern const char *fallbackShader_motionblur_fp;
 extern const char *fallbackShader_wetground_vp;
 extern const char *fallbackShader_wetground_fp;
+extern const char *fallbackShader_haze_vp;
+extern const char *fallbackShader_haze_fp;
 extern const char *fallbackShader_ssao_vp;
 extern const char *fallbackShader_ssao_fp;
 extern const char *fallbackShader_texturecolor_vp;
@@ -112,6 +114,9 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_ToneParams", GLSL_VEC4 },
 	{ "u_LutParams", GLSL_VEC4 },
 	{ "u_AoParams", GLSL_VEC4 },
+	{ "u_HazeColor", GLSL_VEC4 },
+	{ "u_HazeParams", GLSL_VEC4 },
+	{ "u_HazeSun", GLSL_VEC4 },
 
 	{ "u_EnableTextures", GLSL_VEC4 },
 
@@ -1692,6 +1697,24 @@ void GLSL_InitGPUShaders(void)
 		numEtcShaders++;
 	}
 
+	// Q3Rally: haze
+	if (glRefConfig.framebufferObject)
+	{
+		attribs = ATTR_POSITION | ATTR_TEXCOORD;
+		extradefines[0] = '\0';
+
+		if (!GLSL_InitGPUShader(&tr.hazeShader, "haze", attribs, qtrue, extradefines, qtrue, fallbackShader_haze_vp, fallbackShader_haze_fp))
+		{
+			ri.Error(ERR_FATAL, "Could not load haze shader!");
+		}
+
+		GLSL_InitUniforms(&tr.hazeShader);
+		GLSL_SetUniformInt(&tr.hazeShader, UNIFORM_TEXTUREMAP, TB_COLORMAP);
+		GLSL_FinishGPUShader(&tr.hazeShader);
+
+		numEtcShaders++;
+	}
+
 
 	// GLSL 1.10+ or GL_OES_standard_derivatives extension are required for dFdx() and dFdy() GLSL functions
 	if (glRefConfig.glslMajorVersion > 1 || (glRefConfig.glslMajorVersion == 1 && glRefConfig.glslMinorVersion >= 10)
@@ -1826,6 +1849,7 @@ void GLSL_ShutdownGPUShaders(void)
 	GLSL_DeleteGPUShader(&tr.carReflectShader);
 	GLSL_DeleteGPUShader(&tr.motionBlurShader);
 	GLSL_DeleteGPUShader(&tr.wetGroundShader);
+	GLSL_DeleteGPUShader(&tr.hazeShader);
 	GLSL_DeleteGPUShader(&tr.ssaoShader);
 
 	for ( i = 0; i < 4; i++)

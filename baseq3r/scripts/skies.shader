@@ -18,6 +18,7 @@ textures/skies/hellsky
 	q3gl2_sun 4 3 3 65 290 75 0.6
 	q3map_surfacelight 50
 	skyparms - 512 -
+	q3r_haze 0.42 0.38 0.34 3500 2500 0 150	// Q3Rally: haze of the maps with this sky
 	q3r_colorLut gfx/luts/warm	// Q3Rally: colour grading look of the maps with this sky
 
 	{
@@ -78,6 +79,7 @@ textures/q3r_skies/env/trainyard/trainyard
 	q3map_sun 1 1 1 32 240 50
 	q3gl2_sun 1 1 1 32 240 50 0.5
 	skyparms textures/q3r_skies/env/trainyard/trainyard - -
+	q3r_haze 0.70 0.76 0.84 6000	// Q3Rally: haze of the maps with this sky
 }
 
 // ------------------------------------------------------------
@@ -150,6 +152,7 @@ textures/q3r_skies/env/mp_us/mp_us
 	q3map_sun 1 1 1 100 300 50
 	q3gl2_sun 1 1 1 100 300 50 0.5
 	skyparms textures/q3r_skies/env/mp_us/urbansp - -
+	q3r_haze 0.22 0.09 0.05 4000	// Q3Rally: haze of the maps with this sky
 	q3r_colorLut gfx/luts/dusk	// Q3Rally: colour grading look of the maps with this sky
 }
 
@@ -168,6 +171,7 @@ textures/stecki/night01
 	q3map_surfacelight 5
 
         skyparms textures/stecki/night01 512 textures/stecki/night01
+	q3r_haze 0.10 0.09 0.08 4000	// Q3Rally: haze of the maps with this sky
         q3r_colorLut gfx/luts/night	// Q3Rally: colour grading look of the maps with this sky
 
 }
@@ -188,6 +192,7 @@ textures/stecki/sub01
 	q3map_surfacelight 320
 
         skyparms textures/stecki/sub01 512 textures/stecki/sub01
+	q3r_haze 0.62 0.68 0.76 6000 3000 -150 160 0.5	// Q3Rally: haze of the maps with this sky
 
 }
 
@@ -237,6 +242,7 @@ textures/skies/tim_dm3_red
 	//q3map_sun 1 .37 .19 70 30 70
 	q3map_surfacelight 80
 	skyparms - 512 -
+	q3r_haze 0.40 0.12 0.06 3500	// Q3Rally: haze of the maps with this sky
 	q3r_colorLut gfx/luts/warm	// Q3Rally: colour grading look of the maps with this sky
 
 	//cloudparms 512 full
@@ -264,6 +270,7 @@ textures/skies/night_dark
 	q3map_surfacelight 35
 	q3map_sun 0.545098 0.690196 0.705882 15 319 58
 	skyParms env/xnight2 128 -
+	q3r_haze 0.04 0.05 0.07 3000	// Q3Rally: haze of the maps with this sky
 	q3r_colorLut gfx/luts/night	// Q3Rally: colour grading look of the maps with this sky
 }
 
@@ -279,5 +286,6 @@ textures/vsky/vsky
 	q3map_sun 0.980392 0.67451 0.372549 100 334 57
 	q3gl2_sun 0.980392 0.67451 0.372549 100 334 57 0.5
 	skyparms textures/vsky/vsky - -
+	q3r_haze 0.62 0.42 0.32 4500 0 0 128 0.6	// Q3Rally: haze of the maps with this sky
 	q3r_colorLut gfx/luts/warm	// Q3Rally: colour grading look of the maps with this sky
 }

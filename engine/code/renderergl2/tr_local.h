@@ -677,6 +677,9 @@ typedef enum
 	UNIFORM_TONEPARAMS,		// Q3Rally: x = curve (0 classic, 1 filmic), y = filmic exposure, z = filmic white
 	UNIFORM_LUTPARAMS,		// Q3Rally: x = LUT strength, y = LUT size (0 = none)
 	UNIFORM_AOPARAMS,		// Q3Rally: SSAO, x = radius, y = intensity, z = bias, w = samples
+	UNIFORM_HAZECOLOR,		// Q3Rally: haze, rgb + most it hides
+	UNIFORM_HAZEPARAMS,		// Q3Rally: haze, density, ground density, 1 / ground thickness, ground height
+	UNIFORM_HAZESUN,		// Q3Rally: haze, direction to the sun + glow
 
 	UNIFORM_ENABLETEXTURES,
 
@@ -1714,6 +1717,16 @@ typedef struct {
 	char					colorLutName[MAX_QPATH];	// what colorLutImage was loaded for
 	char					worldColorLut[MAX_QPATH];	// worldspawn "colorlut"
 	char					shaderColorLut[MAX_QPATH];	// q3r_colorLut in the sky shader
+
+	// Q3Rally: haze of the map (q3r_haze in the sky shader or worldspawn "haze")
+	qboolean				hazeSet;
+	qboolean				hazeFromWorld;
+	vec3_t					hazeColor;
+	float					hazeDistance;		// units at which the thin haze hides half
+	float					hazeGroundDistance;	// the same for the ground haze at its height, 0 = none
+	float					hazeGroundHeight;
+	float					hazeGroundThickness;
+	float					hazeSunGlow;
 	shaderProgram_t calclevels4xShader[2];
 	shaderProgram_t shadowmaskShader;
 	shaderProgram_t lampShadowShader;	// Q3Rally
@@ -1723,6 +1736,7 @@ typedef struct {
 	shaderProgram_t carReflectShader;	// Q3Rally: car paint reflection
 	shaderProgram_t motionBlurShader;	// Q3Rally: camera motion blur
 	shaderProgram_t wetGroundShader;	// Q3Rally: wet ground, darkening and screen space reflection
+	shaderProgram_t hazeShader;			// Q3Rally: distance and height haze
 	shaderProgram_t ssaoShader;
 	shaderProgram_t depthBlurShader[4];
 	shaderProgram_t testcubeShader;
@@ -1900,6 +1914,8 @@ extern  cvar_t  *r_postProcess;
 extern  cvar_t  *r_toneMap;
 extern  cvar_t  *r_toneMapCurve;
 extern  cvar_t  *r_ssaoRadius;
+extern  cvar_t  *r_haze;
+extern  cvar_t  *r_hazeDensity;
 extern  cvar_t  *r_genNormalStrength;
 extern  cvar_t  *r_ssaoStrength;
 extern  cvar_t  *r_ssaoDistance;
@@ -2451,6 +2467,8 @@ void R_ComputeMotionMask( void );
 #define CAR_REFLECT_COAT	0.7f		// Q3Rally: clear coat on top of the car paint
 #define CAR_REFLECT_COAT_FACING	0.04f	// Q3Rally: clear coat seen straight on (1 at the edges)
 void RE_BeginScene( const refdef_t *fd );
+qboolean R_ParseHaze( const char *text );
+void RB_Haze( FBO_t *dstFbo, ivec4_t dstBox );
 void R_UpdateColorLut( void );
 image_t *R_GenerateSurfaceMaps( image_t *diffuse );
 void RE_RenderScene( const refdef_t *fd );

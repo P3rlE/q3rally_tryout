@@ -12,6 +12,7 @@ textures/skies/oasisnight
 	q3map_surfacelight 30
 	q3map_sun 1.0 0.95 0.8 40 270 25
 	skyParms env/oasisnight/oasisnight - -
+	q3r_haze 0.12 0.12 0.20 4000	// Q3Rally: haze of the maps with this sky
 	q3r_colorLut gfx/luts/night	// Q3Rally: colour grading look of the maps with this sky
 }
 

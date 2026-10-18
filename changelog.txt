@@ -186,6 +186,20 @@ Added:
   (one pixel Sobel, brightened the texture) is no longer used.
   r_genNormalMaps is now on by default (latched); new cvar
   r_genNormalStrength (1). Real _n / _s maps next to a texture still win.
+- Distance and ground haze (OpenGL2): the air between the camera and far
+  surfaces is hazy in the colour of the map's sky, so the distance gets
+  depth; a ground haze can lie in valleys and hollows (thick near the
+  ground, thin higher up, integrated along the view ray) and the haze
+  glows towards the sun. The sky only gets haze at the horizon. Set in the
+  sky shader with q3r_haze <r> <g> <b> <distance> [<ground distance>
+  <ground height> <ground thickness> [<sun glow>]] or with the worldspawn
+  key "haze" (same values, wins over the sky shader). Set for every map
+  with a sky except the space nebula; country01 and sk1 also get ground
+  haze. New cvars r_haze (1) and r_hazeDensity (1).
+- OpenGL2: alpha tested surfaces that write depth (trees, fences, grates)
+  are now part of the depth prepass even when they blend, so haze, ambient
+  occlusion and soft particles see them (the tree tops above the forest
+  walls were treated as sky).
 
 Changed:
 

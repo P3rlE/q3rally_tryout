@@ -379,6 +379,17 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
   </table></div>
   <div class="callout orange"><strong>Limits</strong>The height comes from brightness: light mortar between dark bricks reads as raised. For important textures a hand made <code>_n</code> (and <code>_s</code>) is better and is used automatically. Load time grows a little (every world texture is decoded twice). The headlight cones (<code>spotlight_fp.glsl</code>) do not use the normal maps yet.</div>
 
+  <h3>Haze — Implementation</h3>
+  <p>Cvars: <code>r_haze</code> (archive, 1), <code>r_hazeDensity</code> (archive, 1). Needs <code>r_depthPrepass 1</code>.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Part</th><th>Where</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>Settings</td><td><code>R_ParseHaze</code> (<code>tr_postprocess.c</code>), <code>tr_bsp.c</code> (worldspawn <code>haze</code>), <code>tr_shader.c</code> (<code>q3r_haze</code>)</td><td><code>tr.haze*</code>, cleared in <code>RE_LoadWorldMap</code>. The worldspawn is read before the shaders, so it sets <code>tr.hazeFromWorld</code> and the keyword is ignored then. GL1 skips the keyword.</td></tr>
+      <tr><td>Pass</td><td><code>RB_Haze</code>, <code>glsl/haze_*.glsl</code>, called from <code>RB_PostProcess</code> after the SSAO and the wet ground copy, before tone mapping</td><td>Fullscreen over <code>tr.hdrDepthImage</code> (<code>FBO_BlitFromTexture</code>, blend SRC_ALPHA / ONE_MINUS_SRC_ALPHA). Ray = forward + (1 &minus; 2u)&middot;tan(fx/2)&middot;left + (2v &minus; 1)&middot;tan(fy/2)&middot;up, distance = view depth &middot; |ray|. Optical depth = d &middot; ln2/distance (sky: only towards the horizon, sky distance = 3 &times; distance) + ground part g&middot;e<sup>&minus;b(h<sub>eye</sub>&minus;h<sub>0</sub>)</sup>&middot;d&middot;(1&minus;e<sup>&minus;b&middot;&Delta;z</sup>)/(b&middot;&Delta;z), g = ln2/ground distance, b = 1/thickness. Colour + sun colour (from <code>tr.sunLight</code>, max 1) &times; max(ray&middot;sun, 0)<sup>8</sup> &times; glow. Main view only.</td></tr>
+      <tr><td>Depth prepass</td><td><code>RB_InDepthPrepass</code> (<code>tr_backend.c</code>)</td><td>Besides opaque and portal shaders also shaders whose first stage writes depth with an alpha test (trees, fences) even when they blend; not sky or water. Before, blended tree walls were missing in the depth (haze, SSAO and soft particles treated them as sky).</td></tr>
+    </tbody>
+  </table></div>
+
   <h3>Filmic Tone Mapping &amp; Colour Grading — Implementation</h3>
   <p>Part of the tone mapping pass (<code>RB_ToneMap</code> in <code>tr_postprocess.c</code>, <code>glsl/tonemap_fp.glsl</code>), so it needs <code>r_hdr 1</code> and <code>r_toneMap 1</code> and runs before bloom and FXAA. Cvars (all archive): <code>r_toneMapCurve</code> (1), <code>r_filmicExposure</code> (1.25), <code>r_filmicWhite</code> (2), <code>r_colorGrade</code> (1), <code>r_colorLut</code> ("").</p>
   <div class="table-wrap"><table>

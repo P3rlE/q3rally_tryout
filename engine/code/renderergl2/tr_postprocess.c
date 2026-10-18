@@ -710,3 +710,90 @@ void RB_MotionBlur(FBO_t *srcFbo, ivec4_t srcBox)
 		prevValid = qtrue;
 	}
 }
+
+
+/*
+=============
+R_ParseHaze
+
+Q3Rally: the haze of the map, from the worldspawn key "haze" or the sky
+shader keyword q3r_haze:
+  <r> <g> <b> <distance> [<ground distance> <ground height> <ground thickness> [<sun glow>]]
+distance = units at which the haze hides half (0 = no thin haze); ground
+distance = the same for the ground haze at the ground height (0 = none);
+the ground haze thins out by e every ground thickness units upwards.
+=============
+*/
+qboolean R_ParseHaze( const char *text )
+{
+	float v[9];
+	int n;
+
+	for ( n = 0; n < 9; n++ ) {
+		v[n] = 0.0f;
+	}
+	n = sscanf( text, "%f %f %f %f %f %f %f %f", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5], &v[6], &v[7] );
+	if ( n < 4 ) {
+		ri.Printf( PRINT_WARNING, "WARNING: haze needs <r> <g> <b> <distance> [<ground distance> <ground height> <ground thickness> [<sun glow>]], got '%s'\n", text );
+		return qfalse;
+	}
+
+	VectorSet( tr.hazeColor, v[0], v[1], v[2] );
+	tr.hazeDistance = MAX( v[3], 0.0f );
+	tr.hazeGroundDistance = n >= 5 ? MAX( v[4], 0.0f ) : 0.0f;
+	tr.hazeGroundHeight = v[5];
+	tr.hazeGroundThickness = n >= 7 ? MAX( v[6], 1.0f ) : 128.0f;
+	tr.hazeSunGlow = n >= 8 ? MAX( v[7], 0.0f ) : 0.5f;
+	tr.hazeSet = tr.hazeDistance > 0.0f || tr.hazeGroundDistance > 0.0f;
+
+	return qtrue;
+}
+
+/*
+=============
+RB_Haze
+
+Q3Rally: distance and ground haze over the scene, before tone mapping
+(glsl/haze_fp.glsl). Main view only, needs the depth of the prepass.
+=============
+*/
+void RB_Haze( FBO_t *dstFbo, ivec4_t dstBox )
+{
+	vec4_t vec, sunColor;
+	float zNear, density, groundDensity, scale;
+
+	if ( !tr.hazeShader.program || !tr.hdrDepthImage || !tr.hazeSet || r_hazeDensity->value <= 0.0f ) {
+		return;
+	}
+
+	zNear = backEnd.viewParms.zNear > 0.0f ? backEnd.viewParms.zNear : r_znear->value;
+	density = tr.hazeDistance > 0.0f ? 0.6931472f / tr.hazeDistance * r_hazeDensity->value : 0.0f;
+	groundDensity = tr.hazeGroundDistance > 0.0f ? 0.6931472f / tr.hazeGroundDistance * r_hazeDensity->value : 0.0f;
+
+	VectorSet4( vec, backEnd.viewParms.zFar / zNear, backEnd.viewParms.zFar,
+		tan( backEnd.viewParms.fovX * M_PI / 360.0f ), tan( backEnd.viewParms.fovY * M_PI / 360.0f ) );
+	GLSL_SetUniformVec4( &tr.hazeShader, UNIFORM_VIEWINFO, vec );
+	GLSL_SetUniformVec3( &tr.hazeShader, UNIFORM_VIEWORIGIN, backEnd.viewParms.or.origin );
+	GLSL_SetUniformVec3( &tr.hazeShader, UNIFORM_VIEWFORWARD, backEnd.viewParms.or.axis[0] );
+	GLSL_SetUniformVec3( &tr.hazeShader, UNIFORM_VIEWLEFT, backEnd.viewParms.or.axis[1] );
+	GLSL_SetUniformVec3( &tr.hazeShader, UNIFORM_VIEWUP, backEnd.viewParms.or.axis[2] );
+
+	VectorSet4( vec, tr.hazeColor[0], tr.hazeColor[1], tr.hazeColor[2], 1.0f );
+	GLSL_SetUniformVec4( &tr.hazeShader, UNIFORM_HAZECOLOR, vec );
+	VectorSet4( vec, density, groundDensity, 1.0f / tr.hazeGroundThickness, tr.hazeGroundHeight );
+	GLSL_SetUniformVec4( &tr.hazeShader, UNIFORM_HAZEPARAMS, vec );
+	VectorSet4( vec, tr.sunDirection[0], tr.sunDirection[1], tr.sunDirection[2], tr.hazeSunGlow );
+	GLSL_SetUniformVec4( &tr.hazeShader, UNIFORM_HAZESUN, vec );
+
+	// the sun's colour at most 1, and how far the sky counts as
+	scale = MAX( tr.sunLight[0], MAX( tr.sunLight[1], tr.sunLight[2] ) );
+	if ( scale > 0.0f ) {
+		VectorScale( tr.sunLight, 1.0f / scale, sunColor );
+	} else {
+		VectorSet( sunColor, 1.0f, 1.0f, 1.0f );
+	}
+	sunColor[3] = tr.hazeDistance > 0.0f ? tr.hazeDistance * 3.0f : 8000.0f;
+
+	FBO_BlitFromTexture( tr.hdrDepthImage, NULL, NULL, dstFbo, dstBox, &tr.hazeShader, sunColor,
+		GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHTEST_DISABLE );
+}

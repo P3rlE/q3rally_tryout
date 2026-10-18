@@ -2346,6 +2346,14 @@ void R_LoadEntities( lump_t *l ) {
 			continue;
 		}
 
+		// Q3Rally: haze of the map (wins over q3r_haze in the sky shader)
+		if (!Q_stricmp(keyname, "haze") || !Q_stricmp(keyname, "_haze")) {
+			if (R_ParseHaze(value)) {
+				tr.hazeFromWorld = qtrue;
+			}
+			continue;
+		}
+
 		// Q3Rally: colour grading look of the map
 		if (!Q_stricmp(keyname, "colorlut") || !Q_stricmp(keyname, "_colorlut")) {
 			Q_strncpyz(tr.worldColorLut, value, sizeof(tr.worldColorLut));
@@ -2888,6 +2896,8 @@ void RE_LoadWorldMap( const char *name ) {
 	// Q3Rally: the map's colour grading comes from its worldspawn or sky shader
 	tr.worldColorLut[0] = '\0';
 	tr.shaderColorLut[0] = '\0';
+	tr.hazeSet = qfalse;
+	tr.hazeFromWorld = qfalse;
 
 	// set default tone mapping settings
 	tr.toneMinAvgMaxLevel[0] = -8.0f;

@@ -2111,6 +2111,27 @@ static qboolean ParseShader( char **text )
 			ParseWaterParm( token, text );
 			continue;
 		}
+		// Q3Rally: q3r_haze <r> <g> <b> <distance> [<ground distance>
+		// <ground height> <ground thickness> [<sun glow>]], haze of the map
+		// (in the sky shader; a worldspawn "haze" wins)
+		else if ( !Q_stricmp( token, "q3r_haze" ) )
+		{
+			char hazeText[256];
+
+			hazeText[0] = '\0';
+			while ( 1 ) {
+				token = COM_ParseExt( text, qfalse );
+				if ( !token[0] ) {
+					break;
+				}
+				Q_strcat( hazeText, sizeof( hazeText ), token );
+				Q_strcat( hazeText, sizeof( hazeText ), " " );
+			}
+			if ( !tr.hazeFromWorld ) {
+				R_ParseHaze( hazeText );
+			}
+			continue;
+		}
 		// Q3Rally: q3r_colorLut <image>, colour grading look of the map (in
 		// the sky shader, like q3gl2_sun)
 		else if ( !Q_stricmp( token, "q3r_colorLut" ) )
