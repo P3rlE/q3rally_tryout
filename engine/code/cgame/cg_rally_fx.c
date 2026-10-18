@@ -266,6 +266,9 @@ static void CG_FX_ParseEntities( void ) {
 
 		if ( !Q_stricmp( CG_FX_Value( "classname", "" ), "rally_fx_spray" ) ) {
 			CG_FX_AddSpray();
+		} else if ( !Q_stricmp( CG_FX_Value( "classname", "" ), "worldspawn" ) ) {
+			// Q3Rally: wet ground without rain (0 = dry, 1 = soaked)
+			cgs.mapWetness = Com_Clamp( 0.0f, 1.0f, CG_FX_Float( "wetness", 0.0f ) );
 		}
 	}
 }

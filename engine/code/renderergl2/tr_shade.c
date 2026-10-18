@@ -1186,6 +1186,93 @@ static qboolean RB_CarReflectionStage( shaderCommands_t *input, shaderStage_t *p
 	return qtrue;
 }
 
+/*
+==================
+RB_WetGroundPass
+
+Q3Rally: wet ground. Drawn over an opaque world surface after its stages:
+darker, and a screen space reflection of the scene (glsl/wetground_fp.glsl).
+How strong depends on the surface type: asphalt and other hard ground
+mirrors with puddles, loose ground mostly gets darker, grass only a bit.
+==================
+*/
+#define WET_SKIP_FLAGS	( SURF_SKY | SURF_NODRAW | SURF_SNOW | SURF_ICE )
+
+static void RB_WetGroundPass( shaderCommands_t *input )
+{
+	shader_t *shader = input->shader;
+	shaderProgram_t *sp = &tr.wetGroundShader;
+	float wetness, reflection, darken, puddles;
+	vec4_t vec;
+	qboolean ssr;
+
+	if ( !sp->program || backEnd.depthFill || backEnd.currentEntity != &tr.worldEntity
+		|| ( backEnd.refdef.rdflags & RDF_NOWORLDMODEL ) || backEnd.viewParms.targetFbo || backEnd.viewParms.isPortal
+		|| ( backEnd.viewParms.flags & ( VPF_SHADOWMAP | VPF_DEPTHSHADOW | VPF_WATERREFLECTION | VPF_CARREFLECT ) )
+		|| backEnd.viewParms.viewportWidth < glConfig.vidWidth / 2 )
+	{
+		return;
+	}
+	if ( shader->sort != SS_OPAQUE || shader->polygonOffset || shader->numDeforms || shader->isWater
+		|| ( shader->surfaceFlags & WET_SKIP_FLAGS ) )
+	{
+		return;
+	}
+
+	wetness = backEnd.refdef.wetness;
+	if ( shader->surfaceFlags & SURF_WET ) {
+		wetness = 1.0f;		// always wet (puddles, wet spots in the map)
+	}
+	if ( wetness <= 0.0f ) {
+		return;
+	}
+
+	if ( shader->surfaceFlags & SURF_GRASS ) {
+		reflection = 0.10f; darken = 0.22f; puddles = 0.0f;
+	} else if ( shader->surfaceFlags & ( SURF_DIRT | SURF_DUST | SURF_SAND ) ) {
+		reflection = 0.30f; darken = 0.40f; puddles = 0.6f;
+	} else if ( shader->surfaceFlags & SURF_GRAVEL ) {
+		reflection = 0.25f; darken = 0.35f; puddles = 0.3f;
+	} else {
+		reflection = 1.0f; darken = 0.42f; puddles = 1.0f;	// asphalt, concrete, metal
+	}
+
+	// the reflection needs this frame's depth and last frame's picture,
+	// taken from almost the same place
+	ssr = backEnd.wetDepthReady && tr.wetSceneValid && tr.hdrDepthImage && tr.wetSceneImage
+		&& backEnd.refdef.time - tr.wetSceneTime > 0 && backEnd.refdef.time - tr.wetSceneTime < 250
+		&& Distance( tr.wetScenePrevOrigin, backEnd.viewParms.or.origin ) < 400.0f;
+	if ( !ssr ) {
+		reflection = 0.0f;
+	}
+
+	GLSL_BindProgram( sp );
+	GLSL_SetUniformMat4( sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection );
+	GLSL_SetUniformMat4( sp, UNIFORM_PREVVIEWPROJ, tr.wetScenePrevViewProj );
+	GLSL_SetUniformVec3( sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.or.origin );
+
+	// x, y = near and far plane, z = ray steps, w = mip level of the rough
+	// reflection
+	VectorSet4( vec, backEnd.viewParms.zNear, backEnd.viewParms.zFar, r_wetGround->integer >= 2 ? 40.0f : 24.0f, 4.0f );
+	GLSL_SetUniformVec4( sp, UNIFORM_VIEWINFO, vec );
+
+	VectorSet4( vec, wetness, reflection, darken, puddles );
+	GLSL_SetUniformVec4( sp, UNIFORM_WETPARAMS, vec );
+
+	if ( ssr ) {
+		GL_BindToTMU( tr.wetSceneImage, TB_COLORMAP );
+		GL_BindToTMU( tr.hdrDepthImage, TB_LIGHTMAP );
+	} else {
+		GL_BindToTMU( tr.whiteImage, TB_COLORMAP );	// not read without a reflection
+		GL_BindToTMU( tr.whiteImage, TB_LIGHTMAP );
+	}
+
+	// colour adds the reflection, alpha darkens what is there
+	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_SRC_ALPHA | GLS_DEPTHFUNC_EQUAL );
+
+	R_DrawElements( input->numIndexes, input->firstIndex );
+}
+
 static void RB_IterateStagesGeneric( shaderCommands_t *input )
 {
 	int stage;
@@ -1660,6 +1747,9 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 		RB_DrawCarReflection( input, r_carReflectionStrength->value * CAR_REFLECT_COAT, CAR_REFLECT_COAT_FACING, 0.0f,
 			GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_EQUAL );
 	}
+
+	// Q3Rally: wet ground
+	RB_WetGroundPass( input );
 }
 
 

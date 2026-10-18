@@ -920,6 +920,7 @@ const void	*RB_DrawSurfs( const void *data ) {
 	RB_BeginDrawingView ();
 
 	backEnd.softDepthReady = qfalse;
+	backEnd.wetDepthReady = qfalse;
 
 	if (glRefConfig.framebufferObject && (backEnd.viewParms.flags & VPF_DEPTHCLAMP) && glRefConfig.depthClamp)
 	{
@@ -966,6 +967,7 @@ const void	*RB_DrawSurfs( const void *data ) {
 				// Q3Rally: the soft particles of this view read it (not for
 				// views into their own FBO, e.g. the car reflection)
 				backEnd.softDepthReady = r_softParticles->value > 0.0f && backEnd.viewParms.targetFbo == NULL;
+				backEnd.wetDepthReady = backEnd.viewParms.targetFbo == NULL;
 			}
 
 			if (r_sunlightMode->integer && backEnd.viewParms.flags & VPF_USESUNLIGHT)
@@ -1625,6 +1627,24 @@ const void *RB_PostProcess(const void *data)
 	srcBox[1] = backEnd.viewParms.viewportY;
 	srcBox[2] = backEnd.viewParms.viewportWidth;
 	srcBox[3] = backEnd.viewParms.viewportHeight;
+
+	// Q3Rally: keep this frame's scene (before tone mapping) for the wet
+	// ground reflections of the next frame, only while the ground is wet
+	if (backEnd.viewParms.viewportWidth >= glConfig.vidWidth / 2 && !(backEnd.refdef.rdflags & RDF_NOWORLDMODEL))
+	{
+		tr.wetSceneValid = qfalse;
+
+		if (srcFbo && tr.wetSceneFbo && backEnd.refdef.wetness > 0.0f)
+		{
+			FBO_FastBlit(srcFbo, srcBox, tr.wetSceneFbo, NULL, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+			qglGenerateTextureMipmapEXT(tr.wetSceneImage->texnum, GL_TEXTURE_2D);
+
+			Mat4Multiply(backEnd.viewParms.projectionMatrix, backEnd.viewParms.world.modelMatrix, tr.wetScenePrevViewProj);
+			VectorCopy(backEnd.viewParms.or.origin, tr.wetScenePrevOrigin);
+			tr.wetSceneTime = backEnd.refdef.time;
+			tr.wetSceneValid = qtrue;
+		}
+	}
 
 	if (srcFbo)
 	{

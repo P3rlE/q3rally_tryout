@@ -58,6 +58,8 @@ extern const char *fallbackShader_carreflect_vp;
 extern const char *fallbackShader_carreflect_fp;
 extern const char *fallbackShader_motionblur_vp;
 extern const char *fallbackShader_motionblur_fp;
+extern const char *fallbackShader_wetground_vp;
+extern const char *fallbackShader_wetground_fp;
 extern const char *fallbackShader_ssao_vp;
 extern const char *fallbackShader_ssao_fp;
 extern const char *fallbackShader_texturecolor_vp;
@@ -102,6 +104,8 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_ShadowParams", GLSL_VEC4 },
 	{ "u_SpotDir", GLSL_VEC4 },
 	{ "u_SoftParticle", GLSL_VEC4 },
+	{ "u_WetParams", GLSL_VEC4 },
+	{ "u_PrevViewProj", GLSL_MAT16 },
 
 	{ "u_EnableTextures", GLSL_VEC4 },
 
@@ -1628,6 +1632,25 @@ void GLSL_InitGPUShaders(void)
 		numEtcShaders++;
 	}
 
+	// Q3Rally: wet ground
+	if (glRefConfig.framebufferObject && r_wetGround->integer)
+	{
+		attribs = ATTR_POSITION | ATTR_NORMAL;
+		extradefines[0] = '\0';
+
+		if (!GLSL_InitGPUShader(&tr.wetGroundShader, "wetground", attribs, qtrue, extradefines, qtrue, fallbackShader_wetground_vp, fallbackShader_wetground_fp))
+		{
+			ri.Error(ERR_FATAL, "Could not load wetground shader!");
+		}
+
+		GLSL_InitUniforms(&tr.wetGroundShader);
+		GLSL_SetUniformInt(&tr.wetGroundShader, UNIFORM_TEXTUREMAP, TB_COLORMAP);
+		GLSL_SetUniformInt(&tr.wetGroundShader, UNIFORM_SCREENDEPTHMAP, TB_LIGHTMAP);
+		GLSL_FinishGPUShader(&tr.wetGroundShader);
+
+		numEtcShaders++;
+	}
+
 
 	// GLSL 1.10+ or GL_OES_standard_derivatives extension are required for dFdx() and dFdy() GLSL functions
 	if (glRefConfig.glslMajorVersion > 1 || (glRefConfig.glslMajorVersion == 1 && glRefConfig.glslMinorVersion >= 10)
@@ -1761,6 +1784,7 @@ void GLSL_ShutdownGPUShaders(void)
 	GLSL_DeleteGPUShader(&tr.spotlightShader);
 	GLSL_DeleteGPUShader(&tr.carReflectShader);
 	GLSL_DeleteGPUShader(&tr.motionBlurShader);
+	GLSL_DeleteGPUShader(&tr.wetGroundShader);
 	GLSL_DeleteGPUShader(&tr.ssaoShader);
 
 	for ( i = 0; i < 4; i++)

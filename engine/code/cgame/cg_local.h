@@ -1033,6 +1033,11 @@ typedef struct {
 	int			ghostSplitDeltaMs;
 	int			ghostSplitDeltaTime;
 	qboolean	ghostSplitDeltaValid;
+
+	// Q3Rally: wet ground (refdef.wetness), gets wet in the rain and dries
+	// slowly afterwards
+	float		wetness;
+	qboolean	wetnessStarted;
 } cg_t;
 
 
@@ -1627,6 +1632,9 @@ typedef struct {
 	// (r_sunShadowsActive), the blob under the cars is then only a soft
 	// contact shadow
 	qboolean		sunShadows;
+
+	// Q3Rally: worldspawn "wetness", how wet the ground is without rain
+	float			mapWetness;
 } cgs_t;
 
 //==============================================================================
@@ -2241,6 +2249,7 @@ void CG_Atmospheric_Shutdown( void );
 void CG_Atmospheric_AddWeatherZone( centity_t *cent );
 qboolean CG_AtmosphericPointInWeather( const vec3_t point, int type );
 qboolean CG_AtmosphericPointWet( const vec3_t point );
+void CG_UpdateWetness( void );
 qboolean CG_AtmosphericPointSnow( const vec3_t point );
 void CG_AtmosphericAddLoopingSounds( void );
 

@@ -454,6 +454,15 @@ void FBO_Init(void)
 		R_CheckFBO(tr.screenSsaoFbo);
 	}
 
+	// Q3Rally: last frame's scene for the wet ground
+	if (tr.wetSceneImage)
+	{
+		tr.wetSceneFbo = FBO_Create("_wetScene", tr.wetSceneImage->width, tr.wetSceneImage->height);
+		FBO_AttachImage(tr.wetSceneFbo, tr.wetSceneImage, GL_COLOR_ATTACHMENT0, 0);
+		R_CheckFBO(tr.wetSceneFbo);
+	}
+	tr.wetSceneValid = qfalse;
+
 	// Q3Rally: car reflection cube map, the side is attached when it is rendered
 	if (tr.carReflectImage)
 	{

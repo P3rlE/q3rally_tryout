@@ -173,6 +173,8 @@ cvar_t  *r_motionBlurMax;
 cvar_t  *r_motionBlurMaxNos;
 cvar_t  *r_motionBlurNear;
 cvar_t  *r_softParticles;
+cvar_t  *r_wetGround;
+cvar_t  *r_wetness;
 cvar_t  *r_headlights;
 cvar_t  *r_headlightShadows;
 cvar_t  *r_headlightShadowMapSize;
@@ -1396,6 +1398,13 @@ void R_Register( void )
 	r_softParticles = ri.Cvar_Get( "r_softParticles", "24", CVAR_ARCHIVE );
 	ri.Cvar_CheckRange( r_softParticles, 0, 200, qfalse );
 	ri.Cvar_SetDescription( r_softParticles, "Q3Rally: smoke, dust and other particles fade out over this distance where they cut into walls and the ground, instead of a hard edge (0 = off; needs r_depthPrepass 1)" );
+
+	r_wetGround = ri.Cvar_Get( "r_wetGround", "1", CVAR_ARCHIVE | CVAR_LATCH );
+	ri.Cvar_CheckRange( r_wetGround, 0, 2, qtrue );
+	ri.Cvar_SetDescription( r_wetGround, "Q3Rally: wet ground in the rain is darker and reflects the scene (screen space reflections); 0 = off, 1 = on, 2 = finer reflections (needs r_depthPrepass 1)" );
+	r_wetness = ri.Cvar_Get( "r_wetness", "-1", CVAR_CHEAT );
+	ri.Cvar_CheckRange( r_wetness, -1, 1, qfalse );
+	ri.Cvar_SetDescription( r_wetness, "Q3Rally: test value for how wet the ground is (0 to 1); -1 = from the rain and the map" );
 	r_motionBlurNear = ri.Cvar_Get( "r_motionBlurNear", "120", CVAR_ARCHIVE );
 	ri.Cvar_CheckRange( r_motionBlurNear, 0, 1000, qfalse );
 	ri.Cvar_SetDescription( r_motionBlurNear, "Q3Rally: the motion blur fades in up to this distance from the camera (the car in front of the camera is left sharp anyway)" );

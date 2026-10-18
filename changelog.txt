@@ -114,6 +114,19 @@ Added:
   registered at map load: a weapon handed out without a pickup in the map
   (give, game modes) showed no mine model and a missing-texture square
   instead of the explosion.
+- Wet ground (OpenGL2): in the rain the ground gets wet within about 20
+  seconds and dries within about 2 minutes after the rain stops. Wet
+  ground is darker and reflects the scene (screen space reflections:
+  the reflected view ray is stepped through the depth of the frame and the
+  colour is taken from the previous frame), with Fresnel (strong at
+  grazing angles) and puddles on asphalt that mirror the surroundings,
+  lights and cars. Asphalt, concrete and metal reflect most, dirt, sand
+  and gravel mostly get darker, grass only a little; walls get a bit
+  darker and do not mirror. New worldspawn key "wetness" (0 to 1) for maps
+  that are wet without rain, e.g. a night city after the rain; shaders
+  with surfaceparm wet are always wet. New cvars r_wetGround (1, 0 = off,
+  2 = finer reflections; needs r_depthPrepass 1) and r_wetness (cheat,
+  test value, -1 = from the rain). OpenGL1 draws the ground as before.
 
 Changed:
 

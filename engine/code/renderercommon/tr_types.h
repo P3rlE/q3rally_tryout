@@ -143,6 +143,10 @@ typedef struct {
 
 	// text messages for deform text shaders
 	char		text[MAX_RENDER_STRINGS][MAX_RENDER_STRING_LENGTH];
+
+	// Q3Rally: how wet the ground is (0 = dry, 1 = soaked), from rain and
+	// the map; the OpenGL2 renderer darkens it and adds reflections
+	float		wetness;
 } refdef_t;
 
 

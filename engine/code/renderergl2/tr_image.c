@@ -2935,8 +2935,8 @@ void R_CreateBuiltinImages( void ) {
 		if (r_shadowBlur->integer || r_hdr->integer || r_fxaa->integer || r_motionBlur->value > 0.0f)
 			tr.screenScratchImage = R_CreateImage("screenScratch", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, rgbFormat);
 
-		// Q3Rally: the soft particles read the depth from here as well
-		if (r_shadowBlur->integer || r_ssao->integer || r_softParticles->value > 0.0f)
+		// Q3Rally: the soft particles and the wet ground read the depth from here as well
+		if (r_shadowBlur->integer || r_ssao->integer || r_softParticles->value > 0.0f || r_wetGround->integer)
 			tr.hdrDepthImage = R_CreateImage("*hdrDepth", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_R32F);
 
 		if (r_drawSunRays->integer)
@@ -3035,6 +3035,17 @@ void R_CreateBuiltinImages( void ) {
 				qglTextureParameterfEXT(tr.spotShadowImage[x]->texnum, GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
 				qglTextureParameterfEXT(tr.spotShadowImage[x]->texnum, GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 			}
+		}
+
+		// Q3Rally: last frame's scene for the wet ground reflections, half
+		// size with mip maps (the blurred levels make wet asphalt look rough)
+		// (the mip maps are made after each copy, IMGFLAG_MIPMAP would
+		// resample the empty image to a power of two)
+		if (r_wetGround->integer && glRefConfig.framebufferBlit)
+		{
+			tr.wetSceneImage = R_CreateImage("*wetScene", NULL, glConfig.vidWidth / 2, glConfig.vidHeight / 2, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
+			qglTextureParameterfEXT(tr.wetSceneImage->texnum, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			qglGenerateTextureMipmapEXT(tr.wetSceneImage->texnum, GL_TEXTURE_2D);
 		}
 
 		// Q3Rally: cube map the car paint reflects

@@ -2127,6 +2127,8 @@ Q3R2STRINGOBJ = \
   $(B)/renderergl2/glsl/carreflect_vp.o \
   $(B)/renderergl2/glsl/motionblur_fp.o \
   $(B)/renderergl2/glsl/motionblur_vp.o \
+  $(B)/renderergl2/glsl/wetground_fp.o \
+  $(B)/renderergl2/glsl/wetground_vp.o \
   $(B)/renderergl2/glsl/ssao_fp.o \
   $(B)/renderergl2/glsl/ssao_vp.o \
   $(B)/renderergl2/glsl/texturecolor_fp.o \

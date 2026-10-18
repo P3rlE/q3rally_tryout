@@ -668,6 +668,8 @@ typedef enum
 	UNIFORM_SHADOWPARAMS,	// Q3Rally: xyz = world shadow bias (sun dir * units), w = model shadow bias
 	UNIFORM_SPOTDIR,		// Q3Rally: spot light direction, w = cos of the outer cone
 	UNIFORM_SOFTPARTICLE,	// Q3Rally: x = fade distance (0 = off), y = blend mode, zw = 1 / depth texture size
+	UNIFORM_WETPARAMS,		// Q3Rally: wet ground, x = wetness, y = reflection, z = darkening, w = puddles
+	UNIFORM_PREVVIEWPROJ,	// Q3Rally: world -> clip space of the frame in tr.wetSceneImage
 
 	UNIFORM_ENABLETEXTURES,
 
@@ -807,6 +809,7 @@ typedef struct {
 	int         spotMask;			// Q3Rally: dlights that are spot lights
 	vec4_t      motionMaskRect;		// Q3Rally: screen rect (uv min xy, max xy) of the models at the camera, no motion blur there
 	float       motionMaskFar;		// Q3Rally: their farthest view distance, 0 = none
+	float       wetness;			// Q3Rally: wet ground, 0 = dry, 1 = soaked
 	int         lampShadowSlot[MAX_LAMP_SHADOWS];
 	float       lampShadowMvp[MAX_LAMP_SHADOWS][16];
 	vec4_t      lampShadowOrigin[MAX_LAMP_SHADOWS];	// xyz, w = light * LAMP_LIGHT_SCALE
@@ -1558,6 +1561,7 @@ typedef struct {
 	qboolean    depthFill;
 	qboolean    waterReflectionReady;	// Q3Rally: reflection texture was rendered this frame
 	qboolean    softDepthReady;			// Q3Rally: tr.hdrDepthImage holds this view's opaque depth (soft particles)
+	qboolean    wetDepthReady;			// Q3Rally: the same for the wet ground reflections
 } backEndState_t;
 
 /*
@@ -1633,6 +1637,12 @@ typedef struct {
 	image_t					*spotShadowImage[MAX_SPOT_SHADOWS];	// Q3Rally: headlight shadow maps
 	FBO_t					*spotShadowFbo[MAX_SPOT_SHADOWS];
 	image_t					*carReflectImage;	// Q3Rally: cube map around the camera for the car paint
+	image_t					*wetSceneImage;		// Q3Rally: last frame's scene (half size, mip mapped), the wet ground reflects it
+	FBO_t					*wetSceneFbo;
+	mat4_t					wetScenePrevViewProj;	// its world -> clip matrix
+	vec3_t					wetScenePrevOrigin;
+	int						wetSceneTime;
+	qboolean				wetSceneValid;
 	FBO_t					*carReflectFbo;
 	int						carReflectSide;		// next side to render
 	FBO_t					*depthFbo;
@@ -1697,6 +1707,7 @@ typedef struct {
 	shaderProgram_t spotlightShader;	// Q3Rally: headlight pass
 	shaderProgram_t carReflectShader;	// Q3Rally: car paint reflection
 	shaderProgram_t motionBlurShader;	// Q3Rally: camera motion blur
+	shaderProgram_t wetGroundShader;	// Q3Rally: wet ground, darkening and screen space reflection
 	shaderProgram_t ssaoShader;
 	shaderProgram_t depthBlurShader[4];
 	shaderProgram_t testcubeShader;
@@ -1932,6 +1943,8 @@ extern  cvar_t  *r_motionBlurMax;
 extern  cvar_t  *r_motionBlurMaxNos;
 extern  cvar_t  *r_motionBlurNear;
 extern  cvar_t  *r_softParticles;
+extern  cvar_t  *r_wetGround;
+extern  cvar_t  *r_wetness;
 extern  cvar_t  *r_headlights;
 extern  cvar_t  *r_headlightShadows;
 extern  cvar_t  *r_headlightShadowMapSize;

@@ -2598,6 +2598,8 @@ disable_splash turns off visual impact splashes, improving framerates since ther
 
 The rain volume also marks the road beneath it as dynamically wet at runtime:
 vehicle grip is reduced and tires emit spray without requiring SURF_WET on the road shader.
+In OpenGL2 the ground in the volume also looks wet (darker, reflections and puddles on asphalt);
+it gets wet within about 20 seconds of rain and dries within about 2 minutes.
 
 Server weather timing is controlled globally with:
 g_dynamicWeather 1/0, g_weatherInitialChance, g_weatherOnMinTime, g_weatherOnMaxTime,
@@ -2767,6 +2769,7 @@ scoreboardmusic : path/name of looping .wav file used for level's scoreboard mus
 _ambient OR ambient : Adds a constant value to overall lighting. Use is not recommended. Ambient light will have a tendency to flatten out variations in light and shade.
 _color : RGB value for ambient light color (default is 0 0 0).
 gravity : gravity of level (default is normal gravity: 800).
+wetness : Q3Rally: how wet the ground is without rain, 0 (dry, default) to 1 (soaked). The OpenGL2 renderer makes wet ground darker and adds reflections (puddles on asphalt). Inside an active rally_weather_rain zone the ground gets wet anyway while it rains and dries slowly afterwards.
 gridsize : granularity of the lightgrid created by q3map. Value is three integers separated by spaces, representing number of units between grid points in X Y Z. Default gridsize value is 128 128 256. Use larger powers of 2 to reduce BSP size and compile time on very large maps.
 _blocksize : q3map always splits the BSP tree along the planes X=_blocksize*n and Y=_blocksize*n. Default _blocksize value is 1024. Increase the blocksize using larger powers of 2 to reduce compile times on very large maps with a low structural brush density.
 -------- Q3MAP2 KEYS --------

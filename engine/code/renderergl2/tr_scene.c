@@ -366,6 +366,14 @@ void RE_BeginScene(const refdef_t *fd)
 	tr.refdef.time = fd->time;
 	tr.refdef.rdflags = fd->rdflags;
 
+	// Q3Rally: wet ground
+	tr.refdef.wetness = r_wetness->value >= 0.0f ? r_wetness->value : fd->wetness;
+	if ( !( tr.refdef.wetness > 0.0f ) ) {		// also catches NaN from an old cgame
+		tr.refdef.wetness = 0.0f;
+	} else if ( tr.refdef.wetness > 1.0f ) {
+		tr.refdef.wetness = 1.0f;
+	}
+
 	// copy the areamask data over and note if it has changed, which
 	// will force a reset of the visible leafs even if the view hasn't moved
 	tr.refdef.areamaskModified = qfalse;
