@@ -70,6 +70,64 @@ textures/q3r_liquids/q3r_water_03
 	}
 }
 
+textures/q3r_liquids/q3r_water_pool
+{
+	// Q3Rally: the calm green pool water of liquids/calm_poollight with the
+	// OpenGL2 reflection (q3r_sk1); the stages are the OpenGL1 / r_water 0 look
+	qer_editorimage textures/liquids/pool3d_4b.tga
+	q3map_globaltexture
+	qer_trans .75
+
+	surfaceparm trans
+	surfaceparm nonsolid
+	surfaceparm SURF_WET
+	surfaceparm nolightmap
+	q3map_surfacelight 50
+
+	cull disable
+	tesssize 64
+	deformVertexes wave 100 sin 1 1 1 .1
+
+	q3r_water textures/q3r_liquids/water_normal.tga 256 0.03 0.04
+	q3r_waterColor 0.05 0.13 0.11 0.6
+	q3r_waterFresnel 0.1 4
+	q3r_waterSpecular 0.5
+
+	{ 
+		map textures/liquids/pool3d_5c2.tga
+		blendFunc GL_dst_color GL_zero
+		rgbgen identity
+		tcmod scale .5 .5
+		tcmod transform 1.5 0 1.5 1 1 2
+		tcmod scroll -.05 .001
+	}
+	
+	{ 
+		map textures/liquids/pool3d_6c2.tga
+		blendFunc GL_dst_color GL_zero
+		rgbgen identity
+		tcmod scale .5 .5
+		tcmod transform 0 1.5 1 1.5 2 1
+		tcmod scroll .025 -.001
+	}
+
+	{ 
+		map textures/liquids/pool3d_3c2.tga
+		blendFunc GL_dst_color GL_zero
+		rgbgen identity
+		tcmod scale .25 .5
+		tcmod scroll .001 .025
+	}
+	{
+		map textures/liquids/pool3d_4b2.tga
+		blendfunc add
+		tcmod scale .125 .125	
+		rgbgen identity
+	}
+
+	//	END
+}
+
 textures/q3r_liquids/q3r_lavahell
 {
 	qer_editorimage textures/q3r_liquids/q3r_lavahell.tga

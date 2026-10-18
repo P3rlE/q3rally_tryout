@@ -91,7 +91,9 @@ static const fxSmokeKind_t fxSmokeKinds[FX_SMOKE_NUM_KINDS] = {
 	{ { 0.80f, 0.70f, 0.50f }, 0.50f, 14, 92, 2000, 800,    4, 1.3f, 45,  40, 0.25f },	// FX_SMOKE_SAND
 	{ { 0.40f, 0.38f, 0.24f }, 0.30f, 10, 55, 1200, 400,   12, 2.0f, 35,  30, 0.20f },	// FX_SMOKE_GRASS
 	{ { 0.70f, 0.70f, 0.72f }, 0.92f, 40, 230, 7000, 3000,  -5, 1.5f, 90,  30, 0.00f },	// FX_SMOKE_SCREEN
-	{ { 0.24f, 0.23f, 0.22f }, 0.85f, 30, 150, 3500, 1500, -45, 1.8f, 220, 170, 0.00f }	// FX_SMOKE_BLAST
+	{ { 0.24f, 0.23f, 0.22f }, 0.85f, 30, 150, 3500, 1500, -45, 1.8f, 220, 170, 0.00f },	// FX_SMOKE_BLAST
+	{ { 0.86f, 0.89f, 0.93f }, 0.55f, 10, 66,  950,  350,  35, 2.2f, 30,  18, 0.00f },	// FX_SPRAY_WET
+	{ { 0.93f, 0.95f, 0.99f }, 0.62f, 10, 70, 1200,  400,  20, 1.9f, 32,  18, 0.00f }	// FX_SPRAY_SNOW
 };
 
 typedef struct {
@@ -436,7 +438,25 @@ point of the tyre; up is the ground normal, carVel the car's velocity.
 strength scales the size and opacity (1 = normal).
 =================
 */
+static void CG_FX_SpawnPuff( const vec3_t origin, const vec3_t up, const vec3_t carVel, const vec3_t throwVel, int kind, float strength );
+
 void CG_FX_TireSmoke( const vec3_t origin, const vec3_t up, const vec3_t carVel, int kind, float strength ) {
+	CG_FX_SpawnPuff( origin, up, carVel, vec3_origin, kind, strength );
+}
+
+/*
+=================
+CG_FX_Spray
+
+Like CG_FX_TireSmoke, but the puff is thrown with velocity throwVel (tyre
+spray, snow dust).
+=================
+*/
+void CG_FX_Spray( const vec3_t origin, const vec3_t up, const vec3_t throwVel, int kind, float strength ) {
+	CG_FX_SpawnPuff( origin, up, vec3_origin, throwVel, kind, strength );
+}
+
+static void CG_FX_SpawnPuff( const vec3_t origin, const vec3_t up, const vec3_t carVel, const vec3_t throwVel, int kind, float strength ) {
 	const fxSmokeKind_t	*k;
 	fxParticle_t		*p;
 	vec3_t				ambient, directed, dir, probe;
@@ -471,7 +491,7 @@ void CG_FX_TireSmoke( const vec3_t origin, const vec3_t up, const vec3_t carVel,
 
 	ang = random() * 2.0f * M_PI;
 	for ( i = 0; i < 3; i++ ) {
-		p->vel[i] = carVel[i] * k->carShare + up[i] * k->upSpeed * ( 0.6f + random() * 0.8f );
+		p->vel[i] = carVel[i] * k->carShare + throwVel[i] * ( 0.8f + random() * 0.4f ) + up[i] * k->upSpeed * ( 0.6f + random() * 0.8f );
 	}
 	p->vel[0] += cos( ang ) * k->spread * random();
 	p->vel[1] += sin( ang ) * k->spread * random();
@@ -491,10 +511,13 @@ void CG_FX_TireSmoke( const vec3_t origin, const vec3_t up, const vec3_t carVel,
 	VectorCopy( k->color, p->color );
 	VectorMA( origin, 24.0f, up, probe );
 	if ( trap_R_LightForPoint( probe, ambient, directed, dir ) ) {
+		// spray and snow dust scatter the light, they stay brighter
+		float minLight = ( kind == FX_SPRAY_WET || kind == FX_SPRAY_SNOW ) ? 0.65f : 0.3f;
+
 		for ( i = 0; i < 3; i++ ) {
 			float l = ( ambient[i] + directed[i] * 0.6f ) / 170.0f;
 
-			p->color[i] = k->color[i] * Com_Clamp( 0.3f, 1.1f, l );
+			p->color[i] = k->color[i] * Com_Clamp( minLight, 1.1f, l );
 		}
 	}
 }

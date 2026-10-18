@@ -696,7 +696,7 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php/matches"
       <tr>
         <td>8</td>
         <td>Wet ground</td>
-        <td>With OpenGL2 the ground inside an active rain volume looks wet: darker, with reflections and puddles on asphalt (dirt, sand and gravel mostly get darker, grass only a little). It gets wet within about 20 seconds of rain and dries within about 2 minutes. For a map that is wet without rain set the worldspawn key <code>wetness</code> (0 = dry, 1 = soaked); shaders with <code>surfaceparm wet</code> are always wet. Test with <code>devmap</code> and <code>r_wetness 1</code> (cheat; <code>-1</code> = from the rain again).</td>
+        <td>With OpenGL2 the ground inside an active rain volume looks wet: darker, with reflections (strongest on asphalt; dirt, sand and gravel mostly get darker, grass only a little) and puddles on every kind of ground that mirror like water, muddy on loose ground, with drop rings while it rains. It gets wet within about 20 seconds of rain and dries within about 2 minutes. For a map that is wet without rain set the worldspawn key <code>wetness</code> (0 = dry, 1 = soaked); shaders with <code>surfaceparm wet</code> are always wet. Test with <code>devmap</code> and <code>r_wetness 1</code> (cheat; <code>-1</code> = from the rain again).</td>
       </tr>
       <tr>
         <td>9</td>
@@ -1160,7 +1160,7 @@ docker run --rm -it -p 27960:27960/udp \
     <li>OpenGL2: motion blur at speed (the car itself stays sharp), much stronger while burning NOS (cvars <code>r_motionBlur</code>, <code>r_motionBlurNos</code>, <code>r_motionBlurMax</code>, <code>r_motionBlurMaxNos</code>, <code>r_motionBlurNear</code>); a car burning NOS glows in a pulsing light blue shell instead of the old rocket flame</li>
     <li>Tyre smoke and dust are soft billowing clouds lit by the map, with their own look on asphalt, dust, dirt, gravel, sand and grass (cvar <code>cg_tireSmoke</code>); in OpenGL2 particles fade softly where they touch the ground (cvar <code>r_softParticles</code>)</li>
     <li>The smoke screen is a thick cloud that hangs on the track, mines explode with dark smoke and dirt</li>
-    <li>OpenGL2: wet ground in the rain: darker, with reflections of the surroundings, lights and cars, and puddles on asphalt; it gets wet within about 20 seconds and dries within about 2 minutes (cvar <code>r_wetGround</code>, 2 = finer reflections)</li>
+    <li>OpenGL2: wet ground in the rain: darker, with reflections of the surroundings, lights and cars, and puddles that mirror like water (muddy on loose ground, with rain drop rings); it gets wet within about 20 seconds and dries within about 2 minutes (cvar <code>r_wetGround</code>, 2 = finer reflections); tyre spray and powder snow are soft, lit clouds</li>
     <li>OpenGL2: bloom (glow around bright lights) and FXAA edge smoothing (cvars <code>r_bloom</code>, <code>r_bloomIntensity</code>, <code>r_bloomThreshold</code>, <code>r_fxaa</code>)</li>
     <li><code>q3r_ctf_01</code>: reflective pool, running water in the pipe, waterfall with spray and sound; new shaders <code>q3r_waterfall</code> and <code>q3r_waterflow</code></li>
     <li>Sun shadows on maps that had a sun straight overhead (q3r_dd_02, q3r_downtown, q3r_citydom, q3r_ctf_01, q3r_battlecanyon, q3r_david4; maps relit)</li>

@@ -1203,6 +1203,7 @@ static void RB_WetGroundPass( shaderCommands_t *input )
 	shader_t *shader = input->shader;
 	shaderProgram_t *sp = &tr.wetGroundShader;
 	float wetness, reflection, darken, puddles;
+	vec3_t tint;
 	vec4_t vec;
 	qboolean ssr;
 
@@ -1227,14 +1228,20 @@ static void RB_WetGroundPass( shaderCommands_t *input )
 		return;
 	}
 
+	// reflection of the surface itself, darkening, how much water it holds
+	// (puddles), colour of the puddle water
 	if ( shader->surfaceFlags & SURF_GRASS ) {
-		reflection = 0.10f; darken = 0.22f; puddles = 0.0f;
+		reflection = 0.10f; darken = 0.22f; puddles = 0.25f;
+		VectorSet( tint, 0.75f, 0.72f, 0.55f );
 	} else if ( shader->surfaceFlags & ( SURF_DIRT | SURF_DUST | SURF_SAND ) ) {
-		reflection = 0.30f; darken = 0.40f; puddles = 0.6f;
+		reflection = 0.30f; darken = 0.40f; puddles = 1.0f;
+		VectorSet( tint, 0.78f, 0.66f, 0.50f );		// muddy
 	} else if ( shader->surfaceFlags & SURF_GRAVEL ) {
-		reflection = 0.25f; darken = 0.35f; puddles = 0.3f;
+		reflection = 0.25f; darken = 0.35f; puddles = 0.6f;
+		VectorSet( tint, 0.80f, 0.74f, 0.64f );
 	} else {
-		reflection = 1.0f; darken = 0.42f; puddles = 1.0f;	// asphalt, concrete, metal
+		reflection = 1.0f; darken = 0.42f; puddles = 0.9f;	// asphalt, concrete, metal
+		VectorSet( tint, 1.0f, 1.0f, 1.0f );
 	}
 
 	// the reflection needs this frame's depth and last frame's picture,
@@ -1258,6 +1265,10 @@ static void RB_WetGroundPass( shaderCommands_t *input )
 
 	VectorSet4( vec, wetness, reflection, darken, puddles );
 	GLSL_SetUniformVec4( sp, UNIFORM_WETPARAMS, vec );
+
+	VectorSet4( vec, tint[0], tint[1], tint[2], ( backEnd.refdef.rdflags & RDF_RAIN ) ? 1.0f : 0.0f );
+	GLSL_SetUniformVec4( sp, UNIFORM_COLOR, vec );
+	GLSL_SetUniformFloat( sp, UNIFORM_TIME, backEnd.refdef.floatTime );
 
 	if ( ssr ) {
 		GL_BindToTMU( tr.wetSceneImage, TB_COLORMAP );

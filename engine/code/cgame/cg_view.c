@@ -1041,6 +1041,7 @@ void CG_UpdateWetness( void ) {
 	target = Com_Clamp( 0.0f, 1.0f, cgs.mapWetness );
 	if ( CG_AtmosphericPointWet( cg.refdef.vieworg ) || CG_AtmosphericPointWet( cg.predictedPlayerState.origin ) ) {
 		target = 1.0f;
+		cg.refdef.rdflags |= RDF_RAIN;		// drop rings in the puddles
 	}
 
 	// a race that starts in the rain starts on a wet track

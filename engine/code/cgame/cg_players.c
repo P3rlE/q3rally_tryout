@@ -3297,23 +3297,6 @@ static int CG_TireSmokeKind( int surfaceFlags ) {
 	return FX_SMOKE_TIRE;
 }
 
-static void CG_AddTireSprayParticle( vec3_t origin, vec3_t dir, float speed, int radius, int duration, float r, float g, float b, float a, qhandle_t shader ) {
-	vec3_t			velocity;
-	localEntity_t	*le;
-
-	VectorNormalize2( dir, velocity );
-	velocity[0] += crandom() * 0.08f;
-	velocity[1] += crandom() * 0.08f;
-	velocity[2] += crandom() * 0.05f;
-	VectorNormalize( velocity );
-	VectorScale( velocity, speed, velocity );
-
-	le = CG_SmokePuff( origin, velocity, radius, r, g, b, a, duration, cg.time, 0, LEF_PUFF_DONT_SCALE, shader );
-	if ( le ) {
-		le->refEntity.rotation = crandom() * 12.0f;
-	}
-}
-
 /*
 ===============
 CG_AddWetTireSpray
@@ -3331,7 +3314,6 @@ static void CG_AddWetTireSpray( centity_t *cent, vec3_t origin, vec3_t up, int t
 	float		normalSpeed;
 	int			interval;
 	int			radius;
-	int			duration;
 	float		particleSpeed;
 	float		alpha;
 	float		backScale;
@@ -3357,7 +3339,6 @@ static void CG_AddWetTireSpray( centity_t *cent, vec3_t origin, vec3_t up, int t
 
 	if ( frontAxle ) {
 		radius = 7 + (int)( normalSpeed * 6.0f ) + ( skidding ? 3 : 0 );
-		duration = 240 + (int)( normalSpeed * 120.0f ) + ( skidding ? 80 : 0 );
 		particleSpeed = 28.0f + normalSpeed * 38.0f + ( skidding ? 10.0f : 0.0f );
 		alpha = 0.34f + normalSpeed * 0.16f + ( skidding ? 0.10f : 0.0f );
 		backScale = -0.72f;
@@ -3365,7 +3346,6 @@ static void CG_AddWetTireSpray( centity_t *cent, vec3_t origin, vec3_t up, int t
 		originLift = 3.0f + normalSpeed * 2.0f;
 	} else {
 		radius = 9 + (int)( normalSpeed * 9.0f ) + ( skidding ? 6 : 0 );
-		duration = 300 + (int)( normalSpeed * 170.0f ) + ( skidding ? 130 : 0 );
 		particleSpeed = 24.0f + normalSpeed * 34.0f + ( skidding ? 14.0f : 0.0f );
 		alpha = 0.44f + normalSpeed * 0.20f + ( skidding ? 0.16f : 0.0f );
 		backScale = -0.55f;
@@ -3378,7 +3358,9 @@ static void CG_AddWetTireSpray( centity_t *cent, vec3_t origin, vec3_t up, int t
 	VectorNormalize( sprayDir );
 
 	VectorMA( origin, originLift, up, sprayOrigin );
-	CG_AddTireSprayParticle( sprayOrigin, sprayDir, particleSpeed, radius, duration, 0.88f, 0.94f, 1.0f, alpha, cgs.media.waterSprayFanShader );
+	// Q3Rally: soft, lit mist in the client particle pool
+	VectorScale( sprayDir, particleSpeed * 2.4f, sprayDir );
+	CG_FX_Spray( sprayOrigin, up, sprayDir, FX_SPRAY_WET, radius / 13.0f + alpha * 0.4f );
 	cent->wetSprayTime[tireNum] = cg.time + interval - (int)( normalSpeed * 25.0f );
 }
 
@@ -3398,7 +3380,6 @@ static void CG_AddSnowTireSpray( centity_t *cent, vec3_t origin, vec3_t up, int 
 	float		normalSpeed;
 	int			interval;
 	int			radius;
-	int			duration;
 	float		particleSpeed;
 	float		alpha;
 	float		backScale;
@@ -3424,7 +3405,6 @@ static void CG_AddSnowTireSpray( centity_t *cent, vec3_t origin, vec3_t up, int 
 
 	if ( frontAxle ) {
 		radius = 8 + (int)( normalSpeed * 7.0f ) + ( skidding ? 3 : 0 );
-		duration = 320 + (int)( normalSpeed * 150.0f ) + ( skidding ? 90 : 0 );
 		particleSpeed = 18.0f + normalSpeed * 24.0f + ( skidding ? 8.0f : 0.0f );
 		alpha = 0.34f + normalSpeed * 0.16f + ( skidding ? 0.10f : 0.0f );
 		backScale = -0.62f;
@@ -3432,7 +3412,6 @@ static void CG_AddSnowTireSpray( centity_t *cent, vec3_t origin, vec3_t up, int 
 		originLift = 3.5f + normalSpeed * 2.5f;
 	} else {
 		radius = 11 + (int)( normalSpeed * 11.0f ) + ( skidding ? 6 : 0 );
-		duration = 420 + (int)( normalSpeed * 220.0f ) + ( skidding ? 150 : 0 );
 		particleSpeed = 20.0f + normalSpeed * 30.0f + ( skidding ? 12.0f : 0.0f );
 		alpha = 0.46f + normalSpeed * 0.22f + ( skidding ? 0.16f : 0.0f );
 		backScale = -0.48f;
@@ -3445,7 +3424,9 @@ static void CG_AddSnowTireSpray( centity_t *cent, vec3_t origin, vec3_t up, int 
 	VectorNormalize( sprayDir );
 
 	VectorMA( origin, originLift, up, sprayOrigin );
-	CG_AddTireSprayParticle( sprayOrigin, sprayDir, particleSpeed, radius, duration, 0.92f, 0.96f, 1.0f, alpha, cgs.media.snowSprayFanShader );
+	// Q3Rally: soft, lit powder in the client particle pool
+	VectorScale( sprayDir, particleSpeed * 2.4f, sprayDir );
+	CG_FX_Spray( sprayOrigin, up, sprayDir, FX_SPRAY_SNOW, radius / 14.0f + alpha * 0.4f );
 	cent->wetSprayTime[tireNum] = cg.time + interval - (int)( normalSpeed * 20.0f );
 }
 
@@ -3630,11 +3611,11 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 				if ( snowSurface ) {
 					// snow surface: powder spray instead of smoke
 					VectorMA( tr.endpos, 7.0f, up, origin );
-					CG_AddTireSprayParticle(origin, up, 24, 14, 480, 0.92f, 0.96f, 1.0f, 0.62f, cgs.media.snowSprayPuffShader);
+					CG_FX_Spray( origin, up, vec3_origin, FX_SPRAY_SNOW, 1.2f );
 				} else if ( wetSurface ) {
 					// wet surface: spray instead of smoke — fast, small, bluish-white, short-lived
 					VectorMA( tr.endpos, 7.0f, up, origin );
-					CG_AddTireSprayParticle(origin, up, 28, 13, 380, 0.88f, 0.94f, 1.0f, 0.58f, cgs.media.waterSprayPuffShader);
+					CG_FX_Spray( origin, up, vec3_origin, FX_SPRAY_WET, 1.1f );
 				} else if ( tr.surfaceFlags & SURF_ICE ) {
 					CreateSmokeCloudEntity(tr.endpos, up, 10, 8, 500, surfaceColors[colorIndex][0], surfaceColors[colorIndex][1], surfaceColors[colorIndex][2], 0.6f, cgs.media.snowPuffShader);
 				} else {
@@ -3661,6 +3642,9 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 			VectorNormalize(delta);
 
 			CG_SkidMark( shader, origin, tr.plane.normal, delta, 1,1,1,1, qfalse, 8.0F, length, qfalse );
+		}
+		else if ( wetSurface ) {
+			// Q3Rally: wet ground makes no dust, only the spray above
 		}
 		else if ( tr.surfaceFlags & SURF_DUST ){
 			// Q3Rally: rolling tyres throw up dust, more with speed

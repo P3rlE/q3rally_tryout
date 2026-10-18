@@ -18,6 +18,8 @@ uniform mat4   u_PrevViewProj;
 uniform vec3   u_ViewOrigin;
 uniform vec4   u_ViewInfo;		// x = zNear, y = zFar, z = steps, w = highest mip level
 uniform vec4   u_WetParams;		// x = wetness, y = reflection, z = darkening, w = puddles
+uniform vec4   u_Color;			// rgb = tint of the puddle water (muddy on loose ground), a = rain (drop rings)
+uniform float  u_Time;
 
 varying vec3   var_Position;
 varying vec3   var_Normal;
@@ -78,17 +80,35 @@ void main()
 	// water gathers on the flat parts: walls get a bit darker, no mirror
 	float up = smoothstep(0.55, 0.85, N.z);
 
-	// puddles, more of them the wetter it is
+	// puddles: they appear once the ground is properly wet and grow with
+	// it; u_WetParams.w is how much water the surface holds
 	float n = Noise(var_Position.xy / 230.0) * 0.65 + Noise(var_Position.xy / 61.0) * 0.35;
-	float puddle = smoothstep(0.66 - 0.14 * wet, 0.72 - 0.14 * wet, n) * smoothstep(0.45, 1.0, wet) * u_WetParams.w * up;
+	float level = 0.70 - 0.22 * u_WetParams.w * smoothstep(0.25, 1.0, wet);
+	float puddle = smoothstep(level, level + 0.05, n) * step(0.25, wet) * up;
 
 	// wet asphalt is rough: the normal wobbles a little outside the puddles
 	vec2 wobble = vec2(Noise(var_Position.xy / 9.0), Noise(var_Position.yx / 9.0 + 17.0)) - 0.5;
 	N = normalize(N + vec3(wobble * 0.05 * (1.0 - puddle), 0.0));
 
+	// rain drops make rings on the puddles: one drop per cell at a time
+	if (u_Color.a > 0.0 && puddle > 0.0)
+	{
+		vec2  cell = floor(var_Position.xy / 26.0);
+		float h = Hash(cell);
+		float t = fract(u_Time * (0.9 + h * 0.6) + h);
+		vec2  centre = (cell + 0.25 + 0.5 * vec2(h, Hash(cell + 7.0))) * 26.0;
+		vec2  d = var_Position.xy - centre;
+		float dist = length(d);
+		float ring = sin((dist - t * 13.0) * 1.6) * exp(-abs(dist - t * 13.0) * 0.5) * (1.0 - t);
+		N = normalize(N + vec3(d / max(dist, 0.01) * ring * 0.18 * u_Color.a * puddle, 0.0));
+	}
+
 	float cosT = clamp(-dot(V, N), 0.0, 1.0);
 	float fresnel = 0.03 + 0.97 * pow(1.0 - cosT, 5.0);
-	float reflection = u_WetParams.y * wet * up * mix(0.45, 1.0, puddle) * fresnel;
+
+	// the surface itself reflects by its material, a puddle is water on
+	// any ground and reflects like a mirror
+	float reflection = wet * up * mix(u_WetParams.y * 0.45, 1.0, puddle) * fresnel;
 	float dark = u_WetParams.z * wet * mix(0.5, 1.0, up);
 
 	vec3 color = vec3(0.0);
@@ -101,7 +121,7 @@ void main()
 		vec3  last = p;
 		float stepLen = 4.0 + LinearZ(gl_FragCoord.z) * 0.01;
 		float jitter = Hash(gl_FragCoord.xy);
-		float mip = mix(u_ViewInfo.w * 0.6, 0.0, puddle);
+		float mip = mix(u_ViewInfo.w * 0.6, 0.0, puddle * puddle);
 		vec2  lastUV = vec2(-1.0);
 		bool  hit = false;
 		bool  blocked = false;
@@ -176,6 +196,9 @@ void main()
 	}
 
 	reflection *= found;
+
+	// muddy puddles on loose ground
+	color *= mix(vec3(1.0), u_Color.rgb, puddle);
 
 	gl_FragColor = vec4(color * reflection, (1.0 - dark) * (1.0 - reflection));
 }

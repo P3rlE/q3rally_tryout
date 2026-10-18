@@ -2235,10 +2235,13 @@ typedef enum {
 	FX_SMOKE_GRASS,
 	FX_SMOKE_SCREEN,	// rear weapon smoke screen: thick, big, long
 	FX_SMOKE_BLAST,		// dark smoke of an explosion (mine)
+	FX_SPRAY_WET,		// water spray of tyres on a wet road
+	FX_SPRAY_SNOW,		// powder snow thrown up by tyres
 	FX_SMOKE_NUM_KINDS
 } fxSmokeKindNum_t;
 
 void CG_FX_TireSmoke( const vec3_t origin, const vec3_t up, const vec3_t carVel, int kind, float strength );
+void CG_FX_Spray( const vec3_t origin, const vec3_t up, const vec3_t throwVel, int kind, float strength );
 
 //
 // cg_atmospheric.c

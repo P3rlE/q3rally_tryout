@@ -127,6 +127,18 @@ Added:
   with surfaceparm wet are always wet. New cvars r_wetGround (1, 0 = off,
   2 = finer reflections; needs r_depthPrepass 1) and r_wetness (cheat,
   test value, -1 = from the rain). OpenGL1 draws the ground as before.
+  Puddles form on every kind of ground once it is properly wet and grow
+  with the wetness; they mirror like water (muddy on dirt, sand and
+  grass), and while it rains drops make rings in them.
+- Tyre spray on wet roads and powder snow behind the tyres are soft, lit
+  clouds in the client particle pool like the tyre smoke (they followed the
+  map's light too little and were small sprites); wet ground no longer
+  throws up dust.
+- q3r_sk1 (Canyon Cruise): the puddle on the track and the creek under the
+  bridges use the reflective water (new shader
+  textures/q3r_liquids/q3r_water_pool, the old pool look stays for
+  OpenGL1 and r_water 0; liquids/calm_poollight itself is unchanged for
+  q3r_ctf_04 and q3r_david4).
 
 Changed:
 
@@ -426,6 +438,13 @@ Changed:
   and effects of the main view. Car glass keeps the static reflection texture.
 
 Fixed:
+
+- q3r_sk1: a 4 unit gap between the road and the start pad showed the void
+  as a white line along the start. Fixed in the .map (the road brush now
+  reaches the pad); the map needs to be compiled again (-bsp -meta
+  -custinfoparms; -vis -saveprt; -light -fast -super 2 -filter -bounce 8,
+  then bspc for the AAS). Until then the shipped BSP has the side of the
+  pad in the road texture, so the line is less bright.
 
 - The give command could crash the server ("BG_CanItemBeGrabbed: index out
   of range") when the item placed at the car started inside the ground: the
