@@ -111,6 +111,7 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_ColorLutMap", GLSL_INT },
 	{ "u_ToneParams", GLSL_VEC4 },
 	{ "u_LutParams", GLSL_VEC4 },
+	{ "u_AoParams", GLSL_VEC4 },
 
 	{ "u_EnableTextures", GLSL_VEC4 },
 

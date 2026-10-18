@@ -116,6 +116,9 @@ cvar_t  *r_postProcess;
 
 cvar_t  *r_toneMap;
 cvar_t  *r_toneMapCurve;
+cvar_t  *r_ssaoRadius;
+cvar_t  *r_ssaoStrength;
+cvar_t  *r_ssaoDistance;
 cvar_t  *r_filmicExposure;
 cvar_t  *r_filmicWhite;
 cvar_t  *r_colorGrade;
@@ -1344,7 +1347,18 @@ void R_Register( void )
 	r_cameraExposure = ri.Cvar_Get( "r_cameraExposure", "1", CVAR_CHEAT );
 
 	r_depthPrepass = ri.Cvar_Get( "r_depthPrepass", "1", CVAR_ARCHIVE );
-	r_ssao = ri.Cvar_Get( "r_ssao", "0", CVAR_LATCH | CVAR_ARCHIVE );
+	r_ssao = ri.Cvar_Get( "r_ssao", "1", CVAR_LATCH | CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_ssao, 0, 2, qtrue );
+	ri.Cvar_SetDescription( r_ssao, "Q3Rally: ambient occlusion, soft shadows in corners, under and around the cars (needs r_depthPrepass 1): 0 = off, 1 = on, 2 = finer (more samples)" );
+	r_ssaoRadius = ri.Cvar_Get( "r_ssaoRadius", "48", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_ssaoRadius, 8, 256, qfalse );
+	ri.Cvar_SetDescription( r_ssaoRadius, "Q3Rally: how far (world units) geometry darkens its surroundings in the ambient occlusion" );
+	r_ssaoStrength = ri.Cvar_Get( "r_ssaoStrength", "0.8", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_ssaoStrength, 0, 4, qfalse );
+	ri.Cvar_SetDescription( r_ssaoStrength, "Q3Rally: how dark the ambient occlusion gets" );
+	r_ssaoDistance = ri.Cvar_Get( "r_ssaoDistance", "3000", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_ssaoDistance, 256, 16384, qfalse );
+	ri.Cvar_SetDescription( r_ssaoDistance, "Q3Rally: distance at which the ambient occlusion has faded out" );
 
 	r_normalMapping = ri.Cvar_Get( "r_normalMapping", "1", CVAR_ARCHIVE | CVAR_LATCH );
 	r_specularMapping = ri.Cvar_Get( "r_specularMapping", "1", CVAR_ARCHIVE | CVAR_LATCH );

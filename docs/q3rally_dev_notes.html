@@ -356,6 +356,17 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
   </table></div>
   <div class="callout orange"><strong>Open ideas</strong>SMAA instead of FXAA (sharper textures, needs the area/search lookup textures), a lens dirt texture for the bloom, per-map bloom settings in the worldspawn.</div>
 
+  <h3>Ambient Occlusion — Implementation</h3>
+  <p>Replaces the ioquake3 SSAO shader (3 samples, no normals). Cvars: <code>r_ssao</code> (archive, latched, 1; 2 = 24 samples), <code>r_ssaoRadius</code> (48), <code>r_ssaoStrength</code> (0.8), <code>r_ssaoDistance</code> (3000), all archive. Needs <code>r_depthPrepass 1</code>.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Part</th><th>Where</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>AO pass</td><td><code>glsl/ssao_fp.glsl</code>, <code>RB_DrawSurfs</code> (<code>tr_backend.c</code>, after the depth prepass)</td><td>Scalable Ambient Obscurance (McGuire et al. 2012) at half resolution into <code>tr.quarterFbo[0]</code> (the &quot;quarter&quot; images are half size). The pixel is rebuilt in view space from <code>tr.hdrDepthImage</code> (raw depth, centre snapped to a full resolution texel) with <code>u_ViewInfo</code> = zFar/zNear, zFar, tan(fov/2) x and y (zNear from <code>viewParms.zNear</code>); the normal from the neighbour on each axis with the smaller depth step. Samples on a 7-turn spiral inside a disc of <code>r_ssaoRadius</code> world units (at most 12 % of the screen), each adds f&sup3; &middot; max((v&middot;n &minus; bias) / (v&middot;v + &epsilon;), 0), f = r&sup2; &minus; v&middot;v; A = 1 &minus; sum &middot; strength &middot; 5/N &middot; r / r&#8310;. Per pixel rotation from interleaved gradient noise. Fades to 1 between 60 % and 100 % of <code>r_ssaoDistance</code>; sky (depth 1) and pixels whose disc is under two texels stay 1.</td></tr>
+      <tr><td>Blur</td><td><code>depthBlurShader[0]</code> / <code>[1]</code></td><td>Horizontal into <code>tr.quarterFbo[1]</code>, vertical into <code>tr.screenSsaoFbo</code>, depth aware (unchanged).</td></tr>
+      <tr><td>Apply</td><td><code>RB_PostProcess</code></td><td>Multiplied over the HDR scene before tone mapping. Main view only (viewport &ge; half the screen, no water/car reflection views, no <code>RDF_NOWORLDMODEL</code>), so small extra views never get a stale AO image.</td></tr>
+    </tbody>
+  </table></div>
+
   <h3>Filmic Tone Mapping &amp; Colour Grading — Implementation</h3>
   <p>Part of the tone mapping pass (<code>RB_ToneMap</code> in <code>tr_postprocess.c</code>, <code>glsl/tonemap_fp.glsl</code>), so it needs <code>r_hdr 1</code> and <code>r_toneMap 1</code> and runs before bloom and FXAA. Cvars (all archive): <code>r_toneMapCurve</code> (1), <code>r_filmicExposure</code> (1.25), <code>r_filmicWhite</code> (2), <code>r_colorGrade</code> (1), <code>r_colorLut</code> ("").</p>
   <div class="table-wrap"><table>

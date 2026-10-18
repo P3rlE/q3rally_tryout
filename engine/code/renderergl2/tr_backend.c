@@ -1148,14 +1148,17 @@ const void	*RB_DrawSurfs( const void *data ) {
 				}
 			}
 
-			if (r_ssao->integer)
+			// Q3Rally: ambient occlusion (SAO) for the main view only
+			if (r_ssao->integer && tr.screenSsaoFbo && backEnd.viewParms.viewportWidth >= glConfig.vidWidth / 2
+				&& !(backEnd.viewParms.flags & (VPF_WATERREFLECTION | VPF_CARREFLECT)) && !backEnd.viewParms.targetFbo)
 			{
 				vec4_t quadVerts[4];
 				vec2_t texCoords[4];
+				vec4_t vec;
+				float zNear = backEnd.viewParms.zNear > 0.0f ? backEnd.viewParms.zNear : r_znear->value;
 
-				viewInfo[2] = 1.0f / ((float)(tr.quarterImage[0]->width)  * tan(backEnd.viewParms.fovX * M_PI / 360.0f) * 2.0f);
-				viewInfo[3] = 1.0f / ((float)(tr.quarterImage[0]->height) * tan(backEnd.viewParms.fovY * M_PI / 360.0f) * 2.0f);
-				viewInfo[3] *= (float)backEnd.viewParms.viewportHeight / (float)backEnd.viewParms.viewportWidth;
+				VectorSet4(viewInfo, backEnd.viewParms.zFar / zNear, backEnd.viewParms.zFar,
+					tan(backEnd.viewParms.fovX * M_PI / 360.0f), tan(backEnd.viewParms.fovY * M_PI / 360.0f));
 
 				FBO_Bind(tr.quarterFbo[0]);
 
@@ -1179,6 +1182,10 @@ const void	*RB_DrawSurfs( const void *data ) {
 				GL_BindToTMU(tr.hdrDepthImage, TB_COLORMAP);
 
 				GLSL_SetUniformVec4(&tr.ssaoShader, UNIFORM_VIEWINFO, viewInfo);
+				VectorSet4(vec, r_ssaoRadius->value, r_ssaoStrength->value, r_ssaoRadius->value * 0.03f, r_ssao->integer >= 2 ? 24.0f : 12.0f);
+				GLSL_SetUniformVec4(&tr.ssaoShader, UNIFORM_AOPARAMS, vec);
+				VectorSet4(vec, 1.0f / tr.hdrDepthImage->width, 1.0f / tr.hdrDepthImage->height, r_ssaoDistance->value * 0.6f, r_ssaoDistance->value);
+				GLSL_SetUniformVec4(&tr.ssaoShader, UNIFORM_COLOR, vec);
 
 				RB_InstantQuad2(quadVerts, texCoords); //, color, shaderProgram, invTexRes);
 
@@ -1613,7 +1620,7 @@ const void *RB_PostProcess(const void *data)
 	dstBox[2] = backEnd.viewParms.viewportWidth;
 	dstBox[3] = backEnd.viewParms.viewportHeight;
 
-	if (r_ssao->integer)
+	if (r_ssao->integer && tr.screenSsaoFbo && backEnd.viewParms.viewportWidth >= glConfig.vidWidth / 2 && !(backEnd.refdef.rdflags & RDF_NOWORLDMODEL))
 	{
 		srcBox[0] = backEnd.viewParms.viewportX      * tr.screenSsaoImage->width  / (float)glConfig.vidWidth;
 		srcBox[1] = backEnd.viewParms.viewportY      * tr.screenSsaoImage->height / (float)glConfig.vidHeight;

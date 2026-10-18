@@ -166,6 +166,15 @@ Added:
   q3r_battlecanyon and q3r_david4; dusk for q3r_dirtyfun and q3r_dd_02;
   cold for q3r_ridgeracer (and q3r_watertest). The other maps use
   q3r_default.
+- Ambient occlusion (OpenGL2): soft shadows where surfaces meet, so the
+  cars stand on the ground (a contact shadow under the car) and kerbs,
+  wall bases, corners and props get depth. Rebuilt after Scalable Ambient
+  Obscurance: positions and normals from the depth of the prepass, 12
+  samples (24 with r_ssao 2) on a spiral with a radius in world units, at
+  half resolution with the depth aware blur; it fades out in the distance.
+  Only the main view. r_ssao is now on by default (latched, needs
+  r_depthPrepass 1); new cvars r_ssaoRadius (48), r_ssaoStrength (0.8) and
+  r_ssaoDistance (3000).
 
 Changed:
 

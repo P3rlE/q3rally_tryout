@@ -676,6 +676,7 @@ typedef enum
 	UNIFORM_COLORLUTMAP,	// Q3Rally: colour grading LUT of the tone mapping
 	UNIFORM_TONEPARAMS,		// Q3Rally: x = curve (0 classic, 1 filmic), y = filmic exposure, z = filmic white
 	UNIFORM_LUTPARAMS,		// Q3Rally: x = LUT strength, y = LUT size (0 = none)
+	UNIFORM_AOPARAMS,		// Q3Rally: SSAO, x = radius, y = intensity, z = bias, w = samples
 
 	UNIFORM_ENABLETEXTURES,
 
@@ -1898,6 +1899,9 @@ extern  cvar_t  *r_postProcess;
 
 extern  cvar_t  *r_toneMap;
 extern  cvar_t  *r_toneMapCurve;
+extern  cvar_t  *r_ssaoRadius;
+extern  cvar_t  *r_ssaoStrength;
+extern  cvar_t  *r_ssaoDistance;
 extern  cvar_t  *r_filmicExposure;
 extern  cvar_t  *r_filmicWhite;
 extern  cvar_t  *r_colorGrade;
