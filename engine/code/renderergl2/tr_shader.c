@@ -687,11 +687,8 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 					if (stage->type == ST_NORMALPARALLAXMAP)
 						type = IMGTYPE_NORMALHEIGHT;
 				}
-				else
-				{
-					if (r_genNormalMaps->integer)
-						flags |= IMGFLAG_GENNORMALMAP;
-				}
+				// Q3Rally: normal maps are made in CollapseStagesToLightall
+				// (R_GenerateSurfaceMaps), only for world surfaces
 
 				stage->bundle[0].image[0] = R_FindImageFile( token, type, flags );
 
@@ -730,11 +727,6 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 
 				if (stage->type == ST_NORMALPARALLAXMAP)
 					type = IMGTYPE_NORMALHEIGHT;
-			}
-			else
-			{
-				if (r_genNormalMaps->integer)
-					flags |= IMGFLAG_GENNORMALMAP;
 			}
 
 
@@ -2377,6 +2369,37 @@ static void ComputeVertexAttribs(void)
 }
 
 
+/*
+===============
+SurfaceMapMaterial
+
+Q3Rally: relief strength, specular reflectance and gloss of the generated
+normal / specular maps (R_GenerateSurfaceMaps) by the surface flags.
+===============
+*/
+static void SurfaceMapMaterial( int surfaceFlags, float *bump, float *reflectance, float *gloss )
+{
+	if ( surfaceFlags & SURF_ICE ) {
+		*bump = 0.3f; *reflectance = 0.04f; *gloss = 0.8f;
+	} else if ( surfaceFlags & SURF_SNOW ) {
+		*bump = 0.5f; *reflectance = 0.03f; *gloss = 0.35f;
+	} else if ( surfaceFlags & SURF_METAL ) {
+		*bump = 0.5f; *reflectance = 0.12f; *gloss = 0.6f;
+	} else if ( surfaceFlags & SURF_GRAVEL ) {
+		*bump = 1.2f; *reflectance = 0.03f; *gloss = 0.25f;
+	} else if ( surfaceFlags & ( SURF_DIRT | SURF_DUST ) ) {
+		*bump = 1.0f; *reflectance = 0.025f; *gloss = 0.15f;
+	} else if ( surfaceFlags & SURF_SAND ) {
+		*bump = 0.6f; *reflectance = 0.025f; *gloss = 0.15f;
+	} else if ( surfaceFlags & SURF_GRASS ) {
+		*bump = 0.8f; *reflectance = 0.03f; *gloss = 0.2f;
+	} else if ( surfaceFlags & SURF_ASPHALT ) {
+		*bump = 0.6f; *reflectance = 0.04f; *gloss = 0.45f;
+	} else {
+		*bump = 1.0f; *reflectance = 0.04f; *gloss = 0.3f;	// walls, concrete, stone, wood
+	}
+}
+
 static void CollapseStagesToLightall(shaderStage_t *diffuse, 
 	shaderStage_t *normal, shaderStage_t *specular, shaderStage_t *lightmap, 
 	qboolean useLightVector, qboolean useLightVertex, qboolean parallax, qboolean tcgen)
@@ -2445,6 +2468,14 @@ static void CollapseStagesToLightall(shaderStage_t *diffuse,
 				normalImg = R_FindImageFile(normalName, IMGTYPE_NORMAL, normalFlags);
 			}
 
+			// Q3Rally: none there, make one (world surfaces, not alpha
+			// tested and no decals)
+			if (!normalImg && r_genNormalMaps->integer && lightmap && shader.lightmapIndex >= 0
+				&& !(diffuse->stateBits & GLS_ATEST_BITS) && !shader.polygonOffset)
+			{
+				normalImg = R_GenerateSurfaceMaps(diffuseImg);
+			}
+
 			if (normalImg)
 			{
 				diffuse->bundle[TB_NORMALMAP] = diffuse->bundle[0];
@@ -2455,6 +2486,15 @@ static void CollapseStagesToLightall(shaderStage_t *diffuse,
 					defs |= LIGHTDEF_USE_PARALLAXMAP;
 
 				VectorSet4(diffuse->normalScale, r_baseNormalX->value, r_baseNormalY->value, 1.0f, r_baseParallax->value);
+
+				if (normalImg->flags & IMGFLAG_GENERATED)
+				{
+					float bump, refl, gloss;
+
+					SurfaceMapMaterial(shader.surfaceFlags, &bump, &refl, &gloss);
+					diffuse->normalScale[0] *= bump * r_genNormalStrength->value;
+					diffuse->normalScale[1] *= bump * r_genNormalStrength->value;
+				}
 			}
 		}
 	}
@@ -2486,6 +2526,14 @@ static void CollapseStagesToLightall(shaderStage_t *diffuse,
 				diffuse->bundle[TB_SPECULARMAP].image[0] = specularImg;
 
 				VectorSet4(diffuse->specularScale, 1.0f, 1.0f, 1.0f, 1.0f);
+
+				if (specularImg->flags & IMGFLAG_GENERATED)
+				{
+					float bump, refl, gloss;
+
+					SurfaceMapMaterial(shader.surfaceFlags, &bump, &refl, &gloss);
+					VectorSet4(diffuse->specularScale, refl, refl, refl, gloss);
+				}
 			}
 		}
 	}
@@ -3619,9 +3667,6 @@ shader_t *R_FindShaderEx( const char *name, int lightmapIndex, qboolean mipRawIm
 		if (mipRawImage)
 		{
 			flags |= IMGFLAG_MIPMAP | IMGFLAG_PICMIP;
-
-			if (r_genNormalMaps->integer)
-				flags |= IMGFLAG_GENNORMALMAP;
 		}
 		else
 		{

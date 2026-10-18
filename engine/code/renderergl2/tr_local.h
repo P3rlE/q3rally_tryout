@@ -1900,6 +1900,7 @@ extern  cvar_t  *r_postProcess;
 extern  cvar_t  *r_toneMap;
 extern  cvar_t  *r_toneMapCurve;
 extern  cvar_t  *r_ssaoRadius;
+extern  cvar_t  *r_genNormalStrength;
 extern  cvar_t  *r_ssaoStrength;
 extern  cvar_t  *r_ssaoDistance;
 extern  cvar_t  *r_filmicExposure;
@@ -2451,6 +2452,7 @@ void R_ComputeMotionMask( void );
 #define CAR_REFLECT_COAT_FACING	0.04f	// Q3Rally: clear coat seen straight on (1 at the edges)
 void RE_BeginScene( const refdef_t *fd );
 void R_UpdateColorLut( void );
+image_t *R_GenerateSurfaceMaps( image_t *diffuse );
 void RE_RenderScene( const refdef_t *fd );
 void RE_EndScene( void );
 

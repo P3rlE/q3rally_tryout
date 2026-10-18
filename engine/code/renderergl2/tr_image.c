@@ -2715,6 +2715,176 @@ image_t	*R_FindImageFile( const char *name, imgType_t type, imgFlags_t flags )
 }
 
 
+
+/*
+================
+R_GenerateSurfaceMaps
+
+Q3Rally: makes a normal map ("<name>_n") and a specular map ("<name>_s")
+for a world texture that has none. The height is the texture's luminance
+with its large scale changes taken out (painted light and shadow are not
+relief); the normal comes from its slope at two scales (fine grain and
+larger bumps). The specular map holds the gloss in alpha: lower in the
+dark gaps, higher on the raised parts; its colour is white, the renderer
+scales both by the material (CollapseStagesToLightall). Both images get
+IMGFLAG_GENERATED. Returns the normal map, or NULL.
+================
+*/
+static void BoxBlur1D( const float *in, float *out, int count, int stride, int len, int radius, qboolean wrap )
+{
+	int line, i;
+
+	for ( line = 0; line < count; line++ )
+	{
+		const float *src = in + line * ( stride == 1 ? len : 1 );
+		float *dst = out + line * ( stride == 1 ? len : 1 );
+		float sum = 0.0f, scale = 1.0f / ( radius * 2 + 1 );
+
+		for ( i = -radius; i <= radius; i++ )
+		{
+			int j = wrap ? ( ( i % len ) + len ) % len : CLAMP( i, 0, len - 1 );
+			sum += src[j * stride];
+		}
+
+		for ( i = 0; i < len; i++ )
+		{
+			int add = i + radius + 1, sub = i - radius;
+
+			dst[i * stride] = sum * scale;
+
+			add = wrap ? add % len : MIN( add, len - 1 );
+			sub = wrap ? ( ( sub % len ) + len ) % len : MAX( sub, 0 );
+			sum += src[add * stride] - src[sub * stride];
+		}
+	}
+}
+
+static void BoxBlur2D( const float *in, float *out, float *tmp, int width, int height, int radius, qboolean wrap )
+{
+	BoxBlur1D( in, tmp, height, 1, width, radius, wrap );			// rows
+	BoxBlur1D( tmp, out, width, width, height, radius, wrap );		// columns
+}
+
+image_t *R_GenerateSurfaceMaps( image_t *diffuse )
+{
+	char normalName[MAX_QPATH], specularName[MAX_QPATH];
+	byte *pic = NULL, *normalPic, *specularPic;
+	float *lum, *base, *fine, *coarse, *tmp;
+	int width, height, numMips, x, y, n, radius;
+	GLenum picFormat;
+	qboolean wrap;
+	imgFlags_t flags;
+	float scale;
+	image_t *normalImage;
+
+	if ( !diffuse || !diffuse->imgName[0] || diffuse->imgName[0] == '*' ) {
+		return NULL;
+	}
+
+	COM_StripExtension( diffuse->imgName, normalName, sizeof( normalName ) );
+	Q_strncpyz( specularName, normalName, sizeof( specularName ) );
+	Q_strcat( normalName, sizeof( normalName ), "_n" );
+	Q_strcat( specularName, sizeof( specularName ), "_s" );
+
+	R_LoadImage( diffuse->imgName, &pic, &width, &height, &picFormat, &numMips );
+	if ( !pic ) {
+		return NULL;
+	}
+	if ( picFormat != GL_RGBA8 || width < 8 || height < 8 ) {
+		ri.Free( pic );		// compressed source, or too small for relief
+		return NULL;
+	}
+
+	n = width * height;
+	wrap = !( diffuse->flags & IMGFLAG_CLAMPTOEDGE );
+	lum = ri.Malloc( n * sizeof( float ) * 5 );
+	base = lum + n;
+	fine = base + n;
+	coarse = fine + n;
+	tmp = coarse + n;
+
+	// luminance, roughly linear
+	for ( x = 0; x < n; x++ )
+	{
+		float l = ( pic[x * 4 + 0] * 0.299f + pic[x * 4 + 1] * 0.587f + pic[x * 4 + 2] * 0.114f ) / 255.0f;
+		lum[x] = l * l;
+	}
+
+	// take out large scale brightness (painted light and shadow)
+	radius = MAX( 2, MAX( width, height ) / 24 );
+	BoxBlur2D( lum, base, tmp, width, height, radius, wrap );
+	for ( x = 0; x < n; x++ ) {
+		lum[x] -= base[x];
+	}
+
+	// fine grain and larger bumps
+	BoxBlur2D( lum, fine, tmp, width, height, 1, wrap );
+	BoxBlur2D( lum, coarse, tmp, width, height, MAX( 2, MAX( width, height ) / 128 ), wrap );
+
+	// slopes are per texel: a texture with more texels over the same area
+	// needs a stronger factor for the same relief
+	scale = 6.0f * MAX( width, height ) / 256.0f;
+
+	normalPic = ri.Malloc( n * 4 );
+	specularPic = ri.Malloc( n * 4 );
+
+	for ( y = 0; y < height; y++ )
+	{
+		for ( x = 0; x < width; x++ )
+		{
+			int xl, xr, yu, yd, xl2, xr2, yu2, yd2, i = y * width + x;
+			float dx, dy, gloss;
+			vec3_t normal;
+
+			if ( wrap ) {
+				xl = ( x + width - 1 ) % width; xr = ( x + 1 ) % width;
+				yu = ( y + height - 1 ) % height; yd = ( y + 1 ) % height;
+				xl2 = ( x + width - 3 ) % width; xr2 = ( x + 3 ) % width;
+				yu2 = ( y + height - 3 ) % height; yd2 = ( y + 3 ) % height;
+			} else {
+				xl = MAX( x - 1, 0 ); xr = MIN( x + 1, width - 1 );
+				yu = MAX( y - 1, 0 ); yd = MIN( y + 1, height - 1 );
+				xl2 = MAX( x - 3, 0 ); xr2 = MIN( x + 3, width - 1 );
+				yu2 = MAX( y - 3, 0 ); yd2 = MIN( y + 3, height - 1 );
+			}
+
+			// same signs as the old generator: x from left minus right,
+			// y from top minus bottom
+			dx = ( fine[y * width + xl] - fine[y * width + xr] ) * 0.5f
+			   + ( coarse[y * width + xl2] - coarse[y * width + xr2] ) * ( 1.0f / 6.0f ) * 1.5f;
+			dy = ( fine[yu * width + x] - fine[yd * width + x] ) * 0.5f
+			   + ( coarse[yu2 * width + x] - coarse[yd2 * width + x] ) * ( 1.0f / 6.0f ) * 1.5f;
+
+			VectorSet( normal, dx * scale, dy * scale, 1.0f );
+			VectorNormalize( normal );
+
+			normalPic[i * 4 + 0] = FloatToOffsetByte( normal[0] );
+			normalPic[i * 4 + 1] = FloatToOffsetByte( normal[1] );
+			normalPic[i * 4 + 2] = FloatToOffsetByte( normal[2] );
+			normalPic[i * 4 + 3] = 255;
+
+			// gloss: rough in the gaps, smoother on top
+			gloss = Com_Clamp( 0.35f, 1.0f, 0.75f + fine[i] * 6.0f );
+			specularPic[i * 4 + 0] = specularPic[i * 4 + 1] = specularPic[i * 4 + 2] = 255;
+			specularPic[i * 4 + 3] = (byte)( gloss * 255.0f );
+		}
+	}
+
+	flags = ( diffuse->flags & ( IMGFLAG_MIPMAP | IMGFLAG_PICMIP | IMGFLAG_CLAMPTOEDGE ) ) | IMGFLAG_NOLIGHTSCALE | IMGFLAG_GENERATED;
+
+	normalImage = R_CreateImage( normalName, normalPic, width, height, IMGTYPE_NORMAL, flags, 0 );
+	if ( r_specularMapping->integer ) {
+		R_CreateImage( specularName, specularPic, width, height, IMGTYPE_COLORALPHA, flags, 0 );
+	}
+
+	ri.Free( specularPic );
+	ri.Free( normalPic );
+	ri.Free( lum );
+	ri.Free( pic );
+
+	return normalImage;
+}
+
 /*
 ================
 R_CreateDlightImage

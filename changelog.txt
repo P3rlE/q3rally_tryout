@@ -175,6 +175,17 @@ Added:
   Only the main view. r_ssao is now on by default (latched, needs
   r_depthPrepass 1); new cvars r_ssaoRadius (48), r_ssaoStrength (0.8) and
   r_ssaoDistance (3000).
+- Normal and specular maps for the map textures (OpenGL2): textures without
+  their own _n / _s maps get them made when the map loads, from the
+  texture itself (relief from its brightness with painted light and shadow
+  taken out, at a fine and a coarse scale; gloss lower in the gaps).
+  Relief, reflectance and gloss follow the material from the surface flags:
+  asphalt slightly glossy, dirt, sand and grass matt, gravel rough, metal
+  shiny, ice glossy. Only world surfaces with a lightmap (no models, car
+  skins, decals or alpha tested surfaces). The old ioquake3 generator
+  (one pixel Sobel, brightened the texture) is no longer used.
+  r_genNormalMaps is now on by default (latched); new cvar
+  r_genNormalStrength (1). Real _n / _s maps next to a texture still win.
 
 Changed:
 

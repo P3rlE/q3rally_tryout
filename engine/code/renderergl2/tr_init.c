@@ -117,6 +117,7 @@ cvar_t  *r_postProcess;
 cvar_t  *r_toneMap;
 cvar_t  *r_toneMapCurve;
 cvar_t  *r_ssaoRadius;
+cvar_t  *r_genNormalStrength;
 cvar_t  *r_ssaoStrength;
 cvar_t  *r_ssaoDistance;
 cvar_t  *r_filmicExposure;
@@ -1384,7 +1385,11 @@ void R_Register( void )
 	r_imageUpsample = ri.Cvar_Get( "r_imageUpsample", "0", CVAR_ARCHIVE | CVAR_LATCH );
 	r_imageUpsampleMaxSize = ri.Cvar_Get( "r_imageUpsampleMaxSize", "1024", CVAR_ARCHIVE | CVAR_LATCH );
 	r_imageUpsampleType = ri.Cvar_Get( "r_imageUpsampleType", "1", CVAR_ARCHIVE | CVAR_LATCH );
-	r_genNormalMaps = ri.Cvar_Get( "r_genNormalMaps", "0", CVAR_ARCHIVE | CVAR_LATCH );
+	r_genNormalMaps = ri.Cvar_Get( "r_genNormalMaps", "1", CVAR_ARCHIVE | CVAR_LATCH );
+	ri.Cvar_SetDescription( r_genNormalMaps, "Q3Rally: make normal and specular maps for map textures that have none (relief and gloss by material); needs r_normalMapping 1" );
+	r_genNormalStrength = ri.Cvar_Get( "r_genNormalStrength", "1", CVAR_ARCHIVE | CVAR_LATCH );
+	ri.Cvar_CheckRange( r_genNormalStrength, 0, 4, qfalse );
+	ri.Cvar_SetDescription( r_genNormalStrength, "Q3Rally: relief strength of the made normal maps (r_genNormalMaps)" );
 
 	r_forceSun = ri.Cvar_Get( "r_forceSun", "0", CVAR_ARCHIVE );
 	r_forceSunLightScale = ri.Cvar_Get( "r_forceSunLightScale", "1.0", CVAR_CHEAT );

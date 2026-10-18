@@ -367,6 +367,18 @@ footer{border-top:1px solid #1a1a1a;padding:24px 40px;display:flex;align-items:c
     </tbody>
   </table></div>
 
+  <h3>Normal &amp; Specular Maps — Implementation</h3>
+  <p>The OpenGL2 lightall shader already uses a normal map (light direction per vertex from the light grid, or the deluxe map) and a specular map (rgb = reflectance, alpha = gloss), and <code>CollapseStagesToLightall</code> looks for <code>&lt;texture&gt;_nh</code>, <code>_n</code> and <code>_s</code> next to the diffuse texture. Q3Rally ships almost none, so they are made at load time. Cvars: <code>r_genNormalMaps</code> (archive, latched, 1), <code>r_genNormalStrength</code> (archive, latched, 1).</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Part</th><th>Where</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>Generator</td><td><code>R_GenerateSurfaceMaps</code> (<code>tr_image.c</code>)</td><td>Loads the diffuse file again (<code>R_LoadImage</code>, uncompressed sources only). Height = squared luminance minus a box blur of 1/24 of the size (painted light and shadow are not relief). Slopes from a 1 texel blur (central differences) plus a 1/128 size blur (&plusmn;3 texels), scaled by size / 256 so the relief does not depend on the resolution; same signs as the old generator. Tiling textures wrap, clamped ones clamp. Writes <code>&lt;name&gt;_n</code> (IMGTYPE_NORMAL) and <code>&lt;name&gt;_s</code> (white, gloss 0.35&ndash;1 in alpha from the fine height), both with <code>IMGFLAG_GENERATED</code>, mip mapped like the diffuse texture.</td></tr>
+      <tr><td>When</td><td><code>CollapseStagesToLightall</code> (<code>tr_shader.c</code>)</td><td>Only when no <code>_nh</code> / <code>_n</code> file exists, the stage has a lightmap (<code>shader.lightmapIndex &ge; 0</code>), no alpha test and the shader no polygon offset. The generated images are found by name for every further shader with the same texture. The old <code>IMGFLAG_GENNORMALMAP</code> path in <code>R_FindImageFile</code> is no longer triggered.</td></tr>
+      <tr><td>Material</td><td><code>SurfaceMapMaterial</code> (<code>tr_shader.c</code>)</td><td>From <code>shader.surfaceFlags</code>: relief factor into <code>normalScale.xy</code> (&times; <code>r_genNormalStrength</code>), reflectance and gloss into <code>specularScale</code>. ice 0.3 / 0.04 / 0.8, snow 0.5 / 0.03 / 0.35, metal 0.5 / 0.12 / 0.6, gravel 1.2 / 0.03 / 0.25, dirt+dust 1.0 / 0.025 / 0.15, sand 0.6 / 0.025 / 0.15, grass 0.8 / 0.03 / 0.2, asphalt 0.6 / 0.04 / 0.45, other 1.0 / 0.04 / 0.3. Only for generated images; real maps keep <code>r_baseNormalX/Y</code> and specular 1.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout orange"><strong>Limits</strong>The height comes from brightness: light mortar between dark bricks reads as raised. For important textures a hand made <code>_n</code> (and <code>_s</code>) is better and is used automatically. Load time grows a little (every world texture is decoded twice). The headlight cones (<code>spotlight_fp.glsl</code>) do not use the normal maps yet.</div>
+
   <h3>Filmic Tone Mapping &amp; Colour Grading — Implementation</h3>
   <p>Part of the tone mapping pass (<code>RB_ToneMap</code> in <code>tr_postprocess.c</code>, <code>glsl/tonemap_fp.glsl</code>), so it needs <code>r_hdr 1</code> and <code>r_toneMap 1</code> and runs before bloom and FXAA. Cvars (all archive): <code>r_toneMapCurve</code> (1), <code>r_filmicExposure</code> (1.25), <code>r_filmicWhite</code> (2), <code>r_colorGrade</code> (1), <code>r_colorLut</code> ("").</p>
   <div class="table-wrap"><table>
