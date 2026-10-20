@@ -524,6 +524,17 @@ Changed:
 
 Fixed:
 
+- Haze (OpenGL2): where the void under a map shows through water or glass
+  (the creek in q3r_sk1), the haze treated it as sky below the horizon and
+  covered the water with a flat wall of haze colour. The sky only gets haze
+  in a thin band below the horizon now.
+- Crash "Z_Malloc: failed on allocation of 6290104 bytes from the main zone"
+  when loading a map with a large texture (q3r_sundown, tex9_15_blu.png,
+  1254 x 1254) while r_genNormalMaps is on (High and Ultra presets): the
+  normal map generator took its work buffers (20 bytes per texel) from the
+  48 MB zone. They come from the C heap now, and the source image is freed
+  as soon as it is no longer needed.
+
 - q3r_sk1: a 4 unit gap between the road and the start pad showed the void
   as a white line along the start. Fixed in the .map (the road brush now
   reaches the pad); the map needs to be compiled again (-bsp -meta

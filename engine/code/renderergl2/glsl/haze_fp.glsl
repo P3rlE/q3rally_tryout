@@ -37,7 +37,10 @@ void main()
 	float z = sky ? u_Color.a : u_ViewInfo.y / mix(u_ViewInfo.x, 1.0, d);
 	float dist = z * len;
 
-	// thin haze everywhere; the sky only gets it towards the horizon
+	// thin haze everywhere; the sky only gets it towards the horizon.
+	// Below the horizon the sky is the void under a map seen through
+	// water or glass, which do not write depth: only a thin band there, or
+	// the water turns into a flat wall of haze
 	float tau = u_HazeParams.x * dist;
 	if (sky)
 		tau *= 1.0 - smoothstep(0.0, 0.35, ray.z);
@@ -54,6 +57,9 @@ void main()
 
 		tau += u_HazeParams.y * exp(-clamp(b * h, -8.0, 40.0)) * dist * along;
 	}
+
+	if (sky && ray.z < 0.0)
+		tau *= 1.0 - smoothstep(0.0, 0.05, -ray.z);
 
 	float haze = (1.0 - exp(-tau)) * u_HazeColor.a;
 
