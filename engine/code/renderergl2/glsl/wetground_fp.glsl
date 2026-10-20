@@ -17,17 +17,18 @@ uniform mat4   u_ModelViewProjectionMatrix;
 uniform mat4   u_PrevViewProj;
 uniform vec3   u_ViewOrigin;
 uniform vec4   u_ViewInfo;		// x = zNear, y = zFar, z = steps, w = highest mip level
-uniform vec4   u_WetParams;		// x = wetness, y = reflection, z = darkening, w = puddles
+uniform vec4   u_WetParams;		// x = wetness of the map, y = reflection, z = darkening, w = puddles
 uniform vec4   u_Color;			// rgb = tint of the puddle water (muddy on loose ground)
 uniform float  u_Time;
-uniform vec4   u_WetZones[16];	// rain zones: mins + wetness, maxs + rain (drop rings)
-uniform int    u_WetZoneCount;
+uniform vec4   u_Weather;		// where the sky is: x = wetness, y = snow, z = rain, w = snowfall
+uniform sampler2D u_WeatherGridMap;	// sky grid: height + 32768, r = high byte, g = low byte
+uniform vec4   u_WeatherGrid;	// xy = origin, z = 1 / cell, w = 1 if there is a grid
+uniform vec4   u_WeatherGridSize;	// xy = cells, zw = 1 / cells
 
 varying vec3   var_Position;
 varying vec3   var_Normal;
 
 #define MAX_STEPS 40
-#define MAX_WET_ZONES 8
 
 float Hash(vec2 p)
 {
@@ -42,6 +43,30 @@ float Noise(vec2 p)
 
 	return mix(mix(Hash(i), Hash(i + vec2(1.0, 0.0)), u.x),
 	           mix(Hash(i + vec2(0.0, 1.0)), Hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+
+// how far the weather reaches the point, 0 to 1: out under the open sky
+// unless far below the highest surface of the grid cell (a bridge, a
+// roof); soft over a cell, so the rain blows a little way under an edge
+float CellExposure(vec2 cell, float z)
+{
+	vec2  uv = (clamp(cell, vec2(0.0), u_WeatherGridSize.xy - 1.0) + 0.5) * u_WeatherGridSize.zw;
+	vec4  t = texture2D(u_WeatherGridMap, uv);
+	float h = floor(t.r * 255.0 + 0.5) * 256.0 + floor(t.g * 255.0 + 0.5) - 32768.0;
+	return smoothstep(h - 64.0, h - 40.0, z);
+}
+
+float WeatherExposure(vec3 p)
+{
+	if (u_WeatherGrid.w < 0.5)
+		return 0.0;
+
+	vec2 c = (p.xy - u_WeatherGrid.xy) * u_WeatherGrid.z - 0.5;
+	vec2 c0 = floor(c);
+	vec2 f = c - c0;
+
+	return mix(mix(CellExposure(c0, p.z), CellExposure(c0 + vec2(1.0, 0.0), p.z), f.x),
+	           mix(CellExposure(c0 + vec2(0.0, 1.0), p.z), CellExposure(c0 + vec2(1.0, 1.0), p.z), f.x), f.y);
 }
 
 float LinearZ(float depth)
@@ -78,23 +103,22 @@ void main()
 {
 	float wet = u_WetParams.x;
 	float rain = 0.0;
-	int   z;
 
-	// rain zones: wet inside the box, soft at the sides; the ground may lie
-	// a little below the bottom of the zone
-	for (z = 0; z < MAX_WET_ZONES; z++)
+	// r_weatherDebug: blue where the weather reaches, red where covered
+	if (u_Color.a > 0.5)
 	{
-		if (z >= u_WetZoneCount)
-			break;
+		float e = WeatherExposure(var_Position);
+		gl_FragColor = vec4(mix(vec3(0.5, 0.05, 0.0), vec3(0.0, 0.2, 0.6), e), 0.5);
+		return;
+	}
 
-		vec4  lo = u_WetZones[z * 2];
-		vec4  hi = u_WetZones[z * 2 + 1];
-		vec2  d2 = min(var_Position.xy - lo.xy, hi.xy - var_Position.xy);
-		float f = smoothstep(-16.0, 16.0, min(d2.x, d2.y))
-		        * step(lo.z - 64.0, var_Position.z) * step(var_Position.z, hi.z);
+	// the weather wets the ground where the sky is above
+	if (u_Weather.x > 0.0)
+	{
+		float e = WeatherExposure(var_Position);
 
-		wet = max(wet, lo.w * f);
-		rain = max(rain, hi.w * f);
+		wet = max(wet, u_Weather.x * e);
+		rain = u_Weather.z * e;
 	}
 
 	if (wet <= 0.001)

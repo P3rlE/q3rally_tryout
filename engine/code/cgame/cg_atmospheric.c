@@ -97,20 +97,22 @@ typedef struct cg_atmosphericEffect_s {
 	void (*ParticleRender)( int type, cg_atmosphericParticle_t *particle );
 } cg_atmosphericEffect_t;
 
+// Q3Rally weather: one particle set per kind of weather, as many particles
+// as the intensity asks for; they fall where the sky is (the weather grid)
 typedef struct cg_atmosphericZone_s {
-	int entityNum;
 	int type;
 	int numParticles;
-	qboolean disableSplashes;
 	qboolean active;
-	vec3_t mins;
-	vec3_t maxs;
-	float wetness;		// Q3Rally: how wet the ground in a rain zone is
 } cg_atmosphericZone_t;
 
 static cg_atmosphericEffect_t cg_atmFxList[NUM_ATMOSPHERIC_TYPES];
-static cg_atmosphericZone_t cg_atmZones[MAX_ATMOSPHERIC_ZONES];
-static int cg_numAtmZones;
+static cg_atmosphericZone_t cg_atmZones[NUM_ATMOSPHERIC_TYPES];
+
+#define WEATHER_RAIN_PARTICLES	1000
+#define WEATHER_SNOW_PARTICLES	800
+
+static weatherGrid_t	cg_weatherGrid;
+static weatherState_t	cg_weatherState;
 
 static void CG_Atmospheric_SetParticles( int type, int numParticles, qboolean disableSplashes );
 static int CG_AtmosphericResolveZone( int type, const vec3_t point );
@@ -138,7 +140,8 @@ void CG_Atmospheric_Init( void )
 {
 	memset( cg_atmFxList, 0, sizeof( cg_atmFxList ) );
 	memset( cg_atmZones, 0, sizeof( cg_atmZones ) );
-	cg_numAtmZones = 0;
+	memset( &cg_weatherState, 0, sizeof( cg_weatherState ) );
+	cg_weatherGrid.valid = qfalse;
 }
 
 void CG_Atmospheric_Shutdown( void )
@@ -146,55 +149,129 @@ void CG_Atmospheric_Shutdown( void )
 	CG_Atmospheric_Init();
 }
 
-void CG_Atmospheric_AddWeatherZone( centity_t *cent )
+/*
+=================
+CG_WeatherTrace
+
+The grid must see only the world, like the server's when it builds it.
+=================
+*/
+static void CG_WeatherTrace( trace_t *result, const vec3_t start, const vec3_t mins, const vec3_t maxs,
+	const vec3_t end, int skipNumber, int mask )
 {
-	cg_atmosphericZone_t *zone;
-	entityState_t *s1;
-	qhandle_t model;
-	int i;
+	(void)skipNumber;
+	trap_CM_BoxTrace( result, start, end, mins, maxs, 0, mask );
+}
 
-	if ( !cent ) {
-		return;
+void CG_WeatherConfigStringModified( void )
+{
+	weatherAnchor_t a;
+
+	BG_WeatherParseAnchor( CG_ConfigString( CS_WEATHER ), &a );
+	BG_WeatherSetAnchor( &cg_weatherState, &a );
+	BG_WeatherAdvance( &cg_weatherState, cg.time );
+}
+
+/*
+=================
+CG_WeatherInit
+
+After the map is loaded: the sky grid (the same as the server's), the
+weather as it is now and the particles for the kinds the map can have.
+=================
+*/
+void CG_WeatherInit( void )
+{
+	int start;
+	float params[4];
+
+	if ( BG_WeatherGridParse( CG_ConfigString( CS_WEATHERGRID ), &cg_weatherGrid ) ) {
+		start = trap_Milliseconds();
+		BG_WeatherGridBuild( &cg_weatherGrid, CG_WeatherTrace );
+		CG_Printf( "weather grid %i x %i, cell %i, %i ms\n", cg_weatherGrid.width, cg_weatherGrid.height,
+			(int)cg_weatherGrid.cell, trap_Milliseconds() - start );
+
+		params[0] = cg_weatherGrid.origin[0];
+		params[1] = cg_weatherGrid.origin[1];
+		params[2] = cg_weatherGrid.cell;
+		params[3] = 0.0f;
+		trap_R_SetWeatherGrid( cg_weatherGrid.heights, cg_weatherGrid.width, cg_weatherGrid.height, params );
 	}
 
-	s1 = &cent->currentState;
-	if ( s1->eType != ET_WEATHER || s1->weapon < 0 || s1->weapon >= NUM_ATMOSPHERIC_TYPES ) {
-		return;
-	}
+	CG_WeatherConfigStringModified();
 
-	for ( i = 0; i < cg_numAtmZones; i++ ) {
-		if ( cg_atmZones[i].entityNum == s1->number ) {
-			cg_atmZones[i].active = s1->generic1 != 0;
-			cg_atmZones[i].numParticles = s1->powerups;
-			cg_atmZones[i].disableSplashes = s1->legsAnim != 0;
-			CG_Atmospheric_SetParticles( s1->weapon, s1->powerups, s1->legsAnim != 0 );
-			return;
+	cg_atmZones[0].type = 0;
+	cg_atmZones[1].type = 1;
+	CG_Atmospheric_SetParticles( 0, WEATHER_RAIN_PARTICLES, qfalse );
+	CG_Atmospheric_SetParticles( 1, WEATHER_SNOW_PARTICLES, qtrue );
+}
+
+/*
+=================
+CG_WeatherUpdate
+
+Every frame, before the prediction: the ground and the particle counts.
+=================
+*/
+void CG_WeatherUpdate( void )
+{
+	int i, type;
+
+	BG_WeatherAdvance( &cg_weatherState, cg.time );
+
+	for ( i = 0; i < NUM_ATMOSPHERIC_TYPES; i++ ) {
+		type = ( i == 0 ) ? WEATHER_RAIN : WEATHER_SNOW;
+		if ( cg_weatherState.anchor.type == type && cg_weatherState.intensity > 0.01f ) {
+			cg_atmZones[i].active = qtrue;
+			cg_atmZones[i].numParticles = (int)( cg_atmFxList[i].numDrops * cg_weatherState.intensity );
+		} else {
+			cg_atmZones[i].active = qfalse;
+			cg_atmZones[i].numParticles = 0;
 		}
 	}
+}
 
-	if ( cg_numAtmZones >= MAX_ATMOSPHERIC_ZONES ) {
-		return;
-	}
-	i = cg_numAtmZones++;
+/*
+=================
+CG_WeatherRefdef
 
-	zone = &cg_atmZones[i];
-	zone->entityNum = s1->number;
-	zone->type = s1->weapon;
-	zone->numParticles = s1->powerups;
-	zone->disableSplashes = s1->legsAnim != 0;
-	zone->active = s1->generic1 != 0;
-	zone->wetness = zone->active ? 1.0f : 0.0f;	// a race in the rain starts on a wet track
+For the renderer: how wet and snowed in the ground out in the weather is
+and how hard it rains and snows (refdef.weather).
+=================
+*/
+void CG_WeatherRefdef( refdef_t *refdef )
+{
+	float in = cg_weatherState.intensity;
 
-	if ( s1->solid == SOLID_BMODEL ) {
-		model = cgs.inlineDrawModel[s1->modelindex];
-	} else {
-		model = cgs.gameModels[s1->modelindex];
-	}
-	trap_R_ModelBounds( model, zone->mins, zone->maxs );
-	VectorAdd( zone->mins, cent->lerpOrigin, zone->mins );
-	VectorAdd( zone->maxs, cent->lerpOrigin, zone->maxs );
+	refdef->weather[0] = cg_weatherState.wetness;
+	refdef->weather[1] = cg_weatherState.snow;
+	refdef->weather[2] = cg_weatherState.anchor.type == WEATHER_RAIN ? in : 0.0f;
+	refdef->weather[3] = cg_weatherState.anchor.type == WEATHER_SNOW ? in : 0.0f;
+}
 
-	CG_Atmospheric_SetParticles( zone->type, zone->numParticles, zone->disableSplashes );
+// weatherinfo: the weather now and whether it reaches the camera and the car
+void CG_WeatherInfo_f( void )
+{
+	static const char *names[] = { "none", "rain", "snow" };
+	const weatherAnchor_t *a = &cg_weatherState.anchor;
+
+	CG_Printf( "weather: %s, intensity %.2f (%.2f -> %.2f in %i s), ground wet %.2f, snow %.2f\n",
+		names[a->type], cg_weatherState.intensity, a->intensity0, a->intensity1,
+		( a->endTime - a->startTime ) / 1000, cg_weatherState.wetness, cg_weatherState.snow );
+	CG_Printf( "grid %i x %i cell %i (%s), camera %s, car %s\n", cg_weatherGrid.width, cg_weatherGrid.height,
+		(int)cg_weatherGrid.cell, cg_weatherGrid.valid ? "ok" : "none",
+		BG_WeatherExposed( &cg_weatherGrid, cg.refdef.vieworg ) ? "outside" : "covered",
+		BG_WeatherExposed( &cg_weatherGrid, cg.predictedPlayerState.origin ) ? "outside" : "covered" );
+}
+
+float CG_AtmosphericPointWet( const vec3_t point )
+{
+	return BG_WeatherWetness( &cg_weatherState, &cg_weatherGrid, point );
+}
+
+float CG_AtmosphericPointSnow( const vec3_t point )
+{
+	return BG_WeatherSnow( &cg_weatherState, &cg_weatherGrid, point );
 }
 
 qboolean CG_AtmosphericPointInWeather( const vec3_t point, int type )
@@ -206,86 +283,6 @@ qboolean CG_AtmosphericPointInWeather( const vec3_t point, int type )
 	return CG_AtmosphericResolveZone( type, point ) >= 0;
 }
 
-/*
-=================
-CG_AtmosphericWetZones
-
-Q3Rally: the ground in a rain zone gets wet within WET_RAIN_TIME while it
-rains there and dries within WET_DRY_TIME after the rain stops; the zones
-that are wet go to the renderer (refdef.wetZones), the nearest first if
-there are too many.
-=================
-*/
-#define WET_RAIN_TIME	20.0f	// seconds
-#define WET_DRY_TIME	120.0f
-
-void CG_AtmosphericWetZones( refdef_t *refdef )
-{
-	cg_atmosphericZone_t *zone;
-	float dt, dist[MAX_ATMOSPHERIC_ZONES], d;
-	int order[MAX_ATMOSPHERIC_ZONES], num, i, j, k;
-
-	dt = Com_Clamp( 0.0f, 0.2f, cg.frametime * 0.001f );
-	num = 0;
-
-	for ( i = 0, zone = cg_atmZones; i < cg_numAtmZones; i++, zone++ ) {
-		if ( zone->type != 0 ) {
-			continue;		// snow
-		}
-
-		if ( zone->active ) {
-			zone->wetness = MIN( 1.0f, zone->wetness + dt / WET_RAIN_TIME );
-		} else {
-			zone->wetness = MAX( 0.0f, zone->wetness - dt / WET_DRY_TIME );
-		}
-		if ( zone->wetness <= 0.0f ) {
-			continue;
-		}
-
-		// distance of the view to the box, sorted in
-		d = 0.0f;
-		for ( k = 0; k < 3; k++ ) {
-			if ( refdef->vieworg[k] < zone->mins[k] ) {
-				d += Square( zone->mins[k] - refdef->vieworg[k] );
-			} else if ( refdef->vieworg[k] > zone->maxs[k] ) {
-				d += Square( refdef->vieworg[k] - zone->maxs[k] );
-			}
-		}
-		for ( j = num; j > 0 && dist[j - 1] > d; j-- ) {
-			dist[j] = dist[j - 1];
-			order[j] = order[j - 1];
-		}
-		dist[j] = d;
-		order[j] = i;
-		num++;
-	}
-
-	refdef->numWetZones = MIN( num, MAX_WET_ZONES );
-	for ( j = 0; j < refdef->numWetZones; j++ ) {
-		float *z = refdef->wetZones[j];
-
-		zone = &cg_atmZones[order[j]];
-		z[0] = zone->mins[0];
-		z[1] = zone->mins[1];
-		z[2] = zone->mins[2];
-		z[3] = zone->wetness;
-		z[4] = zone->maxs[0];
-		z[5] = zone->maxs[1];
-		z[6] = zone->maxs[2];
-		z[7] = zone->active ? 1.0f : 0.0f;
-	}
-}
-
-qboolean CG_AtmosphericPointWet( const vec3_t point )
-{
-	return CG_AtmosphericPointInWeather( point, 0 );
-}
-
-qboolean CG_AtmosphericPointSnow( const vec3_t point )
-{
-	return CG_AtmosphericPointInWeather( point, 1 );
-}
-
 void CG_AtmosphericAddLoopingSounds( void )
 {
 	qboolean inRain;
@@ -295,14 +292,14 @@ void CG_AtmosphericAddLoopingSounds( void )
 		return;
 	}
 
-	inRain = CG_AtmosphericPointWet( cg.refdef.vieworg ) || CG_AtmosphericPointWet( cg.predictedPlayerState.origin );
-	inSnow = CG_AtmosphericPointSnow( cg.refdef.vieworg ) || CG_AtmosphericPointSnow( cg.predictedPlayerState.origin );
+	inRain = CG_AtmosphericPointInWeather( cg.refdef.vieworg, 0 ) || CG_AtmosphericPointInWeather( cg.predictedPlayerState.origin, 0 );
+	inSnow = CG_AtmosphericPointInWeather( cg.refdef.vieworg, 1 ) || CG_AtmosphericPointInWeather( cg.predictedPlayerState.origin, 1 );
 
-	if ( inRain && cgs.media.weatherRainLoopSound ) {
+	if ( inRain && cg_weatherState.intensity > 0.1f && cgs.media.weatherRainLoopSound ) {
 		trap_S_AddRealLoopingSound( ATMOSPHERIC_RAIN_SOUND_ENTITY, cg.refdef.vieworg, vec3_origin, cgs.media.weatherRainLoopSound );
 	}
 
-	if ( inSnow && cgs.media.weatherSnowLoopSound ) {
+	if ( inSnow && cg_weatherState.intensity > 0.1f && cgs.media.weatherSnowLoopSound ) {
 		trap_S_AddRealLoopingSound( ATMOSPHERIC_SNOW_SOUND_ENTITY, cg.refdef.vieworg, vec3_origin, cgs.media.weatherSnowLoopSound );
 	}
 }
@@ -319,30 +316,22 @@ static qboolean CG_AtmosphericInViewCone( const vec3_t point, float conePadding 
 	return fabs( AngleDifference( cg.refdefViewAngles[YAW], yaw ) ) <= halfFov;
 }
 
+// the zone of a point is the kind of weather, if it falls there now
 static int CG_AtmosphericResolveZone( int type, const vec3_t point )
 {
-	int i;
-
-	for ( i = 0; i < cg_numAtmZones; i++ ) {
-		if ( cg_atmZones[i].type != type || !cg_atmZones[i].active ) {
-			continue;
-		}
-
-		if ( CG_InsideBox( cg_atmZones[i].mins, cg_atmZones[i].maxs, point ) ) {
-			return i;
-		}
+	if ( type < 0 || type >= NUM_ATMOSPHERIC_TYPES || !cg_atmZones[type].active ) {
+		return -1;
+	}
+	if ( !BG_WeatherExposed( &cg_weatherGrid, point ) ) {
+		return -1;
 	}
 
-	return -1;
+	return type;
 }
 
 static qboolean CG_AtmosphericZoneSplashesEnabled( int zoneId )
 {
-	if ( zoneId < 0 || zoneId >= cg_numAtmZones ) {
-		return qfalse;
-	}
-
-	return !cg_atmZones[zoneId].disableSplashes;
+	return zoneId == 0;		// rain
 }
 
 static float CG_AtmosphericDeterministic01( int zoneId, int particleId, int salt )
@@ -586,7 +575,7 @@ static qboolean CG_RainParticleGenerate( int type, cg_atmosphericParticle_t *par
 		}
 		else if( tr.fraction == 1 )  	  	// Didn't hit anything, we're (probably) outside the world
 			return( qfalse );
-		else if( tr.surfaceFlags & SURF_SKY )  	// Hit sky, this is where we start.
+		else if( BG_WeatherIsSky( &cg_weatherGrid, &tr ) )  	// Hit sky, this is where we start.
 			break;
 		else return( qfalse );
 	}
@@ -800,7 +789,7 @@ static qboolean CG_SnowParticleGenerate( int type, cg_atmosphericParticle_t *par
 		}
 		else if( tr.fraction == 1 )  	  	// Didn't hit anything, we're (probably) outside the world
 			return( qfalse );
-		else if( tr.surfaceFlags & SURF_SKY )  	// Hit sky, this is where we start.
+		else if( BG_WeatherIsSky( &cg_weatherGrid, &tr ) )  	// Hit sky, this is where we start.
 			break;
 		else return( qfalse );
 	}

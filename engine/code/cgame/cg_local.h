@@ -2254,12 +2254,15 @@ void CG_FX_Spray( const vec3_t origin, const vec3_t up, const vec3_t throwVel, i
 void CG_AddAtmosphericEffects( void );
 void CG_Atmospheric_Init( void );
 void CG_Atmospheric_Shutdown( void );
-void CG_Atmospheric_AddWeatherZone( centity_t *cent );
+void CG_WeatherInit( void );
+void CG_WeatherInfo_f( void );
+void CG_WeatherConfigStringModified( void );
+void CG_WeatherUpdate( void );
+void CG_WeatherRefdef( refdef_t *refdef );
 qboolean CG_AtmosphericPointInWeather( const vec3_t point, int type );
-qboolean CG_AtmosphericPointWet( const vec3_t point );
-void CG_AtmosphericWetZones( refdef_t *refdef );
+float CG_AtmosphericPointWet( const vec3_t point );
 void CG_UpdateWetness( void );
-qboolean CG_AtmosphericPointSnow( const vec3_t point );
+float CG_AtmosphericPointSnow( const vec3_t point );
 void CG_AtmosphericAddLoopingSounds( void );
 
 //
@@ -2576,6 +2579,7 @@ void		trap_R_AddPolysToScene( qhandle_t hShader , int numVerts, const polyVert_t
 void		trap_R_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void		trap_R_AddAdditiveLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void		trap_R_AddSpotLightToScene( const vec3_t org, const vec3_t dir, float radius, float coneAngle, float r, float g, float b, int flags );
+void		trap_R_SetWeatherGrid( const short *heights, int width, int height, const float *params );
 int			trap_R_LightForPoint( vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir );
 void		trap_R_RenderScene( const refdef_t *fd );
 void		trap_R_SetColor( const float *rgba );	// NULL = 1,1,1,1

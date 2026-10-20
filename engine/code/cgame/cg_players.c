@@ -3540,8 +3540,8 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 
 	VectorMA(curOrigin, -(WHEEL_RADIUS * 2.0f), up, end);
 	CG_Trace(&tr, curOrigin, NULL, NULL, end, cent->currentState.number, CONTENTS_SOLID);
-	snowSurface = ( tr.surfaceFlags & SURF_SNOW ) || CG_AtmosphericPointSnow( tr.endpos );
-	wetSurface = !snowSurface && ( ( tr.surfaceFlags & SURF_WET ) || CG_AtmosphericPointWet( tr.endpos ) );
+	snowSurface = ( tr.surfaceFlags & SURF_SNOW ) || CG_AtmosphericPointSnow( tr.endpos ) > 0.3f;
+	wetSurface = !snowSurface && ( ( tr.surfaceFlags & SURF_WET ) || CG_AtmosphericPointWet( tr.endpos ) > 0.15f );
 	VectorSubtract(cent->lastSkidOrigin[tireNum], curOrigin, delta);
 	skidding = cent->wheelSkidding[tireNum];
 

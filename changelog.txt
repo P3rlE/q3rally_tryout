@@ -203,6 +203,36 @@ Added:
 
 Changed:
 
+- Weather system reworked. The weather now covers the whole map and falls
+  wherever the sky is above: when a map loads, the server and every client
+  trace it from above on a 64 unit grid and keep, per cell, the highest
+  surface that sees a sky face; under bridges, roofs and in tunnels the
+  ground stays dry (the rain blows a little way in under the edges). The
+  server runs showers of rain or snow that build up over 30 to 60 seconds,
+  last a while and pass, also during a race, with an intensity from 0 to
+  1 instead of on/off. Every change goes to the clients as one config
+  string (CS_WEATHER); server and clients work out the same wet and
+  snowed in ground from it in fixed steps, so the grip on the server, the
+  prediction and the look agree, also for late joiners. Wet ground loses
+  grip in proportion to how wet it is (up to a quarter), fresh snow moves
+  the grip towards packed snow; tyre spray and powder snow follow the
+  ground. Rain wets the ground in about 20 seconds of heavy rain and it
+  dries in about 2 minutes; snow covers it in about 90 seconds and melts
+  in about 4 minutes, leaving it wet. A race that starts in the rain
+  starts on a wet track. New worldspawn keys weather (none, rain, snow or
+  "rain snow"), weatherChance (40), weatherCycle ("90 300" seconds) and
+  weatherStrength ("0.4 1"). New server cvar g_weather (0 always dry, 1
+  as the map says, 2 rain, 3 snow for the whole race on any map, e.g. for
+  the ladder); Ghost Race is always dry. The cvars g_dynamicWeather,
+  g_weatherInitialChance, g_weatherOnMinTime, g_weatherOnMaxTime,
+  g_weatherOffMinTime and g_weatherOffMaxTime are gone. rally_weather_rain
+  and rally_weather_snow are obsolete: a map that still has them and no
+  weather key gets rain or snow. New client command weatherinfo and cheat
+  r_weatherDebug 1 (OpenGL2: the ground blue where the weather reaches it,
+  red where it is covered). New cgame import trap_R_SetWeatherGrid
+  (CG_R_SETWEATHERGRID = 99); refdef_t carries weather[4] instead of the
+  rain zones.
+
 - Graphics menu reorganised into three pages: Graphics (preset, renderer,
   resolution, aspect ratio, fullscreen, anti-aliasing, texture detail,
   texture filter, geometry), Effects (bloom, motion blur, reflections,
@@ -272,6 +302,11 @@ Changed:
   bridge pillars) now use scale 0.5 like the rest of the map (BSP texture
   coordinates and .map; no recompile, lighting unchanged).
 
+- tools/maptools/set_worldspawn.py: changes a compiled map without
+  compiling it again: worldspawn keys (key=value, key= removes),
+  --fix-sky (marks the sky shaders as sky in the BSP),
+  --remove-weather-zones, --show; keeps a .bak and updates the checksum in
+  the .aas so the bots still load it.
 - tools/maptools: q3bsp.py (read and replace the entity lump of a BSP, BSP
   checksum, patch the checksum in an AAS header) and inject_lights.py (copies
   the light entities of a .map into the compiled BSP for lamp shadows).
@@ -524,6 +559,14 @@ Changed:
 
 Fixed:
 
+- scripts/shaderlist.txt did not list ame_desert, arctic, ely_darkcity,
+  ely_sunset, telestecki, cars_helmets and koth_beam, so q3map2 (which
+  only reads the listed files) did not find the skies of q3r_babel,
+  q3r_dirtyfun, q3r_lcs1, q3r_mk, q3r_ridgeracer and q3r_watertest: their
+  sky was compiled without surfaceparm sky (no rain or snow from it, no
+  sun from its q3map_sun). Added; the ame_desert sky also gets
+  surfaceparm sky. Maps compiled before still need recompiling or
+  tools/maptools/set_worldspawn.py --fix-sky.
 - Haze (OpenGL2): where the void under a map shows through water or glass
   (the creek in q3r_sk1), the haze treated it as sky below the horizon and
   covered the water with a flat wall of haze colour. The sky only gets haze

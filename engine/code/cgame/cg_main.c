@@ -2434,6 +2434,8 @@ void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum ) {
 
 	CG_RegisterGraphics();
 
+	CG_WeatherInit();		// Q3Rally: after the map is loaded
+
 // Q3Rally Code Start
 	size = trap_MemoryRemaining();
 	if( size < 1000000 )
