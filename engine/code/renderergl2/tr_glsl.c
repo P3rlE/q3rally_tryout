@@ -112,6 +112,7 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_WeatherGrid", GLSL_VEC4 },
 	{ "u_WeatherGridSize", GLSL_VEC4 },
 	{ "u_WeatherGridMap", GLSL_INT },
+	{ "u_SnowParams", GLSL_VEC4 },
 	{ "u_ColorLutMap", GLSL_INT },
 	{ "u_ToneParams", GLSL_VEC4 },
 	{ "u_LutParams", GLSL_VEC4 },
@@ -1649,7 +1650,7 @@ void GLSL_InitGPUShaders(void)
 	// Q3Rally: wet ground
 	if (glRefConfig.framebufferObject && r_wetGround->integer)
 	{
-		attribs = ATTR_POSITION | ATTR_NORMAL;
+		attribs = ATTR_POSITION | ATTR_NORMAL | ATTR_LIGHTCOORD | ATTR_COLOR;
 		extradefines[0] = '\0';
 
 		if (!GLSL_InitGPUShader(&tr.wetGroundShader, "wetground", attribs, qtrue, extradefines, qtrue, fallbackShader_wetground_vp, fallbackShader_wetground_fp))
@@ -1661,6 +1662,8 @@ void GLSL_InitGPUShaders(void)
 		GLSL_SetUniformInt(&tr.wetGroundShader, UNIFORM_TEXTUREMAP, TB_COLORMAP);
 		GLSL_SetUniformInt(&tr.wetGroundShader, UNIFORM_SCREENDEPTHMAP, TB_LIGHTMAP);
 		GLSL_SetUniformInt(&tr.wetGroundShader, UNIFORM_WEATHERGRIDMAP, TB_NORMALMAP);
+		GLSL_SetUniformInt(&tr.wetGroundShader, UNIFORM_LIGHTMAP, TB_DELUXEMAP);
+		GLSL_SetUniformInt(&tr.wetGroundShader, UNIFORM_SHADOWMAP, TB_SHADOWMAP);
 		GLSL_FinishGPUShader(&tr.wetGroundShader);
 
 		numEtcShaders++;

@@ -3606,6 +3606,15 @@ static void CG_SurfaceEffects( centity_t *cent, vec3_t curOrigin, vec3_t up, int
 			CG_AddWetTireSpray( cent, tr.endpos, up, tireNum, skidding );
 		}
 
+		// Q3Rally: on lying snow the rear tyres leave ruts while rolling
+		// too (the front ones run in the same tracks)
+		if ( !skidding && tireNum >= 2 && !( tr.surfaceFlags & ( SURF_SNOW | SURF_ICE ) )
+			&& CG_AtmosphericPointSnow( tr.endpos ) > 0.35f
+			&& VectorLengthSquared( cent->currentState.pos.trDelta ) > 80.0f * 80.0f ) {
+			CG_SkidRibbon( cent, tireNum, cgs.media.SMSnowShader, tr.endpos, tr.plane.normal );
+			ribbon = qtrue;
+		}
+
 		if ( skidding && shader >= 0 ){
 			length = VectorLength(delta) / 2;
 

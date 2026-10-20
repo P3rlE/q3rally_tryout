@@ -85,6 +85,17 @@ void RB_ToneMap(FBO_t *hdrFbo, ivec4_t hdrBox, FBO_t *ldrFbo, ivec4_t ldrBox, in
 	color[2] = pow(2, r_cameraExposure->value - autoExposure); //exp2(r_cameraExposure->value);
 	color[3] = 1.0f;
 
+	// Q3Rally: the automatic exposure would turn a snowy landscape grey;
+	// like a photographer on snow, open up a little (up to 0.7 stops)
+	if (autoExposure && backEnd.refdef.weather[1] > 0.0f)
+	{
+		float ev = pow(2, 0.7f * backEnd.refdef.weather[1]);
+
+		color[0] *= ev;
+		color[1] *= ev;
+		color[2] *= ev;
+	}
+
 	if (autoExposure)
 		GL_BindToTMU(tr.calcLevelsImage,  TB_LEVELSMAP);
 	else

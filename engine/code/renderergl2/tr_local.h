@@ -674,6 +674,7 @@ typedef enum
 	UNIFORM_WEATHERGRID,	// Q3Rally: sky grid, xy = origin, z = 1 / cell, w = 1 if there is one
 	UNIFORM_WEATHERGRIDSIZE,	// Q3Rally: xy = cells, zw = 1 / cells
 	UNIFORM_WEATHERGRIDMAP,
+	UNIFORM_SNOWPARAMS,		// Q3Rally: snow cover, x = light from the lightmap (1) or the vertices (0), y = buildup, z = sun shadow, w = sparkle
 	UNIFORM_COLORLUTMAP,	// Q3Rally: colour grading LUT of the tone mapping
 	UNIFORM_TONEPARAMS,		// Q3Rally: x = curve (0 classic, 1 filmic), y = filmic exposure, z = filmic white
 	UNIFORM_LUTPARAMS,		// Q3Rally: x = LUT strength, y = LUT size (0 = none)

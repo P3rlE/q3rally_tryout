@@ -440,6 +440,7 @@ skidding, lifts off or the ground changes (CG_SkidRibbonStop).
 */
 #define SKID_HALF_WIDTH		7.0f
 #define SKID_SEGMENT		14.0f
+#define SKID_RUT_SEGMENT	40.0f
 #define SKID_TEX_LENGTH		96.0f	// units per texture repeat along the mark
 #define SKID_LIFETIME		20000
 #define SKID_MAX_GAP		96.0f
@@ -486,7 +487,9 @@ void CG_SkidRibbon( centity_t *cent, int tire, qhandle_t shader, const vec3_t po
 		VectorClear( cent->skidRibbonSide[tire] );
 		return;
 	}
-	if ( segLen < SKID_SEGMENT ) {
+	// (rolling ruts in snow are long and straight: longer segments, so
+	// they do not use up the marks)
+	if ( segLen < ( cent->wheelSkidding[tire] ? SKID_SEGMENT : SKID_RUT_SEGMENT ) ) {
 		return;
 	}
 

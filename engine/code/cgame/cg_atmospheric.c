@@ -247,6 +247,20 @@ void CG_WeatherRefdef( refdef_t *refdef )
 	refdef->weather[1] = cg_weatherState.snow;
 	refdef->weather[2] = cg_weatherState.anchor.type == WEATHER_RAIN ? in : 0.0f;
 	refdef->weather[3] = cg_weatherState.anchor.type == WEATHER_SNOW ? in : 0.0f;
+
+	// cg_weatherPreview "wet snow" (cheat): how the ground looks, for
+	// mappers and tests; the driving does not change
+	if ( cg_weatherPreview.string[0] ) {
+		float wet = -1.0f, snow = -1.0f;
+
+		sscanf( cg_weatherPreview.string, "%f %f", &wet, &snow );
+		if ( wet >= 0.0f ) {
+			refdef->weather[0] = Com_Clamp( 0.0f, 1.0f, wet );
+		}
+		if ( snow >= 0.0f ) {
+			refdef->weather[1] = Com_Clamp( 0.0f, 1.0f, snow );
+		}
+	}
 }
 
 // weatherinfo: the weather now and whether it reaches the camera and the car
