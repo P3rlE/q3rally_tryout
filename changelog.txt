@@ -361,6 +361,24 @@ Changed:
   bridge pillars) now use scale 0.5 like the rest of the map (BSP texture
   coordinates and .map; no recompile, lighting unchanged).
 
+- Texture scale pass over the maps: textures that were stretched far
+  beyond the usual 2 texels per unit (blurry) or squeezed far below it
+  (grainy, visible tiling) now have a sensible size, in the BSP texture
+  coordinates and the .map (no recompile, lighting and bot navigation
+  unchanged): q3r_lcs1 asphalt (x3) and rock (x4), q3r_mk concrete walls
+  (x3), q3r_david5 diamond plate (x4) and cables (x5), q3r_citydom
+  cobbles (4 times larger), q3r_ctf4_03 corrugated sheet (3 times
+  larger), q3r_david4 grass (x3) and blue rusty metal (x2),
+  q3r_ridgeracer rock (x2), q3r_ctf_01 wooden planks (x2). Building
+  facades, tree walls, trims, signs, crowds and the lattice textures of
+  trusses were left as they are, they are made to fit their geometry.
+- tools/maptools/rescale_textures.py: --report lists the texel density of
+  every texture of a compiled map (blurry below 1, grainy above 4.5
+  texels per unit); shader=factor (or fs:ft for the two directions)
+  rescales a texture on the brush faces and patches of the BSP, and with
+  --map in the .map source, so a later compile keeps it. Faces that
+  continue each other keep continuing; keeps .bak copies and updates the
+  .aas checksum.
 - tools/maptools/set_worldspawn.py: changes a compiled map without
   compiling it again: worldspawn keys (key=value, key= removes),
   --fix-sky (marks the sky shaders as sky in the BSP),
