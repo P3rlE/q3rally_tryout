@@ -1427,6 +1427,8 @@ void	G_InitWeather( void );
 void	G_RunWeather( void );
 float	G_WeatherPointWet( const vec3_t point );
 float	G_WeatherPointSnow( const vec3_t point );
+void	G_WeatherMatchReport( char *condition, int conditionSize, int *mode, int *wetPct, int *snowPct,
+			char *mapWeather, int mapWeatherSize );
 
 extern	vmCvar_t	g_carImpactTransfer;
 extern	vmCvar_t	g_carImpactElasticity;

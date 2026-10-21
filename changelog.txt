@@ -114,6 +114,15 @@ Added:
   registered at map load: a weapon handed out without a pickup in the map
   (give, game modes) showed no mine model and a missing-texture square
   instead of the explosion.
+- Ladder and weather: every match report says what the match was driven
+  in (weather.condition dry, wet, snow or mixed, from the share of the
+  time the ground out in the weather was wet or snowed in, without warmup
+  and intermission; also the share in percent, g_weather and what the map
+  allows). The ladder page (1.0.17) has a weather filter next to Online /
+  Offline: any weather, dry, wet, snow; matches from before count as dry.
+  Laps on a wet or snowy track are no longer uploaded as ghosts. The match
+  payload got new fields at its end: game module and engine must be
+  updated together.
 - Maps set up for the weather (worldspawn keys, without compiling them
   again; the .map files have the same keys): rain on q3r_country01 (50 %),
   q3r_sk1 (70 %), q3r_ctf_01 (60 %), q3r_nightcity (50 %), q3r_downtown,

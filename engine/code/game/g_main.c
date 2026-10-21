@@ -1442,6 +1442,10 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
 
         trap_Cvar_VariableStringBuffer( "sv_hostname", payload->serverName, sizeof( payload->serverName ) );
         payload->isDedicated = g_dedicated.integer ? qtrue : qfalse;
+
+        // Q3Rally: what the match was driven in
+        G_WeatherMatchReport( payload->weatherCondition, sizeof( payload->weatherCondition ), &payload->weatherMode,
+                &payload->weatherWetPct, &payload->weatherSnowPct, payload->weatherMap, sizeof( payload->weatherMap ) );
         trap_Cvar_VariableStringBuffer( "net_ip", payload->serverHost, sizeof( payload->serverHost ) );
         if ( payload->serverHost[0] ) {
                 trap_Cvar_VariableStringBuffer( "net_port", buffer, sizeof( buffer ) );

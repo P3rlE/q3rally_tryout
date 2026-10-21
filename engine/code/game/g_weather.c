@@ -42,6 +42,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define WEATHER_RAMP_MIN	30		// seconds for a shower to build up or pass
 #define WEATHER_RAMP_MAX	60
 #define WEATHER_SWITCH_RAMP	10		// seconds when g_weather is changed
+#define WEATHER_STAT_LEVEL	0.3f	// wetter or more snowed in than this counts for the match report
 
 typedef enum {
 	WPHASE_DRY,			// no rain or snow until nextChange
@@ -64,6 +65,11 @@ typedef struct {
 	weatherPhase_t phase;
 	int			nextChange;
 	int			type;			// precipitation of the current or last shower
+
+	// for the match report: how long the ground out in the weather was
+	// wet or snowed in while the match ran (ms)
+	int			statTime, statWet, statSnow;
+	int			statLastTime;
 } gWeather_t;
 
 static gWeather_t		gw;
@@ -402,6 +408,67 @@ void G_RunWeather( void ) {
 	}
 
 	BG_WeatherAdvance( &g_weatherState, level.time );
+
+	// the conditions of the match, for the ladder (not during the warmup
+	// or the intermission)
+	if ( gw.statLastTime && !level.warmupTime && !level.intermissiontime && level.time > gw.statLastTime ) {
+		int dt = level.time - gw.statLastTime;
+
+		gw.statTime += dt;
+		if ( g_weatherState.snow > WEATHER_STAT_LEVEL ) {
+			gw.statSnow += dt;
+		} else if ( g_weatherState.wetness > WEATHER_STAT_LEVEL ) {
+			gw.statWet += dt;
+		}
+	}
+	gw.statLastTime = level.time;
+}
+
+/*
+=================
+G_WeatherMatchReport
+
+For the ladder: what the match was driven in, from the time the ground out
+in the weather was wet or snowed in. "dry" (less than a tenth of the time
+wet or snowy), "wet" or "snow" (at least half the time), else "mixed".
+=================
+*/
+void G_WeatherMatchReport( char *condition, int conditionSize, int *mode, int *wetPct, int *snowPct,
+	char *mapWeather, int mapWeatherSize ) {
+	float wet, snow;
+
+	if ( gw.statTime > 0 ) {
+		wet = (float)gw.statWet / gw.statTime;
+		snow = (float)gw.statSnow / gw.statTime;
+	} else {
+		// no time counted (a report right at the start): the ground now
+		snow = g_weatherState.snow > WEATHER_STAT_LEVEL ? 1.0f : 0.0f;
+		wet = !snow && g_weatherState.wetness > WEATHER_STAT_LEVEL ? 1.0f : 0.0f;
+	}
+
+	if ( snow >= 0.5f ) {
+		Q_strncpyz( condition, "snow", conditionSize );
+	} else if ( wet >= 0.5f ) {
+		Q_strncpyz( condition, "wet", conditionSize );
+	} else if ( wet + snow < 0.1f ) {
+		Q_strncpyz( condition, "dry", conditionSize );
+	} else {
+		Q_strncpyz( condition, "mixed", conditionSize );
+	}
+
+	*mode = gw.mode;
+	*wetPct = (int)( wet * 100.0f + 0.5f );
+	*snowPct = (int)( snow * 100.0f + 0.5f );
+
+	if ( gw.rain && gw.snow ) {
+		Q_strncpyz( mapWeather, "rain snow", mapWeatherSize );
+	} else if ( gw.rain ) {
+		Q_strncpyz( mapWeather, "rain", mapWeatherSize );
+	} else if ( gw.snow ) {
+		Q_strncpyz( mapWeather, "snow", mapWeatherSize );
+	} else {
+		Q_strncpyz( mapWeather, "none", mapWeatherSize );
+	}
 }
 
 float G_WeatherPointWet( const vec3_t point ) {
