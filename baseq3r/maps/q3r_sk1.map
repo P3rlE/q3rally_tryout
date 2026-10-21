@@ -10,6 +10,8 @@
 "music" "sound/world/rainthunderloop"
 "reversable" "0"
 "allowLongTrack" "0"
+"weather" "rain"
+"weatherchance" "70"
 // brush 0
 {
 ( 328 2148 1012 ) ( 328 2148 300 ) ( 328 2960 300 ) skies/hellsky 0 0 0 0.5 0.5 0 0 0
@@ -5599,7 +5601,7 @@ q3r_signage/dirsign02_blu
 ( 2958 3252 384 ) ( 2958 3252 8 ) ( 2958 2470 8 ) common/checkpoint 0 0 0 0.5 0.5 0 0 0
 ( 2958 2470 384 ) ( 2958 2470 8 ) ( 2829 2470 8 ) common/checkpoint 0 0 0 0.5 0.5 0 0 0
 ( 2829 3252 384 ) ( 2829 3252 8 ) ( 2958 3252 8 ) common/checkpoint 0 0 0 0.5 0.5 0 0 0
-( 2845 3252 104 ) ( 2845 2470 104 ) ( 2974 2470 104 ) common/checkpoint 0 0 0 0.5 0.5 0 0 0
+( 2845 3252 8 ) ( 2845 2470 8 ) ( 2974 2470 8 ) common/checkpoint 0 0 0 0.5 0.5 0 0 0
 ( 2829 2470 384 ) ( 2829 3252 384 ) ( 2958 3252 384 ) common/checkpoint 0 0 0 0.5 0.5 0 0 0
 }
 }
@@ -5732,244 +5734,230 @@ q3r_signage/dirsign02_blu
 }
 // entity 30
 {
-"classname" "rally_weather_rain"
-"number" "500"
-// brush 0
-{
-( 3637 4141 1123 ) ( 3637 -1602.75 1123 ) ( -5422.75 4141 1123 ) common/rain 0 0 0 0.5 0.5 0 0 0
-( 3637 4141 1123 ) ( -5422.75 4141 1123 ) ( 3637 4141 402.25 ) common/rain 0 0 0 0.5 0.5 0 0 0
-( 3637 4141 1123 ) ( 3637 4141 402.25 ) ( 3637 -1602.75 1123 ) common/rain 0 0 0 0.5 0.5 0 0 0
-( -5201.25 -1602.75 -164.75 ) ( 3858.5 -1602.75 -164.75 ) ( -5201.25 4141 -164.75 ) common/rain 0 0 0 0.5 0.5 0 0 0
-( -5422.75 -1602.75 402.25 ) ( -5422.75 -1602.75 1123 ) ( 3637 -1602.75 402.25 ) common/rain 0 0 0 0.5 0.5 0 0 0
-( -5166.75 -1602.75 422 ) ( -5166.75 4141 422 ) ( -5166.75 -1602.75 1142.75 ) common/rain 0 0 0 0.5 0.5 0 0 0
-}
-}
-// entity 31
-{
 "classname" "light"
 "origin" "592 2416 208"
 "light" "10"
 }
-// entity 32
+// entity 31
 {
 "classname" "target_speaker"
 "origin" "-2288 2176 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 33
+// entity 32
 {
 "classname" "target_speaker"
 "origin" "-2448 3296 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 34
+// entity 33
 {
 "classname" "target_speaker"
 "origin" "-3120 3296 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 35
+// entity 34
 {
 "classname" "target_speaker"
 "origin" "-3888 3296 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 36
+// entity 35
 {
 "classname" "target_speaker"
 "origin" "-3888 1728 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 37
+// entity 36
 {
 "classname" "target_speaker"
 "origin" "-3888 -16 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 38
+// entity 37
 {
 "classname" "target_speaker"
 "origin" "-3888 -944 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 39
+// entity 38
 {
 "classname" "target_speaker"
 "origin" "-2304 -944 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 40
+// entity 39
 {
 "classname" "target_speaker"
 "origin" "-224 -944 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 41
+// entity 40
 {
 "classname" "target_speaker"
 "origin" "1776 -944 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 42
+// entity 41
 {
 "classname" "target_speaker"
 "origin" "1776 384 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 43
+// entity 42
 {
 "classname" "target_speaker"
 "origin" "2768 384 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 44
+// entity 43
 {
 "classname" "target_speaker"
 "origin" "2768 1552 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 45
+// entity 44
 {
 "classname" "target_speaker"
 "origin" "3136 2912 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 46
+// entity 45
 {
 "classname" "target_speaker"
 "origin" "2608 2912 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 47
+// entity 46
 {
 "classname" "target_speaker"
 "origin" "2608 2272 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 48
+// entity 47
 {
 "classname" "target_speaker"
 "origin" "1680 2272 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 49
+// entity 48
 {
 "classname" "target_speaker"
 "origin" "1680 3296 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 50
+// entity 49
 {
 "classname" "target_speaker"
 "origin" "96 3296 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 51
+// entity 50
 {
 "classname" "target_speaker"
 "origin" "96 2176 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 52
+// entity 51
 {
 "classname" "target_speaker"
 "origin" "-1056 2176 208"
 "noise" "sound/world/rain"
 "spawnflags" "1"
 }
-// entity 53
+// entity 52
 {
 "classname" "info_notnull"
 "targetname" "end1"
 "origin" "-2856 -808 136"
 }
-// entity 54
+// entity 53
 {
 "classname" "info_player_start"
 "number" "7"
 "origin" "-3196 3390 28"
 }
-// entity 55
+// entity 54
 {
 "classname" "info_player_start"
 "number" "5"
 "origin" "-3076 3390 28"
 }
-// entity 56
+// entity 55
 {
 "classname" "info_player_start"
 "number" "6"
 "origin" "-3076 3266 28"
 }
-// entity 57
+// entity 56
 {
 "classname" "info_player_start"
 "number" "2"
 "origin" "-2836 3266 28"
 }
-// entity 58
+// entity 57
 {
 "classname" "info_player_start"
 "number" "3"
 "origin" "-2956 3390 28"
 }
-// entity 59
+// entity 58
 {
 "classname" "info_player_start"
 "number" "11"
 "origin" "-3436 3390 28"
 }
-// entity 60
+// entity 59
 {
 "classname" "info_player_start"
 "number" "12"
 "origin" "-3436 3266 28"
 }
-// entity 61
+// entity 60
 {
 "classname" "info_player_start"
 "number" "8"
 "origin" "-3196 3266 28"
 }
-// entity 62
+// entity 61
 {
 "classname" "info_player_start"
 "number" "4"
 "origin" "-2956 3266 28"
 }
-// entity 63
+// entity 62
 {
 "classname" "info_player_start"
 "number" "10"
 "origin" "-3316 3266 28"
 }
-// entity 64
+// entity 63
 {
 "classname" "info_player_start"
 "number" "9"
 "origin" "-3316 3390 28"
 }
-// entity 65
+// entity 64
 {
 "classname" "rally_checkpoint"
 "number" "3"
@@ -5984,13 +5972,13 @@ q3r_signage/dirsign02_blu
 ( -1112 1976 -168 ) ( -1112 2508 -168 ) ( -1112 1976 208 ) common/checkpoint 0 0 0 0.5 0.5 0 0 0
 }
 }
-// entity 66
+// entity 65
 {
 "classname" "info_notnull"
 "origin" "-1024 2256 28"
 "targetname" "cp_03"
 }
-// entity 67
+// entity 66
 {
 "classname" "rally_checkpoint"
 "number" "5"
@@ -6005,13 +5993,13 @@ q3r_signage/dirsign02_blu
 ( 268.466460228 3020.8463335037 28 ) ( -180.8365111351 3448.0779290199 28 ) ( 268.466460228 3020.8463335037 32 ) common/checkpoint 0 0 0 0.5 0.5 0 0 0
 }
 }
-// entity 68
+// entity 67
 {
 "classname" "info_notnull"
 "origin" "112 3320 56"
 "targetname" "cp_05"
 }
-// entity 69
+// entity 68
 {
 "classname" "rally_checkpoint"
 "target" "cp_06"
@@ -6026,24 +6014,24 @@ q3r_signage/dirsign02_blu
 ( 1270 2997 8 ) ( 1851 3578 8 ) ( 1851 3578 384 ) common/checkpoint 0 0 0 0.5 0.5 0 0 0
 }
 }
-// entity 70
+// entity 69
 {
 "classname" "info_notnull"
 "origin" "1720 3216 56"
 "targetname" "cp_06"
 "angle" "270"
 }
-// entity 71
+// entity 70
 {
 "classname" "item_fuelcan"
 "origin" "-1056 1824 72"
 }
-// entity 72
+// entity 71
 {
 "classname" "item_fuelcan"
 "origin" "-2232 -728 24"
 }
-// entity 73
+// entity 72
 {
 "classname" "func_static"
 "onlyTrackLength" "0"
@@ -6075,7 +6063,7 @@ q3r_signage/dirsign02_blu
 ( -4036 3200 52 ) ( -4036 3456 52 ) ( -4032 3456 52 ) common/caulk 0 0 0 0.5 0.5 0 0 0
 }
 }
-// entity 74
+// entity 73
 {
 "classname" "func_static"
 "onlyTrackLength" "0"
@@ -6107,7 +6095,7 @@ q3r_signage/dirsign02_blu
 ( -4036 -1024 52 ) ( -4036 -768 52 ) ( -4032 -768 52 ) common/caulk 0 0 0 0.5 0.5 0 0 0
 }
 }
-// entity 75
+// entity 74
 {
 "classname" "func_static"
 "onlyTrackLength" "1"
@@ -6139,30 +6127,30 @@ q3r_signage/dirsign02_blu
 ( -4027.8760912418 -752.4124526978 20 ) ( -3797.8804399967 -639.993598938 20 ) ( -3796.1238954067 -643.5872809887 20 ) common/caulk 0 0 0 0.5 0.5 0 0 0
 }
 }
-// entity 76
+// entity 75
 {
 "classname" "item_fuelcan"
 "origin" "-4580 864 26"
 }
-// entity 77
+// entity 76
 {
 "classname" "item_health_small"
 "origin" "-4942 2798 26"
 }
-// entity 78
+// entity 77
 {
 "classname" "misc_model"
 "origin" "-4574 1972 8"
 "model" "models/mapobjects/cactus/cactus.md3"
 }
-// entity 79
+// entity 78
 {
 "classname" "misc_model"
 "origin" "-4558 1916 8"
 "model" "models/mapobjects/cactus/cactus.md3"
 "angle" "-90"
 }
-// entity 80
+// entity 79
 {
 "classname" "misc_model"
 "origin" "-4972.09 1922.03 8"

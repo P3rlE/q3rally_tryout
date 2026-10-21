@@ -114,6 +114,16 @@ Added:
   registered at map load: a weapon handed out without a pickup in the map
   (give, game modes) showed no mine model and a missing-texture square
   instead of the explosion.
+- Maps set up for the weather (worldspawn keys, without compiling them
+  again; the .map files have the same keys): rain on q3r_country01 (50 %),
+  q3r_sk1 (70 %), q3r_ctf_01 (60 %), q3r_nightcity (50 %), q3r_downtown,
+  q3r_citydom, q3r_babel (40 %), q3r_dd_02, q3r_demobowl, q3r_dirtyfun
+  (30 %) and q3r_valley (15 %); snow on q3r_ridgeracer (60 %, wind 60 to
+  300); no weather on q3r_lavafalls, q3r_battlecanyon, q3r_david4,
+  q3r_dm02, q3r_ctf_04, q3r_lcs1 and q3r_mk. The sky of q3r_babel,
+  q3r_dirtyfun, q3r_ridgeracer, q3r_lcs1 and q3r_mk is now marked as sky
+  in the BSP (it was compiled without the flag, so no weather could fall
+  there); the old weather zones of q3r_ridgeracer and q3r_sk1 are gone.
 - Tyre sounds in snow and on wet ground: tyres no longer squeal on snow
   or ice (lying snow from the weather or snow surfaces of the map); they
   crunch through the snow while they roll, louder with the speed and when
