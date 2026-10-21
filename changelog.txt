@@ -114,6 +114,18 @@ Added:
   registered at map load: a weapon handed out without a pickup in the map
   (give, game modes) showed no mine model and a missing-texture square
   instead of the explosion.
+- Wind: the weather now has a wind that every client sees the same. It
+  turns and changes with every change of the weather over the same 30 to
+  60 seconds, is stronger with rain or snow and has gusts on top. It
+  slants the rain, blows the snow along (instead of the random gusts each
+  client made up) and carries tyre smoke, dust, wet and snow spray,
+  smoke puffs and waterfall mist downwind: fully out in the open, a
+  little under a roof. Out in the open a wind sound comes from the side
+  the wind blows from, louder the stronger it is (s_weatherVolume,
+  cg_weatherAudio). New worldspawn keys weatherWind ("30 250", min and
+  max speed in units per second, "0 0" = calm) and weatherWindDir
+  (prevailing direction, -1 = any). weatherinfo prints the wind. The
+  wind does not push the cars.
 - Snow on the ground (OpenGL2): snow from the weather settles where the
   sky is above, on the flat ground (it slides off steep slopes and walls).
   It starts as a thin powder, then the big drifts close up until the

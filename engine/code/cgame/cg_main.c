@@ -878,6 +878,8 @@ static void CG_RegisterSounds( void ) {
 	cgs.media.weatherSnowLoopSound = trap_S_RegisterSound( "sound/weather/snow_wind_loop.wav", qfalse );
 	trap_S_SetSfxGroup( cgs.media.weatherRainLoopSound, SOUND_GROUP_WEATHER );
 	trap_S_SetSfxGroup( cgs.media.weatherSnowLoopSound, SOUND_GROUP_WEATHER );
+	cgs.media.weatherWindLoopSound = trap_S_RegisterSound( "sound/world/wind1.wav", qfalse );
+	trap_S_SetSfxGroup( cgs.media.weatherWindLoopSound, SOUND_GROUP_WEATHER );
 // Q3Rally Code END
 	cgs.media.wearOffSound = trap_S_RegisterSound( "sound/items/wearoff.ogg", qfalse );
 	cgs.media.useNothingSound = trap_S_RegisterSound( "sound/items/use_nothing.ogg", qfalse );

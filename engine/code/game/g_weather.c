@@ -56,6 +56,8 @@ typedef struct {
 	int			chance;
 	int			cycleMin, cycleMax;
 	float		strengthMin, strengthMax;
+	float		windMin, windMax;		// units per second
+	float		windDir;				// prevailing yaw it blows towards, < 0 = any
 	qboolean	legacyRain, legacySnow;
 
 	int			mode;			// g_weather in use (0 for Ghost Race)
@@ -167,6 +169,44 @@ void G_WeatherReadMap( void ) {
 	G_WeatherParseRange( s, &lo, &hi );
 	gw.strengthMin = Com_Clamp( 0.05f, 1.0f, lo );
 	gw.strengthMax = Com_Clamp( gw.strengthMin, 1.0f, hi );
+
+	lo = 30.0f;
+	hi = 250.0f;
+	G_SpawnString( "weatherWind", "30 250", &s );
+	G_WeatherParseRange( s, &lo, &hi );
+	gw.windMin = Com_Clamp( 0.0f, 600.0f, lo );
+	gw.windMax = Com_Clamp( gw.windMin, 600.0f, hi );
+
+	G_SpawnString( "weatherWindDir", "-1", &s );
+	gw.windDir = atof( s );
+	if ( gw.windDir >= 0.0f ) {
+		gw.windDir = AngleNormalize360( gw.windDir );
+	}
+}
+
+/*
+=================
+G_WeatherWindTarget
+
+Where the wind goes with a change of the weather: from the prevailing
+direction of the map (or turning from where it blows now), stronger with
+rain or snow.
+=================
+*/
+static void G_WeatherWindTarget( float intensity, qboolean instant, float *yaw, float *speed ) {
+	float f;
+
+	if ( gw.windDir >= 0.0f ) {
+		*yaw = gw.windDir + crandom() * 30.0f;
+	} else if ( instant ) {
+		*yaw = random() * 360.0f;
+	} else {
+		*yaw = g_weatherState.windYaw + crandom() * 60.0f;
+	}
+	*yaw = AngleNormalize360( *yaw );
+
+	f = random() * 0.4f + 0.6f * intensity * ( 0.5f + 0.5f * random() );
+	*speed = gw.windMin + ( gw.windMax - gw.windMin ) * Com_Clamp( 0.0f, 1.0f, f );
 }
 
 void G_WeatherLegacyZone( int type ) {
@@ -198,6 +238,16 @@ static void G_WeatherPublish( int type, int rampSeconds, float target, qboolean 
 	a.intensity1 = target;
 	a.wetness0 = g_weatherState.wetness;
 	a.snow0 = g_weatherState.snow;
+
+	// the wind turns from where it is now (instantly at the start)
+	G_WeatherWindTarget( target, instant, &a.windYaw1, &a.windSpeed1 );
+	if ( instant ) {
+		a.windYaw0 = a.windYaw1;
+		a.windSpeed0 = a.windSpeed1;
+	} else {
+		a.windYaw0 = g_weatherState.windYaw;
+		a.windSpeed0 = g_weatherState.windSpeed;
+	}
 
 	if ( g_weatherState.anchor.type != type && !instant ) {
 		a.intensity0 = 0.0f;	// a different kind of weather starts from nothing
@@ -314,9 +364,9 @@ void G_InitWeather( void ) {
 
 	G_WeatherStart( qtrue );
 
-	G_Printf( "weather: map allows%s%s%s, chance %i%%, g_weather %i\n",
+	G_Printf( "weather: map allows%s%s%s, chance %i%%, wind %i-%i, g_weather %i\n",
 		gw.rain ? " rain" : "", gw.snow ? " snow" : "", ( gw.rain || gw.snow ) ? "" : " none",
-		gw.chance, gw.mode );
+		gw.chance, (int)gw.windMin, (int)gw.windMax, gw.mode );
 }
 
 /*

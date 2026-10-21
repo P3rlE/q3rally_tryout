@@ -366,6 +366,10 @@ typedef struct {
 	float	intensity1;
 	float	wetness0;		// the ground at startTime
 	float	snow0;
+	float	windYaw0;		// the wind turns and changes from 0 to 1 over the
+	float	windSpeed0;		// same time as the intensity (yaw it blows towards,
+	float	windYaw1;		// degrees; speed in units per second, without gusts)
+	float	windSpeed1;
 } weatherAnchor_t;
 
 typedef struct {
@@ -374,6 +378,9 @@ typedef struct {
 	float	intensity;		// now
 	float	wetness;		// how wet the ground out in the weather is, 0 to 1
 	float	snow;			// how snowed in it is, 0 to 1
+	float	windYaw;		// the wind now without gusts
+	float	windSpeed;
+	vec3_t	wind;			// the wind now with gusts, units per second (z = 0)
 } weatherState_t;
 
 #define WEATHER_GRID_MAX	256
@@ -393,6 +400,7 @@ typedef void (*weatherTrace_t)( trace_t *results, const vec3_t start, const vec3
 float		BG_WeatherIntensity( const weatherAnchor_t *a, int time );
 void		BG_WeatherSetAnchor( weatherState_t *st, const weatherAnchor_t *a );
 void		BG_WeatherAdvance( weatherState_t *st, int time );
+void		BG_WeatherWindBase( const weatherAnchor_t *a, int time, float *yaw, float *speed );
 void		BG_WeatherAnchorString( const weatherAnchor_t *a, char *buf, int size );
 void		BG_WeatherParseAnchor( const char *s, weatherAnchor_t *a );
 void		BG_WeatherGridPlace( weatherGrid_t *g, const vec3_t mins, const vec3_t maxs );

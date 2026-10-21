@@ -30,6 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ATMOSPHERIC_SCENE_POLY_BUDGET	1800
 #define ATMOSPHERIC_RAIN_SOUND_ENTITY	(ENTITYNUM_WORLD - 12)
 #define ATMOSPHERIC_SNOW_SOUND_ENTITY	(ENTITYNUM_WORLD - 11)
+#define ATMOSPHERIC_WIND_SOUND_ENTITY	(ENTITYNUM_WORLD - 13)
 
 #define MAX_ATMOSPHERIC_HEIGHT			65536  	// maximum world height (FIXME: since 1.27 this should be 65536)
 #define MIN_ATMOSPHERIC_HEIGHT			-65536  	// minimum world height (FIXME: since 1.27 this should be -65536)
@@ -110,6 +111,9 @@ static cg_atmosphericZone_t cg_atmZones[NUM_ATMOSPHERIC_TYPES];
 
 #define WEATHER_RAIN_PARTICLES	1000
 #define WEATHER_SNOW_PARTICLES	800
+
+#define WIND_SOUND_MIN			50.0f	// no wind sound below (units per second)
+#define WIND_SOUND_FULL			300.0f	// loudest from here on
 
 static weatherGrid_t	cg_weatherGrid;
 static weatherState_t	cg_weatherState;
@@ -272,10 +276,30 @@ void CG_WeatherInfo_f( void )
 	CG_Printf( "weather: %s, intensity %.2f (%.2f -> %.2f in %i s), ground wet %.2f, snow %.2f\n",
 		names[a->type], cg_weatherState.intensity, a->intensity0, a->intensity1,
 		( a->endTime - a->startTime ) / 1000, cg_weatherState.wetness, cg_weatherState.snow );
+	CG_Printf( "wind %i u/s (%i with gusts) towards %i deg (%i -> %i u/s, %i -> %i deg)\n",
+		(int)cg_weatherState.windSpeed, (int)VectorLength( cg_weatherState.wind ), (int)cg_weatherState.windYaw,
+		(int)a->windSpeed0, (int)a->windSpeed1, (int)a->windYaw0, (int)a->windYaw1 );
 	CG_Printf( "grid %i x %i cell %i (%s), camera %s, car %s\n", cg_weatherGrid.width, cg_weatherGrid.height,
 		(int)cg_weatherGrid.cell, cg_weatherGrid.valid ? "ok" : "none",
 		BG_WeatherExposed( &cg_weatherGrid, cg.refdef.vieworg ) ? "outside" : "covered",
 		BG_WeatherExposed( &cg_weatherGrid, cg.predictedPlayerState.origin ) ? "outside" : "covered" );
+}
+
+/*
+=================
+CG_WeatherWindAt
+
+The wind at a point, units per second: all of it out in the open, a
+little under a roof or a bridge, none on a map without sky.
+=================
+*/
+void CG_WeatherWindAt( const vec3_t point, vec3_t out )
+{
+	if ( !cg_weatherGrid.valid ) {
+		VectorClear( out );
+		return;
+	}
+	VectorScale( cg_weatherState.wind, BG_WeatherExposed( &cg_weatherGrid, point ) ? 1.0f : 0.25f, out );
 }
 
 float CG_AtmosphericPointWet( const vec3_t point )
@@ -315,6 +339,23 @@ void CG_AtmosphericAddLoopingSounds( void )
 
 	if ( inSnow && cg_weatherState.intensity > 0.1f && cgs.media.weatherSnowLoopSound ) {
 		trap_S_AddRealLoopingSound( ATMOSPHERIC_SNOW_SOUND_ENTITY, cg.refdef.vieworg, vec3_origin, cgs.media.weatherSnowLoopSound );
+	}
+
+	// the wind, from the side it comes from; the sound engine has no volume
+	// for a looping sound, so a weaker wind is put further away (full
+	// volume up to 80 units, silent at about 1330)
+	if ( cgs.media.weatherWindLoopSound && cg_weatherGrid.valid
+		&& ( BG_WeatherExposed( &cg_weatherGrid, cg.refdef.vieworg )
+		|| BG_WeatherExposed( &cg_weatherGrid, cg.predictedPlayerState.origin ) ) ) {
+		float speed = VectorLength( cg_weatherState.wind );
+		float volume = Com_Clamp( 0.0f, 1.0f, ( speed - WIND_SOUND_MIN ) / ( WIND_SOUND_FULL - WIND_SOUND_MIN ) );
+		vec3_t from, origin;
+
+		if ( volume > 0.02f ) {
+			VectorNormalize2( cg_weatherState.wind, from );
+			VectorMA( cg.refdef.vieworg, -( 80.0f + 1250.0f * ( 1.0f - 0.85f * volume ) ), from, origin );
+			trap_S_AddRealLoopingSound( ATMOSPHERIC_WIND_SOUND_ENTITY, origin, vec3_origin, cgs.media.weatherWindLoopSound );
+		}
 	}
 }
 
@@ -939,74 +980,6 @@ static void CG_SnowParticleRender( int type, cg_atmosphericParticle_t *particle 
 	trap_R_AddPolyToScene( *particle->effectshader, 4, verts );
 }
 
-/*
-**  	Set up gust parameters.
-*/
-
-static void CG_EffectGust( cg_atmosphericEffect_t *cg_atmFx )
-{
-	// Generate random values for the next gust
-
-	int diff;
-	int type;
-	float angle, strength;
-
-	type = (int)( cg_atmFx - cg_atmFxList );
-	angle = random() * 2.0f * M_PI;
-	strength = ( type == 0 ) ? ( 70.0f + random() * 110.0f ) : ( 25.0f + random() * 70.0f );
-	cg_atmFx->gustVec[0] = cos( angle ) * strength;
-	cg_atmFx->gustVec[1] = sin( angle ) * strength;
-
-	cg_atmFx->baseEndTime		= cg.time					+ cg_atmFx->baseMinTime		+ (rand() % (cg_atmFx->baseMaxTime - cg_atmFx->baseMinTime));
-	diff						= cg_atmFx->changeMaxTime	- cg_atmFx->changeMinTime;
-	cg_atmFx->gustStartTime		= cg_atmFx->baseEndTime		+ cg_atmFx->changeMinTime	+ (diff ? (rand() % diff) : 0);
-	diff						= cg_atmFx->gustMaxTime		- cg_atmFx->gustMinTime;
-	cg_atmFx->gustEndTime		= cg_atmFx->gustStartTime	+ cg_atmFx->gustMinTime		+ (diff ? (rand() % diff) : 0);
-	diff						= cg_atmFx->changeMaxTime	- cg_atmFx->changeMinTime;
-	cg_atmFx->baseStartTime		= cg_atmFx->gustEndTime		+ cg_atmFx->changeMinTime	+ (diff ? (rand() % diff) : 0);
-}
-
-static qboolean CG_EffectGustCurrent( cg_atmosphericEffect_t *cg_atmFx, vec3_t curr, float *weight, int *num )
-{
-	// Calculate direction for new drops.
-
-	vec3_t		temp;
-	float		frac;
-
-	if( cg.time < cg_atmFx->baseEndTime )
-	{
-		VectorCopy( cg_atmFx->baseVec, curr );
-		*weight = cg_atmFx->baseWeight;
-		*num = cg_atmFx->baseDrops;
-	}
-	else {
-		VectorSubtract( cg_atmFx->gustVec, cg_atmFx->baseVec, temp );
-		if( cg.time < cg_atmFx->gustStartTime )
-		{
-			frac = ((float)(cg.time - cg_atmFx->baseEndTime))/((float)(cg_atmFx->gustStartTime - cg_atmFx->baseEndTime));
-			VectorMA( cg_atmFx->baseVec, frac, temp, curr );
-			*weight = cg_atmFx->baseWeight + (cg_atmFx->gustWeight - cg_atmFx->baseWeight) * frac;
-			*num = cg_atmFx->baseDrops + ((float)(cg_atmFx->gustDrops - cg_atmFx->baseDrops)) * frac;
-		}
-		else if( cg.time < cg_atmFx->gustEndTime )
-		{
-			VectorCopy( cg_atmFx->gustVec, curr );
-			*weight = cg_atmFx->gustWeight;
-			*num = cg_atmFx->gustDrops;
-		}
-		else
-		{
-			frac = 1.0 - ((float)(cg.time - cg_atmFx->gustEndTime))/((float)(cg_atmFx->baseStartTime - cg_atmFx->gustEndTime));
-			VectorMA( cg_atmFx->baseVec, frac, temp, curr );
-			*weight = cg_atmFx->baseWeight + (cg_atmFx->gustWeight - cg_atmFx->baseWeight) * frac;
-			*num = cg_atmFx->baseDrops + ((float)(cg_atmFx->gustDrops - cg_atmFx->baseDrops)) * frac;
-			if( cg.time >= cg_atmFx->baseStartTime )
-				return( qtrue );
-		}
-	}
-	return( qfalse );
-}
-
 // Q3Rally Code Start
 /*
 static void CG_EP_ParseFloats( char *floatstr, float *f1, float *f2 )
@@ -1267,9 +1240,6 @@ static void CG_Atmospheric_SetParticles( int type, int numParticles, qboolean di
 		cg_atmFx->particles[count].nextDropTime = ATMOSPHERIC_DROPDELAY + (rand() % ATMOSPHERIC_DROPDELAY);
 	}
 
-	if ( firstInitialization ) {
-		CG_EffectGust( cg_atmFx );
-	}
 }
 // END
 
@@ -1316,8 +1286,13 @@ void CG_AddAtmosphericEffects()
 		}
 		remainingPolys -= max;
 // END
-		if( CG_EffectGustCurrent( cg_atmFx, currvec, &currweight, &currnum ) )
-			CG_EffectGust( cg_atmFx );  	  	  	// Recalculate gust parameters
+		// Q3Rally: the drops and flakes start with the wind of the weather
+		// (the same for everybody); snow a little less (it would fly sideways)
+		currvec[0] = cg_weatherState.wind[0] * ( i == 0 ? 1.0f : 0.6f );
+		currvec[1] = cg_weatherState.wind[1] * ( i == 0 ? 1.0f : 0.6f );
+		currvec[2] = cg_atmFx->baseVec[2];
+		currweight = cg_atmFx->baseWeight;
+		currnum = cg_atmFx->numDrops;
 		if ( currnum > max ) {
 			currnum = max;
 		}

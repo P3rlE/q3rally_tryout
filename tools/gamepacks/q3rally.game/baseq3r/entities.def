@@ -2760,6 +2760,8 @@ weather : Q3Rally: what weather the map can have: rain, snow, "rain snow" (each 
 weatherChance : Q3Rally: share of the time with rain or snow, 0 to 100 (default 40); also the chance that a race starts in the rain.
 weatherCycle : Q3Rally: how long a shower lasts, min and max in seconds (default 90 300). Dry spells last as long times (100 - chance) / chance.
 weatherStrength : Q3Rally: intensity of a shower, min and max from 0 to 1 (default 0.4 1).
+weatherWind : Q3Rally: wind speed, min and max in units per second (default 30 250); it turns and changes with the weather, stronger with rain or snow, and carries the rain, snow, tyre smoke, dust and mist.
+weatherWindDir : Q3Rally: prevailing direction the wind blows towards, yaw in degrees (default -1 = any); the wind then stays within 30 degrees of it.
 gridsize : granularity of the lightgrid created by q3map. Value is three integers separated by spaces, representing number of units between grid points in X Y Z. Default gridsize value is 128 128 256. Use larger powers of 2 to reduce BSP size and compile time on very large maps.
 _blocksize : q3map always splits the BSP tree along the planes X=_blocksize*n and Y=_blocksize*n. Default _blocksize value is 1024. Increase the blocksize using larger powers of 2 to reduce compile times on very large maps with a low structural brush density.
 -------- Q3MAP2 KEYS --------

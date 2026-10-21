@@ -29,6 +29,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // on the server, the prediction on the client and what the client draws all
 // agree, also for a client that joins later.
 //
+// The anchor also carries the wind (direction and speed, turning over the
+// same ramp); the gusts on top of it are a fixed function of the time.
+//
 // Where weather reaches the ground is in a grid built when the map loads
 // (CS_WEATHERGRID gives its placement): for every cell the height of the
 // highest solid surface seen from the sky. A point is out in the weather if
@@ -116,6 +119,58 @@ static void BG_WeatherStep( weatherState_t *st, int time ) {
 	}
 }
 
+/*
+=================
+BG_WeatherWindBase
+
+The wind of the anchor at a time, without the gusts: turns the short way
+round from windYaw0 to windYaw1 while the speed changes.
+=================
+*/
+void BG_WeatherWindBase( const weatherAnchor_t *a, int time, float *yaw, float *speed ) {
+	float f, d;
+
+	if ( time >= a->endTime || a->endTime <= a->startTime ) {
+		f = 1.0f;
+	} else if ( time <= a->startTime ) {
+		f = 0.0f;
+	} else {
+		f = (float)( time - a->startTime ) / (float)( a->endTime - a->startTime );
+	}
+
+	d = AngleNormalize180( a->windYaw1 - a->windYaw0 );
+	*yaw = AngleNormalize360( a->windYaw0 + d * f );
+	*speed = a->windSpeed0 + ( a->windSpeed1 - a->windSpeed0 ) * f;
+}
+
+/*
+=================
+BG_WeatherWindNow
+
+The wind with gusts: a few slow waves of different length, so it never
+repeats in a way one would notice; stronger gusts while it rains or snows.
+The direction swings a little with it.
+=================
+*/
+static void BG_WeatherWindNow( weatherState_t *st, int time ) {
+	float t = ( time & 0xffffff ) * 0.001f;		// seconds, kept small for the sines
+	float gustiness = 0.3f + 0.3f * st->intensity;
+	float gust, swing, yaw, speed;
+
+	BG_WeatherWindBase( &st->anchor, time, &yaw, &speed );
+	st->windYaw = yaw;
+	st->windSpeed = speed;
+
+	gust = 0.55f * sin( t * 0.31f ) + 0.3f * sin( t * 0.83f + 1.7f ) + 0.15f * sin( t * 2.3f + 4.1f );
+	gust = 1.0f + gustiness * gust;
+	swing = 10.0f * sin( t * 0.13f + 0.5f ) + 5.0f * sin( t * 0.47f + 2.2f );
+
+	yaw = DEG2RAD( yaw + swing );
+	st->wind[0] = cos( yaw ) * speed * gust;
+	st->wind[1] = sin( yaw ) * speed * gust;
+	st->wind[2] = 0.0f;
+}
+
 void BG_WeatherSetAnchor( weatherState_t *st, const weatherAnchor_t *a ) {
 	st->anchor = *a;
 	st->steps = 0;
@@ -151,23 +206,24 @@ void BG_WeatherAdvance( weatherState_t *st, int time ) {
 	}
 
 	st->intensity = BG_WeatherIntensity( &st->anchor, time );
+	BG_WeatherWindNow( st, time );
 }
 
 void BG_WeatherAnchorString( const weatherAnchor_t *a, char *buf, int size ) {
-	Com_sprintf( buf, size, "%i %i %i %.3f %.3f %.3f %.3f", a->type, a->startTime, a->endTime,
-		a->intensity0, a->intensity1, a->wetness0, a->snow0 );
+	Com_sprintf( buf, size, "%i %i %i %.3f %.3f %.3f %.3f %.1f %.1f %.1f %.1f", a->type, a->startTime, a->endTime,
+		a->intensity0, a->intensity1, a->wetness0, a->snow0, a->windYaw0, a->windSpeed0, a->windYaw1, a->windSpeed1 );
 }
 
 void BG_WeatherParseAnchor( const char *s, weatherAnchor_t *a ) {
 	char buf[MAX_INFO_STRING];
 	char *p, *tok;
 	int i;
-	float f[7];
+	float f[11];
 
 	memset( f, 0, sizeof( f ) );
 	Q_strncpyz( buf, s, sizeof( buf ) );
 	p = buf;
-	for ( i = 0; i < 7; i++ ) {
+	for ( i = 0; i < 11; i++ ) {
 		tok = COM_Parse( &p );
 		if ( !tok[0] ) {
 			break;
@@ -185,6 +241,10 @@ void BG_WeatherParseAnchor( const char *s, weatherAnchor_t *a ) {
 	a->intensity1 = f[4];
 	a->wetness0 = f[5];
 	a->snow0 = f[6];
+	a->windYaw0 = f[7];
+	a->windSpeed0 = f[8];
+	a->windYaw1 = f[9];
+	a->windSpeed1 = f[10];
 }
 
 /*

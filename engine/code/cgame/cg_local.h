@@ -1337,6 +1337,7 @@ typedef struct {
 	sfxHandle_t	skidSound;
 	sfxHandle_t	weatherRainLoopSound;
 	sfxHandle_t	weatherSnowLoopSound;
+	sfxHandle_t	weatherWindLoopSound;
 	sfxHandle_t	shieldSound;
 	sfxHandle_t	sfx_lghit1;
 	sfxHandle_t	sfx_lghit2;
@@ -2265,6 +2266,7 @@ float CG_AtmosphericPointWet( const vec3_t point );
 void CG_UpdateWetness( void );
 float CG_AtmosphericPointSnow( const vec3_t point );
 void CG_AtmosphericAddLoopingSounds( void );
+void CG_WeatherWindAt( const vec3_t point, vec3_t out );
 
 //
 // cg_rally_scripted_objects.c
