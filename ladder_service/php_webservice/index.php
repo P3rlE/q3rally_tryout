@@ -5015,7 +5015,8 @@ const LADDER_CHANGELOG = [
     changes: [
       'Weather: matches carry the weather they were driven in (weather.condition dry / wet / snow / mixed, wet and snow share, g_weather, what the map allows); the match index keeps the condition',
       'Leaderboards: weather filter next to Online / Offline (any weather, dry, wet, snow); matches from before the weather report count as dry',
-      'Ghosts: the game no longer uploads laps on a wet or snowy track'
+      'Ghosts: the game no longer uploads laps on a wet or snowy track',
+      'rebuild_index.php builds the index with the same fields as an upload (it wrote an older, smaller entry); run it once after this update'
     ],
   },
   {
