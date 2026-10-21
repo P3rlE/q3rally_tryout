@@ -1675,7 +1675,7 @@ const void *RB_PostProcess(const void *data)
 	}
 
 	// Q3Rally: distance and ground haze of the map
-	if (srcFbo && r_haze->integer && tr.hazeSet && backEnd.viewParms.viewportWidth >= glConfig.vidWidth / 2
+	if (srcFbo && r_haze->integer && (tr.hazeSet || backEnd.refdef.overcast > 0.01f) && backEnd.viewParms.viewportWidth >= glConfig.vidWidth / 2
 		&& !(backEnd.refdef.rdflags & RDF_NOWORLDMODEL))
 	{
 		RB_Haze(srcFbo, srcBox);

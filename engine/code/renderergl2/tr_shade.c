@@ -1738,6 +1738,9 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 			}
 
 			GLSL_SetUniformVec4(sp, UNIFORM_ENABLETEXTURES, enableTextures);
+
+			// Q3Rally: under a clouded sky the map's baked sunlight is dimmed
+			GLSL_SetUniformFloat(sp, UNIFORM_OVERCAST, backEnd.currentEntity == &tr.worldEntity ? backEnd.refdef.overcast : 0.0f);
 		}
 		else if ( pStage->bundle[1].image[0] != 0 )
 		{

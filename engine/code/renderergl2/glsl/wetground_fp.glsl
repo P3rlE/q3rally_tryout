@@ -274,6 +274,12 @@ vec3 SnowColor(vec3 N)
 	else
 		light = var_VertLight;
 
+	// under the clouds the baked sunlight fades, as on the ground (lightall)
+	float overcast = min(1.0, max(u_Weather.z, u_Weather.w) * 1.15);
+	float l = max(light.r, max(light.g, light.b));
+	if (overcast > 0.0 && l > 0.45)
+		light *= (0.45 + (l - 0.45) * (1.0 - 0.3 * overcast)) / l;	// less: snow scatters the light
+
 	// the sun shadow of the map's models and the cars, and the lamp shadows
 	if (u_SnowParams.z >= 0.0)
 	{

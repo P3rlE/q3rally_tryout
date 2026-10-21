@@ -682,6 +682,8 @@ typedef enum
 	UNIFORM_HAZECOLOR,		// Q3Rally: haze, rgb + most it hides
 	UNIFORM_HAZEPARAMS,		// Q3Rally: haze, density, ground density, 1 / ground thickness, ground height
 	UNIFORM_HAZESUN,		// Q3Rally: haze, direction to the sun + glow
+	UNIFORM_HAZEWEATHER,	// Q3Rally: haze, x = overcast sky cover, y = time
+	UNIFORM_OVERCAST,		// Q3Rally: lightall, how overcast the sky is (dims the baked sunlight)
 
 	UNIFORM_ENABLETEXTURES,
 
@@ -823,6 +825,8 @@ typedef struct {
 	float       motionMaskFar;		// Q3Rally: their farthest view distance, 0 = none
 	float       wetness;			// Q3Rally: wet ground, 0 = dry, 1 = soaked
 	vec4_t      weather;			// Q3Rally: see refdef_t
+	float       overcast;			// Q3Rally: how overcast the sky is with the rain or snow, 0 to 1
+	float       overcastSnow;		// Q3Rally: 1 when it is snow that falls (brighter, whiter)
 	int         lampShadowSlot[MAX_LAMP_SHADOWS];
 	float       lampShadowMvp[MAX_LAMP_SHADOWS][16];
 	vec4_t      lampShadowOrigin[MAX_LAMP_SHADOWS];	// xyz, w = light * LAMP_LIGHT_SCALE

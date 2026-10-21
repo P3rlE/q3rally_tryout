@@ -120,6 +120,8 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_HazeColor", GLSL_VEC4 },
 	{ "u_HazeParams", GLSL_VEC4 },
 	{ "u_HazeSun", GLSL_VEC4 },
+	{ "u_HazeWeather", GLSL_VEC4 },
+	{ "u_Overcast", GLSL_FLOAT },
 
 	{ "u_EnableTextures", GLSL_VEC4 },
 

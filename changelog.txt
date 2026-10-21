@@ -114,6 +114,13 @@ Added:
   registered at map load: a weapon handed out without a pickup in the map
   (give, game modes) showed no mine model and a missing-texture square
   instead of the explosion.
+- Overcast (OpenGL2): while it rains or snows the sky clouds over, in
+  slowly drifting grey patches, and the light follows the intensity of the
+  shower: the sun gets weak and its shadows fade, the patches of sunlight
+  baked into the map dim, the far distance disappears in a grey haze
+  (thicker in snow, also on maps without a haze of their own, no glow
+  towards the sun), and the picture gets a little darker and its colours
+  duller (less in snow). When the shower passes the sky clears with it.
 - Wind: the weather now has a wind that every client sees the same. It
   turns and changes with every change of the weather over the same 30 to
   60 seconds, is stronger with rain or snow and has gusts on top. It

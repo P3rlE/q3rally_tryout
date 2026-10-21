@@ -422,6 +422,10 @@ void RE_BeginScene(const refdef_t *fd)
 		if ( !tr.weatherGridImage ) {
 			tr.refdef.weather[0] = tr.refdef.weather[1] = tr.refdef.weather[2] = tr.refdef.weather[3] = 0.0f;
 		}
+
+		// the sky clouds over with the rain or snow (and clears with it)
+		tr.refdef.overcast = MIN( 1.0f, MAX( tr.refdef.weather[2], tr.refdef.weather[3] ) * 1.15f );
+		tr.refdef.overcastSnow = tr.refdef.weather[3] > tr.refdef.weather[2] ? 1.0f : 0.0f;
 	}
 
 	// copy the areamask data over and note if it has changed, which
@@ -474,6 +478,21 @@ void RE_BeginScene(const refdef_t *fd)
 				VectorScale(tr.sunLight, scale * r_forceSunAmbientScale->value, tr.refdef.sunAmbCol);
 			else
 				VectorScale(tr.sunLight, scale * tr.sunShadowScale, tr.refdef.sunAmbCol);
+		}
+
+		// Q3Rally: under clouds the sun is weak and its shadows fade (the
+		// sun in the lightmap stays; the tone mapping darkens the scene)
+		if (tr.refdef.overcast > 0.0f)
+		{
+			float c = tr.refdef.overcast;
+
+			VectorScale(tr.refdef.sunCol, 1.0f - 0.75f * c, tr.refdef.sunCol);
+			if (r_sunlightMode->integer == 1)
+			{
+				float amb = tr.refdef.sunAmbCol[0] + (1.0f - tr.refdef.sunAmbCol[0]) * 0.8f * c;
+
+				VectorSet(tr.refdef.sunAmbCol, amb, amb, amb);
+			}
 		}
 	}
 
