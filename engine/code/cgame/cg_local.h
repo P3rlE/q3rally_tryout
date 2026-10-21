@@ -327,6 +327,11 @@ typedef struct centity_s {
 	int				engineNextBurst;	// no new backfire burst before this time
 
 	int				skidSoundTime;
+	int				tyreSoundFrame;		// Q3Rally: the tyres of this frame (cg.clientFrame)
+	int				tyreSnowContacts;	// tyres on snow or ice
+	int				tyreWetContacts;	// tyres on wet ground
+	qboolean		tyreHardSkid;		// a tyre squeals (the skid loop plays)
+	qboolean		tyreSoftSkid;		// a tyre slides on snow or ice (no squeal)
 
 	// scripted object variables
 	qboolean		scriptLoadAttempted;
@@ -1335,6 +1340,8 @@ typedef struct {
 	sfxHandle_t	wearOffSound;
 	sfxHandle_t	turboSound;
 	sfxHandle_t	skidSound;
+	sfxHandle_t	snowRollSound;		// Q3Rally: tyres rolling and sliding in snow
+	sfxHandle_t	wetRollSound;		// Q3Rally: tyres hissing on wet ground
 	sfxHandle_t	weatherRainLoopSound;
 	sfxHandle_t	weatherSnowLoopSound;
 	sfxHandle_t	weatherWindLoopSound;

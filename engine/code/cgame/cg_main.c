@@ -874,6 +874,8 @@ static void CG_RegisterSounds( void ) {
 // Q3Rally Code Start
 	cgs.media.turboSound = trap_S_RegisterSound( "sound/items/turbo_use.ogg", qfalse );
 	cgs.media.skidSound = trap_S_RegisterSound( "sound/rally/car/skid.ogg", qfalse );
+	cgs.media.snowRollSound = trap_S_RegisterSound( "sound/rally/car/snow_roll.wav", qfalse );
+	cgs.media.wetRollSound = trap_S_RegisterSound( "sound/weather/wet_tire_spray_loop.wav", qfalse );
 	cgs.media.weatherRainLoopSound = trap_S_RegisterSound( "sound/weather/rain_loop_heavy.wav", qfalse );
 	cgs.media.weatherSnowLoopSound = trap_S_RegisterSound( "sound/weather/snow_wind_loop.wav", qfalse );
 	trap_S_SetSfxGroup( cgs.media.weatherRainLoopSound, SOUND_GROUP_WEATHER );

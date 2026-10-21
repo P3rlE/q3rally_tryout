@@ -114,6 +114,12 @@ Added:
   registered at map load: a weapon handed out without a pickup in the map
   (give, game modes) showed no mine model and a missing-texture square
   instead of the explosion.
+- Tyre sounds in snow and on wet ground: tyres no longer squeal on snow
+  or ice (lying snow from the weather or snow surfaces of the map); they
+  crunch through the snow while they roll, louder with the speed and when
+  the car slides, and hiss on wet ground. The squeal of a skid on hard
+  ground stays. New sound sound/rally/car/snow_roll.wav; the wet hiss is
+  sound/weather/wet_tire_spray_loop.wav.
 - Overcast (OpenGL2): while it rains or snows the sky clouds over, in
   slowly drifting grey patches, and the light follows the intensity of the
   shower: the sun gets weak and its shadows fade, the patches of sunlight
