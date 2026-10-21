@@ -121,11 +121,12 @@ Added:
   When it melts the patches open again and leave the ground wet. The snow
   is lit by the lightmap of the surface (or its vertex light) and the sun
   and lamp shadows, with wind ripples and a few glittering crystals close
-  by. With the automatic exposure the camera opens up by up to 0.7 stops
-  on snow, so it stays white instead of grey. Surfaces that are already
+  by. With the automatic exposure the camera opens up by up to 0.4 stops
+  on snow, so it does not turn grey. Surfaces that are already
   snow (SURF_SNOW, SURF_ICE) are left as they are. On lying snow the rear
   tyres leave ruts while rolling, not only when they skid (longer ribbon
-  segments, so they do not use up the marks). New cheat cvar
+  segments, so they do not use up the marks); marks in snow are lighter
+  than on other ground (skids 60 %, rolling ruts 40 %). New cheat cvar
   cg_weatherPreview "wet snow" (e.g. "0.5 0.5") shows the ground at that
   wetness and snow, for mappers and screenshots; the grip does not change.
 - Wet ground (OpenGL2): inside a rain zone (rally_weather_rain) the ground

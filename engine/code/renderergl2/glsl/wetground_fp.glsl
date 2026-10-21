@@ -284,7 +284,7 @@ vec3 SnowColor(vec3 N)
 	// wind ripples and soft drifts, so it is not one flat colour
 	vec2  p = var_Position.xy;
 	float drift = Noise(p / 140.0) * 0.6 + Noise(vec2(p.x + p.y * 0.3, p.y) / 23.0) * 0.4;
-	vec3  albedo = vec3(0.86, 0.89, 0.95) * (0.88 + 0.12 * N.z) * (0.9 + 0.12 * drift);
+	vec3  albedo = vec3(0.78, 0.81, 0.87) * (0.88 + 0.12 * N.z) * (0.9 + 0.12 * drift);
 
 	// a few ice crystals glitter close by, each one only from some
 	// directions
