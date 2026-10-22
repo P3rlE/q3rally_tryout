@@ -399,18 +399,6 @@ models/powerups/nos/nos_valve
 	}
 }
 
-models/powerups/nos/nos_ring
-{
-	cull disable
-	nopicmip
-	{
-		map models/powerups/nos/nos_ring.tga
-		blendFunc GL_ONE GL_ONE
-		tcMod scroll -0.25 0
-		rgbGen wave sin 1.0 0.25 0 1.2
-	}
-}
-
 // ------------------------------------------------------------
 // 9.armor_red
 // ------------------------------------------------------------
