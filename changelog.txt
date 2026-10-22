@@ -664,6 +664,14 @@ Changed:
 
 Fixed:
 
+- HUD: the pickup toast and the slipstream gauge were drawn on top of each
+  other above the telemetry strip. The toast moves up out of the gauge slot
+  while the gauge is shown (in step with its fade-in), so both stay readable.
+- q3r_downtown: the info_player_deathmatch at the start line was 160 units
+  below the road (z 24), cars spawned there fell out of the map. Moved onto
+  the road (z 188, like the race starts). The two rear race starts were
+  numbered 7 and 8 a second time; they are 9 and 10 now. Entity lump of the
+  BSP patched, AAS checksum updated.
 - scripts/shaderlist.txt did not list ame_desert, arctic, ely_darkcity,
   ely_sunset, telestecki, cars_helmets and koth_beam, so q3map2 (which
   only reads the listed files) did not find the skies of q3r_babel,
