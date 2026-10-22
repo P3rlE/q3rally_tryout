@@ -262,6 +262,14 @@ Added:
 
 Changed:
 
+- The NOS pickup is now a blue NOS bottle with a chrome valve in a
+  glowing ring instead of the rocket booster with the gear, the HUD icon
+  shows the bottle in a blue powerup gear, and the pickup voice says "NOS"
+  instead of "Turbo". New files: models/powerups/nos/ (nos.md3,
+  nos_ring.md3, textures), icons/nos.tga, sound/items/nos.ogg, shaders in
+  scripts/powerups.shader. The old turbo model, icon and sound are no
+  longer used.
+
 - q3r_lcs1 is now "Red Rock Basin": the fence and the corner pillars are
   gone, the asphalt fades into a sand apron and a banked sand berm that
   rises into red rock cliffs with rounded corners, loose rocks at their
