@@ -262,6 +262,26 @@ Added:
 
 Changed:
 
+- q3r_lcs1 is now "Red Rock Basin": the fence and the corner pillars are
+  gone, the asphalt fades into a sand apron and a banked sand berm that
+  rises into red rock cliffs with rounded corners, loose rocks at their
+  foot, rock towers and floodlight masts. Three gates in the rim are closed
+  with old fences and look out along desert corridors on a ruined control
+  tower, a hangar ruin and open desert; elsewhere the sky starts behind the
+  rim. The asphalt carries the worn markings of an old runway (06/24) and
+  repaired patches. The whole map is scaled to 70 % (the playfield is about
+  8600 units across). Items are placed in zones instead of 16 weapons with
+  999 ammo: BFG in the centre (90 s respawn), rocket launcher, railgun,
+  plasma gun, lightning gun and grenade launcher on a middle ring, shotguns
+  and flamethrowers further out, ammo next to its weapon, health behind the
+  boulders, mega health and red armour up on the berm (60 s), yellow armour
+  and shard clusters, four NOS bottles on the open lanes, mines, oil and
+  smoke near the edge and six fuel cans. 16 spawn points on a ring facing
+  the centre. New bot navigation file. Built for frame rate: about a fifth
+  of the draw surfaces of the first version (small rocks and metal parts
+  are vertex lit and merged), no terrain outside the rim except in the gate
+  corridors. Shaders in scripts/q3r_redrock.shader.
+
 - Weather system reworked. The weather now covers the whole map and falls
   wherever the sky is above: when a map loads, the server and every client
   trace it from above on a 64 unit grid and keep, per cell, the highest
