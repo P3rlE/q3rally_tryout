@@ -7742,3 +7742,8 @@ base_floor/concretefloor1
 "color" "1.0 0.58 0.30"
 "_color" "1.0 0.58 0.30"
 }
+// entity scoreboard
+{
+"classname" "rally_scoreboard"
+"origin" "0 0 688"
+}

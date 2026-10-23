@@ -4,6 +4,13 @@ unreleased
 
 Added:
 
+- Live score on the stadium scoreboard: new client side map entity
+  rally_scoreboard (like rally_fx_spray, the server ignores it). Placed at
+  the centre of the q3r_scoreboard model it draws red score, blue score and
+  the match clock on every screen; goals make the scorer's number blink and
+  show GOAL!, the kick-off shows KICK-OFF. Keys angle, sides, dist, width,
+  height, range (entities.def). Added to q3r_sundown.
+
 - Water with real-time reflections (OpenGL2 renderer): shaders with the new
   q3r_water keyword are drawn by a GLSL program that mirrors the scene in the
   water plane, ripples the reflection with two scrolling normal maps, mixes it
@@ -704,6 +711,17 @@ Changed:
 
 Fixed:
 
+- q3r_sundown: the scoreboard cube in the middle was black. Its model is
+  baked into the map with vertex light and hangs in the shadow of the roof
+  truss, several faces are wound inside out (the screens were culled from
+  the outside) and the screen picture is upside down in the UVs. New shader
+  models/mapobjects/q3r_scoreboard/scoreboard in autoball.shader: lit
+  evenly, glowing screens, drawn two sided; the screen picture is flipped
+  in scoreboard.jpg (painted 2:1 / 03:24 removed, red left like the HUD)
+  and the new scoreboard_glow.jpg. No recompile needed.
+- q3r_sundown did not show up in the map list: scripts/q3r_sundown.arena
+  had no { } around its keys, the menu stopped with "Missing { in info
+  file". New levelshot.
 - HUD: the pickup toast and the slipstream gauge were drawn on top of each
   other above the telemetry strip. The toast moves up out of the gauge slot
   while the gauge is shown (in step with its fade-in), so both stay readable.
