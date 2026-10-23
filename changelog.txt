@@ -269,6 +269,14 @@ Added:
 
 Changed:
 
+- q3r_sundown dressed as a stadium: the pitch is turf with mowing stripes
+  and full markings (one field shader over the floor, textures/q3r_sundown/
+  field*.tga/jpg; grip and sounds unchanged), the goals have glowing posts
+  in team colour (red west, blue east), nets on the walls of the goal boxes
+  and a team coloured light inside, a scrolling LED ad board with the
+  Q3Rally sponsor banners runs above the ramps, the upper walls carry the
+  crowd and the boxes have fans; warm lights under the boxes along the
+  walls. Ad boards, crowd and fans are not solid. New levelshot.
 - q3r_citydom, rework stage 1 (map edges): the streets no longer end at a
   fence in front of the sky. The sky box is 1792 units larger on every side
   and the city goes on behind the arena: the streets continue past the
