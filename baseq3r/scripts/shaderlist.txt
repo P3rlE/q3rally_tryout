@@ -30,3 +30,4 @@ telestecki
 cars_helmets
 koth_beam
 q3r_redrock
+q3r_citydom

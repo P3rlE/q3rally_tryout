@@ -262,6 +262,46 @@ Added:
 
 Changed:
 
+- q3r_citydom, rework stage 1 (map edges): the streets no longer end at a
+  fence in front of the sky. The sky box is 1792 units larger on every side
+  and the city goes on behind the arena: the streets continue past the
+  fences to a ring road, lined by a row of blocks behind the edge buildings
+  and a second, taller row against the sky (shop fronts, facades, cornices,
+  roof structures), so the arena gets a skyline. The backdrop is one
+  func_group of detail brushes with _lightmapscale 4; player clip on the old
+  boundary keeps the cars in. The one street without a fence (west side,
+  y -1216..-832) got one. Worldspawn _blocksize 0: without the forced 1024
+  splits vis has fewer portals than before (4980 instead of 9408) and the
+  culling is a bit better. Layout, spawns and domination points unchanged;
+  AAS rebuilt.
+- q3r_citydom, rework stage 2 (the glass towers): new skin for the two
+  towers and the glass hall between them, collision and the driving levels
+  unchanged. Aluminium frames instead of rusty ones, reflective tinted
+  curtain wall glass (new shaders q3r_citydom/glass and glassdark, the
+  breakable ground floor panes included), light ceiling panels with
+  downlights under the slabs and cantilevers (they light the area below),
+  stone deck on the floors and the bridge. Outside the glass: floor bands,
+  vertical fins on the upper floors, a roof parapet, roof plant and masts
+  with warning lights (detail brushes). New textures in
+  textures/q3r_citydom, scripts/q3r_citydom.shader (in shaderlist.txt).
+- q3r_citydom, rework stage 3 (the hangar): the brick shed with the big
+  corrugated roof in the south east corner is now a car park on the same
+  footprint: closed ground floor with garage doors and windows, four open
+  parking decks with parapets and columns and a lit interior with parked
+  cars behind the openings, a glazed stair tower with P signs and a roof
+  deck with markings and lamp posts. Not reachable for cars, as before.
+- q3r_citydom, rework stage 4 (items, spawns, levelshot): fewer weapons,
+  spread over the map instead of two rows of 16 on the green strips. Two of
+  each weapon, point symmetric to the middle (streets, squares and the
+  tower floors), one BFG, ammo next to its weapon; two red and two yellow
+  armours instead of twelve and four, health and fuel spread evenly. The
+  map had item_quad, item_regen and item_invis, which do not exist in
+  Q3Rally; now rally_item_quad in the middle, rally_item_regen and two NOS.
+  16 deathmatch spawns all over the map (there were two, both in the
+  middle under the centre point; Domination uses them with
+  g_dominationSpawnStyle 0), away from the domination points and facing
+  the middle. The botlib flood of "out of level items" is gone. New
+  levelshot.
 - The NOS pickup is now a blue NOS bottle with a chrome valve instead of
   the rocket booster, spinning in the same powerup gear as the other
   powerups, now in light blue. The HUD icon shows the bottle in a light
