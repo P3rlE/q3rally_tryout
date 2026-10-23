@@ -13,6 +13,7 @@ plates
 powerups
 q3r_textures
 skies
+q3r_sundown
 sprites
 weapons
 cars
