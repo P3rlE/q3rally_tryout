@@ -62,7 +62,9 @@ MEANDER = 140                  # amplitude of the creek bends
 HEAPS = ((330, 760, 44, 140), (760, 400, 36, 120))   # gravel heaps (x, y off the creek, height, radius)
 
 GRID = {}        # (x, y) -> height of the collision vertices
-DIAG = {}        # (x0, y0) -> "ac" or "bd", diagonal of the cell
+DIAG = {}        # (x0, y0) -> "ac" or "bd", diagonal of the 32-unit cell
+COARSE = {}      # (x0, y0) -> diagonal of a 64-unit cell that is not subdivided
+TRIS = []        # terrain triangles (CCW from above)
 MAT = {}         # (x, y) -> ground layer of the vertex
 BRUSHES = []     # worldspawn brushes
 GROUPS = {}      # friction class -> terrain brushes (func_group with index map)
@@ -224,8 +226,58 @@ def build_heights():
                 DIAG[x0, y0] = "ac" if ac < bd else "bd"
 
 
+def coarsen():
+    """64-unit cells where 32 units add nothing: flat, one ground layer, no
+    road, creek or heap. Their edge midpoints are put on the straight edge, so
+    finer neighbours and the backdrop ring meet them without gaps."""
+    big = 2 * STEP
+    for y0 in range(-EXTENT, EXTENT, big):
+        for x0 in range(-EXTENT, EXTENT, big):
+            pts = [(x0 + i * STEP, y0 + j * STEP) for i in range(3) for j in range(3)]
+            if len({MAT[p] for p in pts}) > 1:
+                continue
+            if any(road(x, y) > 0.01 or abs(y - yc(x)) < creek(x)[0] * 2.6 for x, y in pts):
+                continue
+            if any(math.hypot(x - hx[0], y - hy[0]) < hy[1] * 1.7 for x, y in pts for hx, hy in heaps()):
+                continue
+            a, b = GRID[x0, y0], GRID[x0 + big, y0]
+            c, d = GRID[x0 + big, y0 + big], GRID[x0, y0 + big]
+            hc = GRID[x0 + STEP, y0 + STEP]
+            ac, bd = abs((a + c) / 2 - hc), abs((b + d) / 2 - hc)
+            if abs(ac - bd) < 0.05:
+                diag = "ac" if (x0 + STEP) * (y0 + STEP) >= 0 else "bd"
+            else:
+                diag = "ac" if ac < bd else "bd"
+            if max(abs(GRID[x, y] - cell_height(x0, y0, big, diag, x, y)) for x, y in pts) > 0.75:
+                continue
+            COARSE[x0, y0] = diag
+    for (x0, y0) in COARSE:
+        for (p, q) in (((x0, y0), (x0 + big, y0)), ((x0 + big, y0), (x0 + big, y0 + big)),
+                       ((x0, y0 + big), (x0 + big, y0 + big)), ((x0, y0), (x0, y0 + big))):
+            GRID[(p[0] + q[0]) // 2, (p[1] + q[1]) // 2] = (GRID[p] + GRID[q]) / 2
+
+
+def cell_height(x0, y0, size, diag, x, y):
+    u, v = (x - x0) / size, (y - y0) / size
+    a, b = GRID[x0, y0], GRID[x0 + size, y0]
+    c, d = GRID[x0 + size, y0 + size], GRID[x0, y0 + size]
+    if diag == "ac":
+        if v <= u:
+            return a + (b - a) * u + (c - b) * v
+        return a + (c - d) * u + (d - a) * v
+    if u + v <= 1:
+        return a + (b - a) * u + (d - a) * v
+    return c + (d - c) * (1 - u) + (b - c) * (1 - v)
+
+
 def ground(x, y):
     """Height of the actual piecewise planar collision, not the analytic field."""
+    big = 2 * STEP
+    cx = min(CELLS // 2 - 1, max(0, math.floor((x + EXTENT) / big)))
+    cy = min(CELLS // 2 - 1, max(0, math.floor((y + EXTENT) / big)))
+    key = (-EXTENT + cx * big, -EXTENT + cy * big)
+    if key in COARSE:
+        return cell_height(key[0], key[1], big, COARSE[key], x, y)
     ix = min(CELLS - 1, max(0, math.floor((x + EXTENT) / STEP)))
     iy = min(CELLS - 1, max(0, math.floor((y + EXTENT) / STEP)))
     x0, y0 = -EXTENT + ix * STEP, -EXTENT + iy * STEP
@@ -290,9 +342,21 @@ def num(v):
     return s if s not in ("", "-0") else "0"
 
 
-def face(points, material, detail=True, scale=0.5):
+def face(points, material, detail=True, scale=0.5, tex=None):
+    """tex: (x offset, y offset, x scale, y scale) for aligned textures."""
     p = " ".join("( %s )" % " ".join(num(v) for v in xyz) for xyz in points)
-    return f"{p} {material} 0 0 0 {scale} {scale} {DETAIL if detail else 0} 0 0"
+    xo, yo, ss, ts = tex if tex else (0, 0, scale, scale)
+    return f"{p} {material} {num(xo)} {num(yo)} 0 {num(ss)} {num(ts)} {DETAIL if detail else 0} 0 0"
+
+
+def align(n, lo, hi, texw, texh, width, height):
+    """Fit a texw x texh texture exactly onto an axial wall panel, unmirrored."""
+    ax = 0 if abs(n[0]) > 0.5 else 1
+    si = 1 if ax == 0 else 0
+    sc_s, sc_t = width / texw, height / texh
+    ss = (sc_s if n[0] > 0 else -sc_s) if ax == 0 else (-sc_s if n[1] > 0 else sc_s)
+    left = lo[si] if ss > 0 else hi[si]
+    return ((-left / ss) % texw, (hi[2] / sc_t) % texh, ss, sc_t)
 
 
 def brush(faces, group=None):
@@ -423,16 +487,26 @@ def terrain():
     build_heights()
     for (x, y) in GRID:
         MAT[x, y] = material(x, y)
+    coarsen()
     order = ("plain", "grass", "gravel", "dirt")
-    for y in range(-EXTENT, EXTENT, STEP):
-        for x in range(-EXTENT, EXTENT, STEP):
-            a, b = (x, y, GRID[x, y]), (x + STEP, y, GRID[x + STEP, y])
-            c, d = (x + STEP, y + STEP, GRID[x + STEP, y + STEP]), (x, y + STEP, GRID[x, y + STEP])
-            triangles = ((a, b, c), (a, c, d)) if DIAG[x, y] == "ac" else ((a, b, d), (b, c, d))
-            for tri in triangles:
-                classes = [FRICTION[MAT[p[0], p[1]]] for p in tri]
-                major = max(set(classes), key=lambda k: (classes.count(k), order.index(k)))
-                prism(tri, TEX + "t_" + major, scale=1, group=major)
+
+    def cell(x, y, s, diag):
+        a, b = (x, y, GRID[x, y]), (x + s, y, GRID[x + s, y])
+        c, d = (x + s, y + s, GRID[x + s, y + s]), (x, y + s, GRID[x, y + s])
+        return ((a, b, c), (a, c, d)) if diag == "ac" else ((a, b, d), (b, c, d))
+    big = 2 * STEP
+    for y0 in range(-EXTENT, EXTENT, big):
+        for x0 in range(-EXTENT, EXTENT, big):
+            if (x0, y0) in COARSE:
+                TRIS.extend(cell(x0, y0, big, COARSE[x0, y0]))
+                continue
+            for y in (y0, y0 + STEP):
+                for x in (x0, x0 + STEP):
+                    TRIS.extend(cell(x, y, STEP, DIAG[x, y]))
+    for tri in TRIS:
+        classes = [FRICTION[MAT[p[0], p[1]]] for p in tri]
+        major = max(set(classes), key=lambda k: (classes.count(k), order.index(k)))
+        prism(tri, TEX + "t_" + major, scale=1, group=major)
     # A translucent, invisible SOLID boundary also works with Bullet's solid-only
     # static world import. A playerclip-only wall would not block Bullet cars.
     e = EXTENT
@@ -486,49 +560,200 @@ def index_map():
     return target
 
 
+# ---------------------------------------------------------------- bases
+
+def base_buildings(color, bx, by, sx, sy):
+    """One base per team. Collision is the same for all four: canopy pillars,
+    outbuilding block, flag bollards and a 128 x 128 landmark plinth behind the
+    canopy. What differs is above car height or inside those footprints:
+    roofs, walls, doors, props and a landmark that is visible from afar.
+      red    lumber camp:  gabled tile roofs, barn doors, log crane
+      blue   fuel station: flat canopy with lit underside, shop window, price pylon
+      green  ranger post:  steep green roofs, log cabin, fire lookout tower
+      yellow gravel works: yellow mono-pitch roofs, corrugated hall, garage door, silo + conveyor
+    Local frame: u, v point away from the centre of the map (bx + sx*u, by + sy*v)."""
+    T = TEX
+
+    def W(u, v, z):
+        return (bx + sx * u, by + sy * v, z)
+
+    def N(nu, nv, nz):
+        return (sx * nu, sy * nv, nz)
+
+    def lbox(u1, v1, z1, u2, v2, z2, mat, faces=None, solid=True, scale=0.5):
+        """Box in the local frame; faces: {"u-": (material, tex or None), ...}."""
+        (x1, y1, _), (x2, y2, _) = W(u1, v1, 0), W(u2, v2, 0)
+        lo = (min(x1, x2), min(y1, y2), z1)
+        hi = (max(x1, x2), max(y1, y2), z2)
+        world = {"u-": (-sx, 0, 0), "u+": (sx, 0, 0), "v-": (0, -sy, 0), "v+": (0, sy, 0),
+                 "bot": (0, 0, -1), "top": (0, 0, 1)}
+        out = []
+        for key, n in world.items():
+            p = tuple(hi[i] if n[i] > 0 else lo[i] for i in range(3))
+            m, tex = (faces or {}).get(key, (mat, None))
+            out.append(face(plane(n, p), m, scale=scale, tex=tex))
+        brush(out)
+        if solid:
+            SOLIDS.append((lo, hi))
+        return lo, hi
+
+    def panel(u1, v1, z1, u2, v2, z2, key, image, texw, texh, back, solid=True):
+        """Thin panel with an image fitted onto its face `key`."""
+        (x1, y1, _), (x2, y2, _) = W(u1, v1, 0), W(u2, v2, 0)
+        lo = (min(x1, x2), min(y1, y2), z1)
+        hi = (max(x1, x2), max(y1, y2), z2)
+        n = {"u-": (-sx, 0, 0), "u+": (sx, 0, 0), "v-": (0, -sy, 0), "v+": (0, sy, 0)}[key]
+        si = 1 if n[0] else 0
+        tex = align(n, lo, hi, texw, texh, hi[si] - lo[si], z2 - z1)
+        lbox(u1, v1, z1, u2, v2, z2, back, faces={key: (image, tex)}, solid=solid)
+
+    def lconvex(planes, solid=True, scale=0.5):
+        """(local normal, local point, material) planes."""
+        world = []
+        for (nu, nv, nz), (pu, pv, pz), m in planes:
+            world.append((N(nu, nv, nz), W(pu, pv, pz), m))
+        brush([face(plane(n, p), m, scale=scale) for n, p, m in world])
+        if solid:
+            corners = polytope([(n, p) for n, p, _ in world])
+            SOLIDS.append((tuple(min(c[i] for c in corners) for i in range(3)),
+                           tuple(max(c[i] for c in corners) for i in range(3))))
+
+    def gable(u1, v1, u2, v2, z0, z1, along, slope, end, under):
+        """Gabled roof prism; the ridge runs along u or v."""
+        h = z1 - z0
+        if along == "u":
+            half = (v2 - v1) / 2
+            lconvex([((0, 0, -1), (u1, v1, z0), under), ((-1, 0, 0), (u1, v1, z0), end),
+                     ((1, 0, 0), (u2, v1, z0), end), ((0, -h, half), (u1, v1, z0), slope),
+                     ((0, h, half), (u1, v2, z0), slope)])
+        else:
+            half = (u2 - u1) / 2
+            lconvex([((0, 0, -1), (u1, v1, z0), under), ((0, -1, 0), (u1, v1, z0), end),
+                     ((0, 1, 0), (u1, v2, z0), end), ((-h, 0, half), (u1, v1, z0), slope),
+                     ((h, 0, half), (u2, v1, z0), slope)])
+
+    def shed(u1, v1, u2, v2, z0, z_lo, z_hi, along, top, sides, under):
+        """Mono-pitch roof slab rising along u or v."""
+        rise = z_hi - z_lo
+        n_top = (-rise, 0, u2 - u1) if along == "u" else (0, -rise, v2 - v1)
+        lconvex([((0, 0, -1), (u1, v1, z0), under), (n_top, (u1, v1, z_lo), top),
+                 ((-1, 0, 0), (u1, v1, z0), sides), ((1, 0, 0), (u2, v1, z0), sides),
+                 ((0, -1, 0), (u1, v1, z0), sides), ((0, 1, 0), (u1, v2, z0), sides)])
+
+    def octagon(cu, cv, z0, z1, r, side, cap):
+        planes = [((0, 0, -1), (cu, cv, z0), cap), ((0, 0, 1), (cu, cv, z1), cap)]
+        for k in range(8):
+            a = math.radians(22.5 + 45 * k)
+            planes.append(((math.cos(a), math.sin(a), 0), (cu + r * math.cos(a), cv + r * math.sin(a), z0), side))
+        lconvex(planes)
+
+    def pyramid(cu, cv, z0, z1, r, sides, mat, under):
+        h = z1 - z0
+        planes = [((0, 0, -1), (cu, cv, z0), under)]
+        for k in range(sides):
+            a = math.radians((22.5 if sides == 8 else 0) + 360 / sides * k)
+            planes.append(((h * math.cos(a), h * math.sin(a), r), (cu + r * math.cos(a), cv + r * math.sin(a), z0), mat))
+        lconvex(planes)
+
+    wood, metal, concrete, team = T + "wood", T + "metal", T + "concrete", T + color
+    tiles, plank, corrugated = "q3r_building/roof3", "q3r_building/wood03", "q3r_building/wellblech"
+    paint = T + "paint_" + color
+
+    # --- shared collision: canopy pillars, outbuilding block, bollards, plinth
+    gz = max(ground(*W(u, v, 0)[:2]) for u in (-240, 240) for v in (384, 576))
+    for u in (-224, 224):
+        for v in (400, 560):
+            lbox(u - 12, v - 12, ground(*W(u, v, 0)[:2]) - 24, u + 12, v + 12, gz + 248,
+                 wood if color in ("red", "green") else metal)
+    lbox(-264, 366, gz + 208, 264, 382, gz + 240, team)
+    # Equal flag courts stay flush with the terrain; two colored bollards
+    # frame the flag across the diagonal road, clear of all three approaches.
+    for u, v in ((-260, 260), (260, -260)):
+        lbox(u - 12, v - 12, PLAZA_Z, u + 12, v + 12, PLAZA_Z + 68, team)
+    gz2 = max(ground(*W(u, v, 0)[:2]) for u in (384, 576) for v in (-192, 192))
+    walls = {"red": plank, "blue": concrete, "green": wood, "yellow": corrugated}[color]
+    lbox(384, -192, gz2 - 100, 576, 192, gz2 + 184, walls,
+         scale=0.25 if color == "yellow" else 0.5)
+    lbox(376, -160, gz2 + 96, 384, 160, gz2 + 136, team)          # name band towards the yard
+    gl = min(ground(*W(u, v, 0)[:2]) for u in (416, 480, 544) for v in (576, 640, 704))
+    lbox(416, 576, gl - 24, 544, 704, gl + 24, concrete)            # landmark plinth
+
+    if color == "red":                                              # lumber camp
+        gable(-280, 352, 280, 608, gz + 240, gz + 330, "u", tiles, wood, wood)
+        gable(368, -208, 592, 208, gz2 + 184, gz2 + 270, "v", tiles, plank, plank)
+        for v1 in (-46, 0):                                         # barn doors
+            panel(376, v1, gz2 - 4, 384, v1 + 46, gz2 + 88, "u-", "q3r_building/doors_wood01", 256, 512, wood)
+        for u in (-160, -64, 32, 128):                              # stacked timber
+            lbox(u, 608, gz, u + 48, 752, gz + 48, wood)
+        lbox(464, 624, gl + 24, 496, 656, gl + 470, wood)           # log crane: mast,
+        lbox(140, 628, gl + 440, 600, 652, gl + 464, wood)          # jib,
+        lbox(560, 620, gl + 396, 620, 660, gl + 440, team)          # counterweight,
+        lbox(218, 638, gl + 300, 222, 642, gl + 440, metal)         # cable and load
+        lbox(160, 612, gl + 250, 280, 668, gl + 300, wood)
+    elif color == "blue":                                           # fuel station
+        lbox(-280, 352, gz + 240, 280, 608, gz + 262, metal)
+        for u1, v1, u2, v2 in ((-288, 344, 288, 352), (-288, 608, 288, 616),
+                               (-288, 352, -280, 608), (280, 352, 288, 608)):
+            lbox(u1, v1, gz + 228, u2, v2, gz + 280, team)
+        for u in (-180, 60):                                        # lit underside
+            lbox(u, 440, gz + 236, u + 120, 520, gz + 240, "q3r_citydom/lamp", solid=False)
+        lbox(368, -208, gz2 + 184, 592, 208, gz2 + 200, metal)
+        for u1, v1, u2, v2 in ((360, -216, 600, -208), (360, 208, 600, 216),
+                               (360, -208, 368, 208), (592, -208, 600, 208)):
+            lbox(u1, v1, gz2 + 176, u2, v2, gz2 + 212, team)
+        lbox(376, -150, gz2 - 4, 384, 90, gz2 + 88, metal,
+             faces={"u-": ("q3r_glass/plainglass", None)})          # shop window
+        for u in (-120, 120):                                       # pumps
+            lbox(u - 24, 612, gz, u + 24, 656, gz + 100, metal)
+            lbox(u - 28, 608, gz + 68, u + 28, 660, gz + 112, team)
+        for u1 in (436, 508):                                       # price pylon
+            lbox(u1, 632, gl + 24, u1 + 16, 648, gl + 300, metal)
+        for z in (gl + 300, gl + 360):
+            panel(420, 636, z, 540, 644, z + 60, "v-", "q3r_building/gassign01", 128, 64, team)
+        lbox(416, 632, gl + 420, 544, 648, gl + 452, team)
+    elif color == "green":                                          # ranger post
+        gable(-280, 352, 280, 608, gz + 236, gz + 380, "u", paint, wood, wood)
+        gable(368, -208, 592, 208, gz2 + 184, gz2 + 300, "v", paint, wood, wood)
+        panel(376, -23, gz2 - 4, 384, 23, gz2 + 88, "u-", "q3r_building/doors_wood01", 256, 512, wood)
+        lbox(500, 80, gz2 + 200, 540, 120, gz2 + 330, concrete)      # chimney
+        for u in (-120, 24):                                        # equipment lockers
+            lbox(u, 616, gz, u + 96, 696, gz + 112, team)
+        for u in (424, 520):                                        # fire lookout tower
+            for v in (584, 680):
+                lbox(u, v, gl + 24, u + 16, v + 16, gl + 380, wood)
+        for (u1, v1, u2, v2, key) in ((440, 584, 520, 588, "v-"), (440, 692, 520, 696, "v+"),
+                                      (424, 600, 428, 680, "u-"), (532, 600, 536, 680, "u+")):
+            for z in (gl + 40, gl + 210):
+                lbox(u1, v1, z, u2, v2, z + 170, "common/nodrawnonsolid",
+                     faces={key: ("q3r_metals/towerstruts", None)}, solid=False)
+        lbox(408, 568, gl + 380, 552, 712, gl + 412, wood)
+        lbox(408, 568, gl + 412, 552, 712, gl + 446, "q3r_glass/plainglass")
+        lbox(408, 568, gl + 446, 552, 712, gl + 460, wood)
+        pyramid(480, 640, gl + 460, gl + 540, 92, 4, paint, wood)
+    else:                                                           # gravel works
+        shed(-280, 352, 280, 608, gz + 240, gz + 262, gz + 300, "v", paint, team, metal)
+        shed(368, -208, 592, 208, gz2 + 184, gz2 + 200, gz2 + 250, "u", paint, team, metal)
+        panel(376, -48, gz2 - 4, 384, 48, gz2 + 92, "u-", "q3r_building/garage_np", 256, 256, metal)
+        lbox(-128, 608, gz + 24, 128, 688, gz + 156, metal)         # hopper
+        lbox(-144, 592, gz + 156, 144, 704, gz + 180, team)
+        lbox(-24, 704, gz + 32, 24, 752, gz + 48, metal)
+        octagon(480, 640, gl + 24, gl + 300, 56, corrugated, metal)  # silo
+        octagon(480, 640, gl + 190, gl + 222, 60, team, team)
+        pyramid(480, 640, gl + 300, gl + 360, 60, 8, metal, metal)
+        za, zb = gz + 170, gl + 290                                 # conveyor to the silo top
+        lconvex([((0, -1, 0), (100, 636, za), metal), ((0, 1, 0), (100, 660, za), metal),
+                 ((-1, 0, 0), (100, 636, za), team), ((1, 0, 0), (428, 636, za), team),
+                 ((-(zb - za), 0, 328), (100, 636, za + 16), team),
+                 (((zb - za), 0, -328), (100, 636, za), metal)])
+
+
 # ---------------------------------------------------------------- dressing
 
 def dressing():
     for color, bx, by in BASES:
         sx, sy = (-1 if bx < 0 else 1), (-1 if by < 0 else 1)
 
-        def block(u1, v1, z1, u2, v2, z2, mat):
-            xs, ys = sorted((bx + sx * u1, bx + sx * u2)), sorted((by + sy * v1, by + sy * v2))
-            box((xs[0], ys[0], z1), (xs[1], ys[1], z2), TEX + mat)
-
-        # Same footprint and open approaches; dressing stays behind the flag court.
-        # Roof is safely above vehicle height, with 320 units between pillars.
-        gz = max(ground(bx + sx * u, by + sy * v) for u in (-240, 240) for v in (384, 576))
-        for u in (-224, 224):
-            for v in (400, 560):
-                block(u - 12, v - 12, ground(bx + sx * u, by + sy * v) - 24,
-                      u + 12, v + 12, gz + 248, "wood" if color in ("red", "green") else "metal")
-        block(-264, 368, gz + 240, 264, 592, gz + 264, "roof")
-        block(-264, 366, gz + 208, 264, 382, gz + 240, color)
-        # Equal flag courts stay flush with the terrain; two colored bollards
-        # frame the flag across the diagonal road, clear of all three approaches.
-        for u, v in ((-260, 260), (260, -260)):
-            block(u - 12, v - 12, PLAZA_Z, u + 12, v + 12, PLAZA_Z + 68, color)
-        # Each outbuilding has the same solid footprint for fair cover.
-        gz2 = max(ground(bx + sx * u, by + sy * v) for u in (384, 576) for v in (-192, 192))
-        block(384, -192, gz2 - 100, 576, 192, gz2 + 184,
-              "wood" if color in ("red", "green") else "concrete")
-        block(368, -208, gz2 + 184, 592, 208, gz2 + 208, "roof")
-        block(376, -160, gz2 + 96, 384, 160, gz2 + 136, color)
-        if color == "red":  # stacked timber, outside approaches
-            for u in (-160, -64, 32, 128):
-                block(u, 608, gz, u + 48, 752, gz + 48, "wood")
-        elif color == "blue":  # abandoned fuel pumps behind the canopy
-            for u in (-120, 120):
-                block(u - 24, 612, gz, u + 24, 656, gz + 100, "metal")
-                block(u - 28, 608, gz + 68, u + 28, 660, gz + 112, "blue")
-        elif color == "green":  # ranger station equipment lockers
-            for u in (-120, 24):
-                block(u, 616, gz, u + 96, 696, gz + 112, "green")
-        else:  # quarry hopper and conveyor, visually legible silhouette
-            block(-128, 608, gz + 24, 128, 688, gz + 156, "metal")
-            block(-144, 592, gz + 156, 144, 704, gz + 180, "yellow")
-            block(-24, 704, gz + 32, 24, 752, gz + 48, "metal")
+        base_buildings(color, bx, by, sx, sy)
         # Two safe initial starts and four separate respawns per team.
         angle = math.degrees(math.atan2(-by, -bx)) % 360
         for u in (-128, 128):
@@ -630,24 +855,21 @@ def dressing():
 
 def validate():
     gradients, kinks = [], []
-    slopes = {}
-    for y in range(-EXTENT, EXTENT, STEP):
-        for x in range(-EXTENT, EXTENT, STEP):
-            a, b, c, d = GRID[x, y], GRID[x + STEP, y], GRID[x + STEP, y + STEP], GRID[x, y + STEP]
-            if DIAG[x, y] == "ac":
-                g1, g2 = ((b - a) / STEP, (c - b) / STEP), ((c - d) / STEP, (d - a) / STEP)
-            else:
-                g1, g2 = ((b - a) / STEP, (d - a) / STEP), ((c - d) / STEP, (c - b) / STEP)
-            gradients += [math.hypot(*g1), math.hypot(*g2)]
-            slopes[x, y] = (g1, g2)
-    # Change of slope between neighbouring triangles on the roads ("bumps").
-    for (x, y), (g1, g2) in slopes.items():
-        if road(x + STEP / 2, y + STEP / 2) > 0.5 and not in_plaza(x + STEP / 2, y + STEP / 2):
-            kinks.append(math.hypot(g1[0] - g2[0], g1[1] - g2[1]))
-            for nb in ((x + STEP, y), (x, y + STEP)):
-                if nb in slopes:
-                    for h in slopes[nb]:
-                        kinks.append(math.hypot(g2[0] - h[0], g2[1] - h[1]))
+    for (ax_, ay_, az), (bx_, by_, bz), (cx_, cy_, cz) in TRIS:
+        # plane gradient of the triangle
+        det = (bx_ - ax_) * (cy_ - ay_) - (cx_ - ax_) * (by_ - ay_)
+        gx = ((bz - az) * (cy_ - ay_) - (cz - az) * (by_ - ay_)) / det
+        gy = ((cz - az) * (bx_ - ax_) - (bz - az) * (cx_ - ax_)) / det
+        gradients.append(math.hypot(gx, gy))
+    # Change of slope along the road centre lines ("bumps"), per 8 units.
+    for p0, p1 in (((-BASE + 330, BASE - 330), (-40, 40)), ((-BASE, BASE - 330), (-BASE, -BASE + 330)),
+                   ((-BASE + 330, BASE), (BASE - 330, BASE))):
+        n = int(math.dist(p0, p1) / 8)
+        zs = [ground(p0[0] + (p1[0] - p0[0]) * i / n, p0[1] + (p1[1] - p0[1]) * i / n) for i in range(n + 1)]
+        sl = [(zs[i + 1] - zs[i]) / 8 for i in range(n)]
+        kinks += [abs(sl[i + 1] - sl[i]) for i in range(n - 1)]
+    big = 2 * STEP
+    assert all(COARSE.get((-x - big, -y - big)) == dg for (x, y), dg in COARSE.items())
     assert max(gradients) < 0.65, max(gradients)
     # point symmetry everywhere; mirror symmetry away from the creek valley
     assert all(GRID[x, y] == GRID[-x, -y] and DIAG.get((x, y), "ac") == DIAG.get((-x - STEP, -y - STEP), "ac")
@@ -700,12 +922,13 @@ def validate():
     for m in MAT.values():
         counts[LAYERS[m]] = counts.get(LAYERS[m], 0) + 1
     return {"map": NAME, "version": VERSION, "terrain_units": [2 * EXTENT, 2 * EXTENT],
-            "collision_grid_units": STEP, "terrain_triangles": 2 * CELLS * CELLS,
+            "collision_grid_units": [STEP, 2 * STEP], "terrain_triangles": len(TRIS),
+            "coarse_cells_64": len(COARSE),
             "background_triangles": 2 * 4 * CELLS * (len(RINGS) - 1),
             "height_min": min(GRID.values()), "height_max": max(GRID.values()),
             "max_slope_degrees": round(math.degrees(math.atan(max(gradients))), 2),
-            "road_max_slope_change": round(max(kinks), 3),
-            "road_mean_slope_change": round(sum(kinks) / len(kinks), 4),
+            "road_max_slope_change_per_8u": round(max(kinks), 3),
+            "road_mean_slope_change_per_8u": round(sum(kinks) / len(kinks), 4),
             "water_level": WL, **{k: round(v, 2) for k, v in fords.items()},
             "ground_layer_vertices": counts,
             "team_initial_starts": 8, "team_respawns": 16, "flags": 4,

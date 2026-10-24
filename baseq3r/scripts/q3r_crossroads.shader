@@ -60,15 +60,16 @@ textures/q3r_crossroads/concrete
 	}
 }
 
-// Saturated paint on the four base markers and flag platforms.
+// Saturated paint on the four base markers, name bands and team parts
+// (light stucco base so the colors read in daylight and shade).
 // The normal lightmap pass keeps the paint readable in daylight and shade.
 
 textures/q3r_crossroads/red
 {
-	qer_editorimage textures/base_floor/concrete.jpg
+	qer_editorimage textures/q3r_building/stucco01.jpg
 	{
-		map textures/base_floor/concrete.jpg
-		rgbGen const ( 0.8 0.15 0.10 )
+		map textures/q3r_building/stucco01.jpg
+		rgbGen const ( 1.0 0.28 0.20 )
 	}
 	{
 		map $lightmap
@@ -79,10 +80,10 @@ textures/q3r_crossroads/red
 
 textures/q3r_crossroads/blue
 {
-	qer_editorimage textures/base_floor/concrete.jpg
+	qer_editorimage textures/q3r_building/stucco01.jpg
 	{
-		map textures/base_floor/concrete.jpg
-		rgbGen const ( 0.12 0.35 0.85 )
+		map textures/q3r_building/stucco01.jpg
+		rgbGen const ( 0.25 0.50 1.0 )
 	}
 	{
 		map $lightmap
@@ -93,10 +94,10 @@ textures/q3r_crossroads/blue
 
 textures/q3r_crossroads/green
 {
-	qer_editorimage textures/base_floor/concrete.jpg
+	qer_editorimage textures/q3r_building/stucco01.jpg
 	{
-		map textures/base_floor/concrete.jpg
-		rgbGen const ( 0.12 0.6 0.28 )
+		map textures/q3r_building/stucco01.jpg
+		rgbGen const ( 0.30 0.85 0.38 )
 	}
 	{
 		map $lightmap
@@ -107,10 +108,10 @@ textures/q3r_crossroads/green
 
 textures/q3r_crossroads/yellow
 {
-	qer_editorimage textures/base_floor/concrete.jpg
+	qer_editorimage textures/q3r_building/stucco01.jpg
 	{
-		map textures/base_floor/concrete.jpg
-		rgbGen const ( 0.95 0.7 0.1 )
+		map textures/q3r_building/stucco01.jpg
+		rgbGen const ( 1.0 0.80 0.18 )
 	}
 	{
 		map $lightmap
@@ -222,6 +223,67 @@ textures/q3r_crossroads/backdrop
 		blendFunc GL_DST_COLOR GL_SRC_COLOR
 		tcGen vector ( 0.00015625 0 0 ) ( 0 0.00015625 0 )
 		rgbGen identity
+	}
+	{
+		map $lightmap
+		blendFunc GL_DST_COLOR GL_ZERO
+		rgbGen identity
+	}
+}
+
+// Team paint on corrugated sheet metal (roofs of the bases).
+textures/q3r_crossroads/paint_red
+{
+	qer_editorimage textures/q3r_building/wellblech.jpg
+	surfaceparm SURF_METAL
+	{
+		map textures/q3r_building/wellblech.jpg
+		rgbGen const ( 0.78 0.24 0.18 )
+	}
+	{
+		map $lightmap
+		blendFunc GL_DST_COLOR GL_ZERO
+		rgbGen identity
+	}
+}
+
+textures/q3r_crossroads/paint_blue
+{
+	qer_editorimage textures/q3r_building/wellblech.jpg
+	surfaceparm SURF_METAL
+	{
+		map textures/q3r_building/wellblech.jpg
+		rgbGen const ( 0.22 0.38 0.80 )
+	}
+	{
+		map $lightmap
+		blendFunc GL_DST_COLOR GL_ZERO
+		rgbGen identity
+	}
+}
+
+textures/q3r_crossroads/paint_green
+{
+	qer_editorimage textures/q3r_building/wellblech.jpg
+	surfaceparm SURF_METAL
+	{
+		map textures/q3r_building/wellblech.jpg
+		rgbGen const ( 0.30 0.55 0.30 )
+	}
+	{
+		map $lightmap
+		blendFunc GL_DST_COLOR GL_ZERO
+		rgbGen identity
+	}
+}
+
+textures/q3r_crossroads/paint_yellow
+{
+	qer_editorimage textures/q3r_building/wellblech.jpg
+	surfaceparm SURF_METAL
+	{
+		map textures/q3r_building/wellblech.jpg
+		rgbGen const ( 0.95 0.74 0.18 )
 	}
 	{
 		map $lightmap

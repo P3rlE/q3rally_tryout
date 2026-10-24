@@ -7,9 +7,11 @@ Koordinaten, keine pixelgenaue Kopie der Vorlage.
 
 ## Installation und Start
 
-`dist/q3r_crossroads_v0.2.pk3` in den Ordner `baseq3r` einer Q3Rally-Installation
-kopieren und eine aeltere `q3r_crossroads_v0.1.pk3` entfernen. Die PK3 bleibt
-gepackt. Die aktuelle Q3Rally-Spielversion mit CTF4 wird benoetigt. In der Konsole:
+Die Karte gehoert zu den Spieldaten unter `baseq3r`: `maps/q3r_crossroads.bsp`,
+`scripts/q3r_crossroads.shader` und `.arena`, `textures/q3r_crossroads/macro.jpg`
+und `levelshots/q3r_crossroads.jpg` (die `.map` und die Indexmap braucht nur der
+Compiler). Fuer eine Einzelverteilung baut `package_crossroads.py` zusaetzlich eine
+PK3 nach `dist/`. Die aktuelle Q3Rally-Spielversion mit CTF4 wird benoetigt. In der Konsole:
 
 ```text
 /g_gametype 20
@@ -47,6 +49,15 @@ liegen BSP und Quelldateien bereits unter `baseq3r`.
 - Findlinge an den Ufern, in der Kiesgrube und an den Wegen, Kieshaufen in der Grube,
   mehr Baeume im Spielfeld, dichter Wald mit Lichtungen auf den umgebenden Huegeln
   und leichter Sommerdunst (OpenGL2 `q3r_haze`).
+- **Eigene Basen:** gleiche Kollision fuer alle Teams (Pfeiler, Nebengebaeude,
+  Poller, ein 128 x 128 Sockel hinter dem Dach), Unterschiede nur ueber Fahrzeughoehe
+  oder innerhalb dieser Grundflaechen:
+  Rot Holzfaellercamp (Ziegeldaecher, Scheunentor, Holzkran),
+  Blau Tankstelle (flaches Dach mit Leuchtfeldern, Schaufenster, Preismast),
+  Gruen Forststation (steile gruene Daecher, Blockhuette, Feuerwachturm),
+  Gelb Kieswerk (gelbe Pultdaecher, Wellblechhalle, Rolltor, Silo mit Foerderband).
+- **Gemischtes Raster:** 64-Unit-Zellen in flachen, einheitlichen Wiesen, 32 Units an
+  Wegen, Bach, Kieshaufen und Bodenuebergaengen. 44925 statt 63559 Brushes.
 - Die farbigen Poller am Flaggenhof stehen nicht mehr auf der Achse der Ost-West-Strasse,
   sondern rahmen die Flagge quer zur Diagonalstrasse. Alle drei Zufahrten sind frei.
 - Lightgrid 64 x 64 x 128 nur ueber der Spielflaeche.
@@ -72,8 +83,8 @@ Generator ueberschreibt diese Datei.** Fuer reproduzierbare Aenderungen
 Uebersicht und Heightmap. `tools/maptools/crossroads_textures.py` schreibt die
 Bodenshader am Ende von `scripts/q3r_crossroads.shader` und die Makrotextur.
 
-Beide Skripte brauchen Python 3 und Pillow. Die Kollision besteht aus 56448
-geschlossenen Dreiecksprismen (32-Unit-Raster) und 6720 groeberen
+Beide Skripte brauchen Python 3 und Pillow. Die Kollision besteht aus 37764
+geschlossenen Dreiecksprismen (32/64-Unit-Raster) und 6720 groeberen
 Hintergrunddreiecken. Verdeckte Seiten verwenden `common/caulk`, da `common/nodraw`
 in diesem Repository **nonsolid** ist.
 
@@ -122,8 +133,7 @@ Hoechstgeschwindigkeit auf den Strassen 416-453 (V0.1) bzw. 539-572 (V0.2). Das
 Konzept nennt 8-12, 12-18 und 25-40 Sekunden; mit Kurven, Gegnern und Flagge
 liegen echte Laeufe darueber, das muss sich im Spiel zeigen.
 
-Offen: Spiel mit vier menschlichen Teams und Balancing, eigene Basis-Identitaeten,
-AAS fuer Bots.
+Offen: Spiel mit vier menschlichen Teams und Balancing, AAS fuer Bots.
 
 Die PK3 enthaelt nur die kartenspezifischen Dateien (Karte, Quelle, Indexmap,
 Shader, Makrotextur, Vorschau). Alle Standardtexturen, Baummodelle, Flaggen und
