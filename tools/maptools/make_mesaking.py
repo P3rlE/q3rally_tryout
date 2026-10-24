@@ -26,7 +26,8 @@ TEX = "q3r_canyonrush/"          # shared desert set
 DETAIL = 134217728
 STEP = 64
 FLOOR = -192
-HALF = 3328                      # square map half size
+HALF = 3328                      # half size of the detailed square
+OUTER = (HALF, 4300, 5500, 7168)  # rings of hills around it, out to the sky
 R_ARENA, WALL_RUN, WALL_H = 2150, 420, 480
 MESA_TOP, R_TOP, R_CLIFF = 260, 400, 150
 RAMP_DIRS = (45, 135, 225, 315)
@@ -339,7 +340,7 @@ def dressing():
     t = R_TOP - 40
     planes = [((1, 0, 0), (t, 0, 0)), ((-1, 0, 0), (-t, 0, 0)), ((0, 1, 0), (0, t, 0)), ((0, -1, 0), (0, -t, 0)),
               ((0, 0, 1), (0, 0, top + 200)), ((0, 0, -1), (0, 0, top - 10))]
-    body = "\n".join(face(plane(n, p), "common/trigger", detail=False) for n, p in planes)
+    body = "\n".join(face(plane(n, p), "common/checkpoint", detail=False) for n, p in planes)
     TRIGGERS.append('{\n"classname" "trigger_koth_hill"\n"indicatorHeight" "-40"\n{\n' + body + "\n}\n}")
     # crown: a flag pole in the middle of the top, visible from everywhere
     obox(0, 0, (1, 0), 6, 6, top - 8, top + 520, TEX + "metal")
@@ -386,15 +387,50 @@ def dressing():
     entity("info_player_intermission", -1500, -1500, 900, angles="22 45 0")
 
 
+def hill_height(x, y):
+    """Desert hills beyond the arena rim; rise towards the sky walls."""
+    r = max(abs(x), abs(y))
+    bx, by = x * HALF / r, y * HALF / r
+    z = GRID.get((round(bx / STEP) * STEP, round(by / STEP) * STEP), WALL_H)
+    d = r - HALF
+    z += 900 * smooth(0, 3800, d) + 260 * math.sin(x / 830) ** 2 * math.cos(y / 710) ** 2 * smooth(0, 1500, d)
+    return z
+
+
+def backdrop():
+    n = 2 * HALF // STEP
+    for inner, outer in zip(OUTER[:-1], OUTER[1:]):
+        for side in range(4):
+            def point(extent, k):
+                t = -extent + k * 2 * extent / n
+                x, y = ((t, -extent), (extent, t), (-t, extent), (-extent, -t))[side]
+                z = GRID[round(x), round(y)] if extent == HALF else hill_height(x, y)
+                return (x, y, round(z * 8) / 8)
+            for k in range(n):
+                a, b, c, d = point(inner, k), point(outer, k), point(outer, k + 1), point(inner, k + 1)
+                prism((a, b, c), TEX + "hills")
+                prism((a, c, d), TEX + "hills")
+    # invisible solid ring on the rim: cars can reach the top but not drive off
+    r, segs = R_ARENA + WALL_RUN + 160, 40
+    for k in range(segs):
+        a = 2 * math.pi * (k + 0.5) / segs
+        t = (-math.sin(a), math.cos(a))
+        half = r * math.tan(math.pi / segs) + 4
+        obox(r * math.cos(a), r * math.sin(a), t, half, 16, -200, 2600, TEX + "boundary", solid=False)
+
+
 def shell():
+    backdrop()
     m, top = 64, max(GRID.values()) + 2400
+    H = OUTER[-1]
     sky = TEX + "sky"
-    for lo, hi, mat in (((-HALF - m, -HALF - m, FLOOR - 64), (HALF + m, HALF + m, FLOOR), "common/caulk"),
-                        ((-HALF - m, -HALF - m, FLOOR), (-HALF, HALF + m, top), sky),
-                        ((HALF, -HALF - m, FLOOR), (HALF + m, HALF + m, top), sky),
-                        ((-HALF, -HALF - m, FLOOR), (HALF, -HALF, top), sky),
-                        ((-HALF, HALF, FLOOR), (HALF, HALF + m, top), sky),
-                        ((-HALF - m, -HALF - m, top), (HALF + m, HALF + m, top + m), sky)):
+    top += 900
+    for lo, hi, mat in (((-H - m, -H - m, FLOOR - 64), (H + m, H + m, FLOOR), "common/caulk"),
+                        ((-H - m, -H - m, FLOOR), (-H, H + m, top), sky),
+                        ((H, -H - m, FLOOR), (H + m, H + m, top), sky),
+                        ((-H, -H - m, FLOOR), (H, -H, top), sky),
+                        ((-H, H, FLOOR), (H, H + m, top), sky),
+                        ((-H - m, -H - m, top), (H + m, H + m, top + m), sky)):
         (ax, ay, az), (bx, by, bz) = lo, hi
         brush([face(plane(nrm, pt), mat, detail=False) for nrm, pt in
                (((0, 0, -1), (ax, ay, az)), ((0, 0, 1), (bx, by, bz)), ((-1, 0, 0), (ax, ay, az)),

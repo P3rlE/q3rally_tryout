@@ -14,6 +14,9 @@ Erzeugt von `tools/maptools/make_mesaking.py` (Python 3 + Pillow).
 - Deckungsfelsen, Fahrspuren von den Startzonen zu den Rampen, Pickups paarweise
   gespiegelt (Raketenwerfer, Munition, Schrotflinte, Panzerung, Gesundheit,
   Treibstoff, NOS).
+- Man kann bis auf den oberen Rand des Kessels fahren; dort haelt ein unsichtbarer
+  Ring die Autos. Dahinter steigen Duenen bis zum Horizont an, es gibt keine harte
+  Kante zur Skybox.
 - Nutzt Bodenshader und Texturen von `q3r_canyonrush`; zuerst
   `make_canyonrush.py` laufen lassen. Kompilieren wie Canyon Rush.
 

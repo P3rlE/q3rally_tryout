@@ -89,6 +89,44 @@ textures/q3r_canyonrush/checker
 	}
 }
 
+textures/q3r_canyonrush/hills
+{
+	qer_editorimage textures/dip_valley/sand.jpg
+	// unreachable desert hills (q3r_mesaking backdrop), coarse lightmap
+	q3map_lightmapSampleSize 64
+	q3map_nonplanar
+	q3map_shadeAngle 120
+	{
+		map textures/dip_valley/sand.jpg
+		tcGen vector ( 0.002 0 0 ) ( 0 0.002 0 )
+		rgbGen identity
+	}
+	{
+		map textures/q3r_canyonrush/macro.jpg
+		blendFunc GL_DST_COLOR GL_SRC_COLOR
+		tcGen vector ( 0.0002 0 0 ) ( 0 0.0002 0 )
+		rgbGen identity
+	}
+	{
+		map $lightmap
+		blendFunc GL_DST_COLOR GL_ZERO
+		rgbGen identity
+	}
+}
+
+textures/q3r_canyonrush/boundary
+{
+	qer_editorimage textures/base_floor/concrete.jpg
+	qer_trans 0.15
+	// invisible but SOLID (Bullet only takes solid brushes); trans lets light through
+	surfaceparm nodraw
+	surfaceparm nolightmap
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm noimpact
+	surfaceparm detail
+}
+
 // ground: t_* parents on the brush sides (collision, friction); q3map2 draws
 // ter_<layer> / ter_<a>to<b> from maps/q3r_canyonrush_index.pcx. Layers: 0 sand, 1 track, 2 gravel, 3 rock, 4 cliff
 

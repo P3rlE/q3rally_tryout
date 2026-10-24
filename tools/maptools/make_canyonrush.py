@@ -507,12 +507,14 @@ def trigger(classname, i, number=None, target=None):
         keys["number"] = str(number)
     if target:
         keys["target"] = target
-    planes = [((t[0], t[1], 0), (px + t[0] * 24, py + t[1] * 24, z), "common/trigger"),
-              ((-t[0], -t[1], 0), (px - t[0] * 24, py - t[1] * 24, z), "common/trigger"),
-              ((n[0], n[1], 0), (px + n[0] * hw, py + n[1] * hw, z), "common/trigger"),
-              ((-n[0], -n[1], 0), (px - n[0] * hw, py - n[1] * hw, z), "common/trigger"),
-              ((0, 0, 1), (px, py, z + 700), "common/trigger"),
-              ((0, 0, -1), (px, py, z - 120), "common/trigger")]
+    # common/trigger is solid in this repo; the rally shaders are nonsolid
+    tex = "common/checkpoint" if classname == "rally_checkpoint" else "common/startfinish"
+    planes = [((t[0], t[1], 0), (px + t[0] * 24, py + t[1] * 24, z), tex),
+              ((-t[0], -t[1], 0), (px - t[0] * 24, py - t[1] * 24, z), tex),
+              ((n[0], n[1], 0), (px + n[0] * hw, py + n[1] * hw, z), tex),
+              ((-n[0], -n[1], 0), (px - n[0] * hw, py - n[1] * hw, z), tex),
+              ((0, 0, 1), (px, py, z + 700), tex),
+              ((0, 0, -1), (px, py, z - 120), tex)]
     body = "\n".join(face(plane(nn, p), m, detail=False) for nn, p, m in planes)
     TRIGGERS.append("{\n" + "\n".join(f'"{k}" "{v}"' for k, v in keys.items()) + "\n{\n" + body + "\n}\n}")
     if target:
@@ -671,6 +673,15 @@ def write_shader():
     out += lit("boulder", "textures/q3r_dirt_grass/rock01.tga", ("\tq3map_shadeAngle 70",))
     out += lit("metal", "textures/base_trim/tin.jpg", ("\tsurfaceparm SURF_METAL",))
     out += lit("checker", "textures/q3r_dirt_grass/checker01.tga")
+    out += [f"textures/{TEX}hills", "{", "\tqer_editorimage textures/dip_valley/sand.jpg",
+            "\t// unreachable desert hills (q3r_mesaking backdrop), coarse lightmap",
+            "\tq3map_lightmapSampleSize 64", "\tq3map_nonplanar", "\tq3map_shadeAngle 120",
+            "\t{", "\t\tmap textures/dip_valley/sand.jpg", "\t\ttcGen vector ( 0.002 0 0 ) ( 0 0.002 0 )",
+            "\t\trgbGen identity", "\t}"] + tail() + ["}", ""]
+    out += [f"textures/{TEX}boundary", "{", "\tqer_editorimage textures/base_floor/concrete.jpg", "\tqer_trans 0.15",
+            "\t// invisible but SOLID (Bullet only takes solid brushes); trans lets light through",
+            "\tsurfaceparm nodraw", "\tsurfaceparm nolightmap", "\tsurfaceparm trans", "\tsurfaceparm nomarks",
+            "\tsurfaceparm noimpact", "\tsurfaceparm detail", "}", ""]
     out += ["// ground: t_* parents on the brush sides (collision, friction); q3map2 draws",
             "// ter_<layer> / ter_<a>to<b> from maps/q3r_canyonrush_index.pcx. Layers: " +
             ", ".join(f"{i} {n}" for i, (n, _, _) in enumerate(LAYER_TEX)), ""]
