@@ -4,6 +4,18 @@ unreleased
 
 Added:
 
+- New map q3r_canyonrush (Canyon Rush): A2B sprint through a red desert canyon,
+  about 34,000 units from the start gate to the finish gate with six
+  checkpoints: a gorge with a natural rock arch, a basin with hoodoos and a
+  dry gravel riverbed, crests and banked bends. Generator
+  tools/maptools/make_canyonrush.py; sandstone strata texture and ground
+  shaders in textures/ and scripts/q3r_canyonrush.*.
+
+- New map q3r_mesaking (Mesa King) for King of the Hill: round red rock
+  arena with a mesa in the middle; the hill is its flat top, reached by four
+  ramps on the diagonals. Mirror symmetric red/blue spawns and pickups.
+  Generator tools/maptools/make_mesaking.py (uses the canyon ground set).
+
 - Live score on the stadium scoreboard: new client side map entity
   rally_scoreboard (like rally_fx_spray, the server ignores it). Placed at
   the centre of the q3r_scoreboard model it draws red score, blue score and
