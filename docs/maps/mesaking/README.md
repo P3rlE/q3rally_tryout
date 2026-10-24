@@ -20,4 +20,7 @@ Erzeugt von `tools/maptools/make_mesaking.py` (Python 3 + Pillow).
 - Nutzt Bodenshader und Texturen von `q3r_canyonrush`; zuerst
   `make_canyonrush.py` laufen lassen. Kompilieren wie Canyon Rush.
 
-Offen: AAS fuer Bots, Balancing im Spiel.
+Bots: Die AAS laesst sich direkt aus der Map bauen. Schneller geht es mit der
+Ersatzkarte, siehe `docs/maps/aas_proxy.md`.
+
+Offen: Balancing im Spiel. In den Tests fahren die Bots nicht auf den Huegel.

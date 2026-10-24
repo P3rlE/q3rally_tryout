@@ -25,3 +25,6 @@ build.log
 # Local build output and assistant scratch
 dist/
 Claude outputs/
+
+# AAS proxy intermediates (tools/maptools/make_aas_proxy.py)
+baseq3r/maps/*_aasproxy.*

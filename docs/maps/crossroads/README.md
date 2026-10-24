@@ -133,7 +133,10 @@ Hoechstgeschwindigkeit auf den Strassen 416-453 (V0.1) bzw. 539-572 (V0.2). Das
 Konzept nennt 8-12, 12-18 und 25-40 Sekunden; mit Kurven, Gegnern und Flagge
 liegen echte Laeufe darueber, das muss sich im Spiel zeigen.
 
-Offen: Spiel mit vier menschlichen Teams und Balancing, AAS fuer Bots.
+Bots: `maps/q3r_crossroads.aas` wird aus einer vereinfachten Ersatzkarte gebaut, siehe
+`docs/maps/aas_proxy.md`.
+
+Offen: Spiel mit vier menschlichen Teams und Balancing.
 
 Die PK3 enthaelt nur die kartenspezifischen Dateien (Karte, Quelle, Indexmap,
 Shader, Makrotextur, Vorschau). Alle Standardtexturen, Baummodelle, Flaggen und

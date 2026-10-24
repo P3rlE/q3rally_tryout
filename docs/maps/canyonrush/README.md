@@ -42,4 +42,8 @@ Der Generator schreibt Map, Indexmap, `scripts/q3r_canyonrush.shader`,
 `docs/maps/canyonrush/canyonrush_layout.png` und `validation.json`.
 Die Bodenshader und Texturen nutzt auch `q3r_mesaking`.
 
-Offen: AAS fuer Bots, Fahrzeit und Fahrgefuehl im Spiel pruefen.
+Bots: `maps/q3r_canyonrush.aas` wird aus einer vereinfachten Ersatzkarte gebaut, siehe
+`docs/maps/aas_proxy.md`. Der Bot faehrt rund 90 Prozent der Strecke und kehrt nach
+Checkpoint 6 um.
+
+Offen: Fahrzeit und Fahrgefuehl im Spiel pruefen, Bot-Fahrt vor Checkpoint 6.
