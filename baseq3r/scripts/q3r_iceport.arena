@@ -1,0 +1,17 @@
+{
+map "q3r_iceport"
+longname "Iceport Arena"
+author "Q3Rally Team"
+type "q3r_autoball"
+bots "Chloe Jim Zack Paul Tobias Josh"
+starts "8"
+laptime ""
+checkpoints ""
+observerspots ""
+weapons ""
+powerups "4"
+reversable ""
+tracklengths ""
+botsupport "None"
+teams "2"
+}
