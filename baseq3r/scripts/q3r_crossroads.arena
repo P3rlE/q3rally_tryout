@@ -4,5 +4,6 @@
 	type "q3r_ctf4"
 	starts "8"
 	teams "4"
-	botsupport "no"
+	bots "Chloe Jim Zack Paul Tobias Josh Tony"
+	botsupport "yes"
 }
