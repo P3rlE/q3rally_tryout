@@ -4769,8 +4769,14 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			}
 
 			if ( !emergencyResetPerformed ) {
+				int intendedThrottle = throttleChange;
 				float routeYaw = angles[YAW];
 				throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
+				if ( intendedThrottle >= 0 && throttleChange < 0 &&
+					recoveryState == BOT_RECOVERY_NONE && !collisionRiskActive ) {
+					recoveryEvent = "obstacle_probe_brake";
+					recoveryTrigger = "center_probe_blocked";
+				}
 				// The route already describes a driveable bend. Side probes can see
 				// its wall and replace that heading with an arbitrary 15-degree turn.
 				// Keep their brake request, but continue steering toward the route.

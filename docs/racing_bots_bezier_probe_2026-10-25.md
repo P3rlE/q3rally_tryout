@@ -149,4 +149,12 @@ Ursache im Validator: `RaceCrossesGate` wertete bisher eine Überschneidung mit 
 
 Checkpoint 16 bleibt zusätzlich verkehrsanfällig: Ein Bot verbrachte dort 6,85 s, der andere 1,65 s; `collisionRisk` war beim langsameren Bot über einen längeren Abschnitt aktiv. Da der Nutzer Spectator war, ist menschliche Behinderung ausgeschlossen; Bot-zu-Bot-Verkehr kann diesen Teil weiterhin beeinflussen. Erst nach einem Lauf mit der genaueren Gatevalidierung lässt sich trennen, was davon als eigenständiges Verkehrsproblem übrig bleibt.
 
-Der Quellstand mit der Brush-Prüfung ist noch nicht gebaut oder im Spiel verifiziert. Der nächste Windows-Lauf sollte weiterhin `Bezier ready` und `source=bezier route=checkpoint_bezier` melden; zusätzlich darf der Routenindex an Checkpoint 23 nicht mehr bei 616 festhängen.
+Der anschließende Windows-Lauf meldet weiterhin `Bezier ready` und `source=bezier route=checkpoint_bezier`. Die Einzelbot-Telemetrie im folgenden Abschnitt bestätigt, dass der Index an CP23 nicht mehr bei 616 festhängt.
+
+### Einzelbotlauf nach Brush-Prüfung
+
+`downtown_next_try_3_onebot.jsonl` enthält einen Bot und bestätigt die Verbesserung an den vorher problematischen Abschnitten: CP16 dauert 1,85 s ohne Recovery und mit 130 maximaler Abweichung; CP23 dauert 4,8 s, der Index läuft von 576 bis 629 weiter und die maximale Abweichung bleibt bei 77. Damit ist der frühere CP23-Stillstand bei Index 616 in diesem Build nicht mehr vorhanden.
+
+CP22 bleibt auch ohne Verkehr auffällig: 7,65 s, vier Samples `stuck_detect`, neun `reverse_unwind`-Samples, bis zu 195 Abweichung und `collisionRisk=0` über alle CP22-Samples. Der Stillstand beginnt nahe Routeindex 570 bei etwa 20 Einheiten Routenabstand; der Bot hat dort nur noch rund 20–30 Geschwindigkeit bei einem Solltempo um 290. Das widerlegt Bot-zu-Bot-Verkehr als alleinige Ursache. Eine plausible Ursache ist der geradeaus gerichtete Mittelpunkt-Hindernisfühler, der bei einer engen Kurve eine Wand vor dem Auto sieht, obwohl die geführte Route abbiegt. Das ist noch nicht direkt belegt, da das JSONL den Hindernisfühler bislang nicht separat protokolliert.
+
+Der Quellstand markiert nun neu eingeführte Bremsbefehle dieses Fühlers mit `recoveryEvent=obstacle_probe_brake` und `recoveryTrigger=center_probe_blocked`. Im nächsten Lauf zeigt CP22 damit, ob dieser Fühler den Stillstand auslöst. Die Datei `downtown_next_try_2.jsonl` war unter dem angegebenen Pfad nicht vorhanden; der neue Zweibotlauf lässt sich daher derzeit nur über `qconsole.log` als aktiver BPD-Build, nicht anhand seiner Telemetrie vergleichen.
