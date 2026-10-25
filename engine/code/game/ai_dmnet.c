@@ -827,6 +827,29 @@ static qboolean Bot_GhostLateralOffsetIsTrackClear( bot_state_t *bs, const ghost
 	return qtrue;
 }
 
+static qboolean Bot_GhostRouteAheadIsClear( bot_state_t *bs, const ghostBotRoute_t *route,
+	int startIndex, int endIndex ) {
+	int i;
+	vec3_t mins, maxs, traceStart;
+	trace_t trace;
+	if ( !bs || !route || !route->valid || startIndex < 0 || endIndex <= startIndex ||
+		endIndex >= route->numWaypoints ) {
+		return qfalse;
+	}
+	VectorSet( mins, -CAR_WIDTH * 0.5f, -CAR_WIDTH * 0.5f, -CAR_HEIGHT * 0.5f );
+	VectorSet( maxs, CAR_WIDTH * 0.5f, CAR_WIDTH * 0.5f, CAR_HEIGHT * 0.5f );
+	VectorCopy( bs->cur_ps.origin, traceStart );
+	for ( i = startIndex + 1; i <= endIndex; i++ ) {
+		trap_Trace( &trace, traceStart, mins, maxs, route->waypoints[i].origin,
+			bs->entitynum, MASK_PLAYERSOLID );
+		if ( trace.startsolid || trace.allsolid || trace.fraction < 0.99f ) {
+			return qfalse;
+		}
+		VectorCopy( route->waypoints[i].origin, traceStart );
+	}
+	return qtrue;
+}
+
 /*
 ==================
 BotResetNodeSwitches
@@ -4774,8 +4797,14 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
 				if ( intendedThrottle >= 0 && throttleChange < 0 &&
 					recoveryState == BOT_RECOVERY_NONE && !collisionRiskActive ) {
-					recoveryEvent = "obstacle_probe_brake";
-					recoveryTrigger = "center_probe_blocked";
+					if ( Bot_GhostRouteAheadIsClear( bs, ghostRoute, bestIndex, lookAheadIndex ) ) {
+						throttleChange = intendedThrottle;
+						recoveryEvent = "obstacle_probe_ignored";
+						recoveryTrigger = "route_corridor_clear";
+					} else {
+						recoveryEvent = "obstacle_probe_brake";
+						recoveryTrigger = "center_probe_blocked";
+					}
 				}
 				// The route already describes a driveable bend. Side probes can see
 				// its wall and replace that heading with an arbitrary 15-degree turn.
