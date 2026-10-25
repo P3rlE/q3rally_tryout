@@ -20,16 +20,21 @@ void G_RaceRoute_Reset( void ) {
 	s_selectionLogged = qfalse;
 }
 
-// Test a swept car centre against a checkpoint, including the car's touch extent.
+// Use bounds only to cull candidates; confirm the sweep against the actual trigger brush.
 static qboolean RaceCrossesGate( const vec3_t a, const vec3_t b,
 	const gentity_t *gate, float minimumFraction, float *fraction ) {
+	vec3_t edge, localMins, localMaxs, testMins, testMaxs, point;
 	float enter = minimumFraction, leave = 1.0f;
+	float length;
+	int steps, sample;
 	int axis;
 	if ( !gate || !gate->inuse ) return qfalse;
+	VectorSubtract( b, a, edge );
 	for ( axis = 0; axis < 3; axis++ ) {
-		float delta = b[axis] - a[axis];
-		float low = gate->r.absmin[axis] - 32.0f;
-		float high = gate->r.absmax[axis] + 32.0f;
+		float extent = ( axis == 2 ) ? CAR_HEIGHT * 0.5f : CAR_LENGTH * 0.5f;
+		float delta = edge[axis];
+		float low = gate->r.absmin[axis] - extent;
+		float high = gate->r.absmax[axis] + extent;
 		float first, last;
 		if ( fabs( delta ) < 0.001f ) {
 			if ( a[axis] < low || a[axis] > high ) return qfalse;
@@ -42,8 +47,25 @@ static qboolean RaceCrossesGate( const vec3_t a, const vec3_t b,
 		if ( last < leave ) leave = last;
 		if ( enter > leave ) return qfalse;
 	}
-	*fraction = enter;
-	return qtrue;
+
+	// A checkpoint's AABB can be very loose for angled brushes. Match the game
+	// trigger check using the car bounds against the actual brush model.
+	VectorSet( localMins, -CAR_LENGTH * 0.5f, -CAR_LENGTH * 0.5f, -CAR_HEIGHT * 0.5f );
+	VectorSet( localMaxs, CAR_LENGTH * 0.5f, CAR_LENGTH * 0.5f, CAR_HEIGHT * 0.5f );
+	length = Distance( a, b );
+	steps = (int)( length / 24.0f ) + 1;
+	if ( steps < 1 ) steps = 1;
+	for ( sample = 0; sample <= steps; sample++ ) {
+		float testFraction = enter + ( 1.0f - enter ) * ( (float)sample / steps );
+		VectorMA( a, testFraction, edge, point );
+		VectorAdd( point, localMins, testMins );
+		VectorAdd( point, localMaxs, testMaxs );
+		if ( trap_EntityContact( testMins, testMaxs, gate ) ) {
+			*fraction = testFraction;
+			return qtrue;
+		}
+	}
+	return qfalse;
 }
 
 qboolean G_RaceRoute_ValidateGhost( ghostBotRoute_t *route ) {

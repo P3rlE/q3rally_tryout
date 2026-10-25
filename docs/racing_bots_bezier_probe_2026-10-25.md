@@ -138,3 +138,15 @@ Die Telemetrie zeigt, dass die Gateblend-Projektion auf die Fahrzeugrichtung bei
 - Ghost-angepasster BPD-Lauf (Einzelbot): `dist/bot-racing-runs/downtown-bpd-ghost-fit-single-180/result.json`
 - Ghost-angepasster BPD-Lauf (vier Bots): `dist/bot-racing-runs/downtown-bpd-ghost-fit-4bots-180/result.json`
 - Ghost-angepasste BPD-Datei: `dist/bot-racing-input/downtown-ghost-fit/baseq3r/maps/q3r_downtown.bpd`
+
+### Spectatorlauf mit zwei Bots
+
+Der Lauf `downtown_next_try.jsonl` enthält ausschließlich die beiden Bots (Clients 1 und 2); der Spieler war Spectator. `qconsole.log` bestätigt, dass keine Ghost-Route verfügbar war und die BPD mit 27/27 Handles sowie 762 Wegpunkten als `checkpoint_bezier` geladen wurde.
+
+Beide Bots zeigen denselben reproduzierbaren Fehler bei Checkpoint 23: Sie fahren ab Routeindex 616 mit rund 1.070–1.130 Geschwindigkeit weiter, während der Index stehen bleibt. Die Abweichung wächst dort innerhalb etwa einer Sekunde von rund 5 auf 867–890 Einheiten; beide haben nahezu denselben Fehler am selben Kartenpunkt. Die tatsächliche Streckenlinie biegt weiter, die Guidance darf aber nur Segmente mit dem noch offenen Checkpoint 23 auswählen. Das ist damit ein gemeinsamer Gate-/Routenvalidierungsfehler, kein individuelles Fahrstilproblem. Die hohe Geschwindigkeit verschärft die Folgen.
+
+Ursache im Validator: `RaceCrossesGate` wertete bisher eine Überschneidung mit der achsenparallelen `absmin/absmax`-Box des Checkpoints als echten Gatekontakt. Bei gedrehten, polygonalen Checkpoint-Brushes kann diese Box den tatsächlichen Trigger weit überragen. Der Validator markiert dann den Checkpoint zu früh; sobald das Auto diesen fälschlich markierten Abschnitt erreicht, wird die gültige Fortsetzung der Linie für die Guidance ausgefiltert. Die Korrektur prüft Kandidaten nun zusätzlich mit `trap_EntityContact` gegen den echten Brush und denselben konservativen Fahrzeugmaßen wie die Triggerabfrage im Spiel, in 24-Unit-Schritten entlang des Routenabschnitts.
+
+Checkpoint 16 bleibt zusätzlich verkehrsanfällig: Ein Bot verbrachte dort 6,85 s, der andere 1,65 s; `collisionRisk` war beim langsameren Bot über einen längeren Abschnitt aktiv. Da der Nutzer Spectator war, ist menschliche Behinderung ausgeschlossen; Bot-zu-Bot-Verkehr kann diesen Teil weiterhin beeinflussen. Erst nach einem Lauf mit der genaueren Gatevalidierung lässt sich trennen, was davon als eigenständiges Verkehrsproblem übrig bleibt.
+
+Der Quellstand mit der Brush-Prüfung ist noch nicht gebaut oder im Spiel verifiziert. Der nächste Windows-Lauf sollte weiterhin `Bezier ready` und `source=bezier route=checkpoint_bezier` melden; zusätzlich darf der Routenindex an Checkpoint 23 nicht mehr bei 616 festhängen.
