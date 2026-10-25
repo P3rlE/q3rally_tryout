@@ -110,6 +110,10 @@ Die erste Runde lag bei 6,5 % der Samples mehr als 250 Einheiten neben der Route
 
 Der erste Korrekturschritt in `engine/code/game/ai_dmnet.c` ersetzt den harten 90-Grad-Wechsel durch einen Winkelblend: Ab 60 Grad wird zunehmend zur Ausfahrtsrichtung übergeblendet, ab 140 Grad vollständig. Das ist eine gezielte Änderung zur Glättung der beobachteten Sollkurs-Sprünge und braucht noch einen neuen Windows-Lauf zur Bestätigung.
 
+Der darauffolgende Windows-Lauf enthielt `gate_target_blend`-Ereignisse und bestätigt damit, dass dieser Stand aktiv war. Tobias beendete die Runde in 1:42,400, der Spieler in 1:42,550. Die Telemetrie zeigt bei Checkpoint 16 einen nahezu vollständigen Stillstand: Solltempo 57,6, Isttempo unter 7, `driveCommand=0` für rund drei Sekunden. Die Beschleunigungstotzone von 80 Einheiten verhinderte das Anfahren, und dieselbe Schwelle ließ die Stuck-Erkennung keinen Vorwärtswunsch erkennen. Bei Checkpoint 22 blieb der Bot zusätzlich während eines `rejoin_route`-Manövers etwa eine Sekunde fast stehen.
+
+Der aktuelle Stand reduziert die Beschleunigungstotzone unter 160 Geschwindigkeitseinheiten auf 20 und verwendet dieselbe Schwelle für den Stuck-Timer. Dadurch sollte der Bot bei niedrigem Kurventempo weiter Gas geben und bei ausbleibendem Fortschritt in die vorgesehene Recovery wechseln. Der nächste Lauf muss prüfen, ob beide beobachteten Stillstände damit verschwinden.
+
 ## Laufdaten
 
 - BPD: `dist/bot-racing-runs/downtown-bezier-auto-4bots-180/result.json`

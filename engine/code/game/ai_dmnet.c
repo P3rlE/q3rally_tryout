@@ -4166,6 +4166,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	ghostDecisionState_t decisionState;
 	float desiredOffset;
 	float speedBias;
+	float accelerationDeadband;
 	bot_recovery_state_t recoveryState;
 	bot_recovery_state_t previousRecoveryState;
 	float routeDistanceFromCenter = 0.0f;
@@ -4232,6 +4233,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 		int hintIndex = bs->ghostRouteIndexHint;
 		qboolean lapWrapWindow = ghostRoute->closed && hintIndex >= ghostRoute->numSegments - 48 && nextCheckpoint <= 2;
 		actualSpeed = VectorLength( bs->cur_ps.velocity );
+		accelerationDeadband = actualSpeed < 160.0f ? 20.0f : 80.0f;
 		if ( G_RaceRoute_Guidance( ghostRoute, bs->cur_ps.origin, hintIndex, lapWrapWindow, nextCheckpoint, actualSpeed, &guidance ) ) {
 			int bestIndex = guidance.segment;
 			int lookAheadIndex = guidance.targetIndex;
@@ -4289,7 +4291,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				recoveryTrigger = "checkpoint_wrap";
 			}
 
-			if ( speed > actualSpeed + 80.0f ) {
+			if ( speed > actualSpeed + accelerationDeadband ) {
 				bs->ghostRecoveryThrottleIntentTime = FloatTime();
 			}
 
@@ -4599,7 +4601,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			{
 				float speedError = speed - actualSpeed;
 
-				if ( speedError > 80.0f ) {
+				if ( speedError > accelerationDeadband ) {
 					throttleChange = 1;
 				} else if ( speedError < -140.0f ) {
 					throttleChange = -1;
