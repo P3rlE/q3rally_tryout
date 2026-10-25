@@ -120,7 +120,11 @@ Die nächste Aufzeichnung enthält nun `stuck_detect`, `stuck_to_reverse` und `r
 
 Die Telemetrie zeigt außerdem ein spätes Bremsprofil: Bei CP8 fällt das Solltempo innerhalb einer halben Sekunde von ungefähr 802 auf 372, während das Auto noch über 900 schnell ist und bereits bremst. Die bisherige Planung rechnete mit 700 Einheiten/s² Verzögerung (`1400` im quadratischen Bremsmodell); die aufgezeichneten Abbremsphasen deuten auf eine geringere tatsächliche Verzögerung hin.
 
-Der aktuelle Quellstand enthält zwei weitere Anpassungen: Die Begrenzer-Tangente wird nun anhand der Längsdistanz des Ziels zum Gate eingeblendet, statt abhängig von einem schwellwertbasierten Yaw-Wechsel. Die Bremsplanung setzt 500 Einheiten/s² an und beginnt die Bremsanforderung bereits bei 80 statt 140 Einheiten Tempoüberschuss. Ein neuer Windows-Lauf soll zeigen, ob CP16/CP22 stabiler durchfahren und die späteren Rejoins kürzer werden.
+Der getestete Windows-Stand enthielt zwei weitere Anpassungen: Die Begrenzer-Tangente wurde anhand der Längsdistanz des Ziels eingeblendet, statt abhängig von einem schwellwertbasierten Yaw-Wechsel. Die Bremsplanung setzte 500 Einheiten/s² an und begann die Bremsanforderung bereits bei 80 statt 140 Einheiten Tempoüberschuss. Das Log bestätigt `source=bezier route=checkpoint_bezier` und das neue `target_near_gate`-Ereignis. Der Spieler stellte einen Rekord von 1:52,150 auf; Tobias gewann das Rennen.
+
+Die gewöhnliche Routenabweichung ging zurück: p90 sank auf 191,9 Einheiten; 5,9 % der ersten Runden-Samples lagen über 250 Einheiten Abstand. Der lange CP16-Abschnitt blieb jedoch bei 16,7 Sekunden mit drei Stuck-/Rückwärtszyklen. Dabei wechselte der Sollkurs am selben Routenindex 476 weiter um bis zu 166 Grad. CP22 dauerte vier Sekunden bei bis zu 103 Einheiten Abweichung. An CP24 blieb ein später Kurveneintritt sichtbar: Isttempo bis 1.160 gegenüber einem Solltempo von 760, danach stieg die Abweichung bis 337; direkt davor erreichte sie am CP23 772.
+
+Die Telemetrie zeigt, dass die Gateblend-Projektion auf die Fahrzeugrichtung beim Drehen erneut kippen kann. Der aktuelle, noch ungetestete Quellstand projiziert deshalb auf die Routen-Tangente. Das soll den Gateübergang am CP16 stabilisieren. Die frühere Bremsplanung senkte am CP8 das mittlere Isttempo auf etwa 498 gegenüber 490 Solltempo; für die schnellere Kurve an CP24 reicht sie noch nicht aus.
 
 ## Laufdaten
 

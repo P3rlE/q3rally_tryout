@@ -4560,13 +4560,10 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				lookAheadIndex >= 0 && lookAheadIndex < ghostRoute->numSegments &&
 				ghostRoute->segments[lookAheadIndex].nextCheckpoint > 0 &&
 				ghostRoute->segments[lookAheadIndex].nextCheckpoint != nextCheckpoint ) {
-				vec3_t outgoingTangent, tangentAngles, bodyForward;
+				vec3_t outgoingTangent, tangentAngles;
 				int outgoingSegment = bestIndex + 1;
-				float targetForwardDistance, bypassBlend;
-				AngleVectors( bs->cur_ps.viewangles, bodyForward, NULL, NULL );
-				bodyForward[2] = 0.0f;
-				VectorNormalize( bodyForward );
-				targetForwardDistance = DotProduct( dir, bodyForward );
+				float targetRouteDistance, bypassBlend;
+				targetRouteDistance = DotProduct( dir, guidance.tangent );
 				VectorCopy( guidance.tangent, outgoingTangent );
 				/* If the checkpoint's old target is behind the car, continue on
 				 * the first route segment after that gate. The incoming tangent
@@ -4586,13 +4583,13 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 						VectorCopy( guidance.tangent, outgoingTangent );
 					}
 				}
-				if ( targetForwardDistance < 180.0f ) {
+				if ( targetRouteDistance < 180.0f ) {
 					vectoangles( outgoingTangent, tangentAngles );
 					// Guidance pins its target at the gate until the game confirms
-					// the crossing. Blend by longitudinal distance to the gate so
-					// the steering target cannot switch back and forth on a yaw threshold.
+					// the crossing. Project onto the route tangent so this blend does
+					// not reverse direction when the car itself yaws during recovery.
 					bypassBlend = Com_Clamp( 0.0f, 1.0f,
-						( 180.0f - targetForwardDistance ) / 180.0f );
+						( 180.0f - targetRouteDistance ) / 180.0f );
 					angles[YAW] = AngleNormalize360( angles[YAW] +
 						AngleSubtract( tangentAngles[YAW], angles[YAW] ) * bypassBlend );
 					gateTargetBypass = qtrue;
