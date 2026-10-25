@@ -146,6 +146,7 @@ vmCvar_t	g_ghostUpload;
 vmCvar_t	g_ghostDownload;
 vmCvar_t	g_aiDmnetDebugExport;
 vmCvar_t	g_aiDmnetDebugExportPath;
+vmCvar_t	g_botRaceUseTurbo;
 vmCvar_t	g_ladderMatchSeq;
 
 vmCvar_t	g_damageScale;
@@ -331,6 +332,7 @@ static cvarTable_t		gameCvarTable[] = {
 { &g_ghostDownload, "g_ghostDownload", "1", CVAR_ARCHIVE, 0, qfalse },
 { &g_aiDmnetDebugExport, "g_aiDmnetDebugExport", "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
 { &g_aiDmnetDebugExportPath, "g_aiDmnetDebugExportPath", "logs/ai_dmnet_debug.csv", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
+{ &g_botRaceUseTurbo, "g_botRaceUseTurbo", "1", CVAR_ARCHIVE, 0, qfalse },
 { &g_ladderMatchSeq, "sv_ladderMatchSeq", "0", CVAR_ARCHIVE | CVAR_NORESTART, 0, qfalse },
 { &g_humanplayers, "g_humanplayers", "0", CVAR_ROM | CVAR_NORESTART, 0, qfalse },
 { &g_fuelKillReward, "g_fuelKillReward", "10", CVAR_ARCHIVE, 0, qfalse },

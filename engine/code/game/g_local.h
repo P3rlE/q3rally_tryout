@@ -320,6 +320,10 @@ typedef struct ghostRecord_s {
         qboolean hasVariantData;
         qboolean ambiguousLegacy;
         qboolean clean;         // "clean 1": Ghost Race lap without reset (preferred route)
+        qboolean hasPhysicsVersion;
+        qboolean hasMapChecksum;
+        int physicsVersion;
+        int mapChecksum;
 } ghostRecord_t;
 
 #define MAX_GHOST_BOT_WAYPOINTS 4096
@@ -345,6 +349,7 @@ typedef struct ghostRouteLineProfile_s {
 } ghostRouteLineProfile_t;
 
 typedef struct ghostRouteSegment_s {
+	int nextCheckpoint;       // active course gate; prevents skipping a missed gate
 	float recommendedSpeed;
 	float curvature;
 	ghostRouteLineProfile_t lines[GHOST_LINE_FAMILY_COUNT];
@@ -357,9 +362,25 @@ typedef struct ghostBotRoute_s {
 	int	numSegments;
 	qboolean valid;
 	qboolean clean;
+	qboolean closed;           // driving topology; playback samples stay unchanged
+	qboolean fromMapPath;
+	qboolean fromBezierPath;
+	float corridorWidth;       // zero: unknown, require runtime traces for offsets
 	ghostWaypoint_t waypoints[MAX_GHOST_BOT_WAYPOINTS];
 	ghostRouteSegment_t segments[MAX_GHOST_BOT_WAYPOINTS - 1];
 } ghostBotRoute_t;
+
+// Both recorded laps and authored paths feed the same racing guidance/recovery.
+typedef ghostBotRoute_t botRaceRoute_t;
+typedef struct {
+	int segment;
+	int targetIndex;
+	vec3_t target;
+	vec3_t tangent;
+	float distance;
+	float targetSpeed;
+	float curvature;
+} botRaceGuidance_t;
 
 typedef struct botPathNode_s {
 	vec3_t	origin;
@@ -1054,6 +1075,11 @@ void G_Ghost_AnnounceForClient( gentity_t *ent );
 void G_Ghost_RequestRouteForClient( gentity_t *ent );
 void G_Ghost_ProcessClientTransfers( void );
 qboolean G_Ghost_GetBotRoute( const ghostBotRoute_t **outRoute );
+void G_RaceRoute_Reset( void );
+qboolean G_RaceRoute_Get( const botRaceRoute_t **outRoute );
+qboolean G_RaceRoute_ValidateGhost( ghostBotRoute_t *route );
+qboolean G_RaceRoute_Guidance( const botRaceRoute_t *route, const vec3_t origin,
+	int hint, qboolean allowWrap, int nextCheckpoint, float actualSpeed, botRaceGuidance_t *out );
 int G_Ghost_SelectClosestWaypoint( const ghostBotRoute_t *route, const vec3_t origin, int hintIndex, int hintWindow );
 void G_BotPath_ClearAllRoutes( void );
 int G_BotPath_RegisterRoute( const char *name, const botPathNode_t *nodes, int numNodes );
@@ -1365,6 +1391,7 @@ extern	vmCvar_t	g_ghostUpload;
 extern	vmCvar_t	g_ghostDownload;
 extern	vmCvar_t	g_aiDmnetDebugExport;
 extern	vmCvar_t	g_aiDmnetDebugExportPath;
+extern	vmCvar_t	g_botRaceUseTurbo;
 extern	vmCvar_t	g_ladderMatchSeq;
 extern	vmCvar_t	g_damageScale;
 extern	vmCvar_t	g_vehicleDamageScale;

@@ -34,6 +34,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //#define DEBUG
 #define CTF
 
+#include "ai_vehicle.h"
+
 #define MAX_ITEMS					256
 //bot flags
 #define BFL_STRAFERIGHT				1	//strafe to the right
@@ -206,6 +208,8 @@ typedef struct bot_state_s
 	float rallyCombatLastHitTime;					//last time the bot scored a hit in vehicle combat
 	float rallyCombatLastMoveSampleTime;			//last movement sample time for combat stall checks
 	vec3_t rallyCombatLastMoveOrigin;				//last movement sample origin for combat stall checks
+	float rallyCombatBreakawayYaw;
+	bot_vehicle_state_t vehicle;
 	float enemysight_time;							//time before reacting to enemy
 	float enemydeath_time;							//time the enemy died
 	float enemyposition_time;						//time the position and velocity of the enemy were stored
@@ -302,6 +306,7 @@ typedef struct bot_state_s
 
 	float ghostTargetSpeedFiltered;				//smoothed target speed for ghost racing line
 	int ghostTargetSpeedValid;					//whether ghostTargetSpeedFiltered is initialized
+	int raceTurboSafe;						//route follower permits stored turbo on an open section
 	int ghostRouteIndexHint;					//persistent waypoint index hint for ghost racing line
     int botPathRouteIndexHint;                  // persistent node index hint for bot_path_node system
     float botPathLateralOffset;

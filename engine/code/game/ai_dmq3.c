@@ -49,6 +49,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "ai_cmd.h"
 #include "ai_dmnet.h"
 #include "ai_team.h"
+#include "ai_dm_enemyselect.h"
 //
 #include "chars.h"				//characteristics
 #include "inv.h"				//indexes into the inventory
@@ -2896,11 +2897,30 @@ qboolean BotGetLcsRiskMetrics(bot_state_t *bs, float *relativePosition, float *t
 BotAggression
 ==================
 */
+static float BotDeathmatchSkill( bot_state_t *bs ) {
+	return Com_Clamp( 0, 1, (bs->settings.skill - 1) * 0.25f );
+}
+
+static float BotDeathmatchAggression( bot_state_t *bs ) {
+	float skill = BotDeathmatchSkill( bs );
+	int weapon = BotFirstUsableFrontWeapon( &bs->cur_ps );
+	if ( bs->inventory[INVENTORY_HEALTH] < 40 - 14 * skill ) return 0;
+	/* The start weapon is a real DM weapon. The legacy Q3 evaluation gives
+	 * it zero confidence even at full health with ammunition. */
+	if ( weapon > WP_GAUNTLET && weapon < RWP_SMOKE ) {
+		return 65 + 15 * skill + 0.35f * Com_Clamp( -30, 30, bs->personalityAggressionBias );
+	}
+	if ( weapon == WP_GAUNTLET && bs->inventory[INVENTORY_HEALTH] >= 60 &&
+		bs->inventory[ENEMY_HORIZONTAL_DIST] < 180 ) return 55 + 10 * skill;
+	return 0;
+}
+
 float BotAggression(bot_state_t *bs) {
 	float aggression;
 	float lcsRelativePosition = 0.5f;
 	float lcsThreatProximity = 0.0f;
 	int lcsRemainingOpponents = 0;
+	if ( gametype == GT_DEATHMATCH ) return BotDeathmatchAggression( bs );
 
 	//if the bot has quad
 	if (bs->inventory[INVENTORY_QUAD]) {
@@ -3296,7 +3316,7 @@ int BotNeedsCombatSupplies(bot_state_t *bs) {
 	if ( bs->inventory[INVENTORY_FLAMETHROWER] > 0 && bs->inventory[INVENTORY_FLAMETHROWERAMMO] > 18 ) hasStrongWeapon = qtrue;
 	if ( bs->inventory[INVENTORY_SHOTGUN] > 0 && bs->inventory[INVENTORY_SHELLS] > 4 ) hasStrongWeapon = qtrue;
 
-	if ( !hasStrongWeapon && bs->inventory[INVENTORY_BULLETS] < 45 ) {
+	if ( gametype != GT_DEATHMATCH && !hasStrongWeapon && bs->inventory[INVENTORY_BULLETS] < 45 ) {
 		return qtrue;
 	}
 
@@ -3531,6 +3551,99 @@ static void BotRallyCombatSetPhase( bot_state_t *bs, int phase ) {
 	}
 }
 
+/* Deathmatch keeps its driving command separate from the weapon aim request. */
+static bot_moveresult_t BotDeathmatchCombatMove( bot_state_t *bs ) {
+	bot_moveresult_t result;
+	aas_entityinfo_t enemy;
+	vec3_t target, direction, angles, enemyVelocity;
+	float distance, yawError, minRange, maxRange, cruiseSpeed, skill, phaseAge, escapeSpeed;
+	qboolean explosive;
+
+	memset( &result, 0, sizeof( result ) );
+	if ( bs->enemy < 0 ) return result;
+	BotEntityInfo( bs->enemy, &enemy );
+	if ( !enemy.valid ) return result;
+	skill = BotDeathmatchSkill( bs );
+	minRange = 100;
+	maxRange = 1100;
+	cruiseSpeed = 700 + 300 * skill;
+	explosive = qfalse;
+	switch ( bs->weaponnum ) {
+		case WP_GAUNTLET: minRange = 0; maxRange = 100; break;
+		case WP_SHOTGUN: minRange = 65; maxRange = 650; break;
+		case WP_LIGHTNING: minRange = 80; maxRange = 650; break;
+		case WP_FLAME_THROWER: minRange = 65; maxRange = 480; break;
+		case WP_ROCKET_LAUNCHER:
+		case WP_BFG: minRange = 240; maxRange = 1200; explosive = qtrue; break;
+		case WP_GRENADE_LAUNCHER: minRange = 280; maxRange = 900; explosive = qtrue; break;
+		case WP_RAILGUN: minRange = 140; maxRange = 2000; break;
+		default: break;
+	}
+	VectorSubtract( enemy.origin, bs->origin, direction );
+	direction[2] = 0;
+	distance = VectorNormalize( direction );
+	yawError = fabs( AngleSubtract( vectoyaw( direction ), bs->cur_ps.viewangles[YAW] ) );
+	if ( bs->rallyCombatEnemy != bs->enemy || bs->rallyCombatPhaseTime <= 0 ) {
+		bs->rallyCombatEnemy = bs->enemy;
+		bs->rallyCombatPhase = RALLY_COMBAT_APPROACH;
+		bs->rallyCombatPhaseTime = FloatTime();
+		bs->rallyCombatLastHitTime = FloatTime();
+		bs->rallyCombatLastHitCount = bs->cur_ps.persistant[PERS_HITS];
+		bs->rallyCombatTurnDir = (bs->client & 1) ? 1 : -1;
+	}
+	if ( bs->cur_ps.persistant[PERS_HITS] > bs->rallyCombatLastHitCount ) {
+		bs->rallyCombatLastHitTime = FloatTime();
+		bs->rallyCombatLastHitCount = bs->cur_ps.persistant[PERS_HITS];
+	}
+	phaseAge = FloatTime() - bs->rallyCombatPhaseTime;
+	if ( bs->rallyCombatPhase == RALLY_COMBAT_BREAKAWAY ) {
+		if ( phaseAge > 0.95f - 0.30f * skill || distance > minRange + 280 ) {
+			BotRallyCombatSetPhase( bs, RALLY_COMBAT_TURNAROUND );
+		}
+	} else if ( bs->rallyCombatPhase == RALLY_COMBAT_TURNAROUND ) {
+		if ( yawError < 30 || phaseAge > 1.4f ) BotRallyCombatSetPhase( bs, RALLY_COMBAT_APPROACH );
+	} else if ( distance < minRange && (explosive || yawError > 55) ) {
+		/* Losing a few hits is not a reason to abandon a clear firing lane.
+		 * Open space only when the weapon is unsafe or the target passed us. */
+		BotRallyCombatSetPhase( bs, RALLY_COMBAT_BREAKAWAY );
+		bs->rallyCombatBreakawayYaw = AngleNormalize360( bs->cur_ps.viewangles[YAW] +
+			bs->rallyCombatTurnDir * 45 );
+		bs->rallyCombatTurnDir = -bs->rallyCombatTurnDir;
+	} else if ( distance < maxRange && yawError < 30 ) {
+		BotRallyCombatSetPhase( bs, RALLY_COMBAT_FIRE );
+	} else {
+		BotRallyCombatSetPhase( bs, RALLY_COMBAT_APPROACH );
+	}
+	/* Aim prediction/accuracy remains owned by BotAimAtEnemy. It has already
+	 * run this tick, but cannot overwrite the driver's eventual user command. */
+	VectorCopy( bs->aimtarget, target );
+	if ( bs->rallyCombatPhase == RALLY_COMBAT_BREAKAWAY ) {
+		VectorSet( angles, 0, bs->rallyCombatBreakawayYaw, 0 );
+		AngleVectors( angles, direction, NULL, NULL );
+		VectorMA( bs->origin, 650, direction, target );
+		cruiseSpeed = 560 + skill * 180;
+	} else if ( bs->rallyCombatPhase == RALLY_COMBAT_TURNAROUND ) {
+		cruiseSpeed = 340 + 120 * skill;
+	} else if ( bs->rallyCombatPhase == RALLY_COMBAT_FIRE ) {
+		cruiseSpeed = distance < minRange + 160 ? 340 + 120 * skill : 480 + 200 * skill;
+		if ( bs->weaponnum == WP_RAILGUN && distance > 800 ) cruiseSpeed = 420 + 100 * skill;
+	}
+	/* Stay with a fleeing, visible vehicle instead of falling behind at the
+	 * fixed fire-phase speed. AAS observations, not hidden player state. */
+	if ( bs->rallyCombatPhase == RALLY_COMBAT_APPROACH || bs->rallyCombatPhase == RALLY_COMBAT_FIRE ) {
+		if ( enemy.update_time > 0.01f && distance > minRange + 180 && yawError < 35 ) {
+			VectorSubtract( enemy.origin, enemy.lastvisorigin, enemyVelocity );
+			VectorScale( enemyVelocity, 1.0f / enemy.update_time, enemyVelocity );
+			escapeSpeed = DotProduct( enemyVelocity, direction );
+			if ( escapeSpeed > 150 && escapeSpeed + 120 + 140 * skill > cruiseSpeed ) {
+				cruiseSpeed = Com_Clamp( 0, 1000 + 100 * skill, escapeSpeed + 120 + 140 * skill );
+			}
+		}
+	}
+	BotVehicleDrive( bs, target, cruiseSpeed, &result );
+	return result;
+}
+
 static void BotRallyCombatSteerTowardYaw( bot_state_t *bs, float targetYaw, qboolean reverseSteer ) {
 	float yawDelta;
 
@@ -3679,6 +3792,9 @@ bot_moveresult_t BotAttackMove(bot_state_t *bs, int tfl) {
 	bot_goal_t goal;
 
 	attackentity = bs->enemy;
+	if ( gametype == GT_DEATHMATCH && bs->cur_ps.pm_type == PM_NORMAL ) {
+		return BotDeathmatchCombatMove( bs );
+	}
 	if ( BotUseRallyCombatMovement( bs ) ) {
 		return BotRallyCombatMove( bs, tfl );
 	}
@@ -3993,6 +4109,10 @@ int BotFindEnemy(bot_state_t *bs, int curenemy) {
 	float squaredist, cursquaredist;
 	aas_entityinfo_t entinfo, curenemyinfo;
 	vec3_t dir, angles;
+	qboolean dmSelection;
+	int bestEnemy;
+	float bestScore, score, distance, forwardAlignment, threatAlignment;
+	vec3_t forward, enemyForward;
 
 // STONELANCE - FIXME: temp
 	if ( gametype == GT_RACING_DM )
@@ -4000,6 +4120,13 @@ int BotFindEnemy(bot_state_t *bs, int curenemy) {
 		return qfalse;
 	}
 // END
+	dmSelection = ( gametype == GT_DEATHMATCH );
+	bestEnemy = -1;
+	bestScore = 0.0f;
+	if ( dmSelection ) {
+		VectorSet( angles, 0.0f, bs->cur_ps.viewangles[YAW], 0.0f );
+		AngleVectors( angles, forward, NULL, NULL );
+	}
 
 	alertness = trap_Characteristic_BFloat(bs->character, CHARACTERISTIC_ALERTNESS, 0, 1);
 	easyfragger = trap_Characteristic_BFloat(bs->character, CHARACTERISTIC_EASY_FRAGGER, 0, 1);
@@ -4008,7 +4135,7 @@ int BotFindEnemy(bot_state_t *bs, int curenemy) {
 	//remember the current health value
 	bs->lasthealth = bs->inventory[INVENTORY_HEALTH];
 	//
-	if (curenemy >= 0) {
+	if (curenemy >= 0 && !dmSelection) {
 		BotEntityInfo(curenemy, &curenemyinfo);
 		if (EntityCarriesFlag(&curenemyinfo)) return qfalse;
 		VectorSubtract(curenemyinfo.origin, bs->origin, dir);
@@ -4049,7 +4176,7 @@ int BotFindEnemy(bot_state_t *bs, int curenemy) {
 
 		if (i == bs->client) continue;
 		//if it's the current enemy
-		if (i == curenemy) continue;
+		if (i == curenemy && !dmSelection) continue;
 		//if the enemy has targeting disabled
 		if (g_entities[i].flags & FL_NOTARGET) {
 			continue;
@@ -4078,14 +4205,15 @@ int BotFindEnemy(bot_state_t *bs, int curenemy) {
 		if (!EntityCarriesFlag(&entinfo))
 		{
 			//if this enemy is further away than the current one
-			if (curenemy >= 0 && squaredist > cursquaredist) continue;
+			if (!dmSelection && curenemy >= 0 && squaredist > cursquaredist) continue;
 		} //end if
 		//if the bot has no
 		if (squaredist > Square(900.0 + alertness * 4000.0)) continue;
 		//if on the same team
 		if (BotSameTeam(bs, i)) continue;
 		//if the bot's health decreased or the enemy is shooting
-		if (curenemy < 0 && (healthdecrease || EntityIsShooting(&entinfo)))
+		if ((dmSelection && i == curenemy) ||
+				(curenemy < 0 && (healthdecrease || EntityIsShooting(&entinfo))))
 			f = 360;
 		else
 			f = 90 + 90 - (90 - (squaredist > Square(810) ? Square(810) : squaredist) / (810 * 9));
@@ -4109,9 +4237,38 @@ int BotFindEnemy(bot_state_t *bs, int curenemy) {
 				if (BotWantsToRetreat(bs)) continue;
 			}
 		}
+		if ( dmSelection ) {
+			VectorSubtract( entinfo.origin, bs->origin, dir );
+			distance = VectorLength( dir );
+			dir[2] = 0.0f;
+			VectorNormalize( dir );
+			forwardAlignment = DotProduct( forward, dir );
+			VectorSet( angles, 0.0f, entinfo.angles[YAW], 0.0f );
+			AngleVectors( angles, enemyForward, NULL, NULL );
+			threatAlignment = -DotProduct( enemyForward, dir );
+			score = Bot_DMEnemyScore( distance, forwardAlignment, threatAlignment,
+					EntityIsShooting( &entinfo ), vis, i == curenemy );
+			if ( Bot_DMEnemyIsBetter( entinfo.number, score, bestEnemy, bestScore ) ) {
+				bestEnemy = entinfo.number;
+				bestScore = score;
+			}
+			continue;
+		}
 		//found an enemy
 		bs->enemy = entinfo.number;
 		if (curenemy >= 0) bs->enemysight_time = FloatTime() - 2;
+		else bs->enemysight_time = FloatTime();
+		bs->enemysuicide = qfalse;
+		bs->enemydeath_time = 0;
+		bs->enemyvisible_time = FloatTime();
+		return qtrue;
+	}
+	if ( dmSelection && bestEnemy >= 0 ) {
+		/* Candidate retreat checks also update this inventory: keep the winner's. */
+		BotUpdateBattleInventory( bs, bestEnemy );
+		if ( bestEnemy == curenemy ) return qfalse;
+		bs->enemy = bestEnemy;
+		if ( curenemy >= 0 ) bs->enemysight_time = FloatTime() - 2;
 		else bs->enemysight_time = FloatTime();
 		bs->enemysuicide = qfalse;
 		bs->enemydeath_time = 0;
@@ -4392,6 +4549,7 @@ void BotAimAtEnemy(bot_state_t *bs) {
 	if (aim_skill > 0.95) {
 		//don't aim too early
 		reactiontime = 0.5 * trap_Characteristic_BFloat(bs->character, CHARACTERISTIC_REACTIONTIME, 0, 1);
+		if ( gametype == GT_DEATHMATCH ) reactiontime *= 1.1f - 0.65f * BotDeathmatchSkill( bs );
 		if (bs->enemysight_time > FloatTime() - reactiontime) return;
 		if (bs->teleport_time > FloatTime() - reactiontime) return;
 	}
@@ -4650,7 +4808,7 @@ void BotCheckAttack(bot_state_t *bs) {
 	int attackentity;
 	bsp_trace_t bsptrace;
 	//float selfpreservation;
-	vec3_t forward, right, start, end, dir, angles;
+	vec3_t forward, right, up, start, end, dir, angles, fireangles;
 	weaponinfo_t wi;
 	bsp_trace_t trace;
 	aas_entityinfo_t entinfo;
@@ -4675,6 +4833,11 @@ void BotCheckAttack(bot_state_t *bs) {
 	}
 	//
 	reactiontime = trap_Characteristic_BFloat(bs->character, CHARACTERISTIC_REACTIONTIME, 0, 1);
+	if ( gametype == GT_DEATHMATCH ) {
+		float skill = BotDeathmatchSkill( bs );
+		reactiontime = Com_Clamp( 0.12f + 0.38f * (1 - skill), 1,
+			reactiontime * (1.1f - 0.65f * skill) );
+	}
 	if (bs->enemysight_time > FloatTime() - reactiontime) return;
 	if (bs->teleport_time > FloatTime() - reactiontime) return;
 	//if changing weapons
@@ -4682,19 +4845,39 @@ void BotCheckAttack(bot_state_t *bs) {
 	//check fire throttle characteristic
 	if (bs->firethrottlewait_time > FloatTime()) return;
 	firethrottle = trap_Characteristic_BFloat(bs->character, CHARACTERISTIC_FIRETHROTTLE, 0, 1);
+	if ( gametype == GT_DEATHMATCH ) {
+		float skill = BotDeathmatchSkill( bs );
+		if ( skill < 1 ) firethrottle = Com_Clamp( 0.35f + 0.60f * skill,
+			0.45f + 0.50f * skill, firethrottle );
+		else if ( firethrottle < 0.95f ) firethrottle = 0.95f;
+	}
 	if (bs->firethrottleshoot_time < FloatTime()) {
 		if (random() > firethrottle) {
-			bs->firethrottlewait_time = FloatTime() + firethrottle;
+			bs->firethrottlewait_time = FloatTime() + (gametype == GT_DEATHMATCH ?
+				0.12f + 0.38f * (1 - BotDeathmatchSkill( bs )) : firethrottle);
 			bs->firethrottleshoot_time = 0;
+			if ( gametype == GT_DEATHMATCH ) return;
 		}
 		else {
-			bs->firethrottleshoot_time = FloatTime() + 1 - firethrottle;
+			bs->firethrottleshoot_time = FloatTime() + (gametype == GT_DEATHMATCH ?
+				0.15f + 0.85f * BotDeathmatchSkill( bs ) : 1 - firethrottle);
 			bs->firethrottlewait_time = 0;
 		}
 	}
 	//
 	//
-	VectorSubtract(bs->aimtarget, bs->eye, dir);
+	/* CT_MOUSE viewangles are steering input, not the fixed weapon direction. */
+	if ( gametype == GT_DEATHMATCH ) {
+		VectorCopy( bs->cur_ps.viewangles, fireangles );
+		AngleVectors( fireangles, forward, right, up );
+		/* Same body-relative, snapped muzzle used by FireWeapon. */
+		CalcMuzzlePoint( &g_entities[bs->entitynum], forward, right, up, start );
+		VectorSubtract( bs->aimtarget, start, dir );
+	}
+	else {
+		VectorCopy( bs->viewangles, fireangles );
+		VectorSubtract(bs->aimtarget, bs->eye, dir);
+	}
 	//
 	if (bs->weaponnum == WP_GAUNTLET) {
 		if (VectorLengthSquared(dir) > Square(60)) {
@@ -4713,25 +4896,34 @@ void BotCheckAttack(bot_state_t *bs) {
 			fov = 90;
 		}
 	}
-	if (!InFieldOfVision(bs->viewangles, fov, angles))
+	if (!InFieldOfVision(fireangles, fov, angles))
 		return;
-	BotAI_Trace(&bsptrace, bs->eye, NULL, NULL, bs->aimtarget, bs->client, CONTENTS_SOLID|CONTENTS_PLAYERCLIP);
+	if ( gametype == GT_DEATHMATCH ) {
+		BotAI_Trace(&bsptrace, start, NULL, NULL, bs->aimtarget, bs->client, CONTENTS_SOLID|CONTENTS_PLAYERCLIP);
+	}
+	else {
+		BotAI_Trace(&bsptrace, bs->eye, NULL, NULL, bs->aimtarget, bs->client, CONTENTS_SOLID|CONTENTS_PLAYERCLIP);
+	}
 	if (bsptrace.fraction < 1 && bsptrace.ent != attackentity)
 		return;
 
 	//get the weapon info
 	trap_BotGetWeaponInfo(bs->ws, bs->weaponnum, &wi);
 	//get the start point shooting from
-	VectorCopy(bs->origin, start);
-	start[2] += bs->cur_ps.viewheight;
-	AngleVectors(bs->viewangles, forward, right, NULL);
-	start[0] += forward[0] * wi.offset[0] + right[0] * wi.offset[1];
-	start[1] += forward[1] * wi.offset[0] + right[1] * wi.offset[1];
-	start[2] += forward[2] * wi.offset[0] + right[2] * wi.offset[1] + wi.offset[2];
+	if ( gametype != GT_DEATHMATCH ) {
+		VectorCopy(bs->origin, start);
+		start[2] += bs->cur_ps.viewheight;
+		AngleVectors(bs->viewangles, forward, right, NULL);
+		start[0] += forward[0] * wi.offset[0] + right[0] * wi.offset[1];
+		start[1] += forward[1] * wi.offset[0] + right[1] * wi.offset[1];
+		start[2] += forward[2] * wi.offset[0] + right[2] * wi.offset[1] + wi.offset[2];
+	}
 	//end point aiming at
 	VectorMA(start, 1000, forward, end);
 	//a little back to make sure not inside a very close enemy
-	VectorMA(start, -12, forward, start);
+	if ( gametype != GT_DEATHMATCH ) {
+		VectorMA(start, -12, forward, start);
+	}
 	BotAI_Trace(&trace, start, mins, maxs, end, bs->entitynum, MASK_SHOT);
 	//if the entity is a client
 	if (trace.ent >= 0 && trace.ent < MAX_CLIENTS) {
@@ -6393,6 +6585,8 @@ void BotDeathmatchAI(bot_state_t *bs, float thinktime) {
 	BotResetNodeSwitches();
 	//execute AI nodes
 	for (i = 0; i < MAX_NODESWITCHES; i++) {
+		/* A request belongs to the final active node, not one left this tick. */
+		bs->vehicle.active = qfalse;
 		if (bs->ainode(bs)) break;
 	}
 	//if the bot removed itself :)

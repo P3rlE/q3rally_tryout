@@ -2829,6 +2829,7 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/game/ai_team.o \
   $(B)/$(BASEGAME)/game/ai_vcmd.o \
   $(B)/$(BASEGAME)/game/ai_autoball.o \
+  $(B)/$(BASEGAME)/game/ai_vehicle.o \
   $(B)/$(BASEGAME)/game/bg_achievements.o \
   $(B)/$(BASEGAME)/game/bg_misc.o \
   $(B)/$(BASEGAME)/game/bg_pmove.o \
@@ -2842,6 +2843,7 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/game/g_autoball.o \
   $(B)/$(BASEGAME)/game/g_bot.o \
   $(B)/$(BASEGAME)/game/g_botpath.o \
+  $(B)/$(BASEGAME)/game/g_race_route.o \
   $(B)/$(BASEGAME)/game/g_client.o \
   $(B)/$(BASEGAME)/game/g_ghost.o \
   $(B)/$(BASEGAME)/game/g_ghost_record.o \
