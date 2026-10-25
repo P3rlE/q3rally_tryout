@@ -6,6 +6,9 @@ static qboolean s_mapRouteBuilt;
 static qboolean s_bezierRouteBuilt;
 static qboolean s_selectionLogged;
 
+// Conservative longitudinal deceleration estimate for braking-distance planning.
+#define RACE_ROUTE_BRAKE_ACCEL 500.0f
+
 static float RaceClamp( float value, float low, float high ) {
 	return value < low ? low : ( value > high ? high : value );
 }
@@ -285,7 +288,8 @@ qboolean G_RaceRoute_Guidance( const botRaceRoute_t *route, const vec3_t origin,
 	VectorSubtract( route->waypoints[best + 1].origin, route->waypoints[best].origin, out->tangent );
 	VectorNormalize( out->tangent );
 	lookAhead = RaceClamp( 180.0f + actualSpeed * 0.25f, 180.0f, 600.0f );
-	preview = RaceClamp( actualSpeed * actualSpeed / 1400.0f + lookAhead, lookAhead, 4096.0f );
+	preview = RaceClamp( actualSpeed * actualSpeed / ( 2.0f * RACE_ROUTE_BRAKE_ACCEL ) + lookAhead,
+		lookAhead, 4096.0f );
 	travelled = 0.0f;
 	limit = 2600.0f;
 	for ( i = 0; i < count && travelled <= preview; i++ ) {
@@ -307,7 +311,8 @@ qboolean G_RaceRoute_Guidance( const botRaceRoute_t *route, const vec3_t origin,
 			cornerSpeed = sqrt( 600.0f * ( length + nextLength ) * 0.5f / ( 0.01f + sqrt( 2.0f * ( 1.0f - dot ) ) ) );
 			if ( cornerSpeed < speed ) speed = cornerSpeed;
 		}
-		if ( sqrt( speed * speed + 1400.0f * travelled ) < limit ) limit = sqrt( speed * speed + 1400.0f * travelled );
+		if ( sqrt( speed * speed + 2.0f * RACE_ROUTE_BRAKE_ACCEL * travelled ) < limit )
+			limit = sqrt( speed * speed + 2.0f * RACE_ROUTE_BRAKE_ACCEL * travelled );
 		if ( i == 0 ) out->curvature = 1.0f - dot;
 		if ( !targetSet ) {
 			float offset = RaceClamp( lookAhead - travelled, 0.0f, remaining );

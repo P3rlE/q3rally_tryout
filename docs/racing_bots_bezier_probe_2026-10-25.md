@@ -114,6 +114,14 @@ Der darauffolgende Windows-Lauf enthielt `gate_target_blend`-Ereignisse und best
 
 Der aktuelle Stand reduziert die Beschleunigungstotzone unter 160 Geschwindigkeitseinheiten auf 20 und verwendet dieselbe Schwelle für den Stuck-Timer. Dadurch sollte der Bot bei niedrigem Kurventempo weiter Gas geben und bei ausbleibendem Fortschritt in die vorgesehene Recovery wechseln. Der nächste Lauf muss prüfen, ob beide beobachteten Stillstände damit verschwinden.
 
+### Lauf mit reduzierter Beschleunigungstotzone
+
+Die nächste Aufzeichnung enthält nun `stuck_detect`, `stuck_to_reverse` und `reverse_to_rejoin`; der Bot befreite sich in diesem Lauf ohne Rammhilfe. Er beendete die Runde in 1:52,650, der Spieler in 1:52,700. Bei CP16 blieb der Routenindex allerdings rund 14 Sekunden bei 476, mit zwei Stuck-/Rückwärtszyklen. Bei CP22 dauerte der Rejoin etwa 3,25 Sekunden; die Abweichung fiel dabei von rund 320 auf 152 Einheiten. Der Bot wartete während eines großen Teils dieser Phase mit `driveCommand=0`.
+
+Die Telemetrie zeigt außerdem ein spätes Bremsprofil: Bei CP8 fällt das Solltempo innerhalb einer halben Sekunde von ungefähr 802 auf 372, während das Auto noch über 900 schnell ist und bereits bremst. Die bisherige Planung rechnete mit 700 Einheiten/s² Verzögerung (`1400` im quadratischen Bremsmodell); die aufgezeichneten Abbremsphasen deuten auf eine geringere tatsächliche Verzögerung hin.
+
+Der aktuelle Quellstand enthält zwei weitere Anpassungen: Die Begrenzer-Tangente wird nun anhand der Längsdistanz des Ziels zum Gate eingeblendet, statt abhängig von einem schwellwertbasierten Yaw-Wechsel. Die Bremsplanung setzt 500 Einheiten/s² an und beginnt die Bremsanforderung bereits bei 80 statt 140 Einheiten Tempoüberschuss. Ein neuer Windows-Lauf soll zeigen, ob CP16/CP22 stabiler durchfahren und die späteren Rejoins kürzer werden.
+
 ## Laufdaten
 
 - BPD: `dist/bot-racing-runs/downtown-bezier-auto-4bots-180/result.json`

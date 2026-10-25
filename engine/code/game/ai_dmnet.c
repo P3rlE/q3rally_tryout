@@ -4559,11 +4559,14 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			if ( ( recoveryState == BOT_RECOVERY_NONE || recoveryState == BOT_RECOVERY_REJOIN_ROUTE ) &&
 				lookAheadIndex >= 0 && lookAheadIndex < ghostRoute->numSegments &&
 				ghostRoute->segments[lookAheadIndex].nextCheckpoint > 0 &&
-				ghostRoute->segments[lookAheadIndex].nextCheckpoint != nextCheckpoint &&
-				fabs( AngleSubtract( angles[YAW], bs->cur_ps.viewangles[YAW] ) ) > 60.0f ) {
-				vec3_t outgoingTangent, tangentAngles;
+				ghostRoute->segments[lookAheadIndex].nextCheckpoint != nextCheckpoint ) {
+				vec3_t outgoingTangent, tangentAngles, bodyForward;
 				int outgoingSegment = bestIndex + 1;
-				float targetTurn, bypassBlend;
+				float targetForwardDistance, bypassBlend;
+				AngleVectors( bs->cur_ps.viewangles, bodyForward, NULL, NULL );
+				bodyForward[2] = 0.0f;
+				VectorNormalize( bodyForward );
+				targetForwardDistance = DotProduct( dir, bodyForward );
 				VectorCopy( guidance.tangent, outgoingTangent );
 				/* If the checkpoint's old target is behind the car, continue on
 				 * the first route segment after that gate. The incoming tangent
@@ -4583,19 +4586,20 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 						VectorCopy( guidance.tangent, outgoingTangent );
 					}
 				}
-				vectoangles( outgoingTangent, tangentAngles );
-				// Guidance pins its target to a gate until the game registers the
-				// crossing. Blend toward the outgoing route tangent as the gate
-				// target moves behind the car; a hard 90-degree switch made the
-				// requested heading jump across consecutive bot ticks.
-				targetTurn = fabs( AngleSubtract( angles[YAW], bs->cur_ps.viewangles[YAW] ) );
-				bypassBlend = Com_Clamp( 0.0f, 1.0f, ( targetTurn - 60.0f ) / 80.0f );
-				angles[YAW] = AngleNormalize360( angles[YAW] +
-					AngleSubtract( tangentAngles[YAW], angles[YAW] ) * bypassBlend );
-				gateTargetBypass = qtrue;
-				if ( !recoveryEvent[0] ) {
-					recoveryEvent = "gate_target_blend";
-					recoveryTrigger = "target_turn_transition";
+				if ( targetForwardDistance < 180.0f ) {
+					vectoangles( outgoingTangent, tangentAngles );
+					// Guidance pins its target at the gate until the game confirms
+					// the crossing. Blend by longitudinal distance to the gate so
+					// the steering target cannot switch back and forth on a yaw threshold.
+					bypassBlend = Com_Clamp( 0.0f, 1.0f,
+						( 180.0f - targetForwardDistance ) / 180.0f );
+					angles[YAW] = AngleNormalize360( angles[YAW] +
+						AngleSubtract( tangentAngles[YAW], angles[YAW] ) * bypassBlend );
+					gateTargetBypass = qtrue;
+					if ( !recoveryEvent[0] ) {
+						recoveryEvent = "gate_target_blend";
+						recoveryTrigger = "target_near_gate";
+					}
 				}
 			}
 			{
@@ -4603,7 +4607,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 
 				if ( speedError > accelerationDeadband ) {
 					throttleChange = 1;
-				} else if ( speedError < -140.0f ) {
+				} else if ( speedError < -80.0f ) {
 					throttleChange = -1;
 				} else {
 					throttleChange = 0;
