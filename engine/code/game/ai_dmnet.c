@@ -829,7 +829,7 @@ static qboolean Bot_GhostLateralOffsetIsTrackClear( bot_state_t *bs, const ghost
 
 static qboolean Bot_GhostRouteAheadIsClear( bot_state_t *bs, const ghostBotRoute_t *route,
 	int startIndex, int endIndex, int *blockedWaypoint, int *blockedEntity,
-	int *blockedContents, float *blockedFraction ) {
+	int *blockedContents, float *blockedFraction, float *blockedNormalZ ) {
 	int i;
 	vec3_t mins, maxs, traceStart;
 	trace_t trace;
@@ -837,6 +837,7 @@ static qboolean Bot_GhostRouteAheadIsClear( bot_state_t *bs, const ghostBotRoute
 	if ( blockedEntity ) *blockedEntity = -1;
 	if ( blockedContents ) *blockedContents = 0;
 	if ( blockedFraction ) *blockedFraction = 1.0f;
+	if ( blockedNormalZ ) *blockedNormalZ = 0.0f;
 	if ( !bs || !route || !route->valid || startIndex < 0 || endIndex <= startIndex ||
 		endIndex >= route->numWaypoints ) {
 		return qfalse;
@@ -852,6 +853,7 @@ static qboolean Bot_GhostRouteAheadIsClear( bot_state_t *bs, const ghostBotRoute
 			if ( blockedEntity ) *blockedEntity = trace.entityNum;
 			if ( blockedContents ) *blockedContents = trace.contents;
 			if ( blockedFraction ) *blockedFraction = trace.fraction;
+			if ( blockedNormalZ ) *blockedNormalZ = trace.plane.normal[2];
 			return qfalse;
 		}
 		VectorCopy( route->waypoints[i].origin, traceStart );
@@ -4807,12 +4809,14 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 				int probeBlockEntity = -1;
 				int probeBlockContents = 0;
 				float probeBlockFraction = 1.0f;
+				float probeBlockNormalZ = 0.0f;
 				float routeYaw = angles[YAW];
 				throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
 				if ( intendedThrottle >= 0 && throttleChange < 0 &&
 					recoveryState == BOT_RECOVERY_NONE && !collisionRiskActive ) {
 					if ( Bot_GhostRouteAheadIsClear( bs, ghostRoute, bestIndex, lookAheadIndex,
-						&probeBlockWaypoint, &probeBlockEntity, &probeBlockContents, &probeBlockFraction ) ) {
+						&probeBlockWaypoint, &probeBlockEntity, &probeBlockContents, &probeBlockFraction,
+						&probeBlockNormalZ ) ) {
 						throttleChange = intendedThrottle;
 						recoveryEvent = "obstacle_probe_ignored";
 						recoveryTrigger = "route_corridor_clear";
@@ -4820,9 +4824,10 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 						recoveryEvent = "obstacle_probe_brake";
 						if ( probeBlockWaypoint >= 0 ) {
 							Com_sprintf( routeProbeTrigger, sizeof( routeProbeTrigger ),
-								"route_%s_e%d_wp%d_f%.2f_c%d",
+								"route_%s_e%d_wp%d_f%.2f_c%d_nz%.2f",
 								( probeBlockContents & CONTENTS_BODY ) ? "body" : "solid",
-								probeBlockEntity, probeBlockWaypoint, probeBlockFraction, probeBlockContents );
+								probeBlockEntity, probeBlockWaypoint, probeBlockFraction,
+								probeBlockContents, probeBlockNormalZ );
 							recoveryTrigger = routeProbeTrigger;
 						} else {
 							recoveryTrigger = "route_probe_invalid";
