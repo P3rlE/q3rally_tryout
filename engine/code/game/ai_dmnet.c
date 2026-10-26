@@ -828,10 +828,15 @@ static qboolean Bot_GhostLateralOffsetIsTrackClear( bot_state_t *bs, const ghost
 }
 
 static qboolean Bot_GhostRouteAheadIsClear( bot_state_t *bs, const ghostBotRoute_t *route,
-	int startIndex, int endIndex ) {
+	int startIndex, int endIndex, int *blockedWaypoint, int *blockedEntity,
+	int *blockedContents, float *blockedFraction ) {
 	int i;
 	vec3_t mins, maxs, traceStart;
 	trace_t trace;
+	if ( blockedWaypoint ) *blockedWaypoint = -1;
+	if ( blockedEntity ) *blockedEntity = -1;
+	if ( blockedContents ) *blockedContents = 0;
+	if ( blockedFraction ) *blockedFraction = 1.0f;
 	if ( !bs || !route || !route->valid || startIndex < 0 || endIndex <= startIndex ||
 		endIndex >= route->numWaypoints ) {
 		return qfalse;
@@ -843,6 +848,10 @@ static qboolean Bot_GhostRouteAheadIsClear( bot_state_t *bs, const ghostBotRoute
 		trap_Trace( &trace, traceStart, mins, maxs, route->waypoints[i].origin,
 			bs->entitynum, MASK_PLAYERSOLID );
 		if ( trace.startsolid || trace.allsolid || trace.fraction < 0.99f ) {
+			if ( blockedWaypoint ) *blockedWaypoint = i;
+			if ( blockedEntity ) *blockedEntity = trace.entityNum;
+			if ( blockedContents ) *blockedContents = trace.contents;
+			if ( blockedFraction ) *blockedFraction = trace.fraction;
 			return qfalse;
 		}
 		VectorCopy( route->waypoints[i].origin, traceStart );
@@ -4197,6 +4206,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 	qboolean lcsPredictedConflict = qfalse;
 	const char *recoveryEvent = "";
 	const char *recoveryTrigger = "";
+	char routeProbeTrigger[80] = "";
 	qboolean forwardLaunchPhase = qfalse;
 	qboolean raceStartGateActive = qfalse;
 	qboolean spawnInitPhase = qfalse;
@@ -4793,17 +4803,30 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 
 			if ( !emergencyResetPerformed ) {
 				int intendedThrottle = throttleChange;
+				int probeBlockWaypoint = -1;
+				int probeBlockEntity = -1;
+				int probeBlockContents = 0;
+				float probeBlockFraction = 1.0f;
 				float routeYaw = angles[YAW];
 				throttleChange = Bot_CheckForObstacles( bs, angles, throttleChange );
 				if ( intendedThrottle >= 0 && throttleChange < 0 &&
 					recoveryState == BOT_RECOVERY_NONE && !collisionRiskActive ) {
-					if ( Bot_GhostRouteAheadIsClear( bs, ghostRoute, bestIndex, lookAheadIndex ) ) {
+					if ( Bot_GhostRouteAheadIsClear( bs, ghostRoute, bestIndex, lookAheadIndex,
+						&probeBlockWaypoint, &probeBlockEntity, &probeBlockContents, &probeBlockFraction ) ) {
 						throttleChange = intendedThrottle;
 						recoveryEvent = "obstacle_probe_ignored";
 						recoveryTrigger = "route_corridor_clear";
 					} else {
 						recoveryEvent = "obstacle_probe_brake";
-						recoveryTrigger = "center_probe_blocked";
+						if ( probeBlockWaypoint >= 0 ) {
+							Com_sprintf( routeProbeTrigger, sizeof( routeProbeTrigger ),
+								"route_%s_e%d_wp%d_f%.2f_c%d",
+								( probeBlockContents & CONTENTS_BODY ) ? "body" : "solid",
+								probeBlockEntity, probeBlockWaypoint, probeBlockFraction, probeBlockContents );
+							recoveryTrigger = routeProbeTrigger;
+						} else {
+							recoveryTrigger = "route_probe_invalid";
+						}
 					}
 				}
 				// The route already describes a driveable bend. Side probes can see
