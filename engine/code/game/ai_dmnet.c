@@ -703,6 +703,13 @@ static void Bot_PredictCollisionRisk( bot_state_t *bs, const vec3_t routeForward
 		if ( !otherEnt->inuse || !otherEnt->client || otherEnt->health <= 0 ) {
 			continue;
 		}
+		/* A race observer is not a car on the track. Counting a spectator camera
+		 * here can keep collision avoidance active for the entire lap and can
+		 * even accumulate the stuck-collision counter at a slow corner. */
+		if ( otherEnt->client->sess.sessionTeam == TEAM_SPECTATOR ||
+			otherEnt->client->ps.pm_type == PM_SPECTATOR || isRaceObserver( i ) ) {
+			continue;
+		}
 
 		VectorSubtract( otherEnt->client->ps.origin, bs->cur_ps.origin, toOther );
 		ahead = DotProduct( toOther, routeForward );
