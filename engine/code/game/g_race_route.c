@@ -2,7 +2,6 @@
 #include "g_local.h"
 
 static botRaceRoute_t s_mapRoute;
-static qboolean s_mapRouteBuilt;
 static qboolean s_bezierRouteBuilt;
 static qboolean s_selectionLogged;
 
@@ -15,7 +14,6 @@ static float RaceClamp( float value, float low, float high ) {
 
 void G_RaceRoute_Reset( void ) {
 	Com_Memset( &s_mapRoute, 0, sizeof( s_mapRoute ) );
-	s_mapRouteBuilt = qfalse;
 	s_bezierRouteBuilt = qfalse;
 	s_selectionLogged = qfalse;
 }
@@ -99,98 +97,122 @@ qboolean G_RaceRoute_ValidateGhost( ghostBotRoute_t *route ) {
 	return qtrue;
 }
 
-static qboolean RaceImportMap( const botPathRoute_t *path ) {
-	int i, edgeCount, time = 0, startNode = 0, nodeCount;
-	float width = 0.0f;
-	if ( !path || !path->valid || path->numNodes < 2 ) return qfalse;
-	Com_Memset( &s_mapRoute, 0, sizeof( s_mapRoute ) );
-	s_mapRoute.closed = !level.sprintTrack;
-	s_mapRoute.fromMapPath = qtrue;
-	Q_strncpyz( s_mapRoute.path, path->name, sizeof( s_mapRoute.path ) );
-	nodeCount = path->numNodes;
-	if ( s_mapRoute.closed && Distance( path->nodes[0].origin, path->nodes[nodeCount - 1].origin ) <= 0.5f ) nodeCount--;
-	if ( nodeCount < 2 ) return qfalse;
-	// Authored loops can start anywhere. Normalize their seam to just after finish.
-	if ( s_mapRoute.closed && level.finishEnt ) {
-		for ( i = 0; i < nodeCount; i++ ) {
-			float fraction;
-			if ( RaceCrossesGate( path->nodes[i].origin, path->nodes[( i + 1 ) % nodeCount].origin,
-				level.finishEnt, 0.0f, &fraction ) ) { startNode = ( i + 1 ) % nodeCount; break; }
-		}
+static void RaceBezierControls( const vec3_t p0, const vec3_t h0,
+	const vec3_t p3, const vec3_t h3, qboolean reversed, vec3_t c1, vec3_t c2 ) {
+	if ( reversed ) {
+		VectorMA( p0, -1.0f, h0, c1 );
+		VectorAdd( p3, h3, c2 );
+	} else {
+		VectorAdd( p0, h0, c1 );
+		VectorMA( p3, -1.0f, h3, c2 );
 	}
-	edgeCount = s_mapRoute.closed ? nodeCount : nodeCount - 1;
-	for ( i = 0; i < edgeCount; i++ ) {
-		int j, from = ( startNode + i ) % nodeCount, end = ( from + 1 ) % nodeCount;
-		float length = Distance( path->nodes[from].origin, path->nodes[end].origin );
-		int steps = (int)( length / 96.0f ) + 1;
-		float speed = from < path->numSegments ? path->segments[from].recommendedSpeed : path->segments[0].recommendedSpeed;
-		speed = RaceClamp( speed, 150.0f, 2600.0f );
-		if ( s_mapRoute.numWaypoints + steps + 1 > MAX_GHOST_BOT_WAYPOINTS ) return qfalse;
-		if ( width <= 0.0f || path->nodes[from].effectiveWidth < width ) width = path->nodes[from].effectiveWidth;
-		for ( j = 0; j < steps; j++ ) {
-			ghostWaypoint_t *wp = &s_mapRoute.waypoints[s_mapRoute.numWaypoints];
-			ghostRouteSegment_t *seg = &s_mapRoute.segments[s_mapRoute.numWaypoints++];
-			int family, axis;
-			for ( axis = 0; axis < 3; axis++ ) wp->origin[axis] = path->nodes[from].origin[axis] +
-				( path->nodes[end].origin[axis] - path->nodes[from].origin[axis] ) * j / steps;
-			wp->timeOffset = time;
-			time += (int)( 1000.0f * length / ( speed * steps ) ) + 1;
-			seg->recommendedSpeed = speed;
-			for ( family = 0; family < GHOST_LINE_FAMILY_COUNT; family++ ) seg->lines[family].speedScale = 1.0f;
-		}
+}
+
+static void RaceBezierEvaluate( const vec3_t p0, const vec3_t h0,
+	const vec3_t p3, const vec3_t h3, qboolean reversed, float t,
+	vec3_t point, vec3_t derivative, vec3_t secondDerivative ) {
+	vec3_t c1, c2;
+	float u = 1.0f - t;
+	RaceBezierControls( p0, h0, p3, h3, reversed, c1, c2 );
+	if ( point ) {
+		VectorScale( p0, u * u * u, point );
+		VectorMA( point, 3.0f * t * u * u, c1, point );
+		VectorMA( point, 3.0f * t * t * u, c2, point );
+		VectorMA( point, t * t * t, p3, point );
 	}
-	VectorCopy( path->nodes[s_mapRoute.closed ? startNode : path->numNodes - 1].origin,
-		s_mapRoute.waypoints[s_mapRoute.numWaypoints].origin );
-	s_mapRoute.waypoints[s_mapRoute.numWaypoints++].timeOffset = time;
-	s_mapRoute.numSegments = s_mapRoute.numWaypoints - 1;
-	s_mapRoute.corridorWidth = width;
-	s_mapRoute.valid = qtrue;
-	if ( !G_RaceRoute_ValidateGhost( &s_mapRoute ) ) {
-		s_mapRoute.valid = qfalse;
-		return qfalse;
+	if ( derivative ) {
+		VectorScale( p0, -3.0f * u * u, derivative );
+		VectorMA( derivative, 3.0f * u * u - 6.0f * t * u, c1, derivative );
+		VectorMA( derivative, 6.0f * t * u - 3.0f * t * t, c2, derivative );
+		VectorMA( derivative, 3.0f * t * t, p3, derivative );
 	}
-	return qtrue;
+	if ( secondDerivative ) {
+		VectorScale( p0, 6.0f * u, secondDerivative );
+		VectorMA( secondDerivative, -12.0f * u + 6.0f * t, c1, secondDerivative );
+		VectorMA( secondDerivative, 6.0f * u - 12.0f * t, c2, secondDerivative );
+		VectorMA( secondDerivative, 6.0f * t, p3, secondDerivative );
+	}
 }
 
 static qboolean RaceImportBezier( void ) {
 	int checkpointCount = level.numCheckpoints;
-	int segmentIndex, sampleCount = 0, time = 0;
+	int segmentIndex, segmentCount, sampleCount = 0, time = 0;
 	int handleCount = 0;
-	qboolean hasHandles = qfalse;
-	if ( level.sprintTrack || checkpointCount < 3 || checkpointCount > MAX_GHOST_BOT_WAYPOINTS / 8 ) {
-		G_Printf( "G_RaceRoute: Bezier unavailable (sprint=%d checkpoints=%d)\n", level.sprintTrack, checkpointCount );
+	qboolean reversed = ( g_trackReversed.integer && level.trackIsReversable ) ? qtrue : qfalse;
+	if ( checkpointCount < ( level.sprintTrack ? 1 : 2 ) || checkpointCount > MAX_GHOST_BOT_WAYPOINTS / 8 ) {
+		G_Printf( "G_RaceRoute: BPD unavailable (sprint=%d checkpoints=%d)\n", level.sprintTrack, checkpointCount );
+		return qfalse;
+	}
+	if ( level.sprintTrack && ( !level.startEnt || !level.finishEnt ) ) {
+		G_Printf( "G_RaceRoute: BPD unavailable (sprint endpoints not initialized)\n" );
 		return qfalse;
 	}
 	for ( segmentIndex = 0; segmentIndex < checkpointCount; segmentIndex++ ) {
 		if ( !level.checkpoints[segmentIndex] || !level.checkpoints[segmentIndex]->inuse ) {
-			G_Printf( "G_RaceRoute: Bezier unavailable (checkpoint slot %d missing)\n", segmentIndex + 1 );
+			G_Printf( "G_RaceRoute: BPD unavailable (checkpoint slot %d missing)\n", segmentIndex + 1 );
 			return qfalse;
 		}
-		if ( VectorLengthSquared( level.checkpoints[segmentIndex]->s.angles2 ) > 0.01f ) {
-			hasHandles = qtrue;
-			handleCount++;
+		if ( !level.checkpoints[segmentIndex]->bpdLoaded ) {
+			G_Printf( "G_RaceRoute: BPD unavailable (checkpoint slot %d has no BPD entry)\n", segmentIndex + 1 );
+			return qfalse;
 		}
+		if ( VectorLengthSquared( level.checkpoints[segmentIndex]->s.angles2 ) > 0.01f ) handleCount++;
 	}
-	if ( !hasHandles ) {
-		G_Printf( "G_RaceRoute: Bezier unavailable (no loaded checkpoint handles)\n" );
-		return qfalse;
-	}
-	G_Printf( "G_RaceRoute: importing Bezier handles=%d/%d\n", handleCount, checkpointCount );
+	G_Printf( "G_RaceRoute: importing BPD handles=%d/%d reversed=%d\n", handleCount, checkpointCount, reversed );
 
 	Com_Memset( &s_mapRoute, 0, sizeof( s_mapRoute ) );
-	s_mapRoute.closed = qtrue;
+	s_mapRoute.closed = level.sprintTrack ? qfalse : qtrue;
 	s_mapRoute.fromBezierPath = qtrue;
-	Q_strncpyz( s_mapRoute.path, "checkpoint_bezier", sizeof( s_mapRoute.path ) );
-	for ( segmentIndex = 0; segmentIndex < checkpointCount; segmentIndex++ ) {
-		int startIndex = ( checkpointCount - 1 + segmentIndex ) % checkpointCount;
-		int endIndex = ( startIndex + 1 ) % checkpointCount;
-		gentity_t *start = level.checkpoints[startIndex];
-		gentity_t *end = level.checkpoints[endIndex];
-		vec3_t previous = { 0.0f, 0.0f, 0.0f }, point, nextPoint;
+	Q_strncpyz( s_mapRoute.path, "checkpoint_bpd", sizeof( s_mapRoute.path ) );
+	segmentCount = level.sprintTrack ? checkpointCount + 1 : checkpointCount;
+	for ( segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++ ) {
+		gentity_t *start, *end;
+		vec3_t p0, h0, p3, h3;
+		vec3_t previous, point, nextPoint;
 		float approximateLength = 0.0f;
 		int step, steps;
+		if ( level.sprintTrack ) {
+			if ( segmentIndex == 0 ) {
+				start = reversed ? level.finishEnt : level.startEnt;
+				end = level.checkpoints[0];
+				VectorCopy( start->s.origin2, p0 );
+				VectorCopy( end->s.origin2, p3 );
+				VectorSubtract( p3, p0, h0 );
+				VectorScale( h0, ( reversed ? -1.0f : 1.0f ) / 3.0f, h0 );
+				VectorCopy( end->s.angles2, h3 );
+			} else if ( segmentIndex == checkpointCount ) {
+				start = level.checkpoints[checkpointCount - 1];
+				end = reversed ? level.startEnt : level.finishEnt;
+				VectorCopy( start->s.origin2, p0 );
+				VectorCopy( end->s.origin2, p3 );
+				VectorCopy( start->s.angles2, h0 );
+				VectorSubtract( p3, p0, h3 );
+				VectorScale( h3, ( reversed ? -1.0f : 1.0f ) / 3.0f, h3 );
+			} else {
+				start = level.checkpoints[segmentIndex - 1];
+				end = level.checkpoints[segmentIndex];
+				VectorCopy( start->s.origin2, p0 );
+				VectorCopy( start->s.angles2, h0 );
+				VectorCopy( end->s.origin2, p3 );
+				VectorCopy( end->s.angles2, h3 );
+			}
+		} else {
+			int startIndex = ( checkpointCount - 1 + segmentIndex ) % checkpointCount;
+			int endIndex = ( startIndex + 1 ) % checkpointCount;
+			start = level.checkpoints[startIndex];
+			end = level.checkpoints[endIndex];
+			VectorCopy( start->s.origin2, p0 );
+			VectorCopy( start->s.angles2, h0 );
+			VectorCopy( end->s.origin2, p3 );
+			VectorCopy( end->s.angles2, h3 );
+		}
+		if ( reversed ) {
+			VectorScale( h0, -1.0f, h0 );
+			VectorScale( h3, -1.0f, h3 );
+		}
+		RaceBezierEvaluate( p0, h0, p3, h3, qfalse, 0.0f, previous, NULL, NULL );
 		for ( step = 0; step <= 12; step++ ) {
-			G_GetPointOnCurveBetweenCheckpoints( start, end, step / 12.0f, point );
+			RaceBezierEvaluate( p0, h0, p3, h3, qfalse, step / 12.0f, point, NULL, NULL );
 			if ( step > 0 ) {
 				VectorSubtract( point, previous, nextPoint );
 				approximateLength += VectorLength( nextPoint );
@@ -211,14 +233,13 @@ static qboolean RaceImportBezier( void ) {
 			ghostWaypoint_t *waypoint = &s_mapRoute.waypoints[sampleCount];
 			ghostRouteSegment_t *segment = &s_mapRoute.segments[sampleCount];
 
-			G_GetPointOnCurveBetweenCheckpoints( start, end, fraction, waypoint->origin );
+			RaceBezierEvaluate( p0, h0, p3, h3, qfalse, fraction, waypoint->origin, NULL, NULL );
 			waypoint->timeOffset = time;
 			waypoint->required = ( sampleCount == 0 ) ? qtrue : qfalse;
-			G_GetPointOnCurveBetweenCheckpoints( start, end, (float)( step + 1 ) / steps, nextPoint );
+			RaceBezierEvaluate( p0, h0, p3, h3, qfalse, (float)( step + 1 ) / steps, nextPoint, NULL, NULL );
 			VectorSubtract( nextPoint, waypoint->origin, chord );
 			chordLength = VectorLength( chord );
-			G_GetDervOnCurveBetweenCheckpoints( start, end, midpoint, delta );
-			G_Get2ndDervOnCurveBetweenCheckpoints( start, end, midpoint, alpha );
+			RaceBezierEvaluate( p0, h0, p3, h3, qfalse, midpoint, NULL, delta, alpha );
 			CrossProduct( delta, alpha, cross );
 			derivativeLength = VectorLength( delta );
 			curvature = derivativeLength > 0.001f ? VectorLength( cross ) /
@@ -231,7 +252,12 @@ static qboolean RaceImportBezier( void ) {
 			sampleCount++;
 		}
 	}
-	VectorCopy( s_mapRoute.waypoints[0].origin, s_mapRoute.waypoints[sampleCount].origin );
+	if ( level.sprintTrack ) {
+		gentity_t *finish = reversed ? level.startEnt : level.finishEnt;
+		VectorCopy( finish->s.origin2, s_mapRoute.waypoints[sampleCount].origin );
+	} else {
+		VectorCopy( s_mapRoute.waypoints[0].origin, s_mapRoute.waypoints[sampleCount].origin );
+	}
 	s_mapRoute.waypoints[sampleCount].timeOffset = time;
 	s_mapRoute.waypoints[sampleCount].required = qtrue;
 	s_mapRoute.numWaypoints = sampleCount + 1;
@@ -239,37 +265,23 @@ static qboolean RaceImportBezier( void ) {
 	s_mapRoute.valid = qtrue;
 	if ( !G_RaceRoute_ValidateGhost( &s_mapRoute ) ) {
 		s_mapRoute.valid = qfalse;
-		G_Printf( "G_RaceRoute: Bezier rejected (route misses checkpoint order)\n" );
+		G_Printf( "G_RaceRoute: BPD rejected (route misses checkpoint order)\n" );
 		return qfalse;
 	}
-	G_Printf( "G_RaceRoute: Bezier ready waypoints=%d\n", s_mapRoute.numWaypoints );
+	G_Printf( "G_RaceRoute: BPD route ready waypoints=%d\n", s_mapRoute.numWaypoints );
 	return qtrue;
 }
 
 qboolean G_RaceRoute_Get( const botRaceRoute_t **outRoute ) {
-	const ghostBotRoute_t *ghost = NULL;
-	int i;
 	if ( !outRoute ) return qfalse;
 	*outRoute = NULL;
-	if ( G_Ghost_GetBotRoute( &ghost ) && ghost ) {
-		*outRoute = ghost;
-	} else {
-		if ( !s_mapRouteBuilt ) {
-			s_mapRouteBuilt = qtrue;
-			// Registration is dense. A missing path_0 does not turn path_2 into an aggressive line.
-			for ( i = 0; i < G_BotPath_GetRouteCount(); i++ ) {
-				if ( RaceImportMap( G_BotPath_GetRouteByIndex( i ) ) ) break;
-			}
-		}
-		if ( !s_mapRoute.valid && !s_bezierRouteBuilt ) {
-			s_bezierRouteBuilt = qtrue;
-			RaceImportBezier();
-		}
-		if ( s_mapRoute.valid ) *outRoute = &s_mapRoute;
+	if ( !s_bezierRouteBuilt ) {
+		s_bezierRouteBuilt = qtrue;
+		RaceImportBezier();
 	}
+	if ( s_mapRoute.valid ) *outRoute = &s_mapRoute;
 	if ( !s_selectionLogged ) {
-		G_Printf( "G_RaceRoute: source=%s route=%s\n", *outRoute ?
-			( ( *outRoute )->fromBezierPath ? "bezier" : ( ( *outRoute )->fromMapPath ? "map" : "ghost" ) ) : "checkpoint",
+		G_Printf( "G_RaceRoute: source=%s route=%s\n", *outRoute ? "bpd" : "checkpoint",
 			*outRoute ? ( *outRoute )->path : "fallback" );
 		s_selectionLogged = qtrue;
 	}

@@ -4862,7 +4862,7 @@ int AINode_MoveToNextCheckpoint( bot_state_t *bs )
 			Bot_DebugExportDmnetTick( bs, bestIndex, speed, actualSpeed, decisionState, collisionRiskActive,
 				recoveryState, previousRecoveryState, recoveryEvent, recoveryTrigger, routeDistanceFromCenter,
 				-1, bestIndex, lookAheadIndex,
-				ghostRoute->fromBezierPath ? "bezier" : ( ghostRoute->fromMapPath ? "map" : "ghost" ),
+				ghostRoute->fromBezierPath ? "bpd" : ( ghostRoute->fromMapPath ? "map" : "ghost" ),
 				ghostRoute->path, ( ghostRoute->fromMapPath || ghostRoute->fromBezierPath ) ? "" : ghostRoute->path, qtrue,
 				0, 1, 0, forwardLaunchPhase ? 1 : 0,
 				objectiveState, kothOwner, kothContested, throttleChange, routeLateralSpeed );

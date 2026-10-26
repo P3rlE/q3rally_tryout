@@ -83,9 +83,10 @@ void loadBezierPathFile(char *filename) {
 			if (!ent->inuse) {
 				continue;
 			}
-			if (ent->s.eType == ET_CHECKPOINT && ent->number == i) {
+			if (ent->s.eType == ET_CHECKPOINT && ent->bpdIndex == i) {
 				VectorCopy(pos, ent->s.origin2);
 				VectorCopy(dir, ent->s.angles2);
+				ent->bpdLoaded = qtrue;
 				break;
 			}
 			ent = NULL;

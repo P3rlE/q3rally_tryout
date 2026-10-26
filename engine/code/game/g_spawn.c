@@ -985,6 +985,10 @@ void LoadBezierPathFile_Think(gentity_t *ent) {
 	Q_strncpyz(mapname_copy, mapname, sizeof(mapname_copy));
 	COM_StripExtension(COM_SkipPath(mapname_copy), basemap, sizeof(basemap));
 	loadBezierPathFile(va("maps/%s.bpd", basemap));
+	/* The checkpoint setup thinks run at 100 ms. Build both consumers only
+	   after those entities have their final checkpoint order and BPD handles. */
+	G_RaceRoute_Reset();
+	G_RallyIntroRoute_Init();
 
 	G_FreeEntity(ent);
 }
@@ -1131,7 +1135,7 @@ void SP_worldspawn( void ) {
 
 		thinker = G_Spawn();
 		thinker->think = LoadBezierPathFile_Think;
-		thinker->nextthink = level.time + (FRAMETIME * 2);
+		thinker->nextthink = level.time + (FRAMETIME * 10);
 	}
 // END
 }
@@ -1177,7 +1181,6 @@ void G_SpawnEntitiesFromString( void ) {
 		G_SpawnGEntityFromSpawnVars();
 	}	
 
-	G_RallyIntroRoute_Init();
 	G_BuildBotPathRoutesFromSpawnNodes();
 
 // make sure Domination maps have a 3rd sigil

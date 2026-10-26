@@ -118,6 +118,8 @@ struct gentity_s {
 	struct gclient_s	*client;			// NULL if not a client
 
 	qboolean	inuse;
+	qboolean	bpdLoaded;             // this checkpoint was populated from the map's BPD file
+	int			bpdIndex;               // stable authored checkpoint id; unlike number, not reversed at race setup
 
 	char		*classname;			// set in QuakeEd
 	int			spawnflags;			// set in QuakeEd
@@ -370,7 +372,7 @@ typedef struct ghostBotRoute_s {
 	ghostRouteSegment_t segments[MAX_GHOST_BOT_WAYPOINTS - 1];
 } ghostBotRoute_t;
 
-// Both recorded laps and authored paths feed the same racing guidance/recovery.
+// The active BPD path uses the sampled-route shape also used by Ghost playback.
 typedef ghostBotRoute_t botRaceRoute_t;
 typedef struct {
 	int segment;
@@ -1383,6 +1385,7 @@ extern	vmCvar_t	g_trackLength;
 extern	vmCvar_t	g_developer;
 extern	vmCvar_t	g_rallyReadyCheck;
 extern	vmCvar_t	g_derbyMinPlayers;
+extern	vmCvar_t	g_rallyIntroEnabled;
 extern	vmCvar_t	g_rallyIntroCamClients;
 extern	vmCvar_t	g_debugIntroCam;
 void G_RallyUpdateAllTeamTimes( void );

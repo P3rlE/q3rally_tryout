@@ -115,7 +115,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // Autoball shares the KOTH slot; both modes never run at the same time.
 // "state kickoffEnd ballEntity goalTeam scorerClient goalSpeedKmh"
 #define CS_AUTOBALLSTATUS               CS_KOTHSTATUS
-#define CS_INTRO_ROUTE                  33  // packaged Ghost route path, preview duration, and direction
+#define CS_INTRO_ROUTE                  33  // BPD path, preview duration, direction, and pending-start flag
 // Q3Rally Code END
 
 #define CS_MODELS                               34

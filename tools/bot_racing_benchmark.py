@@ -27,7 +27,7 @@ def main():
     parser.add_argument('--bot-turbo', action='store_true',
                         help='allow racing bots to use NOS; disabled by default for human-time comparisons')
     parser.add_argument('--skip-intro', action='store_true',
-                        help='shadow the packaged intro-camera route so headless servers can start a race')
+                        help='disable the race intro while retaining BPD bot guidance')
     args = parser.parse_args()
     if not re.fullmatch(r'[A-Za-z0-9_-]+', args.run) or not re.fullmatch(r'[A-Za-z0-9_]+', args.map):
         parser.error('Use plain map/run names')
@@ -39,10 +39,6 @@ def main():
     game = home / 'baseq3r'
     game.mkdir(parents=True, exist_ok=False)
     shutil.copy2(build / 'baseq3r/qagamex86_64.so', game / 'qagamex86_64.so')
-    if args.skip_intro:
-        intro_routes = game / 'intro_routes'
-        intro_routes.mkdir()
-        (intro_routes / f'{args.map}_tl1_rev0.route').write_text('')
     ghosts = {}
     if args.ghost_dir:
         (game / 'ghosts').mkdir()
@@ -65,6 +61,7 @@ def main():
         f'set bot_thinktime {args.bot_thinktime}', 'set g_synchronousClients 1', 'set g_doWarmup 0',
         'set g_log match.log', 'set g_logsync 1', 'set laplimit 100', 'set timelimit 0',
         'set g_aiDmnetDebugExport 2', 'set g_aiDmnetDebugExportPath racing.jsonl',
+        f'set g_rallyIntroEnabled {0 if args.skip_intro else 1}',
         'set g_rallyIntroCamClients 0', f'devmap {args.map}', 'timescale 1',
         *[f'addbot {name} 5' for name in names], '',
     ])

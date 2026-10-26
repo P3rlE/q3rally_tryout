@@ -2552,10 +2552,10 @@ void SpectatorClientEndFrame( gentity_t *ent ) {
 
 	/*
 	 * Camera path selection order (race/spectator clients):
-	 * 1) Packaged Ghost route intro (G_HoldIntroCamView): active only while
+	 * 1) BPD route intro (G_HoldIntroCamView): active only while
 	 *    level.raceState == RACE_STATE_INTRO_CAM and raceIntroEndTime > now.
 	 *    While active, the server preserves the view handover and returns early;
-	 *    cgame supplies the camera transform from the route.
+	 *    cgame supplies the camera transform from the map's BPD route.
 	 * 2) Normal spectator paths:
 	 *    - SPECTATOR_FOLLOW: chase target player state.
 	 *    - SPECTATOR_OBSERVE: observer spot + optional tracking/zoom.

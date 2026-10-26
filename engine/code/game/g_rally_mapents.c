@@ -787,6 +787,9 @@ void Think_StartFinish( gentity_t *self ){
         // slot [numCheckpoints-1].  Setting it here also fixes Think_Finish (A2B maps)
         // which calls this function before doing its own self->number++ for the finish entity.
         self->number = level.numCheckpoints;
+	if ( self->touch == Touch_StartFinish ) {
+		self->bpdIndex = level.numCheckpoints;
+	}
 
         memset( level.checkpoints, 0, sizeof( level.checkpoints ) );
         memset( level.cpDist, 0, sizeof( level.cpDist ) );
@@ -1022,6 +1025,7 @@ void Think_Checkpoint( gentity_t *self ){
 //	spawnflag 1 enables sound, 2 enables messages, 3 enables both; no flags defaults to sound, 4 is silent
 void SP_rally_checkpoint( gentity_t *ent ) {
 	trap_SetBrushModel( ent, ent->model );
+	ent->bpdIndex = ent->number;
 
 // STONELANCE - April 23, 2002 temp for testing bezier curve stuff
 	ent->r.svFlags |= SVF_BROADCAST;

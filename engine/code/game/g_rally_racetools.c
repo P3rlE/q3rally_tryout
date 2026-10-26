@@ -650,8 +650,8 @@ void RallyStarter_Think( gentity_t *ent ){
 				count, g_derbyMinPlayers.integer) );
 			return;
 		}
-		/* Intro is now triggered early (before the 7500ms grid guard) if a
-		   packaged route exists. If INTRO_CAM is active, the expiry block below
+		/* Intro is triggered early (before the 7500ms grid guard) if a valid
+		   BPD route exists. If INTRO_CAM is active, the expiry block below
 		   handles the handover. */
 		if ( level.raceState == RACE_STATE_INTRO_CAM ) {
 			/* waiting for intro to finish */
