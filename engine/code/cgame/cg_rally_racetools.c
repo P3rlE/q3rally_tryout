@@ -1885,6 +1885,25 @@ void CG_NewLapTime( int client, int lap, int time ) {
 	cent->startLapTime = time;
 }
 
+/*
+=================
+CG_RaceLapStart
+
+Sprint start gates establish the lap timer without completing a lap.
+=================
+*/
+void CG_RaceLapStart( int client, int time ) {
+	centity_t *cent;
+
+	if ( client < 0 || client >= MAX_CLIENTS ) {
+		return;
+	}
+
+	cent = &cg_entities[client];
+	cent->lastStartLapTime = cent->startLapTime;
+	cent->startLapTime = time;
+}
+
 void CG_FinishedRace( int client, int time ) {
 	centity_t	*cent;
 	char		*t;

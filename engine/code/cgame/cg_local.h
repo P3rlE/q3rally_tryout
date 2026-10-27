@@ -2352,6 +2352,7 @@ qboolean CG_InsideBox( const vec3_t mins, const vec3_t maxs, const vec3_t pos );
 // cg_rally_race_tools.c
 //
 void CG_NewLapTime( int client, int lap, int time );
+void CG_RaceLapStart( int client, int time );
 void CG_RecordRaceSplit( int client, int lap, int checkpoint, int time );
 qboolean CG_GetRaceSplitGap( int aheadClient, int behindClient, int *gapMs );
 qboolean CG_RaceOrderIsActive( void );

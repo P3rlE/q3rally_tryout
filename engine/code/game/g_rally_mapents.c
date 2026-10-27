@@ -456,7 +456,8 @@ void Touch_Start (gentity_t *self, gentity_t *other, trace_t *trace ){
         other->client->ps.stats[STAT_NEXT_CHECKPOINT] = other->number;
         other->client->ps.stats[STAT_FRAC_TO_NEXT_CHECKPOINT] = FLOAT2SHORT(0.1f);
 
-        trap_SendServerCommand( -1, va("newLapTime %i %i %i", other->s.clientNum, 1, level.time) );
+        /* A sprint start begins the timed lap; it is not a completed lap. */
+        trap_SendServerCommand( -1, va("raceLapStart %i %i", other->s.clientNum, level.time) );
 
         Rally_PlayerAnnouncerSound( self, other, G_SoundIndex("sound/rally/race/checkpoint.ogg") );
 }
@@ -787,9 +788,6 @@ void Think_StartFinish( gentity_t *self ){
         // slot [numCheckpoints-1].  Setting it here also fixes Think_Finish (A2B maps)
         // which calls this function before doing its own self->number++ for the finish entity.
         self->number = level.numCheckpoints;
-	if ( self->touch == Touch_StartFinish ) {
-		self->bpdIndex = level.numCheckpoints;
-	}
 
         memset( level.checkpoints, 0, sizeof( level.checkpoints ) );
         memset( level.cpDist, 0, sizeof( level.cpDist ) );

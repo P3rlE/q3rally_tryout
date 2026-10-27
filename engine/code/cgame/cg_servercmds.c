@@ -2150,6 +2150,14 @@ static void CG_ServerCommand( void ) {
 	       return;
        }
 
+	if ( !strcmp( cmd, "raceLapStart" ) ) {
+		int client = atoi( CG_Argv( 1 ) );
+		int time = atoi( CG_Argv( 2 ) );
+
+		CG_RaceLapStart( client, time );
+		return;
+	}
+
 	if ( !strcmp( cmd, "positions" ) ) {
 		CG_ParsePositions();
 		return;

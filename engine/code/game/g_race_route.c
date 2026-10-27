@@ -4,6 +4,7 @@
 static botRaceRoute_t s_mapRoute;
 static qboolean s_bezierRouteBuilt;
 static qboolean s_selectionLogged;
+static int s_routeRotateDurations[MAX_GHOST_BOT_WAYPOINTS];
 
 // Conservative longitudinal deceleration estimate for braking-distance planning.
 #define RACE_ROUTE_BRAKE_ACCEL 500.0f
@@ -64,6 +65,95 @@ static qboolean RaceCrossesGate( const vec3_t a, const vec3_t b,
 		}
 	}
 	return qfalse;
+}
+
+static void RaceReverseWaypoints( ghostWaypoint_t *values, int first, int last ) {
+	while ( first < last ) {
+		ghostWaypoint_t swap = values[first];
+		values[first] = values[last];
+		values[last] = swap;
+		first++;
+		last--;
+	}
+}
+
+static void RaceReverseSegments( ghostRouteSegment_t *values, int first, int last ) {
+	while ( first < last ) {
+		ghostRouteSegment_t swap = values[first];
+		values[first] = values[last];
+		values[last] = swap;
+		first++;
+		last--;
+	}
+}
+
+static void RaceReverseInts( int *values, int first, int last ) {
+	while ( first < last ) {
+		int swap = values[first];
+		values[first] = values[last];
+		values[last] = swap;
+		first++;
+		last--;
+	}
+}
+
+static void RaceRotateWaypointsLeft( ghostWaypoint_t *values, int count, int offset ) {
+	if ( offset <= 0 || offset >= count ) return;
+	RaceReverseWaypoints( values, 0, offset - 1 );
+	RaceReverseWaypoints( values, offset, count - 1 );
+	RaceReverseWaypoints( values, 0, count - 1 );
+}
+
+static void RaceRotateSegmentsLeft( ghostRouteSegment_t *values, int count, int offset ) {
+	if ( offset <= 0 || offset >= count ) return;
+	RaceReverseSegments( values, 0, offset - 1 );
+	RaceReverseSegments( values, offset, count - 1 );
+	RaceReverseSegments( values, 0, count - 1 );
+}
+
+static void RaceRotateIntsLeft( int *values, int count, int offset ) {
+	if ( offset <= 0 || offset >= count ) return;
+	RaceReverseInts( values, 0, offset - 1 );
+	RaceReverseInts( values, offset, count - 1 );
+	RaceReverseInts( values, 0, count - 1 );
+}
+
+/* The game treats a circuit's combined start/finish brush as a gate, while
+   the Radiant BPD contains only numbered rally_checkpoint control points.
+   Rotate the sampled closed spline to just after that gate so both the gate
+   validator and the bot's first-checkpoint guidance follow the same order. */
+static qboolean RaceRotateClosedRouteToGate( gentity_t *gate ) {
+	int segmentCount = s_mapRoute.numSegments;
+	int gateSegment = -1;
+	int rotate, i, elapsed = 0;
+	float fraction = 0.0f;
+	if ( !gate || segmentCount < 1 ) return qfalse;
+	for ( i = 0; i < segmentCount; i++ ) {
+		if ( RaceCrossesGate( s_mapRoute.waypoints[i].origin,
+			s_mapRoute.waypoints[i + 1].origin, gate, 0.0f, &fraction ) ) {
+			gateSegment = i;
+			break;
+		}
+	}
+	if ( gateSegment < 0 ) return qfalse;
+	rotate = ( gateSegment + 1 ) % segmentCount;
+	if ( !rotate ) return qtrue;
+	for ( i = 0; i < segmentCount; i++ ) {
+		s_routeRotateDurations[i] = s_mapRoute.waypoints[i + 1].timeOffset -
+			s_mapRoute.waypoints[i].timeOffset;
+	}
+	RaceRotateWaypointsLeft( s_mapRoute.waypoints, segmentCount, rotate );
+	RaceRotateSegmentsLeft( s_mapRoute.segments, segmentCount, rotate );
+	RaceRotateIntsLeft( s_routeRotateDurations, segmentCount, rotate );
+	for ( i = 0; i < segmentCount; i++ ) {
+		s_mapRoute.waypoints[i].timeOffset = elapsed;
+		elapsed += s_routeRotateDurations[i];
+	}
+	s_mapRoute.waypoints[segmentCount] = s_mapRoute.waypoints[0];
+	s_mapRoute.waypoints[segmentCount].timeOffset = elapsed;
+	s_mapRoute.waypoints[0].required = qtrue;
+	s_mapRoute.waypoints[segmentCount].required = qtrue;
+	return qtrue;
 }
 
 qboolean G_RaceRoute_ValidateGhost( ghostBotRoute_t *route ) {
@@ -136,6 +226,9 @@ static void RaceBezierEvaluate( const vec3_t p0, const vec3_t h0,
 
 static qboolean RaceImportBezier( void ) {
 	int checkpointCount = level.numCheckpoints;
+	gentity_t *routePoints[MAX_GHOST_BOT_WAYPOINTS / 8];
+	gentity_t *startFinishGate = NULL;
+	int routePointCount = 0;
 	int segmentIndex, segmentCount, sampleCount = 0, time = 0;
 	int handleCount = 0;
 	qboolean reversed = ( g_trackReversed.integer && level.trackIsReversable ) ? qtrue : qfalse;
@@ -152,19 +245,33 @@ static qboolean RaceImportBezier( void ) {
 			G_Printf( "G_RaceRoute: BPD unavailable (checkpoint slot %d missing)\n", segmentIndex + 1 );
 			return qfalse;
 		}
+		/* A lap's combined start/finish is a race gate, not a BPD control point.
+		   Sprint start and finish are separate endpoint entities and are handled
+		   below in the same way. */
+		if ( !level.sprintTrack && level.checkpoints[segmentIndex] == level.finishEnt ) {
+			startFinishGate = level.checkpoints[segmentIndex];
+			continue;
+		}
 		if ( !level.checkpoints[segmentIndex]->bpdLoaded ) {
-			G_Printf( "G_RaceRoute: BPD unavailable (checkpoint slot %d has no BPD entry)\n", segmentIndex + 1 );
+			G_Printf( "G_RaceRoute: BPD unavailable (checkpoint %d has no BPD entry)\n",
+				level.checkpoints[segmentIndex]->bpdIndex );
 			return qfalse;
 		}
+		if ( routePointCount >= ARRAY_LEN( routePoints ) ) return qfalse;
+		routePoints[routePointCount++] = level.checkpoints[segmentIndex];
 		if ( VectorLengthSquared( level.checkpoints[segmentIndex]->s.angles2 ) > 0.01f ) handleCount++;
 	}
-	G_Printf( "G_RaceRoute: importing BPD handles=%d/%d reversed=%d\n", handleCount, checkpointCount, reversed );
+	if ( routePointCount < ( level.sprintTrack ? 1 : 2 ) ) {
+		G_Printf( "G_RaceRoute: BPD unavailable (route control points=%d)\n", routePointCount );
+		return qfalse;
+	}
+	G_Printf( "G_RaceRoute: importing BPD handles=%d/%d reversed=%d\n", handleCount, routePointCount, reversed );
 
 	Com_Memset( &s_mapRoute, 0, sizeof( s_mapRoute ) );
 	s_mapRoute.closed = level.sprintTrack ? qfalse : qtrue;
 	s_mapRoute.fromBezierPath = qtrue;
 	Q_strncpyz( s_mapRoute.path, "checkpoint_bpd", sizeof( s_mapRoute.path ) );
-	segmentCount = level.sprintTrack ? checkpointCount + 1 : checkpointCount;
+	segmentCount = level.sprintTrack ? routePointCount + 1 : routePointCount;
 	for ( segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++ ) {
 		gentity_t *start, *end;
 		vec3_t p0, h0, p3, h3;
@@ -174,14 +281,14 @@ static qboolean RaceImportBezier( void ) {
 		if ( level.sprintTrack ) {
 			if ( segmentIndex == 0 ) {
 				start = reversed ? level.finishEnt : level.startEnt;
-				end = level.checkpoints[0];
+				end = routePoints[0];
 				VectorCopy( start->s.origin2, p0 );
 				VectorCopy( end->s.origin2, p3 );
 				VectorSubtract( p3, p0, h0 );
 				VectorScale( h0, ( reversed ? -1.0f : 1.0f ) / 3.0f, h0 );
 				VectorCopy( end->s.angles2, h3 );
-			} else if ( segmentIndex == checkpointCount ) {
-				start = level.checkpoints[checkpointCount - 1];
+			} else if ( segmentIndex == routePointCount ) {
+				start = routePoints[routePointCount - 1];
 				end = reversed ? level.startEnt : level.finishEnt;
 				VectorCopy( start->s.origin2, p0 );
 				VectorCopy( end->s.origin2, p3 );
@@ -189,18 +296,18 @@ static qboolean RaceImportBezier( void ) {
 				VectorSubtract( p3, p0, h3 );
 				VectorScale( h3, ( reversed ? -1.0f : 1.0f ) / 3.0f, h3 );
 			} else {
-				start = level.checkpoints[segmentIndex - 1];
-				end = level.checkpoints[segmentIndex];
+				start = routePoints[segmentIndex - 1];
+				end = routePoints[segmentIndex];
 				VectorCopy( start->s.origin2, p0 );
 				VectorCopy( start->s.angles2, h0 );
 				VectorCopy( end->s.origin2, p3 );
 				VectorCopy( end->s.angles2, h3 );
 			}
 		} else {
-			int startIndex = ( checkpointCount - 1 + segmentIndex ) % checkpointCount;
-			int endIndex = ( startIndex + 1 ) % checkpointCount;
-			start = level.checkpoints[startIndex];
-			end = level.checkpoints[endIndex];
+			int startIndex = ( routePointCount - 1 + segmentIndex ) % routePointCount;
+			int endIndex = ( startIndex + 1 ) % routePointCount;
+			start = routePoints[startIndex];
+			end = routePoints[endIndex];
 			VectorCopy( start->s.origin2, p0 );
 			VectorCopy( start->s.angles2, h0 );
 			VectorCopy( end->s.origin2, p3 );
@@ -263,6 +370,12 @@ static qboolean RaceImportBezier( void ) {
 	s_mapRoute.numWaypoints = sampleCount + 1;
 	s_mapRoute.numSegments = sampleCount;
 	s_mapRoute.valid = qtrue;
+	if ( !level.sprintTrack && startFinishGate &&
+		!RaceRotateClosedRouteToGate( startFinishGate ) ) {
+		s_mapRoute.valid = qfalse;
+		G_Printf( "G_RaceRoute: BPD rejected (route misses start/finish gate)\n" );
+		return qfalse;
+	}
 	if ( !G_RaceRoute_ValidateGhost( &s_mapRoute ) ) {
 		s_mapRoute.valid = qfalse;
 		G_Printf( "G_RaceRoute: BPD rejected (route misses checkpoint order)\n" );
