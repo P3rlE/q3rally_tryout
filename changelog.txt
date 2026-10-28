@@ -4,6 +4,24 @@ unreleased
 
 Added:
 
+- q3r_ctf4_03 (Industrial Crossfire) rebuilt from scratch: four-team CTF on
+  a square harbour pier at dusk, rotationally symmetric for fairness. Team
+  bases in the corners (container terminal, steel works, rail depot, bulk
+  terminal), quay roads with gantry cranes and wagon sidings, warehouse with
+  a roof ramp, tank farm, container maze, and an elevated cross whose four
+  arms meet above the central plaza (Quad Damage on top). Generator
+  tools/maptools/make_industrialcrossfire.py.
+
+- New map q3r_ridgepass (Ridge Pass), successor of Ridge Racer: snowy
+  mountain pass circuit shaped like a figure eight, about 27,000 units per
+  lap. Start/finish straight with grandstands and pit building in the valley,
+  underpass, three switchback hairpins, fast ridge bends with a crest, an
+  avalanche gallery and a bridge over the climb back into the valley. 17
+  checkpoints, one in front of every corner, 12 start slots, pickups for
+  Racing DM and Team Racing DM, snow weather. Generator
+  tools/maptools/make_ridgepass.py; AAS built from the proxy map
+  (tools/maptools/make_aas_proxy.py). The old q3r_ridgeracer is unchanged.
+
 - New map q3r_canyonrush (Canyon Rush): A2B sprint through a red desert canyon,
   about 34,000 units from the start gate to the finish gate with six
   checkpoints: a gorge with a natural rock arch, a basin with hoodoos and a

@@ -734,7 +734,7 @@ BotCTFSeekGoals
 */
 void BotCTFSeekGoals(bot_state_t *bs) {
 	float rnd, l1, l2;
-	int flagstatus, c;
+	int flagstatus, ownFlagStatus, enemyFlagStatus, c;
 	vec3_t dir;
 	aas_entityinfo_t entinfo;
 
@@ -796,10 +796,32 @@ void BotCTFSeekGoals(bot_state_t *bs) {
 		}
 	}
 	//
-	if (BotTeam(bs) == TEAM_RED) flagstatus = bs->redflagstatus * 2 + bs->blueflagstatus;
-	else flagstatus = bs->blueflagstatus * 2 + bs->redflagstatus;
+	if (BotTeam(bs) == TEAM_RED) {
+		ownFlagStatus = bs->redflagstatus;
+		enemyFlagStatus = bs->blueflagstatus;
+	} else {
+		ownFlagStatus = bs->blueflagstatus;
+		enemyFlagStatus = bs->redflagstatus;
+	}
+	flagstatus = (ownFlagStatus != 0) * 2 + (enemyFlagStatus != 0);
 	//if our team has the enemy flag and our flag is at the base
 	if (flagstatus == 1) {
+		if (enemyFlagStatus == 2) {
+			// A dropped enemy flag is still a live capture objective. The
+			// ordinary binary flag logic used to treat it as already carried.
+			if (bs->ltgtype != LTG_GETFLAG) {
+				BotRefuseOrder(bs);
+				bs->decisionmaker = bs->client;
+				bs->ordered = qfalse;
+				bs->ltgtype = LTG_GETFLAG;
+				bs->teamgoal_time = FloatTime() + CTF_GETFLAG_TIME;
+				bs->teammessage_time = 0;
+				BotSetTeamStatus(bs);
+			}
+			bs->altroutegoal.areanum = 0;
+			bs->reachedaltroutegoal_time = 0;
+			return;
+		}
 		//
 		if (bs->owndecision_time < FloatTime()) {
 			//if Not defending the base already
@@ -841,37 +863,30 @@ void BotCTFSeekGoals(bot_state_t *bs) {
 	else if (flagstatus == 2) {
 		//
 		if (bs->owndecision_time < FloatTime()) {
-			//if enemy flag carrier is visible
-			c = BotEnemyFlagCarrierVisible(bs);
-			if (c >= 0) {
-				//FIXME: fight enemy flag carrier
-			}
 			//if not already doing something important
-			if (bs->ltgtype != LTG_GETFLAG &&
-				bs->ltgtype != LTG_RETURNFLAG &&
+			if (bs->ltgtype != LTG_RETURNFLAG &&
 				bs->ltgtype != LTG_TEAMHELP &&
-				bs->ltgtype != LTG_TEAMACCOMPANY &&
-				bs->ltgtype != LTG_CAMPORDER &&
-				bs->ltgtype != LTG_PATROL &&
-				bs->ltgtype != LTG_GETITEM) {
+				bs->ltgtype != LTG_TEAMACCOMPANY) {
 
 				BotRefuseOrder(bs);
 				bs->decisionmaker = bs->client;
 				bs->ordered = qfalse;
-				//
-				if (random() < 0.5) {
-					//go for the enemy flag
-					bs->ltgtype = LTG_GETFLAG;
-				}
-				else {
-					bs->ltgtype = LTG_RETURNFLAG;
-				}
+				// Recovering our missing flag takes priority over a second
+				// attack on the enemy base.
+				bs->ltgtype = LTG_RETURNFLAG;
 				//no team message
 				bs->teammessage_time = 0;
 				//set the time the bot will stop getting the flag
-				bs->teamgoal_time = FloatTime() + CTF_GETFLAG_TIME;
-				//get an alternative route goal towards the enemy base
-				BotGetAlternateRouteGoal(bs, BotOppositeTeam(bs));
+				bs->teamgoal_time = FloatTime() + CTF_RETURNFLAG_TIME;
+				if (ownFlagStatus == 2) {
+					// The dropped flag itself is the recovery target.
+					bs->altroutegoal.areanum = 0;
+					bs->reachedaltroutegoal_time = 0;
+				} else {
+					// The enemy base is a fallback search area if our flag
+					// is still being carried and its carrier is out of sight.
+					BotGetAlternateRouteGoal(bs, BotOppositeTeam(bs));
+				}
 				//
 				BotSetTeamStatus(bs);
 				bs->owndecision_time = FloatTime() + 5;
@@ -883,6 +898,19 @@ void BotCTFSeekGoals(bot_state_t *bs) {
 	else if (flagstatus == 3) {
 		//
 		if (bs->owndecision_time < FloatTime()) {
+			if (ownFlagStatus == 2 && bs->ltgtype != LTG_RETURNFLAG) {
+				BotRefuseOrder(bs);
+				bs->decisionmaker = bs->client;
+				bs->ordered = qfalse;
+				bs->ltgtype = LTG_RETURNFLAG;
+				bs->teammessage_time = 0;
+				bs->teamgoal_time = FloatTime() + CTF_RETURNFLAG_TIME;
+				bs->altroutegoal.areanum = 0;
+				bs->reachedaltroutegoal_time = 0;
+				BotSetTeamStatus(bs);
+				bs->owndecision_time = FloatTime() + 5;
+				return;
+			}
 			// if not trying to return the flag and not following the team flag carrier
 			if ( bs->ltgtype != LTG_RETURNFLAG && bs->ltgtype != LTG_TEAMACCOMPANY ) {
 				//
@@ -4105,6 +4133,7 @@ BotFindEnemy
 */
 int BotFindEnemy(bot_state_t *bs, int curenemy) {
 	int i, healthdecrease;
+	int ctfFallbackEnemy;
 	float f, alertness, easyfragger, vis;
 	float squaredist, cursquaredist;
 	aas_entityinfo_t entinfo, curenemyinfo;
@@ -4123,6 +4152,7 @@ int BotFindEnemy(bot_state_t *bs, int curenemy) {
 	dmSelection = ( gametype == GT_DEATHMATCH );
 	bestEnemy = -1;
 	bestScore = 0.0f;
+	ctfFallbackEnemy = -1;
 	if ( dmSelection ) {
 		VectorSet( angles, 0.0f, bs->cur_ps.viewangles[YAW], 0.0f );
 		AngleVectors( angles, forward, NULL, NULL );
@@ -4254,8 +4284,27 @@ int BotFindEnemy(bot_state_t *bs, int curenemy) {
 			}
 			continue;
 		}
+		// When our flag is being carried, prioritize its carrier over other
+		// visible enemies. Keep the first ordinary enemy as a fallback.
+		if (gametype == GT_CTF &&
+			(BotTeam(bs) == TEAM_RED ? bs->redflagstatus : bs->blueflagstatus) == 1 &&
+			!EntityCarriesFlag(&entinfo)) {
+			if (curenemy < 0 && ctfFallbackEnemy < 0) {
+				ctfFallbackEnemy = entinfo.number;
+			}
+			continue;
+		}
 		//found an enemy
 		bs->enemy = entinfo.number;
+		if (curenemy >= 0) bs->enemysight_time = FloatTime() - 2;
+		else bs->enemysight_time = FloatTime();
+		bs->enemysuicide = qfalse;
+		bs->enemydeath_time = 0;
+		bs->enemyvisible_time = FloatTime();
+		return qtrue;
+	}
+	if (ctfFallbackEnemy >= 0) {
+		bs->enemy = ctfFallbackEnemy;
 		if (curenemy >= 0) bs->enemysight_time = FloatTime() - 2;
 		else bs->enemysight_time = FloatTime();
 		bs->enemysuicide = qfalse;

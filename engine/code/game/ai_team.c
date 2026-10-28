@@ -835,8 +835,8 @@ void BotCTFOrders(bot_state_t *bs) {
 	int flagstatus;
 
 	//
-	if (BotTeam(bs) == TEAM_RED) flagstatus = bs->redflagstatus * 2 + bs->blueflagstatus;
-	else flagstatus = bs->blueflagstatus * 2 + bs->redflagstatus;
+	if (BotTeam(bs) == TEAM_RED) flagstatus = (bs->redflagstatus != 0) * 2 + (bs->blueflagstatus != 0);
+	else flagstatus = (bs->blueflagstatus != 0) * 2 + (bs->redflagstatus != 0);
 	//
 	switch(flagstatus) {
 		case 0: BotCTFOrders_BothFlagsAtBase(bs); break;
@@ -2350,12 +2350,28 @@ BotTeamAI
 ==================
 */
 void BotTeamAI(bot_state_t *bs) {
-	int numteammates;
+	int numteammates, redStatus, blueStatus;
 	char netname[MAX_NETNAME];
+	char flagStatus[8];
 
 	//
 	if ( gametype < GT_TEAM  )
 		return;
+	// Keep CTF bot state aligned with the authoritative status string:
+	// 0 = at base, 1 = carried, 2 = dropped.
+	if (gametype == GT_CTF) {
+		trap_GetConfigstring(CS_FLAGSTATUS, flagStatus, sizeof(flagStatus));
+		if ((flagStatus[0] == '0' || flagStatus[0] == '1' || flagStatus[0] == '2') &&
+			(flagStatus[1] == '0' || flagStatus[1] == '1' || flagStatus[1] == '2')) {
+			redStatus = flagStatus[0] - '0';
+			blueStatus = flagStatus[1] - '0';
+			if (bs->redflagstatus != redStatus || bs->blueflagstatus != blueStatus) {
+				bs->flagstatuschanged = qtrue;
+				bs->redflagstatus = redStatus;
+				bs->blueflagstatus = blueStatus;
+			}
+		}
+	}
 	// make sure we've got a valid team leader
 	if (!BotValidTeamLeader(bs)) {
 		//

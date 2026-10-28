@@ -34,3 +34,5 @@ q3r_redrock
 q3r_citydom
 q3r_crossroads
 q3r_canyonrush
+q3r_ridgepass
+q3r_ctf4_03

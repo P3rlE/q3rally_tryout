@@ -1232,6 +1232,39 @@ int BotGetItemLongTermGoal(bot_state_t *bs, int tfl, bot_goal_t *goal) {
 	return qtrue;
 }
 
+#ifdef CTF
+static qboolean BotGetDroppedCTFFlagGoal(bot_state_t *bs, int team, bot_goal_t *goal) {
+	char *flagName;
+	int index, nextIndex, travelTime, bestTravelTime;
+	bot_goal_t candidate;
+
+	if (team == TEAM_RED) flagName = "Red Flag";
+	else if (team == TEAM_BLUE) flagName = "Blue Flag";
+	else return qfalse;
+
+	index = -1;
+	bestTravelTime = 0;
+	while ((nextIndex = trap_BotGetLevelItemGoal(index, flagName, &candidate)) >= 0) {
+		index = nextIndex;
+		if (!(candidate.flags & GFL_DROPPED) || !candidate.areanum) {
+			continue;
+		}
+		if (candidate.areanum == bs->areanum) {
+			travelTime = 1;
+		} else {
+			travelTime = trap_AAS_AreaTravelTimeToGoalArea(bs->areanum, bs->origin,
+				candidate.areanum, bs->tfl);
+		}
+		if (travelTime <= 0 || (bestTravelTime && travelTime >= bestTravelTime)) {
+			continue;
+		}
+		bestTravelTime = travelTime;
+		memcpy(goal, &candidate, sizeof(bot_goal_t));
+	}
+	return bestTravelTime > 0;
+}
+#endif
+
 /*
 ==================
 BotGetLongTermGoal
@@ -1739,6 +1772,10 @@ int BotGetLongTermGoal(bot_state_t *bs, int tfl, int retreat, bot_goal_t *goal) 
 				case TEAM_BLUE: memcpy(goal, &ctf_redflag, sizeof(bot_goal_t)); break;
 				default: bs->ltgtype = 0; return qfalse;
 			}
+			if (BotGetDroppedCTFFlagGoal(bs, BotOppositeTeam(bs), goal)) {
+				bs->altroutegoal.areanum = 0;
+				bs->reachedaltroutegoal_time = 0;
+			}
 			//if touching the flag
 			if (trap_BotTouchingGoal(bs->origin, goal)) {
 				// make sure the bot knows the flag isn't there anymore
@@ -1796,6 +1833,11 @@ int BotGetLongTermGoal(bot_state_t *bs, int tfl, int retreat, bot_goal_t *goal) 
 				case TEAM_RED: memcpy(goal, &ctf_blueflag, sizeof(bot_goal_t)); break;
 				case TEAM_BLUE: memcpy(goal, &ctf_redflag, sizeof(bot_goal_t)); break;
 				default: bs->ltgtype = 0; return qfalse;
+			}
+			if ((BotTeam(bs) == TEAM_RED ? bs->redflagstatus : bs->blueflagstatus) == 2) {
+				bs->altroutegoal.areanum = 0;
+				bs->reachedaltroutegoal_time = 0;
+				BotGetDroppedCTFFlagGoal(bs, BotTeam(bs), goal);
 			}
 			//if touching the flag
 			if (trap_BotTouchingGoal(bs->origin, goal)) bs->ltgtype = 0;
