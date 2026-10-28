@@ -2332,8 +2332,12 @@ int FindHumanTeamLeader(bot_state_t *bs) {
 						ClientName(i, bs->teamleader, sizeof(bs->teamleader));
 						// if not yet ordered to do anything
 						if ( !BotSetLastOrderedTask(bs) ) {
-							// go on defense by default
-							BotVoiceChat_Defend(bs, i, SAY_TELL);
+							// In CTF, let the bot pick a role on its own when a
+							// human leader has not issued an order. Defaulting every
+							// bot to defense leaves no one attacking the enemy flag.
+							if (gametype != GT_CTF) {
+								BotVoiceChat_Defend(bs, i, SAY_TELL);
+							}
 						}
 						return qtrue;
 					}
