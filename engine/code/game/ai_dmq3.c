@@ -840,7 +840,7 @@ Applies the coordinated fallback role when both flags are home. A bot team
 leader's orders and saved player orders are handled before this fallback.
 */
 static qboolean BotCTFApplyDefaultRole(bot_state_t *bs) {
-	int role, botArea, routeTime;
+	int role, botArea, defaultRouteTime, activeRouteTime;
 	bot_goal_t *ownFlag, *enemyFlag;
 	char name[MAX_NETNAME];
 
@@ -874,8 +874,10 @@ static qboolean BotCTFApplyDefaultRole(bot_state_t *bs) {
 		bs->teamgoal_time = FloatTime() + CTF_GETFLAG_TIME;
 		BotGetAlternateRouteGoal(bs, BotOppositeTeam(bs));
 		botArea = BotPointAreaNum(bs->origin);
-		routeTime = botArea ? trap_AAS_AreaTravelTimeToGoalArea(
+		defaultRouteTime = botArea ? trap_AAS_AreaTravelTimeToGoalArea(
 			botArea, bs->origin, enemyFlag->areanum, TFL_DEFAULT) : 0;
+		activeRouteTime = botArea ? trap_AAS_AreaTravelTimeToGoalArea(
+			botArea, bs->origin, enemyFlag->areanum, bs->tfl) : 0;
 	} else {
 		memcpy(&bs->teamgoal, ownFlag, sizeof(bot_goal_t));
 		bs->ltgtype = LTG_DEFENDKEYAREA;
@@ -889,8 +891,8 @@ static qboolean BotCTFApplyDefaultRole(bot_state_t *bs) {
 	ClientName(bs->client, name, sizeof(name));
 	if (role) {
 		BotAI_Print(PRT_MESSAGE,
-			"CTF bot %s assigned default attacker role (flag route area %d -> %d, travel %d)\n",
-			name, botArea, enemyFlag->areanum, routeTime);
+			"CTF bot %s assigned default attacker role (flag route area %d -> %d, default travel %d, active flags 0x%x travel %d)\n",
+			name, botArea, enemyFlag->areanum, defaultRouteTime, bs->tfl, activeRouteTime);
 	} else {
 		BotAI_Print(PRT_MESSAGE, "CTF bot %s assigned default defender role\n", name);
 	}
