@@ -740,15 +740,40 @@ static int BotCTFDefaultRole(bot_state_t *bs) {
 	int candidates[MAX_CLIENTS];
 	int priorities[MAX_CLIENTS];
 	int i, j, count, preference, priority, attackerCount;
+	int assignedCount, assignedAttackers, targetAttackers, team;
 	int insert;
 
+	team = BotTeam(bs);
+	if (bs->ctfDefaultRole != CTF_DEFAULT_ROLE_NONE && bs->ctfDefaultRoleTeam == team) {
+		return (bs->ctfDefaultRole == CTF_DEFAULT_ROLE_ATTACKER) ? 1 : 0;
+	}
+	if (bs->ctfDefaultRoleTeam != team) {
+		bs->ctfDefaultRole = CTF_DEFAULT_ROLE_NONE;
+	}
+
 	count = 0;
+	assignedCount = 0;
+	assignedAttackers = 0;
 	for (i = 0; i < level.maxclients; i++) {
 		if (!g_entities[i].inuse || !(g_entities[i].r.svFlags & SVF_BOT)) {
 			continue;
 		}
 		if (!botstates[i] || !botstates[i]->inuse || !BotSameTeam(bs, i)) {
 			continue;
+		}
+		if (botstates[i]->ctfDefaultRole != CTF_DEFAULT_ROLE_NONE) {
+			if (botstates[i]->ctfDefaultRoleTeam == team) {
+				assignedCount++;
+				if (botstates[i]->ctfDefaultRole == CTF_DEFAULT_ROLE_ATTACKER) {
+					if ((!botstates[i]->ordered && !botstates[i]->lastgoal_ltgtype) ||
+						(botstates[i]->ordered && botstates[i]->ltgtype == LTG_GETFLAG) ||
+						(!botstates[i]->ordered && botstates[i]->lastgoal_ltgtype == LTG_GETFLAG)) {
+						assignedAttackers++;
+					}
+				}
+				continue;
+			}
+			botstates[i]->ctfDefaultRole = CTF_DEFAULT_ROLE_NONE;
 		}
 		// A saved team command always takes precedence over the fallback role.
 		if (botstates[i]->ordered || botstates[i]->lastgoal_ltgtype) {
@@ -785,11 +810,24 @@ static int BotCTFDefaultRole(bot_state_t *bs) {
 	if (!count) {
 		return -1;
 	}
-	attackerCount = (count + 1) / 2;
+	targetAttackers = (assignedCount + count + 1) / 2;
+	attackerCount = targetAttackers - assignedAttackers;
+	if (!assignedAttackers && attackerCount < 1) {
+		attackerCount = 1;
+	}
+	if (attackerCount < 0) {
+		attackerCount = 0;
+	}
+	if (attackerCount > count) {
+		attackerCount = count;
+	}
 	for (i = 0; i < count; i++) {
-		if (candidates[i] == bs->client) {
-			return (i < attackerCount) ? 1 : 0;
-		}
+		botstates[candidates[i]]->ctfDefaultRole = (i < attackerCount) ?
+			CTF_DEFAULT_ROLE_ATTACKER : CTF_DEFAULT_ROLE_DEFENDER;
+		botstates[candidates[i]]->ctfDefaultRoleTeam = team;
+	}
+	if (bs->ctfDefaultRoleTeam == team) {
+		return (bs->ctfDefaultRole == CTF_DEFAULT_ROLE_ATTACKER) ? 1 : 0;
 	}
 	return -1;
 }

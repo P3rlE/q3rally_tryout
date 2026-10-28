@@ -86,6 +86,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //teamplay task preference
 #define TEAMTP_DEFENDER				1
 #define TEAMTP_ATTACKER				2
+//default CTF roles for bots without an explicit team order
+#define CTF_DEFAULT_ROLE_NONE		0
+#define CTF_DEFAULT_ROLE_ATTACKER	1
+#define CTF_DEFAULT_ROLE_DEFENDER	2
 //CTF strategy
 #define CTFS_AGRESSIVE				1
 //copied from the aas file header
@@ -267,6 +271,8 @@ typedef struct bot_state_s
 	float teamgoal_time;							//time to stop helping team mate
 	float teammatevisible_time;						//last time the team mate was NOT visible
 	int teamtaskpreference;							//team task preference
+	int ctfDefaultRole;								//stable fallback CTF role for this map
+	int ctfDefaultRoleTeam;							//team for which the fallback role was assigned
 	// last ordered team goal
 	int lastgoal_decisionmaker;
 	int lastgoal_ltgtype;
