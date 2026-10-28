@@ -1076,6 +1076,7 @@ typedef struct {
     qhandle_t   greenFlagModel;
     qhandle_t   yellowFlagModel;
 	qhandle_t	neutralFlagModel;
+	qhandle_t	pennantShader;		// Q3Rally: pennant of a flag carrier
     qhandle_t   redSigilModel;
     qhandle_t   blueSigilModel;
     qhandle_t   greenSigilModel;

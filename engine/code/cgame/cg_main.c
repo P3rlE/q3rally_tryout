@@ -1215,6 +1215,9 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.ghostShader = trap_R_RegisterShader("gfx/ghost/vehicle" );
 	CG_RacingLine_Register();
 	cgs.media.regenShader = trap_R_RegisterShader("powerups/regen" );
+	// Q3Rally: pennant on the cars that carry a flag (any team mode)
+	cgs.media.pennantShader = trap_R_RegisterShader( "gfx/misc/q3r_pennant" );
+
 
 #ifdef MISSIONPACK
 	if ( cgs.gametype == GT_HARVESTER || cg_buildScript.integer ) {

@@ -299,6 +299,12 @@ Added:
 
 Changed:
 
+- Flag carriers no longer carry the tall flag model above the car. A small
+  pennant in the team colour flies from a whip antenna at the rear corner
+  of the body; antenna and pennant bend and flap with speed and fade out
+  when the camera comes close. New shader gfx/misc/q3r_pennant
+  (scripts/q3r_pennant.shader), code in cg_players.c (CG_CarPennant).
+
 - q3r_crossroads (four-team CTF) V0.2: 30 % larger, ground layers blended by
   vertex alpha, 32/64-unit collision grid with levelled roads, a meandering
   creek with banks, pebble bed, reflective water, fords and gravel islands,
