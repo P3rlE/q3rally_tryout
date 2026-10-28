@@ -703,7 +703,16 @@ void BotCTFOrders_BothFlagsAtBase(bot_state_t *bs) {
 	if (!(bs->ctfstrategy & CTFS_AGRESSIVE)) {
 		//different orders based on the number of team mates
 		switch(numteammates) {
-			case 1: break;
+			case 1:
+			{
+				// A lone bot has no teammate to split roles with, so it must take
+				// the enemy flag instead of waiting for an order.
+				ClientName(teammates[0], name, sizeof(name));
+				BotAI_BotInitialChat(bs, "cmd_getflag", name, NULL);
+				BotSayTeamOrder(bs, teammates[0]);
+				BotSayVoiceTeamOrder(bs, teammates[0], VOICECHAT_GETFLAG);
+				break;
+			}
 			case 2:
 			{
 				//the one closest to the base will defend the base

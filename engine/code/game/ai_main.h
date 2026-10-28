@@ -339,6 +339,8 @@ typedef struct bot_state_s
 	float favoriteWeaponWeightBonus;			//bonus weight for preferred weapon selection
 } bot_state_t;
 
+extern bot_state_t *botstates[MAX_CLIENTS];
+
 //resets the whole bot state
 void BotResetState(bot_state_t *bs);
 //returns the number of bots in the game

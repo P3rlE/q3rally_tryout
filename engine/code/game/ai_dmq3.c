@@ -729,6 +729,130 @@ void BotRefuseOrder(bot_state_t *bs) {
 
 /*
 ==================
+BotCTFDefaultRole
+==================
+Returns a stable default role for a bot when no team leader has assigned
+one. Roughly half of the uncommanded bots attack, with at least one attacker;
+the rest defend their own flag. Task preferences break ties before client
+number so explicit attacker preferences are honored where possible.
+*/
+static int BotCTFDefaultRole(bot_state_t *bs) {
+	int candidates[MAX_CLIENTS];
+	int priorities[MAX_CLIENTS];
+	int i, j, count, preference, priority, attackerCount;
+	int insert;
+
+	count = 0;
+	for (i = 0; i < level.maxclients; i++) {
+		if (!g_entities[i].inuse || !(g_entities[i].r.svFlags & SVF_BOT)) {
+			continue;
+		}
+		if (!botstates[i] || !botstates[i]->inuse || !BotSameTeam(bs, i)) {
+			continue;
+		}
+		// A saved team command always takes precedence over the fallback role.
+		if (botstates[i]->ordered || botstates[i]->lastgoal_ltgtype) {
+			continue;
+		}
+
+		preference = BotGetTeamMateTaskPreference(bs, i);
+		if (preference & TEAMTP_ATTACKER) {
+			priority = 0;
+		} else if (preference & TEAMTP_DEFENDER) {
+			priority = 2;
+		} else {
+			priority = 1;
+		}
+
+		// Sort identically for every bot: preference first, then client slot.
+		insert = count;
+		for (j = 0; j < count; j++) {
+			if (priority < priorities[j] ||
+				(priority == priorities[j] && i < candidates[j])) {
+				insert = j;
+				break;
+			}
+		}
+		for (j = count; j > insert; j--) {
+			candidates[j] = candidates[j - 1];
+			priorities[j] = priorities[j - 1];
+		}
+		candidates[insert] = i;
+		priorities[insert] = priority;
+		count++;
+	}
+
+	if (!count) {
+		return -1;
+	}
+	attackerCount = (count + 1) / 2;
+	for (i = 0; i < count; i++) {
+		if (candidates[i] == bs->client) {
+			return (i < attackerCount) ? 1 : 0;
+		}
+	}
+	return -1;
+}
+
+/*
+==================
+BotCTFApplyDefaultRole
+==================
+Applies the coordinated fallback role when both flags are home. A bot team
+leader's orders and saved player orders are handled before this fallback.
+*/
+static qboolean BotCTFApplyDefaultRole(bot_state_t *bs) {
+	int role;
+	bot_goal_t *ownFlag, *enemyFlag;
+	char name[MAX_NETNAME];
+
+	if (bs->ordered || bs->lastgoal_ltgtype) {
+		return qfalse;
+	}
+	role = BotCTFDefaultRole(bs);
+	if (role < 0) {
+		return qfalse;
+	}
+	ownFlag = BotTeamFlag(bs);
+	enemyFlag = BotEnemyFlag(bs);
+	if (!ownFlag || !ownFlag->areanum || !enemyFlag || !enemyFlag->areanum) {
+		return qfalse;
+	}
+
+	if (role && bs->ltgtype == LTG_GETFLAG && bs->teamgoal_time > FloatTime()) {
+		return qtrue;
+	}
+	if (!role && bs->ltgtype == LTG_DEFENDKEYAREA &&
+		bs->teamgoal.number == ownFlag->number && bs->teamgoal_time > FloatTime()) {
+		return qtrue;
+	}
+
+	BotRefuseOrder(bs);
+	bs->decisionmaker = bs->client;
+	bs->ordered = qfalse;
+	bs->teammessage_time = 0;
+	if (role) {
+		bs->ltgtype = LTG_GETFLAG;
+		bs->teamgoal_time = FloatTime() + CTF_GETFLAG_TIME;
+		BotGetAlternateRouteGoal(bs, BotOppositeTeam(bs));
+	} else {
+		memcpy(&bs->teamgoal, ownFlag, sizeof(bot_goal_t));
+		bs->ltgtype = LTG_DEFENDKEYAREA;
+		bs->teamgoal_time = FloatTime() + TEAM_DEFENDKEYAREA_TIME;
+		bs->defendaway_time = 0;
+		bs->altroutegoal.areanum = 0;
+		bs->reachedaltroutegoal_time = 0;
+	}
+	BotSetTeamStatus(bs);
+	bs->owndecision_time = FloatTime() + 5;
+	ClientName(bs->client, name, sizeof(name));
+	BotAI_Print(PRT_MESSAGE, "CTF bot %s assigned default %s role\n",
+		name, role ? "attacker" : "defender");
+	return qtrue;
+}
+
+/*
+==================
 BotCTFSeekGoals
 ==================
 */
@@ -957,6 +1081,10 @@ void BotCTFSeekGoals(bot_state_t *bs) {
 				}
 			}
 		}
+		return;
+	}
+	// Preserve saved team orders, then assign uncommanded bots a stable split.
+	if (BotCTFApplyDefaultRole(bs)) {
 		return;
 	}
 	// don't just do something wait for the bot team leader to give orders
