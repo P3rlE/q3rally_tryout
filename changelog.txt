@@ -299,6 +299,19 @@ Added:
 
 Changed:
 
+- q3r_david4 (Jungle Opening) rebuilt with the same concept: CTF in a jungle
+  clearing at night, flags on a cross of team-coloured ramps, "Save Ferris"
+  water tower and oak grove with the Quad in the middle, same weapons. The
+  flag now sits on a low octagonal mound with ramps on all eight sides
+  (reachable from every direction, no launch edges, drive straight across);
+  the rails around the bases (dead ends) are gone. New: rolling ground with
+  hills and trees at the edges, a shallow creek along the centre line
+  (cascade, Quad slab, ford, culvert), ruin gates, rock groups, a
+  drive-through outpost with BFG and grenade launcher behind each flag,
+  team floodlights and lanterns. The old AAS no longer matched the BSP (bots
+  stood still); the new one is built from the AAS proxy and every spawn has
+  a route to the enemy flag. Generator tools/maptools/make_david4.py.
+
 - Flag carriers no longer carry the tall flag model above the car. A small
   pennant in the team colour flies from a whip antenna at the rear corner
   of the body; antenna and pennant bend and flap with speed and fade out

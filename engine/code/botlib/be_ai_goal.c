@@ -536,15 +536,19 @@ static int BotItemGoalArea(const char *classname, vec3_t origin, vec3_t mins,
 	int areanum;
 	vec3_t approachOrigin, approachDelta;
 	float approachDistance;
-	const float ctfFlagApproachRadius = 128.0f;
+	const float ctfFlagApproachRadius = 512.0f;
 
 	areanum = AAS_BestReachableArea(origin, mins, maxs, goalorigin);
 	if (areanum || !BotIsCTFFlagItem(classname))
 		return areanum;
 
 	areanum = AAS_NearestReachableArea(origin, ctfFlagApproachRadius, approachOrigin);
-	if (!areanum)
+	if (!areanum) {
+		botimport.Print(PRT_MESSAGE,
+						"%s has no nearby reachable AAS approach within %.0f units\n",
+						classname, ctfFlagApproachRadius);
 		return 0;
+	}
 
 	// Keep the actual flag position as the movement target. The nearby AAS area
 	// supplies the route; the bot must still drive into the flag's pickup volume.

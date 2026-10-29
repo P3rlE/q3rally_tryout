@@ -28,6 +28,7 @@ heisst wie die echte Map. Ohne diesen Schritt meldet das Spiel
 | q3r_crossroads | 44484 | 1664 | 9898 | 27884 | 31 s |
 | q3r_canyonrush | 37680 | 7992 | 19142 | 47466 | 7 min |
 | q3r_mesaking | 12920 | 3272 | 7458 | 20468 | 39 s |
+| q3r_david4 | 11284 | 2236 | 10617 | 30854 | 27 s |
 
 ## Ablauf (Beispiel Canyon Rush)
 
