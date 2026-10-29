@@ -273,6 +273,7 @@ typedef struct bot_state_s
 	int teamtaskpreference;							//team task preference
 	int ctfDefaultRole;								//stable fallback CTF role for this map
 	int ctfDefaultRoleTeam;							//team for which the fallback role was assigned
+	float ctfRouteDebugTime;							//next throttled CTF route progress log
 	// last ordered team goal
 	int lastgoal_decisionmaker;
 	int lastgoal_ltgtype;

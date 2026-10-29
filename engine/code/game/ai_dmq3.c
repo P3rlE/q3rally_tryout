@@ -858,6 +858,26 @@ static qboolean BotCTFApplyDefaultRole(bot_state_t *bs) {
 	}
 
 	if (role && bs->ltgtype == LTG_GETFLAG && bs->teamgoal_time > FloatTime()) {
+		if (bs->ctfRouteDebugTime > FloatTime() + 30.0f) {
+			bs->ctfRouteDebugTime = 0;
+		}
+		if (bs->ctfRouteDebugTime <= FloatTime()) {
+			vec3_t toFlag;
+			float distance;
+			int currentArea, travelTime;
+
+			bs->ctfRouteDebugTime = FloatTime() + 10.0f;
+			currentArea = BotPointAreaNum(bs->origin);
+			travelTime = currentArea ? trap_AAS_AreaTravelTimeToGoalArea(
+				currentArea, bs->origin, enemyFlag->areanum, bs->tfl) : 0;
+			VectorSubtract(enemyFlag->origin, bs->origin, toFlag);
+			distance = VectorLength(toFlag);
+			ClientName(bs->client, name, sizeof(name));
+			BotAI_Print(PRT_MESSAGE,
+				"CTF route progress %s: ltg=%d currentArea=%d flagArea=%d travel=%d distance=%.0f ownFlagArea=%d enemyFlagArea=%d enemy=%d\n",
+				name, bs->ltgtype, currentArea, enemyFlag->areanum, travelTime,
+				distance, ownFlag->areanum, enemyFlag->areanum, bs->enemy);
+		}
 		return qtrue;
 	}
 	if (!role && bs->ltgtype == LTG_DEFENDKEYAREA &&
@@ -893,6 +913,7 @@ static qboolean BotCTFApplyDefaultRole(bot_state_t *bs) {
 		BotAI_Print(PRT_MESSAGE,
 			"CTF bot %s assigned default attacker role (flag route area %d -> %d, default travel %d, active flags 0x%x travel %d)\n",
 			name, botArea, enemyFlag->areanum, defaultRouteTime, bs->tfl, activeRouteTime);
+		bs->ctfRouteDebugTime = FloatTime() + 10.0f;
 	} else {
 		BotAI_Print(PRT_MESSAGE, "CTF bot %s assigned default defender role\n", name);
 	}
