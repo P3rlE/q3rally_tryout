@@ -359,8 +359,10 @@ def polytope(planes):
 
 
 def convex(planes, solid=True, scale=0.5, tag=None):
-    """(outward normal, point, material) planes."""
-    brush([face(plane(n, p), m, scale=scale) for n, p, m in planes])
+    """(outward normal, point, material) planes; a material may also be
+    (material, scale, shift) for a fitted texture."""
+    brush([face(plane(n, p), m[0], scale=m[1], shift=m[2]) if isinstance(m, tuple) else
+           face(plane(n, p), m, scale=scale) for n, p, m in planes])
     corners = polytope([(n, p) for n, p, _ in planes])
     if solid and corners:
         SOLIDS.append((tuple(min(c[i] for c in corners) for i in range(3)),
@@ -470,7 +472,17 @@ def mesa(team, sx):
                     (side0, (cx, 0, 0), rim), (side1, (cx, 0, 0), rim)], scale=0.5, tag="mesa")
     top_r, top_z = MESA_RINGS[-1]
     ngon(cx, 0, top_r, 8, -24, top_z, rim, cap=TEX + f"deck_{team}", tag="mesa")
-    ngon(cx, 0, PAD, 8, top_z, top_z + 2, rim, cap=TEX + f"pad_{team}", tag="pad")
+    # pad: the 256 px swirl fitted once onto the pad, centred on the flag (Q3 axial
+    # projection of an upward face: s = x / scale + shift, t = -y / scale + shift)
+    img = 256
+    sc = 2 * PAD / img
+    fit = (TEX + f"pad_{team}", sc, ((img / 2 - cx / sc) % img, (img / 2) % img))
+    planes = [((0, 0, 1), (cx, 0, top_z + 2), fit), ((0, 0, -1), (cx, 0, top_z), rim)]
+    for k in range(8):
+        a = 2 * math.pi * k / 8
+        nn = (math.cos(a), math.sin(a), 0)
+        planes.append((nn, (cx + nn[0] * PAD, nn[1] * PAD, top_z), rim))
+    convex(planes, tag="pad")
     # glowing team strips on the edge of the top
     for k in range(8):
         th = k * math.pi / 4 + math.pi / 8
@@ -954,7 +966,7 @@ def write_shader():
                            ("blue", "textures/ctf/blue_telep.jpg", (0.3, 0.5, 1.0))):
         out += [f"textures/{TEX}pad_{team}", "{", f"\tqer_editorimage {img}", "\tsurfaceparm nomarks",
                 "\tq3map_surfacelight 120", f"\tq3map_lightRGB {rgb[0]} {rgb[1]} {rgb[2]}",
-                "\t{", f"\t\tmap {img}", "\t\ttcMod rotate 40", "\t\trgbGen identity", "\t}",
+                "\t{", f"\t\tclampMap {img}", "\t\ttcMod rotate 40", "\t\trgbGen identity", "\t}",
                 "\t{", "\t\tmap $lightmap", "\t\tblendFunc GL_DST_COLOR GL_SRC_COLOR", "\t\trgbGen identity", "\t}", "}", ""]
         out += glow(f"glow_{team}", "textures/q3r_signage/white.jpg", rgb, 600)
         out += decal(f"border_{team}", f"textures/q3r_signage/dirsign01_{team[:3] if team == 'blue' else team}.tga")

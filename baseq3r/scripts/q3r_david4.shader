@@ -151,7 +151,7 @@ textures/q3r_david4/pad_red
 	q3map_surfacelight 120
 	q3map_lightRGB 1.0 0.35 0.2
 	{
-		map textures/ctf/red_telep.jpg
+		clampMap textures/ctf/red_telep.jpg
 		tcMod rotate 40
 		rgbGen identity
 	}
@@ -230,7 +230,7 @@ textures/q3r_david4/pad_blue
 	q3map_surfacelight 120
 	q3map_lightRGB 0.3 0.5 1.0
 	{
-		map textures/ctf/blue_telep.jpg
+		clampMap textures/ctf/blue_telep.jpg
 		tcMod rotate 40
 		rgbGen identity
 	}
