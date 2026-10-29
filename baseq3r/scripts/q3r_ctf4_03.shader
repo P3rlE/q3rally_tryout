@@ -1136,19 +1136,6 @@ textures/q3r_ctf4_03/shiphouse
 	}
 }
 
-textures/q3r_ctf4_03/sodium
-{
-	qer_editorimage textures/q3r_signage/white.jpg
-	surfaceparm nomarks
-	surfaceparm nolightmap
-	q3map_surfacelight 1200
-	q3map_lightRGB 1.0 0.72 0.38
-	{
-		map textures/q3r_signage/white.jpg
-		rgbGen const ( 1.0 0.72 0.38 )
-	}
-}
-
 textures/q3r_ctf4_03/floodlamp
 {
 	qer_editorimage textures/q3r_signage/white.jpg

@@ -596,8 +596,10 @@ def ruin_gate(sx):
         z = ground(x, y)
         box((x - 44, y - 44, z - 30), (x + 44, y + 44, z + 230), stone, tag="gate")
         box((x - 52, y - 52, z - 30), (x + 52, y + 52, z + 26), stone, tag="gate")
-        light(x - sx * 70, y, z + 140, 160, (1.0, 0.7, 0.4))
-        box((x - sx * 46 - 8, y - 8, z + 120), (x - sx * 46 + 8, y + 8, z + 136), TEX + "lantern", solid=False)
+        # wall lantern on the pillar face towards the middle (arm 22 out, glass 32 below the mount)
+        entity("misc_model", x - sx * 44, y, z + 150, model="models/mapobjects/q3r_lanterns/lantern_wall.md3",
+               angle="0" if sx < 0 else "180")
+        light(x - sx * 66, y, z + 117, 160, (1.0, 0.7, 0.4))
     zt = max(ground(x, -300), ground(x, 300)) + 230
     box((x - 50, -352, zt), (x + 50, 352, zt + 62), stone, tag="gate")
     # rubble
@@ -681,9 +683,7 @@ def grove():
     for sx in (-1, 1):
         x, y = sx * (creek_half(QUAD[1]) + 90), QUAD[1]
         z = ground(x, y)
-        box((x - 6, y - 6, z - 20), (x + 6, y + 6, z + 110), TEX + "wood", tag="post")
-        box((x - 10, y - 10, z + 110), (x + 10, y + 10, z + 132), TEX + "lantern", solid=False)
-        light(x, y, z + 150, 220, (1.0, 0.75, 0.4))
+        lantern_post(x, y, z, -sx, 220)
 
 
 def water_tower():
@@ -868,16 +868,22 @@ def middle_items():
         item("item_health_large", sx * 1020, -560)
 
 
+def lantern_post(x, y, z, dx, value):
+    """Cast-iron lantern post (model) with the lantern on the side dx (+1 / -1
+    along x); invisible collision around the shaft, light at the glass."""
+    entity("misc_model", x, y, z, model="models/mapobjects/q3r_lanterns/lantern_post.md3",
+           angle="0" if dx > 0 else "180")
+    box((x - 5, y - 5, z - 20), (x + 5, y + 5, z + 120), TEX + "boundary", tag="post")
+    light(x + dx * 34, y, z + 106, value, (1.0, 0.72, 0.38))
+
+
 def lanterns():
     """Warm lanterns on posts along the dirt tracks (night orientation)."""
     spots = [(2200, 920), (2200, -920), (3560, 900), (3560, -900), (650, 1150), (600, -1150)]
     for sx in (-1, 1):
         for x, y in spots:
             X = sx * x
-            z = ground(X, y)
-            box((X - 5, y - 5, z - 20), (X + 5, y + 5, z + 120), TEX + "wood", tag="post")
-            box((X - 10, y - 10, z + 120), (X + 10, y + 10, z + 142), TEX + "lantern", solid=False)
-            light(X, y, z + 160, 190, (1.0, 0.72, 0.38))
+            lantern_post(X, y, ground(X, y), -sx, 190)
 
 
 def misc_entities():
@@ -981,7 +987,6 @@ def write_shader():
     out += lit("metal", "textures/q3r_metals/metrust01.tga", ("\tsurfaceparm SURF_METAL",))
     out += lit("pipe", "textures/base_trim/rusty_pewter_big.tga", ("\tsurfaceparm SURF_METAL", "\tq3map_shadeAngle 60"))
     out += lit("bark", "models/mapobjects/oak/oakstamm.jpg")
-    out += lit("wood", "models/mapobjects/woodpole/wood01.jpg")
     out += [f"textures/{TEX}struts", "{", "\tqer_editorimage textures/q3r_metals/towerstruts.tga",
             "\tsurfaceparm nonsolid", "\tsurfaceparm trans", "\tsurfaceparm alphashadow", "\tcull none",
             "\t{", "\t\tmap textures/q3r_metals/towerstruts.tga", "\t\talphaFunc GE128", "\t\tdepthWrite",
@@ -993,7 +998,6 @@ def write_shader():
             "\t\trgbGen identity", "\t}", "\t{", "\t\tmap $lightmap", "\t\tblendFunc GL_DST_COLOR GL_ZERO",
             "\t\tdepthFunc equal", "\t\trgbGen identity", "\t}", "}", ""]
     out += glow("lamp", "textures/q3r_signage/white.jpg", (1.0, 0.9, 0.72), 400)
-    out += glow("lantern", "textures/q3r_signage/white.jpg", (1.0, 0.68, 0.32), 300)
     out += [f"textures/{TEX}dark", "{", "\tqer_editorimage textures/q3r_signage/white.jpg", "\tsurfaceparm nolightmap",
             "\tsurfaceparm nonsolid", "\t{", "\t\tmap textures/q3r_signage/white.jpg", "\t\trgbGen const ( 0.02 0.02 0.02 )",
             "\t}", "}", ""]

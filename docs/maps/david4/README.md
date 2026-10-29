@@ -26,7 +26,8 @@ liegen 5.120 Units auseinander.
   der Bach unter dem Wasserturm "Save Ferris" durch (Unsichtbarkeit unter dem Tank) und
   verschwindet in einem Durchlass. Der Bach ist überall befahrbar.
 - **Deckung und Orientierung:** Felsgruppen, vor jeder Basis ein altes Steintor auf der
-  Mittellinie, kleine Hügel, Laternen an den ausgefahrenen Erdwegen.
+  Mittellinie, kleine Hügel, gusseiserne Laternen an den ausgefahrenen Erdwegen und
+  Wandlaternen an den Toren (Modelle, siehe `docs/lanterns.md`).
 - **Rand:** Hügel mit Bäumen rund um die Lichtung, dahinter die Waldwand des Originals.
   Eine unsichtbare Wand hält die Autos auf der Lichtung.
 

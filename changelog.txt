@@ -299,6 +299,14 @@ Added:
 
 Changed:
 
+- New lantern models for the maps (models/mapobjects/q3r_lanterns, generator
+  tools/mapobjects/make_lanterns.py, docs/lanterns.md): hanging lantern,
+  cast-iron lantern post with a scrolled arm, wall lantern and a sodium street
+  lamp with a swan-neck arm. Glass and flame flicker softly. q3r_david4 uses
+  the posts along the tracks and at the Quad slab and wall lanterns on the
+  ruin gates; q3r_ctf4_03 uses the street lamps (were brush boxes). AAS of
+  both maps rebuilt.
+
 - King of the Hill: the hill is now marked by a floating golden crown above
   its centre (models/mapobjects/koth/crown.md3) and glowing bollards on the
   border of the zone (post.md3) instead of the ground ring, light beam and

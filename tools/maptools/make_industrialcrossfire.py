@@ -307,13 +307,12 @@ def tankcar(x, y, along_x):
 
 
 def lamp_post(x, y, head_dx, head_dy):
-    """Sodium street lamp: pole, arm, glowing head, light."""
-    box((x - 6, y - 6, 0), (x + 6, y + 6, 330), TEX + "metal")
+    """Sodium street lamp (model, arm towards the head offset), invisible
+    collision around the pole, light under the head."""
     hx, hy = x + head_dx, y + head_dy
-    lo = (min(x, hx) - 5, min(y, hy) - 5, 322)
-    hi = (max(x, hx) + 5, max(y, hy) + 5, 330)
-    box(lo, hi, TEX + "metal")
-    box((hx - 16, hy - 16, 312), (hx + 16, hy + 16, 322), TEX + "metal", faces={"bot": TEX + "sodium"})
+    entity("misc_model", x, y, 0, angle=math.degrees(math.atan2(head_dy, head_dx)),
+           model="models/mapobjects/q3r_lanterns/streetlamp.md3")
+    box((x - 6, y - 6, 0), (x + 6, y + 6, 330), TEX + "boundary")
     entity("light", hx, hy, 290, light="320", _color="1 0.72 0.38")
 
 
@@ -760,7 +759,6 @@ def write_shader():
     out += tinted("hull", "textures/q3r_metals/metrust01.tga", (0.55, 0.22, 0.18), ("\tsurfaceparm SURF_METAL",))
     out += lit("shipdeck", "textures/base_floor/diamond2.jpg", ("\tsurfaceparm SURF_METAL",))
     out += tinted("shiphouse", "textures/q3r_building/concrete01.jpg", (0.95, 0.95, 0.92))
-    out += glow("sodium", (1.0, 0.72, 0.38), 1200)
     out += glow("floodlamp", (0.95, 0.95, 1.0), 2500)
     out += [f"textures/{TEX}clip", "{", "\tqer_trans 0.3", "\tsurfaceparm nodraw", "\tsurfaceparm nolightmap",
             "\tsurfaceparm trans", "\tsurfaceparm nomarks", "\tsurfaceparm detail", "}", ""]

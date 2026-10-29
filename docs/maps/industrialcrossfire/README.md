@@ -28,7 +28,7 @@ Quelldatei; sie wurde ersetzt.
   eine Hochstraße (224 Units hoch). Die vier Arme treffen sich auf einer Plattform über
   dem zentralen Platz. Oben liegt Quad Damage, unten rote Panzerung. Diagonalstraßen
   verbinden jede Basis mit dem Platz.
-- Licht: tiefe Sonne aus Osten (Skybox `env/ely_sunset`), Natriumlampen an den Straßen,
+- Licht: tiefe Sonne aus Osten (Skybox `env/ely_sunset`), Straßenlaternen mit Natriumlicht an den Straßen (Modell, siehe `docs/lanterns.md`),
   Flutlicht an den Basen. Regenwetter mit 45 % Wahrscheinlichkeit.
 
 ## Pickups (je Viertel gleich)

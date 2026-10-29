@@ -421,20 +421,6 @@ textures/q3r_david4/bark
 	}
 }
 
-textures/q3r_david4/wood
-{
-	qer_editorimage models/mapobjects/woodpole/wood01.jpg
-	{
-		map models/mapobjects/woodpole/wood01.jpg
-		rgbGen identity
-	}
-	{
-		map $lightmap
-		blendFunc GL_DST_COLOR GL_ZERO
-		rgbGen identity
-	}
-}
-
 textures/q3r_david4/struts
 {
 	qer_editorimage textures/q3r_metals/towerstruts.tga
@@ -486,19 +472,6 @@ textures/q3r_david4/lamp
 	{
 		map textures/q3r_signage/white.jpg
 		rgbGen const ( 1.0 0.9 0.72 )
-	}
-}
-
-textures/q3r_david4/lantern
-{
-	qer_editorimage textures/q3r_signage/white.jpg
-	surfaceparm nomarks
-	surfaceparm nolightmap
-	q3map_surfacelight 300
-	q3map_lightRGB 1.0 0.68 0.32
-	{
-		map textures/q3r_signage/white.jpg
-		rgbGen const ( 1.0 0.68 0.32 )
 	}
 }
 
