@@ -5959,6 +5959,14 @@ void BotAIBlocked(bot_state_t *bs, bot_moveresult_t *moveresult, int activate) {
 	aas_entityinfo_t entinfo;
 	bot_activategoal_t activategoal;
 
+	/* CTF bots are cars. Their steering/reverse recovery is applied from the
+	 * vehicle driver at usercmd time; the generic foot strafe/back-up logic
+	 * fights that controller and cannot free a car from map geometry. */
+	if (gametype == GT_CTF && bs->vehicle.active) {
+		bs->notblocked_time = FloatTime();
+		return;
+	}
+
 	// if the bot is not blocked by anything
 	if (!moveresult->blocked) {
 		bs->notblocked_time = FloatTime();

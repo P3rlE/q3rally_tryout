@@ -274,10 +274,6 @@ typedef struct bot_state_s
 	int ctfDefaultRole;								//stable fallback CTF role for this map
 	int ctfDefaultRoleTeam;							//team for which the fallback role was assigned
 	float ctfRouteDebugTime;							//next throttled CTF route progress log
-	float ctfRouteProgressTime;							//last measurable movement towards a CTF flag
-	float ctfRouteRecoveryUntil;							//end time for the current short CTF escape attempt
-	vec3_t ctfRouteProgressOrigin;							//origin at last measurable CTF route progress
-	int ctfRouteRecoverySide;							//alternating side for escape movement
 	// last ordered team goal
 	int lastgoal_decisionmaker;
 	int lastgoal_ltgtype;

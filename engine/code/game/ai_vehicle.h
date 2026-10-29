@@ -1,4 +1,4 @@
-/* Shared vehicle commands. Initially enabled for Deathmatch only. */
+/* Shared vehicle commands for car-aware bot modes. */
 #ifndef AI_VEHICLE_H
 #define AI_VEHICLE_H
 
@@ -15,6 +15,7 @@ typedef struct {
 	float targetSpeed;
 	float clearance;
 	qboolean blocked;
+	qboolean onRoad;
 	bot_vehicle_recovery_t recovery;
 	int recoveryUntil;
 	int recoveries;

@@ -3107,95 +3107,15 @@ static void BotCTFRouteDebug(bot_state_t *bs, const char *stage,
 	else VectorClear(movedir);
 	ClientName(bs->client, name, sizeof(name));
 	BotAI_Print(PRT_MESSAGE,
-		"CTF route movement %s stage=%s ltg=%d pos=(%.0f %.0f %.0f) vel=(%.0f %.0f %.0f) area=%d goalArea=%d travel=%d distance=%.0f blocked=%d failure=%d type=%d traveltype=%d flags=0x%x movedir=(%.2f %.2f %.2f)\n",
+		"CTF route movement %s stage=%s ltg=%d pos=(%.0f %.0f %.0f) vel=(%.0f %.0f %.0f) area=%d goalArea=%d travel=%d distance=%.0f blocked=%d failure=%d type=%d traveltype=%d flags=0x%x movedir=(%.2f %.2f %.2f) vehicle=%d road=%d recovery=%d vBlocked=%d clearance=%.2f targetSpeed=%.0f\n",
 		name, stage, bs->ltgtype,
 		bs->origin[0], bs->origin[1], bs->origin[2],
-		bs->velocity[0], bs->velocity[1], bs->velocity[2],
+		bs->cur_ps.velocity[0], bs->cur_ps.velocity[1], bs->cur_ps.velocity[2],
 		currentArea, goal ? goal->areanum : 0, travelTime, distance,
 		blocked, failure, type, traveltype, flags,
-		movedir[0], movedir[1], movedir[2]);
-}
-
-/*
-==================
-BotCTFRecoverRouteStall
-==================
-If navigation keeps an attacker on its flag goal but the player makes no
-world-space progress, clear stale reach avoidance and issue a short side escape.
-This covers static geometry stalls that do not set moveresult->blocked.
-*/
-static qboolean BotCTFRecoverRouteStall(bot_state_t *bs, bot_goal_t *goal,
-	bot_moveresult_t *moveresult) {
-	vec3_t delta, forward, right, escapeDir, angles;
-	float now, goalDistance, movedDistance;
-	char name[MAX_NETNAME];
-
-	if (gametype != GT_CTF || bs->ltgtype != LTG_GETFLAG || !goal ||
-		!goal->areanum || (moveresult && (moveresult->flags & MOVERESULT_WAITING)) ||
-		bs->activatestack) {
-		bs->ctfRouteProgressTime = 0.0f;
-		bs->ctfRouteRecoveryUntil = 0.0f;
-		return qfalse;
-	}
-
-	VectorSubtract(goal->origin, bs->origin, delta);
-	goalDistance = VectorLength(delta);
-	if (goalDistance < 256.0f || BotIsDead(bs) || BotIsObserver(bs)) {
-		bs->ctfRouteProgressTime = 0.0f;
-		bs->ctfRouteRecoveryUntil = 0.0f;
-		return qfalse;
-	}
-
-	now = FloatTime();
-	if (bs->ctfRouteProgressTime <= 0.0f) {
-		bs->ctfRouteProgressTime = now;
-		VectorCopy(bs->origin, bs->ctfRouteProgressOrigin);
-		return qfalse;
-	}
-
-	if (now - bs->ctfRouteProgressTime >= 1.0f) {
-		delta[0] = bs->origin[0] - bs->ctfRouteProgressOrigin[0];
-		delta[1] = bs->origin[1] - bs->ctfRouteProgressOrigin[1];
-		delta[2] = 0.0f;
-		movedDistance = VectorLength(delta);
-		if (movedDistance >= 40.0f) {
-			bs->ctfRouteProgressTime = now;
-			VectorCopy(bs->origin, bs->ctfRouteProgressOrigin);
-			bs->ctfRouteRecoveryUntil = 0.0f;
-		}
-	}
-
-	if (now - bs->ctfRouteProgressTime >= 6.0f && bs->ctfRouteRecoveryUntil <= now) {
-		bs->ctfRouteRecoverySide = !bs->ctfRouteRecoverySide;
-		bs->ctfRouteRecoveryUntil = now + 1.25f;
-		bs->ctfRouteProgressTime = now;
-		VectorCopy(bs->origin, bs->ctfRouteProgressOrigin);
-		trap_BotResetAvoidReach(bs->ms);
-		trap_BotResetLastAvoidReach(bs->ms);
-		ClientName(bs->client, name, sizeof(name));
-		BotAI_Print(PRT_MESSAGE,
-			"CTF bot %s stalled %.0f units from flag in area %d; trying side escape (%s), blocked=%d failure=%d\n",
-			name, goalDistance, BotPointAreaNum(bs->origin),
-			bs->ctfRouteRecoverySide ? "right" : "left",
-			moveresult ? moveresult->blocked : 0, moveresult ? moveresult->failure : 0);
-	}
-
-	if (bs->ctfRouteRecoveryUntil > now) {
-		AngleVectors(bs->cur_ps.viewangles, forward, right, NULL);
-		VectorScale(right, bs->ctfRouteRecoverySide ? 1.0f : -1.0f, escapeDir);
-		VectorMA(escapeDir, -0.35f, forward, escapeDir);
-		VectorNormalize(escapeDir);
-		trap_BotMoveInDirection(bs->ms, escapeDir, 400, MOVE_WALK);
-		trap_EA_MoveForward(bs->client);
-		vectoangles(escapeDir, angles);
-		if (moveresult) {
-			VectorCopy(escapeDir, moveresult->movedir);
-			VectorCopy(angles, moveresult->ideal_viewangles);
-			moveresult->flags |= MOVERESULT_MOVEMENTVIEW;
-		}
-		return qtrue;
-	}
-	return qfalse;
+		movedir[0], movedir[1], movedir[2],
+		bs->vehicle.active, bs->vehicle.onRoad, bs->vehicle.recovery, bs->vehicle.blocked,
+		bs->vehicle.clearance, bs->vehicle.targetSpeed);
 }
 
 /*
@@ -3395,7 +3315,6 @@ int AINode_Seek_LTG(bot_state_t *bs)
 	}
 	//
 	BotAIBlocked(bs, &moveresult, qtrue);
-	BotCTFRecoverRouteStall(bs, &goal, &moveresult);
 	//
 	BotClearPath(bs, &moveresult);
 	//if the viewangles are used for the movement

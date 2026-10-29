@@ -129,7 +129,7 @@ void BotVehicleDrive( bot_state_t *bs, const vec3_t target, float targetSpeed,
 	int targetBlockEntity = ENTITYNUM_NONE;
 	int oldCommandTime = drive->commandTime;
 
-	if ( gametype != GT_DEATHMATCH || bs->cur_ps.pm_type != PM_NORMAL ) {
+	if ( (gametype != GT_DEATHMATCH && gametype != GT_CTF) || bs->cur_ps.pm_type != PM_NORMAL ) {
 		return;
 	}
 	speed = VectorLength( bs->cur_ps.velocity );
@@ -152,6 +152,7 @@ void BotVehicleDrive( bot_state_t *bs, const vec3_t target, float targetSpeed,
 	trap_Trace( &ground, bs->cur_ps.origin, NULL, NULL, end, bs->client,
 		(MASK_PLAYERSOLID | CONTENTS_BOTCLIP) & ~CONTENTS_BODY );
 	onRoad = ground.fraction < 1 && ground.plane.normal[2] > 0.45f;
+	drive->onRoad = onRoad;
 	road = onRoad ? &ground : NULL;
 	horizon = Com_Clamp( 160, 850, 160 + speed * 0.30f + speed * speed / 4000.0f );
 	front = BotVehicleClearance( bs, bs->cur_ps.viewangles[YAW], horizon, road, qtrue, &blockEntity );
@@ -199,7 +200,7 @@ void BotVehicleDrive( bot_state_t *bs, const vec3_t target, float targetSpeed,
 		drive->recoveryUntil = level.time + 850;
 		drive->recoveries++;
 		if ( drive->recoveries >= 3 ) {
-			/* Request a new AAS route/item; never teleport a stuck DM bot. */
+			/* Ask the bot to reconsider its route after repeated failed recovery. */
 			trap_BotResetAvoidReach( bs->ms );
 			bs->ltg_time = 0;
 			bs->nbg_time = 0;
@@ -286,14 +287,21 @@ void BotVehicleMoveToGoal( bot_state_t *bs, bot_moveresult_t *result,
 	float lookAhead, targetSpeed;
 
 	trap_BotMoveToGoal( result, bs->ms, goal, travelFlags );
-	if ( gametype != GT_DEATHMATCH ) return;
+	if ( gametype != GT_DEATHMATCH && gametype != GT_CTF ) return;
 	lookAhead = Com_Clamp( 120, 300, 120 + VectorLength( bs->cur_ps.velocity ) * 0.15f );
 	if ( !trap_BotMovementViewTarget( bs->ms, goal, travelFlags, lookAhead, target ) ) {
 		VectorCopy( result->movedir, direction );
 		if ( VectorNormalize( direction ) > 0.01f ) VectorMA( bs->origin, lookAhead, direction, target );
 		else VectorCopy( goal->origin, target );
 	}
-	targetSpeed = 650 + 70 * Com_Clamp( 1, 5, bs->settings.skill );
+	if ( gametype == GT_CTF ) {
+		/* CTF bots use vehicle steering too, but their AAS goals are foot-scale
+		 * and the maps are tighter than the open DM arenas. Keep their cruise
+		 * speed conservative while BotVehicleDrive handles collision recovery. */
+		targetSpeed = 600 + 50 * Com_Clamp( 1, 5, bs->settings.skill );
+	} else {
+		targetSpeed = 650 + 70 * Com_Clamp( 1, 5, bs->settings.skill );
+	}
 	if ( DistanceSquared( bs->origin, goal->origin ) < Square( 160 ) ) targetSpeed = 300;
 	if ( result->flags & MOVERESULT_WAITING ) targetSpeed = 0;
 	BotVehicleDrive( bs, target, targetSpeed, result );
@@ -306,7 +314,7 @@ void BotVehicleUpdateInput( bot_state_t *bs, usercmd_t *cmd ) {
 	float speed, throttle, steering;
 	int i;
 
-	if ( gametype != GT_DEATHMATCH || !drive->active ) return;
+	if ( (gametype != GT_DEATHMATCH && gametype != GT_CTF) || !drive->active ) return;
 	if ( level.time - drive->commandTime > 300 || bs->cur_ps.pm_type != PM_NORMAL ||
 		bs->client < 0 || bs->client >= level.maxclients || !g_entities[bs->client].client ) {
 		cmd->forwardmove = cmd->rightmove = 0;
