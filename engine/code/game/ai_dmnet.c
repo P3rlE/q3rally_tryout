@@ -3065,6 +3065,141 @@ static void Bot_DerbyRoamDrive( bot_state_t *bs ) {
 
 /*
 ==================
+BotCTFRouteDebug
+==================
+Throttled movement diagnostics for attackers. These distinguish a valid
+objective assignment from movement that is blocked, diverted, or outside AAS.
+*/
+static void BotCTFRouteDebug(bot_state_t *bs, const char *stage,
+	bot_goal_t *goal, bot_moveresult_t *moveresult) {
+	char name[MAX_NETNAME];
+	vec3_t toGoal, movedir;
+	float distance;
+	int currentArea, travelTime;
+	int blocked, failure, type, traveltype, flags;
+
+	if (gametype != GT_CTF || bs->ltgtype != LTG_GETFLAG) {
+		return;
+	}
+	if (bs->ctfRouteDebugTime > FloatTime() + 30.0f) {
+		bs->ctfRouteDebugTime = 0;
+	}
+	if (bs->ctfRouteDebugTime > FloatTime()) {
+		return;
+	}
+	bs->ctfRouteDebugTime = FloatTime() + 10.0f;
+	currentArea = BotPointAreaNum(bs->origin);
+	travelTime = (currentArea && goal && goal->areanum) ?
+		trap_AAS_AreaTravelTimeToGoalArea(currentArea, bs->origin, goal->areanum, bs->tfl) : 0;
+	if (goal) {
+		VectorSubtract(goal->origin, bs->origin, toGoal);
+		distance = VectorLength(toGoal);
+	} else {
+		VectorClear(toGoal);
+		distance = -1.0f;
+	}
+	blocked = moveresult ? moveresult->blocked : 0;
+	failure = moveresult ? moveresult->failure : 0;
+	type = moveresult ? moveresult->type : 0;
+	traveltype = moveresult ? moveresult->traveltype : 0;
+	flags = moveresult ? moveresult->flags : 0;
+	if (moveresult) VectorCopy(moveresult->movedir, movedir);
+	else VectorClear(movedir);
+	ClientName(bs->client, name, sizeof(name));
+	BotAI_Print(PRT_MESSAGE,
+		"CTF route movement %s stage=%s ltg=%d pos=(%.0f %.0f %.0f) vel=(%.0f %.0f %.0f) area=%d goalArea=%d travel=%d distance=%.0f blocked=%d failure=%d type=%d traveltype=%d flags=0x%x movedir=(%.2f %.2f %.2f)\n",
+		name, stage, bs->ltgtype,
+		bs->origin[0], bs->origin[1], bs->origin[2],
+		bs->velocity[0], bs->velocity[1], bs->velocity[2],
+		currentArea, goal ? goal->areanum : 0, travelTime, distance,
+		blocked, failure, type, traveltype, flags,
+		movedir[0], movedir[1], movedir[2]);
+}
+
+/*
+==================
+BotCTFRecoverRouteStall
+==================
+If navigation keeps an attacker on its flag goal but the player makes no
+world-space progress, clear stale reach avoidance and issue a short side escape.
+This covers static geometry stalls that do not set moveresult->blocked.
+*/
+static qboolean BotCTFRecoverRouteStall(bot_state_t *bs, bot_goal_t *goal,
+	bot_moveresult_t *moveresult) {
+	vec3_t delta, forward, right, escapeDir, angles;
+	float now, goalDistance, movedDistance;
+	char name[MAX_NETNAME];
+
+	if (gametype != GT_CTF || bs->ltgtype != LTG_GETFLAG || !goal ||
+		!goal->areanum || (moveresult && (moveresult->flags & MOVERESULT_WAITING)) ||
+		bs->activatestack) {
+		bs->ctfRouteProgressTime = 0.0f;
+		bs->ctfRouteRecoveryUntil = 0.0f;
+		return qfalse;
+	}
+
+	VectorSubtract(goal->origin, bs->origin, delta);
+	goalDistance = VectorLength(delta);
+	if (goalDistance < 256.0f || BotIsDead(bs) || BotIsObserver(bs)) {
+		bs->ctfRouteProgressTime = 0.0f;
+		bs->ctfRouteRecoveryUntil = 0.0f;
+		return qfalse;
+	}
+
+	now = FloatTime();
+	if (bs->ctfRouteProgressTime <= 0.0f) {
+		bs->ctfRouteProgressTime = now;
+		VectorCopy(bs->origin, bs->ctfRouteProgressOrigin);
+		return qfalse;
+	}
+
+	if (now - bs->ctfRouteProgressTime >= 1.0f) {
+		delta[0] = bs->origin[0] - bs->ctfRouteProgressOrigin[0];
+		delta[1] = bs->origin[1] - bs->ctfRouteProgressOrigin[1];
+		delta[2] = 0.0f;
+		movedDistance = VectorLength(delta);
+		if (movedDistance >= 40.0f) {
+			bs->ctfRouteProgressTime = now;
+			VectorCopy(bs->origin, bs->ctfRouteProgressOrigin);
+			bs->ctfRouteRecoveryUntil = 0.0f;
+		}
+	}
+
+	if (now - bs->ctfRouteProgressTime >= 6.0f && bs->ctfRouteRecoveryUntil <= now) {
+		bs->ctfRouteRecoverySide = !bs->ctfRouteRecoverySide;
+		bs->ctfRouteRecoveryUntil = now + 1.25f;
+		bs->ctfRouteProgressTime = now;
+		VectorCopy(bs->origin, bs->ctfRouteProgressOrigin);
+		trap_BotResetAvoidReach(bs->ms);
+		trap_BotResetLastAvoidReach(bs->ms);
+		ClientName(bs->client, name, sizeof(name));
+		BotAI_Print(PRT_MESSAGE,
+			"CTF bot %s stalled %.0f units from flag in area %d; trying side escape (%s), blocked=%d failure=%d\n",
+			name, goalDistance, BotPointAreaNum(bs->origin),
+			bs->ctfRouteRecoverySide ? "right" : "left",
+			moveresult ? moveresult->blocked : 0, moveresult ? moveresult->failure : 0);
+	}
+
+	if (bs->ctfRouteRecoveryUntil > now) {
+		AngleVectors(bs->cur_ps.viewangles, forward, right, NULL);
+		VectorScale(right, bs->ctfRouteRecoverySide ? 1.0f : -1.0f, escapeDir);
+		VectorMA(escapeDir, -0.35f, forward, escapeDir);
+		VectorNormalize(escapeDir);
+		trap_BotMoveInDirection(bs->ms, escapeDir, 400, MOVE_WALK);
+		trap_EA_MoveForward(bs->client);
+		vectoangles(escapeDir, angles);
+		if (moveresult) {
+			VectorCopy(escapeDir, moveresult->movedir);
+			VectorCopy(angles, moveresult->ideal_viewangles);
+			moveresult->flags |= MOVERESULT_MOVEMENTVIEW;
+		}
+		return qtrue;
+	}
+	return qfalse;
+}
+
+/*
+==================
 AINode_Seek_LTG
 ==================
 */
@@ -3143,6 +3278,7 @@ int AINode_Seek_LTG(bot_state_t *bs)
 		}
 		else if (BotWantsToRetreat(bs)) {
 			//keep the current long term goal and retreat
+			BotCTFRouteDebug(bs, "combat-retreat", NULL, NULL);
 			AIEnter_Battle_Retreat(bs, "seek ltg: found enemy");
 			return qfalse;
 		}
@@ -3151,6 +3287,7 @@ int AINode_Seek_LTG(bot_state_t *bs)
 			//empty the goal stack
 			trap_BotEmptyGoalStack(bs->gs);
 			//go fight
+			BotCTFRouteDebug(bs, "combat", NULL, NULL);
 			AIEnter_Battle_Fight(bs, "seek ltg: found enemy");
 			return qfalse;
 		}
@@ -3159,6 +3296,7 @@ int AINode_Seek_LTG(bot_state_t *bs)
 	BotTeamGoals(bs, qfalse);
 	//get the current long term goal
 	if (!BotLongTermGoal(bs, bs->tfl, qfalse, &goal)) {
+		BotCTFRouteDebug(bs, "no-goal", NULL, NULL);
 // Q3Rally Code Start
 		// Derby/LCS arenas frequently have no reachable item-based long term
 		// goal, which would otherwise leave the car standing still. Keep it
@@ -3201,6 +3339,7 @@ int AINode_Seek_LTG(bot_state_t *bs)
 #endif
 		//
 		if (BotNearbyGoal(bs, bs->tfl, &goal, range)) {
+			BotCTFRouteDebug(bs, "nearby-goal", &goal, NULL);
 			trap_BotResetLastAvoidReach(bs->ms);
 			//get the goal at the top of the stack
 			//trap_BotGetTopGoal(bs->gs, &tmpgoal);
@@ -3213,8 +3352,10 @@ int AINode_Seek_LTG(bot_state_t *bs)
 		}
 	}
 	//predict obstacles
-	if (BotAIPredictObstacles(bs, &goal))
+	if (BotAIPredictObstacles(bs, &goal)) {
+		BotCTFRouteDebug(bs, "obstacle-predict", &goal, NULL);
 		return qfalse;
+	}
 	//initialize the movement state
 	BotSetupForMovement(bs);
 	//move towards the goal
@@ -3233,6 +3374,7 @@ int AINode_Seek_LTG(bot_state_t *bs)
 // END
 
 	BotVehicleMoveToGoal(bs, &moveresult, &goal, bs->tfl);
+	BotCTFRouteDebug(bs, "move", &goal, &moveresult);
 
 // Q3Rally Code Start
 	// For car-brawl modes the throttle is issued at the end of the function
@@ -3253,6 +3395,7 @@ int AINode_Seek_LTG(bot_state_t *bs)
 	}
 	//
 	BotAIBlocked(bs, &moveresult, qtrue);
+	BotCTFRecoverRouteStall(bs, &goal, &moveresult);
 	//
 	BotClearPath(bs, &moveresult);
 	//if the viewangles are used for the movement

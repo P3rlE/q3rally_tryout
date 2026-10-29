@@ -6,8 +6,9 @@ Erzeugt von `tools/maptools/make_mesaking.py` (Python 3 + Pillow).
 - Runde Sandarena (Radius 2150 Units) in einem Ring steiler Sandsteinwaende.
 - In der Mitte ein Tafelberg mit flacher Kuppe (Radius 400, die Zone ist ein
   `trigger_koth_hill` ueber der Kuppe), erreichbar ueber vier Rampen auf den
-  Diagonalen (14 Grad); sonst sind die Flanken Steilwaende. Fahnenmast in der
-  Mitte als Orientierung.
+  Diagonalen (14 Grad); sonst sind die Flanken Steilwaende. Ueber der Kuppe
+  schwebt die Krone, am Rand der Zone stehen Leuchtpfosten; beides zeichnet das
+  Spiel selbst (siehe `docs/koth_crown.md`), die Map braucht dafuer nichts.
 - Rot startet im Osten, Blau im Westen, je vier `team_KOTH_*player` und vier
   `team_KOTH_*spawn`. Die Map ist an beiden Achsen gespiegelt, alle Rampen sind
   fuer beide Teams gleich weit.

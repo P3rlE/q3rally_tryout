@@ -342,13 +342,8 @@ def dressing():
               ((0, 0, 1), (0, 0, top + 200)), ((0, 0, -1), (0, 0, top - 10))]
     body = "\n".join(face(plane(n, p), "common/checkpoint", detail=False) for n, p in planes)
     TRIGGERS.append('{\n"classname" "trigger_koth_hill"\n"indicatorHeight" "-40"\n{\n' + body + "\n}\n}")
-    # crown: a flag pole in the middle of the top, visible from everywhere
-    obox(0, 0, (1, 0), 6, 6, top - 8, top + 520, TEX + "metal")
-    obox(0, 64, (1, 0), 3, 58, top + 400, top + 500, TEX + "checker", side=TEX + "metal", solid=False)
-    # low marker posts on the top edge between the ramps
-    for a in (0, 90, 180, 270):
-        x, y = (R_TOP - 30) * math.cos(math.radians(a)), (R_TOP - 30) * math.sin(math.radians(a))
-        obox(x, y, (math.cos(math.radians(a)), math.sin(math.radians(a))), 10, 10, top - 8, top + 46, TEX + "metal")
+    # no pole or marker posts on the top: cgame draws the floating crown above the
+    # hill and bollards on the border of the trigger (cg_hud_vehicle.c)
     # cover rocks in the arena, mirror symmetric in x and y
     rng = random.Random(3)
     seed = 0

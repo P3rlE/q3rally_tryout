@@ -29,7 +29,6 @@ ely_darkcity
 ely_sunset
 telestecki
 cars_helmets
-koth_beam
 q3r_redrock
 q3r_citydom
 q3r_crossroads

@@ -299,6 +299,22 @@ Added:
 
 Changed:
 
+- King of the Hill: the hill is now marked by a floating golden crown above
+  its centre (models/mapobjects/koth/crown.md3) and glowing bollards on the
+  border of the zone (post.md3) instead of the ground ring, light beam and
+  sprite. Gems and cap glow in the owner's colour; while a team captures, the
+  bollards light up one after another in its colour (progress) and the gems
+  pulse towards it; contested: the crown rattles and flickers yellow; on a
+  capture the crown hops and spins. Bollards sink into the ground when a car
+  comes close. Also on the minimap. CS_KOTHSTATUS has three extra fields
+  (capturing team, half extents of the zone). Removed: cg_kothRingScale,
+  cg_kothBeamHalfWidth, cg_kothRingAlpha*, cg_kothBeamAlpha*, koth_beam.shader,
+  textures/fx/koth_beam.png, koth_ring.png, gfx/2d/hillmarker*.png. Models
+  from tools/koth/make_koth_models.py, see docs/koth_crown.md.
+
+- q3r_mesaking: flag pole and the four marker posts on the mesa removed (the
+  crown and the bollards replace them); AAS rebuilt from the proxy.
+
 - q3r_david4 (Jungle Opening) rebuilt with the same concept: CTF in a jungle
   clearing at night, flags on a cross of team-coloured ramps, "Save Ferris"
   water tower and oak grove with the Quad in the middle, same weapons. The
