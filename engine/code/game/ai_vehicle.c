@@ -123,7 +123,7 @@ void BotVehicleDrive( bot_state_t *bs, const vec3_t target, float targetSpeed,
 	vec3_t delta, angles, forward, end;
 	trace_t ground;
 	const trace_t *road;
-	float speed, yaw, horizon, front, left, right, rear, targetClear, yawError;
+	float speed, yaw, horizon, sideHorizon, brakeHorizon, front, left, right, rear, targetClear, yawError;
 	qboolean onRoad;
 	int blockEntity = ENTITYNUM_NONE;
 	int targetBlockEntity = ENTITYNUM_NONE;
@@ -155,9 +155,13 @@ void BotVehicleDrive( bot_state_t *bs, const vec3_t target, float targetSpeed,
 	drive->onRoad = onRoad;
 	road = onRoad ? &ground : NULL;
 	horizon = Com_Clamp( 160, 850, 160 + speed * 0.30f + speed * speed / 4000.0f );
+	/* Tight CTF arenas need local escape checks; a full-speed braking horizon
+	 * often includes several trees even when the immediate turn is open. */
+	sideHorizon = gametype == GT_CTF ? Com_Clamp( 160, 320, horizon * 0.5f ) : horizon;
+	brakeHorizon = horizon;
 	front = BotVehicleClearance( bs, bs->cur_ps.viewangles[YAW], horizon, road, qtrue, &blockEntity );
-	left = BotVehicleClearance( bs, bs->cur_ps.viewangles[YAW] + 50, horizon, road, qfalse, NULL );
-	right = BotVehicleClearance( bs, bs->cur_ps.viewangles[YAW] - 50, horizon, road, qfalse, NULL );
+	left = BotVehicleClearance( bs, bs->cur_ps.viewangles[YAW] + 50, sideHorizon, road, qfalse, NULL );
+	right = BotVehicleClearance( bs, bs->cur_ps.viewangles[YAW] - 50, sideHorizon, road, qfalse, NULL );
 	rear = BotVehicleClearance( bs, bs->cur_ps.viewangles[YAW] + 180, 150, road, qfalse, NULL );
 	targetClear = BotVehicleClearance( bs, yaw, horizon, road, qfalse, &targetBlockEntity );
 	/* A distant opponent in our firing lane is not yet an immediate detour.
@@ -210,12 +214,18 @@ void BotVehicleDrive( bot_state_t *bs, const vec3_t target, float targetSpeed,
 	if ( drive->recovery == BOT_VEHICLE_REVERSE ) {
 		/* Nose target, not travel direction: mouse steering reverses in reverse gear. */
 		yaw = bs->cur_ps.viewangles[YAW] + drive->turnSign * 35;
-		targetSpeed = rear > 0.4f ? -260 : 0;
+		{
+			float reverseRoom = rear * 150 - 18;
+			targetSpeed = reverseRoom > 0 ? -Com_Clamp( 0, 220,
+				sqrt( 2 * 1000.0f * reverseRoom ) ) : 0;
+		}
 	} else if ( drive->recovery == BOT_VEHICLE_TURN ) {
 		float turnClear = BotVehicleClearance( bs, bs->cur_ps.viewangles[YAW] +
-			drive->turnSign * 70, 180, road, qfalse, NULL );
-		yaw = bs->cur_ps.viewangles[YAW] + drive->turnSign * 70;
-		targetSpeed = turnClear > 0.35f ? 320 : 0;
+			drive->turnSign * 50, 180, road, qfalse, NULL );
+		float turnRoom = turnClear * 180 - 18;
+		yaw = bs->cur_ps.viewangles[YAW] + drive->turnSign * 50;
+		targetSpeed = turnRoom > 0 ? Com_Clamp( 0, 220,
+			sqrt( 2 * 1000.0f * turnRoom ) ) : 0;
 	} else {
 		if ( front < 0.85f || targetClear < 0.6f ) {
 			float blockedCorridor = front < targetClear ? front : targetClear;
@@ -247,22 +257,28 @@ void BotVehicleDrive( bot_state_t *bs, const vec3_t target, float targetSpeed,
 				}
 				yaw = bs->cur_ps.viewangles[YAW] + side * 50;
 				targetSpeed = targetSpeed > 520 ? 520 : targetSpeed;
+				targetClear = freeSide;
+				brakeHorizon = sideHorizon;
 			} else if ( front >= 0.85f ) {
 				/* A clear current lane does not make an unsafe requested turn
 				 * safe. Stay in this lane until a checked detour is available. */
 				yaw = bs->cur_ps.viewangles[YAW];
 				if ( targetSpeed > 340 ) targetSpeed = 340;
+				targetClear = front;
 			} else {
 				targetSpeed *= front;
+				targetClear = front;
 			}
 			if ( front < 0.16f && freeSide < 0.35f ) targetSpeed = 0;
 		}
 		yawError = fabs( AngleSubtract( yaw, bs->cur_ps.viewangles[YAW] ) );
 		if ( yawError > 70 && targetSpeed > 340 ) targetSpeed = 340;
 		else if ( yawError > 35 && targetSpeed > 600 ) targetSpeed = 600;
-		/* Reserve braking distance even when the desired corridor is clear. */
-		if ( front < 0.85f ) {
-			float safeSpeed = sqrt( 2 * 1800.0f * (front * horizon > 45 ? front * horizon - 45 : 0) );
+		/* Brake against the corridor we're actually steering into. Using the
+		 * blocked straight-ahead lane here cancels every safe side detour. */
+		if ( targetClear < 0.85f ) {
+			float safeDistance = targetClear * brakeHorizon - 45;
+			float safeSpeed = safeDistance > 0 ? sqrt( 2 * 1800.0f * safeDistance ) : 0;
 			if ( targetSpeed > safeSpeed ) targetSpeed = safeSpeed;
 		}
 	}
