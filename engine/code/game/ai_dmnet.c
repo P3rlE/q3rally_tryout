@@ -245,6 +245,33 @@ static qboolean Bot_LcsShouldIgnoreFoundEnemy( bot_state_t *bs ) {
 	return ( !BotWantsToChase( bs ) || Bot_LcsShouldAvoidBattleEntry( bs, &lcsReason ) );
 }
 
+/*
+==================
+Bot_CtfShouldKeepObjective
+
+Flag runners should not abandon a flag route for an ordinary opponent.
+The enemy flag carrier remains a valid combat target while pursuing or
+returning a flag. A bot carrying the flag always keeps its route to base.
+==================
+*/
+static qboolean Bot_CtfShouldKeepObjective( bot_state_t *bs ) {
+	aas_entityinfo_t enemyInfo;
+
+	if ( !bs || gametype != GT_CTF ||
+		(bs->ltgtype != LTG_GETFLAG && bs->ltgtype != LTG_RETURNFLAG &&
+		bs->ltgtype != LTG_RUSHBASE) ) {
+		return qfalse;
+	}
+	if ( bs->ltgtype == LTG_RUSHBASE || BotCTFCarryingFlag( bs ) ) {
+		return qtrue;
+	}
+	if ( bs->enemy < 0 ) {
+		return qtrue;
+	}
+	BotEntityInfo( bs->enemy, &enemyInfo );
+	return EntityCarriesFlag( &enemyInfo ) ? qfalse : qtrue;
+}
+
 static qboolean Bot_LcsShouldBreakEngagement( bot_state_t *bs, const botCollisionRisk_t *risk, const char **triggerOut ) {
 	float relativePosition = 0.5f;
 	float threatProximity = 0.0f;
@@ -3079,7 +3106,8 @@ static void BotCTFRouteDebug(bot_state_t *bs, const char *stage,
 	int blocked, failure, type, traveltype, flags;
 
 	if (gametype != GT_CTF ||
-		(bs->ltgtype != LTG_GETFLAG && bs->ltgtype != LTG_RUSHBASE)) {
+		(bs->ltgtype != LTG_GETFLAG && bs->ltgtype != LTG_RETURNFLAG &&
+		bs->ltgtype != LTG_RUSHBASE)) {
 		return;
 	}
 	if (bs->ctfRouteDebugTime > FloatTime() + 30.0f) {
@@ -3108,17 +3136,21 @@ static void BotCTFRouteDebug(bot_state_t *bs, const char *stage,
 	else VectorClear(movedir);
 	ClientName(bs->client, name, sizeof(name));
 	BotAI_Print(PRT_MESSAGE,
-		"CTF route movement %s stage=%s ltg=%d carrying=%d pos=(%.0f %.0f %.0f) vel=(%.0f %.0f %.0f) area=%d goalArea=%d travel=%d distance=%.0f blocked=%d failure=%d type=%d traveltype=%d flags=0x%x movedir=(%.2f %.2f %.2f) vehicle=%d road=%d reentryArea=%d recovery=%d vBlocked=%d clearance=%.2f targetSpeed=%.0f\n",
-		name, stage, bs->ltgtype,
+		"CTF route movement %s stage=%s ltg=%d objectiveFocus=%d enemy=%d carrying=%d pos=(%.0f %.0f %.0f) goal=(%.0f %.0f %.0f) vel=(%.0f %.0f %.0f) area=%d goalArea=%d travel=%d distance=%.0f blocked=%d failure=%d type=%d traveltype=%d flags=0x%x movedir=(%.2f %.2f %.2f) vehicle=%d road=%d reentryArea=%d recovery=%d vBlocked=%d clearance=%.2f targetClear=%.2f left=%.2f right=%.2f rear=%.2f targetSpeed=%.0f\n",
+		name, stage, bs->ltgtype, Bot_CtfShouldKeepObjective(bs), bs->enemy,
 		BotCTFCarryingFlag(bs) != CTF_FLAG_NONE,
 		bs->origin[0], bs->origin[1], bs->origin[2],
+		goal ? goal->origin[0] : 0, goal ? goal->origin[1] : 0,
+		goal ? goal->origin[2] : 0,
 		bs->cur_ps.velocity[0], bs->cur_ps.velocity[1], bs->cur_ps.velocity[2],
 		currentArea, goal ? goal->areanum : 0, travelTime, distance,
 		blocked, failure, type, traveltype, flags,
 		movedir[0], movedir[1], movedir[2],
 		bs->vehicle.active, bs->vehicle.onRoad, bs->vehicle.reentryArea,
 		bs->vehicle.recovery, bs->vehicle.blocked,
-		bs->vehicle.clearance, bs->vehicle.targetSpeed);
+		bs->vehicle.clearance, bs->vehicle.targetClearance,
+		bs->vehicle.leftClearance, bs->vehicle.rightClearance,
+		bs->vehicle.rearClearance, bs->vehicle.targetSpeed);
 }
 
 /*
@@ -3193,6 +3225,10 @@ int AINode_Seek_LTG(bot_state_t *bs)
 				bs->teamgoal_time > FloatTime() ) {
 			// Keep moving to the supply goal instead of immediately re-entering
 			// the same fight with an empty or weak weapon.
+		}
+		else if ( Bot_CtfShouldKeepObjective( bs ) ) {
+			/* Continue the flag route; don't let an ordinary duel take over. */
+			bs->enemy = -1;
 		}
 		else if ( Bot_LcsShouldIgnoreFoundEnemy( bs ) ) {
 			// LCS avoidance keeps seeking the current long-term goal instead
@@ -3460,6 +3496,11 @@ int AINode_Battle_Fight(bot_state_t *bs) {
 	}
 	//
 	BotEntityInfo(bs->enemy, &entinfo);
+	if ( Bot_CtfShouldKeepObjective( bs ) ) {
+		bs->enemy = -1;
+		AIEnter_Seek_LTG( bs, "ctf objective takes priority" );
+		return qfalse;
+	}
 	//if the enemy is dead
 	if (bs->enemydeath_time) {
 		if (bs->enemydeath_time < FloatTime() - 1.0) {
@@ -3665,6 +3706,11 @@ int AINode_Battle_Chase(bot_state_t *bs)
 		AIEnter_Seek_LTG(bs, "battle chase: no enemy");
 		return qfalse;
 	}
+	if ( Bot_CtfShouldKeepObjective( bs ) ) {
+		bs->enemy = -1;
+		AIEnter_Seek_LTG( bs, "ctf objective takes priority" );
+		return qfalse;
+	}
 	//if the enemy is visible
 // STONELANCE
 //	if (BotEntityVisible(bs->entitynum, bs->eye, bs->viewangles, 360, bs->enemy)) {
@@ -3836,6 +3882,11 @@ int AINode_Battle_Retreat(bot_state_t *bs) {
 #ifdef DEBUG
 		BotAI_Print(PRT_MESSAGE, "found new better enemy\n");
 #endif
+	}
+	if ( Bot_CtfShouldKeepObjective( bs ) ) {
+		bs->enemy = -1;
+		AIEnter_Seek_LTG( bs, "ctf objective takes priority" );
+		return qfalse;
 	}
 	//
 	bs->tfl = TFL_DEFAULT;

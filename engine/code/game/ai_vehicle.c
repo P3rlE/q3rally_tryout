@@ -164,6 +164,10 @@ void BotVehicleDrive( bot_state_t *bs, const vec3_t target, float targetSpeed,
 	right = BotVehicleClearance( bs, bs->cur_ps.viewangles[YAW] - 50, sideHorizon, road, qfalse, NULL );
 	rear = BotVehicleClearance( bs, bs->cur_ps.viewangles[YAW] + 180, 150, road, qfalse, NULL );
 	targetClear = BotVehicleClearance( bs, yaw, horizon, road, qfalse, &targetBlockEntity );
+	drive->leftClearance = left;
+	drive->rightClearance = right;
+	drive->rearClearance = rear;
+	drive->targetClearance = targetClear;
 	/* A distant opponent in our firing lane is not yet an immediate detour.
 	 * Keep closing with braking room; close contact, other cars and unsafe
 	 * ground still use the normal, continuously checked avoidance below. */
@@ -229,6 +233,8 @@ void BotVehicleDrive( bot_state_t *bs, const vec3_t target, float targetSpeed,
 	} else {
 		if ( front < 0.85f || targetClear < 0.6f ) {
 			float blockedCorridor = front < targetClear ? front : targetClear;
+			float detourThreshold = gametype == GT_CTF ? 0.10f : 0.35f;
+			float detourMargin = gametype == GT_CTF ? 0.05f : 0.10f;
 			int side;
 			float freeSide;
 			/* Commit briefly to a safe passing side. Tiny changes in vehicle
@@ -246,17 +252,18 @@ void BotVehicleDrive( bot_state_t *bs, const vec3_t target, float targetSpeed,
 			}
 			freeSide = side > 0 ? left : right;
 			/* A preferred side never overrides the floor/clearance checks. */
-			if ( freeSide <= 0.35f || freeSide <= blockedCorridor + 0.10f ) {
+			if ( freeSide <= detourThreshold || freeSide <= blockedCorridor + detourMargin ) {
 				side = -side;
 				freeSide = side > 0 ? left : right;
 			}
-			if ( freeSide > blockedCorridor + 0.10f && freeSide > 0.35f ) {
+			if ( freeSide > blockedCorridor + detourMargin && freeSide > detourThreshold ) {
 				if ( side != drive->avoidSign || level.time >= drive->avoidUntil ) {
 					drive->avoidSign = side;
 					drive->avoidUntil = level.time + 650;
 				}
 				yaw = bs->cur_ps.viewangles[YAW] + side * 50;
-				targetSpeed = targetSpeed > 520 ? 520 : targetSpeed;
+				if ( gametype == GT_CTF ) targetSpeed = targetSpeed > 260 ? 260 : targetSpeed;
+				else targetSpeed = targetSpeed > 520 ? 520 : targetSpeed;
 				targetClear = freeSide;
 				brakeHorizon = sideHorizon;
 			} else if ( front >= 0.85f ) {
@@ -269,7 +276,6 @@ void BotVehicleDrive( bot_state_t *bs, const vec3_t target, float targetSpeed,
 				targetSpeed *= front;
 				targetClear = front;
 			}
-			if ( front < 0.16f && freeSide < 0.35f ) targetSpeed = 0;
 		}
 		yawError = fabs( AngleSubtract( yaw, bs->cur_ps.viewangles[YAW] ) );
 		if ( yawError > 70 && targetSpeed > 340 ) targetSpeed = 340;
@@ -277,7 +283,8 @@ void BotVehicleDrive( bot_state_t *bs, const vec3_t target, float targetSpeed,
 		/* Brake against the corridor we're actually steering into. Using the
 		 * blocked straight-ahead lane here cancels every safe side detour. */
 		if ( targetClear < 0.85f ) {
-			float safeDistance = targetClear * brakeHorizon - 45;
+			float safeDistance = targetClear * brakeHorizon -
+				(gametype == GT_CTF ? 18 : 45);
 			float safeSpeed = safeDistance > 0 ? sqrt( 2 * 1800.0f * safeDistance ) : 0;
 			if ( targetSpeed > safeSpeed ) targetSpeed = safeSpeed;
 		}

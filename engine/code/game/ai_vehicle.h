@@ -14,6 +14,10 @@ typedef struct {
 	float desiredYaw;
 	float targetSpeed;
 	float clearance;
+	float targetClearance;
+	float leftClearance;
+	float rightClearance;
+	float rearClearance;
 	qboolean blocked;
 	qboolean onRoad;
 	int reentryArea;
