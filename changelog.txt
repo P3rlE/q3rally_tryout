@@ -299,6 +299,19 @@ Added:
 
 Changed:
 
+- Floodlight mast model (models/mapobjects/q3r_lanterns/floodmast.md3, plus
+  floodmast_red/_blue with team-coloured lenses): tapered galvanised mast,
+  ladder with a safety cage, ringed platform and six tilted flood heads on a
+  frame. Replaces the brush floodlights in q3r_david4 (aimed at the flag mound)
+  and q3r_ctf4_03 (aimed at the flags).
+- Railway models (models/mapobjects/q3r_rail, generator
+  tools/mapobjects/make_rail.py, docs/rail.md): track segment, covered wagon in
+  brown, grey and red, tank wagon and flat wagon with bogies, buffers, ladders
+  and brake wheel. q3r_ctf4_03 uses them instead of brushes; invisible collision
+  hulls keep the old shapes (cars and shots stop at them), the sleeper decal
+  is now a ballast bed. Mesh helpers shared in tools/mapobjects/meshlib.py;
+  degenerate triangles are no longer written. AAS of both maps rebuilt.
+
 - New lantern models for the maps (models/mapobjects/q3r_lanterns, generator
   tools/mapobjects/make_lanterns.py, docs/lanterns.md): hanging lantern,
   cast-iron lantern post with a scrolled arm, wall lantern and a sodium street

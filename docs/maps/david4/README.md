@@ -15,7 +15,8 @@ liegen 5.120 Units auseinander.
   jetzt Steinrampen. Die Flagge ist dadurch aus jeder Richtung erreichbar. Alle
   Steigungen sind sanft und an den Kanten gerundet (keine Absprungkanten), ein Auto
   kann quer über die Kuppe fahren und auf der anderen Seite weiter. Das Flaggenpad
-  leuchtet in Teamfarbe, Flutlichtmasten und farbige Lampen markieren die Basis.
+  leuchtet in Teamfarbe. Zwei Flutlichtmasten mit Strahlern in Teamfarbe (Modell,
+  `docs/lanterns.md`) und farbige Lampen markieren die Basis.
 - **Außenposten:** Hinter jeder Flagge eine Halle zum Durchfahren (vorne und hinten
   offen) mit BFG (Südseite), Granatwerfer (Nordseite), Munition und Gesundheit.
 - **Keine Leitplanken mehr:** Die roten und blauen Leitplanken um die alten Basen waren
@@ -26,8 +27,7 @@ liegen 5.120 Units auseinander.
   der Bach unter dem Wasserturm "Save Ferris" durch (Unsichtbarkeit unter dem Tank) und
   verschwindet in einem Durchlass. Der Bach ist überall befahrbar.
 - **Deckung und Orientierung:** Felsgruppen, vor jeder Basis ein altes Steintor auf der
-  Mittellinie, kleine Hügel, gusseiserne Laternen an den ausgefahrenen Erdwegen und
-  Wandlaternen an den Toren (Modelle, siehe `docs/lanterns.md`).
+  Mittellinie, kleine Hügel, Laternen an den ausgefahrenen Erdwegen.
 - **Rand:** Hügel mit Bäumen rund um die Lichtung, dahinter die Waldwand des Originals.
   Eine unsichtbare Wand hält die Autos auf der Lichtung.
 

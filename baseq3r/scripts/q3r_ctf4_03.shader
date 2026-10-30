@@ -71,34 +71,15 @@ textures/q3r_ctf4_03/line
 	}
 }
 
-textures/q3r_ctf4_03/sleepers
+textures/q3r_ctf4_03/ballast
 {
-	qer_editorimage textures/q3r_ctf4_03/sleepers_x.jpg
+	qer_editorimage textures/q3r_ctf4_03/ballast.jpg
 	surfaceparm nonsolid
 	surfaceparm nomarks
 	surfaceparm trans
 	polygonOffset
 	{
-		map textures/q3r_ctf4_03/sleepers_x.jpg
-		tcGen vector ( 0.007812 0 0 ) ( 0 0.007812 0 )
-		rgbGen identity
-	}
-	{
-		map $lightmap
-		blendFunc GL_DST_COLOR GL_ZERO
-		rgbGen identity
-	}
-}
-
-textures/q3r_ctf4_03/sleepers_y
-{
-	qer_editorimage textures/q3r_ctf4_03/sleepers_y.jpg
-	surfaceparm nonsolid
-	surfaceparm nomarks
-	surfaceparm trans
-	polygonOffset
-	{
-		map textures/q3r_ctf4_03/sleepers_y.jpg
+		map textures/q3r_ctf4_03/ballast.jpg
 		tcGen vector ( 0.007812 0 0 ) ( 0 0.007812 0 )
 		rgbGen identity
 	}
@@ -583,86 +564,7 @@ textures/q3r_ctf4_03/cont7_end
 	}
 }
 
-textures/q3r_ctf4_03/wagon_brown
-{
-	qer_editorimage textures/q3r_metals/cormetal04.tga
-	surfaceparm SURF_METAL
-	{
-		map textures/q3r_metals/cormetal04.tga
-		rgbGen const ( 0.62 0.40 0.30 )
-
-	}
-	{
-		map $lightmap
-		blendFunc GL_DST_COLOR GL_ZERO
-		rgbGen identity
-	}
-}
-
-textures/q3r_ctf4_03/wagon_grey
-{
-	qer_editorimage textures/q3r_metals/cormetal01.tga
-	surfaceparm SURF_METAL
-	{
-		map textures/q3r_metals/cormetal01.tga
-		rgbGen const ( 0.70 0.70 0.72 )
-
-	}
-	{
-		map $lightmap
-		blendFunc GL_DST_COLOR GL_ZERO
-		rgbGen identity
-	}
-}
-
-textures/q3r_ctf4_03/wagon_red
-{
-	qer_editorimage textures/q3r_metals/cormetal02.tga
-	surfaceparm SURF_METAL
-	{
-		map textures/q3r_metals/cormetal02.tga
-		rgbGen const ( 0.85 0.40 0.32 )
-
-	}
-	{
-		map $lightmap
-		blendFunc GL_DST_COLOR GL_ZERO
-		rgbGen identity
-	}
-}
-
 textures/q3r_ctf4_03/controof
-{
-	qer_editorimage textures/q3r_metals/metrust01.tga
-	surfaceparm SURF_METAL
-	{
-		map textures/q3r_metals/metrust01.tga
-		rgbGen identity
-	}
-	{
-		map $lightmap
-		blendFunc GL_DST_COLOR GL_ZERO
-		rgbGen identity
-	}
-}
-
-textures/q3r_ctf4_03/bogie
-{
-	qer_editorimage textures/q3r_metals/Rost.tga
-	surfaceparm SURF_METAL
-	{
-		map textures/q3r_metals/Rost.tga
-		rgbGen const ( 0.35 0.30 0.28 )
-
-	}
-	{
-		map $lightmap
-		blendFunc GL_DST_COLOR GL_ZERO
-		rgbGen identity
-	}
-}
-
-textures/q3r_ctf4_03/rail
 {
 	qer_editorimage textures/q3r_metals/metrust01.tga
 	surfaceparm SURF_METAL
@@ -1136,19 +1038,6 @@ textures/q3r_ctf4_03/shiphouse
 	}
 }
 
-textures/q3r_ctf4_03/floodlamp
-{
-	qer_editorimage textures/q3r_signage/white.jpg
-	surfaceparm nomarks
-	surfaceparm nolightmap
-	q3map_surfacelight 2500
-	q3map_lightRGB 0.95 0.95 1.0
-	{
-		map textures/q3r_signage/white.jpg
-		rgbGen const ( 0.95 0.95 1.0 )
-	}
-}
-
 textures/q3r_ctf4_03/clip
 {
 	qer_trans 0.3
@@ -1157,6 +1046,18 @@ textures/q3r_ctf4_03/clip
 	surfaceparm trans
 	surfaceparm nomarks
 	surfaceparm detail
+}
+
+textures/q3r_ctf4_03/propclip
+{
+	qer_trans 0.15
+	// invisible solid hull of a model (wagons, masts): stops cars and shots, lets light through
+	surfaceparm nodraw
+	surfaceparm nolightmap
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm detail
+	surfaceparm SURF_METAL
 }
 
 textures/q3r_ctf4_03/boundary

@@ -297,13 +297,59 @@ void BotVehicleDrive( bot_state_t *bs, const vec3_t target, float targetSpeed,
 	}
 }
 
+static int BotVehicleFindCTFReentry( bot_state_t *bs, bot_goal_t *goal,
+	int travelFlags, vec3_t target ) {
+	static const vec3_t directions[8] = {
+		{ 1, 0, 0 }, { 0.7071f, 0.7071f, 0 }, { 0, 1, 0 },
+		{ -0.7071f, 0.7071f, 0 }, { -1, 0, 0 }, { -0.7071f, -0.7071f, 0 },
+		{ 0, -1, 0 }, { 0.7071f, -0.7071f, 0 }
+	};
+	vec3_t candidate, delta;
+	float bestScore = 1.0e30f;
+	int bestArea = 0;
+	int radius, direction;
+
+	if ( !goal || !goal->areanum ) return 0;
+	for ( radius = 64; radius <= 256; radius += 64 ) {
+		for ( direction = 0; direction < 8; direction++ ) {
+			int area, travelTime;
+			float distance, score;
+			VectorMA( bs->cur_ps.origin, radius, directions[direction], candidate );
+			area = BotPointAreaNum( candidate );
+			if ( !area ) continue;
+			travelTime = trap_AAS_AreaTravelTimeToGoalArea( area, candidate,
+				goal->areanum, travelFlags );
+			if ( travelTime <= 0 && area != goal->areanum ) continue;
+			VectorSubtract( candidate, bs->cur_ps.origin, delta );
+			distance = VectorLength( delta );
+			score = (travelTime > 0 ? travelTime : 1) + distance * 0.5f;
+			if ( score < bestScore ) {
+				bestScore = score;
+				bestArea = area;
+				VectorCopy( candidate, target );
+			}
+		}
+	}
+	return bestArea;
+}
+
 void BotVehicleMoveToGoal( bot_state_t *bs, bot_moveresult_t *result,
 	bot_goal_t *goal, int travelFlags ) {
 	vec3_t target, direction;
 	float lookAhead, targetSpeed;
+	int reentryArea;
 
 	trap_BotMoveToGoal( result, bs->ms, goal, travelFlags );
 	if ( gametype != GT_DEATHMATCH && gametype != GT_CTF ) return;
+	bs->vehicle.reentryArea = 0;
+	if ( gametype == GT_CTF && !BotPointAreaNum( bs->cur_ps.origin ) &&
+		(reentryArea = BotVehicleFindCTFReentry( bs, goal, travelFlags, target )) != 0 ) {
+		/* The vehicle has drifted outside AAS. Rejoin the closest area that
+		 * still has a route to the current flag before resuming normal guidance. */
+		bs->vehicle.reentryArea = reentryArea;
+		BotVehicleDrive( bs, target, 260, result );
+		return;
+	}
 	lookAhead = Com_Clamp( 120, 300, 120 + VectorLength( bs->cur_ps.velocity ) * 0.15f );
 	if ( !trap_BotMovementViewTarget( bs->ms, goal, travelFlags, lookAhead, target ) ) {
 		VectorCopy( result->movedir, direction );

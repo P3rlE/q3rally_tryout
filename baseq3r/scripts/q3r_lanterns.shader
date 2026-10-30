@@ -1,7 +1,8 @@
 // Lantern models for the maps (misc_model): models/mapobjects/q3r_lanterns/.
 // Written for tools/mapobjects/make_lanterns.py. The models are baked into the
 // BSP and vertex lit by q3map2; glass, flame and lens glow by themselves (the
-// light itself comes from a light entity next to the model).
+// light itself comes from a light entity next to the model). floodmast*.md3
+// uses galv, housing and one of the floodlens shaders.
 
 models/mapobjects/q3r_lanterns/iron
 {
@@ -57,6 +58,59 @@ models/mapobjects/q3r_lanterns/lens
 	surfaceparm nomarks
 	{
 		map models/mapobjects/q3r_lanterns/lens.tga
+		rgbGen identity
+	}
+}
+
+models/mapobjects/q3r_lanterns/galv
+{
+	qer_editorimage models/mapobjects/q3r_lanterns/galv.tga
+	surfaceparm nomarks
+	{
+		map models/mapobjects/q3r_lanterns/galv.tga
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_lanterns/housing
+{
+	qer_editorimage models/mapobjects/q3r_lanterns/housing.tga
+	surfaceparm nomarks
+	{
+		map models/mapobjects/q3r_lanterns/housing.tga
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_lanterns/floodlens
+{
+	qer_editorimage models/mapobjects/q3r_lanterns/floodlens.tga
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	{
+		map models/mapobjects/q3r_lanterns/floodlens.tga
+		rgbGen identity
+	}
+}
+
+models/mapobjects/q3r_lanterns/floodlens_red
+{
+	qer_editorimage models/mapobjects/q3r_lanterns/floodlens_red.tga
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	{
+		map models/mapobjects/q3r_lanterns/floodlens_red.tga
+		rgbGen identity
+	}
+}
+
+models/mapobjects/q3r_lanterns/floodlens_blue
+{
+	qer_editorimage models/mapobjects/q3r_lanterns/floodlens_blue.tga
+	surfaceparm nolightmap
+	surfaceparm nomarks
+	{
+		map models/mapobjects/q3r_lanterns/floodlens_blue.tga
 		rgbGen identity
 	}
 }

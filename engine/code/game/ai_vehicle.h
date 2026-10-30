@@ -16,6 +16,7 @@ typedef struct {
 	float clearance;
 	qboolean blocked;
 	qboolean onRoad;
+	int reentryArea;
 	bot_vehicle_recovery_t recovery;
 	int recoveryUntil;
 	int recoveries;

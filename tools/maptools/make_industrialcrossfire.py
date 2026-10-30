@@ -262,48 +262,80 @@ def container(x, y, along_x, level, color_index, z0=0.0):
             faces={"+y": side + "_end", "-y": side + "_end", "top": TEX + "controof"})
 
 
+RAILM = "models/mapobjects/q3r_rail/"
+
+
 def track(x0, y0, x1, y1):
-    """Rail track along x or y (local): two low rails on sleepers."""
+    """Rail track along x or y (local): track.md3 segments (each stretched a
+    little so they fill the length exactly) on a ballast bed, invisible
+    collision boxes for the two rails."""
     along_x = abs(x1 - x0) > abs(y1 - y0)
     for off in (-36, 36):
         if along_x:
-            box((x0, y0 + off - 4, 0), (x1, y0 + off + 4, 7), TEX + "rail")
+            box((x0, y0 + off - 4, 0), (x1, y0 + off + 4, 7), TEX + "propclip")
         else:
-            box((x0 + off - 4, y0, 0), (x0 + off + 4, y1, 7), TEX + "rail")
+            box((x0 + off - 4, y0, 0), (x0 + off + 4, y1, 7), TEX + "propclip")
+    a, b = (x0, x1) if along_x else (y0, y1)
+    a, b = min(a, b), max(a, b)
+    n = max(1, round((b - a) / 256))
+    seg = (b - a) / n
+    for i in range(n):
+        c = a + (i + 0.5) * seg
+        x, y = (c, y0) if along_x else (x0, c)
+        entity("misc_model", x, y, 0, angle=0 if along_x else 90, model=RAILM + "track.md3",
+               modelscale_vec=f"{seg / 256:.4f} 1 1")
     if along_x:
-        decal((x0, y0 - 56), (x1, y0 + 56), TEX + "sleepers")
+        decal((x0, y0 - 64), (x1, y0 + 64), TEX + "ballast")
     else:
-        decal((x0 - 56, y0), (x0 + 56, y1), TEX + "sleepers_y")
+        decal((x0 - 64, y0), (x0 + 64, y1), TEX + "ballast")
+
+
+def wagon_model(x, y, along_x, name):
+    """Place a wagon model; every other wagon is turned round (brake end)."""
+    flip = 180 if (int(x + y) // 10) % 2 else 0
+    entity("misc_model", x, y, 0, angle=(0 if along_x else 90) + flip, model=RAILM + name + ".md3")
 
 
 def boxcar(x, y, along_x, color):
-    """Freight wagon on a track: bogies, body, sliding doors."""
+    """Covered wagon (boxcar_<color>.md3) with invisible collision for the
+    bogies and the body."""
     L, W = 360, 104
     if along_x:
-        box((x - L / 2 + 30, y - 40, 7), (x + L / 2 - 30, y + 40, 44), TEX + "bogie")
-        box((x - L / 2, y - W / 2, 44), (x + L / 2, y + W / 2, 184), TEX + f"wagon_{color}",
-            faces={"top": TEX + "controof"})
+        box((x - L / 2 + 30, y - 40, 7), (x + L / 2 - 30, y + 40, 44), TEX + "propclip")
+        box((x - L / 2, y - W / 2, 44), (x + L / 2, y + W / 2, 194), TEX + "propclip")
     else:
-        box((x - 40, y - L / 2 + 30, 7), (x + 40, y + L / 2 - 30, 44), TEX + "bogie")
-        box((x - W / 2, y - L / 2, 44), (x + W / 2, y + L / 2, 184), TEX + f"wagon_{color}",
-            faces={"top": TEX + "controof"})
+        box((x - 40, y - L / 2 + 30, 7), (x + 40, y + L / 2 - 30, 44), TEX + "propclip")
+        box((x - W / 2, y - L / 2, 44), (x + W / 2, y + L / 2, 194), TEX + "propclip")
+    wagon_model(x, y, along_x, f"boxcar_{color}")
 
 
 def tankcar(x, y, along_x):
+    """Tank wagon (tankcar.md3); invisible collision: bogie box and an
+    octagonal prism around the barrel."""
     L = 340
     box(((x - L / 2 + 30, y - 40, 7) if along_x else (x - 40, y - L / 2 + 30, 7)),
-        ((x + L / 2 - 30, y + 40, 44) if along_x else (x + 40, y + L / 2 - 30, 44)), TEX + "bogie")
+        ((x + L / 2 - 30, y + 40, 44) if along_x else (x + 40, y + L / 2 - 30, 44)), TEX + "propclip")
     r, zc = 54, 104
     planes = []
     ax = (1, 0, 0) if along_x else (0, 1, 0)
-    planes.append((ax, (x + ax[0] * L / 2, y + ax[1] * L / 2, zc), TEX + "tank"))
-    planes.append(((-ax[0], -ax[1], 0), (x - ax[0] * L / 2, y - ax[1] * L / 2, zc), TEX + "tank"))
+    planes.append((ax, (x + ax[0] * L / 2, y + ax[1] * L / 2, zc), TEX + "propclip"))
+    planes.append(((-ax[0], -ax[1], 0), (x - ax[0] * L / 2, y - ax[1] * L / 2, zc), TEX + "propclip"))
     for k in range(8):
         a = math.radians(22.5 + 45 * k)
         lat, up = math.cos(a), math.sin(a)
         n = (0, lat, up) if along_x else (lat, 0, up)
-        planes.append((n, (x + n[0] * r, y + n[1] * r, zc + up * r), TEX + "tank"))
+        planes.append((n, (x + n[0] * r, y + n[1] * r, zc + up * r), TEX + "propclip"))
     lconvex(planes)
+    wagon_model(x, y, along_x, "tankcar")
+
+
+def flatcar(x, y, along_x):
+    """Flat wagon (flatcar.md3), deck top at z 40; invisible collision box."""
+    if along_x:
+        box((x - 150, y - 40, 7), (x + 150, y + 40, 40), TEX + "propclip")
+    else:
+        box((x - 40, y - 150, 7), (x + 40, y + 150, 40), TEX + "propclip")
+    wagon_model(x, y, along_x, "flatcar")
 
 
 def lamp_post(x, y, head_dx, head_dy):
@@ -316,10 +348,15 @@ def lamp_post(x, y, head_dx, head_dy):
     entity("light", hx, hy, 290, light="320", _color="1 0.72 0.38")
 
 
-def floodlight(x, y, h=620):
-    box((x - 10, y - 10, 0), (x + 10, y + 10, h), TEX + "metal")
-    box((x - 50, y - 50, h), (x + 50, y + 50, h + 30), TEX + "metal", faces={"bot": TEX + "floodlamp"})
-    entity("light", x, y, h - 40, light="700", _color="0.95 0.95 1")
+def floodlight(x, y, aim):
+    """Floodlight mast (floodmast.md3 scaled to 650 high) with its heads aimed
+    at the point aim, invisible collision around the mast, light in front of
+    the heads."""
+    ang = math.atan2(aim[1] - y, aim[0] - x)
+    entity("misc_model", x, y, 0, angle=math.degrees(ang), model="models/mapobjects/q3r_lanterns/floodmast.md3",
+           modelscale="1.3")
+    box((x - 14, y - 14, 0), (x + 14, y + 14, 560), TEX + "propclip")
+    entity("light", x + 80 * math.cos(ang), y + 80 * math.sin(ang), 580, light="700", _color="0.95 0.95 1")
 
 
 # ---------------------------------------------------------------- one quadrant (local NE)
@@ -367,8 +404,8 @@ def quadrant(team):
     # landmark on the hall corner (identity differs, footprint is the same)
     landmark(team)
     # floodlights at the yard corners, low walls along the quays
-    floodlight(1690, 2410)
-    floodlight(2410, 1690)
+    floodlight(1690, 2410, (b, b))
+    floodlight(2410, 1690, (b, b))
     # team pickups and spawns
     ang = 225
     for u in (-110, 110):
@@ -444,7 +481,7 @@ def quadrant(team):
     track(720, 560, 1400, 560)
     boxcar(1150, 560, True, "red")
     for x in (950, 1250):
-        box((x - 150, 340, 7), (x + 150, 420, 40), TEX + "bogie")            # flat wagon
+        flatcar(x, 380, True)
         container(x, 380, True, 0, (x // 50) % colors, z0=40)
     entity("weapon_plasmagun", 1000, 470, 24)
     entity("ammo_cells", 1290, 470, 24)
@@ -671,7 +708,7 @@ def glow(name, rgb, light):
 
 
 def write_textures():
-    """Ballast with wooden sleepers (256 px = 128 units), for tracks along x and y."""
+    """Ballast bed for the tracks (256 px = 128 units): grey-brown stones."""
     from PIL import Image, ImageFilter
     out = ROOT / "baseq3r" / "textures" / "q3r_ctf4_03"
     out.mkdir(parents=True, exist_ok=True)
@@ -681,18 +718,22 @@ def write_textures():
     px = img.load()
     for y in range(size):
         for x in range(size):
-            g = rnd.randint(70, 130)
+            g = rnd.randint(62, 122)
             px[x, y] = (g, int(g * 0.95), int(g * 0.88))
     img = img.filter(ImageFilter.GaussianBlur(0.7))
     px = img.load()
-    for c0 in (40, 168):                       # two sleepers per tile, 24 units wide
-        for x in range(c0, c0 + 48):
-            for y in range(size):
-                grain = 0.85 + 0.15 * math.sin(y * 0.35 + x * 0.05) + rnd.uniform(-0.05, 0.05)
-                edge = 0.7 if x in (c0, c0 + 47) else 1.0
-                px[x, y] = tuple(int(v * grain * edge) for v in (92, 66, 46))
-    img.save(out / "sleepers_x.jpg", quality=90)
-    img.transpose(Image.Transpose.ROTATE_90).save(out / "sleepers_y.jpg", quality=90)
+    for _ in range(900):                       # stones: light top, dark rim
+        cx, cy, r = rnd.randrange(size), rnd.randrange(size), rnd.uniform(2.5, 5.5)
+        tone = rnd.uniform(0.85, 1.2)
+        for dy in range(-6, 7):
+            for dx in range(-6, 7):
+                d = math.hypot(dx, dy * 1.2) / r
+                if d < 1:
+                    p = ((cx + dx) % size, (cy + dy) % size)
+                    k = tone * (1.08 - 0.25 * d) * (0.92 if dy > r * 0.4 else 1.0)
+                    v = px[p]
+                    px[p] = tuple(min(255, int(c * k)) for c in v)
+    img.save(out / "ballast.jpg", quality=90)
 
 
 def write_shader():
@@ -707,8 +748,7 @@ def write_shader():
     out += decal_shader("asphalt", "textures/q3r_road/asph02.jpg", ("\tsurfaceparm SURF_ASPHALT",), tile=256,
                         rgb=(0.50, 0.50, 0.53))
     out += decal_shader("line", "textures/q3r_signage/white.jpg", rgb=(0.85, 0.80, 0.55))
-    out += decal_shader("sleepers", f"textures/{TEX}sleepers_x.jpg", tile=128)
-    out += decal_shader("sleepers_y", f"textures/{TEX}sleepers_y.jpg", tile=128)
+    out += decal_shader("ballast", f"textures/{TEX}ballast.jpg", tile=128)
     out += decal_shader("railplate", "textures/q3r_metals/metrust01.tga")
     for team, rgb in COLORS.items():
         out += tinted(f"paint_{team}", "textures/q3r_building/wellblech.jpg", rgb, ("\tsurfaceparm SURF_METAL",))
@@ -720,12 +760,7 @@ def write_shader():
         # door ends: the same corrugation, a little darker
         out += tinted(f"cont{k}_end", "textures/q3r_building/wellblech.jpg", tuple(c * 0.78 for c in rgb),
                       ("\tsurfaceparm SURF_METAL",))
-    out += tinted("wagon_brown", "textures/q3r_metals/cormetal04.tga", (0.62, 0.40, 0.30), ("\tsurfaceparm SURF_METAL",))
-    out += tinted("wagon_grey", "textures/q3r_metals/cormetal01.tga", (0.70, 0.70, 0.72), ("\tsurfaceparm SURF_METAL",))
-    out += tinted("wagon_red", "textures/q3r_metals/cormetal02.tga", (0.85, 0.40, 0.32), ("\tsurfaceparm SURF_METAL",))
     out += lit("controof", "textures/q3r_metals/metrust01.tga", ("\tsurfaceparm SURF_METAL",))
-    out += lit("bogie", "textures/q3r_metals/Rost.tga", ("\tsurfaceparm SURF_METAL",), ("\t\trgbGen const ( 0.35 0.30 0.28 )",))
-    out += lit("rail", "textures/q3r_metals/metrust01.tga", ("\tsurfaceparm SURF_METAL",))
     out += lit("metal", "textures/base_trim/tin.jpg", ("\tsurfaceparm SURF_METAL",))
     out += tinted("crane", "textures/q3r_metals/cormetal03.tga", (0.95, 0.62, 0.15), ("\tsurfaceparm SURF_METAL",))
     out += tinted("cranehouse", "textures/q3r_building/wellblech.jpg", (0.92, 0.88, 0.80), ("\tsurfaceparm SURF_METAL",))
@@ -759,9 +794,12 @@ def write_shader():
     out += tinted("hull", "textures/q3r_metals/metrust01.tga", (0.55, 0.22, 0.18), ("\tsurfaceparm SURF_METAL",))
     out += lit("shipdeck", "textures/base_floor/diamond2.jpg", ("\tsurfaceparm SURF_METAL",))
     out += tinted("shiphouse", "textures/q3r_building/concrete01.jpg", (0.95, 0.95, 0.92))
-    out += glow("floodlamp", (0.95, 0.95, 1.0), 2500)
     out += [f"textures/{TEX}clip", "{", "\tqer_trans 0.3", "\tsurfaceparm nodraw", "\tsurfaceparm nolightmap",
             "\tsurfaceparm trans", "\tsurfaceparm nomarks", "\tsurfaceparm detail", "}", ""]
+    out += [f"textures/{TEX}propclip", "{", "\tqer_trans 0.15",
+            "\t// invisible solid hull of a model (wagons, masts): stops cars and shots, lets light through",
+            "\tsurfaceparm nodraw", "\tsurfaceparm nolightmap", "\tsurfaceparm trans", "\tsurfaceparm nomarks",
+            "\tsurfaceparm detail", "\tsurfaceparm SURF_METAL", "}", ""]
     out += [f"textures/{TEX}boundary", "{", "\tqer_trans 0.15",
             "\t// invisible but SOLID (Bullet only takes solid brushes); trans lets light through",
             "\tsurfaceparm nodraw", "\tsurfaceparm nolightmap", "\tsurfaceparm trans", "\tsurfaceparm nomarks",

@@ -14,6 +14,12 @@
     streetlamp.md3     sodium street lamp: tapered pole, swan-neck arm and a
                        cobra head with a glowing lens. Origin on the ground,
                        arm along +x (lens 88 units out, at z 316).
+    floodmast.md3      floodlight mast: tapered galvanised mast, ladder with
+                       a cage, ringed platform at z 440 and six tilted flood
+                       heads on a frame, facing +x. Origin on the ground,
+                       about 500 high (md3 coordinates end at 512: use modelscale
+                       for taller masts).
+    floodmast_red.md3, floodmast_blue.md3   the same with team-coloured lenses.
   plus textures; shaders in scripts/q3r_lanterns.shader.
 
 The models carry no light: put a light entity at the glass (see
@@ -27,419 +33,13 @@ import struct
 
 import numpy as np
 
-MAX_VERTS, MAX_INDEXES = 900, 5400       # renderer limits are 1000 / 6000 per surface
+from meshlib import (Mesh, arc, box, frustum, grid, lathe_pts, noise, place, retexture, rot_y,
+                     rot_z, sphere, tube, write_md3, write_tga)
+
 D = "models/mapobjects/q3r_lanterns/"
 IRON, GLASS, FLAME = D + "iron", D + "glass", D + "flame"
 POLE, LENS = D + "pole", D + "lens"
-
-
-# ---------------------------------------------------------------- mesh builder
-
-class Mesh:
-    """Triangles per shader; split into several md3 surfaces when needed."""
-
-    def __init__(self):
-        self.parts = {}
-
-    def add(self, shader, verts, normals, sts, tris, outward=None):
-        """verts/normals/sts: lists; tris index into them. Triangles are turned
-        so that they face along the vertex normals (Q3: clockwise from outside)."""
-        lst = self.parts.setdefault(shader, [])
-        V = np.array(verts, float)
-        N = np.array(normals, float)
-        N /= np.maximum(np.linalg.norm(N, axis=1), 1e-9)[:, None]
-        fixed = []
-        for a, b, c in tris:
-            n = np.cross(V[b] - V[a], V[c] - V[a])
-            if np.dot(n, N[a] + N[b] + N[c]) > 0:
-                b, c = c, b
-            fixed.append((a, b, c))
-        lst.append((V, N, np.array(sts, float), fixed))
-
-    def surfaces(self):
-        out = []
-        for shader, pieces in self.parts.items():
-            cur = None
-            for V, N, S, T in pieces:
-                if cur is None or len(cur[0]) + len(V) > MAX_VERTS or 3 * (len(cur[3]) + len(T)) > MAX_INDEXES:
-                    cur = [[], [], [], []]
-                    out.append((shader, cur))
-                base = len(cur[0])
-                cur[0] += list(V)
-                cur[1] += list(N)
-                cur[2] += list(S)
-                cur[3] += [(a + base, b + base, c + base) for a, b, c in T]
-        return out
-
-
-def grid(mesh, shader, P, Nrm, U, Vv, closed_u=False):
-    """Quad grid from arrays [rows][cols] of points, normals and uv."""
-    rows, cols = len(P), len(P[0])
-    verts, norms, sts, tris = [], [], [], []
-    for i in range(rows):
-        for j in range(cols):
-            verts.append(P[i][j])
-            norms.append(Nrm[i][j])
-            sts.append((U[i][j], Vv[i][j]))
-    for i in range(rows - 1):
-        for j in range(cols - 1):
-            a, b = i * cols + j, i * cols + j + 1
-            c, d = a + cols, b + cols
-            tris += [(a, b, d), (a, d, c)]
-    mesh.add(shader, verts, norms, sts, tris)
-
-
-def lathe(mesh, shader, profile, segs, u_rep=1.0, phase=0.0, radial=None):
-    """profile: list of (r, z, nr, nz, v). Rotated around z."""
-    P, N, U, V = [], [], [], []
-    for r, z, nr, nz, v in profile:
-        rowp, rown, rowu, rowv = [], [], [], []
-        for s in range(segs + 1):
-            a = phase + 2 * math.pi * s / segs
-            k = radial(a) if radial else 1.0
-            rowp.append((r * k * math.cos(a), r * k * math.sin(a), z))
-            rown.append((nr * math.cos(a), nr * math.sin(a), nz))
-            rowu.append(u_rep * s / segs)
-            rowv.append(v)
-        P.append(rowp), N.append(rown), U.append(rowu), V.append(rowv)
-    grid(mesh, shader, P, N, U, V)
-
-
-def profile_from_points(pts, smooth=True):
-    """(r, z) polyline -> (r, z, nr, nz, v) with outward (right-hand) normals.
-    Corners are split when smooth is False or the turn is sharp."""
-    out = []
-    length = 0.0
-    seg_n = []
-    for (r0, z0), (r1, z1) in zip(pts, pts[1:]):
-        dr, dz = r1 - r0, z1 - z0
-        ln = math.hypot(dr, dz) or 1
-        seg_n.append((dz / ln, -dr / ln))           # right normal of the direction of travel
-    acc = [0.0]
-    for (r0, z0), (r1, z1) in zip(pts, pts[1:]):
-        length += math.hypot(r1 - r0, z1 - z0)
-        acc.append(length)
-    for i, (r, z) in enumerate(pts):
-        ns = []
-        if i > 0:
-            ns.append(seg_n[i - 1])
-        if i < len(seg_n):
-            ns.append(seg_n[i])
-        if len(ns) == 2 and (ns[0][0] * ns[1][0] + ns[0][1] * ns[1][1] < 0.7 or not smooth):
-            out.append((r, z, ns[0][0], ns[0][1], acc[i] / 24))
-            out.append((r, z, ns[1][0], ns[1][1], acc[i] / 24))
-        else:
-            nr = sum(n[0] for n in ns)
-            nz = sum(n[1] for n in ns)
-            ln = math.hypot(nr, nz) or 1
-            out.append((r, z, nr / ln, nz / ln, acc[i] / 24))
-    return out
-
-
-def lathe_pts(mesh, shader, pts, segs, u_rep=1.0, radial=None):
-    """Rotate a polyline; split at sharp corners so each run is smooth."""
-    prof = profile_from_points(pts)
-    # cut into runs at duplicated points (sharp corners)
-    runs, cur = [], [prof[0]]
-    for p in prof[1:]:
-        if abs(p[0] - cur[-1][0]) < 1e-9 and abs(p[1] - cur[-1][1]) < 1e-9:
-            runs.append(cur)
-            cur = [p]
-        else:
-            cur.append(p)
-    runs.append(cur)
-    for run in runs:
-        if len(run) >= 2:
-            lathe(mesh, shader, run, segs, u_rep, radial=radial)
-
-
-def sphere(mesh, shader, c, r, segs=10, rings=7, squash=(1, 1, 1), axis=None):
-    """UV sphere; squash scales x y z; axis (ex, ey, ez) rotates it."""
-    ex, ey, ez = axis if axis else ((1, 0, 0), (0, 1, 0), (0, 0, 1))
-    P, N, U, V = [], [], [], []
-    for i in range(rings + 1):
-        th = math.pi * i / rings
-        rp, rn, ru, rv = [], [], [], []
-        for j in range(segs + 1):
-            ph = 2 * math.pi * j / segs
-            lx, ly, lz = math.sin(th) * math.cos(ph), math.sin(th) * math.sin(ph), math.cos(th)
-            px, py, pz = lx * squash[0] * r, ly * squash[1] * r, lz * squash[2] * r
-            nx, ny, nz = lx / squash[0], ly / squash[1], lz / squash[2]
-            rp.append(tuple(c[k] + px * ex[k] + py * ey[k] + pz * ez[k] for k in range(3)))
-            rn.append(tuple(nx * ex[k] + ny * ey[k] + nz * ez[k] for k in range(3)))
-            ru.append(j / segs)
-            rv.append(i / rings)
-        P.append(rp), N.append(rn), U.append(ru), V.append(rv)
-    grid(mesh, shader, P, N, U, V)
-
-
-def octahedron(mesh, shader, c, r, axis, tall=1.3):
-    """Cut gem: eight flat facets, pointing along axis[2]."""
-    ex, ey, ez = axis
-    pts = [tuple(c[k] + r * (math.cos(a) * ex[k] + math.sin(a) * ey[k]) for k in range(3))
-           for a in (0, math.pi / 2, math.pi, 1.5 * math.pi)]
-    top = tuple(c[k] + r * tall * ez[k] for k in range(3))
-    bot = tuple(c[k] - r * 0.5 * ez[k] for k in range(3))
-    for apex in (top, bot):
-        for i in range(4):
-            a, b = pts[i], pts[(i + 1) % 4]
-            n = np.cross(np.subtract(b, a), np.subtract(apex, a))
-            mid = np.mean([a, b, apex], axis=0)
-            if np.dot(n, mid - np.array(c)) < 0:
-                n = -n
-            mesh.add(shader, [a, b, apex], [n, n, n], [(0, 1), (1, 1), (0.5, 0)], [(0, 1, 2)])
-
-
-def box_sweep(mesh, shader, path, side, w, t, v_scale=1 / 24):
-    """Rectangular bar along path (list of points); side: unit vector that
-    stays sideways (w across it, t along the bend normal)."""
-    P = [np.array(p, float) for p in path]
-    S = np.array(side, float)
-    corners_rows = []
-    acc = 0.0
-    vs = []
-    for i, p in enumerate(P):
-        tan = P[min(i + 1, len(P) - 1)] - P[max(i - 1, 0)]
-        tan /= np.linalg.norm(tan)
-        n = np.cross(S, tan)
-        n /= np.linalg.norm(n)
-        s = np.cross(tan, n)
-        if i:
-            acc += np.linalg.norm(P[i] - P[i - 1])
-        vs.append(acc * v_scale)
-        corners_rows.append((p + s * w + n * t, p - s * w + n * t, p - s * w - n * t, p + s * w - n * t, s, n))
-    faces = ((0, 1, lambda s, n: n), (1, 2, lambda s, n: -s), (2, 3, lambda s, n: -n), (3, 0, lambda s, n: s))
-    for a, b, fn in faces:
-        Pp, Nn, U, V = [], [], [], []
-        for row, v in zip(corners_rows, vs):
-            nrm = fn(row[4], row[5])
-            Pp.append([row[a], row[b]])
-            Nn.append([nrm, nrm])
-            U.append([0, 0.25])
-            V.append([v, v])
-        grid(mesh, shader, Pp, Nn, U, V)
-
-
-def box(mesh, shader, lo, hi):
-    x0, y0, z0 = lo
-    x1, y1, z1 = hi
-    faces = [((0, 0, 1), [(x0, y0, z1), (x1, y0, z1), (x1, y1, z1), (x0, y1, z1)]),
-             ((0, 0, -1), [(x0, y0, z0), (x1, y0, z0), (x1, y1, z0), (x0, y1, z0)]),
-             ((1, 0, 0), [(x1, y0, z0), (x1, y1, z0), (x1, y1, z1), (x1, y0, z1)]),
-             ((-1, 0, 0), [(x0, y0, z0), (x0, y1, z0), (x0, y1, z1), (x0, y0, z1)]),
-             ((0, 1, 0), [(x0, y1, z0), (x1, y1, z0), (x1, y1, z1), (x0, y1, z1)]),
-             ((0, -1, 0), [(x0, y0, z0), (x1, y0, z0), (x1, y0, z1), (x0, y0, z1)])]
-    for n, q in faces:
-        mesh.add(shader, q, [n] * 4, [(0, 0), (1, 0), (1, 1), (0, 1)], [(0, 1, 2), (0, 2, 3)])
-
-
-# ---------------------------------------------------------------- md3 out
-
-def encode_normal(n):
-    x, y, z = n
-    lat = int(round(math.atan2(y, x) * 256 / (2 * math.pi))) & 255
-    lng = int(round(math.acos(max(-1.0, min(1.0, z))) * 256 / (2 * math.pi))) & 255
-    return (lat << 8) | lng
-
-
-def name(s, n):
-    return s.encode("ascii")[:n - 1].ljust(n, b"\0")
-
-
-def write_md3(path, model_name, mesh):
-    surfs = mesh.surfaces()
-    blobs = []
-    allv = []
-    for idx, (shader, (V, N, S, T)) in enumerate(surfs):
-        nv, nt = len(V), len(T)
-        assert nv < 1000 and nt * 3 < 6000, (shader, nv, nt)
-        ofs_shaders = 108
-        ofs_tris = ofs_shaders + 68
-        ofs_st = ofs_tris + 12 * nt
-        ofs_xyz = ofs_st + 8 * nv
-        end = ofs_xyz + 8 * nv
-        sname = shader.split("/")[-1] + (f"_{idx}")
-        b = struct.pack("<4s64s10i", b"IDP3", name(sname, 64), 0, 1, 1, nv, nt, ofs_tris, ofs_shaders,
-                        ofs_st, ofs_xyz, end)
-        b += name(shader, 64) + struct.pack("<i", 0)
-        b += b"".join(struct.pack("<3i", *t) for t in T)
-        b += b"".join(struct.pack("<2f", float(s[0]), float(s[1])) for s in S)
-        for v, n in zip(V, N):
-            b += struct.pack("<3hH", *(int(round(c * 64)) for c in v), encode_normal(n))
-        assert len(b) == end
-        blobs.append(b)
-        allv += [tuple(v) for v in V]
-    A = np.array(allv)
-    mins, maxs = A.min(axis=0), A.max(axis=0)
-    radius = float(np.max(np.linalg.norm(A, axis=1)))
-    frame = struct.pack("<3f3f3ff16s", *mins, *maxs, 0, 0, 0, radius, name("frame0", 16))
-    ofs_frames = 108
-    ofs_surfs = ofs_frames + len(frame)
-    body = b"".join(blobs)
-    header = struct.pack("<4si64s9i", b"IDP3", 15, name(model_name, 64), 0, 1, 0, len(blobs), 0,
-                         ofs_frames, ofs_surfs, ofs_surfs, ofs_surfs + len(body))
-    with open(path, "wb") as f:
-        f.write(header + frame + body)
-    tris = sum(len(s[1][3]) for s in surfs)
-    return len(blobs), len(A), tris, mins, maxs
-
-
-# ---------------------------------------------------------------- textures
-
-def write_tga(path, img):
-    h, w = img.shape[:2]
-    grey = img.ndim == 2
-    alpha = (not grey) and img.shape[2] == 4
-    header = struct.pack("<BBBHHBHHHHBB", 0, 0, 3 if grey else 2, 0, 0, 0, 0, 0, w, h,
-                         8 if grey else (32 if alpha else 24), 8 if alpha else 0)
-    if grey:
-        data = img[::-1].tobytes()
-    elif alpha:
-        data = img[::-1][:, :, [2, 1, 0, 3]].tobytes()
-    else:
-        data = img[::-1, :, ::-1].tobytes()
-    with open(path, "wb") as f:
-        f.write(header + data)
-
-
-def noise(size, cells, seed):
-    rng = np.random.default_rng(seed)
-    acc = np.zeros((size, size))
-    for c, w in ((cells, 1.0), (cells * 2, 0.5), (cells * 4, 0.25), (cells * 8, 0.125)):
-        g = rng.random((c, c))
-        g = np.vstack([g, g[:1]])
-        g = np.hstack([g, g[:, :1]])
-        x = np.linspace(0, c, size, endpoint=False)
-        i0 = x.astype(int)
-        f = x - i0
-        f = f * f * (3 - 2 * f)
-        rows = g[i0][:, i0] * (1 - f)[None, :] + g[i0][:, i0 + 1] * f[None, :]
-        rows2 = g[i0 + 1][:, i0] * (1 - f)[None, :] + g[i0 + 1][:, i0 + 1] * f[None, :]
-        acc += w * (rows * (1 - f)[:, None] + rows2 * f[:, None])
-    acc -= acc.min()
-    return acc / acc.max()
-
-
-def write_tga(path, img):
-    h, w = img.shape[:2]
-    grey = img.ndim == 2
-    alpha = (not grey) and img.shape[2] == 4
-    header = struct.pack("<BBBHHBHHHHBB", 0, 0, 3 if grey else 2, 0, 0, 0, 0, 0, w, h,
-                         8 if grey else (32 if alpha else 24), 8 if alpha else 0)
-    if grey:
-        data = img[::-1].tobytes()
-    elif alpha:
-        data = img[::-1][:, :, [2, 1, 0, 3]].tobytes()
-    else:
-        data = img[::-1, :, ::-1].tobytes()
-    with open(path, "wb") as f:
-        f.write(header + data)
-
-
-def noise(size, cells, seed):
-    rng = np.random.default_rng(seed)
-    acc = np.zeros((size, size))
-    for c, w in ((cells, 1.0), (cells * 2, 0.5), (cells * 4, 0.25), (cells * 8, 0.125)):
-        g = rng.random((c, c))
-        g = np.vstack([g, g[:1]])
-        g = np.hstack([g, g[:, :1]])
-        x = np.linspace(0, c, size, endpoint=False)
-        i0 = x.astype(int)
-        f = x - i0
-        f = f * f * (3 - 2 * f)
-        rows = g[i0][:, i0] * (1 - f)[None, :] + g[i0][:, i0 + 1] * f[None, :]
-        rows2 = g[i0 + 1][:, i0] * (1 - f)[None, :] + g[i0 + 1][:, i0 + 1] * f[None, :]
-        acc += w * (rows * (1 - f)[:, None] + rows2 * f[:, None])
-    acc -= acc.min()
-    return acc / acc.max()
-
-
-
-# ---------------------------------------------------------------- extra shapes
-
-def frustum(mesh, shader, n, z0, a0, z1, a1, phase=None, cap0=False, cap1=False, uv=1 / 16):
-    """Flat-sided n-gon frustum between z0 (apothem a0) and z1 (apothem a1).
-    Each side is its own quad (sharp edges); caps optional."""
-    phase = math.pi / n if phase is None else phase
-    r0, r1 = a0 / math.cos(math.pi / n), a1 / math.cos(math.pi / n)
-    up = 1 if z1 > z0 else -1
-    for k in range(n):
-        t0, t1 = phase + 2 * math.pi * k / n, phase + 2 * math.pi * (k + 1) / n
-        tm = (t0 + t1) / 2
-        p = [(r0 * math.cos(t0), r0 * math.sin(t0), z0), (r0 * math.cos(t1), r0 * math.sin(t1), z0),
-             (r1 * math.cos(t1), r1 * math.sin(t1), z1), (r1 * math.cos(t0), r1 * math.sin(t0), z1)]
-        slope = (a0 - a1) / (abs(z1 - z0) or 1) * up
-        nrm = (math.cos(tm), math.sin(tm), slope)
-        w0, w1 = 2 * a0 * math.tan(math.pi / n), 2 * a1 * math.tan(math.pi / n)
-        h = math.hypot(z1 - z0, a1 - a0)
-        st = [(0, 0), (w0 * uv, 0), (w1 * uv, h * uv), (0, h * uv)]
-        mesh.add(shader, p, [nrm] * 4, st, [(0, 1, 2), (0, 2, 3)])
-    for z, r, cap, sgn in ((z0, r0, cap0, -up), (z1, r1, cap1, up)):
-        if not cap:
-            continue
-        pts = [(r * math.cos(phase + 2 * math.pi * k / n), r * math.sin(phase + 2 * math.pi * k / n), z)
-               for k in range(n)]
-        verts = [(0, 0, z)] + pts
-        tris = [(0, 1 + k, 1 + (k + 1) % n) for k in range(n)]
-        mesh.add(shader, verts, [(0, 0, sgn)] * (n + 1), [(v[0] * uv, v[1] * uv) for v in verts], tris)
-
-
-def tube(mesh, shader, path, r, sides=8, closed=False, v_scale=1 / 16, caps=True):
-    """Round tube along a polyline (parallel-transported frame)."""
-    P = [np.array(p, float) for p in path]
-    T = []
-    for i in range(len(P)):
-        if closed:
-            d = P[(i + 1) % len(P)] - P[i - 1]
-        else:
-            d = P[min(i + 1, len(P) - 1)] - P[max(i - 1, 0)]
-        T.append(d / np.linalg.norm(d))
-    ref = np.array([0.0, 0.0, 1.0]) if abs(T[0][2]) < 0.9 else np.array([1.0, 0.0, 0.0])
-    Nn = np.cross(T[0], ref)
-    Nn /= np.linalg.norm(Nn)
-    frames = []
-    for i in range(len(P)):
-        if i:
-            Nn = Nn - T[i] * np.dot(Nn, T[i])
-            Nn /= np.linalg.norm(Nn)
-        B = np.cross(T[i], Nn)
-        frames.append((Nn.copy(), B))
-    pts = list(range(len(P))) + ([0] if closed else [])
-    rows_p, rows_n, rows_u, rows_v = [], [], [], []
-    acc = 0.0
-    for idx, i in enumerate(pts):
-        if idx:
-            acc += np.linalg.norm(P[i] - P[pts[idx - 1]])
-        Nn, B = frames[i]
-        rp, rn, ru, rv = [], [], [], []
-        for s in range(sides + 1):
-            a = 2 * math.pi * s / sides
-            d = Nn * math.cos(a) + B * math.sin(a)
-            rp.append(tuple(P[i] + d * r))
-            rn.append(tuple(d))
-            ru.append(s / sides)
-            rv.append(acc * v_scale)
-        rows_p.append(rp), rows_n.append(rn), rows_u.append(ru), rows_v.append(rv)
-    grid(mesh, shader, rows_p, rows_n, rows_u, rows_v)
-    if caps and not closed:
-        for i, sgn in ((0, -1), (len(P) - 1, 1)):
-            Nn, B = frames[i]
-            ring = [tuple(P[i] + (Nn * math.cos(2 * math.pi * s / sides) + B * math.sin(2 * math.pi * s / sides)) * r)
-                    for s in range(sides)]
-            verts = [tuple(P[i])] + ring
-            tris = [(0, 1 + k, 1 + (k + 1) % sides) for k in range(sides)]
-            mesh.add(shader, verts, [tuple(T[i] * sgn)] * (sides + 1), [(0, 0)] * (sides + 1), tris)
-
-
-def arc(c, r, a0, a1, steps, plane="xz"):
-    out = []
-    for k in range(steps + 1):
-        a = a0 + (a1 - a0) * k / steps
-        if plane == "xz":
-            out.append((c[0] + r * math.cos(a), c[1], c[2] + r * math.sin(a)))
-        else:
-            out.append((c[0] + r * math.cos(a), c[1] + r * math.sin(a), c[2]))
-    return out
+GALV, HOUSING, FLOOD = D + "galv", D + "housing", D + "floodlens"
 
 
 # ---------------------------------------------------------------- lantern
@@ -580,6 +180,98 @@ def streetlamp():
     return mesh
 
 
+# ---------------------------------------------------------------- floodlight mast
+
+FM_TOP = 428.0                                  # platform height
+
+
+def _mast_r(z):
+    return 13.0 - 6.0 * z / FM_TOP              # mast radius (apothem) at height z
+
+
+def _flood_head(m):
+    """Flood head in local coordinates: lens at x 0 facing +x, 28 wide, 22 high."""
+    box(m, HOUSING, (-11.0, -14.0, -11.0), (0.0, 14.0, 11.0))
+    for k in range(5):                          # cooling fins at the back
+        z = -8.0 + 4.0 * k
+        box(m, HOUSING, (-14.0, -12.5, z - 0.7), (-11.0, 12.5, z + 0.7))
+    for lo, hi in (((0.0, -14.0, 9.0), (2.4, 14.0, 11.0)), ((0.0, -14.0, -11.0), (2.4, 14.0, -9.0)),
+                   ((0.0, -14.0, -9.0), (2.4, -12.0, 9.0)), ((0.0, 12.0, -9.0), (2.4, 14.0, 9.0))):
+        box(m, HOUSING, lo, hi)                 # bezel
+    box(m, HOUSING, (0.0, -14.0, 11.0), (6.0, 14.0, 12.0))             # visor
+    m.add(FLOOD, [(0.6, -12.0, -9.0), (0.6, 12.0, -9.0), (0.6, 12.0, 9.0), (0.6, -12.0, 9.0)],
+          [(1, 0, 0)] * 4, [(0, 1), (1, 1), (1, 0), (0, 0)], [(0, 1, 2), (0, 2, 3)])
+    for sy in (-1, 1):                          # trunnions
+        tube(m, HOUSING, [(-5.0, sy * 14.0, 0.0), (-5.0, sy * 16.5, 0.0)], 2.6, 8)
+
+
+def floodmast():
+    mesh = Mesh()
+    top = FM_TOP
+    # foot flange, anchor bolts, tapered 12-sided mast, top cap
+    lathe_pts(mesh, GALV, [(0.01, 0.0), (21.0, 0.0), (21.0, 2.5), (15.5, 3.5), (14.6, 8.0), (13.6, 10.0)], 12)
+    for k in range(4):
+        a = math.pi / 4 + k * math.pi / 2
+        x, y = 17.5 * math.cos(a), 17.5 * math.sin(a)
+        tube(mesh, IRON, [(x, y, 2.5), (x, y, 6.5)], 1.4, 6)
+    frustum(mesh, GALV, 12, 9.0, _mast_r(9.0), 490.0, _mast_r(490.0), uv=1 / 24)
+    sphere(mesh, GALV, (0, 0, 490.0), _mast_r(490.0) + 0.8, 12, 5, squash=(1, 1, 0.6))
+    for z in (150.0, 300.0):                    # sleeve joints
+        frustum(mesh, GALV, 12, z - 2.0, _mast_r(z) + 1.4, z + 2.0, _mast_r(z) + 1.2, cap0=True, cap1=True)
+    # junction box and conduit on the +y side
+    box(mesh, HOUSING, (-7.0, 11.0, 92.0), (7.0, 20.0, 118.0))
+    box(mesh, HOUSING, (-7.6, 10.5, 117.0), (7.6, 20.6, 119.5))
+    tube(mesh, GALV, [(0.0, 15.5, 118.0), (0.0, _mast_r(130.0) + 2.4, 130.0), (0.0, _mast_r(top) + 2.4, top)], 1.5, 6)
+    # ladder on the -x side with stand-off brackets and a safety cage
+    lx = -25.0
+    for sy in (-1, 1):
+        tube(mesh, GALV, [(lx, sy * 7.5, 14.0), (lx, sy * 7.5, top + 30.0)], 1.0, 5)
+    for z in np.arange(26.0, top, 12.0):
+        tube(mesh, GALV, [(lx, -7.5, z), (lx, 7.5, z)], 0.7, 4, caps=False)
+    for z in np.arange(40.0, top, 80.0):
+        for sy in (-1, 1):
+            tube(mesh, GALV, [(-_mast_r(z) + 0.5, sy * 3.0, z), (lx, sy * 7.5, z)], 0.9, 4)
+    hoops = np.arange(180.0, top - 4.0, 42.0)
+    for z in hoops:
+        tube(mesh, GALV, arc((lx - 6.0, 0.0, z), 11.0, math.radians(58), math.radians(302), 12, plane="xy"), 0.8, 4)
+    for a in (120, 180, 240):
+        x, y = lx - 6.0 + 11.0 * math.cos(math.radians(a)), 11.0 * math.sin(math.radians(a))
+        tube(mesh, GALV, [(x, y, hoops[0]), (x, y, top + 30.0)], 0.6, 4)
+    # platform: grating disc on brackets, railing with two rings
+    frustum(mesh, IRON, 16, top - 3.0, 36.0, top, 36.0, cap0=True, cap1=True, uv=1 / 18)
+    for k in range(6):
+        a = 2 * math.pi * k / 6 + math.pi / 6
+        tube(mesh, GALV, [(_mast_r(top - 40) * math.cos(a), _mast_r(top - 40) * math.sin(a), top - 40.0),
+                          (33.0 * math.cos(a), 33.0 * math.sin(a), top - 3.5)], 1.2, 5)
+    posts = [2 * math.pi * k / 12 for k in range(12)]
+    for a in posts:
+        if abs(math.cos(a) + 1) < 0.1:          # leave the ladder opening
+            continue
+        tube(mesh, GALV, [(34.0 * math.cos(a), 34.0 * math.sin(a), top), (34.0 * math.cos(a), 34.0 * math.sin(a), top + 30.0)],
+             0.9, 4)
+    for z in (top + 15.0, top + 30.0):
+        tube(mesh, GALV, arc((0, 0, z), 34.0, math.radians(-150), math.radians(150), 20, plane="xy"), 0.9, 5)
+    # head frame: two bars along y in front of the mast, struts, six heads
+    rows = (top + 32.0, top + 58.0)
+    for z in rows:
+        tube(mesh, GALV, [(11.0, -54.0, z), (11.0, 54.0, z)], 1.8, 6)
+        for sy in (-1, 1):
+            tube(mesh, GALV, [(_mast_r(z) - 1.0, sy * 2.0, z), (11.0, sy * 14.0, z)], 1.4, 5)
+    for sy in (-1, 1):
+        tube(mesh, GALV, [(11.0, sy * 54.0, rows[0] - 6.0), (11.0, sy * 54.0, rows[1] + 6.0)], 1.8, 6)
+    for z in rows:
+        for y in (-36.0, 0.0, 36.0):
+            yaw = math.radians(-0.25 * y)       # outer heads fan out
+            pitch = math.radians(24.0 if z == rows[0] else 16.0)
+            R = rot_z(yaw) @ rot_y(pitch)
+            c = np.array([25.0, y, z])
+            place(mesh, _flood_head, R, c)
+            for sy in (-1, 1):                  # yoke: arms from the bar to the trunnions
+                piv = c + R @ np.array([-5.0, sy * 16.5, 0.0])
+                tube(mesh, GALV, [(11.0, piv[1], z), tuple(piv)], 1.1, 5)
+    return mesh
+
+
 # ---------------------------------------------------------------- textures
 
 def textures(mdir):
@@ -621,6 +313,29 @@ def textures(mdir):
     lens = np.stack([prism * hot, prism * hot * 0.66, prism * hot * 0.30], -1)
     write_tga(os.path.join(mdir, "lens.tga"), (np.clip(lens, 0, 1) * 255).astype(np.uint8))
 
+    # galvanised steel: light grey with spangle
+    sp = noise(s, 16, 21)
+    g = 0.50 + 0.08 * noise(s, 4, 22) + 0.05 * (sp - 0.5) + fine
+    write_tga(os.path.join(mdir, "galv.tga"), (np.clip(np.stack([g * 0.98, g, g * 1.02], -1), 0, 1) * 255).astype(np.uint8))
+    # painted housing: dark grey-green, worn edges
+    h = 0.20 + 0.05 * noise(s, 4, 23) + fine
+    wear = np.clip(noise(s, 12, 24) - 0.8, 0, 1) * 2.0
+    write_tga(os.path.join(mdir, "housing.tga"),
+              (np.clip(np.stack([h + 0.25 * wear, h * 1.06 + 0.25 * wear, h * 1.0 + 0.25 * wear], -1), 0, 1) * 255).astype(np.uint8))
+    # flood lens: reflector rings behind ribbed glass, hot centre; team tints
+    w2, h2 = 128, 96
+    cx, cy = np.meshgrid((np.arange(w2) + 0.5) / w2 * 2 - 1, (np.arange(h2) + 0.5) / h2 * 2 - 1)
+    r = np.sqrt(cx ** 2 + (cy * 0.8) ** 2)
+    rings = 0.82 + 0.18 * np.cos(r * 34) ** 2
+    ribs = 0.9 + 0.1 * np.abs(np.sin(cx * math.pi * 9))
+    hotc = np.clip(1.25 - 0.75 * r, 0.45, 1.0)
+    v = rings * ribs * hotc
+    for suffix, tint in (("", (1.0, 0.98, 0.92)), ("_red", (1.0, 0.42, 0.32)), ("_blue", (0.42, 0.6, 1.0))):
+        img = np.stack([np.minimum(1, v * tint[0] + 0.25 * np.clip(1 - r * 2.2, 0, 1)),
+                        np.minimum(1, v * tint[1] + 0.25 * np.clip(1 - r * 2.2, 0, 1)),
+                        np.minimum(1, v * tint[2] + 0.25 * np.clip(1 - r * 2.2, 0, 1))], -1)
+        write_tga(os.path.join(mdir, f"floodlens{suffix}.tga"), (np.clip(img, 0, 1) * 255).astype(np.uint8))
+
 
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
@@ -629,8 +344,11 @@ def main():
     args = ap.parse_args()
     mdir = os.path.join(args.out, "models", "mapobjects", "q3r_lanterns")
     os.makedirs(mdir, exist_ok=True)
+    fm = floodmast()
     for fname, mesh in (("lantern.md3", lantern()), ("lantern_post.md3", lantern_post()),
-                        ("lantern_wall.md3", lantern_wall()), ("streetlamp.md3", streetlamp())):
+                        ("lantern_wall.md3", lantern_wall()), ("streetlamp.md3", streetlamp()),
+                        ("floodmast.md3", fm), ("floodmast_red.md3", retexture(fm, {FLOOD: FLOOD + "_red"})),
+                        ("floodmast_blue.md3", retexture(fm, {FLOOD: FLOOD + "_blue"}))):
         ns, nv, nt, mins, maxs = write_md3(os.path.join(mdir, fname), D + fname, mesh)
         print(f"{fname}: {ns} surfaces, {nv} verts, {nt} tris, bounds {np.round(mins, 1)} .. {np.round(maxs, 1)}")
     textures(mdir)

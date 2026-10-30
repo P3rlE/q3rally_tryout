@@ -545,15 +545,18 @@ def outpost(team, sx):
 
 
 def masts(team, sx):
-    """Two floodlight masts at the back corners of the base, aimed at the mound."""
+    """Two floodlight masts at the back corners of the base, aimed at the mound:
+    floodmast model (team-coloured lenses, scaled to 430 high), invisible
+    collision around the mast, light in front of the heads."""
     color = (1.0, 0.35, 0.25) if team == "red" else (0.35, 0.5, 1.0)
     for sy in (-1, 1):
         x, y = sx * 3250, sy * 1180
         z = ground(x, y)
-        ngon(x, y, 12, 8, z - 20, z + 420, TEX + "metal", tag="mast")
-        box((x - 40, y - 40, z + 420), (x + 40, y + 40, z + 444), TEX + "metal", solid=False)
-        box((x - 36, y - 36, z + 410), (x + 36, y + 36, z + 420), TEX + "lamp", solid=False)
-        light(x - sx * 60, y - sy * 60, z + 380, 900, color)
+        aim = math.atan2(-y, sx * FLAG_X - x)
+        entity("misc_model", x, y, z - 2, model=f"models/mapobjects/q3r_lanterns/floodmast_{team}.md3",
+               angle=f"{math.degrees(aim) % 360:.0f}", modelscale="0.86")
+        ngon(x, y, 12, 8, z - 20, z + 420, TEX + "boundary", tag="mast")
+        light(x + 170 * math.cos(aim), y + 170 * math.sin(aim), z + 360, 900, color)
 
 
 def spawns(team, sx):

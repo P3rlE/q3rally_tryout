@@ -3,8 +3,8 @@
   "flags": 4,
   "flag_to_neighbour": 4500,
   "flag_to_opposite": 6364,
-  "brushes": 1051,
-  "entities": 197,
+  "brushes": 1043,
+  "entities": 305,
   "spawns_per_team": 6,
   "pickups": 78
 }
