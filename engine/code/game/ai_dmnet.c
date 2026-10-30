@@ -3078,7 +3078,8 @@ static void BotCTFRouteDebug(bot_state_t *bs, const char *stage,
 	int currentArea, travelTime;
 	int blocked, failure, type, traveltype, flags;
 
-	if (gametype != GT_CTF || bs->ltgtype != LTG_GETFLAG) {
+	if (gametype != GT_CTF ||
+		(bs->ltgtype != LTG_GETFLAG && bs->ltgtype != LTG_RUSHBASE)) {
 		return;
 	}
 	if (bs->ctfRouteDebugTime > FloatTime() + 30.0f) {
@@ -3107,8 +3108,9 @@ static void BotCTFRouteDebug(bot_state_t *bs, const char *stage,
 	else VectorClear(movedir);
 	ClientName(bs->client, name, sizeof(name));
 	BotAI_Print(PRT_MESSAGE,
-		"CTF route movement %s stage=%s ltg=%d pos=(%.0f %.0f %.0f) vel=(%.0f %.0f %.0f) area=%d goalArea=%d travel=%d distance=%.0f blocked=%d failure=%d type=%d traveltype=%d flags=0x%x movedir=(%.2f %.2f %.2f) vehicle=%d road=%d reentryArea=%d recovery=%d vBlocked=%d clearance=%.2f targetSpeed=%.0f\n",
+		"CTF route movement %s stage=%s ltg=%d carrying=%d pos=(%.0f %.0f %.0f) vel=(%.0f %.0f %.0f) area=%d goalArea=%d travel=%d distance=%.0f blocked=%d failure=%d type=%d traveltype=%d flags=0x%x movedir=(%.2f %.2f %.2f) vehicle=%d road=%d reentryArea=%d recovery=%d vBlocked=%d clearance=%.2f targetSpeed=%.0f\n",
 		name, stage, bs->ltgtype,
+		BotCTFCarryingFlag(bs) != CTF_FLAG_NONE,
 		bs->origin[0], bs->origin[1], bs->origin[2],
 		bs->cur_ps.velocity[0], bs->cur_ps.velocity[1], bs->cur_ps.velocity[2],
 		currentArea, goal ? goal->areanum : 0, travelTime, distance,
@@ -3259,7 +3261,8 @@ int AINode_Seek_LTG(bot_state_t *bs)
 		}
 #endif
 		//
-		if (BotNearbyGoal(bs, bs->tfl, &goal, range)) {
+		if (!(gametype == GT_CTF && BotCTFCarryingFlag(bs)) &&
+			BotNearbyGoal(bs, bs->tfl, &goal, range)) {
 			BotCTFRouteDebug(bs, "nearby-goal", &goal, NULL);
 			trap_BotResetLastAvoidReach(bs->ms);
 			//get the goal at the top of the stack
@@ -3919,7 +3922,8 @@ int AINode_Battle_Retreat(bot_state_t *bs) {
 		}
 #endif
 		//
-		if (BotNearbyGoal(bs, bs->tfl, &goal, range)) {
+		if (!(gametype == GT_CTF && BotCTFCarryingFlag(bs)) &&
+			BotNearbyGoal(bs, bs->tfl, &goal, range)) {
 			trap_BotResetLastAvoidReach(bs->ms);
 			//time the bot gets to pick up the nearby goal item
 			bs->nbg_time = FloatTime() + range / 100 + 1;
@@ -3934,6 +3938,7 @@ int AINode_Battle_Retreat(bot_state_t *bs) {
 	trap_EA_MoveForward( bs->entitynum );
 // END
 	BotVehicleMoveToGoal(bs, &moveresult, &goal, bs->tfl);
+	BotCTFRouteDebug(bs, "retreat", &goal, &moveresult);
 	//if the movement failed
 	if (moveresult.failure) {
 		//reset the avoid reach, otherwise bot is stuck in current area

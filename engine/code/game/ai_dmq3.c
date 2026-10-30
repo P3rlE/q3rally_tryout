@@ -921,6 +921,7 @@ void BotCTFSeekGoals(bot_state_t *bs) {
 			bs->ltgtype = LTG_RUSHBASE;
 			bs->teamgoal_time = FloatTime() + CTF_RUSHBASE_TIME;
 			bs->rushbaseaway_time = 0;
+			bs->ctfRouteDebugTime = 0;
 			bs->decisionmaker = bs->client;
 			bs->ordered = qfalse;
 			//
@@ -1241,6 +1242,7 @@ void BotCTFRetreatGoals(bot_state_t *bs) {
 			bs->ltgtype = LTG_RUSHBASE;
 			bs->teamgoal_time = FloatTime() + CTF_RUSHBASE_TIME;
 			bs->rushbaseaway_time = 0;
+			bs->ctfRouteDebugTime = 0;
 			bs->decisionmaker = bs->client;
 			bs->ordered = qfalse;
 			BotSetTeamStatus(bs);
