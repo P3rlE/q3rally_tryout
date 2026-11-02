@@ -77,6 +77,9 @@ jobs:
               python tools/build_launcher.py --output output/launcher-ci-linux-x86
               xvfb-run -a python tools/validate_launcher_package.py --release-index output/launcher-ci-linux-x86/release.json --output output/launcher-package-check-linux-x86
             '
+      - name: Make container diagnostics readable by the artifact uploader
+        if: always()
+        run: sudo chmod -R a+rX output/launcher-ci-linux-x86 output/launcher-package-check-linux-x86
       - uses: actions/upload-artifact@v6
         if: always()
         with:

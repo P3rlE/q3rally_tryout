@@ -36,6 +36,7 @@ def main(argv=None):
         "--name", "Q3RallyLauncher", "--paths", str(ROOT), "--specpath", str(output / "spec"),
         "--distpath", str(output / "dist"), "--workpath", str(output / "build"),
         "--copy-metadata", "psutil", "--copy-metadata", "PyNaCl", "--copy-metadata", "cffi",
+        "--hidden-import", "_cffi_backend",
         "--add-data", str(ROOT / "engine/docs/COPYING.txt") + os.pathsep + ".",
         "--add-data", str(ROOT / "launcher/assets") + os.pathsep + "launcher/assets",
         "--add-data", str(args.config.resolve()) + os.pathsep + "launcher", str(ROOT / "run_launcher.py")]
