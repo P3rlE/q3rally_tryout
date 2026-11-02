@@ -74,6 +74,7 @@ def run_case(args, name, index):
                       'ladder_register NativeProbe probe@example.invalid NativeTest agree'])
     (home / 'baseq3r/probe.cfg').write_text('\n'.join(lines) + '\n', encoding='utf-8')
     cmd = [str(args.executable), '+set', 'fs_basepath', str(args.basepath),
+           '+set', 'vm_game', str(args.vm_mode),
            '+set', 'fs_homepath', str(home), '+set', 'dedicated', '1',
            '+set', 'net_ip', '127.0.0.1', '+set', 'net_enabled', '1',
            '+set', 'net_port', str(port), '+set', 'logfile', '2', '+exec', 'probe.cfg']
@@ -131,12 +132,27 @@ def run_case(args, name, index):
     finishes = re.findall(r'broadcast: print "[^\r\n]*(?:won the race!|finished the race in)[^\r\n]*', text)
     finish_check = not args.complete_races or len(finishes) == expected
     http_check = not args.http_probe or 'registration failed: DEDICATED_HTTP_PROBE' in text
+    telemetry_records = telemetry_errors = 0
+    recovery_events = []
+    telemetry = home / 'baseq3r/logs/drive.jsonl'
+    if telemetry.is_file():
+        for line in telemetry.read_text(encoding='utf-8', errors='replace').splitlines():
+            try:
+                record = json.loads(line)
+                telemetry_records += 1
+                if record.get('recoveryEvent'):
+                    recovery_events.append(record['recoveryEvent'])
+            except (ValueError, AttributeError):
+                telemetry_errors += 1
+    telemetry_check = not args.check_telemetry or (telemetry_errors == 0 and (expected == 0 or telemetry_records > 0))
     result = {'case': name, 'mode': mode, 'map': mapname, 'ready': ready,
               'alive_before_shutdown': alive, 'exit': proc.returncode,
               'expected_bots': expected, 'samples': samples, 'teams': team_info,
               'count_ok': count_check, 'teams_ok': team_check, 'intro_ok': intro_check,
               'finishes': finishes, 'finish_ok': finish_check, 'http_ok': http_check,
-              'passed': ready and alive and proc.returncode == 0 and count_check and team_check and intro_check and finish_check and http_check}
+              'telemetry_records': telemetry_records, 'telemetry_errors': telemetry_errors,
+              'recovery_events': recovery_events, 'telemetry_ok': telemetry_check,
+              'passed': ready and alive and proc.returncode == 0 and count_check and team_check and intro_check and finish_check and http_check and telemetry_check}
     (folder / 'result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
     print(json.dumps({k: v for k, v in result.items() if k != 'samples'}), flush=True)
     return result
@@ -152,6 +168,8 @@ def main():
     parser.add_argument('--port', type=int, default=29100)
     parser.add_argument('--complete-races', action='store_true', help='Wait for race finishes; use racing/sprint cases only')
     parser.add_argument('--http-probe', action='store_true', help='Exercise native Ladder HTTP against a local fixture')
+    parser.add_argument('--vm-mode', type=int, choices=(1, 2), default=2, help='1: interpreter, 2: native JIT where available')
+    parser.add_argument('--check-telemetry', action='store_true', help='Require nonempty, valid driving JSON for bot cases')
     args = parser.parse_args()
     args.executable = args.executable.resolve(strict=True)
     args.basepath = args.basepath.resolve(strict=True)
