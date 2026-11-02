@@ -43,8 +43,10 @@ def main():
         if index == 0:
             script += ['seta sensitivity 7.25', 'seta cg_drawFPS 1',
                        'bind F8 screenshotJPEG', 'writeconfig persisted.cfg']
-        script += ['map q3r_country01', 'wait 300', f'screenshotJPEG track-{renderer}',
-                   'play sound/misc/menu1.ogg', 'wait 30', 'vid_restart', 'wait 90',
+        # The world is loaded synchronously before these frames. A short warmup
+        # covers first snapshots without turning software rendering into a benchmark.
+        script += ['map q3r_country01', 'wait 30', f'screenshotJPEG track-{renderer}',
+                   'play sound/misc/menu1.ogg', 'wait 5', 'vid_restart', 'wait 30',
                    f'screenshotJPEG restarted-{renderer}', 'wait 2', 'sensitivity',
                    'cg_drawFPS', 'bind F8', 'profile_active', 'cl_uuid',
                    'echo CLIENT_PROBE_END', 'quit']
