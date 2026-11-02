@@ -1,2 +1,2 @@
-cryptography>=43,<52
+PyNaCl>=1.6.2,<2
 psutil>=6,<8

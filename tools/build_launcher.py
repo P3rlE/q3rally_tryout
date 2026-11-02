@@ -35,7 +35,8 @@ def main(argv=None):
     command = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onedir", "--windowed",
         "--name", "Q3RallyLauncher", "--paths", str(ROOT), "--specpath", str(output / "spec"),
         "--distpath", str(output / "dist"), "--workpath", str(output / "build"),
-        "--copy-metadata", "psutil", "--add-data", str(ROOT / "engine/docs/COPYING.txt") + os.pathsep + ".",
+        "--copy-metadata", "psutil", "--copy-metadata", "PyNaCl", "--copy-metadata", "cffi",
+        "--add-data", str(ROOT / "engine/docs/COPYING.txt") + os.pathsep + ".",
         "--add-data", str(ROOT / "launcher/assets") + os.pathsep + "launcher/assets",
         "--add-data", str(args.config.resolve()) + os.pathsep + "launcher", str(ROOT / "run_launcher.py")]
     if sys.platform == "darwin":

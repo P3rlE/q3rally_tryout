@@ -24,7 +24,7 @@ import urllib.parse
 import urllib.request
 import zipfile
 
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from nacl.signing import VerifyKey
 import psutil
 from . import __version__
 
@@ -41,7 +41,7 @@ class LauncherError(Exception):
 def version_key(version):
     match = VERSION.fullmatch(version)
     if not match:
-        raise LauncherError(f"Ungültige Versionsnummer: {version}")
+        raise LauncherError(f"Invalid version number: {version}")
     major, minor, patch, suffix = match.groups()
     return int(major), int(minor), int(patch or 0), ord(suffix) if suffix else 0
 
@@ -61,7 +61,7 @@ def native_targets():
     if arch == "x86_64" and sys.maxsize <= 2**32:
         arch = "x86"
     if not system or not arch:
-        raise LauncherError("Für dieses Betriebssystem ist kein Launcher-Ziel eingerichtet.")
+        raise LauncherError("This operating system is not supported by the launcher.")
     return [f"{system}-{arch}"] + (["macos-universal"] if system == "macos" else [])
 
 
@@ -88,32 +88,32 @@ def digest_file(path):
 
 def safe_path(name):
     if not isinstance(name, str) or not name or "\\" in name or "\x00" in name:
-        raise LauncherError("Unsicherer Dateipfad im Paket.")
+        raise LauncherError("Unsafe file path in package.")
     path = PurePosixPath(name)
     if path.is_absolute() or any(p in ("", ".", "..") for p in name.split("/")):
-        raise LauncherError(f"Unsicherer Dateipfad: {name}")
+        raise LauncherError(f"Unsafe file path: {name}")
     for part in path.parts:
         if ":" in part or part.endswith((".", " ")) or re.fullmatch(r"(?i:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?", part):
-            raise LauncherError(f"Nicht portabler Dateipfad: {name}")
+            raise LauncherError(f"Non-portable file path: {name}")
     return path
 
 
 def within(root, relative):
     path = Path(root).joinpath(*safe_path(relative).parts)
     if not path.resolve().is_relative_to(Path(root).resolve()):
-        raise LauncherError("Pfad verlässt das Installationsverzeichnis.")
+        raise LauncherError("Path leaves the installation directory.")
     return path
 
 
 def check_url(url, development=False):
     parsed = urllib.parse.urlsplit(url)
     if parsed.username or parsed.password or parsed.fragment:
-        raise LauncherError("Ungültige Downloadadresse.")
+        raise LauncherError("Invalid download URL.")
     local = parsed.scheme == "http" and parsed.hostname in ("127.0.0.1", "localhost", "::1")
     if parsed.scheme != "https" and not (development and local):
-        raise LauncherError("Downloads benötigen HTTPS.")
+        raise LauncherError("Downloads require HTTPS.")
     if not parsed.hostname:
-        raise LauncherError("Downloadadresse ohne Host.")
+        raise LauncherError("Download URL has no host.")
 
 
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
@@ -147,7 +147,7 @@ def decode_catalog(envelope, keys, *, fresh=True):
         public = base64.b64decode(keys[envelope["key_id"]], validate=True)
         if len(payload) > MAX_CATALOG:
             raise ValueError("catalog too large")
-        Ed25519PublicKey.from_public_bytes(public).verify(signature, payload)
+        VerifyKey(public).verify(payload, signature)
         catalog = json.loads(payload)
         if catalog["schema"] != 1 or catalog["product"] != "Q3Rally":
             raise ValueError("schema/product")
@@ -178,7 +178,7 @@ def decode_catalog(envelope, keys, *, fresh=True):
                         raise ValueError("url")
         return catalog
     except Exception as error:
-        raise LauncherError("Versionskatalog ist ungültig, abgelaufen oder nicht vertrauenswürdig signiert.") from error
+        raise LauncherError("The version catalog is invalid, expired or not signed by a trusted key.") from error
 
 
 @contextmanager
@@ -197,7 +197,7 @@ def file_lock(path):
                 import fcntl
                 fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError as error:
-            raise LauncherError("Diese Version wird bereits verwendet oder bearbeitet.") from error
+            raise LauncherError("This version is already in use or being modified.") from error
         try:
             yield
         finally:
@@ -262,18 +262,18 @@ class Manager:
 
     def load_catalog(self, url):
         if not self.keys:
-            raise LauncherError("Der öffentliche Release-Schlüssel ist noch nicht eingerichtet.")
+            raise LauncherError("The public release key has not been configured.")
         check_url(url, self.development)
         with opener(self.development).open(url, timeout=20) as response:
             raw = response.read(MAX_CATALOG * 2 + 1)
         if len(raw) > MAX_CATALOG * 2:
-            raise LauncherError("Versionskatalog ist zu groß.")
+            raise LauncherError("The version catalog is too large.")
         envelope = json.loads(raw)
         catalog = decode_catalog(envelope, self.keys)
         cachefile = self.root / "catalog-cache.json"
         with file_lock(self.locks / "catalog.lock"):
             if cachefile.exists() and catalog["sequence"] < json.loads(cachefile.read_text())["sequence"]:
-                raise LauncherError("Ein älterer Versionskatalog wurde zurückgewiesen.")
+                raise LauncherError("An older version catalog was rejected.")
             atomic_json(cachefile, {"sequence": catalog["sequence"], "envelope": envelope})
         return envelope, catalog
 
@@ -296,10 +296,10 @@ class Manager:
     def path(self, version, target):
         version_key(version)
         if not TARGET.fullmatch(target):
-            raise LauncherError("Ungültiges Plattformziel.")
+            raise LauncherError("Invalid platform target.")
         path = within(self.versions, f"{version}-{target}")
         if path.is_symlink():
-            raise LauncherError("Installationsverzeichnis darf kein symbolischer Link sein.")
+            raise LauncherError("The installation directory must not be a symbolic link.")
         return path
 
     def installed(self):
@@ -335,28 +335,28 @@ class Manager:
             if response.status == 206:
                 expected = f"bytes {offset}-{package['size']-1}/{package['size']}"
                 if response.headers.get("Content-Range") != expected:
-                    raise LauncherError("Ungültige Antwort beim Fortsetzen des Downloads.")
+                    raise LauncherError("Invalid response while resuming the download.")
             elif response.status == 200:
                 offset = 0
             else:
-                raise LauncherError(f"Download fehlgeschlagen: HTTP {response.status}")
+                raise LauncherError(f"Download failed: HTTP {response.status}")
             with partial.open("ab" if offset else "wb") as stream:
                 while True:
                     if cancel.is_set():
-                        raise LauncherError("Download pausiert. Er kann später fortgesetzt werden.")
+                        raise LauncherError("Download paused. You can resume it later.")
                     chunk = response.read(256 * 1024)
                     if not chunk:
                         break
                     offset += len(chunk)
                     if offset > package["size"]:
-                        raise LauncherError("Download ist größer als angekündigt.")
+                        raise LauncherError("The download is larger than expected.")
                     stream.write(chunk)
                     progress(offset, package["size"])
         if offset != package["size"]:
-            raise LauncherError("Download unvollständig. Bitte erneut versuchen.")
+            raise LauncherError("Download incomplete. Please try again.")
         if digest_file(partial) != package["sha256"]:
             partial.unlink()
-            raise LauncherError("Die Prüfsumme des Downloads stimmt nicht. Bitte erneut laden.")
+            raise LauncherError("The download checksum does not match. Please download it again.")
         return partial
 
     def _extract(self, archive_path, stage, version, target, package):
@@ -364,20 +364,20 @@ class Manager:
         with zipfile.ZipFile(archive_path) as archive:
             entries = archive.infolist()
             if len(entries) > 100000 or sum(item.file_size for item in entries) > 20 * 1024**3:
-                raise LauncherError("Installationspaket überschreitet die Größenbegrenzung.")
+                raise LauncherError("The installation package exceeds the size limit.")
             paths, links = set(), []
             for item in entries:
                 if not item.filename.startswith(prefix):
-                    raise LauncherError("Unerwartetes Paketverzeichnis.")
+                    raise LauncherError("Unexpected package directory.")
                 name = item.filename[len(prefix):].rstrip("/")
                 if not name:
                     continue
                 safe_path(name)
                 if name.casefold() == ".launcher-install.json":
-                    raise LauncherError("Paket enthält einen reservierten Installationsbeleg.")
+                    raise LauncherError("The package contains a reserved installation receipt.")
                 key = unicodedata.normalize("NFC", name).casefold()
                 if key in paths:
-                    raise LauncherError("Doppelte Dateinamen im Paket.")
+                    raise LauncherError("Duplicate filenames in package.")
                 paths.add(key)
                 path = within(stage, name)
                 mode = item.external_attr >> 16
@@ -385,13 +385,13 @@ class Manager:
                     path.mkdir(parents=True, exist_ok=True)
                 elif stat.S_ISLNK(mode):
                     if os.name == "nt":
-                        raise LauncherError("Windows-Pakete dürfen keine symbolischen Links enthalten.")
+                        raise LauncherError("Windows packages must not contain symbolic links.")
                     destination = archive.read(item).decode("utf-8")
                     if "\\" in destination or PurePosixPath(destination).is_absolute():
-                        raise LauncherError("Unsicheres Linkziel.")
+                        raise LauncherError("Unsafe link target.")
                     links.append((path, destination))
                 elif stat.S_IFMT(mode) not in (0, stat.S_IFREG):
-                    raise LauncherError("Nicht unterstützter Dateityp im Paket.")
+                    raise LauncherError("Unsupported file type in package.")
                 else:
                     path.parent.mkdir(parents=True, exist_ok=True)
                     with archive.open(item) as source, path.open("xb") as destination:
@@ -402,41 +402,41 @@ class Manager:
             for path, destination in links:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 if not (path.parent / destination).resolve().is_relative_to(stage.resolve()):
-                    raise LauncherError("Link verlässt das Installationsverzeichnis.")
+                    raise LauncherError("Link leaves the installation directory.")
                 path.symlink_to(destination)
             self._verify(stage, version, target, package)
 
     def _verify(self, directory, version, target, package):
         manifest_path = within(directory, "release-manifest.json")
         if manifest_path.is_symlink() or manifest_path.stat().st_size > 16 * 1024**2 or digest_file(manifest_path) != package["manifest_sha256"]:
-            raise LauncherError("Installationsmanifest wurde verändert.")
+            raise LauncherError("The installation manifest was modified.")
         manifest = json.loads(manifest_path.read_text())
         if (manifest.get("product"), manifest.get("version"), manifest.get("target")) != (self.product, version, target):
-            raise LauncherError("Installationsmanifest gehört zu einer anderen Version.")
+            raise LauncherError("The installation manifest belongs to another version.")
         expected = {"release-manifest.json", ".launcher-install.json"}
         for record in manifest["files"]:
             name = record["path"]
             if name in expected:
-                raise LauncherError("Doppelte Dateien im Manifest.")
+                raise LauncherError("Duplicate files in manifest.")
             expected.add(name)
             path = within(directory, name)
             if record.get("symlink"):
                 if not path.is_symlink():
-                    raise LauncherError(f"Link fehlt: {name}")
+                    raise LauncherError(f"Missing link: {name}")
                 data = os.readlink(path).encode()
                 size, digest = len(data), hashlib.sha256(data).hexdigest()
             else:
                 if path.is_symlink() or not path.is_file():
-                    raise LauncherError(f"Datei fehlt: {name}")
+                    raise LauncherError(f"Missing file: {name}")
                 size, digest = path.stat().st_size, digest_file(path)
             if size != record["size"] or digest != record["sha256"]:
-                raise LauncherError(f"Dateiprüfung fehlgeschlagen: {name}")
+                raise LauncherError(f"File verification failed: {name}")
         actual = {p.relative_to(directory).as_posix() for p in directory.rglob("*") if p.is_file() or p.is_symlink()}
         if actual - expected or package["entrypoint"] not in expected - {"release-manifest.json", ".launcher-install.json"}:
-            raise LauncherError("Nicht angekündigte Dateien in der Installation.")
+            raise LauncherError("Unexpected files in the installation.")
         executable = within(directory, package["entrypoint"])
         if not executable.is_file():
-            raise LauncherError("Spielprogramm fehlt.")
+            raise LauncherError("The game executable is missing.")
         return executable
 
     def _receipt(self, version, target):
@@ -458,7 +458,7 @@ class Manager:
         directory = self.path(version, target)
         with file_lock(self.locks / (self.product + "-" + directory.name + ".lock")):
             if processes_using(directory):
-                raise LauncherError("Das Spiel läuft noch. Installation bitte später wiederholen.")
+                raise LauncherError("The game is still running. Please install it later.")
             with file_lock(self.locks / (package["sha256"] + ".download.lock")):
                 archive = self._download(package, cancel or threading.Event(), progress)
             stage = Path(tempfile.mkdtemp(prefix=".stage-", dir=self.versions))
@@ -466,10 +466,10 @@ class Manager:
             try:
                 self._extract(archive, stage, version, target, package)
                 if cancel is not None and cancel.is_set():
-                    raise LauncherError("Installation pausiert. Bitte erneut starten.")
+                    raise LauncherError("Installation paused. Please start it again.")
                 atomic_json(stage / ".launcher-install.json", {"version": version, "target": target, "envelope": envelope})
                 if backup.exists():
-                    raise LauncherError("Eine frühere Wiederherstellung muss zuerst geprüft werden.")
+                    raise LauncherError("A previous recovery must be checked first.")
                 if directory.exists():
                     directory.rename(backup)
                 try:
@@ -489,7 +489,7 @@ class Manager:
         directory = self.path(version, target)
         with file_lock(self.locks / (self.product + "-" + directory.name + ".lock")):
             if processes_using(directory):
-                raise LauncherError("Diese Version läuft noch.")
+                raise LauncherError("This version is still running.")
             # User data deliberately lives elsewhere and survives removal.
             if directory.exists():
                 shutil.rmtree(directory)
@@ -498,7 +498,7 @@ class Manager:
         directory = self.path(version, target)
         with file_lock(self.locks / (self.product + "-" + directory.name + ".lock")):
             if processes_using(directory):
-                raise LauncherError("Diese Version läuft bereits.")
+                raise LauncherError("This version is already running.")
             executable = self.verify(version, target)
             home = within(self.root / "user-data", version)
             home.mkdir(parents=True, exist_ok=True)

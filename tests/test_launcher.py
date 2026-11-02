@@ -16,7 +16,7 @@ import unittest
 from unittest.mock import patch
 import zipfile
 
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from nacl.signing import SigningKey
 from launcher.core import Manager, LauncherError, decode_catalog, file_lock, safe_path, version_key
 from launcher.profiles import import_profile
 from tools.publish_launcher_catalog import sign
@@ -27,8 +27,8 @@ class LauncherTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.key = Ed25519PrivateKey.generate()
-        self.keys = {"test": base64.b64encode(self.key.public_key().public_bytes_raw()).decode()}
+        self.key = SigningKey.generate()
+        self.keys = {"test": base64.b64encode(bytes(self.key.verify_key)).decode()}
         self.requests = []
         self.agents = []
         owner = self
@@ -215,14 +215,19 @@ class LauncherTests(unittest.TestCase):
         self.assertIn(str(self.manager.root / "user-data/0.8"), log)
 
     def test_catalog_publisher_roundtrip_and_development_rejection(self):
-        from cryptography.hazmat.primitives import serialization
+        try:
+            from cryptography.hazmat.primitives import serialization
+            from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        except ImportError:
+            self.skipTest("PEM publishing is tested separately on the 64-bit build host")
         from tools.publish_launcher_catalog import main
         archive = self.root / "game.zip"; archive.write_bytes(self.archive)
         index = self.root / "release.json"
         index.write_text(json.dumps({"product": "Q3Rally", "version": "0.8", "artifacts": [
             {"filename": "game.zip", "target": "windows-x86_64", "size": len(self.archive), "sha256": self.package["sha256"]}]}))
         private = self.root / "temporary-test-key.pem"
-        private.write_bytes(self.key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
+        private.write_bytes(Ed25519PrivateKey.from_private_bytes(bytes(self.key)).private_bytes(
+            serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
         public = self.root / "config.json"; public.write_text(json.dumps({"public_keys": self.keys}))
         output = self.root / "catalog.json"
         arguments = ["catalog", "--private-key", str(private), "--public-config", str(public), "--key-id", "test",
@@ -268,6 +273,12 @@ class LauncherTests(unittest.TestCase):
             with self.subTest(path=path), self.assertRaises(LauncherError):
                 safe_path(path)
         self.assertEqual(sorted(["0.8", "0.7d", "0.7c"], key=version_key), ["0.7c", "0.7d", "0.8"])
+
+    def test_previously_published_signature_remains_compatible(self):
+        fixture = json.loads((Path(__file__).parent / 'fixtures/launcher-legacy-catalog.json').read_text())
+        catalog = decode_catalog(fixture['envelope'], fixture['public_keys'], fresh=False)
+        self.assertEqual(catalog['sequence'], 4)
+        self.assertEqual(catalog['launchers'][0]['version'], '0.2.0')
 
 
 if __name__ == "__main__":

@@ -61,7 +61,9 @@ class Window:
         theme.load_fonts()
         self.root = tk.Tk()
         self.root.title(f"Q3Rally Launcher {__version__}")
-        self.root.geometry("1180x800"); self.root.minsize(1000, 700)
+        width = min(1180, max(1000, self.root.winfo_screenwidth() - 80))
+        height = min(800, max(700, self.root.winfo_screenheight() - 100))
+        self.root.geometry(f"{width}x{height}"); self.root.minsize(1000, 700)
         self.root.configure(background=theme.BACKGROUND)
         body, heading, mono = theme.configure(self.root, ttk)
         self.root.columnconfigure(0, weight=1); self.root.rowconfigure(3, weight=1)
@@ -79,22 +81,22 @@ class Window:
             header.create_rectangle(0, 0, 5, 114, fill=theme.ACCENT, outline="")
             header.create_text(32, 38, anchor="w", text="Q3RALLY", fill=theme.TEXT, font=(heading, 37, "bold"))
             header.create_text(34, 83, anchor="w", text="IT'S DAMN FAST, BABY.", fill=theme.ACCENT, font=(mono, 11))
-            header.create_text(event.width - 32, 57, anchor="e", text="DEIN NÄCHSTES RENNEN.", fill=theme.MUTED, font=(heading, 20, "bold"))
+            header.create_text(event.width - 32, 57, anchor="e", text="YOUR NEXT RACE.", fill=theme.MUTED, font=(heading, 20, "bold"))
         header.bind("<Configure>", paint_header)
         intro = ttk.Frame(self.root)
         intro.grid(row=2, column=0, sticky="ew", padx=32, pady=(25, 18))
         intro.columnconfigure(0, weight=1)
-        ttk.Label(intro, text="SPIELEN", font=(heading, 25, "bold")).grid(row=0, column=0, sticky="w")
-        self.recommendation = tk.StringVar(value="Version auswählen und spielen")
+        ttk.Label(intro, text="PLAY", font=(heading, 25, "bold")).grid(row=0, column=0, sticky="w")
+        self.recommendation = tk.StringVar(value="Choose a version and play")
         ttk.Label(intro, textvariable=self.recommendation, style="Muted.TLabel").grid(row=1, column=0, sticky="w", pady=(4, 0))
-        self.connection = tk.StringVar(value="VERBINDUNG WIRD GEPRÜFT")
+        self.connection = tk.StringVar(value="CONNECTING")
         ttk.Label(intro, textvariable=self.connection, style="Eyebrow.TLabel").grid(row=1, column=1, sticky="e")
         content = ttk.Frame(self.root); content.grid(row=3, column=0, sticky="nsew", padx=32)
         content.columnconfigure(0, minsize=330); content.columnconfigure(1, weight=1); content.rowconfigure(0, weight=1)
         versions = ttk.Frame(content, style="Card.TFrame", padding=18)
         versions.grid(row=0, column=0, sticky="nsew", padx=(0, 24))
         versions.columnconfigure(0, weight=1); versions.rowconfigure(1, weight=1)
-        ttk.Label(versions, text="01 / SPIELVERSIONEN", background=theme.PANEL, foreground=theme.QUIET,
+        ttk.Label(versions, text="01 / GAME VERSIONS", background=theme.PANEL, foreground=theme.QUIET,
                   font=(mono, 10)).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 14))
         self.list = ttk.Treeview(versions, columns=("version", "status"), show="headings", selectmode="browse", height=4)
         self.list.heading("version", text="VERSION"); self.list.heading("status", text="STATUS")
@@ -103,17 +105,17 @@ class Window:
         version_scroll = ttk.Scrollbar(versions, command=self.list.yview)
         version_scroll.grid(row=1, column=1, sticky="ns")
         self.list.configure(yscrollcommand=version_scroll.set)
-        ttk.Label(versions, text="Jede Version hat ihre eigene Installation\nund eigene Spielstände.", background=theme.PANEL,
+        ttk.Label(versions, text="Each version has its own installation\nand saved games.", background=theme.PANEL,
                   foreground=theme.QUIET, font=(body, 10)).grid(row=2, column=0, columnspan=2, sticky="w", pady=(18, 0))
         self.list.bind("<<TreeviewSelect>>", self.selected)
         notes_frame = ttk.Frame(content); notes_frame.grid(row=0, column=1, sticky="nsew")
         notes_frame.rowconfigure(4, weight=1); notes_frame.columnconfigure(0, weight=1)
-        ttk.Label(notes_frame, text="02 / DEINE AUSWAHL", style="Eyebrow.TLabel").grid(row=0, column=0, sticky="w")
-        self.selection_title = tk.StringVar(value="Bereit für die nächste Runde?")
+        ttk.Label(notes_frame, text="02 / YOUR SELECTION", style="Eyebrow.TLabel").grid(row=0, column=0, sticky="w")
+        self.selection_title = tk.StringVar(value="Ready for the next round?")
         ttk.Label(notes_frame, textvariable=self.selection_title, style="Title.TLabel").grid(row=1, column=0, sticky="w", pady=(8, 3))
-        self.selection_meta = tk.StringVar(value="Wähle links eine Spielversion aus.")
+        self.selection_meta = tk.StringVar(value="Select a game version on the left.")
         ttk.Label(notes_frame, textvariable=self.selection_meta, style="Muted.TLabel").grid(row=2, column=0, sticky="w", pady=(0, 20))
-        ttk.Label(notes_frame, text="VERSIONSHINWEISE", style="Eyebrow.TLabel").grid(row=3, column=0, sticky="w", pady=(0, 10))
+        ttk.Label(notes_frame, text="RELEASE NOTES", style="Eyebrow.TLabel").grid(row=3, column=0, sticky="w", pady=(0, 10))
         self.notes = tk.Text(notes_frame, wrap="word", state="disabled", background=theme.FIELD, foreground=theme.MUTED,
                              borderwidth=0, highlightthickness=1, highlightbackground=theme.BORDER,
                              highlightcolor=theme.ACCENT, padx=20, pady=18, font=(body, 12), spacing1=3, spacing3=5, width=40, height=6)
@@ -123,13 +125,13 @@ class Window:
         actions = ttk.Frame(self.root, style="Card.TFrame", padding=(20, 18))
         actions.grid(row=4, column=0, sticky="ew", padx=32, pady=(24, 0))
         actions.columnconfigure(0, weight=1)
-        self.action_title = tk.StringVar(value="Wähle deine Spielversion")
+        self.action_title = tk.StringVar(value="Choose your game version")
         ttk.Label(actions, textvariable=self.action_title, background=theme.PANEL, font=(heading, 18, "bold")).grid(row=0, column=0, sticky="w")
-        self.manage_button = ttk.Button(actions, text="Version verwalten  ▾", command=self.show_management)
+        self.manage_button = ttk.Button(actions, text="Manage version  ▾", command=self.show_management)
         self.manage_button.grid(row=0, column=1, rowspan=2, padx=(20, 14))
-        self.play = ttk.Button(actions, text="SPIELEN  →", style="Primary.TButton", command=lambda: self.install_or_play(True))
+        self.play = ttk.Button(actions, text="PLAY  →", style="Primary.TButton", command=lambda: self.install_or_play(True))
         self.play.grid(row=0, column=2, rowspan=2, sticky="e")
-        self.status = tk.StringVar(value="Prüfe verfügbare Versionen …")
+        self.status = tk.StringVar(value="Checking available versions …")
         self.status_label = ttk.Label(actions, textvariable=self.status, background=theme.PANEL, foreground=theme.QUIET, wraplength=480, width=1)
         self.status_label.grid(row=1, column=0, sticky="ew", pady=(6, 0))
         self.status_label.bind("<Configure>", lambda event: self.status_label.configure(wraplength=max(180, event.width)))
@@ -137,23 +139,23 @@ class Window:
         self.progress.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(16, 0), ipady=0)
         self.progress.configure(length=100)
         self.progress.grid_remove()
-        self.pause = ttk.Button(actions, text="Download pausieren", command=self.cancel.set)
+        self.pause = ttk.Button(actions, text="Pause download", command=self.cancel.set)
         self.pause.grid(row=3, column=0, columnspan=3, sticky="e", pady=(12, 0)); self.pause.grid_remove()
         self.management = tk.Menu(self.root, tearoff=False, background=theme.FIELD, foreground=theme.TEXT,
                                   activebackground=theme.ACCENT_DIM, activeforeground=theme.TEXT, font=(body, 12),
                                   borderwidth=0, activeborderwidth=0, relief="flat")
-        self.install = MenuAction(self.management, "Nur installieren / neu installieren", lambda: self.install_or_play(False))
-        self.repair = MenuAction(self.management, "Spieldateien prüfen", self.verify)
-        self.import_button = MenuAction(self.management, "Profil übernehmen …", self.import_profile)
+        self.install = MenuAction(self.management, "Install only / reinstall", lambda: self.install_or_play(False))
+        self.repair = MenuAction(self.management, "Verify game files", self.verify)
+        self.import_button = MenuAction(self.management, "Import profile …", self.import_profile)
         self.management.add_separator()
-        self.remove = MenuAction(self.management, "Spielversion entfernen …", self.uninstall)
+        self.remove = MenuAction(self.management, "Remove game version …", self.uninstall)
         footer = ttk.Frame(self.root); footer.grid(row=5, column=0, sticky="ew", padx=22, pady=(12, 16))
         footer.columnconfigure(1, weight=1)
-        self.refresh_button = ttk.Button(footer, text="Versionsliste aktualisieren", style="Quiet.TButton", command=self.refresh)
+        self.refresh_button = ttk.Button(footer, text="Refresh versions", style="Quiet.TButton", command=self.refresh)
         self.refresh_button.grid(row=0, column=0, sticky="w")
-        self.update_button = ttk.Button(footer, text="Launcher aktualisieren", command=self.update_launcher)
+        self.update_button = ttk.Button(footer, text="Update launcher", command=self.update_launcher)
         self.update_button.grid(row=0, column=2, padx=12); self.update_button.grid_remove()
-        self.logs_button = ttk.Button(footer, text="Protokolle", style="Quiet.TButton", command=lambda: open_folder(manager.root / "logs"))
+        self.logs_button = ttk.Button(footer, text="Logs", style="Quiet.TButton", command=lambda: open_folder(manager.root / "logs"))
         self.logs_button.grid(row=0, column=3, sticky="e")
         self.preferences = manager.root / "preferences.json"
         try:
@@ -186,20 +188,20 @@ class Window:
         available = self.manager.available(self.catalog or {})
         newest = available[0][0]["version"] if available else None
         if newest:
-            self.recommendation.set(f"Empfohlen: Q3Rally v{newest}")
+            self.recommendation.set(f"Recommended: Q3Rally v{newest}")
         else:
-            self.recommendation.set("Version auswählen und spielen")
+            self.recommendation.set("Choose a version and play")
         for key, item in sorted(self.items.items(), key=lambda pair: version_key(pair[1][0]["version"]), reverse=True):
-            status = "Installiert" if key in self.local else "Verfügbar"
+            status = "Installed" if key in self.local else "Available"
             if item[0]["version"] == newest:
-                status += " · Empfohlen"
+                status += " · Recommended"
             self.list.insert("", "end", iid=key, values=("v" + item[0]["version"], status))
         if self.items:
             key = wanted if wanted in self.items else next(iter(self.list.get_children()))
             self.list.selection_set(key)
         else:
             self.notes.configure(state="normal"); self.notes.delete("1.0", "end")
-            self.notes.insert("1.0", "Noch keine passende Version verfügbar. Installierte Versionen lassen sich auch ohne Update-Dienst starten.")
+            self.notes.insert("1.0", "No compatible version is available yet. Installed versions can also be played offline.")
             self.notes.configure(state="disabled")
         self.selected()
 
@@ -214,14 +216,14 @@ class Window:
             item = self.items[key]
             self.selection_title.set(f"Q3Rally v{item[0]['version']}")
             size = item[2].get("size", 0)
-            self.selection_meta.set(("Installiert · Bereit zum Spielen" if local else "Verfügbar zur Installation") +
+            self.selection_meta.set(("Installed · Ready to play" if local else "Available to install") +
                                     (f" · {size / 1048576:.0f} MB" if size else ""))
             self.action_title.set(f"Q3Rally v{item[0]['version']}")
             self.notes.configure(state="normal"); self.notes.delete("1.0", "end")
-            self.notes.insert("1.0", item[0].get("notes", "Keine Versionshinweise vorhanden."))
+            self.notes.insert("1.0", item[0].get("notes", "No release notes available."))
             self.notes.configure(state="disabled")
-            self.play.configure(text="SPIELEN  →" if local else "INSTALLIEREN & SPIELEN  →")
-            self.install.configure(label="Neu installieren" if local else "Nur installieren")
+            self.play.configure(text="PLAY  →" if local else "INSTALL & PLAY  →")
+            self.install.configure(label="Reinstall" if local else "Install only")
             self.preferred = key
             atomic_json(self.preferences, {"selected": key})
             if not self.busy:
@@ -231,9 +233,9 @@ class Window:
                 self.remove.configure(state="normal" if local else "disabled")
                 self.import_button.configure(state="normal")
         else:
-            self.selection_title.set("Bereit für die nächste Runde?")
-            self.selection_meta.set("Wähle links eine Spielversion aus.")
-            self.action_title.set("Wähle deine Spielversion")
+            self.selection_title.set("Ready for the next round?")
+            self.selection_meta.set("Select a game version on the left.")
+            self.action_title.set("Choose your game version")
         self.manage_button.configure(state="normal" if valid and not self.busy else "disabled")
         self.refresh_button.configure(state="disabled" if self.busy else "normal")
         if self.busy and self.cancellable:
@@ -289,62 +291,62 @@ class Window:
                         self.status.set(result)
                     elif isinstance(result, tuple) and result[0] == "catalog":
                         self.envelope, self.catalog = result[1:]; self.fresh = True
-                        self.connection.set("ONLINE / VERSIONSLISTE AKTUELL")
-                        self.status.set("Versionsliste aktuell. Wähle eine Version und starte dein Rennen.")
+                        self.connection.set("ONLINE / CATALOG UP TO DATE")
+                        self.status.set("Versions are up to date. Choose a version and start your race.")
                     elif result == "restart":
                         self.root.destroy(); return
                     else:
-                        self.status.set(result or "Fertig.")
+                        self.status.set(result or "Done.")
                     self.fill()
         except queue.Empty:
             pass
         self.root.after(80, self.poll)
 
     def refresh(self):
-        self.work("Prüfe verfügbare Versionen …", lambda: ("catalog", *self.manager.load_catalog(self.config["catalog_url"])))
+        self.work("Checking available versions …", lambda: ("catalog", *self.manager.load_catalog(self.config["catalog_url"])))
 
     def install_or_play(self, play):
         release, target, _ = self.items[self.list.selection()[0]]
         version = release["version"]
         key = f"{version}|{target}"
-        if not play and key in self.local and not self.messages.askyesno("Neu installieren", "Diese Spielversion neu installieren? Profile und Demos bleiben erhalten."):
+        if not play and key in self.local and not self.messages.askyesno("Reinstall", "Reinstall this game version? Your profiles and demos will be kept."):
             return
         def operation():
             if not play or key not in self.local:
                 self.manager.install(self.envelope, version, target, cancel=self.cancel,
                     progress=lambda done, total: self.events.put(("progress", (done, total))))
             if play:
-                self.events.put(("status", "Spiel läuft. Viel Spaß!"))
+                self.events.put(("status", "Game running. Have fun!"))
                 code = self.manager.run(version, target)
-                return "Spiel beendet." if code == 0 else f"Spiel beendet (Code {code}). Details stehen im Protokoll."
-            return "Installation abgeschlossen."
-        self.work("Spiel wird vorbereitet …", operation, cancellable=not play or key not in self.local)
+                return "Game closed." if code == 0 else f"Game exited (code {code}). See the log for details."
+            return "Installation complete."
+        self.work("Preparing game …", operation, cancellable=not play or key not in self.local)
 
     def verify(self):
         release, target, _ = self.items[self.list.selection()[0]]
         def operation():
             self.manager.verify(release["version"], target)
-            return "Dateiprüfung erfolgreich."
-        self.work("Prüfe installierte Dateien …", operation)
+            return "File verification complete."
+        self.work("Verifying installed files …", operation)
 
     def uninstall(self):
         release, target, _ = self.items[self.list.selection()[0]]
-        if self.messages.askyesno("Version entfernen", "Spielinstallation entfernen? Profile und Demos bleiben erhalten."):
+        if self.messages.askyesno("Remove version", "Remove this game installation? Your profiles and demos will be kept."):
             def operation():
                 self.manager.uninstall(release["version"], target)
-                return "Spielinstallation entfernt."
-            self.work("Entferne Spielinstallation …", operation)
+                return "Game installation removed."
+            self.work("Removing game installation …", operation)
 
     def import_profile(self):
         from .profiles import import_profile
         release, _, _ = self.items[self.list.selection()[0]]
-        name = self.filedialog.askopenfilename(title="Vorhandenes Profil übernehmen", filetypes=[("Q3Rally-Profil", "*.json")])
+        name = self.filedialog.askopenfilename(title="Import an existing profile", filetypes=[("Q3Rally profile", "*.json")])
         if not name:
             return
         def operation():
             imported = import_profile(Path(name), self.manager.root, release["version"])
-            return f"Profil {imported.stem} übernommen. Im Spiel unter Profile auswählen."
-        self.work("Übernehme Profil …", operation)
+            return f"Profile {imported.stem} imported. Select it under Profiles in the game."
+        self.work("Importing profile …", operation)
 
     def update_launcher(self):
         manager = Manager(self.manager.root, self.manager.keys, development=self.manager.development, product="Q3RallyLauncher")
@@ -356,7 +358,7 @@ class Window:
             atomic_json(manager.root / "launcher-selection.json", {"version": release["version"], "target": target})
             start_launcher(executable, manager.root, self.config_path)
             return "restart"
-        self.work("Aktualisiere Launcher …", operation, cancellable=True)
+        self.work("Updating launcher …", operation, cancellable=True)
 
     def close(self):
         self.cancel.set()
@@ -412,7 +414,7 @@ def main(argv=None):
         candidates = available if args.action == "install" else local
         item = next((item for item in candidates if item[0]["version"] == args.version), None)
         if item is None:
-            raise LauncherError("Version nicht verfügbar/installiert; bitte --version angeben.")
+            raise LauncherError("Version unavailable or not installed; specify --version.")
         version, target = item[0]["version"], item[1]
         if args.action == "install": manager.install(envelope, version, target)
         elif args.action == "verify": manager.verify(version, target)

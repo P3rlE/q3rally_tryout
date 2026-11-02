@@ -31,7 +31,7 @@ class LauncherLayoutTests(unittest.TestCase):
                     window.root.update()
                     self.assertEqual(window.preferred, "0.7d|windows-x86_64")
                     self.assertIn("Earlier version", window.notes.get("1.0", "end"))
-                    self.assertEqual(window.install['label'], "Nur installieren")
+                    self.assertEqual(window.install['label'], "Install only")
                     self.assertEqual(window.repair['state'], "disabled")
                     self.assertEqual(window.import_button['state'], "normal")
                     self.assertEqual(window.remove['state'], "disabled")
@@ -45,10 +45,10 @@ class LauncherLayoutTests(unittest.TestCase):
                     item = window.items['0.7d|windows-x86_64']
                     with patch.object(manager, 'installed', return_value=[item]):
                         window.fill(); window.root.update()
-                        self.assertEqual(window.install['label'], "Neu installieren")
+                        self.assertEqual(window.install['label'], "Reinstall")
                         self.assertEqual(window.repair['state'], "normal")
                         self.assertEqual(window.remove['state'], "normal")
-                        self.assertEqual(window.play['text'], "SPIELEN  →")
+                        self.assertEqual(window.play['text'], "PLAY  →")
                     window.busy = True; window.cancellable = True
                     window.selected(); window.root.update()
                     self.assertTrue(window.pause.winfo_ismapped())

@@ -12,15 +12,15 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from cryptography.hazmat.primitives import serialization
 from launcher.core import atomic_json, check_url, decode_catalog, digest_file, safe_path, version_key
 
 
 def sign(payload, key, key_id):
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    signed = key.sign(raw)
+    signature = getattr(signed, "signature", signed)
     return {"key_id": key_id, "payload": base64.b64encode(raw).decode(),
-            "signature": base64.b64encode(key.sign(raw)).decode()}
+            "signature": base64.b64encode(signature).decode()}
 
 
 def package_record(index, artifact, base_url, product, download_urls=None):
@@ -71,6 +71,9 @@ class Index:
 
 
 def main(argv=None):
+    # Publishing is a build-host tool; the installed launcher does not need it.
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from cryptography.hazmat.primitives import serialization
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     keygen = sub.add_parser("keygen")

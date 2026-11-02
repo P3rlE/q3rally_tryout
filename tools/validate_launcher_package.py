@@ -7,11 +7,12 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import struct
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from nacl.signing import SigningKey
 from launcher.core import Manager, atomic_json
 from tools.publish_launcher_catalog import Index, package_record, sign
 
@@ -27,8 +28,8 @@ def main():
     artifact, = index.data['artifacts']
     version, target = index.data['version'], artifact['target']
     package = package_record(index, artifact, 'https://example.invalid', 'Q3RallyLauncher')
-    key = Ed25519PrivateKey.generate()
-    keys = {'package-test': base64.b64encode(key.public_key().public_bytes_raw()).decode()}
+    key = SigningKey.generate()
+    keys = {'package-test': base64.b64encode(bytes(key.verify_key)).decode()}
     envelope = sign({'schema': 1, 'product': 'Q3Rally', 'sequence': 1,
         'expires': (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(), 'releases': [],
         'launchers': [{'version': version, 'packages': {target: package}}]}, key, 'package-test')
@@ -36,6 +37,19 @@ def main():
     shutil.copyfile(index.parent / artifact['filename'], manager.cache / (package['sha256'] + '.part'))
     manager.install(envelope, version, target)
     executable = manager.verify(version, target)
+    if target.startswith('windows-'):
+        with executable.open('rb') as stream:
+            stream.seek(0x3c)
+            offset = struct.unpack('<I', stream.read(4))[0]
+            stream.seek(offset)
+            signature, machine = struct.unpack('<4sH', stream.read(6))
+        assert signature == b'PE\0\0'
+        assert machine == (0x14c if target == 'windows-x86' else 0x8664), 'Wrong Windows executable architecture'
+    elif target.startswith('linux-'):
+        with executable.open('rb') as stream:
+            header = stream.read(5)
+        assert header[:4] == b'\x7fELF'
+        assert header[4] == (1 if target == 'linux-x86' else 2), 'Wrong Linux executable architecture'
     # An empty trust store makes catalog refresh fail locally before networking.
     config = output / 'offline-config.json'
     atomic_json(config, {'catalog_url': 'https://example.invalid/catalog.json', 'public_keys': {}})
@@ -78,6 +92,7 @@ def main():
     atomic_json(output / 'result.json', {'version': version, 'target': target,
         'signed_install_verified': True, 'packaged_cli_started': True,
         'packaged_gui_started': True, 'live_https_catalog_verified': True,
+        'executable_architecture_verified': True, 'build_python_bits': struct.calcsize('P') * 8,
         'external_python_environment_removed': True})
     print(f'{target}: signed install, packaged CLI and GUI startup PASS', flush=True)
 
