@@ -47,9 +47,12 @@ jobs:
       - if: runner.os == 'Linux'
         run: xvfb-run -a python tools/validate_launcher_package.py --release-index output/launcher-ci/release.json --output output/launcher-package-check
       - uses: actions/upload-artifact@v6
+        if: always()
         with:
           name: launcher-${{ matrix.os }}
           path: |
             output/launcher-ci/*.zip
             output/launcher-ci/release.json
             output/launcher-package-check/result.json
+            output/launcher-package-check/gui.log
+            output/launcher-package-check/**/logs/*.log

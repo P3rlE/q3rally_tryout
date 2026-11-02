@@ -53,7 +53,10 @@ def main():
     live = subprocess.run([str(executable), '--config', str(ROOT / 'launcher/config.json'),
         '--data-dir', str(livehome), '--action', 'list'], env=env, capture_output=True, timeout=60, **options)
     assert live.returncode == 0, live.stderr
-    assert (livehome / 'catalog-cache.json').is_file(), 'Packaged launcher could not verify the live HTTPS catalog'
+    if not (livehome / 'catalog-cache.json').is_file():
+        logfile = livehome / 'logs/launcher.log'
+        details = logfile.read_text(errors='replace') if logfile.is_file() else repr(live.stderr)
+        raise AssertionError('Packaged launcher could not verify the live HTTPS catalog:\n' + details)
     with (output / 'gui.log').open('wb') as log:
         process = subprocess.Popen(command, env=env, stdout=log, stderr=subprocess.STDOUT, **options)
         try:
