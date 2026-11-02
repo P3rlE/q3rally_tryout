@@ -14,6 +14,24 @@ import time
 UUID = '12345678-1234-4234-8234-123456789abc'
 
 
+def preset_values(name, renderer):
+    """Use the real UI preset table instead of maintaining a second definition."""
+    source = (Path(__file__).resolve().parents[1] /
+              'engine/code/q3_ui/ui_advanced_graphics.c').read_text()
+    table = source.split('gfxPresetTable[] = {', 1)[1].split('\n};', 1)[0]
+    rows = re.findall(r'\{\s*"([^"]+)"\s*,\s*\{\s*"([^"]*)"\s*,\s*"([^"]*)"\s*,\s*"([^"]*)"\s*,\s*"([^"]*)"\s*\}\s*\}', table)
+    if not rows:
+        raise ValueError('Graphics preset table could not be read')
+    index = ('low', 'medium', 'high', 'ultra').index(name)
+    values = {row[0]: row[index + 1] for row in rows}
+    msaa = re.search(r'gfxPresetMsaa\[[^]]+\]\s*=\s*\{([^}]+)\}', source)
+    samples = int(msaa[1].split(',')[index])
+    values['r_ext_multisample'] = str(samples if renderer == 'opengl1' else 0)
+    if renderer == 'opengl2':
+        values['r_ext_framebuffer_multisample'] = str(samples)
+    return values
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--executable', type=Path, required=True)
@@ -21,6 +39,7 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--renderer', action='append', choices=('opengl1', 'opengl2'))
     parser.add_argument('--timeout', type=int, default=180)
+    parser.add_argument('--preset', choices=('low', 'medium', 'high', 'ultra'))
     args = parser.parse_args()
     executable = args.executable.resolve(strict=True)
     basepath = args.basepath.resolve(strict=True)
@@ -63,6 +82,11 @@ def main():
                    '+set', 'net_enabled', '1', '+set', 'sv_ladderEnabled', '0',
                    '+set', 'profile_active', 'InstallProbe', '+set', 'logfile', '2',
                    '+exec', 'validation.cfg']
+        if args.preset:
+            values = preset_values(args.preset, renderer)
+            options = [part for key, value in values.items() for part in ('+set', key, value)]
+            command[-2:-2] = options
+            (output / f'{renderer}.preset.json').write_text(json.dumps(values, indent=2) + '\n')
         kwargs = {}
         if os.name == 'nt':
             startup = subprocess.STARTUPINFO()
@@ -112,7 +136,7 @@ def main():
                   'profile_loaded': UUID in text,
                   'settings_saved': '7.25' in config and 'screenshotJPEG' in config,
                   'settings_reloaded': index == 0 or ('7.25' in settings and 'screenshotJPEG' in settings)}
-        result = {'renderer': renderer, 'exit': code, 'checks': checks, 'images': images,
+        result = {'renderer': renderer, 'preset': args.preset or 'default', 'exit': code, 'checks': checks, 'images': images,
                   'gl_renderer': re.findall(r'GL_RENDERER:([^\r\n]*)', text),
                   'audio_driver': re.findall(r'SDL audio driver is ([^\r\n]*)', text),
                   'passed': all(checks.values())}

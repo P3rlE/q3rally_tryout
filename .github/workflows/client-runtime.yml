@@ -37,7 +37,7 @@ jobs:
           python3 -u tools/validate_client_runtime.py \
             --executable "$RUNNER_TEMP/client clean install/q3rally.${{ matrix.arch }}" \
             --basepath "$RUNNER_TEMP/client clean install" \
-            --output client-runtime-${{ matrix.arch }}
+            --output client-runtime-${{ matrix.arch }} --preset low
       - uses: actions/upload-artifact@v7
         if: always()
         with:
