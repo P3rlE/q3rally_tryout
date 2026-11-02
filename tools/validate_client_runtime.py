@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import time
 
 UUID = '12345678-1234-4234-8234-123456789abc'
 
@@ -19,6 +20,7 @@ def main():
     parser.add_argument('--basepath', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--renderer', action='append', choices=('opengl1', 'opengl2'))
+    parser.add_argument('--timeout', type=int, default=180)
     args = parser.parse_args()
     executable = args.executable.resolve(strict=True)
     basepath = args.basepath.resolve(strict=True)
@@ -69,12 +71,24 @@ def main():
         with (output / f'{renderer}.stdout.log').open('w', encoding='utf-8') as log:
             proc = subprocess.Popen(command, cwd=basepath, stdout=log,
                                     stderr=subprocess.STDOUT, **kwargs)
-            try:
-                code = proc.wait(timeout=120)
-            except subprocess.TimeoutExpired:
+            deadline = time.monotonic() + args.timeout
+            code = None
+            while proc.poll() is None and time.monotonic() < deadline:
+                live = (output / f'{renderer}.stdout.log').read_text(encoding='utf-8', errors='replace')
+                if "ERROR: Couldn't compile shader" in live or 'recursive error after:' in live:
+                    code = 'fatal_shader_error'
+                    break
+                time.sleep(.25)
+            if proc.poll() is None:
+                code = code or 'timeout'
                 proc.terminate()
-                proc.wait(timeout=10)
-                code = 'timeout'
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait(timeout=10)
+            else:
+                code = proc.returncode
         text = (output / f'{renderer}.stdout.log').read_text(encoding='utf-8', errors='replace')
         console = game / 'qconsole.log'
         if console.is_file():
