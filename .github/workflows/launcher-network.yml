@@ -1,0 +1,31 @@
+name: Launcher Mac network diagnostics
+on:
+  push:
+    branches: ['codex/launcher-v020-platform-validation']
+    paths: ['.github/workflows/launcher-network.yml']
+jobs:
+  network:
+    runs-on: macos-15-intel
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Read public catalog response with launcher identity
+        shell: bash
+        run: |
+          curl --max-time 30 -sS -D "$RUNNER_TEMP/launcher-headers.txt" -o "$RUNNER_TEMP/launcher-response.txt" -A 'Q3RallyLauncher/0.2.0' https://www.q3rally.com/launcher/catalog.json
+          cat "$RUNNER_TEMP/launcher-headers.txt"
+          head -c 500 "$RUNNER_TEMP/launcher-response.txt"
+          python - <<'PY'
+          import urllib.request, urllib.error
+          request = urllib.request.Request('https://www.q3rally.com/launcher/catalog.json', headers={'User-Agent': 'Q3RallyLauncher/0.2.0'})
+          try:
+              response = urllib.request.urlopen(request, timeout=30)
+          except urllib.error.HTTPError as error:
+              response = error
+          print('\nPython HTTP:', response.status)
+          print('Server:', response.headers.get('Server'))
+          print('CF-Ray:', response.headers.get('CF-Ray'))
+          print(response.read(500).decode(errors='replace'))
+          PY
