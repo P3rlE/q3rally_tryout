@@ -28,4 +28,20 @@ jobs:
           print('Server:', response.headers.get('Server'))
           print('CF-Ray:', response.headers.get('CF-Ray'))
           print(response.read(500).decode(errors='replace'))
+          import ssl
+          print('OpenSSL:', ssl.OPENSSL_VERSION)
+          for negotiated in (False, True):
+              context = ssl.create_default_context()
+              if negotiated:
+                  context.set_alpn_protocols(['http/1.1'])
+                  context.post_handshake_auth = True
+              client = urllib.request.build_opener(urllib.request.HTTPSHandler(context=context))
+              client.addheaders = [('User-Agent', 'Q3RallyLauncher/0.2.0')]
+              try:
+                  response = client.open('https://www.q3rally.com/launcher/catalog.json', timeout=30)
+              except urllib.error.HTTPError as error:
+                  response = error
+              print('Custom context / HTTP negotiation:', negotiated, 'status:', response.status)
+              print('Server:', response.headers.get('Server'), 'CF-Ray:', response.headers.get('CF-Ray'))
+              print(response.read(200).decode(errors='replace'))
           PY

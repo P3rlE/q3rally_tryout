@@ -130,6 +130,9 @@ def opener(development=False):
     if sys.platform == "darwin":
         # Frozen macOS apps cannot rely on a separately installed Python's CA file.
         context = ssl.create_default_context()
+        context.set_alpn_protocols(["http/1.1"])
+        if hasattr(context, "post_handshake_auth"):
+            context.post_handshake_auth = True
         context.load_verify_locations(cafile=Path(__file__).with_name("assets") / "certificates/cacert.pem")
         handlers.append(urllib.request.HTTPSHandler(context=context))
     client = urllib.request.build_opener(*handlers)
