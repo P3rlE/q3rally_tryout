@@ -25,9 +25,14 @@ jobs:
         env:
           Q3RALLY_TEST_GUI: '1'
       - run: python tools/build_launcher.py --output output/launcher-ci
+      - if: runner.os != 'Linux'
+        run: python tools/validate_launcher_package.py --release-index output/launcher-ci/release.json --output output/launcher-package-check
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a python tools/validate_launcher_package.py --release-index output/launcher-ci/release.json --output output/launcher-package-check
       - uses: actions/upload-artifact@v6
         with:
           name: launcher-${{ matrix.os }}
           path: |
             output/launcher-ci/*.zip
             output/launcher-ci/release.json
+            output/launcher-package-check/result.json
