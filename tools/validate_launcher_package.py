@@ -48,6 +48,12 @@ def main():
     assert cli.returncode == 0, cli.stderr
     if cli.stdout:  # A Windows --windowed executable has no console output.
         assert json.loads(cli.stdout)['available'] == []
+    # Check real HTTPS/signature verification through the packaged executable too.
+    livehome = output / 'live-app-data'
+    live = subprocess.run([str(executable), '--config', str(ROOT / 'launcher/config.json'),
+        '--data-dir', str(livehome), '--action', 'list'], env=env, capture_output=True, timeout=60, **options)
+    assert live.returncode == 0, live.stderr
+    assert (livehome / 'catalog-cache.json').is_file(), 'Packaged launcher could not verify the live HTTPS catalog'
     with (output / 'gui.log').open('wb') as log:
         process = subprocess.Popen(command, env=env, stdout=log, stderr=subprocess.STDOUT, **options)
         try:
@@ -68,7 +74,8 @@ def main():
                     process.kill(); process.wait(timeout=10)
     atomic_json(output / 'result.json', {'version': version, 'target': target,
         'signed_install_verified': True, 'packaged_cli_started': True,
-        'packaged_gui_started': True, 'external_python_environment_removed': True})
+        'packaged_gui_started': True, 'live_https_catalog_verified': True,
+        'external_python_environment_removed': True})
     print(f'{target}: signed install, packaged CLI and GUI startup PASS', flush=True)
 
 

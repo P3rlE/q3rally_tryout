@@ -13,6 +13,7 @@ import platform
 import re
 import shutil
 import stat
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -125,7 +126,13 @@ class SafeRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def opener(development=False):
-    client = urllib.request.build_opener(SafeRedirect(development))
+    handlers = [SafeRedirect(development)]
+    if sys.platform == "darwin":
+        # Frozen macOS apps cannot rely on a separately installed Python's CA file.
+        context = ssl.create_default_context()
+        context.load_verify_locations(cafile=Path(__file__).with_name("assets") / "certificates/cacert.pem")
+        handlers.append(urllib.request.HTTPSHandler(context=context))
+    client = urllib.request.build_opener(*handlers)
     client.addheaders = [("User-Agent", f"Q3RallyLauncher/{__version__}")]
     return client
 
