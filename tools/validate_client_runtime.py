@@ -82,10 +82,13 @@ def main():
                    '+set', 'net_enabled', '1', '+set', 'sv_ladderEnabled', '0',
                    '+set', 'profile_active', 'InstallProbe', '+set', 'logfile', '2',
                    '+exec', 'validation.cfg']
+        values = {}
         if args.preset:
             values = preset_values(args.preset, renderer)
-            options = [part for key, value in values.items() for part in ('+set', key, value)]
-            command[-2:-2] = options
+            # The engine limits the number of +commands at startup. Use its
+            # normal config phase so all preset values precede renderer init.
+            (game / 'autoexec.cfg').write_text(''.join(
+                f'seta {key} "{value}"\n' for key, value in values.items()))
             (output / f'{renderer}.preset.json').write_text(json.dumps(values, indent=2) + '\n')
         kwargs = {}
         if os.name == 'nt':
@@ -122,10 +125,18 @@ def main():
             (output / f'{renderer}.qconsole.log').write_text(text, encoding='utf-8')
         settings = text.split('PROBE_SETTINGS_BEGIN\n', 1)[-1].split('PROBE_SETTINGS_END', 1)[0]
         config = (game / 'q3config.cfg').read_text(errors='replace') if (game / 'q3config.cfg').is_file() else ''
+        (output / f'{renderer}.q3config.cfg').write_text(config)
+        preset_mismatches = {}
+        for key, expected in values.items():
+            matches = re.findall(r'^seta\s+' + re.escape(key) + r'\s+"([^"]*)"', config, re.M | re.I)
+            actual = matches[-1] if matches else None
+            if actual != expected:
+                preset_mismatches[key] = {'expected': expected, 'actual': actual}
         images = {stage: (game / f'screenshots/{stage}-{renderer}.jpg').is_file()
                   for stage in ('menu', 'track', 'restarted')}
         identity = json.loads(profile.read_text())
         checks = {'normal_exit': code == 0, 'end_marker': 'CLIENT_PROBE_END' in text,
+                  'preset_applied': not preset_mismatches,
                   'audio_initialized': 'SDL audio initialized.' in text,
                   'renderer_initialized': bool(re.search(r'GL_RENDERER:', text)),
                   'requested_renderer': f'Trying to load "renderer_{renderer}_' in text and
@@ -136,7 +147,8 @@ def main():
                   'profile_loaded': UUID in text,
                   'settings_saved': '7.25' in config and 'screenshotJPEG' in config,
                   'settings_reloaded': index == 0 or ('7.25' in settings and 'screenshotJPEG' in settings)}
-        result = {'renderer': renderer, 'preset': args.preset or 'default', 'exit': code, 'checks': checks, 'images': images,
+        result = {'renderer': renderer, 'preset': args.preset or 'default', 'preset_mismatches': preset_mismatches,
+                  'exit': code, 'checks': checks, 'images': images,
                   'gl_renderer': re.findall(r'GL_RENDERER:([^\r\n]*)', text),
                   'audio_driver': re.findall(r'SDL audio driver is ([^\r\n]*)', text),
                   'passed': all(checks.values())}
