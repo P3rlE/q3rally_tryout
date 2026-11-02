@@ -38,18 +38,18 @@ typedef struct { int startsolid,allsolid,contents,entityNum; float fraction; str
 static struct { int maxclients; } level = {8};
 static client_t client;
 static gentity_t g_entities[1] = {{&client,2}};
-static int noGround,occupied,ceiling,resets,traces;
+static int noGround,occupied,ceiling,roof,resets,traces;
 static float resetFraction;
 #define VectorSet(v,a,b,c) ((v)[0]=(a),(v)[1]=(b),(v)[2]=(c))
 #define VectorCopy(a,b) memcpy(b,a,sizeof(vec3_t))
 static float Distance(const vec3_t a,const vec3_t b) { float x=a[0]-b[0],y=a[1]-b[1],z=a[2]-b[2];return sqrtf(x*x+y*y+z*z); }
 static float VectorNormalize(vec3_t v) { float n=sqrtf(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);if(n){v[0]/=n;v[1]/=n;v[2]/=n;}return n; }
 static void vectoangles(const vec3_t v,vec3_t a) { (void)v;VectorSet(a,0,0,0); }
-static void G_GetPointOnCurveBetweenCheckpoints(gentity_t *p,gentity_t *n,float f,vec3_t o) { (void)p;(void)n;VectorSet(o,f*1000,0,0); }
+static void G_GetPointOnCurveBetweenCheckpoints(gentity_t *p,gentity_t *n,float f,vec3_t o) { (void)p;(void)n;VectorSet(o,f*1000,0,120); }
 static void G_GetDervOnCurveBetweenCheckpoints(gentity_t *p,gentity_t *n,float f,vec3_t o) { (void)p;(void)n;(void)f;VectorSet(o,1,0,0); }
 static void trap_Trace(trace_t *t,const vec3_t s,const vec3_t mi,const vec3_t ma,const vec3_t e,int who,int mask) {
     (void)who;(void)mask;traces++;assert(mi[0]==-50 && ma[0]==50);memset(t,0,sizeof(*t));t->entityNum=100;
-    if(e[2]<s[2]) { t->fraction=noGround?1:.5f;t->plane.normal[2]=1;VectorSet(t->endpos,s[0],s[1],0); }
+    if(e[2]<s[2]) { t->startsolid=roof && s[2]+ma[2]>=256;t->fraction=noGround?1:.5f;t->plane.normal[2]=1;VectorSet(t->endpos,s[0],s[1],74); }
     else t->fraction=ceiling?0:1;
 }
 static int Bot_GhostResetSpotOccupied(gentity_t *e,const vec3_t p) { (void)e;(void)p;return occupied; }
@@ -64,7 +64,7 @@ int main(void) {
     occupied=0;ceiling=1;assert(!Bot_BezierRecover(&b,&prev,&next) && resets==0);
     ceiling=0;b.cur_ps.origin[0]=10000;traces=0;
     assert(!Bot_BezierRecover(&b,&prev,&next) && resets==0 && traces==0);
-    b.cur_ps.origin[0]=300;
+    b.cur_ps.origin[0]=300;roof=1;
     assert(Bot_BezierRecover(&b,&prev,&next) && resets==1);
     assert(resetFraction>.4f && resetFraction<.5f);
     assert(b.cur_ps.stats[1]==12 && client.ps.stats[1]==12 && g_entities[0].currentLap==2);

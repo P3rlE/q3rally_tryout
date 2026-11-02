@@ -4390,7 +4390,9 @@ static qboolean Bot_BezierRecover( bot_state_t *bs, gentity_t *prev, gentity_t *
 		if ( fraction < 0.05f ) fraction = 0.05f;
 		G_GetPointOnCurveBetweenCheckpoints( prev, next, fraction, point );
 		if ( Distance( point, bs->cur_ps.origin ) > GHOST_RECOVERY_RESET_MAX_DISTANCE ) continue;
-		VectorCopy( point, start ); start[2] += 128.0f;
+		/* A high probe can start inside bridge roof/playerclip brushes.
+		   Keep the sweep below those ceilings; clearance is checked separately. */
+		VectorCopy( point, start ); start[2] += 64.0f;
 		VectorCopy( point, end ); end[2] -= 128.0f;
 		trap_Trace( &ground, start, mins, maxs, end, bs->entitynum, MASK_PLAYERSOLID );
 		if ( ground.startsolid || ground.allsolid || ground.fraction >= 1.0f ||
