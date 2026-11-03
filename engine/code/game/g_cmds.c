@@ -2330,12 +2330,18 @@ void ClientCommand( int clientNum ) {
 	else if (Q_stricmp (cmd, "dropWeapon") == 0){
 		G_DropRearWeapon( ent );
 	}
-       else if (Q_stricmp (cmd, "drop") == 0){
-               if ( ent->client->ps.stats[STAT_HOLDABLE_ITEM] != 0 ) {
-                       gitem_t *item = &bg_itemlist[ ent->client->ps.stats[STAT_HOLDABLE_ITEM] ];
-                       G_DropHoldable( ent, item );
-               }
-       }
+	else if ( Q_stricmp( cmd, "trunkuse" ) == 0 ) {
+		trap_Argv( 1, buffer, sizeof( buffer ) );
+		if ( trap_Argc() == 2 && buffer[0] >= '1' && buffer[0] <= '3' && !buffer[1] ) {
+			G_UseTrunkItem( ent, bg_trunkItems[buffer[0] - '1'] );
+		}
+	}
+	else if ( Q_stricmp( cmd, "drop" ) == 0 ) {
+		int index = BG_HoldableItemIndex( ent->client->ps.stats[STAT_HOLDABLE_ITEM] );
+		if ( index ) {
+			G_DropHoldable( ent, &bg_itemlist[index] );
+		}
+	}
 	else if (Q_stricmp (cmd, "mapstats") == 0){
 		trap_Argv( 1, buffer, sizeof( buffer ) );
 		trap_Argv( 2, name, sizeof( name ) );

@@ -2556,8 +2556,10 @@ void BotUpdateInventory(bot_state_t *bs) {
 #endif
 	//powerups
 	bs->inventory[INVENTORY_HEALTH] = bs->cur_ps.stats[STAT_HEALTH];
-	bs->inventory[INVENTORY_TELEPORTER] = bs->cur_ps.stats[STAT_HOLDABLE_ITEM] == MODELINDEX_TELEPORTER;
-	bs->inventory[INVENTORY_MEDKIT] = bs->cur_ps.stats[STAT_HOLDABLE_ITEM] == MODELINDEX_MEDKIT;
+	bs->inventory[INVENTORY_TELEPORTER] = bs->cur_ps.stats[STAT_HOLDABLE_ITEM] == MODELINDEX_TELEPORTER ||
+		( BG_TrunkMask( bs->cur_ps.stats[STAT_HOLDABLE_ITEM] ) & BG_TrunkBit( HI_TELEPORTER ) );
+	bs->inventory[INVENTORY_MEDKIT] = bs->cur_ps.stats[STAT_HOLDABLE_ITEM] == MODELINDEX_MEDKIT ||
+		( BG_TrunkMask( bs->cur_ps.stats[STAT_HOLDABLE_ITEM] ) & BG_TrunkBit( HI_MEDKIT ) );
 	bs->inventory[INVENTORY_TURBO] = bs->cur_ps.stats[STAT_HOLDABLE_ITEM] == MODELINDEX_TURBO;
 #ifdef MISSIONPACK
 	bs->inventory[INVENTORY_KAMIKAZE] = bs->cur_ps.stats[STAT_HOLDABLE_ITEM] == MODELINDEX_KAMIKAZE;
@@ -2875,6 +2877,14 @@ void BotUseInvulnerability(bot_state_t *bs) {
 BotBattleUseItems
 ==================
 */
+static void BotUseTrunkItem( bot_state_t *bs, holdable_t tag ) {
+#ifdef MISSIONPACK
+	trap_EA_Use( bs->client );
+#else
+	G_UseTrunkItem( &g_entities[bs->client], tag );
+#endif
+}
+
 void BotBattleUseItems(bot_state_t *bs) {
 	if (bs->inventory[INVENTORY_HEALTH] < 40) {
 		if (bs->inventory[INVENTORY_TELEPORTER] > 0) {
@@ -2884,13 +2894,14 @@ void BotBattleUseItems(bot_state_t *bs) {
 				&& !BotHarvesterCarryingCubes(bs)
 #endif
 				) {
-				trap_EA_Use(bs->client);
+				BotUseTrunkItem( bs, HI_TELEPORTER );
+				return;
 			}
 		}
 	}
 	if (bs->inventory[INVENTORY_HEALTH] < 60) {
 		if (bs->inventory[INVENTORY_MEDKIT] > 0) {
-			trap_EA_Use(bs->client);
+			BotUseTrunkItem( bs, HI_MEDKIT );
 		}
 	}
 #ifdef MISSIONPACK
@@ -6500,7 +6511,7 @@ void BotCheckEvents(bot_state_t *bs, entityState_t *state) {
 					//if the bot has a personal teleporter
 					if (bs->inventory[INVENTORY_TELEPORTER] > 0) {
 						//use the holdable item
-						trap_EA_Use(bs->client);
+						BotUseTrunkItem( bs, HI_TELEPORTER );
 					}
 				}
 			}

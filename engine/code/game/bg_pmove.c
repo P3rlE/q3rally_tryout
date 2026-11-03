@@ -1682,7 +1682,8 @@ static void PM_Weapon( void ) {
 	}
 
 	// check for item using
-	if ( pm->cmd.buttons & BUTTON_USE_HOLDABLE ) {
+	if ( ( pm->cmd.buttons & BUTTON_USE_HOLDABLE ) &&
+	     !( pm->ps->stats[STAT_HOLDABLE_ITEM] & TRUNK_FLAG ) ) {
 		if ( ! ( pm->ps->pm_flags & PMF_USE_ITEM_HELD ) ) {
 			if ( bg_itemlist[pm->ps->stats[STAT_HOLDABLE_ITEM]].giTag == HI_MEDKIT
 				&& pm->ps->stats[STAT_HEALTH] >= (pm->ps->stats[STAT_MAX_HEALTH] + 25) ) {
@@ -1915,7 +1916,8 @@ static void PM_Alt_Weapon( void ) {
 	}
 
 	// check for item using
-	if ( pm->cmd.buttons & BUTTON_USE_HOLDABLE ) {
+	if ( ( pm->cmd.buttons & BUTTON_USE_HOLDABLE ) &&
+	     !( pm->ps->stats[STAT_HOLDABLE_ITEM] & TRUNK_FLAG ) ) {
 		if ( ! ( pm->ps->pm_flags & PMF_USE_ITEM_HELD ) ) {
 			if ( bg_itemlist[pm->ps->stats[STAT_HOLDABLE_ITEM]].giTag == HI_MEDKIT
 				&& pm->ps->stats[STAT_HEALTH] >= (pm->ps->stats[STAT_MAX_HEALTH] + 25) ) {
