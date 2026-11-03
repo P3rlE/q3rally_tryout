@@ -1305,6 +1305,13 @@ void CL_KeyDownEvent( int key, unsigned time )
 		key = K_ESCAPE;
 	}
 
+	/* The trunk consumes only wheel steps and cancel while driving. */
+	if ( cgvm && clc.state == CA_ACTIVE && !clc.demoplaying && !Key_GetCatcher() &&
+	     ( key == K_MWHEELUP || key == K_MWHEELDOWN || key == K_ESCAPE ) &&
+	     VM_Call( cgvm, CG_KEY_EVENT, key, qtrue, qtrue ) ) {
+		return;
+	}
+
 	// escape is always handled special
 	if ( key == K_ESCAPE ) {
 		if ( Key_GetCatcher( ) & KEYCATCH_MESSAGE ) {
@@ -1368,7 +1375,7 @@ void CL_KeyDownEvent( int key, unsigned time )
 		} 
 	} else if ( Key_GetCatcher( ) & KEYCATCH_CGAME ) {
 		if ( cgvm ) {
-			VM_Call( cgvm, CG_KEY_EVENT, key, qtrue );
+			VM_Call( cgvm, CG_KEY_EVENT, key, qtrue, 0 );
 		} 
 	} else if ( Key_GetCatcher( ) & KEYCATCH_MESSAGE ) {
 		Message_Key( key );
@@ -1409,7 +1416,7 @@ void CL_KeyUpEvent( int key, unsigned time )
 	if ( Key_GetCatcher( ) & KEYCATCH_UI && uivm ) {
 		VM_Call( uivm, UI_KEY_EVENT, key, qfalse );
 	} else if ( Key_GetCatcher( ) & KEYCATCH_CGAME && cgvm ) {
-		VM_Call( cgvm, CG_KEY_EVENT, key, qfalse );
+		VM_Call( cgvm, CG_KEY_EVENT, key, qfalse, 0 );
 	}
 }
 
