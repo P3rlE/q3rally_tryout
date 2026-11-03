@@ -2913,53 +2913,51 @@ static const float trunkDirection[TRUNK_ITEM_COUNT][2] = {
 };
 static const char *const trunkLabel[TRUNK_ITEM_COUNT] = { "Fuel Can", "Teleporter", "Repair Kit" };
 
-static void CG_CloseTrunk( void ) {
-	cg.trunkOpen = qfalse;
-	trap_Key_SetCatcher( trap_Key_GetCatcher() & ~KEYCATCH_CGAME );
-}
-
-qboolean CG_TrunkMouseEvent( int x, int y ) {
-	int i, nearest = 0;
-	float best = -9999.0f;
-	if ( !cg.trunkOpen ) return qfalse;
-	cg.trunkMouseX = Com_Clamp( -96, 96, cg.trunkMouseX + x );
-	cg.trunkMouseY = Com_Clamp( -96, 96, cg.trunkMouseY + y );
-	if ( cg.trunkMouseX * cg.trunkMouseX + cg.trunkMouseY * cg.trunkMouseY < 64 ) return qtrue;
-	for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
-		float direction = trunkDirection[i][0] * cg.trunkMouseX + trunkDirection[i][1] * cg.trunkMouseY;
-		if ( direction > best ) {
-			best = direction;
-			nearest = i;
-		}
-	}
-	cg.trunkSelected = nearest;
-	return qtrue;
-}
-
 qboolean CG_TrunkKeyEvent( int key ) {
 	int mask, slot, step, i;
 	if ( !cg.trunkOpen ) return qfalse;
+	if ( key == K_ESCAPE ) {
+		cg.trunkOpen = qfalse;
+		return qtrue;
+	}
+	if ( key != K_MWHEELUP && key != K_MWHEELDOWN ) return qfalse;
 	mask = cg.snap ? BG_TrunkMask( cg.snap->ps.stats[STAT_HOLDABLE_ITEM] ) : 0;
 	slot = cg.trunkSelected;
-	if ( key == K_LEFTARROW || key == K_RIGHTARROW ) {
-		step = key == K_LEFTARROW ? TRUNK_ITEM_COUNT - 1 : 1;
-		for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
-			slot = ( slot + step ) % TRUNK_ITEM_COUNT;
-			if ( mask & ( 1 << slot ) ) {
-				cg.trunkSelected = slot;
-				break;
-			}
-		}
-	} else if ( key == K_ENTER || key == K_MOUSE1 || ( key >= '1' && key <= '3' ) ) {
-		if ( key >= '1' && key <= '3' ) slot = key - '1';
+	step = key == K_MWHEELUP ? TRUNK_ITEM_COUNT - 1 : 1;
+	for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
+		slot = ( slot + step ) % TRUNK_ITEM_COUNT;
 		if ( mask & ( 1 << slot ) ) {
-			trap_SendClientCommand( va( "trunkuse %d", slot + 1 ) );
-			CG_CloseTrunk();
+			cg.trunkSelected = slot;
+			break;
 		}
-	} else if ( key == K_ESCAPE ) {
-		CG_CloseTrunk();
 	}
 	return qtrue;
+}
+
+/* Draw a circular sector in horizontal strips, leaving the center open. */
+static void CG_DrawTrunkSector( float x, float y, int slot, const float *color ) {
+	int row;
+	for ( row = -34; row < 34; row += 2 ) {
+		float dy = row + 1;
+		float edge = sqrt( 34 * 34 - dy * dy );
+		float hole = fabs( dy ) < 13 ? sqrt( 13 * 13 - dy * dy ) : 0;
+		float split = dy < 0 ? -1.732f * dy : 0;
+		float left = -edge, right = edge;
+		float end, start;
+		if ( slot == 0 ) {
+			if ( dy >= 0 ) continue;
+			left = MAX( left, -split + 0.75f );
+			right = MIN( right, split - 0.75f );
+		} else if ( slot == 1 ) {
+			left = MAX( left, split + 0.75f );
+		} else {
+			right = MIN( right, -split - 0.75f );
+		}
+		end = MIN( right, -hole );
+		start = MAX( left, hole );
+		if ( end > left ) CG_FillRect( x + left, y + row, end - left, 2, color );
+		if ( right > start ) CG_FillRect( x + start, y + row, right - start, 2, color );
+	}
 }
 
 static void CG_TrunkFrame( void ) {
@@ -2987,41 +2985,44 @@ static void CG_TrunkFrame( void ) {
 	     !cg_entities[cg.snap->ps.clientNum].startRaceTime ) {
 		available = qfalse;
 	}
-	if ( cg.trunkOpen && ( !available || catcher != KEYCATCH_CGAME ) ) {
-		CG_CloseTrunk();
+	if ( !available || catcher ) {
+		cg.trunkOpen = qfalse;
+		return;
 	}
-	if ( pressed && available && !catcher && !cg.trunkOpen ) {
+	if ( pressed && cg.trunkOpen ) {
+		if ( mask & ( 1 << cg.trunkSelected ) ) {
+			trap_SendClientCommand( va( "trunkuse %d", cg.trunkSelected + 1 ) );
+		}
+		cg.trunkOpen = qfalse;
+		return;
+	}
+	if ( pressed ) cg.trunkOpen = qtrue;
+	if ( !cg.trunkOpen ) return;
+	if ( !( mask & ( 1 << cg.trunkSelected ) ) ) {
 		for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
 			if ( mask & ( 1 << i ) ) break;
 		}
 		cg.trunkSelected = i;
-		cg.trunkMouseX = cg.trunkMouseY = 0;
-		cg.trunkOpen = qtrue;
-		trap_Key_SetCatcher( KEYCATCH_CGAME );
 	}
-	if ( !cg.trunkOpen ) return;
 
 	horizontal = CG_GetScreenHorizontalPlacement();
 	vertical = CG_GetScreenVerticalPlacement();
-	CG_SetScreenPlacement( PLACE_CENTER, PLACE_CENTER );
-	CG_FillRect( 188, 125, 264, 222, backdrop );
-	CG_DrawIngameString( 320, 217, "TRUNK", UI_CENTER | UI_SMALLFONT, 0.85f, colorWhite );
+	CG_SetScreenPlacement( PLACE_RIGHT, PLACE_BOTTOM );
 	for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
 		gitem_t *item = BG_FindItemForHoldable( bg_trunkItems[i] );
 		int index = item - bg_itemlist;
-		int x = 320 + trunkDirection[i][0] * 100;
-		int y = 218 + trunkDirection[i][1] * 62;
+		float x = 590 + trunkDirection[i][0] * 24;
+		float y = RALLY_HUD_OVERLAY_BOTTOM - 60 + trunkDirection[i][1] * 24;
 		qboolean owned = ( mask & ( 1 << i ) ) != 0;
-		CG_FillRect( x - 40, y - 24, 80, 52, owned && i == cg.trunkSelected ? selected : normal );
+		CG_DrawTrunkSector( 590, RALLY_HUD_OVERLAY_BOTTOM - 60, i,
+			owned ? ( i == cg.trunkSelected ? selected : normal ) : backdrop );
 		CG_RegisterItemVisuals( index );
 		trap_R_SetColor( owned ? NULL : disabled );
-		CG_DrawPic( x - 12, y - 19, 24, 24, cg_items[index].icon );
+		CG_DrawPic( x - 7, y - 7, 14, 14, cg_items[index].icon );
 		trap_R_SetColor( NULL );
-		CG_DrawIngameString( x, y + 11, va( "%d %s", i + 1, trunkLabel[i] ),
-			UI_CENTER | UI_SMALLFONT, 0.49f, owned ? colorWhite : disabled );
 	}
-	CG_DrawIngameString( 320, 326, "CLICK / ENTER TO USE    ESC TO CANCEL",
-		UI_CENTER | UI_SMALLFONT, 0.52f, colorWhite );
+	CG_DrawIngameString( 590, RALLY_HUD_OVERLAY_BOTTOM - 23, trunkLabel[cg.trunkSelected],
+		UI_CENTER | UI_SMALLFONT, 0.48f, colorWhite );
 	CG_SetScreenPlacement( horizontal, vertical );
 }
 
