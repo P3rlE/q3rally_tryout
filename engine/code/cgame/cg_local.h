@@ -745,6 +745,10 @@ typedef struct {
 	int			clientNum;
 	
 	qboolean	demoPlayback;
+	qboolean	trunkOpen;
+	qboolean	trunkUseHeld;
+	int		trunkSelected;
+	float		trunkMouseX, trunkMouseY;
 	qboolean	levelShot;			// taking a level menu screenshot
 	int			deferredPlayerLoading;
 	qboolean	loading;			// don't defer players at initial startup
@@ -1887,6 +1891,10 @@ int CG_CrosshairPlayer( void );
 int CG_LastAttacker( void );
 void CG_LoadMenus(const char *menuFile);
 void CG_KeyEvent(int key, qboolean down);
+#ifndef MISSIONPACK
+qboolean CG_TrunkKeyEvent( int key );
+qboolean CG_TrunkMouseEvent( int x, int y );
+#endif
 void CG_MouseEvent(int x, int y);
 void CG_EventHandling(int type);
 void CG_RankRunFrame( void );

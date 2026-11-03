@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "cg_local.h"
 #include "cg_hud_elements.h"
+#include "../client/keycodes.h"
 
 /* Keep the three compact notices aligned just above the telemetry strip. */
 #define RALLY_HUD_OVERLAY_BOTTOM 410
@@ -2906,8 +2907,128 @@ CG_DrawHoldableItem
 ===================
 */
 #ifndef MISSIONPACK
-static void CG_DrawHoldableItem( void ) { 
-	int		value;
+/* Stable positions match the numbered keyboard shortcuts. */
+static const float trunkDirection[TRUNK_ITEM_COUNT][2] = {
+	{ 0, -1 }, { 0.866f, 0.5f }, { -0.866f, 0.5f }
+};
+static const char *const trunkLabel[TRUNK_ITEM_COUNT] = { "Fuel Can", "Teleporter", "Repair Kit" };
+
+static void CG_CloseTrunk( void ) {
+	cg.trunkOpen = qfalse;
+	trap_Key_SetCatcher( trap_Key_GetCatcher() & ~KEYCATCH_CGAME );
+}
+
+qboolean CG_TrunkMouseEvent( int x, int y ) {
+	int i, nearest = 0;
+	float best = -9999.0f;
+	if ( !cg.trunkOpen ) return qfalse;
+	cg.trunkMouseX = Com_Clamp( -96, 96, cg.trunkMouseX + x );
+	cg.trunkMouseY = Com_Clamp( -96, 96, cg.trunkMouseY + y );
+	if ( cg.trunkMouseX * cg.trunkMouseX + cg.trunkMouseY * cg.trunkMouseY < 64 ) return qtrue;
+	for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
+		float direction = trunkDirection[i][0] * cg.trunkMouseX + trunkDirection[i][1] * cg.trunkMouseY;
+		if ( direction > best ) {
+			best = direction;
+			nearest = i;
+		}
+	}
+	cg.trunkSelected = nearest;
+	return qtrue;
+}
+
+qboolean CG_TrunkKeyEvent( int key ) {
+	int mask, slot, step, i;
+	if ( !cg.trunkOpen ) return qfalse;
+	mask = cg.snap ? BG_TrunkMask( cg.snap->ps.stats[STAT_HOLDABLE_ITEM] ) : 0;
+	slot = cg.trunkSelected;
+	if ( key == K_LEFTARROW || key == K_RIGHTARROW ) {
+		step = key == K_LEFTARROW ? TRUNK_ITEM_COUNT - 1 : 1;
+		for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
+			slot = ( slot + step ) % TRUNK_ITEM_COUNT;
+			if ( mask & ( 1 << slot ) ) {
+				cg.trunkSelected = slot;
+				break;
+			}
+		}
+	} else if ( key == K_ENTER || key == K_MOUSE1 || ( key >= '1' && key <= '3' ) ) {
+		if ( key >= '1' && key <= '3' ) slot = key - '1';
+		if ( mask & ( 1 << slot ) ) {
+			trap_SendClientCommand( va( "trunkuse %d", slot + 1 ) );
+			CG_CloseTrunk();
+		}
+	} else if ( key == K_ESCAPE ) {
+		CG_CloseTrunk();
+	}
+	return qtrue;
+}
+
+static void CG_TrunkFrame( void ) {
+	usercmd_t cmd;
+	qboolean held = qfalse, pressed, available;
+	int mask, i, catcher;
+	screenPlacement_e horizontal, vertical;
+	vec4_t backdrop = { 0.018f, 0.025f, 0.03f, 0.94f };
+	vec4_t normal = { 0.11f, 0.16f, 0.20f, 0.96f };
+	vec4_t selected = { 0.22f, 0.39f, 0.54f, 1.0f };
+	vec4_t disabled = { 0.24f, 0.28f, 0.30f, 0.7f };
+
+	if ( trap_GetUserCmd( trap_GetCurrentCmdNumber(), &cmd ) ) {
+		held = ( cmd.buttons & BUTTON_USE_HOLDABLE ) != 0;
+	}
+	pressed = held && !cg.trunkUseHeld;
+	cg.trunkUseHeld = held;
+	catcher = trap_Key_GetCatcher();
+	mask = BG_TrunkMask( cg.snap->ps.stats[STAT_HOLDABLE_ITEM] );
+	available = mask && cg_draw2D.integer && !cg.levelShot && !cg.demoPlayback &&
+		!cg.showScores && cg.snap->ps.pm_type == PM_NORMAL && cg.snap->ps.stats[STAT_HEALTH] > 0 &&
+		cg.snap->ps.persistant[PERS_TEAM] != TEAM_SPECTATOR && !( cg.snap->ps.pm_flags & PMF_FOLLOW ) &&
+		!isRaceObserver( cg.snap->ps.clientNum ) && !CG_IntroCam_IsActive() && !CG_Autoball_IntroActive();
+	if ( available && ( isRallyRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS ) &&
+	     !cg_entities[cg.snap->ps.clientNum].startRaceTime ) {
+		available = qfalse;
+	}
+	if ( cg.trunkOpen && ( !available || catcher != KEYCATCH_CGAME ) ) {
+		CG_CloseTrunk();
+	}
+	if ( pressed && available && !catcher && !cg.trunkOpen ) {
+		for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
+			if ( mask & ( 1 << i ) ) break;
+		}
+		cg.trunkSelected = i;
+		cg.trunkMouseX = cg.trunkMouseY = 0;
+		cg.trunkOpen = qtrue;
+		trap_Key_SetCatcher( KEYCATCH_CGAME );
+	}
+	if ( !cg.trunkOpen ) return;
+
+	horizontal = CG_GetScreenHorizontalPlacement();
+	vertical = CG_GetScreenVerticalPlacement();
+	CG_SetScreenPlacement( PLACE_CENTER, PLACE_CENTER );
+	CG_FillRect( 188, 125, 264, 222, backdrop );
+	CG_DrawIngameString( 320, 217, "TRUNK", UI_CENTER | UI_SMALLFONT, 0.85f, colorWhite );
+	for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
+		gitem_t *item = BG_FindItemForHoldable( bg_trunkItems[i] );
+		int index = item - bg_itemlist;
+		int x = 320 + trunkDirection[i][0] * 100;
+		int y = 218 + trunkDirection[i][1] * 62;
+		qboolean owned = ( mask & ( 1 << i ) ) != 0;
+		CG_FillRect( x - 40, y - 24, 80, 52, owned && i == cg.trunkSelected ? selected : normal );
+		CG_RegisterItemVisuals( index );
+		trap_R_SetColor( owned ? NULL : disabled );
+		CG_DrawPic( x - 12, y - 19, 24, 24, cg_items[index].icon );
+		trap_R_SetColor( NULL );
+		CG_DrawIngameString( x, y + 11, va( "%d %s", i + 1, trunkLabel[i] ),
+			UI_CENTER | UI_SMALLFONT, 0.49f, owned ? colorWhite : disabled );
+	}
+	CG_DrawIngameString( 320, 326, "CLICK / ENTER TO USE    ESC TO CANCEL",
+		UI_CENTER | UI_SMALLFONT, 0.52f, colorWhite );
+	CG_SetScreenPlacement( horizontal, vertical );
+}
+
+static void CG_DrawHoldableItem( void ) {
+	int value = cg.snap->ps.stats[STAT_HOLDABLE_ITEM];
+	int mask = BG_TrunkMask( value );
+	int items[TRUNK_ITEM_COUNT], count = 0, i, left;
 	screenPlacement_e savedHorizontalPlacement;
 	screenPlacement_e savedVerticalPlacement;
 	vec4_t panelColor = { 0.008f, 0.012f, 0.016f, 0.50f };
@@ -2915,29 +3036,44 @@ static void CG_DrawHoldableItem( void ) {
 	                        Q3RALLY_ACCENT_BLUE, 0.78f };
 	vec4_t useColor = { 0.650f, 0.780f, 0.810f, 0.90f };
 
-	value = cg.snap->ps.stats[STAT_HOLDABLE_ITEM];
-	if ( !value ) {
+	for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
+		if ( mask & ( 1 << i ) ) {
+			items[count++] = BG_FindItemForHoldable( bg_trunkItems[i] ) - bg_itemlist;
+		}
+	}
+	if ( !count && ( value = BG_HoldableItemIndex( value ) ) != 0 ) {
+		items[count++] = value;
+	}
+	if ( !count ) {
 		return;
 	}
-	CG_RegisterItemVisuals( value );
+	for ( i = 0; i < count; i++ ) {
+		CG_RegisterItemVisuals( items[i] );
+	}
+	savedHorizontalPlacement = CG_GetScreenHorizontalPlacement();
+	savedVerticalPlacement = CG_GetScreenVerticalPlacement();
 
 	/* Keep the legacy placement as a fallback when the telemetry strip is off. */
 	if ( !cg_drawStatus.integer ||
 	     ( cgs.gametype == GT_DERBY && !cg_hudShowDerbyVehicle.integer ) ) {
 		CG_SetScreenPlacement( PLACE_RIGHT, PLACE_CENTER );
-		CG_DrawPic( 640 - ICON_SIZE, ( SCREEN_HEIGHT - ICON_SIZE ) / 2,
-		            ICON_SIZE, ICON_SIZE, cg_items[value].icon );
+		for ( i = 0; i < count; i++ ) {
+			CG_DrawPic( 640 - ICON_SIZE, ( SCREEN_HEIGHT - count * ICON_SIZE ) / 2 + i * ICON_SIZE,
+			            ICON_SIZE, ICON_SIZE, cg_items[items[i]].icon );
+		}
+		CG_SetScreenPlacement( savedHorizontalPlacement, savedVerticalPlacement );
 		return;
 	}
 
-	savedHorizontalPlacement = CG_GetScreenHorizontalPlacement();
-	savedVerticalPlacement = CG_GetScreenVerticalPlacement();
+	left = 570 - ( count - 1 ) * 16;
 	CG_SetScreenPlacement( PLACE_CENTER, PLACE_BOTTOM );
-	CG_FillRect( 570, RALLY_HUD_OVERLAY_BOTTOM - 18, 60, 18, panelColor );
-	CG_FillRect( 570, RALLY_HUD_OVERLAY_BOTTOM - 18, 60, 1,
+	CG_FillRect( left, RALLY_HUD_OVERLAY_BOTTOM - 18, 630 - left, 18, panelColor );
+	CG_FillRect( left, RALLY_HUD_OVERLAY_BOTTOM - 18, 630 - left, 1,
 	             accentColor );
 	trap_R_SetColor( NULL );
-	CG_DrawPic( 576, RALLY_HUD_OVERLAY_BOTTOM - 15, 12, 12, cg_items[value].icon );
+	for ( i = 0; i < count; i++ ) {
+		CG_DrawPic( left + 6 + i * 16, RALLY_HUD_OVERLAY_BOTTOM - 15, 12, 12, cg_items[items[i]].icon );
+	}
 	CG_DrawIngameString( 625, RALLY_HUD_OVERLAY_BOTTOM - 14, "USE",
 	                     UI_RIGHT | UI_SMALLFONT, 0.46f, useColor );
 	CG_SetScreenPlacement( savedHorizontalPlacement, savedVerticalPlacement );
@@ -4164,5 +4300,8 @@ void CG_DrawActive( stereoFrame_t stereoView ) {
 
 	// draw status bar and other floating elements
  	CG_Draw2D(stereoView);
+#ifndef MISSIONPACK
+	CG_TrunkFrame();
+#endif
 	CG_DrawIntroCamFade();
 }

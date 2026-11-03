@@ -831,6 +831,7 @@ void UseHoldableItem( gentity_t *ent );
 void PrecacheItem (gitem_t *it);
 gentity_t *Drop_Item( gentity_t *ent, gitem_t *item, float angle );
 void G_DropHoldable( gentity_t *ent, gitem_t *item );
+void G_UseTrunkItem( gentity_t *ent, holdable_t tag );
 void G_DropFuelCan( gentity_t *ent );
 gentity_t *LaunchItem( gitem_t *item, vec3_t origin, vec3_t velocity );
 void SetRespawn (gentity_t *ent, float delay);

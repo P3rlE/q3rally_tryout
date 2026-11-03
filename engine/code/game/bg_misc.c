@@ -1347,6 +1347,42 @@ gitem_t	*BG_FindItemForHoldable( holdable_t pw ) {
 }
 
 
+const holdable_t bg_trunkItems[TRUNK_ITEM_COUNT] = { HI_FUELCAN, HI_TELEPORTER, HI_MEDKIT };
+
+int BG_TrunkBit( holdable_t tag ) {
+#ifndef MISSIONPACK
+	int slot;
+	for ( slot = 0; slot < TRUNK_ITEM_COUNT; slot++ ) {
+		if ( bg_trunkItems[slot] == tag ) {
+			return 1 << slot;
+		}
+	}
+#endif
+	return 0;
+}
+
+int BG_TrunkMask( int value ) {
+	return ( value & TRUNK_FLAG ) ? ( value & TRUNK_MASK ) : 0;
+}
+
+qboolean BG_CanAddHoldable( int value, holdable_t tag ) {
+	int bit = BG_TrunkBit( tag );
+	return !value || ( bit && ( value & TRUNK_FLAG ) && !( BG_TrunkMask( value ) & bit ) );
+}
+
+int BG_HoldableItemIndex( int value ) {
+	int slot;
+	if ( value & TRUNK_FLAG ) {
+		for ( slot = 0; slot < TRUNK_ITEM_COUNT; slot++ ) {
+			if ( BG_TrunkMask( value ) & ( 1 << slot ) ) {
+				return BG_FindItemForHoldable( bg_trunkItems[slot] ) - bg_itemlist;
+			}
+		}
+		return 0;
+	}
+	return value > 0 && value < bg_numItems && bg_itemlist[value].giType == IT_HOLDABLE ? value : 0;
+}
+
 /*
 ===============
 BG_FindItemForWeapon
@@ -1661,17 +1697,7 @@ return qfalse;
 // Q3Rally Code END
 
        case IT_HOLDABLE:
-               if ( item->giTag == HI_FUELCAN ) {
-                       if ( ps->stats[STAT_HOLDABLE_ITEM] ) {
-                               return qfalse;
-                       }
-                       return qtrue;
-               }
-               // can only hold one item at a time
-               if ( ps->stats[STAT_HOLDABLE_ITEM] ) {
-                       return qfalse;
-               }
-               return qtrue;
+               return BG_CanAddHoldable( ps->stats[STAT_HOLDABLE_ITEM], item->giTag );
 
         case IT_BAD:
             Com_Error( ERR_DROP, "BG_CanItemBeGrabbed: IT_BAD" );

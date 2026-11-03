@@ -978,6 +978,34 @@ Events will be passed on to the clients for presentation,
 but any server game effects are handled here
 ================
 */
+void ClientEvents( gentity_t *ent, int oldEventSequence );
+
+void G_UseTrunkItem( gentity_t *ent, holdable_t tag ) {
+	gclient_t *client = ent->client;
+	int mask = BG_TrunkMask( client->ps.stats[STAT_HOLDABLE_ITEM] );
+	int bit = BG_TrunkBit( tag );
+	int oldEventSequence;
+
+	if ( !( mask & bit ) || ent->health <= 0 || client->ps.pm_type != PM_NORMAL ||
+	     client->sess.sessionTeam == TEAM_SPECTATOR || client->finishRaceTime || level.intermissiontime ) {
+		return;
+	}
+	if ( ( isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS ) &&
+	     ( !level.startRaceTime || level.startRaceTime > level.time ) ) {
+		return;
+	}
+	if ( G_Autoball_CarsFrozen( level.time ) ||
+	     ( tag == HI_MEDKIT && ent->health >= client->ps.stats[STAT_MAX_HEALTH] + 25 ) ) {
+		return;
+	}
+	mask &= ~bit;
+	client->ps.stats[STAT_HOLDABLE_ITEM] = mask ? TRUNK_FLAG | mask : 0;
+	oldEventSequence = client->ps.eventSequence;
+	BG_AddPredictableEventToPlayerstate( EV_USE_ITEM0 + tag, 0, &client->ps );
+	ent->eventTime = level.time;
+	ClientEvents( ent, oldEventSequence );
+}
+
 void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 	int		i, j;
 	int		event;

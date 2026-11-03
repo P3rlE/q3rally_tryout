@@ -219,7 +219,12 @@ int		clientNum;
 
 int Pickup_Holdable( gentity_t *ent, gentity_t *other ) {
 
-	other->client->ps.stats[STAT_HOLDABLE_ITEM] = ent->item - bg_itemlist;
+	int *value = &other->client->ps.stats[STAT_HOLDABLE_ITEM];
+	int bit = BG_TrunkBit( ent->item->giTag );
+	if ( !BG_CanAddHoldable( *value, ent->item->giTag ) ) {
+		return 0;
+	}
+	*value = bit ? ( TRUNK_FLAG | BG_TrunkMask( *value ) | bit ) : ent->item - bg_itemlist;
 
 	if( ent->item->giTag == HI_KAMIKAZE ) {
 		other->client->ps.eFlags |= EF_KAMIKAZE;
@@ -231,9 +236,15 @@ int Pickup_Holdable( gentity_t *ent, gentity_t *other ) {
 
 void G_DropHoldable( gentity_t *ent, gitem_t *item ) {
 
+       int *value = &ent->client->ps.stats[STAT_HOLDABLE_ITEM];
+       int mask = BG_TrunkMask( *value );
+       int bit = BG_TrunkBit( item->giTag );
+       if ( ( *value & TRUNK_FLAG ) ? !( mask & bit ) : *value != item - bg_itemlist ) {
+               return;
+       }
        Drop_Item( ent, item, 0 );
-
-       ent->client->ps.stats[STAT_HOLDABLE_ITEM] = 0;
+       mask &= ~bit;
+       *value = mask ? TRUNK_FLAG | mask : 0;
 }
 
 
@@ -405,8 +416,7 @@ int Pickup_Armor( gentity_t *ent, gentity_t *other ) {
 }
 
 int Pickup_FuelCan( gentity_t *ent, gentity_t *other ) {
-    other->client->ps.stats[STAT_HOLDABLE_ITEM] = ent->item - bg_itemlist;
-    return RESPAWN_HOLDABLE;
+    return Pickup_Holdable( ent, other );
 }
 
 //======================================================================

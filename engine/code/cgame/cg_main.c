@@ -34,7 +34,7 @@ displayContextDef_t cgDC;
 
 int forceModelModificationCount = -1;
 
-void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum );
+void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum, qboolean demoPlayback );
 void CG_Shutdown( void );
 
 
@@ -53,7 +53,7 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
 // Q3Rally Code Start
 //		CG_DebugLogPrintf("INIT\n");
 // Q3Rally Code END
-		CG_Init( arg0, arg1, arg2 );
+		CG_Init( arg0, arg1, arg2, arg3 );
 		return 0;
 	case CG_SHUTDOWN:
 // Q3Rally Code Start
@@ -2312,7 +2312,7 @@ Called after every level change or subsystem restart
 Will perform callbacks to make the loading info screen update.
 =================
 */
-void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum ) {
+void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum, qboolean demoPlayback ) {
 	const char	*s;
 // Q3Rally Code Start
 	int		i, size;
@@ -2385,7 +2385,7 @@ void CG_Init( int serverMessageNum, int serverCommandSequence, int clientNum ) {
 
 	// check version
 	s = CG_ConfigString( CS_GAME_VERSION );
-	if ( strcmp( s, GAME_VERSION ) ) {
+	if ( strcmp( s, GAME_VERSION ) && !( demoPlayback && !strcmp( s, GAME_VERSION_BEFORE_TRUNK ) ) ) {
 		CG_Error( "Client/Server game mismatch: %s/%s", GAME_VERSION, s );
 	}
 
@@ -2544,6 +2544,7 @@ void CG_EventHandling(int type) {
 	/* ESC clears KEYCATCH_CGAME in the engine and reports CGAME_EVENT_NONE. */
 	if ( type == CGAME_EVENT_NONE ) {
 		CG_LadderGhost_CatcherCleared();
+		cg.trunkOpen = qfalse;
 	}
 }
 
@@ -2551,6 +2552,7 @@ void CG_EventHandling(int type) {
 
 void CG_KeyEvent(int key, qboolean down) {
 	if ( !down ) return;
+	if ( CG_TrunkKeyEvent( key ) ) return;
 
 	/* Ghost Race: the ladder ghost picker owns the keys while it is open. */
 	if ( CG_LadderGhost_KeyEvent( key ) ) {
@@ -2583,6 +2585,7 @@ void CG_KeyEvent(int key, qboolean down) {
 }
 
 void CG_MouseEvent(int x, int y) {
+	if ( CG_TrunkMouseEvent( x, y ) ) return;
 	/* Keep a 640x480 UI cursor position for HUD menu hit-testing. */
 	cgs.cursorX += x;
 	if ( cgs.cursorX < 0 ) {

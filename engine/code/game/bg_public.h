@@ -35,7 +35,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // because games can change separately from the main system version, we need a
 // second version that must match between game and cgame
 
-#define GAME_VERSION		BASEGAME "-2"
+#define GAME_VERSION		BASEGAME "-3"
+#define GAME_VERSION_BEFORE_TRUNK BASEGAME "-2"
 
 #define	DEFAULT_GRAVITY		800
 #define	GIB_HEALTH			-40
@@ -495,6 +496,16 @@ typedef enum {
         HI_FUELCAN,
         HI_NUM_HOLDABLE
 } holdable_t;
+
+/* The holdable stat keeps its wire width. Untagged values are legacy item indices. */
+#define TRUNK_ITEM_COUNT 3
+#define TRUNK_FLAG 0x1000
+#define TRUNK_MASK ((1 << TRUNK_ITEM_COUNT) - 1)
+extern const holdable_t bg_trunkItems[TRUNK_ITEM_COUNT];
+int BG_TrunkBit( holdable_t tag );
+int BG_TrunkMask( int value );
+int BG_HoldableItemIndex( int value );
+qboolean BG_CanAddHoldable( int value, holdable_t tag );
 
 
 typedef enum {
