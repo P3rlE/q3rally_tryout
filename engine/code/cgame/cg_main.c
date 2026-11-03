@@ -89,6 +89,9 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
 // Q3Rally Code END
 		return CG_LastAttacker();
 	case CG_KEY_EVENT:
+#ifndef MISSIONPACK
+		if ( arg2 ) return arg1 && CG_TrunkKeyEvent( arg0 );
+#endif
 // Q3Rally Code Start
 //		CG_DebugLogPrintf("KEY EVENT\n");
 // Q3Rally Code END
@@ -2552,7 +2555,6 @@ void CG_EventHandling(int type) {
 
 void CG_KeyEvent(int key, qboolean down) {
 	if ( !down ) return;
-	if ( CG_TrunkKeyEvent( key ) ) return;
 
 	/* Ghost Race: the ladder ghost picker owns the keys while it is open. */
 	if ( CG_LadderGhost_KeyEvent( key ) ) {
@@ -2585,7 +2587,6 @@ void CG_KeyEvent(int key, qboolean down) {
 }
 
 void CG_MouseEvent(int x, int y) {
-	if ( CG_TrunkMouseEvent( x, y ) ) return;
 	/* Keep a 640x480 UI cursor position for HUD menu hit-testing. */
 	cgs.cursorX += x;
 	if ( cgs.cursorX < 0 ) {
