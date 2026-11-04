@@ -669,3 +669,21 @@ void Frontend_SetBackButton( menucommon_s *item ) {
     item->y = item->top;
     item->ownerdraw = Frontend_DrawBackButton;
 }
+
+void Frontend_DrawShowcasePanel( int x, int y, int width, int height, float alpha ) {
+    vec4_t surface = UI_SHOWCASE_SURFACE;
+    vec4_t accent = UI_SHOWCASE_ACCENT;
+    surface[3] *= alpha;
+    accent[3] *= alpha;
+    UI_FillRect( x, y, width, height, surface );
+    UI_FillRect( x, y, width, 2, accent );
+}
+
+void Frontend_DrawShowcaseTitle( int x, int y, const char *section, const char *title, float alpha ) {
+    vec4_t accent = UI_SHOWCASE_ACCENT;
+    vec4_t text = UI_FRONTEND_COLOR_TEXT;
+    accent[3] *= alpha;
+    text[3] *= alpha;
+    Frontend_DrawText( x, y, section, UI_LEFT | UI_SMALLFONT, accent );
+    Frontend_DrawTextScaled( x, y + 15, title, UI_LEFT | UI_BIGFONT, 1.18f, text );
+}

@@ -49,6 +49,7 @@ MAIN MENU
 #define ID_DOWNLOADS                    19
 // Q3RALLY DOWNLOADS END
 #define ID_PROFILE_STATS                20
+#define ID_GARAGE                       21
 
 #define MAIN_BANNER_MODEL               "models/mapobjects/q3rtitle/q3rtitle.md3"
 #define MAIN_MENU_VERTICAL_SPACING      50
@@ -78,6 +79,7 @@ typedef struct {
         char                    profileRankLine[64];
         char                    profilePointsLine[64];
 
+        menutext_s              garage;
         menutext_s              banner;
         menubitmap_s            carlogo;
 
@@ -95,7 +97,7 @@ typedef struct {
 static mainmenu_t s_main;
 static vec4_t s_profileActionColor;
 static vec4_t s_frontendScrim = UI_FRONTEND_COLOR_SCRIM;
-static vec4_t s_frontendAccent = UI_FRONTEND_COLOR_ACCENT;
+static vec4_t s_frontendAccent = UI_SHOWCASE_ACCENT;
 static vec4_t s_frontendText = UI_FRONTEND_COLOR_TEXT;
 static vec4_t s_frontendMuted = UI_FRONTEND_COLOR_MUTED;
 static vec4_t s_frontendStatus = UI_FRONTEND_COLOR_STATUS;
@@ -156,6 +158,7 @@ static void MainMenu_SetInteractiveBounds( menutext_s *item, int left, int right
 static void MainMenu_DrawNavItem( void *self ) {
         menutext_s *item;
         qboolean focus;
+        vec4_t textColor;
         float navX;
         float navWidth;
         int top;
@@ -166,9 +169,30 @@ static void MainMenu_DrawNavItem( void *self ) {
         navWidth = MainMenu_NavWidth();
         top = item->generic.y - 9;
 
-        Frontend_DrawNavButton( (int)navX, top, (int)navWidth, 24,
-                                item->string, s_main.visualAlpha, focus,
-                                UI_FRONTEND_TEXT_LEFT );
+        if ( focus ) {
+                vec4_t fill = { 0.22f, 0.11f, 0.055f, 0.85f };
+                vec4_t accent;
+                fill[3] *= s_main.visualAlpha;
+                MainMenu_ColorWithAlpha( accent, s_frontendAccent );
+                UI_FillRect( navX, top, navWidth, 24, fill );
+                UI_FillRect( navX, top, 2, 24, accent );
+        }
+        MainMenu_ColorWithAlpha( textColor, focus ? s_frontendText : s_frontendMuted );
+        Frontend_DrawText( (int)navX + UI_FRONTEND_SPACE_MD, top + 8,
+                           item->string, UI_LEFT | UI_SMALLFONT, textColor );
+}
+
+static void MainMenu_DrawGarageAction( void *self ) {
+        menucommon_s *item = self;
+        qboolean focused = Menu_ItemAtCursor( item->parent ) == item;
+        vec4_t background, label = { 0.06f, 0.03f, 0.02f, 1.0f };
+        MainMenu_ColorWithAlpha( background, s_frontendAccent );
+        if ( focused ) background[1] = 0.55f;
+        label[3] *= s_main.visualAlpha;
+        UI_FillRect( item->left, item->top, item->right - item->left,
+                     item->bottom - item->top, background );
+        Frontend_DrawText( ( item->left + item->right ) / 2, item->top + 9,
+                           "OPEN GARAGE", UI_CENTER | UI_SMALLFONT, label );
 }
 
 static void MainMenu_DrawProfileAction( void *self ) {
@@ -539,6 +563,10 @@ void Main_MenuEvent (void* ptr, int event) {
                 uis.transitionOut = uis.realtime;
                 break;
 
+        case ID_GARAGE:
+                UI_GarageMenu();
+                break;
+
         case ID_PROFILE_ACTION:
                 UI_ProfileOverlay_Open( qfalse );
                 break;
@@ -732,22 +760,16 @@ static void Main_MenuDraw( void ) {
         Frontend_DrawSidebar( (int)railX, 32, (int)MainMenu_RailWidth(), 410,
                               NULL, s_main.visualAlpha );
 
-        Frontend_DrawHeroSurface( (int)heroX, 32, (int)heroWidth, 410,
-                                  s_main.visualAlpha );
-
-        Frontend_DrawText( (int)( heroX + 16 ), 52, "Garage / active vehicle",
-                           UI_LEFT | UI_SMALLFONT, mutedColor );
+        Frontend_DrawShowcasePanel( (int)heroX, 32, (int)heroWidth, 410, s_main.visualAlpha );
+        Frontend_DrawShowcaseTitle( (int)heroX + 16, 52, "01 / THE GAME",
+                                    "READY TO RACE", s_main.visualAlpha );
         MainMenu_DrawStatusChip( heroX, heroWidth );
 
         Menu_Draw( &s_main.menu );
 
-        Frontend_DrawText( (int)( heroX + 16 ), 370, "Ready for the next rally",
+        Frontend_DrawText( (int)heroX + 16, 335, "ACTIVE VEHICLE", UI_LEFT | UI_SMALLFONT, mutedColor );
+        Frontend_DrawText( (int)heroX + 16, 352, s_main.modelskin,
                            UI_LEFT | UI_SMALLFONT, textColor );
-        Frontend_DrawText( (int)( heroX + 16 ), 388,
-                           va( "Model  -  %s", s_main.modelskin ),
-                           UI_LEFT | UI_SMALLFONT, mutedColor );
-        Frontend_DrawText( (int)( heroX + 16 ), 410, "Q3Rally  -  2002-2026",
-                           UI_LEFT | UI_SMALLFONT, mutedColor );
 
         if (uis.demoversion) {
 
@@ -998,6 +1020,14 @@ void UI_MainMenu( void ) {
         // Q3RALLY DOWNLOADS END
         Menu_AddItem( &s_main.menu,     &s_main.exit );            
         Menu_AddItem( &s_main.menu,     &s_main.profileAction );
+        InitMenuText( &s_main.garage, ID_GARAGE, "OPEN GARAGE", (int)MainMenu_HeroX() + 16, 389 );
+        s_main.garage.generic.flags = QMF_NODEFAULTINIT;
+        s_main.garage.generic.ownerdraw = MainMenu_DrawGarageAction;
+        s_main.garage.generic.left = s_main.garage.generic.x;
+        s_main.garage.generic.right = s_main.garage.generic.left + 124;
+        s_main.garage.generic.top = 380;
+        s_main.garage.generic.bottom = 410;
+        Menu_AddItem( &s_main.menu,     &s_main.garage );
         Menu_AddItem( &s_main.menu,     &s_main.profileStatsAction );
 
         s_main.singleplayer.generic.ownerdraw = MainMenu_DrawNavItem;
