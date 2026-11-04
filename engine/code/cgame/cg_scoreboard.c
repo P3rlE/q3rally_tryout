@@ -1357,6 +1357,58 @@ CG_DrawModernScoreboard
 Main function to draw the adaptive modern scoreboard
 =================
 */
+static int CG_DrawRacePodium(int y, int podium[3]) {
+    static const vec4_t panel = { 0.09f, 0.09f, 0.09f, 1.0f };
+    static const int x[3] = { 320, 148, 492 };
+    int rank, count = 0;
+    int i;
+
+    for (i = 0; i < cg.numScores; i++) {
+        const score_t *score = &cg.scores[i];
+        const clientInfo_t *ci = &cgs.clientinfo[score->client];
+        rank = score->position - 1;
+        if (rank < 0 || rank >= 3 || podium[rank] >= 0 ||
+            ci->team == TEAM_SPECTATOR || score->time <= 0 ||
+            cg_entities[score->client].finishRaceTime <= score->time) {
+            continue;
+        }
+        podium[rank] = i;
+        count++;
+    }
+    for (rank = 0; rank < 3; rank++) {
+        const score_t *score;
+        const clientInfo_t *ci;
+        char name[MAX_QPATH];
+        vec4_t accent;
+        int top, time;
+
+        if (podium[rank] < 0) {
+            continue;
+        }
+        score = &cg.scores[podium[rank]];
+        ci = &cgs.clientinfo[score->client];
+        time = cg_entities[score->client].finishRaceTime - score->time;
+        top = y + rank * 9;
+        CG_GetRankColor(rank + 1, accent);
+        CG_FillRect(x[rank] - 80, top, 160, y + 109 - top, panel);
+        CG_FillRect(x[rank] - 80, top, 160, 2, accent);
+        CG_DrawIngameString(x[rank], top + 6, va("%d", rank + 1),
+                            UI_CENTER | UI_SMALLFONT, 0.8f, accent);
+        if (ci->modelIcon) {
+            CG_DrawPic(x[rank] - 29, top + 13, 58, 58, ci->modelIcon);
+        }
+        Q_strncpyz(name, ci->name, sizeof(name));
+        Q_CleanStr(name);
+        while (CG_IngameStringWidth(name, UI_SMALLFONT, 0.7f) > 150) {
+            name[strlen(name) - 1] = 0;
+        }
+        CG_DrawIngameString(x[rank], top + 65, name, UI_CENTER | UI_SMALLFONT, 0.7f, colorWhite);
+        CG_DrawIngameString(x[rank], top + 78, getStringForTimePrecise(time),
+                            UI_CENTER | UI_SMALLFONT, 0.7f, accent);
+    }
+    return count;
+}
+
 qboolean CG_DrawModernScoreboard(void) {
     int y, maxClients, rowHeight;
     int i, drawnClients;
@@ -1375,6 +1427,9 @@ qboolean CG_DrawModernScoreboard(void) {
     int maxRowsStandard;
     qboolean showOverflowRow;
     qboolean raceResults = CG_IsRaceResults();
+    int podium[3] = { -1, -1, -1 };
+    int podiumCount = 0;
+    int remainingScores;
 
     
     CG_SetScreenPlacement(PLACE_CENTER, PLACE_CENTER);
@@ -1473,6 +1528,17 @@ qboolean CG_DrawModernScoreboard(void) {
     CG_DrawModernGameInfo(y, fade, playersRemaining, lastPlaceClient);
     y += BIGCHAR_HEIGHT + 24;
     
+    if (raceResults && !CG_IsTeamGametype()) {
+        podiumCount = CG_DrawRacePodium(y, podium);
+        if (podiumCount > 0) {
+            y += 116;
+        }
+    }
+    remainingScores = cg.numScores - podiumCount;
+    if (!remainingScores && podiumCount) {
+        return qtrue;
+    }
+
     /* Determine layout mode */
     topMargin = y;
     bottomMargin = 32;
@@ -1484,18 +1550,18 @@ qboolean CG_DrawModernScoreboard(void) {
     }
 
     maxRowsStandard = availableHeight / (MODERN_SB_ROW_HEIGHT + rowSpacing);
-    isCompact = (cg.numScores > MAX_SCOREBOARD_CLIENTS) ||
+    isCompact = (remainingScores > MAX_SCOREBOARD_CLIENTS) ||
                 CG_IsTeamGametype() ||
-                (cg.numScores > maxRowsStandard);
+                (remainingScores > maxRowsStandard);
 
     rowHeight = isCompact ? MODERN_SB_COMPACT_HEIGHT : MODERN_SB_ROW_HEIGHT;
     maxRows = availableHeight / (rowHeight + rowSpacing);
 
-    if (isCompact && cg.numScores > maxRows && cg.numScores > 0) {
+    if (isCompact && remainingScores > maxRows) {
         int adjustedHeight;
         int minRowHeight = 14;
 
-        adjustedHeight = (availableHeight / cg.numScores) - rowSpacing;
+        adjustedHeight = (availableHeight / remainingScores) - rowSpacing;
         if (adjustedHeight < minRowHeight) {
             adjustedHeight = minRowHeight;
         }
@@ -1519,10 +1585,10 @@ qboolean CG_DrawModernScoreboard(void) {
     }
 
     showOverflowRow = qfalse;
-    if (cg.numScores > maxClients && maxClients > 1) {
+    if (remainingScores > maxClients && maxClients > 1) {
         maxClients--;
         showOverflowRow = qtrue;
-    } else if (cg.numScores > maxClients && maxRows > maxClients) {
+    } else if (remainingScores > maxClients && maxRows > maxClients) {
         showOverflowRow = qtrue;
     }
     
@@ -1531,6 +1597,11 @@ qboolean CG_DrawModernScoreboard(void) {
     y += MODERN_SB_HEADER_HEIGHT + 4;
     
     localClientDrawn = qfalse;
+    for (i = 0; i < ARRAY_LEN(podium); i++) {
+        if (podium[i] >= 0 && cg.scores[podium[i]].client == cg.snap->ps.clientNum) {
+            localClientDrawn = qtrue;
+        }
+    }
     drawnClients = 0;
     
     if (CG_IsTeamGametype()) {
@@ -1619,6 +1690,9 @@ qboolean CG_DrawModernScoreboard(void) {
 
             score = &cg.scores[i];
             ci = &cgs.clientinfo[score->client];
+            if (i == podium[0] || i == podium[1] || i == podium[2]) {
+                continue;
+            }
             isLocal = (score->client == cg.snap->ps.clientNum) ? qtrue : qfalse;
             ghostAhead = !(ghostPlayerMs > 0 && ghostPlayerMs < ghostMs);
 

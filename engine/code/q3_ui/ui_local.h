@@ -774,6 +774,7 @@ typedef struct {
 // END
 } playerInfo_t;
 
+void UI_DrawShowroomPlayer( float x, float y, float w, float h, playerInfo_t *pi, int time );
 void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int time );
 // STONELANCE
 // void UI_PlayerInfo_SetModel( playerInfo_t *pi, const char *model );
