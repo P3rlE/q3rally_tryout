@@ -2911,7 +2911,7 @@ CG_DrawHoldableItem
 static const float trunkDirection[TRUNK_ITEM_COUNT][2] = {
 	{ 0, -1 }, { 0.866f, 0.5f }, { -0.866f, 0.5f }
 };
-static const char *const trunkLabel[TRUNK_ITEM_COUNT] = { "Fuel Can", "Teleporter", "Repair Kit" };
+static const char *const trunkLabel[TRUNK_ITEM_COUNT] = { "FUEL CAN", "TELEPORTER", "REPAIR KIT" };
 
 qboolean CG_TrunkKeyEvent( int key ) {
 	int mask, slot, step, i;
@@ -2934,30 +2934,88 @@ qboolean CG_TrunkKeyEvent( int key ) {
 	return qtrue;
 }
 
-/* Draw a circular sector in horizontal strips, leaving the center open. */
-static void CG_DrawTrunkSector( float x, float y, int slot, const float *color ) {
-	int row;
-	for ( row = -34; row < 34; row += 2 ) {
-		float dy = row + 1;
-		float edge = sqrt( 34 * 34 - dy * dy );
-		float hole = fabs( dy ) < 13 ? sqrt( 13 * 13 - dy * dy ) : 0;
-		float split = dy < 0 ? -1.732f * dy : 0;
-		float left = -edge, right = edge;
-		float end, start;
-		if ( slot == 0 ) {
-			if ( dy >= 0 ) continue;
-			left = MAX( left, -split + 0.75f );
-			right = MIN( right, split - 0.75f );
-		} else if ( slot == 1 ) {
-			left = MAX( left, split + 0.75f );
-		} else {
-			right = MIN( right, -split - 0.75f );
-		}
-		end = MIN( right, -hole );
-		start = MAX( left, hole );
-		if ( end > left ) CG_FillRect( x + left, y + row, end - left, 2, color );
-		if ( right > start ) CG_FillRect( x + start, y + row, right - start, 2, color );
+/*
+ * The wheel uses the telemetry HUD language: dark translucent panels, a thin
+ * cool-grey outline and a bright rim on the active slot.  The round shapes come
+ * from anti-aliased masks (tools/generate_trunk_wheel.py) that are tinted here;
+ * every mask covers the whole TRUNK_WHEEL_BOX square around the centre.
+ */
+#define TRUNK_WHEEL_X			590.0f
+#define TRUNK_WHEEL_Y			( RALLY_HUD_OVERLAY_BOTTOM - 68.0f )
+#define TRUNK_WHEEL_BOX			72.0f
+#define TRUNK_WHEEL_ICON_RADIUS	22.5f
+#define TRUNK_WHEEL_FADE_TIME	100
+
+static void CG_DrawTrunkMask( qhandle_t mask, const float *color ) {
+	if ( !mask ) return;
+	trap_R_SetColor( color );
+	CG_DrawPic( TRUNK_WHEEL_X - TRUNK_WHEEL_BOX * 0.5f, TRUNK_WHEEL_Y - TRUNK_WHEEL_BOX * 0.5f,
+		TRUNK_WHEEL_BOX, TRUNK_WHEEL_BOX, mask );
+}
+
+static void CG_DrawTrunkWheel( int mask ) {
+	vec4_t fillColor = { 0.008f, 0.012f, 0.016f, 0.74f };
+	vec4_t emptyColor = { 0.008f, 0.012f, 0.016f, 0.36f };
+	vec4_t selectedColor = { 0.070f, 0.120f, 0.160f, 0.90f };
+	vec4_t outlineColor = { 0.240f, 0.340f, 0.360f, 0.78f };
+	vec4_t edgeColor = { 0.380f, 0.820f, 1.000f, 1.00f };
+	vec4_t iconColor = { 1.00f, 1.00f, 1.00f, 0.80f };
+	vec4_t iconSelectedColor = { 1.00f, 1.00f, 1.00f, 1.00f };
+	vec4_t iconEmptyColor = { 0.480f, 0.610f, 0.650f, 0.30f };
+	vec4_t labelPanelColor = { 0.008f, 0.012f, 0.016f, 0.76f };
+	vec4_t accentColor = { Q3RALLY_ACCENT_RED, Q3RALLY_ACCENT_GREEN,
+	                        Q3RALLY_ACCENT_BLUE, 0.78f };
+	vec4_t textColor = { 0.88f, 0.95f, 0.97f, 1.00f };
+	const char *label;
+	float alpha, size, x, y;
+	int i, width;
+
+	alpha = (float)( cg.time - cg.trunkOpenTime ) / TRUNK_WHEEL_FADE_TIME;
+	if ( alpha > 1.0f ) alpha = 1.0f;
+	if ( alpha < 0.0f ) alpha = 0.0f;
+	fillColor[3] *= alpha;
+	emptyColor[3] *= alpha;
+	selectedColor[3] *= alpha;
+	outlineColor[3] *= alpha;
+	edgeColor[3] *= alpha;
+	iconColor[3] *= alpha;
+	iconSelectedColor[3] *= alpha;
+	iconEmptyColor[3] *= alpha;
+	labelPanelColor[3] *= alpha;
+	accentColor[3] *= alpha;
+	textColor[3] *= alpha;
+
+	for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
+		qboolean owned = ( mask & ( 1 << i ) ) != 0;
+		CG_DrawTrunkMask( cgs.media.trunkSectorShader[i],
+			!owned ? emptyColor : ( i == cg.trunkSelected ? selectedColor : fillColor ) );
 	}
+	CG_DrawTrunkMask( cgs.media.trunkOutlineShader, outlineColor );
+	CG_DrawTrunkMask( cgs.media.trunkEdgeShader[cg.trunkSelected], edgeColor );
+
+	for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
+		gitem_t *item = BG_FindItemForHoldable( bg_trunkItems[i] );
+		int index = item - bg_itemlist;
+		qboolean owned = ( mask & ( 1 << i ) ) != 0;
+		size = owned && i == cg.trunkSelected ? 16.0f : 13.0f;
+		x = TRUNK_WHEEL_X + trunkDirection[i][0] * TRUNK_WHEEL_ICON_RADIUS;
+		y = TRUNK_WHEEL_Y + trunkDirection[i][1] * TRUNK_WHEEL_ICON_RADIUS;
+		CG_RegisterItemVisuals( index );
+		trap_R_SetColor( !owned ? iconEmptyColor :
+			( i == cg.trunkSelected ? iconSelectedColor : iconColor ) );
+		CG_DrawPic( x - size * 0.5f, y - size * 0.5f, size, size, cg_items[index].icon );
+	}
+	trap_R_SetColor( NULL );
+
+	/* Name tag in the toast style, between the wheel and the trunk strip. */
+	label = trunkLabel[cg.trunkSelected];
+	width = CG_IngameStringWidth( label, UI_SMALLFONT, 0.46f ) + 12;
+	x = TRUNK_WHEEL_X - width * 0.5f;
+	y = RALLY_HUD_OVERLAY_BOTTOM - 33.0f;
+	CG_FillRect( x, y, width, 12, labelPanelColor );
+	CG_FillRect( x, y, width, 1, accentColor );
+	CG_DrawIngameString( (int)TRUNK_WHEEL_X, (int)y + 3, label,
+		UI_CENTER | UI_SMALLFONT, 0.46f, textColor );
 }
 
 static void CG_TrunkFrame( void ) {
@@ -2965,10 +3023,6 @@ static void CG_TrunkFrame( void ) {
 	qboolean held = qfalse, pressed, available;
 	int mask, i, catcher;
 	screenPlacement_e horizontal, vertical;
-	vec4_t backdrop = { 0.018f, 0.025f, 0.03f, 0.94f };
-	vec4_t normal = { 0.11f, 0.16f, 0.20f, 0.96f };
-	vec4_t selected = { 0.22f, 0.39f, 0.54f, 1.0f };
-	vec4_t disabled = { 0.24f, 0.28f, 0.30f, 0.7f };
 
 	if ( trap_GetUserCmd( trap_GetCurrentCmdNumber(), &cmd ) ) {
 		held = ( cmd.buttons & BUTTON_USE_HOLDABLE ) != 0;
@@ -2996,7 +3050,10 @@ static void CG_TrunkFrame( void ) {
 		cg.trunkOpen = qfalse;
 		return;
 	}
-	if ( pressed ) cg.trunkOpen = qtrue;
+	if ( pressed ) {
+		cg.trunkOpen = qtrue;
+		cg.trunkOpenTime = cg.time;
+	}
 	if ( !cg.trunkOpen ) return;
 	if ( !( mask & ( 1 << cg.trunkSelected ) ) ) {
 		for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
@@ -3007,22 +3064,9 @@ static void CG_TrunkFrame( void ) {
 
 	horizontal = CG_GetScreenHorizontalPlacement();
 	vertical = CG_GetScreenVerticalPlacement();
-	CG_SetScreenPlacement( PLACE_RIGHT, PLACE_BOTTOM );
-	for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
-		gitem_t *item = BG_FindItemForHoldable( bg_trunkItems[i] );
-		int index = item - bg_itemlist;
-		float x = 590 + trunkDirection[i][0] * 24;
-		float y = RALLY_HUD_OVERLAY_BOTTOM - 60 + trunkDirection[i][1] * 24;
-		qboolean owned = ( mask & ( 1 << i ) ) != 0;
-		CG_DrawTrunkSector( 590, RALLY_HUD_OVERLAY_BOTTOM - 60, i,
-			owned ? ( i == cg.trunkSelected ? selected : normal ) : backdrop );
-		CG_RegisterItemVisuals( index );
-		trap_R_SetColor( owned ? NULL : disabled );
-		CG_DrawPic( x - 7, y - 7, 14, 14, cg_items[index].icon );
-		trap_R_SetColor( NULL );
-	}
-	CG_DrawIngameString( 590, RALLY_HUD_OVERLAY_BOTTOM - 23, trunkLabel[cg.trunkSelected],
-		UI_CENTER | UI_SMALLFONT, 0.48f, colorWhite );
+	/* Same placement as the trunk strip below, so both line up on widescreen. */
+	CG_SetScreenPlacement( PLACE_CENTER, PLACE_BOTTOM );
+	CG_DrawTrunkWheel( mask );
 	CG_SetScreenPlacement( horizontal, vertical );
 }
 
