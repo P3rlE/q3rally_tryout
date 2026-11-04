@@ -410,6 +410,33 @@ CG_DrawModernBackground
 Draw a modern styled background with subtle gradients
 =================
 */
+qboolean CG_IsRaceResults( void ) {
+    return cg.snap && cg.snap->ps.pm_type == PM_INTERMISSION &&
+           (cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT ||
+            cgs.gametype == GT_TEAM_RACING);
+}
+
+static void CG_DrawRaceResultsTitle( void ) {
+    static const vec4_t background = { 0.045f, 0.045f, 0.045f, 1.0f };
+    static const vec4_t accent = Q3RALLY_SHOWCASE_ACCENT_COLOR;
+    int clientNum = cg.snap->ps.clientNum;
+    qboolean ready = clientNum >= 0 && clientNum < 32 &&
+        (cg.snap->ps.stats[STAT_CLIENTS_READY] & (1u << clientNum));
+
+    CG_SetScreenPlacement(PLACE_STRETCH, PLACE_STRETCH);
+    CG_FillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, background);
+    CG_SetScreenPlacement(PLACE_CENTER, PLACE_CENTER);
+
+    CG_FillRect(24, 24, SCREEN_WIDTH - 48, 2, accent);
+    CG_DrawIngameString(24, 35, "05 / FINISH", UI_SMALLFONT, 0.8f, accent);
+    CG_DrawIngameString(24, 53, "RACE RESULTS", UI_BIGFONT, 1.1f, colorWhite);
+    if (!cg.demoPlayback && cg.snap->ps.persistant[PERS_TEAM] != TEAM_SPECTATOR) {
+        CG_DrawIngameString(SCREEN_WIDTH - 24, 56,
+                            ready ? "READY" : "FIRE / USE TO CONFIRM",
+                            UI_SMALLFONT | UI_RIGHT, 0.8f, colorWhite);
+    }
+}
+
 static void CG_DrawModernBackground(int x, int y, int width, int height, 
                                    float alpha, qboolean isHeader) {
     vec4_t bgColor;
@@ -421,6 +448,12 @@ static void CG_DrawModernBackground(int x, int y, int width, int height,
     accentColor[1] = Q3RALLY_ACCENT_GREEN;
     accentColor[2] = Q3RALLY_ACCENT_BLUE;
     accentColor[3] = alpha;
+    if (isHeader && CG_IsRaceResults()) {
+        static const vec4_t resultsAccent = Q3RALLY_SHOWCASE_ACCENT_COLOR;
+        accentColor[0] = resultsAccent[0];
+        accentColor[1] = resultsAccent[1];
+        accentColor[2] = resultsAccent[2];
+    }
     if (isHeader) {
         bgColor[0] = 0.008f; bgColor[1] = 0.012f;
         bgColor[2] = 0.016f; bgColor[3] = alpha;
@@ -1341,6 +1374,7 @@ qboolean CG_DrawModernScoreboard(void) {
     int rowSpacing, maxRows, baseMaxClients;
     int maxRowsStandard;
     qboolean showOverflowRow;
+    qboolean raceResults = CG_IsRaceResults();
 
     
     CG_SetScreenPlacement(PLACE_CENTER, PLACE_CENTER);
@@ -1358,7 +1392,7 @@ qboolean CG_DrawModernScoreboard(void) {
     }
     
     /* Don't draw during warmup unless scores are forced */
-    if (cg.warmup && !cg.showScores) {
+    if (cg.warmup && !cg.showScores && !raceResults) {
         return qfalse;
     }
     
@@ -1366,7 +1400,7 @@ qboolean CG_DrawModernScoreboard(void) {
     CG_InitScoreboardColumns();
     
     /* Calculate fade */
-    if (cg.showScores || cg.predictedPlayerState.pm_type == PM_DEAD ||
+    if (raceResults || cg.showScores || cg.predictedPlayerState.pm_type == PM_DEAD ||
         cg.predictedPlayerState.pm_type == PM_INTERMISSION) {
         fade = 1.0f;
         fadeColor = colorWhite;
@@ -1387,9 +1421,13 @@ qboolean CG_DrawModernScoreboard(void) {
     }
     
     y = 80;
+    if (raceResults) {
+        CG_DrawRaceResultsTitle();
+        y = 88;
+    }
     
     /* Draw "Fragged by" message */
-    if (cg.killerName[0]) {
+    if (cg.killerName[0] && !raceResults) {
         char *fragMsg;
         int w, x;
         vec4_t fragColor;

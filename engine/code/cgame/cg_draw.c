@@ -3834,6 +3834,15 @@ static void CG_DrawIntermission( stereoFrame_t stereoFrame ) {
 #endif
 	cg.scoreFadeTime = cg.time;
 
+	if ( CG_IsRaceResults() ) {
+		cg.scoreBoardShowing = CG_DrawScoreboard();
+		CG_DrawHUDOptionsMenu();
+		if ( stereoFrame == STEREO_CENTER ) {
+			CG_JukeboxFrame();
+		}
+		return;
+	}
+
 // Q3Rally Code Start
 	cg.scoreBoardShowing = CG_DrawHUD();
 	CG_DrawHUDOptionsMenu();
