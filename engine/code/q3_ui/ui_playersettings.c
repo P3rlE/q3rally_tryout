@@ -125,10 +125,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define PLAYERSETTINGS_BACK_BUTTON_LEFT			48
 
-/* Vehicle tab: showroom card (left) and setup card (right), like the profile cards. */
-#define VEHICLE_SHOW_X			48
-#define VEHICLE_SHOW_W			344
-#define VEHICLE_SETUP_X			408
+/* Keep the setup column readable; extra widescreen space goes to the car. */
+static int PlayerSettings_GarageInset( void ) {
+	if ( uis.xscale <= 0.0f ) return 0;
+	return (int)Com_Clamp( 0.0f, 64.0f, uis.bias / uis.xscale );
+}
+
+#define VEHICLE_SHOW_X			( 48 - PlayerSettings_GarageInset() )
+#define VEHICLE_SHOW_W			( 344 + 2 * PlayerSettings_GarageInset() )
+#define VEHICLE_SETUP_X			( 408 + PlayerSettings_GarageInset() )
 #define VEHICLE_SETUP_W			184
 #define VEHICLE_CARD_Y			126
 #define VEHICLE_CARD_H			294
@@ -1748,8 +1753,7 @@ static void PlayerSettings_DrawVehiclePanelBackground( void ) {
 	}
 
 	/* Showroom: the car, its name between the arrows, saved setups below. */
-	Frontend_DrawCard( VEHICLE_SHOW_X, VEHICLE_CARD_Y, VEHICLE_SHOW_W, VEHICLE_CARD_H,
-	                   uis.tFrac, qfalse );
+	Frontend_DrawShowcasePanel( VEHICLE_SHOW_X, VEHICLE_CARD_Y, VEHICLE_SHOW_W, VEHICLE_CARD_H, uis.tFrac );
 	Frontend_DrawText( VEHICLE_SHOW_X + 16, VEHICLE_CARD_Y + 18, "Showroom",
 	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 	if ( s_playersettings.numModels > 0 ) {
@@ -1770,8 +1774,7 @@ static void PlayerSettings_DrawVehiclePanelBackground( void ) {
 	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 
 	/* Setup: what is fitted, each row opens Customize vehicle. */
-	Frontend_DrawCard( VEHICLE_SETUP_X, VEHICLE_CARD_Y, VEHICLE_SETUP_W, VEHICLE_CARD_H,
-	                   uis.tFrac, qfalse );
+	Frontend_DrawShowcasePanel( VEHICLE_SETUP_X, VEHICLE_CARD_Y, VEHICLE_SETUP_W, VEHICLE_CARD_H, uis.tFrac );
 	Frontend_DrawText( VEHICLE_SETUP_X + 16, VEHICLE_CARD_Y + 18, "Setup",
 	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
 }
@@ -3327,20 +3330,24 @@ PlayerSettings_DrawBackShaders
 */
 static void PlayerSettings_DrawBackShaders( void ) {
         const char *statusLabel;
+        int inset = s_playersettings.currentTab == TAB_VEHICLE ? PlayerSettings_GarageInset() : 0;
 
         Frontend_DrawBackground( playerSettingsScrimColor );
-        Frontend_DrawPanel( PLAYERSETTINGS_FRAME_X, PLAYERSETTINGS_FRAME_Y,
-                            PLAYERSETTINGS_FRAME_WIDTH,
+        Frontend_DrawPanel( PLAYERSETTINGS_FRAME_X - inset, PLAYERSETTINGS_FRAME_Y,
+                            PLAYERSETTINGS_FRAME_WIDTH + 2 * inset,
                             PLAYERSETTINGS_FRAME_HEIGHT, uis.tFrac,
                             UI_FRONTEND_STYLE_FRAME );
-        Frontend_DrawText( PLAYERSETTINGS_FRAME_X + 24,
-                           PLAYERSETTINGS_FRAME_Y + 24,
-                           "Driver", UI_LEFT | UI_BIGFONT,
-                           playerSettingsTextColor );
-        Frontend_DrawText( PLAYERSETTINGS_FRAME_X + 24,
-                           PLAYERSETTINGS_FRAME_Y + 48,
-                           "Shape your driver identity and active vehicle",
-                           UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
+        if ( s_playersettings.currentTab == TAB_VEHICLE ) {
+                Frontend_DrawShowcaseTitle( PLAYERSETTINGS_FRAME_X - inset + 24,
+                                            PLAYERSETTINGS_FRAME_Y + 13,
+                                            "02 / YOUR VEHICLE", "GARAGE", uis.tFrac );
+        } else {
+                Frontend_DrawText( PLAYERSETTINGS_FRAME_X + 24, PLAYERSETTINGS_FRAME_Y + 24,
+                                   "Driver", UI_LEFT | UI_BIGFONT, playerSettingsTextColor );
+                Frontend_DrawText( PLAYERSETTINGS_FRAME_X + 24, PLAYERSETTINGS_FRAME_Y + 48,
+                                   "Shape your driver identity and active vehicle",
+                                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
+        }
 
         switch ( s_playersettings.currentTab ) {
         case TAB_VEHICLE:
@@ -3365,7 +3372,7 @@ static void PlayerSettings_DrawBackShaders( void ) {
         }
 
         Frontend_DrawStatusChip( PLAYERSETTINGS_FRAME_X +
-                                 PLAYERSETTINGS_FRAME_WIDTH - 104,
+                                 PLAYERSETTINGS_FRAME_WIDTH + inset - 104,
                                  PLAYERSETTINGS_FRAME_Y + 26,
                                  statusLabel, playerSettingsStatusColor,
                                  uis.tFrac );
@@ -5909,7 +5916,7 @@ static void PlayerSettings_MenuInit( void ) {
 		s_playersettings.favpicbuttons[j].focuspic  		= ART_SELECT;
 		s_playersettings.favpicbuttons[j].focuscolor  		= text_color_highlight;
 
-		x += 80;
+		x += ( VEHICLE_SHOW_W - 24 ) / NUM_FAVORITES;
 	}
 
 	s_playersettings.plate.generic.type				= MTYPE_PTEXT;
@@ -6082,6 +6089,14 @@ void UI_PlayerSettingsMenu( void ) {
 	PlayerSettings_DiscardDroppedFile();
 	Frontend_SetBackButton( &s_playersettings.back.generic );
     UI_PushMenu( &s_playersettings.menu );
+}
+
+void UI_GarageMenu( void ) {
+	PlayerSettings_MenuInit();
+	PlayerSettings_DiscardDroppedFile();
+	PlayerSettings_SetTab( TAB_VEHICLE );
+	Frontend_SetBackButton( &s_playersettings.back.generic );
+	UI_PushMenu( &s_playersettings.menu );
 }
 
 void UI_PlayerStatsMenu( void ) {

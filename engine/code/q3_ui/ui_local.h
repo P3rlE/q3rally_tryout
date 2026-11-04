@@ -576,6 +576,7 @@ extern void PlayerModel_Cache( void );
 // ui_playersettings.c
 //
 extern void UI_PlayerSettingsMenu( void );
+extern void UI_GarageMenu( void );
 extern void UI_PlayerStatsMenu( void );
 extern void PlayerSettings_Cache( void );
 extern const char *UI_RimBrandName( const char *rim );
