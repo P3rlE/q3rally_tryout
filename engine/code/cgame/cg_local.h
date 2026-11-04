@@ -2204,6 +2204,7 @@ void CG_DrawInformation( void );
 //
 // cg_scoreboard.c
 //
+qboolean CG_IsRaceResults( void );
 qboolean CG_DrawOldScoreboard( void );
 // Q3Rally Code Start - removed
 // void CG_DrawTourneyScoreboard( void );

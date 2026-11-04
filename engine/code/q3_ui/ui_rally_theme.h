@@ -75,7 +75,7 @@ Copyright (C) 2002-2026 Q3Rally Team
 #define UI_FRONTEND_RADIUS             0 /* legacy renderer: use quiet edge styles */
 
 /* Component styles used by ui_rally_frontend.c. */
-#define UI_SHOWCASE_ACCENT { 1.00f, 0.33f, 0.00f, 1.00f }
+#define UI_SHOWCASE_ACCENT Q3RALLY_SHOWCASE_ACCENT_COLOR
 #define UI_SHOWCASE_SURFACE { 0.055f, 0.055f, 0.055f, 0.96f }
 
 #define UI_FRONTEND_STYLE_SURFACE      0
