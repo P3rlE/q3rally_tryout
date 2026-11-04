@@ -183,16 +183,7 @@ static void MainMenu_DrawNavItem( void *self ) {
 }
 
 static void MainMenu_DrawGarageAction( void *self ) {
-        menucommon_s *item = self;
-        qboolean focused = Menu_ItemAtCursor( item->parent ) == item;
-        vec4_t background, label = { 0.06f, 0.03f, 0.02f, 1.0f };
-        MainMenu_ColorWithAlpha( background, s_frontendAccent );
-        if ( focused ) background[1] = 0.55f;
-        label[3] *= s_main.visualAlpha;
-        UI_FillRect( item->left, item->top, item->right - item->left,
-                     item->bottom - item->top, background );
-        Frontend_DrawText( ( item->left + item->right ) / 2, item->top + 9,
-                           "OPEN GARAGE", UI_CENTER | UI_SMALLFONT, label );
+        Frontend_DrawShowcaseAction( self, "OPEN GARAGE", s_main.visualAlpha );
 }
 
 static void MainMenu_DrawProfileAction( void *self ) {
@@ -210,14 +201,15 @@ static void MainMenu_DrawProfileAction( void *self ) {
         navWidth = MainMenu_NavWidth();
         top = item->generic.y - 16;
 
-        Frontend_DrawCard( (int)navX, top, (int)navWidth, 82,
-                           s_main.visualAlpha, focus );
+        Frontend_DrawShowcaseFocus( (int)navX, top, (int)navWidth, 82,
+                                    s_main.visualAlpha, focus );
         MainMenu_ColorWithAlpha( textColor, focus ? s_frontendAccent : s_frontendText );
         MainMenu_ColorWithAlpha( mutedColor, s_frontendMuted );
 
-        Frontend_DrawStatusChip( (int)navX + 12, top + 10, "Profile",
-                                 focus ? s_frontendAccent : s_frontendStatus,
-                                 s_main.visualAlpha );
+        MainMenu_ColorWithAlpha( mutedColor, s_frontendAccent );
+        Frontend_DrawText( (int)navX + 16, top + 10, "DRIVER PROFILE",
+                           UI_LEFT | UI_SMALLFONT, mutedColor );
+        MainMenu_ColorWithAlpha( mutedColor, s_frontendMuted );
         Frontend_DrawText( (int)( navX + 30 ), top + 27, item->string,
                            UI_LEFT | UI_SMALLFONT | UI_DROPSHADOW,
                            textColor );

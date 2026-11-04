@@ -687,3 +687,40 @@ void Frontend_DrawShowcaseTitle( int x, int y, const char *section, const char *
     Frontend_DrawText( x, y, section, UI_LEFT | UI_SMALLFONT, accent );
     Frontend_DrawTextScaled( x, y + 15, title, UI_LEFT | UI_BIGFONT, 1.18f, text );
 }
+
+void Frontend_DrawShowcaseAction( const menucommon_s *item, const char *label, float alpha ) {
+    vec4_t background = UI_SHOWCASE_ACCENT;
+    vec4_t text = { 0.06f, 0.03f, 0.02f, 1.0f };
+    if ( Menu_ItemAtCursor( item->parent ) == item ) background[1] = 0.55f;
+    background[3] *= alpha;
+    text[3] *= alpha;
+    UI_FillRect( item->left, item->top, item->right - item->left,
+                 item->bottom - item->top, background );
+    Frontend_DrawText( ( item->left + item->right ) / 2,
+                       item->top + ( item->bottom - item->top - SMALLCHAR_HEIGHT ) / 2 + 1,
+                       label, UI_CENTER | UI_SMALLFONT, text );
+}
+
+void Frontend_DrawShowcaseFocus( int x, int y, int width, int height, float alpha, qboolean active ) {
+    vec4_t fill = UI_SHOWCASE_SURFACE;
+    vec4_t accent = UI_SHOWCASE_ACCENT;
+    if ( active ) {
+        fill[0] = 0.22f;
+        fill[1] = 0.11f;
+    }
+    fill[3] *= alpha;
+    accent[3] *= alpha;
+    UI_FillRect( x, y, width, height, fill );
+    if ( active ) UI_FillRect( x, y, 2, height, accent );
+}
+
+void Frontend_DrawShowcaseSecondary( const menucommon_s *item, const char *label, float alpha, qboolean active ) {
+    int width = item->right - item->left;
+    int height = item->bottom - item->top;
+    vec4_t color = UI_FRONTEND_COLOR_TEXT;
+    active = active || Menu_ItemAtCursor( item->parent ) == item;
+    Frontend_DrawShowcaseFocus( item->left, item->top, width, height, alpha, active );
+    color[3] *= alpha;
+    Frontend_DrawText( item->left + width / 2, item->top + ( height - SMALLCHAR_HEIGHT ) / 2 + 1,
+                       label, UI_CENTER | UI_SMALLFONT, color );
+}

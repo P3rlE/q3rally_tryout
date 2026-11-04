@@ -85,7 +85,7 @@ START SERVER MENU *****
 
 static vec4_t startServerTextColor = UI_FRONTEND_COLOR_TEXT;
 static vec4_t startServerMutedColor = UI_FRONTEND_COLOR_MUTED;
-static vec4_t startServerAccentColor = UI_FRONTEND_COLOR_ACCENT;
+static vec4_t startServerAccentColor = UI_SHOWCASE_ACCENT;
 
 
 typedef struct {
@@ -168,10 +168,11 @@ static void StartServer_DrawAction( void *self ) {
                 return;
         }
 
-        Frontend_DrawButton( button->generic.left, button->generic.top,
-                button->generic.right - button->generic.left,
-                button->generic.bottom - button->generic.top,
-                button->string, 1.0f, focus, UI_FRONTEND_TEXT_CENTER );
+        if ( button == &s_startserver.next ) {
+                Frontend_DrawShowcaseAction( &button->generic, "RACE SETUP", 1.0f );
+                return;
+        }
+        Frontend_DrawShowcaseSecondary( &button->generic, button->string, 1.0f, focus );
 }
 
 static void StartServer_DrawGametype( void *self ) {
@@ -192,6 +193,14 @@ static void StartServer_DrawGametype( void *self ) {
                 label, 1.0f, focus, UI_FRONTEND_TEXT_LEFT );
 }
 
+static qhandle_t StartServer_MapShot( const char *map ) {
+        char path[MAX_QPATH];
+        qhandle_t shader;
+        Com_sprintf( path, sizeof( path ), "levelshots/%s", map );
+        shader = trap_R_RegisterShaderNoMip( path );
+        return shader ? shader : trap_R_RegisterShaderNoMip( GAMESERVER_MISSING_MAP_SHOT );
+}
+
 static void StartServer_DrawMapList( void *self ) {
         menulist_s *list;
         int i;
@@ -210,6 +219,9 @@ static void StartServer_DrawMapList( void *self ) {
                 int index;
                 int y;
                 char name[64];
+                qhandle_t thumbnail;
+                qboolean selected;
+                vec4_t card = UI_SHOWCASE_SURFACE;
 
                 index = list->top + i;
                 if ( index < 0 || index >= s_startserver.nummaps ) {
@@ -217,12 +229,20 @@ static void StartServer_DrawMapList( void *self ) {
                 }
                 y = STARTSERVER_LIST_Y + i *
                         ( STARTSERVER_ROW_HEIGHT + STARTSERVER_ROW_GAP );
-                StartServer_FitText( name, sizeof( name ),
-                        s_startserver.maplistname[index], 220 );
-                Frontend_DrawNavButton( STARTSERVER_ROW_X, y,
-                        STARTSERVER_BUTTON_WIDTH, STARTSERVER_ROW_HEIGHT,
-                        name, 1.0f, index == list->curvalue,
-                        UI_FRONTEND_TEXT_LEFT );
+                selected = index == list->curvalue;
+                if ( selected ) {
+                        card[0] = 0.22f;
+                        card[1] = 0.11f;
+                }
+                UI_FillRect( STARTSERVER_ROW_X, y, STARTSERVER_BUTTON_WIDTH, STARTSERVER_ROW_HEIGHT, card );
+                if ( selected ) {
+                        UI_FillRect( STARTSERVER_ROW_X, y, 2, STARTSERVER_ROW_HEIGHT, startServerAccentColor );
+                }
+                thumbnail = StartServer_MapShot( s_startserver.maplist[index] );
+                if ( thumbnail ) UI_DrawHandlePic( STARTSERVER_ROW_X + 5, y + 2, 36, 20, thumbnail );
+                StartServer_FitText( name, sizeof( name ), s_startserver.maplistname[index], STARTSERVER_BUTTON_WIDTH - 54 );
+                Frontend_DrawText( STARTSERVER_ROW_X + 49, y + 8, name, UI_LEFT | UI_SMALLFONT,
+                                   selected ? startServerTextColor : startServerMutedColor );
         }
 
         /* More tracks than rows: show a scrollbar and a "first-last / total"
@@ -341,20 +361,18 @@ static void StartServer_Draw( void ) {
         Frontend_DrawPanel( STARTSERVER_FRAME_X, STARTSERVER_FRAME_Y,
                 STARTSERVER_FRAME_WIDTH, STARTSERVER_FRAME_HEIGHT, 1.0f,
                 UI_FRONTEND_STYLE_FRAME );
-        Frontend_DrawText( STARTSERVER_FRAME_X + 24, STARTSERVER_FRAME_Y + 24,
-                "Create server", UI_LEFT | UI_BIGFONT, startServerTextColor );
-        Frontend_DrawText( STARTSERVER_FRAME_X + 24, STARTSERVER_FRAME_Y + 48,
-                "Choose a game type and track", UI_LEFT | UI_SMALLFONT,
-                startServerMutedColor );
+        Frontend_DrawShowcaseTitle( STARTSERVER_FRAME_X + 24, STARTSERVER_FRAME_Y + 14,
+                s_startserver.multiplayer ? "03 / HOST ONLINE" : "03 / OFFLINE",
+                "CHOOSE A TRACK", 1.0f );
         Frontend_DrawStatusChip( STARTSERVER_FRAME_X + STARTSERVER_FRAME_WIDTH - 96,
-                STARTSERVER_FRAME_Y + 26, "Host", startServerAccentColor, 1.0f );
+                STARTSERVER_FRAME_Y + 26, s_startserver.multiplayer ? "Host" : "Local",
+                startServerAccentColor, 1.0f );
 
         Frontend_DrawCard( STARTSERVER_LIST_X, STARTSERVER_LIST_Y - 22,
                 STARTSERVER_LIST_WIDTH, STARTSERVER_LIST_HEIGHT + 22,
                 1.0f, qfalse );
-        Frontend_DrawCard( STARTSERVER_DETAIL_X, STARTSERVER_DETAIL_Y,
-                STARTSERVER_DETAIL_WIDTH, STARTSERVER_DETAIL_HEIGHT,
-                1.0f, qfalse );
+        Frontend_DrawShowcasePanel( STARTSERVER_DETAIL_X, STARTSERVER_DETAIL_Y,
+                STARTSERVER_DETAIL_WIDTH, STARTSERVER_DETAIL_HEIGHT, 1.0f );
         Frontend_DrawText( STARTSERVER_LIST_X + 16, STARTSERVER_LIST_Y - 20,
                 "Available tracks", UI_LEFT | UI_SMALLFONT,
                 startServerMutedColor );
@@ -366,13 +384,7 @@ static void StartServer_Draw( void ) {
 
         if ( s_startserver.nummaps > 0 && s_startserver.currentmap >= 0 &&
              s_startserver.currentmap < s_startserver.nummaps ) {
-                Com_sprintf( imageName, sizeof( imageName ), "levelshots/%s",
-                        s_startserver.maplist[s_startserver.currentmap] );
-                mapShader = trap_R_RegisterShaderNoMip( imageName );
-                if ( !mapShader ) {
-                        mapShader = trap_R_RegisterShaderNoMip(
-                                GAMESERVER_MISSING_MAP_SHOT );
-                }
+                mapShader = StartServer_MapShot( s_startserver.maplist[s_startserver.currentmap] );
                 if ( mapShader ) {
                         UI_DrawHandlePic( STARTSERVER_DETAIL_X + 16,
                                 STARTSERVER_DETAIL_Y + 42, 224, 126,
@@ -383,7 +395,7 @@ static void StartServer_Draw( void ) {
                         STARTSERVER_DETAIL_WIDTH - 32 );
                 Frontend_DrawText( STARTSERVER_DETAIL_X + 16,
                         STARTSERVER_DETAIL_Y + 188, imageName,
-                        UI_LEFT | UI_BIGFONT, startServerTextColor );
+                        UI_LEFT | UI_SMALLFONT, startServerTextColor );
                 for ( i = 0; i < s_startserver.numstats && i < 5; i++ ) {
                 Frontend_DrawText( STARTSERVER_DETAIL_X + 16,
                                 STARTSERVER_DETAIL_Y + 216 + i * 18,
@@ -1293,7 +1305,7 @@ SERVER OPTIONS MENU *****
 
 static vec4_t serverOptionsTextColor = UI_FRONTEND_COLOR_TEXT;
 static vec4_t serverOptionsMutedColor = UI_FRONTEND_COLOR_MUTED;
-static vec4_t serverOptionsAccentColor = UI_FRONTEND_COLOR_ACCENT;
+static vec4_t serverOptionsAccentColor = UI_SHOWCASE_ACCENT;
 
 
 typedef struct {
@@ -1336,6 +1348,7 @@ typedef struct {
 	int					gametype;
 	char				mapnamebuffer[32];
 	char				playerNameBuffers[PLAYER_SLOTS][16];
+	qhandle_t humanAvatar;
 
 
 	qboolean			newBot;
@@ -2419,6 +2432,8 @@ static void ServerOptions_DrawToggle( void *self ) {
                 toggle->curvalue ? "On" : "Off" );
 }
 
+static void ServerPlayerIcon( const char *modelAndSkin, char *iconName, int iconNameMaxSize );
+
 static void ServerOptions_DrawPlayerName( void *self ) {
         menutext_s *nameItem;
         int slot;
@@ -2426,6 +2441,7 @@ static void ServerOptions_DrawPlayerName( void *self ) {
         qboolean focus;
         char name[32];
         char type[16];
+        qhandle_t portrait = 0;
 
         nameItem = (menutext_s *)self;
         slot = nameItem->generic.id;
@@ -2454,16 +2470,28 @@ static void ServerOptions_DrawPlayerName( void *self ) {
                 Q_strncpyz( type, "Open", sizeof( type ) );
         }
 
-        Q_strncpyz( name, s_serveroptions.playerNameBuffers[slot], sizeof( name ) );
-        if ( !name[0] ) {
-                Q_strncpyz( name, "Open slot", sizeof( name ) );
+        StartServer_FitText( name, sizeof( name ),
+                s_serveroptions.playerNameBuffers[slot][0] ? s_serveroptions.playerNameBuffers[slot] : "Open slot", 108 );
+        if ( slot == 0 && !s_serveroptions.dedicated.curvalue ) {
+                portrait = s_serveroptions.humanAvatar;
+        } else if ( slot > 0 && s_serveroptions.playerType[slot].curvalue == 1 &&
+                    s_serveroptions.playerNameBuffers[slot][0] ) {
+                const char *info = UI_GetBotInfoByName( s_serveroptions.playerNameBuffers[slot] );
+                if ( info ) {
+                        char path[MAX_QPATH];
+                        ServerPlayerIcon( Info_ValueForKey( info, "model" ), path, sizeof( path ) );
+                        portrait = trap_R_RegisterShaderNoMip( path );
+                }
         }
-        StartServer_FitText( name, sizeof( name ), name, 128 );
+        if ( portrait ) {
+                trap_R_SetColor( NULL );
+                UI_DrawHandlePic( SERVEROPT_PLAYER_ROW_X + 3, y + 2, 16, 16, portrait );
+        }
 
-        Frontend_DrawText( SERVEROPT_PLAYER_ROW_X + 8, y + 3, type,
+        Frontend_DrawText( SERVEROPT_PLAYER_ROW_X + 26, y + 3, type,
                 UI_LEFT | UI_SMALLFONT,
                 focus ? serverOptionsAccentColor : serverOptionsMutedColor );
-        Frontend_DrawText( SERVEROPT_PLAYER_ROW_X + 58, y + 3, name,
+        Frontend_DrawText( SERVEROPT_PLAYER_ROW_X + 76, y + 3, name,
                 UI_LEFT | UI_SMALLFONT, serverOptionsTextColor );
 }
 
@@ -2514,10 +2542,11 @@ static void ServerOptions_DrawAction( void *self ) {
 
         button = (menutext_s *)self;
         focus = ( Menu_ItemAtCursor( button->generic.parent ) == button );
-        Frontend_DrawButton( button->generic.left, button->generic.top,
-                button->generic.right - button->generic.left,
-                button->generic.bottom - button->generic.top,
-                button->string, 1.0f, focus, UI_FRONTEND_TEXT_CENTER );
+        if ( button == &s_serveroptions.go ) {
+                Frontend_DrawShowcaseAction( &button->generic, "START RACE", 1.0f );
+                return;
+        }
+        Frontend_DrawShowcaseSecondary( &button->generic, button->string, 1.0f, focus );
 }
 
 static void ServerOptions_LayoutFrontend( void ) {
@@ -2546,7 +2575,7 @@ static void ServerOptions_LayoutFrontend( void ) {
                         ( SERVEROPT_PLAYER_ROW_HEIGHT + SERVEROPT_PLAYER_ROW_GAP );
 
                 s_serveroptions.playerName[slot].generic.left =
-                        SERVEROPT_PLAYER_ROW_X + 54;
+                        SERVEROPT_PLAYER_ROW_X + 72;
                 s_serveroptions.playerName[slot].generic.top = y;
                 s_serveroptions.playerName[slot].generic.right =
                         SERVEROPT_PLAYER_ROW_X + 190;
@@ -2559,10 +2588,10 @@ static void ServerOptions_LayoutFrontend( void ) {
                         ServerOptions_DrawPlayerName;
 
                 s_serveroptions.playerType[slot].generic.left =
-                        SERVEROPT_PLAYER_ROW_X + 4;
+                        SERVEROPT_PLAYER_ROW_X + 22;
                 s_serveroptions.playerType[slot].generic.top = y;
                 s_serveroptions.playerType[slot].generic.right =
-                        SERVEROPT_PLAYER_ROW_X + 52;
+                        SERVEROPT_PLAYER_ROW_X + 70;
                 s_serveroptions.playerType[slot].generic.bottom =
                         y + SERVEROPT_PLAYER_ROW_HEIGHT;
                 s_serveroptions.playerType[slot].generic.x =
@@ -2657,21 +2686,27 @@ static void ServerOptions_LayoutFrontend( void ) {
 static void ServerOptions_Draw( void ) {
         vec4_t scrimColor = UI_FRONTEND_COLOR_SCRIM;
         char subtitle[128];
+        char fittedSubtitle[128];
         qhandle_t mapShader;
+        const char *arena = UI_GetArenaInfoByMap( s_serveroptions.mapnamebuffer );
+        const char *track = arena ? Info_ValueForKey( arena, "longname" ) : "";
+        const char *optionsLabel = s_serveroptions.multiplayer ? "Server options" : "Race options";
 
         Frontend_DrawBackground( scrimColor );
         Frontend_DrawPanel( SERVEROPT_FRAME_X, SERVEROPT_FRAME_Y,
                 SERVEROPT_FRAME_WIDTH, SERVEROPT_FRAME_HEIGHT, 1.0f,
                 UI_FRONTEND_STYLE_FRAME );
-        Frontend_DrawText( SERVEROPT_FRAME_X + 24, SERVEROPT_FRAME_Y + 24,
-                "Host race", UI_LEFT | UI_BIGFONT, serverOptionsTextColor );
-        Com_sprintf( subtitle, sizeof( subtitle ), "%s  ·  %s",
-                s_serveroptions.mapnamebuffer,
+        Frontend_DrawShowcaseTitle( SERVEROPT_FRAME_X + 24, SERVEROPT_FRAME_Y + 9,
+                s_serveroptions.multiplayer ? "04 / HOST ONLINE" : "04 / OFFLINE",
+                "RACE SETUP", 1.0f );
+        Com_sprintf( subtitle, sizeof( subtitle ), "%s  /  %s",
+                track[0] ? track : s_serveroptions.mapnamebuffer,
                 gametype_items[gametype_remap2[s_serveroptions.gametype]] );
+        StartServer_FitText( fittedSubtitle, sizeof( fittedSubtitle ), subtitle, SERVEROPT_FRAME_WIDTH - 48 );
         Frontend_DrawText( SERVEROPT_FRAME_X + 24, SERVEROPT_FRAME_Y + 48,
-                subtitle, UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
+                fittedSubtitle, UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
         Frontend_DrawStatusChip( SERVEROPT_FRAME_X + 310,
-                SERVEROPT_FRAME_Y + 26, "Server options", serverOptionsAccentColor,
+                SERVEROPT_FRAME_Y + 26, optionsLabel, serverOptionsAccentColor,
                 1.0f );
 
         mapShader = 0;
@@ -2685,12 +2720,12 @@ static void ServerOptions_Draw( void ) {
         }
         Frontend_DrawCard( SERVEROPT_PLAYER_X, SERVEROPT_PLAYER_Y,
                 SERVEROPT_PLAYER_WIDTH, SERVEROPT_PLAYER_HEIGHT, 1.0f, qfalse );
-        Frontend_DrawCard( SERVEROPT_OPTION_X, SERVEROPT_OPTION_Y,
-                SERVEROPT_OPTION_WIDTH, SERVEROPT_OPTION_HEIGHT, 1.0f, qfalse );
+        Frontend_DrawShowcasePanel( SERVEROPT_OPTION_X, SERVEROPT_OPTION_Y,
+                SERVEROPT_OPTION_WIDTH, SERVEROPT_OPTION_HEIGHT, 1.0f );
         Frontend_DrawText( SERVEROPT_PLAYER_X + 16, SERVEROPT_PLAYER_Y + 16,
                 "Players", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
         Frontend_DrawText( SERVEROPT_OPTION_X + 16, SERVEROPT_OPTION_Y + 16,
-                "Server options", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
+                optionsLabel, UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
         Frontend_DrawText( SERVEROPT_OPTION_X + 16, SERVEROPT_OPTION_Y + 48,
                 "Track preview", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
         if ( mapShader ) {
@@ -2724,6 +2759,12 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 	
 
 	memset( &s_serveroptions, 0 ,sizeof(serveroptions_t) );
+	{
+		profile_info_t profile;
+		if ( UI_Profile_ReadData( UI_Profile_GetActiveName(), &profile, NULL ) && profile.avatar[0] ) {
+			s_serveroptions.humanAvatar = trap_R_RegisterShaderNoMip( profile.avatar );
+		}
+	}
 	s_serveroptions.multiplayer = multiplayer;
 	// Store the raw GT_ value so that comparisons like (gametype >= GT_TEAM)
 	// work correctly. gametype_remap2 now covers the full GT_ range 0..GT_KOTH.
