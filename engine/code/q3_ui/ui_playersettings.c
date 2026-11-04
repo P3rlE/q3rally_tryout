@@ -1578,52 +1578,21 @@ PlayerSettings_DrawCustomize
 =================
 */
 static void PlayerSettings_DrawCustomize( void *self ) {
-	menulist_s		*item;
-	qboolean		focus;
-
-	item = (menulist_s *)self;
-	focus = ( Menu_ItemAtCursor( item->generic.parent ) == &item->generic );
-	Frontend_DrawButtonFocused( item->generic.left, item->generic.top,
-	                     item->generic.right - item->generic.left,
-	                     item->generic.bottom - item->generic.top,
-	                     PlayerSettings_CarLocked() ? "Locked secret car" : "Customize vehicle",
-	                     uis.tFrac, focus, UI_CENTER );
+	Frontend_DrawShowcaseSecondary( self,
+		PlayerSettings_CarLocked() ? "Locked secret car" : "Customize vehicle", uis.tFrac, qfalse );
 }
 
 static void PlayerSettings_DrawPlateItem( void *self ) {
-	menutext_s *item;
-	qboolean focus;
-
-	item = (menutext_s *)self;
-	focus = ( Menu_ItemAtCursor( item->generic.parent ) == &item->generic );
-	Frontend_DrawButtonFocused( item->generic.left, item->generic.top,
-	                     item->generic.right - item->generic.left,
-	                     item->generic.bottom - item->generic.top,
-	                     "Change plate", uis.tFrac, focus, UI_CENTER );
+	Frontend_DrawShowcaseSecondary( self, "Change plate", uis.tFrac, qfalse );
 }
 
 static void PlayerSettings_DrawBackItem( void *self ) {
-	menutext_s *item;
-	qboolean focus;
-
-	item = (menutext_s *)self;
-	focus = ( Menu_ItemAtCursor( item->generic.parent ) == &item->generic );
-	Frontend_DrawButtonFocused( item->generic.left, item->generic.top,
-	                     item->generic.right - item->generic.left,
-	                     item->generic.bottom - item->generic.top,
-	                     "Back", uis.tFrac, focus, UI_CENTER );
+	Frontend_DrawShowcaseSecondary( self, "Back", uis.tFrac, qfalse );
 }
 
 static void PlayerSettings_DrawVehicleControl( void *self ) {
-	menubitmap_s *item;
-	qboolean focus;
-
-	item = (menubitmap_s *)self;
-	focus = ( Menu_ItemAtCursor( item->generic.parent ) == &item->generic );
-	Frontend_DrawButtonFocused( item->generic.left, item->generic.top,
-	                     item->generic.right - item->generic.left,
-	                     item->generic.bottom - item->generic.top,
-	                     item->generic.id == ID_LEFT ? "<" : ">", uis.tFrac, focus, UI_CENTER );
+	menucommon_s *item = self;
+	Frontend_DrawShowcaseSecondary( item, item->id == ID_LEFT ? "<" : ">", uis.tFrac, qfalse );
 }
 
 static void PlayerSettings_DrawFavoriteButton( void *self ) {
@@ -1654,8 +1623,7 @@ static void PlayerSettings_DrawFavoriteButton( void *self ) {
 		return;
 	}
 
-	Frontend_DrawPanel( x, y, w, h, uis.tFrac,
-	                    ( focus || hovered ) ? UI_FRONTEND_STYLE_ACTIVE : UI_FRONTEND_STYLE_CARD );
+	Frontend_DrawShowcaseFocus( x, y, w, h, uis.tFrac, focus || hovered );
 	icon = s_playersettings.favIcons[slot][0] ?
 	       trap_R_RegisterShaderNoMip( s_playersettings.favIcons[slot] ) : 0;
 	if ( icon ) {
@@ -1699,7 +1667,7 @@ static void PlayerSettings_DrawSetupRow( void *self ) {
 	hovered = UI_CursorInRect( x, y, w, h );
 
 	if ( focus || hovered ) {
-		Frontend_DrawPanel( x, y, w, h, uis.tFrac, UI_FRONTEND_STYLE_ACTIVE );
+		Frontend_DrawShowcaseFocus( x, y, w, h, uis.tFrac, qtrue );
 	}
 	Vector4Copy( playerSettingsMutedColor, line );
 	line[3] = 0.3f * uis.tFrac;
@@ -1923,6 +1891,10 @@ static void PlayerSettings_DrawTabItem( void *self ) {
         focus = ( Menu_ItemAtCursor( tab->generic.parent ) == &tab->generic );
         selected = ( s_playersettings.currentTab == PlayerSettings_TabFromId( tab->generic.id ) );
 
+        if ( s_playersettings.currentTab == TAB_VEHICLE ) {
+                Frontend_DrawShowcaseSecondary( &tab->generic, tab->string, uis.tFrac, selected );
+                return;
+        }
         Frontend_DrawNavButton( tab->generic.left, tab->generic.top,
                                 PLAYERSETTINGS_TAB_WIDTH,
                                 PLAYERSETTINGS_TAB_HEIGHT,
@@ -4148,6 +4120,7 @@ static void PlayerSettings_UpdateModel( void )
 	
 	VectorClear( viewangles );
 	VectorClear( moveangles );
+	moveangles[YAW] = 135.0f;
 
 	trap_Cvar_VariableStringBuffer( "plate", plate, sizeof( plate ) );
 	UI_PlayerInfo_SetModel( &s_playersettings.playerinfo, s_playersettings.modelskin, s_playersettings.rimskin, s_playersettings.headskin, plate);

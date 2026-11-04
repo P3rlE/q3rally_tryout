@@ -700,3 +700,27 @@ void Frontend_DrawShowcaseAction( const menucommon_s *item, const char *label, f
                        item->top + ( item->bottom - item->top - SMALLCHAR_HEIGHT ) / 2 + 1,
                        label, UI_CENTER | UI_SMALLFONT, text );
 }
+
+void Frontend_DrawShowcaseFocus( int x, int y, int width, int height, float alpha, qboolean active ) {
+    vec4_t fill = UI_SHOWCASE_SURFACE;
+    vec4_t accent = UI_SHOWCASE_ACCENT;
+    if ( active ) {
+        fill[0] = 0.22f;
+        fill[1] = 0.11f;
+    }
+    fill[3] *= alpha;
+    accent[3] *= alpha;
+    UI_FillRect( x, y, width, height, fill );
+    if ( active ) UI_FillRect( x, y, 2, height, accent );
+}
+
+void Frontend_DrawShowcaseSecondary( const menucommon_s *item, const char *label, float alpha, qboolean active ) {
+    int width = item->right - item->left;
+    int height = item->bottom - item->top;
+    vec4_t color = UI_FRONTEND_COLOR_TEXT;
+    active = active || Menu_ItemAtCursor( item->parent ) == item;
+    Frontend_DrawShowcaseFocus( item->left, item->top, width, height, alpha, active );
+    color[3] *= alpha;
+    Frontend_DrawText( item->left + width / 2, item->top + ( height - SMALLCHAR_HEIGHT ) / 2 + 1,
+                       label, UI_CENTER | UI_SMALLFONT, color );
+}

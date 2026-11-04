@@ -172,10 +172,7 @@ static void StartServer_DrawAction( void *self ) {
                 Frontend_DrawShowcaseAction( &button->generic, "RACE SETUP", 1.0f );
                 return;
         }
-        Frontend_DrawButton( button->generic.left, button->generic.top,
-                button->generic.right - button->generic.left,
-                button->generic.bottom - button->generic.top,
-                button->string, 1.0f, focus, UI_FRONTEND_TEXT_CENTER );
+        Frontend_DrawShowcaseSecondary( &button->generic, button->string, 1.0f, focus );
 }
 
 static void StartServer_DrawGametype( void *self ) {
@@ -1351,6 +1348,7 @@ typedef struct {
 	int					gametype;
 	char				mapnamebuffer[32];
 	char				playerNameBuffers[PLAYER_SLOTS][16];
+	qhandle_t humanAvatar;
 
 
 	qboolean			newBot;
@@ -2434,6 +2432,8 @@ static void ServerOptions_DrawToggle( void *self ) {
                 toggle->curvalue ? "On" : "Off" );
 }
 
+static void ServerPlayerIcon( const char *modelAndSkin, char *iconName, int iconNameMaxSize );
+
 static void ServerOptions_DrawPlayerName( void *self ) {
         menutext_s *nameItem;
         int slot;
@@ -2441,6 +2441,7 @@ static void ServerOptions_DrawPlayerName( void *self ) {
         qboolean focus;
         char name[32];
         char type[16];
+        qhandle_t portrait = 0;
 
         nameItem = (menutext_s *)self;
         slot = nameItem->generic.id;
@@ -2469,16 +2470,28 @@ static void ServerOptions_DrawPlayerName( void *self ) {
                 Q_strncpyz( type, "Open", sizeof( type ) );
         }
 
-        Q_strncpyz( name, s_serveroptions.playerNameBuffers[slot], sizeof( name ) );
-        if ( !name[0] ) {
-                Q_strncpyz( name, "Open slot", sizeof( name ) );
+        StartServer_FitText( name, sizeof( name ),
+                s_serveroptions.playerNameBuffers[slot][0] ? s_serveroptions.playerNameBuffers[slot] : "Open slot", 108 );
+        if ( slot == 0 && !s_serveroptions.dedicated.curvalue ) {
+                portrait = s_serveroptions.humanAvatar;
+        } else if ( slot > 0 && s_serveroptions.playerType[slot].curvalue == 1 &&
+                    s_serveroptions.playerNameBuffers[slot][0] ) {
+                const char *info = UI_GetBotInfoByName( s_serveroptions.playerNameBuffers[slot] );
+                if ( info ) {
+                        char path[MAX_QPATH];
+                        ServerPlayerIcon( Info_ValueForKey( info, "model" ), path, sizeof( path ) );
+                        portrait = trap_R_RegisterShaderNoMip( path );
+                }
         }
-        StartServer_FitText( name, sizeof( name ), name, 128 );
+        if ( portrait ) {
+                trap_R_SetColor( NULL );
+                UI_DrawHandlePic( SERVEROPT_PLAYER_ROW_X + 3, y + 2, 16, 16, portrait );
+        }
 
-        Frontend_DrawText( SERVEROPT_PLAYER_ROW_X + 8, y + 3, type,
+        Frontend_DrawText( SERVEROPT_PLAYER_ROW_X + 26, y + 3, type,
                 UI_LEFT | UI_SMALLFONT,
                 focus ? serverOptionsAccentColor : serverOptionsMutedColor );
-        Frontend_DrawText( SERVEROPT_PLAYER_ROW_X + 58, y + 3, name,
+        Frontend_DrawText( SERVEROPT_PLAYER_ROW_X + 76, y + 3, name,
                 UI_LEFT | UI_SMALLFONT, serverOptionsTextColor );
 }
 
@@ -2533,10 +2546,7 @@ static void ServerOptions_DrawAction( void *self ) {
                 Frontend_DrawShowcaseAction( &button->generic, "START RACE", 1.0f );
                 return;
         }
-        Frontend_DrawButton( button->generic.left, button->generic.top,
-                button->generic.right - button->generic.left,
-                button->generic.bottom - button->generic.top,
-                button->string, 1.0f, focus, UI_FRONTEND_TEXT_CENTER );
+        Frontend_DrawShowcaseSecondary( &button->generic, button->string, 1.0f, focus );
 }
 
 static void ServerOptions_LayoutFrontend( void ) {
@@ -2565,7 +2575,7 @@ static void ServerOptions_LayoutFrontend( void ) {
                         ( SERVEROPT_PLAYER_ROW_HEIGHT + SERVEROPT_PLAYER_ROW_GAP );
 
                 s_serveroptions.playerName[slot].generic.left =
-                        SERVEROPT_PLAYER_ROW_X + 54;
+                        SERVEROPT_PLAYER_ROW_X + 72;
                 s_serveroptions.playerName[slot].generic.top = y;
                 s_serveroptions.playerName[slot].generic.right =
                         SERVEROPT_PLAYER_ROW_X + 190;
@@ -2578,10 +2588,10 @@ static void ServerOptions_LayoutFrontend( void ) {
                         ServerOptions_DrawPlayerName;
 
                 s_serveroptions.playerType[slot].generic.left =
-                        SERVEROPT_PLAYER_ROW_X + 4;
+                        SERVEROPT_PLAYER_ROW_X + 22;
                 s_serveroptions.playerType[slot].generic.top = y;
                 s_serveroptions.playerType[slot].generic.right =
-                        SERVEROPT_PLAYER_ROW_X + 52;
+                        SERVEROPT_PLAYER_ROW_X + 70;
                 s_serveroptions.playerType[slot].generic.bottom =
                         y + SERVEROPT_PLAYER_ROW_HEIGHT;
                 s_serveroptions.playerType[slot].generic.x =
@@ -2749,6 +2759,12 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 	
 
 	memset( &s_serveroptions, 0 ,sizeof(serveroptions_t) );
+	{
+		profile_info_t profile;
+		if ( UI_Profile_ReadData( UI_Profile_GetActiveName(), &profile, NULL ) && profile.avatar[0] ) {
+			s_serveroptions.humanAvatar = trap_R_RegisterShaderNoMip( profile.avatar );
+		}
+	}
 	s_serveroptions.multiplayer = multiplayer;
 	// Store the raw GT_ value so that comparisons like (gametype >= GT_TEAM)
 	// work correctly. gametype_remap2 now covers the full GT_ range 0..GT_KOTH.

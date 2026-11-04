@@ -201,14 +201,15 @@ static void MainMenu_DrawProfileAction( void *self ) {
         navWidth = MainMenu_NavWidth();
         top = item->generic.y - 16;
 
-        Frontend_DrawCard( (int)navX, top, (int)navWidth, 82,
-                           s_main.visualAlpha, focus );
+        Frontend_DrawShowcaseFocus( (int)navX, top, (int)navWidth, 82,
+                                    s_main.visualAlpha, focus );
         MainMenu_ColorWithAlpha( textColor, focus ? s_frontendAccent : s_frontendText );
         MainMenu_ColorWithAlpha( mutedColor, s_frontendMuted );
 
-        Frontend_DrawStatusChip( (int)navX + 12, top + 10, "Profile",
-                                 focus ? s_frontendAccent : s_frontendStatus,
-                                 s_main.visualAlpha );
+        MainMenu_ColorWithAlpha( mutedColor, s_frontendAccent );
+        Frontend_DrawText( (int)navX + 16, top + 10, "DRIVER PROFILE",
+                           UI_LEFT | UI_SMALLFONT, mutedColor );
+        MainMenu_ColorWithAlpha( mutedColor, s_frontendMuted );
         Frontend_DrawText( (int)( navX + 30 ), top + 27, item->string,
                            UI_LEFT | UI_SMALLFONT | UI_DROPSHADOW,
                            textColor );

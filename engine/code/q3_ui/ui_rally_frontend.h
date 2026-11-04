@@ -21,6 +21,8 @@ void Frontend_DrawHeroSurface( int x, int y, int width, int height, float alpha 
 void Frontend_DrawShowcasePanel( int x, int y, int width, int height, float alpha );
 void Frontend_DrawShowcaseTitle( int x, int y, const char *section, const char *title, float alpha );
 void Frontend_DrawShowcaseAction( const menucommon_s *item, const char *label, float alpha );
+void Frontend_DrawShowcaseFocus( int x, int y, int width, int height, float alpha, qboolean active );
+void Frontend_DrawShowcaseSecondary( const menucommon_s *item, const char *label, float alpha, qboolean active );
 void Frontend_FitText( char *out, int outSize, const char *text, int maxWidth,
                        int style );
 int Frontend_DrawTextWrapped( int x, int y, int maxWidth, int lineHeight,
