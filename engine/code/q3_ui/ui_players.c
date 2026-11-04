@@ -1043,7 +1043,8 @@ static void UI_AddWheels( playerInfo_t *pi, refEntity_t *body, float angle )
 UI_DrawPlayer
 ===============
 */
-void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int time ) {
+static void UI_DrawPlayerPreview( float x, float y, float w, float h, playerInfo_t *pi, int time, qboolean showroom ) {
+	qboolean mainMenu = uis.mainMenu && !showroom;
 	refdef_t		refdef;
 // STONELANCE
 	refEntity_t		body;
@@ -1080,7 +1081,7 @@ void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int ti
 	/* The redesigned main menu owns its preview rotation.  Keep the active
 	 * vehicle fixed between drags; other model previews retain the legacy
 	 * spinView behaviour below. */
-	if ( !uis.mainMenu ) {
+	if ( !mainMenu && !showroom ) {
 		if (uis.spinView){
 			deltaYaw = ((uis.cursorx - uis.cursorpx) / (uis.frametime / 1000.0f)) / 5.0f;
 			deltaRoll = ((uis.cursory - uis.cursorpy) / (uis.frametime / 1000.0f)) / 10.0f;
@@ -1146,7 +1147,7 @@ void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int ti
 	AxisClear( refdef.viewaxis );
 
 // STONELANCE
-	if (uis.mainMenu){
+	if (mainMenu){
 		VectorClear(angles);
 		angles[PITCH] = 20;
 		AnglesToAxis(angles, refdef.viewaxis);
@@ -1187,7 +1188,7 @@ void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int ti
 	origin[1] = 0.5 * ( mins[1] + maxs[1] );
 	origin[2] = -0.5 * ( mins[2] + maxs[2] );
 
-	if (uis.mainMenu){
+	if (mainMenu){
 		origin[2] = 10;
 	}
 
@@ -1198,7 +1199,7 @@ void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int ti
 		 * needs.  Large boxes keep the classic distance of 96. */
 		float	dist = 96.0f;
 
-		if ( !uis.mainMenu && pi->bodyModel ) {
+		if ( !mainMenu && pi->bodyModel ) {
 			vec3_t	bmins, bmaxs;
 			float	tx, ty, a, need;
 			int		k, c;
@@ -2025,6 +2026,14 @@ UI_PlayerInfo_SetModel
 */
 // STONELANCE
 // void UI_PlayerInfo_SetModel( playerInfo_t *pi, const char *model ) {
+void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int time ) {
+	UI_DrawPlayerPreview( x, y, w, h, pi, time, qfalse );
+}
+
+void UI_DrawShowroomPlayer( float x, float y, float w, float h, playerInfo_t *pi, int time ) {
+	UI_DrawPlayerPreview( x, y, w, h, pi, time, qtrue );
+}
+
 void UI_PlayerInfo_SetModel( playerInfo_t *pi, const char *model, const char *rim, const char *head, const char *plate ) {
 // END
 	memset( pi, 0, sizeof(*pi) );

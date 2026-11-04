@@ -96,7 +96,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define PLAYERSETTINGS_FRAME_HEIGHT	440
 #define PLAYERSETTINGS_TAB_WIDTH		128
 #define PLAYERSETTINGS_TAB_GAP		4
-#define PLAYERSETTINGS_TAB_TOP		88
+#define PLAYERSETTINGS_TAB_TOP		80
 #define PLAYERSETTINGS_TAB_HEIGHT	26
 #define PLAYERSETTINGS_TAB_TEXT_OFFSET	5
 #define PLAYERSETTINGS_CONTENT_TOP	( PLAYERSETTINGS_TAB_TOP + PLAYERSETTINGS_TAB_HEIGHT + 12 )
@@ -135,7 +135,7 @@ static int PlayerSettings_GarageInset( void ) {
 #define VEHICLE_SHOW_W			( 344 + 2 * PlayerSettings_GarageInset() )
 #define VEHICLE_SETUP_X			( 408 + PlayerSettings_GarageInset() )
 #define VEHICLE_SETUP_W			184
-#define VEHICLE_CARD_Y			126
+#define VEHICLE_CARD_Y			118
 #define VEHICLE_CARD_H			294
 #define VEHICLE_PREVIEW_X		( VEHICLE_SHOW_X + 8 )
 #define VEHICLE_PREVIEW_Y		( VEHICLE_CARD_Y + 30 )
@@ -525,6 +525,8 @@ typedef struct {
 	int					current_fx;
 	char				playerModel[MAX_QPATH];
 	int					currentTab;
+	qboolean vehicleDragging;
+	int vehicleDragX;
 	profile_info_t	profileInfo;
 	qhandle_t	avatarShader;
 	qboolean	avatarShaderInitialized;
@@ -4154,7 +4156,16 @@ static void PlayerSettings_DrawPlayer( void *self ) {
 */
 // END
 	b = (menubitmap_s*) self;
-	UI_DrawPlayer( b->generic.x, b->generic.y, b->width, b->height, &s_playersettings.playerinfo, uis.realtime );
+	if ( !trap_Key_IsDown( K_MOUSE1 ) ) {
+		s_playersettings.vehicleDragging = qfalse;
+	}
+	if ( s_playersettings.vehicleDragging ) {
+		s_playersettings.playerinfo.moveAngles[YAW] = AngleNormalize360(
+			s_playersettings.playerinfo.moveAngles[YAW] + ( uis.cursorx - s_playersettings.vehicleDragX ) * 0.75f );
+		s_playersettings.vehicleDragX = uis.cursorx;
+	}
+	UI_DrawShowroomPlayer( b->generic.x, b->generic.y, b->width, b->height,
+	                       &s_playersettings.playerinfo, uis.realtime );
 	if ( PlayerSettings_CarLocked() ) {
 		PlayerSettings_DrawCarLock( b->generic.x, b->generic.y, b->width, b->height );
 	}
@@ -4469,6 +4480,13 @@ static sfxHandle_t PlayerSettings_MenuKey( int key ) {
 		return 0;
 // END
 	}
+if ( s_playersettings.currentTab == TAB_VEHICLE && key == K_MOUSE1 &&
+     uis.cursorx >= VEHICLE_PREVIEW_X && uis.cursorx < VEHICLE_PREVIEW_X + VEHICLE_PREVIEW_W &&
+     uis.cursory >= VEHICLE_PREVIEW_Y && uis.cursory < VEHICLE_PREVIEW_Y + VEHICLE_PREVIEW_H ) {
+	s_playersettings.vehicleDragging = qtrue;
+	s_playersettings.vehicleDragX = uis.cursorx;
+	return menu_null_sound;
+}
 if ( s_playersettings.currentTab == TAB_STATS ) {
 const playersettingsPaginationInfo_t *info;
 
