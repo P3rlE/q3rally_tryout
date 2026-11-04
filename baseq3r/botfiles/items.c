@@ -206,7 +206,7 @@ maxs		{13,13,13}
 
 iteminfo "holdable_medkit"
 {
-name		"Medkit"
+name		"Repair Kit"
 		model		"models/powerups/holdable/repairkit.md3"
 modelindex	MODELINDEX_MEDKIT
 type		HEALTHI
