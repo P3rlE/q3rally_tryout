@@ -448,12 +448,6 @@ static void CG_DrawModernBackground(int x, int y, int width, int height,
     accentColor[1] = Q3RALLY_ACCENT_GREEN;
     accentColor[2] = Q3RALLY_ACCENT_BLUE;
     accentColor[3] = alpha;
-    if (isHeader && CG_IsRaceResults()) {
-        static const vec4_t resultsAccent = Q3RALLY_SHOWCASE_ACCENT_COLOR;
-        accentColor[0] = resultsAccent[0];
-        accentColor[1] = resultsAccent[1];
-        accentColor[2] = resultsAccent[2];
-    }
     if (isHeader) {
         bgColor[0] = 0.008f; bgColor[1] = 0.012f;
         bgColor[2] = 0.016f; bgColor[3] = alpha;
@@ -470,6 +464,9 @@ static void CG_DrawModernBackground(int x, int y, int width, int height,
     bgColor[3] = fillAlpha;
     
     CG_FillRect(x, y, width, height, bgColor);
+    if (CG_IsRaceResults()) {
+        return;
+    }
     if (isHeader) {
         CG_FillRect(x, y, width, MODERN_SB_BORDER_SIZE, accentColor);
     }
@@ -1391,7 +1388,7 @@ static int CG_DrawRacePodium(int y, int podium[3]) {
         top = y + rank * 9;
         CG_GetRankColor(rank + 1, accent);
         CG_FillRect(x[rank] - 80, top, 160, y + 109 - top, panel);
-        CG_FillRect(x[rank] - 80, top, 160, 2, accent);
+
         CG_DrawIngameString(x[rank], top + 6, va("%d", rank + 1),
                             UI_CENTER | UI_SMALLFONT, 0.8f, accent);
         if (ci->modelIcon) {
@@ -1405,6 +1402,66 @@ static int CG_DrawRacePodium(int y, int podium[3]) {
         CG_DrawIngameString(x[rank], top + 65, name, UI_CENTER | UI_SMALLFONT, 0.7f, colorWhite);
         CG_DrawIngameString(x[rank], top + 78, getStringForTimePrecise(time),
                             UI_CENTER | UI_SMALLFONT, 0.7f, accent);
+    }
+    return count;
+}
+
+/* Use the same team order and average times as the grouped standings. */
+static int CG_DrawTeamRacePodium(int y) {
+    static const vec4_t panel = { 0.09f, 0.09f, 0.09f, 1.0f };
+    static const int positions[3][3] = {
+        { 320, 0, 0 }, { 214, 426, 0 }, { 320, 148, 492 }
+    };
+    team_t teams[3];
+    int count = 0;
+    int i, j;
+
+    for (i = 1; i <= 4 && count < ARRAY_LEN(teams); i++) {
+        int team = GetTeamAtRank(i);
+        if (team >= TEAM_RED && team <= TEAM_YELLOW && cg.teamTimes[team - TEAM_RED] > 0) {
+            teams[count++] = team;
+        }
+    }
+
+    for (i = 0; i < count; i++) {
+        team_t team = teams[i];
+        int time = cg.teamTimes[team - TEAM_RED];
+        int rank = i + 1;
+        int x = positions[count - 1][i];
+        int top, drivers = 0, shown = 0, iconX;
+        vec4_t teamColor;
+
+        while (rank > 1 && time == cg.teamTimes[teams[rank - 2] - TEAM_RED]) {
+            rank--;
+        }
+        top = y + (rank - 1) * 9;
+        CG_GetModernTeamColor(team, teamColor);
+        CG_FillRect(x - 80, top, 160, y + 109 - top, panel);
+        CG_DrawIngameString(x, top + 6, va("%d  %s", rank, CG_GetTeamName(team)),
+                            UI_CENTER | UI_SMALLFONT, 0.8f, teamColor);
+
+        for (j = 0; j < cg.numScores; j++) {
+            if (cgs.clientinfo[cg.scores[j].client].team == team) {
+                drivers++;
+            }
+        }
+        iconX = x - 18 * (drivers > 4 ? 4 : drivers);
+        for (j = 0; j < cg.numScores && shown < 4; j++) {
+            const clientInfo_t *ci = &cgs.clientinfo[cg.scores[j].client];
+            if (ci->team != team) {
+                continue;
+            }
+            if (shown == 3 && drivers > 4) {
+                CG_DrawIngameString(iconX + 18, top + 38, va("+%d", drivers - shown),
+                                    UI_CENTER | UI_SMALLFONT, 0.8f, colorWhite);
+            } else if (ci->modelIcon) {
+                CG_DrawPic(iconX, top + 26, 36, 36, ci->modelIcon);
+            }
+            iconX += 36;
+            shown++;
+        }
+        CG_DrawIngameString(x, top + 74, va("AVG %s", getStringForTimePrecise(time)),
+                            UI_CENTER | UI_SMALLFONT, 0.75f, colorWhite);
     }
     return count;
 }
@@ -1429,6 +1486,7 @@ qboolean CG_DrawModernScoreboard(void) {
     qboolean raceResults = CG_IsRaceResults();
     int podium[3] = { -1, -1, -1 };
     int podiumCount = 0;
+    int teamPodiumCount = 0;
     int remainingScores;
 
     
@@ -1534,6 +1592,12 @@ qboolean CG_DrawModernScoreboard(void) {
             y += 116;
         }
     }
+    if (raceResults && cgs.gametype == GT_TEAM_RACING) {
+        teamPodiumCount = CG_DrawTeamRacePodium(y);
+        if (teamPodiumCount > 0) {
+            y += 116;
+        }
+    }
     remainingScores = cg.numScores - podiumCount;
     if (!remainingScores && podiumCount) {
         return qtrue;
@@ -1545,6 +1609,13 @@ qboolean CG_DrawModernScoreboard(void) {
     headerHeight = MODERN_SB_HEADER_HEIGHT + 4;
     rowSpacing = 2;
     availableHeight = SCREEN_HEIGHT - topMargin - bottomMargin - headerHeight;
+    if (teamPodiumCount > 0) {
+        for (i = 1; i <= 4; i++) {
+            if (GetTeamAtRank(i) > 0) {
+                availableHeight -= MODERN_SB_COMPACT_HEIGHT + 10;
+            }
+        }
+    }
     if (availableHeight < MODERN_SB_COMPACT_HEIGHT) {
         availableHeight = MODERN_SB_COMPACT_HEIGHT;
     }
