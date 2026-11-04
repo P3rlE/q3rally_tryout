@@ -78,6 +78,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ID_BIRTH_DAY		41
 #define ID_BIRTH_MONTH		42
 #define ID_BIRTH_YEAR		43
+#define ID_WEB_LINK		44
+#define ID_WEB_SYNC		45
 #define ID_AVATAR_IMPORT_PATH	50
 #define ID_AVATAR_IMPORT_CONFIRM	51
 #define ID_AVATAR_IMPORT_CANCEL	52
@@ -492,6 +494,8 @@ typedef struct {
 	menutext_s			back;
 	menutext_s			customize;
 	menutext_s			plate;
+	menutext_s			webLink;
+	menutext_s			webSync;
 	menutext_s			setupRows[3];	/* paint, wheels, driver */
 
 	menubitmap_s		left;
@@ -1588,6 +1592,11 @@ static void PlayerSettings_DrawPlateItem( void *self ) {
 	Frontend_DrawShowcaseSecondary( self, "Change plate", uis.tFrac, qfalse );
 }
 
+static void PlayerSettings_DrawWebAction( void *self ) {
+	menutext_s *item = self;
+	Frontend_DrawShowcaseSecondary( &item->generic, item->string, uis.tFrac, qfalse );
+}
+
 static void PlayerSettings_DrawBackItem( void *self ) {
 	Frontend_DrawShowcaseSecondary( self, "Back", uis.tFrac, qfalse );
 }
@@ -1709,11 +1718,37 @@ static void PlayerSettings_DrawSetupRow( void *self ) {
 
 static void PlayerSettings_UpdateModel( void );
 
+static qboolean PlayerSettings_WebAssetId( const char *id ) {
+	const char *p;
+	if ( !id[0] || strlen( id ) > 48 ) return qfalse;
+	for ( p = id; *p; p++ ) {
+		if ( !strchr( "abcdefghijklmnopqrstuvwxyz0123456789_-", *p ) ) return qfalse;
+	}
+	return qtrue;
+}
+
+static qboolean PlayerSettings_WebAssetExists( const char *path ) {
+	fileHandle_t handle;
+	int length = trap_FS_FOpenFile( path, &handle, FS_READ );
+	if ( handle ) trap_FS_FCloseFile( handle );
+	return length > 0 && handle != 0;
+}
+
+static void PlayerSettings_RequestWebSetup( qboolean link ) {
+	const char *vehicle = s_playersettings.modelname.string;
+	if ( link ) {
+		trap_Cvar_Set( "ui_webprofile_action", "link" );
+	} else if ( vehicle && PlayerSettings_WebAssetId( vehicle ) ) {
+		trap_Cvar_Set( "ui_webprofile_action", va( "sync:%s", vehicle ) );
+	} else {
+		trap_Cvar_Set( "ui_webprofile_status", "Choose a vehicle to sync" );
+	}
+}
+
 static void PlayerSettings_UpdateWebSetup( void ) {
-	char setup[MAX_CVAR_VALUE_STRING], uuid[37], model[MAX_QPATH], rim[MAX_QPATH];
+	char setup[MAX_CVAR_VALUE_STRING], uuid[37], vehicle[50], paint[50], rim[50], model[MAX_QPATH];
 	char *cursor;
 	const profile_info_t *profile;
-	int i;
 
 	trap_Cvar_VariableStringBuffer( "ui_webprofile_setup", setup, sizeof( setup ) );
 	if ( !setup[0] ) return;
@@ -1723,27 +1758,34 @@ static void PlayerSettings_UpdateWebSetup( void ) {
 	profile = UI_Profile_GetActiveInfo();
 	if ( !profile || Q_stricmp( uuid, profile->uuid ) ) return;
 
-	Com_sprintf( model, sizeof( model ), "alpine/%s", COM_Parse( &cursor ) );
+	Q_strncpyz( vehicle, COM_Parse( &cursor ), sizeof( vehicle ) );
+	Q_strncpyz( paint, COM_Parse( &cursor ), sizeof( paint ) );
 	Q_strncpyz( rim, COM_Parse( &cursor ), sizeof( rim ) );
-	/* The UI bridge must only apply supported Alpine combinations. */
-	if ( ( Q_stricmp( model, "alpine/blue" ) && Q_stricmp( model, "alpine/green" ) &&
-	       Q_stricmp( model, "alpine/red" ) && Q_stricmp( model, "alpine/yellow" ) ) ||
-	     ( Q_stricmp( rim, "svt_cobra" ) && Q_stricmp( rim, "q3r_rally13" ) &&
-	       Q_stricmp( rim, "q3r_rally13_dark" ) ) ) return;
-	for ( i = 0; i < s_playersettings.allModels; i++ ) {
-		if ( !Q_stricmp( s_playersettings.modelList[i], "alpine" ) && UI_CarUnlocked( model ) ) {
-			s_playersettings.selectedModel = i;
-			s_playersettings.modelname.string = s_playersettings.modelList[i];
-			Q_strncpyz( s_playersettings.modelskin, model, sizeof( s_playersettings.modelskin ) );
-			Q_strncpyz( s_playersettings.rimskin, rim, sizeof( s_playersettings.rimskin ) );
-			trap_Cvar_Set( "model", model );
-			trap_Cvar_Set( "rim", rim );
-			PlayerSettings_UpdateModel();
-			trap_Cvar_Set( "ui_webprofile_status", "Alpine setup applied" );
-			return;
-		}
+	if ( !PlayerSettings_WebAssetId( vehicle ) || !PlayerSettings_WebAssetId( paint ) ||
+	     !PlayerSettings_WebAssetId( rim ) || strlen( vehicle ) + strlen( paint ) + 1 >= sizeof( model ) ) {
+		trap_Cvar_Set( "ui_webprofile_status", "Invalid web setup" );
+		return;
 	}
-	trap_Cvar_Set( "ui_webprofile_status", "Alpine unavailable in this profile" );
+	if ( !s_playersettings.modelname.string || Q_stricmp( vehicle, s_playersettings.modelname.string ) ) {
+		trap_Cvar_Set( "ui_webprofile_status", "Vehicle changed - sync again" );
+		return;
+	}
+	Com_sprintf( model, sizeof( model ), "%s/%s", vehicle, paint );
+	if ( !UI_CarUnlocked( vehicle ) || !UI_SkinUnlocked( model ) ) {
+		trap_Cvar_Set( "ui_webprofile_status", "Web setup is locked in this profile" );
+		return;
+	}
+	if ( !PlayerSettings_WebAssetExists( va( "models/players/%s.skin", model ) ) ||
+	     !PlayerSettings_WebAssetExists( va( "models/players/wheels/%s.skin", rim ) ) ) {
+		trap_Cvar_Set( "ui_webprofile_status", "Web paint or wheels missing locally" );
+		return;
+	}
+	Q_strncpyz( s_playersettings.modelskin, model, sizeof( s_playersettings.modelskin ) );
+	Q_strncpyz( s_playersettings.rimskin, rim, sizeof( s_playersettings.rimskin ) );
+	trap_Cvar_Set( "model", model );
+	trap_Cvar_Set( "rim", rim );
+	PlayerSettings_UpdateModel();
+	trap_Cvar_Set( "ui_webprofile_status", "Web setup applied" );
 }
 
 static void PlayerSettings_DrawVehiclePanelBackground( void ) {
@@ -1787,7 +1829,7 @@ static void PlayerSettings_DrawVehiclePanelBackground( void ) {
 	                                    VEHICLE_SHOW_X + VEHICLE_SHOW_W - 16,
 	                                    UI_Cvar_VariableString( "ui_webprofile_status" )[0]
 	                                    ? UI_Cvar_VariableString( "ui_webprofile_status" )
-	                                    : "F7 Link web profile / F8 Sync Alpine",
+	                                    : "F7 Link web profile / F8 Sync setup",
 	                                    UI_SMALLFONT, playerSettingsMutedColor );
 
 	/* Setup: what is fitted, each row opens Customize vehicle. */
@@ -4126,6 +4168,8 @@ showVehicle = ( tab == TAB_VEHICLE );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.modelname.generic, qfalse );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.customize.generic, showVehicle );
 	PlayerSettings_SetWidgetVisible( &s_playersettings.plate.generic, showVehicle );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.webLink.generic, showVehicle );
+	PlayerSettings_SetWidgetVisible( &s_playersettings.webSync.generic, showVehicle );
 	for ( i = 0; i < 3; ++i ) {
 		PlayerSettings_SetWidgetVisible( &s_playersettings.setupRows[i].generic, showVehicle );
 	}
@@ -4528,7 +4572,7 @@ static sfxHandle_t PlayerSettings_MenuKey( int key ) {
 // END
 	}
 if ( s_playersettings.currentTab == TAB_VEHICLE && ( key == K_F7 || key == K_F8 ) ) {
-	trap_Cvar_Set( "ui_webprofile_action", key == K_F7 ? "link" : "sync" );
+	PlayerSettings_RequestWebSetup( key == K_F7 );
 	return menu_move_sound;
 }
 if ( s_playersettings.currentTab == TAB_VEHICLE && key == K_MOUSE1 &&
@@ -5373,6 +5417,11 @@ static void PlayerSettings_MenuEvent( void* ptr, int event ) {
 		uis.transitionOut = uis.realtime;
 		break;
 
+	case ID_WEB_LINK:
+	case ID_WEB_SYNC:
+		PlayerSettings_RequestWebSetup( ((menucommon_s *)ptr)->id == ID_WEB_LINK );
+		break;
+
 	case ID_PLATE:
 		UI_PlateSelectionMenu();
 		break;
@@ -5977,6 +6026,21 @@ static void PlayerSettings_MenuInit( void ) {
 	s_playersettings.plate.style					= UI_LEFT | UI_SMALLFONT;
 
 
+	s_playersettings.webLink = s_playersettings.plate;
+	s_playersettings.webLink.generic.id = ID_WEB_LINK;
+	s_playersettings.webLink.generic.ownerdraw = PlayerSettings_DrawWebAction;
+	s_playersettings.webLink.generic.y = s_playersettings.plate.generic.bottom + 4;
+	s_playersettings.webLink.generic.top = s_playersettings.webLink.generic.y;
+	s_playersettings.webLink.generic.bottom = s_playersettings.webLink.generic.top + 20;
+	s_playersettings.webLink.string = "Link web profile";
+
+	s_playersettings.webSync = s_playersettings.webLink;
+	s_playersettings.webSync.generic.id = ID_WEB_SYNC;
+	s_playersettings.webSync.generic.y = s_playersettings.webLink.generic.bottom + 3;
+	s_playersettings.webSync.generic.top = s_playersettings.webSync.generic.y;
+	s_playersettings.webSync.generic.bottom = s_playersettings.webSync.generic.top + 20;
+	s_playersettings.webSync.string = "Sync setup";
+
 	s_playersettings.back.generic.type				= MTYPE_PTEXT;
 	s_playersettings.back.generic.flags				= QMF_LEFT_JUSTIFY|QMF_PULSEIFFOCUS;
 	s_playersettings.back.generic.ownerdraw				= PlayerSettings_DrawBackItem;
@@ -6054,6 +6118,8 @@ static void PlayerSettings_MenuInit( void ) {
 		Menu_AddItem( &s_playersettings.menu, &s_playersettings.setupRows[i] );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.customize );
 	Menu_AddItem( &s_playersettings.menu, &s_playersettings.plate );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.webLink );
+	Menu_AddItem( &s_playersettings.menu, &s_playersettings.webSync );
 // END
 
 // STONELANCE

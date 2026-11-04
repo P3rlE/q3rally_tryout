@@ -162,7 +162,8 @@ typedef struct {
     struct curl_slist   *headers;
     char                errorBuf[CURL_ERROR_SIZE];
     char                profileUuid[37];
-    char                profileBody[128];
+    char                profileBody[192];
+    char                profileVehicle[49];
     struct curl_slist   *profileConnect;
 #endif
 } clDlRequest_t;
@@ -607,13 +608,23 @@ static void CL_ProfileStatus( const char *status ) {
     Cvar_Set( "ui_webprofile_status", status );
 }
 
+static qboolean CL_ProfileAssetId( const char *id ) {
+    return id[0] && strlen( id ) <= 48 &&
+           id[strspn( id, "abcdefghijklmnopqrstuvwxyz0123456789_-" )] == '\0';
+}
+
 static void CL_ProfileAction( const char *action ) {
     clDlRequest_t *req;
     char uuid[37], token[65];
     CURLcode result;
     qboolean link = !strcmp( action, "link" );
 
-    if ( !link && strcmp( action, "sync" ) ) return;
+    const char *vehicle = action + ( Q_strncmp( action, "sync:", 5 ) == 0 ? 5 : 0 );
+
+    if ( !link && (vehicle == action || !CL_ProfileAssetId( vehicle )) ) {
+        CL_ProfileStatus( "Choose a vehicle to sync" );
+        return;
+    }
     if ( cl_dl.active ) {
         CL_ProfileStatus( "Transfer busy - try again" );
         return;
@@ -644,8 +655,9 @@ static void CL_ProfileAction( const char *action ) {
     if ( link ) {
         Q_strncpyz( req->profileBody, "{\"action\":\"device_start\"}", sizeof( req->profileBody ) );
     } else {
+        Q_strncpyz( req->profileVehicle, vehicle, sizeof( req->profileVehicle ) );
         Com_sprintf( req->profileBody, sizeof( req->profileBody ),
-                     "{\"action\":\"device_setup\",\"token\":\"%s\"}", token );
+                     "{\"action\":\"device_setup\",\"token\":\"%s\",\"vehicle\":\"%s\"}", token, vehicle );
     }
 
     req->easy = cl_curl_easy_init();
@@ -691,7 +703,7 @@ static void CL_ProfileAction( const char *action ) {
 }
 
 static void CL_ProfileComplete( clDlRequest_t *req, CURLcode result, long httpCode ) {
-    char uuid[37], code[12], token[65], paint[24], wheels[32];
+    char uuid[37], code[12], token[65], paint[50], wheels[50], vehicle[50];
     const char *end = req->buf + req->bufLen;
     const char *setup;
     const char *value;
@@ -742,28 +754,29 @@ static void CL_ProfileComplete( clDlRequest_t *req, CURLcode result, long httpCo
         cl_dl.pendingToken[0] = '\0';
         Cvar_Set( "ui_webprofile_code", "" );
     }
+    value = JSON_ObjectGetNamedValue( req->buf, end, "vehicle" );
+    if ( !value || !JSON_ValueGetString( value, end, vehicle, sizeof( vehicle ) ) ||
+         strcmp( vehicle, req->profileVehicle ) ) {
+        CL_ProfileStatus( "Web garage update required" );
+        return;
+    }
     setup = JSON_ObjectGetNamedValue( req->buf, end, "setup" );
     if ( !setup || JSON_ValueGetType( setup, end ) != JSONTYPE_OBJECT ) {
-        CL_ProfileStatus( "Linked - save an Alpine setup on the website" );
+        CL_ProfileStatus( "No saved web setup for this vehicle" );
         return;
     }
     value = JSON_ObjectGetNamedValue( setup, end, "paint" );
-    if ( !value || !JSON_ValueGetString( value, end, paint, sizeof( paint ) ) ) {
-        CL_ProfileStatus( "Invalid Alpine paint" );
+    if ( !value || !JSON_ValueGetString( value, end, paint, sizeof( paint ) ) || !CL_ProfileAssetId( paint ) ) {
+        CL_ProfileStatus( "Invalid web paint" );
         return;
     }
     value = JSON_ObjectGetNamedValue( setup, end, "wheels" );
-    if ( !value || !JSON_ValueGetString( value, end, wheels, sizeof( wheels ) ) ) {
-        CL_ProfileStatus( "Invalid Alpine wheels" );
+    if ( !value || !JSON_ValueGetString( value, end, wheels, sizeof( wheels ) ) || !CL_ProfileAssetId( wheels ) ) {
+        CL_ProfileStatus( "Invalid web wheels" );
         return;
     }
-    if ( (strcmp( paint, "blue" ) && strcmp( paint, "green" ) && strcmp( paint, "red" ) && strcmp( paint, "yellow" )) ||
-         (strcmp( wheels, "svt_cobra" ) && strcmp( wheels, "q3r_rally13" ) && strcmp( wheels, "q3r_rally13_dark" )) ) {
-        CL_ProfileStatus( "Unknown Alpine setup" );
-        return;
-    }
-    Cvar_Set( "ui_webprofile_setup", va( "%s %s %s", uuid, paint, wheels ) );
-    CL_ProfileStatus( "Alpine setup received" );
+    Cvar_Set( "ui_webprofile_setup", va( "%s %s %s %s", uuid, vehicle, paint, wheels ) );
+    CL_ProfileStatus( "Web setup received" );
 }
 
 static qboolean CL_DL_StartPk3Download( clDlRequest_t *req ) {
