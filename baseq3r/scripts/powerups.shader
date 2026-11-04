@@ -1150,6 +1150,15 @@ icons/teleporter
 	}
 }
 
+icons/fuelcan2
+{
+	nopicmip
+	{
+		map icons/fuelcan2.tga
+		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+	}
+}
+
 medal_excellent
 {
 	nopicmip
