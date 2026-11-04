@@ -1190,6 +1190,11 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.derbyHudPanelShader = trap_R_RegisterShaderNoMip("gfx/hud/derby_panel");
 	cgs.media.derbyHudVehicleShader = trap_R_RegisterShaderNoMip("gfx/hud/derby_vehicle");
 	cgs.media.derbyHudWarningShader = trap_R_RegisterShaderNoMip("gfx/hud/derby_warning");
+	for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
+		cgs.media.trunkSectorShader[i] = trap_R_RegisterShaderNoMip( va( "gfx/hud/trunk_sector%d", i + 1 ) );
+		cgs.media.trunkEdgeShader[i] = trap_R_RegisterShaderNoMip( va( "gfx/hud/trunk_edge%d", i + 1 ) );
+	}
+	cgs.media.trunkOutlineShader = trap_R_RegisterShaderNoMip( "gfx/hud/trunk_outline" );
 // Q3Rally Code END
 
 	// powerup shaders

@@ -748,6 +748,7 @@ typedef struct {
 	qboolean	trunkOpen;
 	qboolean	trunkUseHeld;
 	int		trunkSelected;
+	int		trunkOpenTime;
 	qboolean	levelShot;			// taking a level menu screenshot
 	int			deferredPlayerLoading;
 	qboolean	loading;			// don't defer players at initial startup
@@ -1279,6 +1280,9 @@ typedef struct {
 	qhandle_t	SMIceShader;
 	qhandle_t	checkpointArrow;
 	qhandle_t	derbyHudPanelShader;
+	qhandle_t	trunkSectorShader[TRUNK_ITEM_COUNT];
+	qhandle_t	trunkEdgeShader[TRUNK_ITEM_COUNT];
+	qhandle_t	trunkOutlineShader;
 	qhandle_t	derbyHudVehicleShader;
 	qhandle_t	derbyHudWarningShader;
 
