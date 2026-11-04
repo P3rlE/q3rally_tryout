@@ -687,3 +687,16 @@ void Frontend_DrawShowcaseTitle( int x, int y, const char *section, const char *
     Frontend_DrawText( x, y, section, UI_LEFT | UI_SMALLFONT, accent );
     Frontend_DrawTextScaled( x, y + 15, title, UI_LEFT | UI_BIGFONT, 1.18f, text );
 }
+
+void Frontend_DrawShowcaseAction( const menucommon_s *item, const char *label, float alpha ) {
+    vec4_t background = UI_SHOWCASE_ACCENT;
+    vec4_t text = { 0.06f, 0.03f, 0.02f, 1.0f };
+    if ( Menu_ItemAtCursor( item->parent ) == item ) background[1] = 0.55f;
+    background[3] *= alpha;
+    text[3] *= alpha;
+    UI_FillRect( item->left, item->top, item->right - item->left,
+                 item->bottom - item->top, background );
+    Frontend_DrawText( ( item->left + item->right ) / 2,
+                       item->top + ( item->bottom - item->top - SMALLCHAR_HEIGHT ) / 2 + 1,
+                       label, UI_CENTER | UI_SMALLFONT, text );
+}
