@@ -1949,6 +1949,7 @@ Q3OBJ = \
   $(B)/client/cl_avi.o \
   $(B)/client/cl_update.o \
   $(B)/client/cl_downloads.o \
+  $(B)/client/json_shared.o \
   \
   $(B)/client/cm_load.o \
   $(B)/client/cm_patch.o \

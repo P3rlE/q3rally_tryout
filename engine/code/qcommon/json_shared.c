@@ -27,5 +27,7 @@ so that both the client and renderer can reference them without causing
 multiple-definition linker errors.
 ================
 */
+#include <string.h>
+
 #define JSON_IMPLEMENTATION
 #include "json.h"

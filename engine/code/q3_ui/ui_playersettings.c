@@ -1707,11 +1707,51 @@ static void PlayerSettings_DrawSetupRow( void *self ) {
 	                                    playerSettingsTextColor );
 }
 
+static void PlayerSettings_UpdateModel( void );
+
+static void PlayerSettings_UpdateWebSetup( void ) {
+	char setup[MAX_CVAR_VALUE_STRING], uuid[37], model[MAX_QPATH], rim[MAX_QPATH];
+	char *cursor;
+	const profile_info_t *profile;
+	int i;
+
+	trap_Cvar_VariableStringBuffer( "ui_webprofile_setup", setup, sizeof( setup ) );
+	if ( !setup[0] ) return;
+	trap_Cvar_Set( "ui_webprofile_setup", "" );
+	cursor = setup;
+	Q_strncpyz( uuid, COM_Parse( &cursor ), sizeof( uuid ) );
+	profile = UI_Profile_GetActiveInfo();
+	if ( !profile || Q_stricmp( uuid, profile->uuid ) ) return;
+
+	Com_sprintf( model, sizeof( model ), "alpine/%s", COM_Parse( &cursor ) );
+	Q_strncpyz( rim, COM_Parse( &cursor ), sizeof( rim ) );
+	/* The UI bridge must only apply supported Alpine combinations. */
+	if ( ( Q_stricmp( model, "alpine/blue" ) && Q_stricmp( model, "alpine/green" ) &&
+	       Q_stricmp( model, "alpine/red" ) && Q_stricmp( model, "alpine/yellow" ) ) ||
+	     ( Q_stricmp( rim, "svt_cobra" ) && Q_stricmp( rim, "q3r_rally13" ) &&
+	       Q_stricmp( rim, "q3r_rally13_dark" ) ) ) return;
+	for ( i = 0; i < s_playersettings.allModels; i++ ) {
+		if ( !Q_stricmp( s_playersettings.modelList[i], "alpine" ) && UI_CarUnlocked( model ) ) {
+			s_playersettings.selectedModel = i;
+			s_playersettings.modelname.string = s_playersettings.modelList[i];
+			Q_strncpyz( s_playersettings.modelskin, model, sizeof( s_playersettings.modelskin ) );
+			Q_strncpyz( s_playersettings.rimskin, rim, sizeof( s_playersettings.rimskin ) );
+			trap_Cvar_Set( "model", model );
+			trap_Cvar_Set( "rim", rim );
+			PlayerSettings_UpdateModel();
+			trap_Cvar_Set( "ui_webprofile_status", "Alpine setup applied" );
+			return;
+		}
+	}
+	trap_Cvar_Set( "ui_webprofile_status", "Alpine unavailable in this profile" );
+}
+
 static void PlayerSettings_DrawVehiclePanelBackground( void ) {
 	char name[MAX_QPATH];
 	const char *modelName;
 	int secret;
 
+	PlayerSettings_UpdateWebSetup();
 	modelName = s_playersettings.modelname.string;
 	if ( !modelName || !modelName[0] ) {
 		modelName = "Unknown vehicle";
@@ -1742,6 +1782,13 @@ static void PlayerSettings_DrawVehiclePanelBackground( void ) {
 	}
 	Frontend_DrawText( VEHICLE_SHOW_X + 16, VEHICLE_SAVED_Y, "Saved setups",
 	                   UI_LEFT | UI_SMALLFONT, playerSettingsMutedColor );
+
+	PlayerSettings_DrawFittedStatsText( VEHICLE_SHOW_X + 16, VEHICLE_NAME_Y + 47,
+	                                    VEHICLE_SHOW_X + VEHICLE_SHOW_W - 16,
+	                                    UI_Cvar_VariableString( "ui_webprofile_status" )[0]
+	                                    ? UI_Cvar_VariableString( "ui_webprofile_status" )
+	                                    : "F7 Link web profile / F8 Sync Alpine",
+	                                    UI_SMALLFONT, playerSettingsMutedColor );
 
 	/* Setup: what is fitted, each row opens Customize vehicle. */
 	Frontend_DrawShowcasePanel( VEHICLE_SETUP_X, VEHICLE_CARD_Y, VEHICLE_SETUP_W, VEHICLE_CARD_H, uis.tFrac );
@@ -4480,6 +4527,10 @@ static sfxHandle_t PlayerSettings_MenuKey( int key ) {
 		return 0;
 // END
 	}
+if ( s_playersettings.currentTab == TAB_VEHICLE && ( key == K_F7 || key == K_F8 ) ) {
+	trap_Cvar_Set( "ui_webprofile_action", key == K_F7 ? "link" : "sync" );
+	return menu_move_sound;
+}
 if ( s_playersettings.currentTab == TAB_VEHICLE && key == K_MOUSE1 &&
      uis.cursorx >= VEHICLE_PREVIEW_X && uis.cursorx < VEHICLE_PREVIEW_X + VEHICLE_PREVIEW_W &&
      uis.cursory >= VEHICLE_PREVIEW_Y && uis.cursory < VEHICLE_PREVIEW_Y + VEHICLE_PREVIEW_H ) {

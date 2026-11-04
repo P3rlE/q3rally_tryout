@@ -41,12 +41,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //   6. Engine updates ui_dl_progress, sets state=done on success
 
 #include "client.h"
+#include "../qcommon/json.h"
 
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 
 #ifdef USE_CURL
 #ifdef USE_LOCAL_HEADERS
@@ -126,7 +133,9 @@ static void              (*cl_curl_slist_free_all)(struct curl_slist*);
 typedef enum {
     CLREQ_INDEX,        // fetch content index JSON
     CLREQ_DOWNLOAD,     // download a pk3
-    CLREQ_PREVIEW       // fetch a preview image
+    CLREQ_PREVIEW,      // fetch a preview image
+    CLREQ_PROFILE_LINK,
+    CLREQ_PROFILE_SETUP
 } clDlRequestType_t;
 
 typedef struct {
@@ -152,6 +161,9 @@ typedef struct {
     CURL                *easy;
     struct curl_slist   *headers;
     char                errorBuf[CURL_ERROR_SIZE];
+    char                profileUuid[37];
+    char                profileBody[128];
+    struct curl_slist   *profileConnect;
 #endif
 } clDlRequest_t;
 
@@ -181,6 +193,8 @@ typedef struct {
 
 #ifdef USE_CURL
     CURLM               *multi;
+    char                pendingProfile[37];
+    char                pendingToken[65];
 #endif
 } clDlState_t;
 
@@ -447,6 +461,7 @@ static void CL_DL_FreeRequest( clDlRequest_t *req ) {
         cl_curl_easy_cleanup( req->easy );
         req->easy = NULL;
     }
+    if ( req->profileConnect ) cl_curl_slist_free_all( req->profileConnect );
 #endif
 
     if ( req->buf ) {
@@ -511,6 +526,244 @@ static qboolean CL_DL_StartIndexFetch( clDlRequest_t *req ) {
     }
 
     return qtrue;
+}
+
+#define PROFILE_URL "https://www.q3rally.com/api/profile.php"
+
+static qboolean CL_ProfileHex( const char *value, int length ) {
+    int i;
+    if ( strlen( value ) != length ) return qfalse;
+    for ( i = 0; i < length; i++ ) {
+        if ( !strchr( "0123456789abcdefABCDEF", value[i] ) ) return qfalse;
+    }
+    return qtrue;
+}
+
+static qboolean CL_ProfileUuid( char uuid[37] ) {
+    char value[MAX_CVAR_VALUE_STRING];
+    int i;
+    Cvar_VariableStringBuffer( "cl_uuid", value, sizeof( value ) );
+    if ( strlen( value ) != 36 ) return qfalse;
+    for ( i = 0; i < 36; i++ ) {
+        if ( i == 8 || i == 13 || i == 18 || i == 23 ) {
+            if ( value[i] != '-' ) return qfalse;
+        } else if ( !strchr( "0123456789abcdefABCDEF", value[i] ) ) {
+            return qfalse;
+        }
+    }
+    Q_strncpyz( uuid, value, 37 );
+    return qtrue;
+}
+
+static qboolean CL_ProfileToken( const char *uuid, char token[65], qboolean save ) {
+    char path[MAX_OSPATH];
+    char temp[MAX_OSPATH];
+    FILE *file;
+    qboolean ok;
+#ifndef _WIN32
+    int fd;
+#endif
+
+    Q_strncpyz( path, FS_BuildOSPath( Cvar_VariableString( "fs_homepath" ),
+                                    "q3rally-profile-devices", va( "%s.key", uuid ) ), sizeof( path ) );
+    if ( !save ) {
+        file = fopen( path, "rb" );
+        if ( !file ) return qfalse;
+        ok = fread( token, 1, 64, file ) == 64 && fgetc( file ) == EOF && !ferror( file );
+        fclose( file );
+        token[64] = '\0';
+        return ok && CL_ProfileHex( token, 64 );
+    }
+    if ( FS_CreatePath( path ) ) return qfalse;
+    Com_sprintf( temp, sizeof( temp ), "%s.tmp", path );
+#ifdef _WIN32
+    file = fopen( temp, "wb" );
+#else
+    fd = open( temp, O_WRONLY | O_CREAT | O_EXCL, 0600 );
+    if ( fd < 0 ) return qfalse;
+    file = fdopen( fd, "wb" );
+    if ( !file ) {
+        close( fd );
+        remove( temp );
+        return qfalse;
+    }
+#endif
+    if ( !file ) return qfalse;
+    ok = fwrite( token, 1, 64, file ) == 64;
+    if ( fclose( file ) != 0 ) ok = qfalse;
+    if ( ok ) {
+#ifdef _WIN32
+        /* The CRT rename cannot replace an existing file on Windows. */
+        ok = MoveFileExA( temp, path, MOVEFILE_REPLACE_EXISTING ) != 0;
+#else
+        ok = rename( temp, path ) == 0;
+#endif
+    }
+    if ( !ok ) remove( temp );
+    return ok;
+}
+
+static void CL_ProfileStatus( const char *status ) {
+    Cvar_Set( "ui_webprofile_status", status );
+}
+
+static void CL_ProfileAction( const char *action ) {
+    clDlRequest_t *req;
+    char uuid[37], token[65];
+    CURLcode result;
+    qboolean link = !strcmp( action, "link" );
+
+    if ( !link && strcmp( action, "sync" ) ) return;
+    if ( cl_dl.active ) {
+        CL_ProfileStatus( "Transfer busy - try again" );
+        return;
+    }
+    if ( !CL_ProfileUuid( uuid ) ) {
+        CL_ProfileStatus( "Select a local driver profile first" );
+        return;
+    }
+    if ( !link ) {
+        if ( !strcmp( uuid, cl_dl.pendingProfile ) && cl_dl.pendingToken[0] ) {
+            Q_strncpyz( token, cl_dl.pendingToken, sizeof( token ) );
+        } else if ( !CL_ProfileToken( uuid, token, qfalse ) ) {
+            CL_ProfileStatus( "Press F7 to link your web profile" );
+            return;
+        }
+    }
+    if ( !CL_DL_EnsureCurl() ) {
+        CL_ProfileStatus( "HTTPS unavailable" );
+        return;
+    }
+    req = CL_DL_AllocRequest();
+    if ( !req ) {
+        CL_ProfileStatus( "Could not start web profile request" );
+        return;
+    }
+    req->type = link ? CLREQ_PROFILE_LINK : CLREQ_PROFILE_SETUP;
+    Q_strncpyz( req->profileUuid, uuid, sizeof( req->profileUuid ) );
+    if ( link ) {
+        Q_strncpyz( req->profileBody, "{\"action\":\"device_start\"}", sizeof( req->profileBody ) );
+    } else {
+        Com_sprintf( req->profileBody, sizeof( req->profileBody ),
+                     "{\"action\":\"device_setup\",\"token\":\"%s\"}", token );
+    }
+
+    req->easy = cl_curl_easy_init();
+    req->headers = cl_curl_slist_append( NULL, "Content-Type: application/json" );
+    req->buf = malloc( 1024 );
+    req->bufCap = 1024;
+    if ( !req->easy || !req->headers || !req->buf ) {
+        CL_DL_FreeRequest( req );
+        CL_ProfileStatus( "Could not start web profile request" );
+        return;
+    }
+    req->buf[0] = '\0';
+    result  = cl_curl_easy_setopt( req->easy, CURLOPT_URL, PROFILE_URL );
+    result |= cl_curl_easy_setopt( req->easy, CURLOPT_HTTPHEADER, req->headers );
+    result |= cl_curl_easy_setopt( req->easy, CURLOPT_POSTFIELDS, req->profileBody );
+    result |= cl_curl_easy_setopt( req->easy, CURLOPT_WRITEFUNCTION, CL_DL_WriteIndex );
+    result |= cl_curl_easy_setopt( req->easy, CURLOPT_WRITEDATA, req );
+    result |= cl_curl_easy_setopt( req->easy, CURLOPT_PRIVATE, req );
+    result |= cl_curl_easy_setopt( req->easy, CURLOPT_NOSIGNAL, 1L );
+    result |= cl_curl_easy_setopt( req->easy, CURLOPT_CONNECTTIMEOUT, 8L );
+    result |= cl_curl_easy_setopt( req->easy, CURLOPT_TIMEOUT, 15L );
+    result |= cl_curl_easy_setopt( req->easy, CURLOPT_USERAGENT, Q3_VERSION );
+
+    if ( getenv( "Q3RALLY_PROFILE_TEST_TUNNEL" ) ) {
+        req->profileConnect = cl_curl_slist_append( NULL, "www.q3rally.com:443:127.0.0.1:8443" );
+        if ( !req->profileConnect ) {
+            CL_DL_FreeRequest( req );
+            CL_ProfileStatus( "Could not configure the local test tunnel" );
+            return;
+        }
+        result |= cl_curl_easy_setopt( req->easy, CURLOPT_CONNECT_TO, req->profileConnect );
+        result |= cl_curl_easy_setopt( req->easy, CURLOPT_PROXY, "" );
+    }
+
+    if ( result != CURLE_OK || cl_curl_multi_add_handle( cl_dl.multi, req->easy ) != CURLM_OK ) {
+        CL_DL_FreeRequest( req );
+        CL_ProfileStatus( "Could not start web profile request" );
+        return;
+    }
+    Cvar_Set( "ui_webprofile_setup", "" );
+    cl_dl.active = req;
+    CL_ProfileStatus( "Contacting q3rally.com..." );
+}
+
+static void CL_ProfileComplete( clDlRequest_t *req, CURLcode result, long httpCode ) {
+    char uuid[37], code[12], token[65], paint[24], wheels[32];
+    const char *end = req->buf + req->bufLen;
+    const char *setup;
+    const char *value;
+
+    if ( !CL_ProfileUuid( uuid ) || strcmp( uuid, req->profileUuid ) ) {
+        CL_ProfileStatus( "" );
+        return;
+    }
+    if ( result != CURLE_OK ) {
+        CL_ProfileStatus( "Could not reach q3rally.com" );
+        return;
+    }
+    if ( httpCode == 202 ) {
+        CL_ProfileStatus( va( "Enter %s on q3rally.com/garage then press F8",
+                              Cvar_VariableString( "ui_webprofile_code" ) ) );
+        return;
+    }
+    if ( req->type == CLREQ_PROFILE_LINK && httpCode == 201 ) {
+        value = JSON_ObjectGetNamedValue( req->buf, end, "code" );
+        if ( !value || !JSON_ValueGetString( value, end, code, sizeof( code ) ) || !CL_ProfileHex( code, 10 ) ) {
+            CL_ProfileStatus( "Invalid response from web profile" );
+            return;
+        }
+        value = JSON_ObjectGetNamedValue( req->buf, end, "token" );
+        if ( !value || !JSON_ValueGetString( value, end, token, sizeof( token ) ) || !CL_ProfileHex( token, 64 ) ) {
+            CL_ProfileStatus( "Invalid response from web profile" );
+            return;
+        }
+        Q_strncpyz( cl_dl.pendingToken, token, sizeof( cl_dl.pendingToken ) );
+        Q_strncpyz( cl_dl.pendingProfile, uuid, sizeof( cl_dl.pendingProfile ) );
+        Cvar_Set( "ui_webprofile_code", code );
+        CL_ProfileStatus( va( "Enter %s on q3rally.com/garage then press F8", code ) );
+        return;
+    }
+    if ( req->type != CLREQ_PROFILE_SETUP || httpCode != 200 ) {
+        if ( httpCode == 401 && !strcmp( uuid, cl_dl.pendingProfile ) ) {
+            cl_dl.pendingToken[0] = '\0';
+            Cvar_Set( "ui_webprofile_code", "" );
+        }
+        CL_ProfileStatus( httpCode == 401 ? "Link expired - press F7 to link again" : "Web profile unavailable" );
+        return;
+    }
+    if ( !strcmp( uuid, cl_dl.pendingProfile ) && cl_dl.pendingToken[0] ) {
+        if ( !CL_ProfileToken( uuid, cl_dl.pendingToken, qtrue ) ) {
+            CL_ProfileStatus( "Linked, but could not save device access" );
+            return;
+        }
+        cl_dl.pendingToken[0] = '\0';
+        Cvar_Set( "ui_webprofile_code", "" );
+    }
+    setup = JSON_ObjectGetNamedValue( req->buf, end, "setup" );
+    if ( !setup || JSON_ValueGetType( setup, end ) != JSONTYPE_OBJECT ) {
+        CL_ProfileStatus( "Linked - save an Alpine setup on the website" );
+        return;
+    }
+    value = JSON_ObjectGetNamedValue( setup, end, "paint" );
+    if ( !value || !JSON_ValueGetString( value, end, paint, sizeof( paint ) ) ) {
+        CL_ProfileStatus( "Invalid Alpine paint" );
+        return;
+    }
+    value = JSON_ObjectGetNamedValue( setup, end, "wheels" );
+    if ( !value || !JSON_ValueGetString( value, end, wheels, sizeof( wheels ) ) ) {
+        CL_ProfileStatus( "Invalid Alpine wheels" );
+        return;
+    }
+    if ( (strcmp( paint, "blue" ) && strcmp( paint, "green" ) && strcmp( paint, "red" ) && strcmp( paint, "yellow" )) ||
+         (strcmp( wheels, "svt_cobra" ) && strcmp( wheels, "q3r_rally13" ) && strcmp( wheels, "q3r_rally13_dark" )) ) {
+        CL_ProfileStatus( "Unknown Alpine setup" );
+        return;
+    }
+    Cvar_Set( "ui_webprofile_setup", va( "%s %s %s", uuid, paint, wheels ) );
+    CL_ProfileStatus( "Alpine setup received" );
 }
 
 static qboolean CL_DL_StartPk3Download( clDlRequest_t *req ) {
@@ -1208,6 +1461,10 @@ void CL_DL_Init( void ) {
     CL_DL_CleanupUninstalled();
 
     // Register CVars (CVAR_TEMP – not saved to config)
+    Cvar_Get( "ui_webprofile_action", "", CVAR_TEMP );
+    Cvar_Get( "ui_webprofile_status", "", CVAR_TEMP );
+    Cvar_Get( "ui_webprofile_setup", "", CVAR_TEMP );
+    Cvar_Get( "ui_webprofile_code", "", CVAR_TEMP );
     Cvar_Get( "ui_dl_state",    "0",  CVAR_TEMP );
     Cvar_Get( "ui_dl_progress", "0",  CVAR_TEMP );
     Cvar_Get( "ui_dl_filename", "",   CVAR_TEMP );
@@ -1248,12 +1505,22 @@ void CL_DL_Frame( void ) {
 
     if ( !cl_dl.initialized ) return;
 
-#ifdef USE_CURL
+#ifndef USE_CURL
+    if ( Cvar_VariableString( "ui_webprofile_action" )[0] ) {
+        Cvar_Set( "ui_webprofile_action", "" );
+        Cvar_Set( "ui_webprofile_status", "HTTPS unavailable" );
+    }
+#else
     now = Sys_Milliseconds();
 
     // Poll ui_dl_action CVar
     if ( now - cl_dl.lastActionPoll >= DL_ACTION_POLL_MS ) {
         cl_dl.lastActionPoll = now;
+        Cvar_VariableStringBuffer( "ui_webprofile_action", action, sizeof( action ) );
+        if ( action[0] ) {
+            Cvar_Set( "ui_webprofile_action", "" );
+            CL_ProfileAction( action );
+        }
         Cvar_VariableStringBuffer( "ui_dl_action", action, sizeof( action ) );
         if ( action[0] ) {
             // Clear immediately so UI knows we saw it
@@ -1289,7 +1556,12 @@ void CL_DL_Frame( void ) {
                 if ( cl_dl.active == req ) {
                     cl_dl.active = NULL;
                 }
-                CL_DL_CompleteRequest( req, msg->data.result, httpCode );
+                if ( req->type == CLREQ_PROFILE_LINK || req->type == CLREQ_PROFILE_SETUP ) {
+                    CL_ProfileComplete( req, msg->data.result, httpCode );
+                    CL_DL_FreeRequest( req );
+                } else {
+                    CL_DL_CompleteRequest( req, msg->data.result, httpCode );
+                }
             }
         }
     }
