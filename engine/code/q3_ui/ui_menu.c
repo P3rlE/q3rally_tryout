@@ -183,16 +183,7 @@ static void MainMenu_DrawNavItem( void *self ) {
 }
 
 static void MainMenu_DrawGarageAction( void *self ) {
-        menucommon_s *item = self;
-        qboolean focused = Menu_ItemAtCursor( item->parent ) == item;
-        vec4_t background, label = { 0.06f, 0.03f, 0.02f, 1.0f };
-        MainMenu_ColorWithAlpha( background, s_frontendAccent );
-        if ( focused ) background[1] = 0.55f;
-        label[3] *= s_main.visualAlpha;
-        UI_FillRect( item->left, item->top, item->right - item->left,
-                     item->bottom - item->top, background );
-        Frontend_DrawText( ( item->left + item->right ) / 2, item->top + 9,
-                           "OPEN GARAGE", UI_CENTER | UI_SMALLFONT, label );
+        Frontend_DrawShowcaseAction( self, "OPEN GARAGE", s_main.visualAlpha );
 }
 
 static void MainMenu_DrawProfileAction( void *self ) {
