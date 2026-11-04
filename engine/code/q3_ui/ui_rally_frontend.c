@@ -654,8 +654,7 @@ static void Frontend_DrawBackButton( void *self ) {
             item->top + 4, "Back", UI_CENTER | UI_SMALLFONT, frontendMutedColor);
         return;
     }
-    Frontend_DrawButton(item->left, item->top, UI_FRONTEND_ACTION_WIDTH,
-        UI_FRONTEND_BUTTON_HEIGHT, "Back", 1.0f, focus, UI_FRONTEND_TEXT_CENTER);
+    Frontend_DrawShowcaseSecondary( item, "Back", 1.0f, focus );
 }
 
 void Frontend_SetBackButton( menucommon_s *item ) {
@@ -676,7 +675,7 @@ void Frontend_DrawShowcasePanel( int x, int y, int width, int height, float alph
     surface[3] *= alpha;
     accent[3] *= alpha;
     UI_FillRect( x, y, width, height, surface );
-    UI_FillRect( x, y, width, 2, accent );
+    UI_FillRect( x, y, width, UI_FRONTEND_PANEL_TOPBAR, accent );
 }
 
 void Frontend_DrawShowcaseTitle( int x, int y, const char *section, const char *title, float alpha ) {

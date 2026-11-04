@@ -49,10 +49,10 @@ Copyright (C) 2002-2026 Q3Rally Team
 #define UI_FRONTEND_COLOR_PANEL_ALT    { 0.055f, 0.065f, 0.072f, 0.88f }
 #define UI_FRONTEND_COLOR_HERO_OVERLAY { 0.025f, 0.032f, 0.040f, 0.60f }
 #define UI_FRONTEND_COLOR_BORDER       { 0.18f, 0.24f, 0.31f, 0.36f }
-#define UI_FRONTEND_COLOR_ACCENT       Q3RALLY_ACCENT_COLOR
+#define UI_FRONTEND_COLOR_ACCENT       UI_SHOWCASE_ACCENT
 #define UI_FRONTEND_COLOR_TEXT         { 0.92f, 0.96f, 0.95f, 1.00f }
 #define UI_FRONTEND_COLOR_MUTED        { 0.44f, 0.51f, 0.51f, 1.00f }
-#define UI_FRONTEND_COLOR_FOCUS_BG     { 0.08f, 0.13f, 0.20f, 0.72f }
+#define UI_FRONTEND_COLOR_FOCUS_BG     { 0.22f, 0.11f, 0.055f, 0.85f }
 #define UI_FRONTEND_COLOR_STATUS       { 0.96f, 0.42f, 0.12f, 1.00f }
 #define UI_FRONTEND_COLOR_SHADOW       { 0.00f, 0.00f, 0.00f, 0.18f }
 #define UI_FRONTEND_COLOR_PROGRESS     { 0.11f, 0.14f, 0.15f, 0.82f }
@@ -65,7 +65,7 @@ Copyright (C) 2002-2026 Q3Rally Team
 #define UI_FRONTEND_SPACE_LG           24
 #define UI_FRONTEND_SPACE_XL           32
 #define UI_FRONTEND_PANEL_EDGE         1
-#define UI_FRONTEND_PANEL_TOPBAR       1
+#define UI_FRONTEND_PANEL_TOPBAR       2
 #define UI_FRONTEND_PANEL_SHADOW       0
 #define UI_FRONTEND_BACK_X             40
 #define UI_FRONTEND_BACK_Y             420

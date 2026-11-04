@@ -1054,7 +1054,7 @@ static void UI_GFX_Loading_MenuDraw( void ) {
     GFX_DrawDriverCard( railX, a );
 
     /* hero: garage with the player's car */
-    Frontend_DrawHeroSurface( (int)heroX, GFX_PANEL_Y, (int)heroWidth, GFX_PANEL_H, a );
+    Frontend_DrawShowcasePanel( (int)heroX, GFX_PANEL_Y, (int)heroWidth, GFX_PANEL_H, a );
     Frontend_DrawText( innerX, GFX_HEADER_Y, "Garage / active vehicle", UI_LEFT | UI_SMALLFONT,
                        GFX_Color( color, gfxMutedColor, a ) );
     chipLabel = s_gfxloading.goTime ? "Ready" : "Loading";
