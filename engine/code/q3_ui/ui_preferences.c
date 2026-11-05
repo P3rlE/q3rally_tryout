@@ -159,7 +159,7 @@ static void Preferences_Event( void* ptr, int notification ) {
 
 	case ID_DYNAMICLIGHTS:
 		trap_Cvar_SetValue( "r_dynamiclight", s_preferences.dynamiclights.curvalue );
-		break;		
+		break;
 
 	case ID_IDENTIFYTARGET:
 		trap_Cvar_SetValue( "cg_drawCrosshairNames", s_preferences.identifytarget.curvalue );
@@ -184,11 +184,11 @@ static void Preferences_Event( void* ptr, int notification ) {
     case ID_DRAWFPS:
         trap_Cvar_SetValue( "cg_DrawFPS", s_preferences.drawfps.curvalue );
         break;
-    
+
     case ID_SIGILSWITCH:
         trap_Cvar_SetValue( "cg_sigilSwitch", s_preferences.sigilswitch.curvalue );
         break;
-            
+
 	case ID_BACK:
 		UI_PopMenu();
 		break;
@@ -435,7 +435,7 @@ static void Preferences_MenuInit( void ) {
 	s_preferences.back.generic.x				= 20;
 	s_preferences.back.generic.y				= 480 - 50;
 	s_preferences.back.generic.id				= ID_BACK;
-	s_preferences.back.generic.callback			= Preferences_Event; 
+	s_preferences.back.generic.callback			= Preferences_Event;
 	s_preferences.back.string					= "Back";
 	s_preferences.back.color					= text_color_normal;
 	s_preferences.back.style					= UI_LEFT | UI_SMALLFONT;
@@ -550,4 +550,10 @@ void UI_PreferencesMenu( void ) {
 	Preferences_MenuInit();
 	Frontend_SetBackButton( &s_preferences.back.generic );
     UI_PushMenu( &s_preferences.menu );
+}
+
+menuframework_s *UI_WebPreferencesMenu( void ) {
+    if ( uis.activemenu != &s_preferences.menu ) return NULL;
+
+    return &s_preferences.menu;
 }

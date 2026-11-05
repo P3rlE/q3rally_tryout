@@ -40,7 +40,7 @@ DRIVER INFORMATION MENU
 #define DRIVERINFO_BACK0	"menu/art/back_0"
 #define DRIVERINFO_BACK1	"menu/art/back_1"
 
-static char* driverinfo_artlist[] = 
+static char* driverinfo_artlist[] =
 {
 	DRIVERINFO_FRAMEL,
 	DRIVERINFO_FRAMER,
@@ -366,7 +366,7 @@ static void UI_DriverInfo_Menu( void )
 	s_driverinfo.back.generic.x					= DRIVERINFO_FRAME_X + 24;
 	s_driverinfo.back.generic.y					= DRIVERINFO_ACTION_Y;
 	s_driverinfo.back.generic.id				= ID_DRIVERINFOBACK;
-	s_driverinfo.back.generic.callback			= DriverInfo_Event; 
+	s_driverinfo.back.generic.callback			= DriverInfo_Event;
 	s_driverinfo.back.string					= "Back";
 	s_driverinfo.back.color						= driverInfoTextColor;
 	s_driverinfo.back.style						= UI_LEFT | UI_SMALLFONT;
@@ -847,4 +847,10 @@ void UI_GraphicsOptionsMenu( void ) {
 	graphicsRows[GRAPHICSROW_RATIO].names = ratios;
 
 	UI_GfxPage_Push( &graphicsPage );
+}
+
+menuframework_s *UI_WebDriverInfoMenu( void ) {
+    if ( uis.activemenu != &s_driverinfo.menu ) return NULL;
+
+    return &s_driverinfo.menu;
 }

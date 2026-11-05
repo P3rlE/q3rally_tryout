@@ -337,7 +337,7 @@ static void UI_NetworkOptionsMenu_Init( void ) {
 	networkOptionsInfo.framel.generic.type		= MTYPE_BITMAP;
 	networkOptionsInfo.framel.generic.name		= ART_FRAMEL;
 	networkOptionsInfo.framel.generic.flags		= QMF_INACTIVE;
-	networkOptionsInfo.framel.generic.x			= 0;  
+	networkOptionsInfo.framel.generic.x			= 0;
 	networkOptionsInfo.framel.generic.y			= 78;
 	networkOptionsInfo.framel.width				= 256;
 	networkOptionsInfo.framel.height			= 329;
@@ -444,7 +444,7 @@ static void UI_NetworkOptionsMenu_Init( void ) {
 	networkOptionsInfo.back.generic.x				= 20;
 	networkOptionsInfo.back.generic.y				= 480 - 50;
 	networkOptionsInfo.back.generic.id				= ID_BACK;
-	networkOptionsInfo.back.generic.callback		= UI_NetworkOptionsMenu_Event; 
+	networkOptionsInfo.back.generic.callback		= UI_NetworkOptionsMenu_Event;
 	networkOptionsInfo.back.string					= "Back";
 	networkOptionsInfo.back.color					= text_color_normal;
 	networkOptionsInfo.back.style					= UI_LEFT | UI_SMALLFONT;
@@ -518,4 +518,10 @@ void UI_NetworkOptionsMenu( void ) {
 	Frontend_SetBackButton( &networkOptionsInfo.back.generic );
     UI_PushMenu( &networkOptionsInfo.menu );
 	Menu_SetCursorToItem( &networkOptionsInfo.menu, &networkOptionsInfo.rate );
+}
+
+menuframework_s *UI_WebNetworkMenu( void ) {
+    if ( uis.activemenu != &networkOptionsInfo.menu ) return NULL;
+
+    return &networkOptionsInfo.menu;
 }

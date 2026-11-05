@@ -63,6 +63,9 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
 		return 0;
 
 	case UI_REFRESH:
+        if ( trap_Cvar_VariableValue( "cl_webIngameUI" ) && UI_WebConfigScreen() ) {
+            uis.frametime = arg0 - uis.realtime; uis.realtime = arg0; return 0;
+        }
 		UI_Refresh( arg0 );
 		return 0;
 
@@ -75,6 +78,63 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
             UI_DrawHandlePic(uis.cursorx-16, uis.cursory-16, 32, 32, uis.cursor);
         }
         return 0;
+    case UI_WEB_CONFIG_NUMBER: return UI_WebConfigNumber( arg0, arg1 );
+    case UI_WEB_CONFIG_CHAR: return UI_WebConfigChar( arg0, arg1, arg2, arg3 );
+    case UI_WEB_CONFIG_ACTION: UI_WebConfigAction( arg0, arg1, arg2 ); return 0;
+    case UI_WEB_ONLINE_NUMBER: return UI_WebOnlineNumber( arg0, arg1 );
+    case UI_WEB_ONLINE_CHAR: return UI_WebOnlineChar( arg0, arg1, arg2 );
+    case UI_WEB_ONLINE_ACTION: UI_WebOnlineAction( arg0, arg1, arg2 ); return 0;
+    case UI_WEB_ONLINE_TICK: UI_WebOnlineTick( arg0 ); return 0;
+    case UI_WEB_OFFLINE_NUMBER: return UI_WebOfflineNumber( arg0, arg1 );
+    case UI_WEB_OFFLINE_CHAR: return UI_WebOfflineChar( arg0, arg1, arg2, arg3 );
+    case UI_WEB_OFFLINE_ACTION: UI_WebOfflineAction( arg0, arg1, arg2 ); return 0;
+    case UI_WEB_DRIVER_VALUE: return UI_WebDriverValue( arg0, arg1 );
+    case UI_WEB_ACHIEVEMENT_CHAR: return UI_WebAchievementChar( arg0, arg1, arg2, arg3 );
+    case UI_WEB_DRIVER_ACTION: UI_WebDriverAction( arg0 ); return 0;
+    case UI_WEB_FAVORITE_CHAR: return UI_WebFavoriteChar( arg0, arg1, arg2 );
+    case UI_WEB_FAVORITES_IMPORT: return UI_WebImportFavorites();
+    case UI_WEB_FAVORITE_SAVE: return UI_WebSaveFavorite( arg0 );
+    case UI_WEB_CATALOG_COUNT: return arg0 == 5 ? UI_WebRivalCount() : UI_WebDownloadCount();
+    case UI_WEB_CATALOG_CHAR: return arg0 == 5 ? UI_WebRivalChar( arg1, arg2, arg3 ) : UI_WebDownloadChar( arg1, arg2, arg3 );
+    case UI_WEB_CATALOG_NUMBER: return UI_WebDownloadNumber( arg0, arg1 );
+    case UI_WEB_CATALOG_ACTION: UI_WebCatalogAction( arg0, arg1, arg2 ); return 0;
+    case UI_WEB_DOWNLOAD_TICK: UI_WebDownloadTick(); return 0;
+    case UI_WEB_ITEM_COUNT: return arg0 == 3 ? UI_WebCreditCount() : UI_WebDemoCount();
+    case UI_WEB_ITEM_CHAR: return arg0 == 3 ? UI_WebCreditChar( arg1, arg2 ) : UI_WebDemoChar( arg1, arg2 );
+    case UI_WEB_ITEM_KIND: return UI_WebCreditKind( arg0 );
+    case UI_WEB_DEMO_ACTION:
+        UI_WebDemoAction( arg0, arg1 );
+        return 0;
+    case UI_WEB_PROFILE_POINTS: {
+        const profile_stats_t *stats = UI_Profile_GetActiveStats();
+        return stats ? stats->playerScore : 0;
+    }
+    case UI_WEB_SCREEN:
+        if ( UI_WebLoadingScreen() ) return 1;
+        if ( UI_WebMainScreen() ) return 2;
+        if ( UI_WebOfflineScreen() ) return UI_WebOfflineScreen();
+        if ( UI_WebOnlineScreen() ) return 11;
+        if ( UI_WebConfigScreen() ) return 12;
+        if ( UI_WebCreditsScreen() ) return 3;
+        if ( UI_WebDemosScreen() ) return 4;
+        if ( UI_WebRivalsScreen() ) return 5;
+        if ( UI_WebDownloadsScreen() ) return 6;
+        if ( UI_WebVehicleSettingsScreen() || UI_WebPlayerModelScreen() ) return 7;
+        return UI_WebDriverScreen() ? 8 : 0;
+    case UI_WEB_TICK:
+        UI_WebLoadingTick( arg0 );
+        return 0;
+    case UI_WEB_ACTION:
+        if ( arg0 == 12 ) UI_WebCreditsExit();
+        if ( arg0 == 14 ) UI_WebGarageBack();
+        UI_WebMainAction( arg0 );
+        UI_WebLoadingAction( arg0 );
+        return 0;
+    case UI_WEB_LOAD_PROGRESS: return UI_WebLoadingProgress();
+    case UI_WEB_LOAD_STAGE: return UI_WebLoadingStage();
+    case UI_WEB_UPDATE_PROMPT: return UI_WebLoadingPrompt();
+	case UI_GARAGE_UNLOCKED_RANK:
+		return UI_Profile_UnlockedRank();
 	case UI_IS_FULLSCREEN:
 		return UI_IsFullscreen();
 

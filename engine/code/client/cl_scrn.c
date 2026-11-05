@@ -172,6 +172,14 @@ void SCR_DrawSmallChar( int x, int y, int ch ) {
 		return;
 	}
 
+    if ( ch >= 32 && cls.consoleFont.glyphs[ch].glyph && cls.consoleFont.glyphs[ch].xSkip > 0 ) {
+        const glyphInfo_t *glyph = &cls.consoleFont.glyphs[ch];
+        float scale = (float)SMALLCHAR_WIDTH / glyph->xSkip;
+        re.DrawStretchPic( x, y + SMALLCHAR_HEIGHT - 3 - glyph->top * scale,
+            glyph->imageWidth * scale, glyph->imageHeight * scale,
+            glyph->s, glyph->t, glyph->s2, glyph->t2, glyph->glyph );
+        return;
+    }
 	row = ch>>4;
 	col = ch&15;
 
@@ -491,9 +499,15 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 
     // Draw the archive first; the cgame renders only into its preview rectangle.
     if ( clc.demoPlayer && uivm ) {
+#ifdef USE_CEF_GARAGE
+        if ( !CL_WebGarageDemoVisible() )
+#endif
         VM_Call( uivm, UI_REFRESH, cls.realtime );
         if ( clc.state == CA_ACTIVE && !clc.demoSeeking ) CL_CGameRendering( stereoFrame );
         // The preview is rendered after the menu and would cover its cursor.
+#ifdef USE_CEF_GARAGE
+        if ( !CL_WebGarageDemoVisible() )
+#endif
         VM_Call( uivm, UI_DRAW_CURSOR );
         Con_DrawConsole();
         return;
@@ -573,6 +587,14 @@ void SCR_UpdateScreen( void ) {
 	if ( !scr_initialized ) {
 		return;				// not initialized yet
 	}
+
+#ifdef USE_CEF_GARAGE
+    /* Loading calls UpdateScreen synchronously while the main frame is blocked. */
+    if ( clc.state >= CA_CONNECTING && clc.state <= CA_PRIMED && !recursive ) CL_WebGarageFrame();
+	if ( CL_WebGarageSkipBackground() ) {
+		return;
+	}
+#endif
 
 	if ( ++recursive > 2 ) {
 		Com_Error( ERR_FATAL, "SCR_UpdateScreen: recursively called" );

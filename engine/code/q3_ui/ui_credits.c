@@ -341,3 +341,21 @@ void UI_CreditMenu( void ) {
     uis.transitionIn = 0;
     UI_PushMenu( &s_credits.menu );
 }
+
+int UI_WebCreditsScreen( void ) {
+    return uis.activemenu == &s_credits.menu ? 3 : 0;
+}
+int UI_WebCreditCount( void ) { return ARRAY_LEN( credits ) - 1; }
+int UI_WebCreditChar( int index, int character ) {
+    if ( index < 0 || index >= UI_WebCreditCount() || character < 0 ||
+         character >= (int)strlen( credits[index].string ) ) return 0;
+    return (unsigned char)credits[index].string[character];
+}
+int UI_WebCreditKind( int index ) {
+    if ( index < 0 || index >= UI_WebCreditCount() ) return 0;
+    if ( credits[index].style & UI_BIGFONT ) return 2;
+    return credits[index].colour == &color_header ? 1 : 0;
+}
+void UI_WebCreditsExit( void ) {
+    if ( UI_WebCreditsScreen() ) Credits_Exit();
+}

@@ -223,6 +223,7 @@ void UI_DrawConnectScreen( qboolean overlay ) {
 	// see what information we should display
 	trap_GetClientState( &cstate );
 
+	if ( trap_Cvar_VariableValue( "cl_webMapLoading" ) ) return;
 	info[0] = '\0';
 	mapPathName[0] = '\0';
 	mapName[0] = '\0';

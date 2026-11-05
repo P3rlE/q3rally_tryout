@@ -553,3 +553,17 @@ void UI_RemoveBotsMenu( void ) {
 	Frontend_SetBackButton( &removeBotsMenuInfo.back.generic );
     UI_PushMenu( &removeBotsMenuInfo.menu );
 }
+
+menuframework_s *UI_WebRemoveBotsMenu( void ) { return uis.activemenu == &removeBotsMenuInfo.menu ? &removeBotsMenuInfo.menu : NULL; }
+
+const char *UI_WebRemoveBotsLabel( int index ) {
+    static char label[96]; menucommon_s *item; int i;
+    if ( uis.activemenu != &removeBotsMenuInfo.menu || index < 0 || index >= removeBotsMenuInfo.menu.nitems ) return "";
+    item = removeBotsMenuInfo.menu.items[index];
+    if ( item == &removeBotsMenuInfo.up.generic ) return "Previous bots";
+    if ( item == &removeBotsMenuInfo.down.generic ) return "Next bots";
+    for ( i = 0; i < 7; i++ ) if ( item == &removeBotsMenuInfo.bots[i].generic ) {
+        Com_sprintf( label, sizeof( label ), "%s%s", i == removeBotsMenuInfo.selectedBotNum ? "Selected: " : "", removeBotsMenuInfo.bots[i].string ); return label;
+    }
+    return "";
+}

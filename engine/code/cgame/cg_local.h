@@ -2699,3 +2699,7 @@ int CG_NewParticleArea ( int num );
 #endif /* CG_LOCAL_H */
 
 qboolean CG_DemoPlayerActive( void );
+
+int CG_WebHUDNumber( int field, int index );
+int CG_WebHUDChar( int index, int field, int choice, int character );
+void CG_WebHUDAction( int action, int index, int value );

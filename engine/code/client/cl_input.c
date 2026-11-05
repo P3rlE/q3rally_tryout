@@ -363,7 +363,18 @@ void CL_MousePositionEvent( int x, int y ) {
     float scaleX = cls.glconfig.vidWidth / 640.0f;
     float scaleY = cls.glconfig.vidHeight / 480.0f;
     float bias = 0;
-    if (!uivm || !clc.demoPlayer || !(Key_GetCatcher() & KEYCATCH_UI)) return;
+#ifdef USE_CEF_GARAGE
+    if ( CL_WebGarageInputVisible() ) {
+        CL_WebGarageFocus();
+        return;
+    }
+#endif
+    if (!uivm || !(Key_GetCatcher() & KEYCATCH_UI)) return;
+    if ( !clc.demoPlayer
+#ifdef USE_CEF_GARAGE
+         && !CL_WebGarageNativeInput()
+#endif
+       ) return;
     if (scaleX > scaleY) {
         scaleX = scaleY;
         bias = (cls.glconfig.vidWidth - 640 * scaleX) / 2;

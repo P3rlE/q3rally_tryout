@@ -464,3 +464,7 @@ void UI_ServerInfoMenu( void )
 }
 
 
+
+menuframework_s *UI_WebServerInfoMenu( void ) { return uis.activemenu == &s_serverinfo.menu ? &s_serverinfo.menu : NULL; }
+
+const char *UI_WebServerInfo( void ) { return s_serverinfo.info; }

@@ -157,6 +157,7 @@ typedef struct {
     // All items from index
     dlItem_t        allItems[DL_MAX_ITEMS];
     int             numAllItems;
+    int             catalogRevision;
 
     int             lastStateCheck;
     qboolean        showPopup;
@@ -265,6 +266,7 @@ static void DL_ParseIndex( const char *buf ) {
     dlItem_t    *item;
 
     s_dl.numAllItems = 0;
+    s_dl.catalogRevision++;
 
     // Walk through the array looking for object starts
     while ( *p && s_dl.numAllItems < DL_MAX_ITEMS ) {
@@ -1050,7 +1052,8 @@ void UI_Rally_DownloadsMenu( void ) {
     DL_PollState();
 
     // If we already have a cached index, load it immediately
-    if ( s_dl.dlState == DL_STATE_READY && s_dl.numAllItems == 0 ) {
+    if ( s_dl.dlState != DL_STATE_FETCHING && s_dl.dlState != DL_STATE_DOWNLOADING &&
+         s_dl.numAllItems == 0 ) {
         DL_LoadIndex();
         DL_ApplyFilter();
     }
@@ -1158,4 +1161,55 @@ void UI_Rally_DownloadsMenu( void ) {
 
     Frontend_SetBackButton( &s_dl.back.generic );
     UI_PushMenu( &s_dl.menu );
+}
+
+int UI_WebDownloadsScreen( void ) { return uis.activemenu == &s_dl.menu ? 6 : 0; }
+int UI_WebDownloadCount( void ) { return s_dl.numAllItems; }
+int UI_WebDownloadChar( int index, int field, int character ) {
+    const char *value;
+    dlItem_t *item;
+    if ( index < 0 || index >= s_dl.numAllItems ) return 0;
+    item = &s_dl.allItems[index];
+    switch ( field ) {
+    case 0: value = item->name; break;
+    case 1: value = item->author; break;
+    case 2: value = item->type; break;
+    case 3: value = item->version; break;
+    case 4: value = item->id; break;
+    default: return 0;
+    }
+    if ( character < 0 || character >= (int)strlen( value ) ) return 0;
+    return (unsigned char)value[character];
+}
+int UI_WebDownloadNumber( int index, int field ) {
+    if ( index == -1 && field == 0 ) return s_dl.catalogRevision;
+    if ( index < 0 || index >= s_dl.numAllItems ) return 0;
+    return field == 0 ? s_dl.allItems[index].size_kb : s_dl.allItems[index].installed;
+}
+void UI_WebDownloadTick( void ) {
+    if ( UI_WebDownloadsScreen() ) DL_PollState();
+}
+void UI_WebCatalogAction( int screen, int action, int index ) {
+    if ( screen == 5 && action == 0 ) {
+        UI_WebRivalsBack();
+        return;
+    }
+    if ( screen != 6 || !UI_WebDownloadsScreen() ) return;
+    switch ( action ) {
+    case 0: UI_PopMenu(); break;
+    case 1:
+        if ( s_dl.dlState != DL_STATE_FETCHING && s_dl.dlState != DL_STATE_DOWNLOADING )
+            trap_Cvar_Set( "ui_dl_action", "fetch_index" );
+        break;
+    case 2:
+        if ( s_dl.dlState == DL_STATE_FETCHING || s_dl.dlState == DL_STATE_DOWNLOADING )
+            trap_Cvar_Set( "ui_dl_action", "cancel" );
+        break;
+    case 3:
+        if ( index >= 0 && index < s_dl.numAllItems &&
+             s_dl.dlState != DL_STATE_FETCHING && s_dl.dlState != DL_STATE_DOWNLOADING &&
+             !s_dl.allItems[index].installed )
+            trap_Cvar_Set( "ui_dl_action", va( "download:%s", s_dl.allItems[index].id ) );
+        break;
+    }
 }

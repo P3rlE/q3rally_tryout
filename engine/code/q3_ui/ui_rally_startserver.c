@@ -3941,3 +3941,149 @@ void UI_BotSelectMenu( char *bot ) {
 	Frontend_SetBackButton( &botSelectInfo.back.generic );
     UI_PushMenu( &botSelectInfo.menu );
 }
+
+
+/* Expose native offline menu state. The web UI does not reproduce map filtering,
+ * track-length mapping, bot restrictions or server-start rules. */
+int UI_WebOfflineScreen( void ) {
+    if ( uis.activemenu == &s_startserver.menu ) return 9;
+    if ( uis.activemenu == &s_serveroptions.menu ) return 10;
+    return 0;
+}
+static menucommon_s *WebOffline_Control( int index ) {
+    menucommon_s *item;
+    if ( UI_WebOfflineScreen() != 10 || index < 0 || index >= s_serveroptions.menu.nitems ) return NULL;
+    item = s_serveroptions.menu.items[index];
+    if ( item->flags & QMF_HIDDEN ) return NULL;
+    if ( item->type != MTYPE_FIELD && item->type != MTYPE_SPINCONTROL && item->type != MTYPE_RADIOBUTTON ) return NULL;
+    return item;
+}
+static int WebOffline_Choices( menucommon_s *item ) {
+    int count = 0;
+    const char **names;
+    if ( !item ) return 0;
+    if ( item->type == MTYPE_RADIOBUTTON ) return 2;
+    if ( item->type != MTYPE_SPINCONTROL ) return 0;
+    names = ((menulist_s *)item)->itemnames;
+    if ( names ) while ( count < 128 && names[count] ) count++;
+    return count;
+}
+int UI_WebOfflineNumber( int field, int index ) {
+    menucommon_s *item = WebOffline_Control( index );
+    int slot;
+    if ( !UI_WebOfflineScreen() ) return 0;
+    switch ( field ) {
+    case 0: return s_startserver.nummaps;
+    case 1: return s_startserver.gametype.curvalue;
+    case 2: return s_startserver.currentmap;
+    case 3: return UI_WebOfflineScreen() == 10 ? s_serveroptions.menu.nitems : 0;
+    case 4: return !item ? 0 : item->type == MTYPE_FIELD ? ((item->flags & QMF_NUMBERSONLY) ? 1 : 4) : item->type == MTYPE_RADIOBUTTON ? 3 : 2;
+    case 5: return !item ? 0 : item->type == MTYPE_SPINCONTROL ? ((menulist_s *)item)->curvalue : item->type == MTYPE_RADIOBUTTON ? ((menuradiobutton_s *)item)->curvalue : 0;
+    case 6: return WebOffline_Choices( item );
+    case 7: return item && (item->flags & (QMF_GRAYED|QMF_INACTIVE)) ? 1 : 0;
+    case 8: return UI_GetNumBots();
+    case 9:
+        if ( !item ) return -1;
+        for ( slot = 0; slot < PLAYER_SLOTS; slot++ ) {
+            if ( item == &s_serveroptions.playerType[slot].generic || item == &s_serveroptions.playerTeam[slot].generic ) return slot;
+        }
+        return -1;
+    case 10: return item && ServerOptions_PlayerSlotForItem( item, 2 ) >= 0 ? 1 : 0;
+    case 11: return s_startserver.numstats;
+    case 12: return UI_WebOfflineScreen() == 10 && BG_GametypeAllowsBots( s_serveroptions.gametype );
+    case 13: return item && item->type == MTYPE_FIELD ? ((menufield_s *)item)->field.maxchars : 0;
+    case 14: return UI_WebOfflineScreen() == 9 ? s_startserver.multiplayer : s_serveroptions.multiplayer;
+    case 15: return UI_WebOfflineScreen() == 10 ? s_serveroptions.dedicated.curvalue : 0;
+    }
+    return 0;
+}
+int UI_WebOfflineChar( int kind, int index, int choice, int character ) {
+    const char *text = "", *info;
+    menucommon_s *item = WebOffline_Control( index );
+    if ( !UI_WebOfflineScreen() ) return 0;
+    switch ( kind ) {
+    case 0: if ( index >= 0 && index < s_startserver.nummaps ) text = s_startserver.maplist[index]; break;
+    case 1: if ( index >= 0 && index < s_startserver.nummaps ) text = s_startserver.maplistname[index]; break;
+    case 2: if ( index >= 0 && index < s_startserver.numstats ) text = s_startserver.mapstats[index]; break;
+    case 3: if ( index >= 0 && index < ARRAY_LEN( gametype_remap ) ) text = gametype_items[index]; break;
+    case 4:
+        if ( item ) {
+            text = item->name ? item->name : "";
+            if ( ServerOptions_PlayerSlotForItem( item, 1 ) >= 0 ) text = "Slot type";
+            if ( ServerOptions_PlayerSlotForItem( item, 2 ) >= 0 ) text = "Team";
+        }
+        break;
+    case 5: if ( item && item->type == MTYPE_FIELD ) text = ((menufield_s *)item)->field.buffer; break;
+    case 6:
+        if ( item && choice >= 0 && choice < WebOffline_Choices( item ) ) {
+            text = item->type == MTYPE_RADIOBUTTON ? (choice ? "Yes" : "No") : ((menulist_s *)item)->itemnames[choice];
+        }
+        break;
+    case 7:
+    case 9:
+        if ( index >= 0 && index < UI_GetNumBots() ) {
+            info = UI_GetBotInfoByNumber( index );
+            text = Info_ValueForKey( info, kind == 7 ? "name" : "model" );
+        }
+        break;
+    case 8: if ( index >= 0 && index < PLAYER_SLOTS ) text = s_serveroptions.playerNameBuffers[index]; break;
+    case 10: { const profile_info_t *info = UI_Profile_GetActiveInfo(); if ( info ) text = info->avatar; } break;
+    }
+    if ( !text || character < 0 || character >= (int)strlen( text ) ) return 0;
+    return (unsigned char)text[character];
+}
+void UI_WebOfflineAction( int action, int index, int value ) {
+    int screen = UI_WebOfflineScreen(), count;
+    menucommon_s *item;
+    if ( !screen ) return;
+    uis.transitionIn = uis.transitionOut = 0;
+    if ( action == 0 ) { UI_PopMenu(); return; }
+    if ( screen == 9 ) {
+        if ( action == 1 && index >= 0 && index < ARRAY_LEN( gametype_remap ) ) {
+            s_startserver.gametype.curvalue = index;
+            StartServer_GametypeEvent( &s_startserver.gametype, QM_ACTIVATED );
+        } else if ( action == 2 && index >= 0 && index < s_startserver.nummaps ) {
+            s_startserver.currentmap = s_startserver.list.curvalue = index;
+            StartServer_Update();
+        } else if ( action == 3 && s_startserver.nummaps > 0 ) {
+            StartServer_MenuEvent( &s_startserver.next, QM_ACTIVATED );
+        }
+        return;
+    }
+    if ( action == 7 ) {
+        char text[256];
+        item = WebOffline_Control( index );
+        if ( !s_serveroptions.multiplayer || item != &s_serveroptions.hostname.generic || item->flags & (QMF_INACTIVE|QMF_GRAYED) ) return;
+        trap_Cvar_VariableStringBuffer( "ui_weboffline_text", text, sizeof( text ) );
+        if ( (int)strlen( text ) > s_serveroptions.hostname.field.maxchars ) return;
+        Q_strncpyz( s_serveroptions.hostname.field.buffer, text, sizeof( s_serveroptions.hostname.field.buffer ) );
+        return;
+    }
+    if ( action == 4 ) {
+        item = WebOffline_Control( index );
+        if ( !item || (item->flags & (QMF_GRAYED|QMF_INACTIVE)) ) return;
+        if ( item->type == MTYPE_FIELD ) {
+            menufield_s *field = (menufield_s *)item;
+            char buffer[32];
+            /* Offline fields are numeric; hostname and dedicated are multiplayer-only. */
+            if ( !(item->flags & QMF_NUMBERSONLY) || value < 0 || value > 99999 ) return;
+            Com_sprintf( buffer, sizeof( buffer ), "%d", value );
+            if ( (int)strlen( buffer ) > field->field.maxchars ) return;
+            Q_strncpyz( field->field.buffer, buffer, sizeof( field->field.buffer ) );
+        } else {
+            if ( value == 1 && ServerOptions_PlayerSlotForItem( item, 1 ) >= 0 && !BG_GametypeAllowsBots( s_serveroptions.gametype ) ) return;
+            count = WebOffline_Choices( item );
+            if ( value < 0 || value >= count ) return;
+            if ( item->type == MTYPE_RADIOBUTTON ) ((menuradiobutton_s *)item)->curvalue = value;
+            else ((menulist_s *)item)->curvalue = value;
+        }
+        if ( item->callback ) item->callback( item, QM_ACTIVATED );
+        ServerOptions_SetPlayerItems();
+    } else if ( action == 5 && BG_GametypeAllowsBots( s_serveroptions.gametype ) && index > 0 && index < PLAYER_SLOTS && value >= 0 && value < UI_GetNumBots() && s_serveroptions.playerType[index].curvalue == 1 ) {
+        const char *info = UI_GetBotInfoByNumber( value );
+        Q_strncpyz( s_serveroptions.playerNameBuffers[index], Info_ValueForKey( info, "name" ), sizeof( s_serveroptions.playerNameBuffers[index] ) );
+        ServerOptions_SetPlayerItems();
+    } else if ( action == 6 && s_startserver.nummaps > 0 ) {
+        ServerOptions_Start();
+    }
+}

@@ -457,3 +457,7 @@ void UI_InGameMenu( void ) {
 	InGame_MenuInit();
 	UI_PushMenu( &s_ingame.menu );
 }
+
+menuframework_s *UI_WebPauseMenu( void ) { return uis.activemenu == &s_ingame.menu ? &s_ingame.menu : NULL; }
+
+int UI_WebIngameContext( void ) { int i; for ( i = 0; i < uis.menusp; i++ ) if ( uis.stack[i] == &s_ingame.menu ) return 1; return 0; }

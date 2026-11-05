@@ -829,3 +829,15 @@ void UI_AdvancedGraphicsOptionsMenu_Cache( void ) {
 void UI_AdvancedGraphicsOptionsMenu( void ) {
 	UI_GfxEffects_Open();
 }
+
+menuframework_s *UI_WebGraphicsMenu( void ) {
+    gfxPage_t *page = Gfx_CurrentPage();
+    if ( !page ) return NULL;
+    Gfx_RefreshPage( page );
+    if ( gfxRestart ) page->apply.generic.flags &= ~(QMF_HIDDEN|QMF_INACTIVE);
+    else page->apply.generic.flags |= QMF_HIDDEN|QMF_INACTIVE;
+    return &page->menu;
+}
+const char *UI_WebGraphicsTitle( void ) {
+    gfxPage_t *page = Gfx_CurrentPage(); return page ? page->def->title : "Graphics";
+}

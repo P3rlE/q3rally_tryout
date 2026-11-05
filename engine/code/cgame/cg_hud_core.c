@@ -35,6 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "cg_local.h"
+#include "../client/keycodes.h"
 #include "cg_hud_elements.h"
 
 /* -----------------------------------------------------------------------
@@ -240,6 +241,10 @@ static void HUDOpt_DrawRightText( float right, int y, const char *text, vec4_t c
                          UI_RIGHT|UI_DROPSHADOW|UI_SMALLFONT, scale, color );
 }
 
+static qboolean HUDOpt_WebVisible( void ) {
+    char flag[8]; trap_Cvar_VariableStringBuffer( "cl_webHUDActive", flag, sizeof( flag ) ); return atoi( flag ) != 0;
+}
+
 static float HUDOpt_ClampFloat( float value, float minValue, float maxValue ) {
     if ( value < minValue ) {
         return minValue;
@@ -389,6 +394,7 @@ Keyboard navigation: Up/Down to move, Enter/Space to toggle, Escape to close.
 ================
 */
 void CG_HUDOptions_KeyEvent( int key ) {
+    if ( HUDOpt_WebVisible() && key != K_ESCAPE && key != K_PAD0_B ) return;
     if ( !cg_hudOptionsOpen.integer ) return;
 
     if ( key == 128 /* K_UPARROW */ ) {
@@ -534,6 +540,8 @@ Call from CG_DrawActive() *after* the main HUD pass.
 ================
 */
 void CG_DrawHUDOptionsMenu( void ) {
+    trap_Cvar_Update( &cg_hudOptionsOpen );
+    if ( HUDOpt_WebVisible() ) return;
     if ( !cg_hudOptionsOpen.integer ) {
         return;
     }
@@ -2048,4 +2056,42 @@ qboolean CG_DrawHUD( void ) {
 
     // CG_DrawHUD draws overlays but is not the scoreboard visibility gate.
     return qfalse;
+}
+
+
+int CG_WebHUDNumber( int field, int index ) {
+    const hudToggleEntry_t *entry;
+    if ( field == 0 ) return HUDOPT_NUM_ENTRIES;
+    if ( index < 0 || index >= HUDOPT_NUM_ENTRIES ) return 0;
+    entry = &hudToggleTable[index]; trap_Cvar_Update( entry->cvar );
+    if ( field == 1 ) return entry->cvar->integer;
+    if ( field == 2 ) return entry->onValue + 1;
+    if ( field == 3 ) return HUDEntry_IsUnavail( entry );
+    return 0;
+}
+int CG_WebHUDChar( int index, int field, int choice, int character ) {
+    const hudToggleEntry_t *entry;
+    const char *text = "";
+    if ( index < 0 || index >= HUDOPT_NUM_ENTRIES ) return 0;
+    entry = &hudToggleTable[index];
+    if ( field == 0 ) text = entry->label;
+    else if ( field == 1 && choice >= 0 && choice <= entry->onValue ) {
+        if ( entry->cycleLabels ) text = entry->cycleLabels[choice];
+        else text = choice ? "On" : "Off";
+        if ( entry->cvar == &cg_ghostPlayback && cgs.gametype == GT_GHOST && choice == 0 ) text = "Auto";
+    }
+    if ( !text || character < 0 || character >= (int)strlen( text ) ) return 0;
+    return (unsigned char)text[character];
+}
+void CG_WebHUDAction( int action, int index, int value ) {
+    const hudToggleEntry_t *entry;
+    trap_Cvar_Update( &cg_hudOptionsOpen );
+    if ( !CG_HUDOptionsIsOpen() ) return;
+    if ( action == 0 ) {
+        if ( index < 0 || index >= HUDOPT_NUM_ENTRIES ) return;
+        entry = &hudToggleTable[index];
+        if ( HUDEntry_IsUnavail( entry ) || value < 0 || value > entry->onValue ) return;
+        trap_Cvar_Set( entry->cvarName, va( "%d", value ) ); trap_Cvar_Update( entry->cvar );
+    } else if ( action == 1 && value >= 40 && value <= 200 && value % 5 == 0 ) HUDOpt_SetFloatCvar( "cg_mmap_size", &cg_mmap_size, value / 100.0f, qfalse );
+    else if ( action == 2 && value >= 30 && value <= 120 && value % 5 == 0 ) HUDOpt_SetFloatCvar( "cg_mmap_fov", &cg_mmap_fov, value, qtrue );
 }

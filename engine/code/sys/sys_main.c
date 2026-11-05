@@ -773,6 +773,13 @@ int main( int argc, char **argv )
 #endif
 
 	extern void Sys_LaunchAutoupdater(int argc, char **argv);
+#ifdef USE_CEF_GARAGE
+	{
+		extern int CL_WebGarageSubprocess( int argc, char **argv );
+		int cefResult = CL_WebGarageSubprocess( argc, argv );
+		if ( cefResult >= 0 ) return cefResult;
+	}
+#endif
 	Sys_LaunchAutoupdater(argc, argv);
 
 #ifndef DEDICATED

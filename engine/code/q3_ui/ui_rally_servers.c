@@ -42,7 +42,7 @@ MULTIPLAYER MENU (SERVER BROWSER)
 //#define MAX_HOSTNAMELENGTH    22
 //#define MAX_MAPNAMELENGTH             16
 #define MAX_HOSTNAMELENGTH              42
-#define MAX_MAPNAMELENGTH               12
+#define MAX_MAPNAMELENGTH               MAX_QPATH
 // END
 #define MAX_LISTBOXITEMS                128
 #define MAX_LOCALSERVERS                128
@@ -2426,4 +2426,179 @@ void UI_ArenaServersMenu( void ) {
         ArenaServers_MenuInit();
         Frontend_SetBackButton( &g_arenaservers.back.generic );
     UI_PushMenu( &g_arenaservers.menu );
+}
+
+
+/* Web server browser: keep network discovery and persisted favorites native. */
+static char webOnlineSelected[MAX_ADDRESSLENGTH];
+static unsigned int webOnlineRevision;
+int UI_WebOnlineScreen( void ) { return uis.activemenu == &g_arenaservers.menu; }
+static servernode_t *WebOnline_Row( int index ) {
+    if ( !UI_WebOnlineScreen() || index < 0 || index >= g_arenaservers.list.numitems || index >= MAX_LISTBOXITEMS ) return NULL;
+    return g_arenaservers.table[index].servernode;
+}
+static int WebOnline_Find( const char *address ) {
+    int i; servernode_t *server;
+    if ( !address || !address[0] ) return -1;
+    for ( i = 0; i < g_arenaservers.list.numitems; i++ ) {
+        server = WebOnline_Row( i );
+        if ( server && !Q_stricmp( server->adrstr, address ) ) return i;
+    }
+    return -1;
+}
+static int WebOnline_Favorite( const char *address ) {
+    int i;
+    for ( i = 0; i < g_arenaservers.numfavoriteaddresses; i++ )
+        if ( !Q_stricmp( g_arenaservers.favoriteaddresses[i], address ) ) return 1;
+    return 0;
+}
+static qboolean WebOnline_AddressValid( const char *address ) {
+    int i, count = 0, port = 0;
+    const char *colon = NULL, *close;
+    if ( !address || !address[0] || strlen( address ) >= MAX_ADDRESSLENGTH ) return qfalse;
+    for ( i = 0; address[i]; i++ ) {
+        char c = address[i];
+        if ( !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '-' || c == ':' || c == '[' || c == ']') ) return qfalse;
+        if ( c == ':' ) { colon = address + i; count++; }
+    }
+    if ( address[0] == '[' ) {
+        close = strchr( address, ']' );
+        if ( !close || close == address + 1 || !strchr( address, ':' ) || strchr( close + 1, ']' ) || strchr( address + 1, '[' ) ) return qfalse;
+        if ( !close[1] ) return qtrue;
+        if ( close[1] != ':' ) return qfalse;
+        colon = close + 1;
+    } else {
+        if ( strchr( address, '[' ) || strchr( address, ']' ) || address[0] == '-' || address[0] == '.' ) return qfalse;
+        if ( count > 1 ) return qtrue; /* bare IPv6; NET_StringToAdr validates the literal */
+        if ( !colon ) return qtrue;
+        if ( colon == address ) return qfalse;
+    }
+    if ( !colon[1] ) return qfalse;
+    for ( colon++; *colon; colon++ ) {
+        if ( *colon < '0' || *colon > '9' ) return qfalse;
+        port = port * 10 + *colon - '0'; if ( port > 65535 ) return qfalse;
+    }
+    return port > 0;
+}
+static void WebOnline_Hash( const void *data, int length ) {
+    const unsigned char *bytes = data; int i;
+    for ( i = 0; i < length; i++ ) webOnlineRevision = (webOnlineRevision ^ bytes[i]) * 16777619u;
+}
+void UI_WebOnlineTick( int realtime ) {
+    int i, selected;
+    servernode_t *server;
+    char message[128];
+    if ( !UI_WebOnlineScreen() ) return;
+    /* Native UI drawing is skipped while CEF is visible. Discovery timeouts
+     * still need the current engine time, rather than a frozen UI clock. */
+    uis.frametime = realtime - uis.realtime;
+    uis.realtime = realtime;
+    if ( g_arenaservers.refreshservers ) ArenaServers_DoRefresh();
+    selected = WebOnline_Find( webOnlineSelected );
+    if ( selected >= 0 ) g_arenaservers.list.curvalue = selected;
+    webOnlineRevision = 2166136261u;
+    WebOnline_Hash( &g_arenaservers.list.numitems, sizeof( int ) );
+    WebOnline_Hash( &g_arenaservers.refreshservers, sizeof( int ) );
+    WebOnline_Hash( webOnlineSelected, strlen( webOnlineSelected ) );
+    if ( g_arenaservers.status.string ) WebOnline_Hash( g_arenaservers.status.string, strlen( g_arenaservers.status.string ) );
+    for ( i = 0; i < g_arenaservers.list.numitems; i++ ) {
+        server = WebOnline_Row( i ); if ( server ) WebOnline_Hash( server, sizeof( *server ) );
+    }
+    WebOnline_Hash( &g_arenaservers.master.curvalue, sizeof( int ) );
+    WebOnline_Hash( &g_arenaservers.gametype.curvalue, sizeof( int ) );
+    WebOnline_Hash( &g_arenaservers.sortkey.curvalue, sizeof( int ) );
+    WebOnline_Hash( &g_arenaservers.showfull.curvalue, sizeof( int ) );
+    WebOnline_Hash( &g_arenaservers.showempty.curvalue, sizeof( int ) );
+    WebOnline_Hash( &g_arenaservers.onlyhumans.curvalue, sizeof( int ) );
+    WebOnline_Hash( g_arenaservers.favoriteaddresses, sizeof( g_arenaservers.favoriteaddresses ) );
+    trap_Cvar_VariableStringBuffer( "ui_webonline_message", message, sizeof( message ) );
+    WebOnline_Hash( message, strlen( message ) );
+}
+int UI_WebOnlineNumber( int field, int index ) {
+    servernode_t *server = WebOnline_Row( index );
+    if ( !UI_WebOnlineScreen() ) return 0;
+    switch ( field ) {
+    case 0: return (int)webOnlineRevision;
+    case 1: return g_arenaservers.list.numitems;
+    case 2: return g_arenaservers.master.curvalue;
+    case 3: return g_arenaservers.gametype.curvalue;
+    case 4: return g_arenaservers.sortkey.curvalue;
+    case 5: return g_arenaservers.showfull.curvalue;
+    case 6: return g_arenaservers.showempty.curvalue;
+    case 7: return g_arenaservers.onlyhumans.curvalue;
+    case 8: return g_arenaservers.refreshservers;
+    case 9: return server ? server->numclients : 0;
+    case 10: return server ? server->maxclients : 0;
+    case 11: return server ? server->pingtime : 0;
+    case 12: return server ? server->humanclients : 0;
+    case 13: return server ? WebOnline_Favorite( server->adrstr ) : 0;
+    case 14: return GAMES_NUM_GAMES;
+    }
+    return 0;
+}
+int UI_WebOnlineChar( int kind, int index, int character ) {
+    servernode_t *server = WebOnline_Row( index );
+    const char *text = "";
+    char message[128];
+    if ( !UI_WebOnlineScreen() ) return 0;
+    switch ( kind ) {
+    case 0: if ( server ) text = server->hostname[0] ? server->hostname : server->adrstr; break;
+    case 1: if ( server ) text = server->adrstr; break;
+    case 2: if ( server ) text = server->mapname; break;
+    case 3: if ( server ) text = ArenaServers_GametypeShortName( server->gametype ); break;
+    case 4: if ( index >= 0 && index < UIAS_NUM_SOURCES ) text = master_items[index]; break;
+    case 5: if ( index >= 0 && index < GAMES_NUM_GAMES ) text = servertype_items[index]; break;
+    case 6: if ( index >= 0 && index < SORT_NUM_SORTS ) text = sortkey_items[index]; break;
+    case 7: text = g_arenaservers.status.string; break;
+    case 8: trap_Cvar_VariableStringBuffer( "ui_webonline_message", message, sizeof( message ) ); text = message; break;
+    case 9: text = webOnlineSelected; break;
+    }
+    if ( !text || character < 0 || character >= (int)strlen( text ) ) return 0;
+    return (unsigned char)text[character];
+}
+void UI_WebOnlineAction( int action, int index, int value ) {
+    char address[256];
+    int row;
+    menucommon_s *item = NULL;
+    if ( !UI_WebOnlineScreen() ) return;
+    uis.transitionIn = uis.transitionOut = 0;
+    trap_Cvar_Set( "ui_webonline_message", "" );
+    if ( action == 0 ) { ArenaServers_Event( &g_arenaservers.back, QM_ACTIVATED ); return; }
+    if ( action == 1 && index >= 0 && index < UIAS_NUM_SOURCES ) {
+        ArenaServers_StopRefresh(); g_arenaservers.master.curvalue = index; item = &g_arenaservers.master.generic;
+    } else if ( action == 2 && index >= 0 && index < GAMES_NUM_GAMES ) {
+        g_arenaservers.gametype.curvalue = index; item = &g_arenaservers.gametype.generic;
+    } else if ( action == 3 && index >= 0 && index < SORT_NUM_SORTS ) {
+        g_arenaservers.sortkey.curvalue = index; item = &g_arenaservers.sortkey.generic;
+    } else if ( action == 4 && index >= 0 && index < 3 && (value == 0 || value == 1) ) {
+        menuradiobutton_s *toggle = index == 0 ? &g_arenaservers.showfull : index == 1 ? &g_arenaservers.showempty : &g_arenaservers.onlyhumans;
+        toggle->curvalue = value; item = &toggle->generic;
+    } else if ( action == 10 ) { ArenaServers_StartRefresh(); }
+    else if ( action == 11 ) { ArenaServers_StopRefresh(); }
+    else if ( action == 12 ) { ArenaServers_StopRefresh(); ArenaServers_SaveChanges(); UI_StartServerMenu( qtrue ); return; }
+    else if ( action >= 5 && action <= 9 ) {
+        trap_Cvar_VariableStringBuffer( "ui_webonline_address", address, sizeof( address ) );
+        if ( !WebOnline_AddressValid( address ) ) { trap_Cvar_Set( "ui_webonline_message", "Enter a valid server address and port (1-65535)." ); return; }
+        if ( action == 9 ) {
+            ArenaServers_StopRefresh(); ArenaServers_SaveChanges();
+            trap_Cmd_ExecuteText( EXEC_APPEND, va( "connect \"%s\"\n", address ) ); return;
+        }
+        if ( action == 7 || action == 8 ) ArenaServers_StopRefresh();
+        row = WebOnline_Find( address );
+        if ( row < 0 ) { trap_Cvar_Set( "ui_webonline_message", "That server is no longer in the current list. Refresh and select it again." ); return; }
+        g_arenaservers.list.curvalue = row;
+        Q_strncpyz( webOnlineSelected, address, sizeof( webOnlineSelected ) );
+        if ( action == 5 ) { ArenaServers_UpdatePicture(); }
+        else if ( action == 6 ) { ArenaServers_StopRefresh(); ArenaServers_SaveChanges(); trap_Cmd_ExecuteText( EXEC_APPEND, va( "connect \"%s\"\n", address ) ); }
+        else if ( action == 7 ) {
+            if ( WebOnline_Favorite( address ) ) trap_Cvar_Set( "ui_webonline_message", "Server is already a favorite." );
+            else if ( g_numfavoriteservers >= MAX_FAVORITESERVERS ) trap_Cvar_Set( "ui_webonline_message", "Your favorites list is full." );
+            else { ArenaServers_AddToFavorites(); ArenaServers_SaveChanges(); trap_Cvar_Set( "ui_webonline_message", "Favorite saved." ); }
+        } else if ( action == 8 && g_servertype == UIAS_FAVORITES ) {
+            ArenaServers_RemoveNow(); ArenaServers_UpdateMenu(); ArenaServers_SaveChanges(); webOnlineSelected[0] = 0;
+            trap_Cvar_Set( "ui_webonline_message", "Favorite removed." );
+        }
+    }
+    if ( item ) ArenaServers_Event( item, QM_ACTIVATED );
+    UI_WebOnlineTick( uis.realtime );
 }

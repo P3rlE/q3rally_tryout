@@ -17,6 +17,12 @@ def test_preview_mouse_coordinates():
 static int uivm=1, catcher=2, calls, lastX, lastY;
 static struct { struct { int vidWidth, vidHeight; } glconfig; } cls;
 static struct { int demoPlayer; } clc;
+#ifdef USE_CEF_GARAGE
+static int webVisible, nativeInput, focusCalls;
+static int CL_WebGarageInputVisible(void) { return webVisible; }
+static int CL_WebGarageNativeInput(void) { return nativeInput; }
+static void CL_WebGarageFocus(void) { focusCalls++; }
+#endif
 static int Key_GetCatcher(void) { return catcher; }
 static void VM_Call(int vm,int command,int x,int y) { assert(command==99); calls++; lastX=x; lastY=y; }
 '''
@@ -32,6 +38,14 @@ int main(void) {
     clc.demoPlayer=0; CL_MousePositionEvent(0,0); assert(calls==3);
     clc.demoPlayer=1; catcher=0; CL_MousePositionEvent(0,0); assert(calls==3);
     catcher=2; uivm=0; CL_MousePositionEvent(0,0); assert(calls==3);
+#ifdef USE_CEF_GARAGE
+    uivm=1; clc.demoPlayer=0; nativeInput=1;
+    CL_MousePositionEvent(640,512); assert(calls==4 && lastX==320 && lastY==240);
+    nativeInput=0;
+    CL_MousePositionEvent(100,100); assert(calls==4);
+    clc.demoPlayer=1; webVisible=1;
+    CL_MousePositionEvent(640,512); assert(calls==4 && focusCalls==1);
+#endif
 }
 '''
     compiler = shutil.which("gcc") or "C:/msys64/mingw64/bin/gcc.exe"
@@ -40,4 +54,6 @@ int main(void) {
         binary = pathlib.Path(directory) / "mouse.exe"
         sourcefile.write_text(harness)
         subprocess.run([compiler, str(sourcefile), "-o", str(binary), '-lm'], check=True)
+        subprocess.run([str(binary)], check=True, timeout=5)
+        subprocess.run([compiler, str(sourcefile), "-DUSE_CEF_GARAGE", "-o", str(binary), '-lm'], check=True)
         subprocess.run([str(binary)], check=True, timeout=5)

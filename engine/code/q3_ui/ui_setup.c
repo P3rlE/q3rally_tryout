@@ -382,3 +382,150 @@ void UI_SetupMenu( void ) {
     Frontend_SetBackButton( &setupMenuInfo.back.generic );
     UI_PushMenu( &setupMenuInfo.menu );
 }
+
+
+static menuframework_s *WebConfig_Menu( int *page ) {
+    menuframework_s *menu; int i;
+    if ( uis.activemenu == &setupMenuInfo.menu ) { *page = 0; return &setupMenuInfo.menu; }
+    if ( (menu = UI_WebControlsMenu()) ) { *page = 1; return menu; }
+    if ( (menu = UI_WebGraphicsMenu()) ) { *page = 2; return menu; }
+    if ( (menu = UI_WebDisplayMenu()) ) { *page = 3; return menu; }
+    if ( (menu = UI_WebSoundMenu()) ) { *page = 4; return menu; }
+    if ( (menu = UI_WebNetworkMenu()) ) { *page = 5; return menu; }
+    if ( (menu = UI_WebPreferencesMenu()) ) { *page = 6; return menu; }
+    if ( (menu = UI_WebRallyOptionsMenu()) ) { *page = 7; return menu; }
+    if ( (menu = UI_WebDriverInfoMenu()) ) { *page = 8; return menu; }
+    if ( (menu = UI_WebPauseMenu()) ) { *page = 10; return menu; }
+    if ( (menu = UI_WebAddBotsMenu()) ) { *page = 11; return menu; }
+    if ( (menu = UI_WebRemoveBotsMenu()) ) { *page = 12; return menu; }
+    if ( (menu = UI_WebTeamMenu()) ) { *page = 13; return menu; }
+    if ( (menu = UI_WebTeamOrdersMenu()) ) { *page = 14; return menu; }
+    if ( (menu = UI_WebServerInfoMenu()) ) { *page = 15; return menu; }
+    if ( (menu = UI_WebConfirmMenu()) ) {
+        if ( UI_WebIngameContext() ) { *page = 9; return menu; }
+        for ( i = 0; i < uis.menusp; i++ ) if ( uis.stack[i] == &setupMenuInfo.menu ) { *page = 9; return menu; }
+    }
+    *page = -1; return NULL;
+}
+int UI_WebConfigScreen( void ) { int page; return WebConfig_Menu( &page ) != NULL; }
+static menucommon_s *WebConfig_Item( int index, int *page ) {
+    menuframework_s *menu = WebConfig_Menu( page );
+    menucommon_s *item;
+    if ( !menu || index < 0 || index >= menu->nitems ) return NULL;
+    item = menu->items[index];
+    if ( item->flags & QMF_HIDDEN ) return NULL;
+    return item;
+}
+static int WebConfig_Choices( menucommon_s *item ) {
+    int count = 0; const char **names;
+    if ( !item ) return 0;
+    if ( item->type == MTYPE_RADIOBUTTON ) return 2;
+    if ( item->type == MTYPE_SCROLLLIST ) return ((menulist_s *)item)->numitems;
+    if ( item->type != MTYPE_SPINCONTROL && item->type != MTYPE_SCROLLLIST ) return 0;
+    names = ((menulist_s *)item)->itemnames;
+    if ( names ) while ( count < 256 && names[count] ) count++;
+    return count;
+}
+int UI_WebConfigNumber( int field, int index ) {
+    int page; menuframework_s *menu = WebConfig_Menu( &page );
+    menucommon_s *item = WebConfig_Item( index, &page );
+    if ( !menu ) return 0;
+    switch ( field ) {
+    case 0: return page;
+    case 1: return menu->nitems;
+    case 2:
+        if ( !item ) return 0;
+        if ( item->type == MTYPE_SPINCONTROL ) return 1;
+        if ( item->type == MTYPE_RADIOBUTTON ) return 2;
+    if ( item->type == MTYPE_SCROLLLIST ) return ((menulist_s *)item)->numitems;
+        if ( item->type == MTYPE_SLIDER ) return 3;
+        if ( item->type == MTYPE_FIELD ) return 4;
+        if ( item->type == MTYPE_ACTION && UI_WebControlText( index, 0 )[0] ) return 5;
+        if ( (item->type == MTYPE_PTEXT || item->type == MTYPE_BITMAP) && item->callback ) return 6;
+        if ( item->type == MTYPE_SCROLLLIST ) return page == 14 ? 8 : 7;
+        return 0;
+    case 3:
+        if ( !item ) return 0;
+        if ( item->type == MTYPE_SLIDER ) return (int)(((menuslider_s *)item)->curvalue * 100 + 0.5f);
+        if ( item->type == MTYPE_RADIOBUTTON ) return ((menuradiobutton_s *)item)->curvalue;
+        if ( item->type == MTYPE_SPINCONTROL ) return ((menulist_s *)item)->curvalue;
+        return 0;
+    case 4: return item && item->type == MTYPE_SLIDER ? (int)(((menuslider_s *)item)->minvalue * 100) : 0;
+    case 5: return item && item->type == MTYPE_SLIDER ? (int)(((menuslider_s *)item)->maxvalue * 100) : 0;
+    case 6: return item && (item->flags & (QMF_INACTIVE|QMF_GRAYED)) ? 1 : 0;
+    case 7: return WebConfig_Choices( item );
+    case 8: return page == 9 || UI_WebControlsConfirm();
+    }
+    return 0;
+}
+int UI_WebConfigChar( int kind, int index, int choice, int character ) {
+    static const char *titles[] = {"Configuration","Controls","Graphics","Display","Sound","Network","Game options","Q3Rally options","Renderer information","Confirm change","Race control","Add bots","Remove bots","Choose a team","Team orders","Server information"};
+    int page; menucommon_s *item = WebConfig_Item( index, &page );
+    const char *text = ""; char info[2048];
+    if ( page < 0 ) return 0;
+    switch ( kind ) {
+    case 0: text = page == 2 ? UI_WebGraphicsTitle() : titles[page]; break;
+    case 1:
+        if ( item ) {
+            if ( item->type == MTYPE_BITMAP ) text = strstr( item->name ? item->name : "", "down" ) ? "Next bots" : strstr( item->name ? item->name : "", "up" ) ? "Previous bots" : "Back";
+            else if ( item->type == MTYPE_PTEXT ) text = ((menutext_s *)item)->string;
+            else if ( item->type == MTYPE_ACTION ) text = UI_WebControlText( index, 0 );
+            else text = item->name ? item->name : "Search controls";
+            if ( page == 11 && UI_WebAddBotsLabel( index )[0] ) text = UI_WebAddBotsLabel( index );
+            if ( page == 12 && UI_WebRemoveBotsLabel( index )[0] ) text = UI_WebRemoveBotsLabel( index );
+            if ( page == 7 && item->id >= 21 && item->id <= 25 ) { Com_sprintf( info, sizeof( info ), "Rear view: %s", text ); text = info; }
+            if ( page == 7 && item->id >= 30 && item->id <= 34 ) { Com_sprintf( info, sizeof( info ), "Main view: %s", text ); text = info; }
+        }
+        break;
+    case 2:
+        if ( item && item->type == MTYPE_FIELD ) text = ((menufield_s *)item)->field.buffer;
+        else if ( item && item->type == MTYPE_ACTION ) text = UI_WebControlText( index, 1 );
+        break;
+    case 3:
+        if ( item && choice >= 0 && choice < WebConfig_Choices( item ) ) text = item->type == MTYPE_RADIOBUTTON ? (choice ? "On" : "Off") : ((menulist_s *)item)->itemnames[choice];
+        break;
+    case 4:
+        if ( page == 9 || UI_WebControlsConfirm() ) {
+            text = UI_WebConfirmQuestion();
+            if ( UI_WebControlsPrompt()[0] ) text = UI_WebControlsPrompt();
+        } else if ( page == 15 ) { text = UI_WebServerInfo();
+        } else if ( page == 10 ) { text = "Race control and session settings. Online races continue while this menu is open.";
+        } else if ( page == 8 ) {
+            Com_sprintf( info, sizeof( info ), "Vendor: %s\nRenderer: %s\nVersion: %s\nColor / depth / stencil: %d / %d / %d bits", uis.glconfig.vendor_string, uis.glconfig.renderer_string, uis.glconfig.version_string, uis.glconfig.colorBits, uis.glconfig.depthBits, uis.glconfig.stencilBits ); text = info;
+        } else if ( page == 2 ) text = "Apply may restart the renderer. The embedded UI preview currently runs in windowed mode.";
+        else if ( page == 4 ) text = "Volume changes are applied with Apply. Changing the sound system or quality may restart audio.";
+        else if ( page == 1 ) text = "Choose an action to rebind it. Save or discard your changes when leaving Controls.";
+        else text = "Settings use the existing Q3Rally configuration and apply rules.";
+        break;
+    }
+    if ( !text || character < 0 || character >= (int)strlen( text ) ) return 0;
+    return (unsigned char)text[character];
+}
+void UI_WebConfigAction( int action, int index, int value ) {
+    int page, count; menucommon_s *item = WebConfig_Item( index, &page );
+    menuframework_s *menu = WebConfig_Menu( &page );
+    if ( !menu ) return;
+    uis.transitionIn = uis.transitionOut = 0;
+    if ( action == 6 ) { if ( menu->key ) menu->key( K_ESCAPE ); else Menu_DefaultKey( menu, K_ESCAPE ); return; }
+    if ( !item || item->flags & (QMF_HIDDEN|QMF_INACTIVE|QMF_GRAYED) ) return;
+    if ( action == 0 && (item->type == MTYPE_PTEXT || item->type == MTYPE_BITMAP) && item->callback ) {
+        if ( page == 0 && item->id == ID_CUSTOMIZEPLAYER ) UI_WebDriverMenu();
+        else item->callback( item, QM_ACTIVATED );
+    } else if ( action == 7 && page == 14 && item->type == MTYPE_SCROLLLIST ) {
+        if ( value < 0 || value >= WebConfig_Choices( item ) ) return;
+        ((menulist_s *)item)->curvalue = value;
+        if ( item->callback ) item->callback( item, QM_ACTIVATED );
+    } else if ( action == 1 && (item->type == MTYPE_SPINCONTROL || item->type == MTYPE_RADIOBUTTON) ) {
+        count = WebConfig_Choices( item ); if ( value < 0 || value >= count ) return;
+        if ( item->type == MTYPE_RADIOBUTTON ) ((menuradiobutton_s *)item)->curvalue = value;
+        else ((menulist_s *)item)->curvalue = value;
+        if ( item->callback ) item->callback( item, QM_ACTIVATED );
+    } else if ( action == 2 && item->type == MTYPE_SLIDER ) {
+        menuslider_s *slider = (menuslider_s *)item; float next = value / 100.0f;
+        if ( next < slider->minvalue || next > slider->maxvalue ) return;
+        slider->curvalue = next; if ( item->callback ) item->callback( item, QM_ACTIVATED );
+    } else if ( (action == 3 || action == 5) && item->type == MTYPE_ACTION ) UI_WebControlsBind( index, action == 5 ? -1 : value );
+    else if ( action == 4 && page == 1 && item->type == MTYPE_FIELD ) {
+        char text[128]; trap_Cvar_VariableStringBuffer( "ui_webconfig_text", text, sizeof( text ) ); UI_WebControlsSearch( text );
+    }
+}

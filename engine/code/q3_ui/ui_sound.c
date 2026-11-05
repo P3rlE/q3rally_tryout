@@ -949,3 +949,9 @@ void UI_SoundOptionsMenu( void ) {
     UI_PushMenu( &soundOptionsInfo.menu );
 	Menu_SetCursorToItem( &soundOptionsInfo.menu, &soundOptionsInfo.sfxvolume );
 }
+
+menuframework_s *UI_WebSoundMenu( void ) {
+    if ( uis.activemenu != &soundOptionsInfo.menu ) return NULL;
+    SoundOptions_UpdateMenuItems();
+    return &soundOptionsInfo.menu;
+}

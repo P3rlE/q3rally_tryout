@@ -1578,6 +1578,7 @@ static void SaveFavorite( const char *favorite ) {
 		Q_strncpyz( info.favoriteCars[favoriteIndex].skin, skinName, sizeof( info.favoriteCars[favoriteIndex].skin ) );
 		Q_strncpyz( info.favoriteCars[favoriteIndex].rim, s_playermodel.rimskin, sizeof( info.favoriteCars[favoriteIndex].rim ) );
 		Q_strncpyz( info.favoriteCars[favoriteIndex].head, s_playermodel.headskin, sizeof( info.favoriteCars[favoriteIndex].head ) );
+        trap_Cvar_VariableStringBuffer( "plate", info.favoriteCars[favoriteIndex].plate, sizeof( info.favoriteCars[favoriteIndex].plate ) );
 
 		if ( UI_Profile_SaveActiveInfo( &info ) ) {
 			s_playermodel.profileInfo = info;
@@ -2636,3 +2637,7 @@ void UI_PlayerModelMenu( const char *modelName )
 }
 
 
+
+int UI_WebPlayerModelScreen( void ) {
+    return uis.activemenu == &s_playermodel.menu;
+}

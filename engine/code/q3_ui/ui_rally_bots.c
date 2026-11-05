@@ -822,3 +822,23 @@ static void UI_BotsMenu_Init(void) {
     }
     UI_BotsMenu_DrawBotPage();
 }
+
+int UI_WebRivalsScreen( void ) { return uis.activemenu == &s_bots.menu ? 5 : 0; }
+int UI_WebRivalCount( void ) { return botCount; }
+int UI_WebRivalChar( int index, int field, int character ) {
+    const char *value;
+    if ( index < 0 || index >= botCount ) return 0;
+    switch ( field ) {
+    case 0: value = botNames[index]; break;
+    case 1: value = botModels[index]; break;
+    case 2: value = botDescriptions[index]; break;
+    case 3: value = botPersonalities[index]; break;
+    case 4: value = botFavWeapon[index]; break;
+    default: return 0;
+    }
+    if ( character < 0 || character >= (int)strlen( value ) ) return 0;
+    return (unsigned char)value[character];
+}
+void UI_WebRivalsBack( void ) {
+    if ( UI_WebRivalsScreen() ) UI_PopMenu();
+}
