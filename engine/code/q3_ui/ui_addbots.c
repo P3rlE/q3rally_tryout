@@ -680,3 +680,17 @@ void UI_AddBotsMenu( void ) {
 	Frontend_SetBackButton( &addBotsMenuInfo.back.generic );
     UI_PushMenu( &addBotsMenuInfo.menu );
 }
+
+menuframework_s *UI_WebAddBotsMenu( void ) { return uis.activemenu == &addBotsMenuInfo.menu ? &addBotsMenuInfo.menu : NULL; }
+
+const char *UI_WebAddBotsLabel( int index ) {
+    static char label[96]; menucommon_s *item; int i;
+    if ( uis.activemenu != &addBotsMenuInfo.menu || index < 0 || index >= addBotsMenuInfo.menu.nitems ) return "";
+    item = addBotsMenuInfo.menu.items[index];
+    if ( item == &addBotsMenuInfo.up.generic ) return "Previous bots";
+    if ( item == &addBotsMenuInfo.down.generic ) return "Next bots";
+    for ( i = 0; i < 7; i++ ) if ( item == &addBotsMenuInfo.bots[i].generic ) {
+        Com_sprintf( label, sizeof( label ), "%s%s", i == addBotsMenuInfo.selectedBotNum ? "Selected: " : "", addBotsMenuInfo.bots[i].string ); return label;
+    }
+    return "";
+}

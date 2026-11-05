@@ -581,3 +581,29 @@ void UI_DemoSaveMenu(void) {
     Menu_AddItem(&demoSave.menu, &demoSave.keep);
     UI_PushMenu(&demoSave.menu);
 }
+
+int UI_WebDemosScreen( void ) {
+    return uis.activemenu == &s_demos.menu ? 4 : 0;
+}
+int UI_WebDemoCount( void ) { return s_demos.numDemos; }
+int UI_WebDemoChar( int index, int character ) {
+    if ( index < 0 || index >= s_demos.numDemos || character < 0 ||
+         character >= (int)strlen( s_demos.demolist[index] ) ) return 0;
+    return (unsigned char)s_demos.demolist[index][character];
+}
+void UI_WebDemoAction( int action, int index ) {
+    menucommon_s item;
+    if ( !UI_WebDemosScreen() ) return;
+    if ( index >= 0 && index < s_demos.numDemos ) s_demos.list.curvalue = index;
+    switch ( action ) {
+    case 0: Demos_PlaySelected(); return;
+    case 1: item.id = ID_PAUSE; break;
+    case 2: item.id = ID_REWIND; break;
+    case 3: item.id = ID_FORWARD; break;
+    case 4: item.id = ID_RESTART; break;
+    case 5: item.id = ID_STOP; break;
+    case 6: item.id = ID_BACK; break;
+    default: return;
+    }
+    Demos_MenuEvent( &item, QM_ACTIVATED );
+}

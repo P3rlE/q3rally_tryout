@@ -1030,15 +1030,8 @@ static void UI_GFX_Loading_MenuDraw( void ) {
     const char *chipLabel;
     vec4_t color;
 
-    GFX_RefreshUpdateState();
-    GFX_UpdateProgress( currentTime );
-    GFX_UpdateSmoothProgress( currentTime );
-    GFX_UpdateStartLights( currentTime );
-
-    if ( GFX_HandoffDue( currentTime ) ) {
-        GFX_HandOffToMainMenu();
-        return;
-    }
+    UI_WebLoadingTick( uis.realtime );
+    if ( !UI_WebLoadingScreen() ) return;
 
     a = GFX_ContentAlpha( currentTime );
 
@@ -1194,4 +1187,43 @@ void UI_GFX_Loading( void ) {
     /* the main menu takes this music over instead of starting its own */
     UI_StartMenuMusic();
     s_gfxloading.musicStarted = qtrue;
+}
+
+
+int UI_WebLoadingScreen( void ) {
+    return uis.activemenu == &s_gfxloading.menu ? 1 : 0;
+}
+
+void UI_WebLoadingTick( int realtime ) {
+    int currentTime;
+    if ( !UI_WebLoadingScreen() ) return;
+    uis.frametime = realtime - uis.realtime;
+    uis.realtime = realtime;
+    currentTime = trap_Milliseconds();
+    GFX_RefreshUpdateState();
+    GFX_UpdateProgress( currentTime );
+    GFX_UpdateSmoothProgress( currentTime );
+    GFX_UpdateStartLights( currentTime );
+    s_gfxloading.stageShown = qtrue;
+    if ( GFX_HandoffDue( currentTime ) ) GFX_HandOffToMainMenu();
+}
+
+int UI_WebLoadingProgress( void ) {
+    return (int)(s_gfxloading.smoothProgress * 100.0f);
+}
+
+int UI_WebLoadingStage( void ) {
+    return s_gfxloading.finalPhase ? GFX_NUM_STAGES : s_gfxloading.currentStage;
+}
+
+int UI_WebLoadingPrompt( void ) {
+    return GFX_UpdatePromptActive();
+}
+
+void UI_WebLoadingAction( int action ) {
+    if ( !UI_WebLoadingScreen() ) return;
+    if ( GFX_UpdatePromptActive() ) {
+        if ( action == 10 ) GFX_ActivateButton( GFX_BTN_UPDATE );
+        if ( action == 11 ) GFX_ActivateButton( GFX_BTN_SKIP );
+    }
 }

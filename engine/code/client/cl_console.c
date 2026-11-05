@@ -284,7 +284,8 @@ void Con_CheckResize (void)
 	int		i, j, width, oldwidth, oldtotallines, numlines, numchars;
 	short	tbuf[CON_TEXTSIZE];
 
-	width = (SCREEN_WIDTH / SMALLCHAR_WIDTH) - 2;
+	width = cls.glconfig.vidWidth > 0 ? cls.glconfig.vidWidth / SMALLCHAR_WIDTH - 4 : DEFAULT_CONSOLE_WIDTH;
+    width = (int)Com_Clamp( 1, CON_TEXTSIZE / 4, width );
 
 	if (width == con.linewidth)
 		return;
@@ -548,10 +549,10 @@ void Con_DrawInput (void) {
 
 	re.SetColor( con.color );
 
-	SCR_DrawSmallChar( con.xadjust + 1 * SMALLCHAR_WIDTH, y, ']' );
+	SCR_DrawSmallChar( con.xadjust + 1 * SMALLCHAR_WIDTH, y, '>' );
 
 	Field_Draw( &g_consoleField, con.xadjust + 2 * SMALLCHAR_WIDTH, y,
-		SCREEN_WIDTH - 3 * SMALLCHAR_WIDTH, qtrue, qtrue );
+		cls.glconfig.vidWidth - 4 * SMALLCHAR_WIDTH, qtrue, qtrue );
 }
 
 
@@ -655,29 +656,21 @@ void Con_DrawSolidConsole( float frac ) {
 	if (lines > cls.glconfig.vidHeight )
 		lines = cls.glconfig.vidHeight;
 
-	// on wide screens, we will center the text
-	con.xadjust = 0;
-	SCR_AdjustFrom640( &con.xadjust, NULL, NULL, NULL );
-
-	// draw the background
-	y = frac * SCREEN_HEIGHT;
-	if ( y < 1 ) {
-		y = 0;
-	}
-	else {
-		SCR_DrawPic( 0, 0, SCREEN_WIDTH, y, cls.consoleShader );
-	}
-
-	color[0] = 1;
-	color[1] = 0;
-	color[2] = 0;
-	color[3] = 1;
-	SCR_FillRect( 0, y, SCREEN_WIDTH, 2, color );
-
+    /* Native-pixel shell: use the complete viewport and keep text on its
+     * fixed grid so history, completion and cursor movement stay unchanged. */
+    con.xadjust = SMALLCHAR_WIDTH;
+    color[0] = .035f; color[1] = .035f; color[2] = .035f; color[3] = .97f;
+    re.SetColor( color ); re.DrawStretchPic( 0, 0, cls.glconfig.vidWidth, lines, 0, 0, 1, 1, cls.whiteShader );
+    color[0] = .085f; color[1] = .085f; color[2] = .085f;
+    re.SetColor( color ); re.DrawStretchPic( 0, 0, cls.glconfig.vidWidth, 30, 0, 0, 1, 1, cls.whiteShader );
+    color[0] = 1; color[1] = .333f; color[2] = 0; color[3] = 1;
+    re.SetColor( color ); re.DrawStretchPic( 0, lines-2, cls.glconfig.vidWidth, 2, 0, 0, 1, 1, cls.whiteShader );
+    SCR_DrawSmallStringExt( 2 * SMALLCHAR_WIDTH, 8, "Q3RALLY / CONSOLE", color, qtrue, qtrue );
+    y = lines;
 
 	// draw the version number
 
-	re.SetColor( g_color_table[ColorIndex(COLOR_RED)] );
+	re.SetColor( color );
 
 	i = strlen( Q3_VERSION );
 
@@ -689,7 +682,7 @@ void Con_DrawSolidConsole( float frac ) {
 
 	// draw the text
 	con.vislines = lines;
-	rows = (lines-SMALLCHAR_HEIGHT)/SMALLCHAR_HEIGHT;		// rows of text to draw
+	rows = (lines - SMALLCHAR_HEIGHT * 5) / SMALLCHAR_HEIGHT;		// rows of text to draw
 
 	y = lines - (SMALLCHAR_HEIGHT*3);
 
@@ -697,7 +690,7 @@ void Con_DrawSolidConsole( float frac ) {
 	if (con.display != con.current)
 	{
 	// draw arrows to show the buffer is backscrolled
-		re.SetColor( g_color_table[ColorIndex(COLOR_RED)] );
+		re.SetColor( color );
 		for (x=0 ; x<con.linewidth ; x+=4)
 			SCR_DrawSmallChar( con.xadjust + (x+1)*SMALLCHAR_WIDTH, y, '^' );
 		y -= SMALLCHAR_HEIGHT;

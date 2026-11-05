@@ -355,6 +355,7 @@ typedef struct {
 	qhandle_t	charSetShader;
 	qhandle_t	whiteShader;
 	qhandle_t	consoleShader;
+    fontInfo_t consoleFont;
 } clientStatic_t;
 
 extern	clientStatic_t		cls;
@@ -669,6 +670,19 @@ void CL_WriteDemoMessage ( msg_t *msg, int headerBytes );
 
 
 //
+#ifdef USE_CEF_GARAGE
+int CL_WebGarageSubprocess( int argc, char **argv );
+void CL_WebGarageInit( void );
+void CL_WebGarage_f( void );
+qboolean CL_WebGarageSkipBackground( void );
+qboolean CL_WebGarageDemoVisible( void );
+qboolean CL_WebGarageInputVisible( void );
+void CL_WebGarageFocus( void );
+qboolean CL_WebGarageNativeInput( void );
+void CL_WebGarageFrame( void );
+void CL_WebGarageShutdown( void );
+#endif
+
 // cl_downloads.c
 // Q3RALLY DOWNLOADS START
 //

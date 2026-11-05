@@ -1069,3 +1069,29 @@ void UI_MainMenu( void ) {
         }
 
 }
+
+int UI_WebMainScreen( void ) {
+        return uis.activemenu == &s_main.menu ? 2 : 0;
+}
+
+void UI_WebMainAction( int action ) {
+        if ( !UI_WebMainScreen() ) return;
+        /* The HTML main menu does not draw the native fade animation. Finish
+         * its transition before a child menu starts accepting native input. */
+        uis.transitionIn = 0;
+        uis.transitionOut = 0;
+        uis.tFrac = 1.0f;
+        MainMenu_RunTransition( 1.0f );
+        switch ( action ) {
+        case 1: MainMenu_ChangeMenu( ID_SINGLEPLAYER ); break;
+        case 2: MainMenu_ChangeMenu( ID_MULTIPLAYER ); break;
+        case 3: MainMenu_ChangeMenu( ID_SETUP ); break;
+        case 4: MainMenu_ChangeMenu( ID_RIVALS ); break;
+        case 5: MainMenu_ChangeMenu( ID_DEMOS ); break;
+        case 6: MainMenu_ChangeMenu( ID_DOWNLOADS ); break;
+        case 7: UI_WebDriverMenu(); break;
+        case 8: if ( UI_Profile_HasActiveProfile() ) UI_PlayerStatsMenu(); break;
+        case 9: UI_ConfirmMenu( "EXIT GAME?", 0, MainMenu_ExitAction ); break;
+        case 13: MainMenu_ExitAction( qtrue ); break;
+        }
+}

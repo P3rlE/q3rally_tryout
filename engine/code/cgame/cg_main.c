@@ -49,6 +49,9 @@ This must be the very first function compiled into the .q3vm file
 Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6, int arg7, int arg8, int arg9, int arg10, int arg11  ) {
 
 	switch ( command ) {
+    case CG_WEB_HUD_NUMBER: return CG_WebHUDNumber( arg0, arg1 );
+    case CG_WEB_HUD_CHAR: return CG_WebHUDChar( arg0, arg1, arg2, arg3 );
+    case CG_WEB_HUD_ACTION: CG_WebHUDAction( arg0, arg1, arg2 ); return 0;
 	case CG_INIT:
 // Q3Rally Code Start
 //		CG_DebugLogPrintf("INIT\n");

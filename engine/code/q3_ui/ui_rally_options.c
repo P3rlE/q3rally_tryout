@@ -844,7 +844,7 @@ void Q3ROptions_MenuInit( void ) {
 	s_q3roptions.back.generic.x				= 25;
 	s_q3roptions.back.generic.y				= 480 - 40;
 	s_q3roptions.back.generic.id			= ID_BACK;
-	s_q3roptions.back.generic.callback		= Q3ROptions_MenuEvent; 
+	s_q3roptions.back.generic.callback		= Q3ROptions_MenuEvent;
 	s_q3roptions.back.string				= "Back";
 	s_q3roptions.back.color					= text_color_normal;
 	s_q3roptions.back.style					= UI_LEFT | UI_SMALLFONT;
@@ -1017,4 +1017,10 @@ void UI_Q3ROptionsMenu( void )
 	Q3ROptions_MenuInit();
 	Frontend_SetBackButton( &s_q3roptions.back.generic );
     UI_PushMenu ( &s_q3roptions.menu );
+}
+
+menuframework_s *UI_WebRallyOptionsMenu( void ) {
+    if ( uis.activemenu != &s_q3roptions.menu ) return NULL;
+
+    return &s_q3roptions.menu;
 }

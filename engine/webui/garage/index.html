@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>Q3Rally | Garage</title>
+  <link rel="stylesheet" href="garage.css">
+  <script defer src="vehicleShowroom.bundle.js"></script>
+  <script defer src="garage.js"></script>
+  <script defer src="frontend.js"></script>
+  <script defer src="archive.js"></script>
+  <script defer src="library.js"></script>
+  <script defer src="driver.js"></script>
+  <script defer src="offline.js"></script>
+  <script defer src="online.js"></script>
+  <script defer src="config.js"></script>
+  <script defer src="session.js"></script>
+  <script src="map-loading.js" defer></script>
+</head>
+<body>
+  <main id="hud-screen" hidden>
+    <header><div><p class="label">Q3RALLY / LIVE HUD</p><h2>Your race.<br>Your <em>display.</em></h2></div></header>
+    <p>Changes apply immediately. Settings unavailable in this mode are disabled.</p>
+    <div class="session-actions"><button id="hud-close">Back to race</button><button class="secondary" id="hud-console">Console</button></div>
+    <div id="hud-fields"></div><h3>Mini-map</h3>
+    <label for="hud-size">Size <output id="hud-size-value"></output><input id="hud-size" type="range" min="40" max="200" step="5"></label>
+    <label for="hud-zoom">Field of view <output id="hud-zoom-value"></output><input id="hud-zoom" type="range" min="30" max="120" step="5"></label>
+    <p class="label">SHIFT + H / ESC TO CLOSE</p>
+  </main>
+  <main id="config-screen" hidden>
+    <header><div><p class="label">Q3RALLY / CONFIGURATION</p><h1 id="config-title">Your <em>settings.</em></h1></div><button class="secondary" id="config-back">Back</button></header>
+    <p id="config-description"></p><nav id="config-actions" class="config-actions" aria-label="Settings categories and actions"></nav>
+    <section id="config-settings"><div id="config-fields" class="config-fields"></div></section>
+    <dialog id="config-confirm" aria-labelledby="config-confirm-title"><p class="label">Q3RALLY / CONFIRM CHANGE</p><h2 id="config-confirm-title">Confirm change</h2><p id="config-confirm-message"></p><div id="config-confirm-actions" class="config-actions"></div></dialog>
+    <dialog id="config-capture" aria-labelledby="config-capture-title"><p class="label">Q3RALLY / CONTROLS</p><h2 id="config-capture-title">Choose a key</h2><p id="config-capture-action"></p><p>Press a key, mouse button, mouse wheel or controller input. Escape cancels.</p><div class="config-actions"><button class="secondary" id="config-capture-cancel">Cancel</button></div></dialog>
+  </main>
+  <main id="online-screen" hidden>
+    <header><div><p class="label">Q3RALLY / ONLINE</p><h1>Join the <em>grid.</em></h1></div><button class="secondary" id="online-back">Back to main menu</button></header>
+    <section class="online-toolbar"><div class="online-filters">
+      <label for="online-source">Server source<select id="online-source"></select></label>
+      <label for="online-mode">Game mode<select id="online-mode"></select></label>
+      <label for="online-sort">Sort by<select id="online-sort"></select></label>
+      <label for="online-search">Search servers<input id="online-search" type="search" placeholder="Name, map or address"></label>
+    </div><div class="online-actions online-toggles">
+      <label><input id="online-full" type="checkbox"> Show full</label><label><input id="online-empty" type="checkbox"> Show empty</label><label><input id="online-humans" type="checkbox"> Count humans only</label>
+    </div><div class="online-actions"><button id="online-refresh">Refresh servers</button><button class="secondary" id="online-stop" disabled>Stop search</button><button class="secondary" id="online-direct">Direct connect</button><button class="secondary" id="online-host">Host a server</button></div>
+    <p id="online-status" role="status"></p></section>
+    <div class="online-layout"><section><div class="online-list-heading"><span>SERVER / MAP</span><span>PLAYERS</span><span>PING</span></div><p id="online-count"></p><div id="online-list" aria-label="Available servers"></div></section>
+    <section class="showroom online-detail"><p class="label">YOUR DESTINATION</p><h2 id="online-name">Choose a server</h2><p id="online-address"></p><img id="online-image" alt="" hidden><div id="online-details"></div>
+      <div class="online-actions"><button id="online-connect" disabled>Connect</button><button class="secondary" id="online-favorite" disabled>Save favorite</button><button class="secondary" id="online-remove" hidden disabled>Remove favorite</button></div>
+      <p id="online-message" role="status"></p>
+    </section></div>
+    <dialog id="online-direct-dialog" aria-labelledby="online-direct-title"><p class="label">Q3RALLY / DIRECT CONNECTION</p><h2 id="online-direct-title">Know the <em>address?</em></h2>
+      <form id="online-direct-form"><label for="online-direct-address">Server address<input id="online-direct-address" type="text" maxlength="63" required placeholder="server.example.com:27960" autocomplete="off" spellcheck="false"></label><p>Hostname, IPv4 or IPv6. The default port is 27960.</p><p id="online-direct-error" role="status"></p><div class="online-actions"><button id="online-direct-connect" type="submit">Connect</button><button class="secondary" type="button" id="online-direct-close">Cancel</button></div></form>
+    </dialog>
+    <dialog id="online-remove-dialog" aria-labelledby="online-remove-title"><h2 id="online-remove-title">Remove favorite?</h2><p id="online-remove-address"></p><div class="online-actions"><button id="online-remove-confirm">Remove favorite</button><button class="secondary" id="online-remove-cancel" autofocus>Keep favorite</button></div></dialog>
+  </main>
+  <main id="offline-screen" hidden>
+    <header><div><p class="label">Q3RALLY / OFFLINE</p><h1>Your next <em>race.</em></h1></div><button class="secondary" id="offline-back">Back</button></header>
+    <nav class="offline-steps" aria-label="Race setup steps"><span id="offline-step-map">01 / TRACK &amp; MODE</span><span id="offline-step-rules">02 / RULES &amp; DRIVERS</span></nav>
+    <div id="offline-track" class="offline-track-layout">
+      <section><label for="offline-mode">Game mode</label><select id="offline-mode"></select>
+        <label for="offline-search">Find a track</label><input id="offline-search" type="search" placeholder="Search tracks">
+        <p id="offline-map-count" role="status"></p><div id="offline-map-list" aria-label="Available tracks"></div>
+      </section>
+      <section class="showroom"><p class="label" id="offline-map-id">YOUR TRACK</p><h2 id="offline-map-name">Choose a track</h2>
+        <img id="offline-map-image" alt="" hidden><div id="offline-map-details"></div>
+        <button id="offline-next" disabled>Race setup</button>
+      </section>
+    </div>
+    <div id="offline-rules" hidden>
+      <section class="offline-summary"><div><p class="label">YOUR RACE</p><h2 id="offline-race-title"></h2><p id="offline-race-mode"></p></div><button id="offline-start">Start race</button></section>
+      <div class="offline-rules-layout"><section><h2>Race rules</h2><p>Zero means no limit.</p><div id="offline-options" class="offline-fields"></div></section>
+        <section id="offline-opponents"><h2>Starting grid</h2><p id="offline-grid-help">Choose your opponents and teams.</p><div id="offline-players"></div></section>
+      </div>
+    </div>
+    <p id="offline-status" role="status"></p>
+  </main>
+  <main id="driver-screen" hidden>
+    <header><div><p class="label">Q3RALLY / YOUR DRIVER</p><h1>Driver <em>profile.</em></h1></div><button class="secondary" data-driver-action="back">Back</button></header>
+    <nav class="driver-tabs" role="tablist" aria-label="Driver profile">
+      <button id="driver-tab-0" role="tab" aria-controls="driver-overview" data-driver-tab="0">Overview</button>
+      <button id="driver-tab-1" role="tab" aria-controls="driver-stats" data-driver-tab="1">Stats</button>
+      <button id="driver-tab-2" role="tab" aria-controls="driver-achievements" data-driver-tab="2">Achievements</button>
+    </nav>
+    <div id="driver-overview" role="tabpanel" aria-labelledby="driver-tab-0"></div>
+    <div id="driver-stats" role="tabpanel" aria-labelledby="driver-tab-1" hidden></div>
+    <div id="driver-achievements" role="tabpanel" aria-labelledby="driver-tab-2" hidden>
+      <label for="driver-achievement-filter">Category</label><select id="driver-achievement-filter"><option value="">All achievements</option></select>
+      <p id="driver-achievement-count"></p><div id="driver-medals" class="driver-medals"></div>
+    </div>
+  </main>
+  <main id="library-screen" hidden>
+    <header><div><p class="label" id="library-label">Q3RALLY / RIVALS</p><h1 id="library-title">Meet your <em>rivals.</em></h1></div>
+      <button class="secondary" id="library-back">Back to main menu</button></header>
+    <div class="library-layout">
+      <section><label for="library-search">Search</label><input id="library-search" type="search" placeholder="Find a rival">
+        <div id="download-filters" hidden><label for="download-type">Content type</label>
+          <select id="download-type"><option value="">All content</option><option value="track">Tracks</option><option value="vehicle">Vehicles</option><option value="skin">Skins</option></select></div>
+        <p id="library-count" role="status">Loading...</p><div id="library-list" aria-label="Items"></div>
+      </section>
+      <section class="showroom">
+        <p class="label" id="library-detail-label">RIVAL PROFILE</p><h2 id="library-name">Select a rival</h2>
+        <img id="library-image" alt="" hidden><div id="rival-3d" hidden></div>
+        <p id="library-author"></p><p id="library-personality"></p><p id="library-weapon"></p>
+        <p id="library-description"></p><p id="library-detail-status" role="status"></p>
+        <div id="download-controls" hidden><button id="download-install" disabled>Install content</button>
+          <button class="secondary" id="download-refresh">Refresh catalog</button>
+          <button class="secondary" id="download-cancel" disabled>Cancel transfer</button>
+          <progress id="download-progress" value="0" max="100" aria-label="Download progress"></progress>
+          <p id="download-status" role="status">Loading catalog...</p>
+        </div>
+      </section>
+    </div>
+  </main>
+  <main id="credits-screen" hidden>
+    <header><div><p class="label">Q3RALLY / THE PEOPLE BEHIND THE RALLY</p><h1>Thank you for <em>playing.</em></h1></div>
+      <button class="secondary" id="credits-exit">Exit game</button></header>
+    <div id="credits-window"><div id="credits-roll"></div></div>
+    <p class="label">PRESS ANY KEY TO EXIT</p>
+  </main>
+  <main id="demos-screen" hidden>
+    <header><div><p class="label">Q3RALLY / DEMO ARCHIVE</p><h1>Your <em>replays.</em></h1></div>
+      <button class="secondary" id="demos-back">Back to main menu</button></header>
+    <div class="archive-layout">
+      <section><p class="label">RECORDINGS</p><label for="demo-list">Choose a recording</label>
+        <select id="demo-list" size="10" aria-label="Recordings"></select>
+        <p id="demo-details">Loading recordings...</p><button id="demo-play" disabled>Play demo</button>
+      </section>
+      <section><p class="label">PREVIEW</p><div id="demo-viewport"><p id="demo-placeholder">Select a recording to preview</p></div>
+        <div class="demo-transport" aria-label="Playback controls">
+          <button class="secondary" data-demo-action="4">Restart</button>
+          <button class="secondary" data-demo-action="2">-10 s</button>
+          <button data-demo-action="1" id="demo-pause">Pause</button>
+          <button class="secondary" data-demo-action="3">+10 s</button>
+          <button class="secondary" data-demo-action="5">Stop</button>
+        </div>
+        <p><span id="demo-clock">0:00</span> <span id="demo-message" role="status"></span></p>
+      </section>
+    </div>
+  </main>
+  <dialog id="quit-confirm"><p class="label">Q3RALLY / FINISH YOUR SESSION</p>
+    <h2>Exit game?</h2><p>Thanks for racing with us.</p>
+    <button id="quit-accept">Show credits and exit</button>
+    <button class="secondary" id="quit-cancel" autofocus>Keep racing</button>
+  </dialog>
+  <main id="frontend" hidden>
+    <header><div><p class="label">Q3RALLY / IT'S DAMN FAST, BABY.</p><h1 id="frontend-title">Ready to <em>race.</em></h1></div>
+      <span class="label" id="frontend-status" role="status">Starting up</span></header>
+    <div class="frontend-layout">
+      <nav id="main-navigation" aria-label="Main menu" hidden>
+        <button data-action="offline">Offline</button><button data-action="online">Online</button>
+        <button data-action="garage">Garage</button><button data-action="config">Config</button>
+        <button data-action="rivals">Rivals</button><button data-action="demos">Demos</button>
+        <button data-action="downloads">Downloads</button>
+        <button class="secondary" data-action="profile">Driver profile<span id="profile-summary"></span></button>
+        <button class="secondary" data-action="quit">Quit</button>
+      </nav>
+      <section id="loading-panel"><p class="label">01 / PREPARING YOUR RALLY</p>
+        <h2 id="loading-title">Starting up</h2><ol id="loading-stages"></ol>
+        <progress id="loading-progress" max="100" value="0" aria-label="Graphics loading"></progress>
+        <p id="loading-percent" role="status">0%</p>
+        <div id="update-prompt" hidden><p>A newer version of Q3Rally is available.</p>
+          <button data-action="update">Open download page</button>
+          <button class="secondary" data-action="skip">Continue</button>
+        </div>
+      </section>
+      <section class="showroom frontend-showroom"><p class="label">YOUR ACTIVE VEHICLE</p>
+        <h2 id="active-vehicle-name">Your car</h2><div id="active-vehicle-3d"></div>
+        <p id="active-vehicle-status">Ready for the next rally</p>
+        <button class="secondary" data-action="garage" id="open-garage" hidden>Customize in garage</button>
+      </section>
+    </div>
+  </main>
+  <main id="garage">
+    <header>
+      <div>
+        <p class="label">Q3RALLY / EMBEDDED GARAGE</p>
+        <h1>Your <em>garage.</em></h1>
+      </div>
+      <button id="back" class="secondary" type="button">Back to game menu</button>
+    </header>
+    <div class="layout">
+      <section class="showroom" aria-labelledby="vehicle-name">
+        <p class="label">01 / SHOWROOM</p>
+        <h2 id="vehicle-name">Alpine</h2>
+        <img id="vehicle-image" src="alpine.png" alt="Alpine">
+        <div id="vehicle-3d" hidden></div>
+        <div class="showroom-actions">
+          <button id="view-toggle" type="button" class="secondary" hidden>3D view</button>
+          <button id="view-reset" type="button" class="secondary" hidden>Reset view</button>
+          <span id="view-status" role="status"></span>
+        </div>
+      </section>
+      <section aria-labelledby="configuration">
+        <p class="label">02 / CONFIGURATION</p>
+        <h2 id="configuration">Make it yours</h2>
+        <div class="setup-controls">
+          <div class="garage-picker">
+            <span id="vehicle-label" class="picker-label">Vehicle</span>
+            <select id="vehicle" hidden aria-hidden="true" tabindex="-1" disabled></select>
+            <div class="garage-carousel" role="group" aria-roledescription="carousel" aria-labelledby="vehicle-label"></div>
+          </div>
+        </div>
+        <div class="setup-controls" id="setup-controls" hidden>
+          <div class="garage-picker">
+            <span id="paint-label" class="picker-label">Paint</span>
+            <select id="paint" hidden aria-hidden="true" tabindex="-1"></select>
+            <div class="garage-carousel" role="group" aria-roledescription="carousel" aria-labelledby="paint-label"></div>
+          </div>
+          <div class="garage-picker">
+            <span id="wheel-label" class="picker-label">Wheels</span>
+            <select id="wheel" hidden aria-hidden="true" tabindex="-1"></select>
+            <div class="garage-carousel" role="group" aria-roledescription="carousel" aria-labelledby="wheel-label"></div>
+          </div>
+          <div class="garage-picker">
+            <span id="head-label" class="picker-label">Driver</span>
+            <select id="head" hidden aria-hidden="true" tabindex="-1"></select>
+            <div class="garage-carousel" role="group" aria-roledescription="carousel" aria-labelledby="head-label"></div>
+          </div>
+          <div class="garage-picker">
+            <span id="plate-label" class="picker-label">License plate</span>
+            <select id="plate" hidden aria-hidden="true" tabindex="-1"></select>
+            <div class="garage-carousel" role="group" aria-roledescription="carousel" aria-labelledby="plate-label"></div>
+          </div>
+        </div>
+        <button id="apply" type="button" disabled>Apply setup</button>
+        <div class="showroom-actions">
+          <button id="web-link" class="secondary" type="button">Link web profile</button>
+          <button id="web-pull" class="secondary" type="button">Load web setup and favorites</button>
+        </div>
+        <p id="web-profile-status" role="status"></p>
+        <p id="status" role="status">Loading local setup options…</p>
+      </section>
+    </div>
+    <section class="favorite-panel" aria-labelledby="favorites-heading">
+      <p class="label">03 / SAVED SETUPS</p><h2 id="favorites-heading">Your favorites</h2>
+      <p>Preview a saved setup or save your current selection in one of four slots.</p>
+      <div id="favorite-slots"></div>
+    </section>
+  </main>
+  <main id="map-loading-screen" hidden>
+    <header><p class="label">Q3RALLY / NEXT STAGE</p><h1>Ready to <em>race.</em></h1></header>
+    <div class="map-loading-grid"><section class="map-loading-preview"><img id="map-loading-image" alt="" hidden><h2 id="map-loading-name">Preparing your race</h2><p id="map-loading-server"></p></section>
+    <section class="map-loading-status"><p class="label">CONNECTION / LOADING</p><h2 id="map-loading-detail" role="status" aria-live="polite">Preparing track resources</h2><progress id="map-loading-progress" max="100" aria-label="Loading progress"></progress><p id="map-loading-transfer"></p><p>Your race starts when the track and vehicles are ready.</p><button id="map-loading-cancel" class="secondary" type="button">Cancel</button></section></div>
+  </main>
+</body>
+</html>

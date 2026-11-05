@@ -141,6 +141,14 @@ int main(int argc,char **argv) {
         self.assertEqual(status, "1 1")
         self.assertEqual(json.loads(text)["identity"]["info"]["favoriteCars"], favorites)
 
+    def test_complete_favorites_preserve_driver_plate_and_slot_order(self):
+        value = current()
+        favorites = [{field: chr(97+i) * 63 for field in ("model", "skin", "rim", "head", "plate")} for i in range(4)]
+        value["identity"]["info"]["favoriteCars"] = favorites
+        status, text = self.run_profile(value).split("\n", 1)
+        self.assertEqual(status, "1 1")
+        self.assertEqual(json.loads(text)["identity"]["info"]["favoriteCars"], favorites)
+
     def test_future_linked_invalid_and_oversized_profiles_are_never_overwritten(self):
         cases = []
         for field, value in (("profileVersion", 3), ("profileVersion", "2")):

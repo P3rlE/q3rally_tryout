@@ -1076,6 +1076,9 @@ qboolean UI_usesUniqueCDKey(void);
 // input interface
 //
 void IN_Init( void *windowData );
+#ifdef USE_CEF_GARAGE
+void *IN_GetWindow( void );
+#endif
 void IN_Frame( void );
 void IN_Shutdown( void );
 void IN_Restart( void );

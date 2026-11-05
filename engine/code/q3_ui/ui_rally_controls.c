@@ -350,6 +350,7 @@ typedef struct {
 } controlsExitConfirm_t;
 
 static controlsExitConfirm_t s_controlsExitConfirm;
+static qboolean s_webControlsStaged;
 static int s_rebindConfirmTargetId = -1;
 static int s_rebindConfirmKey = -1;
 static char s_rebindConfirmQuestion[128];
@@ -1962,11 +1963,11 @@ static qboolean Controls_ApplyBindingChange( int id, int key )
 			if ( key == -1 )
 			{
 				if ( bindptr->bind1 != -1 ) {
-					trap_Key_SetBinding( bindptr->bind1, "" );
+					if ( !s_webControlsStaged ) trap_Key_SetBinding( bindptr->bind1, "" );
 					bindptr->bind1 = -1;
 				}
 				if ( bindptr->bind2 != -1 ) {
-					trap_Key_SetBinding( bindptr->bind2, "" );
+					if ( !s_webControlsStaged ) trap_Key_SetBinding( bindptr->bind2, "" );
 					bindptr->bind2 = -1;
 				}
 			}
@@ -1977,9 +1978,9 @@ static qboolean Controls_ApplyBindingChange( int id, int key )
 			else
 			{
 				if ( bindptr->bind1 != -1 )
-					trap_Key_SetBinding( bindptr->bind1, "" );
+					if ( !s_webControlsStaged ) trap_Key_SetBinding( bindptr->bind1, "" );
 				if ( bindptr->bind2 != -1 )
-					trap_Key_SetBinding( bindptr->bind2, "" );
+					if ( !s_webControlsStaged ) trap_Key_SetBinding( bindptr->bind2, "" );
 				bindptr->bind1 = key;
 				bindptr->bind2 = -1;
 			}
@@ -3402,7 +3403,48 @@ UI_ControlsMenu
 =================
 */
 void UI_ControlsMenu( void ) {
+    s_webControlsStaged = qfalse;
 	Controls_MenuInit();
 	Frontend_SetBackButton( &s_controls.back.generic );
     UI_PushMenu( &s_controls.menu );
 }
+
+menuframework_s *UI_WebControlsMenu( void ) {
+    if ( uis.activemenu == &s_controlsExitConfirm.menu ) return &s_controlsExitConfirm.menu;
+    return uis.activemenu == &s_controls.menu ? &s_controls.menu : NULL;
+}
+const char *UI_WebControlText( int index, int field ) {
+    static char name[96];
+    menucommon_s *item; bind_t *binding;
+    if ( uis.activemenu != &s_controls.menu || index < 0 || index >= s_controls.menu.nitems ) return "";
+    s_webControlsStaged = qtrue;
+    item = s_controls.menu.items[index]; binding = Controls_FindBindingById( item->id );
+    if ( !binding || item->type != MTYPE_ACTION ) return "";
+    if ( !field ) return binding->label;
+    if ( binding->bind1 < 0 ) return "Unbound";
+    Controls_KeyNameForDisplay( binding->bind1, name, sizeof( name ) ); return name;
+}
+const char *UI_WebControlsPrompt( void ) {
+    if ( uis.activemenu == &s_controlsExitConfirm.menu ) return "Save changes?";
+    if ( s_rebindConfirmTargetId >= 0 ) return s_rebindConfirmQuestion;
+    return "";
+}
+void UI_WebControlsBind( int index, int key ) {
+    menucommon_s *item; bind_t *conflict;
+    if ( uis.activemenu != &s_controls.menu || index < 0 || index >= s_controls.menu.nitems || key < -1 || key >= MAX_KEYS || key == K_ESCAPE || key == '`' || key == '~' ) return;
+    item = s_controls.menu.items[index];
+    if ( item->type != MTYPE_ACTION || item->flags & (QMF_HIDDEN|QMF_INACTIVE|QMF_GRAYED) || !Controls_FindBindingById( item->id ) ) return;
+    conflict = key < 0 ? NULL : Controls_FindConflictingBinding( key, item->id );
+    if ( conflict ) {
+        s_rebindConfirmTargetId = item->id; s_rebindConfirmKey = key;
+        Com_sprintf( s_rebindConfirmQuestion, sizeof( s_rebindConfirmQuestion ), "Key is already bound to %s. Replace?", conflict->label );
+        UI_ConfirmMenu_Style( "", UI_CENTER|UI_SMALLFONT, Controls_RebindConflict_Draw, Controls_RebindConflict_Action );
+    } else Controls_ApplyBindingChange( item->id, key );
+}
+
+void UI_WebControlsSearch( const char *text ) {
+    if ( uis.activemenu != &s_controls.menu ) return;
+    Q_strncpyz( s_controlsSearchText, text, sizeof( s_controlsSearchText ) );
+    Controls_SearchFieldSyncFromState(); Controls_Update();
+}
+int UI_WebControlsConfirm( void ) { return uis.activemenu == &s_controlsExitConfirm.menu; }

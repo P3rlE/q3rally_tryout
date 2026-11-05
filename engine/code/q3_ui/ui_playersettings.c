@@ -1746,10 +1746,11 @@ static void PlayerSettings_RequestWebSetup( qboolean link ) {
 }
 
 static void PlayerSettings_UpdateWebSetup( void ) {
-	char setup[MAX_CVAR_VALUE_STRING], uuid[37], vehicle[50], paint[50], rim[50], model[MAX_QPATH];
+	char setup[400], uuid[37], vehicle[50], paint[50], rim[50], head[50], plate[50], model[MAX_QPATH];
 	char *cursor;
 	const profile_info_t *profile;
 
+    UI_WebImportFavorites();
 	trap_Cvar_VariableStringBuffer( "ui_webprofile_setup", setup, sizeof( setup ) );
 	if ( !setup[0] ) return;
 	trap_Cvar_Set( "ui_webprofile_setup", "" );
@@ -1761,6 +1762,8 @@ static void PlayerSettings_UpdateWebSetup( void ) {
 	Q_strncpyz( vehicle, COM_Parse( &cursor ), sizeof( vehicle ) );
 	Q_strncpyz( paint, COM_Parse( &cursor ), sizeof( paint ) );
 	Q_strncpyz( rim, COM_Parse( &cursor ), sizeof( rim ) );
+    Q_strncpyz( head, COM_Parse( &cursor ), sizeof( head ) );
+    Q_strncpyz( plate, COM_Parse( &cursor ), sizeof( plate ) );
 	if ( !PlayerSettings_WebAssetId( vehicle ) || !PlayerSettings_WebAssetId( paint ) ||
 	     !PlayerSettings_WebAssetId( rim ) || strlen( vehicle ) + strlen( paint ) + 1 >= sizeof( model ) ) {
 		trap_Cvar_Set( "ui_webprofile_status", "Invalid web setup" );
@@ -1784,6 +1787,13 @@ static void PlayerSettings_UpdateWebSetup( void ) {
 	Q_strncpyz( s_playersettings.rimskin, rim, sizeof( s_playersettings.rimskin ) );
 	trap_Cvar_Set( "model", model );
 	trap_Cvar_Set( "rim", rim );
+    if ( PlayerSettings_WebAssetId( head ) && PlayerSettings_WebAssetExists( va( "models/players/heads/%s.md3", head ) ) ) {
+        trap_Cvar_Set( "head", head );
+        Q_strncpyz( s_playersettings.headskin, head, sizeof( s_playersettings.headskin ) );
+    }
+    if ( PlayerSettings_WebAssetId( plate ) &&
+         (PlayerSettings_WebAssetExists( va( "models/players/plates/%s.tga", plate ) ) ||
+          PlayerSettings_WebAssetExists( va( "models/players/plates/%s.jpg", plate ) )) ) trap_Cvar_Set( "plate", plate );
 	PlayerSettings_UpdateModel();
 	trap_Cvar_Set( "ui_webprofile_status", "Web setup applied" );
 }
@@ -4307,7 +4317,7 @@ static qboolean PlayerSettings_TryProfileFavorite( const char *favorite, char *m
 
 static qboolean PlayerSettings_GetFavoriteValues( const char *favorite, char *modelName, char *skinName, char *rimName, char *headName ) {
 	if ( PlayerSettings_TryProfileFavorite( favorite, modelName, skinName, rimName, headName ) ) {
-		return qtrue; /* profile favorite found - success */
+		return qfalse; /* Match GetValuesFromFavorite: false means success. */
 	}
 
 	return GetValuesFromFavorite( favorite, modelName, skinName, rimName, headName );
@@ -4370,6 +4380,12 @@ PlayerSettings_GetFavoriteValues( favorite, modelName, skinName, rimName, headNa
 		trap_Cvar_Set( "model", s_playersettings.modelskin );
 		trap_Cvar_Set( "rim", rimName );
 		trap_Cvar_Set( "head", headName );
+        {
+            const profile_info_t *info = UI_Profile_GetActiveInfo();
+            int slot = PlayerSettings_FavoriteIndex( favorite );
+            if ( info && slot >= 0 && slot < PROFILE_MAX_FAVORITE_CARS && info->favoriteCars[slot].plate[0] )
+                trap_Cvar_Set( "plate", info->favoriteCars[slot].plate );
+        }
 
 		s_playersettings.modelChanged = qtrue;
 	}
@@ -5369,6 +5385,7 @@ static void PlayerSettings_MenuEvent( void* ptr, int event ) {
 		break;
 
 	case ID_TAB_VEHICLE:
+        PlayerSettings_SaveChanges();
 		PlayerSettings_SetTab( TAB_VEHICLE );
 		break;
 
@@ -6482,3 +6499,76 @@ void UI_PlateSelectionMenu( void ) {
 	UI_PushMenu( &s_plateSelection.menu );
 }
 // END
+
+int UI_WebVehicleSettingsScreen( void ) {
+    return uis.activemenu == &s_playersettings.menu && s_playersettings.currentTab == TAB_VEHICLE;
+}
+void UI_WebGarageBack( void ) {
+    if ( UI_WebPlayerModelScreen() ) UI_PopMenu();
+    if ( UI_WebVehicleSettingsScreen() ) UI_PopMenu();
+}
+
+static menuframework_s s_webDriverMenu;
+
+void UI_WebDriverMenu( void ) {
+    Com_Memset( &s_webDriverMenu, 0, sizeof( s_webDriverMenu ) );
+    s_webDriverMenu.fullscreen = qtrue;
+    UI_PushMenu( &s_webDriverMenu );
+}
+int UI_WebDriverScreen( void ) {
+    return uis.activemenu == &s_webDriverMenu ||
+           (uis.activemenu == &s_playersettings.menu &&
+            (s_playersettings.currentTab == TAB_STATS || s_playersettings.currentTab == TAB_ACHIEVEMENTS));
+}
+void UI_WebDriverAction( int action ) {
+    if ( !UI_WebDriverScreen() ) return;
+    uis.transitionIn = uis.transitionOut = 0;
+    switch ( action ) {
+    case 0:
+        if ( uis.activemenu == &s_playersettings.menu ) PlayerSettings_SetTab( TAB_PROFILE );
+        else UI_PopMenu();
+        break;
+    case 1: UI_PlayerSettingsMenu(); break;
+    case 2: UI_ProfileOverlay_Open( qtrue ); break;
+    case 3: UI_GarageMenu(); break;
+    case 4: case 5: case 6: UI_WebProfileMutation( action ); break;
+    }
+}
+int UI_WebDriverValue( int field, int index ) {
+    const profile_stats_t *stats = UI_Profile_GetActiveStats();
+    profile_rank_t rank;
+    qboolean hasRank = stats && UI_Profile_GetRank( stats, &rank );
+    switch ( field ) {
+    case 0: return UI_Profile_HasActiveProfile() && UI_Profile_GetActiveInfo() && stats;
+    case 1: return hasRank ? rank.index : 0;
+    case 2: return hasRank && rank.current ? rank.current->minimumScore : 0;
+    case 3: return hasRank && rank.next ? rank.next->minimumScore : 0;
+    case 4: return BG_AchievementCategoryCount();
+    case 5: return BG_AchievementTierCount( index );
+    case 6:
+        if ( uis.activemenu != &s_playersettings.menu ) return 0;
+        return s_playersettings.currentTab == TAB_ACHIEVEMENTS ? 2 : 1;
+    }
+    return 0;
+}
+int UI_WebAchievementChar( int categoryIndex, int tierIndex, int field, int character ) {
+    const bgAchievementCategoryDef_t *category = BG_AchievementGetCategory( categoryIndex );
+    const bgAchievementTierDef_t *tier = BG_AchievementGetTier( categoryIndex, tierIndex );
+    const profile_stats_t *stats = UI_Profile_GetActiveStats();
+    const char *value = "";
+    char number[64];
+    double progress;
+    if ( !category ) return 0;
+    progress = PlayerSettings_GetAchievementProgress( stats, categoryIndex );
+    switch ( field ) {
+    case 0: value = category->title; break;
+    case 1: if ( tier ) value = tier->name; break;
+    case 2: if ( tier ) value = tier->description; break;
+    case 3: if ( tier ) value = bg_achievementMedalTierPaths[category->icon][tierIndex]; break;
+    case 4: Com_sprintf( number, sizeof( number ), "%.6f", progress ); value = number; break;
+    case 5: if ( tier ) { Com_sprintf( number, sizeof( number ), "%.0f", tier->threshold ); value = number; } break;
+    case 6: value = tier && tierIndex < BG_AchievementUnlockedTiers( category, progress ) ? "1" : "0"; break;
+    }
+    if ( character < 0 || character >= (int)strlen( value ) ) return 0;
+    return (unsigned char)value[character];
+}

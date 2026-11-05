@@ -245,7 +245,10 @@ typedef enum {
 
 	CG_MOUSE_EVENT,
 //	void	(*CG_MouseEvent)( int dx, int dy );
-	CG_EVENT_HANDLING
+	CG_EVENT_HANDLING,
+    CG_WEB_HUD_NUMBER,
+    CG_WEB_HUD_CHAR,
+    CG_WEB_HUD_ACTION
 //	void (*CG_EventHandling)(int type);
 } cgameExport_t;
 

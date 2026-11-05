@@ -242,3 +242,5 @@ void UI_TeamMainMenu( void ) {
     TeamMain_MenuInit();
     UI_PushMenu( &s_teammain.menu );
 }
+
+menuframework_s *UI_WebTeamMenu( void ) { return uis.activemenu == &s_teammain.menu ? &s_teammain.menu : NULL; }

@@ -201,6 +201,24 @@ static void CG_CalcVrect (void) {
         cg.refdef.y = (int)(DEMO_PREVIEW_Y * scale);
         cg.refdef.width = (int)(DEMO_PREVIEW_WIDTH * xscale);
         cg.refdef.height = (int)(DEMO_PREVIEW_HEIGHT * scale);
+        {
+            char rect[96], *cursor;
+            int x, y, width, height;
+            trap_Cvar_VariableStringBuffer( "cl_webDemoRect", rect, sizeof( rect ) );
+            cursor = rect;
+            x = atoi( COM_Parse( &cursor ) );
+            y = atoi( COM_Parse( &cursor ) );
+            width = atoi( COM_Parse( &cursor ) );
+            height = atoi( COM_Parse( &cursor ) );
+            if ( x >= 0 && y >= 0 && width > 0 && height > 0 &&
+                 x <= cgs.glconfig.vidWidth && width <= cgs.glconfig.vidWidth - x &&
+                 y <= cgs.glconfig.vidHeight && height <= cgs.glconfig.vidHeight - y ) {
+                cg.refdef.x = x;
+                cg.refdef.y = y;
+                cg.refdef.width = width;
+                cg.refdef.height = height;
+            }
+        }
         return;
     }
 	// the intermission should allways be full screen

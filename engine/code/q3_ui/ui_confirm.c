@@ -343,3 +343,8 @@ void UI_Message( const char **lines ) {
 
 	Menu_SetCursorToItem( &s_confirm.menu, &s_confirm.yes );
 }
+
+menuframework_s *UI_WebConfirmMenu( void ) {
+    return uis.activemenu == &s_confirm.menu ? &s_confirm.menu : NULL;
+}
+const char *UI_WebConfirmQuestion( void ) { return s_confirm.question ? s_confirm.question : ""; }

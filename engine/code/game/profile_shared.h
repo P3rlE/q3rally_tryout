@@ -150,6 +150,7 @@ typedef struct profile_favorite_car_s {
     char skin[PROFILE_MAX_FAVORITE_FIELD];
     char rim[PROFILE_MAX_FAVORITE_FIELD];
     char head[PROFILE_MAX_FAVORITE_FIELD];
+    char plate[PROFILE_MAX_FAVORITE_FIELD];
 } profile_favorite_car_t;
 
 typedef struct profile_info_s {

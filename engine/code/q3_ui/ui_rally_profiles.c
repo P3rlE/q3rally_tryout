@@ -1,3 +1,4 @@
+#include "../game/garage_unlocks.h"
 #define PROFILE_SHARED_IMPLEMENTATION
 #include "../game/profile_shared.h"
 #include "../qcommon/profile_format.h"
@@ -386,6 +387,7 @@ static int UI_Profile_ParseFavoriteCars( const char *buffer, profile_info_t *inf
         UI_Profile_ParseString( objectBuffer, "skin", info->favoriteCars[parsedFavorites].skin, sizeof( info->favoriteCars[parsedFavorites].skin ), "" );
         UI_Profile_ParseString( objectBuffer, "rim", info->favoriteCars[parsedFavorites].rim, sizeof( info->favoriteCars[parsedFavorites].rim ), "" );
         UI_Profile_ParseString( objectBuffer, "head", info->favoriteCars[parsedFavorites].head, sizeof( info->favoriteCars[parsedFavorites].head ), "" );
+        UI_Profile_ParseString( objectBuffer, "plate", info->favoriteCars[parsedFavorites].plate, sizeof( info->favoriteCars[parsedFavorites].plate ), "" );
 
         parsedFavorites++;
         cursor = objectEnd + 1;
@@ -823,14 +825,9 @@ same name on every car (models/players/<car>/<skin>.skin), so one table covers
 all vehicles. The lock lives in the UI only: it keeps the paints as a reward,
 it is not a copy protection.
 */
+#define GARAGE_UNLOCK_ENTRY( id, name, rank ) { id, name, rank },
 const uiSecretSkin_t uiSecretSkins[] = {
-	{ "retro",	"Retro",	2 },	/* Weekend Racer */
-	{ "camo",	"Camo",		4 },	/* Amateur Racer */
-	{ "carbon",	"Carbon",	6 },	/* Semi-Pro Driver */
-	{ "chrome",	"Chrome",	8 },	/* Elite Driver */
-	{ "neon",	"Neon",		10 },	/* Master of Speed */
-	{ "hotrod",	"Hot Rod",	12 },	/* Asphalt King */
-	{ "gold",	"Gold",		14 }	/* Q3Rally Icon */
+	GARAGE_SKIN_UNLOCKS( GARAGE_UNLOCK_ENTRY )
 };
 const int uiSecretSkinCount = sizeof( uiSecretSkins ) / sizeof( uiSecretSkins[0] );
 
@@ -899,14 +896,9 @@ order from the oldest to the newest car. Like the paints, the lock lives in
 the UI only: bots and servers can use every car.
 */
 const uiSecretCar_t uiSecretCars[] = {
-	{ "bountyhunter",	"Bountyhunter",	1 },	/* Street Newbie */
-	{ "cutlass",		"Cutlass",		3 },	/* Track Learner */
-	{ "ridgeback",		"Ridgeback",	5 },	/* Street Racer */
-	{ "mustang",		"Mustang",		7 },	/* Pro Racer */
-	{ "gt500",			"GT500",		9 },	/* Track Dominator */
-	{ "skyline",		"Skyline",		11 },	/* Racing Legend */
-	{ "gtr",			"GT-R",			13 }	/* Grand Champion */
+	GARAGE_CAR_UNLOCKS( GARAGE_UNLOCK_ENTRY )
 };
+#undef GARAGE_UNLOCK_ENTRY
 const int uiSecretCarCount = sizeof( uiSecretCars ) / sizeof( uiSecretCars[0] );
 
 int UI_SecretCarIndex( const char *model ) {
@@ -1257,9 +1249,17 @@ qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *info, con
 
         UI_Profile_FormatJsonString( favoriteField, sizeof( favoriteField ), info->favoriteCars[favoriteIndex].head );
         written = Com_sprintf( favoriteCarsJson + length, sizeof( favoriteCarsJson ) - length,
-                               "\"head\": \"%s\"}", favoriteField );
+                               "\"head\": \"%s\"%s", favoriteField,
+                               info->favoriteCars[favoriteIndex].plate[0] ? ", " : "}" );
         if ( written < 0 || length + written >= (int)sizeof(favoriteCarsJson) ) return qfalse;
         length += written;
+        if ( info->favoriteCars[favoriteIndex].plate[0] ) {
+            UI_Profile_FormatJsonString( favoriteField, sizeof( favoriteField ), info->favoriteCars[favoriteIndex].plate );
+            written = Com_sprintf( favoriteCarsJson + length, sizeof( favoriteCarsJson ) - length,
+                                   "\"plate\": \"%s\"}", favoriteField );
+            if ( written < 0 || length + written >= (int)sizeof(favoriteCarsJson) ) return qfalse;
+            length += written;
+        }
     }
     Com_sprintf( favoriteCarsJson + length, sizeof( favoriteCarsJson ) - length, "\n\t\t]" );
 
@@ -2574,4 +2574,170 @@ qboolean UI_Profile_SaveActiveInfo( const profile_info_t *info ) {
     uis.activeProfileLastRead = uis.realtime;
 
     return qtrue;
+}
+
+int UI_WebFavoriteChar( int slot, int field, int character ) {
+    profile_favorite_car_t legacy;
+    const profile_info_t *info = UI_Profile_GetActiveInfo();
+    const profile_favorite_car_t *favorite;
+    const char *value;
+    if ( slot < 0 || slot >= PROFILE_MAX_FAVORITE_CARS ) return 0;
+    if ( info ) favorite = &info->favoriteCars[slot];
+    else {
+        if ( !UI_Profile_ParseFavoriteCvar( slot, &legacy ) ) return 0;
+        favorite = &legacy;
+    }
+    switch ( field ) {
+    case 0: value = favorite->model; break;
+    case 1: value = favorite->skin; break;
+    case 2: value = favorite->rim; break;
+    case 3: value = favorite->head; break;
+    case 4: value = favorite->plate; break;
+    default: return 0;
+    }
+    if ( character < 0 || character >= (int)strlen( value ) ) return 0;
+    return (unsigned char)value[character];
+}
+
+int UI_WebSaveFavorite( int slot ) {
+    const profile_info_t *active = UI_Profile_GetActiveInfo();
+    profile_info_t info;
+    profile_favorite_car_t *favorite;
+    char input[400], *cursor;
+    if ( !active || slot < 0 || slot >= PROFILE_MAX_FAVORITE_CARS ) return 0;
+    info = *active;
+    favorite = &info.favoriteCars[slot];
+    trap_Cvar_VariableStringBuffer( "ui_webFavoriteSetup", input, sizeof( input ) );
+    cursor = input;
+    Q_strncpyz( favorite->model, COM_Parse( &cursor ), sizeof( favorite->model ) );
+    Q_strncpyz( favorite->skin, COM_Parse( &cursor ), sizeof( favorite->skin ) );
+    Q_strncpyz( favorite->rim, COM_Parse( &cursor ), sizeof( favorite->rim ) );
+    Q_strncpyz( favorite->head, COM_Parse( &cursor ), sizeof( favorite->head ) );
+    Q_strncpyz( favorite->plate, COM_Parse( &cursor ), sizeof( favorite->plate ) );
+    if ( !UI_CarUnlocked( favorite->model ) || !UI_SkinUnlocked( favorite->skin ) ) return 0;
+    if ( !UI_Profile_SaveActiveInfo( &info ) ) return 0;
+    UI_Profile_SetFavoriteCvars( &info );
+    return 1;
+}
+
+int UI_WebImportFavorites( void ) {
+    char input[1600], uuid[37], *cursor;
+    profile_info_t info;
+    const profile_info_t *active = UI_Profile_GetActiveInfo();
+    int slot, field;
+    trap_Cvar_VariableStringBuffer( "ui_webprofile_favorites", input, sizeof( input ) );
+    if ( !input[0] ) return 0;
+    trap_Cvar_Set( "ui_webprofile_favorites", "" );
+    cursor = input;
+    Q_strncpyz( uuid, COM_Parse( &cursor ), sizeof( uuid ) );
+    if ( !active || Q_stricmp( uuid, active->uuid ) ) return 0;
+    info = *active;
+    for ( slot = 0; slot < PROFILE_MAX_FAVORITE_CARS; slot++ ) {
+        char *fields[5];
+        fields[0] = info.favoriteCars[slot].model;
+        fields[1] = info.favoriteCars[slot].skin;
+        fields[2] = info.favoriteCars[slot].rim;
+        fields[3] = info.favoriteCars[slot].head;
+        fields[4] = info.favoriteCars[slot].plate;
+        for ( field = 0; field < 5; field++ ) {
+            const char *token = COM_Parse( &cursor );
+            if ( !token[0] ) return 0;
+            /* Missing remote slots retain the profile's local favorites. */
+            if ( Q_stricmp( token, "-" ) ) Q_strncpyz( fields[field], token, PROFILE_MAX_FAVORITE_FIELD );
+        }
+    }
+    if ( !UI_Profile_SaveActiveInfo( &info ) ) return 0;
+    UI_Profile_SetFavoriteCvars( &info );
+    return 1;
+}
+
+
+/* The web editor uses the same profile writer and activation path as the UI. */
+int UI_WebProfileMutation( int action ) {
+    char expectedUuid[PROFILE_MAX_UUID];
+    char payload[1024], name[PROFILE_MAX_NAME], existing[PROFILE_MAX_NAME], error[96];
+    char avatar[PROFILE_MAX_AVATAR], gender[PROFILE_MAX_GENDER], birth[PROFILE_MAX_BIRTHDATE], country[PROFILE_MAX_COUNTRY];
+    const profile_info_t *active;
+    profile_info_t info;
+    int i, year, month, day, days;
+    qboolean validAvatar = qfalse;
+    trap_Cvar_Set( "ui_webdriver_ok", "0" );
+    trap_Cvar_VariableStringBuffer( "ui_webdriver_payload", payload, sizeof( payload ) );
+    trap_Cvar_Set( "ui_webdriver_payload", "" );
+    UI_Profile_ParseString( payload, "name", name, sizeof( name ), "" );
+    if ( action == 5 || action == 6 ) {
+        if ( !UI_Profile_NameIsValid( name, error, sizeof( error ) ) ) {
+            trap_Cvar_Set( "ui_webdriver_message", error ); return 0;
+        }
+        if ( action == 5 ) {
+            if ( UI_Profile_FindExisting( name, NULL, 0 ) ) {
+                trap_Cvar_Set( "ui_webdriver_message", "Profile already exists." ); return 0;
+            }
+            if ( !UI_Profile_WriteDefaultFile( name ) ) {
+                trap_Cvar_Set( "ui_webdriver_message", "Could not create profile." ); return 0;
+            }
+        } else {
+            if ( !UI_Profile_FindExisting( name, existing, sizeof( existing ) ) || !UI_Profile_ReadData( existing, &info, NULL ) ) {
+                trap_Cvar_Set( "ui_webdriver_message", "Profile is unavailable." ); return 0;
+            }
+            Q_strncpyz( name, existing, sizeof( name ) );
+        }
+        UI_Profile_ActivateProfile( name );
+        trap_Cvar_Set( "ui_webdriver_message", action == 5 ? "Profile created and selected." : "Profile selected." );
+    } else if ( action == 4 ) {
+        active = UI_Profile_GetActiveInfo();
+        if ( !UI_Profile_HasActiveProfile() || !active ) {
+            trap_Cvar_Set( "ui_webdriver_message", "Select a profile first." ); return 0;
+        }
+        UI_Profile_ParseString( payload, "uuid", expectedUuid, sizeof( expectedUuid ), "" );
+        if ( strcmp( expectedUuid, active->uuid ) ) {
+            trap_Cvar_Set( "ui_webdriver_message", "The active profile changed. Reopen the editor." ); return 0;
+        }
+        info = *active;
+        UI_Profile_ParseString( payload, "avatar", avatar, sizeof( avatar ), "" );
+        UI_Profile_ParseString( payload, "gender", gender, sizeof( gender ), "" );
+        UI_Profile_ParseString( payload, "birthDate", birth, sizeof( birth ), "" );
+        UI_Profile_ParseString( payload, "country", country, sizeof( country ), "" );
+        /* Preserve existing custom avatars, but only accept shipped presets as new selections. */
+        validAvatar = !strcmp( avatar, info.avatar );
+        for ( i = 0; i < uiAvatarPresetCount; i++ ) {
+            if ( !strcmp( avatar, uiAvatarPresets[i].path ) ) validAvatar = qtrue;
+        }
+        if ( !validAvatar ) { trap_Cvar_Set( "ui_webdriver_message", "Choose a valid avatar." ); return 0; }
+        if ( gender[0] && strcmp( gender, "Female" ) && strcmp( gender, "Male" ) && strcmp( gender, "Non-binary" ) && strcmp( gender, "Other" ) ) {
+            trap_Cvar_Set( "ui_webdriver_message", "Choose a valid gender." ); return 0;
+        }
+        if ( country[0] && (strlen( country ) != 2 || country[0] < 'A' || country[0] > 'Z' || country[1] < 'A' || country[1] > 'Z') ) {
+            trap_Cvar_Set( "ui_webdriver_message", "Use a two-letter country code." ); return 0;
+        }
+        if ( birth[0] ) {
+            year = month = day = 0;
+            /* QVM sscanf does not consume literal separators and returns zero.
+             * Parse the browser's YYYY-MM-DD value without libc scanning. */
+            if ( strlen( birth ) == 10 && birth[4] == '-' && birth[7] == '-' ) {
+                for ( i = 0; i < 10; i++ ) {
+                    if ( i == 4 || i == 7 ) continue;
+                    if ( birth[i] < '0' || birth[i] > '9' ) break;
+                }
+                if ( i == 10 ) {
+                    year = (birth[0]-'0')*1000 + (birth[1]-'0')*100 + (birth[2]-'0')*10 + birth[3]-'0';
+                    month = (birth[5]-'0')*10 + birth[6]-'0';
+                    day = (birth[8]-'0')*10 + birth[9]-'0';
+                }
+            }
+            if ( year < 1900 || year > 9999 || month < 1 || month > 12 ) {
+                trap_Cvar_Set( "ui_webdriver_message", "Enter a valid birth date." ); return 0;
+            }
+            days = month == 2 ? (28 + (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0))) : ((month == 4 || month == 6 || month == 9 || month == 11) ? 30 : 31);
+            if ( day < 1 || day > days ) { trap_Cvar_Set( "ui_webdriver_message", "Enter a valid birth date." ); return 0; }
+        }
+        Q_strncpyz( info.avatar, avatar, sizeof( info.avatar ) );
+        Q_strncpyz( info.gender, gender, sizeof( info.gender ) );
+        Q_strncpyz( info.birthDate, birth, sizeof( info.birthDate ) );
+        Q_strncpyz( info.country, country, sizeof( info.country ) );
+        if ( !UI_Profile_SaveActiveInfo( &info ) ) { trap_Cvar_Set( "ui_webdriver_message", "Could not save driver." ); return 0; }
+        trap_Cvar_Set( "ui_webdriver_message", "Driver saved." );
+    } else return 0;
+    trap_Cvar_Set( "ui_webdriver_ok", "1" );
+    return 1;
 }

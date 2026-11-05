@@ -3137,6 +3137,9 @@ void CL_Frame ( int msec ) {
         CL_UpdateVersionCheck_Frame();
 	// Q3RALLY DOWNLOADS START
 	CL_DL_Frame();
+#ifdef USE_CEF_GARAGE
+	CL_WebGarageFrame();
+#endif
 	// Q3RALLY DOWNLOADS END
 
 	if ( cls.cddialog ) {
@@ -3319,7 +3322,9 @@ void CL_InitRenderer( void ) {
 	cls.charSetShader = re.RegisterShader( "gfx/2d/bigchars" );
 	cls.whiteShader = re.RegisterShader( "white" );
 	cls.consoleShader = re.RegisterShader( "console" );
-	g_console_field_width = cls.glconfig.vidWidth / SMALLCHAR_WIDTH - 2;
+    Com_Memset( &cls.consoleFont, 0, sizeof( cls.consoleFont ) );
+    re.RegisterFont( "fonts/console.ttf", 17, &cls.consoleFont );
+	g_console_field_width = cls.glconfig.vidWidth / SMALLCHAR_WIDTH - 4;
 	g_consoleField.widthInChars = g_console_field_width;
 }
 
@@ -3916,6 +3921,10 @@ void CL_Init( void ) {
 
 	// Q3RALLY DOWNLOADS START
 	CL_DL_Init();
+#ifdef USE_CEF_GARAGE
+	CL_WebGarageInit();
+	Cmd_AddCommand( "webgarage", CL_WebGarage_f );
+#endif
 	// Q3RALLY DOWNLOADS END
 
 	Com_Printf( "----- Client Initialization Complete -----\n" );
@@ -3945,6 +3954,10 @@ void CL_Shutdown(char *finalmsg, qboolean disconnect, qboolean quit)
 	recursive = qtrue;
 
 	noGameRestart = quit;
+#ifdef USE_CEF_GARAGE
+	CL_WebGarageShutdown();
+	Cmd_RemoveCommand( "webgarage" );
+#endif
 
 	if(disconnect)
 		CL_Disconnect(qtrue);

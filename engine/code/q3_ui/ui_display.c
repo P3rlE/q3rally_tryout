@@ -294,7 +294,7 @@ static void UI_DisplayOptionsMenu_Event( void* ptr, int event ) {
 	case ID_BRIGHTNESS:
 		trap_Cvar_SetValue( "r_gamma", displayOptionsInfo.brightness.curvalue / 10.0f );
 		break;
-	
+
 	case ID_SCREENSIZE:
 		trap_Cvar_SetValue( "cg_viewsize", displayOptionsInfo.screensize.curvalue * 10 );
 		break;
@@ -334,7 +334,7 @@ static void UI_DisplayOptionsMenu_Init( void ) {
 	displayOptionsInfo.framel.generic.type		= MTYPE_BITMAP;
 	displayOptionsInfo.framel.generic.name		= ART_FRAMEL;
 	displayOptionsInfo.framel.generic.flags		= QMF_INACTIVE;
-	displayOptionsInfo.framel.generic.x			= 0;  
+	displayOptionsInfo.framel.generic.x			= 0;
 	displayOptionsInfo.framel.generic.y			= 78;
 	displayOptionsInfo.framel.width				= 256;
 	displayOptionsInfo.framel.height			= 329;
@@ -457,7 +457,7 @@ static void UI_DisplayOptionsMenu_Init( void ) {
 	displayOptionsInfo.back.generic.x				= 20;
 	displayOptionsInfo.back.generic.y				= 480 - 50;
 	displayOptionsInfo.back.generic.id				= ID_BACK;
-	displayOptionsInfo.back.generic.callback		= UI_DisplayOptionsMenu_Event; 
+	displayOptionsInfo.back.generic.callback		= UI_DisplayOptionsMenu_Event;
 	displayOptionsInfo.back.string					= "Back";
 	displayOptionsInfo.back.color					= text_color_normal;
 	displayOptionsInfo.back.style					= UI_LEFT | UI_SMALLFONT;
@@ -522,4 +522,10 @@ void UI_DisplayOptionsMenu( void ) {
 	Frontend_SetBackButton( &displayOptionsInfo.back.generic );
     UI_PushMenu( &displayOptionsInfo.menu );
 	Menu_SetCursorToItem( &displayOptionsInfo.menu, &displayOptionsInfo.brightness );
+}
+
+menuframework_s *UI_WebDisplayMenu( void ) {
+    if ( uis.activemenu != &displayOptionsInfo.menu ) return NULL;
+
+    return &displayOptionsInfo.menu;
 }

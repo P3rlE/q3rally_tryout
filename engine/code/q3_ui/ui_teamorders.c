@@ -450,3 +450,5 @@ void UI_TeamOrdersMenu_f( void ) {
 
 	UI_TeamOrdersMenu();
 }
+
+menuframework_s *UI_WebTeamOrdersMenu( void ) { return uis.activemenu == &teamOrdersMenuInfo.menu ? &teamOrdersMenuInfo.menu : NULL; }

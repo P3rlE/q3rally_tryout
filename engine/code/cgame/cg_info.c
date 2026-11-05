@@ -149,6 +149,7 @@ CG_LoadingString
 */
 void CG_LoadingString( const char *s ) {
 	Q_strncpyz( cg.infoScreenText, s, sizeof( cg.infoScreenText ) );
+    trap_Cvar_Set( "cl_mapLoadingDetail", s );
 
 	trap_UpdateScreen();
 	CG_LoadingScreenDebugPause();

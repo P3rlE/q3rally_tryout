@@ -135,7 +135,8 @@ typedef enum {
     CLREQ_DOWNLOAD,     // download a pk3
     CLREQ_PREVIEW,      // fetch a preview image
     CLREQ_PROFILE_LINK,
-    CLREQ_PROFILE_SETUP
+    CLREQ_PROFILE_SETUP,
+    CLREQ_PROFILE_FAVORITE
 } clDlRequestType_t;
 
 typedef struct {
@@ -162,7 +163,7 @@ typedef struct {
     struct curl_slist   *headers;
     char                errorBuf[CURL_ERROR_SIZE];
     char                profileUuid[37];
-    char                profileBody[192];
+    char                profileBody[768];
     char                profileVehicle[49];
     struct curl_slist   *profileConnect;
 #endif
@@ -615,13 +616,27 @@ static qboolean CL_ProfileAssetId( const char *id ) {
 
 static void CL_ProfileAction( const char *action ) {
     clDlRequest_t *req;
-    char uuid[37], token[65];
+    char uuid[37], token[65], favorite[320], fields[5][50];
+    int slot = -1, field;
+    char *cursor;
     CURLcode result;
     qboolean link = !strcmp( action, "link" );
 
+    qboolean saving = !Q_strncmp( action, "favorite:", 9 );
     const char *vehicle = action + ( Q_strncmp( action, "sync:", 5 ) == 0 ? 5 : 0 );
+    if ( saving ) {
+        Q_strncpyz( favorite, action + 9, sizeof( favorite ) );
+        cursor = favorite;
+        slot = atoi( COM_Parse( &cursor ) );
+        if ( slot < 0 || slot > 3 ) return;
+        for ( field = 0; field < 5; field++ ) {
+            Q_strncpyz( fields[field], COM_Parse( &cursor ), sizeof( fields[field] ) );
+            if ( !CL_ProfileAssetId( fields[field] ) ) return;
+        }
+        vehicle = fields[0];
+    }
 
-    if ( !link && (vehicle == action || !CL_ProfileAssetId( vehicle )) ) {
+    if ( !link && !saving && (vehicle == action || !CL_ProfileAssetId( vehicle )) ) {
         CL_ProfileStatus( "Choose a vehicle to sync" );
         return;
     }
@@ -650,10 +665,15 @@ static void CL_ProfileAction( const char *action ) {
         CL_ProfileStatus( "Could not start web profile request" );
         return;
     }
-    req->type = link ? CLREQ_PROFILE_LINK : CLREQ_PROFILE_SETUP;
+    req->type = link ? CLREQ_PROFILE_LINK : saving ? CLREQ_PROFILE_FAVORITE : CLREQ_PROFILE_SETUP;
     Q_strncpyz( req->profileUuid, uuid, sizeof( req->profileUuid ) );
     if ( link ) {
         Q_strncpyz( req->profileBody, "{\"action\":\"device_start\"}", sizeof( req->profileBody ) );
+    } else if ( saving ) {
+        Com_sprintf( req->profileBody, sizeof( req->profileBody ),
+                     "{\"action\":\"device_favorite\",\"token\":\"%s\",\"slot\":%d,"
+                     "\"vehicle\":\"%s\",\"paint\":\"%s\",\"wheels\":\"%s\",\"head\":\"%s\",\"plate\":\"%s\"}",
+                     token, slot, fields[0], fields[1], fields[2], fields[3], fields[4] );
     } else {
         Q_strncpyz( req->profileVehicle, vehicle, sizeof( req->profileVehicle ) );
         Com_sprintf( req->profileBody, sizeof( req->profileBody ),
@@ -702,8 +722,41 @@ static void CL_ProfileAction( const char *action ) {
     CL_ProfileStatus( "Contacting q3rally.com..." );
 }
 
+static void CL_ProfileReceiveFavorites( clDlRequest_t *req, const char *uuid ) {
+    const char *end = req->buf + req->bufLen;
+    const char *array = JSON_ObjectGetNamedValue( req->buf, end, "favorites" );
+    const char *item, *value;
+    static const char *const names[] = { "vehicle", "paint", "wheels", "head", "plate" };
+    char fields[4][5][50], payload[1600], number[16];
+    int slot, field, used = 0;
+    qboolean seen[4] = { qfalse };
+    if ( !array || JSON_ValueGetType( array, end ) != JSONTYPE_ARRAY ) return;
+    Com_Memset( fields, 0, sizeof( fields ) );
+    for ( item = JSON_ArrayGetFirstValue( array, end ); item; item = JSON_ArrayGetNextValue( item, end ) ) {
+        value = JSON_ObjectGetNamedValue( item, end, "slot" );
+        if ( !value || !JSON_ValueGetString( value, end, number, sizeof( number ) ) ||
+             strlen( number ) != 1 || number[0] < '0' || number[0] > '3' ) return;
+        slot = number[0] - '0';
+        if ( slot < 0 || slot > 3 || seen[slot] ) return;
+        seen[slot] = qtrue;
+        for ( field = 0; field < 5; field++ ) {
+            value = JSON_ObjectGetNamedValue( item, end, names[field] );
+            if ( !value || !JSON_ValueGetString( value, end, fields[slot][field], sizeof( fields[slot][field] ) ) ||
+                 !CL_ProfileAssetId( fields[slot][field] ) ) return;
+        }
+    }
+    used = Com_sprintf( payload, sizeof( payload ), "%s", uuid );
+    for ( slot = 0; slot < 4; slot++ ) {
+        for ( field = 0; field < 5; field++ ) {
+            used += Com_sprintf( payload + used, sizeof( payload ) - used, " %s",
+                                 fields[slot][field][0] ? fields[slot][field] : "-" );
+        }
+    }
+    Cvar_Set( "ui_webprofile_favorites", payload );
+}
+
 static void CL_ProfileComplete( clDlRequest_t *req, CURLcode result, long httpCode ) {
-    char uuid[37], code[12], token[65], paint[50], wheels[50], vehicle[50];
+    char uuid[37], code[12], token[65], paint[50], wheels[50], vehicle[50], head[50], plate[50];
     const char *end = req->buf + req->bufLen;
     const char *setup;
     const char *value;
@@ -738,6 +791,11 @@ static void CL_ProfileComplete( clDlRequest_t *req, CURLcode result, long httpCo
         CL_ProfileStatus( va( "Enter %s on q3rally.com/garage then press F8", code ) );
         return;
     }
+    if ( req->type == CLREQ_PROFILE_FAVORITE ) {
+        CL_ProfileStatus( httpCode == 200 ? "Favorite saved to your web profile" :
+                          httpCode == 401 ? "Link expired - link your web profile again" : "Could not save web favorite" );
+        return;
+    }
     if ( req->type != CLREQ_PROFILE_SETUP || httpCode != 200 ) {
         if ( httpCode == 401 && !strcmp( uuid, cl_dl.pendingProfile ) ) {
             cl_dl.pendingToken[0] = '\0';
@@ -760,6 +818,7 @@ static void CL_ProfileComplete( clDlRequest_t *req, CURLcode result, long httpCo
         CL_ProfileStatus( "Web garage update required" );
         return;
     }
+    CL_ProfileReceiveFavorites( req, uuid );
     setup = JSON_ObjectGetNamedValue( req->buf, end, "setup" );
     if ( !setup || JSON_ValueGetType( setup, end ) != JSONTYPE_OBJECT ) {
         CL_ProfileStatus( "No saved web setup for this vehicle" );
@@ -775,7 +834,16 @@ static void CL_ProfileComplete( clDlRequest_t *req, CURLcode result, long httpCo
         CL_ProfileStatus( "Invalid web wheels" );
         return;
     }
-    Cvar_Set( "ui_webprofile_setup", va( "%s %s %s %s", uuid, vehicle, paint, wheels ) );
+    head[0] = plate[0] = 0;
+    value = JSON_ObjectGetNamedValue( setup, end, "head" );
+    if ( value && (!JSON_ValueGetString( value, end, head, sizeof( head ) ) || !CL_ProfileAssetId( head )) ) {
+        CL_ProfileStatus( "Invalid web driver" ); return;
+    }
+    value = JSON_ObjectGetNamedValue( setup, end, "plate" );
+    if ( value && (!JSON_ValueGetString( value, end, plate, sizeof( plate ) ) || !CL_ProfileAssetId( plate )) ) {
+        CL_ProfileStatus( "Invalid web plate" ); return;
+    }
+    Cvar_Set( "ui_webprofile_setup", va( "%s %s %s %s %s %s", uuid, vehicle, paint, wheels, head, plate ) );
     CL_ProfileStatus( "Web setup received" );
 }
 
@@ -1513,7 +1581,7 @@ void CL_DL_Frame( void ) {
     int      messages;
     int      running;
     int      now;
-    char     action[256];
+    char     action[512];
 #endif
 
     if ( !cl_dl.initialized ) return;
@@ -1569,7 +1637,7 @@ void CL_DL_Frame( void ) {
                 if ( cl_dl.active == req ) {
                     cl_dl.active = NULL;
                 }
-                if ( req->type == CLREQ_PROFILE_LINK || req->type == CLREQ_PROFILE_SETUP ) {
+                if ( req->type == CLREQ_PROFILE_LINK || req->type == CLREQ_PROFILE_SETUP || req->type == CLREQ_PROFILE_FAVORITE ) {
                     CL_ProfileComplete( req, msg->data.result, httpCode );
                     CL_DL_FreeRequest( req );
                 } else {
