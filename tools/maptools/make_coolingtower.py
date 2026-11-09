@@ -258,10 +258,11 @@ def wall():
         convex(planes + side_planes(a0, a1, "common/caulk"))
         # grating from the plinth to the ring beam
         lo_n = tuple(-c for c in top)
-        planes = [((0, 0, 1), (0, 0, GRATE_TOP), "common/nodraw"), (lo_n, p0, "common/nodraw"),
+        # caulk, not common/nodraw: that one is nonsolid in Q3Rally and makes the whole brush passable
+        planes = [((0, 0, 1), (0, 0, GRATE_TOP), "common/caulk"), (lo_n, p0, "common/caulk"),
                   (inner_n, polar(R_WALL * chord, mid), TEX + "grate"),
                   (polar(1.0, mid), polar(t_out, mid), TEX + "grate")]
-        convex(planes + side_planes(a0, a1, "common/nodraw"))
+        convex(planes + side_planes(a0, a1, "common/caulk"))
         # ring beam
         planes = [((0, 0, 1), (0, 0, RING_TOP), "common/caulk"), ((0, 0, -1), (0, 0, GRATE_TOP), TEX + "concrete"),
                   (inner_n, polar(R_WALL * chord, mid), TEX + "concrete"),
@@ -305,6 +306,34 @@ def shell():
             convex(planes + side_planes(a0, a1, "common/caulk"))
     # the lid: sky, solid for the ball, sunlight and weather come from it
     box((-1900, -1900, TOP_Z), (1900, 1900, TOP_Z + 64), TEX + "sky", solid=False, detail=False)
+
+
+def rod(a, b, w, mat):
+    """Straight square bar from a to b, w units thick (not solid: see the shader)."""
+    d = unit(sub(b, a))
+    u = unit(cross(d, (0.0, 0.0, 1.0)))
+    v = cross(u, d)
+    planes = [(tuple(-c for c in d), a, mat), (d, b, mat)]
+    for n in (u, v, tuple(-c for c in u), tuple(-c for c in v)):
+        planes.append((n, tuple(p + c * w / 2 for p, c in zip(a, n)), mat))
+    convex(planes)
+
+
+def scoreboard_rig():
+    """The scoreboard hangs on four steel ropes from brackets on the shell.
+    Model bounds: +-169 across, z -99..290 around its origin."""
+    steel = TEX + "steel"
+    head = SCOREBOARD_Z + 290
+    box((-128, -128, head), (128, 128, head + 32), steel, solid=False)
+    box((-24, -24, head + 32), (24, 24, head + 72), steel, solid=False)
+    anchor_z = 2400
+    r_anchor = shell_radius(anchor_z) - 24
+    for a in (45, 135, 225, 315):
+        c = polar(112 * math.sqrt(2), a, head + 32)
+        b = polar(r_anchor, a, anchor_z)
+        rod(c, b, 6, steel)
+        e = polar(r_anchor + 8, a, anchor_z)
+        box((e[0] - 32, e[1] - 32, anchor_z - 40), (e[0] + 32, e[1] + 32, anchor_z + 24), steel, solid=False)
 
 
 def portal(sx):
@@ -504,6 +533,9 @@ def write_shader():
     out += lit("shell_top", f"{T}concrete.jpg", ("\tq3map_nonplanar", "\tq3map_shadeAngle 60"),
                ("\t\trgbGen const ( 0.85 0.85 0.85 )",))
     out += lit("shell_out", f"{T}concrete.jpg", ("\tq3map_lightmapSampleSize 64",))
+    out += lit("steel", "textures/q3r_metals/plate01.tga", ("\tsurfaceparm nonsolid", "\tsurfaceparm nomarks",
+                                                          "\tsurfaceparm SURF_METAL", "\tq3map_lightmapSampleSize 8"),
+               ("\t\trgbGen const ( 0.45 0.45 0.48 )",))
     out += lit("ground", f"{T}ground.jpg", ("\tq3map_lightmapSampleSize 64",), ("\t\ttcMod scale 0.25 0.25",))
     for team in ("red", "blue"):
         r, g, b = TEAM_RGB[team]
@@ -743,6 +775,7 @@ def main():
     shell()
     for sx in (-1, 1):
         portal(sx)
+    scoreboard_rig()
     sky_box()
     players()
     lights()

@@ -142,6 +142,24 @@ textures/q3r_coolingtower/shell_out
 	}
 }
 
+textures/q3r_coolingtower/steel
+{
+	qer_editorimage textures/q3r_metals/plate01.tga
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	surfaceparm SURF_METAL
+	q3map_lightmapSampleSize 8
+	{
+		map textures/q3r_metals/plate01.tga
+		rgbGen const ( 0.45 0.45 0.48 )
+	}
+	{
+		map $lightmap
+		blendFunc GL_DST_COLOR GL_ZERO
+		rgbGen identity
+	}
+}
+
 textures/q3r_coolingtower/ground
 {
 	qer_editorimage textures/q3r_coolingtower/ground.jpg
