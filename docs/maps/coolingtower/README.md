@@ -5,8 +5,8 @@ Kühlturms. Rund statt rechteckig, Steilkurve statt Bande, Licht und Wetter fall
 nur durch die Öffnung oben auf die Mitte. Erzeugt von
 `tools/maptools/make_coolingtower.py`. Konzept: Dokument „Cooling Tower – Autoball-Arena“.
 
-Stand: **Stufe 0 (Testbox) und Stufe 1 (Rohbau)**. Graue Betontexturen, noch
-keine Landschaft draußen, keine Dampffahnen, keine Feinarbeit am Licht.
+Stand: **Stufe 2** (Rohbau, Details, Umgebung). Offen für Stufe 3: Wettertest,
+Pfützen-Mulde, Sound, Levelshot.
 
 ![Layout](coolingtower_layout.png)
 
@@ -22,7 +22,7 @@ keine Landschaft draußen, keine Dampffahnen, keine Feinarbeit am Licht.
   ein Torhaus aus Beton. Rot im Westen, Blau im Osten.
 - **Wand:** Betonsockel bis zur Kante der Kurve, darauf Stahlgitter bis z 640
   (fest für Ball und Autos, durchsichtig, wirft Schatten), Ringbalken bis z 704,
-  dahinter 48 Betonstützen.
+  dahinter V-Stützen aus Beton.
 - **Schale:** Hyperboloid aus 64 × 10 Segmenten, r 2304 bei z 704, Taille
   r 1664 bei z 2560, Öffnung r 1721 bei z 3072. Sie neigt sich nach innen und
   wirft hohe Bälle zurück.
@@ -53,35 +53,34 @@ Die TV-Kamera (`cg_autoball.c`) sucht von der Feldmitte (z 310) seitlich die Wan
 Sie findet das Gitter bei r 2304, steht 260 davor über der Kurve und rechnet ihre
 Höhe bis unter die Schale (etwa z 1000).
 
-## Stufe 0: Testbox (q3r_coolingtower_test)
+## Draußen und Details (Stufe 2)
 
-`python tools/maptools/make_coolingtower.py --test` schreibt eine Halle mit drei
-geraden Kurvenstücken (25°, 35°, 42°, je 768 Lauf wie in der Arena): auf der
-Nordseite (+y) aus Brushes, auf der Südseite (−y) als Patches. Farben: grün 25°,
-gelb 35°, rot 42°. Dazu Ball und zwei kleine Tore.
+- **Abflussgitter:** vier in der Mitte (r 1100, 45°-Diagonalen), aus jedem steigt
+  Dampf (`rally_fx_spray`, nur Client, kostet keine Entities).
+- **Warnlichter:** orange blinkend über beiden Toren.
+- **Anzeigetafel:** an einer Kopfplatte mit vier Stahlseilen zu Halterungen an der
+  Schale (z 2400), nicht solide.
+- **Beton:** Schalungsplatten mit Ankerlöchern, Kalk- und Rostfahnen; Beckenboden
+  mit Rissen und Flecken.
+- **Draußen** (alles nicht solide, sichtbar durch das Gitter): ein zweiter Kühlturm
+  im Nordwesten, das Maschinenhaus mit Fensterband, Anbau, Schornstein und
+  Trafo-Feld im Südosten, eine Hochspannungsleitung im Norden, 40 Eichen auf
+  trockenem Spätsommergras, eine Betriebsstraße um den Turm.
+- **Farbe:** warmes Color-Grading (`gfx/luts/warm`).
 
-```text
-devmap q3r_coolingtower_test      (Spieltyp Autoball)
-ball_kick 0 1800 0                (Ball gegen die Nordkurven)
-ball_kick 0 -1800 0               (gegen die Südkurven)
-```
-
-Zu prüfen: Tragen die Autos 42°? Läuft der Ball auf den Brush-Kurven so glatt wie
-auf den Patches? Die Arena nutzt Brushes; der Winkel ist `BANK_DEG` im Generator.
+Die Testbox aus Stufe 0 ist wieder entfernt: 42° haben im Spieltest gepasst.
 
 ## Bauen
 
 ```text
 python tools/maptools/make_coolingtower.py
-python tools/maptools/make_coolingtower.py --test
 q3map2 -game quake3 -fs_basegame baseq3r -fs_basepath <repo> -meta -custinfoparms <map>
 q3map2 -game quake3 -fs_basegame baseq3r -fs_basepath <repo> -vis -saveprt <map>
 q3map2 -game quake3 -fs_basegame baseq3r -fs_basepath <repo> -light -custinfoparms -fast -shade -filter -super 2 -bounce 1 <map>
 bspc -forcesidesvisible -optimize -bsp2aas <bsp>
 ```
 
-Der Generator schreibt beide Maps, `scripts/q3r_coolingtower.shader` und `.arena`,
+Der Generator schreibt die Map, `scripts/q3r_coolingtower.shader` und `.arena`,
 die Texturen in `textures/q3r_coolingtower/` sowie `coolingtower_layout.png` und
-`validation.json` hier. Nur der Boden außen und das Himmelsgehäuse sind
-strukturell, `_blocksize 0` hält Vis bei einem Cluster (im Turm sieht man ohnehin
+`validation.json` hier. Nur das Himmelsgehäuse ist strukturell, `_blocksize 0` hält Vis bei einem Cluster (im Turm sieht man ohnehin
 alles). `shaderlist.txt` muss `q3r_coolingtower` und `q3r_sundown` (Tore) enthalten.

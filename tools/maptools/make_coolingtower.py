@@ -19,10 +19,11 @@ A round 4 vs 4 car football pitch in the dry water basin of a cooling tower
   with every solid world brush, so it bounces off; weather starts under sky
   surfaces and q3map2 takes the sunlight from there, so rain, snow and sun
   only reach the middle of the pitch. No autoball_reset volumes.
-
---test writes q3r_coolingtower_test instead: a box with straight bank
-samples at 25, 35 and 42 degrees, as brushes on the north side and as
-patches on the south side, two goals and a ball (stage 0 of the concept).
+- Inside: four drain grates with steam (rally_fx_spray), orange warning
+  lights over the goals, the scoreboard on four steel ropes.
+- Outside (all non-solid, seen through the grating): a second cooling
+  tower, the turbine hall with a chimney, a power line, oaks on dry
+  late-summer grass, a service road around the tower.
 
 Writes the map, scripts/q3r_coolingtower.shader and .arena, the textures in
 textures/q3r_coolingtower/ and docs/maps/coolingtower/ (layout, validation).
@@ -194,9 +195,13 @@ def floor():
     tex = (1024.0, 1024.0, 2 * R_WALL / 2048.0, 2 * R_WALL / 2048.0)
     box((-2800, -2800, -32), (2800, 2800, 0), "common/caulk", faces={"top": ("tex", TEX + "pitch", tex)},
         solid=False)
-    # ground around the tower
+    # ground around the tower (not solid: nothing gets out, and bspc skips it)
     g = 14000
-    box((-g, -g, -96), (g, g, -32), "common/caulk", faces={"top": TEX + "ground"}, solid=False, detail=False)
+    box((-g, -g, -96), (g, g, -32), "common/caulk", faces={"top": TEX + "ground"}, solid=False)
+    # service road around the slab
+    for lo, hi in (((-3300, -3300), (3300, -2800)), ((-3300, 2800), (3300, 3300)),
+                   ((-3300, -2800), (-2800, 2800)), ((2800, -2800), (3300, 2800))):
+        box((*lo, -36), (*hi, -28), TEX + "nodraw_ns", faces={"top": TEX + "asphalt"}, solid=False)
 
 
 def bank():
@@ -268,17 +273,14 @@ def wall():
                   (inner_n, polar(R_WALL * chord, mid), TEX + "concrete"),
                   (polar(1.0, mid), polar(R_WALL + 128, mid), TEX + "concrete")]
         convex(planes + side_planes(a0, a1, "common/caulk"))
-    # columns behind the grating, every 7.5 degrees outside the portals
+    # V-shaped columns behind the grating (not solid, out of reach), a V every 7.5 degrees
     for k in range(48):
-        a = 7.5 * k + 3.75
-        if goal_angle(a) < PORTAL + 4:
+        a = 7.5 * k
+        if goal_angle(a + 3.75) < PORTAL + 4:
             continue
-        c = polar(R_WALL + 96, a)
-        u, v = polar(1.0, a), polar(1.0, a + 90)
-        planes = [((0, 0, 1), (0, 0, GRATE_TOP), "common/caulk"), ((0, 0, -1), (0, 0, -32), "common/caulk")]
-        for n, d in ((u, 40), (tuple(-x for x in u), 40), (v, 28), (tuple(-x for x in v), 28)):
-            planes.append((n, (c[0] + n[0] * d, c[1] + n[1] * d, 0.0), TEX + "column"))
-        convex(planes)
+        top_ = polar(R_WALL + 104, a + 3.75, GRATE_TOP)
+        for b in (a, a + 7.5):
+            rod(polar(R_WALL + 104, b, -32), top_, 44, TEX + "column")
 
 
 def shell_radius(z):
@@ -311,7 +313,8 @@ def shell():
 def rod(a, b, w, mat):
     """Straight square bar from a to b, w units thick (not solid: see the shader)."""
     d = unit(sub(b, a))
-    u = unit(cross(d, (0.0, 0.0, 1.0)))
+    side = cross(d, (0.0, 0.0, 1.0))
+    u = unit(side if math.sqrt(sum(c * c for c in side)) > 1e-3 else cross(d, (1.0, 0.0, 0.0)))
     v = cross(u, d)
     planes = [(tuple(-c for c in d), a, mat), (d, b, mat)]
     for n in (u, v, tuple(-c for c in u), tuple(-c for c in v)):
@@ -386,6 +389,136 @@ def sky_box():
         box(lo, hi, sky, solid=False, detail=False)
 
 
+# ---------------------------------------------------------------- outside
+
+def far_tower(cx, cy, k):
+    """A second cooling tower k times the size of ours, not solid."""
+    mat = TEX + "far_concrete"
+    zs = [k * (RING_TOP + (TOP_Z - RING_TOP) * i / 8) for i in range(9)]
+    seg = 40
+    for j in range(seg):
+        a0, a1 = 360.0 * j / seg, 360.0 * (j + 1) / seg
+        for z0, z1 in zip(zs, zs[1:]):
+            r0, r1 = k * shell_radius(z0 / k), k * shell_radius(z1 / k)
+            A, B, C = polar(r0, a0, z0), polar(r0, a1, z0), polar(r1, a0, z1)
+            A, B, C = [(p[0] + cx, p[1] + cy, p[2]) for p in (A, B, C)]
+            n = tri_normal(A, B, C)
+            mid = polar(1.0, 0.5 * (a0 + a1))
+            if n[0] * mid[0] + n[1] * mid[1] > 0:
+                n = tuple(-c for c in n)
+            back = tuple(p - c * 40 for p, c in zip(A, unit(n)))
+            r0p, r1p = math.radians(a0), math.radians(a1)
+            planes = [(n, A, mat), (tuple(-c for c in n), back, mat),
+                      ((0, 0, 1), (0, 0, z1), mat), ((0, 0, -1), (0, 0, z0), mat),
+                      ((math.sin(r0p), -math.cos(r0p), 0.0), (cx, cy, 0.0), mat),
+                      ((-math.sin(r1p), math.cos(r1p), 0.0), (cx, cy, 0.0), mat)]
+            convex(planes)
+    for j in range(32):
+        a = 360.0 * j / 32
+        top_ = polar(k * R_WALL, a + 5.625, zs[0])
+        for b in (a, a + 11.25):
+            base = polar(k * R_WALL, b, -32)
+            rod((base[0] + cx, base[1] + cy, base[2]), (top_[0] + cx, top_[1] + cy, top_[2]), 70, mat)
+
+
+def cylinder(cx, cy, r, z0, z1, mat, seg=24):
+    pts = [polar(r, 360.0 * j / seg) for j in range(seg)]
+    planes = [((0, 0, 1), (cx, cy, z1), mat), ((0, 0, -1), (cx, cy, z0), mat)]
+    for j in range(seg):
+        a = 360.0 * (j + 0.5) / seg
+        n = polar(1.0, a)
+        c = math.cos(math.radians(180.0 / seg)) * r
+        planes.append((n, (cx + n[0] * c, cy + n[1] * c, 0.0), mat))
+    convex(planes)
+
+
+def plant():
+    """Turbine hall with a window band facing the tower, annex, chimney."""
+    brick, win, far = TEX + "brick", TEX + "hall_windows", TEX + "far_concrete"
+    box((5600, -7300, -32), (8800, -5500, 1400), brick, faces={"top": far}, solid=False)
+    box((5596, -7100, 700), (5600, -5700, 1150), TEX + "nodraw_ns", faces={"-x": win}, solid=False)
+    box((5800, -5500, 700), (8600, -5496, 1150), TEX + "nodraw_ns", faces={"+y": win}, solid=False)
+    box((5550, -7350, 1400), (8850, -5450, 1480), far, solid=False)
+    box((8800, -7000, -32), (10400, -5800, 800), brick, faces={"top": far}, solid=False)
+    cylinder(9600, -4200, 260, -32, 4600, far)
+    for z in (3900, 4300):
+        cylinder(9600, -4200, 264, z, z + 160, TEX + "chimney_red")
+    # transformer yard between hall and tower
+    for x in (4300, 4900):
+        for y in (-5200, -4500):
+            box((x, y, -32), (x + 360, y + 260, 300), TEX + "steel", solid=False)
+
+
+def pylon(x, y):
+    steel = TEX + "steel"
+    top_z, arm_z = 1750, (1300, 1550)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            rod((x + sx * 170, y + sy * 170, -32), (x + sx * 36, y + sy * 36, top_z), 20, steel)
+    rod((x, y, top_z - 20), (x, y, top_z + 220), 14, steel)
+    for z in arm_z:
+        rod((x, y - 560, z), (x, y + 560, z), 22, steel)
+    return [(y + sy * d, z) for z in arm_z for sy in (-1, 1) for d in (520,)]
+
+
+def power_line():
+    xs_ = [-12500, -7500, -2500, 2500, 7500, 12500]
+    y = 9800
+    tips = [pylon(x, y) for x in xs_]
+    for x0, x1, t in zip(xs_, xs_[1:], tips):
+        for wy, wz in t:
+            pts = []
+            for i in range(7):
+                f = i / 6
+                pts.append((x0 + (x1 - x0) * f, wy, wz - 20 - 260 * 4 * f * (1 - f)))
+            for a, b in zip(pts, pts[1:]):
+                rod(a, b, 5, TEX + "wire")
+
+
+def trees():
+    rng = np.random.default_rng(5)
+    placed = 0
+    keep_out = [((5300, -7700), (11000, -3700)), ((3900, -5600), (5600, -4100))]
+    while placed < 40:
+        r = rng.uniform(4300, 13500)
+        a = rng.uniform(0, 360)
+        x, y, _ = polar(r, a)
+        if abs(x) > 14200 or abs(y) > 14200 or abs(y - 9800) < 700:
+            continue
+        if any(lo[0] < x < hi[0] and lo[1] < y < hi[1] for lo, hi in keep_out):
+            continue
+        if math.hypot(x + 8600, y - 5600) < 3200:
+            continue
+        model = f"models/mapobjects/oak/oak{1 + placed % 5}.md3"
+        entity("misc_model", x, y, -36, model=model, modelscale=f"{rng.uniform(1.6, 2.4):.2f}",
+               angle=str(int(rng.uniform(0, 360))))
+        placed += 1
+
+
+def outside():
+    far_tower(-8600, 5600, 1.0)
+    plant()
+    power_line()
+    trees()
+
+
+def drains():
+    """Four drain grates in the middle; steam rises from them."""
+    for a in (45, 135, 225, 315):
+        x, y, _ = polar(1100, a)
+        box((x - 80, y - 80, -1), (x + 80, y + 80, 1), TEX + "nodraw_ns", faces={"top": TEX + "drain"}, solid=False)
+        entity("rally_fx_spray", x, y, 4, radius="56", height="560", size="200", rate="5", droplets="0",
+               alpha="0.16", push="0", _color="0.95 0.95 0.95", range="6000")
+
+
+def beacons():
+    """Orange warning lights over the goals."""
+    for sx in (-1, 1):
+        x0, x1 = xs(sx, GX - 14, GX)
+        box((x0, -28, GH + 110), (x1, 28, GH + 166), TEX + "beacon", solid=False)
+        entity("light", sx * (GX - 60), 0, GH + 138, light="220", _color="1 0.55 0.1")
+
+
 # ---------------------------------------------------------------- entities
 
 def players():
@@ -437,28 +570,75 @@ def save(img, name, out, alpha=False):
         im.save(out / name)
 
 
-def concrete(size, seed, base, joints=0):
+def concrete(size, seed, base, panels=False, streaks=True):
+    """Weathered concrete. panels: formwork joints every 128 x 256 px (staggered)
+    with four tie holes per panel, lime and rust running down from them."""
     rng = np.random.default_rng(seed)
     n = base + 0.08 * noise(size, size, 4, seed) + 0.05 * noise(size, size, 32, seed + 1) \
-        + rng.normal(0, 0.018, (size, size))
-    # lime streaks running down
-    streak = blur(np.clip(noise(size, size, 16, seed + 2) - 0.62, 0, 1)[:1].repeat(size, 0), 2) * 0.35
-    n = n + streak * np.linspace(1, 0.2, size)[:, None]
-    if joints:
-        for r in range(0, size, size // joints):
-            n[r:r + 2, :] *= 0.72
+        + 0.03 * noise(size, size, 128, seed + 3) + rng.normal(0, 0.016, (size, size))
+    streak = blur(np.clip(noise(size, size, 16, seed + 2) - 0.62, 0, 1)[:1].repeat(size, 0), 2) * 0.30
+    if streaks:
+        n = n + streak * np.linspace(1, 0.2, size)[:, None]
+    if panels:
+        ph, pw = 128, 256
+        rows = size // ph
+        for r in range(rows):
+            n[r * ph:r * ph + 2, :] *= 0.74
+            off = (r % 2) * pw // 2
+            for c in range(off, size + pw, pw):
+                n[r * ph:(r + 1) * ph, c % size:(c % size) + 2] *= 0.80
+            for c in range(size // pw + 1):
+                for hx, hy in ((64, 32), (192, 32), (64, 96), (192, 96)):
+                    x, y = (c * pw + off + hx) % size, r * ph + hy
+                    yy, xx = np.ogrid[-4:5, -4:5]
+                    m = (xx * xx + yy * yy) <= 12
+                    n[(y - 4):(y + 5), max(0, x - 4):x + 5][m[:, :min(9, size - x + 4)]] *= 0.45
+                    run = int(rng.uniform(18, 70))
+                    shade = 0.92 if rng.random() < 0.5 else 1.06
+                    n[y + 5:min(size, y + 5 + run), max(0, x - 1):x + 2] *= shade
+        n = blur(n, 1) * 0.6 + n * 0.4
     return np.clip(n, 0, 1)
+
+
+def cracks(size, seed, count):
+    rng = np.random.default_rng(seed)
+    m = np.zeros((size, size), np.float32)
+    for _ in range(count):
+        x, y = rng.uniform(0, size, 2)
+        a = rng.uniform(0, 2 * math.pi)
+        for _ in range(int(rng.uniform(90, 300))):
+            a += rng.normal(0, 0.12)
+            x, y = (x + math.cos(a)) % size, (y + math.sin(a)) % size
+            m[int(y), int(x)] = 1
+    return blur(m, 1)
 
 
 def write_textures():
     out = ROOT / "baseq3r" / "textures" / "q3r_coolingtower"
     out.mkdir(parents=True, exist_ok=True)
-    c = concrete(512, 3, 0.50, joints=4)
-    save(np.stack([c * 0.98, c * 0.97, c * 0.94], -1), "concrete.jpg", out)
-    b = concrete(512, 11, 0.42)
-    save(np.stack([b * 0.95, b * 0.95, b * 0.93], -1), "basin.jpg", out)
-    g = 0.30 + 0.10 * noise(256, 256, 8, 21) + 0.05 * noise(256, 256, 64, 22)
-    save(np.stack([g * 0.70, g * 0.82, g * 0.45], -1), "ground.jpg", out)
+    c = concrete(512, 3, 0.52, panels=True)
+    save(np.stack([c * 0.98, c * 0.96, c * 0.92], -1), "concrete.jpg", out)
+    b = concrete(512, 11, 0.44, streaks=False) * (1 - 0.4 * cracks(512, 12, 6))
+    stains = blur(np.clip(noise(512, 512, 6, 13) - 0.6, 0, 1), 3) * 0.25
+    b = np.clip(b - stains, 0, 1)
+    save(np.stack([b * 0.95, b * 0.94, b * 0.91], -1), "basin.jpg", out)
+    # dry late-summer grass with green and straw patches
+    rng = np.random.default_rng(23)
+    v = 0.34 + 0.10 * noise(256, 256, 8, 21) + 0.06 * noise(256, 256, 64, 22) + rng.normal(0, 0.03, (256, 256))
+    dry = np.clip(noise(256, 256, 4, 24) * 1.6 - 0.5, 0, 1)
+    rgb = np.stack([v * (0.62 + 0.38 * dry), v * (0.80 + 0.05 * dry), v * (0.38 + 0.12 * dry)], -1)
+    save(rgb, "ground.jpg", out)
+
+    # drain grate: frame and bars over a dark pit (alpha keeps the frame and bars)
+    d = np.zeros((128, 128, 4), np.float32)
+    d[..., :3] = 0.05
+    d[..., 3] = 1
+    bars = np.zeros((128, 128), bool)
+    bars[:, (np.arange(128) % 12) < 4] = True
+    bars[:8, :] = bars[-8:, :] = bars[:, :8] = bars[:, -8:] = True
+    metal = 0.30 + 0.12 * noise(128, 128, 8, 41)
+    d[bars, 0], d[bars, 1], d[bars, 2] = metal[bars] * 0.95, metal[bars] * 0.80, metal[bars] * 0.68
+    save(d, "drain.tga", out, alpha=True)
 
     # steel grating with alpha: 256 px = 64 units, bars every 16 px
     a = np.zeros((256, 256), np.float32)
@@ -519,7 +699,8 @@ def write_shader():
             "\tq3map_sun 1 0.95 0.86 220 90 65", "\tq3map_skylight 140 4",
             "\tq3gl2_sun 1 0.95 0.86 150 90 65 0.5",
             "\tskyparms env/arcsky/arcsky2 1024 -",
-            "\tq3r_haze 0.78 0.76 0.72 9000\t// Q3Rally: dusty late summer haze", "}", ""]
+            "\tq3r_haze 0.78 0.76 0.72 9000\t// Q3Rally: dusty late summer haze",
+            "\tq3r_colorLut gfx/luts/warm\t// Q3Rally: colour grading", "}", ""]
     out += [f"{T}pitch", "{", f"\tqer_editorimage {T}pitch_lines.jpg", "\t{",
             f"\t\tmap {T}basin.jpg", "\t\ttcMod scale 9 9", "\t\trgbGen identity", "\t}", "\t{",
             "\t\tmap $lightmap", "\t\tblendFunc GL_DST_COLOR GL_ZERO", "\t\trgbGen identity", "\t}", "\t{",
@@ -527,16 +708,37 @@ def write_shader():
     out += lit("bank", f"{T}basin.jpg", ("\tq3map_nonplanar", "\tq3map_shadeAngle 60"))
     out += lit("concrete", f"{T}concrete.jpg")
     out += lit("portal", f"{T}concrete.jpg", (), ("\t\trgbGen const ( 0.8 0.8 0.82 )",))
-    out += lit("column", f"{T}concrete.jpg", ("\tq3map_lightmapSampleSize 32",), ("\t\trgbGen const ( 0.7 0.7 0.7 )",))
+    out += lit("column", f"{T}concrete.jpg", ("\tsurfaceparm nonsolid", "\tq3map_lightmapSampleSize 32"),
+               ("\t\trgbGen const ( 0.7 0.7 0.7 )",))
     out += lit("shell", f"{T}concrete.jpg", ("\tq3map_nonplanar", "\tq3map_shadeAngle 60",
-                                             "\tq3map_lightmapSampleSize 32"))
+                                             "\tq3map_lightmapSampleSize 32"), ("\t\ttcMod scale 0.5 0.5",))
     out += lit("shell_top", f"{T}concrete.jpg", ("\tq3map_nonplanar", "\tq3map_shadeAngle 60"),
                ("\t\trgbGen const ( 0.85 0.85 0.85 )",))
     out += lit("shell_out", f"{T}concrete.jpg", ("\tq3map_lightmapSampleSize 64",))
     out += lit("steel", "textures/q3r_metals/plate01.tga", ("\tsurfaceparm nonsolid", "\tsurfaceparm nomarks",
                                                           "\tsurfaceparm SURF_METAL", "\tq3map_lightmapSampleSize 8"),
                ("\t\trgbGen const ( 0.45 0.45 0.48 )",))
-    out += lit("ground", f"{T}ground.jpg", ("\tq3map_lightmapSampleSize 64",), ("\t\ttcMod scale 0.25 0.25",))
+    ns = ("\tsurfaceparm nonsolid", "\tq3map_lightmapSampleSize 64")
+    out += lit("ground", f"{T}ground.jpg", ns, ("\t\ttcMod scale 0.25 0.25",))
+    out += lit("asphalt", "textures/q3r_road/asphalt.jpg", ns)
+    out += lit("brick", "textures/q3r_building/brick01.jpg", ns)
+    out += lit("hall_windows", "textures/q3r_building/ind-windows-1.jpg", ns)
+    out += lit("far_concrete", f"{T}concrete.jpg", ns + ("\tq3map_nonplanar", "\tq3map_shadeAngle 60"),
+               ("\t\ttcMod scale 0.5 0.5",))
+    out += lit("chimney_red", f"{T}concrete.jpg", ns, ("\t\trgbGen const ( 0.75 0.18 0.14 )",))
+    out += lit("wire", "textures/q3r_metals/plate01.tga", ("\tsurfaceparm nonsolid", "\tsurfaceparm nomarks",
+                                                          "\tsurfaceparm pointlight"), ("\t\trgbGen const ( 0.12 0.12 0.13 )",))
+    out += [f"{T}nodraw_ns", "{", "\tqer_editorimage textures/common/nodraw.tga", "\tsurfaceparm nodraw",
+            "\tsurfaceparm nonsolid", "\tsurfaceparm trans", "\tsurfaceparm nomarks", "\tsurfaceparm nolightmap", "}", ""]
+    out += [f"{T}drain", "{", f"\tqer_editorimage {T}drain.tga", "\tsurfaceparm nonsolid", "\tsurfaceparm trans",
+            "\tsurfaceparm nomarks", "\tpolygonOffset", "\t{", f"\t\tmap {T}drain.tga", "\t\talphaFunc GE128",
+            "\t\tdepthWrite", "\t\trgbGen identity", "\t}", "\t{", "\t\tmap $lightmap",
+            "\t\tblendFunc GL_DST_COLOR GL_ZERO", "\t\tdepthFunc equal", "\t\trgbGen identity", "\t}", "}", ""]
+    out += [f"{T}beacon", "{", f"\tqer_editorimage {T}concrete.jpg", "\tsurfaceparm nonsolid", "\tsurfaceparm nomarks",
+            "\tsurfaceparm nolightmap", "\tq3map_surfacelight 120", "\tq3map_lightRGB 1 0.55 0.1", "\t{",
+            "\t\tmap textures/q3r_signage/white.jpg", "\t\trgbGen wave square 0.2 0.8 0 1.2", "\t\talphaGen const 1", "\t}",
+            "\t{", "\t\tmap textures/q3r_signage/white.jpg", "\t\tblendFunc GL_DST_COLOR GL_ZERO",
+            "\t\trgbGen const ( 1 0.55 0.1 )", "\t}", "}", ""]
     for team in ("red", "blue"):
         r, g, b = TEAM_RGB[team]
         out += [f"{T}portal_{team}", "{", f"\tqer_editorimage {T}concrete.jpg", "\t{", f"\t\tmap {T}concrete.jpg",
@@ -549,10 +751,6 @@ def write_shader():
             "\tnopicmip", "\t{", f"\t\tmap {T}grate.tga", "\t\talphaFunc GE128", "\t\tdepthWrite",
             "\t\trgbGen identity", "\t}", "\t{", "\t\tmap $lightmap", "\t\tblendFunc GL_DST_COLOR GL_ZERO",
             "\t\tdepthFunc equal", "\t\trgbGen identity", "\t}", "}", ""]
-    # bank samples of the stage 0 test box (q3r_coolingtower_test)
-    for name, rgb in (("test25", (0.55, 1.0, 0.55)), ("test35", (1.0, 0.95, 0.45)), ("test42", (1.0, 0.5, 0.45))):
-        out += lit(name, f"{T}basin.jpg", ("\tcull none", "\tq3map_nonplanar", "\tq3map_shadeAngle 60"),
-                   (f"\t\trgbGen const ( {rgb[0]} {rgb[1]} {rgb[2]} )",))
     path = ROOT / "baseq3r" / "scripts" / f"{NAME}.shader"
     path.write_text("\n".join(out), encoding="utf-8")
 
@@ -657,118 +855,7 @@ def overview(report):
     (out / "validation.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
 
-# ---------------------------------------------------------------- stage 0: bank test box
-
-def patch(rows, mat):
-    """patchDef2 from rows of (x, y, z, s, t) control points."""
-    lines = ["{", "patchDef2", "{", mat, f"( {len(rows)} {len(rows[0])} 0 0 0 )", "("]
-    for row in rows:
-        lines.append("( " + " ".join("( %s %s %s %s %s )" % tuple(num(v) for v in p) for p in row) + " )")
-    lines += [")", "}", "}"]
-    BRUSHES.append("\n".join(lines))
-
-
-def test_ramp(x0, x1, sy, deg, mode, mat):
-    """Straight bank from y = sy * (Y - run) (flat) to the wall at y = sy * Y."""
-    Y, run = 1536, R_WALL - R_FLAT
-    y_foot = sy * (Y - run)
-
-    def yy(d):
-        return y_foot + sy * d
-    if mode == "brush":
-        ds = [run * i / BANK_RINGS for i in range(BANK_RINGS + 1)]
-        for da, db in zip(ds, ds[1:]):
-            pa = (0.0, yy(da), bank_profile(da, deg))
-            pb = (0.0, yy(db), bank_profile(db, deg))
-            dy, dz = pb[1] - pa[1], pb[2] - pa[2]
-            top = (0.0, -dz, dy) if dy > 0 else (0.0, dz, -dy)
-            lo, hi = sorted((yy(da), yy(db)))
-            planes = [(top, pa, mat), ((0, 0, -1), (0, 0, -16), "common/caulk"),
-                      ((-1, 0, 0), (x0, 0, 0), "common/caulk"), ((1, 0, 0), (x1, 0, 0), "common/caulk"),
-                      ((0, -1, 0), (0, lo, 0), "common/caulk"), ((0, 1, 0), (0, hi, 0), "common/caulk")]
-            convex(planes)
-    else:
-        # two quadratic segments of the arc; control points where the tangents meet
-        rb = bank_radius(deg)
-
-        def arc(t):
-            ang = math.radians(deg) * t
-            return rb * math.sin(ang), rb * (1 - math.cos(ang))
-
-        def ctrl(t0, t1):
-            (u0, v0), (u1, v1) = arc(t0), arc(t1)
-            a0, a1 = math.radians(deg) * t0, math.radians(deg) * t1
-            k0, k1 = math.tan(a0), math.tan(a1)
-            u = (v1 - v0 + k0 * u0 - k1 * u1) / (k0 - k1) if abs(k0 - k1) > 1e-9 else 0.5 * (u0 + u1)
-            return u, v0 + k0 * (u - u0)
-        prof = [arc(0), ctrl(0, 0.5), arc(0.5), ctrl(0.5, 1), arc(1)]
-        rows = []
-        for x in (x0, 0.5 * (x0 + x1), x1):
-            rows.append([(x, yy(u), v, x / 256.0, u / 256.0) for u, v in prof])
-        if sy < 0:
-            rows = rows[::-1]
-        patch(rows, mat)
-        # fill under the patch: tangent planes stay below the (convex) arc
-        for t0, t1 in ((0, 0.25), (0.25, 0.5), (0.5, 0.75), (0.75, 1.0)):
-            tm = 0.5 * (t0 + t1)
-            um, vm = arc(tm)
-            k = math.tan(math.radians(deg) * tm)
-            ua, ub = arc(t0)[0], arc(t1)[0]
-            top_pt = (0.0, yy(um), vm - 2)
-            top = (0.0, -sy * k, 1.0)
-            lo, hi = sorted((yy(ua), yy(ub)))
-            planes = [(top, top_pt, "common/caulk"), ((0, 0, -1), (0, 0, -16), "common/caulk"),
-                      ((-1, 0, 0), (x0, 0, 0), "common/caulk"), ((1, 0, 0), (x1, 0, 0), "common/caulk"),
-                      ((0, -1, 0), (0, lo, 0), "common/caulk"), ((0, 1, 0), (0, hi, 0), "common/caulk")]
-            if vm - 2 - k * (um - ua) > -14:
-                convex(planes)
-
-
-def build_test():
-    X, Y, H = 2048, 1536, 768
-    con = TEX + "concrete"
-    box((-X, -Y, -32), (X, Y, 0), "common/caulk", faces={"top": TEX + "basin"}, solid=False, detail=False)
-    for lo, hi in (((-X - 64, -Y - 64, -32), (-X, Y + 64, H)), ((X, -Y - 64, -32), (X + 64, Y + 64, H)),
-                   ((-X, -Y - 64, -32), (X, -Y, H)), ((-X, Y, -32), (X, Y + 64, H))):
-        box(lo, hi, con, solid=False, detail=False)
-    box((-X - 64, -Y - 64, H), (X + 64, Y + 64, H + 64), TEX + "sky", solid=False, detail=False)
-    spans = [(-1856, -704), (-576, 576), (704, 1856)]
-    for (x0, x1), deg in zip(spans, (25, 35, 42)):
-        for sy, mode in ((1, "brush"), (-1, "patch")):
-            test_ramp(x0, x1, sy, deg, mode, TEX + f"test{deg}")
-    # pillars between and beside the ramps cap their open ends
-    for xa, xb in ((-X, -1856), (-704, -576), (576, 704), (1856, X)):
-        for sy in (-1, 1):
-            y0, y1 = sorted((sy * (Y - 900), sy * Y))
-            box((xa, y0, -16), (xb, y1, 400), con, solid=False)
-    # small goals in the end walls
-    for sx in (-1, 1):
-        team = TEAM[sx]
-        net = f"q3r_sundown/net_{team}"
-        goal = []
-        v0, v1 = xs(sx, X - 200, X - 20)
-        box((v0, -300, 0), (v1, 300, 200), "common/trigger", solid=False, target=goal)
-        brush_entity("autoball_goal", goal, team=team)
-        n0, n1 = xs(sx, X - 230, X - 200)
-        box((n0, -330, 0), (n1, 330, 230), net, solid=False)
-    entity("autoball_ball", 0, 0, 100)
-    for team, s in (("red", 1), ("blue", -1)):
-        ang = "0" if team == "red" else "180"
-        for y in (-300, 300):
-            entity(f"team_CTF_{team}player", s * -900, y, 48, angle=ang)
-            entity(f"team_CTF_{team}spawn", s * -1400, y, 48, angle=ang)
-    for x in (-600, 600):
-        entity("info_player_deathmatch", x, 0, 48, angle="90")
-    entity("light", 0, 0, 600, light="4000")
-    write_textures()
-    write_shader()
-    return write_map("q3r_coolingtower_test", "Cooling Tower bank test")
-
-
 def main():
-    if "--test" in sys.argv:
-        print("Wrote", build_test())
-        return
     floor()
     bank_brushes = bank()
     wall()
@@ -776,6 +863,9 @@ def main():
     for sx in (-1, 1):
         portal(sx)
     scoreboard_rig()
+    drains()
+    beacons()
+    outside()
     sky_box()
     players()
     lights()
