@@ -1,0 +1,30 @@
+{
+  "map": "q3r_coolingtower",
+  "pitch_diameter": 4608,
+  "flat_diameter": 3072,
+  "bank_deg": 42.0,
+  "bank_height": 294.8,
+  "goal_mouth": [
+    1088,
+    320
+  ],
+  "goal_to_goal": 4451.0,
+  "shell": {
+    "ring_top": 704,
+    "waist": [
+      1664.0,
+      2560.0
+    ],
+    "opening": [
+      1721,
+      3072
+    ]
+  },
+  "goals": 2,
+  "brushes": 2131,
+  "entities": 52,
+  "kickoff_per_team": 4,
+  "spawns_per_team": 4,
+  "turbo": 10,
+  "bank_brushes": 1178
+}
