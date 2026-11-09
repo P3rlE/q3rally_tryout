@@ -14,6 +14,7 @@ incomplete tags, the Mini's wheel) into the finished car in
 | `render3d.py` | Small software renderer for previews and the menu icons (`icon_<skin>.tga`). |
 | `md3info.py` | Per-surface vertex/triangle counts against the engine limit (exit code 1 if a model would be rejected). |
 | `subdivide.py` | Splits every triangle into four per pass; smooth edges follow PN-triangle curves, hard edges stay sharp. For high-poly tests and smoothing low-poly bodies. |
+| `straighten_wheel.py` | Rebuilds a `carlib.build_wheel` wheel.md3 with the tyre turned onto the axle (`carlib.straighten_tire`), for tyres taken from a steered or cambered source wheel that wobble in the game. Follow with `ground_fix.py`. |
 
 ## Rebuild
 
@@ -120,7 +121,9 @@ python3 ground_fix.py --dry-run $D          # reports "ok"
 `cutlass-sketchfab.fbx` + `textures/` (not in the repo), like the Ridgeback:
 all visible triangles of the body, the wheel decimated to 3,000 triangles
 (needs pyfqmr), chrome and glass with the shared textures, mouldings and lamps
-with their own.
+with their own. The source's front wheels are steered by 10°, so the tyre is
+turned back onto the axle (`carlib.straighten_tire`) before `wheel.md3` is
+written.
 
 ```sh
 cd tools/carbuild
