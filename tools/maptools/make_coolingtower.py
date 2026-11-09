@@ -546,7 +546,18 @@ def players():
         entity("rally_item_turbo", x, y, height(x, y) + 48, count="1500", wait="4")
     entity("misc_model", 0, 0, SCOREBOARD_Z, model="models/mapobjects/q3r_scoreboard/scoreboard.md3", angle="270")
     entity("rally_scoreboard", 0, 0, SCOREBOARD_Z)
-    entity("info_player_intermission", -1500, -1500, 1300, angles="18 45 0")
+    entity("info_player_intermission", -1000, -1000, 1250, angles="24 45 0")
+
+
+def sounds():
+    """Wind whistling through the grating, all round the wall outside the portals."""
+    for k in range(16):
+        a = 11.25 + 22.5 * k
+        if goal_angle(a) < PORTAL + 4:
+            continue
+        x, y, _ = polar(R_WALL + 40, a)
+        entity("target_speaker", x, y, bank_factor(a) * BANK_H + 180,
+               noise=f"sound/world/wind{1 + k % 2}.ogg", spawnflags="1")
 
 
 def lights():
@@ -872,6 +883,7 @@ def main():
     outside()
     sky_box()
     players()
+    sounds()
     lights()
     report = validate()
     report["bank_brushes"] = bank_brushes

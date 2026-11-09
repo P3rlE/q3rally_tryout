@@ -5,8 +5,7 @@ Kühlturms. Rund statt rechteckig, Steilkurve statt Bande, Licht und Wetter fall
 nur durch die Öffnung oben auf die Mitte. Erzeugt von
 `tools/maptools/make_coolingtower.py`. Konzept: Dokument „Cooling Tower – Autoball-Arena“.
 
-Stand: **Stufe 2** (Rohbau, Details, Umgebung). Offen für Stufe 3: Wettertest,
-Pfützen-Mulde, Sound, Levelshot.
+Stand: **Stufe 3** (fertig für den Spieltest mit Menschen).
 
 ![Layout](coolingtower_layout.png)
 
@@ -69,6 +68,19 @@ Höhe bis unter die Schale (etwa z 1000).
 - **Farbe:** warmes Color-Grading (`gfx/luts/warm`).
 
 Die Testbox aus Stufe 0 ist wieder entfernt: 42° haben im Spieltest gepasst.
+
+## Wetter, Sound, Levelshot (Stufe 3)
+
+- **Wetter geprüft** mit `cg_weatherPreview "1 0"` (nass) und `"0 1"` (Schnee):
+  Nässe und Schnee liegen nur in der Mitte unter der Öffnung und auf dem unteren
+  Teil der Kurve, der Ring unter der Schale bleibt trocken, draußen ist alles weiß.
+  Pfützen macht der Renderer selbst auf nassem Beton (`wetground_fp.glsl`), eine
+  Mulde im Boden ist dafür nicht nötig.
+- **Sound:** 12 Lautsprecher (`target_speaker`, Schleife) hinter dem Gitter mit
+  Wind (`sound/world/wind1/2.ogg`); dazu kommt der Wind des Wettersystems.
+- **Intermission:** Kamerapunkt bei (−1000, −1000, 1250), schräg über dem Feld.
+- **Levelshot:** `levelshots/q3r_coolingtower.jpg` (1280 × 720) aus diesem
+  Blickwinkel, mit der Linux-Engine unter Xvfb aufgenommen.
 
 ## Bauen
 
