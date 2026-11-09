@@ -506,9 +506,13 @@ def drains():
     """Four drain grates in the middle; steam rises from them."""
     for a in (45, 135, 225, 315):
         x, y, _ = polar(1100, a)
-        box((x - 80, y - 80, -1), (x + 80, y + 80, 1), TEX + "nodraw_ns", faces={"top": TEX + "drain"}, solid=False)
-        entity("rally_fx_spray", x, y, 4, radius="56", height="560", size="200", rate="5", droplets="0",
-               alpha="0.16", push="0", _color="0.95 0.95 0.95", range="6000")
+        # drain.tga (128 px) fitted once over the 160 x 160 grate
+        k = 160 / 128
+        fit = ((-(x - 80) / k) % 128, ((y + 80) / k) % 128, k, k)
+        box((x - 80, y - 80, -1), (x + 80, y + 80, 1), TEX + "nodraw_ns",
+            faces={"top": ("tex", TEX + "drain", fit)}, solid=False)
+        entity("rally_fx_spray", x, y, 4, radius="72", height="760", size="260", rate="16", droplets="0",
+               alpha="0.32", push="0", _color="0.95 0.95 0.95", range="7000")
 
 
 def beacons():
