@@ -196,3 +196,51 @@ def build_wheel(tire, radius, path, name):
     disc(x_in, open_in, 0.0, -1)
     mn, mx, _ = save(path, name, [tread.done(), rim.done()], None, b'wheel')
     return open_out, open_in, mn, mx
+
+
+def straighten_tire(verts, faces):
+    """Turn a tyre mesh so that it runs true on the wheel model's x axis.
+
+    verts, faces: welded tyre mesh in wheel model space (x = axle, y = forward,
+    z = down), roughly centred on the axle. A tyre taken from a source model
+    whose front wheels are steered or cambered sits at an angle to x; spun
+    about x by the game it wobbles.
+
+    On a surface of revolution every normal line meets the axis. With the face
+    normals n at the face centres p, the axis (direction a, moment m) is the
+    line that best satisfies (p x n).a + n.m = 0 in the area weighted least
+    squares sense (Pottmann & Wallner, line geometry): a small eigenproblem.
+    The tyre is turned so that a becomes x and moved so that the axis runs
+    through the origin, centred between its outermost points along x.
+    Returns (straightened verts, rotation matrix, offset subtracted after the
+    rotation).
+    """
+    import numpy as np
+    v = np.asarray(verts, float)
+    f = np.asarray(faces, int)
+    t = v[f]
+    cr = np.cross(t[:, 1] - t[:, 0], t[:, 2] - t[:, 0])
+    area = np.linalg.norm(cr, axis=1)
+    keep = area > 1e-12
+    n, area, p = cr[keep] / area[keep, None], area[keep], t[keep].mean(1)
+    u = np.hstack([np.cross(p, n), n])                # . (a, m)
+    M = (u * area[:, None]).T @ u
+    A, B, C = M[:3, :3], M[:3, 3:], M[3:, 3:]
+    Ci = np.linalg.pinv(C)
+    w, vec = np.linalg.eigh(A - B @ Ci @ B.T)
+    a = vec[:, 0]
+    if a[0] < 0:
+        a = -a
+    m = -Ci @ B.T @ a
+    foot = np.cross(a, m)                             # point of the axis closest to the origin
+    x = np.array([1.0, 0.0, 0.0])
+    k = np.cross(a, x)
+    s, c = np.linalg.norm(k), float(a @ x)
+    R = np.eye(3)
+    if s > 1e-12:
+        k /= s
+        K = np.array([[0, -k[2], k[1]], [k[2], 0, -k[0]], [-k[1], k[0], 0]])
+        R = np.eye(3) + s * K + (1 - c) * K @ K
+    q = (v - foot) @ R.T
+    off = np.array([(q[:, 0].min() + q[:, 0].max()) / 2, 0.0, 0.0])
+    return q - off, R, R @ foot + off

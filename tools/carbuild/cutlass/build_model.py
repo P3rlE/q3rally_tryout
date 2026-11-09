@@ -23,7 +23,8 @@ from PIL import Image
 import cull
 import fbx
 import mesh
-from carlib import BACKWARD, ID, WL, WR, Builder, build_wheel, save, snap_lights, tri_normal, wheel_tag_z
+from carlib import (BACKWARD, ID, WL, WR, Builder, build_wheel, save, snap_lights, straighten_tire, tri_normal,
+                    wheel_tag_z)
 from layout import atlas, region, X0, X1, Y0, Y1, Z0, Z1
 
 SRC, TEX_DIR, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -111,6 +112,9 @@ def to_wheel(p):
 
 wv, wf = mesh.weld(to_wheel(V), tt)
 wv, wf = mesh.decimate(wv, wf, 3000)          # 8,000 triangles per wheel is too much for four of them
+# the source's front wheels are steered by 10 deg: turn the tyre back onto the axle, or it
+# wobbles when the game spins it
+wv, _, _ = straighten_tire(wv, wf)
 LIFT = (0.0, 0.0, wheel_tag_z(np.hypot(wv[:, 1], wv[:, 2]).max()) - WHEEL_Z)
 
 # ---------------- surfaces --------------------------------------------------------------------
