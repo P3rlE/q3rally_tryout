@@ -30,7 +30,12 @@ static int g_servertype,g_numfavoriteservers,starts,stops,saves,removed,hosted,t
 static char address[128],message[128],command[256];
 static servernode_t a={"127.0.0.1:27960","Server A","q3r_country01",2,1,8,20,0}, b={"127.0.0.1:27961","Server B","q3r_nightcity",3,2,8,30,0};
 static const char *master_items[8],*servertype_items[14],*sortkey_items[5];
+#ifdef _WIN32
 #define Q_stricmp _stricmp
+#else
+#include <strings.h>
+#define Q_stricmp strcasecmp
+#endif
 static void Q_strncpyz(char *out,const char *in,int size){snprintf(out,size,"%s",in);}
 static void trap_Cvar_Set(const char *key,const char *value){if(!strcmp(key,"ui_webonline_message"))Q_strncpyz(message,value,sizeof(message));}
 static void trap_Cvar_VariableStringBuffer(const char *key,char *out,int size){Q_strncpyz(out,!strcmp(key,"ui_webonline_address")?address:message,size);}
