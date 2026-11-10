@@ -1,0 +1,773 @@
+{
+  "vehicles": {
+    "alpine": {
+      "name": "Alpine",
+      "paints": {
+        "blue": {
+          "name": "Blue"
+        },
+        "frefrafac": {
+          "name": "Frefrafac"
+        },
+        "green": {
+          "name": "Green"
+        },
+        "rally01": {
+          "name": "Rally 01"
+        },
+        "rally07": {
+          "name": "Rally 07"
+        },
+        "rally13": {
+          "name": "Rally 13"
+        },
+        "rally27": {
+          "name": "Rally 27"
+        },
+        "rally44": {
+          "name": "Rally 44"
+        },
+        "rally88": {
+          "name": "Rally 88"
+        },
+        "red": {
+          "name": "Red"
+        },
+        "stomped": {
+          "name": "Stomped"
+        },
+        "yellow": {
+          "name": "Yellow"
+        }
+      }
+    },
+    "camaro": {
+      "name": "Camaro",
+      "paints": {
+        "black": {
+          "name": "Black"
+        },
+        "blue": {
+          "name": "Blue"
+        },
+        "green": {
+          "name": "Green"
+        },
+        "rally01": {
+          "name": "Rally 01"
+        },
+        "rally07": {
+          "name": "Rally 07"
+        },
+        "rally13": {
+          "name": "Rally 13"
+        },
+        "rally27": {
+          "name": "Rally 27"
+        },
+        "rally44": {
+          "name": "Rally 44"
+        },
+        "rally88": {
+          "name": "Rally 88"
+        },
+        "red": {
+          "name": "Red"
+        },
+        "white": {
+          "name": "White"
+        },
+        "yellow": {
+          "name": "Yellow"
+        }
+      }
+    },
+    "db12": {
+      "name": "DB12",
+      "paints": {
+        "blue": {
+          "name": "Blue"
+        },
+        "green": {
+          "name": "Green"
+        },
+        "rally01": {
+          "name": "Rally 01"
+        },
+        "rally07": {
+          "name": "Rally 07"
+        },
+        "rally13": {
+          "name": "Rally 13"
+        },
+        "rally27": {
+          "name": "Rally 27"
+        },
+        "rally44": {
+          "name": "Rally 44"
+        },
+        "rally88": {
+          "name": "Rally 88"
+        },
+        "red": {
+          "name": "Red"
+        },
+        "yellow": {
+          "name": "Yellow"
+        }
+      }
+    },
+    "gravelord": {
+      "name": "Gravelord",
+      "paints": {
+        "blue": {
+          "name": "Blue"
+        },
+        "default": {
+          "name": "Default"
+        },
+        "ecto": {
+          "name": "Ecto"
+        },
+        "green": {
+          "name": "Green"
+        },
+        "rally01": {
+          "name": "Rally 01"
+        },
+        "rally07": {
+          "name": "Rally 07"
+        },
+        "rally13": {
+          "name": "Rally 13"
+        },
+        "rally27": {
+          "name": "Rally 27"
+        },
+        "rally44": {
+          "name": "Rally 44"
+        },
+        "rally88": {
+          "name": "Rally 88"
+        },
+        "red": {
+          "name": "Red"
+        },
+        "yellow": {
+          "name": "Yellow"
+        }
+      }
+    },
+    "gremlin": {
+      "name": "Gremlin",
+      "paints": {
+        "black": {
+          "name": "Black"
+        },
+        "blue": {
+          "name": "Blue"
+        },
+        "green": {
+          "name": "Green"
+        },
+        "orange": {
+          "name": "Orange"
+        },
+        "rally01": {
+          "name": "Rally 01"
+        },
+        "rally07": {
+          "name": "Rally 07"
+        },
+        "rally13": {
+          "name": "Rally 13"
+        },
+        "rally27": {
+          "name": "Rally 27"
+        },
+        "rally44": {
+          "name": "Rally 44"
+        },
+        "rally88": {
+          "name": "Rally 88"
+        },
+        "red": {
+          "name": "Red"
+        },
+        "white": {
+          "name": "White"
+        },
+        "yellow": {
+          "name": "Yellow"
+        }
+      }
+    },
+    "macdaddy": {
+      "name": "Mac Daddy",
+      "paints": {
+        "black": {
+          "name": "Black"
+        },
+        "blue": {
+          "name": "Blue"
+        },
+        "checker": {
+          "name": "Checker"
+        },
+        "classic": {
+          "name": "Classic"
+        },
+        "green": {
+          "name": "Green"
+        },
+        "hitormiss": {
+          "name": "Hitormiss"
+        },
+        "pink": {
+          "name": "Pink"
+        },
+        "purple": {
+          "name": "Purple"
+        },
+        "rally01": {
+          "name": "Rally 01"
+        },
+        "rally07": {
+          "name": "Rally 07"
+        },
+        "rally13": {
+          "name": "Rally 13"
+        },
+        "rally27": {
+          "name": "Rally 27"
+        },
+        "rally44": {
+          "name": "Rally 44"
+        },
+        "rally88": {
+          "name": "Rally 88"
+        },
+        "red": {
+          "name": "Red"
+        },
+        "white": {
+          "name": "White"
+        },
+        "yellow": {
+          "name": "Yellow"
+        }
+      }
+    },
+    "mini": {
+      "name": "Mini",
+      "paints": {
+        "blue": {
+          "name": "Blue"
+        },
+        "brown": {
+          "name": "Brown"
+        },
+        "gamespy": {
+          "name": "Gamespy"
+        },
+        "green": {
+          "name": "Green"
+        },
+        "rally01": {
+          "name": "Rally 01"
+        },
+        "rally07": {
+          "name": "Rally 07"
+        },
+        "rally13": {
+          "name": "Rally 13"
+        },
+        "rally27": {
+          "name": "Rally 27"
+        },
+        "rally44": {
+          "name": "Rally 44"
+        },
+        "rally88": {
+          "name": "Rally 88"
+        },
+        "red": {
+          "name": "Red"
+        },
+        "telefragged": {
+          "name": "Telefragged"
+        },
+        "vaporwave": {
+          "name": "Vaporwave"
+        },
+        "yellow": {
+          "name": "Yellow"
+        }
+      }
+    },
+    "murcielago": {
+      "name": "Murcielago",
+      "paints": {
+        "black": {
+          "name": "Black"
+        },
+        "blue": {
+          "name": "Blue"
+        },
+        "bluestripe": {
+          "name": "Bluestripe"
+        },
+        "green": {
+          "name": "Green"
+        },
+        "moddb": {
+          "name": "Moddb"
+        },
+        "rally01": {
+          "name": "Rally 01"
+        },
+        "rally07": {
+          "name": "Rally 07"
+        },
+        "rally13": {
+          "name": "Rally 13"
+        },
+        "rally27": {
+          "name": "Rally 27"
+        },
+        "rally44": {
+          "name": "Rally 44"
+        },
+        "rally88": {
+          "name": "Rally 88"
+        },
+        "red": {
+          "name": "Red"
+        },
+        "redhot": {
+          "name": "Redhot"
+        },
+        "redstripe": {
+          "name": "Redstripe"
+        },
+        "silver": {
+          "name": "Silver"
+        },
+        "silverstripe": {
+          "name": "Silverstripe"
+        },
+        "whitehot": {
+          "name": "Whitehot"
+        },
+        "yellow": {
+          "name": "Yellow"
+        }
+      }
+    },
+    "raptor": {
+      "name": "Raptor",
+      "paints": {
+        "black": {
+          "name": "Black"
+        },
+        "blue": {
+          "name": "Blue"
+        },
+        "dreamcast": {
+          "name": "Dreamcast"
+        },
+        "green": {
+          "name": "Green"
+        },
+        "jp": {
+          "name": "Jp"
+        },
+        "lvl": {
+          "name": "Lvl"
+        },
+        "pink": {
+          "name": "Pink"
+        },
+        "rally01": {
+          "name": "Rally 01"
+        },
+        "rally07": {
+          "name": "Rally 07"
+        },
+        "rally13": {
+          "name": "Rally 13"
+        },
+        "rally27": {
+          "name": "Rally 27"
+        },
+        "rally44": {
+          "name": "Rally 44"
+        },
+        "rally88": {
+          "name": "Rally 88"
+        },
+        "red": {
+          "name": "Red"
+        },
+        "webdog": {
+          "name": "Webdog"
+        },
+        "yellow": {
+          "name": "Yellow"
+        }
+      }
+    },
+    "reaper": {
+      "name": "Reaper",
+      "paints": {
+        "blue": {
+          "name": "Blue"
+        },
+        "bw": {
+          "name": "Bw"
+        },
+        "default": {
+          "name": "Default"
+        },
+        "green": {
+          "name": "Green"
+        },
+        "rally01": {
+          "name": "Rally 01"
+        },
+        "rally07": {
+          "name": "Rally 07"
+        },
+        "rally13": {
+          "name": "Rally 13"
+        },
+        "rally27": {
+          "name": "Rally 27"
+        },
+        "rally44": {
+          "name": "Rally 44"
+        },
+        "rally88": {
+          "name": "Rally 88"
+        },
+        "red": {
+          "name": "Red"
+        },
+        "shacknews": {
+          "name": "Shacknews"
+        },
+        "yellow": {
+          "name": "Yellow"
+        }
+      }
+    },
+    "roadster": {
+      "name": "Roadster",
+      "paints": {
+        "blue": {
+          "name": "Blue"
+        },
+        "green": {
+          "name": "Green"
+        },
+        "pqde": {
+          "name": "Pqde"
+        },
+        "ps2": {
+          "name": "Ps 2"
+        },
+        "rally01": {
+          "name": "Rally 01"
+        },
+        "rally07": {
+          "name": "Rally 07"
+        },
+        "rally13": {
+          "name": "Rally 13"
+        },
+        "rally27": {
+          "name": "Rally 27"
+        },
+        "rally44": {
+          "name": "Rally 44"
+        },
+        "rally88": {
+          "name": "Rally 88"
+        },
+        "red": {
+          "name": "Red"
+        },
+        "tbh": {
+          "name": "Tbh"
+        },
+        "yellow": {
+          "name": "Yellow"
+        }
+      }
+    },
+    "sidepipe": {
+      "name": "Sidepipe",
+      "paints": {
+        "blue": {
+          "name": "Blue"
+        },
+        "green": {
+          "name": "Green"
+        },
+        "orange": {
+          "name": "Orange"
+        },
+        "polycount": {
+          "name": "Polycount"
+        },
+        "ra3": {
+          "name": "Ra 3"
+        },
+        "rally01": {
+          "name": "Rally 01"
+        },
+        "rally07": {
+          "name": "Rally 07"
+        },
+        "rally13": {
+          "name": "Rally 13"
+        },
+        "rally13_navy": {
+          "name": "Rally 13 Navy"
+        },
+        "rally27": {
+          "name": "Rally 27"
+        },
+        "rally44": {
+          "name": "Rally 44"
+        },
+        "rally88": {
+          "name": "Rally 88"
+        },
+        "red": {
+          "name": "Red"
+        },
+        "yellow": {
+          "name": "Yellow"
+        }
+      }
+    },
+    "slingshot": {
+      "name": "Slingshot",
+      "paints": {
+        "blue": {
+          "name": "Blue"
+        },
+        "green": {
+          "name": "Green"
+        },
+        "pqde": {
+          "name": "Pqde"
+        },
+        "ps2": {
+          "name": "Ps 2"
+        },
+        "rally01": {
+          "name": "Rally 01"
+        },
+        "rally07": {
+          "name": "Rally 07"
+        },
+        "rally13": {
+          "name": "Rally 13"
+        },
+        "rally27": {
+          "name": "Rally 27"
+        },
+        "rally44": {
+          "name": "Rally 44"
+        },
+        "rally88": {
+          "name": "Rally 88"
+        },
+        "red": {
+          "name": "Red"
+        },
+        "tbh": {
+          "name": "Tbh"
+        },
+        "yellow": {
+          "name": "Yellow"
+        }
+      }
+    },
+    "viper": {
+      "name": "Viper",
+      "paints": {
+        "blue": {
+          "name": "Blue"
+        },
+        "graphite": {
+          "name": "Graphite"
+        },
+        "green": {
+          "name": "Green"
+        },
+        "rally01": {
+          "name": "Rally 01"
+        },
+        "rally07": {
+          "name": "Rally 07"
+        },
+        "rally13": {
+          "name": "Rally 13"
+        },
+        "rally27": {
+          "name": "Rally 27"
+        },
+        "rally44": {
+          "name": "Rally 44"
+        },
+        "rally88": {
+          "name": "Rally 88"
+        },
+        "red": {
+          "name": "Red"
+        },
+        "stripe_blue": {
+          "name": "Stripe Blue"
+        },
+        "stripe_red": {
+          "name": "Stripe Red"
+        },
+        "white": {
+          "name": "White"
+        },
+        "yellow": {
+          "name": "Yellow"
+        }
+      }
+    }
+  },
+  "wheels": {
+    "amg_163": "Amg 163",
+    "amg_170": "Amg 170",
+    "amg_215": "Amg 215",
+    "amg_220": "Amg 220",
+    "amg_aero": "Amg Aero",
+    "amg_aero2pc": "Amg Aero2Pc",
+    "amg_aero3pc": "Amg Aero3Pc",
+    "amg_aero_ii": "Amg Aero Ii",
+    "amg_sl2pc": "Amg Sl2Pc",
+    "atp_5_razze": "Atp 5 Razze",
+    "atp_7190": "Atp 7190",
+    "atp_7200": "Atp 7200",
+    "atp_8026": "Atp 8026",
+    "atp_riva": "Atp Riva",
+    "atp_s5": "Atp S5",
+    "atp_spa": "Atp Spa",
+    "atp_spa2pc": "Atp Spa2Pc",
+    "atp_twist": "Atp Twist",
+    "atp_type5": "Atp Type5",
+    "bbs_delta": "Bbs Delta",
+    "bbs_lm": "Bbs Lm",
+    "bbs_rc": "Bbs Rc",
+    "bbs_rk": "Bbs Rk",
+    "bbs_rk_ii": "Bbs Rk Ii",
+    "bbs_rs_ii": "Bbs Rs Ii",
+    "bbs_rv": "Bbs Rv",
+    "bbs_rw_ii": "Bbs Rw Ii",
+    "bbs_rx": "Bbs Rx",
+    "bbs_rz_ii": "Bbs Rz Ii",
+    "bor_cw3": "Bor Cw3",
+    "bor_cw4": "Bor Cw4",
+    "bor_tr": "Bor Tr",
+    "bor_type_b": "Bor Type B",
+    "bor_type_c": "Bor Type C",
+    "bor_type_e": "Bor Type E",
+    "bor_type_h": "Bor Type H",
+    "bor_type_m": "Bor Type M",
+    "bor_type_s": "Bor Type S",
+    "bor_type_t": "Bor Type T",
+    "bor_type_td": "Bor Type Td",
+    "brey_comp": "Brey Comp",
+    "brey_inspiration": "Brey Inspiration",
+    "brey_magic": "Brey Magic",
+    "brey_softline": "Brey Softline",
+    "carlsson_116": "Carlsson 116",
+    "carlsson_16": "Carlsson 16",
+    "carlsson_16_evo": "Carlsson 16 Evo",
+    "carlsson_1_5": "Carlsson 1 5",
+    "carlsson_26": "Carlsson 26",
+    "carlsson_2_5": "Carlsson 2 5",
+    "carlsson_36": "Carlsson 36",
+    "fi_500_modular": "Fi 500 Modular",
+    "fi_argus": "Fi Argus",
+    "fi_av3": "Fi Av3",
+    "fi_formula": "Fi Formula",
+    "fi_polaris": "Fi Polaris",
+    "fi_tubolare": "Fi Tubolare",
+    "fi_tubotruck": "Fi Tubotruck",
+    "fi_vela": "Fi Vela",
+    "ko_k1_racing": "Ko K1 Racing",
+    "ko_s6c": "Ko S6C",
+    "ko_seneca_racing": "Ko Seneca Racing",
+    "ko_seneca_rg": "Ko Seneca Rg",
+    "mm_cup_1": "Mm Cup 1",
+    "mm_daisy": "Mm Daisy",
+    "mm_emotion": "Mm Emotion",
+    "mm_evo": "Mm Evo",
+    "mm_glide": "Mm Glide",
+    "mm_m11_2": "Mm M11 2",
+    "mm_m11_2_sport": "Mm M11 2 Sport",
+    "mm_r5": "Mm R5",
+    "mm_sfera": "Mm Sfera",
+    "mm_spider": "Mm Spider",
+    "murcielago": "Murcielago",
+    "oz_altair_plus": "Oz Altair Plus",
+    "oz_ceres": "Oz Ceres",
+    "oz_competition": "Oz Competition",
+    "oz_f1_cup": "Oz F1 Cup",
+    "oz_f1_cup_corsa": "Oz F1 Cup Corsa",
+    "oz_f1_plus": "Oz F1 Plus",
+    "oz_futura": "Oz Futura",
+    "oz_mito_mod": "Oz Mito Mod",
+    "oz_monte_carlo": "Oz Monte Carlo",
+    "oz_navajo": "Oz Navajo",
+    "oz_nova": "Oz Nova",
+    "oz_nova_1pc": "Oz Nova 1Pc",
+    "oz_nova_st": "Oz Nova St",
+    "oz_opera": "Oz Opera",
+    "oz_racing_f1": "Oz Racing F1",
+    "oz_superturismo": "Oz Superturismo",
+    "oz_vela": "Oz Vela",
+    "q3r_bastion": "Q3Rally Bastion",
+    "q3r_crown": "Q3Rally Crown",
+    "q3r_rally13": "Rally 13",
+    "q3r_rally13_dark": "Rally 13 Dark",
+    "q3r_stage6": "Q3Rally Stage6",
+    "q3r_talon": "Q3Rally Talon",
+    "sport_282": "Sport 282",
+    "sport_298": "Sport 298",
+    "sport_5055": "Sport 5055",
+    "sport_6516": "Sport 6516",
+    "sport_6521": "Sport 6521",
+    "ssr_gt1": "Ssr Gt1",
+    "ssr_integral": "Ssr Integral",
+    "svt_cobra": "SVT Cobra",
+    "svt_cobra_99": "SVT Cobra 99",
+    "svt_cobra_contour": "SVT Cobra Contour",
+    "svt_cobra_r": "SVT Cobra R",
+    "svt_lightning": "SVT Lightning",
+    "svt_tbird": "SVT Tbird",
+    "teamloco_134": "Teamloco 134",
+    "teamloco_142": "Teamloco 142",
+    "teamloco_142_anth": "Teamloco 142 Anth",
+    "teamloco_143": "Teamloco 143",
+    "teamloco_144": "Teamloco 144",
+    "teamloco_150": "Teamloco 150",
+    "tgf_ax": "Tgf Ax",
+    "tgf_mx": "Tgf Mx",
+    "trm_sniper": "Trm Sniper",
+    "trm_typhoon": "Trm Typhoon",
+    "viper_gts": "Viper Gts",
+    "zagato_gtz_99": "Zagato Gtz 99",
+    "zagato_rz_12": "Zagato Rz 12",
+    "zagato_sz_55": "Zagato Sz 55"
+  }
+}
