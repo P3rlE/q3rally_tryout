@@ -140,8 +140,8 @@ def package(common_root, build, sdk, output, revision):
         'Extract the whole ZIP, then run Start-WebUI.cmd. No Python, Node, browser or website checkout is required.\n'
         'Start-Native.cmd selects the legacy menus in the same test build.\n'
         'Settings use an isolated Q3Rally-WebUI directory under LOCALAPPDATA. Production profiles are untouched.\n'
-        'This is the Windows x64/windowed CEF pilot, not an official release. The CEF sandbox is disabled.\n'
-        'Fullscreen integration, other platforms and production security review remain separate work.\n'
+        'This is the Windows x64 CEF pilot, not an official release. The CEF sandbox is disabled.\n'
+        'Interactive fullscreen/input QA, other platforms and production security review remain separate work.\n'
         'CEF and third-party license notices are bundled under licenses/.\n'
         f'Source: {revision}\nCEF: {lock["version"]}\n', encoding='utf-8')
     write_json(target / 'webui-build.json', {'schema':1, 'version':VERSION,

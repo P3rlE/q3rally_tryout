@@ -62,8 +62,8 @@ game loop, not browser compositor frame rate.
 ## Pilot boundaries
 
 The build flag is opt-in. The child window tests HTML rendering and native
-interaction in windowed mode. A production UI will need a rendering and
-input path that also works in fullscreen. The local bridge validates setup choices against the bundled catalog and
+interaction in windowed and fullscreen modes. Renderer restarts recreate the
+browser under the replacement SDL window. The local bridge validates setup choices against the bundled catalog and
 profile unlocks before applying them. The CEF sandbox is disabled for this MinGW pilot. It is intended
 for local testing with bundled documents only.
 
@@ -153,8 +153,8 @@ The embedded Config hub and its Controls, Graphics (including Effects, Lighting
 and driver information), Display, Sound, Network, Game options and Q3R options
 screens expose the existing native widgets and callbacks. Driver opens the web
 Driver Profile. Native disabled rows, mode dependencies, presets, staged renderer
-settings and sound Apply/restart behavior remain authoritative. The pilot remains
-windowed; changing fullscreen and applying retains its existing native fallback.
+settings and sound Apply/restart behavior remain authoritative. Changing
+fullscreen and applying recreates the embedded WebUI after the renderer restart.
 
 Control bindings use a capture dialog, named-key conversion in the client, the
 native conflict check and native save/discard/cancel callbacks. Web binding edits
@@ -193,7 +193,7 @@ included alongside the generated assets in baseq3r/fonts.
 Validation: Windows CEF engine and QVM build; 20 regression tests plus 11 subtests;
 headless browser checks for Pause, HUD/sidebar, disabled choices, mobile sizing
 and return to the main menu. Live in-game mouse/console QA remains to be done.
-The existing Windows x64/windowed CEF pilot limitation remains in place.
+The existing Windows x64 CEF pilot limitation remains in place.
 
 
 ### Map loading
@@ -214,7 +214,7 @@ command buffer can process it. The console retains priority.
 Validation: Windows CEF/QVM build, 20 tests and 11 subtests, browser checks for
 map preview, unknown tracks, local/server labels, determinate/indeterminate
 progress, mobile width and exit back to the main menu. Live map-load QA remains
-for the test build; the Windows/windowed pilot restrictions still apply.
+for the test build; the Windows-only pilot restrictions still apply.
 
 
 ## Reproducible Windows x64 Actions test package
@@ -250,6 +250,8 @@ extracts the actual ZIP into a clean directory, checks every digest, strips
 build tools from PATH, checks --version and starts the CEF frontend with an
 isolated profile and no game networking. A bundled-page load marker and bounded
 native config script are required, and results/logs are uploaded with the ZIP.
+The script switches windowed to fullscreen and back with vid_restart and requires
+a new browser attachment in the actual SDL mode plus HTTP 200 in each stage.
 Browser smoke tests run the bundled files with software WebGL and save images.
 These startup checks do not replace interactive fullscreen/input/audio tests.
 
@@ -258,5 +260,5 @@ run and extract its inner ZIP completely. Run `Start-WebUI.cmd`; no Python,
 Node, Chrome or website checkout is needed. `Start-Native.cmd` selects native
 menus in the same test build. Both use an isolated LOCALAPPDATA/Q3Rally-WebUI
 home per source revision and disable server Ladder reporting by default.
-CEF remains the existing sandbox-disabled Windows/windowed pilot; this workflow
+CEF remains the existing sandbox-disabled Windows-only pilot; this workflow
 is an integration milestone, not production security or cross-platform signoff.
