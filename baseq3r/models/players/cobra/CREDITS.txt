@@ -1,0 +1,29 @@
+Q3Rally Cobra - asset sources
+=============================
+
+body.md3, wheel.md3, parts.tga
+    Based on "COBRA", a 427 roadster with side pipes (KeyShot OBJ export,
+    83,951 triangles, no textures), a model provided by the Q3Rally project
+    (own/purchased model, cleared for use with the game).
+
+    Changes for Q3Rally (tools/carbuild/cobra):
+    - an open car: everything visible from outside is kept, the cockpit
+      included (cull.py): 42,249 triangles for the body
+    - scaled to the size of the other cars and centred on the origin
+    - badges and lettering, brake discs and calipers, and the loose bumper
+      brackets under the corners left out
+    - new UVs for the paint (five-sided projection atlas); chrome and glass
+      use the shared textures, all other parts a colour palette (parts.tga)
+      made from the material names
+    - wheel: the rear tyre, decimated to 3,000 triangles and turned true on
+      its axle, with UVs for the shared Q3Rally rim and tread textures; the
+      front tags sit inwards so the narrower front tyres keep their place
+    - tags for wheels, head lamps, tail lamps, plate, side pipe, boot and
+      the driver's head (tag_head, left-hand seat, as on the Roadster)
+
+*_main.tga, glass.tga, chrome.tga, icon_*.tga
+    Made for Q3Rally (tools/carbuild/cobra/gen_textures.py, render3d.py).
+    The secret paints are in zz_secret_skins.pk3 (secret_paints.py).
+
+sound/player/cobra/horn.ogg, falling1.ogg
+    Shared with the Mustang.

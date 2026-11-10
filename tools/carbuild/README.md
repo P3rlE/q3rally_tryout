@@ -133,6 +133,28 @@ python3 cutlass/gen_textures.py $D
 python3 tagview.py $D red /tmp/cutlass_tags.png   # check the light tags
 ```
 
+## Cobra – OBJ without textures, open car
+
+`cobra/` builds `baseq3r/models/players/cobra/` from the project's `COBRA.obj`
+(KeyShot export, 83,951 triangles, no .mtl or textures; not in the repo).
+`obj.py` reads it with `groups_as_objects=True` (KeyShot names parts with `g`,
+uses negative indices and material names with spaces). Like the GT-R: paint
+on the projection atlas, chrome and glass shared, every other material a
+colour from a palette (`parts.tga`, colours set in the script by material
+name). The cockpit is open, so the culling keeps the seats, the dashboard
+and the steering wheel; `tag_head` puts the driver's head over the left-hand
+seat. The wheel is the rear tyre (wider than the front one), straightened on
+its axle; the front tags move in by half the width difference.
+
+```sh
+cd tools/carbuild
+D=../../baseq3r/models/players/cobra
+python3 cobra/build_model.py COBRA.obj $D /tmp/cobra_cache
+python3 cobra/gen_textures.py $D
+python3 ground_fix.py --dry-run $D          # reports "ok"
+# icons as for the Skyline (render3d.py with Q3R_FIT=1, rim amg_163)
+```
+
 ## Bountyhunter – 3DS, original low-poly model
 
 `bountyhunter/` builds `baseq3r/models/players/bountyhunter/` from the project's
