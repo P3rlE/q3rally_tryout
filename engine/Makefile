@@ -2544,9 +2544,16 @@ endif
 ifneq ($(USE_RENDERER_DLOPEN),0)
 $(B)/$(CLIENTBIN)$(FULLBINEXT): $(Q3OBJ) $(LIBSDLMAIN)
 	$(echo_cmd) "LD $@"
+ifeq ($(USE_CEF_GARAGE),1)
+	$(file >$@.objects.rsp,$(Q3OBJ))
+	$(Q)$(BULLET_CXX) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
+		-o $@ @$@.objects.rsp \
+		$(LIBSDLMAIN) $(CLIENT_LIBS) $(LIBS) $(BULLET_LINK_LIBS)
+else
 	$(Q)$(BULLET_CXX) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
 		-o $@ $(Q3OBJ) \
 		$(LIBSDLMAIN) $(CLIENT_LIBS) $(LIBS) $(BULLET_LINK_LIBS)
+endif
 
 $(B)/renderer_opengl1_$(SHLIBNAME): $(Q3ROBJ) $(JPGOBJ)
 	$(echo_cmd) "LD $@"

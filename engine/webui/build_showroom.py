@@ -1,6 +1,5 @@
 """Stage the shared website showroom for the embedded garage pilot."""
 import argparse
-import importlib.util
 import json
 from pathlib import Path
 import re
@@ -9,7 +8,7 @@ import subprocess
 import tempfile
 import zipfile
 
-from PIL import Image
+import showroom_export as exporter
 
 
 ENGINE = Path(__file__).resolve().parents[1]
@@ -20,11 +19,9 @@ def label(key):
     return key.replace("_", " ").title()
 
 
-def export_catalog(website, game, destination):
-    spec = importlib.util.spec_from_file_location("showroom_export", website / "tools/export_garage_showroom.py")
-    exporter = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(exporter)
-    reference = json.loads((website / "src/data/garageCatalog.json").read_text(encoding="utf-8"))
+def export_catalog(game, destination):
+    from PIL import Image
+    reference = json.loads((ENGINE / "webui/catalog_labels.json").read_text(encoding="utf-8"))
     unlocks = (ENGINE / "code/game/garage_unlocks.h").read_text(encoding="utf-8")
     cars, skins = (
         {key: (name, int(rank)) for key, name, rank in
@@ -111,33 +108,55 @@ def export_catalog(website, game, destination):
           f"and {len(catalog['wheels'])} wheel sets.")
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("website", type=Path, help="Website checkout with npm dependencies installed")
-    parser.add_argument("destination", type=Path, help="Pilot runtime webui/garage directory")
-    parser.add_argument("game_assets", type=Path, help="Built pak0.pk3 including secret skins")
-    args = parser.parse_args()
+def extract_assets(package, destination):
+    """Only unpack VFS assets needed by the exporter; reject path traversal."""
+    with zipfile.ZipFile(package) as archive:
+        for member in archive.infolist():
+            if member.is_dir():
+                continue
+            name = member.filename
+            if name.startswith(("models/players/", "textures/", "scripts/", "gfx/avatars/", "menu/achievements/", "levelshots/")):
+                if "\\" in name or any(part in ("", ".", "..") or ":" in part for part in name.split("/")):
+                    raise ValueError(f"Unsafe asset path: {name}")
+                if (member.external_attr >> 16) & 0o170000 == 0o120000:
+                    raise ValueError(f"Asset symlink: {name}")
+                archive.extract(member, destination)
 
-    website = args.website.resolve()
-    destination = args.destination.resolve()
+
+def build(destination, game_assets):
+    webui = ENGINE / "webui"
+    destination.mkdir(parents=True, exist_ok=False)
+    for source in (webui / "garage").iterdir():
+        if source.is_file():
+            shutil.copyfile(source, destination / source.name)
+    fonts = destination / "fonts"
+    fonts.mkdir()
+    for source in (ENGINE.parent / "launcher/assets/fonts").iterdir():
+        if source.suffix.lower() in {".ttf", ".txt"}:
+            shutil.copyfile(source, fonts / source.name)
     with tempfile.TemporaryDirectory(prefix="q3rally-showroom-") as directory:
         game = Path(directory)
-        with zipfile.ZipFile(args.game_assets) as archive:
-            for member in archive.namelist():
-                if member.startswith(("models/players/", "textures/", "scripts/", "gfx/avatars/", "menu/achievements/", "levelshots/")):
-                    archive.extract(member, game)
-        export_catalog(website, game, destination)
+        extract_assets(game_assets, game)
+        export_catalog(game, destination)
     subprocess.run([
         "node", "-e", "require('esbuild').buildSync(JSON.parse(process.argv[1]))",
         json.dumps({
-            "entryPoints": [str(ENGINE / "webui/vehicleShowroom.ts")],
-            "nodePaths": [str(website / "node_modules")],
+            "entryPoints": [str(webui / "vehicleShowroom.ts")],
             "outfile": str(destination / "vehicleShowroom.bundle.js"),
             "bundle": True, "format": "iife", "globalName": "Q3RallyShowroom",
             "target": "chrome120", "minify": True, "legalComments": "eof",
         }),
-    ], cwd=website, check=True)
-    shutil.copyfile(website / "node_modules/three/LICENSE", destination / "THREE-LICENSE.txt")
+    ], cwd=webui, check=True)
+    shutil.copyfile(webui / "node_modules/three/LICENSE", destination / "THREE-LICENSE.txt")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("destination", type=Path, help="Pilot runtime webui/garage directory")
+    parser.add_argument("game_assets", type=Path, help="Built pak0.pk3 including secret skins")
+    args = parser.parse_args()
+
+    build(args.destination.resolve(), args.game_assets.resolve())
 
 
 if __name__ == "__main__":

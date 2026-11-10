@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "version": "150.0.23+g4ccc4ca+chromium-150.0.7871.287",
+  "archive": "cef_binary_150.0.23+g4ccc4ca+chromium-150.0.7871.287_windows64_minimal.tar.bz2",
+  "url": "https://cef-builds.spotifycdn.com/cef_binary_150.0.23%2Bg4ccc4ca%2Bchromium-150.0.7871.287_windows64_minimal.tar.bz2",
+  "sha256": "8167b250a2f746f6c79370dfb2f7e0965495ba418241e7af2a3eb2663dfcc0bb",
+  "size": 164297061
+}

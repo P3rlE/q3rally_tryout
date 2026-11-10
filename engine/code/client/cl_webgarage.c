@@ -652,6 +652,7 @@ static void CEF_CALLBACK Web_LoadEnd( cef_load_handler_t *self, cef_browser_t *b
 	char *paint;
 
 	if ( !frame->is_main( frame ) || !Web_IsLocalFrame( frame ) ) return;
+	Com_Printf( "Web UI: bundled frontend loaded (HTTP %d).\n", httpStatus );
 	webLastState = -1;
 	webItemsScreen = 0;
     webDriverPublished = qfalse;

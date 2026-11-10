@@ -1,0 +1,134 @@
+name: WebUI Windows x64 test package
+on:
+  workflow_dispatch:
+  push:
+    branches: ['codex/v09-webui-*']
+  pull_request:
+    paths:
+      - '.github/workflows/webui-windows.yml'
+      - 'engine/**'
+      - 'baseq3r/**'
+      - 'tools/*webui*'
+      - 'tools/fetch_cef.py'
+      - 'tests/test_web*.py'
+      - 'launcher/assets/fonts/**'
+permissions:
+  contents: read
+concurrency:
+  group: webui-windows-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  common:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: engine/webui/package-lock.json
+      - name: Record source provenance
+        shell: bash
+        run: |
+          echo "SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD)" >> "$GITHUB_ENV"
+          echo 'TZ=UTC' >> "$GITHUB_ENV"
+      - run: python -m pip install pytest -r engine/webui/requirements.txt
+      - name: Regression tests
+        run: python -m pytest -q tests/test_web*.py tests/test_demo_mouse.py tests/test_profile_format.py tests/test_make_release.py
+      - name: Build one canonical set of QVMs
+        run: make release -j4 -C engine BUILD_DIR=build-webui ARCH=x86_64 VERSION=v0.9.0-webui BUILD_CLIENT=0 BUILD_SERVER=0 BUILD_GAME_SO=0 BUILD_GAME_QVM=1
+      - run: npm ci --prefix engine/webui --no-fund --no-audit
+      - name: Build common PK3s and bundled local frontend
+        run: python tools/build_webui_package.py common --vm-dir engine/build-webui/release-linux-x86_64/baseq3r/vm --output output/webui-common --revision ${{ github.sha }} --epoch ${{ env.SOURCE_DATE_EPOCH }}
+      - name: Browser prerequisites
+        working-directory: engine/webui
+        run: npx playwright install --with-deps chromium
+      - name: Test bundled frontend
+        run: node engine/webui/test_frontend.cjs output/webui-common/webui/garage output/webui-browser
+      - uses: actions/upload-artifact@v6
+        with:
+          name: webui-common-${{ github.sha }}
+          path: output/webui-common/
+          retention-days: 14
+          compression-level: 0
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: webui-browser-${{ github.sha }}
+          path: output/webui-browser/
+          retention-days: 14
+          if-no-files-found: ignore
+  windows:
+    needs: common
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v7
+        with:
+          name: webui-common-${{ github.sha }}
+          path: output/webui-common
+      - name: Read common provenance
+        shell: pwsh
+        run: |
+          $manifest = Get-Content output/webui-common/common-manifest.json -Raw | ConvertFrom-Json
+          if ($manifest.revision -ne '${{ github.sha }}') { throw 'Common source SHA mismatch' }
+          "SOURCE_DATE_EPOCH=$($manifest.source_date_epoch)" >> $env:GITHUB_ENV
+          'TZ=UTC' >> $env:GITHUB_ENV
+      - uses: actions/cache@v5
+        with:
+          path: output/cef-sdk
+          key: cef-win64-${{ hashFiles('engine/webui/cef.lock.json') }}
+      - name: Fetch pinned CEF SDK
+        shell: pwsh
+        run: |
+          if (!(Test-Path output/cef-sdk/sdk-path.txt)) {
+            python tools/fetch_cef.py --output output/cef-sdk
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: base-devel git make zip mingw-w64-x86_64-gcc mingw-w64-x86_64-binutils mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
+      - name: Build Windows client, renderers and dedicated server
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          cef_name=$(basename "$(find output/cef-sdk -maxdepth 1 -type d -name 'cef_binary_*' -print -quit)")
+          test -n "$cef_name"
+          sh engine/misc/build-curl-mingw.sh x86_64 "$PWD/output/webui-curl"
+          make release -j4 -C engine BUILD_DIR=build-webui PLATFORM=mingw32 ARCH=x86_64 FULLBINEXT=.x86_64.exe VERSION=v0.9.0-webui WINDRES=windres USE_CURL=1 USE_CURL_DLOPEN=0 CURL_PREFIX="$PWD/output/webui-curl" BUILD_GAME_SO=0 BUILD_GAME_QVM=0 USE_CEF_GARAGE=1 CEF_DIR="$PWD/output/cef-sdk/$cef_name"
+          cp engine/code/curl-8.22.0/COPYING engine/build-webui/release-mingw32-x86_64/CURL-COPYING.txt
+      - name: Assemble complete test package
+        shell: pwsh
+        run: |
+          $sdk = Get-ChildItem output/cef-sdk -Directory -Filter 'cef_binary_*' | Select-Object -First 1
+          python tools/build_webui_package.py package --common output/webui-common --build engine/build-webui/release-mingw32-x86_64 --cef $sdk.FullName --output output/webui-package --revision '${{ github.sha }}'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify and launch extracted ZIP
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem output/webui-package/*.zip | Select-Object -First 1
+          python tools/validate_webui_package.py --archive $zip.FullName --output output/webui-validation
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: Q3Rally-WebUI-windows-x86_64-${{ github.sha }}
+          path: |
+            output/webui-package/*.zip
+            output/webui-package/SHA256SUMS
+            output/webui-validation/result.json
+            output/webui-validation/*.log
+            output/webui-validation/home/baseq3r/qconsole.log
+          retention-days: 14
+          compression-level: 0
+          if-no-files-found: warn

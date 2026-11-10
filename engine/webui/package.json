@@ -1,0 +1,13 @@
+{
+  "name": "q3rally-webui",
+  "version": "0.9.0",
+  "private": true,
+  "description": "Build-only dependencies for the bundled Q3Rally web frontend",
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "playwright": "1.56.1"
+  }
+}

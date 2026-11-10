@@ -36,3 +36,4 @@ baseq3r/maps/*_aasproxy.*
 /ladder.db-wal
 /demo-build.log
 /wiki_export/
+/engine/webui/node_modules/

@@ -25,13 +25,14 @@ as well. Include the CEF license. Copy `engine/webui/garage` to
 `webui/garage` beside the executable, and copy the three TTF files and their
 OFL notices from `launcher/assets/fonts` into `webui/garage/fonts`.
 
-To stage the showroom and its setup catalog, use the matching website checkout
-with its npm dependencies and showroom assets available. The staging command
-reuses the website viewer and exports the vehicle catalog from the built game
-asset PK3, including the secret skins. Pillow is required for the asset export.
+The showroom exporter, vehicle display labels and viewer now live in this
+repository. No website checkout is required. Install the pinned dependencies
+with `npm ci --prefix engine/webui` and
+`python -m pip install -r engine/webui/requirements.txt`. Export into a fresh
+directory; the game PK3 is the source of geometry, skins and preview images.
 
 ```sh
-python engine/webui/build_showroom.py /path/to/website /path/to/game/webui/garage /path/to/game/baseq3r/pak0.pk3
+python engine/webui/build_showroom.py /path/to/game/webui/garage /path/to/game/baseq3r/pak0.pk3
 ```
 
 Start Q3Rally in windowed mode and run `webgarage` from the console while
@@ -214,3 +215,48 @@ Validation: Windows CEF/QVM build, 20 tests and 11 subtests, browser checks for
 map preview, unknown tracks, local/server labels, determinate/indeterminate
 progress, mobile width and exit back to the main menu. Live map-load QA remains
 for the test build; the Windows/windowed pilot restrictions still apply.
+
+
+## Reproducible Windows x64 Actions test package
+
+`.github/workflows/webui-windows.yml` builds the opt-in test package without
+publishing releases or changing the regular release workflow. It runs manually,
+on WebUI integration branches, and on relevant pull requests.
+
+The Linux `common` job builds QVMs once using the source commit timestamp and
+UTC, audits tracked game assets, creates the canonical pak0.pk3/qvms.pk3 and
+exports the whole local showroom. Exact npm versions and integrities are in
+engine/webui/package-lock.json; Python image export uses requirements.txt.
+Vehicle labels and the MD3 exporter were brought over from the Q3Rally website
+and are maintained here, so future website changes cannot silently alter a game
+build. All runtime HTML/scripts, fonts and license notices are staged locally.
+
+The Windows job verifies/downloads the CEF SDK pinned by URL, size and SHA-256
+in engine/webui/cef.lock.json. It builds into a separate `build-webui` directory
+with static Schannel curl. The client linker uses a response file for its object
+list to avoid Windows command-line limits with the longer build directory.
+Only runtime DLLs, snapshots, resources/locales and licenses are copied from the
+SDK; import libraries and bootstrap/example executables are excluded.
+
+The native package consumes the common PK3s byte-for-byte; it cannot regenerate
+them per platform. Both common and final manifests record source provenance,
+file sizes and SHA-256 digests. This structure can be reused by later platform
+jobs; it does not yet change v0.8 release packaging or fix already-published
+platform-specific packages.
+
+Checks cover archive traversal/tampering, canonical QVM preservation, missing
+CEF resources, browser rendering and menu transitions. The Windows validation
+extracts the actual ZIP into a clean directory, checks every digest, strips
+build tools from PATH, checks --version and starts the CEF frontend with an
+isolated profile and no game networking. A bundled-page load marker and bounded
+native config script are required, and results/logs are uploaded with the ZIP.
+Browser smoke tests run the bundled files with software WebGL and save images.
+These startup checks do not replace interactive fullscreen/input/audio tests.
+
+Download the `Q3Rally-WebUI-windows-x86_64-<commit>` artifact from a successful
+run and extract its inner ZIP completely. Run `Start-WebUI.cmd`; no Python,
+Node, Chrome or website checkout is needed. `Start-Native.cmd` selects native
+menus in the same test build. Both use an isolated LOCALAPPDATA/Q3Rally-WebUI
+home per source revision and disable server Ladder reporting by default.
+CEF remains the existing sandbox-disabled Windows/windowed pilot; this workflow
+is an integration milestone, not production security or cross-platform signoff.
