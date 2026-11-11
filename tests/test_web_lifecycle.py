@@ -53,3 +53,37 @@ value="60000";assert(Web_TestDebugPort()==60000);
 }
 '''
     run_c(harness)
+
+
+def test_restart_close_clears_keys_without_calling_sdl_focus_or_cursor():
+    source=(ROOT/'engine/code/client/cl_webgarage.c').read_text()
+    harness=r'''
+#include <assert.h>
+#define CEF_CALLBACK
+#define qfalse 0
+#define SDL_DISABLE 0
+typedef void cef_life_span_handler_t;
+typedef int SDL_Window;
+typedef struct {struct {void(*release)(void*);}base;}cef_browser_t;
+static void release(void *p){}
+static cef_browser_t browser={{release}},*webBrowser=&browser;
+static int webChild,webParent=1,webVideoRestart=1,keys,focus,cursor;
+static int webDemoRectValid,webDemoRegion,webHUDPublished,webHUDRectValid,webHUDRegion,webHUDAction;
+static int webConfigRead,webConfigWrite;
+static void Web_PrintTiming(void){}
+static int IsWindow(int window){return 1;}
+static SDL_Window *IN_GetWindow(void){static SDL_Window window;return &window;}
+static void SetFocus(int window){focus++;}
+static void SDL_RaiseWindow(SDL_Window *window){focus++;}
+static void SDL_SetWindowInputFocus(SDL_Window *window){focus++;}
+static void Key_ClearStates(void){keys++;}
+static void Cvar_Set(const char *name,const char *value){}
+static void SDL_ShowCursor(int state){cursor++;}
+'''+extract(source,'static void CEF_CALLBACK Web_BeforeClose(')+r'''
+int main(void){
+Web_BeforeClose(0,0);assert(keys==1&&!focus&&!cursor&&!webBrowser&&!webParent);
+webVideoRestart=0;webParent=1;webBrowser=&browser;Web_BeforeClose(0,0);
+assert(keys==2&&focus==3&&cursor==1&&!webBrowser);
+}
+'''
+    run_c(harness)

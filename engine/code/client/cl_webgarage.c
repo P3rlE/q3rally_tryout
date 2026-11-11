@@ -702,12 +702,14 @@ static void CEF_CALLBACK Web_BeforeClose( cef_life_span_handler_t *self, cef_bro
 	if ( webBrowser ) webBrowser->base.release( &webBrowser->base );
 	webBrowser = NULL;
 	webChild = NULL;
-	if ( !webVideoRestart && webParent && IsWindow( webParent ) ) {
-        SDL_Window *window = IN_GetWindow();
-        SetFocus( webParent );
-        if ( window ) {
-            SDL_RaiseWindow( window );
-            SDL_SetWindowInputFocus( window );
+    if ( webParent && IsWindow( webParent ) ) {
+        if ( !webVideoRestart ) {
+            SDL_Window *window = IN_GetWindow();
+            SetFocus( webParent );
+            if ( window ) {
+                SDL_RaiseWindow( window );
+                SDL_SetWindowInputFocus( window );
+            }
         }
         Key_ClearStates();
     }
