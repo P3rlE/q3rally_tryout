@@ -1090,6 +1090,12 @@ menuframework_s *UI_WebProfileWizardMenu( void ) {
     return uis.activemenu == &s_pw.menu ? &s_pw.menu : NULL;
 }
 int UI_WebProfileWizardPage( void ) { return s_pw.page; }
+const char *UI_WebProfileWizardAvatar( const menucommon_s *item, int choice ) {
+    if ( UI_WebProfileWizardMenu() && s_pw.page == PW_PAGE_DETAILS &&
+         item == &s_pw.avatarSpin.generic && choice > 0 && choice < PW_AVATAR_COUNT )
+        return s_avatarShaderPaths[choice];
+    return "";
+}
 const char *UI_WebProfileWizardDescription( void ) {
     static char text[512];
     const char *help[] = {

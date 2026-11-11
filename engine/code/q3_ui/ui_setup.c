@@ -517,6 +517,7 @@ int UI_WebConfigChar( int kind, int index, int choice, int character ) {
         else text = "Settings use the existing Q3Rally configuration and apply rules.";
         break;
     }
+    if ( kind == 5 && page == 18 ) text = UI_WebProfileWizardAvatar( item, choice );
     if ( !text || character < 0 || character >= (int)strlen( text ) ) return 0;
     return (unsigned char)text[character];
 }

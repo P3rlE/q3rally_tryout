@@ -1260,6 +1260,7 @@ int UI_WebConfigScreen( void );
 menuframework_s *UI_WebProfileWizardMenu( void );
 int UI_WebProfileWizardPage( void );
 const char *UI_WebProfileWizardDescription( void );
+const char *UI_WebProfileWizardAvatar( const menucommon_s *item, int choice );
 void UI_WebProfileWizardBack( void );
 menuframework_s *UI_WebLadderWizardMenu( void );
 const char *UI_WebLadderWizardDescription( void );
