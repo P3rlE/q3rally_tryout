@@ -42,7 +42,7 @@ def validate(root):
         if actual.get(name) != info: raise ValueError(f'Changed common asset: {name}')
     for name in ('libcef.dll','chrome_elf.dll','v8_context_snapshot.bin','icudtl.dat',
                  'resources.pak','locales/en-US.pak','licenses/CEF-LICENSE.txt',
-                 'licenses/CURL-COPYING.txt','Start-WebUI.cmd','Start-Native.cmd',
+                 'licenses/CURL-COPYING.txt','Start-WebUI.cmd','Start-Native.cmd','Start-Windowed.cmd',
                  'webui/garage/vehicleShowroom.bundle.js','webui/garage/THREE-LICENSE.txt',
                  'webui/garage/fonts/Barlow-Regular.ttf','webui/garage/fonts/ShareTechMono-OFL.txt'):
         if not (root / name).is_file(): raise ValueError(f'Missing required runtime file: {name}')
@@ -79,7 +79,7 @@ def run_native(root, output, first_run=False):
         'echo WEBUI_PACKAGE_PROBE_END\nquit\n')
     command=[str(executable),'+set','fs_basepath',str(root),'+set','fs_homepath',str(home),
         '+set','logfile','2','+set','net_enabled','0','+set','cl_motd','0',
-        '+set','sv_ladderEnabled','0','+set','r_fullscreen','0','+set','r_mode','-1',
+        '+set','sv_ladderEnabled','0','+set','r_fullscreen','1' if first_run else '0','+set','r_mode','-2' if first_run else '-1',
         '+set','r_customwidth','1100','+set','r_customheight','720','+set','cl_renderer','opengl1',
         '+set','s_initsound','0','+set','in_mouse','0','+set','in_nograb','0',
         '+set','com_maxfps','30','+set','com_maxfpsUnfocused','30',
@@ -100,6 +100,8 @@ def run_native(root, output, first_run=False):
     if process.returncode != 0: raise ValueError(f'Packaged client exited with {process.returncode}')
     if first_run and 'Web UI: registration step 17.' not in text:
         raise ValueError('First-run driver wizard was not published to the WebUI')
+    if first_run and 'Web UI: browser attached (fullscreen,' not in text.split('WEBUI_FULLSCREEN_BEGIN',1)[0]:
+        raise ValueError('First-run WebUI did not start directly in fullscreen')
     for marker in ('WEBUI_PACKAGE_PROBE_BEGIN','Web UI: bundled frontend loaded (HTTP 200).','WEBUI_PACKAGE_PROBE_END'):
         if marker not in text: raise ValueError(f'Missing native startup marker: {marker}')
     # Each renderer restart destroys the SDL parent. Require a fresh browser

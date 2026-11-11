@@ -85,5 +85,8 @@ def test_package_uses_canonical_qvms_and_rejects_version_mismatch(tmp_path):
     assert not (target/'baseq3r/vm').exists()
     assert (target/'baseq3r/pak0.pk3').read_bytes()==b'canonical assets'
     assert 'LOCALAPPDATA' in (target/'Start-WebUI.cmd').read_text()
+    assert '+set cl_webUI 1 +set r_fullscreen 1 +set r_mode -2' in (target/'Start-WebUI.cmd').read_text()
+    assert '+set cl_webUI 0 +set r_fullscreen 1 +set r_mode -2' in (target/'Start-Native.cmd').read_text()
+    assert '+set cl_webUI 1 +set r_fullscreen 0 +set r_mode -1' in (target/'Start-Windowed.cmd').read_text()
     put(native,'q3rally.x86_64.exe',b'Q3Rally v0.8.4\0 cl_webUI')
     with pytest.raises(ValueError,match='version'):build.package(shared,native,source,tmp_path/'wrong',SHA)
