@@ -128,17 +128,18 @@ def package(common_root, build, sdk, output, revision):
     staged_license = build / 'CURL-COPYING.txt'
     if not staged_license.is_file(): raise ValueError('Missing static curl license')
     shutil.copyfile(staged_license, target / 'licenses/CURL-COPYING.txt')
-    for mode, enabled in (('WebUI',1),('Native',0)):
+    for mode, enabled, fullscreen, resolution in (('WebUI',1,1,-2),('Native',0,1,-2),('Windowed',1,0,-1)):
         command = ('@echo off\ncd /d "%~dp0"\n'
             '"%~dp0q3rally.x86_64.exe" +set fs_basepath "%~dp0." '
             f'+set fs_homepath "%LOCALAPPDATA%\\Q3Rally-WebUI\\{revision[:12]}" '
-            f'+set cl_webUI {enabled} +set r_fullscreen 0 +set r_mode -1 '
+            f'+set cl_webUI {enabled} +set r_fullscreen {fullscreen} +set r_mode {resolution} '
             '+set r_customwidth 1280 +set r_customheight 800 +set sv_ladderEnabled 0\n')
         (target / f'Start-{mode}.cmd').write_bytes(command.replace('\n','\r\n').encode())
     (target / 'README-WebUI.txt').write_text(
         'Q3Rally v0.9 WebUI development test package\n\n'
         'Extract the whole ZIP, then run Start-WebUI.cmd. No Python, Node, browser or website checkout is required.\n'
         'Start-Native.cmd selects the legacy menus in the same test build.\n'
+        'Both start fullscreen at desktop resolution. Start-Windowed.cmd starts the WebUI in a 1280x800 window.\n'
         'Settings use an isolated Q3Rally-WebUI directory under LOCALAPPDATA. Production profiles are untouched.\n'
         'This is the Windows x64 CEF pilot, not an official release. The CEF sandbox is disabled.\n'
         'Interactive fullscreen/input QA, other platforms and production security review remain separate work.\n'
