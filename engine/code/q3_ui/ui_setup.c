@@ -386,6 +386,8 @@ void UI_SetupMenu( void ) {
 
 static menuframework_s *WebConfig_Menu( int *page ) {
     menuframework_s *menu; int i;
+    if ( (menu = UI_WebLadderWizardMenu()) ) { *page = 16; return menu; }
+    if ( (menu = UI_WebProfileWizardMenu()) ) { *page = 17 + UI_WebProfileWizardPage(); return menu; }
     if ( uis.activemenu == &setupMenuInfo.menu ) { *page = 0; return &setupMenuInfo.menu; }
     if ( (menu = UI_WebControlsMenu()) ) { *page = 1; return menu; }
     if ( (menu = UI_WebGraphicsMenu()) ) { *page = 2; return menu; }
@@ -451,10 +453,21 @@ int UI_WebConfigNumber( int field, int index ) {
         if ( item->type == MTYPE_SPINCONTROL ) return ((menulist_s *)item)->curvalue;
         return 0;
     case 4: return item && item->type == MTYPE_SLIDER ? (int)(((menuslider_s *)item)->minvalue * 100) : 0;
-    case 5: return item && item->type == MTYPE_SLIDER ? (int)(((menuslider_s *)item)->maxvalue * 100) : 0;
+    case 5:
+        if ( item && item->type == MTYPE_FIELD ) return ((menufield_s *)item)->field.maxchars;
+        return item && item->type == MTYPE_SLIDER ? (int)(((menuslider_s *)item)->maxvalue * 100) : 0;
     case 6: return item && (item->flags & (QMF_INACTIVE|QMF_GRAYED)) ? 1 : 0;
     case 7: return WebConfig_Choices( item );
     case 8: return page == 9 || UI_WebControlsConfirm();
+    case 9:
+        if ( page >= 16 ) {
+            const char *text = page == 16 ? UI_WebLadderWizardDescription() : UI_WebProfileWizardDescription();
+            unsigned hash = page; int i;
+            while ( *text ) hash = hash * 33u + (unsigned char)*text++;
+            for ( i = 0; i < menu->nitems; i++ ) hash = hash * 33u + ((menucommon_s *)menu->items[i])->flags;
+            return hash & 0x7fffffff;
+        }
+        return 0;
     }
     return 0;
 }
@@ -464,7 +477,11 @@ int UI_WebConfigChar( int kind, int index, int choice, int character ) {
     const char *text = ""; char info[2048];
     if ( page < 0 ) return 0;
     switch ( kind ) {
-    case 0: text = page == 2 ? UI_WebGraphicsTitle() : titles[page]; break;
+    case 0:
+        if ( page == 16 ) text = "Register offline profile";
+        else if ( page >= 17 ) { static const char *steps[] = {"Create your driver", "Make it yours", "Offline Ladder", "Ready to race"}; text = steps[page - 17]; }
+        else text = page == 2 ? UI_WebGraphicsTitle() : titles[page];
+        break;
     case 1:
         if ( item ) {
             if ( item->type == MTYPE_BITMAP ) text = strstr( item->name ? item->name : "", "down" ) ? "Next bots" : strstr( item->name ? item->name : "", "up" ) ? "Previous bots" : "Back";
@@ -485,14 +502,15 @@ int UI_WebConfigChar( int kind, int index, int choice, int character ) {
         if ( item && choice >= 0 && choice < WebConfig_Choices( item ) ) text = item->type == MTYPE_RADIOBUTTON ? (choice ? "On" : "Off") : ((menulist_s *)item)->itemnames[choice];
         break;
     case 4:
-        if ( page == 9 || UI_WebControlsConfirm() ) {
+        if ( page >= 16 ) text = page == 16 ? UI_WebLadderWizardDescription() : UI_WebProfileWizardDescription();
+        else if ( page == 9 || UI_WebControlsConfirm() ) {
             text = UI_WebConfirmQuestion();
             if ( UI_WebControlsPrompt()[0] ) text = UI_WebControlsPrompt();
         } else if ( page == 15 ) { text = UI_WebServerInfo();
         } else if ( page == 10 ) { text = "Race control and session settings. Online races continue while this menu is open.";
         } else if ( page == 8 ) {
             Com_sprintf( info, sizeof( info ), "Vendor: %s\nRenderer: %s\nVersion: %s\nColor / depth / stencil: %d / %d / %d bits", uis.glconfig.vendor_string, uis.glconfig.renderer_string, uis.glconfig.version_string, uis.glconfig.colorBits, uis.glconfig.depthBits, uis.glconfig.stencilBits ); text = info;
-        } else if ( page == 2 ) text = "Apply may restart the renderer. The embedded UI preview currently runs in windowed mode.";
+        } else if ( page == 2 ) text = "Apply may restart the renderer. The embedded UI returns after the restart.";
         else if ( page == 4 ) text = "Volume changes are applied with Apply. Changing the sound system or quality may restart audio.";
         else if ( page == 1 ) text = "Choose an action to rebind it. Save or discard your changes when leaving Controls.";
         else text = "Settings use the existing Q3Rally configuration and apply rules.";
@@ -506,7 +524,7 @@ void UI_WebConfigAction( int action, int index, int value ) {
     menuframework_s *menu = WebConfig_Menu( &page );
     if ( !menu ) return;
     uis.transitionIn = uis.transitionOut = 0;
-    if ( action == 6 ) { if ( menu->key ) menu->key( K_ESCAPE ); else Menu_DefaultKey( menu, K_ESCAPE ); return; }
+    if ( action == 6 ) { if ( page >= 17 ) UI_WebProfileWizardBack(); else if ( menu->key ) menu->key( K_ESCAPE ); else Menu_DefaultKey( menu, K_ESCAPE ); return; }
     if ( !item || item->flags & (QMF_HIDDEN|QMF_INACTIVE|QMF_GRAYED) ) return;
     if ( action == 0 && (item->type == MTYPE_PTEXT || item->type == MTYPE_BITMAP) && item->callback ) {
         if ( page == 0 && item->id == ID_CUSTOMIZEPLAYER ) UI_WebDriverMenu();
@@ -527,5 +545,13 @@ void UI_WebConfigAction( int action, int index, int value ) {
     } else if ( (action == 3 || action == 5) && item->type == MTYPE_ACTION ) UI_WebControlsBind( index, action == 5 ? -1 : value );
     else if ( action == 4 && page == 1 && item->type == MTYPE_FIELD ) {
         char text[128]; trap_Cvar_VariableStringBuffer( "ui_webconfig_text", text, sizeof( text ) ); UI_WebControlsSearch( text );
+    } else if ( action == 4 && page >= 16 && item->type == MTYPE_FIELD ) {
+        menufield_s *field = (menufield_s *)item;
+        char text[128]; int limit = field->field.maxchars + 1;
+        trap_Cvar_VariableStringBuffer( "ui_webconfig_text", text, sizeof( text ) );
+        if ( limit > sizeof( field->field.buffer ) ) limit = sizeof( field->field.buffer );
+        if ( limit < 1 ) return;
+        Q_strncpyz( field->field.buffer, text, limit );
+        field->field.cursor = strlen( field->field.buffer ); field->field.scroll = 0;
     }
 }

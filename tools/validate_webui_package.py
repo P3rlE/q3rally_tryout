@@ -53,7 +53,7 @@ def validate(root):
     return manifest
 
 
-def run_native(root, output):
+def run_native(root, output, first_run=False):
     executable = root / 'q3rally.x86_64.exe'
     env = os.environ.copy()
     # Do not mask missing MinGW/CEF dependencies with developer tools on PATH.
@@ -66,7 +66,7 @@ def run_native(root, output):
     if version.returncode != 0 or b'Q3Rally v0.9.0-webui' not in version.stdout+version.stderr:
         raise ValueError(f'Packaged executable/version probe failed: {version.returncode}')
     home = output/'home'; profiles=home/'baseq3r/profiles'; profiles.mkdir(parents=True)
-    (profiles/'WebUIPackageProbe.json').write_text(json.dumps({
+    if not first_run: (profiles/'WebUIPackageProbe.json').write_text(json.dumps({
         'profileVersion':2,'identity':{'uuid':'12345678-1234-4234-8234-123456789abc',
         'name':'WebUIPackageProbe','info':{'country':'DE'}},
         'webLink':{'state':'unlinked','accountId':None,'profileId':None},
@@ -83,9 +83,8 @@ def run_native(root, output):
         '+set','r_customwidth','1100','+set','r_customheight','720','+set','cl_renderer','opengl1',
         '+set','s_initsound','0','+set','in_mouse','0','+set','in_nograb','0',
         '+set','com_maxfps','30','+set','com_maxfpsUnfocused','30',
-        '+set','profile_active','WebUIPackageProbe',
-        '+set','ladder_wizard_dismissed_profiles','WebUIPackageProbe',
         '+set','cl_webUI','1','+exec','webui-probe.cfg']
+    if not first_run: command[1:1]=['+set','profile_active','WebUIPackageProbe','+set','ladder_wizard_dismissed_profiles','WebUIPackageProbe']
     with (output/'native.log').open('wb') as log:
         process=subprocess.Popen(command,env=env,cwd=root,stdout=log,stderr=subprocess.STDOUT,
             stdin=subprocess.DEVNULL,creationflags=flags)
@@ -99,6 +98,8 @@ def run_native(root, output):
     console=home/'baseq3r/qconsole.log'
     if console.exists(): text += console.read_text(errors='replace')
     if process.returncode != 0: raise ValueError(f'Packaged client exited with {process.returncode}')
+    if first_run and 'Web UI: registration step 17.' not in text:
+        raise ValueError('First-run driver wizard was not published to the WebUI')
     for marker in ('WEBUI_PACKAGE_PROBE_BEGIN','Web UI: bundled frontend loaded (HTTP 200).','WEBUI_PACKAGE_PROBE_END'):
         if marker not in text: raise ValueError(f'Missing native startup marker: {marker}')
     # Each renderer restart destroys the SDL parent. Require a fresh browser
@@ -124,6 +125,8 @@ def main():
         manifest=validate(root)
         if os.name != 'nt': raise ValueError('Native startup validation requires Windows')
         run_native(root,output)
+        first_run=output/'first-run';first_run.mkdir()
+        run_native(root,first_run,first_run=True)
         result.update(success=True,revision=manifest['revision'],cef=manifest['cef']['version'])
     except Exception as error:
         result['error']=str(error)

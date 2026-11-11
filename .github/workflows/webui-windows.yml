@@ -129,6 +129,8 @@ jobs:
             output/webui-validation/result.json
             output/webui-validation/*.log
             output/webui-validation/home/baseq3r/qconsole.log
+            output/webui-validation/first-run/*.log
+            output/webui-validation/first-run/home/baseq3r/qconsole.log
           retention-days: 14
           compression-level: 0
           if-no-files-found: warn

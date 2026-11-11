@@ -196,6 +196,11 @@ html { scrollbar-gutter: stable; }
 #config-screen input, #config-screen select { position: static; opacity: 1; width: 100%; min-width: 0; background: #222; border: 1px solid var(--line); padding: .65rem; color: white; font: inherit; }
 #config-screen input[type="range"] { padding: .5rem 0; accent-color: var(--accent); }
 #config-description, #config-screen pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+#config-screen.registration-screen { max-width: 70rem; margin-inline: auto; }
+.registration-screen header h1 { font-size: clamp(2.1rem, 4vw, 3.8rem); overflow-wrap: anywhere; }
+.registration-screen #config-description { max-width: 58rem; line-height: 1.7; }
+.registration-screen #config-settings { padding: 2rem; background: var(--panel, #171717); border: 1px solid var(--line); border-top: 2px solid var(--accent); }
+.registration-screen #config-actions { margin-top: 1.5rem; }
 #config-screen pre { max-height: 26rem; overflow-y: auto; }
 #config-screen output { display: block; color: var(--accent); }
 #config-screen dialog { width: min(42rem,calc(100vw - 2rem)); max-height: calc(100vh - 3rem); overflow-y: auto; background: #171717; color: white; border: 1px solid var(--line); border-top: 3px solid var(--accent); padding: 2rem; }
