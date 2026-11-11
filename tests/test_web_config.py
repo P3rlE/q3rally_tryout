@@ -68,7 +68,8 @@ UI_WebConfigAction(7,0,3);assert(calls==5);page=2;UI_WebConfigAction(7,0,0);asse
 UI_WebConfigAction(4,0,0);assert(!strcmp(field.field.buffer,"accel")&&field.field.cursor==5);
 field.generic.flags=QMF_INACTIVE;UI_WebConfigAction(4,0,0);assert(!strcmp(field.field.buffer,"accel"));
 UI_WebConfigAction(6,0,0);assert(back==11);
-page=2;field.generic.flags=0;field.field.buffer[0]=0;UI_WebConfigAction(4,0,0);assert(!field.field.buffer[0]);}
+page=2;field.generic.flags=0;field.field.buffer[0]=0;UI_WebConfigAction(4,0,0);assert(!field.field.buffer[0]);
+page=21;UI_WebConfigAction(4,0,0);assert(!strcmp(field.field.buffer,"accel"));UI_WebConfigAction(6,0,0);assert(back==12);}
 }
 '''
  run_c(harness)

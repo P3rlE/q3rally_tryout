@@ -226,6 +226,9 @@ the shared web form renderer (Config pages 17-20 and 16 respectively). Their
 native menus retain profile creation, validation, protected key handling,
 registration callbacks, retry, cancellation and per-profile dismissal behavior.
 This is offline result registration, not website account creation or linking.
+The post-recording demo filename dialog uses page 21 with native filename and
+duplicate checks. General confirmation menus are routed through the same web
+confirmation dialog even when opened outside Config or an in-game menu.
 
 Only visible, enabled fields accept text updates, bounded by their native field
 limits. Profile Back uses the wizard's native Back action; the mandatory name

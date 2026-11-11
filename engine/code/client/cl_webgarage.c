@@ -1214,7 +1214,7 @@ static void Web_ConfigText( int kind, int index, int choice, wchar_t *out, size_
 static void Web_PublishConfig( void ) {
     cef_frame_t *frame = webBrowser->get_main_frame( webBrowser );
     wchar_t script[15000], a[6400], b[6400]; int i, j, type;
-    if ( VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 0, 0 ) >= 16 )
+    if ( VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 0, 0 ) >= 16 && VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 0, 0 ) <= 20 )
         Com_Printf( "Web UI: registration step %d.\n", (int)VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 0, 0 ) );
     Web_ConfigText( 0, 0, 0, a, ARRAY_LEN( a ) ); Web_ConfigText( 4, 0, 0, b, ARRAY_LEN( b ) );
     swprintf( script, ARRAY_LEN( script ), L"window.q3rallyConfig?.begin(%d,decodeURIComponent('%ls'),decodeURIComponent('%ls'),%d)",

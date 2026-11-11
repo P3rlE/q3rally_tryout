@@ -52,6 +52,17 @@ const server=http.createServer((req,res)=>{
   await page.evaluate(()=>{const c=q3rallyConfig;c.begin(20,'Ready to race','Your driver is ready.',0);c.item(9,6,'START RACING','',0,0,0,0);c.end();});
   assert.equal(await page.locator('#config-back').isHidden(),true);
   assert.equal(await page.getByRole('button',{name:'START RACING',exact:true}).isEnabled(),true);checks++;
+  await page.evaluate(()=>{const c=q3rallyConfig;c.begin(21,'Save demo recording','That filename already exists',0);c.item(0,4,'Filename (without extension)','demo001',0,0,40,0);c.item(1,6,'Save','',0,0,0,0);c.item(2,6,'Keep name','',0,0,0,0);c.end();});
+  assert.equal(await page.locator('#config-item-0').inputValue(),'demo001');
+  assert.equal(await page.getByRole('button',{name:'Save',exact:true}).isEnabled(),true);
+  assert.equal(await page.getByRole('button',{name:'Keep name',exact:true}).isEnabled(),true);checks++;
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);checks++;
+  await page.setViewportSize({width:1280,height:800});
+  await page.evaluate(()=>{const c=q3rallyConfig;c.begin(9,'Confirm change','Delete this profile?',1);c.item(0,6,'Yes','',0,0,0,0);c.item(1,6,'No','',0,0,0,0);c.end();});
+  assert.equal(await page.locator('#config-confirm').isVisible(),true);checks++;
+  await page.evaluate(()=>{q3rallyConfig.begin(21,'Save demo recording','',0);q3rallyConfig.end();});
+  assert.equal(await page.locator('#config-confirm').isVisible(),false);checks++;
   await page.evaluate(()=>{const h=q3rallyHUD;h.begin();h.item(0,'Speedometer',1,0);h.choice(0,'Off');h.choice(0,'On');h.item(1,'Unavailable mode',0,1);h.choice(1,'Off');h.end(100,90);q3rallyFrontend.state(13,0,0,0);});
   assert.equal(await page.locator('#config-screen').isHidden(),true);
   assert.equal(await page.locator('#hud-item-1').isDisabled(),true);

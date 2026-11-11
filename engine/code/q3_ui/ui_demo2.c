@@ -551,6 +551,7 @@ void UI_DemoSaveMenu(void) {
     demoSave.menu.wrapAround = qtrue;
     demoSave.menu.draw = DemoSave_Draw;
     demoSave.name.generic.type = MTYPE_FIELD;
+    demoSave.name.generic.name = "Filename (without extension)";
     demoSave.name.generic.ownerdraw = DemoSave_DrawName;
     demoSave.name.generic.flags = QMF_NODEFAULTINIT;
     demoSave.name.generic.x = demoSave.name.generic.left = 128;
@@ -584,6 +585,12 @@ void UI_DemoSaveMenu(void) {
 
 int UI_WebDemosScreen( void ) {
     return uis.activemenu == &s_demos.menu ? 4 : 0;
+}
+menuframework_s *UI_WebDemoSaveMenu( void ) {
+    return uis.activemenu == &demoSave.menu ? &demoSave.menu : NULL;
+}
+const char *UI_WebDemoSaveDescription( void ) {
+    return demoSave.error[0] ? demoSave.error : "Choose a filename for your recorded demo, or keep its current name.";
 }
 int UI_WebDemoCount( void ) { return s_demos.numDemos; }
 int UI_WebDemoChar( int index, int character ) {

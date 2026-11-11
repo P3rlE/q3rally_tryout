@@ -385,8 +385,9 @@ void UI_SetupMenu( void ) {
 
 
 static menuframework_s *WebConfig_Menu( int *page ) {
-    menuframework_s *menu; int i;
+    menuframework_s *menu;
     if ( (menu = UI_WebLadderWizardMenu()) ) { *page = 16; return menu; }
+    if ( (menu = UI_WebDemoSaveMenu()) ) { *page = 21; return menu; }
     if ( (menu = UI_WebProfileWizardMenu()) ) { *page = 17 + UI_WebProfileWizardPage(); return menu; }
     if ( uis.activemenu == &setupMenuInfo.menu ) { *page = 0; return &setupMenuInfo.menu; }
     if ( (menu = UI_WebControlsMenu()) ) { *page = 1; return menu; }
@@ -404,8 +405,7 @@ static menuframework_s *WebConfig_Menu( int *page ) {
     if ( (menu = UI_WebTeamOrdersMenu()) ) { *page = 14; return menu; }
     if ( (menu = UI_WebServerInfoMenu()) ) { *page = 15; return menu; }
     if ( (menu = UI_WebConfirmMenu()) ) {
-        if ( UI_WebIngameContext() ) { *page = 9; return menu; }
-        for ( i = 0; i < uis.menusp; i++ ) if ( uis.stack[i] == &setupMenuInfo.menu ) { *page = 9; return menu; }
+        *page = 9; return menu;
     }
     *page = -1; return NULL;
 }
@@ -461,7 +461,7 @@ int UI_WebConfigNumber( int field, int index ) {
     case 8: return page == 9 || UI_WebControlsConfirm();
     case 9:
         if ( page >= 16 ) {
-            const char *text = page == 16 ? UI_WebLadderWizardDescription() : UI_WebProfileWizardDescription();
+            const char *text = page == 21 ? UI_WebDemoSaveDescription() : page == 16 ? UI_WebLadderWizardDescription() : UI_WebProfileWizardDescription();
             unsigned hash = page; int i;
             while ( *text ) hash = hash * 33u + (unsigned char)*text++;
             for ( i = 0; i < menu->nitems; i++ ) hash = hash * 33u + ((menucommon_s *)menu->items[i])->flags;
@@ -478,7 +478,8 @@ int UI_WebConfigChar( int kind, int index, int choice, int character ) {
     if ( page < 0 ) return 0;
     switch ( kind ) {
     case 0:
-        if ( page == 16 ) text = "Register offline profile";
+        if ( page == 21 ) text = "Save demo recording";
+        else if ( page == 16 ) text = "Register offline profile";
         else if ( page >= 17 ) { static const char *steps[] = {"Create your driver", "Make it yours", "Offline Ladder", "Ready to race"}; text = steps[page - 17]; }
         else text = page == 2 ? UI_WebGraphicsTitle() : titles[page];
         break;
@@ -502,7 +503,7 @@ int UI_WebConfigChar( int kind, int index, int choice, int character ) {
         if ( item && choice >= 0 && choice < WebConfig_Choices( item ) ) text = item->type == MTYPE_RADIOBUTTON ? (choice ? "On" : "Off") : ((menulist_s *)item)->itemnames[choice];
         break;
     case 4:
-        if ( page >= 16 ) text = page == 16 ? UI_WebLadderWizardDescription() : UI_WebProfileWizardDescription();
+        if ( page >= 16 ) text = page == 21 ? UI_WebDemoSaveDescription() : page == 16 ? UI_WebLadderWizardDescription() : UI_WebProfileWizardDescription();
         else if ( page == 9 || UI_WebControlsConfirm() ) {
             text = UI_WebConfirmQuestion();
             if ( UI_WebControlsPrompt()[0] ) text = UI_WebControlsPrompt();
@@ -524,7 +525,7 @@ void UI_WebConfigAction( int action, int index, int value ) {
     menuframework_s *menu = WebConfig_Menu( &page );
     if ( !menu ) return;
     uis.transitionIn = uis.transitionOut = 0;
-    if ( action == 6 ) { if ( page >= 17 ) UI_WebProfileWizardBack(); else if ( menu->key ) menu->key( K_ESCAPE ); else Menu_DefaultKey( menu, K_ESCAPE ); return; }
+    if ( action == 6 ) { if ( page >= 17 && page <= 20 ) UI_WebProfileWizardBack(); else if ( menu->key ) menu->key( K_ESCAPE ); else Menu_DefaultKey( menu, K_ESCAPE ); return; }
     if ( !item || item->flags & (QMF_HIDDEN|QMF_INACTIVE|QMF_GRAYED) ) return;
     if ( action == 0 && (item->type == MTYPE_PTEXT || item->type == MTYPE_BITMAP) && item->callback ) {
         if ( page == 0 && item->id == ID_CUSTOMIZEPLAYER ) UI_WebDriverMenu();
