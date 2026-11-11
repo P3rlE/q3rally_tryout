@@ -1,0 +1,246 @@
+{
+  "map": "q3r_timberrun",
+  "course_length": 48448,
+  "estimated_time_s": 88.3,
+  "start_z": 1200,
+  "finish_z": 1032,
+  "lowest_z": 629,
+  "max_grade_pct": 17.2,
+  "min_turn_radius": 451,
+  "road_mesh_error": 2.09,
+  "closest_legs_gap": 1071,
+  "sections": {
+    "yard": [
+      0,
+      1504
+    ],
+    "road": [
+      1504,
+      7808
+    ],
+    "hairpins": [
+      7808,
+      17152
+    ],
+    "creek": [
+      17152,
+      23232
+    ],
+    "thicket": [
+      23232,
+      30624
+    ],
+    "clearcut": [
+      30624,
+      38368
+    ],
+    "hollow": [
+      38368,
+      43104
+    ],
+    "crest": [
+      43104,
+      47584
+    ],
+    "finish": [
+      47584,
+      48448
+    ]
+  },
+  "crests_at": [
+    3296,
+    6560,
+    44064
+  ],
+  "ford": {
+    "at": 21344,
+    "water_z": 641,
+    "length": 416,
+    "depth": 12.1,
+    "flooded_grid_points_elsewhere": 21
+  },
+  "creek_length": 7440,
+  "terrain_triangles": 33220,
+  "leaves": {
+    "64": 9972,
+    "128": 3911,
+    "256": 2191,
+    "512": 536
+  },
+  "brushes": 34794,
+  "checkpoints": [
+    {
+      "number": 1,
+      "sample": 92,
+      "fraction": 0.061,
+      "half_reach": 380,
+      "handle": 303
+    },
+    {
+      "number": 2,
+      "sample": 146,
+      "fraction": 0.096,
+      "half_reach": 378,
+      "handle": 830
+    },
+    {
+      "number": 3,
+      "sample": 210,
+      "fraction": 0.139,
+      "half_reach": 376,
+      "handle": 298
+    },
+    {
+      "number": 4,
+      "sample": 274,
+      "fraction": 0.181,
+      "half_reach": 372,
+      "handle": 685
+    },
+    {
+      "number": 5,
+      "sample": 338,
+      "fraction": 0.223,
+      "half_reach": 370,
+      "handle": 291
+    },
+    {
+      "number": 6,
+      "sample": 384,
+      "fraction": 0.253,
+      "half_reach": 370,
+      "handle": 698
+    },
+    {
+      "number": 7,
+      "sample": 448,
+      "fraction": 0.296,
+      "half_reach": 370,
+      "handle": 604
+    },
+    {
+      "number": 8,
+      "sample": 502,
+      "fraction": 0.331,
+      "half_reach": 370,
+      "handle": 740
+    },
+    {
+      "number": 9,
+      "sample": 566,
+      "fraction": 0.374,
+      "half_reach": 373,
+      "handle": 858
+    },
+    {
+      "number": 10,
+      "sample": 630,
+      "fraction": 0.416,
+      "half_reach": 384,
+      "handle": 303
+    },
+    {
+      "number": 11,
+      "sample": 690,
+      "fraction": 0.455,
+      "half_reach": 364,
+      "handle": 869
+    },
+    {
+      "number": 12,
+      "sample": 746,
+      "fraction": 0.492,
+      "half_reach": 353,
+      "handle": 772
+    },
+    {
+      "number": 13,
+      "sample": 800,
+      "fraction": 0.528,
+      "half_reach": 352,
+      "handle": 900
+    },
+    {
+      "number": 14,
+      "sample": 856,
+      "fraction": 0.565,
+      "half_reach": 352,
+      "handle": 481
+    },
+    {
+      "number": 15,
+      "sample": 900,
+      "fraction": 0.594,
+      "half_reach": 352,
+      "handle": 756
+    },
+    {
+      "number": 16,
+      "sample": 964,
+      "fraction": 0.636,
+      "half_reach": 366,
+      "handle": 302
+    },
+    {
+      "number": 17,
+      "sample": 1028,
+      "fraction": 0.679,
+      "half_reach": 390,
+      "handle": 306
+    },
+    {
+      "number": 18,
+      "sample": 1092,
+      "fraction": 0.721,
+      "half_reach": 389,
+      "handle": 604
+    },
+    {
+      "number": 19,
+      "sample": 1156,
+      "fraction": 0.763,
+      "half_reach": 388,
+      "handle": 303
+    },
+    {
+      "number": 20,
+      "sample": 1220,
+      "fraction": 0.805,
+      "half_reach": 369,
+      "handle": 721
+    },
+    {
+      "number": 21,
+      "sample": 1284,
+      "fraction": 0.848,
+      "half_reach": 352,
+      "handle": 304
+    },
+    {
+      "number": 22,
+      "sample": 1348,
+      "fraction": 0.89,
+      "half_reach": 352,
+      "handle": 303
+    },
+    {
+      "number": 23,
+      "sample": 1412,
+      "fraction": 0.932,
+      "half_reach": 385,
+      "handle": 712
+    },
+    {
+      "number": 24,
+      "sample": 1476,
+      "fraction": 0.974,
+      "half_reach": 400,
+      "handle": 302
+    }
+  ],
+  "wall_gaps": [
+    0,
+    0
+  ],
+  "signs": 18
+}
