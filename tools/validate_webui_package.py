@@ -72,12 +72,16 @@ def run_native(root, output):
         'webLink':{'state':'unlinked','accountId':None,'profileId':None},
         'progress':{'epoch':'v0.8-local-1','authority':'local','currentRank':0,
         'highestRank':0,'stats':{'playerScore':0}}}))
-    (home/'baseq3r/webui-probe.cfg').write_text('echo WEBUI_PACKAGE_PROBE_BEGIN\nwait 360\necho WEBUI_PACKAGE_PROBE_END\nquit\n')
+    (home/'baseq3r/webui-probe.cfg').write_text(
+        'echo WEBUI_PACKAGE_PROBE_BEGIN\nwait 180\n'
+        'echo WEBUI_FULLSCREEN_BEGIN\nset r_fullscreen 1\nvid_restart\nwait 180\n'
+        'echo WEBUI_WINDOWED_BEGIN\nset r_fullscreen 0\nvid_restart\nwait 180\n'
+        'echo WEBUI_PACKAGE_PROBE_END\nquit\n')
     command=[str(executable),'+set','fs_basepath',str(root),'+set','fs_homepath',str(home),
         '+set','logfile','2','+set','net_enabled','0','+set','cl_motd','0',
         '+set','sv_ladderEnabled','0','+set','r_fullscreen','0','+set','r_mode','-1',
         '+set','r_customwidth','1100','+set','r_customheight','720','+set','cl_renderer','opengl1',
-        '+set','s_initsound','0','+set','in_mouse','0','+set','in_nograb','1',
+        '+set','s_initsound','0','+set','in_mouse','0','+set','in_nograb','0',
         '+set','com_maxfps','30','+set','com_maxfpsUnfocused','30',
         '+set','profile_active','WebUIPackageProbe',
         '+set','ladder_wizard_dismissed_profiles','WebUIPackageProbe',
@@ -97,6 +101,15 @@ def run_native(root, output):
     if process.returncode != 0: raise ValueError(f'Packaged client exited with {process.returncode}')
     for marker in ('WEBUI_PACKAGE_PROBE_BEGIN','Web UI: bundled frontend loaded (HTTP 200).','WEBUI_PACKAGE_PROBE_END'):
         if marker not in text: raise ValueError(f'Missing native startup marker: {marker}')
+    # Each renderer restart destroys the SDL parent. Require a fresh browser
+    # attachment and successful document load in both replacement windows.
+    for begin, end, mode in (
+        ('WEBUI_FULLSCREEN_BEGIN','WEBUI_WINDOWED_BEGIN','fullscreen'),
+        ('WEBUI_WINDOWED_BEGIN','WEBUI_PACKAGE_PROBE_END','windowed'),
+    ):
+        section = text.split(begin, 1)[1].split(end, 1)[0]
+        if f'Web UI: browser attached ({mode},' not in section or 'Web UI: bundled frontend loaded (HTTP 200).' not in section:
+            raise ValueError(f'WebUI did not recover after the {mode} renderer restart')
     if re.search(r'(^|\n)(?:\^1)?(?:ERROR:|FATAL)',text): raise ValueError('Native startup reported an error')
 
 

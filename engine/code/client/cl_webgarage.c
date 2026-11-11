@@ -810,8 +810,8 @@ int CL_WebGarageSubprocess( int argc, char **argv ) {
 }
 
 void CL_WebGarage_f( void ) {
-	if ( clc.state != CA_DISCONNECTED || Cvar_VariableIntegerValue( "r_fullscreen" ) ) {
-		Com_Printf( "Web garage pilot requires the disconnected main menu in windowed mode.\n" );
+	if ( clc.state != CA_DISCONNECTED ) {
+		Com_Printf( "Web garage requires the disconnected main menu.\n" );
 		return;
 	}
 	webGarageMode = qtrue;
@@ -857,6 +857,9 @@ static void Web_Open( void ) {
 
 	host = webBrowser->get_host( webBrowser );
 	webChild = host->get_window_handle( host );
+	Com_Printf( "Web UI: browser attached (%s, %dx%d).\n",
+	    SDL_GetWindowFlags( window ) & SDL_WINDOW_FULLSCREEN ? "fullscreen" : "windowed",
+	    (int)rect.right, (int)rect.bottom );
 	Com_Memset( &webStats, 0, sizeof( webStats ) );
 	QueryPerformanceFrequency( &webStats.frequency );
 	SDL_SetRelativeMouseMode( SDL_FALSE );
@@ -1269,8 +1272,7 @@ void CL_WebGarageFrame( void ) {
 	RECT parent, child;
 	LARGE_INTEGER start, end;
 	qboolean measure;
-    if ( webFrontend->integer && uivm && Web_CurrentScreen() &&
-         !Cvar_VariableIntegerValue( "r_fullscreen" ) && !webBrowser ) {
+    if ( webFrontend->integer && uivm && Web_CurrentScreen() && !webBrowser ) {
         int screen = Web_CurrentScreen();
         if ( screen >= 1 && screen <= 14 ) {
             if ( screen == 7 ) webGarageMode = qtrue;
