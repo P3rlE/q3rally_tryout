@@ -681,6 +681,7 @@ void CL_WebGarageFocus( void );
 qboolean CL_WebGarageNativeInput( void );
 void CL_WebGarageFrame( void );
 void CL_WebGarageShutdown( void );
+void CL_WebGarageBeforeVideoRestart( void );
 #endif
 
 // cl_downloads.c

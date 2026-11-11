@@ -20,6 +20,7 @@
 static cef_browser_t *webBrowser;
 static HWND webParent, webChild;
 static qboolean webInitialized, webContextReady, webOpenRequested, webCloseRequested;
+static qboolean webVideoRestart;
 #define WEB_ORIGIN L"https://q3rally.invalid/"
 static const wchar_t webPage[] = WEB_ORIGIN L"index.html";
 static wchar_t webRoot[MAX_PATH];
@@ -701,7 +702,7 @@ static void CEF_CALLBACK Web_BeforeClose( cef_life_span_handler_t *self, cef_bro
 	if ( webBrowser ) webBrowser->base.release( &webBrowser->base );
 	webBrowser = NULL;
 	webChild = NULL;
-	if ( webParent && IsWindow( webParent ) ) {
+	if ( !webVideoRestart && webParent && IsWindow( webParent ) ) {
         SDL_Window *window = IN_GetWindow();
         SetFocus( webParent );
         if ( window ) {
@@ -716,7 +717,7 @@ static void CEF_CALLBACK Web_BeforeClose( cef_life_span_handler_t *self, cef_bro
     webConfigRead = webConfigWrite = 0;
     Cvar_Set( "cl_webIngameUI", "0" ); Cvar_Set( "cl_webHUDActive", "0" ); Cvar_Set( "cl_webMapLoading", "0" );
 	Cvar_Set( "cl_webDemoRect", "" );
-	SDL_ShowCursor( SDL_DISABLE );
+	if ( !webVideoRestart ) SDL_ShowCursor( SDL_DISABLE );
 }
 
 static void CEF_CALLBACK Web_ContextInitialized( cef_browser_process_handler_t *self ) {
@@ -740,6 +741,25 @@ static cef_request_handler_t *CEF_CALLBACK Web_GetRequest( cef_client_t *self ) 
 static cef_load_handler_t *CEF_CALLBACK Web_GetLoad( cef_client_t *self ) { return &webLoad; }
 static cef_life_span_handler_t *CEF_CALLBACK Web_GetLife( cef_client_t *self ) { return &webLife; }
 static cef_browser_process_handler_t *CEF_CALLBACK Web_GetProcess( cef_app_t *self ) { return &webProcess; }
+
+static int Web_TestDebugPort( void ) {
+    char value[8]; DWORD length, i; int port = 0;
+    length = GetEnvironmentVariableA( "Q3RALLY_WEBUI_TEST_CDP_PORT", value, sizeof( value ) );
+    if ( !length || length > 5 ) return 0;
+    for ( i = 0; i < length; i++ ) {
+        if ( value[i] < '0' || value[i] > '9' ) return 0;
+        port = port * 10 + value[i] - '0';
+    }
+    return port >= 1024 && port <= 65535 ? port : 0;
+}
+
+static void CEF_CALLBACK Web_TestCommandLine( cef_app_t *self, const cef_string_t *processType, cef_command_line_t *line ) {
+    cef_string_t name = { 0 }, value = { 0 };
+    if ( !Web_TestDebugPort() ) return;
+    Web_SetString( &name, L"remote-debugging-address" ); Web_SetString( &value, L"127.0.0.1" );
+    line->append_switch_with_value( line, &name, &value );
+    cef_string_utf16_clear( &name ); cef_string_utf16_clear( &value );
+}
 
 static qboolean Web_Initialize( void ) {
 	wchar_t directory[MAX_PATH], locales[MAX_PATH], file[MAX_PATH];
@@ -772,6 +792,7 @@ static qboolean Web_Initialize( void ) {
 	Web_StaticHandler( &webLoad.base, sizeof( webLoad ) );
 	Web_StaticHandler( &webLife.base, sizeof( webLife ) );
 	webApp.get_browser_process_handler = Web_GetProcess;
+    webApp.on_before_command_line_processing = Web_TestCommandLine;
 	webProcess.on_context_initialized = Web_ContextInitialized;
 	webClient.get_request_handler = Web_GetRequest;
 	webClient.get_load_handler = Web_GetLoad;
@@ -784,6 +805,8 @@ static qboolean Web_Initialize( void ) {
 	settings.size = sizeof( settings );
 	settings.no_sandbox = 1; /* MinGW pilot, restricted to the bundled local page. */
 	settings.command_line_args_disabled = 1;
+    /* Explicitly opt-in for native integration tests; startup helpers leave it off. */
+    settings.remote_debugging_port = Web_TestDebugPort();
 	if ( !MultiByteToWideChar( CP_ACP, 0, Cvar_VariableString( "fs_homepath" ), -1, home, ARRAY_LEN( home ) ) ||
 	     swprintf( cache, ARRAY_LEN( cache ), L"%ls\\cef-garage", home ) < 0 ) return qfalse;
 	Web_SetString( &settings.root_cache_path, cache );
@@ -1517,4 +1540,19 @@ void CL_WebGarageShutdown( void ) {
 	}
 	cef_shutdown();
 	webInitialized = qfalse;
+}
+
+void CL_WebGarageBeforeVideoRestart( void ) {
+    if ( !webInitialized ) return;
+    /* Finish the child-window teardown while SDL's video device and parent
+     * window are still alive. Never restore focus/cursor during this close. */
+    webVideoRestart = qtrue;
+    webOpenRequested = webCloseRequested = qfalse;
+    if ( webBrowser ) Com_Printf( "Web UI: closing browser before video restart.\n" );
+    Web_Close();
+    while ( webBrowser ) {
+        cef_do_message_loop_work();
+        Sleep( 1 );
+    }
+    webVideoRestart = qfalse;
 }
