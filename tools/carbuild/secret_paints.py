@@ -4,7 +4,7 @@ usage: secret_paints.py <baseq3r dir> <outdir> [car ...]
 
 The 13 original cars got their secret paints in zz_secret_skins.pk3; this
 script makes the same seven paints for the cars built with carbuild
-(Mustang, Skyline, GT-R, Ridgeback, Cutlass, GT500, DB12, Bountyhunter). It writes
+(Mustang, Skyline, GT-R, Ridgeback, Cutlass, Cobra, GT500, DB12, Bountyhunter). It writes
 into <outdir>, laid out like the pk3:
 
   models/players/<car>/<paint>_main.tga      paint atlas
@@ -62,6 +62,7 @@ CARS = {
     'gtr': ('gtr/layout.py', 'gtr/gen_textures.py', 'amg_163'),
     'ridgeback': ('ridgeback/layout.py', 'ridgeback/gen_textures.py', 'amg_163'),
     'cutlass': ('cutlass/layout.py', 'cutlass/gen_textures.py', 'amg_163'),
+    'cobra': ('cobra/layout.py', 'cobra/gen_textures.py', 'amg_163'),
     'gt500': ('gt500/layout.py', 'gt500/gen_textures.py', 'svt_cobra'),
     'db12': ('db12/layout.py', 'db12/gen_textures.py', 'amg_163'),
     'bountyhunter': (None, None, 'amg_163'),
@@ -213,8 +214,10 @@ class Car:
         X0, X1, Y0, Y1, Z0, Z1 = g.bounds
         self.len = X1 - X0
         if D is not None:
-            self.stripe = D['side_stripes'][0][0]
-            self.edge = D['side_stripes'][1][0]
+            # cars without side stripes in their rally paints name a band for the patterns
+            sides = D['side_stripes'] or D['secret_side_stripes']
+            self.stripe = sides[0][0]
+            self.edge = sides[1][0]
             self.front_z, self.back_z = D['stripe_front'], D['stripe_back']
             self.zc, self.h = D['door_roundel'][1], 5.5
         else:                               # Bountyhunter
