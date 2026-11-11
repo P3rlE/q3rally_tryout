@@ -219,6 +219,28 @@ for the test build; the Windows-only pilot restrictions still apply.
 
 ## Reproducible Windows x64 Actions test package
 
+### Driver setup and offline registration
+
+The first-run driver wizard and the standalone offline Ladder registration use
+the shared web form renderer (Config pages 17-20 and 16 respectively). Their
+native menus retain profile creation, validation, protected key handling,
+registration callbacks, retry, cancellation and per-profile dismissal behavior.
+This is offline result registration, not website account creation or linking.
+The post-recording demo filename dialog uses page 21 with native filename and
+duplicate checks. General confirmation menus are routed through the same web
+confirmation dialog even when opened outside Config or an in-game menu.
+
+Only visible, enabled fields accept text updates, bounded by their native field
+limits. Profile Back uses the wizard's native Back action; the mandatory name
+step cannot be dismissed. A native revision derived from step/status/flags
+refreshes asynchronous results without polling and rebuilding the HTML form
+while the user is typing. Registration actions sit below the fields.
+
+The browser tests cover the setup steps, country selection, pending/retry and
+completion UI. Native ZIP validation also starts with a separate empty home and
+requires the first-run wizard to be published, including across fullscreen
+renderer restarts. No live registration is submitted by these tests.
+
 `.github/workflows/webui-windows.yml` builds the opt-in test package without
 publishing releases or changing the regular release workflow. It runs manually,
 on WebUI integration branches, and on relevant pull requests.

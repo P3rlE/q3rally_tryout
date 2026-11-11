@@ -563,6 +563,17 @@ static void LadderWizard_UpdateButtons( void ) {
     s_wizard.btnNever.generic.bottom = WIZARD_BTN_Y + UI_FRONTEND_BUTTON_HEIGHT;
 }
 
+menuframework_s *UI_WebLadderWizardMenu( void ) {
+    return uis.activemenu == &s_wizard.menu ? &s_wizard.menu : NULL;
+}
+const char *UI_WebLadderWizardDescription( void ) {
+    static char text[768];
+    Com_sprintf( text, sizeof( text ),
+        "Optional offline Ladder registration for %s.\nThis saves a key for offline results; it does not create or link a website account.\n%s\n%s",
+        s_wizard.playerName, s_wizard.serverNameNotice, s_wizard.statusLine );
+    return text;
+}
+
 static qboolean LadderWizard_IsFocusableItem( const menucommon_s *item ) {
     if ( !item ) {
         return qfalse;

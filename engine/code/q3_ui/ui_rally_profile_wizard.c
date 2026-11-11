@@ -1086,6 +1086,26 @@ void UI_ProfileWizard_MaybeShow( void ) {
     UI_ProfileWizard_Show();
 }
 
+menuframework_s *UI_WebProfileWizardMenu( void ) {
+    return uis.activemenu == &s_pw.menu ? &s_pw.menu : NULL;
+}
+int UI_WebProfileWizardPage( void ) { return s_pw.page; }
+const char *UI_WebProfileWizardDescription( void ) {
+    static char text[512];
+    const char *help[] = {
+        "Step 1 / 3. Choose a local driver name. Use letters, numbers, underscore, dash or dot.",
+        "Step 2 / 3. Personal details are optional. Choose your country and avatar, or continue without them.",
+        "Step 3 / 3. Optional offline Ladder registration. This saves a key for offline race results; it does not create or link a website account.",
+        "Your driver is ready. Start with Offline for a first race. You can link a website account from Driver Profile."
+    };
+    Com_sprintf( text, sizeof( text ), "%s\n%s", help[s_pw.page], s_pw.statusLine );
+    return text;
+}
+void UI_WebProfileWizardBack( void ) {
+    if ( UI_WebProfileWizardMenu() && !(s_pw.btnBack.generic.flags & (QMF_HIDDEN|QMF_INACTIVE|QMF_GRAYED)) )
+        PW_MenuEvent( &s_pw.btnBack, QM_ACTIVATED );
+}
+
 qboolean UI_ProfileWizard_IsActive( void ) {
     int i;
     for ( i = 0; i < uis.menusp; ++i ) {

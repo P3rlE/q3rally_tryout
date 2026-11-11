@@ -32,7 +32,7 @@
     padTimer=requestAnimationFrame(pollPad);
   }
   find('capture').addEventListener('focusin',()=>{if(!padTimer)padTimer=requestAnimationFrame(pollPad);});
-  function button(item){const b=node('button',item.label,'secondary');b.disabled=item.disabled;b.addEventListener('click',()=>send(0,item.index));return b;}
+  function button(item){const primary=page>=16&&/^(next|join ladder|register|retry|ok|done|start racing|save)$/i.test(item.label);const b=node('button',item.label,primary?'':'secondary');b.disabled=item.disabled;b.addEventListener('click',()=>send(0,item.index));return b;}
   function field(item){
     const wrapper=node('div',undefined,'config-field'),label=node('label',item.label.replace(/:\s*$/,''));label.htmlFor='config-item-'+item.index;wrapper.append(label);
     if(item.type===5){const actions=node('div',undefined,'config-actions'),rebind=node('button',item.text||'Unbound','secondary'),clear=node('button','Clear','secondary');rebind.disabled=clear.disabled=item.disabled;rebind.addEventListener('click',()=>startCapture(item));clear.addEventListener('click',()=>send(5,item.index));actions.append(rebind,clear);wrapper.append(actions);return wrapper;}
@@ -41,18 +41,22 @@
     let input;
     if(item.type===1||item.type===2){input=node('select');if(item.value<0){const custom=new Option('Custom','-1');custom.disabled=true;input.add(custom);}item.choices.forEach((name,index)=>input.add(new Option(clean(name),String(index))));input.value=item.value;}
     else if(item.type===3){input=node('input');input.type='range';input.min=item.min;input.max=item.max;input.step=item.max-item.min<=100?1:100;input.value=item.value;const output=node('output',String(item.value/100));input.addEventListener('input',()=>{output.textContent=String(Number(input.value)/100);});wrapper.append(output);}
-    else{input=node('input');input.type='search';input.value=item.text;input.placeholder='Search controls';}
+    else{input=node('input');input.type=page===1?'search':/email/i.test(item.label)?'email':'text';input.value=item.text;if(page===1)input.placeholder='Search controls';if(item.max>0)input.maxLength=item.max;}
     input.id='config-item-'+item.index;input.disabled=item.disabled;input.addEventListener('focus',()=>{focusHint=input.id;});
     function change(){if(item.type===4)location.href='q3rally-ui://config/text/'+item.index+'/'+encodeURIComponent(input.value);else send(item.type===3?2:1,item.index,Number(input.value));}
-    if(item.type===4)input.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(change,250);});else input.addEventListener('change',change);
+    if(item.type===4&&page===1)input.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(change,250);});else input.addEventListener('change',change);
     wrapper.append(input);return wrapper;
   }
   function render(){
     const pageKey=page+':'+title;if(pageKey!==previousPage){focusHint=undefined;window.scrollTo(0,0);}previousPage=pageKey;
     find('title').textContent=title;find('description').textContent=description;
-    root.querySelector('header .label').textContent=page>=10?'Q3RALLY / IN RACE':'Q3RALLY / CONFIGURATION';
+    root.classList.toggle('registration-screen',page>=16);
+    root.querySelector('header .label').textContent=page===21?'Q3RALLY / YOUR RECORDING':page>=16?'Q3RALLY / YOUR DRIVER':page>=10?'Q3RALLY / IN RACE':'Q3RALLY / CONFIGURATION';
     find('back').textContent=page===10?'Resume race':'Back';
+    find('back').hidden=page===17||page===20;
+    find('back').disabled=page>=17&&page<=20&&!!items.find(item=>/^back$/i.test(item.label))?.disabled;
     const actions=find('actions'),fields=find('fields');actions.replaceChildren();fields.replaceChildren();
+    if(page>=16)find('settings').after(actions);else find('settings').before(actions);
     const controls=items.filter(item=>item.type!==6),buttons=items.filter(item=>item.type===6 && (confirmation || item.label.trim().toLowerCase()!=='back' && !(page===10 && /^resume/i.test(item.label))));
     find('settings').hidden=!controls.length;
     if(confirmation){find('confirm-title').textContent=description||'Confirm change';find('confirm-message').textContent='';find('confirm-actions').replaceChildren(...buttons.map(button));if(!find('confirm').open)find('confirm').showModal();}

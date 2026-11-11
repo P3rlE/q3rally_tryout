@@ -1257,6 +1257,14 @@ void UI_WebOnlineAction( int action, int index, int value );
 void UI_WebOnlineTick( int realtime );
 
 int UI_WebConfigScreen( void );
+menuframework_s *UI_WebProfileWizardMenu( void );
+int UI_WebProfileWizardPage( void );
+const char *UI_WebProfileWizardDescription( void );
+void UI_WebProfileWizardBack( void );
+menuframework_s *UI_WebLadderWizardMenu( void );
+const char *UI_WebLadderWizardDescription( void );
+menuframework_s *UI_WebDemoSaveMenu( void );
+const char *UI_WebDemoSaveDescription( void );
 int UI_WebConfigNumber( int field, int index );
 int UI_WebConfigChar( int kind, int index, int choice, int character );
 void UI_WebConfigAction( int action, int index, int value );

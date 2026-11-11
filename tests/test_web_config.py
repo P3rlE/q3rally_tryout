@@ -14,6 +14,8 @@ def test_config_bridge_validates_values_and_invokes_native_callbacks():
  harness=r'''
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
+#define Q_strncpyz(dest,src,size) snprintf(dest,size,"%s",src)
 #define MTYPE_PTEXT 1
 #define MTYPE_SPINCONTROL 2
 #define MTYPE_RADIOBUTTON 3
@@ -32,6 +34,7 @@ typedef struct {int type,flags,id;void(*callback)(void*,int);} menucommon_s;
 typedef struct {menucommon_s generic;int curvalue;} menulist_s;
 typedef menulist_s menuradiobutton_s;
 typedef struct {menucommon_s generic;float minvalue,maxvalue,curvalue;} menuslider_s;
+typedef struct {menucommon_s generic;struct {char buffer[64];int maxchars,cursor,scroll;}field;}menufield_s;
 typedef struct {int(*key)(int);} menuframework_s;
 static struct{int transitionIn,transitionOut;}uis;
 static int page=2,calls,back,bind,cleared,driver,search;
@@ -41,6 +44,7 @@ static menuframework_s *WebConfig_Menu(int *out){*out=page;return &menu;}
 static int WebConfig_Choices(menucommon_s *item){return 3;}
 static void callback(void *item,int event){assert(event==1);calls++;}
 static void UI_WebDriverMenu(void){driver++;}
+static void UI_WebProfileWizardBack(void){back+=10;}
 static int Menu_DefaultKey(menuframework_s *menu,int key){assert(key==27);back++;return 0;}
 static void UI_WebControlsBind(int index,int key){bind++;if(key==-1)cleared++;}
 static void trap_Cvar_VariableStringBuffer(const char *key,char *out,int size){strcpy(out,"accelerate");}
@@ -60,6 +64,12 @@ UI_WebConfigAction(0,99,0);assert(calls==3);
 button.type=MTYPE_BITMAP;UI_WebConfigAction(0,0,0);assert(calls==4);
 current=&list;page=14;list.generic.type=MTYPE_SCROLLLIST;UI_WebConfigAction(7,0,1);assert(list.curvalue==1&&calls==5);
 UI_WebConfigAction(7,0,3);assert(calls==5);page=2;UI_WebConfigAction(7,0,0);assert(calls==5);
+{menufield_s field={{MTYPE_FIELD,0,0,0},{{0},5,0,0}};current=&field;page=17;
+UI_WebConfigAction(4,0,0);assert(!strcmp(field.field.buffer,"accel")&&field.field.cursor==5);
+field.generic.flags=QMF_INACTIVE;UI_WebConfigAction(4,0,0);assert(!strcmp(field.field.buffer,"accel"));
+UI_WebConfigAction(6,0,0);assert(back==11);
+page=2;field.generic.flags=0;field.field.buffer[0]=0;UI_WebConfigAction(4,0,0);assert(!field.field.buffer[0]);
+page=21;UI_WebConfigAction(4,0,0);assert(!strcmp(field.field.buffer,"accel"));UI_WebConfigAction(6,0,0);assert(back==12);}
 }
 '''
  run_c(harness)

@@ -49,6 +49,7 @@ static qboolean webOnlinePublished;
 static struct { int action, index, value; char text[128]; } webConfigQueue[64];
 static int webConfigRead, webConfigWrite;
 static qboolean webConfigPublished;
+static int webConfigRevision;
 static qboolean webHUDPublished, webHUDRectValid;
 static RECT webHUDRect, webHUDPreviousRect;
 static qboolean webHUDRegion;
@@ -1213,6 +1214,8 @@ static void Web_ConfigText( int kind, int index, int choice, wchar_t *out, size_
 static void Web_PublishConfig( void ) {
     cef_frame_t *frame = webBrowser->get_main_frame( webBrowser );
     wchar_t script[15000], a[6400], b[6400]; int i, j, type;
+    if ( VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 0, 0 ) >= 16 && VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 0, 0 ) <= 20 )
+        Com_Printf( "Web UI: registration step %d.\n", (int)VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 0, 0 ) );
     Web_ConfigText( 0, 0, 0, a, ARRAY_LEN( a ) ); Web_ConfigText( 4, 0, 0, b, ARRAY_LEN( b ) );
     swprintf( script, ARRAY_LEN( script ), L"window.q3rallyConfig?.begin(%d,decodeURIComponent('%ls'),decodeURIComponent('%ls'),%d)",
               (int)VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 0, 0 ), a, b, (int)VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 8, 0 ) ); Web_RunScript( frame, script );
@@ -1226,6 +1229,7 @@ static void Web_PublishConfig( void ) {
         }
     }
     Web_RunScript( frame, L"window.q3rallyConfig?.end()" ); frame->base.release( &frame->base ); webConfigPublished = qtrue;
+    webConfigRevision = VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 9, 0 );
 }
 
 static void Web_HUDText( int index, int field, int choice, wchar_t *out, size_t capacity ) {
@@ -1390,7 +1394,7 @@ void CL_WebGarageFrame( void ) {
         Cvar_Set( "cl_webHUDActive", screen == 13 ? "1" : "0" );
         Cvar_Set( "cl_webMapLoading", screen == 14 ? "1" : "0" );
         if ( screen == 14 ) Web_PublishMapLoading();
-        if ( screen == 12 ) { if ( !webConfigPublished ) Web_PublishConfig(); }
+        if ( screen == 12 ) { if ( !webConfigPublished || webConfigRevision != VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 9, 0 ) ) Web_PublishConfig(); }
         else webConfigPublished = qfalse;
         if ( screen == 11 ) {
             if ( !webOnlinePublished || cls.realtime - webLastOnlinePoll >= 100 ) {
