@@ -9,6 +9,7 @@ parts,models/players/cobra/parts.tga
 parts2,models/players/cobra/parts.tga
 hlights,models/players/cobra/parts.tga
 rlights,models/players/cobra/parts.tga
+driver,models/players/cobra/driver.tga
 tag_weapon,
 tag_wheelfr,
 tag_wheelfl,

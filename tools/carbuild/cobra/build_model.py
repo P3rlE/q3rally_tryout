@@ -80,13 +80,17 @@ MAT = np.array([m for (o, m), tris in G for _ in tris])
 OBJ = np.array([o for (o, m), tris in G for _ in tris])
 
 key = hashlib.sha1(open(SRC, 'rb').read()).hexdigest()[:16]
-cache = os.path.join(CACHE, 'cobra_visible_%s.npy' % key)
+cache = os.path.join(CACHE, 'cobra_facing_%s.npz' % key)
 if os.path.exists(cache):
-    vis = np.load(cache)
+    c = np.load(cache)
+    vis, facing = c['vis'], c['facing']
 else:
-    vis = cull.visible(V, T, progress=lambda n, k, samples, seen: print(
+    vis, facing = cull.visible_facing(V, T, progress=lambda n, k, samples, seen: print(
         'visibility view %d/%d: %d samples, %d triangles seen' % (n, k, samples, seen), flush=True))
-    np.save(cache, vis)
+    np.savez(cache, vis=vis, facing=facing)
+# KeyShot writes many parts with their winding the wrong way round; the game draws only
+# the front: turn every triangle that is seen mostly from its back
+T[facing < 0] = T[facing < 0][:, [0, 2, 1]]
 
 # ---------------- placement ----------------------------------------------------------------
 body = vis & ~np.isin(MAT, list(DROP))
@@ -199,6 +203,9 @@ for m in sorted(vis_mats):
         elif kind in ('glass', 'chrome'):
             b = surf(kind, kind)
             uvs = [box_uv(region(fn), p) for p in pts]
+            if kind == 'glass':         # the windscreen is a single sheet: seen from both sides
+                back = [tuple(-c for c in n) for n in ns]
+                b.tri([b.vert(pts[k], back[k], uvs[k]) for k in (0, 2, 1)])
         elif kind == 'hlights':
             b = surf('hlights', 'parts')
             uvs = [pal_uv('headlamp')] * 3
@@ -210,7 +217,7 @@ for m in sorted(vis_mats):
             uvs = [pal_uv(m)] * 3
         b.tri([b.vert(pts[k], ns[k], uvs[k]) for k in range(3)])
 
-GROUPS = ['body_fl', 'body_fr', 'body_rl', 'body_rr', 'glass', 'chrome', 'parts', 'hlights', 'rlights']
+GROUPS = ['body_fl', 'body_fr', 'body_rl', 'body_rr', 'glass', 'chrome', 'parts', 'hlights', 'rlights', 'driver']
 ORDER = sorted(surfs, key=lambda n: (GROUPS.index(n.rstrip('0123456789')), n))
 
 
@@ -247,23 +254,85 @@ plate_z = tl[2] - 3.5
 # driver's head over the left-hand seat (steering wheel side)
 seat = pts_of(['Black Fabric Mesh #2'], lambda p: p[:, 1] > 0)
 wheel_rim = mid(pts_of(['Real wood #1']))
+# the head models hang from the tag upside down and facing -X (about 7 units tall), as
+# on the Roadster: HEAD turns them; the top of the head ends level with the windscreen
+screen_top = float(pts_of(['Glass Basic White #1'])[:, 2].max())
 head = [float(seat[:, 0].min() + 0.35 * (seat[:, 0].max() - seat[:, 0].min())), float(wheel_rim[1]),
-        float(seat[:, 2].max() - 2.0)]
-cockpit_rim = float(pts_of([PAINT], lambda p: np.abs(p[:, 0] - head[0]) < 8)[:, 2].max())
+        screen_top - 6.5]
+HEAD = [[-1, 0, 0], [0, 1, 0], [0, 0, -1]]
+# weapon on the bonnet, as on the Roadster and Slingshot (an open car has no roof)
+WEAPON_X = 24.0
+bonnet_z = float(pts_of([PAINT], lambda p: (np.abs(p[:, 0] - WEAPON_X) < 2) & (np.abs(p[:, 1]) < 3))[:, 2].max())
 
 tags = [
     ('tag_wheelfl', [FX, FY, WZ], WL), ('tag_wheelfr', [FX, -FY, WZ], WR),
     ('tag_wheelrl', [RX, RY, WZ], WL), ('tag_wheelrr', [RX, -RY, WZ], WR),
-    ('tag_weapon', [head[0] - 10.0, 0.0, cockpit_rim + 2.0], ID),
+    ('tag_weapon', [WEAPON_X, 0.0, bonnet_z], ID),
     ('tag_plate', [plate_x - 0.2, 0.0, plate_z], ID),
     ('tag_turbo', [ex[0] - 1.0, ex[1], ex[2]], BACKWARD),
     ('tag_smoke', [front_x - 16.0, 0.0, 2.0], BACKWARD),
-    ('tag_head', head, ID),
+    ('tag_head', head, HEAD),
     ('tag_hlite1', [hl[0] + 0.5, hl[1], hl[2]], ID), ('tag_hlite2', [hl[0] + 0.5, -hl[1], hl[2]], ID),
     ('tag_blite1', [tl[0] - 0.5, -tl[1], tl[2]], ID), ('tag_blite2', [tl[0] - 0.5, tl[1], tl[2]], ID),
     ('tag_rlite1', [tl[0] - 0.5, -tl[1], tl[2] - 1.5], ID), ('tag_rlite2', [tl[0] - 0.5, tl[1], tl[2] - 1.5], ID),
 ]
 tags = [(n, [float(o[0]), float(o[1]), float(o[2]) + LIFT[2]], a) for n, o, a in tags]
+
+
+def add_driver():
+    """The Roadster's driver body (jacket and arms, in its b_main surface, textured from
+    the jacket corner of slingshot/red_main.tga) under the head: moved onto our
+    tag_head, the arms shortened so the hands reach our steering wheel."""
+    import md3
+    from PIL import Image
+    pdir = os.path.join(OUT, '..')
+    rm = md3.load(os.path.join(pdir, 'roadster', 'body.md3'))
+    r_head = np.array([t[1] for t in rm.tags[0] if t[0] == 'tag_head'][0])
+    st_s = [x for x in rm.surfs if x.name == 'b_steer'][0]
+    r_steer = (np.array([f[:3] for f in st_s.frames[0]]) / 64).mean(0)
+    src = [x for x in rm.surfs if x.name == 'b_main'][0]
+    v = np.array([f[:3] for f in src.frames[0]]) / 64
+    tri = np.array(src.tris)
+    st = np.array(src.st)
+    U1, V1 = 0.21, 0.23                       # jacket corner of the texture
+    uv, cen = st[tri].mean(1), v[tri].mean(1)
+    keep = (uv[:, 0] < U1) & (uv[:, 1] < V1) & (cen[:, 0] > -12) & (cen[:, 0] < 14) & (cen[:, 1] > 0) & \
+        (cen[:, 2] > -3)
+    tri = tri[keep]
+    head_q = np.array([t[1] for t in tags if t[0] == 'tag_head'][0])
+    wheel_q = wheel_rim + np.array([0.0, 0.0, LIFT[2]])
+    rel = v - r_head
+    hands = rel[np.unique(tri)][:, 0].max()                  # hands in front of the Roadster's wheel
+    reach_r = (r_steer - r_head)[0]
+    reach_c = (wheel_q - head_q)[0]
+    target = reach_c + (hands - reach_r)
+    k = (target - 1.0) / (hands - 1.0)
+    t = np.clip((rel[:, 0] - 1.0) / (hands - 1.0), 0, 1)      # 0 at the shoulders, 1 at the hands
+    out = rel.copy()
+    out[:, 0] = np.where(rel[:, 0] > 1.0, 1.0 + (rel[:, 0] - 1.0) * k, rel[:, 0])
+    out[:, 1] += t * ((wheel_q - head_q)[1] - (r_steer - r_head)[1])
+    out[:, 2] += t * ((wheel_q - head_q)[2] - (r_steer - r_head)[2])
+    pos = out + head_q
+    faces = tri[:, [0, 2, 1]]                                  # md3 order -> counter-clockwise
+    used = np.unique(faces)
+    remap = {o: i for i, o in enumerate(used)}
+    vv = pos[used]
+    ff = np.vectorize(remap.get)(faces)
+    cn = mesh.corner_normals(vv, ff, 50.0)
+    b = Builder('driver', P + 'driver.tga', (0.0, 0.0, 0.0))
+    for f, face in enumerate(ff):
+        b.tri([b.vert(tuple(vv[i]), tuple(cn[f][k2]), [st[used[i]][0] / U1, st[used[i]][1] / V1])
+               for k2, i in enumerate(face)])
+    surfs['driver'] = b
+    im = Image.open(os.path.join(pdir, 'slingshot', 'red_main.tga')).convert('RGB')
+    w, h = im.size
+    im.crop((0, 0, round(U1 * w), round(V1 * h))).resize((128, 128), Image.LANCZOS).save(
+        os.path.join(OUT, 'driver.tga'), compression='tga_rle')
+    print('driver: %d triangles, arms x%.2f (reach %.1f -> %.1f)' % (len(ff), k, reach_r, reach_c))
+
+
+add_driver()
+ORDER = sorted(surfs, key=lambda n: (GROUPS.index(n.rstrip('0123456789')), n))
 tags = snap_lights(tags, [surfs[n] for n in ORDER])
 bmn, bmx, rad = save(os.path.join(OUT, 'body.md3'), P + 'body.md3',
                      [surfs[n].done() for n in ORDER], tags, b'cobra')

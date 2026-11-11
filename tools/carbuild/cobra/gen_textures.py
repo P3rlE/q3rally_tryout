@@ -38,7 +38,7 @@ DECALS = {
 paint.Painter(layout, DECALS, ALPHA).paint_all(OUT)
 paint.shared_parts(OUT, ('glass', 'chrome'))
 # skins list the surfaces of body.md3 (build_model.py splits big groups into group2, group3, ...)
-TEX = {'glass': 'glass', 'chrome': 'chrome', 'parts': 'parts', 'hlights': 'parts', 'rlights': 'parts'}
+TEX = {'glass': 'glass', 'chrome': 'chrome', 'parts': 'parts', 'hlights': 'parts', 'rlights': 'parts', 'driver': 'driver'}
 names = [s.name for s in md3.load(os.path.join(OUT, 'body.md3')).surfs]
 paint.write_skins(OUT, 'models/players/cobra/', [],
                   [n for n in names if n.startswith('body_')],
