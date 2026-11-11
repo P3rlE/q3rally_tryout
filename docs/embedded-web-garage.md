@@ -226,6 +226,11 @@ the shared web form renderer (Config pages 17-20 and 16 respectively). Their
 native menus retain profile creation, validation, protected key handling,
 registration callbacks, retry, cancellation and per-profile dismissal behavior.
 This is offline result registration, not website account creation or linking.
+The avatar selector publishes each native preset's exact shader path as optional
+choice metadata. The bundled avatar catalog resolves that identity to a preview
+image, updated immediately on selection. Empty selection clears the image;
+missing images show a text fallback. Labels and catalog order are not used to
+guess the selected avatar.
 The post-recording demo filename dialog uses page 21 with native filename and
 duplicate checks. General confirmation menus are routed through the same web
 confirmation dialog even when opened outside Config or an in-game menu.

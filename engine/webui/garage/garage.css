@@ -201,6 +201,9 @@ html { scrollbar-gutter: stable; }
 .registration-screen #config-description { max-width: 58rem; line-height: 1.7; }
 .registration-screen #config-settings { padding: 2rem; background: var(--panel, #171717); border: 1px solid var(--line); border-top: 2px solid var(--accent); }
 .registration-screen #config-actions { margin-top: 1.5rem; }
+.config-avatar-preview { display: flex; align-items: center; justify-content: center; min-height: 7.5rem; margin-top: .75rem; padding: .75rem; background: #111; border: 1px solid var(--line); }
+.config-avatar-preview img { width: 6rem; height: 6rem; object-fit: contain; }
+.config-avatar-preview span { color: #aaa; font-size: .9rem; }
 #config-screen pre { max-height: 26rem; overflow-y: auto; }
 #config-screen output { display: block; color: var(--accent); }
 #config-screen dialog { width: min(42rem,calc(100vw - 2rem)); max-height: calc(100vh - 3rem); overflow-y: auto; background: #171717; color: white; border: 1px solid var(--line); border-top: 3px solid var(--accent); padding: 2rem; }

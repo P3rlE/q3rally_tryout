@@ -1225,7 +1225,8 @@ static void Web_PublishConfig( void ) {
         swprintf( script, ARRAY_LEN( script ), L"window.q3rallyConfig?.item(%d,%d,decodeURIComponent('%ls'),decodeURIComponent('%ls'),%d,%d,%d,%d)", i, type, a, b,
                   (int)VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 3, i ), (int)VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 4, i ), (int)VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 5, i ), (int)VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 6, i ) ); Web_RunScript( frame, script );
         for ( j = 0; j < VM_Call( uivm, UI_WEB_CONFIG_NUMBER, 7, i ); j++ ) {
-            Web_ConfigText( 3, i, j, a, ARRAY_LEN( a ) ); swprintf( script, ARRAY_LEN( script ), L"window.q3rallyConfig?.choice(%d,%d,decodeURIComponent('%ls'))", i, j, a ); Web_RunScript( frame, script );
+            Web_ConfigText( 3, i, j, a, ARRAY_LEN( a ) ); Web_ConfigText( 5, i, j, b, ARRAY_LEN( b ) );
+            swprintf( script, ARRAY_LEN( script ), L"window.q3rallyConfig?.choice(%d,%d,decodeURIComponent('%ls'),decodeURIComponent('%ls'))", i, j, a, b ); Web_RunScript( frame, script );
         }
     }
     Web_RunScript( frame, L"window.q3rallyConfig?.end()" ); frame->base.release( &frame->base ); webConfigPublished = qtrue;

@@ -2,6 +2,9 @@
 (() => {
   const root=document.querySelector('#config-screen'),find=id=>document.querySelector('#config-'+id);
   let page=0,title='',description='',confirmation=false,items=[],capture,focusHint,previousPage='',searchTimer;
+  let avatars={},avatarsReady=false;
+  const avatarViews=new Set();
+  fetch('./catalog.json').then(response=>response.json()).then(catalog=>{avatars=catalog.avatars||{};avatarsReady=true;avatarViews.forEach(update=>update());}).catch(()=>{avatarsReady=true;avatarViews.forEach(update=>update());});
   const clean=text=>String(text||'').replace(/\^[0-9]/g,'');
   const node=(tag,text,className)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=clean(text);if(className)e.className=className;return e;};
   const send=(action,index=0,value=0)=>{location.href='q3rally-ui://config/'+action+'/'+index+'/'+value;};
@@ -45,7 +48,15 @@
     input.id='config-item-'+item.index;input.disabled=item.disabled;input.addEventListener('focus',()=>{focusHint=input.id;});
     function change(){if(item.type===4)location.href='q3rally-ui://config/text/'+item.index+'/'+encodeURIComponent(input.value);else send(item.type===3?2:1,item.index,Number(input.value));}
     if(item.type===4&&page===1)input.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(change,250);});else input.addEventListener('change',change);
-    wrapper.append(input);return wrapper;
+    wrapper.append(input);
+    if(item.images.some(Boolean)){
+      const preview=node('div',undefined,'config-avatar-preview'),image=node('img'),empty=node('span','No avatar selected');
+      image.width=image.height=96;preview.setAttribute('role','status');preview.setAttribute('aria-label','Avatar preview');preview.append(image,empty);wrapper.append(preview);
+      const update=()=>{const key=item.images[Number(input.value)],source=avatars[key];image.hidden=!source;empty.hidden=!!source;empty.textContent=key?(avatarsReady?'Preview unavailable':'Loading preview...'):'No avatar selected';image.alt=source?'Selected avatar: '+clean(item.choices[Number(input.value)]):'';if(source){if(image.getAttribute('src')!==source)image.src=source;}else image.removeAttribute('src');};
+      image.addEventListener('error',()=>{image.hidden=true;empty.hidden=false;empty.textContent='Preview unavailable';});
+      input.addEventListener('input',update);input.addEventListener('change',update);avatarViews.add(update);update();
+    }
+    return wrapper;
   }
   function render(){
     const pageKey=page+':'+title;if(pageKey!==previousPage){focusHint=undefined;window.scrollTo(0,0);}previousPage=pageKey;
@@ -55,7 +66,7 @@
     find('back').textContent=page===10?'Resume race':'Back';
     find('back').hidden=page===17||page===20;
     find('back').disabled=page>=17&&page<=20&&!!items.find(item=>/^back$/i.test(item.label))?.disabled;
-    const actions=find('actions'),fields=find('fields');actions.replaceChildren();fields.replaceChildren();
+    const actions=find('actions'),fields=find('fields');avatarViews.clear();actions.replaceChildren();fields.replaceChildren();
     if(page>=16)find('settings').after(actions);else find('settings').before(actions);
     const controls=items.filter(item=>item.type!==6),buttons=items.filter(item=>item.type===6 && (confirmation || item.label.trim().toLowerCase()!=='back' && !(page===10 && /^resume/i.test(item.label))));
     find('settings').hidden=!controls.length;
@@ -66,8 +77,8 @@
   find('back').addEventListener('click',()=>send(6));find('confirm').addEventListener('cancel',event=>{event.preventDefault();send(6);});
   window.q3rallyConfig={
     begin(nextPage,nextTitle,nextDescription,isConfirmation){page=nextPage;title=nextTitle;description=nextDescription;confirmation=!!isConfirmation;items=[];},
-    item(index,type,label,text,value,min,max,disabled){items.push({index,type,label,text,value,min,max,disabled:!!disabled,choices:[]});},
-    choice(index,choice,label){items.find(item=>item.index===index)?.choices.push(label);},
+    item(index,type,label,text,value,min,max,disabled){items.push({index,type,label,text,value,min,max,disabled:!!disabled,choices:[],images:[]});},
+    choice(index,choice,label,image=''){const item=items.find(item=>item.index===index);if(item){item.choices[choice]=label;item.images[choice]=image;}},
     end(){render();},
     show(screen){root.hidden=screen!==12;if(screen!==12){finishCapture();find('confirm').close();}}
   };
