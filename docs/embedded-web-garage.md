@@ -282,5 +282,7 @@ run and extract its inner ZIP completely. Run `Start-WebUI.cmd`; no Python,
 Node, Chrome or website checkout is needed. `Start-Native.cmd` selects native
 menus in the same test build. Both use an isolated LOCALAPPDATA/Q3Rally-WebUI
 home per source revision and disable server Ladder reporting by default.
+The default helpers start fullscreen at desktop resolution. Use
+`Start-Windowed.cmd` for a 1280x800 WebUI window when needed.
 CEF remains the existing sandbox-disabled Windows-only pilot; this workflow
 is an integration milestone, not production security or cross-platform signoff.
