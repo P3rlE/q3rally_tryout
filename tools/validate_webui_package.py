@@ -138,6 +138,11 @@ def run_native(root, output, first_run=False, menu_renderer=None):
     if re.search(r'(^|\n)(?:\^1)?(?:ERROR:|FATAL)',text): raise ValueError('Native startup reported an error')
 
 
+def legacy_gdi_only(text):
+    versions=re.findall(r'^GL_VERSION:\s*([^\r\n]+)',text,re.M)
+    return 'GL_RENDERER: GDI Generic' in text and bool(versions) and all(v.startswith('1.1.') or v=='1.1' for v in versions)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--archive',type=Path,required=True)
@@ -151,9 +156,18 @@ def main():
         run_native(root,output)
         first_run=output/'first-run';first_run.mkdir()
         run_native(root,first_run,first_run=True)
+        graphics={}
         for renderer in ('opengl2','opengl1'):
             menu_output=output/('graphics-'+renderer);menu_output.mkdir()
-            run_native(root,menu_output,menu_renderer=renderer)
+            if renderer=='opengl2' and legacy_gdi_only((output/'native.log').read_text(errors='replace')):
+                reason='Runner exposes only Windows GDI OpenGL 1.1; OpenGL 2 renderer is unavailable.'
+                graphics[renderer]={'status':'skipped','reason':reason}
+                (menu_output/'menu-result.json').write_text(json.dumps(graphics[renderer],indent=2)+'\n')
+                print(reason)
+            else:
+                run_native(root,menu_output,menu_renderer=renderer)
+                graphics[renderer]={'status':'passed'}
+        result['graphicsApply']=graphics
         result.update(success=True,revision=manifest['revision'],cef=manifest['cef']['version'])
     except Exception as error:
         result['error']=str(error)

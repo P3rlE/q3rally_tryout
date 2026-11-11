@@ -1,4 +1,13 @@
 from test_web_config import ROOT, extract, run_c
+from tools.validate_webui_package import legacy_gdi_only
+
+
+def test_only_known_gdi_11_limits_skip_the_gl2_menu_probe():
+    assert legacy_gdi_only('GL_RENDERER: GDI Generic\nGL_VERSION: 1.1.0\n')
+    assert not legacy_gdi_only('GL_RENDERER: Intel\nGL_VERSION: 3.2.0\n')
+    assert not legacy_gdi_only('GL_RENDERER: GDI Generic\nGL_VERSION: 3.2.0\n')
+    assert not legacy_gdi_only('GL_RENDERER: Intel\nGL_VERSION: 1.1.0\n')
+    assert not legacy_gdi_only('GL_RENDERER: GDI Generic\n')
 
 
 def test_video_restart_drains_browser_before_releasing_restart_guard():
