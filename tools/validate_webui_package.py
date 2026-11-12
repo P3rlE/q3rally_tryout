@@ -54,7 +54,7 @@ def validate(root):
     return manifest
 
 
-def run_native(root, output, first_run=False, menu_renderer=None):
+def run_native(root, output, first_run=False, menu_renderer=None, physical_pause=False):
     executable = root / 'q3rally.x86_64.exe'
     env = os.environ.copy()
     env.pop('Q3RALLY_WEBUI_TEST_CDP_PORT',None)
@@ -102,7 +102,8 @@ def run_native(root, output, first_run=False, menu_renderer=None):
         try:
             if menu_renderer:
                 with (output/'menu.log').open('wb') as menu_log:
-                    subprocess.run(['node',str(ROOT/'engine/webui/test_native_apply.cjs'),str(port),str(output)],
+                    subprocess.run(['node',str(ROOT/'engine/webui/test_native_apply.cjs'),str(port),str(output)] +
+                        (['--physical-pause',str(process.pid),str(ROOT/'tools/webui_test_escape.py'),sys.executable] if physical_pause else []),
                         stdout=menu_log,stderr=subprocess.STDOUT,check=True,timeout=180)
             process.wait(timeout=180 if not menu_renderer else 30)
         except (subprocess.TimeoutExpired,subprocess.CalledProcessError):

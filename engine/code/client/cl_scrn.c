@@ -480,12 +480,32 @@ SCR_DrawScreenField
 This will be called twice if rendering in stereo mode
 ==================
 */
+static void SCR_RefreshUI( void ) {
+#ifdef USE_CEF_GARAGE
+    if ( CL_WebGarageOwnsScreen() ) {
+        VM_Call( uivm, UI_WEB_TICK, cls.realtime );
+        return;
+    }
+#endif
+    VM_Call( uivm, UI_REFRESH, cls.realtime );
+}
+
 void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 	qboolean uiFullscreen;
 
 	re.BeginFrame( stereoFrame );
 
-	uiFullscreen = (uivm && VM_Call( uivm, UI_IS_FULLSCREEN ));
+    uiFullscreen = (uivm && VM_Call( uivm, UI_IS_FULLSCREEN ));
+#ifdef USE_CEF_GARAGE
+    if ( CL_WebGarageOwnsScreen() ) {
+        uiFullscreen = qfalse;
+        if ( clc.state < CA_LOADING && !clc.demoPlayer ) {
+            re.SetColor( g_color_table[0] );
+            re.DrawStretchPic( 0, 0, cls.glconfig.vidWidth, cls.glconfig.vidHeight, 0, 0, 0, 0, cls.whiteShader );
+            re.SetColor( NULL );
+        }
+    }
+#endif
 
 	// wide aspect ratio screens need to have the sides cleared
 	// unless they are displaying game renderings
@@ -500,13 +520,13 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
     // Draw the archive first; the cgame renders only into its preview rectangle.
     if ( clc.demoPlayer && uivm ) {
 #ifdef USE_CEF_GARAGE
-        if ( !CL_WebGarageDemoVisible() )
+        if ( !CL_WebGarageOwnsScreen() )
 #endif
-        VM_Call( uivm, UI_REFRESH, cls.realtime );
+        SCR_RefreshUI();
         if ( clc.state == CA_ACTIVE && !clc.demoSeeking ) CL_CGameRendering( stereoFrame );
         // The preview is rendered after the menu and would cover its cursor.
 #ifdef USE_CEF_GARAGE
-        if ( !CL_WebGarageDemoVisible() )
+        if ( !CL_WebGarageOwnsScreen() )
 #endif
         VM_Call( uivm, UI_DRAW_CURSOR );
         Con_DrawConsole();
@@ -526,16 +546,24 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 		case CA_DISCONNECTED:
 			// force menu up
 			S_StopAllSounds();
-			VM_Call( uivm, UI_SET_ACTIVE_MENU, UIMENU_MAIN );
-			IN_SyncMousePosition();
+#ifdef USE_CEF_GARAGE
+            if ( !CL_WebGarageOwnsScreen() )
+#endif
+            {
+                VM_Call( uivm, UI_SET_ACTIVE_MENU, UIMENU_MAIN );
+                IN_SyncMousePosition();
+            }
 			break;
 		case CA_CONNECTING:
 		case CA_CHALLENGING:
 		case CA_CONNECTED:
 			// connecting clients will only show the connection dialog
 			// refresh to update the time
-			VM_Call( uivm, UI_REFRESH, cls.realtime );
-			VM_Call( uivm, UI_DRAW_CONNECT_SCREEN, qfalse );
+			SCR_RefreshUI();
+			#ifdef USE_CEF_GARAGE
+            if ( !CL_WebGarageOwnsScreen() )
+#endif
+            VM_Call( uivm, UI_DRAW_CONNECT_SCREEN, qfalse );
 			break;
 		case CA_LOADING:
 		case CA_PRIMED:
@@ -545,8 +573,11 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 			// also draw the connection information, so it doesn't
 			// flash away too briefly on local or lan games
 			// refresh to update the time
-			VM_Call( uivm, UI_REFRESH, cls.realtime );
-			VM_Call( uivm, UI_DRAW_CONNECT_SCREEN, qtrue );
+			SCR_RefreshUI();
+			#ifdef USE_CEF_GARAGE
+            if ( !CL_WebGarageOwnsScreen() )
+#endif
+            VM_Call( uivm, UI_DRAW_CONNECT_SCREEN, qtrue );
 			break;
 		case CA_ACTIVE:
 			// always supply STEREO_CENTER as vieworg offset is now done by the engine.
@@ -561,7 +592,7 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 
 	// the menu draws next
 	if ( Key_GetCatcher( ) & KEYCATCH_UI && uivm ) {
-		VM_Call( uivm, UI_REFRESH, cls.realtime );
+		SCR_RefreshUI();
 	}
 
 	// console draws next

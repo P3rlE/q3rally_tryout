@@ -55,6 +55,28 @@ const button=name=>`[...document.querySelectorAll('#config-actions button')].fin
   checks++;
   console.log('Apply restart completed; fullscreen='+value);
  }
+ if(process.argv[4]==='--physical-pause'){
+ await click(client,"document.querySelector('#config-back')");
+ await click(client,"document.querySelector('#main-navigation [data-action=\"offline\"]')");
+ await click(client,"document.querySelector('#offline-next')");
+ await click(client,"document.querySelector('#offline-start')");
+ const oldPage=page.id;client.close();page=await target(oldPage);client=await connect(page);
+ await wait(client,"document.title==='Q3Rally screen 0'");
+ const nativeEscape=()=>require('node:child_process').execFileSync(process.argv[7],[process.argv[6],process.argv[5]],{windowsHide:true});
+ for(let i=0;i<3;i++){
+  nativeEscape();
+  await wait(client,"!document.querySelector('#config-screen').hidden && document.querySelector('#config-back').textContent==='Resume race'");
+  nativeEscape();
+  await wait(client,"document.title==='Q3Rally screen 0'");
+  console.log('Native pause/resume cycle '+(i+1)+' passed without page recreation.');
+ }
+ nativeEscape();await wait(client,"!document.querySelector('#config-screen').hidden");
+ await click(client,"[...document.querySelectorAll('#config-actions button')].find(b=>/exit game/i.test(b.textContent))");
+ await click(client,"[...document.querySelectorAll('#config-confirm-actions button')].find(b=>/yes/i.test(b.textContent))");
+ await click(client,"document.querySelector('#credits-exit')");
+  fs.writeFileSync(path.join(output,'menu-result.json'),JSON.stringify({success:true,checks,pauseCycles:3},null,2));
+  console.log('Physical ESC: three held-key pause/resume cycles passed.');process.exit(0);
+ }
  const shot=await client.call('Page.captureScreenshot');fs.writeFileSync(path.join(output,'graphics-apply.png'),Buffer.from(shot.data,'base64'));
  await click(client,"document.querySelector('#config-back')");
  await click(client,"document.querySelector('#main-navigation [data-action=\"quit\"]')");

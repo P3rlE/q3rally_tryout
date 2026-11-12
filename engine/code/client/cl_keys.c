@@ -1305,6 +1305,10 @@ void CL_KeyDownEvent( int key, unsigned time )
 		key = K_ESCAPE;
 	}
 
+#ifdef USE_CEF_GARAGE
+    if ( key == K_ESCAPE && Cvar_VariableIntegerValue( "cl_webGarageTiming" ) )
+        Com_Printf( "Web ESC: native down catcher=%d repeats=%d state=%d visible=%d\n", Key_GetCatcher(), keys[key].repeats, clc.state, CL_WebGarageInputVisible() );
+#endif
 	/* The trunk consumes only wheel steps and cancel while driving. */
 	if ( cgvm && clc.state == CA_ACTIVE && !clc.demoplaying && !Key_GetCatcher() &&
 	     ( key == K_MWHEELUP || key == K_MWHEELDOWN || key == K_ESCAPE ) &&
@@ -1314,6 +1318,10 @@ void CL_KeyDownEvent( int key, unsigned time )
 
 	// escape is always handled special
 	if ( key == K_ESCAPE ) {
+#ifdef USE_CEF_GARAGE
+        if ( CL_WebGarageEscapePending() ) return;
+#endif
+        if ( keys[key].repeats > 1 ) return;
 		if ( Key_GetCatcher( ) & KEYCATCH_MESSAGE ) {
 			// clear message mode
 			Message_Key( key );
@@ -1329,7 +1337,11 @@ void CL_KeyDownEvent( int key, unsigned time )
 
 		if ( !( Key_GetCatcher( ) & KEYCATCH_UI ) ) {
 			if ( clc.state == CA_ACTIVE && !clc.demoplaying ) {
-				VM_Call( uivm, UI_SET_ACTIVE_MENU, UIMENU_INGAME );
+				                VM_Call( uivm, UI_SET_ACTIVE_MENU, UIMENU_INGAME );
+#ifdef USE_CEF_GARAGE
+                /* UI_PushMenu clears key states. Arm only after that reset. */
+                CL_WebGarageEscape( qtrue );
+#endif
 			}
 			else if ( clc.state != CA_DISCONNECTED ) {
 				CL_Disconnect_f();
@@ -1393,6 +1405,9 @@ Called by CL_KeyEvent to handle a keyrelease
 */
 void CL_KeyUpEvent( int key, unsigned time )
 {
+#ifdef USE_CEF_GARAGE
+    if ( key == K_ESCAPE ) CL_WebGarageEscape( qfalse );
+#endif
 	keys[key].repeats = 0;
 	keys[key].down = qfalse;
 	anykeydown--;

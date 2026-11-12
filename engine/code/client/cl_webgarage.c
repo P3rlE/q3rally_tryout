@@ -22,6 +22,7 @@ static HWND webParent, webChild;
 static qboolean webInitialized, webContextReady, webOpenRequested, webCloseRequested;
 static qboolean webVideoRestart;
 static qboolean webSuspended;
+static qboolean webOpeningEscape;
 static int webPresentedScreen;
 #define WEB_ORIGIN L"https://q3rally.invalid/"
 static const wchar_t webPage[] = WEB_ORIGIN L"index.html";
@@ -421,6 +422,29 @@ static int Web_CurrentScreen( void ) {
     return (clc.state == CA_DISCONNECTED || clc.demoPlayer) && uivm ? (int)VM_Call( uivm, UI_WEB_SCREEN ) : 0;
 }
 
+qboolean CL_WebGarageOwnsScreen( void ) {
+    /* Ownership starts before CEF is visible, including the initial load and
+     * console transitions. A hidden browser is not permission to draw old UI. */
+    if ( !webFrontend || !webFrontend->integer || !uivm ) return qfalse;
+    return VM_Call( uivm, UI_WEB_SCREEN ) != 0 ||
+        (clc.state >= CA_CONNECTING && clc.state <= CA_PRIMED && !clc.demoPlayer);
+}
+
+void CL_WebGarageEscape( qboolean down ) {
+    webOpeningEscape = down && webFrontend && webFrontend->integer;
+}
+
+qboolean CL_WebGarageEscapePending( void ) { return webOpeningEscape; }
+
+static int CEF_CALLBACK Web_PreKey( cef_keyboard_handler_t *self, cef_browser_t *browser,
+    const cef_key_event_t *event, cef_event_handle_t osEvent, int *shortcut ) {
+    if ( event->windows_key_code == VK_ESCAPE && webTiming && webTiming->integer )
+        Com_Printf( "Web ESC: browser type=%d opening=%d screen=%d visible=%d\n", event->type, webOpeningEscape, Web_CurrentScreen(), Web_Visible() );
+    if ( event->windows_key_code != VK_ESCAPE || !webOpeningEscape ) return 0;
+    if ( event->type == KEYEVENT_KEYUP ) webOpeningEscape = qfalse;
+    return 1;
+}
+
 static int CEF_CALLBACK Web_BeforeBrowse( cef_request_handler_t *self,
 	cef_browser_t *browser, cef_frame_t *frame, cef_request_t *request,
 	int userGesture, int redirect ) {
@@ -656,6 +680,7 @@ static void CEF_CALLBACK Web_LoadEnd( cef_load_handler_t *self, cef_browser_t *b
 
 	if ( !frame->is_main( frame ) || !Web_IsLocalFrame( frame ) ) return;
 	Com_Printf( "Web UI: bundled frontend loaded (HTTP %d).\n", httpStatus );
+    webSuspended = qfalse;
 	webLastState = -1;
 	webItemsScreen = 0;
     webDriverPublished = qfalse;
@@ -741,6 +766,7 @@ static void CEF_CALLBACK Web_TitleChanged( cef_display_handler_t *self, cef_brow
          screen == Web_CurrentScreen() ) webPresentedScreen = screen;
     if ( frame ) frame->base.release( &frame->base );
 }
+static cef_keyboard_handler_t webKeyboard;
 static cef_display_handler_t webDisplay;
 static cef_request_handler_t webRequest;
 static cef_load_handler_t webLoad;
@@ -750,6 +776,7 @@ static cef_client_t webClient;
 static cef_app_t webApp;
 
 static cef_request_handler_t *CEF_CALLBACK Web_GetRequest( cef_client_t *self ) { return &webRequest; }
+static cef_keyboard_handler_t *CEF_CALLBACK Web_GetKeyboard( cef_client_t *self ) { return &webKeyboard; }
 static cef_display_handler_t *CEF_CALLBACK Web_GetDisplay( cef_client_t *self ) { return &webDisplay; }
 static cef_load_handler_t *CEF_CALLBACK Web_GetLoad( cef_client_t *self ) { return &webLoad; }
 static cef_life_span_handler_t *CEF_CALLBACK Web_GetLife( cef_client_t *self ) { return &webLife; }
@@ -806,6 +833,9 @@ static qboolean Web_Initialize( void ) {
     Web_StaticHandler( &webDisplay.base, sizeof( webDisplay ) );
     webClient.get_display_handler = Web_GetDisplay;
     webDisplay.on_title_change = Web_TitleChanged;
+    Web_StaticHandler( &webKeyboard.base, sizeof( webKeyboard ) );
+    webClient.get_keyboard_handler = Web_GetKeyboard;
+    webKeyboard.on_pre_key_event = Web_PreKey;
 	Web_StaticHandler( &webLife.base, sizeof( webLife ) );
 	webApp.get_browser_process_handler = Web_GetProcess;
     webApp.on_before_command_line_processing = Web_TestCommandLine;
@@ -1322,6 +1352,7 @@ void CL_WebGarageFrame( void ) {
         if ( screen >= 1 && screen <= 14 ) {
             if ( screen == 7 ) webGarageMode = qtrue;
             if ( Web_Initialize() ) webOpenRequested = qtrue;
+            else Cvar_Set( "cl_webUI", "0" );
         }
     }
     if ( !webInitialized ) return;
@@ -1373,6 +1404,8 @@ void CL_WebGarageFrame( void ) {
         return;
     }
     webSuspended = qfalse;
+    /* A release may arrive at SDL before the child takes keyboard focus. */
+    if ( webOpeningEscape && !(GetAsyncKeyState( VK_ESCAPE ) & 0x8000) ) webOpeningEscape = qfalse;
     /* Reveal only after the renderer has applied the requested screen. */
     if ( webPresentedScreen == Web_CurrentScreen() && !IsWindowVisible( webChild ) ) {
         cef_browser_host_t *host = webBrowser->get_host( webBrowser );
