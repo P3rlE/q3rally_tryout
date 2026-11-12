@@ -67,7 +67,7 @@
     "256": 2191,
     "512": 536
   },
-  "brushes": 34794,
+  "brushes": 34866,
   "checkpoints": [
     {
       "number": 1,
@@ -242,5 +242,20 @@
     0,
     0
   ],
-  "signs": 18
+  "signs": 18,
+  "forest": {
+    "models": 714,
+    "sprites": 3066,
+    "trunks": 72,
+    "inside": 72,
+    "kinds": {
+      "spruce": 1751,
+      "young": 37,
+      "beech_y": 855,
+      "snag": 7,
+      "beech_g": 389,
+      "beech_r": 430,
+      "oak": 311
+    }
+  }
 }

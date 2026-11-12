@@ -3,16 +3,16 @@
 
 textures/q3r_timberrun/sky
 {
-	qer_editorimage textures/q3r_skies/env/trainyard/trainyard_ft.tga
+	qer_editorimage env/q3r_timberrun/q3r_timberrun_ft.jpg
 	surfaceparm noimpact
 	surfaceparm nolightmap
 	surfaceparm sky
 	q3map_globaltexture
-	q3map_sun 1 0.86 0.68 210 115 22
-	q3map_skylight 150 4
-	q3gl2_sun 1 0.86 0.68 150 115 22 0.6
-	skyparms textures/q3r_skies/env/trainyard/trainyard - -
-	q3r_haze 0.74 0.76 0.78 5200 2600 681 260 0.7	// Q3Rally: morning mist, thick in the creek valley
+	q3map_sun 1 0.84 0.64 230 300 20
+	q3map_skylight 240 4
+	q3gl2_sun 1 0.84 0.64 150 300 20 0.6
+	skyparms env/q3r_timberrun/q3r_timberrun - -
+	q3r_haze 0.80 0.80 0.78 3000 1300 701 320 0.8	// Q3Rally: morning mist, thick in the creek valley
 }
 
 textures/q3r_timberrun/creek
@@ -36,6 +36,199 @@ textures/q3r_timberrun/creek
 		alphaGen const 0.62
 		tcMod scale 0.5 0.5
 		tcMod scroll 0.02 0.004
+	}
+}
+
+// trees: leaves alpha tested, cast alpha shadows; vertex lit by q3map2
+models/mapobjects/q3r_timberrun/spruce
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/spruce.tga
+	surfaceparm nonsolid
+	surfaceparm alphashadow
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm trans
+	cull disable
+	{
+		map models/mapobjects/q3r_timberrun/spruce.tga
+		alphaFunc GE128
+		depthWrite
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/beech_y
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/beech_y.tga
+	surfaceparm nonsolid
+	surfaceparm alphashadow
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm trans
+	cull disable
+	{
+		map models/mapobjects/q3r_timberrun/beech_y.tga
+		alphaFunc GE128
+		depthWrite
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/beech_r
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/beech_r.tga
+	surfaceparm nonsolid
+	surfaceparm alphashadow
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm trans
+	cull disable
+	{
+		map models/mapobjects/q3r_timberrun/beech_r.tga
+		alphaFunc GE128
+		depthWrite
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/beech_g
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/beech_g.tga
+	surfaceparm nonsolid
+	surfaceparm alphashadow
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm trans
+	cull disable
+	{
+		map models/mapobjects/q3r_timberrun/beech_g.tga
+		alphaFunc GE128
+		depthWrite
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/oak
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/oak.tga
+	surfaceparm nonsolid
+	surfaceparm alphashadow
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm trans
+	cull disable
+	{
+		map models/mapobjects/q3r_timberrun/oak.tga
+		alphaFunc GE128
+		depthWrite
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/sprite_spruce
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/sprite_spruce.tga
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm trans
+	surfaceparm noimpact
+	cull disable
+	{
+		map models/mapobjects/q3r_timberrun/sprite_spruce.tga
+		alphaFunc GE128
+		depthWrite
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/sprite_beech_y
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/sprite_beech_y.tga
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm trans
+	surfaceparm noimpact
+	cull disable
+	{
+		map models/mapobjects/q3r_timberrun/sprite_beech_y.tga
+		alphaFunc GE128
+		depthWrite
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/sprite_beech_r
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/sprite_beech_r.tga
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm trans
+	surfaceparm noimpact
+	cull disable
+	{
+		map models/mapobjects/q3r_timberrun/sprite_beech_r.tga
+		alphaFunc GE128
+		depthWrite
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/sprite_beech_g
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/sprite_beech_g.tga
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm trans
+	surfaceparm noimpact
+	cull disable
+	{
+		map models/mapobjects/q3r_timberrun/sprite_beech_g.tga
+		alphaFunc GE128
+		depthWrite
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/sprite_oak
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/sprite_oak.tga
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	surfaceparm nolightmap
+	surfaceparm trans
+	surfaceparm noimpact
+	cull disable
+	{
+		map models/mapobjects/q3r_timberrun/sprite_oak.tga
+		alphaFunc GE128
+		depthWrite
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/bark
+{
+	qer_editorimage models/mapobjects/GR_trees/stamm.jpg
+	surfaceparm nonsolid
+	surfaceparm nolightmap
+	{
+		map models/mapobjects/GR_trees/stamm.jpg
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/oakbark
+{
+	qer_editorimage models/mapobjects/oak/oakstamm.jpg
+	surfaceparm nonsolid
+	surfaceparm nolightmap
+	{
+		map models/mapobjects/oak/oakstamm.jpg
+		rgbGen vertex
 	}
 }
 
@@ -110,6 +303,18 @@ textures/q3r_timberrun/banner_finish
 	}
 }
 
+textures/q3r_timberrun/trunk
+{
+	qer_editorimage textures/base_floor/concrete.jpg
+	qer_trans 0.15
+	// solid core of a tree trunk, invisible
+	surfaceparm nodraw
+	surfaceparm nolightmap
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm detail
+}
+
 textures/q3r_timberrun/boundary
 {
 	qer_editorimage textures/base_floor/concrete.jpg
@@ -128,7 +333,7 @@ textures/q3r_timberrun/boundary
 
 textures/q3r_timberrun/t_dirt
 {
-	qer_editorimage textures/q3r_dirt_grass/darkdirt01.tga
+	qer_editorimage textures/q3r_timberrun/forestfloor.jpg
 	q3map_indexed
 	q3map_shadeAngle 120
 	q3map_nonplanar
@@ -173,14 +378,14 @@ textures/q3r_timberrun/t_wet
 
 textures/q3r_timberrun/ter_0
 {
-	qer_editorimage textures/q3r_dirt_grass/darkdirt01.tga
+	qer_editorimage textures/q3r_timberrun/forestfloor.jpg
 	q3map_shadeAngle 120
 	q3map_lightmapSampleSize 24
 	q3map_nonplanar
 	{
-		map textures/q3r_dirt_grass/darkdirt01.tga
-		tcGen vector ( 0.0034722 0 0 ) ( 0 0.0034722 0 )
-		rgbGen const ( 0.86 0.72 0.56 )
+		map textures/q3r_timberrun/forestfloor.jpg
+		tcGen vector ( 0.0039062 0 0 ) ( 0 0.0039062 0 )
+		rgbGen const ( 0.95 0.90 0.84 )
 	}
 	{
 		map textures/q3r_timberrun/macro.jpg
@@ -317,14 +522,14 @@ textures/q3r_timberrun/ter_5
 
 textures/q3r_timberrun/ter_0to1
 {
-	qer_editorimage textures/q3r_dirt_grass/darkdirt01.tga
+	qer_editorimage textures/q3r_timberrun/forestfloor.jpg
 	q3map_shadeAngle 120
 	q3map_lightmapSampleSize 24
 	q3map_nonplanar
 	{
-		map textures/q3r_dirt_grass/darkdirt01.tga
-		tcGen vector ( 0.0034722 0 0 ) ( 0 0.0034722 0 )
-		rgbGen const ( 0.86 0.72 0.56 )
+		map textures/q3r_timberrun/forestfloor.jpg
+		tcGen vector ( 0.0039062 0 0 ) ( 0 0.0039062 0 )
+		rgbGen const ( 0.95 0.90 0.84 )
 	}
 	{
 		map textures/q3r_dirt_grass/stones01.tga
@@ -348,14 +553,14 @@ textures/q3r_timberrun/ter_0to1
 
 textures/q3r_timberrun/ter_0to2
 {
-	qer_editorimage textures/q3r_dirt_grass/darkdirt01.tga
+	qer_editorimage textures/q3r_timberrun/forestfloor.jpg
 	q3map_shadeAngle 120
 	q3map_lightmapSampleSize 24
 	q3map_nonplanar
 	{
-		map textures/q3r_dirt_grass/darkdirt01.tga
-		tcGen vector ( 0.0034722 0 0 ) ( 0 0.0034722 0 )
-		rgbGen const ( 0.86 0.72 0.56 )
+		map textures/q3r_timberrun/forestfloor.jpg
+		tcGen vector ( 0.0039062 0 0 ) ( 0 0.0039062 0 )
+		rgbGen const ( 0.95 0.90 0.84 )
 	}
 	{
 		map textures/q3r_dirt_grass/grass07.tga
@@ -379,14 +584,14 @@ textures/q3r_timberrun/ter_0to2
 
 textures/q3r_timberrun/ter_0to3
 {
-	qer_editorimage textures/q3r_dirt_grass/darkdirt01.tga
+	qer_editorimage textures/q3r_timberrun/forestfloor.jpg
 	q3map_shadeAngle 120
 	q3map_lightmapSampleSize 24
 	q3map_nonplanar
 	{
-		map textures/q3r_dirt_grass/darkdirt01.tga
-		tcGen vector ( 0.0034722 0 0 ) ( 0 0.0034722 0 )
-		rgbGen const ( 0.86 0.72 0.56 )
+		map textures/q3r_timberrun/forestfloor.jpg
+		tcGen vector ( 0.0039062 0 0 ) ( 0 0.0039062 0 )
+		rgbGen const ( 0.95 0.90 0.84 )
 	}
 	{
 		map textures/q3r_dirt_grass/rock03.tga
@@ -410,14 +615,14 @@ textures/q3r_timberrun/ter_0to3
 
 textures/q3r_timberrun/ter_0to4
 {
-	qer_editorimage textures/q3r_dirt_grass/darkdirt01.tga
+	qer_editorimage textures/q3r_timberrun/forestfloor.jpg
 	q3map_shadeAngle 120
 	q3map_lightmapSampleSize 24
 	q3map_nonplanar
 	{
-		map textures/q3r_dirt_grass/darkdirt01.tga
-		tcGen vector ( 0.0034722 0 0 ) ( 0 0.0034722 0 )
-		rgbGen const ( 0.86 0.72 0.56 )
+		map textures/q3r_timberrun/forestfloor.jpg
+		tcGen vector ( 0.0039062 0 0 ) ( 0 0.0039062 0 )
+		rgbGen const ( 0.95 0.90 0.84 )
 	}
 	{
 		map textures/q3r_dirt_grass/rock03.tga
@@ -441,14 +646,14 @@ textures/q3r_timberrun/ter_0to4
 
 textures/q3r_timberrun/ter_0to5
 {
-	qer_editorimage textures/q3r_dirt_grass/darkdirt01.tga
+	qer_editorimage textures/q3r_timberrun/forestfloor.jpg
 	q3map_shadeAngle 120
 	q3map_lightmapSampleSize 24
 	q3map_nonplanar
 	{
-		map textures/q3r_dirt_grass/darkdirt01.tga
-		tcGen vector ( 0.0034722 0 0 ) ( 0 0.0034722 0 )
-		rgbGen const ( 0.86 0.72 0.56 )
+		map textures/q3r_timberrun/forestfloor.jpg
+		tcGen vector ( 0.0039062 0 0 ) ( 0 0.0039062 0 )
+		rgbGen const ( 0.95 0.90 0.84 )
 	}
 	{
 		map textures/q3r_dirt_grass/darkdirt02.tga
