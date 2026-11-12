@@ -122,6 +122,9 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
         if ( UI_WebVehicleSettingsScreen() || UI_WebPlayerModelScreen() ) return 7;
         return UI_WebDriverScreen() ? 8 : 0;
     case UI_WEB_TICK:
+        uis.frametime = arg0 - uis.realtime; uis.realtime = arg0;
+        uis.transitionIn = uis.transitionOut = 0; uis.tFrac = 1.0f;
+        UI_UpdateCvars();
         UI_WebLoadingTick( arg0 );
         return 0;
     case UI_WEB_ACTION:

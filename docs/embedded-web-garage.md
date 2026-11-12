@@ -326,3 +326,20 @@ initial document contains no visible screen; menu changes are published without
 the former 50 ms delay. Graphics restarts still drain CEF before SDL teardown.
 ESC in configuration/pause is handled at document scope, including after a form
 rebuild leaves focus on BODY; repeats and dialog-owned key events are ignored.
+
+Native UI drawing is now excluded from WebUI-owned screens even while CEF is
+hidden or not yet ready. The engine uses UI_WEB_TICK for native menu state and
+loading progress without invoking the old menu drawing callbacks. Connection
+overlays and the native demo cursor follow the same ownership rule.
+An ESC that opens pause is consumed through its release when keyboard focus
+moves to CEF. This guard is armed after UI_PushMenu clears native key states;
+held-key repeats must not immediately close the newly opened menu.
+`cl_webGarageTiming 1` also logs ESC ownership for further input diagnosis.
+
+For an opt-in Windows developer regression with real held keys, call
+`run_native(root, output, menu_renderer='opengl2', physical_pause=True)` from
+`tools.validate_webui_package`. It starts an isolated offline race, sends ESC
+with its Windows scancode and repeated keydown events, and checks three
+pause/resume cycles. The helper sends input only after verifying that the
+foreground window belongs to the test PID. This interactive probe is separate
+from the CI/CDP probe because hosted runners do not guarantee foreground access.
