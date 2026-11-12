@@ -168,6 +168,22 @@ html { scrollbar-gutter: stable; }
 .offline-player img { width: 4rem; height: 3rem; object-fit: contain; }
 @media(max-width: 48rem) { .offline-track-layout, .offline-rules-layout { grid-template-columns: 1fr; } #offline-map-list { max-height: 18rem; } }
 
+/* Keep desktop track selection inside the viewport; only its list scrolls. */
+@media (min-width: 64rem) and (min-height: 44rem) {
+  #offline-screen.track-selection { height: 100dvh; display: flex; flex-direction: column; padding-block: clamp(1rem, 3vh, 2rem); }
+  #offline-screen.track-selection header { flex-shrink: 0; margin-bottom: 1rem; }
+  #offline-screen.track-selection h1 { font-size: clamp(3rem, 6vw, 5.5rem); }
+  .track-selection .offline-steps { flex-shrink: 0; margin-bottom: 1rem; }
+  .track-selection .offline-track-layout { flex: 1; min-height: 0; }
+  .track-selection .offline-track-layout > section { min-height: 0; min-width: 0; display: flex; flex-direction: column; padding: 1.25rem; }
+  .track-selection #offline-map-list { flex: 1; min-height: 0; max-height: none; align-content: start; grid-auto-rows: max-content; overscroll-behavior: contain; }
+  .track-selection #offline-map-name { flex-shrink: 0; font-size: 2rem; overflow-wrap: anywhere; }
+  .track-selection #offline-map-image { flex: 1 1 0; height: 0; min-height: 6rem; max-height: none; margin-block: .5rem; }
+  .track-selection #offline-map-details { flex-shrink: 0; font-size: .9rem; gap: .3rem 1rem; margin-block: .5rem .75rem; }
+  .track-selection #offline-next { flex-shrink: 0; align-self: start; }
+  .track-selection #offline-status:empty { display: none; }
+}
+
 .online-toolbar { margin-bottom: 1rem; }
 .online-filters { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,12rem),1fr)); gap: 1rem; }
 #online-screen label { display: grid; gap: .5rem; }
