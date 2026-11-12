@@ -45,7 +45,7 @@ FLOOR = 384
 SAMPLE = 32
 SHOULDER = 30           # soft verge beside the gravel
 CUT, FILL = 0.6, 0.6     # side slopes of the cuttings and embankments
-START_AT, FINISH_AT = 900, 520      # units from either end of the centre line
+START_AT, FINISH_AT = 900, 2300     # units from either end of the centre line (a long run-out after the finish)
 SCALE = 0.74            # the sketch below was drawn larger
 
 # centre line control points with the road height there: (x, y, z), start (A) to finish (B),
@@ -65,7 +65,8 @@ SKETCH = [
     (6300, -1000, 930),
     (6200, 600, 965), (6900, 2000, 1010), (8100, 3000, 1050), (9300, 4000, 1085),            # sunken lane
     (10800, 4700, 1110), (12400, 4500, 1120), (13600, 3600, 1085), (14300, 2300, 1050),      # crest, meadow
-    (14600, 900, 1035), (14700, -300, 1030)]                                                 # finish
+    (14600, 900, 1035), (14700, -300, 1030),                                                 # finish
+    (14650, -1500, 1026), (14450, -2700, 1024)]                                              # run-out
 CTRL = [(x * SCALE, y * SCALE, z) for x, y, z in SKETCH]
 C_YARD, C_ROAD, C_HAIRPINS, C_CREEK, C_FORD, C_THICKET, C_CLEAR, C_HOLLOW, C_CREST, C_FINISH = \
     0, 2, 7, 18, 22, 24, 31, 36, 40, 44
@@ -73,7 +74,7 @@ C_YARD, C_ROAD, C_HAIRPINS, C_CREEK, C_FORD, C_THICKET, C_CLEAR, C_HOLLOW, C_CRE
 # keyframes along the course by position (fraction of its length)
 HALF_WIDTH = [(0.00, 260), (0.03, 240), (0.06, 180), (0.16, 175), (0.20, 170), (0.36, 170), (0.41, 185),
               (0.47, 160), (0.50, 152), (0.62, 152), (0.66, 190), (0.79, 188), (0.82, 152), (0.90, 152),
-              (0.93, 185), (0.98, 200), (1.00, 220)]
+              (0.93, 185), (0.955, 200), (0.975, 220), (1.00, 300)]
 
 # jump crests: (section, position in it, grade up, grade down, height)
 CRESTS = (("road", 0.34, 0.07, 0.11, 28), ("road", 0.78, 0.07, 0.11, 28), ("crest", 0.30, 0.10, 0.16, 60))
@@ -976,25 +977,224 @@ def gantry(i, banner):
     brush(faces)
 
 
-def sign_panel(x, y, t, z0, z1, image):
-    """Curve sign board: the chevrons fitted once, unmirrored, on the face the
-    drivers see (it looks back along the road); metal elsewhere."""
-    half, thick = 56, 6
-    f = (-t[0], -t[1])                       # towards the oncoming cars
-    right = (-f[1], f[0])
-    c = (x + f[0] * thick, y + f[1] * thick)
-    left = (c[0] - right[0] * half, c[1] - right[1] * half, 0.0)
-    fit = fitted((f[0], f[1], 0.0), left, z1, 2 * half, z1 - z0, 256, 128)
-    n = (-t[1], t[0])
-    convex([((f[0], f[1], 0), (c[0], c[1], z0), TEX + image, fit),
-            ((t[0], t[1], 0), (x + t[0] * thick, y + t[1] * thick, z0), TEX + "metal"),
-            ((n[0], n[1], 0), (x + n[0] * half, y + n[1] * half, z0), TEX + "metal"),
-            ((-n[0], -n[1], 0), (x - n[0] * half, y - n[1] * half, z0), TEX + "metal"),
-            ((0, 0, 1), (x, y, z1), TEX + "metal"), ((0, 0, -1), (x, y, z0), TEX + "metal")])
+SIGN_W, SIGN_H, SIGN_Z0 = 120, 60, 52     # board size and height of its lower edge above the road
+SIGN_POST_Y, SIGN_POST_X = 38, -3.9        # posts behind the board
+
+
+def sign_model(arrow):
+    """Curve sign as a model: an aluminium board with rounded corners, a
+    folded edge, two round posts with clamps behind it. Faces +x (the board
+    front), y is across, z up; the origin is on the road surface."""
+    md3 = load_md3()
+    half, top, thick, rad = SIGN_W / 2, SIGN_Z0 + SIGN_H, 1.2, 6.0
+    zc = SIGN_Z0 + SIGN_H / 2
+    outline = []                                     # rounded rectangle, ccw seen from the front
+    for cy, cz, a0 in ((half - rad, SIGN_Z0 + rad, -90), (half - rad, top - rad, 0),
+                       (-half + rad, top - rad, 90), (-half + rad, SIGN_Z0 + rad, 180)):
+        for k in range(6):
+            a = math.radians(a0 + 90 * k / 5)
+            outline.append((cy + rad * math.cos(a), cz + rad * math.sin(a)))
+
+    surfs = []
+
+    def surf(name, shader):
+        s = md3.Surf()
+        s.name, s.flags, s.shaders = name, 0, [(shader, 0)]
+        s.tris, s.st, s.frames = [], [], [[]]
+        surfs.append(s)
+        return s
+
+    def vert(s, p, nrm, uv):
+        s.frames[0].append([round(p[0] * 64), round(p[1] * 64), round(p[2] * 64), md3.enc_normal(*nrm)])
+        s.st.append([uv[0], uv[1]])
+        return len(s.st) - 1
+
+    def tri(s, a, b, c):
+        s.tris.append([a, c, b])                  # Q3 draws clockwise triangles as front faces
+
+    # the front and the back: a fan over two rings (enough vertices for the light)
+    for s, x, nx in ((surf("front", OWN_MODELS + f"sign_{arrow}"), thick, 1), (surf("back", OWN_MODELS + "sign_metal"), -thick, -1)):
+        front = s.name == "front"
+        ctr = vert(s, (x, 0, zc), (nx, 0, 0), (0.5, (top - zc) / SIGN_H) if front else (0, zc / 64))
+        rings = []
+        for f in (0.5, 1.0):
+            ring = []
+            for y, z in outline:
+                py, pz = y * f, zc + (z - zc) * f
+                uvp = ((py + half) / SIGN_W, (top - pz) / SIGN_H) if front else (py / 64, pz / 64)
+                ring.append(vert(s, (x, py, pz), (nx, 0, 0), uvp))
+            rings.append(ring)
+        m = len(outline)
+        for k in range(m):
+            a, b = k, (k + 1) % m
+            if nx > 0:
+                tri(s, ctr, rings[0][a], rings[0][b])
+                tri(s, rings[0][a], rings[1][a], rings[1][b])
+                tri(s, rings[0][a], rings[1][b], rings[0][b])
+            else:
+                tri(s, ctr, rings[0][b], rings[0][a])
+                tri(s, rings[0][a], rings[1][b], rings[1][a])
+                tri(s, rings[0][a], rings[0][b], rings[1][b])
+    # the folded edge
+    s = surf("edge", OWN_MODELS + "sign_metal")
+    m = len(outline)
+    for k in range(m):
+        (y0, z0), (y1, z1) = outline[k], outline[(k + 1) % m]
+        ny, nz = z1 - z0, -(y1 - y0)
+        ln = math.hypot(ny, nz) or 1
+        nrm = (0, ny / ln, nz / ln)
+        q = [vert(s, (xx, yy, zz), nrm, (uu, vv)) for xx, yy, zz, uu, vv in
+             ((thick, y0, z0, 0, 0), (thick, y1, z1, 0.25, 0), (-thick, y1, z1, 0.25, 0.04), (-thick, y0, z0, 0, 0.04))]
+        tri(s, q[0], q[1], q[2])
+        tri(s, q[0], q[2], q[3])
+    # posts (round tubes into the ground) with caps, and clamps to the board
+    s = surf("posts", OWN_MODELS + "sign_metal")
+    pr, segs = 2.3, 10
+    for py in (-SIGN_POST_Y, SIGN_POST_Y):
+        ring0, ring1 = [], []
+        for k in range(segs + 1):
+            a = 2 * math.pi * k / segs
+            c, sn = math.cos(a), math.sin(a)
+            ring0.append(vert(s, (SIGN_POST_X + pr * c, py + pr * sn, -110), (c, sn, 0), (k / segs, 3.5)))
+            ring1.append(vert(s, (SIGN_POST_X + pr * c, py + pr * sn, top - 3), (c, sn, 0), (k / segs, 0)))
+        for k in range(segs):
+            tri(s, ring0[k], ring0[k + 1], ring1[k + 1])
+            tri(s, ring0[k], ring1[k + 1], ring1[k])
+        cap = vert(s, (SIGN_POST_X, py, top - 1.5), (0, 0, 1), (0.5, 0.5))
+        for k in range(segs):
+            tri(s, ring1[k], ring1[k + 1], cap)
+        for zz in (SIGN_Z0 + 9, top - 9):        # clamp: a small box around the post
+            box = [(x, y, z) for x in (-thick - 0.2, SIGN_POST_X - pr - 0.8) for y in (py - 4, py + 4)
+                   for z in (zz - 2.5, zz + 2.5)]
+            for quad, nrm in (((0, 1, 3, 2), (1, 0, 0)), ((4, 6, 7, 5), (-1, 0, 0)), ((0, 4, 5, 1), (0, -1, 0)),
+                              ((2, 3, 7, 6), (0, 1, 0)), ((0, 2, 6, 4), (0, 0, -1)), ((1, 5, 7, 3), (0, 0, 1))):
+                idx4 = [vert(s, box[q], nrm, (box[q][1] / 16, box[q][2] / 16)) for q in quad]
+                tri(s, idx4[0], idx4[2], idx4[1])
+                tri(s, idx4[0], idx4[3], idx4[2])
+    m_ = md3.Model()
+    m_.name, m_.flags = f"sign_{arrow}", 0
+    r = math.hypot(half, top)
+    m_.frames = [[SIGN_POST_X - pr, -half, -110, thick, half, top, 0, 0, 0, r, b"sign"]]
+    m_.tags = []
+    m_.surfs = surfs
+    out = ROOT / "baseq3r" / OWN_MODELS
+    out.mkdir(parents=True, exist_ok=True)
+    md3.save(m_, str(out / f"sign_{arrow}.md3"))
+
+
+def write_sign_textures():
+    """Chevron board (red on white reflective sheeting, a little road dirt at
+    the bottom) and the folded aluminium."""
+    from PIL import Image, ImageDraw, ImageFilter
+    import numpy as np
+    out = ROOT / "baseq3r" / OWN_MODELS
+    out.mkdir(parents=True, exist_ok=True)
+    w, h = 512, 256
+    rng = np.random.default_rng(9)
+    im = Image.new("RGB", (w, h), (236, 236, 230))
+    d = ImageDraw.Draw(im)
+    for k in range(3):
+        x = 58 + k * 150
+        d.polygon([(x, 20), (x + 82, h / 2), (x, h - 20), (x + 60, h - 20), (x + 142, h / 2), (x + 60, 20)],
+                  fill=(196, 24, 22))
+    a = np.asarray(im).astype(np.float32)
+    # the micro-prism pattern of reflective sheeting, faint
+    yy, xx = np.mgrid[0:h, 0:w]
+    hexes = 0.5 + 0.5 * np.cos(xx * 0.9) * np.cos((yy + 0.5 * xx) * 0.9)
+    a *= (0.97 + 0.03 * hexes)[..., None]
+    # dirt sprayed up from the road: darker and browner towards the bottom
+    dirt = np.clip((yy / h - 0.55) / 0.45, 0, 1) ** 1.6 * (0.6 + 0.4 * rng.random((h, w)))
+    a = a * (1 - 0.35 * dirt[..., None]) + np.array([96, 80, 60]) * 0.35 * dirt[..., None]
+    a *= (0.96 + 0.04 * rng.random((h, w)))[..., None]
+    im = Image.fromarray(a.clip(0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.5))
+    im.save(out / "sign_r.jpg", quality=93)                        # arrows to the right
+    im.transpose(Image.FLIP_LEFT_RIGHT).save(out / "sign_l.jpg", quality=93)
+
+
+def sign_shaders():
+    M = OWN_MODELS
+    out = ["// curve signs (models, vertex lit by q3map2)"]
+    for arrow in ("l", "r"):
+        out += [f"{M}sign_{arrow}", "{", f"\tqer_editorimage {M}sign_{arrow}.jpg", "\tsurfaceparm nolightmap",
+                "\tsurfaceparm SURF_METAL", "\tcull disable", "\t{", f"\t\tmap {M}sign_{arrow}.jpg", "\t\trgbGen vertex", "\t}", "}", ""]
+    out += [f"{M}sign_metal", "{", "\tqer_editorimage textures/base_trim/tin.jpg", "\tsurfaceparm nolightmap",
+            "\tsurfaceparm SURF_METAL", "\tcull disable", "\t{", "\t\tmap textures/base_trim/tin.jpg", "\t\trgbGen vertex", "\t}", "}", ""]
+    return out
+
+
+def log(c, axis, r, length, ends=TEX + "logend"):
+    """A lying log: an octagonal prism along axis (horizontal unit vector)."""
+    ax, ay = axis
+    t = (ay, -ax)                                    # across the log, horizontal
+    planes = []
+    for k in range(8):
+        a = 2 * math.pi * (k + 0.5) / 8
+        d = (t[0] * math.cos(a), t[1] * math.cos(a), math.sin(a))
+        planes.append((d, (c[0] + d[0] * r, c[1] + d[1] * r, c[2] + d[2] * r), TEX + "logbark"))
+    for sgn in (1, -1):
+        nrm = (ax * sgn, ay * sgn, 0.0)
+        p = (c[0] + ax * sgn * length / 2, c[1] + ay * sgn * length / 2, c[2])
+        right = (-nrm[1], nrm[0])
+        left = (p[0] - right[0] * r, p[1] - right[1] * r, 0.0)
+        fit = fitted(nrm, left, c[2] + r, 2 * r, 2 * r, 128, 128)
+        planes.append((nrm, p, ends, fit))
+    convex(planes)
+
+
+def log_pile():
+    """A pile of logs across the end of the run-out: what you hit when the
+    brakes are late (the invisible wall stays behind it)."""
+    i = len(PATH) - 1
+    rng = random.Random(4)
+    (px, py), t, n = PATH[i], TAN[i], NOR[i]
+    hw = half_width(S[i])
+    z = road_z(S[i])
+    r = 24
+    for row, count in enumerate((4, 3, 2)):
+        for k in range(count):
+            back = -60 - (k - (count - 1) / 2) * 2 * r * 1.02
+            cx, cy = px + t[0] * back, py + t[1] * back
+            cz = z + r + row * r * 1.72 - 4
+            length = 2 * hw + 260 + rng.uniform(-40, 40)
+            off = rng.uniform(-20, 20)
+            log((cx + n[0] * off, cy + n[1] * off, cz), n, r + rng.uniform(-2, 2), length)
+    BOUNDS["log_pile"] = round(S[i] - 60)
+
+
+def write_wood_textures():
+    """End grain of the logs (rings, bark rim, cracks)."""
+    from PIL import Image, ImageDraw, ImageFilter
+    import numpy as np
+    out = ROOT / "baseq3r" / "textures" / "q3r_timberrun"
+    n = 128
+    yy, xx = np.mgrid[0:n, 0:n] - (n - 1) / 2
+    rr = np.hypot(xx, yy) / (n / 2)
+    rng = np.random.default_rng(12)
+    wob = 1 + 0.03 * np.sin(np.arctan2(yy, xx) * 5)
+    rings = 0.5 + 0.5 * np.sin(rr * wob * 46)
+    col = np.array([196, 160, 112]) * (0.86 + 0.14 * rings[..., None]) * (0.95 + 0.05 * rng.random((n, n)))[..., None]
+    col = np.where((rr > 0.88)[..., None], np.array([70, 52, 38]), col)
+    im = Image.fromarray(col.clip(0, 255).astype(np.uint8))
+    d = ImageDraw.Draw(im)
+    for _ in range(3):
+        a = rng.uniform(0, 2 * math.pi)
+        d.line((n / 2, n / 2, n / 2 + math.cos(a) * n * 0.42, n / 2 + math.sin(a) * n * 0.42), fill=(110, 84, 58), width=2)
+    im.filter(ImageFilter.GaussianBlur(0.6)).save(out / "logend.jpg", quality=92)
+    # spruce bark, the furrows along the log (along s)
+    w, h = 256, 128
+    small = rng.random((h // 2, 8))
+    fur = np.asarray(Image.fromarray((small * 255).astype(np.uint8)).resize((w, h), Image.BICUBIC)).astype(np.float32) / 255
+    fine = np.asarray(Image.fromarray((rng.random((h, w // 4)) * 255).astype(np.uint8)).resize((w, h), Image.BILINEAR)).astype(np.float32) / 255
+    v = 0.55 * fur + 0.45 * fine
+    col = np.array([92, 74, 60]) * (0.62 + 0.55 * v[..., None])
+    col = np.where((v < 0.33)[..., None], col * 0.6, col)
+    Image.fromarray(col.clip(0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.5)).save(
+        out / "logbark.jpg", quality=92)
 
 
 def signs():
-    """Curve signs before the tight bends (red/white chevrons)."""
+    """Curve signs before the tight bends (red/white chevrons): three models
+    on the outside of the bend, each with two thin solid posts."""
     n = len(PATH)
     count = 0
     for i in range(20, n - 20):
@@ -1006,9 +1206,14 @@ def signs():
             j = idx(i + d)
             hw = half_width(S[j])
             x, y, z = road_point(j, -side * (hw + SHOULDER + 30))
-            obox(x, y, TAN[j], 4, 46, ground(x, y) - 20, z + 50, TEX + "metal", top=TEX + "metal",
-                 side=TEX + "metal")
-            sign_panel(x, y, TAN[j], z + 50, z + 110, "chevron_l" if KAPPA[i] > 0 else "chevron_r")
+            f = (-TAN[j][0], -TAN[j][1])           # the board looks back at the oncoming cars
+            yaw = math.degrees(math.atan2(f[1], f[0]))
+            entity("misc_model", x, y, z, model=OWN_MODELS + ("sign_l.md3" if KAPPA[i] > 0 else "sign_r.md3"),
+                   angle=f"{yaw:.1f}", _cs="1")
+            for py in (-SIGN_POST_Y, SIGN_POST_Y):
+                cx = x + f[0] * SIGN_POST_X - f[1] * py
+                cy = y + f[1] * SIGN_POST_X + f[0] * py
+                obox(cx, cy, f, 3, 3, ground(cx, cy) - 20, z + SIGN_Z0 + SIGN_H, TEX + "trunk", solid=False)
             count += 1
     BOUNDS["signs"] = count
 
@@ -1559,9 +1764,10 @@ def write_shader():
             "\t\trgbGen const ( 0.22 0.27 0.22 )", "\t\talphaGen const 0.62", "\t\ttcMod scale 0.5 0.5",
             "\t\ttcMod scroll 0.02 0.004", "\t}", "}", ""]
     out += tree_shaders()
+    out += sign_shaders()
+    out += lit("logbark", f"{T}logbark.jpg", ("\tsurfaceparm SURF_DIRT",))
+    out += lit("logend", f"{T}logend.jpg", ("\tsurfaceparm SURF_DIRT",))
     out += lit("metal", "textures/base_trim/tin.jpg", ("\tsurfaceparm SURF_METAL",))
-    out += lit("chevron_r", f"{T}chevron_r.jpg")
-    out += lit("chevron_l", f"{T}chevron_l.jpg")
     out += lit("banner_start", f"{T}banner_start.jpg")
     out += lit("banner_finish", f"{T}banner_finish.jpg")
     out += [f"{T}trunk", "{", "\tqer_editorimage textures/base_floor/concrete.jpg", "\tqer_trans 0.15",
@@ -1608,14 +1814,6 @@ def write_textures():
     m = Image.new("L", (size, size))
     m.putdata([int(128 + ((v - lo) / (hi - lo) - 0.5) * 84) for v in acc])
     m.filter(ImageFilter.GaussianBlur(1.2)).convert("RGB").save(out / "macro.jpg", quality=92)
-    # curve sign: red/white chevrons
-    im = Image.new("RGB", (256, 128), (235, 235, 230))
-    d = ImageDraw.Draw(im)
-    for k in range(3):
-        x = 30 + k * 75
-        d.polygon([(x, 10), (x + 40, 64), (x, 118), (x + 30, 118), (x + 70, 64), (x + 30, 10)], fill=(200, 30, 25))
-    im.save(out / "chevron_r.jpg", quality=92)                       # arrows to the right
-    im.transpose(Image.FLIP_LEFT_RIGHT).save(out / "chevron_l.jpg", quality=92)
     # start / finish banners: chequer band with a word (5x7 dot font)
     for name, word in (("banner_start", "START"), ("banner_finish", "FINISH")):
         im = Image.new("RGB", (512, 64), (250, 250, 245))
@@ -1702,8 +1900,9 @@ def validate():
     flooded = sum(1 for (x, y), z in GRID.items() if x0 <= x <= x1 and y0 <= y <= y1 and z < wz
                   and creek_distance(x, y) > CREEK_W and nearest(x, y, 600)[1] not in wet)
     v = speed_profile()
-    t = sum(SAMPLE / max(30.0, (v[i] + v[i + 1]) / 2) for i in range(n - 1))
-    return {"map": NAME, "course_length": round(length()), "estimated_time_s": round(t, 1),
+    t = sum(SAMPLE / max(30.0, (v[i] + v[i + 1]) / 2) for i in range(BOUNDS["i_start"], BOUNDS["i_finish"]))
+    return {"map": NAME, "course_length": round(S[BOUNDS["i_finish"]] - S[BOUNDS["i_start"]]), "path_length": round(length()),
+            "run_out": round(length() - S[BOUNDS["i_finish"]]), "estimated_time_s": round(t, 1),
             "start_z": round(ZTAB[0]), "finish_z": round(ZTAB[-1]), "lowest_z": round(min(ZTAB)),
             "max_grade_pct": round(100 * max(grades), 1),
             "min_turn_radius": round(1 / max(abs(k) for k in KAPPA)),
@@ -1838,6 +2037,7 @@ def main():
     gantry(BOUNDS["i_start"], "banner_start")
     gantry(BOUNDS["i_finish"], "banner_finish")
     end_walls()
+    log_pile()
     corridor()
     signs()
     forest()
@@ -1847,6 +2047,10 @@ def main():
     report = validate()
     write_textures()
     write_floor()
+    write_wood_textures()
+    write_sign_textures()
+    sign_model("l")
+    sign_model("r")
     write_sky()
     write_trees()
     write_shader()

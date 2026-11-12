@@ -232,40 +232,79 @@ models/mapobjects/q3r_timberrun/oakbark
 	}
 }
 
+// curve signs (models, vertex lit by q3map2)
+models/mapobjects/q3r_timberrun/sign_l
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/sign_l.jpg
+	surfaceparm nolightmap
+	surfaceparm SURF_METAL
+	cull disable
+	{
+		map models/mapobjects/q3r_timberrun/sign_l.jpg
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/sign_r
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/sign_r.jpg
+	surfaceparm nolightmap
+	surfaceparm SURF_METAL
+	cull disable
+	{
+		map models/mapobjects/q3r_timberrun/sign_r.jpg
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/sign_metal
+{
+	qer_editorimage textures/base_trim/tin.jpg
+	surfaceparm nolightmap
+	surfaceparm SURF_METAL
+	cull disable
+	{
+		map textures/base_trim/tin.jpg
+		rgbGen vertex
+	}
+}
+
+textures/q3r_timberrun/logbark
+{
+	qer_editorimage textures/q3r_timberrun/logbark.jpg
+	surfaceparm SURF_DIRT
+	{
+		map textures/q3r_timberrun/logbark.jpg
+		rgbGen identity
+	}
+	{
+		map $lightmap
+		blendFunc GL_DST_COLOR GL_ZERO
+		rgbGen identity
+	}
+}
+
+textures/q3r_timberrun/logend
+{
+	qer_editorimage textures/q3r_timberrun/logend.jpg
+	surfaceparm SURF_DIRT
+	{
+		map textures/q3r_timberrun/logend.jpg
+		rgbGen identity
+	}
+	{
+		map $lightmap
+		blendFunc GL_DST_COLOR GL_ZERO
+		rgbGen identity
+	}
+}
+
 textures/q3r_timberrun/metal
 {
 	qer_editorimage textures/base_trim/tin.jpg
 	surfaceparm SURF_METAL
 	{
 		map textures/base_trim/tin.jpg
-		rgbGen identity
-	}
-	{
-		map $lightmap
-		blendFunc GL_DST_COLOR GL_ZERO
-		rgbGen identity
-	}
-}
-
-textures/q3r_timberrun/chevron_r
-{
-	qer_editorimage textures/q3r_timberrun/chevron_r.jpg
-	{
-		map textures/q3r_timberrun/chevron_r.jpg
-		rgbGen identity
-	}
-	{
-		map $lightmap
-		blendFunc GL_DST_COLOR GL_ZERO
-		rgbGen identity
-	}
-}
-
-textures/q3r_timberrun/chevron_l
-{
-	qer_editorimage textures/q3r_timberrun/chevron_l.jpg
-	{
-		map textures/q3r_timberrun/chevron_l.jpg
 		rgbGen identity
 	}
 	{

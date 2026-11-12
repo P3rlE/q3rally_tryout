@@ -11,7 +11,7 @@ Stand: **Stufe 2** (Wald, Nebel, Licht).
 
 ## Strecke
 
-Länge 48.448 Einheiten, geschätzte Fahrzeit 88 Sekunden, Start auf z 1200, Ziel
+Länge 47.040 Einheiten von Start- bis Ziellinie (die Mittellinie ist mit Startplatz und Auslauf 50.240 lang), geschätzte Fahrzeit 84 Sekunden, Bots brauchen rund 65, Start auf z 1200, Ziel
 auf z 1032, tiefster Punkt in der Furt (z 629). Kleinster Kurvenradius 451,
 größte Steigung 17 % (Abfahrt der großen Kuppe). Alles Schotter (`SURF_GRAVEL`).
 
@@ -26,6 +26,7 @@ größte Steigung 17 % (Abfahrt der großen Kuppe). Alles Schotter (`SURF_GRAVEL
 | Hohlweg | 4.700 | bergauf zwischen Erdböschungen |
 | Kuppe und Wiese | 4.500 | große Sprungkuppe, dann offen bergab |
 | Ziel | 900 | Zielbogen auf der Wiese |
+| Auslauf | 2.300 | hinter dem Ziel, breiter werdend, am Ende ein Holzpolter |
 
 - **Sprungkuppen:** Die Auffahrt ist am Fuß ausgerundet, die Kante oben nicht,
   damit die Autos abheben. Klein: 7 % hinauf, 11 % hinunter, 28 hoch. Groß: 10 %
@@ -39,6 +40,13 @@ größte Steigung 17 % (Abfahrt der großen Kuppe). Alles Schotter (`SURF_GRAVEL
   liegt.
 - **Grenzen:** unsichtbare Wände auf beiden Seiten, 130 hinter dem Bankett, und
   quer an beiden Enden. Zwischen den Kehren rücken sie zusammen.
+- **Auslauf:** 2.300 Einheiten hinter der Ziellinie, die Straße wird bis auf
+  600 breit. Am Ende liegt quer ein Holzpolter (neun Stämme in drei Lagen,
+  fest); die unsichtbare Wand steht erst dahinter.
+- **Kurvenschilder:** je drei Richtungstafeln außen vor den sechs engsten Kurven.
+  Eigenes Modell (`sign_l.md3`, `sign_r.md3`): Aluminiumtafel 120 × 60 mit runden
+  Ecken und umgebördeltem Rand, Folie mit leichtem Straßenschmutz unten, zwei
+  Rundrohre mit Schellen. Fest sind nur die beiden Pfosten.
 - **Checkpoints:** 24, vom Generator so gesetzt, dass die Bot-Route (`.bpd`,
   eine Bézier-Kurve je Abschnitt) höchstens 64 Einheiten von der Mittellinie
   abweicht und nie mehr als 2.048 Einheiten zwischen zwei Checkpoints liegen.
