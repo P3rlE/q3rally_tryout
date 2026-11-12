@@ -3295,6 +3295,9 @@ CL_ShutdownRef
 ============
 */
 void CL_ShutdownRef( void ) {
+#ifdef USE_CEF_GARAGE
+    CL_WebGarageBeforeVideoRestart();
+#endif
 	if ( re.Shutdown ) {
 		re.Shutdown( qtrue );
 	}

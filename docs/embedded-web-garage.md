@@ -282,6 +282,30 @@ a new browser attachment in the actual SDL mode plus HTTP 200 in each stage.
 Browser smoke tests run the bundled files with software WebGL and save images.
 These startup checks do not replace interactive fullscreen/input/audio tests.
 
+### Graphics Apply and browser/window lifetime
+
+Before shutting down the UI VM or destroying the renderer's SDL window, the
+client force-closes the CEF child and pumps until OnBeforeClose has completed.
+CEF itself remains initialized for the replacement window. Focus/cursor
+restoration is suppressed during this close so callbacks cannot enter SDL while
+its video device is being destroyed. Ordinary menu closes retain their focus
+restoration behavior.
+
+The Windows package tests also exercise the actual Graphics / Fullscreen /
+Apply controls with OpenGL 2 and OpenGL 1 and enabled mouse input. Each test
+repeats fullscreen to windowed, back to fullscreen and back to windowed, waits
+for the replacement embedded page/config hub and then quits through the UI.
+The command buffer is left free so Apply can append and execute its restart.
+Results, logs and a screenshot are uploaded with the test artifact.
+On Windows runners exposing only GDI Generic/OpenGL 1.1, the OpenGL 2 menu
+probe is explicitly recorded as skipped in result.json and menu-result.json;
+OpenGL 1 is still required. OpenGL 2 Apply cycles must also be checked on a
+machine with a suitable driver rather than inferred from that CI run.
+
+Only these integration-test processes set Q3RALLY_WEBUI_TEST_CDP_PORT to an
+ephemeral loopback port. Normal startup helpers do not enable a debugging
+endpoint. The CEF command-line policy stays disabled for ordinary arguments.
+
 Download the `Q3Rally-WebUI-windows-x86_64-<commit>` artifact from a successful
 run and extract its inner ZIP completely. Run `Start-WebUI.cmd`; no Python,
 Node, Chrome or website checkout is needed. `Start-Native.cmd` selects native

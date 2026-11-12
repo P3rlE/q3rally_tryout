@@ -71,6 +71,9 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
       - uses: actions/download-artifact@v7
         with:
           name: webui-common-${{ github.sha }}
@@ -131,6 +134,10 @@ jobs:
             output/webui-validation/home/baseq3r/qconsole.log
             output/webui-validation/first-run/*.log
             output/webui-validation/first-run/home/baseq3r/qconsole.log
+            output/webui-validation/graphics-*/*.log
+            output/webui-validation/graphics-*/*.png
+            output/webui-validation/graphics-*/menu-result.json
+            output/webui-validation/graphics-*/home/baseq3r/qconsole.log
           retention-days: 14
           compression-level: 0
           if-no-files-found: warn

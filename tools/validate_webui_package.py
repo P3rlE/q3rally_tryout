@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import socket
 import sys
 import time
 import zipfile
@@ -53,9 +54,14 @@ def validate(root):
     return manifest
 
 
-def run_native(root, output, first_run=False):
+def run_native(root, output, first_run=False, menu_renderer=None):
     executable = root / 'q3rally.x86_64.exe'
     env = os.environ.copy()
+    env.pop('Q3RALLY_WEBUI_TEST_CDP_PORT',None)
+    if menu_renderer:
+        with socket.socket() as listener:
+            listener.bind(('127.0.0.1',0));port=listener.getsockname()[1]
+        env['Q3RALLY_WEBUI_TEST_CDP_PORT']=str(port)
     # Do not mask missing MinGW/CEF dependencies with developer tools on PATH.
     system_root = os.environ['SystemRoot']
     env['PATH'] = os.pathsep.join([str(root),str(Path(system_root)/'System32'),system_root])
@@ -77,27 +83,43 @@ def run_native(root, output, first_run=False):
         'echo WEBUI_FULLSCREEN_BEGIN\nset r_fullscreen 1\nvid_restart\nwait 180\n'
         'echo WEBUI_WINDOWED_BEGIN\nset r_fullscreen 0\nvid_restart\nwait 180\n'
         'echo WEBUI_PACKAGE_PROBE_END\nquit\n')
+    if menu_renderer:
+        # Keep the command buffer free: Apply appends vid_restart to it. The
+        # parent test process supplies the timeout and quits through the UI.
+        (home/'baseq3r/webui-probe.cfg').write_text('echo WEBUI_MENU_PROBE_BEGIN\n')
+    fullscreen=first_run or bool(menu_renderer)
     command=[str(executable),'+set','fs_basepath',str(root),'+set','fs_homepath',str(home),
         '+set','logfile','2','+set','net_enabled','0','+set','cl_motd','0',
-        '+set','sv_ladderEnabled','0','+set','r_fullscreen','1' if first_run else '0','+set','r_mode','-2' if first_run else '-1',
-        '+set','r_customwidth','1100','+set','r_customheight','720','+set','cl_renderer','opengl1',
-        '+set','s_initsound','0','+set','in_mouse','0','+set','in_nograb','0',
+        '+set','sv_ladderEnabled','0','+set','r_fullscreen','1' if fullscreen else '0','+set','r_mode','-2' if fullscreen else '-1',
+        '+set','r_customwidth','1100','+set','r_customheight','720','+set','cl_renderer',menu_renderer or 'opengl1',
+        '+set','s_initsound','0','+set','in_mouse','1' if menu_renderer else '0','+set','in_nograb','0',
         '+set','com_maxfps','30','+set','com_maxfpsUnfocused','30',
         '+set','cl_webUI','1','+exec','webui-probe.cfg']
     if not first_run: command[1:1]=['+set','profile_active','WebUIPackageProbe','+set','ladder_wizard_dismissed_profiles','WebUIPackageProbe']
     with (output/'native.log').open('wb') as log:
         process=subprocess.Popen(command,env=env,cwd=root,stdout=log,stderr=subprocess.STDOUT,
             stdin=subprocess.DEVNULL,creationflags=flags)
-        try: process.wait(timeout=180)
-        except subprocess.TimeoutExpired:
+        try:
+            if menu_renderer:
+                with (output/'menu.log').open('wb') as menu_log:
+                    subprocess.run(['node',str(ROOT/'engine/webui/test_native_apply.cjs'),str(port),str(output)],
+                        stdout=menu_log,stderr=subprocess.STDOUT,check=True,timeout=180)
+            process.wait(timeout=180 if not menu_renderer else 30)
+        except (subprocess.TimeoutExpired,subprocess.CalledProcessError):
             # Only the test process tree spawned here; not other running games.
             subprocess.run(['taskkill','/PID',str(process.pid),'/T','/F'],capture_output=True)
             process.wait(timeout=15)
-            raise ValueError('Packaged CEF client startup timed out')
-    text=(output/'native.log').read_text(errors='replace')
+            raise ValueError('Packaged CEF startup/menu test failed; see native.log and menu.log')
+    native_text=(output/'native.log').read_text(errors='replace')
+    text=native_text
     console=home/'baseq3r/qconsole.log'
     if console.exists(): text += console.read_text(errors='replace')
     if process.returncode != 0: raise ValueError(f'Packaged client exited with {process.returncode}')
+    if menu_renderer:
+        for marker,minimum in (('Web UI: browser attached (fullscreen,',2),('Web UI: browser attached (windowed,',2),
+                               ('Web UI: closing browser before video restart.',3)):
+            if native_text.count(marker)<minimum: raise ValueError(f'Missing Graphics/Apply lifecycle marker: {marker}')
+        return
     if first_run and 'Web UI: registration step 17.' not in text:
         raise ValueError('First-run driver wizard was not published to the WebUI')
     if first_run and 'Web UI: browser attached (fullscreen,' not in text.split('WEBUI_FULLSCREEN_BEGIN',1)[0]:
@@ -116,6 +138,11 @@ def run_native(root, output, first_run=False):
     if re.search(r'(^|\n)(?:\^1)?(?:ERROR:|FATAL)',text): raise ValueError('Native startup reported an error')
 
 
+def legacy_gdi_only(text):
+    versions=re.findall(r'^GL_VERSION:\s*([^\r\n]+)',text,re.M)
+    return 'GL_RENDERER: GDI Generic' in text and bool(versions) and all(v.startswith('1.1.') or v=='1.1' for v in versions)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--archive',type=Path,required=True)
@@ -129,6 +156,18 @@ def main():
         run_native(root,output)
         first_run=output/'first-run';first_run.mkdir()
         run_native(root,first_run,first_run=True)
+        graphics={}
+        for renderer in ('opengl2','opengl1'):
+            menu_output=output/('graphics-'+renderer);menu_output.mkdir()
+            if renderer=='opengl2' and legacy_gdi_only((output/'native.log').read_text(errors='replace')):
+                reason='Runner exposes only Windows GDI OpenGL 1.1; OpenGL 2 renderer is unavailable.'
+                graphics[renderer]={'status':'skipped','reason':reason}
+                (menu_output/'menu-result.json').write_text(json.dumps(graphics[renderer],indent=2)+'\n')
+                print(reason)
+            else:
+                run_native(root,menu_output,menu_renderer=renderer)
+                graphics[renderer]={'status':'passed'}
+        result['graphicsApply']=graphics
         result.update(success=True,revision=manifest['revision'],cef=manifest['cef']['version'])
     except Exception as error:
         result['error']=str(error)
