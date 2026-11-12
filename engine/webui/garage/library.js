@@ -45,12 +45,18 @@
   async function showRival(entry) {
     const setup = carSetup(entry);
     const version = generation;
-    image.hidden = !setup;
+    image.hidden = true;
     if (!setup) return;
     image.src = setup.car.paints[setup.skin].image;
     image.alt = entry.fields[0] + ' / ' + setup.car.name;
-    if (!window.Q3RallyShowroom) return;
+    if (!window.Q3RallyShowroom) {
+      try { await image.decode(); } catch { return; }
+      if (version === generation) image.hidden = false;
+      return;
+    }
     host.hidden = false;
+    host.style.visibility = 'hidden';
+    detailStatus.textContent = 'Loading vehicle preview…';
     try {
       const next = await window.Q3RallyShowroom.openVehicleShowroom(
         host, './showroom/', setup.model, setup.car.name, {yawDegrees: 135, distance: 2.6});
@@ -59,9 +65,12 @@
       await next.update(setup.skin, catalog.wheels.svt_cobra ? 'svt_cobra' : Object.keys(catalog.wheels)[0]);
       if (version !== generation) return;
       image.hidden = true;
+      host.style.visibility = 'visible';
       next.show();
       detailStatus.textContent = 'Drag to rotate / scroll to zoom';
     } catch {
+      if (version !== generation) return;
+      try { await image.decode(); } catch { return; }
       if (version !== generation) return;
       stopViewer();
       image.hidden = false;
