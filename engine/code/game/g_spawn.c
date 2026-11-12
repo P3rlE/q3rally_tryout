@@ -597,6 +597,7 @@ spawn_t	spawns[] = {
 
 	// client-side map effects, cgame reads them from the entity string
 	{"rally_fx_spray", SP_info_null},
+	{"rally_startlight", SP_info_null},	// Q3Rally: start light, drawn by cgame (cg_rally_fx.c)
 	{"rally_scoreboard", SP_info_null},
 
 	{"rally_scripted_object", SP_rally_scripted_object},

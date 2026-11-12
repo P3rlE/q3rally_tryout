@@ -269,6 +269,54 @@ models/mapobjects/q3r_timberrun/sign_metal
 	}
 }
 
+// start and finish arches (models)
+models/mapobjects/q3r_timberrun/truss
+{
+	qer_editorimage textures/base_trim/tin.jpg
+	surfaceparm nolightmap
+	surfaceparm SURF_METAL
+	{
+		map textures/base_trim/tin.jpg
+		rgbGen vertex
+	}
+	{
+		map textures/base_trim/tin.jpg
+		blendFunc GL_ONE GL_ONE
+		tcGen environment
+		rgbGen const ( 0.18 0.18 0.18 )
+	}
+}
+
+models/mapobjects/q3r_timberrun/banner_start
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/banner_start.jpg
+	surfaceparm nolightmap
+	{
+		map models/mapobjects/q3r_timberrun/banner_start.jpg
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/banner_finish
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/banner_finish.jpg
+	surfaceparm nolightmap
+	{
+		map models/mapobjects/q3r_timberrun/banner_finish.jpg
+		rgbGen vertex
+	}
+}
+
+models/mapobjects/q3r_timberrun/concrete
+{
+	qer_editorimage models/mapobjects/q3r_timberrun/concrete.jpg
+	surfaceparm nolightmap
+	{
+		map models/mapobjects/q3r_timberrun/concrete.jpg
+		rgbGen vertex
+	}
+}
+
 textures/q3r_timberrun/logbark
 {
 	qer_editorimage textures/q3r_timberrun/logbark.jpg
@@ -385,34 +433,6 @@ textures/q3r_timberrun/metal
 	surfaceparm SURF_METAL
 	{
 		map textures/base_trim/tin.jpg
-		rgbGen identity
-	}
-	{
-		map $lightmap
-		blendFunc GL_DST_COLOR GL_ZERO
-		rgbGen identity
-	}
-}
-
-textures/q3r_timberrun/banner_start
-{
-	qer_editorimage textures/q3r_timberrun/banner_start.jpg
-	{
-		map textures/q3r_timberrun/banner_start.jpg
-		rgbGen identity
-	}
-	{
-		map $lightmap
-		blendFunc GL_DST_COLOR GL_ZERO
-		rgbGen identity
-	}
-}
-
-textures/q3r_timberrun/banner_finish
-{
-	qer_editorimage textures/q3r_timberrun/banner_finish.jpg
-	{
-		map textures/q3r_timberrun/banner_finish.jpg
 		rgbGen identity
 	}
 	{

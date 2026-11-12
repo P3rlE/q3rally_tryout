@@ -954,29 +954,112 @@ def fitted(normal, left, top_z, width, height, img_w, img_h):
     return (-dl / ss) % img_w, (top_z / ts) % img_h, ss, ts
 
 
+GANTRY_TOWER = 36         # tower centre beyond the road edge
+GANTRY_TOP = 232          # top of the towers and of the beam above the road
+GANTRY_BEAM = 20          # height (and depth) of the beam truss
+GANTRY_BANNER = 50        # banner panel standing on the beam
+TRUSS_W = 18              # width of the square truss
+
+
+def truss(me, s, a, b, u, v, w=TRUSS_W, chord=1.5, brace=0.8):
+    """A square aluminium truss from a to b: four chords at the corners, a
+    zigzag of braces in every face. u, v span the cross section."""
+    d = [b[i] - a[i] for i in range(3)]
+    ln = math.sqrt(sum(c * c for c in d))
+    corners = [(su, sv) for su, sv in ((1, 1), (1, -1), (-1, -1), (-1, 1))]
+
+    def pt(base, su, sv):
+        return [base[i] + su * w / 2 * u[i] + sv * w / 2 * v[i] for i in range(3)]
+    for su, sv in corners:
+        me.tube(s, pt(a, su, sv), pt(b, su, sv), chord, 6)
+    bays = max(1, round(ln / w))
+    for k in range(bays + 1):
+        base = [a[i] + d[i] * k / bays for i in range(3)]
+        nxt = [a[i] + d[i] * (k + 1) / bays for i in range(3)]
+        for f in range(4):
+            (su0, sv0), (su1, sv1) = corners[f], corners[(f + 1) % 4]
+            if k in (0, bays):                                  # rungs at both ends
+                me.tube(s, pt(base, su0, sv0), pt(base, su1, sv1), brace, 5)
+            if k < bays:
+                p0, p1 = (pt(base, su0, sv0), pt(nxt, su1, sv1)) if (k + f) % 2 == 0 else \
+                         (pt(base, su1, sv1), pt(nxt, su0, sv0))
+                me.tube(s, p0, p1, brace, 5)
+
+
+def gantry_model(name, hw, banner, light):
+    """Truss arch over the road: two towers on concrete blocks, a beam on
+    top and a banner panel standing on the beam; at the start a start light
+    hangs under the middle of the beam and a second one sits on the left
+    tower at the drivers' eye height. Local x = along the road, y = to the
+    left, origin on the road centre. Returns the light origins and the
+    tower centres (local)."""
+    me = load_startlight().Mesh()
+    yt = hw + GANTRY_TOWER
+    alu = me.surf("truss", OWN_MODELS + "truss")
+    zb = GANTRY_TOP - GANTRY_BEAM / 2
+    for side in (-1, 1):
+        truss(me, alu, (0, side * yt, -10), (0, side * yt, GANTRY_TOP), (1, 0, 0), (0, 1, 0))
+    truss(me, alu, (0, -yt - TRUSS_W / 2, zb), (0, yt + TRUSS_W / 2, zb), (1, 0, 0), (0, 0, 1))
+    con = me.surf("blocks", OWN_MODELS + "concrete")
+    for side in (-1, 1):
+        me.box(con, (-20, side * yt - 20, -36), (20, side * yt + 20, 6), tex=32)
+    # banner: a panel on the beam, printed on both faces, in a thin frame
+    half = hw + 12
+    z0, z1 = GANTRY_TOP, GANTRY_TOP + GANTRY_BANNER
+    front = me.surf("banner", OWN_MODELS + banner)
+    me.quad(front, [(-1.2, half, z0), (-1.2, -half, z0), (-1.2, -half, z1), (-1.2, half, z1)], (-1, 0, 0),
+            ((0, 1), (1, 1), (1, 0), (0, 0)))
+    me.quad(front, [(1.2, -half, z0), (1.2, half, z0), (1.2, half, z1), (1.2, -half, z1)], (1, 0, 0),
+            ((0, 1), (1, 1), (1, 0), (0, 0)))
+    frame = me.surf("frame", OWN_MODELS + "truss")
+    for a, b in (((0, -half, z0), (0, half, z0)), ((0, -half, z1), (0, half, z1)),
+                 ((0, -half, z0), (0, -half, z1)), ((0, half, z0), (0, half, z1))):
+        me.tube(frame, a, b, 1.8, 6)
+    lights = []
+    if light:
+        lights.append((-5.8, 0.0, zb - GANTRY_BEAM / 2 - 24))           # under the beam, hanger rods up
+        z_eye = 78
+        y_l = yt - TRUSS_W / 2 - 38                                     # clear of the tower
+        lights.append((-TRUSS_W / 2 - 5.8, y_l, z_eye))                  # on an arm from the left tower
+        me.tube(alu, (-TRUSS_W / 2, yt - TRUSS_W / 2, z_eye + 24), (-TRUSS_W / 2, y_l - 14, z_eye + 24), 1.4, 6)
+    me.save(ROOT / "baseq3r" / OWN_MODELS / f"{name}.md3", name)
+    return lights, yt
+
+
+def load_startlight():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("make_startlight", ROOT / "tools" / "maptools" / "make_startlight.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def gantry(i, banner):
-    """Portal across the road: posts and a beam with the banner fitted on both
-    faces (one copy across the road)."""
-    (px, py), t, n = PATH[i], TAN[i], NOR[i]
+    """Start or finish arch (a model) with solid tower feet; at the start
+    two start lights that follow the countdown (rally_startlight)."""
+    (px, py), t = PATH[i], TAN[i]
     hw = half_width(S[i])
     z = road_z(S[i])
+    name = "gantry_" + banner.split("_")[-1]
+    lights, yt = gantry_model(name, hw, banner, banner == "banner_start")
+    BOUNDS.setdefault("banner_aspect", {})[banner] = (hw + 12) * 2 / GANTRY_BANNER
+    yaw = math.degrees(math.atan2(t[1], t[0]))
+    entity("misc_model", px, py, z, model=OWN_MODELS + name + ".md3", angle=f"{yaw:.1f}", _cs="1")
+    n = (-t[1], t[0])
+
+    def world(lx, ly, lz):
+        return px + t[0] * lx + n[0] * ly, py + t[1] * lx + n[1] * ly, z + lz
     for side in (-1, 1):
-        cx, cy = px + n[0] * side * (hw + 60), py + n[1] * side * (hw + 60)
-        obox(cx, cy, t, 18, 18, ground(cx, cy) - 40, z + 420, TEX + "metal")
-    half, z0, z1 = hw + 78, z + 330, z + 420
-    faces = []
-    for f in (t, (-t[0], -t[1])):
-        right = (-f[1], f[0])
-        c = (px + f[0] * 12, py + f[1] * 12)
-        left = (c[0] - right[0] * half, c[1] - right[1] * half, 0.0)
-        xo, yo, ss, ts = fitted((f[0], f[1], 0.0), left, z1, 2 * half, z1 - z0, 512, 64)
-        pts = " ".join("( %s )" % " ".join(num(v) for v in q) for q in plane((f[0], f[1], 0), (c[0], c[1], z0)))
-        faces.append(f"{pts} {TEX + banner} {num(xo)} {num(yo)} 0 {num(ss)} {num(ts)} {DETAIL} 0 0")
-    for nn, p in (((n[0], n[1], 0), (px + n[0] * half, py + n[1] * half, z0)),
-                  ((-n[0], -n[1], 0), (px - n[0] * half, py - n[1] * half, z0)),
-                  ((0, 0, 1), (px, py, z1)), ((0, 0, -1), (px, py, z0))):
-        faces.append(face(plane(nn, p), TEX + "metal"))
-    brush(faces)
+        cx, cy, _ = world(0, side * yt, 0)
+        obox(cx, cy, t, 20, 20, min(ground(cx, cy), z) - 40, z + GANTRY_TOP, TEX + "trunk", solid=False)
+    face = (yaw + 180) % 360                       # the lights look back at the grid
+    for lx, ly, lz in lights:
+        x, y, zz = world(lx, ly, lz)
+        entity("misc_model", x, y, zz, model="models/mapobjects/startlight/startlight.md3", angle=f"{face:.1f}",
+               _cs="1")
+        entity("rally_startlight", x, y, zz, angle=f"{face:.1f}")
+    BOUNDS.setdefault("startlights", 0)
+    BOUNDS["startlights"] += len(lights)
 
 
 SIGN_W, SIGN_H, SIGN_Z0 = 120, 60, 52     # board size and height of its lower edge above the road
@@ -1113,6 +1196,38 @@ def write_sign_textures():
     im.transpose(Image.FLIP_LEFT_RIGHT).save(out / "sign_l.jpg", quality=93)
 
 
+def write_gantry_textures():
+    """Banners (bold word, chequered ends, red edge lines) drawn for the real
+    proportions of each panel, and the concrete of the tower blocks."""
+    from PIL import Image, ImageDraw, ImageFont, ImageFilter
+    import numpy as np
+    out = ROOT / "baseq3r" / OWN_MODELS
+    font_path = "/usr/share/fonts/truetype/google-fonts/Poppins-Bold.ttf"
+    for name, word in (("banner_start", "START"), ("banner_finish", "FINISH")):
+        h = 128
+        w = int(h * BOUNDS["banner_aspect"][name])
+        im = Image.new("RGB", (w, h), (244, 244, 238))
+        d = ImageDraw.Draw(im)
+        sq = h // 4
+        for x0 in (0, w - 3 * sq):
+            for cx in range(3):
+                for cy in range(4):
+                    if (cx + cy) % 2 == 0:
+                        d.rectangle([x0 + cx * sq, cy * sq, x0 + (cx + 1) * sq - 1, (cy + 1) * sq - 1], fill=(22, 22, 22))
+        d.rectangle([3 * sq, 6, w - 3 * sq, 11], fill=(196, 28, 24))
+        d.rectangle([3 * sq, h - 12, w - 3 * sq, h - 7], fill=(196, 28, 24))
+        font = ImageFont.truetype(font_path, 96)
+        box = d.textbbox((0, 0), word, font=font)
+        tw, th = box[2] - box[0], box[3] - box[1]
+        d.text(((w - tw) / 2 - box[0], (h - th) / 2 - box[1]), word, font=font, fill=(24, 24, 24))
+        im = im.resize((1024, 128), Image.LANCZOS)
+        im.save(out / f"{name}.jpg", quality=93)
+    rng = np.random.default_rng(17)
+    a = 150 + 22 * rng.random((128, 128))
+    Image.fromarray(np.dstack([a, a * 0.98, a * 0.94]).clip(0, 255).astype(np.uint8)).filter(
+        ImageFilter.GaussianBlur(1.0)).save(out / "concrete.jpg", quality=90)
+
+
 def sign_shaders():
     M = OWN_MODELS
     out = ["// curve signs (models, vertex lit by q3map2)"]
@@ -1121,6 +1236,14 @@ def sign_shaders():
                 "\tsurfaceparm SURF_METAL", "\tcull disable", "\t{", f"\t\tmap {M}sign_{arrow}.jpg", "\t\trgbGen vertex", "\t}", "}", ""]
     out += [f"{M}sign_metal", "{", "\tqer_editorimage textures/base_trim/tin.jpg", "\tsurfaceparm nolightmap",
             "\tsurfaceparm SURF_METAL", "\tcull disable", "\t{", "\t\tmap textures/base_trim/tin.jpg", "\t\trgbGen vertex", "\t}", "}", ""]
+    out += ["// start and finish arches (models)"]
+    out += [f"{M}truss", "{", "\tqer_editorimage textures/base_trim/tin.jpg", "\tsurfaceparm nolightmap",
+            "\tsurfaceparm SURF_METAL", "\t{", "\t\tmap textures/base_trim/tin.jpg", "\t\trgbGen vertex", "\t}",
+            "\t{", "\t\tmap textures/base_trim/tin.jpg", "\t\tblendFunc GL_ONE GL_ONE", "\t\ttcGen environment",
+            "\t\trgbGen const ( 0.18 0.18 0.18 )", "\t}", "}", ""]
+    for name in ("banner_start", "banner_finish", "concrete"):
+        out += [f"{M}{name}", "{", f"\tqer_editorimage {M}{name}.jpg", "\tsurfaceparm nolightmap", "\t{",
+                f"\t\tmap {M}{name}.jpg", "\t\trgbGen vertex", "\t}", "}", ""]
     return out
 
 
@@ -1972,8 +2095,6 @@ def write_shader():
                         ("bale", "bale.jpg"), ("bale_end", "bale_end.jpg")):
         out += lit(name + "_ns" if name.startswith("log") else name, f"{T}{image}", ns)
     out += lit("metal", "textures/base_trim/tin.jpg", ("\tsurfaceparm SURF_METAL",))
-    out += lit("banner_start", f"{T}banner_start.jpg")
-    out += lit("banner_finish", f"{T}banner_finish.jpg")
     out += [f"{T}trunk", "{", "\tqer_editorimage textures/base_floor/concrete.jpg", "\tqer_trans 0.15",
             "\t// solid core of a tree trunk, invisible", "\tsurfaceparm nodraw", "\tsurfaceparm nolightmap",
             "\tsurfaceparm trans", "\tsurfaceparm nomarks", "\tsurfaceparm detail", "}", ""]
@@ -2018,38 +2139,8 @@ def write_textures():
     m = Image.new("L", (size, size))
     m.putdata([int(128 + ((v - lo) / (hi - lo) - 0.5) * 84) for v in acc])
     m.filter(ImageFilter.GaussianBlur(1.2)).convert("RGB").save(out / "macro.jpg", quality=92)
-    # start / finish banners: chequer band with a word (5x7 dot font)
-    for name, word in (("banner_start", "START"), ("banner_finish", "FINISH")):
-        im = Image.new("RGB", (512, 64), (250, 250, 245))
-        d = ImageDraw.Draw(im)
-        for k in range(0, 512, 16):
-            for r in (0, 1):
-                if (k // 16 + r) % 2 == 0:
-                    d.rectangle([k, r * 8, k + 15, r * 8 + 7], fill=(20, 20, 20))
-                    d.rectangle([k, 48 + r * 8, k + 15, 48 + r * 8 + 7], fill=(20, 20, 20))
-        cell = 4
-        wx = len(word) * 6 * cell - cell
-        x0 = (512 - wx) // 2
-        for i, ch in enumerate(word):
-            for r, row in enumerate(FONT[ch]):
-                for c, bit in enumerate(row):
-                    if bit == "1":
-                        x = x0 + (i * 6 + c) * cell
-                        y = 18 + r * cell
-                        d.rectangle([x, y, x + cell - 1, y + cell - 1], fill=(200, 30, 25))
-        im.save(out / f"{name}.jpg", quality=92)
 
 
-FONT = {
-    "S": ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
-    "T": ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
-    "A": ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
-    "R": ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
-    "F": ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
-    "I": ["11111", "00100", "00100", "00100", "00100", "00100", "11111"],
-    "N": ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
-    "H": ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
-}
 
 
 def index_map():
@@ -2257,6 +2348,7 @@ def main():
     write_wood_textures()
     write_detail_textures()
     write_sign_textures()
+    write_gantry_textures()
     sign_model("l")
     sign_model("r")
     write_sky()

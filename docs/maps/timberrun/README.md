@@ -44,6 +44,16 @@ größte Steigung 17 % (Abfahrt der großen Kuppe). Alles Schotter (`SURF_GRAVEL
 - **Auslauf:** 2.300 Einheiten hinter der Ziellinie, die Straße wird bis auf
   600 breit. Am Ende liegt quer ein Holzpolter (neun Stämme in drei Lagen,
   fest); die unsichtbare Wand steht erst dahinter.
+- **Start und Ziel:** Bögen aus Aluminium-Traversen (Modelle `gantry_start.md3`,
+  `gantry_finish.md3`): zwei Türme 36 neben der Fahrbahn auf Betonblöcken, eine
+  Traverse in 232 Höhe, darauf das Banner (START, FINISH) mit Schachbrett-Enden,
+  beidseitig bedruckt. Fest sind nur die Fußblöcke der Türme.
+- **Startampel:** zwei Ampeln am Startbogen, eine unter der Mitte der Traverse,
+  eine auf Augenhöhe am linken Turm. Drei rote Lampen und eine grüne folgen dem
+  Countdown: bei „3“ eine rote, bei „2“ zwei, bei „1“ drei, bei „GO!“ alle rot
+  aus und grün an, vier Sekunden später dunkel. Neue Entity `rally_startlight`
+  (cgame, `cg_rally_fx.c`), Modell `models/mapobjects/startlight/startlight.md3`
+  von `tools/maptools/make_startlight.py`; jede Map kann sie nutzen.
 - **Kurvenschilder:** je drei Richtungstafeln außen vor den sechs engsten Kurven.
   Eigenes Modell (`sign_l.md3`, `sign_r.md3`): Aluminiumtafel 120 × 60 mit runden
   Ecken und umgebördeltem Rand, Folie mit leichtem Straßenschmutz unten, zwei

@@ -43,3 +43,4 @@ q3r_coolingtower
 q3r_riviera
 q3r_timberrun
 q3r_quarry
+startlight
