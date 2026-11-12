@@ -1159,6 +1159,8 @@ def forest():
                 kind = pick(random.Random(kroll), mix)
                 if opn > 0.5 and sec == "clearcut" and e > 1300:
                     kind = "spruce"                         # the old forest around the clear-cut
+                if kind in ("oak", "snag") and (inside or e < 300):
+                    kind = "beech_y"                        # the oak trunks are wide at the foot
                 if zone == "near":
                     model, (a, b), _, _ = KINDS[kind]
                     scale = a + (b - a) * srand
