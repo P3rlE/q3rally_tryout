@@ -1364,6 +1364,10 @@ void CL_WebGarageFrame( void ) {
             ShowWindow( webChild, SW_HIDE );
             host->set_focus( host, 0 ); host->base.release( &host->base );
             SetFocus( webParent );
+            {
+                SDL_Window *window = IN_GetWindow();
+                if ( window ) { SDL_RaiseWindow( window ); SDL_SetWindowInputFocus( window ); }
+            }
             Key_ClearStates();
         }
         return;
@@ -1389,7 +1393,7 @@ void CL_WebGarageFrame( void ) {
         if ( webHUDRegion ) { SetWindowRgn( webChild, NULL, TRUE ); webHUDPublished = webHUDRectValid = webHUDRegion = qfalse; }
         if ( webLastState != 14 ) {
             frame = webBrowser->get_main_frame( webBrowser );
-            Web_RunScript( frame, L"window.q3rallyFrontend?.state(14,0,0,0);document.title='Q3Rally screen 14'" );
+            Web_RunScript( frame, L"if(window.q3rallyFrontend){q3rallyFrontend.state(14,0,0,0);document.title='Q3Rally screen 14'}" );
             frame->base.release( &frame->base ); webLastState = 14;
         }
         Web_PublishMapLoading();
@@ -1520,7 +1524,7 @@ void CL_WebGarageFrame( void ) {
         if ( state != webLastState ) {
             cef_frame_t *frame = webBrowser->get_main_frame( webBrowser );
             wchar_t script[256];
-            swprintf( script, ARRAY_LEN( script ), L"window.q3rallyFrontend?.state(%d,%d,%d,%d);document.title='Q3Rally screen %d'",
+            swprintf( script, ARRAY_LEN( script ), L"if(window.q3rallyFrontend){q3rallyFrontend.state(%d,%d,%d,%d);document.title='Q3Rally screen %d'}",
                       screen, progress, stage, prompt, screen );
             Web_RunScript( frame, script );
             frame->base.release( &frame->base );
@@ -1528,7 +1532,7 @@ void CL_WebGarageFrame( void ) {
         }
     } else if ( webGarageMode && webLastState != -2 ) {
         cef_frame_t *frame = webBrowser->get_main_frame( webBrowser );
-        Web_RunScript( frame, L"window.q3rallyFrontend?.garage();document.title='Q3Rally screen 7'" );
+        Web_RunScript( frame, L"if(window.q3rallyFrontend){q3rallyFrontend.garage();document.title='Q3Rally screen 7'}" );
         frame->base.release( &frame->base );
         webLastState = -2;
     }
