@@ -5,7 +5,7 @@ Holzlagerplatz auf dem Rücken hinunter ins Bachtal und wieder hinauf zur Wiese.
 Erzeugt von `tools/maptools/make_timberrun.py`. Konzept: Dokument „Timber Run –
 Sprint-Strecke“.
 
-Stand: **Stufe 1** (fahrbarer Rohbau, noch ohne Wald).
+Stand: **Stufe 2** (Wald, Nebel, Licht).
 
 ![Layout](timberrun_layout.png)
 
@@ -44,6 +44,47 @@ größte Steigung 17 % (Abfahrt der großen Kuppe). Alles Schotter (`SURF_GRAVEL
   abweicht und nie mehr als 2.048 Einheiten zwischen zwei Checkpoints liegen.
 - **Wetter:** Regen, 40 %. Kein Schnee.
 
+## Wald, Nebel, Licht (Stufe 2)
+
+- **Bäume nah an der Straße:** 714 echte Modelle bis 480 Einheiten hinter dem
+  Fahrbahnrand: Fichten (`GR_trees/nadelbaum`, ×3,0–4,4, also 430–630 hoch),
+  Buchen in Gelb, Rot und Grün (`GR_trees/tree1/3/4`, ×2,0–2,8), Eichen
+  (`oak/oak2`) im Hohlweg und auf der Wiese, junge Fichten und tote Stämme im
+  Kahlschlag. Die Blätter laufen über eigene Shader
+  (`models/mapobjects/q3r_timberrun/`) mit umgefärbten Texturen und
+  `alphashadow`, die Bäume werfen Schatten (`_cs 1`).
+- **Mischung je Abschnitt:** Forststraße Fichte mit Buchen, Hangkehren vor allem
+  Buchen, Bachtal grüne und gelbe Buchen, Dickicht fast nur Fichte (dicht),
+  Kahlschlag und Wiese licht, Hohlweg Buchen und Eichen.
+- **Innerhalb der Wände** stehen Bäume nur an geraden Stücken, nie außen in
+  einer Kurve (72 Stück). Stämme bis 400 hinter dem Rand haben einen
+  unsichtbaren, festen Kern (549).
+- **Weiter draußen:** 3066 gekreuzte Flächen mit gerenderten Seitenansichten
+  derselben Modelle (`cross_*.md3`, je 4 Dreiecke), bis 2700 hinter dem Rand.
+- **Boden:** eigene Waldboden-Textur mit Laub, Nadeln und Moos.
+- **Himmel:** eigener Morgenhimmel (`env/q3r_timberrun/`), Sonne bei 300° und
+  20° Höhe, also tief im Südosten; `q3map_sun` und `q3gl2_sun` stehen gleich.
+- **Nebel:** `q3r_haze` nimmt nach 3000 Einheiten die Hälfte der Sicht, dazu
+  Bodennebel im Bachtal (halbe Sicht nach 1300, über dem Wasser am dichtesten).
+- **Sichtweite:** `_farplanedist 7000`: vis wirft weg, was mehr als etwa 9400
+  entfernt liegt. Dort ist im Nebel kaum noch etwas übrig.
+
+### Bildrate
+
+Gemessen mit `r_speeds 1` und `com_speeds 1` in der Linux-Engine (Software-
+Renderer, also nur als Vergleich brauchbar), an neun Stellen der Strecke, Kamera
+150 über der Straße. Zum Vergleich Riviera Run an fünf Stellen.
+
+| | Dreiecke | Flächen | Zeit je Bild |
+|---|---|---|---|
+| Timber Run, ohne Fernsicht-Grenze, 1132 Modelle | bis 651.000 | bis 21.600 | 224–557 ms |
+| Timber Run, wie ausgeliefert | bis 336.000 | bis 12.400 | 221–497 ms |
+| Riviera Run | bis 520.000 | bis 31.200 | 257–354 ms |
+
+Am teuersten ist der Blick über die Hangkehren (viele Blätter übereinander). Auf
+einer echten Grafikkarte ist das kein Problem; im Spieltest mit `cg_drawFPS 1`
+die Kehren und den Blick von der ersten Kuppe ansehen.
+
 ## Geprüft
 
 - **Kompilieren:** kein Leck; BSP 12,7 MB. Gelände aus 33.220 Dreiecken.
@@ -61,9 +102,9 @@ Breite im Dickicht.
 
 ## Stufen
 
-1. **Fahrbarer Rohbau** (dieser Stand): Gelände, Fahrbahn, Kuppen, Furt, Grenzen,
-   Start, Ziel, Checkpoints, Bot-Route, AAS, Kurvenschilder.
-2. Wald, Nebel, Licht, Prüfung der Bildrate.
+1. **Fahrbarer Rohbau:** Gelände, Fahrbahn, Kuppen, Furt, Grenzen, Start, Ziel,
+   Checkpoints, Bot-Route, AAS, Kurvenschilder.
+2. **Wald, Nebel, Licht** (dieser Stand), Prüfung der Bildrate.
 3. Details, Sound, Wetter, Levelshot.
 
 ## Bauen
@@ -91,4 +132,6 @@ bspc -forcesidesvisible -optimize -bsp2aas baseq3r/maps/q3r_timberrun_aasproxy.b
 python tools/maptools/make_aas_proxy.py --checksum baseq3r/maps/q3r_timberrun_aasproxy.aas baseq3r/maps/q3r_timberrun.bsp
 ```
 
-Der Himmel (`trainyard`) und die Bodentexturen sind in Stufe 1 Platzhalter.
+Der Generator schreibt außerdem den Himmel nach `env/q3r_timberrun/` und die
+Baumtexturen, Sprites und `cross_*.md3` nach `models/mapobjects/q3r_timberrun/`.
+Die Lichtberechnung braucht wegen der Schatten der Blätter rund 35 Minuten.

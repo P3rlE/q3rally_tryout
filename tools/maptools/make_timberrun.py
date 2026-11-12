@@ -1059,9 +1059,432 @@ def misc_entities():
     entity("info_player_intermission", x, y, max(z, ground(x, y)) + 650, angles=f"22 {ang:.0f} 0")
 
 
+# ---------------------------------------------------------------- forest (stage 2)
+
+MAPOBJ = "models/mapobjects/"
+OWN_MODELS = f"models/mapobjects/{NAME}/"
+# kind: model, scale range, leaf shader of the model, own leaf texture
+KINDS = {
+    "spruce": ("GR_trees/nadelbaum.md3", (3.0, 4.4), "GR_trees/nadel", "spruce"),
+    "young": ("GR_trees/nadelbaum2.md3", (2.0, 3.2), "GR_trees/nadel", "spruce"),
+    "beech_y": ("GR_trees/tree1.md3", (2.1, 2.8), "GR_trees/tree", "beech_y"),
+    "beech_r": ("GR_trees/tree3.md3", (2.1, 2.8), "GR_trees/tree3", "beech_r"),
+    "beech_g": ("GR_trees/tree4.md3", (2.0, 2.6), "GR_trees/tree4", "beech_g"),
+    "oak": ("oak/oak2.md3", (2.0, 2.6), "oak/oakblaetter2", "oak"),
+    "snag": ("oak/oak4.md3", (1.3, 1.8), None, None),
+}
+BARK = (("GR_trees/stamm", "bark"), ("oak/oakstamm", "oakbark"))
+SPRITES = ("spruce", "beech_y", "beech_r", "beech_g", "oak")
+SPRITE_OF = {"young": "spruce", "snag": "spruce"}
+
+# tree mix per section: (kind, weight) and the density near the road
+MIX = {
+    "yard": ((("spruce", 6), ("beech_y", 1)), 0.55),
+    "road": ((("spruce", 5), ("beech_y", 2), ("beech_r", 1.5), ("beech_g", 1.5)), 0.62),
+    "hairpins": ((("beech_y", 3.5), ("beech_r", 2.5), ("beech_g", 1.5), ("spruce", 2.5)), 0.58),
+    "creek": ((("beech_g", 4), ("beech_y", 3), ("beech_r", 1), ("spruce", 2)), 0.5),
+    "thicket": ((("spruce", 11), ("young", 1)), 0.9),
+    "clearcut": ((("young", 6), ("snag", 2), ("beech_y", 1)), 0.5),
+    "hollow": ((("beech_y", 4), ("beech_r", 3), ("oak", 2), ("beech_g", 1)), 0.62),
+    "crest": ((("oak", 5), ("beech_y", 3), ("spruce", 2)), 0.5),
+    "finish": ((("oak", 5), ("beech_y", 3), ("spruce", 2)), 0.5),
+}
+NEAR = 480          # real tree models up to this far beyond the road edge, flat crosses beyond
+FAR = 2700          # nothing beyond this
+SEC_OF = []
+
+
+def section_of(i):
+    if not SEC_OF:
+        SEC_OF.extend([""] * len(PATH))
+        for name, (a, b) in SECTIONS.items():
+            for k in range(a, b + 1):
+                SEC_OF[k] = SEC_OF[k] or name
+    return SEC_OF[i]
+
+
+def pick(rng, mix):
+    total = sum(w for _, w in mix)
+    r = rng.random() * total
+    for kind, w in mix:
+        r -= w
+        if r <= 0:
+            return kind
+    return mix[-1][0]
+
+
+def forest():
+    """Trees: real models near the road (solid trunks inside the walls),
+    crossed flat sprites further out, nothing in the creek or on the road.
+    Open land (yard, clear-cut, meadow) keeps few trees near the road."""
+    rng = random.Random(77)
+    x0, x1, y0, y1 = BOUNDS["x0"], BOUNDS["x1"], BOUNDS["y0"], BOUNDS["y1"]
+    wz = BOUNDS["water_z"]
+    counts = {"models": 0, "sprites": 0, "trunks": 0, "inside": 0}
+    kinds = {}
+    for cell, zone in ((150, "near"), (210, "far")):
+        for gy in range(y0 + 150, y1 - 150, cell):
+            for gx in range(x0 + 150, x1 - 150, cell):
+                x, y = gx + rng.uniform(0, cell), gy + rng.uniform(0, cell)
+                roll, kroll, srand = rng.random(), rng.random(), rng.random()
+                d, i = nearest(x, y, FAR + 400)
+                if d > 1e8:
+                    continue
+                e = d - half_width(S[i]) - SHOULDER
+                if (zone == "near") != (e < NEAR) or e < 80 or e > FAR:
+                    continue
+                z = ground(x, y)
+                if z < wz + 12 or creek_distance(x, y) < CREEK_W + 60:
+                    continue
+                sl = max(abs(ground(x + 40, y) - ground(x - 40, y)), abs(ground(x, y + 40) - ground(x, y - 40))) / 80
+                if sl > 0.95:
+                    continue
+                sec = section_of(i)
+                mix, dens = MIX[sec]
+                opn = OPEN.get(i, 0.0) * (1 - smooth(1100, 1700, e))
+                s_, dsig = local(i, x, y)
+                side = 1 if dsig > 0 else -1
+                wall = PLACED[side].get(i)
+                inside = wall is not None and abs(dsig) < wall + 40
+                if inside:
+                    # inside the walls only on straight road, never at the outside of a bend
+                    if abs(KAPPA[i]) > 1 / 900 or sec in ("yard", "finish") or i in FORD:
+                        continue
+                    dens *= 0.45
+                if zone == "far":
+                    dens = 0.78
+                dens *= 1 - 0.88 * opn
+                if roll > dens:
+                    continue
+                kind = pick(random.Random(kroll), mix)
+                if opn > 0.5 and sec == "clearcut" and e > 1300:
+                    kind = "spruce"                         # the old forest around the clear-cut
+                if zone == "near":
+                    model, (a, b), _, _ = KINDS[kind]
+                    scale = a + (b - a) * srand
+                    sink = 6 + sl * 30
+                    keys = {"model": MAPOBJ + model, "modelscale": f"{scale:.2f}",
+                            "angle": str(rng.randrange(360)), "_cs": "1", "_rs": "1"}
+                    for k, (src, dst) in enumerate(remaps(kind)):
+                        keys[f"_remap{k or ''}"] = f"{src};{dst}"
+                    entity("misc_model", x, y, z - sink, **keys)
+                    counts["models"] += 1
+                    if inside or e < 400:
+                        r = 16 if kind in ("young", "snag") else 18
+                        box((x - r, y - r, z - 30), (x + r, y + r, z + 150), TEX + "boundary")
+                        counts["trunks"] += 1
+                        counts["inside"] += inside
+                else:
+                    kind = SPRITE_OF.get(kind, kind)
+                    _, (a, b), _, _ = KINDS[kind]
+                    scale = a + (b - a) * srand
+                    entity("misc_model", x, y, z - 8 - sl * 30, model=OWN_MODELS + f"cross_{kind}.md3",
+                           modelscale=f"{scale:.2f}", angle=str(rng.randrange(90)))
+                    counts["sprites"] += 1
+                kinds[kind] = kinds.get(kind, 0) + 1
+    BOUNDS["forest"] = {**counts, "kinds": kinds}
+
+
+def remaps(kind):
+    _, _, leaf, own = KINDS[kind]
+    out = []
+    for src, dst in BARK:
+        for ext in ("", ".tga", ".jpg"):
+            out.append((MAPOBJ + src + ext, OWN_MODELS + dst))
+    if leaf:
+        for ext in ("", ".tga"):
+            out.append((MAPOBJ + leaf + ext, OWN_MODELS + own))
+    return out
+
+
+def load_md3():
+    import sys
+    sys.path.insert(0, str(ROOT / "tools" / "carbuild"))
+    import md3
+    return md3
+
+
+def leaf_texture(own):
+    """The leaf textures of the models, recoloured for an autumn morning."""
+    from PIL import Image
+    import numpy as np
+    src = {"spruce": "GR_trees/nadel.tga", "beech_y": "GR_trees/tree.tga", "beech_r": "GR_trees/tree3.tga",
+           "beech_g": "GR_trees/tree4.tga", "oak": "oak/oakblaetter2.tga"}[own]
+    a = np.asarray(Image.open(ROOT / "baseq3r" / MAPOBJ / src).convert("RGBA")).astype(np.float32)
+    mul = {"spruce": (0.50, 0.66, 0.50), "beech_y": (1.0, 0.92, 0.80), "beech_r": (0.95, 0.85, 0.80),
+           "beech_g": (0.92, 0.92, 0.80), "oak": (0.95, 0.88, 0.75)}[own]
+    a[..., :3] *= mul
+    return a
+
+
+def sprite(kind, w=256, h=512):
+    """Side view of a tree model (orthographic, z-buffered, alpha tested): the
+    texture of the crossed planes far from the road."""
+    import numpy as np
+    md3 = load_md3()
+    model, _, leaf, own = KINDS[kind]
+    m = md3.load(str(ROOT / "baseq3r" / MAPOBJ / model))
+    from PIL import Image
+    texs = {}
+    tris = []
+    for s in m.surfs:
+        name = s.shaders[0][0]
+        if leaf and name.startswith(MAPOBJ + leaf):
+            t = leaf_texture(own)
+        else:
+            p = ROOT / "baseq3r" / (name.rsplit(".", 1)[0] + ".jpg")
+            if not p.exists():
+                p = p.with_suffix(".tga")
+            t = np.asarray(Image.open(p).convert("RGBA")).astype(np.float32)
+            t[..., :3] *= 0.8
+        texs[name] = t
+        v = np.array([f[:3] for f in s.frames[0]], dtype=np.float32) / 64
+        st = np.array(s.st, dtype=np.float32)
+        for a, b, c in s.tris:
+            tris.append((v[[a, b, c]], st[[a, b, c]], name))
+    allv = np.concatenate([t[0] for t in tris])
+    rad = float(max(np.abs(allv[:, 0]).max(), np.abs(allv[:, 1]).max()))
+    top = float(allv[:, 2].max())
+    sx, sz = w / (2 * rad), h / top
+    img = np.zeros((h, w, 4), np.float32)
+    depth = np.full((h, w), 1e9, np.float32)
+    for v, st, name in tris:
+        tex = texs[name]
+        th, tw = tex.shape[:2]
+        px = (v[:, 0] + rad) * sx
+        py = (top - v[:, 2]) * sz
+        u0, u1 = int(max(0, np.floor(px.min()))), int(min(w - 1, np.ceil(px.max())))
+        v0, v1 = int(max(0, np.floor(py.min()))), int(min(h - 1, np.ceil(py.max())))
+        if u1 < u0 or v1 < v0:
+            continue
+        gu, gv = np.meshgrid(np.arange(u0, u1 + 1) + 0.5, np.arange(v0, v1 + 1) + 0.5)
+        (ax, bx, cx), (ay, by, cy) = px, py
+        den = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy)
+        if abs(den) < 1e-6:
+            continue
+        l1 = ((by - cy) * (gu - cx) + (cx - bx) * (gv - cy)) / den
+        l2 = ((cy - ay) * (gu - cx) + (ax - cx) * (gv - cy)) / den
+        l3 = 1 - l1 - l2
+        ins = (l1 >= 0) & (l2 >= 0) & (l3 >= 0)
+        if not ins.any():
+            continue
+        dep = l1 * v[0, 1] + l2 * v[1, 1] + l3 * v[2, 1]
+        s_ = (l1 * st[0, 0] + l2 * st[1, 0] + l3 * st[2, 0]) % 1.0
+        t_ = (l1 * st[0, 1] + l2 * st[1, 1] + l3 * st[2, 1]) % 1.0
+        col = tex[np.clip((t_ * th).astype(int), 0, th - 1), np.clip((s_ * tw).astype(int), 0, tw - 1)]
+        ok = ins & (col[..., 3] > 127) & (dep < depth[v0:v1 + 1, u0:u1 + 1])
+        # darker towards the back and the bottom of the crown
+        shade = (0.72 + 0.28 * np.clip((rad - dep) / (2 * rad), 0, 1)) * (0.75 + 0.25 * (1 - gv / h))
+        region = img[v0:v1 + 1, u0:u1 + 1]
+        region[ok, :3] = col[ok, :3] * shade[ok, None]
+        region[ok, 3] = 255
+        depth[v0:v1 + 1, u0:u1 + 1][ok] = dep[ok]
+    # bleed the colour into the transparent texels (no dark fringe in the mip maps)
+    from PIL import ImageFilter
+    rgb = Image.fromarray(img[..., :3].clip(0, 255).astype(np.uint8))
+    alpha = img[..., 3] > 0
+    filled = np.asarray(rgb).astype(np.float32)
+    for r in (2, 4, 8, 16):
+        blur = np.asarray(rgb.filter(ImageFilter.BoxBlur(r))).astype(np.float32)
+        wgt = np.asarray(Image.fromarray((alpha * 255).astype(np.uint8)).filter(ImageFilter.BoxBlur(r))).astype(np.float32)
+        est = blur / np.maximum(wgt[..., None] / 255, 1e-3)
+        hole = ~alpha & (wgt > 0) & (filled.sum(-1) == 0)
+        filled[hole] = est[hole]
+    out = np.dstack([filled.clip(0, 255), alpha * 255]).astype(np.uint8)
+    return Image.fromarray(out, "RGBA"), rad, top
+
+
+def cross_model(kind, rad, top):
+    """Two crossed quads, each with both windings, the size of the tree model."""
+    md3 = load_md3()
+    m = md3.Model()
+    m.name, m.flags = f"cross_{kind}", 0
+    m.frames = [[-rad, -rad, 0, rad, rad, top, 0, 0, 0, math.hypot(rad, top), b"cross"]]
+    m.tags = []
+    s = md3.Surf()
+    s.name, s.flags = "cross", 0
+    s.shaders = [(OWN_MODELS + f"sprite_{kind}", 0)]
+    verts, st, tris = [], [], []
+    up = md3.enc_normal(0, 0, 1)            # lit like the ground under it (the shader draws both sides)
+    for ax in ((1, 0), (0, 1)):
+        base = len(verts)
+        for u, zz in ((0, 0), (1, 0), (1, top), (0, top)):
+            p = -rad + 2 * rad * u
+            verts.append([round(ax[0] * p * 64), round(ax[1] * p * 64), round(zz * 64), up])
+            st.append([u, 1 - zz / top])
+        tris += [[base, base + 2, base + 1], [base, base + 3, base + 2]]
+    s.tris, s.st, s.frames = tris, st, [verts]
+    m.surfs = [s]
+    out = ROOT / "baseq3r" / OWN_MODELS
+    out.mkdir(parents=True, exist_ok=True)
+    md3.save(m, str(out / f"cross_{kind}.md3"))
+
+
+def write_trees():
+    """Leaf textures, sprites and the crossed-plane models."""
+    from PIL import Image
+    import numpy as np
+    out = ROOT / "baseq3r" / OWN_MODELS
+    out.mkdir(parents=True, exist_ok=True)
+    for own in ("spruce", "beech_y", "beech_r", "beech_g", "oak"):
+        Image.fromarray(leaf_texture(own).clip(0, 255).astype(np.uint8), "RGBA").save(out / f"{own}.tga", compression="tga_rle")
+    for kind in SPRITES:
+        im, rad, top = sprite(kind)
+        im.save(out / f"sprite_{kind}.tga", compression="tga_rle")
+        cross_model(kind, rad, top)
+
+
+def tree_shaders():
+    M = OWN_MODELS
+    out = ["// trees: leaves alpha tested, cast alpha shadows; vertex lit by q3map2"]
+    for own in ("spruce", "beech_y", "beech_r", "beech_g", "oak"):
+        out += [f"{M}{own}", "{", f"\tqer_editorimage {M}{own}.tga", "\tsurfaceparm nonsolid",
+                "\tsurfaceparm alphashadow", "\tsurfaceparm nomarks", "\tsurfaceparm nolightmap",
+                "\tsurfaceparm trans", "\tcull disable",
+                "\t{", f"\t\tmap {M}{own}.tga", "\t\talphaFunc GE128", "\t\tdepthWrite", "\t\trgbGen vertex",
+                "\t}", "}", ""]
+    for kind in SPRITES:
+        out += [f"{M}sprite_{kind}", "{", f"\tqer_editorimage {M}sprite_{kind}.tga", "\tsurfaceparm nonsolid",
+                "\tsurfaceparm nomarks", "\tsurfaceparm nolightmap", "\tsurfaceparm trans",
+                "\tsurfaceparm noimpact", "\tcull disable", "\t{", f"\t\tmap {M}sprite_{kind}.tga", "\t\talphaFunc GE128",
+                "\t\tdepthWrite", "\t\trgbGen vertex", "\t}", "}", ""]
+    for src, dst in BARK:
+        out += [f"{M}{dst}", "{", f"\tqer_editorimage {MAPOBJ}{src}.jpg", "\tsurfaceparm nonsolid",
+                "\tsurfaceparm nolightmap",
+                "\t{", f"\t\tmap {MAPOBJ}{src}.jpg", "\t\trgbGen vertex", "\t}", "}", ""]
+    return out
+
+
+# ---------------------------------------------------------------- sky, forest floor
+
+SUN_YAW, SUN_PITCH = 300, 20        # south-east-ish, low: early morning in autumn
+
+
+def write_sky():
+    """A misty morning sky as a skybox, the sun where q3map_sun puts it."""
+    import numpy as np
+    from PIL import Image
+    out = ROOT / "baseq3r" / "env" / NAME
+    out.mkdir(parents=True, exist_ok=True)
+    n = 512
+    yaw, pitch = math.radians(SUN_YAW), math.radians(SUN_PITCH)
+    sun = np.array([math.cos(yaw) * math.cos(pitch), math.sin(yaw) * math.cos(pitch), math.sin(pitch)])
+    rng = np.random.default_rng(5)
+    grids = [rng.random((g + 1, g + 1)) for g in (4, 8, 16, 32, 64)]
+
+    def noise(u, v):
+        acc = np.zeros_like(u)
+        amp, tot = 1.0, 0.0
+        for g in grids:
+            k = g.shape[0] - 1
+            fu, fv = (u % 1) * k, (v % 1) * k
+            iu, iv = np.minimum(np.floor(fu).astype(int), k - 1), np.minimum(np.floor(fv).astype(int), k - 1)
+            tu, tv = fu - iu, fv - iv
+            tu, tv = tu * tu * (3 - 2 * tu), tv * tv * (3 - 2 * tv)
+            g2 = g.copy()
+            g2[-1, :], g2[:, -1] = g2[0, :], g2[:, 0]
+            a = g2[iv, iu] * (1 - tu) + g2[iv, iu + 1] * tu
+            b = g2[iv + 1, iu] * (1 - tu) + g2[iv + 1, iu + 1] * tu
+            acc += amp * (a * (1 - tv) + b * tv)
+            tot += amp
+            amp *= 0.55
+        return acc / tot
+
+    faces = {"rt": lambda s, t: (np.ones_like(s), -s, t), "lf": lambda s, t: (-np.ones_like(s), s, t),
+             "bk": lambda s, t: (s, np.ones_like(s), t), "ft": lambda s, t: (-s, -np.ones_like(s), t),
+             "up": lambda s, t: (-t, -s, np.ones_like(s)), "dn": lambda s, t: (t, -s, -np.ones_like(s))}
+    c = (np.arange(n) + 0.5) / n
+    uu, vv = np.meshgrid(c, c)
+    s, t = 2 * uu - 1, 1 - 2 * vv
+    horizon = np.array([0.84, 0.82, 0.78])
+    zenith = np.array([0.50, 0.60, 0.74])
+    warm = np.array([1.0, 0.84, 0.60])
+    for name, f in faces.items():
+        x, y, z = f(s, t)
+        ln = np.sqrt(x * x + y * y + z * z)
+        x, y, z = x / ln, y / ln, z / ln
+        el = np.arcsin(np.clip(z, -1, 1))
+        k = np.clip(el / 0.9, 0, 1) ** 0.6
+        col = horizon * (1 - k[..., None]) + zenith * k[..., None]
+        cosang = np.clip(x * sun[0] + y * sun[1] + z * sun[2], -1, 1)
+        ang = np.arccos(cosang)
+        glow = 0.55 * np.exp(-ang / 0.10) + 0.22 * np.exp(-ang / 0.6)
+        col = col * (1 - 0.3 * glow[..., None]) + warm * glow[..., None]
+        # thin cloud streaks on a plane over the land
+        h = np.maximum(z, 0.02)
+        pu, pv = x / h * 0.06 + 0.3, y / h * 0.18 + 0.7
+        cl = noise(pu, pv)
+        cover = np.clip((cl - 0.52) * 3.2, 0, 1) * np.clip((el - 0.02) / 0.15, 0, 1)
+        lit = 0.85 + 0.5 * np.exp(-ang / 0.5)
+        cloud = np.array([0.88, 0.86, 0.84]) * lit[..., None] * np.array([1.0, 0.96, 0.9])
+        col = col * (1 - 0.55 * cover[..., None]) + cloud * 0.55 * cover[..., None]
+        disc = np.clip((0.012 - ang) / 0.004, 0, 1)
+        col = col * (1 - disc[..., None]) + np.array([1.0, 0.97, 0.88]) * 1.15 * disc[..., None]
+        # the haze band near the horizon and below it
+        band = np.exp(-np.maximum(el, 0) / 0.07)[..., None]
+        col = col * (1 - 0.6 * band) + horizon * 0.6 * band
+        col[el < 0] = horizon * 0.95
+        Image.fromarray((col.clip(0, 1) * 255).astype(np.uint8)).save(out / f"{NAME}_{name}.jpg", quality=94)
+
+
+def write_floor():
+    """Forest floor: brown soil with fallen leaves, a few needles and moss;
+    seamless, 512 x 512."""
+    import numpy as np
+    from PIL import Image, ImageDraw, ImageFilter
+    out = ROOT / "baseq3r" / "textures" / "q3r_timberrun"
+    n = 512
+    rng = random.Random(31)
+    nrng = np.random.default_rng(31)
+    small = nrng.random((16, 16))
+    base = np.asarray(Image.fromarray((np.tile(small, (3, 3)) * 255).astype(np.uint8)).resize(
+        (n * 3, n * 3), Image.BICUBIC).crop((n, n, 2 * n, 2 * n))).astype(np.float32) / 255
+    grain = nrng.random((n, n)) * 0.25
+    soil = np.array([74, 54, 38], np.float32)
+    img = soil * (0.75 + 0.35 * base[..., None] + grain[..., None])
+    im = Image.fromarray(img.clip(0, 255).astype(np.uint8))
+    d = ImageDraw.Draw(im)
+    colours = [(176, 96, 34), (196, 132, 40), (150, 70, 30), (120, 78, 40), (206, 160, 60), (98, 64, 38),
+               (160, 110, 50), (130, 50, 28)]
+    # moss patches
+    for _ in range(40):
+        x, y, r = rng.uniform(0, n), rng.uniform(0, n), rng.uniform(6, 22)
+        for ox in (-n, 0, n):
+            for oy in (-n, 0, n):
+                d.ellipse((x + ox - r, y + oy - r, x + ox + r, y + oy + r), fill=(64, 72, 40))
+    for k in range(2000):
+        x, y = rng.uniform(0, n), rng.uniform(0, n)
+        L, W = rng.uniform(5, 11), rng.uniform(2.5, 5)
+        a = rng.uniform(0, math.pi)
+        col = rng.choice(colours)
+        shade = rng.uniform(0.5, 0.82)
+        col = tuple(int(c * shade) for c in col)
+        ca, sa = math.cos(a), math.sin(a)
+        pts = []
+        for j in range(10):
+            th = 2 * math.pi * j / 10
+            px, py = L * math.cos(th), W * math.sin(th) * (1 - 0.3 * math.cos(th))
+            pts.append((px * ca - py * sa, px * sa + py * ca))
+        for ox in (-n, 0, n):
+            for oy in (-n, 0, n):
+                if -15 < x + ox < n + 15 and -15 < y + oy < n + 15:
+                    d.polygon([(x + ox + px, y + oy + py) for px, py in pts], fill=col,
+                              outline=tuple(int(c * 0.85) for c in col))
+    # needles and twigs
+    for _ in range(500):
+        x, y = rng.uniform(0, n), rng.uniform(0, n)
+        a, L = rng.uniform(0, math.pi), rng.uniform(4, 14)
+        col = (110, 80, 50) if rng.random() < 0.7 else (60, 44, 30)
+        for ox in (-n, 0, n):
+            for oy in (-n, 0, n):
+                d.line((x + ox, y + oy, x + ox + L * math.cos(a), y + oy + L * math.sin(a)), fill=col, width=1)
+    im = im.filter(ImageFilter.GaussianBlur(0.8))
+    im.save(out / "forestfloor.jpg", quality=92)
+
+
 # ---------------------------------------------------------------- shaders, textures
 
-LAYER_TEX = (("forest", "textures/q3r_dirt_grass/darkdirt01.tga", 288),
+LAYER_TEX = (("forest", "textures/q3r_timberrun/forestfloor.jpg", 256),
              ("gravel", "textures/q3r_dirt_grass/stones01.tga", 160),
              ("grass", "textures/q3r_dirt_grass/grass07.tga", 320),
              ("rock", "textures/q3r_dirt_grass/rock03.tga", 288),
@@ -1070,7 +1493,7 @@ LAYER_TEX = (("forest", "textures/q3r_dirt_grass/darkdirt01.tga", 288),
 PARENTS = (("dirt", ("surfaceparm SURF_DIRT",), 0), ("gravel", ("surfaceparm SURF_GRAVEL",), 1),
            ("grass", ("surfaceparm SURF_GRASS",), 2), ("rock", (), 3),
            ("wet", ("surfaceparm SURF_GRAVEL", "surfaceparm SURF_WET"), 5))
-TINT = {"forest": "\t\trgbGen const ( 0.86 0.72 0.56 )", "gravel": "\t\trgbGen const ( 0.92 0.88 0.80 )",
+TINT = {"forest": "\t\trgbGen const ( 0.95 0.90 0.84 )", "gravel": "\t\trgbGen const ( 0.92 0.88 0.80 )",
         "grass": "\t\trgbGen const ( 0.86 0.82 0.62 )", "rock": "\t\trgbGen const ( 0.80 0.78 0.74 )",
         "cliff": "\t\trgbGen const ( 0.76 0.74 0.70 )", "mud": "\t\trgbGen const ( 0.62 0.56 0.48 )"}
 
@@ -1118,11 +1541,11 @@ def write_shader():
     T = f"textures/{TEX}"
     out = [f"// {TITLE} - A to B gravel sprint through an autumn forest, early in the morning.",
            "// Written by tools/maptools/make_timberrun.py. Compile with -custinfoparms.", ""]
-    out += [f"{T}sky", "{", "\tqer_editorimage textures/q3r_skies/env/trainyard/trainyard_ft.tga", "\tsurfaceparm noimpact",
+    out += [f"{T}sky", "{", f"\tqer_editorimage env/{NAME}/{NAME}_ft.jpg", "\tsurfaceparm noimpact",
             "\tsurfaceparm nolightmap", "\tsurfaceparm sky", "\tq3map_globaltexture",
-            "\tq3map_sun 1 0.86 0.68 210 115 22", "\tq3map_skylight 150 4",
-            "\tq3gl2_sun 1 0.86 0.68 150 115 22 0.6", "\tskyparms textures/q3r_skies/env/trainyard/trainyard - -",
-            f"\tq3r_haze 0.74 0.76 0.78 5200 2600 {BOUNDS['water_z'] + 40} 260 0.7"
+            f"\tq3map_sun 1 0.84 0.64 230 {SUN_YAW} {SUN_PITCH}", "\tq3map_skylight 240 4",
+            f"\tq3gl2_sun 1 0.84 0.64 150 {SUN_YAW} {SUN_PITCH} 0.6", f"\tskyparms env/{NAME}/{NAME} - -",
+            f"\tq3r_haze 0.80 0.80 0.78 3000 1300 {BOUNDS['water_z'] + 60} 320 0.8"
             "\t// Q3Rally: morning mist, thick in the creek valley", "}", ""]
     out += [f"{T}creek", "{", "\tqer_editorimage textures/q3r_liquids/water.tga", "\tqer_trans 0.35",
             "\tsurfaceparm nonsolid", "\tsurfaceparm trans", "\tsurfaceparm nomarks", "\tsurfaceparm nolightmap",
@@ -1132,6 +1555,7 @@ def write_shader():
             "\t{", "\t\tmap textures/q3r_liquids/water.tga", "\t\tblendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA",
             "\t\trgbGen const ( 0.22 0.27 0.22 )", "\t\talphaGen const 0.62", "\t\ttcMod scale 0.5 0.5",
             "\t\ttcMod scroll 0.02 0.004", "\t}", "}", ""]
+    out += tree_shaders()
     out += lit("metal", "textures/base_trim/tin.jpg", ("\tsurfaceparm SURF_METAL",))
     out += lit("chevron_r", f"{T}chevron_r.jpg")
     out += lit("chevron_l", f"{T}chevron_l.jpg")
@@ -1286,7 +1710,7 @@ def validate():
             "terrain_triangles": len(TRIS),
             "leaves": {s: sum(1 for leaf in LEAVES if leaf[2] == s) for s in (64, 128, 256, 512)},
             "brushes": len(BRUSHES) + sum(len(g) for g in GROUPS.values()), "checkpoints": CHECKPOINTS,
-            "wall_gaps": BOUNDS.get("wall_gaps"), "signs": BOUNDS.get("signs")}
+            "wall_gaps": BOUNDS.get("wall_gaps"), "signs": BOUNDS.get("signs"), "forest": BOUNDS.get("forest")}
 
 
 def overview(report):
@@ -1352,8 +1776,10 @@ def write_route():
 
 
 def write_map():
-    fields = {"classname": "worldspawn", "message": TITLE, "_ambient": "20", "_minlight": "14",
+    fields = {"classname": "worldspawn", "message": TITLE, "_ambient": "26", "_minlight": "18",
               "gridsize": "128 128 256", "_blocksize": "1024 1024 4096",
+              # vis drops what lies more than about 9,400 units away; the haze hides it long before
+              "_farplanedist": "7000",
               "weather": "rain", "weatherChance": "40", "weatherCycle": "120 240", "weatherStrength": "0.3 0.8",
               "weatherWind": "20 120"}
     text = ["// Generated by tools/maptools/make_timberrun.py. Q3 brush format.",
@@ -1408,11 +1834,15 @@ def main():
     end_walls()
     corridor()
     signs()
+    forest()
     water()
     misc_entities()
     shell()
     report = validate()
     write_textures()
+    write_floor()
+    write_sky()
+    write_trees()
     write_shader()
     index_map()
     target = write_map()
