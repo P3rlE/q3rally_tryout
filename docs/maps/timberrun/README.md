@@ -57,8 +57,9 @@ größte Steigung 17 % (Abfahrt der großen Kuppe). Alles Schotter (`SURF_GRAVEL
   Buchen, Bachtal grüne und gelbe Buchen, Dickicht fast nur Fichte (dicht),
   Kahlschlag und Wiese licht, Hohlweg Buchen und Eichen.
 - **Innerhalb der Wände** stehen Bäume nur an geraden Stücken, nie außen in
-  einer Kurve (72 Stück). Stämme bis 400 hinter dem Rand haben einen
-  unsichtbaren, festen Kern (549).
+  einer Kurve, und nie Eichen oder tote Stämme (deren Fuß ist zu breit). Diese
+  72 Bäume haben einen unsichtbaren, festen Kern (`trunk`). Hinter den Wänden
+  kommt kein Auto hin, dort sind die Bäume nicht fest.
 - **Weiter draußen:** 3066 gekreuzte Flächen mit gerenderten Seitenansichten
   derselben Modelle (`cross_*.md3`, je 4 Dreiecke), bis 2700 hinter dem Rand.
 - **Boden:** eigene Waldboden-Textur mit Laub, Nadeln und Moos.
@@ -88,8 +89,13 @@ die Kehren und den Blick von der ersten Kuppe ansehen.
 ## Geprüft
 
 - **Kompilieren:** kein Leck; BSP 12,7 MB. Gelände aus 33.220 Dreiecken.
-- **AAS:** aus der Ersatzkarte gebaut (`docs/maps/aas_proxy.md`), 37.190 Areas,
-  lädt ohne Fehler. bspc braucht dafür vier Minuten.
+- **AAS:** aus der Ersatzkarte gebaut (`docs/maps/aas_proxy.md`), 37.726 Areas,
+  lädt ohne Fehler. bspc braucht dafür viereinhalb Minuten. Die Ersatzkarte
+  lässt `misc_model` weg; mit den 3780 Baum-Entities lief bspc in
+  `AAS_MAX_REACHABILITYSIZE`.
+- **Bots ohne Bildschirm** (`dedicated 1`, 4 Bots, Stufe 4): alle vier im Ziel,
+  rund 65 Sekunden nach dem Start, gleich schnell wie auf dem Rohbau ohne Wald.
+  Die längeren Zeiten im Lauf mit Bild kamen vom langsamen Software-Renderer.
 - **Bots, Sprint (`g_gametype 7`), 4 Bots, Stufe 4, ein Lauf:** Alle nutzen die
   BPD-Route (`G_RaceRoute: source=bpd`, 24 von 24 Griffen). Drei kamen ins Ziel,
   nach 111, 113 und 122 Sekunden; der vierte (Mini) war beim Rennende noch

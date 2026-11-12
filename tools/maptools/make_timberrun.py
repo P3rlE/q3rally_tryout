@@ -1171,9 +1171,10 @@ def forest():
                         keys[f"_remap{k or ''}"] = f"{src};{dst}"
                     entity("misc_model", x, y, z - sink, **keys)
                     counts["models"] += 1
-                    if inside or e < 400:
+                    if inside:                      # outside the walls no car gets near
                         r = 16 if kind in ("young", "snag") else 18
-                        box((x - r, y - r, z - 30), (x + r, y + r, z + 150), TEX + "boundary")
+                        # not "boundary": the AAS proxy keeps those everywhere, these only where cars get
+                        box((x - r, y - r, z - 30), (x + r, y + r, z + 150), TEX + "trunk")
                         counts["trunks"] += 1
                         counts["inside"] += inside
                 else:
@@ -1563,6 +1564,9 @@ def write_shader():
     out += lit("chevron_l", f"{T}chevron_l.jpg")
     out += lit("banner_start", f"{T}banner_start.jpg")
     out += lit("banner_finish", f"{T}banner_finish.jpg")
+    out += [f"{T}trunk", "{", "\tqer_editorimage textures/base_floor/concrete.jpg", "\tqer_trans 0.15",
+            "\t// solid core of a tree trunk, invisible", "\tsurfaceparm nodraw", "\tsurfaceparm nolightmap",
+            "\tsurfaceparm trans", "\tsurfaceparm nomarks", "\tsurfaceparm detail", "}", ""]
     out += [f"{T}boundary", "{", "\tqer_editorimage textures/base_floor/concrete.jpg", "\tqer_trans 0.15",
             "\t// invisible but SOLID; trans lets light through",
             "\tsurfaceparm nodraw", "\tsurfaceparm nolightmap", "\tsurfaceparm trans", "\tsurfaceparm nomarks",

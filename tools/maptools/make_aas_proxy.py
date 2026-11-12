@@ -479,6 +479,8 @@ def make_proxy(src):
             kept[idx] = (keys, keep)
     kept = [e for i, e in enumerate(kept) if i == 0 or e[1] or not any(
         k == '"classname" "func_group"' for k in e[0])]
+    # map models are scenery for bspc: they only make the BSP bigger
+    kept = [e for e in kept if '"classname" "misc_model"' not in e[0]]
     leaves, vh = build_leaves(field, bx0, by0, bx1, by1)
     proxy = proxy_brushes(leaves, vh, floor)
     text = [f"// AAS proxy of {Path(src).name}, written by tools/maptools/make_aas_proxy.py.",
