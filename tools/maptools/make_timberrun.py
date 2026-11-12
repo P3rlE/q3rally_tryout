@@ -71,10 +71,10 @@ CTRL = [(x * SCALE, y * SCALE, z) for x, y, z in SKETCH]
 C_YARD, C_ROAD, C_HAIRPINS, C_CREEK, C_FORD, C_THICKET, C_CLEAR, C_HOLLOW, C_CREST, C_FINISH = \
     0, 2, 7, 18, 22, 24, 31, 36, 40, 44
 
-# keyframes along the course by position (fraction of its length)
+# keyframes along the course by position (fraction of its length without the run-out)
 HALF_WIDTH = [(0.00, 260), (0.03, 240), (0.06, 180), (0.16, 175), (0.20, 170), (0.36, 170), (0.41, 185),
               (0.47, 160), (0.50, 152), (0.62, 152), (0.66, 190), (0.79, 188), (0.82, 152), (0.90, 152),
-              (0.93, 185), (0.955, 200), (0.975, 220), (1.00, 300)]
+              (0.93, 185), (0.98, 200), (1.00, 220), (1.02, 260), (1.05, 300)]
 
 # jump crests: (section, position in it, grade up, grade down, height)
 CRESTS = (("road", 0.34, 0.07, 0.11, 28), ("road", 0.78, 0.07, 0.11, 28), ("crest", 0.30, 0.10, 0.16, 60))
@@ -170,7 +170,9 @@ def length():
 
 
 def frac(s):
-    return min(1.0, max(0.0, s / length()))
+    """Position as a fraction of the course without the run-out (1 = the old
+    end of the centre line), so the run-out leaves all widths as they were."""
+    return min(1.05, max(0.0, s / CTRL_S[C_FINISH + 1]))
 
 
 def half_width(s):

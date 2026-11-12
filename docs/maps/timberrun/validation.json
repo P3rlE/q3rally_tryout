@@ -59,17 +59,17 @@
     "water_z": 641,
     "length": 416,
     "depth": 12.1,
-    "flooded_grid_points_elsewhere": 25
+    "flooded_grid_points_elsewhere": 21
   },
   "creek_length": 7440,
-  "terrain_triangles": 34378,
+  "terrain_triangles": 34456,
   "leaves": {
-    "64": 10372,
-    "128": 4031,
-    "256": 2288,
+    "64": 10412,
+    "128": 4033,
+    "256": 2285,
     "512": 498
   },
-  "brushes": 36091,
+  "brushes": 36165,
   "checkpoints": [
     {
       "number": 1,
@@ -82,7 +82,7 @@
       "number": 2,
       "sample": 146,
       "fraction": 0.093,
-      "half_reach": 379,
+      "half_reach": 378,
       "handle": 830
     },
     {
@@ -96,7 +96,7 @@
       "number": 4,
       "sample": 274,
       "fraction": 0.174,
-      "half_reach": 374,
+      "half_reach": 372,
       "handle": 685
     },
     {
@@ -131,7 +131,7 @@
       "number": 9,
       "sample": 566,
       "fraction": 0.36,
-      "half_reach": 370,
+      "half_reach": 373,
       "handle": 858
     },
     {
@@ -145,14 +145,14 @@
       "number": 11,
       "sample": 690,
       "fraction": 0.439,
-      "half_reach": 373,
+      "half_reach": 364,
       "handle": 869
     },
     {
       "number": 12,
       "sample": 746,
       "fraction": 0.475,
-      "half_reach": 359,
+      "half_reach": 353,
       "handle": 772
     },
     {
@@ -180,42 +180,42 @@
       "number": 16,
       "sample": 964,
       "fraction": 0.614,
-      "half_reach": 352,
+      "half_reach": 366,
       "handle": 302
     },
     {
       "number": 17,
       "sample": 1028,
       "fraction": 0.654,
-      "half_reach": 388,
+      "half_reach": 390,
       "handle": 306
     },
     {
       "number": 18,
       "sample": 1092,
       "fraction": 0.695,
-      "half_reach": 390,
+      "half_reach": 389,
       "handle": 604
     },
     {
       "number": 19,
       "sample": 1156,
       "fraction": 0.736,
-      "half_reach": 389,
+      "half_reach": 388,
       "handle": 303
     },
     {
       "number": 20,
       "sample": 1220,
       "fraction": 0.777,
-      "half_reach": 388,
+      "half_reach": 369,
       "handle": 721
     },
     {
       "number": 21,
       "sample": 1284,
       "fraction": 0.817,
-      "half_reach": 353,
+      "half_reach": 352,
       "handle": 304
     },
     {
@@ -229,14 +229,14 @@
       "number": 23,
       "sample": 1412,
       "fraction": 0.899,
-      "half_reach": 352,
+      "half_reach": 385,
       "handle": 712
     },
     {
       "number": 24,
       "sample": 1476,
       "fraction": 0.94,
-      "half_reach": 390,
+      "half_reach": 399,
       "handle": 302
     }
   ],
@@ -246,18 +246,18 @@
   ],
   "signs": 18,
   "forest": {
-    "models": 725,
-    "sprites": 3099,
-    "trunks": 74,
-    "inside": 74,
+    "models": 721,
+    "sprites": 3100,
+    "trunks": 70,
+    "inside": 70,
     "kinds": {
-      "spruce": 1784,
+      "spruce": 1785,
       "young": 43,
-      "beech_y": 840,
+      "beech_y": 826,
       "snag": 4,
-      "beech_g": 393,
-      "beech_r": 424,
-      "oak": 336
+      "beech_g": 398,
+      "beech_r": 423,
+      "oak": 342
     }
   }
 }
