@@ -153,7 +153,9 @@ html { scrollbar-gutter: stable; }
 .offline-map { display: flex; gap: 1rem; align-items: center; text-align: left; }
 .offline-map img { width: 6rem; height: 3.5rem; object-fit: cover; }
 .offline-map[aria-pressed="true"] { background: #44200e; border-color: var(--accent); }
-#offline-map-image { height: clamp(12rem, 29vw, 28rem); object-fit: cover; margin: 1.5rem 0; }
+#offline-map-image { height: clamp(9rem, 24vh, 16rem); object-fit: cover; margin: .75rem 0; }
+#offline-map-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: .4rem 1.25rem; margin: .5rem 0 1rem; }
+#offline-map-details p { margin: 0; line-height: 1.4; overflow-wrap: anywhere; }
 .offline-summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .offline-rules-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 1rem; }
 .offline-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 1rem; }
