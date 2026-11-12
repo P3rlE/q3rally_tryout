@@ -11,8 +11,9 @@ Stand: **Stufe 2** (Wald, Nebel, Licht).
 
 ## Strecke
 
-Länge 47.040 Einheiten von Start- bis Ziellinie (die Mittellinie ist mit Startplatz und Auslauf 50.240 lang), geschätzte Fahrzeit 84 Sekunden, Bots brauchen rund 65, Start auf z 1200, Ziel
-auf z 1032, tiefster Punkt in der Furt (z 629). Kleinster Kurvenradius 451,
+Länge 47.040 Einheiten von der Start- bis zur Ziellinie (mit Startplatz und
+Auslauf ist die Mittellinie 50.240 lang). Geschätzte Fahrzeit 84 Sekunden, die
+Bots brauchen rund 65. Start auf z 1200, Ziel auf z 1032, tiefster Punkt in der Furt (z 629). Kleinster Kurvenradius 451,
 größte Steigung 17 % (Abfahrt der großen Kuppe). Alles Schotter (`SURF_GRAVEL`).
 
 | Abschnitt | Länge | Charakter |
