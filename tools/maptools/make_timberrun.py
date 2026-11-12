@@ -1440,7 +1440,7 @@ def write_detail_textures():
     rng = np.random.default_rng(21)
     w, h = 256, 128
     a = np.zeros((h, w, 3))
-    base = np.array([196, 168, 104])
+    base = np.array([164, 140, 92])
     a[:] = base * 0.8
     img = Image.fromarray(a.astype(np.uint8))
     d = ImageDraw.Draw(img)
