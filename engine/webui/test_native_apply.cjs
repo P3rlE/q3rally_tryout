@@ -19,7 +19,7 @@ async function connect(page){
  const call=(method,params={})=>new Promise((resolve,reject)=>{const id=++serial;const timer=setTimeout(()=>{pending.delete(id);reject(Error('CDP timeout: '+method));},10000);pending.set(id,{resolve,reject,timer});socket.send(JSON.stringify({id,method,params}));});
  return {call,close:()=>socket.close(),evaluate:async expression=>{const reply=await call('Runtime.evaluate',{expression,returnByValue:true,userGesture:true});if(reply.exceptionDetails)throw Error(reply.exceptionDetails.text);return reply.result.value;}};
 }
-async function wait(client,expression){const deadline=Date.now()+30000;while(Date.now()<deadline){if(await client.evaluate(expression))return;await pause();}throw Error('Timed out: '+expression);}
+async function wait(client,expression){const deadline=Date.now()+30000;while(Date.now()<deadline){if(await client.evaluate(expression))return;await pause();}fs.writeFileSync(path.join(output,'timeout-dom.txt'),await client.evaluate('document.body.innerText'));throw Error('Timed out: '+expression);}
 async function click(client,query){
  const expression=`(()=>{const element=${query};return !!element&&!element.disabled&&element.getClientRects().length>0;})()`;
  await wait(client,expression);
@@ -28,6 +28,17 @@ async function click(client,query){
 const button=name=>`[...document.querySelectorAll('#config-actions button')].find(b=>b.textContent.trim()===${JSON.stringify(name)})`;
 (async()=>{
  let page=await target(),client=await connect(page);
+ await click(client,"document.querySelector('#main-navigation [data-action=\"config\"]')");
+ // Form rebuilds can leave focus on BODY. ESC must still leave the menu,
+ // once per physical press, without destroying/reloading the CEF page.
+ await wait(client,button('Graphics'));
+ await client.evaluate("document.activeElement.blur()");
+ await client.call('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+ await client.call('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+ await wait(client,"!document.querySelector('#main-navigation').hidden");
+ const current=await(await fetch('http://127.0.0.1:'+port+'/json/list')).json();
+ if(!current.some(item=>item.id===page.id))throw Error('ESC unexpectedly recreated CEF');
+ console.log('Single ESC from BODY returned to main menu.');
  await click(client,"document.querySelector('#main-navigation [data-action=\"config\"]')");
  let checks=0;
  for(const value of ['0','1','0']){

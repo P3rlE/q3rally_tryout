@@ -110,6 +110,7 @@
   window.q3rallyFrontend = {
 
     state(screen, percent, stage, prompt) {
+      if (screen === 7) { this.garage(); return; }
       window.q3rallyArchive?.show(screen);
       window.q3rallyLibrary?.show(screen);
       window.q3rallyDriver?.show(screen);
@@ -118,7 +119,7 @@
       window.q3rallyConfig?.show(screen);
       window.q3rallyHUD?.show(screen);
       window.q3rallyMapLoading?.show(screen);
-      if ((screen >= 3 && screen <= 6) || screen === 8 || screen === 9 || screen === 10 || screen === 11 || screen === 12 || screen === 13 || screen === 14) {
+      if (screen === 0 || (screen >= 3 && screen <= 6) || screen === 8 || screen === 9 || screen === 10 || screen === 11 || screen === 12 || screen === 13 || screen === 14) {
         shell.hidden = garage.hidden = true;
         request++;
         viewer?.dispose();
@@ -194,6 +195,8 @@
     },
 
     garage() {
+      window.q3rallyArchive?.show(7);
+      window.q3rallyLibrary?.show(7);
       window.q3rallyDriver?.show(7);
       window.q3rallyOffline?.show(7);
       window.q3rallyOnline?.show(7);

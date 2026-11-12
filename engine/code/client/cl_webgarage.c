@@ -21,6 +21,8 @@ static cef_browser_t *webBrowser;
 static HWND webParent, webChild;
 static qboolean webInitialized, webContextReady, webOpenRequested, webCloseRequested;
 static qboolean webVideoRestart;
+static qboolean webSuspended;
+static int webPresentedScreen;
 #define WEB_ORIGIN L"https://q3rally.invalid/"
 static const wchar_t webPage[] = WEB_ORIGIN L"index.html";
 static wchar_t webRoot[MAX_PATH];
@@ -56,7 +58,6 @@ static RECT webHUDRect, webHUDPreviousRect;
 static qboolean webHUDRegion;
 static int webHUDAction = -1, webHUDIndex, webHUDValue, webSessionAction;
 static int webLastState = -1;
-static int webLastReport;
 static int webDemoAction = -1, webDemoIndex;
 static RECT webDemoRect;
 static qboolean webDemoRectValid, webDemoRegion, webDemoRectChanged;
@@ -99,7 +100,7 @@ qboolean CL_WebGarageDemoVisible( void ) {
 }
 
 qboolean CL_WebGarageNativeInput( void ) {
-    return webInitialized && webFrontend && webFrontend->integer && !webBrowser;
+    return webInitialized && webFrontend && webFrontend->integer && !Web_Visible();
 }
 
 void CL_WebGarageFocus( void ) {
@@ -732,6 +733,15 @@ static void CEF_CALLBACK Web_ContextInitialized( cef_browser_process_handler_t *
 	if ( !webContextReady ) Com_Printf( "Web garage: could not register the local origin.\n" );
 }
 
+static void CEF_CALLBACK Web_TitleChanged( cef_display_handler_t *self, cef_browser_t *browser, const cef_string_t *title ) {
+    int screen;
+    cef_frame_t *frame = browser->get_main_frame( browser );
+    if ( frame && Web_IsLocalFrame( frame ) && title &&
+         swscanf( title->str, L"Q3Rally screen %d", &screen ) == 1 &&
+         screen == Web_CurrentScreen() ) webPresentedScreen = screen;
+    if ( frame ) frame->base.release( &frame->base );
+}
+static cef_display_handler_t webDisplay;
 static cef_request_handler_t webRequest;
 static cef_load_handler_t webLoad;
 static cef_life_span_handler_t webLife;
@@ -740,6 +750,7 @@ static cef_client_t webClient;
 static cef_app_t webApp;
 
 static cef_request_handler_t *CEF_CALLBACK Web_GetRequest( cef_client_t *self ) { return &webRequest; }
+static cef_display_handler_t *CEF_CALLBACK Web_GetDisplay( cef_client_t *self ) { return &webDisplay; }
 static cef_load_handler_t *CEF_CALLBACK Web_GetLoad( cef_client_t *self ) { return &webLoad; }
 static cef_life_span_handler_t *CEF_CALLBACK Web_GetLife( cef_client_t *self ) { return &webLife; }
 static cef_browser_process_handler_t *CEF_CALLBACK Web_GetProcess( cef_app_t *self ) { return &webProcess; }
@@ -792,6 +803,9 @@ static qboolean Web_Initialize( void ) {
 	Web_StaticHandler( &webClient.base, sizeof( webClient ) );
 	Web_StaticHandler( &webRequest.base, sizeof( webRequest ) );
 	Web_StaticHandler( &webLoad.base, sizeof( webLoad ) );
+    Web_StaticHandler( &webDisplay.base, sizeof( webDisplay ) );
+    webClient.get_display_handler = Web_GetDisplay;
+    webDisplay.on_title_change = Web_TitleChanged;
 	Web_StaticHandler( &webLife.base, sizeof( webLife ) );
 	webApp.get_browser_process_handler = Web_GetProcess;
     webApp.on_before_command_line_processing = Web_TestCommandLine;
@@ -864,10 +878,11 @@ static void Web_Open( void ) {
 		return;
 	}
 	webParent = info.info.win.window;
+    webSuspended = qfalse; webPresentedScreen = 0;
 	GetClientRect( webParent, &rect );
 	native.size = sizeof( native );
 	native.parent_window = webParent;
-	native.style = WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+	native.style = WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
 	native.bounds.width = rect.right;
 	native.bounds.height = rect.bottom;
 	native.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
@@ -1327,14 +1342,40 @@ void CL_WebGarageFrame( void ) {
         Key_SetCatcher( Key_GetCatcher() & ~KEYCATCH_CGAME );
         if ( cgvm ) VM_Call( cgvm, CG_EVENT_HANDLING, CGAME_EVENT_NONE );
     }
-	if ( webCloseRequested || !Web_CurrentScreen() || !IsWindow( webParent ) ) {
-		webCloseRequested = qfalse;
-		webSetup.pending = qfalse;
-        Cvar_Set( "cl_webIngameUI", "0" ); Cvar_Set( "cl_webHUDActive", "0" ); Cvar_Set( "cl_webMapLoading", "0" );
+    if ( webCloseRequested || !IsWindow( webParent ) ) {
+        webCloseRequested = qfalse;
         if ( webChild ) ShowWindow( webChild, SW_HIDE );
-		Web_Close();
-		return;
-	}
+        Web_Close();
+        return;
+    }
+    if ( !Web_CurrentScreen() ) {
+        if ( !webSuspended ) {
+            cef_browser_host_t *host = webBrowser->get_host( webBrowser );
+            webSuspended = qtrue; webPresentedScreen = 0; webLastState = -1;
+            webSetup.pending = qfalse; webGarageMode = qfalse;
+            webConfigPublished = webOnlinePublished = webDriverPublished = qfalse;
+            webOfflineScreen = webItemsScreen = webCatalogScreen = 0;
+            Cvar_Set( "cl_webIngameUI", "0" ); Cvar_Set( "cl_webHUDActive", "0" ); Cvar_Set( "cl_webMapLoading", "0" );
+            {
+                cef_frame_t *frame = webBrowser->get_main_frame( webBrowser );
+                Web_RunScript( frame, L"window.q3rallyFrontend?.state(0,0,0,0);document.title='Q3Rally screen 0'" );
+                frame->base.release( &frame->base );
+            }
+            ShowWindow( webChild, SW_HIDE );
+            host->set_focus( host, 0 ); host->base.release( &host->base );
+            SetFocus( webParent );
+            Key_ClearStates();
+        }
+        return;
+    }
+    webSuspended = qfalse;
+    /* Reveal only after the renderer has applied the requested screen. */
+    if ( webPresentedScreen == Web_CurrentScreen() && !IsWindowVisible( webChild ) ) {
+        cef_browser_host_t *host = webBrowser->get_host( webBrowser );
+        ShowWindow( webChild, SW_SHOW );
+        SDL_SetRelativeMouseMode( SDL_FALSE ); SDL_ShowCursor( SDL_ENABLE );
+        host->set_focus( host, 1 ); host->base.release( &host->base );
+    }
 	if ( webChild && GetClientRect( webParent, &parent ) && GetClientRect( webChild, &child ) &&
 	     (parent.right != child.right || parent.bottom != child.bottom) ) {
 		SetWindowPos( webChild, NULL, 0, 0, parent.right, parent.bottom, SWP_NOACTIVATE | SWP_NOZORDER );
@@ -1348,7 +1389,7 @@ void CL_WebGarageFrame( void ) {
         if ( webHUDRegion ) { SetWindowRgn( webChild, NULL, TRUE ); webHUDPublished = webHUDRectValid = webHUDRegion = qfalse; }
         if ( webLastState != 14 ) {
             frame = webBrowser->get_main_frame( webBrowser );
-            Web_RunScript( frame, L"window.q3rallyFrontend?.state(14,0,0,0)" );
+            Web_RunScript( frame, L"window.q3rallyFrontend?.state(14,0,0,0);document.title='Q3Rally screen 14'" );
             frame->base.release( &frame->base ); webLastState = 14;
         }
         Web_PublishMapLoading();
@@ -1413,7 +1454,6 @@ void CL_WebGarageFrame( void ) {
         }
         screen = Web_CurrentScreen();
         if ( screen < 1 || screen > 14 ) {
-            Web_Close();
             return;
         }
         Cvar_Set( "cl_webIngameUI", clc.state == CA_ACTIVE && screen == 12 ? "1" : "0" );
@@ -1476,20 +1516,19 @@ void CL_WebGarageFrame( void ) {
             Web_PublishDownloadState();
             webLastStatusReport = cls.realtime;
         }
-        state = screen + progress * 4 + stage * 512 + prompt * 8192;
-        if ( state != webLastState && cls.realtime - webLastReport >= 50 ) {
+        state = screen + progress * 16 + stage * 2048 + prompt * 32768;
+        if ( state != webLastState ) {
             cef_frame_t *frame = webBrowser->get_main_frame( webBrowser );
-            wchar_t script[180];
-            swprintf( script, ARRAY_LEN( script ), L"window.q3rallyFrontend?.state(%d,%d,%d,%d)",
-                      screen, progress, stage, prompt );
+            wchar_t script[256];
+            swprintf( script, ARRAY_LEN( script ), L"window.q3rallyFrontend?.state(%d,%d,%d,%d);document.title='Q3Rally screen %d'",
+                      screen, progress, stage, prompt, screen );
             Web_RunScript( frame, script );
             frame->base.release( &frame->base );
             webLastState = state;
-            webLastReport = cls.realtime;
         }
     } else if ( webGarageMode && webLastState != -2 ) {
         cef_frame_t *frame = webBrowser->get_main_frame( webBrowser );
-        Web_RunScript( frame, L"window.q3rallyFrontend?.garage()" );
+        Web_RunScript( frame, L"window.q3rallyFrontend?.garage();document.title='Q3Rally screen 7'" );
         frame->base.release( &frame->base );
         webLastState = -2;
     }

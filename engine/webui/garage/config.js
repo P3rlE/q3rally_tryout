@@ -73,7 +73,7 @@
     if(confirmation){find('confirm-title').textContent=description||'Confirm change';find('confirm-message').textContent='';find('confirm-actions').replaceChildren(...buttons.map(button));if(!find('confirm').open)find('confirm').showModal();}
     else{find('confirm').close();buttons.forEach(item=>actions.append(button(item)));controls.forEach(item=>fields.append(field(item)));if(focusHint)document.getElementById(focusHint)?.focus({preventScroll:true});}
   }
-  root.addEventListener('keydown',event=>{if(event.key==='Escape'&&!event.target.closest('dialog')){event.preventDefault();send(6);}});
+  document.addEventListener('keydown',event=>{if(!root.hidden&&event.key==='Escape'&&!event.defaultPrevented&&!event.repeat&&!event.target.closest('dialog')){event.preventDefault();send(6);}});
   find('back').addEventListener('click',()=>send(6));find('confirm').addEventListener('cancel',event=>{event.preventDefault();send(6);});
   window.q3rallyConfig={
     begin(nextPage,nextTitle,nextDescription,isConfirmation){page=nextPage;title=nextTitle;description=nextDescription;confirmation=!!isConfirmation;items=[];},

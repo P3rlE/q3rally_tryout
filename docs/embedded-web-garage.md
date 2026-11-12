@@ -315,3 +315,14 @@ The default helpers start fullscreen at desktop resolution. Use
 `Start-Windowed.cmd` for a 1280x800 WebUI window when needed.
 CEF remains the existing sandbox-disabled Windows-only pilot; this workflow
 is an integration milestone, not production security or cross-platform signoff.
+
+### Menu focus and presentation
+
+CEF stays loaded but hidden during gameplay and console use. Suspension releases
+keyboard focus to SDL, clears pressed keys once and stops the showroom. Opening
+pause reuses the document instead of loading the garage again. Native presentation
+waits for a local renderer title acknowledgement for the current screen. The
+initial document contains no visible screen; menu changes are published without
+the former 50 ms delay. Graphics restarts still drain CEF before SDL teardown.
+ESC in configuration/pause is handled at document scope, including after a form
+rebuild leaves focus on BODY; repeats and dialog-owned key events are ignored.
