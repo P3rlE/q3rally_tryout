@@ -2639,6 +2639,9 @@ entity at the same origin and angle (the centre of the lamp row).
 "spacing"	distance between lamp centres (default 16, the model)
 "radius"	lens radius (default 5.5, the model)
 "range"	not drawn beyond this view distance (default 6000)
+
+To check the lamps in the editor's test map: devmap, then
+cg_startLightPreview 1, 2 or 3 (red lamps) or 4 (green), 0 = off.
 */
 
 /*QUAKED item_armor_green (0 .7 0) (-16 -16 -16) (16 16 16) SUSPENDED

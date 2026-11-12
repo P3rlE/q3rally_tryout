@@ -71,6 +71,8 @@ Keys:
   spacing   distance between lamp centres              (default 16)
   radius    lens radius                                (default 5.5)
   range     not drawn beyond this view distance        (default 6000)
+
+cg_startLightPreview (cheat) shows 1-3 red lamps or, with 4, the green one.
 ===========================================================================
 */
 
@@ -303,6 +305,11 @@ static void CG_FX_StartLightState( int count, int *reds, qboolean *green ) {
 
 	*reds = 0;
 	*green = qfalse;
+	if ( cg_startLightPreview.integer > 0 ) {		/* for mappers: 1-3 red lamps, 4 green */
+		*green = ( cg_startLightPreview.integer >= 4 ) ? qtrue : qfalse;
+		*reds = *green ? 0 : cg_startLightPreview.integer * ( count - 1 ) / 3;
+		return;
+	}
 	if ( !p[0] ) {
 		return;
 	}
@@ -393,18 +400,19 @@ static void CG_FX_DrawStartLights( void ) {
 
 			/* the lens itself, flat on the front */
 			VectorScale( rgb, 1.0f, core );
-			CG_FX_GlowQuad( pos, l->right, up, l->radius * 1.15f, core );
+			CG_FX_GlowQuad( pos, l->right, up, l->radius * 1.3f, core );
+			CG_FX_GlowQuad( pos, l->right, up, l->radius * 1.3f, core );		/* twice: a hot core */
 			/* the halo, towards the camera, only seen from the front */
 			if ( facing > 0.0f ) {
 				vec3_t halo, hpos;
-				VectorScale( rgb, 0.45f * facing, halo );
+				VectorScale( rgb, 0.8f * facing, halo );
 				VectorMA( pos, 2.0f, toView, hpos );
-				CG_FX_GlowQuad( hpos, camRight, camUp, l->radius * 4.0f, halo );
+				CG_FX_GlowQuad( hpos, camRight, camUp, l->radius * 5.0f, halo );
 			}
 			{
 				vec3_t lp;
 				VectorMA( pos, 24.0f, l->forward, lp );
-				trap_R_AddLightToScene( lp, 110.0f, rgb[0], rgb[1], rgb[2] );
+				trap_R_AddLightToScene( lp, 70.0f, rgb[0], rgb[1], rgb[2] );
 			}
 		}
 	}

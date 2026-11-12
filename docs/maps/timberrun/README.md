@@ -53,7 +53,8 @@ größte Steigung 17 % (Abfahrt der großen Kuppe). Alles Schotter (`SURF_GRAVEL
   Countdown: bei „3“ eine rote, bei „2“ zwei, bei „1“ drei, bei „GO!“ alle rot
   aus und grün an, vier Sekunden später dunkel. Neue Entity `rally_startlight`
   (cgame, `cg_rally_fx.c`), Modell `models/mapobjects/startlight/startlight.md3`
-  von `tools/maptools/make_startlight.py`; jede Map kann sie nutzen.
+  von `tools/maptools/make_startlight.py`; jede Map kann sie nutzen. Zum
+  Ansehen ohne Rennen: `cg_startLightPreview 1`–`3` (rot), `4` (grün), `0` aus.
 - **Kurvenschilder:** je drei Richtungstafeln außen vor den sechs engsten Kurven.
   Eigenes Modell (`sign_l.md3`, `sign_r.md3`): Aluminiumtafel 120 × 60 mit runden
   Ecken und umgebördeltem Rand, Folie mit leichtem Straßenschmutz unten, zwei

@@ -44,15 +44,15 @@ models/mapobjects/startlight/lens_green
 	}
 }
 
-// the light of a lit lamp, drawn by cgame (additive, coloured per vertex)
+// the light of a lit lamp, drawn by cgame (additive, coloured and faded per vertex)
 models/mapobjects/startlight/glow
 {
 	nopicmip
-	nomipmaps
-	cull disable
+	cull none
 	{
 		clampmap models/mapobjects/startlight/glow.tga
-		blendFunc GL_ONE GL_ONE
+		blendFunc GL_SRC_ALPHA GL_ONE
 		rgbGen vertex
+		alphaGen vertex
 	}
 }

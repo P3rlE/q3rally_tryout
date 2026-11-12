@@ -158,7 +158,8 @@ def write_textures():
         Image.fromarray(c.clip(0, 255).astype(np.uint8)).save(out / f"{name}.jpg", quality=94)
     glow = np.clip(1 - rr, 0, 1) ** 2.2 + 0.9 * np.clip(1 - rr / 0.35, 0, 1)
     g = (np.clip(glow, 0, 1) * 255).astype(np.uint8)
-    Image.fromarray(np.dstack([g, g, g])).save(out / "glow.tga")
+    w = np.full_like(g, 255)
+    Image.fromarray(np.dstack([w, w, w, g]), "RGBA").save(out / "glow.tga")
 
 
 def write_shader():
@@ -209,16 +210,16 @@ def write_shader():
 	}}
 }}
 
-// the light of a lit lamp, drawn by cgame (additive, coloured per vertex)
+// the light of a lit lamp, drawn by cgame (additive, coloured and faded per vertex)
 {D}glow
 {{
 	nopicmip
-	nomipmaps
-	cull disable
+	cull none
 	{{
 		clampmap {D}glow.tga
-		blendFunc GL_ONE GL_ONE
+		blendFunc GL_SRC_ALPHA GL_ONE
 		rgbGen vertex
+		alphaGen vertex
 	}}
 }}
 """

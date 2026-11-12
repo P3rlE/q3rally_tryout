@@ -1838,6 +1838,7 @@ extern	vmCvar_t		cg_mapEffects;
 extern	vmCvar_t		cg_tireSmoke;
 extern	vmCvar_t		cg_weatherAudio;
 extern	vmCvar_t		cg_weatherPreview;
+extern	vmCvar_t		cg_startLightPreview;
 extern	vmCvar_t		cg_developer;
 
 extern	vmCvar_t		cg_fpsLimit;
