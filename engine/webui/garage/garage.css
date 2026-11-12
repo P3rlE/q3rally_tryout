@@ -100,7 +100,8 @@ button:disabled { opacity: .45; cursor: default; }
 #download-progress, #download-status { width: 100%; }
 #download-progress { accent-color: var(--accent); }
 #library-author, #library-personality, #library-description, #library-detail-status { color: #bbb; }
-#library-weapon { color: var(--accent); }
+#library-weapon { display: flex; align-items: center; gap: .75rem; color: var(--accent); }
+#library-weapon img { flex: 0 0 2.5rem; width: 2.5rem; height: 2.5rem; object-fit: contain; filter: none; }
 @media (max-width: 42rem) { .library-layout { grid-template-columns: 1fr; } }
 
 .favorite-panel { margin-top: 1.5rem; }

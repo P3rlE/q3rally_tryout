@@ -90,9 +90,11 @@ def export_catalog(game, destination):
             image.convert("RGBA").save(previews / filename)
         catalog["plates"][key] = {"name": label(key), "image": f"previews/{filename}", "rank": 0}
 
-    for key, folder in (("avatars", "gfx/avatars"), ("achievementIcons", "menu/achievements"), ("mapShots", "levelshots")):
+    for key, folder in (("avatars", "gfx/avatars"), ("achievementIcons", "menu/achievements"), ("mapShots", "levelshots"), ("weaponIcons", "icons")):
         catalog[key] = {}
         for source in sorted((game / folder).rglob("*")):
+            if key == "weaponIcons" and not source.stem.startswith("iconw_"):
+                continue
             if source.suffix.lower() not in {".png", ".tga", ".jpg"}:
                 continue
             shader = source.relative_to(game).with_suffix("").as_posix()
@@ -115,7 +117,7 @@ def extract_assets(package, destination):
             if member.is_dir():
                 continue
             name = member.filename
-            if name.startswith(("models/players/", "textures/", "scripts/", "gfx/avatars/", "menu/achievements/", "levelshots/")):
+            if name.startswith(("models/players/", "textures/", "scripts/", "gfx/avatars/", "menu/achievements/", "levelshots/", "icons/iconw_")):
                 if "\\" in name or any(part in ("", ".", "..") or ":" in part for part in name.split("/")):
                     raise ValueError(f"Unsafe asset path: {name}")
                 if (member.external_attr >> 16) & 0o170000 == 0o120000:

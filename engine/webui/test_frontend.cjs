@@ -136,8 +136,8 @@ const server=http.createServer((req,res)=>{
     document.querySelector('#view-toggle').click();
     __previewRequests=[];__previewShown=[];
     const l=q3rallyLibrary;l.begin(5);
-    l.item(5,0,['First','alpine/red','','',''],0,0);
-    l.item(5,1,['Second','alpine/blue','','',''],0,0);
+    l.item(5,0,['First','alpine/red','','','Plasmagun'],0,0);
+    l.item(5,1,['Second','alpine/blue','','','Railgun'],0,0);
     l.end(5);q3rallyFrontend.state(5,0,0,0);
     document.querySelector('#library-list button[data-index="1"]').click();
   });
@@ -147,6 +147,10 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>__previewShown.length>0);
   assert.equal(await page.evaluate(()=>__previewShown.length),1);
   assert.equal(await page.locator('#library-name').textContent(),'Second');checks++;
+  assert.equal(await page.locator('#library-weapon span').textContent(),'Favorite weapon / Railgun');
+  assert.equal(await page.locator('#library-weapon img').getAttribute('src'),catalog.weaponIcons['icons/iconw_railgun']);
+  await page.waitForFunction(()=>{const icon=document.querySelector('#library-weapon img');return icon.complete&&icon.naturalWidth>0;});checks++;
+
   assert.deepEqual(errors,[]);
   fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({success:true,checks,cars:Object.keys(catalog.vehicles).length},null,2));
   console.log('Bundled frontend: '+checks+' checks passed.');
