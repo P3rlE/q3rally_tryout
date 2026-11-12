@@ -97,6 +97,40 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);checks++;
   await page.evaluate(()=>q3rallyFrontend.state(2,0,0,0));
   assert.equal(await page.locator('#map-loading-screen').isHidden(),true);checks++;
+  // Resolve obsolete model requests last: neither the old photo nor a stale
+  // 3D model may be displayed under the new selection's title.
+  await page.evaluate(()=>{
+    window.__previewRequests=[];window.__previewShown=[];
+    window.Q3RallyShowroom={openVehicleShowroom:(host,base,id)=>new Promise(resolve=>{
+      const entry={id,resolve:()=>resolve({update:async()=>{},show:()=>__previewShown.push(id),dispose:()=>{},reset:()=>{}})};
+      __previewRequests.push(entry);
+    })};
+    q3rallyFrontend.state(7,0,0,0);
+    document.querySelector('#view-toggle').click();
+    const field=document.querySelector('#vehicle');field.selectedIndex=1;field.dispatchEvent(new Event('change'));
+    field.selectedIndex=2;field.dispatchEvent(new Event('change'));
+  });
+  assert.equal(await page.locator('#vehicle-image').isHidden(),true);
+  assert.equal(await page.locator('#vehicle-3d').evaluate(e=>getComputedStyle(e).visibility),'hidden');checks++;
+  const latest=await page.locator('#vehicle').inputValue();
+  await page.evaluate(()=>{[...__previewRequests].reverse().forEach(request=>request.resolve());});
+  await page.waitForFunction(()=>__previewShown.length>0);
+  assert.deepEqual(await page.evaluate(()=>__previewShown),[latest]);checks++;
+  await page.evaluate(()=>{
+    document.querySelector('#view-toggle').click();
+    __previewRequests=[];__previewShown=[];
+    const l=q3rallyLibrary;l.begin(5);
+    l.item(5,0,['First','alpine/red','','',''],0,0);
+    l.item(5,1,['Second','alpine/blue','','',''],0,0);
+    l.end(5);q3rallyFrontend.state(5,0,0,0);
+    document.querySelector('#library-list button[data-index="1"]').click();
+  });
+  assert.equal(await page.locator('#library-image').isHidden(),true);
+  assert.equal(await page.locator('#rival-3d').evaluate(e=>getComputedStyle(e).visibility),'hidden');checks++;
+  await page.evaluate(()=>{[...__previewRequests].reverse().forEach(request=>request.resolve());});
+  await page.waitForFunction(()=>__previewShown.length>0);
+  assert.equal(await page.evaluate(()=>__previewShown.length),1);
+  assert.equal(await page.locator('#library-name').textContent(),'Second');checks++;
   assert.deepEqual(errors,[]);
   fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({success:true,checks,cars:Object.keys(catalog.vehicles).length},null,2));
   console.log('Bundled frontend: '+checks+' checks passed.');

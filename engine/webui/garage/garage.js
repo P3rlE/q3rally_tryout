@@ -138,7 +138,8 @@ function selected() {
 
 function showImage() {
   canvasHost.hidden = true;
-  image.hidden = false;
+  image.hidden = use3d || !image.complete || !image.naturalWidth;
+  canvasHost.style.visibility = '';
   reset.hidden = true;
 }
 
@@ -164,10 +165,16 @@ async function update3d() {
   const current = showroom;
   if (!current || showroomVehicle !== id || !setup) return;
   const version = ++textureGeneration;
+  canvasHost.hidden = false;
+  canvasHost.style.visibility = 'hidden';
+  image.hidden = true;
+  reset.hidden = true;
+  viewStatus.textContent = 'Loading 3D preview�';
   try {
     await current.update(setup.paint, setup.wheels);
     if (version !== textureGeneration) return;
     canvasHost.hidden = false;
+    canvasHost.style.visibility = 'visible';
     image.hidden = true;
     reset.hidden = false;
     viewStatus.textContent = 'Drag to rotate · scroll to zoom';
@@ -182,6 +189,9 @@ async function update3d() {
 async function load3d(id) {
   const current = ++generation;
   disposeShowroom();
+  canvasHost.hidden = false;
+  canvasHost.style.visibility = 'hidden';
+  image.hidden = true;
   toggle.textContent = 'Photo view';
   viewStatus.textContent = 'Loading 3D preview…';
   try {
@@ -216,6 +226,8 @@ function setOptions(select, entries, value) {
 
 function refreshImages(id, setup) {
   const selectedPaint = catalog.vehicles[id].paints[setup.paint];
+  image.hidden = true;
+  image.onload = () => { if (!use3d) image.hidden = false; };
   image.src = selectedPaint.image;
   image.alt = catalog.vehicles[id].name + ' in ' + selectedPaint.name;
   renderCarousels();
