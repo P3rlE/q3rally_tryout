@@ -54,6 +54,25 @@ night). With r_softParticles (OpenGL2) they fade out where they cut into
 the ground instead of showing a hard edge. cg_tireSmoke scales them
 (0 = off, 1 = default, 2 = double). All of them, and the waterfall mist,
 drift with the wind of the weather (CG_WeatherWindAt).
+
+rally_startlight
+----------------
+A start light (red, red, red, green) that follows the race countdown: one
+red lamp more at "3", "2" and "1", all reds off and the green one on at
+"GO!", dark again a few seconds later. Like rally_fx_spray it only lives in
+the entity string (the server maps it to SP_info_null). The housing is an
+ordinary map model (models/mapobjects/startlight/startlight.md3); this entity
+only draws the light of the lamps, so put both at the same origin and angle.
+
+Keys:
+  origin    centre of the lamp row on the lens plane (model origin)
+  angle     yaw the lamps face, towards the grid       (default 0)
+  count     number of lamps, the last one is green     (default 4)
+  spacing   distance between lamp centres              (default 16)
+  radius    lens radius                                (default 5.5)
+  range     not drawn beyond this view distance        (default 6000)
+
+cg_startLightPreview (cheat) shows 1-3 red lamps or, with 4, the green one.
 ===========================================================================
 */
 
@@ -147,6 +166,18 @@ static polyVert_t	fxMistVerts[FX_MAX_PARTICLES * 4];
 static polyVert_t	fxDropVerts[FX_MAX_PARTICLES * 4];
 static polyVert_t	fxSmokeVerts[FX_MAX_PARTICLES * 4];
 
+#define SL_MAX_LIGHTS		8
+
+typedef struct {
+	vec3_t	origin, forward, right;
+	int		count;
+	float	spacing, radius, range;
+} startLight_t;
+
+static startLight_t	slLights[SL_MAX_LIGHTS];
+static int			slNumLights;
+static qhandle_t	slGlowShader;
+
 static char			fxKeys[FX_MAX_KEYS][2][MAX_TOKEN_CHARS];
 static int			fxNumKeys;
 
@@ -236,6 +267,159 @@ static void CG_FX_AddSpray( void ) {
 
 /*
 =================
+CG_FX_AddStartLight
+=================
+*/
+static void CG_FX_AddStartLight( void ) {
+	startLight_t	*l;
+	vec3_t			angles;
+
+	if ( slNumLights >= SL_MAX_LIGHTS ) {
+		CG_Printf( S_COLOR_YELLOW "WARNING: more than %i rally_startlight entities\n", SL_MAX_LIGHTS );
+		return;
+	}
+	l = &slLights[slNumLights++];
+	CG_FX_Vector( "origin", "0 0 0", l->origin );
+	VectorSet( angles, 0.0f, CG_FX_Float( "angle", 0.0f ), 0.0f );
+	AngleVectors( angles, l->forward, l->right, NULL );
+	l->count   = (int)Com_Clamp( 2.0f, 8.0f, CG_FX_Float( "count", 4.0f ) );
+	l->spacing = Com_Clamp( 2.0f, 256.0f, CG_FX_Float( "spacing", 16.0f ) );
+	l->radius  = Com_Clamp( 1.0f, 64.0f, CG_FX_Float( "radius", 5.5f ) );
+	l->range   = Com_Clamp( 256.0f, 16384.0f, CG_FX_Float( "range", 6000.0f ) );
+	if ( !slGlowShader ) {
+		slGlowShader = trap_R_RegisterShader( "models/mapobjects/startlight/glow" );
+	}
+}
+
+/*
+=================
+CG_FX_StartLightState
+
+How many red lamps are lit (0..count-1) and whether the green one is,
+from the last race countdown message ("3", "2", "1", "GO!").
+=================
+*/
+static void CG_FX_StartLightState( int count, int *reds, qboolean *green ) {
+	const char *p = cg.countDownPrint;
+	int n;
+
+	*reds = 0;
+	*green = qfalse;
+	if ( cg_startLightPreview.integer > 0 ) {		/* for mappers: 1-3 red lamps, 4 green */
+		*green = ( cg_startLightPreview.integer >= 4 ) ? qtrue : qfalse;
+		*reds = *green ? 0 : cg_startLightPreview.integer * ( count - 1 ) / 3;
+		return;
+	}
+	if ( !p[0] ) {
+		return;
+	}
+	if ( !Q_stricmp( p, "GO!" ) ) {
+		*green = ( cg.time < cg.countDownEnd + 4000 ) ? qtrue : qfalse;
+		return;
+	}
+	n = atoi( p );
+	if ( n >= 1 && n <= 3 && cg.time < cg.countDownEnd + 1500 ) {
+		/* "3" lights the first red lamp, "1" the last; more lamps fill up from the left */
+		*reds = ( count - 1 ) - ( n - 1 ) * ( count - 1 ) / 3;
+		if ( *reds < 1 ) {
+			*reds = 1;
+		}
+	}
+}
+
+/* a glowing quad: facing `normal`, spanned by right/up */
+static void CG_FX_GlowQuad( const vec3_t org, const vec3_t right, const vec3_t up, float size, const vec3_t rgb ) {
+	polyVert_t	v[4];
+	byte		c[4];
+	int			k;
+
+	for ( k = 0; k < 3; k++ ) {
+		c[k] = (byte)( Com_Clamp( 0.0f, 1.0f, rgb[k] ) * 255.0f );
+	}
+	c[3] = 255;
+	for ( k = 0; k < 4; k++ ) {
+		float sx = ( k == 1 || k == 2 ) ? 1.0f : -1.0f;
+		float sy = ( k >= 2 ) ? -1.0f : 1.0f;
+		VectorMA( org, sx * size, right, v[k].xyz );
+		VectorMA( v[k].xyz, sy * size, up, v[k].xyz );
+		v[k].st[0] = sx > 0 ? 1.0f : 0.0f;
+		v[k].st[1] = sy > 0 ? 0.0f : 1.0f;
+		Byte4Copy( c, v[k].modulate );
+	}
+	trap_R_AddPolyToScene( slGlowShader, 4, v );
+}
+
+/*
+=================
+CG_FX_DrawStartLights
+=================
+*/
+static void CG_FX_DrawStartLights( void ) {
+	int i, k, reds;
+	qboolean green;
+	vec3_t up = { 0.0f, 0.0f, 1.0f };
+
+	if ( !slNumLights || !slGlowShader ) {
+		return;
+	}
+	for ( i = 0; i < slNumLights; i++ ) {
+		startLight_t *l = &slLights[i];
+		vec3_t toView, camRight, camUp;
+		float facing;
+
+		CG_FX_StartLightState( l->count, &reds, &green );
+		if ( !reds && !green ) {
+			continue;
+		}
+		VectorSubtract( cg.refdef.vieworg, l->origin, toView );
+		if ( VectorLength( toView ) > l->range ) {
+			continue;
+		}
+		VectorNormalize( toView );
+		facing = DotProduct( toView, l->forward );
+		VectorCopy( cg.refdef.viewaxis[1], camRight );
+		VectorCopy( cg.refdef.viewaxis[2], camUp );
+
+		for ( k = 0; k < l->count; k++ ) {
+			qboolean isGreen = ( k == l->count - 1 );
+			vec3_t pos, rgb, core;
+			float off;
+
+			if ( isGreen ? !green : ( k >= reds ) ) {
+				continue;
+			}
+			if ( isGreen ) {
+				VectorSet( rgb, 0.25f, 1.0f, 0.35f );
+			} else {
+				VectorSet( rgb, 1.0f, 0.12f, 0.06f );
+			}
+			/* lamps from the drivers' left to right; the viewer looks along -forward */
+			off = ( k - ( l->count - 1 ) * 0.5f ) * l->spacing;
+			VectorMA( l->origin, -off, l->right, pos );
+			VectorMA( pos, 0.4f, l->forward, pos );
+
+			/* the lens itself, flat on the front */
+			VectorScale( rgb, 1.0f, core );
+			CG_FX_GlowQuad( pos, l->right, up, l->radius * 1.3f, core );
+			CG_FX_GlowQuad( pos, l->right, up, l->radius * 1.3f, core );		/* twice: a hot core */
+			/* the halo, towards the camera, only seen from the front */
+			if ( facing > 0.0f ) {
+				vec3_t halo, hpos;
+				VectorScale( rgb, 0.8f * facing, halo );
+				VectorMA( pos, 2.0f, toView, hpos );
+				CG_FX_GlowQuad( hpos, camRight, camUp, l->radius * 5.0f, halo );
+			}
+			{
+				vec3_t lp;
+				VectorMA( pos, 24.0f, l->forward, lp );
+				trap_R_AddLightToScene( lp, 70.0f, rgb[0], rgb[1], rgb[2] );
+			}
+		}
+	}
+}
+
+/*
+=================
 CG_FX_ParseEntities
 
 Walks the map's entity string once. Returns when it is exhausted.
@@ -271,6 +455,8 @@ static void CG_FX_ParseEntities( void ) {
 
 		if ( !Q_stricmp( CG_FX_Value( "classname", "" ), "rally_fx_spray" ) ) {
 			CG_FX_AddSpray();
+		} else if ( !Q_stricmp( CG_FX_Value( "classname", "" ), "rally_startlight" ) ) {
+			CG_FX_AddStartLight();
 		} else if ( !Q_stricmp( CG_FX_Value( "classname", "" ), "rally_scoreboard" ) ) {
 			// Q3Rally: live score on a stadium scoreboard model (cg_autoball.c)
 			vec3_t org;
@@ -295,6 +481,8 @@ Called once the world map is loaded.
 void CG_InitRallyFX( void ) {
 	memset( fxParticles, 0, sizeof( fxParticles ) );
 	fxNextParticle = 0;
+	slNumLights = 0;
+	slGlowShader = 0;
 
 	CG_FX_ParseEntities();
 
@@ -588,6 +776,8 @@ Spawns, moves and draws the map effect particles. Called every frame.
 void CG_AddRallyFX( void ) {
 	float	dt, density;
 	int		i, n, numMist, numDrop, numSmoke;
+
+	CG_FX_DrawStartLights();
 
 	density = Com_Clamp( 0.0f, 2.0f, cg_mapEffects.value );
 	dt = Com_Clamp( 0.0f, 0.1f, cg.frametime * 0.001f );

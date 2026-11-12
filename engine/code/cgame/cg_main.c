@@ -286,6 +286,7 @@ vmCvar_t	cg_mapEffects;
 vmCvar_t	cg_tireSmoke;
 vmCvar_t	cg_weatherAudio;
 vmCvar_t	cg_weatherPreview;
+vmCvar_t	cg_startLightPreview;
 
 vmCvar_t	cg_fpsLimit;
 vmCvar_t	cg_autodrop;
@@ -435,6 +436,7 @@ static cvarTable_t cvarTable[] = {
 
 	{ &cg_atmosphericLevel, "cg_atmosphericLevel", "2", CVAR_ARCHIVE },
 	{ &cg_weatherPreview, "cg_weatherPreview", "", CVAR_CHEAT },
+	{ &cg_startLightPreview, "cg_startLightPreview", "0", CVAR_CHEAT },	// Q3Rally: 1-3 red lamps, 4 green (rally_startlight)
 	{ &cg_mapEffects, "cg_mapEffects", "1", CVAR_ARCHIVE },
 	{ &cg_tireSmoke, "cg_tireSmoke", "1", CVAR_ARCHIVE },
 	{ &cg_weatherAudio, "cg_weatherAudio", "1", CVAR_ARCHIVE },

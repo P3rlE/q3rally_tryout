@@ -250,12 +250,16 @@ def drivable(field, kept, bx0, by0, bx1, by1):
 
 def keep_brush(brush, reach, bx0, by0, margin=192):
     """Structural, boundary and drivable-area detail brushes stay; scenery far
-    outside the drivable region (forests on the hills) is dropped."""
+    outside the drivable region (forests on the hills) and thin detail poles
+    are dropped."""
     faces = brush_faces(brush)
     flags = faces[0][2][faces[0][2].rfind(")") + 1:].split()
     if len(flags) < 7 or not int(flags[6]) & DETAIL or any("boundary" in m for _, m, _ in faces):
         return True
     pts = [p for f in faces for p in f[0]]
+    # thin poles (sign posts) only make bspc split areas without end
+    if all(max(p[i] for p in pts) - min(p[i] for p in pts) < 16 for i in range(2)):
+        return False
     lo = [min(p[i] for p in pts) - margin for i in range(2)]
     hi = [max(p[i] for p in pts) + margin for i in range(2)]
     if (hi[0] - lo[0]) * (hi[1] - lo[1]) > 4096 * 4096:
@@ -479,6 +483,8 @@ def make_proxy(src):
             kept[idx] = (keys, keep)
     kept = [e for i, e in enumerate(kept) if i == 0 or e[1] or not any(
         k == '"classname" "func_group"' for k in e[0])]
+    # map models are scenery for bspc: they only make the BSP bigger
+    kept = [e for e in kept if '"classname" "misc_model"' not in e[0]]
     leaves, vh = build_leaves(field, bx0, by0, bx1, by1)
     proxy = proxy_brushes(leaves, vh, floor)
     text = [f"// AAS proxy of {Path(src).name}, written by tools/maptools/make_aas_proxy.py.",

@@ -2626,6 +2626,24 @@ scorer's number blink and show GOAL!, the kick-off shows KICK-OFF.
 "range"	not drawn beyond this view distance (default 9000)
 */
 
+/*QUAKED rally_startlight (1 .2 .1) (-8 -8 -8) (8 8 8)
+Start light that follows the race countdown: one red lamp more at 3, 2
+and 1, the green one at GO!, dark again a few seconds later. Purely client
+side, like rally_fx_spray. Place a misc_model with
+models/mapobjects/startlight/startlight.md3 for the housing and put this
+entity at the same origin and angle (the centre of the lamp row).
+
+-------- KEYS --------
+"angle"	yaw the lamps face, towards the grid (default 0)
+"count"	number of lamps, the last one is green (default 4, the model)
+"spacing"	distance between lamp centres (default 16, the model)
+"radius"	lens radius (default 5.5, the model)
+"range"	not drawn beyond this view distance (default 6000)
+
+To check the lamps in the editor's test map: devmap, then
+cg_startLightPreview 1, 2 or 3 (red lamps) or 4 (green), 0 = off.
+*/
+
 /*QUAKED item_armor_green (0 .7 0) (-16 -16 -16) (16 16 16) SUSPENDED
 */
 
