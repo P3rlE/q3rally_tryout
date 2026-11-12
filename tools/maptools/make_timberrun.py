@@ -1124,15 +1124,15 @@ def sign_shaders():
     return out
 
 
-def log(c, axis, r, length, ends=TEX + "logend"):
-    """A lying log: an octagonal prism along axis (horizontal unit vector)."""
+def log(c, axis, r, length, ends=TEX + "logend", bark=TEX + "logbark", solid=True, sides=8):
+    """A lying log (or round bale): a prism with `sides` sides along axis (horizontal unit vector)."""
     ax, ay = axis
     t = (ay, -ax)                                    # across the log, horizontal
     planes = []
-    for k in range(8):
-        a = 2 * math.pi * (k + 0.5) / 8
+    for k in range(sides):
+        a = 2 * math.pi * (k + 0.5) / sides
         d = (t[0] * math.cos(a), t[1] * math.cos(a), math.sin(a))
-        planes.append((d, (c[0] + d[0] * r, c[1] + d[1] * r, c[2] + d[2] * r), TEX + "logbark"))
+        planes.append((d, (c[0] + d[0] * r, c[1] + d[1] * r, c[2] + d[2] * r), bark))
     for sgn in (1, -1):
         nrm = (ax * sgn, ay * sgn, 0.0)
         p = (c[0] + ax * sgn * length / 2, c[1] + ay * sgn * length / 2, c[2])
@@ -1140,7 +1140,7 @@ def log(c, axis, r, length, ends=TEX + "logend"):
         left = (p[0] - right[0] * r, p[1] - right[1] * r, 0.0)
         fit = fitted(nrm, left, c[2] + r, 2 * r, 2 * r, 128, 128)
         planes.append((nrm, p, ends, fit))
-    convex(planes)
+    convex(planes, solid=solid)
 
 
 def log_pile():
@@ -1266,6 +1266,202 @@ def misc_entities():
     entity("info_player_intermission", x, y, max(z, ground(x, y)) + 650, angles=f"22 {ang:.0f} 0")
 
 
+# ---------------------------------------------------------------- details (stage 3)
+
+FOOTPRINTS = []         # (x, y, radius): no trees here
+
+
+def ground_spread(pts):
+    zs = [ground(x, y) for x, y in pts]
+    return min(zs), max(zs)
+
+
+def stack(c, axis, length, rows, r, marked, rng, solid=False):
+    """Logs lying parallel along axis, in rows (bottom first), on the ground
+    at c (x, y, z). Decoration beyond the walls is not solid."""
+    ax, ay = axis
+    n = (-ay, ax)
+    sfx = "" if solid else "_ns"
+    for row, count in enumerate(rows):
+        for k in range(count):
+            off = (k - (count - 1) / 2) * 2 * r * 1.03
+            rr = r + rng.uniform(-2.5, 2.5)
+            cz = c[2] + rr + row * r * 1.72 - 3
+            shift = rng.uniform(-14, 14)
+            ends = TEX + ("logend_mark" if marked and rng.random() < 0.7 else "logend") + sfx
+            log((c[0] + n[0] * off + ax * shift, c[1] + n[1] * off + ay * shift, cz), axis, rr,
+                length + rng.uniform(-24, 24), ends=ends, bark=TEX + "logbark" + sfx, solid=solid)
+
+
+def roadside(i, side, extra, half_len):
+    """A flat spot beside the road behind the wall: (x, y, z, axis) or None."""
+    hw = half_width(S[i])
+    lat = PLACED[side].get(i, hw + SHOULDER + LAND_GAP) + extra
+    x, y, _ = road_point(i, side * lat)
+    t = TAN[i]
+    pts = [(x + t[0] * d, y + t[1] * d) for d in (-half_len, 0, half_len)]
+    lo, hi = ground_spread(pts)
+    if hi - lo > 22:
+        return None
+    for px, py in pts:                      # keep clear of other parts of the course
+        d, j = nearest(px, py, 900)
+        if abs(j - i) > 20 and d - half_width(S[j]) < 300:
+            return None
+    return x, y, (lo + hi) / 2, t
+
+
+def details():
+    """Log piles at the timber yard and along the forest road, stumps in the
+    clear-cut, round bales on the meadow."""
+    rng = random.Random(33)
+    piles = 0
+    # timber yard: four long piles behind the walls, marked for the sawmill
+    a, b = SECTIONS["yard"]
+    for s_at, side in ((280, 1), (700, 1), (420, -1), (1150, -1)):
+        i = at(s_at)
+        spot = roadside(i, side, 90, 220)
+        if spot:
+            x, y, z, t = spot
+            stack((x, y, z), t, 440, (5, 4, 3), 22, True, rng)
+            FOOTPRINTS.append((x, y, 300))
+            piles += 1
+    # along the course: smaller piles on straight bits
+    for sec, pos in (("road", 0.18), ("road", 0.6), ("hairpins", 0.12), ("creek", 0.15), ("thicket", 0.35),
+                     ("thicket", 0.8), ("clearcut", 0.12), ("clearcut", 0.45), ("clearcut", 0.8)):
+        a, b = SECTIONS[sec]
+        want = int(a + (b - a) * pos)
+        for d in sorted(range(-25, 26), key=abs):
+            i = idx(want + d)
+            if abs(KAPPA[i]) > 1 / 1400:
+                continue
+            side = 1 if (want // 7) % 2 else -1
+            spot = roadside(i, side, 80, 170) or roadside(i, -side, 80, 170)
+            if spot:
+                x, y, z, t = spot
+                stack((x, y, z), t, 340, rng.choice(((4, 3, 2), (3, 2, 1), (4, 3))), 20, rng.random() < 0.5, rng)
+                FOOTPRINTS.append((x, y, 240))
+                piles += 1
+                break
+    # stumps in the clear-cut
+    a, b = SECTIONS["clearcut"]
+    stumps = 0
+    tries = 0
+    while stumps < 90 and tries < 3000:
+        tries += 1
+        i = rng.randrange(a + 10, b - 10)
+        if OPEN.get(i, 0) < 0.5:
+            continue
+        side = rng.choice((-1, 1))
+        hw = half_width(S[i])
+        lat = PLACED[side].get(i, hw + SHOULDER + LAND_GAP) + rng.uniform(30, 1100)
+        x, y, _ = road_point(i, side * lat)
+        d, j = nearest(x, y, 900)
+        if d - half_width(S[j]) < 200 or creek_distance(x, y) < CREEK_W + 80:
+            continue
+        z = ground(x, y)
+        r = rng.uniform(13, 22)
+        h = rng.uniform(10, 30)
+        stump((x, y, z), r, h, rng)
+        FOOTPRINTS.append((x, y, 60))
+        stumps += 1
+    # round bales on the meadow before the finish
+    a, b = SECTIONS["crest"]
+    bales = 0
+    for k in range(40):
+        if bales >= 9:
+            break
+        i = rng.randrange(a + (b - a) // 2, b)
+        side = rng.choice((-1, 1))
+        hw = half_width(S[i])
+        lat = PLACED[side].get(i, hw + SHOULDER + LAND_GAP) + rng.uniform(60, 500)
+        x, y, _ = road_point(i, side * lat)
+        d, j = nearest(x, y, 900)
+        if d - half_width(S[j]) < 220 or any(math.dist((x, y), f[:2]) < f[2] for f in FOOTPRINTS):
+            continue
+        yaw = rng.uniform(0, math.pi)
+        lo, hi = ground_spread([(x + math.cos(yaw) * 45 * e, y + math.sin(yaw) * 45 * e) for e in (-1, 1)])
+        if hi - lo > 14:
+            continue
+        log((x, y, lo + 38), (math.cos(yaw), math.sin(yaw)), 40, 92, ends=TEX + "bale_end",
+            bark=TEX + "bale", solid=False, sides=14)
+        FOOTPRINTS.append((x, y, 120))
+        bales += 1
+    BOUNDS["details"] = {"log_piles": piles, "stumps": stumps, "bales": bales}
+
+
+def stump(c, r, h, rng):
+    """A short upright octagonal stump, nonsolid (only beyond the walls)."""
+    planes = []
+    rot = rng.uniform(0, math.pi / 4)
+    for k in range(8):
+        a = rot + 2 * math.pi * k / 8
+        d = (math.cos(a), math.sin(a), 0.0)
+        planes.append((d, (c[0] + d[0] * r, c[1] + d[1] * r, c[2]), TEX + "logbark_ns"))
+    top = (0.0, 0.0, 1.0)
+    planes.append((top, (c[0], c[1], c[2] + h), TEX + "logend_ns"))
+    planes.append(((0.0, 0.0, -1.0), (c[0], c[1], c[2] - 30), TEX + "logbark_ns"))
+    convex(planes, solid=False)
+
+
+def sounds():
+    """Ambient loops: the forest along the course, the creek at the ford."""
+    n = len(PATH)
+    count = 0
+    for k, i in enumerate(range(20, n - 20, int(1500 / SAMPLE))):
+        side = 1 if k % 2 else -1
+        x, y, z = road_point(i, side * 520)
+        if creek_distance(x, y) < 900:
+            continue
+        entity("target_speaker", x, y, ground(x, y) + 160, noise="sound/world/q3r_timberrun/forest.ogg",
+               spawnflags="1")
+        count += 1
+    wz = BOUNDS["water_z"]
+    creek = 0
+    last = None
+    for x, y in CREEK:
+        if last and math.dist((x, y), last) < 650:
+            continue
+        entity("target_speaker", x, y, wz + 40, noise="sound/world/q3r_timberrun/creek.ogg", spawnflags="1")
+        last = (x, y)
+        creek += 1
+    BOUNDS["speakers"] = {"forest": count, "creek": creek}
+
+
+def write_detail_textures():
+    """End grain with a forester's spray mark, straw for the bales."""
+    from PIL import Image, ImageDraw, ImageFilter
+    import numpy as np
+    out = ROOT / "baseq3r" / "textures" / "q3r_timberrun"
+    im = Image.open(out / "logend.jpg").convert("RGB")
+    d = ImageDraw.Draw(im)
+    d.line((40, 52, 88, 76), fill=(206, 40, 32), width=7)
+    d.line((44, 80, 84, 48), fill=(206, 40, 32), width=6)
+    im.filter(ImageFilter.GaussianBlur(0.7)).save(out / "logend_mark.jpg", quality=92)
+    rng = np.random.default_rng(21)
+    w, h = 256, 128
+    a = np.zeros((h, w, 3))
+    base = np.array([196, 168, 104])
+    a[:] = base * 0.8
+    img = Image.fromarray(a.astype(np.uint8))
+    d = ImageDraw.Draw(img)
+    for _ in range(1800):
+        x, y = rng.uniform(0, w), rng.uniform(0, h)
+        L = rng.uniform(10, 40)
+        ang = rng.normal(0, 0.15)
+        c = tuple(int(v * rng.uniform(0.6, 1.15)) for v in base)
+        for ox in (-w, 0, w):
+            d.line((x + ox, y, x + ox + L * math.cos(ang), y + L * math.sin(ang)), fill=c, width=1)
+    img.filter(ImageFilter.GaussianBlur(0.4)).save(out / "bale.jpg", quality=92)
+    n = 128
+    yy, xx = np.mgrid[0:n, 0:n] - (n - 1) / 2
+    rr = np.hypot(xx, yy) / (n / 2)
+    th = np.arctan2(yy, xx)
+    spiral = 0.5 + 0.5 * np.sin(rr * 40 + th)
+    col = base * (0.72 + 0.3 * spiral[..., None]) * (0.9 + 0.1 * rng.random((n, n)))[..., None]
+    Image.fromarray(col.clip(0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.6)).save(
+        out / "bale_end.jpg", quality=92)
+
+
 # ---------------------------------------------------------------- forest (stage 2)
 
 MAPOBJ = "models/mapobjects/"
@@ -1342,6 +1538,8 @@ def forest():
                     continue
                 z = ground(x, y)
                 if z < wz + 12 or creek_distance(x, y) < CREEK_W + 60:
+                    continue
+                if any((x - fx) ** 2 + (y - fy) ** 2 < fr * fr for fx, fy, fr in FOOTPRINTS):
                     continue
                 sl = max(abs(ground(x + 40, y) - ground(x - 40, y)), abs(ground(x, y + 40) - ground(x, y - 40))) / 80
                 if sl > 0.95:
@@ -1769,6 +1967,10 @@ def write_shader():
     out += sign_shaders()
     out += lit("logbark", f"{T}logbark.jpg", ("\tsurfaceparm SURF_DIRT",))
     out += lit("logend", f"{T}logend.jpg", ("\tsurfaceparm SURF_DIRT",))
+    ns = ("\tsurfaceparm nonsolid", "\tsurfaceparm nomarks")
+    for name, image in (("logbark", "logbark.jpg"), ("logend", "logend.jpg"), ("logend_mark", "logend_mark.jpg"),
+                        ("bale", "bale.jpg"), ("bale_end", "bale_end.jpg")):
+        out += lit(name + "_ns" if name.startswith("log") else name, f"{T}{image}", ns)
     out += lit("metal", "textures/base_trim/tin.jpg", ("\tsurfaceparm SURF_METAL",))
     out += lit("banner_start", f"{T}banner_start.jpg")
     out += lit("banner_finish", f"{T}banner_finish.jpg")
@@ -1917,7 +2119,8 @@ def validate():
             "terrain_triangles": len(TRIS),
             "leaves": {s: sum(1 for leaf in LEAVES if leaf[2] == s) for s in (64, 128, 256, 512)},
             "brushes": len(BRUSHES) + sum(len(g) for g in GROUPS.values()), "checkpoints": CHECKPOINTS,
-            "wall_gaps": BOUNDS.get("wall_gaps"), "signs": BOUNDS.get("signs"), "forest": BOUNDS.get("forest")}
+            "wall_gaps": BOUNDS.get("wall_gaps"), "signs": BOUNDS.get("signs"), "forest": BOUNDS.get("forest"),
+            "details": BOUNDS.get("details"), "speakers": BOUNDS.get("speakers")}
 
 
 def overview(report):
@@ -2042,6 +2245,8 @@ def main():
     log_pile()
     corridor()
     signs()
+    details()
+    sounds()
     forest()
     water()
     misc_entities()
@@ -2050,6 +2255,7 @@ def main():
     write_textures()
     write_floor()
     write_wood_textures()
+    write_detail_textures()
     write_sign_textures()
     sign_model("l")
     sign_model("r")

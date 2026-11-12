@@ -5,7 +5,7 @@ Holzlagerplatz auf dem Rücken hinunter ins Bachtal und wieder hinauf zur Wiese.
 Erzeugt von `tools/maptools/make_timberrun.py`. Konzept: Dokument „Timber Run –
 Sprint-Strecke“.
 
-Stand: **Stufe 2** (Wald, Nebel, Licht).
+Stand: **Stufe 3** (fertig für den Spieltest).
 
 ![Layout](timberrun_layout.png)
 
@@ -95,6 +95,26 @@ Am teuersten ist der Blick über die Hangkehren (viele Blätter übereinander). 
 einer echten Grafikkarte ist das kein Problem; im Spieltest mit `cg_drawFPS 1`
 die Kehren und den Blick von der ersten Kuppe ansehen.
 
+## Details, Sound, Wetter, Levelshot (Stufe 3)
+
+- **Holzlagerplatz:** vier lange Polter hinter den Wänden am Start (Stämme
+  440 lang, fünf, vier und drei Lagen), viele Stirnseiten mit roter
+  Förster-Markierung.
+- **An der Strecke:** neun kleinere Polter auf geraden Stücken (Forststraße,
+  Kehren, Bachtal, Dickicht, Kahlschlag), 90 Baumstümpfe im Kahlschlag, neun
+  Rundballen auf der Wiese vor dem Ziel. Alles hinter den Wänden und nicht fest.
+  Bäume halten Abstand davon.
+- **Sound:** zwei eigene Schleifen, synthetisch erzeugt von
+  `tools/maptools/make_timberrun_sounds.py` (keine Samples, frei nutzbar):
+  `forest.ogg` (36 s: Blätter im Wind, Zilpzalp, Kohlmeise, Rotkehlchen,
+  Specht, eine Krähe in der Ferne) an 31 Lautsprechern entlang der Strecke,
+  `creek.ogg` (10 s: Rauschen und Blubbern) an elf Stellen am Bach.
+- **Wetter:** Regen 40 % (`weather rain`), mit `g_weather 2` und
+  `cg_weatherPreview "1 0"` angesehen: Der Regen fällt überall, die Straße
+  glänzt, im Bachtal mischt er sich mit dem Bodennebel.
+- **Levelshot:** `levelshots/q3r_timberrun.jpg`, Blick über die Furt im
+  Morgennebel, mit der Linux-Engine unter Xvfb aufgenommen.
+
 ## Geprüft
 
 - **Kompilieren:** kein Leck; BSP 12,7 MB. Gelände aus 33.220 Dreiecken.
@@ -119,8 +139,8 @@ Breite im Dickicht.
 
 1. **Fahrbarer Rohbau:** Gelände, Fahrbahn, Kuppen, Furt, Grenzen, Start, Ziel,
    Checkpoints, Bot-Route, AAS, Kurvenschilder.
-2. **Wald, Nebel, Licht** (dieser Stand), Prüfung der Bildrate.
-3. Details, Sound, Wetter, Levelshot.
+2. **Wald, Nebel, Licht**, Prüfung der Bildrate.
+3. **Details, Sound, Wetter, Levelshot** (dieser Stand).
 
 ## Bauen
 
@@ -150,3 +170,5 @@ python tools/maptools/make_aas_proxy.py --checksum baseq3r/maps/q3r_timberrun_aa
 Der Generator schreibt außerdem den Himmel nach `env/q3r_timberrun/` und die
 Baumtexturen, Sprites und `cross_*.md3` nach `models/mapobjects/q3r_timberrun/`.
 Die Lichtberechnung braucht wegen der Schatten der Blätter rund 35 Minuten.
+Die Sounds entstehen getrennt mit `python tools/maptools/make_timberrun_sounds.py`
+(numpy, scipy, ffmpeg mit libvorbis).

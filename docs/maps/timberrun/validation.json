@@ -69,7 +69,7 @@
     "256": 2285,
     "512": 498
   },
-  "brushes": 36165,
+  "brushes": 36383,
   "checkpoints": [
     {
       "number": 1,
@@ -246,18 +246,27 @@
   ],
   "signs": 18,
   "forest": {
-    "models": 721,
-    "sprites": 3100,
-    "trunks": 70,
-    "inside": 70,
+    "models": 715,
+    "sprites": 3099,
+    "trunks": 73,
+    "inside": 73,
     "kinds": {
-      "spruce": 1785,
+      "spruce": 1774,
       "young": 43,
-      "beech_y": 826,
-      "snag": 4,
-      "beech_g": 398,
-      "beech_r": 423,
-      "oak": 342
+      "beech_y": 834,
+      "beech_r": 428,
+      "beech_g": 387,
+      "snag": 3,
+      "oak": 345
     }
+  },
+  "details": {
+    "log_piles": 13,
+    "stumps": 90,
+    "bales": 9
+  },
+  "speakers": {
+    "forest": 31,
+    "creek": 11
   }
 }

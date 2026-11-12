@@ -299,6 +299,86 @@ textures/q3r_timberrun/logend
 	}
 }
 
+textures/q3r_timberrun/logbark_ns
+{
+	qer_editorimage textures/q3r_timberrun/logbark.jpg
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	{
+		map textures/q3r_timberrun/logbark.jpg
+		rgbGen identity
+	}
+	{
+		map $lightmap
+		blendFunc GL_DST_COLOR GL_ZERO
+		rgbGen identity
+	}
+}
+
+textures/q3r_timberrun/logend_ns
+{
+	qer_editorimage textures/q3r_timberrun/logend.jpg
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	{
+		map textures/q3r_timberrun/logend.jpg
+		rgbGen identity
+	}
+	{
+		map $lightmap
+		blendFunc GL_DST_COLOR GL_ZERO
+		rgbGen identity
+	}
+}
+
+textures/q3r_timberrun/logend_mark_ns
+{
+	qer_editorimage textures/q3r_timberrun/logend_mark.jpg
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	{
+		map textures/q3r_timberrun/logend_mark.jpg
+		rgbGen identity
+	}
+	{
+		map $lightmap
+		blendFunc GL_DST_COLOR GL_ZERO
+		rgbGen identity
+	}
+}
+
+textures/q3r_timberrun/bale
+{
+	qer_editorimage textures/q3r_timberrun/bale.jpg
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	{
+		map textures/q3r_timberrun/bale.jpg
+		rgbGen identity
+	}
+	{
+		map $lightmap
+		blendFunc GL_DST_COLOR GL_ZERO
+		rgbGen identity
+	}
+}
+
+textures/q3r_timberrun/bale_end
+{
+	qer_editorimage textures/q3r_timberrun/bale_end.jpg
+	surfaceparm nonsolid
+	surfaceparm nomarks
+	{
+		map textures/q3r_timberrun/bale_end.jpg
+		rgbGen identity
+	}
+	{
+		map $lightmap
+		blendFunc GL_DST_COLOR GL_ZERO
+		rgbGen identity
+	}
+}
+
 textures/q3r_timberrun/metal
 {
 	qer_editorimage textures/base_trim/tin.jpg
