@@ -29,6 +29,22 @@ const server=http.createServer((req,res)=>{
   await page.evaluate(()=>q3rallyFrontend.state(0,0,0,0));
   assert.equal(await page.locator('main:visible').count(),0);checks++;
 
+  await page.evaluate(()=>document.fonts.ready);
+  for(const width of [1920,1280,800,390]){
+    await page.setViewportSize({width,height:900});
+    const positions=await page.evaluate(()=>{
+      const positions=[];
+      for(let stage=0;stage<10;stage++){
+        q3rallyFrontend.state(1,stage*10,stage%9,stage===9?1:0);
+        positions.push([document.querySelector('#loading-stages').getBoundingClientRect().top,
+          document.querySelector('#loading-progress').getBoundingClientRect().top]);
+      }
+      return positions;
+    });
+    assert.ok(positions.every(position=>position.every((value,index)=>Math.abs(value-positions[0][index])<1)),
+      'Loading list and progress must stay fixed at width '+width);checks++;
+  }
+  await page.setViewportSize({width:1280,height:800});
   const catalog=JSON.parse(fs.readFileSync(path.join(root,'catalog.json')));
   assert.ok(Object.keys(catalog.vehicles).length>=20);
   assert.ok(Object.values(catalog.vehicles).some(car=>car.rank>0));checks++;
