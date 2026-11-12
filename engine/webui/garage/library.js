@@ -59,7 +59,7 @@
     detailStatus.textContent = 'Loading vehicle preview…';
     try {
       const next = await window.Q3RallyShowroom.openVehicleShowroom(
-        host, './showroom/', setup.model, setup.car.name, {yawDegrees: 135, distance: 2.6});
+        host, './showroom/', setup.model, setup.car.name, {yawDegrees: 135, distance: 2.1});
       if (version !== generation) { next.dispose(); return; }
       viewer = next;
       await next.update(setup.skin, catalog.wheels.svt_cobra ? 'svt_cobra' : Object.keys(catalog.wheels)[0]);
