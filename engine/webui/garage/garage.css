@@ -56,6 +56,7 @@ button:disabled { opacity: .45; cursor: default; }
 .frontend-layout { display: grid; grid-template-columns: minmax(14rem, .65fr) minmax(0, 1.8fr); gap: 1.5rem; align-items: stretch; }
 #main-navigation { display: grid; gap: .5rem; align-content: start; }
 #main-navigation button { text-align: left; text-transform: uppercase; font-family: 'Barlow Condensed', sans-serif; font-size: 1.3rem; letter-spacing: .06em; }
+#loading-title { font-size: clamp(1.5rem, 2.5vw, 2rem); line-height: 1.1; min-height: 3.3em; }
 #loading-stages { list-style: decimal-leading-zero; padding-left: 1.6rem; color: #999; }
 #loading-stages li { padding: .3rem 0; }
 #loading-stages .current { color: var(--accent); }
