@@ -22,6 +22,13 @@ const server=http.createServer((req,res)=>{
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:'+server.address().port+'/index.html');
   await page.waitForFunction(()=>!document.querySelector('#apply').disabled);checks++;
+  assert.equal(await page.locator('main:visible').count(),0);checks++;
+  await page.evaluate(()=>q3rallyFrontend.state(7,0,0,0));
+  assert.equal(await page.locator('#garage').isVisible(),true);
+  assert.equal(await page.locator('#frontend').isHidden(),true);checks++;
+  await page.evaluate(()=>q3rallyFrontend.state(0,0,0,0));
+  assert.equal(await page.locator('main:visible').count(),0);checks++;
+
   const catalog=JSON.parse(fs.readFileSync(path.join(root,'catalog.json')));
   assert.ok(Object.keys(catalog.vehicles).length>=20);
   assert.ok(Object.values(catalog.vehicles).some(car=>car.rank>0));checks++;

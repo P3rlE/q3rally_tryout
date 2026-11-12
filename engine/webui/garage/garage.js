@@ -402,12 +402,11 @@ function renderFavorites() {
 }
 apply.addEventListener('click', () => submitSetup());
 document.querySelector('#back').addEventListener('click', () => {
-  window.q3rallyFrontend?.leaveGarage();
   location.href = 'q3rally-ui://garage/close';
 });
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && !document.querySelector('#garage').hidden) {
-    window.q3rallyFrontend?.leaveGarage();
+  if (event.key === 'Escape' && !event.repeat && !event.defaultPrevented && !document.querySelector('#garage').hidden) {
+    event.preventDefault();
     location.href = 'q3rally-ui://garage/close';
   }
 });
