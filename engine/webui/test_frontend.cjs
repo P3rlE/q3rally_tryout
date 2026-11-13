@@ -176,6 +176,41 @@ const server=http.createServer((req,res)=>{
   }
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);checks++;
+  for(const teams of [false,true]){
+    await page.evaluate(({teams,avatar})=>{
+      const o=q3rallyOffline;o.begin(10,0,0,1);o.mode(0,teams?'Team Racing':'Racing');
+      o.map(0,'q3r_country01','Roll on down the line');o.avatar(avatar);
+      ['Bot Skill','Laps','Time Limit','Pure Server','Track Length'].forEach((label,index)=>{
+        o.control(index,index===1||index===2?1:0,label,index===1?'3':'0',0,0,-1,0,3);
+        ['Bring It On','Hard','Expert'].forEach((title,value)=>o.choice(index,value,title));
+      });
+      for(let slot=0;slot<12;slot++){
+        o.player(slot,slot?'Rival '+slot:'Player');o.bot(slot,'Rival '+slot,'alpine/red');
+        o.control(10+slot,0,'Slot type','',slot?1:0,0,slot,0,0);
+        ['Human','Bot','Open','Closed'].forEach((title,value)=>o.choice(10+slot,value,title));
+        if(teams){o.control(30+slot,0,'Team','',slot%2,0,slot,1,0);o.choice(30+slot,0,'Red');o.choice(30+slot,1,'Blue');}
+      }
+      o.end();q3rallyFrontend.state(10,0,0,0);
+    },{teams,avatar:Object.keys(catalog.avatars)[0]});
+    for(const viewport of [{width:1280,height:800},{width:1920,height:1080}]){
+      await page.setViewportSize(viewport);
+      const layout=await page.evaluate(()=>{
+        window.scrollTo(0,0);const grid=document.querySelector('#offline-players');
+        grid.scrollTop=grid.scrollHeight;
+        return {height:document.documentElement.scrollHeight,width:document.documentElement.scrollWidth,
+          button:document.querySelector('#offline-start').getBoundingClientRect().bottom,
+          scroll:grid.scrollTop,last:grid.lastElementChild.getBoundingClientRect().bottom,
+          gridBottom:grid.getBoundingClientRect().bottom};
+      });
+      assert.ok(layout.height<=viewport.height+1&&layout.width<=viewport.width,'Race setup fits '+JSON.stringify({teams,viewport,layout}));
+      assert.ok(layout.button<=viewport.height,'Start race remains visible');
+      assert.ok(layout.scroll>0&&layout.last<=layout.gridBottom+1,'Last starting slot stays reachable');checks++;
+      await page.evaluate(()=>{document.querySelector('#offline-players').scrollTop=0;});
+      await page.screenshot({path:path.join(output,'rules-'+(teams?'teams-':'')+viewport.width+'.png')});
+    }
+  }
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);checks++;
   assert.deepEqual(errors,[]);
   fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({success:true,checks,cars:Object.keys(catalog.vehicles).length},null,2));
   console.log('Bundled frontend: '+checks+' checks passed.');

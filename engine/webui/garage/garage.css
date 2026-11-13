@@ -170,10 +170,10 @@ html { scrollbar-gutter: stable; }
 
 /* Keep desktop track selection inside the viewport; only its list scrolls. */
 @media (min-width: 64rem) and (min-height: 44rem) {
-  #offline-screen.track-selection { height: 100dvh; display: flex; flex-direction: column; padding-block: clamp(1rem, 3vh, 2rem); }
-  #offline-screen.track-selection header { flex-shrink: 0; margin-bottom: 1rem; }
-  #offline-screen.track-selection h1 { font-size: clamp(3rem, 6vw, 5.5rem); }
-  .track-selection .offline-steps { flex-shrink: 0; margin-bottom: 1rem; }
+  #offline-screen:is(.track-selection, .race-setup) { height: 100dvh; display: flex; flex-direction: column; padding-block: clamp(1rem, 3vh, 2rem); }
+  #offline-screen:is(.track-selection, .race-setup) header { flex-shrink: 0; margin-bottom: 1rem; }
+  #offline-screen:is(.track-selection, .race-setup) h1 { font-size: clamp(3rem, 6vw, 5.5rem); }
+  #offline-screen:is(.track-selection, .race-setup) .offline-steps { flex-shrink: 0; margin-bottom: 1rem; }
   .track-selection .offline-track-layout { flex: 1; min-height: 0; }
   .track-selection .offline-track-layout > section { min-height: 0; min-width: 0; display: flex; flex-direction: column; padding: 1.25rem; }
   .track-selection #offline-map-list { flex: 1; min-height: 0; max-height: none; align-content: start; grid-auto-rows: max-content; overscroll-behavior: contain; }
@@ -181,7 +181,28 @@ html { scrollbar-gutter: stable; }
   .track-selection #offline-map-image { flex: 1 1 0; height: 0; min-height: 6rem; max-height: none; margin-block: .5rem; }
   .track-selection #offline-map-details { flex-shrink: 0; font-size: .9rem; gap: .3rem 1rem; margin-block: .5rem .75rem; }
   .track-selection #offline-next { flex-shrink: 0; align-self: start; }
-  .track-selection #offline-status:empty { display: none; }
+  #offline-screen:is(.track-selection, .race-setup) #offline-status:empty { display: none; }
+}
+
+@media (min-width: 64rem) and (min-height: 44rem) {
+  .race-setup #offline-rules { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .race-setup .offline-summary { flex-shrink: 0; padding: 1rem 1.25rem; }
+  .race-setup .offline-summary h2 { font-size: 2rem; }
+  .race-setup .offline-summary p:last-child { margin: .25rem 0 0; }
+  .race-setup .offline-rules-layout { flex: 1; min-height: 0; }
+  .race-setup .offline-rules-layout > section { min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: 1.25rem; }
+  .race-setup .offline-rules-layout h2 { font-size: 1.75rem; }
+  .race-setup .offline-rules-layout > section > p { margin: .5rem 0 1rem; }
+  .race-setup #offline-options { min-height: 0; overflow-y: auto; align-content: start; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem 1rem; overscroll-behavior: contain; }
+  .race-setup #offline-players { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .race-setup .offline-player { gap: .5rem; padding: .75rem 0; }
+  .race-setup .offline-player p { flex: 0 0 4.5rem; width: auto; margin: 0; overflow-wrap: anywhere; }
+  .race-setup .offline-human p { flex: 1; }
+  .race-setup .offline-human img { order: -1; }
+  .race-setup .offline-player label { min-width: 5.5rem; font-size: .85rem; }
+  .race-setup .offline-player > select { min-width: 7rem; }
+  .race-setup .offline-player img { width: 3rem; height: 3rem; object-fit: contain; }
+  #offline-screen.race-setup label { margin-bottom: 0; }
 }
 
 .online-toolbar { margin-bottom: 1rem; }
