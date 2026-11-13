@@ -25,7 +25,9 @@ die alten Namen weiterhin (`give Railgun` funktioniert also noch).
 
 ## Icons
 
-Die Icons (`icons/iconw_*.tga`, 256 × 256 RGBA) zeigen das typische Autoteil
+Die Icons (`icons/iconw_*.tga`, 256 × 256 RGBA) und die Schilder auf den
+Munitionskisten (`models/powerups/ammo/*ammo2.tga`, 128 × 128, schwarzes Feld
+im Rahmen der Waffenfarbe) zeigen das typische Autoteil
 jeder Waffe als Piktogramm: Sägeschwert, Scheinwerfer, zwei Endrohre,
 Bremsscheibe mit Sattel, vier Rohre, Zündkerze mit Funke, Turbolader, Kühler
 mit Düse, Hutze, Flasche mit Flamme. Die Farben sind die alten, damit man die

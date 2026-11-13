@@ -5,6 +5,9 @@ recognised at a glance (the HUD shows it at 12 x 12 px).
 The pictograms are SVG on a 64 grid; Chromium (Playwright) renders them to
 256 x 256 RGBA, the shape colour through a mask so cut-outs are real alpha.
 
+The same pictograms go on the ammo boxes: models/powerups/ammo/*ammo2.tga
+(128 x 128, black field in a frame of the weapon colour, as before).
+
   python3 tools/carbuild/weapons/make_icons.py
 """
 from __future__ import annotations
@@ -133,6 +136,25 @@ def icon_svg(key, px=SIZE):
             f'<rect width="64" height="64" fill="{COLOURS[key]}" mask="url(#m)"/></svg>')
 
 
+# ammo box label -> icon
+AMMO = {"mach": "machinegun", "shot": "shotgun", "gren": "grenade", "rock": "rocket", "ligh": "lightning",
+        "rail": "railgun", "plas": "plasma", "bfg": "bfg", "flame": "flame"}
+AMMO_DIR = ROOT / "baseq3r/models/powerups/ammo"
+AMMO_SIZE = 128
+
+
+def ammo_svg(key):
+    """The label on the ammo box: black field, 5 px frame in the weapon
+    colour, the pictogram inside."""
+    col = COLOURS[key]
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="{AMMO_SIZE}" height="{AMMO_SIZE}">'
+            f'<defs><mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">'
+            f'<rect width="64" height="64" fill="#000"/>{picto(key, "#FFF", "#000")}</mask></defs>'
+            f'<rect width="128" height="128" fill="{col}"/><rect x="5" y="5" width="118" height="118" fill="#000"/>'
+            f'<g transform="translate(20 20) scale(1.375)"><rect width="64" height="64" fill="{col}" mask="url(#m)"/></g>'
+            f'</svg>')
+
+
 def render_all():
     from playwright.sync_api import sync_playwright
     with sync_playwright() as pw:
@@ -144,6 +166,13 @@ def render_all():
             im = Image.open(io.BytesIO(png)).convert("RGBA")
             im.save(OUT / f"iconw_{key}.tga")
             print(f"iconw_{key}.tga")
+        page.set_viewport_size({"width": AMMO_SIZE, "height": AMMO_SIZE})
+        for box, key in AMMO.items():
+            page.set_content(f'<html><body style="margin:0;background:#000">{ammo_svg(key)}</body></html>')
+            png = page.screenshot(clip={"x": 0, "y": 0, "width": AMMO_SIZE, "height": AMMO_SIZE})
+            im = Image.open(io.BytesIO(png)).convert("RGBA")
+            im.save(AMMO_DIR / f"{box}ammo2.tga")
+            print(f"{box}ammo2.tga")
         browser.close()
 
 
