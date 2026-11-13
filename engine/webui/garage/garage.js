@@ -195,7 +195,7 @@ async function load3d(id) {
   toggle.textContent = 'Photo view';
   viewStatus.textContent = 'Loading 3D preview…';
   try {
-    const next = await window.Q3RallyShowroom.openVehicleShowroom(canvasHost, './showroom/', id, catalog.vehicles[id].name);
+    const next = await window.Q3RallyShowroom.openVehicleShowroom(canvasHost, './showroom/', id, catalog.vehicles[id].name, {yawDegrees: 135, distance: 2.1});
     if (current !== generation) {
       next.dispose();
       return;

@@ -59,7 +59,7 @@
     detailStatus.textContent = 'Loading vehicle preview…';
     try {
       const next = await window.Q3RallyShowroom.openVehicleShowroom(
-        host, './showroom/', setup.model, setup.car.name, {yawDegrees: 135, distance: 2.6});
+        host, './showroom/', setup.model, setup.car.name, {yawDegrees: 135, distance: 2.1});
       if (version !== generation) { next.dispose(); return; }
       viewer = next;
       await next.update(setup.skin, catalog.wheels.svt_cobra ? 'svt_cobra' : Object.keys(catalog.wheels)[0]);
@@ -94,6 +94,26 @@
     image.alt = entry.fields[0];
     image.src = './download-preview/' + id + extensions[0];
   }
+  function favoriteWeapon(entry) {
+    const target = document.querySelector('#library-weapon');
+    target.replaceChildren();
+    const name = mode === 5 && entry ? cleanWeapon(entry.fields[4]) : '';
+    target.hidden = !name;
+    if (!name) return;
+    const icons = {gauntlet:'gauntlet',chainsaw:'gauntlet',machinegun:'machinegun',shotgun:'shotgun',
+      grenadelauncher:'grenade',rocketlauncher:'rocket',lightning:'lightning',railgun:'railgun',
+      plasmagun:'plasma',bfg10k:'bfg',flamethrower:'flame'};
+    const key = name.toLowerCase().replace(/[\s_-]/g,'').replace(/^weapon/,'');
+    const source = catalog?.weaponIcons?.['icons/iconw_' + icons[key]];
+    if (source) {
+      const icon = document.createElement('img');icon.src = source;icon.alt = '';
+      icon.width = icon.height = 40;
+      icon.addEventListener('error',()=>{icon.hidden=true;});target.append(icon);
+    }
+    const text = document.createElement('span');text.textContent = 'Favorite weapon / ' + name;
+    target.append(text);
+  }
+  function cleanWeapon(value) { return String(value || '').replace(/\^[0-9]/g,'').trim(); }
   function select(index) {
     stopViewer();
     selected = index;
@@ -107,7 +127,7 @@
     title.textContent = entry?.fields[0] ?? (mode === 5 ? 'No rivals found' : 'Select content');
     document.querySelector('#library-author').textContent = mode === 6 && entry ? 'By ' + entry.fields[1] : '';
     document.querySelector('#library-personality').textContent = mode === 5 && entry ? entry.fields[3] : '';
-    document.querySelector('#library-weapon').textContent = mode === 5 && entry && entry.fields[4] ? 'Favorite weapon / ' + entry.fields[4] : '';
+    favoriteWeapon(entry);
     document.querySelector('#library-description').textContent = mode === 5 && entry ? entry.fields[2] : '';
     if (entry) {
       if (mode === 5) void showRival(entry);

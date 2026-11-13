@@ -90,6 +90,7 @@
     }
   }
   function render() {
+    root.classList.toggle('track-selection', stage === 9);
     const modeSelect = find('mode'); modeSelect.replaceChildren(...modes.map((title,index) => new Option(title,String(index)))); modeSelect.value = mode;
     find('track').hidden = stage !== 9; find('rules').hidden = stage !== 10;
     find('step-map').setAttribute('aria-current',stage === 9 ? 'step' : 'false'); find('step-rules').setAttribute('aria-current',stage === 10 ? 'step' : 'false');

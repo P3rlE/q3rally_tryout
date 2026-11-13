@@ -29,6 +29,22 @@ const server=http.createServer((req,res)=>{
   await page.evaluate(()=>q3rallyFrontend.state(0,0,0,0));
   assert.equal(await page.locator('main:visible').count(),0);checks++;
 
+  await page.evaluate(()=>document.fonts.ready);
+  for(const width of [1920,1280,800,390]){
+    await page.setViewportSize({width,height:900});
+    const positions=await page.evaluate(()=>{
+      const positions=[];
+      for(let stage=0;stage<10;stage++){
+        q3rallyFrontend.state(1,stage*10,stage%9,stage===9?1:0);
+        positions.push([document.querySelector('#loading-stages').getBoundingClientRect().top,
+          document.querySelector('#loading-progress').getBoundingClientRect().top]);
+      }
+      return positions;
+    });
+    assert.ok(positions.every(position=>position.every((value,index)=>Math.abs(value-positions[0][index])<1)),
+      'Loading list and progress must stay fixed at width '+width);checks++;
+  }
+  await page.setViewportSize({width:1280,height:800});
   const catalog=JSON.parse(fs.readFileSync(path.join(root,'catalog.json')));
   assert.ok(Object.keys(catalog.vehicles).length>=20);
   assert.ok(Object.values(catalog.vehicles).some(car=>car.rank>0));checks++;
@@ -120,8 +136,8 @@ const server=http.createServer((req,res)=>{
     document.querySelector('#view-toggle').click();
     __previewRequests=[];__previewShown=[];
     const l=q3rallyLibrary;l.begin(5);
-    l.item(5,0,['First','alpine/red','','',''],0,0);
-    l.item(5,1,['Second','alpine/blue','','',''],0,0);
+    l.item(5,0,['First','alpine/red','','','Plasmagun'],0,0);
+    l.item(5,1,['Second','alpine/blue','','','Railgun'],0,0);
     l.end(5);q3rallyFrontend.state(5,0,0,0);
     document.querySelector('#library-list button[data-index="1"]').click();
   });
@@ -131,6 +147,35 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>__previewShown.length>0);
   assert.equal(await page.evaluate(()=>__previewShown.length),1);
   assert.equal(await page.locator('#library-name').textContent(),'Second');checks++;
+  assert.equal(await page.locator('#library-weapon span').textContent(),'Favorite weapon / Railgun');
+  assert.equal(await page.locator('#library-weapon img').getAttribute('src'),catalog.weaponIcons['icons/iconw_railgun']);
+  await page.waitForFunction(()=>{const icon=document.querySelector('#library-weapon img');return icon.complete&&icon.naturalWidth>0;});checks++;
+
+  // Use a full list, not a single fixture map: the list must scroll without
+  // stretching the entire track-selection page past the viewport.
+  await page.evaluate(()=>{
+    const o=q3rallyOffline;o.begin(9,0,0,1);o.mode(0,'Racing');
+    for(let i=0;i<9;i++)o.map(i,'q3r_country01','Roll on down the line '+(i+1));
+    ['Start positions: 8','Laptime: 55 sec','Checkpoints: 19','Observer spots: 12',
+      'Weapons: 0','Powerups: 0','Reversable: No','Track lengths available: Long',
+      'Bot Support: Very Good!','Teams: All'].forEach(text=>o.detail(text));
+    o.end();q3rallyFrontend.state(9,0,0,0);
+  });
+  for(const viewport of [{width:1280,height:800},{width:1920,height:1080}]){
+    await page.setViewportSize(viewport);
+    const layout=await page.evaluate(()=>{
+      window.scrollTo(0,0);const list=document.querySelector('#offline-map-list');
+      list.scrollTop=100;
+      return {height:document.documentElement.scrollHeight,scroll:list.scrollTop,
+        button:document.querySelector('#offline-next').getBoundingClientRect().bottom};
+    });
+    await page.screenshot({path:path.join(output,'tracks-'+viewport.width+'.png')});
+    assert.ok(layout.height<=viewport.height+1,'Track selection must fit '+JSON.stringify({viewport,layout}));
+    assert.ok(layout.button<=viewport.height,'Race setup must remain visible');
+    assert.ok(layout.scroll>0,'Map list must scroll independently');checks++;
+  }
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);checks++;
   assert.deepEqual(errors,[]);
   fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({success:true,checks,cars:Object.keys(catalog.vehicles).length},null,2));
   console.log('Bundled frontend: '+checks+' checks passed.');
