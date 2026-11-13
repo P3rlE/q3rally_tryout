@@ -2234,7 +2234,7 @@ WEAPON_* ENTITIES
 //=============================================================================
 
 /*QUAKED weapon_bfg (1 0 .5) (-16 -16 -16) (16 16 16) SUSPENDED
-Big Freaking Gun.
+BFG Blower (BFG10K): a Roots blower with a forward-facing scoop.
 -------- KEYS --------
 wait : time in seconds before item respawns after being picked up (default 5, -1 = never respawn).
 random : random time variance in seconds added or subtracted from "wait" delay (default 0 - see Notes).
@@ -2260,7 +2260,7 @@ model="models/weapons2/bfg/bfg.md3"*/
 //=============================================================================
 
 /*QUAKED weapon_gauntlet (1 0 .5) (-16 -16 -16) (16 16 16) SUSPENDED
-Gauntlet.
+Harvester Saw (chainsaw): a harvester saw head on a hydraulic arm.
 -------- KEYS --------
 wait : time in seconds before item respawns after being picked up (default 5, -1 = never respawn).
 random : random time variance in seconds added or subtracted from "wait" delay (default 0 - see Notes).
@@ -2310,7 +2310,7 @@ model="models/weapons2/grapple/grapple.md3"*/
 //=============================================================================
 
 /*QUAKED weapon_grenadelauncher (1 0 .5) (-16 -16 -16) (16 16 16) SUSPENDED
-Grenade Launcher.
+Drum Launcher (grenade launcher): a brake disc drum and caliper breech.
 -------- KEYS --------
 wait : time in seconds before item respawns after being picked up (default 5, -1 = never respawn).
 random : random time variance in seconds added or subtracted from "wait" delay (default 0 - see Notes).
@@ -2336,7 +2336,7 @@ model="models/weapons2/grenadel/grenadel.md3"*/
 //=============================================================================
 
 /*QUAKED weapon_lightning (1 0 .5) (-16 -16 -16) (16 16 16) SUSPENDED
-Lightning Gun.
+Spark Gun (lightning gun): an ignition coil with two spark plugs.
 -------- KEYS --------
 wait : time in seconds before item respawns after being picked up (default 5, -1 = never respawn).
 random : random time variance in seconds added or subtracted from "wait" delay (default 0 - see Notes).
@@ -2362,7 +2362,7 @@ model="models\weapons2\lightning\lightning.md3"*/
 //=============================================================================
 
 /*QUAKED weapon_machinegun (1 0 .5) (-16 -16 -16) (16 16 16) SUSPENDED
-Machine Gun.
+Spotlight MG (machinegun): a rally spotlight with a three-barrel rotor.
 -------- KEYS --------
 wait : time in seconds before item respawns after being picked up (default 5, -1 = never respawn).
 random : random time variance in seconds added or subtracted from "wait" delay (default 0 - see Notes).
@@ -2388,7 +2388,7 @@ model="models\weapons2\machinegun\machinegun.md3"*/
 //=============================================================================
 
 /*QUAKED weapon_plasmagun (1 0 .5) (-16 -16 -16) (16 16 16) SUSPENDED
-Plasma gun.
+Plasma Cooler (plasma gun): an intercooler with a glowing nozzle.
 -------- KEYS --------
 wait : time in seconds before item respawns after being picked up (default 5, -1 = never respawn).
 random : random time variance in seconds added or subtracted from "wait" delay (default 0 - see Notes).
@@ -2414,7 +2414,7 @@ model="models/weapons2/plasma/plasma.md3"*/
 //=============================================================================
 
 /*QUAKED weapon_railgun (1 0 .5) (-16 -16 -16) (16 16 16) SUSPENDED
-Railgun.
+Turbo Railgun (railgun): a turbocharger and two carbon rails.
 -------- KEYS --------
 wait : time in seconds before item respawns after being picked up (default 5, -1 = never respawn).
 random : random time variance in seconds added or subtracted from "wait" delay (default 0 - see Notes).
@@ -2440,7 +2440,7 @@ model="models/weapons2/railgun/railgun.md3"*/
 //=============================================================================
 
 /*QUAKED weapon_rocketlauncher (1 0 .5) (-16 -16 -16) (16 16 16) SUSPENDED
-Rocket Launcher.
+Quad Launcher (rocket launcher): four exhaust tubes in a carbon box.
 -------- KEYS --------
 wait : time in seconds before item respawns after being picked up (default 5, -1 = never respawn).
 random : random time variance in seconds added or subtracted from "wait" delay (default 0 - see Notes).
@@ -2466,7 +2466,7 @@ model="models/weapons2/rocketl/rocketl.md3"*/
 //=============================================================================
 
 /*QUAKED weapon_shotgun (1 0 .5) (-16 -16 -16) (16 16 16) SUSPENDED
-Shotgun.
+Twin Shotgun (shotgun): a sport exhaust with two slash-cut tips.
 -------- KEYS --------
 wait : time in seconds before item respawns after being picked up (default 5, -1 = never respawn).
 random : random time variance in seconds added or subtracted from "wait" delay (default 0 - see Notes).
@@ -2492,7 +2492,7 @@ model="models/weapons2/shotgun/shotgun.md3"*/
 //=============================================================================
 
 /*QUAKED weapon_flamethrower (1 0 .5) (-16 -16 -16) (16 16 16) SUSPENDED
-Flamethrower.
+Nitro Flamer (flame thrower): a pressure bottle and an afterburner nozzle.
 -------- KEYS --------
 wait : time in seconds before item respawns after being picked up (default 5, -1 = never respawn).
 random : random time variance in seconds added or subtracted from "wait" delay (default 0 - see Notes).

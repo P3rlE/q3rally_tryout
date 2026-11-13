@@ -401,11 +401,11 @@ static void CG_Obituary( entityState_t *ent ) {
 			break;
 		case MOD_PLASMA:
 			message = "was melted by";
-			message2 = "'s plasmagun";
+			message2 = "'s Plasma Cooler";
 			break;
 		case MOD_PLASMA_SPLASH:
 			message = "was melted by";
-			message2 = "'s plasmagun";
+			message2 = "'s Plasma Cooler";
 			break;
 		case MOD_RAILGUN:
 			message = "was railed by";
@@ -416,7 +416,7 @@ static void CG_Obituary( entityState_t *ent ) {
 		case MOD_BFG:
 		case MOD_BFG_SPLASH:
 			message = "was blasted by";
-			message2 = "'s BFG";
+			message2 = "'s BFG Blower";
 			break;
 #ifdef MISSIONPACK
 		case MOD_NAIL:

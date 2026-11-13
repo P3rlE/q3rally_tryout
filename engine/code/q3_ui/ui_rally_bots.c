@@ -157,7 +157,18 @@ static const weaponiconmap_t s_weaponIconMap[] = {
     { "RAILGUN",         "icons/iconw_railgun" },
     { "PLASMAGUN",       "icons/iconw_plasma" },
     { "BFG10k",          "icons/iconw_bfg" },
-    { "FLAMETHROWER",    "icons/iconw_flame" }
+    { "FLAMETHROWER",    "icons/iconw_flame" },
+    /* the Q3Rally display names */
+    { "HARVESTERSAW",    "icons/iconw_gauntlet" },
+    { "SPOTLIGHTMG",     "icons/iconw_machinegun" },
+    { "TWINSHOTGUN",     "icons/iconw_shotgun" },
+    { "DRUMLAUNCHER",    "icons/iconw_grenade" },
+    { "QUADLAUNCHER",    "icons/iconw_rocket" },
+    { "SPARKGUN",        "icons/iconw_lightning" },
+    { "TURBORAILGUN",    "icons/iconw_railgun" },
+    { "PLASMACOOLER",    "icons/iconw_plasma" },
+    { "BFGBLOWER",       "icons/iconw_bfg" },
+    { "NITROFLAMER",     "icons/iconw_flame" }
 };
 #define WEAPONICONMAP_COUNT ( (int)(sizeof(s_weaponIconMap)/sizeof(s_weaponIconMap[0])) )
 

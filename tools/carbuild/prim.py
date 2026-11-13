@@ -85,6 +85,12 @@ class Mesh:
         for k in range(1, len(i) - 1):
             self.tri(i[0], i[k], i[k + 1])
 
+    def poly2(self, pts, n, mat):
+        """Convex polygon facing n, whatever order the points come in."""
+        a, b, c = pts[0], pts[1], pts[2]
+        t = _cross([b[i] - a[i] for i in range(3)], [c[i] - a[i] for i in range(3)])
+        self.poly(pts if sum(t[i] * n[i] for i in range(3)) > 0 else list(reversed(pts)), n, mat)
+
     def box(self, lo, hi, mat):
         (x0, y0, z0), (x1, y1, z1) = lo, hi
         c = [(x, y, z) for x in (x0, x1) for y in (y0, y1) for z in (z0, z1)]
@@ -133,10 +139,114 @@ class Mesh:
             self.tri(inner[k], outer[k], outer[k + 1])
             self.tri(inner[k], outer[k + 1], inner[k + 1])
 
+    def loft(self, rings, mat, cap0=True, cap1=True, cap_mat=None, inside=False):
+        """Skin through a list of rings (same point count, each a closed
+        loop round the loft direction); smooth normals, cylinder-like UVs
+        (u round the rings, v along the loft). inside=True turns the skin
+        inside out (the inner wall of a duct or scoop)."""
+        n, nr = len(rings[0]), len(rings)
+        cents = [[sum(p[i] for p in r) / n for i in range(3)] for r in rings]
+        axis = _norm([cents[-1][i] - cents[0][i] for i in range(3)])
+        c0 = cents[0]
+        turn = _cross([rings[0][0][i] - c0[i] for i in range(3)], [rings[0][1][i] - c0[i] for i in range(3)])
+        if sum(turn[i] * axis[i] for i in range(3)) < 0:
+            rings = [list(reversed(r)) for r in rings]
+        cu0, cv0, size = self.cells[mat]
+        rows = []
+        for j, r in enumerate(rings):
+            jp, jn = max(j - 1, 0), min(j + 1, nr - 1)
+            row = []
+            for k in range(n + 1):
+                kk = k % n
+                p = r[kk]
+                ta = [r[(kk + 1) % n][i] - r[(kk - 1) % n][i] for i in range(3)]
+                tl = [rings[jn][kk][i] - rings[jp][kk][i] for i in range(3)]
+                nrm = _norm(_cross(ta, tl))
+                out = [p[i] - cents[j][i] for i in range(3)]
+                if (sum(nrm[i] * out[i] for i in range(3)) < 0) != inside:
+                    nrm = [-c for c in nrm]
+                uv = (cu0 + size * (0.04 + 0.92 * k / n), cv0 + size * (0.9 - 0.8 * j / max(1, nr - 1)))
+                row.append(self.vert(p, nrm, mat, uv))
+            rows.append(row)
+        for j in range(nr - 1):
+            for k in range(n):
+                if inside:
+                    self.tri(rows[j][k], rows[j + 1][k + 1], rows[j][k + 1])
+                    self.tri(rows[j][k], rows[j + 1][k], rows[j + 1][k + 1])
+                else:
+                    self.tri(rows[j][k], rows[j][k + 1], rows[j + 1][k + 1])
+                    self.tri(rows[j][k], rows[j + 1][k + 1], rows[j + 1][k])
+        cm = cap_mat or mat
+        if cap0:
+            d = _norm([cents[1][i] - cents[0][i] for i in range(3)])
+            self.poly(list(reversed(rings[0])), [-c for c in d], cm)
+        if cap1:
+            d = _norm([cents[-1][i] - cents[-2][i] for i in range(3)])
+            self.poly(list(rings[-1]), d, cm)
+
+    def bore(self, c, d, r, depth, mat="dark", segs=10):
+        """The inside of a pipe: a tube seen from inside, from the mouth c
+        `depth` units back against d (d points out of the mouth), closed."""
+        dn = _norm(d)
+        u, v = frame(dn)
+        e = [c[i] - dn[i] * depth for i in range(3)]
+        cu0, cv0, size = self.cells[mat]
+        r0, r1 = [], []
+        for k in range(segs + 1):
+            t = 2 * math.pi * k / segs
+            radial = [math.cos(t) * u[i] + math.sin(t) * v[i] for i in range(3)]
+            n = [-x for x in radial]
+            uvx = cu0 + size * (0.04 + 0.92 * k / segs)
+            r0.append(self.vert([c[i] + r * radial[i] for i in range(3)], n, mat, (uvx, cv0 + size * 0.1)))
+            r1.append(self.vert([e[i] + r * radial[i] for i in range(3)], n, mat, (uvx, cv0 + size * 0.9)))
+        for k in range(segs):
+            self.tri(r0[k], r1[k + 1], r0[k + 1])
+            self.tri(r0[k], r1[k], r1[k + 1])
+        pts = []
+        for k in range(segs):
+            t = 2 * math.pi * k / segs
+            pts.append([e[i] + r * (math.cos(t) * u[i] + math.sin(t) * v[i]) for i in range(3)])
+        self.poly(pts, dn, mat)
+
     def tube(self, pts, r, mat, segs=6):
         """A bent rod through a list of points."""
         for a, b in zip(pts, pts[1:]):
             self.cyl(a, b, r, mat=mat, segs=segs, cap0=False, cap1=False)
+
+    def smooth_tube(self, pts, r, mat, segs=8, cap0=False, cap1=False):
+        """A hose: one continuous skin through the points (rings mitred at
+        the joints), unlike tube(), which is a chain of straight pieces."""
+        rings = []
+        up = None
+        for j, p in enumerate(pts):
+            a = pts[max(j - 1, 0)]
+            b = pts[min(j + 1, len(pts) - 1)]
+            d = _norm([b[i] - a[i] for i in range(3)])
+            if up is None:
+                u, v = frame(d)
+            else:                                   # parallel transport: no twisting
+                u = _norm(_cross(_cross(d, up), d))
+                u = [-c for c in u] if sum(u[i] * up[i] for i in range(3)) < 0 else u
+                v = _cross(d, u)
+            up = u
+            rings.append([[p[i] + r * (math.cos(2 * math.pi * k / segs) * u[i] + math.sin(2 * math.pi * k / segs) * v[i])
+                           for i in range(3)] for k in range(segs)])
+        self.loft(rings, mat, cap0=cap0, cap1=cap1)
+
+    def cross_quads(self, c, sx, sy, sz, mat=None):
+        """Two crossed quads (in the xz and xy planes) round c, for glows
+        and flames; the whole cell of mat (or, without mat, a whole texture
+        of its own) is mapped on each."""
+        cu0, cv0, size = self.cells[mat] if mat else (0.0, 0.0, 1.0)
+        mat = mat or next(iter(self.cells))
+        uvs = [(cu0, cv0), (cu0 + size, cv0), (cu0 + size, cv0 + size), (cu0, cv0 + size)]
+        for pts, n in (([(c[0] - sx, c[1], c[2] + sz), (c[0] + sx, c[1], c[2] + sz), (c[0] + sx, c[1], c[2] - sz),
+                         (c[0] - sx, c[1], c[2] - sz)], (0, 1, 0)),
+                       ([(c[0] - sx, c[1] - sy, c[2]), (c[0] + sx, c[1] - sy, c[2]), (c[0] + sx, c[1] + sy, c[2]),
+                         (c[0] - sx, c[1] + sy, c[2])], (0, 0, 1))):
+            i = [self.vert(p, n, mat, uv) for p, uv in zip(pts, uvs)]
+            self.tri(i[0], i[1], i[2])
+            self.tri(i[0], i[2], i[3])
 
     def tag(self, name, origin, axis=((1, 0, 0), (0, 1, 0), (0, 0, 1))):
         self.tags.append([name, list(origin), [list(a) for a in axis]])
