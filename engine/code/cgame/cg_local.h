@@ -230,6 +230,11 @@ typedef struct {
 	float			barrelAngle;
 	int				barrelTime;
 	qboolean		barrelSpinning;
+
+	// Q3Rally: where the roof weapon's muzzle (tag_flash) was last drawn,
+	// for effects started by events (Nitro Flamer side burst)
+	vec3_t			muzzleOrigin;
+	int				muzzleTime;
 } playerEntity_t;
 
 //=================================================

@@ -1213,7 +1213,7 @@ static void CG_FlameThrowerStream( centity_t *cent, vec3_t origin ) {
 #undef FLAME_STREAM_FILL_PUFFS
 
 #define FLAME_SIDE_BURST_RANGE	150.0f
-#define FLAME_SIDE_BURST_PUFFS	16
+#define FLAME_SIDE_BURST_PUFFS	24
 
 static void CG_FlameThrowerSideBurstStream( centity_t *cent, const vec3_t carForward,
 		const vec3_t right, const vec3_t up, float side ) {
@@ -1228,26 +1228,48 @@ static void CG_FlameThrowerSideBurstStream( centity_t *cent, const vec3_t carFor
 	float jitter;
 	float radius;
 
+	centity_t *owner;
+	vec3_t sideOrigin;
+	float range;
+
 	VectorCopy( cent->lerpOrigin, origin );
 	if ( cent->currentState.number == cg.predictedPlayerState.clientNum ) {
 		VectorCopy( cg.predictedPlayerEntity.lerpOrigin, origin );
 	}
 
-	VectorMA( origin, CAR_HEIGHT / 2, up, origin );
-	VectorMA( origin, 8, carForward, origin );
-	VectorMA( origin, side * ( CAR_WIDTH / 2 + 4 ), right, origin );
+	// where the server's cone starts: beside the car, half way up
+	VectorMA( origin, CAR_HEIGHT / 2, up, sideOrigin );
+	VectorMA( sideOrigin, 8, carForward, sideOrigin );
+	VectorMA( sideOrigin, side * ( CAR_WIDTH / 2 + 4 ), right, sideOrigin );
+
+	// the flames leave the roof weapon's nozzle and end where the cone
+	// ends, so they reach as far as the damage does
+	owner = &cg_entities[cent->currentState.number];
+	if ( cent->pe.muzzleTime && cg.time - cent->pe.muzzleTime < 250 ) {
+		VectorMA( cent->pe.muzzleOrigin, -2, carForward, origin );
+	} else if ( owner->pe.muzzleTime && cg.time - owner->pe.muzzleTime < 250 ) {
+		VectorMA( owner->pe.muzzleOrigin, -2, carForward, origin );
+	} else {
+		VectorCopy( sideOrigin, origin );
+	}
 
 	if ( CG_PointContents( origin, cent->currentState.number ) & ( CONTENTS_WATER | CONTENTS_SLIME | CONTENTS_LAVA ) ) {
 		return;
 	}
 
-	VectorScale( right, side, dir );
-	VectorMA( origin, FLAME_SIDE_BURST_RANGE, dir, end );
+	VectorMA( sideOrigin, FLAME_SIDE_BURST_RANGE * side, right, end );
+	VectorSubtract( end, origin, dir );
+	range = VectorNormalize( dir );
+	if ( range < 1.0f ) {
+		return;
+	}
 	CG_Trace( &trace, origin, NULL, NULL, end, cent->currentState.number, MASK_SHOT );
 
 	for ( i = 0; i < FLAME_SIDE_BURST_PUFFS; i++ ) {
-		frac = ( 0.02f + 0.06f * (float)i ) * trace.fraction;
-		VectorMA( origin, FLAME_SIDE_BURST_RANGE * frac, dir, point );
+		// denser at the nozzle, where the puffs are small
+		frac = (float)i / ( FLAME_SIDE_BURST_PUFFS - 1 );
+		frac = frac * sqrt( frac ) * 0.97f * trace.fraction;
+		VectorMA( origin, range * frac, dir, point );
 
 		jitter = 1.0f + 9.0f * frac;
 		VectorMA( point, crandom() * jitter, carForward, point );
@@ -1257,7 +1279,8 @@ static void CG_FlameThrowerSideBurstStream( centity_t *cent, const vec3_t carFor
 		VectorMA( velocity, crandom() * 10.0f, carForward, velocity );
 		VectorMA( velocity, crandom() * 5.0f, up, velocity );
 
-		radius = 13.0f + 24.0f * frac;
+		// thin at the nozzle, widening outwards
+		radius = 6.0f + 31.0f * frac;
 		CG_SmokePuff( point, velocity, radius,
 			1.0f, 0.74f + random() * 0.22f, 0.10f, 0.86f,
 			170, cg.time, 0, LEF_PUFF_DONT_SCALE, cgs.media.flameBallShader );
@@ -1483,6 +1506,19 @@ void CG_AddPlayerWeapon( refEntity_t *parent, playerState_t *ps, centity_t *cent
 	// go ahead and use the cent
 	if( ( nonPredictedCent - cg_entities ) != cent->currentState.clientNum ) {
 		nonPredictedCent = cent;
+	}
+
+	// remember the muzzle for event effects (side burst of the Nitro Flamer)
+	if ( weaponNum == WP_FLAME_THROWER ) {
+		refEntity_t	muzzle;
+
+		memset( &muzzle, 0, sizeof( muzzle ) );
+		AxisClear( muzzle.axis );
+		CG_PositionRotatedEntityOnTag( &muzzle, &gun, weapon->weaponModel, "tag_flash" );
+		VectorCopy( muzzle.origin, cent->pe.muzzleOrigin );
+		cent->pe.muzzleTime = cg.time;
+		VectorCopy( muzzle.origin, nonPredictedCent->pe.muzzleOrigin );
+		nonPredictedCent->pe.muzzleTime = cg.time;
 	}
 
 	// add the flash
