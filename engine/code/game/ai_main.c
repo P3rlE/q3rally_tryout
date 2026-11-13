@@ -136,6 +136,18 @@ int BotFavoriteWeaponFromName( const char *name ) {
 		return WP_NONE;
 	}
 
+	// Q3Rally display names
+	if ( !Q_stricmp( name, "Spotlight MG" ) ) return WP_MACHINEGUN;
+	if ( !Q_stricmp( name, "Twin Shotgun" ) ) return WP_SHOTGUN;
+	if ( !Q_stricmp( name, "Drum Launcher" ) ) return WP_GRENADE_LAUNCHER;
+	if ( !Q_stricmp( name, "Quad Launcher" ) ) return WP_ROCKET_LAUNCHER;
+	if ( !Q_stricmp( name, "Spark Gun" ) ) return WP_LIGHTNING;
+	if ( !Q_stricmp( name, "Turbo Railgun" ) ) return WP_RAILGUN;
+	if ( !Q_stricmp( name, "Plasma Cooler" ) ) return WP_PLASMAGUN;
+	if ( !Q_stricmp( name, "BFG Blower" ) ) return WP_BFG;
+	if ( !Q_stricmp( name, "Nitro Flamer" ) ) return WP_FLAME_THROWER;
+	if ( !Q_stricmp( name, "Harvester Saw" ) ) return WP_GAUNTLET;
+	// the old names
 	if ( !Q_stricmp( name, "Machinegun" ) ) return WP_MACHINEGUN;
 	if ( !Q_stricmp( name, "Shotgun" ) ) return WP_SHOTGUN;
 	if ( !Q_stricmp( name, "Grenade Launcher" ) ) return WP_GRENADE_LAUNCHER;

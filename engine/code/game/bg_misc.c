@@ -270,7 +270,7 @@ Refills vehicle fuel.
         { "models/weapons2/gauntlet/gauntlet.md3",
 		NULL, NULL, NULL},
 /* icon */		"icons/iconw_gauntlet",
-/* pickup */	"Chainsaw",
+/* pickup */	"Harvester Saw",
 		0,
 		IT_WEAPON,
 		WP_GAUNTLET,
@@ -286,7 +286,7 @@ Refills vehicle fuel.
         { "models/weapons2/shotgun/shotgun.md3", 
 		NULL, NULL, NULL},
 /* icon */		"icons/iconw_shotgun",
-/* pickup */	"Shotgun",
+/* pickup */	"Twin Shotgun",
 		10,
 		IT_WEAPON,
 		WP_SHOTGUN,
@@ -302,7 +302,7 @@ Refills vehicle fuel.
         { "models/weapons2/machinegun/machinegun.md3", 
 		NULL, NULL, NULL},
 /* icon */		"icons/iconw_machinegun",
-/* pickup */	"Machinegun",
+/* pickup */	"Spotlight MG",
 		40,
 		IT_WEAPON,
 		WP_MACHINEGUN,
@@ -318,7 +318,7 @@ Refills vehicle fuel.
         { "models/weapons2/grenadel/grenadel.md3", 
 		NULL, NULL, NULL},
 /* icon */		"icons/iconw_grenade",
-/* pickup */	"Grenade Launcher",
+/* pickup */	"Drum Launcher",
 		10,
 		IT_WEAPON,
 		WP_GRENADE_LAUNCHER,
@@ -334,7 +334,7 @@ Refills vehicle fuel.
         { "models/weapons2/rocketl/rocketl.md3", 
 		NULL, NULL, NULL},
 /* icon */		"icons/iconw_rocket",
-/* pickup */	"Rocket Launcher",
+/* pickup */	"Quad Launcher",
 		10,
 		IT_WEAPON,
 		WP_ROCKET_LAUNCHER,
@@ -350,7 +350,7 @@ Refills vehicle fuel.
         { "models/weapons2/lightning/lightning.md3", 
 		NULL, NULL, NULL},
 /* icon */		"icons/iconw_lightning",
-/* pickup */	"Lightning Gun",
+/* pickup */	"Spark Gun",
 		100,
 		IT_WEAPON,
 		WP_LIGHTNING,
@@ -366,7 +366,7 @@ Refills vehicle fuel.
         { "models/weapons2/railgun/railgun.md3", 
 		NULL, NULL, NULL},
 /* icon */		"icons/iconw_railgun",
-/* pickup */	"Railgun",
+/* pickup */	"Turbo Railgun",
 		10,
 		IT_WEAPON,
 		WP_RAILGUN,
@@ -382,7 +382,7 @@ Refills vehicle fuel.
         { "models/weapons2/plasma/plasma.md3", 
 		NULL, NULL, NULL},
 /* icon */		"icons/iconw_plasma",
-/* pickup */	"Plasma Gun",
+/* pickup */	"Plasma Cooler",
 		50,
 		IT_WEAPON,
 		WP_PLASMAGUN,
@@ -398,7 +398,7 @@ Refills vehicle fuel.
         { "models/weapons2/bfg/bfg.md3", 
 		NULL, NULL, NULL},
 /* icon */		"icons/iconw_bfg",
-/* pickup */	"BFG10K",
+/* pickup */	"BFG Blower",
 		20,
 		IT_WEAPON,
 		WP_BFG,
@@ -436,7 +436,7 @@ Refills vehicle fuel.
 	{ "models/weapons2/flamethrower/flamethrower.md3",
 	NULL, NULL, NULL},
 /* icon */	"icons/iconw_flame",
-/* pickup */	"Flame Thrower",
+/* pickup */	"Nitro Flamer",
 	20,
 	IT_WEAPON,
 	WP_FLAME_THROWER,
@@ -1413,10 +1413,37 @@ BG_FindItem
 */
 gitem_t	*BG_FindItem( const char *pickupName ) {
 	gitem_t	*it;
+	int		i;
+	// Q3Rally: the weapons got new display names; the old ones still work
+	// (give, configs, scripts)
+	static const char *oldNames[][2] = {
+		{ "Chainsaw",			"weapon_gauntlet" },
+		{ "Gauntlet",			"weapon_gauntlet" },
+		{ "Machinegun",			"weapon_machinegun" },
+		{ "Shotgun",			"weapon_shotgun" },
+		{ "Grenade Launcher",	"weapon_grenadelauncher" },
+		{ "Rocket Launcher",	"weapon_rocketlauncher" },
+		{ "Lightning Gun",		"weapon_lightning" },
+		{ "Railgun",			"weapon_railgun" },
+		{ "Plasma Gun",			"weapon_plasmagun" },
+		{ "BFG10K",				"weapon_bfg" },
+		{ "Flame Thrower",		"weapon_flamethrower" },
+		{ "Flamethrower",		"weapon_flamethrower" }
+	};
 	
 	for ( it = bg_itemlist + 1 ; it->classname ; it++ ) {
 		if ( !Q_stricmp( it->pickup_name, pickupName ) )
 			return it;
+	}
+
+	for ( i = 0 ; i < ARRAY_LEN( oldNames ) ; i++ ) {
+		if ( Q_stricmp( oldNames[i][0], pickupName ) ) {
+			continue;
+		}
+		for ( it = bg_itemlist + 1 ; it->classname ; it++ ) {
+			if ( !Q_stricmp( it->classname, oldNames[i][1] ) )
+				return it;
+		}
 	}
 
 	return NULL;

@@ -252,19 +252,19 @@ BotWeaponNameForMeansOfDeath
 
 char *BotWeaponNameForMeansOfDeath(int mod) {
 	switch(mod) {
-		case MOD_SHOTGUN: return "Shotgun";
-		case MOD_GAUNTLET: return "Chainsaw";
-		case MOD_MACHINEGUN: return "Machinegun";
+		case MOD_SHOTGUN: return "Twin Shotgun";
+		case MOD_GAUNTLET: return "Harvester Saw";
+		case MOD_MACHINEGUN: return "Spotlight MG";
 		case MOD_GRENADE:
-		case MOD_GRENADE_SPLASH: return "Grenade Launcher";
+		case MOD_GRENADE_SPLASH: return "Drum Launcher";
 		case MOD_ROCKET:
-		case MOD_ROCKET_SPLASH: return "Rocket Launcher";
+		case MOD_ROCKET_SPLASH: return "Quad Launcher";
 		case MOD_PLASMA:
-		case MOD_PLASMA_SPLASH: return "Plasmagun";
-		case MOD_RAILGUN: return "Railgun";
-		case MOD_LIGHTNING: return "Lightning Gun";
+		case MOD_PLASMA_SPLASH: return "Plasma Cooler";
+		case MOD_RAILGUN: return "Turbo Railgun";
+		case MOD_LIGHTNING: return "Spark Gun";
 		case MOD_BFG:
-		case MOD_BFG_SPLASH: return "BFG10K";
+		case MOD_BFG_SPLASH: return "BFG Blower";
 #ifdef MISSIONPACK
 		case MOD_NAIL: return "Nailgun";
 		case MOD_CHAINGUN: return "Chaingun";
@@ -291,20 +291,20 @@ char *BotRandomWeaponName(void) {
 	rnd = random() * 8.9;
 #endif
 	switch(rnd) {
-		case 0: return "Chainsaw";
-		case 1: return "Shotgun";
-		case 2: return "Machinegun";
-		case 3: return "Grenade Launcher";
-		case 4: return "Rocket Launcher";
-		case 5: return "Plasmagun";
-		case 6: return "Railgun";
-		case 7: return "Lightning Gun";
+		case 0: return "Harvester Saw";
+		case 1: return "Twin Shotgun";
+		case 2: return "Spotlight MG";
+		case 3: return "Drum Launcher";
+		case 4: return "Quad Launcher";
+		case 5: return "Plasma Cooler";
+		case 6: return "Turbo Railgun";
+		case 7: return "Spark Gun";
 #ifdef MISSIONPACK
 		case 8: return "Nailgun";
 		case 9: return "Chaingun";
 		case 10: return "Proximity Launcher";
 #endif
-		default: return "BFG10K";
+		default: return "BFG Blower";
 	}
 }
 
