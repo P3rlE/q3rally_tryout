@@ -67,7 +67,7 @@
       if (!rowControls.length && slot !== 0) continue;
       if (!allowsBots && slot !== 0) continue;
       const type = rowControls.find(control => !control.team), team = rowControls.find(control => control.team);
-      const row = node('div', undefined, 'offline-player'); row.append(node('p', slot === 0 ? (dedicated ? 'Server slot' : 'You / ' + players[slot]) : 'Slot ' + (slot + 1), 'label'));
+      const row = node('div', undefined, 'offline-player'); row.classList.toggle('offline-human', slot === 0 && !dedicated); row.append(node('p', slot === 0 ? (dedicated ? 'Server slot' : 'You / ' + players[slot]) : 'Slot ' + (slot + 1), 'label'));
       if (slot === 0 && !dedicated) {
         if (catalog.avatars?.[avatar]) row.append(image(catalog.avatars[avatar]));
       } else if (type) row.append(controlElement(type));
@@ -91,6 +91,7 @@
   }
   function render() {
     root.classList.toggle('track-selection', stage === 9);
+    root.classList.toggle('race-setup', stage === 10);
     const modeSelect = find('mode'); modeSelect.replaceChildren(...modes.map((title,index) => new Option(title,String(index)))); modeSelect.value = mode;
     find('track').hidden = stage !== 9; find('rules').hidden = stage !== 10;
     find('step-map').setAttribute('aria-current',stage === 9 ? 'step' : 'false'); find('step-rules').setAttribute('aria-current',stage === 10 ? 'step' : 'false');
