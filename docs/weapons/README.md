@@ -23,6 +23,27 @@ Bot-Lieblingswaffe, Bot-Chat, zwei Todesmeldungen). Entity-Klassennamen,
 Waffennummern und Botdateien bleiben gleich; `give` und `BG_FindItem` kennen
 die alten Namen weiterhin (`give Railgun` funktioniert also noch).
 
+## Icons
+
+Die Icons (`icons/iconw_*.tga`, 256 × 256 RGBA) zeigen das typische Autoteil
+jeder Waffe als Piktogramm: Sägeschwert, Scheinwerfer, zwei Endrohre,
+Bremsscheibe mit Sattel, vier Rohre, Zündkerze mit Funke, Turbolader, Kühler
+mit Düse, Hutze, Flasche mit Flamme. Die Farben sind die alten, damit man die
+Waffen weiter auf einen Blick erkennt; im HUD sind die Icons nur 12 × 12 px groß.
+
+| Waffe | Icon-Datei | Farbe |
+|---|---|---|
+| Harvester Saw | `iconw_gauntlet.tga` | #22C8FF |
+| Spotlight MG | `iconw_machinegun.tga` | #FFE21A |
+| Twin Shotgun | `iconw_shotgun.tga` | #FF6A00 |
+| Drum Launcher | `iconw_grenade.tga` | #16B04A |
+| Quad Launcher | `iconw_rocket.tga` | #FF2A2A |
+| Spark Gun | `iconw_lightning.tga` | #FFF27A |
+| Turbo Railgun | `iconw_railgun.tga` | #2BEA4E |
+| Plasma Cooler | `iconw_plasma.tga` | #FF2EF0 |
+| BFG Blower | `iconw_bfg.tga` | #2F7BFF |
+| Nitro Flamer | `iconw_flame.tga` | #FF5A1F |
+
 ## Dateien
 
 - `tools/carbuild/prim.py`: Grundkörper für kleine md3-Modelle (Box, Zylinder,
@@ -36,6 +57,13 @@ die alten Namen weiterhin (`give Railgun` funktioniert also noch).
   ```
   python3 tools/carbuild/weapons/build_weapons.py            # alle
   python3 tools/carbuild/weapons/build_weapons.py spark_gun  # nur eine
+  ```
+
+- `tools/carbuild/weapons/make_icons.py`: die Piktogramme als SVG (64er-Raster),
+  von Chromium (Playwright) zu den Icon-Dateien gerendert:
+
+  ```
+  python3 tools/carbuild/weapons/make_icons.py
   ```
 
 Pro Waffe entstehen `<waffe>.md3` (mit `tag_flash`, bei drehenden Teilen auch
