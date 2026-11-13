@@ -76,6 +76,266 @@ models/weapons2/q3r/chain
 	}
 }
 
+// muzzle flashes: grey star / cone / ring textures, tinted per weapon,
+// a white-hot core on top
+models/weapons2/q3r/flash_yellow_star
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/flash_star.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 1.00 0.82 0.42 )
+	}
+	{
+		clampmap models/weapons2/q3r/flash_star_core.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen identity
+	}
+}
+
+models/weapons2/q3r/flash_yellow_cone
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/flash_cone.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 1.00 0.82 0.42 )
+	}
+	{
+		clampmap models/weapons2/q3r/flash_cone_core.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen identity
+	}
+}
+
+models/weapons2/q3r/flash_yellow_ring
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/lampflash.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 1.00 0.82 0.42 )
+	}
+}
+
+models/weapons2/q3r/flash_orange_star
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/flash_star.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 1.00 0.55 0.16 )
+	}
+	{
+		clampmap models/weapons2/q3r/flash_star_core.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen identity
+	}
+}
+
+models/weapons2/q3r/flash_orange_cone
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/flash_cone.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 1.00 0.55 0.16 )
+	}
+	{
+		clampmap models/weapons2/q3r/flash_cone_core.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen identity
+	}
+}
+
+models/weapons2/q3r/flash_orange_ring
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/lampflash.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 1.00 0.55 0.16 )
+	}
+}
+
+models/weapons2/q3r/flash_ice_star
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/flash_star.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 0.50 0.85 1.00 )
+	}
+	{
+		clampmap models/weapons2/q3r/flash_star_core.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen identity
+	}
+}
+
+models/weapons2/q3r/flash_ice_cone
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/flash_cone.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 0.50 0.85 1.00 )
+	}
+	{
+		clampmap models/weapons2/q3r/flash_cone_core.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen identity
+	}
+}
+
+models/weapons2/q3r/flash_ice_ring
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/lampflash.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 0.50 0.85 1.00 )
+	}
+}
+
+models/weapons2/q3r/flash_blue_star
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/flash_star.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 0.30 0.72 1.00 )
+	}
+	{
+		clampmap models/weapons2/q3r/flash_star_core.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen identity
+	}
+}
+
+models/weapons2/q3r/flash_blue_cone
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/flash_cone.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 0.30 0.72 1.00 )
+	}
+	{
+		clampmap models/weapons2/q3r/flash_cone_core.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen identity
+	}
+}
+
+models/weapons2/q3r/flash_blue_ring
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/lampflash.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 0.30 0.72 1.00 )
+	}
+}
+
+models/weapons2/q3r/flash_green_star
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/flash_star.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 0.55 1.00 0.38 )
+	}
+	{
+		clampmap models/weapons2/q3r/flash_star_core.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen identity
+	}
+}
+
+models/weapons2/q3r/flash_green_cone
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/flash_cone.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 0.55 1.00 0.38 )
+	}
+	{
+		clampmap models/weapons2/q3r/flash_cone_core.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen identity
+	}
+}
+
+models/weapons2/q3r/flash_green_ring
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/lampflash.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen const ( 0.55 1.00 0.38 )
+	}
+}
+
+models/weapons2/q3r/flash_entity_star
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/flash_star.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen entity
+	}
+	{
+		clampmap models/weapons2/q3r/flash_star_core.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen identity
+	}
+}
+
+models/weapons2/q3r/flash_entity_cone
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/flash_cone.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen entity
+	}
+	{
+		clampmap models/weapons2/q3r/flash_cone_core.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen identity
+	}
+}
+
+models/weapons2/q3r/flash_entity_ring
+{
+	nopicmip
+	cull none
+	{
+		clampmap models/weapons2/q3r/lampflash.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen entity
+	}
+}
+
 // Spotlight MG: the lamp ring flashes with every shot (in machinegun_flash.md3)
 models/weapons2/q3r/lampflash
 {

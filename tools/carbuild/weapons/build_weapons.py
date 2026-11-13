@@ -9,7 +9,8 @@ written by atlas.py) and the shader models/weapons2/q3r/parts.
 
 Writes into baseq3r/models/weapons2/<weapon>/ the files cgame loads for it:
 <weapon>.md3 (body, with tag_flash and, if it spins, tag_barrel),
-<weapon>_barrel.md3 and <weapon>_flash.md3.
+<weapon>_barrel.md3 and <weapon>_flash.md3 (own muzzle flashes, tinted
+per weapon; the Nitro Flamer has none, its fire is the stream).
 
 Model space: x forward (muzzle), y left, z up; the origin is the car's
 tag_weapon. Sizes are game units.
@@ -112,19 +113,66 @@ def spotlight():
     b.cyl((2.6, 0, 0), (3.2, 0, 0), 1.45, mat="gunmetal", segs=12)
     n_barrel = b.save(d / "machinegun_barrel.md3", "spotlight_rotor")
 
-    # flash: the old muzzle flash plus a glowing ring around the lamp
-    old = md3.load(str(d / "machinegun_flash.md3")) if (d / "machinegun_flash.md3").exists() else None
-    f = Mesh(atlas.CELLS)
-    if old:
-        f.surfs = [s for s in old.surfs if s.name != "lampring"]
-    f.surf("lampring", "models/weapons2/q3r/lampflash")
-    back = -(barrel_len + 0.3) + (LAMP_X1 + 0.75 - ROTOR_X)
-    r = LAMP_R + 0.6
-    f.quad([(back, r, r), (back, -r, r), (back, -r, -r), (back, r, -r)], (1, 0, 0), "orange")
-    s = f.cur
-    s.st = [[0, 0], [1, 0], [1, 1], [0, 1]]
-    n_flash = f.save(d / "machinegun_flash.md3", "spotlight_flash")
+    # flash: a warm star and flame at the rotor, the lamp ring lights up
+    def build(f):
+        flash_star(f, (0.2, 0, 0), 4.2, "yellow")
+        flash_cone(f, (0, 0, 0), 10.0, 4.6, "yellow")
+        f.surf("lampring", "models/weapons2/q3r/lampflash")
+        back = -(barrel_len + 0.3) + (LAMP_X1 + 0.75 - ROTOR_X)
+        r = LAMP_R + 0.6
+        f.quad([(back, r, r), (back, -r, r), (back, -r, -r), (back, r, -r)], (1, 0, 0), "orange")
+        f.cur.st = [[0, 0], [1, 0], [1, 1], [0, 1]]
+    n_flash = write_flash(d, "machinegun", build)
     return {"body": n_body, "barrel": n_barrel, "flash": n_flash}
+
+
+# ---------------------------------------------------------------- muzzle flashes
+
+FLASH_COLOURS = {          # tint of each flash shader; "entity" = the player's rail colour
+    "yellow": (1.0, 0.82, 0.42), "orange": (1.0, 0.55, 0.16), "ice": (0.5, 0.85, 1.0),
+    "blue": (0.3, 0.72, 1.0), "green": (0.55, 1.0, 0.38), "entity": None}
+
+
+def fshader(colour, kind):
+    return f"models/weapons2/q3r/flash_{colour}_{kind}"
+
+
+def flash_star(m, c, r, colour, turn=0.0):
+    """A flash seen from the front: a square facing +x round c."""
+    use(m, colour + "_star", fshader(colour, "star"))
+    cu, su = math.cos(turn), math.sin(turn)
+    pts = [(c[0], c[1] + r * (cu * a - su * b), c[2] + r * (su * a + cu * b)) for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+    i = [m.vert(p, (1, 0, 0), "orange", uv) for p, uv in zip(pts, ((0, 1), (1, 1), (1, 0), (0, 0)))]
+    m.tri(i[0], i[1], i[2]); m.tri(i[0], i[2], i[3])
+
+
+def flash_cone(m, c, length, width, colour):
+    """A flash seen from the side: two crossed quads from c forward (+x)."""
+    use(m, colour + "_cone", fshader(colour, "cone"))
+    h = width / 2
+    for n, off in (((0, 0, 1), (0, h, 0)), ((0, 1, 0), (0, 0, h))):
+        pts = [(c[0], c[1] - off[1], c[2] - off[2]), (c[0] + length, c[1] - off[1], c[2] - off[2]),
+               (c[0] + length, c[1] + off[1], c[2] + off[2]), (c[0], c[1] + off[1], c[2] + off[2])]
+        i = [m.vert(p, n, "orange", uv) for p, uv in zip(pts, ((0, 1), (1, 1), (1, 0), (0, 0)))]
+        m.tri(i[0], i[1], i[2]); m.tri(i[0], i[2], i[3])
+
+
+def flash_ring(m, c, r, colour):
+    use(m, colour + "_ring", fshader(colour, "ring"))
+    pts = [(c[0], c[1] - r, c[2] - r), (c[0], c[1] + r, c[2] - r), (c[0], c[1] + r, c[2] + r), (c[0], c[1] - r, c[2] + r)]
+    i = [m.vert(p, (1, 0, 0), "orange", uv) for p, uv in zip(pts, ((0, 1), (1, 1), (1, 0), (0, 0)))]
+    m.tri(i[0], i[1], i[2]); m.tri(i[0], i[2], i[3])
+
+
+def write_flash(d, name, build):
+    """<name>_flash.md3 round tag_flash (x forward); the old LOD of the
+    flash goes, or the engine would show it at a distance."""
+    f = Mesh(atlas.CELLS)
+    build(f)
+    for lod in (d / f"{name}_flash_1.md3", d / f"{name}_flash_2.md3"):
+        if lod.exists():
+            lod.unlink()
+    return f.save(d / f"{name}_flash.md3", name + "_flash")
 
 
 # ---------------------------------------------------------------- helpers
@@ -336,7 +384,12 @@ def twin_shotgun():
             m.box((x - 0.2, y - 0.2, PZ + PR), (x + 0.2, y + 0.2, hz), "alu")
     m.tag("tag_flash", (TX + 0.5, 0, PZ))
     n_body = m.save(d / "shotgun.md3", "twin_shotgun")
-    return {"body": n_body, "flash": keep_flash(d, "shotgun")}
+
+    def build(f):                                   # one flame from each tip
+        for y in (-1.55, 1.55):
+            flash_star(f, (0, y, 0), 3.2, "orange", turn=0.4 * y)
+            flash_cone(f, (0, y, 0), 9.0, 3.8, "orange")
+    return {"body": n_body, "flash": write_flash(d, "shotgun", build)}
 
 
 # ---------------------------------------------------------------- Drum Launcher
@@ -404,7 +457,11 @@ def drum_launcher():
         b.cyl((DT + 0.7, 1.1 * math.cos(a), 1.1 * math.sin(a)), (DT + 1.0, 1.1 * math.cos(a), 1.1 * math.sin(a)),
               0.28, mat="steel", segs=6)
     n_barrel = b.save(d / "grenadel_barrel.md3", "drum")
-    return {"body": n_body, "barrel": n_barrel, "flash": keep_flash(d, "grenadel")}
+
+    def build(f):                                   # a fat puff out of the funnel
+        flash_star(f, (0, 0, 0), 4.6, "orange")
+        flash_cone(f, (0, 0, 0), 7.5, 6.5, "orange")
+    return {"body": n_body, "barrel": n_barrel, "flash": write_flash(d, "grenadel", build)}
 
 
 # ---------------------------------------------------------------- Quad Launcher
@@ -450,7 +507,13 @@ def quad_launcher():
             m.cyl((-11.35, y, z), (-7.4, y, z), 0.18, mat="alu", segs=5, cap0=False)
     m.tag("tag_flash", (X1 + 0.3, 0, ZC))
     n_body = m.save(d / "rocketl.md3", "quad_launcher")
-    return {"body": n_body, "flash": keep_flash(d, "rocketl")}
+
+    def build(f):                                   # all four tubes light up
+        for y in (-1.55, 1.55):
+            for z in (-1.5, 1.5):
+                flash_star(f, (-0.3, y, z), 2.4, "orange", turn=y * z)
+                flash_cone(f, (-0.3, y, z), 8.5, 2.9, "orange")
+    return {"body": n_body, "flash": write_flash(d, "rocketl", build)}
 
 
 # ---------------------------------------------------------------- Spark Gun
@@ -513,7 +576,12 @@ def spark_gun():
     use(m, "body", PARTS)
     m.tag("tag_flash", (SX + 0.3, 0, CZ))
     n_body = m.save(d / "lightning.md3", "spark_gun")
-    return {"body": n_body, "flash": keep_flash(d, "lightning")}
+
+    def build(f):                                   # a crackling spark burst
+        flash_star(f, (-0.3, 0, 0), 4.0, "ice")
+        flash_star(f, (-0.2, 0, 0), 3.0, "ice", turn=0.7)
+        flash_ring(f, (-0.4, 0, 0), 2.0, "ice")
+    return {"body": n_body, "flash": write_flash(d, "lightning", build)}
 
 
 # ---------------------------------------------------------------- Turbo Railgun
@@ -575,7 +643,12 @@ def turbo_railgun():
         b.poly2(pts, nrm, "chrome")
         b.poly2(pts, tuple(-c for c in nrm), "chrome")
     n_barrel = b.save(d / "railgun_barrel.md3", "compressor")
-    return {"body": n_body, "barrel": n_barrel, "flash": keep_flash(d, "railgun")}
+
+    def build(f):                                   # in the player's rail colour
+        flash_ring(f, (0, 0, 0), 2.6, "entity")
+        flash_star(f, (0.1, 0, 0), 3.6, "entity")
+        flash_cone(f, (0, 0, 0), 6.0, 2.4, "entity")
+    return {"body": n_body, "barrel": n_barrel, "flash": write_flash(d, "railgun", build)}
 
 
 # ---------------------------------------------------------------- Plasma Cooler
@@ -631,7 +704,12 @@ def plasma_cooler():
     use(m, "body", PARTS)
     m.tag("tag_flash", (17.3, 0, CZ))
     n_body = m.save(d / "plasma.md3", "plasma_cooler")
-    return {"body": n_body, "flash": keep_flash(d, "plasma")}
+
+    def build(f):
+        flash_ring(f, (0, 0, 0), 2.0, "blue")
+        flash_star(f, (0.1, 0, 0), 3.0, "blue")
+        flash_cone(f, (0, 0, 0), 4.5, 2.8, "blue")
+    return {"body": n_body, "flash": write_flash(d, "plasma", build)}
 
 
 # ---------------------------------------------------------------- BFG Blower
@@ -695,7 +773,11 @@ def bfg_blower():
         b.cyl((-1.4, 0.45 * math.cos(a), 0.45 * math.sin(a)), (-1.3, 0.45 * math.cos(a), 0.45 * math.sin(a)),
               0.15, mat="steel", segs=6)
     n_barrel = b.save(d / "bfg_barrel.md3", "pulley")
-    return {"body": n_body, "barrel": n_barrel, "flash": keep_flash(d, "bfg")}
+
+    def build(f):                                   # the scoop belches green
+        flash_star(f, (0, 0, 0), 7.0, "green")
+        flash_cone(f, (0, 0, 0), 12.0, 7.5, "green")
+    return {"body": n_body, "barrel": n_barrel, "flash": write_flash(d, "bfg", build)}
 
 
 # ---------------------------------------------------------------- Nitro Flamer
@@ -848,6 +930,9 @@ models/weapons2/q3r/chain
 	}
 }
 
+// muzzle flashes: grey star / cone / ring textures, tinted per weapon,
+// a white-hot core on top
+@@FLASHES@@
 // Spotlight MG: the lamp ring flashes with every shot (in machinegun_flash.md3)
 models/weapons2/q3r/lampflash
 {
@@ -860,6 +945,26 @@ models/weapons2/q3r/lampflash
 	}
 }
 """
+    parts = []
+    for colour, rgb in FLASH_COLOURS.items():
+        gen = "rgbGen entity" if rgb is None else "rgbGen const ( %.2f %.2f %.2f )" % rgb
+        for kind, tex, core in (("star", "flash_star", "flash_star_core"), ("cone", "flash_cone", "flash_cone_core"),
+                                ("ring", "lampflash", None)):
+            stages = f"""	{{
+		clampmap models/weapons2/q3r/{tex}.tga
+		blendFunc GL_ONE GL_ONE
+		{gen}
+	}}
+"""
+            if core:
+                stages += f"""	{{
+		clampmap models/weapons2/q3r/{core}.tga
+		blendFunc GL_ONE GL_ONE
+		rgbGen identity
+	}}
+"""
+            parts.append(f"{fshader(colour, kind)}\n{{\n	nopicmip\n	cull none\n{stages}}}\n")
+    text = text.replace("@@FLASHES@@\n", "\n".join(parts) + "\n")
     (ROOT / "baseq3r" / "scripts" / "q3r_weapons.shader").write_text(text, encoding="utf-8")
 
 

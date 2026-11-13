@@ -13,8 +13,11 @@ blue, green) for the glowing parts; disc (a drilled brake disc) and label
 projection.
 
 Also writes lampflash.tga (the Spotlight MG's ring flash), chain.tga (the
-scrolling saw chain of the Harvester Saw) and chrome.tga (environment map
-for the chrome shader).
+scrolling saw chain of the Harvester Saw), chrome.tga (environment map
+for the chrome shader) and the muzzle flash textures: flash_star (seen
+from the front), flash_cone (seen from the side, base at the left) and
+their *_core versions, the white-hot middle. They are grey; each weapon's
+flash shader tints them with its colour.
 """
 from __future__ import annotations
 
@@ -142,6 +145,39 @@ def label_texture():
     return np.asarray(im).astype(np.float32)
 
 
+def flash_textures(rng):
+    """Star (front view) and cone (side view) of a muzzle flash, grey, plus
+    the white-hot cores."""
+    n = 128
+    yy, xx = (np.mgrid[0:n, 0:n] - (n - 1) / 2) / (n / 2)
+    rr = np.hypot(xx, yy)
+    ang = np.arctan2(yy, xx)
+    rays = np.zeros_like(rr)
+    for k in range(9):
+        a = 2 * np.pi * k / 9 + rng.uniform(-0.25, 0.25)
+        length = rng.uniform(0.55, 1.0)
+        width = rng.uniform(0.05, 0.11)
+        d = np.abs(((ang - a + np.pi) % (2 * np.pi)) - np.pi)
+        rays = np.maximum(rays, np.clip(1 - d / width, 0, 1) * np.clip(1 - rr / length, 0, 1) ** 1.3)
+    glow = np.clip(1 - rr, 0, 1) ** 2.2
+    star = np.clip(0.85 * rays + 0.75 * glow, 0, 1)
+    star_core = np.clip(np.exp(-(rr / 0.2) ** 2) * 1.1, 0, 1)
+    w, h = 256, 64
+    v, u = np.mgrid[0:h, 0:w]
+    u = u / (w - 1)
+    v = (v - (h - 1) / 2) / (h / 2)
+    flick = np.asarray(Image.fromarray((rng.random((8, 32)) * 255).astype(np.uint8)).resize((w, h), Image.BICUBIC)) / 255
+    # a short fat flame: opens quickly from the muzzle, tapers to a ragged tip
+    half = (0.22 + 0.7 * np.clip(u / 0.3, 0, 1) ** 0.5) * (1 - u) ** 0.9 * (0.75 + 0.5 * flick)
+    body = np.clip(1 - np.abs(v) / np.maximum(half, 1e-3), 0, 1) ** 1.4
+    cone = np.clip(body * (1.0 - 0.8 * u) ** 1.2 * (0.7 + 0.45 * flick) * 1.3, 0, 1)
+    cone_core = np.clip(np.exp(-(v / 0.25) ** 2) * np.exp(-(u / 0.3) ** 2) * 1.2, 0, 1)
+    out = {}
+    for name, a in (("flash_star", star), ("flash_star_core", star_core), ("flash_cone", cone), ("flash_cone_core", cone_core)):
+        out[name] = Image.fromarray((np.repeat(a[..., None], 3, 2) * 255).clip(0, 255).astype(np.uint8))
+    return out
+
+
 def write(out: Path):
     out.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(42)
@@ -188,6 +224,8 @@ def write(out: Path):
     ch[tooth] = (190, 194, 200)                                                 # cutter teeth on the outside
     ch[(yy > 12)] = (30, 30, 32)
     Image.fromarray(ch.clip(0, 255).astype(np.uint8)).save(out / "chain.tga")
+    for name, im in flash_textures(np.random.default_rng(11)).items():
+        im.save(out / f"{name}.tga")
     # the Spark Gun spark: a hot white core, ice-blue crackle round it
     n = 64
     yy, xx = (np.mgrid[0:n, 0:n] - (n - 1) / 2) / (n / 2)
