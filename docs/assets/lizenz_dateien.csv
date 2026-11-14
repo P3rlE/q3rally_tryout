@@ -111,7 +111,7 @@ botfiles/syn.h,1323,Bot-Dateien,Text/Code,OpenArena,,B
 botfiles/teamplay.h,10716,Bot-Dateien,Text/Code,OpenArena,,B
 botfiles/weapons.c,4064,Bot-Dateien,Text/Code,OpenArena,,B
 default.cfg,1389,"Skripte, Shader, Konfiguration",Text/Code,eigen (alter Name),,E
-documents/credits.txt,3242,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,
+documents/credits.txt,3417,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,
 documents/license.docx,10886,documents,Sonstiges,unbekannt,,F
 documents/license.txt,15148,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 documents/LINUXNOTES.txt,481,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
@@ -1387,7 +1387,7 @@ models/players/cobra/blue.skin,649,Auto cobra,Autos,unbekannt,,F
 models/players/cobra/blue_main.tga,63532,Auto cobra,Autos,unbekannt,,F
 models/players/cobra/body.md3,1220968,Auto cobra,Autos,unbekannt,,F
 models/players/cobra/chrome.tga,684,Auto cobra,Autos,unbekannt,,F
-models/players/cobra/CREDITS.txt,1483,Auto cobra,Autos,unbekannt,,F
+models/players/cobra/CREDITS.txt,1502,Auto cobra,Autos,unbekannt,,F
 models/players/cobra/driver.tga,39323,Auto cobra,Autos,unbekannt,,F
 models/players/cobra/glass.tga,684,Auto cobra,Autos,unbekannt,,F
 models/players/cobra/green.skin,653,Auto cobra,Autos,unbekannt,,F
@@ -1464,7 +1464,7 @@ models/players/db12/blue.skin,868,Auto db12,Autos,unbekannt,,F
 models/players/db12/blue_main.tga,62733,Auto db12,Autos,unbekannt,,F
 models/players/db12/body.md3,3532348,Auto db12,Autos,unbekannt,,F
 models/players/db12/chrome.tga,684,Auto db12,Autos,unbekannt,,F
-models/players/db12/CREDITS.txt,1371,Auto db12,Autos,unbekannt,,F
+models/players/db12/CREDITS.txt,1348,Auto db12,Autos,unbekannt,,F
 models/players/db12/glass.tga,684,Auto db12,Autos,unbekannt,,F
 models/players/db12/green.skin,874,Auto db12,Autos,unbekannt,,F
 models/players/db12/green_main.tga,62181,Auto db12,Autos,unbekannt,,F

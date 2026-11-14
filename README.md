@@ -51,5 +51,4 @@ Q3Rally is licensed under the GNU General Public License version 2.
   [baseq3r/documents/credits.txt](baseq3r/documents/credits.txt).
 * The license status of every file is tracked in
   [docs/assets/lizenz_einheiten.csv](docs/assets/lizenz_einheiten.csv)
-  (see [docs/assets/README.md](docs/assets/README.md)). Parts that are not
-  cleared yet are marked there and are being replaced.
+  (see [docs/assets/README.md](docs/assets/README.md)).
