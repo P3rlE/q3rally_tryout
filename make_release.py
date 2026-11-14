@@ -176,7 +176,8 @@ def package(path: Path, target: str, version: str, files: list[File], prefix: st
                 with file.path.open("rb") as stream:
                     digest, size = write_stream(archive, info, stream)
             records.append({"path": file.name, "size": size, "sha256": digest, "symlink": file.symlink})
-        documentation = [(ROOT / "engine/docs/COPYING.txt", "COPYING-engine.txt"), (ROOT / "changelog.txt", "changelog.txt")]
+        documentation = [(ROOT / "engine/docs/COPYING.txt", "COPYING-engine.txt"), (ROOT / "baseq3r/documents/credits.txt", "CREDITS.txt"),
+                         (ROOT / "changelog.txt", "changelog.txt")]
         for vendor in sorted((ROOT / "engine/code").iterdir()):
             if vendor.is_dir():
                 for license_name in ("COPYING", "COPYING.txt", "LICENSE", "LICENSE.txt", "LICENSE.md"):
@@ -192,7 +193,8 @@ def package(path: Path, target: str, version: str, files: list[File], prefix: st
                   "macOS: open Q3Rally.app.\n"
                   "Keep the baseq3r data, renderer libraries and runtime dependencies together.\n"
                   "This package contains no personal settings, profiles or demos.\n"
-                  "See changelog.txt, COPYING-engine.txt and bundled asset credits.\n"
+                  "Q3Rally is licensed under the GNU GPL version 2 (COPYING-engine.txt;\n"
+                  "the engine also under any later version). See CREDITS.txt and changelog.txt.\n"
                   "release-manifest.json lists the packaged files and SHA-256 checksums.\n").encode()
         archive.writestr(zip_info(root + "README.txt"), readme)
         records.append({"path": "README.txt", "size": len(readme), "sha256": hashlib.sha256(readme).hexdigest()})

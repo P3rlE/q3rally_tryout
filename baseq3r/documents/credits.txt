@@ -1,0 +1,114 @@
+Q3Rally - Credits
+=================
+
+Q3Rally is free software. The engine (engine/) is licensed under the GNU
+General Public License version 2 or (at your option) any later version. The
+game data (baseq3r/) is licensed under the GNU General Public License
+version 2; the full text is in license.txt. Some parts of the data are
+"version 2 only" (marked below), so the data as a whole stays at version 2.
+
+Third-party parts keep their own licenses, all of them compatible with the
+GPLv2. Everything else in the game data was made for Q3Rally.
+
+
+Q3Rally team
+------------
+
+The old Q3Rally team, who created and released the mod and later its source.
+
+ZTurtleMan     - code and compiling help with the standalone version
+TheBigBoo      - code and many maps
+To-Mos         - models and map models
+ThePanic       - website help and document design
+Toxicity       - textures and design help
+SteelPainter   - many cars and skins
+insellium      - full team member with a lot of work on the game
+
+and everyone else who helped as a team member or freelancer.
+
+
+Engine
+------
+
+Quake III Arena source code by id Software, released under the GPLv2 or
+later, and the ioquake3 project. Third-party libraries in engine/code carry
+their own license files.
+
+
+Maps, music and map objects
+---------------------------
+
+Night City (q3r_nightcity)   by Amphetamine, with the music amp6_22k.ogg
+Canyon Cruise (q3r_sk1)      by SystemKrash
+Lava Falls (q3r_lavafalls)   by Cyberdemon
+Teleporter object (models/mapobjects/telestecki) and texture set
+(textures/stecki)            by Stecki
+
+Released for Q3Rally by their authors.
+
+
+Texture packs from the Quake 3 community
+----------------------------------------
+
+evil1, evil2, evil4, evil5, evil8   by Evillair
+jim, jim_castle, jim_misc
+dsi_textures, tech1soc, terra, vsky
+
+Released for Q3Rally.
+
+
+Skies
+-----
+
+ame_nebula, ame_desert, oasisnight
+    by amethyst7 (Chris Matz).
+    ame_nebula and ame_desert: GPL version 2 only (see their readme files).
+
+ely_darkcity, ely_sunset
+    by Colin Lowndes (3delyvisions.com), made with TerraGen, converted to
+    the Quake 3 format by Laszlo Menczel (Speaker).
+    GPL version 2 only (see their readme files).
+
+
+Cars
+----
+
+Nissan Skyline R34 GT-R (models/players/skyline)
+    based on "Nissan Skyline R34 GT-R" by Lexyc16
+    https://skfb.ly/6TxFX
+    Creative Commons Attribution 4.0 International (CC BY 4.0)
+    https://creativecommons.org/licenses/by/4.0/
+    The changes for Q3Rally are listed in models/players/skyline/CREDITS.txt.
+
+Each car folder in models/players/ may carry a CREDITS.txt with the sources
+of its model and textures.
+
+
+Sounds
+------
+
+Announcer (sound/feedback)   Fuzztooth (mancubus.net)
+
+
+OpenArena
+---------
+
+Some sounds, textures, sprites and models come from OpenArena
+(openarena.ws), licensed under the GPL.
+
+
+Fonts
+-----
+
+Share Tech Mono   SIL Open Font License 1.1 (fonts/ShareTechMono-OFL.txt)
+
+
+Thanks
+------
+
+Nexuiz team, QuakeSRC.org, ModDB, Quake3World, Tr3b, Pappy-R from
+PlanetQuake.com, the people from Quake.de, Viktor Karp for the debris models
+of earlier versions, and everyone around the world who helped.
+
+A big thanks to John Carmack and id Software for Quake III Arena and its
+source code. Without them Q3Rally would not exist.
