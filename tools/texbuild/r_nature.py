@@ -57,3 +57,32 @@ def skies():
         'textures/skies/killsky_1.jpg': (clouds(512, 512, 821, [(0, '#000000'), (0.4, '#200000'), (0.7, '#900808'), (1, '#e02010')], 1.6), None),
         'textures/skies/killsky_2.jpg': (clouds(512, 512, 822, [(0, '#000000'), (0.5, '#100000'), (0.75, '#800606'), (1, '#c81810')], 1.8), None),
     }
+
+
+@recipe
+def debris_textures():
+    """Skins of the debris pieces: broken stone, splintered wood."""
+    out = {}
+    w = h = 256
+    f1, f2, _ = worley(w, h, 40, 1100)
+    crack = blur(smooth(1.6, 0, f2 - f1) * (noise(w, h, 1101, 3, 20) > 0.62), 0.8)
+    t = clamp(noise(w, h, 1102, 2, 40, 1.8) * 0.5 + clamp(f1 / 25) * 0.3 + noise(w, h, 1103, 20, None, 1.1) * 0.2)
+    col = gradient_map(t, [(0, '#4a4844'), (0.5, '#7c7870'), (1, '#a8a49a')])
+    hm = t * 0.6 - crack * 0.4
+    out['models/debris/debris_stone.jpg'] = (finish(light(col, 1 - crack * 0.5), hm, 8, 0.6, 2, 1100), None)
+    w, h = 1024, 191
+    grain = noise(w, h, 1104, 1, None, 1.6, aniso=(1, 10))         # long fibres along x
+    rings = 0.5 + 0.5 * np.sin(grain * 40)
+    knots = np.zeros((h, w), F)
+    x, y = grid(w, h)
+    rng = np.random.default_rng(1105)
+    for _ in range(4):
+        kx, ky = rng.uniform(0, w), rng.uniform(30, h - 30)
+        knots = np.maximum(knots, glow_blob(x, y, kx, ky, rng.uniform(8, 16), 2.0))
+    t = clamp(grain * 0.5 + rings * 0.35 - knots * 0.5 + 0.1)
+    col = gradient_map(t, [(0, '#8a6a48'), (0.4, '#b08a60'), (0.75, '#cfae84'), (1, '#e6caa2')])
+    plank = smooth(14, 22, y) * smooth(h - 14, h - 22, y)          # the board in the middle, saw-cut edges
+    col = finish(col, grain * 0.3 + rings * 0.1 + plank * 0.8, 5, 0.3, 2, 1104)
+    col = lerp(light(fill(w, h, '#7a7a78'), 0.9 + 0.2 * noise(w, h, 1106, 4, 40)), col, plank)
+    out['models/debris/debris_wood.jpg'] = (col, None)
+    return out

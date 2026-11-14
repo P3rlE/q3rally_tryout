@@ -51,6 +51,15 @@ Zufall ist überall mit festen Seeds gesetzt, ein neuer Lauf ergibt also dieselb
 - Die CTF-Flaggen zeigen ein Lenkrad (blau) und eine karierte Raute (rot).
 - Die Modelltexturen der Lampen (`spotlamp`, `gratetorch2b`) und des Schädels sind neu gezeichnet. Die Ausschnitte passen zu den UV-Flächen der Modelle, die direkt aus den MD3-Dateien gelesen werden.
 
+## Trümmer
+
+Die 42 Trümmerstücke in `models/debris/` (Beton hell und dunkel, Stein, Glas, Holz) und ihre zwei
+Texturen `debris_stone.jpg` und `debris_wood.jpg` stammten von Viktor Karp, ohne auffindbare Lizenz.
+`build_models.py` baut sie neu: Beton und Stein als kantige Brocken (konvexe Hülle aus zufälligen
+Punkten, zu einem Kasten hin gedrückt, damit Bruchflächen flach sind), Glas als flache Scherben,
+Holz als Brett mit gesplitterten Enden. Jedes Stück behält Größe, Lage und Shader des alten;
+`debris_sizes.json` hält nur diese Zahlen fest. Die Texturen kommen aus `r_nature.py`.
+
 ## Bewusst nicht ersetzt
 
 - `models/gibs/gibs.tga` trägt nur einen Quake-3-Namen. Inhaltlich ist es Q3Rallys eigener Trümmer-Atlas (Lenkrad, Lüfter, Schläuche).
