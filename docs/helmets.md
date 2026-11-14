@@ -39,8 +39,11 @@ Wer noch einen alten Kopf eingestellt hat, bekommt beim Start `classic`. Das pr�
 
 ## Aufbau
 
-- Maße wie die alten Köpfe: Ursprung oben am Kopf, x nach vorn, etwa 10 Einheiten lang. Das Auto setzt
-  den Helm an seinen `tag_head`.
+- Der `tag_head` der Autos ist um 180 Grad um y gedreht (Achsen -x, y, -z). Die Kopfmodelle liegen
+  deshalb wie die alten Köpfe auf dem Kopf und nach hinten gewandt in der Datei, mit dem Hals im Ursprung.
+- Der Helm wird aufrecht modelliert, mit x nach vorn und z nach oben. `TagMesh` dreht ihn beim Schreiben
+  und skaliert ihn auf 92 %, damit er ins Cockpit passt.
+- Die Icons werden wieder aufrecht gerendert.
 - Die Schale ist ein Ringnetz. Ring t geht von 0 am unteren Rand bis 1 am Scheitel, der Winkel phi läuft
   um den Kopf.
 - Die Gesichtsöffnung ist pro Ring der Bereich zwischen -phi_e(t) und phi_e(t). Ihr Rand bleibt deshalb
