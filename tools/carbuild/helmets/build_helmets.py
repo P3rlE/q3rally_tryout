@@ -12,8 +12,10 @@ and the shared parts (visors, goggles, rubber, balaclava) plus
 scripts/heads.shader. The head list in the menus and the garage is built
 from the .skin files, so a new design only needs an entry in designs.py.
 
-Units are game units like the old heads: origin at the top of the head,
-x forward, about 10 units long. The car places the model at its tag_head.
+Units are game units like the old heads, about 10 units long. The cars'
+tag_head is turned 180 degrees round y, so the files hold the helmet upside
+down and facing back, neck at the origin (TagMesh does that); the helmet is
+modelled upright, x forward, z up.
 
 The shell is a ring mesh: ring t (0 at the bottom edge, 1 at the top) and
 angle phi round the head (0 straight ahead). P(phi, t) gives the point;
@@ -233,8 +235,23 @@ def add_face(m, shader_lens):
             m.tri(cen, ids[k], ids[(k + 1) % 12])
 
 
+# The cars' tag_head is turned 180 degrees round y (axis -x, y, -z): the head
+# models are stored upside down and facing back, with the neck at the origin
+# (like the old heads). The helmet is modelled upright and turned here.
+TAG_SHIFT = np.array([1.0, 0.0, 7.0])          # upright model -> place above the tag
+TAG_SCALE = 0.92                                # a helmet is bigger than a head: fit the cockpits
+TAG_AXIS = np.diag([-1.0, 1.0, -1.0])
+
+
+class TagMesh(Mesh):
+    def vert(self, p, n, mat, uv=None):
+        p = TAG_AXIS @ ((np.asarray(p, float) + TAG_SHIFT) * TAG_SCALE)
+        n = TAG_AXIS @ np.asarray(n, float)
+        return super().vert(tuple(float(c) for c in p), tuple(float(c) for c in n), mat, uv)
+
+
 def helmet(kind, paint_shader, visor_shader):
-    m = Mesh({'m': (0.0, 0.0, 1.0)})
+    m = TagMesh({'m': (0.0, 0.0, 1.0)})
     add_shell(m, kind, paint_shader)
     if kind.name == 'full':
         add_visor(m, kind, visor_shader)
@@ -314,7 +331,7 @@ def shader_text(keys):
 def render_icon(md3_path, skin):
     from mdlrender import Scene
     sc = Scene(size=128, ss=4)
-    sc.add(md3_path, skin)
+    sc.add(md3_path, skin, axis=TAG_AXIS / TAG_SCALE, origin=-TAG_SHIFT)   # back to upright for the picture
     sc.camera((24, 15, 3.5), target=(-0.4, 0.2, -3.6), fov=34)
     sc.light = np.array([0.6, 0.45, 0.7])
     return sc.render(fit=0.94)
