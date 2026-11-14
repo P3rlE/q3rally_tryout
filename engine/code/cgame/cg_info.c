@@ -386,6 +386,9 @@ void CG_DrawInformation( void ) {
         case GT_GHOST:
                 s = "Ghost Race";
                 break;
+        case GT_DRAG:
+                s = "Drag Race";
+                break;
         case GT_DERBY:
                 s = "Demolition Derby";
                 break;

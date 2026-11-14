@@ -28,6 +28,17 @@ static int commandLogCount;
 static int lastSoundIndex;
 static qboolean rallyMode = qtrue;
 
+/* Drag has its own production harness. Existing race paths must not delegate. */
+void G_DragStarterThink(gentity_t *starter) {
+    (void)starter;
+    assert(!"Unexpected Drag start in a normal race");
+}
+int G_DragCompare(int a, int b) {
+    (void)a; (void)b;
+    assert(!"Unexpected Drag ranking in a normal race");
+    return 0;
+}
+
 static const char *centerPrintLog[16];
 static int centerPrintCount;
 static vec3_t mockPlayerMins = {-16.0f, -16.0f, -24.0f};

@@ -6,7 +6,7 @@
 #define Q_GAMETYPE_H
 
 typedef enum {
-        // Non-team gametypes (0-15). Values 9-15 are reserved.
+        // Non-team gametypes (0-15). Values 10-15 are reserved.
         GT_RACING          =  0,    // racing
         GT_RACING_DM       =  1,    // racing with weapons
         GT_SINGLE_PLAYER   =  2,    // single player / time trial
@@ -16,6 +16,7 @@ typedef enum {
         GT_DEATHMATCH      =  6,    // free-for-all deathmatch
         GT_SPRINT          =  7,    // point-to-point sprint race
         GT_GHOST           =  8,    // solo ghost race, no bots
+        GT_DRAG            =  9,    // equal-spec drag race, human drivers only
 
         // Team gametypes (16+). Values 24+ are reserved.
         GT_TEAM            = 16,    // team deathmatch

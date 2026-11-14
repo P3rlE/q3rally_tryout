@@ -285,6 +285,11 @@ typedef struct centity_s {
 	// race variables
 	int				finishRaceTime;
 	int				startRaceTime;
+	int				dragPhase;
+	int				dragGreenTime;
+	int				dragLaunchTime;
+	int				dragFinishTime;
+	int				dragTrapSpeed;
 
 	int				startLapTime;
 	int				lastStartLapTime;

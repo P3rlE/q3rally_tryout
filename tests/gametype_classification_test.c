@@ -1,7 +1,7 @@
 /*
  * Unit test for the central gametype classification in bg_misc.c.
  * GT_GHOST must behave like a race everywhere (ghost recording/playback,
- * intro camera, bot route source) while being the only human-only mode.
+ * intro camera, bot route source). Drag and Ghost Race are human-only modes.
  */
 #include <assert.h>
 #include <stdio.h>
@@ -27,7 +27,7 @@ qboolean isRaceObserver( int clientNum ) {
 
 static const int s_validGametypes[] = {
 	GT_RACING, GT_RACING_DM, GT_SINGLE_PLAYER, GT_DERBY, GT_LCS, GT_ELIMINATION,
-	GT_DEATHMATCH, GT_SPRINT, GT_GHOST, GT_TEAM, GT_TEAM_RACING, GT_TEAM_RACING_DM,
+	GT_DEATHMATCH, GT_SPRINT, GT_GHOST, GT_DRAG, GT_TEAM, GT_TEAM_RACING, GT_TEAM_RACING_DM,
 	GT_CTF, GT_CTF4, GT_DOMINATION, GT_KOTH, GT_AUTOBALL
 };
 
@@ -55,10 +55,11 @@ int main( void ) {
 	assert( BG_GametypeIsNonDMRace( GT_GHOST, qtrue ) );
 	assert( BG_GametypeHasRaceFinish( GT_GHOST ) );
 
-	/* ...but the only mode without bots */
+	/* Human-only modes cannot add bots. */
 	assert( !BG_GametypeAllowsBots( GT_GHOST ) );
+	assert( !BG_GametypeAllowsBots( GT_DRAG ) );
 	for ( gt = 0; gt < GT_MAX_GAME_TYPE; gt++ ) {
-		if ( gt != GT_GHOST ) {
+		if ( gt != GT_GHOST && gt != GT_DRAG ) {
 			assert( BG_GametypeAllowsBots( gt ) );
 		}
 	}
@@ -66,6 +67,15 @@ int main( void ) {
 	/* Ghost Race uses the racing entity set of a map */
 	assert( !strcmp( BG_GametypeEntityName( GT_GHOST ), "racing" ) );
 	assert( !strcmp( BG_GametypeDisplayName( GT_GHOST ), "Ghost Race" ) );
+
+	/* Drag has its own map layout and keeps the existing IDs stable. */
+	assert( GT_DRAG == 9 && GT_DRAG < GT_TEAM );
+	assert( BG_GametypeIsRace( GT_DRAG ) );
+	assert( BG_GametypeIsTimedRace( GT_DRAG ) );
+	assert( BG_GametypeIsNonDMRace( GT_DRAG, qfalse ) );
+	assert( BG_GametypeHasRaceFinish( GT_DRAG ) );
+	assert( !strcmp( BG_GametypeEntityName( GT_DRAG ), "drag" ) );
+	assert( !strcmp( BG_GametypeDisplayName( GT_DRAG ), "Drag Race" ) );
 
 	/* Unchanged classification of the existing modes */
 	assert( BG_GametypeIsRace( GT_RACING ) && BG_GametypeIsRace( GT_RACING_DM ) );

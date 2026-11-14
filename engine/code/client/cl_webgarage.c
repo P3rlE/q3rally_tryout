@@ -1199,7 +1199,7 @@ static void Web_PublishOffline( int screen ) {
               (int)VM_Call( uivm, UI_WEB_OFFLINE_NUMBER, 1, 0 ), (int)VM_Call( uivm, UI_WEB_OFFLINE_NUMBER, 2, 0 ),
               (int)VM_Call( uivm, UI_WEB_OFFLINE_NUMBER, 12, 0 ), (int)VM_Call( uivm, UI_WEB_OFFLINE_NUMBER, 14, 0 ), (int)VM_Call( uivm, UI_WEB_OFFLINE_NUMBER, 15, 0 ) );
     Web_RunScript( frame, script );
-    for ( i = 0; i < 16; i++ ) {
+    for ( i = 0; i < VM_Call( uivm, UI_WEB_OFFLINE_NUMBER, 16, 0 ); i++ ) {
         Web_OfflineText( 3, i, 0, a, ARRAY_LEN( a ) );
         swprintf( script, ARRAY_LEN( script ), L"window.q3rallyOffline?.mode(%d,decodeURIComponent('%ls'))", i, a ); Web_RunScript( frame, script );
     }

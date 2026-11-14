@@ -29,14 +29,14 @@ def test_iter_gametypes_are_sorted_by_numeric_value():
 def test_cli_outputs_expected_lines():
     script = REPO_ROOT / "tools" / "startserver" / "cli.py"
     result = subprocess.run([
-        "python3",
+        sys.executable,
         str(script),
         "team-racing"
     ], check=True, capture_output=True, text=True)
     assert result.stdout.strip() == "team_racing 17"
 
     list_result = subprocess.run([
-        "python3",
+        sys.executable,
         str(script),
         "--list",
     ], check=True, capture_output=True, text=True)
@@ -44,6 +44,7 @@ def test_cli_outputs_expected_lines():
     assert lines[0].startswith("0 - racing")
     assert any(line.startswith("7 - sprint") for line in lines)
     assert any(line.startswith("8 - ghost") for line in lines)
+    assert any(line.startswith("9 - drag") for line in lines)
     assert any(line.startswith("22 - koth") for line in lines)
     assert lines[-1].endswith("autoball")
 
@@ -67,6 +68,7 @@ def test_gametype_values_match_bg_public():
         "DEATHMATCH": "deathmatch",
         "SPRINT": "sprint",
         "GHOST": "ghost",
+        "DRAG": "drag",
         "TEAM": "team",
         "TEAM_RACING": "team_racing",
         "TEAM_RACING_DM": "team_racing_dm",
@@ -90,3 +92,8 @@ def test_ghost_aliases_resolve():
 def test_autoball_aliases_resolve():
     assert cli.resolve_gametype("autoball") == ("autoball", 23)
     assert cli.resolve_gametype("Car-Football") == ("autoball", 23)
+
+
+def test_drag_aliases_resolve():
+    assert cli.resolve_gametype("drag") == ("drag", 9)
+    assert cli.resolve_gametype("Drag-Race") == ("drag", 9)

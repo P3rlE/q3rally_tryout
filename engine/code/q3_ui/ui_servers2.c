@@ -178,14 +178,23 @@ static char* gamenames[] = {
 */
 	"Race",
 	"Race DM",
+	"Single",
 	"Derby",
 	"LCS",
+	"Elimination",
 	"DM ",
+	"Sprint",
+	"Ghost Race",
+	"Drag Race",
+	"???", "???", "???", "???", "???", "???",
+	"Team DM",
 	"TRace",
 	"TRace DM",
-	"Team DM",	// team deathmatch
 	"CTF",	// capture the flag
+	"4-Team CTF",
     "Domination", // domination
+	"KOTH",
+	"Autoball",
 // END
 	"???",			// unknown
 	0
@@ -566,7 +575,7 @@ static void ArenaServers_UpdateMenu( void ) {
 			break;
 */
 		case GAMES_RACING:
-			if( servernodeptr->gametype != GT_RACING && servernodeptr->gametype != GT_SPRINT ) {
+			if( servernodeptr->gametype != GT_RACING && servernodeptr->gametype != GT_SPRINT && servernodeptr->gametype != GT_DRAG ) {
 				continue;
 			}
 			break;

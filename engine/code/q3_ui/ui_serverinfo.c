@@ -97,6 +97,7 @@ static const char *ServerInfo_GameTypeName( int gametype )
 	case GT_DEATHMATCH:      return "Deathmatch";
 	case GT_SPRINT:          return "Sprint";
 	case GT_GHOST:           return "Ghost Race";
+	case GT_DRAG:            return "Drag Race";
 	case GT_TEAM:            return "Team Deathmatch";
 	case GT_TEAM_RACING:     return "Team Racing";
 	case GT_TEAM_RACING_DM:  return "Team Racing DM";

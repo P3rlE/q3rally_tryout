@@ -58,6 +58,8 @@
     const label = node('label', control.label.replace(/:\s*$/, '').trim()); label.htmlFor = element.id; label.append(element); return label;
   }
   function options() {
+    const drag = modes[mode] === 'Drag Race';
+    find('rule-help').textContent = drag ? 'Equal vehicle performance. One run. Early release is a false start.' : 'Zero means no limit.';
     find('race-title').textContent = maps[selected]?.title || 'Your race'; find('race-mode').textContent = modes[mode] || '';
     const options = find('options'); options.replaceChildren();
     controls.filter(control => control.slot < 0).forEach(control => options.append(controlElement(control)));
@@ -65,12 +67,13 @@
     for (let slot = 0; slot < 12; slot++) {
       const rowControls = controls.filter(control => control.slot === slot);
       if (!rowControls.length && slot !== 0) continue;
-      if (!allowsBots && slot !== 0) continue;
+      if (!allowsBots && slot !== 0 && !(drag && slot === 1)) continue;
       const type = rowControls.find(control => !control.team), team = rowControls.find(control => control.team);
       const row = node('div', undefined, 'offline-player'); row.classList.toggle('offline-human', slot === 0 && !dedicated); row.append(node('p', slot === 0 ? (dedicated ? 'Server slot' : 'You / ' + players[slot]) : 'Slot ' + (slot + 1), 'label'));
       if (slot === 0 && !dedicated) {
         if (catalog.avatars?.[avatar]) row.append(image(catalog.avatars[avatar]));
-      } else if (type) row.append(controlElement(type));
+      } else if (drag) row.append(node('span', 'Open human slot'));
+      else if (type) row.append(controlElement(type));
       if (slot > 0 && type?.value === 1 && allowsBots) {
         const select = node('select'); select.setAttribute('aria-label','Driver for slot ' + (slot + 1));
         bots.slice().sort((a,b) => a.name.localeCompare(b.name)).forEach(bot => select.add(new Option(clean(bot.name),String(bot.index))));
@@ -83,7 +86,7 @@
       if (team) row.append(controlElement(team));
       grid.append(row);
     }
-    find('grid-help').textContent = allowsBots ? 'Choose your opponents and teams.' : 'This mode is driven solo. Bots are disabled.';
+    find('grid-help').textContent = drag ? 'Two human drivers or solo practice. Hold the handbrake to stage, release on green, then use Gear Up / Gear Down. Bots are disabled.' : allowsBots ? 'Choose your opponents and teams.' : 'This mode is driven solo. Bots are disabled.';
     if (refreshFocus) {
       const element = document.getElementById(refreshFocus);
       element?.focus({preventScroll:true}); refreshFocus = undefined;

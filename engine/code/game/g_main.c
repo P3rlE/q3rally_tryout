@@ -1389,7 +1389,7 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
 
 	/* Ghost races are solo time trials without opponents; they never
 	   produce a ladder result. */
-	if ( g_gametype.integer == GT_GHOST ) {
+	if ( g_gametype.integer == GT_GHOST || g_gametype.integer == GT_DRAG ) {
 		return;
 	}
 
@@ -1720,6 +1720,8 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
         // parse the key/value pairs and spawn gentities
         G_SpawnEntitiesFromString();
 
+        G_DragInit();
+
         G_InitWeather();
 
 	if ( g_gametype.integer == GT_KOTH && !KOTH_MapHasValidHill() ) {
@@ -2011,6 +2013,10 @@ static void G_RecordMatchOutcome( void ) {
         int                     clientNum;
         int                     winner;
         qboolean                teamGame;
+
+	if ( g_gametype.integer == GT_DRAG ) {
+		return;
+	}
 
 	if ( g_gametype.integer == GT_KOTH && level.kothMapInvalid ) {
 		return;
@@ -3028,6 +3034,10 @@ void CheckExitRules( void ) {
 	}
 
 	// check for sudden death in all other modes (and untimed KOTH matches)
+	if ( G_DragCheckExit() ) {
+		return;
+	}
+
 	if ( ScoreIsTied() ) {
 		return;
 	}
@@ -3760,6 +3770,9 @@ void G_RunFrame( int levelTime ) {
 
 		G_RunThink( ent );
 	}
+
+	/* Resolve close Drag finishes after every driver's movement for this tick. */
+	G_DragRunFrame();
 
 	// perform final fixups on the players
 	ent = &g_entities[0];

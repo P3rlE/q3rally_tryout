@@ -1,0 +1,17 @@
+{
+map "q3r_dragstrip"
+longname "Drag Strip"
+author "Q3Rally Team"
+type "q3r_drag"
+starts "2"
+laps "1"
+laptime "Quarter-mile prototype"
+checkpoints "1"
+observerspots "1"
+weapons "0"
+powerups "0"
+reversable "0"
+tracklengths "1"
+botsupport "No"
+teams "None"
+}

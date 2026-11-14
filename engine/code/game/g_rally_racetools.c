@@ -285,6 +285,10 @@ qboolean IsCarAhead(gentity_t *one, gentity_t *two){
 	float		dist1, dist2;
 	int			time1, time2;
 
+	if ( g_gametype.integer == GT_DRAG ) {
+		return G_DragCompare( one->s.clientNum, two->s.clientNum ) < 0;
+	}
+
 	if (one->client->finishRaceTime && two->client->finishRaceTime){
 		time1 = one->client->finishRaceTime - level.startRaceTime;
 		if (one->client->ps.persistant[PERS_SCORE] > 0 && !isRallyNonDMRace()){
@@ -515,6 +519,11 @@ void RallyStarter_Think( gentity_t *ent ){
 	qboolean	ignoreBots;
 	qboolean	useIntroRaceState;
 	int			introDurationMs;
+
+	if ( g_gametype.integer == GT_DRAG ) {
+		G_DragStarterThink( ent );
+		return;
+	}
 
 	useIntroRaceState = ( g_gametype.integer == GT_RACING
 		|| g_gametype.integer == GT_RACING_DM

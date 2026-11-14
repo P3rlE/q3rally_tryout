@@ -823,6 +823,13 @@ void SetTeam( gentity_t *ent, const char *s ) {
 		team = TEAM_FREE;
 	}
 
+	if ( g_gametype.integer == GT_DRAG && team != TEAM_SPECTATOR &&
+		client->sess.sessionTeam == TEAM_SPECTATOR &&
+		( TeamCount( clientNum, TEAM_FREE ) >= 2 || !G_DragCanJoin() ) ) {
+		trap_SendServerCommand( clientNum, "cp \"Wait for the next Drag heat or a free lane.\"" );
+		return;
+	}
+
 	// override decision if limiting the players
 // STONELANCE
 /*
@@ -2301,6 +2308,7 @@ void ClientCommand( int clientNum ) {
 		Cmd_Stats_f( ent );
 // STONELANCE
 	else if (Q_stricmp (cmd, "gearUp") == 0){
+		if ( g_gametype.integer == GT_DRAG ) ent->client->pers.transmissionMode = TR_MANUAL;
 		if ( ent->client->pers.transmissionMode == TR_AUTO && !ent->client->pers.manualShift )
 			return;
 		if ( ent->client->pers.transmissionMode == TR_MANUAL_CLUTCH && ent->client->pers.cmd.upmove <= 0 )
@@ -2312,6 +2320,7 @@ void ClientCommand( int clientNum ) {
 			ent->client->car.gear++;
 	}
 	else if (Q_stricmp (cmd, "gearDown") == 0){
+		if ( g_gametype.integer == GT_DRAG ) ent->client->pers.transmissionMode = TR_MANUAL;
 		if ( ent->client->pers.transmissionMode == TR_AUTO && !ent->client->pers.manualShift )
 			return;
 		if ( ent->client->pers.transmissionMode == TR_MANUAL_CLUTCH && ent->client->pers.cmd.upmove <= 0 )

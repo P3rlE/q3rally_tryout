@@ -95,6 +95,10 @@ static void G_RallyCompleteCleanSegment( gentity_t *ent ) {
 	int turboRemaining;
 	qboolean awardedNos;
 
+	if ( g_gametype.integer == GT_DRAG ) {
+		return;
+	}
+
 	if ( !ent || !ent->client ) {
 		return;
 	}
@@ -466,6 +470,12 @@ void Touch_Start (gentity_t *self, gentity_t *other, trace_t *trace ){
                 return;
         }
 
+        /* Drag's clock starts at green; crossing the Sprint start must not
+         * replace that timestamp or turn into a new attempt. */
+        if ( g_gametype.integer == GT_DRAG ) {
+                return;
+        }
+
         if ( other->client->lastCheckpointTime + 300 > level.time ) {
                 return;
         }
@@ -596,6 +606,11 @@ void G_RallyUpdateAllTeamTimes( void ) {
 
 void Touch_Finish (gentity_t *self, gentity_t *other, trace_t *trace ){
         const char *place;
+
+        /* Drag uses a common origin-crossing plane, independent of brush contact. */
+        if ( g_gametype.integer == GT_DRAG ) {
+                return;
+        }
 
         if ( !other->client || other->client->finishRaceTime ) {
                 return;

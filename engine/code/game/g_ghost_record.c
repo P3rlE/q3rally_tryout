@@ -183,7 +183,7 @@ static qboolean G_GhostRecord_ClientEligible( gentity_t *ent ) {
 	if ( G_LadderRulesViolation() ) {
 		return qfalse;
 	}
-	if ( !BG_GametypeIsTimedRace( g_gametype.integer ) ) {
+	if ( g_gametype.integer == GT_DRAG || !BG_GametypeIsTimedRace( g_gametype.integer ) ) {
 		return qfalse;
 	}
 	if ( !client || ( ent->r.svFlags & SVF_BOT ) ) {
