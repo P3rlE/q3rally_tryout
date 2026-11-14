@@ -40,3 +40,54 @@ keine neue Meldung über fehlende Bilder, Modelle oder Sounds.
 Nicht entfernt: ungenutzte Q3Rally-eigene Dateien und solche ohne Quake-3- oder
 OpenArena-Bezug (Mapobjekte wie Fahrzeuge, Pylonen, Laternen, Texturen für neue
 Karten), Map-Quellen-Texturen, Editorbilder und alle Sounds.
+
+## Lizenz-Inventur
+
+`tools/assets/license_inventory.py` ordnet jede Datei in `baseq3r/` (auch in `.pk3`) einer Einheit zu:
+einem Auto, einer Karte, einem Texturset, einer Soundgruppe, einem Musikstück. Für jede Einheit hält das
+Skript fest, was über Herkunft und Lizenz bekannt ist:
+
+```
+python3 tools/assets/license_inventory.py [--audit herkunft.json]
+```
+
+Ergebnis:
+
+- `docs/assets/lizenz_einheiten.csv`: eine Zeile pro Einheit mit Befund, Lizenz, Aufgabe und Ansprechpartner-Hinweis
+- `docs/assets/lizenz_dateien.csv`: eine Zeile pro Datei mit Einheit, Herkunftsklasse und Generator
+
+| Befund | Bedeutung |
+|---|---|
+| eigen, generiert | von einem Skript in `tools/` erzeugt, Quelle im Repo |
+| eigen laut Projekt | für Q3Rally erstellt (laut CREDITS oder Projektangabe); steht unter der Spiellizenz |
+| freigegeben | fremder Urheber, laut Projekt für Q3Rally freigegeben; in `baseq3r/documents/credits.txt` genannt |
+| frei, verträglich | fremd, aber unter GPL, CC BY 4.0 oder OFL; in `credits.txt` genannt |
+| Lizenz einholen | fremder Urheber bekannt, Freigabe fehlt noch |
+| Lizenz prüfen | eine Lizenz ist bekannt, ihre Bedingungen passen vielleicht nicht |
+| unverträglich | so nicht unter die GPL; Lizenz einholen oder ersetzen |
+| Herkunft klären | im Repo steht nichts zur Herkunft; im Team nachfragen |
+
+Alles, wozu im Repo kein fremder Urheber steht, gilt laut Projekt als für Q3Rally erstellt.
+
+Das Wissen über einzelne Einheiten steht im Skript selbst (`KB`, `OWN_STATED`, `HINTS`).
+Ist eine Lizenz geklärt, wird der Eintrag dort angepasst und das Skript neu ausgeführt.
+
+## Lizenz des Spiels
+
+Q3Rally steht unter der GNU GPL Version 2 (`baseq3r/documents/license.txt`, `README.md`). Die Engine ist
+GPLv2 oder später. Bei den Daten geht es nicht über Version 2 hinaus, weil die Skyboxen von amethyst7
+(`ame_nebula`, `ame_desert`) und von Colin Lowndes (`ely_darkcity`, `ely_sunset`) nur unter GPLv2 stehen.
+Fremde Urheber und ihre Lizenzen stehen in `baseq3r/documents/credits.txt`; `make_release.py` legt die
+Datei als `CREDITS.txt` ins Release.
+
+Noch offen (Stand der CSV-Dateien):
+
+| Einheit | Befund | Was zu tun ist |
+|---|---|---|
+| Auto `db12` | unverträglich | Urheber und Lizenz des Modells fehlen. |
+| Auto `cobra` | Lizenz prüfen | Kaufmodell; erlaubt die Kauflizenz die Weitergabe unter GPL? |
+
+Die Fahrerköpfe aus Quake 3 und die Xaero-Statue in `q3r_ctf_04` sind durch eigene Helme und einen
+Pokal ersetzt (#1516, siehe `docs/helmets.md` und `docs/textures/README.md`).
+
+Die beiden CSV-Dateien zeigen den Stand nach den PRs #1511 bis #1513, #1515 und #1516.

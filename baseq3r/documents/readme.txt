@@ -38,6 +38,12 @@ The Source for content and code is available at
 
 https://github.com/Q3Rally-Team/q3rally
 
+** LICENSE **
+
+Q3Rally is free software under the GNU General Public License version 2,
+see license.txt. Third-party authors and their licenses are listed in
+credits.txt.
+
 ** CREDITS **
 
 Credits goes to the Old Q3Rally Team who made a good way for this with creating and releasing this great mod and also releasing the source after giving the mod up.
