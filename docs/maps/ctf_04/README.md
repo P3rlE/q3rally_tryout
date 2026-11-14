@@ -31,12 +31,14 @@ unverändert, das Skript schreibt `baseq3r/maps/q3r_ctf_04.map` und
   Ring und auf dem Parkplatz, Laternenpfähle an den Ecken des Platzes.
 - **Deckung:** In den vier Blöcken um den Platz Eichen, Pflanzkübel mit Baum, niedrige
   Mauern, ein Kiosk und ein geparktes Auto. In den äußeren Ecken neben den Basen auf
-  jeder Seite ein Parkplatz (Autos, Container) und ein kleiner Park (Bäume, Mauern,
-  Kiosk).
+  jeder Seite ein Parkplatz (Autos, Container) und ein kleiner Park (Bäume, Mauer,
+  Kiosk). Zwischen allen Hindernissen bleiben mindestens rund 150 Units frei.
 - **Kollision:** Bäume, Laternen und Automodelle haben einen festen, unsichtbaren Hull
-  (`textures/q3r_ctf_04/propclip`). Die Brushes der alten Map aus `common/full_clip`
-  sind ebenfalls auf `propclip` umgestellt: `full_clip` ist nur Spieler-Clip, die
-  Fahrphysik (Bullet) nimmt aber nur feste Brushes.
+  (`textures/q3r_ctf_04/propclip`), ebenso die Bäume der alten Map, die nur
+  `common/full_clip` hatten: `full_clip` ist nur Spieler-Clip, die Fahrphysik (Bullet)
+  nimmt aber nur feste Brushes. Die niedrigen Clips der Hebebühnen in der Werkstatt
+  bleiben Spieler-Clip wie im Original; fest gemacht, blieben Bots zwischen den
+  Bühnen hängen.
 - **Flaggenpads:** Die Seiten nutzten eine fehlende Textur (`kilt_texpack02`), jetzt
   `evil5_ctf/ctf_crete_red` und `ctf_crete_blue`.
 - Titel „Trophy Square“ in der Map und in der Arena-Datei.
