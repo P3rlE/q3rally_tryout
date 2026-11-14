@@ -229,6 +229,23 @@ def chainsaw_hit(sr=22050, seconds=0.77):
     return out * np.minimum(1, (n - np.arange(n)) / (sr * 0.05))   # fade the tail to zero
 
 
+def gear_clack(sr=44100, seconds=0.0775, seed=70, pitch=1.0):
+    """Gear change: a dry mechanical clack (click, short metal ring, low knock)."""
+    n = int(sr * seconds)
+    t = np.arange(n) / sr
+    click = band_noise(n, sr, 1500, 12000, seed) * np.exp(-t / 0.003)
+    ring = np.zeros(n)
+    for f, a, d in ((870, 1.0, 0.012), (2310, 0.6, 0.008), (4150, 0.35, 0.005), (6020, 0.2, 0.003)):
+        ring += a * np.sin(2 * np.pi * f * pitch * t + seed) * np.exp(-t / d)
+    knock = np.sin(2 * np.pi * 140 * pitch * t) * np.exp(-t / 0.018)
+    second = np.zeros(n)                     # the dog teeth engaging a moment later
+    k = int(sr * 0.022 * pitch)
+    m = n - k
+    second[k:] = band_noise(m, sr, 800, 6000, seed + 1) * np.exp(-np.arange(m) / sr / 0.004) * 0.5
+    out = click * 0.9 + ring * 0.5 + knock * 0.7 + second
+    return out * np.minimum(1, (n - np.arange(n)) / (sr * 0.006))
+
+
 # target loudness (RMS) of each file, so the mix in the game stays as it was
 SOUNDS = [
     ('sound/world/lava1.ogg', lava, 22050, 0.099, 50),
@@ -237,12 +254,19 @@ SOUNDS = [
     ('sound/world/tim_hole.ogg', hole, 22050, 0.140, 50),
     ('sound/weapons/melee/fstrun.ogg', chainsaw_run, 22050, 0.167, 50),
     ('sound/weapons/melee/fstatck.ogg', chainsaw_hit, 22050, 0.246, 50),
+    # gear change clacks: plain 16-bit wav like the other engine sounds, peak at -6 dBFS
+    ('sound/engines/default/shift1.wav', gear_clack, 44100, 0.078, 0),
+    ('sound/engines/default/shift2.wav', lambda sr: gear_clack(sr, 0.0556, 71, 1.15), 44100, 0.103, 0),
 ]
 
 
 def write(path, x, sr, kbps, keep_wav):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     pcm = (np.clip(x, -1, 1) * 32767).astype('<i2').tobytes()
+    if path.endswith('.wav'):
+        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 's16le', '-ar', str(sr), '-ac', '1', '-i', '-',
+                        '-c:a', 'pcm_s16le', '-bitexact', '-map_metadata', '-1', path], input=pcm, check=True)
+        return
     cmd = ['ffmpeg', '-v', 'error', '-y', '-f', 's16le', '-ar', str(sr), '-ac', '1', '-i', '-',
            '-c:a', 'libvorbis', '-b:a', f'{kbps}k', path]
     subprocess.run(cmd, input=pcm, check=True)
@@ -261,6 +285,8 @@ def main():
         if a.only and a.only not in rel:
             continue
         x = level(fn(sr=sr), rms)
+        if rel.endswith('.wav'):                 # engine sounds are normalised to -6 dBFS
+            x = x * (0.5 / np.abs(x).max())
         write(os.path.join(a.out, rel), x, sr, kbps, a.wav)
         print(f'{rel:36s} {len(x) / sr:5.2f}s  rms {np.sqrt((x * x).mean()):.3f}  peak {np.abs(x).max():.2f}')
 
