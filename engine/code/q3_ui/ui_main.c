@@ -423,7 +423,7 @@ static cvarTable_t		cvarTable[] = {
 	{ &ui_mmap_fov, "cg_mmap_fov", "60", CVAR_ARCHIVE },
 
 	{ &ui_model, "model", "alpine/red", CVAR_USERINFO|CVAR_ARCHIVE },
-	{ &ui_head, "head", "doom", CVAR_USERINFO|CVAR_ARCHIVE },
+	{ &ui_head, "head", "classic", CVAR_USERINFO|CVAR_ARCHIVE },
 	{ &ui_rim, "rim", "svt_cobra", CVAR_USERINFO|CVAR_ARCHIVE },
 	{ &ui_plate, "plate", "usa_california", CVAR_USERINFO|CVAR_ARCHIVE },
 	/* Stabiler Spieler-Identifier — wird vom Profil-System befüllt,
