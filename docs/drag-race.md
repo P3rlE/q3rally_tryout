@@ -8,6 +8,8 @@ change the v0.8 release line or its Ladder/profile contracts.
 Select **Drag Race** in Offline/Host and choose **Drag Strip**. The prototype
 accepts two human drivers, or one driver for solo practice. Bots are disabled.
 Both lanes use the same vehicle performance, regardless of the selected body.
+Neutral revs carry into a brief clutch engagement when first gear is selected.
+Throttle and tyre grip affect the launch; there is no fixed perfect-RPM bonus.
 
 For a console start:
 
@@ -16,14 +18,15 @@ set g_gametype 9
 map q3r_dragstrip
 ```
 
-1. Hold the handbrake to stage. The default binding is **Space**. The countdown
-   begins once every connected driver is holding it; solo staging starts a
-   practice heat immediately.
-2. Keep holding through the amber lights. Release on green to launch. You may
-   hold the accelerator in advance; it cannot launch the car automatically.
+1. The car starts in **N**. Use the accelerator to build and hold your chosen
+   launch RPM. With a keyboard, tap the accelerator to regulate the revs. The
+   countdown begins once every connected driver is revving in neutral; solo
+   staging starts a practice heat immediately.
+2. Stay in N through the amber lights. On green, select first with **Gear Up**
+   to launch. Throttle changes while waiting do not count as a false start.
 3. Shift manually with **Gear Up / Gear Down** (defaults **Page Up / Page Down**).
    The mode forces manual transmission without changing the saved preference.
-4. Stay in your lane and cross the finish. Releasing before green is an
+4. Stay in your lane and cross the finish. Selecting first before green is an
    irrevocable false start. Leaving the lane, resetting/respawning, or leaving
    the driving field after green forfeits the attempt.
 5. Review the results and use the normal intermission confirmation for the next
@@ -35,14 +38,14 @@ geometry checks and rebuild instructions.
 
 ## Timing and rules
 
-- **RT:** time from scheduled green to the driver's handbrake-release command.
-  This prototype measures the input release, rather than a physical start beam.
-- **ET:** time from that release to crossing the finish plane.
+- **RT:** time from scheduled green to the driver's first-gear input.
+  This prototype measures gear engagement, rather than a physical start beam.
+- **ET:** time from that input to crossing the finish plane.
 - **TOTAL:** RT + ET. The earliest valid finish wins; equal millisecond results
   are tied. Invalid attempts have no result time or finishing rank.
 - **KM/H:** interpolated speed at the finish.
 
-The server uses the accepted usercommand timestamp for the release and
+The server uses the accepted launch-input timestamp for first gear and
 interpolates crossing of a common plane between movement updates. The car's
 origin is the shared reference for every vehicle body. Millisecond display is
 the recording resolution, not a guarantee of sub-frame physical accuracy.
@@ -60,10 +63,11 @@ profile progression or submit Ladder results.
 ## Scope and validation
 
 Included: separate gametype ID 9, dedicated map filtering, native/WebUI setup,
-staging/false starts, manual shifting, lane rules, interpolated finish timing,
-live telemetry and Drag results. Existing mode IDs remain stable.
+neutral staging, first-gear launch/false starts, manual shifting, lane rules,
+interpolated finish timing, live telemetry and Drag results. Existing mode IDs
+remain stable.
 
-Deferred: an analogue clutch/launch-RPM model, selectable gearing, NOS,
+Deferred: analogue clutch control, selectable gearing, NOS,
 Best-of-three matches with lane swaps, bots, career rewards and Ladder support.
 
 Production-code harnesses cover staging, false starts, queued/future input,

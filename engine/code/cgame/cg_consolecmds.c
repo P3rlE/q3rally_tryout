@@ -667,7 +667,27 @@ typedef struct {
 	void	(*function)(void);
 } consoleCommand_t;
 
+static void CG_GearUp_f( void ) {
+	if ( cgs.gametype == GT_DRAG && cg.snap ) {
+		int clientNum = cg.snap->ps.clientNum;
+		CG_DragPredictFirstGear( &cg_entities[clientNum], &cg.predictedPlayerState, clientNum, cg.time );
+		trap_SendClientCommand( va( "gearUp %d", cg.time ) );
+	} else {
+		trap_SendClientCommand( "gearUp" );
+	}
+}
+
+static void CG_GearDown_f( void ) {
+	if ( cgs.gametype == GT_DRAG ) {
+		trap_SendClientCommand( va( "gearDown %d", cg.time ) );
+	} else {
+		trap_SendClientCommand( "gearDown" );
+	}
+}
+
 static consoleCommand_t	commands[] = {
+	{ "gearUp", CG_GearUp_f },
+	{ "gearDown", CG_GearDown_f },
 	{ "testgun", CG_TestGun_f },
 	{ "testmodel", CG_TestModel_f },
 	{ "nextframe", CG_TestModelNextFrame_f },

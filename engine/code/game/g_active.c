@@ -2062,6 +2062,7 @@ void ClientThink_real( gentity_t *ent ) {
 	pm.controlMode = client->pers.controlMode;
 	pm.manualShift = client->pers.manualShift;
 	pm.transmissionMode = client->pers.transmissionMode;
+	pm.dragRace = g_gametype.integer == GT_DRAG;
 	pm.client = qfalse;
 
 	if (ent->pDebug > 0){

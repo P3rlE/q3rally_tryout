@@ -2169,6 +2169,18 @@ void Cmd_Headlight_Toggle_f( gentity_t *ent ) {
 ClientCommand
 =================
 */
+static int Cmd_DragGearTime( gentity_t *ent ) {
+	char text[32], *end;
+	long stamp;
+	if ( trap_Argc() != 2 ) return ent->client->pers.cmd.serverTime;
+	trap_Argv( 1, text, sizeof( text ) );
+	stamp = strtol( text, &end, 10 );
+	if ( !text[0] || *end ) return ent->client->pers.cmd.serverTime;
+	if ( stamp < level.time - 1000 ) return level.time - 1000;
+	if ( stamp > level.time + 200 ) return level.time + 200;
+	return (int)stamp;
+}
+
 void ClientCommand( int clientNum ) {
 	gentity_t *ent;
 	char	cmd[MAX_TOKEN_CHARS];
@@ -2308,6 +2320,7 @@ void ClientCommand( int clientNum ) {
 		Cmd_Stats_f( ent );
 // STONELANCE
 	else if (Q_stricmp (cmd, "gearUp") == 0){
+		if ( G_DragTryGearChange( ent, 1, Cmd_DragGearTime( ent ) ) ) return;
 		if ( g_gametype.integer == GT_DRAG ) ent->client->pers.transmissionMode = TR_MANUAL;
 		if ( ent->client->pers.transmissionMode == TR_AUTO && !ent->client->pers.manualShift )
 			return;
@@ -2320,6 +2333,7 @@ void ClientCommand( int clientNum ) {
 			ent->client->car.gear++;
 	}
 	else if (Q_stricmp (cmd, "gearDown") == 0){
+		if ( G_DragTryGearChange( ent, -1, Cmd_DragGearTime( ent ) ) ) return;
 		if ( g_gametype.integer == GT_DRAG ) ent->client->pers.transmissionMode = TR_MANUAL;
 		if ( ent->client->pers.transmissionMode == TR_AUTO && !ent->client->pers.manualShift )
 			return;

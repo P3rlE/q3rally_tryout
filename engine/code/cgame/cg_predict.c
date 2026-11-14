@@ -688,6 +688,21 @@ typedef struct {
 
 static cgDragPrediction_t cg_dragPrediction;
 
+void CG_DragPredictFirstGear( const centity_t *car, const playerState_t *ps,
+	int clientNum, int commandTime ) {
+	if ( cg_dragPrediction.clientNum != clientNum ||
+		cg_dragPrediction.greenTime != car->dragGreenTime ) {
+		cg_dragPrediction.clientNum = clientNum;
+		cg_dragPrediction.greenTime = car->dragGreenTime;
+		cg_dragPrediction.launchTime = 0;
+	}
+	if ( car->dragPhase == DRAG_COUNTDOWN && ps->stats[STAT_GEAR] == 0 &&
+		!cg_dragPrediction.launchTime ) {
+		/* Match the timestamp sent with gearUp; early requests stay invalid. */
+		cg_dragPrediction.launchTime = commandTime;
+	}
+}
+
 static void CG_DragFilterPredictedCommand( usercmd_t *cmd, playerState_t *ps,
 	const centity_t *car, int clientNum, int renderTime ) {
 	qboolean freeze;
@@ -698,7 +713,7 @@ static void CG_DragFilterPredictedCommand( usercmd_t *cmd, playerState_t *ps,
 		cg_dragPrediction.launchTime = 0;
 	}
 	if ( car->dragLaunchTime > 0 ) {
-		/* An authoritative release replaces the prediction, including a
+		/* Authoritative gear engagement replaces the prediction, including a
 		 * correction after a delayed packet. Keep one timestamp on replays. */
 		cg_dragPrediction.launchTime = car->dragLaunchTime;
 	}
@@ -707,22 +722,28 @@ static void CG_DragFilterPredictedCommand( usercmd_t *cmd, playerState_t *ps,
 	cmd->buttons &= ~( BUTTON_ATTACK | BUTTON_USE_HOLDABLE );
 	ps->stats[STAT_WEAPONS] = ps->stats[STAT_HOLDABLE_ITEM] = ps->stats[STAT_SLIPSTREAM] = 0;
 	memset( ps->powerups, 0, sizeof( ps->powerups ) );
-	freeze = car->dragPhase >= DRAG_FINISHED || car->dragPhase < DRAG_COUNTDOWN
-		|| !car->dragGreenTime || cmd->serverTime < car->dragGreenTime;
-	if ( !freeze && !cg_dragPrediction.launchTime && !( cmd->buttons & BUTTON_HANDBRAKE ) ) {
-		cg_dragPrediction.launchTime = cmd->serverTime;
-	}
-	if ( !cg_dragPrediction.launchTime || renderTime < car->dragGreenTime
-		|| cmd->serverTime < cg_dragPrediction.launchTime ) {
-		freeze = qtrue;
-	}
+	freeze = car->dragPhase >= DRAG_FINISHED || car->dragPhase < DRAG_COUNTDOWN ||
+		!car->dragGreenTime || !cg_dragPrediction.launchTime ||
+		cg_dragPrediction.launchTime < car->dragGreenTime ||
+		cmd->serverTime < cg_dragPrediction.launchTime || renderTime < car->dragGreenTime;
 	if ( freeze ) {
 		cmd->buttons = BUTTON_HANDBRAKE;
-		cmd->forwardmove = cmd->rightmove = 0;
+		cmd->rightmove = 0;
+		if ( car->dragPhase >= DRAG_FINISHED ) {
+			cmd->forwardmove = 0;
+			ps->stats[STAT_GEAR] = 0;
+		} else {
+			/* Neutral disconnects the drivetrain, while gas still drives RPM. */
+			ps->stats[STAT_GEAR] = 0;
+			if ( cmd->forwardmove < 0 ) cmd->forwardmove = 0;
+		}
 		return;
 	}
-	/* Integrate a launch command only from its release timestamp. Subsequent
+	/* Integrate a launch command only from its first-gear timestamp. Subsequent
 	 * render frames reuse this timestamp while RUNNING is still in flight. */
+	if ( car->dragPhase == DRAG_COUNTDOWN || ps->commandTime < cg_dragPrediction.launchTime ) {
+		ps->stats[STAT_GEAR] = 1;
+	}
 	if ( ps->commandTime < cg_dragPrediction.launchTime ) {
 		ps->commandTime = cg_dragPrediction.launchTime;
 	}
@@ -970,6 +991,7 @@ void CG_PredictPlayerState( void ) {
 	cg_pmove.controlMode = cgs.clientinfo[cg.predictedPlayerState.clientNum].controlMode;
 	cg_pmove.manualShift = cgs.clientinfo[cg.predictedPlayerState.clientNum].manualShift;
 	cg_pmove.transmissionMode = cgs.clientinfo[cg.predictedPlayerState.clientNum].transmissionMode;
+	cg_pmove.dragRace = cgs.gametype == GT_DRAG;
 	if ( cgs.gametype == GT_DRAG ) {
 		cg_pmove.transmissionMode = TR_MANUAL;
 		cg_pmove.manualShift = qtrue;
@@ -1064,6 +1086,7 @@ void CG_PredictPlayerState( void ) {
 		if ( cgs.gametype == GT_DRAG ) {
 			CG_DragFilterPredictedCommand( &cg_pmove.cmd, &cg.predictedPlayerState,
 				&cg_entities[cg.snap->ps.clientNum], cg.snap->ps.clientNum, cg.time );
+			cg.car.gear = cg.predictedPlayerState.stats[STAT_GEAR];
 		}
 
 		if (cg_entities[cg.snap->ps.clientNum].finishRaceTime &&

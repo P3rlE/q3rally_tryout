@@ -263,6 +263,7 @@ typedef struct {
         int                     controlMode;
         qboolean        manualShift;
         int                     transmissionMode;
+        qboolean                dragRace;       // shared neutral-launch coupling
         collisionDamage_t       damage;
         collisionDamage_t       breakableDamage;
         vehicleCollisionContact_t vehicleCollision;

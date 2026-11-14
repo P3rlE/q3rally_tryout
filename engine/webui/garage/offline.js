@@ -59,7 +59,7 @@
   }
   function options() {
     const drag = modes[mode] === 'Drag Race';
-    find('rule-help').textContent = drag ? 'Equal vehicle performance. One run. Early release is a false start.' : 'Zero means no limit.';
+    find('rule-help').textContent = drag ? 'Equal vehicle performance. One run. Selecting first before green is a false start.' : 'Zero means no limit.';
     find('race-title').textContent = maps[selected]?.title || 'Your race'; find('race-mode').textContent = modes[mode] || '';
     const options = find('options'); options.replaceChildren();
     controls.filter(control => control.slot < 0).forEach(control => options.append(controlElement(control)));
@@ -86,7 +86,7 @@
       if (team) row.append(controlElement(team));
       grid.append(row);
     }
-    find('grid-help').textContent = drag ? 'Two human drivers or solo practice. Hold the handbrake to stage, release on green, then use Gear Up / Gear Down. Bots are disabled.' : allowsBots ? 'Choose your opponents and teams.' : 'This mode is driven solo. Bots are disabled.';
+    find('grid-help').textContent = drag ? 'Two human drivers or solo practice. Build and hold revs in N, select first on green, then use Gear Up / Gear Down. Bots are disabled.' : allowsBots ? 'Choose your opponents and teams.' : 'This mode is driven solo. Bots are disabled.';
     if (refreshFocus) {
       const element = document.getElementById(refreshFocus);
       element?.focus({preventScroll:true}); refreshFocus = undefined;

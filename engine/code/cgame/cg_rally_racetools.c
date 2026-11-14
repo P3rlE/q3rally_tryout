@@ -2019,7 +2019,7 @@ void CG_DrawRaceCountDown( void ){
 		int light, amberCount;
 		qboolean green = driver->dragGreenTime > 0 && cg.time >= driver->dragGreenTime;
 		qboolean fault = driver->dragPhase == DRAG_FALSE_START;
-		const char *label = fault ? "FALSE START" : ( green ? "GO!" : "HOLD HANDBRAKE" );
+		const char *label = fault ? "FALSE START" : ( green ? "SHIFT INTO 1ST" : "HOLD REVS IN N" );
 		vec4_t dark = { 0.08f, 0.08f, 0.08f, 0.95f };
 		vec4_t amber = { 1.0f, 0.65f, 0.05f, 1.0f };
 		vec4_t go = { 0.2f, 1.0f, 0.3f, 1.0f };
