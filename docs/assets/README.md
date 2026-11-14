@@ -40,3 +40,33 @@ keine neue Meldung über fehlende Bilder, Modelle oder Sounds.
 Nicht entfernt: ungenutzte Q3Rally-eigene Dateien und solche ohne Quake-3- oder
 OpenArena-Bezug (Mapobjekte wie Fahrzeuge, Pylonen, Laternen, Texturen für neue
 Karten), Map-Quellen-Texturen, Editorbilder und alle Sounds.
+
+## Lizenz-Inventur
+
+`tools/assets/license_inventory.py` ordnet jede Datei in `baseq3r/` (auch in `.pk3`) einer Einheit zu:
+einem Auto, einer Karte, einem Texturset, einer Soundgruppe, einem Musikstück. Für jede Einheit hält das
+Skript fest, was über Herkunft und Lizenz bekannt ist:
+
+```
+python3 tools/assets/license_inventory.py [--audit herkunft.json]
+```
+
+Ergebnis:
+
+- `docs/assets/lizenz_einheiten.csv`: eine Zeile pro Einheit mit Befund, Lizenz, Aufgabe und Ansprechpartner-Hinweis
+- `docs/assets/lizenz_dateien.csv`: eine Zeile pro Datei mit Einheit, Herkunftsklasse und Generator
+
+| Befund | Bedeutung |
+|---|---|
+| eigen, generiert | von einem Skript in `tools/` erzeugt, Quelle im Repo |
+| eigen laut Projekt | laut CREDITS oder Projektangabe eigen; braucht nur die Lizenzerklärung des Spiels |
+| frei, verträglich | fremd, aber unter GPL, CC BY 4.0 oder OFL; Urheber in den Credits nennen |
+| Lizenz einholen | fremder Urheber bekannt; Freigabe unter GPL erfragen |
+| Lizenz prüfen | eine Lizenz ist bekannt, ihre Bedingungen passen vielleicht nicht |
+| unverträglich | so nicht unter die GPL; Lizenz einholen oder ersetzen |
+| Herkunft klären | im Repo steht nichts zur Herkunft; im Team nachfragen |
+
+Das Wissen über einzelne Einheiten steht im Skript selbst (`KB`, `OWN_STATED`, `HINTS`).
+Ist eine Lizenz geklärt, wird der Eintrag dort angepasst und das Skript neu ausgeführt.
+
+Die beiden CSV-Dateien zeigen den Stand nach den PRs #1511 bis #1513.
