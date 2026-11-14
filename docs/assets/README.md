@@ -59,14 +59,34 @@ Ergebnis:
 | Befund | Bedeutung |
 |---|---|
 | eigen, generiert | von einem Skript in `tools/` erzeugt, Quelle im Repo |
-| eigen laut Projekt | laut CREDITS oder Projektangabe eigen; braucht nur die Lizenzerklärung des Spiels |
-| frei, verträglich | fremd, aber unter GPL, CC BY 4.0 oder OFL; Urheber in den Credits nennen |
-| Lizenz einholen | fremder Urheber bekannt; Freigabe unter GPL erfragen |
+| eigen laut Projekt | für Q3Rally erstellt (laut CREDITS oder Projektangabe); steht unter der Spiellizenz |
+| freigegeben | fremder Urheber, laut Projekt für Q3Rally freigegeben; in `baseq3r/documents/credits.txt` genannt |
+| frei, verträglich | fremd, aber unter GPL, CC BY 4.0 oder OFL; in `credits.txt` genannt |
+| Lizenz einholen | fremder Urheber bekannt, Freigabe fehlt noch |
 | Lizenz prüfen | eine Lizenz ist bekannt, ihre Bedingungen passen vielleicht nicht |
 | unverträglich | so nicht unter die GPL; Lizenz einholen oder ersetzen |
 | Herkunft klären | im Repo steht nichts zur Herkunft; im Team nachfragen |
 
+Alles, wozu im Repo kein fremder Urheber steht, gilt laut Projekt als für Q3Rally erstellt.
+
 Das Wissen über einzelne Einheiten steht im Skript selbst (`KB`, `OWN_STATED`, `HINTS`).
 Ist eine Lizenz geklärt, wird der Eintrag dort angepasst und das Skript neu ausgeführt.
 
-Die beiden CSV-Dateien zeigen den Stand nach den PRs #1511 bis #1513.
+## Lizenz des Spiels
+
+Q3Rally steht unter der GNU GPL Version 2 (`baseq3r/documents/license.txt`, `README.md`). Die Engine ist
+GPLv2 oder später. Bei den Daten geht es nicht über Version 2 hinaus, weil die Skyboxen von amethyst7
+(`ame_nebula`, `ame_desert`) und von Colin Lowndes (`ely_darkcity`, `ely_sunset`) nur unter GPLv2 stehen.
+Fremde Urheber und ihre Lizenzen stehen in `baseq3r/documents/credits.txt`; `make_release.py` legt die
+Datei als `CREDITS.txt` ins Release.
+
+Noch offen (Stand der CSV-Dateien):
+
+| Einheit | Befund | Was zu tun ist |
+|---|---|---|
+| `models/players/heads` | unverträglich | Die Fahrerköpfe sind die Köpfe der Quake-3-Figuren (Ordner `heads/quake3/`, Sarge, Klesk, Sorlag, Xaero …). Durch eigene Köpfe oder Helme ersetzen. |
+| `models/mapobjects/Xaero_statue` | unverträglich | Statue der Quake-3-Figur Xaero, fest in `q3r_ctf_04.bsp` eingebaut. Durch ein eigenes Objekt ersetzen und die Karte neu kompilieren. |
+| Auto `db12` | unverträglich | Urheber und Lizenz des Modells fehlen. |
+| Auto `cobra` | Lizenz prüfen | Kaufmodell; erlaubt die Kauflizenz die Weitergabe unter GPL? |
+
+Die beiden CSV-Dateien zeigen den Stand nach den PRs #1511 bis #1513 und #1515.

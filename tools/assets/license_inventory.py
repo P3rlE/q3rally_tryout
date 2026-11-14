@@ -33,48 +33,54 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 OWN_GEN = 'eigen, generiert'              # made by a script in tools/, source in the repo
 OWN = 'eigen laut Projekt'                # the project says it is its own work
 FREE = 'frei, verträglich'                # third party under a license that fits the GPL
+REL = 'freigegeben'                       # named third party, released for Q3Rally (project statement)
 ASK = 'Lizenz einholen'                   # named third party, permission needed
 CHECK = 'Lizenz prüfen'                   # license known in part, terms need checking
 BAD = 'unverträglich'                     # cannot be shipped under the GPL as it is
 UNKNOWN = 'Herkunft klären'               # nothing known
 
+GAME = 'GPLv2 (Spiellizenz)'
+DONE = 'nichts mehr; steht unter der Spiellizenz'
+CREDIT = 'nichts mehr; in documents/credits.txt genannt'
+
 # ---------------------------------------------------------------- knowledge base: unit -> facts
 KB = {
     # cars
-    'Auto bountyhunter': (OWN, 'Projekt-Modell PoliceCar.3DS laut CREDITS ("own model, same license as the game")', 'wie das Spiel', 'Lizenz des Spiels festlegen'),
-    'Auto cutlass': (OWN, 'Projekt-Modell "Oldsmobile Cutlass Supreme Sedan \'71" laut CREDITS', 'wie das Spiel', 'Lizenz des Spiels festlegen'),
-    'Auto gt500': (OWN, 'Projekt-Modell upload.fbx laut CREDITS', 'wie das Spiel', 'Lizenz des Spiels festlegen'),
-    'Auto gtr': (OWN, 'Projekt-Modell NissanGT-R.fbx laut CREDITS', 'wie das Spiel', 'Lizenz des Spiels festlegen'),
-    'Auto ridgeback': (OWN, 'Projekt-Modell "lightbody lifted 85" laut CREDITS', 'wie das Spiel', 'Lizenz des Spiels festlegen'),
+    'Auto bountyhunter': (OWN, 'Projekt-Modell PoliceCar.3DS laut CREDITS ("own model, same license as the game")', GAME, DONE),
+    'Auto cutlass': (OWN, 'Projekt-Modell "Oldsmobile Cutlass Supreme Sedan \'71" laut CREDITS', GAME, DONE),
+    'Auto gt500': (OWN, 'Projekt-Modell upload.fbx laut CREDITS', GAME, DONE),
+    'Auto gtr': (OWN, 'Projekt-Modell NissanGT-R.fbx laut CREDITS', GAME, DONE),
+    'Auto ridgeback': (OWN, 'Projekt-Modell "lightbody lifted 85" laut CREDITS', GAME, DONE),
     'Auto cobra': (CHECK, 'Modell "COBRA" (KeyShot-OBJ), laut CREDITS "own/purchased model, cleared for use with the game"', 'Kauflizenz', 'Kaufbedingungen prüfen: Ist Weitergabe des Modells unter GPL erlaubt? Sonst Freigabe beim Verkäufer einholen'),
     'Auto db12': (BAD, 'Modell "Aston Martin DB12 2024" aus 2024-aston-martin-db12.zip; Autor und Lizenz laut CREDITS nicht angegeben', 'unbekannt', 'Urheber finden und Lizenz einholen, sonst Auto ersetzen'),
-    'Auto skyline': (FREE, '"Nissan Skyline R34 GT-R" von Lexyc16', 'CC BY 4.0', 'Namensnennung in die Spiel-Credits übernehmen (CC BY 4.0 ist mit GPLv3 verträglich)'),
+    'Auto skyline': (FREE, '"Nissan Skyline R34 GT-R" von Lexyc16', 'CC BY 4.0', CREDIT + ' (CC BY 4.0 ist mit der GPL verträglich)'),
     # sounds
-    'Sounds engines/default': (CHECK, 'Motor-Loops aus Projekt-Material, Fehlzündungen synthetisch; shift1/shift2.wav aus Pixabay-Effekt 267611', 'Pixabay Content License (shift*)', 'shift1/shift2.wav ersetzen (Pixabay-Lizenz ist keine freie Lizenz); Rest eigen'),
-    'Sounds feedback': (ASK, 'Ansager; credits.txt: "Fuzztooth (mancubus.net) is the announcer"; laut Projekt eigene Aufnahmen', 'nicht angegeben', 'Fuzztooth um Freigabe unter GPL bitten (Sprecher hat Rechte an der Aufnahme)'),
-    'Sounds items': (OWN, 'Powerup-Sounds, laut Projekt eigene Dateien', 'wie das Spiel', 'Lizenz des Spiels festlegen'),
-    'Sounds misc': (OWN, 'Menü-Sounds, laut Projekt eigene Dateien', 'wie das Spiel', 'Lizenz des Spiels festlegen'),
+    'Sounds engines/default': (OWN, 'Motor-Loops aus Projekt-Material; Fehlzündungen und Schaltgeräusche synthetisch (tools/soundbuild)', GAME, DONE),
+    'Sounds feedback': (REL, 'Ansager; credits.txt: "Fuzztooth (mancubus.net) is the announcer"; laut Projekt eigene Aufnahmen, freigegeben', GAME, CREDIT),
+    'Sounds items': (OWN, 'Powerup-Sounds, laut Projekt eigene Dateien', GAME, DONE),
+    'Sounds misc': (OWN, 'Menü-Sounds, laut Projekt eigene Dateien', GAME, DONE),
     # skies
-    'Skybox ame_nebula': (FREE, 'amethyst7 (Chris Matz), readme', 'GPLv2', 'Credits nennen; GPLv2 ohne "oder später": mit GPLv3 nur verträglich, wenn das Spiel GPLv2 bleibt oder amethyst7 zustimmt'),
-    'Skybox ame_desert': (FREE, 'amethyst7 (Chris Matz), readme', 'GPLv2', 'wie ame_nebula'),
-    'Skybox ely_darkcity': (FREE, 'Colin Lowndes (3delyvisions.com), umgewandelt von Laszlo Menczel; readme: Erlaubnis zur Verteilung unter GPLv2', 'GPLv2', 'Credits nennen; GPL-Version wie bei ame_nebula'),
-    'Skybox ely_sunset': (FREE, 'wie ely_darkcity', 'GPLv2', 'wie ely_darkcity'),
-    'Skybox oasisnight': (ASK, 'Amethyst7, readme von 2001 ohne Lizenzangabe', 'nicht angegeben', 'amethyst7 fragen oder durch eigene Skybox ersetzen'),
+    'Skybox ame_nebula': (FREE, 'amethyst7 (Chris Matz), readme', 'GPLv2 (nur Version 2)', CREDIT + '; nur GPLv2, deshalb bleibt das Spiel bei Version 2'),
+    'Skybox ame_desert': (FREE, 'amethyst7 (Chris Matz), readme', 'GPLv2 (nur Version 2)', 'wie ame_nebula'),
+    'Skybox ely_darkcity': (FREE, 'Colin Lowndes (3delyvisions.com), umgewandelt von Laszlo Menczel; readme: Erlaubnis zur Verteilung unter GPLv2', 'GPLv2 (nur Version 2)', 'wie ame_nebula'),
+    'Skybox ely_sunset': (FREE, 'wie ely_darkcity', 'GPLv2 (nur Version 2)', 'wie ame_nebula'),
+    'Skybox oasisnight': (REL, 'Amethyst7, readme von 2001 ohne Lizenzangabe; laut Projekt freigegeben', GAME, CREDIT),
     # maps with a named author in the title or worldspawn
-    'Karte q3r_nightcity': (ASK, 'Kartentitel "Q3R Night City - By Amphetamine"', 'nicht angegeben', 'Amphetamine um Freigabe bitten'),
-    'Karte q3r_sk1': (ASK, 'Kartentitel "Canyon Cruise by SystemKrash"', 'nicht angegeben', 'SystemKrash um Freigabe bitten'),
-    'Karte q3r_lavafalls': (ASK, 'worldspawn author "Cyberdemon@planetquake.com"', 'nicht angegeben', 'Cyberdemon um Freigabe bitten (Texturen sind inzwischen eigen)'),
-    'Musik amp6_22k.ogg': (ASK, 'Musik von Night City, vermutlich Amphetamine (Dateiname)', 'nicht angegeben', 'mit der Karte zusammen klären'),
+    'Karte q3r_nightcity': (REL, 'Kartentitel "Q3R Night City - By Amphetamine"; laut Projekt freigegeben', GAME, CREDIT),
+    'Karte q3r_sk1': (REL, 'Kartentitel "Canyon Cruise by SystemKrash"; laut Projekt freigegeben', GAME, CREDIT),
+    'Karte q3r_lavafalls': (REL, 'worldspawn author "Cyberdemon@planetquake.com"; laut Projekt freigegeben', GAME, CREDIT),
+    'Musik amp6_22k.ogg': (REL, 'Musik von Night City, Amphetamine; laut Projekt freigegeben', GAME, CREDIT),
     # map objects and textures with a named author
-    'Modelle mapobjects/telestecki': (ASK, 'telestecki.shader: "TELEPORT MAP OBJECT BY STECKI - stecki@quakerally.com"', 'nicht angegeben', 'Stecki um Freigabe bitten'),
-    'Texturen stecki': (ASK, 'Texturset von Stecki (siehe telestecki)', 'nicht angegeben', 'mit telestecki zusammen klären'),
-    'Modelle debris': (CHECK, 'Readme: "Viktor Karp for his great debris models" (victorkarp.wordpress.com)', 'unbekannt', 'Lizenz von Viktor Karps Debris-Modellen nachschlagen'),
+    'Modelle mapobjects/telestecki': (REL, 'telestecki.shader: "TELEPORT MAP OBJECT BY STECKI"; laut Projekt freigegeben', GAME, CREDIT),
+    'Texturen stecki': (REL, 'Texturset von Stecki (siehe telestecki); laut Projekt freigegeben', GAME, CREDIT),
     # fonts and documents
-    'Texturen evil* (Evillair)': (ASK, 'Texturpakete evil1/2/4/5/8, vermutlich von Evillair (Quake-3-Community); einige Dateien auch in OpenArena', 'nicht angegeben', 'Lizenz der Evillair-Pakete nachschlagen; oft "frei für Quake-3-Karten", das ist keine GPL; OpenArena-Anteile sind GPLv2'),
-    'Texturen jim*': (ASK, 'Texturpakete jim, jim_castle, jim_misc (Quake-3-Community)', 'nicht angegeben', 'Urheber und Lizenz suchen oder ersetzen'),
-    'Modelle mapobjects/xaero_statue': (CHECK, 'Statue; der Name verweist auf die Quake-3-Figur Xaero', 'unbekannt', 'prüfen, ob das Modell aus Quake 3 abgeleitet ist; dann ersetzen'),
-    'Texturen q3r_* (Projekt-Sets)': (UNKNOWN, 'Q3Rally-eigene Texturensets (q3r_building, q3r_road, q3r_signage …); die Readme nennt Toxicity für Texturen', 'unbekannt', 'Urheber im Team erfragen; Fotos/Fremdquellen darin ausschließen; wenn eigen: unter die Spiellizenz stellen'),
-    'Schriften': (FREE, 'Share Tech Mono', 'SIL OFL 1.1', 'als eigene Datei mitliefern ist üblich; Lizenztext beilegen'),
+    'Texturen evil* (Evillair)': (REL, 'Texturpakete evil1/2/4/5/8 von Evillair (Quake-3-Community); einige Dateien auch in OpenArena; laut Projekt freigegeben', GAME, CREDIT),
+    'Texturen jim*': (REL, 'Texturpakete jim, jim_castle, jim_misc (Quake-3-Community); laut Projekt freigegeben', GAME, CREDIT),
+    'Modelle mapobjects/xaero_statue': (BAD, 'Statue der Quake-3-Figur Xaero: die Textur zeigt Xaeros Gesicht und Rüstung (wie heads/quake3/xaero_h.tga); das Modell ist als misc_model fest in q3r_ctf_04.bsp eingebaut', 'id Software, keine freie Lizenz', 'Statue in q3r_ctf_04.map durch ein eigenes Objekt ersetzen, Karte und AAS neu kompilieren, Ordner löschen'),
+    'Texturen q3r_* (Projekt-Sets)': (OWN, 'Q3Rally-eigene Texturensets (q3r_building, q3r_road, q3r_signage …); die Readme nennt Toxicity für Texturen', GAME, DONE),
+    'Schriften': (FREE, 'Share Tech Mono', 'SIL OFL 1.1', CREDIT + '; Lizenztext liegt in fonts/'),
+    # Quake 3 characters
+    'Autoteile heads': (BAD, 'Fahrerköpfe der Quake-3-Figuren: Ordner heads/quake3/ mit den Kopf-Skins von Sarge, Klesk, Sorlag, Xaero, Doom, Anarki …, Modellnamen und Skin-Varianten (krusade, roderic, harpy …) wie in Quake 3, dazu die Icons', 'id Software, keine freie Lizenz', 'durch eigene Fahrerköpfe oder Helme ersetzen'),
 }
 
 # files the project states are its own although they carry old Quake 3 names
@@ -120,6 +126,7 @@ GEN_RULES = [
     (r'^models/powerups/ammo/[a-z]+ammo2\.tga$', 'tools/carbuild/weapons/make_icons.py'),
     (r'^models/flags/[br]_flag\.md3$', 'tools/texbuild/build_models.py'),
     (r'^models/weaphits/crackle\.md3$', 'tools/texbuild/build_models.py'),
+    (r'^models/debris/[^/]+\.md3$', 'tools/texbuild/build_models.py'),
     (r'^models/mapobjects/koth/', 'tools/koth'),
     (r'^models/mapobjects/(q3r_lanterns|q3r_rail)/', 'tools/mapobjects'),
     (r'^models/mapobjects/startlight/', 'tools/maptools/make_startlight.py'),
@@ -310,27 +317,28 @@ def main():
         if name in KB:
             status, herkunft, lizenz, todo = KB[name]
         elif k['eigen (generiert)'] == u['n']:
-            status, herkunft, lizenz, todo = OWN_GEN, 'erzeugt von ' + ', '.join(sorted(u['gen'])), 'wie das Spiel', 'Lizenz des Spiels festlegen'
+            status, herkunft, lizenz, todo = OWN_GEN, 'erzeugt von ' + ', '.join(sorted(u['gen'])), GAME, DONE
         elif name.startswith('Karte ') and 'test' in name:
-            status, herkunft, lizenz, todo = UNKNOWN, 'Test- oder Werkstattkarte', 'unbekannt', 'aus dem Release nehmen, dann entfällt die Klärung'
+            status, herkunft, lizenz, todo = OWN, 'Test- oder Werkstattkarte, für Q3Rally erstellt', GAME, DONE + '; kann aus dem Release raus'
         elif k['eigen (generiert)'] + k['OpenArena'] == u['n']:
-            status, herkunft, lizenz, todo = OWN_GEN, 'erzeugt von ' + ', '.join(sorted(u['gen'])) + ' und OpenArena', 'wie das Spiel / GPLv2', 'Lizenz des Spiels festlegen; OpenArena in den Credits nennen'
+            status, herkunft, lizenz, todo = OWN_GEN, 'erzeugt von ' + ', '.join(sorted(u['gen'])) + ' und OpenArena', 'GPLv2', CREDIT
         elif u['bereich'] == 'Text/Code':
-            status, herkunft, lizenz, todo = OWN, 'Skripte, Shader, Konfiguration und Bot-Daten des Projekts', 'wie das Spiel', 'Lizenz des Spiels festlegen; OpenArena-Anteile nennen'
+            status, herkunft, lizenz, todo = OWN, 'Skripte, Shader, Konfiguration und Bot-Daten des Projekts', GAME, DONE
         elif k['OpenArena'] == u['n']:
-            status, herkunft, lizenz, todo = FREE, 'OpenArena', 'GPLv2', 'OpenArena in den Credits nennen; GPL-Version klären'
+            status, herkunft, lizenz, todo = FREE, 'OpenArena', 'GPL', CREDIT
         else:
             hint = next((v for pfx, v in PACK_HINT.items() if name.startswith('Texturen ' + pfx)), '')
             if hint:
-                status, herkunft, lizenz, todo = ASK, hint, 'nicht angegeben', 'Lizenz des Pakets nachschlagen; oft "frei für Quake-3-Karten", das ist keine GPL'
+                status, herkunft, lizenz, todo = REL, hint + '; laut Projekt freigegeben', GAME, CREDIT
             elif k['eigen (alter Name)'] + k['eigen (generiert)'] + k['eigen (laut Projekt)'] + k['OpenArena'] == u['n']:
-                status, herkunft, lizenz, todo = OWN, 'eigen und/oder OpenArena', 'wie das Spiel', 'Lizenz des Spiels festlegen; OpenArena-Anteile nennen'
+                status, herkunft, lizenz, todo = OWN, 'eigen und/oder OpenArena', GAME, DONE
             else:
-                status, herkunft, lizenz, todo = UNKNOWN, 'keine Angaben im Repo', 'unbekannt', 'Urheber im Team erfragen; wenn eigen: unter die Spiellizenz stellen'
+                # the project states that everything without a named third party was made for Q3Rally
+                status, herkunft, lizenz, todo = OWN, 'für Q3Rally erstellt (laut Projekt)', GAME, DONE
         if k['Quake 3 (Verdacht)']:
             todo = f"{k['Quake 3 (Verdacht)']} Datei(en) mit Quake-3-Verdacht prüfen. " + todo
         if k['OpenArena'] and status not in (FREE,) and 'OpenArena' not in todo:
-            todo += f"; enthält {k['OpenArena']} OpenArena-Datei(en) (GPLv2)"
+            todo += f"; enthält {k['OpenArena']} OpenArena-Datei(en) (GPL, in den Credits genannt)"
         ask = HINTS.get(u['bereich'], '') if status in (UNKNOWN, ASK, CHECK, BAD) else ''
         out_units.append({'Bereich': u['bereich'], 'Einheit': name, 'Dateien': u['n'], 'MB': round(u['bytes'] / 1e6, 2),
                           'Zusammensetzung': mix, 'Herkunft laut Repo': herkunft, 'Lizenz bisher': lizenz,

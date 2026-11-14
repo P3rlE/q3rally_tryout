@@ -788,50 +788,50 @@ models/breakables/wood02.md3,18556,Modelle breakables,Modelle,unbekannt,,F
 models/breakables/wood03.md3,7900,Modelle breakables,Modelle,unbekannt,,F
 models/breakables/wood04.md3,8224,Modelle breakables,Modelle,unbekannt,,F
 models/breakables/woodfx.jpg,13342,Modelle breakables,Modelle,unbekannt,,F
-models/debris/concrete_b1.md3,940,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_b1_large.md3,1180,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_b2.md3,1612,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_b2_large.md3,1340,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_b3.md3,1180,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_b3_large.md3,1324,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_b4.md3,1356,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_b5.md3,1284,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_b6.md3,868,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_b7.md3,1340,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_b8.md3,1324,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_d1.md3,940,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_d1_large.md3,1180,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_d2.md3,1612,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_d2_large.md3,1340,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_d3.md3,1180,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_d3_large.md3,1324,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_d4.md3,1356,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_d5.md3,1284,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_d6.md3,868,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_d7.md3,1340,Modelle debris,Modelle,unbekannt,,F
-models/debris/concrete_d8.md3,1324,Modelle debris,Modelle,unbekannt,,F
-models/debris/debris_stone.jpg,96368,Modelle debris,Modelle,unbekannt,,F
-models/debris/debris_wood.jpg,151122,Modelle debris,Modelle,unbekannt,,F
-models/debris/glass_1.md3,996,Modelle debris,Modelle,unbekannt,,F
-models/debris/glass_1_large.md3,996,Modelle debris,Modelle,unbekannt,,F
-models/debris/glass_2.md3,996,Modelle debris,Modelle,unbekannt,,F
-models/debris/glass_2_large.md3,996,Modelle debris,Modelle,unbekannt,,F
-models/debris/glass_3.md3,1796,Modelle debris,Modelle,unbekannt,,F
-models/debris/glass_3_large.md3,1796,Modelle debris,Modelle,unbekannt,,F
-models/debris/glass_4.md3,1220,Modelle debris,Modelle,unbekannt,,F
-models/debris/glass_4_large.md3,1220,Modelle debris,Modelle,unbekannt,,F
-models/debris/glass_5.md3,996,Modelle debris,Modelle,unbekannt,,F
-models/debris/glass_5_large.md3,996,Modelle debris,Modelle,unbekannt,,F
-models/debris/stone_1.md3,972,Modelle debris,Modelle,unbekannt,,F
-models/debris/stone_2.md3,1740,Modelle debris,Modelle,unbekannt,,F
-models/debris/stone_3.md3,1180,Modelle debris,Modelle,unbekannt,,F
-models/debris/stone_4.md3,1420,Modelle debris,Modelle,unbekannt,,F
-models/debris/stone_5.md3,1380,Modelle debris,Modelle,unbekannt,,F
-models/debris/wood_b1.md3,1724,Modelle debris,Modelle,unbekannt,,F
-models/debris/wood_b2.md3,1036,Modelle debris,Modelle,unbekannt,,F
-models/debris/wood_b3.md3,1148,Modelle debris,Modelle,unbekannt,,F
-models/debris/wood_b4.md3,1660,Modelle debris,Modelle,unbekannt,,F
-models/debris/wood_b5.md3,1780,Modelle debris,Modelle,unbekannt,,F
+models/debris/concrete_b1.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_b1_large.md3,2500,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_b2.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_b2_large.md3,2260,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_b3.md3,2500,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_b3_large.md3,2380,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_b4.md3,2020,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_b5.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_b6.md3,1780,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_b7.md3,2020,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_b8.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_d1.md3,1780,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_d1_large.md3,2620,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_d2.md3,1780,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_d2_large.md3,2500,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_d3.md3,2500,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_d3_large.md3,2380,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_d4.md3,2020,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_d5.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_d6.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_d7.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/concrete_d8.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/debris_stone.jpg,25997,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild,F
+models/debris/debris_wood.jpg,112849,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild,F
+models/debris/glass_1.md3,820,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/glass_1_large.md3,1060,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/glass_2.md3,1060,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/glass_2_large.md3,1060,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/glass_3.md3,1540,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/glass_3_large.md3,1060,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/glass_4.md3,1300,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/glass_4_large.md3,1060,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/glass_5.md3,1060,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/glass_5_large.md3,1300,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/stone_1.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/stone_2.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/stone_3.md3,2260,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/stone_4.md3,2020,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/stone_5.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/wood_b1.md3,2020,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/wood_b2.md3,1660,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/wood_b3.md3,1660,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/wood_b4.md3,1660,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
+models/debris/wood_b5.md3,1420,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
 models/flags/b_flag.md3,23380,Modelle flags,Modelle,eigen (generiert),tools/texbuild/build_models.py,C
 models/flags/b_flag.tga,153010,Modelle flags,Modelle,OpenArena,,B
 models/flags/b_sigil.md3,11076,Modelle flags,Modelle,unbekannt,,F
@@ -3403,7 +3403,7 @@ sound/autoball/whistle.ogg,7732,Sounds autoball,Sounds,unbekannt,,F
 sound/breakable/glass.ogg,9821,"Sounds Effekte (aliens, metal, plastic, breakable)",Sounds,unbekannt,,F
 sound/breakable/metal.ogg,71966,"Sounds Effekte (aliens, metal, plastic, breakable)",Sounds,unbekannt,,F
 sound/breakable/wood.ogg,15041,"Sounds Effekte (aliens, metal, plastic, breakable)",Sounds,unbekannt,,F
-sound/engines/default/CREDITS.txt,1423,Sounds engines/default,Sounds,unbekannt,,F
+sound/engines/default/CREDITS.txt,777,Sounds engines/default,Sounds,unbekannt,,F
 sound/engines/default/engine.cfg,1293,Sounds engines/default,Sounds,unbekannt,,F
 sound/engines/default/on_00.wav,19348,Sounds engines/default,Sounds,unbekannt,,F
 sound/engines/default/on_01.wav,19130,Sounds engines/default,Sounds,unbekannt,,F
@@ -3420,8 +3420,8 @@ sound/engines/default/pop1.wav,7100,Sounds engines/default,Sounds,unbekannt,,F
 sound/engines/default/pop2.wav,7100,Sounds engines/default,Sounds,unbekannt,,F
 sound/engines/default/pop3.wav,7100,Sounds engines/default,Sounds,unbekannt,,F
 sound/engines/default/pop4.wav,7100,Sounds engines/default,Sounds,unbekannt,,F
-sound/engines/default/shift1.wav,12646,Sounds engines/default,Sounds,unbekannt,,F
-sound/engines/default/shift2.wav,10718,Sounds engines/default,Sounds,unbekannt,,F
+sound/engines/default/shift1.wav,6878,Sounds engines/default,Sounds,eigen (generiert),tools/soundbuild,F
+sound/engines/default/shift2.wav,4946,Sounds engines/default,Sounds,eigen (generiert),tools/soundbuild,F
 sound/feedback/1_frag.ogg,19027,Sounds feedback,Sounds,eigen (laut Projekt),,D
 sound/feedback/1_minute.ogg,18221,Sounds feedback,Sounds,eigen (laut Projekt),,D
 sound/feedback/2_frags.ogg,20893,Sounds feedback,Sounds,eigen (laut Projekt),,D
