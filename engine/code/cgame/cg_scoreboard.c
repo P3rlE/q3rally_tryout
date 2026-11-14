@@ -1381,7 +1381,9 @@ static void CG_DrawModernGameInfo(int y, float fade,
     /* Draw current rank/status */
     if (!CG_IsTeamGametype()) {
         if (cg.snap->ps.persistant[PERS_TEAM] != TEAM_SPECTATOR) {
-            if (isRacing) {
+            if (cgs.gametype == GT_DRAG && CG_IsRaceResults()) {
+                gameInfo = "REACTION + ELAPSED = TOTAL";
+            } else if (isRacing) {
                 gameInfo = va("Position %s",
                              CG_PlaceString(cg.snap->ps.persistant[PERS_RANK] + 1));
             } else {
@@ -1679,7 +1681,8 @@ qboolean CG_DrawModernScoreboard(void) {
     CG_DrawModernGameInfo(y, fade, playersRemaining, lastPlaceClient);
     y += BIGCHAR_HEIGHT + 24;
     
-    if (raceResults && !CG_IsTeamGametype()) {
+    /* Every Drag driver needs the RT/ET/trap row, including a solo winner. */
+    if (raceResults && !CG_IsTeamGametype() && cgs.gametype != GT_DRAG) {
         podiumCount = CG_DrawRacePodium(y, podium);
         if (podiumCount > 0) {
             y += 116;
