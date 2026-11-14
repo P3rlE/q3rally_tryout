@@ -74,8 +74,8 @@ Ist eine Lizenz geklärt, wird der Eintrag dort angepasst und das Skript neu aus
 
 ## Lizenz des Spiels
 
-Q3Rally steht unter der GNU GPL Version 2 (`baseq3r/documents/license.txt`, `README.md`). Die Engine ist
-GPLv2 oder später. Bei den Daten geht es nicht über Version 2 hinaus, weil die Skyboxen von amethyst7
+Q3Rally steht unter der GNU GPL Version 2 (`COPYING`, `baseq3r/documents/license.txt`, `README.md`).
+Engine, Launcher, Ladder-Service und Tools stehen unter GPLv2 oder später. Bei den Daten geht es nicht über Version 2 hinaus, weil die Skyboxen von amethyst7
 (`ame_nebula`, `ame_desert`) und von Colin Lowndes (`ely_darkcity`, `ely_sunset`) nur unter GPLv2 stehen.
 Fremde Urheber und ihre Lizenzen stehen in `baseq3r/documents/credits.txt`; `make_release.py` legt die
 Datei als `CREDITS.txt` ins Release.

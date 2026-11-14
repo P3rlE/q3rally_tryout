@@ -10,7 +10,9 @@
    reports and remaining manual-test limitations. A failed job's partial artifact
    is not a release package. Physical Mac checks remain separate.
 4. Merge the reviewed source into official master. Create a release tag whose
-   source tree matches the tested candidate. Publish the six exact ZIPs with
+   source tree matches the tested candidate. Name it `v<version>` (for example
+   `v0.8.5`): the README in every package links to that tag as the source code
+   of the release, which the GPL requires. Publish the six exact ZIPs with
    `release.json`, `SHA256SUMS` and collected source/provenance metadata. Verify
    uploaded sizes/hashes and the release tag's tree before changing the catalog.
 5. Use `tools/publish_launcher_catalog.py --help` to prepare the signed catalog

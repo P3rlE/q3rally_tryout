@@ -20,6 +20,8 @@ from pathlib import Path
 from tools.release_assets import Asset, SOURCE_SUFFIXES, audit, inventory, safe_name
 
 ROOT = Path(__file__).resolve().parent
+# GPLv2: every package names the source of exactly its version (the release tag v<version>)
+SOURCE_URL = "https://github.com/Q3Rally-Team/q3rally"
 QVMS = ("cgame.qvm", "qagame.qvm", "ui.qvm")
 TARGET = re.compile(r"(windows|linux|macos)-(x86|x86_64|arm64|universal)\Z")
 STAMP = (1980, 1, 1, 0, 0, 0)
@@ -195,6 +197,7 @@ def package(path: Path, target: str, version: str, files: list[File], prefix: st
                   "This package contains no personal settings, profiles or demos.\n"
                   "Q3Rally is licensed under the GNU GPL version 2 (COPYING-engine.txt;\n"
                   "the engine also under any later version). See CREDITS.txt and changelog.txt.\n"
+                  f"Source code of this version: {SOURCE_URL}/tree/v{version}\n"
                   "release-manifest.json lists the packaged files and SHA-256 checksums.\n").encode()
         archive.writestr(zip_info(root + "README.txt"), readme)
         records.append({"path": "README.txt", "size": len(readme), "sha256": hashlib.sha256(readme).hexdigest()})
