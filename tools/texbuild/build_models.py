@@ -190,6 +190,145 @@ def debris(name, info, seed):
     return m
 
 
+# ---------------------------------------------------------------- trophy (q3r_ctf_04)
+TROPHY = 'models/mapobjects/q3r_trophy'
+
+
+def lathe(m, profile, segs, uscale=1.0, vlen=None, phase=0.0):
+    """Smooth surface of revolution round z through profile [(r, z), ...].
+    A point given twice is a crease (the runs on both sides get their own
+    normals). u runs round (uscale repeats), v along the profile (one repeat
+    per vlen units of profile length, or once over the whole profile)."""
+    runs, cur = [], [profile[0]]
+    for a in profile[1:]:
+        if a == cur[-1]:
+            runs.append(cur)
+            cur = [a]
+        else:
+            cur.append(a)
+    runs.append(cur)
+    total = sum(math.dist(a, b) for a, b in zip(profile, profile[1:]))
+    vlen = vlen or total
+    s0 = 0.0
+    for run in runs:
+        if len(run) < 2:
+            continue
+        acc = [s0]
+        for a, b in zip(run, run[1:]):
+            acc.append(acc[-1] + math.dist(a, b))
+        s0 = acc[-1]
+        rows = []
+        for j, (r, z) in enumerate(run):
+            a, b = run[max(j - 1, 0)], run[min(j + 1, len(run) - 1)]
+            dr, dz = b[0] - a[0], b[1] - a[1]
+            ln = math.hypot(dr, dz) or 1.0
+            nr, nz = dz / ln, -dr / ln
+            row = []
+            for k in range(segs + 1):
+                t = 2 * math.pi * k / segs + phase
+                c, sn = math.cos(t), math.sin(t)
+                row.append(m.vert((r * c, r * sn, z), (nr * c, nr * sn, nz), 'm', (uscale * k / segs, acc[j] / vlen)))
+            rows.append(row)
+        for j in range(len(rows) - 1):
+            for k in range(segs):
+                a, b, c, d = rows[j][k], rows[j][k + 1], rows[j + 1][k + 1], rows[j + 1][k]
+                m.tri(a, b, c)
+                m.tri(a, c, d)
+
+
+def prism(m, profile, sides, phase):
+    """Faceted stone: like lathe() (same profile direction: the outside is
+    on the right of the walk), but every side is a flat face; the texture
+    repeats every 64 units, so joints and grain match from face to face."""
+    ang = [2 * math.pi * k / sides + phase for k in range(sides + 1)]
+    for (r0, z0), (r1, z1) in zip(profile, profile[1:]):
+        dr, dz = r1 - r0, z1 - z0
+        ln = math.hypot(dr, dz)
+        if ln < 1e-9:
+            continue
+        nr, nz = dz / ln, -dr / ln
+        for k in range(sides):
+            a0, a1 = ang[k], ang[k + 1]
+            am = (a0 + a1) / 2
+            p = [(r0 * math.cos(a0), r0 * math.sin(a0), z0), (r0 * math.cos(a1), r0 * math.sin(a1), z0),
+                 (r1 * math.cos(a1), r1 * math.sin(a1), z1), (r1 * math.cos(a0), r1 * math.sin(a0), z1)]
+            n = (nr * math.cos(am), nr * math.sin(am), nz)
+            if abs(dz) < 1e-9:                  # flat ring: planar uv from above
+                uvs = [(q[0] / 64, q[1] / 64) for q in p]
+            else:                               # side: across the face, height
+                uvs = [((-q[0] * math.sin(am) + q[1] * math.cos(am)) / 64, -q[2] / 64) for q in p]
+            ids = [m.vert(q, n, 'm', uv) for q, uv in zip(p, uvs)]
+            m.tri(ids[0], ids[1], ids[2])
+            m.tri(ids[0], ids[2], ids[3])
+
+
+def bent_tube(m, pts, r, segs):
+    """A round tube through pts with smooth normals; rings are carried along
+    the curve without twisting, so it can bend round tight loops."""
+    pts = np.array(pts, float)
+    rings, prev = [], None
+    for j in range(len(pts)):
+        d = pts[min(j + 1, len(pts) - 1)] - pts[max(j - 1, 0)]
+        d /= np.linalg.norm(d)
+        if prev is None:
+            ref = np.array([1.0, 0, 0]) if abs(d[0]) < 0.9 else np.array([0, 0, 1.0])
+            u = np.cross(d, ref)
+        else:
+            u = prev - d * np.dot(prev, d)
+        u /= np.linalg.norm(u)
+        v = np.cross(d, u)
+        prev = u
+        rings.append([(np.cos(2 * np.pi * k / segs) * u + np.sin(2 * np.pi * k / segs) * v) for k in range(segs + 1)])
+    rows = [[m.vert(tuple(pts[j] + r * n), tuple(n), 'm', (k / segs, j / (len(pts) - 1))) for k, n in enumerate(ring)]
+            for j, ring in enumerate(rings)]
+    for j in range(len(rows) - 1):
+        for k in range(segs):
+            a, b, c, d = rows[j][k], rows[j][k + 1], rows[j + 1][k + 1], rows[j + 1][k]
+            m.tri(a, b, c)
+            m.tri(a, c, d)
+
+
+def trophy():
+    """The monument in the fountain of q3r_ctf_04: a rally trophy on a stone
+    plinth. Origin on the fountain floor, about 135 units high like the old
+    statue."""
+    m = Mesh({'m': (0.0, 0.0, 1.0)})
+    oct_ = math.pi / 8
+    m.surf('plinth', f'{TROPHY}/stone')
+    prism(m, [(26.5, -8), (26.5, 14), (21.5, 14), (21.5, 46), (24.5, 46), (24.5, 49), (21.5, 52),
+              (0, 52)], 8, oct_)
+    m.surf('cup', f'{TROPHY}/bronze')
+    lathe(m, [(0, 52), (15, 52), (15, 52), (15, 55), (15, 55), (12.5, 57), (6, 63), (4.2, 67), (4.2, 67),
+              (7.5, 69), (8, 71), (7.5, 73), (7.5, 73), (4.4, 75), (4.6, 78), (8.5, 81), (16, 88), (22, 98),
+              (25.5, 109), (26.8, 120), (26.8, 120), (28.6, 121.5), (28.6, 124.5), (28.6, 124.5),
+              (26.6, 124.5), (26.6, 124.5), (25.2, 118), (22, 104), (15, 92), (6, 87.5), (0, 87)], 32, 4, 24)
+    for side in (-1, 1):                       # two handles, one continuous bent tube each
+        ctrl = [(22.5, 113), (33, 116), (40.5, 110), (41.5, 99), (36, 89.5), (26, 86), (14.5, 89.5)]
+        pts = []
+        for i in range(len(ctrl) - 1):          # Catmull-Rom through the control points
+            p0, p1, p2, p3 = (ctrl[max(i - 1, 0)], ctrl[i], ctrl[i + 1], ctrl[min(i + 2, len(ctrl) - 1)])
+            for t in [k / 4 for k in range(4)]:
+                yz = [0.5 * (2 * p1[c] + (-p0[c] + p2[c]) * t + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * t * t
+                             + (-p0[c] + 3 * p1[c] - 3 * p2[c] + p3[c]) * t ** 3) for c in (0, 1)]
+                pts.append((0, side * yz[0], yz[1]))
+        pts.append((0, side * ctrl[-1][0], ctrl[-1][1]))
+        bent_tube(m, pts, 2.3, 10)
+    m.surf('band', f'{TROPHY}/band')          # chequered ring round the bowl
+    lathe(m, [(24.25, 103.5), (25.35, 108.2), (25.95, 112.5)], 48, 12)
+    m.surf('plaques', f'{TROPHY}/plaque')     # a bronze plaque on four sides of the plinth
+    a = 21.5 * math.cos(oct_) + 0.35
+    for k in range(4):
+        t = k * math.pi / 2
+        c, sn = math.cos(t), math.sin(t)
+        q = [(-6.5, 24), (6.5, 24), (6.5, 38), (-6.5, 38)]
+        pts = [(a * c - u * sn, a * sn + u * c, z) for u, z in q]
+        uvs = [(0, 1), (1, 1), (1, 0), (0, 0)]
+        ids = [m.vert(p, (c, sn, 0), 'm', uv) for p, uv in zip(pts, uvs)]
+        m.tri(ids[0], ids[1], ids[2])
+        m.tri(ids[0], ids[2], ids[3])
+    return m
+
+
 def main():
     import json
     sizes = json.load(open(os.path.join(HERE, 'debris_sizes.json')))
@@ -202,6 +341,9 @@ def main():
         print(path, flag(colour).save(path, f'{colour}_flag'), 'triangles')
     path = os.path.join(BASE, 'models', 'weaphits', 'crackle.md3')
     print(path, crackle().save(path, 'crackle'), 'triangles')
+    path = os.path.join(BASE, *TROPHY.split('/'), 'trophy.md3')
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    print(path, trophy().save(path, 'trophy'), 'triangles')
 
 
 if __name__ == '__main__':

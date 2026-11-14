@@ -65,3 +65,27 @@ Holz als Brett mit gesplitterten Enden. Jedes Stück behält Größe, Lage und S
 - `models/gibs/gibs.tga` trägt nur einen Quake-3-Namen. Inhaltlich ist es Q3Rallys eigener Trümmer-Atlas (Lenkrad, Lüfter, Schläuche).
 - `textures/effects/tinfx.tga` (OpenArena) und `baslt4_1_2k/_4k` (ohne Quake-3-Bezug) bleiben, wie sie sind.
 - Die alte Shotgun-Textur (`shotgun.tga`, `shotgun_spec.jpg`) und ihr Shader sind gelöscht. Seit den neuen Waffen benutzt sie kein Modell mehr.
+
+## Pokal in q3r_ctf_04
+
+Im Brunnen in der Mitte von `q3r_ctf_04` stand eine Statue der Quake-3-Figur Xaero. Dort steht jetzt ein
+Rallye-Pokal auf einem Granitsockel: Bronzepokal mit zwei Henkeln, Zielflaggen-Band und vier Plaketten
+mit Lenkrad. Modell (`models/mapobjects/q3r_trophy/trophy.md3`) und Texturen kommen aus
+`build_models.py` und `r_special.py`, der Shader steht in `scripts/q3r_trophy.shader`.
+
+Die Karte ist nicht neu kompiliert. q3map2 backt `misc_model`s in die BSP. Die Quelle von `q3r_ctf_04`
+lässt sich aber nicht mehr so kompilieren wie damals, weil `spotlamp1.md3` fehlt. Außerdem sind die
+Lichtentities nachträglich eingesetzt. Deshalb tauscht `tools/maptools/replace_model_in_bsp.py` nur die
+Flächen des alten Modells gegen die des neuen:
+
+```
+python3 tools/maptools/replace_model_in_bsp.py baseq3r/maps/q3r_ctf_04.bsp \
+    --old models/mapobjects/Xaero_statue/ --model models/mapobjects/q3r_trophy/trophy.md3 --origin -8 0 -8
+```
+
+- Die Vertexfarben kommen aus dem Lichtgitter der Karte. Es ist dasselbe Licht, das ein Auto an dieser
+  Stelle bekommt.
+- Jede neue Fläche wird in alle Leafs eingetragen, die sie berührt.
+- Die Prüfsumme in der AAS wird angepasst. Die Bot-Navigation bleibt gültig, weil das Modell nicht solide
+  ist.
+- In `q3r_ctf_04.map` zeigt der `misc_model` jetzt auf den Pokal.
