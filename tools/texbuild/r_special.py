@@ -288,3 +288,66 @@ def map_models():
     lens = gradient_map(clamp(1 - r / 15), [(0, '#201818'), (0.3, '#806868'), (1, '#fff4f0')])
     out['models/mapobjects/spotlamp/spotlamp_l.jpg'] = (lens, None)
     return out
+
+
+# ---------------------------------------------------------------- trophy in q3r_ctf_04
+@recipe
+def trophy():
+    """Skins of the monument in the fountain of q3r_ctf_04 (build_models.py):
+    granite plinth, bronze cup, chequered band, plaque with a steering wheel."""
+    out = {}
+    base = 'models/mapobjects/q3r_trophy/'
+    # granite: 512 px = 64 units, two courses of blocks with thin joints
+    w = h = 512
+    x, y = grid(w, h)
+    grain = noise(w, h, 1201, 30, None, 1.2)
+    spots = (noise(w, h, 1202, 40, None, 0.9) > 0.78).astype(F) * 0.5 + (noise(w, h, 1203, 40, None, 0.9) < 0.2).astype(F) * 0.4
+    t = clamp(noise(w, h, 1204, 2, 30, 1.8) * 0.5 + grain * 0.3 + 0.1)
+    col = gradient_map(t, [(0, '#77736c'), (0.5, '#9a958c'), (1, '#b9b4aa')])
+    col = lerp(col, fill(w, h, '#3c3a38'), spots * 0.6)
+    col = lerp(col, fill(w, h, '#d8d2c8'), (noise(w, h, 1205, 40, None, 0.9) > 0.8).astype(F) * 0.4)
+    lx, ly = tiled(x, y, 256, 256, 0, 0)
+    joint = np.minimum(np.abs(np.abs(ly) - 128) - 1.5, np.abs(np.abs(lx) - 128) - 1.5)
+    hm = bevel(joint, 6) + noise(w, h, 1206, 8, 80) * 0.15
+    col = finish(col, hm, 5, 0.5, 2, 1201)
+    out[base + 'stone.jpg'] = (col, None)
+    # bronze: warm metal, a little patina in the hollows
+    w = h = 256
+    t = clamp(0.5 + (noise(w, h, 1210, 1, 6, 2.0) - 0.5) * 0.5 + (noise(w, h, 1211, 40, None, 1.0) - 0.5) * 0.15)
+    col = gradient_map(t, [(0, '#7a521c'), (0.45, '#b07c30'), (0.8, '#d4a44c'), (1, '#f0cc78')])
+    patina = clamp((noise(w, h, 1212, 3, 30, 1.6) - 0.62) * 4)
+    col = lerp(col, fill(w, h, '#4a6a50'), patina * 0.2)
+    out[base + 'bronze.jpg'] = (col, None)
+    # reflection for tcGen environment: bright sky above, dark ground below, two soft lights
+    w = h = 128
+    x, y = grid(w, h)
+    t = clamp(1 - y / h)
+    env = gradient_map(t, [(0, '#120c06'), (0.45, '#3a2a14'), (0.55, '#8a6a3a'), (1, '#e8d0a0')])
+    env = screen(env, fill(w, h, '#fff0d0') * (glow_blob(x, y, 40, 30, 22, 2.0) * 0.8)[..., None])
+    env = screen(env, fill(w, h, '#ffe8c0') * (glow_blob(x, y, 96, 44, 14, 2.0) * 0.5)[..., None])
+    out[base + 'env.jpg'] = (env, None)
+    # chequered band: 4 x 2 squares per repeat, black enamel and polished metal
+    w, h = 128, 64
+    x, y = grid(w, h)
+    chk = ((x // 32).astype(int) + (y // 32).astype(int)) % 2
+    edge = mask(np.minimum(np.abs((x % 32) - 16) - 15, np.abs((y % 32) - 16) - 15))
+    col = np.where(chk[..., None] == 1, fill(w, h, '#e8e4dc'), fill(w, h, '#141414'))
+    col = lerp(col, fill(w, h, '#a8742c'), 1 - edge)
+    out[base + 'band.jpg'] = (col, None)
+    # plaque: bronze plate, raised rim, steering wheel in relief
+    w = h = 128
+    x, y = grid(w, h)
+    plate = sd_box(x, y, 64, 64, 60, 60, 6)
+    rim = bevel(-plate, 3) - bevel(-plate - 8, 3) * 0.6
+    r = np.sqrt((x - 64) ** 2 + (y - 60) ** 2)
+    ring = np.abs(r - 34) - 5
+    hub = r - 9
+    spokes = np.minimum(sd_segment(x, y, 64, 60, 64, 96, 4.5),
+                        np.minimum(sd_segment(x, y, 64, 60, 30, 52, 4.5), sd_segment(x, y, 64, 60, 98, 52, 4.5)))
+    wheel = np.minimum(np.minimum(ring, hub), spokes)
+    hm = rim * 0.5 + bevel(wheel, 3) * 0.8 + noise(w, h, 1220, 10, 60) * 0.05
+    t = clamp(noise(w, h, 1221, 2, 20, 1.8) * 0.5 + 0.35 + bevel(wheel, 3) * 0.3)
+    col = gradient_map(t, [(0, '#5a3a14'), (0.5, '#a8742c'), (1, '#f0cc78')])
+    col = finish(col, hm, 6, 0.7, 2, 1220, gloss=0.25)
+    out[base + 'plaque.jpg'] = (col, None)
+    return out

@@ -145,15 +145,15 @@ typedef struct {
 // Q3Rally Code END
 #ifdef MISSIONPACK
 #define	DEFAULT_TEAM_MODEL		"doom"
-#define	DEFAULT_TEAM_HEAD		"doom"
+#define	DEFAULT_TEAM_HEAD		"classic"
 #else
 // Q3Rally Code Start
 // #define	DEFAULT_TEAM_MODEL		"sarge"
 // #define	DEFAULT_TEAM_HEAD		"sarge"
 #define	DEFAULT_TEAM_MODEL		"sidepipe"
-#define	DEFAULT_TEAM_HEAD		"doom"
+#define	DEFAULT_TEAM_HEAD		"classic"
 #endif
-#define	DEFAULT_HEAD			"doom"
+#define	DEFAULT_HEAD			"classic"
 #define	DEFAULT_RIM				"svt_cobra"
 #define	DEFAULT_PLATE			"plate_usa"
 #define	DEFAULT_PLATE_SKIN		"player0"

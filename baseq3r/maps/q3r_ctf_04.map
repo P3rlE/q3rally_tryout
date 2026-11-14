@@ -11188,7 +11188,7 @@
 {
 "classname" "misc_model"
 "origin" "-8.000000 0.000000 -8.000000"
-"model" "models/mapobjects/Xaero_statue/xaero_statue.md3"
+"model" "models/mapobjects/q3r_trophy/trophy.md3"
 }
 // entity 2
 {

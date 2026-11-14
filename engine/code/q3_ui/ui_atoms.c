@@ -1403,6 +1403,22 @@ void UI_Shutdown( void ) {
 
 /*
 =================
+UI_HeadExists
+=================
+*/
+static qboolean UI_HeadExists( const char *head ) {
+	fileHandle_t f;
+	int len = trap_FS_FOpenFile( va( "models/players/heads/%s.skin", head ), &f, FS_READ );
+	if ( len < 0 || !f ) {
+		return qfalse;
+	}
+	trap_FS_FCloseFile( f );
+	return qtrue;
+}
+
+
+/*
+=================
 UI_Init
 =================
 */
@@ -1443,9 +1459,10 @@ void UI_Init( void ) {
 
 	// check for head again
 	trap_Cvar_VariableStringBuffer( "head", modelname, sizeof( modelname ) );
-	if (modelname[0] == 0)
+	if (modelname[0] == 0 || !UI_HeadExists( modelname ))
 	{
-		trap_Cvar_Set( "head", "doom" );
+		// also replaces heads that are no longer shipped (the old Quake 3 heads)
+		trap_Cvar_Set( "head", DEFAULT_HEAD );
 	}
 
 	// check for head again

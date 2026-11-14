@@ -256,7 +256,7 @@ function refreshVehicle() {
   const setup = setups.get(id) ?? {
     paint: Object.keys(paints).find(key => !isLocked(paints[key])) ?? Object.keys(paints)[0],
     wheels: catalog.wheels.svt_cobra ? 'svt_cobra' : Object.keys(catalog.wheels)[0],
-    head: catalog.heads?.doom ? 'doom' : Object.keys(catalog.heads ?? {})[0],
+    head: catalog.heads?.classic ? 'classic' : Object.keys(catalog.heads ?? {})[0],
     plate: catalog.plates?.usa_california ? 'usa_california' : Object.keys(catalog.plates ?? {})[0],
   };
   setups.set(id, setup);
@@ -331,7 +331,7 @@ fetch('./catalog.json').then(response => {
 }).then(data => {
   catalog = data;
   setOptions(wheel, catalog.wheels, 'svt_cobra');
-  setOptions(head, catalog.heads ?? {}, catalog.heads?.doom ? 'doom' : Object.keys(catalog.heads ?? {})[0]);
+  setOptions(head, catalog.heads ?? {}, catalog.heads?.classic ? 'classic' : Object.keys(catalog.heads ?? {})[0]);
   setOptions(plate, catalog.plates ?? {}, catalog.plates?.usa_california ? 'usa_california' : Object.keys(catalog.plates ?? {})[0]);
   controls.hidden = false;
   vehicle.disabled = false;
