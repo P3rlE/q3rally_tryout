@@ -1,10 +1,10 @@
 Q3Rally - Credits
 =================
 
-Q3Rally is free software. The engine (engine/) is licensed under the GNU
-General Public License version 2 or (at your option) any later version. The
-game data (baseq3r/) is licensed under the GNU General Public License
-version 2; the full text is in license.txt. Some parts of the data are
+Q3Rally is free software. The engine (engine/), the launcher and the tools
+are licensed under the GNU General Public License version 2 or (at your
+option) any later version. The game data (baseq3r/) is licensed under the
+GNU General Public License version 2; the full text is in license.txt. Some parts of the data are
 "version 2 only" (marked below), so the data as a whole stays at version 2.
 
 Third-party parts keep their own licenses, all of them compatible with the

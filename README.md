@@ -40,10 +40,14 @@ See the [release procedure](docs/releasing.md) and the
 
 ## License
 
-Q3Rally is licensed under the GNU General Public License version 2.
+Q3Rally is licensed under the GNU General Public License version 2
+([COPYING](COPYING)).
 
 * The source code in `engine/` is licensed under the GPLv2 or later unless
   specified otherwise ([engine/docs/COPYING.txt](engine/docs/COPYING.txt)).
+* The launcher (`launcher/`), the Ladder service (`ladder_service/`), the
+  tools (`tools/`), the tests and the release scripts are licensed under the
+  GPLv2 or later as well.
 * The game data in `baseq3r/` is licensed under the GPLv2
   ([baseq3r/documents/license.txt](baseq3r/documents/license.txt)). Some
   third-party parts of it are "version 2 only", so the data stays at version 2.
