@@ -1137,20 +1137,6 @@ rocketFlare
 // 10.Shotgun
 // ------------------------------------------------------------
 
-models/weapons2/shotgun/shotgun
-{
-    {
-        map models/weapons2/shotgun/shotgun.tga
-        rgbGen lightingDiffuse
-    }
-    {
-        map models/weapons2/shotgun/shotgun_spec.jpg
-        blendFunc GL_SRC_ALPHA GL_ONE
-        detail
-        alphaGen lightingSpecular
-    }
-}
-
 models/weapons2/shells/sgunshell_2
 {
 	deformVertexes autosprite

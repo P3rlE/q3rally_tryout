@@ -29,10 +29,30 @@
 0,
 0
 ],
+"gfx/misc/railcorethin_mono.jpg": [
+6,
+6,
+5
+],
+"gfx/misc/raildisc_mono2.jpg": [
+114,
+114,
+114
+],
+"gfx/misc/sun.tga": [
+65,
+65,
+65
+],
 "models/mapobjects/Skull/skull.jpg": [
 91,
 64,
 47
+],
+"models/mapobjects/barrel/barrel2fx.jpg": [
+62,
+39,
+9
 ],
 "models/mapobjects/gratelamp/gratetorch2.jpg": [
 48,
@@ -58,6 +78,16 @@
 92,
 79,
 75
+],
+"models/powerups/armor/energy_yel3.jpg": [
+49,
+40,
+4
+],
+"models/weaphits/electric.jpg": [
+1,
+5,
+7
 ],
 "textures/base_door/shinymetaldoor_outside3a2.tga": [
 26,
@@ -499,10 +529,65 @@
 30,
 69
 ],
+"textures/effects/blueflagmap.tga": [
+78,
+4,
+4
+],
+"textures/effects/envmapblue.jpg": [
+32,
+43,
+87
+],
+"textures/effects/envmapgold.jpg": [
+161,
+111,
+34
+],
+"textures/effects/envmapligh.jpg": [
+68,
+41,
+9
+],
+"textures/effects/envmapmach.jpg": [
+117,
+106,
+37
+],
+"textures/effects/envmaprail.jpg": [
+26,
+51,
+3
+],
+"textures/effects/envmapred.jpg": [
+98,
+21,
+21
+],
+"textures/effects/envmapyel.jpg": [
+192,
+165,
+4
+],
+"textures/effects/quadmap2.jpg": [
+65,
+15,
+43
+],
+"textures/effects/regenmap2.jpg": [
+74,
+2,
+2
+],
 "textures/effects/tinfx.tga": [
 40,
 40,
 40
+],
+"textures/effects/tinfx2b.jpg": [
+46,
+39,
+36
 ],
 "textures/effects/tinfx2c.jpg": [
 67,
@@ -684,10 +769,60 @@
 76,
 58
 ],
+"textures/sfx/bolts.jpg": [
+20,
+15,
+9
+],
+"textures/sfx/detail.jpg": [
+95,
+94,
+92
+],
+"textures/sfx/detail.tga": [
+96,
+96,
+96
+],
+"textures/sfx/fire_ctfblue.jpg": [
+20,
+44,
+142
+],
+"textures/sfx/fire_ctfred.jpg": [
+151,
+15,
+24
+],
+"textures/sfx/firegorre.tga": [
+180,
+60,
+0
+],
+"textures/sfx/firewalla.tga": [
+130,
+57,
+1
+],
+"textures/sfx/portalfog.jpg": [
+169,
+169,
+169
+],
+"textures/sfx/proto_zzztblu3.jpg": [
+2,
+16,
+135
+],
 "textures/sfx/shadow.jpg": [
 155,
 155,
 155
+],
+"textures/sfx/specular.jpg": [
+69,
+55,
+56
 ],
 "textures/skies/dimclouds.jpg": [
 52,
