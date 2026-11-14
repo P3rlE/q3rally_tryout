@@ -1,6 +1,6 @@
 /*
  * Q3Rally v0.9 Drag Race prototype.
- * Equal cars, a deliberate handbrake release and a common finish plane.
+ * Equal cars, a neutral-to-first launch and a common finish plane.
  * Keep heat state private: none of these results enter the v0.8 profiles.
  */
 #include "g_local.h"
@@ -13,8 +13,8 @@ typedef struct {
 	dragPhase_t phase;
 	qboolean spawned;
 	qboolean participant;
-	qboolean brakeHeld;
-	int releaseTime;
+	qboolean throttleReady;
+	int launchTime;
 	int finishTime;
 	int trapSpeed;
 	int nextNotice;
@@ -52,17 +52,23 @@ static qboolean G_DragTerminal( const dragClient_t *driver ) {
 static void G_DragPublish( int clientNum, int recipient ) {
 	const dragClient_t *driver = &dragClients[clientNum];
 	trap_SendServerCommand( recipient, va( "dragStatus %d %d %d %d %d %d",
-		clientNum, driver->phase, dragGreenTime, driver->releaseTime,
+		clientNum, driver->phase, dragGreenTime, driver->launchTime,
 		driver->finishTime, driver->trapSpeed ) );
 }
 
 static void G_DragSetPhase( int clientNum, dragPhase_t phase ) {
 	dragClients[clientNum].phase = phase;
 	if ( phase == DRAG_RUNNING && g_entities[clientNum].client
-		&& g_entities[clientNum].client->ps.commandTime < dragClients[clientNum].releaseTime ) {
+		&& g_entities[clientNum].client->ps.commandTime < dragClients[clientNum].launchTime ) {
 		/* A usercommand describes input at its timestamp. Do not integrate
 		 * its new throttle backwards across the interval spent staged. */
-		g_entities[clientNum].client->ps.commandTime = dragClients[clientNum].releaseTime;
+		g_entities[clientNum].client->ps.commandTime = dragClients[clientNum].launchTime;
+	}
+	if ( phase == DRAG_RUNNING && g_entities[clientNum].client ) {
+		/* Keep the free engine RPM: engaging first transfers the launch load
+		 * through the shared drivetrain simulation. */
+		g_entities[clientNum].client->car.gear = 1;
+		g_entities[clientNum].client->ps.stats[STAT_GEAR] = 1;
 	}
 	G_DragPublish( clientNum, -1 );
 }
@@ -125,6 +131,8 @@ void G_DragClientSpawn( gentity_t *ent ) {
 		memset( driver, 0, sizeof( *driver ) );
 		driver->spawned = qtrue;
 		VectorCopy( ent->client->ps.origin, driver->gridOrigin );
+		ent->client->car.gear = 0;
+		ent->client->ps.stats[STAT_GEAR] = 0;
 		ent->ready = qfalse;
 		G_DragPublish( clientNum, -1 );
 	}
@@ -148,10 +156,12 @@ void G_DragClientDisconnect( int clientNum ) {
 		level.raceState = RACE_STATE_NONE;
 		for ( i = 0; i < MAX_CLIENTS; i++ ) {
 			dragClients[i].participant = qfalse;
-			dragClients[i].releaseTime = 0;
+			dragClients[i].launchTime = 0;
 			dragClients[i].finishTime = 0;
 			if ( G_DragActive( i ) && i != clientNum ) {
-				dragClients[i].phase = dragClients[i].brakeHeld ? DRAG_STAGED : DRAG_WAITING;
+				dragClients[i].phase = dragClients[i].throttleReady ? DRAG_STAGED : DRAG_WAITING;
+				g_entities[i].client->car.gear = 0;
+				g_entities[i].client->ps.stats[STAT_GEAR] = 0;
 				g_entities[i].client->finishRaceTime = 0;
 				G_DragPublish( i, -1 );
 			}
@@ -210,7 +220,7 @@ static void G_DragStartGreen( void ) {
 		}
 		g_entities[i].client->lapStartTime = dragGreenTime;
 		g_entities[i].client->lastCheckpointTime = dragGreenTime;
-		if ( !G_DragTerminal( &dragClients[i] ) && dragClients[i].releaseTime ) {
+		if ( !G_DragTerminal( &dragClients[i] ) && dragClients[i].launchTime ) {
 			G_DragSetPhase( i, DRAG_RUNNING );
 		} else {
 			G_DragPublish( i, -1 );
@@ -242,7 +252,8 @@ void G_DragStarterThink( gentity_t *starter ) {
 				continue;
 			}
 			count++;
-			if ( !dragClients[i].spawned || !dragClients[i].brakeHeld ) {
+			if ( !dragClients[i].spawned || !dragClients[i].throttleReady ||
+				g_entities[i].client->car.gear != 0 ) {
 				staged = qfalse;
 			}
 		}
@@ -251,14 +262,14 @@ void G_DragStarterThink( gentity_t *starter ) {
 		}
 		dragCountdownTime = level.time;
 		/* Vary only the final wait. The common scheduled timestamp is the
-		 * authority for all release commands, including delayed packets. */
+		 * authority for all first-gear commands, including delayed packets. */
 		dragGreenTime = level.time + 3000 + ( rand() % 1001 );
 		level.raceState = RACE_STATE_COUNTDOWN;
 		level.raceIntroEndTime = 0;
 		for ( i = 0; i < MAX_CLIENTS; i++ ) {
 			if ( G_DragActive( i ) ) {
 				dragClients[i].participant = qtrue;
-				dragClients[i].releaseTime = 0;
+				dragClients[i].launchTime = 0;
 				G_DragSetPhase( i, DRAG_COUNTDOWN );
 			}
 		}
@@ -269,14 +280,14 @@ void G_DragStarterThink( gentity_t *starter ) {
 		if ( light < 1 ) light = 1;
 		if ( light != dragLastLight ) {
 			dragLastLight = light;
-			trap_SendServerCommand( -1, va( "rc \"%d - HOLD HANDBRAKE\" %d", light, light ) );
+			trap_SendServerCommand( -1, va( "rc \"%d - HOLD RPM IN N\" %d", light, light ) );
 		}
 	}
 }
 
 void G_DragFilterCommand( gentity_t *ent, usercmd_t *cmd ) {
 	dragClient_t *driver;
-	qboolean brakeHeld;
+	qboolean throttleReady;
 	int clientNum;
 	if ( g_gametype.integer != GT_DRAG || !ent || !ent->client || !cmd ) {
 		return;
@@ -284,7 +295,6 @@ void G_DragFilterCommand( gentity_t *ent, usercmd_t *cmd ) {
 	clientNum = ent->s.number;
 	if ( clientNum < 0 || clientNum >= MAX_CLIENTS ) return;
 	driver = &dragClients[clientNum];
-	brakeHeld = ( cmd->buttons & BUTTON_HANDBRAKE ) ? qtrue : qfalse;
 	ent->client->pers.transmissionMode = TR_MANUAL;
 	ent->client->pers.manualShift = qtrue;
 	ent->client->ps.stats[STAT_HOLDABLE_ITEM] = 0;
@@ -300,34 +310,68 @@ void G_DragFilterCommand( gentity_t *ent, usercmd_t *cmd ) {
 		G_DragClientSpawn( ent );
 	}
 	if ( !dragCountdownTime ) {
-		if ( driver->brakeHeld != brakeHeld ) {
-			G_DragSetPhase( clientNum, brakeHeld ? DRAG_STAGED : DRAG_WAITING );
+		/* Neutral keeps the car on the grid while the engine responds to gas.
+		 * A positive pedal input is the driver's explicit staging action. */
+		ent->client->car.gear = 0;
+		ent->client->ps.stats[STAT_GEAR] = 0;
+		throttleReady = cmd->forwardmove > 0 ? qtrue : qfalse;
+		if ( driver->throttleReady != throttleReady ) {
+			G_DragSetPhase( clientNum, throttleReady ? DRAG_STAGED : DRAG_WAITING );
 		}
-		driver->brakeHeld = brakeHeld;
-		ent->ready = brakeHeld;
+		driver->throttleReady = throttleReady;
+		ent->ready = throttleReady;
 		if ( level.time >= driver->nextNotice ) {
 			trap_SendServerCommand( clientNum,
-				"cp \"DRAG RACE: hold HANDBRAKE to stage.\nKeep holding until GREEN, then release.\nManual gears: gearUp / gearDown\"" );
+				"cp \"DRAG RACE: apply gas in N to stage.\nHold your launch RPM, select FIRST on GREEN.\nManual gears: gearUp / gearDown\"" );
 			driver->nextNotice = level.time + 4000;
 		}
-	} else if ( driver->participant && !G_DragTerminal( driver ) ) {
-		/* The first release is final: reapplying the brake cannot erase a
-		 * false start, and pre-held throttle cannot launch a staged car. */
-		if ( driver->brakeHeld && !brakeHeld && !driver->releaseTime ) {
-			driver->releaseTime = cmd->serverTime;
-			if ( cmd->serverTime < dragGreenTime ) {
-				G_DragDisqualify( clientNum, DRAG_FALSE_START, "FALSE START" );
-			} else if ( level.startRaceTime ) {
-				G_DragSetPhase( clientNum, DRAG_RUNNING );
-			}
-		}
-		driver->brakeHeld = brakeHeld;
+	} else {
+		driver->throttleReady = !G_DragTerminal( driver ) && cmd->forwardmove > 0 ? qtrue : qfalse;
 	}
 	G_DragStartGreen();
 	if ( !driver->participant || driver->phase != DRAG_RUNNING || !level.startRaceTime ) {
 		cmd->buttons = BUTTON_HANDBRAKE;
-		cmd->forwardmove = cmd->rightmove = cmd->upmove = 0;
+		cmd->rightmove = cmd->upmove = 0;
+		ent->client->car.gear = 0;
+		ent->client->ps.stats[STAT_GEAR] = 0;
+		/* Free revving stays available before launch; invalid/finished runs
+		 * are stopped instead of continuing to rev in the result screen. */
+		if ( G_DragTerminal( driver ) || cmd->forwardmove < 0 ) {
+			cmd->forwardmove = 0;
+		}
 	}
+}
+
+qboolean G_DragTryGearChange( gentity_t *ent, int direction, int commandTime ) {
+	dragClient_t *driver;
+	int clientNum;
+	if ( g_gametype.integer != GT_DRAG ) return qfalse;
+	if ( !ent || !ent->client ) return qtrue;
+	clientNum = ent->s.number;
+	if ( clientNum < 0 || clientNum >= MAX_CLIENTS || !G_DragActive( clientNum ) ) return qtrue;
+	driver = &dragClients[clientNum];
+	if ( driver->phase == DRAG_RUNNING ) return qfalse;
+	if ( G_DragTerminal( driver ) || direction <= 0 || driver->launchTime ) return qtrue;
+	if ( !dragCountdownTime || !driver->participant ) {
+		trap_SendServerCommand( clientNum, "cp \"Apply gas in N to stage, then select FIRST on GREEN.\"" );
+		return qtrue;
+	}
+	/* Use the same accepted input-time bounds as movement. Keeping an early
+	 * timestamp is necessary: delayed delivery must not turn a false start
+	 * into a legal launch. The first gear request is final. */
+	if ( commandTime <= 0 ) commandTime = ent->client->pers.cmd.serverTime;
+	if ( commandTime < level.time - 1000 ) commandTime = level.time - 1000;
+	if ( commandTime > level.time + 200 ) commandTime = level.time + 200;
+	driver->launchTime = commandTime;
+	if ( commandTime < dragGreenTime ) {
+		G_DragDisqualify( clientNum, DRAG_FALSE_START, "FALSE START - selected FIRST before GREEN" );
+		return qtrue;
+	}
+	G_DragStartGreen();
+	if ( level.startRaceTime && driver->phase != DRAG_RUNNING ) {
+		G_DragSetPhase( clientNum, DRAG_RUNNING );
+	}
+	return qtrue;
 }
 
 void G_DragPostMove( gentity_t *ent, const vec3_t oldOrigin, int oldTime ) {
@@ -370,7 +414,7 @@ void G_DragPostMove( gentity_t *ent, const vec3_t oldOrigin, int oldTime ) {
 			return;
 		}
 		timestamp = oldTime + (int)( fraction * ( ent->client->ps.commandTime - oldTime ) + 0.5f );
-		if ( timestamp < driver->releaseTime ) timestamp = driver->releaseTime;
+		if ( timestamp < driver->launchTime ) timestamp = driver->launchTime;
 		driver->finishTime = timestamp;
 		driver->trapSpeed = (int)( ( driver->previousSpeed + fraction * ( speed - driver->previousSpeed ) )
 			* 36.0f / CP_M_2_QU + 0.5f );

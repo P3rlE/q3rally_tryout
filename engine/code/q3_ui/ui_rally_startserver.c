@@ -2759,9 +2759,9 @@ static void ServerOptions_Draw( void ) {
 		Frontend_DrawText( SERVEROPT_PLAYER_X + 16, SERVEROPT_PLAYER_Y + 108,
 			"Same specs. Manual shifting.", UI_LEFT | UI_SMALLFONT, serverOptionsTextColor );
 		Frontend_DrawText( SERVEROPT_PLAYER_X + 16, SERVEROPT_PLAYER_Y + 132,
-			"Hold handbrake to stage.", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
+			"Build revs in N to stage.", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
 		Frontend_DrawText( SERVEROPT_PLAYER_X + 16, SERVEROPT_PLAYER_Y + 156,
-			"Release on green.", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
+			"Select first on green.", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
 		Frontend_DrawText( SERVEROPT_PLAYER_X + 16, SERVEROPT_PLAYER_Y + 180,
 			"Use Gear Up / Gear Down.", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
 	}

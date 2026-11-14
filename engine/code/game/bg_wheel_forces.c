@@ -176,13 +176,42 @@ static void PM_UpdateFreeEngineRPM( car_t *car, float sec )
 	car->rpm = PM_ApplyRevLimiter( car, car->rpm, sec );
 }
 
-static void PM_UpdateRPM(car_t *car, carPoint_t *points, float sec){
+/* A small automatic clutch engagement for Drag's neutral-to-first launch.
+ * RPM is already replicated/predicted: no unsynchronised launch timer is
+ * needed. Approximate exponential matching keeps RPM decay consistent across
+ * physics steps. The extra shaft torque comes from the
+ * flywheel's lost angular momentum, rather than a launch-window bonus.
+ * Excess wheel RPM still drives the normal limiter and tyre-slip model. */
+static float PM_DragCoupleLaunchRPM( car_t *car, float wheelRpm, float sec ) {
+	const float flywheelInertia = 0.08f; /* kg m^2, light engine/flywheel assembly */
+	const float couplingSeconds = 0.22f;
+	float previousRpm, targetRpm, torqueNm, x, decay;
+
+	previousRpm = PM_ClampRPM( car->rpm );
+	targetRpm = PM_ClampRPM( wheelRpm );
+	if ( sec <= 0.0f ) {
+		return 0.0f;
+	}
+	if ( previousRpm <= targetRpm ) {
+		car->rpm = targetRpm;
+		return 0.0f;
+	}
+	/* bg_lib's QVM exp() clamps negative inputs to zero. Use the same bounded
+	 * fourth-order reciprocal polynomial in both native and QVM physics. */
+	x = sec / couplingSeconds;
+	decay = 1.0f / ( 1.0f + x * ( 1.0f + x * ( 0.5f + x * ( 1.0f / 6.0f + x / 24.0f ) ) ) );
+	car->rpm = targetRpm + ( previousRpm - targetRpm ) * decay;
+	torqueNm = flywheelInertia * ( previousRpm - car->rpm ) * ( M_PI / 30.0f ) / sec;
+	return torqueNm / 1.355818f; /* existing engine curve uses ft.lb */
+}
+
+static float PM_UpdateRPM(car_t *car, carPoint_t *points, float sec){
 	float	rpmTemp;
 	float	shiftDownRPM, shiftUpRPM;
 
 	if ( PM_ClutchOpen( car ) ) {
 		PM_UpdateFreeEngineRPM( car, sec );
-		return;
+		return 0.0f;
 	}
 
 	shiftDownRPM = CP_RPM_MIN + (CP_RPM_MAX - CP_RPM_MIN) * (0.4f + 0.2f * car->throttle);
@@ -247,12 +276,16 @@ static void PM_UpdateRPM(car_t *car, carPoint_t *points, float sec){
 			}
 		}
 
+		if ( pm->dragRace && car->gear == 1 && car->rpm > PM_ClampRPM( rpmTemp ) ) {
+			return PM_DragCoupleLaunchRPM( car, rpmTemp, sec );
+		}
 		car->rpm = PM_ApplyRevLimiter( car, rpmTemp, sec );
 	}
 	else {
 		rpmTemp = PM_WheelSpeedtoRPM(car, points);
 		car->rpm = PM_ApplyRevLimiter( car, rpmTemp, sec );
 	}
+	return 0.0f;
 }
 
 /*
@@ -485,7 +518,7 @@ static void PM_TireFrictionForces( car_t *car, carPoint_t *points, int i, vec3_t
 PM_TireEngineForces
 ================================================================================
 */
-static void PM_TireEngineForces( car_t *car, carPoint_t *points, int i, vec3_t forward ){
+static void PM_TireEngineForces( car_t *car, carPoint_t *points, int i, vec3_t forward, float couplingTorque ){
 	float	torque, ratio, relrpm, friction;
 //	float	power;
 //	float	normalForce;
@@ -513,6 +546,7 @@ static void PM_TireEngineForces( car_t *car, carPoint_t *points, int i, vec3_t f
 
 	relrpm = (car->rpm - CP_RPM_TORQUE_PEAK);
 	torque = car->throttle * ((-1.0f * CP_TORQUE_SLOPE * relrpm * relrpm) + CP_TORQUE_PEAK); // ft.lb
+	torque += couplingTorque;
 //	power = torque * car->rpm / (30 * 550 / M_PI); // hp
 
 	if (car->gear < 0)
@@ -594,7 +628,7 @@ PM_AddRoadForces
 void PM_AddRoadForces(car_t *car, carBody_t *body, carPoint_t *points, float sec){
 	vec3_t		temp;
 	vec3_t		forward, right, up;
-	float		v, targetAngle;
+	float		v, targetAngle, couplingTorque;
 	int			i;
 
 	v = DotProduct(body->v, body->forward);
@@ -685,7 +719,7 @@ void PM_AddRoadForces(car_t *car, carBody_t *body, carPoint_t *points, float sec
 	else
 		pm->ps->extra_eFlags &= ~CF_BRAKE;
 
-	PM_UpdateRPM(car, points, sec);
+	couplingTorque = PM_UpdateRPM(car, points, sec);
 
 	PM_AirFrictionForces(car, body, points, sec);
 
@@ -713,7 +747,7 @@ void PM_AddRoadForces(car_t *car, carBody_t *body, carPoint_t *points, float sec
 		VectorNormalize(right);
 		CrossProduct(up, right, forward);
 
-		PM_TireEngineForces(car, points, i, forward);
+		PM_TireEngineForces(car, points, i, forward, couplingTorque);
 
 		PM_TireBrakingForces(car, points, i, forward, car->throttle);
 
@@ -740,7 +774,7 @@ void PM_AddRoadForces(car_t *car, carBody_t *body, carPoint_t *points, float sec
 			VectorCopy(body->up, up);
 		}
 
-		PM_TireEngineForces(car, points, i, forward);
+		PM_TireEngineForces(car, points, i, forward, couplingTorque);
 
 		PM_TireBrakingForces(car, points, i, forward, car->throttle);
 

@@ -8,6 +8,7 @@ void G_DragClientSpawn( gentity_t *ent );
 void G_DragClientDisconnect( int clientNum );
 void G_DragStarterThink( gentity_t *starter );
 void G_DragFilterCommand( gentity_t *ent, usercmd_t *cmd );
+qboolean G_DragTryGearChange( gentity_t *ent, int direction, int commandTime );
 void G_DragPostMove( gentity_t *ent, const vec3_t oldOrigin, int oldTime );
 void G_DragRunFrame( void );
 qboolean G_DragCheckExit( void );

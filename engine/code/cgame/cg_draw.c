@@ -1476,14 +1476,14 @@ static void CG_DrawRallyTelemetryHud( void ) {
 		int reactionMs = validRun && cent->dragLaunchTime > 0 ? cent->dragLaunchTime - cent->dragGreenTime : -1;
 		int elapsedMs = validRun && cent->dragLaunchTime > 0 ?
 			( cent->dragFinishTime > 0 ? cent->dragFinishTime : cg.time ) - cent->dragLaunchTime : 0;
-		const char *status = "HOLD HANDBRAKE TO STAGE";
+		const char *status = "REV IN N TO STAGE";
 		if ( elapsedMs < 0 ) elapsedMs = 0;
 		if ( cent->dragPhase == DRAG_FALSE_START ) status = "FALSE START";
 		else if ( cent->dragPhase == DRAG_DNF ) status = "DID NOT FINISH";
 		else if ( cent->dragPhase == DRAG_FINISHED ) status = "FINISHED";
 		else if ( cent->dragPhase == DRAG_RUNNING ) status = "MANUAL SHIFT";
-		else if ( cent->dragPhase == DRAG_COUNTDOWN ) status = "RELEASE BRAKE ON GREEN";
-		else if ( cent->dragPhase == DRAG_STAGED ) status = "STAGED - KEEP BRAKE HELD";
+		else if ( cent->dragPhase == DRAG_COUNTDOWN ) status = "SHIFT INTO 1ST ON GREEN";
+		else if ( cent->dragPhase == DRAG_STAGED ) status = "STAGED - HOLD REVS IN N";
 		CG_DrawIngameSmallString( 190, 418, "DRAG RACE", mutedColor );
 		CG_DrawIngameString( 190, 432, status, UI_SMALLFONT, 0.46f,
 			cent->dragPhase >= DRAG_FALSE_START ? dangerColor : colorWhite );
@@ -1495,6 +1495,10 @@ static void CG_DrawRallyTelemetryHud( void ) {
 			Com_sprintf( modeExtra, sizeof(modeExtra), "ET %d.%03d", elapsedMs / 1000, elapsedMs % 1000 );
 		else
 			Q_strncpyz( modeExtra, "ET --", sizeof(modeExtra) );
+		if ( cent->dragPhase < DRAG_RUNNING ) {
+			Com_sprintf( modeValue, sizeof(modeValue), "RPM %d", rpm );
+			Q_strncpyz( modeExtra, "NEUTRAL", sizeof(modeExtra) );
+		}
 		CG_DrawIngameSmallString( 190, 450, modeValue, colorWhite );
 		CG_DrawIngameString( 410, 450, modeExtra, UI_RIGHT | UI_SMALLFONT, 0.55f, accentColor );
 	} else if ( raceMode ) {

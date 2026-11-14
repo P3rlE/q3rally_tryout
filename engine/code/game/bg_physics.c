@@ -604,7 +604,7 @@ void PM_InitializeVehicle( car_t *car, vec3_t origin, vec3_t angles, vec3_t velo
 	car->springMinLength = CP_SPRING_MINLEN;
 //	car->shockStrength = CP_SHOCK_STRENGTH;
 
-	car->gear = 1;
+	car->gear = pm->dragRace ? 0 : 1;
 	car->rpm = CP_RPM_MIN;
 	car->fuel = keep ? fuel : CP_MAX_FUEL;
 	car->fuelLeak = keep ? leak : qfalse;

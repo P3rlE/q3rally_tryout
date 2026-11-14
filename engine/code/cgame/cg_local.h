@@ -2712,5 +2712,7 @@ int CG_NewParticleArea ( int num );
 qboolean CG_DemoPlayerActive( void );
 
 int CG_WebHUDNumber( int field, int index );
+void CG_DragPredictFirstGear( const centity_t *car, const playerState_t *ps,
+    int clientNum, int commandTime );
 int CG_WebHUDChar( int index, int field, int choice, int character );
 void CG_WebHUDAction( int action, int index, int value );

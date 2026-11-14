@@ -220,7 +220,7 @@ const server=http.createServer((req,res)=>{
   });
   assert.equal(await page.locator('#offline-players .offline-player').count(),2);
   assert.equal(await page.locator('#offline-players select').count(),0);
-  assert.match(await page.locator('#offline-grid-help').textContent(),/release on green/i);checks++;
+  assert.match(await page.locator('#offline-grid-help').textContent(),/hold revs in N, select first on green/i);checks++;
   await page.screenshot({path:path.join(output,'rules-drag.png')});
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);checks++;
