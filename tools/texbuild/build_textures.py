@@ -16,7 +16,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import common  # noqa: E402
-import r_metal, r_light, r_cutout, r_stone, r_nature, r_special  # noqa: E402,F401
+import r_metal, r_light, r_cutout, r_stone, r_nature, r_special, r_effects  # noqa: E402,F401
 from tex import save  # noqa: E402
 import json  # noqa: E402
 import numpy as np  # noqa: E402

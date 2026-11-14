@@ -1,8 +1,9 @@
-# Eigene Karten-Texturen
+# Eigene Karten- und Effekt-Texturen
 
 Die Karten benutzten noch 129 Bilder, die mit hoher Wahrscheinlichkeit aus Quake 3 stammen
-(Herkunftsklasse C der Asset-Prüfung, siehe `docs/assets/README.md`). Diese Bilder sind jetzt
-durch eigene ersetzt. Alle Pixel kommen aus einem Generator im Repo:
+(Herkunftsklasse C der Asset-Prüfung, siehe `docs/assets/README.md`). Dazu kamen 27 Effektbilder
+(Powerup-Spiegelungen, Feuer, Blitze, Rail-Effekte, Ladebildschirm) und drei Modelle. Alles davon ist
+jetzt durch eigene Inhalte ersetzt. Alle Pixel kommen aus einem Generator im Repo:
 
 ```
 python3 tools/texbuild/build_textures.py                  # alle Texturen nach baseq3r/
@@ -32,6 +33,12 @@ Gebraucht werden Python 3, numpy, scipy und Pillow.
 | `r_stone.py` | Stein- und Ziegelwände, Putz, das große Wandbild in `q3r_ctf_01` |
 | `r_nature.py` | Fels, Erde, Wolkenschichten |
 | `r_special.py` | Skybox, Spiegelungs-Maps, Wasser, Teleporter, CTF-Flaggen, Modelltexturen |
+| `r_effects.py` | Powerup- und Item-Spiegelungen, Feuer, Blitze, Rail-Kern und -Scheibe, Sonne, Ladebildschirm-Vignette |
+| `build_models.py` | Eigene Geometrie für die CTF-Flaggen (`models/flags/*_flag.md3`) und den Blitzeinschlag (`models/weaphits/crackle.md3`), gebaut mit `tools/carbuild/prim.py` |
+
+Die Modelle baut ein eigener Aufruf: `python3 tools/texbuild/build_models.py`. Die Flächen- und
+Shadernamen sind dieselben wie vorher, damit wehendes Tuch, Chrom-Stange und Flammen-Emblem weiter
+funktionieren. Das Tuch hat die alte Größe und Texturrichtung, das Emblem in der Kugel ist ein Rad.
 
 Jedes Rezept ist eine Funktion mit `@recipe`, die `{Pfad: (Farbe, Alpha oder None)}` zurückgibt.
 Zufall ist überall mit festen Seeds gesetzt, ein neuer Lauf ergibt also dieselben Bilder.
@@ -44,7 +51,8 @@ Zufall ist überall mit festen Seeds gesetzt, ein neuer Lauf ergibt also dieselb
 - Die CTF-Flaggen zeigen ein Lenkrad (blau) und eine karierte Raute (rot).
 - Die Modelltexturen der Lampen (`spotlamp`, `gratetorch2b`) und des Schädels sind neu gezeichnet. Die Ausschnitte passen zu den UV-Flächen der Modelle, die direkt aus den MD3-Dateien gelesen werden.
 
-## Nicht enthalten
+## Bewusst nicht ersetzt
 
-- Die Effekt- und Powerup-Texturen außerhalb der Karten (`textures/effects/envmap*`, `textures/sfx/*`, Flaggen-Effekte) sind noch alt.
+- `models/gibs/gibs.tga` trägt nur einen Quake-3-Namen. Inhaltlich ist es Q3Rallys eigener Trümmer-Atlas (Lenkrad, Lüfter, Schläuche).
 - `textures/effects/tinfx.tga` (OpenArena) und `baslt4_1_2k/_4k` (ohne Quake-3-Bezug) bleiben, wie sie sind.
+- Die alte Shotgun-Textur (`shotgun.tga`, `shotgun_spec.jpg`) und ihr Shader sind gelöscht. Seit den neuen Waffen benutzt sie kein Modell mehr.
