@@ -320,12 +320,12 @@ def main():
             status, herkunft, lizenz, todo = OWN_GEN, 'erzeugt von ' + ', '.join(sorted(u['gen'])), GAME, DONE
         elif name.startswith('Karte ') and 'test' in name:
             status, herkunft, lizenz, todo = OWN, 'Test- oder Werkstattkarte, für Q3Rally erstellt', GAME, DONE + '; kann aus dem Release raus'
-        elif k['eigen (generiert)'] + k['OpenArena'] == u['n']:
-            status, herkunft, lizenz, todo = OWN_GEN, 'erzeugt von ' + ', '.join(sorted(u['gen'])) + ' und OpenArena', 'GPLv2', CREDIT
-        elif u['bereich'] == 'Text/Code':
-            status, herkunft, lizenz, todo = OWN, 'Skripte, Shader, Konfiguration und Bot-Daten des Projekts', GAME, DONE
         elif k['OpenArena'] == u['n']:
             status, herkunft, lizenz, todo = FREE, 'OpenArena', 'GPL', CREDIT
+        elif k['eigen (generiert)'] + k['OpenArena'] == u['n']:
+            status, herkunft, lizenz, todo = OWN_GEN, 'erzeugt von ' + ', '.join(sorted(u['gen'])) + ' und OpenArena', GAME, DONE
+        elif u['bereich'] == 'Text/Code':
+            status, herkunft, lizenz, todo = OWN, 'Skripte, Shader, Konfiguration und Bot-Daten des Projekts', GAME, DONE
         else:
             hint = next((v for pfx, v in PACK_HINT.items() if name.startswith('Texturen ' + pfx)), '')
             if hint:
@@ -337,7 +337,7 @@ def main():
                 status, herkunft, lizenz, todo = OWN, 'für Q3Rally erstellt (laut Projekt)', GAME, DONE
         if k['Quake 3 (Verdacht)']:
             todo = f"{k['Quake 3 (Verdacht)']} Datei(en) mit Quake-3-Verdacht prüfen. " + todo
-        if k['OpenArena'] and status not in (FREE,) and 'OpenArena' not in todo:
+        if k['OpenArena'] and status != FREE and 'OpenArena' not in todo and 'OpenArena' not in herkunft:
             todo += f"; enthält {k['OpenArena']} OpenArena-Datei(en) (GPL, in den Credits genannt)"
         ask = HINTS.get(u['bereich'], '') if status in (UNKNOWN, ASK, CHECK, BAD) else ''
         out_units.append({'Bereich': u['bereich'], 'Einheit': name, 'Dateien': u['n'], 'MB': round(u['bytes'] / 1e6, 2),
