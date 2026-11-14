@@ -1,0 +1,717 @@
+{
+"env/xnight2_bk.jpg": [
+1,
+2,
+6
+],
+"env/xnight2_dn.jpg": [
+0,
+0,
+0
+],
+"env/xnight2_ft.jpg": [
+0,
+0,
+0
+],
+"env/xnight2_lf.jpg": [
+2,
+3,
+6
+],
+"env/xnight2_rt.jpg": [
+0,
+1,
+1
+],
+"env/xnight2_up.jpg": [
+0,
+0,
+0
+],
+"models/mapobjects/Skull/skull.jpg": [
+91,
+64,
+47
+],
+"models/mapobjects/gratelamp/gratetorch2.jpg": [
+48,
+21,
+11
+],
+"models/mapobjects/gratelamp/gratetorch2b.tga": [
+56,
+32,
+20
+],
+"models/mapobjects/spotlamp/beam.jpg": [
+31,
+25,
+20
+],
+"models/mapobjects/spotlamp/spotlamp.tga": [
+46,
+44,
+42
+],
+"models/mapobjects/spotlamp/spotlamp_l.jpg": [
+92,
+79,
+75
+],
+"textures/base_door/shinymetaldoor_outside3a2.tga": [
+26,
+17,
+17
+],
+"textures/base_door/shinymetaldoor_outside3glow.tga": [
+3,
+0,
+0
+],
+"textures/base_floor/clang_floor.jpg": [
+54,
+36,
+29
+],
+"textures/base_floor/diamond2.jpg": [
+42,
+42,
+42
+],
+"textures/base_floor/diamond2c.jpg": [
+42,
+42,
+42
+],
+"textures/base_floor/hfloor3.jpg": [
+48,
+38,
+26
+],
+"textures/base_floor/proto_grate4.tga": [
+56,
+38,
+29
+],
+"textures/base_floor/proto_rustygrate.tga": [
+46,
+26,
+12
+],
+"textures/base_floor/rusty_pentagrate.tga": [
+44,
+26,
+13
+],
+"textures/base_floor/tilefloor7.jpg": [
+25,
+21,
+15
+],
+"textures/base_floor/tilefloor7_ow.jpg": [
+22,
+19,
+15
+],
+"textures/base_floor/tilefloor7_owfx.jpg": [
+1,
+1,
+0
+],
+"textures/base_light/baslt4_1.blend.jpg": [
+83,
+83,
+58
+],
+"textures/base_light/baslt4_1.jpg": [
+121,
+120,
+105
+],
+"textures/base_light/baslt4_1_2k.jpg": [
+45,
+43,
+34
+],
+"textures/base_light/baslt4_1_4k.jpg": [
+101,
+93,
+80
+],
+"textures/base_light/border11light.blend.jpg": [
+40,
+26,
+23
+],
+"textures/base_light/border11light.jpg": [
+78,
+73,
+64
+],
+"textures/base_light/jaildr1_3.blend.jpg": [
+57,
+15,
+8
+],
+"textures/base_light/jaildr1_3.jpg": [
+62,
+30,
+24
+],
+"textures/base_light/light1.blend.jpg": [
+90,
+76,
+77
+],
+"textures/base_light/light1.jpg": [
+119,
+96,
+87
+],
+"textures/base_light/light5.jpg": [
+131,
+125,
+107
+],
+"textures/base_light/proto_light.jpg": [
+85,
+80,
+78
+],
+"textures/base_light/proto_lightmap.jpg": [
+62,
+52,
+49
+],
+"textures/base_light/proto_lightred.jpg": [
+168,
+26,
+14
+],
+"textures/base_light/runway.jpg": [
+72,
+56,
+41
+],
+"textures/base_light/runway_glow.jpg": [
+7,
+6,
+0
+],
+"textures/base_light/runwayb.jpg": [
+25,
+14,
+0
+],
+"textures/base_light/wsupprt1_12.jpg": [
+76,
+65,
+51
+],
+"textures/base_light/xlight5.blend.jpg": [
+102,
+95,
+73
+],
+"textures/base_light/xlight5.jpg": [
+43,
+42,
+41
+],
+"textures/base_support/cable.jpg": [
+31,
+30,
+25
+],
+"textures/base_support/grate1_4.jpg": [
+43,
+33,
+22
+],
+"textures/base_support/pip03_3.jpg": [
+76,
+58,
+42
+],
+"textures/base_support/pipecolumn4.tga": [
+102,
+39,
+19
+],
+"textures/base_support/support1shiny.tga": [
+41,
+35,
+32
+],
+"textures/base_support/surface2.jpg": [
+124,
+89,
+60
+],
+"textures/base_support/x_support.tga": [
+49,
+33,
+25
+],
+"textures/base_support/x_support2.png": [
+69,
+70,
+69
+],
+"textures/base_support/x_support2.tga": [
+69,
+70,
+69
+],
+"textures/base_support/z_support.tga": [
+78,
+69,
+63
+],
+"textures/base_trim/basemetalsupport.jpg": [
+75,
+69,
+65
+],
+"textures/base_trim/metal2_2.tga": [
+59,
+55,
+53
+],
+"textures/base_trim/panel_edged.jpg": [
+69,
+57,
+48
+],
+"textures/base_trim/panel_shiny.tga": [
+82,
+68,
+57
+],
+"textures/base_trim/proto_fence.tga": [
+69,
+55,
+46
+],
+"textures/base_trim/rusty_pewter_big.jpg": [
+47,
+42,
+35
+],
+"textures/base_trim/tinfx.jpg": [
+58,
+58,
+58
+],
+"textures/base_trim/wires01.tga": [
+130,
+103,
+87
+],
+"textures/base_trim/wires02.tga": [
+146,
+123,
+110
+],
+"textures/base_trim/xian_dm3padwall_x.jpg": [
+80,
+76,
+70
+],
+"textures/base_wall/atech1_a.jpg": [
+47,
+41,
+35
+],
+"textures/base_wall/atech1_b.jpg": [
+47,
+41,
+35
+],
+"textures/base_wall/atech1_e.jpg": [
+47,
+41,
+35
+],
+"textures/base_wall/bluemetal3.jpg": [
+119,
+93,
+92
+],
+"textures/base_wall/bluemetal3b.jpg": [
+121,
+94,
+94
+],
+"textures/base_wall/bluemetalsupport.jpg": [
+97,
+81,
+98
+],
+"textures/base_wall/bluemetalsupport2c_1vent.tga": [
+77,
+67,
+56
+],
+"textures/base_wall/bluemetalsupport2clight.glow.tga": [
+0,
+0,
+0
+],
+"textures/base_wall/bluemetalsupport2clight.tga": [
+82,
+92,
+88
+],
+"textures/base_wall/bluemetalsupport2f.tga": [
+103,
+94,
+84
+],
+"textures/base_wall/bluemetalsupport2ftv.tga": [
+108,
+99,
+89
+],
+"textures/base_wall/bluemetalsupport2ftv_glow.jpg": [
+4,
+20,
+1
+],
+"textures/base_wall/chrome_env.jpg": [
+145,
+146,
+145
+],
+"textures/base_wall/comp3.tga": [
+58,
+50,
+49
+],
+"textures/base_wall/comp3c.tga": [
+58,
+50,
+49
+],
+"textures/base_wall/comp3env.jpg": [
+51,
+55,
+60
+],
+"textures/base_wall/comp3text.jpg": [
+3,
+0,
+0
+],
+"textures/base_wall/comp3textb.jpg": [
+21,
+21,
+21
+],
+"textures/base_wall/concretepipe01.jpg": [
+81,
+75,
+66
+],
+"textures/base_wall/grill.tga": [
+78,
+72,
+67
+],
+"textures/base_wall/metalfloor_wall_10.jpg": [
+55,
+26,
+26
+],
+"textures/base_wall/metaltech04final.jpg": [
+94,
+79,
+70
+],
+"textures/base_wall/metaltech06final.jpg": [
+54,
+40,
+32
+],
+"textures/base_wall/metfloor_block_3.jpg": [
+94,
+84,
+76
+],
+"textures/base_wall/patch10_beatup2.jpg": [
+65,
+56,
+45
+],
+"textures/base_wall/patch10_beatup3.jpg": [
+76,
+62,
+51
+],
+"textures/base_wall/patch10rusty5.jpg": [
+127,
+94,
+69
+],
+"textures/base_wall/redmet4small.jpg": [
+69,
+25,
+25
+],
+"textures/ctf/blue_telep.jpg": [
+8,
+8,
+8
+],
+"textures/ctf/blue_telep2.jpg": [
+17,
+17,
+37
+],
+"textures/ctf/ctf_blueflag.tga": [
+29,
+29,
+107
+],
+"textures/ctf/ctf_redflag.tga": [
+107,
+28,
+28
+],
+"textures/ctf/red_telep.jpg": [
+8,
+8,
+8
+],
+"textures/ctf/red_telep2.jpg": [
+37,
+17,
+17
+],
+"textures/ctf/telep.tga": [
+41,
+39,
+37
+],
+"textures/ctf/test2.tga": [
+17,
+30,
+69
+],
+"textures/effects/tinfx.tga": [
+40,
+40,
+40
+],
+"textures/effects/tinfx2c.jpg": [
+67,
+67,
+69
+],
+"textures/effects/tinfx2d.jpg": [
+67,
+67,
+69
+],
+"textures/gothic_block/block10d.jpg": [
+78,
+64,
+49
+],
+"textures/gothic_block/blocks17.jpg": [
+94,
+81,
+76
+],
+"textures/gothic_cath/graycathflesh1L.jpg": [
+62,
+49,
+48
+],
+"textures/gothic_cath/graycathflesh1R.jpg": [
+68,
+53,
+54
+],
+"textures/gothic_cath/graycathflesh2L.jpg": [
+61,
+51,
+48
+],
+"textures/gothic_cath/graycathflesh2R.jpg": [
+72,
+60,
+57
+],
+"textures/gothic_cath/graycathflesh3L.jpg": [
+62,
+48,
+47
+],
+"textures/gothic_cath/graycathflesh3R.jpg": [
+65,
+51,
+50
+],
+"textures/gothic_cath/graycathflesh4L.jpg": [
+82,
+70,
+61
+],
+"textures/gothic_cath/graycathflesh4R.jpg": [
+92,
+80,
+70
+],
+"textures/gothic_cath/graycathflesh5L.jpg": [
+72,
+62,
+59
+],
+"textures/gothic_cath/graycathflesh5R.jpg": [
+76,
+65,
+62
+],
+"textures/gothic_floor/blocks17floor3.jpg": [
+82,
+47,
+38
+],
+"textures/gothic_floor/q1metal7_98d_256x256.jpg": [
+88,
+87,
+78
+],
+"textures/gothic_floor/q1metal7_99.jpg": [
+98,
+95,
+63
+],
+"textures/gothic_trim/baseboard01.jpg": [
+63,
+59,
+54
+],
+"textures/gothic_trim/border7.jpg": [
+45,
+46,
+40
+],
+"textures/gothic_trim/column2c_test.jpg": [
+60,
+58,
+65
+],
+"textures/gothic_trim/pitted_rust.jpg": [
+59,
+46,
+39
+],
+"textures/gothic_trim/zinc_shiny.tga": [
+90,
+85,
+78
+],
+"textures/gothic_wall/crack5c.jpg": [
+65,
+51,
+56
+],
+"textures/gothic_wall/iron01_c.jpg": [
+64,
+46,
+40
+],
+"textures/gothic_wall/iron01_c3.jpg": [
+58,
+39,
+37
+],
+"textures/gothic_wall/iron01_p.jpg": [
+62,
+48,
+44
+],
+"textures/gothic_wall/streetbricks11.jpg": [
+50,
+47,
+46
+],
+"textures/gothic_wall/support2b.jpg": [
+160,
+135,
+109
+],
+"textures/gothic_wall/supportborder_blue_b.jpg": [
+89,
+72,
+54
+],
+"textures/gothic_wall/xiantourneycolumn_b6.jpg": [
+47,
+38,
+33
+],
+"textures/liquids/pool3d_3c2.jpg": [
+141,
+141,
+160
+],
+"textures/liquids/pool3d_4b2.jpg": [
+3,
+10,
+7
+],
+"textures/liquids/pool3d_5c2.jpg": [
+129,
+129,
+140
+],
+"textures/liquids/pool3d_6c2.jpg": [
+88,
+99,
+100
+],
+"textures/organics/dirt2.jpg": [
+42,
+26,
+14
+],
+"textures/organics/pjrock7d.jpg": [
+81,
+76,
+58
+],
+"textures/sfx/shadow.jpg": [
+155,
+155,
+155
+],
+"textures/skies/dimclouds.jpg": [
+52,
+45,
+36
+],
+"textures/skies/killsky_1.jpg": [
+85,
+0,
+0
+],
+"textures/skies/killsky_2.jpg": [
+35,
+0,
+0
+],
+"textures/stone/pjrock1.jpg": [
+34,
+17,
+12
+],
+"textures/stone/rockwall.jpg": [
+60,
+36,
+36
+]
+}
