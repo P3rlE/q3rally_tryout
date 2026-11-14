@@ -629,11 +629,12 @@ def item(x, y, yaw, classname, z=ZG + 24):
 
 def props():
     # lamps along the inner roads (each with its copy turned by 180 degrees)
-    for x, y, yaw in ((1640, 2000, 0), (1940, 1500, 180), (1640, 1050, 0), (1640, 300, 0),
-                      (1640, -1100, 0), (1940, -1550, 180), (1640, -2000, 0),
-                      (152, 1700, 180), (152, 2100, 180),
-                      (-1300, 620, 90), (-500, 620, 90), (500, 620, 90), (1300, 620, 90),
-                      (900, 152, 270), (1400, -152, 90)):
+    # (56 units from the kerb: bots cutting a corner must not catch the pole)
+    for x, y, yaw in ((1608, 2000, 0), (1972, 1500, 180), (1608, 1050, 0),
+                      (1608, -1100, 0), (1972, -1550, 180), (1608, -2000, 0),
+                      (184, 1700, 180), (184, 2060, 180),
+                      (-1300, 588, 90), (-500, 588, 90), (500, 588, 90), (1300, 588, 90),
+                      (900, 184, 270), (1400, -184, 90)):
         both(lambda a, b, c: streetlamp(a, b, c), x, y, yaw)
     # lantern posts at the corners of the square
     for x, y in ((360, 360), (-360, 360)):
