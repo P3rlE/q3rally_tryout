@@ -3,8 +3,8 @@ Q3Rally Cobra - asset sources
 
 body.md3, wheel.md3, parts.tga
     Based on "COBRA", a 427 roadster with side pipes (KeyShot OBJ export,
-    83,951 triangles, no textures), a model provided by the Q3Rally project
-    (own/purchased model, cleared for use with the game).
+    83,951 triangles, no textures), a model provided to the Q3Rally project
+    and released for Q3Rally under the GNU General Public License version 2.
 
     Changes for Q3Rally (tools/carbuild/cobra):
     - an open car: everything visible from outside is kept, the cockpit

@@ -80,14 +80,13 @@ GPLv2 oder später. Bei den Daten geht es nicht über Version 2 hinaus, weil die
 Fremde Urheber und ihre Lizenzen stehen in `baseq3r/documents/credits.txt`; `make_release.py` legt die
 Datei als `CREDITS.txt` ins Release.
 
-Noch offen (Stand der CSV-Dateien):
+Offen ist nichts mehr:
 
-| Einheit | Befund | Was zu tun ist |
-|---|---|---|
-| Auto `db12` | unverträglich | Urheber und Lizenz des Modells fehlen. |
-| Auto `cobra` | Lizenz prüfen | Kaufmodell; erlaubt die Kauflizenz die Weitergabe unter GPL? |
+- DB12 und Cobra sind laut Projekt für Q3Rally unter GPLv2 freigegeben.
+- Das Intro-Video `video/idlogo.ogv` ist für Q3Rally erstellt. Es heißt nur so, weil die Engine diesen
+  Namen erwartet.
 
 Die Fahrerköpfe aus Quake 3 und die Xaero-Statue in `q3r_ctf_04` sind durch eigene Helme und einen
 Pokal ersetzt (#1516, siehe `docs/helmets.md` und `docs/textures/README.md`).
 
-Die beiden CSV-Dateien zeigen den Stand nach den PRs #1511 bis #1513, #1515 und #1516.
+Die beiden CSV-Dateien zeigen den Stand nach PR #1516 und den Freigaben für DB12 und Cobra.

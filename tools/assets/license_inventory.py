@@ -51,8 +51,8 @@ KB = {
     'Auto gt500': (OWN, 'Projekt-Modell upload.fbx laut CREDITS', GAME, DONE),
     'Auto gtr': (OWN, 'Projekt-Modell NissanGT-R.fbx laut CREDITS', GAME, DONE),
     'Auto ridgeback': (OWN, 'Projekt-Modell "lightbody lifted 85" laut CREDITS', GAME, DONE),
-    'Auto cobra': (CHECK, 'Modell "COBRA" (KeyShot-OBJ), laut CREDITS "own/purchased model, cleared for use with the game"', 'Kauflizenz', 'Kaufbedingungen prüfen: Ist Weitergabe des Modells unter GPL erlaubt? Sonst Freigabe beim Verkäufer einholen'),
-    'Auto db12': (BAD, 'Modell "Aston Martin DB12 2024" aus 2024-aston-martin-db12.zip; Autor und Lizenz laut CREDITS nicht angegeben', 'unbekannt', 'Urheber finden und Lizenz einholen, sonst Auto ersetzen'),
+    'Auto cobra': (REL, 'Modell "COBRA" (KeyShot-OBJ), dem Projekt zur Verfügung gestellt; laut Projekt für Q3Rally unter GPLv2 freigegeben', GAME, CREDIT),
+    'Auto db12': (REL, 'Modell "Aston Martin DB12 2024" aus 2024-aston-martin-db12.zip, dem Projekt zur Verfügung gestellt; laut Projekt für Q3Rally unter GPLv2 freigegeben', GAME, CREDIT),
     'Auto skyline': (FREE, '"Nissan Skyline R34 GT-R" von Lexyc16', 'CC BY 4.0', CREDIT + ' (CC BY 4.0 ist mit der GPL verträglich)'),
     # sounds
     'Sounds engines/default': (OWN, 'Motor-Loops aus Projekt-Material; Fehlzündungen und Schaltgeräusche synthetisch (tools/soundbuild)', GAME, DONE),
@@ -77,6 +77,7 @@ KB = {
     'Texturen evil* (Evillair)': (REL, 'Texturpakete evil1/2/4/5/8 von Evillair (Quake-3-Community); einige Dateien auch in OpenArena; laut Projekt freigegeben', GAME, CREDIT),
     'Texturen jim*': (REL, 'Texturpakete jim, jim_castle, jim_misc (Quake-3-Community); laut Projekt freigegeben', GAME, CREDIT),
     'Texturen q3r_* (Projekt-Sets)': (OWN, 'Q3Rally-eigene Texturensets (q3r_building, q3r_road, q3r_signage …); die Readme nennt Toxicity für Texturen', GAME, DONE),
+    'video': (OWN, 'Intro-Video mit Q3R-Logo (idlogo.ogv heißt so, weil die Engine den Namen erwartet); laut Projekt für Q3Rally erstellt', GAME, DONE),
     'Schriften': (FREE, 'Share Tech Mono', 'SIL OFL 1.1', CREDIT + '; Lizenztext liegt in fonts/'),
 }
 

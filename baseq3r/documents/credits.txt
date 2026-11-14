@@ -80,6 +80,10 @@ Nissan Skyline R34 GT-R (models/players/skyline)
     https://creativecommons.org/licenses/by/4.0/
     The changes for Q3Rally are listed in models/players/skyline/CREDITS.txt.
 
+Cobra (models/players/cobra) and Aston Martin DB12 (models/players/db12)
+    models provided to the Q3Rally project and released for Q3Rally
+    under the GNU GPL version 2.
+
 Each car folder in models/players/ may carry a CREDITS.txt with the sources
 of its model and textures.
 

@@ -4,8 +4,8 @@ Q3Rally DB12 - asset sources
 body.md3, wheel.md3, parts.tga
     Based on "Aston Martin DB12 2024" (Aston Martin DB12 2024.obj with its
     material colours), a model provided to the Q3Rally project as
-    2024-aston-martin-db12.zip. Original author and license: not stated in
-    the download - to be filled in before a release.
+    2024-aston-martin-db12.zip, released for Q3Rally under the GNU General
+    Public License version 2.
 
     Changes for Q3Rally (tools/carbuild/db12):
     - only the triangles visible from outside are kept (cull.py): the
