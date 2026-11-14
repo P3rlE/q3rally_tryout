@@ -568,7 +568,10 @@ static void CG_DrawModernHeader(int y, float fade) {
             case SBCOL_DEATHS:
             case SBCOL_LAPTIME:
             case SBCOL_DELTA:
+            case SBCOL_DRAG_REACTION:
+            case SBCOL_DRAG_ELAPSED:
             case SBCOL_TOTALTIME:
+            case SBCOL_DRAG_TRAP:
             case SBCOL_STATUS:
             case SBCOL_KOTH_CAPS:
             case SBCOL_KOTH_DEF:
