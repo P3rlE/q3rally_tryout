@@ -1,7 +1,9 @@
-"""Own geometry for the CTF flags and the lightning impact.
+"""Own geometry for the CTF flags, the lightning impact and the debris.
 
     python3 tools/texbuild/build_models.py
 
+The debris pieces keep the size, position and shader of the pieces they
+replace (debris_sizes.json holds only those numbers); their shapes are new.
 Surface and shader names stay the same as before, so the existing shaders
 (waving cloth, chrome pole, flame emblem) keep working. The cloth keeps
 its size and texture direction (u along the cloth, v down from the top).
@@ -9,6 +11,8 @@ its size and texture direction (u along the cloth, v down from the top).
 import math
 import os
 import sys
+
+import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', 'carbuild'))
@@ -112,7 +116,87 @@ def crackle():
     return m
 
 
+def chunk(rng, size, kind):
+    """Points of a debris piece inside its box `size` (x, y, z)."""
+    sx, sy, sz = (s / 2 for s in size)
+    if kind == 'wood':                          # a splintered plank along its longest axis
+        ax = int(np.argmax(size))
+        half = [sx, sy, sz]
+        o = [i for i in range(3) if i != ax]
+        pts = []
+        for end in (-1, 1):
+            for k in range(rng.integers(3, 6)):    # ragged end: points pulled back by different amounts
+                p = [rng.uniform(-1, 1) * h for h in half]
+                p[ax] = end * half[ax] * rng.uniform(0.55, 1.0)
+                pts.append(p)
+            for a in (-1, 1):
+                for b in (-1, 1):
+                    p = [0.0, 0.0, 0.0]
+                    p[o[0]], p[o[1]] = a * half[o[0]], b * half[o[1]]
+                    p[ax] = end * half[ax] * rng.uniform(0.45, 0.8)
+                    pts.append(p)
+        return np.array(pts)
+    if kind == 'glass':                         # a flat shard with a few sharp corners
+        thin = int(np.argmin(size))
+        o = [i for i in range(3) if i != thin]
+        k = rng.integers(4, 7)
+        ang = np.sort(rng.uniform(0, 2 * np.pi, k))
+        rad = rng.uniform(0.45, 1.0, k)
+        pts = []
+        for a, r in zip(ang, rad):
+            for side in (-1, 1):
+                p = [0.0, 0.0, 0.0]
+                p[o[0]] = np.cos(a) * r * size[o[0]] / 2
+                p[o[1]] = np.sin(a) * r * size[o[1]] / 2
+                p[thin] = side * size[thin] / 2
+                pts.append(p)
+        return np.array(pts)
+    # concrete and stone: a lumpy block, flatter faces where it broke
+    n = 16 if max(size) < 30 else 22
+    d = rng.normal(size=(n, 3))
+    d /= np.linalg.norm(d, axis=1)[:, None]
+    d = np.sign(d) * np.abs(d) ** 0.6           # pushed towards a box: broken blocks have flat sides
+    return d * [sx, sy, sz] * rng.uniform(0.8, 1.0, (n, 1))
+
+
+def debris(name, info, seed):
+    """One debris model: the convex hull of chunk(), flat-shaded."""
+    from scipy.spatial import ConvexHull
+    rng = np.random.default_rng(seed)
+    kind = 'wood' if 'wood' in name else 'glass' if 'glass' in name else 'stone'
+    pts = chunk(rng, info['size'], kind)
+    lo, hi = pts.min(0), pts.max(0)             # stretch to exactly the old size
+    pts = (pts - (lo + hi) / 2) * (np.array(info['size']) / np.maximum(hi - lo, 1e-3)) + np.array(info['centre'])
+    hull = ConvexHull(pts)
+    m = Mesh({'m': (0.0, 0.0, 1.0)})
+    m.surf('debris', info['shader'])
+    ax = int(np.argmax(info['size']))
+    for simplex, eq in zip(hull.simplices, hull.equations):
+        n = eq[:3]
+        a, b, c = (pts[i] for i in simplex)
+        if np.dot(np.cross(b - a, c - a), n) < 0:
+            b, c = c, b
+        ids = []
+        for p in (a, b, c):
+            if kind == 'wood':                  # grain runs along the plank
+                o = [i for i in range(3) if i != ax]
+                uv = ((p[ax] - pts[:, ax].min()) / max(info['size'][ax], 1), 0.5 + (p[o[0]] + p[o[1]]) / 16.0)
+            else:                               # box projection, one texture repeat per 64 units
+                k = int(np.argmax(np.abs(n)))
+                o = [i for i in range(3) if i != k]
+                uv = (p[o[0]] / 64.0, p[o[1]] / 64.0)
+            ids.append(m.vert(tuple(float(v) for v in p), tuple(float(v) for v in n), 'm', uv))
+        m.tri(*ids)
+    return m
+
+
 def main():
+    import json
+    sizes = json.load(open(os.path.join(HERE, 'debris_sizes.json')))
+    for i, (name, info) in enumerate(sorted(sizes.items())):
+        path = os.path.join(BASE, 'models', 'debris', name)
+        debris(name, info, 2000 + i).save(path, name[:-4])
+    print(len(sizes), 'debris models')
     for colour in ('b', 'r'):
         path = os.path.join(BASE, 'models', 'flags', f'{colour}_flag.md3')
         print(path, flag(colour).save(path, f'{colour}_flag'), 'triangles')
