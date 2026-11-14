@@ -12,19 +12,7 @@ pop1.wav .. pop4.wav
     and a decaying sine, numpy). No third-party material.
 
 shift1.wav, shift2.wav
-    Gear change clack, cut from the Pixabay sound effect
-    "car gear shift park chevrolet equinox" (Pixabay ID 267611,
-    original file nsqke_sfx-car-gear-shift-park-chevrolet-equinox-267611.mp3).
-    Edited for Q3Rally: two single clacks cut out (at 0.83 s and 3.50 s),
-    110 Hz high-pass against the engine rumble, noise gate after the clack,
-    normalized to -6 dBFS, 44.1 kHz mono.
-
-    License: Pixabay Content License
-    https://pixabay.com/service/license-summary/
-    - free to use, no attribution required (credited here anyway)
-    - may be modified and used in new works
-    - must not be sold or distributed as a standalone file in essentially
-      unmodified form; here it is edited and part of the game
-    - no use with trademarks/logos for commercial goods, not misleading,
-      not illegal
-    The full license text on pixabay.com is the legally binding version.
+    Gear change clack. Synthetic, made by tools/soundbuild/build_sounds.py
+    (gear_clack: a click, a short metal ring, a low knock and the second
+    clack of the teeth engaging), 44.1 kHz mono, peak at -6 dBFS.
+    No third-party material.
