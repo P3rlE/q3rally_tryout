@@ -175,3 +175,32 @@ textures/q3r_ctf_04/pool_side
 		rgbgen identity
 	}
 }
+
+// ------------------------------------------------------------
+// Invisible collision (tools/maptools/rework_ctf04.py). Both are SOLID:
+// the vehicle physics (Bullet) only takes solid brushes, common/full_clip
+// is player clip only. trans lets the light through.
+// ------------------------------------------------------------
+
+textures/q3r_ctf_04/propclip
+{
+	qer_trans 0.15
+	// hull of a model (trees, lamps, parked cars): stops cars and shots
+	surfaceparm nodraw
+	surfaceparm nolightmap
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm detail
+}
+
+textures/q3r_ctf_04/boundary
+{
+	qer_trans 0.15
+	// wall above the barrier at the edge of the play area, up to the sky
+	surfaceparm nodraw
+	surfaceparm nolightmap
+	surfaceparm trans
+	surfaceparm nomarks
+	surfaceparm noimpact
+	surfaceparm detail
+}

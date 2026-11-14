@@ -1,0 +1,46 @@
+{
+//MAP FILE NAME
+map "q3r_ctf_04"
+
+//IN-GAME MAP NAME
+longname "Trophy Square"
+
+//AUTHOR OF THE MAP
+author "Q3Rally Team"
+
+//GAME TYPE SUPPORTS
+type "q3r_ctf"
+
+//CUSTOM BOTS
+//bots ""
+
+//PLAYER STARTS
+starts "10"
+
+//LAPTIME
+laptime ""
+
+//CHECKPOINTS
+checkpoints ""
+
+//OBSERVER SPOTS
+observerspots ""
+
+//WEAPONS
+weapons "BFG,SG,GL,FT,RG"
+
+//POWERUPS
+powerups ""
+
+//REVERSABLE
+reversable ""
+
+//TRACK LENGTHS
+tracklengths ""
+
+//BOT SUPPORTS
+botsupport "Good"
+
+//TEAMS
+teams "2"
+}
