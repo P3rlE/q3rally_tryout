@@ -1,5 +1,59 @@
 !!! --- Q3Rally Changelog --- !!!
 
+Unreleased
+
+License:
+
+- Q3Rally is licensed under the GNU GPL version 2: the engine under version
+  2 or later, the game data under version 2 (documents/license.txt; some
+  skies are "version 2 only"). Third-party authors and their licenses are
+  listed in documents/credits.txt, shipped as CREDITS.txt in the release
+  packages. Every file of the game data is accounted for in
+  docs/assets/lizenz_einheiten.csv (tools/assets/license_inventory.py).
+- The game data no longer contains content from Quake III Arena: everything
+  that came from id Software has been replaced by own content or removed
+  (the changes below).
+
+Changed:
+
+- Weapons: own models in a "built, not bought" style, all ten made from car
+  parts on the same roof plate, with own muzzle flashes and icons. New names
+  close to the old ones: Harvester Saw, Spotlight MG, Twin Shotgun, Drum
+  Launcher, Quad Launcher, Spark Gun, Turbo Railgun, Plasma Cooler, BFG
+  Blower, Nitro Flamer. Weapon numbers, classnames and bot files stay;
+  "give" still knows the old names. Generator tools/carbuild/weapons.
+- Map textures: 129 images from Quake 3 are now generated
+  (tools/texbuild). File names, sizes, alpha and the average colour stay,
+  so no map had to be compiled again. Own motifs instead of the old ones:
+  a wheel rim instead of the pentagram grate, a steering wheel instead of
+  the skull mural in q3r_ctf_01, wheel hubs on iron01_p.
+- Effects: own reflection maps for powerups and items, fire, lightning,
+  rail core and disc, sun glow, loading screen vignette; own CTF flag
+  models (wheel emblem) and lightning impact model.
+- Sounds: the last six sounds from Quake 3 are synthesised (lava, loud
+  fire, computer hum, air suction, Harvester Saw running and hitting), as
+  are the gear change clacks of the default engine sound (previously a
+  Pixabay effect). Same names, lengths and loudness; loops without seams.
+  Generator tools/soundbuild.
+- Debris of breakables: own models for all 42 pieces (concrete, stone,
+  glass, wood) and their two textures, same size and placement as before.
+- Driver heads: 18 own racing helmets instead of the heads of the Quake 3
+  characters, 14 full face (classic, racer, checker, flames, carbon, police,
+  camo, neon, gold, lightning, tricolore, stars, sunset, arrow) and 4 open
+  with balaclava and goggles (retro, vintage, moto, pilot). The default is
+  "classic"; a saved head that no longer exists falls back to it.
+  Generator tools/carbuild/helmets.
+- q3r_ctf_04: a bronze rally trophy on a granite plinth stands in the
+  fountain instead of the Xaero statue. Only the statue was swapped in the
+  compiled map (tools/maptools/replace_model_in_bsp.py); lighting and bot
+  navigation are unchanged.
+
+Removed:
+
+- 187 unused files from Quake 3 and OpenArena that no map, model, shader
+  or code loads (tools/assets/find_unused_assets.py), and the textures of
+  the old weapons.
+
 v0.8.4 - 2026-11-03
 
 Fixed:
