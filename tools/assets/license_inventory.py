@@ -76,11 +76,8 @@ KB = {
     # fonts and documents
     'Texturen evil* (Evillair)': (REL, 'Texturpakete evil1/2/4/5/8 von Evillair (Quake-3-Community); einige Dateien auch in OpenArena; laut Projekt freigegeben', GAME, CREDIT),
     'Texturen jim*': (REL, 'Texturpakete jim, jim_castle, jim_misc (Quake-3-Community); laut Projekt freigegeben', GAME, CREDIT),
-    'Modelle mapobjects/xaero_statue': (BAD, 'Statue der Quake-3-Figur Xaero: die Textur zeigt Xaeros Gesicht und Rüstung (wie heads/quake3/xaero_h.tga); das Modell ist als misc_model fest in q3r_ctf_04.bsp eingebaut', 'id Software, keine freie Lizenz', 'Statue in q3r_ctf_04.map durch ein eigenes Objekt ersetzen, Karte und AAS neu kompilieren, Ordner löschen'),
     'Texturen q3r_* (Projekt-Sets)': (OWN, 'Q3Rally-eigene Texturensets (q3r_building, q3r_road, q3r_signage …); die Readme nennt Toxicity für Texturen', GAME, DONE),
     'Schriften': (FREE, 'Share Tech Mono', 'SIL OFL 1.1', CREDIT + '; Lizenztext liegt in fonts/'),
-    # Quake 3 characters
-    'Autoteile heads': (BAD, 'Fahrerköpfe der Quake-3-Figuren: Ordner heads/quake3/ mit den Kopf-Skins von Sarge, Klesk, Sorlag, Xaero, Doom, Anarki …, Modellnamen und Skin-Varianten (krusade, roderic, harpy …) wie in Quake 3, dazu die Icons', 'id Software, keine freie Lizenz', 'durch eigene Fahrerköpfe oder Helme ersetzen'),
 }
 
 # files the project states are its own although they carry old Quake 3 names
@@ -127,6 +124,9 @@ GEN_RULES = [
     (r'^models/flags/[br]_flag\.md3$', 'tools/texbuild/build_models.py'),
     (r'^models/weaphits/crackle\.md3$', 'tools/texbuild/build_models.py'),
     (r'^models/debris/[^/]+\.md3$', 'tools/texbuild/build_models.py'),
+    (r'^models/mapobjects/q3r_trophy/', 'tools/texbuild'),
+    (r'^models/players/heads/', 'tools/carbuild/helmets'),
+    (r'^scripts/(heads|q3r_trophy)\.shader$', 'tools/carbuild/helmets'),
     (r'^models/mapobjects/koth/', 'tools/koth'),
     (r'^models/mapobjects/(q3r_lanterns|q3r_rail)/', 'tools/mapobjects'),
     (r'^models/mapobjects/startlight/', 'tools/maptools/make_startlight.py'),

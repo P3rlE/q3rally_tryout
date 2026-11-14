@@ -84,9 +84,10 @@ Noch offen (Stand der CSV-Dateien):
 
 | Einheit | Befund | Was zu tun ist |
 |---|---|---|
-| `models/players/heads` | unverträglich | Die Fahrerköpfe sind die Köpfe der Quake-3-Figuren (Ordner `heads/quake3/`, Sarge, Klesk, Sorlag, Xaero …). Durch eigene Köpfe oder Helme ersetzen. |
-| `models/mapobjects/Xaero_statue` | unverträglich | Statue der Quake-3-Figur Xaero, fest in `q3r_ctf_04.bsp` eingebaut. Durch ein eigenes Objekt ersetzen und die Karte neu kompilieren. |
 | Auto `db12` | unverträglich | Urheber und Lizenz des Modells fehlen. |
 | Auto `cobra` | Lizenz prüfen | Kaufmodell; erlaubt die Kauflizenz die Weitergabe unter GPL? |
 
-Die beiden CSV-Dateien zeigen den Stand nach den PRs #1511 bis #1513 und #1515.
+Die Fahrerköpfe aus Quake 3 und die Xaero-Statue in `q3r_ctf_04` sind durch eigene Helme und einen
+Pokal ersetzt (#1516, siehe `docs/helmets.md` und `docs/textures/README.md`).
+
+Die beiden CSV-Dateien zeigen den Stand nach den PRs #1511 bis #1513, #1515 und #1516.

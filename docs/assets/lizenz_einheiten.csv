@@ -22,7 +22,7 @@ Autos,Auto skyline,112,15.47,112 unbekannt,"""Nissan Skyline R34 GT-R"" von Lexy
 Autos,Auto slingshot,83,22.73,83 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,zz_secret_skins.pk3
 Autos,Auto viper,119,22.86,119 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,zz_secret_skins.pk3
 Autos,Autoteile allgemein,1,0.0,1 OpenArena,OpenArena,GPL,"frei, verträglich",nichts mehr; in documents/credits.txt genannt,,
-Autos,Autoteile heads,192,7.82,192 unbekannt,"Fahrerköpfe der Quake-3-Figuren: Ordner heads/quake3/ mit den Kopf-Skins von Sarge, Klesk, Sorlag, Xaero, Doom, Anarki …, Modellnamen und Skin-Varianten (krusade, roderic, harpy …) wie in Quake 3, dazu die Icons","id Software, keine freie Lizenz",unverträglich,durch eigene Fahrerköpfe oder Helme ersetzen,"SteelPainter (viele Autos und Skins), To-Mos (Modelle), altes Q3Rally-Team",
+Autos,Autoteile heads,81,2.3,81 eigen (generiert),erzeugt von tools/carbuild/helmets,GPLv2 (Spiellizenz),"eigen, generiert",nichts mehr; steht unter der Spiellizenz,,
 Autos,Autoteile plates,56,0.44,56 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
 Autos,Autoteile wheels,374,4.12,374 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
 Himmel,Skybox ame_desert,7,4.72,7 unbekannt,"amethyst7 (Chris Matz), readme",GPLv2 (nur Version 2),"frei, verträglich",wie ame_nebula,,
@@ -45,7 +45,7 @@ Karten,Karte q3r_crossroads,8,44.88,8 eigen (generiert),erzeugt von tools/maptoo
 Karten,Karte q3r_ctf4_01,4,0.27,4 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
 Karten,Karte q3r_ctf4_03,7,15.07,7 eigen (generiert),erzeugt von tools/maptools,GPLv2 (Spiellizenz),"eigen, generiert",nichts mehr; steht unter der Spiellizenz,,
 Karten,Karte q3r_ctf_01,5,10.56,5 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
-Karten,Karte q3r_ctf_04,4,6.1,4 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
+Karten,Karte q3r_ctf_04,4,6.48,4 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
 Karten,Karte q3r_ctf_bot_test,4,0.26,4 unbekannt,"Test- oder Werkstattkarte, für Q3Rally erstellt",GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz; kann aus dem Release raus,,
 Karten,Karte q3r_david4,8,20.89,8 eigen (generiert),erzeugt von tools/maptools,GPLv2 (Spiellizenz),"eigen, generiert",nichts mehr; steht unter der Spiellizenz,,
 Karten,Karte q3r_david5,5,2.21,5 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
@@ -70,7 +70,7 @@ Karten,Karte q3r_timberrun,15,55.07,15 eigen (generiert),erzeugt von tools/mapto
 Karten,Karte q3r_valley,6,4.96,6 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
 Karten,Karte q3r_watertest,2,0.48,2 unbekannt,"Test- oder Werkstattkarte, für Q3Rally erstellt",GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz; kann aus dem Release raus,,
 Karten,Karte test,5,0.9,5 unbekannt,"Test- oder Werkstattkarte, für Q3Rally erstellt",GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz; kann aus dem Release raus,,
-Modelle,Eigene generierte Dateien (Modelle),109,4.37,109 eigen (generiert),"erzeugt von tools/carbuild/weapons, tools/koth, tools/mapobjects, tools/maptools/make_startlight.py, tools/texbuild, tools/texbuild/build_models.py",GPLv2 (Spiellizenz),"eigen, generiert",nichts mehr; steht unter der Spiellizenz,,
+Modelle,Eigene generierte Dateien (Modelle),115,4.57,115 eigen (generiert),"erzeugt von tools/carbuild/weapons, tools/koth, tools/mapobjects, tools/maptools/make_startlight.py, tools/texbuild, tools/texbuild/build_models.py",GPLv2 (Spiellizenz),"eigen, generiert",nichts mehr; steht unter der Spiellizenz,,
 Modelle,"Modelle Sonstiges (test, mapobjects ohne Unterordner)",9,0.07,9 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
 Modelle,Modelle autoball,4,2.13,4 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
 Modelle,Modelle breakables,10,0.13,10 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
@@ -102,7 +102,6 @@ Modelle,Modelle mapobjects/vehicles,22,5.72,22 unbekannt,für Q3Rally erstellt (
 Modelle,Modelle mapobjects/videocamera,3,0.3,3 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
 Modelle,Modelle mapobjects/watertower,7,0.76,7 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
 Modelle,Modelle mapobjects/woodpole,5,0.1,5 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
-Modelle,Modelle mapobjects/xaero_statue,3,0.39,3 unbekannt,Statue der Quake-3-Figur Xaero: die Textur zeigt Xaeros Gesicht und Rüstung (wie heads/quake3/xaero_h.tga); das Modell ist als misc_model fest in q3r_ctf_04.bsp eingebaut,"id Software, keine freie Lizenz",unverträglich,"Statue in q3r_ctf_04.map durch ein eigenes Objekt ersetzen, Karte und AAS neu kompilieren, Ordner löschen","To-Mos (Modelle und Kartenobjekte), Viktor Karp (Trümmer), altes Q3Rally-Team",
 Modelle,Modelle powerups,137,18.27,"97 unbekannt, 23 eigen (alter Name), 11 eigen (generiert), 6 OpenArena",für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,"nichts mehr; steht unter der Spiellizenz; enthält 6 OpenArena-Datei(en) (GPL, in den Credits genannt)",,
 Modelle,Modelle rearfire,22,0.33,22 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
 Modelle,Modelle weaphits,20,1.3,"18 OpenArena, 2 eigen (generiert)","erzeugt von tools/texbuild, tools/texbuild/build_models.py und OpenArena",GPLv2 (Spiellizenz),"eigen, generiert",nichts mehr; steht unter der Spiellizenz,,
@@ -140,7 +139,7 @@ Sounds,Sounds weapons,7,0.09,"4 unbekannt, 2 eigen (generiert), 1 OpenArena",fü
 Sounds,Sounds weather,6,1.94,6 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,
 Sounds,Sounds world,48,4.93,"37 OpenArena, 7 unbekannt, 4 eigen (generiert)",für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,"nichts mehr; steht unter der Spiellizenz; enthält 37 OpenArena-Datei(en) (GPL, in den Credits genannt)",,
 Text/Code,Bot-Dateien,111,0.59,"109 OpenArena, 2 unbekannt","Skripte, Shader, Konfiguration und Bot-Daten des Projekts",GPLv2 (Spiellizenz),eigen laut Projekt,"nichts mehr; steht unter der Spiellizenz; enthält 109 OpenArena-Datei(en) (GPL, in den Credits genannt)",,
-Text/Code,"Skripte, Shader, Konfiguration",70,0.78,"59 unbekannt, 7 eigen (alter Name), 3 OpenArena, 1 eigen (generiert)","Skripte, Shader, Konfiguration und Bot-Daten des Projekts",GPLv2 (Spiellizenz),eigen laut Projekt,"nichts mehr; steht unter der Spiellizenz; enthält 3 OpenArena-Datei(en) (GPL, in den Credits genannt)",,zz_secret_skins.pk3
+Text/Code,"Skripte, Shader, Konfiguration",72,0.76,"59 unbekannt, 7 eigen (alter Name), 3 eigen (generiert), 3 OpenArena","Skripte, Shader, Konfiguration und Bot-Daten des Projekts",GPLv2 (Spiellizenz),eigen laut Projekt,"nichts mehr; steht unter der Spiellizenz; enthält 3 OpenArena-Datei(en) (GPL, in den Credits genannt)",,zz_secret_skins.pk3
 Texturen,Eigene generierte Dateien (Texturen),16,2.64,16 eigen (generiert),erzeugt von tools/texbuild,GPLv2 (Spiellizenz),"eigen, generiert",nichts mehr; steht unter der Spiellizenz,,
 Texturen,OpenArena-Dateien (Texturen),20,1.23,20 OpenArena,OpenArena,GPL,"frei, verträglich",nichts mehr; in documents/credits.txt genannt,,
 Texturen,Texturen arctic,23,0.88,23 unbekannt,für Q3Rally erstellt (laut Projekt),GPLv2 (Spiellizenz),eigen laut Projekt,nichts mehr; steht unter der Spiellizenz,,

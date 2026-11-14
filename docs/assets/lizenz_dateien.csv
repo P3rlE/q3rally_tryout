@@ -111,13 +111,14 @@ botfiles/syn.h,1323,Bot-Dateien,Text/Code,OpenArena,,B
 botfiles/teamplay.h,10716,Bot-Dateien,Text/Code,OpenArena,,B
 botfiles/weapons.c,4064,Bot-Dateien,Text/Code,OpenArena,,B
 default.cfg,1389,"Skripte, Shader, Konfiguration",Text/Code,eigen (alter Name),,E
-documents/license.docx,18336,documents,Sonstiges,unbekannt,,F
-documents/license.txt,34460,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
+documents/credits.txt,3242,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,
+documents/license.docx,10886,documents,Sonstiges,unbekannt,,F
+documents/license.txt,15148,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 documents/LINUXNOTES.txt,481,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 documents/OGGVORBIS.README.txt,1470,"Skripte, Shader, Konfiguration",Text/Code,OpenArena,,A
 documents/productid.txt,16,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 documents/readme.docx,6161,documents,Sonstiges,unbekannt,,F
-documents/readme.txt,2538,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
+documents/readme.txt,2710,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 documents/SDL.README.txt,377,"Skripte, Shader, Konfiguration",Text/Code,OpenArena,,A
 env/ame_desert/desertsky_bk.tga,786450,Skybox ame_desert,Himmel,unbekannt,,F
 env/ame_desert/desertsky_dn.tga,786450,Skybox ame_desert,Himmel,unbekannt,,F
@@ -456,8 +457,8 @@ maps/q3r_ctf_01.aas,1377376,Karte q3r_ctf_01,Karten,unbekannt,,F
 maps/q3r_ctf_01.bsp,6507236,Karte q3r_ctf_01,Karten,unbekannt,,F
 maps/q3r_ctf_01.map,1916236,Karte q3r_ctf_01,Karten,unbekannt,,F
 maps/q3r_ctf_04.aas,379332,Karte q3r_ctf_04,Karten,unbekannt,,F
-maps/q3r_ctf_04.bsp,4914592,Karte q3r_ctf_04,Karten,unbekannt,,F
-maps/q3r_ctf_04.map,802538,Karte q3r_ctf_04,Karten,unbekannt,,F
+maps/q3r_ctf_04.bsp,5292012,Karte q3r_ctf_04,Karten,unbekannt,,F
+maps/q3r_ctf_04.map,802530,Karte q3r_ctf_04,Karten,unbekannt,,F
 maps/q3r_ctf_bot_test.aas,1212,Karte q3r_ctf_bot_test,Karten,unbekannt,,F
 maps/q3r_ctf_bot_test.bsp,252288,Karte q3r_ctf_bot_test,Karten,unbekannt,,F
 maps/q3r_ctf_bot_test.map,6271,Karte q3r_ctf_bot_test,Karten,unbekannt,,F
@@ -1115,6 +1116,12 @@ models/mapobjects/q3r_timberrun/sprite_beech_y.tga,284904,Modelle mapobjects/q3r
 models/mapobjects/q3r_timberrun/sprite_oak.tga,245333,Modelle mapobjects/q3r_timberrun,Modelle,unbekannt,,F
 models/mapobjects/q3r_timberrun/sprite_spruce.tga,329196,Modelle mapobjects/q3r_timberrun,Modelle,unbekannt,,F
 models/mapobjects/q3r_timberrun/spruce.tga,225484,Modelle mapobjects/q3r_timberrun,Modelle,unbekannt,,F
+models/mapobjects/q3r_trophy/band.jpg,2050,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild,
+models/mapobjects/q3r_trophy/bronze.jpg,15462,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild,
+models/mapobjects/q3r_trophy/env.jpg,2177,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild,
+models/mapobjects/q3r_trophy/plaque.jpg,10265,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild,
+models/mapobjects/q3r_trophy/stone.jpg,109065,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild,
+models/mapobjects/q3r_trophy/trophy.md3,65156,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild,
 models/mapobjects/q3rlogo/logo.md3,18356,Modelle mapobjects/q3rlogo,Modelle,unbekannt,,F
 models/mapobjects/redish/lightspot_white.ase,23917,OpenArena-Dateien (Modelle),Modelle,OpenArena,,B
 models/mapobjects/roadblock/roadblock.jpg,5639,Modelle mapobjects/roadblock,Modelle,unbekannt,,F
@@ -1188,9 +1195,6 @@ models/mapobjects/woodpole/pole_75.md3,852,Modelle mapobjects/woodpole,Modelle,u
 models/mapobjects/woodpole/pole_cap.md3,1076,Modelle mapobjects/woodpole,Modelle,unbekannt,,F
 models/mapobjects/woodpole/polew.script,189,Modelle mapobjects/woodpole,Modelle,unbekannt,,F
 models/mapobjects/woodpole/wood01.tga,98348,Modelle mapobjects/woodpole,Modelle,unbekannt,,F
-models/mapobjects/Xaero_statue/xaero_statue.tga,262188,Modelle mapobjects/xaero_statue,Modelle,unbekannt,,F
-models/mapobjects/Xaero_statue/xaero_statue_a.tga,65580,Modelle mapobjects/xaero_statue,Modelle,unbekannt,,F
-models/mapobjects/Xaero_statue/xaero_statue_h.tga,65580,Modelle mapobjects/xaero_statue,Modelle,unbekannt,,F
 models/misc/telep.md3,1924,OpenArena-Dateien (Modelle),Modelle,OpenArena,,A
 models/players/alpine/animation.cfg,10,Auto alpine,Autos,unbekannt,,F
 models/players/alpine/blue.skin,655,Auto alpine,Autos,unbekannt,,F
@@ -1657,198 +1661,87 @@ models/players/gtr/red_main.tga,63218,Auto gtr,Autos,unbekannt,,F
 models/players/gtr/wheel.md3,185716,Auto gtr,Autos,unbekannt,,F
 models/players/gtr/yellow.skin,790,Auto gtr,Autos,unbekannt,,F
 models/players/gtr/yellow_main.tga,64919,Auto gtr,Autos,unbekannt,,F
-models/players/heads/anarki.md3,5000,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/anarki.skin,109,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/angel.md3,41412,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/angel.skin,58,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/biker.md3,29096,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/biker.skin,57,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/bitterman.md3,26116,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/bitterman.skin,61,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/bones.md3,20852,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/bones.skin,57,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/bones2.md3,20852,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/bones2.skin,59,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/cadavre.md3,29096,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/cadavre.skin,59,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/crash.md3,45200,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/crash.skin,107,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/daemia.md3,5156,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/daemia.skin,58,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/doom.md3,4896,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/doom.skin,103,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/fanatic.md3,36020,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/fanatic.skin,114,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/flisk.md3,3492,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/flisk.skin,57,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/gorre.md3,29404,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/gorre.skin,55,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/grrl.md3,42872,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/grrl.skin,56,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/grunt.md3,3436,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/grunt.skin,57,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/harpy.md3,4768,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/harpy.skin,109,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/hossman.md3,29096,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/hossman.skin,59,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/hunter.md3,4768,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/hunter.skin,110,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_anarki.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_angel.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_biker.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_bitterman.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_bones.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_bones2.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_cadavre.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_crash.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_daemia.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_doom.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_fanatic.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_flisk.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_gorre.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_grrl.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_grunt.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_harpy.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_hossman.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_hunter.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_id.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_keel.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_klesk.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_krusade.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_lucy.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_major.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_mynx.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_orbb.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_patriot.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_phobos.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_ranger.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_razor.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_roderic.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_sarge.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_slammer.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_slash.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_sorlag.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_stripe.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_stroggo.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_tankjr.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_uriel.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_visor.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_wrack.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_xaero.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_yuriko.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/icon_zael.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/id.md3,36020,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/id.skin,109,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/keel.md3,21976,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/keel.skin,56,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/klesk.md3,3492,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/klesk.skin,57,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/krusade.md3,3760,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/krusade.skin,104,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/lucy.md3,41412,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/lucy.skin,56,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/major.md3,5156,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/major.skin,57,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/mynx.md3,42412,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/mynx.skin,109,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/orbb.md3,2008,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/orbb.skin,56,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/patriot.md3,36020,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/patriot.skin,114,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/phobos.md3,4896,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/phobos.skin,107,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/anarki_g.tga,6683,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/anarki_g_fx.tga,5228,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/anarki_h.tga,49691,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/angel_h.tga,49196,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/biker_h.tga,49196,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/bitterman_h.tga,49196,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/bones2_fx.jpg,2770,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/bones2_h.tga,45483,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/bones_h.tga,45483,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/cadavre_h.tga,49196,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/cigar.glow.tga,428,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/cigar.tga,428,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/crash_h.tga,262683,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/daemia_h.tga,24620,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/doom.tga,48167,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/doom_f.tga,6188,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/fanatic_h.tga,49196,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/flisk_h.tga,32812,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/gorre.tga,262188,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/grrl_h.tga,65580,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/grunt_h.tga,49691,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/hossman_h.tga,49196,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/hunter_f.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/hunter_h.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/id_h.tga,65580,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/keel_h.tga,49196,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/klesk_g.tga,24620,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/klesk_h.tga,25115,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/krusade_h.tga,33803,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/lucy_h.tga,49196,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/major_h.tga,25115,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/mynx_h.tga,98843,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/mynx_shiny.tga,131611,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/null.tga,428,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/orbb_h.tga,66075,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/patriot_h.tga,49196,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/phobos.tga,64043,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/phobos_f.tga,8236,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/ranger.tga,262683,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/ranger_h.tga,12332,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/razor_gogs.tga,812,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/razor_gogs_fx.tga,3116,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/razor_h.tga,49196,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/roderic_h.tga,33803,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/sarge_h.tga,25487,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/slammer_h.tga,49196,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/slash_h.tga,49196,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/sorlag.tga,197147,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/stripe_h.tga,65580,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/stroggo_h.tga,49196,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/tankjr.tga,32367,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/uriel.tga,197147,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/uriel_h.tga,16428,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/visor.tga,197147,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/wrack.tga,262188,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/wrack_h.tga,12332,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/xaero_h.tga,65580,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/yuriko_h.tga,65580,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/zael.tga,262683,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/quake3/zael_h.tga,12332,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/ranger.md3,35640,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/ranger.skin,106,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/razor.md3,36020,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/razor.skin,110,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/roderic.md3,3760,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/roderic.skin,104,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/sarge.md3,3760,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/sarge.skin,103,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/slammer.md3,29096,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/slammer.skin,59,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/slash.md3,42872,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/slash.skin,57,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/sorlag.md3,16124,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/sorlag.skin,56,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/stripe.md3,3436,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/stripe.skin,58,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/stroggo.md3,29096,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/stroggo.skin,59,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/tankjr.md3,1644,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/tankjr.skin,56,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/uriel.md3,26352,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/uriel.skin,102,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/visor.md3,29404,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/visor.skin,55,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/wrack.md3,35640,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/wrack.skin,104,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/xaero.md3,21220,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/xaero.skin,57,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/yuriko.md3,42872,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/yuriko.skin,58,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/zael.md3,26352,Autoteile heads,Autos,unbekannt,,F
-models/players/heads/zael.skin,100,Autoteile heads,Autos,unbekannt,,F
+models/players/heads/arrow.md3,41564,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/arrow.skin,143,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/camo.md3,41564,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/camo.skin,141,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/carbon.md3,41564,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/carbon.skin,143,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/checker.md3,41564,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/checker.skin,147,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/classic.md3,41564,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/classic.skin,145,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/flames.md3,41564,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/flames.skin,143,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/gold.md3,41564,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/gold.skin,141,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/arrow.jpg,18337,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/balaclava.jpg,4125,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/camo.jpg,28545,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/carbon.jpg,45483,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/checker.jpg,39496,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/classic.jpg,19680,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/flames.jpg,10407,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/gloss.jpg,1445,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/gold.jpg,17836,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/lightning.jpg,15714,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/moto.jpg,25437,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/neon.jpg,19425,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/pilot.jpg,8218,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/police.jpg,17778,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/racer.jpg,14543,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/retro.jpg,15477,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/stars.jpg,22362,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/sunset.jpg,17219,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/tricolore.jpg,10473,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/trim.jpg,1759,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/vintage.jpg,10208,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/visor_env.jpg,1823,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/visor_fire.jpg,994,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/visor_gold.jpg,1062,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/visor_iridium.jpg,871,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/visor_silver.jpg,997,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/helmets/visor_smoke.jpg,840,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_arrow.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_camo.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_carbon.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_checker.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_classic.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_flames.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_gold.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_lightning.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_moto.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_neon.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_pilot.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_police.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_racer.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_retro.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_stars.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_sunset.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_tricolore.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/icon_vintage.tga,65580,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/lightning.md3,41564,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/lightning.skin,149,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/moto.md3,40012,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/moto.skin,231,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/neon.md3,41564,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/neon.skin,144,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/pilot.md3,40012,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/pilot.skin,233,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/police.md3,41564,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/police.skin,144,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/racer.md3,41564,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/racer.skin,143,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/retro.md3,40012,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/retro.skin,232,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/stars.md3,41564,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/stars.skin,144,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/sunset.md3,41564,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/sunset.skin,143,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/tricolore.md3,41564,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/tricolore.skin,148,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/vintage.md3,40012,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
+models/players/heads/vintage.skin,233,Autoteile heads,Autos,eigen (generiert),tools/carbuild/helmets,
 models/players/macdaddy/animation.cfg,10,Auto macdaddy,Autos,unbekannt,,F
 models/players/macdaddy/black.skin,425,Auto macdaddy,Autos,unbekannt,,F
 models/players/macdaddy/black_hlites.tga,4140,Auto macdaddy,Autos,unbekannt,,F
@@ -3322,7 +3215,7 @@ scripts/ely_darkcity.shader,503,"Skripte, Shader, Konfiguration",Text/Code,unbek
 scripts/ely_sunset.shader,539,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/example.script,1899,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/gfx.shader,38141,"Skripte, Shader, Konfiguration",Text/Code,eigen (alter Name),,E
-scripts/heads.shader,9462,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
+scripts/heads.shader,5668,"Skripte, Shader, Konfiguration",Text/Code,eigen (generiert),tools/carbuild/helmets,F
 scripts/liquids.shader,10942,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/mapobjects.shader,7469,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/plates.shader,6741,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
@@ -3379,9 +3272,10 @@ scripts/q3r_sundown.shader,3771,Karte q3r_sundown,Karten,unbekannt,,F
 scripts/q3r_textures.shader,74591,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/q3r_timberrun.arena,193,Karte q3r_timberrun,Karten,eigen (generiert),tools/maptools,F
 scripts/q3r_timberrun.shader,24204,Karte q3r_timberrun,Karten,eigen (generiert),tools/maptools,F
+scripts/q3r_trophy.shader,588,"Skripte, Shader, Konfiguration",Text/Code,eigen (generiert),tools/carbuild/helmets,
 scripts/q3r_valley.arena,627,Karte q3r_valley,Karten,unbekannt,,F
 scripts/q3r_weapons.shader,6093,"Skripte, Shader, Konfiguration",Text/Code,eigen (generiert),tools/carbuild/weapons,F
-scripts/shaderlist.txt,504,"Skripte, Shader, Konfiguration",Text/Code,eigen (alter Name),,E
+scripts/shaderlist.txt,515,"Skripte, Shader, Konfiguration",Text/Code,eigen (alter Name),,E
 scripts/skies.shader,8074,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/sprites.shader,1869,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/startlight.shader,1246,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
