@@ -1606,7 +1606,8 @@ static float G_SlipstreamDepth( gentity_t *ent ) {
 	if ( !g_slipstream.integer || g_slipstreamStrength.value <= 0.0f ) {
 		return 0.0f;
 	}
-	if ( !BG_GametypeIsRace( g_gametype.integer ) || g_gametype.integer == GT_GHOST ) {
+	if ( !BG_GametypeIsRace( g_gametype.integer ) || g_gametype.integer == GT_GHOST ||
+		g_gametype.integer == GT_DRAG ) {
 		return 0.0f;
 	}
 	if ( client->sess.sessionTeam == TEAM_SPECTATOR || client->ps.pm_type != PM_NORMAL ||
@@ -1828,7 +1829,9 @@ void ClientThink_real( gentity_t *ent ) {
 
 // STONELANCE
 	// check for car reset
-	G_ResetCar( ent );
+	if ( g_gametype.integer != GT_DRAG ) {
+		G_ResetCar( ent );
+	}
 
 	// Autoball kick-off: hold every car on its spot until the countdown ends
 	if ( g_gametype.integer == GT_AUTOBALL && G_Autoball_CarsFrozen( ucmd->serverTime ) ) {
@@ -1837,7 +1840,9 @@ void ClientThink_real( gentity_t *ent ) {
 		ucmd->upmove = 0;
 	}
 
-	if (!level.startRaceTime &&	(isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS)){
+	G_DragFilterCommand( ent, ucmd );
+
+	if (g_gametype.integer != GT_DRAG && !level.startRaceTime &&	(isRallyRace() || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS)){
 		if ( ucmd->buttons & ( BUTTON_ATTACK | BUTTON_USE_HOLDABLE ) && !ent->ready ) {
 			trap_SendServerCommand( ent->s.clientNum, "cp \"Waiting for other players...\n\"");
 			ent->ready = qtrue;
@@ -2089,7 +2094,8 @@ void ClientThink_real( gentity_t *ent ) {
         pm.car_friction_scale = car_friction_scale.value;
         pm.car_impact_transfer = g_carImpactTransfer.value;
         pm.car_impact_elasticity = g_carImpactElasticity.value;
-        pm.useFuel = ( g_useFuel.integer && g_gametype.integer != GT_AUTOBALL ) ? qtrue : qfalse;
+        pm.useFuel = ( g_useFuel.integer && g_gametype.integer != GT_AUTOBALL &&
+                g_gametype.integer != GT_DRAG ) ? qtrue : qfalse;
 // END
 
         VectorCopy( client->ps.origin, client->oldOrigin );
@@ -2133,6 +2139,7 @@ void ClientThink_real( gentity_t *ent ) {
 #else
 		Pmove (&pm);
 #endif
+		G_DragPostMove( ent, client->oldOrigin, oldTime );
 		G_GhostRace_RestoreOtherCars();
 
 		/* refund 90% of fuel consumed - bots pay only 10% */
@@ -2153,7 +2160,11 @@ void ClientThink_real( gentity_t *ent ) {
 
 // STONELANCE
 	AnglesSubtract( client->ps.viewangles, oldAngles, ent->s.apos.trDelta );
-	VectorScale( ent->s.apos.trDelta, 1000.0f / ( client->ps.commandTime - oldTime ), ent->s.apos.trDelta );
+	if ( client->ps.commandTime > oldTime ) {
+		VectorScale( ent->s.apos.trDelta, 1000.0f / ( client->ps.commandTime - oldTime ), ent->s.apos.trDelta );
+	} else {
+		VectorClear( ent->s.apos.trDelta );
+	}
 
 	if (level.time > 2000){
 		client->frameNum++;

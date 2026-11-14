@@ -70,7 +70,10 @@ typedef enum {
     SBCOL_DEATHS,     /* Deaths */
     SBCOL_LAPTIME,    /* Best lap time */
     SBCOL_DELTA,      /* Gap to the race leader */
+    SBCOL_DRAG_REACTION,
+    SBCOL_DRAG_ELAPSED,
     SBCOL_TOTALTIME,  /* Total/Race time */
+    SBCOL_DRAG_TRAP,
     SBCOL_PING,       /* Network ping */
     SBCOL_STATUS,     /* Ready status, etc */
     SBCOL_KOTH_CAPS,  /* Q3Rally KOTH: captures */
@@ -167,6 +170,9 @@ static void CG_InitScoreboardColumns(void) {
     showDelta = qfalse;
     
     switch (cgs.gametype) {
+        case GT_DRAG:
+            showTimes = qtrue;
+            break;
         case GT_RACING:
         case GT_SPRINT:
         case GT_TEAM_RACING:
@@ -367,6 +373,27 @@ static void CG_InitScoreboardColumns(void) {
         columns[SBCOL_STATUS].header = (cgs.gametype == GT_GHOST) ? "VS GHOST" : "STATUS";
         columns[SBCOL_STATUS].visible = qtrue;
     }
+
+    if ( cgs.gametype == GT_DRAG ) {
+        columns[SBCOL_RANK].width = 36;
+        columns[SBCOL_AVATAR].width = 30;
+        columns[SBCOL_NAME].width = 125;
+        columns[SBCOL_TOTALTIME].width = 80;
+        columns[SBCOL_TOTALTIME].header = "TOTAL";
+        columns[SBCOL_STATUS].width = 100;
+        columns[SBCOL_DRAG_REACTION].type = SBCOL_DRAG_REACTION;
+        columns[SBCOL_DRAG_REACTION].width = 70;
+        columns[SBCOL_DRAG_REACTION].header = "RT (S)";
+        columns[SBCOL_DRAG_REACTION].visible = qtrue;
+        columns[SBCOL_DRAG_ELAPSED].type = SBCOL_DRAG_ELAPSED;
+        columns[SBCOL_DRAG_ELAPSED].width = 70;
+        columns[SBCOL_DRAG_ELAPSED].header = "ET (S)";
+        columns[SBCOL_DRAG_ELAPSED].visible = qtrue;
+        columns[SBCOL_DRAG_TRAP].type = SBCOL_DRAG_TRAP;
+        columns[SBCOL_DRAG_TRAP].width = 65;
+        columns[SBCOL_DRAG_TRAP].header = "KM/H";
+        columns[SBCOL_DRAG_TRAP].visible = qtrue;
+    }
     
     /* Calculate actual content width */
     totalContentWidth = 0;
@@ -412,7 +439,7 @@ Draw a modern styled background with subtle gradients
 */
 qboolean CG_IsRaceResults( void ) {
     return cg.snap && cg.snap->ps.pm_type == PM_INTERMISSION &&
-           (cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT ||
+           (cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_DRAG ||
             cgs.gametype == GT_TEAM_RACING);
 }
 
@@ -429,7 +456,7 @@ static void CG_DrawRaceResultsTitle( void ) {
 
     CG_FillRect(24, 24, SCREEN_WIDTH - 48, 2, accent);
     CG_DrawIngameString(24, 35, "05 / FINISH", UI_SMALLFONT, 0.8f, accent);
-    CG_DrawIngameString(24, 53, "RACE RESULTS", UI_BIGFONT, 1.1f, colorWhite);
+    CG_DrawIngameString(24, 53, cgs.gametype == GT_DRAG ? "DRAG RESULTS" : "RACE RESULTS", UI_BIGFONT, 1.1f, colorWhite);
     if (!cg.demoPlayback && cg.snap->ps.persistant[PERS_TEAM] != TEAM_SPECTATOR) {
         CG_DrawIngameString(SCREEN_WIDTH - 24, 56,
                             ready ? "READY" : "FIRE / USE TO CONFIRM",
@@ -751,6 +778,48 @@ CG_DrawColumnData
 Draw data for a specific column type - C89 compatible
 =================
 */
+static void CG_DragResultText( sbColumn_t colType, const centity_t *car,
+                               char *buffer, int size ) {
+    int milliseconds = -1;
+
+    Q_strncpyz( buffer, "-", size );
+    if ( car->dragPhase == DRAG_FALSE_START ) {
+        return;
+    }
+    if ( colType == SBCOL_DRAG_TRAP ) {
+        if ( car->dragPhase == DRAG_FINISHED && car->dragTrapSpeed >= 0 ) {
+            Com_sprintf( buffer, size, "%d.%d", car->dragTrapSpeed / 10, car->dragTrapSpeed % 10 );
+        }
+        return;
+    }
+    if ( colType == SBCOL_DRAG_REACTION && car->dragGreenTime > 0 &&
+         car->dragLaunchTime >= car->dragGreenTime ) {
+        milliseconds = car->dragLaunchTime - car->dragGreenTime;
+    } else if ( car->dragPhase == DRAG_FINISHED &&
+                car->dragFinishTime >= car->dragLaunchTime && car->dragLaunchTime > 0 ) {
+        if ( colType == SBCOL_DRAG_ELAPSED ) {
+            milliseconds = car->dragFinishTime - car->dragLaunchTime;
+        } else if ( colType == SBCOL_TOTALTIME && car->dragGreenTime > 0 ) {
+            milliseconds = car->dragFinishTime - car->dragGreenTime;
+        }
+    }
+    if ( milliseconds >= 0 ) {
+        Com_sprintf( buffer, size, "%d.%03d", milliseconds / 1000, milliseconds % 1000 );
+    }
+}
+
+static const char *CG_DragResultStatus( int phase ) {
+    switch ( phase ) {
+    case DRAG_FALSE_START: return "FALSE START";
+    case DRAG_DNF:         return "DNF";
+    case DRAG_FINISHED:    return "FINISHED";
+    case DRAG_RUNNING:     return "RUNNING";
+    case DRAG_STAGED:      return "STAGED";
+    case DRAG_COUNTDOWN:   return "STAGED";
+    default:              return "WAIT";
+    }
+}
+
 static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width, 
                              score_t *score, int rank, float fade, 
                              qboolean isCompact) {
@@ -789,6 +858,10 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
             if (ci->team == TEAM_SPECTATOR) {
                 Com_sprintf(buffer, sizeof(buffer), "SPEC");
                 CG_DrawModernText(x, y, buffer, 1, width, textColor, qfalse);
+            } else if ( cgs.gametype == GT_DRAG &&
+                        ( cg_entities[score->client].dragPhase == DRAG_FALSE_START ||
+                          cg_entities[score->client].dragPhase == DRAG_DNF ) ) {
+                CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
             } else if (isRacingMode && cgs.gametype != GT_ELIMINATION &&
                        cgs.gametype != GT_DERBY && cgs.gametype != GT_LCS &&
                        score->position > 0) {
@@ -897,6 +970,9 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
         case SBCOL_TOTALTIME:
             if (ci->team == TEAM_SPECTATOR) {
                 CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
+            } else if ( cgs.gametype == GT_DRAG ) {
+                CG_DragResultText( colType, &cg_entities[score->client], buffer, sizeof( buffer ) );
+                CG_DrawModernText(x, y, buffer, 1, width, textColor, qfalse);
             } else {
                 if (cg_entities[score->client].finishRaceTime) {
                     totalTime = cg_entities[score->client].finishRaceTime - score->time;
@@ -943,6 +1019,12 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
                 }
             } else if (ci->team == TEAM_SPECTATOR) {
                 CG_DrawModernText(x, y, "SPEC", 1, width, textColor, qfalse);
+            } else if ( cgs.gametype == GT_DRAG ) {
+                int phase = cg_entities[score->client].dragPhase;
+                if ( phase == DRAG_FALSE_START || phase == DRAG_DNF ) {
+                    textColor[0] = 1.0f; textColor[1] = 0.38f; textColor[2] = 0.30f;
+                }
+                CG_DrawModernText(x, y, CG_DragResultStatus( phase ), 1, width, textColor, qfalse);
             } else if (cgs.gametype == GT_DERBY) {
 				qboolean matchEnded;
 				qboolean wrecked;
@@ -996,6 +1078,17 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
                 CG_DrawModernText(x, y, "WAIT", 1, width, textColor, qfalse);
             } else {
                 CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
+            }
+            break;
+
+        case SBCOL_DRAG_REACTION:
+        case SBCOL_DRAG_ELAPSED:
+        case SBCOL_DRAG_TRAP:
+            if ( ci->team == TEAM_SPECTATOR ) {
+                CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
+            } else {
+                CG_DragResultText( colType, &cg_entities[score->client], buffer, sizeof( buffer ) );
+                CG_DrawModernText(x, y, buffer, 1, width, textColor, qfalse);
             }
             break;
 
@@ -1548,7 +1641,7 @@ qboolean CG_DrawModernScoreboard(void) {
         /* Different message based on gametype */
         if (cgs.gametype == GT_DERBY) {
             fragMsg = va("Wrecked by %s", cg.killerName);
-        } else if (cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_GHOST) {
+        } else if (cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_DRAG || cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_GHOST) {
             fragMsg = va("Crashed by %s", cg.killerName);
         } else {
             fragMsg = va("Eliminated by %s", cg.killerName);
@@ -1857,6 +1950,7 @@ void CG_DrawScoreboardGameModeInfo(void) {
         case GT_RACING_DM:        gametypeName = "Racing Deathmatch"; break;
         case GT_SPRINT:           gametypeName = "Sprint"; break;
         case GT_GHOST:            gametypeName = "Ghost Race"; break;
+        case GT_DRAG:             gametypeName = "Drag Race"; break;
         case GT_DERBY:            gametypeName = "Demolition Derby"; break;
         case GT_DEATHMATCH:       gametypeName = "Deathmatch"; break;
         case GT_LCS:              gametypeName = "Last Car Standing"; break;
@@ -1915,6 +2009,7 @@ const char* CG_GetGametypeScoreLabel(void) {
             return "SCORE";
         case GT_RACING:
         case GT_SPRINT:
+        case GT_DRAG:
         case GT_TEAM_RACING:
         case GT_GHOST:
             return "TIME";

@@ -119,7 +119,7 @@ static startserver_t s_startserver;
 
 static void StartServer_MenuEvent( void *ptr, int event );
 static void StartServer_Update( void );
-static const char *gametype_items[17];
+static const char *gametype_items[18];
 
 static int StartServer_CvarIntOrDefault( const char *name, int defaultValue ) {
 	char value[32];
@@ -435,14 +435,15 @@ static const char *gametype_items[] = {
 	"Domination",
     "King of the Hill",
     "Autoball",
+    "Drag Race",
 	0
 };
 
 // gametype_items[gametype_remap2[s_serveroptions.gametype]]
 // gametype_remap maps display-list index -> raw GT_ value (used when starting server)
 // gametype_remap2 maps raw GT_ value -> gametype_items display index
-// Team gametypes start at GT_TEAM=16; indices 9-15 are unused gaps filled with 0.
-static int gametype_remap[] = {GT_RACING, GT_RACING_DM, GT_SPRINT, GT_GHOST, GT_DERBY, GT_LCS, GT_ELIMINATION, GT_DEATHMATCH, GT_TEAM, GT_TEAM_RACING, GT_TEAM_RACING_DM, GT_CTF, GT_CTF4, GT_DOMINATION, GT_KOTH, GT_AUTOBALL};
+// Team gametypes start at GT_TEAM=16; indices 10-15 are unused gaps filled with 0.
+static int gametype_remap[] = {GT_RACING, GT_RACING_DM, GT_SPRINT, GT_GHOST, GT_DERBY, GT_LCS, GT_ELIMINATION, GT_DEATHMATCH, GT_TEAM, GT_TEAM_RACING, GT_TEAM_RACING_DM, GT_CTF, GT_CTF4, GT_DOMINATION, GT_KOTH, GT_AUTOBALL, GT_DRAG};
 static int gametype_remap2[] = {
 	0,  // GT_RACING          = 0
 	1,  // GT_RACING_DM       = 1
@@ -453,7 +454,7 @@ static int gametype_remap2[] = {
 	7,  // GT_DEATHMATCH      = 6
 	2,  // GT_SPRINT          = 7
 	3,  // GT_GHOST           = 8
-	0,  // 9  (unused)
+	16, // GT_DRAG            = 9
 	0,  // 10 (unused)
 	0,  // 11 (unused)
 	0,  // 12 (unused)
@@ -696,6 +697,8 @@ static const struct {
         { "q3r_racing_dm", GT_RACING_DM },
         { "q3r_sprint", GT_SPRINT },
         { "q3r_ghost", GT_GHOST },
+        { "q3r_drag", GT_DRAG },
+        { "drag", GT_DRAG },
         { "q3r_derby", GT_DERBY },
         { "q3r_lcs", GT_LCS },
         { "q3r_elimination", GT_ELIMINATION },
@@ -1554,7 +1557,7 @@ static void ServerOptions_Start( void ) {
 	char	buf[64];
 
 	timelimit	 = atoi( s_serveroptions.timelimit.field.buffer );
-	fraglimit	 = ( s_serveroptions.gametype == GT_SPRINT ) ? 1 : atoi( s_serveroptions.fraglimit.field.buffer );
+	fraglimit	 = ( s_serveroptions.gametype == GT_SPRINT || s_serveroptions.gametype == GT_DRAG ) ? 1 : atoi( s_serveroptions.fraglimit.field.buffer );
 	flaglimit	 = atoi( s_serveroptions.flaglimit.field.buffer );
 	kothPtsTick	 = atoi( s_serveroptions.kothPtsTick.field.buffer );
 	kothPtsCapture = atoi( s_serveroptions.kothPtsCapture.field.buffer );
@@ -1583,6 +1586,13 @@ static void ServerOptions_Start( void ) {
 			continue;
 		}
 		maxclients++;
+	}
+	if ( s_serveroptions.gametype == GT_DRAG ) {
+		maxclients = 2;
+		trackLengthValue = 0;
+		reversed = 0;
+		timelimit = 0;
+		flaglimit = 0;
 	}
 
 	switch( s_serveroptions.gametype ) {
@@ -1820,10 +1830,20 @@ static void ServerOptions_InitPlayerItems( void ) {
                 startIndex = (s_serveroptions.dedicated.curvalue == 0) ? 1 : 0;
 
                 for( n = startIndex; n < PLAYER_SLOTS; n++ ) {
-                        s_serveroptions.playerType[n].curvalue = 0;
+                        s_serveroptions.playerType[n].curvalue = ( s_serveroptions.gametype == GT_DRAG && n >= 2 ) ? 2 : 0;
                         Q_strncpyz( s_serveroptions.playerNameBuffers[n], "----", sizeof( s_serveroptions.playerNameBuffers[n] ) );
                 }
         }
+	if ( s_serveroptions.gametype == GT_DRAG ) {
+		s_serveroptions.botSkill.generic.flags |= QMF_HIDDEN | QMF_INACTIVE;
+		for ( n = 0; n < PLAYER_SLOTS; n++ ) {
+			s_serveroptions.playerType[n].generic.flags |= QMF_INACTIVE;
+			if ( n >= 2 ) {
+				s_serveroptions.playerType[n].generic.flags |= QMF_HIDDEN;
+				s_serveroptions.playerName[n].generic.flags |= QMF_HIDDEN | QMF_INACTIVE;
+			}
+		}
+	}
 }
 
 
@@ -2034,7 +2054,7 @@ static void ServerOptions_InitBotNames( void ) {
 
 	if( !BG_GametypeAllowsBots( s_serveroptions.gametype ) ) {
                 for( n = startIndex; n < PLAYER_SLOTS; n++ ) {
-                        s_serveroptions.playerType[n].curvalue = 0;
+                        s_serveroptions.playerType[n].curvalue = ( s_serveroptions.gametype == GT_DRAG && n >= 2 ) ? 2 : 0;
                         Q_strncpyz( s_serveroptions.playerNameBuffers[n], "----", sizeof( s_serveroptions.playerNameBuffers[n] ) );
                 }
 
@@ -2136,6 +2156,7 @@ static void ServerOptions_SetMenuItems( void ) {
 	switch( s_serveroptions.gametype ) {
 
 	case GT_SPRINT:
+	case GT_DRAG:
 		Q_strncpyz( s_serveroptions.fraglimit.field.buffer, "1", sizeof( s_serveroptions.fraglimit.field.buffer ) );
 		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_racing_timelimit" ) ) );
 		break;
@@ -2734,6 +2755,16 @@ static void ServerOptions_Draw( void ) {
         }
 
         Menu_Draw( &s_serveroptions.menu );
+	if ( s_serveroptions.gametype == GT_DRAG ) {
+		Frontend_DrawText( SERVEROPT_PLAYER_X + 16, SERVEROPT_PLAYER_Y + 108,
+			"Same specs. Manual shifting.", UI_LEFT | UI_SMALLFONT, serverOptionsTextColor );
+		Frontend_DrawText( SERVEROPT_PLAYER_X + 16, SERVEROPT_PLAYER_Y + 132,
+			"Hold handbrake to stage.", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
+		Frontend_DrawText( SERVEROPT_PLAYER_X + 16, SERVEROPT_PLAYER_Y + 156,
+			"Release on green.", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
+		Frontend_DrawText( SERVEROPT_PLAYER_X + 16, SERVEROPT_PLAYER_Y + 180,
+			"Use Gear Up / Gear Down.", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
+	}
 
         Frontend_DrawText( SERVEROPT_FRAME_X + 24, SERVEROPT_FRAME_Y + 384,
                 "Select a player or option", UI_LEFT | UI_SMALLFONT,
@@ -2837,7 +2868,7 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 
 		limitFieldAdded = qtrue;
 	}
-	else if( s_serveroptions.gametype != GT_DERBY && s_serveroptions.gametype != GT_LCS && s_serveroptions.gametype != GT_SPRINT &&
+	else if( s_serveroptions.gametype != GT_DERBY && s_serveroptions.gametype != GT_LCS && s_serveroptions.gametype != GT_SPRINT && s_serveroptions.gametype != GT_DRAG &&
 			s_serveroptions.gametype != GT_GHOST ) {
 
 		s_serveroptions.fraglimit.generic.type		= MTYPE_FIELD;
@@ -3180,7 +3211,7 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 		s_serveroptions.gametype == GT_AUTOBALL ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.flaglimit );
 	}
-	else if( s_serveroptions.gametype != GT_DERBY && s_serveroptions.gametype != GT_LCS && s_serveroptions.gametype != GT_SPRINT &&
+	else if( s_serveroptions.gametype != GT_DERBY && s_serveroptions.gametype != GT_LCS && s_serveroptions.gametype != GT_SPRINT && s_serveroptions.gametype != GT_DRAG &&
 			!ServerOptions_IsGhostSprintMap( s_serveroptions.gametype ) ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.fraglimit );
 	}
@@ -3199,7 +3230,9 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.autoballBallGravity );
 	}
 
-	Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.timelimit );
+	if ( s_serveroptions.gametype != GT_DRAG ) {
+		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.timelimit );
+	}
 
 	if( s_serveroptions.gametype >= GT_TEAM ) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.friendlyfire );
@@ -3994,6 +4027,7 @@ int UI_WebOfflineNumber( int field, int index ) {
     case 13: return item && item->type == MTYPE_FIELD ? ((menufield_s *)item)->field.maxchars : 0;
     case 14: return UI_WebOfflineScreen() == 9 ? s_startserver.multiplayer : s_serveroptions.multiplayer;
     case 15: return UI_WebOfflineScreen() == 10 ? s_serveroptions.dedicated.curvalue : 0;
+    case 16: return ARRAY_LEN( gametype_remap );
     }
     return 0;
 }

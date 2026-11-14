@@ -1415,6 +1415,11 @@ char *ClientConnect( int clientNum, qboolean firstTime, qboolean isBot ) {
 		G_InitSessionData( client, userinfo );
 	}
 	G_ReadSessionData( client );
+	if ( g_gametype.integer == GT_DRAG && client->sess.sessionTeam != TEAM_SPECTATOR &&
+		( TeamCount( clientNum, TEAM_FREE ) >= 2 || !G_DragCanJoin() ) ) {
+		client->sess.sessionTeam = TEAM_SPECTATOR;
+		client->sess.spectatorState = SPECTATOR_FREE;
+	}
 	G_RestoreWaitingRaceBot( client, firstTime, isBot );
 
 	// get and distribute relevant parameters
@@ -2015,6 +2020,7 @@ if (client->ps.stats[STAT_WEAPONS] & (1u << i)) {
 	// initialize animations and other things
 	client->ps.commandTime = level.time - 100;
 	ent->client->pers.cmd.serverTime = level.time;
+	G_DragClientSpawn( ent );
 	ClientThink( ent-g_entities );
 	// run the presend to set anything else, follow spectators wait
 	// until all clients have been reconnected after map_restart
@@ -2052,6 +2058,7 @@ void ClientDisconnect( int clientNum ) {
 
 	// Q3Rally: drop any lap ghost being recorded for this slot
 	G_GhostRecord_ClientDisconnect( clientNum );
+	G_DragClientDisconnect( clientNum );
 	G_GhostLadder_ClientDisconnect( clientNum );
 	G_Autoball_ForgetClient( clientNum );	// no goal credit for a slot's next owner
 

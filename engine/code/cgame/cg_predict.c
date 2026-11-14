@@ -679,6 +679,55 @@ to ease the jerk.
 // Q3Rally Code Start
 extern char *eventnames[];
 // END
+
+typedef struct {
+	int clientNum;
+	int greenTime;
+	int launchTime;
+} cgDragPrediction_t;
+
+static cgDragPrediction_t cg_dragPrediction;
+
+static void CG_DragFilterPredictedCommand( usercmd_t *cmd, playerState_t *ps,
+	const centity_t *car, int clientNum, int renderTime ) {
+	qboolean freeze;
+	if ( cg_dragPrediction.clientNum != clientNum ||
+		cg_dragPrediction.greenTime != car->dragGreenTime ) {
+		cg_dragPrediction.clientNum = clientNum;
+		cg_dragPrediction.greenTime = car->dragGreenTime;
+		cg_dragPrediction.launchTime = 0;
+	}
+	if ( car->dragLaunchTime > 0 ) {
+		/* An authoritative release replaces the prediction, including a
+		 * correction after a delayed packet. Keep one timestamp on replays. */
+		cg_dragPrediction.launchTime = car->dragLaunchTime;
+	}
+	cmd->weapon = ps->weapon = WP_NONE;
+	cmd->upmove = 0;
+	cmd->buttons &= ~( BUTTON_ATTACK | BUTTON_USE_HOLDABLE );
+	ps->stats[STAT_WEAPONS] = ps->stats[STAT_HOLDABLE_ITEM] = ps->stats[STAT_SLIPSTREAM] = 0;
+	memset( ps->powerups, 0, sizeof( ps->powerups ) );
+	freeze = car->dragPhase >= DRAG_FINISHED || car->dragPhase < DRAG_COUNTDOWN
+		|| !car->dragGreenTime || cmd->serverTime < car->dragGreenTime;
+	if ( !freeze && !cg_dragPrediction.launchTime && !( cmd->buttons & BUTTON_HANDBRAKE ) ) {
+		cg_dragPrediction.launchTime = cmd->serverTime;
+	}
+	if ( !cg_dragPrediction.launchTime || renderTime < car->dragGreenTime
+		|| cmd->serverTime < cg_dragPrediction.launchTime ) {
+		freeze = qtrue;
+	}
+	if ( freeze ) {
+		cmd->buttons = BUTTON_HANDBRAKE;
+		cmd->forwardmove = cmd->rightmove = 0;
+		return;
+	}
+	/* Integrate a launch command only from its release timestamp. Subsequent
+	 * render frames reuse this timestamp while RUNNING is still in flight. */
+	if ( ps->commandTime < cg_dragPrediction.launchTime ) {
+		ps->commandTime = cg_dragPrediction.launchTime;
+	}
+}
+
 void CG_PredictPlayerState( void ) {
 	int			cmdNum, current;
 	playerState_t	oldPlayerState;
@@ -921,6 +970,10 @@ void CG_PredictPlayerState( void ) {
 	cg_pmove.controlMode = cgs.clientinfo[cg.predictedPlayerState.clientNum].controlMode;
 	cg_pmove.manualShift = cgs.clientinfo[cg.predictedPlayerState.clientNum].manualShift;
 	cg_pmove.transmissionMode = cgs.clientinfo[cg.predictedPlayerState.clientNum].transmissionMode;
+	if ( cgs.gametype == GT_DRAG ) {
+		cg_pmove.transmissionMode = TR_MANUAL;
+		cg_pmove.manualShift = qtrue;
+	}
 
 	cg_pmove.car_spring = cgs.car_spring > 0.0f ? cgs.car_spring : 120.0f;
 	cg_pmove.car_shock_up = cgs.car_shock_up > 0.0f ? cgs.car_shock_up : 12.0f;
@@ -938,7 +991,7 @@ void CG_PredictPlayerState( void ) {
 	cg_pmove.car_air_cof = cgs.car_air_cof > 0.0f ? cgs.car_air_cof : CP_AIR_COF;
 	cg_pmove.car_air_frac_to_df = cgs.car_air_frac_to_df > 0.0f ? cgs.car_air_frac_to_df : CP_FRAC_TO_DF;
 	cg_pmove.car_friction_scale = cgs.car_friction_scale > 0.0f ? cgs.car_friction_scale : 1.1f;
-	cg_pmove.useFuel = cg_useFuel.integer ? qtrue : qfalse;
+	cg_pmove.useFuel = ( cg_useFuel.integer && cgs.gametype != GT_DRAG ) ? qtrue : qfalse;
 
 //	for ( cmdNum = current - CMD_BACKUP + 1 ; cmdNum <= current ; cmdNum++ ) {
 	count = 0;
@@ -960,7 +1013,8 @@ void CG_PredictPlayerState( void ) {
 
 // Q3Rally Code Start
 		// only skip 10 times (this might be the source of the infinite loop)
-		if( cmdNum != current /*&& skipcount < 10*/ )
+		if( cmdNum != current && ( cgs.gametype != GT_DRAG ||
+			cg_entities[cg.snap->ps.clientNum].dragPhase >= DRAG_RUNNING ) /*&& skipcount < 10*/ )
 		{
 			trap_GetUserCmd( cmdNum+1, &nextCmd );
 			
@@ -997,7 +1051,7 @@ void CG_PredictPlayerState( void ) {
 
 
 // Q3Rally Code Start
-		if ((isRallyRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS) && !cg_entities[cg.snap->ps.clientNum].startRaceTime){
+		if (cgs.gametype != GT_DRAG && (isRallyRace() || cgs.gametype == GT_DERBY || cgs.gametype == GT_LCS) && !cg_entities[cg.snap->ps.clientNum].startRaceTime){
 			cg_pmove.cmd.buttons = BUTTON_HANDBRAKE;
 
 			cg_pmove.cmd.forwardmove = 0;
@@ -1006,6 +1060,11 @@ void CG_PredictPlayerState( void ) {
 		}
 
 		CG_Autoball_FreezeCommand( &cg_pmove.cmd );
+
+		if ( cgs.gametype == GT_DRAG ) {
+			CG_DragFilterPredictedCommand( &cg_pmove.cmd, &cg.predictedPlayerState,
+				&cg_entities[cg.snap->ps.clientNum], cg.snap->ps.clientNum, cg.time );
+		}
 
 		if (cg_entities[cg.snap->ps.clientNum].finishRaceTime &&
 			cg_entities[cg.snap->ps.clientNum].finishRaceTime + 500 < cg.time &&

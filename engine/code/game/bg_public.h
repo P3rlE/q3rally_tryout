@@ -371,6 +371,17 @@ float		BG_WeatherSnow( const weatherState_t *st, const weatherGrid_t *g, const v
 //===================================================================================
 
 
+/* Drag Race status carried by the dragStatus server command. */
+typedef enum {
+        DRAG_WAITING = 0,
+        DRAG_STAGED,
+        DRAG_COUNTDOWN,
+        DRAG_RUNNING,
+        DRAG_FINISHED,
+        DRAG_FALSE_START,
+        DRAG_DNF
+} dragPhase_t;
+
 // player_state->stats[] indexes
 // NOTE: may not have more than 18
 typedef enum {

@@ -61,6 +61,11 @@ static void G_Profile_MaybeAutosave( void );
 static void G_Profile_UpdateRankState( void );
 
 static qboolean G_Profile_ShouldTrackClient( const gclient_t *client ) {
+    /* Experimental v0.9 heats do not advance the v0.8 profile counters. */
+    if ( g_gametype.integer == GT_DRAG ) {
+        return qfalse;
+    }
+
     if ( !s_profileState.loaded ) {
         return qfalse;
     }

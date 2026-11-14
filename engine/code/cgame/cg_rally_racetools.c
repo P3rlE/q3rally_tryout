@@ -1912,6 +1912,10 @@ void CG_FinishedRace( int client, int time ) {
 		return;
 	}
 	cent = &cg_entities[client];
+	if ( cgs.gametype == GT_DRAG ) {
+		cent->finishRaceTime = time;
+		return;
+	}
 
         if ( client == cg.snap->ps.clientNum
                 && ((time - cent->startLapTime) < cent->bestLapTime || cent->bestLapTime == 0) ){
@@ -1983,7 +1987,7 @@ void CG_StartRace( int time ) {
                 player->lastStartLapTime = 0;
         }
 
-        if ( isRallyRace() ) {
+        if ( isRallyRace() && cgs.gametype != GT_DRAG ) {
                 CG_LoadPersonalGhost();
                 CG_BeginGhostRecording( time );
                 /* Ghost Race: tell the server which ghost is raced. */
@@ -2009,6 +2013,29 @@ void CG_DrawRaceCountDown( void ){
 	float	f, scale;
 	int		x, y, w, h;
 	vec4_t	color;
+
+	if ( cgs.gametype == GT_DRAG && cg.snap ) {
+		centity_t *driver = &cg_entities[cg.snap->ps.clientNum];
+		int light, amberCount;
+		qboolean green = driver->dragGreenTime > 0 && cg.time >= driver->dragGreenTime;
+		qboolean fault = driver->dragPhase == DRAG_FALSE_START;
+		const char *label = fault ? "FALSE START" : ( green ? "GO!" : "HOLD HANDBRAKE" );
+		vec4_t dark = { 0.08f, 0.08f, 0.08f, 0.95f };
+		vec4_t amber = { 1.0f, 0.65f, 0.05f, 1.0f };
+		vec4_t go = { 0.2f, 1.0f, 0.3f, 1.0f };
+		vec4_t red = { 1.0f, 0.15f, 0.1f, 1.0f };
+		if ( !driver->dragGreenTime || cg.time > driver->dragGreenTime + 1500 ) return;
+		amberCount = 4 - atoi( cg.countDownPrint );
+		if ( amberCount < 0 ) amberCount = 0;
+		if ( amberCount > 3 ) amberCount = 3;
+		CG_FillRect( 250, 174, 140, 40, dark );
+		for ( light = 0; light < 4; light++ ) {
+			CG_FillRect( 258 + light * 32, 182, 24, 24,
+				fault ? red : ( green ? (light == 3 ? go : dark) : (light < amberCount ? amber : dark) ) );
+		}
+		CG_DrawBigString( 320 - strlen(label) * BIGCHAR_WIDTH / 2, 224, label, 1.0f );
+		return;
+	}
 
 	if (cg.countDownEnd + 1000 < cg.time || cg.countDownPrint[0] == 0)
 		return;

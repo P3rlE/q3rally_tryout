@@ -2358,21 +2358,21 @@ qboolean BG_UnpackEngineState( int packed, float *rpm, float *throttle, int *gea
 
 Q3Rally gametype classification
 
-All "which gametypes are races" decisions live here so a new gametype only
-has to be registered once. GT_GHOST is a normal race in every respect (laps,
-checkpoints, ghost recording/playback, bot route source); it only differs in
-that bots are not allowed.
+Shared race classification lives here. GT_GHOST shares normal racing rules
+without bots. GT_DRAG shares race presentation and weapon restrictions, with
+its own start/timing controller and no bots.
 
 ===============================================================================
 */
 
-/* Every gametype that runs the rally race state machine (start, checkpoints,
-   laps, finish) and therefore records and plays back ghosts. */
+/* Gametypes with race framing (start, progress and finish). Drag has a separate
+   controller; its classification does not opt it into ghost persistence. */
 qboolean BG_GametypeIsRace( int gametype ) {
 	switch ( gametype ) {
 	case GT_RACING:
 	case GT_RACING_DM:
 	case GT_SPRINT:
+	case GT_DRAG:
 	case GT_TEAM_RACING:
 	case GT_TEAM_RACING_DM:
 	case GT_ELIMINATION:
@@ -2389,6 +2389,7 @@ qboolean BG_GametypeIsTimedRace( int gametype ) {
 	switch ( gametype ) {
 	case GT_RACING:
 	case GT_SPRINT:
+	case GT_DRAG:
 	case GT_TEAM_RACING:
 	case GT_SINGLE_PLAYER:
 	case GT_GHOST:
@@ -2412,7 +2413,7 @@ qboolean BG_GametypeHasRaceFinish( int gametype ) {
 }
 
 qboolean BG_GametypeAllowsBots( int gametype ) {
-	return ( gametype != GT_GHOST ) ? qtrue : qfalse;
+	return ( gametype != GT_GHOST && gametype != GT_DRAG ) ? qtrue : qfalse;
 }
 
 /* Name matched against the "gametype" key of map entities. GT_GHOST uses the
@@ -2422,6 +2423,7 @@ const char *BG_GametypeEntityName( int gametype ) {
 	case GT_RACING:         return "racing";
 	case GT_RACING_DM:      return "racing_dm";
 	case GT_SPRINT:         return "sprint";
+	case GT_DRAG:           return "drag";
 	case GT_SINGLE_PLAYER:  return "single";
 	case GT_DERBY:          return "derby";
 	case GT_LCS:            return "lcs";
@@ -2445,6 +2447,7 @@ const char *BG_GametypeDisplayName( int gametype ) {
 	case GT_RACING:         return "Racing";
 	case GT_RACING_DM:      return "Racing Deathmatch";
 	case GT_SPRINT:         return "Sprint";
+	case GT_DRAG:           return "Drag Race";
 	case GT_SINGLE_PLAYER:  return "Single Player";
 	case GT_DERBY:          return "Demolition Derby";
 	case GT_LCS:            return "Last Car Standing";

@@ -209,6 +209,19 @@ const server=http.createServer((req,res)=>{
       await page.screenshot({path:path.join(output,'rules-'+(teams?'teams-':'')+viewport.width+'.png')});
     }
   }
+  await page.evaluate(()=>{
+    const o=q3rallyOffline;o.begin(10,16,0,0);o.mode(16,'Drag Race');
+    o.map(0,'q3r_dragstrip','Dragstrip');
+    for(let slot=0;slot<2;slot++){
+      o.player(slot,slot?'----':'Player');o.control(10+slot,0,'Slot type','',0,1,slot,0,0);
+      o.choice(10+slot,0,'Open');
+    }
+    o.end();q3rallyFrontend.state(10,0,0,0);
+  });
+  assert.equal(await page.locator('#offline-players .offline-player').count(),2);
+  assert.equal(await page.locator('#offline-players select').count(),0);
+  assert.match(await page.locator('#offline-grid-help').textContent(),/release on green/i);checks++;
+  await page.screenshot({path:path.join(output,'rules-drag.png')});
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);checks++;
   assert.deepEqual(errors,[]);

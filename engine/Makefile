@@ -2872,6 +2872,7 @@ Q3GOBJ_ = \
   $(B)/$(BASEGAME)/game/g_bot.o \
   $(B)/$(BASEGAME)/game/g_botpath.o \
   $(B)/$(BASEGAME)/game/g_race_route.o \
+  $(B)/$(BASEGAME)/game/g_drag.o \
   $(B)/$(BASEGAME)/game/g_client.o \
   $(B)/$(BASEGAME)/game/g_ghost.o \
   $(B)/$(BASEGAME)/game/g_ghost_record.o \
