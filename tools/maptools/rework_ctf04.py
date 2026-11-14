@@ -352,8 +352,8 @@ def rework_source(ents):
         texs = {t for _, t, _ in b}
         if texs == {"skies/oasisnight"}:
             continue                                       # the old sky box
-        if texs == {"common/full_clip"}:                   # solid for the physics as well
-            b = [(p, TEX + "propclip", r) for p, _, r in b]
+        if texs == {"common/full_clip"} and bbox(b)[1][2] > 100:   # tree trunks: solid for the physics as well
+            b = [(p, TEX + "propclip", r) for p, _, r in b]       # (the low car lift clips stay player clip)
         b = [(p, {"kilt_texpack02/kilt_tribeswirl_red": "evil5_ctf/ctf_crete_red",
                   "kilt_texpack02/kilt_tribeswirl_blue": "evil5_ctf/ctf_crete_blue"}.get(t, t), r) for p, t, r in b]
         kept.append(b)
@@ -644,7 +644,7 @@ def props():
     def inner(x, y, yaw):
         s = 1 if yaw == 0 else -1
         oak(s * 1050, s * 430, yaw, 1)
-        planter(*sorted((s * 640, s * 900)), *sorted((s * 250, s * 330)), tree="tree6")
+        planter(*sorted((s * 640, s * 900)), *sorted((s * 330, s * 410)), tree="tree6")
         low_wall(*sorted((s * 1250, s * 1520)), *sorted((s * 300, s * 332)))
         item(s * 1380, s * 500, yaw, "item_health")
     inner(0, 0, 0)
@@ -687,9 +687,7 @@ def props():
         kiosk(*sorted((X(2900), X(3140))), *sorted((X(1300), X(1440))))
         for k, (px, py) in enumerate(((2350, 1150), (2600, 1900), (3600, 1250), (3900, 1750), (3300, 2000), (2250, 1700))):
             oak(X(px), X(py), yaw, (1, 3, 5, 2, 4, 1)[k])
-        low_wall(*sorted((X(2420), X(2780))), *sorted((X(1500), X(1532))))
-        low_wall(*sorted((X(3440), X(3800))), *sorted((X(1500), X(1532))))
-        planter(*sorted((X(3260), X(3420))), *sorted((X(1640), X(1800))), tree="tree6")
+        low_wall(*sorted((X(3500), X(3800))), *sorted((X(1500), X(1532))))
         streetlamp(X(3000), X(1700), 0 if s > 0 else 180)
         item(X(3020), X(1220), yaw, "item_health_large")
         item(X(3600), X(1600), yaw, "ammo_shells")
