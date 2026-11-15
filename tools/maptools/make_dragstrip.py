@@ -147,10 +147,18 @@ def fit(img, side, lo, hi):
 
 
 class Map:
+    # far scenery goes into func_groups with a coarser lightmap: the big ground and the buttes
+    # would otherwise take most of the light compile
+    GROUPS = {"far": "16"}
+
     def __init__(self):
         self.world, self.ents = [], []
+        self.groups = {k: [] for k in self.GROUPS}
 
-    def box(self, lo, hi, mat, faces=None, detail=True):
+    def _add(self, brush, group):
+        (self.groups[group] if group else self.world).append(brush)
+
+    def box(self, lo, hi, mat, faces=None, detail=True, group=None):
         lo, hi = tuple(map(min, lo, hi)), tuple(map(max, lo, hi))       # corners in any order
         assert all(h > l for l, h in zip(lo, hi)), (lo, hi)
         out = []
@@ -160,10 +168,10 @@ class Map:
             if callable(spec):
                 spec = spec(key, lo, hi)
             out.append(tface(n, p, spec, detail))
-        self.world.append(out)
+        self._add(out, group)
         return out
 
-    def prism(self, pts, z0, z1, side, top=None, bottom=CAULK, detail=True):
+    def prism(self, pts, z0, z1, side, top=None, bottom=CAULK, detail=True, group=None):
         """Vertical prism over a convex polygon given counter-clockwise."""
         faces = []
         for i in range(len(pts)):
@@ -172,7 +180,7 @@ class Map:
             faces.append(tface(((by - ay) / ln, (ax - bx) / ln, 0), (ax, ay, z0), side, detail))
         faces.append(tface((0, 0, 1), (pts[0][0], pts[0][1], z1), top or side, detail))
         faces.append(tface((0, 0, -1), (pts[0][0], pts[0][1], z0), bottom, detail))
-        self.world.append(faces)
+        self._add(faces, group)
 
     def hull(self, planes, mat, detail=True):
         """Brush from (normal, point) pairs."""
@@ -191,7 +199,10 @@ class Map:
 
     def write(self, path, header, worldkv):
         out = [f"// {line}\n" for line in header]
-        allents = [{"kv": [["classname", "worldspawn"]] + worldkv, "brushes": self.world}] + self.ents
+        allents = [{"kv": [["classname", "worldspawn"]] + worldkv, "brushes": self.world}]
+        allents += [{"kv": [["classname", "func_group"], ["_lightmapscale", sc]], "brushes": self.groups[g]}
+                    for g, sc in self.GROUPS.items() if self.groups[g]]
+        allents += self.ents
         for i, e in enumerate(allents):
             out.append(f"// entity {i}\n{{\n")
             out += [f'"{k}" "{v}"\n' for k, v in e["kv"]]
@@ -202,7 +213,7 @@ class Map:
                 out.append("}\n")
             out.append("}\n")
         path.write_text("".join(out), newline="\n")
-        return len(self.world)
+        return len(self.world) + sum(len(b) for b in self.groups.values())
 
 
 # ================================================================= textures
@@ -612,7 +623,7 @@ def ground(m, x0, x1, y0, y1, runoff, mat, scale=1.0):
     W = WALL_Y
     for lo, hi in (((x0, W, -16), (x1, y1, 0)), ((x0, y0, -16), (x1, -W, 0)),
                    ((x0, -W, -16), (BACK_X, W, 0)), ((runoff, -W, -16), (x1, W, 0))):
-        m.box(lo, hi, CAULK, faces={"top": g}, detail=False)
+        m.box(lo, hi, CAULK, faces={"top": g}, detail=False, group="far")
 
 
 def grandstand(m, x0, x1, side, y_front, rows=9, rise=40, tread=56, crowd=True, roof=True):
@@ -672,9 +683,9 @@ def mesa(m, cx, cy, r, h, rnd, mat):
         rr = r * rnd.uniform(0.8, 1.15)
         pts.append((cx + rr * math.cos(a), cy + rr * math.sin(a)))
     spec = {"m": mat, "s": (2.0, h / 512 * 1.2)}
-    m.prism(pts, -16, h * 0.6, spec, top={"m": "q3r_dirt_grass/dirt02", "s": (2, 2)}, detail=False)
+    m.prism(pts, -16, h * 0.6, spec, top={"m": "q3r_dirt_grass/dirt02", "s": (2, 2)}, detail=False, group="far")
     pts2 = [(cx + (x - cx) * 0.72, cy + (y - cy) * 0.72) for x, y in pts]
-    m.prism(pts2, h * 0.6, h, spec, top={"m": "q3r_dirt_grass/dirt02", "s": (2, 2)}, detail=False)
+    m.prism(pts2, h * 0.6, h, spec, top={"m": "q3r_dirt_grass/dirt02", "s": (2, 2)}, detail=False, group="far")
 
 
 def building(m, x0, x1, y0, y1, h, facade, sc, top="q3r_building/roof", hidden=()):
