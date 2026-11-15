@@ -371,6 +371,25 @@ def rework_source(ents):
         print(f"block {suffix}: {len(src)} brushes copied, {len(old)} removed")
     world["brushes"] = kept
     put(world, "message", "Trophy Square")
+    trophy_base(ents)
+
+
+def trophy_base(ents):
+    """The old statue column in the fountain (32 units wide) is narrower than the plinth of the
+    trophy (53): an octagonal granite base with a cap instead, the trophy centred on it."""
+    world = ents[0]
+    col = [b for b in world["brushes"] if [tuple(map(round, v)) for v in bbox(b)] == [(-16, -16, -56), (16, 16, -8)]]
+    assert len(col) == 1, len(col)
+    world["brushes"].remove(col[0])
+    stone = {"m": "models/mapobjects/q3r_trophy/stone", "s": (0.125, 0.125)}
+
+    def octagon(r):                 # same facets as the plinth (faces on the axes)
+        return [(r * math.cos(math.radians(22.5 + 45 * k)), r * math.sin(math.radians(22.5 + 45 * k))) for k in range(8)]
+    prism(octagon(34), -56, -13, stone)
+    prism(octagon(37), -13, -8, stone)
+    model = [e for e in ents if get(e, "model") == "models/mapobjects/q3r_trophy/trophy.md3"]
+    assert len(model) == 1
+    put(model[0], "origin", "0 0 -8")
 
 
 # ---------------------------------------------------------------- city ring
