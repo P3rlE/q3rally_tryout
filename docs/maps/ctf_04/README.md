@@ -71,8 +71,10 @@ Werkstatt in die BSP (Lampenschatten im OpenGL2-Renderer). Danach die AAS bauen 
 ihre Prüfsumme anpassen.
 
 Das Modell `models/mapobjects/spotlamp1/spotlamp1.md3` (die Strahler über der
-Werkstatt) fehlte im Repo, die Map ließ sich deshalb nicht mehr bauen. Es ist aus der
-alten BSP zurückgeholt (`tools/maptools/extract_model_from_bsp.py`).
+Werkstatt) fehlte im Repo, die Map ließ sich deshalb nicht mehr bauen. Es kommt jetzt aus
+dem alten Mapping-Ordner (MilkShape-Modell). `tools/maptools/extract_model_from_bsp.py`
+holt ein `misc_model` aus einer kompilierten BSP zurück, falls einmal nur noch die Map
+übrig ist; die Rekonstruktion von `spotlamp1` daraus war geometrisch identisch.
 
 ## Getestet und offen
 
