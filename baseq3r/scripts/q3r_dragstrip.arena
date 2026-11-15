@@ -1,11 +1,11 @@
 {
 map "q3r_dragstrip"
-longname "Drag Strip"
+longname "Desert Dragway"
 author "Q3Rally Team"
 type "q3r_drag"
 starts "2"
 laps "1"
-laptime "Quarter-mile prototype"
+laptime ""
 checkpoints "1"
 observerspots "1"
 weapons "0"
