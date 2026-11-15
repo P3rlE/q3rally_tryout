@@ -338,6 +338,51 @@ def make_textures():
 
 SHADER = r"""// Drag Race maps (tools/maptools/make_dragstrip.py). Generated: edit the script.
 
+// skies: the community skyboxes with a sun, sky fill light and haze for these venues
+textures/q3r_drag/sky_desert
+{
+	qer_editorimage env/ame_desert/desertsky_ft.tga
+	surfaceparm sky
+	surfaceparm noimpact
+	surfaceparm nolightmap
+	q3map_globaltexture
+	q3map_sun 1 0.93 0.82 190 230 35
+	q3map_skylight 90 4
+	q3gl2_sun 1 0.93 0.82 140 230 35 0.5
+	skyparms env/ame_desert/desertsky - -
+	q3r_haze 0.70 0.64 0.56 14000	// Q3Rally: dust over the desert
+	q3r_colorLut gfx/luts/warm
+}
+
+textures/q3r_drag/sky_night
+{
+	qer_editorimage env/ely_darkcity/darkcity_ft.tga
+	surfaceparm sky
+	surfaceparm noimpact
+	surfaceparm nolightmap
+	q3map_globaltexture
+	q3map_sun 0.55 0.6 0.9 25 230 40
+	q3map_skylight 20 3
+	skyparms env/ely_darkcity/darkcity - -
+	q3r_haze 0.07 0.07 0.13 9000	// Q3Rally: night over the city
+	q3r_colorLut gfx/luts/neutral
+}
+
+textures/q3r_drag/sky_sunset
+{
+	qer_editorimage env/ely_sunset/sunset_ft.tga
+	surfaceparm sky
+	surfaceparm noimpact
+	surfaceparm nolightmap
+	q3map_globaltexture
+	q3map_sun 1 0.68 0.45 170 350 12
+	q3map_skylight 90 4
+	q3gl2_sun 1 0.68 0.45 120 350 12 0.6
+	skyparms env/ely_sunset/sunset - -
+	q3r_haze 0.62 0.50 0.46 11000	// Q3Rally: evening haze over the airfield
+	q3r_colorLut gfx/luts/dusk
+}
+
 // runway concrete of the airfield: the same asphalt surface (grip) as every drag lane
 textures/q3r_drag/runway
 {
@@ -674,18 +719,36 @@ def light_mast(m, x, y, aim_y, h=640, color="1 0.97 0.9", power=1600):
 
 # ================================================================= scenery helpers
 
+def frustum(m, pts, z0, z1, shrink, side, top, group=None):
+    """Convex block with sloped sides: the polygon pts at z0, shrunk towards its centre at z1."""
+    cx, cy = sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts)
+    planes = [((0, 0, -1), (cx, cy, z0)), ((0, 0, 1), (cx, cy, z1))]
+    for i in range(len(pts)):
+        a, b = (*pts[i], z0), (*pts[(i + 1) % len(pts)], z0)
+        ta = (cx + (a[0] - cx) * shrink, cy + (a[1] - cy) * shrink, z1)
+        n = cross(sub(b, a), sub(ta, a))
+        if dot(n, (a[0] - cx, a[1] - cy, 0)) < 0:
+            n = tuple(-c for c in n)
+        ln = math.sqrt(dot(n, n))
+        planes.append((tuple(c / ln for c in n), a))
+    faces = [tface(n, p, top if n[2] > 0.99 else (CAULK if n[2] < -0.99 else side), False) for n, p in planes]
+    (m.groups[group] if group else m.world).append(faces)
+
+
 def mesa(m, cx, cy, r, h, rnd, mat):
-    """Rock butte: two stacked irregular convex prisms."""
-    k = rnd.randint(6, 9)
+    """Sandstone butte: a talus slope, a steep cliff band and a flat cap."""
+    k = rnd.randint(7, 10)
     pts = []
     for i in range(k):
-        a = 2 * math.pi * i / k + rnd.uniform(-0.2, 0.2)
-        rr = r * rnd.uniform(0.8, 1.15)
+        a = 2 * math.pi * i / k + rnd.uniform(-0.15, 0.15)
+        rr = r * rnd.uniform(0.85, 1.12)
         pts.append((cx + rr * math.cos(a), cy + rr * math.sin(a)))
-    spec = {"m": mat, "s": (2.0, h / 512 * 1.2)}
-    m.prism(pts, -16, h * 0.6, spec, top={"m": "q3r_dirt_grass/dirt02", "s": (2, 2)}, detail=False, group="far")
-    pts2 = [(cx + (x - cx) * 0.72, cy + (y - cy) * 0.72) for x, y in pts]
-    m.prism(pts2, h * 0.6, h, spec, top={"m": "q3r_dirt_grass/dirt02", "s": (2, 2)}, detail=False, group="far")
+    rock = {"m": mat, "s": (1.5, 0.9)}
+    cap = {"m": "q3r_dirt_grass/dirt02", "s": (2, 2)}
+    foot = h * rnd.uniform(0.25, 0.35)
+    frustum(m, pts, -16, foot, 0.78, {"m": "q3r_dirt_grass/redrock03", "s": (2, 2)}, cap, group="far")
+    upper = [(cx + (x - cx) * 0.8, cy + (y - cy) * 0.8) for x, y in pts]
+    frustum(m, upper, foot, h, 0.88, rock, cap, group="far")
 
 
 def building(m, x0, x1, y0, y1, h, facade, sc, top="q3r_building/roof", hidden=()):
@@ -726,14 +789,14 @@ def desert():
     runoff = 19072
     wall = {"m": "q3r_road/cement_redwhite", "s": (0.5, 0.5)}
     strip(m, QUARTER, runoff, wall)
-    skybox(m, X0, X1, Y0, Y1, 3584, "skies/ame_desert")
+    skybox(m, X0, X1, Y0, Y1, 3584, TEX + "sky_desert")
     ground(m, X0, X1, Y0, Y1, runoff, "q3r_dirt_grass/dirt02", 1.5)
     # service road along the south side and the paddock behind the start
     m.box((-3000, -1500, 0), (20200, -1260, 1), {"m": "q3r_road/asph02", "s": (0.5, 0.5)}, faces={"bot": CAULK}, detail=False)
     m.box((-3000, -1260, 0), (-1000, 1600, 1), {"m": "q3r_road/asph02", "s": (0.5, 0.5)}, faces={"bot": CAULK}, detail=False)
     # grandstands at the start, both sides
     for s in (1, -1):
-        grandstand(m, -400, 2600, s, 600)
+        grandstand(m, -400, 2600, s, 600, roof=s > 0)       # no roof on the sun side: it would shade the grid
         grandstand(m, 3000, 4600, s, 600, rows=6, roof=False)
         timing_board(m, QUARTER + 900, s, 640)
     # spectators standing at the fence in front of the stands
@@ -803,7 +866,7 @@ def night():
     wall = {"m": "q3r_building/concrete02", "s": (0.25, 0.25)}
     stripe = {"m": "q3r_road/cement_redwhite", "s": (0.5, 0.5)}
     strip(m, finish, runoff, wall, wall_top=stripe)
-    skybox(m, X0, X1, Y0, Y1, 2816, "skies/ely_darkcity")
+    skybox(m, X0, X1, Y0, Y1, 2816, TEX + "sky_night")
     ground(m, X0, X1, Y0, Y1, runoff, "q3r_road/asph02", 0.5)
     # sidewalks with kerbs
     for s in (1, -1):
@@ -877,7 +940,7 @@ def airfield():
     rw = {"m": TEX + "runway", "s": (0.5, 0.5)}
     blocks = {"m": "q3r_building/concrete02", "s": (0.25, 0.25)}
     strip(m, finish, runoff, blocks, wall_top={"m": TEX + "paint_red", "s": (0.25, 0.25)}, road=TEX + "runway")
-    skybox(m, X0, X1, Y0, Y1, 3328, "skies/ely_sunset")
+    skybox(m, X0, X1, Y0, Y1, 3328, TEX + "sky_sunset")
     ground(m, X0, X1, Y0, Y1, runoff, "q3r_dirt_grass/grass07", 1.5)
     # runway beyond the drag lanes, threshold bars and the runway number, edge lights
     for s in (1, -1):

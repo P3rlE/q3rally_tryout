@@ -1,5 +1,50 @@
 // Drag Race maps (tools/maptools/make_dragstrip.py). Generated: edit the script.
 
+// skies: the community skyboxes with a sun, sky fill light and haze for these venues
+textures/q3r_drag/sky_desert
+{
+	qer_editorimage env/ame_desert/desertsky_ft.tga
+	surfaceparm sky
+	surfaceparm noimpact
+	surfaceparm nolightmap
+	q3map_globaltexture
+	q3map_sun 1 0.93 0.82 190 230 35
+	q3map_skylight 90 4
+	q3gl2_sun 1 0.93 0.82 140 230 35 0.5
+	skyparms env/ame_desert/desertsky - -
+	q3r_haze 0.70 0.64 0.56 14000	// Q3Rally: dust over the desert
+	q3r_colorLut gfx/luts/warm
+}
+
+textures/q3r_drag/sky_night
+{
+	qer_editorimage env/ely_darkcity/darkcity_ft.tga
+	surfaceparm sky
+	surfaceparm noimpact
+	surfaceparm nolightmap
+	q3map_globaltexture
+	q3map_sun 0.55 0.6 0.9 25 230 40
+	q3map_skylight 20 3
+	skyparms env/ely_darkcity/darkcity - -
+	q3r_haze 0.07 0.07 0.13 9000	// Q3Rally: night over the city
+	q3r_colorLut gfx/luts/neutral
+}
+
+textures/q3r_drag/sky_sunset
+{
+	qer_editorimage env/ely_sunset/sunset_ft.tga
+	surfaceparm sky
+	surfaceparm noimpact
+	surfaceparm nolightmap
+	q3map_globaltexture
+	q3map_sun 1 0.68 0.45 170 350 12
+	q3map_skylight 90 4
+	q3gl2_sun 1 0.68 0.45 120 350 12 0.6
+	skyparms env/ely_sunset/sunset - -
+	q3r_haze 0.62 0.50 0.46 11000	// Q3Rally: evening haze over the airfield
+	q3r_colorLut gfx/luts/dusk
+}
+
 // runway concrete of the airfield: the same asphalt surface (grip) as every drag lane
 textures/q3r_drag/runway
 {
