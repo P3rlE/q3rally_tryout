@@ -652,6 +652,7 @@ static qboolean G_LadderGametypeHasRaceFields( int gametype ) {
         return ( gametype == GT_RACING ||
                  gametype == GT_RACING_DM ||
                  gametype == GT_SPRINT ||
+                 gametype == GT_DRAG ||
                  gametype == GT_TEAM_RACING ||
                  gametype == GT_TEAM_RACING_DM ||
                  gametype == GT_ELIMINATION );
@@ -683,7 +684,7 @@ qboolean G_LadderValidatePayload( ladderMatchPayload_t *payload, qboolean blockO
 
         hasRaceFields = G_LadderGametypeHasRaceFields( payload->gametype );
         if ( hasRaceFields ) {
-                if ( payload->numberOfLaps <= 0 ) {
+                if ( payload->gametype != GT_DRAG && payload->numberOfLaps <= 0 ) {
                         payload->validationErrors |= LADDER_PAYLOAD_ERR_MISSING_REQUIRED;
                         Q_strncpyz( payload->validationReason, "numberOfLaps_required_for_race_mode", sizeof( payload->validationReason ) );
                 }
@@ -719,6 +720,31 @@ qboolean G_LadderValidatePayload( ladderMatchPayload_t *payload, qboolean blockO
                 int expectedLapCount;
                 int j;
                 float expectedKdRatio;
+
+                if ( payload->gametype == GT_DRAG ) {
+                        qboolean finished = !strcmp( player->dragStatus, "finished" );
+                        qboolean invalid = !strcmp( player->dragStatus, "false_start" ) || !strcmp( player->dragStatus, "dnf" );
+                        qboolean bad = !finished && !invalid;
+                        if ( payload->numberOfLaps != 0 || payload->trackReversed ||
+                                payload->playerCount < 1 || payload->playerCount > 2 ||
+                                payload->dragDuel != ( payload->playerCount == 2 ) ||
+                                ( !payload->dragDuel && payload->winnerClientNum != -1 ) ) bad = qtrue;
+                        if ( player->team != TEAM_FREE || player->isBot || player->bestLapMs ||
+                                player->lapCount || player->kills || player->deaths || player->survivalMs ) bad = qtrue;
+                        if ( player->reactionMs < 0 || player->reactionMs > 120000 ||
+                                player->elapsedMs < 0 || player->elapsedMs > 120000 ||
+                                player->totalRaceMs < 0 || player->totalRaceMs > 120000 ||
+                                !SV_LadderIsFinite( player->trapSpeedKph ) || player->trapSpeedKph < 0.0f || player->trapSpeedKph > 1000.0f ) bad = qtrue;
+                        if ( finished ) {
+                                if ( player->elapsedMs <= 0 || player->totalRaceMs != player->reactionMs + player->elapsedMs ||
+                                        player->position < 1 || player->position > payload->playerCount || player->finishRaceTime <= 0 ) bad = qtrue;
+                        } else if ( player->reactionMs || player->elapsedMs || player->totalRaceMs ||
+                                player->trapSpeedKph != 0.0f || player->finishRaceTime || player->position ) bad = qtrue;
+                        if ( bad ) {
+                                payload->validationErrors |= LADDER_PAYLOAD_ERR_INTERNAL_CONSISTENCY;
+                                Q_strncpyz( payload->validationReason, "invalid_drag_result", sizeof( payload->validationReason ) );
+                        }
+                }
 
                 if ( player->team < TEAM_FREE || player->team > TEAM_SPECTATOR ) {
                         payload->validationErrors |= LADDER_PAYLOAD_ERR_VALUE_RANGE;
@@ -848,7 +874,7 @@ static qboolean SV_LadderJsonAppendLapArray( ladderJsonBuilder_t *builder, const
 }
 
 static qboolean SV_LadderJsonAppendPlayer( ladderJsonBuilder_t *builder,
-        const ladderPlayerPayload_t *player, qboolean isKoth, qboolean isAutoball ) {
+        const ladderPlayerPayload_t *player, qboolean isKoth, qboolean isAutoball, qboolean isDrag ) {
         qboolean first = qtrue;
         const char *teamName = SV_LadderTeamName( player->team );
 
@@ -998,6 +1024,17 @@ static qboolean SV_LadderJsonAppendPlayer( ladderJsonBuilder_t *builder,
              !SV_LadderJsonAppendInt( builder, player->totalRaceMs ) ) {
                 return qfalse;
         }
+        if ( isDrag &&
+             ( !SV_LadderJsonAppendKey( builder, "dragStatus", &first ) ||
+               !SV_LadderJsonAppendString( builder, player->dragStatus ) ||
+               !SV_LadderJsonAppendKey( builder, "reactionMs", &first ) ||
+               !SV_LadderJsonAppendInt( builder, player->reactionMs ) ||
+               !SV_LadderJsonAppendKey( builder, "elapsedMs", &first ) ||
+               !SV_LadderJsonAppendInt( builder, player->elapsedMs ) ||
+               !SV_LadderJsonAppendKey( builder, "trapSpeedKph", &first ) ||
+               !SV_LadderJsonAppendFloat( builder, player->trapSpeedKph ) ) ) {
+                return qfalse;
+        }
         if ( !SV_LadderJsonAppendKey( builder, "lapCount", &first ) ||
              !SV_LadderJsonAppendInt( builder, player->lapCount ) ) {
                 return qfalse;
@@ -1136,6 +1173,12 @@ static qboolean SV_LadderJsonAppendPlayer( ladderJsonBuilder_t *builder,
                         SNAP_INT( "sprintWins",       sprintWins       )
                         SNAP_INT( "sprintCompleted",  sprintCompleted  )
                         SNAP_INT( "sprintBestMs",     sprintBestMs     )
+
+                        SNAP_INT( "dragWins",           dragWins           )
+                        SNAP_INT( "dragCompleted",      dragCompleted      )
+                        SNAP_INT( "dragBestMs",         dragBestMs         )
+                        SNAP_INT( "dragBestReactionMs", dragBestReactionMs )
+                        SNAP_INT( "dragBestElapsedMs",  dragBestElapsedMs  )
 
                         /* ── GT_ELIMINATION ── */
                         SNAP_INT( "eliminationWins",              eliminationWins              )
@@ -1400,6 +1443,12 @@ static char *SV_LadderSerializeMatch( const ladderMatchPayload_t *payload, size_
                         Z_Free( builder.data );
                         return NULL;
                 }
+                if ( payload->gametype == GT_DRAG &&
+                     ( !SV_LadderJsonAppendKey( &builder, "dragDuel", &settingsFirst ) ||
+                       !SV_LadderJsonAppendBoolean( &builder, payload->dragDuel ) ) ) {
+                        Z_Free( builder.data );
+                        return NULL;
+                }
                 if ( !SV_LadderJsonAppendKey( &builder, "numberOfLaps", &settingsFirst ) ||
                      !SV_LadderJsonAppendInt( &builder, payload->numberOfLaps ) ) {
                         Z_Free( builder.data );
@@ -1502,7 +1551,8 @@ static char *SV_LadderSerializeMatch( const ladderMatchPayload_t *payload, size_
                         }
                         if ( !SV_LadderJsonAppendPlayer( &builder, &payload->players[i],
                                 payload->gametype == GT_KOTH ? qtrue : qfalse,
-                                payload->gametype == GT_AUTOBALL ? qtrue : qfalse ) ) {
+                                payload->gametype == GT_AUTOBALL ? qtrue : qfalse,
+                                payload->gametype == GT_DRAG ? qtrue : qfalse ) ) {
                                 Z_Free( builder.data );
                                 return NULL;
                         }

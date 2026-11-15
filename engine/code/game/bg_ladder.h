@@ -85,6 +85,13 @@ typedef struct ladderProfileSnapshot_s {
         int             sprintCompleted;
         int             sprintBestMs;
 
+        /* GT_DRAG: valid finishes and independently recorded best times. */
+        int             dragWins;
+        int             dragCompleted;
+        int             dragBestMs;
+        int             dragBestReactionMs;
+        int             dragBestElapsedMs;
+
         /* ── GT_ELIMINATION ─────────────────────────────────────────────── */
         int             eliminationWins;
         int             eliminationCompleted;
@@ -175,6 +182,10 @@ typedef struct ladderPlayerPayload_s {
         int                     position;
         int                     bestLapMs;
         int                     totalRaceMs;
+        char                    dragStatus[16]; /* GT_DRAG: finished / false_start / dnf */
+        int                     reactionMs;
+        int                     elapsedMs;
+        float                   trapSpeedKph;
         int                     lapCount;
         int                     lapTimes[LADDER_MAX_LAP_TIMES];
         int                     kills;
@@ -224,6 +235,7 @@ typedef struct ladderMatchPayload_s {
         int                     winnerClientNum;
         int                     numberOfLaps;
         qboolean        trackReversed;
+        qboolean        dragDuel; /* GT_DRAG: two human drivers armed this heat */
         int                     eliminationStartDelay;
         int                     eliminationInterval;
         int                     eliminationWarning;

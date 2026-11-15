@@ -61,11 +61,6 @@ static void G_Profile_MaybeAutosave( void );
 static void G_Profile_UpdateRankState( void );
 
 static qboolean G_Profile_ShouldTrackClient( const gclient_t *client ) {
-    /* Experimental v0.9 heats do not advance the v0.8 profile counters. */
-    if ( g_gametype.integer == GT_DRAG ) {
-        return qfalse;
-    }
-
     if ( !s_profileState.loaded ) {
         return qfalse;
     }
@@ -109,6 +104,7 @@ static qboolean G_Profile_IsRacingGametype( void ) {
     case GT_RACING:
     case GT_RACING_DM:
     case GT_SPRINT:
+    case GT_DRAG:
     case GT_TEAM_RACING:
     case GT_TEAM_RACING_DM:
     case GT_ELIMINATION:     /* racing with elimination still a race */
@@ -493,6 +489,11 @@ qboolean G_Profile_GetLadderSnapshot( ladderProfileSnapshot_t *outSnapshot,
     outSnapshot->sprintWins = s_profileState.stats.sprintWins;
     outSnapshot->sprintCompleted = s_profileState.stats.sprintCompleted;
     outSnapshot->sprintBestMs = s_profileState.stats.sprintBestMs;
+    outSnapshot->dragWins = s_profileState.stats.dragWins;
+    outSnapshot->dragCompleted = s_profileState.stats.dragCompleted;
+    outSnapshot->dragBestMs = s_profileState.stats.dragBestMs;
+    outSnapshot->dragBestReactionMs = s_profileState.stats.dragBestReactionMs;
+    outSnapshot->dragBestElapsedMs = s_profileState.stats.dragBestElapsedMs;
     outSnapshot->eliminationWins = s_profileState.stats.eliminationWins;
     outSnapshot->eliminationCompleted = s_profileState.stats.eliminationCompleted;
     outSnapshot->eliminationTotalRoundsLasted = s_profileState.stats.eliminationTotalRoundsLasted;
@@ -1042,6 +1043,11 @@ static qboolean G_Profile_LoadFromDisk( void ) {
     /* GT_SPRINT */
     s_profileState.stats.sprintCompleted = G_Profile_ParseInt( buffer, "sprintCompleted", 0 );
     s_profileState.stats.sprintBestMs    = G_Profile_ParseInt( buffer, "sprintBestMs",    0 );
+    s_profileState.stats.dragWins = G_Profile_ParseInt( buffer, "dragWins", 0 );
+    s_profileState.stats.dragCompleted = G_Profile_ParseInt( buffer, "dragCompleted", 0 );
+    s_profileState.stats.dragBestMs = G_Profile_ParseInt( buffer, "dragBestMs", 0 );
+    s_profileState.stats.dragBestReactionMs = G_Profile_ParseInt( buffer, "dragBestReactionMs", 0 );
+    s_profileState.stats.dragBestElapsedMs = G_Profile_ParseInt( buffer, "dragBestElapsedMs", 0 );
 
     /* GT_ELIMINATION */
     s_profileState.stats.eliminationWins              = G_Profile_ParseInt( buffer, "eliminationWins",              0 );
@@ -1508,6 +1514,19 @@ static void G_Profile_WriteToDisk( void ) {
         length += len3;
     }
 
+    /* Keep the additive Drag fields in their own call for the QVM argument limit. */
+    {
+        int dragLength = Com_sprintf( buffer + length, sizeof( buffer ) - length,
+            "\t\t\"dragWins\": %d,\n\t\t\"dragCompleted\": %d,\n"
+            "\t\t\"dragBestMs\": %d,\n\t\t\"dragBestReactionMs\": %d,\n"
+            "\t\t\"dragBestElapsedMs\": %d,\n",
+            s_profileState.stats.dragWins, s_profileState.stats.dragCompleted,
+            s_profileState.stats.dragBestMs, s_profileState.stats.dragBestReactionMs,
+            s_profileState.stats.dragBestElapsedMs );
+        if ( dragLength < 0 || length + dragLength >= (int)sizeof( buffer ) ) return;
+        length += dragLength;
+    }
+
     /* Part 4: team/zone stats + footer */
     {
         int len4 = Com_sprintf( buffer + length, sizeof( buffer ) - length,
@@ -1823,6 +1842,11 @@ void G_Profile_AddScore( int delta ) {
     profile_rank_t rankInfo;
     int clientNum = -1;
     int i;
+
+    /* Solo Drag is a time trial. Only a two-driver heat awards career points. */
+    if ( g_gametype.integer == GT_DRAG && !G_DragLadderDuel() ) {
+        return;
+    }
 
     if ( !s_profileState.loaded || delta == 0 ) {
         return;
@@ -2174,6 +2198,41 @@ void G_Profile_RecordSprintTime( gclient_t *client, int totalMs ) {
     }
 }
 
+/* A Drag finish is not a lap. Solo practice records times without a victory
+ * or points; an armed duel uses the existing race win / placement awards. */
+void G_Profile_RecordDragResult( gclient_t *client, int reactionMs, int elapsedMs,
+                                int position, qboolean duel, qboolean won, qboolean hasWinner ) {
+    qboolean finished;
+    int totalMs;
+
+    if ( g_gametype.integer != GT_DRAG || !G_Profile_ShouldTrackClient( client ) ||
+         client->pers.profileMatchOutcomeRecorded ) {
+        return;
+    }
+    finished = reactionMs >= 0 && reactionMs <= 120000 && elapsedMs > 0 &&
+        elapsedMs <= 120000 - reactionMs && position >= 1 && position <= 2;
+    totalMs = finished ? reactionMs + elapsedMs : 0;
+    if ( finished ) {
+        if ( !s_profileState.stats.dragCompleted || totalMs < s_profileState.stats.dragBestMs )
+            s_profileState.stats.dragBestMs = totalMs;
+        /* Zero is a valid perfect reaction, so completion count is the sentinel. */
+        if ( !s_profileState.stats.dragCompleted || reactionMs < s_profileState.stats.dragBestReactionMs )
+            s_profileState.stats.dragBestReactionMs = reactionMs;
+        if ( !s_profileState.stats.dragCompleted || elapsedMs < s_profileState.stats.dragBestElapsedMs )
+            s_profileState.stats.dragBestElapsedMs = elapsedMs;
+        s_profileState.stats.dragCompleted++;
+    }
+    if ( duel && hasWinner ) {
+        if ( finished && won ) G_Profile_RecordWin( client );
+        else G_Profile_RecordLoss( client );
+        if ( finished ) G_Profile_RecordRacePlacement( client, position );
+    } else {
+        client->pers.profileMatchOutcomeRecorded = qtrue;
+        s_profileState.stats.gamesPlayed++;
+    }
+    s_profileState.dirty = qtrue;
+}
+
 void G_Profile_RecordWin( gclient_t *client ) {
     if ( !s_profileState.loaded ) {
         return;
@@ -2212,6 +2271,9 @@ void G_Profile_RecordWin( gclient_t *client ) {
         s_profileState.stats.sprintWins++;
         s_profileState.stats.sprintCompleted++;
         G_Profile_CheckAchievementProgress( client, BG_ACHIEVEMENT_SPRINT_WINS );
+        break;
+    case GT_DRAG:
+        s_profileState.stats.dragWins++;
         break;
     case GT_ELIMINATION:
         s_profileState.stats.eliminationWins++;

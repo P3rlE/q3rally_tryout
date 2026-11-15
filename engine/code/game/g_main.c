@@ -820,6 +820,8 @@ static const char *G_LadderModeForGametype( int gametype ) {
                 return "GT_RACING_DM";
         case GT_SPRINT:
                 return "GT_SPRINT";
+        case GT_DRAG:
+                return "GT_DRAG";
         case GT_SINGLE_PLAYER:
                 return "GT_SINGLE_PLAYER";
         case GT_DERBY:
@@ -862,6 +864,7 @@ static qboolean G_LadderGametypeHasRaceFields( int gametype ) {
         return ( gametype == GT_RACING
                 || gametype == GT_RACING_DM
                 || gametype == GT_SPRINT
+                || gametype == GT_DRAG
                 || gametype == GT_TEAM_RACING
                 || gametype == GT_TEAM_RACING_DM
                 || gametype == GT_ELIMINATION
@@ -968,6 +971,28 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
 
         client = &level.clients[ clientNum ];
         ent = &g_entities[ clientNum ];
+
+        if ( g_gametype.integer == GT_DRAG ) {
+                char uuid[LADDER_MAX_PLAYER_ID];
+                int revision = 0, epoch = 0;
+                if ( payload->playerCount < 0 || payload->playerCount >= MAX_CLIENTS ) return qfalse;
+                player = &payload->players[payload->playerCount];
+                if ( !G_DragPopulateLadderPlayer( clientNum, player ) ) return qfalse;
+                /* Identity belongs to the armed driver, even after a forfeit
+                 * frees the slot for a different spectator. Attach a local
+                 * snapshot only while it still belongs to that identity. */
+                if ( client->pers.connected == CON_CONNECTED && client->pers.localClient
+                        && G_Profile_GetUUID( uuid, sizeof( uuid ) ) && !strcmp( uuid, player->playerId ) ) {
+                        player->profileAttached = qtrue;
+                        if ( G_Profile_GetLadderSnapshot( &player->profile, &revision, &epoch ) ) {
+                                player->profile.valid = qtrue;
+                                player->profile.snapshotRevision = revision;
+                                player->profile.snapshotEpoch = epoch;
+                        }
+                }
+                payload->playerCount++;
+                return qtrue;
+        }
 
         if ( client->pers.connected != CON_CONNECTED ) {
                 return qfalse;
@@ -1303,6 +1328,11 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
                                         snap->sprintWins = G_Profile_ParseIntPublic( statsBuf, "sprintWins", 0 );
                                         snap->sprintCompleted = G_Profile_ParseIntPublic( statsBuf, "sprintCompleted", 0 );
                                         snap->sprintBestMs = G_Profile_ParseIntPublic( statsBuf, "sprintBestMs", 0 );
+                                        snap->dragWins = G_Profile_ParseIntPublic( statsBuf, "dragWins", 0 );
+                                        snap->dragCompleted = G_Profile_ParseIntPublic( statsBuf, "dragCompleted", 0 );
+                                        snap->dragBestMs = G_Profile_ParseIntPublic( statsBuf, "dragBestMs", 0 );
+                                        snap->dragBestReactionMs = G_Profile_ParseIntPublic( statsBuf, "dragBestReactionMs", 0 );
+                                        snap->dragBestElapsedMs = G_Profile_ParseIntPublic( statsBuf, "dragBestElapsedMs", 0 );
                                         snap->eliminationWins = G_Profile_ParseIntPublic( statsBuf, "eliminationWins", 0 );
                                         snap->eliminationCompleted = G_Profile_ParseIntPublic( statsBuf, "eliminationCompleted", 0 );
                                         snap->eliminationTotalRoundsLasted = G_Profile_ParseIntPublic( statsBuf, "eliminationTotalRoundsLasted", 0 );
@@ -1389,7 +1419,7 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
 
 	/* Ghost races are solo time trials without opponents; they never
 	   produce a ladder result. */
-	if ( g_gametype.integer == GT_GHOST || g_gametype.integer == GT_DRAG ) {
+	if ( g_gametype.integer == GT_GHOST ) {
 		return;
 	}
 
@@ -1481,6 +1511,11 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
                 payload->finishRaceTime = level.finishRaceTime;
                 payload->numberOfLaps = level.numberOfLaps;
                 payload->trackReversed = g_trackReversed.integer ? qtrue : qfalse;
+                if ( payload->gametype == GT_DRAG ) {
+                        payload->numberOfLaps = 0;
+                        payload->trackReversed = qfalse;
+                        payload->dragDuel = G_DragLadderDuel();
+                }
         } else {
                 if ( level.startRaceTime || level.finishRaceTime || level.numberOfLaps || g_trackReversed.integer ) {
                         Com_Printf( "Ladder: warning - race fields set in non-race mode %s; neutralizing payload fields\n",
@@ -1494,6 +1529,7 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
         }
 
         payload->winnerClientNum = G_LadderWinnerForGametype( payload->gametype );
+        if ( payload->gametype == GT_DRAG && !payload->dragDuel ) payload->winnerClientNum = -1;
         if ( payload->winnerClientNum != level.winnerNumber ) {
                 if (g_developer.integer) Com_Printf( "Ladder: info - winnerClientNum adjusted for mode %s (%d -> %d)\n",
                         payload->mode, level.winnerNumber, payload->winnerClientNum );
@@ -1542,6 +1578,10 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
         for ( i = 0; i < level.maxclients; ++i ) {
                 G_LadderPopulatePlayer( payload, i );
         }
+
+        /* No armed driver means this was a cancelled/invalid course setup,
+         * not a completed heat with an invented participant or result. */
+        if ( payload->gametype == GT_DRAG && !payload->playerCount ) return;
 
         G_LadderLogSubmitSnapshot( payload );
 
@@ -2014,10 +2054,6 @@ static void G_RecordMatchOutcome( void ) {
         int                     winner;
         qboolean                teamGame;
 
-	if ( g_gametype.integer == GT_DRAG ) {
-		return;
-	}
-
 	if ( g_gametype.integer == GT_KOTH && level.kothMapInvalid ) {
 		return;
 	}
@@ -2029,6 +2065,21 @@ static void G_RecordMatchOutcome( void ) {
 		return;
 	}
 	level.matchOutcomeRecorded = qtrue;
+
+        if ( g_gametype.integer == GT_DRAG ) {
+                qboolean duel = G_DragLadderDuel();
+                qboolean hasWinner = duel && level.winnerNumber >= 0;
+                for ( clientNum = 0; clientNum < level.maxclients; ++clientNum ) {
+                        ladderPlayerPayload_t result;
+                        gclient_t *client = &level.clients[clientNum];
+                        if ( !G_DragLadderIdentityMatches( clientNum )
+                                || !G_DragPopulateLadderPlayer( clientNum, &result ) ) continue;
+                        G_Profile_RecordDragResult( client, result.reactionMs, result.elapsedMs,
+                                result.position, duel, hasWinner && clientNum == level.winnerNumber, hasWinner );
+                        ClientUserinfoChanged( clientNum );
+                }
+                return;
+        }
 
         if ( level.numPlayingClients <= 0 ) {
                 return;

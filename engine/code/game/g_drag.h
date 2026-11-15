@@ -13,5 +13,9 @@ void G_DragPostMove( gentity_t *ent, const vec3_t oldOrigin, int oldTime );
 void G_DragRunFrame( void );
 qboolean G_DragCheckExit( void );
 int G_DragCompare( int clientA, int clientB );
+qboolean G_DragLadderParticipant( int clientNum );
+qboolean G_DragLadderDuel( void );
+qboolean G_DragLadderIdentityMatches( int clientNum );
+qboolean G_DragPopulateLadderPlayer( int clientNum, ladderPlayerPayload_t *player );
 
 #endif

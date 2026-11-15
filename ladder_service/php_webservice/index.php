@@ -57,7 +57,7 @@ try {
 }
 
 const LADDER_RACE_MODES = [
-    'GT_RACING', 'GT_RACING_DM', 'GT_SPRINT', 'GT_TEAM_RACING', 'GT_TEAM_RACING_DM',
+    'GT_RACING', 'GT_RACING_DM', 'GT_SPRINT', 'GT_DRAG', 'GT_TEAM_RACING', 'GT_TEAM_RACING_DM',
 ];
 const LADDER_DEATHMATCH_MODES = [
     'GT_DEATHMATCH', 'GT_TEAM',
@@ -1399,6 +1399,7 @@ try {
       { key: 'gt_racing', type: 'race' },
       { key: 'gt_racing_dm', type: 'race' },
       { key: 'gt_sprint', type: 'race' },
+      { key: 'gt_drag', type: 'race' },
       { key: 'gt_derby', type: 'derby' },
       { key: 'gt_lcs', type: 'survival' },
       { key: 'gt_elimination', type: 'objective' },
@@ -1475,6 +1476,10 @@ try {
         'leaderboard.headers.rank': 'Rang',
         'leaderboard.headers.player': 'Spieler',
         'leaderboard.headers.time': 'Zeit',
+        'drag.headers.total': 'TOTAL (s)',
+        'drag.headers.reaction': 'RT (s)',
+        'drag.headers.elapsed': 'ET (s)',
+        'drag.headers.trap': 'Ziel km/h',
         'leaderboard.headers.best': 'Bestzeit',
         'leaderboard.headers.map': 'Map',
         'leaderboard.headers.mode': 'Modus',
@@ -1661,6 +1666,10 @@ try {
         'leaderboard.headers.rank': 'Rank',
         'leaderboard.headers.player': 'Player',
         'leaderboard.headers.time': 'Time',
+        'drag.headers.total': 'TOTAL (s)',
+        'drag.headers.reaction': 'RT (s)',
+        'drag.headers.elapsed': 'ET (s)',
+        'drag.headers.trap': 'Trap km/h',
         'leaderboard.headers.best': 'Best time',
         'leaderboard.headers.map': 'Map',
         'leaderboard.headers.mode': 'Mode',
@@ -1799,6 +1808,7 @@ try {
         gt_racing: 'Rennen',
         gt_racing_dm: 'Deathmatch Rennen',
         gt_sprint: 'Sprint',
+        gt_drag: 'Drag Race',
         gt_derby: 'Demolition Derby',
         gt_lcs: 'Last Car Standing',
         gt_elimination: 'Elimination',
@@ -1816,6 +1826,7 @@ try {
         gt_racing: 'Racing',
         gt_racing_dm: 'Racing Deathmatch',
         gt_sprint: 'Sprint',
+        gt_drag: 'Drag Race',
         gt_derby: 'Demolition Derby',
         gt_lcs: 'Last Car Standing',
         gt_elimination: 'Elimination',
@@ -1831,7 +1842,7 @@ try {
       }
     };
 
-    const RACE_MODE_KEYS = new Set(['gt_racing', 'gt_racing_dm', 'gt_sprint', 'gt_team_racing', 'gt_team_racing_dm']);
+    const RACE_MODE_KEYS = new Set(['gt_racing', 'gt_racing_dm', 'gt_sprint', 'gt_drag', 'gt_team_racing', 'gt_team_racing_dm']);
     const DEATHMATCH_MODE_KEYS = new Set(['gt_deathmatch', 'gt_team']);
     const DERBY_MODE_KEYS = new Set(['gt_derby']);
     const SURVIVAL_MODE_KEYS = new Set(['gt_lcs']);
@@ -2446,6 +2457,18 @@ function updateModeTabsLanguage() {
 }
 
 function getColumnsForMode(config) {
+  if (config.key === 'gt_drag') {
+    return [
+      { key: 'rank', labelKey: 'leaderboard.headers.rank' },
+      { key: 'player', labelKey: 'leaderboard.headers.player' },
+      { key: 'time', labelKey: 'drag.headers.total' },
+      { key: 'reaction', labelKey: 'drag.headers.reaction' },
+      { key: 'elapsed', labelKey: 'drag.headers.elapsed' },
+      { key: 'trap', labelKey: 'drag.headers.trap' },
+      { key: 'vehicle', labelKey: 'leaderboard.headers.vehicle' },
+      { key: 'recorded', labelKey: 'leaderboard.headers.recorded' }
+    ];
+  }
   if (config.type === 'race') {
     return [
       { key: 'rank', labelKey: 'leaderboard.headers.rank' },
@@ -2601,7 +2624,7 @@ function renderModeTable(modeKey) {
       const td = document.createElement('td');
       switch (column.key) {
         case 'rank':
-          td.textContent = String(index + 1);
+          td.textContent = String(modeKey === 'gt_drag' ? rows.findIndex((row) => row.time === entry.time) + 1 : index + 1);
           break;
         case 'player': {
           td.classList.add('leaderboard-player');
@@ -2634,7 +2657,16 @@ function renderModeTable(modeKey) {
           break;
         }
         case 'time':
-          td.textContent = formatRaceTime(entry.time);
+          td.textContent = modeKey === 'gt_drag' ? entry.time.toFixed(3) : formatRaceTime(entry.time);
+          break;
+        case 'reaction':
+          td.textContent = (entry.reactionMs / 1000).toFixed(3);
+          break;
+        case 'elapsed':
+          td.textContent = (entry.elapsedMs / 1000).toFixed(3);
+          break;
+        case 'trap':
+          td.textContent = Number(entry.trapSpeedKph).toFixed(1);
           break;
         case 'vehicle':
           td.textContent = entry.vehicle ? entry.vehicle : '–';
@@ -3650,6 +3682,15 @@ function ingestMatchInto(match, aggregation) {
   }
 }
 
+function extractDragResult(entry) {
+  if (!entry || entry.dragStatus !== 'finished' || extractIsBot(entry)) return null;
+  const { reactionMs, elapsedMs, totalRaceMs, trapSpeedKph } = entry;
+  if (![reactionMs, elapsedMs, totalRaceMs].every((value) => Number.isInteger(value) && value >= 0 && value <= 120000) ||
+      elapsedMs <= 0 || totalRaceMs !== reactionMs + elapsedMs ||
+      !Number.isFinite(trapSpeedKph) || trapSpeedKph < 0 || trapSpeedKph > 1000) return null;
+  return { time: totalRaceMs / 1000, reactionMs, elapsedMs, trapSpeedKph };
+}
+
 function ingestRaceEntries(aggregation, entries, context) {
   const { map, mapKey, modeKey, matchId, startedAt, recordedAt } = context;
   for (const entry of entries) {
@@ -3657,7 +3698,8 @@ function ingestRaceEntries(aggregation, entries, context) {
     if (!player) {
       continue;
     }
-    const seconds = findBestTime(entry);
+    const drag = modeKey === 'gt_drag' ? extractDragResult(entry) : null;
+    const seconds = modeKey === 'gt_drag' ? (drag ? drag.time : null) : findBestTime(entry);
     if (seconds === null || !isReasonableRaceTime(seconds)) {
       continue;
     }
@@ -3673,6 +3715,7 @@ function ingestRaceEntries(aggregation, entries, context) {
         playerLower,
         playerId: racePlayerId,
         time: seconds,
+        ...(drag || {}),
         map,
         mapKey,
         modeKey,
@@ -3880,6 +3923,7 @@ function canonicalMode(mode) {
   if (!normalized.startsWith('gt_')) {
     normalized = `gt_${normalized}`;
   }
+  if (normalized === 'gt_drag_race') normalized = 'gt_drag';
   if (MODE_CONFIG_MAP.has(normalized)) {
     return normalized;
   }
@@ -4787,6 +4831,7 @@ async function showPlayerProfile(playerId, playerName) {
       { title: 'Racing',          primaryStat: 'racingCompleted', alwaysVisibleWhenTracked: true, fields: [['Wins','racingWins'],['Podiums','racingPodiums'],['Completed','racingCompleted'],['Total Time',null,'racingTotalMs']] },
       { title: 'Racing DM',       primaryStat: 'racingDmCompleted', alwaysVisibleWhenTracked: true, fields: [['Wins','racingDmWins'],['Podiums','racingDmPodiums'],['Completed','racingDmCompleted']] },
       { title: 'Sprint',          primaryStat: 'sprintCompleted', alwaysVisibleWhenTracked: true, fields: [['Wins','sprintWins'],['Completed','sprintCompleted'],['Best Time',null,'sprintBestMs']] },
+      { title: 'Drag Race',       primaryStat: 'dragCompleted', alwaysVisibleWhenTracked: true, fields: [['Wins','dragWins'],['Valid Finishes','dragCompleted'],['Best Total',null,'dragBestMs'],['Best RT',null,'dragBestReactionMs'],['Best ET',null,'dragBestElapsedMs']] },
       { title: 'Elimination',     primaryStat: 'eliminationCompleted', fields: [['Wins','eliminationWins'],['Completed','eliminationCompleted'],['Rounds Lasted','eliminationTotalRoundsLasted']] },
       { title: 'LCS',             primaryStat: 'lcsCompleted', fields: [['Wins','lcsWins'],['Completed','lcsCompleted'],['Survival Time',null,'lcsTotalSurvivalMs']] },
       { title: 'CTF',             primaryStat: 'ctfCompleted', fields: [['Wins','ctfWins'],['Completed','ctfCompleted'],['Captures','ctfCaptures']] },
@@ -4841,7 +4886,8 @@ async function showPlayerProfile(playerId, playerName) {
           let val;
           if (msKey) {
             const ms = toIntStat(p, msKey);
-            val = ms > 0 ? formatMs(ms) : '–';
+            val = msKey === 'dragBestReactionMs' && toIntStat(p, 'dragCompleted') > 0
+              ? `${(ms / 1000).toFixed(3)}s` : (ms > 0 ? formatMs(ms) : '–');
           } else {
             val = String(toIntStat(p, key));
           }
@@ -4953,12 +4999,19 @@ async function showMatchDetails(matchId) {
         const name = p.cleanName || p.name || 'Unknown';
         const pos  = p.position || '–';
         const stats = [];
-        if (p.bestLapMs > 0) stats.push(`Best: ${formatMs(p.bestLapMs)}`);
-        if (p.totalRaceMs > 0) stats.push(`Total: ${formatMs(p.totalRaceMs)}`);
-        if (p.kills != null) stats.push(`K: ${p.kills}`);
-        if (p.deaths != null) stats.push(`D: ${p.deaths}`);
-        if (p.captures > 0) stats.push(`Caps: ${p.captures}`);
-        if (p.score != null) stats.push(`Score: ${p.score}`);
+        if (canonicalMode(rawMode) === 'gt_drag') {
+          const drag = extractDragResult(p);
+          stats.push(String(p.dragStatus || '').replaceAll('_', ' ').toUpperCase());
+          if (drag) stats.push(`RT: ${(drag.reactionMs / 1000).toFixed(3)}s`, `ET: ${formatMs(drag.elapsedMs)}`,
+            `TOTAL: ${formatMs(p.totalRaceMs)}`, `${drag.trapSpeedKph.toFixed(1)} km/h`);
+        } else {
+          if (p.bestLapMs > 0) stats.push(`Best: ${formatMs(p.bestLapMs)}`);
+          if (p.totalRaceMs > 0) stats.push(`Total: ${formatMs(p.totalRaceMs)}`);
+          if (p.kills != null) stats.push(`K: ${p.kills}`);
+          if (p.deaths != null) stats.push(`D: ${p.deaths}`);
+          if (p.captures > 0) stats.push(`Caps: ${p.captures}`);
+          if (p.score != null) stats.push(`Score: ${p.score}`);
+        }
 
         const row = document.createElement('div');
         row.className = 'q3-match-player';
@@ -6100,7 +6153,7 @@ function profile_upsert_from_payload(array $payload): void
         }
     }
 
-    if (!$hasWinnerClientNum && !$isTeamMode) {
+    if (!$hasWinnerClientNum && !$isTeamMode && $mode !== 'GT_DRAG') {
         $positionOne = array_values(array_filter(
             $humanPlayers,
             static fn($hp) => (int)($hp['position'] ?? 0) === 1
@@ -6158,6 +6211,11 @@ function profile_upsert_from_payload(array $payload): void
         $isWinnerByClient = $hasWinnerClientNum && $winnerClientNum >= 0 && $winnerClientNum === $clientNum;
         $isWinnerByTeam = $isTeamMode && $winnerTeam !== null && $playerTeam !== '' && $playerTeam === $winnerTeam;
         $isWinner = $isTeamMode ? $isWinnerByTeam : $isWinnerByClient;
+        if ($mode === 'GT_DRAG') {
+            $isWinner = drag_winner_client_num($payload) === $clientNum &&
+                ($player['dragStatus'] ?? '') === 'finished';
+            $hasWinnerClientNum = drag_winner_client_num($payload) >= 0;
+        }
 
         // ── Accuracy Award ─────────────────────────────────────────────
         $accuracy      = (int)($player['accuracy'] ?? 0);
@@ -6209,6 +6267,19 @@ function profile_upsert_from_payload(array $payload): void
         };
 
         $pickCareerWithBaselineDelta = $pickCareer;
+        $pickDragBest = function(string $key, string $matchKey) use ($snap, $existing, $player, $mode, $countThisMatch): int {
+            $values = [];
+            if ((int)($existing['dragCompleted'] ?? 0) > 0 && array_key_exists($key, $existing)) {
+                $values[] = max(0, (int)$existing[$key]);
+            }
+            if ((int)($snap['dragCompleted'] ?? 0) > 0 && profile_snapshot_int($snap, $key) !== null) {
+                $values[] = max(0, (int)$snap[$key]);
+            }
+            if ($mode === 'GT_DRAG' && $countThisMatch && ($player['dragStatus'] ?? '') === 'finished') {
+                $values[] = (int)$player[$matchKey];
+            }
+            return $values ? min($values) : 0;
+        };
         $mergeCareerCountField = function(string $field, int $deltaValue) use ($snap, $existing, $countThisMatch, $matchId): int {
             $existingValue = (int)($existing[$field] ?? 0);
             $snapshotValue = profile_snapshot_int($snap, $field);
@@ -6453,6 +6524,18 @@ function profile_upsert_from_payload(array $payload): void
                 case 'GT_ELIMINATION':
                     $scoreDeltaDerived = $isWinner ? 1 : 0;
                     break;
+                case 'GT_DRAG':
+                    // Match facts supply the existing race placement awards for
+                    // remote players. A native snapshot already includes these
+                    // and achievement bonuses and remains the primary source.
+                    if (($payload['settings']['dragDuel'] ?? false) === true && $hasWinnerClientNum &&
+                        ($player['dragStatus'] ?? '') === 'finished') {
+                        $scoreDeltaDerived = $isWinner ? 12 : ($position === 2 ? 6 : 0);
+                        if (($payload['source'] ?? '') === 'online' && $scoreDeltaDerived > 0) {
+                            $scoreDeltaDerived = (int)($scoreDeltaDerived * 1.10);
+                        }
+                    }
+                    break;
                 case 'GT_RACING':
                 case 'GT_RACING_DM':
                 case 'GT_SPRINT':
@@ -6554,6 +6637,13 @@ function profile_upsert_from_payload(array $payload): void
                 if ($new > 0 && ($old === 0 || $new < $old)) return $new;
                 return $old ?: $new;
             })(),
+
+            // ── GT_DRAG ─────────────────────────────────────────────────
+            'dragWins'       => $pickCareer('dragWins', $mode === 'GT_DRAG' && $isWinner ? 1 : 0),
+            'dragCompleted'  => $pickCareer('dragCompleted', $mode === 'GT_DRAG' && ($player['dragStatus'] ?? '') === 'finished' ? 1 : 0),
+            'dragBestMs'     => $pickDragBest('dragBestMs', 'totalRaceMs'),
+            'dragBestReactionMs' => $pickDragBest('dragBestReactionMs', 'reactionMs'),
+            'dragBestElapsedMs' => $pickDragBest('dragBestElapsedMs', 'elapsedMs'),
 
             // ── GT_ELIMINATION ──────────────────────────────────────────
             'eliminationWins'              => $pickCareer('eliminationWins', $careerDeltas['eliminationWinsDelta']),
@@ -6698,7 +6788,98 @@ function normalize_mode_value($mode): string
     if (strpos($upper, 'GT_') !== 0) {
         $upper = 'GT_' . $upper;
     }
+    if ($upper === 'GT_DRAG_RACE') {
+        $upper = 'GT_DRAG';
+    }
     return $upper;
+}
+
+/** Drag is a timed heat, not a lap. Reject inconsistent result facts before
+ * persistence so invalid starts cannot enter either profiles or best times. */
+function normalize_drag_payload(array $payload): array
+{
+    $settings = $payload['settings'] ?? null;
+    $players = $payload['players'];
+    if (!is_array($settings) || ($settings['g_gametype'] ?? null) !== 9 ||
+        (array_key_exists('gametype', $payload) && $payload['gametype'] !== 9) ||
+        !is_bool($settings['dragDuel'] ?? null) || count($players) < 1 || count($players) > 2 ||
+        $settings['dragDuel'] !== (count($players) === 2) || !empty($payload['teams'])) {
+        throw new LadderApiException(422, 'DRAG_SETTINGS_INVALID', 'Drag requires one or two human drivers and matching Drag settings.');
+    }
+    $clientNums = [];
+    $playerIds = [];
+    foreach ($players as $index => $player) {
+        if (!is_array($player) || !empty($player['isBot']) ||
+            !is_int($player['clientNum'] ?? null) || $player['clientNum'] < 0 || $player['clientNum'] >= 64 ||
+            isset($clientNums[$player['clientNum']]) || !is_string($player['playerId'] ?? null) ||
+            trim($player['playerId']) === '' || isset($playerIds[$player['playerId']]) ||
+            !in_array($player['dragStatus'] ?? null, ['finished', 'false_start', 'dnf'], true)) {
+            throw new LadderApiException(422, 'DRAG_PLAYER_INVALID', 'Drag requires distinct human drivers with a terminal result status.');
+        }
+        $clientNums[$player['clientNum']] = true;
+        $playerIds[$player['playerId']] = true;
+        foreach (['reactionMs', 'elapsedMs', 'totalRaceMs', 'position'] as $field) {
+            if (!is_int($player[$field] ?? null) || $player[$field] < 0 || $player[$field] > 120000) {
+                throw new LadderApiException(422, 'DRAG_RESULT_INVALID', 'Drag times and position must be non-negative integers.');
+            }
+        }
+        $speed = $player['trapSpeedKph'] ?? null;
+        if ((!is_int($speed) && !is_float($speed)) || !is_finite((float)$speed) || $speed < 0 || $speed > 1000) {
+            throw new LadderApiException(422, 'DRAG_RESULT_INVALID', 'Drag trap speed must be finite and between 0 and 1000 km/h.');
+        }
+        if ($player['dragStatus'] === 'finished') {
+            if ($player['elapsedMs'] <= 0 || $player['totalRaceMs'] !== $player['reactionMs'] + $player['elapsedMs'] ||
+                $player['position'] < 1 || $player['position'] > count($players)) {
+                throw new LadderApiException(422, 'DRAG_RESULT_INVALID', 'A valid Drag finish requires TOTAL = RT + ET and a finishing position.');
+            }
+        } elseif ($player['reactionMs'] !== 0 || $player['elapsedMs'] !== 0 || $player['totalRaceMs'] !== 0 ||
+                  $player['position'] !== 0 || (float)$speed !== 0.0) {
+            throw new LadderApiException(422, 'DRAG_RESULT_INVALID', 'False starts and DNFs cannot carry valid result times or a position.');
+        }
+        // Lap, team and combat state have no meaning in this mode.
+        $player['bestLapMs'] = $player['lapCount'] = $player['kills'] = $player['deaths'] = 0;
+        $player['lapTimes'] = [];
+        $player['team'] = 0;
+        $players[$index] = $player;
+    }
+    foreach ($players as $player) {
+        if ($player['dragStatus'] !== 'finished') continue;
+        $expectedPosition = 1;
+        foreach ($players as $opponent) {
+            if ($opponent['dragStatus'] === 'finished' && $opponent['totalRaceMs'] < $player['totalRaceMs']) {
+                $expectedPosition++;
+            }
+        }
+        if ($player['position'] !== $expectedPosition) {
+            throw new LadderApiException(422, 'DRAG_POSITION_INVALID', 'Drag positions must follow valid TOTAL times, with shared ranks for ties.');
+        }
+    }
+    $payload['players'] = array_values($players);
+    $payload['winnerClientNum'] = drag_winner_client_num($payload);
+    $payload['settings']['winnerClientNum'] = $payload['winnerClientNum'];
+    return $payload;
+}
+
+function drag_winner_client_num(array $payload): int
+{
+    $players = (array)($payload['players'] ?? []);
+    if (($payload['settings']['dragDuel'] ?? false) !== true || count($players) !== 2) {
+        return -1;
+    }
+    $best = null;
+    $winner = -1;
+    foreach ($players as $player) {
+        if (!is_array($player) || !empty($player['isBot']) || ($player['dragStatus'] ?? '') !== 'finished') continue;
+        $total = (int)($player['totalRaceMs'] ?? 0);
+        if ($total <= 0) continue;
+        if ($best === null || $total < $best) {
+            $best = $total;
+            $winner = (int)($player['clientNum'] ?? -1);
+        } elseif ($total === $best) {
+            $winner = -1;
+        }
+    }
+    return $winner;
 }
 
 function mode_is_race(string $mode): bool
@@ -6781,6 +6962,9 @@ function extract_player_deaths(array $player, string $mode): int
 
 function extract_player_position(array $player, string $mode): int
 {
+    if ($mode === 'GT_DRAG' && ($player['dragStatus'] ?? '') !== 'finished') {
+        return 0;
+    }
     if (mode_is_race($mode) || mode_is_elimination($mode)) {
         $position = first_numeric_value($player, ['position', 'rank']);
         return (int) max(0, $position ?? 0);
@@ -6790,6 +6974,9 @@ function extract_player_position(array $player, string $mode): int
 
 function extract_player_race_time(array $player, string $mode): int
 {
+    if ($mode === 'GT_DRAG') {
+        return ($player['dragStatus'] ?? '') === 'finished' ? (int)max(0, $player['totalRaceMs'] ?? 0) : 0;
+    }
     if (!mode_is_race($mode) && !mode_is_elimination($mode) && !mode_is_survival($mode)) {
         return 0;
     }
@@ -6808,6 +6995,15 @@ function extract_player_zone_hold(array $player, string $mode): int
 
 function index_derive_winner(array $payload, string $mode): array
 {
+    if ($mode === 'GT_DRAG') {
+        $winner = drag_winner_client_num($payload);
+        foreach ((array)($payload['players'] ?? []) as $player) {
+            if ($winner >= 0 && is_array($player) && (int)($player['clientNum'] ?? -1) === $winner) {
+                return ['winner' => (string)($player['cleanName'] ?? $player['name'] ?? ''), 'winnerTeam' => 0];
+            }
+        }
+        return ['winner' => '', 'winnerTeam' => 0];
+    }
     // Mirrors the winner-detection logic of profile_upsert_from_payload().
     // Returns ['winner' => string cleanName, 'winnerTeam' => int].
     $teamModes = ['GT_TEAM', 'GT_TEAM_RACING', 'GT_TEAM_RACING_DM',
@@ -6985,6 +7181,10 @@ function index_extract_entry(array $payload): array
             })(),
             'bestLapMs'   => (int)($p['bestLapMs'] ?? 0),
             'totalRaceMs' => extract_player_race_time($p, $mode),
+            'dragStatus'  => $mode === 'GT_DRAG' ? (string)($p['dragStatus'] ?? '') : '',
+            'reactionMs'  => $mode === 'GT_DRAG' ? (int)($p['reactionMs'] ?? 0) : 0,
+            'elapsedMs'   => $mode === 'GT_DRAG' ? (int)($p['elapsedMs'] ?? 0) : 0,
+            'trapSpeedKph' => $mode === 'GT_DRAG' ? (float)($p['trapSpeedKph'] ?? 0) : 0,
             'kills'       => $kills,
             'deaths'      => extract_player_deaths($p, $mode),
             'position'    => extract_player_position($p, $mode),
@@ -7196,6 +7396,10 @@ function normalize_ingest_payload(array $payload): array
         throw new LadderApiException(422, 'PLAYERS_REQUIRED', 'players must be a non-empty array.');
     }
 
+    if ($payload['mode'] === 'GT_DRAG') {
+        $payload = normalize_drag_payload($payload);
+    }
+
     $normalizedPlayers = [];
     foreach ($payload['players'] as $index => $player) {
         if (!is_array($player)) {
@@ -7210,7 +7414,7 @@ function normalize_ingest_payload(array $payload): array
         $player['zoneHoldMs'] = extract_player_zone_hold($player, $payload['mode']);
 
         // mode-specific neutralization (new semantics first, legacy-compatible)
-        if (!mode_is_race($payload['mode']) && !mode_is_elimination($payload['mode'])) {
+        if ($payload['mode'] === 'GT_DRAG' || (!mode_is_race($payload['mode']) && !mode_is_elimination($payload['mode']))) {
             $player['bestLapMs'] = 0;
             $player['lapCount'] = 0;
             $player['lapTimes'] = [];
