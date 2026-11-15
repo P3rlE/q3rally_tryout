@@ -304,8 +304,8 @@ def make_textures():
     Image.fromarray((np.dstack([v, v, v * 1.02]) * 255).clip(0, 255).astype(np.uint8)).save(TEXDIR / "rubber.jpg", quality=90)
 
     # runway concrete: slabs of 256 units (texture 512 px at scale 0.5) with dark joints and tyre marks
-    n = noise(512, 3)
-    v = 0.52 + 0.16 * (n - 0.5)
+    n = noise(512, 3, ((128, 0.3), (64, 0.3), (16, 0.4)))
+    v = 0.55 + 0.09 * (n - 0.5)
     v[:, :3] -= 0.18
     v[:3, :] -= 0.18
     v[:, 255:258] -= 0.12
@@ -328,6 +328,12 @@ def make_textures():
         im = Image.new("RGB", (64, 64), tuple(int(x * 0.75) for x in c))
         ImageDraw.Draw(im).ellipse((6, 6, 57, 57), fill=c)
         im.filter(ImageFilter.GaussianBlur(3)).save(TEXDIR / f"{name}.jpg", quality=95)
+
+    # corrugated hangar cladding: light grey ribs every 16 px (8 units at scale 0.5)
+    n = noise(256, 5, ((8, 0.6), (32, 0.4)))
+    rib = 0.5 + 0.5 * np.cos(np.arange(256) / 16 * 2 * np.pi)
+    v = 0.58 + 0.10 * rib[None, :] + 0.08 * (n - 0.5)
+    Image.fromarray((np.dstack([v * 0.97, v, v * 1.02]) * 255).clip(0, 255).astype(np.uint8)).save(TEXDIR / "cladding.jpg", quality=90)
 
     # tent canvas and hangar door
     n = noise(256, 4, ((16, 0.6), (4, 0.4)))
@@ -1007,7 +1013,7 @@ def airfield():
 
 def hangar(m, x0, x1, y0, y1, h=560):
     """Hangar with an open door towards the runway (+y) and a sloped roof."""
-    wallm = {"m": "q3r_metals/cormetal02", "s": (0.5, 0.5)}
+    wallm = {"m": TEX + "cladding", "s": (0.5, 0.5)}
     t = 24
     m.box((x0, y0, 0), (x1, y0 + t, h), wallm, faces={"bot": CAULK})                  # back
     m.box((x0, y0, 0), (x0 + t, y1, h), wallm, faces={"bot": CAULK})                  # sides
