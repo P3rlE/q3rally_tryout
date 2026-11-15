@@ -25,8 +25,6 @@ jobs:
   ladder-tests:
     name: Ladder service tests
     runs-on: ubuntu-24.04
-    env:
-      LADDER_DB_PATH: ${{ runner.temp }}/ladder-service-tests.db
     steps:
     - uses: actions/checkout@v7
     - uses: actions/setup-python@v6
@@ -41,6 +39,8 @@ jobs:
         sudo apt-get install -y php-cli
         python -m pip install -r ladder_service/requirements.txt
     - name: Test Python and PHP Ladder services
+      env:
+        LADDER_DB_PATH: ${{ runner.temp }}/ladder-service-tests.db
       run: python -m pytest -q ladder_service/tests
   linux:
     name: Linux ${{ matrix.arch }}
