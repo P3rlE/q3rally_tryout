@@ -1093,6 +1093,10 @@ static void CG_DrawRallyTelemetryHud( void ) {
 	if ( !cg.snap || !cg_drawStatus.integer ) {
 		return;
 	}
+	if ( cgs.gametype == GT_DRAG ) {
+		CG_DrawDragTelemetryHud();
+		return;
+	}
 	if ( cgs.gametype == GT_DERBY && !cg_hudShowDerbyVehicle.integer ) {
 		return;
 	}
@@ -1471,36 +1475,6 @@ static void CG_DrawRallyTelemetryHud( void ) {
 			CG_DrawIngameString( HUD_X(294), 450, modeExtra,
 			                     UI_RIGHT | UI_SMALLFONT, 0.42f, accentColor );
 		}
-	} else if ( cgs.gametype == GT_DRAG ) {
-		qboolean validRun = cent->dragPhase == DRAG_RUNNING || cent->dragPhase == DRAG_FINISHED;
-		int reactionMs = validRun && cent->dragLaunchTime > 0 ? cent->dragLaunchTime - cent->dragGreenTime : -1;
-		int elapsedMs = validRun && cent->dragLaunchTime > 0 ?
-			( cent->dragFinishTime > 0 ? cent->dragFinishTime : cg.time ) - cent->dragLaunchTime : 0;
-		const char *status = "REV IN N TO STAGE";
-		if ( elapsedMs < 0 ) elapsedMs = 0;
-		if ( cent->dragPhase == DRAG_FALSE_START ) status = "FALSE START";
-		else if ( cent->dragPhase == DRAG_DNF ) status = "DID NOT FINISH";
-		else if ( cent->dragPhase == DRAG_FINISHED ) status = "FINISHED";
-		else if ( cent->dragPhase == DRAG_RUNNING ) status = "MANUAL SHIFT";
-		else if ( cent->dragPhase == DRAG_COUNTDOWN ) status = "SHIFT INTO 1ST ON GREEN";
-		else if ( cent->dragPhase == DRAG_STAGED ) status = "STAGED - HOLD REVS IN N";
-		CG_DrawIngameSmallString( 190, 418, "DRAG RACE", mutedColor );
-		CG_DrawIngameString( 190, 432, status, UI_SMALLFONT, 0.46f,
-			cent->dragPhase >= DRAG_FALSE_START ? dangerColor : colorWhite );
-		if ( reactionMs >= 0 )
-			Com_sprintf( modeValue, sizeof(modeValue), "RT %d.%03d", reactionMs / 1000, reactionMs % 1000 );
-		else
-			Q_strncpyz( modeValue, "RT --", sizeof(modeValue) );
-		if ( validRun )
-			Com_sprintf( modeExtra, sizeof(modeExtra), "ET %d.%03d", elapsedMs / 1000, elapsedMs % 1000 );
-		else
-			Q_strncpyz( modeExtra, "ET --", sizeof(modeExtra) );
-		if ( cent->dragPhase < DRAG_RUNNING ) {
-			Com_sprintf( modeValue, sizeof(modeValue), "RPM %d", rpm );
-			Q_strncpyz( modeExtra, "NEUTRAL", sizeof(modeExtra) );
-		}
-		CG_DrawIngameSmallString( 190, 450, modeValue, colorWhite );
-		CG_DrawIngameString( 410, 450, modeExtra, UI_RIGHT | UI_SMALLFONT, 0.55f, accentColor );
 	} else if ( raceMode ) {
 		if ( cent->finishRaceTime ) {
 			lapTime = cent->finishRaceTime - cent->startLapTime;
@@ -3925,7 +3899,7 @@ static void CG_DrawIntermission( stereoFrame_t stereoFrame ) {
 
 	if ( stereoFrame == STEREO_CENTER ) {
 		CG_JukeboxFrame();
-		CG_JukeboxDraw( 8.0f, (float)(RALLY_HUD_OVERLAY_BOTTOM - 42), 252.0f, 42.0f );
+		CG_JukeboxDraw( 8.0f, (float)((cgs.gametype == GT_DRAG ? 386 : RALLY_HUD_OVERLAY_BOTTOM) - 42), 252.0f, 42.0f );
 	}
 
 	if (!cg.scoreBoardShowing)
@@ -4302,7 +4276,7 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 
 	if ( stereoFrame == STEREO_CENTER ) {
 		CG_JukeboxFrame();
-		CG_JukeboxDraw( 8.0f, (float)(RALLY_HUD_OVERLAY_BOTTOM - 42), 252.0f, 42.0f );
+		CG_JukeboxDraw( 8.0f, (float)((cgs.gametype == GT_DRAG ? 386 : RALLY_HUD_OVERLAY_BOTTOM) - 42), 252.0f, 42.0f );
 	}
 
 #ifdef MISSIONPACK

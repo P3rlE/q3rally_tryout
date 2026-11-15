@@ -312,8 +312,9 @@ static void HUDOpt_DrawSlider( float x, float y, const char *label, float value,
 HUDEntry_IsUnavail
 Returns qtrue when a toggle entry is not applicable in the current gametype.
   -1 is always available; -2 applies where the score panel is drawn.
-  -3 is rally race, -4 rally race/LCS, -5 race/LCS/Derby, -6 race with laps,
-  -7 point-to-point (A2B) course.
+  -3 is course-race guidance/position, -4 opponent list, -5 race/LCS/Derby times,
+  -6 race with laps, -7 point-to-point (A2B) distance. Drag uses its dedicated
+  HUD; only times and an optional two-driver opponent list apply there.
   Non-negative values are exact GT_* matches.
 ================
 */
@@ -324,15 +325,16 @@ static qboolean HUDEntry_IsUnavail( const hudToggleEntry_t *e ) {
         return ( BG_GametypeIsTimedRace( cgs.gametype ) ||
                  cgs.gametype == GT_DERBY );
     if ( e->gameTypeOnly == HUDOPT_MODE_RALLY_RACE )
-        return !isRallyRace();
+        return ( cgs.gametype == GT_DRAG || !isRallyRace() );
     if ( e->gameTypeOnly == HUDOPT_MODE_RACE_OR_LCS )
-        return ( !isRallyRace() && cgs.gametype != GT_LCS );
+        return ( cgs.gametype == GT_DRAG && cgs.numRacers < 2 ) ||
+               ( !isRallyRace() && cgs.gametype != GT_LCS );
     if ( e->gameTypeOnly == HUDOPT_MODE_RACE_LCS_DERBY )
         return ( !isRallyRace() && cgs.gametype != GT_LCS && cgs.gametype != GT_DERBY );
     if ( e->gameTypeOnly == HUDOPT_MODE_SPRINT_TRACK )
-        return !CG_IsSprintTrack();
+        return ( cgs.gametype == GT_DRAG || !CG_IsSprintTrack() );
     if ( e->gameTypeOnly == HUDOPT_MODE_RACE_WITH_LAPS )
-        return ( !isRallyRace() || cgs.gametype == GT_ELIMINATION );
+        return ( !isRallyRace() || cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_DRAG );
     return ( cgs.gametype != e->gameTypeOnly );
 }
 
@@ -840,6 +842,12 @@ float CG_DrawUpperRightHUD( float y ) {
 
     /* Suppress racing HUD elements during the intro route preview. */
     if ( CG_IntroCam_IsActive() ) {
+        return y;
+    }
+
+    /* The Drag strip has fixed lanes and a dedicated launch/timing display. */
+    if ( cgs.gametype == GT_DRAG ) {
+        cg.wrongWayStartTime = cg.wrongWayTime = 0;
         return y;
     }
 
@@ -1971,7 +1979,8 @@ qboolean CG_DrawHUD( void ) {
         trap_SendClientCommand( "score" );
     }
 
-    if ( isRallyRace() && cg_hudShowOpponentList.integer ) {
+    if ( isRallyRace() && cg_hudShowOpponentList.integer &&
+         ( cgs.gametype != GT_DRAG || cgs.numRacers > 1 ) ) {
         CG_DrawRacingOrderHUD( 10.0f );
     }
     if ( cgs.gametype == GT_DEATHMATCH && !cg.showScores &&

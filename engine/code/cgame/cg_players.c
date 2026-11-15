@@ -3150,7 +3150,7 @@ static void CG_PlayerSprites( centity_t *cent ) {
 
 // Q3Rally Code Start
 	// UPDATE - enable this
-	if ( cg_drawPositionSprites.integer && isRallyRace() &&
+	if ( cgs.gametype != GT_DRAG && cg_drawPositionSprites.integer && isRallyRace() &&
 //	if ( isRallyRace() &&
 		cg_entities[cent->currentState.number].currentPosition >= 1 &&
 		cg_entities[cent->currentState.number].positionChangeTime + 5000 > cg.time) {
@@ -4994,7 +4994,7 @@ skip_reverselights:;
 	// (RDF_NOS, r_motionBlurNos)
 
 	// floating arrow to checkpoint
-	if (cg_checkpointArrowMode.integer == 2 && cent->currentState.clientNum == cg.snap->ps.clientNum){
+	if (cgs.gametype != GT_DRAG && cg_checkpointArrowMode.integer == 2 && cent->currentState.clientNum == cg.snap->ps.clientNum){
 		for (i = 0; i < MAX_GENTITIES; i++) {
 			other = &cg_entities[i];
 			if (other->currentState.eType != ET_CHECKPOINT) continue;

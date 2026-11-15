@@ -36,6 +36,29 @@ The map is approximately a quarter mile from the equal grid positions to the
 finish plane. See [the map contract](drag-race-map.md) for exact coordinates,
 geometry checks and rebuild instructions.
 
+## Drag HUD and launch guide
+
+The dedicated Drag display focuses on engine RPM, gear, speed and race timing.
+Before launch, the tachometer highlights a recommended RPM band and indicates
+whether to build, hold or ease the throttle. This is a driving aid; it does not
+add a launch bonus, change the clutch or tyre physics, or select a gear for you.
+The 4,000–5,000 RPM recommendation is calibrated for the current stock car
+physics on dry asphalt. It marks a broad useful launch range, not one exact
+perfect RPM value or a promise for modified physics and other surfaces.
+
+The green RPM band and the start lights have separate meanings: keep the revs
+in the band while waiting, then select first only when the **start light** turns
+green. Selecting first during amber is still a false start, even with the RPM
+cursor inside the recommended band. Once driving, the tachometer shows engine
+speed and the rev limiter rather than the neutral launch recommendation.
+
+Integrity, armour, NOS and fuel indicators are omitted because those systems do
+not affect Drag heats. Checkpoint arrows, the racing line and lap counters are
+also omitted on the straight strip. The solo 1/1 order list is hidden; a duel
+can still show both drivers through the opponent-list option. Times, the main
+status HUD, minimap and rear-view mirror retain their applicable HUD toggles,
+and saved preferences remain available in other modes.
+
 ## Timing and rules
 
 - **RT:** time from scheduled green to the driver's first-gear input.
