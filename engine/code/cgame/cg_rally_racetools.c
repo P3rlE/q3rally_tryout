@@ -2009,6 +2009,42 @@ void CG_StartRace( int time ) {
         cg.eliminationPlayersRemaining = CG_GetPlayersRemaining( NULL );
 }
 
+/* The world lights, HUD and tones share the server's scheduled Drag green.
+ * Use any connected participant so spectators and a disqualified driver see
+ * the same physical lights as the remaining driver. Personal faults belong
+ * in that driver's HUD, not on the common start signal. */
+int CG_DragStartLightState( int *reds, qboolean *green ) {
+	int i, greenTime = 0, number;
+
+	*reds = 0;
+	*green = qfalse;
+	if ( cgs.gametype != GT_DRAG || !cg.snap ||
+		cg.snap->ps.pm_type == PM_INTERMISSION ) {
+		return 0;
+	}
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		const centity_t *driver = &cg_entities[i];
+		if ( cgs.clientinfo[i].infoValid && driver->dragPhase >= DRAG_COUNTDOWN &&
+			driver->dragGreenTime > greenTime ) {
+			greenTime = driver->dragGreenTime;
+		}
+	}
+	if ( !greenTime ) {
+		return 0;
+	}
+	if ( cg.time >= greenTime ) {
+		*green = cg.time < greenTime + 4000;
+	} else {
+		/* The server varies the final red hold. Keep the last red state
+		 * until its scheduled green, even if the GO message arrives late. */
+		number = atoi( cg.countDownPrint );
+		if ( number >= 1 && number <= 3 ) {
+			*reds = 4 - number;
+		}
+	}
+	return greenTime;
+}
+
 void CG_DrawRaceCountDown( void ){
 	float	f, scale;
 	int		x, y, w, h;
@@ -2016,18 +2052,17 @@ void CG_DrawRaceCountDown( void ){
 
 	if ( cgs.gametype == GT_DRAG && cg.snap ) {
 		centity_t *driver = &cg_entities[cg.snap->ps.clientNum];
-		int light, amberCount;
-		qboolean green = driver->dragGreenTime > 0 && cg.time >= driver->dragGreenTime;
+		int light, amberCount, greenTime;
+		qboolean green;
 		qboolean fault = driver->dragPhase == DRAG_FALSE_START;
-		const char *label = fault ? "FALSE START" : ( green ? "SHIFT INTO 1ST" : "HOLD REVS IN N" );
+		const char *label;
 		vec4_t dark = { 0.08f, 0.08f, 0.08f, 0.95f };
 		vec4_t amber = { 1.0f, 0.65f, 0.05f, 1.0f };
 		vec4_t go = { 0.2f, 1.0f, 0.3f, 1.0f };
 		vec4_t red = { 1.0f, 0.15f, 0.1f, 1.0f };
-		if ( !driver->dragGreenTime || cg.time > driver->dragGreenTime + 1500 ) return;
-		amberCount = 4 - atoi( cg.countDownPrint );
-		if ( amberCount < 0 ) amberCount = 0;
-		if ( amberCount > 3 ) amberCount = 3;
+		greenTime = CG_DragStartLightState( &amberCount, &green );
+		if ( !greenTime || cg.time > greenTime + 1500 ) return;
+		label = fault ? "FALSE START" : ( green ? "SHIFT INTO 1ST" : "HOLD REVS IN N" );
 		CG_FillRect( 250, 174, 140, 40, dark );
 		for ( light = 0; light < 4; light++ ) {
 			CG_FillRect( 258 + light * 32, 182, 24, 24,
@@ -2059,4 +2094,68 @@ void CG_RaceCountDown( const char *str, int secondsLeft ){
 	cg.centerPrintTime = 0;
 	cg.countDownEnd = cg.time + secondsLeft * 1000;
 	Q_strncpyz( cg.countDownPrint, str, sizeof(cg.countDownPrint) );
+}
+
+/* Drag start tones follow the same state as the world lights and HUD.
+ * Keep this outside drawing: hidden HUDs, rear views and stereo rendering
+ * must not suppress or repeat the start signal. */
+static int s_dragSoundHeat;
+static int s_dragSoundLamp;
+static int s_dragSoundTime = -1;
+static int s_dragSoundMutedHeat;
+
+void CG_ResetDragStartSounds( void ) {
+	s_dragSoundHeat = 0;
+	s_dragSoundLamp = 0;
+	s_dragSoundTime = -1;
+	s_dragSoundMutedHeat = 0;
+}
+
+void CG_UpdateDragStartSounds( void ) {
+	int heat, reds, lamp;
+	qboolean green;
+	sfxHandle_t sound = 0;
+
+	if ( cgs.gametype != GT_DRAG || !cg.snap || cg_startLightPreview.integer > 0 ) {
+		CG_ResetDragStartSounds();
+		return;
+	}
+	heat = CG_DragStartLightState( &reds, &green );
+	lamp = green ? 4 : reds;
+	if ( cg.time < s_dragSoundTime ) {
+		/* A backwards demo seek must not replay a launch cue for this heat. */
+		s_dragSoundMutedHeat = heat;
+		s_dragSoundHeat = heat;
+		s_dragSoundLamp = lamp;
+		s_dragSoundTime = cg.time;
+		return;
+	}
+	if ( heat <= 0 ) {
+		CG_ResetDragStartSounds();
+		return;
+	}
+	if ( heat != s_dragSoundHeat ) {
+		s_dragSoundHeat = heat;
+		s_dragSoundLamp = 0;
+		/* Joining, seeking or enabling audio after green is not a new GO. */
+		if ( cg.time >= heat ) {
+			s_dragSoundLamp = lamp;
+			s_dragSoundTime = cg.time;
+			return;
+		}
+	}
+	if ( cg.time != s_dragSoundTime && heat != s_dragSoundMutedHeat ) {
+		if ( lamp >= 1 && lamp <= 3 && lamp > s_dragSoundLamp ) {
+			sound = cgs.media.dragCountdownSound;
+		} else if ( lamp == 4 && s_dragSoundLamp >= 1 && s_dragSoundLamp <= 3
+			&& s_dragSoundTime < heat && cg.time - heat <= 250 ) {
+			/* Skip a stale green after a long pause or forward demo seek. */
+			sound = cgs.media.dragGreenSound;
+		}
+	}
+	s_dragSoundLamp = lamp;
+	s_dragSoundTime = cg.time;
+	if ( sound ) {
+		trap_S_StartLocalSound( sound, CHAN_ANNOUNCER );
+	}
 }

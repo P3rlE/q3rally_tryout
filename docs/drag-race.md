@@ -79,6 +79,16 @@ switch to spectator before green cancels the countdown and requires restaging.
 New drivers cannot join an armed heat. A heat times out after 60 seconds; after
 the first valid finish, the other driver has up to ten seconds to finish.
 
+The Drag Strip has a physical start light above each lane, reusing Timber Run's
+`rally_startlight` model and effect. Its three red lamps match the HUD's three
+amber stages. Both world lights, the HUD and the distinct green tone use the
+same scheduled server green timestamp, even when the `GO!` text arrives later.
+A short tone accompanies each countdown stage. Green stays lit for up to four
+seconds; the HUD start prompt clears sooner. A driver's false start is shown
+in their HUD and does not change the common world lights for the opponent.
+Map restart and a cancelled start clear the previous signals. Mapper preview
+is silent, and late joining or seeking past green does not replay a stale tone.
+
 Weapons, holdable items, powerups, clean-sector NOS, slipstream and fuel
 consumption are disabled. The prototype does not write race ghosts, award
 profile progression or submit Ladder results.

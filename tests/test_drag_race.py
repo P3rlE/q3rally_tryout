@@ -21,6 +21,8 @@ static gclient_t clients[MAX_CLIENTS];
 static gentity_t startGate, finishGate, starter;
 static int exits, rankCalls, statuses, positionPublications, publishedPositions[2];
 static char lastExit[128];
+static int lightReplays;
+static char lastLight[64];
 
 char *QDECL va(char *format, ...) {
     static char buffer[2048]; va_list ap;
@@ -28,8 +30,11 @@ char *QDECL va(char *format, ...) {
     return buffer;
 }
 void trap_SendServerCommand(int recipient, const char *text) {
-    (void)recipient;
     if (strncmp(text, "dragStatus ", 11) == 0) statuses++;
+    if (recipient==2 && strncmp(text,"rc ",3)==0) {
+        lightReplays++;
+        snprintf(lastLight,sizeof(lastLight),"%s",text);
+    }
 }
 void CalculateRanks(void) { rankCalls++; }
 void Cmd_RacePositions_f(void) {
@@ -53,6 +58,7 @@ static void resetHeat(int count) {
     memset(&finishGate, 0, sizeof(finishGate));
     memset(&starter, 0, sizeof(starter));
     exits = rankCalls = statuses = positionPublications = 0;
+    lightReplays=0; lastLight[0]='\0';
     publishedPositions[0] = publishedPositions[1] = 0;
     g_gametype.integer = GT_DRAG;
     level.time = 1000; level.maxclients = 2; level.clients = clients;
@@ -104,6 +110,15 @@ static usercmd_t launch(int clientNum, int time) {
     return input(clientNum,time,127);
 }
 
+static void spawnViewer(void) {
+    gentity_t *viewer=&g_entities[2];
+    viewer->inuse=qtrue; viewer->client=&clients[2];
+    viewer->s.number=viewer->s.clientNum=2;
+    clients[2].pers.connected=CON_CONNECTED;
+    clients[2].sess.sessionTeam=TEAM_SPECTATOR;
+    G_DragClientSpawn(viewer);
+}
+
 static void finishAt(int clientNum, int crossingTime, float speed) {
     gentity_t *car = &g_entities[clientNum];
     vec3_t before;
@@ -122,6 +137,28 @@ static void finishAt(int clientNum, int crossingTime, float speed) {
 int main(void) {
     int green;
     usercmd_t cmd;
+
+    /* A spectator arriving after a countdown message receives the current
+       red stage, including the variable final hold, without a global replay. */
+    resetHeat(2); stage(2); green=dragGreenTime;
+    spawnViewer();
+    assert(lightReplays==1 && !strcmp(lastLight,"rc \"3 - HOLD RPM IN N\" 3"));
+    level.time=dragCountdownTime+1000; G_DragStarterThink(&starter);
+    spawnViewer();
+    assert(lightReplays==2 && !strcmp(lastLight,"rc \"2 - HOLD RPM IN N\" 2"));
+    level.time=dragCountdownTime+2000; G_DragStarterThink(&starter);
+    spawnViewer();
+    assert(lightReplays==3 && !strcmp(lastLight,"rc \"1 - HOLD RPM IN N\" 1"));
+    level.time=green-1; spawnViewer();
+    assert(lightReplays==4 && !strcmp(lastLight,"rc \"1 - HOLD RPM IN N\" 1"));
+    level.time=green; G_DragStarterThink(&starter); spawnViewer();
+    assert(lightReplays==5 && !strcmp(lastLight,"rc \"GO!\" 0"));
+    level.time=green+4000; spawnViewer();
+    assert(lightReplays==5); /* No stale green replay after the lamps expire. */
+
+    resetHeat(2); stage(2);
+    G_DragClientDisconnect(1); spawnViewer();
+    assert(!lightReplays); /* A cancelled countdown has no stage to replay. */
 
     resetHeat(2);
     assert(G_DragCanJoin());

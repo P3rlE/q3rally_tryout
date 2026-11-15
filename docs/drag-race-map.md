@@ -38,6 +38,17 @@ The main straight extends past the finish to X=19072, leaving approximately
 gantries clear the road by 256 units. The intermission camera overlooks the
 start area.
 
+Two start lights hang from the existing start gantry, centred over the lanes
+at `(84, -160, 168)` and `(84, 160, 168)`, facing angle 180 towards the grid.
+Each uses the existing Timber Run `models/mapobjects/startlight/startlight.md3`
+housing plus a `rally_startlight` entity at the same origin and angle. The
+model's hanger rods end at Z=192; four thin metal extensions connect them to
+the gantry at Z=256. This lower placement keeps the lenses visible from the
+grid in both 4:3 and widescreen views. The housings add no collision, and the
+new solid extension rods stay wholly above Z=192. The paired lamps show the
+same shared Drag start sequence. The HUD light remains visible as an
+additional reference.
+
 ## Rebuild
 
 Use Q3Map2 with the repository's current custom surface flags. The example
@@ -66,6 +77,13 @@ flag is `0x200000`; the paint has no solid contents. Both spawn positions and
 all three gate centres were also checked in the compiled BSP. In-game driving
 and visual checks remain necessary.
 
+The start-light rebuild also completed BSP, VIS and light without leaks. The
+compiled BSP contains both `rally_startlight` entities and all three housing
+and lens shaders. A comparison with the preceding BSP confirmed that all 76
+original brushes retain identical collision planes, shader flags and contents.
+Only the four extension rods add collision, each a 2-by-2-unit column confined
+to Z=192..256 above the driving area.
+
 ## Manual course checks
 
 1. Spawn one driver in each numbered position; check both face the finish.
@@ -75,3 +93,5 @@ and visual checks remain necessary.
 4. Confirm the finish gantry does not stop the car and the runoff can be used
    to brake before the end barrier.
 5. Repeat the same launch and shift sequence in both lanes and compare times.
+6. Check both overhead start lights from the grid. Their reds and green must
+   agree with the HUD; a cancelled start must clear them together.

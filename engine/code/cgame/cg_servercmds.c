@@ -925,6 +925,9 @@ static void CG_MapRestart( void ) {
 	cg.soundBufferIn = 0;
 	cg.soundBufferOut = 0;
 	cg.soundTime = 0;
+	cg.countDownPrint[0] = '\0';
+	cg.countDownEnd = 0;
+	CG_ResetDragStartSounds();
 	memset( cg.soundBuffer, 0, sizeof( cg.soundBuffer ) );
 	memset( cg.hudToastQueue, 0, sizeof( cg.hudToastQueue ) );
 
@@ -968,6 +971,11 @@ static void CG_MapRestart( void ) {
 		cent->startRaceTime = 0;
 		cent->startLapTime = 0;
 		cent->lastStartLapTime = 0;
+		cent->dragPhase = DRAG_WAITING;
+		cent->dragGreenTime = 0;
+		cent->dragLaunchTime = 0;
+		cent->dragFinishTime = 0;
+		cent->dragTrapSpeed = 0;
 	}
 // END
 

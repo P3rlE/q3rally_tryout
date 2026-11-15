@@ -806,6 +806,10 @@ static void CG_RegisterSounds( void ) {
 	cgs.media.count1Sound = trap_S_RegisterSound( "sound/feedback/one.ogg", qtrue );
 	cgs.media.countFightSound = trap_S_RegisterSound( "sound/feedback/fight.ogg", qtrue );
 	cgs.media.countPrepareSound = trap_S_RegisterSound( "sound/feedback/prepare.ogg", qtrue );
+	if ( cgs.gametype == GT_DRAG || cg_buildScript.integer ) {
+		cgs.media.dragCountdownSound = trap_S_RegisterSound( "sound/feedback/drag_countdown.wav", qfalse );
+		cgs.media.dragGreenSound = trap_S_RegisterSound( "sound/feedback/drag_green.wav", qfalse );
+	}
 #ifdef MISSIONPACK
 	cgs.media.countPrepareTeamSound = trap_S_RegisterSound( "sound/feedback/prepare_team.wav", qtrue );
 #endif
