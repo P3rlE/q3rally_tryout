@@ -27,6 +27,7 @@ mit aktualisieren (inkl. Modus-Status, Datenquelle, Semantik, Fallback).
 - **R** Racing
 - **RDM** Racing DM
 - **SPR** Sprint
+- **DRAG** Drag Race (v0.9 Tryout)
 - **DER** Derby
 - **LCS** LCS
 - **ELI** Elimination
@@ -41,6 +42,50 @@ mit aktualisieren (inkl. Modus-Status, Datenquelle, Semantik, Fallback).
 - **AB** Autoball
 
 ---
+
+## Aktive v0.9-Erweiterung: `GT_DRAG`
+
+Diese additive Tryout-Erweiterung folgt dem aktuellen zentralen Profilmodell.
+Die historischen Dedicated-only-/Periodenregeln weiter unten werden dadurch
+nicht aktiviert. Reguläre Offline-Berichte bleiben zulässig. Andere Modi
+behalten ihre bisherigen Felder und Wertungsregeln.
+
+| Feld | Status | Quelle / Semantik | Neutralwert |
+|---|---|---|---|
+| `mode`, `gametype`, `settings.g_gametype` | DRAG: P+B | `GT_DRAG`, `9`, `9` | kein anderer Modus als Fallback |
+| `settings.dragDuel` | DRAG: P+B | `G_DragLadderDuel`: genau zwei menschliche Fahrer beim Scharfstellen; bleibt bei späterem Verlassen erhalten | `false` für Solo |
+| `players[].dragStatus` | DRAG: P+B | `G_DragPopulateLadderPlayer`: `finished`, `false_start`, `dnf` aus dem autoritativen Heat-Zustand | ungültiger Zustand: kein gültiger Zieleinlauf |
+| `players[].reactionMs` | DRAG: P+B | First-Gear-Zeit minus gemeinsame Grünzeit | `0` bei ungültigem Lauf; auch gültige perfekte RT kann `0` sein |
+| `players[].elapsedMs` | DRAG: P+B | interpolierter Zieleinlauf minus First-Gear-Zeit | `0` bei ungültigem Lauf |
+| `players[].totalRaceMs` | DRAG: P+B | RT + ET, ausschließlich bei `finished`; maßgeblich für Bestzeit und Zielrang | `0` bei Fehlstart/DNF |
+| `players[].trapSpeedKph` | DRAG: P+B | interpolierte Zielgeschwindigkeit in km/h mit einer Nachkommastelle | `0` bei Fehlstart/DNF |
+| `players[].position` | DRAG: P+B | Rang gültiger Gesamtzeiten; gleiche Millisekunde ergibt gleichen Rang | `0` bei Fehlstart/DNF |
+| `winnerClientNum` | DRAG: P+B | einziger gültiger Duellsieger; Solo, Gleichstand und kein gültiger Zieleinlauf haben keinen Sieger | `-1` |
+| `numberOfLaps`, `bestLapMs`, `lapCount`, `lapTimes[]`, `survivalMs` | DRAG: V+B | Drag-Zeit ist keine Runden-/Überlebenszeit | `0`, `[]` |
+| Waffen-, Kill-, Damage- und Teamfelder | DRAG: V+B | nicht Teil des Drag-Ergebnisses | bisherige Neutralwerte |
+| `profile.dragWins`, `profile.dragCompleted` | DRAG: P+B bei gültigem Snapshot | native Profilwerte; Siege nur im Duell, Completed nur gültige Zieleinläufe | `0` |
+| `profile.dragBestMs`, `profile.dragBestReactionMs`, `profile.dragBestElapsedMs` | DRAG: P+B bei gültigem Snapshot | unabhängige Minima gültiger Ergebnisse; `dragCompleted>0` unterscheidet eine perfekte RT=0 von fehlenden Daten | `0` |
+
+Der Server friert die Identität beim Scharfstellen ein. Ein späterer Zuschauer
+oder ein anderer Spieler im selben Slot darf keinen früheren Heat übernehmen.
+Abbruch/Disconnect eines Teilnehmers bleibt als DNF erhalten. Gemeldet werden
+ein oder zwei menschliche Fahrer; Bots und bloße Zuschauer werden nicht gemeldet.
+
+Millisekunden müssen ganzzahlig und nicht negativ sein, ET eines gültigen
+Zieleinlaufs muss positiv sein und TOTAL exakt RT+ET entsprechen. Der defensive
+Ingest-Bereich bis 120.000 ms lässt den Serverframe an der 60-Sekunden-Grenze zu;
+er verlängert nicht das spielseitige Heat-Zeitlimit. Zieltempo muss endlich und
+zwischen 0 und 1.000 km/h liegen. Fehlstart/DNF haben ausschließlich neutrale
+Zeit-/Tempo-/Rangfelder. Identitäten und Slots dürfen nicht doppelt vorkommen.
+
+Duellpunkte verwenden die vorhandenen nativen Rennvergaben: 12 für den gültigen
+Sieger, 6 für einen gültigen zweiten Platz, vorhandener Onlinebonus pro Vergabe
+und vorhandene Win-Achievements. Solo, Gleichstand ohne Sieger und ungültiger
+Zieleinlauf erhalten keine Ergebnis-/Platzierungspunkte. Ein ungültiger Gegner
+kann bei vorhandenem gültigem Sieger eine Niederlage erhalten. Snapshot-first,
+Offline-Key-Bindung und Match-Dublettenschutz bleiben erhalten. Ohne Snapshot
+nutzt PHP für DRAG die entsprechenden Basisvergaben einschließlich Onlinebonus,
+keine neue allgemeine Karriereformel.
 
 ## 1) `ladderMatchPayload_t`
 

@@ -37,6 +37,8 @@ int main( void ) {
         assert( strstr( json, "\"teamHoldMs\"" ) == NULL );
         assert( strstr( json, "\"kothContestTimeMs\"" ) == NULL );
         assert( strstr( json, "\"autoballGoals\"" ) == NULL );
+        assert( strstr( json, "\"dragStatus\"" ) == NULL );
+        assert( strstr( json, "\"dragDuel\"" ) == NULL );
 
         Z_Free( json );
 
@@ -78,6 +80,29 @@ int main( void ) {
         assert( strstr( json, "\"teamScores\":[0,5,3,0,0,0]" ) != NULL );
         assert( strstr( json, "\"kothContestTimeMs\"" ) == NULL );
         assert( strstr( json, "\"teamHoldMs\"" ) == NULL );
+        Z_Free( json );
+
+        payload.gametype = GT_DRAG;
+        payload.dragDuel = qtrue;
+        payload.players[0].reactionMs = 200;
+        payload.players[0].elapsedMs = 12500;
+        payload.players[0].totalRaceMs = 12700;
+        payload.players[0].trapSpeedKph = 151.2f;
+        Q_strncpyz( payload.players[0].dragStatus, "finished", sizeof( payload.players[0].dragStatus ) );
+        payload.players[0].profileAttached = qtrue;
+        payload.players[0].profile.valid = qtrue;
+        payload.players[0].profile.dragCompleted = 4;
+        payload.players[0].profile.dragBestReactionMs = 0;
+        json = SV_LadderSerializeMatch( &payload, &length );
+        assert( json != NULL );
+        assert( strstr( json, "\"dragDuel\":true" ) != NULL );
+        assert( strstr( json, "\"dragStatus\":\"finished\"" ) != NULL );
+        assert( strstr( json, "\"reactionMs\":200" ) != NULL );
+        assert( strstr( json, "\"elapsedMs\":12500" ) != NULL );
+        assert( strstr( json, "\"totalRaceMs\":12700" ) != NULL );
+        assert( strstr( json, "\"trapSpeedKph\":151.2" ) != NULL );
+        assert( strstr( json, "\"dragCompleted\":4" ) != NULL );
+        assert( strstr( json, "\"dragBestReactionMs\":0" ) != NULL );
         Z_Free( json );
 
         puts( "ok" );

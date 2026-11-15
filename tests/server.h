@@ -80,6 +80,7 @@ static inline qboolean Profile_GetRankForScore( const profile_stats_t *stats, co
 #define GT_ELIMINATION 5
 #define GT_DEATHMATCH 6
 #define GT_SPRINT 7
+#define GT_DRAG 9
 #define GT_TEAM 16
 #define GT_TEAM_RACING 17
 #define GT_TEAM_RACING_DM 18
@@ -146,6 +147,7 @@ typedef struct ladderProfileSnapshot_s {
         int             racingWins, racingPodiums, racingCompleted, racingTotalMs;
         int             racingDmWins, racingDmPodiums, racingDmCompleted, racingDmTotalMs;
         int             sprintWins, sprintCompleted, sprintBestMs;
+        int             dragWins, dragCompleted, dragBestMs, dragBestReactionMs, dragBestElapsedMs;
         int             eliminationWins, eliminationCompleted, eliminationTotalRoundsLasted;
         int             lcsWins, lcsCompleted, lcsTotalSurvivalMs;
         int             derbyWins, derbyCompleted, derbyKills;
@@ -189,6 +191,10 @@ typedef struct ladderPlayerPayload_s {
         int                     position;
         int                     bestLapMs;
         int                     totalRaceMs;
+        char                    dragStatus[16];
+        int                     reactionMs;
+        int                     elapsedMs;
+        float                   trapSpeedKph;
         int                     lapCount;
         int                     lapTimes[LADDER_MAX_LAP_TIMES];
         int                     kills;
@@ -238,6 +244,7 @@ typedef struct ladderMatchPayload_s {
         int                     winnerClientNum;
         int                     numberOfLaps;
         qboolean        trackReversed;
+        qboolean        dragDuel;
         int                     eliminationStartDelay;
         int                     eliminationInterval;
         int                     eliminationWarning;

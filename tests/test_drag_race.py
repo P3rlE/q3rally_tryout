@@ -23,6 +23,21 @@ static int exits, rankCalls, statuses, positionPublications, publishedPositions[
 static char lastExit[128];
 static int lightReplays;
 static char lastLight[64];
+static char userIds[MAX_CLIENTS][64];
+
+void trap_GetUserinfo(int clientNum,char *out,int size) { snprintf(out,size,"%d",clientNum); }
+char *Info_ValueForKey(const char *info,const char *key) {
+    int n=atoi(info);
+    if(!strcmp(key,"cl_uuid")) return userIds[n];
+    if(!strcmp(key,"name")) return clients[n].pers.netname;
+    return "";
+}
+void Q_strncpyz(char *out,const char *in,int size) { snprintf(out,size,"%s",in); }
+char *Q_CleanStr(char *text) { return text; }
+int QDECL Com_sprintf(char *out,int size,const char *format,...) {
+    int n; va_list ap; va_start(ap,format); n=vsnprintf(out,size,format,ap); va_end(ap); return n;
+}
+qboolean G_Profile_GetUUID(char *out,int size) { out[0]=0; return qfalse; }
 
 char *QDECL va(char *format, ...) {
     static char buffer[2048]; va_list ap;
@@ -69,6 +84,7 @@ static void resetHeat(int count) {
     finishGate.number = 2;
     level.startEnt = &startGate; level.finishEnt = &finishGate;
     G_DragInit();
+    for(i=0;i<MAX_CLIENTS;i++) snprintf(userIds[i],sizeof(userIds[i]),"driver-%d",i);
     for (i=0;i<count;i++) {
         gentity_t *car = &g_entities[i];
         car->inuse = qtrue; car->client = &clients[i];
@@ -137,6 +153,41 @@ static void finishAt(int clientNum, int crossingTime, float speed) {
 int main(void) {
     int green;
     usercmd_t cmd;
+    ladderPlayerPayload_t result;
+
+    /* Ladder facts come from actual Drag state, never the finish marker
+       that also makes a disqualified driver enter the observer delay. */
+    resetHeat(2); stage(2); green=dragGreenTime;
+    assert(G_DragLadderDuel() && G_DragLadderIdentityMatches(0));
+    level.time=green+100;
+    launch(0,green+100);
+    assert(G_DragTryGearChange(&g_entities[1],1,green-1));
+    finishAt(0,green+2000,1000); G_DragRunFrame();
+    assert(G_DragPopulateLadderPlayer(0,&result));
+    assert(!strcmp(result.playerId,"driver-0") && !strcmp(result.dragStatus,"finished"));
+    assert(result.reactionMs==100 && result.elapsedMs==1900 && result.totalRaceMs==2000);
+    assert(result.position==1 && result.trapSpeedKph>100 && !result.bestLapMs && !result.lapCount);
+    assert(G_DragPopulateLadderPlayer(1,&result));
+    assert(!strcmp(result.dragStatus,"false_start") && clients[1].finishRaceTime>0);
+    assert(!result.reactionMs && !result.elapsedMs && !result.totalRaceMs && !result.position && !result.finishRaceTime);
+    strcpy(userIds[1],"new-spectator"); clients[1].sess.sessionTeam=TEAM_SPECTATOR;
+    assert(!G_DragLadderIdentityMatches(1));
+    assert(G_DragPopulateLadderPlayer(1,&result) && !strcmp(result.playerId,"driver-1"));
+    assert(!G_DragPopulateLadderPlayer(2,&result)); /* spectators were not armed */
+
+    resetHeat(2); stage(2); green=dragGreenTime; level.time=green+100;
+    launch(0,green+100); launch(1,green+100);
+    G_DragClientDisconnect(1); clients[1].pers.connected=CON_DISCONNECTED;
+    assert(G_DragPopulateLadderPlayer(1,&result) && !strcmp(result.dragStatus,"dnf"));
+    assert(!result.totalRaceMs && G_DragLadderDuel()); /* forfeit still belongs to this duel */
+    resetHeat(1); stage(1); green=dragGreenTime; level.time=green+100;
+    launch(0,green+100); finishAt(0,green+2000,1000); G_DragRunFrame();
+    assert(!G_DragLadderDuel() && G_DragPopulateLadderPlayer(0,&result));
+    assert(result.position==1 && !strcmp(result.dragStatus,"finished"));
+    resetHeat(2); stage(2); G_DragClientDisconnect(1);
+    assert(!G_DragPopulateLadderPlayer(0,&result) && !G_DragLadderDuel());
+    resetHeat(2); g_entities[1].r.svFlags=SVF_BOT; stage(1);
+    assert(!G_DragLadderDuel() && !G_DragPopulateLadderPlayer(1,&result));
 
     /* A spectator arriving after a countdown message receives the current
        red stage, including the variable final hold, without a global replay. */

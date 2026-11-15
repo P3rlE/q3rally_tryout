@@ -1084,6 +1084,11 @@ qboolean UI_Profile_ReadData( const char *name, profile_info_t *outInfo, profile
         /* ── GT_SPRINT ───────────────────────────────────────────────── */
             outStats->sprintCompleted     = UI_Profile_ParseInt( buffer, "sprintCompleted", 0 );
             outStats->sprintBestMs        = UI_Profile_ParseInt( buffer, "sprintBestMs", 0 );
+            outStats->dragWins = UI_Profile_ParseInt( buffer, "dragWins", 0 );
+            outStats->dragCompleted = UI_Profile_ParseInt( buffer, "dragCompleted", 0 );
+            outStats->dragBestMs = UI_Profile_ParseInt( buffer, "dragBestMs", 0 );
+            outStats->dragBestReactionMs = UI_Profile_ParseInt( buffer, "dragBestReactionMs", 0 );
+            outStats->dragBestElapsedMs = UI_Profile_ParseInt( buffer, "dragBestElapsedMs", 0 );
         /* ── GT_ELIMINATION ──────────────────────────────────────────── */
             outStats->eliminationWins              = UI_Profile_ParseInt( buffer, "eliminationWins", 0 );
             outStats->eliminationCompleted         = UI_Profile_ParseInt( buffer, "eliminationCompleted", 0 );
@@ -1329,6 +1334,16 @@ qboolean UI_Profile_WriteFile( const char *name, const profile_info_t *info, con
         written = Com_sprintf( buffer + off, sizeof(buffer) - off,
             "\t\t\"sprintCompleted\": %d,\n\t\t\"sprintBestMs\": %d,\n",
             stats->sprintCompleted, stats->sprintBestMs );
+        if ( written < 0 || off + written >= (int)sizeof(buffer) ) return qfalse;
+        off += written;
+
+        /* GT_DRAG */
+        written = Com_sprintf( buffer + off, sizeof(buffer) - off,
+            "\t\t\"dragWins\": %d,\n\t\t\"dragCompleted\": %d,\n"
+            "\t\t\"dragBestMs\": %d,\n\t\t\"dragBestReactionMs\": %d,\n"
+            "\t\t\"dragBestElapsedMs\": %d,\n",
+            stats->dragWins, stats->dragCompleted, stats->dragBestMs,
+            stats->dragBestReactionMs, stats->dragBestElapsedMs );
         if ( written < 0 || off + written >= (int)sizeof(buffer) ) return qfalse;
         off += written;
 

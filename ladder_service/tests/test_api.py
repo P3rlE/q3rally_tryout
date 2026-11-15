@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import copy
 from pathlib import Path
 import sys
 
@@ -15,7 +16,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from ladder_service.ladder_service import main
 from ladder_service.ladder_service.db import session_scope
 from ladder_service.ladder_service.models import Base
-from ladder_service.ladder_service.schemas import _TEAM_MODES, _VALID_GAMETYPES
+from ladder_service.ladder_service.schemas import MatchCreate, _TEAM_MODES, _VALID_GAMETYPES
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -72,6 +73,26 @@ def _build_match(match_id: str, mode: str) -> dict[str, object]:
     else:
         payload["teams"] = None
         payload["players"] = [{**MATCH_TEMPLATE["players"][0], "team": None}]
+    if mode == "GT_DRAG":
+        payload["settings"] = {"g_gametype": 9, "dragDuel": False}
+        payload["winnerClientNum"] = -1
+        payload["players"][0].update({
+            "clientNum": 0, "dragStatus": "finished", "reactionMs": 220,
+            "elapsedMs": 13000, "totalRaceMs": 13220, "trapSpeedKph": 151.2,
+            "position": 1,
+        })
+    return payload
+
+
+def _drag_match(match_id: str, *, duel: bool = False) -> dict[str, object]:
+    payload = _build_match(match_id, "GT_DRAG")
+    payload["settings"]["dragDuel"] = duel
+    payload["map"] = "q3r_dragstrip"
+    if duel:
+        opponent = {**payload["players"][0], "playerId": "sha256:def", "clientNum": 1,
+                    "position": 2, "reactionMs": 300, "totalRaceMs": 13300}
+        payload["players"].append(opponent)
+        payload["winnerClientNum"] = 0
     return payload
 
 
@@ -152,6 +173,153 @@ def test_create_match_accepts_sprint_mode() -> None:
 
     cleanup = client.delete(f"/api/v1/matches/{match['matchId']}")
     assert cleanup.status_code == 204
+
+
+@pytest.mark.parametrize("alias", ["GT_DRAG", "drag", "Drag Race", "gt_drag_race"])
+def test_drag_result_round_trips_and_filters_as_its_own_mode(alias: str) -> None:
+    match = _drag_match("drag-alias-" + alias.replace(" ", "-"))
+    match["mode"] = alias
+    created = client.post("/api/v1/matches", json=match)
+    assert created.status_code == 201, created.text
+    try:
+        stored = client.get(f"/api/v1/matches/{match['matchId']}")
+        assert stored.status_code == 200, stored.text
+        data = stored.json()
+        assert data["mode"] == "GT_DRAG"
+        assert data["settings"] == {"g_gametype": 9, "dragDuel": False}
+        assert data["winnerClientNum"] == -1
+        for field in ("dragStatus", "reactionMs", "elapsedMs", "totalRaceMs", "trapSpeedKph", "position"):
+            assert data["players"][0][field] == match["players"][0][field]
+        for filter_alias in ("GT_DRAG", "drag race"):
+            filtered = client.get("/api/v1/matches", params={"mode": filter_alias})
+            assert filtered.status_code == 200, filtered.text
+            assert any(row["matchId"] == match["matchId"] for row in filtered.json()["matches"])
+            assert all(row["mode"] == "GT_DRAG" for row in filtered.json()["matches"])
+    finally:
+        client.delete(f"/api/v1/matches/{match['matchId']}")
+
+
+@pytest.mark.parametrize("status", ["false_start", "dnf"])
+def test_drag_keeps_invalid_results_without_fabricated_times(status: str) -> None:
+    match = _drag_match("drag-invalid-" + status, duel=True)
+    player = match["players"][1]
+    player.update({"dragStatus": status, "reactionMs": 0, "elapsedMs": 0,
+                   "totalRaceMs": 0, "trapSpeedKph": 0, "position": 0})
+    created = client.post("/api/v1/matches", json=match)
+    assert created.status_code == 201, created.text
+    try:
+        stored = client.get(f"/api/v1/matches/{match['matchId']}").json()
+        assert stored["players"][1]["dragStatus"] == status
+        assert stored["players"][1]["totalRaceMs"] == 0
+        assert stored["players"][1]["position"] == 0
+        assert stored["winnerClientNum"] == 0
+    finally:
+        client.delete(f"/api/v1/matches/{match['matchId']}")
+
+
+@pytest.mark.parametrize(("field", "value", "code"), [
+    ("dragStatus", "running", "DRAG_STATUS_INVALID"),
+    ("dragStatus", [], "DRAG_STATUS_INVALID"),
+    ("dragStatus", {}, "DRAG_STATUS_INVALID"),
+    ("reactionMs", -1, "DRAG_TIME_INVALID"),
+    ("reactionMs", True, "DRAG_TIME_INVALID"),
+    ("reactionMs", "220", "DRAG_TIME_INVALID"),
+    ("elapsedMs", 0, "DRAG_TIME_MISMATCH"),
+    ("elapsedMs", 13000.5, "DRAG_TIME_INVALID"),
+    ("totalRaceMs", 13221, "DRAG_TIME_MISMATCH"),
+    ("totalRaceMs", 120001, "DRAG_TIME_INVALID"),
+    ("trapSpeedKph", -1, "DRAG_SPEED_INVALID"),
+    ("trapSpeedKph", 1000.1, "DRAG_SPEED_INVALID"),
+    ("trapSpeedKph", "151.2", "DRAG_SPEED_INVALID"),
+    ("position", 0, "DRAG_POSITION_INVALID"),
+    ("position", 2, "DRAG_POSITION_INVALID"),
+    ("position", 1.5, "DRAG_POSITION_INVALID"),
+    ("position", True, "DRAG_POSITION_INVALID"),
+    ("isBot", True, "DRAG_BOT_FORBIDDEN"),
+])
+def test_drag_rejects_invalid_result_facts_before_storage(field: str, value: object, code: str) -> None:
+    match = _drag_match("drag-reject-" + field)
+    match["players"][0][field] = value
+    rejected = client.post("/api/v1/matches", json=match)
+    assert rejected.status_code == 422, rejected.text
+    assert code in rejected.json()["validation"]["errorCodes"]
+    assert client.get(f"/api/v1/matches/{match['matchId']}").status_code == 404
+
+
+def test_drag_accepts_zero_reaction_and_boundary_frame_finish() -> None:
+    for reaction, elapsed in ((0, 13000), (1, 60050), (60000, 60000)):
+        match = _drag_match(f"drag-boundary-{reaction}-{elapsed}")
+        match["players"][0].update({"reactionMs": reaction, "elapsedMs": elapsed,
+                                    "totalRaceMs": reaction + elapsed})
+        created = client.post("/api/v1/matches", json=match)
+        assert created.status_code == 201, created.text
+        client.delete(f"/api/v1/matches/{match['matchId']}")
+
+
+def test_drag_rejects_invalid_times_and_prevents_solo_wins() -> None:
+    match = _drag_match("drag-bad-invalid-time")
+    match["players"][0]["dragStatus"] = "false_start"
+    rejected = client.post("/api/v1/matches", json=match)
+    assert rejected.status_code == 422, rejected.text
+    assert "DRAG_INVALID_RESULT" in rejected.json()["validation"]["errorCodes"]
+    match = _drag_match("drag-bad-solo-win")
+    match["winnerClientNum"] = 0
+    created = client.post("/api/v1/matches", json=match)
+    assert created.status_code == 201, created.text
+    stored = client.get(f"/api/v1/matches/{match['matchId']}").json()
+    assert stored["winnerClientNum"] == -1
+    client.delete(f"/api/v1/matches/{match['matchId']}")
+
+
+def test_drag_validates_roster_duel_flag_and_winner() -> None:
+    base = _drag_match("drag-bad-roster", duel=True)
+    mutations = [
+        (lambda p: p["settings"].update(g_gametype=3), "DRAG_GAMETYPE_INVALID"),
+        (lambda p: p["settings"].update(g_gametype=9.0), "DRAG_GAMETYPE_INVALID"),
+        (lambda p: p["settings"].update(dragDuel=False), "DRAG_DUEL_INVALID"),
+        (lambda p: p["settings"].pop("dragDuel"), "DRAG_DUEL_INVALID"),
+        (lambda p: p["players"].append(copy.deepcopy(p["players"][1])), "DRAG_PLAYER_COUNT_INVALID"),
+        (lambda p: p["players"][1].update(playerId=p["players"][0]["playerId"]), "DRAG_PLAYER_DUPLICATE"),
+        (lambda p: p["players"][1].update(playerId=" \t"), "DRAG_PLAYER_DUPLICATE"),
+        (lambda p: p["players"][1].update(clientNum=0), "DRAG_CLIENT_INVALID"),
+        (lambda p: p["players"][1].pop("clientNum"), "DRAG_CLIENT_INVALID"),
+        (lambda p: p["players"][1].update(position=1), "DRAG_POSITION_INVALID"),
+    ]
+    for mutate, code in mutations:
+        match = copy.deepcopy(base)
+        mutate(match)
+        rejected = client.post("/api/v1/matches", json=match)
+        assert rejected.status_code == 422, rejected.text
+        assert code in rejected.json()["validation"]["errorCodes"]
+
+
+def test_drag_tied_duel_has_no_winner() -> None:
+    match = _drag_match("drag-tie", duel=True)
+    match["players"][1].update(totalRaceMs=13220, reactionMs=220, position=1)
+    match["winnerClientNum"] = 0
+    created = client.post("/api/v1/matches", json=match)
+    assert created.status_code == 201, created.text
+    stored = client.get(f"/api/v1/matches/{match['matchId']}").json()
+    assert stored["winnerClientNum"] == -1
+    client.delete(f"/api/v1/matches/{match['matchId']}")
+
+
+def test_drag_winner_comes_from_total_time_instead_of_reported_slot() -> None:
+    match = _drag_match("drag-normalize-winner", duel=True)
+    match["winnerClientNum"] = 1
+    created = client.post("/api/v1/matches", json=match)
+    assert created.status_code == 201, created.text
+    stored = client.get(f"/api/v1/matches/{match['matchId']}").json()
+    assert stored["winnerClientNum"] == 0
+    client.delete(f"/api/v1/matches/{match['matchId']}")
+
+
+@pytest.mark.parametrize("speed", [float("nan"), float("inf"), -float("inf"), 10**500])
+def test_drag_schema_rejects_nonfinite_and_oversized_trap_speeds(speed: object) -> None:
+    match = _drag_match("drag-bad-speed")
+    match["players"][0]["trapSpeedKph"] = speed
+    with pytest.raises(ValueError, match="DRAG_SPEED_INVALID"):
+        MatchCreate.parse_obj(match)
 
 
 def test_mode_forbids_teams_with_validation_codes() -> None:

@@ -84,6 +84,13 @@ typedef struct profile_stats_s {
     int    sprintCompleted;
     int    sprintBestMs;
 
+    /* GT_DRAG: completed counts valid finishes, including solo practice. */
+    int    dragWins;
+    int    dragCompleted;
+    int    dragBestMs;
+    int    dragBestReactionMs;
+    int    dragBestElapsedMs;
+
     /* ── GT_ELIMINATION ──────────────────────────────────────────────────── */
     int    eliminationWins;
     int    eliminationCompleted;

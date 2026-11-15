@@ -58,6 +58,48 @@ int main( void ) {
     assert( G_LadderValidatePayload( &payload, qtrue ) == qfalse );
     assert( payload.validationErrors & LADDER_PAYLOAD_ERR_INTERNAL_CONSISTENCY );
 
+    InitPayload( &payload, GT_DRAG );
+    payload.winnerClientNum = -1;
+    Q_strncpyz( payload.mode, "GT_DRAG", sizeof( payload.mode ) );
+    Q_strncpyz( payload.players[0].dragStatus, "finished", sizeof( payload.players[0].dragStatus ) );
+    payload.players[0].reactionMs = 200;
+    payload.players[0].elapsedMs = 12500;
+    payload.players[0].totalRaceMs = 12700;
+    payload.players[0].finishRaceTime = 22700;
+    payload.players[0].position = 1;
+    payload.players[0].trapSpeedKph = 151.2f;
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qtrue );
+    payload.players[0].totalRaceMs++;
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qfalse );
+    payload.players[0].totalRaceMs--;
+    payload.valid = qtrue;
+    payload.players[0].reactionMs = 0; /* exact green is a valid reaction */
+    payload.players[0].totalRaceMs = payload.players[0].elapsedMs;
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qtrue );
+    payload.players[0].trapSpeedKph = NAN;
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qfalse );
+
+    InitPayload( &payload, GT_DRAG );
+    payload.winnerClientNum = -1;
+    Q_strncpyz( payload.players[0].dragStatus, "false_start", sizeof( payload.players[0].dragStatus ) );
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qtrue );
+    payload.players[0].finishRaceTime = 10000; /* observer delay is not a finish */
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qfalse );
+    payload.players[0].finishRaceTime = 0;
+    payload.valid = qtrue;
+    payload.winnerClientNum = 0; /* solo practice cannot be a competitive win */
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qfalse );
+
+    InitPayload( &payload, GT_DRAG );
+    payload.playerCount = 2;
+    payload.dragDuel = qtrue;
+    payload.winnerClientNum = -1;
+    Q_strncpyz( payload.players[0].dragStatus, "dnf", sizeof( payload.players[0].dragStatus ) );
+    Q_strncpyz( payload.players[1].dragStatus, "dnf", sizeof( payload.players[1].dragStatus ) );
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qtrue );
+    payload.dragDuel = qfalse;
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qfalse );
+
     puts( "ok" );
     return 0;
 }

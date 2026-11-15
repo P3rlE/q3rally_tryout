@@ -22,6 +22,26 @@ jobs:
         sudo apt-get install -y gcc php-cli python3-pytest python3-cryptography python3-psutil python3-nacl
     - name: Run tests
       run: python3 -m pytest -q tests
+  ladder-tests:
+    name: Ladder service tests
+    runs-on: ubuntu-24.04
+    env:
+      LADDER_DB_PATH: ${{ runner.temp }}/ladder-service-tests.db
+    steps:
+    - uses: actions/checkout@v7
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - uses: actions/setup-node@v6
+      with:
+        node-version: '22'
+    - name: Install Ladder test dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y php-cli
+        python -m pip install -r ladder_service/requirements.txt
+    - name: Test Python and PHP Ladder services
+      run: python -m pytest -q ladder_service/tests
   linux:
     name: Linux ${{ matrix.arch }}
     runs-on: ubuntu-22.04

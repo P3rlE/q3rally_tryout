@@ -114,6 +114,8 @@ def list_matches(
 
     query = select(Match).order_by(Match.start_time.desc()).offset(offset).limit(limit)
     if mode:
+        if mode.strip().upper().replace(" ", "_") in {"DRAG", "DRAG_RACE", "GT_DRAG", "GT_DRAG_RACE"}:
+            mode = "GT_DRAG"
         query = query.where(Match.mode == mode)
 
     rows = session.execute(query).scalars().all()

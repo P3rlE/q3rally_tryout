@@ -90,18 +90,41 @@ Map restart and a cancelled start clear the previous signals. Mapper preview
 is silent, and late joining or seeking past green does not replay a stale tone.
 
 Weapons, holdable items, powerups, clean-sector NOS, slipstream and fuel
-consumption are disabled. The prototype does not write race ghosts, award
-profile progression or submit Ladder results.
+consumption are disabled. Drag does not write lap ghosts.
+
+## Ladder and career (v0.9)
+
+Standard-rule heats are reported as `GT_DRAG`, including regular offline
+games. The Ladder ranks valid finishes by **TOTAL = RT + ET**, not ET alone.
+Reaction, elapsed time, finish speed and result status remain separate facts.
+False starts and DNF stay visible as invalid results with no recorded time or
+finishing rank. Armed participants remain in the report after a disconnect or
+switch to spectator; spectators and unarmed drivers do not become participants.
+
+Solo practice records valid best times and completed runs without a competitive
+win, loss or career-point award. A heat armed with two human drivers uses the
+existing race awards: 12 points for the valid winner and 6 for a valid second
+place, with the existing per-award online bonus and win achievements. An invalid
+opponent can lose a duel but receives no placement points. Exact total-time ties
+have no winner or result-point award. Repeated submission cannot award a heat
+twice. Cheats, slow motion and modified physics retain the standard Ladder gate.
+
+Drag has independent profile counters: `dragWins`, `dragCompleted` (valid
+finishes only), `dragBestMs`, `dragBestReactionMs`, and `dragBestElapsedMs`.
+Zero milliseconds is a valid reaction; a previous perfect reaction must survive
+later slower starts. Drag results do not update Sprint wins or lap records.
+Existing profile identities and progress are preserved when these additive
+fields are saved by the game or menu.
 
 ## Scope and validation
 
 Included: separate gametype ID 9, dedicated map filtering, native/WebUI setup,
 neutral staging, first-gear launch/false starts, manual shifting, lane rules,
-interpolated finish timing, live telemetry and Drag results. Existing mode IDs
-remain stable.
+interpolated finish timing, live telemetry, Drag results, Ladder time rankings
+and duel career awards. Existing mode IDs remain stable.
 
 Deferred: analogue clutch control, selectable gearing, NOS,
-Best-of-three matches with lane swaps, bots, career rewards and Ladder support.
+Best-of-three matches with lane swaps and bots.
 
 Production-code harnesses cover staging, false starts, queued/future input,
 prediction replay, finish order/ties, forfeits, disconnects/spectator changes,

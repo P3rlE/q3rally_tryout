@@ -1,9 +1,10 @@
 /*
  * Q3Rally v0.9 Drag Race prototype.
  * Equal cars, a neutral-to-first launch and a common finish plane.
- * Keep heat state private: none of these results enter the v0.8 profiles.
+ * Keep heat timing authoritative for the v0.9 Ladder report.
  */
 #include "g_local.h"
+#include "g_profile.h"
 
 #define DRAG_HEAT_TIMEOUT_MS 60000
 #define DRAG_FINISH_GRACE_MS 10000
@@ -21,6 +22,8 @@ typedef struct {
 	vec3_t gridOrigin;
 	float progress;
 	float previousSpeed;
+	ladderPlayerPayload_t ladderIdentity;
+	int enterTime;
 } dragClient_t;
 
 static dragClient_t dragClients[MAX_CLIENTS];
@@ -35,6 +38,113 @@ static vec3_t dragForward, dragRight, dragFinishOrigin;
 static float dragLaneHalfWidth;
 
 extern void LogExit( const char *string );
+
+/* Freeze identity at arming. A disconnected driver's slot can subsequently
+ * belong to a spectator; that must not transfer a forfeit to the new owner. */
+static void G_DragCaptureLadderIdentity( int clientNum ) {
+	dragClient_t *driver = &dragClients[clientNum];
+	gclient_t *client = g_entities[clientNum].client;
+	ladderPlayerPayload_t *player = &driver->ladderIdentity;
+	char userinfo[MAX_INFO_STRING];
+	const char *value;
+
+	memset( player, 0, sizeof( *player ) );
+	trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
+	player->clientNum = clientNum;
+	player->team = TEAM_FREE;
+	player->zoneActiveSigil = -1;
+	player->ping = client->ps.ping;
+	driver->enterTime = client->pers.enterTime;
+	if ( client->pers.localClient ) {
+		G_Profile_GetUUID( player->playerId, sizeof( player->playerId ) );
+	}
+	value = Info_ValueForKey( userinfo, "cl_uuid" );
+	if ( !player->playerId[0] && value[0] ) Q_strncpyz( player->playerId, value, sizeof( player->playerId ) );
+	value = Info_ValueForKey( userinfo, "cl_guid" );
+	if ( value[0] ) {
+		Q_strncpyz( player->guid, value, sizeof( player->guid ) );
+		if ( !player->playerId[0] ) Q_strncpyz( player->playerId, value, sizeof( player->playerId ) );
+	}
+	value = Info_ValueForKey( userinfo, "ip" );
+	if ( value[0] ) {
+		if ( !player->guid[0] ) Q_strncpyz( player->guid, value, sizeof( player->guid ) );
+		if ( !player->playerId[0] && !client->pers.localClient ) Q_strncpyz( player->playerId, value, sizeof( player->playerId ) );
+	}
+	value = Info_ValueForKey( userinfo, "name" );
+	Q_strncpyz( player->name, value[0] ? value : client->pers.netname, sizeof( player->name ) );
+	Q_strncpyz( player->cleanName, player->name, sizeof( player->cleanName ) );
+	Q_CleanStr( player->cleanName );
+	if ( !player->playerId[0] ) Q_strncpyz( player->playerId, player->cleanName, sizeof( player->playerId ) );
+	if ( !player->playerId[0] ) Com_sprintf( player->playerId, sizeof( player->playerId ), "client-%i", clientNum );
+	Q_strncpyz( player->model, Info_ValueForKey( userinfo, "model" ), sizeof( player->model ) );
+	value = Info_ValueForKey( userinfo, "chassis" );
+	if ( !value[0] ) value = Info_ValueForKey( userinfo, "vehicle" );
+	Q_strncpyz( player->vehicle, value, sizeof( player->vehicle ) );
+}
+
+qboolean G_DragLadderParticipant( int clientNum ) {
+	return g_gametype.integer == GT_DRAG && clientNum >= 0 && clientNum < MAX_CLIENTS
+		&& dragCountdownTime > 0 && dragClients[clientNum].participant;
+}
+
+qboolean G_DragLadderDuel( void ) {
+	int i, count = 0;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( G_DragLadderParticipant( i ) ) count++;
+	}
+	return count == 2;
+}
+
+qboolean G_DragLadderIdentityMatches( int clientNum ) {
+	char userinfo[MAX_INFO_STRING], identity[LADDER_MAX_PLAYER_ID];
+	gclient_t *client;
+	const char *value;
+	if ( !G_DragLadderParticipant( clientNum ) ) return qfalse;
+	client = g_entities[clientNum].client;
+	if ( !client || client->pers.connected != CON_CONNECTED ) return qfalse;
+	identity[0] = '\0';
+	if ( client->pers.localClient ) G_Profile_GetUUID( identity, sizeof( identity ) );
+	trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
+	value = Info_ValueForKey( userinfo, "cl_uuid" );
+	if ( !identity[0] && value[0] ) Q_strncpyz( identity, value, sizeof( identity ) );
+	value = Info_ValueForKey( userinfo, "cl_guid" );
+	if ( !identity[0] && value[0] ) Q_strncpyz( identity, value, sizeof( identity ) );
+	value = Info_ValueForKey( userinfo, "ip" );
+	if ( !identity[0] && !client->pers.localClient && value[0] ) Q_strncpyz( identity, value, sizeof( identity ) );
+	if ( !identity[0] ) {
+		value = Info_ValueForKey( userinfo, "name" );
+		Q_strncpyz( identity, value[0] ? value : client->pers.netname, sizeof( identity ) );
+		Q_CleanStr( identity );
+	}
+	if ( !identity[0] ) Com_sprintf( identity, sizeof( identity ), "client-%i", clientNum );
+	return !strcmp( identity, dragClients[clientNum].ladderIdentity.playerId );
+}
+
+qboolean G_DragPopulateLadderPlayer( int clientNum, ladderPlayerPayload_t *player ) {
+	const dragClient_t *driver;
+	int i;
+	if ( !player || !G_DragLadderParticipant( clientNum ) ) return qfalse;
+	driver = &dragClients[clientNum];
+	*player = driver->ladderIdentity;
+	player->time = level.time > driver->enterTime ? level.time - driver->enterTime : 0;
+	Q_strncpyz( player->dragStatus, driver->phase == DRAG_FALSE_START ? "false_start" : "dnf", sizeof( player->dragStatus ) );
+	if ( driver->phase == DRAG_FINISHED && driver->launchTime >= dragGreenTime
+		&& driver->finishTime > driver->launchTime ) {
+		Q_strncpyz( player->dragStatus, "finished", sizeof( player->dragStatus ) );
+		player->reactionMs = driver->launchTime - dragGreenTime;
+		player->elapsedMs = driver->finishTime - driver->launchTime;
+		player->totalRaceMs = driver->finishTime - dragGreenTime;
+		player->finishRaceTime = driver->finishTime;
+		player->trapSpeedKph = driver->trapSpeed * 0.1f;
+		player->position = 1;
+		for ( i = 0; i < MAX_CLIENTS; i++ ) {
+			if ( i != clientNum && G_DragLadderParticipant( i )
+				&& dragClients[i].phase == DRAG_FINISHED
+				&& dragClients[i].finishTime < driver->finishTime ) player->position++;
+		}
+	}
+	return qtrue;
+}
 
 static qboolean G_DragActive( int clientNum ) {
 	gentity_t *ent = &g_entities[clientNum];
@@ -279,6 +389,7 @@ void G_DragStarterThink( gentity_t *starter ) {
 		for ( i = 0; i < MAX_CLIENTS; i++ ) {
 			if ( G_DragActive( i ) ) {
 				dragClients[i].participant = qtrue;
+				G_DragCaptureLadderIdentity( i );
 				dragClients[i].launchTime = 0;
 				G_DragSetPhase( i, DRAG_COUNTDOWN );
 			}

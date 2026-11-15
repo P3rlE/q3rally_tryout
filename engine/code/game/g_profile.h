@@ -22,6 +22,8 @@ void G_Profile_RecordFlagCapture( struct gclient_s *client );
 void G_Profile_RecordFlagAssist( struct gclient_s *client );
 void G_Profile_RecordLapComplete( struct gclient_s *client, qboolean isLeader, qboolean allowRankProgress );
 void G_Profile_RecordRacePlacement( struct gclient_s *client, int position );
+void G_Profile_RecordDragResult( struct gclient_s *client, int reactionMs, int elapsedMs,
+                                int position, qboolean duel, qboolean won, qboolean hasWinner );
 void G_Profile_RecordRaceTime( struct gclient_s *client, int totalRaceMs );
 void G_Profile_RecordSprintTime( struct gclient_s *client, int totalMs );
 void G_Profile_RecordSurvivalTime( struct gclient_s *client, int survivalMs );

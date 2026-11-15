@@ -39,6 +39,7 @@ SEMANTIC_ORACLE: dict[str, ModeSemantics] = {
     "GT_RACING": ModeSemantics(team_mode=False, race_mode=True, elimination_mode=False, zone_mode=False),
     "GT_RACING_DM": ModeSemantics(team_mode=False, race_mode=True, elimination_mode=False, zone_mode=False),
     "GT_SPRINT": ModeSemantics(team_mode=False, race_mode=True, elimination_mode=False, zone_mode=False),
+    "GT_DRAG": ModeSemantics(team_mode=False, race_mode=False, elimination_mode=False, zone_mode=False),
     "GT_TEAM_RACING": ModeSemantics(team_mode=True, race_mode=True, elimination_mode=False, zone_mode=False),
     "GT_TEAM_RACING_DM": ModeSemantics(team_mode=True, race_mode=True, elimination_mode=False, zone_mode=False),
     "GT_ELIMINATION": ModeSemantics(team_mode=False, race_mode=False, elimination_mode=True, zone_mode=False),
@@ -108,16 +109,18 @@ def php_env(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
 
     src_dir = REPO_ROOT / "ladder_service" / "php_webservice"
     run_dir = tmp_path_factory.mktemp("php_webservice") / "php_webservice"
-    shutil.copytree(src_dir, run_dir)
+    shutil.copytree(src_dir, run_dir, ignore=shutil.ignore_patterns("data"))
 
     data_dir = run_dir / "data"
     data_dir.mkdir(exist_ok=True)
 
     port = _find_free_port()
+    log_path = run_dir / "test-server.log"
+    log = log_path.open("w", encoding="utf-8")
     process = subprocess.Popen(
         [php_bin, "-S", f"127.0.0.1:{port}", "-t", str(run_dir)],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=log,
+        stderr=subprocess.STDOUT,
         text=True,
     )
 
@@ -134,8 +137,10 @@ def php_env(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
         time.sleep(0.2)
 
     if not started:
-        stderr = process.stderr.read() if process.stderr else ""
         process.terminate()
+        process.wait(timeout=5)
+        log.close()
+        stderr = log_path.read_text(errors="replace")
         raise RuntimeError(f"PHP test server did not start. stderr={stderr}")
 
     status, reg = _http_json(
@@ -145,10 +150,20 @@ def php_env(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
             "serverName": "Q3Rally Matrix Test",
             "ownerName": "CI",
             "ownerEmail": "ci@example.org",
-            "type": "offline",
+            "type": "server",
         },
     )
     assert status == 201, reg
+
+    # Registrations intentionally remain pending until an administrator approves
+    # them. Only approve this fixture's synthetic key in its isolated data copy.
+    key_path = data_dir / "private/server_keys.json"
+    keys = json.loads(key_path.read_text())
+    for record in keys:
+        if record["key"] == reg["key"]:
+            record["status"] = "active"
+            record["approvedAt"] = datetime.now(timezone.utc).isoformat()
+    key_path.write_text(json.dumps(keys), encoding="utf-8")
 
     yield {
         "base_url": base_url,
@@ -159,6 +174,7 @@ def php_env(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
 
     process.terminate()
     process.wait(timeout=5)
+    log.close()
 
 
 def generate_golden_payload(mode: str) -> dict[str, Any]:
@@ -208,6 +224,16 @@ def generate_golden_payload(mode: str) -> dict[str, Any]:
         payload["teams"] = None
         payload["players"][0]["team"] = None
 
+    if mode == "GT_DRAG":
+        payload["map"] = "q3r_dragstrip"
+        payload["settings"] = {"g_gametype": 9, "dragDuel": False}
+        payload["winnerClientNum"] = -1
+        payload["players"][0].update({
+            "clientNum": 0, "dragStatus": "finished", "reactionMs": 220,
+            "elapsedMs": 13000, "totalRaceMs": 13220, "trapSpeedKph": 151.2,
+            "kills": 0, "deaths": 0, "bestLapMs": 0, "lapCount": 0, "lapTimes": [],
+        })
+
     return payload
 
 
@@ -231,6 +257,17 @@ def _assert_semantics_in_php_stored_payload(mode: str, stored: dict[str, Any]) -
     if not semantics.zone_mode:
         assert player["zoneHoldMs"] == 0
         assert player["zoneActiveSigil"] == -1
+
+    if mode == "GT_DRAG":
+        assert stored["settings"]["dragDuel"] is False
+        assert stored["winnerClientNum"] == -1
+        assert player["dragStatus"] == "finished"
+        assert player["reactionMs"] == 220
+        assert player["elapsedMs"] == 13000
+        assert player["totalRaceMs"] == 13220
+        assert player["trapSpeedKph"] == 151.2
+        assert player["position"] == 1
+        assert player["kills"] == player["deaths"] == 0
 
 
 def _make_negative_payload(mode: str) -> dict[str, Any]:
@@ -496,7 +533,7 @@ def test_php_profile_reupload_same_match_id_does_not_double_count(php_env: dict[
     _assert_profile_fields(profile, expected_golden_profile)
 
 
-def test_php_profile_dm_snapshot_delta_kills_count_once_per_match(php_env: dict[str, Any]) -> None:
+def test_php_profile_dm_post_match_snapshot_does_not_add_kills_twice(php_env: dict[str, Any]) -> None:
     player_id = "6b1f2505-c27c-4f19-b6df-8a92f049a5e3"
 
     first_payload = _profile_payload("profile-dm-snapshot-delta-1", "GT_DEATHMATCH", player_id)
@@ -515,8 +552,9 @@ def test_php_profile_dm_snapshot_delta_kills_count_once_per_match(php_env: dict[
     _assert_profile_fields(
         profile,
         {
-            "kills": 109,
-            "wins": 12,
+            # Native snapshots already include this match's kills and win.
+            "kills": 105,
+            "wins": 11,
             "losses": 1,
             "gamesPlayed": 2,
             "dmWins": 2,
@@ -526,7 +564,7 @@ def test_php_profile_dm_snapshot_delta_kills_count_once_per_match(php_env: dict[
     assert profile["_processedMatchIds"] == ["profile-dm-snapshot-delta-1", "profile-dm-snapshot-delta-2"]
 
 
-def test_php_profile_ctf_captures_snapshot_delta_counted_once(php_env: dict[str, Any]) -> None:
+def test_php_profile_ctf_post_match_snapshot_does_not_add_captures_twice(php_env: dict[str, Any]) -> None:
     player_id = "de6fc0cf-9db9-4f9a-8578-4862dca5f7cc"
     payload = generate_golden_payload("GT_CTF")
     payload["matchId"] = "profile-ctf-captures-snapshot-delta-1"
@@ -553,9 +591,9 @@ def test_php_profile_ctf_captures_snapshot_delta_counted_once(php_env: dict[str,
     _assert_profile_fields(
         profile,
         {
-            "flagCaptures": 13,
-            "ctfCaptures": 13,
-            "wins": 6,
+            "flagCaptures": 10,
+            "ctfCaptures": 10,
+            "wins": 5,
             "losses": 2,
             "ctfWins": 1,
             "ctfCompleted": 1,
@@ -632,7 +670,7 @@ def test_php_profile_upsert_prefers_valid_snapshot(php_env: dict[str, Any]) -> N
     assert status == 201, created
 
     profile = _get_php_profile(php_env, player_id)
-    assert profile["wins"] == 12
+    assert profile["wins"] == 11
     assert profile["losses"] == 5
     assert profile["kills"] == 81
     assert profile["deaths"] == 44
@@ -777,7 +815,7 @@ def test_php_profile_missing_winner_field_is_graceful(php_env: dict[str, Any]) -
     assert profile["dmCompleted"] == 1
 
 
-def test_php_profile_team_mode_applies_team_win_loss_delta(php_env: dict[str, Any]) -> None:
+def test_php_profile_team_mode_preserves_post_match_win_loss_snapshot(php_env: dict[str, Any]) -> None:
     winner_id = "fdde3dae-c8c7-4c36-a60d-145b7ad95c25"
     loser_id = "0dd4d0a4-80ef-4d7d-93bd-c4e9c4e8ab16"
     payload = generate_golden_payload("GT_TEAM")
@@ -813,10 +851,10 @@ def test_php_profile_team_mode_applies_team_win_loss_delta(php_env: dict[str, An
 
     winner = _get_php_profile(php_env, winner_id)
     loser = _get_php_profile(php_env, loser_id)
-    assert winner["wins"] == 5
+    assert winner["wins"] == 4
     assert winner["losses"] == 2
     assert loser["wins"] == 9
-    assert loser["losses"] == 2
+    assert loser["losses"] == 1
 
 
 @pytest.mark.parametrize("mode,win_field", [("GT_CTF", "ctfWins"), ("GT_CTF4", "ctf4Wins")])
