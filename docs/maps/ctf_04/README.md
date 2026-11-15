@@ -73,3 +73,9 @@ ihre Prüfsumme anpassen.
 Das Modell `models/mapobjects/spotlamp1/spotlamp1.md3` (die Strahler über der
 Werkstatt) fehlte im Repo, die Map ließ sich deshalb nicht mehr bauen. Es ist aus der
 alten BSP zurückgeholt (`tools/maptools/extract_model_from_bsp.py`).
+
+## Getestet und offen
+
+Bot-Test mit 3 gegen 3: Die Bots holen Flaggen, bringen sie zurück und punkten. Offen:
+In der engen Werkstatt (Hebebühnen) bleibt ab und zu ein Bot hängen; das war im Original
+schon so. Spieltest mit Menschen und Balancing der zwei BFGs stehen noch aus.
