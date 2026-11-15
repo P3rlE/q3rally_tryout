@@ -606,12 +606,12 @@ def skybox(m, x0, x1, y0, y1, top, sky):
     m.box((x1, y0, -64), (x1 + t, y1, top), sky, detail=False)
 
 
-def ground(m, x0, x1, y0, y1, mat, scale=1.0):
+def ground(m, x0, x1, y0, y1, runoff, mat, scale=1.0):
     """Ground slab around the strip (the strip's own slab covers the road)."""
     g = {"m": mat, "s": (scale, scale)}
     W = WALL_Y
     for lo, hi in (((x0, W, -16), (x1, y1, 0)), ((x0, y0, -16), (x1, -W, 0)),
-                   ((x0, -W, -16), (BACK_X, W, 0))):
+                   ((x0, -W, -16), (BACK_X, W, 0)), ((runoff, -W, -16), (x1, W, 0))):
         m.box(lo, hi, CAULK, faces={"top": g}, detail=False)
 
 
@@ -716,7 +716,7 @@ def desert():
     wall = {"m": "q3r_road/cement_redwhite", "s": (0.5, 0.5)}
     strip(m, QUARTER, runoff, wall)
     skybox(m, X0, X1, Y0, Y1, 3584, "skies/ame_desert")
-    ground(m, X0, X1, Y0, Y1, "q3r_dirt_grass/dirt02", 1.5)
+    ground(m, X0, X1, Y0, Y1, runoff, "q3r_dirt_grass/dirt02", 1.5)
     # service road along the south side and the paddock behind the start
     m.box((-3000, -1500, 0), (20200, -1260, 1), {"m": "q3r_road/asph02", "s": (0.5, 0.5)}, faces={"bot": CAULK}, detail=False)
     m.box((-3000, -1260, 0), (-1000, 1600, 1), {"m": "q3r_road/asph02", "s": (0.5, 0.5)}, faces={"bot": CAULK}, detail=False)
@@ -793,7 +793,7 @@ def night():
     stripe = {"m": "q3r_road/cement_redwhite", "s": (0.5, 0.5)}
     strip(m, finish, runoff, wall, wall_top=stripe)
     skybox(m, X0, X1, Y0, Y1, 2816, "skies/ely_darkcity")
-    ground(m, X0, X1, Y0, Y1, "q3r_road/asph02", 0.5)
+    ground(m, X0, X1, Y0, Y1, runoff, "q3r_road/asph02", 0.5)
     # sidewalks with kerbs
     for s in (1, -1):
         y0, y1 = WALL_Y + WALL_T, 760
@@ -867,7 +867,7 @@ def airfield():
     blocks = {"m": "q3r_building/concrete02", "s": (0.25, 0.25)}
     strip(m, finish, runoff, blocks, wall_top={"m": TEX + "paint_red", "s": (0.25, 0.25)}, road=TEX + "runway")
     skybox(m, X0, X1, Y0, Y1, 3328, "skies/ely_sunset")
-    ground(m, X0, X1, Y0, Y1, "q3r_dirt_grass/grass07", 1.5)
+    ground(m, X0, X1, Y0, Y1, runoff, "q3r_dirt_grass/grass07", 1.5)
     # runway beyond the drag lanes, threshold bars and the runway number, edge lights
     for s in (1, -1):
         m.box((-3200, min(s * (WALL_Y + WALL_T), s * 900), 0), (20800, max(s * (WALL_Y + WALL_T), s * 900), 1), rw,
