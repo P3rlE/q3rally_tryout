@@ -43,10 +43,15 @@ Changed:
   with balaclava and goggles (retro, vintage, moto, pilot). The default is
   "classic"; a saved head that no longer exists falls back to it.
   Generator tools/carbuild/helmets.
-- q3r_ctf_04: a bronze rally trophy on a granite plinth stands in the
-  fountain instead of the Xaero statue. Only the statue was swapped in the
-  compiled map (tools/maptools/replace_model_in_bsp.py); lighting and bot
-  navigation are unchanged.
+- q3r_ctf_04 is finished as "Trophy Square": a bronze rally trophy on a
+  granite plinth stands in the fountain instead of the Xaero statue. The
+  map is point symmetric now (the car workshop with the BFG and the
+  apartment house are mirrored into the empty south half), a ring road
+  around the square connects the north-south roads as a flanking route,
+  and a city of houses, street lamps, trees, low walls, a parking lot and
+  a park each per side were added. Model props have solid collision for
+  the vehicle physics, the flag pads lost their missing texture.
+  Generator tools/maptools/rework_ctf04.py.
 
 Removed:
 
