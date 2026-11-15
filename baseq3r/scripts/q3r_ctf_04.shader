@@ -204,3 +204,18 @@ textures/q3r_ctf_04/boundary
 	surfaceparm noimpact
 	surfaceparm detail
 }
+
+// granite base under the trophy in the fountain: the stone of the trophy plinth
+textures/q3r_ctf_04/trophy_stone
+{
+	qer_editorimage models/mapobjects/q3r_trophy/stone.jpg
+	{
+		map $lightmap
+		rgbGen identity
+	}
+	{
+		map models/mapobjects/q3r_trophy/stone.jpg
+		blendFunc GL_DST_COLOR GL_ZERO
+		rgbGen identity
+	}
+}

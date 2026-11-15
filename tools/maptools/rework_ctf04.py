@@ -381,7 +381,7 @@ def trophy_base(ents):
     col = [b for b in world["brushes"] if [tuple(map(round, v)) for v in bbox(b)] == [(-16, -16, -56), (16, 16, -8)]]
     assert len(col) == 1, len(col)
     world["brushes"].remove(col[0])
-    stone = {"m": "models/mapobjects/q3r_trophy/stone", "s": (0.125, 0.125)}
+    stone = {"m": TEX + "trophy_stone", "s": (0.125, 0.125)}
 
     def octagon(r):                 # same facets as the plinth (faces on the axes)
         return [(r * math.cos(math.radians(22.5 + 45 * k)), r * math.sin(math.radians(22.5 + 45 * k))) for k in range(8)]
