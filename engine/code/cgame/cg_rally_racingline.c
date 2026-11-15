@@ -549,7 +549,7 @@ static void RL_SetVert( polyVert_t *v, const racingLinePoint_t *p, float side, f
 static qboolean RL_ShouldDraw( void ) {
 	const playerState_t *ps;
 
-	if ( !cg_racingLine.integer || !isRallyRace() || !cg.snap ) {
+	if ( cgs.gametype == GT_DRAG || !cg_racingLine.integer || !isRallyRace() || !cg.snap ) {
 		return qfalse;
 	}
 	ps = &cg.predictedPlayerState;

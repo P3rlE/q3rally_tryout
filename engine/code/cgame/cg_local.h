@@ -2321,6 +2321,7 @@ void CG_DrawIngameString( int x, int y, const char *text, int style,
 	                        float scale, const float *color );
 void CG_DrawIngameSmallString( int x, int y, const char *text,
 	                             const float *color );
+void CG_DrawDragTelemetryHud( void );
 void CG_QueueHudToast( int itemNum );
 void CG_QueueRewardToast( qhandle_t icon, sfxHandle_t sound, int rewardCount );
 void CG_QueueAchievementToast( bgAchievementCategory_t category, int tierIndex );
