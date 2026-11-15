@@ -310,6 +310,13 @@ static void CG_FX_StartLightState( int count, int *reds, qboolean *green ) {
 		*reds = *green ? 0 : cg_startLightPreview.integer * ( count - 1 ) / 3;
 		return;
 	}
+	if ( cgs.gametype == GT_DRAG ) {
+		CG_DragStartLightState( &n, green );
+		if ( n > 0 ) {
+			*reds = ( count - 1 ) - ( 3 - n ) * ( count - 1 ) / 3;
+		}
+		return;
+	}
 	if ( !p[0] ) {
 		return;
 	}

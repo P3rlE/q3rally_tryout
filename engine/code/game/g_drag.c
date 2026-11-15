@@ -141,6 +141,16 @@ void G_DragClientSpawn( gentity_t *ent ) {
 			G_DragPublish( i, clientNum );
 		}
 	}
+	/* Late spectators also need the current red stage: its final hold is
+	 * randomized, so the green timestamp alone cannot reconstruct it. */
+	if ( dragCountdownTime && !level.startRaceTime && level.time < dragGreenTime
+		&& dragLastLight >= 1 && dragLastLight <= 3 ) {
+		trap_SendServerCommand( clientNum, va( "rc \"%d - HOLD RPM IN N\" %d",
+			dragLastLight, dragLastLight ) );
+	} else if ( dragGreenTime > 0 && level.time >= dragGreenTime
+		&& level.time < dragGreenTime + 4000 ) {
+		trap_SendServerCommand( clientNum, "rc \"GO!\" 0" );
+	}
 }
 
 void G_DragClientDisconnect( int clientNum ) {

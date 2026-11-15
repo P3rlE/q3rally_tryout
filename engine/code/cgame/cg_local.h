@@ -1467,6 +1467,8 @@ sfxHandle_t neutralFlagReturnedSound;
 	sfxHandle_t	count1Sound;
 	sfxHandle_t	countFightSound;
 	sfxHandle_t	countPrepareSound;
+	sfxHandle_t	dragCountdownSound;
+	sfxHandle_t	dragGreenSound;
 
 #ifdef MISSIONPACK
 	// new stuff
@@ -2418,8 +2420,11 @@ void CG_GhostRace_DrawResultBanner( void );
 void CG_GhostRace_ReportOpponent( void );
 qboolean CG_GhostRace_ClientResult( int clientNum, qboolean *won );
 void CG_AttemptSavePersonalGhost( int finishTime );
+int CG_DragStartLightState( int *reds, qboolean *green );
 void CG_DrawRaceCountDown( void );
 void CG_RaceCountDown( const char *str, int secondsLeft );
+void CG_UpdateDragStartSounds( void );
+void CG_ResetDragStartSounds( void );
 
 //
 // Modular HUD interfaces (cg_hud_core.c and HUD element modules)

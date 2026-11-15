@@ -1120,6 +1120,7 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 
 	// let the client system know what our weapon and zoom settings are
 	trap_SetUserCmdValue( cg.weaponSelect, cg.zoomSensitivity );
+	CG_UpdateDragStartSounds();
 
 	// (re)send ghost commands the server has not answered yet
 	CG_LadderGhost_NetFrame();
