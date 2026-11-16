@@ -972,6 +972,7 @@ static void CG_MapRestart( void ) {
 		cent->startLapTime = 0;
 		cent->lastStartLapTime = 0;
 		cent->dragPhase = DRAG_WAITING;
+		cent->dragCountdownTime = 0;
 		cent->dragGreenTime = 0;
 		cent->dragLaunchTime = 0;
 		cent->dragFinishTime = 0;
@@ -1917,17 +1918,18 @@ static void CG_ServerCommand( void ) {
 	if ( !strcmp( cmd, "dragStatus" ) ) {
 		int clientNum, phase;
 		centity_t *car;
-		if ( cgs.gametype != GT_DRAG || trap_Argc() != 7 ) return;
+		if ( cgs.gametype != GT_DRAG || trap_Argc() != 8 ) return;
 		clientNum = atoi( CG_Argv( 1 ) );
 		phase = atoi( CG_Argv( 2 ) );
 		if ( clientNum < 0 || clientNum >= MAX_CLIENTS ||
 			phase < DRAG_WAITING || phase > DRAG_DNF ) return;
 		car = &cg_entities[clientNum];
 		car->dragPhase = phase;
-		car->dragGreenTime = atoi( CG_Argv( 3 ) );
-		car->dragLaunchTime = atoi( CG_Argv( 4 ) );
-		car->dragFinishTime = atoi( CG_Argv( 5 ) );
-		car->dragTrapSpeed = atoi( CG_Argv( 6 ) );
+		car->dragCountdownTime = atoi( CG_Argv( 3 ) );
+		car->dragGreenTime = atoi( CG_Argv( 4 ) );
+		car->dragLaunchTime = atoi( CG_Argv( 5 ) );
+		car->dragFinishTime = atoi( CG_Argv( 6 ) );
+		car->dragTrapSpeed = atoi( CG_Argv( 7 ) );
 		return;
 	}
 

@@ -729,13 +729,16 @@ qboolean G_LadderValidatePayload( ladderMatchPayload_t *payload, qboolean blockO
                                 payload->playerCount < 1 || payload->playerCount > 2 ||
                                 payload->dragDuel != ( payload->playerCount == 2 ) ||
                                 ( !payload->dragDuel && payload->winnerClientNum != -1 ) ) bad = qtrue;
-                        if ( player->team != TEAM_FREE || player->isBot || player->bestLapMs ||
+                        /* A bot may race the second lane, as in the other modes. */
+                        if ( player->team != TEAM_FREE || player->bestLapMs ||
                                 player->lapCount || player->kills || player->deaths || player->survivalMs ) bad = qtrue;
                         if ( player->reactionMs < 0 || player->reactionMs > 120000 ||
                                 player->elapsedMs < 0 || player->elapsedMs > 120000 ||
                                 player->totalRaceMs < 0 || player->totalRaceMs > 120000 ||
                                 !SV_LadderIsFinite( player->trapSpeedKph ) || player->trapSpeedKph < 0.0f || player->trapSpeedKph > 1000.0f ) bad = qtrue;
                         if ( finished ) {
+                                /* A faster reaction is a false start in the game rules. */
+                                if ( player->reactionMs < DRAG_MIN_REACTION_MS ) bad = qtrue;
                                 if ( player->elapsedMs <= 0 || player->totalRaceMs != player->reactionMs + player->elapsedMs ||
                                         player->position < 1 || player->position > payload->playerCount || player->finishRaceTime <= 0 ) bad = qtrue;
                         } else if ( player->reactionMs || player->elapsedMs || player->totalRaceMs ||

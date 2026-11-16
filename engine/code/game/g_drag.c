@@ -24,10 +24,23 @@ typedef struct {
 	float previousSpeed;
 	ladderPlayerPayload_t ladderIdentity;
 	int enterTime;
+	/* Bot driver: a plan per heat, drawn from the bot's skill. */
+	qboolean botPlanned;
+	float botSkill;			/* 0 (skill 1) .. 1 (skill 5) */
+	float botLaunchRpm;
+	int botReactionMs;
+	float botShiftRpm;
+	int botLastShift;
 } dragClient_t;
 
 static dragClient_t dragClients[MAX_CLIENTS];
 static int dragCountdownTime;
+/* The scheduled green stays on the server. Clients learn the green time only
+ * once it has happened: knowing it in advance would let a modified client
+ * launch on the exact millisecond. */
+static int dragScheduledGreenTime;
+/* The server frame in which green actually happened; 0 before green. That
+ * snapshot carries GO, so reaction times are measured from what drivers saw. */
 static int dragGreenTime;
 static int dragLastLight;
 static int dragAllDoneTime;
@@ -54,6 +67,7 @@ static void G_DragCaptureLadderIdentity( int clientNum ) {
 	player->team = TEAM_FREE;
 	player->zoneActiveSigil = -1;
 	player->ping = client->ps.ping;
+	player->isBot = ( g_entities[clientNum].r.svFlags & SVF_BOT ) ? qtrue : qfalse;
 	driver->enterTime = client->pers.enterTime;
 	if ( client->pers.localClient ) {
 		G_Profile_GetUUID( player->playerId, sizeof( player->playerId ) );
@@ -150,8 +164,7 @@ static qboolean G_DragActive( int clientNum ) {
 	gentity_t *ent = &g_entities[clientNum];
 	return ent->inuse && ent->client
 		&& ent->client->pers.connected == CON_CONNECTED
-		&& ent->client->sess.sessionTeam != TEAM_SPECTATOR
-		&& !( ent->r.svFlags & SVF_BOT );
+		&& ent->client->sess.sessionTeam != TEAM_SPECTATOR;
 }
 
 static qboolean G_DragTerminal( const dragClient_t *driver ) {
@@ -161,13 +174,19 @@ static qboolean G_DragTerminal( const dragClient_t *driver ) {
 
 static void G_DragPublish( int clientNum, int recipient ) {
 	const dragClient_t *driver = &dragClients[clientNum];
-	trap_SendServerCommand( recipient, va( "dragStatus %d %d %d %d %d %d",
-		clientNum, driver->phase, dragGreenTime, driver->launchTime,
-		driver->finishTime, driver->trapSpeed ) );
+	/* The countdown start identifies the heat and drives the red lamps.
+	 * dragGreenTime stays 0 until green has happened. */
+	trap_SendServerCommand( recipient, va( "dragStatus %d %d %d %d %d %d %d",
+		clientNum, driver->phase, dragCountdownTime, dragGreenTime,
+		driver->launchTime, driver->finishTime, driver->trapSpeed ) );
 }
 
 static void G_DragSetPhase( int clientNum, dragPhase_t phase ) {
 	dragClients[clientNum].phase = phase;
+	if ( phase == DRAG_COUNTDOWN && g_entities[clientNum].client ) {
+		/* The heat is armed: from now on the engine can be over-revved. */
+		g_entities[clientNum].client->ps.stats[STAT_DRAG_ENGINE] = DRAG_ENGINE_ARMED;
+	}
 	if ( phase == DRAG_RUNNING && g_entities[clientNum].client
 		&& g_entities[clientNum].client->ps.commandTime < dragClients[clientNum].launchTime ) {
 		/* A usercommand describes input at its timestamp. Do not integrate
@@ -190,6 +209,7 @@ static void G_DragDisqualify( int clientNum, dragPhase_t phase, const char *reas
 		return;
 	}
 	driver->participant = qtrue;
+	G_LogPrintf( "DragDisqualify: %i %s\n", clientNum, reason );
 	G_DragSetPhase( clientNum, phase );
 	if ( ent->client ) {
 		/* A non-zero finish marker also activates the existing observer delay.
@@ -202,7 +222,8 @@ static void G_DragDisqualify( int clientNum, dragPhase_t phase, const char *reas
 
 void G_DragInit( void ) {
 	memset( dragClients, 0, sizeof( dragClients ) );
-	dragCountdownTime = dragGreenTime = dragAllDoneTime = dragFirstFinishTime = 0;
+	dragCountdownTime = dragScheduledGreenTime = dragGreenTime = 0;
+	dragAllDoneTime = dragFirstFinishTime = 0;
 	dragLastLight = -1;
 	dragMapInvalid = dragResultAnnounced = qfalse;
 	VectorClear( dragForward );
@@ -243,6 +264,7 @@ void G_DragClientSpawn( gentity_t *ent ) {
 		VectorCopy( ent->client->ps.origin, driver->gridOrigin );
 		ent->client->car.gear = 0;
 		ent->client->ps.stats[STAT_GEAR] = 0;
+		ent->client->ps.stats[STAT_DRAG_ENGINE] = 0;
 		ent->ready = qfalse;
 		G_DragPublish( clientNum, -1 );
 	}
@@ -251,9 +273,9 @@ void G_DragClientSpawn( gentity_t *ent ) {
 			G_DragPublish( i, clientNum );
 		}
 	}
-	/* Late spectators also need the current red stage: its final hold is
-	 * randomized, so the green timestamp alone cannot reconstruct it. */
-	if ( dragCountdownTime && !level.startRaceTime && level.time < dragGreenTime
+	/* Late spectators also need the current red stage for the countdown
+	 * text; the lamps themselves follow the published countdown start. */
+	if ( dragCountdownTime && !level.startRaceTime
 		&& dragLastLight >= 1 && dragLastLight <= 3 ) {
 		trap_SendServerCommand( clientNum, va( "rc \"%d - HOLD RPM IN N\" %d",
 			dragLastLight, dragLastLight ) );
@@ -271,7 +293,7 @@ void G_DragClientDisconnect( int clientNum ) {
 	if ( dragCountdownTime && !level.startRaceTime ) {
 		/* Cancel the armed start so a disconnect never gives the remaining
 		 * driver an unexpected green or an automatic walkover. */
-		dragCountdownTime = dragGreenTime = 0;
+		dragCountdownTime = dragScheduledGreenTime = dragGreenTime = 0;
 		dragLastLight = -1;
 		level.raceState = RACE_STATE_NONE;
 		for ( i = 0; i < MAX_CLIENTS; i++ ) {
@@ -282,6 +304,7 @@ void G_DragClientDisconnect( int clientNum ) {
 				dragClients[i].phase = dragClients[i].throttleReady ? DRAG_STAGED : DRAG_WAITING;
 				g_entities[i].client->car.gear = 0;
 				g_entities[i].client->ps.stats[STAT_GEAR] = 0;
+				g_entities[i].client->ps.stats[STAT_DRAG_ENGINE] = 0;
 				g_entities[i].client->finishRaceTime = 0;
 				G_DragPublish( i, -1 );
 			}
@@ -324,11 +347,15 @@ static qboolean G_DragConfigureTrack( void ) {
 	return dragLaneHalfWidth > CAR_WIDTH;
 }
 
+/* Call only from the server frame (starter think and G_DragRunFrame), never
+ * while processing a client command between frames: the snapshot of this
+ * frame is the first one that shows green. */
 static void G_DragStartGreen( void ) {
 	int i;
-	if ( !dragGreenTime || level.startRaceTime || level.time < dragGreenTime ) {
+	if ( !dragScheduledGreenTime || level.startRaceTime || level.time < dragScheduledGreenTime ) {
 		return;
 	}
+	dragGreenTime = level.time;
 	level.startRaceTime = dragGreenTime;
 	level.raceState = RACE_STATE_RUNNING;
 	level.raceIntroEndTime = 0;
@@ -340,11 +367,9 @@ static void G_DragStartGreen( void ) {
 		}
 		g_entities[i].client->lapStartTime = dragGreenTime;
 		g_entities[i].client->lastCheckpointTime = dragGreenTime;
-		if ( !G_DragTerminal( &dragClients[i] ) && dragClients[i].launchTime ) {
-			G_DragSetPhase( i, DRAG_RUNNING );
-		} else {
-			G_DragPublish( i, -1 );
-		}
+		/* Every request before this frame was a false start, so no driver is
+		 * launched here; publish the green time with each driver's state. */
+		G_DragPublish( i, -1 );
 	}
 }
 
@@ -381,9 +406,9 @@ void G_DragStarterThink( gentity_t *starter ) {
 			return;
 		}
 		dragCountdownTime = level.time;
-		/* Vary only the final wait. The common scheduled timestamp is the
-		 * authority for all first-gear commands, including delayed packets. */
-		dragGreenTime = level.time + 3000 + ( rand() % 1001 );
+		/* Vary only the final wait, and keep it secret until green. */
+		dragScheduledGreenTime = level.time + 3000 + ( rand() % 1001 );
+		dragGreenTime = 0;
 		level.raceState = RACE_STATE_COUNTDOWN;
 		level.raceIntroEndTime = 0;
 		for ( i = 0; i < MAX_CLIENTS; i++ ) {
@@ -449,7 +474,6 @@ void G_DragFilterCommand( gentity_t *ent, usercmd_t *cmd ) {
 	} else {
 		driver->throttleReady = !G_DragTerminal( driver ) && cmd->forwardmove > 0 ? qtrue : qfalse;
 	}
-	G_DragStartGreen();
 	if ( !driver->participant || driver->phase != DRAG_RUNNING || !level.startRaceTime ) {
 		cmd->buttons = BUTTON_HANDBRAKE;
 		cmd->rightmove = cmd->upmove = 0;
@@ -465,7 +489,8 @@ void G_DragFilterCommand( gentity_t *ent, usercmd_t *cmd ) {
 
 qboolean G_DragTryGearChange( gentity_t *ent, int direction, int commandTime ) {
 	dragClient_t *driver;
-	int clientNum;
+	int clientNum, reactionMs;
+	char reason[96];
 	if ( g_gametype.integer != GT_DRAG ) return qfalse;
 	if ( !ent || !ent->client ) return qtrue;
 	clientNum = ent->s.number;
@@ -483,13 +508,34 @@ qboolean G_DragTryGearChange( gentity_t *ent, int direction, int commandTime ) {
 	if ( commandTime <= 0 ) commandTime = ent->client->pers.cmd.serverTime;
 	if ( commandTime < level.time - 1000 ) commandTime = level.time - 1000;
 	if ( commandTime > level.time + 200 ) commandTime = level.time + 200;
+	/* The client stamps gearUp with the time of the frame it was pressed in,
+	 * and sends it together with that frame's movement. It can therefore never
+	 * be older than the movement already received: an older stamp is a
+	 * backdated launch, and is moved up to the last accepted movement. */
+	if ( commandTime < ent->client->pers.cmd.serverTime && !( ent->r.svFlags & SVF_BOT ) ) {
+		commandTime = ent->client->pers.cmd.serverTime;
+	}
 	driver->launchTime = commandTime;
-	if ( commandTime < dragGreenTime ) {
+	/* Before the green frame, no request is legal, whatever its timestamp. */
+	if ( !level.startRaceTime || !dragGreenTime || commandTime < dragGreenTime ) {
 		G_DragDisqualify( clientNum, DRAG_FALSE_START, "FALSE START - selected FIRST before GREEN" );
 		return qtrue;
 	}
-	G_DragStartGreen();
-	if ( level.startRaceTime && driver->phase != DRAG_RUNNING ) {
+	reactionMs = commandTime - dragGreenTime;
+	if ( reactionMs < DRAG_MIN_REACTION_MS ) {
+		/* Not va(): G_DragDisqualify formats with va() itself. */
+		Com_sprintf( reason, sizeof( reason ), "FALSE START - reaction %d.%03d s, minimum %d.%03d s",
+			reactionMs / 1000, reactionMs % 1000, DRAG_MIN_REACTION_MS / 1000, DRAG_MIN_REACTION_MS % 1000 );
+		G_DragDisqualify( clientNum, DRAG_FALSE_START, reason );
+		return qtrue;
+	}
+	if ( ent->r.svFlags & SVF_BOT ) {
+		/* The server drives bots between frames at their exact reaction
+		 * time. Until then the car stood in N, so integrating first gear
+		 * from that moment is the same as having launched then. */
+		ent->client->ps.commandTime = commandTime;
+	}
+	if ( driver->phase != DRAG_RUNNING ) {
 		G_DragSetPhase( clientNum, DRAG_RUNNING );
 	}
 	return qtrue;
@@ -568,12 +614,146 @@ int G_DragCompare( int clientA, int clientB ) {
 	return a->progress > b->progress ? -1 : 1;
 }
 
+/*
+ * Bots. A bot draws a plan per heat from its skill: the revs it holds in N,
+ * its reaction time and its shift points. The server then drives it on the
+ * frame: launch at green + reaction (a rookie now and then jumps the light,
+ * which is a false start under the minimum reaction rule), shift at the
+ * planned revs, and steer along the own lane. Skill 1 bogs or smokes its
+ * launches and reacts in about 0.36 s; skill 5 launches in the band and
+ * reacts in about 0.16 s.
+ */
+#define DRAG_BOT_AIM_AHEAD		1600.0f
+#define DRAG_BOT_SHIFT_SETTLE	250		/* ms after a gear change before the next */
+
+static float G_DragGauss( void ) {
+	/* sum of four uniforms: close enough to a unit normal for driver error */
+	return ( random() + random() + random() + random() - 2.0f ) * 1.732f;
+}
+
+static float G_DragClamp( float value, float low, float high ) {
+	return value < low ? low : ( value > high ? high : value );
+}
+
+static void G_DragBotRollShift( dragClient_t *driver ) {
+	driver->botShiftRpm = G_DragClamp( 6020.0f + G_DragGauss() * ( 40.0f + 300.0f * ( 1.0f - driver->botSkill ) ),
+		5300.0f, 6200.0f );
+}
+
+static void G_DragBotPlan( int clientNum ) {
+	dragClient_t *driver = &dragClients[clientNum];
+	char userinfo[MAX_INFO_STRING];
+	float skill, reaction;
+
+	trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
+	skill = atof( Info_ValueForKey( userinfo, "skill" ) );
+	driver->botSkill = G_DragClamp( ( skill - 1.0f ) / 4.0f, 0.0f, 1.0f );
+	/* Even a rookie stays out of the red zone while it waits for green. */
+	driver->botLaunchRpm = G_DragClamp( 4300.0f + G_DragGauss() * ( 150.0f + 1100.0f * ( 1.0f - driver->botSkill ) ),
+		1500.0f, DRAG_ENGINE_REDLINE_RPM - 50.0f );
+	if ( random() < 0.04f * ( 1.0f - driver->botSkill ) ) {
+		reaction = 40.0f + random() * 55.0f;		/* anticipated the green */
+	} else {
+		reaction = 360.0f - 200.0f * driver->botSkill
+			+ G_DragGauss() * ( 25.0f + 55.0f * ( 1.0f - driver->botSkill ) );
+		if ( reaction < 120.0f ) reaction = 120.0f + random() * 20.0f;
+	}
+	driver->botReactionMs = (int)reaction;
+	G_DragBotRollShift( driver );
+	driver->botPlanned = qtrue;
+}
+
+/* Called for every bot usercmd (ai_main.c): throttle and steering. */
+qboolean G_DragBotInput( int clientNum, usercmd_t *cmd ) {
+	gentity_t *ent;
+	dragClient_t *driver;
+	vec3_t aim, dir, angles;
+	float yaw, steering;
+	int i;
+
+	if ( g_gametype.integer != GT_DRAG || clientNum < 0 || clientNum >= MAX_CLIENTS || !cmd ) return qfalse;
+	ent = &g_entities[clientNum];
+	if ( !ent->client || !( ent->r.svFlags & SVF_BOT ) ) return qfalse;
+	driver = &dragClients[clientNum];
+	if ( !driver->botPlanned ) G_DragBotPlan( clientNum );
+
+	cmd->buttons = 0;
+	cmd->upmove = cmd->rightmove = 0;
+	cmd->weapon = WP_NONE;
+	if ( G_DragTerminal( driver ) ) {
+		cmd->forwardmove = 0;
+	} else if ( driver->phase == DRAG_RUNNING ) {
+		cmd->forwardmove = 127;
+	} else {
+		/* In N the pedal position sets the revs: hold the planned ones. */
+		i = (int)( 127.0f * ( driver->botLaunchRpm - CP_RPM_MIN ) / ( CP_RPM_MAX - CP_RPM_MIN ) + 0.5f );
+		cmd->forwardmove = (signed char)( i < 1 ? 1 : ( i > 127 ? 127 : i ) );
+	}
+
+	/* Steer at a point on the own lane's centre line ahead. */
+	if ( dragForward[0] == 0.0f && dragForward[1] == 0.0f ) return qtrue;
+	VectorMA( driver->gridOrigin, driver->progress + DRAG_BOT_AIM_AHEAD, dragForward, aim );
+	VectorSubtract( aim, ent->client->ps.origin, dir );
+	yaw = vectoyaw( dir );
+	if ( ent->client->pers.controlMode == CT_MOUSE ) {
+		VectorSet( angles, 0, yaw, 0 );
+		for ( i = 0; i < 3; i++ ) cmd->angles[i] = ANGLE2SHORT( angles[i] ) - ent->client->ps.delta_angles[i];
+	} else {
+		steering = WheelAngle( ent->client->ps.viewangles[YAW], yaw );
+		cmd->rightmove = (signed char)( 127.0f * G_DragClamp( steering / 20.0f, -1.0f, 1.0f ) );
+	}
+	return qtrue;
+}
+
+/* Every server frame once green has happened: launch and shift on time. */
+static void G_DragBotFrame( int clientNum ) {
+	dragClient_t *driver = &dragClients[clientNum];
+	gentity_t *ent = &g_entities[clientNum];
+	car_t *car = &ent->client->car;
+
+	if ( !driver->botPlanned ) G_DragBotPlan( clientNum );
+	if ( driver->phase == DRAG_COUNTDOWN && dragGreenTime > 0
+		&& level.time >= dragGreenTime + driver->botReactionMs ) {
+		G_DragTryGearChange( ent, 1, dragGreenTime + driver->botReactionMs );
+		driver->botLastShift = level.time;
+		return;
+	}
+	if ( driver->phase == DRAG_RUNNING && car->gear >= 1 && car->gear < 6
+		&& level.time >= driver->botLastShift + DRAG_BOT_SHIFT_SETTLE && car->rpm >= driver->botShiftRpm ) {
+		car->gear++;
+		driver->botLastShift = level.time;
+		G_DragBotRollShift( driver );
+	}
+}
+
+/* An engine blown by pmove ends the attempt: smoke, a bang, and a DNF. */
+static void G_DragCheckEngine( int clientNum ) {
+	gentity_t *ent = &g_entities[clientNum];
+	int state;
+	if ( !ent->client || G_DragTerminal( &dragClients[clientNum] ) ) return;
+	state = ent->client->ps.stats[STAT_DRAG_ENGINE];
+	if ( !( state & DRAG_ENGINE_BLOWN ) ) return;
+	ent->client->ps.eFlags |= EF_SMOKE_DARK;
+	G_Sound( ent, CHAN_AUTO, G_SoundIndex( "sound/feedback/drag_engine_blow.wav" ) );
+	G_DragDisqualify( clientNum, DRAG_DNF, ( state & DRAG_ENGINE_OVERREV )
+		? "ENGINE BLOWN - over-revved, shift up in time"
+		: "ENGINE BLOWN - too long on the limiter" );
+}
+
 void G_DragRunFrame( void ) {
 	int i, j, count, done, winner, position;
 	qboolean tied, positionChanged, resultChanged;
 	if ( g_gametype.integer != GT_DRAG || !dragCountdownTime || level.intermissiontime ) return;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( dragClients[i].participant && G_DragActive( i ) ) G_DragCheckEngine( i );
+	}
 	G_DragStartGreen();
 	if ( !level.startRaceTime ) return;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( dragClients[i].participant && G_DragActive( i ) && ( g_entities[i].r.svFlags & SVF_BOT ) ) {
+			G_DragBotFrame( i );
+		}
+	}
 	count = done = 0;
 	winner = -1;
 	tied = qfalse;
@@ -622,6 +802,20 @@ void G_DragRunFrame( void ) {
 	if ( dragAllDoneTime && !dragResultAnnounced ) {
 		dragResultAnnounced = qtrue;
 		resultChanged = qtrue;
+		for ( i = 0; i < MAX_CLIENTS; i++ ) {
+			const dragClient_t *driver = &dragClients[i];
+			if ( !driver->participant ) continue;
+			if ( driver->phase == DRAG_FINISHED ) {
+				G_LogPrintf( "DragResult: %i finished rt=%d et=%d total=%d trap=%d.%d bot=%i %s\n", i,
+					driver->launchTime - dragGreenTime, driver->finishTime - driver->launchTime,
+					driver->finishTime - dragGreenTime, driver->trapSpeed / 10, driver->trapSpeed % 10,
+					( g_entities[i].r.svFlags & SVF_BOT ) ? 1 : 0, driver->ladderIdentity.cleanName );
+			} else {
+				G_LogPrintf( "DragResult: %i %s bot=%i %s\n", i,
+					driver->phase == DRAG_FALSE_START ? "false_start" : "dnf",
+					( g_entities[i].r.svFlags & SVF_BOT ) ? 1 : 0, driver->ladderIdentity.cleanName );
+			}
+		}
 		if ( winner >= 0 && !tied ) {
 			trap_SendServerCommand( -1, va( "print \"%s won the Drag heat!\n\"",
 				g_entities[winner].client->pers.netname ) );

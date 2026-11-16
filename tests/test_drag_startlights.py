@@ -2,7 +2,7 @@
 from test_plate_and_menu_regressions import CODE, compile_run, function
 
 
-def test_drag_world_and_hud_use_the_same_authoritative_green():
+def test_drag_world_and_hud_follow_the_countdown_and_announced_green():
     racing = (CODE / "cgame/cg_rally_racetools.c").read_text()
     effects = (CODE / "cgame/cg_rally_fx.c").read_text()
     harness = r'''
@@ -19,50 +19,69 @@ float AngleNormalize180(float angle) { return angle; }
     harness += function(racing, "CG_DragStartLightState") + "\n"
     harness += function(effects, "CG_FX_StartLightState") + "\n"
     harness += r'''
-static void check(int expectedReds, qboolean expectedGreen, int expectedTime) {
-    int reds, time, worldReds;
+static void check(int expectedReds, qboolean expectedGreen, int expectedHeat, int expectedGreenTime) {
+    int reds, heat, greenTime, worldReds;
     qboolean green, worldGreen;
-    time=CG_DragStartLightState(&reds,&green);
+    heat=CG_DragStartLightState(&reds,&green,&greenTime);
     CG_FX_StartLightState(4,&worldReds,&worldGreen);
-    assert(time==expectedTime && reds==expectedReds && green==expectedGreen);
+    assert(heat==expectedHeat && greenTime==expectedGreenTime);
+    assert(reds==expectedReds && green==expectedGreen);
     assert(worldReds==reds && worldGreen==green);
+}
+static void arm(int countdown, int greenTime) {
+    cg_entities[0].dragCountdownTime=cg_entities[1].dragCountdownTime=countdown;
+    cg_entities[0].dragGreenTime=cg_entities[1].dragGreenTime=greenTime;
 }
 int main(void) {
     snapshot_t snap={0};
     int count, reds;
     qboolean green;
     cg.snap=&snap; cgs.gametype=GT_DRAG;
-    check(0,qfalse,0);
+    check(0,qfalse,0,0);
     cgs.clientinfo[0].infoValid=cgs.clientinfo[1].infoValid=qtrue;
     cg_entities[0].dragPhase=cg_entities[1].dragPhase=DRAG_COUNTDOWN;
-    cg_entities[0].dragGreenTime=cg_entities[1].dragGreenTime=10000;
-    cg.time=6000; strcpy(cg.countDownPrint,"3 - HOLD RPM"); check(1,qfalse,10000);
-    cg.time=7000; strcpy(cg.countDownPrint,"2 - HOLD RPM"); check(2,qfalse,10000);
-    cg.time=8000; strcpy(cg.countDownPrint,"1 - HOLD RPM"); check(3,qfalse,10000);
-    /* A randomized final red hold is not timed from the message expiry. */
-    cg.countDownEnd=0; cg.time=9999; check(3,qfalse,10000);
+    /* The server publishes the countdown start, never the coming green. */
+    arm(6000,0);
+    cg.time=6000; check(1,qfalse,6000,0);
+    cg.time=6999; check(1,qfalse,6000,0);
+    cg.time=7000; check(2,qfalse,6000,0);
+    cg.time=8000; check(3,qfalse,6000,0);
+    /* The lamps do not depend on countdown text arriving. */
+    strcpy(cg.countDownPrint,"GO!"); cg.time=8500; check(3,qfalse,6000,0);
+    cg.countDownPrint[0]='\0';
+    /* The third red holds for the whole variable final wait. */
+    cg.time=9999; check(3,qfalse,6000,0);
+    cg.time=12000; check(3,qfalse,6000,0);
     /* A personal false start never changes the shared lamps for the opponent. */
-    cg_entities[0].dragPhase=DRAG_FALSE_START; check(3,qfalse,10000);
-    cg.time=10000; check(0,qtrue,10000); /* GO message deliberately still missing. */
-    cg.time=13999; check(0,qtrue,10000);
-    cg.time=14000; check(0,qfalse,10000);
-    /* Spectators and drivers see the same common timestamp. */
+    cg_entities[0].dragPhase=DRAG_FALSE_START; check(3,qfalse,6000,0);
+    /* Green is shown from the frame that announced it. */
+    arm(6000,9550); cg.time=9550; check(0,qtrue,6000,9550);
+    cg.time=13549; check(0,qtrue,6000,9550);
+    cg.time=13550; check(0,qfalse,6000,9550);
+    /* Only one driver's status may carry green yet; it still counts. */
+    cg_entities[0].dragGreenTime=0; cg.time=9600; check(0,qtrue,6000,9550);
+    /* A clock briefly behind the published green keeps the third red. */
+    cg.time=9549; check(3,qfalse,6000,9550);
+    /* Spectators and drivers see the same common timestamps. */
     snap.ps.clientNum=5; snap.ps.persistant[PERS_TEAM]=TEAM_SPECTATOR;
-    cg.time=10020; check(0,qtrue,10000);
-    cgs.clientinfo[0].infoValid=qfalse; check(0,qtrue,10000);
-    /* Cancellation/restaging clears the participants' timestamps. */
-    cg_entities[1].dragGreenTime=0; strcpy(cg.countDownPrint,"START CANCELLED");
-    check(0,qfalse,0);
-    cg_entities[1].dragGreenTime=20000; cg.time=18000;
-    strcpy(cg.countDownPrint,"1"); check(3,qfalse,20000);
-    /* A stale text GO cannot release the next heat early. */
-    strcpy(cg.countDownPrint,"GO!"); check(0,qfalse,20000);
-    cg.time=20000; check(0,qtrue,20000);
-    snap.ps.pm_type=PM_INTERMISSION; check(0,qfalse,0);
+    cg.time=9600; check(0,qtrue,6000,9550);
+    cgs.clientinfo[0].infoValid=qfalse; check(0,qtrue,6000,9550);
+    cgs.clientinfo[0].infoValid=qtrue;
+    /* Cancellation/restaging clears the countdown. */
+    arm(0,0); cg_entities[0].dragPhase=cg_entities[1].dragPhase=DRAG_STAGED;
+    check(0,qfalse,0,0);
+    /* A newer heat replaces stale state from an earlier one. */
+    cg_entities[0].dragPhase=DRAG_FINISHED; cg_entities[0].dragCountdownTime=6000;
+    cg_entities[0].dragGreenTime=9550;
+    cg_entities[1].dragPhase=DRAG_COUNTDOWN; cg_entities[1].dragCountdownTime=18000;
+    cg_entities[1].dragGreenTime=0;
+    cg.time=20500; check(3,qfalse,18000,0);
+    cg_entities[1].dragGreenTime=21200; cg.time=21200; check(0,qtrue,18000,21200);
+    snap.ps.pm_type=PM_INTERMISSION; check(0,qfalse,0,0);
     snap.ps.pm_type=PM_NORMAL;
     /* Map restart clears every participant, including an obsolete opponent. */
-    memset(cg_entities,0,sizeof(cg_entities)); check(0,qfalse,0);
-    cg.snap=NULL; check(0,qfalse,0); cg.snap=&snap;
+    memset(cg_entities,0,sizeof(cg_entities)); check(0,qfalse,0,0);
+    cg.snap=NULL; check(0,qfalse,0,0); cg.snap=&snap;
     /* Mapper preview remains independent of Drag state and of sounds. */
     cg_startLightPreview.integer=2;
     CG_FX_StartLightState(4,&reds,&green); assert(reds==2 && !green);
@@ -83,12 +102,11 @@ int main(void) {
     CG_FX_StartLightState(4,&reds,&green); assert(reds==0 && !green);
     /* Configurable lamp counts stay within their housing's lens count. */
     cgs.gametype=GT_DRAG; cgs.clientinfo[1].infoValid=qtrue;
-    cg_entities[1].dragPhase=DRAG_COUNTDOWN; cg_entities[1].dragGreenTime=10000;
-    cg.time=6000;
+    cg_entities[1].dragPhase=DRAG_COUNTDOWN; cg_entities[1].dragCountdownTime=6000;
     for(count=2;count<=8;count++) {
-        strcpy(cg.countDownPrint,"3"); CG_FX_StartLightState(count,&reds,&green);
+        cg.time=6000; CG_FX_StartLightState(count,&reds,&green);
         assert(reds>=1 && reds<count && !green);
-        strcpy(cg.countDownPrint,"1"); CG_FX_StartLightState(count,&reds,&green);
+        cg.time=8000; CG_FX_StartLightState(count,&reds,&green);
         assert(reds==count-1 && !green);
     }
     return 0;

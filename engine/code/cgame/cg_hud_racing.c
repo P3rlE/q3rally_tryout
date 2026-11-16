@@ -29,6 +29,7 @@ This file is part of q3rally source code.
  * the default dry strip; it never changes torque, shifting or race rules. */
 #define DRAG_HUD_LAUNCH_RPM_MIN 4000
 #define DRAG_HUD_LAUNCH_RPM_MAX 5000
+#define DRAG_HUD_SHIFT_RPM      5900	/* shift light: best upshift is around 6000 */
 #define DRAG_HUD_TOP           386
 #define DRAG_HUD_TACH_X        180.0f
 #define DRAG_HUD_TACH_WIDTH    270.0f
@@ -39,6 +40,9 @@ typedef struct {
 	int elapsedMs;
 	int totalMs;
 	int launchBand;
+	int engineStress;	/* ms in the red, 0..DRAG_ENGINE_STRESS_LIMIT_MS */
+	qboolean engineBlown;
+	qboolean shiftLight;
 	qboolean launchGuide;
 	const char *statusText;
 	const char *hintText;
@@ -68,6 +72,8 @@ static void CG_BuildDragHudState( const playerState_t *ps, const centity_t *car,
 	state->reactionMs = state->elapsedMs = state->totalMs = -1;
 	state->launchGuide = car->dragPhase < DRAG_RUNNING && ps->stats[STAT_GEAR] == 0;
 	state->launchBand = CG_DragHudLaunchBand( state->rpm );
+	state->engineStress = ps->stats[STAT_DRAG_ENGINE] & DRAG_ENGINE_STRESS_MASK;
+	state->engineBlown = ( ps->stats[STAT_DRAG_ENGINE] & DRAG_ENGINE_BLOWN ) ? qtrue : qfalse;
 	state->statusText = "GAS IN N TO STAGE";
 	state->hintText = "MANUAL SHIFT";
 	if ( car->dragPhase == DRAG_FALSE_START ) state->statusText = "FALSE START";
@@ -80,11 +86,18 @@ static void CG_BuildDragHudState( const playerState_t *ps, const centity_t *car,
 		else
 			state->statusText = "WAIT FOR GREEN";
 	} else if ( car->dragPhase == DRAG_STAGED ) state->statusText = "WAIT FOR LIGHTS";
-	if ( state->launchGuide ) {
+	if ( state->engineBlown ) state->statusText = "ENGINE BLOWN";
+	if ( state->engineBlown || car->dragPhase >= DRAG_FINISHED ) {
+		state->hintText = "";
+	} else if ( state->engineStress > 0 && state->rpm >= DRAG_ENGINE_REDLINE_RPM ) {
+		/* The red zone is heating the engine: it blows at the limit. */
+		state->hintText = "OVER-REV! ENGINE HEATING";
+	} else if ( state->launchGuide ) {
 		state->hintText = state->launchBand < 0 ? "BUILD REVS" :
 			( state->launchBand > 0 ? "EASE OFF" : "HOLD REVS" );
-	} else if ( car->dragPhase >= DRAG_FINISHED ) {
-		state->hintText = "";
+	} else if ( ps->stats[STAT_GEAR] > 0 && ps->stats[STAT_GEAR] < 6 && state->rpm >= DRAG_HUD_SHIFT_RPM ) {
+		state->shiftLight = qtrue;
+		state->hintText = "SHIFT UP";
 	} else if ( state->rpm >= CP_RPM_MAX - 320 ) {
 		state->hintText = "REV LIMITER";
 	}
@@ -137,7 +150,7 @@ void CG_DrawDragTelemetryHud( void ) {
 	fraction = CG_DragHudRpmFraction( state.rpm );
 	rpmColor = state.rpm >= CP_RPM_MAX - 320 ? danger : colorWhite;
 	if ( state.launchGuide ) rpmColor = state.launchBand == 0 ? ready : warning;
-	statusColor = car->dragPhase >= DRAG_FALSE_START ? danger : accent;
+	statusColor = car->dragPhase >= DRAG_FALSE_START || state.engineBlown ? danger : accent;
 	if ( car->dragPhase == DRAG_COUNTDOWN && car->dragGreenTime > 0 && cg.time >= car->dragGreenTime ) statusColor = ready;
 
 	savedHorizontal = CG_GetScreenHorizontalPlacement();
@@ -160,7 +173,7 @@ void CG_DrawDragTelemetryHud( void ) {
 	CG_DrawIngameString( 450, 409, text, UI_RIGHT, 1.10f, rpmColor );
 	CG_FillRect( DRAG_HUD_TACH_X, 442, DRAG_HUD_TACH_WIDTH, 12, tach );
 	CG_FillRect( DRAG_HUD_TACH_X, 442, DRAG_HUD_TACH_WIDTH * fraction, 12, fill );
-	zoneX = DRAG_HUD_TACH_X + DRAG_HUD_TACH_WIDTH * CG_DragHudRpmFraction( CP_RPM_MAX - 350 );
+	zoneX = DRAG_HUD_TACH_X + DRAG_HUD_TACH_WIDTH * CG_DragHudRpmFraction( DRAG_ENGINE_REDLINE_RPM );
 	CG_FillRect( zoneX, 442, DRAG_HUD_TACH_X + DRAG_HUD_TACH_WIDTH - zoneX, 12, redline );
 	if ( state.launchGuide ) {
 		zoneX = DRAG_HUD_TACH_X + DRAG_HUD_TACH_WIDTH * CG_DragHudRpmFraction( DRAG_HUD_LAUNCH_RPM_MIN );
@@ -176,7 +189,17 @@ void CG_DrawDragTelemetryHud( void ) {
 	}
 	markerX = DRAG_HUD_TACH_X + ( DRAG_HUD_TACH_WIDTH - 2 ) * fraction;
 	CG_FillRect( markerX, 439, 2, 18, rpmColor );
-	CG_DrawIngameString( 180, 462, state.hintText, UI_SMALLFONT, 0.47f, rpmColor );
+	if ( state.engineStress > 0 && !state.engineBlown ) {
+		/* Engine heat under the tachometer; flashes when close to blowing. */
+		fraction = state.engineStress / (float)DRAG_ENGINE_STRESS_LIMIT_MS;
+		if ( fraction < 0.66f || ( cg.time / 120 ) & 1 ) {
+			CG_FillRect( DRAG_HUD_TACH_X, 456, DRAG_HUD_TACH_WIDTH * fraction, 3,
+				fraction < 0.5f ? warning : danger );
+		}
+	}
+	CG_DrawIngameString( 180, 462, state.hintText, UI_SMALLFONT, 0.47f,
+		state.engineStress > 0 && state.rpm >= DRAG_ENGINE_REDLINE_RPM ? danger :
+		( state.shiftLight ? ready : rpmColor ) );
 
 	gear = ps->stats[STAT_GEAR];
 	if ( gear < 0 ) Q_strncpyz( gearText, "R", sizeof( gearText ) );

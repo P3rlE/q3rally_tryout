@@ -2638,6 +2638,8 @@ void PmoveSingle (pmove_t *pmove) {
 		if( VectorNAN( pm->car->sBody.L ) )
 			VectorClear( pm->car->sBody.L );
 
+		PM_DragEngineUpdate( pm->car, pml.msec );
+
 		// translate car values to player angles, etc
 		VectorCopy(pm->car->sBody.v, pm->ps->velocity);
 		VectorCopy(pm->car->sBody.r, pm->ps->origin);
@@ -2683,7 +2685,8 @@ void PmoveSingle (pmove_t *pmove) {
 			dot = 0;
 		pm->ps->torsoAnim = (int)(CP_SPRING_SCALE * dot);
 
-		pm->ps->stats[STAT_RPM] = pm->car->rpm;
+		/* A blown Drag engine stands still: the tachometer drops to zero. */
+		pm->ps->stats[STAT_RPM] = ( pm->dragRace && DRAG_EngineBlown( pm->ps ) ) ? 0 : pm->car->rpm;
 		pm->ps->stats[STAT_GEAR] = pm->car->gear;
 
 		// used to keep track of time since last onGround for resetCar

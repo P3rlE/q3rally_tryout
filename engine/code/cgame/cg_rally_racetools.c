@@ -2009,15 +2009,20 @@ void CG_StartRace( int time ) {
         cg.eliminationPlayersRemaining = CG_GetPlayersRemaining( NULL );
 }
 
-/* The world lights, HUD and tones share the server's scheduled Drag green.
+/* The world lights, HUD and tones share the server's Drag start sequence.
  * Use any connected participant so spectators and a disqualified driver see
  * the same physical lights as the remaining driver. Personal faults belong
- * in that driver's HUD, not on the common start signal. */
-int CG_DragStartLightState( int *reds, qboolean *green ) {
-	int i, greenTime = 0, number;
+ * in that driver's HUD, not on the common start signal.
+ *
+ * Returns the countdown start, which identifies the heat (0 when no heat is
+ * armed). The server does not reveal the green time in advance: greenTime is
+ * 0 until green has happened, and the third red stays lit until then. */
+int CG_DragStartLightState( int *reds, qboolean *green, int *greenTime ) {
+	int i, heat = 0, elapsed;
 
 	*reds = 0;
 	*green = qfalse;
+	*greenTime = 0;
 	if ( cgs.gametype != GT_DRAG || !cg.snap ||
 		cg.snap->ps.pm_type == PM_INTERMISSION ) {
 		return 0;
@@ -2025,24 +2030,32 @@ int CG_DragStartLightState( int *reds, qboolean *green ) {
 	for ( i = 0; i < MAX_CLIENTS; i++ ) {
 		const centity_t *driver = &cg_entities[i];
 		if ( cgs.clientinfo[i].infoValid && driver->dragPhase >= DRAG_COUNTDOWN &&
-			driver->dragGreenTime > greenTime ) {
-			greenTime = driver->dragGreenTime;
+			driver->dragCountdownTime > heat ) {
+			heat = driver->dragCountdownTime;
 		}
 	}
-	if ( !greenTime ) {
+	if ( !heat ) {
 		return 0;
 	}
-	if ( cg.time >= greenTime ) {
-		*green = cg.time < greenTime + 4000;
-	} else {
-		/* The server varies the final red hold. Keep the last red state
-		 * until its scheduled green, even if the GO message arrives late. */
-		number = atoi( cg.countDownPrint );
-		if ( number >= 1 && number <= 3 ) {
-			*reds = 4 - number;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		const centity_t *driver = &cg_entities[i];
+		if ( cgs.clientinfo[i].infoValid && driver->dragPhase >= DRAG_COUNTDOWN &&
+			driver->dragCountdownTime == heat && driver->dragGreenTime > *greenTime ) {
+			*greenTime = driver->dragGreenTime;
 		}
 	}
-	return greenTime;
+	if ( *greenTime && cg.time >= *greenTime ) {
+		*green = cg.time < *greenTime + 4000;
+	} else {
+		/* One red per second from the countdown start, as on the server;
+		 * the third stays lit through the variable final hold. */
+		elapsed = cg.time - heat;
+		*reds = elapsed < 0 ? 1 : 1 + elapsed / 1000;
+		if ( *reds > 3 ) {
+			*reds = 3;
+		}
+	}
+	return heat;
 }
 
 void CG_DrawRaceCountDown( void ){
@@ -2052,7 +2065,7 @@ void CG_DrawRaceCountDown( void ){
 
 	if ( cgs.gametype == GT_DRAG && cg.snap ) {
 		centity_t *driver = &cg_entities[cg.snap->ps.clientNum];
-		int light, amberCount, greenTime;
+		int light, amberCount, greenTime, heat;
 		qboolean green;
 		qboolean fault = driver->dragPhase == DRAG_FALSE_START;
 		const char *label;
@@ -2060,8 +2073,8 @@ void CG_DrawRaceCountDown( void ){
 		vec4_t amber = { 1.0f, 0.65f, 0.05f, 1.0f };
 		vec4_t go = { 0.2f, 1.0f, 0.3f, 1.0f };
 		vec4_t red = { 1.0f, 0.15f, 0.1f, 1.0f };
-		greenTime = CG_DragStartLightState( &amberCount, &green );
-		if ( !greenTime || cg.time > greenTime + 1500 ) return;
+		heat = CG_DragStartLightState( &amberCount, &green, &greenTime );
+		if ( !heat || ( greenTime && cg.time > greenTime + 1500 ) ) return;
 		label = fault ? "FALSE START" : ( green ? "SHIFT INTO 1ST" : "HOLD REVS IN N" );
 		CG_FillRect( 250, 174, 140, 40, dark );
 		for ( light = 0; light < 4; light++ ) {
@@ -2112,7 +2125,7 @@ void CG_ResetDragStartSounds( void ) {
 }
 
 void CG_UpdateDragStartSounds( void ) {
-	int heat, reds, lamp;
+	int heat, reds, lamp, greenTime;
 	qboolean green;
 	sfxHandle_t sound = 0;
 
@@ -2120,7 +2133,7 @@ void CG_UpdateDragStartSounds( void ) {
 		CG_ResetDragStartSounds();
 		return;
 	}
-	heat = CG_DragStartLightState( &reds, &green );
+	heat = CG_DragStartLightState( &reds, &green, &greenTime );
 	lamp = green ? 4 : reds;
 	if ( cg.time < s_dragSoundTime ) {
 		/* A backwards demo seek must not replay a launch cue for this heat. */
@@ -2138,7 +2151,7 @@ void CG_UpdateDragStartSounds( void ) {
 		s_dragSoundHeat = heat;
 		s_dragSoundLamp = 0;
 		/* Joining, seeking or enabling audio after green is not a new GO. */
-		if ( cg.time >= heat ) {
+		if ( greenTime && cg.time >= greenTime ) {
 			s_dragSoundLamp = lamp;
 			s_dragSoundTime = cg.time;
 			return;
@@ -2148,8 +2161,10 @@ void CG_UpdateDragStartSounds( void ) {
 		if ( lamp >= 1 && lamp <= 3 && lamp > s_dragSoundLamp ) {
 			sound = cgs.media.dragCountdownSound;
 		} else if ( lamp == 4 && s_dragSoundLamp >= 1 && s_dragSoundLamp <= 3
-			&& s_dragSoundTime < heat && cg.time - heat <= 250 ) {
-			/* Skip a stale green after a long pause or forward demo seek. */
+			&& cg.time - greenTime <= 250 ) {
+			/* Green becomes known only with its announcement, which a lost
+			 * snapshot can delay slightly. Skip a stale green after a long
+			 * pause or forward demo seek. */
 			sound = cgs.media.dragGreenSound;
 		}
 	}

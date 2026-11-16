@@ -366,6 +366,7 @@ typedef struct {
 void PM_AddRoadForces(car_t *car, carBody_t *body, carPoint_t *points, float sec);
 void PM_CalculateNetForce( carPoint_t *point, int pointIndex );
 void PM_DriveMove( car_t *car, float time, qboolean includeBodies );
+void PM_DragEngineUpdate( car_t *car, int msec );
 
 // used externally
 void PM_ApplyForce( carBody_t *body, vec3_t force, vec3_t at );

@@ -324,7 +324,7 @@ PM_AccelerateAndMove
 */
 static void PM_AccelerateAndMove( car_t *car, carPoint_t *source, carPoint_t *target, float time )
 {
-	float	alpha;
+	float	alpha, creep;
 	vec3_t	vec, avgAccel;
 //	vec3_t	avgVel;
 
@@ -371,12 +371,17 @@ static void PM_AccelerateAndMove( car_t *car, carPoint_t *source, carPoint_t *ta
 	// Play transmission grinding sound if the force is too big
 
 	// PHYSICS TEMP
-	if ( car->gear > 0 && target->w > -1.5f )
+	/* The fixed 1.5 rad/s dead zone has to be crossed within one step, which
+	 * depends on the step length: with short steps (high frame rates) a weakly
+	 * driven wheel never gets out of it. Drag launches from low revs rely on
+	 * that, so Drag only stops wheels that turn the wrong way. */
+	creep = ( pm && pm->dragRace ) ? 0.0f : 1.5f;
+	if ( car->gear > 0 && target->w > -creep )
 	{
 //		Com_Printf("You're screwing up your transmission %f\n", target->w);
 		target->w = 0;
 	}
-	else if ( car->gear < 0 && target->w < 1.5f )
+	else if ( car->gear < 0 && target->w < creep )
 	{
 //		Com_Printf("You're screwing up your transmission %f\n", target->w);
 		target->w = 0;

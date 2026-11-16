@@ -217,6 +217,23 @@ def test_drag_keeps_invalid_results_without_fabricated_times(status: str) -> Non
         client.delete(f"/api/v1/matches/{match['matchId']}")
 
 
+def test_drag_duel_against_a_bot_is_stored_and_the_bot_can_win() -> None:
+    match = _drag_match("drag-bot-duel", duel=True)
+    bot = match["players"][1]
+    bot.update({"isBot": True, "playerId": "bot-carla", "name": "Carla",
+                "reactionMs": 150, "totalRaceMs": 13150, "position": 1})
+    match["players"][0]["position"] = 2
+    match["winnerClientNum"] = 1
+    created = client.post("/api/v1/matches", json=match)
+    assert created.status_code == 201, created.text
+    try:
+        stored = client.get(f"/api/v1/matches/{match['matchId']}").json()
+        assert stored["players"][1]["isBot"] is True
+        assert stored["winnerClientNum"] == 1  # the faster bot beats the human
+    finally:
+        client.delete(f"/api/v1/matches/{match['matchId']}")
+
+
 @pytest.mark.parametrize(("field", "value", "code"), [
     ("dragStatus", "running", "DRAG_STATUS_INVALID"),
     ("dragStatus", [], "DRAG_STATUS_INVALID"),
@@ -235,7 +252,7 @@ def test_drag_keeps_invalid_results_without_fabricated_times(status: str) -> Non
     ("position", 2, "DRAG_POSITION_INVALID"),
     ("position", 1.5, "DRAG_POSITION_INVALID"),
     ("position", True, "DRAG_POSITION_INVALID"),
-    ("isBot", True, "DRAG_BOT_FORBIDDEN"),
+    ("isBot", "yes", "DRAG_BOT_INVALID"),
 ])
 def test_drag_rejects_invalid_result_facts_before_storage(field: str, value: object, code: str) -> None:
     match = _drag_match("drag-reject-" + field)
@@ -246,14 +263,25 @@ def test_drag_rejects_invalid_result_facts_before_storage(field: str, value: obj
     assert client.get(f"/api/v1/matches/{match['matchId']}").status_code == 404
 
 
-def test_drag_accepts_zero_reaction_and_boundary_frame_finish() -> None:
-    for reaction, elapsed in ((0, 13000), (1, 60050), (60000, 60000)):
+def test_drag_accepts_minimum_reaction_and_boundary_frame_finish() -> None:
+    for reaction, elapsed in ((100, 13000), (101, 60050), (60000, 60000)):
         match = _drag_match(f"drag-boundary-{reaction}-{elapsed}")
         match["players"][0].update({"reactionMs": reaction, "elapsedMs": elapsed,
                                     "totalRaceMs": reaction + elapsed})
         created = client.post("/api/v1/matches", json=match)
         assert created.status_code == 201, created.text
         client.delete(f"/api/v1/matches/{match['matchId']}")
+
+
+@pytest.mark.parametrize("reaction", [0, 1, 99])
+def test_drag_rejects_a_finish_faster_than_the_minimum_reaction(reaction: int) -> None:
+    match = _drag_match(f"drag-too-fast-{reaction}")
+    elapsed = match["players"][0]["elapsedMs"]
+    match["players"][0].update({"reactionMs": reaction, "totalRaceMs": reaction + elapsed})
+    rejected = client.post("/api/v1/matches", json=match)
+    assert rejected.status_code == 422, rejected.text
+    assert "DRAG_REACTION_TOO_FAST" in rejected.json()["validation"]["errorCodes"]
+    assert client.get(f"/api/v1/matches/{match['matchId']}").status_code == 404
 
 
 def test_drag_rejects_invalid_times_and_prevents_solo_wins() -> None:

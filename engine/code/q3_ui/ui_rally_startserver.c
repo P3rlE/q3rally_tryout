@@ -1830,16 +1830,16 @@ static void ServerOptions_InitPlayerItems( void ) {
                 startIndex = (s_serveroptions.dedicated.curvalue == 0) ? 1 : 0;
 
                 for( n = startIndex; n < PLAYER_SLOTS; n++ ) {
-                        s_serveroptions.playerType[n].curvalue = ( s_serveroptions.gametype == GT_DRAG && n >= 2 ) ? 2 : 0;
+                        s_serveroptions.playerType[n].curvalue = 0;
                         Q_strncpyz( s_serveroptions.playerNameBuffers[n], "----", sizeof( s_serveroptions.playerNameBuffers[n] ) );
                 }
         }
 	if ( s_serveroptions.gametype == GT_DRAG ) {
-		s_serveroptions.botSkill.generic.flags |= QMF_HIDDEN | QMF_INACTIVE;
+		/* Two lanes: the second slot takes a human, a bot or nobody. */
 		for ( n = 0; n < PLAYER_SLOTS; n++ ) {
-			s_serveroptions.playerType[n].generic.flags |= QMF_INACTIVE;
 			if ( n >= 2 ) {
-				s_serveroptions.playerType[n].generic.flags |= QMF_HIDDEN;
+				s_serveroptions.playerType[n].curvalue = 2;
+				s_serveroptions.playerType[n].generic.flags |= QMF_HIDDEN | QMF_INACTIVE;
 				s_serveroptions.playerName[n].generic.flags |= QMF_HIDDEN | QMF_INACTIVE;
 			}
 		}
@@ -2054,12 +2054,23 @@ static void ServerOptions_InitBotNames( void ) {
 
 	if( !BG_GametypeAllowsBots( s_serveroptions.gametype ) ) {
                 for( n = startIndex; n < PLAYER_SLOTS; n++ ) {
-                        s_serveroptions.playerType[n].curvalue = ( s_serveroptions.gametype == GT_DRAG && n >= 2 ) ? 2 : 0;
+                        s_serveroptions.playerType[n].curvalue = 0;
                         Q_strncpyz( s_serveroptions.playerNameBuffers[n], "----", sizeof( s_serveroptions.playerNameBuffers[n] ) );
                 }
 
                 return;
         }
+
+	if ( s_serveroptions.gametype == GT_DRAG ) {
+		/* One rival in the second lane; Carla "launches hard". */
+		for ( n = startIndex; n < PLAYER_SLOTS; n++ ) {
+			s_serveroptions.playerType[n].curvalue = 2;
+			Q_strncpyz( s_serveroptions.playerNameBuffers[n], "----", sizeof( s_serveroptions.playerNameBuffers[n] ) );
+		}
+		s_serveroptions.playerType[1].curvalue = 1;
+		Q_strncpyz( s_serveroptions.playerNameBuffers[1], "Carla", sizeof( s_serveroptions.playerNameBuffers[1] ) );
+		return;
+	}
 
     if( s_serveroptions.gametype > GT_DOMINATION ) {
 		Q_strncpyz( s_serveroptions.playerNameBuffers[1], "Bobby", 16 );
@@ -2759,11 +2770,11 @@ static void ServerOptions_Draw( void ) {
 		Frontend_DrawText( SERVEROPT_PLAYER_X + 16, SERVEROPT_PLAYER_Y + 108,
 			"Same specs. Manual shifting.", UI_LEFT | UI_SMALLFONT, serverOptionsTextColor );
 		Frontend_DrawText( SERVEROPT_PLAYER_X + 16, SERVEROPT_PLAYER_Y + 132,
-			"Build revs in N to stage.", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
+			"Hold 4000-5000 RPM in N.", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
 		Frontend_DrawText( SERVEROPT_PLAYER_X + 16, SERVEROPT_PLAYER_Y + 156,
 			"Select first on green.", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
 		Frontend_DrawText( SERVEROPT_PLAYER_X + 16, SERVEROPT_PLAYER_Y + 180,
-			"Use Gear Up / Gear Down.", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
+			"Shift up before the limiter.", UI_LEFT | UI_SMALLFONT, serverOptionsMutedColor );
 	}
 
         Frontend_DrawText( SERVEROPT_FRAME_X + 24, SERVEROPT_FRAME_Y + 384,

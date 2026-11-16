@@ -38,6 +38,10 @@ _TEAM_MODES: set[str] = {
 }
 
 
+# A Drag launch faster than this after green is a false start in the game.
+DRAG_MIN_REACTION_MS = 100
+
+
 def _mode_error(code: str, message: str) -> ValueError:
     return ValueError(f"[{code}] {message}")
 
@@ -55,12 +59,15 @@ def _validate_drag_result(player: "Player", player_count: int) -> None:
     speed = result.get("trapSpeedKph")
     if type(speed) not in (int, float) or not 0 <= speed <= 1000 or not math.isfinite(speed):
         raise _mode_error("DRAG_SPEED_INVALID", "trapSpeedKph must be finite and in 0..1000")
-    if result.get("isBot", False):
-        raise _mode_error("DRAG_BOT_FORBIDDEN", "Drag results require human drivers")
+    if type(result.get("isBot", False)) is not bool:
+        raise _mode_error("DRAG_BOT_INVALID", "isBot must be a boolean")
     position = player.position
     if status == "finished":
         if result["elapsedMs"] <= 0 or result["totalRaceMs"] != result["reactionMs"] + result["elapsedMs"]:
             raise _mode_error("DRAG_TIME_MISMATCH", "A finished Drag total must equal RT + ET, with ET > 0")
+        if result["reactionMs"] < DRAG_MIN_REACTION_MS:
+            raise _mode_error("DRAG_REACTION_TOO_FAST",
+                              f"A reaction under {DRAG_MIN_REACTION_MS} ms is a false start, not a finish")
         if position is None or not 1 <= position <= player_count:
             raise _mode_error("DRAG_POSITION_INVALID", "A finished Drag needs a valid finishing position")
     elif any(result[name] != 0 for name in ("reactionMs", "elapsedMs", "totalRaceMs", "trapSpeedKph")) or position != 0:

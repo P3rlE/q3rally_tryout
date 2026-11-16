@@ -1041,6 +1041,8 @@ void BotUpdateInput(bot_state_t *bs, int time, int elapsed_time) {
 	//convert the bot input to a usercmd
 	BotInputToUserCommand(&bi, &bs->lastucmd, bs->cur_ps.delta_angles, time);
 	BotVehicleUpdateInput( bs, &bs->lastucmd );
+	// Drag Race: the server drives the bot (throttle, lane, launch, shifts)
+	G_DragBotInput( bs->client, &bs->lastucmd );
 	// Autoball bots burn turbo by holding the button
 	if ( BotAutoball_WantsTurbo( bs->client ) ) {
 		bs->lastucmd.buttons |= BUTTON_TURBO;
@@ -1309,7 +1311,9 @@ int BotAISetupClient(int client, struct bot_settings_s *settings, qboolean resta
 		return qfalse;
 	}
 
-	if (!trap_AAS_Initialized()) {
+	/* Drag bots are driven by g_drag.c and need no navigation; Drag strips
+	 * ship without an AAS file. */
+	if (!trap_AAS_Initialized() && g_gametype.integer != GT_DRAG) {
 		BotAI_Print(PRT_FATAL, "AAS not initialized\n");
 		return qfalse;
 	}
@@ -1616,6 +1620,25 @@ int BotAIStartFrame(int time) {
 
 	elapsed_time = time - local_time;
 	local_time = time;
+
+	/* Drag Race: g_drag.c drives the bots (lane, revs, launch, shifts). They
+	 * need no AI think and no navigation, only their usercmd every frame. */
+	if ( g_gametype.integer == GT_DRAG ) {
+		char command[1024];
+		for ( i = 0; i < MAX_CLIENTS; i++ ) {
+			if ( !botstates[i] || !botstates[i]->inuse ||
+				g_entities[i].client->pers.connected != CON_CONNECTED ) {
+				continue;
+			}
+			/* Acknowledge server commands, as BotAI would: an unread queue
+			 * overflows and drops the bot. */
+			while ( trap_BotGetServerCommand( i, command, sizeof( command ) ) ) {
+			}
+			BotUpdateInput( botstates[i], time, elapsed_time );
+			trap_BotUserCommand( botstates[i]->client, &botstates[i]->lastucmd );
+		}
+		return qtrue;
+	}
 
 	botlib_residual += elapsed_time;
 

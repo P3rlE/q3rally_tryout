@@ -246,6 +246,26 @@ def gear_clack(sr=44100, seconds=0.0775, seed=70, pitch=1.0):
     return out * np.minimum(1, (n - np.arange(n)) / (sr * 0.006))
 
 
+def engine_blow(sr=22050, seconds=1.4):
+    """Drag engine blowing: a hard bang, a rattle of loose metal, a hiss of steam."""
+    n = int(sr * seconds)
+    t = np.arange(n) / sr
+    bang = band_noise(n, sr, 60, 5000, 81) * np.exp(-t / 0.045) * 1.3
+    thump = np.sin(2 * np.pi * 55 * t + 4 * np.exp(-t / 0.05)) * np.exp(-t / 0.12)
+    rattle = np.zeros(n)
+    rng = RNG(82)
+    for _ in range(14):                      # bits of metal clattering away
+        k = int(rng.uniform(0.03, 0.55) * sr)
+        m = n - k
+        f = rng.uniform(900, 4200)
+        tt = np.arange(m) / sr
+        ping = np.sin(2 * np.pi * f * tt) * np.exp(-tt / rng.uniform(0.01, 0.03))
+        rattle[k:] += ping * rng.uniform(0.15, 0.4) * np.exp(-k / sr / 0.4)
+    hiss = band_noise(n, sr, 2500, 9000, 83) * np.minimum(1, t / 0.08) * np.exp(-t / 0.5) * 0.35
+    out = bang + thump * 0.9 + rattle + hiss
+    return out * np.minimum(1, (n - np.arange(n)) / (sr * 0.1))   # fade the tail to zero
+
+
 # target loudness (RMS) of each file, so the mix in the game stays as it was
 SOUNDS = [
     ('sound/world/lava1.ogg', lava, 22050, 0.099, 50),
@@ -257,6 +277,8 @@ SOUNDS = [
     # gear change clacks: plain 16-bit wav like the other engine sounds, peak at -6 dBFS
     ('sound/engines/default/shift1.wav', gear_clack, 44100, 0.078, 0),
     ('sound/engines/default/shift2.wav', lambda sr: gear_clack(sr, 0.0556, 71, 1.15), 44100, 0.103, 0),
+    # Drag Race: an over-revved engine blowing (16-bit wav like the other Drag signals)
+    ('sound/feedback/drag_engine_blow.wav', engine_blow, 22050, 0.120, 0),
 ]
 
 

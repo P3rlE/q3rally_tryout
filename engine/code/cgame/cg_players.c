@@ -3044,6 +3044,7 @@ void CG_EngineSoundFrame( void ) {
 	// own or followed car
 	if ( ( ps->persistant[PERS_TEAM] != TEAM_SPECTATOR || ( ps->pm_flags & PMF_FOLLOW ) ) &&
 		ps->pm_type != PM_INTERMISSION && ps->stats[STAT_HEALTH] > 0 &&
+		!( cgs.gametype == GT_DRAG && DRAG_EngineBlown( ps ) ) &&
 		localNum >= 0 && localNum < MAX_CLIENTS ) {
 		CG_EngineSoundCar( &cg_entities[localNum], &cgs.clientinfo[localNum], qtrue,
 			ps->stats[STAT_RPM], CG_EngineLocalThrottle( ps ), ps->stats[STAT_GEAR],
@@ -3055,6 +3056,10 @@ void CG_EngineSoundFrame( void ) {
 	for ( i = 0; i < cg.snap->numEntities && num < MAX_CLIENTS; i++ ) {
 		es = &cg.snap->entities[i];
 		if ( es->eType != ET_PLAYER || ( es->eFlags & EF_DEAD ) ) {
+			continue;
+		}
+		/* A blown Drag engine smokes (no damage exists there) and is silent. */
+		if ( cgs.gametype == GT_DRAG && ( es->eFlags & EF_SMOKE_DARK ) ) {
 			continue;
 		}
 		if ( es->clientNum < 0 || es->clientNum >= MAX_CLIENTS || es->clientNum == localNum ) {

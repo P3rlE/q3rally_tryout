@@ -21,17 +21,22 @@ static gclient_t clients[MAX_CLIENTS];
 static gentity_t startGate, finishGate, starter;
 static int exits, rankCalls, statuses, positionPublications, publishedPositions[2];
 static char lastExit[128];
-static int lightReplays;
+static int lightReplays, statusMismatches;
+static char lastCp[2][160];
 static char lastLight[64];
 static char userIds[MAX_CLIENTS][64];
 
 void trap_GetUserinfo(int clientNum,char *out,int size) { snprintf(out,size,"%d",clientNum); }
+static char botSkill[8]="5";
 char *Info_ValueForKey(const char *info,const char *key) {
     int n=atoi(info);
     if(!strcmp(key,"cl_uuid")) return userIds[n];
     if(!strcmp(key,"name")) return clients[n].pers.netname;
+    if(!strcmp(key,"skill")) return botSkill;
     return "";
 }
+float vectoyaw(const vec3_t v) { return atan2(v[1],v[0])*180.0f/M_PI; }
+float WheelAngle(float carYaw,float viewYaw) { return viewYaw-carYaw; }
 void Q_strncpyz(char *out,const char *in,int size) { snprintf(out,size,"%s",in); }
 char *Q_CleanStr(char *text) { return text; }
 int QDECL Com_sprintf(char *out,int size,const char *format,...) {
@@ -45,12 +50,26 @@ char *QDECL va(char *format, ...) {
     return buffer;
 }
 void trap_SendServerCommand(int recipient, const char *text) {
-    if (strncmp(text, "dragStatus ", 11) == 0) statuses++;
+    if (strncmp(text, "dragStatus ", 11) == 0) {
+        int client, phase, countdown, green;
+        statuses++;
+        assert(sscanf(text+11,"%d %d %d %d",&client,&phase,&countdown,&green)==4);
+        /* Status always carries the current heat and the green that has
+           actually happened: never the scheduled, still secret, green. */
+        if (countdown!=dragCountdownTime || green!=dragGreenTime) statusMismatches++;
+        if (green && green==dragScheduledGreenTime && !level.startRaceTime) statusMismatches++;
+    }
+    if (recipient>=0 && recipient<2 && strncmp(text,"cp ",3)==0)
+        snprintf(lastCp[recipient],sizeof(lastCp[recipient]),"%s",text);
     if (recipient==2 && strncmp(text,"rc ",3)==0) {
         lightReplays++;
         snprintf(lastLight,sizeof(lastLight),"%s",text);
     }
 }
+static int engineBangs;
+int G_SoundIndex(char *name) { assert(strstr(name,"drag_engine_blow")); return 7; }
+void G_Sound(gentity_t *ent,int channel,int sound) { assert(sound==7); engineBangs++; }
+void QDECL G_LogPrintf(const char *fmt,...) {}
 void CalculateRanks(void) { rankCalls++; }
 void Cmd_RacePositions_f(void) {
     positionPublications++;
@@ -116,8 +135,17 @@ static void stage(int count) {
     }
     G_DragStarterThink(&starter);
     assert(level.raceState == RACE_STATE_COUNTDOWN);
-    assert(dragGreenTime >= 4000 && dragGreenTime <= 5000);
+    assert(dragScheduledGreenTime >= 4000 && dragScheduledGreenTime <= 5000);
+    assert(!dragGreenTime); /* the coming green is not published */
     assert(!level.startRaceTime && !G_DragCanJoin());
+}
+
+/* Run the server frame of the scheduled green. */
+static int goGreen(void) {
+    level.time = dragScheduledGreenTime;
+    G_DragStarterThink(&starter);
+    assert(dragGreenTime == level.time && level.startRaceTime == level.time);
+    return dragGreenTime;
 }
 
 static usercmd_t launch(int clientNum, int time) {
@@ -157,7 +185,7 @@ int main(void) {
 
     /* Ladder facts come from actual Drag state, never the finish marker
        that also makes a disqualified driver enter the observer delay. */
-    resetHeat(2); stage(2); green=dragGreenTime;
+    resetHeat(2); stage(2); green=goGreen();
     assert(G_DragLadderDuel() && G_DragLadderIdentityMatches(0));
     level.time=green+100;
     launch(0,green+100);
@@ -175,23 +203,23 @@ int main(void) {
     assert(G_DragPopulateLadderPlayer(1,&result) && !strcmp(result.playerId,"driver-1"));
     assert(!G_DragPopulateLadderPlayer(2,&result)); /* spectators were not armed */
 
-    resetHeat(2); stage(2); green=dragGreenTime; level.time=green+100;
+    resetHeat(2); stage(2); green=goGreen(); level.time=green+100;
     launch(0,green+100); launch(1,green+100);
     G_DragClientDisconnect(1); clients[1].pers.connected=CON_DISCONNECTED;
     assert(G_DragPopulateLadderPlayer(1,&result) && !strcmp(result.dragStatus,"dnf"));
     assert(!result.totalRaceMs && G_DragLadderDuel()); /* forfeit still belongs to this duel */
-    resetHeat(1); stage(1); green=dragGreenTime; level.time=green+100;
+    resetHeat(1); stage(1); green=goGreen(); level.time=green+100;
     launch(0,green+100); finishAt(0,green+2000,1000); G_DragRunFrame();
     assert(!G_DragLadderDuel() && G_DragPopulateLadderPlayer(0,&result));
     assert(result.position==1 && !strcmp(result.dragStatus,"finished"));
     resetHeat(2); stage(2); G_DragClientDisconnect(1);
     assert(!G_DragPopulateLadderPlayer(0,&result) && !G_DragLadderDuel());
-    resetHeat(2); g_entities[1].r.svFlags=SVF_BOT; stage(1);
-    assert(!G_DragLadderDuel() && !G_DragPopulateLadderPlayer(1,&result));
+    resetHeat(2); g_entities[1].r.svFlags=SVF_BOT; stage(2);
+    assert(G_DragLadderDuel() && G_DragPopulateLadderPlayer(1,&result) && result.isBot); /* bots race too */
 
     /* A spectator arriving after a countdown message receives the current
        red stage, including the variable final hold, without a global replay. */
-    resetHeat(2); stage(2); green=dragGreenTime;
+    resetHeat(2); stage(2); green=dragScheduledGreenTime;
     spawnViewer();
     assert(lightReplays==1 && !strcmp(lastLight,"rc \"3 - HOLD RPM IN N\" 3"));
     level.time=dragCountdownTime+1000; G_DragStarterThink(&starter);
@@ -222,7 +250,7 @@ int main(void) {
     input(1,1000,64);
     G_DragStarterThink(&starter);
     assert(!dragCountdownTime); /* every connected driver must stage */
-    stage(2); green=dragGreenTime;
+    stage(2); green=dragScheduledGreenTime;
     assert(clients[0].pers.transmissionMode==TR_MANUAL);
     assert(clients[0].ps.stats[STAT_HOLDABLE_ITEM]==0);
     level.time=green-1;
@@ -234,7 +262,8 @@ int main(void) {
     input(0,green+20,127);
     G_DragTryGearChange(&g_entities[0],1,green+20);
     assert(dragClients[0].phase==DRAG_FALSE_START); /* cannot undo by re-staging */
-    level.time=green+150;
+    assert(strstr(lastCp[0],"before GREEN"));
+    goGreen(); level.time=green+150;
     clients[1].car.rpm=3600;
     cmd=launch(1,green+150);
     assert(level.startRaceTime==green && dragClients[1].phase==DRAG_RUNNING);
@@ -255,31 +284,66 @@ int main(void) {
     level.time+=3000;
     assert(G_DragCheckExit() && exits==1);
 
-    resetHeat(2); stage(2); green=dragGreenTime;
+    /* Before the green frame no request is legal, even one whose timestamp
+       lies after the scheduled green: that green is not public knowledge. */
+    resetHeat(2); stage(2); green=dragScheduledGreenTime;
     level.time=green-10;
-    cmd=input(0,green+5,127); /* legal future timestamp, not early movement */
-    assert(G_DragTryGearChange(&g_entities[0],1,green+5));
-    assert(!level.startRaceTime && clients[0].car.gear==0 && cmd.buttons==BUTTON_HANDBRAKE);
-    assert(G_DragTryGearChange(&g_entities[0],-1,green+6));
-    assert(G_DragTryGearChange(&g_entities[0],1,green+8));
-    assert(dragClients[0].launchTime==green+5); /* first request cannot be overwritten */
-    level.time=green+100;
-    input(0,green+100,127); launch(1,green+100);
-    assert(dragClients[0].launchTime==green+5 && clients[0].car.gear==1);
+    cmd=input(0,green+DRAG_MIN_REACTION_MS+5,127);
+    assert(G_DragTryGearChange(&g_entities[0],1,green+DRAG_MIN_REACTION_MS+5));
+    assert(!level.startRaceTime && dragClients[0].phase==DRAG_FALSE_START);
+    assert(clients[0].car.gear==0);
+    assert(G_DragTryGearChange(&g_entities[0],1,green+DRAG_MIN_REACTION_MS+8));
+    assert(dragClients[0].launchTime==green+DRAG_MIN_REACTION_MS+5); /* first request is final */
+    goGreen(); level.time=green+130; launch(1,green+130);
+    assert(dragClients[1].phase==DRAG_RUNNING && dragClients[0].phase==DRAG_FALSE_START);
+
+    /* Green is the server frame that announces it, not the scheduled time. */
+    resetHeat(1); stage(1); green=dragScheduledGreenTime;
+    level.time=green+37; G_DragRunFrame();
+    assert(dragGreenTime==green+37 && level.startRaceTime==green+37);
+    assert(G_DragTryGearChange(&g_entities[0],1,green+37+DRAG_MIN_REACTION_MS));
+    assert(dragClients[0].phase==DRAG_RUNNING);
+
+    /* Reacting faster than the minimum is a false start; exactly the minimum
+       is legal (checked in the first heat above, 0.100 s). */
+    resetHeat(2); stage(2); green=goGreen(); level.time=green+120;
+    assert(G_DragTryGearChange(&g_entities[0],1,green+DRAG_MIN_REACTION_MS-1));
+    assert(dragClients[0].phase==DRAG_FALSE_START);
+    assert(strstr(lastCp[0],"reaction 0.099 s, minimum 0.100 s"));
+    assert(G_DragPopulateLadderPlayer(0,&result) && !strcmp(result.dragStatus,"false_start"));
+    assert(!result.reactionMs && !result.totalRaceMs && !result.position);
+    assert(G_DragTryGearChange(&g_entities[1],1,green+DRAG_MIN_REACTION_MS));
+    assert(dragClients[1].phase==DRAG_RUNNING);
+
+    /* A gearUp timestamp cannot predate the movement already received:
+       a backdated stamp is moved up to the last accepted usercmd. */
+    resetHeat(1); stage(1); green=goGreen(); level.time=green+300;
+    clients[0].pers.cmd.serverTime=green+260;
+    assert(G_DragTryGearChange(&g_entities[0],1,green+DRAG_MIN_REACTION_MS));
+    assert(dragClients[0].phase==DRAG_RUNNING && dragClients[0].launchTime==green+260);
+    /* ...and a stamp before green stays a false start after being moved up
+       only when the received movement was itself before green. */
+    resetHeat(1); stage(1); green=dragScheduledGreenTime; level.time=green-20;
+    clients[0].pers.cmd.serverTime=green-30;
+    assert(G_DragTryGearChange(&g_entities[0],1,green-40));
+    assert(dragClients[0].phase==DRAG_FALSE_START && dragClients[0].launchTime==green-30);
+
+    resetHeat(2); stage(2); green=goGreen(); level.time=green+100;
+    input(0,green+100,127); launch(0,green+100); launch(1,green+100);
     /* Process the slower car first in the same frame. Correct timing wins. */
     finishAt(0,green+2200,1000); finishAt(1,green+2150,1000);
     G_DragRunFrame();
     assert(level.winnerNumber==1 && G_DragCompare(1,0)<0);
     assert(clients[0].ps.stats[STAT_POSITION]==2 && clients[1].ps.stats[STAT_POSITION]==1);
 
-    resetHeat(2); stage(2); green=dragGreenTime; level.time=green+100;
+    resetHeat(2); stage(2); green=goGreen(); level.time=green+100;
     launch(0,green+100); launch(1,green+100);
     finishAt(0,green+2000,1000); finishAt(1,green+2000,1000);
     G_DragRunFrame();
     assert(level.winnerNumber==-1 && G_DragCompare(0,1)==0);
     assert(clients[0].ps.stats[STAT_POSITION]==1 && clients[1].ps.stats[STAT_POSITION]==1);
 
-    resetHeat(1); stage(1); green=dragGreenTime; level.time=green+100;
+    resetHeat(1); stage(1); green=goGreen(); level.time=green+100;
     G_DragRunFrame();
     cmd=input(0,green+100,127);
     assert(cmd.forwardmove==127 && cmd.buttons==BUTTON_HANDBRAKE && dragClients[0].phase==DRAG_COUNTDOWN);
@@ -289,11 +353,11 @@ int main(void) {
     cmd=input(0,green+100,127);
     assert(cmd.forwardmove==0 && dragClients[0].phase==DRAG_FALSE_START);
 
-    resetHeat(1); stage(1); green=dragGreenTime; level.time=green+20;
-    launch(0,green+20);
+    resetHeat(1); stage(1); green=goGreen(); level.time=green+120;
+    launch(0,green+120);
     clients[0].ps.origin[1]=0;
-    clients[0].ps.commandTime=green+120;
-    { vec3_t before={0,-160,28}; G_DragPostMove(&g_entities[0],before,green+20); }
+    clients[0].ps.commandTime=green+220;
+    { vec3_t before={0,-160,28}; G_DragPostMove(&g_entities[0],before,green+120); }
     assert(dragClients[0].phase==DRAG_DNF); /* crossing the center line forfeits */
     G_DragClientSpawn(&g_entities[0]);
     assert(dragClients[0].phase==DRAG_DNF); /* no reset/retry exploit */
@@ -303,7 +367,7 @@ int main(void) {
     resetHeat(2); stage(2);
     G_DragClientDisconnect(1);
     g_entities[1].inuse=qfalse;
-    assert(!dragCountdownTime && !dragGreenTime && G_DragCanJoin());
+    assert(!dragCountdownTime && !dragScheduledGreenTime && !dragGreenTime && G_DragCanJoin());
     G_DragStarterThink(&starter); /* remaining player can explicitly solo-test */
     assert(dragCountdownTime && dragClients[0].participant);
 
@@ -312,7 +376,7 @@ int main(void) {
     G_DragClientSpawn(&g_entities[0]);
     assert(!dragCountdownTime && G_DragCanJoin());
 
-    resetHeat(1); stage(1); green=dragGreenTime; level.time=green+100;
+    resetHeat(1); stage(1); green=goGreen(); level.time=green+100;
     launch(0,green+100);
     clients[0].sess.sessionTeam=TEAM_SPECTATOR;
     G_DragClientSpawn(&g_entities[0]);
@@ -320,7 +384,7 @@ int main(void) {
     G_DragRunFrame(); level.time+=3000; G_DragCheckExit();
     assert(exits==1); /* leaving a solo heat cannot hang it forever */
 
-    resetHeat(2); stage(2); green=dragGreenTime; level.time=green+100;
+    resetHeat(2); stage(2); green=goGreen(); level.time=green+100;
     launch(0,green+100); launch(1,green+100);
     G_DragRunFrame();
     assert(positionPublications==1 && rankCalls==1);
@@ -344,10 +408,80 @@ int main(void) {
     assert(positionPublications==3 && rankCalls==3);
     assert(publishedPositions[0]==2 && publishedPositions[1]==1); /* live overtake published */
 
-    resetHeat(1); stage(1); green=dragGreenTime;
+    resetHeat(1); stage(1); green=goGreen();
     level.time=green+60000;
     G_DragRunFrame();
     assert(dragClients[0].phase==DRAG_DNF); /* stalled heats cannot hang forever */
+
+    /* The countdown arms the engine; staging alone cannot blow it. */
+    resetHeat(2);
+    assert(!clients[0].ps.stats[STAT_DRAG_ENGINE]);
+    stage(2);
+    assert(clients[0].ps.stats[STAT_DRAG_ENGINE]==DRAG_ENGINE_ARMED);
+    assert(clients[1].ps.stats[STAT_DRAG_ENGINE]==DRAG_ENGINE_ARMED);
+    /* Blown on the limiter during the lights: DNF, smoke, one bang. */
+    engineBangs=0;
+    clients[0].ps.stats[STAT_DRAG_ENGINE]|=DRAG_ENGINE_BLOWN;
+    G_DragRunFrame(); G_DragRunFrame();
+    assert(dragClients[0].phase==DRAG_DNF && engineBangs==1);
+    assert(clients[0].ps.eFlags & EF_SMOKE_DARK);
+    assert(strstr(lastCp[0],"too long on the limiter"));
+    assert(dragClients[1].phase==DRAG_COUNTDOWN); /* the opponent races on */
+    green=goGreen(); level.time=green+150; launch(1,green+150);
+    /* Over-revved by road speed while running. */
+    clients[1].ps.stats[STAT_DRAG_ENGINE]|=DRAG_ENGINE_BLOWN|DRAG_ENGINE_OVERREV;
+    G_DragRunFrame();
+    assert(dragClients[1].phase==DRAG_DNF && engineBangs==2);
+    assert(strstr(lastCp[1],"over-revved"));
+    assert(G_DragPopulateLadderPlayer(1,&result) && !strcmp(result.dragStatus,"dnf"));
+    /* A cancelled countdown disarms the engines of the drivers who stay. */
+    resetHeat(2); stage(2);
+    G_DragClientDisconnect(1);
+    assert(!clients[0].ps.stats[STAT_DRAG_ENGINE]);
+
+    /* A bot races the second lane: it stages with the revs of its plan,
+       launches exactly at green + its reaction and shifts on its plan. */
+    resetHeat(2); g_entities[1].r.svFlags=SVF_BOT; strcpy(botSkill,"5");
+    {
+        usercmd_t botCmd; int reaction, launchAt;
+        memset(&botCmd,0,sizeof(botCmd));
+        assert(G_DragBotInput(1,&botCmd) && dragClients[1].botPlanned);
+        assert(!G_DragBotInput(0,&botCmd)); /* humans drive themselves */
+        G_DragBotInput(1,&botCmd);
+        assert(botCmd.forwardmove>0 && botCmd.buttons==0);
+        assert(dragClients[1].botLaunchRpm>=1500 && dragClients[1].botLaunchRpm<DRAG_ENGINE_REDLINE_RPM);
+        reaction=dragClients[1].botReactionMs;
+        assert(reaction>=120 && reaction<300); /* skill 5 never anticipates */
+        input(0,level.time,64); input(1,level.time,botCmd.forwardmove);
+        G_DragStarterThink(&starter);
+        assert(dragCountdownTime && G_DragLadderDuel()); /* a bot duel is a duel */
+        G_DragBotInput(1,&botCmd); /* now on the lane: steer along it */
+        assert(botCmd.angles[YAW]==ANGLE2SHORT(0));
+        green=goGreen(); launchAt=green+reaction;
+        level.time=launchAt-1; clients[1].ps.commandTime=level.time; G_DragRunFrame();
+        assert(dragClients[1].phase==DRAG_COUNTDOWN);
+        level.time=launchAt+40; clients[1].ps.commandTime=level.time; G_DragRunFrame();
+        assert(dragClients[1].phase==DRAG_RUNNING && dragClients[1].launchTime==launchAt);
+        assert(clients[1].ps.commandTime==launchAt); /* integrates from its real launch */
+        G_DragBotInput(1,&botCmd); assert(botCmd.forwardmove==127);
+        clients[1].car.rpm=dragClients[1].botShiftRpm+1;
+        G_DragRunFrame(); assert(clients[1].car.gear==1); /* settle after the launch */
+        level.time+=300; G_DragRunFrame(); assert(clients[1].car.gear==2);
+        G_DragRunFrame(); assert(clients[1].car.gear==2); /* one gear per settle time */
+        assert(G_DragPopulateLadderPlayer(1,&result) && result.isBot);
+        assert(G_DragPopulateLadderPlayer(0,&result) && !result.isBot);
+    }
+    /* A rookie that jumps the light gets the minimum reaction false start. */
+    resetHeat(1); g_entities[0].r.svFlags=SVF_BOT; strcpy(botSkill,"1");
+    {
+        usercmd_t botCmd; memset(&botCmd,0,sizeof(botCmd));
+        G_DragBotInput(0,&botCmd); input(0,level.time,botCmd.forwardmove);
+        G_DragStarterThink(&starter); green=goGreen();
+        dragClients[0].botReactionMs=60;
+        level.time=green+80; G_DragRunFrame();
+        assert(dragClients[0].phase==DRAG_FALSE_START);
+    }
+    g_entities[0].r.svFlags=0;
 
     resetHeat(1); level.finishEnt=NULL;
     G_DragStarterThink(&starter); G_DragCheckExit();
@@ -357,7 +491,7 @@ int main(void) {
     memset(&cmd,0,sizeof(cmd)); cmd.forwardmove=127;
     G_DragFilterCommand(&g_entities[0],&cmd);
     assert(cmd.forwardmove==127 && !G_DragCheckExit());
-    assert(statuses>0);
+    assert(statuses>0 && !statusMismatches);
     return 0;
 }
 '''
@@ -368,3 +502,17 @@ int main(void) {
         c.write_text(harness)
         subprocess.run([compiler, '-DARCH_STRING="test"', str(c), "-o", str(binary), "-lm"], check=True)
         subprocess.run([str(binary)], check=True, timeout=5)
+
+
+def test_minimum_reaction_is_the_same_in_game_server_and_ladder_services():
+    """The rule exists in C, the C test stub, Python and PHP; keep them equal."""
+    import re
+    expected = re.search(r"#define DRAG_MIN_REACTION_MS (\d+)",
+                         (ROOT / "engine/code/game/bg_public.h").read_text()).group(1)
+    assert re.search(r"#define DRAG_MIN_REACTION_MS (\d+)",
+                     (ROOT / "tests/server.h").read_text()).group(1) == expected
+    assert re.search(r"^DRAG_MIN_REACTION_MS = (\d+)$",
+                     (ROOT / "ladder_service/ladder_service/schemas.py").read_text(), re.M).group(1) == expected
+    php = (ROOT / "ladder_service/php_webservice/index.php").read_text(encoding="utf-8")
+    assert "$player['reactionMs'] < " + expected + ")" in php
+    assert "reactionMs < " + expected + " /*" in php

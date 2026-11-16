@@ -15,9 +15,9 @@ def test_drag_start_tones_follow_transitions_without_replaying_stale_starts():
 cg_t cg;
 cgs_t cgs;
 vmCvar_t cg_startLightPreview;
-static int heat, reds, emitted, countdowns, greens;
+static int heat, announced, reds, emitted, countdowns, greens;
 static qboolean green;
-int CG_DragStartLightState(int *r,qboolean *g) { *r=reds; *g=green; return heat; }
+int CG_DragStartLightState(int *r,qboolean *g,int *t) { *r=reds; *g=green; *t=announced; return heat; }
 void trap_S_StartLocalSound(sfxHandle_t sound,int channel) {
     assert(channel==CHAN_ANNOUNCER);
     if(sound==17) countdowns++;
@@ -29,8 +29,9 @@ void trap_S_StartLocalSound(sfxHandle_t sound,int channel) {
     harness += function(source, "CG_ResetDragStartSounds") + "\n"
     harness += function(source, "CG_UpdateDragStartSounds") + "\n"
     harness += r'''
-static void frame(int time,int target,int r,qboolean g) {
-    cg.time=time; heat=target; reds=r; green=g;
+/* heat: countdown start; at: announced green time, 0 before green. */
+static void frame(int time,int target,int at,int r,qboolean g) {
+    cg.time=time; heat=target; announced=at; reds=r; green=g;
     CG_UpdateDragStartSounds();
 }
 static void reset(void) {
@@ -42,52 +43,52 @@ int main(void) {
     cg.snap=&snapshot;
     cgs.media.dragCountdownSound=17; cgs.media.dragGreenSound=23;
     reset();
-    frame(5000,10000,1,qfalse); assert(countdowns==1);
-    frame(5000,10000,1,qfalse); assert(countdowns==1); /* stereo */
-    frame(5999,10000,1,qfalse); assert(countdowns==1);
-    frame(6000,10000,2,qfalse); assert(countdowns==2);
-    frame(7000,10000,3,qfalse); assert(countdowns==3);
-    frame(9999,10000,3,qfalse); assert(emitted==3); /* randomized final wait */
-    frame(10000,10000,0,qtrue); assert(greens==1);
-    frame(10000,10000,0,qtrue); frame(10001,10000,0,qtrue);
-    frame(14001,10000,0,qfalse); assert(emitted==4);
+    frame(5000,5000,0,1,qfalse); assert(countdowns==1);
+    frame(5000,5000,0,1,qfalse); assert(countdowns==1); /* stereo */
+    frame(5999,5000,0,1,qfalse); assert(countdowns==1);
+    frame(6000,5000,0,2,qfalse); assert(countdowns==2);
+    frame(7000,5000,0,3,qfalse); assert(countdowns==3);
+    frame(9999,5000,0,3,qfalse); assert(emitted==3); /* unknown final wait */
+    frame(10000,5000,9950,0,qtrue); assert(greens==1); /* announced green */
+    frame(10000,5000,9950,0,qtrue); frame(10001,5000,9950,0,qtrue);
+    frame(14001,5000,9950,0,qfalse); assert(emitted==4);
 
     reset();
-    frame(10001,10000,0,qtrue); frame(10020,10000,0,qtrue);
+    frame(10001,5000,10000,0,qtrue); frame(10020,5000,10000,0,qtrue);
     assert(!emitted); /* new viewer after green */
-    frame(15000,10000,0,qfalse); assert(!emitted);
+    frame(15000,5000,10000,0,qfalse); assert(!emitted);
 
     reset();
-    frame(9990,10000,3,qfalse);
-    frame(10250,10000,0,qtrue); assert(greens==1);
+    frame(9990,5000,0,3,qfalse);
+    frame(10250,5000,10000,0,qtrue); assert(greens==1);
     reset();
-    frame(9990,10000,3,qfalse);
-    frame(10251,10000,0,qtrue); assert(!greens); /* pause/forward seek */
+    frame(9990,5000,0,3,qfalse);
+    frame(10251,5000,10000,0,qtrue); assert(!greens); /* pause/forward seek */
 
     reset();
-    frame(9000,10000,3,qfalse);
-    frame(8500,10000,2,qfalse); /* backwards seek */
-    frame(9000,10000,3,qfalse); frame(10000,10000,0,qtrue);
+    frame(9000,5000,0,3,qfalse);
+    frame(8500,5000,0,2,qfalse); /* backwards seek */
+    frame(9000,5000,0,3,qfalse); frame(10000,5000,10000,0,qtrue);
     assert(countdowns==1 && !greens);
-    frame(17000,20000,1,qfalse); assert(countdowns==2); /* next heat */
+    frame(17000,17000,0,1,qfalse); assert(countdowns==2); /* next heat */
 
     reset();
-    frame(5000,10000,1,qfalse);
-    frame(5100,0,0,qfalse); /* cancelled */
-    frame(6000,11000,1,qfalse); assert(countdowns==2);
+    frame(5000,5000,0,1,qfalse);
+    frame(5100,0,0,0,qfalse); /* cancelled */
+    frame(6000,6000,0,1,qfalse); assert(countdowns==2);
     CG_ResetDragStartSounds(); /* map_restart */
-    frame(6000,11000,1,qfalse); assert(countdowns==3);
+    frame(6000,6000,0,1,qfalse); assert(countdowns==3);
 
     reset();
     cg_startLightPreview.integer=4;
-    frame(5000,10000,1,qfalse); frame(10000,10000,0,qtrue);
+    frame(5000,5000,0,1,qfalse); frame(10000,5000,10000,0,qtrue);
     assert(!emitted);
     cg_startLightPreview.integer=0;
-    frame(10010,10000,0,qtrue); assert(!emitted);
+    frame(10010,5000,10000,0,qtrue); assert(!emitted);
     reset(); cgs.gametype=GT_RACING;
-    frame(5000,10000,1,qfalse); assert(!emitted);
+    frame(5000,5000,0,1,qfalse); assert(!emitted);
     reset(); cg.snap=NULL;
-    frame(5000,10000,1,qfalse); assert(!emitted);
+    frame(5000,5000,0,1,qfalse); assert(!emitted);
     return 0;
 }
 '''

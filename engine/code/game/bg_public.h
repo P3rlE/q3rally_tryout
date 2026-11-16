@@ -383,6 +383,26 @@ typedef enum {
         DRAG_DNF
 } dragPhase_t;
 
+/* A first-gear request less than this long after green is a false start,
+ * like the 0.100 s limit in sprint athletics. It is not humanly possible to
+ * react faster, so such a launch was anticipated or automated. */
+#define DRAG_MIN_REACTION_MS 100
+
+/* Drag engine: ps->stats[STAT_DRAG_ENGINE]. Time spent in the red zone
+ * stresses the engine and it blows once the stress reaches the limit; it
+ * cools at half that rate below the red zone. The rev limiter only cuts the
+ * engine's own drive: when the road speed spins it far past its maximum (a
+ * downshift, or hanging on the limiter instead of shifting up) it blows at
+ * once. Only an armed heat (countdown started) can blow an engine. */
+#define DRAG_ENGINE_STRESS_MASK     0x0FFF  /* ms of stress */
+#define DRAG_ENGINE_ARMED           0x1000  /* set by the server at the countdown */
+#define DRAG_ENGINE_BLOWN           0x2000
+#define DRAG_ENGINE_OVERREV        0x4000  /* blown by road speed spinning it past the limit */
+#define DRAG_ENGINE_REDLINE_RPM     6000
+#define DRAG_ENGINE_STRESS_LIMIT_MS 2000
+#define DRAG_ENGINE_OVERREV_RPM     7600
+#define DRAG_EngineBlown( ps )      ( ( (ps)->stats[STAT_DRAG_ENGINE] & DRAG_ENGINE_BLOWN ) != 0 )
+
 // player_state->stats[] indexes
 // NOTE: may not have more than 18
 typedef enum {
@@ -409,7 +429,10 @@ typedef enum {
         STAT_FUEL,
         STAT_SLIPSTREAM,                /* packed slipstream state, see BG_Slipstream* */
         /* Derby reuses the race-only fraction slot to preserve the wire layout. */
-        STAT_DERBY_NORAM = STAT_FRAC_TO_NEXT_CHECKPOINT
+        STAT_DERBY_NORAM = STAT_FRAC_TO_NEXT_CHECKPOINT,
+        /* Drag has no damage: it reuses the damage-taken slot for its engine
+         * state (see DRAG_ENGINE_*), predicted like the RPM. */
+        STAT_DRAG_ENGINE = STAT_DAMAGE_TAKEN
 // END
 } statIndex_t;
 

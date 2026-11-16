@@ -81,6 +81,7 @@ static inline qboolean Profile_GetRankForScore( const profile_stats_t *stats, co
 #define GT_DEATHMATCH 6
 #define GT_SPRINT 7
 #define GT_DRAG 9
+#define DRAG_MIN_REACTION_MS 100 /* mirrors game/bg_public.h */
 #define GT_TEAM 16
 #define GT_TEAM_RACING 17
 #define GT_TEAM_RACING_DM 18

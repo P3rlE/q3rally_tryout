@@ -36,6 +36,29 @@ static float CP_GEAR_RATIOS[] = {CP_GEAR1, CP_GEAR2, CP_GEAR3, CP_GEAR4, CP_GEAR
 #define CP_RPM_LIMITER_CUT		CP_RPM_MAX
 #define CP_RPM_LIMITER_RESUME	( CP_RPM_MAX - 320.0f )
 
+/* Drag Race launch. The launch RPM decides how cleanly the car gets away:
+ * too low and the loaded engine bogs and climbs out of the cellar slowly; too
+ * high and the clutch dump spins the rear tyres past their grip. Calibrated
+ * with tools/drag/launch_sweep.py; only active with pm->dragRace. */
+#ifndef DRAG_BOG_RPM
+#define DRAG_BOG_RPM			3600.0f	/* below this the loaded engine bogs */
+#endif
+#ifndef DRAG_BOG_MIN_TORQUE
+#define DRAG_BOG_MIN_TORQUE		0.30f	/* share of torque left at idle */
+#endif
+#ifndef DRAG_FLYWHEEL_INERTIA
+#define DRAG_FLYWHEEL_INERTIA	0.80f	/* kg m^2, engine/flywheel assembly */
+#endif
+#ifndef DRAG_SPIN_GRIP_START
+#define DRAG_SPIN_GRIP_START	245.0f	/* rear slip speed (qu/s) where drive starts to go up in smoke */
+#endif
+#ifndef DRAG_SPIN_GRIP_FULL
+#define DRAG_SPIN_GRIP_FULL		380.0f	/* slip speed with the full grip loss */
+#endif
+#ifndef DRAG_SPIN_GRIP_LOSS
+#define DRAG_SPIN_GRIP_LOSS		1.00f	/* share of the drive lost at full burnout */
+#endif
+
 
 #if 0
 /*
@@ -183,7 +206,7 @@ static void PM_UpdateFreeEngineRPM( car_t *car, float sec )
  * flywheel's lost angular momentum, rather than a launch-window bonus.
  * Excess wheel RPM still drives the normal limiter and tyre-slip model. */
 static float PM_DragCoupleLaunchRPM( car_t *car, float wheelRpm, float sec ) {
-	const float flywheelInertia = 0.08f; /* kg m^2, light engine/flywheel assembly */
+	const float flywheelInertia = DRAG_FLYWHEEL_INERTIA;
 	const float couplingSeconds = 0.22f;
 	float previousRpm, targetRpm, torqueNm, x, decay;
 
@@ -290,6 +313,54 @@ static float PM_UpdateRPM(car_t *car, carPoint_t *points, float sec){
 
 /*
 ================================================================================
+PM_DragEngineUpdate
+
+Drag only, once per move with its whole msec so that prediction and server
+step through the same integers. Time in the red zone builds stress and time
+below it removes half as much; the engine blows at the limit. A gear in which
+the road speed would spin the engine past DRAG_ENGINE_OVERREV_RPM blows it at
+once: the rev limiter cannot protect an engine driven by the wheels.
+================================================================================
+*/
+void PM_DragEngineUpdate( car_t *car, int msec ) {
+	int state, stress;
+	float wheelRpm;
+
+	if ( !pm->dragRace || msec <= 0 ) {
+		return;
+	}
+	state = pm->ps->stats[STAT_DRAG_ENGINE];
+	if ( !( state & DRAG_ENGINE_ARMED ) || ( state & DRAG_ENGINE_BLOWN ) ) {
+		return;
+	}
+	stress = state & DRAG_ENGINE_STRESS_MASK;
+	if ( car->gear > 0 ) {
+		/* Road speed, not the fastest wheel: spinning tyres on the limiter
+		 * are not a wrong gear. */
+		wheelRpm = DotProduct( car->sBody.v, car->sBody.forward ) / WHEEL_RADIUS
+			* ( 30.0f / M_PI ) * CP_GEAR_RATIOS[car->gear - 1] * CP_AXLEGEAR;
+		if ( wheelRpm > DRAG_ENGINE_OVERREV_RPM ) {
+			pm->ps->stats[STAT_DRAG_ENGINE] = state | DRAG_ENGINE_BLOWN | DRAG_ENGINE_OVERREV;
+			return;
+		}
+	}
+	if ( car->rpm >= DRAG_ENGINE_REDLINE_RPM ) {
+		stress += msec;
+	} else {
+		stress -= msec / 2;
+	}
+	if ( stress < 0 ) {
+		stress = 0;
+	}
+	if ( stress >= DRAG_ENGINE_STRESS_LIMIT_MS ) {
+		stress = DRAG_ENGINE_STRESS_LIMIT_MS;
+		state |= DRAG_ENGINE_BLOWN;
+	}
+	pm->ps->stats[STAT_DRAG_ENGINE] = ( state & ~DRAG_ENGINE_STRESS_MASK ) | stress;
+}
+
+/*
+================================================================================
 PM_AirFrictionForces
 ================================================================================
 */
@@ -349,7 +420,7 @@ static void PM_GroundFrictionForces( car_t *car, carPoint_t *points, int i, vec3
 	float	normalForce, sideForce;
 	vec3_t	accel, targetV, force;
 
-	float	skid, slipangle, forwardForce;
+	float	skid, slipangle, forwardForce, slipSpeed, grip;
 	//float	v, angle, n2, v2;
 
 	normalForce = VectorLength(points[i].forces[NORMAL]);
@@ -362,6 +433,7 @@ static void PM_GroundFrictionForces( car_t *car, carPoint_t *points, int i, vec3
 	VectorAdd(targetV, points[i+4].v, accel);
 	VectorInverse(accel);
 	VectorMA(accel, -DotProduct(accel, up), up, accel);
+	slipSpeed = fabs( DotProduct( accel, forward ) );
 
 //	Com_Printf("Accel: %f\n", DotProduct(accel, forward));
 
@@ -444,6 +516,17 @@ static void PM_GroundFrictionForces( car_t *car, carPoint_t *points, int i, vec3
 
 	points[i].netMoment += (DotProduct(force, forward) * WHEEL_RADIUS);
 
+	/* Drag only: rear tyres spun far past their grip turn part of the drive
+	 * into smoke, so a launch from too high revs pulls less. The wheel still
+	 * feels the full road reaction: the lost share heats the rubber instead of
+	 * spinning the wheel up further, which keeps the loss proportional. */
+	if ( pm->dragRace && i >= FIRST_RW_POINT && !points[i].slipping && slipSpeed > DRAG_SPIN_GRIP_START ) {
+		grip = ( slipSpeed - DRAG_SPIN_GRIP_START ) / ( DRAG_SPIN_GRIP_FULL - DRAG_SPIN_GRIP_START );
+		if ( grip > 1.0f ) grip = 1.0f;
+		grip = -DRAG_SPIN_GRIP_LOSS * grip * DotProduct( force, forward );
+		VectorMA( force, grip, forward, force );
+	}
+
 	VectorAdd(points[i].forces[ROAD], force, points[i].forces[ROAD]);
 
 	// static friction
@@ -518,6 +601,18 @@ static void PM_TireFrictionForces( car_t *car, carPoint_t *points, int i, vec3_t
 PM_TireEngineForces
 ================================================================================
 */
+/* Drag only: a loaded engine below DRAG_BOG_RPM bogs. Its torque falls off
+ * towards idle, so a launch from too low revs climbs out slowly. */
+static float PM_DragBogFactor( const car_t *car ) {
+	float x;
+	if ( !pm->dragRace || car->gear <= 0 || car->rpm >= DRAG_BOG_RPM ) {
+		return 1.0f;
+	}
+	x = ( car->rpm - CP_RPM_MIN ) / ( DRAG_BOG_RPM - CP_RPM_MIN );
+	if ( x < 0.0f ) x = 0.0f;
+	return DRAG_BOG_MIN_TORQUE + ( 1.0f - DRAG_BOG_MIN_TORQUE ) * x * x;
+}
+
 static void PM_TireEngineForces( car_t *car, carPoint_t *points, int i, vec3_t forward, float couplingTorque ){
 	float	torque, ratio, relrpm, friction;
 //	float	power;
@@ -546,6 +641,7 @@ static void PM_TireEngineForces( car_t *car, carPoint_t *points, int i, vec3_t f
 
 	relrpm = (car->rpm - CP_RPM_TORQUE_PEAK);
 	torque = car->throttle * ((-1.0f * CP_TORQUE_SLOPE * relrpm * relrpm) + CP_TORQUE_PEAK); // ft.lb
+	torque *= PM_DragBogFactor( car );
 	torque += couplingTorque;
 //	power = torque * car->rpm / (30 * 550 / M_PI); // hp
 
@@ -718,6 +814,11 @@ void PM_AddRoadForces(car_t *car, carBody_t *body, carPoint_t *points, float sec
 		pm->ps->extra_eFlags |= CF_BRAKE;
 	else
 		pm->ps->extra_eFlags &= ~CF_BRAKE;
+
+	/* A blown Drag engine makes no power; the brakes still work. */
+	if ( pm->dragRace && DRAG_EngineBlown( pm->ps ) && car->throttle > 0.0f ) {
+		car->throttle = 0.0f;
+	}
 
 	couplingTorque = PM_UpdateRPM(car, points, sec);
 

@@ -311,7 +311,8 @@ static void CG_FX_StartLightState( int count, int *reds, qboolean *green ) {
 		return;
 	}
 	if ( cgs.gametype == GT_DRAG ) {
-		CG_DragStartLightState( &n, green );
+		int greenTime;
+		CG_DragStartLightState( &n, green, &greenTime );
 		if ( n > 0 ) {
 			*reds = ( count - 1 ) - ( 3 - n ) * ( count - 1 ) / 3;
 		}
