@@ -59,7 +59,7 @@
   }
   function options() {
     const drag = modes[mode] === 'Drag Race';
-    find('rule-help').textContent = drag ? 'Equal vehicle performance. One run. Selecting first before green, or less than 0.100 s after it, is a false start.' : 'Zero means no limit.';
+    find('rule-help').textContent = drag ? 'Equal vehicle performance. A match is the best of the chosen heats; the Ladder keeps your best heat. Selecting first before green, or less than 0.100 s after it, is a false start.' : 'Zero means no limit.';
     find('race-title').textContent = maps[selected]?.title || 'Your race'; find('race-mode').textContent = modes[mode] || '';
     const options = find('options'); options.replaceChildren();
     controls.filter(control => control.slot < 0).forEach(control => options.append(controlElement(control)));

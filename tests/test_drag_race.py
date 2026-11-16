@@ -49,7 +49,10 @@ char *QDECL va(char *format, ...) {
     va_start(ap, format); vsnprintf(buffer, sizeof(buffer), format, ap); va_end(ap);
     return buffer;
 }
+static char lastMatch[256], lastCpAll[256];
 void trap_SendServerCommand(int recipient, const char *text) {
+    if (strncmp(text,"dragMatch ",10)==0 && recipient==-1) snprintf(lastMatch,sizeof(lastMatch),"%s",text);
+    if (strncmp(text,"cp ",3)==0 && recipient==-1) snprintf(lastCpAll,sizeof(lastCpAll),"%s",text);
     if (strncmp(text, "dragStatus ", 11) == 0) {
         int client, phase, countdown, green;
         statuses++;
@@ -70,6 +73,19 @@ static int engineBangs;
 int G_SoundIndex(char *name) { assert(strstr(name,"drag_engine_blow")); return 7; }
 void G_Sound(gentity_t *ent,int channel,int sound) { assert(sound==7); engineBangs++; }
 void QDECL G_LogPrintf(const char *fmt,...) {}
+vmCvar_t g_dragBestOf, g_dragTournament;
+static int respawns, consoleCommands; static char lastConsole[256];
+void Q_strcat(char *dest,int size,const char *src) { strncat(dest,src,size-strlen(dest)-1); }
+void ClientSpawn(gentity_t *ent) {
+    /* back to the own grid slot, as the spawn point selection does */
+    respawns++;
+    VectorSet(ent->client->ps.origin, 0, ent->s.number ? 160 : -160, 28);
+    VectorClear(ent->client->ps.velocity);
+    ent->client->ps.eFlags=0;
+    G_DragClientSpawn(ent);
+}
+const char *G_DragNextRivalName(const char *previous) { return "Josh"; }
+void trap_SendConsoleCommand(int when,const char *text) { consoleCommands++; snprintf(lastConsole,sizeof(lastConsole),"%s",text); }
 void CalculateRanks(void) { rankCalls++; }
 void Cmd_RacePositions_f(void) {
     positionPublications++;
@@ -92,6 +108,7 @@ static void resetHeat(int count) {
     memset(&finishGate, 0, sizeof(finishGate));
     memset(&starter, 0, sizeof(starter));
     exits = rankCalls = statuses = positionPublications = 0;
+    consoleCommands = 0; lastConsole[0]=lastMatch[0]=lastCpAll[0]='\0';
     lightReplays=0; lastLight[0]='\0';
     publishedPositions[0] = publishedPositions[1] = 0;
     g_gametype.integer = GT_DRAG;
@@ -176,6 +193,29 @@ static void finishAt(int clientNum, int crossingTime, float speed) {
     clients[clientNum].ps.origin[0] = 1100;
     clients[clientNum].ps.commandTime = crossingTime + 50;
     G_DragPostMove(car,before,crossingTime-50);
+}
+
+/* One heat of a match: both staged, green, launches and finishes relative
+   to green (finish<0: false start). Returns green. */
+static int playHeat(int count, int finish0, int finish1) {
+    int i, green, finish[2];
+    finish[0]=finish0; finish[1]=finish1;
+    for (i=0;i<count;i++) input(i,level.time,64);
+    G_DragStarterThink(&starter);
+    assert(dragCountdownTime);
+    green=goGreen(); level.time=green+150;
+    for (i=0;i<count;i++) {
+        if (finish[i]<0) { assert(G_DragTryGearChange(&g_entities[i],1,green-5)); continue; }
+        launch(i,green+150);
+    }
+    for (i=0;i<count;i++) if (finish[i]>=0) finishAt(i,green+finish[i],1000);
+    G_DragRunFrame();
+    return green;
+}
+
+static void nextHeat(void) {
+    level.time=dragAllDoneTime+DRAG_NEXT_HEAT_MS;
+    G_DragCheckExit();
 }
 
 int main(void) {
@@ -482,6 +522,71 @@ int main(void) {
         assert(dragClients[0].phase==DRAG_FALSE_START);
     }
     g_entities[0].r.svFlags=0;
+
+    /* Best of 3: the same drivers until one has won two heats, without a
+       map restart. The Ladder gets each driver's best heat; the match
+       standing (heat wins, then best heat) gives the positions. */
+    g_dragBestOf.integer=3;
+    resetHeat(2); assert(dragMatchBestOf==3 && G_DragCanJoin());
+    playHeat(2,2100,2200); /* heat 1: driver 0 */
+    assert(dragMatch[0].wins==1 && !dragMatchOver && dragMatchHeats==1 && exits==0);
+    assert(strstr(lastMatch,"dragMatch 3 2 0 -1 2 0 1 1 0"));
+    assert(strstr(lastCpAll,"HEAT TO") && strstr(lastCpAll,"1 - 0"));
+    respawns=0; nextHeat();
+    assert(respawns==2 && !dragCountdownTime && !level.startRaceTime && exits==0);
+    assert(dragClients[0].phase==DRAG_WAITING && dragMatch[0].entered && dragMatch[1].entered);
+    assert(!G_DragCanJoin()); /* the match has begun */
+    playHeat(2,2300,2050); /* heat 2: driver 1, the fastest heat of the match */
+    assert(dragMatch[0].wins==1 && dragMatch[1].wins==1 && !dragMatchOver);
+    nextHeat();
+    playHeat(2,2000,-1); /* heat 3: driver 1 jumps the light */
+    assert(dragMatchOver && dragMatchWinner==0 && G_DragCanJoin());
+    level.time=dragAllDoneTime+DRAG_RESULT_HOLD_MS; G_DragCheckExit();
+    assert(exits==1 && strstr(lastExit,"match") && level.winnerNumber==0);
+    assert(strstr(lastCpAll,"WINS THE MATCH") && strstr(lastCpAll,"2 - 1"));
+    assert(G_DragLadderDuel());
+    assert(G_DragPopulateLadderPlayer(0,&result) && result.dragHeatWins==2 && result.position==1);
+    assert(!strcmp(result.dragStatus,"finished") && result.totalRaceMs==2000); /* best heat */
+    assert(G_DragPopulateLadderPlayer(1,&result) && result.dragHeatWins==1 && result.position==2);
+    assert(!strcmp(result.dragStatus,"finished") && result.totalRaceMs==2050); /* faster, still second */
+    assert(consoleCommands==0); /* no bots, no rival change */
+
+    /* A heat without a winner is run again; after twice the heats the match ends. */
+    resetHeat(2);
+    playHeat(2,2000,2000); /* tie */
+    assert(dragMatchHeats==0 && dragMatchAttempts==1 && !dragMatchOver);
+    assert(strstr(lastCpAll,"HEAT AGAIN"));
+    for (green=0;green<5;green++) { nextHeat(); playHeat(2,-1,-1); }
+    assert(dragMatchAttempts==6 && dragMatchOver && dragMatchWinner==-1);
+
+    /* Leaving between heats forfeits the match; the driver ahead wins it. */
+    resetHeat(2); playHeat(2,2100,2200); nextHeat();
+    g_entities[1].inuse=qfalse; clients[1].pers.connected=CON_DISCONNECTED;
+    G_DragCheckExit();
+    assert(exits==1 && strstr(lastExit,"forfeit") && level.winnerNumber==0);
+
+    /* Solo practice: three heats, the best one is reported. */
+    resetHeat(1);
+    playHeat(1,2400,0); nextHeat(); playHeat(1,2200,0); nextHeat();
+    assert(!dragMatchOver); playHeat(1,2300,0);
+    assert(dragMatchOver && dragMatchHeats==3 && !G_DragLadderDuel());
+    assert(G_DragPopulateLadderPlayer(0,&result) && result.totalRaceMs==2200 && result.position==1);
+
+    /* After a match against a bot, the next match is against another bot. */
+    resetHeat(2); g_entities[1].r.svFlags=SVF_BOT; strcpy(clients[1].pers.netname,"Carla"); strcpy(botSkill,"5");
+    playHeat(2,2100,2200); nextHeat(); playHeat(2,2100,2200);
+    level.time=dragAllDoneTime+DRAG_RESULT_HOLD_MS; G_DragCheckExit();
+    assert(exits==1 && consoleCommands==1);
+    assert(strstr(lastConsole,"clientkick 1") && strstr(lastConsole,"addbot Josh 5 free"));
+    /* a bot joining during the intermission is not a disqualified driver */
+    G_DragClientSpawn(&g_entities[1]);
+    assert(dragClients[1].phase!=DRAG_DNF);
+    g_dragTournament.integer=1; resetHeat(2); g_entities[1].r.svFlags=SVF_BOT;
+    playHeat(2,2100,2200); nextHeat(); playHeat(2,2100,2200);
+    level.time=dragAllDoneTime+DRAG_RESULT_HOLD_MS; G_DragCheckExit();
+    assert(consoleCommands==0); /* the tournament picks its own drivers */
+    g_dragTournament.integer=0;
+    g_dragBestOf.integer=0;
 
     resetHeat(1); level.finishEnt=NULL;
     G_DragStarterThink(&starter); G_DragCheckExit();

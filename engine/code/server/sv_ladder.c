@@ -736,6 +736,11 @@ qboolean G_LadderValidatePayload( ladderMatchPayload_t *payload, qboolean blockO
                                 player->elapsedMs < 0 || player->elapsedMs > 120000 ||
                                 player->totalRaceMs < 0 || player->totalRaceMs > 120000 ||
                                 !SV_LadderIsFinite( player->trapSpeedKph ) || player->trapSpeedKph < 0.0f || player->trapSpeedKph > 1000.0f ) bad = qtrue;
+                        /* Heats per match are odd; a heat win needs a valid finish. */
+                        if ( payload->dragBestOf < 0 || payload->dragBestOf > 7 ||
+                                ( payload->dragBestOf && !( payload->dragBestOf & 1 ) ) ||
+                                player->dragHeatWins < 0 || player->dragHeatWins > 7 ||
+                                ( !finished && player->dragHeatWins ) ) bad = qtrue;
                         if ( finished ) {
                                 /* A faster reaction is a false start in the game rules. */
                                 if ( player->reactionMs < DRAG_MIN_REACTION_MS ) bad = qtrue;
@@ -1035,7 +1040,9 @@ static qboolean SV_LadderJsonAppendPlayer( ladderJsonBuilder_t *builder,
                !SV_LadderJsonAppendKey( builder, "elapsedMs", &first ) ||
                !SV_LadderJsonAppendInt( builder, player->elapsedMs ) ||
                !SV_LadderJsonAppendKey( builder, "trapSpeedKph", &first ) ||
-               !SV_LadderJsonAppendFloat( builder, player->trapSpeedKph ) ) ) {
+               !SV_LadderJsonAppendFloat( builder, player->trapSpeedKph ) ||
+               !SV_LadderJsonAppendKey( builder, "dragHeatWins", &first ) ||
+               !SV_LadderJsonAppendInt( builder, player->dragHeatWins ) ) ) {
                 return qfalse;
         }
         if ( !SV_LadderJsonAppendKey( builder, "lapCount", &first ) ||
@@ -1448,7 +1455,9 @@ static char *SV_LadderSerializeMatch( const ladderMatchPayload_t *payload, size_
                 }
                 if ( payload->gametype == GT_DRAG &&
                      ( !SV_LadderJsonAppendKey( &builder, "dragDuel", &settingsFirst ) ||
-                       !SV_LadderJsonAppendBoolean( &builder, payload->dragDuel ) ) ) {
+                       !SV_LadderJsonAppendBoolean( &builder, payload->dragDuel ) ||
+                       !SV_LadderJsonAppendKey( &builder, "dragBestOf", &settingsFirst ) ||
+                       !SV_LadderJsonAppendInt( &builder, payload->dragBestOf > 0 ? payload->dragBestOf : 1 ) ) ) {
                         Z_Free( builder.data );
                         return NULL;
                 }

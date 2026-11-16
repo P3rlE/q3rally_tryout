@@ -1326,6 +1326,7 @@ typedef struct {
 	menuradiobutton_s	kothOvertime;
 	menufield_s			kothOvertimeHold;
 	menulist_s			autoballBalls;
+	menulist_s			dragBestOf;
 	menulist_s			autoballBallSize;
 	menulist_s			autoballBallGravity;
 	menuradiobutton_s	friendlyfire;
@@ -1420,6 +1421,7 @@ static const char *botSkill_list[] = {
 
 // Autoball mutators: menu entries and the cvar values behind them
 static const char *autoball_balls_list[] = { "1", "2", "3", 0 };
+static const char *drag_best_of_list[] = { "1", "3", "5", "7", 0 };	/* heats per match */
 static const char *autoball_size_list[] = { "Normal", "Small", "Big", "Giant", 0 };
 static const float autoball_size_values[] = { 1.0f, 0.7f, 1.4f, 2.0f };
 static const char *autoball_gravity_list[] = { "Normal", "Light", "Moon", "Heavy", 0 };
@@ -1588,6 +1590,9 @@ static void ServerOptions_Start( void ) {
 		maxclients++;
 	}
 	if ( s_serveroptions.gametype == GT_DRAG ) {
+		int bestOf = (int)Com_Clamp( 0, 3, s_serveroptions.dragBestOf.curvalue );
+		trap_Cvar_SetValue( "ui_drag_bestof", bestOf );
+		trap_Cvar_SetValue( "g_dragBestOf", 1 + 2 * bestOf );
 		maxclients = 2;
 		trackLengthValue = 0;
 		reversed = 0;
@@ -2168,6 +2173,8 @@ static void ServerOptions_SetMenuItems( void ) {
 
 	case GT_SPRINT:
 	case GT_DRAG:
+		/* best of 3 until the player picks something else */
+		s_serveroptions.dragBestOf.curvalue = (int)Com_Clamp( 0, 3, StartServer_CvarIntOrDefault( "ui_drag_bestof", 1 ) );
 		Q_strncpyz( s_serveroptions.fraglimit.field.buffer, "1", sizeof( s_serveroptions.fraglimit.field.buffer ) );
 		Com_sprintf( s_serveroptions.timelimit.field.buffer, 4, "%i", (int)Com_Clamp( 0, 999, trap_Cvar_VariableValue( "ui_racing_timelimit" ) ) );
 		break;
@@ -2947,6 +2954,16 @@ static void ServerOptions_MenuInit( qboolean multiplayer ) {
 		y += BIGCHAR_HEIGHT+2;
 	}
 
+	if ( s_serveroptions.gametype == GT_DRAG ) {
+		s_serveroptions.dragBestOf.generic.type       = MTYPE_SPINCONTROL;
+		s_serveroptions.dragBestOf.generic.flags      = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
+		s_serveroptions.dragBestOf.generic.x          = OPTIONS_X;
+		s_serveroptions.dragBestOf.generic.y          = y;
+		s_serveroptions.dragBestOf.generic.name       = "Heats / match:";
+		s_serveroptions.dragBestOf.itemnames          = drag_best_of_list;
+		y += BIGCHAR_HEIGHT+2;
+	}
+
 	if ( s_serveroptions.gametype == GT_AUTOBALL ) {
 		s_serveroptions.autoballBalls.generic.type       = MTYPE_SPINCONTROL;
 		s_serveroptions.autoballBalls.generic.flags      = QMF_PULSEIFFOCUS|QMF_SMALLFONT;
@@ -3233,6 +3250,10 @@ if (s_serveroptions.gametype == GT_DOMINATION) {
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.kothPtsDefend );
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.kothOvertime );
 		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.kothOvertimeHold );
+	}
+
+	if( s_serveroptions.gametype == GT_DRAG ) {
+		Menu_AddItem( &s_serveroptions.menu, &s_serveroptions.dragBestOf );
 	}
 
 	if( s_serveroptions.gametype == GT_AUTOBALL ) {

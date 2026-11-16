@@ -6807,6 +6807,10 @@ function normalize_drag_payload(array $payload): array
         $settings['dragDuel'] !== (count($players) === 2) || !empty($payload['teams'])) {
         throw new LadderApiException(422, 'DRAG_SETTINGS_INVALID', 'Drag requires one or two drivers and matching Drag settings.');
     }
+    // Heats per match (best of 1, 3, 5, 7). Each driver reports the best heat.
+    if (array_key_exists('dragBestOf', $settings) && !in_array($settings['dragBestOf'], [1, 3, 5, 7], true)) {
+        throw new LadderApiException(422, 'DRAG_SETTINGS_INVALID', 'dragBestOf must be 1, 3, 5 or 7.');
+    }
     $clientNums = [];
     $playerIds = [];
     foreach ($players as $index => $player) {
@@ -6829,6 +6833,10 @@ function normalize_drag_payload(array $payload): array
         if ((!is_int($speed) && !is_float($speed)) || !is_finite((float)$speed) || $speed < 0 || $speed > 1000) {
             throw new LadderApiException(422, 'DRAG_RESULT_INVALID', 'Drag trap speed must be finite and between 0 and 1000 km/h.');
         }
+        $wins = $player['dragHeatWins'] ?? 0;
+        if (!is_int($wins) || $wins < 0 || $wins > 7 || ($player['dragStatus'] !== 'finished' && $wins !== 0)) {
+            throw new LadderApiException(422, 'DRAG_RESULT_INVALID', 'Drag heat wins must be 0..7, and a heat win needs a valid finish.');
+        }
         if ($player['dragStatus'] === 'finished') {
             if ($player['elapsedMs'] <= 0 || $player['totalRaceMs'] !== $player['reactionMs'] + $player['elapsedMs'] ||
                 $player['position'] < 1 || $player['position'] > count($players)) {
@@ -6848,16 +6856,21 @@ function normalize_drag_payload(array $payload): array
         $player['team'] = 0;
         $players[$index] = $player;
     }
+    // Standing: heats won in the match first, then the best TOTAL time.
     foreach ($players as $player) {
         if ($player['dragStatus'] !== 'finished') continue;
         $expectedPosition = 1;
         foreach ($players as $opponent) {
-            if ($opponent['dragStatus'] === 'finished' && $opponent['totalRaceMs'] < $player['totalRaceMs']) {
+            if ($opponent['dragStatus'] !== 'finished') continue;
+            $opponentWins = (int)($opponent['dragHeatWins'] ?? 0);
+            $playerWins = (int)($player['dragHeatWins'] ?? 0);
+            if ($opponentWins > $playerWins ||
+                ($opponentWins === $playerWins && $opponent['totalRaceMs'] < $player['totalRaceMs'])) {
                 $expectedPosition++;
             }
         }
         if ($player['position'] !== $expectedPosition) {
-            throw new LadderApiException(422, 'DRAG_POSITION_INVALID', 'Drag positions must follow valid TOTAL times, with shared ranks for ties.');
+            throw new LadderApiException(422, 'DRAG_POSITION_INVALID', 'Drag positions must follow heat wins, then valid TOTAL times, with shared ranks for ties.');
         }
     }
     $payload['players'] = array_values($players);
@@ -6871,6 +6884,22 @@ function drag_winner_client_num(array $payload): int
     $players = (array)($payload['players'] ?? []);
     if (($payload['settings']['dragDuel'] ?? false) !== true || count($players) !== 2) {
         return -1;
+    }
+    $bestOf = (int)($payload['settings']['dragBestOf'] ?? 1);
+    if ($bestOf > 1) {
+        // A best-of match goes to the driver who alone won the most heats.
+        $most = 0;
+        $winner = -1;
+        foreach ($players as $player) {
+            $wins = is_array($player) ? (int)($player['dragHeatWins'] ?? 0) : 0;
+            if ($wins > $most) {
+                $most = $wins;
+                $winner = (int)($player['clientNum'] ?? -1);
+            } elseif ($wins === $most && $wins > 0) {
+                $winner = -1;
+            }
+        }
+        return $winner;
     }
     $best = null;
     $winner = -1;
@@ -7192,6 +7221,7 @@ function index_extract_entry(array $payload): array
             'reactionMs'  => $mode === 'GT_DRAG' ? (int)($p['reactionMs'] ?? 0) : 0,
             'elapsedMs'   => $mode === 'GT_DRAG' ? (int)($p['elapsedMs'] ?? 0) : 0,
             'trapSpeedKph' => $mode === 'GT_DRAG' ? (float)($p['trapSpeedKph'] ?? 0) : 0,
+            'dragHeatWins' => $mode === 'GT_DRAG' ? (int)($p['dragHeatWins'] ?? 0) : 0,
             'kills'       => $kills,
             'deaths'      => extract_player_deaths($p, $mode),
             'position'    => extract_player_position($p, $mode),

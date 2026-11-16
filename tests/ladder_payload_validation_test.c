@@ -113,6 +113,15 @@ int main( void ) {
     payload.valid = qtrue;
     payload.players[1].isBot = qtrue; /* a bot may race the second lane */
     assert( G_LadderValidatePayload( &payload, qtrue ) == qtrue );
+    payload.dragBestOf = 4; /* heats per match are odd */
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qfalse );
+    payload.dragBestOf = 3;
+    payload.valid = qtrue;
+    payload.players[1].dragHeatWins = 1; /* a heat win needs a valid finish */
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qfalse );
+    payload.players[1].dragHeatWins = 0;
+    payload.valid = qtrue;
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qtrue );
 
     puts( "ok" );
     return 0;

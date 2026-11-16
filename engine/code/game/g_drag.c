@@ -9,6 +9,7 @@
 #define DRAG_HEAT_TIMEOUT_MS 60000
 #define DRAG_FINISH_GRACE_MS 10000
 #define DRAG_RESULT_HOLD_MS 3000
+#define DRAG_NEXT_HEAT_MS 4000	/* result on screen before the next heat of a match */
 
 typedef struct {
 	dragPhase_t phase;
@@ -49,6 +50,41 @@ static qboolean dragMapInvalid;
 static qboolean dragResultAnnounced;
 static vec3_t dragForward, dragRight, dragFinishOrigin;
 static float dragLaneHalfWidth;
+
+/*
+ * Match: best of g_dragBestOf heats (1, 3, 5 or 7) between the same drivers,
+ * without reloading the map. A duel ends when a driver has won the majority;
+ * a heat without a winner (tie, both invalid) is run again, up to twice the
+ * number of heats. Solo practice runs the number of heats. The Ladder gets
+ * each driver's best heat; wins, losses and points count for the match.
+ */
+typedef struct {
+	qboolean entered;		/* armed in a heat of this match */
+	int wins;
+	qboolean hasBest;		/* a valid finish in some heat */
+	int bestRt, bestEt, bestTotal, bestTrap, bestFinish;
+	dragPhase_t lastPhase;
+	ladderPlayerPayload_t identity;	/* frozen at the driver's first heat */
+	int enterTime;
+} dragMatchDriver_t;
+
+static dragMatchDriver_t dragMatch[MAX_CLIENTS];
+static int dragMatchBestOf;
+static int dragMatchHeats;		/* heats that counted */
+static int dragMatchAttempts;	/* heats run, including repeated ones */
+static int dragMatchWinner;
+static qboolean dragMatchOver;
+static qboolean dragHeatRecorded;
+static int G_DragMatchEntrants( int *gone );
+
+/* The result of one driver over the match so far, including the current heat
+ * if it has not been recorded yet. */
+typedef struct {
+	int wins;
+	qboolean hasBest;
+	int rt, et, total, trap, finish;
+	dragPhase_t phase;
+} dragMatchResult_t;
 
 extern void LogExit( const char *string );
 
@@ -98,7 +134,47 @@ static void G_DragCaptureLadderIdentity( int clientNum ) {
 
 qboolean G_DragLadderParticipant( int clientNum ) {
 	return g_gametype.integer == GT_DRAG && clientNum >= 0 && clientNum < MAX_CLIENTS
-		&& dragCountdownTime > 0 && dragClients[clientNum].participant;
+		&& dragMatch[clientNum].entered;
+}
+
+int G_DragMatchBestOf( void ) {
+	return dragMatchBestOf;
+}
+
+static void G_DragMatchResultFor( int clientNum, dragMatchResult_t *out ) {
+	const dragMatchDriver_t *entry = &dragMatch[clientNum];
+	const dragClient_t *driver = &dragClients[clientNum];
+	int total;
+	memset( out, 0, sizeof( *out ) );
+	out->wins = entry->wins;
+	out->hasBest = entry->hasBest;
+	out->rt = entry->bestRt;
+	out->et = entry->bestEt;
+	out->total = entry->bestTotal;
+	out->trap = entry->bestTrap;
+	out->finish = entry->bestFinish;
+	out->phase = entry->lastPhase;
+	if ( dragHeatRecorded || !driver->participant || !dragCountdownTime ) return;
+	out->phase = driver->phase;
+	if ( driver->phase == DRAG_FINISHED && dragGreenTime && driver->launchTime >= dragGreenTime
+		&& driver->finishTime > driver->launchTime ) {
+		total = driver->finishTime - dragGreenTime;
+		if ( !out->hasBest || total < out->total ) {
+			out->hasBest = qtrue;
+			out->rt = driver->launchTime - dragGreenTime;
+			out->et = driver->finishTime - driver->launchTime;
+			out->total = total;
+			out->trap = driver->trapSpeed;
+			out->finish = driver->finishTime;
+		}
+	}
+}
+
+/* Match standing: more heat wins first, then the better best heat. */
+static qboolean G_DragMatchAhead( const dragMatchResult_t *a, const dragMatchResult_t *b ) {
+	if ( a->wins != b->wins ) return a->wins > b->wins;
+	if ( a->hasBest != b->hasBest ) return a->hasBest;
+	return a->hasBest && a->total < b->total;
 }
 
 qboolean G_DragLadderDuel( void ) {
@@ -131,30 +207,34 @@ qboolean G_DragLadderIdentityMatches( int clientNum ) {
 		Q_CleanStr( identity );
 	}
 	if ( !identity[0] ) Com_sprintf( identity, sizeof( identity ), "client-%i", clientNum );
-	return !strcmp( identity, dragClients[clientNum].ladderIdentity.playerId );
+	return !strcmp( identity, dragMatch[clientNum].identity.playerId );
 }
 
+/* The Ladder gets the driver's best heat of the match; the position is the
+ * match standing (heat wins, then best heat). */
 qboolean G_DragPopulateLadderPlayer( int clientNum, ladderPlayerPayload_t *player ) {
-	const dragClient_t *driver;
+	const dragMatchDriver_t *entry;
+	dragMatchResult_t mine, other;
 	int i;
 	if ( !player || !G_DragLadderParticipant( clientNum ) ) return qfalse;
-	driver = &dragClients[clientNum];
-	*player = driver->ladderIdentity;
-	player->time = level.time > driver->enterTime ? level.time - driver->enterTime : 0;
-	Q_strncpyz( player->dragStatus, driver->phase == DRAG_FALSE_START ? "false_start" : "dnf", sizeof( player->dragStatus ) );
-	if ( driver->phase == DRAG_FINISHED && driver->launchTime >= dragGreenTime
-		&& driver->finishTime > driver->launchTime ) {
+	entry = &dragMatch[clientNum];
+	G_DragMatchResultFor( clientNum, &mine );
+	*player = entry->identity;
+	player->time = level.time > entry->enterTime ? level.time - entry->enterTime : 0;
+	player->dragHeatWins = mine.wins;
+	Q_strncpyz( player->dragStatus, mine.phase == DRAG_FALSE_START ? "false_start" : "dnf", sizeof( player->dragStatus ) );
+	if ( mine.hasBest ) {
 		Q_strncpyz( player->dragStatus, "finished", sizeof( player->dragStatus ) );
-		player->reactionMs = driver->launchTime - dragGreenTime;
-		player->elapsedMs = driver->finishTime - driver->launchTime;
-		player->totalRaceMs = driver->finishTime - dragGreenTime;
-		player->finishRaceTime = driver->finishTime;
-		player->trapSpeedKph = driver->trapSpeed * 0.1f;
+		player->reactionMs = mine.rt;
+		player->elapsedMs = mine.et;
+		player->totalRaceMs = mine.total;
+		player->finishRaceTime = mine.finish;
+		player->trapSpeedKph = mine.trap * 0.1f;
 		player->position = 1;
 		for ( i = 0; i < MAX_CLIENTS; i++ ) {
-			if ( i != clientNum && G_DragLadderParticipant( i )
-				&& dragClients[i].phase == DRAG_FINISHED
-				&& dragClients[i].finishTime < driver->finishTime ) player->position++;
+			if ( i == clientNum || !G_DragLadderParticipant( i ) ) continue;
+			G_DragMatchResultFor( i, &other );
+			if ( G_DragMatchAhead( &other, &mine ) ) player->position++;
 		}
 	}
 	return qtrue;
@@ -230,13 +310,40 @@ void G_DragInit( void ) {
 	VectorClear( dragRight );
 	VectorClear( dragFinishOrigin );
 	dragLaneHalfWidth = 0.0f;
+	memset( dragMatch, 0, sizeof( dragMatch ) );
+	dragMatchBestOf = g_dragBestOf.integer;
+	if ( dragMatchBestOf < 1 ) dragMatchBestOf = 1;
+	if ( dragMatchBestOf > 7 ) dragMatchBestOf = 7;
+	if ( !( dragMatchBestOf & 1 ) ) dragMatchBestOf++;
+	dragMatchHeats = dragMatchAttempts = 0;
+	dragMatchWinner = -1;
+	dragMatchOver = dragHeatRecorded = qfalse;
 	if ( g_gametype.integer == GT_DRAG ) {
 		level.winnerNumber = -1;
 	}
 }
 
+/* New drivers join before the first heat of a match, or once it is over. */
 qboolean G_DragCanJoin( void ) {
-	return g_gametype.integer != GT_DRAG || !dragCountdownTime;
+	return g_gametype.integer != GT_DRAG || dragMatchOver
+		|| ( !dragCountdownTime && !dragMatchAttempts );
+}
+
+/* dragMatch <bestOf> <heat> <over> <winner> <count> { <client> <wins> } */
+static void G_DragPublishMatch( int recipient ) {
+	char text[256];
+	int i, count = 0;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( dragMatch[i].entered ) count++;
+	}
+	Com_sprintf( text, sizeof( text ), "dragMatch %d %d %d %d %d", dragMatchBestOf,
+		dragMatchOver ? dragMatchHeats : dragMatchHeats + 1, dragMatchOver ? 1 : 0, dragMatchWinner, count );
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( dragMatch[i].entered ) {
+			Q_strcat( text, sizeof( text ), va( " %d %d", i, dragMatch[i].wins ) );
+		}
+	}
+	trap_SendServerCommand( recipient, text );
 }
 
 void G_DragClientSpawn( gentity_t *ent ) {
@@ -255,7 +362,7 @@ void G_DragClientSpawn( gentity_t *ent ) {
 		/* SetTeam also reaches ClientSpawn. Retain the timed participant:
 		 * leaving the driving field is a forfeit, not a way to erase a heat. */
 		G_DragClientDisconnect( clientNum );
-	} else if ( dragCountdownTime && ent->client->sess.sessionTeam != TEAM_SPECTATOR ) {
+	} else if ( dragCountdownTime && !dragMatchOver && ent->client->sess.sessionTeam != TEAM_SPECTATOR ) {
 		/* A respawn/reset must not create a new timed attempt in this heat. */
 		G_DragDisqualify( clientNum, DRAG_DNF, "DNF - no resets during a Drag heat" );
 	} else {
@@ -273,6 +380,7 @@ void G_DragClientSpawn( gentity_t *ent ) {
 			G_DragPublish( i, clientNum );
 		}
 	}
+	G_DragPublishMatch( clientNum );
 	/* Late spectators also need the current red stage for the countdown
 	 * text; the lamps themselves follow the published countdown start. */
 	if ( dragCountdownTime && !level.startRaceTime
@@ -310,6 +418,10 @@ void G_DragClientDisconnect( int clientNum ) {
 			}
 		}
 		trap_SendServerCommand( -1, "rc \"START CANCELLED - RESTAGE\" 0" );
+		if ( !dragMatchAttempts ) {
+			/* The match had not begun: nobody has entered it yet. */
+			memset( dragMatch, 0, sizeof( dragMatch ) );
+		}
 		memset( &dragClients[clientNum], 0, sizeof( dragClients[clientNum] ) );
 		G_DragPublish( clientNum, -1 );
 		return;
@@ -405,6 +517,10 @@ void G_DragStarterThink( gentity_t *starter ) {
 		if ( !count || !staged || count > 2 ) {
 			return;
 		}
+		/* No new heat once the match is decided or a driver of it has left. */
+		if ( dragMatchOver || ( dragMatchAttempts && G_DragMatchEntrants( &i ) && i >= 0 ) ) {
+			return;
+		}
 		dragCountdownTime = level.time;
 		/* Vary only the final wait, and keep it secret until green. */
 		dragScheduledGreenTime = level.time + 3000 + ( rand() % 1001 );
@@ -415,6 +531,11 @@ void G_DragStarterThink( gentity_t *starter ) {
 			if ( G_DragActive( i ) ) {
 				dragClients[i].participant = qtrue;
 				G_DragCaptureLadderIdentity( i );
+				if ( !dragMatch[i].entered ) {
+					dragMatch[i].entered = qtrue;
+					dragMatch[i].identity = dragClients[i].ladderIdentity;
+					dragMatch[i].enterTime = dragClients[i].enterTime;
+				}
 				dragClients[i].launchTime = 0;
 				G_DragSetPhase( i, DRAG_COUNTDOWN );
 			}
@@ -740,6 +861,166 @@ static void G_DragCheckEngine( int clientNum ) {
 		: "ENGINE BLOWN - too long on the limiter" );
 }
 
+/* Every armed driver who left the field during the match forfeits it. */
+static int G_DragMatchEntrants( int *gone ) {
+	int i, count = 0;
+	if ( gone ) *gone = -1;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( !dragMatch[i].entered ) continue;
+		count++;
+		if ( gone && !G_DragActive( i ) ) *gone = i;
+	}
+	return count;
+}
+
+static void G_DragUpdateMatch( void ) {
+	int i, entrants, gone, need, best = -1, bestWins = -1;
+	qboolean shared = qfalse;
+	entrants = G_DragMatchEntrants( &gone );
+	need = dragMatchBestOf / 2 + 1;
+	dragMatchWinner = -1;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( !dragMatch[i].entered ) continue;
+		if ( dragMatch[i].wins > bestWins ) {
+			bestWins = dragMatch[i].wins;
+			best = i;
+			shared = qfalse;
+		} else if ( dragMatch[i].wins == bestWins ) {
+			shared = qtrue;
+		}
+	}
+	if ( entrants <= 1 ) {
+		dragMatchOver = dragMatchHeats >= dragMatchBestOf || gone >= 0;
+		return;
+	}
+	if ( gone >= 0 ) {
+		/* A forfeit ends the match on the heats won so far: the driver who
+		 * stayed wins it if ahead, as the Ladder counts it. */
+		dragMatchOver = qtrue;
+		for ( i = 0; i < MAX_CLIENTS; i++ ) {
+			if ( dragMatch[i].entered && i != gone && G_DragActive( i )
+				&& dragMatch[i].wins > dragMatch[gone].wins ) dragMatchWinner = i;
+		}
+		return;
+	}
+	dragMatchOver = bestWins >= need || dragMatchAttempts >= 2 * dragMatchBestOf;
+	if ( dragMatchOver && !shared ) dragMatchWinner = best;
+}
+
+/* Fold a resolved heat into the match. A duel heat without a winner is run
+ * again; solo practice counts every heat. */
+static void G_DragRecordHeat( int heatDrivers, int heatWinner ) {
+	int i, total;
+	if ( dragHeatRecorded ) return;
+	dragHeatRecorded = qtrue;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		const dragClient_t *driver = &dragClients[i];
+		dragMatchDriver_t *entry = &dragMatch[i];
+		if ( !driver->participant || !entry->entered ) continue;
+		entry->lastPhase = driver->phase;
+		if ( driver->phase != DRAG_FINISHED || !dragGreenTime || driver->launchTime < dragGreenTime
+			|| driver->finishTime <= driver->launchTime ) continue;
+		total = driver->finishTime - dragGreenTime;
+		if ( entry->hasBest && total >= entry->bestTotal ) continue;
+		entry->hasBest = qtrue;
+		entry->bestRt = driver->launchTime - dragGreenTime;
+		entry->bestEt = driver->finishTime - driver->launchTime;
+		entry->bestTotal = total;
+		entry->bestTrap = driver->trapSpeed;
+		entry->bestFinish = driver->finishTime;
+	}
+	if ( heatWinner >= 0 && heatWinner < MAX_CLIENTS && dragMatch[heatWinner].entered ) {
+		dragMatch[heatWinner].wins++;
+	}
+	dragMatchAttempts++;
+	if ( heatDrivers <= 1 || heatWinner >= 0 ) dragMatchHeats++;
+	G_DragUpdateMatch();
+	G_DragPublishMatch( -1 );
+	G_LogPrintf( "DragMatch: heat=%d attempts=%d bestOf=%d over=%d winner=%d\n",
+		dragMatchHeats, dragMatchAttempts, dragMatchBestOf, dragMatchOver ? 1 : 0, dragMatchWinner );
+}
+
+static const char *G_DragShortName( int clientNum ) {
+	if ( clientNum < 0 || clientNum >= MAX_CLIENTS || !g_entities[clientNum].client ) return "-";
+	return dragMatch[clientNum].identity.cleanName[0] ? dragMatch[clientNum].identity.cleanName
+		: g_entities[clientNum].client->pers.netname;
+}
+
+/* "HEAT 2 OF 3: CARLA" / "MATCH 1 - 1" or the match result. */
+static void G_DragAnnounceMatch( int heatWinner ) {
+	char score[64];
+	int i, a = -1, b = -1;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( !dragMatch[i].entered ) continue;
+		if ( a < 0 ) a = i; else if ( b < 0 ) b = i;
+	}
+	if ( b >= 0 ) {
+		Com_sprintf( score, sizeof( score ), "%s %d - %d %s", G_DragShortName( a ), dragMatch[a].wins,
+			dragMatch[b].wins, G_DragShortName( b ) );
+	} else {
+		Com_sprintf( score, sizeof( score ), "heat %d of %d", dragMatchHeats, dragMatchBestOf );
+	}
+	if ( dragMatchOver ) {
+		trap_SendServerCommand( -1, dragMatchWinner >= 0
+			? va( "cp \"%s WINS THE MATCH\n%s\"", G_DragShortName( dragMatchWinner ), score )
+			: va( "cp \"MATCH OVER\n%s\"", score ) );
+	} else if ( heatWinner >= 0 ) {
+		trap_SendServerCommand( -1, va( "cp \"HEAT TO %s\n%s\"", G_DragShortName( heatWinner ), score ) );
+	} else {
+		trap_SendServerCommand( -1, va( "cp \"%s\n%s\"", b >= 0 ? "NO WINNER - HEAT AGAIN" : "HEAT DONE", score ) );
+	}
+}
+
+/* Back to the grid for the next heat of the match, without a map restart. */
+static void G_DragNextHeat( void ) {
+	gentity_t *ent;
+	int i;
+	dragCountdownTime = dragScheduledGreenTime = dragGreenTime = 0;
+	dragAllDoneTime = dragFirstFinishTime = 0;
+	dragLastLight = -1;
+	dragResultAnnounced = dragHeatRecorded = qfalse;
+	level.startRaceTime = level.finishRaceTime = 0;
+	level.raceState = RACE_STATE_NONE;
+	level.winnerNumber = -1;
+	memset( dragClients, 0, sizeof( dragClients ) );
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( !G_DragActive( i ) ) continue;
+		ent = &g_entities[i];
+		ent->client->finishRaceTime = 0;
+		ent->client->lapStartTime = ent->client->lastCheckpointTime = 0;
+		ent->client->ps.stats[STAT_POSITION] = 0;
+		ClientSpawn( ent );
+	}
+	G_DragPublishMatch( -1 );
+}
+
+/* After a match against a bot, the next match is against another bot. */
+static void G_DragNextRival( void ) {
+	char userinfo[MAX_INFO_STRING];
+	const char *next, *skill;
+	int i, humans = 0;
+	if ( g_dragTournament.integer ) return;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( dragMatch[i].entered && G_DragActive( i ) && !( g_entities[i].r.svFlags & SVF_BOT ) ) humans++;
+	}
+	if ( !humans ) return;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( !dragMatch[i].entered || !G_DragActive( i ) || !( g_entities[i].r.svFlags & SVF_BOT ) ) continue;
+		next = G_DragNextRivalName( g_entities[i].client->pers.netname );
+		if ( !next ) continue;
+		trap_GetUserinfo( i, userinfo, sizeof( userinfo ) );
+		skill = Info_ValueForKey( userinfo, "skill" );
+		trap_SendConsoleCommand( EXEC_APPEND, va( "clientkick %d\naddbot %s %s free\n", i, next,
+			skill[0] ? skill : "3" ) );
+	}
+}
+
+static void G_DragFinishMatch( const char *reason ) {
+	level.winnerNumber = dragMatchWinner;
+	G_DragNextRival();
+	LogExit( reason );
+}
+
 void G_DragRunFrame( void ) {
 	int i, j, count, done, winner, position;
 	qboolean tied, positionChanged, resultChanged;
@@ -819,9 +1100,16 @@ void G_DragRunFrame( void ) {
 		if ( winner >= 0 && !tied ) {
 			trap_SendServerCommand( -1, va( "print \"%s won the Drag heat!\n\"",
 				g_entities[winner].client->pers.netname ) );
-			trap_SendServerCommand( winner, "cp \"DRAG HEAT WON\"" );
+		}
+		G_DragRecordHeat( count, tied ? -1 : winner );
+		if ( dragMatchBestOf <= 1 ) {
+			if ( winner >= 0 && !tied ) {
+				trap_SendServerCommand( winner, "cp \"DRAG HEAT WON\"" );
+			} else {
+				trap_SendServerCommand( -1, winner >= 0 ? "cp \"DRAG HEAT TIED\"" : "cp \"NO VALID FINISH\"" );
+			}
 		} else {
-			trap_SendServerCommand( -1, winner >= 0 ? "cp \"DRAG HEAT TIED\"" : "cp \"NO VALID FINISH\"" );
+			G_DragAnnounceMatch( tied ? -1 : winner );
 		}
 	}
 	if ( positionChanged ) {
@@ -833,12 +1121,24 @@ void G_DragRunFrame( void ) {
 }
 
 qboolean G_DragCheckExit( void ) {
+	int gone;
 	if ( g_gametype.integer != GT_DRAG ) return qfalse;
-	if ( dragMapInvalid && !level.intermissionQueued && !level.intermissiontime ) {
+	if ( level.intermissionQueued || level.intermissiontime ) return qtrue;
+	if ( dragMapInvalid ) {
 		LogExit( "Invalid Drag Race map." );
-	} else if ( dragAllDoneTime && level.time >= dragAllDoneTime + DRAG_RESULT_HOLD_MS
-		&& !level.intermissionQueued && !level.intermissiontime ) {
-		LogExit( "Drag heat finished." );
+	} else if ( dragAllDoneTime && dragMatchOver && level.time >= dragAllDoneTime + DRAG_RESULT_HOLD_MS ) {
+		G_DragFinishMatch( dragMatchBestOf > 1 ? "Drag match finished." : "Drag heat finished." );
+	} else if ( dragAllDoneTime && !dragMatchOver && level.time >= dragAllDoneTime + DRAG_NEXT_HEAT_MS ) {
+		G_DragNextHeat();
+	} else if ( !dragCountdownTime && dragMatchAttempts && !dragMatchOver ) {
+		/* Between heats, a driver of the match left: forfeit. */
+		G_DragMatchEntrants( &gone );
+		if ( gone >= 0 ) {
+			G_DragUpdateMatch();
+			G_DragPublishMatch( -1 );
+			G_DragAnnounceMatch( -1 );
+			G_DragFinishMatch( "Drag match forfeited." );
+		}
 	}
 	return qtrue;
 }

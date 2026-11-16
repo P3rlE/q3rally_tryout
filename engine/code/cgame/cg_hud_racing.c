@@ -119,6 +119,30 @@ static void CG_DrawDragHudTime( int y, const char *label, int milliseconds,
 	CG_DrawIngameString( 154, y, value, UI_RIGHT | UI_SMALLFONT, 0.65f, colorWhite );
 }
 
+/* "HEAT 2 OF 3   YOU 1 : 0 CARLA" above the Drag panel, for best-of matches. */
+static void CG_DrawDragMatchLine( const float *panel, const float *accent, const float *muted ) {
+	char text[96], left[32], right[32];
+	int self, i;
+	if ( cgs.dragMatch.bestOf <= 1 || !cgs.dragMatch.heat ) return;
+	self = cg.snap ? cg.snap->ps.clientNum : -1;
+	if ( cgs.dragMatch.over ) {
+		Com_sprintf( text, sizeof( text ), "MATCH OVER" );
+	} else {
+		Com_sprintf( text, sizeof( text ), "HEAT %d OF %d", cgs.dragMatch.heat, cgs.dragMatch.bestOf );
+	}
+	CG_FillRect( 196, DRAG_HUD_TOP - 18, 248, 18, panel );
+	CG_DrawIngameString( 204, DRAG_HUD_TOP - 15, text, UI_SMALLFONT, 0.46f, muted );
+	if ( cgs.dragMatch.count != 2 ) return;
+	for ( i = 0; i < 2; i++ ) {
+		const char *name = cgs.dragMatch.client[i] == self ? "YOU"
+			: cgs.clientinfo[cgs.dragMatch.client[i]].name;
+		Q_strncpyz( i ? right : left, name, sizeof( left ) );
+		Q_CleanStr( i ? right : left );
+	}
+	Com_sprintf( text, sizeof( text ), "%s %d : %d %s", left, cgs.dragMatch.wins[0], cgs.dragMatch.wins[1], right );
+	CG_DrawIngameString( 436, DRAG_HUD_TOP - 15, text, UI_RIGHT | UI_SMALLFONT, 0.46f, accent );
+}
+
 void CG_DrawDragTelemetryHud( void ) {
 	static const vec4_t panel = { 0.008f, 0.012f, 0.016f, 0.76f };
 	static const vec4_t line = { 0.300f, 0.390f, 0.430f, 0.64f };
@@ -162,6 +186,7 @@ void CG_DrawDragTelemetryHud( void ) {
 	CG_FillRect( 164, 398, 1, 70, line );
 	CG_FillRect( 476, 398, 1, 70, line );
 	CG_DrawIngameString( 18, 395, "DRAG RACE", UI_SMALLFONT, 0.58f, accent );
+	CG_DrawDragMatchLine( panel, accent, muted );
 	if ( cg_hudShowTimes.integer ) {
 		CG_DrawDragHudTime( 414, "RT", state.reactionMs, muted );
 		CG_DrawDragHudTime( 432, "ET", state.elapsedMs, muted );

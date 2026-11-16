@@ -25,6 +25,7 @@ static int labelY[64];
 int QDECL Com_sprintf(char *dest,int size,const char *format,...) {
     int n; va_list ap; va_start(ap,format); n=vsnprintf(dest,size,format,ap); va_end(ap); return n;
 }
+char *Q_CleanStr(char *text) { return text; }
 void Q_strncpyz(char *dest,const char *src,int size) {
     assert(size>0); snprintf(dest,size,"%s",src);
 }

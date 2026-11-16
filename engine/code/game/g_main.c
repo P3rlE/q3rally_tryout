@@ -207,6 +207,9 @@ vmCvar_t	car_friction_scale;
 vmCvar_t	g_carImpactTransfer;
 vmCvar_t	g_carImpactElasticity;
 vmCvar_t	g_slipstream;
+vmCvar_t	g_dragBestOf;
+vmCvar_t	g_dragTournament;
+vmCvar_t	g_dragTournamentSize;
 vmCvar_t	g_slipstreamStrength;
 vmCvar_t	g_slipstreamDistance;
 // END
@@ -372,6 +375,10 @@ static cvarTable_t		gameCvarTable[] = {
 	 * loses right behind another one, distance the wake length in qu
 	 * (1500 qu ~ 42 m). LIVE like the impact cvars; part of the ladder rules. */
 	{ &g_slipstream,           "g_slipstream",           "1",    CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qfalse },
+	/* Drag Race: heats per match (1, 3, 5, 7), read at each match start; tournament */
+	{ &g_dragBestOf,           "g_dragBestOf",           "3",    CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qfalse },
+	{ &g_dragTournament,       "g_dragTournament",       "0",    CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qfalse },
+	{ &g_dragTournamentSize,   "g_dragTournamentSize",   "8",    CVAR_ARCHIVE, 0, qfalse },
 	{ &g_slipstreamStrength,   "g_slipstreamStrength",   "0.25", CVAR_ARCHIVE, 0, qfalse },
 	{ &g_slipstreamDistance,   "g_slipstreamDistance",   "1500", CVAR_ARCHIVE, 0, qfalse },
 
@@ -1516,6 +1523,7 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
                         payload->numberOfLaps = 0;
                         payload->trackReversed = qfalse;
                         payload->dragDuel = G_DragLadderDuel();
+                        payload->dragBestOf = G_DragMatchBestOf();
                 }
         } else {
                 if ( level.startRaceTime || level.finishRaceTime || level.numberOfLaps || g_trackReversed.integer ) {

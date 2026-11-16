@@ -267,6 +267,38 @@ int G_CountBotPlayersByName( const char *name, int team ) {
 
 /*
 ===============
+G_DragNextRivalName
+
+Drag Race: a bot for the next match, not in the game and not the previous one.
+===============
+*/
+const char *G_DragNextRivalName( const char *previous ) {
+	int		selection[MAX_BOTS];
+	int		n, num = 0;
+	char	*value;
+	char	clean[MAX_NETNAME];
+
+	Q_strncpyz( clean, previous ? previous : "", sizeof( clean ) );
+	Q_CleanStr( clean );
+	for ( n = 0; n < g_numBots && num < MAX_BOTS; n++ ) {
+		value = Info_ValueForKey( g_botInfos[n], "funname" );
+		if ( !value[0] ) {
+			value = Info_ValueForKey( g_botInfos[n], "name" );
+		}
+		if ( !Q_stricmp( value, clean ) || G_CountBotPlayersByName( value, -1 ) > 0 ) {
+			continue;
+		}
+		selection[num++] = n;
+	}
+	if ( !num ) {
+		return NULL;
+	}
+	value = Info_ValueForKey( g_botInfos[selection[rand() % num]], "name" );
+	return value[0] ? va( "%s", value ) : NULL;
+}
+
+/*
+===============
 G_SelectRandomBotInfo
 
 Get random least used bot info on team or whole server if team is -1.

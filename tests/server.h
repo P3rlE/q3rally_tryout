@@ -193,6 +193,7 @@ typedef struct ladderPlayerPayload_s {
         int                     bestLapMs;
         int                     totalRaceMs;
         char                    dragStatus[16];
+        int                       dragHeatWins;
         int                     reactionMs;
         int                     elapsedMs;
         float                   trapSpeedKph;
@@ -246,6 +247,7 @@ typedef struct ladderMatchPayload_s {
         int                     numberOfLaps;
         qboolean        trackReversed;
         qboolean        dragDuel;
+        int            dragBestOf;
         int                     eliminationStartDelay;
         int                     eliminationInterval;
         int                     eliminationWarning;

@@ -136,6 +136,29 @@ def test_php_drag_bot_duel_awards_the_human_and_a_faster_bot_wins(php_ladder):
     assert len(list((root / "data/profiles").glob("*.json"))) == 1
 
 
+def test_php_drag_best_of_match_goes_to_the_most_heat_wins(php_ladder):
+    run, _ = php_ladder
+    bot = player(1, reaction=150, elapsed=12800, position=2)
+    bot.update(isBot=True, playerId="bot-carla", name="Carla", dragHeatWins=1)
+    human = player(reaction=200, elapsed=13000, position=1)
+    human["dragHeatWins"] = 2
+    payload = match("best-of-3", [human, bot])
+    payload["settings"]["dragBestOf"] = 3
+    row = run([payload])[0]
+    assert "payload" in row, row
+    assert row["payload"]["winnerClientNum"] == 0  # two heats beat the faster single heat
+    assert row["index"]["players"][0]["dragHeatWins"] == 2
+    profile = row["profiles"][0]
+    assert profile["dragWins"] == 1 and profile["playerScore"] == 13 and profile["dragBestMs"] == 13200
+    bad = match("best-of-4", [dict(human), dict(bot)])
+    bad["settings"]["dragBestOf"] = 4
+    assert run([bad])[0]["status"] == 422
+    cheat = match("heat-win-dnf", [dict(human), player(1, status="dnf")])
+    cheat["players"][1]["dragHeatWins"] = 1
+    cheat["settings"]["dragBestOf"] = 3
+    assert run([cheat])[0]["status"] == 422
+
+
 def test_php_drag_native_snapshot_is_not_double_credited(php_ladder):
     run, _ = php_ladder
     payload = match()

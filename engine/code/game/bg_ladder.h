@@ -182,7 +182,8 @@ typedef struct ladderPlayerPayload_s {
         int                     position;
         int                     bestLapMs;
         int                     totalRaceMs;
-        char                    dragStatus[16]; /* GT_DRAG: finished / false_start / dnf */
+        char                    dragStatus[16]; /* GT_DRAG: finished / false_start / dnf (best heat of the match) */
+        int                     dragHeatWins;   /* GT_DRAG: heats won in the match */
         int                     reactionMs;
         int                     elapsedMs;
         float                   trapSpeedKph;
@@ -235,7 +236,8 @@ typedef struct ladderMatchPayload_s {
         int                     winnerClientNum;
         int                     numberOfLaps;
         qboolean        trackReversed;
-        qboolean        dragDuel; /* GT_DRAG: two human drivers armed this heat */
+        qboolean        dragDuel; /* GT_DRAG: two drivers (human or bot) in the match */
+        int             dragBestOf; /* GT_DRAG: heats per match (1, 3, 5, 7) */
         int                     eliminationStartDelay;
         int                     eliminationInterval;
         int                     eliminationWarning;

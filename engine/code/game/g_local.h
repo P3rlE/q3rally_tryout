@@ -1274,6 +1274,7 @@ void Svcmd_AbortPodium_f( void );
 //
 void G_InitBots( qboolean restart );
 char *G_GetBotInfoByNumber( int num );
+const char *G_DragNextRivalName( const char *previous );
 char *G_GetBotInfoByName( const char *name );
 void G_CheckBotSpawn( void );
 void G_RemoveQueuedBotBegin( int clientNum );
@@ -1467,6 +1468,9 @@ void	G_WeatherMatchReport( char *condition, int conditionSize, int *mode, int *w
 extern	vmCvar_t	g_carImpactTransfer;
 extern	vmCvar_t	g_carImpactElasticity;
 extern	vmCvar_t	g_slipstream;
+extern	vmCvar_t	g_dragBestOf;
+extern	vmCvar_t	g_dragTournament;
+extern	vmCvar_t	g_dragTournamentSize;
 extern	vmCvar_t	g_slipstreamStrength;
 extern	vmCvar_t	g_slipstreamDistance;
 // END
