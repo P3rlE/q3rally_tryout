@@ -1678,6 +1678,17 @@ typedef struct {
 		int		client[2];
 		int		wins[2];
 	} dragMatch;
+	/* Drag Race tournament bracket (dragTourney server command) */
+	struct {
+		int		size;		/* 0: no tournament */
+		int		bestOf;
+		int		played;
+		int		current[2];	/* entrants of the match up next, -1 when over */
+		char	name[16][16];
+		qboolean	human[16];
+		int		winner[15];	/* 0 first entrant, 1 second */
+		int		wins[15][2];
+	} dragTourney;
 } cgs_t;
 
 //==============================================================================
@@ -2330,6 +2341,7 @@ int  CG_FrontendStringWidth( const char *text, int style, float scale );
 void CG_DrawFrontendString( int x, int y, const char *text, int style,
 	                        float scale, const float *color );
 int  CG_IngameStringWidth( const char *text, int style, float scale );
+qboolean CG_DrawDragTourney( void );
 void CG_DrawIngameString( int x, int y, const char *text, int style,
 	                        float scale, const float *color );
 void CG_DrawIngameSmallString( int x, int y, const char *text,

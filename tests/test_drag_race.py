@@ -85,6 +85,11 @@ void ClientSpawn(gentity_t *ent) {
     G_DragClientSpawn(ent);
 }
 const char *G_DragNextRivalName(const char *previous) { return "Josh"; }
+static int tourneyLineups, tourneyMatchOvers, tourneyWinner=-2, tourneyLineupReady=1;
+void G_DragTourneyInit(void) {}
+void G_DragTourneyPublish(int recipient) {}
+qboolean G_DragTourneyLineup(void) { tourneyLineups++; return tourneyLineupReady; }
+void G_DragTourneyMatchOver(int winnerClient,const int *wins) { tourneyMatchOvers++; tourneyWinner=winnerClient; }
 void trap_SendConsoleCommand(int when,const char *text) { consoleCommands++; snprintf(lastConsole,sizeof(lastConsole),"%s",text); }
 void CalculateRanks(void) { rankCalls++; }
 void Cmd_RacePositions_f(void) {
@@ -597,6 +602,36 @@ int main(void) {
     G_DragFilterCommand(&g_entities[0],&cmd);
     assert(cmd.forwardmove==127 && !G_DragCheckExit());
     assert(statuses>0 && !statusMismatches);
+
+    /* Tournament hooks: no lane is armed before the lineup stands, and a
+     * finished match is handed to the bracket with its winner. */
+    {
+        int i, before, exitsBefore;
+        g_gametype.integer=GT_DRAG; g_dragBestOf.integer=1; G_DragInit(); resetHeat(2);
+        tourneyLineupReady=0; tourneyLineups=0;
+        for(i=0;i<10;i++) { level.time+=50; input(0,level.time,64); input(1,level.time,64); G_DragStarterThink(&starter); }
+        assert(tourneyLineups>0 && !dragCountdownTime);
+        tourneyLineupReady=1;
+        before=tourneyMatchOvers; exitsBefore=exits;
+        playHeat(2,2100,2000); nextHeat();
+        assert(exits==exitsBefore+1 && tourneyMatchOvers==before+1 && tourneyWinner==1);
+    }
+
+    /* Skipped bot matches: a knockout always has a winner with a majority,
+     * and the stronger bot wins most of them. */
+    {
+        int bestOf, wa, wb, strong=0, n;
+        srand(7);
+        for(bestOf=1;bestOf<=7;bestOf+=2) {
+            for(n=0;n<200;n++) {
+                G_DragSimulateMatch(3,3,bestOf,&wa,&wb);
+                assert(wa!=wb && wa>=0 && wb>=0 && wa+wb<=2*bestOf+1);
+                assert(wa==bestOf/2+1 || wb==bestOf/2+1 || wa+wb>=2*bestOf);
+            }
+        }
+        for(n=0;n<400;n++) { G_DragSimulateMatch(5,1,3,&wa,&wb); if(wa>wb) strong++; }
+        assert(strong>300);
+    }
     return 0;
 }
 '''

@@ -75,6 +75,14 @@ Changed:
   the score. The Ladder gets each driver's best heat; the match goes to
   the most heat wins, and career points count once per match. After a
   match against a bot, the next one is against another bot.
+- Drag Race tournament (g_dragTournament, "Tournament" in the server
+  options): a knockout of 4, 8 or 16 drivers (g_dragTournamentSize), the
+  humans on the server filled up with bots around the chosen skill. Each
+  pairing is a best-of match; the bracket is shown between the matches.
+  Matches between two bots are driven and can be skipped with "dragskip"
+  ("dragskip all" up to the own next match). A human who leaves forfeits.
+  Each match counts for the Ladder and career as before (bot-only matches
+  are not reported); the tournament winner gets 20 career points on top.
 - q3r_ctf_04 is finished as "Trophy Square": a bronze rally trophy on a
   granite plinth stands in the fountain instead of the Xaero statue. The
   map is point symmetric now (the car workshop with the BFG and the

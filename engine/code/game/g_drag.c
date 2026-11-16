@@ -321,6 +321,7 @@ void G_DragInit( void ) {
 	if ( g_gametype.integer == GT_DRAG ) {
 		level.winnerNumber = -1;
 	}
+	G_DragTourneyInit();
 }
 
 /* New drivers join before the first heat of a match, or once it is over. */
@@ -381,6 +382,7 @@ void G_DragClientSpawn( gentity_t *ent ) {
 		}
 	}
 	G_DragPublishMatch( clientNum );
+	G_DragTourneyPublish( clientNum );
 	/* Late spectators also need the current red stage for the countdown
 	 * text; the lamps themselves follow the published countdown start. */
 	if ( dragCountdownTime && !level.startRaceTime
@@ -502,6 +504,10 @@ void G_DragStarterThink( gentity_t *starter ) {
 		return;
 	}
 	if ( !dragCountdownTime ) {
+		/* Tournament: the pairing's two drivers on the strip first. */
+		if ( !G_DragTourneyLineup() ) {
+			return;
+		}
 		count = 0;
 		staged = qtrue;
 		for ( i = 0; i < MAX_CLIENTS; i++ ) {
@@ -761,27 +767,80 @@ static void G_DragBotRollShift( dragClient_t *driver ) {
 		5300.0f, 6200.0f );
 }
 
+/* A heat plan from skill (0 rookie .. 1 best): launch revs and reaction. */
+static void G_DragBotPlanFor( float skill, float *launchRpm, int *reactionMs ) {
+	float reaction;
+	/* Even a rookie stays out of the red zone while it waits for green. */
+	*launchRpm = G_DragClamp( 4300.0f + G_DragGauss() * ( 150.0f + 1100.0f * ( 1.0f - skill ) ),
+		1500.0f, DRAG_ENGINE_REDLINE_RPM - 50.0f );
+	if ( random() < 0.04f * ( 1.0f - skill ) ) {
+		reaction = 40.0f + random() * 55.0f;		/* anticipated the green */
+	} else {
+		reaction = 360.0f - 200.0f * skill + G_DragGauss() * ( 25.0f + 55.0f * ( 1.0f - skill ) );
+		if ( reaction < 120.0f ) reaction = 120.0f + random() * 20.0f;
+	}
+	*reactionMs = (int)reaction;
+}
+
 static void G_DragBotPlan( int clientNum ) {
 	dragClient_t *driver = &dragClients[clientNum];
 	char userinfo[MAX_INFO_STRING];
-	float skill, reaction;
+	float skill;
 
 	trap_GetUserinfo( clientNum, userinfo, sizeof( userinfo ) );
 	skill = atof( Info_ValueForKey( userinfo, "skill" ) );
 	driver->botSkill = G_DragClamp( ( skill - 1.0f ) / 4.0f, 0.0f, 1.0f );
-	/* Even a rookie stays out of the red zone while it waits for green. */
-	driver->botLaunchRpm = G_DragClamp( 4300.0f + G_DragGauss() * ( 150.0f + 1100.0f * ( 1.0f - driver->botSkill ) ),
-		1500.0f, DRAG_ENGINE_REDLINE_RPM - 50.0f );
-	if ( random() < 0.04f * ( 1.0f - driver->botSkill ) ) {
-		reaction = 40.0f + random() * 55.0f;		/* anticipated the green */
-	} else {
-		reaction = 360.0f - 200.0f * driver->botSkill
-			+ G_DragGauss() * ( 25.0f + 55.0f * ( 1.0f - driver->botSkill ) );
-		if ( reaction < 120.0f ) reaction = 120.0f + random() * 20.0f;
-	}
-	driver->botReactionMs = (int)reaction;
+	G_DragBotPlanFor( driver->botSkill, &driver->botLaunchRpm, &driver->botReactionMs );
 	G_DragBotRollShift( driver );
 	driver->botPlanned = qtrue;
+}
+
+/* Time lost by the launch revs, from the calibration (docs/drag-launch-rpm-calibration.md). */
+static float G_DragLaunchLoss( float rpm ) {
+	static const float rpms[] = { 1000, 2000, 3000, 3500, 4000, 4500, 5000, 5500, 6000 };
+	static const float loss[] = { 0.61f, 0.36f, 0.14f, 0.03f, 0.0f, 0.01f, 0.03f, 0.07f, 0.12f };
+	int i;
+	if ( rpm <= rpms[0] ) return loss[0];
+	for ( i = 1; i < (int)( sizeof( rpms ) / sizeof( rpms[0] ) ); i++ ) {
+		if ( rpm <= rpms[i] ) {
+			return loss[i - 1] + ( loss[i] - loss[i - 1] ) * ( rpm - rpms[i - 1] ) / ( rpms[i] - rpms[i - 1] );
+		}
+	}
+	return loss[sizeof( loss ) / sizeof( loss[0] ) - 1];
+}
+
+/* One heat between two bots without driving it: 0 or 1 wins, -1 nobody. */
+static int G_DragSimulateHeat( int skillA, int skillB ) {
+	float total[2], skill, rpm;
+	int i, reaction;
+	qboolean valid[2];
+	for ( i = 0; i < 2; i++ ) {
+		skill = G_DragClamp( ( ( i ? skillB : skillA ) - 1.0f ) / 4.0f, 0.0f, 1.0f );
+		G_DragBotPlanFor( skill, &rpm, &reaction );
+		valid[i] = reaction >= DRAG_MIN_REACTION_MS;
+		/* shift points add a little spread, more for rookies */
+		total[i] = reaction / 1000.0f + G_DragLaunchLoss( rpm ) + G_DragGauss() * ( 0.01f + 0.03f * ( 1.0f - skill ) );
+	}
+	if ( !valid[0] && !valid[1] ) return -1;
+	if ( valid[0] != valid[1] ) return valid[0] ? 0 : 1;
+	return total[1] < total[0];
+}
+
+/* A whole best-of match between two bots; a knockout always has a winner. */
+void G_DragSimulateMatch( int skillA, int skillB, int bestOf, int *winsA, int *winsB ) {
+	int need, attempts = 0, heat;
+	if ( bestOf < 1 ) bestOf = 1;
+	need = bestOf / 2 + 1;
+	*winsA = *winsB = 0;
+	while ( *winsA < need && *winsB < need && attempts < 2 * bestOf ) {
+		heat = G_DragSimulateHeat( skillA, skillB );
+		if ( heat == 0 ) ( *winsA )++;
+		else if ( heat == 1 ) ( *winsB )++;
+		attempts++;
+	}
+	if ( *winsA == *winsB ) {
+		if ( random() < 0.5f ) ( *winsA )++; else ( *winsB )++;
+	}
 }
 
 /* Called for every bot usercmd (ai_main.c): throttle and steering. */
@@ -1016,7 +1075,10 @@ static void G_DragNextRival( void ) {
 }
 
 static void G_DragFinishMatch( const char *reason ) {
+	int wins[MAX_CLIENTS], i;
 	level.winnerNumber = dragMatchWinner;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) wins[i] = dragMatch[i].wins;
+	G_DragTourneyMatchOver( dragMatchWinner, wins );
 	G_DragNextRival();
 	LogExit( reason );
 }
