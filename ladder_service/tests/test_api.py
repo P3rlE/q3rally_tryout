@@ -234,6 +234,41 @@ def test_drag_duel_against_a_bot_is_stored_and_the_bot_can_win() -> None:
         client.delete(f"/api/v1/matches/{match['matchId']}")
 
 
+def test_drag_best_of_match_reports_best_heats_and_the_most_heat_wins() -> None:
+    match = _drag_match("drag-best-of", duel=True)
+    match["settings"]["dragBestOf"] = 3
+    winner, loser = match["players"]
+    winner.update({"dragHeatWins": 2, "position": 1})                       # 13220, slower best heat
+    loser.update({"dragHeatWins": 1, "position": 2, "reactionMs": 200,
+                  "elapsedMs": 12900, "totalRaceMs": 13100})               # faster best heat
+    match["winnerClientNum"] = 0
+    created = client.post("/api/v1/matches", json=match)
+    assert created.status_code == 201, created.text
+    try:
+        stored = client.get(f"/api/v1/matches/{match['matchId']}").json()
+        assert stored["winnerClientNum"] == 0  # heat wins decide, not the fastest heat
+        assert stored["settings"]["dragBestOf"] == 3
+    finally:
+        client.delete(f"/api/v1/matches/{match['matchId']}")
+
+
+@pytest.mark.parametrize(("change", "code"), [
+    (lambda m: m["settings"].update(dragBestOf=4), "DRAG_BEST_OF_INVALID"),
+    (lambda m: m["players"][1].update(position=1), "DRAG_POSITION_INVALID"),
+    (lambda m: m["players"][1].update(dragStatus="dnf", reactionMs=0, elapsedMs=0, totalRaceMs=0,
+                                      trapSpeedKph=0, position=0), "DRAG_HEAT_WINS_INVALID"),
+])
+def test_drag_best_of_rejects_inconsistent_matches(change, code) -> None:
+    match = _drag_match("drag-best-of-bad", duel=True)
+    match["settings"]["dragBestOf"] = 3
+    match["players"][0].update({"dragHeatWins": 2, "position": 1})
+    match["players"][1].update({"dragHeatWins": 1, "position": 2})
+    change(match)
+    rejected = client.post("/api/v1/matches", json=match)
+    assert rejected.status_code == 422, rejected.text
+    assert code in rejected.json()["validation"]["errorCodes"]
+
+
 @pytest.mark.parametrize(("field", "value", "code"), [
     ("dragStatus", "running", "DRAG_STATUS_INVALID"),
     ("dragStatus", [], "DRAG_STATUS_INVALID"),

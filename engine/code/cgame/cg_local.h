@@ -1668,6 +1668,16 @@ typedef struct {
 
 	// Q3Rally: worldspawn "wetness", how wet the ground is without rain
 	float			mapWetness;
+	/* Drag Race match (dragMatch server command) */
+	struct {
+		int		bestOf;
+		int		heat;		/* current heat, or the last one once over */
+		qboolean	over;
+		int		winner;
+		int		count;
+		int		client[2];
+		int		wins[2];
+	} dragMatch;
 } cgs_t;
 
 //==============================================================================

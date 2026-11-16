@@ -72,6 +72,9 @@ def _validate_drag_result(player: "Player", player_count: int) -> None:
             raise _mode_error("DRAG_POSITION_INVALID", "A finished Drag needs a valid finishing position")
     elif any(result[name] != 0 for name in ("reactionMs", "elapsedMs", "totalRaceMs", "trapSpeedKph")) or position != 0:
         raise _mode_error("DRAG_INVALID_RESULT", "False starts and DNFs have zero timings, trap speed and position")
+    wins = result.get("dragHeatWins", 0)
+    if type(wins) is not int or not 0 <= wins <= 7 or (status != "finished" and wins):
+        raise _mode_error("DRAG_HEAT_WINS_INVALID", "dragHeatWins is 0..7, and a heat win needs a valid finish")
 
 
 class ServerInfo(BaseModel):
@@ -211,16 +214,29 @@ class MatchCreate(BaseModel):
                 raise _mode_error("DRAG_CLIENT_INVALID", "Drag driver slots must be distinct integers in 0..63")
             for player in players:
                 _validate_drag_result(player, len(players))
+            best_of = getattr(settings, "dragBestOf", 1) if settings is not None else 1
+            if type(best_of) is not int or best_of not in (1, 3, 5, 7):
+                raise _mode_error("DRAG_BEST_OF_INVALID", "dragBestOf is 1, 3, 5 or 7")
+            # A best-of match reports each driver's best heat; the standing is
+            # heat wins first, then the best heat. A single heat has no wins
+            # field and keeps the time order.
+            def standing(player):
+                return (-player.__dict__.get("dragHeatWins", 0), player.__dict__["totalRaceMs"])
             finished = [player for player in players if player.__dict__["dragStatus"] == "finished"]
             for player in finished:
-                expected_position = 1 + sum(other.__dict__["totalRaceMs"] < player.__dict__["totalRaceMs"] for other in finished)
+                expected_position = 1 + sum(standing(other) < standing(player) for other in finished)
                 if player.position != expected_position:
-                    raise _mode_error("DRAG_POSITION_INVALID", "Drag finishing positions must follow valid total times")
+                    raise _mode_error("DRAG_POSITION_INVALID", "Drag positions must follow heat wins, then the best total time")
             # Match facts select the winner. A reported slot cannot turn a solo
             # run, tie or invalid result into a competitive victory.
-            best = min((player.__dict__["totalRaceMs"] for player in finished), default=0)
-            fastest = [player for player in finished if player.__dict__["totalRaceMs"] == best]
-            values["winnerClientNum"] = fastest[0].__dict__["clientNum"] if len(players) == 2 and len(fastest) == 1 else -1
+            if best_of > 1:
+                # The match goes to the driver who alone won the most heats.
+                most = max(player.__dict__.get("dragHeatWins", 0) for player in players)
+                leaders = [player for player in players if most > 0 and player.__dict__.get("dragHeatWins", 0) == most]
+            else:
+                top = min((standing(player) for player in finished), default=None)
+                leaders = [player for player in finished if standing(player) == top]
+            values["winnerClientNum"] = leaders[0].__dict__["clientNum"] if len(players) == 2 and len(leaders) == 1 else -1
 
         if mode not in _TEAM_MODES:
             if teams:

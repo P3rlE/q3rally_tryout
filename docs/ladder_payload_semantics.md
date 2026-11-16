@@ -54,7 +54,9 @@ behalten ihre bisherigen Felder und Wertungsregeln.
 |---|---|---|---|
 | `mode`, `gametype`, `settings.g_gametype` | DRAG: P+B | `GT_DRAG`, `9`, `9` | kein anderer Modus als Fallback |
 | `settings.dragDuel` | DRAG: P+B | `G_DragLadderDuel`: genau zwei menschliche Fahrer beim Scharfstellen; bleibt bei späterem Verlassen erhalten | `false` für Solo |
-| `players[].dragStatus` | DRAG: P+B | `G_DragPopulateLadderPlayer`: `finished`, `false_start`, `dnf` aus dem autoritativen Heat-Zustand | ungültiger Zustand: kein gültiger Zieleinlauf |
+| `settings.dragBestOf` | DRAG: P+B | Läufe pro Match (1, 3, 5, 7); fehlt bei älteren Meldungen (= 1) | `1` |
+| `players[].dragHeatWins` | DRAG: P+B | im Match gewonnene Läufe; ein Laufsieg braucht ein gültiges Ziel | `0` |
+| `players[].dragStatus` | DRAG: P+B | `G_DragPopulateLadderPlayer`: bester Lauf des Matches; `finished` mit gültigem Lauf, sonst `false_start`/`dnf` des letzten Laufs | ungültiger Zustand: kein gültiger Zieleinlauf |
 | `players[].reactionMs` | DRAG: P+B | First-Gear-Zeit minus gemeinsame Grünzeit; bei `finished` mindestens 100 ms (`DRAG_MIN_REACTION_MS`), schneller ist ein Fehlstart | `0` bei ungültigem Lauf |
 | `players[].elapsedMs` | DRAG: P+B | interpolierter Zieleinlauf minus First-Gear-Zeit | `0` bei ungültigem Lauf |
 | `players[].totalRaceMs` | DRAG: P+B | RT + ET, ausschließlich bei `finished`; maßgeblich für Bestzeit und Zielrang | `0` bei Fehlstart/DNF |

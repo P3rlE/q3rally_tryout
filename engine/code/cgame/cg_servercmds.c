@@ -892,6 +892,27 @@ A tournement restart will clear everything, but doesn't
 require a reload of all the media
 ===============
 */
+/* A new heat of a Drag match: per-car race state from the last heat goes. */
+static void CG_DragNewHeat( void ) {
+	centity_t *cent;
+	int i;
+	cg.countDownPrint[0] = '\0';
+	cg.countDownEnd = 0;
+	CG_ResetDragStartSounds();
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		cent = &cg_entities[i];
+		cent->finishRaceTime = 0;
+		cent->startRaceTime = 0;
+		cent->currentPosition = 0;
+		cent->dragPhase = DRAG_WAITING;
+		cent->dragCountdownTime = 0;
+		cent->dragGreenTime = 0;
+		cent->dragLaunchTime = 0;
+		cent->dragFinishTime = 0;
+		cent->dragTrapSpeed = 0;
+	}
+}
+
 static void CG_MapRestart( void ) {
 // Q3Rally Code Start
 	int			i;
@@ -978,6 +999,7 @@ static void CG_MapRestart( void ) {
 		cent->dragFinishTime = 0;
 		cent->dragTrapSpeed = 0;
 	}
+	memset( &cgs.dragMatch, 0, sizeof( cgs.dragMatch ) );
 // END
 
 #ifdef MISSIONPACK
@@ -1912,6 +1934,27 @@ static void CG_ServerCommand( void ) {
 	}
 	if ( !strcmp( cmd, "cleanSector" ) ) {
 		CG_QueueHudToast( HUD_TOAST_CLEAN_SECTOR_ITEM );
+		return;
+	}
+
+	if ( !strcmp( cmd, "dragMatch" ) ) {
+		int heat, count, i;
+		if ( cgs.gametype != GT_DRAG || trap_Argc() < 6 ) return;
+		heat = atoi( CG_Argv( 2 ) );
+		count = atoi( CG_Argv( 5 ) );
+		if ( count < 0 || count > 2 || trap_Argc() != 6 + 2 * count ) return;
+		if ( cgs.dragMatch.heat && heat != cgs.dragMatch.heat && !atoi( CG_Argv( 3 ) ) ) {
+			CG_DragNewHeat();	/* back on the grid, no map restart */
+		}
+		cgs.dragMatch.bestOf = atoi( CG_Argv( 1 ) );
+		cgs.dragMatch.heat = heat;
+		cgs.dragMatch.over = atoi( CG_Argv( 3 ) ) ? qtrue : qfalse;
+		cgs.dragMatch.winner = atoi( CG_Argv( 4 ) );
+		cgs.dragMatch.count = count;
+		for ( i = 0; i < count; i++ ) {
+			cgs.dragMatch.client[i] = atoi( CG_Argv( 6 + 2 * i ) );
+			cgs.dragMatch.wins[i] = atoi( CG_Argv( 7 + 2 * i ) );
+		}
 		return;
 	}
 

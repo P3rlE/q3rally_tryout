@@ -69,6 +69,12 @@ Changed:
   and shift points; rookies sometimes bog or jump the light. Drag strips
   need no AAS file. A duel against a bot gives career points as in the
   other modes. The server log gets DragResult and DragDisqualify lines.
+- Drag Race matches: a match is the best of 1, 3, 5 or 7 heats
+  (g_dragBestOf, "Heats / match", 3 by default) against the same rival,
+  without reloading the map between heats. The HUD shows the heat and
+  the score. The Ladder gets each driver's best heat; the match goes to
+  the most heat wins, and career points count once per match. After a
+  match against a bot, the next one is against another bot.
 - q3r_ctf_04 is finished as "Trophy Square": a bronze rally trophy on a
   granite plinth stands in the fountain instead of the Xaero statue. The
   map is point symmetric now (the car workshop with the BFG and the

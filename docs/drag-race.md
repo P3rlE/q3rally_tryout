@@ -30,8 +30,27 @@ map q3r_dragstrip
 4. Stay in your lane and cross the finish. Selecting first before green, or
    less than 0.100 s after it, is an irrevocable false start. Leaving the lane, resetting/respawning, or leaving
    the driving field after green forfeits the attempt.
-5. Review the results and use the normal intermission confirmation for the next
-   heat. Each match currently contains one run.
+5. A match is the best of `g_dragBestOf` heats (1, 3, 5 or 7; 3 by default,
+   "Heats / match" in the start menu). After each heat the result stays on
+   screen for four seconds, then both cars are back on the grid for the next
+   heat, without a map reload. Use the normal intermission confirmation for the
+   next match.
+
+## Matches
+
+- A duel ends as soon as a driver has won the majority of the heats (2 of 3,
+  3 of 5, 4 of 7). The HUD shows "HEAT 2 OF 3" and the score above the Drag
+  panel; after each heat the centre print gives the heat winner and the score.
+- A heat without a winner (an exact tie, or both drivers invalid) is run again.
+  After twice the number of heats the match ends; the driver with more heat
+  wins takes it, otherwise nobody.
+- A driver who leaves during the match forfeits it. The match ends on the heats
+  won so far: the driver who stayed wins it if ahead.
+- Solo practice runs the number of heats.
+- New drivers join before the first heat of a match or once it is over; in
+  between they spectate.
+- After a match against a bot, the next match is against another bot with the
+  same skill (not in tournament mode).
 
 Desert Dragway and Airfield Drag are approximately a quarter mile from the
 equal grid positions to the finish plane, Night Drag an eighth mile. See
@@ -158,8 +177,12 @@ consumption are disabled. Drag does not write lap ghosts.
 
 ## Ladder and career (v0.9)
 
-Standard-rule heats are reported as `GT_DRAG`, including regular offline
-games. The Ladder ranks valid finishes by **TOTAL = RT + ET**, not ET alone.
+Standard-rule matches are reported as `GT_DRAG`, including regular offline
+games, once per match with each driver's **best heat** (`settings.dragBestOf`,
+`players[].dragHeatWins`). The leaderboard ranks valid finishes by
+**TOTAL = RT + ET**, not ET alone. The match goes to the driver who alone won
+the most heats; positions follow heat wins, then the best heat. A driver can
+therefore win the match with a slower best heat.
 Reaction, elapsed time, finish speed and result status remain separate facts.
 False starts and DNF stay visible as invalid results with no recorded time or
 finishing rank. A bot's result is stored with the match (`isBot`) and can win
@@ -167,9 +190,8 @@ the heat, but bots never enter leaderboards or get a profile. Armed participants
 switch to spectator; spectators and unarmed drivers do not become participants.
 
 Solo practice records valid best times and completed runs without a competitive
-win, loss or career-point award. A heat armed with two drivers, human or bot as
-in the other modes, uses the
-existing race awards: 12 points for the valid winner and 6 for a valid second
+win, loss or career-point award. A match with two drivers, human or bot as in
+the other modes, uses the existing race awards once for the whole match: 12 points for the valid winner and 6 for a valid second
 place, with the existing per-award online bonus and win achievements. An invalid
 opponent can lose a duel but receives no placement points. Exact total-time ties
 have no winner or result-point award. Repeated submission cannot award a heat
