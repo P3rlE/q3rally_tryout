@@ -267,6 +267,27 @@ int G_CountBotPlayersByName( const char *name, int team ) {
 
 /*
 ===============
+G_DragTourneyBotName
+
+Drag tournament field: bot names from a random starting point onwards.
+===============
+*/
+const char *G_DragTourneyBotName( int index ) {
+	static int offset;
+	char *value;
+
+	if ( g_numBots <= 0 || index < 0 || index >= g_numBots ) {
+		return NULL;
+	}
+	if ( !index ) {
+		offset = rand() % g_numBots;
+	}
+	value = Info_ValueForKey( g_botInfos[( offset + index ) % g_numBots], "name" );
+	return value[0] ? value : NULL;
+}
+
+/*
+===============
 G_DragNextRivalName
 
 Drag Race: a bot for the next match, not in the game and not the previous one.

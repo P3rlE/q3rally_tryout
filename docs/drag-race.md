@@ -52,6 +52,34 @@ map q3r_dragstrip
 - After a match against a bot, the next match is against another bot with the
   same skill (not in tournament mode).
 
+## Tournament
+
+`g_dragTournament 1` (server options: "Tournament: 4 / 8 / 16 drivers")
+turns the strip into a single elimination of `g_dragTournamentSize` drivers.
+
+- The field is drawn when the first human is on the server: every human present
+  (up to the size), filled up with different bots whose skill is `g_spSkill`
+  ±1. The draw is random.
+- Each pairing is a normal match of `g_dragBestOf` heats. A knockout needs a
+  winner: if a match ends without one, a coin decides.
+- Only the two drivers of the pairing are on the strip; everyone else
+  spectates. The server adds and kicks the bots as the bracket needs them.
+- Bot against bot is driven. A spectator can skip it with `/dragskip` (this
+  match) or `/dragskip all` (all bot matches up to the next one with a human);
+  the result is drawn from the bots' skill with the same launch, reaction and
+  false-start model the bots drive with.
+- A human who leaves before or during his match forfeits it.
+- Between the matches the intermission shows the heat results for a few
+  seconds, then the bracket (holding the scoreboard key brings the results
+  back). The client gets the bracket as `dragTourney <size> <bestOf> <played>
+  <a> <b> {"name" human}×size {winner winsA winsB}×played`.
+- The bracket lives in the cvars `g_dragTourneyA/B/R` across the map restarts
+  between matches. Loading another map, or the restart after the final,
+  starts a new tournament. The server log gets `DragTourney:` lines.
+- Ladder and career: each match is reported and scored like any other match;
+  a match between two bots is not reported. A local human who wins the
+  tournament gets 20 career points on top.
+
 Desert Dragway and Airfield Drag are approximately a quarter mile from the
 equal grid positions to the finish plane, Night Drag an eighth mile. See
 [the map contract](drag-race-map.md) for exact coordinates,

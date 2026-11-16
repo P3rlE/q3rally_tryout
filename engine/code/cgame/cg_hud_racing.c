@@ -399,3 +399,173 @@ float CG_DrawEliminationTimeline( float y ) {
 
 	return y;
 }
+
+/*
+=================
+CG_DrawDragTourney
+
+The Drag tournament bracket between matches. The heat results come first;
+holding the scoreboard key brings them back. Returns qfalse when the
+results screen should be drawn instead.
+=================
+*/
+#define DT_TOP		104
+#define DT_BOTTOM	430
+#define DT_LEFT		24
+#define DT_RIGHT	616
+
+static void CG_DragTourneyFit( const char *in, char *out, int size, int width, float scale ) {
+	int length;
+	Q_strncpyz( out, in, size );
+	for ( length = strlen( out ); length > 1 && CG_IngameStringWidth( out, UI_SMALLFONT, scale ) > width; ) {
+		out[--length] = '\0';
+	}
+}
+
+static void CG_DragTourneyBox( int x, int y, int w, int h, int entrant, int wins,
+	qboolean lost, qboolean next, const char *self ) {
+	static const vec4_t box = { 0.040f, 0.052f, 0.060f, 0.94f };
+	static const vec4_t edge = { 0.300f, 0.390f, 0.430f, 0.64f };
+	static const vec4_t muted = { 0.560f, 0.680f, 0.710f, 1.0f };
+	static const vec4_t dim = { 0.380f, 0.430f, 0.450f, 1.0f };
+	static const vec4_t accent = Q3RALLY_ACCENT_COLOR;
+	const float *color;
+	char name[20], text[24];
+	float scale = h >= 18 ? 0.55f : 0.46f;
+	int textY = y + ( h - (int)( 14 * scale ) ) / 2;
+
+	CG_FillRect( x, y, w, h, box );
+	if ( next ) {
+		CG_FillRect( x, y, 2, h, accent );
+		CG_FillRect( x, y, w, 1, accent );
+		CG_FillRect( x, y + h - 1, w, 1, accent );
+		CG_FillRect( x + w - 1, y, 1, h, accent );
+	} else {
+		CG_FillRect( x, y + h - 1, w, 1, edge );
+	}
+	if ( entrant < 0 ) {
+		CG_DrawIngameString( x + 6, textY, "-", UI_SMALLFONT, scale, dim );
+		return;
+	}
+	if ( lost ) color = dim;
+	else if ( !Q_stricmp( cgs.dragTourney.name[entrant], self ) && cgs.dragTourney.human[entrant] ) color = accent;
+	else color = cgs.dragTourney.human[entrant] ? colorWhite : muted;
+	CG_DragTourneyFit( cgs.dragTourney.name[entrant], name, sizeof( name ), w - ( wins >= 0 ? 24 : 10 ), scale );
+	CG_DrawIngameString( x + 6, textY, name, UI_SMALLFONT, scale, color );
+	if ( wins >= 0 ) {
+		Com_sprintf( text, sizeof( text ), "%d", wins );
+		CG_DrawIngameString( x + w - 6, textY, text, UI_SMALLFONT | UI_RIGHT, scale, lost ? dim : colorWhite );
+	}
+}
+
+qboolean CG_DrawDragTourney( void ) {
+	static const vec4_t background = { 0.045f, 0.045f, 0.045f, 1.0f };
+	static const vec4_t line = { 0.300f, 0.390f, 0.430f, 0.64f };
+	static const vec4_t muted = { 0.560f, 0.680f, 0.710f, 1.0f };
+	static const vec4_t accent = Q3RALLY_ACCENT_COLOR;
+	static int since, lastSeen;
+	int slot[5][16], start[5], rounds, size, played, r, j, m, column, boxW, boxH, x, y, pairY;
+	float area;
+	char self[MAX_QPATH], text[96];
+	qboolean ready;
+	int clientNum;
+
+	size = cgs.dragTourney.size;
+	if ( cgs.gametype != GT_DRAG || !size || !cg.snap ) return qfalse;
+	if ( cg.time - lastSeen > 1000 || cg.time < lastSeen ) since = cg.time;
+	lastSeen = cg.time;
+	if ( cg.time - since < 5000 || cg.showScores ) return qfalse;
+
+	played = cgs.dragTourney.played;
+	for ( rounds = 0; ( 1 << rounds ) < size; rounds++ ) {
+	}
+	/* who sits in which slot: round 0 is the draw, then the winners */
+	start[0] = 0;
+	for ( j = 0; j < size; j++ ) slot[0][j] = j;
+	for ( r = 1; r <= rounds; r++ ) {
+		start[r] = start[r - 1] + ( size >> r );
+		for ( j = 0; j < size >> r; j++ ) {
+			m = start[r - 1] + j;
+			if ( m < played && slot[r - 1][2 * j] >= 0 && slot[r - 1][2 * j + 1] >= 0 ) {
+				slot[r][j] = slot[r - 1][2 * j + cgs.dragTourney.winner[m]];
+			} else {
+				slot[r][j] = -1;
+			}
+		}
+	}
+
+	clientNum = cg.snap->ps.clientNum;
+	self[0] = '\0';
+	if ( clientNum >= 0 && clientNum < MAX_CLIENTS ) {
+		Q_strncpyz( self, cgs.clientinfo[cg.clientNum].name, sizeof( self ) );
+		Q_CleanStr( self );
+	}
+
+	CG_SetScreenPlacement( PLACE_STRETCH, PLACE_STRETCH );
+	CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, background );
+	CG_SetScreenPlacement( PLACE_CENTER, PLACE_CENTER );
+	CG_FillRect( 24, 24, SCREEN_WIDTH - 48, 2, accent );
+	CG_DrawIngameString( 24, 35, "DRAG TOURNAMENT", UI_SMALLFONT, 0.8f, accent );
+	if ( played >= size - 1 ) {
+		Com_sprintf( text, sizeof( text ), "%s WINS", cgs.dragTourney.name[slot[rounds][0]] );
+	} else {
+		static const char *roundNames[] = { "FINAL", "SEMI-FINAL", "QUARTER-FINAL", "ROUND OF 16" };
+		int index, left;
+		for ( r = 0; r < rounds && played >= start[r] + ( size >> ( r + 1 ) ); r++ ) {
+		}
+		left = rounds - r - 1;
+		index = left < 0 ? 0 : ( left > 3 ? 3 : left );
+		Com_sprintf( text, sizeof( text ), "%s", roundNames[index] );
+	}
+	CG_DrawIngameString( 24, 53, text, UI_BIGFONT, 1.1f, colorWhite );
+	Com_sprintf( text, sizeof( text ), "%d DRIVERS  -  BEST OF %d", size, cgs.dragTourney.bestOf );
+	CG_DrawIngameString( SCREEN_WIDTH - 24, 38, text, UI_SMALLFONT | UI_RIGHT, 0.6f, muted );
+	ready = clientNum >= 0 && clientNum < 32 && ( cg.snap->ps.stats[STAT_CLIENTS_READY] & ( 1u << clientNum ) );
+	if ( !cg.demoPlayback ) {
+		CG_DrawIngameString( SCREEN_WIDTH - 24, 58, ready ? "READY" : "FIRE / USE TO CONTINUE",
+			UI_SMALLFONT | UI_RIGHT, 0.7f, colorWhite );
+	}
+
+	column = ( DT_RIGHT - DT_LEFT ) / ( rounds + 1 );
+	boxW = column - 16;
+	area = (float)( DT_BOTTOM - DT_TOP ) / size;
+	boxH = (int)area - 4;
+	if ( boxH > 22 ) boxH = 22;
+	for ( r = 0; r <= rounds; r++ ) {
+		int count = size >> r;
+		float pitch = ( DT_BOTTOM - DT_TOP ) / (float)count;
+		x = DT_LEFT + r * column;
+		for ( j = 0; j < count; j++ ) {
+			int wins = -1;
+			qboolean lost = qfalse, next = qfalse;
+			y = DT_TOP + (int)( ( j + 0.5f ) * pitch ) - boxH / 2;
+			if ( r < rounds ) {
+				m = start[r] + j / 2;
+				if ( m < played ) {
+					wins = cgs.dragTourney.wins[m][j & 1];
+					lost = cgs.dragTourney.winner[m] != ( j & 1 );
+				} else if ( m == played ) {
+					next = qtrue;
+				}
+				/* connector to the next round */
+				if ( j & 1 ) {
+					pairY = DT_TOP + (int)( ( j - 0.5f ) * pitch );
+					CG_FillRect( x + boxW, pairY, 8, 1, line );
+					CG_FillRect( x + boxW, y + boxH / 2, 8, 1, line );
+					CG_FillRect( x + boxW + 8, pairY, 1, y + boxH / 2 - pairY + 1, line );
+					CG_FillRect( x + boxW + 8, DT_TOP + (int)( ( j / 2 + 0.5f ) * 2 * pitch ), 8, 1, line );
+				}
+			}
+			CG_DragTourneyBox( x, y, boxW, boxH, slot[r][j], wins, lost, next, self );
+		}
+	}
+
+	if ( played < size - 1 && cgs.dragTourney.current[0] >= 0 && cgs.dragTourney.current[1] >= 0
+		&& !cgs.dragTourney.human[cgs.dragTourney.current[0]] && !cgs.dragTourney.human[cgs.dragTourney.current[1]] ) {
+		CG_DrawIngameString( 24, 448, "NEXT IS A BOT MATCH:  /dragskip  SKIPS IT,  /dragskip all  SKIPS TO YOUR NEXT MATCH",
+			UI_SMALLFONT, 0.5f, muted );
+	} else {
+		CG_DrawIngameString( 24, 448, "HOLD SCOREBOARD FOR THE HEAT RESULTS", UI_SMALLFONT, 0.5f, muted );
+	}
+	return qtrue;
+}

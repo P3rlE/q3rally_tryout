@@ -3883,6 +3883,11 @@ static void CG_DrawIntermission( stereoFrame_t stereoFrame ) {
 	cg.scoreFadeTime = cg.time;
 
 	if ( CG_IsRaceResults() ) {
+		/* Drag tournament: the bracket once the results had their moment */
+		if ( CG_DrawDragTourney() ) {
+			cg.scoreBoardShowing = qtrue;
+			return;
+		}
 		cg.scoreBoardShowing = CG_DrawScoreboard();
 		CG_DrawHUDOptionsMenu();
 		if ( stereoFrame == STEREO_CENTER ) {

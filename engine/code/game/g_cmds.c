@@ -829,6 +829,10 @@ void SetTeam( gentity_t *ent, const char *s ) {
 		trap_SendServerCommand( clientNum, "cp \"Wait for the next Drag heat or a free lane.\"" );
 		return;
 	}
+	if ( g_gametype.integer == GT_DRAG && team != TEAM_SPECTATOR && !G_DragTourneyDriver( clientNum ) ) {
+		trap_SendServerCommand( clientNum, "cp \"Not your match.\nWatch the tournament until it is.\"" );
+		return;
+	}
 
 	// override decision if limiting the players
 // STONELANCE
@@ -2319,6 +2323,8 @@ void ClientCommand( int clientNum ) {
 	else if (Q_stricmp (cmd, "stats") == 0)
 		Cmd_Stats_f( ent );
 // STONELANCE
+	else if (Q_stricmp (cmd, "dragskip") == 0)
+		Cmd_DragSkip_f( ent );
 	else if (Q_stricmp (cmd, "gearUp") == 0){
 		if ( G_DragTryGearChange( ent, 1, Cmd_DragGearTime( ent ) ) ) return;
 		if ( g_gametype.integer == GT_DRAG ) ent->client->pers.transmissionMode = TR_MANUAL;
