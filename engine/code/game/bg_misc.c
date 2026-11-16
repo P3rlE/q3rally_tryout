@@ -2413,7 +2413,7 @@ qboolean BG_GametypeHasRaceFinish( int gametype ) {
 }
 
 qboolean BG_GametypeAllowsBots( int gametype ) {
-	return ( gametype != GT_GHOST && gametype != GT_DRAG ) ? qtrue : qfalse;
+	return gametype != GT_GHOST ? qtrue : qfalse;
 }
 
 /* Name matched against the "gametype" key of map entities. GT_GHOST uses the

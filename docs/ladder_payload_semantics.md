@@ -69,7 +69,9 @@ behalten ihre bisherigen Felder und Wertungsregeln.
 Der Server friert die Identität beim Scharfstellen ein. Ein späterer Zuschauer
 oder ein anderer Spieler im selben Slot darf keinen früheren Heat übernehmen.
 Abbruch/Disconnect eines Teilnehmers bleibt als DNF erhalten. Gemeldet werden
-ein oder zwei menschliche Fahrer; Bots und bloße Zuschauer werden nicht gemeldet.
+ein oder zwei Fahrer, auf der zweiten Spur auch ein Bot (`isBot`, wie in den
+anderen Modi); bloße Zuschauer werden nicht gemeldet. Ein Bot kann den Heat
+gewinnen, kommt aber in keine Bestenliste und bekommt kein Profil.
 
 Millisekunden müssen ganzzahlig und nicht negativ sein, ET eines gültigen
 Zieleinlaufs muss positiv sein und TOTAL exakt RT+ET entsprechen. Die RT eines

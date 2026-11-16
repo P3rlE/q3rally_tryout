@@ -6805,17 +6805,18 @@ function normalize_drag_payload(array $payload): array
         (array_key_exists('gametype', $payload) && $payload['gametype'] !== 9) ||
         !is_bool($settings['dragDuel'] ?? null) || count($players) < 1 || count($players) > 2 ||
         $settings['dragDuel'] !== (count($players) === 2) || !empty($payload['teams'])) {
-        throw new LadderApiException(422, 'DRAG_SETTINGS_INVALID', 'Drag requires one or two human drivers and matching Drag settings.');
+        throw new LadderApiException(422, 'DRAG_SETTINGS_INVALID', 'Drag requires one or two drivers and matching Drag settings.');
     }
     $clientNums = [];
     $playerIds = [];
     foreach ($players as $index => $player) {
-        if (!is_array($player) || !empty($player['isBot']) ||
+        // A bot may race the second lane, as in the other modes; it never gets a profile.
+        if (!is_array($player) || !is_bool($player['isBot'] ?? false) ||
             !is_int($player['clientNum'] ?? null) || $player['clientNum'] < 0 || $player['clientNum'] >= 64 ||
             isset($clientNums[$player['clientNum']]) || !is_string($player['playerId'] ?? null) ||
             trim($player['playerId']) === '' || isset($playerIds[$player['playerId']]) ||
             !in_array($player['dragStatus'] ?? null, ['finished', 'false_start', 'dnf'], true)) {
-            throw new LadderApiException(422, 'DRAG_PLAYER_INVALID', 'Drag requires distinct human drivers with a terminal result status.');
+            throw new LadderApiException(422, 'DRAG_PLAYER_INVALID', 'Drag requires distinct drivers with a terminal result status.');
         }
         $clientNums[$player['clientNum']] = true;
         $playerIds[$player['playerId']] = true;
@@ -6874,7 +6875,8 @@ function drag_winner_client_num(array $payload): int
     $best = null;
     $winner = -1;
     foreach ($players as $player) {
-        if (!is_array($player) || !empty($player['isBot']) || ($player['dragStatus'] ?? '') !== 'finished') continue;
+        // Bots count: a bot that wins the heat beats the human.
+        if (!is_array($player) || ($player['dragStatus'] ?? '') !== 'finished') continue;
         $total = (int)($player['totalRaceMs'] ?? 0);
         if ($total <= 0) continue;
         if ($best === null || $total < $best) {

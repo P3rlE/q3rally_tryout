@@ -729,7 +729,8 @@ qboolean G_LadderValidatePayload( ladderMatchPayload_t *payload, qboolean blockO
                                 payload->playerCount < 1 || payload->playerCount > 2 ||
                                 payload->dragDuel != ( payload->playerCount == 2 ) ||
                                 ( !payload->dragDuel && payload->winnerClientNum != -1 ) ) bad = qtrue;
-                        if ( player->team != TEAM_FREE || player->isBot || player->bestLapMs ||
+                        /* A bot may race the second lane, as in the other modes. */
+                        if ( player->team != TEAM_FREE || player->bestLapMs ||
                                 player->lapCount || player->kills || player->deaths || player->survivalMs ) bad = qtrue;
                         if ( player->reactionMs < 0 || player->reactionMs > 120000 ||
                                 player->elapsedMs < 0 || player->elapsedMs > 120000 ||

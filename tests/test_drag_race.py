@@ -27,12 +27,16 @@ static char lastLight[64];
 static char userIds[MAX_CLIENTS][64];
 
 void trap_GetUserinfo(int clientNum,char *out,int size) { snprintf(out,size,"%d",clientNum); }
+static char botSkill[8]="5";
 char *Info_ValueForKey(const char *info,const char *key) {
     int n=atoi(info);
     if(!strcmp(key,"cl_uuid")) return userIds[n];
     if(!strcmp(key,"name")) return clients[n].pers.netname;
+    if(!strcmp(key,"skill")) return botSkill;
     return "";
 }
+float vectoyaw(const vec3_t v) { return atan2(v[1],v[0])*180.0f/M_PI; }
+float WheelAngle(float carYaw,float viewYaw) { return viewYaw-carYaw; }
 void Q_strncpyz(char *out,const char *in,int size) { snprintf(out,size,"%s",in); }
 char *Q_CleanStr(char *text) { return text; }
 int QDECL Com_sprintf(char *out,int size,const char *format,...) {
@@ -65,6 +69,7 @@ void trap_SendServerCommand(int recipient, const char *text) {
 static int engineBangs;
 int G_SoundIndex(char *name) { assert(strstr(name,"drag_engine_blow")); return 7; }
 void G_Sound(gentity_t *ent,int channel,int sound) { assert(sound==7); engineBangs++; }
+void QDECL G_LogPrintf(const char *fmt,...) {}
 void CalculateRanks(void) { rankCalls++; }
 void Cmd_RacePositions_f(void) {
     positionPublications++;
@@ -209,8 +214,8 @@ int main(void) {
     assert(result.position==1 && !strcmp(result.dragStatus,"finished"));
     resetHeat(2); stage(2); G_DragClientDisconnect(1);
     assert(!G_DragPopulateLadderPlayer(0,&result) && !G_DragLadderDuel());
-    resetHeat(2); g_entities[1].r.svFlags=SVF_BOT; stage(1);
-    assert(!G_DragLadderDuel() && !G_DragPopulateLadderPlayer(1,&result));
+    resetHeat(2); g_entities[1].r.svFlags=SVF_BOT; stage(2);
+    assert(G_DragLadderDuel() && G_DragPopulateLadderPlayer(1,&result) && result.isBot); /* bots race too */
 
     /* A spectator arriving after a countdown message receives the current
        red stage, including the variable final hold, without a global replay. */
@@ -433,6 +438,50 @@ int main(void) {
     resetHeat(2); stage(2);
     G_DragClientDisconnect(1);
     assert(!clients[0].ps.stats[STAT_DRAG_ENGINE]);
+
+    /* A bot races the second lane: it stages with the revs of its plan,
+       launches exactly at green + its reaction and shifts on its plan. */
+    resetHeat(2); g_entities[1].r.svFlags=SVF_BOT; strcpy(botSkill,"5");
+    {
+        usercmd_t botCmd; int reaction, launchAt;
+        memset(&botCmd,0,sizeof(botCmd));
+        assert(G_DragBotInput(1,&botCmd) && dragClients[1].botPlanned);
+        assert(!G_DragBotInput(0,&botCmd)); /* humans drive themselves */
+        G_DragBotInput(1,&botCmd);
+        assert(botCmd.forwardmove>0 && botCmd.buttons==0);
+        assert(dragClients[1].botLaunchRpm>=1500 && dragClients[1].botLaunchRpm<DRAG_ENGINE_REDLINE_RPM);
+        reaction=dragClients[1].botReactionMs;
+        assert(reaction>=120 && reaction<300); /* skill 5 never anticipates */
+        input(0,level.time,64); input(1,level.time,botCmd.forwardmove);
+        G_DragStarterThink(&starter);
+        assert(dragCountdownTime && G_DragLadderDuel()); /* a bot duel is a duel */
+        G_DragBotInput(1,&botCmd); /* now on the lane: steer along it */
+        assert(botCmd.angles[YAW]==ANGLE2SHORT(0));
+        green=goGreen(); launchAt=green+reaction;
+        level.time=launchAt-1; clients[1].ps.commandTime=level.time; G_DragRunFrame();
+        assert(dragClients[1].phase==DRAG_COUNTDOWN);
+        level.time=launchAt+40; clients[1].ps.commandTime=level.time; G_DragRunFrame();
+        assert(dragClients[1].phase==DRAG_RUNNING && dragClients[1].launchTime==launchAt);
+        assert(clients[1].ps.commandTime==launchAt); /* integrates from its real launch */
+        G_DragBotInput(1,&botCmd); assert(botCmd.forwardmove==127);
+        clients[1].car.rpm=dragClients[1].botShiftRpm+1;
+        G_DragRunFrame(); assert(clients[1].car.gear==1); /* settle after the launch */
+        level.time+=300; G_DragRunFrame(); assert(clients[1].car.gear==2);
+        G_DragRunFrame(); assert(clients[1].car.gear==2); /* one gear per settle time */
+        assert(G_DragPopulateLadderPlayer(1,&result) && result.isBot);
+        assert(G_DragPopulateLadderPlayer(0,&result) && !result.isBot);
+    }
+    /* A rookie that jumps the light gets the minimum reaction false start. */
+    resetHeat(1); g_entities[0].r.svFlags=SVF_BOT; strcpy(botSkill,"1");
+    {
+        usercmd_t botCmd; memset(&botCmd,0,sizeof(botCmd));
+        G_DragBotInput(0,&botCmd); input(0,level.time,botCmd.forwardmove);
+        G_DragStarterThink(&starter); green=goGreen();
+        dragClients[0].botReactionMs=60;
+        level.time=green+80; G_DragRunFrame();
+        assert(dragClients[0].phase==DRAG_FALSE_START);
+    }
+    g_entities[0].r.svFlags=0;
 
     resetHeat(1); level.finishEnt=NULL;
     G_DragStarterThink(&starter); G_DragCheckExit();

@@ -109,6 +109,10 @@ int main( void ) {
     assert( G_LadderValidatePayload( &payload, qtrue ) == qtrue );
     payload.dragDuel = qfalse;
     assert( G_LadderValidatePayload( &payload, qtrue ) == qfalse );
+    payload.dragDuel = qtrue;
+    payload.valid = qtrue;
+    payload.players[1].isBot = qtrue; /* a bot may race the second lane */
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qtrue );
 
     puts( "ok" );
     return 0;

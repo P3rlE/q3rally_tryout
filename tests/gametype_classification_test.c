@@ -57,9 +57,9 @@ int main( void ) {
 
 	/* Human-only modes cannot add bots. */
 	assert( !BG_GametypeAllowsBots( GT_GHOST ) );
-	assert( !BG_GametypeAllowsBots( GT_DRAG ) );
+	assert( BG_GametypeAllowsBots( GT_DRAG ) ); /* a bot can race the second lane */
 	for ( gt = 0; gt < GT_MAX_GAME_TYPE; gt++ ) {
-		if ( gt != GT_GHOST && gt != GT_DRAG ) {
+		if ( gt != GT_GHOST ) {
 			assert( BG_GametypeAllowsBots( gt ) );
 		}
 	}

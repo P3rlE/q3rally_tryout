@@ -117,6 +117,25 @@ def test_php_drag_solo_ties_and_invalid_attempts_do_not_create_wins(php_ladder):
     assert all(p["totalRaceMs"] == p["position"] == 0 for p in dnf_row["index"]["players"])
 
 
+def test_php_drag_bot_duel_awards_the_human_and_a_faster_bot_wins(php_ladder):
+    run, root = php_ladder
+    bot = player(1, reaction=150, elapsed=12900, position=1)
+    bot.update(isBot=True, playerId="bot-carla", name="Carla")
+    lost = match("bot-1", [player(reaction=200, elapsed=13000, position=2), bot])
+    bot_slow = player(1, reaction=300, elapsed=13300, position=2)
+    bot_slow.update(isBot=True, playerId="bot-carla", name="Carla")
+    won = match("bot-2", [player(reaction=200, elapsed=13000), bot_slow])
+    lost_row, won_row = run([lost, won])
+    assert lost_row["payload"]["winnerClientNum"] == 1 and lost_row["index"]["winner"] == "Carla"
+    human = lost_row["profiles"][0]
+    assert human["losses"] == 1 and human["dragWins"] == 0 and human["dragCompleted"] == 1
+    assert human["playerScore"] == 6  # second place points, as against a human
+    assert lost_row["profiles"][1] is None  # bots never get a profile
+    assert won_row["payload"]["winnerClientNum"] == 0
+    assert won_row["profiles"][0]["dragWins"] == 1 and won_row["profiles"][0]["playerScore"] == 6 + 13
+    assert len(list((root / "data/profiles").glob("*.json"))) == 1
+
+
 def test_php_drag_native_snapshot_is_not_double_credited(php_ladder):
     run, _ = php_ladder
     payload = match()
@@ -133,7 +152,7 @@ def test_php_drag_native_snapshot_is_not_double_credited(php_ladder):
     lambda m: m["settings"].update(dragDuel=False),
     lambda m: m["settings"].update(g_gametype=1),
     lambda m: m.update(teams=[{"team": "red"}]),
-    lambda m: m["players"][0].update(isBot=True),
+    lambda m: m["players"][0].update(isBot="yes"),
     lambda m: m["players"][0].update(dragStatus="countdown"),
     lambda m: m["players"][0].update(reactionMs=True),
     lambda m: m["players"][0].update(reactionMs=99, totalRaceMs=99 + 13000),  # a false start

@@ -219,8 +219,8 @@ const server=http.createServer((req,res)=>{
     o.end();q3rallyFrontend.state(10,0,0,0);
   });
   assert.equal(await page.locator('#offline-players .offline-player').count(),2);
-  assert.equal(await page.locator('#offline-players select').count(),0);
-  assert.match(await page.locator('#offline-grid-help').textContent(),/hold revs in N, select first on green/i);checks++;
+  assert.equal(await page.locator('#offline-players select').count(),1); /* lane 2: human, bot or nobody */
+  assert.match(await page.locator('#offline-grid-help').textContent(),/human or a bot.*4000-5000 RPM in N, select first on green/i);checks++;
   await page.screenshot({path:path.join(output,'rules-drag.png')});
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);checks++;

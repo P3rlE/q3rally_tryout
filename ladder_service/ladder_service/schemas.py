@@ -59,8 +59,8 @@ def _validate_drag_result(player: "Player", player_count: int) -> None:
     speed = result.get("trapSpeedKph")
     if type(speed) not in (int, float) or not 0 <= speed <= 1000 or not math.isfinite(speed):
         raise _mode_error("DRAG_SPEED_INVALID", "trapSpeedKph must be finite and in 0..1000")
-    if result.get("isBot", False):
-        raise _mode_error("DRAG_BOT_FORBIDDEN", "Drag results require human drivers")
+    if type(result.get("isBot", False)) is not bool:
+        raise _mode_error("DRAG_BOT_INVALID", "isBot must be a boolean")
     position = player.position
     if status == "finished":
         if result["elapsedMs"] <= 0 or result["totalRaceMs"] != result["reactionMs"] + result["elapsedMs"]:

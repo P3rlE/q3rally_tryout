@@ -6,11 +6,11 @@ change the v0.8 release line or its Ladder/profile contracts.
 ## Playing a heat
 
 Select **Drag Race** in Offline/Host and choose one of the strips: **Desert
-Dragway**, **Night Drag** (eighth mile) or **Airfield Drag**. The prototype
-accepts two human drivers, or one driver for solo practice. Bots are disabled.
-Both lanes use the same vehicle performance, regardless of the selected body.
-Neutral revs carry into a brief clutch engagement when first gear is selected.
-Throttle and tyre grip affect the launch; there is no fixed perfect-RPM bonus.
+Dragway**, **Night Drag** (eighth mile) or **Airfield Drag**. Race a human or a
+bot in the second lane, or practise solo. Both lanes use the same vehicle
+performance, regardless of the selected body. Neutral revs carry into a clutch
+engagement when first gear is selected, and the launch RPM decides how cleanly
+the car gets away (see [launch, bog and smoke](#launch-bog-and-smoke)).
 
 For a console start:
 
@@ -37,6 +37,58 @@ Desert Dragway and Airfield Drag are approximately a quarter mile from the
 equal grid positions to the finish plane, Night Drag an eighth mile. See
 [the map contract](drag-race-map.md) for exact coordinates,
 geometry checks and rebuild instructions.
+
+## Launch, bog and smoke
+
+The physics below are Drag only; other modes drive as before.
+
+- **Too low:** below 3,600 RPM a loaded engine bogs. Its torque falls towards
+  30 % at idle, so a launch from the cellar climbs out slowly. The car always
+  gets going and the run stays valid; it just costs time (about +0.6 s from
+  1,000 RPM, +0.15 s from 3,000 RPM). Shifting up far too early drops into the
+  same bog.
+- **Too high:** the heavier clutch dump spins the rear tyres. Past their grip,
+  part of the drive goes up in smoke instead of pulling (about +0.1 s from the
+  limiter).
+- **Sweet spot:** 4,000–5,000 RPM, shown by the HUD band. See
+  [the calibration](drag-launch-rpm-calibration.md).
+
+### Engine damage
+
+Once the lights start, the engine can be over-revved:
+
+- Time in the red zone from 6,000 RPM builds stress, shown as a heat bar under
+  the tachometer with "OVER-REV! ENGINE HEATING". Below the red zone it cools
+  at half that rate. About 2.7 s on the limiter blows the engine, also in N
+  while waiting for green: hold the band, not the limiter.
+- The limiter only cuts the engine's own drive. When the road speed spins the
+  engine past 7,600 RPM, it blows at once: a downshift at speed, or hanging on
+  the limiter instead of shifting up.
+- A blown engine makes no power and smokes, with a bang. The attempt ends as a
+  DNF with the reason ("too long on the limiter" or "over-revved").
+
+The HUD lights **SHIFT UP** from 5,900 RPM; shifting at about 6,000 RPM is
+best. Before the lights, staging on the limiter cannot hurt the engine.
+
+## Bots
+
+A bot can race the second lane. Its skill sets a plan for each heat: the revs
+it holds in N, its reaction time and its shift points. The server then drives
+it frame by frame: it launches at green plus its reaction, shifts on its plan
+and steers along its own lane. Measured on the dedicated server:
+
+| Skill | Reaction | Launch | Mistakes |
+| --- | --- | --- | --- |
+| 1 | about 0.30–0.49 s | often bogs or smokes | now and then jumps the light (false start) |
+| 3 | about 0.17–0.32 s | mostly in the band | rare |
+| 5 | about 0.13–0.22 s | in the band | none |
+
+Bots stay out of the red zone while waiting for green. Drag bots need no
+navigation, so the strips need no AAS file: on Drag maps the bot AI does not
+think, it only sends the usercmds the server prepares.
+
+Each finished heat logs `DragResult:` lines (RT, ET, total, trap speed, bot)
+and every disqualification a `DragDisqualify:` line with its reason.
 
 ## Drag HUD and launch guide
 
@@ -110,11 +162,13 @@ Standard-rule heats are reported as `GT_DRAG`, including regular offline
 games. The Ladder ranks valid finishes by **TOTAL = RT + ET**, not ET alone.
 Reaction, elapsed time, finish speed and result status remain separate facts.
 False starts and DNF stay visible as invalid results with no recorded time or
-finishing rank. Armed participants remain in the report after a disconnect or
+finishing rank. A bot's result is stored with the match (`isBot`) and can win
+the heat, but bots never enter leaderboards or get a profile. Armed participants remain in the report after a disconnect or
 switch to spectator; spectators and unarmed drivers do not become participants.
 
 Solo practice records valid best times and completed runs without a competitive
-win, loss or career-point award. A heat armed with two human drivers uses the
+win, loss or career-point award. A heat armed with two drivers, human or bot as
+in the other modes, uses the
 existing race awards: 12 points for the valid winner and 6 for a valid second
 place, with the existing per-award online bonus and win achievements. An invalid
 opponent can lose a duel but receives no placement points. Exact total-time ties
@@ -137,8 +191,10 @@ neutral staging, first-gear launch/false starts, manual shifting, lane rules,
 interpolated finish timing, live telemetry, Drag results, Ladder time rankings
 and duel career awards. Existing mode IDs remain stable.
 
+Since then: launch physics with bog and smoke, engine damage, bots.
+
 Deferred: analogue clutch control, selectable gearing, NOS,
-Best-of-three matches with lane swaps and bots.
+Best-of-three matches with lane swaps.
 
 Production-code harnesses cover staging, false starts, queued/future input,
 prediction replay, finish order/ties, forfeits, disconnects/spectator changes,
