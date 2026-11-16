@@ -1686,8 +1686,8 @@ typedef struct {
 		int		current[2];	/* entrants of the match up next, -1 when over */
 		char	name[16][16];
 		qboolean	human[16];
-		int		winner[15];	/* 0 first entrant, 1 second */
-		int		wins[15][2];
+		int		winner[16];	/* play order; size-2 third place, size-1 final */
+		int		wins[16][2];
 	} dragTourney;
 } cgs_t;
 

@@ -211,12 +211,44 @@ int main(void) {
         memset(wins,0,sizeof(wins)); wins[0]=2;
         G_DragTourneyMatchOver(0,wins);
     }
-    assert(dt.played==7 && DT_Winner(6)==per && bonus==DT_CHAMPION_BONUS);
-    assert(!strncmp(lastBracket,"dragTourney 8 3 7 -1 -1 ",24));
+    /* eight matches: four quarter-finals, two semi-finals, third place, final */
+    assert(dt.played==8 && DT_Winner(7)==per && bonus==DT_CHAMPION_BONUS);
+    DT_MatchEntrants(7,&a,&b);
+    assert(a==DT_Winner(4) && b==DT_Winner(5));
+    DT_MatchEntrants(6,&a,&b);
+    assert(a==DT_Loser(4) && b==DT_Loser(5) && a!=per && b!=per);
+    assert(DT_Winner(6)==a || DT_Winner(6)==b);
+    assert(!strcmp(DT_MatchName(5),"SEMI-FINAL") && !strcmp(DT_MatchName(6),"THIRD PLACE")
+        && !strcmp(DT_MatchName(7),"FINAL") && !strcmp(DT_MatchName(0),"QUARTER-FINAL"));
+    assert(!strncmp(lastBracket,"dragTourney 8 3 8 -1 -1 ",24));
 
     /* The next load after the final starts over. */
     G_DragTourneyInit();
     assert(!dt.loaded && !cvar("g_dragTourneyA")[0]);
+
+    /* Four drivers: losing the semi-final means racing for third place. */
+    g_dragTournamentSize.integer=4; bonus=0;
+    for (i=1;i<level.maxclients;i++) dropClient(i);
+    lineup();
+    assert(dt.size==4 && !strcmp(DT_MatchName(0),"SEMI-FINAL") && strstr(lastCp,"NEW DRAG TOURNAMENT"));
+    per=entrantOf("Per");
+    while (G_DragTourneyActive()) {
+        DT_MatchEntrants(dt.played,&a,&b);
+        if (DT_IsBot(a) && DT_IsBot(b)) { argument[0]=0; Cmd_DragSkip_f(&g_entities[0]); continue; }
+        lineup();
+        ca=DT_ClientOf(a); cb=DT_ClientOf(b);
+        memset(wins,0,sizeof(wins));
+        if (dt.played<2) { /* the human loses his semi-final ... */
+            int rival = ca==0 ? cb : ca;
+            wins[rival]=2; G_DragTourneyMatchOver(rival,wins);
+            assert(strstr(lastCp,"QUARTER")==NULL);
+        } else {           /* ... and wins third place */
+            assert(dt.played==2 && !strcmp(DT_MatchName(2),"THIRD PLACE") && strstr(lastCp,"THIRD PLACE"));
+            wins[0]=2; G_DragTourneyMatchOver(0,wins);
+        }
+    }
+    assert(dt.played==4 && DT_Winner(2)==per && DT_Winner(3)!=per && !bonus);
+    G_DragTourneyInit();
 
     /* A human who leaves forfeits: the opponent goes through. */
     g_dragTournamentSize.integer=4; bonus=0;

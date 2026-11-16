@@ -1942,7 +1942,7 @@ static void CG_ServerCommand( void ) {
 		memset( &cgs.dragTourney, 0, sizeof( cgs.dragTourney ) );
 		if ( size != 4 && size != 8 && size != 16 ) return;
 		played = atoi( CG_Argv( 3 ) );
-		if ( played < 0 || played > size - 1 || trap_Argc() < 6 + 2 * size + 3 * played ) return;
+		if ( played < 0 || played > size || trap_Argc() < 6 + 2 * size + 3 * played ) return;
 		cgs.dragTourney.size = size;
 		cgs.dragTourney.bestOf = atoi( CG_Argv( 2 ) );
 		cgs.dragTourney.played = played;

@@ -17,7 +17,11 @@ on the server, filled up with bots whose skill spreads around g_spSkill. Each
 pairing is a normal best-of match (g_dragBestOf) on the current strip. The
 two drivers of the pairing race; everyone else spectates. Bot against bot is
 driven too, and a spectator can skip it ("dragskip", "dragskip all"): the
-result is then drawn from the bots' skills.
+result is then drawn from the bots' skills. The losers of the semi-finals
+race for third place before the final, so the podium has three steps.
+
+Matches in play order: the rounds up to the semi-finals (round 0 first),
+then third place (size - 2), then the final (size - 1).
 
 Each match reloads the map, so the bracket lives in server cvars:
   g_dragTourneyA  "size bestOf|name,client,skill;..."  entrants 0..7
@@ -53,7 +57,7 @@ static struct {
 	int			bestOf;
 	int			played;
 	dtEntrant_t	field[DT_MAX];
-	dtResult_t	results[DT_MAX - 1];
+	dtResult_t	results[DT_MAX];
 	int			lineupTime;
 	int			lineupMatch;
 } dt;
@@ -152,7 +156,7 @@ static qboolean DT_Load( void ) {
 		memset( &dt, 0, sizeof( dt ) );
 		return qfalse;
 	}
-	for ( p = r; *p && dt.played < dt.size - 1; ) {
+	for ( p = r; *p && dt.played < dt.size; ) {
 		dtResult_t *result = &dt.results[dt.played];
 		const char *field = p;
 		result->winner = atoi( field );
@@ -186,6 +190,7 @@ static int DT_Round( int k, int *indexInRound, int *roundStart ) {
 
 static void DT_MatchEntrants( int k, int *a, int *b );
 static void DT_Record( int winnerSide, int winsA, int winsB );
+static int DT_Loser( int k );
 
 static int DT_Winner( int k ) {
 	int a, b;
@@ -194,8 +199,25 @@ static int DT_Winner( int k ) {
 	return dt.results[k].winner ? b : a;
 }
 
+static int DT_Loser( int k ) {
+	int a, b;
+	if ( k < 0 || k >= dt.played ) return -1;
+	DT_MatchEntrants( k, &a, &b );
+	return dt.results[k].winner ? a : b;
+}
+
 static void DT_MatchEntrants( int k, int *a, int *b ) {
 	int index, start, round, previousStart;
+	if ( k == dt.size - 1 ) {		/* final: the semi-final winners */
+		*a = DT_Winner( dt.size - 4 );
+		*b = DT_Winner( dt.size - 3 );
+		return;
+	}
+	if ( k == dt.size - 2 ) {		/* third place: the semi-final losers */
+		*a = DT_Loser( dt.size - 4 );
+		*b = DT_Loser( dt.size - 3 );
+		return;
+	}
 	round = DT_Round( k, &index, &start );
 	if ( !round ) {
 		*a = 2 * index;
@@ -241,9 +263,11 @@ static int DT_EntrantOfClient( int clientNum ) {
 	return -1;
 }
 
-static const char *DT_RoundName( int round ) {
-	int left = dt.size >> round;
-	if ( left == 2 ) return "FINAL";
+static const char *DT_MatchName( int k ) {
+	int left;
+	if ( k == dt.size - 1 ) return "FINAL";
+	if ( k == dt.size - 2 ) return "THIRD PLACE";
+	left = dt.size >> DT_Round( k, NULL, NULL );
 	if ( left == 4 ) return "SEMI-FINAL";
 	if ( left == 8 ) return "QUARTER-FINAL";
 	return "ROUND OF 16";
@@ -252,7 +276,7 @@ static const char *DT_RoundName( int round ) {
 /* ---------------------------------------------------------------- public */
 
 qboolean G_DragTourneyActive( void ) {
-	return g_gametype.integer == GT_DRAG && g_dragTournament.integer && dt.loaded && dt.played < dt.size - 1;
+	return g_gametype.integer == GT_DRAG && g_dragTournament.integer && dt.loaded && dt.played < dt.size;
 }
 
 /* dragTourney <size> <bestOf> <played> <a> <b> { "name" <human> }x size
@@ -265,7 +289,7 @@ void G_DragTourneyPublish( int recipient ) {
 		if ( recipient >= 0 ) trap_SendServerCommand( recipient, "dragTourney 0" );
 		return;
 	}
-	if ( dt.played < dt.size - 1 ) DT_MatchEntrants( dt.played, &a, &b );
+	if ( dt.played < dt.size ) DT_MatchEntrants( dt.played, &a, &b );
 	Com_sprintf( text, sizeof( text ), "dragTourney %d %d %d %d %d", dt.size, dt.bestOf, dt.played, a, b );
 	for ( i = 0; i < dt.size; i++ ) {
 		Q_strcat( text, sizeof( text ), va( " \"%s\" %d", dt.field[i].name, DT_IsBot( i ) ? 0 : 1 ) );
@@ -287,7 +311,7 @@ void G_DragTourneyInit( void ) {
 		memset( &dt, 0, sizeof( dt ) );
 		return;
 	}
-	if ( DT_Load() && dt.played >= dt.size - 1 ) {
+	if ( DT_Load() && dt.played >= dt.size ) {
 		DT_Clear();
 	}
 	dt.lineupTime = 0;
@@ -356,7 +380,7 @@ qboolean G_DragTourneyLineup( void ) {
 
 	if ( g_gametype.integer != GT_DRAG || !g_dragTournament.integer ) return qtrue;
 	if ( !dt.loaded && !DT_Build() ) return qfalse;
-	if ( dt.played >= dt.size - 1 ) return qfalse;
+	if ( dt.played >= dt.size ) return qfalse;
 	DT_MatchEntrants( dt.played, &a, &b );
 	ca = DT_ClientOf( a );
 	cb = DT_ClientOf( b );
@@ -401,7 +425,8 @@ qboolean G_DragTourneyLineup( void ) {
 			trap_SendConsoleCommand( EXEC_APPEND, va( "addbot %s %d free\n", dt.field[b].name, dt.field[b].skill ) );
 		}
 		if ( dt.lineupMatch != dt.played ) {
-			trap_SendServerCommand( -1, va( "cp \"%s\n%s vs %s%s\"", DT_RoundName( DT_Round( dt.played, NULL, NULL ) ),
+			trap_SendServerCommand( -1, va( "cp \"%s%s\n%s vs %s%s\"",
+				dt.played ? "" : "NEW DRAG TOURNAMENT\n\n", DT_MatchName( dt.played ),
 				dt.field[a].name, dt.field[b].name,
 				DT_IsBot( a ) && DT_IsBot( b ) ? "\n\n/dragskip to skip, /dragskip all" : "" ) );
 			G_DragTourneyPublish( -1 );
@@ -425,9 +450,11 @@ static void DT_Record( int winnerSide, int winsA, int winsB ) {
 	dt.results[dt.played].winsB = winsB;
 	dt.played++;
 	G_LogPrintf( "DragTourney: match %d %s %d - %d %s\n", dt.played, dt.field[a].name, winsA, winsB, dt.field[b].name );
-	if ( dt.played >= dt.size - 1 ) {
+	if ( dt.played >= dt.size ) {
+		int third = DT_Winner( dt.size - 2 );
 		champion = winnerSide ? b : a;
-		G_LogPrintf( "DragTourney: champion %s\n", dt.field[champion].name );
+		G_LogPrintf( "DragTourney: champion %s, second %s, third %s\n", dt.field[champion].name,
+			dt.field[winnerSide ? a : b].name, third >= 0 ? dt.field[third].name : "-" );
 		trap_SendServerCommand( -1, va( "print \"%s wins the Drag tournament!\n\"", dt.field[champion].name ) );
 		if ( !DT_IsBot( champion ) && dt.field[champion].client >= 0
 			&& level.clients[dt.field[champion].client].pers.localClient ) {

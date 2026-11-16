@@ -62,6 +62,8 @@ turns the strip into a single elimination of `g_dragTournamentSize` drivers.
   ±1. The draw is random.
 - Each pairing is a normal match of `g_dragBestOf` heats. A knockout needs a
   winner: if a match ends without one, a coin decides.
+- The losers of the semi-finals race for third place before the final, so a
+  tournament has as many matches as drivers.
 - Only the two drivers of the pairing are on the strip; everyone else
   spectates. The server adds and kicks the bots as the bracket needs them.
 - Bot against bot is driven. A spectator can skip it with `/dragskip` (this
@@ -70,8 +72,10 @@ turns the strip into a single elimination of `g_dragTournamentSize` drivers.
   false-start model the bots drive with.
 - A human who leaves before or during his match forfeits it.
 - Between the matches the intermission shows the heat results for a few
-  seconds, then the bracket (holding the scoreboard key brings the results
-  back). The client gets the bracket as `dragTourney <size> <bestOf> <played>
+  seconds, then the bracket with the third place match under the winner
+  (holding the scoreboard key brings the results back). After the final it
+  shows the podium and where the player finished; firing starts the next
+  tournament, which opens with "NEW DRAG TOURNAMENT". The client gets the bracket as `dragTourney <size> <bestOf> <played>
   <a> <b> {"name" human}×size {winner winsA winsB}×played`.
 - The bracket lives in the cvars `g_dragTourneyA/B/R` across the map restarts
   between matches. Loading another map, or the restart after the final,
