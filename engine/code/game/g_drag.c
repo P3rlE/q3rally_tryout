@@ -176,6 +176,10 @@ static void G_DragPublish( int clientNum, int recipient ) {
 
 static void G_DragSetPhase( int clientNum, dragPhase_t phase ) {
 	dragClients[clientNum].phase = phase;
+	if ( phase == DRAG_COUNTDOWN && g_entities[clientNum].client ) {
+		/* The heat is armed: from now on the engine can be over-revved. */
+		g_entities[clientNum].client->ps.stats[STAT_DRAG_ENGINE] = DRAG_ENGINE_ARMED;
+	}
 	if ( phase == DRAG_RUNNING && g_entities[clientNum].client
 		&& g_entities[clientNum].client->ps.commandTime < dragClients[clientNum].launchTime ) {
 		/* A usercommand describes input at its timestamp. Do not integrate
@@ -252,6 +256,7 @@ void G_DragClientSpawn( gentity_t *ent ) {
 		VectorCopy( ent->client->ps.origin, driver->gridOrigin );
 		ent->client->car.gear = 0;
 		ent->client->ps.stats[STAT_GEAR] = 0;
+		ent->client->ps.stats[STAT_DRAG_ENGINE] = 0;
 		ent->ready = qfalse;
 		G_DragPublish( clientNum, -1 );
 	}
@@ -291,6 +296,7 @@ void G_DragClientDisconnect( int clientNum ) {
 				dragClients[i].phase = dragClients[i].throttleReady ? DRAG_STAGED : DRAG_WAITING;
 				g_entities[i].client->car.gear = 0;
 				g_entities[i].client->ps.stats[STAT_GEAR] = 0;
+				g_entities[i].client->ps.stats[STAT_DRAG_ENGINE] = 0;
 				g_entities[i].client->finishRaceTime = 0;
 				G_DragPublish( i, -1 );
 			}
@@ -594,10 +600,27 @@ int G_DragCompare( int clientA, int clientB ) {
 	return a->progress > b->progress ? -1 : 1;
 }
 
+/* An engine blown by pmove ends the attempt: smoke, a bang, and a DNF. */
+static void G_DragCheckEngine( int clientNum ) {
+	gentity_t *ent = &g_entities[clientNum];
+	int state;
+	if ( !ent->client || G_DragTerminal( &dragClients[clientNum] ) ) return;
+	state = ent->client->ps.stats[STAT_DRAG_ENGINE];
+	if ( !( state & DRAG_ENGINE_BLOWN ) ) return;
+	ent->client->ps.eFlags |= EF_SMOKE_DARK;
+	G_Sound( ent, CHAN_AUTO, G_SoundIndex( "sound/feedback/drag_engine_blow.wav" ) );
+	G_DragDisqualify( clientNum, DRAG_DNF, ( state & DRAG_ENGINE_OVERREV )
+		? "ENGINE BLOWN - over-revved, shift up in time"
+		: "ENGINE BLOWN - too long on the limiter" );
+}
+
 void G_DragRunFrame( void ) {
 	int i, j, count, done, winner, position;
 	qboolean tied, positionChanged, resultChanged;
 	if ( g_gametype.integer != GT_DRAG || !dragCountdownTime || level.intermissiontime ) return;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( dragClients[i].participant && G_DragActive( i ) ) G_DragCheckEngine( i );
+	}
 	G_DragStartGreen();
 	if ( !level.startRaceTime ) return;
 	count = done = 0;

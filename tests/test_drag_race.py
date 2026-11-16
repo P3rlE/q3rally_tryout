@@ -62,6 +62,9 @@ void trap_SendServerCommand(int recipient, const char *text) {
         snprintf(lastLight,sizeof(lastLight),"%s",text);
     }
 }
+static int engineBangs;
+int G_SoundIndex(char *name) { assert(strstr(name,"drag_engine_blow")); return 7; }
+void G_Sound(gentity_t *ent,int channel,int sound) { assert(sound==7); engineBangs++; }
 void CalculateRanks(void) { rankCalls++; }
 void Cmd_RacePositions_f(void) {
     positionPublications++;
@@ -404,6 +407,32 @@ int main(void) {
     level.time=green+60000;
     G_DragRunFrame();
     assert(dragClients[0].phase==DRAG_DNF); /* stalled heats cannot hang forever */
+
+    /* The countdown arms the engine; staging alone cannot blow it. */
+    resetHeat(2);
+    assert(!clients[0].ps.stats[STAT_DRAG_ENGINE]);
+    stage(2);
+    assert(clients[0].ps.stats[STAT_DRAG_ENGINE]==DRAG_ENGINE_ARMED);
+    assert(clients[1].ps.stats[STAT_DRAG_ENGINE]==DRAG_ENGINE_ARMED);
+    /* Blown on the limiter during the lights: DNF, smoke, one bang. */
+    engineBangs=0;
+    clients[0].ps.stats[STAT_DRAG_ENGINE]|=DRAG_ENGINE_BLOWN;
+    G_DragRunFrame(); G_DragRunFrame();
+    assert(dragClients[0].phase==DRAG_DNF && engineBangs==1);
+    assert(clients[0].ps.eFlags & EF_SMOKE_DARK);
+    assert(strstr(lastCp[0],"too long on the limiter"));
+    assert(dragClients[1].phase==DRAG_COUNTDOWN); /* the opponent races on */
+    green=goGreen(); level.time=green+150; launch(1,green+150);
+    /* Over-revved by road speed while running. */
+    clients[1].ps.stats[STAT_DRAG_ENGINE]|=DRAG_ENGINE_BLOWN|DRAG_ENGINE_OVERREV;
+    G_DragRunFrame();
+    assert(dragClients[1].phase==DRAG_DNF && engineBangs==2);
+    assert(strstr(lastCp[1],"over-revved"));
+    assert(G_DragPopulateLadderPlayer(1,&result) && !strcmp(result.dragStatus,"dnf"));
+    /* A cancelled countdown disarms the engines of the drivers who stay. */
+    resetHeat(2); stage(2);
+    G_DragClientDisconnect(1);
+    assert(!clients[0].ps.stats[STAT_DRAG_ENGINE]);
 
     resetHeat(1); level.finishEnt=NULL;
     G_DragStarterThink(&starter); G_DragCheckExit();

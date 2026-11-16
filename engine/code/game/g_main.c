@@ -1118,7 +1118,8 @@ static qboolean G_LadderPopulatePlayer( ladderMatchPayload_t *payload, int clien
         player->captures = client->ps.persistant[PERS_CAPTURES];
 
         player->damageDealt = client->ps.stats[STAT_DAMAGE_DEALT];
-        player->damageTaken = client->ps.stats[STAT_DAMAGE_TAKEN];
+        /* Drag keeps its engine state in this slot; it has no damage. */
+        player->damageTaken = g_gametype.integer == GT_DRAG ? 0 : client->ps.stats[STAT_DAMAGE_TAKEN];
         player->position = client->ps.stats[STAT_POSITION];
 
         killSemantics = qfalse;
