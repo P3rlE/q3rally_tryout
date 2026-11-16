@@ -50,6 +50,12 @@ Changed:
   (q3r_drag_airfield, quarter mile on a runway at sunset). All three keep
   the same lanes, gates and asphalt grip. Generator
   tools/maptools/make_dragstrip.py.
+- Drag Race start: the server no longer tells the clients in advance when
+  green comes; they learn it in the frame it happens, and reaction times
+  count from there. Selecting first less than 0.100 s after green is a
+  false start (as in sprint athletics), and a gearUp timestamp can no
+  longer be backdated before the movement already sent. The Ladder
+  rejects such finishes and leaves older ones out of the leaderboard.
 - q3r_ctf_04 is finished as "Trophy Square": a bronze rally trophy on a
   granite plinth stands in the fountain instead of the Xaero statue. The
   map is point symmetric now (the car workshop with the BFG and the

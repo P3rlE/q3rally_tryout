@@ -286,7 +286,8 @@ typedef struct centity_s {
 	int				finishRaceTime;
 	int				startRaceTime;
 	int				dragPhase;
-	int				dragGreenTime;
+	int				dragCountdownTime;	// server time the start lights began, 0 if not armed
+	int				dragGreenTime;		// server time of green, 0 until green has happened
 	int				dragLaunchTime;
 	int				dragFinishTime;
 	int				dragTrapSpeed;
@@ -2420,7 +2421,7 @@ void CG_GhostRace_DrawResultBanner( void );
 void CG_GhostRace_ReportOpponent( void );
 qboolean CG_GhostRace_ClientResult( int clientNum, qboolean *won );
 void CG_AttemptSavePersonalGhost( int finishTime );
-int CG_DragStartLightState( int *reds, qboolean *green );
+int CG_DragStartLightState( int *reds, qboolean *green, int *greenTime );
 void CG_DrawRaceCountDown( void );
 void CG_RaceCountDown( const char *str, int secondsLeft );
 void CG_UpdateDragStartSounds( void );

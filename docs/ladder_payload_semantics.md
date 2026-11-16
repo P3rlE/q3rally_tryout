@@ -55,7 +55,7 @@ behalten ihre bisherigen Felder und Wertungsregeln.
 | `mode`, `gametype`, `settings.g_gametype` | DRAG: P+B | `GT_DRAG`, `9`, `9` | kein anderer Modus als Fallback |
 | `settings.dragDuel` | DRAG: P+B | `G_DragLadderDuel`: genau zwei menschliche Fahrer beim Scharfstellen; bleibt bei späterem Verlassen erhalten | `false` für Solo |
 | `players[].dragStatus` | DRAG: P+B | `G_DragPopulateLadderPlayer`: `finished`, `false_start`, `dnf` aus dem autoritativen Heat-Zustand | ungültiger Zustand: kein gültiger Zieleinlauf |
-| `players[].reactionMs` | DRAG: P+B | First-Gear-Zeit minus gemeinsame Grünzeit | `0` bei ungültigem Lauf; auch gültige perfekte RT kann `0` sein |
+| `players[].reactionMs` | DRAG: P+B | First-Gear-Zeit minus gemeinsame Grünzeit; bei `finished` mindestens 100 ms (`DRAG_MIN_REACTION_MS`), schneller ist ein Fehlstart | `0` bei ungültigem Lauf |
 | `players[].elapsedMs` | DRAG: P+B | interpolierter Zieleinlauf minus First-Gear-Zeit | `0` bei ungültigem Lauf |
 | `players[].totalRaceMs` | DRAG: P+B | RT + ET, ausschließlich bei `finished`; maßgeblich für Bestzeit und Zielrang | `0` bei Fehlstart/DNF |
 | `players[].trapSpeedKph` | DRAG: P+B | interpolierte Zielgeschwindigkeit in km/h mit einer Nachkommastelle | `0` bei Fehlstart/DNF |
@@ -64,7 +64,7 @@ behalten ihre bisherigen Felder und Wertungsregeln.
 | `numberOfLaps`, `bestLapMs`, `lapCount`, `lapTimes[]`, `survivalMs` | DRAG: V+B | Drag-Zeit ist keine Runden-/Überlebenszeit | `0`, `[]` |
 | Waffen-, Kill-, Damage- und Teamfelder | DRAG: V+B | nicht Teil des Drag-Ergebnisses | bisherige Neutralwerte |
 | `profile.dragWins`, `profile.dragCompleted` | DRAG: P+B bei gültigem Snapshot | native Profilwerte; Siege nur im Duell, Completed nur gültige Zieleinläufe | `0` |
-| `profile.dragBestMs`, `profile.dragBestReactionMs`, `profile.dragBestElapsedMs` | DRAG: P+B bei gültigem Snapshot | unabhängige Minima gültiger Ergebnisse; `dragCompleted>0` unterscheidet eine perfekte RT=0 von fehlenden Daten | `0` |
+| `profile.dragBestMs`, `profile.dragBestReactionMs`, `profile.dragBestElapsedMs` | DRAG: P+B bei gültigem Snapshot | unabhängige Minima gültiger Ergebnisse; `dragCompleted>0` unterscheidet gesetzte Werte von fehlenden Daten | `0` |
 
 Der Server friert die Identität beim Scharfstellen ein. Ein späterer Zuschauer
 oder ein anderer Spieler im selben Slot darf keinen früheren Heat übernehmen.
@@ -72,7 +72,9 @@ Abbruch/Disconnect eines Teilnehmers bleibt als DNF erhalten. Gemeldet werden
 ein oder zwei menschliche Fahrer; Bots und bloße Zuschauer werden nicht gemeldet.
 
 Millisekunden müssen ganzzahlig und nicht negativ sein, ET eines gültigen
-Zieleinlaufs muss positiv sein und TOTAL exakt RT+ET entsprechen. Der defensive
+Zieleinlaufs muss positiv sein und TOTAL exakt RT+ET entsprechen. Die RT eines
+gültigen Zieleinlaufs beträgt mindestens 100 ms; der Python-Dienst meldet
+schnellere als `DRAG_REACTION_TOO_FAST`, der PHP-Dienst als `DRAG_RESULT_INVALID`. Der defensive
 Ingest-Bereich bis 120.000 ms lässt den Serverframe an der 60-Sekunden-Grenze zu;
 er verlängert nicht das spielseitige Heat-Zeitlimit. Zieltempo muss endlich und
 zwischen 0 und 1.000 km/h liegen. Fehlstart/DNF haben ausschließlich neutrale

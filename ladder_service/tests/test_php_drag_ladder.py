@@ -72,9 +72,9 @@ echo json_encode($out, JSON_THROW_ON_ERROR);
     return run, root
 
 
-def test_php_drag_total_wins_and_zero_reaction_survives_profile_updates(php_ladder):
+def test_php_drag_total_wins_and_minimum_reaction_survives_profile_updates(php_ladder):
     run, _ = php_ladder
-    first = match(players=[player(reaction=0, elapsed=13000), player(1, reaction=300, elapsed=12800, position=2)])
+    first = match(players=[player(reaction=100, elapsed=13000), player(1, reaction=400, elapsed=12800, position=2)])
     second = match("drag-2", [player(reaction=500, elapsed=12000), player(1, reaction=500, elapsed=12500, position=2)])
     rows = run([first, first, second])
     assert rows[0]["payload"]["winnerClientNum"] == 0  # Bob's quicker ET is not the winning TOTAL.
@@ -82,7 +82,7 @@ def test_php_drag_total_wins_and_zero_reaction_survives_profile_updates(php_ladd
     assert index["mode"] == "GT_DRAG" and index["winner"] == "Alice"
     assert index["weather"] == "dry"
     assert {k: index["players"][0][k] for k in ("dragStatus", "reactionMs", "elapsedMs", "totalRaceMs", "trapSpeedKph")} == {
-        "dragStatus": "finished", "reactionMs": 0, "elapsedMs": 13000, "totalRaceMs": 13000, "trapSpeedKph": 151.2}
+        "dragStatus": "finished", "reactionMs": 100, "elapsedMs": 13000, "totalRaceMs": 13100, "trapSpeedKph": 151.2}
     for p, score in zip(rows[0]["profiles"], (13, 6)):
         assert p["playerScore"] == score
         assert p["dragCompleted"] == 1
@@ -93,7 +93,7 @@ def test_php_drag_total_wins_and_zero_reaction_survives_profile_updates(php_ladd
     local = rows[2]["profiles"][0]
     assert local["dragWins"] == local["dragCompleted"] == 2
     assert local["dragBestMs"] == 12500 and local["dragBestElapsedMs"] == 12000
-    assert local["dragBestReactionMs"] == 0  # Zero is a valid best reaction, not an unset marker.
+    assert local["dragBestReactionMs"] == 100  # The fastest legal reaction is kept as the best.
 
 
 def test_php_drag_solo_ties_and_invalid_attempts_do_not_create_wins(php_ladder):
@@ -136,6 +136,8 @@ def test_php_drag_native_snapshot_is_not_double_credited(php_ladder):
     lambda m: m["players"][0].update(isBot=True),
     lambda m: m["players"][0].update(dragStatus="countdown"),
     lambda m: m["players"][0].update(reactionMs=True),
+    lambda m: m["players"][0].update(reactionMs=99, totalRaceMs=99 + 13000),  # a false start
+    lambda m: m["players"][0].update(reactionMs=0, totalRaceMs=13000),
     lambda m: m["players"][0].update(elapsedMs=0),
     lambda m: m["players"][0].update(totalRaceMs=1200),
     lambda m: m["players"][0].update(trapSpeedKph=1001),
@@ -193,16 +195,17 @@ assert.equal(canonicalMode('GT_DRAG'), 'gt_drag');
 assert.equal(canonicalMode('nonsense'), null);
 const agg = {raceBest:new Map()};
 const ctx = {modeKey:'gt_drag',map:'q3r_dragstrip',mapKey:'q3r_dragstrip',matchId:'1'};
-input[0].bestLapMs=1; input[0].elapsedMs=13000; input[0].reactionMs=0; input[0].totalRaceMs=13000;
+input[0].bestLapMs=1; input[0].elapsedMs=13000; input[0].reactionMs=100; input[0].totalRaceMs=13100;
 input.push({...input[0],name:'False Start',dragStatus:'false_start'});
 input.push({...input[0],name:'DNF',dragStatus:'dnf'});
 input.push({...input[0],name:'Bot',isBot:true});
 input.push({...input[0],name:'Contradiction',totalRaceMs:1});
+input.push({...input[0],name:'Too Fast',reactionMs:99,totalRaceMs:13099}); /* older record, now a false start */
 ingestRaceEntries(agg,input,ctx);
 assert.equal(agg.raceBest.size,2);
 const rows = [...agg.raceBest.values()].sort((a,b)=>a.time-b.time);
-assert.equal(rows[0].player,'Alice'); assert.equal(rows[0].time,13);
-assert.equal(rows[0].reactionMs,0); assert.equal(rows[0].elapsedMs,13000);
+assert.equal(rows[0].player,'Alice'); assert.equal(rows[0].time,13.1);
+assert.equal(rows[0].reactionMs,100); assert.equal(rows[0].elapsedMs,13000);
 assert.equal(rows[0].trapSpeedKph,151.2);
 assert.deepEqual(getColumnsForMode({key:'gt_drag',type:'race'}).map(x=>x.key),
  ['rank','player','time','reaction','elapsed','trap','vehicle','recorded']);

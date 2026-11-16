@@ -3687,6 +3687,7 @@ function extractDragResult(entry) {
   const { reactionMs, elapsedMs, totalRaceMs, trapSpeedKph } = entry;
   if (![reactionMs, elapsedMs, totalRaceMs].every((value) => Number.isInteger(value) && value >= 0 && value <= 120000) ||
       elapsedMs <= 0 || totalRaceMs !== reactionMs + elapsedMs ||
+      reactionMs < 100 /* a false start under the current rules, even in older records */ ||
       !Number.isFinite(trapSpeedKph) || trapSpeedKph < 0 || trapSpeedKph > 1000) return null;
   return { time: totalRaceMs / 1000, reactionMs, elapsedMs, trapSpeedKph };
 }
@@ -6831,6 +6832,10 @@ function normalize_drag_payload(array $payload): array
             if ($player['elapsedMs'] <= 0 || $player['totalRaceMs'] !== $player['reactionMs'] + $player['elapsedMs'] ||
                 $player['position'] < 1 || $player['position'] > count($players)) {
                 throw new LadderApiException(422, 'DRAG_RESULT_INVALID', 'A valid Drag finish requires TOTAL = RT + ET and a finishing position.');
+            }
+            // The game counts a reaction under 0.100 s as a false start.
+            if ($player['reactionMs'] < 100) {
+                throw new LadderApiException(422, 'DRAG_RESULT_INVALID', 'A Drag reaction under 100 ms is a false start, not a finish.');
             }
         } elseif ($player['reactionMs'] !== 0 || $player['elapsedMs'] !== 0 || $player['totalRaceMs'] !== 0 ||
                   $player['position'] !== 0 || (float)$speed !== 0.0) {

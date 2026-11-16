@@ -724,7 +724,7 @@ static void CG_DragFilterPredictedCommand( usercmd_t *cmd, playerState_t *ps,
 	memset( ps->powerups, 0, sizeof( ps->powerups ) );
 	freeze = car->dragPhase >= DRAG_FINISHED || car->dragPhase < DRAG_COUNTDOWN ||
 		!car->dragGreenTime || !cg_dragPrediction.launchTime ||
-		cg_dragPrediction.launchTime < car->dragGreenTime ||
+		cg_dragPrediction.launchTime < car->dragGreenTime + DRAG_MIN_REACTION_MS ||
 		cmd->serverTime < cg_dragPrediction.launchTime || renderTime < car->dragGreenTime;
 	if ( freeze ) {
 		cmd->buttons = BUTTON_HANDBRAKE;

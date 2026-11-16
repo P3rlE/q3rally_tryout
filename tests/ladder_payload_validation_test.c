@@ -73,9 +73,19 @@ int main( void ) {
     assert( G_LadderValidatePayload( &payload, qtrue ) == qfalse );
     payload.players[0].totalRaceMs--;
     payload.valid = qtrue;
-    payload.players[0].reactionMs = 0; /* exact green is a valid reaction */
-    payload.players[0].totalRaceMs = payload.players[0].elapsedMs;
+    payload.players[0].reactionMs = DRAG_MIN_REACTION_MS; /* the fastest legal reaction */
+    payload.players[0].totalRaceMs = payload.players[0].elapsedMs + DRAG_MIN_REACTION_MS;
     assert( G_LadderValidatePayload( &payload, qtrue ) == qtrue );
+    payload.players[0].reactionMs--; /* faster is a false start, never a finish */
+    payload.players[0].totalRaceMs--;
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qfalse );
+    payload.players[0].reactionMs = 0;
+    payload.players[0].totalRaceMs = payload.players[0].elapsedMs;
+    payload.valid = qtrue;
+    assert( G_LadderValidatePayload( &payload, qtrue ) == qfalse );
+    payload.players[0].reactionMs = DRAG_MIN_REACTION_MS;
+    payload.players[0].totalRaceMs = payload.players[0].elapsedMs + DRAG_MIN_REACTION_MS;
+    payload.valid = qtrue;
     payload.players[0].trapSpeedKph = NAN;
     assert( G_LadderValidatePayload( &payload, qtrue ) == qfalse );
 

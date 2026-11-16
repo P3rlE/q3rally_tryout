@@ -28,6 +28,12 @@ typedef struct {
 
 static dragClient_t dragClients[MAX_CLIENTS];
 static int dragCountdownTime;
+/* The scheduled green stays on the server. Clients learn the green time only
+ * once it has happened: knowing it in advance would let a modified client
+ * launch on the exact millisecond. */
+static int dragScheduledGreenTime;
+/* The server frame in which green actually happened; 0 before green. That
+ * snapshot carries GO, so reaction times are measured from what drivers saw. */
 static int dragGreenTime;
 static int dragLastLight;
 static int dragAllDoneTime;
@@ -161,9 +167,11 @@ static qboolean G_DragTerminal( const dragClient_t *driver ) {
 
 static void G_DragPublish( int clientNum, int recipient ) {
 	const dragClient_t *driver = &dragClients[clientNum];
-	trap_SendServerCommand( recipient, va( "dragStatus %d %d %d %d %d %d",
-		clientNum, driver->phase, dragGreenTime, driver->launchTime,
-		driver->finishTime, driver->trapSpeed ) );
+	/* The countdown start identifies the heat and drives the red lamps.
+	 * dragGreenTime stays 0 until green has happened. */
+	trap_SendServerCommand( recipient, va( "dragStatus %d %d %d %d %d %d %d",
+		clientNum, driver->phase, dragCountdownTime, dragGreenTime,
+		driver->launchTime, driver->finishTime, driver->trapSpeed ) );
 }
 
 static void G_DragSetPhase( int clientNum, dragPhase_t phase ) {
@@ -202,7 +210,8 @@ static void G_DragDisqualify( int clientNum, dragPhase_t phase, const char *reas
 
 void G_DragInit( void ) {
 	memset( dragClients, 0, sizeof( dragClients ) );
-	dragCountdownTime = dragGreenTime = dragAllDoneTime = dragFirstFinishTime = 0;
+	dragCountdownTime = dragScheduledGreenTime = dragGreenTime = 0;
+	dragAllDoneTime = dragFirstFinishTime = 0;
 	dragLastLight = -1;
 	dragMapInvalid = dragResultAnnounced = qfalse;
 	VectorClear( dragForward );
@@ -251,9 +260,9 @@ void G_DragClientSpawn( gentity_t *ent ) {
 			G_DragPublish( i, clientNum );
 		}
 	}
-	/* Late spectators also need the current red stage: its final hold is
-	 * randomized, so the green timestamp alone cannot reconstruct it. */
-	if ( dragCountdownTime && !level.startRaceTime && level.time < dragGreenTime
+	/* Late spectators also need the current red stage for the countdown
+	 * text; the lamps themselves follow the published countdown start. */
+	if ( dragCountdownTime && !level.startRaceTime
 		&& dragLastLight >= 1 && dragLastLight <= 3 ) {
 		trap_SendServerCommand( clientNum, va( "rc \"%d - HOLD RPM IN N\" %d",
 			dragLastLight, dragLastLight ) );
@@ -271,7 +280,7 @@ void G_DragClientDisconnect( int clientNum ) {
 	if ( dragCountdownTime && !level.startRaceTime ) {
 		/* Cancel the armed start so a disconnect never gives the remaining
 		 * driver an unexpected green or an automatic walkover. */
-		dragCountdownTime = dragGreenTime = 0;
+		dragCountdownTime = dragScheduledGreenTime = dragGreenTime = 0;
 		dragLastLight = -1;
 		level.raceState = RACE_STATE_NONE;
 		for ( i = 0; i < MAX_CLIENTS; i++ ) {
@@ -324,11 +333,15 @@ static qboolean G_DragConfigureTrack( void ) {
 	return dragLaneHalfWidth > CAR_WIDTH;
 }
 
+/* Call only from the server frame (starter think and G_DragRunFrame), never
+ * while processing a client command between frames: the snapshot of this
+ * frame is the first one that shows green. */
 static void G_DragStartGreen( void ) {
 	int i;
-	if ( !dragGreenTime || level.startRaceTime || level.time < dragGreenTime ) {
+	if ( !dragScheduledGreenTime || level.startRaceTime || level.time < dragScheduledGreenTime ) {
 		return;
 	}
+	dragGreenTime = level.time;
 	level.startRaceTime = dragGreenTime;
 	level.raceState = RACE_STATE_RUNNING;
 	level.raceIntroEndTime = 0;
@@ -340,11 +353,9 @@ static void G_DragStartGreen( void ) {
 		}
 		g_entities[i].client->lapStartTime = dragGreenTime;
 		g_entities[i].client->lastCheckpointTime = dragGreenTime;
-		if ( !G_DragTerminal( &dragClients[i] ) && dragClients[i].launchTime ) {
-			G_DragSetPhase( i, DRAG_RUNNING );
-		} else {
-			G_DragPublish( i, -1 );
-		}
+		/* Every request before this frame was a false start, so no driver is
+		 * launched here; publish the green time with each driver's state. */
+		G_DragPublish( i, -1 );
 	}
 }
 
@@ -381,9 +392,9 @@ void G_DragStarterThink( gentity_t *starter ) {
 			return;
 		}
 		dragCountdownTime = level.time;
-		/* Vary only the final wait. The common scheduled timestamp is the
-		 * authority for all first-gear commands, including delayed packets. */
-		dragGreenTime = level.time + 3000 + ( rand() % 1001 );
+		/* Vary only the final wait, and keep it secret until green. */
+		dragScheduledGreenTime = level.time + 3000 + ( rand() % 1001 );
+		dragGreenTime = 0;
 		level.raceState = RACE_STATE_COUNTDOWN;
 		level.raceIntroEndTime = 0;
 		for ( i = 0; i < MAX_CLIENTS; i++ ) {
@@ -449,7 +460,6 @@ void G_DragFilterCommand( gentity_t *ent, usercmd_t *cmd ) {
 	} else {
 		driver->throttleReady = !G_DragTerminal( driver ) && cmd->forwardmove > 0 ? qtrue : qfalse;
 	}
-	G_DragStartGreen();
 	if ( !driver->participant || driver->phase != DRAG_RUNNING || !level.startRaceTime ) {
 		cmd->buttons = BUTTON_HANDBRAKE;
 		cmd->rightmove = cmd->upmove = 0;
@@ -465,7 +475,8 @@ void G_DragFilterCommand( gentity_t *ent, usercmd_t *cmd ) {
 
 qboolean G_DragTryGearChange( gentity_t *ent, int direction, int commandTime ) {
 	dragClient_t *driver;
-	int clientNum;
+	int clientNum, reactionMs;
+	char reason[96];
 	if ( g_gametype.integer != GT_DRAG ) return qfalse;
 	if ( !ent || !ent->client ) return qtrue;
 	clientNum = ent->s.number;
@@ -483,13 +494,28 @@ qboolean G_DragTryGearChange( gentity_t *ent, int direction, int commandTime ) {
 	if ( commandTime <= 0 ) commandTime = ent->client->pers.cmd.serverTime;
 	if ( commandTime < level.time - 1000 ) commandTime = level.time - 1000;
 	if ( commandTime > level.time + 200 ) commandTime = level.time + 200;
+	/* The client stamps gearUp with the time of the frame it was pressed in,
+	 * and sends it together with that frame's movement. It can therefore never
+	 * be older than the movement already received: an older stamp is a
+	 * backdated launch, and is moved up to the last accepted movement. */
+	if ( commandTime < ent->client->pers.cmd.serverTime ) {
+		commandTime = ent->client->pers.cmd.serverTime;
+	}
 	driver->launchTime = commandTime;
-	if ( commandTime < dragGreenTime ) {
+	/* Before the green frame, no request is legal, whatever its timestamp. */
+	if ( !level.startRaceTime || !dragGreenTime || commandTime < dragGreenTime ) {
 		G_DragDisqualify( clientNum, DRAG_FALSE_START, "FALSE START - selected FIRST before GREEN" );
 		return qtrue;
 	}
-	G_DragStartGreen();
-	if ( level.startRaceTime && driver->phase != DRAG_RUNNING ) {
+	reactionMs = commandTime - dragGreenTime;
+	if ( reactionMs < DRAG_MIN_REACTION_MS ) {
+		/* Not va(): G_DragDisqualify formats with va() itself. */
+		Com_sprintf( reason, sizeof( reason ), "FALSE START - reaction %d.%03d s, minimum %d.%03d s",
+			reactionMs / 1000, reactionMs % 1000, DRAG_MIN_REACTION_MS / 1000, DRAG_MIN_REACTION_MS % 1000 );
+		G_DragDisqualify( clientNum, DRAG_FALSE_START, reason );
+		return qtrue;
+	}
+	if ( driver->phase != DRAG_RUNNING ) {
 		G_DragSetPhase( clientNum, DRAG_RUNNING );
 	}
 	return qtrue;

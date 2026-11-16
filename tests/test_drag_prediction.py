@@ -44,43 +44,43 @@ int main(void) {
     cmd=command(999,qtrue);
     CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,999);
     assert(!cg_dragPrediction.launchTime && cmd.forwardmove==127 && ps.stats[STAT_GEAR]==0);
-    cmd=command(1005,qfalse);
-    CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,1005);
+    cmd=command(1105,qfalse);
+    CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,1105);
     assert(!cg_dragPrediction.launchTime && ps.stats[STAT_GEAR]==0);
     assert(cmd.buttons==BUTTON_HANDBRAKE); /* Gas/brake changes cannot launch. */
-    CG_DragPredictFirstGear(&car,&ps,0,1005);
-    cmd=command(1005,qfalse);
+    CG_DragPredictFirstGear(&car,&ps,0,1105);
+    cmd=command(1105,qfalse);
     CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,999);
     assert(cmd.forwardmove==127 && ps.commandTime==900 && ps.stats[STAT_GEAR]==0);
-    assert(cg_dragPrediction.launchTime==1005); /* future cmd cannot move before green */
-    cmd=command(1020,qfalse);
-    CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,1010);
-    assert(cmd.forwardmove==127 && ps.commandTime==1005 && ps.stats[STAT_GEAR]==1);
+    assert(cg_dragPrediction.launchTime==1105); /* future cmd cannot move before green */
+    cmd=command(1120,qfalse);
+    CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,1110);
+    assert(cmd.forwardmove==127 && ps.commandTime==1105 && ps.stats[STAT_GEAR]==1);
     assert(!(cmd.buttons&(BUTTON_ATTACK|BUTTON_USE_HOLDABLE)));
 
     /* Fresh render calls must retain the first gear input while the server's
        COUNTDOWN phase is still the most recently delivered status. */
-    ps.commandTime=1020;
-    cmd=command(1030,qfalse);
-    CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,1030);
-    assert(cmd.forwardmove==127 && ps.commandTime==1020);
-    assert(cg_dragPrediction.launchTime==1005);
+    ps.commandTime=1120;
+    cmd=command(1130,qfalse);
+    CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,1130);
+    assert(cmd.forwardmove==127 && ps.commandTime==1120);
+    assert(cg_dragPrediction.launchTime==1105);
 
     /* Replaying from an older snapshot clamps to the same first-gear input, not the
        newest command's time. The remaining interval may accelerate. */
     ps.commandTime=900;
-    cmd=command(1060,qfalse);
-    CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,1060);
-    assert(ps.commandTime==1005 && cmd.forwardmove==127);
+    cmd=command(1160,qfalse);
+    CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,1160);
+    assert(ps.commandTime==1105 && cmd.forwardmove==127);
 
-    car.dragPhase=DRAG_RUNNING; car.dragLaunchTime=1010;
+    car.dragPhase=DRAG_RUNNING; car.dragLaunchTime=1110;
     ps.commandTime=900; ps.stats[STAT_GEAR]=0;
-    cmd=command(1070,qfalse);
-    CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,1070);
-    assert(ps.commandTime==1010 && cg_dragPrediction.launchTime==1010 && ps.stats[STAT_GEAR]==1);
-    ps.commandTime=1080; ps.stats[STAT_GEAR]=0;
-    cmd=command(1090,qtrue);
-    CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,1090);
+    cmd=command(1170,qfalse);
+    CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,1170);
+    assert(ps.commandTime==1110 && cg_dragPrediction.launchTime==1110 && ps.stats[STAT_GEAR]==1);
+    ps.commandTime=1180; ps.stats[STAT_GEAR]=0;
+    cmd=command(1190,qtrue);
+    CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,1190);
     assert(cmd.forwardmove==127 && (cmd.buttons&BUTTON_HANDBRAKE));
     assert(ps.stats[STAT_GEAR]==0); /* Later manual neutral selection is respected. */
 
@@ -101,16 +101,16 @@ int main(void) {
     CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,2000);
     assert(cmd.forwardmove==127 && ps.stats[STAT_GEAR]==0 && !cg_dragPrediction.launchTime);
     assert(!ps.stats[STAT_SLIPSTREAM] && !ps.stats[STAT_HOLDABLE_ITEM] && !ps.powerups[PW_TURBO]);
-    CG_DragPredictFirstGear(&car,&ps,0,2015);
-    cmd=command(2015,qfalse);
-    CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,2015);
-    assert(ps.commandTime==2015);
+    CG_DragPredictFirstGear(&car,&ps,0,2115);
+    cmd=command(2115,qfalse);
+    CG_DragFilterPredictedCommand(&cmd,&ps,&car,0,2115);
+    assert(ps.commandTime==2115);
     ps.commandTime=1900;
     ps.stats[STAT_GEAR]=0;
-    CG_DragPredictFirstGear(&car,&ps,1,2025);
-    cmd=command(2025,qfalse);
-    CG_DragFilterPredictedCommand(&cmd,&ps,&car,1,2025);
-    assert(ps.commandTime==2025 && cg_dragPrediction.clientNum==1);
+    CG_DragPredictFirstGear(&car,&ps,1,2125);
+    cmd=command(2125,qfalse);
+    CG_DragFilterPredictedCommand(&cmd,&ps,&car,1,2125);
+    assert(ps.commandTime==2125 && cg_dragPrediction.clientNum==1);
 
     /* An early first gear never turns into a valid launch when green arrives. */
     car.dragGreenTime=3000; ps.commandTime=2900; ps.stats[STAT_GEAR]=0;
@@ -120,6 +120,19 @@ int main(void) {
     CG_DragFilterPredictedCommand(&cmd,&ps,&car,1,3020);
     assert(cg_dragPrediction.launchTime==2990 && ps.commandTime==2900);
     assert(ps.stats[STAT_GEAR]==0 && cmd.buttons==BUTTON_HANDBRAKE);
+
+    /* A launch inside the minimum reaction time is a server false start, so
+       it is never predicted as a launch either; 0.100 s is still legal. */
+    car.dragGreenTime=4000; ps.commandTime=3900; ps.stats[STAT_GEAR]=0;
+    CG_DragPredictFirstGear(&car,&ps,1,4000+DRAG_MIN_REACTION_MS-1);
+    cmd=command(4150,qfalse);
+    CG_DragFilterPredictedCommand(&cmd,&ps,&car,1,4150);
+    assert(ps.commandTime==3900 && ps.stats[STAT_GEAR]==0 && cmd.buttons==BUTTON_HANDBRAKE);
+    car.dragGreenTime=5000; ps.commandTime=4900;
+    CG_DragPredictFirstGear(&car,&ps,1,5000+DRAG_MIN_REACTION_MS);
+    cmd=command(5150,qfalse);
+    CG_DragFilterPredictedCommand(&cmd,&ps,&car,1,5150);
+    assert(ps.commandTime==5000+DRAG_MIN_REACTION_MS && ps.stats[STAT_GEAR]==1);
     return 0;
 }
 '''

@@ -246,14 +246,25 @@ def test_drag_rejects_invalid_result_facts_before_storage(field: str, value: obj
     assert client.get(f"/api/v1/matches/{match['matchId']}").status_code == 404
 
 
-def test_drag_accepts_zero_reaction_and_boundary_frame_finish() -> None:
-    for reaction, elapsed in ((0, 13000), (1, 60050), (60000, 60000)):
+def test_drag_accepts_minimum_reaction_and_boundary_frame_finish() -> None:
+    for reaction, elapsed in ((100, 13000), (101, 60050), (60000, 60000)):
         match = _drag_match(f"drag-boundary-{reaction}-{elapsed}")
         match["players"][0].update({"reactionMs": reaction, "elapsedMs": elapsed,
                                     "totalRaceMs": reaction + elapsed})
         created = client.post("/api/v1/matches", json=match)
         assert created.status_code == 201, created.text
         client.delete(f"/api/v1/matches/{match['matchId']}")
+
+
+@pytest.mark.parametrize("reaction", [0, 1, 99])
+def test_drag_rejects_a_finish_faster_than_the_minimum_reaction(reaction: int) -> None:
+    match = _drag_match(f"drag-too-fast-{reaction}")
+    elapsed = match["players"][0]["elapsedMs"]
+    match["players"][0].update({"reactionMs": reaction, "totalRaceMs": reaction + elapsed})
+    rejected = client.post("/api/v1/matches", json=match)
+    assert rejected.status_code == 422, rejected.text
+    assert "DRAG_REACTION_TOO_FAST" in rejected.json()["validation"]["errorCodes"]
+    assert client.get(f"/api/v1/matches/{match['matchId']}").status_code == 404
 
 
 def test_drag_rejects_invalid_times_and_prevents_solo_wins() -> None:

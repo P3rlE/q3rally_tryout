@@ -27,8 +27,8 @@ map q3r_dragstrip
    to launch. Throttle changes while waiting do not count as a false start.
 3. Shift manually with **Gear Up / Gear Down** (defaults **Page Up / Page Down**).
    The mode forces manual transmission without changing the saved preference.
-4. Stay in your lane and cross the finish. Selecting first before green is an
-   irrevocable false start. Leaving the lane, resetting/respawning, or leaving
+4. Stay in your lane and cross the finish. Selecting first before green, or
+   less than 0.100 s after it, is an irrevocable false start. Leaving the lane, resetting/respawning, or leaving
    the driving field after green forfeits the attempt.
 5. Review the results and use the normal intermission confirmation for the next
    heat. Each match currently contains one run.
@@ -63,29 +63,39 @@ and saved preferences remain available in other modes.
 
 ## Timing and rules
 
-- **RT:** time from scheduled green to the driver's first-gear input.
+- **RT:** time from green to the driver's first-gear input.
   This prototype measures gear engagement, rather than a physical start beam.
+  An RT under **0.100 s** is a false start, as in sprint athletics: nobody
+  reacts that fast, so such a launch was anticipated or automated.
 - **ET:** time from that input to crossing the finish plane.
 - **TOTAL:** RT + ET. The earliest valid finish wins; equal millisecond results
   are tied. Invalid attempts have no result time or finishing rank.
 - **KM/H:** interpolated speed at the finish.
 
 The server uses the accepted launch-input timestamp for first gear and
-interpolates crossing of a common plane between movement updates. The car's
+interpolates crossing of a common plane between movement updates. A gearUp
+timestamp older than the movement the server has already received from that
+client is moved up to that movement: the client sends both together, so an
+older stamp can only be a backdated launch. The car's
 origin is the shared reference for every vehicle body. Millisecond display is
 the recording resolution, not a guarantee of sub-frame physical accuracy.
 Winner resolution happens after all drivers have moved for a server frame.
 
-Green follows three amber stages with a variable final hold. A disconnect or
+Green follows three amber stages with a variable final hold. The server keeps
+the scheduled green to itself. Green is the server frame in which it happens;
+the snapshot of that frame is the first to tell clients, so RT is measured from
+the moment drivers can see green. Any first-gear request before that frame is a
+false start, whatever its timestamp. A disconnect or
 switch to spectator before green cancels the countdown and requires restaging.
 New drivers cannot join an armed heat. A heat times out after 60 seconds; after
 the first valid finish, the other driver has up to ten seconds to finish.
 
 Every drag strip has a physical start light above each lane, reusing Timber Run's
 `rally_startlight` model and effect. Its three red lamps match the HUD's three
-amber stages. Both world lights, the HUD and the distinct green tone use the
-same scheduled server green timestamp, even when the `GO!` text arrives later.
-A short tone accompanies each countdown stage. Green stays lit for up to four
+amber stages. Both world lights, the HUD and the tones follow the same
+published countdown start (one more red per second, the third held through
+the variable wait) and switch to green with the announced green time, even when
+the `GO!` text arrives later. A short tone accompanies each countdown stage. Green stays lit for up to four
 seconds; the HUD start prompt clears sooner. A driver's false start is shown
 in their HUD and does not change the common world lights for the opponent.
 Map restart and a cancelled start clear the previous signals. Mapper preview
@@ -113,8 +123,10 @@ twice. Cheats, slow motion and modified physics retain the standard Ladder gate.
 
 Drag has independent profile counters: `dragWins`, `dragCompleted` (valid
 finishes only), `dragBestMs`, `dragBestReactionMs`, and `dragBestElapsedMs`.
-Zero milliseconds is a valid reaction; a previous perfect reaction must survive
-later slower starts. Drag results do not update Sprint wins or lap records.
+A best reaction must survive later slower starts. Finishes with an RT under
+0.100 s are false starts: the game never reports them as finished, the dedicated
+server's and both Ladder services' validation reject them, and the Ladder's
+leaderboard leaves out older records that would now be false starts. Drag results do not update Sprint wins or lap records.
 Existing profile identities and progress are preserved when these additive
 fields are saved by the game or menu.
 

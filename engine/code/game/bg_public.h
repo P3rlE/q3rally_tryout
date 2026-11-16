@@ -383,6 +383,11 @@ typedef enum {
         DRAG_DNF
 } dragPhase_t;
 
+/* A first-gear request less than this long after green is a false start,
+ * like the 0.100 s limit in sprint athletics. It is not humanly possible to
+ * react faster, so such a launch was anticipated or automated. */
+#define DRAG_MIN_REACTION_MS 100
+
 // player_state->stats[] indexes
 // NOTE: may not have more than 18
 typedef enum {
