@@ -43,6 +43,13 @@ Changed:
   with balaclava and goggles (retro, vintage, moto, pilot). The default is
   "classic"; a saved head that no longer exists falls back to it.
   Generator tools/carbuild/helmets.
+- Drag Race maps: the test strip q3r_dragstrip became "Desert Dragway"
+  (quarter mile with grandstands, paddock, timing boards, buttes and a
+  blimp), and two new strips came with it: "Night Drag" (q3r_drag_night,
+  eighth mile on a closed-off city avenue at night) and "Airfield Drag"
+  (q3r_drag_airfield, quarter mile on a runway at sunset). All three keep
+  the same lanes, gates and asphalt grip. Generator
+  tools/maptools/make_dragstrip.py.
 - q3r_ctf_04 is finished as "Trophy Square": a bronze rally trophy on a
   granite plinth stands in the fountain instead of the Xaero statue. The
   map is point symmetric now (the car workshop with the BFG and the

@@ -5,7 +5,8 @@ change the v0.8 release line or its Ladder/profile contracts.
 
 ## Playing a heat
 
-Select **Drag Race** in Offline/Host and choose **Drag Strip**. The prototype
+Select **Drag Race** in Offline/Host and choose one of the strips: **Desert
+Dragway**, **Night Drag** (eighth mile) or **Airfield Drag**. The prototype
 accepts two human drivers, or one driver for solo practice. Bots are disabled.
 Both lanes use the same vehicle performance, regardless of the selected body.
 Neutral revs carry into a brief clutch engagement when first gear is selected.
@@ -32,8 +33,9 @@ map q3r_dragstrip
 5. Review the results and use the normal intermission confirmation for the next
    heat. Each match currently contains one run.
 
-The map is approximately a quarter mile from the equal grid positions to the
-finish plane. See [the map contract](drag-race-map.md) for exact coordinates,
+Desert Dragway and Airfield Drag are approximately a quarter mile from the
+equal grid positions to the finish plane, Night Drag an eighth mile. See
+[the map contract](drag-race-map.md) for exact coordinates,
 geometry checks and rebuild instructions.
 
 ## Drag HUD and launch guide
@@ -79,7 +81,7 @@ switch to spectator before green cancels the countdown and requires restaging.
 New drivers cannot join an armed heat. A heat times out after 60 seconds; after
 the first valid finish, the other driver has up to ten seconds to finish.
 
-The Drag Strip has a physical start light above each lane, reusing Timber Run's
+Every drag strip has a physical start light above each lane, reusing Timber Run's
 `rally_startlight` model and effect. Its three red lamps match the HUD's three
 amber stages. Both world lights, the HUD and the distinct green tone use the
 same scheduled server green timestamp, even when the `GO!` text arrives later.

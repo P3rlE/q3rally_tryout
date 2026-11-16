@@ -132,6 +132,7 @@ GEN_RULES = [
     (r'^models/mapobjects/(q3r_lanterns|q3r_rail)/', 'tools/mapobjects'),
     (r'^models/mapobjects/startlight/', 'tools/maptools/make_startlight.py'),
     (r'^gfx/luts/', 'tools/maptools/make_color_luts.py'),
+    (r'^(textures/q3r_drag/|scripts/q3r_drag\.shader$)', 'tools/maptools/make_dragstrip.py'),
 ]
 
 

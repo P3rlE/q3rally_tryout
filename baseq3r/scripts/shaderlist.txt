@@ -46,3 +46,4 @@ q3r_timberrun
 q3r_quarry
 startlight
 q3r_weapons
+q3r_drag
