@@ -50,6 +50,19 @@ static int contents( const vec3_t point, int pass ) { return point[2] < 0 ? CONT
 static qboolean friction( const carPoint_t *point, float *s, float *k ) {
 	*s = CP_SCOF; *k = CP_KCOF; return qtrue;
 }
+/* As ClientThink and the client prediction do with pmove_fixed: command times
+ * are rounded up to whole pmove_msec steps, whatever the frame rate. */
+static int fixedTime( int serverTime ) {
+	return ( ( serverTime + 17 ) / 18 ) * 18;
+}
+
+static void move( pmove_t *m, int serverTime ) {
+	m->cmd.serverTime = fixedTime( serverTime );
+	if ( m->cmd.serverTime > m->ps->commandTime ) {
+		moveCar( m );
+	}
+}
+
 static void setup( pmove_t *m, playerState_t *p, car_t *car ) {
 	memset( m, 0, sizeof( *m ) ); memset( p, 0, sizeof( *p ) ); memset( car, 0, sizeof( *car ) );
 	m->ps = p; m->car = car; m->client = qtrue; m->trace = floorTrace; m->pointcontents = contents;
@@ -68,24 +81,27 @@ static void setup( pmove_t *m, playerState_t *p, car_t *car ) {
 
 static void run( float startRpm, int step, float shiftRpm ) {
 	pmove_t m; playerState_t p; car_t car;
-	int t, launch, minRpm = 99999, engine;
+	int t, launch, minRpm = 99999, engine, lastShift = 0;
 	float startX, lastX = 0, x, t60ft = 0, speed;
 	setup( &m, &p, &car );
 	/* Settle on the grid in N, then build the launch RPM with the throttle. */
 	m.cmd.buttons = BUTTON_HANDBRAKE;
-	for ( t = step; t <= 2000; t += step ) { m.cmd.serverTime = t; moveCar( &m ); }
+	for ( t = step; t <= 2000; t += step ) { move( &m, t ); }
 	/* The countdown arms the engine: two seconds of holding these revs. */
 	p.stats[STAT_DRAG_ENGINE] = DRAG_ENGINE_ARMED;
 	m.cmd.forwardmove = (signed char)( 127.0f * ( startRpm - CP_RPM_MIN ) / ( CP_RPM_MAX - CP_RPM_MIN ) + 0.5f );
 	if ( startRpm >= CP_RPM_MAX ) m.cmd.forwardmove = 127;
-	for ( ; t <= 4000; t += step ) { m.cmd.serverTime = t; moveCar( &m ); }
+	for ( ; t <= 4000; t += step ) { move( &m, t ); }
 	startX = p.origin[0];
 	car.gear = 1; p.stats[STAT_GEAR] = 1;
 	m.cmd.buttons = 0; m.cmd.forwardmove = 127; launch = p.commandTime;
 	for ( t = step; t <= 25000; t += step ) {
 		lastX = p.origin[0] - startX;
-		if ( t > 300 && car.gear < 6 && car.rpm >= shiftRpm ) car.gear++;
-		m.cmd.serverTime = launch + t; moveCar( &m ); x = p.origin[0] - startX;
+		if ( t > 300 && t >= lastShift + 100 && car.gear < 6 && car.rpm >= shiftRpm ) {
+			car.gear++;
+			lastShift = t;
+		}
+		move( &m, launch + t ); x = p.origin[0] - startX;
 		if ( t < 1500 && p.stats[STAT_RPM] < minRpm ) minRpm = p.stats[STAT_RPM];
 		if ( getenv( "LAUNCH_SWEEP_TRACE" ) && ( t % 96 == 0 || t <= 4 * step ) ) {
 			float vx = p.velocity[0];
@@ -114,11 +130,11 @@ static void limiter( int step ) {
 	int t;
 	setup( &m, &p, &car );
 	m.cmd.buttons = BUTTON_HANDBRAKE;
-	for ( t = step; t <= 1000; t += step ) { m.cmd.serverTime = t; moveCar( &m ); }
+	for ( t = step; t <= 1000; t += step ) { move( &m, t ); }
 	p.stats[STAT_DRAG_ENGINE] = DRAG_ENGINE_ARMED;
 	m.cmd.forwardmove = 127;
 	for ( t = step; t <= 20000; t += step ) {
-		m.cmd.serverTime = 1000 + t; moveCar( &m );
+		move( &m, 1000 + t );
 		if ( p.stats[STAT_DRAG_ENGINE] & DRAG_ENGINE_BLOWN ) {
 			printf( "limiter,%d,blown after %.2f s\n", step, t / 1000.0f );
 			return;
