@@ -1048,6 +1048,13 @@ static void G_DragNextHeat( void ) {
 		ent->client->finishRaceTime = 0;
 		ent->client->lapStartTime = ent->client->lastCheckpointTime = 0;
 		ent->client->ps.stats[STAT_POSITION] = 0;
+		/* A driver who was out of the last heat (blown engine, false start,
+		 * finished) became a race observer, maybe following the rival. Only
+		 * ClientBegin clears that, so take him out of it here, or ClientSpawn
+		 * puts him back into the observer camera instead of his car. */
+		ent->raceObserver = qfalse;
+		ent->client->sess.spectatorState = SPECTATOR_NOT;
+		ent->client->ps.pm_flags &= ~( PMF_FOLLOW | PMF_OBSERVE );
 		ClientSpawn( ent );
 	}
 	G_DragPublishMatch( -1 );

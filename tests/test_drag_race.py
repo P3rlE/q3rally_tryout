@@ -537,8 +537,12 @@ int main(void) {
     assert(dragMatch[0].wins==1 && !dragMatchOver && dragMatchHeats==1 && exits==0);
     assert(strstr(lastMatch,"dragMatch 3 2 0 -1 2 0 1 1 0"));
     assert(strstr(lastCpAll,"HEAT TO") && strstr(lastCpAll,"1 - 0"));
+    /* driver 1 sat out the rest of heat 1 as a race observer following driver 0 */
+    g_entities[1].raceObserver=qtrue; clients[1].sess.spectatorState=SPECTATOR_FOLLOW;
+    clients[1].ps.pm_flags|=PMF_FOLLOW;
     respawns=0; nextHeat();
     assert(respawns==2 && !dragCountdownTime && !level.startRaceTime && exits==0);
+    assert(!g_entities[1].raceObserver && clients[1].sess.spectatorState==SPECTATOR_NOT);
     assert(dragClients[0].phase==DRAG_WAITING && dragMatch[0].entered && dragMatch[1].entered);
     assert(!G_DragCanJoin()); /* the match has begun */
     playHeat(2,2300,2050); /* heat 2: driver 1, the fastest heat of the match */
