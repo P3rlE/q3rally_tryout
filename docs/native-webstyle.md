@@ -2,18 +2,24 @@
 
 The WebUI (`engine/webui/garage`, shown through CEF on Windows) set the look of
 the menus. Screens move back into the game one at a time and must look exactly
-like their WebUI version, on every platform and without a browser. The first
-one is the graphics loading screen ("Getting ready.", WebUI screen 1).
+like their WebUI version, on every platform and without a browser. Done so
+far: the graphics loading screen ("Getting ready.", WebUI screen 1) and the
+main menu ("Ready to race.", WebUI screen 2).
 
 ## How a screen is rebuilt
 
-- **Layout from the CSS.** `q3_ui/ui_rally_gfxlayout.c` computes every box
-  of the screen from the rules in `garage.css`, number for number. This covers
+- **Layout from the CSS.** `q3_ui/ui_rally_gfxlayout.c` (loading screen) and
+  `q3_ui/ui_rally_mainlayout.c` (main menu) compute every box of the screen
+  from the rules in `garage.css`, number for number. What both share, the
+  page header, the two-column grid and the showroom with the car, lives in
+  `q3_ui/ui_rally_frontpage.c`. This covers
   `clamp()` with `vw`/`vh`, `max-width`, the grid columns, margins and their
   collapsing, `min-height` and line wrapping. It works in screen pixels, which
   are CSS pixels at a device pixel ratio of 1. Chrome reserves 15 px for the
   scrollbar (`scrollbar-gutter: stable`), so the page is not centered on the
-  screen.
+  screen. Chrome keeps block lengths in 1/64 px, cut off rather than
+  rounded; the main menu's stacked buttons follow that, or nine of them
+  would drift by a quarter pixel.
 - **Text like Chrome.** `q3_ui/ui_rally_webstyle.c` lays text out with the
   font's linear advances, its GPOS pair kerning, `letter-spacing` after every
   glyph and `text-transform`. Line boxes round ascent and descent to whole
@@ -53,19 +59,23 @@ atlases.
 
 ## Checking a screen
 
-- `tools/ui_webstyle/measure_webui_loading.cjs` measures the WebUI screen in
-  Chrome. It records every box and the width of every text run, for ten
-  viewports and all states.
-- The result is `tests/fixtures/webui_loading_layout.json`.
-- `tests/test_native_gfxloading.py` runs the native layout and text
-  measurement against that fixture:
+- `tools/ui_webstyle/measure_webui_loading.cjs` and `measure_webui_main.cjs`
+  measure the WebUI screens in Chrome. They record every box and the width
+  of every text run, for several viewports and all states (main menu: with
+  and without a profile, quit dialog open).
+- The results are `tests/fixtures/webui_loading_layout.json` and
+  `webui_main_layout.json`.
+- `tests/test_native_gfxloading.py` and `test_native_mainmenu.py` run the
+  native layout and text measurement against them:
   - boxes must match within 0.5 px;
   - text runs within 0.1 px;
   - line breaks must match exactly.
 - `tools/ui_webstyle/native_screenshot.sh` takes a screenshot of the real
-  client under Xvfb, with Mesa's software renderer. The cvar
-  `ui_gfxLoadingPreview "stage,percent,prompt"` pins the state, so the
-  screenshot can be laid next to the WebUI screenshot of the same state.
+  client under Xvfb, with Mesa's software renderer. A cvar pins the state, so
+  the screenshot can be laid next to the WebUI screenshot of the same state:
+  `ui_gfxLoadingPreview "stage,percent,prompt"` for the loading screen,
+  `ui_mainMenuPreview "name,rank,points,quit"` for the main menu (it also
+  skips the profile wizards).
 
 What still differs from the WebUI:
 - **Glyph edges.** Chrome positions glyphs on subpixels; the game draws them
@@ -78,13 +88,30 @@ What still differs from the WebUI:
 
 ## Interplay with the WebUI
 
-While the native loading screen runs, the UI reports `UI_WEB_SCREEN` 15. The
-client then starts CEF and loads the page hidden in its screen 1 state, so
-the car viewer is already loaded.
+## The main menu
 
-For the hand-off, the UI reports the main menu with bit `0x100`. It keeps
-drawing its own screen until the browser has shown the page. The client then
-sets `cl_webPresented` to 2, and the UI switches to the main menu. The UI
-waits for this at most 3 s.
+- The buttons behave like the page's: a click activates, Tab and the arrow
+  keys move a white focus outline (`:focus-visible`), Enter presses the
+  focused button. There are no hover styles, as on the page. Escape does
+  nothing, this is the top menu.
+- Quit opens the page's confirm dialog over its backdrop; "Keep racing" has
+  the focus, Escape closes it, "Show credits and exit" runs the credits.
+- The car can be turned and zoomed like the WebUI's OrbitControls: a drag
+  turns by 360° per height of the view, the elevation stays between −10° and
+  67.5°, the wheel zooms by 0.95 per notch between 2.1 and 7 radii.
+- Driver profile opens the WebUI's driver page with `cl_webUI` 1, otherwise
+  the native profile overlay.
 
-Without CEF (`cl_webUI` 0, or no WebUI build) the UI switches at once.
+## Interplay with the WebUI
+
+While a native screen runs (loading screen, main menu), the UI reports
+`UI_WEB_SCREEN` 15. The client treats it like screen 0: the browser stays
+hidden and the game draws. While the game is disconnected, though, the
+client starts CEF and loads the page, so the screens that are still WebUI
+pages open without a load.
+
+Going from a native screen to a WebUI screen, the browser shows the new page
+a few frames later. Until then the client keeps the last native frame on
+screen (`CL_WebGarageHoldFrame`, at most 1 s) instead of drawing black.
+
+Without CEF (`cl_webUI` 0, or no WebUI build) nothing of this applies.

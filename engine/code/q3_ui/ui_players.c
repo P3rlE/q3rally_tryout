@@ -2041,11 +2041,13 @@ UI_DrawVehicleWebView
 The active vehicle the way the WebUI's three.js showroom frames it
 (engine/webui/vehicleShowroom.ts, opened with yaw 135 and distance 2.6):
 the bounding sphere of body and wheels, a 36 degree vertical field of view,
-the camera 2.6 radii out at 18 degrees elevation. No driver and no plate,
-the WebUI export has neither. x, y, w, h are screen pixels.
+the camera at yaw (135 for the WebUI's opening view), elevationDegrees (18)
+and distanceRadii (2.6) around its center. No driver and no plate, the WebUI
+export has neither. x, y, w, h are screen pixels.
 ==========================
 */
-void UI_DrawVehicleWebView( float x, float y, float w, float h, playerInfo_t *pi, int time ) {
+void UI_DrawVehicleWebView( float x, float y, float w, float h, playerInfo_t *pi, int time,
+                            float yaw, float elevationDegrees, float distanceRadii ) {
 	static const char *wheelTags[4] = { "tag_wheelfl", "tag_wheelfr", "tag_wheelrl", "tag_wheelrr" };
 	refdef_t		refdef;
 	refEntity_t		body;
@@ -2083,9 +2085,9 @@ void UI_DrawVehicleWebView( float x, float y, float w, float h, playerInfo_t *pi
 	if ( radius < 1.0f ) radius = 1.0f;
 
 	/* three.js: azimuth (yaw - 180) in the glTF xz plane, glTF (x, y, z) = Quake (x, z, -y) */
-	azimuth = DEG2RAD( 135.0f - 180.0f );
-	elevation = M_PI / 10.0f;
-	distance = radius * 2.6f;
+	azimuth = DEG2RAD( yaw - 180.0f );
+	elevation = DEG2RAD( elevationDegrees );
+	distance = radius * distanceRadii;
 	offset[0] = cos( azimuth ) * cos( elevation ) * distance;
 	offset[1] = -sin( azimuth ) * cos( elevation ) * distance;
 	offset[2] = sin( elevation ) * distance;

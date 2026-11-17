@@ -19,7 +19,7 @@ against the positions Chrome reports.
 #ifndef UI_RALLY_GFXLAYOUT_H
 #define UI_RALLY_GFXLAYOUT_H
 
-#include "ui_rally_webstyle.h"
+#include "ui_rally_frontpage.h"
 
 #define GFX_LAYOUT_STAGES	8
 
@@ -30,6 +30,8 @@ typedef struct {
 	char		status[96];			/* #active-vehicle-status */
 	qboolean	prompt;				/* #update-prompt shown */
 
+	wsFrontPage_t	page;
+
 	/* the html box: the body background tiles at this size */
 	float		pageWidth, pageHeight;
 
@@ -38,10 +40,9 @@ typedef struct {
 	float		h1Y, h1Size;
 	float		statusX, statusY;	/* #frontend-status */
 
-	/* sections, border boxes */
-	wsRect_t	left, right;
-	float		leftX, rightX;		/* content box x */
-	float		leftW, rightW;		/* content box width */
+	/* the loading section's border box and content box */
+	wsRect_t	left;
+	float		leftX, leftW;
 
 	/* left: loading panel */
 	float		loadingLabelY;
@@ -57,21 +58,13 @@ typedef struct {
 	float		promptY;
 	wsRect_t	buttons[2];			/* Open download page, Continue */
 
-	/* right: showroom */
-	float		showroomLabelY;
-	wsLines_t	showroomLabelLines;
-	wsTextStyle_t vehicleStyle;
-	wsLines_t	vehicleLines;
-	float		vehicleY;
-	wsRect_t	car;				/* #active-vehicle-3d */
-	wsLines_t	statusLines;
-	float		statusTextY;
+	/* the showroom in the second column */
+	wsShowroom_t room;
 } gfxLayout_t;
 
 extern const char *gfxStageLabels[GFX_LAYOUT_STAGES + 1];
 extern const char *gfxPromptText;
 extern const char *gfxLoadingLabel;
-extern const char *gfxShowroomLabel;
 extern const char *gfxButtonLabels[2];
 
 /* Fills in everything below the inputs for a viewport of width x height. */

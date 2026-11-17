@@ -43,6 +43,7 @@ extern const vec4_t wsLine;			/* --line #373737 */
 extern const vec4_t wsSurface;		/* section #171717 */
 extern const vec4_t wsWhite;
 extern const vec4_t wsMuted;		/* #999 */
+extern const vec4_t wsSummary;		/* #bbb, #profile-summary */
 extern const vec4_t wsButtonText;	/* #141414 */
 
 typedef struct {

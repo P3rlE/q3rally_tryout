@@ -21,8 +21,14 @@ Changed:
   the layout follows the WebUI's CSS, the text uses its fonts (Barlow,
   Barlow Condensed, Share Tech Mono) as atlases with Chrome's kerning, and
   the car is shown with the same camera as the WebUI showroom, rendered by
-  the game. With the WebUI the page loads behind it and takes over at the
-  main menu without a black frame (docs/native-webstyle.md).
+  the game (docs/native-webstyle.md).
+- The main menu is drawn by the game again, in the same way, and looks
+  exactly like the WebUI's "Ready to race." menu: the navigation, the
+  profile line, the showroom with the car (turn it by dragging, zoom with
+  the wheel) and the quit dialog. Keyboard: Tab or the arrows move the
+  focus, Enter presses. Going on to a menu that is still a WebUI page, the
+  last frame stays on screen until the page shows, instead of a black
+  frame.
 - Weapons: own models in a "built, not bought" style, all ten made from car
   parts on the same roof plate, with own muzzle flashes and icons. New names
   close to the old ones: Harvester Saw, Spotlight MG, Twin Shotgun, Drum

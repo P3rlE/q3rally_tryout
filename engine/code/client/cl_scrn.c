@@ -625,6 +625,10 @@ void SCR_UpdateScreen( void ) {
 	if ( CL_WebGarageSkipBackground() ) {
 		return;
 	}
+	/* keep the last native frame until the browser shows its page */
+	if ( !recursive && CL_WebGarageHoldFrame( cls.realtime ) ) {
+		return;
+	}
 #endif
 
 	if ( ++recursive > 2 ) {

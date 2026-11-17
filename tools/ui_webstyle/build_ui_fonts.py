@@ -33,15 +33,15 @@ FONTS = ROOT / 'launcher/assets/fonts'
 OUTPUT = ROOT / 'baseq3r/menu/fonts'
 
 CHARS = [c for c in range(32, 127)] + [c for c in range(160, 256)]
-CONDENSED = [24, 28, 32, 38, 44, 48, 56, 66, 78, 92, 112]
+CONDENSED = [20.8, 24, 28, 32, 38, 44, 48, 56, 66, 78, 92, 112]
 VARIANTS = {
     # name: (file, sizes, embolden, oblique); the condensed face only ever
     # shows uppercased text (h1, h2, navigation), so it carries no lowercase
     'sharetechmono':          ('ShareTechMono-Regular.ttf', [12.8], False, False),
-    'barlow':                 ('Barlow-Regular.ttf', [16], False, False),
+    'barlow':                 ('Barlow-Regular.ttf', [13.6, 16], False, False),
     'barlow_bold':            ('Barlow-Regular.ttf', [16], True, False),   # font-weight 750 on a regular face
     'barlowcondensed':        ('BarlowCondensed-Bold.ttf', CONDENSED, False, False),
-    'barlowcondensed_italic': ('BarlowCondensed-Bold.ttf', CONDENSED[5:], False, True),
+    'barlowcondensed_italic': ('BarlowCondensed-Bold.ttf', CONDENSED[6:], False, True),
 }
 PADDING = 2
 # Chrome draws list markers with tabular figures (::marker { font-variant-numeric:

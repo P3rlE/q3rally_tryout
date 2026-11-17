@@ -87,7 +87,6 @@ void CL_WebGarageInit( void ) {
     Cvar_Get( "cl_webHUDActive", "0", CVAR_ROM );
     Cvar_Get( "cl_webMapLoading", "0", CVAR_ROM );
     Cvar_Get( "cl_webIngameUI", "0", CVAR_ROM );
-    Cvar_Get( "cl_webPresented", "0", CVAR_ROM );	/* screen the browser shows, for the UI's hand-off */
 }
 
 static qboolean Web_Visible( void ) {
@@ -414,17 +413,14 @@ static qboolean Web_DriverPayload( const wchar_t *source ) {
 }
 
 /*
- * What the UI module reports for UI_WEB_SCREEN. Besides the WebUI screens it
- * has two native cases (q3_ui/ui_rally_gfxloading.c):
- *   WEB_SCREEN_PRELOAD       the native loading screen runs; the page loads
- *                            hidden in its screen 1 state, so the main menu
- *                            is ready the moment it is asked for
- *   screen | WEB_SCREEN_NATIVE_UNTIL_SHOWN
- *                            the UI wants that screen but keeps drawing its
- *                            own until the browser shows it (no black frames)
+ * What the UI module reports for UI_WEB_SCREEN. Besides the WebUI screens:
+ *   WEB_SCREEN_PRELOAD   a native screen (q3_ui/ui_rally_gfxloading.c,
+ *                        ui_menu.c) is up; the browser stays hidden like on
+ *                        screen 0, but is created and loads its page while
+ *                        the game is disconnected, so the WebUI screens open
+ *                        without a load.
  */
 #define WEB_SCREEN_PRELOAD              15
-#define WEB_SCREEN_NATIVE_UNTIL_SHOWN   0x100
 
 static int Web_UIScreenRaw( void ) {
     return uivm ? (int)VM_Call( uivm, UI_WEB_SCREEN ) : 0;
@@ -432,8 +428,7 @@ static int Web_UIScreenRaw( void ) {
 
 static int Web_UIScreen( void ) {
     int screen = Web_UIScreenRaw();
-    if ( screen == WEB_SCREEN_PRELOAD ) return 1;
-    return screen & 0xff;
+    return screen == WEB_SCREEN_PRELOAD ? 0 : screen;
 }
 
 static qboolean Web_Preloading( void ) {
@@ -455,11 +450,31 @@ qboolean CL_WebGarageOwnsScreen( void ) {
      * console transitions. A hidden browser is not permission to draw old UI. */
     int screen;
     if ( !webFrontend || !webFrontend->integer || !uivm ) return qfalse;
-    screen = Web_UIScreenRaw();
-    if ( screen == WEB_SCREEN_PRELOAD ) return qfalse;
-    if ( screen & WEB_SCREEN_NATIVE_UNTIL_SHOWN ) return webChild && IsWindowVisible( webChild );
+    screen = Web_UIScreen();
     return screen != 0 ||
         (clc.state >= CA_CONNECTING && clc.state <= CA_PRIMED && !clc.demoPlayer);
+}
+
+/*
+ * From a native screen to a WebUI screen the browser shows the new page a
+ * few frames later. SCR_UpdateScreen skips those frames instead of drawing
+ * black, so the last native frame stays on screen; a browser that does not
+ * show within WEB_HOLD_NATIVE_MS gets the black screen as before.
+ */
+#define WEB_HOLD_NATIVE_MS  1000
+static int webNativeFrameTime;
+
+qboolean CL_WebGarageHoldFrame( int realtime ) {
+    if ( !CL_WebGarageOwnsScreen() ) {
+        webNativeFrameTime = realtime ? realtime : 1;
+        return qfalse;
+    }
+    if ( !webNativeFrameTime ) return qfalse;
+    if ( ( webChild && IsWindowVisible( webChild ) ) || realtime - webNativeFrameTime >= WEB_HOLD_NATIVE_MS ) {
+        webNativeFrameTime = 0;
+        return qfalse;
+    }
+    return qtrue;
 }
 
 void CL_WebGarageEscape( qboolean down ) {
@@ -973,7 +988,6 @@ static void Web_Open( void ) {
 
 static void Web_Close( void ) {
 	cef_browser_host_t *host;
-	Cvar_Set( "cl_webPresented", "0" );
 	if ( !webBrowser ) return;
 	host = webBrowser->get_host( webBrowser );
 	host->set_focus( host, 0 );
@@ -1380,8 +1394,8 @@ void CL_WebGarageFrame( void ) {
 	RECT parent, child;
 	LARGE_INTEGER start, end;
 	qboolean measure;
-    if ( webFrontend->integer && uivm && Web_CurrentScreen() && !webBrowser ) {
-        int screen = Web_CurrentScreen();
+    if ( webFrontend->integer && uivm && ( Web_CurrentScreen() || Web_Preloading() ) && !webBrowser ) {
+        int screen = Web_Preloading() ? 1 : Web_CurrentScreen();
         if ( screen >= 1 && screen <= 14 ) {
             if ( screen == 7 ) webGarageMode = qtrue;
             if ( Web_Initialize() ) webOpenRequested = qtrue;
@@ -1397,7 +1411,7 @@ void CL_WebGarageFrame( void ) {
 		QueryPerformanceCounter( &end );
 		Web_RecordTiming( start, end );
 	}
-	if ( webOpenRequested && webContextReady && Web_CurrentScreen() ) Web_Open();
+	if ( webOpenRequested && webContextReady && ( Web_CurrentScreen() || Web_Preloading() ) ) Web_Open();
 	if ( !webBrowser ) return;
     if ( webSessionAction == 3 ) { webSessionAction = 0; Cbuf_AddText( "disconnect\n" ); }
     if ( webSessionAction == 1 ) { webSessionAction = 0; Con_ToggleConsole_f(); }
@@ -1426,7 +1440,6 @@ void CL_WebGarageFrame( void ) {
                 frame->base.release( &frame->base );
             }
             ShowWindow( webChild, SW_HIDE );
-            Cvar_Set( "cl_webPresented", "0" );
             host->set_focus( host, 0 ); host->base.release( &host->base );
             SetFocus( webParent );
             {
@@ -1441,10 +1454,9 @@ void CL_WebGarageFrame( void ) {
     /* A release may arrive at SDL before the child takes keyboard focus. */
     if ( webOpeningEscape && !(GetAsyncKeyState( VK_ESCAPE ) & 0x8000) ) webOpeningEscape = qfalse;
     /* Reveal only after the renderer has applied the requested screen. */
-    if ( webPresentedScreen == Web_CurrentScreen() && !IsWindowVisible( webChild ) && !Web_Preloading() ) {
+    if ( webPresentedScreen == Web_CurrentScreen() && !IsWindowVisible( webChild ) ) {
         cef_browser_host_t *host = webBrowser->get_host( webBrowser );
         ShowWindow( webChild, SW_SHOW );
-        Cvar_Set( "cl_webPresented", va( "%d", webPresentedScreen ) );
         SDL_SetRelativeMouseMode( SDL_FALSE ); SDL_ShowCursor( SDL_ENABLE );
         host->set_focus( host, 1 ); host->base.release( &host->base );
     }
