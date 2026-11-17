@@ -297,6 +297,14 @@ static struct {
 	float top, height, fraction;
 } wsFade;
 
+/* overflow: hidden at the sides, for text in a narrower box */
+static float wsClipLeft, wsClipRight;
+
+void WS_SetClipX( float left, float right ) {
+	wsClipLeft = left;
+	wsClipRight = right;
+}
+
 void WS_SetFade( float top, float height, float fraction ) {
 	wsFade.top = top;
 	wsFade.height = height;
@@ -396,10 +404,26 @@ void WS_DrawText( const wsTextStyle_t *style, float x, float lineTop, const char
 			float gx = WS_Round( pen + rect[4] * k ), gy = baseline - rect[5] * k;
 			float s0 = (float)rect[0] / atlas->width, t0 = (float)rect[1] / atlas->height;
 			float s1 = (float)( rect[0] + rect[2] ) / atlas->width, t1 = (float)( rect[1] + rect[3] ) / atlas->height;
+			float gw = rect[2] * k;
+			if ( wsClipRight > wsClipLeft ) {
+				if ( gx >= wsClipRight || gx + gw <= wsClipLeft ) {
+					pen += font->advance[glyph] * scale + style->spacing;
+					continue;
+				}
+				if ( gx + gw > wsClipRight ) {
+					s1 = s0 + ( s1 - s0 ) * ( wsClipRight - gx ) / gw;
+					gw = wsClipRight - gx;
+				}
+				if ( gx < wsClipLeft ) {
+					s0 = s1 - ( s1 - s0 ) * ( gx + gw - wsClipLeft ) / gw;
+					gw = gx + gw - wsClipLeft;
+					gx = wsClipLeft;
+				}
+			}
 			if ( wsFade.height > 0.0f ) {
-				WS_DrawFadedGlyph( gx, gy, rect[2] * k, rect[3] * k, s0, t0, s1, t1, atlas->shader, color );
+				WS_DrawFadedGlyph( gx, gy, gw, rect[3] * k, s0, t0, s1, t1, atlas->shader, color );
 			} else {
-				trap_R_DrawStretchPic( gx, gy, rect[2] * k, rect[3] * k, s0, t0, s1, t1, atlas->shader );
+				trap_R_DrawStretchPic( gx, gy, gw, rect[3] * k, s0, t0, s1, t1, atlas->shader );
 			}
 		}
 		pen += font->advance[glyph] * scale + style->spacing;

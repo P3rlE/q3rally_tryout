@@ -30,6 +30,8 @@ DEMOS MENU
 */
 
 #include "ui_local.h"
+#include "ui_rally_demoslayout.h"
+#include "ui_rally_library.h"
 #include "ui_rally_frontend.h"
 #include "../qcommon/demo_layout.h"
 
@@ -48,27 +50,6 @@ DEMOS MENU
 
 /* The virtual UI is 640x480. Keep the demo screen aligned with the other
  * modern frontend surfaces and leave the image itself open behind them. */
-#define DEMOS_FRAME_X           24
-#define DEMOS_FRAME_Y           20
-#define DEMOS_FRAME_WIDTH       592
-#define DEMOS_FRAME_HEIGHT      440
-#define DEMOS_LIST_X            40
-#define DEMOS_LIST_Y            112
-#define DEMOS_LIST_WIDTH        176
-#define DEMOS_LIST_HEIGHT       256
-#define DEMOS_ROW_X             ( DEMOS_LIST_X + 16 )
-#define DEMOS_ROW_Y             DEMOS_LIST_Y
-#define DEMOS_ROW_WIDTH         ( DEMOS_LIST_WIDTH - 32 )
-#define DEMOS_ROW_HEIGHT        UI_FRONTEND_BUTTON_HEIGHT
-#define DEMOS_ROW_GAP           3
-#define DEMOS_VISIBLE_ITEMS     8
-#define DEMOS_ACTION_Y          420
-#define DEMOS_ACTION_HEIGHT     UI_FRONTEND_BUTTON_HEIGHT
-#define DEMOS_ACTION_WIDTH      UI_FRONTEND_ACTION_WIDTH
-#define DEMOS_BACK_X            40
-#define DEMOS_PREVIOUS_X        168
-#define DEMOS_NEXT_X            296
-#define DEMOS_GO_X              424
 
 typedef struct {
     menuframework_s menu;
@@ -80,6 +61,11 @@ typedef struct {
     menutext_s pause, stop, restart, rewind, forward;
     char playing[MAX_QPATH];
     int infoSelection, infoBytes;
+    demosLayout_t   layout;
+    float           scroll;             /* #demo-list scrollTop */
+    qboolean        dragThumb;
+    float           dragY, dragScroll;
+    int             lastClick, lastClickRow;
 
     int             numDemos;
     char            names[NAMEBUFSIZE];
@@ -87,11 +73,9 @@ typedef struct {
 } demos_t;
 
 static demos_t s_demos;
-
-static vec4_t demosTextColor = UI_FRONTEND_COLOR_TEXT;
+static vec4_t demosTextColor = UI_FRONTEND_COLOR_TEXT;		/* the save dialog */
 static vec4_t demosMutedColor = UI_FRONTEND_COLOR_MUTED;
 
-static void Demos_UpdatePaging( void );
 
 static void Demos_PlaySelected( void ) {
     char cleanName[MAX_QPATH];
@@ -150,57 +134,286 @@ static void Demos_MenuEvent( void *ptr, int event ) {
         }
         break;
 
-    case ID_LEFT:
-        if ( event == QM_ACTIVATED ) {
-            ScrollList_Key( &s_demos.list, K_PGUP );
-            Demos_UpdatePaging();
-        }
-        break;
-
-    case ID_RIGHT:
-        if ( event == QM_ACTIVATED ) {
-            ScrollList_Key( &s_demos.list, K_PGDN );
-            Demos_UpdatePaging();
-        }
-        break;
-
-    case ID_LIST:
-        Demos_UpdatePaging();
-        break;
     }
 }
 
-static void Demos_DrawList( void *self ) {
-    menulist_s *list;
-    int i;
+/* -------------------------------------------------------------------------
+   The WebUI's #demos-screen (archive.js)
+   ------------------------------------------------------------------------- */
 
-    list = (menulist_s *)self;
-    if ( s_demos.numDemos <= 0 ) {
-        Frontend_DrawText( DEMOS_ROW_X, DEMOS_ROW_Y + 10,
-                           "No demos found", UI_LEFT | UI_SMALLFONT,
-                           demosMutedColor );
+static const vec4_t demosList     = { 0x15 / 255.0f, 0x15 / 255.0f, 0x15 / 255.0f, 1.0f };
+static const vec4_t demosChecked  = { 0x71 / 255.0f, 0x31 / 255.0f, 0x10 / 255.0f, 1.0f };   /* option:checked */
+static const vec4_t demosViewport = { 0x08 / 255.0f, 0x08 / 255.0f, 0x08 / 255.0f, 1.0f };
+
+static qboolean Demos_Playing( void ) {
+    return trap_Cvar_VariableValue( "cl_demoPlayer" ) != 0.0f;
+}
+
+static qboolean Demos_Seeking( void ) {
+    return trap_Cvar_VariableValue( "cl_demoSeeking" ) != 0.0f;
+}
+
+/* selectRecording(): name and size of the selected recording */
+static void Demos_Details( char *out, int size ) {
+    int index = s_demos.list.curvalue;
+    fileHandle_t f;
+
+    if ( s_demos.numDemos <= 0 || index < 0 || index >= s_demos.numDemos ) {
+        Q_strncpyz( out, "No recordings found. Record a demo during a game to add it here.", size );
         return;
     }
-
-    for ( i = 0; i < DEMOS_VISIBLE_ITEMS; i++ ) {
-        int index;
-        int y;
-        qboolean active;
-        char label[24];
-
-        index = list->top + i;
-        if ( index < 0 || index >= s_demos.numDemos ) {
-            break;
-        }
-
-        y = DEMOS_ROW_Y + i * ( DEMOS_ROW_HEIGHT + DEMOS_ROW_GAP );
-        active = ( index == list->curvalue ) ? qtrue : qfalse;
-        Frontend_FitText(label, sizeof(label), list->itemnames[index], DEMOS_ROW_WIDTH - 16, UI_SMALLFONT);
-        Frontend_DrawNavButton( DEMOS_ROW_X, y, DEMOS_ROW_WIDTH,
-                                DEMOS_ROW_HEIGHT,
-                                label, 1.0f, active,
-                                UI_FRONTEND_TEXT_LEFT );
+    if ( s_demos.infoSelection != index ) {
+        s_demos.infoSelection = index;
+        s_demos.infoBytes = trap_FS_FOpenFile( va( "demos/%s", s_demos.demolist[index] ), &f, FS_READ );
+        if ( s_demos.infoBytes >= 0 ) trap_FS_FCloseFile( f );
     }
+    Com_sprintf( out, size, "%s / %.1f MB", s_demos.demolist[index],
+                 ( s_demos.infoBytes > 0 ? s_demos.infoBytes : 0 ) / 1048576.0f );
+}
+
+static void Demos_BuildLayout( void ) {
+    demosLayout_t *l = &s_demos.layout;
+    char message[96];
+    int seconds;
+
+    memset( l, 0, sizeof( *l ) );
+    l->count = s_demos.numDemos;
+    l->scroll = s_demos.scroll;
+    Demos_Details( l->details, sizeof( l->details ) );
+    trap_Cvar_VariableStringBuffer( "cl_demoError", message, sizeof( message ) );
+    if ( !message[0] ) trap_Cvar_VariableStringBuffer( "cl_demoNotice", message, sizeof( message ) );
+    /* playback(): the placeholder, the clock, the message and the pause label */
+    l->placeholder = !Demos_Playing() || Demos_Seeking();
+    Q_strncpyz( l->placeholderText, Demos_Seeking() ? "Seeking..." : message[0] ? message : "Select a recording to preview",
+                sizeof( l->placeholderText ) );
+    seconds = (int)trap_Cvar_VariableValue( "cl_demoTime" );
+    if ( seconds < 0 ) seconds = 0;
+    Com_sprintf( l->clock, sizeof( l->clock ), "%d:%02d", seconds / 60, seconds % 60 );
+    if ( message[0] ) Q_strncpyz( l->message, message, sizeof( l->message ) );
+    else if ( Demos_Seeking() ) Q_strncpyz( l->message, "Seeking...", sizeof( l->message ) );
+    else if ( Demos_Playing() ) Q_strncpyz( l->message, trap_Cvar_VariableValue( "cl_freezeDemo" ) ? "Paused" : "Playing",
+                                            sizeof( l->message ) );
+    Q_strncpyz( l->pause, trap_Cvar_VariableValue( "cl_freezeDemo" ) ? "Resume" : "Pause", sizeof( l->pause ) );
+    Demos_Layout( l, WS_ViewportWidth(), WS_ViewportHeight() );
+    s_demos.scroll = l->scroll;
+}
+
+static void Demos_TrackThumb( void ) {
+    const demosLayout_t *l = &s_demos.layout;
+    float x, y, track;
+
+    if ( !s_demos.dragThumb ) return;
+    if ( !trap_Key_IsDown( K_MOUSE1 ) ) {
+        s_demos.dragThumb = qfalse;
+        return;
+    }
+    Library_Cursor( &x, &y );
+    track = l->port.h - 2.0f * RIVALS_ARROW - 9.0f - l->thumb.h;
+    if ( track > 0.0f ) s_demos.scroll = s_demos.dragScroll + ( y - s_demos.dragY ) * ( l->contentHeight - l->port.h ) / track;
+}
+
+static void Demos_DrawOptions( void ) {
+    const demosLayout_t *l = &s_demos.layout;
+    wsTextStyle_t body;
+    float x0 = WS_Round( l->list.x ), y0 = WS_Round( l->list.y ), x1 = WS_Round( l->list.x + l->list.w ), y1 = WS_Round( l->list.y + l->list.h );
+    float top = l->port.y, bottom = l->port.y + l->port.h;
+    int i;
+
+    WS_FillRect( x0, y0, x1 - x0, y1 - y0, wsLine );
+    WS_FillRect( x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2, demosList );
+    WS_BodyStyle( &body );
+    body.lineHeight = 19.0f;	/* an option's normal line */
+    WS_SetFade( top, bottom - top, 0.0f );
+    WS_SetClipX( l->port.x, l->port.x + l->optionWidth );
+    for ( i = 0; i < s_demos.numDemos; i++ ) {
+        float y = l->port.y - s_demos.scroll + i * l->optionHeight;
+        if ( y >= bottom || y + l->optionHeight <= top ) continue;
+        if ( i == s_demos.list.curvalue ) {
+            float a = y > top ? y : top, b = y + l->optionHeight < bottom ? y + l->optionHeight : bottom;
+            WS_FillRect( WS_Round( l->port.x ), WS_Round( a ), WS_Round( l->optionWidth ), WS_Round( b ) - WS_Round( a ), demosChecked );
+        }
+        WS_DrawText( &body, l->port.x + WS_LU( 0.6f * WS_REM ), y + WS_LU( 0.4f * WS_REM ), s_demos.demolist[i],
+                     strlen( s_demos.demolist[i] ), wsWhite );
+    }
+    WS_SetFade( 0.0f, 0.0f, 0.0f );
+    WS_SetClipX( 0.0f, 0.0f );
+    if ( l->scrollbar ) WS_DrawScrollbar( &l->port, &l->thumb );
+}
+
+static void Demos_Draw( void ) {
+    demosLayout_t *l;
+    wsTextStyle_t body, detail;
+    qboolean playing, idle;
+    int i;
+
+    Demos_TrackThumb();
+    Demos_BuildLayout();
+    l = &s_demos.layout;
+    playing = Demos_Playing();
+    idle = !playing || Demos_Seeking();
+    WS_BodyStyle( &body );
+    detail = body;
+    detail.size = 0.9f * WS_REM;
+    detail.lineHeight = DEMOS_DETAIL_LINE;
+
+    /* where the cgame renders the preview (cg_view.c) */
+    trap_Cvar_Set( "ui_demoRect", va( "%d %d %d %d", (int)WS_Round( l->viewport.x ), (int)WS_Round( l->viewport.y ),
+                                      (int)WS_Round( l->viewport.w ), (int)WS_Round( l->viewport.h ) ) );
+
+    WS_DrawBackground( l->pageWidth, l->pageHeight );
+    WS_DrawFrontHeader( &l->page, "Your ", "replays.", "" );
+    WS_DrawButton( &l->back, "Back to main menu", qtrue, qfalse );
+
+    /* left: the recordings */
+    WS_DrawSection( &l->left, qfalse );
+    WS_DrawLabel( l->leftX, l->recordingsY, "RECORDINGS", NULL );
+    WS_DrawText( &body, l->leftX, l->chooseY, "Choose a recording", 18, wsWhite );
+    Demos_DrawOptions();
+    WS_DrawLines( &detail, l->leftX, l->detailsY, l->details, &l->detailLines, wsSummary );
+    Library_DrawButton( &l->play, "Play demo", qfalse, s_demos.numDemos <= 0 );
+
+    /* right: the preview and the transport */
+    WS_DrawSection( &l->right, qfalse );
+    WS_DrawLabel( l->rightX, l->previewY, "PREVIEW", NULL );
+    WS_FillRect( WS_Round( l->viewport.x ), WS_Round( l->viewport.y ), WS_Round( l->viewport.w ), WS_Round( l->viewport.h ), demosViewport );
+    if ( l->placeholder ) {
+        WS_DrawText( &body, l->placeholderX, l->placeholderY, l->placeholderText, strlen( l->placeholderText ), wsWhite );
+    }
+    for ( i = 0; i < 5; i++ ) {
+        Library_DrawButton( &l->transport[i], i == 2 ? l->pause : demosTransport[i], i != 2, idle );
+    }
+    WS_DrawText( &body, l->clockX, l->clockY, l->clock, strlen( l->clock ), wsWhite );
+    if ( l->message[0] ) WS_DrawText( &body, l->messageX, l->clockY, l->message, strlen( l->message ), wsSummary );
+}
+
+static void Demos_Action( int id ) {
+    menucommon_s item;
+    item.id = id;
+    Demos_MenuEvent( &item, QM_ACTIVATED );
+}
+
+static void Demos_Click( float x, float y ) {
+    const demosLayout_t *l = &s_demos.layout;
+    static const int transport[5] = { ID_RESTART, ID_REWIND, ID_PAUSE, ID_FORWARD, ID_STOP };
+    int i, row;
+
+    if ( Library_Inside( &l->back, x, y ) ) { Demos_Action( ID_BACK ); return; }
+    if ( Library_Inside( &l->play, x, y ) ) { Demos_PlaySelected(); return; }
+    if ( Library_Inside( &l->port, x, y ) ) {
+        if ( l->scrollbar && x >= l->port.x + l->port.w - RIVALS_SCROLLBAR ) {
+            if ( y < l->port.y + RIVALS_ARROW ) s_demos.scroll -= 40.0f;
+            else if ( y >= l->port.y + l->port.h - RIVALS_ARROW ) s_demos.scroll += 40.0f;
+            else if ( y < l->thumb.y ) s_demos.scroll -= 0.875f * l->port.h;
+            else if ( y >= l->thumb.y + l->thumb.h ) s_demos.scroll += 0.875f * l->port.h;
+            else {
+                s_demos.dragThumb = qtrue;
+                s_demos.dragY = y;
+                s_demos.dragScroll = s_demos.scroll;
+            }
+            return;
+        }
+        row = (int)( ( y - l->port.y + s_demos.scroll ) / l->optionHeight );
+        if ( row >= 0 && row < s_demos.numDemos ) {
+            /* a double click plays it, as the page's dblclick */
+            if ( row == s_demos.lastClickRow && uis.realtime - s_demos.lastClick < 500 ) Demos_PlaySelected();
+            s_demos.list.curvalue = row;
+            s_demos.lastClickRow = row;
+            s_demos.lastClick = uis.realtime;
+        }
+        return;
+    }
+    if ( Demos_Playing() && !Demos_Seeking() ) {
+        for ( i = 0; i < 5; i++ ) {
+            if ( Library_Inside( &l->transport[i], x, y ) ) { Demos_Action( transport[i] ); return; }
+        }
+    }
+}
+
+static sfxHandle_t Demos_MenuKey( int key ) {
+    const demosLayout_t *l = &s_demos.layout;
+    qboolean active = Demos_Playing();
+    float x, y;
+    int row;
+
+    if ( key & K_CHAR_FLAG ) return 0;
+    Library_Cursor( &x, &y );
+    switch ( key ) {
+    case K_ESCAPE:
+    case K_PAD0_B:
+        Demos_Action( ID_BACK );
+        return 0;
+    case K_MOUSE1:
+        Demos_Click( x, y );
+        return 0;
+    case K_MWHEELUP:
+    case K_MWHEELDOWN:
+        if ( Library_Inside( &l->port, x, y ) ) s_demos.scroll += key == K_MWHEELUP ? -100.0f : 100.0f;
+        return 0;
+    case K_SPACE:
+        if ( active ) Demos_Action( ID_PAUSE );
+        return 0;
+    case K_LEFTARROW:
+    case K_KP_LEFTARROW:
+        if ( active ) Demos_Action( ID_REWIND );
+        return 0;
+    case K_RIGHTARROW:
+    case K_KP_RIGHTARROW:
+        if ( active ) Demos_Action( ID_FORWARD );
+        return 0;
+    case K_UPARROW:
+    case K_KP_UPARROW:
+    case K_DOWNARROW:
+    case K_KP_DOWNARROW:
+        if ( s_demos.numDemos <= 0 ) return 0;
+        row = s_demos.list.curvalue + ( key == K_UPARROW || key == K_KP_UPARROW ? -1 : 1 );
+        if ( row < 0 ) row = 0;
+        if ( row >= s_demos.numDemos ) row = s_demos.numDemos - 1;
+        s_demos.list.curvalue = row;
+        if ( row * l->optionHeight < s_demos.scroll ) s_demos.scroll = row * l->optionHeight;
+        if ( ( row + 1 ) * l->optionHeight > s_demos.scroll + l->port.h ) s_demos.scroll = ( row + 1 ) * l->optionHeight - l->port.h;
+        return 0;
+    case K_ENTER:
+    case K_KP_ENTER:
+        Demos_PlaySelected();
+        return 0;
+    }
+    return 0;
+}
+
+static void Demos_MenuInit( void ) {
+    char preview[64];
+
+    memset( &s_demos, 0, sizeof( s_demos ) );
+    s_demos.infoSelection = -1;
+    s_demos.lastClickRow = -1;
+    trap_Cvar_VariableStringBuffer( "ui_demoPlayerName", s_demos.playing, sizeof( s_demos.playing ) );
+
+    s_demos.menu.draw = Demos_Draw;
+    s_demos.menu.key = Demos_MenuKey;
+    s_demos.menu.fullscreen = qtrue;
+
+    s_demos.list.itemnames = (const char **)s_demos.demolist;
+    s_demos.numDemos = UI_FetchDemoList( s_demos.names, sizeof( s_demos.names ),
+                                         (const char **)s_demos.demolist, MAX_DEMOS, NULL );
+    s_demos.list.numitems = s_demos.numDemos;
+    s_demos.list.curvalue = 0;	/* demosEnd(): the first recording */
+
+    /* ui_demosPreview "selected,scroll" pins a state for screenshots (tools/ui_webstyle) */
+    trap_Cvar_VariableStringBuffer( "ui_demosPreview", preview, sizeof( preview ) );
+    if ( preview[0] ) {
+        char *field = strchr( preview, ',' );
+        s_demos.list.curvalue = atoi( preview );
+        if ( field ) s_demos.scroll = atof( field + 1 );
+    }
+}
+
+void Demos_Cache( void ) {
+    /* Keep this legacy entry point for existing callers. */
+}
+
+void UI_DemosMenu( void ) {
+    Demos_MenuInit();
+    UI_PushMenu( &s_demos.menu );
 }
 
 static void Demos_DrawAction( void *self ) {
@@ -231,254 +444,6 @@ static void Demos_DrawAction( void *self ) {
 
     Frontend_DrawButton( x, y, width, height, button->string, 1.0f,
                          focus, UI_FRONTEND_TEXT_CENTER );
-}
-
-static void Demos_Draw( void ) {
-    vec4_t scrimColor = UI_FRONTEND_COLOR_SCRIM;
-    qboolean playing = trap_Cvar_VariableValue("cl_demoPlayer") != 0;
-    qboolean seeking = trap_Cvar_VariableValue("cl_demoSeeking") != 0;
-    menutext_s *transport[5];
-    int i;
-    int seconds = (int)trap_Cvar_VariableValue("cl_demoTime");
-    char clock[24];
-    char error[1024], notice[128];
-    char title[64];
-    trap_Cvar_VariableStringBuffer("cl_demoError", error, sizeof(error));
-    trap_Cvar_VariableStringBuffer("cl_demoNotice", notice, sizeof(notice));
-    if (seconds < 0) seconds = 0;
-    if (seconds >= 3600)
-        Com_sprintf(clock, sizeof(clock), "%d:%02d:%02d", seconds / 3600, (seconds / 60) % 60, seconds % 60);
-    else
-        Com_sprintf(clock, sizeof(clock), "%02d:%02d", seconds / 60, seconds % 60);
-    Frontend_FitText(title, sizeof(title), playing ? s_demos.playing : "Preview", DEMO_PREVIEW_WIDTH - 104, UI_SMALLFONT);
-    transport[0] = &s_demos.restart; transport[1] = &s_demos.rewind;
-    transport[2] = &s_demos.pause; transport[3] = &s_demos.forward;
-    transport[4] = &s_demos.stop;
-    for (i = 0; i < 5; i++) {
-        transport[i]->generic.flags &= ~QMF_GRAYED;
-        if (!playing || (seeking && i != 4)) transport[i]->generic.flags |= QMF_GRAYED;
-    }
-    s_demos.pause.string = trap_Cvar_VariableValue("cl_freezeDemo") ? "Resume" : "Pause";
-    Frontend_DrawBackground(scrimColor);
-    Frontend_DrawPanel(24, 20, 592, 440, 1.0f, UI_FRONTEND_STYLE_FRAME);
-    Frontend_DrawText(40, 44, "Demo player", UI_LEFT | UI_BIGFONT, demosTextColor);
-    Frontend_DrawText(40, 82, "Recordings", UI_LEFT | UI_SMALLFONT, demosMutedColor);
-    Frontend_DrawCard(40, 100, 176, 276, 1.0f, qfalse);
-    Frontend_DrawCard(DEMO_PREVIEW_X, DEMO_PREVIEW_Y, DEMO_PREVIEW_WIDTH, DEMO_PREVIEW_HEIGHT, 1.0f, qfalse);
-    if (trap_Cvar_VariableValue("cl_demoSeeking"))
-        Frontend_DrawText(252, 220, "Seeking...", UI_LEFT | UI_SMALLFONT, demosTextColor);
-    if (!playing && error[0]) {
-        Frontend_DrawText(252, 150, "Cannot play recording", UI_LEFT | UI_SMALLFONT, demosTextColor);
-        Frontend_DrawTextWrapped(252, 184, DEMO_PREVIEW_WIDTH - 40, 20, 8,
-            error, UI_LEFT | UI_SMALLFONT, demosMutedColor);
-    }
-    if (!playing && !error[0] && !s_demos.numDemos)
-        Frontend_DrawText(252, 220, "No recordings available", UI_LEFT | UI_SMALLFONT, demosMutedColor);
-    if (!playing && !error[0] && s_demos.numDemos > 0) {
-        const char *name = s_demos.list.itemnames[s_demos.list.curvalue];
-        const char *ext = strrchr(name, '.');
-        char display[40];
-        if (s_demos.infoSelection != s_demos.list.curvalue) {
-            fileHandle_t file;
-            s_demos.infoSelection = s_demos.list.curvalue;
-            s_demos.infoBytes = trap_FS_FOpenFile(va("demos/%s", name), &file, FS_READ);
-            if (file) trap_FS_FCloseFile(file);
-        }
-        Q_strncpyz(display, name, sizeof(display));
-        Frontend_DrawText(252, 150, "Selected recording", UI_LEFT | UI_SMALLFONT, demosMutedColor);
-        Frontend_DrawText(252, 178, display, UI_LEFT | UI_SMALLFONT, demosTextColor);
-        Frontend_DrawText(252, 210, va("Size: %.1f MB", s_demos.infoBytes / 1048576.0f), UI_LEFT | UI_SMALLFONT, demosMutedColor);
-        Frontend_DrawText(252, 236, va("Format: %s", ext ? ext + 1 : "unknown"), UI_LEFT | UI_SMALLFONT, demosMutedColor);
-        Frontend_DrawText(252, 300, notice[0] ? notice : "Press Play demo to start", UI_LEFT | UI_SMALLFONT, demosMutedColor);
-    }
-    Frontend_DrawText(DEMO_PREVIEW_X, 82, title, UI_LEFT | UI_SMALLFONT, demosTextColor);
-    Frontend_DrawText(DEMO_PREVIEW_X + DEMO_PREVIEW_WIDTH, 82, clock,
-        UI_RIGHT | UI_SMALLFONT, playing ? demosTextColor : demosMutedColor);
-    if (playing)
-        Frontend_DrawText(600, 48, seeking ? "Seeking" :
-            (trap_Cvar_VariableValue("cl_freezeDemo") ? "Paused" : "Playing"),
-            UI_RIGHT | UI_SMALLFONT, demosMutedColor);
-    Frontend_DrawText(128, 352, va("%d / %d", s_demos.numDemos ? s_demos.list.curvalue + 1 : 0, s_demos.numDemos), UI_CENTER | UI_SMALLFONT, demosMutedColor);
-    Frontend_DrawText(232, 432, "Space: pause   Arrows: seek", UI_LEFT | UI_SMALLFONT, demosMutedColor);
-    Menu_Draw(&s_demos.menu);
-}
-
-static sfxHandle_t Demos_MenuKey( int key ) {
-    int row;
-    int index;
-
-    if ( key == K_ESCAPE || key == K_MOUSE2 ) trap_Cmd_ExecuteText(EXEC_APPEND, "demopreviewstop\n");
-    if ((key == K_LEFTARROW || key == K_RIGHTARROW) && trap_Cvar_VariableValue("cl_demoPlayer")) {
-        trap_Cmd_ExecuteText(EXEC_APPEND, key == K_LEFTARROW ? "demoseek -10\n" : "demoseek 10\n");
-        return menu_null_sound;
-    }
-    if ( key == K_SPACE && trap_Cvar_VariableValue("cl_demoPlayer") ) {
-        trap_Cvar_Set("cl_freezeDemo", trap_Cvar_VariableValue("cl_freezeDemo") ? "0" : "1");
-        return menu_null_sound;
-    }
-    if ( key & K_CHAR_FLAG ) {
-        return 0;
-    }
-
-    /* The list is drawn with custom row spacing, so resolve its mouse hit
-     * area explicitly before the generic menu router sees the click. */
-    if ( key == K_MOUSE1 &&
-         uis.cursorx >= DEMOS_ROW_X &&
-         uis.cursorx <= DEMOS_ROW_X + DEMOS_ROW_WIDTH &&
-         uis.cursory >= DEMOS_ROW_Y &&
-         uis.cursory < DEMOS_ROW_Y + DEMOS_VISIBLE_ITEMS *
-             ( DEMOS_ROW_HEIGHT + DEMOS_ROW_GAP ) ) {
-        row = ( uis.cursory - DEMOS_ROW_Y ) /
-              ( DEMOS_ROW_HEIGHT + DEMOS_ROW_GAP );
-        if ( uis.cursory >= DEMOS_ROW_Y + row *
-             ( DEMOS_ROW_HEIGHT + DEMOS_ROW_GAP ) + DEMOS_ROW_HEIGHT ) {
-            return menu_null_sound;
-        }
-
-        index = s_demos.list.top + row;
-        if ( index >= 0 && index < s_demos.numDemos ) {
-            s_demos.list.oldvalue = s_demos.list.curvalue;
-            s_demos.list.curvalue = index;
-            return s_demos.list.oldvalue == index ? menu_null_sound :
-                                                     menu_move_sound;
-        }
-        return menu_null_sound;
-    }
-
-    if ( ( key == K_ENTER || key == K_KP_ENTER ) &&
-         Menu_ItemAtCursor( &s_demos.menu ) ==
-             (menucommon_s *)&s_demos.list ) {
-        Demos_PlaySelected();
-        return menu_in_sound;
-    }
-
-    return Menu_DefaultKey( &s_demos.menu, key );
-}
-
-static void Demos_UpdatePaging( void ) {
-    s_demos.previous.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
-    s_demos.next.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
-
-    if ( s_demos.numDemos <= 0 || s_demos.list.top <= 0 ) {
-        s_demos.previous.generic.flags |= QMF_GRAYED;
-    }
-    if ( s_demos.numDemos <= 0 ||
-         s_demos.list.top + DEMOS_VISIBLE_ITEMS >= s_demos.numDemos ) {
-        s_demos.next.generic.flags |= QMF_GRAYED;
-    }
-}
-
-static void Demos_InitAction( menutext_s *item, int id, const char *label,
-                              int x ) {
-    item->generic.type = MTYPE_PTEXT;
-    item->generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
-    item->generic.id = id;
-    item->generic.callback = Demos_MenuEvent;
-    item->generic.x = x + DEMOS_ACTION_WIDTH / 2;
-    item->generic.y = DEMOS_ACTION_Y;
-    item->generic.left = x;
-    item->generic.top = DEMOS_ACTION_Y;
-    item->generic.right = x + DEMOS_ACTION_WIDTH;
-    item->generic.bottom = DEMOS_ACTION_Y + DEMOS_ACTION_HEIGHT;
-    item->string = (char *)label;
-    item->color = demosTextColor;
-    item->style = UI_CENTER | UI_SMALLFONT;
-    item->generic.ownerdraw = Demos_DrawAction;
-}
-
-static void Demos_PlaceAction(menutext_s *item, int x, int y, int width) {
-    item->generic.x = x + width / 2;
-    item->generic.y = item->generic.top = y;
-    item->generic.left = x;
-    item->generic.right = x + width;
-    item->generic.bottom = y + 28;
-}
-
-static void Demos_MenuInit( void ) {
-    memset( &s_demos, 0, sizeof( s_demos ) );
-    s_demos.infoSelection = -1;
-    trap_Cvar_VariableStringBuffer("ui_demoPlayerName", s_demos.playing, sizeof(s_demos.playing));
-
-    s_demos.menu.draw = Demos_Draw;
-    s_demos.menu.key = Demos_MenuKey;
-    s_demos.menu.fullscreen = qtrue;
-    s_demos.menu.wrapAround = qtrue;
-
-    s_demos.list.generic.type = MTYPE_SCROLLLIST;
-    s_demos.list.generic.flags = QMF_PULSEIFFOCUS | QMF_NODEFAULTINIT;
-    s_demos.list.generic.id = ID_LIST;
-    s_demos.list.generic.callback = Demos_MenuEvent;
-    s_demos.list.generic.x = DEMOS_ROW_X;
-    s_demos.list.generic.y = DEMOS_ROW_Y;
-    s_demos.list.generic.left = DEMOS_ROW_X;
-    s_demos.list.generic.top = DEMOS_ROW_Y;
-    s_demos.list.generic.right = DEMOS_ROW_X + DEMOS_ROW_WIDTH;
-    s_demos.list.generic.bottom = DEMOS_ROW_Y + DEMOS_VISIBLE_ITEMS *
-                                  ( DEMOS_ROW_HEIGHT + DEMOS_ROW_GAP );
-    s_demos.list.width = 18;
-    s_demos.list.height = DEMOS_VISIBLE_ITEMS;
-    s_demos.list.columns = 1;
-    s_demos.list.itemnames = (const char **)s_demos.demolist;
-    s_demos.list.generic.ownerdraw = Demos_DrawList;
-
-    s_demos.numDemos = UI_FetchDemoList( s_demos.names, sizeof( s_demos.names ),
-                                         (const char **)s_demos.demolist,
-                                         MAX_DEMOS, NULL );
-    s_demos.list.numitems = s_demos.numDemos;
-
-    if ( !s_demos.numDemos ) {
-        s_demos.list.itemnames[0] = "No demos found";
-        s_demos.list.numitems = 1;
-        s_demos.list.generic.flags |= QMF_INACTIVE;
-    }
-
-    Demos_InitAction( &s_demos.back, ID_BACK, "Back", DEMOS_BACK_X );
-    Demos_InitAction( &s_demos.previous, ID_LEFT, "Previous",
-                      DEMOS_PREVIOUS_X );
-    Demos_InitAction( &s_demos.next, ID_RIGHT, "Next", DEMOS_NEXT_X );
-    Demos_InitAction( &s_demos.go, ID_GO, "Play demo", DEMOS_GO_X );
-
-    Demos_InitAction(&s_demos.pause, ID_PAUSE, "Pause", 264);
-    Demos_InitAction(&s_demos.restart, ID_RESTART, "Restart", 376);
-    Demos_InitAction(&s_demos.stop, ID_STOP, "Stop", 488);
-    Demos_InitAction(&s_demos.rewind, ID_REWIND, "-10s", 306);
-    Demos_InitAction(&s_demos.forward, ID_FORWARD, "+10s", 454);
-    Demos_PlaceAction(&s_demos.restart, 232, 388, 68);
-    Demos_PlaceAction(&s_demos.rewind, 306, 388, 68);
-    Demos_PlaceAction(&s_demos.pause, 380, 388, 68);
-    Demos_PlaceAction(&s_demos.forward, 454, 388, 68);
-    Demos_PlaceAction(&s_demos.stop, 528, 388, 72);
-    Demos_PlaceAction(&s_demos.go, 40, 388, 176);
-    Demos_PlaceAction(&s_demos.previous, 48, 344, 48);
-    Demos_PlaceAction(&s_demos.next, 160, 344, 48);
-    s_demos.previous.string = "<";
-    s_demos.next.string = ">";
-    Demos_PlaceAction(&s_demos.back, 40, 424, 88);
-    Menu_AddItem(&s_demos.menu, &s_demos.rewind);
-    Menu_AddItem(&s_demos.menu, &s_demos.forward);
-    Menu_AddItem(&s_demos.menu, &s_demos.pause);
-    Menu_AddItem(&s_demos.menu, &s_demos.restart);
-    Menu_AddItem(&s_demos.menu, &s_demos.stop);
-    Menu_AddItem( &s_demos.menu, &s_demos.list );
-    Menu_AddItem( &s_demos.menu, &s_demos.back );
-    Menu_AddItem( &s_demos.menu, &s_demos.previous );
-    Menu_AddItem( &s_demos.menu, &s_demos.next );
-    Menu_AddItem( &s_demos.menu, &s_demos.go );
-
-    if ( !s_demos.numDemos ) {
-        s_demos.go.generic.flags |= QMF_GRAYED;
-    }
-    Demos_UpdatePaging();
-}
-
-void Demos_Cache( void ) {
-    /* Keep this legacy entry point for existing callers. */
-}
-
-void UI_DemosMenu( void ) {
-    Demos_MenuInit();
-    Frontend_SetBackButton( &s_demos.back.generic );
-    UI_PushMenu( &s_demos.menu );
 }
 
 /* Naming is offered after the recording has safely been closed. Escape keeps

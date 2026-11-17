@@ -6,7 +6,8 @@ like their WebUI version, on every platform and without a browser. Done so
 far: the graphics loading screen ("Getting ready.", WebUI screen 1), the
 main menu ("Ready to race.", WebUI screen 2), the end credits ("Thank you
 for playing.", WebUI screen 3), Rivals ("Meet your rivals.", WebUI
-screen 5) and Downloads ("Expand your rally.", WebUI screen 6).
+screen 5), Downloads ("Expand your rally.", WebUI screen 6) and the demo
+archive ("Your replays.", WebUI screen 4).
 
 ## How a screen is rebuilt
 
@@ -69,8 +70,8 @@ atlases.
 ## Checking a screen
 
 - `tools/ui_webstyle/measure_webui_loading.cjs`, `measure_webui_main.cjs`,
-  `measure_webui_credits.cjs`, `measure_webui_rivals.cjs` and
-  `measure_webui_downloads.cjs` measure the WebUI screens in Chrome (the
+  `measure_webui_credits.cjs`, `measure_webui_rivals.cjs`,
+  `measure_webui_downloads.cjs` and `measure_webui_demos.cjs` measure the WebUI screens in Chrome (the
   credits with the roll paused at fixed times). They record every box and the width
   of every text run, for several viewports and all states (main menu: with
   and without a profile, quit dialog open).
@@ -91,7 +92,8 @@ atlases.
   credits, paused that far into the roll, `ui_rivalsPreview
   "search,scroll,rival"` for Rivals, `ui_downloadsPreview
   "state,progress,type,search,item"` for Downloads (catalog from
-  `ui_dl_indexpath`).
+  `ui_dl_indexpath`), `ui_demosPreview "selected,scroll"` for the demo
+  archive.
 
 What still differs from the WebUI:
 - **Glyph edges.** Chrome positions glyphs on subpixels; the game draws them
@@ -137,6 +139,20 @@ What still differs from the WebUI:
   is a plain list below the box.
 - Previews are drawn 4:3 (levelshots); the UI cannot read an image's size.
 
+## Demo archive
+
+- `q3_ui/ui_rally_demoslayout.c` lays it out: the listbox (`<select size>`,
+  options of 31.8px, the checked one #713110), the details in .9rem that
+  break even inside a name (`overflow-wrap: anywhere`), the viewport and the
+  transport.
+- A recording plays embedded (`demopreview`) as before. The UI names the
+  viewport in `ui_demoRect` ("x y w h", screen pixels); the cgame renders
+  the demo there (`cg_view.c`), as it did for the WebUI's `cl_webDemoRect`.
+- Like the page: a double click or Play starts, Space pauses, the left and
+  right arrows seek 10 s, Escape stops and goes back. The transport is
+  disabled (opacity .45) while nothing plays or the demo seeks.
+- `WS_SetClipX` cuts text at the sides, for the options in the listbox.
+
 ## Interplay with the WebUI
 
 ## The main menu
@@ -155,8 +171,8 @@ What still differs from the WebUI:
 
 ## Interplay with the WebUI
 
-While a native screen runs (loading screen, main menu, end credits, Rivals,
-Downloads), the UI reports
+While a native screen runs (loading screen, main menu, end credits, demo
+archive, Rivals, Downloads), the UI reports
 `UI_WEB_SCREEN` 15. The client treats it like screen 0: the browser stays
 hidden and the game draws. While the game is disconnected, though, the
 client starts CEF and loads the page, so the screens that are still WebUI

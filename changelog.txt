@@ -40,6 +40,9 @@ Changed:
 - Downloads is drawn by the game again and looks exactly like the WebUI's
   "Expand your rally." screen: search, content type, the list, details
   with preview, and install, refresh and cancel with the progress bar.
+- The demo archive is drawn by the game again and looks exactly like the
+  WebUI's "Your replays." screen: the list of recordings, the preview that
+  plays the demo in place, and restart, seek, pause and stop.
 - Weapons: own models in a "built, not bought" style, all ten made from car
   parts on the same roof plate, with own muzzle flashes and icons. New names
   close to the old ones: Harvester Saw, Spotlight MG, Twin Shotgun, Drum

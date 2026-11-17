@@ -205,6 +205,8 @@ static void CG_CalcVrect (void) {
             char rect[96], *cursor;
             int x, y, width, height;
             trap_Cvar_VariableStringBuffer( "cl_webDemoRect", rect, sizeof( rect ) );
+            /* the native demo archive (q3_ui/ui_demo2.c) names its viewport */
+            if ( !rect[0] ) trap_Cvar_VariableStringBuffer( "ui_demoRect", rect, sizeof( rect ) );
             cursor = rect;
             x = atoi( COM_Parse( &cursor ) );
             y = atoi( COM_Parse( &cursor ) );

@@ -87,6 +87,8 @@ float	WS_LU( float value );
  * 0.12 for 12% fades at top and bottom); a height of 0 turns it off. */
 void	WS_SetFade( float top, float height, float fraction );
 float	WS_FadeAlpha( float y );
+/* cut text at the sides (overflow: hidden); right <= left turns it off */
+void	WS_SetClipX( float left, float right );
 void	WS_DrawText( const wsTextStyle_t *style, float x, float lineTop, const char *text, int length, const float *color );
 
 void	WS_FillRect( float x, float y, float w, float h, const float *color );
