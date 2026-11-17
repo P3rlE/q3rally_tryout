@@ -2034,6 +2034,99 @@ void UI_DrawShowroomPlayer( float x, float y, float w, float h, playerInfo_t *pi
 	UI_DrawPlayerPreview( x, y, w, h, pi, time, qtrue );
 }
 
+/*
+==========================
+UI_DrawVehicleWebView
+
+The active vehicle the way the WebUI's three.js showroom frames it
+(engine/webui/vehicleShowroom.ts, opened with yaw 135 and distance 2.6):
+the bounding sphere of body and wheels, a 36 degree vertical field of view,
+the camera 2.6 radii out at 18 degrees elevation. No driver and no plate,
+the WebUI export has neither. x, y, w, h are screen pixels.
+==========================
+*/
+void UI_DrawVehicleWebView( float x, float y, float w, float h, playerInfo_t *pi, int time ) {
+	static const char *wheelTags[4] = { "tag_wheelfl", "tag_wheelfr", "tag_wheelrl", "tag_wheelrr" };
+	refdef_t		refdef;
+	refEntity_t		body;
+	orientation_t	tag;
+	vec3_t			mins, maxs, wmins, wmaxs, center, offset, corner, point;
+	vec3_t			light;
+	float			radius, distance, azimuth, elevation;
+	int				i, c, j;
+
+	if ( !pi->bodyModel || w < 1.0f || h < 1.0f ) {
+		return;
+	}
+
+	/* bounds of what the export holds: the body and the wheels on their tags */
+	trap_R_ModelBounds( pi->bodyModel, mins, maxs );
+	if ( pi->wheelModel ) {
+		trap_R_ModelBounds( pi->wheelModel, wmins, wmaxs );
+		for ( i = 0; i < 4; i++ ) {
+			if ( !UI_TagExists( pi->bodyModel, (char *)wheelTags[i] ) ) continue;
+			trap_CM_LerpTag( &tag, pi->bodyModel, 0, 0, 1.0f, wheelTags[i] );
+			for ( c = 0; c < 8; c++ ) {
+				corner[0] = ( c & 1 ) ? wmaxs[0] : wmins[0];
+				corner[1] = ( c & 2 ) ? wmaxs[1] : wmins[1];
+				corner[2] = ( c & 4 ) ? wmaxs[2] : wmins[2];
+				VectorCopy( tag.origin, point );
+				for ( j = 0; j < 3; j++ ) VectorMA( point, corner[j], tag.axis[j], point );
+				AddPointToBounds( point, mins, maxs );
+			}
+		}
+	}
+	VectorAdd( mins, maxs, center );
+	VectorScale( center, 0.5f, center );
+	VectorSubtract( maxs, mins, offset );
+	radius = VectorLength( offset ) * 0.5f;
+	if ( radius < 1.0f ) radius = 1.0f;
+
+	/* three.js: azimuth (yaw - 180) in the glTF xz plane, glTF (x, y, z) = Quake (x, z, -y) */
+	azimuth = DEG2RAD( 135.0f - 180.0f );
+	elevation = M_PI / 10.0f;
+	distance = radius * 2.6f;
+	offset[0] = cos( azimuth ) * cos( elevation ) * distance;
+	offset[1] = -sin( azimuth ) * cos( elevation ) * distance;
+	offset[2] = sin( elevation ) * distance;
+
+	memset( &refdef, 0, sizeof( refdef ) );
+	refdef.rdflags = RDF_NOWORLDMODEL;
+	VectorAdd( center, offset, refdef.vieworg );
+	VectorScale( offset, -1.0f, refdef.viewaxis[0] );
+	VectorNormalize( refdef.viewaxis[0] );
+	VectorSet( point, 0, 0, 1 );
+	CrossProduct( point, refdef.viewaxis[0], refdef.viewaxis[1] );
+	VectorNormalize( refdef.viewaxis[1] );
+	CrossProduct( refdef.viewaxis[0], refdef.viewaxis[1], refdef.viewaxis[2] );
+
+	refdef.x = (int)x;
+	refdef.y = (int)y;
+	refdef.width = (int)( x + w ) - refdef.x;
+	refdef.height = (int)( y + h ) - refdef.y;
+	refdef.fov_y = 36.0f;
+	refdef.fov_x = 2.0f * atan2( tan( DEG2RAD( 18.0f ) ) * refdef.width, refdef.height ) * ( 180.0f / M_PI );
+	refdef.time = time;
+
+	trap_R_ClearScene();
+
+	memset( &body, 0, sizeof( body ) );
+	body.hModel = pi->bodyModel;
+	body.customSkin = pi->bodySkin;
+	body.renderfx = RF_LIGHTING_ORIGIN | RF_NOSHADOW;
+	AxisClear( body.axis );
+	trap_R_AddRefEntityToScene( &body );
+	UI_AddWheels( pi, &body, 0.0f );
+
+	/* key and fill like the showroom (three.js units scaled to the car) */
+	VectorSet( light, center[0] + radius * 4.0f, center[1] - radius * 3.0f, center[2] + radius * 6.0f );
+	trap_R_AddLightToScene( light, radius * 12.0f, 1.0f, 0.95f, 0.9f );
+	VectorSet( light, center[0] - radius * 4.0f, center[1] + radius * 5.0f, center[2] + radius * 3.0f );
+	trap_R_AddLightToScene( light, radius * 9.0f, 0.87f, 0.91f, 1.0f );
+
+	trap_R_RenderScene( &refdef );
+}
+
 void UI_PlayerInfo_SetModel( playerInfo_t *pi, const char *model, const char *rim, const char *head, const char *plate ) {
 // END
 	memset( pi, 0, sizeof(*pi) );

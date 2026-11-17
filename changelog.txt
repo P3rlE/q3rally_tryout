@@ -16,6 +16,13 @@ License:
 
 Changed:
 
+- The graphics loading screen is drawn by the game again, on every
+  platform, and looks exactly like the WebUI's "Getting ready." screen:
+  the layout follows the WebUI's CSS, the text uses its fonts (Barlow,
+  Barlow Condensed, Share Tech Mono) as atlases with Chrome's kerning, and
+  the car is shown with the same camera as the WebUI showroom, rendered by
+  the game. With the WebUI the page loads behind it and takes over at the
+  main menu without a black frame (docs/native-webstyle.md).
 - Weapons: own models in a "built, not bought" style, all ten made from car
   parts on the same roof plate, with own muzzle flashes and icons. New names
   close to the old ones: Harvester Saw, Spotlight MG, Twin Shotgun, Drum
