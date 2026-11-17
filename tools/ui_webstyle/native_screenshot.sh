@@ -5,8 +5,9 @@
 #   tools/ui_webstyle/native_screenshot.sh <width> <height> <state> <out.png> [seconds]
 #
 # <state> is "stage,percent,prompt" for the loading screen,
-# "main:name,rank,points,quit" for the main menu or "credits:seconds" for the
-# end credits, paused that many seconds into the roll. The last two come up
+# "main:name,rank,points,quit" for the main menu, "credits:seconds" for the
+# end credits, paused that many seconds into the roll, or
+# "rivals:search,scroll,rival" for Rivals (rival -1: the first match). The last two come up
 # once the loading screen has run through (give it about 40 seconds).
 #
 # Needs a Linux client build (make BUILD_CLIENT=1), Xvfb, Mesa and ImageMagick's
@@ -26,6 +27,8 @@ Xvfb ":$DISPLAY_NUMBER" -screen 0 "${1}x${2}x24" >/dev/null 2>&1 & XVFB=$!
 sleep 1
 if [ "${3#main:}" != "$3" ]; then
     STATE=(+set ui_mainMenuPreview "${3#main:}")
+elif [ "${3#rivals:}" != "$3" ]; then
+    STATE=(+set ui_rivalsPreview "${3#rivals:}")
 elif [ "${3#credits:}" != "$3" ]; then
     STATE=(+set ui_creditsPreview "${3#credits:}")
 else

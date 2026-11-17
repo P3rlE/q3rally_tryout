@@ -4,14 +4,16 @@ The WebUI (`engine/webui/garage`, shown through CEF on Windows) set the look of
 the menus. Screens move back into the game one at a time and must look exactly
 like their WebUI version, on every platform and without a browser. Done so
 far: the graphics loading screen ("Getting ready.", WebUI screen 1), the
-main menu ("Ready to race.", WebUI screen 2) and the end credits ("Thank you
-for playing.", WebUI screen 3).
+main menu ("Ready to race.", WebUI screen 2), the end credits ("Thank you
+for playing.", WebUI screen 3) and Rivals ("Meet your rivals.", WebUI
+screen 5).
 
 ## How a screen is rebuilt
 
 - **Layout from the CSS.** `q3_ui/ui_rally_gfxlayout.c` (loading screen),
-  `q3_ui/ui_rally_mainlayout.c` (main menu) and
-  `q3_ui/ui_rally_creditslayout.c` (end credits) compute every box of the screen
+  `q3_ui/ui_rally_mainlayout.c` (main menu),
+  `q3_ui/ui_rally_creditslayout.c` (end credits) and
+  `q3_ui/ui_rally_rivalslayout.c` (Rivals) compute every box of the screen
   from the rules in `garage.css`, number for number. What both share, the
   page header, the two-column grid and the showroom with the car, lives in
   `q3_ui/ui_rally_frontpage.c`. This covers
@@ -66,8 +68,8 @@ atlases.
 
 ## Checking a screen
 
-- `tools/ui_webstyle/measure_webui_loading.cjs`, `measure_webui_main.cjs` and
-  `measure_webui_credits.cjs` measure the WebUI screens in Chrome (the
+- `tools/ui_webstyle/measure_webui_loading.cjs`, `measure_webui_main.cjs`,
+  `measure_webui_credits.cjs` and `measure_webui_rivals.cjs` measure the WebUI screens in Chrome (the
   credits with the roll paused at fixed times). They record every box and the width
   of every text run, for several viewports and all states (main menu: with
   and without a profile, quit dialog open).
@@ -85,7 +87,8 @@ atlases.
   `ui_gfxLoadingPreview "stage,percent,prompt"` for the loading screen,
   `ui_mainMenuPreview "name,rank,points,quit"` for the main menu (it also
   skips the profile wizards), `ui_creditsPreview <seconds>` for the end
-  credits, paused that far into the roll.
+  credits, paused that far into the roll, `ui_rivalsPreview
+  "search,scroll,rival"` for Rivals.
 
 What still differs from the WebUI:
 - **Glyph edges.** Chrome positions glyphs on subpixels; the game draws them
@@ -103,6 +106,21 @@ What still differs from the WebUI:
 - They roll up through the window at 38 px/s, from just below it until the
   last line has left it; then the game quits, as on the page.
 - Any key quits at once; the mouse only through the "Exit game" button.
+
+## Rivals
+
+- The list, the search and the profile follow library.js in its rivals mode:
+  the search matches name, model, description and personality; the selected
+  rival stays while it still matches, else the first match is selected.
+- The list scrolls with the wheel (100 px a notch), the scrollbar's arrows
+  and track, and by dragging its thumb. Chrome's dark scrollbar, as CEF
+  shows it on Windows, is captured in `menu/ui/web_scrollbar.png`.
+- The search field takes the keyboard after a click; Escape goes back to the
+  main menu, the arrow keys move the selection.
+- The rival's car can be turned and zoomed like the main menu's, starting
+  at 2.1 radii as on the page.
+- The page shows no weapon icons: its icon table does not know the weapon
+  names of 2026, so the native screen leaves them out too.
 
 ## Interplay with the WebUI
 
@@ -122,7 +140,7 @@ What still differs from the WebUI:
 
 ## Interplay with the WebUI
 
-While a native screen runs (loading screen, main menu, end credits), the UI reports
+While a native screen runs (loading screen, main menu, end credits, Rivals), the UI reports
 `UI_WEB_SCREEN` 15. The client treats it like screen 0: the browser stays
 hidden and the game draws. While the game is disconnected, though, the
 client starts CEF and loads the page, so the screens that are still WebUI

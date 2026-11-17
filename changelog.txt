@@ -34,6 +34,9 @@ Changed:
   the window's edges like the page's mask and ends the game when it is
   through; any key or "Exit game" quits at once. The menu text now uses
   the fonts' standard ligatures (fi, fl, ij, ...) as Chrome does.
+- Rivals is drawn by the game again and looks exactly like the WebUI's
+  "Meet your rivals." screen: search, the scrolling list with Chrome's dark
+  scrollbar, and the rival's profile with the car to turn and zoom.
 - Weapons: own models in a "built, not bought" style, all ten made from car
   parts on the same roof plate, with own muzzle flashes and icons. New names
   close to the old ones: Harvester Saw, Spotlight MG, Twin Shotgun, Drum

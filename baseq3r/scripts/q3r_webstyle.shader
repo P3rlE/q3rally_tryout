@@ -43,3 +43,15 @@ menu/ui/web_progress_fill
 		rgbGen vertex
 	}
 }
+
+menu/ui/web_scrollbar
+{
+	nopicmip
+	nomipmaps
+	{
+		clampmap menu/ui/web_scrollbar.png
+		blendfunc blend
+		rgbGen vertex
+		alphaGen vertex
+	}
+}
