@@ -1275,6 +1275,7 @@ void Svcmd_AbortPodium_f( void );
 void G_InitBots( qboolean restart );
 char *G_GetBotInfoByNumber( int num );
 const char *G_DragNextRivalName( const char *previous );
+const char *G_DragTourneyBotName( int index );
 char *G_GetBotInfoByName( const char *name );
 void G_CheckBotSpawn( void );
 void G_RemoveQueuedBotBegin( int clientNum );

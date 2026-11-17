@@ -1591,6 +1591,12 @@ static void G_LadderSubmitMatchReport( const char *reason ) {
         /* No armed driver means this was a cancelled/invalid course setup,
          * not a completed heat with an invented participant or result. */
         if ( payload->gametype == GT_DRAG && !payload->playerCount ) return;
+        /* Drag: a match between two bots (tournament) has nothing to rank. */
+        if ( payload->gametype == GT_DRAG ) {
+                for ( i = 0; i < payload->playerCount && payload->players[i].isBot; ++i ) {
+                }
+                if ( i == payload->playerCount ) return;
+        }
 
         G_LadderLogSubmitSnapshot( payload );
 
@@ -1769,6 +1775,9 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
         // parse the key/value pairs and spawn gentities
         G_SpawnEntitiesFromString();
 
+        if ( !restart ) {
+                G_DragTourneyReset();	/* a tournament lives across map_restart only */
+        }
         G_DragInit();
 
         G_InitWeather();

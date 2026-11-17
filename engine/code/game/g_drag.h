@@ -11,6 +11,17 @@ void G_DragFilterCommand( gentity_t *ent, usercmd_t *cmd );
 qboolean G_DragTryGearChange( gentity_t *ent, int direction, int commandTime );
 qboolean G_DragBotInput( int clientNum, usercmd_t *cmd );
 int G_DragMatchBestOf( void );
+void G_DragSimulateMatch( int skillA, int skillB, int bestOf, int *winsA, int *winsB );
+
+/* g_drag_tourney.c */
+qboolean G_DragTourneyActive( void );
+void G_DragTourneyInit( void );
+void G_DragTourneyReset( void );
+void G_DragTourneyPublish( int recipient );
+qboolean G_DragTourneyLineup( void );
+void G_DragTourneyMatchOver( int winnerClient, const int *winsByClient );
+qboolean G_DragTourneyDriver( int clientNum );
+void Cmd_DragSkip_f( gentity_t *ent );
 void G_DragPostMove( gentity_t *ent, const vec3_t oldOrigin, int oldTime );
 void G_DragRunFrame( void );
 qboolean G_DragCheckExit( void );

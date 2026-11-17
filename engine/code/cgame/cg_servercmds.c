@@ -1937,6 +1937,29 @@ static void CG_ServerCommand( void ) {
 		return;
 	}
 
+	if ( !strcmp( cmd, "dragTourney" ) ) {
+		int size = atoi( CG_Argv( 1 ) ), played, i, arg;
+		memset( &cgs.dragTourney, 0, sizeof( cgs.dragTourney ) );
+		if ( size != 4 && size != 8 && size != 16 ) return;
+		played = atoi( CG_Argv( 3 ) );
+		if ( played < 0 || played > size || trap_Argc() < 6 + 2 * size + 3 * played ) return;
+		cgs.dragTourney.size = size;
+		cgs.dragTourney.bestOf = atoi( CG_Argv( 2 ) );
+		cgs.dragTourney.played = played;
+		cgs.dragTourney.current[0] = atoi( CG_Argv( 4 ) );
+		cgs.dragTourney.current[1] = atoi( CG_Argv( 5 ) );
+		for ( i = 0, arg = 6; i < size; i++, arg += 2 ) {
+			Q_strncpyz( cgs.dragTourney.name[i], CG_Argv( arg ), sizeof( cgs.dragTourney.name[i] ) );
+			cgs.dragTourney.human[i] = atoi( CG_Argv( arg + 1 ) ) ? qtrue : qfalse;
+		}
+		for ( i = 0; i < played; i++, arg += 3 ) {
+			cgs.dragTourney.winner[i] = atoi( CG_Argv( arg ) ) ? 1 : 0;
+			cgs.dragTourney.wins[i][0] = atoi( CG_Argv( arg + 1 ) );
+			cgs.dragTourney.wins[i][1] = atoi( CG_Argv( arg + 2 ) );
+		}
+		return;
+	}
+
 	if ( !strcmp( cmd, "dragMatch" ) ) {
 		int heat, count, i;
 		if ( cgs.gametype != GT_DRAG || trap_Argc() < 6 ) return;
