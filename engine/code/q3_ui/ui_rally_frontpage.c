@@ -132,6 +132,19 @@ void WS_FrontPageLabeled( wsFrontPage_t *page, float width, float height, const 
 	page->sectionPad = WS_Clamp( WS_REM, 0.03f * width, 2.0f * WS_REM );
 }
 
+float WS_PlaceHeaderButton( const wsFrontPage_t *page, const char *label, wsRect_t *button ) {
+	button->w = WS_ButtonWidth( label );
+	button->h = WS_BUTTON_HEIGHT;
+	if ( page->titleW + WS_REM + button->w <= page->contentW ) {
+		button->x = page->contentX + page->contentW - button->w;
+		button->y = page->pad;
+		return page->pad + page->titleH + 2.0f * WS_REM;
+	}
+	button->x = page->contentX;
+	button->y = page->pad + page->titleH + WS_REM;
+	return button->y + button->h + 2.0f * WS_REM;
+}
+
 /* label, h2 (clamp(1.5rem, 4vw, 3rem), line-height 1), the 3D view
  * (clamp(15rem, 43vh, 32rem)), the status line and the garage button */
 float WS_ShowroomLayout( wsShowroom_t *room, const wsFrontPage_t *page,

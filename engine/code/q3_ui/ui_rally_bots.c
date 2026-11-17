@@ -145,174 +145,8 @@ static void UI_CanonicalizeWeapon( const char *in, char *out, int outSize ) {
 }
 
 /* Canonical token -> icon shader (icons/iconw_*) */
-typedef struct { const char *canon; const char *icon; } weaponiconmap_t;
-static const weaponiconmap_t s_weaponIconMap[] = {
-    { "GAUNTLET",        "icons/iconw_gauntlet" },  /* Chainsaw alias uses same icon */
-    { "CHAINSAW",        "icons/iconw_gauntlet" },
-    { "MACHINEGUN",      "icons/iconw_machinegun" },
-    { "SHOTGUN",         "icons/iconw_shotgun" },
-    { "GRENADELAUNCHER", "icons/iconw_grenade" },
-    { "ROCKETLAUNCHER",  "icons/iconw_rocket" },
-    { "LIGHTNING",       "icons/iconw_lightning" },
-    { "RAILGUN",         "icons/iconw_railgun" },
-    { "PLASMAGUN",       "icons/iconw_plasma" },
-    { "BFG10k",          "icons/iconw_bfg" },
-    { "FLAMETHROWER",    "icons/iconw_flame" },
-    /* the Q3Rally display names */
-    { "HARVESTERSAW",    "icons/iconw_gauntlet" },
-    { "SPOTLIGHTMG",     "icons/iconw_machinegun" },
-    { "TWINSHOTGUN",     "icons/iconw_shotgun" },
-    { "DRUMLAUNCHER",    "icons/iconw_grenade" },
-    { "QUADLAUNCHER",    "icons/iconw_rocket" },
-    { "SPARKGUN",        "icons/iconw_lightning" },
-    { "TURBORAILGUN",    "icons/iconw_railgun" },
-    { "PLASMACOOLER",    "icons/iconw_plasma" },
-    { "BFGBLOWER",       "icons/iconw_bfg" },
-    { "NITROFLAMER",     "icons/iconw_flame" }
-};
-#define WEAPONICONMAP_COUNT ( (int)(sizeof(s_weaponIconMap)/sizeof(s_weaponIconMap[0])) )
-
-/* Resolve icon handle from favoriteweapon text */
-static qhandle_t UI_WeaponIconFromText( const char *favoriteText ) {
-    char canon[32]; int i;
-    if (!favoriteText || !*favoriteText) return 0;
-    UI_CanonicalizeWeapon(favoriteText, canon, sizeof(canon));
-    if (!canon[0]) return 0;
-    for (i = 0; i < WEAPONICONMAP_COUNT; i++) {
-        if (Q_stricmp(s_weaponIconMap[i].canon, canon) == 0) {
-            return trap_R_RegisterShaderNoMip(s_weaponIconMap[i].icon);
-        }
-    }
-    return 0;
-}
-
-/* Small word wrapper for the modern frontend text atlas. */
-static void UI_DrawWrappedProportional( int x, int y, int maxWidth, int lineHeight,
-                                        const char *text, int style, vec4_t color ) {
-    char line[1024];
-    char word[256];
-    char test[1024];
-    const char *s;
-    int wi;
-    int w;
-
-    if (!text || !*text) {
-        return;
-    }
-
-    line[0] = '\0';
-    s = text;
-
-    while (*s) {
-        /* respect explicit newlines */
-        if (*s == '\n') {
-            if (line[0]) {
-                Frontend_DrawText(x, y, line, style, color);
-                line[0] = '\0';
-            }
-            y += lineHeight;
-            s++;
-            continue;
-        }
-
-        /* read next word */
-        wi = 0;
-        while (*s && *s != ' ' && *s != '\n' && wi < (int)sizeof(word) - 1) {
-            word[wi++] = *s++;
-        }
-        word[wi] = '\0';
-
-        /* collapse multiple spaces */
-        while (*s == ' ') s++;
-
-        if (!word[0]) continue;
-
-        if (line[0]) {
-            Q_strncpyz(test, line, sizeof(test));
-            Q_strcat(test, sizeof(test), " ");
-            Q_strcat(test, sizeof(test), word);
-        } else {
-            Q_strncpyz(test, word, sizeof(test));
-        }
-
-        w = Frontend_TextWidth(test, style);
-        if (w <= maxWidth) {
-            if (line[0]) Q_strcat(line, sizeof(line), " ");
-            Q_strcat(line, sizeof(line), word);
-        } else {
-            if (line[0]) {
-                Frontend_DrawText(x, y, line, style, color);
-                y += lineHeight;
-                Q_strncpyz(line, word, sizeof(line));
-            } else {
-                /* extremely long single word: draw anyway */
-                Frontend_DrawText(x, y, word, style, color);
-                y += lineHeight;
-            }
-        }
-    }
-
-    if (line[0]) {
-        Frontend_DrawText(x, y, line, style, color);
-    }
-}
-
 #define NAME_BUFSIZE 64
 #define DESC_BUFSIZE 256
-#define MAX_VISIBLE_BOTS 10
-#define DESC_MAXWIDTH 332
-#define DESC_LINEHEIGHT 18
-
-/* Modern rivals layout. Coordinates use the shared 640x480 virtual space. */
-#define RIVALS_FRAME_X       4
-#define RIVALS_FRAME_Y       20
-#define RIVALS_FRAME_W       632
-#define RIVALS_FRAME_H       440
-#define RIVALS_LIST_X        20
-#define RIVALS_LIST_Y        100
-#define RIVALS_LIST_W        204
-#define RIVALS_LIST_H        304
-#define RIVALS_ROW_X         32
-#define RIVALS_ROW_Y         134
-#define RIVALS_ROW_W         180
-#define RIVALS_ROW_H         UI_FRONTEND_BUTTON_HEIGHT
-#define RIVALS_ROW_GAP       3
-#define RIVALS_HERO_X        236
-#define RIVALS_HERO_Y        88
-#define RIVALS_HERO_W        400
-#define RIVALS_HERO_H        328
-#define RIVALS_DETAIL_X      252
-#define RIVALS_DETAIL_Y      316
-#define RIVALS_ACTION_Y      424
-#define RIVALS_ACTION_H      UI_FRONTEND_BUTTON_HEIGHT
-#define RIVALS_ACTION_W      UI_FRONTEND_ACTION_WIDTH
-#define RIVALS_BACK_X        20
-#define RIVALS_PREV_X        264
-#define RIVALS_NEXT_X        504
-
-/* control IDs */
-#define ID_BOT0  1000
-#define ID_PREV  2000
-#define ID_NEXT  2001
-#define ID_BACK  10
-
-static vec4_t rivalsTextColor  = UI_FRONTEND_COLOR_TEXT;
-static vec4_t rivalsMutedColor = UI_FRONTEND_COLOR_MUTED;
-static vec4_t rivalsAccentColor = UI_FRONTEND_COLOR_ACCENT;
-
-/* Draw weapon icon to the right of the car icon; derives position from given rect (no layout change) */
-static void UI_DrawWeaponIconNextTo( int x, int y, int w, int h, const char *favoriteText ) {
-    qhandle_t wi;
-    if (!favoriteText || !*favoriteText) return;
-    wi = UI_WeaponIconFromText(favoriteText);
-    if (!wi) return;
-    {
-#define WEAPON_ICON_DY 32
-    int wx = x + w + 24;
-    int wy = y + WEAPON_ICON_DY;
-        UI_DrawHandlePic(wx, wy, 40, 40, wi);
-    }
-}
 
 static char botNames[MAX_BOTS][NAME_BUFSIZE];
 static char botModels[MAX_BOTS][NAME_BUFSIZE];
@@ -325,24 +159,28 @@ static qhandle_t botIcons[MAX_BOTS];
 static qhandle_t botPlateShaders[MAX_BOTS];
 static weapon_t  botWeapons[MAX_BOTS];
 static int botCount = 0;
-static int botPage = 0;
-static int botSelected = -1;
 
-static menutext_s botItems[MAX_VISIBLE_BOTS];
-static menutext_s nextButton;
-static menutext_s prevButton;
+#include "ui_rally_rivalslayout.h"
 
 typedef struct {
     menuframework_s menu;
-    menutext_s      banner;
-    menutext_s      back;
+    rivalsLayout_t  layout;
+    char            query[64];          /* #library-search */
+    qboolean        searchFocus;
+    int             searchFocusTime;
+    int             matches[MAX_BOTS];  /* the rivals the search leaves, in order */
+    int             matchCount;
+    int             selected;           /* rival index, -1 none */
+    float           scroll;             /* #library-list scrollTop */
+    qboolean        dragCar, dragThumb;
+    float           dragX, dragY, dragScroll;
+    float           yaw, elevation, distance;
 } botsmenu_t;
 
 static botsmenu_t s_bots;
 static playerInfo_t s_garagePlayerInfo;
 
-static void UI_BotsMenu_Init(void);
-static void UI_BotsMenu_DrawBotPage(void);
+#define RIVALS_VIEW_DISTANCE  2.1f      /* library.js: openVehicleShowroom( ..., {distance: 2.1} ) */
 
 /* Apply model, weapon and plate for a selected rival */
 static void UI_BotsMenu_SetRival( int index ) {
@@ -393,228 +231,6 @@ static void UI_BotsMenu_SetRival( int index ) {
         wp, qfalse );
 }
 
-static void UI_BotsMenu_BackEvent(void *ptr, int event) {
-    if (event != QM_ACTIVATED) return;
-    UI_PopMenu();
-}
-
-static void UI_BotsMenu_BotSelectEvent(void *ptr, int event) {
-    int i;
-    int index;
-
-    if (event != QM_ACTIVATED) return;
-
-    for (i = 0; i < MAX_VISIBLE_BOTS; i++) {
-        if ((void*)&botItems[i] == ptr) {
-            index = botPage * MAX_VISIBLE_BOTS + i;
-            if (index >= 0 && index < botCount) {
-                botSelected = index;
-                UI_BotsMenu_SetRival( botSelected );
-                UI_BotsMenu_DrawBotPage();
-            }
-            break;
-        }
-    }
-}
-
-
-static void UI_BotsMenu_NextPage(void *ptr, int event) {
-    int start;
-    if (event != QM_ACTIVATED) return;
-    if ((botPage + 1) * MAX_VISIBLE_BOTS < botCount) {
-        botPage++;
-        start = botPage * MAX_VISIBLE_BOTS;
-        if (botSelected < start || botSelected >= start + MAX_VISIBLE_BOTS) {
-            botSelected = (start < botCount) ? start : botCount - 1;
-            if (botSelected >= 0) {
-                UI_BotsMenu_SetRival( botSelected );
-            }
-        }
-        UI_BotsMenu_DrawBotPage();
-    }
-}
-
-static void UI_BotsMenu_PrevPage(void *ptr, int event) {
-    int start;
-    if (event != QM_ACTIVATED) return;
-    if (botPage > 0) {
-        botPage--;
-        start = botPage * MAX_VISIBLE_BOTS;
-        if (botSelected < start || botSelected >= start + MAX_VISIBLE_BOTS) {
-            botSelected = (start < botCount) ? start : botCount - 1;
-            if (botSelected >= 0) {
-                UI_BotsMenu_SetRival( botSelected );
-            }
-        }
-        UI_BotsMenu_DrawBotPage();
-    }
-}
-
-static sfxHandle_t UI_BotsMenu_Key(int key) {
-    int row;
-    int index;
-
-    /* The legacy menu mouse router uses label-derived bounds for PText
-     * widgets. Rival rows are deliberately full-width custom cards, so map
-     * their hit area explicitly before the generic router can fall through
-     * to the Back action. */
-    if ( key == K_MOUSE1 &&
-         uis.cursorx >= RIVALS_ROW_X &&
-         uis.cursorx <= RIVALS_ROW_X + RIVALS_ROW_W &&
-         uis.cursory >= RIVALS_ROW_Y &&
-         uis.cursory < RIVALS_ROW_Y + MAX_VISIBLE_BOTS *
-             ( RIVALS_ROW_H + RIVALS_ROW_GAP ) ) {
-        row = ( uis.cursory - RIVALS_ROW_Y ) /
-              ( RIVALS_ROW_H + RIVALS_ROW_GAP );
-        if ( uis.cursory >= RIVALS_ROW_Y + row *
-             ( RIVALS_ROW_H + RIVALS_ROW_GAP ) + RIVALS_ROW_H ) {
-            return 0;
-        }
-
-        index = botPage * MAX_VISIBLE_BOTS + row;
-        if ( row >= 0 && row < MAX_VISIBLE_BOTS &&
-             index >= 0 && index < botCount ) {
-            botSelected = index;
-            UI_BotsMenu_SetRival( botSelected );
-            UI_BotsMenu_DrawBotPage();
-            return menu_move_sound;
-        }
-    }
-
-    return Menu_DefaultKey(&s_bots.menu, key);
-}
-
-static void UI_BotsMenu_DrawBanner( void *self ) {
-    Frontend_DrawText( RIVALS_FRAME_X + 24, RIVALS_FRAME_Y + 24,
-                       "Rivals", UI_LEFT | UI_BIGFONT, rivalsTextColor );
-    Frontend_DrawText( RIVALS_FRAME_X + 24, RIVALS_FRAME_Y + 48,
-                       "Choose a driver to inspect their setup",
-                       UI_LEFT | UI_SMALLFONT, rivalsMutedColor );
-    Frontend_DrawStatusChip( RIVALS_FRAME_X + RIVALS_FRAME_W - 94,
-                             RIVALS_FRAME_Y + 26, "Roster",
-                             rivalsAccentColor, 1.0f );
-}
-
-static void UI_BotsMenu_DrawRivalItem( void *self ) {
-    menutext_s *item;
-    int index;
-
-    item = (menutext_s *)self;
-    if ( item->generic.flags & QMF_INACTIVE ) {
-        return;
-    }
-
-    index = 0;
-    while ( index < MAX_VISIBLE_BOTS && &botItems[index] != item ) {
-        index++;
-    }
-    if ( index >= MAX_VISIBLE_BOTS ) {
-        return;
-    }
-
-    Frontend_DrawNavButton( item->generic.left, item->generic.top,
-                            item->generic.right - item->generic.left,
-                            item->generic.bottom - item->generic.top,
-                            item->string, 1.0f,
-                            botPage * MAX_VISIBLE_BOTS + index == botSelected,
-                            UI_FRONTEND_TEXT_LEFT );
-}
-
-static void UI_BotsMenu_DrawAction( void *self ) {
-    menutext_s *button;
-    qboolean focus;
-    qboolean disabled;
-    vec4_t disabledColor;
-    int x;
-    int y;
-    int width;
-
-    button = (menutext_s *)self;
-    focus = ( Menu_ItemAtCursor( button->generic.parent ) == button );
-    disabled = ( button->generic.flags & QMF_GRAYED ) ? qtrue : qfalse;
-    x = button->generic.left;
-    y = button->generic.top;
-    width = button->generic.right - button->generic.left;
-
-    if ( disabled ) {
-        Vector4Copy( rivalsMutedColor, disabledColor );
-        disabledColor[3] = 0.35f;
-        Frontend_DrawText( x + width / 2, y + 6, button->string,
-                           UI_CENTER | UI_SMALLFONT, disabledColor );
-        return;
-    }
-
-    Frontend_DrawButton( x, y, width,
-                         button->generic.bottom - button->generic.top,
-                         button->string, 1.0f, focus,
-                         UI_FRONTEND_TEXT_CENTER );
-}
-
-static void UI_BotsMenu_Draw(void) {
-    vec4_t scrimColor = UI_FRONTEND_COLOR_SCRIM;
-    char pageStr[32];
-    const char *favoriteWeapon;
-
-    Frontend_DrawBackground( scrimColor );
-
-    Frontend_DrawPanel( RIVALS_FRAME_X, RIVALS_FRAME_Y,
-                        RIVALS_FRAME_W, RIVALS_FRAME_H, 1.0f,
-                        UI_FRONTEND_STYLE_FRAME );
-    Frontend_DrawCard( RIVALS_LIST_X, RIVALS_LIST_Y,
-                       RIVALS_LIST_W, RIVALS_LIST_H, 1.0f, qfalse );
-    Frontend_DrawCard( RIVALS_HERO_X, RIVALS_HERO_Y,
-                       RIVALS_HERO_W, RIVALS_HERO_H, 1.0f, qfalse );
-    Frontend_DrawText( RIVALS_LIST_X + 12, RIVALS_LIST_Y + 14,
-                       "Rival roster", UI_LEFT | UI_SMALLFONT,
-                       rivalsMutedColor );
-    Frontend_DrawText( RIVALS_HERO_X + 16, RIVALS_HERO_Y + 14,
-                       "Rival profile", UI_LEFT | UI_SMALLFONT,
-                       rivalsMutedColor );
-
-    Menu_Draw( &s_bots.menu );
-
-    if ( botCount > MAX_VISIBLE_BOTS ) {
-        int totalPages = ( botCount + MAX_VISIBLE_BOTS - 1 ) / MAX_VISIBLE_BOTS;
-        /* in the card header like the showroom counter: the ten rows fill
-           the card down to its bottom edge */
-        Com_sprintf( pageStr, sizeof(pageStr), "%d / %d",
-                     botPage + 1, totalPages );
-        Frontend_DrawText( RIVALS_LIST_X + RIVALS_LIST_W - 12,
-                           RIVALS_LIST_Y + 14, pageStr,
-                           UI_RIGHT | UI_SMALLFONT, rivalsMutedColor );
-    }
-
-    if ( botSelected >= 0 && botSelected < botCount ) {
-        favoriteWeapon = botFavWeapon[botSelected][0] ?
-                         botFavWeapon[botSelected] : "-";
-
-        UI_DrawPlayer( RIVALS_HERO_X + 16, RIVALS_HERO_Y + 28,
-                       RIVALS_HERO_W - 32, 204,
-                       &s_garagePlayerInfo, uis.realtime );
-
-        Frontend_DrawText( RIVALS_DETAIL_X, RIVALS_DETAIL_Y,
-                           botNames[botSelected], UI_LEFT | UI_BIGFONT,
-                           rivalsTextColor );
-        Frontend_DrawText( RIVALS_DETAIL_X, RIVALS_DETAIL_Y + 22,
-                           botPersonalities[botSelected], UI_LEFT | UI_SMALLFONT,
-                           rivalsMutedColor );
-        Frontend_DrawText( RIVALS_DETAIL_X, RIVALS_DETAIL_Y + 42,
-                           va( "Favorite weapon  /  %s", favoriteWeapon ),
-                           UI_LEFT | UI_SMALLFONT, rivalsAccentColor );
-        UI_DrawWeaponIconNextTo( RIVALS_HERO_X + RIVALS_HERO_W - 104,
-                                 RIVALS_DETAIL_Y, 40, 40,
-                                 botFavWeapon[botSelected][0] ?
-                                 botFavWeapon[botSelected] : NULL );
-        UI_DrawWrappedProportional( RIVALS_DETAIL_X, RIVALS_DETAIL_Y + 62,
-                                    DESC_MAXWIDTH, DESC_LINEHEIGHT,
-                                    botDescriptions[botSelected],
-                                    UI_LEFT | UI_SMALLFONT, rivalsMutedColor );
-    } else {
-        Frontend_DrawText( RIVALS_HERO_X + RIVALS_HERO_W / 2,
-                           RIVALS_HERO_Y + 150, "Select a rival",
-                           UI_CENTER | UI_BIGFONT, rivalsMutedColor );
-    }
-}
 
 static void UI_BotsMenu_ParseBots(void) {
     char *text_p;
@@ -696,143 +312,441 @@ static void UI_BotsMenu_ParseBots(void) {
     }
 }
 
-static void UI_BotsMenu_DrawBotPage(void) {
-    int start, i, index;
-    int rowY;
 
-    start = botPage * MAX_VISIBLE_BOTS;
-    for (i = 0; i < MAX_VISIBLE_BOTS; i++) {
-        index = start + i;
-        rowY = RIVALS_ROW_Y + i * ( RIVALS_ROW_H + RIVALS_ROW_GAP );
-        if (index < botCount) {
-            botItems[i].string = botNames[index];
-            botItems[i].color  = (index == botSelected) ? rivalsAccentColor : rivalsTextColor;
-            botItems[i].generic.flags = QMF_LEFT_JUSTIFY | QMF_PULSEIFFOCUS;
-            botItems[i].generic.left   = RIVALS_ROW_X;
-            botItems[i].generic.top    = rowY;
-            botItems[i].generic.right  = RIVALS_ROW_X + RIVALS_ROW_W;
-            botItems[i].generic.bottom = rowY + RIVALS_ROW_H;
-        } else {
-            botItems[i].generic.flags = QMF_INACTIVE;
-            botItems[i].generic.left = RIVALS_ROW_X;
-            botItems[i].generic.right = RIVALS_ROW_X + RIVALS_ROW_W;
-            botItems[i].generic.top = rowY;
-            botItems[i].generic.bottom = rowY + RIVALS_ROW_H;
-            botItems[i].string = "";
-            botItems[i].color  = rivalsTextColor;
+static const vec4_t rivalsSelected = { 0x3b / 255.0f, 0x23 / 255.0f, 0x17 / 255.0f, 1.0f };   /* aria-pressed */
+static const vec4_t rivalsInput    = { 0x11 / 255.0f, 0x11 / 255.0f, 0x11 / 255.0f, 1.0f };
+static const vec4_t rivalsHolder   = { 0x75 / 255.0f, 0x75 / 255.0f, 0x75 / 255.0f, 1.0f };   /* ::placeholder */
+static const vec4_t rivalsRing     = { 0xee / 255.0f, 0xee / 255.0f, 0xee / 255.0f, 1.0f };   /* focus ring */
+static const vec4_t rivalsTrack    = { 0x2c / 255.0f, 0x2c / 255.0f, 0x2c / 255.0f, 1.0f };   /* dark scrollbar */
+static const vec4_t rivalsThumb    = { 0x9f / 255.0f, 0x9f / 255.0f, 0x9f / 255.0f, 1.0f };
+
+/* -------------------------------------------------------------------------
+   Search and selection, as library.js does it
+   ------------------------------------------------------------------------- */
+
+static void Rivals_Lower( const char *in, char *out, int size ) {
+    int i;
+    for ( i = 0; in[i] && i < size - 1; i++ ) out[i] = tolower( (unsigned char)in[i] );
+    out[i] = '\0';
+}
+
+/* name, model, description and personality joined, matched case-insensitively */
+static qboolean Rivals_Matches( int index, const char *query ) {
+    char joined[2 * DESC_BUFSIZE + 2 * NAME_BUFSIZE + 4], lower[sizeof( joined )];
+    if ( !query[0] ) return qtrue;
+    Com_sprintf( joined, sizeof( joined ), "%s %s %s %s", botNames[index], botModels[index],
+                 botDescriptions[index], botPersonalities[index] );
+    Rivals_Lower( joined, lower, sizeof( lower ) );
+    return strstr( lower, query ) != NULL;
+}
+
+static void Rivals_Select( int index ) {
+    if ( index == s_bots.selected ) return;
+    s_bots.selected = index;
+    /* a new showroom per rival: the camera starts over */
+    s_bots.yaw = WS_VIEW_AZIMUTH;
+    s_bots.elevation = WS_VIEW_ELEVATION;
+    s_bots.distance = RIVALS_VIEW_DISTANCE;
+    s_bots.dragCar = qfalse;
+    if ( index >= 0 ) UI_BotsMenu_SetRival( index );
+}
+
+/* renderList(): filter, keep the selected rival if it still matches, else the first */
+static void Rivals_Filter( void ) {
+    char query[64], *start, *end;
+    int i, keep = -1;
+
+    Rivals_Lower( s_bots.query, query, sizeof( query ) );
+    for ( start = query; *start == ' '; start++ ) {
+    }
+    for ( end = start + strlen( start ); end > start && end[-1] == ' '; end-- ) {
+    }
+    *end = '\0';
+    s_bots.matchCount = 0;
+    for ( i = 0; i < botCount; i++ ) {
+        if ( !Rivals_Matches( i, start ) ) continue;
+        if ( i == s_bots.selected ) keep = i;
+        s_bots.matches[s_bots.matchCount++] = i;
+    }
+    Rivals_Select( keep >= 0 ? keep : ( s_bots.matchCount ? s_bots.matches[0] : -1 ) );
+}
+
+static int Rivals_Row( int index ) {
+    int i;
+    for ( i = 0; i < s_bots.matchCount; i++ ) {
+        if ( s_bots.matches[i] == index ) return i;
+    }
+    return -1;
+}
+
+/* -------------------------------------------------------------------------
+   Layout
+   ------------------------------------------------------------------------- */
+
+static void Rivals_Clean( const char *in, char *out, int size ) {
+    /* cleanWeapon(): color codes out, trimmed */
+    int n = 0;
+    for ( ; *in && n < size - 1; in++ ) {
+        if ( *in == '^' && in[1] >= '0' && in[1] <= '9' ) { in++; continue; }
+        out[n++] = *in;
+    }
+    out[n] = '\0';
+    while ( n > 0 && out[n - 1] == ' ' ) out[--n] = '\0';
+    for ( n = 0; out[n] == ' '; n++ ) {
+    }
+    if ( n ) memmove( out, out + n, strlen( out + n ) + 1 );
+}
+
+static void Rivals_BuildLayout( void ) {
+    rivalsLayout_t *l = &s_bots.layout;
+    int index = s_bots.selected;
+    char weapon[DESC_BUFSIZE];
+
+    l->count = s_bots.matchCount;
+    l->scroll = s_bots.scroll;
+    Q_strncpyz( l->name, index >= 0 ? botNames[index] : "No rivals found", sizeof( l->name ) );
+    Q_strncpyz( l->personality, index >= 0 ? botPersonalities[index] : "", sizeof( l->personality ) );
+    l->weapon[0] = '\0';
+    if ( index >= 0 ) {
+        Rivals_Clean( botFavWeapon[index], weapon, sizeof( weapon ) );
+        if ( weapon[0] ) Com_sprintf( l->weapon, sizeof( l->weapon ), "Favorite weapon / %s", weapon );
+    }
+    Q_strncpyz( l->description, index >= 0 ? botDescriptions[index] : "", sizeof( l->description ) );
+    Q_strncpyz( l->status, index >= 0 ? "Drag to rotate / scroll to zoom" : "", sizeof( l->status ) );
+    Rivals_Layout( l, WS_ViewportWidth(), WS_ViewportHeight() );
+    s_bots.scroll = l->scroll;
+}
+
+/* -------------------------------------------------------------------------
+   Drawing
+   ------------------------------------------------------------------------- */
+
+/* a rectangle cut to the list's scrollport */
+static void Rivals_FillClipped( float x, float y, float w, float h, const float *color ) {
+    const wsRect_t *list = &s_bots.layout.list;
+    float top = y > list->y ? y : list->y;
+    float bottom = y + h < list->y + list->h ? y + h : list->y + list->h;
+    if ( bottom > top ) WS_FillRect( x, top, w, bottom - top, color );
+}
+
+static void Rivals_DrawButton( const wsRect_t *b, int index ) {
+    const rivalsLayout_t *l = &s_bots.layout;
+    wsTextStyle_t bold;
+    qboolean pressed = index == s_bots.selected;
+    float x0 = WS_Round( b->x ), y0 = WS_Round( b->y ), x1 = WS_Round( b->x + b->w ), y1 = WS_Round( b->y + b->h );
+    float iconX, iconY, top, bottom;
+
+    Rivals_FillClipped( x0, y0, x1 - x0, y1 - y0, pressed ? wsAccent : wsLine );
+    Rivals_FillClipped( x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2, pressed ? rivalsSelected : wsSurface );
+
+    /* the icon, object-fit: contain in 3.5rem x 2.5rem: the square icons are 40 x 40 */
+    iconX = WS_Round( b->x + 1.0f + WS_LU( WS_BUTTON_PAD_X ) + 8.0f );
+    iconY = WS_Round( b->y + 1.0f + WS_LU( WS_BUTTON_PAD_Y ) );
+    top = iconY > l->list.y ? iconY : l->list.y;
+    bottom = iconY + 40.0f < l->list.y + l->list.h ? iconY + 40.0f : l->list.y + l->list.h;
+    if ( bottom > top && botIcons[index] ) {
+        trap_R_SetColor( NULL );
+        trap_R_DrawStretchPic( iconX, top, 40.0f, bottom - top, 0.0f, ( top - iconY ) / 40.0f,
+                               1.0f, ( bottom - iconY ) / 40.0f, botIcons[index] );
+    }
+
+    WS_BodyStyle( &bold );
+    bold.font = WS_BODY_BOLD;
+    WS_SetFade( l->list.y, l->list.h, 0.0f );
+    WS_DrawText( &bold, b->x + 1.0f + WS_LU( WS_BUTTON_PAD_X ) + 3.5f * WS_REM + WS_LU( 0.7f * WS_REM ),
+                 b->y + 1.0f + WS_LU( WS_BUTTON_PAD_Y ) + 8.0f, botNames[index], strlen( botNames[index] ), wsWhite );
+    WS_SetFade( 0.0f, 0.0f, 0.0f );
+}
+
+/* Chrome's dark classic scrollbar: track, arrow buttons, rounded thumb */
+static void Rivals_DrawScrollbar( void ) {
+    static qhandle_t art;
+    const rivalsLayout_t *l = &s_bots.layout;
+    float x = WS_Round( l->list.x + l->list.w - RIVALS_SCROLLBAR ), top = WS_Round( l->list.y );
+    float bottom = WS_Round( l->list.y + l->list.h ), y0, y1;
+
+    if ( !l->scrollbar ) return;
+    if ( !art ) art = trap_R_RegisterShaderNoMip( "menu/ui/web_scrollbar" );
+    WS_FillRect( x, top, RIVALS_SCROLLBAR, bottom - top, rivalsTrack );
+    trap_R_SetColor( rivalsThumb );
+    trap_R_DrawStretchPic( x, top, 15, 15, 0, 0, 15 / 16.0f, 15 / 32.0f, art );
+    trap_R_DrawStretchPic( x, bottom - 15, 15, 15, 0, 15 / 32.0f, 15 / 16.0f, 0, art );
+    y0 = WS_Round( l->thumb.y );
+    y1 = floor( l->thumb.y + l->thumb.h ) + 1.0f;
+    trap_R_DrawStretchPic( x, y0, 15, 5, 0, 15 / 32.0f, 15 / 16.0f, 20 / 32.0f, art );
+    trap_R_DrawStretchPic( x, y1 - 5, 15, 5, 0, 20 / 32.0f, 15 / 16.0f, 25 / 32.0f, art );
+    trap_R_SetColor( NULL );
+    if ( y1 - 5 > y0 + 5 ) WS_FillRect( x + 3, y0 + 5, 9, y1 - y0 - 10, rivalsThumb );
+}
+
+static void Rivals_DrawSearch( void ) {
+    const rivalsLayout_t *l = &s_bots.layout;
+    const wsRect_t *r = &l->search;
+    wsTextStyle_t body, cancel;
+    float x0 = WS_Round( r->x ), y0 = WS_Round( r->y ), x1 = WS_Round( r->x + r->w ), y1 = WS_Round( r->y + r->h );
+    float textX = r->x + 1.0f + WS_LU( 0.6f * WS_REM ), lineTop = r->y + 1.0f + WS_LU( 0.6f * WS_REM );
+
+    WS_BodyStyle( &body );
+    if ( s_bots.searchFocus ) {
+        /* the focus ring, 2px #eee over the border */
+        WS_FillRect( x0 - 1, y0 - 1, x1 - x0 + 2, y1 - y0 + 2, rivalsRing );
+        WS_FillRect( x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2, rivalsInput );
+    } else {
+        WS_FillRect( x0, y0, x1 - x0, y1 - y0, wsLine );
+        WS_FillRect( x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2, rivalsInput );
+    }
+    if ( s_bots.query[0] ) {
+        WS_DrawText( &body, textX, lineTop, s_bots.query, strlen( s_bots.query ), wsWhite );
+        if ( s_bots.searchFocus ) {
+            /* the search field's cancel button */
+            cancel = body;
+            cancel.font = WS_BODY_BOLD;
+            cancel.size = 20.0f;
+            cancel.lineHeight = WS_BODY_LINE;
+            WS_DrawText( &cancel, x1 - 1.0f - WS_LU( 0.6f * WS_REM ) - 12.0f, lineTop - 1.0f, "\xd7", 1, wsWhite );
         }
+    } else {
+        WS_DrawText( &body, textX, lineTop, rivalsPlaceholder, strlen( rivalsPlaceholder ), rivalsHolder );
     }
-    prevButton.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
-    nextButton.generic.flags = QMF_CENTER_JUSTIFY | QMF_PULSEIFFOCUS;
-    if ( botPage <= 0 ) {
-        prevButton.generic.flags |= QMF_GRAYED;
-    }
-    if ( ( botPage + 1 ) * MAX_VISIBLE_BOTS >= botCount ) {
-        nextButton.generic.flags |= QMF_GRAYED;
+    if ( s_bots.searchFocus && ( ( uis.realtime - s_bots.searchFocusTime ) / 500 ) % 2 == 0 ) {
+        float caret = WS_Round( textX + WS_TextWidth( &body, s_bots.query, strlen( s_bots.query ) ) );
+        WS_FillRect( caret, WS_Round( lineTop + 3.0f ), 1, 19, wsWhite );
     }
 }
 
-void UI_BotsMenu(void) {
-    memset(&s_bots, 0, sizeof(s_bots));
+static void Rivals_Orbit( void ) {
+    const wsRect_t *car = &s_bots.layout.car;
+    float x = uis.cursorx * uis.xscale + uis.bias, y = uis.cursory * uis.yscale;
+
+    if ( s_bots.dragCar ) {
+        if ( !trap_Key_IsDown( K_MOUSE1 ) ) {
+            s_bots.dragCar = qfalse;
+        } else if ( car->h > 0.0f ) {
+            s_bots.yaw = AngleNormalize360( s_bots.yaw + 360.0f * ( x - s_bots.dragX ) / car->h );
+            s_bots.elevation = WS_Clamp( WS_VIEW_MIN_ELEVATION, s_bots.elevation + 360.0f * ( y - s_bots.dragY ) / car->h,
+                                         WS_VIEW_MAX_ELEVATION );
+        }
+    }
+    if ( s_bots.dragThumb ) {
+        const rivalsLayout_t *l = &s_bots.layout;
+        float track = l->list.h - 2.0f * RIVALS_ARROW - 9.0f - l->thumb.h;
+        if ( !trap_Key_IsDown( K_MOUSE1 ) ) {
+            s_bots.dragThumb = qfalse;
+        } else if ( track > 0.0f ) {
+            s_bots.scroll = s_bots.dragScroll + ( y - s_bots.dragY ) * ( l->contentHeight - l->list.h ) / track;
+        }
+        return;
+    }
+    s_bots.dragX = x;
+    s_bots.dragY = y;
+}
+
+static void UI_BotsMenu_Draw( void ) {
+    rivalsLayout_t *l = &s_bots.layout;
+    wsTextStyle_t body, label;
+    wsRect_t b;
+    int row;
+
+    Rivals_Orbit();
+    Rivals_BuildLayout();
+    WS_BodyStyle( &body );
+    WS_LabelStyle( &label );
+
+    WS_DrawBackground( l->pageWidth, l->pageHeight );
+    WS_DrawFrontHeader( &l->page, "Meet your ", "rivals.", "" );
+    WS_DrawButton( &l->back, rivalsBack, qtrue, qfalse );
+
+    /* left: search, count, list */
+    WS_DrawSection( &l->left, qfalse );
+    WS_DrawText( &body, l->leftX, l->searchLabelY, "Search", 6, wsWhite );
+    Rivals_DrawSearch();
+    {
+        char count[32];
+        Com_sprintf( count, sizeof( count ), "%d rivals", s_bots.matchCount );
+        WS_DrawText( &body, l->leftX, l->countY, count, strlen( count ), wsWhite );
+    }
+    for ( row = 0; row < s_bots.matchCount; row++ ) {
+        Rivals_Button( l, row, &b );
+        if ( b.y >= l->list.y + l->list.h || b.y + b.h <= l->list.y ) continue;
+        Rivals_DrawButton( &b, s_bots.matches[row] );
+    }
+    Rivals_DrawScrollbar();
+
+    /* right: the rival's profile */
+    WS_DrawSection( &l->right, qtrue );
+    WS_DrawLabel( l->rightX, l->labelY, rivalsDetailLabel, NULL );
+    WS_DrawLines( &l->title, l->rightX, l->nameY, l->name, &l->nameLines, wsWhite );
+    if ( s_bots.selected >= 0 ) {
+        UI_DrawVehicleWebView( l->car.x, l->car.y, l->car.w, l->car.h, &s_garagePlayerInfo, uis.realtime,
+                               s_bots.yaw, s_bots.elevation, s_bots.distance );
+    }
+    WS_DrawLines( &body, l->rightX, l->personalityY, l->personality, &l->personalityLines, wsSummary );
+    WS_DrawLines( &body, l->rightX, l->weaponY, l->weapon, &l->weaponLines, wsAccent );
+    WS_DrawLines( &body, l->rightX, l->descriptionY, l->description, &l->descriptionLines, wsSummary );
+    WS_DrawLines( &body, l->rightX, l->statusY, l->status, &l->statusLines, wsSummary );
+
+    Menu_Draw( &s_bots.menu );
+}
+
+/* -------------------------------------------------------------------------
+   Input
+   ------------------------------------------------------------------------- */
+
+static qboolean Rivals_Inside( const wsRect_t *r, float x, float y ) {
+    return r->w > 0.0f && x >= r->x && x < r->x + r->w && y >= r->y && y < r->y + r->h;
+}
+
+static void Rivals_ScrollTo( int row ) {
+    const rivalsLayout_t *l = &s_bots.layout;
+    float top = row * ( l->rowHeight + l->rowGap );
+    if ( top < s_bots.scroll ) s_bots.scroll = top;
+    if ( top + l->rowHeight > s_bots.scroll + l->list.h ) s_bots.scroll = top + l->rowHeight - l->list.h;
+}
+
+static void Rivals_Click( float x, float y ) {
+    const rivalsLayout_t *l = &s_bots.layout;
+    wsRect_t b, cancel;
+    int row;
+
+    s_bots.searchFocus = qfalse;
+    if ( Rivals_Inside( &l->back, x, y ) ) {
+        UI_PopMenu();
+        return;
+    }
+    if ( Rivals_Inside( &l->search, x, y ) ) {
+        cancel = l->search;
+        cancel.x = l->search.x + l->search.w - 1.0f - WS_LU( 0.6f * WS_REM ) - 16.0f;
+        cancel.w = 16.0f + WS_LU( 0.6f * WS_REM );
+        if ( s_bots.query[0] && Rivals_Inside( &cancel, x, y ) ) {
+            s_bots.query[0] = '\0';
+            Rivals_Filter();
+        }
+        s_bots.searchFocus = qtrue;
+        s_bots.searchFocusTime = uis.realtime;
+        return;
+    }
+    if ( Rivals_Inside( &l->list, x, y ) ) {
+        if ( l->scrollbar && x >= l->list.x + l->list.w - RIVALS_SCROLLBAR ) {
+            if ( y < l->list.y + RIVALS_ARROW ) s_bots.scroll -= 40.0f;
+            else if ( y >= l->list.y + l->list.h - RIVALS_ARROW ) s_bots.scroll += 40.0f;
+            else if ( y < l->thumb.y ) s_bots.scroll -= 0.875f * l->list.h;
+            else if ( y >= l->thumb.y + l->thumb.h ) s_bots.scroll += 0.875f * l->list.h;
+            else {
+                s_bots.dragThumb = qtrue;
+                s_bots.dragY = y;
+                s_bots.dragScroll = s_bots.scroll;
+            }
+            return;
+        }
+        for ( row = 0; row < s_bots.matchCount; row++ ) {
+            Rivals_Button( l, row, &b );
+            if ( Rivals_Inside( &b, x, y ) ) {
+                Rivals_Select( s_bots.matches[row] );
+                return;
+            }
+        }
+        return;
+    }
+    if ( s_bots.selected >= 0 && Rivals_Inside( &l->car, x, y ) ) {
+        s_bots.dragCar = qtrue;
+        s_bots.dragX = x;
+        s_bots.dragY = y;
+    }
+}
+
+static sfxHandle_t UI_BotsMenu_Key( int key ) {
+    const rivalsLayout_t *l = &s_bots.layout;
+    float x = uis.cursorx * uis.xscale + uis.bias, y = uis.cursory * uis.yscale;
+    int row, length;
+
+    if ( key & K_CHAR_FLAG ) {
+        int ch = key & ~K_CHAR_FLAG;
+        if ( !s_bots.searchFocus ) return 0;
+        length = strlen( s_bots.query );
+        if ( ch == 8 ) {
+            if ( length ) s_bots.query[length - 1] = '\0';
+        } else if ( ch >= 32 && ch != 127 && ch < 256 && length < (int)sizeof( s_bots.query ) - 1 ) {
+            s_bots.query[length] = (char)ch;
+            s_bots.query[length + 1] = '\0';
+        } else {
+            return 0;
+        }
+        s_bots.searchFocusTime = uis.realtime;
+        Rivals_Filter();
+        return 0;
+    }
+
+    switch ( key ) {
+    case K_ESCAPE:
+    case K_PAD0_B:
+        UI_PopMenu();
+        return 0;
+    case K_MOUSE1:
+        Rivals_Click( x, y );
+        return 0;
+    case K_MWHEELUP:
+    case K_MWHEELDOWN:
+        if ( Rivals_Inside( &l->list, x, y ) ) {
+            s_bots.scroll += key == K_MWHEELUP ? -100.0f : 100.0f;
+        } else if ( s_bots.selected >= 0 && Rivals_Inside( &l->car, x, y ) ) {
+            s_bots.distance = WS_Clamp( WS_VIEW_MIN_DISTANCE,
+                                        key == K_MWHEELUP ? s_bots.distance * 0.95f : s_bots.distance / 0.95f,
+                                        WS_VIEW_MAX_DISTANCE );
+        }
+        return 0;
+    case K_UPARROW:
+    case K_KP_UPARROW:
+    case K_DOWNARROW:
+    case K_KP_DOWNARROW:
+    case K_PAD0_DPAD_UP:
+    case K_PAD0_DPAD_DOWN:
+        if ( !s_bots.matchCount ) return 0;
+        row = Rivals_Row( s_bots.selected );
+        if ( key == K_UPARROW || key == K_KP_UPARROW || key == K_PAD0_DPAD_UP ) row = row > 0 ? row - 1 : 0;
+        else row = row < s_bots.matchCount - 1 ? row + 1 : s_bots.matchCount - 1;
+        Rivals_Select( s_bots.matches[row] );
+        Rivals_ScrollTo( row );
+        return 0;
+    }
+    return 0;
+}
+
+/*
+=================
+UI_BotsMenu
+=================
+*/
+void UI_BotsMenu( void ) {
+    char preview[64];
+
+    memset( &s_bots, 0, sizeof( s_bots ) );
     s_bots.menu.key        = UI_BotsMenu_Key;
     s_bots.menu.draw       = UI_BotsMenu_Draw;
     s_bots.menu.fullscreen = qtrue;
-    UI_BotsMenu_Init();
-    Frontend_SetBackButton( &s_bots.back.generic );
-    UI_PushMenu(&s_bots.menu);
-}
-
-static void UI_BotsMenu_Init(void) {
-    int i;
-    trap_Cvar_Set("cg_viewsize", "100");
-    s_bots.menu.wrapAround = qtrue;
-    s_bots.menu.fullscreen = qtrue;
-
-    s_bots.banner.generic.type  = MTYPE_BTEXT;
-    s_bots.banner.generic.x     = RIVALS_FRAME_X + 24;
-    s_bots.banner.generic.y     = RIVALS_FRAME_Y + 24;
-    s_bots.banner.generic.flags = QMF_INACTIVE;
-    s_bots.banner.string        = "Rivals";
-    s_bots.banner.color         = rivalsTextColor;
-    s_bots.banner.style         = UI_LEFT | UI_BIGFONT;
-    s_bots.banner.generic.ownerdraw = UI_BotsMenu_DrawBanner;
+    s_bots.selected = -1;
 
     UI_BotsMenu_ParseBots();
-    UI_PlayerInfo_SetModel(&s_garagePlayerInfo, "roadster/blue",
-                           DEFAULT_RIM, DEFAULT_HEAD, DEFAULT_PLATE );
-
-    Menu_AddItem(&s_bots.menu, &s_bots.banner);
-
-    for (i = 0; i < MAX_VISIBLE_BOTS; i++) {
-        botItems[i].generic.type = MTYPE_PTEXT;
-        botItems[i].generic.flags = QMF_LEFT_JUSTIFY | QMF_PULSEIFFOCUS;
-        botItems[i].generic.x = RIVALS_ROW_X;
-        botItems[i].generic.y = RIVALS_ROW_Y + i * ( RIVALS_ROW_H + RIVALS_ROW_GAP );
-        botItems[i].generic.id = ID_BOT0 + i;
-        botItems[i].generic.callback = UI_BotsMenu_BotSelectEvent;
-        botItems[i].string = "";
-        botItems[i].style = UI_LEFT | UI_SMALLFONT;
-        botItems[i].color = rivalsTextColor;
-        botItems[i].generic.ownerdraw = UI_BotsMenu_DrawRivalItem;
-        Menu_AddItem(&s_bots.menu, &botItems[i]);
+    /* ui_rivalsPreview "search,scroll,rival" pins a state for screenshots
+     * (tools/ui_webstyle) */
+    trap_Cvar_VariableStringBuffer( "ui_rivalsPreview", preview, sizeof( preview ) );
+    if ( preview[0] ) {
+        char *field = strchr( preview, ',' );
+        if ( field ) *field++ = '\0';
+        Q_strncpyz( s_bots.query, preview, sizeof( s_bots.query ) );
+        Rivals_Filter();
+        if ( field ) {
+            s_bots.scroll = atof( field );
+            field = strchr( field, ',' );
+            if ( field && atoi( field + 1 ) >= 0 && atoi( field + 1 ) < botCount && field[1] != '-' ) {
+                Rivals_Select( atoi( field + 1 ) );
+            }
+        }
+    } else {
+        Rivals_Filter();
     }
-
-    prevButton.generic.type = MTYPE_PTEXT;
-    prevButton.generic.flags = QMF_LEFT_JUSTIFY | QMF_PULSEIFFOCUS;
-    prevButton.generic.x = RIVALS_PREV_X + RIVALS_ACTION_W / 2;
-    prevButton.generic.y = RIVALS_ACTION_Y;
-    prevButton.generic.id = ID_PREV;
-    prevButton.generic.callback = UI_BotsMenu_PrevPage;
-    prevButton.string = "Previous";
-    prevButton.color = rivalsTextColor;
-    prevButton.style = UI_CENTER | UI_SMALLFONT;
-    prevButton.generic.ownerdraw = UI_BotsMenu_DrawAction;
-
-    nextButton.generic.type = MTYPE_PTEXT;
-    nextButton.generic.flags = QMF_RIGHT_JUSTIFY | QMF_PULSEIFFOCUS;
-    nextButton.generic.x = RIVALS_NEXT_X + RIVALS_ACTION_W / 2;
-    nextButton.generic.y = RIVALS_ACTION_Y;
-    nextButton.generic.id = ID_NEXT;
-    nextButton.generic.callback = UI_BotsMenu_NextPage;
-    nextButton.string = "Next";
-    nextButton.color = rivalsTextColor;
-    nextButton.style = UI_CENTER | UI_SMALLFONT;
-    nextButton.generic.ownerdraw = UI_BotsMenu_DrawAction;
-
-    s_bots.back.generic.type     = MTYPE_PTEXT;
-    s_bots.back.generic.flags    = QMF_LEFT_JUSTIFY | QMF_PULSEIFFOCUS;
-    s_bots.back.generic.x        = RIVALS_BACK_X + RIVALS_ACTION_W / 2;
-    s_bots.back.generic.y        = RIVALS_ACTION_Y;
-    s_bots.back.generic.id       = ID_BACK;
-    s_bots.back.generic.callback = UI_BotsMenu_BackEvent;
-    s_bots.back.string           = "Back";
-    s_bots.back.color            = rivalsTextColor;
-    s_bots.back.style            = UI_CENTER | UI_SMALLFONT;
-    s_bots.back.generic.ownerdraw = UI_BotsMenu_DrawAction;
-    Menu_AddItem(&s_bots.menu, &s_bots.back);
-    Menu_AddItem(&s_bots.menu, &prevButton);
-    Menu_AddItem(&s_bots.menu, &nextButton);
-
-    /* Keep the three navigation actions on a shared flat button grid. */
-    s_bots.back.generic.left = RIVALS_BACK_X;
-    s_bots.back.generic.top = RIVALS_ACTION_Y;
-    s_bots.back.generic.right = RIVALS_BACK_X + RIVALS_ACTION_W;
-    s_bots.back.generic.bottom = RIVALS_ACTION_Y + RIVALS_ACTION_H;
-    prevButton.generic.left = RIVALS_PREV_X;
-    prevButton.generic.top = RIVALS_ACTION_Y;
-    prevButton.generic.right = RIVALS_PREV_X + RIVALS_ACTION_W;
-    prevButton.generic.bottom = RIVALS_ACTION_Y + RIVALS_ACTION_H;
-    nextButton.generic.left = RIVALS_NEXT_X;
-    nextButton.generic.top = RIVALS_ACTION_Y;
-    nextButton.generic.right = RIVALS_NEXT_X + RIVALS_ACTION_W;
-    nextButton.generic.bottom = RIVALS_ACTION_Y + RIVALS_ACTION_H;
-
-    if (botCount > 0) {
-        botSelected = 0;
-        UI_BotsMenu_SetRival( 0 );
-    }
-    UI_BotsMenu_DrawBotPage();
+    UI_PushMenu( &s_bots.menu );
 }
+
 
 int UI_WebRivalsScreen( void ) { return uis.activemenu == &s_bots.menu ? 5 : 0; }
 int UI_WebRivalCount( void ) { return botCount; }

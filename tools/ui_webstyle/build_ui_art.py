@@ -9,6 +9,9 @@ The native screens draw what the WebUI gets from CSS (garage.css):
                        #141414 75%) in box-relative coordinates
   web_progress_*.png   Chrome's dark <progress>, as it paints it on a #171717
                        section: columns 0-3 left cap, 4 middle, 12-15 right cap
+  web_scrollbar.png    Chrome's dark scrollbar, white with coverage in alpha:
+                       rows 0-14 the up arrow button (flipped for down),
+                       rows 15-19 and 20-24 the thumb's top and bottom caps
 """
 from __future__ import annotations
 import argparse
@@ -75,6 +78,24 @@ def showroom(size: int = 512) -> Image.Image:
             pixels[x, y] = tuple(round(a + (b - a) * t) for a, b in zip(inner, outer))
     return image
 
+# Captured from Chrome's dark classic scrollbar (track #2c2c2c, arrows and
+# thumb #9f9f9f) as coverage 0-255 of the light color.
+SCROLL_UP = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 255, 255, 255, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 0, 0, 0, 0, 0], [0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0], [0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+SCROLL_CAP_TOP = [[0, 7, 144, 217, 246, 217, 142, 7, 0], [53, 213, 255, 255, 255, 255, 255, 213, 49], [126, 255, 255, 255, 255, 255, 255, 255, 126], [213, 255, 255, 255, 255, 255, 255, 255, 197], [246, 255, 255, 255, 255, 255, 255, 255, 237]]      # 9 columns, at column 3 of the 15
+SCROLL_CAP_BOTTOM = [[255, 255, 255, 255, 255, 255, 255, 255, 255], [213, 255, 255, 255, 255, 255, 255, 255, 197], [126, 255, 255, 255, 255, 255, 255, 255, 124], [4, 204, 255, 255, 255, 255, 255, 206, 4], [0, 7, 142, 217, 246, 217, 142, 7, 0]]
+
+
+def scrollbar() -> Image.Image:
+    image = Image.new('RGBA', (16, 32), (255, 255, 255, 0))
+    for y, row in enumerate(SCROLL_UP):
+        for x, value in enumerate(row):
+            image.putpixel((x, y), (255, 255, 255, value))
+    for top, cap in ((15, SCROLL_CAP_TOP), (20, SCROLL_CAP_BOTTOM)):
+        for y, row in enumerate(cap):
+            for x, value in enumerate(row):
+                image.putpixel((3 + x, top + y), (255, 255, 255, value))
+    return image
+
 
 def progress(left, middle, right) -> Image.Image:
     def rgb(value):
@@ -98,6 +119,7 @@ def main() -> None:
     showroom().save(args.output / 'web_showroom.png', optimize=True)
     progress(TRACK_LEFT, TRACK_MIDDLE, TRACK_RIGHT).save(args.output / 'web_progress_track.png', optimize=True)
     progress(FILL_LEFT, FILL_MIDDLE, FILL_RIGHT).save(args.output / 'web_progress_fill.png', optimize=True)
+    scrollbar().save(args.output / 'web_scrollbar.png', optimize=True)
 
 
 if __name__ == '__main__':

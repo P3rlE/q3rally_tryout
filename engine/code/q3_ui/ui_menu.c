@@ -698,6 +698,11 @@ void UI_MainMenu( void ) {
         {
                 /* pinned states for screenshots (tools/ui_webstyle), no wizards */
                 char preview[8];
+                trap_Cvar_VariableStringBuffer( "ui_rivalsPreview", preview, sizeof( preview ) );
+                if ( preview[0] ) {
+                        UI_BotsMenu();
+                        return;
+                }
                 trap_Cvar_VariableStringBuffer( "ui_creditsPreview", preview, sizeof( preview ) );
                 if ( preview[0] ) {
                         UI_CreditMenu();

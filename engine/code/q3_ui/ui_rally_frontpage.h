@@ -81,6 +81,9 @@ float	WS_ButtonWidth( const char *label );
 /* main, header and grid of the page; title + em is the h1 */
 void	WS_FrontPageLabeled( wsFrontPage_t *page, float width, float height, const char *label,
 							 const char *title, const char *em, const char *status );
+/* A secondary button at the header's right ("Back to main menu"), wrapping
+ * below the title like flex-wrap does; returns the top of what follows. */
+float	WS_PlaceHeaderButton( const wsFrontPage_t *page, const char *label, wsRect_t *button );
 void	WS_FrontPage( wsFrontPage_t *page, float width, float height,
 					  const char *title, const char *em, const char *status );
 /* The showroom section in the second column; returns its natural height.

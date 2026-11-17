@@ -22,6 +22,7 @@ HARNESS = r'''
 #include "q3_ui/ui_rally_gfxlayout.h"
 #include "q3_ui/ui_rally_mainlayout.h"
 #include "q3_ui/ui_rally_creditslayout.h"
+#include "q3_ui/ui_rally_rivalslayout.h"
 #include <stdio.h>
 uiStatic_t uis;
 static FILE *files[8];
@@ -48,6 +49,7 @@ void UI_DrawVehicleWebView(float x, float y, float w, float h, playerInfo_t *pi,
 #include "q3_ui/ui_rally_gfxlayout.c"
 #include "q3_ui/ui_rally_mainlayout.c"
 #include "q3_ui/ui_rally_creditslayout.c"
+#include "q3_ui/ui_rally_rivalslayout.c"
 
 static void rect(const char *name, wsRect_t r) { printf("\"%s\":[%g,%g,%g,%g],", name, r.x, r.y, r.w, r.h); }
 
@@ -109,6 +111,28 @@ int main(void) {
             printf("\"h1\":%g,\"hint\":%g,\"page\":%g,\"rollHeight\":%g,\"duration\":%g,\"title\":%g,\"lines\":[",
                 l.page.h1Y, l.hintY, l.pageHeight, l.rollHeight, l.duration, l.title.size);
             for (i = 0; i < l.count; i++) printf("%s[%g,%g]", i ? "," : "", Credits_LineTop(&l, i, t), l.lineH[i]);
+            printf("]}\n");
+        } else if (!strcmp(command, "rivals")) {
+            /* rivals <width> <height> <count> <scroll>, then name|personality|weapon|description|status */
+            static rivalsLayout_t l; float w, h, scroll; int count; char line[1024], *f[5]; int i;
+            memset(&l, 0, sizeof(l));
+            scanf("%f %f %d %f\n", &w, &h, &count, &scroll);
+            fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
+            f[0] = line; for (i = 1; i < 5; i++) { f[i] = strchr(f[i - 1], '|'); *f[i]++ = 0; }
+            Q_strncpyz(l.name, f[0], sizeof(l.name)); Q_strncpyz(l.personality, f[1], sizeof(l.personality));
+            Q_strncpyz(l.weapon, f[2], sizeof(l.weapon)); Q_strncpyz(l.description, f[3], sizeof(l.description));
+            Q_strncpyz(l.status, f[4], sizeof(l.status));
+            l.count = count; l.scroll = scroll;
+            uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
+            Rivals_Layout(&l, w, h);
+            printf("{");
+            rect("back", l.back); rect("left", l.left); rect("right", l.right); rect("search", l.search);
+            rect("list", l.list); rect("car", l.car);
+            printf("\"h1\":%g,\"searchLabel\":%g,\"count\":%g,\"label\":%g,\"name\":%g,\"personality\":%g,"
+                "\"weapon\":%g,\"description\":%g,\"status\":%g,\"page\":%g,\"content\":%g,\"scroll\":%g,\"buttons\":[",
+                l.page.h1Y, l.searchLabelY, l.countY, l.labelY, l.nameY, l.personalityY, l.weaponY, l.descriptionY,
+                l.statusY, l.pageHeight, l.contentHeight, l.scroll);
+            for (i = 0; i < count; i++) { wsRect_t b; Rivals_Button(&l, i, &b); printf("%s[%g,%g,%g,%g]", i ? "," : "", b.x, b.y, b.w, b.h); }
             printf("]}\n");
         } else if (!strcmp(command, "width")) {
             wsTextStyle_t style; int font, upper; float size, spacing; char shown[256];

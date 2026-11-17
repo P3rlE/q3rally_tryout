@@ -30,24 +30,12 @@ void Credits_Layout( creditsLayout_t *l, float width, float height, const int *k
 	WS_FrontPageLabeled( &l->page, width, height, creditsLabel, "Thank you for ", "playing.", "" );
 	l->pageWidth = l->page.pageWidth;
 
-	/* header: the title block and the exit button, space-between; the button
-	 * wraps below when both do not fit with the 1rem gap */
-	l->exit.w = WS_ButtonWidth( creditsExitLabel );
-	l->exit.h = WS_BUTTON_HEIGHT;
-	if ( l->page.titleW + REM + l->exit.w <= l->page.contentW ) {
-		l->exit.x = l->page.contentX + l->page.contentW - l->exit.w;
-		l->exit.y = l->page.pad;
-		y = l->page.pad + l->page.titleH;
-	} else {
-		l->exit.x = l->page.contentX;
-		l->exit.y = l->page.pad + l->page.titleH + REM;
-		y = l->exit.y + l->exit.h;
-	}
+	y = WS_PlaceHeaderButton( &l->page, creditsExitLabel, &l->exit );
 
 	/* #credits-window: 60vh, then the hint label right below */
 	l->window.x = l->page.contentX;
 	l->window.w = l->page.contentW;
-	l->window.y = y + 2.0f * REM;
+	l->window.y = y;
 	l->window.h = LU( 0.6f * height );
 	l->hintY = l->window.y + l->window.h;
 	l->pageHeight = l->hintY + LU( WS_LABEL_LINE ) + l->page.pad;
