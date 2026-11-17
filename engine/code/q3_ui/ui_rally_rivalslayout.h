@@ -27,7 +27,12 @@ test can hold it against the positions Chrome reports.
 
 typedef struct {
 	/* inputs */
+	qboolean	downloads;			/* library.js mode 6: Downloads, else Rivals */
+	qboolean	imageShown;			/* Downloads: a preview image exists */
+	qboolean	hideScrollbar;		/* lay out like a browser with hidden scrollbars (tests) */
+	char		author[96];			/* Downloads: "By ..." */
 	int			count;				/* rivals in the list, after the search */
+	const char	*rowText[RIVALS_MAX];	/* each button's text */
 	char		name[64];			/* the selected rival */
 	char		personality[256];
 	char		weapon[256];		/* "Favorite weapon / ..." or empty */
@@ -43,11 +48,17 @@ typedef struct {
 
 	float		searchLabelY;		/* "Search" */
 	wsRect_t	search;				/* #library-search */
+	float		typeLabelY;			/* Downloads: "Content type" */
+	wsRect_t	type;				/* Downloads: #download-type */
 	float		countY;				/* #library-count */
 	wsRect_t	list;				/* #library-list, its scrollport */
 	float		contentHeight;		/* scrollHeight */
 	qboolean	scrollbar;			/* the list overflows */
-	float		rowHeight, rowGap;	/* buttons in the list */
+	float		rowGap;				/* buttons in the list */
+	float		rowY[RIVALS_MAX];	/* relative to the list content */
+	float		rowH[RIVALS_MAX];
+	wsLines_t	rowLines[RIVALS_MAX];
+	float		rowTextX;			/* from the button's left */
 	float		buttonWidth;		/* the list's width without the scrollbar */
 	wsRect_t	thumb;				/* the scrollbar thumb, when there is one */
 
@@ -55,15 +66,23 @@ typedef struct {
 	wsTextStyle_t title;			/* the h2 */
 	wsLines_t	nameLines;
 	float		nameY;
-	wsRect_t	car;				/* #rival-3d */
-	wsLines_t	personalityLines, weaponLines, descriptionLines, statusLines;
-	float		personalityY, weaponY, descriptionY, statusY;
+	wsRect_t	car;				/* #rival-3d, or #library-image for Downloads */
+	wsLines_t	authorLines, personalityLines, weaponLines, descriptionLines, statusLines;
+	float		authorY, personalityY, weaponY, descriptionY, statusY;
+
+	/* Downloads: #download-controls */
+	wsRect_t	install, refresh, cancel;
+	wsRect_t	progress;			/* the <progress> box, 16px high */
+	wsLines_t	downloadStatusLines;
+	float		downloadStatusY;
+	char		downloadStatus[256];	/* input */
 } rivalsLayout_t;
 
 extern const char *rivalsLabel;
 extern const char *rivalsBack;
 extern const char *rivalsDetailLabel;
 extern const char *rivalsPlaceholder;
+extern const char *downloadsLabels[3];		/* Install, Refresh, Cancel */
 
 void Rivals_Layout( rivalsLayout_t *layout, float width, float height );
 /* the box of a list button, on screen (scrolled), before clipping to the list */

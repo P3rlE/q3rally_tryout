@@ -118,7 +118,7 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
         if ( UI_WebCreditsScreen() ) return 15;	/* native as well */
         if ( UI_WebDemosScreen() ) return 4;
         if ( UI_WebRivalsScreen() ) return 15;	/* native as well */
-        if ( UI_WebDownloadsScreen() ) return 6;
+        if ( UI_WebDownloadsScreen() ) return 15;	/* native as well */
         if ( UI_WebVehicleSettingsScreen() || UI_WebPlayerModelScreen() ) return 7;
         return UI_WebDriverScreen() ? 8 : 0;
     case UI_WEB_TICK:

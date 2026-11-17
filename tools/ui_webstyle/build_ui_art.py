@@ -11,7 +11,8 @@ The native screens draw what the WebUI gets from CSS (garage.css):
                        section: columns 0-3 left cap, 4 middle, 12-15 right cap
   web_scrollbar.png    Chrome's dark scrollbar, white with coverage in alpha:
                        rows 0-14 the up arrow button (flipped for down),
-                       rows 15-19 and 20-24 the thumb's top and bottom caps
+                       rows 15-19 and 20-24 the thumb's top and bottom caps,
+                       rows 25-31 the dark <select>'s arrow (columns 0-9)
 """
 from __future__ import annotations
 import argparse
@@ -82,6 +83,8 @@ def showroom(size: int = 512) -> Image.Image:
 # thumb #9f9f9f) as coverage 0-255 of the light color.
 SCROLL_UP = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 255, 255, 255, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 0, 0, 0, 0, 0], [0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0], [0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
 SCROLL_CAP_TOP = [[0, 7, 144, 217, 246, 217, 142, 7, 0], [53, 213, 255, 255, 255, 255, 255, 213, 49], [126, 255, 255, 255, 255, 255, 255, 255, 126], [213, 255, 255, 255, 255, 255, 255, 255, 197], [246, 255, 255, 255, 255, 255, 255, 255, 237]]      # 9 columns, at column 3 of the 15
+SELECT_ARROW = [[0, 114, 24, 0, 0, 0, 0, 24, 111, 0], [105, 255, 219, 25, 0, 0, 25, 219, 255, 101], [24, 223, 255, 219, 24, 24, 219, 255, 219, 24], [0, 28, 220, 255, 222, 222, 255, 220, 25, 0], [0, 0, 29, 222, 255, 255, 220, 28, 0, 0], [0, 0, 0, 28, 226, 223, 28, 0, 0, 0], [0, 0, 0, 0, 32, 29, 0, 0, 0, 0]]   # 10 x 7, white on #111
+
 SCROLL_CAP_BOTTOM = [[255, 255, 255, 255, 255, 255, 255, 255, 255], [213, 255, 255, 255, 255, 255, 255, 255, 197], [126, 255, 255, 255, 255, 255, 255, 255, 124], [4, 204, 255, 255, 255, 255, 255, 206, 4], [0, 7, 142, 217, 246, 217, 142, 7, 0]]
 
 
@@ -94,6 +97,9 @@ def scrollbar() -> Image.Image:
         for y, row in enumerate(cap):
             for x, value in enumerate(row):
                 image.putpixel((3 + x, top + y), (255, 255, 255, value))
+    for y, row in enumerate(SELECT_ARROW):
+        for x, value in enumerate(row):
+            image.putpixel((x, 25 + y), (255, 255, 255, value))
     return image
 
 
