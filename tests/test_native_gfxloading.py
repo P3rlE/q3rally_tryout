@@ -124,9 +124,9 @@ int main(void) {
 '''
 
 
-def compile_harness(folder):
+def compile_harness(folder, base=None):
     source = folder / 'harness.c'
-    source.write_text(HARNESS.replace('BASE', json.dumps(str(ROOT / 'baseq3r'))))
+    source.write_text(HARNESS.replace('BASE', json.dumps(str(base or ROOT / 'baseq3r'))))
     exe = folder / 'harness'
     command = [shutil.which('gcc') or 'gcc', '-DARCH_STRING="test"', '-I' + str(CODE), '-w', str(source),
                str(CODE / 'qcommon/q_shared.c'), str(CODE / 'qcommon/q_math.c'), '-o', str(exe), '-lm']
@@ -242,3 +242,26 @@ def test_font_atlases_and_art_are_complete():
         assert (ROOT / f'baseq3r/menu/ui/{art}.png').is_file()
     for license in ('Barlow-OFL.txt', 'BarlowCondensed-OFL.txt', 'ShareTechMono-OFL.txt'):
         assert (fonts / license).is_file()
+
+
+def test_font_data_of_version_1_still_shows_text():
+    """A game whose menu/fonts predate the ligatures (version 1) must still
+    draw its text, only without ligatures."""
+    fonts = ROOT / 'baseq3r/menu/fonts'
+    with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as directory:
+        base = pathlib.Path(directory) / 'base'
+        (base / 'menu/fonts').mkdir(parents=True)
+        for name in ('sharetechmono', 'barlow', 'barlow_bold', 'barlowcondensed', 'barlowcondensed_italic'):
+            data = bytearray((fonts / f'{name}.dat').read_bytes())
+            magic, version, upm, ascent, descent, glyphs, kerns, sizes = struct.unpack_from('<4s7i', data)
+            offset = 32 + glyphs * 8 + kerns * 8
+            ligatures, = struct.unpack_from('<i', data, offset)
+            del data[offset:offset + 4 + ligatures * 8]
+            struct.pack_into('<i', data, 4, 1)
+            (base / f'menu/fonts/{name}.dat').write_bytes(bytes(data))
+        exe = compile_harness(pathlib.Path(directory), base)
+        old, = run(exe, ['width 1 16 0 0 Heijsters'])
+    with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as directory:
+        exe = compile_harness(pathlib.Path(directory))
+        new, = run(exe, ['width 1 16 0 0 Heijsters'])
+    assert float(old) > 0 and float(new) > 0 and float(old) != float(new)

@@ -97,7 +97,8 @@ static qboolean WS_LoadFont( wsFont_t id ) {
 	font->glyphCount = WS_ReadInt( wsFile, &offset );
 	font->kernCount = WS_ReadInt( wsFile, &offset );
 	font->sizeCount = WS_ReadInt( wsFile, &offset );
-	if ( version != 2 || font->upm <= 0 || font->glyphCount > WS_MAX_GLYPHS ||
+	/* version 1 has no ligatures: older data still shows its text */
+	if ( ( version != 1 && version != 2 ) || font->upm <= 0 || font->glyphCount > WS_MAX_GLYPHS ||
 	     font->kernCount > WS_MAX_KERNS || font->sizeCount < 1 || font->sizeCount > WS_MAX_SIZES ||
 	     offset + font->glyphCount * 8 + font->kernCount * 8 > length ) {
 		Com_Printf( S_COLOR_YELLOW "WARNING: menu font %s has an unsupported layout\n", path );
@@ -113,8 +114,11 @@ static qboolean WS_LoadFont( wsFont_t id ) {
 		font->kernKey[i] = WS_ReadInt( wsFile, &offset );
 		font->kernValue[i] = (short)WS_ReadInt( wsFile, &offset );
 	}
-	if ( offset + 4 > length ) return qfalse;
-	font->ligCount = WS_ReadInt( wsFile, &offset );
+	font->ligCount = 0;
+	if ( version >= 2 ) {
+		if ( offset + 4 > length ) return qfalse;
+		font->ligCount = WS_ReadInt( wsFile, &offset );
+	}
 	if ( font->ligCount < 0 || font->ligCount > WS_MAX_LIGS || offset + font->ligCount * 8 > length ) return qfalse;
 	for ( i = 0; i < font->ligCount; i++ ) {
 		font->ligCode[i] = WS_ReadInt( wsFile, &offset );
