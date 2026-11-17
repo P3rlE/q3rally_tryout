@@ -21,6 +21,7 @@ HARNESS = r'''
 #include "q3_ui/ui_local.h"
 #include "q3_ui/ui_rally_gfxlayout.h"
 #include "q3_ui/ui_rally_mainlayout.h"
+#include "q3_ui/ui_rally_creditslayout.h"
 #include <stdio.h>
 uiStatic_t uis;
 static FILE *files[8];
@@ -46,6 +47,7 @@ void UI_DrawVehicleWebView(float x, float y, float w, float h, playerInfo_t *pi,
 #include "q3_ui/ui_rally_frontpage.c"
 #include "q3_ui/ui_rally_gfxlayout.c"
 #include "q3_ui/ui_rally_mainlayout.c"
+#include "q3_ui/ui_rally_creditslayout.c"
 
 static void rect(const char *name, wsRect_t r) { printf("\"%s\":[%g,%g,%g,%g],", name, r.x, r.y, r.w, r.h); }
 
@@ -94,6 +96,19 @@ int main(void) {
             for (i = 0; i < MAIN_NAV_COUNT; i++) {
                 printf("%s[%g,%g,%g,%g]", i ? "," : "", l.nav[i].x, l.nav[i].y, l.nav[i].w, l.nav[i].h);
             }
+            printf("]}\n");
+        } else if (!strcmp(command, "credits")) {
+            /* credits <width> <height> <seconds> <count> <kind>... */
+            static creditsLayout_t l; int kinds[CREDITS_MAX_LINES], count, i; float w, h, t;
+            scanf("%f %f %f %d", &w, &h, &t, &count);
+            for (i = 0; i < count; i++) scanf("%d", &kinds[i]);
+            uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
+            Credits_Layout(&l, w, h, kinds, count);
+            printf("{");
+            rect("exit", l.exit); rect("window", l.window);
+            printf("\"h1\":%g,\"hint\":%g,\"page\":%g,\"rollHeight\":%g,\"duration\":%g,\"title\":%g,\"lines\":[",
+                l.page.h1Y, l.hintY, l.pageHeight, l.rollHeight, l.duration, l.title.size);
+            for (i = 0; i < l.count; i++) printf("%s[%g,%g]", i ? "," : "", Credits_LineTop(&l, i, t), l.lineH[i]);
             printf("]}\n");
         } else if (!strcmp(command, "width")) {
             wsTextStyle_t style; int font, upper; float size, spacing; char shown[256];
@@ -209,8 +224,11 @@ def test_font_atlases_and_art_are_complete():
     for name in ('sharetechmono', 'barlow', 'barlow_bold', 'barlowcondensed', 'barlowcondensed_italic'):
         data = (fonts / f'{name}.dat').read_bytes()
         magic, version, upm, ascent, descent, glyphs, kerns, sizes = struct.unpack_from('<4s7i', data)
-        assert magic == b'Q3UF' and version == 1 and glyphs <= 224 and kerns <= 4096 and 1 <= sizes <= 12
+        assert magic == b'Q3UF' and version == 2 and glyphs <= 224 and kerns <= 4096 and 1 <= sizes <= 12
         offset = 32 + glyphs * 8 + kerns * 8
+        ligatures, = struct.unpack_from('<i', data, offset)
+        assert 0 <= ligatures <= 16
+        offset += 4 + ligatures * 8
         for _ in range(sizes):
             size100, width, height, image = struct.unpack_from('<3i64s', data, offset)
             offset += 76 + glyphs * 24

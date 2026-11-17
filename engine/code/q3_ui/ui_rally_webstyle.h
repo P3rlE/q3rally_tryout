@@ -81,6 +81,12 @@ float	WS_TextTop( const wsTextStyle_t *style );
 float	WS_Baseline( const wsTextStyle_t *style );
 /* Greedy line breaking at spaces, like a block of normal white-space. */
 void	WS_Wrap( const wsTextStyle_t *style, const char *text, float maxWidth, wsLines_t *lines );
+/* Chrome's LayoutUnit: lengths cut to 1/64 px */
+float	WS_LU( float value );
+/* A vertical fade mask over a box for the text drawn after it (fraction
+ * 0.12 for 12% fades at top and bottom); a height of 0 turns it off. */
+void	WS_SetFade( float top, float height, float fraction );
+float	WS_FadeAlpha( float y );
 void	WS_DrawText( const wsTextStyle_t *style, float x, float lineTop, const char *text, int length, const float *color );
 
 void	WS_FillRect( float x, float y, float w, float h, const float *color );

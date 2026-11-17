@@ -25,26 +25,22 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 Q3Rally Credits Screen
 
-Scrolling credits combining Q3Rally team and original iD Software credits.
-- Scrolls at constant speed from bottom to top
-- Fades in at top and out at bottom of screen
+Scrolling credits combining Q3Rally team and original iD Software credits,
+drawn like the WebUI's #credits-screen (ui_rally_creditslayout.c,
+docs/native-webstyle.md).
+- Rolls up through a window at 38 px/s, faded in at its bottom and out at
+  its top, then quits the game
 - Music volume is raised to 0.5 if below, then restored on exit
-- Pressing any key exits and quits the game (end-of-game screen)
+- Any key or the "Exit game" button exits and quits the game
 ===========================================================================
 */
 
 #include "ui_local.h"
 #include "ui_rally_frontend.h"
+#include "ui_rally_creditslayout.h"
 
 /* -------------------------------------------------------------------------
-   Constants
-   ------------------------------------------------------------------------- */
-
-#define SCROLL_SPEED        2.80f   /* pixels per 100ms (uis.realtime units) */
-#define FADE_ZONE_HEIGHT    60      /* px over which alpha fades at top/bottom edges */
-
-/* -------------------------------------------------------------------------
-   Colours
+   Colours: they only tell the line kinds apart (UI_WebCreditKind)
    ------------------------------------------------------------------------- */
 
 static vec4_t color_header     = UI_FRONTEND_COLOR_ACCENT;
@@ -193,128 +189,106 @@ typedef struct {
     menuframework_s menu;
     int             startTime;   /* uis.realtime when credits began          */
     float           mvolume;     /* original music volume, restored on exit  */
-    int             totalHeight; /* pre-calculated total pixel height        */
+    qboolean        exiting;
+    int             kinds[CREDITS_MAX_LINES];
+    creditsLayout_t layout;
 } creditsmenu_t;
 
 static creditsmenu_t s_credits;
-
-static int Credits_LineHeight( int style ) {
-    if ( style & UI_GIANTFONT ) {
-        return GIANTCHAR_HEIGHT + UI_FRONTEND_SPACE_SM;
-    }
-    if ( style & UI_BIGFONT ) {
-        return BIGCHAR_HEIGHT + UI_FRONTEND_SPACE_SM;
-    }
-    return SMALLCHAR_HEIGHT + UI_FRONTEND_SPACE_SM;
-}
-
-/* -------------------------------------------------------------------------
-   Helper: calculate total pixel height of all credit lines
-   ------------------------------------------------------------------------- */
-
-static int Credits_CalcTotalHeight( void ) {
-    int n, h = 0;
-
-    for ( n = 0; credits[n].string != NULL; n++ ) {
-        h += Credits_LineHeight( credits[n].style );
-    }
-    return h;
-}
-
-/* -------------------------------------------------------------------------
-   Helper: returns an alpha [0,1] for a given screen y (top-left of line),
-   based on the center of the line for smoother transitions.
-   ------------------------------------------------------------------------- */
-
-static float Credits_EdgeAlpha( int lineTop, int lineH ) {
-    int center = lineTop + lineH / 2;
-
-    if ( center < 0 || center > 480 )
-        return 0.0f;
-    if ( center < FADE_ZONE_HEIGHT )
-        return (float)center / (float)FADE_ZONE_HEIGHT;
-    if ( center > 480 - FADE_ZONE_HEIGHT )
-        return (float)( 480 - center ) / (float)FADE_ZONE_HEIGHT;
-    return 1.0f;
-}
 
 /* -------------------------------------------------------------------------
    Exit helper - restores music volume and quits
    ------------------------------------------------------------------------- */
 
 static void Credits_Exit( void ) {
+    if ( s_credits.exiting ) return;
+    s_credits.exiting = qtrue;
     trap_Cmd_ExecuteText( EXEC_APPEND,
                           va( "s_musicvolume %f; quit\n", s_credits.mvolume ) );
 }
 
+/* Seconds into the roll; ui_creditsPreview pins it for screenshots
+ * (tools/ui_webstyle). */
+static float Credits_Seconds( qboolean *pinned ) {
+    char value[16];
+
+    trap_Cvar_VariableStringBuffer( "ui_creditsPreview", value, sizeof( value ) );
+    *pinned = value[0] != '\0';
+    if ( *pinned ) return atof( value );
+    return ( uis.realtime - s_credits.startTime ) / 1000.0f;
+}
+
 /* -------------------------------------------------------------------------
-   Key handler
+   Key handler: like the page, any key exits; the mouse only on the button.
    ------------------------------------------------------------------------- */
 
 static sfxHandle_t UI_CreditMenu_Key( int key ) {
+    const wsRect_t *b = &s_credits.layout.exit;
+    float x, y;
+
     if ( key & K_CHAR_FLAG )
         return 0;
+    if ( key == K_MOUSE1 ) {
+        x = uis.cursorx * uis.xscale + uis.bias;
+        y = uis.cursory * uis.yscale;
+        if ( x >= b->x && x < b->x + b->w && y >= b->y && y < b->y + b->h ) {
+            Credits_Exit();
+        }
+        return 0;
+    }
+    if ( key >= K_MOUSE2 && key <= K_MOUSE5 ) return 0;
+    if ( key == K_MWHEELUP || key == K_MWHEELDOWN ) return 0;
 
     Credits_Exit();
     return 0;
 }
 
 /* -------------------------------------------------------------------------
-   Draw function
+   Draw function: #credits-screen of the WebUI
    ------------------------------------------------------------------------- */
 
 static void UI_CreditMenu_Draw( void ) {
-    int     n, y, scrollY;
-    vec4_t  drawColor;
-    vec4_t  scrimColor = UI_FRONTEND_COLOR_SCRIM;
-    vec4_t  lineColor = UI_FRONTEND_COLOR_ACCENT;
-    vec4_t  mutedColor = UI_FRONTEND_COLOR_MUTED;
+    creditsLayout_t *l = &s_credits.layout;
+    wsTextStyle_t    body, label;
+    const wsTextStyle_t *style;
+    const float     *color;
+    char             shown[128];
+    float            seconds, top, width;
+    qboolean         pinned;
+    int              n;
 
-    /* The shared cover background also selects one of the two frontend
-     * images for this menu and keeps it stable until the menu changes. */
-    scrimColor[3] = 0.82f;
-    Frontend_DrawBackground( scrimColor );
+    seconds = Credits_Seconds( &pinned );
+    Credits_Layout( l, WS_ViewportWidth(), WS_ViewportHeight(), s_credits.kinds, UI_WebCreditCount() );
 
-    /* --- scroll position: start of first line --- */
-    scrollY = 480 - (int)( SCROLL_SPEED * (float)( uis.realtime - s_credits.startTime ) / 100.0f );
+    WS_DrawBackground( l->pageWidth, l->pageHeight );
+    WS_DrawFrontHeader( &l->page, "Thank you for ", "playing.", "" );
+    WS_DrawButton( &l->exit, creditsExitLabel, qtrue, qfalse );
 
-    /* --- draw lines --- */
-    y = scrollY;
-    for ( n = 0; credits[n].string != NULL; n++ ) {
-        int lineTop, lineH;
-
-        lineH = Credits_LineHeight( credits[n].style );
-
-        lineTop = y;
-        y += lineH;
-
-        /* skip lines fully outside the visible screen area */
-        if ( lineTop > 480 ) continue;
-        if ( y < 0 )         continue;
-
-        /* draw non-empty lines */
-        if ( credits[n].string[0] != '\0' ) {
-            float alpha = Credits_EdgeAlpha( lineTop, lineH );
-
-            Vector4Copy( *credits[n].colour, drawColor );
-            drawColor[3] *= alpha;
-
-            Frontend_DrawText( 320, lineTop, credits[n].string,
-                               credits[n].style, drawColor );
+    /* the roll, cut to its window and faded at both ends */
+    WS_BodyStyle( &body );
+    WS_LabelStyle( &label );
+    WS_SetFade( l->window.y, l->window.h, CREDITS_FADE );
+    for ( n = 0; n < l->count; n++ ) {
+        top = Credits_LineTop( l, n, seconds );
+        if ( top >= l->window.y + l->window.h || top + l->lineH[n] <= l->window.y ) continue;
+        if ( !credits[n].string[0] ) continue;
+        if ( s_credits.kinds[n] == CREDITS_TITLE ) {
+            style = &l->title; color = wsWhite;
+        } else if ( s_credits.kinds[n] == CREDITS_HEADING ) {
+            style = &label; color = wsAccent;
+        } else {
+            style = &body; color = wsWhite;
         }
+        WS_Transform( style, credits[n].string, shown, sizeof( shown ) );
+        width = WS_TextWidth( style, shown, strlen( shown ) );
+        WS_DrawText( style, l->window.x + ( l->window.w - width ) * 0.5f, top, shown, strlen( shown ), color );
     }
+    WS_SetFade( 0.0f, 0.0f, 0.0f );
 
-    /* Fixed chrome keeps the otherwise open credits view anchored in the
-     * same visual language as the other modern frontend screens. */
-    UI_FillRect( 32, 20, 576, UI_FRONTEND_PANEL_TOPBAR, lineColor );
-    Frontend_DrawText( 32, 28, "Q3RALLY", UI_LEFT | UI_BIGFONT | UI_DROPSHADOW,
-                       color_title );
-    Frontend_DrawStatusChip( 520, 28, "Credits", lineColor, 1.0f );
-    Frontend_DrawText( 32, 452, "Press any key to exit",
-                       UI_LEFT | UI_SMALLFONT, mutedColor );
+    WS_DrawLabel( l->page.contentX, l->hintY, creditsHint, NULL );
 
-    /* --- end of credits: last line has scrolled off the top --- */
-    if ( y < 0 ) {
+    /* the animation's end: the last line has left the window */
+    if ( !pinned && seconds >= l->duration ) {
         Credits_Exit();
     }
 }
@@ -324,6 +298,8 @@ static void UI_CreditMenu_Draw( void ) {
    ------------------------------------------------------------------------- */
 
 void UI_CreditMenu( void ) {
+    int n;
+
     memset( &s_credits, 0, sizeof( s_credits ) );
 
     s_credits.menu.draw       = UI_CreditMenu_Draw;
@@ -331,7 +307,9 @@ void UI_CreditMenu( void ) {
     s_credits.menu.fullscreen = qtrue;
 
     s_credits.startTime   = uis.realtime;
-    s_credits.totalHeight = Credits_CalcTotalHeight();
+    for ( n = 0; n < UI_WebCreditCount() && n < CREDITS_MAX_LINES; n++ ) {
+        s_credits.kinds[n] = UI_WebCreditKind( n );
+    }
 
     s_credits.mvolume = trap_Cvar_VariableValue( "s_musicvolume" );
     if ( s_credits.mvolume < 0.5f )
@@ -340,6 +318,7 @@ void UI_CreditMenu( void ) {
 
     uis.transitionIn = 0;
     UI_PushMenu( &s_credits.menu );
+    m_entersound = qfalse;
 }
 
 int UI_WebCreditsScreen( void ) {
