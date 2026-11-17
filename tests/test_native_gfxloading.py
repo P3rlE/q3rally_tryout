@@ -23,6 +23,7 @@ HARNESS = r'''
 #include "q3_ui/ui_rally_mainlayout.h"
 #include "q3_ui/ui_rally_creditslayout.h"
 #include "q3_ui/ui_rally_rivalslayout.h"
+#include "q3_ui/ui_rally_demoslayout.h"
 #include <stdio.h>
 uiStatic_t uis;
 static FILE *files[8];
@@ -50,6 +51,7 @@ void UI_DrawVehicleWebView(float x, float y, float w, float h, playerInfo_t *pi,
 #include "q3_ui/ui_rally_mainlayout.c"
 #include "q3_ui/ui_rally_creditslayout.c"
 #include "q3_ui/ui_rally_rivalslayout.c"
+#include "q3_ui/ui_rally_demoslayout.c"
 
 static void rect(const char *name, wsRect_t r) { printf("\"%s\":[%g,%g,%g,%g],", name, r.x, r.y, r.w, r.h); }
 
@@ -140,6 +142,28 @@ int main(void) {
                 l.page.h1Y, l.searchLabelY, l.countY, l.labelY, l.nameY, l.personalityY, l.weaponY, l.descriptionY,
                 l.statusY, l.pageHeight, l.contentHeight, l.scroll);
             for (i = 0; i < count; i++) { wsRect_t b; Rivals_Button(&l, i, &b); printf("%s[%g,%g,%g,%g]", i ? "," : "", b.x, b.y, b.w, b.h); }
+            printf("]}\n");
+        } else if (!strcmp(command, "demos")) {
+            /* demos <width> <height> <count> <scroll>, then details|placeholder|clock|message|pause */
+            static demosLayout_t l; float w, h; char line[512], *f[5]; int i;
+            memset(&l, 0, sizeof(l));
+            scanf("%f %f %d %f\n", &w, &h, &l.count, &l.scroll);
+            fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
+            f[0] = line; for (i = 1; i < 5; i++) { f[i] = strchr(f[i - 1], '|'); *f[i]++ = 0; }
+            Q_strncpyz(l.details, f[0], sizeof(l.details)); Q_strncpyz(l.placeholderText, f[1], sizeof(l.placeholderText));
+            l.placeholder = f[1][0] != 0;
+            Q_strncpyz(l.clock, f[2], sizeof(l.clock)); Q_strncpyz(l.message, f[3], sizeof(l.message)); Q_strncpyz(l.pause, f[4], sizeof(l.pause));
+            l.hideScrollbar = qtrue;
+            uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
+            Demos_Layout(&l, w, h);
+            printf("{");
+            rect("back", l.back); rect("left", l.left); rect("right", l.right); rect("list", l.list);
+            rect("play", l.play); rect("viewport", l.viewport);
+            printf("\"h1\":%g,\"recordings\":%g,\"choose\":%g,\"details\":[%g,%g],\"preview\":%g,\"placeholder\":[%g,%g],"
+                "\"clock\":%g,\"message\":%g,\"page\":%g,\"option\":[%g,%g,%g],\"transport\":[",
+                l.page.h1Y, l.recordingsY, l.chooseY, l.detailsY, l.detailLines.count * DEMOS_DETAIL_LINE, l.previewY,
+                l.placeholderX, l.placeholderY, l.clockY, l.messageX, l.pageHeight, l.optionHeight, l.optionWidth, l.contentHeight);
+            for (i = 0; i < 5; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.transport[i].x, l.transport[i].y, l.transport[i].w, l.transport[i].h);
             printf("]}\n");
         } else if (!strcmp(command, "width")) {
             wsTextStyle_t style; int font, upper; float size, spacing; char shown[256];

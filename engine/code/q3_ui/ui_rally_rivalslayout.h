@@ -85,6 +85,8 @@ extern const char *rivalsPlaceholder;
 extern const char *downloadsLabels[3];		/* Install, Refresh, Cancel */
 
 void Rivals_Layout( rivalsLayout_t *layout, float width, float height );
+/* the thumb of Chrome's scrollbar for a scrollport, content height and scroll */
+void WS_ScrollThumb( const wsRect_t *port, float content, float scroll, wsRect_t *thumb );
 /* the box of a list button, on screen (scrolled), before clipping to the list */
 void Rivals_Button( const rivalsLayout_t *layout, int row, wsRect_t *button );
 

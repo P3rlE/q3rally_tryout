@@ -173,23 +173,25 @@ void Library_DrawList( const wsLibrary_t *lib, const qhandle_t *icons ) {
 }
 
 /* Chrome's dark classic scrollbar: track, arrow buttons, rounded thumb */
-void Library_DrawScrollbar( const wsLibrary_t *lib ) {
-	const rivalsLayout_t *l = &lib->layout;
-	float x = WS_Round( l->list.x + l->list.w - RIVALS_SCROLLBAR ), top = WS_Round( l->list.y );
-	float bottom = WS_Round( l->list.y + l->list.h ), y0, y1;
+void WS_DrawScrollbar( const wsRect_t *port, const wsRect_t *thumb ) {
+	float x = WS_Round( port->x + port->w - RIVALS_SCROLLBAR ), top = WS_Round( port->y );
+	float bottom = WS_Round( port->y + port->h ), y0, y1;
 	qhandle_t art = Library_Art();
 
-	if ( !l->scrollbar ) return;
 	WS_FillRect( x, top, RIVALS_SCROLLBAR, bottom - top, libTrack );
 	trap_R_SetColor( libThumb );
 	trap_R_DrawStretchPic( x, top, 15, 15, 0, 0, 15 / 16.0f, 15 / 32.0f, art );
 	trap_R_DrawStretchPic( x, bottom - 15, 15, 15, 0, 15 / 32.0f, 15 / 16.0f, 0, art );
-	y0 = WS_Round( l->thumb.y );
-	y1 = floor( l->thumb.y + l->thumb.h ) + 1.0f;
+	y0 = WS_Round( thumb->y );
+	y1 = floor( thumb->y + thumb->h ) + 1.0f;
 	trap_R_DrawStretchPic( x, y0, 15, 5, 0, 15 / 32.0f, 15 / 16.0f, 20 / 32.0f, art );
 	trap_R_DrawStretchPic( x, y1 - 5, 15, 5, 0, 20 / 32.0f, 15 / 16.0f, 25 / 32.0f, art );
 	trap_R_SetColor( NULL );
 	if ( y1 - 5 > y0 + 5 ) WS_FillRect( x + 3, y0 + 5, 9, y1 - y0 - 10, libThumb );
+}
+
+void Library_DrawScrollbar( const wsLibrary_t *lib ) {
+	if ( lib->layout.scrollbar ) WS_DrawScrollbar( &lib->layout.list, &lib->layout.thumb );
 }
 
 /* -------------------------------------------------------------------------
