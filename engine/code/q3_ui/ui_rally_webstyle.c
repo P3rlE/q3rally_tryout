@@ -26,6 +26,7 @@ const vec4_t wsLine       = { 55 / 255.0f, 55 / 255.0f, 55 / 255.0f, 1.0f };
 const vec4_t wsSurface    = { 23 / 255.0f, 23 / 255.0f, 23 / 255.0f, 1.0f };
 const vec4_t wsWhite      = { 1.0f, 1.0f, 1.0f, 1.0f };
 const vec4_t wsMuted      = { 153 / 255.0f, 153 / 255.0f, 153 / 255.0f, 1.0f };
+const vec4_t wsSummary    = { 187 / 255.0f, 187 / 255.0f, 187 / 255.0f, 1.0f };
 const vec4_t wsButtonText = { 20 / 255.0f, 20 / 255.0f, 20 / 255.0f, 1.0f };
 
 /* -------------------------------------------------------------------------

@@ -676,6 +676,7 @@ void CL_WebGarageInit( void );
 void CL_WebGarage_f( void );
 qboolean CL_WebGarageSkipBackground( void );
 qboolean CL_WebGarageOwnsScreen( void );
+qboolean CL_WebGarageHoldFrame( int realtime );
 void CL_WebGarageEscape( qboolean down );
 qboolean CL_WebGarageEscapePending( void );
 qboolean CL_WebGarageDemoVisible( void );

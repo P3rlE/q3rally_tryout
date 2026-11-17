@@ -38,8 +38,7 @@ and "Continue".
 
 #include "ui_local.h"
 #include "ui_rally_gfxlayout.h"
-#include "ui_rally_vehicle_names.h"
-#include "../game/garage_unlocks.h"
+#include "ui_rally_frontpage.h"
 
 /* -------------------------------------------------------------------------
    Timing (milliseconds)
@@ -53,7 +52,6 @@ and "Continue".
 #define GFX_UPDATE_WAIT_TIME   2500     /* extra wait for a still-running version check */
 #define GFX_GO_HOLD             800     /* "go" until the main menu takes over */
 #define GFX_MAX_DEBUG_PAUSE   15000     /* safety clamp for the test cvars */
-#define GFX_WEB_WAIT           3000     /* longest wait for the WebUI main menu */
 #define GFX_SMOOTH_LERP_SPEED  4.5f     /* progress smoothing, units per second */
 
 /* Used when version.txt does not announce a download page. */
@@ -110,7 +108,6 @@ typedef struct {
     qboolean         finalPhase;            /* all stages done */
     int              finalStartTime;
     int              goTime;                /* hand-off started, 0 until then */
-    int              webHandoffTime;        /* waiting for the WebUI to show the main menu */
     qboolean         skipRequested;
     qboolean         musicStarted;
     sfxHandle_t      goSound;
@@ -131,26 +128,6 @@ static gfxloading_t s_gfxloading;
    Stages
    ------------------------------------------------------------------------- */
 
-/* The name the WebUI catalog shows: unlock name, catalog label, or the
- * folder name in title case (engine/webui/build_showroom.py). */
-static void GFX_VehicleName( const char *key, char *out, int size ) {
-#define GFX_UNLOCK_NAME( id, name, rank ) if ( !Q_stricmp( key, id ) ) { Q_strncpyz( out, name, size ); return; }
-#define GFX_LABEL_NAME( id, name ) if ( !Q_stricmp( key, id ) ) { Q_strncpyz( out, name, size ); return; }
-    char *c;
-    qboolean start = qtrue;
-
-    GARAGE_CAR_UNLOCKS( GFX_UNLOCK_NAME )
-    UI_VEHICLE_LABELS( GFX_LABEL_NAME )
-    Q_strncpyz( out, key, size );
-    for ( c = out; *c; c++ ) {
-        if ( *c == '_' ) *c = ' ';
-        *c = start ? toupper( (unsigned char)*c ) : tolower( (unsigned char)*c );
-        start = !isalpha( (unsigned char)*c );
-    }
-#undef GFX_UNLOCK_NAME
-#undef GFX_LABEL_NAME
-}
-
 static void GFX_ReadVehicle( void ) {
     char  model[MAX_QPATH];
     char *slash;
@@ -163,7 +140,7 @@ static void GFX_ReadVehicle( void ) {
     if ( slash ) {
         *slash = '\0';
     }
-    GFX_VehicleName( model, s_gfxloading.vehicleName, sizeof( s_gfxloading.vehicleName ) );
+    WS_VehicleName( model, s_gfxloading.vehicleName, sizeof( s_gfxloading.vehicleName ) );
 }
 
 /* Load the active car the same way the main menu does. */
@@ -398,19 +375,7 @@ static void GFX_UpdateFinish( int currentTime ) {
 }
 
 static qboolean GFX_HandoffDue( int currentTime ) {
-    if ( !s_gfxloading.goTime || currentTime < s_gfxloading.goTime + GFX_GO_HOLD ) {
-        return qfalse;
-    }
-    /* With the WebUI the main menu is a page: this screen stays until the
-     * browser shows it, so there is never a frame without either. */
-    if ( trap_Cvar_VariableValue( "cl_webUI" ) ) {
-        if ( !s_gfxloading.webHandoffTime ) {
-            s_gfxloading.webHandoffTime = currentTime;
-        }
-        return ( trap_Cvar_VariableValue( "cl_webPresented" ) == 2 ||
-                 currentTime - s_gfxloading.webHandoffTime >= GFX_WEB_WAIT ) ? qtrue : qfalse;
-    }
-    return qtrue;
+    return s_gfxloading.goTime && currentTime >= s_gfxloading.goTime + GFX_GO_HOLD;
 }
 
 static void GFX_HandOffToMainMenu( void ) {
@@ -452,28 +417,6 @@ static qboolean GFX_Preview( int *stage, int *percent, qboolean *prompt ) {
     return qtrue;
 }
 
-static void GFX_DrawLines( const wsTextStyle_t *style, float x, float y, const char *text,
-                           const wsLines_t *lines, const float *color ) {
-    char upper[256];
-    int  i;
-
-    WS_Transform( style, text, upper, sizeof( upper ) );
-    for ( i = 0; i < lines->count; i++ ) {
-        WS_DrawText( style, x, y + i * style->lineHeight, upper + lines->start[i], lines->length[i], color );
-    }
-}
-
-static void GFX_DrawLabel( float x, float y, const char *text, const wsLines_t *lines ) {
-    wsTextStyle_t label = { WS_MONO, 0.8f * WS_REM, 0.14f * 0.8f * WS_REM, 1.5f * 0.8f * WS_REM, qfalse };
-    wsLines_t     single;
-
-    if ( !lines ) {
-        WS_Wrap( &label, text, 1.0e6f, &single );
-        lines = &single;
-    }
-    GFX_DrawLines( &label, x, y, text, lines, wsAccent );
-}
-
 /* <ol style="list-style: decimal-leading-zero"> with an outside marker */
 static void GFX_DrawStages( const gfxLayout_t *l, int stage ) {
     wsTextStyle_t body = { WS_BODY, WS_REM, 0.0f, 1.5f * WS_REM, qfalse };
@@ -490,7 +433,7 @@ static void GFX_DrawStages( const gfxLayout_t *l, int stage ) {
         WS_DrawText( &body, l->stageX - WS_TextWidth( &body, marker, strlen( marker ) ),
                      l->stageY[i] + 0.3f * WS_REM, marker, strlen( marker ), color );
         WS_Wrap( &body, gfxStageLabels[i], l->leftW - 1.6f * WS_REM, &lines );
-        GFX_DrawLines( &body, l->stageX, l->stageY[i] + 0.3f * WS_REM, gfxStageLabels[i], &lines, color );
+        WS_DrawLines( &body, l->stageX, l->stageY[i] + 0.3f * WS_REM, gfxStageLabels[i], &lines, color );
     }
 }
 
@@ -505,9 +448,8 @@ static void GFX_BuildLayout( gfxLayout_t *l, int stage, qboolean prompt ) {
 
 static void UI_GFX_Loading_MenuDraw( void ) {
     gfxLayout_t  *l = &s_gfxloading.layout;
-    wsTextStyle_t h1, h1em, body;
+    wsTextStyle_t body;
     char          text[32];
-    float         x;
     int           stage, percent;
     qboolean      prompt;
 
@@ -522,49 +464,26 @@ static void UI_GFX_Loading_MenuDraw( void ) {
     GFX_BuildLayout( l, stage, prompt );
     WS_DrawBackground( l->pageWidth, l->pageHeight );
 
-    /* header: label, "Getting ready." and the status label */
-    GFX_DrawLabel( l->headerX, l->headerY, "Q3RALLY / IT'S DAMN FAST, BABY.", NULL );
-    h1.font = WS_CONDENSED;
-    h1.size = l->h1Size;
-    h1.spacing = 0.0f;
-    h1.lineHeight = l->h1Size;
-    h1.uppercase = qtrue;
-    h1em = h1;
-    h1em.font = WS_CONDENSED_ITALIC;
-    WS_Transform( &h1, "Getting ", text, sizeof( text ) );
-    WS_DrawText( &h1, l->headerX, l->h1Y, text, strlen( text ), wsWhite );
-    x = l->headerX + WS_TextWidth( &h1, text, strlen( text ) );
-    WS_Transform( &h1em, "ready.", text, sizeof( text ) );
-    WS_DrawText( &h1em, x, l->h1Y, text, strlen( text ), wsAccent );
-    GFX_DrawLabel( l->statusX, l->statusY, "Loading graphics", NULL );
+    WS_DrawFrontHeader( &l->page, "Getting ", "ready.", "Loading graphics" );
 
     /* left: the loading panel */
     WS_DrawSection( &l->left, qfalse );
-    GFX_DrawLabel( l->leftX, l->loadingLabelY, gfxLoadingLabel, &l->loadingLabelLines );
-    GFX_DrawLines( &l->titleStyle, l->leftX, l->titleY, l->title, &l->titleLines, wsWhite );
+    WS_DrawLabel( l->leftX, l->loadingLabelY, gfxLoadingLabel, &l->loadingLabelLines );
+    WS_DrawLines( &l->titleStyle, l->leftX, l->titleY, l->title, &l->titleLines, wsWhite );
     GFX_DrawStages( l, stage );
     WS_DrawProgress( l->progressX, l->progressY, l->progressW, percent / 100.0f );
-    body.font = WS_BODY;
-    body.size = WS_REM;
-    body.spacing = 0.0f;
-    body.lineHeight = 1.5f * WS_REM;
-    body.uppercase = qfalse;
+    WS_BodyStyle( &body );
     Com_sprintf( text, sizeof( text ), "%d%%", percent );
     WS_DrawText( &body, l->leftX, l->percentY, text, strlen( text ), wsWhite );
     if ( l->prompt ) {
-        GFX_DrawLines( &body, l->leftX, l->promptY, gfxPromptText, &l->promptLines, wsWhite );
+        WS_DrawLines( &body, l->leftX, l->promptY, gfxPromptText, &l->promptLines, wsWhite );
         WS_DrawButton( &l->buttons[0], gfxButtonLabels[0], qfalse, s_gfxloading.focusedBtn == GFX_BTN_UPDATE );
         WS_DrawButton( &l->buttons[1], gfxButtonLabels[1], qtrue, s_gfxloading.focusedBtn == GFX_BTN_SKIP );
     }
 
     /* right: the showroom with the active vehicle */
-    WS_DrawSection( &l->right, qtrue );
-    GFX_DrawLabel( l->rightX, l->showroomLabelY, gfxShowroomLabel, &l->showroomLabelLines );
-    GFX_DrawLines( &l->vehicleStyle, l->rightX, l->vehicleY, l->vehicle, &l->vehicleLines, wsWhite );
-    GFX_DrawLines( &body, l->rightX, l->statusTextY, l->status, &l->statusLines, wsWhite );
-    if ( s_gfxloading.carLoaded ) {
-        UI_DrawVehicleWebView( l->car.x, l->car.y, l->car.w, l->car.h, &s_gfxloading.playerinfo, uis.realtime );
-    }
+    WS_DrawShowroom( &l->room, l->vehicle, l->status, s_gfxloading.carLoaded ? &s_gfxloading.playerinfo : NULL,
+                     WS_VIEW_AZIMUTH, WS_VIEW_ELEVATION, WS_VIEW_DISTANCE );
 
     Menu_Draw( &s_gfxloading.menu );
     s_gfxloading.stageShown = qtrue;
@@ -718,12 +637,11 @@ void UI_WebLoadingTick( int realtime ) {
 }
 
 /*
- * UI_WEB_SCREEN while this screen runs (client/cl_webgarage.c): 15 lets the
- * WebUI load hidden; during the hand-off, the main menu (2) with 0x100, the
- * browser shows it when ready and this screen draws until then.
+ * UI_WEB_SCREEN while this screen runs (client/cl_webgarage.c): 15, drawn
+ * natively while the WebUI loads hidden for the screens that still use it.
  */
 int UI_WebLoadingScreenCode( void ) {
-    return s_gfxloading.webHandoffTime ? ( 2 | 0x100 ) : 15;
+    return 15;
 }
 
 int UI_WebLoadingProgress( void ) {

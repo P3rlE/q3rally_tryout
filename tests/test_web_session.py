@@ -27,10 +27,8 @@ clc.state=CA_CONNECTING;assert(Web_CurrentScreen()==14);clc.state=CA_PRIMED;asse
 catcher=KEYCATCH_CONSOLE;assert(Web_CurrentScreen()==0);catcher=0;
 clc.state=CA_DISCONNECTED;assert(Web_CurrentScreen()==12);
 clc.state=CA_ACTIVE;clc.demoPlayer=1;screen=4;assert(Web_CurrentScreen()==4);
-/* the native loading screen preloads the page in its screen 1 state, a
- * hand-off asks for the screen with the native-until-shown bit */
-clc.state=CA_DISCONNECTED;clc.demoPlayer=0;screen=15;assert(Web_CurrentScreen()==1);
-screen=2|0x100;assert(Web_CurrentScreen()==2);}
+/* the native loading screen and main menu: the browser waits hidden */
+clc.state=CA_DISCONNECTED;clc.demoPlayer=0;screen=15;assert(Web_CurrentScreen()==0);}
 """
  run_c(harness)
 
@@ -40,7 +38,7 @@ def screen_codes(source):
  return source[start:source.index('\n\n',start)]+'\n'
 
 
-def test_native_loading_screen_keeps_drawing_until_the_browser_shows_the_page():
+def test_native_screens_preload_the_browser_and_hold_their_last_frame():
  source=(ROOT/'engine/code/client/cl_webgarage.c').read_text()
  harness=r"""
 #include <assert.h>
@@ -56,16 +54,29 @@ static struct {int integer;} frontend={1},*webFrontend=&frontend;
 static struct {int state,demoPlayer;} clc={CA_DISCONNECTED,0};
 static int VM_Call(int vm,int command){return screen;}
 static int IsWindowVisible(int window){return visible;}
-"""+screen_codes(source)+extract(source,'static int Web_UIScreenRaw(')+extract(source,'static qboolean Web_Preloading(')+extract(source,'qboolean CL_WebGarageOwnsScreen(')+r"""
+"""+screen_codes(source)+extract(source,'static int Web_UIScreenRaw(')+extract(source,'static int Web_UIScreen(')+extract(source,'static qboolean Web_Preloading(')+extract(source,'qboolean CL_WebGarageOwnsScreen(')+hold_frame(source)+r"""
 int main(void){
+ /* a native screen: drawn by the UI while the page loads hidden */
  screen=15;assert(!CL_WebGarageOwnsScreen()&&Web_Preloading());
- screen=2|0x100;assert(!CL_WebGarageOwnsScreen()&&!Web_Preloading());
- visible=1;assert(CL_WebGarageOwnsScreen());
- screen=2;visible=0;assert(CL_WebGarageOwnsScreen());
+ assert(!CL_WebGarageHoldFrame(1000));
+ /* a WebUI screen asked for: the native frame stays until the page shows */
+ screen=9;assert(CL_WebGarageOwnsScreen()&&!Web_Preloading());
+ assert(CL_WebGarageHoldFrame(1016)&&CL_WebGarageHoldFrame(1500));
+ visible=1;assert(!CL_WebGarageHoldFrame(1516));
+ visible=0;assert(!CL_WebGarageHoldFrame(1532));
+ /* a browser that does not come draws black after a second */
+ screen=15;assert(!CL_WebGarageHoldFrame(2000));
+ screen=9;assert(CL_WebGarageHoldFrame(2500)&&!CL_WebGarageHoldFrame(3000)&&!CL_WebGarageHoldFrame(3016));
+ clc.state=8;screen=15;assert(!Web_Preloading());
  screen=0;assert(!CL_WebGarageOwnsScreen());
  frontend.integer=0;screen=2;assert(!CL_WebGarageOwnsScreen());}
 """
  run_c(harness)
+
+
+def hold_frame(source):
+ start=source.index('#define WEB_HOLD_NATIVE_MS')
+ return '\n'+source[start:source.index('\n}\n',start)+3]
 
 def test_hud_commands_validate_mode_values_and_open_state():
  source=(ROOT/'engine/code/cgame/cg_hud_core.c').read_text()

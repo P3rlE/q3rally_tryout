@@ -20,6 +20,7 @@ TITLES = {'s2': 'Preparing the setup menu', 's0': 'Starting up', 's8': 'Ready to
 HARNESS = r'''
 #include "q3_ui/ui_local.h"
 #include "q3_ui/ui_rally_gfxlayout.h"
+#include "q3_ui/ui_rally_mainlayout.h"
 #include <stdio.h>
 uiStatic_t uis;
 static FILE *files[8];
@@ -39,8 +40,12 @@ void trap_R_SetColor(const float *rgba) {}
 void trap_R_DrawStretchPic(float x, float y, float w, float h, float s1, float t1, float s2, float t2, qhandle_t shader) {}
 void QDECL Com_Printf(const char *fmt, ...) {}
 void QDECL Com_Error(int level, const char *fmt, ...) { abort(); }
+void UI_DrawVehicleWebView(float x, float y, float w, float h, playerInfo_t *pi, int time,
+                           float yaw, float elevation, float distance) {}
 #include "q3_ui/ui_rally_webstyle.c"
+#include "q3_ui/ui_rally_frontpage.c"
 #include "q3_ui/ui_rally_gfxlayout.c"
+#include "q3_ui/ui_rally_mainlayout.c"
 
 static void rect(const char *name, wsRect_t r) { printf("\"%s\":[%g,%g,%g,%g],", name, r.x, r.y, r.w, r.h); }
 
@@ -57,15 +62,38 @@ int main(void) {
             uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
             GFX_Layout(&l, w, h);
             printf("{");
-            rect("left", l.left); rect("right", l.right); rect("car", l.car);
+            rect("left", l.left); rect("right", l.room.box); rect("car", l.room.car);
             rect("update", l.buttons[0]); rect("skip", l.buttons[1]);
             printf("\"h1\":%g,\"status\":[%g,%g],\"title\":%g,\"progress\":[%g,%g,%g],\"percent\":%g,",
                 l.h1Y, l.statusX, l.statusY, l.titleY, l.progressX, l.progressY, l.progressW, l.percentY);
             printf("\"prompt\":%g,\"vehicle\":%g,\"statusText\":%g,\"stageX\":%g,\"page\":%g,",
-                l.promptY, l.vehicleY, l.statusTextY, l.stageX, l.pageHeight);
+                l.promptY, l.room.vehicleY, l.room.statusY, l.stageX, l.pageHeight);
             printf("\"lines\":[%d,%d,%d,%d],\"stages\":[", l.titleLines.count, l.promptLines.count,
-                l.vehicleLines.count, l.loadingLabelLines.count);
+                l.room.vehicleLines.count, l.loadingLabelLines.count);
             for (i = 0; i < GFX_LAYOUT_STAGES; i++) printf("%s%g", i ? "," : "", l.stageY[i]);
+            printf("]}\n");
+        } else if (!strcmp(command, "main")) {
+            /* main <width> <height> <profile summary> */
+            mainLayout_t l; float w, h; int i;
+            memset(&l, 0, sizeof(l));
+            scanf("%f %f %255[^\n]", &w, &h, text);
+            Q_strncpyz(l.summary, text, sizeof(l.summary));
+            strcpy(l.vehicle, "Alpine"); strcpy(l.status, "Ready for the next rally");
+            uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
+            MainMenu_Layout(&l, w, h);
+            printf("{");
+            rect("right", l.room.box); rect("car", l.room.car); rect("garage", l.room.garage);
+            rect("dialog", l.dialog); rect("accept", l.accept); rect("cancel", l.cancel);
+            printf("\"h1\":%g,\"status\":[%g,%g],\"vehicle\":%g,\"statusText\":%g,\"page\":%g,",
+                l.page.h1Y, l.page.statusX, l.page.statusY, l.room.vehicleY, l.room.statusY, l.pageHeight);
+            printf("\"summary\":[%g,%g],\"dialogText\":[%g,%g,%g,%g],",
+                l.nav[MAIN_NAV_PROFILE].x + l.navTextX, l.summaryY,
+                l.dialogX, l.dialogLabelY, l.dialogTitleY, l.dialogTextY);
+            printf("\"lines\":[%d,%d,%d],\"buttons\":[", l.summaryLines.count, l.room.vehicleLines.count,
+                l.dialogTitleLines.count);
+            for (i = 0; i < MAIN_NAV_COUNT; i++) {
+                printf("%s[%g,%g,%g,%g]", i ? "," : "", l.nav[i].x, l.nav[i].y, l.nav[i].w, l.nav[i].h);
+            }
             printf("]}\n");
         } else if (!strcmp(command, "width")) {
             wsTextStyle_t style; int font, upper; float size, spacing; char shown[256];
@@ -92,7 +120,8 @@ def compile_harness(folder):
 
 
 def run(exe, commands):
-    result = subprocess.run([str(exe)], input='\n'.join(commands) + '\n', capture_output=True, text=True,
+    # the native text is Latin-1, like the game's strings
+    result = subprocess.run([str(exe)], input='\n'.join(commands) + '\n', capture_output=True, encoding='latin-1',
                             check=True, timeout=60)
     return result.stdout.splitlines()
 

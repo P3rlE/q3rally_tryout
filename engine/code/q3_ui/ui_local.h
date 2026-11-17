@@ -776,7 +776,8 @@ typedef struct {
 
 void UI_DrawShowroomPlayer( float x, float y, float w, float h, playerInfo_t *pi, int time );
 void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int time );
-void UI_DrawVehicleWebView( float x, float y, float w, float h, playerInfo_t *pi, int time );
+void UI_DrawVehicleWebView( float x, float y, float w, float h, playerInfo_t *pi, int time,
+                            float yaw, float elevationDegrees, float distanceRadii );
 // STONELANCE
 // void UI_PlayerInfo_SetModel( playerInfo_t *pi, const char *model );
 void UI_PlayerInfo_SetModel( playerInfo_t *pi, const char *model, const char *rim, const char *head, const char *plate );
