@@ -50,7 +50,10 @@ map q3r_dragstrip
 - New drivers join before the first heat of a match or once it is over; in
   between they spectate.
 - After a match against a bot, the next match is against another bot with the
-  same skill (not in tournament mode).
+  same skill (not in tournament mode). The swap happens when the intermission
+  ends, so the results still show the bot that was raced.
+- Between heats both cars are taken off the strip before they respawn, so each
+  gets a free start spot.
 
 ## Tournament
 

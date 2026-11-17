@@ -74,11 +74,12 @@ int G_SoundIndex(char *name) { assert(strstr(name,"drag_engine_blow")); return 7
 void G_Sound(gentity_t *ent,int channel,int sound) { assert(sound==7); engineBangs++; }
 void QDECL G_LogPrintf(const char *fmt,...) {}
 vmCvar_t g_dragBestOf, g_dragTournament;
-static int respawns, consoleCommands; static char lastConsole[256];
+static int respawns, consoleCommands, unlinks, firstSpawnUnlinks; static char lastConsole[256];
+void trap_UnlinkEntity(gentity_t *ent) { unlinks++; }
 void Q_strcat(char *dest,int size,const char *src) { strncat(dest,src,size-strlen(dest)-1); }
 void ClientSpawn(gentity_t *ent) {
     /* back to the own grid slot, as the spawn point selection does */
-    respawns++;
+    if (!respawns++) firstSpawnUnlinks=unlinks;
     VectorSet(ent->client->ps.origin, 0, ent->s.number ? 160 : -160, 28);
     VectorClear(ent->client->ps.velocity);
     ent->client->ps.eFlags=0;
@@ -540,8 +541,10 @@ int main(void) {
     /* driver 1 sat out the rest of heat 1 as a race observer following driver 0 */
     g_entities[1].raceObserver=qtrue; clients[1].sess.spectatorState=SPECTATOR_FOLLOW;
     clients[1].ps.pm_flags|=PMF_FOLLOW;
-    respawns=0; nextHeat();
+    respawns=0; unlinks=0; nextHeat();
     assert(respawns==2 && !dragCountdownTime && !level.startRaceTime && exits==0);
+    /* both cars leave the strip before either takes a start spot */
+    assert(firstSpawnUnlinks==2);
     assert(!g_entities[1].raceObserver && clients[1].sess.spectatorState==SPECTATOR_NOT);
     assert(dragClients[0].phase==DRAG_WAITING && dragMatch[0].entered && dragMatch[1].entered);
     assert(!G_DragCanJoin()); /* the match has begun */
@@ -585,14 +588,19 @@ int main(void) {
     resetHeat(2); g_entities[1].r.svFlags=SVF_BOT; strcpy(clients[1].pers.netname,"Carla"); strcpy(botSkill,"5");
     playHeat(2,2100,2200); nextHeat(); playHeat(2,2100,2200);
     level.time=dragAllDoneTime+DRAG_RESULT_HOLD_MS; G_DragCheckExit();
-    assert(exits==1 && consoleCommands==1);
-    assert(strstr(lastConsole,"clientkick 1") && strstr(lastConsole,"addbot Josh 5 free"));
+    /* the results still show Carla: the swap waits for the end of the intermission */
+    assert(exits==1 && consoleCommands==0);
+    clients[1].pers.connected=CON_CONNECTED;
+    G_DragExitLevel();
+    assert(consoleCommands==1 && strstr(lastConsole,"clientkick 1") && strstr(lastConsole,"addbot Josh 5 free"));
+    G_DragExitLevel();
+    assert(consoleCommands==1);
     /* a bot joining during the intermission is not a disqualified driver */
     G_DragClientSpawn(&g_entities[1]);
     assert(dragClients[1].phase!=DRAG_DNF);
     g_dragTournament.integer=1; resetHeat(2); g_entities[1].r.svFlags=SVF_BOT;
     playHeat(2,2100,2200); nextHeat(); playHeat(2,2100,2200);
-    level.time=dragAllDoneTime+DRAG_RESULT_HOLD_MS; G_DragCheckExit();
+    level.time=dragAllDoneTime+DRAG_RESULT_HOLD_MS; G_DragCheckExit(); G_DragExitLevel();
     assert(consoleCommands==0); /* the tournament picks its own drivers */
     g_dragTournament.integer=0;
     g_dragBestOf.integer=0;
