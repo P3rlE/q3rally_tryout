@@ -11,10 +11,12 @@ Output, per variant, into baseq3r/menu/fonts/:
   <variant>.dat         metrics, kerning, glyph rectangles for every size
   <variant>_<px>.png    one white/alpha atlas per size
 
-File format (little endian int32 unless noted):
+File format (little endian int32 unless noted), version 2:
   'Q3UF' version upm ascent descent glyphCount kernCount sizeCount
   glyphCount x { codepoint advance }                       advance in font units
   kernCount  x { (left << 16) | right  adjust }            sorted, font units
+  ligatureCount
+  ligatureCount x { codepoint  characters[4 bytes] }       the 'liga' feature, in font order
   sizeCount  x { size*100 width height image[64 bytes]
                  glyphCount x { x y w h left top } }        pixels, top above baseline
 """
@@ -47,6 +49,9 @@ PADDING = 2
 # Chrome draws list markers with tabular figures (::marker { font-variant-numeric:
 # tabular-nums }); the body faces carry them at 0x80-0x89, unused in Latin-1.
 TABULAR_BASE = 0x80
+# Chrome applies the standard ligatures (fi, fl, ij, ...) to text without
+# letter-spacing; their glyphs follow at 0x8A, also unused in Latin-1.
+LIGATURE_BASE = 0x8A
 
 
 def kerning(font: TTFont, glyph_for: dict[int, str]) -> dict[tuple[int, int], int]:
@@ -109,6 +114,34 @@ def tabular_digits(font: TTFont) -> dict[int, str]:
     return {}
 
 
+def ligatures(font: TTFont, glyph_for: dict[int, str]) -> list[tuple[str, str]]:
+    """The 'liga' ligatures of the default Latin language whose characters the
+    atlas carries, in the font's order: HarfBuzz takes the first that matches."""
+    table = font['GSUB'].table if 'GSUB' in font else None
+    if not table:
+        return []
+    names = {name: chr(code) for code, name in glyph_for.items() if code < TABULAR_BASE or code >= 0xa0}
+    script = next((record.Script for record in table.ScriptList.ScriptRecord if record.ScriptTag == 'latn'), None)
+    if script is None or script.DefaultLangSys is None:
+        return []
+    found = []
+    for index in script.DefaultLangSys.FeatureIndex:
+        record = table.FeatureList.FeatureRecord[index]
+        if record.FeatureTag != 'liga':
+            continue
+        for lookup_index in record.Feature.LookupListIndex:
+            lookup = table.LookupList.Lookup[lookup_index]
+            for sub in lookup.SubTable:
+                if lookup.LookupType == 7:
+                    sub = sub.ExtSubTable
+                for first, entries in getattr(sub, 'ligatures', {}).items():
+                    for entry in entries:
+                        parts = [first] + list(entry.Component)
+                        if all(part in names for part in parts) and len(parts) <= 4:
+                            found.append((''.join(names[part] for part in parts), entry.LigGlyph))
+    return found
+
+
 def raster(face: freetype.Face, glyph: int, size: float, embolden: bool, oblique: bool):
     face.set_char_size(int(round(size * 64)))
     if oblique:
@@ -169,19 +202,25 @@ def build(name: str, output: Path) -> None:
     glyph_for = {code: cmap[code] for code in codes}
     if not name.startswith('barlowcondensed'):
         glyph_for.update(tabular_digits(font))
-        codes = sorted(glyph_for)
+    ligas = ligatures(font, glyph_for)
+    for index, (_, glyph) in enumerate(ligas):
+        glyph_for[LIGATURE_BASE + index] = glyph
+    codes = sorted(glyph_for)
     upm = font['head'].unitsPerEm
     hhea = font['hhea']
     kerns = sorted(kerning(font, glyph_for).items(), key=lambda item: (item[0][0] << 16) | item[0][1])
     face = freetype.Face(str(path))
 
     data = bytearray(b'Q3UF')
-    data += struct.pack('<6i', 1, upm, hhea.ascent, -hhea.descent, len(codes), len(kerns))
+    data += struct.pack('<6i', 2, upm, hhea.ascent, -hhea.descent, len(codes), len(kerns))
     data += struct.pack('<i', len(sizes))
     for code in codes:
         data += struct.pack('<2i', code, font['hmtx'][glyph_for[code]][0])
     for (left, right), value in kerns:
         data += struct.pack('<2i', (left << 16) | right, value)
+    data += struct.pack('<i', len(ligas))
+    for index, (characters, _) in enumerate(ligas):
+        data += struct.pack('<i4s', LIGATURE_BASE + index, characters.encode('latin-1'))
     for size in sizes:
         rendered = [raster(face, font.getGlyphID(glyph_for[code]), size, embolden, oblique) for code in codes]
         width, height, places = pack([image for image, _, _ in rendered])

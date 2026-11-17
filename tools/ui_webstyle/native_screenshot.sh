@@ -4,9 +4,10 @@
 #
 #   tools/ui_webstyle/native_screenshot.sh <width> <height> <state> <out.png> [seconds]
 #
-# <state> is "stage,percent,prompt" for the loading screen or
-# "main:name,rank,points,quit" for the main menu, which comes up once the
-# loading screen has run through (give it about 40 seconds).
+# <state> is "stage,percent,prompt" for the loading screen,
+# "main:name,rank,points,quit" for the main menu or "credits:seconds" for the
+# end credits, paused that many seconds into the roll. The last two come up
+# once the loading screen has run through (give it about 40 seconds).
 #
 # Needs a Linux client build (make BUILD_CLIENT=1), Xvfb, Mesa and ImageMagick's
 # import. The game data is this checkout's baseq3r plus the built QVMs.
@@ -25,6 +26,8 @@ Xvfb ":$DISPLAY_NUMBER" -screen 0 "${1}x${2}x24" >/dev/null 2>&1 & XVFB=$!
 sleep 1
 if [ "${3#main:}" != "$3" ]; then
     STATE=(+set ui_mainMenuPreview "${3#main:}")
+elif [ "${3#credits:}" != "$3" ]; then
+    STATE=(+set ui_creditsPreview "${3#credits:}")
 else
     STATE=(+set ui_gfxLoadingStagePause 15000 +set ui_gfxLoadingPreview "$3")
 fi

@@ -115,7 +115,7 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
         if ( UI_WebOfflineScreen() ) return UI_WebOfflineScreen();
         if ( UI_WebOnlineScreen() ) return 11;
         if ( UI_WebConfigScreen() ) return 12;
-        if ( UI_WebCreditsScreen() ) return 3;
+        if ( UI_WebCreditsScreen() ) return 15;	/* native as well */
         if ( UI_WebDemosScreen() ) return 4;
         if ( UI_WebRivalsScreen() ) return 5;
         if ( UI_WebDownloadsScreen() ) return 6;

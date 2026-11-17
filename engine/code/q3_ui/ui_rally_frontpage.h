@@ -46,6 +46,8 @@ typedef struct {
 	float		contentX, contentW;	/* main content box */
 	/* header */
 	float		headerX, headerY, h1Y, h1Size, statusX, statusY;
+	float		titleW, titleH;		/* the header's first child: label and h1 */
+	const char	*label;				/* the label above the h1 */
 	/* .frontend-layout */
 	float		gridY;
 	qboolean	oneColumn;			/* up to 42rem */
@@ -77,6 +79,8 @@ void	WS_StyledWrap( const wsTextStyle_t *style, const char *text, float width, w
 float	WS_ButtonWidth( const char *label );
 
 /* main, header and grid of the page; title + em is the h1 */
+void	WS_FrontPageLabeled( wsFrontPage_t *page, float width, float height, const char *label,
+							 const char *title, const char *em, const char *status );
 void	WS_FrontPage( wsFrontPage_t *page, float width, float height,
 					  const char *title, const char *em, const char *status );
 /* The showroom section in the second column; returns its natural height.

@@ -36,6 +36,7 @@ const vec4_t wsButtonText = { 20 / 255.0f, 20 / 255.0f, 20 / 255.0f, 1.0f };
 #define WS_MAX_GLYPHS	224
 #define WS_MAX_KERNS	4096
 #define WS_MAX_SIZES	12
+#define WS_MAX_LIGS		16
 #define WS_FILE_MAX		65536
 
 typedef struct {
@@ -54,6 +55,9 @@ typedef struct {
 	int			advance[WS_MAX_GLYPHS];
 	int			kernKey[WS_MAX_KERNS];
 	short		kernValue[WS_MAX_KERNS];
+	int			ligCount;		/* the font's standard ligatures, in its order */
+	int			ligCode[WS_MAX_LIGS];
+	char		ligText[WS_MAX_LIGS][5];
 	wsAtlas_t	atlas[WS_MAX_SIZES];
 } wsFontData_t;
 
@@ -93,7 +97,7 @@ static qboolean WS_LoadFont( wsFont_t id ) {
 	font->glyphCount = WS_ReadInt( wsFile, &offset );
 	font->kernCount = WS_ReadInt( wsFile, &offset );
 	font->sizeCount = WS_ReadInt( wsFile, &offset );
-	if ( version != 1 || font->upm <= 0 || font->glyphCount > WS_MAX_GLYPHS ||
+	if ( version != 2 || font->upm <= 0 || font->glyphCount > WS_MAX_GLYPHS ||
 	     font->kernCount > WS_MAX_KERNS || font->sizeCount < 1 || font->sizeCount > WS_MAX_SIZES ||
 	     offset + font->glyphCount * 8 + font->kernCount * 8 > length ) {
 		Com_Printf( S_COLOR_YELLOW "WARNING: menu font %s has an unsupported layout\n", path );
@@ -108,6 +112,15 @@ static qboolean WS_LoadFont( wsFont_t id ) {
 	for ( i = 0; i < font->kernCount; i++ ) {
 		font->kernKey[i] = WS_ReadInt( wsFile, &offset );
 		font->kernValue[i] = (short)WS_ReadInt( wsFile, &offset );
+	}
+	if ( offset + 4 > length ) return qfalse;
+	font->ligCount = WS_ReadInt( wsFile, &offset );
+	if ( font->ligCount < 0 || font->ligCount > WS_MAX_LIGS || offset + font->ligCount * 8 > length ) return qfalse;
+	for ( i = 0; i < font->ligCount; i++ ) {
+		font->ligCode[i] = WS_ReadInt( wsFile, &offset );
+		memcpy( font->ligText[i], wsFile + offset, 4 );
+		font->ligText[i][4] = '\0';
+		offset += 4;
 	}
 	for ( s = 0; s < font->sizeCount; s++ ) {
 		wsAtlas_t *atlas = &font->atlas[s];
@@ -146,6 +159,27 @@ static int WS_Kern( const wsFontData_t *font, int left, int right ) {
 }
 
 /* The glyph a byte shows: missing ones fall back to '?'. */
+/* The code of the next glyph at text[i]: one of the font's standard
+ * ligatures where it starts there, as Chrome shapes text without
+ * letter-spacing, else the character. *used gets the characters it takes. */
+static int WS_NextCode( const wsFontData_t *font, const wsTextStyle_t *style, const char *text, int i,
+                        int length, int *used ) {
+	int l, n;
+	*used = 1;
+	if ( style->spacing == 0.0f ) {
+		for ( l = 0; l < font->ligCount; l++ ) {
+			const char *c = font->ligText[l];
+			for ( n = 0; c[n] && i + n < length && text[i + n] == c[n]; n++ ) {
+			}
+			if ( !c[n] ) {
+				*used = n;
+				return font->ligCode[l];
+			}
+		}
+	}
+	return (unsigned char)text[i];
+}
+
 static int WS_Glyph( const wsFontData_t *font, int code ) {
 	int glyph = font->index[code & 255];
 	return glyph >= 0 ? glyph : font->index['?'];
@@ -186,13 +220,13 @@ void WS_Transform( const wsTextStyle_t *style, const char *in, char *out, int si
 float WS_TextWidth( const wsTextStyle_t *style, const char *text, int length ) {
 	const wsFontData_t *font;
 	float width = 0.0f, scale;
-	int i, glyph, previous = -1;
+	int i, glyph, previous = -1, used;
 
 	if ( !WS_FontReady( style->font ) ) return 0.0f;
 	font = &wsFonts[style->font];
 	scale = style->size / font->upm;
-	for ( i = 0; i < length && text[i]; i++ ) {
-		int code = (unsigned char)text[i];
+	for ( i = 0; i < length && text[i]; i += used ) {
+		int code = WS_NextCode( font, style, text, i, length, &used );
 		glyph = WS_Glyph( font, code );
 		if ( previous >= 0 ) width += WS_Kern( font, previous, code ) * scale;
 		if ( glyph >= 0 ) width += font->advance[glyph] * scale;
@@ -246,11 +280,83 @@ void WS_Wrap( const wsTextStyle_t *style, const char *text, float maxWidth, wsLi
 	}
 }
 
+/* -------------------------------------------------------------------------
+   Vertical fade mask
+
+   mask-image: linear-gradient(transparent, #000 F, #000 1-F, transparent)
+   on a box: text inside is cut to the box and faded in over the top and
+   out over the bottom fraction F of its height. A glyph in a fade zone is
+   drawn in one pixel rows, each with the mask's alpha at its center.
+   ------------------------------------------------------------------------- */
+
+static struct {
+	float top, height, fraction;
+} wsFade;
+
+void WS_SetFade( float top, float height, float fraction ) {
+	wsFade.top = top;
+	wsFade.height = height;
+	wsFade.fraction = fraction;
+}
+
+float WS_FadeAlpha( float y ) {
+	float t, zone;
+	if ( wsFade.height <= 0.0f ) return 1.0f;
+	t = ( y - wsFade.top ) / wsFade.height;
+	zone = wsFade.fraction;
+	if ( t <= 0.0f || t >= 1.0f ) return 0.0f;
+	if ( zone > 0.0f && t < zone ) return t / zone;
+	if ( zone > 0.0f && t > 1.0f - zone ) return ( 1.0f - t ) / zone;
+	return 1.0f;
+}
+
+static void WS_DrawFadedGlyph( float x, float y, float w, float h, float s0, float t0, float s1, float t1,
+                               qhandle_t shader, const float *color ) {
+	float top = wsFade.top, bottom = wsFade.top + wsFade.height;
+	float solidTop = top + wsFade.fraction * wsFade.height, solidBottom = bottom - wsFade.fraction * wsFade.height;
+	float row, next, a, b;
+	vec4_t faded;
+
+	if ( y >= bottom || y + h <= top ) return;
+	/* the part between the fade zones in one piece */
+	a = y > solidTop ? y : solidTop;
+	b = y + h < solidBottom ? y + h : solidBottom;
+	if ( b > a ) {
+		trap_R_SetColor( color );
+		trap_R_DrawStretchPic( x, a, w, b - a, s0, t0 + ( t1 - t0 ) * ( a - y ) / h, s1,
+		                       t0 + ( t1 - t0 ) * ( b - y ) / h, shader );
+	}
+	/* the rest row by row; the solid part is skipped */
+	a = y > top ? y : top;
+	b = y + h < bottom ? y + h : bottom;
+	for ( row = a; row < b; row = next ) {
+		next = floor( row ) + 1.0f;
+		if ( next > b ) next = b;
+		if ( row >= solidTop && row < solidBottom ) {
+			next = solidBottom;		/* drawn in one piece above */
+			continue;
+		}
+		if ( row < solidTop && next > solidTop ) next = solidTop;
+		if ( color ) Vector4Copy( color, faded );
+		else { faded[0] = faded[1] = faded[2] = faded[3] = 1.0f; }
+		faded[3] *= WS_FadeAlpha( 0.5f * ( row + next ) );
+		if ( faded[3] <= 0.0f ) continue;
+		trap_R_SetColor( faded );
+		trap_R_DrawStretchPic( x, row, w, next - row, s0, t0 + ( t1 - t0 ) * ( row - y ) / h, s1,
+		                       t0 + ( t1 - t0 ) * ( next - y ) / h, shader );
+	}
+	trap_R_SetColor( color );
+}
+
+float WS_LU( float value ) {
+	return floor( value * 64.0f ) / 64.0f;
+}
+
 void WS_DrawText( const wsTextStyle_t *style, float x, float lineTop, const char *text, int length, const float *color ) {
 	const wsFontData_t *font;
 	const wsAtlas_t *atlas;
 	float pen = x, scale, k, baseline;
-	int i, s, glyph, previous = -1;
+	int i, s, glyph, previous = -1, used;
 
 	if ( !WS_FontReady( style->font ) ) return;
 	font = &wsFonts[style->font];
@@ -271,8 +377,8 @@ void WS_DrawText( const wsTextStyle_t *style, float x, float lineTop, const char
 	baseline = WS_Round( lineTop + WS_Baseline( style ) );
 
 	trap_R_SetColor( color );
-	for ( i = 0; i < length && text[i]; i++ ) {
-		int code = (unsigned char)text[i];
+	for ( i = 0; i < length && text[i]; i += used ) {
+		int code = WS_NextCode( font, style, text, i, length, &used );
 		const short *rect;
 		glyph = WS_Glyph( font, code );
 		if ( previous >= 0 ) pen += WS_Kern( font, previous, code ) * scale;
@@ -283,10 +389,14 @@ void WS_DrawText( const wsTextStyle_t *style, float x, float lineTop, const char
 		}
 		rect = atlas->rect[glyph];
 		if ( rect[2] > 0 && rect[3] > 0 ) {
-			trap_R_DrawStretchPic( WS_Round( pen + rect[4] * k ), baseline - rect[5] * k, rect[2] * k, rect[3] * k,
-				(float)rect[0] / atlas->width, (float)rect[1] / atlas->height,
-				(float)( rect[0] + rect[2] ) / atlas->width, (float)( rect[1] + rect[3] ) / atlas->height,
-				atlas->shader );
+			float gx = WS_Round( pen + rect[4] * k ), gy = baseline - rect[5] * k;
+			float s0 = (float)rect[0] / atlas->width, t0 = (float)rect[1] / atlas->height;
+			float s1 = (float)( rect[0] + rect[2] ) / atlas->width, t1 = (float)( rect[1] + rect[3] ) / atlas->height;
+			if ( wsFade.height > 0.0f ) {
+				WS_DrawFadedGlyph( gx, gy, rect[2] * k, rect[3] * k, s0, t0, s1, t1, atlas->shader, color );
+			} else {
+				trap_R_DrawStretchPic( gx, gy, rect[2] * k, rect[3] * k, s0, t0, s1, t1, atlas->shader );
+			}
 		}
 		pen += font->advance[glyph] * scale + style->spacing;
 	}
