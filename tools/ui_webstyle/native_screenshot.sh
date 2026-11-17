@@ -7,7 +7,10 @@
 # <state> is "stage,percent,prompt" for the loading screen,
 # "main:name,rank,points,quit" for the main menu, "credits:seconds" for the
 # end credits, paused that many seconds into the roll, or
-# "rivals:search,scroll,rival" for Rivals (rival -1: the first match). The last two come up
+# "rivals:search,scroll,rival" for Rivals (rival -1: the first match) or
+# "downloads:state,progress,type,search,item" for Downloads with the catalog
+# tests/fixtures/downloads_index.json (type 0-3: all, tracks, vehicles, skins;
+# item -1: the first match). The last two come up
 # once the loading screen has run through (give it about 40 seconds).
 #
 # Needs a Linux client build (make BUILD_CLIENT=1), Xvfb, Mesa and ImageMagick's
@@ -27,6 +30,13 @@ Xvfb ":$DISPLAY_NUMBER" -screen 0 "${1}x${2}x24" >/dev/null 2>&1 & XVFB=$!
 sleep 1
 if [ "${3#main:}" != "$3" ]; then
     STATE=(+set ui_mainMenuPreview "${3#main:}")
+elif [ "${3#downloads:}" != "$3" ]; then
+    mkdir -p "$WORK/home/baseq3r"
+    cp "$ROOT/tests/fixtures/downloads_index.json" "$WORK/home/baseq3r/downloads_index.json"
+    # installed, as the measurement marks them: empty packages of those ids
+    python3 -c 'import sys,zipfile;[zipfile.ZipFile(f,"w").close() for f in sys.argv[1:]]' \
+        "$WORK/home/baseq3r/trk_lava_falls_rev.pk3" "$WORK/home/baseq3r/trk_dirty_fun_2.pk3"
+    STATE=(+set ui_downloadsPreview "${3#downloads:}" +set ui_dl_indexpath downloads_index.json)
 elif [ "${3#rivals:}" != "$3" ]; then
     STATE=(+set ui_rivalsPreview "${3#rivals:}")
 elif [ "${3#credits:}" != "$3" ]; then

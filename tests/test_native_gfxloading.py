@@ -113,12 +113,17 @@ int main(void) {
             for (i = 0; i < l.count; i++) printf("%s[%g,%g]", i ? "," : "", Credits_LineTop(&l, i, t), l.lineH[i]);
             printf("]}\n");
         } else if (!strcmp(command, "rivals")) {
-            /* rivals <width> <height> <count> <scroll>, then name|personality|weapon|description|status */
-            static rivalsLayout_t l; float w, h, scroll; int count; char line[1024], *f[5]; int i;
+            /* rivals <width> <height> <count> <scroll> <downloads>, then
+             * name|personality|weapon|description|status|author|download status */
+            static rivalsLayout_t l; float w, h, scroll; int count, downloads; char line[1024], *f[7]; int i;
             memset(&l, 0, sizeof(l));
-            scanf("%f %f %d %f\n", &w, &h, &count, &scroll);
+            scanf("%f %f %d %f %d\n", &w, &h, &count, &scroll, &downloads);
             fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
-            f[0] = line; for (i = 1; i < 5; i++) { f[i] = strchr(f[i - 1], '|'); *f[i]++ = 0; }
+            f[0] = line; for (i = 1; i < 7; i++) { f[i] = strchr(f[i - 1], '|'); *f[i]++ = 0; }
+            l.downloads = downloads; l.hideScrollbar = qtrue;	/* like the measured Chrome */
+            { static char rows[8192]; char *r; fgets(rows, sizeof(rows), stdin); rows[strcspn(rows, "\n")] = 0;
+              for (i = 0, r = rows; i < count && r; i++) { l.rowText[i] = r; r = strchr(r, '|'); if (r) *r++ = 0; } }
+            Q_strncpyz(l.author, f[5], sizeof(l.author)); Q_strncpyz(l.downloadStatus, f[6], sizeof(l.downloadStatus));
             Q_strncpyz(l.name, f[0], sizeof(l.name)); Q_strncpyz(l.personality, f[1], sizeof(l.personality));
             Q_strncpyz(l.weapon, f[2], sizeof(l.weapon)); Q_strncpyz(l.description, f[3], sizeof(l.description));
             Q_strncpyz(l.status, f[4], sizeof(l.status));
@@ -127,7 +132,9 @@ int main(void) {
             Rivals_Layout(&l, w, h);
             printf("{");
             rect("back", l.back); rect("left", l.left); rect("right", l.right); rect("search", l.search);
-            rect("list", l.list); rect("car", l.car);
+            rect("list", l.list); rect("car", l.car); rect("type", l.type); rect("install", l.install);
+            rect("refresh", l.refresh); rect("cancel", l.cancel); rect("progress", l.progress);
+            printf("\"typeLabel\":%g,\"author\":%g,\"downloadStatus\":%g,", l.typeLabelY, l.authorY, l.downloadStatusY);
             printf("\"h1\":%g,\"searchLabel\":%g,\"count\":%g,\"label\":%g,\"name\":%g,\"personality\":%g,"
                 "\"weapon\":%g,\"description\":%g,\"status\":%g,\"page\":%g,\"content\":%g,\"scroll\":%g,\"buttons\":[",
                 l.page.h1Y, l.searchLabelY, l.countY, l.labelY, l.nameY, l.personalityY, l.weaponY, l.descriptionY,

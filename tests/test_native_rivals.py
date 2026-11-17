@@ -3,9 +3,8 @@
 tests/fixtures/webui_rivals_layout.json holds what Chrome reports for the
 WebUI's Rivals screen (tools/ui_webstyle/measure_webui_rivals.cjs: ten
 viewports; the start, a search and a scrolled list). Chrome is measured with
-hidden scrollbars like the other screens; the native list shows CEF's 15px
-scrollbar, so its buttons are 15px narrower than in the fixture where the
-list overflows.
+hidden scrollbars like the other screens, and the layout is run the same way
+(hideScrollbar); in the game the list shows CEF's 15px scrollbar.
 """
 import json
 import pathlib
@@ -25,9 +24,10 @@ def test_native_rivals_match_the_webui_at_every_size():
         els = FIXTURE[key]['els']
         pressed = [b[0] for b in els['buttons'] if b[5]]
         name, model, description, personality, weapon = RIVALS[pressed[0]]
-        commands.append(f'rivals {width} {height} {len(els["buttons"])} {els["scroll"][0]}')
+        commands.append(f'rivals {width} {height} {len(els["buttons"])} {els["scroll"][0]} 0')
         commands.append('|'.join([name, personality, 'Favorite weapon / ' + weapon, description,
-                                  'Drag to rotate / scroll to zoom']))
+                                  'Drag to rotate / scroll to zoom', '', '']))
+        commands.append('|'.join(RIVALS[b[0]][0] for b in els['buttons']))
     with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as directory:
         exe = compile_harness(pathlib.Path(directory))
         output = [json.loads(line) for line in run(exe, commands)]
@@ -50,9 +50,8 @@ def test_native_rivals_match_the_webui_at_every_size():
             reference = chrome[element][1] - (2 if element in ('searchLabel',) else 0)
             check(name, [mine[name]], [reference])
         check('page', [mine['page']], [FIXTURE[key]['height']])
-        scrollbar = 15 if chrome['scroll'][1] > chrome['scroll'][3] else 0
         for row, button in enumerate(chrome['buttons']):
-            check(f'button {row}', mine['buttons'][row], [button[1], button[2], button[3] - scrollbar, button[4]])
+            check(f'button {row}', mine['buttons'][row], [button[1], button[2], button[3], button[4]])
         assert not problems, (key, problems)
 
 

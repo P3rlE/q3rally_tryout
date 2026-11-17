@@ -5,8 +5,8 @@ the menus. Screens move back into the game one at a time and must look exactly
 like their WebUI version, on every platform and without a browser. Done so
 far: the graphics loading screen ("Getting ready.", WebUI screen 1), the
 main menu ("Ready to race.", WebUI screen 2), the end credits ("Thank you
-for playing.", WebUI screen 3) and Rivals ("Meet your rivals.", WebUI
-screen 5).
+for playing.", WebUI screen 3), Rivals ("Meet your rivals.", WebUI
+screen 5) and Downloads ("Expand your rally.", WebUI screen 6).
 
 ## How a screen is rebuilt
 
@@ -69,7 +69,8 @@ atlases.
 ## Checking a screen
 
 - `tools/ui_webstyle/measure_webui_loading.cjs`, `measure_webui_main.cjs`,
-  `measure_webui_credits.cjs` and `measure_webui_rivals.cjs` measure the WebUI screens in Chrome (the
+  `measure_webui_credits.cjs`, `measure_webui_rivals.cjs` and
+  `measure_webui_downloads.cjs` measure the WebUI screens in Chrome (the
   credits with the roll paused at fixed times). They record every box and the width
   of every text run, for several viewports and all states (main menu: with
   and without a profile, quit dialog open).
@@ -88,7 +89,9 @@ atlases.
   `ui_mainMenuPreview "name,rank,points,quit"` for the main menu (it also
   skips the profile wizards), `ui_creditsPreview <seconds>` for the end
   credits, paused that far into the roll, `ui_rivalsPreview
-  "search,scroll,rival"` for Rivals.
+  "search,scroll,rival"` for Rivals, `ui_downloadsPreview
+  "state,progress,type,search,item"` for Downloads (catalog from
+  `ui_dl_indexpath`).
 
 What still differs from the WebUI:
 - **Glyph edges.** Chrome positions glyphs on subpixels; the game draws them
@@ -122,6 +125,18 @@ What still differs from the WebUI:
 - The page shows no weapon icons: its icon table does not know the weapon
   names of 2026, so the native screen leaves them out too.
 
+## Downloads
+
+- The WebUI shows Downloads on the same page as Rivals (library.js mode 6);
+  `ui_rally_rivalslayout.c` lays out both, `ui_rally_library.c` holds what
+  they share: search, list, scrollbar, disabled buttons.
+- The type filter, the search (name, author, type) and the selection by id
+  follow library.js. Install, Refresh and Cancel act as the page's buttons
+  did (`UI_WebCatalogAction`), disabled at opacity .45 like in Chrome.
+- The <select>'s option list is the system's popup in CEF; the native one
+  is a plain list below the box.
+- Previews are drawn 4:3 (levelshots); the UI cannot read an image's size.
+
 ## Interplay with the WebUI
 
 ## The main menu
@@ -140,7 +155,8 @@ What still differs from the WebUI:
 
 ## Interplay with the WebUI
 
-While a native screen runs (loading screen, main menu, end credits, Rivals), the UI reports
+While a native screen runs (loading screen, main menu, end credits, Rivals,
+Downloads), the UI reports
 `UI_WEB_SCREEN` 15. The client treats it like screen 0: the browser stays
 hidden and the game draws. While the game is disconnected, though, the
 client starts CEF and loads the page, so the screens that are still WebUI

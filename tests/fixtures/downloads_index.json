@@ -1,0 +1,14 @@
+[
+  { "id": "trk_canyon_cruise2", "name": "Canyon Cruise II", "author": "Stecki", "version": "1.2", "type": "track", "size": 18874368 },
+  { "id": "trk_night_city_x", "name": "Night City Extended", "author": "insellium", "version": "2.0", "type": "track", "size": 25165824 },
+  { "id": "veh_gremlin_rally", "name": "Gremlin Rally Edition", "author": "P3rlE", "version": "1.0", "type": "vehicle", "size": 6291456 },
+  { "id": "skin_mini_tartan", "name": "Mini Tartan Paint", "author": "To-mos", "version": "1.1", "type": "skin", "size": 1048576 },
+  { "id": "trk_lava_falls_rev", "name": "Lava Falls Reverse", "author": "Amphetamine", "version": "1.0", "type": "track", "size": 15728640 },
+  { "id": "veh_db12_classic", "name": "DB12 Classic", "author": "Steel Painter", "version": "0.9", "type": "vehicle", "size": 8388608 },
+  { "id": "skin_viper_flames", "name": "Viper Flames", "author": "Toxicity", "version": "1.0", "type": "skin", "size": 786432 },
+  { "id": "trk_ridge_pass_snow", "name": "Ridge Pass Snow", "author": "gout", "version": "1.3", "type": "track", "size": 20971520 },
+  { "id": "veh_raptor_baja", "name": "Raptor Baja", "author": "thebigbuu", "version": "1.0", "type": "vehicle", "size": 7340032 },
+  { "id": "skin_gtr_neon", "name": "GTR Neon Nights", "author": "PaniC", "version": "1.0", "type": "skin", "size": 1572864 },
+  { "id": "trk_dirty_fun_2", "name": "Dirty Fun 2", "author": "System Krash", "version": "1.0", "type": "track", "size": 12582912 },
+  { "id": "skin_alpine_retro", "name": "Alpine Retro Stripes", "author": "Cyberdemon", "version": "1.0", "type": "skin", "size": 917504 }
+]
