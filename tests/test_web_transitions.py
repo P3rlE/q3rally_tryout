@@ -1,4 +1,5 @@
 from test_web_config import ROOT, extract, run_c
+from test_web_session import screen_codes
 
 
 def test_only_current_local_screen_can_reveal_the_browser():
@@ -103,7 +104,9 @@ static struct {int state,demoPlayer;} clc;
 static struct {int integer;} *webFrontend;
 static int uivm=1,screen;
 static int VM_Call(int vm,int command){return screen;}
-""".replace('static struct {int integer;} *webFrontend;','static __typeof__(frontend) *webFrontend;')+extract(source,'qboolean CL_WebGarageOwnsScreen(')+r"""
+static int webChild=1,visible;
+static int IsWindowVisible(int window){return visible;}
+""".replace('static struct {int integer;} *webFrontend;','static __typeof__(frontend) *webFrontend;')+screen_codes(source)+extract(source,'static int Web_UIScreenRaw(')+extract(source,'qboolean CL_WebGarageOwnsScreen(')+r"""
 int main(void){
  webFrontend=&frontend;frontend.integer=1;screen=12;clc.state=8;
  assert(CL_WebGarageOwnsScreen());
@@ -111,6 +114,9 @@ int main(void){
  clc.state=CA_CONNECTING;assert(CL_WebGarageOwnsScreen());
  frontend.integer=0;assert(!CL_WebGarageOwnsScreen());
  frontend.integer=1;uivm=0;assert(!CL_WebGarageOwnsScreen());
+ /* the only exception: the native loading screen hands over to a page */
+ uivm=1;clc.state=1;screen=2|0x100;assert(!CL_WebGarageOwnsScreen());
+ visible=1;assert(CL_WebGarageOwnsScreen());
 }
 """
     run_c(harness)

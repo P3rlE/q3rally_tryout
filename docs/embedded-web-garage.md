@@ -69,6 +69,10 @@ for local testing with bundled documents only.
 
 ## Main menu, Rivals and Downloads
 
+The graphics loading screen (WebUI screen 1) is drawn by the game again, in
+the WebUI's look (docs/native-webstyle.md). The page still loads behind it,
+hidden in its screen 1 state, and takes over at the main menu.
+
 With `cl_webUI 1`, the embedded frontend opens for graphics loading, the main
 menu, credits, the demo archive, Rivals and Downloads. Other menus use their
 native UI. On return to a native menu, the client restores SDL input focus,

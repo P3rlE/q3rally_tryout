@@ -17,7 +17,7 @@ static struct {int state,demoPlayer;} clc;
 static int Key_GetCatcher(void){return catcher;}
 static int Cvar_VariableIntegerValue(const char *name){return hud;}
 static int VM_Call(int vm,int command){return screen;}
-"""+extract(source,'static int Web_CurrentScreen(')+r"""
+"""+screen_codes(source)+extract(source,'static int Web_UIScreenRaw(')+extract(source,'static int Web_UIScreen(')+extract(source,'static int Web_CurrentScreen(')+r"""
 int main(void){clc.state=CA_ACTIVE;assert(Web_CurrentScreen()==0);
 catcher=KEYCATCH_UI;assert(Web_CurrentScreen()==12);
 hud=1;catcher=KEYCATCH_CGAME;assert(Web_CurrentScreen()==13);
@@ -26,7 +26,44 @@ catcher=0;clc.state=2;assert(Web_CurrentScreen()==0);
 clc.state=CA_CONNECTING;assert(Web_CurrentScreen()==14);clc.state=CA_PRIMED;assert(Web_CurrentScreen()==14);
 catcher=KEYCATCH_CONSOLE;assert(Web_CurrentScreen()==0);catcher=0;
 clc.state=CA_DISCONNECTED;assert(Web_CurrentScreen()==12);
-clc.state=CA_ACTIVE;clc.demoPlayer=1;screen=4;assert(Web_CurrentScreen()==4);}
+clc.state=CA_ACTIVE;clc.demoPlayer=1;screen=4;assert(Web_CurrentScreen()==4);
+/* the native loading screen preloads the page in its screen 1 state, a
+ * hand-off asks for the screen with the native-until-shown bit */
+clc.state=CA_DISCONNECTED;clc.demoPlayer=0;screen=15;assert(Web_CurrentScreen()==1);
+screen=2|0x100;assert(Web_CurrentScreen()==2);}
+"""
+ run_c(harness)
+
+
+def screen_codes(source):
+ start=source.index('#define WEB_SCREEN_PRELOAD')
+ return source[start:source.index('\n\n',start)]+'\n'
+
+
+def test_native_loading_screen_keeps_drawing_until_the_browser_shows_the_page():
+ source=(ROOT/'engine/code/client/cl_webgarage.c').read_text()
+ harness=r"""
+#include <assert.h>
+#define CA_CONNECTING 3
+#define CA_PRIMED 7
+#define CA_DISCONNECTED 1
+#define UI_WEB_SCREEN 77
+typedef int qboolean;
+#define qfalse 0
+#define qtrue 1
+static int uivm=1,screen,visible,webChild=1;
+static struct {int integer;} frontend={1},*webFrontend=&frontend;
+static struct {int state,demoPlayer;} clc={CA_DISCONNECTED,0};
+static int VM_Call(int vm,int command){return screen;}
+static int IsWindowVisible(int window){return visible;}
+"""+screen_codes(source)+extract(source,'static int Web_UIScreenRaw(')+extract(source,'static qboolean Web_Preloading(')+extract(source,'qboolean CL_WebGarageOwnsScreen(')+r"""
+int main(void){
+ screen=15;assert(!CL_WebGarageOwnsScreen()&&Web_Preloading());
+ screen=2|0x100;assert(!CL_WebGarageOwnsScreen()&&!Web_Preloading());
+ visible=1;assert(CL_WebGarageOwnsScreen());
+ screen=2;visible=0;assert(CL_WebGarageOwnsScreen());
+ screen=0;assert(!CL_WebGarageOwnsScreen());
+ frontend.integer=0;screen=2;assert(!CL_WebGarageOwnsScreen());}
 """
  run_c(harness)
 

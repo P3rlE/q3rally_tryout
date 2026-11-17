@@ -776,6 +776,7 @@ typedef struct {
 
 void UI_DrawShowroomPlayer( float x, float y, float w, float h, playerInfo_t *pi, int time );
 void UI_DrawPlayer( float x, float y, float w, float h, playerInfo_t *pi, int time );
+void UI_DrawVehicleWebView( float x, float y, float w, float h, playerInfo_t *pi, int time );
 // STONELANCE
 // void UI_PlayerInfo_SetModel( playerInfo_t *pi, const char *model );
 void UI_PlayerInfo_SetModel( playerInfo_t *pi, const char *model, const char *rim, const char *head, const char *plate );
@@ -1205,6 +1206,7 @@ int UI_WebLoadingScreen( void );
 void UI_WebLoadingTick( int realtime );
 int UI_WebLoadingProgress( void );
 int UI_WebLoadingStage( void );
+int UI_WebLoadingScreenCode( void );
 int UI_WebLoadingPrompt( void );
 void UI_WebLoadingAction( int action );
 

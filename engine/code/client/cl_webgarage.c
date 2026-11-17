@@ -87,6 +87,7 @@ void CL_WebGarageInit( void ) {
     Cvar_Get( "cl_webHUDActive", "0", CVAR_ROM );
     Cvar_Get( "cl_webMapLoading", "0", CVAR_ROM );
     Cvar_Get( "cl_webIngameUI", "0", CVAR_ROM );
+    Cvar_Get( "cl_webPresented", "0", CVAR_ROM );	/* screen the browser shows, for the UI's hand-off */
 }
 
 static qboolean Web_Visible( void ) {
@@ -412,21 +413,52 @@ static qboolean Web_DriverPayload( const wchar_t *source ) {
     Cvar_Set( "ui_webdriver_payload", text ); return qtrue;
 }
 
+/*
+ * What the UI module reports for UI_WEB_SCREEN. Besides the WebUI screens it
+ * has two native cases (q3_ui/ui_rally_gfxloading.c):
+ *   WEB_SCREEN_PRELOAD       the native loading screen runs; the page loads
+ *                            hidden in its screen 1 state, so the main menu
+ *                            is ready the moment it is asked for
+ *   screen | WEB_SCREEN_NATIVE_UNTIL_SHOWN
+ *                            the UI wants that screen but keeps drawing its
+ *                            own until the browser shows it (no black frames)
+ */
+#define WEB_SCREEN_PRELOAD              15
+#define WEB_SCREEN_NATIVE_UNTIL_SHOWN   0x100
+
+static int Web_UIScreenRaw( void ) {
+    return uivm ? (int)VM_Call( uivm, UI_WEB_SCREEN ) : 0;
+}
+
+static int Web_UIScreen( void ) {
+    int screen = Web_UIScreenRaw();
+    if ( screen == WEB_SCREEN_PRELOAD ) return 1;
+    return screen & 0xff;
+}
+
+static qboolean Web_Preloading( void ) {
+    return clc.state == CA_DISCONNECTED && Web_UIScreenRaw() == WEB_SCREEN_PRELOAD;
+}
+
 static int Web_CurrentScreen( void ) {
     if ( !(Key_GetCatcher() & KEYCATCH_CONSOLE) && clc.state >= CA_CONNECTING && clc.state <= CA_PRIMED && !clc.demoPlayer ) return 14;
     if ( Key_GetCatcher() & KEYCATCH_CONSOLE ) return 0;
     if ( clc.state == CA_ACTIVE && !clc.demoPlayer ) {
         if ( cgvm && Cvar_VariableIntegerValue( "cg_hudOptionsOpen" ) && (Key_GetCatcher() & KEYCATCH_CGAME) && !(Key_GetCatcher() & KEYCATCH_UI) ) return 13;
-        return (Key_GetCatcher() & KEYCATCH_UI) && uivm ? (int)VM_Call( uivm, UI_WEB_SCREEN ) : 0;
+        return (Key_GetCatcher() & KEYCATCH_UI) && uivm ? Web_UIScreen() : 0;
     }
-    return (clc.state == CA_DISCONNECTED || clc.demoPlayer) && uivm ? (int)VM_Call( uivm, UI_WEB_SCREEN ) : 0;
+    return (clc.state == CA_DISCONNECTED || clc.demoPlayer) && uivm ? Web_UIScreen() : 0;
 }
 
 qboolean CL_WebGarageOwnsScreen( void ) {
     /* Ownership starts before CEF is visible, including the initial load and
      * console transitions. A hidden browser is not permission to draw old UI. */
+    int screen;
     if ( !webFrontend || !webFrontend->integer || !uivm ) return qfalse;
-    return VM_Call( uivm, UI_WEB_SCREEN ) != 0 ||
+    screen = Web_UIScreenRaw();
+    if ( screen == WEB_SCREEN_PRELOAD ) return qfalse;
+    if ( screen & WEB_SCREEN_NATIVE_UNTIL_SHOWN ) return webChild && IsWindowVisible( webChild );
+    return screen != 0 ||
         (clc.state >= CA_CONNECTING && clc.state <= CA_PRIMED && !clc.demoPlayer);
 }
 
@@ -474,7 +506,7 @@ static int CEF_CALLBACK Web_BeforeBrowse( cef_request_handler_t *self,
             }
         }
     }
-    if ( !allow && !redirect && userGesture && frame->is_main( frame ) && Web_IsLocalFrame( frame ) && uivm && url && VM_Call( uivm, UI_WEB_SCREEN ) == 12 && webConfigWrite - webConfigRead < ARRAY_LEN( webConfigQueue ) ) {
+    if ( !allow && !redirect && userGesture && frame->is_main( frame ) && Web_IsLocalFrame( frame ) && uivm && url && Web_UIScreen() == 12 && webConfigWrite - webConfigRead < ARRAY_LEN( webConfigQueue ) ) {
         const wchar_t *uri = (const wchar_t *)url->str;
         int action, index, value, consumed = 0, slot = webConfigWrite % ARRAY_LEN( webConfigQueue ); wchar_t tail;
         if ( swscanf( uri, L"q3rally-ui://config/%d/%d/%d%c", &action, &index, &value, &tail ) == 3 && action >= 0 && action <= 6 && index >= 0 && index < 512 && value >= 0 && value <= 100000 ) {
@@ -493,7 +525,7 @@ static int CEF_CALLBACK Web_BeforeBrowse( cef_request_handler_t *self,
         }
     }
     if ( !allow && !redirect && userGesture && frame->is_main( frame ) && Web_IsLocalFrame( frame ) && uivm && url ) {
-        int screen = VM_Call( uivm, UI_WEB_SCREEN ), action, index, value, consumed = 0;
+        int screen = Web_UIScreen(), action, index, value, consumed = 0;
         const wchar_t *uri = (const wchar_t *)url->str;
         wchar_t tail;
         if ( screen == 11 && webOnlineWrite - webOnlineRead < ARRAY_LEN( webOnlineQueue ) ) {
@@ -515,7 +547,7 @@ static int CEF_CALLBACK Web_BeforeBrowse( cef_request_handler_t *self,
         }
     }
     if ( !allow && !redirect && userGesture && frame->is_main( frame ) && Web_IsLocalFrame( frame ) && uivm && url ) {
-        int screen = VM_Call( uivm, UI_WEB_SCREEN ), action, index, value;
+        int screen = Web_UIScreen(), action, index, value;
         wchar_t tail;
         if ( (screen == 9 || screen == 10) &&
              swscanf( (const wchar_t *)url->str, L"q3rally-ui://offline/%d/%d/%d%c", &action, &index, &value, &tail ) == 3 &&
@@ -525,7 +557,7 @@ static int CEF_CALLBACK Web_BeforeBrowse( cef_request_handler_t *self,
         }
     }
     if ( !allow && !redirect && frame->is_main( frame ) && Web_IsLocalFrame( frame ) &&
-         uivm && VM_Call( uivm, UI_WEB_SCREEN ) == 4 && url ) {
+         uivm && Web_UIScreen() == 4 && url ) {
         const wchar_t *value = (const wchar_t *)url->str;
         int x, y, w, h, vw, vh, actionId, index;
         wchar_t tail;
@@ -554,7 +586,7 @@ static int CEF_CALLBACK Web_BeforeBrowse( cef_request_handler_t *self,
     }
     if ( !allow && !redirect && userGesture && frame->is_main( frame ) &&
          Web_IsLocalFrame( frame ) && uivm && url ) {
-        int screen = VM_Call( uivm, UI_WEB_SCREEN ), actionId, index;
+        int screen = Web_UIScreen(), actionId, index;
         wchar_t tail;
         if ( (screen == 5 || screen == 6) &&
              swscanf( (const wchar_t *)url->str, L"q3rally-ui://catalog/action/%d/%d%c", &actionId, &index, &tail ) == 2 &&
@@ -566,7 +598,7 @@ static int CEF_CALLBACK Web_BeforeBrowse( cef_request_handler_t *self,
         }
     }
     if ( !allow && !redirect && userGesture && frame->is_main( frame ) && Web_IsLocalFrame( frame ) &&
-         uivm && VM_Call( uivm, UI_WEB_SCREEN ) == 8 && url ) {
+         uivm && Web_UIScreen() == 8 && url ) {
         const wchar_t *value = (const wchar_t *)url->str;
         if ( !wcscmp( value, L"q3rally-ui://driver/back" ) ) webDriverAction = 0;
         if ( !wcscmp( value, L"q3rally-ui://driver/edit" ) ) webDriverAction = 1;
@@ -583,12 +615,12 @@ static int CEF_CALLBACK Web_BeforeBrowse( cef_request_handler_t *self,
     }
     if ( !allow && !redirect && frame->is_main( frame ) && Web_IsLocalFrame( frame ) &&
          Web_Equals( url, L"q3rally-ui://menu/credits-exit" ) && uivm &&
-         VM_Call( uivm, UI_WEB_SCREEN ) == 3 ) webMenuAction = 12;
+         Web_UIScreen() == 3 ) webMenuAction = 12;
 	if ( !allow && !redirect && userGesture && frame->is_main( frame ) &&
 	     Web_IsLocalFrame( frame ) && (clc.state == CA_DISCONNECTED || clc.demoPlayer || (clc.state == CA_ACTIVE && (Key_GetCatcher() & KEYCATCH_UI))) ) {
 		if ( Web_Equals( url, L"q3rally-ui://garage/close" ) ) {
 			if ( webFrontend->integer ) {
-                if ( uivm && VM_Call( uivm, UI_WEB_SCREEN ) == 7 ) webMenuAction = 14;
+                if ( uivm && Web_UIScreen() == 7 ) webMenuAction = 14;
                 webGarageMode = qfalse;
                 webLastState = -1;
             } else webCloseRequested = qtrue;
@@ -621,7 +653,7 @@ static int CEF_CALLBACK Web_BeforeBrowse( cef_request_handler_t *self,
                                       slot, fields[0], fields[1], fields[2], fields[3], fields[4] ) );
             }
         } else if ( Web_Equals( url, L"q3rally-ui://menu/garage" ) ) {
-            if ( uivm && VM_Call( uivm, UI_WEB_SCREEN ) == 2 ) {
+            if ( uivm && Web_UIScreen() == 2 ) {
                 webGarageMode = qtrue;
                 webLastState = -1;
             }
@@ -941,6 +973,7 @@ static void Web_Open( void ) {
 
 static void Web_Close( void ) {
 	cef_browser_host_t *host;
+	Cvar_Set( "cl_webPresented", "0" );
 	if ( !webBrowser ) return;
 	host = webBrowser->get_host( webBrowser );
 	host->set_focus( host, 0 );
@@ -1393,6 +1426,7 @@ void CL_WebGarageFrame( void ) {
                 frame->base.release( &frame->base );
             }
             ShowWindow( webChild, SW_HIDE );
+            Cvar_Set( "cl_webPresented", "0" );
             host->set_focus( host, 0 ); host->base.release( &host->base );
             SetFocus( webParent );
             {
@@ -1407,9 +1441,10 @@ void CL_WebGarageFrame( void ) {
     /* A release may arrive at SDL before the child takes keyboard focus. */
     if ( webOpeningEscape && !(GetAsyncKeyState( VK_ESCAPE ) & 0x8000) ) webOpeningEscape = qfalse;
     /* Reveal only after the renderer has applied the requested screen. */
-    if ( webPresentedScreen == Web_CurrentScreen() && !IsWindowVisible( webChild ) ) {
+    if ( webPresentedScreen == Web_CurrentScreen() && !IsWindowVisible( webChild ) && !Web_Preloading() ) {
         cef_browser_host_t *host = webBrowser->get_host( webBrowser );
         ShowWindow( webChild, SW_SHOW );
+        Cvar_Set( "cl_webPresented", va( "%d", webPresentedScreen ) );
         SDL_SetRelativeMouseMode( SDL_FALSE ); SDL_ShowCursor( SDL_ENABLE );
         host->set_focus( host, 1 ); host->base.release( &host->base );
     }
@@ -1433,7 +1468,7 @@ void CL_WebGarageFrame( void ) {
         return;
     }
     Web_ProfileFrame();
-    if ( uivm && VM_Call( uivm, UI_WEB_SCREEN ) == 7 && webMenuAction != 14 ) webGarageMode = qtrue;
+    if ( uivm && Web_UIScreen() == 7 && webMenuAction != 14 ) webGarageMode = qtrue;
     if ( !webGarageMode && uivm ) {
         if ( webCatalogAction >= 0 ) {
             VM_Call( uivm, UI_WEB_CATALOG_ACTION, webCatalogActionScreen, webCatalogAction, webCatalogIndex );
@@ -1513,7 +1548,7 @@ void CL_WebGarageFrame( void ) {
         if ( screen == 8 && !webDriverPublished ) Web_PublishDriver();
         if ( screen == 1 ) {
             if ( CL_WebGarageSkipBackground() ) VM_Call( uivm, UI_WEB_TICK, cls.realtime );
-            screen = VM_Call( uivm, UI_WEB_SCREEN );
+            screen = Web_UIScreen();
             progress = VM_Call( uivm, UI_WEB_LOAD_PROGRESS );
             stage = VM_Call( uivm, UI_WEB_LOAD_STAGE );
             prompt = VM_Call( uivm, UI_WEB_UPDATE_PROMPT );

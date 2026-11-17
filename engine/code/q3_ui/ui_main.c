@@ -110,7 +110,7 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
         return stats ? stats->playerScore : 0;
     }
     case UI_WEB_SCREEN:
-        if ( UI_WebLoadingScreen() ) return 1;
+        if ( UI_WebLoadingScreen() ) return UI_WebLoadingScreenCode();
         if ( UI_WebMainScreen() ) return 2;
         if ( UI_WebOfflineScreen() ) return UI_WebOfflineScreen();
         if ( UI_WebOnlineScreen() ) return 11;

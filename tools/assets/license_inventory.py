@@ -78,7 +78,7 @@ KB = {
     'Texturen jim*': (REL, 'Texturpakete jim, jim_castle, jim_misc (Quake-3-Community); laut Projekt freigegeben', GAME, CREDIT),
     'Texturen q3r_* (Projekt-Sets)': (OWN, 'Q3Rally-eigene Texturensets (q3r_building, q3r_road, q3r_signage …); die Readme nennt Toxicity für Texturen', GAME, DONE),
     'video': (OWN, 'Intro-Video mit Q3R-Logo (idlogo.ogv heißt so, weil die Engine den Namen erwartet); laut Projekt für Q3Rally erstellt', GAME, DONE),
-    'Schriften': (FREE, 'Share Tech Mono', 'SIL OFL 1.1', CREDIT + '; Lizenztext liegt in fonts/'),
+    'Schriften': (FREE, 'Share Tech Mono, Barlow, Barlow Condensed (als Atlanten, tools/ui_webstyle/build_ui_fonts.py)', 'SIL OFL 1.1', CREDIT + '; Lizenztexte liegen in fonts/ und menu/fonts/'),
 }
 
 # files the project states are its own although they carry old Quake 3 names
@@ -133,6 +133,8 @@ GEN_RULES = [
     (r'^models/mapobjects/startlight/', 'tools/maptools/make_startlight.py'),
     (r'^gfx/luts/', 'tools/maptools/make_color_luts.py'),
     (r'^(textures/q3r_drag/|scripts/q3r_drag\.shader$)', 'tools/maptools/make_dragstrip.py'),
+    (r'^menu/ui/web_[^/]+\.png$', 'tools/ui_webstyle/build_ui_art.py'),
+    (r'^scripts/q3r_webstyle\.shader$', 'tools/ui_webstyle'),
 ]
 
 
@@ -193,7 +195,7 @@ def unit_of(p, maps):
         return f'Modelle {s[1]}/{s[2]}', 'Modelle'
     if s[0] == 'models' and len(s) > 2:
         return f'Modelle {s[1]}', 'Modelle'
-    if s[0] == 'fonts':
+    if s[0] == 'fonts' or (s[0] == 'menu' and len(s) > 2 and s[1] == 'fonts'):
         return 'Schriften', 'Oberfläche'
     if s[0] in ('menu', 'gfx', 'icons', 'ui'):
         return (f'{s[0]}/{s[1]}' if len(s) > 2 else s[0]), 'Oberfläche'
