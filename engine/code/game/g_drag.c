@@ -50,6 +50,7 @@ static qboolean dragMapInvalid;
 static qboolean dragResultAnnounced;
 static vec3_t dragForward, dragRight, dragFinishOrigin;
 static float dragLaneHalfWidth;
+static char dragRivalSwap[MAX_CLIENTS][48];	/* "name skill" replacing the bot in this slot */
 
 /*
  * Match: best of g_dragBestOf heats (1, 3, 5 or 7) between the same drivers,
@@ -302,6 +303,7 @@ static void G_DragDisqualify( int clientNum, dragPhase_t phase, const char *reas
 
 void G_DragInit( void ) {
 	memset( dragClients, 0, sizeof( dragClients ) );
+	memset( dragRivalSwap, 0, sizeof( dragRivalSwap ) );
 	dragCountdownTime = dragScheduledGreenTime = dragGreenTime = 0;
 	dragAllDoneTime = dragFirstFinishTime = 0;
 	dragLastLight = -1;
@@ -1055,16 +1057,41 @@ static void G_DragNextHeat( void ) {
 		ent->raceObserver = qfalse;
 		ent->client->sess.spectatorState = SPECTATOR_NOT;
 		ent->client->ps.pm_flags &= ~( PMF_FOLLOW | PMF_OBSERVE );
-		ClientSpawn( ent );
+		/* Off the strip first: a car still standing on a start spot from the
+		 * last heat (out at the line, or the driver's own) makes the grid
+		 * pick an overflow spot behind the line. */
+		trap_UnlinkEntity( ent );
+		if ( ent->frontBounds ) trap_UnlinkEntity( ent->frontBounds );
+		if ( ent->rearBounds ) trap_UnlinkEntity( ent->rearBounds );
+	}
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( G_DragActive( i ) ) ClientSpawn( &g_entities[i] );
 	}
 	G_DragPublishMatch( -1 );
 }
 
-/* After a match against a bot, the next match is against another bot. */
+/* After a match against a bot, the next match is against another bot. The
+ * swap waits for the end of the intermission, so the results still show the
+ * rival that was raced (see G_DragExitLevel). */
+
+void G_DragExitLevel( void ) {
+	int i;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( !dragRivalSwap[i][0] ) continue;
+		/* only if the slot still holds a bot */
+		if ( g_gametype.integer == GT_DRAG && level.clients[i].pers.connected != CON_DISCONNECTED
+			&& ( g_entities[i].r.svFlags & SVF_BOT ) ) {
+			trap_SendConsoleCommand( EXEC_APPEND, va( "clientkick %d\naddbot %s free\n", i, dragRivalSwap[i] ) );
+		}
+		dragRivalSwap[i][0] = '\0';
+	}
+}
+
 static void G_DragNextRival( void ) {
 	char userinfo[MAX_INFO_STRING];
 	const char *next, *skill;
 	int i, humans = 0;
+	memset( dragRivalSwap, 0, sizeof( dragRivalSwap ) );
 	if ( g_dragTournament.integer ) return;
 	for ( i = 0; i < MAX_CLIENTS; i++ ) {
 		if ( dragMatch[i].entered && G_DragActive( i ) && !( g_entities[i].r.svFlags & SVF_BOT ) ) humans++;
@@ -1076,8 +1103,7 @@ static void G_DragNextRival( void ) {
 		if ( !next ) continue;
 		trap_GetUserinfo( i, userinfo, sizeof( userinfo ) );
 		skill = Info_ValueForKey( userinfo, "skill" );
-		trap_SendConsoleCommand( EXEC_APPEND, va( "clientkick %d\naddbot %s %s free\n", i, next,
-			skill[0] ? skill : "3" ) );
+		Com_sprintf( dragRivalSwap[i], sizeof( dragRivalSwap[i] ), "%s %s", next, skill[0] ? skill : "3" );
 	}
 }
 

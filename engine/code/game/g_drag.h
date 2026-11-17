@@ -11,6 +11,7 @@ void G_DragFilterCommand( gentity_t *ent, usercmd_t *cmd );
 qboolean G_DragTryGearChange( gentity_t *ent, int direction, int commandTime );
 qboolean G_DragBotInput( int clientNum, usercmd_t *cmd );
 int G_DragMatchBestOf( void );
+void G_DragExitLevel( void );
 void G_DragSimulateMatch( int skillA, int skillB, int bestOf, int *winsA, int *winsB );
 
 /* g_drag_tourney.c */

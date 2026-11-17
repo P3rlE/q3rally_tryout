@@ -75,6 +75,12 @@ Changed:
   the score. The Ladder gets each driver's best heat; the match goes to
   the most heat wins, and career points count once per match. After a
   match against a bot, the next one is against another bot.
+- Drag Race: the results after a match against a bot show that bot; the
+  next bot only takes over when the intermission ends (it used to replace
+  the rival at once and appear as a spectator in the results).
+- Drag Race: both cars leave the strip before the next heat's respawn, so
+  no driver gets an overflow spot behind the line because a car of the
+  last heat still stood on his start spot.
 - Drag Race: a driver who was out of a heat (blown engine, false start)
   stayed in the observer camera in the next heat of the match, and the
   heat waited for him.

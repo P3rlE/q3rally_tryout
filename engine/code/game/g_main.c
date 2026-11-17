@@ -2655,6 +2655,9 @@ void ExitLevel (void) {
 */
 // END
 
+	/* Drag: the next bot rival takes over only now, after the results. */
+	G_DragExitLevel();
+
 	trap_Cvar_VariableStringBuffer( "nextmap", nextmap, sizeof(nextmap) );
 	trap_Cvar_VariableStringBuffer( "d1", d1, sizeof(d1) );
 
