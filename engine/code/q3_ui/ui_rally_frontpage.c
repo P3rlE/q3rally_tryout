@@ -73,10 +73,16 @@ static void WS_H1Styles( const wsFrontPage_t *page, wsTextStyle_t *h1, wsTextSty
 
 void WS_FrontPage( wsFrontPage_t *page, float width, float height,
                    const char *title, const char *em, const char *status ) {
+	WS_FrontPageLabeled( page, width, height, wsHeaderLabel, title, em, status );
+}
+
+void WS_FrontPageLabeled( wsFrontPage_t *page, float width, float height, const char *headerLabel,
+                          const char *title, const char *em, const char *status ) {
 	wsTextStyle_t label, h1, h1em;
 	float main, headerH, divW, statusW;
 
 	memset( page, 0, sizeof( *page ) );
+	page->label = headerLabel;
 	page->width = width;
 	page->height = height;
 	WS_LabelStyle( &label );
@@ -96,7 +102,9 @@ void WS_FrontPage( wsFrontPage_t *page, float width, float height,
 	page->h1Y = page->pad + WS_LABEL_LINE + WS_HEADING_MARGIN;
 	headerH = WS_LABEL_LINE + 2.0f * WS_HEADING_MARGIN + page->h1Size;
 	divW = WS_StyledWidth( &h1, title ) + WS_StyledWidth( &h1em, em );
-	if ( WS_StyledWidth( &label, wsHeaderLabel ) > divW ) divW = WS_StyledWidth( &label, wsHeaderLabel );
+	if ( WS_StyledWidth( &label, headerLabel ) > divW ) divW = WS_StyledWidth( &label, headerLabel );
+	page->titleW = divW;
+	page->titleH = headerH;
 	statusW = WS_StyledWidth( &label, status );
 	if ( divW + WS_REM + statusW <= page->contentW ) {
 		page->statusX = page->contentX + page->contentW - statusW;
@@ -228,13 +236,15 @@ void WS_DrawFrontHeader( const wsFrontPage_t *page, const char *title, const cha
 	wsTextStyle_t h1, h1em;
 	char          shown[64];
 
-	WS_DrawLabel( page->headerX, page->headerY, wsHeaderLabel, NULL );
+	WS_DrawLabel( page->headerX, page->headerY, page->label, NULL );
 	WS_H1Styles( page, &h1, &h1em );
 	WS_Transform( &h1, title, shown, sizeof( shown ) );
 	WS_DrawText( &h1, page->headerX, page->h1Y, shown, strlen( shown ), wsWhite );
 	WS_Transform( &h1em, em, shown, sizeof( shown ) );
 	WS_DrawText( &h1em, page->headerX + WS_StyledWidth( &h1, title ), page->h1Y, shown, strlen( shown ), wsAccent );
-	WS_DrawLabel( page->statusX, page->statusY, status, NULL );
+	if ( status && status[0] ) {
+		WS_DrawLabel( page->statusX, page->statusY, status, NULL );
+	}
 }
 
 void WS_DrawShowroom( const wsShowroom_t *room, const char *vehicle, const char *status,

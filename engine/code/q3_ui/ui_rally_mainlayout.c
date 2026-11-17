@@ -34,9 +34,7 @@ const char *mainQuitCancel = "Keep racing";
 
 /* Chrome keeps block lengths in 1/64 px (LayoutUnit), cut off, not rounded;
  * nine stacked buttons would otherwise drift by a quarter pixel. */
-static float LU( float value ) {
-	return floor( value * 64.0f ) / 64.0f;
-}
+#define LU WS_LU
 
 /* #quit-confirm: width fit-content up to min(32rem, 90vw), centered */
 static void MainMenu_DialogLayout( mainLayout_t *l, float width, float height ) {

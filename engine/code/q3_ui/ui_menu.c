@@ -696,10 +696,16 @@ void UI_MainMenu( void ) {
         m_entersound = qfalse;
 
         {
+                /* pinned states for screenshots (tools/ui_webstyle), no wizards */
                 char preview[8];
+                trap_Cvar_VariableStringBuffer( "ui_creditsPreview", preview, sizeof( preview ) );
+                if ( preview[0] ) {
+                        UI_CreditMenu();
+                        return;
+                }
                 trap_Cvar_VariableStringBuffer( "ui_mainMenuPreview", preview, sizeof( preview ) );
                 if ( preview[0] ) {
-                        return;         /* a pinned state for screenshots, no wizards */
+                        return;
                 }
         }
 

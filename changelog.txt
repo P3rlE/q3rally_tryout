@@ -29,6 +29,11 @@ Changed:
   focus, Enter presses. Going on to a menu that is still a WebUI page, the
   last frame stays on screen until the page shows, instead of a black
   frame.
+- The end credits are drawn by the game again and look exactly like the
+  WebUI's "Thank you for playing." screen: the roll fades in and out at
+  the window's edges like the page's mask and ends the game when it is
+  through; any key or "Exit game" quits at once. The menu text now uses
+  the fonts' standard ligatures (fi, fl, ij, ...) as Chrome does.
 - Weapons: own models in a "built, not bought" style, all ten made from car
   parts on the same roof plate, with own muzzle flashes and icons. New names
   close to the old ones: Harvester Saw, Spotlight MG, Twin Shotgun, Drum

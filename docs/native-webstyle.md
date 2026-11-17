@@ -3,13 +3,15 @@
 The WebUI (`engine/webui/garage`, shown through CEF on Windows) set the look of
 the menus. Screens move back into the game one at a time and must look exactly
 like their WebUI version, on every platform and without a browser. Done so
-far: the graphics loading screen ("Getting ready.", WebUI screen 1) and the
-main menu ("Ready to race.", WebUI screen 2).
+far: the graphics loading screen ("Getting ready.", WebUI screen 1), the
+main menu ("Ready to race.", WebUI screen 2) and the end credits ("Thank you
+for playing.", WebUI screen 3).
 
 ## How a screen is rebuilt
 
-- **Layout from the CSS.** `q3_ui/ui_rally_gfxlayout.c` (loading screen) and
-  `q3_ui/ui_rally_mainlayout.c` (main menu) compute every box of the screen
+- **Layout from the CSS.** `q3_ui/ui_rally_gfxlayout.c` (loading screen),
+  `q3_ui/ui_rally_mainlayout.c` (main menu) and
+  `q3_ui/ui_rally_creditslayout.c` (end credits) compute every box of the screen
   from the rules in `garage.css`, number for number. What both share, the
   page header, the two-column grid and the showroom with the car, lives in
   `q3_ui/ui_rally_frontpage.c`. This covers
@@ -21,13 +23,18 @@ main menu ("Ready to race.", WebUI screen 2).
   rounded; the main menu's stacked buttons follow that, or nine of them
   would drift by a quarter pixel.
 - **Text like Chrome.** `q3_ui/ui_rally_webstyle.c` lays text out with the
-  font's linear advances, its GPOS pair kerning, `letter-spacing` after every
+  font's linear advances, its standard ligatures (fi, fl, ffi, ffl, ij, IJ,
+  gj, `--`; Chrome leaves them out when letter-spacing is set), its GPOS pair
+  kerning, `letter-spacing` after every
   glyph and `text-transform`. Line boxes round ascent and descent to whole
   pixels and put the larger half of the leading below the text.
 - **Things Chrome synthesizes:**
   - bold for weight 750 on a regular face (outline emboldened by em/24, as Skia does);
   - italic for `<em>` (skew 1/4);
   - tabular figures for list markers (`::marker { font-variant-numeric: tabular-nums }`).
+- **Masks.** `mask-image` with a vertical gradient (the credits window fades
+  its text in and out over 12% at each end) is `WS_SetFade`: glyphs in a
+  fade zone are drawn in one pixel rows, each with the mask's alpha.
 - **Backgrounds.**
   - The body stripes are a 1D texture. The shader `tcMod transform`
     (`scripts/q3r_webstyle.shader`) projects the pixel position onto the
@@ -59,14 +66,16 @@ atlases.
 
 ## Checking a screen
 
-- `tools/ui_webstyle/measure_webui_loading.cjs` and `measure_webui_main.cjs`
-  measure the WebUI screens in Chrome. They record every box and the width
+- `tools/ui_webstyle/measure_webui_loading.cjs`, `measure_webui_main.cjs` and
+  `measure_webui_credits.cjs` measure the WebUI screens in Chrome (the
+  credits with the roll paused at fixed times). They record every box and the width
   of every text run, for several viewports and all states (main menu: with
   and without a profile, quit dialog open).
-- The results are `tests/fixtures/webui_loading_layout.json` and
-  `webui_main_layout.json`.
-- `tests/test_native_gfxloading.py` and `test_native_mainmenu.py` run the
-  native layout and text measurement against them:
+- The results are `tests/fixtures/webui_loading_layout.json`,
+  `webui_main_layout.json` and `webui_credits_layout.json`.
+- `tests/test_native_gfxloading.py`, `test_native_mainmenu.py` and
+  `test_native_credits.py` run the native layout and text measurement
+  against them:
   - boxes must match within 0.5 px;
   - text runs within 0.1 px;
   - line breaks must match exactly.
@@ -75,7 +84,8 @@ atlases.
   the screenshot can be laid next to the WebUI screenshot of the same state:
   `ui_gfxLoadingPreview "stage,percent,prompt"` for the loading screen,
   `ui_mainMenuPreview "name,rank,points,quit"` for the main menu (it also
-  skips the profile wizards).
+  skips the profile wizards), `ui_creditsPreview <seconds>` for the end
+  credits, paused that far into the roll.
 
 What still differs from the WebUI:
 - **Glyph edges.** Chrome positions glyphs on subpixels; the game draws them
@@ -85,6 +95,14 @@ What still differs from the WebUI:
   lit headlights. Camera, field of view, angle and framing are the same
   (`UI_DrawVehicleWebView`).
 - **The cursor.** The game draws its own cursor.
+
+## The end credits
+
+- The lines are the table in `q3_ui/ui_credits.c`, as the client published
+  them to the page: titles as h2, accent-colored lines as labels.
+- They roll up through the window at 38 px/s, from just below it until the
+  last line has left it; then the game quits, as on the page.
+- Any key quits at once; the mouse only through the "Exit game" button.
 
 ## Interplay with the WebUI
 
@@ -104,7 +122,7 @@ What still differs from the WebUI:
 
 ## Interplay with the WebUI
 
-While a native screen runs (loading screen, main menu), the UI reports
+While a native screen runs (loading screen, main menu, end credits), the UI reports
 `UI_WEB_SCREEN` 15. The client treats it like screen 0: the browser stays
 hidden and the game draws. While the game is disconnected, though, the
 client starts CEF and loads the page, so the screens that are still WebUI
