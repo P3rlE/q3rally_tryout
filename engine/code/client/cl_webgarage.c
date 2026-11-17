@@ -436,7 +436,8 @@ static qboolean Web_Preloading( void ) {
 }
 
 static int Web_CurrentScreen( void ) {
-    if ( !(Key_GetCatcher() & KEYCATCH_CONSOLE) && clc.state >= CA_CONNECTING && clc.state <= CA_PRIMED && !clc.demoPlayer ) return 14;
+    /* connecting and loading: the UI draws the map loading screen itself */
+    if ( clc.state >= CA_CONNECTING && clc.state <= CA_PRIMED && !clc.demoPlayer ) return 0;
     if ( Key_GetCatcher() & KEYCATCH_CONSOLE ) return 0;
     if ( clc.state == CA_ACTIVE && !clc.demoPlayer ) {
         if ( cgvm && Cvar_VariableIntegerValue( "cg_hudOptionsOpen" ) && (Key_GetCatcher() & KEYCATCH_CGAME) && !(Key_GetCatcher() & KEYCATCH_UI) ) return 13;
@@ -451,8 +452,7 @@ qboolean CL_WebGarageOwnsScreen( void ) {
     int screen;
     if ( !webFrontend || !webFrontend->integer || !uivm ) return qfalse;
     screen = Web_UIScreen();
-    return screen != 0 ||
-        (clc.state >= CA_CONNECTING && clc.state <= CA_PRIMED && !clc.demoPlayer);
+    return screen != 0 && !(clc.state >= CA_CONNECTING && clc.state <= CA_PRIMED && !clc.demoPlayer);
 }
 
 /*

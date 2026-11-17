@@ -75,8 +75,8 @@ Downloads (screen 6) are drawn by the game again, in the WebUI's look (docs/nati
 page still loads behind them, hidden, for the screens that are still pages.
 
 With `cl_webUI 1`, the embedded frontend still opens for the driver page, the
-garage, offline and online play, the settings, the HUD options and map
-loading. Other menus use their
+garage, offline and online play, the settings and the HUD options. Map loading is
+native (docs/native-webstyle.md). Other menus use their
 native UI. On return to a native menu, the client restores SDL input focus,
 clears held keys and routes mouse positions through the UI's absolute position
 entry point.

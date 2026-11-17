@@ -99,6 +99,7 @@ void	WS_DrawBackground( float pageWidth, float pageHeight );
 /* <progress> in the dark color scheme, 16px box */
 void	WS_DrawProgress( float x, float y, float w, float fraction );
 /* primary or .secondary button, box given, label centered on its line */
+void	WS_DrawProgressRange( float x, float y, float w, float from, float to );
 void	WS_DrawButton( const wsRect_t *box, const char *label, qboolean secondary, qboolean focused );
 
 #endif

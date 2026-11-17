@@ -528,6 +528,22 @@ void WS_DrawProgress( float x, float y, float w, float fraction ) {
 	WS_ProgressPart( left + 4, top, fill - left - 4, 4.5f, 4.5f, wsProgressFill );
 }
 
+/* An indeterminate <progress>: the track with a moving piece of fill from
+ * one fraction to another (both clamped to the bar) */
+void WS_DrawProgressRange( float x, float y, float w, float from, float to ) {
+	float left = WS_Round( x ), right = WS_Round( x + w ), top = WS_Round( y ) + 4, a, b;
+
+	WS_RegisterArt();
+	WS_ProgressPart( left, top, 4, 0, 4, wsProgressTrack );
+	WS_ProgressPart( left + 4, top, right - left - 8, 4.5f, 4.5f, wsProgressTrack );
+	WS_ProgressPart( right - 4, top, 4, 12, 16, wsProgressTrack );
+	a = WS_Round( x + w * WS_Clamp( 0.0f, from, 1.0f ) );
+	b = WS_Round( x + w * WS_Clamp( 0.0f, to, 1.0f ) );
+	if ( a < left + 4 ) a = left + 4;
+	if ( b > right - 4 ) b = right - 4;
+	if ( b > a ) WS_ProgressPart( a, top, b - a, 4.5f, 4.5f, wsProgressFill );
+}
+
 void WS_DrawButton( const wsRect_t *box, const char *label, qboolean secondary, qboolean focused ) {
 	wsTextStyle_t style = { WS_BODY_BOLD, WS_REM, 0.0f, 24.0f, qfalse };
 	float x0 = WS_Round( box->x ), y0 = WS_Round( box->y );
