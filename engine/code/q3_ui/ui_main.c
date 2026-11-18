@@ -115,7 +115,7 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
         if ( UI_WebMainScreen() ) return 15;	/* native, the browser waits hidden */
         if ( UI_WebOfflineScreen() ) return 15;	/* both offline steps: native as well */
         if ( UI_WebOnlineScreen() ) return 15;	/* the server browser: native as well */
-        if ( UI_WebConfigScreen() ) return Config_Native() ? 15 : 12;	/* settings and race control native, the wizards still on the page */
+        if ( UI_WebConfigScreen() ) return Config_Native() ? 15 : 12;	/* settings, race control and the wizards: native */
         if ( UI_WebCreditsScreen() ) return 15;	/* native as well */
         if ( UI_WebDemosScreen() ) return 15;	/* native as well */
         if ( UI_WebRivalsScreen() ) return 15;	/* native as well */

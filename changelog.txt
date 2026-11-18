@@ -65,7 +65,9 @@ Changed:
   controls with key capture and search, graphics, display, sound, network,
   game and Q3Rally options, the renderer information and the confirmations,
   and in the race the pause page, adding and removing bots, team orders and
-  the server information. The first-start and ladder wizards follow.
+  the server information. The same goes for the first-start wizard
+  (driver name, details with avatar preview, offline Ladder, ready), the
+  offline Ladder registration and saving a demo recording.
 - Weapons: own models in a "built, not bought" style, all ten made from car
   parts on the same roof plate, with own muzzle flashes and icons. New names
   close to the old ones: Harvester Saw, Spotlight MG, Twin Shotgun, Drum

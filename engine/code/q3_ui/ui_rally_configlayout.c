@@ -52,32 +52,30 @@ void Config_WrapPre( const wsTextStyle_t *style, const char *text, float width, 
 	int start = 0, length = strlen( text );
 
 	memset( lines, 0, sizeof( *lines ) );
-	while ( start < length && lines->count < CONFIG_MAX_LINES ) {
-		int end = start, fit = start, chance = -1, next, i;
+	/* a line feed at the very end opens no line of its own */
+	if ( length && text[length - 1] == '\n' ) length--;
+	if ( !length ) return;
+	while ( start <= length && lines->count < CONFIG_MAX_LINES ) {
+		int end = start, piece = start;
 		while ( end < length && text[end] != '\n' ) end++;
-		/* the longest piece that fits; spaces at its end hang */
-		for ( i = start + 1; i <= end; i++ ) {
-			if ( text[i - 1] != ' ' && WS_TextWidth( style, text + start, i - start ) > width + 0.01f ) break;
-			fit = i;
-			if ( i < end && text[i - 1] == ' ' && text[i] != ' ' ) chance = i;
-			if ( i < end && i - 1 > start && text[i - 1] == '-' && isalnum( (unsigned char)text[i - 2] ) && isalpha( (unsigned char)text[i] ) ) chance = i;
-		}
-		if ( fit >= end ) next = end;
-		else if ( chance > start ) next = chance;
-		else next = fit > start ? fit : start + 1;
-		lines->start[lines->count] = start;
-		lines->length[lines->count] = next - start;
-		lines->count++;
-		start = next;
-		if ( start < length && text[start] == '\n' ) {
-			start++;
-			/* an empty line between two line feeds */
-			if ( start < length && text[start] == '\n' && lines->count < CONFIG_MAX_LINES ) {
-				lines->start[lines->count] = start;
-				lines->length[lines->count] = 0;
-				lines->count++;
+		/* the segment up to the line feed, broken where it has to */
+		do {
+			int fit = piece, chance = -1, next, i;
+			for ( i = piece + 1; i <= end; i++ ) {
+				if ( text[i - 1] != ' ' && WS_TextWidth( style, text + piece, i - piece ) > width + 0.01f ) break;
+				fit = i;
+				if ( i < end && text[i - 1] == ' ' && text[i] != ' ' ) chance = i;
+				if ( i < end && i - 1 > piece && text[i - 1] == '-' && isalnum( (unsigned char)text[i - 2] ) && isalpha( (unsigned char)text[i] ) ) chance = i;
 			}
-		}
+			if ( fit >= end ) next = end;
+			else if ( chance > piece ) next = chance;
+			else next = fit > piece ? fit : piece + 1;
+			lines->start[lines->count] = piece;
+			lines->length[lines->count] = next - piece;
+			lines->count++;
+			piece = next;
+		} while ( piece < end && lines->count < CONFIG_MAX_LINES );
+		start = end + 1;
 	}
 }
 
@@ -129,8 +127,32 @@ static float Config_Field( configLayout_t *l, configField_t *f, float width ) {
 	default:	/* the selects */
 		f->control.y = y + 0.5f * REM;
 		f->control.h = CONFIG_SELECT;
-		return f->control.y + f->control.h;
+		y = f->control.y + f->control.h;
+		if ( f->avatar != CONFIG_NO_PREVIEW ) {
+			/* .config-avatar-preview: margin-top .75rem, padding .75rem,
+			 * min-height 7.5rem; a 6rem picture or a .9rem note, centred */
+			f->preview.x = 0.0f;
+			f->preview.w = width;
+			f->preview.y = y + 0.75f * REM;
+			f->preview.h = f->avatar == CONFIG_PREVIEW_IMAGE ? 6.0f * REM + 2.0f * 0.75f * REM + 2.0f : 7.5f * REM;
+			if ( f->preview.h < 7.5f * REM ) f->preview.h = 7.5f * REM;
+			f->image.w = f->image.h = 6.0f * REM;
+			f->image.x = ( width - f->image.w ) * 0.5f;
+			f->image.y = f->preview.y + ( f->preview.h - f->image.h ) * 0.5f;
+			y = f->preview.y + f->preview.h;
+		}
+		return y;
 	}
+}
+
+/* the button row */
+static void Config_Nav( configLayout_t *l, float y ) {
+	int i;
+	l->nav.y = y;
+	l->nav.h = 0.0f;
+	if ( l->dialog == CONFIG_CONFIRM ) return;
+	for ( i = 0; i < l->buttons; i++ ) l->button[i].w = WS_ButtonWidth( l->buttonLabel[i] );
+	l->nav.h = Config_Flow( l->button, l->buttons, l->nav.x, y, l->nav.w, WS_BUTTON_HEIGHT, CONFIG_GAP );
 }
 
 static void Config_Dialog( configLayout_t *l, float width, float height ) {
@@ -185,31 +207,61 @@ void Config_Layout( configLayout_t *l, float width, float height ) {
 	int i, row;
 
 	WS_BodyStyle( &body );
-	l->headerLabel = l->screen >= 10 ? "Q3RALLY / IN RACE" : "Q3RALLY / CONFIGURATION";
+	l->registration = l->screen >= 16;
+	l->headerLabel = l->screen == 21 ? "Q3RALLY / YOUR RECORDING" : l->screen >= 16 ? "Q3RALLY / YOUR DRIVER" :
+	                 l->screen >= 10 ? "Q3RALLY / IN RACE" : "Q3RALLY / CONFIGURATION";
 	l->backLabel = l->screen == 10 ? "Resume race" : "Back";
+	l->backHidden = l->screen == 17 || l->screen == 20;
 	WS_FrontPageLabeled( &l->page, width, height, l->headerLabel, l->title ? l->title : "", "", "" );
-	top = WS_PlaceHeaderButton( &l->page, l->backLabel, &l->back );
-	pad = l->page.sectionPad;
+	if ( l->registration ) {
+		/* .registration-screen: max-width 70rem; h1 clamp(2.1rem, 4vw, 3.8rem) */
+		wsTextStyle_t h1, label;
+		float main = l->page.pageWidth < 70.0f * REM ? l->page.pageWidth : 70.0f * REM;
+		WS_LabelStyle( &label );
+		l->page.contentX = l->page.headerX = ( l->page.pageWidth - main ) * 0.5f + l->page.pad;
+		l->page.contentW = main - 2.0f * l->page.pad;
+		l->page.h1Size = LU( WS_Clamp( 2.1f * REM, 0.04f * width, 3.8f * REM ) );
+		l->page.titleH = LU( WS_LABEL_LINE ) + 2.0f * LU( WS_HEADING_MARGIN ) + l->page.h1Size;
+		h1.font = WS_CONDENSED;
+		h1.size = h1.lineHeight = l->page.h1Size;
+		h1.spacing = 0.0f;
+		h1.uppercase = qtrue;
+		l->page.titleW = WS_StyledWidth( &h1, l->title ? l->title : "" );
+		if ( WS_StyledWidth( &label, l->headerLabel ) > l->page.titleW ) l->page.titleW = WS_StyledWidth( &label, l->headerLabel );
+	}
+	if ( l->backHidden ) {
+		memset( &l->back, 0, sizeof( l->back ) );
+		top = l->page.pad + l->page.titleH + 2.0f * REM;
+	} else {
+		top = WS_PlaceHeaderButton( &l->page, l->backLabel, &l->back );
+	}
+	/* the section's padding: 2rem on the registration pages */
+	pad = l->registration ? 2.0f * REM : l->page.sectionPad;
 	l->h2.font = WS_CONDENSED;
 	l->h2.size = l->h2.lineHeight = LU( WS_Clamp( 1.5f * REM, 0.04f * width, 3.0f * REM ) );
 	l->h2.spacing = 0.0f;
 	l->h2.uppercase = qtrue;
 
-	/* p#config-description (pre-wrap), then nav.config-actions (a flex box:
-	 * margin 1rem 0, its own margins never collapse together) */
-	Config_WrapPre( &body, l->description ? l->description : "", l->page.contentW, &l->descriptionLines );
+	/* p#config-description (pre-wrap; 58rem wide at line-height 1.7 on the
+	 * registration pages) */
+	l->descriptionStyle = body;
+	if ( l->registration ) l->descriptionStyle.lineHeight = LU( 1.7f * REM );
+	Config_WrapPre( &l->descriptionStyle, l->description ? l->description : "",
+	                l->registration && l->page.contentW > 58.0f * REM ? 58.0f * REM : l->page.contentW, &l->descriptionLines );
 	l->descriptionY = top;
 	y = top;
-	if ( l->descriptionLines.count ) y += l->descriptionLines.count * WS_BODY_LINE + REM;
+	if ( l->descriptionLines.count ) y += l->descriptionLines.count * l->descriptionStyle.lineHeight + REM;
+
+	/* nav.config-actions (a flex box: margin 1rem 0, its own margins never
+	 * collapse together); on the registration pages after the settings,
+	 * margin-top 1.5rem */
 	l->nav.x = l->page.contentX;
 	l->nav.w = l->page.contentW;
-	l->nav.y = y;
 	l->nav.h = 0.0f;
-	if ( l->dialog != CONFIG_CONFIRM ) {
-		for ( i = 0; i < l->buttons; i++ ) l->button[i].w = WS_ButtonWidth( l->buttonLabel[i] );
-		l->nav.h = Config_Flow( l->button, l->buttons, l->nav.x, y, l->nav.w, WS_BUTTON_HEIGHT, CONFIG_GAP );
+	if ( !l->registration ) {
+		Config_Nav( l, y );
+		y = l->nav.y + l->nav.h + REM;
 	}
-	y = l->nav.y + l->nav.h + REM;
 
 	/* section#config-settings > .config-fields:
 	 * repeat(auto-fit, minmax(min(100%, 19rem), 1fr)), gap 1.5rem; auto-fit
@@ -225,7 +277,7 @@ void Config_Layout( configLayout_t *l, float width, float height ) {
 	if ( l->columns < 1 ) l->columns = 1;
 	if ( l->columns > l->fields ) l->columns = l->fields;
 	if ( l->settings ) {
-		float rowTop = y + 1.0f + pad, h[CONFIG_MAX_FIELDS];
+		float top2 = l->registration ? 2.0f : 1.0f, rowTop = y + top2 + pad, h[CONFIG_MAX_FIELDS];
 		column = ( l->fieldsW - ( l->columns - 1 ) * 1.5f * REM ) / l->columns;
 		for ( row = 0; row * l->columns < l->fields; row++ ) {
 			float rowH = 0.0f;
@@ -244,11 +296,19 @@ void Config_Layout( configLayout_t *l, float width, float height ) {
 				f->outputY += rowTop;
 				f->rebind.x += f->box.x; f->clear.x += f->box.x;
 				f->rebind.y += rowTop; f->clear.y += rowTop;
+				f->preview.x += f->box.x; f->preview.y += rowTop;
+				f->image.x += f->box.x; f->image.y += rowTop;
 			}
 			rowTop += rowH + 1.5f * REM;
 		}
 		l->section.h = rowTop - 1.5f * REM + pad + 1.0f - y;
 		y += l->section.h;
+	}
+	if ( l->registration ) {
+		/* the settings' bottom, or the description's 1rem against 1.5rem */
+		y += l->settings || !l->descriptionLines.count ? 1.5f * REM : 0.5f * REM;
+		Config_Nav( l, y );
+		y = l->nav.y + l->nav.h + REM;
 	}
 	l->pageHeight = y + l->page.pad;
 
@@ -268,6 +328,7 @@ void Config_Layout( configLayout_t *l, float width, float height ) {
 		for ( i = 0; i < l->fields && l->settings; i++ ) {
 			configField_t *f = &l->field[i];
 			f->box.y += dy; f->control.y += dy; f->outputY += dy; f->rebind.y += dy; f->clear.y += dy;
+			f->preview.y += dy; f->image.y += dy;
 		}
 	}
 	if ( l->dialog != CONFIG_NO_DIALOG ) Config_Dialog( l, width, height );

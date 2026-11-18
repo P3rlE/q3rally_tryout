@@ -1,12 +1,12 @@
 // Measure the WebUI's settings (#config-screen, screen 12: config pages
-// 0-15) in Chrome: the reference the native ones (q3_ui/ui_rally_config.c)
+// 0-21, the wizards included) in Chrome: the reference the native ones (q3_ui/ui_rally_config.c)
 // are tested against.
 //
 //   node tools/ui_webstyle/measure_webui_config.cjs <staged garage> <fixture.json> [screenshot dir]
 //
 // The data is the game's own: tests/fixtures/config_model.json holds the
-// pages as the UI prints them with ui_configDump 1 (and one made-up page with
-// the two list items). Every visible element is recorded under a path
+// pages as the UI prints them with ui_configDump 1 (one made-up page with
+// the two list items, the details step with an avatar chosen). Every visible element is recorded under a path
 // (tag#id.class:index from the screen down, "dialog/..." for an open dialog).
 const {chromium}=require('playwright');const fs=require('fs'),path=require('path'),http=require('http');
 const [root,output,shots]=process.argv.slice(2);

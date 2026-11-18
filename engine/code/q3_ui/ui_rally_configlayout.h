@@ -45,18 +45,22 @@ typedef struct {
 } configLines_t;
 
 typedef enum { CONFIG_NO_DIALOG, CONFIG_CONFIRM, CONFIG_CAPTURE } configDialog_t;
+/* the avatar select's preview: none, the picture, or a note ("No avatar selected") */
+typedef enum { CONFIG_NO_PREVIEW, CONFIG_PREVIEW_IMAGE, CONFIG_PREVIEW_NOTE } configPreview_t;
 
 typedef struct {
 	/* inputs */
 	int				type;
 	const char		*label;			/* without the trailing colon */
 	const char		*text;			/* the list's lines (CONFIG_LIST), the key (CONFIG_KEY) */
+	configPreview_t	avatar;
 
 	wsRect_t		box;			/* .config-field, stretched to its grid row */
 	wsLines_t		labelLines;
 	wsRect_t		control;		/* select, input, range input (2px margin) or pre */
 	float			outputY;		/* the slider's value */
 	wsRect_t		rebind, clear;	/* CONFIG_KEY */
+	wsRect_t		preview, image;	/* the avatar preview and its picture */
 	configLines_t	lines;			/* CONFIG_LIST */
 	float			listHeight;		/* the pre's content */
 } configField_t;
@@ -74,10 +78,13 @@ typedef struct {
 	float			pageScroll;
 
 	wsFrontPage_t	page;
+	qboolean		registration;	/* the wizards (16-21): .registration-screen */
+	qboolean		backHidden;
 	const char		*headerLabel, *backLabel;
 	wsRect_t		back;
 	float			descriptionY;
 	configLines_t	descriptionLines;
+	wsTextStyle_t	descriptionStyle;
 	wsRect_t		nav;
 	wsRect_t		button[CONFIG_MAX_BUTTONS];		/* in nav, or in the confirm dialog */
 	qboolean		settings;
