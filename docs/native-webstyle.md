@@ -72,8 +72,8 @@ atlases.
 
 - `tools/ui_webstyle/measure_webui_loading.cjs`, `measure_webui_main.cjs`,
   `measure_webui_credits.cjs`, `measure_webui_rivals.cjs`,
-  `measure_webui_downloads.cjs`, `measure_webui_demos.cjs` and
-  `measure_webui_maploading.cjs` measure the WebUI screens in Chrome (the
+  `measure_webui_downloads.cjs`, `measure_webui_demos.cjs`,
+  `measure_webui_maploading.cjs` and `measure_webui_offline.cjs` measure the WebUI screens in Chrome (the
   credits with the roll paused at fixed times). They record every box and the width
   of every text run, for several viewports and all states (main menu: with
   and without a profile, quit dialog open).
@@ -168,6 +168,25 @@ What still differs from the WebUI:
   on the page, there is no cursor during loading.
 - The client no longer hands this screen to the browser
   (`Web_CurrentScreen`, `CL_WebGarageOwnsScreen`).
+
+## Offline, step 1 (track and mode)
+
+- `q3_ui/ui_rally_offline.c` draws it over the old start server menu
+  (`Offline_InstallTrack`), layout in `ui_rally_offlinelayout.c`. It reads
+  the same model the page read (`UI_WebOfflineNumber`, `UI_WebOfflineChar`)
+  and acts through `UI_WebOfflineAction`: back, mode, track, next.
+- From 64rem x 44rem the page fills the viewport and only the track list
+  scrolls; the image takes what the details leave. Below that the page
+  flows and scrolls as a whole, with a scrollbar in the gutter.
+- Like the page: a new mode clears the search, the search matches title and
+  id, the arrows and the D-pad pick the previous or next track, Enter goes
+  to "Race setup", Escape goes back.
+- Levelshots are drawn with `object-fit: cover`; their size comes from the
+  file's header (JPEG, TGA, PNG), most are 16:9, a few square.
+- `ui_offlineDump 1` prints the model as JSON (tests/fixtures/offline_model.json),
+  `ui_offlinePreview "mode,search,track,scroll[,pagescroll]"` opens the
+  screen in that state (native_screenshot.sh `offline:`).
+- Step 2 (rules and drivers, screen 10) is still the page.
 
 ## Interplay with the WebUI
 

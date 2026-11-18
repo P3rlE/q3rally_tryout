@@ -112,6 +112,7 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
     case UI_WEB_SCREEN:
         if ( UI_WebLoadingScreen() ) return UI_WebLoadingScreenCode();
         if ( UI_WebMainScreen() ) return 15;	/* native, the browser waits hidden */
+        if ( UI_WebOfflineScreen() == 9 ) return 15;	/* track and mode: native as well */
         if ( UI_WebOfflineScreen() ) return UI_WebOfflineScreen();
         if ( UI_WebOnlineScreen() ) return 11;
         if ( UI_WebConfigScreen() ) return 12;

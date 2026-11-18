@@ -3026,6 +3026,8 @@ Q3UIOBJ_ = \
   $(B)/$(BASEGAME)/ui/ui_rally_library.o \
   $(B)/$(BASEGAME)/ui/ui_rally_demoslayout.o \
   $(B)/$(BASEGAME)/ui/ui_rally_maploadlayout.o \
+  $(B)/$(BASEGAME)/ui/ui_rally_offline.o \
+  $(B)/$(BASEGAME)/ui/ui_rally_offlinelayout.o \
   $(B)/$(BASEGAME)/ui/ui_rally_webstyle.o \
   $(B)/$(BASEGAME)/ui/ui_rally_frontend.o \
   $(B)/$(BASEGAME)/ui/ui_rally_profiles.o \

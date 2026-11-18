@@ -46,6 +46,10 @@ Changed:
 - The map loading screen is drawn by the game again and looks exactly like
   the WebUI's: the track with its levelshot, the connection state, the
   download progress and the connection attempts. Escape cancels.
+- The first step of an offline race ("Your next race.", track and mode) is
+  drawn by the game again and looks exactly like the WebUI's: game mode,
+  track search, the list with levelshots, the track with its details and
+  "Race setup". The second step (rules and drivers) follows.
 - Weapons: own models in a "built, not bought" style, all ten made from car
   parts on the same roof plate, with own muzzle flashes and icons. New names
   close to the old ones: Harvester Saw, Spotlight MG, Twin Shotgun, Drum
