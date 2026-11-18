@@ -23,7 +23,8 @@ catcher=KEYCATCH_UI;assert(Web_CurrentScreen()==12);
 hud=1;catcher=KEYCATCH_CGAME;assert(Web_CurrentScreen()==13);
 catcher|=KEYCATCH_CONSOLE;assert(Web_CurrentScreen()==0);
 catcher=0;clc.state=2;assert(Web_CurrentScreen()==0);
-clc.state=CA_CONNECTING;assert(Web_CurrentScreen()==14);clc.state=CA_PRIMED;assert(Web_CurrentScreen()==14);
+/* connecting and loading: the native map loading screen, the browser hides */
+clc.state=CA_CONNECTING;assert(Web_CurrentScreen()==0);clc.state=CA_PRIMED;assert(Web_CurrentScreen()==0);
 catcher=KEYCATCH_CONSOLE;assert(Web_CurrentScreen()==0);catcher=0;
 clc.state=CA_DISCONNECTED;assert(Web_CurrentScreen()==12);
 clc.state=CA_ACTIVE;clc.demoPlayer=1;screen=4;assert(Web_CurrentScreen()==4);

@@ -43,6 +43,9 @@ Changed:
 - The demo archive is drawn by the game again and looks exactly like the
   WebUI's "Your replays." screen: the list of recordings, the preview that
   plays the demo in place, and restart, seek, pause and stop.
+- The map loading screen is drawn by the game again and looks exactly like
+  the WebUI's: the track with its levelshot, the connection state, the
+  download progress and the connection attempts. Escape cancels.
 - Weapons: own models in a "built, not bought" style, all ten made from car
   parts on the same roof plate, with own muzzle flashes and icons. New names
   close to the old ones: Harvester Saw, Spotlight MG, Twin Shotgun, Drum

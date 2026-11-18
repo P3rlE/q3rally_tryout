@@ -24,6 +24,7 @@ HARNESS = r'''
 #include "q3_ui/ui_rally_creditslayout.h"
 #include "q3_ui/ui_rally_rivalslayout.h"
 #include "q3_ui/ui_rally_demoslayout.h"
+#include "q3_ui/ui_rally_maploadlayout.h"
 #include <stdio.h>
 uiStatic_t uis;
 static FILE *files[8];
@@ -52,6 +53,7 @@ void UI_DrawVehicleWebView(float x, float y, float w, float h, playerInfo_t *pi,
 #include "q3_ui/ui_rally_creditslayout.c"
 #include "q3_ui/ui_rally_rivalslayout.c"
 #include "q3_ui/ui_rally_demoslayout.c"
+#include "q3_ui/ui_rally_maploadlayout.c"
 
 static void rect(const char *name, wsRect_t r) { printf("\"%s\":[%g,%g,%g,%g],", name, r.x, r.y, r.w, r.h); }
 
@@ -165,6 +167,25 @@ int main(void) {
                 l.placeholderX, l.placeholderY, l.clockY, l.messageX, l.pageHeight, l.optionHeight, l.optionWidth, l.contentHeight);
             for (i = 0; i < 5; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.transport[i].x, l.transport[i].y, l.transport[i].w, l.transport[i].h);
             printf("]}\n");
+        } else if (!strcmp(command, "mapload")) {
+            /* mapload <width> <height> <image>, then name|server|detail|transfer */
+            static mapLoadLayout_t l; float w, h; int image; char line[512], *f[4]; int i;
+            memset(&l, 0, sizeof(l));
+            scanf("%f %f %d\n", &w, &h, &image);
+            fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
+            f[0] = line; for (i = 1; i < 4; i++) { f[i] = strchr(f[i - 1], '|'); *f[i]++ = 0; }
+            l.image = image;
+            Q_strncpyz(l.name, f[0], sizeof(l.name)); Q_strncpyz(l.server, f[1], sizeof(l.server));
+            Q_strncpyz(l.detail, f[2], sizeof(l.detail)); Q_strncpyz(l.transfer, f[3], sizeof(l.transfer));
+            uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
+            MapLoad_Layout(&l, w, h);
+            printf("{");
+            rect("preview", l.preview); rect("status", l.status); rect("image", l.shot); rect("progress", l.progress);
+            rect("cancel", l.cancel);
+            printf("\"label\":%g,\"h1\":[%g,%g],\"name\":[%g,%d],\"server\":%g,\"statusLabel\":%g,\"detail\":[%g,%d],"
+                "\"transfer\":%g,\"note\":[%g,%d],\"page\":%g}\n",
+                l.labelY, l.h1X, l.h1Y, l.nameY, l.nameLines.count, l.serverY, l.statusLabelY, l.detailY, l.detailLines.count,
+                l.transferY, l.noteY, l.noteLines.count, l.pageHeight);
         } else if (!strcmp(command, "width")) {
             wsTextStyle_t style; int font, upper; float size, spacing; char shown[256];
             scanf("%d %f %f %d %255[^\n]", &font, &size, &spacing, &upper, text);

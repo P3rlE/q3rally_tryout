@@ -111,7 +111,8 @@ int main(void){
  webFrontend=&frontend;frontend.integer=1;screen=12;clc.state=8;
  assert(CL_WebGarageOwnsScreen());
  screen=0;assert(!CL_WebGarageOwnsScreen());
- clc.state=CA_CONNECTING;assert(CL_WebGarageOwnsScreen());
+ /* connecting and loading are native: the game draws, whatever the UI reports */
+ screen=12;clc.state=CA_CONNECTING;assert(!CL_WebGarageOwnsScreen());clc.state=8;
  frontend.integer=0;assert(!CL_WebGarageOwnsScreen());
  frontend.integer=1;uivm=0;assert(!CL_WebGarageOwnsScreen());
  /* the only exception: a native screen (15), whether or not the browser shows */
