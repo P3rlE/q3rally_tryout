@@ -694,10 +694,22 @@ void UI_MainMenu( void ) {
 
         {
                 /* pinned states for screenshots (tools/ui_webstyle), no wizards */
-                char preview[8];
+                char preview[32];
                 trap_Cvar_VariableStringBuffer( "ui_offlinePreview", preview, sizeof( preview ) );
                 if ( preview[0] ) {
                         UI_StartServerMenu( qfalse );
+                        return;
+                }
+                trap_Cvar_VariableStringBuffer( "ui_configPreview", preview, sizeof( preview ) );
+                if ( preview[0] ) {
+                        /* the setup page, then the buttons with these item indices ("2,3") */
+                        char *press = preview;
+                        UI_SetupMenu();
+                        while ( press && *press ) {
+                                if ( atoi( press ) > 0 || press != preview ) UI_WebConfigAction( 0, atoi( press ), 0 );
+                                press = strchr( press, ',' );
+                                if ( press ) press++;
+                        }
                         return;
                 }
                 trap_Cvar_VariableStringBuffer( "ui_driverPreview", preview, sizeof( preview ) );

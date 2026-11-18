@@ -258,6 +258,35 @@ What still differs from the WebUI:
   state (native_screenshot.sh `driver:` with tests/fixtures/profiles, or
   `nodriver:`).
 
+## The settings and race control
+
+- `q3_ui/ui_rally_config.c` draws config pages 0-15 (setup, controls,
+  graphics, display, sound, network, game and Q3Rally options, renderer
+  information, confirmations, pause, bots, team orders, server information)
+  in place of the old menus' drawing and keys (`Config_Native` in
+  ui_atoms.c), layout in `ui_rally_configlayout.c`. Like config.js it reads
+  `UI_WebConfigNumber` / `UI_WebConfigChar` and acts through
+  `UI_WebConfigAction`; the old menus stay underneath and keep their
+  callbacks. The wizards (pages 16-21) are still the page.
+- One renderer for every page, as on the page: buttons in a flex row
+  (without Back, and without "Resume race" on the pause page, which is the
+  header button there), the other items in the auto-fit grid: selects,
+  sliders (range input with its value), the control search, key bindings
+  (rebind and Clear), the text list (team orders, a pre).
+- A confirmation page (`UI_WebConfigNumber( 8 )`) is the confirm dialog over
+  the page. Rebind opens the key capture dialog: the next key, mouse
+  button, wheel or pad input binds (`UI_WebConfigAction` 3), Escape and
+  Cancel cancel, the console key is ignored.
+- Chrome draws the range input without the page's border and background: an
+  8px track with a grey border, accent up to a 16px disc. A disabled select
+  looks like an enabled one (the page sets its colours). The pre has no
+  font of its own on the page (the browser's monospace); it is drawn in
+  Barlow.
+- `ui_configDump 1` prints each page (tests/fixtures/config_model.json),
+  `ui_configPreview "2,3"` opens the setup page and presses those items,
+  `ui_configPress` / `ui_configCapture` press an item or open the key capture
+  on the current page (native_screenshot.sh `config:` and `race:`).
+
 ## The main menu
 
 - The buttons behave like the page's: a click activates, Tab and the arrow
@@ -274,7 +303,8 @@ What still differs from the WebUI:
 ## Interplay with the WebUI
 
 While a native screen runs (loading screen, main menu, end credits, demo
-archive, Rivals, Downloads; map loading has no UI screen code), the UI reports
+archive, Rivals, Downloads, offline, online, driver page, settings; map
+loading has no UI screen code), the UI reports
 `UI_WEB_SCREEN` 15. The client treats it like screen 0: the browser stays
 hidden and the game draws. While the game is disconnected, though, the
 client starts CEF and loads the page, so the screens that are still WebUI

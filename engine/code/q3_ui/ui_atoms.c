@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	User interface building blocks and support functions.
 **********************************************************************/
 #include "ui_local.h"
+#include "ui_rally_config.h"
 
 #define POOLSIZE	128 * 1024
 static char		memoryPool[POOLSIZE];
@@ -1145,7 +1146,10 @@ void UI_KeyEvent( int key, int down ) {
 		return;
 // END
 
-	if (uis.activemenu->key)
+	/* the settings and race control pages are drawn like the WebUI's (ui_rally_config.c) */
+	if ( Config_Native() )
+		s = Config_Key( key );
+	else if (uis.activemenu->key)
 		s = uis.activemenu->key( key );
 	else
 		s = Menu_DefaultKey( uis.activemenu, key );
@@ -1698,7 +1702,15 @@ void UI_Refresh( int realtime )
 	UI_UpdateCvars();
 	UI_UpdateMenuBackShader( qfalse );
 
-	if ( uis.activemenu )
+	if ( uis.activemenu && Config_Native() )
+	{
+		Config_Draw();
+		if( uis.firstdraw ) {
+			UI_MouseEvent( 0, 0 );
+			uis.firstdraw = qfalse;
+		}
+	}
+	else if ( uis.activemenu )
 	{
 		if (uis.activemenu->fullscreen)
 		{

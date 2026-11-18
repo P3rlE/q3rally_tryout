@@ -17,7 +17,11 @@
 # "driver:tab,filter,pagescroll,dialog" (Per of tests/fixtures/profiles active)
 # or "nodriver:..." (no profile) for the driver page, or
 # "online:row,search,listscroll,pagescroll,dialog" for the server browser with
-# the favorites 127.0.0.1:27961-27963 (dedicated servers started beforehand). The last ones come up
+# the favorites 127.0.0.1:27961-27963 (dedicated servers started beforehand), or
+# "config:presses[,capture]" for the settings (the setup page, then the buttons
+# with these item indices pressed, "2,3"; "c<item>" opens the key capture for
+# that item) or "race:presses" for the race control pages over a race on
+# q3r_sk1 (the pause page, then the presses; give it about 150 seconds). The last ones come up
 # once the loading screen has run through (give it about 40 seconds).
 #
 # Needs a Linux client build (make BUILD_CLIENT=1), Xvfb, Mesa and ImageMagick's
@@ -65,6 +69,21 @@ elif [ "${3#online:}" != "$3" ]; then
     # the favorites: three local servers (start them first) and one that does not answer
     STATE=(+set ui_onlinePreview "${3#online:}" +set ui_browserMaster 7 +set net_port 27990 +set server1 127.0.0.1:27961
            +set server2 127.0.0.1:27962 +set server3 127.0.0.1:27963 +set server4 127.0.0.1:27969)
+elif [ "${3#config:}" != "$3" ]; then
+    mkdir -p "$WORK/home/baseq3r/profiles"
+    cp "$ROOT"/tests/fixtures/profiles/*.json "$WORK/home/baseq3r/profiles/"
+    PRESSES=${3#config:}
+    CAPTURE=$(echo "$PRESSES" | tr ',' '\n' | sed -n 's/^c//p')
+    PRESSES=$(echo "$PRESSES" | tr ',' '\n' | grep -v '^c' | paste -sd, -)
+    STATE=(+set ui_configPreview "${PRESSES:-0}" +set ui_configCapture "${CAPTURE:-}" +set profile_active Per)
+elif [ "${3#race:}" != "$3" ]; then
+    mkdir -p "$WORK/home/baseq3r/profiles"
+    cp "$ROOT"/tests/fixtures/profiles/*.json "$WORK/home/baseq3r/profiles/"
+    {
+        echo "devmap q3r_sk1"; echo "wait 400"; echo "togglemenu"; echo "wait 100"
+        for press in $(echo "${3#race:}" | tr ',' ' '); do echo "set ui_configPress $press"; echo "wait 100"; done
+    } >"$WORK/home/baseq3r/race.cfg"
+    STATE=(+set vm_game 2 +set profile_active Per +set g_gametype 0 +set bot_minplayers 3 +exec race.cfg)
 elif [ "${3#offline:}" != "$3" ]; then
     STATE=(+set ui_offlinePreview "${3#offline:}")
 elif [ "${3#rivals:}" != "$3" ]; then
