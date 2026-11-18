@@ -73,52 +73,66 @@ static float Offline_Details( offlineLayout_t *l, float width, float rowGap, flo
 	return l->details > 0 ? y + rowHeight : 0.0f;
 }
 
+float Offline_Header( offlineHeader_t *h, float width, float height, qboolean hosting, const char *back ) {
+	wsTextStyle_t label, h1, h1em, mono = { WS_MONO, 0.9f * REM, 0.0f, 16.0f, qfalse };
+	float main, titleW, top;
+	const char *labelText = hosting ? "Q3RALLY / HOST A SERVER" : "Q3RALLY / OFFLINE";
+
+	h->desktop = width >= 64.0f * REM && height >= 44.0f * REM;
+	WS_LabelStyle( &label );
+	h->pageWidth = width - WS_SCROLLBAR_GUTTER;
+	main = h->pageWidth < 105.0f * REM ? h->pageWidth : 105.0f * REM;
+	h->padX = WS_Clamp( REM, 0.04f * width, 5.0f * REM );
+	h->padY = h->desktop ? WS_Clamp( REM, 0.03f * height, 2.0f * REM ) : h->padX;
+	h->contentX = ( h->pageWidth - main ) * 0.5f + h->padX;
+	h->contentW = main - 2.0f * h->padX;
+
+	/* the label and the h1 at the left, Back at the right */
+	h->h1Size = h->desktop ? WS_Clamp( 3.0f * REM, 0.06f * width, 5.5f * REM ) : WS_Clamp( 3.0f * REM, 0.08f * width, 7.0f * REM );
+	h1.font = WS_CONDENSED; h1.size = h->h1Size; h1.spacing = 0.0f; h1.lineHeight = h->h1Size; h1.uppercase = qtrue;
+	h1em = h1; h1em.font = WS_CONDENSED_ITALIC;
+	titleW = WS_StyledWidth( &h1, "Your next " ) + WS_StyledWidth( &h1em, "race." );
+	if ( WS_StyledWidth( &label, labelText ) > titleW ) titleW = WS_StyledWidth( &label, labelText );
+	h->labelY = h->padY;
+	h->h1Y = h->padY + LU( WS_LABEL_LINE ) + WS_HEADING_MARGIN;
+	top = h->h1Y + h->h1Size + WS_HEADING_MARGIN;
+	h->back.w = WS_ButtonWidth( back );
+	h->back.h = WS_BUTTON_HEIGHT;
+	if ( titleW + REM + h->back.w <= h->contentW ) {
+		h->back.x = h->contentX + h->contentW - h->back.w;
+		h->back.y = h->padY;
+	} else {
+		h->back.x = h->contentX;
+		h->back.y = top + REM;
+		top = h->back.y + h->back.h;
+	}
+	top += h->desktop ? REM : 2.0f * REM;
+
+	/* .offline-steps: flex, gap 2rem, .9rem Share Tech Mono (line-height normal) */
+	h->stepY = top;
+	h->stepRulesX = h->contentX + WS_TextWidth( &mono, offlineSteps[0], strlen( offlineSteps[0] ) ) + 2.0f * REM;
+	return top + 16.0f + ( h->desktop ? REM : 1.5f * REM );
+}
+
 void Offline_Layout( offlineLayout_t *l, float width, float height ) {
-	wsTextStyle_t label, h1, h1em;
-	float main, y, column1, column2, pad, titleW, top, bottom, maxScroll, steps, detailsTop;
+	offlineHeader_t head;
+	float y, column1, column2, pad, top, bottom, maxScroll, detailsTop;
 	char shown[96];
 	int i;
 
-	l->desktop = width >= 64.0f * REM && height >= 44.0f * REM;
-	WS_LabelStyle( &label );
-	l->pageWidth = width - WS_SCROLLBAR_GUTTER;
-	main = l->pageWidth < 105.0f * REM ? l->pageWidth : 105.0f * REM;
-	l->padX = WS_Clamp( REM, 0.04f * width, 5.0f * REM );
-	l->padY = l->desktop ? WS_Clamp( REM, 0.03f * height, 2.0f * REM ) : l->padX;
-	l->contentX = ( l->pageWidth - main ) * 0.5f + l->padX;
-	l->contentW = main - 2.0f * l->padX;
-
-	/* header: the label and the h1 at the left, Back at the right */
-	l->h1Size = l->desktop ? WS_Clamp( 3.0f * REM, 0.06f * width, 5.5f * REM ) : WS_Clamp( 3.0f * REM, 0.08f * width, 7.0f * REM );
-	h1.font = WS_CONDENSED; h1.size = l->h1Size; h1.spacing = 0.0f; h1.lineHeight = l->h1Size; h1.uppercase = qtrue;
-	h1em = h1; h1em.font = WS_CONDENSED_ITALIC;
-	titleW = WS_StyledWidth( &h1, "Your next " ) + WS_StyledWidth( &h1em, "race." );
-	if ( WS_StyledWidth( &label, l->hosting ? "Q3RALLY / HOST A SERVER" : "Q3RALLY / OFFLINE" ) > titleW ) {
-		titleW = WS_StyledWidth( &label, l->hosting ? "Q3RALLY / HOST A SERVER" : "Q3RALLY / OFFLINE" );
-	}
-	l->labelY = l->padY;
-	l->h1Y = l->padY + LU( WS_LABEL_LINE ) + WS_HEADING_MARGIN;
-	top = l->h1Y + l->h1Size + WS_HEADING_MARGIN;
-	l->back.w = WS_ButtonWidth( l->hosting ? "Back to server browser" : "Back to main menu" );
-	l->back.h = WS_BUTTON_HEIGHT;
-	if ( titleW + REM + l->back.w <= l->contentW ) {
-		l->back.x = l->contentX + l->contentW - l->back.w;
-		l->back.y = l->padY;
-	} else {
-		l->back.x = l->contentX;
-		l->back.y = top + REM;
-		top = l->back.y + l->back.h;
-	}
-	top += l->desktop ? REM : 2.0f * REM;
-
-	/* .offline-steps: flex, gap 2rem, .9rem Share Tech Mono (line-height normal) */
-	{
-		wsTextStyle_t mono = { WS_MONO, 0.9f * REM, 0.0f, 16.0f, qfalse };
-		l->stepY = top;
-		l->stepRulesX = l->contentX + WS_TextWidth( &mono, offlineSteps[0], strlen( offlineSteps[0] ) ) + 2.0f * REM;
-		steps = 16.0f;
-	}
-	top += steps + ( l->desktop ? REM : 1.5f * REM );
+	top = Offline_Header( &head, width, height, l->hosting, l->hosting ? "Back to server browser" : "Back to main menu" );
+	l->desktop = head.desktop;
+	l->pageWidth = head.pageWidth;
+	l->padX = head.padX;
+	l->padY = head.padY;
+	l->contentX = head.contentX;
+	l->contentW = head.contentW;
+	l->labelY = head.labelY;
+	l->h1Y = head.h1Y;
+	l->h1Size = head.h1Size;
+	l->back = head.back;
+	l->stepY = head.stepY;
+	l->stepRulesX = head.stepRulesX;
 
 	/* .offline-track-layout: minmax(0, 1fr) minmax(0, 1.4fr), gap 1rem; one column up to 48rem */
 	if ( width > 48.0f * REM ) {

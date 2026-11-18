@@ -12,7 +12,8 @@
 # tests/fixtures/downloads_index.json (type 0-3: all, tracks, vehicles, skins;
 # item -1: the first match), or "demos:selected,scroll" for the demo archive
 # with the recordings of tests/fixtures/demo_names.json (empty files), or
-# "offline:mode,search,selected,scroll" for step 1 of the offline setup. The last ones come up
+# "offline:mode,search,selected,scroll[,pagescroll[,2]]" for the offline setup
+# (step 1, or step 2 with ",2": scroll is then the starting grid's). The last ones come up
 # once the loading screen has run through (give it about 40 seconds).
 #
 # Needs a Linux client build (make BUILD_CLIENT=1), Xvfb, Mesa and ImageMagick's

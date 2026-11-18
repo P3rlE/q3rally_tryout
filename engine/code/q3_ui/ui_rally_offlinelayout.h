@@ -25,6 +25,18 @@ from the drawing so a test can hold it against what Chrome reports.
 #define OFFLINE_MAX_ROWS	64
 #define OFFLINE_MAX_DETAILS	16
 
+/* the header and the steps, shared by both steps */
+typedef struct {
+	qboolean	desktop;			/* min-width 64rem and min-height 44rem */
+	float		pageWidth, padX, padY, contentX, contentW;
+	float		labelY, h1Y, h1Size;
+	wsRect_t	back;
+	float		stepY, stepRulesX;
+} offlineHeader_t;
+
+/* lays out the header with its Back button; returns the top of what follows the steps */
+float Offline_Header( offlineHeader_t *header, float width, float height, qboolean hosting, const char *back );
+
 typedef struct {
 	/* inputs */
 	qboolean	hosting;			/* "Q3RALLY / HOST A SERVER" */

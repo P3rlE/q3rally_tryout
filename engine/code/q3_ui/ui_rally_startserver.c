@@ -3355,6 +3355,8 @@ static void UI_ServerOptionsMenu( qboolean multiplayer ) {
 	ServerOptions_MenuInit( multiplayer );
 	Frontend_SetBackButton( &s_serveroptions.back.generic );
     UI_PushMenu( &s_serveroptions.menu );
+	/* drawn like the WebUI's offline step 2 (ui_rally_offlinerules.c) */
+	Offline_InstallRules( &s_serveroptions.menu );
 }
 
 

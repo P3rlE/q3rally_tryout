@@ -73,7 +73,8 @@ atlases.
 - `tools/ui_webstyle/measure_webui_loading.cjs`, `measure_webui_main.cjs`,
   `measure_webui_credits.cjs`, `measure_webui_rivals.cjs`,
   `measure_webui_downloads.cjs`, `measure_webui_demos.cjs`,
-  `measure_webui_maploading.cjs` and `measure_webui_offline.cjs` measure the WebUI screens in Chrome (the
+  `measure_webui_maploading.cjs`, `measure_webui_offline.cjs` and
+  `measure_webui_offline_rules.cjs` measure the WebUI screens in Chrome (the
   credits with the roll paused at fixed times). They record every box and the width
   of every text run, for several viewports and all states (main menu: with
   and without a profile, quit dialog open).
@@ -186,7 +187,27 @@ What still differs from the WebUI:
 - `ui_offlineDump 1` prints the model as JSON (tests/fixtures/offline_model.json),
   `ui_offlinePreview "mode,search,track,scroll[,pagescroll]"` opens the
   screen in that state (native_screenshot.sh `offline:`).
-- Step 2 (rules and drivers, screen 10) is still the page.
+
+## Offline, step 2 (rules and drivers)
+
+- `q3_ui/ui_rally_offlinerules.c` draws it over the old server options menu
+  (`Offline_InstallRules`), layout in `ui_rally_offlinerulelayout.c`. Like
+  `options()` in offline.js: the summary with "Start race", the rules (the
+  controls without a slot) and a row per slot (type, the bot's car and
+  select, the team).
+- The rows are laid out as the page's flex rows: labels `flex: 1` with a
+  min-width, the bot select `flex: 2` from its padding, lines wrap when the
+  minimums do not fit. A select is as tall as Chrome's menulist: the font's
+  ascent and descent, each rounded, a pixel above and below.
+- Selects open a plain option list (up to 20 rows, the wheel scrolls it);
+  numbers are typed into the field and set on Enter or a click elsewhere,
+  as the page's change event. Bot cars are the vehicles' `icon_<paint>`,
+  the same pictures as the page's previews.
+- Chrome breaks lines after a hyphen between digits or letters
+  ("4000-5000"); `WS_Wrap` does too.
+- `ui_offlinePreview "mode,search,track,gridscroll,pagescroll,2"` opens step 2
+  (native_screenshot.sh `offline:`); `ui_offlineDump 1` then prints its
+  model (tests/fixtures/offline_rules_model.json).
 
 ## Interplay with the WebUI
 

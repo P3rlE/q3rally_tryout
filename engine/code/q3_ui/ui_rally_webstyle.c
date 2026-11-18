@@ -261,17 +261,29 @@ float WS_Baseline( const wsTextStyle_t *style ) {
 	return WS_TextTop( style ) + WS_Ascent( style );
 }
 
+/* the end of the next piece that may end a line: before a space, or after a
+ * hyphen between letters or digits ("4000-5000", as Chrome breaks it) */
+static int WS_NextBreak( const char *text, int from, int length ) {
+	int p;
+	for ( p = from; p < length; p++ ) {
+		if ( text[p] == ' ' ) return p;
+		if ( text[p] == '-' && p > from && p + 1 < length && isalnum( (unsigned char)text[p - 1] ) &&
+		     isalnum( (unsigned char)text[p + 1] ) ) return p + 1;
+	}
+	return length;
+}
+
 void WS_Wrap( const wsTextStyle_t *style, const char *text, float maxWidth, wsLines_t *lines ) {
 	int start = 0, end, next, length = strlen( text );
 
 	memset( lines, 0, sizeof( *lines ) );
 	while ( start < length && lines->count < WS_MAX_LINES ) {
 		/* take words while they fit; a single long word stays alone */
-		end = start;
-		while ( end < length && text[end] != ' ' ) end++;
+		end = WS_NextBreak( text, start, length );
 		while ( end < length ) {
-			next = end + 1;
-			while ( next < length && text[next] != ' ' ) next++;
+			next = end;
+			while ( next < length && text[next] == ' ' ) next++;
+			next = WS_NextBreak( text, next, length );
 			if ( WS_TextWidth( style, text + start, next - start ) > maxWidth + 0.01f ) break;
 			end = next;
 		}

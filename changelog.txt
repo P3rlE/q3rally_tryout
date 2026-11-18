@@ -49,7 +49,9 @@ Changed:
 - The first step of an offline race ("Your next race.", track and mode) is
   drawn by the game again and looks exactly like the WebUI's: game mode,
   track search, the list with levelshots, the track with its details and
-  "Race setup". The second step (rules and drivers) follows.
+  "Race setup". The second step (rules and drivers) follows it: the race
+  summary with "Start race", the rules and the starting grid with bots, their
+  cars and teams.
 - Weapons: own models in a "built, not bought" style, all ten made from car
   parts on the same roof plate, with own muzzle flashes and icons. New names
   close to the old ones: Harvester Saw, Spotlight MG, Twin Shotgun, Drum

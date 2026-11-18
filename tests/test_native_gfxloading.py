@@ -26,6 +26,7 @@ HARNESS = r'''
 #include "q3_ui/ui_rally_demoslayout.h"
 #include "q3_ui/ui_rally_maploadlayout.h"
 #include "q3_ui/ui_rally_offlinelayout.h"
+#include "q3_ui/ui_rally_offlinerulelayout.h"
 #include <stdio.h>
 uiStatic_t uis;
 static FILE *files[8];
@@ -56,6 +57,7 @@ void UI_DrawVehicleWebView(float x, float y, float w, float h, playerInfo_t *pi,
 #include "q3_ui/ui_rally_demoslayout.c"
 #include "q3_ui/ui_rally_maploadlayout.c"
 #include "q3_ui/ui_rally_offlinelayout.c"
+#include "q3_ui/ui_rally_offlinerulelayout.c"
 
 static void rect(const char *name, wsRect_t r) { printf("\"%s\":[%g,%g,%g,%g],", name, r.x, r.y, r.w, r.h); }
 
@@ -213,6 +215,60 @@ int main(void) {
             for (i = 0; i < l.count; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.list.x, l.list.y - l.scroll + l.rowY[i], l.rowWidth, l.rowH[i]);
             printf("],\"detailBoxes\":[");
             for (i = 0; i < l.details; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.detailX[i], l.detailY[i], l.detailW, l.detailLines[i].count * l.detailStyle.lineHeight);
+            printf("]}\n");
+        } else if (!strcmp(command, "rules")) {
+            /* rules <width> <height> <options scroll> <players scroll> <hosting>, then title|mode,
+               the rule help, the grid help, fields (I:/S:text|...), rows (human~text~kinds;...) */
+            static rulesLayout_t l; static char head[256], rhelp[1024], ghelp[1024], fields[2048], rows[4096];
+            float w, h; int hosting, i, j; char *r, *next;
+            memset(&l, 0, sizeof(l));
+            scanf("%f %f %f %f %d\n", &w, &h, &l.optionsScroll, &l.playersScroll, &hosting);
+            fgets(head, sizeof(head), stdin); head[strcspn(head, "\n")] = 0;
+            fgets(rhelp, sizeof(rhelp), stdin); rhelp[strcspn(rhelp, "\n")] = 0;
+            fgets(ghelp, sizeof(ghelp), stdin); ghelp[strcspn(ghelp, "\n")] = 0;
+            fgets(fields, sizeof(fields), stdin); fields[strcspn(fields, "\n")] = 0;
+            fgets(rows, sizeof(rows), stdin); rows[strcspn(rows, "\n")] = 0;
+            r = strchr(head, '|'); *r++ = 0;
+            Q_strncpyz(l.title, head, sizeof(l.title)); Q_strncpyz(l.modeName, r, sizeof(l.modeName));
+            l.ruleHelp = rhelp; l.gridHelp = ghelp; l.hosting = hosting; l.hideScrollbar = qtrue;
+            for (r = fields; *r && l.fields < RULES_MAX_FIELDS; r = next) {
+                next = strchr(r, '|'); if (next) *next++ = 0; else next = r + strlen(r);
+                l.fieldInput[l.fields] = r[0] == 'I'; l.fieldText[l.fields++] = r + 2;
+            }
+            for (r = rows; *r && l.rows < RULES_MAX_ROWS; r = next) {
+                char *text, *kinds;
+                next = strchr(r, ';'); if (next) *next++ = 0; else next = r + strlen(r);
+                text = strchr(r, '~'); *text++ = 0; kinds = strchr(text, '~'); *kinds++ = 0;
+                l.rowHuman[l.rows] = r[0] == '1'; l.rowText[l.rows] = text;
+                for (j = 0; kinds[j] && j < RULES_MAX_PARTS; j++)
+                    l.rowKind[l.rows][j] = kinds[j] == 'P' ? RULES_P : kinds[j] == 'A' ? RULES_AVATAR : kinds[j] == 'T' ? RULES_TYPE
+                        : kinds[j] == 'C' ? RULES_CAR : kinds[j] == 'B' ? RULES_BOT : RULES_TEAM;
+                l.rowParts[l.rows++] = j;
+            }
+            uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
+            Rules_Layout(&l, w, h);
+            printf("{");
+            rect("back", l.head.back); rect("summary", l.summary); rect("start", l.start); rect("left", l.left); rect("right", l.right);
+            rect("options", l.options); rect("players", l.players);
+            printf("\"label\":%g,\"h1\":%g,\"step\":[%g,%g],\"summaryLabel\":%g,\"title\":%g,\"raceMode\":%g,"
+                "\"rulesH2\":%g,\"ruleHelp\":[%g,%d],\"gridH2\":%g,\"gridHelp\":[%g,%d],\"page\":%g,\"heights\":[%g,%g],\"fields\":[",
+                l.head.labelY, l.head.h1Y, l.head.stepY, l.head.stepRulesX, l.summaryLabelY, l.titleY, l.modeY,
+                l.rulesH2Y, l.ruleHelpY, l.ruleHelpLines.count, l.gridH2Y, l.gridHelpY, l.gridHelpLines.count, l.pageHeight,
+                l.optionsHeight, l.playersHeight);
+            for (i = 0; i < l.fields; i++) printf("%s[%g,%g,%g,%g,%g,%g,%g,%g]", i ? "," : "",
+                l.options.x + l.fieldBox[i].x, l.options.y - l.optionsScroll + l.fieldBox[i].y, l.fieldBox[i].w, l.fieldBox[i].h,
+                l.options.x + l.fieldControl[i].x, l.options.y - l.optionsScroll + l.fieldControl[i].y, l.fieldControl[i].w, l.fieldControl[i].h);
+            printf("],\"rows\":[");
+            for (i = 0; i < l.rows; i++) {
+                float oy = l.players.y - l.playersScroll + l.row[i].y;
+                printf("%s{\"row\":[%g,%g,%g,%g],\"parts\":[", i ? "," : "", l.players.x, oy, l.rowWidth, l.row[i].h);
+                for (j = 0; j < l.row[i].parts; j++) {
+                    rulesItem_t *p = &l.row[i].part[j];
+                    printf("%s[%d,%g,%g,%g,%g,%g,%g,%g,%g]", j ? "," : "", p->kind, l.players.x + p->box.x, oy + p->box.y, p->box.w, p->box.h,
+                        l.players.x + p->control.x, oy + p->control.y, p->control.w, p->control.h);
+                }
+                printf("]}");
+            }
             printf("]}\n");
         } else if (!strcmp(command, "width")) {
             wsTextStyle_t style; int font, upper; float size, spacing; char shown[256];

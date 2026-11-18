@@ -12,7 +12,8 @@ or (at your option) any later version.
 
 The offline race setup drawn like the WebUI's #offline-screen (offline.js),
 on the model the page was fed from: UI_WebOfflineNumber, UI_WebOfflineChar
-and UI_WebOfflineAction in ui_rally_startserver.c. Step 1, track and mode.
+and UI_WebOfflineAction in ui_rally_startserver.c. Step 1, track and mode;
+step 2 is ui_rally_offlinerules.c.
 */
 
 #include "ui_local.h"
@@ -70,7 +71,50 @@ void Offline_Dump( void ) {
 		if ( i ) Com_Printf( "," );
 		Offline_Quoted( text );
 	}
-	Com_Printf( "]}\n" );
+	Com_Printf( "]" );
+	if ( UI_WebOfflineScreen() == 10 ) {
+		int j, count;
+		Com_Printf( ",\"allowsBots\":%d,\"dedicated\":%d,\"avatar\":", UI_WebOfflineNumber( 12, 0 ), UI_WebOfflineNumber( 15, 0 ) );
+		Offline_Text( 10, 0, 0, text, sizeof( text ) );
+		Offline_Quoted( text );
+		Com_Printf( ",\"controls\":[" );
+		for ( i = 0, count = 0; i < UI_WebOfflineNumber( 3, 0 ); i++ ) {
+			if ( !UI_WebOfflineNumber( 4, i ) ) continue;
+			Com_Printf( "%s[%d,%d,", count++ ? "," : "", i, UI_WebOfflineNumber( 4, i ) );
+			Offline_Text( 4, i, 0, text, sizeof( text ) );
+			Offline_Quoted( text );
+			Com_Printf( "," );
+			Offline_Text( 5, i, 0, text, sizeof( text ) );
+			Offline_Quoted( text );
+			Com_Printf( ",%d,%d,%d,%d,%d,[", UI_WebOfflineNumber( 5, i ), UI_WebOfflineNumber( 7, i ), UI_WebOfflineNumber( 9, i ),
+			            UI_WebOfflineNumber( 10, i ), UI_WebOfflineNumber( 13, i ) );
+			for ( j = 0; j < UI_WebOfflineNumber( 6, i ); j++ ) {
+				Offline_Text( 6, i, j, text, sizeof( text ) );
+				if ( j ) Com_Printf( "," );
+				Offline_Quoted( text );
+			}
+			Com_Printf( "]]" );
+		}
+		Com_Printf( "],\"players\":[" );
+		for ( i = 0; i < 12; i++ ) {
+			Offline_Text( 8, i, 0, text, sizeof( text ) );
+			if ( i ) Com_Printf( "," );
+			Offline_Quoted( text );
+		}
+		Com_Printf( "],\"bots\":[" );
+		for ( i = 0; i < UI_WebOfflineNumber( 8, 0 ); i++ ) {
+			if ( i ) Com_Printf( "," );
+			Com_Printf( "[" );
+			Offline_Text( 7, i, 0, text, sizeof( text ) );
+			Offline_Quoted( text );
+			Com_Printf( "," );
+			Offline_Text( 9, i, 0, text, sizeof( text ) );
+			Offline_Quoted( text );
+			Com_Printf( "]" );
+		}
+		Com_Printf( "]" );
+	}
+	Com_Printf( "}\n" );
 }
 
 /* -------------------------------------------------------------------------
@@ -487,13 +531,14 @@ void Offline_InstallTrack( menuframework_s *menu ) {
 	memset( &s_offline, 0, sizeof( s_offline ) );
 	menu->draw = Offline_TrackDraw;
 	menu->key = Offline_TrackKey;
-	/* ui_offlinePreview "mode,search,selected,scroll[,pagescroll]" pins a state for screenshots */
+	/* ui_offlinePreview "mode,search,selected,scroll[,pagescroll[,step]]" pins a state for
+	 * screenshots; step 2 goes on to the rules and drivers */
 	trap_Cvar_VariableStringBuffer( "ui_offlinePreview", preview, sizeof( preview ) );
 	if ( preview[0] ) {
-		char *field[5];
+		char *field[6];
 		int n;
 		field[0] = preview;
-		for ( n = 1; n < 5; n++ ) {
+		for ( n = 1; n < 6; n++ ) {
 			field[n] = field[n - 1] ? strchr( field[n - 1], ',' ) : NULL;
 			if ( field[n] ) *field[n]++ = '\0';
 		}
@@ -503,5 +548,9 @@ void Offline_InstallTrack( menuframework_s *menu ) {
 		uis.activemenu = menu;	/* the model answers for the active menu */
 		if ( atoi( field[0] ) != UI_WebOfflineNumber( 1, 0 ) ) UI_WebOfflineAction( 1, atoi( field[0] ), 0 );
 		if ( field[2] ) UI_WebOfflineAction( 2, atoi( field[2] ), 0 );
+		if ( field[5] && atoi( field[5] ) == 2 ) {
+			UI_WebOfflineAction( 3, 0, 0 );
+			if ( trap_Cvar_VariableValue( "ui_offlineDump" ) ) Offline_Dump();
+		}
 	}
 }
