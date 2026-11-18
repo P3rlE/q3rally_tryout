@@ -37,11 +37,12 @@ OUTPUT = ROOT / 'baseq3r/menu/fonts'
 CHARS = [c for c in range(32, 127)] + [c for c in range(160, 256)]
 CONDENSED = [20.8, 24, 28, 32, 38, 44, 48, 56, 66, 78, 92, 112]
 VARIANTS = {
-    # name: (file, sizes, embolden, oblique); the condensed face only ever
-    # shows uppercased text (h1, h2, navigation), so it carries no lowercase
+    # name: (file, sizes, embolden, oblique); the italic condensed face only
+    # ever shows uppercased text (the h1's em), so it carries no lowercase
     'sharetechmono':          ('ShareTechMono-Regular.ttf', [12.8], False, False),
     'barlow':                 ('Barlow-Regular.ttf', [13.6, 16], False, False),
-    'barlow_bold':            ('Barlow-Regular.ttf', [16], True, False),   # font-weight 750 on a regular face
+    # font-weight 750 on a regular face; 18.72 (h3) and 25.6 (the driver's figures)
+    'barlow_bold':            ('Barlow-Regular.ttf', [16, 18.72, 25.6], True, False),
     'barlowcondensed':        ('BarlowCondensed-Bold.ttf', CONDENSED, False, False),
     'barlowcondensed_italic': ('BarlowCondensed-Bold.ttf', CONDENSED[6:], False, True),
 }
@@ -198,7 +199,7 @@ def build(name: str, output: Path) -> None:
     font = TTFont(path)
     cmap = font.getBestCmap()
     codes = [code for code in CHARS if code in cmap
-             and (not name.startswith('barlowcondensed') or chr(code).upper() == chr(code))]
+             and (name != 'barlowcondensed_italic' or chr(code).upper() == chr(code))]
     glyph_for = {code: cmap[code] for code in codes}
     if not name.startswith('barlowcondensed'):
         glyph_for.update(tabular_digits(font))

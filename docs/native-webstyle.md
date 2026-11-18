@@ -74,7 +74,8 @@ atlases.
   `measure_webui_credits.cjs`, `measure_webui_rivals.cjs`,
   `measure_webui_downloads.cjs`, `measure_webui_demos.cjs`,
   `measure_webui_maploading.cjs`, `measure_webui_offline.cjs`,
-  `measure_webui_offline_rules.cjs` and `measure_webui_online.cjs` measure the WebUI screens in Chrome (the
+  `measure_webui_offline_rules.cjs`, `measure_webui_online.cjs` and
+  `measure_webui_driver.cjs` measure the WebUI screens in Chrome (the
   credits with the roll paused at fixed times). They record every box and the width
   of every text run, for several viewports and all states (main menu: with
   and without a profile, quit dialog open).
@@ -231,6 +232,32 @@ What still differs from the WebUI:
   screen in that state (native_screenshot.sh `online:`, with three local
   dedicated servers as favorites).
 
+## The driver page
+
+- `q3_ui/ui_rally_driver.c` draws it over `s_webDriverMenu`
+  (`Driver_Install`), layout in `ui_rally_driverlayout.c`: the tabs, the
+  overview, the stats, the achievements and the two dialogs (edit driver,
+  select / create profile). It reads what the page was fed (the active
+  profile, `UI_WebDriverValue`, `UI_WebAchievementChar`) and changes
+  profiles through `UI_WebDriverAction` 4-6 with `ui_webdriver_payload`,
+  as the page did; the status line shows `ui_webdriver_message`.
+- The achievement cards float the medal right: their lines beside it are
+  4rem shorter. A locked medal is the category's `_locked` picture at .45
+  (the page greys the tier's picture with a filter).
+- The category filter is Chrome's own select in the system font: its width
+  follows the widest option (143.781px for "All achievements"); the text is
+  drawn in Barlow.
+- The date field takes digits (mm, dd, yyyy) like Chrome's; the calendar
+  picker is not there. Values of 0 ms show the em dash, drawn as a bar (the
+  fonts are Latin-1).
+- The condensed face now carries its lowercase (the cards' h3) and the bold
+  face 18.72 and 25.6px: the condensed data grew to 82 KB, the menu font
+  loader reads up to 128 KB.
+- `ui_driverDump 1` prints the model (tests/fixtures/driver_model.json),
+  `ui_driverPreview "tab,filter,pagescroll,dialog"` opens the page in that
+  state (native_screenshot.sh `driver:` with tests/fixtures/profiles, or
+  `nodriver:`).
+
 ## The main menu
 
 - The buttons behave like the page's: a click activates, Tab and the arrow
@@ -242,8 +269,7 @@ What still differs from the WebUI:
 - The car can be turned and zoomed like the WebUI's OrbitControls: a drag
   turns by 360° per height of the view, the elevation stays between −10° and
   67.5°, the wheel zooms by 0.95 per notch between 2.1 and 7 radii.
-- Driver profile opens the WebUI's driver page with `cl_webUI` 1, otherwise
-  the native profile overlay.
+- Driver profile opens the native driver page (below).
 
 ## Interplay with the WebUI
 

@@ -1,0 +1,126 @@
+{
+  "profileVersion": 2,
+  "identity": {
+    "uuid": "3f1c2b9a-7d4e-4c21-9a8b-5e6f7a8b9c0d",
+    "name": "Per",
+    "info": {
+      "gender": "Male",
+      "birthDate": "1984-06-12",
+      "avatar": "gfx/avatars/preset/helmet_27",
+      "country": "DE",
+      "favoriteCars": [
+        {
+          "model": "",
+          "skin": "",
+          "rim": "",
+          "head": ""
+        },
+        {
+          "model": "",
+          "skin": "",
+          "rim": "",
+          "head": ""
+        },
+        {
+          "model": "",
+          "skin": "",
+          "rim": "",
+          "head": ""
+        },
+        {
+          "model": "",
+          "skin": "",
+          "rim": "",
+          "head": ""
+        }
+      ]
+    }
+  },
+  "webLink": {
+    "state": "unlinked",
+    "accountId": null,
+    "profileId": null
+  },
+  "progress": {
+    "epoch": "v0.8-local-1",
+    "authority": "local",
+    "currentRank": 5,
+    "highestRank": 5,
+    "stats": {
+      "distanceKm": 1843.62,
+      "fuelUsed": 412.5,
+      "bestLapMs": 83417,
+      "kills": 214,
+      "deaths": 187,
+      "wins": 46,
+      "playerScore": 12840,
+      "sprintWins": 7,
+      "losses": 91,
+      "flagCaptures": 12,
+      "flagAssists": 9,
+      "accuracyAwards": 3,
+      "excellentAwards": 21,
+      "impressiveAwards": 5,
+      "perfectAwards": 1,
+      "topSpeedKph": 241.7,
+      "damageDealt": 48211,
+      "damageTaken": 51034,
+      "mostUsedVehicle": "ridgeback",
+      "mostUsedVehicleTimeMs": 36120000,
+      "gamesPlayed": 137,
+      "statsRevision": 1,
+      "racingWins": 31,
+      "racingPodiums": 58,
+      "racingCompleted": 88,
+      "racingTotalMs": 21944000,
+      "racingDmWins": 6,
+      "racingDmPodiums": 11,
+      "racingDmCompleted": 17,
+      "racingDmTotalMs": 3891000,
+      "sprintCompleted": 12,
+      "sprintBestMs": 47213,
+      "eliminationWins": 2,
+      "eliminationCompleted": 5,
+      "eliminationTotalRoundsLasted": 23,
+      "lcsWins": 1,
+      "lcsCompleted": 4,
+      "lcsTotalSurvivalMs": 611000,
+      "derbyWins": 3,
+      "derbyCompleted": 6,
+      "derbyKills": 29,
+      "dmWins": 2,
+      "dmCompleted": 5,
+      "dmKills": 61,
+      "ctfWins": 1,
+      "ctfCompleted": 3,
+      "ctfCaptures": 4,
+      "ctf4Wins": 0,
+      "ctf4Completed": 0,
+      "ctf4Captures": 0,
+      "teamWins": 0,
+      "teamCompleted": 0,
+      "teamKills": 0,
+      "teamRacingWins": 2,
+      "teamRacingCompleted": 4,
+      "teamRacingPodiums": 3,
+      "teamRacingDmWins": 0,
+      "teamRacingDmCompleted": 0,
+      "teamRacingDmPodiums": 0,
+      "dominationWins": 0,
+      "dominationCompleted": 0,
+      "dominationZoneHoldMs": 0,
+      "kothWins": 0,
+      "kothCompleted": 0,
+      "kothZoneHoldMs": 0,
+      "autoballWins": 1,
+      "autoballCompleted": 2,
+      "autoballGoals": 5,
+      "vehicles": [
+        {
+          "name": "alpine",
+          "timeMs": 2000
+        }
+      ]
+    }
+  }
+}

@@ -28,6 +28,7 @@ HARNESS = r'''
 #include "q3_ui/ui_rally_offlinelayout.h"
 #include "q3_ui/ui_rally_offlinerulelayout.h"
 #include "q3_ui/ui_rally_onlinelayout.h"
+#include "q3_ui/ui_rally_driverlayout.h"
 #include <stdio.h>
 uiStatic_t uis;
 static FILE *files[8];
@@ -60,6 +61,7 @@ void UI_DrawVehicleWebView(float x, float y, float w, float h, playerInfo_t *pi,
 #include "q3_ui/ui_rally_offlinelayout.c"
 #include "q3_ui/ui_rally_offlinerulelayout.c"
 #include "q3_ui/ui_rally_onlinelayout.c"
+#include "q3_ui/ui_rally_driverlayout.c"
 
 static void rect(const char *name, wsRect_t r) { printf("\"%s\":[%g,%g,%g,%g],", name, r.x, r.y, r.w, r.h); }
 
@@ -316,6 +318,69 @@ int main(void) {
                 l.statusY, l.statusLines.count, l.headingY, l.headingPlayersX, l.headingPingX, l.countY, l.labelY, l.nameY, l.nameLinesDetail.count,
                 l.addressY, l.addressLines.count, l.detailsY, l.detailsH, l.messageY, l.list.y + l.emptyY, l.pageHeight, l.listHeight,
                 l.dialogLabelY, l.dialogH2Y, l.dialogFieldLabelY, l.dialogHelpY, l.dialogErrorY, l.dialogAddressY);
+        } else if (!strcmp(command, "driver")) {
+            /* driver <width> <height> <tab> <profile> <avatar> <dialog> <avatars>, then lines:
+               name|rank|country|progress text|widest filter option|count|profile line|status,
+               the four overview values (|), the stats (|), medals (earned~label~name~text~status|...), profiles (|) */
+            static driverLayout_t l; static char head[1024], overview[256], stats[4096], medals[32768], profiles[2048];
+            char *field[8], *r, *next; float w, h; int tab, profile, avatar, dialog, i, n;
+            memset(&l, 0, sizeof(l));
+            scanf("%f %f %d %d %d %d %d\n", &w, &h, &tab, &profile, &avatar, &dialog, &l.avatars);
+            fgets(head, sizeof(head), stdin); head[strcspn(head, "\n")] = 0;
+            fgets(overview, sizeof(overview), stdin); overview[strcspn(overview, "\n")] = 0;
+            fgets(stats, sizeof(stats), stdin); stats[strcspn(stats, "\n")] = 0;
+            fgets(medals, sizeof(medals), stdin); medals[strcspn(medals, "\n")] = 0;
+            fgets(profiles, sizeof(profiles), stdin); profiles[strcspn(profiles, "\n")] = 0;
+            for (n = 0, r = head; n < 8; n++) { field[n] = r; r = strchr(r, '|'); if (r) *r++ = 0; else r = head + strlen(head); }
+            l.name = field[0]; l.rank = field[1]; l.country = field[2]; l.progressText = field[3]; l.filterText = field[4];
+            l.count = field[5]; l.profileLine = field[6]; l.status = field[7];
+            for (n = 0, r = overview; n < 4; n++) { l.overview[n] = r; r = strchr(r, '|'); if (r) *r++ = 0; else r = overview + strlen(overview); }
+            for (n = 0, r = stats; n < DRIVER_STATS; n++) { l.stats[n] = r; r = strchr(r, '|'); if (r) *r++ = 0; else r = stats + strlen(stats); }
+            for (r = medals; *r && l.medals < DRIVER_MAX_MEDALS; r = next) {
+                next = strchr(r, '|'); if (next) *next++ = 0; else next = r + strlen(r);
+                l.earned[l.medals] = r[0] == '1'; r += 2;
+                l.medalLabel[l.medals] = r; r = strchr(r, '~'); *r++ = 0;
+                l.medalName[l.medals] = r; r = strchr(r, '~'); *r++ = 0;
+                l.medalText[l.medals] = r; r = strchr(r, '~'); *r++ = 0;
+                l.medalStatus[l.medals++] = r;
+            }
+            for (r = profiles; *r && l.profiles < DRIVER_MAX_PROFILES; r = next) {
+                next = strchr(r, '|'); if (next) *next++ = 0; else next = r + strlen(r);
+                l.profileName[l.profiles++] = r;
+            }
+            l.tab = tab; l.profile = profile; l.avatar = avatar; l.dialog = dialog; l.hideScrollbar = qtrue;
+            uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
+            Driver_Layout(&l, w, h);
+            printf("{");
+            rect("back", l.back); rect("identity", l.identity); rect("career", l.career); rect("avatar", l.avatarBox);
+            rect("filter", l.filter); rect("dialog", l.dialogBox); rect("list", l.list); rect("nameInput", l.nameInput);
+            rect("submit", l.submit); rect("close", l.close);
+            printf("\"tabs\":[");
+            for (i = 0; i < 3; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.tabs[i].x, l.tabs[i].y, l.tabs[i].w, l.tabs[i].h);
+            printf("],\"actions\":[");
+            for (i = 0; i < 3; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.actions[i].x, l.actions[i].y, l.actions[i].w, l.actions[i].h);
+            printf("],\"overview\":[");
+            for (i = 0; i < 4; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.overviewCard[i].box.x, l.overviewCard[i].box.y, l.overviewCard[i].box.w, l.overviewCard[i].box.h);
+            printf("],\"groups\":[");
+            for (i = 0; i < DRIVER_GROUPS; i++) printf("%s[%g,%g,%g,%g,%g]", i ? "," : "", l.group[i].x, l.group[i].y, l.group[i].w, l.group[i].h, l.groupH2Y[i]);
+            printf("],\"stats\":[");
+            for (i = 0; i < DRIVER_STATS; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.statCard[i].box.x, l.statCard[i].box.y, l.statCard[i].box.w, l.statCard[i].box.h);
+            printf("],\"medals\":[");
+            for (i = 0; i < l.medals; i++) printf("%s[%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%d,%d]", i ? "," : "", l.medal[i].box.x, l.medal[i].box.y, l.medal[i].box.w, l.medal[i].box.h,
+                l.medal[i].medal.x, l.medal[i].labelY, l.medal[i].nameY, l.medal[i].textY, l.medal[i].progressY, l.medal[i].statusY, l.medal[i].name.count, l.medal[i].text.count);
+            printf("],\"fields\":[");
+            for (i = 0; i < 3; i++) printf("%s[%g,%g,%g,%g,%g]", i ? "," : "", l.field[i].x, l.field[i].y, l.field[i].w, l.field[i].h, l.fieldLabelY[i]);
+            printf("],\"avatars\":[");
+            for (i = 0; i < l.avatars; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.avatarChoice[i].x, l.avatarChoice[i].y, l.avatarChoice[i].w, l.avatarChoice[i].h);
+            printf("],\"profiles\":[");
+            for (i = 0; i < l.profiles; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.list.x, l.list.y + l.profileButton[i].y, l.profileButton[i].w, l.profileButton[i].h);
+            printf("],\"y\":{\"identity\":%g,\"label\":%g,\"name\":%g,\"rank\":%g,\"country\":%g,\"careerH2\":%g,\"progress\":%g,"
+                "\"progressText\":%g,\"category\":%g,\"count\":%g,\"dialogLabel\":%g,\"dialogH2\":%g,\"profileLine\":%g,"
+                "\"avatarLabel\":%g,\"create\":%g,\"nameLabel\":%g,\"help\":%g,\"status\":%g},\"identityX\":%g,\"identityW\":%g,"
+                "\"page\":%g,\"dialogHeight\":%g,\"listHeight\":%g}\n",
+                l.identityY, l.identityLabelY, l.nameY, l.rankY, l.countryY, l.careerH2Y, l.progressY, l.progressTextY, l.categoryY,
+                l.countY, l.dialogLabelY, l.dialogH2Y, l.profileLineY, l.avatarLabelY, l.createY, l.nameLabelY, l.helpY, l.statusY,
+                l.identityX, l.identityW, l.pageHeight, l.dialogHeight, l.listHeight);
         } else if (!strcmp(command, "width")) {
             wsTextStyle_t style; int font, upper; float size, spacing; char shown[256];
             scanf("%d %f %f %d %255[^\n]", &font, &size, &spacing, &upper, text);

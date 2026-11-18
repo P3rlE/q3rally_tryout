@@ -56,6 +56,10 @@ Changed:
   exactly like the WebUI's: source, mode and sort, the search, the toggles,
   the server list, the destination with levelshot and details, favorites
   and the direct connect dialog.
+- The driver page ("Driver profile.") is drawn by the game again and looks
+  exactly like the WebUI's: overview, stats and achievements, editing the
+  driver (gender, birth date, country, avatar) and selecting or creating a
+  profile. The main menu's Driver profile opens it on every system.
 - Weapons: own models in a "built, not bought" style, all ten made from car
   parts on the same roof plate, with own muzzle flashes and icons. New names
   close to the old ones: Harvester Saw, Spotlight MG, Twin Shotgun, Drum

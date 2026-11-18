@@ -120,7 +120,8 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
         if ( UI_WebRivalsScreen() ) return 15;	/* native as well */
         if ( UI_WebDownloadsScreen() ) return 15;	/* native as well */
         if ( UI_WebVehicleSettingsScreen() || UI_WebPlayerModelScreen() ) return 7;
-        return UI_WebDriverScreen() ? 8 : 0;
+        /* the driver page is native; the old player settings' stats tabs still show the WebUI's */
+        return UI_WebDriverScreen() ? ( UI_WebDriverNative() ? 15 : 8 ) : 0;
     case UI_WEB_TICK:
         uis.frametime = arg0 - uis.realtime; uis.realtime = arg0;
         uis.transitionIn = uis.transitionOut = 0; uis.tFrac = 1.0f;
