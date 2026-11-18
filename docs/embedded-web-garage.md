@@ -72,12 +72,13 @@ for local testing with bundled documents only.
 The graphics loading screen (WebUI screen 1), the main menu (screen 2), the
 end credits (screen 3), the demo archive (screen 4), Rivals (screen 5),
 Downloads (screen 6), the driver page (screen 8), offline play (screens 9
-and 10) and the server browser (screen 11) are drawn by the game again, in
+and 10), the server browser (screen 11) and the settings with the race
+control (screen 12, config pages 0-15) are drawn by the game again, in
 the WebUI's look (docs/native-webstyle.md). The page still loads behind
 them, hidden, for the screens that are still pages.
 
 With `cl_webUI 1`, the embedded frontend still opens for the garage, the
-settings and the HUD options. Map loading is
+first-start and ladder wizards (config pages 16-21) and the HUD options. Map loading is
 native (docs/native-webstyle.md). Other menus use their
 native UI. On return to a native menu, the client restores SDL input focus,
 clears held keys and routes mouse positions through the UI's absolute position

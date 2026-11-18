@@ -29,6 +29,7 @@ HARNESS = r'''
 #include "q3_ui/ui_rally_offlinerulelayout.h"
 #include "q3_ui/ui_rally_onlinelayout.h"
 #include "q3_ui/ui_rally_driverlayout.h"
+#include "q3_ui/ui_rally_configlayout.h"
 #include <stdio.h>
 uiStatic_t uis;
 static FILE *files[8];
@@ -62,6 +63,7 @@ void UI_DrawVehicleWebView(float x, float y, float w, float h, playerInfo_t *pi,
 #include "q3_ui/ui_rally_offlinerulelayout.c"
 #include "q3_ui/ui_rally_onlinelayout.c"
 #include "q3_ui/ui_rally_driverlayout.c"
+#include "q3_ui/ui_rally_configlayout.c"
 
 static void rect(const char *name, wsRect_t r) { printf("\"%s\":[%g,%g,%g,%g],", name, r.x, r.y, r.w, r.h); }
 
@@ -318,6 +320,46 @@ int main(void) {
                 l.statusY, l.statusLines.count, l.headingY, l.headingPlayersX, l.headingPingX, l.countY, l.labelY, l.nameY, l.nameLinesDetail.count,
                 l.addressY, l.addressLines.count, l.detailsY, l.detailsH, l.messageY, l.list.y + l.emptyY, l.pageHeight, l.listHeight,
                 l.dialogLabelY, l.dialogH2Y, l.dialogFieldLabelY, l.dialogHelpY, l.dialogErrorY, l.dialogAddressY);
+        } else if (!strcmp(command, "config")) {
+            /* config <width> <height> <page> <dialog> <scroll>, then lines: title, description, capture action,
+               buttons (|), fields (type~label~text|...); \x1e stands for a line feed */
+            static configLayout_t l; static char title[256], description[4096], action[256], buttons[2048], fields[16384];
+            char *r, *next, *c; float w, h; int dialog, i;
+            memset(&l, 0, sizeof(l));
+            scanf("%f %f %d %d %f\n", &w, &h, &l.screen, &dialog, &l.pageScroll);
+            fgets(title, sizeof(title), stdin); title[strcspn(title, "\n")] = 0;
+            fgets(description, sizeof(description), stdin); description[strcspn(description, "\n")] = 0;
+            fgets(action, sizeof(action), stdin); action[strcspn(action, "\n")] = 0;
+            fgets(buttons, sizeof(buttons), stdin); buttons[strcspn(buttons, "\n")] = 0;
+            fgets(fields, sizeof(fields), stdin); fields[strcspn(fields, "\n")] = 0;
+            for (c = description; *c; c++) if (*c == '\x1e') *c = '\n';
+            for (c = fields; *c; c++) if (*c == '\x1e') *c = '\n';
+            l.title = title; l.description = description; l.captureAction = action; l.dialog = dialog;
+            for (r = buttons; *r && l.buttons < CONFIG_MAX_BUTTONS; r = next) {
+                next = strchr(r, '|'); if (next) *next++ = 0; else next = r + strlen(r);
+                l.buttonLabel[l.buttons++] = r;
+            }
+            for (r = fields; *r && l.fields < CONFIG_MAX_FIELDS; r = next) {
+                configField_t *f = &l.field[l.fields++];
+                next = strchr(r, '|'); if (next) *next++ = 0; else next = r + strlen(r);
+                f->type = atoi(r); r = strchr(r, '~') + 1; f->label = r; r = strchr(r, '~'); *r++ = 0; f->text = r;
+            }
+            uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
+            Config_Layout(&l, w, h);
+            printf("{");
+            rect("back", l.back); rect("nav", l.nav); rect("section", l.section); rect("dialog", l.dialogBox); rect("cancel", l.cancel);
+            printf("\"buttons\":[");
+            for (i = 0; i < l.buttons; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.button[i].x, l.button[i].y, l.button[i].w, l.button[i].h);
+            printf("],\"fields\":[");
+            for (i = 0; i < l.fields && l.settings; i++) {
+                configField_t *f = &l.field[i];
+                printf("%s[[%g,%g,%g,%g],[%g,%g,%g,%g],%g,[%g,%g,%g,%g],[%g,%g,%g,%g],%d]", i ? "," : "", f->box.x, f->box.y, f->box.w, f->box.h,
+                    f->control.x, f->control.y, f->control.w, f->control.h, f->outputY, f->rebind.x, f->rebind.y, f->rebind.w, f->rebind.h,
+                    f->clear.x, f->clear.y, f->clear.w, f->clear.h, f->labelLines.count);
+            }
+            printf("],\"description\":[%g,%d],\"page\":%g,\"settings\":%d,\"dialogY\":[%g,%g,%g,%g],\"h2\":[%d,%g]}\n",
+                l.descriptionY, l.descriptionLines.count, l.pageHeight, l.settings, l.dialogLabelY, l.dialogH2Y, l.dialogActionY, l.dialogHelpY,
+                l.dialogH2Lines.count, l.h2.size);
         } else if (!strcmp(command, "driver")) {
             /* driver <width> <height> <tab> <profile> <avatar> <dialog> <avatars>, then lines:
                name|rank|country|progress text|widest filter option|count|profile line|status,
