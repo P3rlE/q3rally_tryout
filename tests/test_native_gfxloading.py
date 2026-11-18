@@ -27,6 +27,7 @@ HARNESS = r'''
 #include "q3_ui/ui_rally_maploadlayout.h"
 #include "q3_ui/ui_rally_offlinelayout.h"
 #include "q3_ui/ui_rally_offlinerulelayout.h"
+#include "q3_ui/ui_rally_onlinelayout.h"
 #include <stdio.h>
 uiStatic_t uis;
 static FILE *files[8];
@@ -58,6 +59,7 @@ void UI_DrawVehicleWebView(float x, float y, float w, float h, playerInfo_t *pi,
 #include "q3_ui/ui_rally_maploadlayout.c"
 #include "q3_ui/ui_rally_offlinelayout.c"
 #include "q3_ui/ui_rally_offlinerulelayout.c"
+#include "q3_ui/ui_rally_onlinelayout.c"
 
 static void rect(const char *name, wsRect_t r) { printf("\"%s\":[%g,%g,%g,%g],", name, r.x, r.y, r.w, r.h); }
 
@@ -270,6 +272,50 @@ int main(void) {
                 printf("]}");
             }
             printf("]}\n");
+        } else if (!strcmp(command, "online")) {
+            /* online <width> <height> <list scroll> <picked> <image> <remove> <dialog>, then lines:
+               status|count|empty|message|name|address|favorite|dialog text, details (|), rows (name~sub|...) */
+            static onlineLayout_t l; static char head[2048], details[1024], rows[8192]; char *field[8], *r, *next;
+            float w, h; int picked, image, removable, dialog, i, n;
+            memset(&l, 0, sizeof(l));
+            scanf("%f %f %f %d %d %d %d\n", &w, &h, &l.listScroll, &picked, &image, &removable, &dialog);
+            fgets(head, sizeof(head), stdin); head[strcspn(head, "\n")] = 0;
+            fgets(details, sizeof(details), stdin); details[strcspn(details, "\n")] = 0;
+            fgets(rows, sizeof(rows), stdin); rows[strcspn(rows, "\n")] = 0;
+            for (n = 0, r = head; n < 8; n++) { field[n] = r; r = strchr(r, '|'); if (r) *r++ = 0; else r = head + strlen(head); }
+            l.status = field[0]; l.count = field[1]; l.empty = field[2]; l.message = field[3]; l.name = field[4];
+            l.address = field[5]; l.favorite = field[6]; l.dialogText = field[7];
+            for (n = 0, r = details; n < ONLINE_DETAILS; n++) { l.detail[n] = r; r = strchr(r, '|'); if (r) *r++ = 0; else r = details + strlen(details); }
+            for (r = rows; *r && l.rows < ONLINE_MAX_ROWS; r = next) {
+                next = strchr(r, '|'); if (next) *next++ = 0; else next = r + strlen(r);
+                l.rowName[l.rows] = r; r = strchr(r, '~'); *r++ = 0; l.rowSub[l.rows++] = r;
+            }
+            l.picked = picked; l.image = image; l.remove = removable; l.dialog = dialog; l.hideScrollbar = qtrue;
+            uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
+            Online_Layout(&l, w, h);
+            printf("{");
+            rect("back", l.back); rect("toolbar", l.toolbar); rect("listSection", l.listSection); rect("detailSection", l.detailSection);
+            rect("list", l.list); rect("image", l.shot); rect("dialog", l.dialogBox); rect("dialogInput", l.dialogInput);
+            printf("\"filters\":[");
+            for (i = 0; i < ONLINE_FILTERS; i++) printf("%s[%g,%g,%g,%g,%g,%g,%g,%g]", i ? "," : "", l.filterBox[i].x, l.filterBox[i].y, l.filterBox[i].w, l.filterBox[i].h,
+                l.filterControl[i].x, l.filterControl[i].y, l.filterControl[i].w, l.filterControl[i].h);
+            printf("],\"toggles\":[");
+            for (i = 0; i < ONLINE_TOGGLES; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.toggle[i].x, l.toggle[i].y, l.toggle[i].w, l.toggle[i].h);
+            printf("],\"actions\":[");
+            for (i = 0; i < ONLINE_ACTIONS; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.action[i].x, l.action[i].y, l.action[i].w, l.action[i].h);
+            printf("],\"buttons\":[");
+            for (i = 0; i < ONLINE_BUTTONS; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.button[i].x, l.button[i].y, l.button[i].w, l.button[i].h);
+            printf("],\"dialogButtons\":[");
+            for (i = 0; i < 2; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.dialogButton[i].x, l.dialogButton[i].y, l.dialogButton[i].w, l.dialogButton[i].h);
+            printf("],\"cards\":[");
+            for (i = 0; i < ONLINE_DETAILS && picked; i++) printf("%s[%g,%g,%g,%g,%g]", i ? "," : "", l.card[i].x, l.card[i].y, l.card[i].w, l.card[i].h, l.cardValueY[i]);
+            printf("],\"rows\":[");
+            for (i = 0; i < l.rows; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.list.x, l.list.y - l.listScroll + l.rowY[i], l.rowWidth, l.rowH[i]);
+            printf("],\"status\":[%g,%d],\"heading\":[%g,%g,%g],\"countY\":%g,\"label\":%g,\"name\":[%g,%d],\"address\":[%g,%d],"
+                "\"details\":[%g,%g],\"message\":%g,\"emptyY\":%g,\"page\":%g,\"listHeight\":%g,\"dialogY\":[%g,%g,%g,%g,%g,%g]}\n",
+                l.statusY, l.statusLines.count, l.headingY, l.headingPlayersX, l.headingPingX, l.countY, l.labelY, l.nameY, l.nameLinesDetail.count,
+                l.addressY, l.addressLines.count, l.detailsY, l.detailsH, l.messageY, l.list.y + l.emptyY, l.pageHeight, l.listHeight,
+                l.dialogLabelY, l.dialogH2Y, l.dialogFieldLabelY, l.dialogHelpY, l.dialogErrorY, l.dialogAddressY);
         } else if (!strcmp(command, "width")) {
             wsTextStyle_t style; int font, upper; float size, spacing; char shown[256];
             scanf("%d %f %f %d %255[^\n]", &font, &size, &spacing, &upper, text);

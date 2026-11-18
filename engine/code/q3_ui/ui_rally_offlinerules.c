@@ -277,7 +277,7 @@ static void Rules_DrawSelect( const wsRect_t *r, const char *text, float size, q
 	Rules_Mix( wsWhite, opacity, color );
 	WS_SetClipX( r->x + 1.0f, r->x + r->w - 20.0f );
 	Rules_SetClip( clip );
-	WS_DrawText( &style, r->x + 1.0f + WS_LU( 0.65f * WS_REM ), r->y + 1.0f + WS_LU( 0.65f * WS_REM ) + ( r->h - 2.0f * WS_LU( 0.65f * WS_REM ) - 2.0f - line ) * 0.5f,
+	WS_DrawText( &style, r->x + 1.0f + WS_LU( 0.65f * WS_REM ) + 4.0f, r->y + 1.0f + WS_LU( 0.65f * WS_REM ) + ( r->h - 2.0f * WS_LU( 0.65f * WS_REM ) - 2.0f - line ) * 0.5f,
 	             text, strlen( text ), color );
 	Rules_SetClip( NULL );
 	WS_SetClipX( 0.0f, 0.0f );
@@ -534,7 +534,7 @@ static void Rules_OpenPopup( int ctl, int row, const wsRect_t *anchor, float siz
 	if ( ctl >= 0 ) {
 		s_rules.popupCount = s_rules.control[ctl].choices;
 		s_rules.popupCurrent = s_rules.control[ctl].value;
-	} else {
+	} else if ( row >= 0 && row < RULES_MAX_ROWS ) {
 		int i;
 		s_rules.popupCount = s_rules.bots + ( s_rules.bot[row] < 0 ? 1 : 0 );
 		s_rules.popupCurrent = s_rules.bots;

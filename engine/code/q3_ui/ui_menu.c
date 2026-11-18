@@ -703,6 +703,11 @@ void UI_MainMenu( void ) {
                         UI_StartServerMenu( qfalse );
                         return;
                 }
+                trap_Cvar_VariableStringBuffer( "ui_onlinePreview", preview, sizeof( preview ) );
+                if ( preview[0] ) {
+                        UI_ArenaServersMenu();
+                        return;
+                }
                 trap_Cvar_VariableStringBuffer( "ui_demosPreview", preview, sizeof( preview ) );
                 if ( preview[0] ) {
                         UI_DemosMenu();

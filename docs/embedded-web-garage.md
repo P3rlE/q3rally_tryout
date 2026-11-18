@@ -71,11 +71,11 @@ for local testing with bundled documents only.
 
 The graphics loading screen (WebUI screen 1), the main menu (screen 2), the
 end credits (screen 3), the demo archive (screen 4), Rivals (screen 5) and
-Downloads (screen 6) and offline play (screens 9 and 10) are drawn by the game again, in the WebUI's look (docs/native-webstyle.md). The
+Downloads (screen 6) offline play (screens 9 and 10) and the server browser (screen 11) are drawn by the game again, in the WebUI's look (docs/native-webstyle.md). The
 page still loads behind them, hidden, for the screens that are still pages.
 
 With `cl_webUI 1`, the embedded frontend still opens for the driver page, the
-garage, online play, the settings and the HUD options. Map loading is
+garage, the settings and the HUD options. Map loading is
 native (docs/native-webstyle.md). Other menus use their
 native UI. On return to a native menu, the client restores SDL input focus,
 clears held keys and routes mouse positions through the UI's absolute position

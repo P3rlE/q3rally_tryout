@@ -159,7 +159,7 @@ static const char *Offline_Trimmed( const char *text ) {
 
 /* the levelshot's size from its file header: object-fit cover needs the
  * picture's own aspect (most are 16:9, a few are square) */
-static float Offline_ImageAspect( const char *name ) {
+float Offline_ImageAspect( const char *name ) {
 	static byte data[65536];
 	static const char *extensions[3] = { "jpg", "tga", "png" };
 	fileHandle_t f;
@@ -327,7 +327,7 @@ static void Offline_TrackDraw( void ) {
 	WS_DrawText( &body, l->leftX, l->modeLabelY, "Game mode", 9, wsWhite );
 	Offline_DrawField( &l->mode, qfalse );
 	Offline_Text( 3, mode, 0, text, sizeof( text ) );
-	WS_DrawText( &select, l->mode.x + 1.0f + WS_LU( 0.65f * WS_REM ), l->mode.y + 1.0f + WS_LU( 0.65f * WS_REM ), text, strlen( text ), wsWhite );
+	WS_DrawText( &select, l->mode.x + 1.0f + WS_LU( 0.65f * WS_REM ) + 4.0f, l->mode.y + 1.0f + WS_LU( 0.65f * WS_REM ), text, strlen( text ), wsWhite );
 	trap_R_SetColor( wsWhite );
 	trap_R_DrawStretchPic( WS_Round( l->mode.x + l->mode.w ) - 14.0f, WS_Round( l->mode.y + l->mode.h * 0.5f ) - 3.0f, 10, 7,
 	                       0, 25 / 32.0f, 10 / 16.0f, 1.0f, trap_R_RegisterShaderNoMip( "menu/ui/web_scrollbar" ) );

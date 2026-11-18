@@ -32,6 +32,7 @@ MULTIPLAYER MENU (SERVER BROWSER)
 
 
 #include "ui_local.h"
+#include "ui_rally_online.h"
 #include "ui_rally_frontend.h"
 
 
@@ -2426,6 +2427,8 @@ void UI_ArenaServersMenu( void ) {
         ArenaServers_MenuInit();
         Frontend_SetBackButton( &g_arenaservers.back.generic );
     UI_PushMenu( &g_arenaservers.menu );
+	/* drawn like the WebUI's online screen (ui_rally_online.c) */
+	Online_Install( &g_arenaservers.menu );
 }
 
 

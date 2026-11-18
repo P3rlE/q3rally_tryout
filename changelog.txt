@@ -52,6 +52,10 @@ Changed:
   "Race setup". The second step (rules and drivers) follows it: the race
   summary with "Start race", the rules and the starting grid with bots, their
   cars and teams.
+- The server browser ("Join the grid.") is drawn by the game again and looks
+  exactly like the WebUI's: source, mode and sort, the search, the toggles,
+  the server list, the destination with levelshot and details, favorites
+  and the direct connect dialog.
 - Weapons: own models in a "built, not bought" style, all ten made from car
   parts on the same roof plate, with own muzzle flashes and icons. New names
   close to the old ones: Harvester Saw, Spotlight MG, Twin Shotgun, Drum
