@@ -1242,6 +1242,7 @@ int UI_WebImportFavorites( void );
 
 void UI_WebDriverMenu( void );
 int UI_WebDriverScreen( void );
+int UI_WebDriverNative( void );
 void UI_WebDriverAction( int action );
 int UI_WebDriverValue( int field, int index );
 int UI_WebAchievementChar( int category, int tier, int field, int character );

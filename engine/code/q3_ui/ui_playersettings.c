@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "ui_local.h"
+#include "ui_rally_driver.h"
 #include "ui_rally_frontend.h"
 #include "../game/bg_achievements.h"
 
@@ -6514,6 +6515,11 @@ void UI_WebDriverMenu( void ) {
     Com_Memset( &s_webDriverMenu, 0, sizeof( s_webDriverMenu ) );
     s_webDriverMenu.fullscreen = qtrue;
     UI_PushMenu( &s_webDriverMenu );
+    /* drawn like the WebUI's driver page (ui_rally_driver.c) */
+    Driver_Install( &s_webDriverMenu );
+}
+int UI_WebDriverNative( void ) {
+    return uis.activemenu == &s_webDriverMenu;
 }
 int UI_WebDriverScreen( void ) {
     return uis.activemenu == &s_webDriverMenu ||

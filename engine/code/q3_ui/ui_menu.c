@@ -327,11 +327,8 @@ static void MainMenu_Activate( int item ) {
                 break;
         case MAIN_NAV_PROFILE:
                 uis.mainMenu = 0;
-                if ( trap_Cvar_VariableValue( "cl_webUI" ) ) {
-                        UI_WebDriverMenu();
-                } else {
-                        UI_ProfileOverlay_Open( qfalse );
-                }
+                /* the driver page is native now, like the WebUI's */
+                UI_WebDriverMenu();
                 break;
         case MAIN_NAV_QUIT:
                 s_main.quitOpen = qtrue;
@@ -701,6 +698,11 @@ void UI_MainMenu( void ) {
                 trap_Cvar_VariableStringBuffer( "ui_offlinePreview", preview, sizeof( preview ) );
                 if ( preview[0] ) {
                         UI_StartServerMenu( qfalse );
+                        return;
+                }
+                trap_Cvar_VariableStringBuffer( "ui_driverPreview", preview, sizeof( preview ) );
+                if ( preview[0] ) {
+                        UI_WebDriverMenu();
                         return;
                 }
                 trap_Cvar_VariableStringBuffer( "ui_onlinePreview", preview, sizeof( preview ) );

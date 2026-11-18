@@ -37,7 +37,7 @@ const vec4_t wsButtonText = { 20 / 255.0f, 20 / 255.0f, 20 / 255.0f, 1.0f };
 #define WS_MAX_KERNS	4096
 #define WS_MAX_SIZES	12
 #define WS_MAX_LIGS		16
-#define WS_FILE_MAX		65536
+#define WS_FILE_MAX		131072	/* the condensed face with its lowercase: 84 KB */
 
 typedef struct {
 	int			size100;		/* atlas pixel size * 100 */
