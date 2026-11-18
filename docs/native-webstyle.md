@@ -73,8 +73,8 @@ atlases.
 - `tools/ui_webstyle/measure_webui_loading.cjs`, `measure_webui_main.cjs`,
   `measure_webui_credits.cjs`, `measure_webui_rivals.cjs`,
   `measure_webui_downloads.cjs`, `measure_webui_demos.cjs`,
-  `measure_webui_maploading.cjs`, `measure_webui_offline.cjs` and
-  `measure_webui_offline_rules.cjs` measure the WebUI screens in Chrome (the
+  `measure_webui_maploading.cjs`, `measure_webui_offline.cjs`,
+  `measure_webui_offline_rules.cjs` and `measure_webui_online.cjs` measure the WebUI screens in Chrome (the
   credits with the roll paused at fixed times). They record every box and the width
   of every text run, for several viewports and all states (main menu: with
   and without a profile, quit dialog open).
@@ -209,7 +209,27 @@ What still differs from the WebUI:
   (native_screenshot.sh `offline:`); `ui_offlineDump 1` then prints its
   model (tests/fixtures/offline_rules_model.json).
 
-## Interplay with the WebUI
+## The server browser (Online)
+
+- `q3_ui/ui_rally_online.c` draws it over the old arena servers menu
+  (`Online_Install`), layout in `ui_rally_onlinelayout.c`. It reads the model
+  the page read (`UI_WebOnlineNumber`, `UI_WebOnlineChar`) and acts through
+  `UI_WebOnlineAction`; the address actions (select, connect, favorite,
+  remove, direct) pass the address in `ui_webonline_address`, as before.
+- Like online.js: the search matches name, map, address and mode; "Count
+  humans only" shows humans in the players column; a server without humans
+  shows an empty "Human players" (the page writes nothing for a 0);
+  "Remove favorite" only with the Favorites source, behind its dialog.
+- The page flows and scrolls as a whole; the list scrolls from 38rem. The
+  dialogs are centred in the viewport (without the scrollbar gutter) over
+  a #000b backdrop.
+- Checkboxes are Chrome's in the dark scheme with the accent colour, drawn
+  pixel for pixel from a screenshot (no texture). Chrome starts a select's
+  text 4px inside its padding; all native selects do that now.
+- `ui_onlineDump 1` prints the model (tests/fixtures/online_model.json),
+  `ui_onlinePreview "row,search,listscroll,pagescroll,dialog"` opens the
+  screen in that state (native_screenshot.sh `online:`, with three local
+  dedicated servers as favorites).
 
 ## The main menu
 

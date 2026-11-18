@@ -16,6 +16,8 @@ or (at your option) any later version.
 
 void Offline_Text( int kind, int index, int choice, char *out, int size );
 void Offline_Dump( void );
+/* width / height of levelshots/<name> from its file header (1 when unknown) */
+float Offline_ImageAspect( const char *name );
 /* takes over drawing and input of the track step (s_startserver.menu) */
 void Offline_InstallTrack( menuframework_s *menu );
 /* and of the rules and drivers step (s_serveroptions.menu), ui_rally_offlinerules.c */

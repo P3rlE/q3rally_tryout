@@ -13,7 +13,9 @@
 # item -1: the first match), or "demos:selected,scroll" for the demo archive
 # with the recordings of tests/fixtures/demo_names.json (empty files), or
 # "offline:mode,search,selected,scroll[,pagescroll[,2]]" for the offline setup
-# (step 1, or step 2 with ",2": scroll is then the starting grid's). The last ones come up
+# (step 1, or step 2 with ",2": scroll is then the starting grid's), or
+# "online:row,search,listscroll,pagescroll,dialog" for the server browser with
+# the favorites 127.0.0.1:27961-27963 (dedicated servers started beforehand). The last ones come up
 # once the loading screen has run through (give it about 40 seconds).
 #
 # Needs a Linux client build (make BUILD_CLIENT=1), Xvfb, Mesa and ImageMagick's
@@ -47,6 +49,10 @@ elif [ "${3#downloads:}" != "$3" ]; then
     python3 -c 'import sys,zipfile;[zipfile.ZipFile(f,"w").close() for f in sys.argv[1:]]' \
         "$WORK/home/baseq3r/trk_lava_falls_rev.pk3" "$WORK/home/baseq3r/trk_dirty_fun_2.pk3"
     STATE=(+set ui_downloadsPreview "${3#downloads:}" +set ui_dl_indexpath downloads_index.json)
+elif [ "${3#online:}" != "$3" ]; then
+    # the favorites: three local servers (start them first) and one that does not answer
+    STATE=(+set ui_onlinePreview "${3#online:}" +set ui_browserMaster 7 +set net_port 27990 +set server1 127.0.0.1:27961
+           +set server2 127.0.0.1:27962 +set server3 127.0.0.1:27963 +set server4 127.0.0.1:27969)
 elif [ "${3#offline:}" != "$3" ]; then
     STATE=(+set ui_offlinePreview "${3#offline:}")
 elif [ "${3#rivals:}" != "$3" ]; then
