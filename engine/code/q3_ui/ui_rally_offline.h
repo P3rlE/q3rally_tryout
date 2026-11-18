@@ -18,5 +18,7 @@ void Offline_Text( int kind, int index, int choice, char *out, int size );
 void Offline_Dump( void );
 /* takes over drawing and input of the track step (s_startserver.menu) */
 void Offline_InstallTrack( menuframework_s *menu );
+/* and of the rules and drivers step (s_serveroptions.menu), ui_rally_offlinerules.c */
+void Offline_InstallRules( menuframework_s *menu );
 
 #endif

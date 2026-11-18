@@ -59,7 +59,7 @@ typedef struct {
 	qboolean	uppercase;		/* text-transform: uppercase */
 } wsTextStyle_t;
 
-#define WS_MAX_LINES	8
+#define WS_MAX_LINES	16
 
 typedef struct {
 	int		count;
