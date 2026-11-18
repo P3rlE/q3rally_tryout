@@ -11,7 +11,8 @@
 # "downloads:state,progress,type,search,item" for Downloads with the catalog
 # tests/fixtures/downloads_index.json (type 0-3: all, tracks, vehicles, skins;
 # item -1: the first match), or "demos:selected,scroll" for the demo archive
-# with the recordings of tests/fixtures/demo_names.json (empty files). The last two come up
+# with the recordings of tests/fixtures/demo_names.json (empty files), or
+# "offline:mode,search,selected,scroll" for step 1 of the offline setup. The last ones come up
 # once the loading screen has run through (give it about 40 seconds).
 #
 # Needs a Linux client build (make BUILD_CLIENT=1), Xvfb, Mesa and ImageMagick's
@@ -45,6 +46,8 @@ elif [ "${3#downloads:}" != "$3" ]; then
     python3 -c 'import sys,zipfile;[zipfile.ZipFile(f,"w").close() for f in sys.argv[1:]]' \
         "$WORK/home/baseq3r/trk_lava_falls_rev.pk3" "$WORK/home/baseq3r/trk_dirty_fun_2.pk3"
     STATE=(+set ui_downloadsPreview "${3#downloads:}" +set ui_dl_indexpath downloads_index.json)
+elif [ "${3#offline:}" != "$3" ]; then
+    STATE=(+set ui_offlinePreview "${3#offline:}")
 elif [ "${3#rivals:}" != "$3" ]; then
     STATE=(+set ui_rivalsPreview "${3#rivals:}")
 elif [ "${3#credits:}" != "$3" ]; then

@@ -31,6 +31,7 @@ START SERVER MENU *****
 
 
 #include "ui_local.h"
+#include "ui_rally_offline.h"
 #include "ui_rally_frontend.h"
 
 #define GAMESERVER_SELECT		"menu/art/maps_select"
@@ -1253,6 +1254,9 @@ void UI_StartServerMenu( qboolean multiplayer ) {
 	s_startserver.multiplayer = multiplayer;
 	Frontend_SetBackButton( &s_startserver.back.generic );
     UI_PushMenu( &s_startserver.menu );
+	/* drawn like the WebUI's offline step 1 (ui_rally_offline.c) */
+	Offline_InstallTrack( &s_startserver.menu );
+	if ( trap_Cvar_VariableValue( "ui_offlineDump" ) ) Offline_Dump();
 }
 
 

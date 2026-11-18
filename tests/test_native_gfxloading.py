@@ -25,6 +25,7 @@ HARNESS = r'''
 #include "q3_ui/ui_rally_rivalslayout.h"
 #include "q3_ui/ui_rally_demoslayout.h"
 #include "q3_ui/ui_rally_maploadlayout.h"
+#include "q3_ui/ui_rally_offlinelayout.h"
 #include <stdio.h>
 uiStatic_t uis;
 static FILE *files[8];
@@ -54,6 +55,7 @@ void UI_DrawVehicleWebView(float x, float y, float w, float h, playerInfo_t *pi,
 #include "q3_ui/ui_rally_rivalslayout.c"
 #include "q3_ui/ui_rally_demoslayout.c"
 #include "q3_ui/ui_rally_maploadlayout.c"
+#include "q3_ui/ui_rally_offlinelayout.c"
 
 static void rect(const char *name, wsRect_t r) { printf("\"%s\":[%g,%g,%g,%g],", name, r.x, r.y, r.w, r.h); }
 
@@ -186,6 +188,32 @@ int main(void) {
                 "\"transfer\":%g,\"note\":[%g,%d],\"page\":%g}\n",
                 l.labelY, l.h1X, l.h1Y, l.nameY, l.nameLines.count, l.serverY, l.statusLabelY, l.detailY, l.detailLines.count,
                 l.transferY, l.noteY, l.noteLines.count, l.pageHeight);
+        } else if (!strcmp(command, "offline")) {
+            /* offline <width> <height> <scroll> <image>, then mapId|name, rows (|), details (|) */
+            static offlineLayout_t l; static char head[256], rows[4096], details[2048]; float w, h; int image, i; char *r;
+            memset(&l, 0, sizeof(l));
+            scanf("%f %f %f %d\n", &w, &h, &l.scroll, &image);
+            fgets(head, sizeof(head), stdin); head[strcspn(head, "\n")] = 0;
+            fgets(rows, sizeof(rows), stdin); rows[strcspn(rows, "\n")] = 0;
+            fgets(details, sizeof(details), stdin); details[strcspn(details, "\n")] = 0;
+            r = strchr(head, '|'); *r++ = 0;
+            Q_strncpyz(l.mapId, head, sizeof(l.mapId)); Q_strncpyz(l.name, r, sizeof(l.name));
+            for (r = rows; *r && l.count < OFFLINE_MAX_ROWS; ) { l.rowText[l.count++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
+            for (r = details; *r && l.details < OFFLINE_MAX_DETAILS; ) { l.detail[l.details++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
+            l.image = image; l.hideScrollbar = qtrue;
+            uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
+            Offline_Layout(&l, w, h);
+            printf("{");
+            rect("back", l.back); rect("left", l.left); rect("right", l.right); rect("mode", l.mode); rect("search", l.search);
+            rect("list", l.list); rect("image", l.shot); rect("next", l.next);
+            printf("\"label\":%g,\"h1\":%g,\"step\":[%g,%g],\"modeLabel\":%g,\"searchLabel\":%g,\"count\":%g,"
+                "\"mapId\":%g,\"name\":%g,\"details\":[%g,%g],\"page\":%g,\"buttons\":[",
+                l.labelY, l.h1Y, l.stepY, l.stepRulesX, l.modeLabelY, l.searchLabelY, l.countY, l.mapIdY, l.nameY,
+                l.detailsY, l.detailsH, l.pageHeight);
+            for (i = 0; i < l.count; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.list.x, l.list.y - l.scroll + l.rowY[i], l.rowWidth, l.rowH[i]);
+            printf("],\"detailBoxes\":[");
+            for (i = 0; i < l.details; i++) printf("%s[%g,%g,%g,%g]", i ? "," : "", l.detailX[i], l.detailY[i], l.detailW, l.detailLines[i].count * l.detailStyle.lineHeight);
+            printf("]}\n");
         } else if (!strcmp(command, "width")) {
             wsTextStyle_t style; int font, upper; float size, spacing; char shown[256];
             scanf("%d %f %f %d %255[^\n]", &font, &size, &spacing, &upper, text);
