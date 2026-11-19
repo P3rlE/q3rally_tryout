@@ -284,7 +284,7 @@ Solid entity that oscillates back and forth in a linear motion. By default, it w
 speed : amount of time in seconds for one complete oscillation cycle (default 4).
 height : sets the amount of travel of the oscillation movement (default 32). 
 phase : sets the start offset of the oscillation cycle. Values must be 0 < phase < 1. Any integer phase value is the same as no offset (default 0).
-noise : path/name of .wav file to play. Use looping sounds only (eg. sound/world/drone6.wav - See Notes).
+noise : path/name of .wav file to play. Use looping sounds only (eg. sound/world/machinerydrone01.wav - See Notes).
 model2 : path/name of model to include (eg: models/mapobjects/jets/jets01.md3).
 origin : alternate method of setting XYZ origin of sound and .md3 model included with entity (See Notes).
 light : constantLight radius of .md3 model included with entity. Has no effect on the entity's brushes (default 0).
@@ -458,7 +458,7 @@ Solid entity that describes a pendulum back and forth rotation movement. Rotates
 angle : angle offset of axis of rotation from default X axis (default 0).
 speed : angle of swing arc in either direction from initial position (default 30).
 phase : sets the start offset of the swinging cycle. Values must be 0 < phase < 1. Any integer phase value is the same as no offset (default 0).
-noise : path/name of .wav file to play. Use looping sounds only (eg. sound/world/drone6.wav).
+noise : path/name of .wav file to play. Use looping sounds only (eg. sound/world/machinerydrone01.wav).
 model2 : path/name of model to include (eg: models/mapobjects/jets/jets01.md3).
 origin : alternate method of setting XYZ origin of entity's rotation axis and .md3 model included with entity (default "0 0 0" - See Notes).
 light : constantLight radius of .md3 model included with entity. Has no effect on the entity's brushes (default 0).
@@ -522,7 +522,7 @@ Target this entity with a misc_model to have the model attached to the entity (s
 Solid entity that rotates continuously. Rotates on one or multiple axes and requires an origin brush. It will always start on in the game and is not targetable.
 -------- KEYS --------
 speed : determines how fast entity rotates (default 100).
-noise : path/name of .wav file to play. Use looping sounds only (eg. sound/world/drone6.wav).
+noise : path/name of .wav file to play. Use looping sounds only (eg. sound/world/machinerydrone01.wav).
 targetname : activating trigger points to this.
 targetname2 : activating trigger points to this.
 model2 : path/name of model to include (eg: models/mapobjects/bitch/fembotbig.md3).
@@ -1996,7 +1996,7 @@ notsingle : when set to 1, entity will not spawn in Single Player mode.*/
 /*QUAKED target_speaker (0 .7 .7) (-8 -8 -8) (8 8 8) LOOPED_ON LOOPED_OFF GLOBAL ACTIVATOR
 Sound generating entity that plays .wav files. Normal non-looping sounds play each time the target_speaker is triggered. Looping sounds can be set to play by themselves (no activating trigger) or be toggled on/off by a trigger.
 -------- KEYS --------
-noise : path/name of .wav file to play (eg. sound/world/growl1.wav - see Notes).
+noise : path/name of .wav file to play (eg. sound/world/wind1.wav - see Notes).
 wait : delay in seconds between each time the sound is played ("random" key must be set - see Notes).
 random : random time variance in seconds added or subtracted from "wait" delay ("wait" key must be set - see Notes).
 targetname : the activating button or trigger points to this.
@@ -2681,7 +2681,7 @@ Turbo pickup.
 -------- KEYS --------
 "count" turbo given in milliseconds (default 5000)
 "wait" respawn time in seconds (default 120; Autoball arenas use about 10 for big and 4 for small pickups)
-model="models/powerups/turbo/turbo.md3"*/
+model="models/powerups/nos/nos.md3"*/
 
 /*QUAKED rally_item_env (.3 .3 1) (-16 -16 -16) (16 16 16) SUSPENDED
 model="models/powerups/env/atomic.md3"*/

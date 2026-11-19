@@ -18,14 +18,23 @@ Als benutzt gilt, was erreichbar ist über
 - Zeichenketten im Code, auch als Muster (`"models/players/%s/body.md3"`) und
   Shader-Namen ohne Pfad (`"rocketExplosion"`);
 - Text-Konfigurationen (Arenen, cfg, Skins);
-- ganze Ordner, die das Spiel zur Laufzeit auflistet (`models/players`, `music`, `fonts`).
+- ganze Ordner, die das Spiel zur Laufzeit auflistet (`models/players`, `music`, `fonts`);
+- Namen, die der Code erst zur Laufzeit zusammensetzt: die Atlanten der Menüschriften
+  (`menu/fonts/<schrift>.dat` nennt sie), die Motorgeräusche (`engine.cfg` nennt seine
+  Loops, dazu `pop1..4` und `shift1..2` je Auto und im Standardsatz) und die Geräusche
+  der Autos (`sound/player/<auto>/<name>` für jedes `"*<name>.wav"` in `cg_players.c`,
+  etwa Hupe und Absturz);
+- Q3Rally-eigene Shader-Schlüsselwörter mit Bildern (`q3r_colorLut`, `q3r_water`) und
+  die `.mtr`-Fassung eines Skripts, die der opengl2-Renderer statt der `.shader` liest.
 
 Getrennt ausgewiesen: Bilder, die nur noch in einer Map-Quelle (`.map`) stehen oder
 nur als Editorbild (`qer_editorimage`) dienen.
 
-Grenzen: Sounds werden über Spielertabellen und zusammengesetzte Namen geladen, die
-das Skript nicht sicher erkennt; die Sound-Liste ist deshalb nur ein Hinweis. Modelle,
-die q3map2 in eine Karte einbackt, stehen nur in der Map-Quelle.
+Grenzen: Was der Code über ungewöhnlich zusammengesetzte Namen lädt, kann übersehen
+sein; vor dem Entfernen deshalb alle Karten vorher und nachher im Spiel laden und die
+Meldungen vergleichen. Modelle, die q3map2 in eine Karte einbackt, stehen nur in der
+Map-Quelle. Sounds, die nur `.script`-Dateien von Mapobjekten nennen, gelten als
+ungenutzt, solange das Mapobjekt ungenutzt ist.
 
 ## Aufräumen 11/2026
 
@@ -40,6 +49,33 @@ keine neue Meldung über fehlende Bilder, Modelle oder Sounds.
 Nicht entfernt: ungenutzte Q3Rally-eigene Dateien und solche ohne Quake-3- oder
 OpenArena-Bezug (Mapobjekte wie Fahrzeuge, Pylonen, Laternen, Texturen für neue
 Karten), Map-Quellen-Texturen, Editorbilder und alle Sounds.
+
+## Audit vor dem Release 11/2026
+
+Das Skript kennt jetzt die Menüschriften, Motor- und Autogeräusche, `q3r_colorLut` /
+`q3r_water` und `.mtr`-Skripte. Vorher stand dadurch fälschlich als ungenutzt da,
+was das Spiel lädt: die Schriftatlanten, die Motorgeräusche, Hupe und Absturz der Autos,
+`gfx/luts/neutral`, die Wasser-Normalmap und zwei Munitionsbilder des opengl2-Renderers.
+
+Entfernt wurden 108 Dateien, die nichts mehr lädt:
+
+- Sounds (64): Reste aus Quake 3 und OpenArena (Umgebungsgeräusche, Hülsen, Blut,
+  Teleporter, alte Ansagen), drei nicht verwendete Wetter-Loops und die Bruchgeräusche
+  unter `sound/breakable`, die kein Code lädt;
+- Modelle und Bilder (44): der alte Turbo (Modell, Effekte, Icon), die Rückseiten der
+  alten Munitionskisten, die alten Zerbrechlich-Modelle, drei große Betonbrocken, alte
+  Menügrafiken (Pfeile, Rahmen, Discord-Logo, Ladebild-Auto), `icons/rpm` und
+  `icons/fuelcan`, eine Medaille.
+
+Die Shader des alten Turbos sind mit weg; im Gamepack zeigt `rally_item_turbo` jetzt die
+NOS-Flasche. Geprüft im Spiel: alle 38 Karten vorher und nachher mit Bots geladen, keine neue Meldung
+über fehlende Dateien.
+
+Bewusst behalten, wie beim ersten Aufräumen: ungenutzte Mapobjekte (samt den Sounds ihrer
+`.script`-Dateien) und Texturen als Bibliothek für Mapper, Map-Quellen-Texturen und
+Editorbilder.
+
+Die Lizenz-Inventur (`lizenz_*.csv`) ist auf dem neuen Stand.
 
 ## Lizenz-Inventur
 

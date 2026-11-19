@@ -111,7 +111,7 @@ botfiles/syn.h,1323,Bot-Dateien,Text/Code,OpenArena,,B
 botfiles/teamplay.h,10716,Bot-Dateien,Text/Code,OpenArena,,B
 botfiles/weapons.c,4064,Bot-Dateien,Text/Code,OpenArena,,B
 default.cfg,1389,"Skripte, Shader, Konfiguration",Text/Code,eigen (alter Name),,E
-documents/credits.txt,3417,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,
+documents/credits.txt,3446,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,
 documents/license.docx,10886,documents,Sonstiges,unbekannt,,F
 documents/license.txt,15148,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 documents/LINUXNOTES.txt,481,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
@@ -166,8 +166,8 @@ env/xnight2_ft.jpg,11636,Skybox xnight2,Himmel,eigen (generiert),tools/texbuild,
 env/xnight2_lf.jpg,12535,Skybox xnight2,Himmel,eigen (generiert),tools/texbuild,C
 env/xnight2_rt.jpg,12560,Skybox xnight2,Himmel,eigen (generiert),tools/texbuild,C
 env/xnight2_up.jpg,12037,Skybox xnight2,Himmel,eigen (generiert),tools/texbuild,C
-fonts/fontImage_17.dat,28740,Schriften,Oberfläche,unbekannt,,F
-fonts/q3r_console.png,20543,Schriften,Oberfläche,unbekannt,,F
+fonts/fontImage_17.dat,28740,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_console_font.py,F
+fonts/q3r_console.png,20543,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_console_font.py,F
 fonts/ShareTechMono-OFL.txt,4428,Schriften,Oberfläche,unbekannt,,F
 gfx/2d/backtile.jpg,308,Oberfläche gfx,Oberfläche,OpenArena,,A
 gfx/2d/bigchars.tga,4194843,Oberfläche gfx,Oberfläche,eigen (alter Name),,E
@@ -304,7 +304,6 @@ gfx/ui/q3rally_frontend_bg_alt2.png,1590144,Oberfläche gfx,Oberfläche,unbekann
 gfx/ui/q3rally_frontend_bg_alt3.png,2027639,Oberfläche gfx,Oberfläche,unbekannt,,F
 gfx/ui/q3rally_missing_map_shot.png,1917419,Oberfläche gfx,Oberfläche,unbekannt,,F
 icons/env.tga,262683,icons,Oberfläche,unbekannt,,F
-icons/fuelcan.tga,10320,icons,Oberfläche,unbekannt,,F
 icons/fuelcan2.tga,19605,icons,Oberfläche,unbekannt,,F
 icons/haste.tga,262683,icons,Oberfläche,eigen (alter Name),,E
 icons/icona_bfg.tga,262683,icons,Oberfläche,eigen (alter Name),,E
@@ -362,13 +361,11 @@ icons/rf_flame.tga,262683,icons,Oberfläche,unbekannt,,F
 icons/rf_mine.tga,262683,icons,Oberfläche,unbekannt,,F
 icons/rf_oil.tga,262683,icons,Oberfläche,unbekannt,,F
 icons/rf_smoke.tga,262683,icons,Oberfläche,unbekannt,,F
-icons/rpm.tga,121261,icons,Oberfläche,unbekannt,,F
 icons/shardg.tga,262683,icons,Oberfläche,unbekannt,,F
 icons/shardr.tga,262683,icons,Oberfläche,unbekannt,,F
 icons/shardy.tga,262683,icons,Oberfläche,unbekannt,,F
 icons/shield.tga,262683,icons,Oberfläche,unbekannt,,F
 icons/teleporter.tga,12701,icons,Oberfläche,eigen (alter Name),,E
-icons/turbo.tga,262683,icons,Oberfläche,unbekannt,,F
 intro_routes/q3r_country01_tl2_rev0.route,7600,intro_routes,Sonstiges,unbekannt,,F
 intro_routes/q3r_country01_tl2_rev1.route,11511,intro_routes,Sonstiges,unbekannt,,F
 intro_routes/q3r_dirtyfun_tl0_rev0.route,10810,intro_routes,Sonstiges,unbekannt,,F
@@ -400,6 +397,7 @@ levelshots/q3r_country01.jpg,931156,Karte q3r_country01,Karten,unbekannt,,F
 levelshots/q3r_crossroads.jpg,73653,Karte q3r_crossroads,Karten,eigen (generiert),tools/maptools,F
 levelshots/q3r_ctf4_03.jpg,173838,Karte q3r_ctf4_03,Karten,eigen (generiert),tools/maptools,F
 levelshots/q3r_ctf_01.jpg,758110,Karte q3r_ctf_01,Karten,unbekannt,,F
+levelshots/q3r_ctf_04.jpg,116246,Karte q3r_ctf_04,Karten,unbekannt,,
 levelshots/q3r_david4.jpg,290672,Karte q3r_david4,Karten,eigen (generiert),tools/maptools,F
 levelshots/q3r_david5.jpg,591764,Karte q3r_david5,Karten,unbekannt,,F
 levelshots/q3r_dd_02.jpg,480995,Karte q3r_dd_02,Karten,unbekannt,,F
@@ -407,6 +405,9 @@ levelshots/q3r_demobowl.jpg,857397,Karte q3r_demobowl,Karten,unbekannt,,F
 levelshots/q3r_dirtyfun.jpg,815155,Karte q3r_dirtyfun,Karten,unbekannt,,F
 levelshots/q3r_dm02.jpg,878244,Karte q3r_dm02,Karten,unbekannt,,F
 levelshots/q3r_downtown.jpg,759855,Karte q3r_downtown,Karten,unbekannt,,F
+levelshots/q3r_drag_airfield.jpg,157864,Karte q3r_drag_airfield,Karten,eigen (generiert),tools/maptools,
+levelshots/q3r_drag_night.jpg,238785,Karte q3r_drag_night,Karten,eigen (generiert),tools/maptools,
+levelshots/q3r_dragstrip.jpg,222240,Karte q3r_dragstrip,Karten,eigen (generiert),tools/maptools,
 levelshots/q3r_lavafalls.jpg,1539725,Karte q3r_lavafalls,Karten,unbekannt,,F
 levelshots/q3r_lcs1.jpg,330616,Karte q3r_lcs1,Karten,eigen (generiert),tools/maptools,F
 levelshots/q3r_mesaking.jpg,64414,Karte q3r_mesaking,Karten,eigen (generiert),tools/maptools,F
@@ -456,9 +457,9 @@ maps/q3r_ctf4_03.map,690994,Karte q3r_ctf4_03,Karten,eigen (generiert),tools/map
 maps/q3r_ctf_01.aas,1377376,Karte q3r_ctf_01,Karten,unbekannt,,F
 maps/q3r_ctf_01.bsp,6507236,Karte q3r_ctf_01,Karten,unbekannt,,F
 maps/q3r_ctf_01.map,1916236,Karte q3r_ctf_01,Karten,unbekannt,,F
-maps/q3r_ctf_04.aas,379332,Karte q3r_ctf_04,Karten,unbekannt,,F
-maps/q3r_ctf_04.bsp,5292012,Karte q3r_ctf_04,Karten,unbekannt,,F
-maps/q3r_ctf_04.map,802530,Karte q3r_ctf_04,Karten,unbekannt,,F
+maps/q3r_ctf_04.aas,828556,Karte q3r_ctf_04,Karten,unbekannt,,F
+maps/q3r_ctf_04.bsp,14332812,Karte q3r_ctf_04,Karten,unbekannt,,F
+maps/q3r_ctf_04.map,1571739,Karte q3r_ctf_04,Karten,unbekannt,,F
 maps/q3r_ctf_bot_test.aas,1212,Karte q3r_ctf_bot_test,Karten,unbekannt,,F
 maps/q3r_ctf_bot_test.bsp,252288,Karte q3r_ctf_bot_test,Karten,unbekannt,,F
 maps/q3r_ctf_bot_test.map,6271,Karte q3r_ctf_bot_test,Karten,unbekannt,,F
@@ -488,6 +489,12 @@ maps/q3r_downtown.aas,907600,Karte q3r_downtown,Karten,unbekannt,,F
 maps/q3r_downtown.bpd,1456,Karte q3r_downtown,Karten,unbekannt,,F
 maps/q3r_downtown.bsp,10064504,Karte q3r_downtown,Karten,unbekannt,,F
 maps/q3r_downtown.map,2101536,Karte q3r_downtown,Karten,unbekannt,,F
+maps/q3r_drag_airfield.bsp,1796496,Karte q3r_drag_airfield,Karten,eigen (generiert),tools/maptools,
+maps/q3r_drag_airfield.map,181334,Karte q3r_drag_airfield,Karten,eigen (generiert),tools/maptools,
+maps/q3r_drag_night.bsp,1521836,Karte q3r_drag_night,Karten,eigen (generiert),tools/maptools,
+maps/q3r_drag_night.map,205305,Karte q3r_drag_night,Karten,eigen (generiert),tools/maptools,
+maps/q3r_dragstrip.bsp,3053836,Karte q3r_dragstrip,Karten,eigen (generiert),tools/maptools,
+maps/q3r_dragstrip.map,226136,Karte q3r_dragstrip,Karten,eigen (generiert),tools/maptools,
 maps/q3r_lavafalls.aas,1143640,Karte q3r_lavafalls,Karten,unbekannt,,F
 maps/q3r_lavafalls.bpd,1177,Karte q3r_lavafalls,Karten,unbekannt,,F
 maps/q3r_lavafalls.bsp,5198464,Karte q3r_lavafalls,Karten,unbekannt,,F
@@ -594,7 +601,6 @@ menu/achievements/medal_assists_t6.png,30990,Oberfläche menu,Oberfläche,unbeka
 menu/achievements/medal_assists_t7.png,30381,Oberfläche menu,Oberfläche,unbekannt,,F
 menu/achievements/medal_assists_t8.png,29684,Oberfläche menu,Oberfläche,unbekannt,,F
 menu/achievements/medal_assists_unlocked.png,29684,Oberfläche menu,Oberfläche,unbekannt,,F
-menu/achievements/medal_blanco_unlocked.png,29348,Oberfläche menu,Oberfläche,unbekannt,,F
 menu/achievements/medal_driven_locked.png,24386,Oberfläche menu,Oberfläche,unbekannt,,F
 menu/achievements/medal_driven_t1.png,26477,Oberfläche menu,Oberfläche,unbekannt,,F
 menu/achievements/medal_driven_t2.png,26460,Oberfläche menu,Oberfläche,unbekannt,,F
@@ -687,15 +693,10 @@ menu/achievements/medal_wins_t8.png,28679,Oberfläche menu,Oberfläche,unbekannt
 menu/achievements/medal_wins_unlocked.png,28679,Oberfläche menu,Oberfläche,unbekannt,,F
 menu/art/3_cursor2.tga,66075,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/addbotframe.tga,1049115,Oberfläche menu,Oberfläche,eigen (alter Name),,E
-menu/art/addbotred.tga,1049115,Oberfläche menu,Oberfläche,eigen (alter Name),,E
-menu/art/arrow_d0.tga,262162,Oberfläche menu,Oberfläche,unbekannt,,F
-menu/art/arrow_d1.tga,262162,Oberfläche menu,Oberfläche,unbekannt,,F
 menu/art/arrow_l0.tga,262162,Oberfläche menu,Oberfläche,unbekannt,,F
 menu/art/arrow_l1.tga,262162,Oberfläche menu,Oberfläche,unbekannt,,F
 menu/art/arrow_r0.tga,262162,Oberfläche menu,Oberfläche,unbekannt,,F
 menu/art/arrow_r1.tga,262162,Oberfläche menu,Oberfläche,unbekannt,,F
-menu/art/arrow_u0.tga,262162,Oberfläche menu,Oberfläche,unbekannt,,F
-menu/art/arrow_u1.tga,262162,Oberfläche menu,Oberfläche,unbekannt,,F
 menu/art/arrows_horz_0.tga,32812,Oberfläche menu,Oberfläche,OpenArena,,A
 menu/art/arrows_horz_left.tga,16428,Oberfläche menu,Oberfläche,OpenArena,,A
 menu/art/arrows_horz_right.tga,16428,Oberfläche menu,Oberfläche,OpenArena,,A
@@ -703,16 +704,12 @@ menu/art/arrows_vert_0.tga,524827,Oberfläche menu,Oberfläche,eigen (alter Name
 menu/art/arrows_vert_bot.tga,262683,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/arrows_vert_top.tga,262683,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/cut_frame.tga,1049115,Oberfläche menu,Oberfläche,eigen (alter Name),,E
-menu/art/cut_frame_2.tga,499980,Oberfläche menu,Oberfläche,unbekannt,,F
-menu/art/cutred.tga,1049115,Oberfläche menu,Oberfläche,eigen (alter Name),,E
-menu/art/discordlogo.tga,71259,Oberfläche menu,Oberfläche,unbekannt,,F
 menu/art/font1_prop.tga,1049115,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/font1_prop_glo.tga,1049115,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/font2_prop.tga,1049115,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/frame1_l.tga,1049115,Oberfläche menu,Oberfläche,OpenArena,,B
 menu/art/frame1_r.tga,1049115,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/frame2_l.tga,1049115,Oberfläche menu,Oberfläche,OpenArena,,B
-menu/art/frame2_r.tga,262683,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/fx_base.tga,8236,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/fx_blue.tga,1068,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/fx_cyan.tga,1068,Oberfläche menu,Oberfläche,eigen (alter Name),,E
@@ -724,7 +721,6 @@ menu/art/fx_yel.tga,1068,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/gs_arrows_0.tga,262683,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/gs_arrows_l.tga,131611,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/gs_arrows_r.tga,131611,Oberfläche menu,Oberfläche,eigen (alter Name),,E
-menu/art/loading_car.tga,1769419,Oberfläche menu,Oberfläche,unbekannt,,F
 menu/art/maps_select.tga,66075,Oberfläche menu,Oberfläche,OpenArena,,A
 menu/art/maps_selected.tga,16923,Oberfläche menu,Oberfläche,OpenArena,,A
 menu/art/menu_back.jpg,108314,Oberfläche menu,Oberfläche,unbekannt,,F
@@ -747,6 +743,39 @@ menu/art/sliderbutt_1.tga,2587,Oberfläche menu,Oberfläche,eigen (alter Name),,
 menu/art/switch_off.tga,4635,Oberfläche menu,Oberfläche,OpenArena,,B
 menu/art/switch_on.tga,4635,Oberfläche menu,Oberfläche,OpenArena,,B
 menu/art/unknownmap.tga,1921139,Oberfläche menu,Oberfläche,eigen (alter Name),,E
+menu/fonts/Barlow-OFL.txt,4377,Schriften,Oberfläche,unbekannt,,
+menu/fonts/barlow.dat,37844,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_136.png,13418,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_160.png,16340,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_bold.dat,48172,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_bold_160.png,20053,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_bold_187.png,24490,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_bold_256.png,35571,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_bold_320.png,45645,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/BarlowCondensed-OFL.txt,4377,Schriften,Oberfläche,unbekannt,,
+menu/fonts/barlowcondensed.dat,82188,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_1120.png,131162,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_208.png,21475,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_240.png,24157,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_280.png,30247,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_320.png,33772,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_380.png,41723,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_440.png,48269,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_480.png,51206,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_560.png,60819,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_660.png,73344,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_780.png,90115,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_920.png,105838,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic.dat,29316,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic_1120.png,106403,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic_480.png,42623,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic_560.png,49845,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic_660.png,60685,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic_780.png,70551,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic_920.png,87781,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/ShareTechMono-OFL.txt,4429,Schriften,Oberfläche,unbekannt,,
+menu/fonts/sharetechmono.dat,6304,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/sharetechmono_128.png,11178,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
 menu/medals/medal_accuracy.tga,262683,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/medals/medal_assist.tga,262683,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/medals/medal_capture.tga,262683,Oberfläche menu,Oberfläche,eigen (alter Name),,E
@@ -770,6 +799,11 @@ menu/tab/name.tga,10592,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/tab/ping.tga,8789,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/tab/score.tga,8867,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/tab/time.tga,7992,Oberfläche menu,Oberfläche,eigen (alter Name),,E
+menu/ui/web_progress_fill.png,218,Eigene generierte Dateien (Oberfläche),Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_art.py,
+menu/ui/web_progress_track.png,217,Eigene generierte Dateien (Oberfläche),Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_art.py,
+menu/ui/web_scrollbar.png,336,Eigene generierte Dateien (Oberfläche),Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_art.py,
+menu/ui/web_showroom.png,26184,Eigene generierte Dateien (Oberfläche),Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_art.py,
+menu/ui/web_stripes.png,80,Eigene generierte Dateien (Oberfläche),Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_art.py,
 models/ammo/grenade1.md3,1076,OpenArena-Dateien (Modelle),Modelle,OpenArena,,A
 models/ammo/rocket/rocket.md3,8668,OpenArena-Dateien (Modelle),Modelle,OpenArena,,A
 models/ammo/rocket/rocket.tga,164045,OpenArena-Dateien (Modelle),Modelle,OpenArena,,A
@@ -779,16 +813,6 @@ models/autoball/ball.md3,31204,Modelle autoball,Modelle,unbekannt,,F
 models/autoball/ball.tga,1572882,Modelle autoball,Modelle,unbekannt,,F
 models/autoball/ball_glow.tga,524306,Modelle autoball,Modelle,unbekannt,,F
 models/autoball/trail.tga,4114,Modelle autoball,Modelle,unbekannt,,F
-models/breakables/boxwood.jpg,48271,Modelle breakables,Modelle,unbekannt,,F
-models/breakables/glass01.md3,932,Modelle breakables,Modelle,unbekannt,,F
-models/breakables/glass02.md3,1012,Modelle breakables,Modelle,unbekannt,,F
-models/breakables/glass03.md3,1172,Modelle breakables,Modelle,unbekannt,,F
-models/breakables/glassfx.jpg,3834,Modelle breakables,Modelle,unbekannt,,F
-models/breakables/wood01.md3,25436,Modelle breakables,Modelle,unbekannt,,F
-models/breakables/wood02.md3,18556,Modelle breakables,Modelle,unbekannt,,F
-models/breakables/wood03.md3,7900,Modelle breakables,Modelle,unbekannt,,F
-models/breakables/wood04.md3,8224,Modelle breakables,Modelle,unbekannt,,F
-models/breakables/woodfx.jpg,13342,Modelle breakables,Modelle,unbekannt,,F
 models/debris/concrete_b1.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
 models/debris/concrete_b1_large.md3,2500,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
 models/debris/concrete_b2.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
@@ -801,11 +825,8 @@ models/debris/concrete_b6.md3,1780,Eigene generierte Dateien (Modelle),Modelle,e
 models/debris/concrete_b7.md3,2020,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
 models/debris/concrete_b8.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
 models/debris/concrete_d1.md3,1780,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
-models/debris/concrete_d1_large.md3,2620,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
 models/debris/concrete_d2.md3,1780,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
-models/debris/concrete_d2_large.md3,2500,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
 models/debris/concrete_d3.md3,2500,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
-models/debris/concrete_d3_large.md3,2380,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
 models/debris/concrete_d4.md3,2020,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
 models/debris/concrete_d5.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
 models/debris/concrete_d6.md3,1900,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/texbuild/build_models.py,F
@@ -1133,6 +1154,7 @@ models/mapobjects/spotlamp/beam.jpg,895,Modelle mapobjects/spotlamp,Modelle,eige
 models/mapobjects/spotlamp/spotlamp.md3,6348,Modelle mapobjects/spotlamp,Modelle,unbekannt,,G
 models/mapobjects/spotlamp/spotlamp.tga,131116,Modelle mapobjects/spotlamp,Modelle,eigen (generiert),tools/texbuild,C
 models/mapobjects/spotlamp/spotlamp_l.jpg,932,Modelle mapobjects/spotlamp,Modelle,eigen (generiert),tools/texbuild,C
+models/mapobjects/spotlamp1/spotlamp1.md3,20996,Modelle mapobjects/spotlamp1,Modelle,unbekannt,,
 models/mapobjects/startlight/glow.tga,16428,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_startlight.py,F
 models/mapobjects/startlight/housing.jpg,2334,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_startlight.py,F
 models/mapobjects/startlight/lens_green.jpg,1417,Eigene generierte Dateien (Modelle),Modelle,eigen (generiert),tools/maptools/make_startlight.py,F
@@ -2911,7 +2933,6 @@ models/powerups/ammo/bfgam_1.md3,24876,Modelle powerups,Modelle,eigen (alter Nam
 models/powerups/ammo/bfgammo-glow.jpg,56014,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/bfgammo2.tga,65580,Modelle powerups,Modelle,eigen (generiert),tools/carbuild/weapons/make_icons.py,E
 models/powerups/ammo/bfgammo_new.tga,1049115,Modelle powerups,Modelle,unbekannt,,F
-models/powerups/ammo/bfgback.jpg,11568,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/bfgfluid.jpg,20470,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/envmapbfg.jpg,7208,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/envmapligh.jpg,3376,Modelle powerups,Modelle,unbekannt,,F
@@ -2922,7 +2943,6 @@ models/powerups/ammo/flameammo2.tga,65580,Modelle powerups,Modelle,eigen (generi
 models/powerups/ammo/flameammo_new.tga,1049115,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/grenadeam.md3,24876,Modelle powerups,Modelle,eigen (alter Name),,E
 models/powerups/ammo/grenadeam_1.md3,24876,Modelle powerups,Modelle,eigen (alter Name),,E
-models/powerups/ammo/grenadeback.jpg,17974,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/grenammo2.tga,65580,Modelle powerups,Modelle,eigen (generiert),tools/carbuild/weapons/make_icons.py,E
 models/powerups/ammo/grenammo_new.tga,1049115,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/lighammo-glow.jpg,55690,Modelle powerups,Modelle,unbekannt,,F
@@ -2931,38 +2951,30 @@ models/powerups/ammo/lighammo_new.tga,1049115,Modelle powerups,Modelle,unbekannt
 models/powerups/ammo/lighfluid.jpg,13433,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/lightningam.md3,24876,Modelle powerups,Modelle,eigen (alter Name),,E
 models/powerups/ammo/lightningam_1.md3,24876,Modelle powerups,Modelle,eigen (alter Name),,E
-models/powerups/ammo/lightningback.jpg,11691,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/machammo2.tga,65580,Modelle powerups,Modelle,eigen (generiert),tools/carbuild/weapons/make_icons.py,E
 models/powerups/ammo/machammo_new.tga,1049115,Modelle powerups,Modelle,unbekannt,,F
-models/powerups/ammo/machineback.jpg,11688,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/machinegunam.md3,24876,Modelle powerups,Modelle,eigen (alter Name),,E
 models/powerups/ammo/machinegunam_1.md3,24876,Modelle powerups,Modelle,eigen (alter Name),,E
-models/powerups/ammo/nailammo2.tga,49691,Modelle powerups,Modelle,eigen (generiert),tools/carbuild/weapons/make_icons.py,F
-models/powerups/ammo/nailammo_new.tga,1049115,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/plasammo-glow.jpg,58094,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/plasammo2.tga,65580,Modelle powerups,Modelle,eigen (generiert),tools/carbuild/weapons/make_icons.py,E
 models/powerups/ammo/plasammo_new.tga,1049115,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/plasfluid.jpg,14565,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/plasmaam.md3,24876,Modelle powerups,Modelle,eigen (alter Name),,E
 models/powerups/ammo/plasmaam_1.md3,24876,Modelle powerups,Modelle,eigen (alter Name),,E
-models/powerups/ammo/plasmaback.jpg,11533,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/railammo-glow.jpg,57317,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/railammo2.tga,65580,Modelle powerups,Modelle,eigen (generiert),tools/carbuild/weapons/make_icons.py,E
 models/powerups/ammo/railammo_new.tga,1049115,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/railfluid.jpg,14133,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/railgunam.md3,24876,Modelle powerups,Modelle,eigen (alter Name),,E
 models/powerups/ammo/railgunam_1.md3,24876,Modelle powerups,Modelle,eigen (alter Name),,E
-models/powerups/ammo/railgunback.jpg,11620,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/rockammo2.tga,65580,Modelle powerups,Modelle,eigen (generiert),tools/carbuild/weapons/make_icons.py,E
 models/powerups/ammo/rockammo_new.tga,1049115,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/rocketam.md3,24876,Modelle powerups,Modelle,eigen (alter Name),,E
 models/powerups/ammo/rocketam_1.md3,24876,Modelle powerups,Modelle,eigen (alter Name),,E
-models/powerups/ammo/rocketback.jpg,17816,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/shotammo2.tga,65580,Modelle powerups,Modelle,eigen (generiert),tools/carbuild/weapons/make_icons.py,E
 models/powerups/ammo/shotammo_new.tga,1049115,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/ammo/shotgunam.md3,24876,Modelle powerups,Modelle,eigen (alter Name),,E
 models/powerups/ammo/shotgunam_1.md3,24876,Modelle powerups,Modelle,eigen (alter Name),,E
-models/powerups/ammo/shotgunback.jpg,11573,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/armor/armor_red.md3,7660,Modelle powerups,Modelle,OpenArena,,A
 models/powerups/armor/armor_yel.md3,5900,Modelle powerups,Modelle,OpenArena,,A
 models/powerups/armor/energy_red1.jpg,2651,Modelle powerups,Modelle,OpenArena,,A
@@ -3055,13 +3067,6 @@ models/powerups/shield/shgear.jpg,63635,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/shield/shgear.md3,4884,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/shield/shield.jpg,6118,Modelle powerups,Modelle,unbekannt,,F
 models/powerups/shield/shield.md3,2788,Modelle powerups,Modelle,eigen (alter Name),,E
-models/powerups/turbo/booster.tga,16428,Modelle powerups,Modelle,unbekannt,,F
-models/powerups/turbo/burn.tga,12332,Modelle powerups,Modelle,unbekannt,,F
-models/powerups/turbo/ramp.tga,4140,Modelle powerups,Modelle,unbekannt,,F
-models/powerups/turbo/thrust.tga,16428,Modelle powerups,Modelle,unbekannt,,F
-models/powerups/turbo/turbo.md3,4868,Modelle powerups,Modelle,unbekannt,,F
-models/powerups/turbo/turbogear.jpg,118460,Modelle powerups,Modelle,unbekannt,,F
-models/powerups/turbo/turbogear.md3,4884,Modelle powerups,Modelle,unbekannt,,F
 models/rearfire/blue.skin,74,Modelle rearfire,Modelle,unbekannt,,F
 models/rearfire/flametrail.md3,956,Modelle rearfire,Modelle,unbekannt,,F
 models/rearfire/green.skin,75,Modelle rearfire,Modelle,unbekannt,,F
@@ -3219,7 +3224,7 @@ scripts/heads.shader,5668,"Skripte, Shader, Konfiguration",Text/Code,eigen (gene
 scripts/liquids.shader,10942,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/mapobjects.shader,7469,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/plates.shader,6741,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
-scripts/powerups.shader,24617,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
+scripts/powerups.shader,22487,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/q3r_arenas.txt,0,"Skripte, Shader, Konfiguration",Text/Code,OpenArena,,A
 scripts/q3r_babel.arena,544,Karte q3r_babel,Karten,unbekannt,,F
 scripts/q3r_battlecanyon.arena,538,Karte q3r_battlecanyon,Karten,unbekannt,,F
@@ -3236,7 +3241,8 @@ scripts/q3r_ctf4_01.arena,460,Karte q3r_ctf4_01,Karten,unbekannt,,F
 scripts/q3r_ctf4_03.arena,478,Karte q3r_ctf4_03,Karten,eigen (generiert),tools/maptools,F
 scripts/q3r_ctf4_03.shader,18923,Karte q3r_ctf4_03,Karten,eigen (generiert),tools/maptools,F
 scripts/q3r_ctf_01.arena,516,Karte q3r_ctf_01,Karten,unbekannt,,F
-scripts/q3r_ctf_04.shader,4178,Karte q3r_ctf_04,Karten,unbekannt,,F
+scripts/q3r_ctf_04.arena,471,Karte q3r_ctf_04,Karten,unbekannt,,
+scripts/q3r_ctf_04.shader,5297,Karte q3r_ctf_04,Karten,unbekannt,,F
 scripts/q3r_ctf_bot_test.arena,502,Karte q3r_ctf_bot_test,Karten,unbekannt,,F
 scripts/q3r_david4.arena,512,Karte q3r_david4,Karten,eigen (generiert),tools/maptools,F
 scripts/q3r_david4.shader,20670,Karte q3r_david4,Karten,eigen (generiert),tools/maptools,F
@@ -3246,6 +3252,10 @@ scripts/q3r_demobowl.arena,518,Karte q3r_demobowl,Karten,unbekannt,,F
 scripts/q3r_dirtyfun.arena,614,Karte q3r_dirtyfun,Karten,unbekannt,,F
 scripts/q3r_dm02.arena,514,Karte q3r_dm02,Karten,unbekannt,,F
 scripts/q3r_downtown.arena,601,Karte q3r_downtown,Karten,unbekannt,,F
+scripts/q3r_drag.shader,4203,"Skripte, Shader, Konfiguration",Text/Code,eigen (generiert),tools/maptools/make_dragstrip.py,
+scripts/q3r_drag_airfield.arena,242,Karte q3r_drag_airfield,Karten,eigen (generiert),tools/maptools,
+scripts/q3r_drag_night.arena,236,Karte q3r_drag_night,Karten,eigen (generiert),tools/maptools,
+scripts/q3r_dragstrip.arena,239,Karte q3r_dragstrip,Karten,eigen (generiert),tools/maptools,
 scripts/q3r_fx.shader,872,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/q3r_koth.shader,1635,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/q3r_lanterns.shader,2613,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
@@ -3275,7 +3285,8 @@ scripts/q3r_timberrun.shader,24204,Karte q3r_timberrun,Karten,eigen (generiert),
 scripts/q3r_trophy.shader,588,"Skripte, Shader, Konfiguration",Text/Code,eigen (generiert),tools/carbuild/helmets,
 scripts/q3r_valley.arena,627,Karte q3r_valley,Karten,unbekannt,,F
 scripts/q3r_weapons.shader,6093,"Skripte, Shader, Konfiguration",Text/Code,eigen (generiert),tools/carbuild/weapons,F
-scripts/shaderlist.txt,515,"Skripte, Shader, Konfiguration",Text/Code,eigen (alter Name),,E
+scripts/q3r_webstyle.shader,899,"Skripte, Shader, Konfiguration",Text/Code,eigen (generiert),tools/ui_webstyle,
+scripts/shaderlist.txt,524,"Skripte, Shader, Konfiguration",Text/Code,eigen (alter Name),,E
 scripts/skies.shader,8074,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/sprites.shader,1869,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
 scripts/startlight.shader,1246,"Skripte, Shader, Konfiguration",Text/Code,unbekannt,,F
@@ -3294,9 +3305,6 @@ sound/autoball/goal_horn.ogg,29556,Sounds autoball,Sounds,unbekannt,,F
 sound/autoball/hit_hard.ogg,7587,Sounds autoball,Sounds,unbekannt,,F
 sound/autoball/hit_soft.ogg,6086,Sounds autoball,Sounds,unbekannt,,F
 sound/autoball/whistle.ogg,7732,Sounds autoball,Sounds,unbekannt,,F
-sound/breakable/glass.ogg,9821,"Sounds Effekte (aliens, metal, plastic, breakable)",Sounds,unbekannt,,F
-sound/breakable/metal.ogg,71966,"Sounds Effekte (aliens, metal, plastic, breakable)",Sounds,unbekannt,,F
-sound/breakable/wood.ogg,15041,"Sounds Effekte (aliens, metal, plastic, breakable)",Sounds,unbekannt,,F
 sound/engines/default/CREDITS.txt,777,Sounds engines/default,Sounds,unbekannt,,F
 sound/engines/default/engine.cfg,1293,Sounds engines/default,Sounds,unbekannt,,F
 sound/engines/default/on_00.wav,19348,Sounds engines/default,Sounds,unbekannt,,F
@@ -3328,13 +3336,14 @@ sound/feedback/blueleads.ogg,13671,Sounds feedback,Sounds,eigen (laut Projekt),,
 sound/feedback/credits.txt,44,Sounds feedback,Sounds,eigen (laut Projekt),,B
 sound/feedback/defense.ogg,14947,Sounds feedback,Sounds,eigen (laut Projekt),,E
 sound/feedback/denied.ogg,13639,Sounds feedback,Sounds,eigen (laut Projekt),,B
+sound/feedback/drag_countdown.wav,4896,Sounds feedback,Sounds,eigen (laut Projekt),,
+sound/feedback/drag_engine_blow.wav,61782,Sounds feedback,Sounds,eigen (generiert),tools/soundbuild,
+sound/feedback/drag_green.wav,11952,Sounds feedback,Sounds,eigen (laut Projekt),,
 sound/feedback/excellent.ogg,14380,Sounds feedback,Sounds,eigen (laut Projekt),,D
 sound/feedback/excellent_a.ogg,14380,Sounds feedback,Sounds,eigen (laut Projekt),,D
 sound/feedback/fight.ogg,10067,Sounds feedback,Sounds,eigen (laut Projekt),,D
-sound/feedback/fight2.ogg,10067,Sounds feedback,Sounds,eigen (laut Projekt),,E
 sound/feedback/frags.ogg,14070,Sounds feedback,Sounds,eigen (laut Projekt),,D
 sound/feedback/gauntlet.ogg,14965,Sounds feedback,Sounds,eigen (laut Projekt),,D
-sound/feedback/greenleads.ogg,16033,Sounds feedback,Sounds,eigen (laut Projekt),,G
 sound/feedback/hit.ogg,7749,Sounds feedback,Sounds,eigen (laut Projekt),,D
 sound/feedback/hit_teammate.ogg,5221,Sounds feedback,Sounds,eigen (laut Projekt),,B
 sound/feedback/hithi.ogg,7158,Sounds feedback,Sounds,eigen (laut Projekt),,B
@@ -3356,20 +3365,15 @@ sound/feedback/telefragged.ogg,14087,Sounds feedback,Sounds,eigen (laut Projekt)
 sound/feedback/three.ogg,11203,Sounds feedback,Sounds,eigen (laut Projekt),,D
 sound/feedback/tiedlead.ogg,29364,Sounds feedback,Sounds,eigen (laut Projekt),,D
 sound/feedback/two.ogg,10106,Sounds feedback,Sounds,eigen (laut Projekt),,D
-sound/feedback/voc_base_attack.ogg,27812,Sounds feedback,Sounds,eigen (laut Projekt),,G
 sound/feedback/voc_holyshit.ogg,17542,Sounds feedback,Sounds,eigen (laut Projekt),,E
 sound/feedback/voc_youlose.ogg,25877,Sounds feedback,Sounds,eigen (laut Projekt),,E
 sound/feedback/voc_youwin.ogg,21001,Sounds feedback,Sounds,eigen (laut Projekt),,E
 sound/feedback/vote_failed.ogg,16533,Sounds feedback,Sounds,eigen (laut Projekt),,E
 sound/feedback/vote_now.ogg,12028,Sounds feedback,Sounds,eigen (laut Projekt),,E
 sound/feedback/vote_passed.ogg,20894,Sounds feedback,Sounds,eigen (laut Projekt),,E
-sound/feedback/yellowleads.ogg,16132,Sounds feedback,Sounds,eigen (laut Projekt),,G
-sound/feedback/youlose.ogg,26221,Sounds feedback,Sounds,eigen (laut Projekt),,E
-sound/feedback/youwin.ogg,25645,Sounds feedback,Sounds,eigen (laut Projekt),,E
 sound/items/airout.ogg,10616,Sounds items,Sounds,eigen (laut Projekt),,B
 sound/items/damage2.ogg,11563,Sounds items,Sounds,eigen (laut Projekt),,B
 sound/items/damage3.ogg,9491,Sounds items,Sounds,eigen (laut Projekt),,B
-sound/items/electro.ogg,10981,Sounds items,Sounds,eigen (laut Projekt),,B
 sound/items/flight.ogg,6706,Sounds items,Sounds,eigen (laut Projekt),,B
 sound/items/haste.ogg,15250,Sounds items,Sounds,eigen (laut Projekt),,D
 sound/items/holdable.ogg,7478,Sounds items,Sounds,eigen (laut Projekt),,B
@@ -3387,29 +3391,15 @@ sound/items/regeneration.ogg,14380,Sounds items,Sounds,eigen (laut Projekt),,D
 sound/items/respawn1.ogg,6581,Sounds items,Sounds,eigen (laut Projekt),,B
 sound/items/s_health.ogg,5061,Sounds items,Sounds,eigen (laut Projekt),,B
 sound/items/shield.ogg,17710,Sounds items,Sounds,eigen (laut Projekt),,G
-sound/items/telein.ogg,18307,Sounds items,Sounds,eigen (laut Projekt),,B
-sound/items/teleout.ogg,9642,Sounds items,Sounds,eigen (laut Projekt),,B
-sound/items/turbo.ogg,8305,Sounds items,Sounds,eigen (laut Projekt),,G
 sound/items/turbo_use.ogg,9956,Sounds items,Sounds,eigen (laut Projekt),,G
 sound/items/use_medkit.ogg,13887,Sounds items,Sounds,eigen (laut Projekt),,B
 sound/items/use_nothing.ogg,5499,Sounds items,Sounds,eigen (laut Projekt),,B
 sound/items/wearoff.ogg,9705,Sounds items,Sounds,eigen (laut Projekt),,B
-sound/le/bullet1.ogg,4203,Sounds le,Sounds,eigen (alter Name),,E
-sound/le/bullet2.ogg,4217,Sounds le,Sounds,eigen (alter Name),,E
-sound/le/bullet3.ogg,4385,Sounds le,Sounds,eigen (alter Name),,E
-sound/le/shell1.ogg,3322,Sounds le,Sounds,OpenArena,,B
-sound/le/shell2.ogg,3292,Sounds le,Sounds,OpenArena,,B
-sound/le/shell3.ogg,3194,Sounds le,Sounds,OpenArena,,B
-sound/le/splat1.ogg,5783,Sounds le,Sounds,OpenArena,,B
-sound/le/splat2.ogg,7575,Sounds le,Sounds,OpenArena,,B
-sound/le/splat3.ogg,6339,Sounds le,Sounds,OpenArena,,B
-sound/le/splat5.ogg,6747,Sounds le,Sounds,OpenArena,,B
 sound/metal/fullmetalbang.ogg,12302,"Sounds Effekte (aliens, metal, plastic, breakable)",Sounds,unbekannt,,F
 sound/metal/hollowmetalbang.ogg,17995,"Sounds Effekte (aliens, metal, plastic, breakable)",Sounds,unbekannt,,F
 sound/misc/am_pkup.ogg,9694,Sounds misc,Sounds,eigen (laut Projekt),,B
 sound/misc/ar1_pkup.ogg,5927,Sounds misc,Sounds,eigen (laut Projekt),,B
 sound/misc/ar2_pkup.ogg,12199,Sounds misc,Sounds,eigen (laut Projekt),,B
-sound/misc/ar3_pkup.ogg,16132,Sounds misc,Sounds,eigen (laut Projekt),,B
 sound/misc/menu1.ogg,4512,Sounds misc,Sounds,eigen (laut Projekt),,D
 sound/misc/menu2.ogg,6034,Sounds misc,Sounds,eigen (laut Projekt),,D
 sound/misc/menu3.ogg,6034,Sounds misc,Sounds,eigen (laut Projekt),,D
@@ -3528,7 +3518,6 @@ sound/weapons/change.ogg,11208,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
 sound/weapons/credits,0,OpenArena-Dateien (Sounds),Sounds,OpenArena,,A
 sound/weapons/flamer/fl_expl.ogg,18226,Sounds weapons,Sounds,unbekannt,,G
 sound/weapons/flamer/fl_fire.ogg,7771,Sounds weapons,Sounds,unbekannt,,G
-sound/weapons/flamer/fl_fly.ogg,5779,Sounds weapons,Sounds,unbekannt,,G
 sound/weapons/flamer/fl_hum.ogg,16168,Sounds weapons,Sounds,unbekannt,,G
 sound/weapons/grenade/grenlf1a.ogg,10028,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
 sound/weapons/grenade/hgrenb1a.ogg,11520,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
@@ -3561,55 +3550,19 @@ sound/weapons/rocket/rocklx1a.ogg,16401,OpenArena-Dateien (Sounds),Sounds,OpenAr
 sound/weapons/shotgun/sshotf1b.ogg,14861,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
 sound/weapons/weapon_hover.ogg,4873,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
 sound/weather/rain_loop_heavy.wav,352844,Sounds weather,Sounds,unbekannt,,F
-sound/weather/rain_loop_light.wav,352844,Sounds weather,Sounds,unbekannt,,F
-sound/weather/snow_storm_loop.wav,441044,Sounds weather,Sounds,unbekannt,,F
-sound/weather/snow_tire_spray_loop.wav,176444,Sounds weather,Sounds,unbekannt,,F
 sound/weather/snow_wind_loop.wav,441044,Sounds weather,Sounds,unbekannt,,F
 sound/weather/wet_tire_spray_loop.wav,176444,Sounds weather,Sounds,unbekannt,,F
 sound/world/1shot_greg_01.ogg,118678,Sounds world,Sounds,OpenArena,,B
-sound/world/1shot_greg_03.ogg,72023,Sounds world,Sounds,OpenArena,,B
 sound/world/ambience03.ogg,11442,Sounds world,Sounds,OpenArena,,B
-sound/world/ambient/x_ancientsdrone.ogg,68203,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
-sound/world/ambient/x_drowning.ogg,53372,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
-sound/world/ambient/x_forbidden.ogg,43741,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
-sound/world/ambient/x_ominous.ogg,57676,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
-sound/world/ambient/x_rumbledrone.ogg,44175,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
-sound/world/cf_blubber01.ogg,42376,Sounds world,Sounds,OpenArena,,A
-sound/world/cf_distant01.ogg,97701,Sounds world,Sounds,OpenArena,,B
-sound/world/clack.ogg,4801,Sounds world,Sounds,OpenArena,,B
 sound/world/CREDITS,0,Sounds world,Sounds,OpenArena,,A
 sound/world/crowdlng.ogg,106506,Sounds world,Sounds,unbekannt,,G
 sound/world/crowds.ogg,48209,Sounds world,Sounds,unbekannt,,G
-sound/world/curnt2.ogg,16252,Sounds world,Sounds,OpenArena,,B
-sound/world/demonwind01.ogg,27983,Sounds world,Sounds,OpenArena,,B
-sound/world/drone6.ogg,21769,Sounds world,Sounds,OpenArena,,B
-sound/world/drops.ogg,105566,Sounds world,Sounds,OpenArena,,B
 sound/world/electro.ogg,11063,Sounds world,Sounds,OpenArena,,B
-sound/world/fan.ogg,5942,Sounds world,Sounds,OpenArena,,B
-sound/world/fan4.ogg,18647,Sounds world,Sounds,OpenArena,,B
-sound/world/fire1.ogg,87016,Sounds world,Sounds,OpenArena,,B
-sound/world/fire2.ogg,95352,Sounds world,Sounds,OpenArena,,B
 sound/world/fireloud.ogg,77471,Sounds world,Sounds,eigen (generiert),tools/soundbuild,D
-sound/world/firesoft.ogg,83958,Sounds world,Sounds,OpenArena,,B
-sound/world/growl1.ogg,23126,Sounds world,Sounds,OpenArena,,B
-sound/world/growl2.ogg,18310,Sounds world,Sounds,OpenArena,,B
-sound/world/growl3.ogg,19650,Sounds world,Sounds,OpenArena,,B
-sound/world/insect.ogg,82346,Sounds world,Sounds,unbekannt,,G
 sound/world/jumppad.ogg,16161,Sounds world,Sounds,OpenArena,,B
 sound/world/lava1.ogg,99071,Sounds world,Sounds,eigen (generiert),tools/soundbuild,D
-sound/world/lava_amb_01_quiet.ogg,24758,Sounds world,Sounds,OpenArena,,B
 sound/world/machinerydrone01.ogg,12663,Sounds world,Sounds,OpenArena,,B
-sound/world/machinerydrone02.ogg,18944,Sounds world,Sounds,OpenArena,,B
-sound/world/monitor_02.ogg,18096,Sounds world,Sounds,OpenArena,,B
-sound/world/neonhum.ogg,12522,Sounds world,Sounds,OpenArena,,B
-sound/world/new/moan1.ogg,74014,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
-sound/world/new/moan2.ogg,83247,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
-sound/world/new/moan4.ogg,107380,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
-sound/world/new/moan5.ogg,53206,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
-sound/world/new/moan6.ogg,61849,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
-sound/world/new/painwind22k.ogg,64629,OpenArena-Dateien (Sounds),Sounds,OpenArena,,B
 sound/world/portal01.ogg,21747,Sounds world,Sounds,OpenArena,,B
-sound/world/portal02.ogg,11263,Sounds world,Sounds,OpenArena,,B
 sound/world/q3r_timberrun/creek.ogg,53475,Sounds world,Sounds,unbekannt,,G
 sound/world/q3r_timberrun/forest.ogg,171327,Sounds world,Sounds,unbekannt,,G
 sound/world/rain.ogg,1642254,Sounds world,Sounds,unbekannt,,G
@@ -3618,10 +3571,7 @@ sound/world/suck1.ogg,20759,Sounds world,Sounds,OpenArena,,B
 sound/world/telein.ogg,18389,Sounds world,Sounds,OpenArena,,B
 sound/world/teleout.ogg,9724,Sounds world,Sounds,OpenArena,,B
 sound/world/tim_comp_hum3.ogg,37982,Sounds world,Sounds,eigen (generiert),tools/soundbuild,D
-sound/world/tim_drone1.ogg,10969,Sounds world,Sounds,OpenArena,,B
 sound/world/tim_hole.ogg,18641,Sounds world,Sounds,eigen (generiert),tools/soundbuild,D
-sound/world/tim_machine.ogg,43811,Sounds world,Sounds,OpenArena,,B
-sound/world/tim_pump.ogg,9872,Sounds world,Sounds,OpenArena,,B
 sound/world/waterfall.ogg,12334,Sounds world,Sounds,OpenArena,,B
 sound/world/wind1.ogg,54630,Sounds world,Sounds,OpenArena,,B
 sound/world/wind2.ogg,32178,Sounds world,Sounds,OpenArena,,B
@@ -4068,6 +4018,30 @@ textures/q3r_dirt_grass/rock03.tga,196652,Texturen q3r_* (Projekt-Sets),Texturen
 textures/q3r_dirt_grass/stones01.tga,196652,Texturen q3r_* (Projekt-Sets),Texturen,unbekannt,,F
 textures/q3r_dirt_grass/stones01grass.tga,197147,Texturen q3r_* (Projekt-Sets),Texturen,unbekannt,,F
 textures/q3r_dirt_grass/stones02.tga,196652,Texturen q3r_* (Projekt-Sets),Texturen,unbekannt,,F
+textures/q3r_drag/banner_finish.jpg,12431,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/banner_start.jpg,30891,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/board.jpg,47805,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/canvas_blue.jpg,3086,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/canvas_red.jpg,3405,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/canvas_white.jpg,3929,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/cladding.jpg,5969,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/dist_1000ft.jpg,17570,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/dist_330ft.jpg,17341,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/dist_60ft.jpg,16706,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/dist_660ft.jpg,18093,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/dist_eighth.jpg,16637,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/dist_quarter.jpg,15730,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/lamp.jpg,1228,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/lamp_amber.jpg,1267,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/lamp_blue.jpg,1196,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/paint_red.jpg,694,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/paint_yellow.jpg,695,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/rubber.jpg,6413,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/runway.jpg,24463,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/sign_burnout.jpg,16755,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/sign_finish.jpg,18081,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/sign_staging.jpg,15451,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
+textures/q3r_drag/windsock.jpg,1048,Eigene generierte Dateien (Texturen),Texturen,eigen (generiert),tools/maptools/make_dragstrip.py,
 textures/q3r_floor/trim18.tga,196652,Texturen q3r_* (Projekt-Sets),Texturen,unbekannt,,F
 textures/q3r_glass/darkglass.tga,45894,Texturen q3r_* (Projekt-Sets),Texturen,unbekannt,,F
 textures/q3r_glass/glass03.jpg,39816,Texturen q3r_* (Projekt-Sets),Texturen,unbekannt,,F

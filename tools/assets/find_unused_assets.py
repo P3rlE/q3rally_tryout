@@ -46,11 +46,13 @@ for p in files:
 
 # ---------------------------------------------------------------- shader scripts
 shaders = {}        # name -> (body, script file)
+gl2_bodies = {}     # name -> body from a .mtr: the opengl2 renderer reads
+                    # scripts/<x>.mtr instead of <x>.shader where there is one
 # of two shaders with the same name the renderer takes the one in the
 # alphabetically first script (checked in the game: railCore comes from
 # gfx.shader, not weapons.shader), and within a file the first one
 for p in sorted(files):
-    if p.startswith('scripts/') and p.endswith('.shader'):
+    if p.startswith('scripts/') and p.endswith(('.shader', '.mtr')):
         t = files[p]().decode('latin-1')
         t = re.sub(r'//[^\n]*', '', t)
         i, n = 0, len(t)
@@ -66,7 +68,10 @@ for p in sorted(files):
                 depth += {'{': 1, '}': -1}.get(t[j], 0)
                 j += 1
             name = norm(m.group(1))
-            shaders.setdefault(name, (t[m.end():j - 1], p))   # first definition wins, like the engine
+            if p.endswith('.mtr'):
+                gl2_bodies.setdefault(name, t[m.end():j - 1])
+            else:
+                shaders.setdefault(name, (t[m.end():j - 1], p))   # first definition wins, like the engine
             i = j
 
 used, editor_only, via = set(), set(), {}
@@ -87,7 +92,7 @@ def visit_shader(name, why):
     if name in used_shaders: return
     used_shaders.add(name)
     body, _ = shaders[name]
-    for line in body.splitlines():
+    for line in (body + '\n' + gl2_bodies.get(name, '')).splitlines():
         w = line.split()
         if not w: continue
         k = w[0].lower()
@@ -103,6 +108,10 @@ def visit_shader(name, why):
                     for s in SKY: ref(box + s, why)
         elif k in ('q3map_baseshader', 'q3map_remapshader', 'q3map_cloneshader') and len(w) > 1:
             ref(w[1], why)
+        elif k.startswith('q3r_'):
+            # Q3Rally's own keywords that name pictures (q3r_colorLut, q3r_water)
+            for x in w[1:]:
+                if '/' in x and not x.startswith('//'): ref(x, why)
         elif k in ('qer_editorimage', 'q3map_lightimage'):
             if len(w) > 1:
                 for c in by_stem.get(stem(norm(w[1])), ()):
@@ -219,6 +228,30 @@ for p in sorted(files):
 for p in files:
     if p.startswith(('models/players/', 'music/', 'fonts/')):
         ref(p, 'Ordner wird zur Laufzeit gelistet')
+# 5. names the code puts together at run time
+#    the menu fonts (ui_rally_webstyle.c: menu/fonts/<variant>.dat names its atlases)
+for p in sorted(files):
+    if p.startswith('menu/fonts/') and p.endswith('.dat'):
+        ref(p, 'Code ui_rally_webstyle.c')
+        for atlas in re.findall(rb'menu/fonts/[A-Za-z0-9_]+', files[p]()):
+            ref(atlas.decode(), 'Schrift ' + p)
+#    engine sounds: engine.cfg names its loops beside itself (snd_engine.c), the
+#    pops and shifts are <dir>/pop1..4 and shift1..2 (cg_players.c), the default
+#    set for every car without its own
+for p in sorted(files):
+    if p.endswith('/engine.cfg') and p.startswith('sound/'):
+        d = p.rsplit('/', 1)[0]
+        for tok in re.findall(r'[A-Za-z0-9_\-]+\.(?:wav|ogg)', files[p]().decode('latin-1', 'ignore')):
+            ref(d + '/' + tok.lower(), 'Motor ' + p)
+for p in files:
+    if re.match(r'sound/(engines/default|player/[^/]+)/(pop[1-4]|shift[12])\.(wav|ogg)$', p):
+        ref(p, 'Code cg_players.c (Motorgeräusche)')
+#    the cars' own sounds: sound/player/<car>/<name> for "*<name>.wav" (cg_players.c)
+custom = re.findall(r'"\*([a-z0-9_]+)\.wav"', (CODE / 'cgame/cg_players.c').read_text(errors='ignore'))
+for p in files:
+    m = re.match(r'sound/player/[^/]+/([^/]+)\.(wav|ogg)$', p)
+    if m and m.group(1) in custom:
+        ref(p, 'Code cg_players.c (Autogeräusch *' + m.group(1) + ')')
 
 # ---------------------------------------------------------------- closure
 names = sorted(set(shaders) | set(by_stem))
