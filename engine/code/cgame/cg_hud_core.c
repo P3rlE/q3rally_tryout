@@ -175,10 +175,6 @@ static const hudToggleEntry_t hudToggleTable[] = {
 
 #define HUDOPT_NUM_ENTRIES  ( (int)( sizeof(hudToggleTable) / sizeof(hudToggleTable[0]) ) )
 
-static qboolean HUDOpt_WebVisible( void ) {
-    char flag[8]; trap_Cvar_VariableStringBuffer( "cl_webHUDActive", flag, sizeof( flag ) ); return atoi( flag ) != 0;
-}
-
 static void HUDOpt_SetFloatCvar( const char *cvarName, vmCvar_t *cvar, float value, qboolean wholeNumber ) {
     if ( wholeNumber ) {
         trap_Cvar_Set( cvarName, va( "%.0f", value ) );
@@ -242,20 +238,20 @@ The panel itself is cg_hud_panel.c, in the look of the WebUI's #hud-screen.
 ================
 */
 void CG_HUDOptions_KeyEvent( int key ) {
-    if ( HUDOpt_WebVisible() || !cg_hudOptionsOpen.integer ) return;
+    if ( !cg_hudOptionsOpen.integer ) return;
     CG_HUDPanel_Key( key );
 }
 
 qboolean CG_HUDOptions_MouseEvent( int cx, int cy, qboolean clicked ) {
     ( void )cx; ( void )cy;
     if ( !cg_hudOptionsOpen.integer ) return qfalse;
-    if ( clicked && !HUDOpt_WebVisible() ) CG_HUDPanel_Key( K_MOUSE1 );
+    if ( clicked ) CG_HUDPanel_Key( K_MOUSE1 );
     return qtrue;   /* the menu takes all mouse input while it is open */
 }
 
 void CG_DrawHUDOptionsMenu( void ) {
     trap_Cvar_Update( &cg_hudOptionsOpen );
-    if ( HUDOpt_WebVisible() || !cg_hudOptionsOpen.integer ) return;
+    if ( !cg_hudOptionsOpen.integer ) return;
     CG_HUDPanel_Draw();
 }
 

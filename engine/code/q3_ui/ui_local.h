@@ -1201,48 +1201,25 @@ void UI_InitGameinfo( void );
 void UI_DemoSaveMenu(void);
 
 /* Embedded frontend exports. Screen 1 is graphics loading, 2 is the main menu. */
-int UI_WebMainScreen( void );
-void UI_WebMainAction( int action );
 int UI_WebLoadingScreen( void );
 void UI_WebLoadingTick( int realtime );
 int UI_WebLoadingProgress( void );
-int UI_WebLoadingStage( void );
-int UI_WebLoadingScreenCode( void );
-int UI_WebLoadingPrompt( void );
-void UI_WebLoadingAction( int action );
 
-int UI_WebCreditsScreen( void );
 int UI_WebCreditCount( void );
-int UI_WebCreditChar( int index, int character );
 int UI_WebCreditKind( int index );
-void UI_WebCreditsExit( void );
-int UI_WebDemosScreen( void );
-int UI_WebDemoCount( void );
-int UI_WebDemoChar( int index, int character );
-void UI_WebDemoAction( int action, int index );
 
 int UI_WebRivalsScreen( void );
-int UI_WebRivalCount( void );
-int UI_WebRivalChar( int index, int field, int character );
 int UI_WebDownloadsScreen( void );
-int UI_WebDownloadCount( void );
-int UI_WebDownloadChar( int index, int field, int character );
-int UI_WebDownloadNumber( int index, int field );
-void UI_WebDownloadTick( void );
 void UI_WebCatalogAction( int screen, int action, int index );
 void UI_WebRivalsBack( void );
 
 int UI_WebFavoriteChar( int slot, int field, int character );
 int UI_WebSaveFavorite( int slot );
-int UI_WebVehicleSettingsScreen( void );
-int UI_WebPlayerModelScreen( void );
-void UI_WebGarageBack( void );
 
 int UI_WebImportFavorites( void );
 
 void UI_WebDriverMenu( void );
 int UI_WebDriverScreen( void );
-int UI_WebDriverNative( void );
 void UI_WebDriverAction( int action );
 int UI_WebDriverValue( int field, int index );
 int UI_WebAchievementChar( int category, int tier, int field, int character );
@@ -1298,6 +1275,5 @@ menuframework_s *UI_WebTeamOrdersMenu( void );
 menuframework_s *UI_WebServerInfoMenu( void );
 const char *UI_WebServerInfo( void );
 
-int UI_WebIngameContext( void );
 const char *UI_WebAddBotsLabel( int index );
 const char *UI_WebRemoveBotsLabel( int index );

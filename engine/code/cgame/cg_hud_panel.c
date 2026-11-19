@@ -12,8 +12,9 @@ or (at your option) any later version.
 
 The HUD options (Shift+H in a race) drawn like the WebUI's #hud-screen
 (session.js): the panel at the right with a select per toggle and the
-mini-map's two sliders. It reads and changes the toggles through the same
-CG_WebHUDNumber / CG_WebHUDChar / CG_WebHUDAction the client used for CEF.
+mini-map's two sliders. It reads and changes the toggles through
+CG_WebHUDNumber / CG_WebHUDChar / CG_WebHUDAction (named after the former
+embedded browser UI, which called them too).
 Layout in cg_hud_panellayout.c; the drawing is q3_ui's webstyle, built into
 the cgame as well.
 */

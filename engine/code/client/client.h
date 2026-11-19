@@ -670,23 +670,6 @@ void CL_WriteDemoMessage ( msg_t *msg, int headerBytes );
 
 
 //
-#ifdef USE_CEF_GARAGE
-int CL_WebGarageSubprocess( int argc, char **argv );
-void CL_WebGarageInit( void );
-void CL_WebGarage_f( void );
-qboolean CL_WebGarageSkipBackground( void );
-qboolean CL_WebGarageOwnsScreen( void );
-qboolean CL_WebGarageHoldFrame( int realtime );
-void CL_WebGarageEscape( qboolean down );
-qboolean CL_WebGarageEscapePending( void );
-qboolean CL_WebGarageDemoVisible( void );
-qboolean CL_WebGarageInputVisible( void );
-void CL_WebGarageFocus( void );
-qboolean CL_WebGarageNativeInput( void );
-void CL_WebGarageFrame( void );
-void CL_WebGarageShutdown( void );
-void CL_WebGarageBeforeVideoRestart( void );
-#endif
 
 // cl_downloads.c
 // Q3RALLY DOWNLOADS START

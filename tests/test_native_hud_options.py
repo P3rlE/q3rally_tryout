@@ -55,3 +55,35 @@ def test_native_hud_options_match_the_webui_at_every_size():
         if problems:
             failures.append((key, problems[:6]))
     assert not failures, (len(failures), failures[:8])
+
+
+def test_hud_commands_validate_mode_values_and_open_state():
+ from test_web_config import extract, run_c
+ source=(ROOT/'engine/code/cgame/cg_hud_core.c').read_text()
+ harness=r"""
+#include <assert.h>
+#define HUDOPT_NUM_ENTRIES 2
+#define qfalse 0
+#define qtrue 1
+typedef struct {int integer;} vmCvar_t;
+typedef struct {vmCvar_t *cvar;const char *cvarName;int onValue;} hudToggleEntry_t;
+static vmCvar_t cg_hudOptionsOpen,cg_mmap_size,cg_mmap_fov,a,b;
+static hudToggleEntry_t hudToggleTable[]={{&a,"a",1},{&b,"b",3}};
+static int calls,unavailable;static float last;
+static void trap_Cvar_Update(vmCvar_t *v){}
+static int CG_HUDOptionsIsOpen(void){return cg_hudOptionsOpen.integer;}
+static int HUDEntry_IsUnavail(const hudToggleEntry_t *entry){return unavailable;}
+static const char *va(const char *format,int value){return "test";}
+static void trap_Cvar_Set(const char *name,const char *value){calls++;}
+static void HUDOpt_SetFloatCvar(const char *name,vmCvar_t *v,float value,int integral){calls++;last=value;}
+"""+extract(source,'void CG_WebHUDAction(')+r"""
+int main(void){CG_WebHUDAction(0,0,1);assert(calls==0);cg_hudOptionsOpen.integer=1;
+CG_WebHUDAction(0,0,1);assert(calls==1);
+CG_WebHUDAction(0,0,2);CG_WebHUDAction(0,-1,0);CG_WebHUDAction(0,2,0);assert(calls==1);
+unavailable=1;CG_WebHUDAction(0,0,0);assert(calls==1);unavailable=0;
+CG_WebHUDAction(1,0,40);assert(calls==2&&last>.39f&&last<.41f);
+CG_WebHUDAction(1,0,201);CG_WebHUDAction(1,0,41);assert(calls==2);
+CG_WebHUDAction(2,0,120);assert(calls==3&&last==120);
+CG_WebHUDAction(2,0,125);CG_WebHUDAction(2,0,29);assert(calls==3);}
+"""
+ run_c(harness)

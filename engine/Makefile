@@ -778,11 +778,6 @@ ifdef MINGW
     BASE_CFLAGS += -m64
   endif
 
-  ifeq ($(USE_CEF_GARAGE),1)
-    CLIENT_CFLAGS += -DUSE_CEF_GARAGE -I$(CEF_DIR)
-    CLIENT_LIBS += $(CEF_DIR)/Release/libcef.lib
-  endif
-
   # libmingw32 must be linked before libSDLmain
   CLIENT_LIBS += -lmingw32
   RENDERER_LIBS += -lmingw32
@@ -2531,29 +2526,12 @@ endif
 
 Q3OBJ += $(BULLET_OBJECTS) $(B)/client/sv_rally_physics.o
 
-ifeq ($(USE_CEF_GARAGE),1)
-  ifneq ($(PLATFORM)-$(ARCH),mingw32-x86_64)
-    $(error USE_CEF_GARAGE is currently supported only on Windows x64)
-  endif
-  ifeq ($(wildcard $(CEF_DIR)/include/capi/cef_app_capi.h),)
-    $(error Set CEF_DIR to the unpacked Windows x64 CEF SDK)
-  endif
-  Q3OBJ += $(B)/client/cl_webgarage.o
-endif
-
 ifneq ($(USE_RENDERER_DLOPEN),0)
 $(B)/$(CLIENTBIN)$(FULLBINEXT): $(Q3OBJ) $(LIBSDLMAIN)
 	$(echo_cmd) "LD $@"
-ifeq ($(USE_CEF_GARAGE),1)
-	$(file >$@.objects.rsp,$(Q3OBJ))
-	$(Q)$(BULLET_CXX) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
-		-o $@ @$@.objects.rsp \
-		$(LIBSDLMAIN) $(CLIENT_LIBS) $(LIBS) $(BULLET_LINK_LIBS)
-else
 	$(Q)$(BULLET_CXX) $(CLIENT_CFLAGS) $(CFLAGS) $(CLIENT_LDFLAGS) $(LDFLAGS) $(NOTSHLIBLDFLAGS) \
 		-o $@ $(Q3OBJ) \
 		$(LIBSDLMAIN) $(CLIENT_LIBS) $(LIBS) $(BULLET_LINK_LIBS)
-endif
 
 $(B)/renderer_opengl1_$(SHLIBNAME): $(Q3ROBJ) $(JPGOBJ)
 	$(echo_cmd) "LD $@"

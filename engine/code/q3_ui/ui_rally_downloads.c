@@ -701,31 +701,6 @@ void UI_Rally_DownloadsMenu( void ) {
 }
 
 int UI_WebDownloadsScreen( void ) { return uis.activemenu == &s_dl.menu ? 6 : 0; }
-int UI_WebDownloadCount( void ) { return s_dl.numAllItems; }
-int UI_WebDownloadChar( int index, int field, int character ) {
-    const char *value;
-    dlItem_t *item;
-    if ( index < 0 || index >= s_dl.numAllItems ) return 0;
-    item = &s_dl.allItems[index];
-    switch ( field ) {
-    case 0: value = item->name; break;
-    case 1: value = item->author; break;
-    case 2: value = item->type; break;
-    case 3: value = item->version; break;
-    case 4: value = item->id; break;
-    default: return 0;
-    }
-    if ( character < 0 || character >= (int)strlen( value ) ) return 0;
-    return (unsigned char)value[character];
-}
-int UI_WebDownloadNumber( int index, int field ) {
-    if ( index == -1 && field == 0 ) return s_dl.catalogRevision;
-    if ( index < 0 || index >= s_dl.numAllItems ) return 0;
-    return field == 0 ? s_dl.allItems[index].size_kb : s_dl.allItems[index].installed;
-}
-void UI_WebDownloadTick( void ) {
-    if ( UI_WebDownloadsScreen() ) DL_PollState();
-}
 void UI_WebCatalogAction( int screen, int action, int index ) {
     if ( screen == 5 && action == 0 ) {
         UI_WebRivalsBack();

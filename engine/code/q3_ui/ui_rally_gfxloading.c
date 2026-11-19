@@ -636,30 +636,6 @@ void UI_WebLoadingTick( int realtime ) {
     if ( GFX_HandoffDue( currentTime ) ) GFX_HandOffToMainMenu();
 }
 
-/*
- * UI_WEB_SCREEN while this screen runs (client/cl_webgarage.c): 15, drawn
- * natively while the WebUI loads hidden for the screens that still use it.
- */
-int UI_WebLoadingScreenCode( void ) {
-    return 15;
-}
-
 int UI_WebLoadingProgress( void ) {
     return (int)(s_gfxloading.smoothProgress * 100.0f);
-}
-
-int UI_WebLoadingStage( void ) {
-    return GFX_Stage();
-}
-
-int UI_WebLoadingPrompt( void ) {
-    return GFX_UpdatePromptActive();
-}
-
-void UI_WebLoadingAction( int action ) {
-    if ( !UI_WebLoadingScreen() ) return;
-    if ( GFX_UpdatePromptActive() ) {
-        if ( action == 10 ) GFX_ActivateButton( GFX_BTN_UPDATE );
-        if ( action == 11 ) GFX_ActivateButton( GFX_BTN_SKIP );
-    }
 }

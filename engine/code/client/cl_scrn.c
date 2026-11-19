@@ -481,12 +481,6 @@ This will be called twice if rendering in stereo mode
 ==================
 */
 static void SCR_RefreshUI( void ) {
-#ifdef USE_CEF_GARAGE
-    if ( CL_WebGarageOwnsScreen() ) {
-        VM_Call( uivm, UI_WEB_TICK, cls.realtime );
-        return;
-    }
-#endif
     VM_Call( uivm, UI_REFRESH, cls.realtime );
 }
 
@@ -496,16 +490,6 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 	re.BeginFrame( stereoFrame );
 
     uiFullscreen = (uivm && VM_Call( uivm, UI_IS_FULLSCREEN ));
-#ifdef USE_CEF_GARAGE
-    if ( CL_WebGarageOwnsScreen() ) {
-        uiFullscreen = qfalse;
-        if ( clc.state < CA_LOADING && !clc.demoPlayer ) {
-            re.SetColor( g_color_table[0] );
-            re.DrawStretchPic( 0, 0, cls.glconfig.vidWidth, cls.glconfig.vidHeight, 0, 0, 0, 0, cls.whiteShader );
-            re.SetColor( NULL );
-        }
-    }
-#endif
 
 	// wide aspect ratio screens need to have the sides cleared
 	// unless they are displaying game renderings
@@ -519,15 +503,9 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 
     // Draw the archive first; the cgame renders only into its preview rectangle.
     if ( clc.demoPlayer && uivm ) {
-#ifdef USE_CEF_GARAGE
-        if ( !CL_WebGarageOwnsScreen() )
-#endif
         SCR_RefreshUI();
         if ( clc.state == CA_ACTIVE && !clc.demoSeeking ) CL_CGameRendering( stereoFrame );
         // The preview is rendered after the menu and would cover its cursor.
-#ifdef USE_CEF_GARAGE
-        if ( !CL_WebGarageOwnsScreen() )
-#endif
         VM_Call( uivm, UI_DRAW_CURSOR );
         Con_DrawConsole();
         return;
@@ -546,13 +524,8 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 		case CA_DISCONNECTED:
 			// force menu up
 			S_StopAllSounds();
-#ifdef USE_CEF_GARAGE
-            if ( !CL_WebGarageOwnsScreen() )
-#endif
-            {
-                VM_Call( uivm, UI_SET_ACTIVE_MENU, UIMENU_MAIN );
-                IN_SyncMousePosition();
-            }
+			VM_Call( uivm, UI_SET_ACTIVE_MENU, UIMENU_MAIN );
+			IN_SyncMousePosition();
 			break;
 		case CA_CONNECTING:
 		case CA_CHALLENGING:
@@ -560,9 +533,6 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 			// connecting clients will only show the connection dialog
 			// refresh to update the time
 			SCR_RefreshUI();
-			#ifdef USE_CEF_GARAGE
-            if ( !CL_WebGarageOwnsScreen() )
-#endif
             VM_Call( uivm, UI_DRAW_CONNECT_SCREEN, qfalse );
 			break;
 		case CA_LOADING:
@@ -574,9 +544,6 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 			// flash away too briefly on local or lan games
 			// refresh to update the time
 			SCR_RefreshUI();
-			#ifdef USE_CEF_GARAGE
-            if ( !CL_WebGarageOwnsScreen() )
-#endif
             VM_Call( uivm, UI_DRAW_CONNECT_SCREEN, qtrue );
 			break;
 		case CA_ACTIVE:
@@ -619,17 +586,6 @@ void SCR_UpdateScreen( void ) {
 		return;				// not initialized yet
 	}
 
-#ifdef USE_CEF_GARAGE
-    /* Loading calls UpdateScreen synchronously while the main frame is blocked. */
-    if ( clc.state >= CA_CONNECTING && clc.state <= CA_PRIMED && !recursive ) CL_WebGarageFrame();
-	if ( CL_WebGarageSkipBackground() ) {
-		return;
-	}
-	/* keep the last native frame until the browser shows its page */
-	if ( !recursive && CL_WebGarageHoldFrame( cls.realtime ) ) {
-		return;
-	}
-#endif
 
 	if ( ++recursive > 2 ) {
 		Com_Error( ERR_FATAL, "SCR_UpdateScreen: recursively called" );
@@ -659,4 +615,3 @@ void SCR_UpdateScreen( void ) {
 	
 	recursive = 0;
 }
-

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Screenshot of a native screen in a pinned state, for a side by side check
-# against the WebUI (measure_webui_loading.cjs, measure_webui_main.cjs):
+# against the WebUI screenshots (the WebUI itself is in the git history):
 #
 #   tools/ui_webstyle/native_screenshot.sh <width> <height> <state> <out.png> [seconds]
 #

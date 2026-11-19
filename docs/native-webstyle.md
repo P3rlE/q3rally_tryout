@@ -1,14 +1,16 @@
 # Native screens in the WebUI look
 
-The WebUI (`engine/webui/garage`, shown through CEF on Windows) set the look of
-the menus. Screens move back into the game one at a time and must look exactly
-like their WebUI version, on every platform and without a browser. Done so
-far: the graphics loading screen ("Getting ready.", WebUI screen 1), the
-main menu ("Ready to race.", WebUI screen 2), the end credits ("Thank you
-for playing.", WebUI screen 3), Rivals ("Meet your rivals.", WebUI
-screen 5), Downloads ("Expand your rally.", WebUI screen 6) and the demo
-archive ("Your replays.", WebUI screen 4) and the map loading screen
-("Ready to race.", WebUI screen 14).
+The WebUI (formerly `engine/webui/garage`, shown through CEF on Windows) set
+the look of the menus. Every screen moved back into the game and looks exactly
+like its WebUI version, on every platform and without a browser; the WebUI,
+CEF and their build and packaging were then removed (they remain in the git
+history). The measurements in `tests/fixtures/webui_*.json` are the frozen
+reference. The first screens were the graphics loading screen ("Getting
+ready.", WebUI screen 1), the main menu ("Ready to race.", WebUI screen 2),
+the end credits ("Thank you for playing.", WebUI screen 3), Rivals ("Meet your
+rivals.", WebUI screen 5), Downloads ("Expand your rally.", WebUI screen 6)
+and the demo archive ("Your replays.", WebUI screen 4) and the map loading
+screen ("Ready to race.", WebUI screen 14).
 
 ## How a screen is rebuilt
 
@@ -70,13 +72,9 @@ atlases.
 
 ## Checking a screen
 
-- `tools/ui_webstyle/measure_webui_loading.cjs`, `measure_webui_main.cjs`,
-  `measure_webui_credits.cjs`, `measure_webui_rivals.cjs`,
-  `measure_webui_downloads.cjs`, `measure_webui_demos.cjs`,
-  `measure_webui_maploading.cjs`, `measure_webui_offline.cjs`,
-  `measure_webui_offline_rules.cjs`, `measure_webui_online.cjs` and
-  `measure_webui_driver.cjs` measure the WebUI screens in Chrome (the
-  credits with the roll paused at fixed times). They record every box and the width
+- The `tools/ui_webstyle/measure_webui_*.cjs` scripts measured the WebUI
+  screens in Chrome (the credits with the roll paused at fixed times); they
+  went with the WebUI and are in the git history. They record every box and the width
   of every text run, for several viewports and all states (main menu: with
   and without a profile, quit dialog open).
 - The results are `tests/fixtures/webui_loading_layout.json`,
@@ -151,7 +149,7 @@ What still differs from the WebUI:
   transport.
 - A recording plays embedded (`demopreview`) as before. The UI names the
   viewport in `ui_demoRect` ("x y w h", screen pixels); the cgame renders
-  the demo there (`cg_view.c`), as it did for the WebUI's `cl_webDemoRect`.
+  the demo there (`cg_view.c`).
 - Like the page: a double click or Play starts, Space pauses, the left and
   right arrows seek 10 s, Escape stops and goes back. The transport is
   disabled (opacity .45) while nothing plays or the demo seeks.
@@ -309,8 +307,8 @@ What still differs from the WebUI:
   the cgame's glconfig and white shader); the text styles, buttons,
   selects, range inputs and the scrollbar now live there for both.
 - The toggles come from the table in cg_hud_core.c through
-  `CG_WebHUDNumber` / `CG_WebHUDChar` / `CG_WebHUDAction`, as for CEF. The
-  client no longer reports screen 13, so CEF stays hidden in the race.
+  `CG_WebHUDNumber` / `CG_WebHUDChar` / `CG_WebHUDAction` (named after the
+  WebUI, which called them too).
 - The cgame's cursor reaches the sides of a wide screen like the UI's
   (-bias .. 640 + bias). Escape (the client clears the cgame key catcher)
   and Shift+H close the panel.
@@ -326,7 +324,7 @@ What still differs from the WebUI:
   the status lines and the four favorite slots. Layout in
   `ui_rally_garagelayout.c`, tested against Chrome
   (tests/test_native_garage.py, ten viewports, three setups).
-- The catalog is found the way engine/webui/build_showroom.py builds
+- The catalog is found the way the WebUI's build_showroom.py built
   catalog.json (`ui_rally_garagedata.c`): vehicles with a body.md3, their
   paints and the wheels and drivers by `<key>.skin` beside an `icon_<key>`,
   the plates by their pictures; names from game/garage_unlocks.h,
@@ -357,18 +355,11 @@ What still differs from the WebUI:
   67.5°, the wheel zooms by 0.95 per notch between 2.1 and 7 radii.
 - Driver profile opens the native driver page (below).
 
-## Interplay with the WebUI
+## Without the WebUI
 
-While a native screen runs (loading screen, main menu, end credits, demo
-archive, Rivals, Downloads, offline, online, driver page, settings; map
-loading has no UI screen code), the UI reports
-`UI_WEB_SCREEN` 15. The client treats it like screen 0: the browser stays
-hidden and the game draws. While the game is disconnected, though, the
-client starts CEF and loads the page, so the screens that are still WebUI
-pages open without a load.
-
-Going from a native screen to a WebUI screen, the browser shows the new page
-a few frames later. Until then the client keeps the last native frame on
-screen (`CL_WebGarageHoldFrame`, at most 1 s) instead of drawing black.
-
-Without CEF (`cl_webUI` 0, or no WebUI build) nothing of this applies.
+The WebUI and CEF are removed: no `cl_webUI`, no `webgarage` command, no
+`UI_WEB_*` / `CG_WEB_*` calls between client and VMs. Functions named
+`UI_Web*` / `CG_Web*` that the native screens still use keep their names.
+The menus get the pointer's position (`UI_MOUSE_POSITION`) on every
+platform, as they did beside the browser. The console font builder moved to
+`tools/ui_webstyle/build_console_font.py`.

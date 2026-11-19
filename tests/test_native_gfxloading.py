@@ -603,13 +603,6 @@ def test_text_runs_measure_like_chrome():
         assert abs(float(width) - runs[key]) < 0.1, (key, width, runs[key])
 
 
-def test_vehicle_names_follow_the_webui_catalog():
-    labels = json.loads((ROOT / 'engine/webui/catalog_labels.json').read_text())['vehicles']
-    header = (CODE / 'q3_ui/ui_rally_vehicle_names.h').read_text()
-    native = dict(re.findall(r'ENTRY\( "([^"]+)", "([^"]+)" \)', header))
-    assert native == {key: value['name'] for key, value in labels.items()}
-
-
 def test_font_atlases_and_art_are_complete():
     fonts = ROOT / 'baseq3r/menu/fonts'
     for name in ('sharetechmono', 'barlow', 'barlow_bold', 'barlowcondensed', 'barlowcondensed_italic'):
