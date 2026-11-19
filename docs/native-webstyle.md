@@ -260,14 +260,23 @@ What still differs from the WebUI:
 
 ## The settings and race control
 
-- `q3_ui/ui_rally_config.c` draws config pages 0-15 (setup, controls,
+- `q3_ui/ui_rally_config.c` draws every config page (setup, controls,
   graphics, display, sound, network, game and Q3Rally options, renderer
-  information, confirmations, pause, bots, team orders, server information)
+  information, confirmations, pause, bots, team orders, server information,
+  and the wizards: offline Ladder registration 16, first start 17-20, demo
+  save 21)
   in place of the old menus' drawing and keys (`Config_Native` in
   ui_atoms.c), layout in `ui_rally_configlayout.c`. Like config.js it reads
   `UI_WebConfigNumber` / `UI_WebConfigChar` and acts through
   `UI_WebConfigAction`; the old menus stay underneath and keep their
-  callbacks. The wizards (pages 16-21) are still the page.
+  callbacks.
+- The wizard pages are config.js's `.registration-screen`: 70rem wide, a
+  smaller h1, the description at line-height 1.7 and 58rem, the settings
+  with 2rem padding and a 2px accent top, the buttons below them (Next, Join
+  ladder, Register, Retry, OK, Done, Start racing and Save in the accent).
+  Back is hidden on the name and ready steps. The avatar select shows its
+  preview (the avatar's own shader at 6rem, or "No avatar selected").
+  Typing in a field sends the text with each key (`UI_WebConfigAction` 4).
 - One renderer for every page, as on the page: buttons in a flex row
   (without Back, and without "Resume race" on the pause page, which is the
   header button there), the other items in the auto-fit grid: selects,
@@ -284,8 +293,10 @@ What still differs from the WebUI:
   Barlow.
 - `ui_configDump 1` prints each page (tests/fixtures/config_model.json),
   `ui_configPreview "2,3"` opens the setup page and presses those items,
-  `ui_configPress` / `ui_configCapture` press an item or open the key capture
-  on the current page (native_screenshot.sh `config:` and `race:`).
+  (`ui_configPreview demosave` the demo save page),
+  `ui_configPress` ("item", or "action:item:value") / `ui_configCapture`
+  act on the current page or open the key capture (native_screenshot.sh
+  `config:` and `race:`; without a profile the first-start wizard opens).
 
 ## The main menu
 

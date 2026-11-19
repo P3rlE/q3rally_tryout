@@ -12,6 +12,9 @@ import tempfile
 
 from test_native_gfxloading import ROOT, compile_harness, run, close
 
+# the avatars the WebUI's catalog has a picture for (catalog.json)
+AVATARS = {'gfx/avatars/preset/' + n for n in ('flags', 'helmet_01', 'helmet_07', 'helmet_13', 'helmet_27', 'helmet_44', 'helmet_88',
+                                               'rocket', 'shifter', 'steering', 'tacho', 'tyre')}
 FIXTURE = json.loads((ROOT / 'tests/fixtures/webui_config_layout.json').read_text())
 MODELS = json.loads((ROOT / 'tests/fixtures/config_model.json').read_text())
 KEYS = sorted(FIXTURE)
@@ -34,7 +37,8 @@ def commands(key):
         if kind == 6:
             continue
         shown = clean(text) if kind == 5 else '\x1e'.join(clean(c[0]) for c in choices) if kind == 7 else ''
-        fields.append(f'{kind}~{re.sub(r":\s*$", "", clean(label))}~{shown}')
+        avatar = 0 if not any(c[1] for c in choices) else 1 if 0 <= value < len(choices) and choices[value][1] in AVATARS else 2
+        fields.append(f'{kind}~{re.sub(r":\s*$", "", clean(label))}~{shown}~{avatar}')
     action = next((clean(i[2]) for i in model['items'] if i[1] == 5), '') if capture else ''
     dialog = 1 if confirm else 2 if capture else 0
     return [f'config {width} {height} {page} {dialog} 0', clean(model['title']), clean(model['description']).replace('\n', '\x1e'),
@@ -48,7 +52,7 @@ def test_native_settings_match_the_webui_at_every_size():
     with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as directory:
         exe = compile_harness(pathlib.Path(directory))
         output = [json.loads(line) for line in run(exe, lines)]
-    assert len(KEYS) == 150
+    assert len(KEYS) == 220
     failures = []
     for key, mine in zip(KEYS, output):
         els = FIXTURE[key]['els']
@@ -58,30 +62,35 @@ def test_native_settings_match_the_webui_at_every_size():
             if reference is not None and not close(value, reference):
                 problems.append((what, value, reference))
 
-        check('back', mine['back'], els['/header:0/button#config-back.secondary:1'])
+        check('back', mine['back'], els.get('/header:0/button#config-back.secondary:1', [0, 0, 0, 0]))
         check('page', [mine['page']], [FIXTURE[key]['height']])
         description = els['/p#config-description:1']
-        check('description', [mine['description'][0], mine['description'][1] * 24], description[1::2])
-        nav = els.get('/nav#config-actions.config-actions:2')
+        check('description', mine['description'], description[1::2])
+        nav = els.get('/nav#config-actions.config-actions:2') or els.get('/nav#config-actions.config-actions:3')
         dialog = els.get('dialog')
         if not dialog or 'capture' in key:
             check('nav', mine['nav'], nav)
             for index, box in enumerate(b for p, b in els.items() if re.match(r'/nav[^/]*/button', p)):
                 check(f'button {index}', mine['buttons'][index], box)
-        section = els.get('/section#config-settings:3')
+        section = els.get('/section#config-settings:3') or els.get('/section#config-settings:2')
         assert bool(section) == bool(mine['settings']), key
         if section:
             check('section', mine['section'], section)
             fields = [p for p in els if re.search(r'config-fields:0/div\.config-field:\d+$', p)]
             assert len(fields) == len(mine['fields']), key
             for index, path in enumerate(fields):
-                box, control, output, rebind, clear, labels = mine['fields'][index]
+                box, control, output, rebind, clear, labels, preview, image = mine['fields'][index]
                 check(f'field {index}', box, els[path])
                 check(f'label {index}', [labels * 24], [els[path + '/label:0'][3]])
                 inner = [(p, b) for p, b in els.items() if p.startswith(path + '/') and p.count('/') == path.count('/') + 1 and '/label:0' not in p]
                 for p, b in inner:
                     if '/output:' in p:
                         check(f'output {index}', [output], [b[1]])
+                    elif 'config-avatar-preview' in p:
+                        check(f'preview {index}', preview, b)
+                        picture = els.get(p + '/img:0')
+                        if picture:
+                            check(f'avatar {index}', image, picture)
                     elif 'div.config-actions' in p:
                         check(f'actions {index}', [control[1], control[3]], [b[1], b[3]])
                         check(f'rebind {index}', rebind, els[p + '/button.secondary:0'])

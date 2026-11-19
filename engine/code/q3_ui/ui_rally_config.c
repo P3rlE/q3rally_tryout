@@ -13,7 +13,8 @@ or (at your option) any later version.
 The settings drawn like the WebUI's #config-screen (config.js): the setup
 page, controls, graphics, display, sound, network, game and Q3Rally options,
 the renderer information, the confirmation and the race control pages
-(pause, bots, teams, server information). One renderer for every page, as
+(pause, bots, teams, server information), and the wizards (offline Ladder
+registration, first start, demo save). One renderer for every page, as
 on the page: it reads UI_WebConfigNumber / UI_WebConfigChar and acts through
 UI_WebConfigAction, like the client did for CEF.
 */
@@ -24,7 +25,7 @@ UI_WebConfigAction, like the client did for CEF.
 #include "ui_rally_library.h"
 #include "ui_rally_rivalslayout.h"
 
-#define CONFIG_LAST_PAGE	15		/* the wizards (16-21) stay as they are */
+#define CONFIG_LAST_PAGE	21
 
 static int Config_Page( void ) {
 	return UI_WebConfigScreen() ? UI_WebConfigNumber( 0, 0 ) : -1;
@@ -133,7 +134,10 @@ static struct {
 	qboolean		disabled[CONFIG_MAX_FIELDS];
 	float			listScroll[CONFIG_MAX_FIELDS];
 	char			search[64];
-	qboolean		searchFocus;
+	int				focus;			/* the text field being edited, field + 1 */
+	qboolean		backDisabled;
+	char			avatarPath[CONFIG_MAX_FIELDS][MAX_QPATH];
+	qhandle_t		avatarShader[CONFIG_MAX_FIELDS];
 	int				focusTime;
 	int				popup;			/* field + 1 */
 	float			popupScroll;
@@ -192,22 +196,16 @@ static void Config_Build( void ) {
 		Q_strncpyz( s_config.pageKey, key, sizeof( s_config.pageKey ) );
 		s_config.pageScroll = 0.0f;
 		s_config.popup = s_config.capture = 0;
-		s_config.searchFocus = qfalse;
+		s_config.focus = 0;
 		s_config.drag = DRAG_NONE;
-		s_config.search[0] = '\0';
 		memset( s_config.listScroll, 0, sizeof( s_config.listScroll ) );
-		for ( i = 0; i < items; i++ ) {
-			if ( UI_WebConfigNumber( 2, i ) == CONFIG_FIELD ) {
-				Config_Text( 2, i, 0, s_config.search, sizeof( s_config.search ) );
-				break;
-			}
-		}
 	}
 
 	l->screen = page;
 	l->title = s_config.title;
 	l->description = s_config.description;
 	l->buttons = l->fields = 0;
+	s_config.backDisabled = qfalse;
 	for ( i = 0; i < items; i++ ) {
 		type = UI_WebConfigNumber( 2, i );
 		if ( !type ) continue;
@@ -219,6 +217,7 @@ static void Config_Build( void ) {
 			while ( label[start] == ' ' ) start++;
 			while ( end > start && label[end - 1] == ' ' ) end--;
 			Q_strncpyz( trimmed, label + start, end - start + 1 );
+			if ( !Q_stricmp( label, "back" ) ) s_config.backDisabled = UI_WebConfigNumber( 6, i ) != 0;
 			if ( !confirm && ( !Q_stricmp( trimmed, "back" ) || ( page == 10 && !Q_stricmpn( label, "resume", 6 ) ) ) ) continue;
 			if ( l->buttons >= CONFIG_MAX_BUTTONS ) continue;
 			Q_strncpyz( s_config.buttonText[l->buttons], label, sizeof( s_config.buttonText[0] ) );
@@ -259,12 +258,32 @@ static void Config_Build( void ) {
 			}
 			( void )length;
 		}
+		/* the avatar select's preview: the picture of the choice, if it has one */
+		l->field[j].avatar = CONFIG_NO_PREVIEW;
+		if ( type == CONFIG_SPIN || type == CONFIG_RADIO ) {
+			char image[MAX_QPATH];
+			int c;
+			for ( c = 0; c < s_config.choices[j]; c++ ) {
+				Config_Text( 5, i, c, image, sizeof( image ) );
+				if ( image[0] ) break;
+			}
+			if ( c < s_config.choices[j] ) {
+				image[0] = '\0';
+				if ( s_config.value[j] >= 0 && s_config.value[j] < s_config.choices[j] ) Config_Text( 5, i, s_config.value[j], image, sizeof( image ) );
+				if ( strcmp( image, s_config.avatarPath[j] ) ) {
+					Q_strncpyz( s_config.avatarPath[j], image, sizeof( s_config.avatarPath[0] ) );
+					s_config.avatarShader[j] = image[0] ? trap_R_RegisterShaderNoMip( image ) : 0;
+				}
+				l->field[j].avatar = s_config.avatarShader[j] ? CONFIG_PREVIEW_IMAGE : CONFIG_PREVIEW_NOTE;
+			}
+		}
 		l->field[j].type = type;
 		l->field[j].label = s_config.fieldLabel[j];
 		l->field[j].text = s_config.fieldText[j];
 	}
 	if ( s_config.capture > l->fields || ( s_config.capture && l->field[s_config.capture - 1].type != CONFIG_KEY ) ) s_config.capture = 0;
 	if ( s_config.popup > l->fields ) s_config.popup = 0;
+	if ( s_config.focus > l->fields || ( s_config.focus && l->field[s_config.focus - 1].type != CONFIG_FIELD ) ) s_config.focus = 0;
 	l->dialog = confirm ? CONFIG_CONFIRM : s_config.capture ? CONFIG_CAPTURE : CONFIG_NO_DIALOG;
 	l->captureAction = s_config.capture ? s_config.fieldCapture[s_config.capture - 1] : "";
 	l->pageScroll = s_config.pageScroll;
@@ -420,6 +439,17 @@ static void Config_DrawPopup( void ) {
 	}
 }
 
+/* config.js: primary only on the wizard pages, for these */
+static qboolean Config_Secondary( const char *label ) {
+	static const char *primary[] = { "next", "join ladder", "register", "retry", "ok", "done", "start racing", "save" };
+	int i;
+	if ( s_config.layout.screen < 16 ) return qtrue;
+	for ( i = 0; i < (int)ARRAY_LEN( primary ); i++ ) {
+		if ( !Q_stricmp( label, primary[i] ) ) return qfalse;
+	}
+	return qtrue;
+}
+
 static void Config_DrawDialog( void ) {
 	configLayout_t *l = &s_config.layout;
 	wsTextStyle_t body;
@@ -440,11 +470,33 @@ static void Config_DrawDialog( void ) {
 	WS_Transform( &l->h2, l->dialogTitle, shown, sizeof( shown ) );
 	WS_DrawLines( &l->h2, l->dialogX, l->dialogH2Y, shown, &l->dialogH2Lines, wsWhite );
 	if ( l->dialog == CONFIG_CONFIRM ) {
-		for ( i = 0; i < l->buttons; i++ ) Library_DrawButton( &l->button[i], l->buttonLabel[i], l->screen < 16, s_config.buttonDisabled[i] );
+		for ( i = 0; i < l->buttons; i++ ) Library_DrawButton( &l->button[i], l->buttonLabel[i], Config_Secondary( l->buttonLabel[i] ), s_config.buttonDisabled[i] );
 	} else {
 		WS_DrawLines( &body, l->dialogX, l->dialogActionY, l->captureAction, &l->dialogActionLines, wsWhite );
 		WS_DrawLines( &body, l->dialogX, l->dialogHelpY, configCaptureHelp, &l->dialogHelpLines, wsWhite );
 		Library_DrawButton( &l->cancel, "Cancel", qtrue, qfalse );
+	}
+}
+
+/* .config-avatar-preview: #111 with a border, the picture (object-fit:
+ * contain) or a note in #aaa at .9rem */
+static void Config_DrawPreview( const configField_t *f, int field ) {
+	static const vec4_t back = { 0x11 / 255.0f, 0x11 / 255.0f, 0x11 / 255.0f, 1.0f };
+	static const vec4_t note = { 0xaa / 255.0f, 0xaa / 255.0f, 0xaa / 255.0f, 1.0f };
+	float x0 = WS_Round( f->preview.x ), y0 = WS_Round( f->preview.y ), x1 = WS_Round( f->preview.x + f->preview.w ), y1 = WS_Round( f->preview.y + f->preview.h );
+	WS_FillRect( x0, y0, x1 - x0, y1 - y0, wsLine );
+	WS_FillRect( x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2, back );
+	if ( f->avatar == CONFIG_PREVIEW_IMAGE ) {
+		trap_R_SetColor( NULL );
+		trap_R_DrawStretchPic( WS_Round( f->image.x ), WS_Round( f->image.y ), f->image.w, f->image.h, 0, 0, 1, 1, s_config.avatarShader[field] );
+	} else {
+		wsTextStyle_t small;
+		const char *text = s_config.avatarPath[field][0] ? "Preview unavailable" : "No avatar selected";
+		WS_BodyStyle( &small );
+		small.size = 0.9f * WS_REM;
+		small.lineHeight = WS_LU( 1.5f * 0.9f * WS_REM );
+		WS_DrawText( &small, f->preview.x + ( f->preview.w - WS_TextWidth( &small, text, strlen( text ) ) ) * 0.5f,
+		             f->preview.y + ( f->preview.h - small.lineHeight ) * 0.5f, text, strlen( text ), note );
 	}
 }
 
@@ -457,13 +509,21 @@ static void Config_DrawPage( void ) {
 	WS_BodyStyle( &body );
 	WS_DrawBackground( l->page.pageWidth, l->pageHeight );
 	WS_DrawFrontHeader( &l->page, l->title, "", "" );
-	Library_DrawButton( &l->back, l->backLabel, qtrue, qfalse );
-	Config_DrawLines( &body, l->page.contentX, l->descriptionY, l->description, &l->descriptionLines, wsWhite );
+	if ( !l->backHidden ) Library_DrawButton( &l->back, l->backLabel, qtrue, l->screen >= 17 && s_config.backDisabled );
+	Config_DrawLines( &l->descriptionStyle, l->page.contentX, l->descriptionY, l->description, &l->descriptionLines, wsWhite );
 	if ( l->dialog != CONFIG_CONFIRM ) {
-		for ( i = 0; i < l->buttons; i++ ) Library_DrawButton( &l->button[i], l->buttonLabel[i], qtrue, s_config.buttonDisabled[i] );
+		for ( i = 0; i < l->buttons; i++ ) Library_DrawButton( &l->button[i], l->buttonLabel[i], Config_Secondary( l->buttonLabel[i] ), s_config.buttonDisabled[i] );
 	}
 	if ( !l->settings ) return;
-	WS_DrawSection( &l->section, qfalse );
+	if ( l->registration ) {
+		/* .registration-screen #config-settings: border-top 2px */
+		float x0 = WS_Round( l->section.x ), y0 = WS_Round( l->section.y ), x1 = WS_Round( l->section.x + l->section.w ), y1 = WS_Round( l->section.y + l->section.h );
+		WS_FillRect( x0, y0, x1 - x0, y1 - y0, wsLine );
+		WS_FillRect( x0, y0, x1 - x0, 2, wsAccent );
+		WS_FillRect( x0 + 1, y0 + 2, x1 - x0 - 2, y1 - y0 - 3, wsSurface );
+	} else {
+		WS_DrawSection( &l->section, qfalse );
+	}
 	accent = body;
 	for ( i = 0; i < l->fields; i++ ) {
 		configField_t *f = &l->field[i];
@@ -477,7 +537,7 @@ static void Config_DrawPage( void ) {
 			break;
 		}
 		case CONFIG_FIELD:
-			Config_DrawInput( &f->control, s_config.search, l->screen == 1 ? "Search controls" : NULL, s_config.searchFocus );
+			Config_DrawInput( &f->control, s_config.focus == i + 1 ? s_config.search : f->text, l->screen == 1 ? "Search controls" : NULL, s_config.focus == i + 1 );
 			break;
 		case CONFIG_KEY:
 			Library_DrawButton( &f->rebind, f->text[0] ? f->text : "Unbound", qtrue, s_config.disabled[i] );
@@ -498,6 +558,7 @@ static void Config_DrawPage( void ) {
 		default:
 			Config_SelectText( i, text, sizeof( text ) );
 			Config_DrawSelect( &f->control, text, s_config.popup == i + 1, s_config.disabled[i] );
+			if ( f->avatar != CONFIG_NO_PREVIEW ) Config_DrawPreview( f, i );
 			break;
 		}
 	}
@@ -515,14 +576,10 @@ static int Config_SliderValue( int field, float x ) {
 	return value > high ? high : value;
 }
 
+/* the edited text goes to the field as the page's input event did */
 static void Config_Search( void ) {
 	trap_Cvar_Set( "ui_webconfig_text", s_config.search );
-	if ( s_config.layout.fields ) {
-		int i;
-		for ( i = 0; i < s_config.layout.fields; i++ ) {
-			if ( s_config.layout.field[i].type == CONFIG_FIELD ) { UI_WebConfigAction( 4, s_config.fieldItem[i], 0 ); break; }
-		}
-	}
+	if ( s_config.focus ) UI_WebConfigAction( 4, s_config.fieldItem[s_config.focus - 1], 0 );
 }
 
 static void Config_Bind( int key ) {
@@ -580,9 +637,12 @@ static void Config_Click( float x, float y ) {
 		}
 		return;
 	}
-	s_config.searchFocus = qfalse;
+	s_config.focus = 0;
 	if ( l->pageBar && Config_ScrollbarClick( &l->viewport, &l->pageThumb, &s_config.pageScroll, DRAG_PAGE, 0, x, y ) ) return;
-	if ( Library_Inside( &l->back, x, y ) ) { UI_WebConfigAction( 6, 0, 0 ); return; }
+	if ( Library_Inside( &l->back, x, y ) ) {
+		if ( !l->backHidden && !( l->screen >= 17 && s_config.backDisabled ) ) UI_WebConfigAction( 6, 0, 0 );
+		return;
+	}
 	for ( i = 0; i < l->buttons; i++ ) {
 		if ( Library_Inside( &l->button[i], x, y ) ) {
 			if ( !s_config.buttonDisabled[i] ) UI_WebConfigAction( 0, s_config.buttonItem[i], 0 );
@@ -605,8 +665,9 @@ static void Config_Click( float x, float y ) {
 			s_config.dragValue = Config_SliderValue( i, x );
 			return;
 		case CONFIG_FIELD:
-			s_config.searchFocus = qtrue;
+			s_config.focus = i + 1;
 			s_config.focusTime = uis.realtime;
+			Q_strncpyz( s_config.search, s_config.fieldText[i], sizeof( s_config.search ) );
 			return;
 		case CONFIG_LIST:
 			if ( f->listHeight > f->control.h + 0.5f ) {
@@ -624,9 +685,10 @@ static void Config_Click( float x, float y ) {
 }
 
 static void Config_Type( int ch ) {
-	int length = strlen( s_config.search );
+	int length = strlen( s_config.search ), limit = sizeof( s_config.search ) - 1;
+	if ( s_config.focus && s_config.high[s_config.focus - 1] > 0 && s_config.high[s_config.focus - 1] < limit ) limit = s_config.high[s_config.focus - 1];
 	if ( ch == 8 ) { if ( length ) s_config.search[length - 1] = '\0'; else return; }
-	else if ( ch >= 32 && ch < 127 && length < (int)sizeof( s_config.search ) - 1 ) {
+	else if ( ch >= 32 && ch < 127 && length < limit ) {
 		s_config.search[length] = (char)ch;
 		s_config.search[length + 1] = '\0';
 	} else return;
@@ -638,12 +700,16 @@ static int configDumped = -1;
 
 void Config_Draw( void ) {
 	int page = Config_Page();
-	char press[16];
+	char press[64];
 	/* ui_configPress <item>: presses a button, for scripted checks (tools/ui_webstyle) */
 	trap_Cvar_VariableStringBuffer( "ui_configPress", press, sizeof( press ) );
 	if ( press[0] ) {
 		trap_Cvar_Set( "ui_configPress", "" );
-		UI_WebConfigAction( 0, atoi( press ), 0 );
+		/* "action:item:value" for any other action (4: the text in ui_webconfig_text) */
+		if ( strchr( press, ':' ) ) {
+			char *item = strchr( press, ':' ) + 1, *value = strchr( item, ':' );
+			UI_WebConfigAction( atoi( press ), atoi( item ), value ? atoi( value + 1 ) : 0 );
+		} else UI_WebConfigAction( 0, atoi( press ), 0 );
 		page = Config_Page();
 		if ( !Config_Native() ) return;
 	}
@@ -707,7 +773,7 @@ sfxHandle_t Config_Key( int key ) {
 
 	Library_Cursor( &x, &y );
 	if ( key & K_CHAR_FLAG ) {
-		if ( s_config.searchFocus && l->dialog == CONFIG_NO_DIALOG ) Config_Type( key & ~K_CHAR_FLAG );
+		if ( s_config.focus && l->dialog == CONFIG_NO_DIALOG ) Config_Type( key & ~K_CHAR_FLAG );
 		return 0;
 	}
 	if ( l->dialog == CONFIG_CAPTURE ) {
@@ -741,20 +807,20 @@ sfxHandle_t Config_Key( int key ) {
 		s_config.pageScroll += key == K_MWHEELUP ? -100.0f : 100.0f;
 		return 0;
 	case K_BACKSPACE:
-		if ( s_config.searchFocus ) Config_Type( 8 );
+		if ( s_config.focus ) Config_Type( 8 );
 		return 0;
 	case K_ENTER:
 	case K_KP_ENTER:
 		s_config.popup = 0;
-		s_config.searchFocus = qfalse;
+		s_config.focus = 0;
 		return 0;
 	case K_UPARROW:
 	case K_PGUP:
-		if ( !s_config.searchFocus ) s_config.pageScroll -= key == K_PGUP ? 0.875f * l->viewport.h : 40.0f;
+		if ( !s_config.focus ) s_config.pageScroll -= key == K_PGUP ? 0.875f * l->viewport.h : 40.0f;
 		return 0;
 	case K_DOWNARROW:
 	case K_PGDN:
-		if ( !s_config.searchFocus ) s_config.pageScroll += key == K_PGDN ? 0.875f * l->viewport.h : 40.0f;
+		if ( !s_config.focus ) s_config.pageScroll += key == K_PGDN ? 0.875f * l->viewport.h : 40.0f;
 		return 0;
 	}
 	return 0;

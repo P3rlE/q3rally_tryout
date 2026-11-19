@@ -701,6 +701,10 @@ void UI_MainMenu( void ) {
                         return;
                 }
                 trap_Cvar_VariableStringBuffer( "ui_configPreview", preview, sizeof( preview ) );
+                if ( !Q_stricmp( preview, "demosave" ) ) {
+                        UI_DemoSaveMenu();
+                        return;
+                }
                 if ( preview[0] ) {
                         /* the setup page, then the buttons with these item indices ("2,3") */
                         char *press = preview;

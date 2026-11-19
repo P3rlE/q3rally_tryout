@@ -343,6 +343,7 @@ int main(void) {
                 configField_t *f = &l.field[l.fields++];
                 next = strchr(r, '|'); if (next) *next++ = 0; else next = r + strlen(r);
                 f->type = atoi(r); r = strchr(r, '~') + 1; f->label = r; r = strchr(r, '~'); *r++ = 0; f->text = r;
+                if ((c = strchr(r, '~'))) { *c++ = 0; f->avatar = atoi(c); }
             }
             uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
             Config_Layout(&l, w, h);
@@ -353,12 +354,13 @@ int main(void) {
             printf("],\"fields\":[");
             for (i = 0; i < l.fields && l.settings; i++) {
                 configField_t *f = &l.field[i];
-                printf("%s[[%g,%g,%g,%g],[%g,%g,%g,%g],%g,[%g,%g,%g,%g],[%g,%g,%g,%g],%d]", i ? "," : "", f->box.x, f->box.y, f->box.w, f->box.h,
+                printf("%s[[%g,%g,%g,%g],[%g,%g,%g,%g],%g,[%g,%g,%g,%g],[%g,%g,%g,%g],%d,[%g,%g,%g,%g],[%g,%g,%g,%g]]", i ? "," : "", f->box.x, f->box.y, f->box.w, f->box.h,
                     f->control.x, f->control.y, f->control.w, f->control.h, f->outputY, f->rebind.x, f->rebind.y, f->rebind.w, f->rebind.h,
-                    f->clear.x, f->clear.y, f->clear.w, f->clear.h, f->labelLines.count);
+                    f->clear.x, f->clear.y, f->clear.w, f->clear.h, f->labelLines.count, f->preview.x, f->preview.y, f->preview.w, f->preview.h,
+                    f->image.x, f->image.y, f->image.w, f->image.h);
             }
-            printf("],\"description\":[%g,%d],\"page\":%g,\"settings\":%d,\"dialogY\":[%g,%g,%g,%g],\"h2\":[%d,%g]}\n",
-                l.descriptionY, l.descriptionLines.count, l.pageHeight, l.settings, l.dialogLabelY, l.dialogH2Y, l.dialogActionY, l.dialogHelpY,
+            printf("],\"description\":[%g,%g],\"page\":%g,\"settings\":%d,\"dialogY\":[%g,%g,%g,%g],\"h2\":[%d,%g]}\n",
+                l.descriptionY, l.descriptionLines.count * l.descriptionStyle.lineHeight, l.pageHeight, l.settings, l.dialogLabelY, l.dialogH2Y, l.dialogActionY, l.dialogHelpY,
                 l.dialogH2Lines.count, l.h2.size);
         } else if (!strcmp(command, "driver")) {
             /* driver <width> <height> <tab> <profile> <avatar> <dialog> <avatars>, then lines:
