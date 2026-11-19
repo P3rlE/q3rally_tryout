@@ -298,6 +298,23 @@ What still differs from the WebUI:
   act on the current page or open the key capture (native_screenshot.sh
   `config:` and `race:`; without a profile the first-start wizard opens).
 
+## The HUD options (cgame)
+
+- Shift+H in a race opens `cgame/cg_hud_panel.c`, the WebUI's `#hud-screen`
+  (session.js): the panel fixed at the right (clamp(21rem, 42vw, 36rem),
+  inside the page's 15px scrollbar gutter, #111 with a 3px accent at its
+  left), scrolling on its own. Layout in `cgame/cg_hud_panellayout.c`,
+  tested against Chrome (tests/test_native_hud_options.py).
+- The cgame builds `q3_ui/ui_rally_webstyle.c` in as well (`CGAME` picks
+  the cgame's glconfig and white shader); the text styles, buttons,
+  selects, range inputs and the scrollbar now live there for both.
+- The toggles come from the table in cg_hud_core.c through
+  `CG_WebHUDNumber` / `CG_WebHUDChar` / `CG_WebHUDAction`, as for CEF. The
+  client no longer reports screen 13, so CEF stays hidden in the race.
+- The cgame's cursor reaches the sides of a wide screen like the UI's
+  (-bias .. 640 + bias). Escape (the client clears the cgame key catcher)
+  and Shift+H close the panel.
+
 ## The main menu
 
 - The buttons behave like the page's: a click activates, Tab and the arrow

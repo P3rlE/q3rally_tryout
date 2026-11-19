@@ -21,13 +21,6 @@ garage.css; see docs/native-webstyle.md.
 
 #include "ui_rally_webstyle.h"
 
-#define WS_LABEL_LINE		( 1.5f * 0.8f * WS_REM )	/* .label: .8rem/1.5 */
-#define WS_HEADING_MARGIN	( 0.4f * WS_REM )			/* h1, h2: margin .4rem 0 */
-#define WS_BODY_LINE		( 1.5f * WS_REM )			/* body: 16px/1.5 */
-#define WS_BLOCK_MARGIN		WS_REM						/* p, ol: 1em */
-#define WS_BUTTON_PAD_X		( 0.85f * WS_REM )			/* button: padding .65rem .85rem */
-#define WS_BUTTON_PAD_Y		( 0.65f * WS_REM )
-#define WS_BUTTON_HEIGHT	( 2.0f * WS_BUTTON_PAD_Y + WS_BODY_LINE + 2.0f )
 
 /* The showroom camera the WebUI opens with (frontend.js: yaw 135, distance
  * 2.6) and its 18 degree elevation; OrbitControls limits for dragging. */
@@ -72,11 +65,6 @@ typedef struct {
 extern const char *wsShowroomLabel;
 extern const char *wsGarageButton;
 
-void	WS_LabelStyle( wsTextStyle_t *style );
-void	WS_BodyStyle( wsTextStyle_t *style );
-float	WS_StyledWidth( const wsTextStyle_t *style, const char *text );
-void	WS_StyledWrap( const wsTextStyle_t *style, const char *text, float width, wsLines_t *lines );
-float	WS_ButtonWidth( const char *label );
 
 /* main, header and grid of the page; title + em is the h1 */
 void	WS_FrontPageLabeled( wsFrontPage_t *page, float width, float height, const char *label,
@@ -96,9 +84,6 @@ void	WS_PlaceShowroom( wsShowroom_t *room, float top, float height );
 void	WS_VehicleName( const char *key, char *out, int size );
 
 void	WS_DrawFrontHeader( const wsFrontPage_t *page, const char *title, const char *em, const char *status );
-void	WS_DrawLabel( float x, float y, const char *text, const wsLines_t *lines );
-void	WS_DrawLines( const wsTextStyle_t *style, float x, float y, const char *text,
-					  const wsLines_t *lines, const float *color );
 void	WS_DrawShowroom( const wsShowroom_t *room, const char *vehicle, const char *status,
 						 playerInfo_t *car, float azimuth, float elevation, float distance );
 

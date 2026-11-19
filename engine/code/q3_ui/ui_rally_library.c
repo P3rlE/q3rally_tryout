@@ -21,14 +21,7 @@ static const vec4_t libSelected = { 0x3b / 255.0f, 0x23 / 255.0f, 0x17 / 255.0f,
 static const vec4_t libInput    = { 0x11 / 255.0f, 0x11 / 255.0f, 0x11 / 255.0f, 1.0f };
 static const vec4_t libHolder   = { 0x75 / 255.0f, 0x75 / 255.0f, 0x75 / 255.0f, 1.0f };   /* ::placeholder */
 static const vec4_t libRing     = { 0xee / 255.0f, 0xee / 255.0f, 0xee / 255.0f, 1.0f };   /* focus ring */
-static const vec4_t libTrack    = { 0x2c / 255.0f, 0x2c / 255.0f, 0x2c / 255.0f, 1.0f };   /* dark scrollbar */
-static const vec4_t libThumb    = { 0x9f / 255.0f, 0x9f / 255.0f, 0x9f / 255.0f, 1.0f };
 
-static qhandle_t Library_Art( void ) {
-	static qhandle_t art;
-	if ( !art ) art = trap_R_RegisterShaderNoMip( "menu/ui/web_scrollbar" );
-	return art;
-}
 
 void Library_Cursor( float *x, float *y ) {
 	*x = uis.cursorx * uis.xscale + uis.bias;
@@ -173,22 +166,6 @@ void Library_DrawList( const wsLibrary_t *lib, const qhandle_t *icons ) {
 }
 
 /* Chrome's dark classic scrollbar: track, arrow buttons, rounded thumb */
-void WS_DrawScrollbar( const wsRect_t *port, const wsRect_t *thumb ) {
-	float x = WS_Round( port->x + port->w - RIVALS_SCROLLBAR ), top = WS_Round( port->y );
-	float bottom = WS_Round( port->y + port->h ), y0, y1;
-	qhandle_t art = Library_Art();
-
-	WS_FillRect( x, top, RIVALS_SCROLLBAR, bottom - top, libTrack );
-	trap_R_SetColor( libThumb );
-	trap_R_DrawStretchPic( x, top, 15, 15, 0, 0, 15 / 16.0f, 15 / 32.0f, art );
-	trap_R_DrawStretchPic( x, bottom - 15, 15, 15, 0, 15 / 32.0f, 15 / 16.0f, 0, art );
-	y0 = WS_Round( thumb->y );
-	y1 = floor( thumb->y + thumb->h ) + 1.0f;
-	trap_R_DrawStretchPic( x, y0, 15, 5, 0, 15 / 32.0f, 15 / 16.0f, 20 / 32.0f, art );
-	trap_R_DrawStretchPic( x, y1 - 5, 15, 5, 0, 20 / 32.0f, 15 / 16.0f, 25 / 32.0f, art );
-	trap_R_SetColor( NULL );
-	if ( y1 - 5 > y0 + 5 ) WS_FillRect( x + 3, y0 + 5, 9, y1 - y0 - 10, libThumb );
-}
 
 void Library_DrawScrollbar( const wsLibrary_t *lib ) {
 	if ( lib->layout.scrollbar ) WS_DrawScrollbar( &lib->layout.list, &lib->layout.thumb );

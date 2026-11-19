@@ -2562,6 +2562,11 @@ void CG_EventHandling(int type) {
 	if ( type == CGAME_EVENT_NONE ) {
 		CG_LadderGhost_CatcherCleared();
 		cg.trunkOpen = qfalse;
+		/* the HUD options close with it */
+		if ( CG_HUDOptionsIsOpen() ) {
+			trap_Cvar_Set( "cg_hudOptionsOpen", "0" );
+			CG_HUDPanel_Reset();
+		}
 	}
 }
 
@@ -2587,26 +2592,30 @@ void CG_KeyEvent(int key, qboolean down) {
 		return;
 	}
 
-	/* While menu is open: navigation and toggle */
+	/* While the menu is open the panel takes the keys; Escape with nothing
+	 * else open closes it */
 	if ( CG_HUDOptionsIsOpen() ) {
-		if ( key == K_ESCAPE ) {
+		if ( ( key == K_ESCAPE || key == K_PAD0_B ) && !CG_HUDPanel_Key( key ) ) {
 			trap_Cvar_Set( "cg_hudOptionsOpen", "0" );
 			trap_Key_SetCatcher( trap_Key_GetCatcher() & ~KEYCATCH_CGAME );
 		} else if ( key == K_MOUSE1 ) {
 			CG_HUDOptions_MouseEvent( cgs.cursorX, cgs.cursorY, qtrue );
-		} else {
+		} else if ( key != K_ESCAPE && key != K_PAD0_B ) {
 			CG_HUDOptions_KeyEvent( key );
 		}
 	}
 }
 
 void CG_MouseEvent(int x, int y) {
-	/* Keep a 640x480 UI cursor position for HUD menu hit-testing. */
+	/* Keep a 640x480 cursor like the UI's, reaching the sides of a wide
+	 * screen (-bias .. 640 + bias), for the HUD options panel. */
+	int bias = cgs.screenXScale > 0.0f ? (int)( cgs.screenXBias / cgs.screenXScale ) : 0;
+
 	cgs.cursorX += x;
-	if ( cgs.cursorX < 0 ) {
-		cgs.cursorX = 0;
-	} else if ( cgs.cursorX > 640 ) {
-		cgs.cursorX = 640;
+	if ( cgs.cursorX < -bias ) {
+		cgs.cursorX = -bias;
+	} else if ( cgs.cursorX > 640 + bias ) {
+		cgs.cursorX = 640 + bias;
 	}
 
 	cgs.cursorY += y;

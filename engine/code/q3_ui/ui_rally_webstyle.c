@@ -18,7 +18,16 @@ in font units, so a run measures the same at every size; the glyph images
 come from the next larger atlas.
 */
 
+#ifdef CGAME
+/* the cgame draws the HUD options in this look too (cgame/cg_hud_panel.c) */
+#include "../cgame/cg_local.h"
+#define WS_GLCONFIG		cgs.glconfig
+#define WS_WHITE_SHADER	cgs.media.whiteShader
+#else
 #include "ui_local.h"
+#define WS_GLCONFIG		uis.glconfig
+#define WS_WHITE_SHADER	uis.whiteShader
+#endif
 #include "ui_rally_webstyle.h"
 
 const vec4_t wsAccent     = { 1.0f, 85 / 255.0f, 0.0f, 1.0f };
@@ -201,8 +210,8 @@ float WS_Round( float value ) {
 	return (float)floor( value + 0.5f );
 }
 
-float WS_ViewportWidth( void ) { return (float)uis.glconfig.vidWidth; }
-float WS_ViewportHeight( void ) { return (float)uis.glconfig.vidHeight; }
+float WS_ViewportWidth( void ) { return (float)WS_GLCONFIG.vidWidth; }
+float WS_ViewportHeight( void ) { return (float)WS_GLCONFIG.vidHeight; }
 
 void WS_Transform( const wsTextStyle_t *style, const char *in, char *out, int size ) {
 	int n = 0, c;
@@ -462,7 +471,7 @@ void WS_FillRect( float x, float y, float w, float h, const float *color ) {
 	float x0 = WS_Round( x ), y0 = WS_Round( y ), x1 = WS_Round( x + w ), y1 = WS_Round( y + h );
 	if ( x1 <= x0 || y1 <= y0 ) return;
 	trap_R_SetColor( color );
-	trap_R_DrawStretchPic( x0, y0, x1 - x0, y1 - y0, 0, 0, 0, 0, uis.whiteShader );
+	trap_R_DrawStretchPic( x0, y0, x1 - x0, y1 - y0, 0, 0, 0, 0, WS_WHITE_SHADER );
 	trap_R_SetColor( NULL );
 }
 
@@ -573,4 +582,168 @@ void WS_DrawButton( const wsRect_t *box, const char *label, qboolean secondary, 
 		WS_FillRect( x0 - 5, y0 - 3, 2, y1 - y0 + 6, wsWhite );
 		WS_FillRect( x1 + 3, y0 - 3, 2, y1 - y0 + 6, wsWhite );
 	}
+}
+
+/* -------------------------------------------------------------------------
+   Text styles
+   ------------------------------------------------------------------------- */
+
+void WS_LabelStyle( wsTextStyle_t *style ) {
+	style->font = WS_MONO;
+	style->size = 0.8f * WS_REM;
+	style->spacing = 0.14f * 0.8f * WS_REM;
+	style->lineHeight = WS_LABEL_LINE;
+	style->uppercase = qfalse;
+}
+
+void WS_BodyStyle( wsTextStyle_t *style ) {
+	style->font = WS_BODY;
+	style->size = WS_REM;
+	style->spacing = 0.0f;
+	style->lineHeight = WS_BODY_LINE;
+	style->uppercase = qfalse;
+}
+
+float WS_StyledWidth( const wsTextStyle_t *style, const char *text ) {
+	char shown[256];
+	WS_Transform( style, text, shown, sizeof( shown ) );
+	return WS_TextWidth( style, shown, strlen( shown ) );
+}
+
+void WS_StyledWrap( const wsTextStyle_t *style, const char *text, float width, wsLines_t *lines ) {
+	char shown[256];
+	WS_Transform( style, text, shown, sizeof( shown ) );
+	WS_Wrap( style, shown, width, lines );
+}
+
+float WS_ButtonWidth( const char *label ) {
+	wsTextStyle_t style;
+	WS_BodyStyle( &style );
+	style.font = WS_BODY_BOLD;
+	return 2.0f * WS_BUTTON_PAD_X + 2.0f + WS_StyledWidth( &style, label );
+}
+
+void WS_DrawLines( const wsTextStyle_t *style, float x, float y, const char *text,
+                   const wsLines_t *lines, const float *color ) {
+	char shown[256];
+	int  i;
+
+	WS_Transform( style, text, shown, sizeof( shown ) );
+	for ( i = 0; i < lines->count; i++ ) {
+		WS_DrawText( style, x, y + i * style->lineHeight, shown + lines->start[i], lines->length[i], color );
+	}
+}
+
+void WS_DrawLabel( float x, float y, const char *text, const wsLines_t *lines ) {
+	wsTextStyle_t label;
+	wsLines_t     single;
+
+	WS_LabelStyle( &label );
+	if ( !lines ) {
+		WS_Wrap( &label, text, 1.0e6f, &single );
+		lines = &single;
+	}
+	WS_DrawLines( &label, x, y, text, lines, wsAccent );
+}
+
+/* -------------------------------------------------------------------------
+   Form controls and Chrome's classic scrollbar
+   ------------------------------------------------------------------------- */
+
+static const vec4_t wsInput     = { 0x22 / 255.0f, 0x22 / 255.0f, 0x22 / 255.0f, 1.0f };
+static const vec4_t wsRing      = { 0xee / 255.0f, 0xee / 255.0f, 0xee / 255.0f, 1.0f };
+static const vec4_t wsTrack     = { 0x3b / 255.0f, 0x3b / 255.0f, 0x3b / 255.0f, 1.0f };	/* range, dark scheme */
+static const vec4_t wsTrackLine = { 0x85 / 255.0f, 0x85 / 255.0f, 0x85 / 255.0f, 1.0f };
+static const vec4_t wsBarTrack  = { 0x2c / 255.0f, 0x2c / 255.0f, 0x2c / 255.0f, 1.0f };	/* dark scrollbar */
+static const vec4_t wsBarThumb  = { 0x9f / 255.0f, 0x9f / 255.0f, 0x9f / 255.0f, 1.0f };
+
+static qhandle_t WS_ScrollbarArt( void ) {
+	static qhandle_t art;
+	if ( !art ) art = trap_R_RegisterShaderNoMip( "menu/ui/web_scrollbar" );
+	return art;
+}
+
+void WS_DrawInputBox( const wsRect_t *r, qboolean focus ) {
+	float x0 = WS_Round( r->x ), y0 = WS_Round( r->y ), x1 = WS_Round( r->x + r->w ), y1 = WS_Round( r->y + r->h );
+	if ( focus ) WS_FillRect( x0 - 1, y0 - 1, x1 - x0 + 2, y1 - y0 + 2, wsRing );
+	else WS_FillRect( x0, y0, x1 - x0, y1 - y0, wsLine );
+	WS_FillRect( x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2, wsInput );
+}
+
+/* Chrome's menulist starts its text 4px inside the padding; a disabled one
+ * looks the same (the pages set its colours) */
+void WS_DrawSelect( const wsRect_t *r, float padding, const char *text, qboolean open ) {
+	wsTextStyle_t style;
+	WS_BodyStyle( &style );
+	style.lineHeight = 21.0f;
+	WS_DrawInputBox( r, open );
+	WS_SetClipX( r->x + 1.0f, r->x + r->w - 20.0f );
+	WS_DrawText( &style, r->x + 1.0f + padding + 4.0f, r->y + 1.0f + padding + ( r->h - 2.0f * padding - 23.0f ) * 0.5f,
+	             text, strlen( text ), wsWhite );
+	WS_SetClipX( 0.0f, 0.0f );
+	trap_R_SetColor( wsWhite );
+	trap_R_DrawStretchPic( WS_Round( r->x + r->w ) - 14.0f, WS_Round( r->y + r->h * 0.5f ) - 3.0f, 10, 7, 0, 25 / 32.0f, 10 / 16.0f, 1.0f,
+	                       WS_ScrollbarArt() );
+	trap_R_SetColor( NULL );
+}
+
+/* input[type=range] in the dark scheme with accent-color: an 8px track with
+ * a grey border, the accent up to the 16px thumb, in the content box below
+ * the vertical padding */
+void WS_DrawRange( const wsRect_t *r, float padding, float fraction, qboolean disabled ) {
+	float x0 = r->x + 1.0f, w = r->w - 2.0f, top = r->y + 1.0f + padding, cx, cy, radius = 8.0f;
+	float tx0 = WS_Round( x0 ), tx1 = WS_Round( x0 + w ), ty = WS_Round( top + 4.0f ), fill;
+	vec4_t accent;
+	int j;
+	Vector4Copy( wsAccent, accent );
+	if ( disabled ) accent[3] = 0.5f;
+	cx = x0 + radius + fraction * ( w - 2.0f * radius );
+	cy = top + radius;
+	fill = WS_Round( cx );
+	/* the track: rounded ends, 1px border */
+	WS_FillRect( tx0 + 2, ty, tx1 - tx0 - 4, 1, wsTrackLine );
+	WS_FillRect( tx0 + 2, ty + 7, tx1 - tx0 - 4, 1, wsTrackLine );
+	WS_FillRect( tx0, ty + 2, 1, 4, wsTrackLine );
+	WS_FillRect( tx1 - 1, ty + 2, 1, 4, wsTrackLine );
+	WS_FillRect( tx0 + 1, ty + 1, 1, 1, wsTrackLine );
+	WS_FillRect( tx0 + 1, ty + 6, 1, 1, wsTrackLine );
+	WS_FillRect( tx1 - 2, ty + 1, 1, 1, wsTrackLine );
+	WS_FillRect( tx1 - 2, ty + 6, 1, 1, wsTrackLine );
+	WS_FillRect( tx0 + 1, ty + 2, 1, 4, accent );
+	WS_FillRect( tx0 + 2, ty + 1, fill - tx0 - 2, 6, accent );
+	WS_FillRect( fill, ty + 1, tx1 - 2 - fill, 6, wsTrack );
+	WS_FillRect( tx1 - 2, ty + 2, 1, 4, wsTrack );
+	/* the thumb: a 16px disc */
+	for ( j = 0; j < 16; j++ ) {
+		float dy = j + 0.5f - radius, half = sqrt( radius * radius - dy * dy );
+		float a = WS_Round( cx - half ), b = WS_Round( cx + half );
+		if ( b > a ) WS_FillRect( a, WS_Round( cy - radius ) + j, b - a, 1, accent );
+	}
+}
+
+void WS_ScrollThumb( const wsRect_t *port, float content, float scroll, wsRect_t *thumb ) {
+	float track = port->h - 2.0f * WS_SCROLLBAR_ARROW - 9.0f;
+	thumb->h = content > 0.0f ? track * port->h / content : track;
+	if ( thumb->h < 9.0f ) thumb->h = 9.0f;
+	thumb->w = 9.0f;
+	thumb->x = port->x + port->w - WS_SCROLLBAR_GUTTER + 3.0f;
+	thumb->y = port->y + WS_SCROLLBAR_ARROW + 2.5f +
+		( content > port->h ? ( track - thumb->h ) * scroll / ( content - port->h ) : 0.0f );
+}
+
+void WS_DrawScrollbar( const wsRect_t *port, const wsRect_t *thumb ) {
+	float x = WS_Round( port->x + port->w - WS_SCROLLBAR_GUTTER ), top = WS_Round( port->y );
+	float bottom = WS_Round( port->y + port->h ), y0, y1;
+	qhandle_t art = WS_ScrollbarArt();
+
+	WS_FillRect( x, top, WS_SCROLLBAR_GUTTER, bottom - top, wsBarTrack );
+	trap_R_SetColor( wsBarThumb );
+	trap_R_DrawStretchPic( x, top, 15, 15, 0, 0, 15 / 16.0f, 15 / 32.0f, art );
+	trap_R_DrawStretchPic( x, bottom - 15, 15, 15, 0, 15 / 32.0f, 15 / 16.0f, 0, art );
+	y0 = WS_Round( thumb->y );
+	y1 = floor( thumb->y + thumb->h ) + 1.0f;
+	trap_R_DrawStretchPic( x, y0, 15, 5, 0, 15 / 32.0f, 15 / 16.0f, 20 / 32.0f, art );
+	trap_R_DrawStretchPic( x, y1 - 5, 15, 5, 0, 20 / 32.0f, 15 / 16.0f, 25 / 32.0f, art );
+	trap_R_SetColor( NULL );
+	if ( y1 - 5 > y0 + 5 ) WS_FillRect( x + 3, y0 + 5, 9, y1 - y0 - 10, wsBarThumb );
 }

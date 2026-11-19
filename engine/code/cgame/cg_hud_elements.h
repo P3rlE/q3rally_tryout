@@ -91,6 +91,10 @@ float    CG_GetEliminationColumnWidth( void );
 void     CG_DrawHUDOptionsMenu( void );
 qboolean CG_HUDOptions_MouseEvent( int cx, int cy, qboolean clicked );
 void     CG_HUDOptions_KeyEvent( int key );
+/* cg_hud_panel.c */
+void     CG_HUDPanel_Draw( void );
+qboolean CG_HUDPanel_Key( int key );
+void     CG_HUDPanel_Reset( void );
 qboolean CG_HUDOptionsIsOpen( void );
 void     CG_HUD_RegisterCvars( void );
 qboolean CG_DrawHUD( void );

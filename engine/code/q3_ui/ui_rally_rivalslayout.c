@@ -269,13 +269,4 @@ void Rivals_Button( const rivalsLayout_t *l, int row, wsRect_t *button ) {
 	button->h = l->rowH[row];
 }
 
-void WS_ScrollThumb( const wsRect_t *port, float content, float scroll, wsRect_t *thumb ) {
-	float track = port->h - 2.0f * RIVALS_ARROW - 9.0f;
-	thumb->h = content > 0.0f ? track * port->h / content : track;
-	if ( thumb->h < 9.0f ) thumb->h = 9.0f;
-	thumb->w = 9.0f;
-	thumb->x = port->x + port->w - RIVALS_SCROLLBAR + 3.0f;
-	thumb->y = port->y + RIVALS_ARROW + 2.5f +
-		( content > port->h ? ( track - thumb->h ) * scroll / ( content - port->h ) : 0.0f );
-}
 
