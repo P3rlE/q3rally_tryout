@@ -30,6 +30,7 @@ HARNESS = r'''
 #include "q3_ui/ui_rally_onlinelayout.h"
 #include "q3_ui/ui_rally_driverlayout.h"
 #include "q3_ui/ui_rally_configlayout.h"
+#include "q3_ui/ui_rally_garagelayout.h"
 #include "cgame/cg_hud_panellayout.h"
 #include <stdio.h>
 uiStatic_t uis;
@@ -65,6 +66,7 @@ void UI_DrawVehicleWebView(float x, float y, float w, float h, playerInfo_t *pi,
 #include "q3_ui/ui_rally_onlinelayout.c"
 #include "q3_ui/ui_rally_driverlayout.c"
 #include "q3_ui/ui_rally_configlayout.c"
+#include "q3_ui/ui_rally_garagelayout.c"
 #include "cgame/cg_hud_panellayout.c"
 
 static void rect(const char *name, wsRect_t r) { printf("\"%s\":[%g,%g,%g,%g],", name, r.x, r.y, r.w, r.h); }
@@ -384,6 +386,58 @@ int main(void) {
             printf("],\"y\":[%g,%g,%g,%g,%g,%g,%g,%g,%g],\"text\":%d,\"content\":%g,\"h2\":%g,\"x\":[%g,%g,%g]}\n",
                 l.labelY, l.h2Y, l.textY, l.h3Y, l.sizeY, l.sizeOutputY, l.zoomY, l.zoomOutputY, l.hintY,
                 l.textLines.count, l.contentHeight, l.h2Size, l.x, l.w, l.emX);
+        } else if (!strcmp(command, "garage")) {
+            /* garage <width> <height> <view3d>, then lines: vehicle, status, profile status,
+               the pickers (count index lockedBefore lockedCurrent lockedAfter, five times),
+               the slots (used image|load text, four lines) */
+            static garageLayout_t l; static char vehicle[128], status[512], profile[512], load[4][128];
+            float w, h; int view3d, i, c;
+            memset(&l, 0, sizeof(l));
+            scanf("%f %f %d\n", &w, &h, &view3d);
+            fgets(vehicle, sizeof(vehicle), stdin); vehicle[strcspn(vehicle, "\n")] = 0;
+            fgets(status, sizeof(status), stdin); status[strcspn(status, "\n")] = 0;
+            fgets(profile, sizeof(profile), stdin); profile[strcspn(profile, "\n")] = 0;
+            for (i = 0; i < GARAGE_PICKERS; i++) {
+                int a, b, d; scanf("%d %d %d %d %d", &l.picker[i].count, &l.picker[i].index, &a, &b, &d);
+                l.picker[i].locked[0] = a; l.picker[i].locked[1] = b; l.picker[i].locked[2] = d;
+            }
+            scanf("\n");
+            for (i = 0; i < GARAGE_SLOTS; i++) {
+                int used, image; char *bar;
+                fgets(load[i], sizeof(load[i]), stdin); load[i][strcspn(load[i], "\n")] = 0;
+                sscanf(load[i], "%d %d", &used, &image); bar = strchr(load[i], '|');
+                l.slot[i].used = used; l.slot[i].image = image; l.slot[i].load = bar ? bar + 1 : "Empty";
+            }
+            l.vehicle = vehicle; l.status = status; l.profileStatus = profile; l.view3d = view3d;
+            uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
+            Garage_Layout(&l, w, h);
+            printf("{");
+            rect("back", l.back); rect("showroom", l.showroom); rect("config", l.config); rect("favorites", l.favorites);
+            rect("image", l.image); rect("toggle", l.toggle); rect("apply", l.apply); rect("link", l.link); rect("pull", l.pull);
+            printf("\"y\":[%g,%g,%g,%g,%g,%g,%g,%g,%g],\"lines\":[%d,%d,%d],\"page\":%g,\"pickers\":[",
+                l.showroomLabelY, l.vehicleY, l.configLabelY, l.configH2Y, l.favoritesLabelY, l.favoritesH2Y, l.favoritesTextY,
+                l.profileStatusY, l.statusY, l.vehicleLines.count, l.statusLines.count, l.profileStatusLines.count, l.pageHeight);
+            for (i = 0; i < GARAGE_PICKERS; i++) {
+                garagePicker_t *p = &l.picker[i];
+                printf("%s{\"label\":%g,\"box\":[%g,%g,%g,%g],\"prev\":[%g,%g,%g,%g],\"next\":[%g,%g,%g,%g],\"cards\":[", i ? "," : "",
+                    p->labelY, p->box.x, p->box.y, p->box.w, p->box.h, p->previous.x, p->previous.y, p->previous.w, p->previous.h,
+                    p->next.x, p->next.y, p->next.w, p->next.h);
+                for (c = 0; c < 3; c++) {
+                    garageCard_t *k = &p->card[c];
+                    printf("%s[[%g,%g,%g,%g],[%g,%g,%g,%g],%g,%g,%g,%g,%g]", c ? "," : "", k->box.x, k->box.y, k->box.w, k->box.h,
+                        k->image.x, k->image.y, k->image.w, k->image.h, k->nameX, k->nameW, k->nameY, k->lockY, k->countY);
+                }
+                printf("]}");
+            }
+            printf("],\"slots\":[");
+            for (i = 0; i < GARAGE_SLOTS; i++) {
+                garageSlot_t *s = &l.slot[i];
+                printf("%s{\"box\":[%g,%g,%g,%g],\"label\":%g,\"picture\":[%g,%g,%g,%g],\"load\":[%g,%g,%g,%g],\"save\":[%g,%g,%g,%g],\"upload\":[%g,%g,%g,%g]}",
+                    i ? "," : "", s->box.x, s->box.y, s->box.w, s->box.h, s->labelY, s->picture.x, s->picture.y, s->picture.w, s->picture.h,
+                    s->loadButton.x, s->loadButton.y, s->loadButton.w, s->loadButton.h, s->save.x, s->save.y, s->save.w, s->save.h,
+                    s->upload.x, s->upload.y, s->upload.w, s->upload.h);
+            }
+            printf("]}\n");
         } else if (!strcmp(command, "driver")) {
             /* driver <width> <height> <tab> <profile> <avatar> <dialog> <avatars>, then lines:
                name|rank|country|progress text|widest filter option|count|profile line|status,

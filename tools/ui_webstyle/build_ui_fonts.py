@@ -41,8 +41,9 @@ VARIANTS = {
     # ever shows uppercased text (the h1's em), so it carries no lowercase
     'sharetechmono':          ('ShareTechMono-Regular.ttf', [12.8], False, False),
     'barlow':                 ('Barlow-Regular.ttf', [13.6, 16], False, False),
-    # font-weight 750 on a regular face; 18.72 (h3) and 25.6 (the driver's figures)
-    'barlow_bold':            ('Barlow-Regular.ttf', [16, 18.72, 25.6], True, False),
+    # font-weight 750 on a regular face; 18.72 (h3), 25.6 (the driver's figures)
+    # and 32 (the garage carousel's arrows)
+    'barlow_bold':            ('Barlow-Regular.ttf', [16, 18.72, 25.6, 32], True, False),
     'barlowcondensed':        ('BarlowCondensed-Bold.ttf', CONDENSED, False, False),
     'barlowcondensed_italic': ('BarlowCondensed-Bold.ttf', CONDENSED[6:], False, True),
 }
@@ -53,6 +54,10 @@ TABULAR_BASE = 0x80
 # Chrome applies the standard ligatures (fi, fl, ij, ...) to text without
 # letter-spacing; their glyphs follow at 0x8A, also unused in Latin-1.
 LIGATURE_BASE = 0x8A
+# A few characters past Latin-1 that the pages show ("‹ ›" on the garage
+# carousel's arrows, "…" where text-overflow cuts a name) sit at 0x9C-0x9E in
+# the body faces, after the ligatures.
+EXTRA = {0x9C: 0x2039, 0x9D: 0x203A, 0x9E: 0x2026}
 
 
 def kerning(font: TTFont, glyph_for: dict[int, str]) -> dict[tuple[int, int], int]:
@@ -204,8 +209,11 @@ def build(name: str, output: Path) -> None:
     if not name.startswith('barlowcondensed'):
         glyph_for.update(tabular_digits(font))
     ligas = ligatures(font, glyph_for)
+    assert LIGATURE_BASE + len(ligas) <= min(EXTRA)
     for index, (_, glyph) in enumerate(ligas):
         glyph_for[LIGATURE_BASE + index] = glyph
+    if name in ('barlow', 'barlow_bold'):
+        glyph_for.update({code: cmap[source] for code, source in EXTRA.items() if source in cmap})
     codes = sorted(glyph_for)
     upm = font['head'].unitsPerEm
     hhea = font['hhea']
