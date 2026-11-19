@@ -319,8 +319,9 @@ What still differs from the WebUI:
 
 - `q3_ui/ui_rally_garage.c` is the WebUI's `#garage` (garage.js), opened by
   `UI_GarageMenu` (the main menu's Garage, the driver page): the showroom
-  with the paint's picture (object-fit: contain, a drop shadow) or the 3D
-  view (`UI_DrawVehicleWebView`, drag to rotate, wheel to zoom, Reset view),
+  opens on the 3D view (`UI_DrawVehicleWebView`, drag to rotate, wheel to
+  zoom, Reset view; the page opened on the picture), "Photo view" shows the
+  paint's picture (object-fit: contain, a drop shadow),
   "Make it yours" with five carousels, Apply setup, the web profile buttons,
   the status lines and the four favorite slots. Layout in
   `ui_rally_garagelayout.c`, tested against Chrome

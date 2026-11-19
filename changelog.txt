@@ -73,7 +73,8 @@ Changed:
   and field of view, Back to race and Console. The pointer reaches the whole
   width of a wide screen there.
 - The garage is drawn by the game again and looks exactly like the WebUI's:
-  the showroom with the vehicle's picture or the rotatable 3D view, "Make it
+  the showroom with the rotatable 3D view (it opens on it) or the vehicle's
+  picture, "Make it
   yours" with a carousel each for vehicle, paint, wheels, driver and license
   plate, Apply setup, the web profile buttons and the four favorite slots.
 - Weapons: own models in a "built, not bought" style, all ten made from car

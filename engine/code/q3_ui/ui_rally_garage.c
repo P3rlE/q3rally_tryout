@@ -806,6 +806,9 @@ void UI_RallyGarageMenu( void ) {
 	s_garage.yaw = WS_VIEW_AZIMUTH;
 	s_garage.elevation = WS_VIEW_ELEVATION;
 	s_garage.distance = 2.1f;
+	/* unlike the page, the garage opens on the 3D view; "Photo view" shows
+	 * the paint's picture */
+	s_garage.view3d = qtrue;
 	Garage_LoadCatalog();
 	if ( garageCatalog.vehicles ) Garage_Initial();
 	UI_PushMenu( &s_garage.menu );
