@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 //
 #include "ui_local.h"
+#include "ui_rally_garage.h"
 #include "ui_rally_driver.h"
 #include "ui_rally_frontend.h"
 #include "../game/bg_achievements.h"
@@ -6217,12 +6218,9 @@ void UI_PlayerSettingsMenu( void ) {
     UI_PushMenu( &s_playersettings.menu );
 }
 
+/* the garage is drawn in the WebUI's look (ui_rally_garage.c) */
 void UI_GarageMenu( void ) {
-	PlayerSettings_MenuInit();
-	PlayerSettings_DiscardDroppedFile();
-	PlayerSettings_SetTab( TAB_VEHICLE );
-	Frontend_SetBackButton( &s_playersettings.back.generic );
-	UI_PushMenu( &s_playersettings.menu );
+	UI_RallyGarageMenu();
 }
 
 void UI_PlayerStatsMenu( void ) {

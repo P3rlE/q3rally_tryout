@@ -315,6 +315,34 @@ What still differs from the WebUI:
   (-bias .. 640 + bias). Escape (the client clears the cgame key catcher)
   and Shift+H close the panel.
 
+## The garage
+
+- `q3_ui/ui_rally_garage.c` is the WebUI's `#garage` (garage.js), opened by
+  `UI_GarageMenu` (the main menu's Garage, the driver page): the showroom
+  with the paint's picture (object-fit: contain, a drop shadow) or the 3D
+  view (`UI_DrawVehicleWebView`, drag to rotate, wheel to zoom, Reset view),
+  "Make it yours" with five carousels, Apply setup, the web profile buttons,
+  the status lines and the four favorite slots. Layout in
+  `ui_rally_garagelayout.c`, tested against Chrome
+  (tests/test_native_garage.py, ten viewports, three setups).
+- The catalog is found the way engine/webui/build_showroom.py builds
+  catalog.json (`ui_rally_garagedata.c`): vehicles with a body.md3, their
+  paints and the wheels and drivers by `<key>.skin` beside an `icon_<key>`,
+  the plates by their pictures; names from game/garage_unlocks.h,
+  `ui_rally_garage_labels.h` (catalog_labels.json's names that are not the
+  file name in title case) and the title case. The pictures are the game's
+  icons, the ones the WebUI's previews were made from.
+- What the client did for the page the UI does itself: Apply sets model, rim,
+  head and plate after the same checks, Save here goes through
+  `UI_WebSaveFavorite`, the web profile through `ui_webprofile_action`
+  (link, sync, favorite), and `ui_webprofile_setup` / `ui_webprofile_status`
+  come back into the page.
+- The carousel arrows and the ellipsis are characters past Latin-1: the body
+  faces carry "‹ › …" at 0x9C-0x9E (build_ui_fonts.py), barlow_bold also at
+  32px for the arrows.
+- `ui_configPreview garage` opens the garage from the main menu for
+  screenshots.
+
 ## The main menu
 
 - The buttons behave like the page's: a click activates, Tab and the arrow

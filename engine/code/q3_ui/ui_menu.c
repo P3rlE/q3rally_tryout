@@ -705,6 +705,10 @@ void UI_MainMenu( void ) {
                         UI_DemoSaveMenu();
                         return;
                 }
+                if ( !Q_stricmp( preview, "garage" ) ) {
+                        UI_GarageMenu();
+                        return;
+                }
                 if ( preview[0] ) {
                         /* the setup page, then the buttons with these item indices ("2,3") */
                         char *press = preview;
