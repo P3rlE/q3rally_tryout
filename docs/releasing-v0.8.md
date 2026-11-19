@@ -37,8 +37,8 @@ provenance separately and do not mix code from different release builds.
 Windows input: client, dedicated server, both renderer DLLs, SDL2.dll and all
 required runtime DLLs. Linux input: client, dedicated server, both renderer .so
 files and any vendored libraries in the root or lib/. System dependencies are
-not collected automatically. Linux ARM64 needs a client build; the existing
-server-only CI artifact is insufficient for a full game release.
+not collected automatically. Linux ARM64 is not built in CI; a full game
+release for it would need a client build.
 
 macOS input: a prepared unsigned Q3Rally.app, using the existing
 `engine/make-macosx-app.sh` workflow. Frameworks and internal relative symlinks

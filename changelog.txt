@@ -167,6 +167,8 @@ Changed:
 
 Removed:
 
+- CI: the Build workflow no longer builds the web version (Emscripten) and
+  the Linux ARM64 dedicated server; neither is shipped.
 - The embedded browser frontend (WebUI over CEF, Windows only) is gone:
   every screen it had is drawn by the game itself now, on every platform.
   No CEF download, no browser files in the Windows package, no
