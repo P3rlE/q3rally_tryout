@@ -135,6 +135,8 @@ GEN_RULES = [
     (r'^(textures/q3r_drag/|scripts/q3r_drag\.shader$)', 'tools/maptools/make_dragstrip.py'),
     (r'^menu/ui/web_[^/]+\.png$', 'tools/ui_webstyle/build_ui_art.py'),
     (r'^scripts/q3r_webstyle\.shader$', 'tools/ui_webstyle'),
+    (r'^menu/fonts/[^/]+\.(dat|png)$', 'tools/ui_webstyle/build_ui_fonts.py'),
+    (r'^fonts/(q3r_console\.png|fontimage_17\.dat)$', 'tools/ui_webstyle/build_console_font.py'),
 ]
 
 

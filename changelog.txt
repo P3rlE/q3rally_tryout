@@ -172,6 +172,11 @@ Removed:
   No CEF download, no browser files in the Windows package, no
   cl_webUI and no "webgarage" command any more. The menus follow the
   mouse pointer on every platform, as they did beside the browser.
+- 108 more files nothing loads (docs/assets/README.md): leftover sounds from
+  Quake 3 and OpenArena, the old turbo pickup, old ammo box and menu art,
+  unused breakable models. The asset check now knows the menu fonts, the
+  engine and car sounds, q3r_colorLut / q3r_water and the opengl2 .mtr
+  scripts; the license inventory is up to date.
 - 187 unused files from Quake 3 and OpenArena that no map, model, shader
   or code loads (tools/assets/find_unused_assets.py), and the textures of
   the old weapons.

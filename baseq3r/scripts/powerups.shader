@@ -296,15 +296,6 @@ powerups/quadWeapon
 // 8.turbo
 // ------------------------------------------------------------
 
-icons/turbo
-{
-       nopicmip
-       {
-              map icons/turbo.tga
-              blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-       }
-}
-
 models/barrels/turbo
 {	
 	
@@ -321,40 +312,6 @@ models/barrels/turbo
                 tcmod scroll 9 9
 		blendfunc GL_ONE GL_ONE
 		
-	}
-}
-
-models/powerups/turbo/booster
-{
-
-	{
-//		map models/barrels/chrometest2.jpg
-//		map textures/effects/tinfx2c.tga
-               map textures/sfx/specular.tga
-
-		tcGen environment
-	}
-	{
-		map models/powerups/turbo/booster.tga
-		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-	}
-}
-
-models/powerups/turbo/thrust
-{
-	{
-		map models/powerups/turbo/thrust.tga 
-		blendFunc	GL_SRC_ALPHA GL_ONE
-	}
-	{
-		map models/powerups/turbo/burn.tga
-		tcMod scroll 0 -3
-		blendFunc	GL_DST_COLOR GL_ONE
-	}
-	{
-		map models/powerups/turbo/burn.tga
-		tcMod scroll 0 -1
-		blendFunc	GL_DST_COLOR GL_ONE
 	}
 }
 
@@ -1403,4 +1360,4 @@ icons/iconf_yell3
 		map icons/iconf_yell3.tga
 		blendFunc GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
 	}
-}
+}
