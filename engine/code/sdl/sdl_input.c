@@ -65,12 +65,6 @@ static int in_eventTime = 0;
 
 static SDL_Window *SDL_window = NULL;
 
-#ifdef USE_CEF_GARAGE
-void *IN_GetWindow( void ) {
-	return SDL_window;
-}
-#endif
-
 #define CTRL(a) ((a)-'a'+1)
 
 /*
@@ -1359,11 +1353,9 @@ static void IN_ProcessEvents( void )
 				break;
 
 			case SDL_MOUSEMOTION:
-                if ((clc.demoPlayer
-#ifdef USE_CEF_GARAGE
-                     || CL_WebGarageNativeInput()
-#endif
-                    ) && (Key_GetCatcher() & KEYCATCH_UI)) {
+                /* the menus follow the pointer itself (as they did beside the
+                 * embedded browser) */
+                if ( Key_GetCatcher() & KEYCATCH_UI ) {
                     mouseLastX = e.motion.x;
                     mouseLastY = e.motion.y;
                     Com_QueueEvent(in_eventTime, SE_MOUSE_ABSOLUTE, e.motion.x, e.motion.y, 0, NULL);
@@ -1396,11 +1388,7 @@ static void IN_ProcessEvents( void )
 			case SDL_MOUSEBUTTONUP:
 				{
 					int b;
-                    if ((clc.demoPlayer
-#ifdef USE_CEF_GARAGE
-                     || CL_WebGarageNativeInput()
-#endif
-                    ) && (Key_GetCatcher() & KEYCATCH_UI))
+                    if ( Key_GetCatcher() & KEYCATCH_UI )
                         Com_QueueEvent(in_eventTime, SE_MOUSE_ABSOLUTE, e.button.x, e.button.y, 0, NULL);
 					switch( e.button.button )
 					{
@@ -1536,11 +1524,7 @@ void IN_Frame( void )
 	// update isFullscreen since it might of changed since the last vid_restart
 	cls.glconfig.isFullscreen = Cvar_VariableIntegerValue( "r_fullscreen" ) != 0;
 
-	if (
-#ifdef USE_CEF_GARAGE
-        CL_WebGarageInputVisible() ||
-#endif
-        ( !cls.glconfig.isFullscreen && ( Key_GetCatcher() & KEYCATCH_CONSOLE ) ) )
+	if ( !cls.glconfig.isFullscreen && ( Key_GetCatcher() & KEYCATCH_CONSOLE ) )
 	{
 		// Console is down in windowed mode
 		IN_DeactivateMouse( qtrue );

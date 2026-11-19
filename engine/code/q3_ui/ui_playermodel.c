@@ -2635,9 +2635,3 @@ void UI_PlayerModelMenu( const char *modelName )
 	Menu_SetCursorToItem( &s_playermodel.menu,
 		&s_playermodel.picbuttons[s_playermodel.selectedmodel % MAX_MODELSPERPAGE] );
 }
-
-
-
-int UI_WebPlayerModelScreen( void ) {
-    return uis.activemenu == &s_playermodel.menu;
-}

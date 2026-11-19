@@ -16,6 +16,5 @@ or (at your option) any later version.
 
 /* the garage in the WebUI's look (ui_rally_garage.c) */
 void		UI_RallyGarageMenu( void );
-qboolean	UI_WebGarageNative( void );
 
 #endif

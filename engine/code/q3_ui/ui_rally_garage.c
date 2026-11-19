@@ -794,10 +794,6 @@ static sfxHandle_t Garage_Key( int key ) {
    Entry
    ------------------------------------------------------------------------- */
 
-qboolean UI_WebGarageNative( void ) {
-	return uis.activemenu == &s_garage.menu;
-}
-
 void UI_RallyGarageMenu( void ) {
 	memset( &s_garage, 0, sizeof( s_garage ) );
 	s_garage.menu.fullscreen = qtrue;

@@ -114,17 +114,3 @@ def test_native_garage_matches_the_webui_at_every_size():
         if problems:
             failures.append((key, problems[:6]))
     assert not failures, (len(failures), failures[:6])
-
-
-def test_garage_labels_follow_the_webui_catalog():
-    """ui_rally_garage_labels.h holds catalog_labels.json's names that differ
-    from the file name in title case (build_showroom.py's label())."""
-    labels = json.loads((ROOT / 'engine/webui/catalog_labels.json').read_text())
-    header = (ROOT / 'engine/code/q3_ui/ui_rally_garage_labels.h').read_text()
-    title = lambda key: key.replace('_', ' ').title()
-    paints = {(car, key, value['name']) for car, entry in labels['vehicles'].items()
-              for key, value in entry.get('paints', {}).items() if value['name'] != title(key)}
-    wheels = {(key, value['name'] if isinstance(value, dict) else value) for key, value in labels['wheels'].items()
-              if (value['name'] if isinstance(value, dict) else value) != title(key)}
-    assert set(re.findall(r'ENTRY\( "([^"]+)", "([^"]+)", "([^"]+)" \)', header)) == paints
-    assert set(re.findall(r'ENTRY\( "([^"]+)", "([^"]+)" \)', header)) == wheels

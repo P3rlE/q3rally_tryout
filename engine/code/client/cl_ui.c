@@ -1492,9 +1492,6 @@ CL_ShutdownUI
 ====================
 */
 void CL_ShutdownUI( void ) {
-#ifdef USE_CEF_GARAGE
-    CL_WebGarageBeforeVideoRestart();
-#endif
 	Key_SetCatcher( Key_GetCatcher( ) & ~KEYCATCH_UI );
 	cls.uiStarted = qfalse;
 	if ( !uivm ) {

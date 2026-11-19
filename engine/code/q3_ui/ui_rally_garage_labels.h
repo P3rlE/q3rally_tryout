@@ -10,10 +10,9 @@ published by the Free Software Foundation; either version 2 of the License,
 or (at your option) any later version.
 ===========================================================================
 
-The names the WebUI's garage catalog gives paints and wheels where they are
-not their file name in title case (engine/webui/catalog_labels.json, read by
-engine/webui/build_showroom.py). Paints unlocked by rank are named in
-game/garage_unlocks.h. tests/test_native_garage.py keeps the lists in step.
+The names the garage gives paints and wheels where they are not their file
+name in title case (taken over from the former WebUI's catalog_labels.json).
+Paints unlocked by rank are named in game/garage_unlocks.h.
 */
 
 #ifndef UI_RALLY_GARAGE_LABELS_H

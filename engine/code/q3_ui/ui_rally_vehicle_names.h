@@ -10,10 +10,9 @@ published by the Free Software Foundation; either version 2 of the License,
 or (at your option) any later version.
 ===========================================================================
 
-Display names of the vehicles that the WebUI catalog takes from
-engine/webui/catalog_labels.json; unlockable cars are named in
-game/garage_unlocks.h, all others by their folder in title case.
-tests/test_native_gfxloading.py keeps the two lists in step.
+Display names of the vehicles (taken over from the former WebUI's
+catalog_labels.json); unlockable cars are named in game/garage_unlocks.h,
+all others by their folder in title case.
 */
 
 #ifndef UI_RALLY_VEHICLE_NAMES_H

@@ -167,6 +167,11 @@ Changed:
 
 Removed:
 
+- The embedded browser frontend (WebUI over CEF, Windows only) is gone:
+  every screen it had is drawn by the game itself now, on every platform.
+  No CEF download, no browser files in the Windows package, no
+  cl_webUI and no "webgarage" command any more. The menus follow the
+  mouse pointer on every platform, as they did beside the browser.
 - 187 unused files from Quake 3 and OpenArena that no map, model, shader
   or code loads (tools/assets/find_unused_assets.py), and the textures of
   the old weapons.

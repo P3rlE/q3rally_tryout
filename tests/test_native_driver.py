@@ -22,7 +22,21 @@ STATES = {'overview': ('driver', 0, None, 0), 'stats': ('driver', 1, None, 0), '
           'switch': ('driver', 0, None, 2)}
 RANKS = re.findall(r'ENTRY\(\s*"([^"]+)"', (ROOT / 'engine/code/game/profile_shared.h').read_text())
 COUNTRIES = {'DE': 'Germany'}
-GROUPS = re.findall(r"'?([A-Za-z -]+)'?: \[([^\]]*)\]", (ROOT / 'engine/webui/garage/driver.js').read_text().split('const groups = {')[1].split('};')[0])
+# the statistics in the order of the WebUI's driver.js (its groups), frozen
+# with the fixture when the WebUI was removed
+STAT_KEYS = [
+    'gamesPlayed', 'wins', 'losses', 'playerScore', 'distanceKm', 'fuelUsed', 'topSpeedKph', 'bestLapMs',
+    'kills', 'deaths', 'damageDealt', 'damageTaken', 'flagCaptures', 'flagAssists', 'accuracyAwards',
+    'excellentAwards', 'impressiveAwards', 'perfectAwards', 'mostUsedVehicle', 'mostUsedVehicleTimeMs',
+    'racingWins', 'racingPodiums', 'racingCompleted', 'racingTotalMs', 'racingDmWins', 'racingDmPodiums',
+    'racingDmCompleted', 'racingDmTotalMs', 'sprintWins', 'sprintCompleted', 'sprintBestMs',
+    'eliminationWins', 'eliminationCompleted', 'eliminationTotalRoundsLasted', 'lcsWins', 'lcsCompleted',
+    'lcsTotalSurvivalMs', 'derbyWins', 'derbyCompleted', 'derbyKills', 'dmWins', 'dmCompleted', 'dmKills',
+    'ctfWins', 'ctfCompleted', 'ctfCaptures', 'ctf4Wins', 'ctf4Completed', 'ctf4Captures', 'teamWins',
+    'teamCompleted', 'teamKills', 'teamRacingWins', 'teamRacingCompleted', 'teamRacingPodiums',
+    'teamRacingDmWins', 'teamRacingDmCompleted', 'teamRacingDmPodiums', 'dominationWins',
+    'dominationCompleted', 'dominationZoneHoldMs', 'kothWins', 'kothCompleted', 'kothZoneHoldMs',
+    'autoballWins', 'autoballCompleted', 'autoballGoals']
 
 
 def fmt(value):
@@ -66,12 +80,11 @@ def commands(key):
             status = 'Earned' if won == '1' else f'Locked \xb7 {fmt(value)} / {fmt(threshold)}'
             medals.append(f'{won}~{title}~{tier_name}~{text}~{status}')
     profiles = '|'.join(n + (' \xb7 Active' if profile and n == profile['identity']['name'] else '') for n in sorted(model['available']))
-    keys = [k.strip().strip("'") for _, group in GROUPS for k in group.split(',')]
     return [f'driver {width} {height} {tab} {int(bool(profile))} {int(bool(info.get("avatar")))} {dialog} 12',
             '|'.join([name, ranked, country, progress, 'All achievements', f'{earned} / {total} achievements earned',
                       'Profile: ' + (profile['identity']['name'] if profile else ''), '']),
             '|'.join([fmt(stats.get('playerScore')), fmt(stats.get('gamesPlayed')), fmt(stats.get('wins')), fmt(stats.get('distanceKm')) + ' km']),
-            '|'.join(stat(stats, k) for k in keys), '|'.join(medals), profiles]
+            '|'.join(stat(stats, k) for k in STAT_KEYS), '|'.join(medals), profiles]
 
 
 def get(els, pattern):

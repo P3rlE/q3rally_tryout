@@ -74,12 +74,11 @@ def test_main_menu_texts_measure_like_chrome():
         assert abs(float(width) - runs[key]) < 0.1, (key, width, runs[key])
 
 
-def test_main_menu_labels_and_ranks_follow_the_webui():
-    html = (ROOT / 'engine/webui/garage/index.html').read_text()
+def test_main_menu_labels_and_ranks():
     layout = (ROOT / 'engine/code/q3_ui/ui_rally_mainlayout.c').read_text()
     for label in ('Offline', 'Online', 'Garage', 'Config', 'Rivals', 'Demos', 'Downloads', 'Driver profile', 'Quit',
                   'Q3RALLY / FINISH YOUR SESSION', 'Exit game?', 'Thanks for racing with us.',
                   'Show credits and exit', 'Keep racing'):
-        assert label in html and f'"{label}"' in layout, label
+        assert f'"{label}"' in layout, label
     menu = (ROOT / 'engine/code/q3_ui/ui_menu.c').read_text()
     assert 'PROFILE_RANK_TABLE( MAIN_RANK_NAME )' in menu

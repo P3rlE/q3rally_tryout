@@ -3137,9 +3137,6 @@ void CL_Frame ( int msec ) {
         CL_UpdateVersionCheck_Frame();
 	// Q3RALLY DOWNLOADS START
 	CL_DL_Frame();
-#ifdef USE_CEF_GARAGE
-	CL_WebGarageFrame();
-#endif
 	// Q3RALLY DOWNLOADS END
 
 	if ( cls.cddialog ) {
@@ -3295,9 +3292,6 @@ CL_ShutdownRef
 ============
 */
 void CL_ShutdownRef( void ) {
-#ifdef USE_CEF_GARAGE
-    CL_WebGarageBeforeVideoRestart();
-#endif
 	if ( re.Shutdown ) {
 		re.Shutdown( qtrue );
 	}
@@ -3924,10 +3918,6 @@ void CL_Init( void ) {
 
 	// Q3RALLY DOWNLOADS START
 	CL_DL_Init();
-#ifdef USE_CEF_GARAGE
-	CL_WebGarageInit();
-	Cmd_AddCommand( "webgarage", CL_WebGarage_f );
-#endif
 	// Q3RALLY DOWNLOADS END
 
 	Com_Printf( "----- Client Initialization Complete -----\n" );
@@ -3957,10 +3947,6 @@ void CL_Shutdown(char *finalmsg, qboolean disconnect, qboolean quit)
 	recursive = qtrue;
 
 	noGameRestart = quit;
-#ifdef USE_CEF_GARAGE
-	CL_WebGarageShutdown();
-	Cmd_RemoveCommand( "webgarage" );
-#endif
 
 	if(disconnect)
 		CL_Disconnect(qtrue);

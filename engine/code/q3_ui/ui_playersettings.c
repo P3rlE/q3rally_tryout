@@ -6499,14 +6499,6 @@ void UI_PlateSelectionMenu( void ) {
 }
 // END
 
-int UI_WebVehicleSettingsScreen( void ) {
-    return uis.activemenu == &s_playersettings.menu && s_playersettings.currentTab == TAB_VEHICLE;
-}
-void UI_WebGarageBack( void ) {
-    if ( UI_WebPlayerModelScreen() ) UI_PopMenu();
-    if ( UI_WebVehicleSettingsScreen() ) UI_PopMenu();
-}
-
 static menuframework_s s_webDriverMenu;
 
 void UI_WebDriverMenu( void ) {
@@ -6515,9 +6507,6 @@ void UI_WebDriverMenu( void ) {
     UI_PushMenu( &s_webDriverMenu );
     /* drawn like the WebUI's driver page (ui_rally_driver.c) */
     Driver_Install( &s_webDriverMenu );
-}
-int UI_WebDriverNative( void ) {
-    return uis.activemenu == &s_webDriverMenu;
 }
 int UI_WebDriverScreen( void ) {
     return uis.activemenu == &s_webDriverMenu ||
