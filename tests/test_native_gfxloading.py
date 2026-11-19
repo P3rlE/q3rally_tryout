@@ -30,6 +30,7 @@ HARNESS = r'''
 #include "q3_ui/ui_rally_onlinelayout.h"
 #include "q3_ui/ui_rally_driverlayout.h"
 #include "q3_ui/ui_rally_configlayout.h"
+#include "cgame/cg_hud_panellayout.h"
 #include <stdio.h>
 uiStatic_t uis;
 static FILE *files[8];
@@ -64,6 +65,7 @@ void UI_DrawVehicleWebView(float x, float y, float w, float h, playerInfo_t *pi,
 #include "q3_ui/ui_rally_onlinelayout.c"
 #include "q3_ui/ui_rally_driverlayout.c"
 #include "q3_ui/ui_rally_configlayout.c"
+#include "cgame/cg_hud_panellayout.c"
 
 static void rect(const char *name, wsRect_t r) { printf("\"%s\":[%g,%g,%g,%g],", name, r.x, r.y, r.w, r.h); }
 
@@ -362,6 +364,26 @@ int main(void) {
             printf("],\"description\":[%g,%g],\"page\":%g,\"settings\":%d,\"dialogY\":[%g,%g,%g,%g],\"h2\":[%d,%g]}\n",
                 l.descriptionY, l.descriptionLines.count * l.descriptionStyle.lineHeight, l.pageHeight, l.settings, l.dialogLabelY, l.dialogH2Y, l.dialogActionY, l.dialogHelpY,
                 l.dialogH2Lines.count, l.h2.size);
+        } else if (!strcmp(command, "hud")) {
+            /* hud <width> <height> <scroll>, then the toggles' labels (|) */
+            static hudPanelLayout_t l; static char labels[4096]; char *r, *next; float w, h; int i;
+            memset(&l, 0, sizeof(l));
+            scanf("%f %f %f\n", &w, &h, &l.scroll);
+            fgets(labels, sizeof(labels), stdin); labels[strcspn(labels, "\n")] = 0;
+            for (r = labels; *r && l.items < HUDPANEL_MAX_ITEMS; r = next) {
+                next = strchr(r, '|'); if (next) *next++ = 0; else next = r + strlen(r);
+                l.itemLabel[l.items++] = r;
+            }
+            uis.glconfig.vidWidth = w; uis.glconfig.vidHeight = h;
+            HUDPanel_Layout(&l, w, h);
+            printf("{");
+            rect("panel", l.panel); rect("close", l.close); rect("console", l.console); rect("size", l.size); rect("zoom", l.zoom);
+            printf("\"items\":[");
+            for (i = 0; i < l.items; i++) printf("%s[%g,%d,%g,%g,%g,%g]", i ? "," : "", l.itemY[i], l.itemLines[i].count,
+                l.select[i].x, l.select[i].y, l.select[i].w, l.select[i].h);
+            printf("],\"y\":[%g,%g,%g,%g,%g,%g,%g,%g,%g],\"text\":%d,\"content\":%g,\"h2\":%g,\"x\":[%g,%g,%g]}\n",
+                l.labelY, l.h2Y, l.textY, l.h3Y, l.sizeY, l.sizeOutputY, l.zoomY, l.zoomOutputY, l.hintY,
+                l.textLines.count, l.contentHeight, l.h2Size, l.x, l.w, l.emX);
         } else if (!strcmp(command, "driver")) {
             /* driver <width> <height> <tab> <profile> <avatar> <dialog> <avatars>, then lines:
                name|rank|country|progress text|widest filter option|count|profile line|status,

@@ -108,15 +108,11 @@ void Config_Dump( void ) {
 
 typedef enum { DRAG_NONE, DRAG_PAGE, DRAG_SLIDER, DRAG_LIST } configDrag_t;
 
-static const vec4_t configInput    = { 0x22 / 255.0f, 0x22 / 255.0f, 0x22 / 255.0f, 1.0f };
-static const vec4_t configRing     = { 0xee / 255.0f, 0xee / 255.0f, 0xee / 255.0f, 1.0f };
 static const vec4_t configHolder   = { 0x75 / 255.0f, 0x75 / 255.0f, 0x75 / 255.0f, 1.0f };
 static const vec4_t configDim      = { 1.0f, 1.0f, 1.0f, 0.5f };	/* disabled controls */
 static const vec4_t configBackdrop = { 0.0f, 0.0f, 0.0f, 0xbb / 255.0f };	/* dialog::backdrop #000b */
 static const vec4_t configPopup    = { 0x1f / 255.0f, 0x1f / 255.0f, 0x1f / 255.0f, 1.0f };
 static const vec4_t configPopupLine = { 0x3b / 255.0f, 0x3b / 255.0f, 0x3b / 255.0f, 1.0f };
-static const vec4_t configTrack    = { 0x3b / 255.0f, 0x3b / 255.0f, 0x3b / 255.0f, 1.0f };	/* range, dark scheme */
-static const vec4_t configTrackLine = { 0x85 / 255.0f, 0x85 / 255.0f, 0x85 / 255.0f, 1.0f };
 
 static struct {
 	configLayout_t	layout;
@@ -295,36 +291,11 @@ static void Config_Build( void ) {
    Drawing
    ------------------------------------------------------------------------- */
 
-static void Config_DrawField( const wsRect_t *r, qboolean focus ) {
-	float x0 = WS_Round( r->x ), y0 = WS_Round( r->y ), x1 = WS_Round( r->x + r->w ), y1 = WS_Round( r->y + r->h );
-	if ( focus ) WS_FillRect( x0 - 1, y0 - 1, x1 - x0 + 2, y1 - y0 + 2, configRing );
-	else WS_FillRect( x0, y0, x1 - x0, y1 - y0, wsLine );
-	WS_FillRect( x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2, configInput );
-}
-
-/* a select: Chrome's menulist starts its text 4px inside the padding; a
- * disabled one looks the same (the page sets its colors) */
-static void Config_DrawSelect( const wsRect_t *r, const char *text, qboolean open, qboolean disabled ) {
-	wsTextStyle_t style;
-	WS_BodyStyle( &style );
-	style.lineHeight = 21.0f;
-	Config_DrawField( r, open );
-	WS_SetClipX( r->x + 1.0f, r->x + r->w - 20.0f );
-	WS_DrawText( &style, r->x + 1.0f + WS_LU( 0.65f * WS_REM ) + 4.0f, r->y + 1.0f + WS_LU( 0.65f * WS_REM ) + ( r->h - 2.0f * WS_LU( 0.65f * WS_REM ) - 23.0f ) * 0.5f,
-	             text, strlen( text ), wsWhite );
-	WS_SetClipX( 0.0f, 0.0f );
-	( void )disabled;
-	trap_R_SetColor( wsWhite );
-	trap_R_DrawStretchPic( WS_Round( r->x + r->w ) - 14.0f, WS_Round( r->y + r->h * 0.5f ) - 3.0f, 10, 7, 0, 25 / 32.0f, 10 / 16.0f, 1.0f,
-	                       trap_R_RegisterShaderNoMip( "menu/ui/web_scrollbar" ) );
-	trap_R_SetColor( NULL );
-}
-
 static void Config_DrawInput( const wsRect_t *r, const char *text, const char *placeholder, qboolean focus ) {
 	wsTextStyle_t body;
 	float x = r->x + 1.0f + WS_LU( 0.65f * WS_REM ), y = r->y + 1.0f + WS_LU( 0.65f * WS_REM );
 	WS_BodyStyle( &body );
-	Config_DrawField( r, focus );
+	WS_DrawInputBox( r, focus );
 	WS_SetClipX( r->x + 1.0f, r->x + r->w - 1.0f );
 	if ( text[0] ) WS_DrawText( &body, x, y, text, strlen( text ), wsWhite );
 	else if ( placeholder ) WS_DrawText( &body, x, y, placeholder, strlen( placeholder ), configHolder );
@@ -339,37 +310,6 @@ static void Config_DrawInput( const wsRect_t *r, const char *text, const char *p
 static float Config_SliderFraction( int field, int value ) {
 	int span = s_config.high[field] - s_config.low[field];
 	return span > 0 ? WS_Clamp( 0.0f, (float)( value - s_config.low[field] ) / span, 1.0f ) : 0.0f;
-}
-
-static void Config_DrawSlider( const wsRect_t *r, float fraction, qboolean disabled ) {
-	float x0 = r->x + 1.0f, w = r->w - 2.0f, top = r->y + 1.0f + 0.5f * WS_REM, cx, cy, radius = 8.0f;
-	float tx0 = WS_Round( x0 ), tx1 = WS_Round( x0 + w ), ty = WS_Round( top + 4.0f ), fill;
-	vec4_t accent;
-	int j;
-	Vector4Copy( wsAccent, accent );
-	if ( disabled ) accent[3] = 0.5f;
-	cx = x0 + radius + fraction * ( w - 2.0f * radius );
-	cy = top + radius;
-	fill = WS_Round( cx );
-	/* the track: rounded ends, 1px border */
-	WS_FillRect( tx0 + 2, ty, tx1 - tx0 - 4, 1, configTrackLine );
-	WS_FillRect( tx0 + 2, ty + 7, tx1 - tx0 - 4, 1, configTrackLine );
-	WS_FillRect( tx0, ty + 2, 1, 4, configTrackLine );
-	WS_FillRect( tx1 - 1, ty + 2, 1, 4, configTrackLine );
-	WS_FillRect( tx0 + 1, ty + 1, 1, 1, configTrackLine );
-	WS_FillRect( tx0 + 1, ty + 6, 1, 1, configTrackLine );
-	WS_FillRect( tx1 - 2, ty + 1, 1, 1, configTrackLine );
-	WS_FillRect( tx1 - 2, ty + 6, 1, 1, configTrackLine );
-	WS_FillRect( tx0 + 1, ty + 2, 1, 4, accent );
-	WS_FillRect( tx0 + 2, ty + 1, fill - tx0 - 2, 6, accent );
-	WS_FillRect( fill, ty + 1, tx1 - 2 - fill, 6, configTrack );
-	WS_FillRect( tx1 - 2, ty + 2, 1, 4, configTrack );
-	/* the thumb: a 16px disc */
-	for ( j = 0; j < 16; j++ ) {
-		float dy = j + 0.5f - radius, half = sqrt( radius * radius - dy * dy );
-		float a = WS_Round( cx - half ), b = WS_Round( cx + half );
-		if ( b > a ) WS_FillRect( a, WS_Round( cy - radius ) + j, b - a, 1, accent );
-	}
 }
 
 static void Config_DrawLines( const wsTextStyle_t *style, float x, float y, const char *text, const configLines_t *lines, const float *color ) {
@@ -533,7 +473,7 @@ static void Config_DrawPage( void ) {
 			int value = s_config.drag == DRAG_SLIDER && s_config.dragField == i ? s_config.dragValue : s_config.value[i];
 			Config_Hundredths( value, text, sizeof( text ) );
 			WS_DrawText( &accent, f->box.x, f->outputY, text, strlen( text ), wsAccent );
-			Config_DrawSlider( &f->control, Config_SliderFraction( i, value ), s_config.disabled[i] );
+			WS_DrawRange( &f->control, 0.5f * WS_REM, Config_SliderFraction( i, value ), s_config.disabled[i] );
 			break;
 		}
 		case CONFIG_FIELD:
@@ -557,7 +497,7 @@ static void Config_DrawPage( void ) {
 		}
 		default:
 			Config_SelectText( i, text, sizeof( text ) );
-			Config_DrawSelect( &f->control, text, s_config.popup == i + 1, s_config.disabled[i] );
+			WS_DrawSelect( &f->control, WS_LU( 0.65f * WS_REM ), text, s_config.popup == i + 1 );
 			if ( f->avatar != CONFIG_NO_PREVIEW ) Config_DrawPreview( f, i );
 			break;
 		}

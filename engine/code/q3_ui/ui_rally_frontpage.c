@@ -26,41 +26,6 @@ const char *wsGarageButton = "Customize in garage";
 
 static const char *wsHeaderLabel = "Q3RALLY / IT'S DAMN FAST, BABY.";
 
-void WS_LabelStyle( wsTextStyle_t *style ) {
-	style->font = WS_MONO;
-	style->size = 0.8f * WS_REM;
-	style->spacing = 0.14f * 0.8f * WS_REM;
-	style->lineHeight = WS_LABEL_LINE;
-	style->uppercase = qfalse;
-}
-
-void WS_BodyStyle( wsTextStyle_t *style ) {
-	style->font = WS_BODY;
-	style->size = WS_REM;
-	style->spacing = 0.0f;
-	style->lineHeight = WS_BODY_LINE;
-	style->uppercase = qfalse;
-}
-
-float WS_StyledWidth( const wsTextStyle_t *style, const char *text ) {
-	char shown[256];
-	WS_Transform( style, text, shown, sizeof( shown ) );
-	return WS_TextWidth( style, shown, strlen( shown ) );
-}
-
-void WS_StyledWrap( const wsTextStyle_t *style, const char *text, float width, wsLines_t *lines ) {
-	char shown[256];
-	WS_Transform( style, text, shown, sizeof( shown ) );
-	WS_Wrap( style, shown, width, lines );
-}
-
-float WS_ButtonWidth( const char *label ) {
-	wsTextStyle_t style;
-	WS_BodyStyle( &style );
-	style.font = WS_BODY_BOLD;
-	return 2.0f * WS_BUTTON_PAD_X + 2.0f + WS_StyledWidth( &style, label );
-}
-
 static void WS_H1Styles( const wsFrontPage_t *page, wsTextStyle_t *h1, wsTextStyle_t *em ) {
 	h1->font = WS_CONDENSED;
 	h1->size = page->h1Size;
@@ -221,29 +186,6 @@ void WS_VehicleName( const char *key, char *out, int size ) {
 /* -------------------------------------------------------------------------
    Drawing
    ------------------------------------------------------------------------- */
-
-void WS_DrawLines( const wsTextStyle_t *style, float x, float y, const char *text,
-                   const wsLines_t *lines, const float *color ) {
-	char shown[256];
-	int  i;
-
-	WS_Transform( style, text, shown, sizeof( shown ) );
-	for ( i = 0; i < lines->count; i++ ) {
-		WS_DrawText( style, x, y + i * style->lineHeight, shown + lines->start[i], lines->length[i], color );
-	}
-}
-
-void WS_DrawLabel( float x, float y, const char *text, const wsLines_t *lines ) {
-	wsTextStyle_t label;
-	wsLines_t     single;
-
-	WS_LabelStyle( &label );
-	if ( !lines ) {
-		WS_Wrap( &label, text, 1.0e6f, &single );
-		lines = &single;
-	}
-	WS_DrawLines( &label, x, y, text, lines, wsAccent );
-}
 
 void WS_DrawFrontHeader( const wsFrontPage_t *page, const char *title, const char *em, const char *status ) {
 	wsTextStyle_t h1, h1em;

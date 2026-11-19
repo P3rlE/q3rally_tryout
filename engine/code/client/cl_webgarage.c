@@ -440,7 +440,7 @@ static int Web_CurrentScreen( void ) {
     if ( clc.state >= CA_CONNECTING && clc.state <= CA_PRIMED && !clc.demoPlayer ) return 0;
     if ( Key_GetCatcher() & KEYCATCH_CONSOLE ) return 0;
     if ( clc.state == CA_ACTIVE && !clc.demoPlayer ) {
-        if ( cgvm && Cvar_VariableIntegerValue( "cg_hudOptionsOpen" ) && (Key_GetCatcher() & KEYCATCH_CGAME) && !(Key_GetCatcher() & KEYCATCH_UI) ) return 13;
+        /* the HUD options (screen 13) are drawn by the cgame (cg_hud_panel.c) */
         return (Key_GetCatcher() & KEYCATCH_UI) && uivm ? Web_UIScreen() : 0;
     }
     return (clc.state == CA_DISCONNECTED || clc.demoPlayer) && uivm ? Web_UIScreen() : 0;

@@ -77,8 +77,9 @@ control and the wizards (screen 12, config pages 0-21) are drawn by the game aga
 the WebUI's look (docs/native-webstyle.md). The page still loads behind
 them, hidden, for the screens that are still pages.
 
-With `cl_webUI 1`, the embedded frontend still opens for the garage and the
-HUD options. Map loading is
+With `cl_webUI 1`, the embedded frontend still opens for the garage. The HUD
+options in a race (screen 13) are the cgame's own panel again
+(cgame/cg_hud_panel.c). Map loading is
 native (docs/native-webstyle.md). Other menus use their
 native UI. On return to a native menu, the client restores SDL input focus,
 clears held keys and routes mouse positions through the UI's absolute position

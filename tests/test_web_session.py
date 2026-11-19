@@ -20,7 +20,8 @@ static int VM_Call(int vm,int command){return screen;}
 """+screen_codes(source)+extract(source,'static int Web_UIScreenRaw(')+extract(source,'static int Web_UIScreen(')+extract(source,'static int Web_CurrentScreen(')+r"""
 int main(void){clc.state=CA_ACTIVE;assert(Web_CurrentScreen()==0);
 catcher=KEYCATCH_UI;assert(Web_CurrentScreen()==12);
-hud=1;catcher=KEYCATCH_CGAME;assert(Web_CurrentScreen()==13);
+/* the HUD options are the cgame's own panel: the browser stays hidden */
+hud=1;catcher=KEYCATCH_CGAME;assert(Web_CurrentScreen()==0);
 catcher|=KEYCATCH_CONSOLE;assert(Web_CurrentScreen()==0);
 catcher=0;clc.state=2;assert(Web_CurrentScreen()==0);
 /* connecting and loading: the native map loading screen, the browser hides */

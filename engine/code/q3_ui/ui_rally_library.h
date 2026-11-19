@@ -44,7 +44,6 @@ void	Library_DrawSearch( const wsLibrary_t *lib, const char *placeholder );
 void	Library_DrawList( const wsLibrary_t *lib, const qhandle_t *icons );
 void	Library_DrawScrollbar( const wsLibrary_t *lib );
 /* Chrome's dark scrollbar at the right of a scrollport */
-void	WS_DrawScrollbar( const wsRect_t *port, const wsRect_t *thumb );
 /* a button drawn at opacity .45 when disabled, as Chrome does */
 void	Library_DrawButton( const wsRect_t *box, const char *label, qboolean secondary, qboolean disabled );
 

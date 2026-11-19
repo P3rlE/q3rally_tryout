@@ -2762,6 +2762,9 @@ Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_rally_draw.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_drawtools.o \
   $(B)/$(BASEGAME)/cgame/cg_hud_core.o \
+  $(B)/$(BASEGAME)/cgame/cg_hud_panel.o \
+  $(B)/$(BASEGAME)/cgame/cg_hud_panellayout.o \
+  $(B)/$(BASEGAME)/cgame/ui_rally_webstyle.o \
   $(B)/$(BASEGAME)/cgame/cg_hud_racing.o \
   $(B)/$(BASEGAME)/cgame/cg_hud_derby.o \
   $(B)/$(BASEGAME)/cgame/cg_hud_vehicle.o \
@@ -3269,6 +3272,13 @@ $(B)/$(BASEGAME)/cgame/bg_%.o: $(GDIR)/bg_%.c
 
 $(B)/$(BASEGAME)/cgame/%.o: $(CGDIR)/%.c
 	$(DO_CGAME_CC)
+
+# the WebUI look (q3_ui) for the HUD options panel
+$(B)/$(BASEGAME)/cgame/ui_rally_%.o: $(Q3UIDIR)/ui_rally_%.c
+	$(DO_CGAME_CC)
+
+$(B)/$(BASEGAME)/cgame/ui_rally_%.asm: $(Q3UIDIR)/ui_rally_%.c $(Q3LCC)
+	$(DO_CGAME_Q3LCC)
 
 $(B)/$(BASEGAME)/cgame/bg_%.asm: $(GDIR)/bg_%.c $(Q3LCC)
 	$(DO_CGAME_Q3LCC)

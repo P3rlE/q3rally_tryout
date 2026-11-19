@@ -68,6 +68,10 @@ Changed:
   the server information. The same goes for the first-start wizard
   (driver name, details with avatar preview, offline Ladder, ready), the
   offline Ladder registration and saving a demo recording.
+- The HUD options in a race (Shift+H) are drawn by the game again, as the
+  WebUI's panel at the right: a select per HUD element, the mini-map's size
+  and field of view, Back to race and Console. The pointer reaches the whole
+  width of a wide screen there.
 - Weapons: own models in a "built, not bought" style, all ten made from car
   parts on the same roof plate, with own muzzle flashes and icons. New names
   close to the old ones: Harvester Saw, Spotlight MG, Twin Shotgun, Drum

@@ -32,8 +32,16 @@ typedef enum {
 } wsFont_t;
 
 /* The WebUI reserves room for a scrollbar (html { scrollbar-gutter: stable }). */
-#define WS_SCROLLBAR_GUTTER		15.0f
+#define WS_SCROLLBAR_GUTTER		15.0f	/* Chrome's classic scrollbar, as CEF shows it */
+#define WS_SCROLLBAR_ARROW		15.0f	/* its arrow buttons */
 #define WS_REM					16.0f
+#define WS_LABEL_LINE		( 1.5f * 0.8f * WS_REM )	/* .label: .8rem/1.5 */
+#define WS_HEADING_MARGIN	( 0.4f * WS_REM )			/* h1, h2: margin .4rem 0 */
+#define WS_BODY_LINE		( 1.5f * WS_REM )			/* body: 16px/1.5 */
+#define WS_BLOCK_MARGIN		WS_REM						/* p, ol: 1em */
+#define WS_BUTTON_PAD_X		( 0.85f * WS_REM )			/* button: padding .65rem .85rem */
+#define WS_BUTTON_PAD_Y		( 0.65f * WS_REM )
+#define WS_BUTTON_HEIGHT	( 2.0f * WS_BUTTON_PAD_Y + WS_BODY_LINE + 2.0f )
 /* WS_BODY's tabular figures 0-9 (font-variant-numeric: tabular-nums) */
 #define WS_TABULAR_DIGIT		0x80
 
@@ -101,5 +109,23 @@ void	WS_DrawProgress( float x, float y, float w, float fraction );
 /* primary or .secondary button, box given, label centered on its line */
 void	WS_DrawProgressRange( float x, float y, float w, float from, float to );
 void	WS_DrawButton( const wsRect_t *box, const char *label, qboolean secondary, qboolean focused );
+/* select / input box: #222, 1px line (a light ring while open or focused) */
+void	WS_DrawInputBox( const wsRect_t *r, qboolean focus );
+void	WS_DrawSelect( const wsRect_t *r, float padding, const char *text, qboolean open );
+/* input[type=range]: fraction 0..1 of the way, padding above the 16px track box */
+void	WS_DrawRange( const wsRect_t *r, float padding, float fraction, qboolean disabled );
+/* Chrome's classic scrollbar at the right of port */
+void	WS_ScrollThumb( const wsRect_t *port, float content, float scroll, wsRect_t *thumb );
+void	WS_DrawScrollbar( const wsRect_t *port, const wsRect_t *thumb );
+
+/* the page's text styles (.label, body) and their measures */
+void	WS_LabelStyle( wsTextStyle_t *style );
+void	WS_BodyStyle( wsTextStyle_t *style );
+float	WS_StyledWidth( const wsTextStyle_t *style, const char *text );
+void	WS_StyledWrap( const wsTextStyle_t *style, const char *text, float width, wsLines_t *lines );
+float	WS_ButtonWidth( const char *label );
+void	WS_DrawLabel( float x, float y, const char *text, const wsLines_t *lines );
+void	WS_DrawLines( const wsTextStyle_t *style, float x, float y, const char *text,
+					  const wsLines_t *lines, const float *color );
 
 #endif
