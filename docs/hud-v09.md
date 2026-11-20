@@ -25,7 +25,8 @@ mode card and the standings changes.
 - `engine/code/cgame/cg_hud_modern.c` fills it from the game and draws it,
   scaled by the screen height. The corners follow the screen edges, so 4:3
   and ultrawide keep the same distances from the edges.
-- The icons are drawn by Chrome from the design's SVG
+- The icons are drawn by Chrome from the design's SVG (also the weapons:
+  `hud_gun`, `hud_mine`, `hud_smoke`)
   (`build_hud_icons.py` → `baseq3r/menu/art/hud_*.png`).
 - The menu fonts have extra atlas sizes for the HUD (up to 4K) and an em dash;
   the italic face carries lowercase too ("1,252 m").
@@ -38,6 +39,7 @@ mode card and the standings changes.
 | Sprint | yes: the way to the finish instead of the lap, a progress bar with the checkpoints (ticks up to 12), total time |
 | Ghost Race | yes: the gap to the ghost at the last checkpoint instead of the place (blue ahead, orange behind), the ghost and its lap in the card; at the right the splits of the lap (sector time and how it went against the ghost) and the sector you are in |
 | Team Racing | yes: the race with "YOUR TEAM" in the card, the teams' average time over the order ("--" until the first car is home) and a square in the team colour before every driver |
+| Racing DM, Team Racing DM | yes: SCORE (frags) in the card instead of the gap, the car's card 330px wide with FRONT and REAR weapon (ammo, name) before the items, a kill feed of the last three kills (6 s) under the order; in teams the frags in the team cells |
 | all others | the old HUD for now |
 
 `cg_hudStyle 0` shows the old HUD in every mode. The HUD toggles

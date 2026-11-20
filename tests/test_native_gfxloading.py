@@ -470,6 +470,11 @@ int main(void) {
                 l.teamName[l.teamCount] = item; r = strchr(item, ':'); *r++ = 0; l.teamValue[l.teamCount++] = r;
             }
             if (n > 38) l.rowSwatch = atoi(f[38]);
+            for (item = n > 39 ? f[39] : ""; *item && l.killCount < MH_KILLS_MAX; item = more) {   /* kills: a:weapon:b;.. */
+                more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
+                l.killA[l.killCount] = item; r = strchr(item, ':'); *r++ = 0;
+                l.killWeapon[l.killCount] = r; r = strchr(r, ':'); *r++ = 0; l.killB[l.killCount++] = r;
+            }
 #undef FIELD
             uis.glconfig.vidWidth = l.viewWidth; uis.glconfig.vidHeight = 900;
             MH_RaceLayout(&l);
@@ -483,6 +488,9 @@ int main(void) {
             for (i = 0; i < l.rowCount; i++) { char k[16]; sprintf(k, "row%d", i); rect(k, l.row[i]);
                 sprintf(k, "rowPos%d", i); T(k, l.rowPosT[i]); sprintf(k, "rowName%d", i); T(k, l.rowNameT[i]);
                 sprintf(k, "rowValue%d", i); T(k, l.rowValueT[i]); sprintf(k, "rowSwatch%d", i); rect(k, l.rowSwatchBox[i]); }
+            for (i = 0; i < l.killCount; i++) { char k[16]; sprintf(k, "kill%d", i); rect(k, l.killBox[i]);
+                sprintf(k, "killA%d", i); T(k, l.killAT[i]); sprintf(k, "killWeapon%d", i); T(k, l.killWeaponT[i]);
+                sprintf(k, "killB%d", i); T(k, l.killBT[i]); }
             for (i = 0; i < l.teamCount; i++) { char k[16]; sprintf(k, "team%d", i); rect(k, l.teamCell[i]);
                 sprintf(k, "teamName%d", i); T(k, l.teamNameT[i]); sprintf(k, "teamValue%d", i); T(k, l.teamValueT[i]); }
             rect("mirror", l.mirrorBox); rect("toast", l.toastBox); rect("toastIcon", l.toastIconBox);

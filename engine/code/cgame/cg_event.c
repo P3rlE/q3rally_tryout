@@ -154,6 +154,9 @@ static void CG_Obituary( entityState_t *ent ) {
 		attackerCi = &cgs.clientinfo[attacker];
 	}
 
+	/* the v0.9 HUD's kill feed */
+	CG_ModernHUD_Obituary( target, attacker, mod );
+
 	targetInfo = CG_ConfigString( CS_PLAYERS + target );
 	if ( !targetInfo ) {
 		return;
