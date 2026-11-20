@@ -1734,6 +1734,7 @@ extern	vmCvar_t		cg_crosshairY;
 extern	vmCvar_t		cg_crosshairSize;
 extern	vmCvar_t		cg_crosshairHealth;
 extern	vmCvar_t		cg_drawStatus;
+extern	vmCvar_t		cg_hudStyle;
 extern	vmCvar_t		cg_draw2D;
 extern	vmCvar_t		cg_animSpeed;
 extern	vmCvar_t		cg_debugAnim;
@@ -2352,6 +2353,30 @@ void CG_QueueRewardToast( qhandle_t icon, sfxHandle_t sound, int rewardCount );
 void CG_QueueAchievementToast( bgAchievementCategory_t category, int tierIndex );
 void CG_QueueRankToast( int rankIndex, const char *name, qboolean rankUp );
 void CG_QueueMessageToast( const char *message );
+/* the HUD's notification and jukebox, for the v0.9 HUD (cg_hud_modern.c) */
+typedef struct {
+	char		tag[32];		/* "Pickup", "Reward", ... */
+	char		title[128];
+	char		sub[64];		/* empty: none */
+	qhandle_t	icon;
+	float		alpha;			/* fading out */
+	int			tone;			/* 0 accent, 1 blue (rank up), 2 grey (message) */
+} cgHudToastView_t;
+qboolean CG_HudToastView( cgHudToastView_t *view );
+typedef struct {
+	qboolean	playing;
+	qboolean	open;			/* for a while after a change */
+	char		line[160];		/* "Artist \x9f Title" */
+	char		title[64], artist[64], state[24], modes[48];
+	char		time[16];		/* elapsed */
+	char		times[32];		/* "1:42 / 3:58" */
+	float		progress;
+} cgJukeboxView_t;
+qboolean CG_JukeboxView( cgJukeboxView_t *view );
+qboolean CG_ModernHUD_Active( void );
+void CG_ModernHUD_DrawViews( void );
+void CG_ModernHUD_Draw( void );
+void CG_ModernHUD_DrawStandings( void );
 
 //
 // cg_rally_tools.c

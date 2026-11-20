@@ -32,6 +32,7 @@ HARNESS = r'''
 #include "q3_ui/ui_rally_configlayout.h"
 #include "q3_ui/ui_rally_garagelayout.h"
 #include "cgame/cg_hud_panellayout.h"
+#include "cgame/cg_hud_modernlayout.h"
 #include <stdio.h>
 uiStatic_t uis;
 static FILE *files[8];
@@ -68,6 +69,7 @@ void UI_DrawVehicleWebView(float x, float y, float w, float h, playerInfo_t *pi,
 #include "q3_ui/ui_rally_configlayout.c"
 #include "q3_ui/ui_rally_garagelayout.c"
 #include "cgame/cg_hud_panellayout.c"
+#include "cgame/cg_hud_modernlayout.c"
 
 static void rect(const char *name, wsRect_t r) { printf("\"%s\":[%g,%g,%g,%g],", name, r.x, r.y, r.w, r.h); }
 
@@ -386,6 +388,73 @@ int main(void) {
             printf("],\"y\":[%g,%g,%g,%g,%g,%g,%g,%g,%g],\"text\":%d,\"content\":%g,\"h2\":%g,\"x\":[%g,%g,%g]}\n",
                 l.labelY, l.h2Y, l.textY, l.h3Y, l.sizeY, l.sizeOutputY, l.zoomY, l.zoomOutputY, l.hintY,
                 l.textLines.count, l.contentHeight, l.h2Size, l.x, l.w, l.emX);
+        } else if (!strcmp(command, "hudrace")) {
+            /* hudrace <view width>, then one line of fields split by |, lists by ; and : */
+            static mhRaceLayout_t l; static char line[4096]; static char *f[40]; char *r, *next, *item, *more;
+            int n = 0, i;
+            memset(&l, 0, sizeof(l));
+            scanf("%f\n", &l.viewWidth);
+            fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
+            for (r = line; n < 40; r = next) {
+                next = strchr(r, '|'); f[n++] = r;
+                if (!next) break;
+                *next++ = 0;
+            }
+#define FIELD(k) (*f[k] ? f[k] : NULL)
+            l.title = f[0]; l.pos = FIELD(1); l.of = f[2]; l.lapLabel = f[3]; l.lapValue = FIELD(4);
+            for (item = f[5]; *item && l.kvCount < MH_KV_MAX; item = more) {
+                more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
+                l.kvKey[l.kvCount] = item; r = strchr(item, ':'); *r = 0; l.kvValue[l.kvCount++] = r + 1;
+            }
+            l.standings = 1; l.orderTitle = f[6]; l.orderRight = f[7];
+            for (item = f[8]; *item && l.rowCount < MH_ROWS_MAX; item = more) {
+                more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
+                l.rowPos[l.rowCount] = item; r = strchr(item, ':'); *r++ = 0;
+                l.rowName[l.rowCount] = r; r = strchr(r, ':'); *r++ = 0; l.rowValue[l.rowCount++] = r;
+            }
+            l.mirror = atoi(f[9]); l.toast = atoi(f[10]); l.toastIcon = atoi(f[11]);
+            l.toastTag = f[12]; l.toastTitle = f[13]; l.toastSub = FIELD(14);
+            l.jukebox = atoi(f[15]); l.jukeboxOpen = atoi(f[16]); l.jukeboxLine = f[17]; l.jukeboxTime = f[18];
+            l.jukeboxTitle = f[19]; l.jukeboxArtist = f[20]; l.jukeboxState = f[21];
+            l.integrity = f[22]; l.armor = FIELD(23);
+            l.minimap = atoi(f[24]); l.minimapSize = 176; l.slipstream = atoi(f[25]); l.slipValue = f[26];
+            l.speed = f[27]; l.unit = f[28]; l.gear = f[29]; l.nos = f[30]; l.fuel = f[31];
+            if (n > 32) l.vehicleWidth = atof(f[32]);
+            for (item = n > 33 ? f[33] : ""; *item && l.slotCount < MH_SLOTS_MAX; item = more) {
+                more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
+                l.slotLabel[l.slotCount] = item; r = strchr(item, ':'); *r++ = 0;
+                l.slotValue[l.slotCount] = r; r = strchr(r, ':'); *r++ = 0; l.slotName[l.slotCount++] = r;
+            }
+#undef FIELD
+            uis.glconfig.vidWidth = l.viewWidth; uis.glconfig.vidHeight = 900;
+            MH_RaceLayout(&l);
+#define T(name, t) printf("\"%s\":[%g,%g,%g,%g],", name, (t).box.x, (t).box.y, (t).box.w, (t).box.h)
+            printf("{");
+            rect("card", l.card); rect("sep", l.sep); T("title", l.titleT); T("pos", l.posT); T("of", l.ofT);
+            T("lapLabel", l.lapLabelT); T("lapValue", l.lapValueT);
+            for (i = 0; i < l.kvCount; i++) { char k[16]; sprintf(k, "key%d", i); T(k, l.kvKeyT[i]); sprintf(k, "value%d", i); T(k, l.kvValueT[i]); }
+            rect("order", l.order); T("orderTitle", l.orderTitleT); T("orderRight", l.orderRightT);
+            for (i = 0; i < l.rowCount; i++) { char k[16]; sprintf(k, "row%d", i); rect(k, l.row[i]);
+                sprintf(k, "rowPos%d", i); T(k, l.rowPosT[i]); sprintf(k, "rowName%d", i); T(k, l.rowNameT[i]);
+                sprintf(k, "rowValue%d", i); T(k, l.rowValueT[i]); }
+            rect("mirror", l.mirrorBox); rect("toast", l.toastBox); rect("toastIcon", l.toastIconBox);
+            T("toastTag", l.toastTagT); T("toastTitle", l.toastTitleT); T("toastSub", l.toastSubT);
+            rect("jukebox", l.jukeboxBox); rect("jukeboxIcon", l.jukeboxIcon); rect("jukeboxBar", l.jukeboxBar);
+            T("jukeboxLine", l.jukeboxLineT); T("jukeboxTime", l.jukeboxTimeT); T("jukeboxState", l.jukeboxStateT);
+            T("jukeboxTitle", l.jukeboxTitleT); T("jukeboxArtist", l.jukeboxArtistT); T("jukeboxModes", l.jukeboxModesT);
+            for (i = 0; i < 3; i++) { char k[16]; sprintf(k, "jukeboxButton%d", i); rect(k, l.jukeboxButton[i]); }
+            rect("vehicle", l.vehicle); rect("integrityBar", l.integrityBar); T("integrityLabel", l.integrityLabel);
+            T("integrity", l.integrityT); T("armorLabel", l.armorLabel); T("armor", l.armorT); rect("vehicleSep", l.vehicleSep);
+            for (i = 0; i < l.slotCount; i++) { char k[16]; sprintf(k, "slotLabel%d", i); T(k, l.slotLabelT[i]);
+                sprintf(k, "slotIcon%d", i); rect(k, l.slotIcon[i]); sprintf(k, "slotValue%d", i); T(k, l.slotValueT[i]);
+                sprintf(k, "slotName%d", i); T(k, l.slotNameT[i]); }
+            rect("minimap", l.minimapBox); rect("minimapView", l.minimapView);
+            rect("slip", l.slip); rect("slipBar", l.slipBar); T("slipLabel", l.slipLabel); T("slipValue", l.slipValueT);
+            rect("cockpit", l.cockpit); rect("gearBox", l.gearBox); rect("rpm", l.rpm); rect("nosBar", l.nosBar); rect("fuelBar", l.fuelBar);
+            T("speed", l.speedT); T("unit", l.unitT); T("gearLabel", l.gearLabel); T("gear", l.gearT);
+            T("nosLabel", l.nosLabel); T("nosValue", l.nosValue); T("fuelLabel", l.fuelLabel); T("fuelValue", l.fuelValue);
+            printf("\"name0\":\"%s\"}\n", l.rowNameT[0].text);
+#undef T
         } else if (!strcmp(command, "garage")) {
             /* garage <width> <height> <view3d>, then lines: vehicle, status, profile status,
                the pickers (count index lockedBefore lockedCurrent lockedAfter, five times),
@@ -608,7 +677,7 @@ def test_font_atlases_and_art_are_complete():
     for name in ('sharetechmono', 'barlow', 'barlow_bold', 'barlowcondensed', 'barlowcondensed_italic'):
         data = (fonts / f'{name}.dat').read_bytes()
         magic, version, upm, ascent, descent, glyphs, kerns, sizes = struct.unpack_from('<4s7i', data)
-        assert magic == b'Q3UF' and version == 2 and glyphs <= 224 and kerns <= 4096 and 1 <= sizes <= 12
+        assert magic == b'Q3UF' and version == 2 and glyphs <= 224 and kerns <= 4096 and 1 <= sizes <= 16  # WS_MAX_SIZES
         offset = 32 + glyphs * 8 + kerns * 8
         ligatures, = struct.unpack_from('<i', data, offset)
         assert 0 <= ligatures <= 16

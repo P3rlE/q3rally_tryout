@@ -995,6 +995,141 @@ static void CG_DrawHudToast( void ) {
 	CG_DrawIngameString( textX, panelY + 7, message, UI_SMALLFONT, textScale, textColor );
 }
 
+/* "EXCELLENT" -> "Excellent" */
+static void CG_HudToastTitleCase( const char *in, char *out, int size ) {
+	int i;
+	qboolean start = qtrue;
+	for ( i = 0; in[i] && i < size - 1; i++ ) {
+		char c = in[i];
+		if ( start && c >= 'a' && c <= 'z' ) c -= 32;
+		else if ( !start && c >= 'A' && c <= 'Z' ) c += 32;
+		start = ( c == ' ' );
+		out[i] = c;
+	}
+	out[i] = '\0';
+}
+
+/*
+=================
+CG_HudToastView
+
+The notification lane's current card for the v0.9 HUD: the same queue,
+sound and timing as CG_DrawHudToast, told as a tag, a title and a line.
+=================
+*/
+qboolean CG_HudToastView( cgHudToastView_t *view ) {
+	cgHudToast_t *toast;
+	gitem_t *item;
+	const bgAchievementCategoryDef_t *category;
+	const bgAchievementTierDef_t *tier;
+	int elapsed, duration, itemNum;
+
+	memset( view, 0, sizeof( *view ) );
+	while ( cg.hudToastQueueCount > 0 ) {
+		toast = &cg.hudToastQueue[0];
+		duration = toast->duration > 0 ? toast->duration : HUD_TOAST_DISPLAY_TIME;
+		elapsed = cg.time - toast->startTime;
+		if ( elapsed < duration &&
+		     !( toast->type == CG_HUD_TOAST_PICKUP && cg_drawPickups.value <= 0.0f ) ) {
+			break;
+		}
+		CG_ShiftHudToastQueue();
+	}
+	if ( cg.hudToastQueueCount <= 0 ) {
+		return qfalse;
+	}
+	toast = &cg.hudToastQueue[0];
+	duration = toast->duration > 0 ? toast->duration : HUD_TOAST_DISPLAY_TIME;
+	elapsed = cg.time - toast->startTime;
+	if ( elapsed < 0 ) {
+		return qfalse;
+	}
+	if ( toast->sound && !toast->soundPlayed ) {
+		trap_S_StartLocalSound( toast->sound, CHAN_ANNOUNCER );
+		toast->soundPlayed = qtrue;
+	}
+	view->alpha = 1.0f;
+	if ( elapsed > duration - HUD_TOAST_FADE_TIME ) {
+		view->alpha = (float)( duration - elapsed ) / HUD_TOAST_FADE_TIME;
+	}
+	if ( view->alpha < 0.0f ) view->alpha = 0.0f;
+	itemNum = toast->itemNum;
+
+	switch ( toast->type ) {
+	case CG_HUD_TOAST_CLEAN_SECTOR:
+		Q_strncpyz( view->tag, "Clean sector", sizeof( view->tag ) );
+		Q_strncpyz( view->title, "+0.5 s NOS", sizeof( view->title ) );
+		item = BG_FindItemForPowerup( PW_TURBO );
+		if ( item ) itemNum = item - bg_itemlist;
+		break;
+	case CG_HUD_TOAST_PICKUP:
+		if ( itemNum < 1 || itemNum >= bg_numItems ) {
+			CG_ShiftHudToastQueue();
+			return qfalse;
+		}
+		item = &bg_itemlist[itemNum];
+		Q_strncpyz( view->tag, "Pickup", sizeof( view->tag ) );
+		Q_strncpyz( view->title, item->pickup_name ? item->pickup_name : "Pickup", sizeof( view->title ) );
+		break;
+	case CG_HUD_TOAST_REWARD:
+		Q_strncpyz( view->tag, "Reward", sizeof( view->tag ) );
+		CG_HudToastTitleCase( CG_GetRewardToastLabel( toast->iconShader ), view->title, sizeof( view->title ) );
+		if ( toast->rewardCount > 1 ) {
+			Com_sprintf( view->sub, sizeof( view->sub ), "X%d", toast->rewardCount );
+		}
+		view->icon = toast->iconShader;
+		break;
+	case CG_HUD_TOAST_ACHIEVEMENT:
+		category = BG_AchievementGetCategory( toast->achievementCategory );
+		tier = BG_AchievementGetTier( toast->achievementCategory, toast->achievementTier );
+		if ( !category || !tier ) {
+			CG_ShiftHudToastQueue();
+			return qfalse;
+		}
+		Q_strncpyz( view->tag, "Achievement", sizeof( view->tag ) );
+		Q_strncpyz( view->title, tier->name, sizeof( view->title ) );
+		if ( category->title ) Q_strncpyz( view->sub, category->title, sizeof( view->sub ) );
+		if ( category->icon >= 0 && category->icon < BG_ACHIEVEMENT_ICON_COUNT ) {
+			view->icon = ( elapsed < ACHIEVEMENT_LOCKED_TIME ) ?
+			             cgs.media.achievementMedalLocked[category->icon] :
+			             CG_GetAchievementTierMedal( category->icon, toast->achievementTier );
+			if ( !view->icon ) {
+				view->icon = cgs.media.achievementMedalUnlocked[category->icon];
+			}
+		}
+		break;
+	case CG_HUD_TOAST_RANK:
+		Q_strncpyz( view->tag, toast->rankUp ? "Rank up" : "Rank down", sizeof( view->tag ) );
+		Q_strncpyz( view->title, toast->name, sizeof( view->title ) );
+		view->tone = toast->rankUp ? 1 : 0;
+		break;
+	case CG_HUD_TOAST_MESSAGE:
+		Q_strncpyz( view->tag, "Message", sizeof( view->tag ) );
+		Q_strncpyz( view->title, toast->message, sizeof( view->title ) );
+		/* "You fragged X\n2nd place with 3": the second line below */
+		{
+			char *line = strchr( view->title, '\n' );
+			if ( line ) {
+				*line++ = '\0';
+				Q_strncpyz( view->sub, line, sizeof( view->sub ) );
+				line = strchr( view->sub, '\n' );
+				if ( line ) *line = '\0';
+			}
+		}
+		view->tone = 2;
+		break;
+	default:
+		CG_ShiftHudToastQueue();
+		return qfalse;
+	}
+	if ( !view->icon && itemNum > 0 && itemNum < bg_numItems &&
+	     ( toast->type == CG_HUD_TOAST_PICKUP || toast->type == CG_HUD_TOAST_CLEAN_SECTOR ) ) {
+		CG_RegisterItemVisuals( itemNum );
+		view->icon = cg_items[itemNum].icon;
+	}
+	return qtrue;
+}
+
 static int CG_RallyTelemetryX( float x, float spreadFactor ) {
 	/* Spread anchors into the pillarboxed side margins without stretching
 	 * glyphs or icons; their own draw sizes remain aspect-correct. */
@@ -1846,6 +1981,10 @@ static void CG_DrawSlipstreamGauge( void ) {
 
 static void CG_DrawRallyStatusBar( void ) {
 	if ( !cg_drawStatus.integer ) {
+		return;
+	}
+	if ( CG_ModernHUD_Active() ) {
+		CG_ModernHUD_Draw();
 		return;
 	}
 
@@ -3093,7 +3232,8 @@ static void CG_DrawHoldableItem( void ) {
 	if ( !count && ( value = BG_HoldableItemIndex( value ) ) != 0 ) {
 		items[count++] = value;
 	}
-	if ( !count ) {
+	if ( !count || CG_ModernHUD_Active() ) {
+		/* the v0.9 HUD shows the trunk in the car's card */
 		return;
 	}
 	for ( i = 0; i < count; i++ ) {
@@ -3904,7 +4044,8 @@ static void CG_DrawIntermission( stereoFrame_t stereoFrame ) {
 
 	if ( stereoFrame == STEREO_CENTER ) {
 		CG_JukeboxFrame();
-		CG_JukeboxDraw( 8.0f, (float)((cgs.gametype == GT_DRAG ? 386 : RALLY_HUD_OVERLAY_BOTTOM) - 42), 252.0f, 42.0f );
+		if ( !CG_ModernHUD_Active() )
+			CG_JukeboxDraw( 8.0f, (float)((cgs.gametype == GT_DRAG ? 386 : RALLY_HUD_OVERLAY_BOTTOM) - 42), 252.0f, 42.0f );
 	}
 
 	if (!cg.scoreBoardShowing)
@@ -4281,7 +4422,8 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 
 	if ( stereoFrame == STEREO_CENTER ) {
 		CG_JukeboxFrame();
-		CG_JukeboxDraw( 8.0f, (float)((cgs.gametype == GT_DRAG ? 386 : RALLY_HUD_OVERLAY_BOTTOM) - 42), 252.0f, 42.0f );
+		if ( !CG_ModernHUD_Active() )
+			CG_JukeboxDraw( 8.0f, (float)((cgs.gametype == GT_DRAG ? 386 : RALLY_HUD_OVERLAY_BOTTOM) - 42), 252.0f, 42.0f );
 	}
 
 #ifdef MISSIONPACK
@@ -4352,7 +4494,9 @@ void CG_DrawActive( stereoFrame_t stereoView ) {
 	trap_R_RenderScene( &cg.refdef );
 
 // Q3Rally Code Start
-	if ( !CG_IntroCam_IsActive() ) {
+	if ( CG_ModernHUD_Active() ) {
+		CG_ModernHUD_DrawViews();
+	} else if ( !CG_IntroCam_IsActive() ) {
 		if ( !cg.scoreBoardShowing )
 			CG_DrawRearviewMirror( 170, 10, 300, 75);
 

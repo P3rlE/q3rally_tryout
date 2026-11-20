@@ -39,13 +39,16 @@ CONDENSED = [20.8, 24, 28, 32, 38, 44, 48, 56, 66, 78, 92, 112]
 VARIANTS = {
     # name: (file, sizes, embolden, oblique); the italic condensed face only
     # ever shows uppercased text (the h1's em), so it carries no lowercase
-    'sharetechmono':          ('ShareTechMono-Regular.ttf', [12.8], False, False),
-    'barlow':                 ('Barlow-Regular.ttf', [13.6, 16], False, False),
+    # the in-game HUD (cgame/cg_hud_modern.c) scales with the screen height
+    # (900 px = 1): its labels, figures and names up to 4K want larger atlases
+    'sharetechmono':          ('ShareTechMono-Regular.ttf', [12.8, 16, 20, 25.6, 32, 40], False, False),
+    'barlow':                 ('Barlow-Regular.ttf', [13.6, 16, 20, 25.6, 32, 40, 48], False, False),
     # font-weight 750 on a regular face; 18.72 (h3), 25.6 (the driver's figures)
     # and 32 (the garage carousel's arrows)
     'barlow_bold':            ('Barlow-Regular.ttf', [16, 18.72, 25.6, 32], True, False),
     'barlowcondensed':        ('BarlowCondensed-Bold.ttf', CONDENSED, False, False),
-    'barlowcondensed_italic': ('BarlowCondensed-Bold.ttf', CONDENSED[6:], False, True),
+    # and the HUD's figures: P3 and the speed from 26 px at 720p to 178 px at 4K
+    'barlowcondensed_italic': ('BarlowCondensed-Bold.ttf', [20.8, 24, 28, 32, 38] + CONDENSED[6:] + [136, 168], False, True),
 }
 PADDING = 2
 # Chrome draws list markers with tabular figures (::marker { font-variant-numeric:
@@ -55,9 +58,10 @@ TABULAR_BASE = 0x80
 # letter-spacing; their glyphs follow at 0x8A, also unused in Latin-1.
 LIGATURE_BASE = 0x8A
 # A few characters past Latin-1 that the pages show ("‹ ›" on the garage
-# carousel's arrows, "…" where text-overflow cuts a name) sit at 0x9C-0x9E in
-# the body faces, after the ligatures.
-EXTRA = {0x9C: 0x2039, 0x9D: 0x203A, 0x9E: 0x2026}
+# carousel's arrows, "…" where text-overflow cuts a name, "—" between artist
+# and title in the HUD's jukebox) sit at 0x9C-0x9F in the body faces, after
+# the ligatures.
+EXTRA = {0x9C: 0x2039, 0x9D: 0x203A, 0x9E: 0x2026, 0x9F: 0x2014}
 
 
 def kerning(font: TTFont, glyph_for: dict[int, str]) -> dict[tuple[int, int], int]:

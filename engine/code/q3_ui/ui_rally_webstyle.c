@@ -44,7 +44,7 @@ const vec4_t wsButtonText = { 20 / 255.0f, 20 / 255.0f, 20 / 255.0f, 1.0f };
 
 #define WS_MAX_GLYPHS	224
 #define WS_MAX_KERNS	4096
-#define WS_MAX_SIZES	12
+#define WS_MAX_SIZES	16
 #define WS_MAX_LIGS		16
 #define WS_FILE_MAX		131072	/* the condensed face with its lowercase: 84 KB */
 
@@ -265,6 +265,13 @@ float WS_TextTop( const wsTextStyle_t *style ) {
 	return (float)floor( ( style->lineHeight - content ) * 0.5f );
 }
 
+/* line-height: normal (no line gap in the WebUI fonts) */
+float WS_ContentHeight( const wsTextStyle_t *style ) {
+	const wsFontData_t *font;
+	if ( !WS_FontReady( style->font ) ) return 0.0f;
+	font = &wsFonts[style->font];
+	return WS_Ascent( style ) + WS_Round( font->descent * style->size / font->upm );
+}
 float WS_Baseline( const wsTextStyle_t *style ) {
 	if ( !WS_FontReady( style->font ) ) return 0.0f;
 	return WS_TextTop( style ) + WS_Ascent( style );
