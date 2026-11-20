@@ -46,6 +46,9 @@ typedef struct {
 	const char	*title;				/* "Race · Downtown" (shown in capitals) */
 	const char	*pos, *of;			/* "P3" "/ 6", NULL: no position */
 	const char	*lapLabel, *lapValue;	/* "LAP" "2/5", NULL: none */
+	qboolean	progress;			/* a sprint: the course as a bar, its checkpoints as ticks */
+	int			progressTicks;
+	const char	*progressLeft, *progressRight;	/* "CP 4 / 7" "58%" */
 	int			kvCount;
 	const char	*kvKey[MH_KV_MAX], *kvValue[MH_KV_MAX];
 
@@ -80,6 +83,8 @@ typedef struct {
 	wsRect_t	card, sep;
 	mhText_t	titleT, posT, ofT, lapLabelT, lapValueT;
 	mhText_t	kvKeyT[MH_KV_MAX], kvValueT[MH_KV_MAX];
+	wsRect_t	progressBar;		/* the ticks: drawn at i / (ticks + 1) of it, 2x12, 3px above */
+	mhText_t	progressLeftT, progressRightT;
 
 	wsRect_t	order, row[MH_ROWS_MAX];
 	mhText_t	orderTitleT, orderRightT;

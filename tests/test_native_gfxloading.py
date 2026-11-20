@@ -425,6 +425,10 @@ int main(void) {
                 l.slotLabel[l.slotCount] = item; r = strchr(item, ':'); *r++ = 0;
                 l.slotValue[l.slotCount] = r; r = strchr(r, ':'); *r++ = 0; l.slotName[l.slotCount++] = r;
             }
+            if (n > 34 && *f[34]) {   /* ticks:left:right */
+                l.progress = 1; l.progressTicks = atoi(f[34]); r = strchr(f[34], ':'); *r++ = 0;
+                l.progressLeft = r; r = strchr(r, ':'); *r++ = 0; l.progressRight = r;
+            }
 #undef FIELD
             uis.glconfig.vidWidth = l.viewWidth; uis.glconfig.vidHeight = 900;
             MH_RaceLayout(&l);
@@ -432,6 +436,7 @@ int main(void) {
             printf("{");
             rect("card", l.card); rect("sep", l.sep); T("title", l.titleT); T("pos", l.posT); T("of", l.ofT);
             T("lapLabel", l.lapLabelT); T("lapValue", l.lapValueT);
+            rect("progressBar", l.progressBar); T("progressLeft", l.progressLeftT); T("progressRight", l.progressRightT);
             for (i = 0; i < l.kvCount; i++) { char k[16]; sprintf(k, "key%d", i); T(k, l.kvKeyT[i]); sprintf(k, "value%d", i); T(k, l.kvValueT[i]); }
             rect("order", l.order); T("orderTitle", l.orderTitleT); T("orderRight", l.orderRightT);
             for (i = 0; i < l.rowCount; i++) { char k[16]; sprintf(k, "row%d", i); rect(k, l.row[i]);

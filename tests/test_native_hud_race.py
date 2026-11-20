@@ -14,6 +14,7 @@ import tempfile
 from test_native_gfxloading import ROOT, compile_harness, run, close
 
 RACE = json.loads((ROOT / 'tests/fixtures/hud_race_layout.json').read_text())['els']
+SPRINT = json.loads((ROOT / 'tests/fixtures/hud_sprint_layout.json').read_text())['els']
 RACING_DM = json.loads((ROOT / 'tests/fixtures/hud_racingdm_layout.json').read_text())['els']
 NOTIFY = json.loads((ROOT / 'tests/fixtures/hud_notify_layout.json').read_text())['els']
 
@@ -47,7 +48,7 @@ def command(model, width=1600):
               m['jukebox'], m['open'], m['line'], m['time'], m['jtitle'], m['jartist'], m['jstate'],
               m['integrity'], m['armor'], m['minimap'], m['slip'], m['slipValue'],
               m['speed'], m['unit'], m['gear'], m['nos'], m['fuel'], m.get('vehicleWidth', 0),
-              ';'.join(f'{a}:{b}:{c}' for a, b, c in m.get('slots', []))]
+              ';'.join(f'{a}:{b}:{c}' for a, b, c in m.get('slots', [])), m.get('progress', '')]
     return [f'hudrace {width}', latin('|'.join(str(f) for f in fields))]
 
 
@@ -168,3 +169,36 @@ def test_the_hud_icons_are_there():
         png = (ROOT / f'baseq3r/menu/art/{name}.png').read_bytes()
         assert png[16:24] == (64).to_bytes(4, 'big') * 2, name
         assert f'"menu/art/{name}"' in source
+
+
+# the sprint board of gen.py
+SPRINT_MODEL = dict(
+    RACE_MODEL, title='Sprint \u00b7 Timber Run', pos='P2', of='/ 4', lapLabel='TO GO', lapValue='1,252 m',
+    progress='7:CP 4 / 7:58%', kv=[('TIME', '0:51.06'), ('BEST', '1:28.40'), ('TO P1', '+1.14')],
+    rows=[('01', 'Dean', 'LEADER'), ('02', 'Player', '+1.14'), ('03', 'Chloe', '+3.02'), ('04', 'Tony', '+7.88')],
+    mirror=0, tag='Pickup', toastTitle='NOS +25%', sub='BOTTLE 2 OF 3', jukebox=0, integrity='125', slip=0,
+    speed='97', gear='3', nos='25%', fuel='94%')
+
+
+def test_native_sprint_hud_matches_the_design():
+    mine, = layouts(command(SPRINT_MODEL))
+    card, order, toast, br = '/div:1/div:0', '/div:2/div:0', '/div:0/div:0', '/div:4'
+    pairs = [('card', card), ('title', card + '/div:0'),
+             ('pos', card + '/div:1/div:0/div:0'), ('of', card + '/div:1/div:0/div:1'),
+             ('lapLabel', card + '/div:1/div:1/div:0'), ('lapValue', card + '/div:1/div:1/div:1'),
+             ('progressBar', card + '/div:2'), ('progressLeft', card + '/div:3/div:0'),
+             ('progressRight', card + '/div:3/div:1'), ('sep', card + '/div:4'),
+             ('order', order), ('toast', toast), ('toastTag', toast + '/div:1/div:0'),
+             ('toastTitle', toast + '/div:1/div:1'), ('toastSub', toast + '/div:1/div:2'),
+             ('vehicle', '/div:3/div:0'), ('minimap', br + '/div:0'), ('cockpit', br + '/div:1'),
+             ('speed', br + '/div:1/div:0/div:0/div:0'), ('gear', br + '/div:1/div:0/div:1/div:1/div:0')] \
+        + [(f'key{i}', card + f'/div:{5 + i}/div:0') for i in range(3)] \
+        + [(f'value{i}', card + f'/div:{5 + i}/div:1') for i in range(3)] \
+        + [(f'rowName{i}', order + f'/div:1/div:{i}/div:1') for i in range(4)]
+    problems = check_all(mine, SPRINT, pairs)
+    assert not problems, problems
+    # the checkpoints sit at i / (ticks + 1) of the bar (drawn by cg_hud_modern.c)
+    bar = mine['progressBar']
+    for i in range(1, 8):
+        tick = SPRINT[card + f'/div:2/div:{i}']
+        assert abs(bar[0] + bar[2] * i / 8 - tick[0]) < 0.5
