@@ -17,6 +17,7 @@ RACE = json.loads((ROOT / 'tests/fixtures/hud_race_layout.json').read_text())['e
 SPRINT = json.loads((ROOT / 'tests/fixtures/hud_sprint_layout.json').read_text())['els']
 GHOST = json.loads((ROOT / 'tests/fixtures/hud_ghost_layout.json').read_text())['els']
 TEAM_RACE = json.loads((ROOT / 'tests/fixtures/hud_teamrace_layout.json').read_text())['els']
+MESSAGES = json.loads((ROOT / 'tests/fixtures/hud_messages_layout.json').read_text())['els']
 RACING_DM = json.loads((ROOT / 'tests/fixtures/hud_racingdm_layout.json').read_text())['els']
 NOTIFY = json.loads((ROOT / 'tests/fixtures/hud_notify_layout.json').read_text())['els']
 
@@ -258,4 +259,34 @@ def test_native_team_race_hud_matches_the_design():
         pairs += [(f'row{i}', row), (f'rowPos{i}', row + '/div:0'), (f'rowSwatch{i}', row + '/div:1'),
                   (f'rowName{i}', row + '/div:2'), (f'rowValue{i}', row + '/div:3')]
     problems = check_all(mine, TEAM_RACE, pairs)
+    assert not problems, problems
+
+
+# the big messages and the spectator's panel (gen.py Meldungen board)
+def test_the_big_messages_match_the_design():
+    warning, recovered, wide = layouts(['hudmsg 1600', 'WRONG WAY|56|300|TURN AROUND'],
+                                       ['hudmsg 1600', 'CAR RECOVERED|44|420|BACK ON TRACK AT CP 4'],
+                                       ['hudmsg 2100', 'WRONG WAY|56|300|TURN AROUND'])
+    problems = [(n, mine[k], MESSAGES[p]) for n, mine, k, p in (
+        ('warning', warning, 'title', '/div:1/div:0'), ('warning sub', warning, 'sub0', '/div:1/div:1'),
+        ('recovered', recovered, 'title', '/div:2/div:0'), ('recovered sub', recovered, 'sub0', '/div:2/div:1'))
+        if not close(mine[k], MESSAGES[p])]
+    assert not problems, problems
+    # centred on any screen
+    assert abs(wide['title'][0] + wide['title'][2] / 2 - 1050) < 0.01
+
+
+def test_a_long_centerprint_gets_smaller_and_then_cut():
+    long, longer = layouts(['hudmsg 1600', 'Press FIRE or USE when ready to race, then wait for the others to be ready too|44|300|'],
+                           ['hudmsg 1024', 'x' * 90 + '|44|300|'])
+    assert 28 <= long['size'] < 44 and long['title'][2] <= 960
+    assert longer['size'] == 28 and longer['titleText'].endswith('\x9e') and longer['title'][2] <= 1024 - 192
+
+
+def test_the_spectator_panel_matches_the_design():
+    mine, = layouts(['hudspec 1600', 'FOLLOWING|Sam|FIRE NEXT|ESC MENU'])
+    panel = '/div:5/div:0'
+    pairs = [('box', panel), ('label', panel + '/div:0/div:0/div:0'), ('name', panel + '/div:0/div:0/div:1'),
+             ('hint1', panel + '/div:0/div:1/div:0'), ('hint2', panel + '/div:0/div:1/div:1')]
+    problems = check_all(mine, MESSAGES, pairs)
     assert not problems, problems

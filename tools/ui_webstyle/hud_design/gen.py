@@ -351,6 +351,32 @@ board('TeamRacing.dc.html', 'Team race', BG['racing_dm'], [
     col(BR, minimap() + slipstream(0.7) + cockpit('142', '4', 0.72, 0.6, 0.82), 330),
 ])
 
+# 1c Big messages in the race: centred under the mirror, and the spectator's panel at the bottom (not on
+# the canvas, which shows them on the notifications board) -------------------------------------------
+def bigmsg(main, sub=None, size=44, color='#ffffff', top=300):
+    s = lab(sub, '#dddddd', 14 if size >= 56 else 13) if sub else ''
+    return (f'<div style="position: absolute; left: 0; right: 0; top: {top}px; display: flex; flex-direction: column; '
+            f'align-items: center; gap: 6px; text-shadow: 0 2px 12px rgba(0,0,0,0.6)">{big(main, size, color)}{s}</div>')
+
+
+def spectator(name):
+    return panel(row(f'<div style="display: flex; flex-direction: column; gap: 4px">{lab("FOLLOWING")}{text(name, 22, "#ffffff", 700)}</div>',
+                     f'<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">'
+                     f'{lab("FIRE NEXT", "#999999", 11)}{lab("ESC MENU", "#999999", 11)}</div>'), gap=8)
+
+
+board('Meldungen.dc.html', 'Race messages', BG['racing_dm'], [
+    top_center(mirror(BG['racing_dm'])),
+    bigmsg('WRONG WAY', 'TURN AROUND', 56, ACC),
+    bigmsg('CAR RECOVERED', 'BACK ON TRACK AT CP 4', 44, top=420),
+    col(TL, modecard('Race · Downtown', posline('P3', 6, 'LAP', '2/5') + sep()
+                     + kv('LAP', '0:42.18') + kv('BEST', '0:40.95') + kv('TO P2', '+1.07', ACC)), 300),
+    col(TR, standings('Race order', 'Gap', RACE_ROWS), 272),
+    col('left: 650px; bottom: 28px', spectator('Sam'), 300),
+    col(BL, vehicle(118), 300),
+    col(BR, minimap() + cockpit('142', '4', 0.72, 0.6, 0.82), 330),
+])
+
 # 2 Zones (German explanation board) ---------------------------------------------------------------
 def zone(x, y, w, h, num, name, desc):
     return (f'<div style="position: absolute; left: {x}px; top: {y}px; width: {w}px; height: {h}px; box-sizing: border-box; '

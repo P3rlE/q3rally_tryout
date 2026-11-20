@@ -2384,6 +2384,8 @@ qboolean CG_ModernHUD_Active( void );
 void CG_ModernHUD_DrawViews( void );
 void CG_ModernHUD_Draw( void );
 void CG_ModernHUD_DrawStandings( void );
+void CG_ModernHUD_DrawMessages( void );
+void CG_ModernHUD_DrawSpectator( void );
 
 //
 // cg_rally_tools.c

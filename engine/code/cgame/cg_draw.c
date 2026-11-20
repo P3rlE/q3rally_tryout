@@ -3849,6 +3849,10 @@ CG_DrawSpectator
 =================
 */
 static void CG_DrawSpectator(void) {
+	if ( CG_ModernHUD_Active() ) {
+		if ( !( cg.snap->ps.pm_flags & PMF_FOLLOW ) ) CG_ModernHUD_DrawSpectator();
+		return;
+	}
     CG_SetScreenPlacement(PLACE_CENTER, PLACE_BOTTOM);
 	CG_DrawIngameString(320, 440, "Spectator", UI_CENTER | UI_SMALLFONT | UI_DROPSHADOW, 1.0f, colorWhite);
 // Q3Rally Code Start - removed gametype
@@ -4069,6 +4073,10 @@ static qboolean CG_DrawFollow( void ) {
 	/* Don't show "following <player>" during the intro route preview. */
 	if ( CG_IntroCam_IsActive() ) {
 		return qfalse;
+	}
+	if ( CG_ModernHUD_Active() ) {
+		CG_ModernHUD_DrawSpectator();
+		return qtrue;
 	}
     
     CG_SetScreenPlacement(PLACE_CENTER, PLACE_TOP);
@@ -4453,10 +4461,12 @@ static void CG_Draw2D(stereoFrame_t stereoFrame)
 		cg.scoreBoardShowing = CG_DrawScoreboard();
 
 	if ( !cg.scoreBoardShowing) {
-		CG_DrawCenterString();
-
-		CG_DrawRaceCountDown();
-
+		if ( CG_ModernHUD_Active() ) {
+			CG_ModernHUD_DrawMessages();
+		} else {
+			CG_DrawCenterString();
+			CG_DrawRaceCountDown();
+		}
 	}
 
 }

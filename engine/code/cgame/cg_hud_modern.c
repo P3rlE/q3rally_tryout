@@ -793,3 +793,116 @@ void CG_ModernHUD_Draw( void ) {
 	}
 	MH_DrawCockpit( l );
 }
+
+/* -------------------------------------------------------------------------
+   big messages in the middle (gen.py bigmsg): the countdown, wrong way and
+   the centerprints, one at a time, in the menu fonts
+   ------------------------------------------------------------------------- */
+
+static const vec4_t mhShadow = { 0.0f, 0.0f, 0.0f, 0.6f };
+
+/* text-shadow: 0 2px 12px: a soft shadow 2px down */
+static void MH_ShadowStr( const mhText_t *t, const float *color, float alpha ) {
+	mhText_t shadow = *t;
+	shadow.box.y += 2.0f;
+	MH_Str( &shadow, mhShadow, alpha );
+	MH_Str( t, color, alpha );
+}
+
+static void MH_DrawMessage( const char *title, float size, const float *color, int subCount, const char **sub, float alpha ) {
+	mhMessageLayout_t m;
+	int i;
+	memset( &m, 0, sizeof( m ) );
+	m.viewWidth = mh.l.viewWidth;
+	m.title = title;
+	m.titleSize = size;
+	m.subCount = subCount;
+	for ( i = 0; i < subCount && i < MH_SUB_MAX; i++ ) m.sub[i] = sub[i];
+	MH_MessageLayout( &m );
+	MH_ShadowStr( &m.titleT, color, alpha );
+	for ( i = 0; i < m.subCount; i++ ) MH_ShadowStr( &m.subT[i], mhValue, alpha );
+}
+
+/* "3" "2" "1" "GO!": until a second after the start, the last one fading */
+static qboolean MH_Countdown( void ) {
+	float alpha = 1.0f;
+	if ( !cg.countDownPrint[0] || cg.time > cg.countDownEnd + 1000 ) return qfalse;
+	if ( cg.time > cg.countDownEnd ) alpha = 1.0f - ( cg.time - cg.countDownEnd ) / 1000.0f;
+	MH_DrawMessage( cg.countDownPrint, 96.0f, Q_stricmp( cg.countDownPrint, "GO!" ) ? mhWhite : mhAccent, 0, NULL, alpha );
+	return qtrue;
+}
+
+/* two seconds the wrong way round (cg_hud_racing.c keeps the time) */
+static qboolean MH_WrongWay( void ) {
+	static const char *sub[1] = { "TURN AROUND" };
+	float *color;
+	if ( !cg.wrongWayStartTime || cg.wrongWayStartTime > cg.time - 2000 ) return qfalse;
+	color = CG_FadeColor( cg.wrongWayTime, 300 );
+	if ( !color ) return qfalse;
+	MH_DrawMessage( "WRONG WAY", 56.0f, mhAccent, 1, sub, color[3] );
+	return qtrue;
+}
+
+/* a centerprint (also target_print): the first line big, the next ones under it */
+static qboolean MH_CenterPrint( void ) {
+	static char lines[1 + MH_SUB_MAX][MH_TEXT_MAX];
+	const char *sub[MH_SUB_MAX], *s;
+	float *color;
+	int count = 0, n;
+
+	if ( !cg.centerPrintTime || CG_LadderGhost_PickerIsOpen() ) return qfalse;
+	color = CG_FadeColor( cg.centerPrintTime, 1000 * cg_centertime.value );
+	if ( !color ) return qfalse;
+	for ( s = cg.centerPrint; *s && count < 1 + MH_SUB_MAX; ) {
+		char raw[MH_TEXT_MAX];
+		for ( n = 0; s[n] && s[n] != '\n' && n < MH_TEXT_MAX - 1; n++ ) raw[n] = s[n];
+		raw[n] = '\0';
+		while ( s[n] && s[n] != '\n' ) n++;
+		s += n;
+		if ( *s == '\n' ) s++;
+		MH_Plain( raw, lines[count], sizeof( lines[0] ) );
+		if ( lines[count][0] ) count++;
+	}
+	if ( !count ) return qfalse;
+	for ( n = 1; n < count; n++ ) sub[n - 1] = lines[n];
+	MH_DrawMessage( lines[0], 44.0f, mhWhite, count - 1, sub, color[3] );
+	return qtrue;
+}
+
+void CG_ModernHUD_DrawMessages( void ) {
+	if ( !cg.snap ) return;
+	MH_Prepare();
+	if ( MH_Countdown() ) return;
+	if ( MH_WrongWay() ) return;
+	MH_CenterPrint();
+}
+
+/* -------------------------------------------------------------------------
+   the spectator: whom we follow, or the free camera, at the bottom
+   ------------------------------------------------------------------------- */
+
+void CG_ModernHUD_DrawSpectator( void ) {
+	mhSpectatorLayout_t sp;
+	char name[40];
+	if ( !cg.snap || CG_IntroCam_IsActive() ) return;
+	MH_Prepare();
+	memset( &sp, 0, sizeof( sp ) );
+	sp.viewWidth = mh.l.viewWidth;
+	if ( cg.snap->ps.pm_flags & PMF_FOLLOW ) {
+		MH_Plain( cgs.clientinfo[cg.snap->ps.clientNum].name, name, sizeof( name ) );
+		sp.label = "FOLLOWING";
+		sp.name = name;
+		sp.hint1 = "FIRE NEXT";
+	} else {
+		sp.label = "SPECTATOR";
+		sp.name = "Watching";
+		sp.hint1 = "FIRE FOLLOW";
+	}
+	sp.hint2 = "ESC MENU";
+	MH_SpectatorLayout( &sp );
+	MH_Panel( &sp.box, qtrue, 1.0f );
+	MH_Str( &sp.labelT, mhLabel, 1.0f );
+	MH_Str( &sp.nameT, mhWhite, 1.0f );
+	MH_Str( &sp.hint1T, mhMuted, 1.0f );
+	MH_Str( &sp.hint2T, mhMuted, 1.0f );
+}

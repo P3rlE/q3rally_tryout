@@ -679,3 +679,82 @@ void MH_RaceLayout( mhRaceLayout_t *l ) {
 	if ( l->slipstream ) bottom = MH_Slipstream( l, bottom ) - MH_COLUMN_GAP;
 	if ( l->minimap ) MH_Minimap( l, bottom );
 }
+
+/* -------------------------------------------------------------------------
+   big messages (gen.py bigmsg): a column centred on the screen, gap 6px
+   ------------------------------------------------------------------------- */
+
+void MH_MessageLayout( mhMessageLayout_t *m ) {
+	wsTextStyle_t title, sub;
+	float size = m->titleSize > 0.0f ? m->titleSize : 44.0f;
+	float maxW = m->viewWidth - 2.0f * 96.0f, y;
+	int i;
+
+	if ( maxW > 960.0f ) maxW = 960.0f;
+	/* a long centerprint: smaller, down to 28px, then cut */
+	for ( ;; ) {
+		MH_Big( &title, size );
+		title.uppercase = qtrue;
+		MH_Set( &m->titleT, &title, m->title );
+		if ( m->titleT.box.w <= maxW || size <= 28.0f ) break;
+		size -= 2.0f;
+	}
+	MH_Fit( &m->titleT, maxW );
+	m->titleT.box.w = MH_Width( &m->titleT );
+	y = m->top > 0.0f ? m->top : MH_MESSAGE_TOP;
+	MH_Place( &m->titleT, ( m->viewWidth - m->titleT.box.w ) * 0.5f, y );
+	y += m->titleT.box.h;
+
+	MH_Label( &sub, size >= 56.0f ? 14.0f : 13.0f );
+	for ( i = 0; i < m->subCount && i < MH_SUB_MAX; i++ ) {
+		MH_Set( &m->subT[i], &sub, m->sub[i] );
+		MH_Fit( &m->subT[i], maxW );
+		m->subT[i].box.w = MH_Width( &m->subT[i] );
+		MH_Place( &m->subT[i], ( m->viewWidth - m->subT[i].box.w ) * 0.5f, y + 6.0f );
+		y += 6.0f + m->subT[i].box.h;
+	}
+}
+
+/* -------------------------------------------------------------------------
+   the spectator (gen.py spectator): a panel, at the left the label over the
+   name, at the right two hints, the columns on their first baselines
+   ------------------------------------------------------------------------- */
+
+void MH_SpectatorLayout( mhSpectatorLayout_t *s ) {
+	wsTextStyle_t label, name, hint;
+	float x, y, w, leftH, rightH, above, h;
+
+	MH_Label( &label, 12.0f );
+	MH_Text( &name, 22.0f );
+	MH_Label( &hint, 11.0f );
+	MH_Set( &s->labelT, &label, s->label );
+	MH_Set( &s->nameT, &name, s->name );
+	MH_Set( &s->hint1T, &hint, s->hint1 );
+	MH_Set( &s->hint2T, &hint, s->hint2 );
+
+	s->box.w = MH_SPECTATOR_W;
+	s->box.x = ( s->viewWidth - s->box.w ) * 0.5f;
+	x = s->box.x + 1.0f + MH_PAD_X;
+	w = s->box.w - 2.0f - 2.0f * MH_PAD_X;
+
+	/* the right column takes what it needs, the name the rest (12px apart) */
+	rightH = s->hint1T.box.w > s->hint2T.box.w ? s->hint1T.box.w : s->hint2T.box.w;
+	MH_Fit( &s->nameT, w - rightH - 12.0f );
+	s->nameT.box.w = MH_Width( &s->nameT );
+	if ( s->labelT.box.w > s->nameT.box.w ) s->nameT.box.w = s->labelT.box.w;
+	else s->labelT.box.w = s->nameT.box.w;		/* a column's blocks */
+
+	leftH = s->labelT.box.h + 4.0f + s->nameT.box.h;
+	rightH = s->hint1T.box.h + 4.0f + s->hint2T.box.h;
+	above = MH_Base( &s->labelT ) > MH_Base( &s->hint1T ) ? MH_Base( &s->labelT ) : MH_Base( &s->hint1T );
+	h = above - MH_Base( &s->labelT ) + leftH;
+	if ( above - MH_Base( &s->hint1T ) + rightH > h ) h = above - MH_Base( &s->hint1T ) + rightH;
+
+	s->box.h = 2.0f + MH_PAD_Y + h + MH_PAD_Y + 1.0f;
+	s->box.y = MH_DESIGN_HEIGHT - MH_BOTTOM - s->box.h;
+	y = s->box.y + 2.0f + MH_PAD_Y;
+	MH_Place( &s->labelT, x, y + above - MH_Base( &s->labelT ) );
+	MH_Place( &s->nameT, x, s->labelT.box.y + s->labelT.box.h + 4.0f );
+	MH_Place( &s->hint1T, x + w - s->hint1T.box.w, y + above - MH_Base( &s->hint1T ) );
+	MH_Place( &s->hint2T, x + w - s->hint2T.box.w, s->hint1T.box.y + s->hint1T.box.h + 4.0f );
+}
