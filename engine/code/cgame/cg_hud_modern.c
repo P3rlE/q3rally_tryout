@@ -22,6 +22,7 @@ screen height; this file scales them to the screen and fills in the game.
 #include "cg_local.h"
 #include "cg_hud_elements.h"
 #include "cg_hud_modernlayout.h"
+#include "../client/keycodes.h"
 
 #define MH_MINIMAP			176.0f	/* the design's minimap at the default cg_mmap_size */
 #define MH_MINIMAP_DEFAULT	1.0f	/* ui_main.c registers cg_mmap_size first, at 1.0 */
@@ -881,9 +882,41 @@ void CG_ModernHUD_DrawMessages( void ) {
    the spectator: whom we follow, or the free camera, at the bottom
    ------------------------------------------------------------------------- */
 
+/* a key's name as the controls menu shows it, for the hints */
+static void MH_KeyName( int key, char *out, int size ) {
+	static const struct { int key; const char *name; } names[] = {
+		{ K_TAB, "TAB" }, { K_ENTER, "ENTER" }, { K_SPACE, "SPACE" }, { K_BACKSPACE, "BACKSPACE" },
+		{ K_UPARROW, "UP" }, { K_DOWNARROW, "DOWN" }, { K_LEFTARROW, "LEFT" }, { K_RIGHTARROW, "RIGHT" },
+		{ K_ALT, "ALT" }, { K_CTRL, "CTRL" }, { K_SHIFT, "SHIFT" }, { K_INS, "INS" }, { K_DEL, "DEL" },
+		{ K_PGDN, "PGDN" }, { K_PGUP, "PGUP" }, { K_HOME, "HOME" }, { K_END, "END" },
+		{ K_KP_INS, "KP INS" }, { K_KP_DEL, "KP DEL" }, { K_KP_ENTER, "KP ENTER" }, { K_KP_HOME, "KP 7" },
+		{ K_KP_UPARROW, "KP 8" }, { K_KP_PGUP, "KP 9" }, { K_KP_LEFTARROW, "KP 4" }, { K_KP_5, "KP 5" },
+		{ K_KP_RIGHTARROW, "KP 6" }, { K_KP_END, "KP 1" }, { K_KP_DOWNARROW, "KP 2" }, { K_KP_PGDN, "KP 3" },
+		{ K_MOUSE1, "MOUSE 1" }, { K_MOUSE2, "MOUSE 2" }, { K_MOUSE3, "MOUSE 3" }, { K_MOUSE4, "MOUSE 4" },
+		{ K_MOUSE5, "MOUSE 5" }, { K_MWHEELUP, "WHEEL UP" }, { K_MWHEELDOWN, "WHEEL DOWN" }
+	};
+	int i;
+	if ( key >= K_F1 && key <= K_F12 ) {
+		Com_sprintf( out, size, "F%d", key - K_F1 + 1 );
+		return;
+	}
+	if ( key > 32 && key < 127 ) {
+		Com_sprintf( out, size, "%c", toupper( key ) );
+		return;
+	}
+	for ( i = 0; i < ARRAY_LEN( names ); i++ ) {
+		if ( names[i].key == key ) {
+			Q_strncpyz( out, names[i].name, size );
+			return;
+		}
+	}
+	Q_strncpyz( out, "REAR FIRE", size );	/* unbound or unnamed: the control's name */
+}
+
 void CG_ModernHUD_DrawSpectator( void ) {
 	mhSpectatorLayout_t sp;
-	char name[40];
+	char name[40], key[16], view[32];
+	int watched;
 	if ( !cg.snap || CG_IntroCam_IsActive() ) return;
 	MH_Prepare();
 	memset( &sp, 0, sizeof( sp ) );
@@ -892,13 +925,23 @@ void CG_ModernHUD_DrawSpectator( void ) {
 		MH_Plain( cgs.clientinfo[cg.snap->ps.clientNum].name, name, sizeof( name ) );
 		sp.label = "FOLLOWING";
 		sp.name = name;
-		sp.hint1 = "FIRE NEXT";
+	} else if ( cg.snap->ps.pm_flags & PMF_OBSERVE ) {
+		/* the track cameras: the driver they turn to, if they turn */
+		watched = cg.snap->ps.persistant[PERS_ATTACKER];
+		if ( watched >= 0 && watched < MAX_CLIENTS && cgs.clientinfo[watched].infoValid )
+			MH_Plain( cgs.clientinfo[watched].name, name, sizeof( name ) );
+		else
+			Q_strncpyz( name, "Fixed view", sizeof( name ) );
+		sp.label = "TRACK CAMERA";
+		sp.name = name;
 	} else {
 		sp.label = "SPECTATOR";
-		sp.name = "Watching";
-		sp.hint1 = "FIRE FOLLOW";
+		sp.name = "Free camera";
 	}
-	sp.hint2 = "ESC MENU";
+	sp.hint1 = "FIRE NEXT";
+	MH_KeyName( trap_Key_GetKey( "+button12" ), key, sizeof( key ) );
+	Com_sprintf( view, sizeof( view ), "%s VIEW", key );
+	sp.hint2 = view;
 	MH_SpectatorLayout( &sp );
 	MH_Panel( &sp.box, qtrue, 1.0f );
 	MH_Str( &sp.labelT, mhLabel, 1.0f );

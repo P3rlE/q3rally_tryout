@@ -51,6 +51,10 @@ In these modes the big messages in the middle are in the menu fonts too
 accent), WRONG WAY, and every centerprint (also target_print) with its first
 line big and the next ones in small capitals under it. One at a time:
 countdown before wrong way before a centerprint. A spectator gets a panel at
-the bottom in the middle: whom he follows, FIRE for the next one.
+the bottom in the middle: the view (following, track camera, free camera)
+and whom it shows. FIRE goes to the next driver, the rear attack key
+(`+button12`, default KP INS, shown in the panel) to the next view:
+follow, track cameras, free camera, follow. A driver who has finished skips
+the free camera.
 
 Still to come: the other game modes.

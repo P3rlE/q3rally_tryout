@@ -35,6 +35,10 @@ Changed:
 - In the modes with the new HUD the big messages in the middle (countdown,
   GO!, wrong way, every centerprint) are in the menu fonts, and spectators
   get a panel at the bottom with the driver they follow.
+- Spectators can go back to the free camera: the rear attack key (default
+  KP INS) now goes round follow, track cameras and free camera, and the
+  panel shows the view and the key. Leaving a driver no longer keeps his
+  HUD on the screen in the track cameras.
 - The graphics loading screen is drawn by the game again, on every
   platform, and looks exactly like the WebUI's "Getting ready." screen:
   the layout follows the WebUI's CSS, the text uses its fonts (Barlow,
