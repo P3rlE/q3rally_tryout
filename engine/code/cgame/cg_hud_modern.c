@@ -42,6 +42,11 @@ static const vec4_t mhDarkTrack = { 30 / 255.0f, 30 / 255.0f, 30 / 255.0f, 1.0f 
 static const vec4_t mhMe        = { 1.0f, 85 / 255.0f, 0.0f, 0.18f };
 static const vec4_t mhGlass     = { 1.0f, 1.0f, 1.0f, 0.35f };
 #define MH_TICKS_MAX 12
+static const vec4_t mhTeam[MH_TEAMS_MAX] = {	/* the design's red, blue, green, yellow */
+	{ 244 / 255.0f, 61 / 255.0f, 56 / 255.0f, 1.0f }, { 71 / 255.0f, 143 / 255.0f, 1.0f, 1.0f },
+	{ 46 / 255.0f, 224 / 255.0f, 82 / 255.0f, 1.0f }, { 1.0f, 209 / 255.0f, 41 / 255.0f, 1.0f }
+};
+static const vec4_t mhOnTeam    = { 17 / 255.0f, 17 / 255.0f, 17 / 255.0f, 1.0f };	/* #111 on a team's colour */
 static const vec4_t mhTickOpen  = { 90 / 255.0f, 90 / 255.0f, 90 / 255.0f, 1.0f };	/* #5a5a5a */
 
 static struct {
@@ -58,6 +63,8 @@ static struct {
 	qboolean		rowMe[MH_ROWS_MAX];
 	const float		*rowColor[MH_ROWS_MAX];		/* NULL: #ddd */
 	const float		*posColor;
+	int				rowTeam[MH_ROWS_MAX];			/* TEAM_RED.., for the swatch */
+	char			teamValue[MH_TEAMS_MAX][16];
 	cgHudToastView_t	toast;
 	cgJukeboxView_t	jukebox;
 	char			integrity[16], armor[16];
@@ -200,7 +207,18 @@ static int MH_RaceOrder( int at[MAX_CLIENTS + 1], int *local ) {
 
 qboolean CG_ModernHUD_Active( void ) {
 	return cg_hudStyle.integer && cg.snap &&
-	       ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_GHOST );
+	       ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_GHOST ||
+	         cgs.gametype == GT_TEAM_RACING );
+}
+
+/* a driver's team: our own from the snapshot, the freshest */
+static int MH_Team( int client ) {
+	if ( client == cg.snap->ps.clientNum ) return cg.snap->ps.persistant[PERS_TEAM];
+	return cgs.clientinfo[client].team;
+}
+
+static const float *MH_TeamColor( int team ) {
+	return team >= TEAM_RED && team < TEAM_RED + MH_TEAMS_MAX ? mhTeam[team - TEAM_RED] : mhMuted;
 }
 
 /* the checkpoints of the course: numbered 1..n (start and finish are 0) */
@@ -336,7 +354,8 @@ static void MH_Prepare( void ) {
 	if ( !map || !map[0] ) map = COM_SkipPath( cgs.mapname );
 	MH_Plain( map, mh.rowName[0], sizeof( mh.rowName[0] ) );
 	Com_sprintf( mh.title, sizeof( mh.title ), "%s \xb7 %s",
-	             cgs.gametype == GT_GHOST ? "Ghost race" : cgs.gametype == GT_SPRINT ? "Sprint" : "Race", mh.rowName[0] );
+	             cgs.gametype == GT_GHOST ? "Ghost race" : cgs.gametype == GT_SPRINT ? "Sprint" :
+	             cgs.gametype == GT_TEAM_RACING ? "Team race" : "Race", mh.rowName[0] );
 	l->title = mh.title;
 	mh.posColor = mhWhite;
 	if ( cgs.gametype == GT_GHOST ) {
@@ -416,6 +435,12 @@ static void MH_Prepare( void ) {
 		else Q_strncpyz( mh.kvValue[l->kvCount], "--", sizeof( mh.kvValue[0] ) );
 		mh.kvColor[l->kvCount++] = mhFast;
 	}
+	/* the team race: whose colours we drive in */
+	if ( cgs.gametype == GT_TEAM_RACING && ( MH_Team( ps->clientNum ) == TEAM_RED || MH_Team( ps->clientNum ) == TEAM_BLUE ) ) {
+		Q_strncpyz( mh.kvKey[l->kvCount], "YOUR TEAM", sizeof( mh.kvKey[0] ) );
+		Q_strncpyz( mh.kvValue[l->kvCount], MH_Team( ps->clientNum ) == TEAM_RED ? "RED" : "BLUE", sizeof( mh.kvValue[0] ) );
+		mh.kvColor[l->kvCount++] = MH_TeamColor( MH_Team( ps->clientNum ) );
+	}
 	for ( i = 0; i < l->kvCount; i++ ) {
 		l->kvKey[i] = mh.kvKey[i];
 		l->kvValue[i] = mh.kvValue[i];
@@ -424,8 +449,26 @@ static void MH_Prepare( void ) {
 	/* the standings: up to six rows around our place */
 	l->standings = cg_hudShowOpponentList.integer && last > 0 && !cg.showScores &&
 	               cg.predictedPlayerState.pm_type != PM_INTERMISSION && !CG_IntroCam_IsActive();
-	l->orderTitle = "Race order";
+	l->orderTitle = cgs.gametype == GT_TEAM_RACING ? "Team race order" : "Race order";
 	l->orderRight = "Gap";
+	if ( cgs.gametype == GT_TEAM_RACING ) {
+		/* the teams' average race time, as the server ranks them. Until the
+		 * first car is home it counts everyone at the time so far, the same
+		 * for both teams: "--" then. */
+		qboolean home = qfalse;
+		for ( i = 0; i < cgs.maxclients && i < MAX_CLIENTS; i++ ) {
+			if ( cgs.clientinfo[i].infoValid && cg_entities[i].finishRaceTime ) home = qtrue;
+		}
+		for ( i = 0; i < 2; i++ ) {
+			if ( home && cg.teamTimes[i] > 0 && cg.teamTimes[i] < ( 1 << 30 ) ) MH_Time( cg.teamTimes[i], mh.teamValue[i], sizeof( mh.teamValue[i] ) );
+			else Q_strncpyz( mh.teamValue[i], "--", sizeof( mh.teamValue[i] ) );
+			l->teamValue[i] = mh.teamValue[i];
+		}
+		l->teamName[0] = "RED";
+		l->teamName[1] = "BLUE";
+		l->teamCount = 2;
+		l->rowSwatch = qtrue;
+	}
 	for ( i = 0; i < MH_ROWS_MAX; i++ ) mh.rowColor[i] = NULL;
 	if ( cgs.gametype == GT_GHOST ) {
 		if ( l->standings ) MH_GhostSplits( l, cent, ps );
@@ -441,6 +484,7 @@ static void MH_Prepare( void ) {
 			int position = first + i, client = at[position];
 			Com_sprintf( mh.rowPos[i], sizeof( mh.rowPos[i] ), "%02d", position );
 			mh.rowMe[i] = client >= 0 && client == ps->clientNum;
+			mh.rowTeam[i] = client >= 0 ? MH_Team( client ) : TEAM_FREE;
 			if ( client < 0 ) {
 				mh.rowName[i][0] = '\0';
 				mh.rowValue[i][0] = '\0';
@@ -621,8 +665,14 @@ void CG_ModernHUD_DrawStandings( void ) {
 	MH_Panel( &l->order, qtrue, 1.0f );
 	MH_Str( &l->orderTitleT, mhLabel, 1.0f );
 	MH_Str( &l->orderRightT, mhMuted, 1.0f );
+	for ( i = 0; i < l->teamCount; i++ ) {
+		MH_FillRect( &l->teamCell[i], mhTeam[i], 1.0f );
+		MH_Str( &l->teamNameT[i], mhOnTeam, 1.0f );
+		MH_Str( &l->teamValueT[i], mhOnTeam, 1.0f );
+	}
 	for ( i = 0; i < l->rowCount; i++ ) {
 		if ( mh.rowMe[i] ) MH_FillRect( &l->row[i], mhMe, 1.0f );
+		if ( l->rowSwatch && l->rowName[i] && l->rowName[i][0] ) MH_FillRect( &l->rowSwatchBox[i], MH_TeamColor( mh.rowTeam[i] ), 1.0f );
 		MH_Str( &l->rowPosT[i], mhMuted, 1.0f );
 		MH_Str( &l->rowNameT[i], mhWhite, 1.0f );
 		MH_Str( &l->rowValueT[i], mh.rowColor[i] ? mh.rowColor[i] : mhValue, 1.0f );

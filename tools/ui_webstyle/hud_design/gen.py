@@ -336,6 +336,21 @@ board('Main.dc.html', 'Race', BG['racing_dm'], [
     col(BR, minimap() + slipstream(0.7) + cockpit('142', '4', 0.72, 0.6, 0.82), 330),
 ])
 
+# 1b Team race: the race board with the teams (not on the canvas, which shows it as the race) ------------
+TEAM_RACE_ROWS = [('01', 'Sam', 'LEADER', '', TEAM['red']), ('02', 'Bobby', '+0.85', '', TEAM['blue']),
+                  ('03', 'Player', '+1.92', 'me', TEAM['blue']), ('04', 'Janine', '+2.40', '', TEAM['red']),
+                  ('05', 'Vlad', '+4.07', '', TEAM['red']), ('06', 'Emma', '+6.31', '', TEAM['blue'])]
+board('TeamRacing.dc.html', 'Team race', BG['racing_dm'], [
+    top_center(mirror(BG['racing_dm'])),
+    col(TL, modecard('Team race · Downtown', posline('P3', 6, 'LAP', '2/5') + sep()
+                     + kv('LAP', '0:42.18') + kv('BEST', '0:40.95') + kv('TO P2', '+1.07', ACC)
+                     + kv('YOUR TEAM', 'BLUE', TEAM['blue'])), 300),
+    col(TR, standings('Team race order', 'Gap', TEAM_RACE_ROWS,
+                      teams=[('RED', TEAM['red'], '1:42.10'), ('BLUE', TEAM['blue'], '--')]), 272),
+    col(BL, jukebox() + vehicle(118), 300),
+    col(BR, minimap() + slipstream(0.7) + cockpit('142', '4', 0.72, 0.6, 0.82), 330),
+])
+
 # 2 Zones (German explanation board) ---------------------------------------------------------------
 def zone(x, y, w, h, num, name, desc):
     return (f'<div style="position: absolute; left: {x}px; top: {y}px; width: {w}px; height: {h}px; box-sizing: border-box; '

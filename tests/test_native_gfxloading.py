@@ -434,6 +434,11 @@ int main(void) {
                 more = strchr(item, ','); if (more) *more++ = 0; else more = item + strlen(item);
                 l.kvSize[i] = atof(item);
             }
+            for (item = n > 37 ? f[37] : ""; *item && l.teamCount < MH_TEAMS_MAX; item = more) {   /* teams: name:value;.. */
+                more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
+                l.teamName[l.teamCount] = item; r = strchr(item, ':'); *r++ = 0; l.teamValue[l.teamCount++] = r;
+            }
+            if (n > 38) l.rowSwatch = atoi(f[38]);
 #undef FIELD
             uis.glconfig.vidWidth = l.viewWidth; uis.glconfig.vidHeight = 900;
             MH_RaceLayout(&l);
@@ -446,7 +451,9 @@ int main(void) {
             rect("order", l.order); T("orderTitle", l.orderTitleT); T("orderRight", l.orderRightT);
             for (i = 0; i < l.rowCount; i++) { char k[16]; sprintf(k, "row%d", i); rect(k, l.row[i]);
                 sprintf(k, "rowPos%d", i); T(k, l.rowPosT[i]); sprintf(k, "rowName%d", i); T(k, l.rowNameT[i]);
-                sprintf(k, "rowValue%d", i); T(k, l.rowValueT[i]); }
+                sprintf(k, "rowValue%d", i); T(k, l.rowValueT[i]); sprintf(k, "rowSwatch%d", i); rect(k, l.rowSwatchBox[i]); }
+            for (i = 0; i < l.teamCount; i++) { char k[16]; sprintf(k, "team%d", i); rect(k, l.teamCell[i]);
+                sprintf(k, "teamName%d", i); T(k, l.teamNameT[i]); sprintf(k, "teamValue%d", i); T(k, l.teamValueT[i]); }
             rect("mirror", l.mirrorBox); rect("toast", l.toastBox); rect("toastIcon", l.toastIconBox);
             T("toastTag", l.toastTagT); T("toastTitle", l.toastTitleT); T("toastSub", l.toastSubT);
             rect("jukebox", l.jukeboxBox); rect("jukeboxIcon", l.jukeboxIcon); rect("jukeboxBar", l.jukeboxBar);

@@ -30,6 +30,8 @@ Changed:
 - The new HUD in the Ghost Race: the gap to the ghost in big figures,
   the ghost and its lap time in the card, and a list of the lap's splits
   against the ghost where the race order would be.
+- The new HUD in Team Racing: your team in the card, the teams' times
+  over the race order and every driver marked in the team colour.
 - The graphics loading screen is drawn by the game again, on every
   platform, and looks exactly like the WebUI's "Getting ready." screen:
   the layout follows the WebUI's CSS, the text uses its fonts (Barlow,
