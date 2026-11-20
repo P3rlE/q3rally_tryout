@@ -183,6 +183,19 @@ static void MH_Card( mhRaceLayout_t *l ) {
 			MH_Place( &l->lapValueT, in.x + in.w - l->lapValueT.box.w, top + l->lapLabelT.box.h + 4.0f );
 		}
 		y += h + 12.0f;
+	}
+	/* sprint_progress(): margin-top 4px, 6px high; a row of two labels below */
+	if ( l->progress ) {
+		l->progressBar.x = in.x;
+		l->progressBar.y = y + 4.0f;
+		l->progressBar.w = in.w;
+		l->progressBar.h = 6.0f;
+		y += 4.0f + 6.0f + 12.0f;
+		MH_Set( &l->progressLeftT, &label, l->progressLeft );
+		MH_Set( &l->progressRightT, &label, l->progressRight );
+		y += MH_BaselineRow( &l->progressLeftT, &l->progressRightT, in.x, y, in.w ) + 12.0f;
+	}
+	if ( l->pos || l->lapValue || l->progress ) {
 		l->sep.x = in.x;
 		l->sep.y = y;
 		l->sep.w = in.w;

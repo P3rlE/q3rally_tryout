@@ -41,12 +41,17 @@ static const vec4_t mhTrack     = { 44 / 255.0f, 44 / 255.0f, 44 / 255.0f, 1.0f 
 static const vec4_t mhDarkTrack = { 30 / 255.0f, 30 / 255.0f, 30 / 255.0f, 1.0f };	/* #1e1e1e */
 static const vec4_t mhMe        = { 1.0f, 85 / 255.0f, 0.0f, 0.18f };
 static const vec4_t mhGlass     = { 1.0f, 1.0f, 1.0f, 0.35f };
+#define MH_TICKS_MAX 12
+static const vec4_t mhTickOpen  = { 90 / 255.0f, 90 / 255.0f, 90 / 255.0f, 1.0f };	/* #5a5a5a */
 
 static struct {
 	int				time;			/* the frame this was laid out for */
 	qboolean		ready;
 	mhRaceLayout_t	l;
 	char			title[MH_TEXT_MAX], pos[16], of[16], lap[16];
+	char			progressLeft[24], progressRight[16];
+	float			progressFrac;
+	int				progressDone;
 	char			kvKey[MH_KV_MAX][16], kvValue[MH_KV_MAX][24];
 	const float		*kvColor[MH_KV_MAX];
 	char			rowPos[MH_ROWS_MAX][8], rowName[MH_ROWS_MAX][40], rowValue[MH_ROWS_MAX][16];
@@ -192,7 +197,23 @@ static int MH_RaceOrder( int at[MAX_CLIENTS + 1], int *local ) {
 }
 
 qboolean CG_ModernHUD_Active( void ) {
-	return cg_hudStyle.integer && cg.snap && cgs.gametype == GT_RACING;
+	return cg_hudStyle.integer && cg.snap && ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT );
+}
+
+/* the checkpoints of the course: numbered 1..n (start and finish are 0) */
+static int MH_Checkpoints( void ) {
+	int i, n = 0;
+	for ( i = 0; i < cg.snap->numEntities; i++ ) {
+		const entityState_t *es = &cg.snap->entities[i];
+		if ( es->eType == ET_CHECKPOINT && es->weapon > n ) n = es->weapon;
+	}
+	return n;
+}
+
+/* 1252 -> "1,252" */
+static void MH_Thousands( int value, char *out, int size ) {
+	if ( value >= 1000 ) Com_sprintf( out, size, "%d,%03d", value / 1000, value % 1000 );
+	else Com_sprintf( out, size, "%d", value );
 }
 
 static void MH_Register( void ) {
@@ -236,7 +257,7 @@ static void MH_Prepare( void ) {
 	map = CG_ConfigString( CS_MESSAGE );
 	if ( !map || !map[0] ) map = COM_SkipPath( cgs.mapname );
 	MH_Plain( map, mh.rowName[0], sizeof( mh.rowName[0] ) );
-	Com_sprintf( mh.title, sizeof( mh.title ), "Race \xb7 %s", mh.rowName[0] );
+	Com_sprintf( mh.title, sizeof( mh.title ), "%s \xb7 %s", cgs.gametype == GT_SPRINT ? "Sprint" : "Race", mh.rowName[0] );
 	l->title = mh.title;
 	if ( cg_hudShowPosition.integer ) {
 		if ( cent->currentPosition > 0 ) Com_sprintf( mh.pos, sizeof( mh.pos ), "P%d", cent->currentPosition );
@@ -245,7 +266,29 @@ static void MH_Prepare( void ) {
 		l->pos = mh.pos;
 		l->of = mh.of;
 	}
-	if ( cg_hudShowLaps.integer ) {
+	if ( CG_IsSprintTrack() ) {
+		/* a sprint: the way to the finish instead of the lap */
+		float total = cgs.trackLength * CG_RaceLapLimit();
+		int remain = ps->stats[STAT_DISTANCE_REMAIN], ticks = MH_Checkpoints(), next = ps->stats[STAT_NEXT_CHECKPOINT];
+		char metres[16];
+		mh.progressFrac = 0.0f;
+		if ( cent->finishRaceTime ) mh.progressFrac = 1.0f;
+		else if ( total > 0.0f && remain > 0 ) mh.progressFrac = WS_Clamp( 0.0f, 1.0f - remain / total, 1.0f );
+		if ( cent->finishRaceTime ) remain = 0;
+		MH_Thousands( remain > 0 ? remain : 0, metres, sizeof( metres ) );
+		Com_sprintf( mh.lap, sizeof( mh.lap ), "%s m", metres );
+		l->lapLabel = "TO GO";
+		l->lapValue = mh.lap;
+		if ( total > 0.0f ) {
+			mh.progressDone = cent->finishRaceTime || next > ticks ? ticks : ( next > 1 ? next - 1 : 0 );
+			Com_sprintf( mh.progressLeft, sizeof( mh.progressLeft ), "CP %d / %d", mh.progressDone, ticks );
+			Com_sprintf( mh.progressRight, sizeof( mh.progressRight ), "%d%%", (int)( mh.progressFrac * 100.0f ) );
+			l->progress = qtrue;
+			l->progressTicks = ticks;
+			l->progressLeft = mh.progressLeft;
+			l->progressRight = mh.progressRight;
+		}
+	} else if ( cg_hudShowLaps.integer ) {
 		lap = cent->currentLap > 0 ? cent->currentLap : 1;
 		if ( cgs.laplimit > 1 ) Com_sprintf( mh.lap, sizeof( mh.lap ), "%d/%d", lap, cgs.laplimit );
 		else Com_sprintf( mh.lap, sizeof( mh.lap ), "%d", lap );
@@ -256,7 +299,7 @@ static void MH_Prepare( void ) {
 		if ( cent->finishRaceTime ) lapTime = cent->finishRaceTime - cent->startLapTime;
 		else if ( cent->startRaceTime ) lapTime = cg.time - cent->startLapTime;
 		else lapTime = 0;
-		Q_strncpyz( mh.kvKey[0], "LAP", sizeof( mh.kvKey[0] ) );
+		Q_strncpyz( mh.kvKey[0], CG_IsSprintTrack() ? "TIME" : "LAP", sizeof( mh.kvKey[0] ) );
 		MH_Time( lapTime, mh.kvValue[0], sizeof( mh.kvValue[0] ) );
 		mh.kvColor[0] = mhWhite;
 		Q_strncpyz( mh.kvKey[1], "BEST", sizeof( mh.kvKey[1] ) );
@@ -452,7 +495,18 @@ static void MH_DrawCard( const mhRaceLayout_t *l ) {
 		MH_Str( &l->lapLabelT, mhLabel, 1.0f );
 		MH_Str( &l->lapValueT, mhWhite, 1.0f );
 	}
-	if ( l->pos || l->lapValue ) MH_FillRect( &l->sep, mhLine, 1.0f );
+	if ( l->progress ) {
+		const wsRect_t *b = &l->progressBar;
+		MH_Bar( b, mh.progressFrac, mhAccent, mhTrack, 1.0f );
+		/* past a dozen checkpoints the ticks turn into a ruler: the CP line says it */
+		for ( i = 1; l->progressTicks <= MH_TICKS_MAX && i <= l->progressTicks; i++ ) {
+			MH_Fill( b->x + b->w * i / ( l->progressTicks + 1 ), b->y - 3.0f, 2.0f, 12.0f,
+			         i <= mh.progressDone ? mhWhite : mhTickOpen, 1.0f );
+		}
+		MH_Str( &l->progressLeftT, mhMuted, 1.0f );
+		MH_Str( &l->progressRightT, mhMuted, 1.0f );
+	}
+	if ( l->pos || l->lapValue || l->progress ) MH_FillRect( &l->sep, mhLine, 1.0f );
 	for ( i = 0; i < l->kvCount; i++ ) {
 		MH_Str( &l->kvKeyT[i], mhMuted, 1.0f );
 		MH_Str( &l->kvValueT[i], mh.kvColor[i], 1.0f );

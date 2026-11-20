@@ -24,6 +24,9 @@ Changed:
   items) and the jukebox at the bottom left, minimap, slipstream and the
   cockpit (speed, gear, revs, NOS, fuel) at the bottom right. It scales
   with the screen height; cg_hudStyle 0 brings the old HUD back.
+- The new HUD in the sprint: the card shows the way to the finish
+  ("1,252 m"), a progress bar with the checkpoints passed and the total
+  time instead of the lap.
 - The graphics loading screen is drawn by the game again, on every
   platform, and looks exactly like the WebUI's "Getting ready." screen:
   the layout follows the WebUI's CSS, the text uses its fonts (Barlow,

@@ -27,13 +27,15 @@ mode card and the standings changes.
   and ultrawide keep the same distances from the edges.
 - The icons are drawn by Chrome from the design's SVG
   (`build_hud_icons.py` → `baseq3r/menu/art/hud_*.png`).
-- The menu fonts have extra atlas sizes for the HUD (up to 4K) and an em dash.
+- The menu fonts have extra atlas sizes for the HUD (up to 4K) and an em dash;
+  the italic face carries lowercase too ("1,252 m").
 
 ## Game modes
 
 | Mode | v0.9 HUD |
 |---|---|
 | Race | yes |
+| Sprint | yes: the way to the finish instead of the lap, a progress bar with the checkpoints (ticks up to 12), total time |
 | all others | the old HUD for now |
 
 `cg_hudStyle 0` shows the old HUD in every mode. The HUD toggles

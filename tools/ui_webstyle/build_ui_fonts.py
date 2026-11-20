@@ -37,8 +37,7 @@ OUTPUT = ROOT / 'baseq3r/menu/fonts'
 CHARS = [c for c in range(32, 127)] + [c for c in range(160, 256)]
 CONDENSED = [20.8, 24, 28, 32, 38, 44, 48, 56, 66, 78, 92, 112]
 VARIANTS = {
-    # name: (file, sizes, embolden, oblique); the italic condensed face only
-    # ever shows uppercased text (the h1's em), so it carries no lowercase
+    # name: (file, sizes, embolden, oblique)
     # the in-game HUD (cgame/cg_hud_modern.c) scales with the screen height
     # (900 px = 1): its labels, figures and names up to 4K want larger atlases
     'sharetechmono':          ('ShareTechMono-Regular.ttf', [12.8, 16, 20, 25.6, 32, 40], False, False),
@@ -47,7 +46,8 @@ VARIANTS = {
     # and 32 (the garage carousel's arrows)
     'barlow_bold':            ('Barlow-Regular.ttf', [16, 18.72, 25.6, 32], True, False),
     'barlowcondensed':        ('BarlowCondensed-Bold.ttf', CONDENSED, False, False),
-    # and the HUD's figures: P3 and the speed from 26 px at 720p to 178 px at 4K
+    # the menus' h1 em, and the HUD's figures and words ("P3", the speed,
+    # "1,252 m", "Blue") from 26 px at 720p to 178 px at 4K
     'barlowcondensed_italic': ('BarlowCondensed-Bold.ttf', [20.8, 24, 28, 32, 38] + CONDENSED[6:] + [136, 168], False, True),
 }
 PADDING = 2
@@ -207,8 +207,7 @@ def build(name: str, output: Path) -> None:
     path = FONTS / filename
     font = TTFont(path)
     cmap = font.getBestCmap()
-    codes = [code for code in CHARS if code in cmap
-             and (name != 'barlowcondensed_italic' or chr(code).upper() == chr(code))]
+    codes = [code for code in CHARS if code in cmap]
     glyph_for = {code: cmap[code] for code in codes}
     if not name.startswith('barlowcondensed'):
         glyph_for.update(tabular_digits(font))
