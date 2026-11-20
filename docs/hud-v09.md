@@ -36,6 +36,7 @@ mode card and the standings changes.
 |---|---|
 | Race | yes |
 | Sprint | yes: the way to the finish instead of the lap, a progress bar with the checkpoints (ticks up to 12), total time |
+| Ghost Race | yes: the gap to the ghost at the last checkpoint instead of the place (blue ahead, orange behind), the ghost and its lap in the card; at the right the splits of the lap (sector time and how it went against the ghost) and the sector you are in |
 | all others | the old HUD for now |
 
 `cg_hudStyle 0` shows the old HUD in every mode. The HUD toggles

@@ -52,10 +52,12 @@ static struct {
 	char			progressLeft[24], progressRight[16];
 	float			progressFrac;
 	int				progressDone;
-	char			kvKey[MH_KV_MAX][16], kvValue[MH_KV_MAX][24];
+	char			kvKey[MH_KV_MAX][16], kvValue[MH_KV_MAX][32];
 	const float		*kvColor[MH_KV_MAX];
 	char			rowPos[MH_ROWS_MAX][8], rowName[MH_ROWS_MAX][40], rowValue[MH_ROWS_MAX][16];
 	qboolean		rowMe[MH_ROWS_MAX];
+	const float		*rowColor[MH_ROWS_MAX];		/* NULL: #ddd */
+	const float		*posColor;
 	cgHudToastView_t	toast;
 	cgJukeboxView_t	jukebox;
 	char			integrity[16], armor[16];
@@ -197,7 +199,8 @@ static int MH_RaceOrder( int at[MAX_CLIENTS + 1], int *local ) {
 }
 
 qboolean CG_ModernHUD_Active( void ) {
-	return cg_hudStyle.integer && cg.snap && ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT );
+	return cg_hudStyle.integer && cg.snap &&
+	       ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_GHOST );
 }
 
 /* the checkpoints of the course: numbered 1..n (start and finish are 0) */
@@ -214,6 +217,81 @@ static int MH_Checkpoints( void ) {
 static void MH_Thousands( int value, char *out, int size ) {
 	if ( value >= 1000 ) Com_sprintf( out, size, "%d,%03d", value / 1000, value % 1000 );
 	else Com_sprintf( out, size, "%d", value );
+}
+
+/* the ghost race: who the ghost is and its lap, or what the game is doing to get one */
+static void MH_GhostLine( char *out, int size ) {
+	char name[40], plain[40];
+	const char *status;
+	qboolean error;
+	int lapMs;
+
+	if ( CG_GhostRace_Opponent( name, sizeof( name ), &lapMs ) ) {
+		char lapText[16];
+		MH_Time( lapMs, lapText, sizeof( lapText ) );
+		if ( CG_GhostPlaybackMode() == 1 ) Q_strncpyz( plain, "PERSONAL", sizeof( plain ) );
+		else if ( CG_GhostPlaybackMode() == 2 ) Q_strncpyz( plain, "SERVER", sizeof( plain ) );
+		else {
+			MH_Plain( name, plain, 17 );	/* a ladder name: the row has room for sixteen */
+			Q_strupr( plain );
+		}
+		Com_sprintf( out, size, "%s \xb7 %s", plain, lapText );
+		return;
+	}
+	switch ( CG_GhostPlaybackMode() ) {
+	case 1:
+		CG_LoadPersonalGhost();
+		status = cg.personalGhostSearchValid && !cg.personalGhostSearchFound ? "NO GHOST FOR CAR" : "SEARCHING";
+		break;
+	case 2:
+		if ( cg.baseGhostTransferFailed ) status = "TRANSFER FAILED";
+		else if ( cg.baseGhostTransferPending ) status = "RECEIVING";
+		else if ( cg.baseGhostStatusKnown ) status = "NO SERVER GHOST";
+		else status = "WAITING";
+		break;
+	case 3:
+		status = CG_LadderGhost_StatusText( &error );
+		if ( !Q_stricmpn( status, "VS ", 3 ) ) status += 3;
+		break;
+	default:
+		status = "OFF";
+		break;
+	}
+	Q_strncpyz( out, status, size );
+}
+
+/* the ghost race: this lap's splits (the time of each sector, how it went
+ * against the ghost) and the sector we are in */
+static void MH_GhostSplits( mhRaceLayout_t *l, const centity_t *cent, const playerState_t *ps ) {
+	int n = cg.ghostSplitLapStart == cent->startLapTime ? cg.ghostSplitCount : 0;
+	qboolean running = cent->startLapTime && !cent->finishRaceTime && cg.time >= cent->startLapTime;
+	int shown = running ? MH_ROWS_MAX - 1 : MH_ROWS_MAX;
+	int i, row = 0;
+
+	l->orderTitle = "Splits";
+	l->orderRight = "vs ghost";
+	for ( i = n > shown ? n - shown : 0; i < n; i++, row++ ) {
+		int sector = cg.ghostSplitDeltaAt[i] - ( i > 0 ? cg.ghostSplitDeltaAt[i - 1] : 0 );
+		Com_sprintf( mh.rowPos[row], sizeof( mh.rowPos[0] ), "S%d", cg.ghostSplitCheckpoint[i] );
+		MH_Time( cg.ghostSplitElapsed[i] - ( i > 0 ? cg.ghostSplitElapsed[i - 1] : 0 ), mh.rowName[row], sizeof( mh.rowName[0] ) );
+		MH_Gap( sector, mh.rowValue[row], sizeof( mh.rowValue[0] ) );
+		mh.rowColor[row] = sector <= 0 ? mhFast : mhAccent;
+		mh.rowMe[row] = qfalse;
+	}
+	if ( running ) {
+		int next = ps->stats[STAT_NEXT_CHECKPOINT];
+		Com_sprintf( mh.rowPos[row], sizeof( mh.rowPos[0] ), "S%d", next > 0 ? next : 1 );
+		MH_Time( cg.time - cent->startLapTime - ( n > 0 ? cg.ghostSplitElapsed[n - 1] : 0 ), mh.rowName[row], sizeof( mh.rowName[0] ) );
+		Q_strncpyz( mh.rowValue[row], "--", sizeof( mh.rowValue[0] ) );
+		mh.rowColor[row] = NULL;
+		mh.rowMe[row++] = qtrue;
+	}
+	for ( i = 0; i < row; i++ ) {
+		l->rowPos[i] = mh.rowPos[i];
+		l->rowName[i] = mh.rowName[i];
+		l->rowValue[i] = mh.rowValue[i];
+	}
+	l->rowCount = row;
 }
 
 static void MH_Register( void ) {
@@ -257,9 +335,22 @@ static void MH_Prepare( void ) {
 	map = CG_ConfigString( CS_MESSAGE );
 	if ( !map || !map[0] ) map = COM_SkipPath( cgs.mapname );
 	MH_Plain( map, mh.rowName[0], sizeof( mh.rowName[0] ) );
-	Com_sprintf( mh.title, sizeof( mh.title ), "%s \xb7 %s", cgs.gametype == GT_SPRINT ? "Sprint" : "Race", mh.rowName[0] );
+	Com_sprintf( mh.title, sizeof( mh.title ), "%s \xb7 %s",
+	             cgs.gametype == GT_GHOST ? "Ghost race" : cgs.gametype == GT_SPRINT ? "Sprint" : "Race", mh.rowName[0] );
 	l->title = mh.title;
-	if ( cg_hudShowPosition.integer ) {
+	mh.posColor = mhWhite;
+	if ( cgs.gametype == GT_GHOST ) {
+		/* alone on the track: the gap to the ghost at the last checkpoint */
+		if ( CG_GhostPlaybackMode() && cg.ghostSplitDeltaValid ) {
+			MH_Gap( cg.ghostSplitDeltaMs, mh.pos, sizeof( mh.pos ) );
+			mh.posColor = cg.ghostSplitDeltaMs <= 0 ? mhFast : mhAccent;
+		} else {
+			Q_strncpyz( mh.pos, "--", sizeof( mh.pos ) );
+		}
+		l->posLabel = "VS GHOST";
+		l->pos = mh.pos;
+		l->of = "";
+	} else if ( cg_hudShowPosition.integer ) {
 		if ( cent->currentPosition > 0 ) Com_sprintf( mh.pos, sizeof( mh.pos ), "P%d", cent->currentPosition );
 		else Q_strncpyz( mh.pos, "P-", sizeof( mh.pos ) );
 		Com_sprintf( mh.of, sizeof( mh.of ), "/ %d", racers );
@@ -307,8 +398,13 @@ static void MH_Prepare( void ) {
 		mh.kvColor[1] = mhWhite;
 		l->kvCount = 2;
 	}
-	/* the gap to the car ahead, or the lead over the next one */
-	if ( local > 1 && at[local - 1] >= 0 ) {
+	/* the ghost race: the ghost; else the gap to the car ahead, or the lead over the next one */
+	if ( cgs.gametype == GT_GHOST ) {
+		Q_strncpyz( mh.kvKey[l->kvCount], "GHOST", sizeof( mh.kvKey[0] ) );
+		MH_GhostLine( mh.kvValue[l->kvCount], sizeof( mh.kvValue[0] ) );
+		l->kvSize[l->kvCount] = 14.0f;
+		mh.kvColor[l->kvCount++] = mhValue;
+	} else if ( local > 1 && at[local - 1] >= 0 ) {
 		Com_sprintf( mh.kvKey[l->kvCount], sizeof( mh.kvKey[0] ), "TO P%d", local - 1 );
 		/* the splits are taken at the checkpoints: an older one can look ahead */
 		if ( CG_GetRaceSplitGap( at[local - 1], ps->clientNum, &gap ) && gap > 0 ) MH_Gap( gap, mh.kvValue[l->kvCount], sizeof( mh.kvValue[0] ) );
@@ -330,7 +426,10 @@ static void MH_Prepare( void ) {
 	               cg.predictedPlayerState.pm_type != PM_INTERMISSION && !CG_IntroCam_IsActive();
 	l->orderTitle = "Race order";
 	l->orderRight = "Gap";
-	if ( l->standings ) {
+	for ( i = 0; i < MH_ROWS_MAX; i++ ) mh.rowColor[i] = NULL;
+	if ( cgs.gametype == GT_GHOST ) {
+		if ( l->standings ) MH_GhostSplits( l, cent, ps );
+	} else if ( l->standings ) {
 		count = last < MH_ROWS_MAX ? last : MH_ROWS_MAX;
 		first = 1;
 		if ( last > count ) {
@@ -488,7 +587,8 @@ static void MH_DrawCard( const mhRaceLayout_t *l ) {
 	MH_Panel( &l->card, qtrue, 1.0f );
 	MH_Str( &l->titleT, mhLabel, 1.0f );
 	if ( l->pos ) {
-		MH_Str( &l->posT, mhWhite, 1.0f );
+		if ( l->posLabel ) MH_Str( &l->posLabelT, mhLabel, 1.0f );
+		MH_Str( &l->posT, mh.posColor, 1.0f );
 		MH_Str( &l->ofT, mhMuted, 1.0f );
 	}
 	if ( l->lapValue ) {
@@ -525,7 +625,7 @@ void CG_ModernHUD_DrawStandings( void ) {
 		if ( mh.rowMe[i] ) MH_FillRect( &l->row[i], mhMe, 1.0f );
 		MH_Str( &l->rowPosT[i], mhMuted, 1.0f );
 		MH_Str( &l->rowNameT[i], mhWhite, 1.0f );
-		MH_Str( &l->rowValueT[i], mhValue, 1.0f );
+		MH_Str( &l->rowValueT[i], mh.rowColor[i] ? mh.rowColor[i] : mhValue, 1.0f );
 	}
 }
 

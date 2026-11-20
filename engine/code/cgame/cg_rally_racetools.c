@@ -1777,6 +1777,17 @@ void CG_UpdateGhostSplitDelta( void ) {
         cg.ghostSplitDeltaTime = cg.time;
         cg.ghostSplitDeltaValid = qtrue;
 
+        if ( cg.ghostSplitLapStart != startLapTime ) {
+                cg.ghostSplitLapStart = startLapTime;
+                cg.ghostSplitCount = 0;
+        }
+        if ( cg.ghostSplitCount < MAX_GHOST_SPLITS ) {
+                cg.ghostSplitCheckpoint[cg.ghostSplitCount] = crossedCheckpoint;
+                cg.ghostSplitElapsed[cg.ghostSplitCount] = localElapsed;
+                cg.ghostSplitDeltaAt[cg.ghostSplitCount] = deltaMs;
+                cg.ghostSplitCount++;
+        }
+
         trap_Cvar_Update( &cg_ghostSplitAudio );
         if ( cg_ghostSplitAudio.integer && deltaMs < 0 && cgs.media.excellentSound ) {
                 trap_S_StartLocalSound( cgs.media.excellentSound, CHAN_ANNOUNCER );
@@ -2003,6 +2014,8 @@ void CG_StartRace( int time ) {
         cg.ghostSplitDeltaMs = 0;
         cg.ghostSplitDeltaTime = 0;
         cg.ghostSplitDeltaValid = qfalse;
+        cg.ghostSplitLapStart = 0;
+        cg.ghostSplitCount = 0;
 
         cg.eliminationWarningActive = qfalse;
         cg.eliminationWarningTime = 0;

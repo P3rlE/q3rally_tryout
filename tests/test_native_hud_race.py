@@ -15,6 +15,7 @@ from test_native_gfxloading import ROOT, compile_harness, run, close
 
 RACE = json.loads((ROOT / 'tests/fixtures/hud_race_layout.json').read_text())['els']
 SPRINT = json.loads((ROOT / 'tests/fixtures/hud_sprint_layout.json').read_text())['els']
+GHOST = json.loads((ROOT / 'tests/fixtures/hud_ghost_layout.json').read_text())['els']
 RACING_DM = json.loads((ROOT / 'tests/fixtures/hud_racingdm_layout.json').read_text())['els']
 NOTIFY = json.loads((ROOT / 'tests/fixtures/hud_notify_layout.json').read_text())['els']
 
@@ -48,7 +49,8 @@ def command(model, width=1600):
               m['jukebox'], m['open'], m['line'], m['time'], m['jtitle'], m['jartist'], m['jstate'],
               m['integrity'], m['armor'], m['minimap'], m['slip'], m['slipValue'],
               m['speed'], m['unit'], m['gear'], m['nos'], m['fuel'], m.get('vehicleWidth', 0),
-              ';'.join(f'{a}:{b}:{c}' for a, b, c in m.get('slots', [])), m.get('progress', '')]
+              ';'.join(f'{a}:{b}:{c}' for a, b, c in m.get('slots', [])), m.get('progress', ''),
+              m.get('posLabel', ''), ','.join(str(v) for v in m.get('kvSizes', []))]
     return [f'hudrace {width}', latin('|'.join(str(f) for f in fields))]
 
 
@@ -202,3 +204,31 @@ def test_native_sprint_hud_matches_the_design():
     for i in range(1, 8):
         tick = SPRINT[card + f'/div:2/div:{i}']
         assert abs(bar[0] + bar[2] * i / 8 - tick[0]) < 0.5
+
+
+# the ghost race board of gen.py: the gap to the ghost instead of the place, splits at the right
+GHOST_MODEL = dict(
+    RACE_MODEL, title='Ghost race \u00b7 Country', pos='-0.84', of='', posLabel='VS GHOST', lapValue='3/5',
+    kv=[('LAP', '0:38.77'), ('BEST', '0:39.61'), ('GHOST', 'PERSONAL \u00b7 1:21.40')], kvSizes=[17, 17, 14],
+    orderTitle='Splits', orderRight='vs ghost',
+    rows=[('S1', 'Start straight', '-0.21'), ('S2', 'Forest hairpin', '-0.48'), ('S3', 'Jump', '+0.12'),
+          ('S4', 'Finish', '\u2014')],
+    mirror=1, toast=0, jukebox=0, integrity='125', minimap=0, slip=0, speed='121', gear='4')
+
+
+def test_native_ghost_hud_matches_the_design():
+    mine, = layouts(command(GHOST_MODEL))
+    card, order = '/div:1/div:0', '/div:2/div:0'
+    pairs = [('card', card), ('title', card + '/div:0'),
+             ('posLabel', card + '/div:1/div:0/div:0'), ('pos', card + '/div:1/div:0/div:1'),
+             ('lapLabel', card + '/div:1/div:1/div:0'), ('lapValue', card + '/div:1/div:1/div:1'),
+             ('sep', card + '/div:2'), ('order', order), ('orderTitle', order + '/div:0/div:0'),
+             ('orderRight', order + '/div:0/div:1'), ('mirror', '/div:0/div:0'), ('vehicle', '/div:3/div:0'),
+             ('cockpit', '/div:4/div:0')] \
+        + [(f'key{i}', card + f'/div:{3 + i}/div:0') for i in range(3)] \
+        + [(f'value{i}', card + f'/div:{3 + i}/div:1') for i in range(3)] \
+        + [(f'rowPos{i}', order + f'/div:1/div:{i}/div:0') for i in range(4)] \
+        + [(f'rowName{i}', order + f'/div:1/div:{i}/div:1') for i in range(4)] \
+        + [(f'rowValue{i}', order + f'/div:1/div:{i}/div:2') for i in range(4)]
+    problems = check_all(mine, GHOST, pairs)
+    assert not problems, problems

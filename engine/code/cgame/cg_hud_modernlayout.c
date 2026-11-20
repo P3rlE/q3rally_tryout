@@ -80,15 +80,17 @@ static float MH_Width( const mhText_t *t ) {
 /* white-space: nowrap; overflow: hidden; text-overflow: ellipsis */
 static void MH_Fit( mhText_t *t, float width ) {
 	char whole[MH_TEXT_MAX];
+	/* Share Tech Mono has no "…" in its atlas: three dots, as wide as it is */
+	const char *ellipsis = t->style.font == WS_MONO ? "..." : MH_ELLIPSIS;
 	int length;
 	if ( MH_Width( t ) <= width + 0.01f ) return;
 	Q_strncpyz( whole, t->text, sizeof( whole ) );
 	for ( length = strlen( whole ); length > 0; length-- ) {
 		Q_strncpyz( t->text, whole, length + 1 );
-		Q_strcat( t->text, sizeof( t->text ), MH_ELLIPSIS );
+		Q_strcat( t->text, sizeof( t->text ), ellipsis );
 		if ( MH_Width( t ) <= width + 0.01f ) return;
 	}
-	Q_strncpyz( t->text, MH_ELLIPSIS, sizeof( t->text ) );
+	Q_strncpyz( t->text, ellipsis, sizeof( t->text ) );
 }
 
 /* a block holding one line: as wide as its text (shrink to fit) */
@@ -157,7 +159,12 @@ static void MH_Card( mhRaceLayout_t *l ) {
 	if ( l->pos || l->lapValue ) {
 		left = right = 0.0f;
 		posAbove = posBelow = 0.0f;
-		if ( l->pos ) {
+		if ( l->pos && l->posLabel ) {
+			/* label over the figure, like the lap at the right */
+			MH_Set( &l->posLabelT, &label, l->posLabel );
+			MH_Set( &l->posT, &big64, l->pos );
+			left = l->posLabelT.box.h + 4.0f + l->posT.box.h;
+		} else if ( l->pos ) {
 			MH_Set( &l->posT, &big64, l->pos );
 			MH_Set( &l->ofT, &big26, l->of );
 			posAbove = MH_Base( &l->posT );
@@ -172,7 +179,12 @@ static void MH_Card( mhRaceLayout_t *l ) {
 			right = l->lapLabelT.box.h + 4.0f + l->lapValueT.box.h;
 		}
 		h = left > right ? left : right;
-		if ( l->pos ) {
+		if ( l->pos && l->posLabel ) {
+			float top = y + h - left;
+			MH_Place( &l->posLabelT, in.x, top );
+			MH_Place( &l->posT, in.x, top + l->posLabelT.box.h + 4.0f );
+			if ( l->posT.box.w > l->posLabelT.box.w ) l->posLabelT.box.w = l->posT.box.w;	/* a column's block */
+		} else if ( l->pos ) {
 			float top = y + h - left;
 			MH_Place( &l->posT, in.x, top + posAbove - MH_Base( &l->posT ) );
 			MH_Place( &l->ofT, in.x + l->posT.box.w + 6.0f, top + posAbove - MH_Base( &l->ofT ) );
@@ -204,10 +216,11 @@ static void MH_Card( mhRaceLayout_t *l ) {
 	}
 
 	for ( i = 0; i < l->kvCount; i++ ) {
-		wsTextStyle_t key;
+		wsTextStyle_t key, value;
 		MH_Label( &key, 12.0f );
+		MH_Mono( &value, l->kvSize[i] > 0.0f ? l->kvSize[i] : 17.0f );
 		MH_Set( &l->kvKeyT[i], &key, l->kvKey[i] );
-		MH_Set( &l->kvValueT[i], &mono17, l->kvValue[i] );
+		MH_Set( &l->kvValueT[i], &value, l->kvValue[i] );
 		y += MH_BaselineRow( &l->kvKeyT[i], &l->kvValueT[i], in.x, y, in.w ) + 12.0f;
 	}
 	y -= 12.0f;

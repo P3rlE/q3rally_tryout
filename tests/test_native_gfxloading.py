@@ -429,12 +429,17 @@ int main(void) {
                 l.progress = 1; l.progressTicks = atoi(f[34]); r = strchr(f[34], ':'); *r++ = 0;
                 l.progressLeft = r; r = strchr(r, ':'); *r++ = 0; l.progressRight = r;
             }
+            if (n > 35) l.posLabel = FIELD(35);
+            for (i = 0, item = n > 36 ? f[36] : ""; *item && i < MH_KV_MAX; i++, item = more) {   /* value sizes: 17,17,14 */
+                more = strchr(item, ','); if (more) *more++ = 0; else more = item + strlen(item);
+                l.kvSize[i] = atof(item);
+            }
 #undef FIELD
             uis.glconfig.vidWidth = l.viewWidth; uis.glconfig.vidHeight = 900;
             MH_RaceLayout(&l);
 #define T(name, t) printf("\"%s\":[%g,%g,%g,%g],", name, (t).box.x, (t).box.y, (t).box.w, (t).box.h)
             printf("{");
-            rect("card", l.card); rect("sep", l.sep); T("title", l.titleT); T("pos", l.posT); T("of", l.ofT);
+            rect("card", l.card); rect("sep", l.sep); T("title", l.titleT); T("posLabel", l.posLabelT); T("pos", l.posT); T("of", l.ofT);
             T("lapLabel", l.lapLabelT); T("lapValue", l.lapValueT);
             rect("progressBar", l.progressBar); T("progressLeft", l.progressLeftT); T("progressRight", l.progressRightT);
             for (i = 0; i < l.kvCount; i++) { char k[16]; sprintf(k, "key%d", i); T(k, l.kvKeyT[i]); sprintf(k, "value%d", i); T(k, l.kvValueT[i]); }
