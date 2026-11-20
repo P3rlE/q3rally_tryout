@@ -350,6 +350,10 @@ float CG_DrawArrowToCheckpoint( float y ) {
 	if ( !cg.wrongWayStartTime || cg.wrongWayStartTime > cg.time - 2000 )
 		return y;
 
+	/* the v0.9 HUD draws it with the other big messages */
+	if ( CG_ModernHUD_Active() )
+		return y;
+
 	color = CG_FadeColor( cg.wrongWayTime, 300 );
 	if ( !color )
 		return y;

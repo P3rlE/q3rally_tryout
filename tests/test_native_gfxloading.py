@@ -388,6 +388,37 @@ int main(void) {
             printf("],\"y\":[%g,%g,%g,%g,%g,%g,%g,%g,%g],\"text\":%d,\"content\":%g,\"h2\":%g,\"x\":[%g,%g,%g]}\n",
                 l.labelY, l.h2Y, l.textY, l.h3Y, l.sizeY, l.sizeOutputY, l.zoomY, l.zoomOutputY, l.hintY,
                 l.textLines.count, l.contentHeight, l.h2Size, l.x, l.w, l.emX);
+        } else if (!strcmp(command, "hudmsg")) {
+            /* hudmsg <view width>, then: title|size|top|sub;sub */
+            static mhMessageLayout_t m; static char line[1024]; char *f[4], *r, *item, *more; int n = 0, i;
+            memset(&m, 0, sizeof(m));
+            scanf("%f\n", &m.viewWidth);
+            fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
+            for (r = line; n < 4; ) { f[n++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
+            m.title = f[0]; m.titleSize = atof(f[1]); m.top = atof(f[2]);
+            for (item = n > 3 ? f[3] : ""; *item && m.subCount < MH_SUB_MAX; item = more) {
+                more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
+                m.sub[m.subCount++] = item;
+            }
+            uis.glconfig.vidWidth = m.viewWidth; uis.glconfig.vidHeight = 900;
+            MH_MessageLayout(&m);
+            printf("{\"title\":[%g,%g,%g,%g],\"titleText\":\"%s\"", m.titleT.box.x, m.titleT.box.y, m.titleT.box.w, m.titleT.box.h, m.titleT.text);
+            for (i = 0; i < m.subCount; i++) printf(",\"sub%d\":[%g,%g,%g,%g]", i, m.subT[i].box.x, m.subT[i].box.y, m.subT[i].box.w, m.subT[i].box.h);
+            printf(",\"size\":%g}\n", m.titleT.style.size);
+        } else if (!strcmp(command, "hudspec")) {
+            /* hudspec <view width>, then: label|name|hint|hint */
+            static mhSpectatorLayout_t sp; static char line[512]; char *f[4], *r; int n = 0;
+            memset(&sp, 0, sizeof(sp));
+            scanf("%f\n", &sp.viewWidth);
+            fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
+            for (r = line; n < 4; ) { f[n++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
+            sp.label = f[0]; sp.name = f[1]; sp.hint1 = f[2]; sp.hint2 = f[3];
+            uis.glconfig.vidWidth = sp.viewWidth; uis.glconfig.vidHeight = 900;
+            MH_SpectatorLayout(&sp);
+#define B(name, b) printf("\"%s\":[%g,%g,%g,%g],", name, (b).x, (b).y, (b).w, (b).h)
+            printf("{"); B("box", sp.box); B("label", sp.labelT.box); B("name", sp.nameT.box);
+            B("hint1", sp.hint1T.box); B("hint2", sp.hint2T.box); printf("\"nameText\":\"%s\"}\n", sp.nameT.text);
+#undef B
         } else if (!strcmp(command, "hudrace")) {
             /* hudrace <view width>, then one line of fields split by |, lists by ; and : */
             static mhRaceLayout_t l; static char line[4096]; static char *f[40]; char *r, *next, *item, *more;

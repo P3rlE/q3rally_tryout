@@ -46,5 +46,11 @@ mode card and the standings changes.
 `cg_drawMMap`, `cg_drawStatus`) work as before; `cg_mmap_size` scales the
 minimap, `cg_mmap_fov` its zoom.
 
-Still to come: the big messages in the middle (countdown, GO, wrong way,
-centerprints) in the menu fonts, and the other game modes.
+In these modes the big messages in the middle are in the menu fonts too
+(the `Meldungen.dc.html` board): the countdown ("3", "2", "1", "GO!" in the
+accent), WRONG WAY, and every centerprint (also target_print) with its first
+line big and the next ones in small capitals under it. One at a time:
+countdown before wrong way before a centerprint. A spectator gets a panel at
+the bottom in the middle: whom he follows, FIRE for the next one.
+
+Still to come: the other game modes.
