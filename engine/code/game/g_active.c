@@ -652,6 +652,14 @@ static void G_DebugClientRaceSnapshot( gentity_t *ent, const char *context ) {
 SpectatorThink
 =================
 */
+/* a driver a spectator can follow or watch: in the game, not watching himself */
+static qboolean G_SpectatorTargetValid( int clientNum ) {
+	if ( clientNum < 0 || clientNum >= level.maxclients ) return qfalse;
+	if ( level.clients[clientNum].pers.connected != CON_CONNECTED ) return qfalse;
+	if ( level.clients[clientNum].sess.sessionTeam == TEAM_SPECTATOR ) return qfalse;
+	return !isRaceObserver( clientNum );
+}
+
 void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 	pmove_t	pm;
 	gclient_t	*client;
@@ -736,16 +744,36 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd ) {
 			return;
 		}
 		
-		if( client->sess.spectatorState == SPECTATOR_FREE )
-			newState = SPECTATOR_OBSERVE;
+		/* the views in turn: follow -> track cameras -> free -> follow. A
+		 * driver who has finished watches from the cameras, never free
+		 * (his car is still in the world). */
+		if ( client->sess.spectatorState == SPECTATOR_FREE )
+			newState = SPECTATOR_FOLLOW;
+		else if ( client->sess.spectatorState == SPECTATOR_OBSERVE )
+			newState = isRaceObserver( ent->s.number ) ? SPECTATOR_FOLLOW : SPECTATOR_FREE;
 		else
-			newState = client->sess.spectatorState + 1;
+			newState = SPECTATOR_OBSERVE;
 
 		switch (newState){
 		default:
 		case SPECTATOR_FOLLOW:
+			/* from the free camera: the driver followed last, or the next one */
+			if ( client->sess.spectatorState == SPECTATOR_FREE ) {
+				if ( !G_SpectatorTargetValid( client->sess.spectatorClient ) )
+					Cmd_FollowCycle_f( ent, 1 );
+				if ( !G_SpectatorTargetValid( client->sess.spectatorClient ) ) {
+					client->sess.spectatorState = SPECTATOR_FREE;
+					break;
+				}
+			}
 			trap_SendServerCommand( ent - g_entities, "print \"Spectator Mode: Follow\n\"" );
 			client->sess.spectatorState = SPECTATOR_FOLLOW;
+			break;
+
+		case SPECTATOR_FREE:
+			trap_SendServerCommand( ent - g_entities, "print \"Spectator Mode: Free\n\"" );
+			StopFollowing( ent );
+			client->ps.pm_flags &= ~PMF_OBSERVE;
 			break;
 
 		case SPECTATOR_OBSERVE:

@@ -941,6 +941,9 @@ void StopFollowing( gentity_t *ent ) {
 // END
 	ent->client->sess.spectatorState = SPECTATOR_FREE;
 	ent->client->ps.pm_flags &= ~PMF_FOLLOW;
+	/* following copied the driver's playerState, his team with it: our own
+	 * again, or cgame draws his HUD over the track cameras */
+	ent->client->ps.persistant[PERS_TEAM] = ent->client->sess.sessionTeam;
 	ent->r.svFlags &= ~SVF_BOT;
 	ent->client->ps.clientNum = ent - g_entities;
 
