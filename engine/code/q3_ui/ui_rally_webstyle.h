@@ -87,6 +87,8 @@ float	WS_TextWidth( const wsTextStyle_t *style, const char *text, int length );
 /* Content area and baseline of a line box, relative to the line top. */
 float	WS_TextTop( const wsTextStyle_t *style );
 float	WS_Baseline( const wsTextStyle_t *style );
+/* ascent and descent, rounded like Chrome: the height of line-height: normal */
+float	WS_ContentHeight( const wsTextStyle_t *style );
 /* Greedy line breaking at spaces, like a block of normal white-space. */
 void	WS_Wrap( const wsTextStyle_t *style, const char *text, float maxWidth, wsLines_t *lines );
 /* Chrome's LayoutUnit: lengths cut to 1/64 px */

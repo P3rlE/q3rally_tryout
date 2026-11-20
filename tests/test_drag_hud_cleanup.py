@@ -27,6 +27,8 @@ qboolean isRallyNonDMRace(void) { return isRallyRace(); }
 qboolean BG_GametypeIsTimedRace(int mode) { return mode==GT_RACING || mode==GT_SPRINT || mode==GT_DRAG; }
 qboolean CG_IsSprintTrack(void) { return cgs.gametype==GT_SPRINT || cgs.gametype==GT_DRAG; }
 qboolean CG_IntroCam_IsActive(void) { return qfalse; }
+qboolean CG_ModernHUD_Active(void) { return qfalse; }
+void CG_ModernHUD_DrawStandings(void) {}
 float CG_DrawArrowToCheckpoint(float y) { arrowCalls++; return y; }
 void CG_UpdateGhostSplitDelta(void) { ghostUpdates++; }
 float CG_DrawScores(float x,float y) { return y; }

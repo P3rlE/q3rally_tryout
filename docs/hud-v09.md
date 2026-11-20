@@ -1,0 +1,46 @@
+# The in-game HUD of v0.9
+
+The HUD follows the menus: dark panels with a 1px line and an orange top
+edge, the menu fonts, and the centre of the screen left to the race. Each
+module sits in the same corner in every game mode; only the content of the
+mode card and the standings changes.
+
+| Where | What |
+|---|---|
+| top left | mode card: place, lap, lap and best time, gap to the car ahead (or the lead) |
+| top right | standings: up to six rows around your place |
+| top centre | rear view, below it the notification lane (pickups, rewards, achievements, rank, messages) |
+| bottom left | jukebox (one line, opened for 15 s on a change of track), the car: integrity, armor, trunk items and weapons |
+| bottom right | minimap, slipstream (while active), cockpit: speed, gear, revs, NOS, fuel |
+
+## Design and code
+
+- The design is a set of 1600x900 pages, one per game mode, written by
+  `tools/ui_webstyle/hud_design/gen.py` (also the Design canvas "Q3Rally HUD –
+  Entwurf v0.9"). `measure_hud_design.py` measures a page in Chrome into
+  `tests/fixtures/hud_*_layout.json`.
+- `engine/code/cgame/cg_hud_modernlayout.c` lays the modules out in design
+  pixels (900 to the screen height) the way Chrome lays out the page;
+  `tests/test_native_hud_race.py` holds it against the measurements (0.5 px).
+- `engine/code/cgame/cg_hud_modern.c` fills it from the game and draws it,
+  scaled by the screen height. The corners follow the screen edges, so 4:3
+  and ultrawide keep the same distances from the edges.
+- The icons are drawn by Chrome from the design's SVG
+  (`build_hud_icons.py` → `baseq3r/menu/art/hud_*.png`).
+- The menu fonts have extra atlas sizes for the HUD (up to 4K) and an em dash.
+
+## Game modes
+
+| Mode | v0.9 HUD |
+|---|---|
+| Race | yes |
+| all others | the old HUD for now |
+
+`cg_hudStyle 0` shows the old HUD in every mode. The HUD toggles
+(`cg_hudShowTimes`, `cg_hudShowLaps`, `cg_hudShowPosition`,
+`cg_hudShowOpponentList`, `cg_hudShowSlipstream`, `cg_drawRearView`,
+`cg_drawMMap`, `cg_drawStatus`) work as before; `cg_mmap_size` scales the
+minimap, `cg_mmap_fov` its zoom.
+
+Still to come: the big messages in the middle (countdown, GO, wrong way,
+centerprints) in the menu fonts, and the other game modes.

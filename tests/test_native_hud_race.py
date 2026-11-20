@@ -1,0 +1,170 @@
+"""The in-game HUD of a race has to look like its design.
+
+tests/fixtures/hud_race_layout.json holds what Chrome reports for the
+design's race board (tools/ui_webstyle/hud_design/measure_hud_design.py
+Main.dc.html), tests/fixtures/hud_notify_layout.json the board with the
+notifications and the opened jukebox, tests/fixtures/hud_racingdm_layout.json
+the race with weapons (its car with armor, weapons and an item). The native layout runs here with the
+design's content (tools/ui_webstyle/hud_design/gen.py) against them.
+"""
+import json
+import pathlib
+import tempfile
+
+from test_native_gfxloading import ROOT, compile_harness, run, close
+
+RACE = json.loads((ROOT / 'tests/fixtures/hud_race_layout.json').read_text())['els']
+RACING_DM = json.loads((ROOT / 'tests/fixtures/hud_racingdm_layout.json').read_text())['els']
+NOTIFY = json.loads((ROOT / 'tests/fixtures/hud_notify_layout.json').read_text())['els']
+
+# the race board of gen.py
+RACE_MODEL = {
+    'title': 'Race · Downtown', 'pos': 'P3', 'of': '/ 6', 'lapLabel': 'LAP', 'lapValue': '2/5',
+    'kv': [('LAP', '0:42.18'), ('BEST', '0:40.95'), ('TO P2', '+1.07')],
+    'orderTitle': 'Race order', 'orderRight': 'Gap',
+    'rows': [('01', 'Sam', 'LEADER'), ('02', 'Bobby', '+0.85'), ('03', 'Player', '+1.92'),
+             ('04', 'Janine', '+2.40'), ('05', 'Vlad', '+4.07'), ('06', 'Emma', '+6.31')],
+    'mirror': 1, 'toast': 1, 'toastIcon': 1, 'tag': 'Personal best', 'toastTitle': 'Lap 1 · 0:40.95',
+    'sub': 'BEST LAP ON Q3R_DOWNTOWN',
+    'jukebox': 1, 'open': 0, 'line': 'Artist — Track title', 'time': '1:42',
+    'jtitle': 'Track title', 'jartist': 'Artist', 'jstate': 'NOW PLAYING',
+    'integrity': '118', 'armor': '', 'minimap': 1, 'slip': 1, 'slipValue': '+8%',
+    'speed': '142', 'unit': 'MPH', 'gear': '4', 'nos': '60%', 'fuel': '82%',
+}
+
+
+def latin(text):
+    # the game's strings are Latin-1; the body faces carry the em dash at 0x9F
+    return text.replace('—', '\x9f')
+
+
+def command(model, width=1600):
+    m = model
+    fields = [m['title'], m['pos'], m['of'], m['lapLabel'], m['lapValue'],
+              ';'.join(f'{k}:{v}' for k, v in m['kv']), m['orderTitle'], m['orderRight'],
+              ';'.join(f'{p}:{n}:{v}' for p, n, v in m['rows']),
+              m['mirror'], m['toast'], m['toastIcon'], m['tag'], m['toastTitle'], m['sub'],
+              m['jukebox'], m['open'], m['line'], m['time'], m['jtitle'], m['jartist'], m['jstate'],
+              m['integrity'], m['armor'], m['minimap'], m['slip'], m['slipValue'],
+              m['speed'], m['unit'], m['gear'], m['nos'], m['fuel'], m.get('vehicleWidth', 0),
+              ';'.join(f'{a}:{b}:{c}' for a, b, c in m.get('slots', []))]
+    return [f'hudrace {width}', latin('|'.join(str(f) for f in fields))]
+
+
+def layouts(*commands):
+    with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as directory:
+        exe = compile_harness(pathlib.Path(directory))
+        return [json.loads(line) for line in run(exe, [line for c in commands for line in c])]
+
+
+def check_all(mine, els, pairs):
+    problems = []
+    for name, path in pairs:
+        if not close(mine[name], els[path]):
+            problems.append((name, [round(v, 3) for v in mine[name]], [round(v, 3) for v in els[path]]))
+    return problems
+
+
+CARD = '/div:1/div:0'
+ORDER = '/div:2/div:0'
+TOAST = '/div:0/div:1'
+BL = '/div:3'
+BR = '/div:4'
+RACE_PAIRS = [
+    ('mirror', '/div:0/div:0'), ('toast', TOAST), ('toastIcon', TOAST + '/div:0'),
+    ('toastTag', TOAST + '/div:1/div:0'), ('toastTitle', TOAST + '/div:1/div:1'), ('toastSub', TOAST + '/div:1/div:2'),
+    ('card', CARD), ('title', CARD + '/div:0'), ('sep', CARD + '/div:2'),
+    ('pos', CARD + '/div:1/div:0/div:0'), ('of', CARD + '/div:1/div:0/div:1'),
+    ('lapLabel', CARD + '/div:1/div:1/div:0'), ('lapValue', CARD + '/div:1/div:1/div:1'),
+    ('order', ORDER), ('orderTitle', ORDER + '/div:0/div:0'), ('orderRight', ORDER + '/div:0/div:1'),
+    ('jukebox', BL + '/div:0'), ('jukeboxIcon', BL + '/div:0/div:0/svg:0'), ('jukeboxLine', BL + '/div:0/div:0/div:1'),
+    ('jukeboxTime', BL + '/div:0/div:0/div:2'), ('jukeboxBar', BL + '/div:0/div:1'),
+    ('vehicle', BL + '/div:1'), ('integrityLabel', BL + '/div:1/div:0/div:0/div:0'),
+    ('integrity', BL + '/div:1/div:0/div:0/div:1'), ('integrityBar', BL + '/div:1/div:1'),
+    ('minimap', BR + '/div:0'), ('minimapView', BR + '/div:0/svg:0'),
+    ('slip', BR + '/div:1'), ('slipLabel', BR + '/div:1/div:0/div:0'), ('slipValue', BR + '/div:1/div:0/div:1'),
+    ('slipBar', BR + '/div:1/div:1'),
+    ('cockpit', BR + '/div:2'), ('speed', BR + '/div:2/div:0/div:0/div:0'), ('unit', BR + '/div:2/div:0/div:0/div:1'),
+    ('gearLabel', BR + '/div:2/div:0/div:1/div:0'), ('gearBox', BR + '/div:2/div:0/div:1/div:1'),
+    ('gear', BR + '/div:2/div:0/div:1/div:1/div:0'), ('rpm', BR + '/div:2/div:1'),
+    ('nosLabel', BR + '/div:2/div:2/div:0/div:0/div:0'), ('nosValue', BR + '/div:2/div:2/div:0/div:0/div:1'),
+    ('nosBar', BR + '/div:2/div:2/div:0/div:1'),
+    ('fuelLabel', BR + '/div:2/div:2/div:1/div:0/div:0'), ('fuelValue', BR + '/div:2/div:2/div:1/div:0/div:1'),
+    ('fuelBar', BR + '/div:2/div:2/div:1/div:1'),
+] + [(f'key{i}', CARD + f'/div:{3 + i}/div:0') for i in range(3)] \
+  + [(f'value{i}', CARD + f'/div:{3 + i}/div:1') for i in range(3)] \
+  + [(f'row{i}', ORDER + f'/div:1/div:{i}') for i in range(6)] \
+  + [(f'rowPos{i}', ORDER + f'/div:1/div:{i}/div:0') for i in range(6)] \
+  + [(f'rowName{i}', ORDER + f'/div:1/div:{i}/div:1') for i in range(6)] \
+  + [(f'rowValue{i}', ORDER + f'/div:1/div:{i}/div:2') for i in range(6)]
+
+
+def test_native_race_hud_matches_the_design():
+    mine, = layouts(command(RACE_MODEL))
+    problems = check_all(mine, RACE, RACE_PAIRS)
+    assert not problems, problems
+
+
+def test_the_opened_jukebox_matches_the_design():
+    # the notifications board shows it in a stack 1150px from the left, 253.19px down
+    model = dict(RACE_MODEL, open=1, time='1:42 / 3:58', line='SHUFFLE · REPEAT ALL')
+    mine, = layouts(command(model))
+    box = NOTIFY['/div:3/div:5']
+    dx, dy = box[0] - mine['jukebox'][0], box[1] - mine['jukebox'][1]
+
+    def moved(name):
+        x, y, w, h = mine[name]
+        return [x + dx, y + dy, w, h]
+
+    panel = '/div:3/div:5'
+    pairs = [('jukebox', panel), ('jukeboxState', panel + '/div:0/div:0'), ('jukeboxTime', panel + '/div:0/div:1'),
+             ('jukeboxTitle', panel + '/div:1/div:0'), ('jukeboxArtist', panel + '/div:1/div:1'),
+             ('jukeboxBar', panel + '/div:2'), ('jukeboxModes', panel + '/div:3/div:1')] \
+        + [(f'jukeboxButton{i}', panel + f'/div:3/div:0/div:{i}') for i in range(3)]
+    problems = [(n, moved(n), NOTIFY[p]) for n, p in pairs if not close(moved(n), NOTIFY[p])]
+    assert not problems, problems
+
+
+def test_the_columns_keep_to_their_corners_on_any_screen():
+    # 4:3 and 21:9: the corners follow the edges, the centre stays centred
+    narrow, wide = layouts(command(RACE_MODEL, 1200), command(RACE_MODEL, 2100))
+    for mine, width in ((narrow, 1200), (wide, 2100)):
+        assert mine['card'][0] == 32
+        assert abs(mine['order'][0] + mine['order'][2] - (width - 32)) < 0.01
+        assert abs(mine['cockpit'][0] + mine['cockpit'][2] - (width - 32)) < 0.01
+        assert abs(mine['mirror'][0] + mine['mirror'][2] / 2 - width / 2) < 0.01
+        assert mine['card'][0] + mine['card'][2] < mine['mirror'][0]
+        assert mine['mirror'][0] + mine['mirror'][2] < mine['order'][0]
+
+
+def test_long_names_are_cut_with_an_ellipsis():
+    model = dict(RACE_MODEL, rows=[('01', 'A driver with a very long name indeed', 'LEADER')])
+    mine, = layouts(command(model))
+    assert mine['name0'].endswith('\x9e')
+    assert mine['rowName0'][2] < 200
+
+
+def test_the_car_with_weapons_and_an_item_matches_the_design():
+    # the race with weapons: the car's card is 330px wide, armor 25, three slots
+    model = dict(RACE_MODEL, integrity='71', armor='25', vehicleWidth=330, jukebox=0,
+                 slots=[('FRONT', '140', 'Machine gun'), ('REAR', '3', 'Mines'), ('ITEM', '1', 'Smoke')])
+    mine, = layouts(command(model))
+    car = '/div:3/div:1'
+    pairs = [('vehicle', car), ('integrityLabel', car + '/div:0/div:0/div:0'), ('integrity', car + '/div:0/div:0/div:1'),
+             ('armorLabel', car + '/div:0/div:1/div:0'), ('armor', car + '/div:0/div:1/div:1'),
+             ('integrityBar', car + '/div:1'), ('vehicleSep', car + '/div:2')]
+    for i in range(3):
+        slot = car + f'/div:3/div:{i}'
+        pairs += [(f'slotLabel{i}', slot + '/div:0'), (f'slotIcon{i}', slot + '/div:1/svg:0'),
+                  (f'slotValue{i}', slot + '/div:1/div:1'), (f'slotName{i}', slot + '/div:2')]
+    problems = check_all(mine, RACING_DM, pairs)
+    assert not problems, problems
+
+
+def test_the_hud_icons_are_there():
+    # tools/ui_webstyle/hud_design/build_hud_icons.py; cgame/cg_hud_modern.c registers them
+    source = (ROOT / 'engine/code/cgame/cg_hud_modern.c').read_text()
+    for name in ('hud_note', 'hud_prev', 'hud_play', 'hud_next', 'hud_chevron', 'hud_message'):
+        png = (ROOT / f'baseq3r/menu/art/{name}.png').read_bytes()
+        assert png[16:24] == (64).to_bytes(4, 'big') * 2, name
+        assert f'"menu/art/{name}"' in source

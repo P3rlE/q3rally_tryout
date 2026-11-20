@@ -441,6 +441,60 @@ void CG_JukeboxFrame( void ) {
     }
 }
 
+/*
+=================
+CG_JukeboxView
+
+What the v0.9 HUD shows of the jukebox: one line while a track plays,
+opened for a while after a change (cg_hud_modern.c).
+=================
+*/
+qboolean CG_JukeboxView( cgJukeboxView_t *view ) {
+    int index, elapsed, duration;
+    char elapsedText[16], durationText[16];
+    const char *title, *artist;
+
+    memset( view, 0, sizeof( *view ) );
+    view->playing = cg_jukebox.active && cg_jukebox.trackCount > 0;
+    view->open = cg_jukebox.displayExpireTime > cg.time && cg_jukebox.statusLine[0];
+    if ( !view->playing && !view->open ) {
+        return qfalse;
+    }
+    Com_sprintf( view->modes, sizeof( view->modes ), "%sREPEAT %s",
+        cg_jukeboxShuffle.integer ? "SHUFFLE \xb7 " : "", CG_JukeboxGetRepeatModeLabel() );
+    if ( !view->playing ) {
+        Q_strncpyz( view->state, "JUKEBOX", sizeof( view->state ) );
+        Q_strncpyz( view->title, cg_jukebox.statusLine, sizeof( view->title ) );
+        Q_strncpyz( view->line, cg_jukebox.statusLine, sizeof( view->line ) );
+        Q_strncpyz( view->time, "--:--", sizeof( view->time ) );
+        Q_strncpyz( view->times, "--:--", sizeof( view->times ) );
+        return qtrue;
+    }
+    index = cg_jukebox.currentTrack;
+    title = cg_jukebox.trackTitles[index][0] ? cg_jukebox.trackTitles[index] : cg_jukebox.trackNames[index];
+    artist = cg_jukebox.trackArtists[index];
+    Q_strncpyz( view->state, "NOW PLAYING", sizeof( view->state ) );
+    Q_strncpyz( view->title, title, sizeof( view->title ) );
+    if ( artist[0] ) {
+        Q_strncpyz( view->artist, artist, sizeof( view->artist ) );
+        Com_sprintf( view->line, sizeof( view->line ), "%s \x9f %s", artist, title );
+    } else {
+        Com_sprintf( view->artist, sizeof( view->artist ), "TRACK %02i/%02i", index + 1, cg_jukebox.trackCount );
+        Q_strncpyz( view->line, title, sizeof( view->line ) );
+    }
+    duration = cg_jukebox.trackDurations[index];
+    elapsed = cg.time - cg_jukebox.trackStartTime;
+    if ( elapsed < 0 ) elapsed = 0;
+    if ( duration > 0 && elapsed > duration ) elapsed = duration;
+    CG_JukeboxFormatDuration( elapsed > 0 ? elapsed : 1, elapsedText, sizeof( elapsedText ) );
+    if ( elapsed <= 0 ) Q_strncpyz( elapsedText, "0:00", sizeof( elapsedText ) );
+    CG_JukeboxFormatDuration( duration, durationText, sizeof( durationText ) );
+    Q_strncpyz( view->time, elapsedText, sizeof( view->time ) );
+    Com_sprintf( view->times, sizeof( view->times ), "%s / %s", elapsedText, durationText );
+    view->progress = duration > 0 ? (float)elapsed / duration : 0.0f;
+    return qtrue;
+}
+
 void CG_JukeboxDraw( float x, float y, float w, float h ) {
     vec4_t backgroundColor = { 0.008f, 0.012f, 0.016f, 0.82f };
     vec4_t borderColor = { 0.300f, 0.390f, 0.430f, 0.78f };

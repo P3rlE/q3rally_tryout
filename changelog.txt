@@ -16,6 +16,14 @@ License:
 
 Changed:
 
+- New in-game HUD in the look of the menus (docs/hud-v09.md), one game mode
+  at a time, starting with the race: panels in the corners instead of the
+  strip along the bottom, the centre of the screen kept free. The mode's
+  card (place, lap, times, the gap to the car ahead), the race order, the
+  rear view and the notifications at the top, the car (integrity, trunk
+  items) and the jukebox at the bottom left, minimap, slipstream and the
+  cockpit (speed, gear, revs, NOS, fuel) at the bottom right. It scales
+  with the screen height; cg_hudStyle 0 brings the old HUD back.
 - The graphics loading screen is drawn by the game again, on every
   platform, and looks exactly like the WebUI's "Getting ready." screen:
   the layout follows the WebUI's CSS, the text uses its fonts (Barlow,

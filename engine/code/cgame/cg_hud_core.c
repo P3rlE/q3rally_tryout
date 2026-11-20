@@ -1426,7 +1426,9 @@ qboolean CG_DrawHUD( void ) {
         trap_SendClientCommand( "score" );
     }
 
-    if ( isRallyRace() && cg_hudShowOpponentList.integer &&
+    if ( CG_ModernHUD_Active() ) {
+        CG_ModernHUD_DrawStandings();
+    } else if ( isRallyRace() && cg_hudShowOpponentList.integer &&
          ( cgs.gametype != GT_DRAG || cgs.numRacers > 1 ) ) {
         CG_DrawRacingOrderHUD( 10.0f );
     }

@@ -721,6 +721,12 @@ menu/art/fx_yel.tga,1068,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/gs_arrows_0.tga,262683,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/gs_arrows_l.tga,131611,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/art/gs_arrows_r.tga,131611,Oberfläche menu,Oberfläche,eigen (alter Name),,E
+menu/art/hud_chevron.png,681,Oberfläche menu,Oberfläche,eigen (generiert),tools/ui_webstyle/hud_design/build_hud_icons.py,
+menu/art/hud_message.png,726,Oberfläche menu,Oberfläche,eigen (generiert),tools/ui_webstyle/hud_design/build_hud_icons.py,
+menu/art/hud_next.png,1309,Oberfläche menu,Oberfläche,eigen (generiert),tools/ui_webstyle/hud_design/build_hud_icons.py,
+menu/art/hud_note.png,1552,Oberfläche menu,Oberfläche,eigen (generiert),tools/ui_webstyle/hud_design/build_hud_icons.py,
+menu/art/hud_play.png,1265,Oberfläche menu,Oberfläche,eigen (generiert),tools/ui_webstyle/hud_design/build_hud_icons.py,
+menu/art/hud_prev.png,1293,Oberfläche menu,Oberfläche,eigen (generiert),tools/ui_webstyle/hud_design/build_hud_icons.py,
 menu/art/maps_select.tga,66075,Oberfläche menu,Oberfläche,OpenArena,,A
 menu/art/maps_selected.tga,16923,Oberfläche menu,Oberfläche,OpenArena,,A
 menu/art/menu_back.jpg,108314,Oberfläche menu,Oberfläche,unbekannt,,F
@@ -744,14 +750,19 @@ menu/art/switch_off.tga,4635,Oberfläche menu,Oberfläche,OpenArena,,B
 menu/art/switch_on.tga,4635,Oberfläche menu,Oberfläche,OpenArena,,B
 menu/art/unknownmap.tga,1921139,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/fonts/Barlow-OFL.txt,4377,Schriften,Oberfläche,unbekannt,,
-menu/fonts/barlow.dat,37844,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
-menu/fonts/barlow_136.png,13418,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
-menu/fonts/barlow_160.png,16340,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
-menu/fonts/barlow_bold.dat,48172,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
-menu/fonts/barlow_bold_160.png,20053,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
-menu/fonts/barlow_bold_187.png,24490,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
-menu/fonts/barlow_bold_256.png,35571,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
-menu/fonts/barlow_bold_320.png,45645,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow.dat,63840,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_136.png,13309,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_160.png,16309,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_200.png,21870,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_256.png,31157,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_320.png,38032,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_400.png,52149,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_480.png,63595,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_bold.dat,48276,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_bold_160.png,20335,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_bold_187.png,24481,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_bold_256.png,35610,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlow_bold_320.png,45754,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
 menu/fonts/BarlowCondensed-OFL.txt,4377,Schriften,Oberfläche,unbekannt,,
 menu/fonts/barlowcondensed.dat,82188,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
 menu/fonts/barlowcondensed_1120.png,131162,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
@@ -766,16 +777,28 @@ menu/fonts/barlowcondensed_560.png,60819,Schriften,Oberfläche,eigen (generiert)
 menu/fonts/barlowcondensed_660.png,73344,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
 menu/fonts/barlowcondensed_780.png,90115,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
 menu/fonts/barlowcondensed_920.png,105838,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
-menu/fonts/barlowcondensed_italic.dat,29316,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic.dat,52360,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
 menu/fonts/barlowcondensed_italic_1120.png,106403,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic_1360.png,143744,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic_1680.png,178322,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic_208.png,16469,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic_240.png,18909,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic_280.png,22730,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic_320.png,27611,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/barlowcondensed_italic_380.png,32672,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
 menu/fonts/barlowcondensed_italic_480.png,42623,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
 menu/fonts/barlowcondensed_italic_560.png,49845,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
 menu/fonts/barlowcondensed_italic_660.png,60685,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
 menu/fonts/barlowcondensed_italic_780.png,70551,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
 menu/fonts/barlowcondensed_italic_920.png,87781,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
 menu/fonts/ShareTechMono-OFL.txt,4429,Schriften,Oberfläche,unbekannt,,
-menu/fonts/sharetechmono.dat,6304,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/sharetechmono.dat,29844,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
 menu/fonts/sharetechmono_128.png,11178,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/sharetechmono_160.png,13610,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/sharetechmono_200.png,17942,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/sharetechmono_256.png,22343,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/sharetechmono_320.png,29499,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
+menu/fonts/sharetechmono_400.png,36082,Schriften,Oberfläche,eigen (generiert),tools/ui_webstyle/build_ui_fonts.py,
 menu/medals/medal_accuracy.tga,262683,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/medals/medal_assist.tga,262683,Oberfläche menu,Oberfläche,eigen (alter Name),,E
 menu/medals/medal_capture.tga,262683,Oberfläche menu,Oberfläche,eigen (alter Name),,E

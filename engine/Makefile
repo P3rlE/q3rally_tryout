@@ -2742,6 +2742,8 @@ Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_hud_core.o \
   $(B)/$(BASEGAME)/cgame/cg_hud_panel.o \
   $(B)/$(BASEGAME)/cgame/cg_hud_panellayout.o \
+  $(B)/$(BASEGAME)/cgame/cg_hud_modernlayout.o \
+  $(B)/$(BASEGAME)/cgame/cg_hud_modern.o \
   $(B)/$(BASEGAME)/cgame/ui_rally_webstyle.o \
   $(B)/$(BASEGAME)/cgame/cg_hud_racing.o \
   $(B)/$(BASEGAME)/cgame/cg_hud_derby.o \

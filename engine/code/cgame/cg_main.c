@@ -162,6 +162,7 @@ vmCvar_t	cg_crosshairY;
 vmCvar_t	cg_crosshairHealth;
 vmCvar_t	cg_draw2D;
 vmCvar_t	cg_drawStatus;
+vmCvar_t	cg_hudStyle;
 vmCvar_t	cg_animSpeed;
 vmCvar_t	cg_debugAnim;
 vmCvar_t	cg_debugPosition;
@@ -340,6 +341,8 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_gibs, "cg_gibs", "1", CVAR_ARCHIVE  },
 	{ &cg_draw2D, "cg_draw2D", "1", CVAR_ARCHIVE  },
 	{ &cg_drawStatus, "cg_drawStatus", "1", CVAR_ARCHIVE  },
+	/* 1: the v0.9 HUD where a game mode has it (cg_hud_modern.c), 0: the old one */
+	{ &cg_hudStyle, "cg_hudStyle", "1", CVAR_ARCHIVE },
 	{ &cg_drawTimer, "cg_drawTimer", "0", CVAR_ARCHIVE  },
 	{ &cg_drawFPS, "cg_drawFPS", "0", CVAR_ARCHIVE  },
     { &cg_sigilSwitch, "cg_sigilSwitch", "0", CVAR_ARCHIVE  },

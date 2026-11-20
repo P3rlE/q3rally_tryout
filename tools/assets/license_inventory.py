@@ -136,6 +136,7 @@ GEN_RULES = [
     (r'^menu/ui/web_[^/]+\.png$', 'tools/ui_webstyle/build_ui_art.py'),
     (r'^scripts/q3r_webstyle\.shader$', 'tools/ui_webstyle'),
     (r'^menu/fonts/[^/]+\.(dat|png)$', 'tools/ui_webstyle/build_ui_fonts.py'),
+    (r'^menu/art/hud_[a-z]+\.png$', 'tools/ui_webstyle/hud_design/build_hud_icons.py'),
     (r'^fonts/(q3r_console\.png|fontimage_17\.dat)$', 'tools/ui_webstyle/build_console_font.py'),
 ]
 
