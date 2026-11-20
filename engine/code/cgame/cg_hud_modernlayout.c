@@ -232,7 +232,7 @@ static void MH_Card( mhRaceLayout_t *l ) {
    ------------------------------------------------------------------------- */
 
 static void MH_Order( mhRaceLayout_t *l ) {
-	wsTextStyle_t label, mono13, text15;
+	wsTextStyle_t label, mono13, text15, label11, big20;
 	wsRect_t in;
 	float y;
 	int i;
@@ -240,6 +240,8 @@ static void MH_Order( mhRaceLayout_t *l ) {
 	MH_Label( &label, 12.0f );
 	MH_Mono( &mono13, 13.0f );
 	MH_Text( &text15, 15.0f );
+	MH_Label( &label11, 11.0f );
+	MH_Big( &big20, 20.0f );
 
 	l->order.x = l->viewWidth - MH_SIDE - MH_ORDER_W;
 	l->order.y = MH_TOP;
@@ -251,6 +253,29 @@ static void MH_Order( mhRaceLayout_t *l ) {
 	MH_Set( &l->orderTitleT, &label, l->orderTitle );
 	MH_Set( &l->orderRightT, &label, l->orderRight );
 	y += MH_BaselineRow( &l->orderTitleT, &l->orderRightT, in.x, y, in.w ) + 10.0f;
+
+	/* the teams: a grid of equal cells 4px apart, padding 5px 8px, name and
+	 * figure at the ends, centred */
+	if ( l->teamCount > 0 ) {
+		float cellW = ( in.w - 4.0f * ( l->teamCount - 1 ) ) / l->teamCount, h = 0.0f;
+		for ( i = 0; i < l->teamCount; i++ ) {
+			MH_Set( &l->teamNameT[i], &label11, l->teamName[i] );
+			MH_Set( &l->teamValueT[i], &big20, l->teamValue[i] );
+			if ( l->teamNameT[i].box.h > h ) h = l->teamNameT[i].box.h;
+			if ( l->teamValueT[i].box.h > h ) h = l->teamValueT[i].box.h;
+		}
+		h += 10.0f;
+		for ( i = 0; i < l->teamCount; i++ ) {
+			wsRect_t *c = &l->teamCell[i];
+			c->x = in.x + i * ( cellW + 4.0f );
+			c->y = y;
+			c->w = cellW;
+			c->h = h;
+			MH_Place( &l->teamNameT[i], c->x + 8.0f, c->y + ( h - l->teamNameT[i].box.h ) * 0.5f );
+			MH_Place( &l->teamValueT[i], c->x + c->w - 8.0f - l->teamValueT[i].box.w, c->y + ( h - l->teamValueT[i].box.h ) * 0.5f );
+		}
+		y += h + 10.0f;
+	}
 
 	/* rows: margin 0 -8px, 26px high, padding 0 8px, gap 10px, centred */
 	for ( i = 0; i < l->rowCount; i++ ) {
@@ -264,6 +289,12 @@ static void MH_Order( mhRaceLayout_t *l ) {
 		MH_Set( &l->rowPosT[i], &mono13, l->rowPos[i] );
 		MH_Place( &l->rowPosT[i], x, r->y + ( r->h - l->rowPosT[i].box.h ) * 0.5f );
 		x += l->rowPosT[i].box.w + 10.0f;
+		if ( l->rowSwatch ) {
+			l->rowSwatchBox[i].x = x;
+			l->rowSwatchBox[i].y = r->y + ( r->h - 8.0f ) * 0.5f;
+			l->rowSwatchBox[i].w = l->rowSwatchBox[i].h = 8.0f;
+			x += 8.0f + 10.0f;
+		}
 		valueW = MH_Set( &l->rowValueT[i], &mono13, l->rowValue[i] );
 		MH_Place( &l->rowValueT[i], r->x + r->w - 8.0f - valueW, r->y + ( r->h - l->rowValueT[i].box.h ) * 0.5f );
 		MH_Set( &l->rowNameT[i], &text15, l->rowName[i] );

@@ -30,6 +30,7 @@ so a test can hold it against what Chrome reports for the design
 #define MH_RPM_SEGMENTS		20
 #define MH_RPM_HOT			16		/* segments from here on light in the accent */
 #define MH_SLOTS_MAX		3		/* front, rear, item */
+#define MH_TEAMS_MAX		4
 #define MH_ELLIPSIS			"\x9e"	/* the body faces' "..." */
 
 typedef struct {
@@ -57,6 +58,9 @@ typedef struct {
 	/* top right: the standings */
 	qboolean	standings;
 	const char	*orderTitle, *orderRight;
+	int			teamCount;			/* the teams' standing over the rows, in their colours */
+	const char	*teamName[MH_TEAMS_MAX], *teamValue[MH_TEAMS_MAX];
+	qboolean	rowSwatch;			/* a square in the driver's team colour before the name */
 	int			rowCount;
 	const char	*rowPos[MH_ROWS_MAX], *rowName[MH_ROWS_MAX], *rowValue[MH_ROWS_MAX];
 
@@ -91,6 +95,8 @@ typedef struct {
 	wsRect_t	order, row[MH_ROWS_MAX];
 	mhText_t	orderTitleT, orderRightT;
 	mhText_t	rowPosT[MH_ROWS_MAX], rowNameT[MH_ROWS_MAX], rowValueT[MH_ROWS_MAX];
+	wsRect_t	teamCell[MH_TEAMS_MAX], rowSwatchBox[MH_ROWS_MAX];
+	mhText_t	teamNameT[MH_TEAMS_MAX], teamValueT[MH_TEAMS_MAX];
 
 	wsRect_t	mirrorBox, toastBox, toastIconBox;
 	mhText_t	toastTagT, toastTitleT, toastSubT;

@@ -16,6 +16,7 @@ from test_native_gfxloading import ROOT, compile_harness, run, close
 RACE = json.loads((ROOT / 'tests/fixtures/hud_race_layout.json').read_text())['els']
 SPRINT = json.loads((ROOT / 'tests/fixtures/hud_sprint_layout.json').read_text())['els']
 GHOST = json.loads((ROOT / 'tests/fixtures/hud_ghost_layout.json').read_text())['els']
+TEAM_RACE = json.loads((ROOT / 'tests/fixtures/hud_teamrace_layout.json').read_text())['els']
 RACING_DM = json.loads((ROOT / 'tests/fixtures/hud_racingdm_layout.json').read_text())['els']
 NOTIFY = json.loads((ROOT / 'tests/fixtures/hud_notify_layout.json').read_text())['els']
 
@@ -50,7 +51,8 @@ def command(model, width=1600):
               m['integrity'], m['armor'], m['minimap'], m['slip'], m['slipValue'],
               m['speed'], m['unit'], m['gear'], m['nos'], m['fuel'], m.get('vehicleWidth', 0),
               ';'.join(f'{a}:{b}:{c}' for a, b, c in m.get('slots', [])), m.get('progress', ''),
-              m.get('posLabel', ''), ','.join(str(v) for v in m.get('kvSizes', []))]
+              m.get('posLabel', ''), ','.join(str(v) for v in m.get('kvSizes', [])),
+              ';'.join(f'{n}:{v}' for n, v in m.get('teams', [])), m.get('swatch', 0)]
     return [f'hudrace {width}', latin('|'.join(str(f) for f in fields))]
 
 
@@ -231,4 +233,29 @@ def test_native_ghost_hud_matches_the_design():
         + [(f'rowName{i}', order + f'/div:1/div:{i}/div:1') for i in range(4)] \
         + [(f'rowValue{i}', order + f'/div:1/div:{i}/div:2') for i in range(4)]
     problems = check_all(mine, GHOST, pairs)
+    assert not problems, problems
+
+
+# the team race board of gen.py: the race with the team's colour and the teams over the order
+TEAM_RACE_MODEL = dict(
+    RACE_MODEL, title='Team race \u00b7 Downtown', toast=0,
+    kv=[('LAP', '0:42.18'), ('BEST', '0:40.95'), ('TO P2', '+1.07'), ('YOUR TEAM', 'BLUE')],
+    orderTitle='Team race order', teams=[('RED', '1:42.10'), ('BLUE', '--')], swatch=1)
+
+
+def test_native_team_race_hud_matches_the_design():
+    mine, = layouts(command(TEAM_RACE_MODEL))
+    card, order = '/div:1/div:0', '/div:2/div:0'
+    pairs = [('card', card), ('order', order), ('orderTitle', order + '/div:0/div:0'),
+             ('orderRight', order + '/div:0/div:1')] \
+        + [(f'key{i}', card + f'/div:{3 + i}/div:0') for i in range(4)] \
+        + [(f'value{i}', card + f'/div:{3 + i}/div:1') for i in range(4)] \
+        + [(f'team{i}', order + f'/div:1/div:{i}') for i in range(2)] \
+        + [(f'teamName{i}', order + f'/div:1/div:{i}/div:0') for i in range(2)] \
+        + [(f'teamValue{i}', order + f'/div:1/div:{i}/div:1') for i in range(2)]
+    for i in range(6):
+        row = order + f'/div:2/div:{i}'
+        pairs += [(f'row{i}', row), (f'rowPos{i}', row + '/div:0'), (f'rowSwatch{i}', row + '/div:1'),
+                  (f'rowName{i}', row + '/div:2'), (f'rowValue{i}', row + '/div:3')]
+    problems = check_all(mine, TEAM_RACE, pairs)
     assert not problems, problems
