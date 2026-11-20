@@ -1062,6 +1062,13 @@ typedef struct {
 	int			ghostSplitDeltaMs;
 	int			ghostSplitDeltaTime;
 	qboolean	ghostSplitDeltaValid;
+	/* this lap's splits against the ghost, for the HUD's split list */
+#define MAX_GHOST_SPLITS 64
+	int			ghostSplitLapStart;					/* startLapTime they belong to */
+	int			ghostSplitCount;
+	int			ghostSplitCheckpoint[MAX_GHOST_SPLITS];
+	int			ghostSplitElapsed[MAX_GHOST_SPLITS];	/* our time into the lap */
+	int			ghostSplitDeltaAt[MAX_GHOST_SPLITS];	/* to the ghost, negative: ahead */
 } cg_t;
 
 
