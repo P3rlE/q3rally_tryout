@@ -662,11 +662,49 @@ static float MH_Minimap( mhRaceLayout_t *l, float bottom ) {
 
 /* ------------------------------------------------------------------------- */
 
+/* the kill feed (gen.py killfeed): under the standings 8px apart, each line
+ * at the right edge, padding 4px 10px, the three parts 8px apart on one
+ * baseline */
+static void MH_KillFeed( mhRaceLayout_t *l, float y ) {
+	wsTextStyle_t name, weapon;
+	float right = l->viewWidth - MH_SIDE;
+	int i;
+
+	MH_Text( &name, 14.0f );
+	MH_Mono( &weapon, 11.0f );
+	for ( i = 0; i < l->killCount; i++ ) {
+		mhText_t *a = &l->killAT[i], *w = &l->killWeaponT[i], *b = &l->killBT[i];
+		qboolean target = l->killB[i] && l->killB[i][0];
+		float above, below, x;
+		MH_Set( a, &name, l->killA[i] );
+		MH_Fit( a, 110.0f );
+		a->box.w = MH_Width( a );
+		MH_Set( w, &weapon, l->killWeapon[i] );
+		MH_Set( b, &name, target ? l->killB[i] : "" );
+		MH_Fit( b, 110.0f );
+		b->box.w = MH_Width( b );
+		above = MH_Base( a ) > MH_Base( w ) ? MH_Base( a ) : MH_Base( w );
+		below = a->box.h - MH_Base( a ) > w->box.h - MH_Base( w ) ? a->box.h - MH_Base( a ) : w->box.h - MH_Base( w );
+		l->killBox[i].w = 10.0f + a->box.w + 8.0f + w->box.w + ( target ? 8.0f + b->box.w : 0.0f ) + 10.0f;
+		l->killBox[i].h = 4.0f + above + below + 4.0f;
+		l->killBox[i].x = right - l->killBox[i].w;
+		l->killBox[i].y = y;
+		x = l->killBox[i].x + 10.0f;
+		MH_Place( a, x, y + 4.0f + above - MH_Base( a ) );
+		x += a->box.w + 8.0f;
+		MH_Place( w, x, y + 4.0f + above - MH_Base( w ) );
+		x += w->box.w + 8.0f;
+		MH_Place( b, x, y + 4.0f + above - MH_Base( b ) );
+		y += l->killBox[i].h + 8.0f;
+	}
+}
+
 void MH_RaceLayout( mhRaceLayout_t *l ) {
 	float bottom;
 
 	MH_Card( l );
 	if ( l->standings ) MH_Order( l );
+	if ( l->killCount ) MH_KillFeed( l, l->standings ? l->order.y + l->order.h + 8.0f : MH_TOP );
 	MH_TopCentre( l );
 
 	bottom = MH_Vehicle( l, MH_DESIGN_HEIGHT - MH_BOTTOM ) - MH_COLUMN_GAP;

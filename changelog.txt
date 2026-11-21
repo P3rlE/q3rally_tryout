@@ -39,6 +39,9 @@ Changed:
   KP INS) now goes round follow, track cameras and free camera, and the
   panel shows the view and the key. Leaving a driver no longer keeps his
   HUD on the screen in the track cameras.
+- The new HUD in Racing DM and Team Racing DM: the score in the card, the
+  weapons with their ammo in the car's card and a kill feed under the race
+  order (in teams with the teams' frags over it).
 - The graphics loading screen is drawn by the game again, on every
   platform, and looks exactly like the WebUI's "Getting ready." screen:
   the layout follows the WebUI's CSS, the text uses its fonts (Barlow,

@@ -31,6 +31,7 @@ so a test can hold it against what Chrome reports for the design
 #define MH_RPM_HOT			16		/* segments from here on light in the accent */
 #define MH_SLOTS_MAX		3		/* front, rear, item */
 #define MH_TEAMS_MAX		4
+#define MH_KILLS_MAX		3		/* the kill feed under the standings */
 #define MH_ELLIPSIS			"\x9e"	/* the body faces' "..." */
 
 typedef struct {
@@ -61,6 +62,8 @@ typedef struct {
 	int			teamCount;			/* the teams' standing over the rows, in their colours */
 	const char	*teamName[MH_TEAMS_MAX], *teamValue[MH_TEAMS_MAX];
 	qboolean	rowSwatch;			/* a square in the driver's team colour before the name */
+	int			killCount;			/* the kill feed, oldest first: "Player" "ROCKET" "Paul" */
+	const char	*killA[MH_KILLS_MAX], *killWeapon[MH_KILLS_MAX], *killB[MH_KILLS_MAX];	/* killB "": none */
 	int			rowCount;
 	const char	*rowPos[MH_ROWS_MAX], *rowName[MH_ROWS_MAX], *rowValue[MH_ROWS_MAX];
 
@@ -97,6 +100,8 @@ typedef struct {
 	mhText_t	rowPosT[MH_ROWS_MAX], rowNameT[MH_ROWS_MAX], rowValueT[MH_ROWS_MAX];
 	wsRect_t	teamCell[MH_TEAMS_MAX], rowSwatchBox[MH_ROWS_MAX];
 	mhText_t	teamNameT[MH_TEAMS_MAX], teamValueT[MH_TEAMS_MAX];
+	wsRect_t	killBox[MH_KILLS_MAX];
+	mhText_t	killAT[MH_KILLS_MAX], killWeaponT[MH_KILLS_MAX], killBT[MH_KILLS_MAX];
 
 	wsRect_t	mirrorBox, toastBox, toastIconBox;
 	mhText_t	toastTagT, toastTitleT, toastSubT;

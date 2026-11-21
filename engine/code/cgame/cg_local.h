@@ -2386,6 +2386,7 @@ void CG_ModernHUD_Draw( void );
 void CG_ModernHUD_DrawStandings( void );
 void CG_ModernHUD_DrawMessages( void );
 void CG_ModernHUD_DrawSpectator( void );
+void CG_ModernHUD_Obituary( int target, int attacker, int mod );
 
 //
 // cg_rally_tools.c

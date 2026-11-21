@@ -76,7 +76,10 @@ static struct {
 	float			slipFrac, slipAlpha;
 	char			speed[16], gear[8], nos[8], fuel[8];
 	float			rpmFrac, nosFrac, fuelFrac;
-	qhandle_t		note, prev, play, next, chevron, message;
+	qhandle_t		note, prev, play, next, chevron, message, gun, mine, smoke;
+	char			slotValue[MH_SLOTS_MAX][8];
+	const float		*slotColor[MH_SLOTS_MAX];
+	char			killA[MH_KILLS_MAX][32], killB[MH_KILLS_MAX][32];
 } mh;
 
 static float mhScale;
@@ -209,8 +212,12 @@ static int MH_RaceOrder( int at[MAX_CLIENTS + 1], int *local ) {
 qboolean CG_ModernHUD_Active( void ) {
 	return cg_hudStyle.integer && cg.snap &&
 	       ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_GHOST ||
-	         cgs.gametype == GT_TEAM_RACING );
+	         cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM );
 }
+
+/* the race with weapons, and the races in teams */
+#define MH_COMBAT()		( cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM )
+#define MH_TEAMRACE()	( cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_TEAM_RACING_DM )
 
 /* a driver's team: our own from the snapshot, the freshest */
 static int MH_Team( int client ) {
@@ -313,6 +320,104 @@ static void MH_GhostSplits( mhRaceLayout_t *l, const centity_t *cent, const play
 	l->rowCount = row;
 }
 
+/* the weapons in the car's card: the front one (or the one being picked, in
+ * the accent) and the first rear one with ammo, as the old HUD chose them */
+static void MH_WeaponSlot( mhRaceLayout_t *l, const char *label, int weapon, int ammo, qhandle_t icon, const float *color ) {
+	int i = l->slotCount++;
+	const gitem_t *item = BG_FindItemForWeapon( weapon );
+	mh.slotIcon[i] = icon;
+	mh.slotColor[i] = color;
+	if ( ammo >= 0 ) Com_sprintf( mh.slotValue[i], sizeof( mh.slotValue[i] ), "%d", ammo );
+	else Q_strncpyz( mh.slotValue[i], "--", sizeof( mh.slotValue[i] ) );
+	Q_strncpyz( mh.slotName[i], item && item->pickup_name ? item->pickup_name : "", sizeof( mh.slotName[i] ) );
+	l->slotLabel[i] = label;
+	l->slotValue[i] = mh.slotValue[i];
+	l->slotName[i] = mh.slotName[i];
+}
+
+static void MH_Weapons( mhRaceLayout_t *l, const playerState_t *ps ) {
+	int front = ps->weapon, rear = 0, fallback = 0, w;
+	const float *color = mhWhite;
+	if ( cg.weaponSelectTime > 0 && cg.time >= cg.weaponSelectTime && cg.time - cg.weaponSelectTime < WEAPON_SELECT_TIME &&
+	     cg.weaponSelect > WP_NONE && cg.weaponSelect < RWP_SMOKE && ( ps->stats[STAT_WEAPONS] & ( 1u << cg.weaponSelect ) ) ) {
+		front = cg.weaponSelect;
+		color = mhAccent;
+	}
+	if ( front > WP_NONE && front < RWP_SMOKE ) MH_WeaponSlot( l, "FRONT", front, ps->ammo[front], mh.gun, color );
+	for ( w = RWP_SMOKE; w < WP_NUM_WEAPONS; w++ ) {
+		if ( !( ps->stats[STAT_WEAPONS] & ( 1u << w ) ) ) continue;
+		if ( !fallback ) fallback = w;
+		if ( ps->ammo[w] > 0 ) {
+			rear = w;
+			break;
+		}
+	}
+	if ( !rear ) rear = fallback;
+	if ( rear ) MH_WeaponSlot( l, "REAR", rear, ps->ammo[rear], rear == RWP_SMOKE ? mh.smoke : mh.mine, mhWhite );
+}
+
+/* the kill feed: who got whom with what, the last three of six seconds */
+#define MH_KILL_TIME	6000
+static struct {
+	int		time;
+	char	a[32], b[32];
+	const char	*weapon;
+} mhKills[MH_KILLS_MAX];
+
+static const char *MH_KillWeapon( int mod ) {
+	switch ( mod ) {
+	case MOD_MACHINEGUN: return "MG";
+	case MOD_SHOTGUN: return "SHOTGUN";
+	case MOD_GAUNTLET: return "GAUNTLET";
+	case MOD_GRENADE: case MOD_GRENADE_SPLASH: return "GRENADE";
+	case MOD_ROCKET: case MOD_ROCKET_SPLASH: return "ROCKET";
+	case MOD_PLASMA: case MOD_PLASMA_SPLASH: return "PLASMA";
+	case MOD_FLAME_THROWER: case MOD_FIRE: return "FLAMES";
+	case MOD_RAILGUN: return "RAIL";
+	case MOD_LIGHTNING: return "LIGHTNING";
+	case MOD_BFG: case MOD_BFG_SPLASH: return "BFG";
+	case MOD_MINE: case MOD_MINE_SPLASH: return "MINES";
+	case MOD_BIOHAZARD: return "BIO";
+	case MOD_POISON: return "GAS";
+	case MOD_VEHICLE_COLLISION: case MOD_DERBY_NO_RAM: return "RAM";
+	case MOD_TELEFRAG: return "TELEFRAG";
+	case MOD_SUICIDE: return "SUICIDE";
+	case MOD_WORLD_COLLISION: case MOD_HIGH_FORCES: case MOD_UPSIDEDOWN: case MOD_BO_SHOCKS:
+	case MOD_FALLING: case MOD_CRUSH: return "CRASH";
+	case MOD_WATER: case MOD_SLIME: case MOD_LAVA: case MOD_TRIGGER_HURT: case MOD_TARGET_LASER: return "OUT";
+	default: return "KILL";
+	}
+}
+
+void CG_ModernHUD_Obituary( int target, int attacker, int mod ) {
+	int i;
+	if ( target < 0 || target >= MAX_CLIENTS ) return;
+	for ( i = 0; i < MH_KILLS_MAX - 1; i++ ) mhKills[i] = mhKills[i + 1];
+	i = MH_KILLS_MAX - 1;
+	mhKills[i].time = cg.time;
+	mhKills[i].weapon = MH_KillWeapon( mod );
+	if ( attacker >= 0 && attacker < MAX_CLIENTS && attacker != target ) {
+		MH_Plain( cgs.clientinfo[attacker].name, mhKills[i].a, sizeof( mhKills[i].a ) );
+		MH_Plain( cgs.clientinfo[target].name, mhKills[i].b, sizeof( mhKills[i].b ) );
+	} else {
+		/* no one else to blame: the one who went out */
+		MH_Plain( cgs.clientinfo[target].name, mhKills[i].a, sizeof( mhKills[i].a ) );
+		mhKills[i].b[0] = '\0';
+	}
+}
+
+static void MH_Kills( mhRaceLayout_t *l ) {
+	int i;
+	l->killCount = 0;
+	if ( !MH_COMBAT() || cg.showScores ) return;
+	for ( i = 0; i < MH_KILLS_MAX; i++ ) {
+		if ( !mhKills[i].time || mhKills[i].time > cg.time || cg.time - mhKills[i].time > MH_KILL_TIME ) continue;
+		l->killA[l->killCount] = mhKills[i].a;
+		l->killWeapon[l->killCount] = mhKills[i].weapon;
+		l->killB[l->killCount++] = mhKills[i].b;
+	}
+}
+
 static void MH_Register( void ) {
 	if ( mh.note ) return;
 	mh.note = trap_R_RegisterShaderNoMip( "menu/art/hud_note" );
@@ -321,6 +426,9 @@ static void MH_Register( void ) {
 	mh.next = trap_R_RegisterShaderNoMip( "menu/art/hud_next" );
 	mh.chevron = trap_R_RegisterShaderNoMip( "menu/art/hud_chevron" );
 	mh.message = trap_R_RegisterShaderNoMip( "menu/art/hud_message" );
+	mh.gun = trap_R_RegisterShaderNoMip( "menu/art/hud_gun" );
+	mh.mine = trap_R_RegisterShaderNoMip( "menu/art/hud_mine" );
+	mh.smoke = trap_R_RegisterShaderNoMip( "menu/art/hud_smoke" );
 }
 
 static qboolean MH_Views( void ) {
@@ -356,7 +464,8 @@ static void MH_Prepare( void ) {
 	MH_Plain( map, mh.rowName[0], sizeof( mh.rowName[0] ) );
 	Com_sprintf( mh.title, sizeof( mh.title ), "%s \xb7 %s",
 	             cgs.gametype == GT_GHOST ? "Ghost race" : cgs.gametype == GT_SPRINT ? "Sprint" :
-	             cgs.gametype == GT_TEAM_RACING ? "Team race" : "Race", mh.rowName[0] );
+	             cgs.gametype == GT_TEAM_RACING ? "Team race" : cgs.gametype == GT_RACING_DM ? "Race combat" :
+	             cgs.gametype == GT_TEAM_RACING_DM ? "Team race combat" : "Race", mh.rowName[0] );
 	l->title = mh.title;
 	mh.posColor = mhWhite;
 	if ( cgs.gametype == GT_GHOST ) {
@@ -424,6 +533,11 @@ static void MH_Prepare( void ) {
 		MH_GhostLine( mh.kvValue[l->kvCount], sizeof( mh.kvValue[0] ) );
 		l->kvSize[l->kvCount] = 14.0f;
 		mh.kvColor[l->kvCount++] = mhValue;
+	} else if ( MH_COMBAT() ) {
+		/* with weapons: the frags count */
+		Q_strncpyz( mh.kvKey[l->kvCount], "SCORE", sizeof( mh.kvKey[0] ) );
+		Com_sprintf( mh.kvValue[l->kvCount], sizeof( mh.kvValue[0] ), "%d", ps->persistant[PERS_SCORE] );
+		mh.kvColor[l->kvCount++] = mhWhite;
 	} else if ( local > 1 && at[local - 1] >= 0 ) {
 		Com_sprintf( mh.kvKey[l->kvCount], sizeof( mh.kvKey[0] ), "TO P%d", local - 1 );
 		/* the splits are taken at the checkpoints: an older one can look ahead */
@@ -437,7 +551,7 @@ static void MH_Prepare( void ) {
 		mh.kvColor[l->kvCount++] = mhFast;
 	}
 	/* the team race: whose colours we drive in */
-	if ( cgs.gametype == GT_TEAM_RACING && ( MH_Team( ps->clientNum ) == TEAM_RED || MH_Team( ps->clientNum ) == TEAM_BLUE ) ) {
+	if ( MH_TEAMRACE() && ( MH_Team( ps->clientNum ) == TEAM_RED || MH_Team( ps->clientNum ) == TEAM_BLUE ) ) {
 		Q_strncpyz( mh.kvKey[l->kvCount], "YOUR TEAM", sizeof( mh.kvKey[0] ) );
 		Q_strncpyz( mh.kvValue[l->kvCount], MH_Team( ps->clientNum ) == TEAM_RED ? "RED" : "BLUE", sizeof( mh.kvValue[0] ) );
 		mh.kvColor[l->kvCount++] = MH_TeamColor( MH_Team( ps->clientNum ) );
@@ -450,9 +564,19 @@ static void MH_Prepare( void ) {
 	/* the standings: up to six rows around our place */
 	l->standings = cg_hudShowOpponentList.integer && last > 0 && !cg.showScores &&
 	               cg.predictedPlayerState.pm_type != PM_INTERMISSION && !CG_IntroCam_IsActive();
-	l->orderTitle = cgs.gametype == GT_TEAM_RACING ? "Team race order" : "Race order";
+	l->orderTitle = MH_TEAMRACE() ? "Team race order" : "Race order";
 	l->orderRight = "Gap";
-	if ( cgs.gametype == GT_TEAM_RACING ) {
+	if ( cgs.gametype == GT_TEAM_RACING_DM ) {
+		/* with weapons: the teams' frags, as the old HUD showed them */
+		for ( i = 0; i < 2; i++ ) {
+			Com_sprintf( mh.teamValue[i], sizeof( mh.teamValue[i] ), "%d", cg.teamScores[i] );
+			l->teamValue[i] = mh.teamValue[i];
+		}
+		l->teamName[0] = "RED";
+		l->teamName[1] = "BLUE";
+		l->teamCount = 2;
+		l->rowSwatch = qtrue;
+	} else if ( cgs.gametype == GT_TEAM_RACING ) {
 		/* the teams' average race time, as the server ranks them. Until the
 		 * first car is home it counts everyone at the time so far, the same
 		 * for both teams: "--" then. */
@@ -530,23 +654,31 @@ static void MH_Prepare( void ) {
 		Com_sprintf( mh.armor, sizeof( mh.armor ), "%d", ps->stats[STAT_ARMOR] );
 		l->armor = mh.armor;
 	}
+	/* with weapons: the front and the rear weapon with their ammo first */
+	l->slotCount = 0;
+	if ( MH_COMBAT() ) {
+		l->vehicleWidth = 330.0f;
+		MH_Weapons( l, ps );
+	}
 	/* the trunk: each item in a slot, "USE" beside its icon */
 	{
-		int value = ps->stats[STAT_HOLDABLE_ITEM], mask = BG_TrunkMask( value ), items[TRUNK_ITEM_COUNT], n = 0;
+		int value = ps->stats[STAT_HOLDABLE_ITEM], mask = BG_TrunkMask( value ), items[TRUNK_ITEM_COUNT], n = 0, k;
 		for ( i = 0; i < TRUNK_ITEM_COUNT; i++ ) {
 			if ( mask & ( 1 << i ) ) items[n++] = BG_FindItemForHoldable( bg_trunkItems[i] ) - bg_itemlist;
 		}
 		if ( !n && ( value = BG_HoldableItemIndex( value ) ) != 0 ) items[n++] = value;
-		for ( i = 0; i < n && i < MH_SLOTS_MAX; i++ ) {
-			CG_RegisterItemVisuals( items[i] );
-			mh.slotIcon[i] = cg_items[items[i]].icon;
-			Q_strncpyz( mh.slotName[i], bg_itemlist[items[i]].pickup_name ? bg_itemlist[items[i]].pickup_name : "", sizeof( mh.slotName[i] ) );
+		for ( k = 0; k < n && l->slotCount < MH_SLOTS_MAX; k++ ) {
+			i = l->slotCount++;
+			CG_RegisterItemVisuals( items[k] );
+			mh.slotIcon[i] = cg_items[items[k]].icon;
+			mh.slotColor[i] = mhWhite;
+			Q_strncpyz( mh.slotName[i], bg_itemlist[items[k]].pickup_name ? bg_itemlist[items[k]].pickup_name : "", sizeof( mh.slotName[i] ) );
 			l->slotLabel[i] = "ITEM";
 			l->slotValue[i] = "USE";
 			l->slotName[i] = mh.slotName[i];
 		}
-		l->slotCount = i;
 	}
+	MH_Kills( l );
 
 	/* bottom right */
 	l->minimap = cg_drawMMap.integer && MH_Views();
@@ -658,10 +790,23 @@ static void MH_DrawCard( const mhRaceLayout_t *l ) {
 	}
 }
 
+static const vec4_t mhKillBack = { 13 / 255.0f, 13 / 255.0f, 13 / 255.0f, 0.62f };
+
+static void MH_DrawKillFeed( const mhRaceLayout_t *l ) {
+	int i;
+	for ( i = 0; i < l->killCount; i++ ) {
+		MH_FillRect( &l->killBox[i], mhKillBack, 1.0f );
+		MH_Str( &l->killAT[i], mhWhite, 1.0f );
+		MH_Str( &l->killWeaponT[i], mhAccent, 1.0f );
+		MH_Str( &l->killBT[i], mhValue, 1.0f );
+	}
+}
+
 void CG_ModernHUD_DrawStandings( void ) {
 	const mhRaceLayout_t *l = &mh.l;
 	int i;
 	MH_Prepare();
+	MH_DrawKillFeed( l );
 	if ( !l->standings ) return;
 	MH_Panel( &l->order, qtrue, 1.0f );
 	MH_Str( &l->orderTitleT, mhLabel, 1.0f );
@@ -738,7 +883,7 @@ static void MH_DrawVehicle( const mhRaceLayout_t *l ) {
 		MH_FillRect( &l->vehicleSep, mhLine, 1.0f );
 		for ( i = 0; i < l->slotCount; i++ ) {
 			MH_Str( &l->slotLabelT[i], mhMuted, 1.0f );
-			MH_Pic( &l->slotIcon[i], 0.0f, mh.slotIcon[i], mhWhite, 1.0f );
+			MH_Pic( &l->slotIcon[i], 0.0f, mh.slotIcon[i], mh.slotColor[i] ? mh.slotColor[i] : mhWhite, 1.0f );
 			MH_Str( &l->slotValueT[i], mhAccent, 1.0f );
 			MH_Str( &l->slotNameT[i], mhLabel, 1.0f );
 		}

@@ -53,7 +53,8 @@ def command(model, width=1600):
               m['speed'], m['unit'], m['gear'], m['nos'], m['fuel'], m.get('vehicleWidth', 0),
               ';'.join(f'{a}:{b}:{c}' for a, b, c in m.get('slots', [])), m.get('progress', ''),
               m.get('posLabel', ''), ','.join(str(v) for v in m.get('kvSizes', [])),
-              ';'.join(f'{n}:{v}' for n, v in m.get('teams', [])), m.get('swatch', 0)]
+              ';'.join(f'{n}:{v}' for n, v in m.get('teams', [])), m.get('swatch', 0),
+              ';'.join(f'{a}:{w}:{b}' for a, w, b in m.get('kills', []))]
     return [f'hudrace {width}', latin('|'.join(str(f) for f in fields))]
 
 
@@ -170,7 +171,8 @@ def test_the_car_with_weapons_and_an_item_matches_the_design():
 def test_the_hud_icons_are_there():
     # tools/ui_webstyle/hud_design/build_hud_icons.py; cgame/cg_hud_modern.c registers them
     source = (ROOT / 'engine/code/cgame/cg_hud_modern.c').read_text()
-    for name in ('hud_note', 'hud_prev', 'hud_play', 'hud_next', 'hud_chevron', 'hud_message'):
+    for name in ('hud_note', 'hud_prev', 'hud_play', 'hud_next', 'hud_chevron', 'hud_message',
+                 'hud_gun', 'hud_mine', 'hud_smoke'):
         png = (ROOT / f'baseq3r/menu/art/{name}.png').read_bytes()
         assert png[16:24] == (64).to_bytes(4, 'big') * 2, name
         assert f'"menu/art/{name}"' in source
@@ -290,3 +292,26 @@ def test_the_spectator_panel_matches_the_design():
              ('hint1', panel + '/div:0/div:1/div:0'), ('hint2', panel + '/div:0/div:1/div:1')]
     problems = check_all(mine, MESSAGES, pairs)
     assert not problems, problems
+
+
+# the race with weapons (gen.py RacingDM board): score in the card, the kill feed under the order
+def test_native_race_combat_hud_matches_the_design():
+    model = dict(RACE_MODEL, title='Race combat \u00b7 Downtown', pos='P2', lapValue='3/5',
+                 kv=[('LAP', '0:44.02'), ('BEST', '0:41.37'), ('SCORE', '4')],
+                 kills=[('Player', 'ROCKET', 'Paul'), ('Sam', 'MINES', 'Tony')])
+    mine, = layouts(command(model))
+    pairs = [('card', '/div:1/div:0'), ('order', '/div:2/div:0')] \
+        + [(f'value{i}', f'/div:1/div:0/div:{3 + i}/div:1') for i in range(3)]
+    for i in range(2):
+        line = f'/div:2/div:{1 + i}'
+        pairs += [(f'kill{i}', line), (f'killA{i}', line + '/div:0'), (f'killWeapon{i}', line + '/div:1'),
+                  (f'killB{i}', line + '/div:2')]
+    problems = check_all(mine, RACING_DM, pairs)
+    assert not problems, problems
+
+
+def test_a_death_without_a_killer_has_one_name():
+    model = dict(RACE_MODEL, kills=[('Paul', 'CRASH', '')])
+    mine, = layouts(command(model))
+    assert abs(mine['kill0'][2] - (10 + mine['killA0'][2] + 8 + mine['killWeapon0'][2] + 10)) < 0.01
+    assert abs(mine['kill0'][0] + mine['kill0'][2] - 1568) < 0.01
