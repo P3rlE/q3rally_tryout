@@ -54,7 +54,9 @@ typedef struct {
 	qboolean	headerRow;			/* posLabel and pos on one baseline row (CTF: "YOUR TEAM" .. "Green") */
 	int			flagCount;			/* CTF: icon, team, state, note, then a second line */
 	const char	*flagName[MH_FLAGS_MAX], *flagState[MH_FLAGS_MAX], *flagNote[MH_FLAGS_MAX];
-	int			zoneCount;			/* Domination: a row of tiles (A B C ..), then a row over a bar */
+	const char	*hillLabel, *hillOwner;	/* KOTH: an icon, beside it "HILL HELD BY" over "Red" */
+	int			zoneCount;			/* Domination: a row of tiles (A B C ..), then a row over a bar
+									   (KOTH: the row and the bar only, zoneLabel set) */
 	const char	*zoneName[MH_ZONES_MAX];
 	const char	*zoneLabel, *zoneValue;	/* "CAPTURING C" "65%" */
 	const char	*lapLabel, *lapValue;	/* "LAP" "2/5", NULL: none */
@@ -111,7 +113,8 @@ typedef struct {
 	mhText_t	elimLabelT, elimValueT, elimCaptionT;
 	wsRect_t	derbyCar, derbySwatch[3];			/* the car in the design's 110x170 view box */
 	wsRect_t	flagIcon[MH_FLAGS_MAX], sep2;
-	wsRect_t	zoneTile[MH_ZONES_MAX], zoneBar;
+	wsRect_t	zoneTile[MH_ZONES_MAX], zoneBar, hillIcon;
+	mhText_t	hillLabelT, hillOwnerT;
 	mhText_t	zoneNameT[MH_ZONES_MAX], zoneLabelT, zoneValueT;
 	mhText_t	flagNameT[MH_FLAGS_MAX], flagStateT[MH_FLAGS_MAX], flagNoteT[MH_FLAGS_MAX];
 	mhText_t	derbyStatusT, derbyLegendT[3];		/* OK, WORN, CRITICAL */

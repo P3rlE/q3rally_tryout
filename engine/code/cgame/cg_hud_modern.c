@@ -76,7 +76,8 @@ static struct {
 	const float		*posColor, *posLabelColor;
 	qboolean		flagAway[MH_FLAGS_MAX];		/* the state in the accent */
 	const float		*zoneColor[MH_ZONES_MAX];	/* the owner's colour, mhZoneFree: nobody */
-	const float		*zoneLineColor;				/* the capture row and its bar */
+	const float		*zoneLineColor, *zoneBarColor;	/* the capture row, its bar */
+	const float		*hillColor;					/* KOTH: the owner's colour, muted: nobody */
 	float			zoneFrac;
 	char			zoneLabel[24], zoneValue[16];
 	int				rowTeam[MH_ROWS_MAX];			/* TEAM_RED.., for the swatch */
@@ -91,7 +92,7 @@ static struct {
 	float			slipFrac, slipAlpha;
 	char			speed[16], gear[8], nos[8], fuel[8];
 	float			rpmFrac, nosFrac, fuelFrac;
-	qhandle_t		note, prev, play, next, chevron, message, gun, mine, smoke, flag;
+	qhandle_t		note, prev, play, next, chevron, message, gun, mine, smoke, flag, hill;
 	char			slotValue[MH_SLOTS_MAX][8];
 	const float		*slotColor[MH_SLOTS_MAX];
 	char			killA[MH_KILLS_MAX][32], killB[MH_KILLS_MAX][32];
@@ -230,7 +231,7 @@ qboolean CG_ModernHUD_Active( void ) {
 	         cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM ||
 	         cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ||
 	         cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM || cgs.gametype == GT_CTF ||
-	         cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION );
+	         cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION || cgs.gametype == GT_KOTH );
 }
 
 /* the gaps to the leader for every place (-1: none yet). The order is the
@@ -642,6 +643,7 @@ static void MH_Domination( mhRaceLayout_t *l, const playerState_t *ps ) {
 		mh.zoneFrac = count > 0 ? (float)held / count : 0.0f;
 		mh.zoneLineColor = mine;
 	}
+	mh.zoneBarColor = mh.zoneLineColor;
 	l->zoneLabel = mh.zoneLabel;
 	l->zoneValue = mh.zoneValue;
 
@@ -672,6 +674,88 @@ static void MH_Domination( mhRaceLayout_t *l, const playerState_t *ps ) {
 		l->teamName[i] = cells[i];
 	}
 	l->teamCount = MH_TEAMS_MAX;
+	l->rowSwatch = qtrue;
+}
+
+/* king of the hill: who holds the hill, what goes on there (capturing,
+ * contested, held, empty) with the players of each team on it, the next
+ * respawn wave and the clock; the order by points, the teams' over it */
+static void MH_KingOfTheHill( mhRaceLayout_t *l, const playerState_t *ps ) {
+	int owner = cgs.kothOwner, pct = Com_Clamp( 0, 100, cgs.kothCapturePct ), wave, i;
+	int red = cgs.kothPresence[0], blue = cgs.kothPresence[1];
+	qboolean capturing = !cgs.kothContested && ( cgs.kothCapturingTeam == TEAM_RED || cgs.kothCapturingTeam == TEAM_BLUE ) &&
+	                     cgs.kothCapturingTeam != owner && pct > 0 && pct < 100;
+
+	l->pos = NULL;
+	l->of = NULL;
+	l->lapValue = NULL;
+	l->progress = qfalse;
+	l->hillLabel = "HILL HELD BY";
+	l->hillOwner = owner == TEAM_RED ? "Red" : owner == TEAM_BLUE ? "Blue" : "Nobody";
+	mh.hillColor = owner == TEAM_RED || owner == TEAM_BLUE ? MH_TeamColor( owner ) : mhMuted;
+
+	if ( red >= 0 && blue >= 0 ) Com_sprintf( mh.zoneValue, sizeof( mh.zoneValue ), "%d v %d", red, blue );
+	else mh.zoneValue[0] = '\0';
+	if ( cgs.kothContested ) {
+		Q_strncpyz( mh.zoneLabel, "CONTESTED", sizeof( mh.zoneLabel ) );
+		mh.zoneLineColor = mhAccent;
+		mh.zoneFrac = 0.0f;
+	} else if ( capturing ) {
+		Q_strncpyz( mh.zoneLabel, "CAPTURING", sizeof( mh.zoneLabel ) );
+		Com_sprintf( mh.zoneValue, sizeof( mh.zoneValue ), "%d%%", pct );
+		mh.zoneLineColor = MH_TeamColor( cgs.kothCapturingTeam );
+		mh.zoneFrac = pct / 100.0f;
+	} else if ( owner == TEAM_RED || owner == TEAM_BLUE ) {
+		qboolean there = ( owner == TEAM_RED ? red : blue ) != 0;
+		Q_strncpyz( mh.zoneLabel, there ? "HOLDING" : "HILL EMPTY", sizeof( mh.zoneLabel ) );
+		mh.zoneLineColor = there ? MH_TeamColor( owner ) : mhMuted;
+		mh.zoneBarColor = MH_TeamColor( owner );	/* held all the same */
+		mh.zoneFrac = 1.0f;
+	} else {
+		Q_strncpyz( mh.zoneLabel, "HILL EMPTY", sizeof( mh.zoneLabel ) );
+		mh.zoneLineColor = mhMuted;
+		mh.zoneFrac = 0.0f;
+	}
+	if ( !( owner == TEAM_RED || owner == TEAM_BLUE ) || cgs.kothContested || capturing ) mh.zoneBarColor = mh.zoneLineColor;
+	l->zoneLabel = mh.zoneLabel;
+	l->zoneValue = mh.zoneValue;
+
+	/* the next respawn wave (waves come at whole multiples of the server
+	 * time), then the clock */
+	l->kvCount = 0;
+	wave = cg_kothRespawnWave.integer;
+	if ( wave > 0 && wave < 1000 ) wave *= 1000;
+	Q_strncpyz( mh.kvKey[1], mh.kvKey[0], sizeof( mh.kvKey[1] ) );
+	Q_strncpyz( mh.kvValue[1], mh.kvValue[0], sizeof( mh.kvValue[1] ) );
+	if ( wave > 0 ) {
+		int left = ( cg.snap->ps.pm_type == PM_DEAD && cg.kothRespawnAt > cg.time ) ? cg.kothRespawnAt - cg.time
+		           : wave - ( cg.time % wave );
+		Q_strncpyz( mh.kvKey[0], "RESPAWN WAVE", sizeof( mh.kvKey[0] ) );
+		Com_sprintf( mh.kvValue[0], sizeof( mh.kvValue[0] ), "%d:%02d", ( left + 999 ) / 60000, ( ( left + 999 ) / 1000 ) % 60 );
+		mh.kvColor[0] = ps->pm_type == PM_DEAD ? mhAccent : mhWhite;
+		mh.kvColor[1] = mhWhite;
+		l->kvCount = 2;
+	} else {
+		Q_strncpyz( mh.kvKey[0], mh.kvKey[1], sizeof( mh.kvKey[0] ) );
+		Q_strncpyz( mh.kvValue[0], mh.kvValue[1], sizeof( mh.kvValue[0] ) );
+		mh.kvColor[0] = mhWhite;
+		l->kvCount = 1;
+	}
+	for ( i = 0; i < l->kvCount; i++ ) {
+		l->kvKey[i] = mh.kvKey[i];
+		l->kvValue[i] = mh.kvValue[i];
+		l->kvSize[i] = 0.0f;
+	}
+
+	l->orderTitle = "KOTH driver order";
+	l->orderRight = "Pts";
+	for ( i = 0; i < 2; i++ ) {
+		Com_sprintf( mh.teamValue[i], sizeof( mh.teamValue[i] ), "%d", cg.teamScores[i] );
+		l->teamValue[i] = mh.teamValue[i];
+	}
+	l->teamName[0] = "RED";
+	l->teamName[1] = "BLUE";
+	l->teamCount = 2;
 	l->rowSwatch = qtrue;
 }
 
@@ -845,7 +929,7 @@ static void MH_LastCar( mhRaceLayout_t *l, const playerState_t *ps, const centit
 /* the race with weapons, and the races in teams */
 #define MH_COMBAT()		( cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM || cgs.gametype == GT_LCS || \
 						  cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM || \
-						  cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION || \
+						  cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION || cgs.gametype == GT_KOTH || \
 						  ( cgs.gametype == GT_ELIMINATION && cgs.eliminationWeapons ) )
 #define MH_TEAMRACE()	( cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_TEAM_RACING_DM )
 
@@ -1070,6 +1154,7 @@ static void MH_Register( void ) {
 	mh.mine = trap_R_RegisterShaderNoMip( "menu/art/hud_mine" );
 	mh.smoke = trap_R_RegisterShaderNoMip( "menu/art/hud_smoke" );
 	mh.flag = trap_R_RegisterShaderNoMip( "menu/art/hud_flag" );
+	mh.hill = trap_R_RegisterShaderNoMip( "menu/art/hud_hill" );
 }
 
 static qboolean MH_Views( void ) {
@@ -1114,7 +1199,8 @@ static void MH_Prepare( void ) {
 	             cgs.gametype == GT_ELIMINATION ? "Elimination" : cgs.gametype == GT_LCS ? "Last car standing" :
 	             cgs.gametype == GT_DERBY ? "Derby" : cgs.gametype == GT_DEATHMATCH ? "Deathmatch" :
 	             cgs.gametype == GT_TEAM ? "Team combat" : cgs.gametype == GT_CTF ? "Capture the flag" :
-	             cgs.gametype == GT_CTF4 ? "Four team CTF" : cgs.gametype == GT_DOMINATION ? "Domination" : "Race",
+	             cgs.gametype == GT_CTF4 ? "Four team CTF" : cgs.gametype == GT_DOMINATION ? "Domination" :
+	             cgs.gametype == GT_KOTH ? "King of the hill" : "Race",
 	             mh.rowName[0] );
 	l->title = mh.title;
 	mh.posColor = mhWhite;
@@ -1288,6 +1374,10 @@ static void MH_Prepare( void ) {
 		MH_Deathmatch( l, ps );
 		MH_Domination( l, ps );
 	}
+	if ( cgs.gametype == GT_KOTH ) {
+		MH_Deathmatch( l, ps );
+		MH_KingOfTheHill( l, ps );
+	}
 
 	/* the top centre */
 	l->mirror = cg_drawRearView.integer && MH_Views() && !cg.scoreBoardShowing;
@@ -1447,16 +1537,21 @@ static void MH_DrawCard( const mhRaceLayout_t *l ) {
 		MH_Str( &l->progressLeftT, mhMuted, 1.0f );
 		MH_Str( &l->progressRightT, mhMuted, 1.0f );
 	}
-	if ( l->zoneCount ) {
+	if ( l->hillOwner ) {
+		MH_Pic( &l->hillIcon, 0.0f, mh.hill, mh.hillColor, 1.0f );
+		MH_Str( &l->hillLabelT, mhLabel, 1.0f );
+		MH_Str( &l->hillOwnerT, mh.hillColor, 1.0f );
+	}
+	if ( l->zoneCount || l->zoneLabel ) {
 		for ( i = 0; i < l->zoneCount; i++ ) {
 			MH_FillRect( &l->zoneTile[i], mh.zoneColor[i], 1.0f );
 			MH_Str( &l->zoneNameT[i], mh.zoneColor[i] == mhZoneFree ? mhValue : mhOnTeam, 1.0f );
 		}
 		MH_Str( &l->zoneLabelT, mh.zoneLineColor, 1.0f );
 		MH_Str( &l->zoneValueT, mh.zoneLineColor, 1.0f );
-		MH_Bar( &l->zoneBar, mh.zoneFrac, mh.zoneLineColor, mhTrack, 1.0f );
+		MH_Bar( &l->zoneBar, mh.zoneFrac, mh.zoneBarColor, mhTrack, 1.0f );
 	}
-	if ( l->pos || l->lapValue || l->progress || l->zoneCount ) MH_FillRect( &l->sep, mhLine, 1.0f );
+	if ( l->pos || l->lapValue || l->progress || l->zoneCount || l->zoneLabel ) MH_FillRect( &l->sep, mhLine, 1.0f );
 	if ( l->flagCount ) {
 		for ( i = 0; i < l->flagCount; i++ ) {
 			MH_Pic( &l->flagIcon[i], 0.0f, mh.flag, mhTeam[i], 1.0f );

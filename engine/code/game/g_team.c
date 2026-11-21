@@ -1705,11 +1705,12 @@ Encodes hill state into CS_KOTHSTATUS configstring:
   capture_pct: 0-100
   capturer: team that is taking the hill while capture_pct runs (0 = none)
   half_x, half_y: half extents of the hill zone (the client draws its border)
+  red, blue: the living players of each team on the hill
 Readers that only know the first seven fields keep working.
 ===================
 */
 void KOTH_SetHillStatus( int owner, int contested, int pct, const vec3_t hillOrigin, float hillRadius ) {
-	trap_SetConfigstring( CS_KOTHSTATUS, va( "%i %i %i %i %i %i %i %i %i %i",
+	trap_SetConfigstring( CS_KOTHSTATUS, va( "%i %i %i %i %i %i %i %i %i %i %i %i",
 		owner,
 		contested,
 		pct,
@@ -1719,7 +1720,9 @@ void KOTH_SetHillStatus( int owner, int contested, int pct, const vec3_t hillOri
 		(int)hillRadius,
 		teamgame.kothCapturingTeam,
 		(int)teamgame.kothHillHalfX,
-		(int)teamgame.kothHillHalfY ) );
+		(int)teamgame.kothHillHalfY,
+		teamgame.kothPresenceRed,
+		teamgame.kothPresenceBlue ) );
 }
 
 qboolean KOTH_IsClientInHill( int clientNum ) {
@@ -1881,7 +1884,7 @@ void KOTH_Think( void ) {
 				if ( !teamgame.kothOvertimeActive ) {
 					level.teamScores[presentTeam] += defendPoints;
 					CalculateRanks();
-					trap_SendServerCommand( -1, va( "print \"%s^7 team defended the hill! (+%d)\\n\"",
+					trap_SendServerCommand( -1, va( "print \"%s^7 team defended the hill! (+%d)\n\"",
 						( presentTeam == TEAM_RED ) ? "^1Red" : "^4Blue", defendPoints ) );
 					G_LogPrintf( "koth_hill_defended: team=%i points=%i attackTeam=%i contested_ms=%i\n",
 						presentTeam, defendPoints, teamgame.kothLastAttackingTeam, contestedDuration );
@@ -1945,10 +1948,10 @@ void KOTH_Think( void ) {
 				/* Award capture reward to all team members on the hill. */
 				KOTH_AwardPersistToHillTeamPlayers( hill, presentTeam, PERS_CAPTURES );
 				if ( teamgame.kothOvertimeActive ) {
-					trap_SendServerCommand( -1, va( "print \"%s^7 team captured the hill!\\n\"",
+					trap_SendServerCommand( -1, va( "print \"%s^7 team captured the hill!\n\"",
 						( presentTeam == TEAM_RED ) ? "^1Red" : "^4Blue" ) );
 				} else {
-					trap_SendServerCommand( -1, va( "print \"%s^7 team captured the hill! (+%d)\\n\"",
+					trap_SendServerCommand( -1, va( "print \"%s^7 team captured the hill! (+%d)\n\"",
 						( presentTeam == TEAM_RED ) ? "^1Red" : "^4Blue", capturePoints ) );
 				}
 				KOTH_SetHillStatus( presentTeam, qfalse, 100, hillCenter, hillRadius );

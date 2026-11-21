@@ -218,11 +218,31 @@ static void MH_Card( mhRaceLayout_t *l ) {
 		MH_Set( &l->progressRightT, &label, l->progressRight );
 		y += MH_BaselineRow( &l->progressLeftT, &l->progressRightT, in.x, y, in.w ) + 12.0f;
 	}
+	/* KOTH: the hill icon (34), 12px to its right a column 4px apart: the
+	 * label over the owner (big 40), centred on each other */
+	if ( l->hillOwner ) {
+		wsTextStyle_t big40;
+		float colH;
+		MH_Big( &big40, 40.0f );
+		MH_Set( &l->hillLabelT, &label, l->hillLabel );
+		MH_Set( &l->hillOwnerT, &big40, l->hillOwner );
+		colH = l->hillLabelT.box.h + 4.0f + l->hillOwnerT.box.h;
+		l->hillIcon.x = in.x;
+		l->hillIcon.y = y + ( colH - 34.0f ) * 0.5f;
+		l->hillIcon.w = l->hillIcon.h = 34.0f;
+		MH_Place( &l->hillLabelT, in.x + 34.0f + 12.0f, y );
+		MH_Place( &l->hillOwnerT, in.x + 34.0f + 12.0f, y + l->hillLabelT.box.h + 4.0f );
+		/* a column's blocks: as wide as the wider one */
+		if ( l->hillOwnerT.box.w > l->hillLabelT.box.w ) l->hillLabelT.box.w = l->hillOwnerT.box.w;
+		else l->hillOwnerT.box.w = l->hillLabelT.box.w;
+		y += colH + 12.0f;
+	}
+
 	/* zones(): tiles 40px high, 4px apart, sharing the width; 12px below a
 	 * column 6px apart: the row (label, mono 13), a 6px bar */
-	if ( l->zoneCount > 0 ) {
+	if ( l->zoneCount > 0 || l->zoneLabel ) {
 		wsTextStyle_t letter, mono13;
-		float tileW = ( in.w - 4.0f * ( l->zoneCount - 1 ) ) / l->zoneCount;
+		float tileW = l->zoneCount > 0 ? ( in.w - 4.0f * ( l->zoneCount - 1 ) ) / l->zoneCount : 0.0f;
 		MH_Big( &letter, 22.0f );
 		MH_Mono( &mono13, 13.0f );
 		for ( i = 0; i < l->zoneCount; i++ ) {
@@ -234,7 +254,7 @@ static void MH_Card( mhRaceLayout_t *l ) {
 			MH_Place( &l->zoneNameT[i], l->zoneTile[i].x + ( tileW - l->zoneNameT[i].box.w ) * 0.5f,
 			          y + ( 40.0f - l->zoneNameT[i].box.h ) * 0.5f );
 		}
-		y += 40.0f + 12.0f;
+		if ( l->zoneCount > 0 ) y += 40.0f + 12.0f;
 		MH_Set( &l->zoneLabelT, &label, l->zoneLabel ? l->zoneLabel : "" );
 		MH_Set( &l->zoneValueT, &mono13, l->zoneValue ? l->zoneValue : "" );
 		y += MH_BaselineRow( &l->zoneLabelT, &l->zoneValueT, in.x, y, in.w ) + 6.0f;
@@ -244,7 +264,7 @@ static void MH_Card( mhRaceLayout_t *l ) {
 		l->zoneBar.h = 6.0f;
 		y += 6.0f + 12.0f;
 	}
-	if ( l->pos || l->lapValue || l->progress || l->zoneCount ) {
+	if ( l->pos || l->lapValue || l->progress || l->zoneCount || l->zoneLabel ) {
 		l->sep.x = in.x;
 		l->sep.y = y;
 		l->sep.w = in.w;

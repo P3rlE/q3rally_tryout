@@ -545,6 +545,7 @@ static void CG_DrawKOTH_RespawnWave_Internal( void ) {
 
 	if ( cgs.gametype != GT_KOTH ) return;
 	if ( !cg_hudShowKothRespawnWave.integer ) return;
+	if ( CG_ModernHUD_Active() ) return;	/* the v0.9 card has the wave */
 	if ( cg.snap->ps.stats[STAT_HEALTH] > 0 ) return;
 	if ( cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR ) return;
 
