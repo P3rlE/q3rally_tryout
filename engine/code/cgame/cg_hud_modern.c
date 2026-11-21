@@ -72,7 +72,7 @@ static struct {
 	const float		*derbyStatusColor;
 	char			elimValue[24], elimCaption[48];
 	float			elimFrac;
-	const float		*posColor;
+	const float		*posColor, *posLabelColor;
 	int				rowTeam[MH_ROWS_MAX];			/* TEAM_RED.., for the swatch */
 	char			teamValue[MH_TEAMS_MAX][16];
 	cgHudToastView_t	toast;
@@ -223,7 +223,7 @@ qboolean CG_ModernHUD_Active( void ) {
 	       ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_GHOST ||
 	         cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM ||
 	         cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ||
-	         cgs.gametype == GT_DEATHMATCH );
+	         cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM );
 }
 
 /* the gaps to the leader for every place (-1: none yet). The order is the
@@ -387,6 +387,9 @@ static int MH_LastCarAlive( int except ) {
 	return n;
 }
 
+static int MH_Team( int client );
+static const float *MH_TeamColor( int team );
+
 /* "1st" "2nd" "=3rd" (tied) */
 static void MH_Ordinal( int rank, qboolean tied, char *out, int size ) {
 	static const char *suffix[4] = { "th", "st", "nd", "rd" };
@@ -473,12 +476,51 @@ static void MH_Deathmatch( mhRaceLayout_t *l, const playerState_t *ps ) {
 		MH_Plain( cgs.clientinfo[sc->client].name, mh.rowName[i], sizeof( mh.rowName[0] ) );
 		Com_sprintf( mh.rowValue[i], sizeof( mh.rowValue[0] ), "%d", sc->score );
 		mh.rowMe[i] = sc->client == ps->clientNum;
+		mh.rowTeam[i] = MH_Team( sc->client );
 		mh.rowColor[i] = mh.rowNameColor[i] = NULL;
 		l->rowPos[i] = mh.rowPos[i];
 		l->rowName[i] = mh.rowName[i];
 		l->rowValue[i] = mh.rowValue[i];
 	}
 	l->rowCount = rows;
+}
+
+/* team deathmatch: on top of the deathmatch, our team in its colour and our
+ * frags, the frag limit, and the teams' frags over the order */
+static void MH_TeamDeathmatch( mhRaceLayout_t *l, const playerState_t *ps ) {
+	int team = MH_Team( ps->clientNum ), i;
+
+	if ( team == TEAM_RED || team == TEAM_BLUE ) {
+		l->posLabel = "YOUR TEAM";
+		l->pos = team == TEAM_RED ? "Red" : "Blue";
+		l->posSize = 44.0f;
+		l->of = "";
+		mh.posColor = mh.posLabelColor = MH_TeamColor( team );
+	}
+	Com_sprintf( mh.lap, sizeof( mh.lap ), "%d", ps->persistant[PERS_SCORE] );
+	l->lapLabel = "YOUR FRAGS";
+	l->lapValue = mh.lap;
+
+	/* the clock stays, the leader makes way for the limit */
+	l->kvCount = 1;
+	if ( cgs.fraglimit > 0 ) {
+		Q_strncpyz( mh.kvKey[1], "LIMIT", sizeof( mh.kvKey[1] ) );
+		Com_sprintf( mh.kvValue[1], sizeof( mh.kvValue[1] ), "%d", cgs.fraglimit );
+		mh.kvColor[1] = mhWhite;
+		l->kvKey[1] = mh.kvKey[1];
+		l->kvValue[1] = mh.kvValue[1];
+		l->kvCount = 2;
+	}
+
+	l->orderTitle = "Team frag order";
+	for ( i = 0; i < 2; i++ ) {
+		Com_sprintf( mh.teamValue[i], sizeof( mh.teamValue[i] ), "%d", cg.teamScores[i] );
+		l->teamValue[i] = mh.teamValue[i];
+	}
+	l->teamName[0] = "RED";
+	l->teamName[1] = "BLUE";
+	l->teamCount = 2;
+	l->rowSwatch = qtrue;
 }
 
 /* derby: the score, the time left to ram someone before the game takes the
@@ -650,7 +692,7 @@ static void MH_LastCar( mhRaceLayout_t *l, const playerState_t *ps, const centit
 
 /* the race with weapons, and the races in teams */
 #define MH_COMBAT()		( cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM || cgs.gametype == GT_LCS || \
-						  cgs.gametype == GT_DEATHMATCH || \
+						  cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM || \
 						  ( cgs.gametype == GT_ELIMINATION && cgs.eliminationWeapons ) )
 #define MH_TEAMRACE()	( cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_TEAM_RACING_DM )
 
@@ -899,6 +941,7 @@ static void MH_Prepare( void ) {
 	mhScale = cgs.glconfig.vidHeight / MH_DESIGN_HEIGHT;
 	memset( l, 0, sizeof( *l ) );
 	mh.lapColor = NULL;
+	mh.posLabelColor = NULL;
 	l->viewWidth = cgs.glconfig.vidWidth / mhScale;
 
 	last = MH_RaceOrder( at, &local );
@@ -914,7 +957,8 @@ static void MH_Prepare( void ) {
 	             cgs.gametype == GT_TEAM_RACING ? "Team race" : cgs.gametype == GT_RACING_DM ? "Race combat" :
 	             cgs.gametype == GT_TEAM_RACING_DM ? "Team race combat" :
 	             cgs.gametype == GT_ELIMINATION ? "Elimination" : cgs.gametype == GT_LCS ? "Last car standing" :
-	             cgs.gametype == GT_DERBY ? "Derby" : cgs.gametype == GT_DEATHMATCH ? "Deathmatch" : "Race",
+	             cgs.gametype == GT_DERBY ? "Derby" : cgs.gametype == GT_DEATHMATCH ? "Deathmatch" :
+	             cgs.gametype == GT_TEAM ? "Team combat" : "Race",
 	             mh.rowName[0] );
 	l->title = mh.title;
 	mh.posColor = mhWhite;
@@ -1078,7 +1122,8 @@ static void MH_Prepare( void ) {
 
 	if ( cgs.gametype == GT_ELIMINATION ) MH_Elimination( l, at, last, ps, cent );
 	if ( cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ) MH_LastCar( l, ps, cent );
-	if ( cgs.gametype == GT_DEATHMATCH ) MH_Deathmatch( l, ps );
+	if ( cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM ) MH_Deathmatch( l, ps );
+	if ( cgs.gametype == GT_TEAM ) MH_TeamDeathmatch( l, ps );
 
 	/* the top centre */
 	l->mirror = cg_drawRearView.integer && MH_Views() && !cg.scoreBoardShowing;
@@ -1111,7 +1156,6 @@ static void MH_Prepare( void ) {
 	/* with weapons: the front and the rear weapon with their ammo first */
 	l->slotCount = 0;
 	if ( MH_COMBAT() ) {
-		l->vehicleWidth = cgs.gametype == GT_LCS ? 300.0f : 330.0f;	/* the LCS board keeps 300 */
 		MH_Weapons( l, ps );
 	}
 	/* the trunk: each item in a slot, "USE" beside its icon */
@@ -1132,6 +1176,8 @@ static void MH_Prepare( void ) {
 			l->slotName[i] = mh.slotName[i];
 		}
 	}
+	/* three slots need the wider card (the boards: 330 with three, 300 with two) */
+	if ( l->slotCount >= 3 ) l->vehicleWidth = 330.0f;
 	MH_Kills( l );
 
 	/* bottom right */
@@ -1218,7 +1264,7 @@ static void MH_DrawCard( const mhRaceLayout_t *l ) {
 	MH_Panel( &l->card, qtrue, 1.0f );
 	MH_Str( &l->titleT, mhLabel, 1.0f );
 	if ( l->pos ) {
-		if ( l->posLabel ) MH_Str( &l->posLabelT, mhLabel, 1.0f );
+		if ( l->posLabel ) MH_Str( &l->posLabelT, mh.posLabelColor ? mh.posLabelColor : mhLabel, 1.0f );
 		MH_Str( &l->posT, mh.posColor, 1.0f );
 		MH_Str( &l->ofT, mhMuted, 1.0f );
 	}

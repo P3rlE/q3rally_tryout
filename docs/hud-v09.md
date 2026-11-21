@@ -44,6 +44,7 @@ mode card and the standings changes.
 | Last Car Standing | yes: LEFT x / y and SCORE, match time and the leader; "Still in" with everyone's integrity as a bar (in percent, orange when low), those out under it; weapons and kill feed; a big message when someone is out |
 | Derby | yes: SCORE and NO RAM (time left to ram someone), the car from above with the zones that took the hits (OK / WORN / CRITICAL, the zone just hit blinks); "Derby order" with everyone's integrity; a big message when someone is out |
 | Deathmatch | yes: frags against the frag limit and the rank ("=3rd" when tied), time left (or played) and the leader; "Frag order" from the scores; weapons and kill feed |
+| Team Deathmatch | yes: your team in its colour and your frags, the clock and the frag limit; "Team frag order" with the teams' frags over it and team squares; weapons and kill feed |
 | all others | the old HUD for now |
 
 The gaps in the race order come from the checkpoints (`cg_race_gap.c`,

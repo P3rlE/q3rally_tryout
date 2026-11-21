@@ -1437,7 +1437,7 @@ qboolean CG_DrawHUD( void ) {
         CG_DrawDeathmatchOrderHUD( 10.0f );
     }
     if ( ( cgs.gametype == GT_TEAM || cgs.gametype == GT_KOTH ||
-           cgs.gametype == GT_AUTOBALL ) && !cg.showScores &&
+           cgs.gametype == GT_AUTOBALL ) && !cg.showScores && !CG_ModernHUD_Active() &&
          cg.predictedPlayerState.pm_type != PM_INTERMISSION ) {
         CG_DrawTeamDeathmatchOrderHUD( 10.0f );
     }

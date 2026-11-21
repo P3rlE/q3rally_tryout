@@ -58,6 +58,9 @@ Changed:
   a big message for every car out.
 - The new HUD in Deathmatch: frags against the limit and the rank, the
   clock and the leader, the frag order, weapons and the kill feed.
+- The new HUD in Team Deathmatch: your team in its colour and your frags,
+  the teams' frags over the team frag order, weapons and the kill feed.
+  The car card is 330px wide with three slots, 300px with fewer.
 - The graphics loading screen is drawn by the game again, on every
   platform, and looks exactly like the WebUI's "Getting ready." screen:
   the layout follows the WebUI's CSS, the text uses its fonts (Barlow,
