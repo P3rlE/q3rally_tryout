@@ -18,6 +18,7 @@ SPRINT = json.loads((ROOT / 'tests/fixtures/hud_sprint_layout.json').read_text()
 GHOST = json.loads((ROOT / 'tests/fixtures/hud_ghost_layout.json').read_text())['els']
 TEAM_RACE = json.loads((ROOT / 'tests/fixtures/hud_teamrace_layout.json').read_text())['els']
 CTF = json.loads((ROOT / 'tests/fixtures/hud_ctf_layout.json').read_text())['els']
+AUTOBALL = json.loads((ROOT / 'tests/fixtures/hud_autoball_layout.json').read_text())['els']
 KOTH = json.loads((ROOT / 'tests/fixtures/hud_koth_layout.json').read_text())['els']
 DOMINATION = json.loads((ROOT / 'tests/fixtures/hud_domination_layout.json').read_text())['els']
 TEAMDM = json.loads((ROOT / 'tests/fixtures/hud_teamdm_layout.json').read_text())['els']
@@ -64,7 +65,7 @@ def command(model, width=1600):
               ';'.join(f'{n}:{v}' for n, v in m.get('teams', [])), m.get('swatch', 0),
               ';'.join(f'{a}:{w}:{b}' for a, w, b in m.get('kills', [])), m.get('elim', ''),
               m.get('posSize', 0), m.get('rowBars', 0), m.get('derby', ''), m.get('headerRow', 0),
-              ';'.join(f'{n}~{st}~{no}' for n, st, no in m.get('flags', [])), m.get('zones', ''), m.get('hill', '')]
+              ';'.join(f'{n}~{st}~{no}' for n, st, no in m.get('flags', [])), m.get('zones', ''), m.get('hill', ''), m.get('scorebug', '')]
     return [f'hudrace {width}', latin('|'.join(str(f) for f in fields))]
 
 
@@ -492,4 +493,26 @@ def test_native_koth_hud_matches_the_design():
              ('key1', card + '/div:5/div:0'), ('value1', card + '/div:5/div:1'), ('order', order)] \
         + [(f'team{i}', order + f'/div:1/div:{i}') for i in range(2)]
     problems = check_all(mine, KOTH, pairs)
+    assert not problems, problems
+
+
+def test_native_autoball_hud_matches_the_design():
+    model = dict(RACE_MODEL, title='Autoball \u00b7 Rooftop', posLabel='YOUR TEAM', pos='Blue', headerRow=1, of='',
+                 lapValue='', mirror=0, scorebug='RED~2~3:41~2ND HALF~1~BLUE',
+                 kv=[('BALL', 'RED HALF \u00b7 42 M'), ('YOUR GOALS', '1'), ('POSSESSION', '46%')],
+                 orderTitle='Autoball order', orderRight='Goals',
+                 rows=[('01', 'Vlad', '2'), ('02', 'Player', '1'), ('03', 'Steve', '0'), ('04', 'Jennifer', '0')],
+                 toast=0)
+    mine, = layouts(command(model))
+    bug, card, order = '/div:1/div:0', '/div:2/div:0', '/div:3/div:0'
+    pairs = [('bugBox', bug), ('bugCell0', bug + '/div:0'), ('bugCell1', bug + '/div:1'), ('bugCell2', bug + '/div:2'),
+             ('bugLeftLabel', bug + '/div:0/div:0'), ('bugLeft', bug + '/div:0/div:1'),
+             ('bugClock', bug + '/div:1/div:0'), ('bugSub', bug + '/div:1/div:1'),
+             ('bugRight', bug + '/div:2/div:0'), ('bugRightLabel', bug + '/div:2/div:1'),
+             ('card', card), ('posLabel', card + '/div:1/div:0'), ('pos', card + '/div:1/div:1'), ('sep', card + '/div:2'),
+             ('order', order)] \
+        + [(f'key{i}', card + f'/div:{3 + i}/div:0') for i in range(3)] \
+        + [(f'value{i}', card + f'/div:{3 + i}/div:1') for i in range(3)] \
+        + [(f'row{i}', order + f'/div:1/div:{i}') for i in range(4)]
+    problems = check_all(mine, AUTOBALL, pairs)
     assert not problems, problems

@@ -368,10 +368,12 @@ void MH_ZoneMarkerLayout( mhZoneMarker_t *m ) {
 	wsTextStyle_t letter, mono12;
 	MH_Big( &letter, 18.0f );
 	MH_Mono( &mono12, 12.0f );
-	m->tile.x = m->x - MH_MARKER_SIZE * 0.5f;
-	m->tile.y = m->y - MH_MARKER_SIZE * 0.5f;
-	m->tile.w = m->tile.h = MH_MARKER_SIZE;
 	MH_Set( &m->letterT, &letter, m->letter );
+	/* a letter on a square; a word ("BALL") gets 6px either side */
+	m->tile.w = m->letterT.box.w + 12.0f > MH_MARKER_SIZE ? m->letterT.box.w + 12.0f : MH_MARKER_SIZE;
+	m->tile.h = MH_MARKER_SIZE;
+	m->tile.x = m->x - m->tile.w * 0.5f;
+	m->tile.y = m->y - MH_MARKER_SIZE * 0.5f;
 	MH_Place( &m->letterT, m->x - m->letterT.box.w * 0.5f, m->y - m->letterT.box.h * 0.5f );
 	MH_Set( &m->distanceT, &mono12, m->distance );
 	MH_Place( &m->distanceT, m->x - m->distanceT.box.w * 0.5f, m->tile.y + MH_MARKER_SIZE + 4.0f );
@@ -484,6 +486,47 @@ static void MH_TopCentre( mhRaceLayout_t *l ) {
 	wsTextStyle_t label11, text19, mono12;
 	float y = MH_CENTER_TOP, x, textH, content, textW;
 
+	/* scorebug(): a 1px border around three cells 52 high, 92 120 92 wide;
+	 * label and score side by side 10px apart, the clock over the line 2px
+	 * apart, each centred in its cell */
+	if ( l->scorebug ) {
+		wsTextStyle_t label11, label10, big34, mono22;
+		float cx[3] = { 92.0f, 120.0f, 92.0f }, cy = y + 1.0f + 26.0f, gx, colH;
+		int i;
+		MH_Label( &label11, 11.0f );
+		MH_Label( &label10, 10.0f );
+		MH_Big( &big34, 34.0f );
+		MH_Mono( &mono22, 22.0f );
+		l->bugBox.w = 92.0f + 120.0f + 92.0f + 2.0f;
+		l->bugBox.h = 54.0f;
+		l->bugBox.x = ( l->viewWidth - l->bugBox.w ) * 0.5f;
+		l->bugBox.y = y;
+		x = l->bugBox.x + 1.0f;
+		for ( i = 0; i < 3; i++ ) {
+			l->bugCell[i].x = x;
+			l->bugCell[i].y = y + 1.0f;
+			l->bugCell[i].w = cx[i];
+			l->bugCell[i].h = 52.0f;
+			x += cx[i];
+		}
+		MH_Set( &l->bugLeftLabelT, &label11, l->bugLeftLabel );
+		MH_Set( &l->bugLeftT, &big34, l->bugLeft );
+		gx = l->bugCell[0].x + ( 92.0f - l->bugLeftLabelT.box.w - 10.0f - l->bugLeftT.box.w ) * 0.5f;
+		MH_Place( &l->bugLeftLabelT, gx, cy - l->bugLeftLabelT.box.h * 0.5f );
+		MH_Place( &l->bugLeftT, gx + l->bugLeftLabelT.box.w + 10.0f, cy - l->bugLeftT.box.h * 0.5f );
+		MH_Set( &l->bugRightT, &big34, l->bugRight );
+		MH_Set( &l->bugRightLabelT, &label11, l->bugRightLabel );
+		gx = l->bugCell[2].x + ( 92.0f - l->bugRightT.box.w - 10.0f - l->bugRightLabelT.box.w ) * 0.5f;
+		MH_Place( &l->bugRightT, gx, cy - l->bugRightT.box.h * 0.5f );
+		MH_Place( &l->bugRightLabelT, gx + l->bugRightT.box.w + 10.0f, cy - l->bugRightLabelT.box.h * 0.5f );
+		MH_Set( &l->bugClockT, &mono22, l->bugClock );
+		MH_Set( &l->bugSubT, &label10, l->bugSub ? l->bugSub : "" );
+		colH = l->bugClockT.box.h + ( l->bugSubT.text[0] ? 2.0f + l->bugSubT.box.h : 0.0f );
+		MH_Place( &l->bugClockT, l->bugCell[1].x + ( 120.0f - l->bugClockT.box.w ) * 0.5f, cy - colH * 0.5f );
+		MH_Place( &l->bugSubT, l->bugCell[1].x + ( 120.0f - l->bugSubT.box.w ) * 0.5f,
+		          cy - colH * 0.5f + l->bugClockT.box.h + 2.0f );
+		y += 54.0f + 12.0f;
+	}
 	if ( l->mirror ) {
 		l->mirrorBox.x = ( l->viewWidth - MH_MIRROR_W ) * 0.5f;
 		l->mirrorBox.y = y;

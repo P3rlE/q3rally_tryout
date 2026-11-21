@@ -493,6 +493,11 @@ int main(void) {
             if (n > 47 && *f[47]) {   /* hill: label~owner */
                 l.hillLabel = f[47]; r = strchr(f[47], '~'); *r++ = 0; l.hillOwner = r;
             }
+            if (n > 48 && *f[48]) {   /* scorebug: RED~2~3:41~2ND HALF~1~BLUE */
+                l.scorebug = 1; l.bugLeftLabel = f[48]; r = strchr(f[48], '~'); *r++ = 0;
+                l.bugLeft = r; r = strchr(r, '~'); *r++ = 0; l.bugClock = r; r = strchr(r, '~'); *r++ = 0;
+                l.bugSub = r; r = strchr(r, '~'); *r++ = 0; l.bugRight = r; r = strchr(r, '~'); *r++ = 0; l.bugRightLabel = r;
+            }
             if (n > 40 && *f[40]) {   /* elimination: label;value;caption */
                 l.elim = 1; l.elimLabel = f[40]; r = strchr(f[40], ';'); *r++ = 0;
                 l.elimValue = r; r = strchr(r, ';'); *r++ = 0; l.elimCaption = r;
@@ -507,6 +512,9 @@ int main(void) {
             rect("sep2", l.sep2);
             for (i = 0; i < l.zoneCount; i++) { char k[24]; sprintf(k, "zoneTile%d", i); rect(k, l.zoneTile[i]);
                 sprintf(k, "zoneName%d", i); T(k, l.zoneNameT[i]); }
+            rect("bugBox", l.bugBox); rect("bugCell0", l.bugCell[0]); rect("bugCell1", l.bugCell[1]); rect("bugCell2", l.bugCell[2]);
+            T("bugLeftLabel", l.bugLeftLabelT); T("bugLeft", l.bugLeftT); T("bugClock", l.bugClockT); T("bugSub", l.bugSubT);
+            T("bugRight", l.bugRightT); T("bugRightLabel", l.bugRightLabelT);
             rect("hillIcon", l.hillIcon); T("hillLabel", l.hillLabelT); T("hillOwner", l.hillOwnerT);
             rect("zoneBar", l.zoneBar); T("zoneLabel", l.zoneLabelT); T("zoneValue", l.zoneValueT);
             for (i = 0; i < l.flagCount; i++) { char k[24]; sprintf(k, "flagIcon%d", i); rect(k, l.flagIcon[i]);
