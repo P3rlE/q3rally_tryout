@@ -17,6 +17,7 @@ RACE = json.loads((ROOT / 'tests/fixtures/hud_race_layout.json').read_text())['e
 SPRINT = json.loads((ROOT / 'tests/fixtures/hud_sprint_layout.json').read_text())['els']
 GHOST = json.loads((ROOT / 'tests/fixtures/hud_ghost_layout.json').read_text())['els']
 TEAM_RACE = json.loads((ROOT / 'tests/fixtures/hud_teamrace_layout.json').read_text())['els']
+DERBY = json.loads((ROOT / 'tests/fixtures/hud_derby_layout.json').read_text())['els']
 LCS = json.loads((ROOT / 'tests/fixtures/hud_lcs_layout.json').read_text())['els']
 ELIMINATION = json.loads((ROOT / 'tests/fixtures/hud_elimination_layout.json').read_text())['els']
 MESSAGES = json.loads((ROOT / 'tests/fixtures/hud_messages_layout.json').read_text())['els']
@@ -57,7 +58,7 @@ def command(model, width=1600):
               m.get('posLabel', ''), ','.join(str(v) for v in m.get('kvSizes', [])),
               ';'.join(f'{n}:{v}' for n, v in m.get('teams', [])), m.get('swatch', 0),
               ';'.join(f'{a}:{w}:{b}' for a, w, b in m.get('kills', [])), m.get('elim', ''),
-              m.get('posSize', 0), m.get('rowBars', 0)]
+              m.get('posSize', 0), m.get('rowBars', 0), m.get('derby', '')]
     return [f'hudrace {width}', latin('|'.join(str(f) for f in fields))]
 
 
@@ -361,4 +362,20 @@ def test_native_last_car_standing_hud_matches_the_design():
         pairs += [(f'row{i}', row), (f'rowName{i}', row + '/div:0'), (f'rowBar{i}', row + '/div:1'),
                   (f'rowValue{i}', row + '/div:2')]
     problems = check_all(mine, LCS, pairs)
+    assert not problems, problems
+
+
+# the derby board: score and the no-ram clock, the car from above with its worst zone
+def test_native_derby_card_matches_the_design():
+    model = dict(RACE_MODEL, title='Derby \u00b7 David5', posLabel='SCORE', pos='840', posSize=56, of='',
+                 lapLabel='NO RAM', lapValue='0:39', kv=[], derby='FRONT CRITICAL', toast=0, jukebox=0)
+    mine, = layouts(command(model))
+    card, block = '/div:1/div:0', '/div:1/div:0/div:3'
+    pairs = [('card', card), ('posLabel', card + '/div:1/div:0/div:0'), ('pos', card + '/div:1/div:0/div:1'),
+             ('lapLabel', card + '/div:1/div:1/div:0'), ('lapValue', card + '/div:1/div:1/div:1'),
+             ('sep', card + '/div:2'), ('derbyCar', block + '/svg:0'), ('derbyStatus', block + '/div:1/div:0')]
+    for i in range(3):
+        pairs += [(f'derbySwatch{i}', block + f'/div:1/div:{1 + i}/div:0'),
+                  (f'derbyLegend{i}', block + f'/div:1/div:{1 + i}/div:1')]
+    problems = check_all(mine, DERBY, pairs)
     assert not problems, problems

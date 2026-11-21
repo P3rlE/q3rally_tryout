@@ -477,6 +477,7 @@ int main(void) {
             }
             if (n > 41) l.posSize = atof(f[41]);
             if (n > 42) l.rowBars = atoi(f[42]);
+            if (n > 43 && *f[43]) l.derbyStatus = f[43];
             if (n > 40 && *f[40]) {   /* elimination: label;value;caption */
                 l.elim = 1; l.elimLabel = f[40]; r = strchr(f[40], ';'); *r++ = 0;
                 l.elimValue = r; r = strchr(r, ';'); *r++ = 0; l.elimCaption = r;
@@ -488,6 +489,9 @@ int main(void) {
             printf("{");
             rect("card", l.card); rect("sep", l.sep); T("title", l.titleT); T("posLabel", l.posLabelT); T("pos", l.posT); T("of", l.ofT);
             T("lapLabel", l.lapLabelT); T("lapValue", l.lapValueT);
+            rect("derbyCar", l.derbyCar); T("derbyStatus", l.derbyStatusT);
+            for (i = 0; i < 3; i++) { char k[24]; sprintf(k, "derbySwatch%d", i); rect(k, l.derbySwatch[i]);
+                sprintf(k, "derbyLegend%d", i); T(k, l.derbyLegendT[i]); }
             rect("elimBar", l.elimBar); T("elimLabel", l.elimLabelT); T("elimValue", l.elimValueT); T("elimCaption", l.elimCaptionT);
             rect("progressBar", l.progressBar); T("progressLeft", l.progressLeftT); T("progressRight", l.progressRightT);
             for (i = 0; i < l.kvCount; i++) { char k[16]; sprintf(k, "key%d", i); T(k, l.kvKeyT[i]); sprintf(k, "value%d", i); T(k, l.kvValueT[i]); }

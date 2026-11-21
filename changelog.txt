@@ -53,6 +53,9 @@ Changed:
   integrity as a bar, weapons, kill feed and a big message for every car
   out. The server now sends the integrity list in LCS too (as in Derby).
   In the new HUD the ammo warning is in the menu font under the mirror.
+- The new HUD in Derby: score and the no-ram clock, the car from above
+  showing where the hits landed, everyone's integrity in the derby order and
+  a big message for every car out.
 - The graphics loading screen is drawn by the game again, on every
   platform, and looks exactly like the WebUI's "Getting ready." screen:
   the layout follows the WebUI's CSS, the text uses its fonts (Barlow,

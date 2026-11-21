@@ -66,7 +66,10 @@ static struct {
 	const float		*rowNameColor[MH_ROWS_MAX];	/* NULL: white */
 	float			rowFrac[MH_ROWS_MAX];
 	qboolean		rowLow[MH_ROWS_MAX];			/* under 35: the bar in the accent */
-	char			lcsLeader[32];
+	const float		*lapColor;					/* the right of the place line, NULL: label/white */
+	int				derbyZone[4];				/* damage taken per zone: front, left, right, rear */
+	int				derbyHitSeen, derbyMaxHealth;
+	const float		*derbyStatusColor;
 	char			elimValue[24], elimCaption[48];
 	float			elimFrac;
 	const float		*posColor;
@@ -219,7 +222,7 @@ qboolean CG_ModernHUD_Active( void ) {
 	return cg_hudStyle.integer && cg.snap &&
 	       ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_GHOST ||
 	         cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM ||
-	         cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS );
+	         cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY );
 }
 
 /* the gaps to the leader for every place (-1: none yet). The order is the
@@ -349,6 +352,8 @@ static qboolean MH_LastCarOut( int client ) {
 	if ( client == cg.snap->ps.clientNum )
 		return cg.snap->ps.pm_type == PM_DEAD || cg.snap->ps.stats[STAT_HEALTH] <= 0;
 	if ( cg_entities[client].currentState.eFlags & EF_DEAD ) return qtrue;
+	/* the derby sets the finish time of a car that is out (the winner's at the end) */
+	if ( cgs.gametype == GT_DERBY && cg_entities[client].finishRaceTime && !cg.intermissionStarted ) return qtrue;
 	for ( i = 0; i < cg.numScores; i++ ) {
 		if ( cg.scores[i].client == client ) return cg.scores[i].integrity == 0;
 	}
@@ -381,6 +386,94 @@ static int MH_LastCarAlive( int except ) {
 	return n;
 }
 
+/* derby: the score, the time left to ram someone before the game takes the
+ * car out, and the car from above. The server has one integrity for the
+ * car; the zones show where the hits landed (cg_playerstate.c works out
+ * the zone of each hit), added up here since the car was whole. */
+static const char *mhZoneName[4] = { "FRONT", "LEFT", "RIGHT", "REAR" };
+
+static int MH_DerbyZoneState( int zone, int maxHealth ) {
+	if ( mh.derbyZone[zone] * 100 >= maxHealth * 30 ) return 2;	/* critical */
+	if ( mh.derbyZone[zone] * 100 >= maxHealth * 12 ) return 1;	/* worn */
+	return 0;
+}
+
+static void MH_Derby( mhRaceLayout_t *l, const playerState_t *ps, const centity_t *cent ) {
+	static char status[24];
+	int seconds = ps->stats[STAT_DERBY_NORAM], maxHealth = ps->stats[STAT_MAX_HEALTH] > 0 ? ps->stats[STAT_MAX_HEALTH] : 100;
+	int zone, worst = -1, worstState = 0, state;
+
+	Com_sprintf( mh.pos, sizeof( mh.pos ), "%d", ps->persistant[PERS_SCORE] );
+	l->posLabel = "SCORE";
+	l->pos = mh.pos;
+	l->posSize = 56.0f;
+	l->of = "";
+	if ( cent->startRaceTime && seconds > 0 ) Com_sprintf( mh.lap, sizeof( mh.lap ), "%d:%02d", seconds / 60, seconds % 60 );
+	else Q_strncpyz( mh.lap, "--", sizeof( mh.lap ) );
+	l->lapLabel = "NO RAM";
+	l->lapValue = mh.lap;
+	mh.lapColor = mhAccent;
+
+	/* the hits on our car since it was whole */
+	if ( ps->stats[STAT_HEALTH] >= maxHealth || ps->pm_type == PM_SPECTATOR ) memset( mh.derbyZone, 0, sizeof( mh.derbyZone ) );
+	if ( cg.derbyHitFxTime && cg.derbyHitFxTime != mh.derbyHitSeen ) {
+		mh.derbyHitSeen = cg.derbyHitFxTime;
+		if ( cg.derbyHitFxDir >= 0 && cg.derbyHitFxDir < 4 ) mh.derbyZone[cg.derbyHitFxDir] += cg.derbyHitFxDamage;
+		else for ( zone = 0; zone < 4; zone++ ) mh.derbyZone[zone] += cg.derbyHitFxDamage / 4;
+	}
+	for ( zone = 0; zone < 4; zone++ ) {
+		state = MH_DerbyZoneState( zone, maxHealth );
+		if ( worst < 0 || state > worstState || ( state == worstState && mh.derbyZone[zone] > mh.derbyZone[worst] ) ) {
+			worst = zone;
+			worstState = state;
+		}
+	}
+	if ( worstState == 2 ) Com_sprintf( status, sizeof( status ), "%s CRITICAL", mhZoneName[worst] );
+	else if ( worstState == 1 ) Com_sprintf( status, sizeof( status ), "%s WORN", mhZoneName[worst] );
+	else Q_strncpyz( status, "NO DAMAGE", sizeof( status ) );
+	l->derbyStatus = status;
+	mh.derbyStatusColor = worstState == 2 ? mhAccent : worstState == 1 ? mhSoft : mhMuted;
+	mh.derbyMaxHealth = maxHealth;
+}
+
+/* an SVG stroke: `width` wide, centred on the rectangle's edge */
+static void MH_Outline( const wsRect_t *r, const float *color, float width ) {
+	float h = width * 0.5f;
+	MH_Fill( r->x - h, r->y - h, r->w + width, width, color, 1.0f );
+	MH_Fill( r->x - h, r->y + r->h - h, r->w + width, width, color, 1.0f );
+	MH_Fill( r->x - h, r->y + h, width, r->h - width, color, 1.0f );
+	MH_Fill( r->x + r->w - h, r->y + h, width, r->h - width, color, 1.0f );
+}
+
+/* the car from above, in the design's 110x170 view box */
+static void MH_DrawDerbyCar( const mhRaceLayout_t *l ) {
+	static const float zones[4][4] = { { 31, 14, 48, 16 }, { 13, 40, 10, 90 }, { 87, 40, 10, 90 }, { 31, 140, 48, 16 } };
+	static const vec4_t worn = { 122 / 255.0f, 122 / 255.0f, 122 / 255.0f, 1.0f };	/* #7a7a7a */
+	static const vec4_t line = { 90 / 255.0f, 90 / 255.0f, 90 / 255.0f, 1.0f };		/* #5a5a5a */
+	const wsRect_t *c = &l->derbyCar;
+	const float *legend[3] = { mhSoft, worn, mhAccent };
+	wsRect_t r;
+	int zone, i, hitAge = cg.time - cg.derbyHitFxTime;
+
+	r.x = c->x + 25; r.y = c->y + 10; r.w = 60; r.h = 150;
+	MH_Outline( &r, line, 2.0f );
+	r.x = c->x + 36; r.y = c->y + 52; r.w = 38; r.h = 56;
+	MH_Outline( &r, line, 2.0f );
+	for ( zone = 0; zone < 4; zone++ ) {
+		float alpha = 1.0f;
+		r.x = c->x + zones[zone][0]; r.y = c->y + zones[zone][1]; r.w = zones[zone][2]; r.h = zones[zone][3];
+		/* the zone just hit blinks for two seconds */
+		if ( cg.derbyHitFxTime && hitAge >= 0 && hitAge < 2200 && ( cg.derbyHitFxDir == zone || cg.derbyHitFxDir < 0 ) )
+			alpha = ( ( cg.time / 150 ) & 1 ) ? 0.35f : 1.0f;
+		MH_FillRect( &r, legend[MH_DerbyZoneState( zone, mh.derbyMaxHealth )], alpha );
+	}
+	MH_Str( &l->derbyStatusT, mh.derbyStatusColor, 1.0f );
+	for ( i = 0; i < 3; i++ ) {
+		MH_FillRect( &l->derbySwatch[i], legend[i], 1.0f );
+		MH_Str( &l->derbyLegendT[i], mhLabel, 1.0f );
+	}
+}
+
 /* the card: cars left and the score, the match time and the leader; the
  * order: everyone's integrity as a bar, those still in first */
 static void MH_LastCar( mhRaceLayout_t *l, const playerState_t *ps, const centity_t *cent ) {
@@ -399,18 +492,21 @@ static void MH_LastCar( mhRaceLayout_t *l, const playerState_t *ps, const centit
 		}
 	}
 
-	Com_sprintf( mh.pos, sizeof( mh.pos ), "%d / %d", alive, count );
-	l->posLabel = "LEFT";
-	l->pos = mh.pos;
-	l->posSize = 56.0f;
-	l->of = "";
-	Com_sprintf( mh.lap, sizeof( mh.lap ), "%d", ps->persistant[PERS_SCORE] );
-	l->lapLabel = "SCORE";
-	l->lapValue = mh.lap;
 	l->progress = qfalse;
-
 	l->kvCount = 0;
-	if ( cg_hudShowTimes.integer ) {
+	if ( cgs.gametype == GT_DERBY ) {
+		MH_Derby( l, ps, cent );
+	} else {
+		Com_sprintf( mh.pos, sizeof( mh.pos ), "%d / %d", alive, count );
+		l->posLabel = "LEFT";
+		l->pos = mh.pos;
+		l->posSize = 56.0f;
+		l->of = "";
+		Com_sprintf( mh.lap, sizeof( mh.lap ), "%d", ps->persistant[PERS_SCORE] );
+		l->lapLabel = "SCORE";
+		l->lapValue = mh.lap;
+	}
+	if ( cg_hudShowTimes.integer && cgs.gametype == GT_LCS ) {
 		if ( cent->finishRaceTime ) time = cent->finishRaceTime - cent->startRaceTime;
 		else if ( cent->startRaceTime && cg.time > cent->startRaceTime ) time = cg.time - cent->startRaceTime;
 		else time = 0;
@@ -418,7 +514,7 @@ static void MH_LastCar( mhRaceLayout_t *l, const playerState_t *ps, const centit
 		MH_Time( time, mh.kvValue[l->kvCount], sizeof( mh.kvValue[0] ) );
 		mh.kvColor[l->kvCount++] = mhWhite;
 	}
-	if ( alive > 0 ) {
+	if ( alive > 0 && cgs.gametype == GT_LCS ) {
 		Q_strncpyz( mh.kvKey[l->kvCount], "LEADER", sizeof( mh.kvKey[0] ) );
 		MH_Plain( cgs.clientinfo[order[0]].name, mh.kvValue[l->kvCount], sizeof( mh.kvValue[0] ) );
 		mh.kvColor[l->kvCount++] = mhWhite;
@@ -429,11 +525,12 @@ static void MH_LastCar( mhRaceLayout_t *l, const playerState_t *ps, const centit
 		l->kvSize[i] = 0.0f;
 	}
 
-	l->orderTitle = "Still in";
+	l->orderTitle = cgs.gametype == GT_DERBY ? "Derby order" : "Still in";
 	l->orderRight = "Integrity";
 	l->rowBars = qtrue;
 	/* no race order here: the scores decide */
-	l->standings = cg_hudShowOpponentList.integer && count > 0 && !cg.showScores &&
+	l->standings = ( cgs.gametype == GT_DERBY ? cg_hudShowDerbyList.integer : cg_hudShowOpponentList.integer ) &&
+	               count > 0 && !cg.showScores &&
 	               cg.predictedPlayerState.pm_type != PM_INTERMISSION && !CG_IntroCam_IsActive();
 	if ( !l->standings ) return;
 	for ( row = 0; row < count && row < MH_ROWS_MAX; row++ ) {
@@ -634,8 +731,8 @@ static const char *MH_KillWeapon( int mod ) {
 void CG_ModernHUD_Obituary( int target, int attacker, int mod ) {
 	int i;
 	if ( target < 0 || target >= MAX_CLIENTS ) return;
-	/* last car standing: one life, so every death is someone out */
-	if ( cgs.gametype == GT_LCS && cg.snap && CG_ModernHUD_Active() ) {
+	/* last car standing and derby: one life, so every death is someone out */
+	if ( ( cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ) && cg.snap && CG_ModernHUD_Active() ) {
 		char name[40];
 		int left = MH_LastCarAlive( target );
 		MH_Plain( cgs.clientinfo[target].name, name, sizeof( name ) );
@@ -705,6 +802,7 @@ static void MH_Prepare( void ) {
 	MH_Register();
 	mhScale = cgs.glconfig.vidHeight / MH_DESIGN_HEIGHT;
 	memset( l, 0, sizeof( *l ) );
+	mh.lapColor = NULL;
 	l->viewWidth = cgs.glconfig.vidWidth / mhScale;
 
 	last = MH_RaceOrder( at, &local );
@@ -719,7 +817,8 @@ static void MH_Prepare( void ) {
 	             cgs.gametype == GT_GHOST ? "Ghost race" : cgs.gametype == GT_SPRINT ? "Sprint" :
 	             cgs.gametype == GT_TEAM_RACING ? "Team race" : cgs.gametype == GT_RACING_DM ? "Race combat" :
 	             cgs.gametype == GT_TEAM_RACING_DM ? "Team race combat" :
-	             cgs.gametype == GT_ELIMINATION ? "Elimination" : cgs.gametype == GT_LCS ? "Last car standing" : "Race",
+	             cgs.gametype == GT_ELIMINATION ? "Elimination" : cgs.gametype == GT_LCS ? "Last car standing" :
+	             cgs.gametype == GT_DERBY ? "Derby" : "Race",
 	             mh.rowName[0] );
 	l->title = mh.title;
 	mh.posColor = mhWhite;
@@ -882,7 +981,7 @@ static void MH_Prepare( void ) {
 	}
 
 	if ( cgs.gametype == GT_ELIMINATION ) MH_Elimination( l, at, last, ps, cent );
-	if ( cgs.gametype == GT_LCS ) MH_LastCar( l, ps, cent );
+	if ( cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ) MH_LastCar( l, ps, cent );
 
 	/* the top centre */
 	l->mirror = cg_drawRearView.integer && MH_Views() && !cg.scoreBoardShowing;
@@ -1027,8 +1126,8 @@ static void MH_DrawCard( const mhRaceLayout_t *l ) {
 		MH_Str( &l->ofT, mhMuted, 1.0f );
 	}
 	if ( l->lapValue ) {
-		MH_Str( &l->lapLabelT, mhLabel, 1.0f );
-		MH_Str( &l->lapValueT, mhWhite, 1.0f );
+		MH_Str( &l->lapLabelT, mh.lapColor ? mh.lapColor : mhLabel, 1.0f );
+		MH_Str( &l->lapValueT, mh.lapColor ? mh.lapColor : mhWhite, 1.0f );
 	}
 	if ( l->progress ) {
 		const wsRect_t *b = &l->progressBar;
@@ -1042,6 +1141,7 @@ static void MH_DrawCard( const mhRaceLayout_t *l ) {
 		MH_Str( &l->progressRightT, mhMuted, 1.0f );
 	}
 	if ( l->pos || l->lapValue || l->progress ) MH_FillRect( &l->sep, mhLine, 1.0f );
+	if ( l->derbyStatus ) MH_DrawDerbyCar( l );
 	if ( l->elim ) {
 		MH_Str( &l->elimLabelT, mhAccent, 1.0f );
 		MH_Str( &l->elimValueT, mhAccent, 1.0f );

@@ -1489,7 +1489,7 @@ qboolean CG_DrawHUD( void ) {
 
     case GT_DERBY:
         /* The results scoreboard takes over this corner at match end. */
-        if ( cg_hudShowDerbyList.integer && !cg.showScores &&
+        if ( cg_hudShowDerbyList.integer && !cg.showScores && !CG_ModernHUD_Active() &&
              cg.predictedPlayerState.pm_type != PM_INTERMISSION ) {
             CG_DrawHUD_DerbyList( 440, 16 );
         }

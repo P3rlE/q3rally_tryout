@@ -217,6 +217,35 @@ static void MH_Card( mhRaceLayout_t *l ) {
 		y += 1.0f + 12.0f;
 	}
 
+	/* derby: the car, and 18px to its right a column 10px apart, centred on it */
+	if ( l->derbyStatus ) {
+		static const char *legend[3] = { "OK", "WORN", "CRITICAL" };
+		wsTextStyle_t small;
+		float x = in.x + 110.0f + 18.0f, colH, cy;
+		MH_Label( &small, 11.0f );
+		l->derbyCar.x = in.x;
+		l->derbyCar.y = y;
+		l->derbyCar.w = 110.0f;
+		l->derbyCar.h = 170.0f;
+		MH_Set( &l->derbyStatusT, &label, l->derbyStatus );
+		colH = l->derbyStatusT.box.h;
+		for ( i = 0; i < 3; i++ ) {
+			MH_Set( &l->derbyLegendT[i], &small, legend[i] );
+			colH += 10.0f + l->derbyLegendT[i].box.h;
+		}
+		cy = y + ( 170.0f - colH ) * 0.5f;
+		MH_Place( &l->derbyStatusT, x, cy );
+		cy += l->derbyStatusT.box.h + 10.0f;
+		for ( i = 0; i < 3; i++ ) {
+			l->derbySwatch[i].x = x;
+			l->derbySwatch[i].y = cy + ( l->derbyLegendT[i].box.h - 10.0f ) * 0.5f;
+			l->derbySwatch[i].w = l->derbySwatch[i].h = 10.0f;
+			MH_Place( &l->derbyLegendT[i], x + 10.0f + 8.0f, cy );
+			cy += l->derbyLegendT[i].box.h + 10.0f;
+		}
+		y += 170.0f + 12.0f;
+	}
+
 	/* elimination: a column 6px apart: the row, a 6px bar, a small line */
 	if ( l->elim ) {
 		wsTextStyle_t small;
