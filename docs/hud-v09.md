@@ -41,6 +41,7 @@ mode card and the standings changes.
 | Team Racing | yes: the race with "YOUR TEAM" in the card, the teams' average time over the order ("--" until the first car is home) and a square in the team colour before every driver |
 | Racing DM, Team Racing DM | yes: SCORE (frags) in the card instead of the gap, the car's card 330px wide with FRONT and REAR weapon (ammo, name) before the items, a kill feed of the last three kills (6 s) under the order; in teams the frags in the team cells |
 | Elimination | yes: place among those still in, LEFT x/y, NEXT OUT (who is last now, how many are through the lap that decides), total time; "Still in" with SAFE/DANGER and the drivers out under it; a big message when someone is out; weapons and kill feed with g_eliminationWeapons |
+| Last Car Standing | yes: LEFT x / y and SCORE, match time and the leader; "Still in" with everyone's integrity as a bar (in percent, orange when low), those out under it; weapons and kill feed; a big message when someone is out |
 | all others | the old HUD for now |
 
 The gaps in the race order come from the checkpoints (`cg_race_gap.c`,

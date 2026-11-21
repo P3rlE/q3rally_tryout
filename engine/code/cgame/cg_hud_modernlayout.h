@@ -48,6 +48,7 @@ typedef struct {
 	const char	*title;				/* "Race · Downtown" (shown in capitals) */
 	const char	*pos, *of;			/* "P3" "/ 6", NULL: no position */
 	const char	*posLabel;			/* the ghost race: "VS GHOST" over "-0.84" (of unused) */
+	float		posSize;			/* the figure under posLabel, 0: 64 */
 	const char	*lapLabel, *lapValue;	/* "LAP" "2/5", NULL: none */
 	qboolean	progress;			/* a sprint: the course as a bar, its checkpoints as ticks */
 	int			progressTicks;
@@ -64,6 +65,7 @@ typedef struct {
 	int			teamCount;			/* the teams' standing over the rows, in their colours */
 	const char	*teamName[MH_TEAMS_MAX], *teamValue[MH_TEAMS_MAX];
 	qboolean	rowSwatch;			/* a square in the driver's team colour before the name */
+	qboolean	rowBars;			/* name, a bar, a value 40px wide at the right (no place) */
 	int			killCount;			/* the kill feed, oldest first: "Player" "ROCKET" "Paul" */
 	const char	*killA[MH_KILLS_MAX], *killWeapon[MH_KILLS_MAX], *killB[MH_KILLS_MAX];	/* killB "": none */
 	int			rowCount;
@@ -102,7 +104,7 @@ typedef struct {
 	wsRect_t	order, row[MH_ROWS_MAX];
 	mhText_t	orderTitleT, orderRightT;
 	mhText_t	rowPosT[MH_ROWS_MAX], rowNameT[MH_ROWS_MAX], rowValueT[MH_ROWS_MAX];
-	wsRect_t	teamCell[MH_TEAMS_MAX], rowSwatchBox[MH_ROWS_MAX];
+	wsRect_t	teamCell[MH_TEAMS_MAX], rowSwatchBox[MH_ROWS_MAX], rowBar[MH_ROWS_MAX];
 	mhText_t	teamNameT[MH_TEAMS_MAX], teamValueT[MH_TEAMS_MAX];
 	wsRect_t	killBox[MH_KILLS_MAX];
 	mhText_t	killAT[MH_KILLS_MAX], killWeaponT[MH_KILLS_MAX], killBT[MH_KILLS_MAX];

@@ -161,8 +161,10 @@ static void MH_Card( mhRaceLayout_t *l ) {
 		posAbove = posBelow = 0.0f;
 		if ( l->pos && l->posLabel ) {
 			/* label over the figure, like the lap at the right */
+			wsTextStyle_t figure;
+			MH_Big( &figure, l->posSize > 0.0f ? l->posSize : 64.0f );
 			MH_Set( &l->posLabelT, &label, l->posLabel );
-			MH_Set( &l->posT, &big64, l->pos );
+			MH_Set( &l->posT, &figure, l->pos );
 			left = l->posLabelT.box.h + 4.0f + l->posT.box.h;
 		} else if ( l->pos ) {
 			MH_Set( &l->posT, &big64, l->pos );
@@ -305,6 +307,24 @@ static void MH_Order( mhRaceLayout_t *l ) {
 		r->w = in.w + 16.0f;
 		r->h = 26.0f;
 		x = r->x + 8.0f;
+		if ( l->rowBars ) {
+			/* name 92px, the bar, the value in a 40px column, all centred */
+			wsTextStyle_t mono12;
+			MH_Mono( &mono12, 12.0f );
+			MH_Set( &l->rowNameT[i], &text15, l->rowName[i] );
+			MH_Fit( &l->rowNameT[i], 92.0f );
+			l->rowNameT[i].box.w = 92.0f;
+			MH_Place( &l->rowNameT[i], x, r->y + ( r->h - l->rowNameT[i].box.h ) * 0.5f );
+			MH_Set( &l->rowValueT[i], &mono12, l->rowValue[i] );
+			l->rowValueT[i].box.w = 40.0f;	/* the column; the text sits at its right */
+			MH_Place( &l->rowValueT[i], r->x + r->w - 8.0f - 40.0f, r->y + ( r->h - l->rowValueT[i].box.h ) * 0.5f );
+			l->rowBar[i].x = x + 92.0f + 10.0f;
+			l->rowBar[i].w = l->rowValueT[i].box.x - 10.0f - l->rowBar[i].x;
+			l->rowBar[i].h = 4.0f;
+			l->rowBar[i].y = r->y + ( r->h - 4.0f ) * 0.5f;
+			y += r->h + 2.0f;
+			continue;
+		}
 		MH_Set( &l->rowPosT[i], &mono13, l->rowPos[i] );
 		MH_Place( &l->rowPosT[i], x, r->y + ( r->h - l->rowPosT[i].box.h ) * 0.5f );
 		x += l->rowPosT[i].box.w + 10.0f;
