@@ -215,6 +215,23 @@ qboolean CG_ModernHUD_Active( void ) {
 	         cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM );
 }
 
+/* the gaps to the leader for every place (-1: none yet). The order is the
+ * server's, by the way still to go; the gaps are taken at the checkpoints.
+ * Where they disagree (just overtaken), a place is shown no closer than the
+ * one ahead of it. */
+static int mhGap[MAX_CLIENTS + 1];
+
+static void MH_Gaps( const int at[MAX_CLIENTS + 1], int last ) {
+	int position, gap, floor = 0;
+	mhGap[1] = 0;
+	for ( position = 2; position <= last && position <= MAX_CLIENTS; position++ ) {
+		mhGap[position] = -1;
+		if ( at[1] < 0 || at[position] < 0 || !CG_GetRaceSplitGap( at[1], at[position], &gap ) ) continue;
+		if ( gap < floor ) gap = floor;
+		mhGap[position] = floor = gap;
+	}
+}
+
 /* the race with weapons, and the races in teams */
 #define MH_COMBAT()		( cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM )
 #define MH_TEAMRACE()	( cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_TEAM_RACING_DM )
@@ -442,7 +459,7 @@ static void MH_Prepare( void ) {
 	mhRaceLayout_t *l = &mh.l;
 	playerState_t *ps = &cg.snap->ps;
 	centity_t *cent = &cg_entities[ps->clientNum];
-	int at[MAX_CLIENTS + 1], local, last, i, first, count, gap, lap, lapTime, racers, turbo, maxHealth;
+	int at[MAX_CLIENTS + 1], local, last, i, first, count, lap, lapTime, racers, turbo, maxHealth;
 	const char *map;
 	vec3_t forward;
 	float factor;
@@ -456,6 +473,7 @@ static void MH_Prepare( void ) {
 	l->viewWidth = cgs.glconfig.vidWidth / mhScale;
 
 	last = MH_RaceOrder( at, &local );
+	MH_Gaps( at, last );
 	racers = cgs.numRacers > 0 ? cgs.numRacers : ( last > 0 ? last : 1 );
 
 	/* the mode card */
@@ -539,14 +557,14 @@ static void MH_Prepare( void ) {
 		Com_sprintf( mh.kvValue[l->kvCount], sizeof( mh.kvValue[0] ), "%d", ps->persistant[PERS_SCORE] );
 		mh.kvColor[l->kvCount++] = mhWhite;
 	} else if ( local > 1 && at[local - 1] >= 0 ) {
+		/* the same figures as the race order: the difference of the two gaps */
 		Com_sprintf( mh.kvKey[l->kvCount], sizeof( mh.kvKey[0] ), "TO P%d", local - 1 );
-		/* the splits are taken at the checkpoints: an older one can look ahead */
-		if ( CG_GetRaceSplitGap( at[local - 1], ps->clientNum, &gap ) && gap > 0 ) MH_Gap( gap, mh.kvValue[l->kvCount], sizeof( mh.kvValue[0] ) );
+		if ( mhGap[local] >= 0 && mhGap[local - 1] >= 0 ) MH_Gap( mhGap[local] - mhGap[local - 1], mh.kvValue[l->kvCount], sizeof( mh.kvValue[0] ) );
 		else Q_strncpyz( mh.kvValue[l->kvCount], "--", sizeof( mh.kvValue[0] ) );
 		mh.kvColor[l->kvCount++] = mhAccent;
 	} else if ( local == 1 && last > 1 && at[2] >= 0 ) {
 		Q_strncpyz( mh.kvKey[l->kvCount], "LEAD", sizeof( mh.kvKey[0] ) );
-		if ( CG_GetRaceSplitGap( ps->clientNum, at[2], &gap ) && gap > 0 ) MH_Gap( gap, mh.kvValue[l->kvCount], sizeof( mh.kvValue[0] ) );
+		if ( mhGap[2] >= 0 ) MH_Gap( mhGap[2], mh.kvValue[l->kvCount], sizeof( mh.kvValue[0] ) );
 		else Q_strncpyz( mh.kvValue[l->kvCount], "--", sizeof( mh.kvValue[0] ) );
 		mh.kvColor[l->kvCount++] = mhFast;
 	}
@@ -616,7 +634,7 @@ static void MH_Prepare( void ) {
 			} else {
 				MH_Plain( cgs.clientinfo[client].name, mh.rowName[i], sizeof( mh.rowName[i] ) );
 				if ( position == 1 ) Q_strncpyz( mh.rowValue[i], "LEADER", sizeof( mh.rowValue[i] ) );
-				else if ( at[1] >= 0 && CG_GetRaceSplitGap( at[1], client, &gap ) ) MH_Gap( gap, mh.rowValue[i], sizeof( mh.rowValue[i] ) );
+				else if ( mhGap[position] >= 0 ) MH_Gap( mhGap[position], mh.rowValue[i], sizeof( mh.rowValue[i] ) );
 				else Q_strncpyz( mh.rowValue[i], "--", sizeof( mh.rowValue[i] ) );
 			}
 			l->rowPos[i] = mh.rowPos[i];

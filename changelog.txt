@@ -42,6 +42,10 @@ Changed:
 - The new HUD in Racing DM and Team Racing DM: the score in the card, the
   weapons with their ammo in the car's card and a kill feed under the race
   order (in teams with the teams' frags over it).
+- The gaps in the race order no longer go negative or stick: a gap is taken
+  at the last checkpoint both drivers have crossed and grows while the one
+  ahead is past the next one; in the new HUD a place is never shown closer
+  than the one ahead of it, and "TO P2" is the difference of the two.
 - The graphics loading screen is drawn by the game again, on every
   platform, and looks exactly like the WebUI's "Getting ready." screen:
   the layout follows the WebUI's CSS, the text uses its fonts (Barlow,

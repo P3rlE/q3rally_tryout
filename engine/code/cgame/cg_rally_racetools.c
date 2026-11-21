@@ -22,25 +22,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "cg_local.h"
+#include "cg_race_gap.h"
 
 #define MAX_GHOST_FILE_SIZE ( 2 * 1024 * 1024 )
-#define CG_RACE_SPLIT_HISTORY 32
 #define CG_GHOST_SAMPLE_MIN_DISTANCE 72.0f
 #define CG_GHOST_SAMPLE_MAX_INTERVAL 150
 #define CG_GHOST_SAMPLE_MIN_TURN_INTERVAL 20
 #define CG_GHOST_SAMPLE_TURN_DEGREES 8.0f
-
-typedef struct {
-	int lap;
-	int checkpoint;
-	int time;
-} cgRaceSplit_t;
-
-typedef struct {
-	cgRaceSplit_t splits[CG_RACE_SPLIT_HISTORY];
-	int next;
-	int count;
-} cgRaceSplitHistory_t;
 
 static cgRaceSplitHistory_t s_raceSplitHistory[MAX_CLIENTS];
 /* Also allow clients that joined after the raceTime command to show standings. */
@@ -1797,75 +1785,24 @@ void CG_UpdateGhostSplitDelta( void ) {
 }
 
 void CG_RecordRaceSplit( int client, int lap, int checkpoint, int time ) {
-	cgRaceSplitHistory_t *history;
-	cgRaceSplit_t *split;
-	int i;
-	int index;
-
 	if ( client < 0 || client >= MAX_CLIENTS || lap <= 0 ||
 	     checkpoint <= 0 || time <= 0 ) {
 		return;
 	}
-
-	history = &s_raceSplitHistory[client];
-	for ( i = 0; i < history->count; i++ ) {
-		index = history->next - 1 - i;
-		while ( index < 0 ) {
-			index += CG_RACE_SPLIT_HISTORY;
-		}
-		split = &history->splits[index];
-		if ( split->lap == lap && split->checkpoint == checkpoint ) {
-			split->time = time;
-			return;
-		}
-	}
-
-	split = &history->splits[history->next];
-	split->lap = lap;
-	split->checkpoint = checkpoint;
-	split->time = time;
-	history->next = ( history->next + 1 ) % CG_RACE_SPLIT_HISTORY;
-	if ( history->count < CG_RACE_SPLIT_HISTORY ) {
-		history->count++;
-	}
+	CG_RaceSplitAdd( &s_raceSplitHistory[client], lap, checkpoint, time );
 }
 
+/* the gap of a driver to one ahead (cg_race_gap.c): at the last checkpoint
+ * both crossed, growing while the one ahead is past the next one */
 qboolean CG_GetRaceSplitGap( int aheadClient, int behindClient, int *gapMs ) {
-	cgRaceSplitHistory_t *aheadHistory;
-	cgRaceSplitHistory_t *behindHistory;
-	cgRaceSplit_t *behindSplit;
-	int i, j;
-	int behindIndex, aheadIndex;
-
 	if ( !gapMs || aheadClient < 0 || aheadClient >= MAX_CLIENTS ||
 	     behindClient < 0 || behindClient >= MAX_CLIENTS ||
 	     aheadClient == behindClient ) {
 		return qfalse;
 	}
-
-	aheadHistory = &s_raceSplitHistory[aheadClient];
-	behindHistory = &s_raceSplitHistory[behindClient];
-	for ( i = 0; i < behindHistory->count; i++ ) {
-		behindIndex = behindHistory->next - 1 - i;
-		while ( behindIndex < 0 ) {
-			behindIndex += CG_RACE_SPLIT_HISTORY;
-		}
-		behindSplit = &behindHistory->splits[behindIndex];
-
-		for ( j = 0; j < aheadHistory->count; j++ ) {
-			aheadIndex = aheadHistory->next - 1 - j;
-			while ( aheadIndex < 0 ) {
-				aheadIndex += CG_RACE_SPLIT_HISTORY;
-			}
-			if ( aheadHistory->splits[aheadIndex].lap == behindSplit->lap &&
-			     aheadHistory->splits[aheadIndex].checkpoint == behindSplit->checkpoint ) {
-				*gapMs = behindSplit->time - aheadHistory->splits[aheadIndex].time;
-				return qtrue;
-			}
-		}
-	}
-
-	return qfalse;
+	return CG_RaceGap( &s_raceSplitHistory[aheadClient], cg_entities[aheadClient].finishRaceTime,
+	                   &s_raceSplitHistory[behindClient], cg_entities[behindClient].finishRaceTime,
+	                   cg.snap ? cg.snap->serverTime : cg.time, gapMs ) ? qtrue : qfalse;
 }
 
 qboolean CG_RaceOrderIsActive( void ) {

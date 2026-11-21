@@ -42,6 +42,12 @@ mode card and the standings changes.
 | Racing DM, Team Racing DM | yes: SCORE (frags) in the card instead of the gap, the car's card 330px wide with FRONT and REAR weapon (ammo, name) before the items, a kill feed of the last three kills (6 s) under the order; in teams the frags in the team cells |
 | all others | the old HUD for now |
 
+The gaps in the race order come from the checkpoints (`cg_race_gap.c`,
+tested in `tests/test_race_gap.py`): at the last checkpoint both drivers
+have crossed, growing while the one ahead is past the next one. The order
+itself is the server's (by the way still to go); where the two disagree
+right after an overtake, a place is shown no closer than the one ahead.
+
 `cg_hudStyle 0` shows the old HUD in every mode. The HUD toggles
 (`cg_hudShowTimes`, `cg_hudShowLaps`, `cg_hudShowPosition`,
 `cg_hudShowOpponentList`, `cg_hudShowSlipstream`, `cg_drawRearView`,
