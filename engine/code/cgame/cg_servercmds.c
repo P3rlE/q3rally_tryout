@@ -491,7 +491,7 @@ static void CG_ParseKothStatus( void ) {
 	int capturePct;
 	float hillX, hillY, hillZ, hillRadius;
 	float halfX, halfY;
-	int capturer;
+	int capturer, presence;
 	qboolean haveHillOrigin;
 	qboolean haveHillRadius;
 	int oldOwner;
@@ -547,6 +547,13 @@ static void CG_ParseKothStatus( void ) {
 			cgs.kothHillHalf[0] = halfX;
 			cgs.kothHillHalf[1] = halfY;
 		}
+	}
+	/* Optional: the players of each team on the hill */
+	cgs.kothPresence[0] = cgs.kothPresence[1] = -1;
+	if ( CG_ParseNextKothInt( &cursor, &presence ) ) {
+		cgs.kothPresence[0] = presence;
+		if ( CG_ParseNextKothInt( &cursor, &presence ) ) cgs.kothPresence[1] = presence;
+		else cgs.kothPresence[0] = -1;
 	}
 	if ( cg.kothStatusInitialized && oldOwner != cgs.kothOwner ) {
 		cg.kothOwnerChangeTime = cg.time;	/* crown hop, also for spectators */

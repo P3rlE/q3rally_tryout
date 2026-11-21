@@ -1020,7 +1020,7 @@ static qboolean G_BlockSpectatorToggleDuringIntro( gentity_t *ent ) {
 		return qfalse;
 	}
 
-	trap_SendServerCommand( ent - g_entities, "print \"Track preview active - spectator mode is locked.\\n\"" );
+	trap_SendServerCommand( ent - g_entities, "print \"Track preview active - spectator mode is locked.\n\"" );
 	return qtrue;
 }
 

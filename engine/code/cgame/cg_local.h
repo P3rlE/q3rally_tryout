@@ -1621,6 +1621,7 @@ typedef struct {
 	float			kothHillRadius;		/* XY radius of the hill brush, from CS_KOTHSTATUS */
 	int				kothCapturingTeam;	/* team taking the hill while kothCapturePct runs (TEAM_FREE = none) */
 	float			kothHillHalf[2];	/* half extents of the hill zone (0 = unknown, use the radius) */
+	int				kothPresence[2];	/* red and blue players on the hill, -1: unknown (older servers) */
 	qboolean  newHud;
 
 	//

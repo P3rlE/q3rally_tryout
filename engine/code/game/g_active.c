@@ -552,7 +552,7 @@ static qboolean G_BlockSpectatorButtonsDuringIntro( gentity_t *ent ) {
 	}
 
 	if ( ent->updateTime <= level.time ) {
-		trap_SendServerCommand( ent - g_entities, "print \"Track preview active\\n\"" );
+		trap_SendServerCommand( ent - g_entities, "print \"Track preview active\n\"" );
 		ent->updateTime = level.time + 1000;
 	}
 

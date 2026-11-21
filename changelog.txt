@@ -70,6 +70,13 @@ Changed:
   your team and the clock, the teams' score over the order, weapons and
   the kill feed. The point markers in the scene show the point's letter,
   owner and distance and stay clear of the panels.
+- The new HUD in King of the Hill: who holds the hill, capturing (how
+  far), contested, holding or empty with each team's players on the hill,
+  the next respawn wave and the clock, the teams' points over the order,
+  weapons and the kill feed. The server sends the players on the hill with
+  the hill status.
+- KOTH: the hill messages ("Blue team captured the hill!") and the track
+  preview notes no longer end in a stray "\n".
 - Domination: a capture starts over when the capturing team has left the
   point for a second. Before, a team that touched a point once took it on
   its next touch, however much later.

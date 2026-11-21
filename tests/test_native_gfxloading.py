@@ -421,12 +421,12 @@ int main(void) {
 #undef B
         } else if (!strcmp(command, "hudrace")) {
             /* hudrace <view width>, then one line of fields split by |, lists by ; and : */
-            static mhRaceLayout_t l; static char line[4096]; static char *f[48]; char *r, *next, *item, *more;
+            static mhRaceLayout_t l; static char line[4096]; static char *f[56]; char *r, *next, *item, *more;
             int n = 0, i;
             memset(&l, 0, sizeof(l));
             scanf("%f\n", &l.viewWidth);
             fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
-            for (r = line; n < 48; r = next) {
+            for (r = line; n < 56; r = next) {
                 next = strchr(r, '|'); f[n++] = r;
                 if (!next) break;
                 *next++ = 0;
@@ -484,11 +484,14 @@ int main(void) {
                 l.flagName[l.flagCount] = item; r = strchr(item, '~'); *r++ = 0;
                 l.flagState[l.flagCount] = r; r = strchr(r, '~'); *r++ = 0; l.flagNote[l.flagCount++] = r;
             }
-            if (n > 46 && *f[46]) {   /* zones: ABCDE~label~value */
+            if (n > 46 && *f[46]) {   /* zones: ABCDE~label~value (no letters: the row and bar only) */
                 static char names[MH_ZONES_MAX][2];
                 r = strchr(f[46], '~'); *r++ = 0; l.zoneLabel = r; r = strchr(r, '~'); *r++ = 0; l.zoneValue = r;
                 for (i = 0; f[46][i] && i < MH_ZONES_MAX; i++) { names[i][0] = f[46][i]; l.zoneName[i] = names[i]; }
                 l.zoneCount = i;
+            }
+            if (n > 47 && *f[47]) {   /* hill: label~owner */
+                l.hillLabel = f[47]; r = strchr(f[47], '~'); *r++ = 0; l.hillOwner = r;
             }
             if (n > 40 && *f[40]) {   /* elimination: label;value;caption */
                 l.elim = 1; l.elimLabel = f[40]; r = strchr(f[40], ';'); *r++ = 0;
@@ -504,6 +507,7 @@ int main(void) {
             rect("sep2", l.sep2);
             for (i = 0; i < l.zoneCount; i++) { char k[24]; sprintf(k, "zoneTile%d", i); rect(k, l.zoneTile[i]);
                 sprintf(k, "zoneName%d", i); T(k, l.zoneNameT[i]); }
+            rect("hillIcon", l.hillIcon); T("hillLabel", l.hillLabelT); T("hillOwner", l.hillOwnerT);
             rect("zoneBar", l.zoneBar); T("zoneLabel", l.zoneLabelT); T("zoneValue", l.zoneValueT);
             for (i = 0; i < l.flagCount; i++) { char k[24]; sprintf(k, "flagIcon%d", i); rect(k, l.flagIcon[i]);
                 sprintf(k, "flagName%d", i); T(k, l.flagNameT[i]); sprintf(k, "flagState%d", i); T(k, l.flagStateT[i]);

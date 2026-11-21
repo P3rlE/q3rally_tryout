@@ -18,6 +18,7 @@ SPRINT = json.loads((ROOT / 'tests/fixtures/hud_sprint_layout.json').read_text()
 GHOST = json.loads((ROOT / 'tests/fixtures/hud_ghost_layout.json').read_text())['els']
 TEAM_RACE = json.loads((ROOT / 'tests/fixtures/hud_teamrace_layout.json').read_text())['els']
 CTF = json.loads((ROOT / 'tests/fixtures/hud_ctf_layout.json').read_text())['els']
+KOTH = json.loads((ROOT / 'tests/fixtures/hud_koth_layout.json').read_text())['els']
 DOMINATION = json.loads((ROOT / 'tests/fixtures/hud_domination_layout.json').read_text())['els']
 TEAMDM = json.loads((ROOT / 'tests/fixtures/hud_teamdm_layout.json').read_text())['els']
 DEATHMATCH = json.loads((ROOT / 'tests/fixtures/hud_deathmatch_layout.json').read_text())['els']
@@ -63,7 +64,7 @@ def command(model, width=1600):
               ';'.join(f'{n}:{v}' for n, v in m.get('teams', [])), m.get('swatch', 0),
               ';'.join(f'{a}:{w}:{b}' for a, w, b in m.get('kills', [])), m.get('elim', ''),
               m.get('posSize', 0), m.get('rowBars', 0), m.get('derby', ''), m.get('headerRow', 0),
-              ';'.join(f'{n}~{st}~{no}' for n, st, no in m.get('flags', [])), m.get('zones', '')]
+              ';'.join(f'{n}~{st}~{no}' for n, st, no in m.get('flags', [])), m.get('zones', ''), m.get('hill', '')]
     return [f'hudrace {width}', latin('|'.join(str(f) for f in fields))]
 
 
@@ -181,7 +182,7 @@ def test_the_hud_icons_are_there():
     # tools/ui_webstyle/hud_design/build_hud_icons.py; cgame/cg_hud_modern.c registers them
     source = (ROOT / 'engine/code/cgame/cg_hud_modern.c').read_text()
     for name in ('hud_note', 'hud_prev', 'hud_play', 'hud_next', 'hud_chevron', 'hud_message',
-                 'hud_gun', 'hud_mine', 'hud_smoke', 'hud_flag'):
+                 'hud_gun', 'hud_mine', 'hud_smoke', 'hud_flag', 'hud_hill'):
         png = (ROOT / f'baseq3r/menu/art/{name}.png').read_bytes()
         assert png[16:24] == (64).to_bytes(4, 'big') * 2, name
         assert f'"menu/art/{name}"' in source
@@ -471,4 +472,24 @@ def test_native_domination_hud_matches_the_design():
         + [(f'zoneName{i}', card + f'/div:1/div:{i}/div:0') for i in range(5)] \
         + [(f'team{i}', order + f'/div:1/div:{i}') for i in range(4)]
     problems = check_all(mine, DOMINATION, pairs)
+    assert not problems, problems
+
+
+def test_native_koth_hud_matches_the_design():
+    model = dict(RACE_MODEL, title='King of the hill \u00b7 Mesa King', pos='', of='', lapValue='',
+                 hill='HILL HELD BY~Red', zones='~CONTESTED~2 v 1',
+                 kv=[('RESPAWN WAVE', '0:07'), ('TIME LEFT', '4:55')], orderTitle='KOTH driver order', orderRight='Pts',
+                 teams=[('RED', '52'), ('BLUE', '30')], swatch=1,
+                 rows=[('01', 'Ivan', '28'), ('02', 'Tanya', '24'), ('03', 'Player', '19'), ('04', 'Paul', '11')],
+                 toast=0, jukebox=0)
+    mine, = layouts(command(model))
+    card, order = '/div:1/div:0', '/div:2/div:0'
+    pairs = [('card', card), ('title', card + '/div:0'), ('hillIcon', card + '/div:1/svg:0'),
+             ('hillLabel', card + '/div:1/div:1/div:0'), ('hillOwner', card + '/div:1/div:1/div:1'),
+             ('zoneLabel', card + '/div:2/div:0/div:0'), ('zoneValue', card + '/div:2/div:0/div:1'),
+             ('zoneBar', card + '/div:2/div:1'), ('sep', card + '/div:3'),
+             ('key0', card + '/div:4/div:0'), ('value0', card + '/div:4/div:1'),
+             ('key1', card + '/div:5/div:0'), ('value1', card + '/div:5/div:1'), ('order', order)] \
+        + [(f'team{i}', order + f'/div:1/div:{i}') for i in range(2)]
+    problems = check_all(mine, KOTH, pairs)
     assert not problems, problems
