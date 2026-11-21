@@ -25,7 +25,7 @@ so a test can hold it against what Chrome reports for the design
 
 #define MH_DESIGN_HEIGHT	900.0f
 #define MH_TEXT_MAX			96
-#define MH_KV_MAX			4
+#define MH_KV_MAX			6		/* the drag time slip: reaction, 60 ft .. trap */
 #define MH_ROWS_MAX			6
 #define MH_RPM_SEGMENTS		20
 #define MH_RPM_HOT			16		/* segments from here on light in the accent */
@@ -34,6 +34,8 @@ so a test can hold it against what Chrome reports for the design
 #define MH_KILLS_MAX		3		/* the kill feed under the standings */
 #define MH_FLAGS_MAX		4		/* CTF: a line per flag */
 #define MH_ZONES_MAX		5		/* Domination: a tile per control point */
+#define MH_TREE_ROWS		6		/* Drag: PRE, STAGE, three ambers, GO */
+#define MH_TACH_SEGMENTS	40		/* Drag: the tachometer's segments */
 #define MH_ELLIPSIS			"\x9e"	/* the body faces' "..." */
 
 typedef struct {
@@ -54,6 +56,7 @@ typedef struct {
 	qboolean	headerRow;			/* posLabel and pos on one baseline row (CTF: "YOUR TEAM" .. "Green") */
 	int			flagCount;			/* CTF: icon, team, state, note, then a second line */
 	const char	*flagName[MH_FLAGS_MAX], *flagState[MH_FLAGS_MAX], *flagNote[MH_FLAGS_MAX];
+	const char	*labelRowLeft, *labelRowRight;	/* Drag: "YOU" "LANE LEFT", two labels on a row */
 	const char	*hillLabel, *hillOwner;	/* KOTH: an icon, beside it "HILL HELD BY" over "Red" */
 	int			zoneCount;			/* Domination: a row of tiles (A B C ..), then a row over a bar
 									   (KOTH: the row and the bar only, zoneLabel set) */
@@ -82,6 +85,8 @@ typedef struct {
 	const char	*killA[MH_KILLS_MAX], *killWeapon[MH_KILLS_MAX], *killB[MH_KILLS_MAX];	/* killB "": none */
 	int			rowCount;
 	const char	*rowPos[MH_ROWS_MAX], *rowName[MH_ROWS_MAX], *rowValue[MH_ROWS_MAX];
+	qboolean	tree;				/* Drag: under the standings, two lamps a row and a label */
+	const char	*treeLabel[MH_TREE_ROWS];
 
 	/* top centre: rear view and the notification lane */
 	qboolean	scorebug;			/* Autoball: red cell, the clock over a line, blue cell (in place of the mirror) */
@@ -98,6 +103,10 @@ typedef struct {
 	float		vehicleWidth;						/* 0: 300 */
 	int			slotCount;							/* weapons and items under a line */
 	const char	*slotLabel[MH_SLOTS_MAX], *slotValue[MH_SLOTS_MAX], *slotName[MH_SLOTS_MAX];
+
+	/* bottom centre: the drag tachometer (in place of minimap and cockpit) */
+	qboolean	tach;
+	const char	*tachRpm, *tachMidLabel, *tachMidValue, *tachGear, *tachUnit, *tachSpeed, *tachLeft, *tachRight;
 
 	/* bottom right: minimap, slipstream, cockpit */
 	qboolean	minimap;
@@ -117,6 +126,12 @@ typedef struct {
 	wsRect_t	flagIcon[MH_FLAGS_MAX], sep2;
 	wsRect_t	zoneTile[MH_ZONES_MAX], zoneBar, hillIcon;
 	wsRect_t	bugBox, bugCell[3];			/* the border, then red, clock, blue */
+	mhText_t	labelRowLeftT, labelRowRightT;
+	wsRect_t	treeBox, treeLamp[MH_TREE_ROWS][2];
+	mhText_t	treeTitleT, treeLabelT[MH_TREE_ROWS];
+	wsRect_t	tachBox, tachSeg[MH_TACH_SEGMENTS];
+	mhText_t	tachRpmLabelT, tachRpmT, tachMidLabelT, tachMidValueT, tachGearLabelT, tachGearT,
+				tachUnitT, tachSpeedT, tachLeftT, tachRightT;
 	mhText_t	bugLeftLabelT, bugLeftT, bugClockT, bugSubT, bugRightT, bugRightLabelT;
 	mhText_t	hillLabelT, hillOwnerT;
 	mhText_t	zoneNameT[MH_ZONES_MAX], zoneLabelT, zoneValueT;
@@ -175,6 +190,7 @@ typedef struct {
 typedef struct {
 	float		viewWidth;
 	const char	*label, *name, *hint1, *hint2;	/* "FOLLOWING" "Sam" "FIRE NEXT" "ESC MENU" */
+	float		bottom;				/* its lower edge, 0: MH_BOTTOM above the screen's (drag: over the tachometer) */
 
 	wsRect_t	box;
 	mhText_t	labelT, nameT, hint1T, hint2T;

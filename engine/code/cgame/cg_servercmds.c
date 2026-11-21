@@ -1969,6 +1969,7 @@ static void CG_ServerCommand( void ) {
 	}
 
 	if ( !strcmp( cmd, "dragMatch" ) ) {
+		static int lastHeatToast;
 		int heat, count, i;
 		if ( cgs.gametype != GT_DRAG || trap_Argc() < 6 ) return;
 		heat = atoi( CG_Argv( 2 ) );
@@ -1985,6 +1986,26 @@ static void CG_ServerCommand( void ) {
 		for ( i = 0; i < count; i++ ) {
 			cgs.dragMatch.client[i] = atoi( CG_Argv( 6 + 2 * i ) );
 			cgs.dragMatch.wins[i] = atoi( CG_Argv( 7 + 2 * i ) );
+		}
+		if ( heat != lastHeatToast && !cgs.dragMatch.over && cgs.dragMatch.bestOf > 1 && heat > 0 && CG_ModernHUD_Active() ) {
+			/* a heat of a match begins: which, and how it stands */
+			char title[32], sub[64];
+			lastHeatToast = heat;
+			Com_sprintf( title, sizeof( title ), "Heat %d of %d", heat, cgs.dragMatch.bestOf );
+			Com_sprintf( sub, sizeof( sub ), "BEST OF %d", cgs.dragMatch.bestOf );
+			if ( count == 2 && cg.snap ) {
+				int me = cgs.dragMatch.client[0] == cg.snap->ps.clientNum ? 0 : cgs.dragMatch.client[1] == cg.snap->ps.clientNum ? 1 : -1;
+				int a = cgs.dragMatch.wins[0], b = cgs.dragMatch.wins[1];
+				if ( me >= 0 ) {
+					int mine = cgs.dragMatch.wins[me], theirs = cgs.dragMatch.wins[1 - me];
+					if ( mine > theirs ) Com_sprintf( sub, sizeof( sub ), "YOU LEAD %d - %d", mine, theirs );
+					else if ( mine < theirs ) Com_sprintf( sub, sizeof( sub ), "YOU TRAIL %d - %d", mine, theirs );
+					else if ( mine ) Com_sprintf( sub, sizeof( sub ), "ALL SQUARE %d - %d", mine, theirs );
+				} else if ( a || b ) {
+					Com_sprintf( sub, sizeof( sub ), "%d - %d", a, b );
+				}
+			}
+			CG_QueueHeatToast( title, sub );
 		}
 		return;
 	}

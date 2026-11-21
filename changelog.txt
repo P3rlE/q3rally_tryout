@@ -75,6 +75,11 @@ Changed:
   the next respawn wave and the clock, the teams' points over the order,
   weapons and the kill feed. The server sends the players on the hill with
   the hill status.
+- The new HUD in Drag: the time slip in the card (reaction, 60 ft, 330 ft,
+  1/8 and 1/4 mile, trap speed), the duel by lanes with the elapsed times,
+  the Christmas tree under it, a wide tachometer at the bottom with the
+  launch window, the rev limit and what to do next, and a notification at
+  each heat of a match. Every game mode now has the new HUD.
 - The new HUD in Autoball: a score bug at the top, your team, where the
   ball is (whose half, how far), your goals and your team's possession,
   the order by goals, the goal as a big message with the scorer and the

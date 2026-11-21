@@ -493,6 +493,19 @@ int main(void) {
             if (n > 47 && *f[47]) {   /* hill: label~owner */
                 l.hillLabel = f[47]; r = strchr(f[47], '~'); *r++ = 0; l.hillOwner = r;
             }
+            if (n > 49 && *f[49]) {   /* label row: YOU~LANE LEFT */
+                l.labelRowLeft = f[49]; r = strchr(f[49], '~'); *r++ = 0; l.labelRowRight = r;
+            }
+            if (n > 50 && *f[50]) {   /* tree labels: PRE~STAGE~~~~GO */
+                l.tree = 1; r = f[50];
+                for (i = 0; i < MH_TREE_ROWS; i++) { l.treeLabel[i] = r; r = strchr(r, '~'); if (!r) break; *r++ = 0; }
+            }
+            if (n > 51 && *f[51]) {   /* tach: rpm~midLabel~midValue~gear~unit~speed~left~right */
+                char **t[8] = { (char **)&l.tachRpm, (char **)&l.tachMidLabel, (char **)&l.tachMidValue, (char **)&l.tachGear,
+                                (char **)&l.tachUnit, (char **)&l.tachSpeed, (char **)&l.tachLeft, (char **)&l.tachRight };
+                l.tach = 1; r = f[51];
+                for (i = 0; i < 8; i++) { *t[i] = r; r = strchr(r, '~'); if (!r) break; *r++ = 0; }
+            }
             if (n > 48 && *f[48]) {   /* scorebug: RED~2~3:41~2ND HALF~1~BLUE */
                 l.scorebug = 1; l.bugLeftLabel = f[48]; r = strchr(f[48], '~'); *r++ = 0;
                 l.bugLeft = r; r = strchr(r, '~'); *r++ = 0; l.bugClock = r; r = strchr(r, '~'); *r++ = 0;
@@ -512,6 +525,15 @@ int main(void) {
             rect("sep2", l.sep2);
             for (i = 0; i < l.zoneCount; i++) { char k[24]; sprintf(k, "zoneTile%d", i); rect(k, l.zoneTile[i]);
                 sprintf(k, "zoneName%d", i); T(k, l.zoneNameT[i]); }
+            T("labelRowLeft", l.labelRowLeftT); T("labelRowRight", l.labelRowRightT);
+            rect("treeBox", l.treeBox); T("treeTitle", l.treeTitleT);
+            for (i = 0; i < MH_TREE_ROWS; i++) { char k[24]; sprintf(k, "treeLamp%d0", i); rect(k, l.treeLamp[i][0]);
+                sprintf(k, "treeLamp%d1", i); rect(k, l.treeLamp[i][1]); sprintf(k, "treeLabel%d", i); T(k, l.treeLabelT[i]); }
+            rect("tachBox", l.tachBox); T("tachRpmLabel", l.tachRpmLabelT); T("tachRpm", l.tachRpmT);
+            T("tachMidLabel", l.tachMidLabelT); T("tachMidValue", l.tachMidValueT); T("tachGearLabel", l.tachGearLabelT);
+            T("tachGear", l.tachGearT); T("tachUnit", l.tachUnitT); T("tachSpeed", l.tachSpeedT);
+            T("tachLeft", l.tachLeftT); T("tachRight", l.tachRightT);
+            for (i = 0; i < MH_TACH_SEGMENTS; i++) { char k[24]; sprintf(k, "tachSeg%d", i); rect(k, l.tachSeg[i]); }
             rect("bugBox", l.bugBox); rect("bugCell0", l.bugCell[0]); rect("bugCell1", l.bugCell[1]); rect("bugCell2", l.bugCell[2]);
             T("bugLeftLabel", l.bugLeftLabelT); T("bugLeft", l.bugLeftT); T("bugClock", l.bugClockT); T("bugSub", l.bugSubT);
             T("bugRight", l.bugRightT); T("bugRightLabel", l.bugRightLabelT);

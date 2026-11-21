@@ -769,6 +769,12 @@ void CG_QueueMessageToast( const char *message ) {
 	}
 }
 
+/* drag: a new heat of a match, "title\nsub" like a message */
+void CG_QueueHeatToast( const char *title, const char *sub ) {
+	cgHudToast_t *toast = CG_AddHudToastEntry( CG_HUD_TOAST_HEAT, HUD_TOAST_DISPLAY_TIME + 300 );
+	if ( toast ) Com_sprintf( toast->message, sizeof( toast->message ), "%s\n%s", title, sub );
+}
+
 static const char *CG_GetRewardToastLabel( qhandle_t icon ) {
 	if ( icon == cgs.media.medalImpressive ) return "IMPRESSIVE";
 	if ( icon == cgs.media.medalImpressiveTelefrag ) return "TELEFRAG";
@@ -946,7 +952,11 @@ static void CG_DrawHudToast( void ) {
 		hasIcon = qfalse;
 		break;
 	case CG_HUD_TOAST_MESSAGE:
+	case CG_HUD_TOAST_HEAT:
 		Q_strncpyz( message, toast->message, sizeof( message ) );
+		for ( i = 0; message[i]; i++ ) {
+			if ( message[i] == '\n' ) message[i] = ' ';
+		}
 		hasIcon = qfalse;
 		break;
 	default:
@@ -1117,7 +1127,8 @@ qboolean CG_HudToastView( cgHudToastView_t *view ) {
 		view->tone = toast->rankUp ? 1 : 0;
 		break;
 	case CG_HUD_TOAST_MESSAGE:
-		Q_strncpyz( view->tag, "Message", sizeof( view->tag ) );
+	case CG_HUD_TOAST_HEAT:
+		Q_strncpyz( view->tag, toast->type == CG_HUD_TOAST_HEAT ? "Heat" : "Message", sizeof( view->tag ) );
 		Q_strncpyz( view->title, toast->message, sizeof( view->title ) );
 		/* "You fragged X\n2nd place with 3": the second line below */
 		{
@@ -1129,7 +1140,7 @@ qboolean CG_HudToastView( cgHudToastView_t *view ) {
 				if ( line ) *line = '\0';
 			}
 		}
-		view->tone = 2;
+		view->tone = toast->type == CG_HUD_TOAST_HEAT ? 3 : 2;	/* 3: the message icon in blue */
 		break;
 	default:
 		CG_ShiftHudToastQueue();

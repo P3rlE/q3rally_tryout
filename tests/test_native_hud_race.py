@@ -18,6 +18,7 @@ SPRINT = json.loads((ROOT / 'tests/fixtures/hud_sprint_layout.json').read_text()
 GHOST = json.loads((ROOT / 'tests/fixtures/hud_ghost_layout.json').read_text())['els']
 TEAM_RACE = json.loads((ROOT / 'tests/fixtures/hud_teamrace_layout.json').read_text())['els']
 CTF = json.loads((ROOT / 'tests/fixtures/hud_ctf_layout.json').read_text())['els']
+DRAG = json.loads((ROOT / 'tests/fixtures/hud_drag_layout.json').read_text())['els']
 AUTOBALL = json.loads((ROOT / 'tests/fixtures/hud_autoball_layout.json').read_text())['els']
 KOTH = json.loads((ROOT / 'tests/fixtures/hud_koth_layout.json').read_text())['els']
 DOMINATION = json.loads((ROOT / 'tests/fixtures/hud_domination_layout.json').read_text())['els']
@@ -65,7 +66,8 @@ def command(model, width=1600):
               ';'.join(f'{n}:{v}' for n, v in m.get('teams', [])), m.get('swatch', 0),
               ';'.join(f'{a}:{w}:{b}' for a, w, b in m.get('kills', [])), m.get('elim', ''),
               m.get('posSize', 0), m.get('rowBars', 0), m.get('derby', ''), m.get('headerRow', 0),
-              ';'.join(f'{n}~{st}~{no}' for n, st, no in m.get('flags', [])), m.get('zones', ''), m.get('hill', ''), m.get('scorebug', '')]
+              ';'.join(f'{n}~{st}~{no}' for n, st, no in m.get('flags', [])), m.get('zones', ''), m.get('hill', ''), m.get('scorebug', ''),
+              m.get('labelRow', ''), m.get('tree', ''), m.get('tach', '')]
     return [f'hudrace {width}', latin('|'.join(str(f) for f in fields))]
 
 
@@ -183,7 +185,7 @@ def test_the_hud_icons_are_there():
     # tools/ui_webstyle/hud_design/build_hud_icons.py; cgame/cg_hud_modern.c registers them
     source = (ROOT / 'engine/code/cgame/cg_hud_modern.c').read_text()
     for name in ('hud_note', 'hud_prev', 'hud_play', 'hud_next', 'hud_chevron', 'hud_message',
-                 'hud_gun', 'hud_mine', 'hud_smoke', 'hud_flag', 'hud_hill'):
+                 'hud_gun', 'hud_mine', 'hud_smoke', 'hud_flag', 'hud_hill', 'hud_dot'):
         png = (ROOT / f'baseq3r/menu/art/{name}.png').read_bytes()
         assert png[16:24] == (64).to_bytes(4, 'big') * 2, name
         assert f'"menu/art/{name}"' in source
@@ -515,4 +517,32 @@ def test_native_autoball_hud_matches_the_design():
         + [(f'value{i}', card + f'/div:{3 + i}/div:1') for i in range(3)] \
         + [(f'row{i}', order + f'/div:1/div:{i}') for i in range(4)]
     problems = check_all(mine, AUTOBALL, pairs)
+    assert not problems, problems
+
+
+def test_native_drag_hud_matches_the_design():
+    model = dict(RACE_MODEL, title='Drag \u00b7 Quarter mile', pos='', of='', lapValue='', labelRow='YOU~LANE LEFT',
+                 kv=[('REACTION', '0.412'), ('60 FT', '2.08'), ('330 FT', '--'), ('1/8 MILE', '--'), ('1/4 MILE', '--'),
+                     ('TRAP', '--')], kvSizes=[],
+                 orderTitle='Duel \u00b7 Heat 2/3', orderRight='ET', rows=[('L', 'Player', '--'), ('R', 'Vlad', '--')],
+                 tree='PRE~STAGE~~~~GO', tach='5,900~LAUNCH WINDOW~5,500 - 7,000~1~MPH~0~IDLE~REV LIMIT \u00b7 ENGINE BLOWS',
+                 mirror=0, toast=0, jukebox=0, armor='')
+    mine, = layouts(command(model))
+    card, order, tree, tach = '/div:2/div:0', '/div:3/div:0', '/div:3/div:1', '/div:4/div:0'
+    pairs = [('card', card), ('title', card + '/div:0'), ('labelRowLeft', card + '/div:1/div:0'),
+             ('labelRowRight', card + '/div:1/div:1'), ('sep', card + '/div:2'), ('order', order),
+             ('rowPos0', order + '/div:1/div:0/div:0'),
+             ('treeBox', tree), ('treeTitle', tree + '/div:0'),
+             ('tachBox', tach), ('tachRpmLabel', tach + '/div:0/div:0/div:0'), ('tachRpm', tach + '/div:0/div:0/div:1'),
+             ('tachMidLabel', tach + '/div:0/div:1/div:0'), ('tachMidValue', tach + '/div:0/div:1/div:1'),
+             ('tachGearLabel', tach + '/div:0/div:2/div:0/div:0'), ('tachGear', tach + '/div:0/div:2/div:0/div:1'),
+             ('tachUnit', tach + '/div:0/div:2/div:1/div:0'), ('tachSpeed', tach + '/div:0/div:2/div:1/div:1'),
+             ('tachSeg0', tach + '/div:1/div:0'), ('tachSeg39', tach + '/div:1/div:39'),
+             ('tachLeft', tach + '/div:2/div:0'), ('tachRight', tach + '/div:2/div:1'),
+             ('vehicle', '/div:5/div:0')] \
+        + [(f'key{i}', card + f'/div:{3 + i}/div:0') for i in range(6)] \
+        + [(f'value{i}', card + f'/div:{3 + i}/div:1') for i in range(2)] \
+        + [(f'treeLamp{i}{j}', tree + f'/div:1/div:{i}/div:{j}') for i in range(6) for j in range(2)] \
+        + [(f'treeLabel{i}', tree + f'/div:1/div:{i}/div:2') for i in (0, 1, 5)]
+    problems = check_all(mine, DRAG, pairs)
     assert not problems, problems
