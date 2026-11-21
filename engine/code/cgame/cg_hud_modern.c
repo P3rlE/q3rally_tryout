@@ -63,6 +63,9 @@ static struct {
 	char			rowPos[MH_ROWS_MAX][8], rowName[MH_ROWS_MAX][40], rowValue[MH_ROWS_MAX][16];
 	qboolean		rowMe[MH_ROWS_MAX];
 	const float		*rowColor[MH_ROWS_MAX];		/* NULL: #ddd */
+	const float		*rowNameColor[MH_ROWS_MAX];	/* NULL: white */
+	char			elimValue[24], elimCaption[48];
+	float			elimFrac;
 	const float		*posColor;
 	int				rowTeam[MH_ROWS_MAX];			/* TEAM_RED.., for the swatch */
 	char			teamValue[MH_TEAMS_MAX][16];
@@ -212,7 +215,8 @@ static int MH_RaceOrder( int at[MAX_CLIENTS + 1], int *local ) {
 qboolean CG_ModernHUD_Active( void ) {
 	return cg_hudStyle.integer && cg.snap &&
 	       ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_GHOST ||
-	         cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM );
+	         cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM ||
+	         cgs.gametype == GT_ELIMINATION );
 }
 
 /* the gaps to the leader for every place (-1: none yet). The order is the
@@ -232,8 +236,112 @@ static void MH_Gaps( const int at[MAX_CLIENTS + 1], int last ) {
 	}
 }
 
+/* elimination: the last one over the line in each lap is out. The card
+ * shows how many are left, who is last now and how many are through the lap
+ * that decides; the order lists who is still in, the last one in DANGER, and
+ * under it who is out, the latest first. */
+static void MH_Elimination( mhRaceLayout_t *l, const int at[MAX_CLIENTS + 1], int last,
+                            const playerState_t *ps, const centity_t *cent ) {
+	int alive[MAX_CLIENTS], out[MAX_CLIENTS], aliveCount = 0, outCount = 0, total, position, i, j;
+	int lap = 0, through = 0, me = -1, count, first, row = 0, time;
+	static const vec4_t outName = { 119 / 255.0f, 119 / 255.0f, 119 / 255.0f, 1.0f };	/* #777 */
+
+	for ( position = 1; position <= last; position++ ) {
+		if ( at[position] >= 0 && !cg_entities[at[position]].eliminationOut ) alive[aliveCount++] = at[position];
+	}
+	for ( i = 0; i < cgs.maxclients && i < MAX_CLIENTS; i++ ) {
+		if ( !cgs.clientinfo[i].infoValid || !cg_entities[i].eliminationOut ) continue;
+		/* the latest out first */
+		for ( j = outCount; j > 0 && cg_entities[out[j - 1]].finishRaceTime < cg_entities[i].finishRaceTime; j-- ) out[j] = out[j - 1];
+		out[j] = i;
+		outCount++;
+	}
+	total = aliveCount + outCount;
+	for ( i = 0; i < aliveCount; i++ ) {
+		if ( alive[i] == ps->clientNum ) me = i;
+		if ( !lap || cg_entities[alive[i]].currentLap < lap ) lap = cg_entities[alive[i]].currentLap;
+	}
+	for ( i = 0; i < aliveCount; i++ ) {
+		if ( cg_entities[alive[i]].currentLap > lap ) through++;
+	}
+
+	/* the card: place among those still in, how many are left */
+	if ( me >= 0 ) {
+		Com_sprintf( mh.pos, sizeof( mh.pos ), "P%d", me + 1 );
+		Com_sprintf( mh.of, sizeof( mh.of ), "/ %d", aliveCount );
+		l->pos = mh.pos;
+		l->of = mh.of;
+	} else {
+		l->pos = NULL;
+	}
+	Com_sprintf( mh.lap, sizeof( mh.lap ), "%d/%d", aliveCount, total );
+	l->lapLabel = "LEFT";
+	l->lapValue = mh.lap;
+	l->progress = qfalse;
+	l->elim = cent->startRaceTime && aliveCount > 1 && lap > 0;
+	if ( l->elim ) {
+		if ( alive[aliveCount - 1] == ps->clientNum && !( ps->pm_flags & PMF_FOLLOW ) ) Q_strncpyz( mh.elimValue, "YOU", sizeof( mh.elimValue ) );
+		else {
+			MH_Plain( cgs.clientinfo[alive[aliveCount - 1]].name, mh.elimValue, sizeof( mh.elimValue ) );
+			Q_strupr( mh.elimValue );
+		}
+		Com_sprintf( mh.elimCaption, sizeof( mh.elimCaption ), "%d OF %d THROUGH LAP %d", through, aliveCount - 1, lap );
+		mh.elimFrac = (float)through / ( aliveCount - 1 );
+		l->elimLabel = "NEXT OUT";
+		l->elimValue = mh.elimValue;
+		l->elimCaption = mh.elimCaption;
+	}
+	l->kvCount = 0;
+	if ( cg_hudShowTimes.integer ) {
+		if ( cent->finishRaceTime ) time = cent->finishRaceTime - cent->startRaceTime;
+		else if ( cent->startRaceTime && cg.time > cent->startRaceTime ) time = cg.time - cent->startRaceTime;
+		else time = 0;
+		Q_strncpyz( mh.kvKey[0], "TIME", sizeof( mh.kvKey[0] ) );
+		MH_Time( time, mh.kvValue[0], sizeof( mh.kvValue[0] ) );
+		mh.kvColor[0] = mhWhite;
+		l->kvKey[0] = mh.kvKey[0];
+		l->kvValue[0] = mh.kvValue[0];
+		l->kvCount = 1;
+	}
+
+	/* the order: who is still in around us, then who is out */
+	l->orderTitle = "Still in";
+	l->orderRight = "Status";
+	if ( !l->standings ) return;
+	count = aliveCount < MH_ROWS_MAX ? aliveCount : MH_ROWS_MAX;
+	first = 0;
+	if ( aliveCount > count ) {
+		first = ( me >= 0 ? me : 0 ) - count / 2;
+		if ( first < 0 ) first = 0;
+		if ( first > aliveCount - count ) first = aliveCount - count;
+	}
+	for ( i = first; i < first + count; i++, row++ ) {
+		Com_sprintf( mh.rowPos[row], sizeof( mh.rowPos[0] ), "%02d", i + 1 );
+		MH_Plain( cgs.clientinfo[alive[i]].name, mh.rowName[row], sizeof( mh.rowName[0] ) );
+		Q_strncpyz( mh.rowValue[row], i == aliveCount - 1 && aliveCount > 1 ? "DANGER" : "SAFE", sizeof( mh.rowValue[0] ) );
+		mh.rowColor[row] = i == aliveCount - 1 && aliveCount > 1 ? mhAccent : NULL;
+		mh.rowNameColor[row] = NULL;
+		mh.rowMe[row] = alive[i] == ps->clientNum;
+	}
+	for ( i = 0; i < outCount && row < MH_ROWS_MAX; i++, row++ ) {
+		Q_strncpyz( mh.rowPos[row], "--", sizeof( mh.rowPos[0] ) );
+		MH_Plain( cgs.clientinfo[out[i]].name, mh.rowName[row], sizeof( mh.rowName[0] ) );
+		Q_strncpyz( mh.rowValue[row], "OUT", sizeof( mh.rowValue[0] ) );
+		mh.rowColor[row] = mhMuted;
+		mh.rowNameColor[row] = outName;
+		mh.rowMe[row] = out[i] == ps->clientNum;
+	}
+	for ( i = 0; i < row; i++ ) {
+		l->rowPos[i] = mh.rowPos[i];
+		l->rowName[i] = mh.rowName[i];
+		l->rowValue[i] = mh.rowValue[i];
+	}
+	l->rowCount = row;
+}
+
 /* the race with weapons, and the races in teams */
-#define MH_COMBAT()		( cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM )
+#define MH_COMBAT()		( cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM || \
+						  ( cgs.gametype == GT_ELIMINATION && cgs.eliminationWeapons ) )
 #define MH_TEAMRACE()	( cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_TEAM_RACING_DM )
 
 /* a driver's team: our own from the snapshot, the freshest */
@@ -483,7 +591,8 @@ static void MH_Prepare( void ) {
 	Com_sprintf( mh.title, sizeof( mh.title ), "%s \xb7 %s",
 	             cgs.gametype == GT_GHOST ? "Ghost race" : cgs.gametype == GT_SPRINT ? "Sprint" :
 	             cgs.gametype == GT_TEAM_RACING ? "Team race" : cgs.gametype == GT_RACING_DM ? "Race combat" :
-	             cgs.gametype == GT_TEAM_RACING_DM ? "Team race combat" : "Race", mh.rowName[0] );
+	             cgs.gametype == GT_TEAM_RACING_DM ? "Team race combat" :
+	             cgs.gametype == GT_ELIMINATION ? "Elimination" : "Race", mh.rowName[0] );
 	l->title = mh.title;
 	mh.posColor = mhWhite;
 	if ( cgs.gametype == GT_GHOST ) {
@@ -612,7 +721,7 @@ static void MH_Prepare( void ) {
 		l->teamCount = 2;
 		l->rowSwatch = qtrue;
 	}
-	for ( i = 0; i < MH_ROWS_MAX; i++ ) mh.rowColor[i] = NULL;
+	for ( i = 0; i < MH_ROWS_MAX; i++ ) mh.rowColor[i] = mh.rowNameColor[i] = NULL;
 	if ( cgs.gametype == GT_GHOST ) {
 		if ( l->standings ) MH_GhostSplits( l, cent, ps );
 	} else if ( l->standings ) {
@@ -643,6 +752,8 @@ static void MH_Prepare( void ) {
 		}
 		l->rowCount = count;
 	}
+
+	if ( cgs.gametype == GT_ELIMINATION ) MH_Elimination( l, at, last, ps, cent );
 
 	/* the top centre */
 	l->mirror = cg_drawRearView.integer && MH_Views() && !cg.scoreBoardShowing;
@@ -802,6 +913,12 @@ static void MH_DrawCard( const mhRaceLayout_t *l ) {
 		MH_Str( &l->progressRightT, mhMuted, 1.0f );
 	}
 	if ( l->pos || l->lapValue || l->progress ) MH_FillRect( &l->sep, mhLine, 1.0f );
+	if ( l->elim ) {
+		MH_Str( &l->elimLabelT, mhAccent, 1.0f );
+		MH_Str( &l->elimValueT, mhAccent, 1.0f );
+		MH_Bar( &l->elimBar, mh.elimFrac, mhAccent, mhTrack, 1.0f );
+		MH_Str( &l->elimCaptionT, mhMuted, 1.0f );
+	}
 	for ( i = 0; i < l->kvCount; i++ ) {
 		MH_Str( &l->kvKeyT[i], mhMuted, 1.0f );
 		MH_Str( &l->kvValueT[i], mh.kvColor[i], 1.0f );
@@ -838,7 +955,7 @@ void CG_ModernHUD_DrawStandings( void ) {
 		if ( mh.rowMe[i] ) MH_FillRect( &l->row[i], mhMe, 1.0f );
 		if ( l->rowSwatch && l->rowName[i] && l->rowName[i][0] ) MH_FillRect( &l->rowSwatchBox[i], MH_TeamColor( mh.rowTeam[i] ), 1.0f );
 		MH_Str( &l->rowPosT[i], mhMuted, 1.0f );
-		MH_Str( &l->rowNameT[i], mhWhite, 1.0f );
+		MH_Str( &l->rowNameT[i], mh.rowNameColor[i] ? mh.rowNameColor[i] : mhWhite, 1.0f );
 		MH_Str( &l->rowValueT[i], mh.rowColor[i] ? mh.rowColor[i] : mhValue, 1.0f );
 	}
 }
@@ -1111,4 +1228,24 @@ void CG_ModernHUD_DrawSpectator( void ) {
 	MH_Str( &sp.nameT, mhWhite, 1.0f );
 	MH_Str( &sp.hint1T, mhMuted, 1.0f );
 	MH_Str( &sp.hint2T, mhMuted, 1.0f );
+}
+
+/* elimination: someone is out. The drivers still in read their place and
+ * that they are safe, everybody else how many are left. */
+void CG_ModernHUD_Eliminated( int clientNum, int remaining ) {
+	static const char *suffix[4] = { "TH", "ST", "ND", "RD" };
+	char name[40];
+	int me, place;
+	if ( !cg.snap || clientNum < 0 || clientNum >= MAX_CLIENTS || !CG_ModernHUD_Active() ) return;
+	MH_Plain( cgs.clientinfo[clientNum].name, name, sizeof( name ) );
+	me = cg.snap->ps.clientNum;
+	place = cg_entities[me].currentPosition;
+	if ( !( cg.snap->ps.pm_flags & PMF_FOLLOW ) && cg.snap->ps.persistant[PERS_TEAM] != TEAM_SPECTATOR &&
+	     !cg_entities[me].eliminationOut && place > 0 ) {
+		CG_CenterPrint( va( "%d%s \xb7 SAFE\n%s is out", place,
+		                    suffix[( place % 100 >= 11 && place % 100 <= 13 ) || place % 10 > 3 ? 0 : place % 10], name ),
+		                SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
+	} else {
+		CG_CenterPrint( va( "%s is out\n%d left", name, remaining ), SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
+	}
 }

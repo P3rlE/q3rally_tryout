@@ -508,8 +508,8 @@ board('Elimination.dc.html', 'Elimination', BG['racing'], [
                      + f'<div style="display: flex; flex-direction: column; gap: 6px">{row(lab("NEXT OUT", ACC), mono("0:12", 17, ACC))}{bar(0.4, ACC, 6)}'
                      f'{lab("LAST PLACE IS OUT AT 0:00", "#999999", 11)}</div>' + kv('TIME', '1:47.30')), 300),
     col(TR, standings('Still in', 'Status', [('01', 'Carla', 'SAFE'), ('02', 'Tony', 'SAFE'), ('03', 'Player', 'SAFE', 'me'),
-                                             ('04', 'Janine', 'DANGER', '', None, ACC), ('—', 'Bobby', 'OUT', 'out'),
-                                             ('—', 'Emma', 'OUT', 'out')]), 272),
+                                             ('04', 'Janine', 'DANGER', '', None, ACC), ('--', 'Bobby', 'OUT', 'out'),
+                                             ('--', 'Emma', 'OUT', 'out')]), 272),
     col(BL, vehicle(103), 300),
     col(BR, cockpit('131', '4', 0.77, 0.15, 0.73), 330),
     center('3RD · SAFE', 'Bobby is out', 210, 46),

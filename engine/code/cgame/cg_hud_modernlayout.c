@@ -215,6 +215,25 @@ static void MH_Card( mhRaceLayout_t *l ) {
 		y += 1.0f + 12.0f;
 	}
 
+	/* elimination: a column 6px apart: the row, a 6px bar, a small line */
+	if ( l->elim ) {
+		wsTextStyle_t small;
+		MH_Label( &small, 11.0f );
+		MH_Set( &l->elimLabelT, &label, l->elimLabel );
+		MH_Set( &l->elimValueT, &mono17, l->elimValue );
+		y += MH_BaselineRow( &l->elimLabelT, &l->elimValueT, in.x, y, in.w ) + 6.0f;
+		l->elimBar.x = in.x;
+		l->elimBar.y = y;
+		l->elimBar.w = in.w;
+		l->elimBar.h = 6.0f;
+		y += 6.0f + 6.0f;
+		MH_Set( &l->elimCaptionT, &small, l->elimCaption );
+		MH_Fit( &l->elimCaptionT, in.w );
+		MH_Place( &l->elimCaptionT, in.x, y );
+		l->elimCaptionT.box.w = in.w;	/* a block over the card's width */
+		y += l->elimCaptionT.box.h + 12.0f;
+	}
+
 	for ( i = 0; i < l->kvCount; i++ ) {
 		wsTextStyle_t key, value;
 		MH_Label( &key, 12.0f );

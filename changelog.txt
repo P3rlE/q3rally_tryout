@@ -46,6 +46,9 @@ Changed:
   at the last checkpoint both drivers have crossed and grows while the one
   ahead is past the next one; in the new HUD a place is never shown closer
   than the one ahead of it, and "TO P2" is the difference of the two.
+- The new HUD in Elimination: how many are left, who goes out next and how
+  many are already through the lap that decides, the drivers still in (the
+  last one in DANGER) and those out, and a big message when someone is out.
 - The graphics loading screen is drawn by the game again, on every
   platform, and looks exactly like the WebUI's "Getting ready." screen:
   the layout follows the WebUI's CSS, the text uses its fonts (Barlow,

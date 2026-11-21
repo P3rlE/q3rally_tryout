@@ -1897,6 +1897,7 @@ static void CG_ParseEliminationStatus( void ) {
                 cg.eliminationWarningActive = qfalse;
                 cg.eliminationWarningTime = 0;
                 CG_CheckEliminationWarning( cg.eliminationPlayersRemaining );
+                if ( !isLocal ) CG_ModernHUD_Eliminated( clientNum, remaining );
 
                 if ( cgs.media.eliminationEliminatedSound && !isLocal ) {
                         trap_S_StartLocalSound( cgs.media.eliminationEliminatedSound, CHAN_ANNOUNCER );
