@@ -17,6 +17,7 @@ RACE = json.loads((ROOT / 'tests/fixtures/hud_race_layout.json').read_text())['e
 SPRINT = json.loads((ROOT / 'tests/fixtures/hud_sprint_layout.json').read_text())['els']
 GHOST = json.loads((ROOT / 'tests/fixtures/hud_ghost_layout.json').read_text())['els']
 TEAM_RACE = json.loads((ROOT / 'tests/fixtures/hud_teamrace_layout.json').read_text())['els']
+ELIMINATION = json.loads((ROOT / 'tests/fixtures/hud_elimination_layout.json').read_text())['els']
 MESSAGES = json.loads((ROOT / 'tests/fixtures/hud_messages_layout.json').read_text())['els']
 RACING_DM = json.loads((ROOT / 'tests/fixtures/hud_racingdm_layout.json').read_text())['els']
 NOTIFY = json.loads((ROOT / 'tests/fixtures/hud_notify_layout.json').read_text())['els']
@@ -54,7 +55,7 @@ def command(model, width=1600):
               ';'.join(f'{a}:{b}:{c}' for a, b, c in m.get('slots', [])), m.get('progress', ''),
               m.get('posLabel', ''), ','.join(str(v) for v in m.get('kvSizes', [])),
               ';'.join(f'{n}:{v}' for n, v in m.get('teams', [])), m.get('swatch', 0),
-              ';'.join(f'{a}:{w}:{b}' for a, w, b in m.get('kills', []))]
+              ';'.join(f'{a}:{w}:{b}' for a, w, b in m.get('kills', [])), m.get('elim', '')]
     return [f'hudrace {width}', latin('|'.join(str(f) for f in fields))]
 
 
@@ -315,3 +316,25 @@ def test_a_death_without_a_killer_has_one_name():
     mine, = layouts(command(model))
     assert abs(mine['kill0'][2] - (10 + mine['killA0'][2] + 8 + mine['killWeapon0'][2] + 10)) < 0.01
     assert abs(mine['kill0'][0] + mine['kill0'][2] - 1568) < 0.01
+
+
+# the elimination board of gen.py: places left, who goes out next, still in and out
+def test_native_elimination_hud_matches_the_design():
+    model = dict(RACE_MODEL, title='Elimination \u00b7 Country', pos='P3', of='/ 4', lapLabel='LEFT', lapValue='4/6',
+                 elim='NEXT OUT;0:12;LAST PLACE IS OUT AT 0:00', kv=[('TIME', '1:47.30')],
+                 orderTitle='Still in', orderRight='Status',
+                 rows=[('01', 'Carla', 'SAFE'), ('02', 'Tony', 'SAFE'), ('03', 'Player', 'SAFE'), ('04', 'Janine', 'DANGER'),
+                       ('--', 'Bobby', 'OUT'), ('--', 'Emma', 'OUT')], mirror=0, toast=0, jukebox=0)
+    mine, = layouts(command(model))
+    card, order = '/div:0/div:0', '/div:1/div:0'
+    pairs = [('card', card), ('pos', card + '/div:1/div:0/div:0'), ('of', card + '/div:1/div:0/div:1'),
+             ('lapLabel', card + '/div:1/div:1/div:0'), ('lapValue', card + '/div:1/div:1/div:1'),
+             ('sep', card + '/div:2'), ('elimLabel', card + '/div:3/div:0/div:0'),
+             ('elimValue', card + '/div:3/div:0/div:1'), ('elimBar', card + '/div:3/div:1'),
+             ('elimCaption', card + '/div:3/div:2'), ('key0', card + '/div:4/div:0'), ('value0', card + '/div:4/div:1'),
+             ('order', order), ('orderTitle', order + '/div:0/div:0'), ('orderRight', order + '/div:0/div:1')]
+    for i in range(6):
+        row = order + f'/div:1/div:{i}'
+        pairs += [(f'rowPos{i}', row + '/div:0'), (f'rowName{i}', row + '/div:1'), (f'rowValue{i}', row + '/div:2')]
+    problems = check_all(mine, ELIMINATION, pairs)
+    assert not problems, problems

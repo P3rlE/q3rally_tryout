@@ -421,12 +421,12 @@ int main(void) {
 #undef B
         } else if (!strcmp(command, "hudrace")) {
             /* hudrace <view width>, then one line of fields split by |, lists by ; and : */
-            static mhRaceLayout_t l; static char line[4096]; static char *f[40]; char *r, *next, *item, *more;
+            static mhRaceLayout_t l; static char line[4096]; static char *f[48]; char *r, *next, *item, *more;
             int n = 0, i;
             memset(&l, 0, sizeof(l));
             scanf("%f\n", &l.viewWidth);
             fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
-            for (r = line; n < 40; r = next) {
+            for (r = line; n < 48; r = next) {
                 next = strchr(r, '|'); f[n++] = r;
                 if (!next) break;
                 *next++ = 0;
@@ -475,6 +475,10 @@ int main(void) {
                 l.killA[l.killCount] = item; r = strchr(item, ':'); *r++ = 0;
                 l.killWeapon[l.killCount] = r; r = strchr(r, ':'); *r++ = 0; l.killB[l.killCount++] = r;
             }
+            if (n > 40 && *f[40]) {   /* elimination: label;value;caption */
+                l.elim = 1; l.elimLabel = f[40]; r = strchr(f[40], ';'); *r++ = 0;
+                l.elimValue = r; r = strchr(r, ';'); *r++ = 0; l.elimCaption = r;
+            }
 #undef FIELD
             uis.glconfig.vidWidth = l.viewWidth; uis.glconfig.vidHeight = 900;
             MH_RaceLayout(&l);
@@ -482,6 +486,7 @@ int main(void) {
             printf("{");
             rect("card", l.card); rect("sep", l.sep); T("title", l.titleT); T("posLabel", l.posLabelT); T("pos", l.posT); T("of", l.ofT);
             T("lapLabel", l.lapLabelT); T("lapValue", l.lapValueT);
+            rect("elimBar", l.elimBar); T("elimLabel", l.elimLabelT); T("elimValue", l.elimValueT); T("elimCaption", l.elimCaptionT);
             rect("progressBar", l.progressBar); T("progressLeft", l.progressLeftT); T("progressRight", l.progressRightT);
             for (i = 0; i < l.kvCount; i++) { char k[16]; sprintf(k, "key%d", i); T(k, l.kvKeyT[i]); sprintf(k, "value%d", i); T(k, l.kvValueT[i]); }
             rect("order", l.order); T("orderTitle", l.orderTitleT); T("orderRight", l.orderRightT);
