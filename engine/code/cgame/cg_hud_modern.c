@@ -49,6 +49,7 @@ static const vec4_t mhTeam[MH_TEAMS_MAX] = {	/* the design's red, blue, green, y
 };
 static const vec4_t mhOnTeam    = { 17 / 255.0f, 17 / 255.0f, 17 / 255.0f, 1.0f };	/* #111 on a team's colour */
 static const vec4_t mhTickOpen  = { 90 / 255.0f, 90 / 255.0f, 90 / 255.0f, 1.0f };	/* #5a5a5a */
+static const vec4_t mhZoneFree  = { 58 / 255.0f, 58 / 255.0f, 58 / 255.0f, 1.0f };	/* #3a3a3a: a point nobody holds */
 
 static struct {
 	int				time;			/* the frame this was laid out for */
@@ -74,6 +75,10 @@ static struct {
 	float			elimFrac;
 	const float		*posColor, *posLabelColor;
 	qboolean		flagAway[MH_FLAGS_MAX];		/* the state in the accent */
+	const float		*zoneColor[MH_ZONES_MAX];	/* the owner's colour, mhZoneFree: nobody */
+	const float		*zoneLineColor;				/* the capture row and its bar */
+	float			zoneFrac;
+	char			zoneLabel[24], zoneValue[16];
 	int				rowTeam[MH_ROWS_MAX];			/* TEAM_RED.., for the swatch */
 	char			teamValue[MH_TEAMS_MAX][16];
 	cgHudToastView_t	toast;
@@ -225,7 +230,7 @@ qboolean CG_ModernHUD_Active( void ) {
 	         cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM ||
 	         cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ||
 	         cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM || cgs.gametype == GT_CTF ||
-	         cgs.gametype == GT_CTF4 );
+	         cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION );
 }
 
 /* the gaps to the leader for every place (-1: none yet). The order is the
@@ -594,6 +599,82 @@ static void MH_CaptureTheFlag( mhRaceLayout_t *l, const playerState_t *ps ) {
 	l->rowSwatch = qtrue;
 }
 
+/* domination: a tile per control point in its owner's colour; under it the
+ * point we are capturing (the server sends how far, STAT_DOM_CAPTURE), else
+ * how many our team holds */
+static void MH_Domination( mhRaceLayout_t *l, const playerState_t *ps ) {
+	static const char *letters[MH_ZONES_MAX] = { "A", "B", "C", "D", "E" };
+	static const char *names[MH_TEAMS_MAX] = { "RED", "BLUE", "GREEN", "YELLOW" };
+	static const char *cells[MH_TEAMS_MAX] = { "R", "B", "G", "Y" };
+	int team = MH_Team( ps->clientNum ), capture = ps->stats[STAT_DOM_CAPTURE], count = 0, held = 0, i;
+	const float *mine = MH_TeamColor( team );
+	static int lastCapture, lastCaptureTime, lastClient;
+
+	/* the server sets the capture only in frames the car touches the point:
+	 * keep it over the gaps while the car moves about on it */
+	if ( capture ) {
+		lastCapture = capture;
+		lastCaptureTime = cg.time;
+		lastClient = ps->clientNum;
+	} else if ( lastClient == ps->clientNum && cg.time - lastCaptureTime < 600 && cg.time >= lastCaptureTime ) {
+		capture = lastCapture;
+	}
+
+	for ( i = 0; i < MH_ZONES_MAX && i < MAX_SIGILS && cgs.sigil[i] != SIGIL_NONE; i++ ) {
+		int owner = cgs.sigil[i] >= SIGIL_ISRED ? TEAM_RED + cgs.sigil[i] - SIGIL_ISRED : TEAM_FREE;
+		l->zoneName[i] = letters[i];
+		mh.zoneColor[i] = owner != TEAM_FREE ? MH_TeamColor( owner ) : mhZoneFree;
+		if ( owner != TEAM_FREE && owner == team ) held++;
+		count++;
+	}
+	l->zoneCount = count;
+	/* taken in the meantime: the hold is over */
+	if ( capture && DOM_CAPTURE_POINT( capture ) < count &&
+	     cgs.sigil[DOM_CAPTURE_POINT( capture )] == SIGIL_ISRED + DOM_CAPTURE_TEAM( capture ) - TEAM_RED ) capture = 0;
+	if ( capture && DOM_CAPTURE_POINT( capture ) < count ) {
+		Com_sprintf( mh.zoneLabel, sizeof( mh.zoneLabel ), "CAPTURING %s", letters[DOM_CAPTURE_POINT( capture )] );
+		Com_sprintf( mh.zoneValue, sizeof( mh.zoneValue ), "%d%%", DOM_CAPTURE_PERCENT( capture ) );
+		mh.zoneFrac = DOM_CAPTURE_PERCENT( capture ) / 100.0f;
+		mh.zoneLineColor = MH_TeamColor( DOM_CAPTURE_TEAM( capture ) );
+	} else {
+		Q_strncpyz( mh.zoneLabel, "POINTS HELD", sizeof( mh.zoneLabel ) );
+		Com_sprintf( mh.zoneValue, sizeof( mh.zoneValue ), "%d / %d", held, count );
+		mh.zoneFrac = count > 0 ? (float)held / count : 0.0f;
+		mh.zoneLineColor = mine;
+	}
+	l->zoneLabel = mh.zoneLabel;
+	l->zoneValue = mh.zoneValue;
+
+	/* no score line: the points are the story; the team and the clock */
+	l->pos = NULL;
+	l->of = NULL;
+	l->lapValue = NULL;
+	l->progress = qfalse;
+	Q_strncpyz( mh.kvValue[1], mh.kvValue[0], sizeof( mh.kvValue[1] ) );
+	Q_strncpyz( mh.kvKey[1], mh.kvKey[0], sizeof( mh.kvKey[1] ) );
+	mh.kvColor[1] = mhWhite;
+	Q_strncpyz( mh.kvKey[0], "YOUR TEAM", sizeof( mh.kvKey[0] ) );
+	Q_strncpyz( mh.kvValue[0], team >= TEAM_RED && team < TEAM_RED + MH_TEAMS_MAX ? names[team - TEAM_RED] : "--",
+	            sizeof( mh.kvValue[0] ) );
+	mh.kvColor[0] = mine;
+	l->kvCount = 2;
+	for ( i = 0; i < 2; i++ ) {
+		l->kvKey[i] = mh.kvKey[i];
+		l->kvValue[i] = mh.kvValue[i];
+		l->kvSize[i] = 0.0f;
+	}
+
+	l->orderTitle = "Domination order";
+	l->orderRight = "Score";
+	for ( i = 0; i < MH_TEAMS_MAX; i++ ) {
+		Com_sprintf( mh.teamValue[i], sizeof( mh.teamValue[i] ), "%d", cg.teamScores[i] );
+		l->teamValue[i] = mh.teamValue[i];
+		l->teamName[i] = cells[i];
+	}
+	l->teamCount = MH_TEAMS_MAX;
+	l->rowSwatch = qtrue;
+}
+
 /* derby: the score, the time left to ram someone before the game takes the
  * car out, and the car from above. The server has one integrity for the
  * car; the zones show where the hits landed (cg_playerstate.c works out
@@ -764,7 +845,7 @@ static void MH_LastCar( mhRaceLayout_t *l, const playerState_t *ps, const centit
 /* the race with weapons, and the races in teams */
 #define MH_COMBAT()		( cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM || cgs.gametype == GT_LCS || \
 						  cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM || \
-						  cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 || \
+						  cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION || \
 						  ( cgs.gametype == GT_ELIMINATION && cgs.eliminationWeapons ) )
 #define MH_TEAMRACE()	( cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_TEAM_RACING_DM )
 
@@ -1033,7 +1114,7 @@ static void MH_Prepare( void ) {
 	             cgs.gametype == GT_ELIMINATION ? "Elimination" : cgs.gametype == GT_LCS ? "Last car standing" :
 	             cgs.gametype == GT_DERBY ? "Derby" : cgs.gametype == GT_DEATHMATCH ? "Deathmatch" :
 	             cgs.gametype == GT_TEAM ? "Team combat" : cgs.gametype == GT_CTF ? "Capture the flag" :
-	             cgs.gametype == GT_CTF4 ? "Four team CTF" : "Race",
+	             cgs.gametype == GT_CTF4 ? "Four team CTF" : cgs.gametype == GT_DOMINATION ? "Domination" : "Race",
 	             mh.rowName[0] );
 	l->title = mh.title;
 	mh.posColor = mhWhite;
@@ -1203,6 +1284,10 @@ static void MH_Prepare( void ) {
 		MH_Deathmatch( l, ps );
 		MH_CaptureTheFlag( l, ps );
 	}
+	if ( cgs.gametype == GT_DOMINATION ) {
+		MH_Deathmatch( l, ps );
+		MH_Domination( l, ps );
+	}
 
 	/* the top centre */
 	l->mirror = cg_drawRearView.integer && MH_Views() && !cg.scoreBoardShowing;
@@ -1362,7 +1447,16 @@ static void MH_DrawCard( const mhRaceLayout_t *l ) {
 		MH_Str( &l->progressLeftT, mhMuted, 1.0f );
 		MH_Str( &l->progressRightT, mhMuted, 1.0f );
 	}
-	if ( l->pos || l->lapValue || l->progress ) MH_FillRect( &l->sep, mhLine, 1.0f );
+	if ( l->zoneCount ) {
+		for ( i = 0; i < l->zoneCount; i++ ) {
+			MH_FillRect( &l->zoneTile[i], mh.zoneColor[i], 1.0f );
+			MH_Str( &l->zoneNameT[i], mh.zoneColor[i] == mhZoneFree ? mhValue : mhOnTeam, 1.0f );
+		}
+		MH_Str( &l->zoneLabelT, mh.zoneLineColor, 1.0f );
+		MH_Str( &l->zoneValueT, mh.zoneLineColor, 1.0f );
+		MH_Bar( &l->zoneBar, mh.zoneFrac, mh.zoneLineColor, mhTrack, 1.0f );
+	}
+	if ( l->pos || l->lapValue || l->progress || l->zoneCount ) MH_FillRect( &l->sep, mhLine, 1.0f );
 	if ( l->flagCount ) {
 		for ( i = 0; i < l->flagCount; i++ ) {
 			MH_Pic( &l->flagIcon[i], 0.0f, mh.flag, mhTeam[i], 1.0f );
@@ -1516,9 +1610,90 @@ static void MH_DrawCockpit( const mhRaceLayout_t *l ) {
 }
 
 /* the parts of the HUD that go with the status bar (cg_drawStatus) */
+/* domination: the control points in the scene. In view the marker sits
+ * over the point, out of view at the edge towards it; either way in the
+ * band between the panels at the top and at the bottom */
+#define MH_MARKER_TOP		270.0f
+#define MH_MARKER_BOTTOM	650.0f
+#define MH_MARKER_SIDE		50.0f
+#define MH_MARKER_NEAR		8.0f	/* metres */
+
+static void MH_DrawZoneMarkers( const mhRaceLayout_t *l ) {
+	static const char *letters[MH_ZONES_MAX] = { "A", "B", "C", "D", "E" };
+	static char distance[MH_ZONES_MAX][16];
+	mhZoneMarker_t m[MH_ZONES_MAX], swap;
+	float range[MH_ZONES_MAX], r;
+	int owner[MH_ZONES_MAX], count = 0, i, k, o;
+	float w = l->viewWidth, cx = w * 0.5f;
+	float focalX = w * 0.5f / tan( cg.refdef.fov_x * M_PI / 360.0f );
+	float focalY = MH_DESIGN_HEIGHT * 0.5f / tan( cg.refdef.fov_y * M_PI / 360.0f );
+
+	if ( cgs.gametype != GT_DOMINATION || !cg_sigilLocator.integer || cg.showScores ||
+	     cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR || cg.snap->ps.pm_type == PM_INTERMISSION ) return;
+	for ( i = 0; i < cg.snap->numEntities && count < MH_ZONES_MAX; i++ ) {
+		const centity_t *cent = &cg_entities[cg.snap->entities[i].number];
+		const entityState_t *es = &cent->currentState;
+		vec3_t point, delta;
+		float forward, left, up, sx, sy, t;
+		int index = es->generic1 - 1;
+
+		if ( es->eType != ET_ITEM || index < 0 || index >= MH_ZONES_MAX ||
+		     es->modelindex <= 0 || es->modelindex >= bg_numItems || bg_itemlist[es->modelindex].giType != IT_SIGIL ) continue;
+		VectorCopy( cent->lerpOrigin, point );
+		point[2] += 48.0f;
+		VectorSubtract( point, cg.refdef.vieworg, delta );
+		forward = DotProduct( delta, cg.refdef.viewaxis[0] );
+		left = DotProduct( delta, cg.refdef.viewaxis[1] );
+		up = DotProduct( delta, cg.refdef.viewaxis[2] );
+		sx = forward > 1.0f ? cx - left / forward * focalX : -1.0f;
+		sy = forward > 1.0f ? MH_DESIGN_HEIGHT * 0.5f - up / forward * focalY : -1.0f;
+		if ( forward <= 1.0f || sx < MH_MARKER_SIDE || sx > w - MH_MARKER_SIDE ) {
+			/* out of view: at the side it is on, the further round behind
+			 * us the lower, so the points do not pile up */
+			float bearing = fabs( atan2( left, forward ) ) * 180.0f / M_PI, half = cg.refdef.fov_x * 0.5f;
+			t = half < 179.0f ? ( bearing - half ) / ( 180.0f - half ) : 1.0f;
+			sx = left > 0.0f ? MH_MARKER_SIDE : w - MH_MARKER_SIDE;
+			sy = MH_MARKER_TOP + WS_Clamp( 0.0f, t, 1.0f ) * ( MH_MARKER_BOTTOM - MH_MARKER_TOP );
+		}
+		range[count] = VectorLength( delta );
+		if ( range[count] < MH_MARKER_NEAR * CP_M_2_QU ) continue;	/* we are on it: the card says it */
+		o = cgs.sigil[index];
+		owner[count] = o >= SIGIL_ISRED ? TEAM_RED + o - SIGIL_ISRED : TEAM_FREE;
+		Com_sprintf( distance[count], sizeof( distance[0] ), "%d m", (int)( range[count] / CP_M_2_QU ) );
+		m[count].x = sx;
+		m[count].y = WS_Clamp( MH_MARKER_TOP, sy, MH_MARKER_BOTTOM );
+		m[count].letter = letters[index];
+		m[count].distance = distance[count];
+		count++;
+	}
+	/* far ones first: the nearer point lies on top */
+	for ( i = 1; i < count; i++ ) {
+		for ( k = i; k > 0 && range[k] > range[k - 1]; k-- ) {
+			swap = m[k]; m[k] = m[k - 1]; m[k - 1] = swap;
+			r = range[k]; range[k] = range[k - 1]; range[k - 1] = r;
+			o = owner[k]; owner[k] = owner[k - 1]; owner[k - 1] = o;
+		}
+	}
+	for ( i = 0; i < count; i++ ) {
+		wsRect_t back;
+		MH_ZoneMarkerLayout( &m[i] );
+		back.x = m[i].distanceT.box.x < m[i].tile.x ? m[i].distanceT.box.x : m[i].tile.x;
+		back.w = m[i].distanceT.box.w > m[i].tile.w ? m[i].distanceT.box.w : m[i].tile.w;
+		back.x -= 4.0f;
+		back.w += 8.0f;
+		back.y = m[i].tile.y - 4.0f;
+		back.h = m[i].distanceT.box.y + m[i].distanceT.box.h + 3.0f - back.y;
+		MH_FillRect( &back, mhPanel, 1.0f );
+		MH_FillRect( &m[i].tile, owner[i] != TEAM_FREE ? MH_TeamColor( owner[i] ) : mhZoneFree, 1.0f );
+		MH_Str( &m[i].letterT, owner[i] != TEAM_FREE ? mhOnTeam : mhValue, 1.0f );
+		MH_Str( &m[i].distanceT, mhValue, 1.0f );
+	}
+}
+
 void CG_ModernHUD_Draw( void ) {
 	const mhRaceLayout_t *l = &mh.l;
 	MH_Prepare();
+	if ( !CG_IntroCam_IsActive() ) MH_DrawZoneMarkers( l );
 	if ( l->mirror ) MH_Border( &l->mirrorBox, mhGlass, 1.0f, NULL, 1.0f );
 	if ( l->minimap ) {
 		/* the frame around the view, which is already drawn */

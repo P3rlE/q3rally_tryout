@@ -484,6 +484,12 @@ int main(void) {
                 l.flagName[l.flagCount] = item; r = strchr(item, '~'); *r++ = 0;
                 l.flagState[l.flagCount] = r; r = strchr(r, '~'); *r++ = 0; l.flagNote[l.flagCount++] = r;
             }
+            if (n > 46 && *f[46]) {   /* zones: ABCDE~label~value */
+                static char names[MH_ZONES_MAX][2];
+                r = strchr(f[46], '~'); *r++ = 0; l.zoneLabel = r; r = strchr(r, '~'); *r++ = 0; l.zoneValue = r;
+                for (i = 0; f[46][i] && i < MH_ZONES_MAX; i++) { names[i][0] = f[46][i]; l.zoneName[i] = names[i]; }
+                l.zoneCount = i;
+            }
             if (n > 40 && *f[40]) {   /* elimination: label;value;caption */
                 l.elim = 1; l.elimLabel = f[40]; r = strchr(f[40], ';'); *r++ = 0;
                 l.elimValue = r; r = strchr(r, ';'); *r++ = 0; l.elimCaption = r;
@@ -496,6 +502,9 @@ int main(void) {
             rect("card", l.card); rect("sep", l.sep); T("title", l.titleT); T("posLabel", l.posLabelT); T("pos", l.posT); T("of", l.ofT);
             T("lapLabel", l.lapLabelT); T("lapValue", l.lapValueT);
             rect("sep2", l.sep2);
+            for (i = 0; i < l.zoneCount; i++) { char k[24]; sprintf(k, "zoneTile%d", i); rect(k, l.zoneTile[i]);
+                sprintf(k, "zoneName%d", i); T(k, l.zoneNameT[i]); }
+            rect("zoneBar", l.zoneBar); T("zoneLabel", l.zoneLabelT); T("zoneValue", l.zoneValueT);
             for (i = 0; i < l.flagCount; i++) { char k[24]; sprintf(k, "flagIcon%d", i); rect(k, l.flagIcon[i]);
                 sprintf(k, "flagName%d", i); T(k, l.flagNameT[i]); sprintf(k, "flagState%d", i); T(k, l.flagStateT[i]);
                 sprintf(k, "flagNote%d", i); T(k, l.flagNoteT[i]); }
