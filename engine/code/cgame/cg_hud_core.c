@@ -1497,6 +1497,7 @@ qboolean CG_DrawHUD( void ) {
         break;
 
     case GT_LCS:
+	if ( CG_ModernHUD_Active() ) break;	/* the v0.9 HUD has the order */
 	{
 		float y = 130.0f;
 		qboolean showLcsOverview = ( !cg.showScores &&

@@ -64,6 +64,9 @@ static struct {
 	qboolean		rowMe[MH_ROWS_MAX];
 	const float		*rowColor[MH_ROWS_MAX];		/* NULL: #ddd */
 	const float		*rowNameColor[MH_ROWS_MAX];	/* NULL: white */
+	float			rowFrac[MH_ROWS_MAX];
+	qboolean		rowLow[MH_ROWS_MAX];			/* under 35: the bar in the accent */
+	char			lcsLeader[32];
 	char			elimValue[24], elimCaption[48];
 	float			elimFrac;
 	const float		*posColor;
@@ -216,7 +219,7 @@ qboolean CG_ModernHUD_Active( void ) {
 	return cg_hudStyle.integer && cg.snap &&
 	       ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_GHOST ||
 	         cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM ||
-	         cgs.gametype == GT_ELIMINATION );
+	         cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS );
 }
 
 /* the gaps to the leader for every place (-1: none yet). The order is the
@@ -339,8 +342,122 @@ static void MH_Elimination( mhRaceLayout_t *l, const int at[MAX_CLIENTS + 1], in
 	l->rowCount = row;
 }
 
+/* last car standing: one life each. Who is out, by the scores (sent every
+ * two seconds), the entity and our own playerState. */
+static qboolean MH_LastCarOut( int client ) {
+	int i;
+	if ( client == cg.snap->ps.clientNum )
+		return cg.snap->ps.pm_type == PM_DEAD || cg.snap->ps.stats[STAT_HEALTH] <= 0;
+	if ( cg_entities[client].currentState.eFlags & EF_DEAD ) return qtrue;
+	for ( i = 0; i < cg.numScores; i++ ) {
+		if ( cg.scores[i].client == client ) return cg.scores[i].integrity == 0;
+	}
+	return qfalse;
+}
+
+/* integrity in percent, as the server sends it with the scores; -1: not yet */
+static int MH_LastCarIntegrity( int client ) {
+	const playerState_t *ps = &cg.snap->ps;
+	int i;
+	if ( client == ps->clientNum ) {
+		if ( ps->stats[STAT_HEALTH] <= 0 ) return 0;
+		/* capped like the server caps the others' (a bonus can lift health over the max) */
+		i = ps->stats[STAT_MAX_HEALTH] > 0 ? ps->stats[STAT_HEALTH] * 100 / ps->stats[STAT_MAX_HEALTH] : ps->stats[STAT_HEALTH];
+		return i > 100 ? 100 : i;
+	}
+	for ( i = 0; i < cg.numScores; i++ ) {
+		if ( cg.scores[i].client == client ) return cg.scores[i].integrity;
+	}
+	return -1;
+}
+
+/* how many are still in, not counting `except` (-1: none) */
+static int MH_LastCarAlive( int except ) {
+	int i, n = 0;
+	for ( i = 0; i < cgs.maxclients && i < MAX_CLIENTS; i++ ) {
+		if ( i == except || !cgs.clientinfo[i].infoValid || cgs.clientinfo[i].team == TEAM_SPECTATOR ) continue;
+		if ( !MH_LastCarOut( i ) ) n++;
+	}
+	return n;
+}
+
+/* the card: cars left and the score, the match time and the leader; the
+ * order: everyone's integrity as a bar, those still in first */
+static void MH_LastCar( mhRaceLayout_t *l, const playerState_t *ps, const centity_t *cent ) {
+	static const vec4_t outName = { 119 / 255.0f, 119 / 255.0f, 119 / 255.0f, 1.0f };
+	int order[MAX_CLIENTS], count = 0, alive = 0, pass, i, client, row, time;
+
+	/* the server's order (by integrity), those still in first */
+	for ( pass = 0; pass < 2; pass++ ) {
+		for ( i = 0; i < cg.numScores; i++ ) {
+			client = cg.scores[i].client;
+			if ( client < 0 || client >= MAX_CLIENTS || !cgs.clientinfo[client].infoValid ) continue;
+			if ( cgs.clientinfo[client].team == TEAM_SPECTATOR ) continue;
+			if ( MH_LastCarOut( client ) != ( pass == 1 ) ) continue;
+			order[count++] = client;
+			if ( !pass ) alive++;
+		}
+	}
+
+	Com_sprintf( mh.pos, sizeof( mh.pos ), "%d / %d", alive, count );
+	l->posLabel = "LEFT";
+	l->pos = mh.pos;
+	l->posSize = 56.0f;
+	l->of = "";
+	Com_sprintf( mh.lap, sizeof( mh.lap ), "%d", ps->persistant[PERS_SCORE] );
+	l->lapLabel = "SCORE";
+	l->lapValue = mh.lap;
+	l->progress = qfalse;
+
+	l->kvCount = 0;
+	if ( cg_hudShowTimes.integer ) {
+		if ( cent->finishRaceTime ) time = cent->finishRaceTime - cent->startRaceTime;
+		else if ( cent->startRaceTime && cg.time > cent->startRaceTime ) time = cg.time - cent->startRaceTime;
+		else time = 0;
+		Q_strncpyz( mh.kvKey[l->kvCount], "MATCH", sizeof( mh.kvKey[0] ) );
+		MH_Time( time, mh.kvValue[l->kvCount], sizeof( mh.kvValue[0] ) );
+		mh.kvColor[l->kvCount++] = mhWhite;
+	}
+	if ( alive > 0 ) {
+		Q_strncpyz( mh.kvKey[l->kvCount], "LEADER", sizeof( mh.kvKey[0] ) );
+		MH_Plain( cgs.clientinfo[order[0]].name, mh.kvValue[l->kvCount], sizeof( mh.kvValue[0] ) );
+		mh.kvColor[l->kvCount++] = mhWhite;
+	}
+	for ( i = 0; i < l->kvCount; i++ ) {
+		l->kvKey[i] = mh.kvKey[i];
+		l->kvValue[i] = mh.kvValue[i];
+		l->kvSize[i] = 0.0f;
+	}
+
+	l->orderTitle = "Still in";
+	l->orderRight = "Integrity";
+	l->rowBars = qtrue;
+	/* no race order here: the scores decide */
+	l->standings = cg_hudShowOpponentList.integer && count > 0 && !cg.showScores &&
+	               cg.predictedPlayerState.pm_type != PM_INTERMISSION && !CG_IntroCam_IsActive();
+	if ( !l->standings ) return;
+	for ( row = 0; row < count && row < MH_ROWS_MAX; row++ ) {
+		int integrity = MH_LastCarIntegrity( order[row] );
+		qboolean out = row >= alive;
+		mh.rowPos[row][0] = '\0';
+		MH_Plain( cgs.clientinfo[order[row]].name, mh.rowName[row], sizeof( mh.rowName[0] ) );
+		if ( out ) Q_strncpyz( mh.rowValue[row], "OUT", sizeof( mh.rowValue[0] ) );
+		else if ( integrity < 0 ) Q_strncpyz( mh.rowValue[row], "--", sizeof( mh.rowValue[0] ) );
+		else Com_sprintf( mh.rowValue[row], sizeof( mh.rowValue[0] ), "%d%%", integrity );
+		mh.rowFrac[row] = out || integrity < 0 ? 0.0f : WS_Clamp( 0.0f, integrity / 100.0f, 1.0f );
+		mh.rowLow[row] = integrity >= 0 && integrity < 28;	/* the design's 35 of 125 */
+		mh.rowColor[row] = out ? mhMuted : NULL;
+		mh.rowNameColor[row] = out ? outName : NULL;
+		mh.rowMe[row] = order[row] == ps->clientNum;
+		l->rowPos[row] = mh.rowPos[row];
+		l->rowName[row] = mh.rowName[row];
+		l->rowValue[row] = mh.rowValue[row];
+	}
+	l->rowCount = row;
+}
+
 /* the race with weapons, and the races in teams */
-#define MH_COMBAT()		( cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM || \
+#define MH_COMBAT()		( cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM || cgs.gametype == GT_LCS || \
 						  ( cgs.gametype == GT_ELIMINATION && cgs.eliminationWeapons ) )
 #define MH_TEAMRACE()	( cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_TEAM_RACING_DM )
 
@@ -517,6 +634,16 @@ static const char *MH_KillWeapon( int mod ) {
 void CG_ModernHUD_Obituary( int target, int attacker, int mod ) {
 	int i;
 	if ( target < 0 || target >= MAX_CLIENTS ) return;
+	/* last car standing: one life, so every death is someone out */
+	if ( cgs.gametype == GT_LCS && cg.snap && CG_ModernHUD_Active() ) {
+		char name[40];
+		int left = MH_LastCarAlive( target );
+		MH_Plain( cgs.clientinfo[target].name, name, sizeof( name ) );
+		if ( target == cg.snap->ps.clientNum && !( cg.snap->ps.pm_flags & PMF_FOLLOW ) )
+			CG_CenterPrint( va( "You are out\n%d left", left ), SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
+		else
+			CG_CenterPrint( va( "%s is out\n%d left", name, left ), SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
+	}
 	for ( i = 0; i < MH_KILLS_MAX - 1; i++ ) mhKills[i] = mhKills[i + 1];
 	i = MH_KILLS_MAX - 1;
 	mhKills[i].time = cg.time;
@@ -592,7 +719,8 @@ static void MH_Prepare( void ) {
 	             cgs.gametype == GT_GHOST ? "Ghost race" : cgs.gametype == GT_SPRINT ? "Sprint" :
 	             cgs.gametype == GT_TEAM_RACING ? "Team race" : cgs.gametype == GT_RACING_DM ? "Race combat" :
 	             cgs.gametype == GT_TEAM_RACING_DM ? "Team race combat" :
-	             cgs.gametype == GT_ELIMINATION ? "Elimination" : "Race", mh.rowName[0] );
+	             cgs.gametype == GT_ELIMINATION ? "Elimination" : cgs.gametype == GT_LCS ? "Last car standing" : "Race",
+	             mh.rowName[0] );
 	l->title = mh.title;
 	mh.posColor = mhWhite;
 	if ( cgs.gametype == GT_GHOST ) {
@@ -754,6 +882,7 @@ static void MH_Prepare( void ) {
 	}
 
 	if ( cgs.gametype == GT_ELIMINATION ) MH_Elimination( l, at, last, ps, cent );
+	if ( cgs.gametype == GT_LCS ) MH_LastCar( l, ps, cent );
 
 	/* the top centre */
 	l->mirror = cg_drawRearView.integer && MH_Views() && !cg.scoreBoardShowing;
@@ -786,7 +915,7 @@ static void MH_Prepare( void ) {
 	/* with weapons: the front and the rear weapon with their ammo first */
 	l->slotCount = 0;
 	if ( MH_COMBAT() ) {
-		l->vehicleWidth = 330.0f;
+		l->vehicleWidth = cgs.gametype == GT_LCS ? 300.0f : 330.0f;	/* the LCS board keeps 300 */
 		MH_Weapons( l, ps );
 	}
 	/* the trunk: each item in a slot, "USE" beside its icon */
@@ -956,6 +1085,14 @@ void CG_ModernHUD_DrawStandings( void ) {
 		if ( l->rowSwatch && l->rowName[i] && l->rowName[i][0] ) MH_FillRect( &l->rowSwatchBox[i], MH_TeamColor( mh.rowTeam[i] ), 1.0f );
 		MH_Str( &l->rowPosT[i], mhMuted, 1.0f );
 		MH_Str( &l->rowNameT[i], mh.rowNameColor[i] ? mh.rowNameColor[i] : mhWhite, 1.0f );
+		if ( l->rowBars ) {
+			/* integrity: orange when low; the value at the right of its column */
+			mhText_t value = l->rowValueT[i];
+			MH_Bar( &l->rowBar[i], mh.rowFrac[i], mh.rowLow[i] ? mhAccent : mhSoft, mhTrack, 1.0f );
+			value.box.x += value.box.w - WS_TextWidth( &value.style, value.text, strlen( value.text ) );
+			MH_Str( &value, mh.rowColor[i] ? mh.rowColor[i] : mhValue, 1.0f );
+			continue;
+		}
 		MH_Str( &l->rowValueT[i], mh.rowColor[i] ? mh.rowColor[i] : mhValue, 1.0f );
 	}
 }
@@ -1248,4 +1385,21 @@ void CG_ModernHUD_Eliminated( int clientNum, int remaining ) {
 	} else {
 		CG_CenterPrint( va( "%s is out\n%d left", name, remaining ), SCREEN_HEIGHT * 0.30, BIGCHAR_WIDTH );
 	}
+}
+
+/* "OUT OF AMMO" / "LOW AMMO WARNING" under the mirror, in the label face */
+void CG_ModernHUD_DrawAmmoWarning( const char *text, qboolean out ) {
+	wsTextStyle_t style;
+	mhText_t t;
+	if ( !cg.snap ) return;
+	MH_Prepare();
+	memset( &t, 0, sizeof( t ) );
+	MH_Label( &style, 14.0f );
+	t.style = style;
+	Q_strncpyz( t.text, text, sizeof( t.text ) );
+	t.box.w = WS_TextWidth( &t.style, t.text, strlen( t.text ) );
+	t.box.h = WS_ContentHeight( &t.style );
+	t.box.x = ( mh.l.viewWidth - t.box.w ) * 0.5f;
+	t.box.y = 128.0f;
+	MH_ShadowStr( &t, out ? mhAccent : mhValue, 1.0f );
 }

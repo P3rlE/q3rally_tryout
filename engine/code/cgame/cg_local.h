@@ -2388,6 +2388,7 @@ void CG_ModernHUD_DrawMessages( void );
 void CG_ModernHUD_DrawSpectator( void );
 void CG_ModernHUD_Obituary( int target, int attacker, int mod );
 void CG_ModernHUD_Eliminated( int clientNum, int remaining );
+void CG_ModernHUD_DrawAmmoWarning( const char *text, qboolean out );
 
 //
 // cg_rally_tools.c

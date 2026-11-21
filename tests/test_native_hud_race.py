@@ -17,6 +17,7 @@ RACE = json.loads((ROOT / 'tests/fixtures/hud_race_layout.json').read_text())['e
 SPRINT = json.loads((ROOT / 'tests/fixtures/hud_sprint_layout.json').read_text())['els']
 GHOST = json.loads((ROOT / 'tests/fixtures/hud_ghost_layout.json').read_text())['els']
 TEAM_RACE = json.loads((ROOT / 'tests/fixtures/hud_teamrace_layout.json').read_text())['els']
+LCS = json.loads((ROOT / 'tests/fixtures/hud_lcs_layout.json').read_text())['els']
 ELIMINATION = json.loads((ROOT / 'tests/fixtures/hud_elimination_layout.json').read_text())['els']
 MESSAGES = json.loads((ROOT / 'tests/fixtures/hud_messages_layout.json').read_text())['els']
 RACING_DM = json.loads((ROOT / 'tests/fixtures/hud_racingdm_layout.json').read_text())['els']
@@ -55,7 +56,8 @@ def command(model, width=1600):
               ';'.join(f'{a}:{b}:{c}' for a, b, c in m.get('slots', [])), m.get('progress', ''),
               m.get('posLabel', ''), ','.join(str(v) for v in m.get('kvSizes', [])),
               ';'.join(f'{n}:{v}' for n, v in m.get('teams', [])), m.get('swatch', 0),
-              ';'.join(f'{a}:{w}:{b}' for a, w, b in m.get('kills', [])), m.get('elim', '')]
+              ';'.join(f'{a}:{w}:{b}' for a, w, b in m.get('kills', [])), m.get('elim', ''),
+              m.get('posSize', 0), m.get('rowBars', 0)]
     return [f'hudrace {width}', latin('|'.join(str(f) for f in fields))]
 
 
@@ -337,4 +339,26 @@ def test_native_elimination_hud_matches_the_design():
         row = order + f'/div:1/div:{i}'
         pairs += [(f'rowPos{i}', row + '/div:0'), (f'rowName{i}', row + '/div:1'), (f'rowValue{i}', row + '/div:2')]
     problems = check_all(mine, ELIMINATION, pairs)
+    assert not problems, problems
+
+
+# the last car standing board: cars left and score, the integrity of everyone still in
+def test_native_last_car_standing_hud_matches_the_design():
+    model = dict(RACE_MODEL, title='Last car standing \u00b7 DD02', posLabel='LEFT', pos='3 / 6', posSize=56, of='',
+                 lapLabel='SCORE', lapValue='2', kv=[('MATCH', '2:41'), ('LONGEST ALIVE', 'Carla')],
+                 orderTitle='Still in', orderRight='Integrity', rowBars=1,
+                 rows=[('', 'Player', '88'), ('', 'Carla', '112'), ('', 'Josh', '21'), ('', 'Minori', 'OUT'),
+                       ('', 'Sam', 'OUT'), ('', 'Ivan', 'OUT')], toast=0, jukebox=0)
+    mine, = layouts(command(model))
+    card, order = '/div:1/div:0', '/div:2/div:0'
+    pairs = [('card', card), ('posLabel', card + '/div:1/div:0/div:0'), ('pos', card + '/div:1/div:0/div:1'),
+             ('lapLabel', card + '/div:1/div:1/div:0'), ('lapValue', card + '/div:1/div:1/div:1'),
+             ('sep', card + '/div:2'), ('key0', card + '/div:3/div:0'), ('value0', card + '/div:3/div:1'),
+             ('key1', card + '/div:4/div:0'), ('value1', card + '/div:4/div:1'),
+             ('order', order), ('orderTitle', order + '/div:0/div:0'), ('orderRight', order + '/div:0/div:1')]
+    for i in range(6):
+        row = order + f'/div:1/div:{i}'
+        pairs += [(f'row{i}', row), (f'rowName{i}', row + '/div:0'), (f'rowBar{i}', row + '/div:1'),
+                  (f'rowValue{i}', row + '/div:2')]
+    problems = check_all(mine, LCS, pairs)
     assert not problems, problems

@@ -475,6 +475,8 @@ int main(void) {
                 l.killA[l.killCount] = item; r = strchr(item, ':'); *r++ = 0;
                 l.killWeapon[l.killCount] = r; r = strchr(r, ':'); *r++ = 0; l.killB[l.killCount++] = r;
             }
+            if (n > 41) l.posSize = atof(f[41]);
+            if (n > 42) l.rowBars = atoi(f[42]);
             if (n > 40 && *f[40]) {   /* elimination: label;value;caption */
                 l.elim = 1; l.elimLabel = f[40]; r = strchr(f[40], ';'); *r++ = 0;
                 l.elimValue = r; r = strchr(r, ';'); *r++ = 0; l.elimCaption = r;
@@ -492,7 +494,7 @@ int main(void) {
             rect("order", l.order); T("orderTitle", l.orderTitleT); T("orderRight", l.orderRightT);
             for (i = 0; i < l.rowCount; i++) { char k[16]; sprintf(k, "row%d", i); rect(k, l.row[i]);
                 sprintf(k, "rowPos%d", i); T(k, l.rowPosT[i]); sprintf(k, "rowName%d", i); T(k, l.rowNameT[i]);
-                sprintf(k, "rowValue%d", i); T(k, l.rowValueT[i]); sprintf(k, "rowSwatch%d", i); rect(k, l.rowSwatchBox[i]); }
+                sprintf(k, "rowValue%d", i); T(k, l.rowValueT[i]); sprintf(k, "rowSwatch%d", i); rect(k, l.rowSwatchBox[i]); sprintf(k, "rowBar%d", i); rect(k, l.rowBar[i]); }
             for (i = 0; i < l.killCount; i++) { char k[16]; sprintf(k, "kill%d", i); rect(k, l.killBox[i]);
                 sprintf(k, "killA%d", i); T(k, l.killAT[i]); sprintf(k, "killWeapon%d", i); T(k, l.killWeaponT[i]);
                 sprintf(k, "killB%d", i); T(k, l.killBT[i]); }

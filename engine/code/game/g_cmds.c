@@ -160,8 +160,9 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 // END
 
 	/* Send Derby integrity separately so the long-standing `scores` row format
-	   remains compatible with older clients and servers. */
-	if ( g_gametype.integer == GT_DERBY ) {
+	   remains compatible with older clients and servers. Last Car Standing
+	   lists everyone's integrity too. */
+	if ( g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS ) {
 		string[0] = '\0';
 		stringlength = 0;
 		for ( j = 0; j < i; j++ ) {

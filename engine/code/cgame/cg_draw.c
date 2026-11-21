@@ -4133,6 +4133,10 @@ static void CG_DrawAmmoWarning( void ) {
 	} else {
 		s = "LOW AMMO WARNING";
 	}
+	if ( CG_ModernHUD_Active() ) {
+		CG_ModernHUD_DrawAmmoWarning( s, cg.lowAmmoWarning == 2 );
+		return;
+	}
 	w = CG_DrawStrlen( s ) * BIGCHAR_WIDTH;
 	CG_DrawBigString(320 - w / 2, 98, s, 1.0F);
 	}

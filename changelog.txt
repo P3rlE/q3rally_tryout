@@ -49,6 +49,10 @@ Changed:
 - The new HUD in Elimination: how many are left, who goes out next and how
   many are already through the lap that decides, the drivers still in (the
   last one in DANGER) and those out, and a big message when someone is out.
+- The new HUD in Last Car Standing: cars left and score, everyone's
+  integrity as a bar, weapons, kill feed and a big message for every car
+  out. The server now sends the integrity list in LCS too (as in Derby).
+  In the new HUD the ammo warning is in the menu font under the mirror.
 - The graphics loading screen is drawn by the game again, on every
   platform, and looks exactly like the WebUI's "Getting ready." screen:
   the layout follows the WebUI's CSS, the text uses its fonts (Barlow,
