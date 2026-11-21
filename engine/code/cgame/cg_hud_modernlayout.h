@@ -84,6 +84,8 @@ typedef struct {
 	const char	*rowPos[MH_ROWS_MAX], *rowName[MH_ROWS_MAX], *rowValue[MH_ROWS_MAX];
 
 	/* top centre: rear view and the notification lane */
+	qboolean	scorebug;			/* Autoball: red cell, the clock over a line, blue cell (in place of the mirror) */
+	const char	*bugLeftLabel, *bugLeft, *bugClock, *bugSub, *bugRight, *bugRightLabel;
 	qboolean	mirror;
 	qboolean	toast, toastIcon;
 	const char	*toastTag, *toastTitle, *toastSub;	/* toastSub NULL: two lines */
@@ -114,6 +116,8 @@ typedef struct {
 	wsRect_t	derbyCar, derbySwatch[3];			/* the car in the design's 110x170 view box */
 	wsRect_t	flagIcon[MH_FLAGS_MAX], sep2;
 	wsRect_t	zoneTile[MH_ZONES_MAX], zoneBar, hillIcon;
+	wsRect_t	bugBox, bugCell[3];			/* the border, then red, clock, blue */
+	mhText_t	bugLeftLabelT, bugLeftT, bugClockT, bugSubT, bugRightT, bugRightLabelT;
 	mhText_t	hillLabelT, hillOwnerT;
 	mhText_t	zoneNameT[MH_ZONES_MAX], zoneLabelT, zoneValueT;
 	mhText_t	flagNameT[MH_FLAGS_MAX], flagStateT[MH_FLAGS_MAX], flagNoteT[MH_FLAGS_MAX];

@@ -358,6 +358,10 @@ static void CG_Autoball_DrawIndicator( void ) {
 		}
 	}
 
+	if ( CG_ModernHUD_Active() ) {
+		CG_PopScreenPlacement();
+		return;	/* off screen the v0.9 HUD draws its own marker, clear of its panels */
+	}
 	{
 		/* screen-space direction: right = -left, down = -up */
 		float dx = -left, dy = -up, len, t;
@@ -458,6 +462,8 @@ void CG_Autoball_Draw2D( void ) {
 		CG_Autoball_DrawIndicator();
 	if ( cgs.gametype != GT_AUTOBALL )
 		return;
+	if ( CG_ModernHUD_Active() )
+		return;	/* the v0.9 HUD has its own score bug and goal message */
 	CG_SetScreenPlacement( PLACE_CENTER, PLACE_TOP );
 	CG_Autoball_DrawScoreBug();
 	CG_PopScreenPlacement();

@@ -78,6 +78,8 @@ static struct {
 	const float		*zoneColor[MH_ZONES_MAX];	/* the owner's colour, mhZoneFree: nobody */
 	const float		*zoneLineColor, *zoneBarColor;	/* the capture row, its bar */
 	const float		*hillColor;					/* KOTH: the owner's colour, muted: nobody */
+	char			bugLeft[8], bugRight[8], bugClock[16];
+	qboolean		bugSubAccent;
 	float			zoneFrac;
 	char			zoneLabel[24], zoneValue[16];
 	int				rowTeam[MH_ROWS_MAX];			/* TEAM_RED.., for the swatch */
@@ -231,7 +233,8 @@ qboolean CG_ModernHUD_Active( void ) {
 	         cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM ||
 	         cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ||
 	         cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM || cgs.gametype == GT_CTF ||
-	         cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION || cgs.gametype == GT_KOTH );
+	         cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION || cgs.gametype == GT_KOTH ||
+	         cgs.gametype == GT_AUTOBALL );
 }
 
 /* the gaps to the leader for every place (-1: none yet). The order is the
@@ -432,6 +435,16 @@ static void MH_Deathmatch( mhRaceLayout_t *l, const playerState_t *ps ) {
 		if ( client == ps->clientNum ) me = count;
 		order[count++] = i;
 	}
+	if ( cgs.gametype == GT_AUTOBALL ) {
+		/* by goals (the server's order, by points, among equals) */
+		int k, swap;
+		for ( i = 1; i < count; i++ ) {
+			for ( k = i; k > 0 && cg.scores[order[k]].autoballGoals > cg.scores[order[k - 1]].autoballGoals; k-- ) {
+				swap = order[k]; order[k] = order[k - 1]; order[k - 1] = swap;
+			}
+		}
+		for ( i = 0, me = -1; i < count; i++ ) if ( cg.scores[order[i]].client == ps->clientNum ) me = i;
+	}
 
 	Com_sprintf( mh.pos, sizeof( mh.pos ), "%d", ps->persistant[PERS_SCORE] );
 	l->pos = mh.pos;
@@ -483,7 +496,8 @@ static void MH_Deathmatch( mhRaceLayout_t *l, const playerState_t *ps ) {
 		Com_sprintf( mh.rowPos[i], sizeof( mh.rowPos[0] ), "%02d", first + i + 1 );
 		MH_Plain( cgs.clientinfo[sc->client].name, mh.rowName[i], sizeof( mh.rowName[0] ) );
 		Com_sprintf( mh.rowValue[i], sizeof( mh.rowValue[0] ), "%d",
-		             cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 ? sc->captures : sc->score );
+		             cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 ? sc->captures :
+		             cgs.gametype == GT_AUTOBALL ? sc->autoballGoals : sc->score );
 		mh.rowMe[i] = sc->client == ps->clientNum;
 		mh.rowTeam[i] = MH_Team( sc->client );
 		mh.rowColor[i] = mh.rowNameColor[i] = NULL;
@@ -756,6 +770,106 @@ static void MH_KingOfTheHill( mhRaceLayout_t *l, const playerState_t *ps ) {
 	l->teamName[0] = "RED";
 	l->teamName[1] = "BLUE";
 	l->teamCount = 2;
+	l->rowSwatch = qtrue;
+}
+
+/* autoball: the score bug at the top (in place of the rear view), our team,
+ * where the ball is, our goals and how long our team had the ball (the team
+ * of the last touch, counted here while the ball is in play) */
+static int mhPossession[2], mhPossessionTime;
+
+static void MH_Autoball( mhRaceLayout_t *l, const playerState_t *ps ) {
+	int team = MH_Team( ps->clientNum ), msec, seconds, i, touch, total;
+	qboolean overtime = qfalse;
+	centity_t *ball = CG_Autoball_FindBall();
+
+	/* the score bug: the clock stands before the first whistle */
+	msec = cg.time - cgs.levelStartTime;
+	if ( msec < 0 || cgs.autoballState == AUTOBALL_STATE_WAITING ) msec = 0;
+	if ( cgs.timelimit > 0 ) {
+		msec = cgs.timelimit * 60000 - msec;
+		if ( msec < 0 ) {
+			overtime = qtrue;
+			msec = -msec;
+		}
+	}
+	seconds = msec / 1000;
+	Com_sprintf( mh.bugClock, sizeof( mh.bugClock ), "%s%d:%02d", overtime ? "+" : "", seconds / 60, seconds % 60 );
+	Com_sprintf( mh.bugLeft, sizeof( mh.bugLeft ), "%d", cgs.scores1 );
+	Com_sprintf( mh.bugRight, sizeof( mh.bugRight ), "%d", cgs.scores2 );
+	l->scorebug = qtrue;
+	l->bugLeftLabel = "RED";
+	l->bugRightLabel = "BLUE";
+	l->bugLeft = mh.bugLeft;
+	l->bugRight = mh.bugRight;
+	l->bugClock = mh.bugClock;
+	l->bugSub = overtime ? "OVERTIME" : cgs.autoballState == AUTOBALL_STATE_WAITING ? "WARM-UP" :
+	            cgs.autoballState == AUTOBALL_STATE_KICKOFF ? "KICK-OFF" : cgs.autoballState == AUTOBALL_STATE_GOAL ? "GOAL" :
+	            cgs.timelimit > 0 ? "TIME LEFT" : "MATCH";
+	mh.bugSubAccent = overtime || cgs.autoballState == AUTOBALL_STATE_GOAL;
+
+	/* possession: the team of the last touch, while the ball is in play */
+	if ( cg.time > mhPossessionTime ) {
+		touch = ball ? ( ball->currentState.generic1 & SCRIPTED_GENERIC1_TEAM_MASK ) >> SCRIPTED_GENERIC1_TEAM_SHIFT : 0;
+		if ( mhPossessionTime && cgs.autoballState == AUTOBALL_STATE_LIVE && ( touch == TEAM_RED || touch == TEAM_BLUE ) &&
+		     cg.time - mhPossessionTime < 1000 ) {
+			mhPossession[touch - TEAM_RED] += cg.time - mhPossessionTime;
+		}
+		mhPossessionTime = cg.time;
+	}
+
+	/* our team in a row */
+	l->posLabel = "YOUR TEAM";
+	l->pos = team == TEAM_RED ? "Red" : team == TEAM_BLUE ? "Blue" : "--";
+	l->headerRow = qtrue;
+	l->posSize = 30.0f;
+	l->of = NULL;
+	l->lapValue = NULL;
+	l->progress = qfalse;
+	mh.posColor = mh.posLabelColor = MH_TeamColor( team );
+
+	/* the ball: in whose half (by the goals), how far from us */
+	Q_strncpyz( mh.kvKey[0], "BALL", sizeof( mh.kvKey[0] ) );
+	if ( ball ) {
+		float metres = Distance( ball->lerpOrigin, cg.predictedPlayerState.origin ) / CP_M_2_QU;
+		if ( ps->clientNum != cg.predictedPlayerState.clientNum || cg.snap->ps.pm_flags & PMF_FOLLOW )
+			metres = Distance( ball->lerpOrigin, cg_entities[ps->clientNum].lerpOrigin ) / CP_M_2_QU;
+		if ( cgs.autoballHaveGoals ) {
+			vec3_t axis, rel;
+			float t;
+			VectorSubtract( cgs.autoballGoal[1], cgs.autoballGoal[0], axis );
+			VectorSubtract( ball->lerpOrigin, cgs.autoballGoal[0], rel );
+			t = DotProduct( rel, axis ) / DotProduct( axis, axis );
+			Com_sprintf( mh.kvValue[0], sizeof( mh.kvValue[0] ), "%s HALF \xb7 %d M", t < 0.5f ? "RED" : "BLUE", (int)metres );
+		} else {
+			Com_sprintf( mh.kvValue[0], sizeof( mh.kvValue[0] ), "%d M", (int)metres );
+		}
+	} else {
+		Q_strncpyz( mh.kvValue[0], "--", sizeof( mh.kvValue[0] ) );
+	}
+	Q_strncpyz( mh.kvKey[1], "YOUR GOALS", sizeof( mh.kvKey[1] ) );
+	Q_strncpyz( mh.kvValue[1], "0", sizeof( mh.kvValue[1] ) );
+	for ( i = 0; i < cg.numScores; i++ ) {
+		if ( cg.scores[i].client == ps->clientNum )
+			Com_sprintf( mh.kvValue[1], sizeof( mh.kvValue[1] ), "%d", cg.scores[i].autoballGoals );
+	}
+	Q_strncpyz( mh.kvKey[2], "POSSESSION", sizeof( mh.kvKey[2] ) );
+	total = mhPossession[0] + mhPossession[1];
+	if ( total > 0 && ( team == TEAM_RED || team == TEAM_BLUE ) )
+		Com_sprintf( mh.kvValue[2], sizeof( mh.kvValue[2] ), "%d%%", ( mhPossession[team - TEAM_RED] * 100 + total / 2 ) / total );
+	else
+		Q_strncpyz( mh.kvValue[2], "--", sizeof( mh.kvValue[2] ) );
+	l->kvCount = 3;
+	for ( i = 0; i < 3; i++ ) {
+		l->kvKey[i] = mh.kvKey[i];
+		l->kvValue[i] = mh.kvValue[i];
+		l->kvSize[i] = 0.0f;
+		mh.kvColor[i] = mhWhite;
+	}
+
+	l->orderTitle = "Autoball order";
+	l->orderRight = "Goals";
+	l->teamCount = 0;
 	l->rowSwatch = qtrue;
 }
 
@@ -1200,7 +1314,7 @@ static void MH_Prepare( void ) {
 	             cgs.gametype == GT_DERBY ? "Derby" : cgs.gametype == GT_DEATHMATCH ? "Deathmatch" :
 	             cgs.gametype == GT_TEAM ? "Team combat" : cgs.gametype == GT_CTF ? "Capture the flag" :
 	             cgs.gametype == GT_CTF4 ? "Four team CTF" : cgs.gametype == GT_DOMINATION ? "Domination" :
-	             cgs.gametype == GT_KOTH ? "King of the hill" : "Race",
+	             cgs.gametype == GT_KOTH ? "King of the hill" : cgs.gametype == GT_AUTOBALL ? "Autoball" : "Race",
 	             mh.rowName[0] );
 	l->title = mh.title;
 	mh.posColor = mhWhite;
@@ -1378,9 +1492,13 @@ static void MH_Prepare( void ) {
 		MH_Deathmatch( l, ps );
 		MH_KingOfTheHill( l, ps );
 	}
+	if ( cgs.gametype == GT_AUTOBALL ) {
+		MH_Deathmatch( l, ps );
+		MH_Autoball( l, ps );
+	}
 
 	/* the top centre */
-	l->mirror = cg_drawRearView.integer && MH_Views() && !cg.scoreBoardShowing;
+	l->mirror = cg_drawRearView.integer && MH_Views() && !cg.scoreBoardShowing && !l->scorebug;
 	l->toast = CG_HudToastView( &mh.toast );
 	if ( l->toast ) {
 		l->toastIcon = qtrue;
@@ -1713,6 +1831,68 @@ static void MH_DrawCockpit( const mhRaceLayout_t *l ) {
 #define MH_MARKER_SIDE		50.0f
 #define MH_MARKER_NEAR		8.0f	/* metres */
 
+/* out of view: at the side it is on, the further round behind us the
+ * lower, so the markers do not pile up */
+static void MH_MarkerSide( float left, float forward, float w, float *sx, float *sy ) {
+	float bearing = fabs( atan2( left, forward ) ) * 180.0f / M_PI, half = cg.refdef.fov_x * 0.5f;
+	float t = half < 179.0f ? ( bearing - half ) / ( 180.0f - half ) : 1.0f;
+	*sx = left > 0.0f ? MH_MARKER_SIDE : w - MH_MARKER_SIDE;
+	*sy = MH_MARKER_TOP + WS_Clamp( 0.0f, t, 1.0f ) * ( MH_MARKER_BOTTOM - MH_MARKER_TOP );
+}
+
+/* a marker: a dark plate, the tile, its text, the distance under it */
+static void MH_DrawMarker( mhZoneMarker_t *m, const float *tile, const float *text ) {
+	wsRect_t back;
+	MH_ZoneMarkerLayout( m );
+	back.x = m->distanceT.box.x < m->tile.x ? m->distanceT.box.x : m->tile.x;
+	back.w = m->distanceT.box.w > m->tile.w ? m->distanceT.box.w : m->tile.w;
+	back.x -= 4.0f;
+	back.w += 8.0f;
+	back.y = m->tile.y - 4.0f;
+	back.h = m->distanceT.box.y + m->distanceT.box.h + 3.0f - back.y;
+	MH_FillRect( &back, mhPanel, 1.0f );
+	MH_FillRect( &m->tile, tile, 1.0f );
+	MH_Str( &m->letterT, text, 1.0f );
+	MH_Str( &m->distanceT, mhValue, 1.0f );
+}
+
+/* autoball: the ball out of view (in view cg_autoball.c puts brackets
+ * round it), in the colour of the team that touched it last */
+static void MH_DrawBallMarker( const mhRaceLayout_t *l ) {
+	centity_t *ball;
+	mhZoneMarker_t m;
+	vec3_t delta;
+	float forward, left, up, sx, sy, w = l->viewWidth;
+	float focalY = MH_DESIGN_HEIGHT * 0.5f / tan( cg.refdef.fov_y * M_PI / 360.0f );
+	char distance[16];
+	int touch;
+
+	if ( !cg_autoballIndicator.integer || cg.showScores || cg.snap->ps.pm_type == PM_INTERMISSION ||
+	     cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR || ( cg.snap->ps.pm_flags & PMF_FOLLOW ) ||
+	     cg.snap->ps.stats[STAT_HEALTH] <= 0 ) return;
+	ball = CG_Autoball_FindBall();
+	if ( !ball ) return;
+	VectorSubtract( ball->lerpOrigin, cg.refdef.vieworg, delta );
+	forward = DotProduct( delta, cg.refdef.viewaxis[0] );
+	left = DotProduct( delta, cg.refdef.viewaxis[1] );
+	up = DotProduct( delta, cg.refdef.viewaxis[2] );
+	if ( forward > 1.0f ) {
+		/* in view as cg_autoball.c has it (24px in from a 640x480 screen) */
+		sx = 320.0f - left / forward * ( 320.0f / tan( cg.refdef.fov_x * M_PI / 360.0f ) );
+		sy = 240.0f - up / forward * ( 240.0f / tan( cg.refdef.fov_y * M_PI / 360.0f ) );
+		if ( sx > 24.0f && sx < 616.0f && sy > 24.0f && sy < 456.0f ) return;
+	}
+	MH_MarkerSide( left, forward, w, &sx, &sy );
+	if ( forward > 1.0f ) sy = WS_Clamp( MH_MARKER_TOP, MH_DESIGN_HEIGHT * 0.5f - up / forward * focalY, MH_MARKER_BOTTOM );
+	touch = ( ball->currentState.generic1 & SCRIPTED_GENERIC1_TEAM_MASK ) >> SCRIPTED_GENERIC1_TEAM_SHIFT;
+	Com_sprintf( distance, sizeof( distance ), "%d m", (int)( VectorLength( delta ) / CP_M_2_QU ) );
+	m.x = sx;
+	m.y = sy;
+	m.letter = "BALL";
+	m.distance = distance;
+	MH_DrawMarker( &m, touch == TEAM_RED || touch == TEAM_BLUE ? MH_TeamColor( touch ) : mhLit, mhOnTeam );
+}
+
 static void MH_DrawZoneMarkers( const mhRaceLayout_t *l ) {
 	static const char *letters[MH_ZONES_MAX] = { "A", "B", "C", "D", "E" };
 	static char distance[MH_ZONES_MAX][16];
@@ -1729,7 +1909,7 @@ static void MH_DrawZoneMarkers( const mhRaceLayout_t *l ) {
 		const centity_t *cent = &cg_entities[cg.snap->entities[i].number];
 		const entityState_t *es = &cent->currentState;
 		vec3_t point, delta;
-		float forward, left, up, sx, sy, t;
+		float forward, left, up, sx, sy;
 		int index = es->generic1 - 1;
 
 		if ( es->eType != ET_ITEM || index < 0 || index >= MH_ZONES_MAX ||
@@ -1742,14 +1922,7 @@ static void MH_DrawZoneMarkers( const mhRaceLayout_t *l ) {
 		up = DotProduct( delta, cg.refdef.viewaxis[2] );
 		sx = forward > 1.0f ? cx - left / forward * focalX : -1.0f;
 		sy = forward > 1.0f ? MH_DESIGN_HEIGHT * 0.5f - up / forward * focalY : -1.0f;
-		if ( forward <= 1.0f || sx < MH_MARKER_SIDE || sx > w - MH_MARKER_SIDE ) {
-			/* out of view: at the side it is on, the further round behind
-			 * us the lower, so the points do not pile up */
-			float bearing = fabs( atan2( left, forward ) ) * 180.0f / M_PI, half = cg.refdef.fov_x * 0.5f;
-			t = half < 179.0f ? ( bearing - half ) / ( 180.0f - half ) : 1.0f;
-			sx = left > 0.0f ? MH_MARKER_SIDE : w - MH_MARKER_SIDE;
-			sy = MH_MARKER_TOP + WS_Clamp( 0.0f, t, 1.0f ) * ( MH_MARKER_BOTTOM - MH_MARKER_TOP );
-		}
+		if ( forward <= 1.0f || sx < MH_MARKER_SIDE || sx > w - MH_MARKER_SIDE ) MH_MarkerSide( left, forward, w, &sx, &sy );
 		range[count] = VectorLength( delta );
 		if ( range[count] < MH_MARKER_NEAR * CP_M_2_QU ) continue;	/* we are on it: the card says it */
 		o = cgs.sigil[index];
@@ -1770,25 +1943,18 @@ static void MH_DrawZoneMarkers( const mhRaceLayout_t *l ) {
 		}
 	}
 	for ( i = 0; i < count; i++ ) {
-		wsRect_t back;
-		MH_ZoneMarkerLayout( &m[i] );
-		back.x = m[i].distanceT.box.x < m[i].tile.x ? m[i].distanceT.box.x : m[i].tile.x;
-		back.w = m[i].distanceT.box.w > m[i].tile.w ? m[i].distanceT.box.w : m[i].tile.w;
-		back.x -= 4.0f;
-		back.w += 8.0f;
-		back.y = m[i].tile.y - 4.0f;
-		back.h = m[i].distanceT.box.y + m[i].distanceT.box.h + 3.0f - back.y;
-		MH_FillRect( &back, mhPanel, 1.0f );
-		MH_FillRect( &m[i].tile, owner[i] != TEAM_FREE ? MH_TeamColor( owner[i] ) : mhZoneFree, 1.0f );
-		MH_Str( &m[i].letterT, owner[i] != TEAM_FREE ? mhOnTeam : mhValue, 1.0f );
-		MH_Str( &m[i].distanceT, mhValue, 1.0f );
+		MH_DrawMarker( &m[i], owner[i] != TEAM_FREE ? MH_TeamColor( owner[i] ) : mhZoneFree,
+		               owner[i] != TEAM_FREE ? mhOnTeam : mhValue );
 	}
 }
 
 void CG_ModernHUD_Draw( void ) {
 	const mhRaceLayout_t *l = &mh.l;
 	MH_Prepare();
-	if ( !CG_IntroCam_IsActive() ) MH_DrawZoneMarkers( l );
+	if ( !CG_IntroCam_IsActive() ) {
+		MH_DrawZoneMarkers( l );
+		if ( cgs.gametype == GT_AUTOBALL ) MH_DrawBallMarker( l );
+	}
 	if ( l->mirror ) MH_Border( &l->mirrorBox, mhGlass, 1.0f, NULL, 1.0f );
 	if ( l->minimap ) {
 		/* the frame around the view, which is already drawn */
@@ -1800,6 +1966,18 @@ void CG_ModernHUD_Draw( void ) {
 		MH_Border( b, mhLine, 1.0f, NULL, 1.0f );
 	}
 	if ( CG_IntroCam_IsActive() ) return;
+	if ( l->scorebug ) {
+		MH_Border( &l->bugBox, mhLine, 1.0f, NULL, 1.0f );
+		MH_FillRect( &l->bugCell[0], mhTeam[0], 1.0f );
+		MH_FillRect( &l->bugCell[1], mhPanel, 1.0f );
+		MH_FillRect( &l->bugCell[2], mhTeam[1], 1.0f );
+		MH_Str( &l->bugLeftLabelT, mhOnTeam, 1.0f );
+		MH_Str( &l->bugLeftT, mhOnTeam, 1.0f );
+		MH_Str( &l->bugRightT, mhOnTeam, 1.0f );
+		MH_Str( &l->bugRightLabelT, mhOnTeam, 1.0f );
+		MH_Str( &l->bugClockT, mh.bugSubAccent ? mhAccent : mhWhite, 1.0f );
+		MH_Str( &l->bugSubT, mh.bugSubAccent ? mhAccent : mhMuted, 1.0f );
+	}
 	MH_DrawCard( l );
 	if ( l->toast ) MH_DrawToast( l );
 	if ( l->jukebox ) MH_DrawJukebox( l );
@@ -1862,6 +2040,35 @@ static qboolean MH_WrongWay( void ) {
 	return qtrue;
 }
 
+/* autoball: "BLUE SCORES!" in the team's colour, the scorer and the ball's
+ * speed under it; three seconds, then a second to fade */
+static qboolean MH_AutoballGoal( void ) {
+	static char line[MH_TEXT_MAX];
+	const char *sub[1];
+	int elapsed;
+	float alpha;
+	char name[40];
+
+	if ( cgs.gametype != GT_AUTOBALL || cgs.autoballState != AUTOBALL_STATE_GOAL ) return qfalse;
+	elapsed = cg.time - cgs.autoballGoalTime;
+	if ( elapsed < 0 ) elapsed = 0;
+	alpha = elapsed < 3000 ? 1.0f : 1.0f - ( elapsed - 3000 ) / 1000.0f;
+	if ( alpha <= 0.0f ) return qfalse;
+	if ( cgs.autoballScorer >= 0 && cgs.autoballScorer < MAX_CLIENTS && cgs.clientinfo[cgs.autoballScorer].infoValid ) {
+		MH_Plain( cgs.clientinfo[cgs.autoballScorer].name, name, sizeof( name ) );
+	} else {
+		Q_strncpyz( name, cgs.autoballScorer == -2 ? "Own goal" : "", sizeof( name ) );
+	}
+	if ( cg_metricUnits.integer )
+		Com_sprintf( line, sizeof( line ), "%s%s%d KM/H", name, name[0] ? " \xb7 " : "", cgs.autoballGoalSpeed );
+	else
+		Com_sprintf( line, sizeof( line ), "%s%s%d MPH", name, name[0] ? " \xb7 " : "", (int)( cgs.autoballGoalSpeed * 0.621371f + 0.5f ) );
+	sub[0] = line;
+	MH_DrawMessage( cgs.autoballGoalTeam == TEAM_BLUE ? "BLUE SCORES!" : "RED SCORES!", 72.0f,
+	                MH_TeamColor( cgs.autoballGoalTeam == TEAM_BLUE ? TEAM_BLUE : TEAM_RED ), 1, sub, alpha );
+	return qtrue;
+}
+
 /* a centerprint (also target_print): the first line big, the next ones under it */
 static qboolean MH_CenterPrint( void ) {
 	static char lines[1 + MH_SUB_MAX][MH_TEXT_MAX];
@@ -1893,6 +2100,7 @@ void CG_ModernHUD_DrawMessages( void ) {
 	MH_Prepare();
 	if ( MH_Countdown() ) return;
 	if ( MH_WrongWay() ) return;
+	if ( MH_AutoballGoal() ) return;
 	MH_CenterPrint();
 }
 
