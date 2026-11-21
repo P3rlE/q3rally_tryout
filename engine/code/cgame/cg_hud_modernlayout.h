@@ -53,6 +53,8 @@ typedef struct {
 	qboolean	progress;			/* a sprint: the course as a bar, its checkpoints as ticks */
 	int			progressTicks;
 	const char	*progressLeft, *progressRight;	/* "CP 4 / 7" "58%" */
+	const char	*derbyStatus;		/* derby: the car from above (110x170) and beside it the
+									   worst zone ("FRONT CRITICAL") over a legend; NULL: none */
 	qboolean	elim;				/* elimination: who goes out next, a bar, a line under it */
 	const char	*elimLabel, *elimValue, *elimCaption;	/* "NEXT OUT" "LAP 3" "2 OF 3 THROUGH" */
 	int			kvCount;
@@ -99,6 +101,8 @@ typedef struct {
 	wsRect_t	progressBar;		/* the ticks: drawn at i / (ticks + 1) of it, 2x12, 3px above */
 	mhText_t	progressLeftT, progressRightT;
 	mhText_t	elimLabelT, elimValueT, elimCaptionT;
+	wsRect_t	derbyCar, derbySwatch[3];			/* the car in the design's 110x170 view box */
+	mhText_t	derbyStatusT, derbyLegendT[3];		/* OK, WORN, CRITICAL */
 	wsRect_t	elimBar;
 
 	wsRect_t	order, row[MH_ROWS_MAX];
