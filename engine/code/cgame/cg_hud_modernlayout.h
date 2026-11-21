@@ -32,6 +32,7 @@ so a test can hold it against what Chrome reports for the design
 #define MH_SLOTS_MAX		3		/* front, rear, item */
 #define MH_TEAMS_MAX		4
 #define MH_KILLS_MAX		3		/* the kill feed under the standings */
+#define MH_FLAGS_MAX		4		/* CTF: a line per flag */
 #define MH_ELLIPSIS			"\x9e"	/* the body faces' "..." */
 
 typedef struct {
@@ -49,6 +50,9 @@ typedef struct {
 	const char	*pos, *of;			/* "P3" "/ 6", NULL: no position */
 	const char	*posLabel;			/* the ghost race: "VS GHOST" over "-0.84" (of unused) */
 	float		posSize;			/* the figure under posLabel, 0: 64 */
+	qboolean	headerRow;			/* posLabel and pos on one baseline row (CTF: "YOUR TEAM" .. "Green") */
+	int			flagCount;			/* CTF: icon, team, state, note, then a second line */
+	const char	*flagName[MH_FLAGS_MAX], *flagState[MH_FLAGS_MAX], *flagNote[MH_FLAGS_MAX];
 	const char	*lapLabel, *lapValue;	/* "LAP" "2/5", NULL: none */
 	qboolean	progress;			/* a sprint: the course as a bar, its checkpoints as ticks */
 	int			progressTicks;
@@ -102,6 +106,8 @@ typedef struct {
 	mhText_t	progressLeftT, progressRightT;
 	mhText_t	elimLabelT, elimValueT, elimCaptionT;
 	wsRect_t	derbyCar, derbySwatch[3];			/* the car in the design's 110x170 view box */
+	wsRect_t	flagIcon[MH_FLAGS_MAX], sep2;
+	mhText_t	flagNameT[MH_FLAGS_MAX], flagStateT[MH_FLAGS_MAX], flagNoteT[MH_FLAGS_MAX];
 	mhText_t	derbyStatusT, derbyLegendT[3];		/* OK, WORN, CRITICAL */
 	wsRect_t	elimBar;
 

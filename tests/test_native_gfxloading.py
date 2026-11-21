@@ -478,6 +478,12 @@ int main(void) {
             if (n > 41) l.posSize = atof(f[41]);
             if (n > 42) l.rowBars = atoi(f[42]);
             if (n > 43 && *f[43]) l.derbyStatus = f[43];
+            if (n > 44) l.headerRow = atoi(f[44]);
+            for (item = n > 45 ? f[45] : ""; *item && l.flagCount < MH_FLAGS_MAX; item = more) {   /* flags: name~state~note;.. */
+                more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
+                l.flagName[l.flagCount] = item; r = strchr(item, '~'); *r++ = 0;
+                l.flagState[l.flagCount] = r; r = strchr(r, '~'); *r++ = 0; l.flagNote[l.flagCount++] = r;
+            }
             if (n > 40 && *f[40]) {   /* elimination: label;value;caption */
                 l.elim = 1; l.elimLabel = f[40]; r = strchr(f[40], ';'); *r++ = 0;
                 l.elimValue = r; r = strchr(r, ';'); *r++ = 0; l.elimCaption = r;
@@ -489,6 +495,10 @@ int main(void) {
             printf("{");
             rect("card", l.card); rect("sep", l.sep); T("title", l.titleT); T("posLabel", l.posLabelT); T("pos", l.posT); T("of", l.ofT);
             T("lapLabel", l.lapLabelT); T("lapValue", l.lapValueT);
+            rect("sep2", l.sep2);
+            for (i = 0; i < l.flagCount; i++) { char k[24]; sprintf(k, "flagIcon%d", i); rect(k, l.flagIcon[i]);
+                sprintf(k, "flagName%d", i); T(k, l.flagNameT[i]); sprintf(k, "flagState%d", i); T(k, l.flagStateT[i]);
+                sprintf(k, "flagNote%d", i); T(k, l.flagNoteT[i]); }
             rect("derbyCar", l.derbyCar); T("derbyStatus", l.derbyStatusT);
             for (i = 0; i < 3; i++) { char k[24]; sprintf(k, "derbySwatch%d", i); rect(k, l.derbySwatch[i]);
                 sprintf(k, "derbyLegend%d", i); T(k, l.derbyLegendT[i]); }

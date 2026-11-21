@@ -1009,6 +1009,18 @@ static void CG_HudToastTitleCase( const char *in, char *out, int size ) {
 	out[i] = '\0';
 }
 
+static void CG_HudToastStripColors( char *text ) {
+	char *out = text;
+	for ( ; *text; text++ ) {
+		if ( Q_IsColorString( text ) ) {
+			text++;
+			continue;
+		}
+		*out++ = *text;
+	}
+	*out = '\0';
+}
+
 /*
 =================
 CG_HudToastView
@@ -1127,6 +1139,9 @@ qboolean CG_HudToastView( cgHudToastView_t *view ) {
 		CG_RegisterItemVisuals( itemNum );
 		view->icon = cg_items[itemNum].icon;
 	}
+	/* the v0.9 type draws plain text: no ^7 or ^4 out of player names */
+	CG_HudToastStripColors( view->title );
+	CG_HudToastStripColors( view->sub );
 	return qtrue;
 }
 
