@@ -430,12 +430,21 @@ typedef enum {
         STAT_SLIPSTREAM,                /* packed slipstream state, see BG_Slipstream* */
         /* Derby reuses the race-only fraction slot to preserve the wire layout. */
         STAT_DERBY_NORAM = STAT_FRAC_TO_NEXT_CHECKPOINT,
+        /* Domination has no checkpoints either: the point the player is
+         * capturing, see DOM_CAPTURE_*. 0: none */
+        STAT_DOM_CAPTURE = STAT_FRAC_TO_NEXT_CHECKPOINT,
         /* Drag has no damage: it reuses the damage-taken slot for its engine
          * state (see DRAG_ENGINE_*), predicted like the RPM. */
         STAT_DRAG_ENGINE = STAT_DAMAGE_TAKEN
 // END
 } statIndex_t;
 
+
+/* STAT_DOM_CAPTURE: percent (0..100), point index (0..7) and capturing team (1..4) */
+#define DOM_CAPTURE_PACK( point, team, percent )	( ( percent ) | ( ( point ) << 7 ) | ( ( team ) << 10 ) )
+#define DOM_CAPTURE_PERCENT( v )	( ( v ) & 127 )
+#define DOM_CAPTURE_POINT( v )		( ( ( v ) >> 7 ) & 7 )
+#define DOM_CAPTURE_TEAM( v )		( ( ( v ) >> 10 ) & 7 )
 
 // player_state->persistant[] indexes
 // these fields are the only part of player_state that isn't

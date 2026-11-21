@@ -65,6 +65,14 @@ Changed:
   colour and a line per flag (at base, carried and by whom, dropped and
   when it returns), the teams' captures over the CTF order, weapons and
   the kill feed. Player names in the notifications lose their colour codes.
+- The new HUD in Domination: a tile per control point in its owner's
+  colour, how far your capture is (or how many points your team holds),
+  your team and the clock, the teams' score over the order, weapons and
+  the kill feed. The point markers in the scene show the point's letter,
+  owner and distance and stay clear of the panels.
+- Domination: a capture starts over when the capturing team has left the
+  point for a second. Before, a team that touched a point once took it on
+  its next touch, however much later.
 - The graphics loading screen is drawn by the game again, on every
   platform, and looks exactly like the WebUI's "Getting ready." screen:
   the layout follows the WebUI's CSS, the text uses its fonts (Barlow,

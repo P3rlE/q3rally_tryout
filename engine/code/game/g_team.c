@@ -60,6 +60,7 @@ typedef struct teamgame_s {
 	int				numSigils;
 	int				sigilCaptureStart[MAX_SIGILS];
 	team_t			sigilCapturingTeam[MAX_SIGILS];
+	int				sigilLastTouch[MAX_SIGILS];	/* the capturing team's last touch */
 	// KOTH hill state
 	int				kothOwner;
 	int				kothContested;
@@ -471,6 +472,9 @@ void Init_Sigils( void ) {
             
         if (!Q_stricmp(point->classname, "team_domination_sigil")) {
             teamgame.sigil[teamgame.numSigils].entity = point;
+            /* the HUD's markers: every point, with its letter */
+            point->r.svFlags |= SVF_BROADCAST;
+            point->s.generic1 = teamgame.numSigils + 1;
             teamgame.numSigils++;
             if ( teamgame.numSigils == MAX_SIGILS )
                 return;
@@ -574,6 +578,7 @@ void ValidateSigilsInMap( gentity_t *ent )
           targ->item = item;
           targ->r.svFlags = SVF_BROADCAST;
           targ->s.powerups = PW_SIGILWHITE;
+          targ->s.generic1 = teamgame.numSigils + 1;
           targ->count = 0;
           teamgame.sigil[teamgame.numSigils].entity = targ;
           teamgame.numSigils++;
@@ -1497,6 +1502,8 @@ void CaptureSigil(gentity_t *ent, int sigilNum, sigilStatus_t status, powerup_t 
 Sigil_Touch
 ====================================
 */
+#define SIGIL_TOUCH_GAP	1000	/* ms without a touch that end a capture */
+
 int Sigil_Touch( gentity_t *ent, gentity_t *other ) {
     gclient_t *cl = other->client;
     int sigilNum = 0;
@@ -1546,13 +1553,20 @@ int Sigil_Touch( gentity_t *ent, gentity_t *other ) {
     }
 
     if ( g_dominationCaptureDelay.integer > 0 ) {
-        if ( teamgame.sigilCapturingTeam[sigilNum] != team ) {
+        int held;
+        /* a capture starts over when another team took over the point or
+         * the capturing team left it for a moment */
+        if ( teamgame.sigilCapturingTeam[sigilNum] != team ||
+             level.time - teamgame.sigilLastTouch[sigilNum] > SIGIL_TOUCH_GAP ) {
             teamgame.sigilCapturingTeam[sigilNum] = team;
             teamgame.sigilCaptureStart[sigilNum] = level.time;
-            return 0;
         }
+        teamgame.sigilLastTouch[sigilNum] = level.time;
 
-        if ( level.time - teamgame.sigilCaptureStart[sigilNum] < g_dominationCaptureDelay.integer ) {
+        held = level.time - teamgame.sigilCaptureStart[sigilNum];
+        if ( held < g_dominationCaptureDelay.integer ) {
+            cl->ps.stats[STAT_DOM_CAPTURE] = DOM_CAPTURE_PACK( sigilNum, team,
+                held * 100 / g_dominationCaptureDelay.integer );
             return 0;
         }
     }

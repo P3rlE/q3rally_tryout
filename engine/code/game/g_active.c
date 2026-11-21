@@ -2425,6 +2425,9 @@ void ClientThink_real( gentity_t *ent ) {
 
 	// link entity now, after any personal teleporters have been used
 	trap_LinkEntity (ent);
+	if ( g_gametype.integer == GT_DOMINATION ) {
+		client->ps.stats[STAT_DOM_CAPTURE] = 0;	/* Sigil_Touch sets it while capturing */
+	}
 	if ( !ent->client->noclip ) {
 		G_TouchTriggers( ent );
 	}

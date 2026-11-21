@@ -218,7 +218,33 @@ static void MH_Card( mhRaceLayout_t *l ) {
 		MH_Set( &l->progressRightT, &label, l->progressRight );
 		y += MH_BaselineRow( &l->progressLeftT, &l->progressRightT, in.x, y, in.w ) + 12.0f;
 	}
-	if ( l->pos || l->lapValue || l->progress ) {
+	/* zones(): tiles 40px high, 4px apart, sharing the width; 12px below a
+	 * column 6px apart: the row (label, mono 13), a 6px bar */
+	if ( l->zoneCount > 0 ) {
+		wsTextStyle_t letter, mono13;
+		float tileW = ( in.w - 4.0f * ( l->zoneCount - 1 ) ) / l->zoneCount;
+		MH_Big( &letter, 22.0f );
+		MH_Mono( &mono13, 13.0f );
+		for ( i = 0; i < l->zoneCount; i++ ) {
+			l->zoneTile[i].x = in.x + i * ( tileW + 4.0f );
+			l->zoneTile[i].y = y;
+			l->zoneTile[i].w = tileW;
+			l->zoneTile[i].h = 40.0f;
+			MH_Set( &l->zoneNameT[i], &letter, l->zoneName[i] );
+			MH_Place( &l->zoneNameT[i], l->zoneTile[i].x + ( tileW - l->zoneNameT[i].box.w ) * 0.5f,
+			          y + ( 40.0f - l->zoneNameT[i].box.h ) * 0.5f );
+		}
+		y += 40.0f + 12.0f;
+		MH_Set( &l->zoneLabelT, &label, l->zoneLabel ? l->zoneLabel : "" );
+		MH_Set( &l->zoneValueT, &mono13, l->zoneValue ? l->zoneValue : "" );
+		y += MH_BaselineRow( &l->zoneLabelT, &l->zoneValueT, in.x, y, in.w ) + 6.0f;
+		l->zoneBar.x = in.x;
+		l->zoneBar.y = y;
+		l->zoneBar.w = in.w;
+		l->zoneBar.h = 6.0f;
+		y += 6.0f + 12.0f;
+	}
+	if ( l->pos || l->lapValue || l->progress || l->zoneCount ) {
 		l->sep.x = in.x;
 		l->sep.y = y;
 		l->sep.w = in.w;
@@ -316,6 +342,19 @@ static void MH_Card( mhRaceLayout_t *l ) {
 	}
 	y -= 12.0f;
 	l->card.h = y + MH_PAD_Y + 1.0f - l->card.y;
+}
+
+void MH_ZoneMarkerLayout( mhZoneMarker_t *m ) {
+	wsTextStyle_t letter, mono12;
+	MH_Big( &letter, 18.0f );
+	MH_Mono( &mono12, 12.0f );
+	m->tile.x = m->x - MH_MARKER_SIZE * 0.5f;
+	m->tile.y = m->y - MH_MARKER_SIZE * 0.5f;
+	m->tile.w = m->tile.h = MH_MARKER_SIZE;
+	MH_Set( &m->letterT, &letter, m->letter );
+	MH_Place( &m->letterT, m->x - m->letterT.box.w * 0.5f, m->y - m->letterT.box.h * 0.5f );
+	MH_Set( &m->distanceT, &mono12, m->distance );
+	MH_Place( &m->distanceT, m->x - m->distanceT.box.w * 0.5f, m->tile.y + MH_MARKER_SIZE + 4.0f );
 }
 
 /* -------------------------------------------------------------------------

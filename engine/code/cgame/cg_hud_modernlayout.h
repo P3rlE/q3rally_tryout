@@ -33,6 +33,7 @@ so a test can hold it against what Chrome reports for the design
 #define MH_TEAMS_MAX		4
 #define MH_KILLS_MAX		3		/* the kill feed under the standings */
 #define MH_FLAGS_MAX		4		/* CTF: a line per flag */
+#define MH_ZONES_MAX		5		/* Domination: a tile per control point */
 #define MH_ELLIPSIS			"\x9e"	/* the body faces' "..." */
 
 typedef struct {
@@ -53,6 +54,9 @@ typedef struct {
 	qboolean	headerRow;			/* posLabel and pos on one baseline row (CTF: "YOUR TEAM" .. "Green") */
 	int			flagCount;			/* CTF: icon, team, state, note, then a second line */
 	const char	*flagName[MH_FLAGS_MAX], *flagState[MH_FLAGS_MAX], *flagNote[MH_FLAGS_MAX];
+	int			zoneCount;			/* Domination: a row of tiles (A B C ..), then a row over a bar */
+	const char	*zoneName[MH_ZONES_MAX];
+	const char	*zoneLabel, *zoneValue;	/* "CAPTURING C" "65%" */
 	const char	*lapLabel, *lapValue;	/* "LAP" "2/5", NULL: none */
 	qboolean	progress;			/* a sprint: the course as a bar, its checkpoints as ticks */
 	int			progressTicks;
@@ -107,6 +111,8 @@ typedef struct {
 	mhText_t	elimLabelT, elimValueT, elimCaptionT;
 	wsRect_t	derbyCar, derbySwatch[3];			/* the car in the design's 110x170 view box */
 	wsRect_t	flagIcon[MH_FLAGS_MAX], sep2;
+	wsRect_t	zoneTile[MH_ZONES_MAX], zoneBar;
+	mhText_t	zoneNameT[MH_ZONES_MAX], zoneLabelT, zoneValueT;
 	mhText_t	flagNameT[MH_FLAGS_MAX], flagStateT[MH_FLAGS_MAX], flagNoteT[MH_FLAGS_MAX];
 	mhText_t	derbyStatusT, derbyLegendT[3];		/* OK, WORN, CRITICAL */
 	wsRect_t	elimBar;
@@ -173,6 +179,18 @@ void	MH_Big( wsTextStyle_t *style, float size );		/* Barlow Condensed bold itali
 void	MH_Mono( wsTextStyle_t *style, float size );		/* Share Tech Mono figures */
 void	MH_Text( wsTextStyle_t *style, float size );		/* Barlow */
 
+/* Domination: a control point in the scene, its letter on a tile in its
+ * owner's colour and the distance under it */
+typedef struct {
+	float		x, y;				/* inputs: the tile's centre */
+	const char	*letter, *distance;
+	wsRect_t	tile;				/* outputs */
+	mhText_t	letterT, distanceT;
+} mhZoneMarker_t;
+
+#define MH_MARKER_SIZE	26.0f
+
+void	MH_ZoneMarkerLayout( mhZoneMarker_t *m );
 void	MH_RaceLayout( mhRaceLayout_t *l );
 void	MH_MessageLayout( mhMessageLayout_t *m );
 void	MH_SpectatorLayout( mhSpectatorLayout_t *s );
