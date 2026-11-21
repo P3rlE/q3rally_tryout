@@ -20,7 +20,7 @@ OUT = ROOT / 'baseq3r/menu/art'
 # icon name in the design -> file name in the game
 WANTED = {'note': 'hud_note', 'prev': 'hud_prev', 'play': 'hud_play', 'next': 'hud_next',
           'chevron': 'hud_chevron', 'msg': 'hud_message', 'gun': 'hud_gun', 'mine': 'hud_mine',
-          'smoke': 'hud_smoke'}
+          'smoke': 'hud_smoke', 'flag': 'hud_flag'}
 SIZE = 64
 
 

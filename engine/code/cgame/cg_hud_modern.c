@@ -73,6 +73,7 @@ static struct {
 	char			elimValue[24], elimCaption[48];
 	float			elimFrac;
 	const float		*posColor, *posLabelColor;
+	qboolean		flagAway[MH_FLAGS_MAX];		/* the state in the accent */
 	int				rowTeam[MH_ROWS_MAX];			/* TEAM_RED.., for the swatch */
 	char			teamValue[MH_TEAMS_MAX][16];
 	cgHudToastView_t	toast;
@@ -85,7 +86,7 @@ static struct {
 	float			slipFrac, slipAlpha;
 	char			speed[16], gear[8], nos[8], fuel[8];
 	float			rpmFrac, nosFrac, fuelFrac;
-	qhandle_t		note, prev, play, next, chevron, message, gun, mine, smoke;
+	qhandle_t		note, prev, play, next, chevron, message, gun, mine, smoke, flag;
 	char			slotValue[MH_SLOTS_MAX][8];
 	const float		*slotColor[MH_SLOTS_MAX];
 	char			killA[MH_KILLS_MAX][32], killB[MH_KILLS_MAX][32];
@@ -223,7 +224,8 @@ qboolean CG_ModernHUD_Active( void ) {
 	       ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_GHOST ||
 	         cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM ||
 	         cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ||
-	         cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM );
+	         cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM || cgs.gametype == GT_CTF ||
+	         cgs.gametype == GT_CTF4 );
 }
 
 /* the gaps to the leader for every place (-1: none yet). The order is the
@@ -474,7 +476,8 @@ static void MH_Deathmatch( mhRaceLayout_t *l, const playerState_t *ps ) {
 		const score_t *sc = &cg.scores[order[first + i]];
 		Com_sprintf( mh.rowPos[i], sizeof( mh.rowPos[0] ), "%02d", first + i + 1 );
 		MH_Plain( cgs.clientinfo[sc->client].name, mh.rowName[i], sizeof( mh.rowName[0] ) );
-		Com_sprintf( mh.rowValue[i], sizeof( mh.rowValue[0] ), "%d", sc->score );
+		Com_sprintf( mh.rowValue[i], sizeof( mh.rowValue[0] ), "%d",
+		             cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 ? sc->captures : sc->score );
 		mh.rowMe[i] = sc->client == ps->clientNum;
 		mh.rowTeam[i] = MH_Team( sc->client );
 		mh.rowColor[i] = mh.rowNameColor[i] = NULL;
@@ -520,6 +523,74 @@ static void MH_TeamDeathmatch( mhRaceLayout_t *l, const playerState_t *ps ) {
 	l->teamName[0] = "RED";
 	l->teamName[1] = "BLUE";
 	l->teamCount = 2;
+	l->rowSwatch = qtrue;
+}
+
+/* capture the flag (two or four teams): our team in a row, a line per
+ * flag (at base, carried by whom, dropped and when it goes home), the
+ * clock; the order by score with the captures, the teams' captures over it */
+#define MH_FLAG_RETURN	30000	/* a dropped flag goes home after 30 s (g_items.c) */
+static int mhFlagDropped[MH_FLAGS_MAX], mhFlagLast[MH_FLAGS_MAX];
+
+static void MH_CaptureTheFlag( mhRaceLayout_t *l, const playerState_t *ps ) {
+	static const char *names[MH_FLAGS_MAX] = { "Red", "Blue", "Green", "Yellow" };
+	static const char *cells[2][MH_FLAGS_MAX] = { { "RED", "BLUE", "", "" }, { "R", "B", "G", "Y" } };
+	static char notes[MH_FLAGS_MAX][32];
+	int teams = cgs.gametype == GT_CTF4 ? 4 : 2, team = MH_Team( ps->clientNum ), status[MH_FLAGS_MAX], i, c, left;
+
+	status[0] = cgs.redflag;
+	status[1] = cgs.blueflag;
+	status[2] = cgs.greenflag;
+	status[3] = cgs.yellowflag;
+
+	l->posLabel = "YOUR TEAM";
+	l->pos = team >= TEAM_RED && team < TEAM_RED + teams ? names[team - TEAM_RED] : "--";
+	l->headerRow = qtrue;
+	l->posSize = 30.0f;
+	l->of = NULL;
+	l->lapValue = NULL;
+	l->progress = qfalse;
+	mh.posColor = mh.posLabelColor = MH_TeamColor( team );
+
+	for ( i = 0; i < teams; i++ ) {
+		/* when it was dropped, for the time until it goes home */
+		if ( status[i] == 2 && mhFlagLast[i] != 2 ) mhFlagDropped[i] = cg.time;
+		mhFlagLast[i] = status[i];
+		notes[i][0] = '\0';
+		if ( status[i] == 1 ) {
+			/* the carrier, if we can see him (or it is us) */
+			for ( c = 0; c < MAX_CLIENTS; c++ ) {
+				const centity_t *ce = &cg_entities[c];
+				int powerups = c == ps->clientNum ? ps->powerups[PW_REDFLAG + i] ? ( 1 << ( PW_REDFLAG + i ) ) : 0
+				                                  : ( ce->currentValid ? ce->currentState.powerups : 0 );
+				if ( cgs.clientinfo[c].infoValid && ( powerups & ( 1 << ( PW_REDFLAG + i ) ) ) ) {
+					MH_Plain( cgs.clientinfo[c].name, notes[i], sizeof( notes[i] ) );
+					break;
+				}
+			}
+		} else if ( status[i] == 2 ) {
+			left = MH_FLAG_RETURN - ( cg.time - mhFlagDropped[i] );
+			if ( left < 0 ) left = 0;
+			Com_sprintf( notes[i], sizeof( notes[i] ), "%d:%02d", left / 60000, ( left / 1000 ) % 60 );
+		}
+		l->flagName[i] = names[i];
+		l->flagState[i] = status[i] == 1 ? "CARRIED" : status[i] == 2 ? "DROPPED" : "AT BASE";
+		l->flagNote[i] = notes[i];
+		mh.flagAway[i] = status[i] != 0;
+	}
+	l->flagCount = teams;
+
+	/* the clock only: the flags are the story here */
+	l->kvCount = 1;
+
+	l->orderTitle = cgs.gametype == GT_CTF4 ? "CTF driver order" : "CTF order";
+	l->orderRight = "Caps";
+	for ( i = 0; i < teams; i++ ) {
+		Com_sprintf( mh.teamValue[i], sizeof( mh.teamValue[i] ), "%d", cg.teamScores[i] );
+		l->teamValue[i] = mh.teamValue[i];
+		l->teamName[i] = cells[teams == 4][i];
+	}
+	l->teamCount = teams;
 	l->rowSwatch = qtrue;
 }
 
@@ -693,6 +764,7 @@ static void MH_LastCar( mhRaceLayout_t *l, const playerState_t *ps, const centit
 /* the race with weapons, and the races in teams */
 #define MH_COMBAT()		( cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM || cgs.gametype == GT_LCS || \
 						  cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM || \
+						  cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 || \
 						  ( cgs.gametype == GT_ELIMINATION && cgs.eliminationWeapons ) )
 #define MH_TEAMRACE()	( cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_TEAM_RACING_DM )
 
@@ -916,6 +988,7 @@ static void MH_Register( void ) {
 	mh.gun = trap_R_RegisterShaderNoMip( "menu/art/hud_gun" );
 	mh.mine = trap_R_RegisterShaderNoMip( "menu/art/hud_mine" );
 	mh.smoke = trap_R_RegisterShaderNoMip( "menu/art/hud_smoke" );
+	mh.flag = trap_R_RegisterShaderNoMip( "menu/art/hud_flag" );
 }
 
 static qboolean MH_Views( void ) {
@@ -952,13 +1025,15 @@ static void MH_Prepare( void ) {
 	map = CG_ConfigString( CS_MESSAGE );
 	if ( !map || !map[0] ) map = COM_SkipPath( cgs.mapname );
 	MH_Plain( map, mh.rowName[0], sizeof( mh.rowName[0] ) );
+	COM_StripExtension( mh.rowName[0], mh.rowName[0], sizeof( mh.rowName[0] ) );
 	Com_sprintf( mh.title, sizeof( mh.title ), "%s \xb7 %s",
 	             cgs.gametype == GT_GHOST ? "Ghost race" : cgs.gametype == GT_SPRINT ? "Sprint" :
 	             cgs.gametype == GT_TEAM_RACING ? "Team race" : cgs.gametype == GT_RACING_DM ? "Race combat" :
 	             cgs.gametype == GT_TEAM_RACING_DM ? "Team race combat" :
 	             cgs.gametype == GT_ELIMINATION ? "Elimination" : cgs.gametype == GT_LCS ? "Last car standing" :
 	             cgs.gametype == GT_DERBY ? "Derby" : cgs.gametype == GT_DEATHMATCH ? "Deathmatch" :
-	             cgs.gametype == GT_TEAM ? "Team combat" : "Race",
+	             cgs.gametype == GT_TEAM ? "Team combat" : cgs.gametype == GT_CTF ? "Capture the flag" :
+	             cgs.gametype == GT_CTF4 ? "Four team CTF" : "Race",
 	             mh.rowName[0] );
 	l->title = mh.title;
 	mh.posColor = mhWhite;
@@ -1124,6 +1199,10 @@ static void MH_Prepare( void ) {
 	if ( cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ) MH_LastCar( l, ps, cent );
 	if ( cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM ) MH_Deathmatch( l, ps );
 	if ( cgs.gametype == GT_TEAM ) MH_TeamDeathmatch( l, ps );
+	if ( cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 ) {
+		MH_Deathmatch( l, ps );
+		MH_CaptureTheFlag( l, ps );
+	}
 
 	/* the top centre */
 	l->mirror = cg_drawRearView.integer && MH_Views() && !cg.scoreBoardShowing;
@@ -1284,6 +1363,15 @@ static void MH_DrawCard( const mhRaceLayout_t *l ) {
 		MH_Str( &l->progressRightT, mhMuted, 1.0f );
 	}
 	if ( l->pos || l->lapValue || l->progress ) MH_FillRect( &l->sep, mhLine, 1.0f );
+	if ( l->flagCount ) {
+		for ( i = 0; i < l->flagCount; i++ ) {
+			MH_Pic( &l->flagIcon[i], 0.0f, mh.flag, mhTeam[i], 1.0f );
+			MH_Str( &l->flagNameT[i], mhWhite, 1.0f );
+			MH_Str( &l->flagStateT[i], mh.flagAway[i] ? mhAccent : mhValue, 1.0f );
+			MH_Str( &l->flagNoteT[i], mhMuted, 1.0f );
+		}
+		MH_FillRect( &l->sep2, mhLine, 1.0f );
+	}
 	if ( l->derbyStatus ) MH_DrawDerbyCar( l );
 	if ( l->elim ) {
 		MH_Str( &l->elimLabelT, mhAccent, 1.0f );

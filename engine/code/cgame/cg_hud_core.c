@@ -1443,7 +1443,7 @@ qboolean CG_DrawHUD( void ) {
     }
     if ( ( cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 ||
            cgs.gametype == GT_DOMINATION ) &&
-         !cg.showScores &&
+         !cg.showScores && !CG_ModernHUD_Active() &&
          cg.predictedPlayerState.pm_type != PM_INTERMISSION ) {
         CG_DrawCTFOrderHUD( 10.0f );
     }
