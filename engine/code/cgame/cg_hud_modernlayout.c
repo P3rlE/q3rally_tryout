@@ -156,7 +156,14 @@ static void MH_Card( mhRaceLayout_t *l ) {
 
 	/* posline: "P3" "/ 6" on one baseline at the left, "LAP" over "2/5" at
 	 * the right, both at the bottom of the row */
-	if ( l->pos || l->lapValue ) {
+	if ( l->headerRow && l->pos ) {
+		/* one row: the label at the left, the figure at the right, one baseline */
+		wsTextStyle_t figure;
+		MH_Big( &figure, l->posSize > 0.0f ? l->posSize : 30.0f );
+		MH_Set( &l->posLabelT, &label, l->posLabel );
+		MH_Set( &l->posT, &figure, l->pos );
+		y += MH_BaselineRow( &l->posLabelT, &l->posT, in.x, y, in.w ) + 12.0f;
+	} else if ( l->pos || l->lapValue ) {
 		left = right = 0.0f;
 		posAbove = posBelow = 0.0f;
 		if ( l->pos && l->posLabel ) {
@@ -216,6 +223,38 @@ static void MH_Card( mhRaceLayout_t *l ) {
 		l->sep.y = y;
 		l->sep.w = in.w;
 		l->sep.h = 1.0f;
+		y += 1.0f + 12.0f;
+	}
+
+	/* CTF: a line per flag, 8px apart: icon 18, team 60px, state, note at the
+	 * right; then a second rule */
+	if ( l->flagCount > 0 ) {
+		wsTextStyle_t name, state, note;
+		MH_Text( &name, 15.0f );
+		MH_Mono( &state, 13.0f );
+		MH_Mono( &note, 12.0f );
+		for ( i = 0; i < l->flagCount; i++ ) {
+			float rowH;
+			MH_Set( &l->flagNameT[i], &name, l->flagName[i] );
+			MH_Set( &l->flagStateT[i], &state, l->flagState[i] );
+			MH_Set( &l->flagNoteT[i], &note, l->flagNote[i] ? l->flagNote[i] : "" );
+			MH_Fit( &l->flagNoteT[i], 90.0f );
+			l->flagNoteT[i].box.w = MH_Width( &l->flagNoteT[i] );
+			rowH = l->flagNameT[i].box.h > 18.0f ? l->flagNameT[i].box.h : 18.0f;
+			l->flagIcon[i].x = in.x;
+			l->flagIcon[i].y = y + ( rowH - 18.0f ) * 0.5f;
+			l->flagIcon[i].w = l->flagIcon[i].h = 18.0f;
+			l->flagNameT[i].box.w = 60.0f;
+			MH_Place( &l->flagNameT[i], in.x + 28.0f, y + ( rowH - l->flagNameT[i].box.h ) * 0.5f );
+			l->flagStateT[i].box.w = in.w - 98.0f - 10.0f - l->flagNoteT[i].box.w;
+			MH_Place( &l->flagStateT[i], in.x + 98.0f, y + ( rowH - l->flagStateT[i].box.h ) * 0.5f );
+			MH_Place( &l->flagNoteT[i], in.x + in.w - l->flagNoteT[i].box.w, y + ( rowH - l->flagNoteT[i].box.h ) * 0.5f );
+			y += rowH + ( i < l->flagCount - 1 ? 8.0f : 12.0f );
+		}
+		l->sep2.x = in.x;
+		l->sep2.y = y;
+		l->sep2.w = in.w;
+		l->sep2.h = 1.0f;
 		y += 1.0f + 12.0f;
 	}
 

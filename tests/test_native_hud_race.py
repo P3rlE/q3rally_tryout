@@ -17,6 +17,7 @@ RACE = json.loads((ROOT / 'tests/fixtures/hud_race_layout.json').read_text())['e
 SPRINT = json.loads((ROOT / 'tests/fixtures/hud_sprint_layout.json').read_text())['els']
 GHOST = json.loads((ROOT / 'tests/fixtures/hud_ghost_layout.json').read_text())['els']
 TEAM_RACE = json.loads((ROOT / 'tests/fixtures/hud_teamrace_layout.json').read_text())['els']
+CTF = json.loads((ROOT / 'tests/fixtures/hud_ctf_layout.json').read_text())['els']
 TEAMDM = json.loads((ROOT / 'tests/fixtures/hud_teamdm_layout.json').read_text())['els']
 DEATHMATCH = json.loads((ROOT / 'tests/fixtures/hud_deathmatch_layout.json').read_text())['els']
 DERBY = json.loads((ROOT / 'tests/fixtures/hud_derby_layout.json').read_text())['els']
@@ -60,7 +61,8 @@ def command(model, width=1600):
               m.get('posLabel', ''), ','.join(str(v) for v in m.get('kvSizes', [])),
               ';'.join(f'{n}:{v}' for n, v in m.get('teams', [])), m.get('swatch', 0),
               ';'.join(f'{a}:{w}:{b}' for a, w, b in m.get('kills', [])), m.get('elim', ''),
-              m.get('posSize', 0), m.get('rowBars', 0), m.get('derby', '')]
+              m.get('posSize', 0), m.get('rowBars', 0), m.get('derby', ''), m.get('headerRow', 0),
+              ';'.join(f'{n}~{st}~{no}' for n, st, no in m.get('flags', []))]
     return [f'hudrace {width}', latin('|'.join(str(f) for f in fields))]
 
 
@@ -178,7 +180,7 @@ def test_the_hud_icons_are_there():
     # tools/ui_webstyle/hud_design/build_hud_icons.py; cgame/cg_hud_modern.c registers them
     source = (ROOT / 'engine/code/cgame/cg_hud_modern.c').read_text()
     for name in ('hud_note', 'hud_prev', 'hud_play', 'hud_next', 'hud_chevron', 'hud_message',
-                 'hud_gun', 'hud_mine', 'hud_smoke'):
+                 'hud_gun', 'hud_mine', 'hud_smoke', 'hud_flag'):
         png = (ROOT / f'baseq3r/menu/art/{name}.png').read_bytes()
         assert png[16:24] == (64).to_bytes(4, 'big') * 2, name
         assert f'"menu/art/{name}"' in source
@@ -426,4 +428,27 @@ def test_native_team_deathmatch_hud_matches_the_design():
         pairs += [(f'rowPos{i}', row + '/div:0'), (f'rowSwatch{i}', row + '/div:1'), (f'rowName{i}', row + '/div:2'),
                   (f'rowValue{i}', row + '/div:3')]
     problems = check_all(mine, TEAMDM, pairs)
+    assert not problems, problems
+
+
+# the four team CTF board: your team in a row, a line per flag, the teams' captures over the order
+def test_native_ctf_hud_matches_the_design():
+    model = dict(RACE_MODEL, title='Four team CTF \u00b7 CTF4_01', posLabel='YOUR TEAM', pos='Green', headerRow=1, of='',
+                 lapValue='', flags=[('Red', 'CARRIED', 'Player'), ('Blue', 'AT BASE', ''), ('Green', 'DROPPED', '0:12'),
+                                     ('Yellow', 'AT BASE', '')],
+                 kv=[('TIME LEFT', '11:03')], orderTitle='CTF driver order', orderRight='Caps',
+                 teams=[('R', '1'), ('B', '2'), ('G', '1'), ('Y', '0')], swatch=1,
+                 rows=[('01', 'Ivan', '2'), ('02', 'Player', '1'), ('03', 'Kuro', '1'), ('04', 'Minori', '0')],
+                 toast=0, jukebox=0)
+    mine, = layouts(command(model))
+    card, order = '/div:1/div:0', '/div:2/div:0'
+    pairs = [('card', card), ('posLabel', card + '/div:1/div:0'), ('pos', card + '/div:1/div:1'), ('sep', card + '/div:2'),
+             ('sep2', card + '/div:4'), ('key0', card + '/div:5/div:0'), ('value0', card + '/div:5/div:1'), ('order', order)] \
+        + [(f'team{i}', order + f'/div:1/div:{i}') for i in range(4)]
+    for i in range(4):
+        line = card + f'/div:3/div:{i}'
+        pairs += [(f'flagIcon{i}', line + '/svg:0'), (f'flagName{i}', line + '/div:1'), (f'flagState{i}', line + '/div:2')]
+        if i in (0, 2):
+            pairs.append((f'flagNote{i}', line + '/div:3'))
+    problems = check_all(mine, CTF, pairs)
     assert not problems, problems
