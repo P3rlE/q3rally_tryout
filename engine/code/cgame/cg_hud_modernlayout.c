@@ -185,7 +185,9 @@ static void MH_Card( mhRaceLayout_t *l ) {
 			float top = y + h - left;
 			MH_Place( &l->posLabelT, in.x, top );
 			MH_Place( &l->posT, in.x, top + l->posLabelT.box.h + 4.0f );
-			if ( l->posT.box.w > l->posLabelT.box.w ) l->posLabelT.box.w = l->posT.box.w;	/* a column's block */
+			/* a column's blocks: as wide as the wider one */
+			if ( l->posT.box.w > l->posLabelT.box.w ) l->posLabelT.box.w = l->posT.box.w;
+			else l->posT.box.w = l->posLabelT.box.w;
 		} else if ( l->pos ) {
 			float top = y + h - left;
 			MH_Place( &l->posT, in.x, top + posAbove - MH_Base( &l->posT ) );

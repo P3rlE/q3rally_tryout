@@ -17,6 +17,7 @@ RACE = json.loads((ROOT / 'tests/fixtures/hud_race_layout.json').read_text())['e
 SPRINT = json.loads((ROOT / 'tests/fixtures/hud_sprint_layout.json').read_text())['els']
 GHOST = json.loads((ROOT / 'tests/fixtures/hud_ghost_layout.json').read_text())['els']
 TEAM_RACE = json.loads((ROOT / 'tests/fixtures/hud_teamrace_layout.json').read_text())['els']
+TEAMDM = json.loads((ROOT / 'tests/fixtures/hud_teamdm_layout.json').read_text())['els']
 DEATHMATCH = json.loads((ROOT / 'tests/fixtures/hud_deathmatch_layout.json').read_text())['els']
 DERBY = json.loads((ROOT / 'tests/fixtures/hud_derby_layout.json').read_text())['els']
 LCS = json.loads((ROOT / 'tests/fixtures/hud_lcs_layout.json').read_text())['els']
@@ -401,4 +402,28 @@ def test_native_deathmatch_hud_matches_the_design():
         row = order + f'/div:1/div:{i}'
         pairs += [(f'rowPos{i}', row + '/div:0'), (f'rowName{i}', row + '/div:1'), (f'rowValue{i}', row + '/div:2')]
     problems = check_all(mine, DEATHMATCH, pairs)
+    assert not problems, problems
+
+
+# the team deathmatch board: your team and frags, the team frag order with the teams over it
+def test_native_team_deathmatch_hud_matches_the_design():
+    model = dict(RACE_MODEL, title='Team combat \u00b7 Battle Canyon', posLabel='YOUR TEAM', pos='Blue', posSize=44, of='',
+                 lapLabel='YOUR FRAGS', lapValue='6', kv=[('TIME LEFT', '8:20'), ('LIMIT', '50')],
+                 orderTitle='Team frag order', orderRight='Frags', teams=[('RED', '29'), ('BLUE', '34')], swatch=1,
+                 rows=[('01', 'Sam', '11'), ('02', 'Vlad', '9'), ('03', 'Player', '6'), ('04', 'Tobias', '6'),
+                       ('05', 'Minori', '5'), ('06', 'Chloe', '3')],
+                 kills=[('Sam', 'ROCKET', 'Tobias')], mirror=0, toast=0, jukebox=0)
+    mine, = layouts(command(model))
+    card, order = '/div:0/div:0', '/div:1/div:0'
+    pairs = [('card', card), ('posLabel', card + '/div:1/div:0/div:0'), ('pos', card + '/div:1/div:0/div:1'),
+             ('lapLabel', card + '/div:1/div:1/div:0'), ('lapValue', card + '/div:1/div:1/div:1'),
+             ('order', order), ('kill0', '/div:1/div:1')] \
+        + [(f'key{i}', card + f'/div:{3 + i}/div:0') for i in range(2)] \
+        + [(f'value{i}', card + f'/div:{3 + i}/div:1') for i in range(2)] \
+        + [(f'team{i}', order + f'/div:1/div:{i}') for i in range(2)]
+    for i in range(6):
+        row = order + f'/div:2/div:{i}'
+        pairs += [(f'rowPos{i}', row + '/div:0'), (f'rowSwatch{i}', row + '/div:1'), (f'rowName{i}', row + '/div:2'),
+                  (f'rowValue{i}', row + '/div:3')]
+    problems = check_all(mine, TEAMDM, pairs)
     assert not problems, problems
