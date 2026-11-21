@@ -55,7 +55,7 @@ static struct {
 	int				time;			/* the frame this was laid out for */
 	qboolean		ready;
 	mhRaceLayout_t	l;
-	char			title[MH_TEXT_MAX], pos[16], of[16], lap[16];
+	char			title[MH_TEXT_MAX], title2[48], pos[16], of[16], lap[16];
 	char			progressLeft[24], progressRight[16];
 	float			progressFrac;
 	int				progressDone;
@@ -79,6 +79,10 @@ static struct {
 	const float		*zoneLineColor, *zoneBarColor;	/* the capture row, its bar */
 	const float		*hillColor;					/* KOTH: the owner's colour, muted: nobody */
 	char			bugLeft[8], bugRight[8], bugClock[16];
+	const float		*treeColor[MH_TREE_ROWS][2];
+	const float		*tachColor[MH_TACH_SEGMENTS];
+	const float		*tachRpmColor, *tachMidColor, *tachLeftColor, *tachRightColor;
+	char			tachRpm[16], tachGear[8], tachSpeed[16], tachMid[32], labelRowRight[24], labelRowLeft[40];
 	qboolean		bugSubAccent;
 	float			zoneFrac;
 	char			zoneLabel[24], zoneValue[16];
@@ -94,7 +98,7 @@ static struct {
 	float			slipFrac, slipAlpha;
 	char			speed[16], gear[8], nos[8], fuel[8];
 	float			rpmFrac, nosFrac, fuelFrac;
-	qhandle_t		note, prev, play, next, chevron, message, gun, mine, smoke, flag, hill;
+	qhandle_t		note, prev, play, next, chevron, message, gun, mine, smoke, flag, hill, dot;
 	char			slotValue[MH_SLOTS_MAX][8];
 	const float		*slotColor[MH_SLOTS_MAX];
 	char			killA[MH_KILLS_MAX][32], killB[MH_KILLS_MAX][32];
@@ -234,7 +238,7 @@ qboolean CG_ModernHUD_Active( void ) {
 	         cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ||
 	         cgs.gametype == GT_DEATHMATCH || cgs.gametype == GT_TEAM || cgs.gametype == GT_CTF ||
 	         cgs.gametype == GT_CTF4 || cgs.gametype == GT_DOMINATION || cgs.gametype == GT_KOTH ||
-	         cgs.gametype == GT_AUTOBALL );
+	         cgs.gametype == GT_AUTOBALL || cgs.gametype == GT_DRAG );
 }
 
 /* the gaps to the leader for every place (-1: none yet). The order is the
@@ -873,6 +877,292 @@ static void MH_Autoball( mhRaceLayout_t *l, const playerState_t *ps ) {
 	l->rowSwatch = qtrue;
 }
 
+/* drag: the time slip in the card (reaction, the splits, the finish, the
+ * trap speed), the duel by lanes with the elapsed times, the tree under it
+ * and the tachometer across the bottom. The splits are taken here: how far
+ * the car is from where it stood staged, at 60 ft, 330 ft and 1/8 mile
+ * (docs/drag-race-map.md); the finish and the trap are the server's. */
+#define MH_DRAG_LAUNCH_MIN	4000	/* cg_hud_racing.c: the launch band */
+#define MH_DRAG_LAUNCH_MAX	5000
+#define MH_DRAG_SHIFT_RPM	5900
+static const vec4_t mhDim       = { 119 / 255.0f, 119 / 255.0f, 119 / 255.0f, 1.0f };	/* #777: not yet */
+static const vec4_t mhLampYellow = { 1.0f, 209 / 255.0f, 41 / 255.0f, 1.0f };			/* #ffd129 */
+static const vec4_t mhLampAmberOff = { 58 / 255.0f, 50 / 255.0f, 32 / 255.0f, 1.0f };	/* #3a3220 */
+static const vec4_t mhLampGreen = { 46 / 255.0f, 224 / 255.0f, 82 / 255.0f, 1.0f };		/* #2ee052 */
+static const vec4_t mhLampGreenOff = { 28 / 255.0f, 58 / 255.0f, 36 / 255.0f, 1.0f };	/* #1c3a24 */
+static const vec4_t mhSegWindowOff = { 42 / 255.0f, 60 / 255.0f, 77 / 255.0f, 1.0f };	/* #2a3c4d */
+static const vec4_t mhSegLimitOff = { 74 / 255.0f, 36 / 255.0f, 18 / 255.0f, 1.0f };	/* #4a2412 */
+
+static struct {
+	int		client, heat;		/* whose run, which heat (its countdown start) */
+	vec3_t	start;				/* where the car stood staged */
+	float	lastDist;
+	int		lastTime;
+	int		split[3];			/* ms after the launch, 0: not yet */
+} mhDragRun;
+
+static void MH_DragTime( int ms, char *out, int size ) {
+	Com_sprintf( out, size, "%d.%03d", ms / 1000, ms % 1000 );
+}
+
+static void MH_DragSplits( const centity_t *car, int client, const vec3_t origin ) {
+	static const float feet[3] = { 60.0f, 330.0f, 660.0f };
+	float dist;
+	int i;
+	if ( mhDragRun.client != client || mhDragRun.heat != car->dragCountdownTime ) {
+		memset( &mhDragRun, 0, sizeof( mhDragRun ) );
+		mhDragRun.client = client;
+		mhDragRun.heat = car->dragCountdownTime;
+		VectorCopy( origin, mhDragRun.start );
+	}
+	if ( car->dragPhase < DRAG_RUNNING || !car->dragLaunchTime ) {
+		VectorCopy( origin, mhDragRun.start );	/* still on the line */
+		mhDragRun.lastDist = 0.0f;
+		mhDragRun.lastTime = cg.time;
+		return;
+	}
+	if ( car->dragPhase != DRAG_RUNNING || cg.time <= mhDragRun.lastTime ) return;
+	dist = sqrt( ( origin[0] - mhDragRun.start[0] ) * ( origin[0] - mhDragRun.start[0] ) +
+	             ( origin[1] - mhDragRun.start[1] ) * ( origin[1] - mhDragRun.start[1] ) );
+	for ( i = 0; i < 3; i++ ) {
+		float mark = feet[i] * 0.3048f * CP_M_2_QU;
+		if ( !mhDragRun.split[i] && dist >= mark && mhDragRun.lastDist < mark && dist > mhDragRun.lastDist ) {
+			/* between the last frame and this one, where it crossed */
+			int t = mhDragRun.lastTime + (int)( ( mark - mhDragRun.lastDist ) / ( dist - mhDragRun.lastDist ) *
+			                                    ( cg.time - mhDragRun.lastTime ) );
+			mhDragRun.split[i] = t - car->dragLaunchTime > 0 ? t - car->dragLaunchTime : 1;
+		}
+	}
+	mhDragRun.lastDist = dist;
+	mhDragRun.lastTime = cg.time;
+}
+
+/* the two drivers of the duel, the one in the left lane first: from where
+ * the cars stand across the first driver's heading */
+static int MH_DragLanes( int *out ) {
+	int count = 0, i, swap;
+	if ( cgs.dragMatch.count == 2 ) {
+		out[0] = cgs.dragMatch.client[0];
+		out[1] = cgs.dragMatch.client[1];
+		count = 2;
+	} else {
+		for ( i = 0; i < MAX_CLIENTS && count < 2; i++ ) {
+			if ( cgs.clientinfo[i].infoValid && cgs.clientinfo[i].team != TEAM_SPECTATOR ) out[count++] = i;
+		}
+	}
+	if ( count == 2 ) {
+		vec3_t right, delta, angles;
+		const centity_t *a = &cg_entities[out[0]], *b = &cg_entities[out[1]];
+		VectorSet( angles, 0.0f, a->lerpAngles[YAW], 0.0f );
+		AngleVectors( angles, NULL, right, NULL );
+		VectorSubtract( b->lerpOrigin, a->lerpOrigin, delta );
+		if ( DotProduct( delta, right ) < 0.0f ) {
+			swap = out[0]; out[0] = out[1]; out[1] = swap;
+		}
+	}
+	return count;
+}
+
+/* a driver's result in the duel: the elapsed time, or why there is none */
+static const char *MH_DragResult( const centity_t *car, char *out, int size, const float **color ) {
+	*color = NULL;
+	if ( car->dragPhase == DRAG_FALSE_START ) { *color = mhAccent; return "FOUL"; }
+	if ( car->dragPhase == DRAG_DNF ) { *color = mhAccent; return "DNF"; }
+	if ( car->dragPhase == DRAG_FINISHED && car->dragFinishTime > car->dragLaunchTime ) {
+		MH_DragTime( car->dragFinishTime - car->dragLaunchTime, out, size );
+		return out;
+	}
+	*color = mhDim;
+	return "--";
+}
+
+static void MH_DragThousands( int value, char *out, int size ) {
+	if ( value >= 1000 ) Com_sprintf( out, size, "%d,%03d", value / 1000, value % 1000 );
+	else Com_sprintf( out, size, "%d", value );
+}
+
+static void MH_Drag( mhRaceLayout_t *l, const playerState_t *ps ) {
+	static const char *slip[MH_KV_MAX] = { "REACTION", "60 FT", "330 FT", "1/8 MILE", "1/4 MILE", "TRAP" };
+	static char rows[2][24];
+	const centity_t *car = &cg_entities[ps->clientNum];
+	const vec_t *origin = ps->clientNum == cg.predictedPlayerState.clientNum && !( cg.snap->ps.pm_flags & PMF_FOLLOW )
+	                      ? cg.predictedPlayerState.origin : car->lerpOrigin;
+	int lanes[2], count, i, k, rpm, gear, reds, greenTime, launch;
+	qboolean green, launchGuide, running = car->dragPhase == DRAG_RUNNING || car->dragPhase == DRAG_FINISHED;
+	qboolean stressed, blown, shift;
+	float speed;
+
+	MH_DragSplits( car, ps->clientNum, origin );
+	count = MH_DragLanes( lanes );
+
+	/* the card: who, which lane; then the time slip */
+	l->pos = NULL;
+	l->of = NULL;
+	l->lapValue = NULL;
+	l->progress = qfalse;
+	if ( ps->clientNum == cg.predictedPlayerState.clientNum && !( cg.snap->ps.pm_flags & PMF_FOLLOW ) )
+		Q_strncpyz( mh.labelRowLeft, "YOU", sizeof( mh.labelRowLeft ) );
+	else
+		MH_Plain( cgs.clientinfo[ps->clientNum].name, mh.labelRowLeft, sizeof( mh.labelRowLeft ) );
+	mh.labelRowRight[0] = '\0';
+	if ( count == 2 && ( lanes[0] == ps->clientNum || lanes[1] == ps->clientNum ) )
+		Q_strncpyz( mh.labelRowRight, lanes[0] == ps->clientNum ? "LANE LEFT" : "LANE RIGHT", sizeof( mh.labelRowRight ) );
+	l->labelRowLeft = mh.labelRowLeft;
+	l->labelRowRight = mh.labelRowRight;
+
+	for ( i = 0; i < MH_KV_MAX; i++ ) {
+		Q_strncpyz( mh.kvKey[i], slip[i], sizeof( mh.kvKey[i] ) );
+		Q_strncpyz( mh.kvValue[i], "--", sizeof( mh.kvValue[i] ) );
+		mh.kvColor[i] = mhDim;
+	}
+	launch = running && car->dragGreenTime > 0 && car->dragLaunchTime >= car->dragGreenTime;
+	if ( car->dragPhase == DRAG_FALSE_START ) {
+		Q_strncpyz( mh.kvValue[0], "FOUL", sizeof( mh.kvValue[0] ) );
+		mh.kvColor[0] = mhAccent;
+	} else if ( launch ) {
+		MH_DragTime( car->dragLaunchTime - car->dragGreenTime, mh.kvValue[0], sizeof( mh.kvValue[0] ) );
+		mh.kvColor[0] = mhWhite;
+	}
+	for ( i = 0; i < 3; i++ ) {
+		if ( launch && mhDragRun.split[i] ) {
+			MH_DragTime( mhDragRun.split[i], mh.kvValue[1 + i], sizeof( mh.kvValue[0] ) );
+			mh.kvColor[1 + i] = mhWhite;
+		}
+	}
+	if ( car->dragPhase == DRAG_DNF ) {
+		Q_strncpyz( mh.kvValue[4], "DNF", sizeof( mh.kvValue[4] ) );
+		mh.kvColor[4] = mhAccent;
+	} else if ( car->dragPhase == DRAG_FINISHED && car->dragFinishTime > car->dragLaunchTime ) {
+		MH_DragTime( car->dragFinishTime - car->dragLaunchTime, mh.kvValue[4], sizeof( mh.kvValue[4] ) );
+		mh.kvColor[4] = mhWhite;
+		if ( car->dragTrapSpeed > 0 ) {
+			/* tenths of km/h */
+			if ( cg_metricUnits.integer )
+				Com_sprintf( mh.kvValue[5], sizeof( mh.kvValue[5] ), "%d.%d KM/H", car->dragTrapSpeed / 10, car->dragTrapSpeed % 10 );
+			else
+				Com_sprintf( mh.kvValue[5], sizeof( mh.kvValue[5] ), "%.1f MPH", car->dragTrapSpeed * 0.0621371f );
+			mh.kvColor[5] = mhWhite;
+		}
+	}
+	l->kvCount = MH_KV_MAX;
+	for ( i = 0; i < MH_KV_MAX; i++ ) {
+		l->kvKey[i] = mh.kvKey[i];
+		l->kvValue[i] = mh.kvValue[i];
+		l->kvSize[i] = 0.0f;
+	}
+
+	/* the duel */
+	if ( cgs.dragMatch.bestOf > 1 && cgs.dragMatch.heat ) {
+		Com_sprintf( mh.title2, sizeof( mh.title2 ), "Duel \xb7 Heat %d/%d", cgs.dragMatch.heat, cgs.dragMatch.bestOf );
+		l->orderTitle = mh.title2;
+	} else {
+		l->orderTitle = count == 2 ? "Duel" : "Practice";
+	}
+	l->orderRight = "ET";
+	l->teamCount = 0;
+	l->rowSwatch = qfalse;
+	l->rowCount = count;
+	for ( i = 0; i < count; i++ ) {
+		const float *color;
+		const char *result = MH_DragResult( &cg_entities[lanes[i]], rows[i], sizeof( rows[i] ), &color );
+		Q_strncpyz( mh.rowPos[i], count == 2 ? ( i ? "R" : "L" ) : "", sizeof( mh.rowPos[0] ) );
+		MH_Plain( cgs.clientinfo[lanes[i]].name, mh.rowName[i], sizeof( mh.rowName[0] ) );
+		Q_strncpyz( mh.rowValue[i], result, sizeof( mh.rowValue[0] ) );
+		mh.rowMe[i] = lanes[i] == ps->clientNum;
+		mh.rowColor[i] = color;
+		mh.rowNameColor[i] = NULL;
+		l->rowPos[i] = mh.rowPos[i];
+		l->rowName[i] = mh.rowName[i];
+		l->rowValue[i] = mh.rowValue[i];
+	}
+	l->standings = cg_hudShowOpponentList.integer && count > 0 && !cg.showScores &&
+	               cg.predictedPlayerState.pm_type != PM_INTERMISSION && !CG_IntroCam_IsActive();
+
+	/* the tree: a column per lane; PRE when staged, STAGE once the heat is
+	 * armed, the ambers shared, GO green (red after a false start) */
+	CG_DragStartLightState( &reds, &green, &greenTime );
+	l->tree = !cg.showScores && cg.predictedPlayerState.pm_type != PM_INTERMISSION && !CG_IntroCam_IsActive();
+	for ( i = 0; i < MH_TREE_ROWS; i++ ) l->treeLabel[i] = i == 0 ? "PRE" : i == 1 ? "STAGE" : i == 5 ? "GO" : "";
+	for ( k = 0; k < 2; k++ ) {
+		const centity_t *d = k < count ? &cg_entities[lanes[k]] : NULL;
+		int phase = d ? d->dragPhase : DRAG_WAITING;
+		qboolean inHeat = d && phase >= DRAG_STAGED;
+		mh.treeColor[0][k] = inHeat ? mhLampYellow : mhLampAmberOff;
+		mh.treeColor[1][k] = d && phase >= DRAG_COUNTDOWN ? mhLampYellow : mhLampAmberOff;
+		for ( i = 0; i < 3; i++ ) mh.treeColor[2 + i][k] = d && !green && phase >= DRAG_COUNTDOWN && reds > i ? mhLampYellow : mhLampAmberOff;
+		mh.treeColor[5][k] = phase == DRAG_FALSE_START ? mhTeam[0] : d && green && phase >= DRAG_COUNTDOWN ? mhLampGreen : mhLampGreenOff;
+	}
+
+	/* the tachometer */
+	rpm = Com_Clamp( 0, CP_RPM_MAX, ps->stats[STAT_RPM] );
+	gear = ps->stats[STAT_GEAR];
+	launchGuide = car->dragPhase < DRAG_RUNNING && gear == 0;
+	stressed = ( ps->stats[STAT_DRAG_ENGINE] & DRAG_ENGINE_STRESS_MASK ) > 0;
+	blown = ( ps->stats[STAT_DRAG_ENGINE] & DRAG_ENGINE_BLOWN ) != 0;
+	shift = !launchGuide && gear > 0 && gear < 6 && rpm >= MH_DRAG_SHIFT_RPM && !blown && car->dragPhase < DRAG_FINISHED;
+	l->tach = qtrue;
+	MH_DragThousands( rpm, mh.tachRpm, sizeof( mh.tachRpm ) );
+	l->tachRpm = mh.tachRpm;
+	if ( gear < 0 ) Q_strncpyz( mh.tachGear, "R", sizeof( mh.tachGear ) );
+	else if ( gear == 0 ) Q_strncpyz( mh.tachGear, "N", sizeof( mh.tachGear ) );
+	else Com_sprintf( mh.tachGear, sizeof( mh.tachGear ), "%d", gear );
+	l->tachGear = mh.tachGear;
+	speed = Q3VelocityToRL( sqrt( ps->velocity[0] * ps->velocity[0] + ps->velocity[1] * ps->velocity[1] ) );
+	Com_sprintf( mh.tachSpeed, sizeof( mh.tachSpeed ), "%d", (int)( speed + 0.5f ) );
+	l->tachSpeed = mh.tachSpeed;
+	l->tachUnit = cg_metricUnits.integer ? "KM/H" : "MPH";
+	/* the middle: the launch window while on the line, then what goes on */
+	mh.tachMidColor = mhFast;
+	if ( blown ) {
+		l->tachMidLabel = "ENGINE BLOWN";
+		l->tachMidValue = "";
+		mh.tachMidColor = mhAccent;
+	} else if ( launchGuide ) {
+		l->tachMidLabel = car->dragPhase == DRAG_FALSE_START ? "FALSE START" :
+		                  car->dragPhase == DRAG_COUNTDOWN && green ? "SELECT FIRST" :
+		                  car->dragPhase == DRAG_COUNTDOWN || car->dragPhase == DRAG_STAGED ? "LAUNCH WINDOW \xb7 WAIT FOR GREEN" :
+		                  "LAUNCH WINDOW \xb7 GAS IN N TO STAGE";
+		Com_sprintf( mh.tachMid, sizeof( mh.tachMid ), "%d,%03d - %d,%03d", MH_DRAG_LAUNCH_MIN / 1000, MH_DRAG_LAUNCH_MIN % 1000,
+		             MH_DRAG_LAUNCH_MAX / 1000, MH_DRAG_LAUNCH_MAX % 1000 );
+		l->tachMidValue = mh.tachMid;
+		if ( car->dragPhase == DRAG_FALSE_START ) mh.tachMidColor = mhAccent;
+		else if ( car->dragPhase == DRAG_COUNTDOWN && green ) mh.tachMidColor = mhLampGreen;
+	} else if ( car->dragPhase == DRAG_FINISHED ) {
+		l->tachMidLabel = "FINISHED";
+		l->tachMidValue = "";
+		mh.tachMidColor = mhWhite;
+	} else if ( car->dragPhase == DRAG_DNF || car->dragPhase == DRAG_FALSE_START ) {
+		l->tachMidLabel = car->dragPhase == DRAG_DNF ? "DID NOT FINISH" : "FALSE START";
+		l->tachMidValue = "";
+		mh.tachMidColor = mhAccent;
+	} else if ( stressed && rpm >= DRAG_ENGINE_REDLINE_RPM ) {
+		l->tachMidLabel = "OVER-REV";
+		l->tachMidValue = "ENGINE HEATING";
+		mh.tachMidColor = mhAccent;
+	} else if ( shift ) {
+		l->tachMidLabel = "SHIFT UP";
+		l->tachMidValue = "";
+		mh.tachMidColor = mhLampGreen;
+	} else {
+		l->tachMidLabel = car->dragPhase == DRAG_RUNNING ? "RUNNING" : "";
+		l->tachMidValue = "";
+		mh.tachMidColor = mhLabel;
+	}
+	mh.tachRpmColor = rpm >= DRAG_ENGINE_REDLINE_RPM ? mhAccent : launchGuide && rpm >= MH_DRAG_LAUNCH_MIN && rpm <= MH_DRAG_LAUNCH_MAX ? mhFast : mhWhite;
+	l->tachLeft = "IDLE";
+	l->tachRight = "REV LIMIT \xb7 ENGINE BLOWS";
+	mh.tachLeftColor = mhMuted;
+	/* the engine heating in the red: the warning blinks */
+	mh.tachRightColor = stressed && !blown && ( cg.time / 150 ) & 1 ? mhWhite : mhAccent;
+	for ( i = 0; i < MH_TACH_SEGMENTS; i++ ) {
+		int segRpm = ( i + 1 ) * CP_RPM_MAX / MH_TACH_SEGMENTS, lo = i * CP_RPM_MAX / MH_TACH_SEGMENTS;
+		qboolean lit = rpm > lo;
+		if ( lo >= DRAG_ENGINE_REDLINE_RPM ) mh.tachColor[i] = lit ? mhAccent : mhSegLimitOff;
+		else if ( segRpm > MH_DRAG_LAUNCH_MIN && lo < MH_DRAG_LAUNCH_MAX ) mh.tachColor[i] = lit ? mhFast : mhSegWindowOff;
+		else mh.tachColor[i] = lit ? mhLit : mhTrack;
+	}
+}
+
 /* derby: the score, the time left to ram someone before the game takes the
  * car out, and the car from above. The server has one integrity for the
  * car; the zones show where the hits landed (cg_playerstate.c works out
@@ -1269,6 +1559,7 @@ static void MH_Register( void ) {
 	mh.smoke = trap_R_RegisterShaderNoMip( "menu/art/hud_smoke" );
 	mh.flag = trap_R_RegisterShaderNoMip( "menu/art/hud_flag" );
 	mh.hill = trap_R_RegisterShaderNoMip( "menu/art/hud_hill" );
+	mh.dot = trap_R_RegisterShaderNoMip( "menu/art/hud_dot" );
 }
 
 static qboolean MH_Views( void ) {
@@ -1314,7 +1605,7 @@ static void MH_Prepare( void ) {
 	             cgs.gametype == GT_DERBY ? "Derby" : cgs.gametype == GT_DEATHMATCH ? "Deathmatch" :
 	             cgs.gametype == GT_TEAM ? "Team combat" : cgs.gametype == GT_CTF ? "Capture the flag" :
 	             cgs.gametype == GT_CTF4 ? "Four team CTF" : cgs.gametype == GT_DOMINATION ? "Domination" :
-	             cgs.gametype == GT_KOTH ? "King of the hill" : cgs.gametype == GT_AUTOBALL ? "Autoball" : "Race",
+	             cgs.gametype == GT_KOTH ? "King of the hill" : cgs.gametype == GT_AUTOBALL ? "Autoball" : cgs.gametype == GT_DRAG ? "Drag" : "Race",
 	             mh.rowName[0] );
 	l->title = mh.title;
 	mh.posColor = mhWhite;
@@ -1496,9 +1787,10 @@ static void MH_Prepare( void ) {
 		MH_Deathmatch( l, ps );
 		MH_Autoball( l, ps );
 	}
+	if ( cgs.gametype == GT_DRAG ) MH_Drag( l, ps );
 
 	/* the top centre */
-	l->mirror = cg_drawRearView.integer && MH_Views() && !cg.scoreBoardShowing && !l->scorebug;
+	l->mirror = cg_drawRearView.integer && MH_Views() && !cg.scoreBoardShowing && !l->scorebug && !l->tach;
 	l->toast = CG_HudToastView( &mh.toast );
 	if ( l->toast ) {
 		l->toastIcon = qtrue;
@@ -1553,7 +1845,7 @@ static void MH_Prepare( void ) {
 	MH_Kills( l );
 
 	/* bottom right */
-	l->minimap = cg_drawMMap.integer && MH_Views();
+	l->minimap = cg_drawMMap.integer && MH_Views() && !l->tach;	/* drag: the tachometer in its place */
 	l->minimapSize = MH_MINIMAP * WS_Clamp( 0.4f, cg_mmap_size.value / MH_MINIMAP_DEFAULT, 1.7f );
 	factor = 0.0f;
 	mh.slipAlpha = 0.0f;
@@ -1561,7 +1853,7 @@ static void MH_Prepare( void ) {
 	     cg.predictedPlayerState.pm_type == PM_NORMAL ) {
 		factor = BG_SlipstreamFactor( &cg.predictedPlayerState );
 	}
-	if ( factor > 0.0f ) {
+	if ( factor > 0.0f && !l->tach ) {
 		l->slipstream = qtrue;
 		mh.slipAlpha = WS_Clamp( 0.0f, factor / 0.03f, 1.0f );
 		mh.slipFrac = factor / 0.25f;
@@ -1655,6 +1947,10 @@ static void MH_DrawCard( const mhRaceLayout_t *l ) {
 		MH_Str( &l->progressLeftT, mhMuted, 1.0f );
 		MH_Str( &l->progressRightT, mhMuted, 1.0f );
 	}
+	if ( l->labelRowLeft ) {
+		MH_Str( &l->labelRowLeftT, mhLabel, 1.0f );
+		MH_Str( &l->labelRowRightT, mhMuted, 1.0f );
+	}
 	if ( l->hillOwner ) {
 		MH_Pic( &l->hillIcon, 0.0f, mh.hill, mh.hillColor, 1.0f );
 		MH_Str( &l->hillLabelT, mhLabel, 1.0f );
@@ -1669,7 +1965,7 @@ static void MH_DrawCard( const mhRaceLayout_t *l ) {
 		MH_Str( &l->zoneValueT, mh.zoneLineColor, 1.0f );
 		MH_Bar( &l->zoneBar, mh.zoneFrac, mh.zoneBarColor, mhTrack, 1.0f );
 	}
-	if ( l->pos || l->lapValue || l->progress || l->zoneCount || l->zoneLabel ) MH_FillRect( &l->sep, mhLine, 1.0f );
+	if ( l->pos || l->lapValue || l->progress || l->zoneCount || l->zoneLabel || l->labelRowLeft ) MH_FillRect( &l->sep, mhLine, 1.0f );
 	if ( l->flagCount ) {
 		for ( i = 0; i < l->flagCount; i++ ) {
 			MH_Pic( &l->flagIcon[i], 0.0f, mh.flag, mhTeam[i], 1.0f );
@@ -1704,11 +2000,40 @@ static void MH_DrawKillFeed( const mhRaceLayout_t *l ) {
 	}
 }
 
+/* drag: the tree under the standings */
+static void MH_DrawTree( const mhRaceLayout_t *l ) {
+	int i, k;
+	MH_Panel( &l->treeBox, qtrue, 1.0f );
+	MH_Str( &l->treeTitleT, mhLabel, 1.0f );
+	for ( i = 0; i < MH_TREE_ROWS; i++ ) {
+		for ( k = 0; k < 2; k++ ) MH_Pic( &l->treeLamp[i][k], 0.0f, mh.dot, mh.treeColor[i][k], 1.0f );
+		MH_Str( &l->treeLabelT[i], mhMuted, 1.0f );
+	}
+}
+
+/* drag: the tachometer across the bottom */
+static void MH_DrawTach( const mhRaceLayout_t *l ) {
+	int i;
+	MH_Panel( &l->tachBox, qtrue, 1.0f );
+	MH_Str( &l->tachRpmLabelT, mhLabel, 1.0f );
+	MH_Str( &l->tachRpmT, mh.tachRpmColor, 1.0f );
+	MH_Str( &l->tachMidLabelT, mh.tachMidColor, 1.0f );
+	MH_Str( &l->tachMidValueT, mh.tachMidColor, 1.0f );
+	MH_Str( &l->tachGearLabelT, mhLabel, 1.0f );
+	MH_Str( &l->tachGearT, mhWhite, 1.0f );
+	MH_Str( &l->tachUnitT, mhLabel, 1.0f );
+	MH_Str( &l->tachSpeedT, mhWhite, 1.0f );
+	for ( i = 0; i < MH_TACH_SEGMENTS; i++ ) MH_FillRect( &l->tachSeg[i], mh.tachColor[i], 1.0f );
+	MH_Str( &l->tachLeftT, mh.tachLeftColor, 1.0f );
+	MH_Str( &l->tachRightT, mh.tachRightColor, 1.0f );
+}
+
 void CG_ModernHUD_DrawStandings( void ) {
 	const mhRaceLayout_t *l = &mh.l;
 	int i;
 	MH_Prepare();
 	MH_DrawKillFeed( l );
+	if ( l->tree ) MH_DrawTree( l );
 	if ( !l->standings ) return;
 	MH_Panel( &l->order, qtrue, 1.0f );
 	MH_Str( &l->orderTitleT, mhLabel, 1.0f );
@@ -1736,7 +2061,7 @@ void CG_ModernHUD_DrawStandings( void ) {
 }
 
 static void MH_DrawToast( const mhRaceLayout_t *l ) {
-	const float *tone = mh.toast.tone == 1 ? mhFast : ( mh.toast.tone == 2 ? mhMuted : mhAccent );
+	const float *tone = mh.toast.tone == 1 || mh.toast.tone == 3 ? mhFast : ( mh.toast.tone == 2 ? mhMuted : mhAccent );
 	float a = mh.toast.alpha;
 	qhandle_t icon = mh.toast.icon;
 	wsRect_t box = l->toastBox;
@@ -1747,7 +2072,7 @@ static void MH_DrawToast( const mhRaceLayout_t *l ) {
 	if ( icon ) {
 		MH_Pic( &l->toastIconBox, 8.0f, icon, mhWhite, a );
 	} else {
-		MH_Pic( &l->toastIconBox, 11.0f, mh.toast.tone == 2 ? mh.message : mh.chevron, tone, a );
+		MH_Pic( &l->toastIconBox, 11.0f, mh.toast.tone >= 2 ? mh.message : mh.chevron, tone, a );
 	}
 	MH_Str( &l->toastTagT, tone, a );
 	MH_Str( &l->toastTitleT, mhWhite, a );
@@ -1988,7 +2313,8 @@ void CG_ModernHUD_Draw( void ) {
 		MH_Str( &l->slipValueT, mhFast, mh.slipAlpha );
 		MH_Bar( &l->slipBar, mh.slipFrac, mhFast, mhTrack, mh.slipAlpha );
 	}
-	MH_DrawCockpit( l );
+	if ( l->tach ) MH_DrawTach( l );
+	else MH_DrawCockpit( l );
 }
 
 /* -------------------------------------------------------------------------
@@ -2024,6 +2350,7 @@ static void MH_DrawMessage( const char *title, float size, const float *color, i
 static qboolean MH_Countdown( void ) {
 	float alpha = 1.0f;
 	if ( !cg.countDownPrint[0] || cg.time > cg.countDownEnd + 1000 ) return qfalse;
+	if ( cgs.gametype == GT_DRAG && Q_stricmp( cg.countDownPrint, "GO!" ) ) return qfalse;	/* the tree has the lights */
 	if ( cg.time > cg.countDownEnd ) alpha = 1.0f - ( cg.time - cg.countDownEnd ) / 1000.0f;
 	MH_DrawMessage( cg.countDownPrint, 96.0f, Q_stricmp( cg.countDownPrint, "GO!" ) ? mhWhite : mhAccent, 0, NULL, alpha );
 	return qtrue;
@@ -2147,6 +2474,7 @@ void CG_ModernHUD_DrawSpectator( void ) {
 	MH_Prepare();
 	memset( &sp, 0, sizeof( sp ) );
 	sp.viewWidth = mh.l.viewWidth;
+	if ( mh.l.tach ) sp.bottom = mh.l.tachBox.y - 10.0f;	/* over the tachometer */
 	if ( cg.snap->ps.pm_flags & PMF_FOLLOW ) {
 		MH_Plain( cgs.clientinfo[cg.snap->ps.clientNum].name, name, sizeof( name ) );
 		sp.label = "FOLLOWING";

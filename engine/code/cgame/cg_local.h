@@ -85,7 +85,8 @@ typedef enum {
     CG_HUD_TOAST_REWARD,
     CG_HUD_TOAST_ACHIEVEMENT,
     CG_HUD_TOAST_RANK,
-    CG_HUD_TOAST_MESSAGE
+    CG_HUD_TOAST_MESSAGE,
+    CG_HUD_TOAST_HEAT			/* drag: "Heat 2 of 3", the score under it */
 } cgHudToastType_t;
 
 typedef struct {
@@ -2361,6 +2362,7 @@ void CG_QueueRewardToast( qhandle_t icon, sfxHandle_t sound, int rewardCount );
 void CG_QueueAchievementToast( bgAchievementCategory_t category, int tierIndex );
 void CG_QueueRankToast( int rankIndex, const char *name, qboolean rankUp );
 void CG_QueueMessageToast( const char *message );
+void CG_QueueHeatToast( const char *title, const char *sub );
 /* the HUD's notification and jukebox, for the v0.9 HUD (cg_hud_modern.c) */
 typedef struct {
 	char		tag[32];		/* "Pickup", "Reward", ... */

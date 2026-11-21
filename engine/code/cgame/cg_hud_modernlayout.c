@@ -154,6 +154,13 @@ static void MH_Card( mhRaceLayout_t *l ) {
 	l->titleT.box.w = in.w;		/* a block over the card's width */
 	y += l->titleT.box.h + 12.0f;
 
+	/* drag: two labels on a row */
+	if ( l->labelRowLeft ) {
+		MH_Set( &l->labelRowLeftT, &label, l->labelRowLeft );
+		MH_Set( &l->labelRowRightT, &label, l->labelRowRight ? l->labelRowRight : "" );
+		y += MH_BaselineRow( &l->labelRowLeftT, &l->labelRowRightT, in.x, y, in.w ) + 12.0f;
+	}
+
 	/* posline: "P3" "/ 6" on one baseline at the left, "LAP" over "2/5" at
 	 * the right, both at the bottom of the row */
 	if ( l->headerRow && l->pos ) {
@@ -264,7 +271,7 @@ static void MH_Card( mhRaceLayout_t *l ) {
 		l->zoneBar.h = 6.0f;
 		y += 6.0f + 12.0f;
 	}
-	if ( l->pos || l->lapValue || l->progress || l->zoneCount || l->zoneLabel ) {
+	if ( l->pos || l->lapValue || l->progress || l->zoneCount || l->zoneLabel || l->labelRowLeft ) {
 		l->sep.x = in.x;
 		l->sep.y = y;
 		l->sep.w = in.w;
@@ -910,11 +917,119 @@ static void MH_KillFeed( mhRaceLayout_t *l, float y ) {
 	}
 }
 
+/* drag: the tree under the standings (gen.py tree): the label, 12px, rows
+ * 8px apart of two 20px lamps 10px apart and a label 10px on */
+static void MH_Tree( mhRaceLayout_t *l, float top ) {
+	wsTextStyle_t label, label11;
+	float x, y;
+	int i;
+
+	MH_Label( &label, 12.0f );
+	MH_Label( &label11, 11.0f );
+	l->treeBox.x = l->viewWidth - MH_SIDE - MH_ORDER_W;
+	l->treeBox.y = top;
+	l->treeBox.w = MH_ORDER_W;
+	x = l->treeBox.x + 1.0f + MH_PAD_X;
+	y = top + 2.0f + MH_PAD_Y;
+	MH_Set( &l->treeTitleT, &label, "TREE" );
+	MH_Place( &l->treeTitleT, x, y );
+	l->treeTitleT.box.w = l->treeBox.w - 2.0f - 2.0f * MH_PAD_X;	/* a block over the panel's width */
+	y += l->treeTitleT.box.h + 12.0f;
+	for ( i = 0; i < MH_TREE_ROWS; i++ ) {
+		l->treeLamp[i][0].x = x;
+		l->treeLamp[i][1].x = x + 30.0f;
+		l->treeLamp[i][0].y = l->treeLamp[i][1].y = y;
+		l->treeLamp[i][0].w = l->treeLamp[i][0].h = l->treeLamp[i][1].w = l->treeLamp[i][1].h = 20.0f;
+		MH_Set( &l->treeLabelT[i], &label11, l->treeLabel[i] ? l->treeLabel[i] : "" );
+		MH_Place( &l->treeLabelT[i], x + 60.0f, y + ( 20.0f - l->treeLabelT[i].box.h ) * 0.5f );
+		y += 20.0f + ( i < MH_TREE_ROWS - 1 ? 8.0f : 0.0f );
+	}
+	l->treeBox.h = y + MH_PAD_Y + 1.0f - top;
+}
+
+/* drag: the tachometer across the bottom, 400px in from either side
+ * (gen.py drag_tach): RPM over the figure at the left, the launch window in
+ * the middle, gear and speed at the right, all on the bottom line; then 40
+ * segments 3px apart, 26 high; then the two ends of the scale */
+static void MH_Tach( mhRaceLayout_t *l ) {
+	wsTextStyle_t label, label11, big44, mono15;
+	float x, w, y, top, rowH, rightX, segW;
+	int i;
+
+	MH_Label( &label, 12.0f );
+	MH_Label( &label11, 11.0f );
+	MH_Big( &big44, 44.0f );
+	MH_Mono( &mono15, 15.0f );
+	l->tachBox.x = 400.0f;
+	l->tachBox.w = l->viewWidth - 800.0f;
+	x = l->tachBox.x + 1.0f + MH_PAD_X;
+	w = l->tachBox.w - 2.0f - 2.0f * MH_PAD_X;
+
+	MH_Set( &l->tachRpmLabelT, &label, "RPM" );
+	MH_Set( &l->tachRpmT, &big44, l->tachRpm );
+	MH_Set( &l->tachGearLabelT, &label, "GEAR" );
+	MH_Set( &l->tachGearT, &big44, l->tachGear );
+	MH_Set( &l->tachUnitT, &label, l->tachUnit );
+	MH_Set( &l->tachSpeedT, &big44, l->tachSpeed );
+	MH_Set( &l->tachMidLabelT, &label, l->tachMidLabel ? l->tachMidLabel : "" );
+	MH_Set( &l->tachMidValueT, &mono15, l->tachMidValue ? l->tachMidValue : "" );
+	rowH = l->tachRpmLabelT.box.h + 4.0f + l->tachRpmT.box.h;
+	MH_Set( &l->tachLeftT, &label11, l->tachLeft ? l->tachLeft : "" );
+	MH_Set( &l->tachRightT, &label11, l->tachRight ? l->tachRight : "" );
+
+	/* bottom up: the panel ends MH_BOTTOM above the screen's edge */
+	l->tachBox.h = 2.0f + MH_PAD_Y + rowH + 12.0f + 26.0f + 12.0f + l->tachLeftT.box.h + MH_PAD_Y + 1.0f;
+	l->tachBox.y = MH_DESIGN_HEIGHT - MH_BOTTOM - l->tachBox.h;
+	top = y = l->tachBox.y + 2.0f + MH_PAD_Y;
+
+	/* the left column: as wide as the wider block */
+	MH_Place( &l->tachRpmLabelT, x, y );
+	MH_Place( &l->tachRpmT, x, y + l->tachRpmLabelT.box.h + 4.0f );
+	if ( l->tachRpmT.box.w > l->tachRpmLabelT.box.w ) l->tachRpmLabelT.box.w = l->tachRpmT.box.w;
+	else l->tachRpmT.box.w = l->tachRpmLabelT.box.w;
+	/* the right: speed right-aligned, gear centred over its figure 22px before */
+	{
+		float speedW = l->tachSpeedT.box.w > l->tachUnitT.box.w ? l->tachSpeedT.box.w : l->tachUnitT.box.w;
+		float gearW = l->tachGearT.box.w > l->tachGearLabelT.box.w ? l->tachGearT.box.w : l->tachGearLabelT.box.w;
+		float sx = x + w - speedW, gx = sx - 22.0f - gearW;
+		MH_Place( &l->tachUnitT, x + w - l->tachUnitT.box.w, y );
+		MH_Place( &l->tachSpeedT, x + w - l->tachSpeedT.box.w, y + l->tachUnitT.box.h + 4.0f );
+		l->tachUnitT.box.x = sx;	/* the labels' blocks: the column's width */
+		l->tachUnitT.box.w = speedW;
+		MH_Place( &l->tachGearLabelT, gx + ( gearW - l->tachGearLabelT.box.w ) * 0.5f, y );
+		MH_Place( &l->tachGearT, gx + ( gearW - l->tachGearT.box.w ) * 0.5f, y + l->tachGearLabelT.box.h + 4.0f );
+		l->tachGearLabelT.box.x = gx;
+		l->tachGearLabelT.box.w = gearW;
+		rightX = gx;
+	}
+	/* the middle: between the two sides, at the bottom of the row */
+	{
+		float midW = l->tachMidLabelT.box.w > l->tachMidValueT.box.w ? l->tachMidLabelT.box.w : l->tachMidValueT.box.w;
+		float mx = ( x + l->tachRpmT.box.w + rightX ) * 0.5f;
+		float midH = l->tachMidLabelT.box.h + 4.0f + l->tachMidValueT.box.h;
+		MH_Place( &l->tachMidLabelT, mx - l->tachMidLabelT.box.w * 0.5f, y + rowH - midH );
+		MH_Place( &l->tachMidValueT, mx - l->tachMidValueT.box.w * 0.5f, y + rowH - l->tachMidValueT.box.h );
+		l->tachMidLabelT.box.x = mx - midW * 0.5f;
+		l->tachMidLabelT.box.w = midW;
+	}
+	y = top + rowH + 12.0f;
+	segW = ( w - 3.0f * ( MH_TACH_SEGMENTS - 1 ) ) / MH_TACH_SEGMENTS;
+	for ( i = 0; i < MH_TACH_SEGMENTS; i++ ) {
+		l->tachSeg[i].x = x + i * ( segW + 3.0f );
+		l->tachSeg[i].y = y;
+		l->tachSeg[i].w = segW;
+		l->tachSeg[i].h = 26.0f;
+	}
+	y += 26.0f + 12.0f;
+	y += MH_BaselineRow( &l->tachLeftT, &l->tachRightT, x, y, w );
+}
+
 void MH_RaceLayout( mhRaceLayout_t *l ) {
 	float bottom;
 
 	MH_Card( l );
 	if ( l->standings ) MH_Order( l );
+	if ( l->tree ) MH_Tree( l, l->standings ? l->order.y + l->order.h + MH_COLUMN_GAP : MH_TOP );
 	if ( l->killCount ) MH_KillFeed( l, l->standings ? l->order.y + l->order.h + 8.0f : MH_TOP );
 	MH_TopCentre( l );
 
@@ -924,6 +1039,10 @@ void MH_RaceLayout( mhRaceLayout_t *l ) {
 		else MH_JukeboxClosed( l, bottom );
 	}
 
+	if ( l->tach ) {
+		MH_Tach( l );	/* in place of minimap, slipstream and cockpit */
+		return;
+	}
 	bottom = MH_Cockpit( l, MH_DESIGN_HEIGHT - MH_BOTTOM ) - MH_COLUMN_GAP;
 	if ( l->slipstream ) bottom = MH_Slipstream( l, bottom ) - MH_COLUMN_GAP;
 	if ( l->minimap ) MH_Minimap( l, bottom );
@@ -1000,7 +1119,7 @@ void MH_SpectatorLayout( mhSpectatorLayout_t *s ) {
 	if ( above - MH_Base( &s->hint1T ) + rightH > h ) h = above - MH_Base( &s->hint1T ) + rightH;
 
 	s->box.h = 2.0f + MH_PAD_Y + h + MH_PAD_Y + 1.0f;
-	s->box.y = MH_DESIGN_HEIGHT - MH_BOTTOM - s->box.h;
+	s->box.y = ( s->bottom > 0.0f ? s->bottom : MH_DESIGN_HEIGHT - MH_BOTTOM ) - s->box.h;
 	y = s->box.y + 2.0f + MH_PAD_Y;
 	MH_Place( &s->labelT, x, y + above - MH_Base( &s->labelT ) );
 	MH_Place( &s->nameT, x, s->labelT.box.y + s->labelT.box.h + 4.0f );
