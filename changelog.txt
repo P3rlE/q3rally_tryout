@@ -56,6 +56,8 @@ Changed:
 - The new HUD in Derby: score and the no-ram clock, the car from above
   showing where the hits landed, everyone's integrity in the derby order and
   a big message for every car out.
+- The new HUD in Deathmatch: frags against the limit and the rank, the
+  clock and the leader, the frag order, weapons and the kill feed.
 - The graphics loading screen is drawn by the game again, on every
   platform, and looks exactly like the WebUI's "Getting ready." screen:
   the layout follows the WebUI's CSS, the text uses its fonts (Barlow,

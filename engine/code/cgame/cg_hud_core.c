@@ -1432,7 +1432,7 @@ qboolean CG_DrawHUD( void ) {
          ( cgs.gametype != GT_DRAG || cgs.numRacers > 1 ) ) {
         CG_DrawRacingOrderHUD( 10.0f );
     }
-    if ( cgs.gametype == GT_DEATHMATCH && !cg.showScores &&
+    if ( cgs.gametype == GT_DEATHMATCH && !cg.showScores && !CG_ModernHUD_Active() &&
          cg.predictedPlayerState.pm_type != PM_INTERMISSION ) {
         CG_DrawDeathmatchOrderHUD( 10.0f );
     }
