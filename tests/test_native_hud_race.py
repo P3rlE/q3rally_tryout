@@ -17,6 +17,7 @@ RACE = json.loads((ROOT / 'tests/fixtures/hud_race_layout.json').read_text())['e
 SPRINT = json.loads((ROOT / 'tests/fixtures/hud_sprint_layout.json').read_text())['els']
 GHOST = json.loads((ROOT / 'tests/fixtures/hud_ghost_layout.json').read_text())['els']
 TEAM_RACE = json.loads((ROOT / 'tests/fixtures/hud_teamrace_layout.json').read_text())['els']
+DEATHMATCH = json.loads((ROOT / 'tests/fixtures/hud_deathmatch_layout.json').read_text())['els']
 DERBY = json.loads((ROOT / 'tests/fixtures/hud_derby_layout.json').read_text())['els']
 LCS = json.loads((ROOT / 'tests/fixtures/hud_lcs_layout.json').read_text())['els']
 ELIMINATION = json.loads((ROOT / 'tests/fixtures/hud_elimination_layout.json').read_text())['els']
@@ -378,4 +379,26 @@ def test_native_derby_card_matches_the_design():
         pairs += [(f'derbySwatch{i}', block + f'/div:1/div:{1 + i}/div:0'),
                   (f'derbyLegend{i}', block + f'/div:1/div:{1 + i}/div:1')]
     problems = check_all(mine, DERBY, pairs)
+    assert not problems, problems
+
+
+# the deathmatch board: frags against the limit and the rank, the frag order and the kill feed
+def test_native_deathmatch_hud_matches_the_design():
+    model = dict(RACE_MODEL, title='Deathmatch \u00b7 Downtown', pos='12', of='/ 20', lapLabel='RANK', lapValue='2nd',
+                 kv=[('TIME LEFT', '6:12'), ('LEADER', 'Chloe \u00b7 14')], orderTitle='Frag order', orderRight='Frags',
+                 rows=[('01', 'Chloe', '14'), ('02', 'Player', '12'), ('03', 'Paul', '9'), ('04', 'Sam', '7'), ('05', 'Vlad', '3')],
+                 kills=[('Player', 'RAIL', 'Vlad'), ('Chloe', 'ROCKET', 'Sam'), ('Paul', 'MG', 'Player')],
+                 mirror=0, toast=0, jukebox=0)
+    mine, = layouts(command(model))
+    card, order = '/div:0/div:0', '/div:1/div:0'
+    pairs = [('card', card), ('pos', card + '/div:1/div:0/div:0'), ('of', card + '/div:1/div:0/div:1'),
+             ('lapLabel', card + '/div:1/div:1/div:0'), ('lapValue', card + '/div:1/div:1/div:1'),
+             ('order', order)] \
+        + [(f'key{i}', card + f'/div:{3 + i}/div:0') for i in range(2)] \
+        + [(f'value{i}', card + f'/div:{3 + i}/div:1') for i in range(2)] \
+        + [(f'kill{i}', f'/div:1/div:{1 + i}') for i in range(3)]
+    for i in range(5):
+        row = order + f'/div:1/div:{i}'
+        pairs += [(f'rowPos{i}', row + '/div:0'), (f'rowName{i}', row + '/div:1'), (f'rowValue{i}', row + '/div:2')]
+    problems = check_all(mine, DEATHMATCH, pairs)
     assert not problems, problems

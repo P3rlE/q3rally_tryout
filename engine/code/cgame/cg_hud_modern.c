@@ -222,7 +222,8 @@ qboolean CG_ModernHUD_Active( void ) {
 	return cg_hudStyle.integer && cg.snap &&
 	       ( cgs.gametype == GT_RACING || cgs.gametype == GT_SPRINT || cgs.gametype == GT_GHOST ||
 	         cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM ||
-	         cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY );
+	         cgs.gametype == GT_ELIMINATION || cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ||
+	         cgs.gametype == GT_DEATHMATCH );
 }
 
 /* the gaps to the leader for every place (-1: none yet). The order is the
@@ -384,6 +385,100 @@ static int MH_LastCarAlive( int except ) {
 		if ( !MH_LastCarOut( i ) ) n++;
 	}
 	return n;
+}
+
+/* "1st" "2nd" "=3rd" (tied) */
+static void MH_Ordinal( int rank, qboolean tied, char *out, int size ) {
+	static const char *suffix[4] = { "th", "st", "nd", "rd" };
+	int k = ( rank % 100 >= 11 && rank % 100 <= 13 ) || rank % 10 > 3 ? 0 : rank % 10;
+	Com_sprintf( out, size, "%s%d%s", tied ? "=" : "", rank, suffix[k] );
+}
+
+/* the match clock: what is left of the time limit, or the time played */
+static const char *MH_MatchClock( char *out, int size ) {
+	int played = cg.time - cgs.levelStartTime, left;
+	if ( cgs.timelimit > 0 ) {
+		left = cgs.timelimit * 60000 - played;
+		if ( left < 0 ) left = 0;
+		Com_sprintf( out, size, "%d:%02d", left / 60000, ( left / 1000 ) % 60 );
+		return "TIME LEFT";
+	}
+	if ( played < 0 ) played = 0;
+	Com_sprintf( out, size, "%d:%02d", played / 60000, ( played / 1000 ) % 60 );
+	return "TIME";
+}
+
+/* deathmatch: our frags against the limit and our rank, the clock and the
+ * leader; the frag order from the scores (sent every two seconds) */
+static void MH_Deathmatch( mhRaceLayout_t *l, const playerState_t *ps ) {
+	int order[MAX_CLIENTS], count = 0, me = -1, i, client, first, rows, rank;
+	const char *key;
+
+	for ( i = 0; i < cg.numScores; i++ ) {
+		client = cg.scores[i].client;
+		if ( client < 0 || client >= MAX_CLIENTS || !cgs.clientinfo[client].infoValid ) continue;
+		if ( cgs.clientinfo[client].team == TEAM_SPECTATOR ) continue;
+		if ( client == ps->clientNum ) me = count;
+		order[count++] = i;
+	}
+
+	Com_sprintf( mh.pos, sizeof( mh.pos ), "%d", ps->persistant[PERS_SCORE] );
+	l->pos = mh.pos;
+	if ( cgs.fraglimit > 0 ) {
+		Com_sprintf( mh.of, sizeof( mh.of ), "/ %d", cgs.fraglimit );
+		l->of = mh.of;
+	} else {
+		l->of = "";
+	}
+	rank = ( ps->persistant[PERS_RANK] & ~RANK_TIED_FLAG ) + 1;
+	MH_Ordinal( rank, ( ps->persistant[PERS_RANK] & RANK_TIED_FLAG ) != 0, mh.lap, sizeof( mh.lap ) );
+	l->lapLabel = "RANK";
+	l->lapValue = mh.lap;
+	l->progress = qfalse;
+
+	l->kvCount = 0;
+	key = MH_MatchClock( mh.kvValue[0], sizeof( mh.kvValue[0] ) );
+	Q_strncpyz( mh.kvKey[0], key, sizeof( mh.kvKey[0] ) );
+	mh.kvColor[0] = mhWhite;
+	l->kvCount = 1;
+	if ( count > 0 ) {
+		char name[32];
+		MH_Plain( cgs.clientinfo[cg.scores[order[0]].client].name, name, sizeof( name ) );
+		Q_strncpyz( mh.kvKey[1], "LEADER", sizeof( mh.kvKey[1] ) );
+		Com_sprintf( mh.kvValue[1], sizeof( mh.kvValue[1] ), "%s \xb7 %d", name, cg.scores[order[0]].score );
+		mh.kvColor[1] = mhWhite;
+		l->kvCount = 2;
+	}
+	for ( i = 0; i < l->kvCount; i++ ) {
+		l->kvKey[i] = mh.kvKey[i];
+		l->kvValue[i] = mh.kvValue[i];
+		l->kvSize[i] = 0.0f;
+	}
+
+	l->orderTitle = "Frag order";
+	l->orderRight = "Frags";
+	l->standings = cg_hudShowOpponentList.integer && count > 0 && !cg.showScores &&
+	               cg.predictedPlayerState.pm_type != PM_INTERMISSION && !CG_IntroCam_IsActive();
+	if ( !l->standings ) return;
+	rows = count < MH_ROWS_MAX ? count : MH_ROWS_MAX;
+	first = 0;
+	if ( count > rows ) {
+		first = ( me >= 0 ? me : 0 ) - rows / 2;
+		if ( first < 0 ) first = 0;
+		if ( first > count - rows ) first = count - rows;
+	}
+	for ( i = 0; i < rows; i++ ) {
+		const score_t *sc = &cg.scores[order[first + i]];
+		Com_sprintf( mh.rowPos[i], sizeof( mh.rowPos[0] ), "%02d", first + i + 1 );
+		MH_Plain( cgs.clientinfo[sc->client].name, mh.rowName[i], sizeof( mh.rowName[0] ) );
+		Com_sprintf( mh.rowValue[i], sizeof( mh.rowValue[0] ), "%d", sc->score );
+		mh.rowMe[i] = sc->client == ps->clientNum;
+		mh.rowColor[i] = mh.rowNameColor[i] = NULL;
+		l->rowPos[i] = mh.rowPos[i];
+		l->rowName[i] = mh.rowName[i];
+		l->rowValue[i] = mh.rowValue[i];
+	}
+	l->rowCount = rows;
 }
 
 /* derby: the score, the time left to ram someone before the game takes the
@@ -555,6 +650,7 @@ static void MH_LastCar( mhRaceLayout_t *l, const playerState_t *ps, const centit
 
 /* the race with weapons, and the races in teams */
 #define MH_COMBAT()		( cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM || cgs.gametype == GT_LCS || \
+						  cgs.gametype == GT_DEATHMATCH || \
 						  ( cgs.gametype == GT_ELIMINATION && cgs.eliminationWeapons ) )
 #define MH_TEAMRACE()	( cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_TEAM_RACING_DM )
 
@@ -818,7 +914,7 @@ static void MH_Prepare( void ) {
 	             cgs.gametype == GT_TEAM_RACING ? "Team race" : cgs.gametype == GT_RACING_DM ? "Race combat" :
 	             cgs.gametype == GT_TEAM_RACING_DM ? "Team race combat" :
 	             cgs.gametype == GT_ELIMINATION ? "Elimination" : cgs.gametype == GT_LCS ? "Last car standing" :
-	             cgs.gametype == GT_DERBY ? "Derby" : "Race",
+	             cgs.gametype == GT_DERBY ? "Derby" : cgs.gametype == GT_DEATHMATCH ? "Deathmatch" : "Race",
 	             mh.rowName[0] );
 	l->title = mh.title;
 	mh.posColor = mhWhite;
@@ -982,6 +1078,7 @@ static void MH_Prepare( void ) {
 
 	if ( cgs.gametype == GT_ELIMINATION ) MH_Elimination( l, at, last, ps, cent );
 	if ( cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY ) MH_LastCar( l, ps, cent );
+	if ( cgs.gametype == GT_DEATHMATCH ) MH_Deathmatch( l, ps );
 
 	/* the top centre */
 	l->mirror = cg_drawRearView.integer && MH_Views() && !cg.scoreBoardShowing;
