@@ -1,8 +1,7 @@
 """Exercise race feedback and finish timing without a running renderer/server."""
 import pathlib
-import shutil
-import subprocess
-import tempfile
+
+from test_plate_and_menu_regressions import CODE, compile_run
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -31,6 +30,13 @@ level_locals_t level;
 vmCvar_t g_gametype, g_finishRaceDelay, g_timeTrialFinishDelay;
 static int notices, recipient;
 static char message[256], broadcast[256];
+static int recordedTeamTime, submittedTeamTime;
+void QDECL G_LogPrintf(const char *format, ...) {}
+void trap_SetConfigstring(int index, const char *value) {}
+void G_Profile_FlushIfDirty(void) {}
+qboolean G_Profile_IsDirty(void) { return qfalse; }
+static void G_RecordMatchOutcome(void) { recordedTeamTime = level.teamTimes[TEAM_RED]; }
+static void G_LadderSubmitMatchReport(const char *reason) { submittedTeamTime = level.teamTimes[TEAM_RED]; }
 char *QDECL va(char *format, ...) {
     static char result[1024]; va_list ap;
     va_start(ap,format); vsnprintf(result,sizeof(result),format,ap); va_end(ap);
@@ -44,11 +50,49 @@ void trap_SendServerCommand(int client, const char *text) {
     harness += function(server, 'static void G_RallyWarnMissedCheckpoint(') + '\n'
     harness += function(server, 'static const char *G_RallyPlaceString(') + '\n'
     harness += function(server, 'static void G_RallyReportFinish(') + '\n'
+    harness += function(server, 'static void G_RallyUpdateTeamTime(') + '\n'
+    harness += function(server, 'void G_RallyUpdateAllTeamTimes(') + '\n'
+    harness += function(rules, 'void LogExit( const char *string ) {') + '\n'
     harness += function(rules, 'static qboolean G_RaceFinishDelayElapsed(') + '\n'
     harness += function(rally, 'qboolean isRallyDMRace(') + '\n'
     harness += function(shared, 'float Com_Clamp(') + '\n'
     harness += function(hud, 'static qboolean CG_IsMovingAwayFromCheckpoint(') + '\n'
     harness += r'''
+static void TestTeamTimesAtRaceEnd(void) {
+    static gclient_t drivers[3];
+
+    level.clients = drivers;
+    level.maxclients = ARRAY_LEN(drivers);
+    level.startRaceTime = 10000;
+    level.time = 60000;
+    drivers[0].pers.connected = drivers[1].pers.connected = CON_CONNECTED;
+    drivers[0].sess.sessionTeam = drivers[1].sess.sessionTeam = TEAM_RED;
+    drivers[0].finishRaceTime = 40000;
+    drivers[2].sess.sessionTeam = TEAM_RED; /* Disconnected drivers are excluded. */
+
+    g_gametype.integer = GT_TEAM_RACING;
+    G_RallyUpdateAllTeamTimes();
+    assert(level.teamTimes[TEAM_RED] == 40000);
+
+    g_gametype.integer = GT_TEAM_RACING_DM;
+    level.teamScores[TEAM_RED] = 4;
+    level.time = 70000;
+    LogExit("Race finished.");
+    assert(level.intermissionQueued == 70000);
+    assert(recordedTeamTime == 43000 && submittedTeamTime == 43000);
+    assert(!strcmp(broadcast, "times 43000 0 0 0"));
+    assert(!drivers[1].finishRaceTime);
+
+    notices = 0;
+    level.time = 70500;
+    G_RallyUpdateAllTeamTimes();
+    level.intermissionQueued = 0;
+    level.intermissiontime = 71000;
+    level.time = 80000;
+    G_RallyUpdateAllTeamTimes();
+    assert(level.teamTimes[TEAM_RED] == 43000 && !notices);
+}
+
 static void TestFinishDelay(void) {
     level.finishRaceTime = 20000;
     g_finishRaceDelay.integer = 30;
@@ -166,13 +210,57 @@ int main(void) {
     target[0]=0; assert(!CG_IsMovingAwayFromCheckpoint(velocity,target,180));
     TestFinishDelay();
     TestFinishMessages(&car);
+    TestTeamTimesAtRaceEnd();
     return 0;
 }
 '''
-    compiler = shutil.which('gcc') or 'C:/msys64/mingw64/bin/gcc.exe'
-    with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as directory:
-        c = pathlib.Path(directory) / 'feedback.c'
-        binary = pathlib.Path(directory) / 'feedback.exe'
-        c.write_text(harness)
-        subprocess.run([compiler,'-DARCH_STRING="test"',str(c),'-o',str(binary),'-lm'],check=True)
-        subprocess.run([str(binary)],check=True,timeout=5)
+    compile_run(harness)
+
+
+def test_scoreboard_time_stops_for_dnf():
+    scoreboard = (CODE / 'cgame/cg_scoreboard.c').read_text()
+    modes = (CODE / 'game/bg_misc.c').read_text()
+    harness = r'''
+#include "cgame/cg_local.h"
+#include <assert.h>
+cg_t cg;
+cgs_t cgs;
+centity_t cg_entities[MAX_GENTITIES];
+'''
+    harness += function(modes, 'qboolean BG_GametypeIsRace(') + '\n'
+    harness += function(modes, 'qboolean BG_GametypeHasRaceFinish(') + '\n'
+    for signature in (
+        'static qboolean CG_HasRaceFinishStatus(',
+        'static qboolean CG_ScoreboardDriverDnf(',
+        'static int CG_ScoreboardTotalRaceTime(',
+    ):
+        harness += function(scoreboard, signature) + '\n'
+    harness += r'''
+int main(void) {
+    static snapshot_t snapshot;
+    score_t score = {0};
+    score.client = 1;
+    score.time = 10000;
+    cgs.gametype = GT_TEAM_RACING;
+    cg.snap = &snapshot;
+    cg.time = 20000;
+    assert(!CG_ScoreboardDriverDnf(&score));
+    assert(CG_ScoreboardTotalRaceTime(&score) == 10000);
+
+    cg.intermissionStarted = qtrue;
+    assert(CG_ScoreboardDriverDnf(&score));
+    assert(CG_ScoreboardTotalRaceTime(&score) == 0);
+    cg.intermissionStarted = qfalse;
+    snapshot.ps.pm_type = PM_INTERMISSION;
+    cg.time = 30000;
+    cgs.gametype = GT_TEAM_RACING_DM;
+    assert(CG_ScoreboardDriverDnf(&score));
+    assert(CG_ScoreboardTotalRaceTime(&score) == 0);
+
+    cg_entities[1].finishRaceTime = 18000;
+    assert(!CG_ScoreboardDriverDnf(&score));
+    assert(CG_ScoreboardTotalRaceTime(&score) == 8000);
+    return 0;
+}
+'''
+    compile_run(harness)

@@ -121,6 +121,23 @@ static qboolean CG_HasRaceFinishStatus(void) {
     return BG_GametypeHasRaceFinish( cgs.gametype );
 }
 
+static qboolean CG_ScoreboardDriverDnf( const score_t *score ) {
+    return CG_HasRaceFinishStatus() && score->time > 0 &&
+           !cg_entities[score->client].finishRaceTime &&
+           ( cg.intermissionStarted || ( cg.snap && cg.snap->ps.pm_type == PM_INTERMISSION ) );
+}
+
+static int CG_ScoreboardTotalRaceTime( const score_t *score ) {
+    int finishTime = cg_entities[score->client].finishRaceTime;
+    if ( finishTime ) {
+        return finishTime - score->time;
+    }
+    if ( score->time && !CG_ScoreboardDriverDnf( score ) ) {
+        return cg.time - score->time;
+    }
+    return 0;
+}
+
 /*
 =================
 CG_IsTeamGametype
@@ -943,7 +960,7 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
             break;
 
         case SBCOL_DELTA:
-            if (ci->team == TEAM_SPECTATOR) {
+            if (ci->team == TEAM_SPECTATOR || CG_ScoreboardDriverDnf( score )) {
                 CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
             } else if ( ( leaderClient = CG_GetScoreboardRaceLeaderClient() ) == score->client ) {
                 deltaColor[0] = Q3RALLY_ACCENT_RED;
@@ -977,17 +994,9 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
                 CG_DragResultText( colType, &cg_entities[score->client], buffer, sizeof( buffer ) );
                 CG_DrawModernText(x, y, buffer, 1, width, textColor, qfalse);
             } else {
-                if (cg_entities[score->client].finishRaceTime) {
-                    totalTime = cg_entities[score->client].finishRaceTime - score->time;
-                } else if (score->time) {
-                    totalTime = cg.time - score->time;
-                } else {
-                    totalTime = 0;
-                }
-                
+                totalTime = CG_ScoreboardTotalRaceTime( score );
                 if (totalTime > 0) {
-//                    timeStr = getStringForTime(totalTime);
-                      timeStr = getStringForTimePrecise(totalTime);
+                    timeStr = getStringForTimePrecise(totalTime);
                     CG_DrawModernText(x, y, timeStr, 1, width, textColor, qfalse);
                 } else {
                     CG_DrawModernText(x, y, "-", 1, width, textColor, qfalse);
@@ -1063,8 +1072,8 @@ static void CG_DrawColumnData(sbColumn_t colType, int x, int y, int width,
                 }
                 ghostResultColor[3] = fade;
                 CG_DrawModernText(x, y, ghostWon ? "WON" : "LOST", 1, width, ghostResultColor, qfalse);
-            } else if (CG_HasRaceFinishStatus() &&
-                       cg_entities[score->client].startRaceTime > 0) {
+            } else if (ci->team != TEAM_SPECTATOR && CG_HasRaceFinishStatus() &&
+                       score->time > 0) {
                 if (cg_entities[score->client].finishRaceTime > 0) {
                     CG_DrawModernText(x, y, "FINISHED", 1, width, readyColor, qfalse);
                 } else {

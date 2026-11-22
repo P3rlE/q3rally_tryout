@@ -2579,7 +2579,10 @@ void BeginIntermission( void ) {
 		return;		// already active
 	}
 
-        // update wins / losses for the completed match
+        // Direct entry into intermission can bypass LogExit.
+        if ( !level.matchOutcomeRecorded ) {
+                G_RallyUpdateAllTeamTimes();
+        }
         G_RecordMatchOutcome();
 
         level.intermissiontime = level.time;
@@ -2785,6 +2788,8 @@ void LogExit( const char *string ) {
 #endif
 	G_LogPrintf( "Exit: %s\n", string );
 
+	// Use the race cutoff for DNFs before recording or submitting team results.
+	G_RallyUpdateAllTeamTimes();
         level.intermissionQueued = level.time;
 
 	// this will keep the clients from playing any voice sounds

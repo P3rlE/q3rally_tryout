@@ -231,10 +231,7 @@ void Cmd_RacePositions_f( void ) {
 
 
 void Cmd_Times_f( gentity_t *ent ) {
-	// Send current team race times to the requesting client.
-	// level.teamTimes[] is kept up-to-date by G_RallyUpdateTeamTime() in
-	// g_rally_mapents.c whenever a player crosses the finish line.
-	// For non-team or non-race modes the values are 0, which is harmless.
+	// Send the cached live or final team race times to the requesting client.
 	trap_SendServerCommand( ent - g_entities, va( "times %i %i %i %i",
 		level.teamTimes[TEAM_RED],
 		level.teamTimes[TEAM_BLUE],
@@ -355,7 +352,7 @@ void CalculatePlayerPositions( void )
 //	if (level.startRaceTime + FRAMETIME > level.time || level.startRaceTime == 0){
 //		return;
 //	}
-	if (!isRallyRace()){
+	if ( !isRallyRace() || level.intermissionQueued || level.intermissiontime ) {
 		return;
 	}
 
