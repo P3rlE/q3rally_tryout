@@ -6042,6 +6042,42 @@ function profile_collect_team_times(array $payload): array
     return $timesByTeam;
 }
 
+function match_reported_winner_client_num(array $payload): int
+{
+    foreach ([$payload, $payload['settings'] ?? []] as $source) {
+        if (is_array($source) && isset($source['winnerClientNum']) && is_numeric($source['winnerClientNum'])) {
+            return (int)$source['winnerClientNum'];
+        }
+    }
+    return -1;
+}
+
+function match_individual_winner_client_num(array $players, string $mode, int $reportedWinner): int
+{
+    $needsFinish = mode_is_race($mode);
+    if (!$needsFinish && $reportedWinner >= 0) {
+        return $reportedWinner;
+    }
+
+    $firstPlace = [];
+    foreach ($players as $player) {
+        if (!is_array($player) || ($needsFinish && extract_player_race_time($player, $mode) <= 0)) {
+            continue;
+        }
+        $clientNum = (int)($player['clientNum'] ?? -1);
+        if ($clientNum < 0) {
+            continue;
+        }
+        if ($clientNum === $reportedWinner) {
+            return $clientNum;
+        }
+        if (empty($player['isBot']) && (int)($player['position'] ?? 0) === 1) {
+            $firstPlace[] = $clientNum;
+        }
+    }
+    return count($firstPlace) === 1 ? $firstPlace[0] : -1;
+}
+
 function profile_upsert_from_payload(array $payload): void
 {
     $players = $payload['players'] ?? [];
@@ -6053,24 +6089,11 @@ function profile_upsert_from_payload(array $payload): void
     $teamModes = ['GT_TEAM', 'GT_TEAM_RACING', 'GT_TEAM_RACING_DM', 'GT_CTF', 'GT_CTF4', 'GT_DOMINATION', 'GT_KOTH', 'GT_AUTOBALL'];
     $isTeamMode = in_array($mode, $teamModes, true);
     $isTeamRaceMode = in_array($mode, ['GT_TEAM_RACING', 'GT_TEAM_RACING_DM'], true);
-    $winnerClientNum = -1;
-    $hasWinnerClientNum = false;
-    if (array_key_exists('winnerClientNum', $payload) &&
-        (is_int($payload['winnerClientNum']) ||
-         is_float($payload['winnerClientNum']) ||
-         (is_string($payload['winnerClientNum']) && is_numeric($payload['winnerClientNum'])))) {
-        $winnerClientNum = (int) $payload['winnerClientNum'];
-        $hasWinnerClientNum = $winnerClientNum >= 0;
-    } elseif (isset($payload['settings']) &&
-              is_array($payload['settings']) &&
-              array_key_exists('winnerClientNum', $payload['settings']) &&
-              (is_int($payload['settings']['winnerClientNum']) ||
-               is_float($payload['settings']['winnerClientNum']) ||
-               (is_string($payload['settings']['winnerClientNum']) && is_numeric($payload['settings']['winnerClientNum'])))) {
-        // Legacy fallback: old payloads nested the winner in settings.
-        $winnerClientNum = (int) $payload['settings']['winnerClientNum'];
-        $hasWinnerClientNum = $winnerClientNum >= 0;
+    $winnerClientNum = match_reported_winner_client_num($payload);
+    if (!$isTeamMode && $mode !== 'GT_DRAG') {
+        $winnerClientNum = match_individual_winner_client_num($players, $mode, $winnerClientNum);
     }
+    $hasWinnerClientNum = $winnerClientNum >= 0;
 
     $humanPlayers = [];
     foreach ($players as $candidate) {
@@ -6082,12 +6105,14 @@ function profile_upsert_from_payload(array $payload): void
         $humanPlayers[] = [
             'clientNum' => $candidateClientNum,
             'team' => $candidateTeam,
-            'position' => (int)($candidate['position'] ?? 0),
         ];
     }
 
     $winnerTeam = null;
-    if ($isTeamMode) {
+    $teamTimes = $isTeamRaceMode ? profile_collect_team_times($payload) : [];
+    if ($teamTimes) {
+        $winnerTeam = profile_pick_winner_team_by_lowest_time($teamTimes);
+    } elseif ($isTeamMode) {
         if ($hasWinnerClientNum) {
             foreach ($humanPlayers as $hp) {
                 if ($hp['clientNum'] === $winnerClientNum && $hp['team'] !== '') {
@@ -6095,9 +6120,6 @@ function profile_upsert_from_payload(array $payload): void
                     break;
                 }
             }
-        }
-        if ($winnerTeam === null && $isTeamRaceMode) {
-            $winnerTeam = profile_pick_winner_team_by_lowest_time(profile_collect_team_times($payload));
         }
         if ($winnerTeam === null && isset($payload['teams']) && is_array($payload['teams'])) {
             $teamScores = [];
@@ -6151,17 +6173,6 @@ function profile_upsert_from_payload(array $payload): void
             }
 
             $winnerTeam = profile_pick_winner_team_by_scores($teamScores);
-        }
-    }
-
-    if (!$hasWinnerClientNum && !$isTeamMode && $mode !== 'GT_DRAG') {
-        $positionOne = array_values(array_filter(
-            $humanPlayers,
-            static fn($hp) => (int)($hp['position'] ?? 0) === 1
-        ));
-        if (count($positionOne) === 1) {
-            $winnerClientNum = (int)$positionOne[0]['clientNum'];
-            $hasWinnerClientNum = $winnerClientNum >= 0;
         }
     }
 
@@ -6340,7 +6351,7 @@ function profile_upsert_from_payload(array $payload): void
 
         $isRaceCareerMode = in_array($mode, ['GT_RACING', 'GT_RACING_DM', 'GT_SPRINT', 'GT_TEAM_RACING', 'GT_TEAM_RACING_DM'], true);
         $racePosition = (int)($player['position'] ?? $player['rank'] ?? 0);
-        $isRacePodium = $racePosition > 0 && $racePosition <= 3;
+        $isRacePodium = $matchRaceMs > 0 && $racePosition > 0 && $racePosition <= 3;
         $raceTotalMs = $isRaceCareerMode ? max(0, $matchRaceMs) : 0;
 
         $careerDeltas = [
@@ -7047,16 +7058,7 @@ function index_derive_winner(array $payload, string $mode): array
     $isTeamMode = in_array($mode, $teamModes, true);
     $isTeamRaceMode = in_array($mode, ['GT_TEAM_RACING', 'GT_TEAM_RACING_DM'], true);
 
-    $winnerClientNum = -1;
-    $hasWinnerClientNum = false;
-    foreach ([$payload, $payload['settings'] ?? []] as $src) {
-        if (!is_array($src)) continue;
-        if (array_key_exists('winnerClientNum', $src) && is_numeric($src['winnerClientNum'])) {
-            $winnerClientNum = (int)$src['winnerClientNum'];
-            $hasWinnerClientNum = $winnerClientNum >= 0;
-            break;
-        }
-    }
+    $winnerClientNum = match_reported_winner_client_num($payload);
 
     $clientToName = [];
     $clientToTeam = [];
@@ -7070,39 +7072,21 @@ function index_derive_winner(array $payload, string $mode): array
     }
 
     if (!$isTeamMode) {
-        if (!$hasWinnerClientNum) {
-            foreach ((array)($payload['players'] ?? []) as $cp) {
-                if (!is_array($cp) || !empty($cp['isBot'])) continue;
-                if ((int)($cp['position'] ?? 0) === 1) {
-                    $winnerClientNum = (int)($cp['clientNum'] ?? -1);
-                    $hasWinnerClientNum = $winnerClientNum >= 0;
-                    break;
-                }
-            }
-        }
-        $name = ($hasWinnerClientNum && isset($clientToName[$winnerClientNum]))
-            ? $clientToName[$winnerClientNum] : '';
+        $winnerClientNum = match_individual_winner_client_num((array)($payload['players'] ?? []), $mode, $winnerClientNum);
+        $name = $clientToName[$winnerClientNum] ?? '';
         return ['winner' => $name, 'winnerTeam' => 0];
     }
 
     // Team racing uses lower aggregate team time. Team Racing DM already has
     // frag bonuses applied to teamTimes by the engine.
-    $winnerTeamInt = 0;
-    if ($hasWinnerClientNum && isset($clientToTeam[$winnerClientNum])) {
-        $winnerTeamInt = $clientToTeam[$winnerClientNum];
-    } elseif ($isTeamRaceMode) {
-        $wt = profile_pick_winner_team_by_lowest_time(profile_collect_team_times($payload));
-        if ($wt !== null) {
-            foreach ((array)($payload['players'] ?? []) as $cp) {
-                if (!is_array($cp)) continue;
-                if (profile_normalize_team_label($cp['team'] ?? null) === $wt) {
-                    $winnerTeamInt = (int)($cp['team'] ?? 0);
-                    break;
-                }
-            }
-        }
+    $teamTimes = $isTeamRaceMode ? profile_collect_team_times($payload) : [];
+    if ($teamTimes) {
+        $winningTeam = profile_pick_winner_team_by_lowest_time($teamTimes);
+        $teamId = array_search($winningTeam, [1 => 'red', 2 => 'blue', 3 => 'green', 4 => 'yellow'], true);
+        return ['winner' => '', 'winnerTeam' => $teamId ?: 0];
     }
 
+    $winnerTeamInt = $clientToTeam[$winnerClientNum] ?? 0;
     if ($winnerTeamInt !== 0) {
         return ['winner' => '', 'winnerTeam' => $winnerTeamInt];
     }

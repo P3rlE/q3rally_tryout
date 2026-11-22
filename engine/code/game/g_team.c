@@ -1168,6 +1168,10 @@ int Team_TouchOurFlag( gentity_t *ent, gentity_t *other, int team ) {
 	gclient_t	*cl = other->client;
 	int			enemy_flag = 0;
 
+	if ( level.intermissionQueued || level.intermissiontime ) {
+		return 0;
+	}
+
 	if ( g_gametype.integer == GT_CTF4 ) {
 		if ( cl->ps.powerups[PW_REDFLAG] && cl->sess.sessionTeam != TEAM_RED) {
 			enemy_flag = PW_REDFLAG;
@@ -1250,7 +1254,7 @@ int Team_TouchOurFlag( gentity_t *ent, gentity_t *other, int team ) {
         G_Profile_RecordFlagCapture( other->client );
 
 	// other gets another 10 frag bonus
-	AddScore(other, ent->r.currentOrigin, CTF_CAPTURE_BONUS);
+	AddScoreWithoutRankUpdate( other, ent->r.currentOrigin, CTF_CAPTURE_BONUS );
 
 	Team_CaptureFlagSound( ent, team );
 
@@ -1268,12 +1272,12 @@ int Team_TouchOurFlag( gentity_t *ent, gentity_t *other, int team ) {
 		} else if (player->client->sess.sessionTeam ==
 			cl->sess.sessionTeam) {
 #ifdef MISSIONPACK
-			AddScore(player, ent->r.currentOrigin, CTF_TEAM_BONUS);
+			AddScoreWithoutRankUpdate( player, ent->r.currentOrigin, CTF_TEAM_BONUS );
 #endif
 			// award extra points for capture assists
 			if (player->client->pers.teamState.lastreturnedflag + 
 				CTF_RETURN_FLAG_ASSIST_TIMEOUT > level.time) {
-				AddScore (player, ent->r.currentOrigin, CTF_RETURN_FLAG_ASSIST_BONUS);
+				AddScoreWithoutRankUpdate( player, ent->r.currentOrigin, CTF_RETURN_FLAG_ASSIST_BONUS );
                                 other->client->pers.teamState.assists++;
 
                                 player->client->ps.persistant[PERS_ASSIST_COUNT]++;
@@ -1286,7 +1290,7 @@ int Team_TouchOurFlag( gentity_t *ent, gentity_t *other, int team ) {
 			} 
 			if (player->client->pers.teamState.lastfraggedcarrier + 
 				CTF_FRAG_CARRIER_ASSIST_TIMEOUT > level.time) {
-				AddScore(player, ent->r.currentOrigin, CTF_FRAG_CARRIER_ASSIST_BONUS);
+				AddScoreWithoutRankUpdate( player, ent->r.currentOrigin, CTF_FRAG_CARRIER_ASSIST_BONUS );
                                 other->client->pers.teamState.assists++;
                                 player->client->ps.persistant[PERS_ASSIST_COUNT]++;
                                 G_Profile_RecordFlagAssist( player->client );
@@ -1415,6 +1419,10 @@ Sigil_Think
 */
 void Sigil_Think( gentity_t *ent ) {
   team_t team;
+
+  if ( level.intermissionQueued || level.intermissiontime ) {
+    return;
+  }
 
   switch( ent->s.powerups ) {
     case PW_SIGILRED :
@@ -2023,7 +2031,6 @@ qboolean KOTH_HandleOvertime( void ) {
 		if ( level.teamScores[holdingTeam] <= level.teamScores[otherTeam] ) {
 			level.teamScores[holdingTeam] = level.teamScores[otherTeam] + 1;
 		}
-		CalculateRanks();
 		G_LogPrintf( "koth_overtime_end: team=%i hold_ms=%i\n", teamgame.kothOvertimeOwner, holdMs );
 		teamgame.kothOvertimeActive = qfalse;
 		return qtrue;
