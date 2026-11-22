@@ -163,6 +163,11 @@ void AddScore( gentity_t *ent, vec3_t origin, int score ) {
     (void)score;
 }
 
+qboolean AddScoreWithoutRankUpdate( gentity_t *ent, vec3_t origin, int score ) {
+    AddScore( ent, origin, score );
+    return qtrue;
+}
+
 gentity_t *G_Find (gentity_t *from, int fieldofs, const char *match) {
     (void)from;
     (void)fieldofs;

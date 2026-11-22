@@ -639,6 +639,10 @@ static const char *SV_LadderTeamName( int team ) {
                 return "red";
         case TEAM_BLUE:
                 return "blue";
+        case TEAM_GREEN:
+                return "green";
+        case TEAM_YELLOW:
+                return "yellow";
         case TEAM_SPECTATOR:
                 return "spectator";
         default:
