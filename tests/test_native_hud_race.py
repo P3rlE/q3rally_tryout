@@ -18,6 +18,7 @@ SPRINT = json.loads((ROOT / 'tests/fixtures/hud_sprint_layout.json').read_text()
 GHOST = json.loads((ROOT / 'tests/fixtures/hud_ghost_layout.json').read_text())['els']
 TEAM_RACE = json.loads((ROOT / 'tests/fixtures/hud_teamrace_layout.json').read_text())['els']
 CTF = json.loads((ROOT / 'tests/fixtures/hud_ctf_layout.json').read_text())['els']
+END = json.loads((ROOT / 'tests/fixtures/hud_end_racing_layout.json').read_text())['els']
 DRAG = json.loads((ROOT / 'tests/fixtures/hud_drag_layout.json').read_text())['els']
 AUTOBALL = json.loads((ROOT / 'tests/fixtures/hud_autoball_layout.json').read_text())['els']
 KOTH = json.loads((ROOT / 'tests/fixtures/hud_koth_layout.json').read_text())['els']
@@ -185,7 +186,7 @@ def test_the_hud_icons_are_there():
     # tools/ui_webstyle/hud_design/build_hud_icons.py; cgame/cg_hud_modern.c registers them
     source = (ROOT / 'engine/code/cgame/cg_hud_modern.c').read_text()
     for name in ('hud_note', 'hud_prev', 'hud_play', 'hud_next', 'hud_chevron', 'hud_message',
-                 'hud_gun', 'hud_mine', 'hud_smoke', 'hud_flag', 'hud_hill', 'hud_dot'):
+                 'hud_gun', 'hud_mine', 'hud_smoke', 'hud_flag', 'hud_hill', 'hud_dot', 'hud_trophy'):
         png = (ROOT / f'baseq3r/menu/art/{name}.png').read_bytes()
         assert png[16:24] == (64).to_bytes(4, 'big') * 2, name
         assert f'"menu/art/{name}"' in source
@@ -545,4 +546,55 @@ def test_native_drag_hud_matches_the_design():
         + [(f'treeLamp{i}{j}', tree + f'/div:1/div:{i}/div:{j}') for i in range(6) for j in range(2)] \
         + [(f'treeLabel{i}', tree + f'/div:1/div:{i}/div:2') for i in (0, 1, 5)]
     problems = check_all(mine, DRAG, pairs)
+    assert not problems, problems
+
+
+def end_command(fields, width=1600):
+    return [f'hudend {width}', latin('|'.join(str(f) for f in fields))]
+
+
+END_MODEL = ['RACE RESULT', 'DOWNTOWN \u00b7 5 LAPS \u00b7 8 DRIVERS', 'P2', '/ 8', 'FINISHED', '4:21.380',
+             '+1.142 TO THE WINNER',
+             'BEST LAP~0:51.204~;TOP SPEED~214~KM/H;PLACES GAINED~+3~;AVG LAP~0:52.276~',
+             '1~+2.61~L1;0.47~+1.22~L2;0~best~L3;0.18~+0.46~L4;0.42~+1.09~L5',
+             'Sam~4:20.238~~WINNER~0;Player~4:21.380~+1.142~SECOND~1;Carla~4:24.145~+3.907~THIRD~0',
+             'FASTEST LAP~Sam~0:50.871;BEST SECTOR~Player \u00b7 S3~0:11.402;BIGGEST GAIN~Player \u00b7 P5 > P2~+3',
+             'FINAL CLASSIFICATION', '5 LAPS', 0,
+             ';'.join(f'{p}~{n}~{t}~{b}' for p, n, t, b in [
+                 ('01', 'Sam', '4:20.238', '0:50.871'), ('02', 'Player', '+1.142', '0:51.204'),
+                 ('03', 'Carla', '+3.907', '0:51.660'), ('04', 'Tony', '+9.415', '0:52.013'),
+                 ('05', 'Janine', '+12.770', '0:52.390'), ('06', 'Ivan', '+21.004', '0:52.881'),
+                 ('07', 'Minori', '+1 LAP', '0:53.512'), ('08', 'Bee', 'DNF', '0:54.120')]),
+             'FIRE~READY;TAB~DETAILS;ESC~MENU', 'WAITING FOR 5 DRIVERS', '3 / 8 READY']
+
+
+def test_native_end_screen_matches_the_design():
+    mine, = layouts(end_command(END_MODEL))
+    left, pod, aw, lst, foot = '/div:3', '/div:4', '/div:5', '/div:6/div:0', '/div:7'
+    pairs = [('title', '/div:2/div:0'), ('subtitle', '/div:2/div:1'),
+             ('pos', left + '/div:0/div:0'), ('of', left + '/div:0/div:1'),
+             ('doneLabel', left + '/div:1/div:0'), ('doneTime', left + '/div:1/div:1'), ('doneNote', left + '/div:1/div:2'),
+             ('sep0', left + '/div:2'), ('sep1', left + '/div:4'),
+             ('lapsTitle', left + '/div:5/div:0/div:0'), ('lapsNote', left + '/div:5/div:0/div:1'),
+             ('awardsTitle', aw + '/div:0'), ('list', lst), ('listTitle', lst + '/div:0/div:0'),
+             ('listRight', lst + '/div:0/div:1'),
+             ('readyLabel', foot + '/div:1/div:0/div:0'), ('readyValue', foot + '/div:1/div:0/div:1'),
+             ('readyBar', foot + '/div:1/div:1')]
+    pairs += [(f'statLabel{i}', left + f'/div:3/div:{i}/div:0') for i in range(4)]
+    pairs += [(f'statValue{i}', left + f'/div:3/div:{i}/div:1') for i in range(4)]
+    pairs += [(f'lapSlot{i}', left + f'/div:5/div:1/div:{i}') for i in range(5)]
+    # the podium, by place: the winner stands in the middle
+    for place, div in ((0, 1), (1, 0), (2, 2)):
+        card = pod + f'/div:{div}'
+        pairs += [(f'podium{place}', card), (f'podiumCar{place}', card + '/div:0'),
+                  (f'podiumName{place}', card + '/div:1/div:1')]
+    # the third award's "P5 \u2192 P2" has an arrow the game's font does not have
+    for i in range(2):
+        pairs += [(f'award{i}', aw + f'/div:{i + 1}'), (f'awardLabel{i}', aw + f'/div:{i + 1}/div:1/div:0'),
+                  (f'awardValue{i}', aw + f'/div:{i + 1}/div:2/div:0')]
+    pairs += [(f'head{i}', lst + f'/div:1/div:{i}') for i in range(4)]
+    pairs += [(f'row{i}', lst + f'/div:2/div:{i}') for i in range(8)]
+    pairs += [(f'keyName{i}', foot + f'/div:0/div:{i}/div:0') for i in range(3)]
+    pairs += [(f'keyAction{i}', foot + f'/div:0/div:{i}/div:1') for i in range(3)]
+    problems = check_all(mine, END, pairs)
     assert not problems, problems

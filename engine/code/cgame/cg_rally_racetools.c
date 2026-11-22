@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "cg_local.h"
 #include "cg_race_gap.h"
+#include "cg_race_result.h"
 
 #define MAX_GHOST_FILE_SIZE ( 2 * 1024 * 1024 )
 #define CG_GHOST_SAMPLE_MIN_DISTANCE 72.0f
@@ -1784,12 +1785,31 @@ void CG_UpdateGhostSplitDelta( void ) {
         cg.ghostSplitLastNextCheckpoint = nextCheckpoint;
 }
 
+/* the race for the end screen (cg_race_result.c): every driver's laps,
+ * best sector, position at the start */
+static cgRaceResult_t s_raceResults[MAX_CLIENTS];
+
+const cgRaceResult_t *CG_RaceResult( int client ) {
+	return client >= 0 && client < MAX_CLIENTS ? &s_raceResults[client] : NULL;
+}
+
+/* the server's positions: before the start (and until the first one
+ * arrives) that is the grid */
+void CG_RaceResultPosition( int client, int position ) {
+	cgRaceResult_t *r;
+	if ( client < 0 || client >= MAX_CLIENTS ) return;
+	r = &s_raceResults[client];
+	r->position = position;
+	if ( !r->present || !r->grid ) r->grid = position;
+}
+
 void CG_RecordRaceSplit( int client, int lap, int checkpoint, int time ) {
 	if ( client < 0 || client >= MAX_CLIENTS || lap <= 0 ||
 	     checkpoint <= 0 || time <= 0 ) {
 		return;
 	}
 	CG_RaceSplitAdd( &s_raceSplitHistory[client], lap, checkpoint, time );
+	CG_ResultSplit( &s_raceResults[client], checkpoint, time );
 }
 
 /* the gap of a driver to one ahead (cg_race_gap.c): at the last checkpoint
@@ -1814,6 +1834,7 @@ void CG_NewLapTime( int client, int lap, int time ) {
 	char		*t;
 
 	cent = &cg_entities[client];
+	if ( client >= 0 && client < MAX_CLIENTS ) CG_ResultLap( &s_raceResults[client], time );
 
         if ((time - cent->startLapTime) < cent->bestLapTime || cent->bestLapTime == 0){
                 // New bestlap
@@ -1878,6 +1899,7 @@ void CG_FinishedRace( int client, int time ) {
 	}
 
         cent->finishRaceTime = time;
+	CG_ResultFinish( &s_raceResults[client], time );
 
         if ( client == cg.snap->ps.clientNum ) {
                 if ( isRallyRace() && cgs.gametype != GT_GHOST &&
@@ -1918,6 +1940,11 @@ void CG_StartRace( int time ) {
 	cg.wrongWayTime = 0;
 	s_raceOrderActive = qtrue;
 	memset( s_raceSplitHistory, 0, sizeof( s_raceSplitHistory ) );
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( cgs.clientinfo[i].infoValid && cgs.clientinfo[i].team != TEAM_SPECTATOR ) CG_ResultStart( &s_raceResults[i], time );
+		else s_raceResults[i].present = 0;
+	}
+	cg.raceTopSpeed = 0.0f;
 	CG_LadderGhost_ClosePicker();
 	CG_GhostRace_ResetRace();
 

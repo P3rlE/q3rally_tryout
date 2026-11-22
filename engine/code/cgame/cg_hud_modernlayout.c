@@ -1126,3 +1126,312 @@ void MH_SpectatorLayout( mhSpectatorLayout_t *s ) {
 	MH_Place( &s->hint1T, x + w - s->hint1T.box.w, y + above - MH_Base( &s->hint1T ) );
 	MH_Place( &s->hint2T, x + w - s->hint2T.box.w, s->hint1T.box.y + s->hint1T.box.h + 4.0f );
 }
+
+/* -------------------------------------------------------------------------
+   the end screen of a race (gen.py EndRacing)
+   ------------------------------------------------------------------------- */
+
+#define MH_END_MARGIN		56.0f
+#define MH_END_TOP			92.0f
+#define MH_END_LEFT_W		380.0f
+#define MH_END_PODIUM_X		476.0f
+#define MH_END_PODIUM_W		600.0f
+#define MH_END_PODIUM_H		410.0f
+#define MH_END_LIST_W		420.0f
+
+/* a label over a figure: the column as wide as w */
+static float MH_EndStat( mhText_t *label, mhText_t *value, mhText_t *unit, float x, float y, float w ) {
+	MH_Place( label, x, y );
+	label->box.w = w;
+	MH_Place( value, x, y + label->box.h + 4.0f );
+	if ( unit->text[0] ) MH_Place( unit, x + MH_Width( value ) + 6.0f, value->box.y + MH_Base( value ) - MH_Base( unit ) );
+	value->box.w = w;
+	return label->box.h + 4.0f + value->box.h;
+}
+
+/* the left column: the place, the time, four figures, your laps */
+static void MH_EndLeft( mhEndLayout_t *e ) {
+	wsTextStyle_t big168, big48, big44, big30, label12, label11, label10, mono11;
+	float x = MH_END_MARGIN, y = e->top + MH_END_TOP, w = MH_END_LEFT_W, h, slot;
+	int i;
+
+	MH_Big( &big168, 168.0f );
+	MH_Big( &big48, 48.0f );
+	MH_Big( &big44, 44.0f );
+	MH_Big( &big30, 30.0f );
+	MH_Label( &label12, 12.0f );
+	MH_Label( &label11, 11.0f );
+	MH_Label( &label10, 10.0f );
+	MH_Mono( &mono11, 11.0f );
+
+	/* "P2" and "/ 8" on one baseline, 14px apart */
+	MH_Set( &e->posT, &big168, e->pos );
+	MH_Set( &e->ofT, &big48, e->of ? e->of : "" );
+	MH_Place( &e->posT, x, y );
+	MH_Place( &e->ofT, x + e->posT.box.w + 14.0f, y + MH_Base( &e->posT ) - MH_Base( &e->ofT ) );
+	y += e->posT.box.h + 22.0f - 18.0f;
+
+	/* finished: label, time, note, 6px apart, blocks over the column */
+	MH_Set( &e->doneLabelT, &label12, e->doneLabel );
+	MH_Set( &e->doneTimeT, &big44, e->doneTime );
+	MH_Set( &e->doneNoteT, &label12, e->doneNote ? e->doneNote : "" );
+	MH_Place( &e->doneLabelT, x, y );
+	MH_Place( &e->doneTimeT, x, y + e->doneLabelT.box.h + 6.0f );
+	MH_Place( &e->doneNoteT, x, e->doneTimeT.box.y + e->doneTimeT.box.h + 6.0f );
+	e->doneLabelT.box.w = e->doneTimeT.box.w = e->doneNoteT.box.w = w;
+	y = e->doneNoteT.box.y + e->doneNoteT.box.h + 22.0f;
+
+	e->sep[0].x = x;
+	e->sep[0].y = y;
+	e->sep[0].w = w;
+	e->sep[0].h = 1.0f;
+	y += 1.0f + 22.0f;
+
+	/* the figures: two columns 24px apart, rows 18px apart */
+	h = 0.0f;
+	for ( i = 0; i < e->statCount && i < MH_END_STATS; i++ ) {
+		float cw = ( w - 24.0f ) * 0.5f, cx = x + ( i & 1 ) * ( cw + 24.0f ), ch;
+		MH_Set( &e->statLabelT[i], &label11, e->statLabel[i] );
+		MH_Set( &e->statValueT[i], &big30, e->statValue[i] );
+		MH_Set( &e->statUnitT[i], &label11, e->statUnit[i] ? e->statUnit[i] : "" );
+		ch = MH_EndStat( &e->statLabelT[i], &e->statValueT[i], &e->statUnitT[i], cx, y, cw );
+		if ( ch > h ) h = ch;
+		if ( ( i & 1 ) || i == e->statCount - 1 ) {
+			y += h + ( i < e->statCount - 1 ? 18.0f : 0.0f );
+			h = 0.0f;
+		}
+	}
+	y += 22.0f;
+	e->sep[1].x = x;
+	e->sep[1].y = y;
+	e->sep[1].w = w;
+	e->sep[1].h = 1.0f;
+	y += 1.0f + 22.0f;
+
+	/* your laps: the row, 12px, the chart: slots 8px apart, a 56px bar
+	 * area, 6px, the value, 6px, the lap */
+	MH_Set( &e->lapsTitleT, &label12, "YOUR LAPS" );
+	MH_Set( &e->lapsNoteT, &label11, "LOST TO YOUR BEST" );
+	y += MH_BaselineRow( &e->lapsTitleT, &e->lapsNoteT, x, y, w ) + 12.0f;
+	if ( e->lapCount <= 0 ) return;
+	slot = ( w - 8.0f * ( e->lapCount - 1 ) ) / e->lapCount;
+	for ( i = 0; i < e->lapCount && i < MH_END_LAPS; i++ ) {
+		float sx = x + i * ( slot + 8.0f ), bh = 56.0f * e->lapFrac[i];
+		if ( bh < 3.0f ) bh = 3.0f;
+		e->lapSlot[i].x = sx;
+		e->lapSlot[i].y = y;
+		e->lapSlot[i].w = slot;
+		e->lapBar[i].x = sx;
+		e->lapBar[i].w = slot;
+		e->lapBar[i].h = bh;
+		e->lapBar[i].y = y + 56.0f - bh;
+		MH_Set( &e->lapValueT[i], &mono11, e->lapValue[i] );
+		MH_Set( &e->lapNameT[i], &label10, e->lapName[i] );
+		MH_Place( &e->lapValueT[i], sx + ( slot - e->lapValueT[i].box.w ) * 0.5f, y + 56.0f + 6.0f );
+		MH_Place( &e->lapNameT[i], sx + ( slot - e->lapNameT[i].box.w ) * 0.5f,
+		          e->lapValueT[i].box.y + e->lapValueT[i].box.h + 6.0f );
+		e->lapSlot[i].h = e->lapNameT[i].box.y + e->lapNameT[i].box.h - y;
+	}
+}
+
+/* a card on the podium: [place - 1]; the car's view carH high; cards stand
+ * on one line */
+static void MH_EndCard( mhEndLayout_t *e, int k, float x, float w, float carH, float bottom ) {
+	wsTextStyle_t big, label11, text20, mono15, mono13;
+	float h, inX, inW, rowH, colH, y;
+
+	MH_Big( &big, k == 0 ? 64.0f : 52.0f );
+	MH_Label( &label11, 11.0f );
+	MH_Text( &text20, 20.0f );
+	MH_Mono( &mono15, 15.0f );
+	MH_Mono( &mono13, 13.0f );
+	MH_Set( &e->podiumPlaceT[k], &big, k == 0 ? "1" : k == 1 ? "2" : "3" );
+	MH_Set( &e->podiumTagT[k], &label11, e->podiumTag[k] );
+	MH_Set( &e->podiumYouT[k], &label11, e->podiumMe[k] ? "YOU" : "" );
+	MH_Set( &e->podiumNameT[k], &text20, e->podiumName[k] );
+	MH_Set( &e->podiumTimeT[k], &mono15, e->podiumTime[k] );
+	MH_Set( &e->podiumGapT[k], &mono13, e->podiumGap[k] ? e->podiumGap[k] : "" );
+	colH = e->podiumTagT[k].box.h + ( e->podiumMe[k] ? 4.0f + e->podiumYouT[k].box.h : 0.0f );
+	rowH = e->podiumPlaceT[k].box.h > colH ? e->podiumPlaceT[k].box.h : colH;
+	h = 2.0f + carH + 12.0f + rowH + 6.0f + e->podiumNameT[k].box.h + 6.0f + e->podiumTimeT[k].box.h + 14.0f + 1.0f;
+
+	e->podium[k].x = x;
+	e->podium[k].w = w;
+	e->podium[k].h = h;
+	e->podium[k].y = bottom - h;
+	e->podiumCar[k].x = x + 1.0f;
+	e->podiumCar[k].y = e->podium[k].y + 2.0f;
+	e->podiumCar[k].w = w - 2.0f;
+	e->podiumCar[k].h = carH;
+	inX = x + 1.0f + 14.0f;
+	inW = w - 2.0f - 28.0f;
+	y = e->podiumCar[k].y + carH + 12.0f;
+	/* the place at the left, YOU over the tag at the right, on the row's bottom */
+	MH_Place( &e->podiumPlaceT[k], inX, y + rowH - e->podiumPlaceT[k].box.h );
+	MH_Place( &e->podiumTagT[k], inX + inW - e->podiumTagT[k].box.w, y + rowH - e->podiumTagT[k].box.h );
+	MH_Place( &e->podiumYouT[k], inX + inW - e->podiumYouT[k].box.w, e->podiumTagT[k].box.y - 4.0f - e->podiumYouT[k].box.h );
+	y += rowH + 6.0f;
+	MH_Fit( &e->podiumNameT[k], inW );
+	MH_Place( &e->podiumNameT[k], inX, y );
+	e->podiumNameT[k].box.w = inW;
+	y += e->podiumNameT[k].box.h + 6.0f;
+	MH_BaselineRow( &e->podiumTimeT[k], &e->podiumGapT[k], inX, y, inW );
+}
+
+/* the middle: the podium (second, winner, third, 12px apart, on one line),
+ * 28px under it the highlights */
+static void MH_EndMiddle( mhEndLayout_t *e ) {
+	wsTextStyle_t label12, label11, text16, mono15;
+	float x = MH_END_PODIUM_X + ( e->viewWidth - 1600.0f ) * 0.5f, top = e->top + MH_END_TOP;
+	float bottom = top + MH_END_PODIUM_H, y;
+	int i;
+
+	if ( e->podiumCount >= 2 ) MH_EndCard( e, 1, x, 192.0f, 176.0f, bottom );
+	if ( e->podiumCount >= 1 ) MH_EndCard( e, 0, x + 192.0f + 12.0f, 210.0f, 236.0f, bottom );
+	if ( e->podiumCount >= 3 ) MH_EndCard( e, 2, x + 192.0f + 12.0f + 210.0f + 12.0f, 192.0f, 140.0f, bottom );
+
+	MH_Label( &label12, 12.0f );
+	MH_Label( &label11, 11.0f );
+	MH_Text( &text16, 16.0f );
+	MH_Mono( &mono15, 15.0f );
+	y = bottom + 28.0f;
+	if ( e->awardCount <= 0 ) return;
+	MH_Set( &e->awardsTitleT, &label12, "HIGHLIGHTS" );
+	MH_Place( &e->awardsTitleT, x, y );
+	e->awardsTitleT.box.w = MH_END_PODIUM_W;
+	y += e->awardsTitleT.box.h + 10.0f;
+	for ( i = 0; i < e->awardCount && i < MH_END_AWARDS; i++ ) {
+		float colH, cx;
+		MH_Set( &e->awardLabelT[i], &label11, e->awardLabel[i] );
+		MH_Set( &e->awardNameT[i], &text16, e->awardName[i] );
+		MH_Set( &e->awardValueT[i], &mono15, e->awardValue[i] );
+		colH = e->awardLabelT[i].box.h + 4.0f + e->awardNameT[i].box.h;
+		e->award[i].x = x;
+		e->award[i].y = y;
+		e->award[i].w = MH_END_PODIUM_W;
+		e->award[i].h = 1.0f + 12.0f + colH + 12.0f + 1.0f;
+		e->awardIcon[i].x = x + 3.0f + 14.0f;
+		e->awardIcon[i].y = y + ( e->award[i].h - 22.0f ) * 0.5f;
+		e->awardIcon[i].w = e->awardIcon[i].h = 22.0f;
+		cx = e->awardIcon[i].x + 22.0f + 12.0f;
+		MH_Place( &e->awardLabelT[i], cx, y + 1.0f + 12.0f );
+		MH_Place( &e->awardNameT[i], cx, e->awardLabelT[i].box.y + e->awardLabelT[i].box.h + 4.0f );
+		MH_Fit( &e->awardNameT[i], MH_END_PODIUM_W - 3.0f - 14.0f - 34.0f - 120.0f );
+		if ( e->awardNameT[i].box.w > e->awardLabelT[i].box.w ) e->awardLabelT[i].box.w = e->awardNameT[i].box.w;
+		else e->awardNameT[i].box.w = e->awardLabelT[i].box.w;
+		MH_Place( &e->awardValueT[i], x + MH_END_PODIUM_W - 1.0f - 14.0f - e->awardValueT[i].box.w,
+		          y + ( e->award[i].h - e->awardValueT[i].box.h ) * 0.5f );
+		y += e->award[i].h + 10.0f;
+	}
+}
+
+/* the classification: a panel; the title row, 12px, the heads, 12px, the
+ * rows (34 high, 24 compact; 2px apart) 8px wider than the panel's inside */
+static void MH_EndList( mhEndLayout_t *e ) {
+	static const char *heads[4] = { "POS", "DRIVER", "TIME", "BEST" };
+	wsTextStyle_t label12, label11, mono14, text16, mono12, text14;
+	float x = e->viewWidth - MH_END_MARGIN - MH_END_LIST_W, inX, inW, y, colX[4], colW[4], rowH;
+	int i, c;
+
+	MH_Label( &label12, 12.0f );
+	MH_Label( &label11, 11.0f );
+	MH_Mono( &mono14, 14.0f );
+	MH_Text( &text16, 16.0f );
+	MH_Mono( &mono12, 12.0f );
+	MH_Text( &text14, 14.0f );
+	e->list.x = x;
+	e->list.y = e->top + MH_END_TOP;
+	e->list.w = MH_END_LIST_W;
+	inX = x + 1.0f + MH_PAD_X;
+	inW = MH_END_LIST_W - 2.0f - 2.0f * MH_PAD_X;
+	y = e->list.y + 2.0f + MH_PAD_Y;
+	MH_Set( &e->listTitleT, &label12, e->listTitle );
+	MH_Set( &e->listRightT, &label12, e->listRight ? e->listRight : "" );
+	y += MH_BaselineRow( &e->listTitleT, &e->listRightT, inX, y, inW ) + 12.0f;
+
+	/* the columns: 34, the rest, 82, 70, 10px apart, inside 8px */
+	colW[0] = 34.0f;
+	colW[2] = 82.0f;
+	colW[3] = 70.0f;
+	colW[1] = inW - 16.0f - colW[0] - colW[2] - colW[3] - 30.0f;
+	colX[0] = 8.0f;
+	for ( c = 1; c < 4; c++ ) colX[c] = colX[c - 1] + colW[c - 1] + 10.0f;
+	for ( c = 0; c < 4; c++ ) {
+		MH_Set( &e->headT[c], &label11, heads[c] );
+		MH_Place( &e->headT[c], inX + colX[c], y );
+		e->headT[c].box.w = colW[c];
+	}
+	y += e->headT[0].box.h + 12.0f;
+
+	rowH = e->compact ? 24.0f : 34.0f;
+	for ( i = 0; i < e->rowCount && i < MH_END_ROWS; i++ ) {
+		wsRect_t *r = &e->row[i];
+		r->x = inX - 8.0f;
+		r->w = inW + 16.0f;
+		r->y = y;
+		r->h = rowH;
+		MH_Set( &e->rowPosT[i], e->compact ? &mono12 : &mono14, e->rowPos[i] );
+		MH_Set( &e->rowNameT[i], e->compact ? &text14 : &text16, e->rowName[i] );
+		MH_Set( &e->rowTimeT[i], e->compact ? &mono12 : &mono14, e->rowTime[i] );
+		MH_Set( &e->rowBestT[i], e->compact ? &mono12 : &mono14, e->rowBest[i] );
+		MH_Fit( &e->rowNameT[i], colW[1] );
+		MH_Place( &e->rowPosT[i], r->x + colX[0], y + ( rowH - e->rowPosT[i].box.h ) * 0.5f );
+		MH_Place( &e->rowNameT[i], r->x + colX[1], y + ( rowH - e->rowNameT[i].box.h ) * 0.5f );
+		MH_Place( &e->rowTimeT[i], r->x + colX[2], y + ( rowH - e->rowTimeT[i].box.h ) * 0.5f );
+		MH_Place( &e->rowBestT[i], r->x + colX[3], y + ( rowH - e->rowBestT[i].box.h ) * 0.5f );
+		/* the cells: the columns' width; time and best at the right */
+		e->rowPosT[i].box.w = colW[0];
+		e->rowNameT[i].box.w = colW[1];
+		e->rowTimeT[i].box.w = colW[2];
+		e->rowBestT[i].box.w = colW[3];
+		y += rowH + ( i < e->rowCount - 1 ? 2.0f : 0.0f );
+	}
+	e->list.h = y + MH_PAD_Y + 1.0f - e->list.y;
+}
+
+/* the bottom: the keys at the left, who is ready at the right */
+static void MH_EndFooter( mhEndLayout_t *e ) {
+	wsTextStyle_t label12, label11, mono13;
+	float bottom = e->top + MH_DESIGN_HEIGHT - 36.0f, x = MH_END_MARGIN, rx, y, rowH;
+	int i;
+
+	MH_Label( &label12, 12.0f );
+	MH_Label( &label11, 11.0f );
+	MH_Mono( &mono13, 13.0f );
+	rx = e->viewWidth - MH_END_MARGIN - 360.0f;
+	MH_Set( &e->readyLabelT, &label11, e->readyLabel ? e->readyLabel : "" );
+	MH_Set( &e->readyValueT, &mono13, e->readyValue ? e->readyValue : "" );
+	rowH = MH_Base( &e->readyValueT ) > MH_Base( &e->readyLabelT ) ? e->readyValueT.box.h : e->readyLabelT.box.h;
+	y = bottom - 3.0f - 6.0f - rowH;
+	MH_BaselineRow( &e->readyLabelT, &e->readyValueT, rx, y, 360.0f );
+	e->readyBar.x = rx;
+	e->readyBar.y = bottom - 3.0f;
+	e->readyBar.w = 360.0f;
+	e->readyBar.h = 3.0f;
+
+	/* the keys, centred on the block's height */
+	for ( i = 0; i < 3; i++ ) {
+		MH_Set( &e->keyNameT[i], &label12, e->keyName[i] ? e->keyName[i] : "" );
+		MH_Set( &e->keyActionT[i], &label12, e->keyAction[i] ? e->keyAction[i] : "" );
+		MH_Place( &e->keyNameT[i], x, bottom - ( 3.0f + 6.0f + rowH ) * 0.5f - e->keyNameT[i].box.h * 0.5f );
+		MH_Place( &e->keyActionT[i], x + e->keyNameT[i].box.w + 8.0f, e->keyNameT[i].box.y );
+		x = e->keyActionT[i].box.x + e->keyActionT[i].box.w + 28.0f;
+	}
+}
+
+void MH_EndLayout( mhEndLayout_t *e ) {
+	wsTextStyle_t label13, label12;
+
+	MH_Label( &label13, 13.0f );
+	MH_Label( &label12, 12.0f );
+	MH_Set( &e->titleT, &label13, e->title );
+	MH_Set( &e->subtitleT, &label12, e->subtitle ? e->subtitle : "" );
+	MH_Place( &e->titleT, MH_END_MARGIN, e->top + 48.0f );
+	MH_Place( &e->subtitleT, MH_END_MARGIN + e->titleT.box.w + 16.0f,
+	          e->titleT.box.y + MH_Base( &e->titleT ) - MH_Base( &e->subtitleT ) );
+
+	MH_EndLeft( e );
+	MH_EndMiddle( e );
+	MH_EndList( e );
+	MH_EndFooter( e );
+}

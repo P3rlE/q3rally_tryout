@@ -4053,6 +4053,14 @@ static void CG_DrawIntermission( stereoFrame_t stereoFrame ) {
 #endif
 	cg.scoreFadeTime = cg.time;
 
+	/* the v0.9 end screen; TAB shows the scoreboard */
+	if ( CG_ModernHUD_EndActive() && !cg.showScores ) {
+		CG_ModernHUD_DrawEnd();
+		cg.scoreBoardShowing = qtrue;
+		if ( stereoFrame == STEREO_CENTER ) CG_JukeboxFrame();
+		return;
+	}
+
 	if ( CG_IsRaceResults() ) {
 		/* Drag tournament: the bracket once the results had their moment */
 		if ( CG_DrawDragTourney() ) {

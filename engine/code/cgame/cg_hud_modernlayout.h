@@ -213,6 +213,58 @@ typedef struct {
 
 #define MH_MARKER_SIZE	26.0f
 
+/* the end screen of a race (gen.py EndRacing): your result at the left, the
+ * podium with the cars and the highlights in the middle, the classification
+ * at the right, the keys and who is ready at the bottom. Laid out on a
+ * 1600 x 900 page at least; a narrower screen scales the page down. */
+#define MH_END_STATS		4
+#define MH_END_LAPS			12		/* the lap chart: the last ones */
+#define MH_END_ROWS			16		/* the classification; more: yours stays in */
+#define MH_END_AWARDS		3
+
+typedef struct {
+	/* inputs */
+	float		viewWidth;			/* at least 1600 */
+	float		top;				/* the page's offset (a scaled-down page sits in the middle) */
+	const char	*title, *subtitle;	/* "RACE RESULT" "DOWNTOWN · 5 LAPS · 8 DRIVERS" */
+	const char	*pos, *of;			/* "P2" "/ 8" */
+	const char	*doneLabel, *doneTime, *doneNote;	/* "FINISHED" "4:21.380" "+1.142 TO THE WINNER" */
+	int			statCount;
+	const char	*statLabel[MH_END_STATS], *statValue[MH_END_STATS], *statUnit[MH_END_STATS];
+	int			lapCount;			/* the chart: the bars in 0..1, the line under each */
+	float		lapFrac[MH_END_LAPS];
+	const char	*lapValue[MH_END_LAPS], *lapName[MH_END_LAPS];
+	int			podiumCount;		/* places 1..3 there are */
+	const char	*podiumName[3], *podiumTime[3], *podiumGap[3], *podiumTag[3];
+	qboolean	podiumMe[3];
+	int			awardCount;
+	const char	*awardLabel[MH_END_AWARDS], *awardName[MH_END_AWARDS], *awardValue[MH_END_AWARDS];
+	const char	*listTitle, *listRight;	/* "FINAL CLASSIFICATION" "5 LAPS" */
+	int			rowCount;
+	qboolean	compact;			/* more than 8: lower rows */
+	const char	*rowPos[MH_END_ROWS], *rowName[MH_END_ROWS], *rowTime[MH_END_ROWS], *rowBest[MH_END_ROWS];
+	const char	*keyName[3], *keyAction[3];
+	const char	*readyLabel, *readyValue;	/* "WAITING FOR 5 DRIVERS" "3 / 8 READY" */
+
+	/* outputs, by place: [0] the winner, [1] second, [2] third */
+	mhText_t	titleT, subtitleT, posT, ofT, doneLabelT, doneTimeT, doneNoteT;
+	wsRect_t	sep[2];
+	mhText_t	statLabelT[MH_END_STATS], statValueT[MH_END_STATS], statUnitT[MH_END_STATS];
+	mhText_t	lapsTitleT, lapsNoteT, lapValueT[MH_END_LAPS], lapNameT[MH_END_LAPS];
+	wsRect_t	lapSlot[MH_END_LAPS], lapBar[MH_END_LAPS];
+	wsRect_t	podium[3], podiumCar[3];
+	mhText_t	podiumPlaceT[3], podiumTagT[3], podiumYouT[3], podiumNameT[3], podiumTimeT[3], podiumGapT[3];
+	mhText_t	awardsTitleT;
+	wsRect_t	award[MH_END_AWARDS], awardIcon[MH_END_AWARDS];
+	mhText_t	awardLabelT[MH_END_AWARDS], awardNameT[MH_END_AWARDS], awardValueT[MH_END_AWARDS];
+	wsRect_t	list, row[MH_END_ROWS];
+	mhText_t	listTitleT, listRightT, headT[4];
+	mhText_t	rowPosT[MH_END_ROWS], rowNameT[MH_END_ROWS], rowTimeT[MH_END_ROWS], rowBestT[MH_END_ROWS];
+	mhText_t	keyNameT[3], keyActionT[3], readyLabelT, readyValueT;
+	wsRect_t	readyBar;
+} mhEndLayout_t;
+
+void	MH_EndLayout( mhEndLayout_t *e );
 void	MH_ZoneMarkerLayout( mhZoneMarker_t *m );
 void	MH_RaceLayout( mhRaceLayout_t *l );
 void	MH_MessageLayout( mhMessageLayout_t *m );

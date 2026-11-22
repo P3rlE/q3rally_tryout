@@ -2749,6 +2749,7 @@ Q3CGOBJ_ = \
   $(B)/$(BASEGAME)/cgame/cg_hud_derby.o \
   $(B)/$(BASEGAME)/cgame/cg_hud_vehicle.o \
   $(B)/$(BASEGAME)/cgame/cg_race_gap.o \
+  $(B)/$(BASEGAME)/cgame/cg_race_result.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_racetools.o \
   $(B)/$(BASEGAME)/cgame/cg_ghost_picker.o \
   $(B)/$(BASEGAME)/cgame/cg_rally_racingline.o \

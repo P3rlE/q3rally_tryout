@@ -33,6 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../game/bg_achievements.h"
 #include "../game/profile_shared.h"
 #include "cg_public.h"
+#include "cg_race_result.h"
 
 
 // The entire cgame module is unloaded and reloaded on each level change,
@@ -1070,6 +1071,7 @@ typedef struct {
 	int			ghostSplitCheckpoint[MAX_GHOST_SPLITS];
 	int			ghostSplitElapsed[MAX_GHOST_SPLITS];	/* our time into the lap */
 	int			ghostSplitDeltaAt[MAX_GHOST_SPLITS];	/* to the ghost, negative: ahead */
+	float		raceTopSpeed;		/* the end screen: our top speed in this race (display units) */
 } cg_t;
 
 
@@ -2061,6 +2063,7 @@ qhandle_t CG_StatusHandle(int task);
 // cg_player.c
 //
 void CG_Player( centity_t *cent );
+void CG_DrawShowroomCar( float x, float y, float w, float h, int clientNum, float yaw );
 void CG_ResetPlayerEntity( centity_t *cent );
 void CG_AddRefEntityWithPowerups( refEntity_t *ent, entityState_t *state, int team );
 void CG_NewClientInfo( int clientNum );
@@ -2384,6 +2387,8 @@ typedef struct {
 } cgJukeboxView_t;
 qboolean CG_JukeboxView( cgJukeboxView_t *view );
 qboolean CG_ModernHUD_Active( void );
+qboolean CG_ModernHUD_EndActive( void );
+void CG_ModernHUD_DrawEnd( void );
 void CG_ModernHUD_DrawViews( void );
 void CG_ModernHUD_Draw( void );
 void CG_ModernHUD_DrawStandings( void );
@@ -2484,6 +2489,8 @@ void CG_GhostRace_ReportOpponent( void );
 qboolean CG_GhostRace_ClientResult( int clientNum, qboolean *won );
 void CG_AttemptSavePersonalGhost( int finishTime );
 int CG_DragStartLightState( int *reds, qboolean *green, int *greenTime );
+void CG_RaceResultPosition( int client, int position );
+const cgRaceResult_t *CG_RaceResult( int client );
 void CG_DrawRaceCountDown( void );
 void CG_RaceCountDown( const char *str, int secondsLeft );
 void CG_UpdateDragStartSounds( void );

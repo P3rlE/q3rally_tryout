@@ -721,17 +721,157 @@ board('Einblendungen.dc.html', 'Einblendungen und Jukebox', None, [
 
 
 # ---------------------------------------------------------------- canvas index
+# ======================================================================================================
+# End screens (next to the HUD): the race result
+# ======================================================================================================
+CARS = {'viper': '/_blob/cd1e673beb8d39b5864206bcd4132038', 'murcielago': '/_blob/6bdb76631d67a9ecc73e239ee748c9ad',
+        'db12': '/_blob/8baa19f0d9bdc588aabe66c23243706d'}
+if MODE == 'local':
+    CARS = {k: (pathlib.Path(SCENES, f'car_{k}.jpg').as_uri() if SCENES else '') for k in CARS}
+PURPLE = '#b46bff'        # the fastest lap of the race, as on a timing screen
+
+
+def blurred(bg):
+    """The game world behind the result: slow orbit around the winner, dark and soft."""
+    return (f'<img src="{bg}" alt="" style="position: absolute; left: -40px; top: -40px; width: 1680px; height: 980px; '
+            f'object-fit: cover; filter: blur(10px) brightness(0.32) saturate(0.8)">'
+            f'<div style="position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, rgba(0,0,0,0) 0%, '
+            f'rgba(0,0,0,0.55) 100%)"></div>')
+
+
+def car_view(car, w, h):
+    """A 3D window with the car turning on the spot (here a render from the main menu)."""
+    return (f'<div style="width: {w}px; height: {h}px; position: relative; overflow: hidden; '
+            f'background: radial-gradient(ellipse at 50% 70%, #262321 0%, #121212 75%)">'
+            f'<img src="{CARS[car]}" alt="" style="position: absolute; left: 50%; top: 50%; width: {w + 30}px; '
+            f'transform: translate(-50%, -50%); -webkit-mask-image: radial-gradient(ellipse 62% 60% at 50% 55%, #000 55%, transparent 100%); '
+            f'mask-image: radial-gradient(ellipse 62% 60% at 50% 55%, #000 55%, transparent 100%)"></div>')
+
+
+def podium_card(place, name, car, time, gap, w, h, me=False):
+    tag = {1: 'WINNER', 2: 'SECOND', 3: 'THIRD'}[place]
+    border = f'border-top: 2px solid {ACC if place == 1 else "#e6e6e6" if me else LINE};'
+    you = lab('YOU', ACC, 11) if me else ''
+    return (f'<div style="width: {w}px; background: {PANEL}; border: 1px solid {LINE}; {border} '
+            f'box-sizing: border-box; display: flex; flex-direction: column">'
+            f'{car_view(car, w - 2, h)}'
+            f'<div style="padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px">'
+            f'<div style="display: flex; justify-content: space-between; align-items: flex-end">'
+            f'{big(str(place), 64 if place == 1 else 52, ACC if place == 1 else "#ffffff")}'
+            f'<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">{you}{lab(tag, "#999999", 11)}</div></div>'
+            f'{text(name, 20, "#ffffff", 700)}'
+            f'{row(mono(time, 15, "#dddddd"), mono(gap, 13, ACC) if gap else "")}'
+            f'</div></div>')
+
+
+def award(kind, label, name, value, color):
+    return (f'<div style="flex: 1; background: {PANEL}; border: 1px solid {LINE}; border-left: 3px solid {color}; '
+            f'padding: 12px 14px; box-sizing: border-box; display: flex; gap: 12px; align-items: center">'
+            f'{icon(kind, 22, color)}'
+            f'<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">{lab(label, "#999999", 11)}'
+            f'{text(name, 16, "#ffffff")}</div>'
+            f'<div style="margin-left: auto">{mono(value, 15, color)}</div></div>')
+
+
+def classification(rows):
+    head = (f'<div style="display: grid; grid-template-columns: 34px 1fr 82px 70px; gap: 10px; padding: 0 8px">'
+            f'{lab("POS", "#999999", 11)}{lab("DRIVER", "#999999", 11)}'
+            f'<div style="text-align: right">{lab("TIME", "#999999", 11)}</div>'
+            f'<div style="text-align: right">{lab("BEST", "#999999", 11)}</div></div>')
+    out = []
+    for pos, name, gap, best, me, fastest in rows:
+        bg = 'background: rgba(255,85,0,0.18);' if me else ''
+        out.append(f'<div style="display: grid; grid-template-columns: 34px 1fr 82px 70px; gap: 10px; align-items: center; '
+                   f'height: 34px; padding: 0 8px; {bg}">'
+                   f'{mono(pos, 14, ACC if pos == "01" else "#999999")}'
+                   f'{text(name, 16, "#ffffff", 700 if me else 400, "overflow: hidden; text-overflow: ellipsis")}'
+                   f'<div style="text-align: right">{mono(gap, 14, "#dddddd")}</div>'
+                   f'<div style="text-align: right">{mono(best, 14, PURPLE if fastest else "#999999")}</div></div>')
+    return panel(row(lab('Final classification'), lab('5 laps', '#999999')) + head
+                 + f'<div style="display: flex; flex-direction: column; gap: 2px; margin: 0 -8px">{"".join(out)}</div>', gap=12)
+
+
+def lap_chart(laps):
+    """Each lap against your best one: the bar is the time lost, the best lap a thin white line."""
+    best = min(laps)
+    worst = max(laps) - best
+    bars = ''.join(
+        f'<div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px">'
+        f'<div style="height: 56px; width: 100%; display: flex; align-items: flex-end">'
+        f'<div style="width: 100%; height: {max(3, int(56 * (v - best) / worst))}px; '
+        f'background: {"#e6e6e6" if v == best else "#5a5a5a"}"></div></div>'
+        f'{mono("best" if v == best else f"+{v - best:.2f}", 11, "#ffffff" if v == best else "#bbbbbb")}'
+        f'{lab(f"L{i + 1}", "#777777", 10)}</div>'
+        for i, v in enumerate(laps))
+    return f'<div style="display: flex; gap: 8px">{bars}</div>'
+
+
+def stat(k, v, color='#ffffff', unit=''):
+    u = lab(unit, '#777777', 11) if unit else ''
+    return (f'<div style="display: flex; flex-direction: column; gap: 4px">{lab(k, "#999999", 11)}'
+            f'<div style="display: flex; align-items: baseline; gap: 6px">{big(v, 30, color)}{u}</div></div>')
+
+
+def footer(waiting, ready, total):
+    """Q3 waits for the drivers between maps: FIRE says you are ready, the bar how many are."""
+    keys = ''.join(f'<div style="display: flex; gap: 8px; align-items: baseline">{lab(k, "#ffffff", 12)}{lab(a, "#777777", 12)}</div>'
+                   for k, a in (('FIRE', 'READY'), ('TAB', 'DETAILS'), ('ESC', 'MENU')))
+    return (f'<div style="position: absolute; left: 56px; right: 56px; bottom: 36px; display: flex; align-items: center; gap: 40px">'
+            f'<div style="display: flex; gap: 28px">{keys}</div>'
+            f'<div style="margin-left: auto; width: 360px; display: flex; flex-direction: column; gap: 6px">'
+            f'{row(lab(waiting, "#bbbbbb", 11), mono(f"{ready} / {total} READY", 13, "#ffffff"))}{bar(ready / total, ACC, 3)}</div></div>')
+
+
+end_results = [('01', 'Sam', '4:20.238', '0:50.871', False, True), ('02', 'Player', '+1.142', '0:51.204', True, False),
+               ('03', 'Carla', '+3.907', '0:51.660', False, False), ('04', 'Tony', '+9.415', '0:52.013', False, False),
+               ('05', 'Janine', '+12.770', '0:52.390', False, False), ('06', 'Ivan', '+21.004', '0:52.881', False, False),
+               ('07', 'Minori', '+1 LAP', '0:53.512', False, False), ('08', 'Bee', 'DNF', '0:54.120', False, False)]
+
+board('EndRacing.dc.html', 'Race result', None, [
+    blurred(BG['racing']),
+    # the header and your result
+    f'<div style="position: absolute; left: 56px; top: 48px; display: flex; gap: 16px; align-items: baseline">'
+    f'{lab("Race result", ACC, 13)}{lab("Downtown · 5 laps · 8 drivers", "#999999", 12)}</div>',
+    f'<div style="position: absolute; left: 56px; top: 92px; width: 380px; display: flex; flex-direction: column; gap: 22px">'
+    f'<div style="display: flex; align-items: baseline; gap: 14px">{big("P2", 168)}{big("/ 8", 48, "#777777")}</div>'
+    f'<div style="display: flex; flex-direction: column; gap: 6px; margin-top: -18px">{lab("Finished")}'
+    f'{big("4:21.380", 44)}{lab("+1.142 to the winner", ACC, 12)}</div>'
+    + sep() +
+    f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px">'
+    f'{stat("Best lap", "0:51.204")}{stat("Top speed", "214", "#ffffff", "km/h")}'
+    f'{stat("Places gained", "+3", FAST)}{stat("Avg lap", "0:52.276")}</div>'
+    + sep() +
+    f'<div style="display: flex; flex-direction: column; gap: 12px">{row(lab("Your laps"), lab("lost to your best", "#777777", 11))}'
+    + lap_chart([53.81, 52.42, 51.20, 51.66, 52.29]) + '</div></div>',
+    # the podium
+    f'<div style="position: absolute; left: 476px; top: 92px; width: 600px; height: 410px; display: flex; gap: 12px; '
+    f'align-items: flex-end">'
+    + podium_card(2, 'Player', 'viper', '4:21.380', '+1.142', 192, 176, me=True)
+    + podium_card(1, 'Sam', 'murcielago', '4:20.238', '', 210, 236)
+    + podium_card(3, 'Carla', 'db12', '4:24.145', '+3.907', 192, 140) + '</div>',
+    # the awards under the podium
+    f'<div style="position: absolute; left: 476px; top: 530px; width: 600px; display: flex; flex-direction: column; gap: 10px">'
+    f'{lab("Highlights")}'
+    + award('trophy', 'Fastest lap', 'Sam', '0:50.871', PURPLE)
+    + award('flag', 'Best sector', 'Player · S3', '0:11.402', FAST)
+    + award('chevron', 'Biggest gain', 'Player · P5 → P2', '+3', ACC) + '</div>',
+    # the classification
+    col('right: 56px; top: 92px', classification(end_results), 420),
+    footer('WAITING FOR 5 DRIVERS', 3, 8),
+])
+
 order = ['Main.dc.html', 'Zonen.dc.html', 'Sprint.dc.html', 'Ghost.dc.html',
          'Drag.dc.html', 'RacingDM.dc.html', 'Elimination.dc.html', 'LCS.dc.html',
          'Derby.dc.html', 'Deathmatch.dc.html', 'TeamDM.dc.html', 'CTF.dc.html',
-         'Domination.dc.html', 'KOTH.dc.html', 'Autoball.dc.html', 'Einblendungen.dc.html']
+         'Domination.dc.html', 'KOTH.dc.html', 'Autoball.dc.html', 'Einblendungen.dc.html', 'EndRacing.dc.html']
 titles = {'Main.dc.html': 'Rennen (Racing, Team Racing)', 'Zonen.dc.html': 'Zonen und Bausteine', 'Sprint.dc.html': 'Sprint',
           'Ghost.dc.html': 'Ghost Race', 'Drag.dc.html': 'Drag Race', 'RacingDM.dc.html': 'Racing DM (auch Team Racing DM)',
           'Elimination.dc.html': 'Elimination', 'LCS.dc.html': 'Last Car Standing', 'Derby.dc.html': 'Derby',
           'Deathmatch.dc.html': 'Deathmatch', 'TeamDM.dc.html': 'Team Deathmatch', 'CTF.dc.html': 'CTF und CTF4',
           'Domination.dc.html': 'Domination', 'KOTH.dc.html': 'King of the Hill', 'Autoball.dc.html': 'Autoball',
-          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox'}
-rows_titles = ['Aufbau und Rennen', 'Drag, Waffen und Überleben', 'Derby und Arena', 'Ziele, Autoball und Einblendungen']
+          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing (Test)'}
+rows_titles = ['Aufbau und Rennen', 'Drag, Waffen und Überleben', 'Derby und Arena', 'Ziele, Autoball und Einblendungen',
+               'Endbildschirme']
 boards, notes = {}, {}
 for i, n in enumerate(order):
     r, c = divmod(i, 4)

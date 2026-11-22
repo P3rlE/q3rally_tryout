@@ -1559,6 +1559,7 @@ static void CG_ParsePositions( void ) {
 		client = atoi(CG_Argv(i*2 + 2));
 		newPos = atoi(CG_Argv(i*2 + 3));
 
+		CG_RaceResultPosition( client, newPos );
 		if (cg_entities[client].currentPosition != newPos){
 			cg_entities[client].currentPosition = newPos;
 			cg_entities[client].positionChangeTime = cg.time;

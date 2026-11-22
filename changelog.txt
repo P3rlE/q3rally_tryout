@@ -75,6 +75,11 @@ Changed:
   the next respawn wave and the clock, the teams' points over the order,
   weapons and the kill feed. The server sends the players on the hill with
   the hill status.
+- A new end screen for races: your place, time and figures (best lap, top
+  speed, places gained, average lap, your laps as a chart), the podium with
+  each driver's car turning in 3D, highlights (fastest lap, best sector,
+  biggest gain) and the classification with every best lap; how many
+  drivers are ready at the bottom. TAB shows the scoreboard.
 - The new HUD in Drag: the time slip in the card (reaction, 60 ft, 330 ft,
   1/8 and 1/4 mile, trap speed), the duel by lanes with the elapsed times,
   the Christmas tree under it, a wide tachometer at the bottom with the
