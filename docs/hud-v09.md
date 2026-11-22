@@ -119,4 +119,30 @@ them (`level.teamTimes`):
 - The classification with the teams' averages over it and each driver's
   team as a square.
 
-Still to come: the end screens of the other modes and the TAB table.
+## The TAB table
+
+Held with TAB (`+scores`), the game dimmed behind it and the HUD out of the
+way (`TabRacing`, `TabTeamRacing`, `TabDeathmatch`, `TabCTF` on the
+canvas). It no longer comes up on its own when you are wrecked; between
+maps it shows by itself in the modes that have no end screen yet, with how
+many drivers are ready in place of the clock.
+
+- Over it: the mode, the map with the lap or the limit and how many drive,
+  at the right the race time or the clock.
+- Races (Racing, Sprint, Ghost, Elimination, Racing DM, Drag): place,
+  driver with the car, lap, gap to the leader (LEADER, +1 LAP, OUT, DNF, a
+  flag once home), last and best lap (the fastest in purple), ping; one-lap
+  races show the time instead of the laps, Drag RT, ET, total, km/h and the
+  status, Racing DM the frags. Team races put the teams over it (by their
+  drivers' average place) and a square in the team's colour before each
+  name.
+- Combat (Deathmatch, Derby, Last Car Standing): the score big, the damage
+  dealt and taken; those out in grey.
+- Teams (TDM, CTF, CTF4, Domination, KOTH, Autoball): a panel a team side
+  by side (four two by two), its score in the head, the mode's columns:
+  captures, assists and defends; hold time and hill kills; goals, assists,
+  saves and shots; or the damage.
+- Your row is lit, bots show BOT in place of a ping, a ping from 100 on is
+  orange. Under it the spectators and the server with how full it is.
+
+Still to come: the end screens of the other modes.

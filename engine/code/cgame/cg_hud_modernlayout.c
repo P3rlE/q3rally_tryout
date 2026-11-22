@@ -1520,3 +1520,218 @@ void MH_EndLayout( mhEndLayout_t *e ) {
 	MH_EndList( e );
 	MH_EndFooter( e );
 }
+
+/* -------------------------------------------------------------------------
+   the TAB table (gen.py tab_header, tab_table, team_side, tab_footer)
+   ------------------------------------------------------------------------- */
+
+/* the rows of a table from y: the columns 'gap' apart inside 8px of the
+ * row, the row as wide as the panel's inside and 8px either side */
+static float MH_TabRows( mhTabLayout_t *t, int first, int count, float inX, float inW, float y, float gap, float scoreSize ) {
+	float colX[MH_TAB_COLS], colW[MH_TAB_COLS], fixed = 0.0f, rowH = t->compact ? 24.0f : 34.0f;
+	int c, i, rest = -1;
+	wsTextStyle_t mono14, mono13, label11, label10, text16, score;
+	MH_Mono( &mono14, 14.0f );
+	MH_Mono( &mono13, 13.0f );
+	MH_Label( &label11, 11.0f );
+	MH_Label( &label10, 10.0f );
+	MH_Text( &text16, 16.0f );
+	MH_Big( &score, scoreSize );
+
+	for ( c = 0; c < t->colCount; c++ ) {
+		if ( t->colW[c] > 0.0f ) fixed += t->colW[c];
+		else rest = c;
+	}
+	for ( c = 0; c < t->colCount; c++ ) {
+		colW[c] = c == rest ? inW - fixed - gap * ( t->colCount - 1 ) : t->colW[c];
+		colX[c] = c == 0 ? inX : colX[c - 1] + colW[c - 1] + gap;
+	}
+	for ( i = first; i < first + count && i < MH_TAB_ROWS; i++ ) {
+		wsRect_t *r = &t->row[i];
+		r->x = inX - 8.0f;
+		r->y = y;
+		r->w = inW + 16.0f;
+		r->h = rowH;
+		for ( c = 0; c < t->colCount; c++ ) {
+			mhText_t *ct = &t->cellT[i][c];
+			const char *v = t->cell[i][c] ? t->cell[i][c] : "";
+			switch ( t->colKind[c] ) {
+			case MH_TAB_NAME: {
+				mhText_t *car = &t->carT[i];
+				float carW;
+				MH_Set( ct, &text16, v );
+				MH_Set( car, &label10, t->rowCar[i] ? t->rowCar[i] : "" );
+				carW = car->text[0] ? car->box.w + 10.0f : 0.0f;
+				if ( ct->box.w + carW > colW[c] ) {	/* the car goes first, then the name is cut */
+					car->text[0] = '\0';
+					car->box.w = carW = 0.0f;
+					MH_Fit( ct, colW[c] );
+					ct->box.w = MH_Width( ct );
+				}
+				MH_Place( ct, colX[c], y + ( rowH - ct->box.h ) * 0.5f );
+				MH_Place( car, colX[c] + ct->box.w + 10.0f, ct->box.y + MH_Base( ct ) - MH_Base( car ) );
+				break;
+			}
+			case MH_TAB_SWATCH:
+				ct->text[0] = '\0';
+				ct->box.x = colX[c];
+				ct->box.y = y + ( rowH - 10.0f ) * 0.5f;
+				ct->box.w = ct->box.h = 10.0f;
+				break;
+			case MH_TAB_SCORE:
+				MH_Set( ct, &score, v );
+				break;
+			case MH_TAB_PING:
+				MH_Set( ct, Q_stricmp( v, "BOT" ) ? &mono13 : &label11, v );
+				break;
+			default:
+				MH_Set( ct, &mono14, v );
+				break;
+			}
+			if ( t->colKind[c] == MH_TAB_NAME || t->colKind[c] == MH_TAB_SWATCH ) continue;
+			MH_Fit( ct, colW[c] );
+			ct->box.w = colW[c];	/* the column's box; drawn at its right where colRight */
+			MH_Place( ct, colX[c], y + ( rowH - ct->box.h ) * 0.5f );
+		}
+		if ( t->iconCol >= 0 && t->iconCol < t->colCount && t->rowIcon[i] ) {
+			const mhText_t *v = &t->cellT[i][t->iconCol];
+			t->icon[i].w = t->icon[i].h = 14.0f;
+			t->icon[i].x = v->box.x + v->box.w - MH_Width( v ) - 6.0f - 14.0f;
+			t->icon[i].y = y + ( rowH - 14.0f ) * 0.5f;
+		}
+		y += rowH + 2.0f;
+	}
+	return count > 0 ? y - 2.0f : y;
+}
+
+/* the heads over the rows, on the rows' grid */
+static float MH_TabHead( mhTabLayout_t *t, int side, float inX, float inW, float y, float gap ) {
+	float colX = inX, fixed = 0.0f, w;
+	int c, rest = -1;
+	wsTextStyle_t label11;
+	MH_Label( &label11, 11.0f );
+	for ( c = 0; c < t->colCount; c++ ) {
+		if ( t->colW[c] > 0.0f ) fixed += t->colW[c];
+		else rest = c;
+	}
+	for ( c = 0; c < t->colCount; c++ ) {
+		mhText_t *h = &t->headT[side][c];
+		w = c == rest ? inW - fixed - gap * ( t->colCount - 1 ) : t->colW[c];
+		MH_Set( h, &label11, t->colHead[c] ? t->colHead[c] : "" );
+		MH_Place( h, colX, y );
+		h->box.w = w;
+		colX += w + gap;
+	}
+	return y + label11.lineHeight;
+}
+
+void MH_TabLayout( mhTabLayout_t *t ) {
+	wsTextStyle_t label13, label12, label11, label10, mono13, big34, big26, big56, text14;
+	float x = ( t->viewWidth - MH_TAB_W ) * 0.5f, y, bottom, h;
+	int k;
+	MH_Label( &label13, 13.0f );
+	MH_Label( &label12, 12.0f );
+	MH_Label( &label11, 11.0f );
+	MH_Label( &label10, 10.0f );
+	MH_Mono( &mono13, 13.0f );
+	MH_Big( &big34, 34.0f );
+	MH_Big( &big26, 26.0f );
+	MH_Big( &big56, 56.0f );
+	MH_Text( &text14, 14.0f );
+
+	/* the header: the mode over the map at the left, the time at the right,
+	 * both standing on a line 33px over the table */
+	bottom = 150.0f - 33.0f;
+	MH_Set( &t->modeT, &label13, t->mode );
+	MH_Set( &t->subT, &label12, t->sub );
+	MH_Place( &t->subT, x, bottom - t->subT.box.h );
+	MH_Place( &t->modeT, x, t->subT.box.y - 8.0f - t->modeT.box.h );
+	MH_Fit( &t->subT, MH_TAB_W - 240.0f );
+	t->modeT.box.w = t->subT.box.w = t->modeT.box.w > t->subT.box.w ? t->modeT.box.w : t->subT.box.w;
+	MH_Set( &t->rightValueT, &big34, t->rightValue );
+	MH_Set( &t->rightLabelT, &label11, t->rightLabel );
+	MH_Place( &t->rightValueT, x + MH_TAB_W - t->rightValueT.box.w, bottom - t->rightValueT.box.h );
+	MH_Place( &t->rightLabelT, x + MH_TAB_W - t->rightLabelT.box.w, t->rightValueT.box.y - 6.0f - t->rightLabelT.box.h );
+
+	if ( t->sideCount <= 0 ) {
+		/* one table: 2px top, inside 16 18 14 */
+		float inX = x + 1.0f + 18.0f, inW = MH_TAB_W - 2.0f - 36.0f;
+		y = 150.0f + 2.0f + 16.0f;
+		if ( t->teamCellCount > 0 ) {
+			float cw = ( inW - 2.0f * ( t->teamCellCount - 1 ) ) / t->teamCellCount;
+			for ( k = 0; k < t->teamCellCount && k < MH_TAB_SIDES; k++ ) {
+				wsRect_t *c = &t->teamCell[k];
+				c->x = inX + k * ( cw + 2.0f );
+				c->y = y;
+				c->w = cw;
+				c->h = 40.0f;
+				MH_Set( &t->teamCellNameT[k], &label10, t->teamCellName[k] );
+				MH_Set( &t->teamCellValueT[k], &mono13, t->teamCellValue[k] );
+				MH_Set( &t->teamCellPlaceT[k], &big26, t->teamCellPlace[k] );
+				MH_Place( &t->teamCellNameT[k], c->x + 10.0f, y + 6.0f );
+				MH_Place( &t->teamCellValueT[k], c->x + 10.0f, t->teamCellNameT[k].box.y + t->teamCellNameT[k].box.h + 2.0f );
+				MH_Place( &t->teamCellPlaceT[k], c->x + cw - 10.0f - t->teamCellPlaceT[k].box.w, y + ( 40.0f - t->teamCellPlaceT[k].box.h ) * 0.5f );
+				MH_Fit( &t->teamCellValueT[k], cw - 20.0f - t->teamCellPlaceT[k].box.w - 8.0f );
+				t->teamCellValueT[k].box.w = MH_Width( &t->teamCellValueT[k] );
+				if ( t->teamCellValueT[k].box.w > t->teamCellNameT[k].box.w ) t->teamCellNameT[k].box.w = t->teamCellValueT[k].box.w;
+				else t->teamCellValueT[k].box.w = t->teamCellNameT[k].box.w;
+			}
+			y += 40.0f + 12.0f;
+		}
+		y = MH_TabHead( t, 0, inX, inW, y, 10.0f ) + 12.0f;
+		y = MH_TabRows( t, 0, t->rowCount, inX, inW, y, 10.0f, 24.0f );
+		h = y + 14.0f + 1.0f - 150.0f;
+		t->panel[0].x = x;
+		t->panel[0].y = 150.0f;
+		t->panel[0].w = MH_TAB_W;
+		t->panel[0].h = h;
+		bottom = 150.0f + h;
+	} else {
+		/* a panel a team: 3px top in its colour, inside 16 18 14; two side by
+		 * side 16 apart, four two by two */
+		float w = ( MH_TAB_W - 16.0f ) * 0.5f, inW = w - 2.0f - 36.0f, rowTop = 150.0f;
+		int first = 0;
+		bottom = 150.0f;
+		for ( k = 0; k < t->sideCount && k < MH_TAB_SIDES; k++ ) {
+			float px = x + ( k % 2 ) * ( w + 16.0f ), inX = px + 1.0f + 18.0f, top;
+			float above;
+			if ( k == 2 ) rowTop = bottom + 16.0f;
+			top = rowTop + 3.0f + 16.0f;
+			MH_Set( &t->sideTitleT[k], &label13, t->sideTitle[k] );
+			MH_Set( &t->sideNoteT[k], &label11, t->sideNote[k] );
+			MH_Set( &t->sideScoreT[k], &big56, t->sideScore[k] );
+			/* the title over the note, standing on the score's foot */
+			above = t->sideTitleT[k].box.h + 6.0f + t->sideNoteT[k].box.h;
+			MH_Place( &t->sideScoreT[k], inX + inW - t->sideScoreT[k].box.w, top );
+			MH_Place( &t->sideTitleT[k], inX, top + t->sideScoreT[k].box.h - above );
+			MH_Place( &t->sideNoteT[k], inX, t->sideTitleT[k].box.y + t->sideTitleT[k].box.h + 6.0f );
+			if ( t->sideNoteT[k].box.w > t->sideTitleT[k].box.w ) t->sideTitleT[k].box.w = t->sideNoteT[k].box.w;
+			else t->sideNoteT[k].box.w = t->sideTitleT[k].box.w;
+			y = top + t->sideScoreT[k].box.h + 12.0f;
+			y = MH_TabHead( t, k, inX, inW, y, 8.0f ) + 12.0f;
+			y = MH_TabRows( t, first, t->sideRows[k], inX, inW, y, 8.0f, 22.0f );
+			first += t->sideRows[k];
+			t->panel[k].x = px;
+			t->panel[k].y = rowTop;
+			t->panel[k].w = w;
+			t->panel[k].h = y + 14.0f + 1.0f - rowTop;
+			if ( t->panel[k].y + t->panel[k].h > bottom ) bottom = t->panel[k].y + t->panel[k].h;
+		}
+		/* the panels of a row as high as the highest */
+		for ( k = 0; k < t->sideCount && k < MH_TAB_SIDES; k += 2 ) {
+			if ( k + 1 >= t->sideCount ) break;
+			h = t->panel[k].h > t->panel[k + 1].h ? t->panel[k].h : t->panel[k + 1].h;
+			t->panel[k].h = t->panel[k + 1].h = h;
+		}
+	}
+
+	/* the footer, 14 under: the spectators at the left, the server at the right */
+	y = bottom + 14.0f;
+	MH_Set( &t->specLabelT, &label11, t->spectators ? "SPECTATORS" : "" );
+	MH_Set( &t->specT, &text14, t->spectators ? t->spectators : "" );
+	MH_Set( &t->serverT, &label11, t->server ? t->server : "" );
+	MH_Place( &t->specT, x + 2.0f + t->specLabelT.box.w + 12.0f, y );
+	MH_Place( &t->specLabelT, x + 2.0f, y + MH_Base( &t->specT ) - MH_Base( &t->specLabelT ) );
+	MH_Place( &t->serverT, x + MH_TAB_W - 2.0f - t->serverT.box.w, y + MH_Base( &t->specT ) - MH_Base( &t->serverT ) );
+	MH_Fit( &t->specT, t->serverT.box.x - 24.0f - t->specT.box.x );
+}

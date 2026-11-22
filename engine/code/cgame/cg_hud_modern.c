@@ -1564,7 +1564,7 @@ static void MH_Register( void ) {
 }
 
 static qboolean MH_Views( void ) {
-	return cg.snap->ps.pm_type != PM_INTERMISSION &&
+	return cg.snap->ps.pm_type != PM_INTERMISSION && !cg.showScores &&
 	       cgs.clientinfo[cg.snap->ps.clientNum].team != TEAM_SPECTATOR &&
 	       !CG_IntroCam_IsActive();
 }
@@ -2479,7 +2479,7 @@ void CG_ModernHUD_DrawSpectator( void ) {
 	mhSpectatorLayout_t sp;
 	char name[40], key[16], view[32];
 	int watched;
-	if ( !cg.snap || CG_IntroCam_IsActive() ) return;
+	if ( !cg.snap || CG_IntroCam_IsActive() || cg.showScores ) return;
 	MH_Prepare();
 	memset( &sp, 0, sizeof( sp ) );
 	sp.viewWidth = mh.l.viewWidth;
@@ -3156,4 +3156,642 @@ void CG_ModernHUD_DrawEnd( void ) {
 	MH_Bar( &e->readyBar, mhEnd.readyFrac, mhAccent, mhTrack, 1.0f );
 
 	mhScale = base;
+}
+
+
+/* =========================================================================
+   the TAB table (gen.py TabRacing, TabTeamRacing, TabDeathmatch, TabCTF):
+   held with TAB, and on its own between maps where no end screen is
+   ========================================================================= */
+
+static const vec4_t mhTabCar   = { 102 / 255.0f, 102 / 255.0f, 102 / 255.0f, 1.0f };	/* #666 */
+static const vec4_t mhTabVeil  = { 0.0f, 0.0f, 0.0f, 0.62f };
+
+static struct {
+	mhTabLayout_t	t;
+	char			sub[96], rightValue[16], server[80], spectators[160];
+	char			cell[MH_TAB_ROWS][MH_TAB_COLS][24];
+	char			car[MH_TAB_ROWS][24];
+	const float		*color[MH_TAB_ROWS][MH_TAB_COLS];
+	qboolean		rowMe[MH_TAB_ROWS];
+	int				rowTeam[MH_TAB_ROWS];
+	char			sideTitle[MH_TAB_SIDES][16], sideNote[MH_TAB_SIDES][24], sideScore[MH_TAB_SIDES][8];
+	int				sideTeam[MH_TAB_SIDES];
+	char			cellName[MH_TAB_SIDES][16], cellValue[MH_TAB_SIDES][40], cellPlace[MH_TAB_SIDES][8];
+	int				cellTeam[MH_TAB_SIDES];
+	int				scoresAsked;
+} mhTab;
+
+static const char *mhTabTeamNames[MH_TAB_SIDES] = { "RED", "BLUE", "GREEN", "YELLOW" };
+
+/* a column: its head, width (0: the rest), right-aligned, kind */
+static int MH_TabCol( const char *head, float w, qboolean right, mhTabKind_t kind ) {
+	mhTabLayout_t *t = &mhTab.t;
+	int c = t->colCount;
+	if ( c >= MH_TAB_COLS ) return MH_TAB_COLS - 1;
+	t->colHead[c] = head;
+	t->colW[c] = w;
+	t->colRight[c] = right;
+	t->colKind[c] = kind;
+	t->colCount++;
+	return c;
+}
+
+static void QDECL MH_TabSet( int row, int col, const float *color, const char *fmt, ... ) __attribute__ ((format (printf, 4, 5)));
+static void QDECL MH_TabSet( int row, int col, const float *color, const char *fmt, ... ) {
+	va_list ap;
+	if ( row < 0 || row >= MH_TAB_ROWS || col < 0 || col >= MH_TAB_COLS ) return;
+	va_start( ap, fmt );
+	Q_vsnprintf( mhTab.cell[row][col], sizeof( mhTab.cell[row][col] ), fmt, ap );
+	va_end( ap );
+	mhTab.color[row][col] = color;
+}
+
+/* the name and the car of a row; the place in front where there is a column for it */
+static void MH_TabDriver( int row, int client, int posCol, int place, int nameCol, qboolean out ) {
+	clientInfo_t *ci = &cgs.clientinfo[client];
+	char plain[40];
+	if ( posCol >= 0 ) {
+		if ( place > 0 ) MH_TabSet( row, posCol, place == 1 ? mhAccent : mhMuted, "%02d", place );
+		else MH_TabSet( row, posCol, mhMuted, "--" );
+	}
+	MH_Plain( ci->name, plain, sizeof( plain ) );
+	MH_TabSet( row, nameCol, out ? mhDim : mhWhite, "%s", plain );
+	Q_strncpyz( mhTab.car[row], ci->modelName, sizeof( mhTab.car[row] ) );
+	mhTab.rowMe[row] = client == cg.snap->ps.clientNum;
+	mhTab.rowTeam[row] = MH_Team( client );
+}
+
+static void MH_TabPing( int row, int col, int client ) {
+	int i, ping = -1;
+	if ( cgs.clientinfo[client].botSkill > 0 ) {
+		MH_TabSet( row, col, mhDim, "BOT" );
+		return;
+	}
+	for ( i = 0; i < cg.numScores; i++ ) if ( cg.scores[i].client == client ) ping = cg.scores[i].ping;
+	if ( ping < 0 ) MH_TabSet( row, col, mhMuted, "--" );
+	else MH_TabSet( row, col, ping >= 100 ? mhAccent : mhMuted, "%d", ping );
+}
+
+static const score_t *MH_TabScore( int client ) {
+	int i;
+	for ( i = 0; i < cg.numScores; i++ ) if ( cg.scores[i].client == client ) return &cg.scores[i];
+	return NULL;
+}
+
+/* the rows a table shows: all of them up to 14, then 24 low ones; past that
+ * the first ones and you */
+static int MH_TabFit( int *list, int count, int me, int limit ) {
+	int i;
+	if ( count <= limit ) return count;
+	for ( i = 0; i < count; i++ ) if ( list[i] == me ) break;
+	if ( i >= limit ) list[limit - 1] = me;
+	return limit;
+}
+
+static void MH_TabDragText( const centity_t *car, int what, char *out, int size ) {
+	int ms = -1;
+	Q_strncpyz( out, "--", size );
+	if ( car->dragPhase == DRAG_FALSE_START ) return;
+	if ( what == 3 ) {
+		if ( car->dragPhase == DRAG_FINISHED && car->dragTrapSpeed >= 0 )
+			Com_sprintf( out, size, "%d.%d", car->dragTrapSpeed / 10, car->dragTrapSpeed % 10 );
+		return;
+	}
+	if ( what == 0 && car->dragGreenTime > 0 && car->dragLaunchTime >= car->dragGreenTime ) {
+		ms = car->dragLaunchTime - car->dragGreenTime;
+	} else if ( car->dragPhase == DRAG_FINISHED && car->dragFinishTime >= car->dragLaunchTime && car->dragLaunchTime > 0 ) {
+		if ( what == 1 ) ms = car->dragFinishTime - car->dragLaunchTime;
+		else if ( what == 2 && car->dragGreenTime > 0 ) ms = car->dragFinishTime - car->dragGreenTime;
+	}
+	if ( ms >= 0 ) Com_sprintf( out, size, "%d.%03d", ms / 1000, ms % 1000 );
+}
+
+static const char *MH_TabDragStatus( int phase ) {
+	switch ( phase ) {
+	case DRAG_FALSE_START: return "FALSE START";
+	case DRAG_DNF:         return "DNF";
+	case DRAG_FINISHED:    return "FINISHED";
+	case DRAG_RUNNING:     return "RUNNING";
+	case DRAG_STAGED:
+	case DRAG_COUNTDOWN:   return "STAGED";
+	default:               return "WAIT";
+	}
+}
+
+static qboolean MH_TabOver( void ) {
+	return cg.intermissionStarted || cg.snap->ps.pm_type == PM_INTERMISSION;
+}
+
+/* the races: by place, the gap to the leader, laps, last and best lap */
+static void MH_TabRace( const char *map ) {
+	mhTabLayout_t *t = &mhTab.t;
+	int at[MAX_CLIENTS + 1], list[MAX_CLIENTS], count = 0, local, last, i, k, client, leader;
+	int laps = CG_RaceLapLimit(), fastest = 0, leaderLap = 0, rows;
+	qboolean teams = cgs.gametype == GT_TEAM_RACING || cgs.gametype == GT_TEAM_RACING_DM;
+	qboolean combat = cgs.gametype == GT_RACING_DM || cgs.gametype == GT_TEAM_RACING_DM;
+	qboolean drag = cgs.gametype == GT_DRAG, lapped = laps > 1 && !drag;
+	int posCol, nameCol, lapCol = -1, gapCol = -1, lastCol = -1, bestCol = -1, timeCol = -1, fragCol = -1, pingCol;
+	int dragCol[4] = { -1, -1, -1, -1 }, statusCol = -1, swatchCol = -1;
+	char text[24];
+
+	last = MH_RaceOrder( at, &local );
+	MH_Gaps( at, last );
+	for ( i = 1; i <= last; i++ ) if ( at[i] >= 0 ) list[count++] = at[i];
+	/* drivers the order has no place for yet: after it */
+	for ( i = 0; i < cgs.maxclients && i < MAX_CLIENTS; i++ ) {
+		if ( !cgs.clientinfo[i].infoValid || cgs.clientinfo[i].team == TEAM_SPECTATOR ) continue;
+		for ( k = 0; k < count && list[k] != i; k++ );
+		if ( k == count ) list[count++] = i;
+	}
+	leader = count > 0 ? list[0] : -1;
+	for ( i = 0; i < count; i++ ) {
+		int best = cg_entities[list[i]].bestLapTime;
+		if ( best > 0 && ( !fastest || best < fastest ) ) fastest = best;
+	}
+	if ( leader >= 0 ) leaderLap = cg_entities[leader].currentLap;
+	if ( laps > 0 && leaderLap > laps ) leaderLap = laps;
+
+	/* the columns */
+	posCol = MH_TabCol( "POS", 34.0f, qfalse, MH_TAB_MONO );
+	if ( teams ) swatchCol = MH_TabCol( "", 10.0f, qfalse, MH_TAB_SWATCH );
+	nameCol = MH_TabCol( "DRIVER", 0.0f, qfalse, MH_TAB_NAME );
+	if ( drag ) {
+		dragCol[0] = MH_TabCol( "RT", 64.0f, qtrue, MH_TAB_MONO );
+		dragCol[1] = MH_TabCol( "ET", 64.0f, qtrue, MH_TAB_MONO );
+		dragCol[2] = MH_TabCol( "TOTAL", 72.0f, qtrue, MH_TAB_MONO );
+		dragCol[3] = MH_TabCol( "KM/H", 56.0f, qtrue, MH_TAB_MONO );
+		statusCol = MH_TabCol( "STATUS", 110.0f, qtrue, MH_TAB_MONO );
+	} else {
+		if ( lapped ) lapCol = MH_TabCol( "LAP", 44.0f, qtrue, MH_TAB_MONO );
+		gapCol = MH_TabCol( "GAP", 96.0f, qtrue, MH_TAB_MONO );
+		if ( lapped ) {
+			lastCol = MH_TabCol( "LAST", 84.0f, qtrue, MH_TAB_MONO );
+			bestCol = MH_TabCol( "BEST", 84.0f, qtrue, MH_TAB_MONO );
+		} else {
+			timeCol = MH_TabCol( "TIME", 96.0f, qtrue, MH_TAB_MONO );
+		}
+		if ( combat ) fragCol = MH_TabCol( "FRAGS", 52.0f, qtrue, MH_TAB_MONO );
+	}
+	pingCol = MH_TabCol( "PING", 44.0f, qtrue, MH_TAB_PING );
+	t->iconCol = gapCol;
+
+	rows = MH_TabFit( list, count, cg.snap->ps.clientNum, count > 14 ? 24 : 14 );
+	t->compact = count > 14;
+	for ( i = 0; i < rows; i++ ) {
+		centity_t *car;
+		const cgRaceResult_t *r;
+		qboolean out, done, dnf;
+		int place;
+		client = list[i];
+		car = &cg_entities[client];
+		r = CG_RaceResult( client );
+		place = i < count && client == list[i] ? i + 1 : 0;
+		for ( k = 1; k <= last; k++ ) if ( at[k] == client ) place = k;
+		done = car->finishRaceTime > 0 && !( cgs.gametype == GT_ELIMINATION && car->eliminationOut );
+		out = ( cgs.gametype == GT_ELIMINATION && car->eliminationOut ) ||
+		      ( drag && ( car->dragPhase == DRAG_FALSE_START || car->dragPhase == DRAG_DNF ) );
+		dnf = !done && MH_TabOver() && car->startRaceTime > 0;
+		MH_TabDriver( i, client, posCol, place, nameCol, out || dnf );
+		if ( swatchCol >= 0 ) mhTab.color[i][swatchCol] = MH_TeamColor( mhTab.rowTeam[i] );
+		t->rowIcon[i] = done && !drag;
+
+		if ( drag ) {
+			for ( k = 0; k < 4; k++ ) {
+				MH_TabDragText( car, k, text, sizeof( text ) );
+				MH_TabSet( i, dragCol[k], k == 2 ? mhValue : mhMuted, "%s", text );
+			}
+			MH_TabSet( i, statusCol, out ? mhAccent : car->dragPhase == DRAG_FINISHED ? mhWhite : mhMuted,
+			           "%s", MH_TabDragStatus( car->dragPhase ) );
+		} else {
+			if ( lapCol >= 0 ) {
+				int lap = car->currentLap;
+				if ( laps > 0 && ( lap > laps || done ) ) lap = laps;
+				if ( lap > 0 ) MH_TabSet( i, lapCol, out ? mhDim : mhValue, "%d", lap );
+				else MH_TabSet( i, lapCol, mhDim, "-" );
+			}
+			/* the gap: the leader's own line, out, a lap or more down, the split */
+			if ( out ) MH_TabSet( i, gapCol, mhDim, "OUT" );
+			else if ( dnf ) MH_TabSet( i, gapCol, mhDim, "DNF" );
+			else if ( client == leader ) {
+				if ( done ) {
+					CG_ResultTime( car->finishRaceTime - car->startRaceTime, text, sizeof( text ) );
+					MH_TabSet( i, gapCol, mhAccent, "%s", text );
+				} else MH_TabSet( i, gapCol, mhAccent, "LEADER" );
+			} else if ( done && leader >= 0 && cg_entities[leader].finishRaceTime > 0 ) {
+				MH_Gap( ( car->finishRaceTime - car->startRaceTime ) -
+				        ( cg_entities[leader].finishRaceTime - cg_entities[leader].startRaceTime ), text, sizeof( text ) );
+				MH_TabSet( i, gapCol, mhValue, "%s", text );
+			} else if ( lapped && !done && leaderLap - car->currentLap >= 1 && car->currentLap > 0 ) {
+				k = leaderLap - car->currentLap;
+				MH_TabSet( i, gapCol, mhValue, "+%d LAP%s", k, k == 1 ? "" : "S" );
+			} else if ( place > 1 && place <= MAX_CLIENTS && mhGap[place] >= 0 ) {
+				MH_Gap( mhGap[place], text, sizeof( text ) );
+				MH_TabSet( i, gapCol, mhValue, "%s", text );
+			} else MH_TabSet( i, gapCol, mhMuted, "--" );
+
+			if ( lastCol >= 0 ) {
+				if ( r->lapCount > 0 ) {
+					CG_ResultTime( r->laps[r->lapCount - 1], text, sizeof( text ) );
+					MH_TabSet( i, lastCol, mhMuted, "%s", text );
+				} else MH_TabSet( i, lastCol, mhMuted, "--" );
+				if ( car->bestLapTime > 0 ) {
+					CG_ResultTime( car->bestLapTime, text, sizeof( text ) );
+					MH_TabSet( i, bestCol, car->bestLapTime == fastest ? mhPurple : mhMuted, "%s", text );
+				} else MH_TabSet( i, bestCol, mhMuted, "--" );
+			}
+			if ( timeCol >= 0 ) {
+				int ms = done ? car->finishRaceTime - car->startRaceTime :
+				         car->startRaceTime > 0 && !dnf && !out ? cg.time - car->startRaceTime : 0;
+				if ( ms > 0 ) {
+					CG_ResultTime( ms, text, sizeof( text ) );
+					MH_TabSet( i, timeCol, done ? mhWhite : mhMuted, "%s", text );
+				} else MH_TabSet( i, timeCol, mhMuted, "--" );
+			}
+			if ( fragCol >= 0 ) {
+				const score_t *sc = MH_TabScore( client );
+				MH_TabSet( i, fragCol, mhValue, "%d", sc ? sc->score : 0 );
+			}
+		}
+		MH_TabPing( i, pingCol, client );
+	}
+	t->rowCount = rows;
+
+	/* the header: the lap the leader is on, the time the leader has run */
+	t->mode = cgs.gametype == GT_SPRINT ? "SPRINT" : cgs.gametype == GT_GHOST ? "GHOST RACE" :
+	          cgs.gametype == GT_DRAG ? "DRAG RACE" : cgs.gametype == GT_TEAM_RACING ? "TEAM RACE" :
+	          cgs.gametype == GT_RACING_DM ? "RACE COMBAT" : cgs.gametype == GT_TEAM_RACING_DM ? "TEAM RACE COMBAT" :
+	          cgs.gametype == GT_ELIMINATION ? "ELIMINATION" : "RACE";
+	{
+		char lapText[24], teamText[24];
+		lapText[0] = teamText[0] = '\0';
+		if ( lapped ) Com_sprintf( lapText, sizeof( lapText ), " \xb7 LAP %d / %d", leaderLap > 0 ? leaderLap : 1, laps );
+		if ( teams ) {
+			int n = 0;
+			for ( k = 0; k < MH_TAB_SIDES; k++ ) {
+				for ( i = 0; i < count && MH_Team( list[i] ) != TEAM_RED + k; i++ );
+				if ( i < count ) n++;
+			}
+			Com_sprintf( teamText, sizeof( teamText ), " \xb7 %d TEAMS", n );
+		}
+		Com_sprintf( mhTab.sub, sizeof( mhTab.sub ), "%s%s%s \xb7 %d DRIVER%s", map, lapText, teamText, count, count == 1 ? "" : "S" );
+	}
+	t->rightLabel = "RACE TIME";
+	if ( leader >= 0 && cg_entities[leader].startRaceTime > 0 ) {
+		centity_t *l = &cg_entities[leader];
+		MH_Time( ( l->finishRaceTime > 0 ? l->finishRaceTime : cg.time ) - l->startRaceTime, mhTab.rightValue, sizeof( mhTab.rightValue ) );
+	} else Q_strncpyz( mhTab.rightValue, "0:00.00", sizeof( mhTab.rightValue ) );
+
+	/* a team race: the teams over the drivers, by their drivers' places */
+	if ( teams ) {
+		int sum[MH_TAB_SIDES], n[MH_TAB_SIDES], best[MH_TAB_SIDES], order[MH_TAB_SIDES], teamCount = 0;
+		for ( k = 0; k < MH_TAB_SIDES; k++ ) {
+			sum[k] = n[k] = best[k] = 0;
+			for ( i = 0; i < count; i++ ) {
+				if ( MH_Team( list[i] ) != TEAM_RED + k ) continue;
+				sum[k] += i + 1;
+				if ( !best[k] ) best[k] = i + 1;
+				n[k]++;
+			}
+			if ( n[k] ) order[teamCount++] = k;
+		}
+		for ( i = 1; i < teamCount; i++ ) {	/* by the average place, the better best place among equals */
+			for ( k = i; k > 0; k-- ) {
+				int a = order[k - 1], b = order[k];
+				if ( sum[a] * n[b] < sum[b] * n[a] || ( sum[a] * n[b] == sum[b] * n[a] && best[a] <= best[b] ) ) break;
+				order[k - 1] = b;
+				order[k] = a;
+			}
+		}
+		for ( i = 0; i < teamCount; i++ ) {
+			k = order[i];
+			mhTab.cellTeam[i] = TEAM_RED + k;
+			Q_strncpyz( mhTab.cellName[i], mhTabTeamNames[k], sizeof( mhTab.cellName[i] ) );
+			Com_sprintf( mhTab.cellValue[i], sizeof( mhTab.cellValue[i] ), "BEST P%d \xb7 %d DRIVER%s", best[k], n[k], n[k] == 1 ? "" : "S" );
+			Com_sprintf( mhTab.cellPlace[i], sizeof( mhTab.cellPlace[i] ), "P%d", i + 1 );
+			t->teamCellName[i] = mhTab.cellName[i];
+			t->teamCellValue[i] = mhTab.cellValue[i];
+			t->teamCellPlace[i] = mhTab.cellPlace[i];
+		}
+		t->teamCellCount = teamCount;
+	}
+}
+
+/* combat for everybody: by score, the damage dealt and taken */
+static void MH_TabCombat( const char *map ) {
+	mhTabLayout_t *t = &mhTab.t;
+	int list[MAX_CLIENTS], count = 0, i, rows, client;
+	int posCol, nameCol, scoreCol, dealtCol, takenCol, pingCol;
+	qboolean lastCar = cgs.gametype == GT_LCS || cgs.gametype == GT_DERBY;
+	char text[16], clock[16];
+
+	for ( i = 0; i < cg.numScores; i++ ) {
+		client = cg.scores[i].client;
+		if ( client < 0 || client >= MAX_CLIENTS || !cgs.clientinfo[client].infoValid ) continue;
+		if ( cgs.clientinfo[client].team == TEAM_SPECTATOR ) continue;
+		list[count++] = client;
+	}
+	posCol = MH_TabCol( "POS", 34.0f, qfalse, MH_TAB_MONO );
+	nameCol = MH_TabCol( "DRIVER", 0.0f, qfalse, MH_TAB_NAME );
+	scoreCol = MH_TabCol( "SCORE", 64.0f, qtrue, MH_TAB_SCORE );
+	dealtCol = MH_TabCol( "DEALT", 84.0f, qtrue, MH_TAB_MONO );
+	takenCol = MH_TabCol( "TAKEN", 84.0f, qtrue, MH_TAB_MONO );
+	pingCol = MH_TabCol( "PING", 44.0f, qtrue, MH_TAB_PING );
+	t->iconCol = -1;
+
+	rows = MH_TabFit( list, count, cg.snap->ps.clientNum, count > 14 ? 24 : 14 );
+	t->compact = count > 14;
+	for ( i = 0; i < rows; i++ ) {
+		const score_t *sc = MH_TabScore( list[i] );
+		qboolean out = lastCar && MH_LastCarOut( list[i] );
+		int place = 0, k;
+		for ( k = 0; k < count; k++ ) if ( list[k] == list[i] ) place = k + 1;
+		MH_TabDriver( i, list[i], posCol, place, nameCol, out );
+		MH_TabSet( i, scoreCol, out ? mhDim : place == 1 ? mhAccent : mhWhite, "%d", sc ? sc->score : 0 );
+		MH_Thousands( sc ? sc->damageDealt : 0, text, sizeof( text ) );
+		MH_TabSet( i, dealtCol, mhValue, "%s", text );
+		MH_Thousands( sc ? sc->damageTaken : 0, text, sizeof( text ) );
+		MH_TabSet( i, takenCol, mhMuted, "%s", text );
+		MH_TabPing( i, pingCol, list[i] );
+	}
+	t->rowCount = rows;
+
+	t->mode = cgs.gametype == GT_LCS ? "LAST CAR STANDING" : cgs.gametype == GT_DERBY ? "DERBY" : "DEATHMATCH";
+	if ( cgs.fraglimit > 0 && !lastCar )
+		Com_sprintf( mhTab.sub, sizeof( mhTab.sub ), "%s \xb7 FRAGLIMIT %d \xb7 %d DRIVER%s", map, cgs.fraglimit, count, count == 1 ? "" : "S" );
+	else if ( lastCar )
+		Com_sprintf( mhTab.sub, sizeof( mhTab.sub ), "%s \xb7 %d OF %d LEFT", map, MH_LastCarAlive( -1 ), count );
+	else
+		Com_sprintf( mhTab.sub, sizeof( mhTab.sub ), "%s \xb7 %d DRIVER%s", map, count, count == 1 ? "" : "S" );
+	t->rightLabel = MH_MatchClock( clock, sizeof( clock ) );
+	Q_strncpyz( mhTab.rightValue, clock, sizeof( mhTab.rightValue ) );
+}
+
+/* the team games: a panel a team, its score in the head, the mode's columns */
+static void MH_TabTeams( const char *map ) {
+	mhTabLayout_t *t = &mhTab.t;
+	int sides = cgs.gametype == GT_CTF4 ? 4 : 2, side, i, k, row = 0, client, total = 0, perSide, most = 0;
+	int list[MAX_CLIENTS], count;
+	int nameCol, scoreCol, pingCol, col[4] = { -1, -1, -1, -1 };
+	char clock[16];
+
+	nameCol = MH_TabCol( "DRIVER", 0.0f, qfalse, MH_TAB_NAME );
+	scoreCol = MH_TabCol( "SCORE", cgs.gametype == GT_AUTOBALL ? 40.0f : 44.0f, qtrue, MH_TAB_SCORE );
+	switch ( cgs.gametype ) {
+	case GT_CTF:
+	case GT_CTF4:
+		col[0] = MH_TabCol( "CAPS", 36.0f, qtrue, MH_TAB_MONO );
+		col[1] = MH_TabCol( "AST", 36.0f, qtrue, MH_TAB_MONO );
+		col[2] = MH_TabCol( "DEF", 36.0f, qtrue, MH_TAB_MONO );
+		break;
+	case GT_KOTH:
+		col[0] = MH_TabCol( "HOLD", 48.0f, qtrue, MH_TAB_MONO );
+		col[1] = MH_TabCol( "HK", 36.0f, qtrue, MH_TAB_MONO );
+		col[2] = MH_TabCol( "DEF", 36.0f, qtrue, MH_TAB_MONO );
+		break;
+	case GT_AUTOBALL:
+		col[0] = MH_TabCol( "G", 30.0f, qtrue, MH_TAB_MONO );
+		col[1] = MH_TabCol( "A", 30.0f, qtrue, MH_TAB_MONO );
+		col[2] = MH_TabCol( "SV", 30.0f, qtrue, MH_TAB_MONO );
+		col[3] = MH_TabCol( "SH", 30.0f, qtrue, MH_TAB_MONO );
+		break;
+	default:
+		col[0] = MH_TabCol( "DEALT", 56.0f, qtrue, MH_TAB_MONO );
+		col[1] = MH_TabCol( "TAKEN", 56.0f, qtrue, MH_TAB_MONO );
+		break;
+	}
+	pingCol = MH_TabCol( "PING", 40.0f, qtrue, MH_TAB_PING );
+	t->iconCol = -1;
+
+	/* how many rows a team gets: 10 (16 low ones) side by side, 8 low ones two by two */
+	for ( side = 0; side < sides; side++ ) {
+		for ( count = 0, i = 0; i < cg.numScores; i++ ) {
+			client = cg.scores[i].client;
+			if ( client >= 0 && client < MAX_CLIENTS && cgs.clientinfo[client].infoValid && MH_Team( client ) == TEAM_RED + side ) count++;
+		}
+		if ( count > most ) most = count;
+	}
+	t->compact = sides > 2 || most > 10;
+	perSide = sides > 2 ? 8 : most > 10 ? 16 : 10;
+
+	for ( side = 0; side < sides; side++ ) {
+		int score = cg.teamScores[side], next = -999999, note;
+		for ( count = 0, i = 0; i < cg.numScores; i++ ) {
+			client = cg.scores[i].client;
+			if ( client < 0 || client >= MAX_CLIENTS || !cgs.clientinfo[client].infoValid ) continue;
+			if ( MH_Team( client ) != TEAM_RED + side ) continue;
+			list[count++] = client;
+		}
+		total += count;
+		count = MH_TabFit( list, count, cg.snap->ps.clientNum, perSide );
+		for ( i = 0; i < count && row < MH_TAB_ROWS; i++, row++ ) {
+			const score_t *sc = MH_TabScore( list[i] );
+			int value[4] = { 0, 0, 0, 0 };
+			MH_TabDriver( row, list[i], -1, 0, nameCol, qfalse );
+			MH_TabSet( row, scoreCol, mhWhite, "%d", sc ? sc->score : 0 );
+			if ( sc ) {
+				switch ( cgs.gametype ) {
+				case GT_CTF:
+				case GT_CTF4:
+					value[0] = sc->captures; value[1] = sc->assistCount; value[2] = sc->defendCount;
+					break;
+				case GT_KOTH:
+					value[1] = sc->kothHillKills; value[2] = sc->defendCount;
+					break;
+				case GT_AUTOBALL:
+					value[0] = sc->autoballGoals; value[1] = sc->autoballAssists;
+					value[2] = sc->autoballSaves; value[3] = sc->autoballShots;
+					break;
+				default:
+					value[0] = sc->damageDealt; value[1] = sc->damageTaken;
+					break;
+				}
+			}
+			for ( k = 0; k < 4; k++ ) {
+				char text[16];
+				if ( col[k] < 0 ) continue;
+				if ( cgs.gametype == GT_KOTH && k == 0 ) {
+					int secs = sc ? sc->kothHoldTimeMs / 1000 : 0;
+					MH_TabSet( row, col[k], mhValue, "%d:%02d", secs / 60, secs % 60 );
+					continue;
+				}
+				if ( value[k] >= 1000 ) MH_Thousands( value[k], text, sizeof( text ) );
+				else Com_sprintf( text, sizeof( text ), "%d", value[k] );
+				MH_TabSet( row, col[k], value[k] ? mhValue : mhTabCar, "%s", text );
+			}
+			MH_TabPing( row, pingCol, list[i] );
+		}
+		t->sideRows[side] = count;
+
+		/* the head: the team, how it stands, the score */
+		for ( k = 0; k < sides; k++ ) if ( k != side && cg.teamScores[k] > next ) next = cg.teamScores[k];
+		mhTab.sideTeam[side] = TEAM_RED + side;
+		Com_sprintf( mhTab.sideTitle[side], sizeof( mhTab.sideTitle[side] ), "%s TEAM", mhTabTeamNames[side] );
+		Com_sprintf( mhTab.sideScore[side], sizeof( mhTab.sideScore[side] ), "%d", score );
+		note = score - next;
+		if ( note > 0 ) Com_sprintf( mhTab.sideNote[side], sizeof( mhTab.sideNote[side] ), "LEADS BY %d", note );
+		else if ( note == 0 ) Q_strncpyz( mhTab.sideNote[side], "TIED", sizeof( mhTab.sideNote[side] ) );
+		else Com_sprintf( mhTab.sideNote[side], sizeof( mhTab.sideNote[side] ), "%d DRIVER%s", t->sideRows[side], t->sideRows[side] == 1 ? "" : "S" );
+		t->sideTitle[side] = mhTab.sideTitle[side];
+		t->sideNote[side] = mhTab.sideNote[side];
+		t->sideScore[side] = mhTab.sideScore[side];
+	}
+	t->sideCount = sides;
+	t->rowCount = row;
+
+	t->mode = cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 ? "CAPTURE THE FLAG" : cgs.gametype == GT_DOMINATION ? "DOMINATION" :
+	          cgs.gametype == GT_KOTH ? "KING OF THE HILL" : cgs.gametype == GT_AUTOBALL ? "AUTOBALL" : "TEAM DEATHMATCH";
+	if ( ( cgs.gametype == GT_CTF || cgs.gametype == GT_CTF4 ) && cgs.capturelimit > 0 )
+		Com_sprintf( mhTab.sub, sizeof( mhTab.sub ), "%s \xb7 CAPTURELIMIT %d \xb7 %d DRIVERS", map, cgs.capturelimit, total );
+	else if ( cgs.gametype == GT_TEAM && cgs.fraglimit > 0 )
+		Com_sprintf( mhTab.sub, sizeof( mhTab.sub ), "%s \xb7 FRAGLIMIT %d \xb7 %d DRIVERS", map, cgs.fraglimit, total );
+	else
+		Com_sprintf( mhTab.sub, sizeof( mhTab.sub ), "%s \xb7 %d DRIVERS", map, total );
+	t->rightLabel = MH_MatchClock( clock, sizeof( clock ) );
+	Q_strncpyz( mhTab.rightValue, clock, sizeof( mhTab.rightValue ) );
+}
+
+static void MH_TabPrepare( void ) {
+	mhTabLayout_t *t = &mhTab.t;
+	const char *map, *host;
+	int i, players = 0, ready = 0, humans = 0;
+
+	memset( t, 0, sizeof( *t ) );
+	memset( mhTab.cell, 0, sizeof( mhTab.cell ) );
+	memset( mhTab.car, 0, sizeof( mhTab.car ) );
+	memset( mhTab.rowMe, 0, sizeof( mhTab.rowMe ) );
+	t->viewWidth = cgs.glconfig.vidWidth / mhScale;
+	map = CG_ConfigString( CS_MESSAGE );
+	if ( !map || !map[0] ) map = COM_SkipPath( cgs.mapname );
+
+	switch ( cgs.gametype ) {
+	case GT_DEATHMATCH:
+	case GT_LCS:
+	case GT_DERBY:
+		MH_TabCombat( map );
+		break;
+	case GT_TEAM:
+	case GT_CTF:
+	case GT_CTF4:
+	case GT_DOMINATION:
+	case GT_KOTH:
+	case GT_AUTOBALL:
+		MH_TabTeams( map );
+		break;
+	default:
+		MH_TabRace( map );
+		break;
+	}
+	for ( i = 0; i < t->rowCount; i++ ) {
+		int c;
+		for ( c = 0; c < t->colCount; c++ ) t->cell[i][c] = mhTab.cell[i][c];
+		t->rowCar[i] = mhTab.car[i];
+	}
+
+	/* between maps: who is ready in place of the clock */
+	for ( i = 0; i < cgs.maxclients && i < MAX_CLIENTS; i++ ) {
+		if ( !cgs.clientinfo[i].infoValid ) continue;
+		players++;
+		if ( cgs.clientinfo[i].botSkill > 0 || cgs.clientinfo[i].team == TEAM_SPECTATOR ) continue;
+		humans++;
+		if ( cg.snap->ps.stats[STAT_CLIENTS_READY] & ( 1 << i ) ) ready++;
+	}
+	if ( cg.snap->ps.pm_type == PM_INTERMISSION && humans > 0 ) {
+		t->rightLabel = "READY";
+		Com_sprintf( mhTab.rightValue, sizeof( mhTab.rightValue ), "%d / %d", ready, humans );
+	}
+	t->sub = mhTab.sub;
+	t->rightValue = mhTab.rightValue;
+
+	/* the footer: the spectators, the server and how full it is */
+	mhTab.spectators[0] = '\0';
+	for ( i = 0; i < cgs.maxclients && i < MAX_CLIENTS; i++ ) {
+		char name[40];
+		if ( !cgs.clientinfo[i].infoValid || cgs.clientinfo[i].team != TEAM_SPECTATOR ) continue;
+		MH_Plain( cgs.clientinfo[i].name, name, sizeof( name ) );
+		if ( mhTab.spectators[0] ) Q_strcat( mhTab.spectators, sizeof( mhTab.spectators ), " \xb7 " );
+		Q_strcat( mhTab.spectators, sizeof( mhTab.spectators ), name );
+	}
+	t->spectators = mhTab.spectators[0] ? mhTab.spectators : NULL;
+	host = Info_ValueForKey( CG_ConfigString( CS_SERVERINFO ), "sv_hostname" );
+	{
+		char plain[48];
+		MH_Plain( host, plain, sizeof( plain ) );
+		if ( plain[0] ) Com_sprintf( mhTab.server, sizeof( mhTab.server ), "%s \xb7 %d / %d", plain, players, cgs.maxclients );
+		else Com_sprintf( mhTab.server, sizeof( mhTab.server ), "%d / %d", players, cgs.maxclients );
+	}
+	t->server = mhTab.server;
+	MH_TabLayout( t );
+}
+
+/* the table on screen: with TAB, or between maps where no end screen is */
+qboolean CG_ModernHUD_DrawTab( void ) {
+	mhTabLayout_t *t = &mhTab.t;
+	int i, c, k;
+	if ( !cg.snap || cg_paused.integer ) return qfalse;
+	if ( !cg.showScores && !( cg.snap->ps.pm_type == PM_INTERMISSION && !CG_ModernHUD_EndActive() ) ) return qfalse;
+
+	if ( cg.time - mhTab.scoresAsked > 2000 || cg.time < mhTab.scoresAsked ) {
+		mhTab.scoresAsked = cg.time;
+		trap_SendClientCommand( "score" );
+	}
+	MH_Register();
+	mhScale = cgs.glconfig.vidHeight / MH_DESIGN_HEIGHT;
+	MH_TabPrepare();
+
+	WS_FillRect( 0, 0, cgs.glconfig.vidWidth, cgs.glconfig.vidHeight, mhTabVeil );
+	MH_Str( &t->modeT, mhAccent, 1.0f );
+	MH_Str( &t->subT, mhMuted, 1.0f );
+	MH_Str( &t->rightLabelT, mhMuted, 1.0f );
+	MH_Str( &t->rightValueT, mhWhite, 1.0f );
+
+	if ( t->sideCount <= 0 ) {
+		MH_Panel( &t->panel[0], qtrue, 1.0f );
+		for ( k = 0; k < t->teamCellCount; k++ ) {
+			MH_FillRect( &t->teamCell[k], MH_TeamColor( mhTab.cellTeam[k] ), 1.0f );
+			MH_Str( &t->teamCellNameT[k], mhOnTeam, 1.0f );
+			MH_Str( &t->teamCellValueT[k], mhOnTeam, 1.0f );
+			MH_Str( &t->teamCellPlaceT[k], mhOnTeam, 1.0f );
+		}
+		for ( c = 0; c < t->colCount; c++ ) {
+			mhText_t h = t->headT[0][c];
+			if ( t->colRight[c] ) h.box.x += h.box.w - WS_TextWidth( &h.style, h.text, strlen( h.text ) );
+			MH_Str( &h, mhMuted, 1.0f );
+		}
+	} else {
+		for ( k = 0; k < t->sideCount; k++ ) {
+			const float *tc = MH_TeamColor( mhTab.sideTeam[k] );
+			MH_FillRect( &t->panel[k], mhPanel, 1.0f );
+			MH_Border( &t->panel[k], mhLine, 3.0f, tc, 1.0f );
+			MH_Str( &t->sideTitleT[k], tc, 1.0f );
+			MH_Str( &t->sideNoteT[k], mhMuted, 1.0f );
+			MH_Str( &t->sideScoreT[k], mhWhite, 1.0f );
+			for ( c = 0; c < t->colCount; c++ ) {
+				mhText_t h = t->headT[k][c];
+				if ( t->colRight[c] ) h.box.x += h.box.w - WS_TextWidth( &h.style, h.text, strlen( h.text ) );
+				MH_Str( &h, mhMuted, 1.0f );
+			}
+		}
+	}
+
+	for ( i = 0; i < t->rowCount; i++ ) {
+		if ( mhTab.rowMe[i] ) MH_FillRect( &t->row[i], mhMe, 1.0f );
+		for ( c = 0; c < t->colCount; c++ ) {
+			mhText_t v = t->cellT[i][c];
+			const float *color = mhTab.color[i][c] ? mhTab.color[i][c] : mhWhite;
+			if ( t->colKind[c] == MH_TAB_SWATCH ) {
+				MH_FillRect( &v.box, color, 1.0f );
+				continue;
+			}
+			if ( t->colRight[c] ) v.box.x += v.box.w - WS_TextWidth( &v.style, v.text, strlen( v.text ) );
+			MH_Str( &v, color, 1.0f );
+			if ( t->colKind[c] == MH_TAB_NAME ) MH_Str( &t->carT[i], mhTabCar, 1.0f );
+		}
+		if ( t->rowIcon[i] ) MH_Pic( &t->icon[i], 0.0f, mh.flag, mhWhite, 1.0f );
+	}
+
+	MH_Str( &t->specLabelT, mhDim, 1.0f );
+	MH_Str( &t->specT, mhLabel, 1.0f );
+	MH_Str( &t->serverT, mhDim, 1.0f );
+	return qtrue;
 }

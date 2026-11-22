@@ -965,22 +965,170 @@ board('EndTeamRacing.dc.html', 'Team race result', None, [
     footer('WAITING FOR 5 DRIVERS', 3, 8),
 ])
 
-order = ['Main.dc.html', 'Zonen.dc.html', 'Sprint.dc.html', 'Ghost.dc.html',
-         'Drag.dc.html', 'RacingDM.dc.html', 'Elimination.dc.html', 'LCS.dc.html',
-         'Derby.dc.html', 'Deathmatch.dc.html', 'TeamDM.dc.html', 'CTF.dc.html',
-         'Domination.dc.html', 'KOTH.dc.html', 'Autoball.dc.html', 'Einblendungen.dc.html', 'EndRacing.dc.html', 'EndTeamRacing.dc.html']
+# ---------------------------------------------------------------------------
+# the TAB table: held during the game (and when you are wrecked), the game
+# dimmed behind it, the HUD out of the way. One table for every mode: the
+# columns are the mode's, your row lit, bots without a ping.
+# ---------------------------------------------------------------------------
+TAB_X, TAB_W = 360, 880
+
+
+def tab_header(mode, sub, right_label, right_value):
+    return (f'<div style="position: absolute; left: {TAB_X}px; top: 64px; width: {TAB_W}px; display: flex; '
+            f'align-items: flex-end; gap: 16px">'
+            f'<div style="display: flex; flex-direction: column; gap: 8px">{lab(mode, ACC, 13)}{lab(sub, "#999999", 12)}</div>'
+            f'<div style="margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px">'
+            f'{lab(right_label, "#999999", 11)}{big(right_value, 34)}</div></div>')
+
+
+def tab_footer(spectators, server):
+    return (f'<div style="display: flex; align-items: baseline; gap: 12px; padding: 0 2px">{lab("Spectators", "#777777", 11)}{text(spectators, 14, "#bbbbbb")}'
+            f'<div style="margin-left: auto">{lab(server, "#777777", 11)}</div></div>')
+
+
+def tab_name(name, car, me, out=False):
+    return (f'<div style="display: flex; align-items: baseline; gap: 10px; min-width: 0">'
+            f'{text(name, 16, "#777777" if out else "#ffffff", 700 if me else 400)}{lab(car, "#666666", 10)}</div>')
+
+
+def tab_table(cols, rows, top=None):
+    """cols: (header, width or '1fr', align); rows: (cells, me, out). A cell is html."""
+    grid = 'display: grid; grid-template-columns: ' + ' '.join(str(w) + ('px' if isinstance(w, int) else '') for _, w, _ in cols) + '; gap: 10px'
+    head = (f'<div style="{grid}; padding: 0 8px; margin: 0 -8px">'
+            + ''.join(f'<div style="text-align: {a}">{lab(h, "#999999", 11)}</div>' for h, _, a in cols) + '</div>')
+    out = []
+    for cells, me, gone in rows:
+        bg = 'background: rgba(255,85,0,0.18);' if me else ''
+        out.append(f'<div style="{grid}; align-items: center; height: 34px; padding: 0 8px; {bg}">'
+                   + ''.join(f'<div style="text-align: {a}; min-width: 0">{c}</div>' for c, (_, _, a) in zip(cells, cols)) + '</div>')
+    return panel((top or '') + head + f'<div style="display: flex; flex-direction: column; gap: 2px; margin: 0 -8px">{"".join(out)}</div>',
+                 pad='16px 18px 14px', gap=12)
+
+
+def ping(v):
+    if v == 'BOT':
+        return lab('BOT', '#777777', 11)
+    return mono(str(v), 13, '#999999' if v < 100 else ACC)
+
+
+def race_rows(data, teams=False):
+    rows = []
+    for d in data:
+        pos, team, name, car, lap, gap, last, best, pg, flag = d
+        me, out, fastest, done = flag == 'me', flag == 'out', flag == 'fast', flag == 'done'
+        gapc = ACC if gap == 'LEADER' else '#777777' if out else '#dddddd'
+        gapcell = (f'<div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center">'
+                   f'{icon("flag", 14, "#ffffff") if done else ""}{mono(gap, 14, gapc)}</div>')
+        cells = [mono(pos, 14, ACC if pos == '01' else '#999999')]
+        if teams:
+            cells.append(swatch(TEAM[team], 10))
+        cells += [tab_name(name, car, me, out), mono(lap, 14, '#777777' if out else '#dddddd'), gapcell,
+                  mono(last, 14, '#999999'), mono(best, 14, PURPLE if fastest else '#999999'), ping(pg)]
+        rows.append((cells, me, out))
+    return rows
+
+
+RACE_COLS = [('Pos', 34, 'left'), ('Driver', '1fr', 'left'), ('Lap', 44, 'right'), ('Gap', 96, 'right'),
+             ('Last', 84, 'right'), ('Best', 84, 'right'), ('Ping', 44, 'right')]
+tab_race = [('01', 'red', 'Sam', 'Murcielago', '3', 'LEADER', '0:51.204', '0:50.871', 38, 'fast'),
+            ('02', 'blue', 'Bobby', 'Viper', '3', '+0.85', '0:51.880', '0:51.312', 'BOT', ''),
+            ('03', 'blue', 'Player', 'Murcielago', '3', '+1.92', '0:52.013', '0:51.660', 24, 'me'),
+            ('04', 'red', 'Janine', 'DB12', '3', '+2.40', '0:52.390', '0:52.120', 61, ''),
+            ('05', 'red', 'Vlad', 'Beetle', '3', '+4.07', '0:53.004', '0:52.731', 'BOT', ''),
+            ('06', 'blue', 'Emma', 'Viper', '3', '+6.31', '0:52.881', '0:52.881', 88, ''),
+            ('07', 'blue', 'Tony', 'DB12', '2', '+1 LAP', '0:58.120', '0:53.512', 132, ''),
+            ('08', 'red', 'Bee', 'Beetle', '2', 'OUT', '--', '0:54.120', 45, 'out')]
+
+board('TabRacing.dc.html', 'TAB: race', BG['racing'], [
+    tab_header('Race', 'Downtown · lap 3 / 5 · 8 drivers', 'Race time', '2:41.38'),
+    col(f'left: {TAB_X}px; top: 150px', tab_table(RACE_COLS, race_rows(tab_race)) + tab_footer('Ivan · Minori', 'Q3Rally Münster · 10 / 16'), TAB_W, gap=14),
+], dim=0.62)
+
+# a team race: the teams over the drivers, each with the team's square
+team_cells = ''.join(
+    f'<div style="flex: 1; background: {TEAM[t]}; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center">'
+    f'<div style="display: flex; flex-direction: column; gap: 2px">{lab(t.upper(), "#111111", 10)}{mono(v, 13, "#111111")}</div>'
+    f'{big(p, 26, "#111111")}</div>' for t, v, p in (('red', 'best P1 · 4 drivers', 'P1'), ('blue', 'best P2 · 4 drivers', 'P2')))
+board('TabTeamRacing.dc.html', 'TAB: team race', BG['racing'], [
+    tab_header('Team race', 'Downtown · lap 3 / 5 · 2 teams · 8 drivers', 'Race time', '2:41.38'),
+    col(f'left: {TAB_X}px; top: 150px', tab_table(RACE_COLS[:1] + [('', 10, 'left')] + RACE_COLS[1:], race_rows(tab_race, teams=True),
+                                                  top=f'<div style="display: flex; gap: 2px">{team_cells}</div>') + tab_footer('Ivan · Minori', 'Q3Rally Münster · 10 / 16'), TAB_W, gap=14),
+], dim=0.62)
+
+# combat: the score big, the damage dealt and taken
+DM_COLS = [('Pos', 34, 'left'), ('Driver', '1fr', 'left'), ('Score', 64, 'right'), ('Dealt', 84, 'right'),
+           ('Taken', 84, 'right'), ('Ping', 44, 'right')]
+tab_dm = [('01', 'Sam', 'Murcielago', '17', '4 210', '2 380', 38, ''), ('02', 'Player', 'Viper', '14', '3 905', '2 610', 24, 'me'),
+          ('03', 'Bobby', 'Viper', '11', '3 120', '3 004', 'BOT', ''), ('04', 'Janine', 'DB12', '9', '2 870', '3 330', 61, ''),
+          ('05', 'Vlad', 'Beetle', '6', '1 940', '3 760', 'BOT', ''), ('06', 'Emma', 'Viper', '4', '1 505', '4 120', 88, ''),
+          ('07', 'Tony', 'DB12', '-1', '620', '2 950', 132, 'out')]
+dm_rows = [([mono(p, 14, ACC if p == '01' else '#999999'), tab_name(n, c, f == 'me', f == 'out'),
+             big(s, 24, ACC if p == '01' else '#777777' if f == 'out' else '#ffffff'),
+             mono(d, 14, '#dddddd'), mono(t, 14, '#999999'), ping(pg)], f == 'me', f == 'out')
+           for p, n, c, s, d, t, pg, f in tab_dm]
+board('TabDeathmatch.dc.html', 'TAB: deathmatch', BG['dm'], [
+    tab_header('Deathmatch', 'Arena · fraglimit 20 · 7 drivers', 'Time left', '6:12'),
+    col(f'left: {TAB_X}px; top: 150px', tab_table(DM_COLS, dm_rows) + tab_footer('Ivan', 'Q3Rally Münster · 8 / 16'), TAB_W, gap=14),
+], dim=0.62)
+
+
+# teams: a panel a team side by side (four teams: two by two), the score in its head
+def team_side(team, score, note, rows, w):
+    cols = [('Driver', '1fr', 'left'), ('Score', 44, 'right'), ('Caps', 36, 'right'), ('Ast', 36, 'right'),
+            ('Def', 36, 'right'), ('Ping', 40, 'right')]
+    grid = 'display: grid; grid-template-columns: 1fr 44px 36px 36px 36px 40px; gap: 8px'
+    head = (f'<div style="{grid}; padding: 0 8px; margin: 0 -8px">'
+            + ''.join(f'<div style="text-align: {a}">{lab(h, "#999999", 11)}</div>' for h, _, a in cols) + '</div>')
+    out = []
+    for n, c, s, cp, a, d, pg, f in rows:
+        bg = 'background: rgba(255,85,0,0.18);' if f == 'me' else ''
+        out.append(f'<div style="{grid}; align-items: center; height: 34px; padding: 0 8px; {bg}">'
+                   f'{tab_name(n, c, f == "me")}<div style="text-align: right">{big(s, 22)}</div>'
+                   + ''.join(f'<div style="text-align: right">{mono(v, 14, "#dddddd" if v != "0" else "#666666")}</div>' for v in (cp, a, d))
+                   + f'<div style="text-align: right">{ping(pg)}</div></div>')
+    top = (f'<div style="display: flex; justify-content: space-between; align-items: flex-end">'
+           f'<div style="display: flex; flex-direction: column; gap: 6px">{lab(team + " team", TEAM[team], 13)}{lab(note, "#999999", 11)}</div>'
+           f'{big(score, 56)}</div>')
+    return (f'<div style="width: {w}px; background: {PANEL}; border: 1px solid {LINE}; border-top: 3px solid {TEAM[team]}; '
+            f'box-sizing: border-box; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 12px">'
+            f'{top}{head}<div style="display: flex; flex-direction: column; gap: 2px; margin: 0 -8px">{"".join(out)}</div></div>')
+
+
+red_side = [('Sam', 'Murcielago', '14', '3', '1', '4', 38, ''), ('Janine', 'DB12', '9', '1', '2', '6', 61, ''),
+            ('Vlad', 'Beetle', '6', '1', '0', '2', 'BOT', ''), ('Tony', 'DB12', '3', '0', '1', '1', 132, '')]
+blue_side = [('Player', 'Viper', '12', '2', '1', '3', 24, 'me'), ('Bobby', 'Viper', '8', '1', '0', '5', 'BOT', ''),
+             ('Emma', 'Viper', '5', '0', '2', '1', 88, ''), ('Carla', 'Beetle', '2', '0', '0', '0', 70, '')]
+board('TabCTF.dc.html', 'TAB: capture the flag', BG['team_dm'], [
+    tab_header('Capture the flag', 'Canyon · capturelimit 8 · 8 drivers', 'Time left', '11:20'),
+    f'<div style="position: absolute; left: {TAB_X}px; top: 150px; width: {TAB_W}px; display: flex; flex-direction: column; gap: 14px">'
+    f'<div style="display: flex; gap: 16px; align-items: flex-start">'
+    + team_side('red', '5', 'leads by 2', red_side, (TAB_W - 16) // 2)
+    + team_side('blue', '3', '4 drivers', blue_side, (TAB_W - 16) // 2) + '</div>'
+    + tab_footer('Ivan · Minori', 'Q3Rally Münster · 10 / 16') + '</div>',
+], dim=0.62)
+
+ROWS = [['Main.dc.html', 'Zonen.dc.html', 'Sprint.dc.html', 'Ghost.dc.html'],
+        ['Drag.dc.html', 'RacingDM.dc.html', 'Elimination.dc.html', 'LCS.dc.html'],
+        ['Derby.dc.html', 'Deathmatch.dc.html', 'TeamDM.dc.html', 'CTF.dc.html'],
+        ['Domination.dc.html', 'KOTH.dc.html', 'Autoball.dc.html', 'Einblendungen.dc.html'],
+        ['EndRacing.dc.html', 'EndTeamRacing.dc.html'],
+        ['TabRacing.dc.html', 'TabTeamRacing.dc.html', 'TabDeathmatch.dc.html', 'TabCTF.dc.html']]
+order = [n for r in ROWS for n in r]
 titles = {'Main.dc.html': 'Rennen (Racing, Team Racing)', 'Zonen.dc.html': 'Zonen und Bausteine', 'Sprint.dc.html': 'Sprint',
           'Ghost.dc.html': 'Ghost Race', 'Drag.dc.html': 'Drag Race', 'RacingDM.dc.html': 'Racing DM (auch Team Racing DM)',
           'Elimination.dc.html': 'Elimination', 'LCS.dc.html': 'Last Car Standing', 'Derby.dc.html': 'Derby',
           'Deathmatch.dc.html': 'Deathmatch', 'TeamDM.dc.html': 'Team Deathmatch', 'CTF.dc.html': 'CTF und CTF4',
           'Domination.dc.html': 'Domination', 'KOTH.dc.html': 'King of the Hill', 'Autoball.dc.html': 'Autoball',
-          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing'}
+          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing',
+          'TabRacing.dc.html': 'TAB: Rennen (auch Sprint, Ghost, Drag)', 'TabTeamRacing.dc.html': 'TAB: Team Racing',
+          'TabDeathmatch.dc.html': 'TAB: Kampf (DM, Racing DM, Derby, Elimination, LCS)',
+          'TabCTF.dc.html': 'TAB: Teams (TDM, CTF, Domination, KOTH, Autoball)'}
 rows_titles = ['Aufbau und Rennen', 'Drag, Waffen und Überleben', 'Derby und Arena', 'Ziele, Autoball und Einblendungen',
-               'Endbildschirme']
+               'Endbildschirme', 'TAB-Tabelle']
 boards, notes = {}, {}
-for i, n in enumerate(order):
-    r, c = divmod(i, 4)
-    boards[n] = {'x': c * 1680, 'y': r * 1300, 'w': 1600, 'h': 900, 'title': titles[n]}
+for r, names in enumerate(ROWS):
+    for c, n in enumerate(names):
+        boards[n] = {'x': c * 1680, 'y': r * 1300, 'w': 1600, 'h': 900, 'title': titles[n]}
 for r, t in enumerate(rows_titles):
     notes[f'row{r + 1}'] = {'x': 0, 'y': r * 1300 - 260, 'text': t, 'kind': 'title1', 'maxW': 6640}
 canvas = {'v': 3, 'createdOnFiles': {'v': 1, 'at': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')},
