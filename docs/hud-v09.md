@@ -102,4 +102,21 @@ The figures come from what the server sends every client during the race
 a race sees what happened from then on. A spectator sees the winner's race.
 A screen narrower than 16:9 shows the page scaled down.
 
+A team race (Team Racing) ends on the same page for the teams
+(`EndTeamRacing.dc.html`), ranked by their average time as the server ranks
+them (`level.teamTimes`):
+
+- At the left: your team's place ("P1 / 3") in the team's colour, its
+  average and the margin (won by, or to the winner), then your place, your
+  time, how far you were under or over your team's average and your best
+  lap; instead of the lap chart the team averages: a row a team, a dot a
+  driver home on the time axis and the average as a tick, with the gap to
+  the winners.
+- The podium of teams, each card in the team's colour with its best
+  finisher's car and the drivers under it (their places); YOUR TEAM on
+  yours. Highlights: the fastest lap, the team player (the furthest under
+  the team's average) and the biggest gain.
+- The classification with the teams' averages over it and each driver's
+  team as a square.
+
 Still to come: the end screens of the other modes and the TAB table.

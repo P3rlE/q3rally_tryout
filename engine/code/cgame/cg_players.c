@@ -5170,7 +5170,14 @@ void CG_DrawShowroomCar( float x, float y, float w, float h, int clientNum, floa
 	VectorScale( centre, 0.5f, centre );
 	radius = 0.5f * sqrt( ( maxs[0] - mins[0] ) * ( maxs[0] - mins[0] ) + ( maxs[1] - mins[1] ) * ( maxs[1] - mins[1] ) );
 	if ( radius < 16.0f ) radius = 16.0f;
-	dist = radius / tan( fovX * M_PI / 360.0f ) * 0.92f;	/* the body fills the window at every angle */
+	/* far enough that the body fits at every angle: across (the plan's
+	 * diagonal, the near corners a little larger) and up (its height and
+	 * the roof seen 12 degrees from above); a low window wants more room */
+	dist = radius / tan( fovX * M_PI / 360.0f ) * 1.04f;
+	{
+		float up = 0.5f * ( ( maxs[2] - mins[2] ) + 0.42f * radius ) / tan( refdef.fov_y * M_PI / 360.0f ) * 1.15f;
+		if ( up > dist ) dist = up;
+	}
 	AngleVectors( viewAngles, forward, NULL, NULL );
 
 	memset( &body, 0, sizeof( body ) );

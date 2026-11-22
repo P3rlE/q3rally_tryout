@@ -80,6 +80,11 @@ Changed:
   each driver's car turning in 3D, highlights (fastest lap, best sector,
   biggest gain) and the classification with every best lap; how many
   drivers are ready at the bottom. TAB shows the scoreboard.
+- The end screen for team races: the teams on the podium by their average
+  time, each with its best car and its drivers, your team's place and
+  average, how you did against it, a chart of how each average came about
+  (a dot a driver), the team player as a highlight and the classification
+  with the teams' averages and colours.
 - The new HUD in Drag: the time slip in the card (reaction, 60 ft, 330 ft,
   1/8 and 1/4 mile, trap speed), the duel by lanes with the elapsed times,
   the Christmas tree under it, a wide tachometer at the bottom with the

@@ -1210,9 +1210,38 @@ static void MH_EndLeft( mhEndLayout_t *e ) {
 
 	/* your laps: the row, 12px, the chart: slots 8px apart, a 56px bar
 	 * area, 6px, the value, 6px, the lap */
-	MH_Set( &e->lapsTitleT, &label12, "YOUR LAPS" );
-	MH_Set( &e->lapsNoteT, &label11, "LOST TO YOUR BEST" );
+	MH_Set( &e->lapsTitleT, &label12, e->chartTitle ? e->chartTitle : "YOUR LAPS" );
+	MH_Set( &e->lapsNoteT, &label11, e->chartNote ? e->chartNote : "LOST TO YOUR BEST" );
 	y += MH_BaselineRow( &e->lapsTitleT, &e->lapsNoteT, x, y, w ) + 12.0f;
+
+	/* team races: a row a team 20 high, 10 apart: the square (in 22), the
+	 * axis, the gap (62 wide), 10px apart */
+	for ( i = 0; i < e->spreadCount && i < MH_END_TEAMS; i++ ) {
+		wsTextStyle_t mono12;
+		float tx = x + 22.0f + 10.0f, tw = w - 22.0f - 62.0f - 20.0f;
+		int k;
+		MH_Mono( &mono12, 12.0f );
+		e->spreadSwatch[i].x = x;
+		e->spreadSwatch[i].y = y + 5.0f;
+		e->spreadSwatch[i].w = e->spreadSwatch[i].h = 10.0f;
+		e->spreadTrack[i].x = tx;
+		e->spreadTrack[i].y = y + 9.0f;
+		e->spreadTrack[i].w = tw;
+		e->spreadTrack[i].h = 2.0f;
+		for ( k = 0; k < e->spreadDots[i] && k < MH_END_DOTS; k++ ) {
+			e->spreadDotR[i][k].x = tx + e->spreadDot[i][k] * tw - 5.0f;
+			e->spreadDotR[i][k].y = y + 5.0f;
+			e->spreadDotR[i][k].w = e->spreadDotR[i][k].h = 10.0f;
+		}
+		e->spreadTickR[i].x = tx + e->spreadTick[i] * tw - 1.0f;
+		e->spreadTickR[i].y = y;
+		e->spreadTickR[i].w = 2.0f;
+		e->spreadTickR[i].h = 20.0f;
+		MH_Set( &e->spreadValueT[i], &mono12, e->spreadValue[i] ? e->spreadValue[i] : "" );
+		MH_Place( &e->spreadValueT[i], x + w - 62.0f, y + ( 20.0f - e->spreadValueT[i].box.h ) * 0.5f );
+		e->spreadValueT[i].box.w = 62.0f;	/* at the right of it */
+		y += 20.0f + 10.0f;
+	}
 	if ( e->lapCount <= 0 ) return;
 	slot = ( w - 8.0f * ( e->lapCount - 1 ) ) / e->lapCount;
 	for ( i = 0; i < e->lapCount && i < MH_END_LAPS; i++ ) {
@@ -1247,20 +1276,33 @@ static void MH_EndCard( mhEndLayout_t *e, int k, float x, float w, float carH, f
 	MH_Mono( &mono13, 13.0f );
 	MH_Set( &e->podiumPlaceT[k], &big, k == 0 ? "1" : k == 1 ? "2" : "3" );
 	MH_Set( &e->podiumTagT[k], &label11, e->podiumTag[k] );
-	MH_Set( &e->podiumYouT[k], &label11, e->podiumMe[k] ? "YOU" : "" );
+	MH_Set( &e->podiumYouT[k], &label11, e->podiumMe[k] ? ( e->podiumYou ? e->podiumYou : "YOU" ) : "" );
 	MH_Set( &e->podiumNameT[k], &text20, e->podiumName[k] );
 	MH_Set( &e->podiumTimeT[k], &mono15, e->podiumTime[k] );
 	MH_Set( &e->podiumGapT[k], &mono13, e->podiumGap[k] ? e->podiumGap[k] : "" );
 	colH = e->podiumTagT[k].box.h + ( e->podiumMe[k] ? 4.0f + e->podiumYouT[k].box.h : 0.0f );
 	rowH = e->podiumPlaceT[k].box.h > colH ? e->podiumPlaceT[k].box.h : colH;
 	h = 2.0f + carH + 12.0f + rowH + 6.0f + e->podiumNameT[k].box.h + 6.0f + e->podiumTimeT[k].box.h + 14.0f + 1.0f;
+	if ( e->teamPodium ) {
+		/* a 3px top; a rule 2px either side, then the drivers 3px apart */
+		int m, n = e->podiumMembers[k] < MH_END_MEMBERS ? e->podiumMembers[k] : MH_END_MEMBERS;
+		wsTextStyle_t mono12, text14;
+		MH_Mono( &mono12, 12.0f );
+		MH_Text( &text14, 14.0f );
+		h += 1.0f;
+		for ( m = 0; m < n; m++ ) {
+			MH_Set( &e->podiumMemberPosT[k][m], &mono12, e->podiumMemberPos[k][m] );
+			MH_Set( &e->podiumMemberNameT[k][m], &text14, e->podiumMemberName[k][m] );
+		}
+		if ( n > 0 ) h += 6.0f + 2.0f + 1.0f + 2.0f + 6.0f + n * e->podiumMemberNameT[k][0].box.h + ( n - 1 ) * 3.0f;
+	}
 
 	e->podium[k].x = x;
 	e->podium[k].w = w;
 	e->podium[k].h = h;
 	e->podium[k].y = bottom - h;
 	e->podiumCar[k].x = x + 1.0f;
-	e->podiumCar[k].y = e->podium[k].y + 2.0f;
+	e->podiumCar[k].y = e->podium[k].y + ( e->teamPodium ? 3.0f : 2.0f );
 	e->podiumCar[k].w = w - 2.0f;
 	e->podiumCar[k].h = carH;
 	inX = x + 1.0f + 14.0f;
@@ -1275,7 +1317,23 @@ static void MH_EndCard( mhEndLayout_t *e, int k, float x, float w, float carH, f
 	MH_Place( &e->podiumNameT[k], inX, y );
 	e->podiumNameT[k].box.w = inW;
 	y += e->podiumNameT[k].box.h + 6.0f;
-	MH_BaselineRow( &e->podiumTimeT[k], &e->podiumGapT[k], inX, y, inW );
+	y += MH_BaselineRow( &e->podiumTimeT[k], &e->podiumGapT[k], inX, y, inW );
+	if ( e->teamPodium && e->podiumMembers[k] > 0 ) {
+		int m, n = e->podiumMembers[k] < MH_END_MEMBERS ? e->podiumMembers[k] : MH_END_MEMBERS;
+		y += 6.0f + 2.0f;
+		e->podiumRule[k].x = inX;
+		e->podiumRule[k].y = y;
+		e->podiumRule[k].w = inW;
+		e->podiumRule[k].h = 1.0f;
+		y += 1.0f + 2.0f + 6.0f;
+		for ( m = 0; m < n; m++ ) {
+			mhText_t *pos = &e->podiumMemberPosT[k][m], *name = &e->podiumMemberNameT[k][m];
+			MH_Place( name, inX + pos->box.w + 6.0f, y );
+			MH_Fit( name, inW - pos->box.w - 6.0f );
+			MH_Place( pos, inX, y + MH_Base( name ) - MH_Base( pos ) );
+			y += name->box.h + 3.0f;
+		}
+	}
 }
 
 /* the middle: the podium (second, winner, third, 12px apart, on one line),
@@ -1286,9 +1344,10 @@ static void MH_EndMiddle( mhEndLayout_t *e ) {
 	float bottom = top + MH_END_PODIUM_H, y;
 	int i;
 
-	if ( e->podiumCount >= 2 ) MH_EndCard( e, 1, x, 192.0f, 176.0f, bottom );
-	if ( e->podiumCount >= 1 ) MH_EndCard( e, 0, x + 192.0f + 12.0f, 210.0f, 236.0f, bottom );
-	if ( e->podiumCount >= 3 ) MH_EndCard( e, 2, x + 192.0f + 12.0f + 210.0f + 12.0f, 192.0f, 140.0f, bottom );
+	/* the cars: lower on a team's card, the drivers stand under them */
+	if ( e->podiumCount >= 2 ) MH_EndCard( e, 1, x, 192.0f, e->teamPodium ? 128.0f : 176.0f, bottom );
+	if ( e->podiumCount >= 1 ) MH_EndCard( e, 0, x + 192.0f + 12.0f, 210.0f, e->teamPodium ? 172.0f : 236.0f, bottom );
+	if ( e->podiumCount >= 3 ) MH_EndCard( e, 2, x + 192.0f + 12.0f + 210.0f + 12.0f, 192.0f, e->teamPodium ? 92.0f : 140.0f, bottom );
 
 	MH_Label( &label12, 12.0f );
 	MH_Label( &label11, 11.0f );
@@ -1349,13 +1408,34 @@ static void MH_EndList( mhEndLayout_t *e ) {
 	MH_Set( &e->listRightT, &label12, e->listRight ? e->listRight : "" );
 	y += MH_BaselineRow( &e->listTitleT, &e->listRightT, inX, y, inW ) + 12.0f;
 
-	/* the columns: 34, the rest, 82, 70, 10px apart, inside 8px */
+	/* the teams: cells 2px apart, 40 high; the name over the time, 6 8 in */
+	if ( e->teamCellCount > 0 ) {
+		wsTextStyle_t label10, mono13;
+		float cw = ( inW - 2.0f * ( e->teamCellCount - 1 ) ) / e->teamCellCount;
+		MH_Label( &label10, 10.0f );
+		MH_Mono( &mono13, 13.0f );
+		for ( c = 0; c < e->teamCellCount && c < MH_END_TEAMS; c++ ) {
+			e->teamCell[c].x = inX + c * ( cw + 2.0f );
+			e->teamCell[c].y = y;
+			e->teamCell[c].w = cw;
+			e->teamCell[c].h = 40.0f;
+			MH_Set( &e->teamCellNameT[c], &label10, e->teamCellName[c] );
+			MH_Set( &e->teamCellValueT[c], &mono13, e->teamCellValue[c] );
+			MH_Place( &e->teamCellNameT[c], e->teamCell[c].x + 8.0f, y + 6.0f );
+			MH_Place( &e->teamCellValueT[c], e->teamCell[c].x + 8.0f, e->teamCellNameT[c].box.y + e->teamCellNameT[c].box.h + 2.0f );
+			e->teamCellNameT[c].box.w = e->teamCellValueT[c].box.w = cw - 16.0f;
+		}
+		y += 40.0f + 12.0f;
+	}
+
+	/* the columns: 34, (a 10px square,) the rest, 82, 70, 10px apart, inside 8px */
 	colW[0] = 34.0f;
 	colW[2] = 82.0f;
 	colW[3] = 70.0f;
-	colW[1] = inW - 16.0f - colW[0] - colW[2] - colW[3] - 30.0f;
+	colW[1] = inW - 16.0f - colW[0] - colW[2] - colW[3] - 30.0f - ( e->rowSwatch ? 20.0f : 0.0f );
 	colX[0] = 8.0f;
-	for ( c = 1; c < 4; c++ ) colX[c] = colX[c - 1] + colW[c - 1] + 10.0f;
+	colX[1] = colX[0] + colW[0] + 10.0f + ( e->rowSwatch ? 20.0f : 0.0f );
+	for ( c = 2; c < 4; c++ ) colX[c] = colX[c - 1] + colW[c - 1] + 10.0f;
 	for ( c = 0; c < 4; c++ ) {
 		MH_Set( &e->headT[c], &label11, heads[c] );
 		MH_Place( &e->headT[c], inX + colX[c], y );
@@ -1379,6 +1459,11 @@ static void MH_EndList( mhEndLayout_t *e ) {
 		MH_Place( &e->rowNameT[i], r->x + colX[1], y + ( rowH - e->rowNameT[i].box.h ) * 0.5f );
 		MH_Place( &e->rowTimeT[i], r->x + colX[2], y + ( rowH - e->rowTimeT[i].box.h ) * 0.5f );
 		MH_Place( &e->rowBestT[i], r->x + colX[3], y + ( rowH - e->rowBestT[i].box.h ) * 0.5f );
+		if ( e->rowSwatch ) {
+			e->rowSwatchR[i].x = r->x + colX[0] + colW[0] + 10.0f;
+			e->rowSwatchR[i].y = y + ( rowH - 10.0f ) * 0.5f;
+			e->rowSwatchR[i].w = e->rowSwatchR[i].h = 10.0f;
+		}
 		/* the cells: the columns' width; time and best at the right */
 		e->rowPosT[i].box.w = colW[0];
 		e->rowNameT[i].box.w = colW[1];

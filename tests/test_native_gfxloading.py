@@ -421,12 +421,12 @@ int main(void) {
 #undef B
         } else if (!strcmp(command, "hudend")) {
             /* hudend <view width>, then fields split by |, lists by ; and ~ */
-            static mhEndLayout_t e; static char line[4096]; static char *f[20]; char *r, *item, *more, *p[6];
+            static mhEndLayout_t e; static char line[4096]; static char *f[24]; char *r, *item, *more, *p[6];
             int n = 0, i, k;
             memset(&e, 0, sizeof(e));
             scanf("%f\n", &e.viewWidth);
             fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
-            for (r = line; n < 20; ) { f[n++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
+            for (r = line; n < 24; ) { f[n++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
 #define SPLIT(src, cnt) for (k = 0, r = (src); k < (cnt); k++) { p[k] = r; r = r ? strchr(r, '~') : NULL; if (r) *r++ = 0; }
 #define EACH(src) for (item = (src); *item; item = more) { more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
             e.title = f[0]; e.subtitle = f[1]; e.pos = f[2]; e.of = f[3]; e.doneLabel = f[4]; e.doneTime = f[5]; e.doneNote = f[6];
@@ -439,6 +439,16 @@ int main(void) {
             EACH(f[14]) SPLIT(item, 4) e.rowPos[e.rowCount] = p[0]; e.rowName[e.rowCount] = p[1]; e.rowTime[e.rowCount] = p[2]; e.rowBest[e.rowCount++] = p[3]; }
             i = 0; EACH(f[15]) SPLIT(item, 2) e.keyName[i] = p[0]; e.keyAction[i++] = p[1]; }
             e.readyLabel = f[16]; e.readyValue = f[17];
+            /* team races: 18 chart title~note, 19 spread dots,dots~tick~value;.., 20 YOUR TEAM (a team podium),
+             * 21 members pos:name,pos:name;.. a card, 22 team cells name~value;.., 23 row squares */
+            if (n > 18 && *f[18]) { SPLIT(f[18], 2) e.chartTitle = p[0]; e.chartNote = p[1]; }
+            if (n > 19) EACH(f[19]) SPLIT(item, 3) i = e.spreadCount++; e.spreadTick[i] = atof(p[1]); e.spreadValue[i] = p[2];
+                for (r = p[0]; r && *r; ) { e.spreadDot[i][e.spreadDots[i]++] = atof(r); r = strchr(r, ','); if (r) r++; } }
+            if (n > 20 && *f[20]) { e.teamPodium = 1; e.podiumYou = f[20]; }
+            i = 0; if (n > 21) EACH(f[21]) char *m, *mn; for (m = item; *m; m = mn) { mn = strchr(m, ','); if (mn) *mn++ = 0; else mn = m + strlen(m);
+                e.podiumMemberPos[i][e.podiumMembers[i]] = m; r = strchr(m, ':'); *r++ = 0; e.podiumMemberName[i][e.podiumMembers[i]++] = r; } i++; }
+            if (n > 22) EACH(f[22]) SPLIT(item, 2) e.teamCellName[e.teamCellCount] = p[0]; e.teamCellValue[e.teamCellCount++] = p[1]; }
+            if (n > 23) e.rowSwatch = atoi(f[23]);
 #undef SPLIT
 #undef EACH
             uis.glconfig.vidWidth = e.viewWidth; uis.glconfig.vidHeight = 900;
@@ -455,7 +465,17 @@ int main(void) {
                 sprintf(key, "lapBar%d", i); rect(key, e.lapBar[i]); }
             for (i = 0; i < e.podiumCount; i++) { char key[24]; sprintf(key, "podium%d", i); rect(key, e.podium[i]);
                 sprintf(key, "podiumCar%d", i); rect(key, e.podiumCar[i]); sprintf(key, "podiumPlace%d", i); T(key, e.podiumPlaceT[i]);
-                sprintf(key, "podiumName%d", i); T(key, e.podiumNameT[i]); sprintf(key, "podiumTag%d", i); T(key, e.podiumTagT[i]); }
+                sprintf(key, "podiumName%d", i); T(key, e.podiumNameT[i]); sprintf(key, "podiumTag%d", i); T(key, e.podiumTagT[i]);
+                sprintf(key, "podiumYou%d", i); T(key, e.podiumYouT[i]); sprintf(key, "podiumTime%d", i); T(key, e.podiumTimeT[i]);
+                sprintf(key, "podiumRule%d", i); rect(key, e.podiumRule[i]);
+                for (k = 0; k < e.podiumMembers[i]; k++) { sprintf(key, "member%d_%d", i, k); T(key, e.podiumMemberNameT[i][k]);
+                    sprintf(key, "memberPos%d_%d", i, k); T(key, e.podiumMemberPosT[i][k]); } }
+            for (i = 0; i < e.spreadCount; i++) { char key[24]; sprintf(key, "spreadSwatch%d", i); rect(key, e.spreadSwatch[i]);
+                sprintf(key, "spreadTrack%d", i); rect(key, e.spreadTrack[i]); sprintf(key, "spreadTick%d", i); rect(key, e.spreadTickR[i]);
+                sprintf(key, "spreadValue%d", i); T(key, e.spreadValueT[i]);
+                for (k = 0; k < e.spreadDots[i]; k++) { sprintf(key, "spreadDot%d_%d", i, k); rect(key, e.spreadDotR[i][k]); } }
+            for (i = 0; i < e.teamCellCount; i++) { char key[24]; sprintf(key, "teamCell%d", i); rect(key, e.teamCell[i]);
+                sprintf(key, "teamCellName%d", i); T(key, e.teamCellNameT[i]); sprintf(key, "teamCellValue%d", i); T(key, e.teamCellValueT[i]); }
             T("awardsTitle", e.awardsTitleT);
             for (i = 0; i < e.awardCount; i++) { char key[24]; sprintf(key, "award%d", i); rect(key, e.award[i]);
                 sprintf(key, "awardIcon%d", i); rect(key, e.awardIcon[i]); sprintf(key, "awardLabel%d", i); T(key, e.awardLabelT[i]);
@@ -463,7 +483,8 @@ int main(void) {
             rect("list", e.list); T("listTitle", e.listTitleT); T("listRight", e.listRightT);
             for (i = 0; i < 4; i++) { char key[24]; sprintf(key, "head%d", i); T(key, e.headT[i]); }
             for (i = 0; i < e.rowCount; i++) { char key[24]; sprintf(key, "row%d", i); rect(key, e.row[i]);
-                sprintf(key, "rowPos%d", i); T(key, e.rowPosT[i]); sprintf(key, "rowName%d", i); T(key, e.rowNameT[i]); }
+                sprintf(key, "rowPos%d", i); T(key, e.rowPosT[i]); sprintf(key, "rowName%d", i); T(key, e.rowNameT[i]);
+                if (e.rowSwatch) { sprintf(key, "rowSwatch%d", i); rect(key, e.rowSwatchR[i]); } }
             for (i = 0; i < 3; i++) { char key[24]; sprintf(key, "keyName%d", i); T(key, e.keyNameT[i]);
                 sprintf(key, "keyAction%d", i); T(key, e.keyActionT[i]); }
             T("readyLabel", e.readyLabelT); T("readyValue", e.readyValueT); rect("readyBar", e.readyBar);

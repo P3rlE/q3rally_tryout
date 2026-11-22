@@ -49,6 +49,7 @@ int main(void) {
             CG_ResultGap(&d[a], &d[who], text, sizeof(text));
             printf("%s\n", text);
         }
+        else if (!strcmp(cmd, "diff")) { scanf("%d", &a); CG_ResultDiff(a, text, sizeof(text)); printf("%s\n", text); }
         else if (!strcmp(cmd, "time")) { scanf("%d", &a); CG_ResultTime(a, text, sizeof(text)); printf("%s\n", text); }
     }
     return 0;
@@ -108,3 +109,7 @@ def test_the_time_column():
 
 def test_times():
     assert run(['time 51204', 'time 0', 'time 3600000']) == ['0:51.204', '0:00.000', '60:00.000']
+
+
+def test_a_difference_is_signed():
+    assert run(['diff 2070', 'diff -6140', 'diff 0', 'diff 62100', 'diff -61000']) == ['+2.070', '-6.140', '+0.000', '+1:02.100', '-1:01.000']
