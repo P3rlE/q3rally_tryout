@@ -1669,11 +1669,6 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 			trap_Cvar_Set( "laplimit", va( "%i", g_timeTrialLaps.integer ) );
 			trap_Cvar_Update( &g_laplimit );
 		}
-
-		if ( g_timeTrialFinishDelay.integer > 0 ) {
-			trap_Cvar_Set( "g_finishRaceDelay", va( "%i", g_timeTrialFinishDelay.integer ) );
-			trap_Cvar_Update( &g_finishRaceDelay );
-		}
 	}
 
 	G_ProcessIPBans();
@@ -2584,7 +2579,10 @@ void BeginIntermission( void ) {
 		return;		// already active
 	}
 
-        // update wins / losses for the completed match
+        // Direct entry into intermission can bypass LogExit.
+        if ( !level.matchOutcomeRecorded ) {
+                G_RallyUpdateAllTeamTimes();
+        }
         G_RecordMatchOutcome();
 
         level.intermissiontime = level.time;
@@ -2790,6 +2788,8 @@ void LogExit( const char *string ) {
 #endif
 	G_LogPrintf( "Exit: %s\n", string );
 
+	// Use the race cutoff for DNFs before recording or submitting team results.
+	G_RallyUpdateAllTeamTimes();
         level.intermissionQueued = level.time;
 
 	// this will keep the clients from playing any voice sounds
@@ -3035,6 +3035,16 @@ qboolean ScoreIsTied( void ) {
 	return a == b;
 }
 
+static qboolean G_RaceFinishDelayElapsed( void ) {
+	int delay = g_finishRaceDelay.integer;
+
+	if ( g_gametype.integer == GT_SINGLE_PLAYER && g_timeTrialFinishDelay.integer > 0 ) {
+		delay = g_timeTrialFinishDelay.integer;
+	}
+	delay = (int)Com_Clamp( 0, INT_MAX / 1000, delay );
+	return level.time - level.finishRaceTime > delay * 1000;
+}
+
 /*
 =================
 CheckExitRules
@@ -3242,13 +3252,10 @@ void CheckExitRules( void ) {
 		return;
 	}
 
-	if ( level.finishRaceTime && (isRallyRace() || g_gametype.integer == GT_SINGLE_PLAYER) ){
-		// if everyone has finished the race, or the finishRaceDelay time is up, then exit
-		if ( (level.finishRaceTime + (g_finishRaceDelay.integer * 1000) < level.time)
-			|| !count ) {
-			LogExit( "Race finished." );
-			return;
-		}
+	if ( (isRallyRace() || g_gametype.integer == GT_SINGLE_PLAYER) &&
+		level.finishRaceTime && G_RaceFinishDelayElapsed() ) {
+		LogExit( "Race finished." );
+		return;
 	}
 
 	if ( level.finishRaceTime && g_gametype.integer == GT_DERBY

@@ -73,6 +73,11 @@ void DeathmatchScoreboardMessage( gentity_t *ent ) {
 		return;
 	}
 
+	if ( level.intermissiontime &&
+	     ( g_gametype.integer == GT_TEAM_RACING || g_gametype.integer == GT_TEAM_RACING_DM ) ) {
+		Cmd_Times_f( ent );
+	}
+
 	// send the latest information on all clients
 	string[0] = 0;
 	stringlength = 0;

@@ -1,8 +1,7 @@
-"""Exercise production race warning decisions without a running renderer/server."""
+"""Exercise race feedback and finish timing without a running renderer/server."""
 import pathlib
-import shutil
-import subprocess
-import tempfile
+
+from test_plate_and_menu_regressions import CODE, compile_run
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -19,13 +18,25 @@ def function(source, marker):
 
 def test_race_feedback():
     server = (ROOT / 'engine/code/game/g_rally_mapents.c').read_text()
+    rules = (ROOT / 'engine/code/game/g_main.c').read_text()
+    rally = (ROOT / 'engine/code/game/g_rally_tools.c').read_text()
+    shared = (ROOT / 'engine/code/qcommon/q_shared.c').read_text()
     hud = (ROOT / 'engine/code/cgame/cg_hud_racing.c').read_text()
     harness = '#include "' + (ROOT / 'engine/code/game/g_local.h').as_posix() + '"\n'
     harness += r'''
 #include <assert.h>
+#include <limits.h>
 level_locals_t level;
+vmCvar_t g_gametype, g_finishRaceDelay, g_timeTrialFinishDelay;
 static int notices, recipient;
-static char message[256];
+static char message[256], broadcast[256];
+static int recordedTeamTime, submittedTeamTime;
+void QDECL G_LogPrintf(const char *format, ...) {}
+void trap_SetConfigstring(int index, const char *value) {}
+void G_Profile_FlushIfDirty(void) {}
+qboolean G_Profile_IsDirty(void) { return qfalse; }
+static void G_RecordMatchOutcome(void) { recordedTeamTime = level.teamTimes[TEAM_RED]; }
+static void G_LadderSubmitMatchReport(const char *reason) { submittedTeamTime = level.teamTimes[TEAM_RED]; }
 char *QDECL va(char *format, ...) {
     static char result[1024]; va_list ap;
     va_start(ap,format); vsnprintf(result,sizeof(result),format,ap); va_end(ap);
@@ -33,11 +44,116 @@ char *QDECL va(char *format, ...) {
 }
 void trap_SendServerCommand(int client, const char *text) {
     notices++; recipient=client; snprintf(message,sizeof(message),"%s",text);
+    if (client == -1) snprintf(broadcast, sizeof(broadcast), "%s", text);
 }
 '''
     harness += function(server, 'static void G_RallyWarnMissedCheckpoint(') + '\n'
+    harness += function(server, 'static const char *G_RallyPlaceString(') + '\n'
+    harness += function(server, 'static void G_RallyReportFinish(') + '\n'
+    harness += function(server, 'static void G_RallyUpdateTeamTime(') + '\n'
+    harness += function(server, 'void G_RallyUpdateAllTeamTimes(') + '\n'
+    harness += function(rules, 'void LogExit( const char *string ) {') + '\n'
+    harness += function(rules, 'static qboolean G_RaceFinishDelayElapsed(') + '\n'
+    harness += function(rally, 'qboolean isRallyDMRace(') + '\n'
+    harness += function(shared, 'float Com_Clamp(') + '\n'
     harness += function(hud, 'static qboolean CG_IsMovingAwayFromCheckpoint(') + '\n'
     harness += r'''
+static void TestTeamTimesAtRaceEnd(void) {
+    static gclient_t drivers[3];
+
+    level.clients = drivers;
+    level.maxclients = ARRAY_LEN(drivers);
+    level.startRaceTime = 10000;
+    level.time = 60000;
+    drivers[0].pers.connected = drivers[1].pers.connected = CON_CONNECTED;
+    drivers[0].sess.sessionTeam = drivers[1].sess.sessionTeam = TEAM_RED;
+    drivers[0].finishRaceTime = 40000;
+    drivers[2].sess.sessionTeam = TEAM_RED; /* Disconnected drivers are excluded. */
+
+    g_gametype.integer = GT_TEAM_RACING;
+    G_RallyUpdateAllTeamTimes();
+    assert(level.teamTimes[TEAM_RED] == 40000);
+
+    g_gametype.integer = GT_TEAM_RACING_DM;
+    level.teamScores[TEAM_RED] = 4;
+    level.time = 70000;
+    LogExit("Race finished.");
+    assert(level.intermissionQueued == 70000);
+    assert(recordedTeamTime == 43000 && submittedTeamTime == 43000);
+    assert(!strcmp(broadcast, "times 43000 0 0 0"));
+    assert(!drivers[1].finishRaceTime);
+
+    notices = 0;
+    level.time = 70500;
+    G_RallyUpdateAllTeamTimes();
+    level.intermissionQueued = 0;
+    level.intermissiontime = 71000;
+    level.time = 80000;
+    G_RallyUpdateAllTeamTimes();
+    assert(level.teamTimes[TEAM_RED] == 43000 && !notices);
+}
+
+static void TestFinishDelay(void) {
+    level.finishRaceTime = 20000;
+    g_finishRaceDelay.integer = 30;
+    g_timeTrialFinishDelay.integer = 10;
+    g_gametype.integer = GT_SINGLE_PLAYER;
+    level.time = 30000;
+    assert(!G_RaceFinishDelayElapsed());
+    level.time++;
+    assert(G_RaceFinishDelayElapsed());
+
+    g_gametype.integer = GT_TEAM_RACING;
+    assert(!G_RaceFinishDelayElapsed());
+    assert(g_finishRaceDelay.integer == 30);
+    level.time = 50001;
+    assert(G_RaceFinishDelayElapsed());
+
+    g_gametype.integer = GT_SINGLE_PLAYER;
+    g_timeTrialFinishDelay.integer = 0;
+    level.time = 30001;
+    assert(!G_RaceFinishDelayElapsed());
+    level.time = 50001;
+    assert(G_RaceFinishDelayElapsed());
+    g_finishRaceDelay.integer = INT_MAX;
+    assert(!G_RaceFinishDelayElapsed());
+}
+
+static void TestFinishMessages(gentity_t *car) {
+    const int pendingModes[] = {GT_RACING_DM, GT_TEAM_RACING, GT_TEAM_RACING_DM};
+    int i;
+
+    car->s.clientNum = 7;
+    car->client->finishRaceTime = 25000;
+    for (i = 0; i < ARRAY_LEN(pendingModes); i++) {
+        g_gametype.integer = pendingModes[i];
+        level.finishRaceTime = 0;
+        notices = 0;
+        G_RallyReportFinish(car);
+        assert(level.finishRaceTime == 25000 && level.winnerNumber == 7);
+        assert(notices == 2 && recipient == 7);
+        assert(strstr(broadcast, "finished the race") && strstr(message, "Race finished"));
+        car->client->ps.stats[STAT_POSITION] = 2;
+        G_RallyReportFinish(car);
+        assert(!strstr(broadcast, "place"));
+    }
+
+    level.finishRaceTime = 0;
+    g_gametype.integer = GT_GHOST;
+    notices = 0;
+    G_RallyReportFinish(car);
+    assert(notices == 1 && recipient == -1 && strstr(broadcast, "finished the race"));
+
+    level.finishRaceTime = 0;
+    g_gametype.integer = GT_SPRINT;
+    notices = 0;
+    G_RallyReportFinish(car);
+    assert(notices == 2 && recipient == 7 && strstr(message, "won the race"));
+    car->client->ps.stats[STAT_POSITION] = 2;
+    G_RallyReportFinish(car);
+    assert(strstr(broadcast, "second place"));
+}
+
 int main(void) {
     static gentity_t car, gate;
     static gclient_t client;
@@ -92,13 +208,59 @@ int main(void) {
     assert(!CG_IsMovingAwayFromCheckpoint(velocity,target,100));
     assert(!CG_IsMovingAwayFromCheckpoint(velocity,target,0));
     target[0]=0; assert(!CG_IsMovingAwayFromCheckpoint(velocity,target,180));
+    TestFinishDelay();
+    TestFinishMessages(&car);
+    TestTeamTimesAtRaceEnd();
     return 0;
 }
 '''
-    compiler = shutil.which('gcc') or 'C:/msys64/mingw64/bin/gcc.exe'
-    with tempfile.TemporaryDirectory(dir=ROOT / 'tests') as directory:
-        c = pathlib.Path(directory) / 'feedback.c'
-        binary = pathlib.Path(directory) / 'feedback.exe'
-        c.write_text(harness)
-        subprocess.run([compiler,'-DARCH_STRING="test"',str(c),'-o',str(binary),'-lm'],check=True)
-        subprocess.run([str(binary)],check=True,timeout=5)
+    compile_run(harness)
+
+
+def test_scoreboard_time_stops_for_dnf():
+    scoreboard = (CODE / 'cgame/cg_scoreboard.c').read_text()
+    modes = (CODE / 'game/bg_misc.c').read_text()
+    harness = r'''
+#include "cgame/cg_local.h"
+#include <assert.h>
+cg_t cg;
+cgs_t cgs;
+centity_t cg_entities[MAX_GENTITIES];
+'''
+    harness += function(modes, 'qboolean BG_GametypeIsRace(') + '\n'
+    harness += function(modes, 'qboolean BG_GametypeHasRaceFinish(') + '\n'
+    for signature in (
+        'static qboolean CG_HasRaceFinishStatus(',
+        'static qboolean CG_ScoreboardDriverDnf(',
+        'static int CG_ScoreboardTotalRaceTime(',
+    ):
+        harness += function(scoreboard, signature) + '\n'
+    harness += r'''
+int main(void) {
+    static snapshot_t snapshot;
+    score_t score = {0};
+    score.client = 1;
+    score.time = 10000;
+    cgs.gametype = GT_TEAM_RACING;
+    cg.snap = &snapshot;
+    cg.time = 20000;
+    assert(!CG_ScoreboardDriverDnf(&score));
+    assert(CG_ScoreboardTotalRaceTime(&score) == 10000);
+
+    cg.intermissionStarted = qtrue;
+    assert(CG_ScoreboardDriverDnf(&score));
+    assert(CG_ScoreboardTotalRaceTime(&score) == 0);
+    cg.intermissionStarted = qfalse;
+    snapshot.ps.pm_type = PM_INTERMISSION;
+    cg.time = 30000;
+    cgs.gametype = GT_TEAM_RACING_DM;
+    assert(CG_ScoreboardDriverDnf(&score));
+    assert(CG_ScoreboardTotalRaceTime(&score) == 0);
+
+    cg_entities[1].finishRaceTime = 18000;
+    assert(!CG_ScoreboardDriverDnf(&score));
+    assert(CG_ScoreboardTotalRaceTime(&score) == 8000);
+    return 0;
+}
+'''
+    compile_run(harness)

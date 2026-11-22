@@ -501,35 +501,19 @@ void Touch_Start (gentity_t *self, gentity_t *other, trace_t *trace ){
 ================================================================================
 G_RallyUpdateTeamTime
 
-Called whenever a player finishes the race. Recomputes level.teamTimes[] for
-the finishing player's team as the average race duration of all team members
-who have finished so far (using level.time as a stand-in for those who haven't).
+Average the race durations of the connected team members. Use elapsed race
+time for drivers who have yet to finish, including DNFs at the race cutoff.
 
 For GT_TEAM_RACING_DM each frag subtracts TIME_BONUS_PER_FRAG ms, mirroring
 the individual finish-time logic in IsCarAhead().
 
-After updating, broadcasts the new times to all clients so that cg.teamTimes[]
-stays in sync and the scoreboard/header reflect the correct ranking immediately.
 ================================================================================
 */
-static void G_RallyUpdateTeamTime( gentity_t *finisher ) {
-	int		team;
+static void G_RallyUpdateTeamTime( team_t team ) {
 	int		i;
 	int		memberCount;
 	int		totalTime;
 	gclient_t	*cl;
-
-	if ( !finisher->client ) {
-		return;
-	}
-	if ( !level.startRaceTime ) {
-		return;
-	}
-
-	team = finisher->client->sess.sessionTeam;
-	if ( team < TEAM_RED || team > TEAM_YELLOW ) {
-		return;
-	}
 
 	memberCount = 0;
 	totalTime   = 0;
@@ -544,13 +528,12 @@ static void G_RallyUpdateTeamTime( gentity_t *finisher ) {
 		if ( cl->finishRaceTime ) {
 			totalTime += cl->finishRaceTime - level.startRaceTime;
 		} else {
-			// Player hasn't finished yet — use current elapsed time as
-			// a running estimate so the ranking stays live during the race.
 			totalTime += level.time - level.startRaceTime;
 		}
 	}
 
 	if ( memberCount == 0 ) {
+		level.teamTimes[team] = 0;
 		return;
 	}
 
@@ -570,31 +553,21 @@ static void G_RallyUpdateTeamTime( gentity_t *finisher ) {
 ================================================================================
 G_RallyUpdateAllTeamTimes
 
-Recomputes level.teamTimes[] for all active teams and pushes the result to
-all clients. Called periodically from CalculatePlayerPositions so that the
-scoreboard and HUD team-rank display stays live during the race.
+Publishes live team standings during the race and the final standings at exit.
 ================================================================================
 */
 void G_RallyUpdateAllTeamTimes( void ) {
-	gentity_t	dummy;
-	gclient_t	dummyClient;
-	int		t;
+	team_t team;
 
-	if ( !level.startRaceTime ) {
+	if ( !level.startRaceTime || level.intermissionQueued || level.intermissiontime ) {
 		return;
 	}
 	if ( g_gametype.integer != GT_TEAM_RACING && g_gametype.integer != GT_TEAM_RACING_DM ) {
 		return;
 	}
 
-	memset( &dummy, 0, sizeof( dummy ) );
-	memset( &dummyClient, 0, sizeof( dummyClient ) );
-	dummy.client = &dummyClient;
-
-	for ( t = TEAM_RED; t <= TEAM_YELLOW; t++ ) {
-		if ( !TeamCount( -1, t ) ) continue;
-		dummyClient.sess.sessionTeam = t;
-		G_RallyUpdateTeamTime( &dummy );
+	for ( team = TEAM_RED; team <= TEAM_YELLOW; team++ ) {
+		G_RallyUpdateTeamTime( team );
 	}
 
 	trap_SendServerCommand( -1, va( "times %i %i %i %i",
@@ -604,15 +577,56 @@ void G_RallyUpdateAllTeamTimes( void ) {
 		level.teamTimes[TEAM_YELLOW] ) );
 }
 
-void Touch_Finish (gentity_t *self, gentity_t *other, trace_t *trace ){
-        const char *place;
+static void G_RallyReportFinish( gentity_t *finisher ) {
+	gclient_t *client = finisher->client;
+	qboolean firstFinisher = !level.finishRaceTime;
+	qboolean ghostRace = g_gametype.integer == GT_GHOST;
+	int clientNum = finisher->s.clientNum;
+	const char *place;
 
+	if ( firstFinisher ) {
+		client->ps.stats[STAT_POSITION] = 1;
+		level.winnerNumber = clientNum;
+		level.finishRaceTime = client->finishRaceTime;
+	}
+
+	/* In combat and team races, later finishers can still change the result. */
+	if ( isRallyDMRace() || g_gametype.integer == GT_TEAM_RACING || ghostRace ) {
+		trap_SendServerCommand( -1, va( "print \"%s finished the race!\n\"", client->pers.netname ) );
+		/* The client shows the result against the ghost. */
+		if ( !ghostRace ) {
+			trap_SendServerCommand( clientNum, "cp \"Race finished!\n\"" );
+		}
+		return;
+	}
+
+	if ( firstFinisher ) {
+		if ( g_gametype.integer == GT_ELIMINATION ) {
+			trap_SendServerCommand( -1, va( "print \"%s won the elimination!\n\"", client->pers.netname ) );
+			trap_SendServerCommand( clientNum, "cp \"You won the elimination!\n\"" );
+		} else {
+			trap_SendServerCommand( -1, va( "print \"%s won the race!\n\"", client->pers.netname ) );
+			trap_SendServerCommand( clientNum, "cp \"You won the race!\n\"" );
+		}
+		return;
+	}
+
+	place = G_RallyPlaceString( client->ps.stats[STAT_POSITION] );
+	if ( place ) {
+		trap_SendServerCommand( -1, va( "print \"%s finished the race in %s place!\n\"", client->pers.netname, place ) );
+	} else {
+		trap_SendServerCommand( -1, va( "print \"%s finished the race!\n\"", client->pers.netname ) );
+	}
+}
+
+void Touch_Finish (gentity_t *self, gentity_t *other, trace_t *trace ){
         /* Drag uses a common origin-crossing plane, independent of brush contact. */
         if ( g_gametype.integer == GT_DRAG ) {
                 return;
         }
 
-        if ( !other->client || other->client->finishRaceTime ) {
+        if ( !other->client || other->client->finishRaceTime ||
+             level.intermissionQueued || level.intermissiontime ) {
                 return;
         }
 
@@ -637,47 +651,16 @@ void Touch_Finish (gentity_t *self, gentity_t *other, trace_t *trace ){
         other->takedamage = qfalse;
         CalculatePlayerPositions();
 
-        // Update team average time now that this player has a finish time
-        if ( g_gametype.integer == GT_TEAM_RACING || g_gametype.integer == GT_TEAM_RACING_DM ) {
-                G_RallyUpdateTeamTime( other );
-        }
-
         trap_SendServerCommand( -1, va("raceFinishTime %i %i", other->s.clientNum, other->client->finishRaceTime) );
         G_GhostLadder_ClientFinished( other );
 
-        if ( !level.finishRaceTime ){
-                other->client->ps.stats[STAT_POSITION] = 1;
-
-                level.winnerNumber = other->s.clientNum;
-level.finishRaceTime = level.time;
-trap_SendServerCommand( -1, va("print \"%s won the race!\n\"", other->client->pers.netname ));
-/* Ghost Race: the cgame shows the result against the ghost instead. */
-if ( g_gametype.integer != GT_GHOST ) {
-	trap_SendServerCommand( level.winnerNumber, "cp \"You won the race!\n\"");
-}
-}
-else {
-place = G_RallyPlaceString( other->client->ps.stats[STAT_POSITION] );
-
-if ( !place ) {
-Com_Printf( "Unknown placing: %i\n", other->client->ps.stats[STAT_POSITION] );
-}
-
-if ( other->client->ps.stats[STAT_POSITION] <= 8 ){
-trap_SendServerCommand( -1, va("print \"%s finished the race in %s place!\n\"", other->client->pers.netname, place ));
-}
-else {
-trap_SendServerCommand( -1, va("print \"%s finished the race!\n\"", other->client->pers.netname ));
-}
-}
+        G_RallyReportFinish( other );
 
         G_Profile_RecordRacePlacement( other->client, other->client->ps.stats[STAT_POSITION] );
 }
 
 void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
-	const char	*place;
-
-	if ( !other->client ) {
+	if ( !other->client || level.intermissionQueued || level.intermissiontime ) {
 		return;
 	}
 
@@ -713,44 +696,10 @@ void Touch_StartFinish (gentity_t *self, gentity_t *other, trace_t *trace ){
 			other->takedamage = qfalse;
 			CalculatePlayerPositions();
 
-			// Update team average time now that this player has a finish time
-			if ( g_gametype.integer == GT_TEAM_RACING || g_gametype.integer == GT_TEAM_RACING_DM ) {
-				G_RallyUpdateTeamTime( other );
-			}
-
 			trap_SendServerCommand( -1, va("raceFinishTime %i %i", other->s.clientNum, other->client->finishRaceTime) );
 			G_GhostLadder_ClientFinished( other );
 
-			if (!level.finishRaceTime){
-				other->client->ps.stats[STAT_POSITION] = 1; // make sure the player is first
-
-				level.winnerNumber = other->s.clientNum;
-				level.finishRaceTime = level.time;
-				if ( g_gametype.integer == GT_ELIMINATION ) {
-					trap_SendServerCommand( -1, va("print \"%s won the elimination!\n\"", other->client->pers.netname ));
-					trap_SendServerCommand( level.winnerNumber, "cp \"You won the elimination!\n\"");
-				} else {
-					trap_SendServerCommand( -1, va("print \"%s won the race!\n\"", other->client->pers.netname ));
-					/* Ghost Race: the cgame shows the result against the ghost instead. */
-					if ( g_gametype.integer != GT_GHOST ) {
-						trap_SendServerCommand( level.winnerNumber, "cp \"You won the race!\n\"");
-					}
-				}
-			}
-			else {
-				place = G_RallyPlaceString( other->client->ps.stats[STAT_POSITION] );
-
-				if ( !place ) {
-					Com_Printf( "Unknown placing: %i\n", other->client->ps.stats[STAT_POSITION] );
-				}
-
-				if ( other->client->ps.stats[STAT_POSITION] <= 8 ){
-					trap_SendServerCommand( -1, va("print \"%s finished the race in %s place!\n\"", other->client->pers.netname, place ));
-				}
-				else {
-					trap_SendServerCommand( -1, va("print \"%s finished the race!\n\"", other->client->pers.netname ));
-				}
-			}
+			G_RallyReportFinish( other );
 		}
 		else {
 			other->number = 1;
