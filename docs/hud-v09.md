@@ -119,6 +119,25 @@ them (`level.teamTimes`):
 - The classification with the teams' averages over it and each driver's
   team as a square.
 
+A drag race ends on its own page (`EndDrag.dc.html`), the duel:
+
+- At the left: the match ("2-1 / 3", the best of), whether you won it and
+  your quickest run with how much quicker or slower it was than your
+  rival's; best reaction, top trap speed, best total and fouls; your heats
+  as bars against your quickest (a foul an orange line).
+- In the middle a time slip a lane of the deciding heat (the last one
+  with a winner): the car, the lane, reaction, 60 ft, 330 ft, 1/8 mile,
+  1/4 mile and trap speed, the better figure of each line in blue; the
+  winner's slip with WIN and the accent on top. Practice alone: one slip.
+  Highlights: the best reaction and the quickest run of the match.
+- At the right the heats: who won each, the elapsed time, the margin over
+  the line (FOUL, DNF, SOLO, or RERUN for a heat without a winner).
+
+The server sends only each car's current state; the client writes every
+heat down as it runs (`cg_drag_log.c`, tested in `tests/test_drag_log.py`),
+with the 60 ft, 330 ft and 1/8 mile splits the HUD measures, now for both
+lanes. In a tournament the bracket follows after five seconds as before.
+
 ## The TAB table
 
 Held with TAB (`+scores`), the game dimmed behind it and the HUD out of the
@@ -145,4 +164,4 @@ many drivers are ready in place of the clock.
 - Your row is lit, bots show BOT in place of a ping, a ping from 100 on is
   orange. Under it the spectators and the server with how full it is.
 
-Still to come: the end screens of the other modes.
+Still to come: the end screens of Sprint, Ghost and the combat and team modes.

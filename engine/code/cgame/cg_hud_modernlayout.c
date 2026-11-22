@@ -1338,11 +1338,69 @@ static void MH_EndCard( mhEndLayout_t *e, int k, float x, float w, float carH, f
 
 /* the middle: the podium (second, winner, third, 12px apart, on one line),
  * 28px under it the highlights */
+/* a drag duel: the heat over a time slip a lane (gen.py time_slip), the
+ * lines 22 high over a dashed rule; returns where they end */
+static float MH_EndSlips( mhEndLayout_t *e, float x, float top ) {
+	wsTextStyle_t label12, label11, text20, mono14;
+	float y, bottom = top;
+	int k, i, n = e->slipCount < 2 ? e->slipCount : 2;
+	MH_Label( &label12, 12.0f );
+	MH_Label( &label11, 11.0f );
+	MH_Text( &text20, 20.0f );
+	MH_Mono( &mono14, 14.0f );
+	MH_Set( &e->slipTitleT, &label12, e->slipTitle );
+	MH_Set( &e->slipNoteT, &label11, e->slipNote ? e->slipNote : "" );
+	y = top + MH_BaselineRow( &e->slipTitleT, &e->slipNoteT, x, top, MH_END_PODIUM_W ) + 10.0f;
+	for ( k = 0; k < n; k++ ) {
+		float sx = n == 1 ? x + ( MH_END_PODIUM_W - 294.0f ) * 0.5f : x + k * ( 294.0f + 12.0f );
+		float inX = sx + 1.0f + 14.0f, inW = 294.0f - 2.0f - 28.0f, ry, right;
+		e->slip[k].x = sx;
+		e->slip[k].y = y;
+		e->slip[k].w = 294.0f;
+		e->slipCar[k].x = sx + 1.0f;
+		e->slipCar[k].y = y + 2.0f;
+		e->slipCar[k].w = 292.0f;
+		e->slipCar[k].h = 176.0f;
+		ry = y + 2.0f + 176.0f + 12.0f;
+		/* the lane at the left, YOU and WIN at the right */
+		MH_Set( &e->slipLaneT[k], &label11, e->slipLane[k] );
+		MH_Set( &e->slipTagT[k], &label11, e->slipWin[k] ? "WIN" : "" );
+		MH_Set( &e->slipYouT[k], &label11, e->slipMe[k] ? "YOU" : "" );
+		MH_Place( &e->slipLaneT[k], inX, ry );
+		right = inX + inW;
+		MH_Place( &e->slipTagT[k], right - e->slipTagT[k].box.w, ry );
+		if ( e->slipTagT[k].box.w > 0.0f ) right -= e->slipTagT[k].box.w + 10.0f;
+		MH_Place( &e->slipYouT[k], right - e->slipYouT[k].box.w, ry );
+		ry += e->slipLaneT[k].box.h + 8.0f;
+		MH_Set( &e->slipNameT[k], &text20, e->slipName[k] );
+		MH_Place( &e->slipNameT[k], inX, ry );
+		MH_Fit( &e->slipNameT[k], inW );
+		e->slipNameT[k].box.w = inW;
+		ry += e->slipNameT[k].box.h + 8.0f;
+		for ( i = 0; i < e->slipRows && i < MH_END_SLIP_ROWS; i++ ) {
+			mhText_t *lab = &e->slipLabelT[k][i], *val = &e->slipValueT[k][i];
+			MH_Set( lab, &label11, e->slipLabel[i] );
+			MH_Set( val, &mono14, e->slipValue[k][i] ? e->slipValue[k][i] : "" );
+			MH_BaselineRow( lab, val, inX, ry, inW );
+			e->slipRule[k][i].x = inX;
+			e->slipRule[k][i].y = ry + 22.0f;
+			e->slipRule[k][i].w = inW;
+			e->slipRule[k][i].h = 1.0f;
+			ry += 23.0f;
+		}
+		e->slip[k].h = ry + 14.0f + 1.0f - y;
+		if ( y + e->slip[k].h > bottom ) bottom = y + e->slip[k].h;
+	}
+	return bottom;
+}
+
 static void MH_EndMiddle( mhEndLayout_t *e ) {
 	wsTextStyle_t label12, label11, text16, mono15;
 	float x = MH_END_PODIUM_X + ( e->viewWidth - 1600.0f ) * 0.5f, top = e->top + MH_END_TOP;
 	float bottom = top + MH_END_PODIUM_H, y;
 	int i;
+
+	if ( e->slipCount > 0 ) bottom = MH_EndSlips( e, x, top );
 
 	/* the cars: lower on a team's card, the drivers stand under them */
 	if ( e->podiumCount >= 2 ) MH_EndCard( e, 1, x, 192.0f, e->teamPodium ? 128.0f : 176.0f, bottom );
@@ -1432,12 +1490,12 @@ static void MH_EndList( mhEndLayout_t *e ) {
 	colW[0] = 34.0f;
 	colW[2] = 82.0f;
 	colW[3] = 70.0f;
-	colW[1] = inW - 16.0f - colW[0] - colW[2] - colW[3] - 30.0f - ( e->rowSwatch ? 20.0f : 0.0f );
-	colX[0] = 8.0f;
+	colW[1] = inW - colW[0] - colW[2] - colW[3] - 30.0f - ( e->rowSwatch ? 20.0f : 0.0f );
+	colX[0] = 0.0f;
 	colX[1] = colX[0] + colW[0] + 10.0f + ( e->rowSwatch ? 20.0f : 0.0f );
 	for ( c = 2; c < 4; c++ ) colX[c] = colX[c - 1] + colW[c - 1] + 10.0f;
 	for ( c = 0; c < 4; c++ ) {
-		MH_Set( &e->headT[c], &label11, heads[c] );
+		MH_Set( &e->headT[c], &label11, e->listHead[c] ? e->listHead[c] : heads[c] );
 		MH_Place( &e->headT[c], inX + colX[c], y );
 		e->headT[c].box.w = colW[c];
 	}
@@ -1455,12 +1513,12 @@ static void MH_EndList( mhEndLayout_t *e ) {
 		MH_Set( &e->rowTimeT[i], e->compact ? &mono12 : &mono14, e->rowTime[i] );
 		MH_Set( &e->rowBestT[i], e->compact ? &mono12 : &mono14, e->rowBest[i] );
 		MH_Fit( &e->rowNameT[i], colW[1] );
-		MH_Place( &e->rowPosT[i], r->x + colX[0], y + ( rowH - e->rowPosT[i].box.h ) * 0.5f );
-		MH_Place( &e->rowNameT[i], r->x + colX[1], y + ( rowH - e->rowNameT[i].box.h ) * 0.5f );
-		MH_Place( &e->rowTimeT[i], r->x + colX[2], y + ( rowH - e->rowTimeT[i].box.h ) * 0.5f );
-		MH_Place( &e->rowBestT[i], r->x + colX[3], y + ( rowH - e->rowBestT[i].box.h ) * 0.5f );
+		MH_Place( &e->rowPosT[i], inX + colX[0], y + ( rowH - e->rowPosT[i].box.h ) * 0.5f );
+		MH_Place( &e->rowNameT[i], inX + colX[1], y + ( rowH - e->rowNameT[i].box.h ) * 0.5f );
+		MH_Place( &e->rowTimeT[i], inX + colX[2], y + ( rowH - e->rowTimeT[i].box.h ) * 0.5f );
+		MH_Place( &e->rowBestT[i], inX + colX[3], y + ( rowH - e->rowBestT[i].box.h ) * 0.5f );
 		if ( e->rowSwatch ) {
-			e->rowSwatchR[i].x = r->x + colX[0] + colW[0] + 10.0f;
+			e->rowSwatchR[i].x = inX + colX[0] + colW[0] + 10.0f;
 			e->rowSwatchR[i].y = y + ( rowH - 10.0f ) * 0.5f;
 			e->rowSwatchR[i].w = e->rowSwatchR[i].h = 10.0f;
 		}

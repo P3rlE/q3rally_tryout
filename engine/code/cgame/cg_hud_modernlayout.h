@@ -224,6 +224,7 @@ typedef struct {
 #define MH_END_TEAMS		4		/* team races: up to four teams */
 #define MH_END_DOTS			16		/* a team's drivers on the time axis */
 #define MH_END_MEMBERS		4		/* a team's drivers listed on its podium card */
+#define MH_END_SLIP_ROWS	6		/* a drag time slip: reaction, 60 ft .. trap */
 
 typedef struct {
 	/* inputs */
@@ -250,6 +251,13 @@ typedef struct {
 	int			teamCellCount;		/* the classification: the teams over the drivers */
 	const char	*teamCellName[MH_END_TEAMS], *teamCellValue[MH_END_TEAMS];
 	qboolean	rowSwatch;			/* a square in the team's colour before each name */
+	const char	*listHead[4];		/* NULL: POS DRIVER TIME BEST */
+	int			slipCount;			/* a drag duel, in place of the podium: a time slip a lane */
+	const char	*slipTitle, *slipNote;
+	const char	*slipLane[2], *slipName[2];
+	qboolean	slipMe[2], slipWin[2];
+	int			slipRows;
+	const char	*slipLabel[MH_END_SLIP_ROWS], *slipValue[2][MH_END_SLIP_ROWS];
 	int			podiumCount;		/* places 1..3 there are */
 	const char	*podiumName[3], *podiumTime[3], *podiumGap[3], *podiumTag[3];
 	qboolean	podiumMe[3];
@@ -269,6 +277,9 @@ typedef struct {
 	mhText_t	lapsTitleT, lapsNoteT, lapValueT[MH_END_LAPS], lapNameT[MH_END_LAPS];
 	wsRect_t	lapSlot[MH_END_LAPS], lapBar[MH_END_LAPS];
 	wsRect_t	podium[3], podiumCar[3], podiumRule[3];
+	mhText_t	slipTitleT, slipNoteT, slipLaneT[2], slipYouT[2], slipTagT[2], slipNameT[2];
+	mhText_t	slipLabelT[2][MH_END_SLIP_ROWS], slipValueT[2][MH_END_SLIP_ROWS];
+	wsRect_t	slip[2], slipCar[2], slipRule[2][MH_END_SLIP_ROWS];
 	mhText_t	podiumMemberPosT[3][MH_END_MEMBERS], podiumMemberNameT[3][MH_END_MEMBERS];
 	wsRect_t	spreadSwatch[MH_END_TEAMS], spreadTrack[MH_END_TEAMS], spreadDotR[MH_END_TEAMS][MH_END_DOTS], spreadTickR[MH_END_TEAMS];
 	mhText_t	spreadValueT[MH_END_TEAMS];

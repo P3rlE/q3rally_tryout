@@ -774,7 +774,7 @@ def award(kind, label, name, value, color):
 
 
 def classification(rows):
-    head = (f'<div style="display: grid; grid-template-columns: 34px 1fr 82px 70px; gap: 10px; padding: 0 8px">'
+    head = (f'<div style="display: grid; grid-template-columns: 34px 1fr 82px 70px; gap: 10px; padding: 0 8px; margin: 0 -8px">'
             f'{lab("POS", "#999999", 11)}{lab("DRIVER", "#999999", 11)}'
             f'<div style="text-align: right">{lab("TIME", "#999999", 11)}</div>'
             f'<div style="text-align: right">{lab("BEST", "#999999", 11)}</div></div>')
@@ -910,7 +910,7 @@ def team_classification(teams, rows):
     cells = ''.join(f'<div style="flex: 1; background: {TEAM[t]}; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px">'
                     f'{lab(t.upper(), "#111111", 10)}{mono(avg, 13, "#111111")}</div>' for t, avg in teams)
     grid = 'display: grid; grid-template-columns: 34px 10px 1fr 82px 70px; gap: 10px'
-    head = (f'<div style="{grid}; padding: 0 8px">{lab("POS", "#999999", 11)}<div></div>{lab("DRIVER", "#999999", 11)}'
+    head = (f'<div style="{grid}; padding: 0 8px; margin: 0 -8px">{lab("POS", "#999999", 11)}<div></div>{lab("DRIVER", "#999999", 11)}'
             f'<div style="text-align: right">{lab("TIME", "#999999", 11)}</div>'
             f'<div style="text-align: right">{lab("BEST", "#999999", 11)}</div></div>')
     out = []
@@ -963,6 +963,107 @@ board('EndTeamRacing.dc.html', 'Team race result', None, [
     + award('chevron', 'Biggest gain', 'Tony · P7 → P4', '+3', ACC) + '</div>',
     col('right: 56px; top: 92px', team_classification([('blue', '4:26.378'), ('green', '4:28.448'), ('red', '4:29.915')], team_rows), 420),
     footer('WAITING FOR 5 DRIVERS', 3, 8),
+])
+
+# ---------------------------------------------------------------------------
+# the end screen of a drag race: the duel. A time slip a lane, the deciding
+# heat line by line, the better figure of each line in blue; the heats on
+# the right.
+# ---------------------------------------------------------------------------
+
+def time_slip(lane, name, car, rows, win, me, w=294, h=176):
+    """rows: (label, value, better). The winner's slip has the accent on top."""
+    border = f'border-top: 2px solid {ACC if win else "#e6e6e6" if me else LINE};'
+    tag = lab('WIN', ACC, 11) if win else lab('', '#999999', 11)
+    you = lab('YOU', ACC, 11) if me else ''
+    lines = ''.join(
+        f'<div style="display: flex; justify-content: space-between; align-items: baseline; height: 22px; '
+        f'border-bottom: 1px dashed #2c2c2c">{lab(k, "#999999", 11)}{mono(v, 14, FAST if better else "#dddddd")}</div>'
+        for k, v, better in rows)
+    return (f'<div style="width: {w}px; background: {PANEL}; border: 1px solid {LINE}; {border} '
+            f'box-sizing: border-box; display: flex; flex-direction: column">'
+            f'{car_view(car, w - 2, h)}'
+            f'<div style="padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px">'
+            f'<div style="display: flex; justify-content: space-between; align-items: baseline">{lab(lane, "#999999", 11)}'
+            f'<div style="display: flex; gap: 10px">{you}{tag}</div></div>'
+            f'{text(name, 20, "#ffffff", 700)}'
+            f'<div style="display: flex; flex-direction: column">{lines}</div>'
+            f'</div></div>')
+
+
+def heats_list(title, right, rows):
+    grid = 'display: grid; grid-template-columns: 34px 1fr 82px 70px; gap: 10px'
+    head = (f'<div style="{grid}; padding: 0 8px; margin: 0 -8px">{lab("HEAT", "#999999", 11)}{lab("WINNER", "#999999", 11)}'
+            f'<div style="text-align: right">{lab("ET", "#999999", 11)}</div>'
+            f'<div style="text-align: right">{lab("MARGIN", "#999999", 11)}</div></div>')
+    out = []
+    for heat, name, et, margin, me, foul in rows:
+        bg = 'background: rgba(255,85,0,0.18);' if me else ''
+        out.append(f'<div style="{grid}; align-items: center; height: 34px; padding: 0 8px; {bg}">'
+                   f'{mono(heat, 14, "#999999")}'
+                   f'{text(name, 16, "#ffffff", 700 if me else 400, "overflow: hidden; text-overflow: ellipsis")}'
+                   f'<div style="text-align: right">{mono(et, 14, "#dddddd")}</div>'
+                   f'<div style="text-align: right">{mono(margin, 14, ACC if foul else "#999999")}</div></div>')
+    return panel(row(lab(title), lab(right, '#999999')) + head
+                 + f'<div style="display: flex; flex-direction: column; gap: 2px; margin: 0 -8px">{"".join(out)}</div>', gap=12)
+
+
+def heat_chart(heats):
+    """Each heat's elapsed time against your quickest: the bar is what it lost; a foul in the accent."""
+    times = [t for t in heats if t]
+    best, worst = min(times), max(times) - min(times)
+    bars = []
+    for i, v in enumerate(heats):
+        if v is None:
+            bar_ = f'<div style="width: 100%; height: 3px; background: {ACC}"></div>'
+            val = mono('foul', 11, ACC)
+        else:
+            bar_ = (f'<div style="width: 100%; height: {max(3, int(56 * (v - best) / worst))}px; '
+                    f'background: {"#e6e6e6" if v == best else "#5a5a5a"}"></div>')
+            val = mono('best' if v == best else f'+{v - best:.3f}', 11, '#ffffff' if v == best else '#bbbbbb')
+        bars.append(f'<div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px">'
+                    f'<div style="height: 56px; width: 100%; display: flex; align-items: flex-end">{bar_}</div>'
+                    f'{val}{lab(f"H{i + 1}", "#777777", 10)}</div>')
+    return f'<div style="display: flex; gap: 8px">{"".join(bars)}</div>'
+
+
+slip_you = [('Reaction', '0.412', False), ('60 ft', '1.982', True), ('330 ft', '5.104', True),
+            ('1/8 mile', '7.631', True), ('1/4 mile', '11.482', True), ('Trap', '187.4 km/h', True)]
+slip_rival = [('Reaction', '0.388', True), ('60 ft', '2.034', False), ('330 ft', '5.187', False),
+              ('1/8 mile', '7.702', False), ('1/4 mile', '11.589', False), ('Trap', '184.9 km/h', False)]
+
+board('EndDrag.dc.html', 'Drag result', None, [
+    blurred(BG['drag']),
+    f'<div style="position: absolute; left: 56px; top: 48px; display: flex; gap: 16px; align-items: baseline">'
+    f'{lab("Drag result", ACC, 13)}{lab("Airfield · quarter mile · best of 3", "#999999", 12)}</div>',
+    # the match, then your runs
+    f'<div style="position: absolute; left: 56px; top: 92px; width: 380px; display: flex; flex-direction: column; gap: 22px">'
+    f'<div style="display: flex; align-items: baseline; gap: 14px">{big("2-1", 168)}{big("/ 3", 48, "#777777")}</div>'
+    f'<div style="display: flex; flex-direction: column; gap: 6px; margin-top: -18px">{lab("Match won · your quickest run")}'
+    f'{big("11.482", 44)}{lab("0.107 quicker than Vlad", FAST, 12)}</div>'
+    + sep() +
+    f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px">'
+    f'{stat("Best reaction", "0.396")}{stat("Top trap", "187.4", "#ffffff", "km/h")}'
+    f'{stat("Best total", "11.878")}{stat("Fouls", "0")}</div>'
+    + sep() +
+    f'<div style="display: flex; flex-direction: column; gap: 12px">{row(lab("Your heats"), lab("lost to your quickest", "#777777", 11))}'
+    + heat_chart([11.613, None, 11.482]) + '</div></div>',
+    # the deciding heat: a time slip a lane
+    f'<div style="position: absolute; left: 476px; top: 92px; width: 600px; display: flex; flex-direction: column; gap: 10px">'
+    f'{row(lab("Heat 3 · deciding"), lab("better figure in blue", "#777777", 11))}'
+    f'<div style="display: flex; gap: 12px">'
+    + time_slip('Left lane', 'Player', 'viper', slip_you, True, True)
+    + time_slip('Right lane', 'Vlad', 'murcielago', slip_rival, False, False) + '</div></div>',
+    f'<div style="position: absolute; left: 476px; top: 540px; width: 600px; display: flex; flex-direction: column; gap: 10px">'
+    f'{lab("Highlights")}'
+    + award('flag', 'Best reaction', 'Vlad · heat 1', '0.371', FAST)
+    + award('trophy', 'Quickest run', 'Player · heat 3', '11.482', PURPLE) + '</div>',
+    # the heats
+    col('right: 56px; top: 92px', heats_list('Heats', 'best of 3', [
+        ('H1', 'Player', '11.613', '+0.054', True, False),
+        ('H2', 'Vlad', '11.667', 'FOUL', False, True),
+        ('H3', 'Player', '11.482', '+0.107', True, False)]), 420),
+    footer('WAITING FOR 1 DRIVER', 1, 2),
 ])
 
 # ---------------------------------------------------------------------------
@@ -1111,7 +1212,7 @@ ROWS = [['Main.dc.html', 'Zonen.dc.html', 'Sprint.dc.html', 'Ghost.dc.html'],
         ['Drag.dc.html', 'RacingDM.dc.html', 'Elimination.dc.html', 'LCS.dc.html'],
         ['Derby.dc.html', 'Deathmatch.dc.html', 'TeamDM.dc.html', 'CTF.dc.html'],
         ['Domination.dc.html', 'KOTH.dc.html', 'Autoball.dc.html', 'Einblendungen.dc.html'],
-        ['EndRacing.dc.html', 'EndTeamRacing.dc.html'],
+        ['EndRacing.dc.html', 'EndTeamRacing.dc.html', 'EndDrag.dc.html'],
         ['TabRacing.dc.html', 'TabTeamRacing.dc.html', 'TabDeathmatch.dc.html', 'TabCTF.dc.html']]
 order = [n for r in ROWS for n in r]
 titles = {'Main.dc.html': 'Rennen (Racing, Team Racing)', 'Zonen.dc.html': 'Zonen und Bausteine', 'Sprint.dc.html': 'Sprint',
@@ -1119,7 +1220,7 @@ titles = {'Main.dc.html': 'Rennen (Racing, Team Racing)', 'Zonen.dc.html': 'Zone
           'Elimination.dc.html': 'Elimination', 'LCS.dc.html': 'Last Car Standing', 'Derby.dc.html': 'Derby',
           'Deathmatch.dc.html': 'Deathmatch', 'TeamDM.dc.html': 'Team Deathmatch', 'CTF.dc.html': 'CTF und CTF4',
           'Domination.dc.html': 'Domination', 'KOTH.dc.html': 'King of the Hill', 'Autoball.dc.html': 'Autoball',
-          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing',
+          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing', 'EndDrag.dc.html': 'Endbildschirm Drag Race',
           'TabRacing.dc.html': 'TAB: Rennen (auch Sprint, Ghost, Drag)', 'TabTeamRacing.dc.html': 'TAB: Team Racing',
           'TabDeathmatch.dc.html': 'TAB: Kampf (DM, Racing DM, Derby, Elimination, LCS)',
           'TabCTF.dc.html': 'TAB: Teams (TDM, CTF, Domination, KOTH, Autoball)'}

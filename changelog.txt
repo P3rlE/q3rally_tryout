@@ -85,6 +85,12 @@ Changed:
   damage; team games: a panel a team with its score and the mode's
   figures), your row lit, the spectators and the server under it. It only
   comes up with TAB now, not when you are wrecked.
+- The end screen for drag races: the match score, your quickest run
+  against your rival's, best reaction, trap speed and fouls, your heats as
+  a chart, a time slip a lane of the deciding heat with the better figure
+  of each line in blue, the best reaction and quickest run as highlights
+  and every heat with its winner and margin. The headers of the end
+  screens' lists now line up with their columns.
 - The end screen for team races: the teams on the podium by their average
   time, each with its best car and its drivers, your team's place and
   average, how you did against it, a chart of how each average came about

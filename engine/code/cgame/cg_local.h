@@ -34,6 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../game/profile_shared.h"
 #include "cg_public.h"
 #include "cg_race_result.h"
+#include "cg_drag_log.h"
 
 
 // The entire cgame module is unloaded and reloaded on each level change,
@@ -1700,6 +1701,7 @@ typedef struct {
 		int		winner[16];	/* play order; size-2 third place, size-1 final */
 		int		wins[16][2];
 	} dragTourney;
+	cgDragLog_t		dragLog;	/* the heats of the match, for the end screen */
 } cgs_t;
 
 //==============================================================================

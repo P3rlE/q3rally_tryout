@@ -1007,6 +1007,7 @@ static void CG_MapRestart( void ) {
 		cent->dragTrapSpeed = 0;
 	}
 	memset( &cgs.dragMatch, 0, sizeof( cgs.dragMatch ) );
+	CG_DragLogReset( &cgs.dragLog );
 // END
 
 #ifdef MISSIONPACK
@@ -2026,6 +2027,10 @@ static void CG_ServerCommand( void ) {
 		car->dragLaunchTime = atoi( CG_Argv( 5 ) );
 		car->dragFinishTime = atoi( CG_Argv( 6 ) );
 		car->dragTrapSpeed = atoi( CG_Argv( 7 ) );
+		CG_DragLogStatus( &cgs.dragLog, clientNum,
+		                  phase == DRAG_FINISHED ? CG_DRAG_DONE : phase == DRAG_FALSE_START ? CG_DRAG_FOUL :
+		                  phase == DRAG_DNF ? CG_DRAG_OUT : CG_DRAG_RUNNING,
+		                  car->dragCountdownTime, car->dragGreenTime, car->dragLaunchTime, car->dragFinishTime, car->dragTrapSpeed );
 		return;
 	}
 

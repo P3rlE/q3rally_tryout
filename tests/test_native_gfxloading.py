@@ -462,12 +462,12 @@ int main(void) {
 #undef B
         } else if (!strcmp(command, "hudend")) {
             /* hudend <view width>, then fields split by |, lists by ; and ~ */
-            static mhEndLayout_t e; static char line[4096]; static char *f[24]; char *r, *item, *more, *p[6];
+            static mhEndLayout_t e; static char line[4096]; static char *f[30]; char *r, *item, *more, *p[6];
             int n = 0, i, k;
             memset(&e, 0, sizeof(e));
             scanf("%f\n", &e.viewWidth);
             fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
-            for (r = line; n < 24; ) { f[n++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
+            for (r = line; n < 30; ) { f[n++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
 #define SPLIT(src, cnt) for (k = 0, r = (src); k < (cnt); k++) { p[k] = r; r = r ? strchr(r, '~') : NULL; if (r) *r++ = 0; }
 #define EACH(src) for (item = (src); *item; item = more) { more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
             e.title = f[0]; e.subtitle = f[1]; e.pos = f[2]; e.of = f[3]; e.doneLabel = f[4]; e.doneTime = f[5]; e.doneNote = f[6];
@@ -490,6 +490,15 @@ int main(void) {
                 e.podiumMemberPos[i][e.podiumMembers[i]] = m; r = strchr(m, ':'); *r++ = 0; e.podiumMemberName[i][e.podiumMembers[i]++] = r; } i++; }
             if (n > 22) EACH(f[22]) SPLIT(item, 2) e.teamCellName[e.teamCellCount] = p[0]; e.teamCellValue[e.teamCellCount++] = p[1]; }
             if (n > 23) e.rowSwatch = atoi(f[23]);
+            /* drag: 24 list heads a~b~c~d, 25 slip title~note, 26 slips lane~name~me~win;.., 27 labels a~b..,
+             * 28 values v~v..;v~v.. a slip */
+            if (n > 24 && *f[24]) { SPLIT(f[24], 4) for (k = 0; k < 4; k++) e.listHead[k] = p[k]; }
+            if (n > 25 && *f[25]) { SPLIT(f[25], 2) e.slipTitle = p[0]; e.slipNote = p[1]; }
+            if (n > 26) EACH(f[26]) SPLIT(item, 4) i = e.slipCount++; e.slipLane[i] = p[0]; e.slipName[i] = p[1];
+                e.slipMe[i] = atoi(p[2]); e.slipWin[i] = atoi(p[3]); }
+            if (n > 27) for (r = f[27]; r && *r; ) { e.slipLabel[e.slipRows++] = r; r = strchr(r, '~'); if (r) *r++ = 0; }
+            i = 0; if (n > 28) EACH(f[28]) char *v = item; for (k = 0; v && k < MH_END_SLIP_ROWS; k++) {
+                e.slipValue[i][k] = v; v = strchr(v, '~'); if (v) *v++ = 0; } i++; }
 #undef SPLIT
 #undef EACH
             uis.glconfig.vidWidth = e.viewWidth; uis.glconfig.vidHeight = 900;
@@ -515,6 +524,13 @@ int main(void) {
                 sprintf(key, "spreadTrack%d", i); rect(key, e.spreadTrack[i]); sprintf(key, "spreadTick%d", i); rect(key, e.spreadTickR[i]);
                 sprintf(key, "spreadValue%d", i); T(key, e.spreadValueT[i]);
                 for (k = 0; k < e.spreadDots[i]; k++) { sprintf(key, "spreadDot%d_%d", i, k); rect(key, e.spreadDotR[i][k]); } }
+            if (e.slipCount) { T("slipTitle", e.slipTitleT); T("slipNote", e.slipNoteT); }
+            for (i = 0; i < e.slipCount; i++) { char key[24]; sprintf(key, "slip%d", i); rect(key, e.slip[i]);
+                sprintf(key, "slipCar%d", i); rect(key, e.slipCar[i]); sprintf(key, "slipLane%d", i); T(key, e.slipLaneT[i]);
+                sprintf(key, "slipName%d", i); T(key, e.slipNameT[i]); sprintf(key, "slipTag%d", i); T(key, e.slipTagT[i]);
+                sprintf(key, "slipYou%d", i); T(key, e.slipYouT[i]);
+                for (k = 0; k < e.slipRows; k++) { sprintf(key, "slipLabel%d_%d", i, k); T(key, e.slipLabelT[i][k]);
+                    sprintf(key, "slipValue%d_%d", i, k); T(key, e.slipValueT[i][k]); sprintf(key, "slipRule%d_%d", i, k); rect(key, e.slipRule[i][k]); } }
             for (i = 0; i < e.teamCellCount; i++) { char key[24]; sprintf(key, "teamCell%d", i); rect(key, e.teamCell[i]);
                 sprintf(key, "teamCellName%d", i); T(key, e.teamCellNameT[i]); sprintf(key, "teamCellValue%d", i); T(key, e.teamCellValueT[i]); }
             T("awardsTitle", e.awardsTitleT);
@@ -525,6 +541,7 @@ int main(void) {
             for (i = 0; i < 4; i++) { char key[24]; sprintf(key, "head%d", i); T(key, e.headT[i]); }
             for (i = 0; i < e.rowCount; i++) { char key[24]; sprintf(key, "row%d", i); rect(key, e.row[i]);
                 sprintf(key, "rowPos%d", i); T(key, e.rowPosT[i]); sprintf(key, "rowName%d", i); T(key, e.rowNameT[i]);
+                sprintf(key, "rowTime%d", i); T(key, e.rowTimeT[i]); sprintf(key, "rowBest%d", i); T(key, e.rowBestT[i]);
                 if (e.rowSwatch) { sprintf(key, "rowSwatch%d", i); rect(key, e.rowSwatchR[i]); } }
             for (i = 0; i < 3; i++) { char key[24]; sprintf(key, "keyName%d", i); T(key, e.keyNameT[i]);
                 sprintf(key, "keyAction%d", i); T(key, e.keyActionT[i]); }

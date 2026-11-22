@@ -893,48 +893,54 @@ static const vec4_t mhLampGreenOff = { 28 / 255.0f, 58 / 255.0f, 36 / 255.0f, 1.
 static const vec4_t mhSegWindowOff = { 42 / 255.0f, 60 / 255.0f, 77 / 255.0f, 1.0f };	/* #2a3c4d */
 static const vec4_t mhSegLimitOff = { 74 / 255.0f, 36 / 255.0f, 18 / 255.0f, 1.0f };	/* #4a2412 */
 
-static struct {
-	int		client, heat;		/* whose run, which heat (its countdown start) */
+/* the splits of a run, measured here from where the car stood staged (the
+ * server sends only the launch and the finish): for every car in the duel,
+ * written into the heat log for the end screen */
+typedef struct {
+	int		heat;				/* the heat (its countdown start) */
 	vec3_t	start;				/* where the car stood staged */
 	float	lastDist;
 	int		lastTime;
 	int		split[3];			/* ms after the launch, 0: not yet */
-} mhDragRun;
+} mhDragRun_t;
+static mhDragRun_t mhDragRuns[MAX_CLIENTS];
 
 static void MH_DragTime( int ms, char *out, int size ) {
 	Com_sprintf( out, size, "%d.%03d", ms / 1000, ms % 1000 );
 }
 
-static void MH_DragSplits( const centity_t *car, int client, const vec3_t origin ) {
+static const mhDragRun_t *MH_DragSplits( const centity_t *car, int client, const vec3_t origin ) {
 	static const float feet[3] = { 60.0f, 330.0f, 660.0f };
+	mhDragRun_t *run = &mhDragRuns[client];
 	float dist;
 	int i;
-	if ( mhDragRun.client != client || mhDragRun.heat != car->dragCountdownTime ) {
-		memset( &mhDragRun, 0, sizeof( mhDragRun ) );
-		mhDragRun.client = client;
-		mhDragRun.heat = car->dragCountdownTime;
-		VectorCopy( origin, mhDragRun.start );
+	if ( run->heat != car->dragCountdownTime ) {
+		memset( run, 0, sizeof( *run ) );
+		run->heat = car->dragCountdownTime;
+		VectorCopy( origin, run->start );
 	}
 	if ( car->dragPhase < DRAG_RUNNING || !car->dragLaunchTime ) {
-		VectorCopy( origin, mhDragRun.start );	/* still on the line */
-		mhDragRun.lastDist = 0.0f;
-		mhDragRun.lastTime = cg.time;
-		return;
+		VectorCopy( origin, run->start );	/* still on the line */
+		run->lastDist = 0.0f;
+		run->lastTime = cg.time;
+		return run;
 	}
-	if ( car->dragPhase != DRAG_RUNNING || cg.time <= mhDragRun.lastTime ) return;
-	dist = sqrt( ( origin[0] - mhDragRun.start[0] ) * ( origin[0] - mhDragRun.start[0] ) +
-	             ( origin[1] - mhDragRun.start[1] ) * ( origin[1] - mhDragRun.start[1] ) );
+	if ( car->dragPhase != DRAG_RUNNING || cg.time <= run->lastTime ) return run;
+	dist = sqrt( ( origin[0] - run->start[0] ) * ( origin[0] - run->start[0] ) +
+	             ( origin[1] - run->start[1] ) * ( origin[1] - run->start[1] ) );
 	for ( i = 0; i < 3; i++ ) {
 		float mark = feet[i] * 0.3048f * CP_M_2_QU;
-		if ( !mhDragRun.split[i] && dist >= mark && mhDragRun.lastDist < mark && dist > mhDragRun.lastDist ) {
+		if ( !run->split[i] && dist >= mark && run->lastDist < mark && dist > run->lastDist ) {
 			/* between the last frame and this one, where it crossed */
-			int t = mhDragRun.lastTime + (int)( ( mark - mhDragRun.lastDist ) / ( dist - mhDragRun.lastDist ) *
-			                                    ( cg.time - mhDragRun.lastTime ) );
-			mhDragRun.split[i] = t - car->dragLaunchTime > 0 ? t - car->dragLaunchTime : 1;
+			int t = run->lastTime + (int)( ( mark - run->lastDist ) / ( dist - run->lastDist ) *
+			                               ( cg.time - run->lastTime ) );
+			run->split[i] = t - car->dragLaunchTime > 0 ? t - car->dragLaunchTime : 1;
+			CG_DragLogSplit( &cgs.dragLog, client, car->dragCountdownTime, i, run->split[i] );
 		}
 	}
-	mhDragRun.lastDist = dist;
-	mhDragRun.lastTime = cg.time;
+	run->lastDist = dist;
+	run->lastTime = cg.time;
+	return run;
 }
 
 /* the two drivers of the duel, the one in the left lane first: from where
@@ -992,8 +998,11 @@ static void MH_Drag( mhRaceLayout_t *l, const playerState_t *ps ) {
 	qboolean stressed, blown, shift;
 	float speed;
 
-	MH_DragSplits( car, ps->clientNum, origin );
+	const mhDragRun_t *run = MH_DragSplits( car, ps->clientNum, origin );
 	count = MH_DragLanes( lanes );
+	for ( i = 0; i < count; i++ ) {	/* the other lane too, for the end screen */
+		if ( lanes[i] != ps->clientNum ) MH_DragSplits( &cg_entities[lanes[i]], lanes[i], cg_entities[lanes[i]].lerpOrigin );
+	}
 
 	/* the card: who, which lane; then the time slip */
 	l->pos = NULL;
@@ -1024,8 +1033,8 @@ static void MH_Drag( mhRaceLayout_t *l, const playerState_t *ps ) {
 		mh.kvColor[0] = mhWhite;
 	}
 	for ( i = 0; i < 3; i++ ) {
-		if ( launch && mhDragRun.split[i] ) {
-			MH_DragTime( mhDragRun.split[i], mh.kvValue[1 + i], sizeof( mh.kvValue[0] ) );
+		if ( launch && run->split[i] ) {
+			MH_DragTime( run->split[i], mh.kvValue[1 + i], sizeof( mh.kvValue[0] ) );
 			mh.kvColor[1 + i] = mhWhite;
 		}
 	}
@@ -2586,12 +2595,20 @@ static struct {
 	char			doneLabel[40], teamName[MH_END_TEAMS][12], teamTime[MH_END_TEAMS][16], spreadValue[MH_END_TEAMS][16];
 	char			memberPos[3][MH_END_MEMBERS][8], memberName[3][MH_END_MEMBERS][40];
 	qboolean		memberMe[3][MH_END_MEMBERS];
+	/* drag */
+	qboolean		drag;
+	const float		*doneNoteColor;
+	int				slipClient[2];
+	char			slipName[2][40], slipValue[2][MH_END_SLIP_ROWS][16], slipTitle[32];
+	qboolean		slipBetter[2][MH_END_SLIP_ROWS];
+	const float		*rowBestColor[MH_END_ROWS];
 } mhEnd;
 
 qboolean CG_ModernHUD_EndActive( void ) {
 	int i;
 	if ( !cg_hudStyle.integer || !cg.snap || cg.snap->ps.pm_type != PM_INTERMISSION ) return qfalse;
-	if ( cgs.gametype != GT_RACING && cgs.gametype != GT_TEAM_RACING ) return qfalse;
+	if ( cgs.gametype != GT_RACING && cgs.gametype != GT_TEAM_RACING && cgs.gametype != GT_DRAG ) return qfalse;
+	if ( cgs.gametype == GT_DRAG ) return cgs.dragLog.count > 0;	/* the heats the client wrote down */
 	for ( i = 0; i < MAX_CLIENTS; i++ ) {
 		if ( CG_RaceResult( i )->present && CG_RaceResult( i )->finishTime ) return qtrue;
 	}
@@ -2812,6 +2829,298 @@ static void MH_EndTeams( const cgRaceResult_t *all, const int *order, int count,
 	}
 }
 
+/* -------------------------------------------------------------------------
+   the end screen of a drag race (gen.py EndDrag): the match, a time slip a
+   lane of the deciding heat, the heats; from the heat log the client keeps
+   ------------------------------------------------------------------------- */
+
+static void MH_EndDragTrap( int trap, char *out, int size ) {
+	if ( trap >= 0 ) Com_sprintf( out, size, "%d.%d km/h", trap / 10, trap % 10 );
+	else Q_strncpyz( out, "--", size );
+}
+
+/* the heats of this duel (or of the one driver on the strip), in order */
+static int MH_EndDragHeats( const int *duel, int drivers, int *heats ) {
+	const cgDragLog_t *log = &cgs.dragLog;
+	int i, n = 0;
+	for ( i = 0; i < log->count && n < CG_DRAG_HEATS; i++ ) {
+		const cgDragHeat_t *h = &log->heat[i];
+		if ( !CG_DragLogRun( h, duel[0] ) ) continue;
+		if ( drivers == 2 && !CG_DragLogRun( h, duel[1] ) ) continue;
+		heats[n++] = i;
+	}
+	return n;
+}
+
+static void MH_EndDrag( void ) {
+	mhEndLayout_t *e = &mhEnd.e;
+	const cgDragLog_t *log = &cgs.dragLog;
+	int duel[2], lanes[2], drivers, heats[CG_DRAG_HEATS], heatCount, i, k, me, rival = -1, decider = -1;
+	int myBestEt = 0, rivalBestEt = 0, bestRt = -1, bestTotal = 0, topTrap = -1, fouls = 0, worst = 0;
+	int awardRt = -1, awardRtWho = -1, awardRtHeat = 0, awardEt = 0, awardEtWho = -1, awardEtHeat = 0;
+	char name[40], map[40];
+	const char *info;
+
+	mhEnd.drag = qtrue;
+	info = CG_ConfigString( CS_MESSAGE );
+	if ( !info || !info[0] ) info = COM_SkipPath( cgs.mapname );
+	MH_Plain( info, map, sizeof( map ) );
+	COM_StripExtension( map, map, sizeof( map ) );
+	Q_strupr( map );
+	/* who drove: the match's two, or the one on the strip */
+	if ( cgs.dragMatch.count >= 1 ) {
+		drivers = cgs.dragMatch.count;
+		duel[0] = cgs.dragMatch.client[0];
+		duel[1] = drivers == 2 ? cgs.dragMatch.client[1] : -1;
+	} else {
+		drivers = 1;
+		duel[0] = cg.snap->ps.clientNum;
+		duel[1] = -1;
+	}
+	me = cg.snap->ps.clientNum;
+	if ( me != duel[0] && me != duel[1] ) {	/* watching: the winner's side */
+		me = cgs.dragMatch.winner >= 0 && cgs.dragMatch.winner < MAX_CLIENTS && cgs.dragMatch.winner == duel[1] ? duel[1] : duel[0];
+	}
+	if ( drivers == 2 ) rival = me == duel[0] ? duel[1] : duel[0];
+	heatCount = MH_EndDragHeats( duel, drivers, heats );
+
+	/* the header */
+	e->title = "DRAG RESULT";
+	if ( cgs.dragMatch.bestOf > 1 )
+		Com_sprintf( mhEnd.sub, sizeof( mhEnd.sub ), "%s \xb7 QUARTER MILE \xb7 BEST OF %d", map, cgs.dragMatch.bestOf );
+	else
+		Com_sprintf( mhEnd.sub, sizeof( mhEnd.sub ), "%s \xb7 QUARTER MILE", map );
+
+	/* your heats: the quickest, the chart, the figures */
+	e->lapCount = 0;
+	for ( i = 0; i < heatCount; i++ ) {
+		const cgDragRun_t *r = CG_DragLogRun( &log->heat[heats[i]], me ), *o = rival >= 0 ? CG_DragLogRun( &log->heat[heats[i]], rival ) : NULL;
+		int m;
+		if ( r->state == CG_DRAG_FOUL ) fouls++;
+		if ( r->state == CG_DRAG_DONE && r->et > 0 ) {
+			if ( !myBestEt || r->et < myBestEt ) myBestEt = r->et;
+			if ( r->et > worst ) worst = r->et;
+			if ( r->total > 0 && ( !bestTotal || r->total < bestTotal ) ) bestTotal = r->total;
+			if ( r->trap > topTrap ) topTrap = r->trap;
+		}
+		if ( r->state != CG_DRAG_FOUL && r->rt >= 0 && ( bestRt < 0 || r->rt < bestRt ) ) bestRt = r->rt;
+		if ( o && o->state == CG_DRAG_DONE && o->et > 0 && ( !rivalBestEt || o->et < rivalBestEt ) ) rivalBestEt = o->et;
+		if ( CG_DragLogWinner( &log->heat[heats[i]], &m ) >= 0 ) decider = i;
+		/* the highlights, over both */
+		for ( k = 0; k < 2; k++ ) {
+			const cgDragRun_t *x = &log->heat[heats[i]].run[k];
+			if ( x->client < 0 ) continue;
+			if ( x->state != CG_DRAG_FOUL && x->rt >= 0 && ( awardRt < 0 || x->rt < awardRt ) ) {
+				awardRt = x->rt; awardRtWho = x->client; awardRtHeat = i + 1;
+			}
+			if ( x->state == CG_DRAG_DONE && x->et > 0 && ( !awardEt || x->et < awardEt ) ) {
+				awardEt = x->et; awardEtWho = x->client; awardEtHeat = i + 1;
+			}
+		}
+	}
+	for ( i = 0; i < heatCount && e->lapCount < MH_END_LAPS; i++ ) {
+		const cgDragRun_t *r = CG_DragLogRun( &log->heat[heats[i]], me );
+		k = e->lapCount++;
+		Com_sprintf( mhEnd.lapName[k], sizeof( mhEnd.lapName[k] ), "H%d", i + 1 );
+		if ( r->state == CG_DRAG_DONE && r->et > 0 && myBestEt ) {
+			e->lapFrac[k] = worst > myBestEt ? (float)( r->et - myBestEt ) / ( worst - myBestEt ) : 0.0f;
+			if ( r->et == myBestEt ) Q_strncpyz( mhEnd.lap[k], "best", sizeof( mhEnd.lap[k] ) );
+			else Com_sprintf( mhEnd.lap[k], sizeof( mhEnd.lap[k] ), "+%d.%03d", ( r->et - myBestEt ) / 1000, ( r->et - myBestEt ) % 1000 );
+		} else {
+			e->lapFrac[k] = 0.0f;
+			Q_strncpyz( mhEnd.lap[k], r->state == CG_DRAG_FOUL ? "foul" : "dnf", sizeof( mhEnd.lap[k] ) );
+		}
+		e->lapValue[k] = mhEnd.lap[k];
+		e->lapName[k] = mhEnd.lapName[k];
+	}
+	e->chartTitle = "YOUR HEATS";
+	e->chartNote = "LOST TO YOUR QUICKEST";
+	if ( e->lapCount < 2 ) e->lapCount = 0;	/* one heat: nothing to compare */
+
+	/* the left: the match, your quickest run */
+	if ( drivers == 2 ) {
+		int mine = cgs.dragMatch.client[0] == me ? cgs.dragMatch.wins[0] : cgs.dragMatch.wins[1];
+		int theirs = cgs.dragMatch.client[0] == me ? cgs.dragMatch.wins[1] : cgs.dragMatch.wins[0];
+		Com_sprintf( mhEnd.pos, sizeof( mhEnd.pos ), "%d-%d", mine, theirs );
+		if ( me == cg.snap->ps.clientNum )
+			Com_sprintf( mhEnd.doneLabel, sizeof( mhEnd.doneLabel ), "%s \xb7 YOUR QUICKEST RUN",
+			             cgs.dragMatch.winner == me ? "MATCH WON" : cgs.dragMatch.winner >= 0 ? "MATCH LOST" : "MATCH" );
+		else {
+			MH_Plain( cgs.clientinfo[me].name, name, sizeof( name ) );
+			Com_sprintf( mhEnd.doneLabel, sizeof( mhEnd.doneLabel ), "%s \xb7 QUICKEST RUN", name );
+		}
+	} else {
+		int done = 0;
+		for ( i = 0; i < heatCount; i++ ) if ( CG_DragLogRun( &log->heat[heats[i]], me )->state == CG_DRAG_DONE ) done++;
+		Com_sprintf( mhEnd.pos, sizeof( mhEnd.pos ), "%d", done );
+		Q_strncpyz( mhEnd.doneLabel, "CLEAN RUNS \xb7 YOUR QUICKEST", sizeof( mhEnd.doneLabel ) );
+	}
+	Com_sprintf( mhEnd.of, sizeof( mhEnd.of ), "/ %d", cgs.dragMatch.bestOf > 1 ? cgs.dragMatch.bestOf : heatCount > 0 ? heatCount : 1 );
+	e->doneLabel = mhEnd.doneLabel;
+	if ( myBestEt ) MH_DragTime( myBestEt, mhEnd.doneTime, sizeof( mhEnd.doneTime ) );
+	else Q_strncpyz( mhEnd.doneTime, "--", sizeof( mhEnd.doneTime ) );
+	mhEnd.doneNote[0] = '\0';
+	mhEnd.doneNoteColor = mhAccent;
+	if ( rival >= 0 && myBestEt && rivalBestEt && myBestEt != rivalBestEt ) {
+		int d = rivalBestEt - myBestEt, a = d < 0 ? -d : d;
+		MH_Plain( cgs.clientinfo[rival].name, name, sizeof( name ) );
+		Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), "%d.%03d %s THAN %s", a / 1000, a % 1000, d > 0 ? "QUICKER" : "SLOWER", name );
+		mhEnd.doneNoteColor = d > 0 ? mhFast : mhAccent;
+	}
+
+	e->statLabel[0] = "BEST REACTION";
+	if ( bestRt >= 0 ) MH_DragTime( bestRt, mhEnd.stat[0], sizeof( mhEnd.stat[0] ) );
+	else Q_strncpyz( mhEnd.stat[0], "--", sizeof( mhEnd.stat[0] ) );
+	e->statLabel[1] = "TOP TRAP";
+	e->statUnit[1] = NULL;
+	if ( topTrap >= 0 ) {
+		Com_sprintf( mhEnd.stat[1], sizeof( mhEnd.stat[1] ), "%d.%d", topTrap / 10, topTrap % 10 );
+		e->statUnit[1] = "KM/H";
+	} else Q_strncpyz( mhEnd.stat[1], "--", sizeof( mhEnd.stat[1] ) );
+	e->statLabel[2] = "BEST TOTAL";
+	if ( bestTotal ) MH_DragTime( bestTotal, mhEnd.stat[2], sizeof( mhEnd.stat[2] ) );
+	else Q_strncpyz( mhEnd.stat[2], "--", sizeof( mhEnd.stat[2] ) );
+	e->statLabel[3] = "FOULS";
+	Com_sprintf( mhEnd.stat[3], sizeof( mhEnd.stat[3] ), "%d", fouls );
+	for ( i = 0; i < 4; i++ ) mhEnd.statColor[i] = mhWhite;
+	if ( fouls ) mhEnd.statColor[3] = mhAccent;
+
+	/* the middle: the deciding heat (or the last), a slip a lane */
+	e->podiumCount = 0;
+	if ( decider < 0 ) decider = heatCount - 1;
+	if ( decider >= 0 ) {
+		const cgDragHeat_t *h = &log->heat[heats[decider]];
+		int margin, win = CG_DragLogWinner( h, &margin ), n = 0;
+		if ( drivers == 2 && MH_DragLanes( lanes ) == 2 && ( lanes[0] == duel[0] || lanes[0] == duel[1] ) ) {
+			/* the lanes as the cars stand */
+		} else {
+			lanes[0] = duel[0];
+			lanes[1] = duel[1];
+		}
+		e->slipRows = MH_END_SLIP_ROWS;
+		e->slipLabel[0] = "REACTION";
+		e->slipLabel[1] = "60 FT";
+		e->slipLabel[2] = "330 FT";
+		e->slipLabel[3] = "1/8 MILE";
+		e->slipLabel[4] = "1/4 MILE";
+		e->slipLabel[5] = "TRAP";
+		for ( k = 0; k < drivers && k < 2; k++ ) {
+			int client = lanes[k];
+			const cgDragRun_t *r = CG_DragLogRun( h, client );
+			int value[MH_END_SLIP_ROWS], row;
+			if ( !r ) continue;
+			mhEnd.slipClient[n] = client;
+			MH_Plain( cgs.clientinfo[client].name, mhEnd.slipName[n], sizeof( mhEnd.slipName[n] ) );
+			e->slipName[n] = mhEnd.slipName[n];
+			e->slipLane[n] = drivers == 1 ? "YOUR LANE" : k == 0 ? "LEFT LANE" : "RIGHT LANE";
+			e->slipMe[n] = client == cg.snap->ps.clientNum;
+			e->slipWin[n] = drivers == 2 && win >= 0 && h->run[win].client == client;
+			value[0] = r->state == CG_DRAG_FOUL ? -1 : r->rt;
+			value[1] = r->split[0] ? r->split[0] : -1;
+			value[2] = r->split[1] ? r->split[1] : -1;
+			value[3] = r->split[2] ? r->split[2] : -1;
+			value[4] = r->state == CG_DRAG_DONE ? r->et : -1;
+			value[5] = r->state == CG_DRAG_DONE ? r->trap : -1;
+			for ( row = 0; row < MH_END_SLIP_ROWS; row++ ) {
+				if ( row == 0 && r->state == CG_DRAG_FOUL ) Q_strncpyz( mhEnd.slipValue[n][row], "FOUL", sizeof( mhEnd.slipValue[n][row] ) );
+				else if ( row == 4 && r->state == CG_DRAG_OUT ) Q_strncpyz( mhEnd.slipValue[n][row], "DNF", sizeof( mhEnd.slipValue[n][row] ) );
+				else if ( value[row] < 0 ) Q_strncpyz( mhEnd.slipValue[n][row], "--", sizeof( mhEnd.slipValue[n][row] ) );
+				else if ( row == 5 ) MH_EndDragTrap( value[row], mhEnd.slipValue[n][row], sizeof( mhEnd.slipValue[n][row] ) );
+				else MH_DragTime( value[row], mhEnd.slipValue[n][row], sizeof( mhEnd.slipValue[n][row] ) );
+				e->slipValue[n][row] = mhEnd.slipValue[n][row];
+				mhEnd.slipBetter[n][row] = qfalse;
+			}
+			/* the better figure of each line: compared once both slips are in */
+			if ( n == 1 ) {
+				const cgDragRun_t *a = CG_DragLogRun( h, mhEnd.slipClient[0] );
+				int va[MH_END_SLIP_ROWS];
+				va[0] = a->state == CG_DRAG_FOUL ? -1 : a->rt;
+				va[1] = a->split[0] ? a->split[0] : -1;
+				va[2] = a->split[1] ? a->split[1] : -1;
+				va[3] = a->split[2] ? a->split[2] : -1;
+				va[4] = a->state == CG_DRAG_DONE ? a->et : -1;
+				va[5] = a->state == CG_DRAG_DONE ? a->trap : -1;
+				for ( row = 0; row < MH_END_SLIP_ROWS; row++ ) {
+					if ( va[row] < 0 || value[row] < 0 || va[row] == value[row] ) continue;
+					if ( row == 5 ? va[row] > value[row] : va[row] < value[row] ) mhEnd.slipBetter[0][row] = qtrue;
+					else mhEnd.slipBetter[1][row] = qtrue;
+				}
+			}
+			n++;
+		}
+		e->slipCount = n;
+		Com_sprintf( mhEnd.slipTitle, sizeof( mhEnd.slipTitle ), cgs.dragMatch.over && win >= 0 && drivers == 2 ? "HEAT %d \xb7 DECIDING" : "HEAT %d",
+		             decider + 1 );
+		e->slipTitle = mhEnd.slipTitle;
+		e->slipNote = n == 2 ? "BETTER FIGURE IN BLUE" : "";
+	}
+
+	/* the highlights: the best reaction and the quickest run of the match */
+	e->awardCount = 0;
+	if ( awardRtWho >= 0 ) {
+		k = e->awardCount++;
+		e->awardLabel[k] = "BEST REACTION";
+		MH_Plain( cgs.clientinfo[awardRtWho].name, name, sizeof( name ) );
+		Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 heat %d", name, awardRtHeat );
+		MH_DragTime( awardRt, mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ) );
+		mhEnd.awardColor[k] = mhFast;
+		mhEnd.awardIcon[k] = mh.flag;
+	}
+	if ( awardEtWho >= 0 ) {
+		k = e->awardCount++;
+		e->awardLabel[k] = "QUICKEST RUN";
+		MH_Plain( cgs.clientinfo[awardEtWho].name, name, sizeof( name ) );
+		Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 heat %d", name, awardEtHeat );
+		MH_DragTime( awardEt, mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ) );
+		mhEnd.awardColor[k] = mhPurple;
+		mhEnd.awardIcon[k] = mh.trophy;
+	}
+
+	/* the right: the heats, who won each, by how much */
+	e->listTitle = "HEATS";
+	if ( cgs.dragMatch.bestOf > 1 ) Com_sprintf( mhEnd.listRight, sizeof( mhEnd.listRight ), "BEST OF %d", cgs.dragMatch.bestOf );
+	else mhEnd.listRight[0] = '\0';
+	e->listRight = mhEnd.listRight;
+	e->listHead[0] = "HEAT";
+	e->listHead[1] = "WINNER";
+	e->listHead[2] = "ET";
+	e->listHead[3] = "MARGIN";
+	e->rowCount = 0;
+	e->compact = heatCount > 12;
+	for ( i = 0; i < heatCount && e->rowCount < MH_END_ROWS; i++ ) {
+		const cgDragHeat_t *h = &log->heat[heats[i]];
+		int margin, win = CG_DragLogWinner( h, &margin );
+		k = e->rowCount++;
+		Com_sprintf( mhEnd.rowPos[k], sizeof( mhEnd.rowPos[k] ), "H%d", i + 1 );
+		mhEnd.rowClient[k] = -1;
+		mhEnd.rowMe[k] = qfalse;
+		mhEnd.rowBestColor[k] = mhMuted;
+		if ( win >= 0 ) {
+			const cgDragRun_t *w = &h->run[win], *l = &h->run[1 - win];
+			MH_Plain( cgs.clientinfo[w->client].name, mhEnd.rowName[k], sizeof( mhEnd.rowName[k] ) );
+			MH_DragTime( w->et, mhEnd.rowTime[k], sizeof( mhEnd.rowTime[k] ) );
+			mhEnd.rowMe[k] = w->client == cg.snap->ps.clientNum;
+			if ( margin >= 0 ) Com_sprintf( mhEnd.rowBest[k], sizeof( mhEnd.rowBest[k] ), "+%d.%03d", margin / 1000, margin % 1000 );
+			else if ( !CG_DragLogPresent( l ) ) Q_strncpyz( mhEnd.rowBest[k], "SOLO", sizeof( mhEnd.rowBest[k] ) );
+			else {
+				Q_strncpyz( mhEnd.rowBest[k], l->state == CG_DRAG_FOUL ? "FOUL" : "DNF", sizeof( mhEnd.rowBest[k] ) );
+				mhEnd.rowBestColor[k] = mhAccent;
+			}
+		} else {
+			const cgDragRun_t *a = &h->run[0];
+			Q_strncpyz( mhEnd.rowName[k], "No winner", sizeof( mhEnd.rowName[k] ) );
+			Q_strncpyz( mhEnd.rowTime[k], "--", sizeof( mhEnd.rowTime[k] ) );
+			Q_strncpyz( mhEnd.rowBest[k], a->state == CG_DRAG_FOUL || h->run[1].state == CG_DRAG_FOUL ? "FOUL" :
+			            a->state == CG_DRAG_RUNNING ? "--" : "RERUN", sizeof( mhEnd.rowBest[k] ) );
+			mhEnd.rowBestColor[k] = mhAccent;
+		}
+		e->rowPos[k] = mhEnd.rowPos[k];
+		e->rowName[k] = mhEnd.rowName[k];
+		e->rowTime[k] = mhEnd.rowTime[k];
+		e->rowBest[k] = mhEnd.rowBest[k];
+	}
+}
+
 static void MH_EndPrepare( void ) {
 	mhEndLayout_t *e = &mhEnd.e;
 	const cgRaceResult_t *all = CG_RaceResult( 0 ), *mine, *winner;
@@ -3005,8 +3314,11 @@ static void MH_EndPrepare( void ) {
 	}
 
 	mhEnd.teams = qfalse;
+	mhEnd.drag = qfalse;
 	mhEnd.posColor = mhWhite;
+	mhEnd.doneNoteColor = mhAccent;
 	if ( cgs.gametype == GT_TEAM_RACING ) MH_EndTeams( all, order, count, me, mine, place );
+	if ( cgs.gametype == GT_DRAG ) MH_EndDrag();
 	for ( i = 0; i < e->awardCount; i++ ) {
 		e->awardName[i] = mhEnd.awardName[i];
 		e->awardValue[i] = mhEnd.awardValue[i];
@@ -3051,7 +3363,7 @@ void CG_ModernHUD_DrawEnd( void ) {
 	MH_Str( &e->ofT, mhDim, 1.0f );
 	MH_Str( &e->doneLabelT, mhEnd.teams ? mhEnd.posColor : mhLabel, 1.0f );
 	MH_Str( &e->doneTimeT, mhWhite, 1.0f );
-	MH_Str( &e->doneNoteT, mhAccent, 1.0f );
+	MH_Str( &e->doneNoteT, mhEnd.doneNoteColor, 1.0f );
 	MH_FillRect( &e->sep[0], mhLine, 1.0f );
 	MH_FillRect( &e->sep[1], mhLine, 1.0f );
 	for ( i = 0; i < e->statCount; i++ ) {
@@ -3063,8 +3375,9 @@ void CG_ModernHUD_DrawEnd( void ) {
 	MH_Str( &e->lapsNoteT, mhDim, 1.0f );
 	for ( i = 0; i < e->lapCount; i++ ) {
 		qboolean isBest = !Q_stricmp( e->lapValue[i], "best" );
-		MH_FillRect( &e->lapBar[i], isBest ? mhLapBest : mhLapBar, 1.0f );
-		MH_Str( &e->lapValueT[i], isBest ? mhWhite : mhLabel, 1.0f );
+		qboolean foul = !Q_stricmp( e->lapValue[i], "foul" ) || !Q_stricmp( e->lapValue[i], "dnf" );
+		MH_FillRect( &e->lapBar[i], foul ? mhAccent : isBest ? mhLapBest : mhLapBar, 1.0f );
+		MH_Str( &e->lapValueT[i], foul ? mhAccent : isBest ? mhWhite : mhLabel, 1.0f );
 		MH_Str( &e->lapNameT[i], mhDim, 1.0f );
 	}
 	for ( i = 0; i < e->spreadCount; i++ ) {
@@ -3109,6 +3422,34 @@ void CG_ModernHUD_DrawEnd( void ) {
 		}
 	}
 
+	/* a drag duel: the time slips */
+	if ( e->slipCount ) {
+		MH_Str( &e->slipTitleT, mhLabel, 1.0f );
+		MH_Str( &e->slipNoteT, mhDim, 1.0f );
+	}
+	for ( k = 0; k < e->slipCount; k++ ) {
+		const wsRect_t *c = &e->slipCar[k];
+		MH_FillRect( &e->slip[k], mhPanel, 1.0f );
+		MH_Border( &e->slip[k], mhLine, 2.0f, e->slipWin[k] ? mhAccent : e->slipMe[k] ? mhSoft : mhLine, 1.0f );
+		MH_FillRect( c, mhShowroom, 1.0f );
+		CG_DrawShowroomCar( MH_Snap( c->x ), MH_Snap( c->y ), MH_Snap( c->x + c->w ) - MH_Snap( c->x ),
+		                    MH_Snap( c->y + c->h ) - MH_Snap( c->y ), mhEnd.slipClient[k],
+		                    AngleMod( 150.0f + k * 60.0f + cg.time * 0.018f ) );
+		MH_Str( &e->slipLaneT[k], mhMuted, 1.0f );
+		MH_Str( &e->slipYouT[k], mhAccent, 1.0f );
+		MH_Str( &e->slipTagT[k], mhAccent, 1.0f );
+		MH_Str( &e->slipNameT[k], mhWhite, 1.0f );
+		for ( i = 0; i < e->slipRows; i++ ) {
+			const wsRect_t *rule = &e->slipRule[k][i];
+			float dx;
+			MH_Str( &e->slipLabelT[k][i], mhMuted, 1.0f );
+			MH_Str( &e->slipValueT[k][i], !Q_stricmp( e->slipValue[k][i], "FOUL" ) || !Q_stricmp( e->slipValue[k][i], "DNF" ) ? mhAccent :
+			        mhEnd.slipBetter[k][i] ? mhFast : mhValue, 1.0f );
+			for ( dx = 0.0f; dx < rule->w; dx += 6.0f )	/* dashed */
+				MH_Fill( rule->x + dx, rule->y, dx + 3.0f > rule->w ? rule->w - dx : 3.0f, 1.0f, mhTrack, 1.0f );
+		}
+	}
+
 	if ( e->awardCount ) MH_Str( &e->awardsTitleT, mhLabel, 1.0f );
 	for ( i = 0; i < e->awardCount; i++ ) {
 		wsRect_t strip = e->award[i];
@@ -3138,13 +3479,13 @@ void CG_ModernHUD_DrawEnd( void ) {
 	for ( i = 0; i < e->rowCount; i++ ) {
 		mhText_t time = e->rowTimeT[i], best = e->rowBestT[i];
 		if ( mhEnd.rowMe[i] ) MH_FillRect( &e->row[i], mhMe, 1.0f );
-		MH_Str( &e->rowPosT[i], !Q_stricmp( e->rowPos[i], "01" ) ? mhAccent : mhMuted, 1.0f );
+		MH_Str( &e->rowPosT[i], !mhEnd.drag && !Q_stricmp( e->rowPos[i], "01" ) ? mhAccent : mhMuted, 1.0f );
 		MH_Str( &e->rowNameT[i], mhWhite, 1.0f );
 		if ( e->rowSwatch ) MH_FillRect( &e->rowSwatchR[i], MH_TeamColor( mhEnd.rowTeam[i] ), 1.0f );
 		time.box.x += time.box.w - WS_TextWidth( &time.style, time.text, strlen( time.text ) );
 		best.box.x += best.box.w - WS_TextWidth( &best.style, best.text, strlen( best.text ) );
 		MH_Str( &time, mhValue, 1.0f );
-		MH_Str( &best, mhEnd.rowClient[i] == mhEnd.fastest ? mhPurple : mhMuted, 1.0f );
+		MH_Str( &best, mhEnd.drag ? mhEnd.rowBestColor[i] : mhEnd.rowClient[i] == mhEnd.fastest ? mhPurple : mhMuted, 1.0f );
 	}
 
 	for ( i = 0; i < 3; i++ ) {
