@@ -1472,6 +1472,7 @@ try {
         'filters.matches.limit.label': 'Lade-Limit',
         'filters.matches.limit.all': 'Alle',
         'filters.matches.refresh': 'Aktualisieren',
+        'filters.hideBots': 'Bots ausblenden',
         'matches.empty': 'Keine Bestzeiten gefunden. Lade weitere Renn-Matches oder passe die Filter an.',
         'leaderboard.headers.rank': 'Rang',
         'leaderboard.headers.player': 'Spieler',
@@ -1662,6 +1663,7 @@ try {
         'filters.matches.limit.label': 'Load limit',
         'filters.matches.limit.all': 'All',
         'filters.matches.refresh': 'Refresh',
+        'filters.hideBots': 'Hide bots',
         'matches.empty': 'No best times found. Load more racing matches or adjust the filters.',
         'leaderboard.headers.rank': 'Rank',
         'leaderboard.headers.player': 'Player',
@@ -1968,6 +1970,7 @@ const state = {
   activeMode: MODE_CONFIG.length ? MODE_CONFIG[0].key : 'gt_racing',
   activeSource: 'online',
   activeWeather: 'all',
+  hideBots: false,
   language: 'en',
   modeStatus: { key: null, params: {}, isError: false }
 };
@@ -3405,7 +3408,7 @@ function renderSourceToggle() {
 
   const bar = document.createElement('div');
   bar.id = 'source-toggle';
-  bar.style.cssText = 'display:inline-flex;gap:6px;margin-bottom:16px;align-items:center;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:12px;padding:5px';
+  bar.style.cssText = 'display:inline-flex;flex-wrap:wrap;max-width:100%;gap:6px;margin-bottom:16px;align-items:center;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:12px;padding:5px';
 
   [
     { key: 'online',  labelDe: 'Online',  labelEn: 'Online'  },
@@ -3432,6 +3435,21 @@ function renderSourceToggle() {
     bar.appendChild(btn);
   });
 
+  const botLabel = document.createElement('label');
+  botLabel.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:6px 14px;font-size:.9rem;cursor:pointer';
+  const botCheckbox = document.createElement('input');
+  botCheckbox.type = 'checkbox';
+  botCheckbox.id = 'hide-bots';
+  botCheckbox.checked = state.hideBots;
+  botCheckbox.addEventListener('change', () => {
+    state.hideBots = botCheckbox.checked;
+    rebuildForSource();
+  });
+  const botText = document.createElement('span');
+  botText.id = 'hide-bots-label';
+  botLabel.append(botCheckbox, botText);
+  bar.appendChild(botLabel);
+
   panel.insertBefore(bar, panel.firstChild);
   updateSourceToggleUI();
   if (state.activeMode === GHOST_TAB_KEY) {
@@ -3440,6 +3458,8 @@ function renderSourceToggle() {
 }
 
 function updateSourceToggleUI() {
+  const botText = document.getElementById('hide-bots-label');
+  if (botText) botText.textContent = t('filters.hideBots');
   const btns = document.querySelectorAll('#source-toggle button[data-source], #source-toggle button[data-weather]');
   btns.forEach((btn) => {
     const active = btn.dataset.source ? btn.dataset.source === state.activeSource
@@ -3487,9 +3507,9 @@ function setActiveWeather(weather) {
 }
 
 function rebuildForSource() {
-  if (state.activeWeather === 'all' && state.activeSource === 'online') {
+  if (!state.hideBots && state.activeWeather === 'all' && state.activeSource === 'online') {
     state.aggregation = state.aggregationOnline;
-  } else if (state.activeWeather === 'all' && state.activeSource === 'offline') {
+  } else if (!state.hideBots && state.activeWeather === 'all' && state.activeSource === 'offline') {
     state.aggregation = state.aggregationOffline;
   } else {
     // re-aggregate the matches of this source and weather
@@ -3502,7 +3522,7 @@ function rebuildForSource() {
       if (state.activeWeather !== 'all' && matchWeather(match) !== state.activeWeather) {
         continue;
       }
-      ingestMatchInto(match, state.aggregation);
+      ingestMatchInto(match, state.aggregation, state.hideBots);
     }
   }
   buildRaceLeaderboard();
@@ -3514,6 +3534,8 @@ function rebuildForSource() {
   updateSummary();
   updateModeOptions();
   MODE_CONFIG.forEach(({ key }) => renderModeTable(key));
+  setModeStatus(state.aggregation.totalMatches ? 'mode.status.ready' : 'mode.status.empty',
+                { count: state.aggregation.totalMatches });
 }
 
 async function loadMatches() {
@@ -3613,8 +3635,13 @@ function profileIdFor(entry) {
   return (latest && latest.id) || entry.playerId;
 }
 
-function ingestMatchInto(match, aggregation) {
+function ingestMatchInto(match, aggregation, hideBots = false) {
   if (!aggregation) {
+    return;
+  }
+
+  const entries = extractScoreboardEntries(match);
+  if (hideBots && !entries.some((entry) => !extractIsBot(entry))) {
     return;
   }
 
@@ -3630,7 +3657,8 @@ function ingestMatchInto(match, aggregation) {
     }
   }
 
-  const players = extractPlayers(match);
+  const players = hideBots ? entries.filter((entry) => !extractIsBot(entry)).map(extractLeaderboardPlayer)
+                           : extractPlayers(match);
   players.forEach((name) => {
     if (name) {
       aggregation.playerNames.add(name);
@@ -3649,7 +3677,6 @@ function ingestMatchInto(match, aggregation) {
     return;
   }
 
-  const entries = extractScoreboardEntries(match);
   if (!entries.length) {
     return;
   }
@@ -3666,7 +3693,8 @@ function ingestMatchInto(match, aggregation) {
     modeKey,
     matchId,
     startedAt,
-    recordedAt
+    recordedAt,
+    hideBots
   };
 
   if (RACE_MODE_KEYS.has(modeKey)) {
@@ -3695,6 +3723,7 @@ function extractDragResult(entry) {
 function ingestRaceEntries(aggregation, entries, context) {
   const { map, mapKey, modeKey, matchId, startedAt, recordedAt } = context;
   for (const entry of entries) {
+    if (context.hideBots && extractIsBot(entry)) continue;
     const player = extractLeaderboardPlayer(entry);
     if (!player) {
       continue;
@@ -3733,6 +3762,7 @@ function ingestRaceEntries(aggregation, entries, context) {
 function ingestDeathmatchEntries(aggregation, entries, context) {
   const { map, mapKey, modeKey, matchId, startedAt, recordedAt } = context;
   for (const entry of entries) {
+    if (context.hideBots && extractIsBot(entry)) continue;
     const player = extractLeaderboardPlayer(entry);
     if (!player) {
       continue;
@@ -3780,6 +3810,7 @@ function ingestDeathmatchEntries(aggregation, entries, context) {
 function ingestDerbyEntries(aggregation, entries, context) {
   const { map, mapKey, modeKey, matchId, startedAt, recordedAt } = context;
   for (const entry of entries) {
+    if (context.hideBots && extractIsBot(entry)) continue;
     const player = extractLeaderboardPlayer(entry);
     if (!player) {
       continue;
@@ -3837,6 +3868,7 @@ function ingestObjectiveEntries(aggregation, entries, context, customTargetMap =
 
   for (let index = 0; index < entries.length; index += 1) {
     const entry = entries[index];
+    if (context.hideBots && extractIsBot(entry)) continue;
     const player = extractLeaderboardPlayer(entry);
     if (!player) {
       continue;
