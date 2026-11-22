@@ -666,3 +666,116 @@ def test_native_team_end_screen_matches_the_design():
     pairs += [(f'rowSwatch{i}', lst + f'/div:3/div:{i}/div:1') for i in range(8)]
     problems = check_all(mine, END_TEAM, pairs)
     assert not problems, problems
+
+
+
+# the TAB table -------------------------------------------------------------
+TAB = {name: json.loads((ROOT / f'tests/fixtures/hud_tab_{name}_layout.json').read_text())['els']
+       for name in ('racing', 'teamracing', 'deathmatch', 'ctf')}
+MONO, NAME, SCORE, SWATCH, PING = range(5)
+RACE_COLS = [('POS', 34, 0, MONO), ('DRIVER', 0, 0, NAME), ('LAP', 44, 1, MONO), ('GAP', 96, 1, MONO),
+             ('LAST', 84, 1, MONO), ('BEST', 84, 1, MONO), ('PING', 44, 1, PING)]
+TAB_RACE = [('01', 'Sam', 'MURCIELAGO', '3', 'LEADER', '0:51.204', '0:50.871', '38'),
+            ('02', 'Bobby', 'VIPER', '3', '+0.85', '0:51.880', '0:51.312', 'BOT'),
+            ('03', 'Player', 'MURCIELAGO', '3', '+1.92', '0:52.013', '0:51.660', '24'),
+            ('04', 'Janine', 'DB12', '3', '+2.40', '0:52.390', '0:52.120', '61'),
+            ('05', 'Vlad', 'BEETLE', '3', '+4.07', '0:53.004', '0:52.731', 'BOT'),
+            ('06', 'Emma', 'VIPER', '3', '+6.31', '0:52.881', '0:52.881', '88'),
+            ('07', 'Tony', 'DB12', '2', '+1 LAP', '0:58.120', '0:53.512', '132'),
+            ('08', 'Bee', 'BEETLE', '2', 'OUT', '--', '0:54.120', '45')]
+
+
+def tab_command(mode, sub, rl, rv, cols, rows, sides='', cells='', icon_col=-1, spectators='Ivan · Minori',
+                server='Q3RALLY MÜNSTER · 10 / 16', width=1600):
+    colf = ';'.join(f'{h}~{w}~{r}~{k}' for h, w, r, k in cols)
+    rowf = ';'.join(f"{'^'.join(cs)}~{car}~{ic}" for cs, car, ic in rows)
+    return [f'hudtab {width}', latin('|'.join(str(f) for f in [mode, sub, rl, rv, colf, sides, cells, rowf, icon_col, 0,
+                                                               spectators, server]))]
+
+
+def _race_rows(team=False):
+    teams = ['red', 'blue', 'blue', 'red', 'red', 'blue', 'blue', 'red']
+    return [(([p, ''] if team else [p]) + [n, lap, gap, last, best, pg], car, 0)
+            for (p, n, car, lap, gap, last, best, pg), t in zip(TAB_RACE, teams)]
+
+
+def _tab_pairs(table, rows, cols, name_col, count, skip=()):
+    pairs = [('mode', '/div:2/div:0/div:0'), ('sub', '/div:2/div:0/div:1'),
+             ('rightLabel', '/div:2/div:1/div:0'), ('rightValue', '/div:2/div:1/div:1'),
+             ('specLabel', '/div:3/div:1/div:0'), ('spec', '/div:3/div:1/div:1'), ('server', '/div:3/div:1/div:2/div:0')]
+    for c in range(cols):
+        pairs.append((f'head0_{c}', f'{table}/div:{rows - 1}/div:{c}'))
+    for i in range(count):
+        r = f'{table}/div:{rows}/div:{i}'
+        pairs.append((f'row{i}', r))
+        pairs.append((f'car{i}', f'{r}/div:{name_col}/div:0/div:1'))
+        pairs += [(f'cell{i}_{c}', f'{r}/div:{c}' + ('/div:0' if c != name_col else '/div:0/div:0'))
+                  for c in range(cols) if c not in skip]
+    return pairs
+
+
+def test_native_tab_table_matches_the_race_design():
+    mine, = layouts(tab_command('RACE', 'DOWNTOWN · LAP 3 / 5 · 8 DRIVERS', 'RACE TIME', '2:41.38',
+                                RACE_COLS, _race_rows()))
+    pairs = [('panel0', '/div:3/div:0')] + _tab_pairs('/div:3/div:0', 1, 7, 1, 8, skip=(3,))
+    pairs += [(f'cell{i}_3', f'/div:3/div:0/div:1/div:{i}/div:3') for i in range(8)]
+    problems = check_all(mine, TAB['racing'], pairs)
+    assert not problems, problems
+    assert mine['name0'] == 'Sam'
+
+
+def test_native_tab_table_matches_the_team_race_design():
+    cols = RACE_COLS[:1] + [('', 10, 0, SWATCH)] + RACE_COLS[1:]
+    mine, = layouts(tab_command('TEAM RACE', 'DOWNTOWN · LAP 3 / 5 · 2 TEAMS · 8 DRIVERS', 'RACE TIME', '2:41.38',
+                                cols, _race_rows(team=True),
+                                cells='RED~BEST P1 · 4 DRIVERS~P1;BLUE~BEST P2 · 4 DRIVERS~P2'))
+    t = '/div:3/div:0'
+    pairs = [('panel0', t)] + _tab_pairs(t, 2, 8, 2, 8, skip=(1, 4))
+    pairs += [(f'cell{i}_1', f'{t}/div:2/div:{i}/div:1/div:0') for i in range(8)]
+    pairs += [(f'cell{i}_4', f'{t}/div:2/div:{i}/div:4') for i in range(8)]
+    for k in range(2):
+        pairs += [(f'teamCell{k}', f'{t}/div:0/div:{k}'), (f'teamCellName{k}', f'{t}/div:0/div:{k}/div:0/div:0'),
+                  (f'teamCellPlace{k}', f'{t}/div:0/div:{k}/div:1')]
+    problems = check_all(mine, TAB['teamracing'], pairs)
+    assert not problems, problems
+
+
+def test_native_tab_table_matches_the_combat_design():
+    cols = [('POS', 34, 0, MONO), ('DRIVER', 0, 0, NAME), ('SCORE', 64, 1, SCORE), ('DEALT', 84, 1, MONO),
+            ('TAKEN', 84, 1, MONO), ('PING', 44, 1, PING)]
+    data = [('01', 'Sam', 'MURCIELAGO', '17', '4 210', '2 380', '38'), ('02', 'Player', 'VIPER', '14', '3 905', '2 610', '24'),
+            ('03', 'Bobby', 'VIPER', '11', '3 120', '3 004', 'BOT'), ('04', 'Janine', 'DB12', '9', '2 870', '3 330', '61'),
+            ('05', 'Vlad', 'BEETLE', '6', '1 940', '3 760', 'BOT'), ('06', 'Emma', 'VIPER', '4', '1 505', '4 120', '88'),
+            ('07', 'Tony', 'DB12', '-1', '620', '2 950', '132')]
+    rows = [([p, n, sc, d, tk, pg], car, 0) for p, n, car, sc, d, tk, pg in data]
+    mine, = layouts(tab_command('DEATHMATCH', 'ARENA · FRAGLIMIT 20 · 7 DRIVERS', 'TIME LEFT', '6:12', cols, rows,
+                                spectators='Ivan', server='Q3RALLY MÜNSTER · 8 / 16'))
+    pairs = [('panel0', '/div:3/div:0')] + _tab_pairs('/div:3/div:0', 1, 6, 1, 7)
+    problems = check_all(mine, TAB['deathmatch'], pairs)
+    assert not problems, problems
+
+
+def test_native_tab_table_matches_the_team_design():
+    cols = [('DRIVER', 0, 0, NAME), ('SCORE', 44, 1, SCORE), ('CAPS', 36, 1, MONO), ('AST', 36, 1, MONO),
+            ('DEF', 36, 1, MONO), ('PING', 40, 1, PING)]
+    red = [('Sam', 'MURCIELAGO', '14', '3', '1', '4', '38'), ('Janine', 'DB12', '9', '1', '2', '6', '61'),
+           ('Vlad', 'BEETLE', '6', '1', '0', '2', 'BOT'), ('Tony', 'DB12', '3', '0', '1', '1', '132')]
+    blue = [('Player', 'VIPER', '12', '2', '1', '3', '24'), ('Bobby', 'VIPER', '8', '1', '0', '5', 'BOT'),
+            ('Emma', 'VIPER', '5', '0', '2', '1', '88'), ('Carla', 'BEETLE', '2', '0', '0', '0', '70')]
+    rows = [([n, sc, cp, a, d, pg], car, 0) for n, car, sc, cp, a, d, pg in red + blue]
+    mine, = layouts(tab_command('CAPTURE THE FLAG', 'CANYON · CAPTURELIMIT 8 · 8 DRIVERS', 'TIME LEFT', '11:20', cols,
+                                rows, sides='RED TEAM~LEADS BY 2~5~4;BLUE TEAM~4 DRIVERS~3~4'))
+    pairs = [('mode', '/div:2/div:0/div:0'), ('sub', '/div:2/div:0/div:1'),
+             ('rightLabel', '/div:2/div:1/div:0'), ('rightValue', '/div:2/div:1/div:1'),
+             ('specLabel', '/div:3/div:1/div:0'), ('spec', '/div:3/div:1/div:1'), ('server', '/div:3/div:1/div:2/div:0')]
+    for k in range(2):
+        side = f'/div:3/div:0/div:{k}'
+        pairs += [(f'panel{k}', side), (f'sideTitle{k}', side + '/div:0/div:0/div:0'), (f'sideNote{k}', side + '/div:0/div:0/div:1'),
+                  (f'sideScore{k}', side + '/div:0/div:1')]
+        pairs += [(f'head{k}_{c}', f'{side}/div:1/div:{c}') for c in range(6)]
+        for i in range(4):
+            r = f'{side}/div:2/div:{i}'
+            pairs += [(f'row{k * 4 + i}', r), (f'cell{k * 4 + i}_0', r + '/div:0/div:0'), (f'car{k * 4 + i}', r + '/div:0/div:1')]
+            pairs += [(f'cell{k * 4 + i}_{c}', f'{r}/div:{c}') for c in range(1, 6)]
+    problems = check_all(mine, TAB['ctf'], pairs)
+    assert not problems, problems

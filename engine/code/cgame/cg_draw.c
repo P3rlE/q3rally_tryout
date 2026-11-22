@@ -4030,6 +4030,8 @@ static qboolean CG_DrawScoreboard( void ) {
 
 	return qtrue;
 #else
+	/* the v0.9 table: only with TAB (not when wrecked), and between maps */
+	if ( CG_ModernHUD_Active() ) return CG_ModernHUD_DrawTab();
 	return CG_DrawOldScoreboard();
 #endif
 }

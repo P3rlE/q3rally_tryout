@@ -285,6 +285,62 @@ typedef struct {
 	wsRect_t	readyBar;
 } mhEndLayout_t;
 
+/* ---------------------------------------------------------------------------
+   the TAB table (gen.py TabRacing, TabTeamRacing, TabDeathmatch, TabCTF):
+   880 wide in the middle, the mode over it, the spectators under it. One
+   table, or a panel a team side by side (four: two by two).
+   --------------------------------------------------------------------------- */
+#define MH_TAB_COLS			9
+#define MH_TAB_ROWS			32		/* all rows, the sides' one after another */
+#define MH_TAB_SIDES		4
+#define MH_TAB_W			880.0f
+
+typedef enum {
+	MH_TAB_MONO,		/* mono 14 (the place, times, numbers) */
+	MH_TAB_NAME,		/* the name, the car small after it */
+	MH_TAB_SCORE,		/* big 24 (22 in a team's panel) */
+	MH_TAB_SWATCH,		/* a 10px square in the team's colour */
+	MH_TAB_PING			/* mono 13, "BOT" a label */
+} mhTabKind_t;
+
+typedef struct {
+	/* inputs ------------------------------------------------------------- */
+	float		viewWidth;
+	const char	*mode, *sub;				/* "RACE", "DOWNTOWN · LAP 3 / 5 · 8 DRIVERS" */
+	const char	*rightLabel, *rightValue;	/* "RACE TIME" "2:41.38" */
+	int			colCount;
+	const char	*colHead[MH_TAB_COLS];
+	float		colW[MH_TAB_COLS];			/* 0: the rest */
+	qboolean	colRight[MH_TAB_COLS];
+	mhTabKind_t	colKind[MH_TAB_COLS];
+	int			sideCount;					/* 0: one table; 2 or 4: a panel a team */
+	const char	*sideTitle[MH_TAB_SIDES], *sideNote[MH_TAB_SIDES], *sideScore[MH_TAB_SIDES];
+	int			sideRows[MH_TAB_SIDES];
+	int			teamCellCount;				/* one table: the teams over it */
+	const char	*teamCellName[MH_TAB_SIDES], *teamCellValue[MH_TAB_SIDES], *teamCellPlace[MH_TAB_SIDES];
+	int			rowCount;
+	const char	*cell[MH_TAB_ROWS][MH_TAB_COLS];
+	const char	*rowCar[MH_TAB_ROWS];
+	int			iconCol;					/* a flag before this column's value where rowIcon: -1 none */
+	qboolean	rowIcon[MH_TAB_ROWS];
+	qboolean	compact;					/* rows 24 high */
+	const char	*spectators;				/* NULL: no spectators line */
+	const char	*server;
+
+	/* outputs ------------------------------------------------------------ */
+	mhText_t	modeT, subT, rightLabelT, rightValueT;
+	wsRect_t	panel[MH_TAB_SIDES];		/* one table: panel[0] */
+	mhText_t	sideTitleT[MH_TAB_SIDES], sideNoteT[MH_TAB_SIDES], sideScoreT[MH_TAB_SIDES];
+	wsRect_t	teamCell[MH_TAB_SIDES];
+	mhText_t	teamCellNameT[MH_TAB_SIDES], teamCellValueT[MH_TAB_SIDES], teamCellPlaceT[MH_TAB_SIDES];
+	mhText_t	headT[MH_TAB_SIDES][MH_TAB_COLS];
+	wsRect_t	row[MH_TAB_ROWS], icon[MH_TAB_ROWS];
+	mhText_t	cellT[MH_TAB_ROWS][MH_TAB_COLS];	/* right-aligned: the column's box */
+	mhText_t	carT[MH_TAB_ROWS];
+	mhText_t	specLabelT, specT, serverT;
+} mhTabLayout_t;
+
+void	MH_TabLayout( mhTabLayout_t *t );
 void	MH_EndLayout( mhEndLayout_t *e );
 void	MH_ZoneMarkerLayout( mhZoneMarker_t *m );
 void	MH_RaceLayout( mhRaceLayout_t *l );

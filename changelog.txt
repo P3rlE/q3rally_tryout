@@ -79,7 +79,12 @@ Changed:
   speed, places gained, average lap, your laps as a chart), the podium with
   each driver's car turning in 3D, highlights (fastest lap, best sector,
   biggest gain) and the classification with every best lap; how many
-  drivers are ready at the bottom. TAB shows the scoreboard.
+  drivers are ready at the bottom. TAB shows the TAB table.
+- The TAB table in the v0.9 style: one table for every mode with the
+  mode's columns (race: lap, gap, last and best lap; combat: score and
+  damage; team games: a panel a team with its score and the mode's
+  figures), your row lit, the spectators and the server under it. It only
+  comes up with TAB now, not when you are wrecked.
 - The end screen for team races: the teams on the podium by their average
   time, each with its best car and its drivers, your team's place and
   average, how you did against it, a chart of how each average came about

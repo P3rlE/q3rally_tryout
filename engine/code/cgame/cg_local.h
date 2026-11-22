@@ -2389,6 +2389,7 @@ qboolean CG_JukeboxView( cgJukeboxView_t *view );
 qboolean CG_ModernHUD_Active( void );
 qboolean CG_ModernHUD_EndActive( void );
 void CG_ModernHUD_DrawEnd( void );
+qboolean CG_ModernHUD_DrawTab( void );
 void CG_ModernHUD_DrawViews( void );
 void CG_ModernHUD_Draw( void );
 void CG_ModernHUD_DrawStandings( void );

@@ -419,6 +419,47 @@ int main(void) {
             printf("{"); B("box", sp.box); B("label", sp.labelT.box); B("name", sp.nameT.box);
             B("hint1", sp.hint1T.box); B("hint2", sp.hint2T.box); printf("\"nameText\":\"%s\"}\n", sp.nameT.text);
 #undef B
+        } else if (!strcmp(command, "hudtab")) {
+            /* hudtab <view width>, then: mode|sub|right label|right value|cols head~w~right~kind;..|
+             * sides title~note~score~rows;..|team cells name~value~place;..|rows cell^cell..~car~icon;..|
+             * icon column|compact|spectators (- none)|server */
+            static mhTabLayout_t t; static char line[8192]; static char *f[12]; char *r, *item, *more, *p[6], *c;
+            int n = 0, i, k;
+            memset(&t, 0, sizeof(t));
+            scanf("%f\n", &t.viewWidth);
+            fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
+            for (r = line; n < 12; ) { f[n++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
+#define SPLIT(src, cnt) for (k = 0, r = (src); k < (cnt); k++) { p[k] = r; r = r ? strchr(r, '~') : NULL; if (r) *r++ = 0; }
+#define EACH(src) for (item = (src); *item; item = more) { more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
+            t.mode = f[0]; t.sub = f[1]; t.rightLabel = f[2]; t.rightValue = f[3];
+            EACH(f[4]) SPLIT(item, 4) i = t.colCount++; t.colHead[i] = p[0]; t.colW[i] = atof(p[1]); t.colRight[i] = atoi(p[2]); t.colKind[i] = atoi(p[3]); }
+            EACH(f[5]) SPLIT(item, 4) i = t.sideCount++; t.sideTitle[i] = p[0]; t.sideNote[i] = p[1]; t.sideScore[i] = p[2]; t.sideRows[i] = atoi(p[3]); }
+            EACH(f[6]) SPLIT(item, 3) i = t.teamCellCount++; t.teamCellName[i] = p[0]; t.teamCellValue[i] = p[1]; t.teamCellPlace[i] = p[2]; }
+            EACH(f[7]) SPLIT(item, 3) i = t.rowCount++; t.rowCar[i] = p[1]; t.rowIcon[i] = atoi(p[2]);
+                for (k = 0, c = p[0]; c && k < MH_TAB_COLS; k++) { t.cell[i][k] = c; c = strchr(c, '^'); if (c) *c++ = 0; } }
+            t.iconCol = atoi(f[8]); t.compact = atoi(f[9]); t.spectators = strcmp(f[10], "-") ? f[10] : NULL; t.server = f[11];
+#undef SPLIT
+#undef EACH
+            uis.glconfig.vidWidth = t.viewWidth; uis.glconfig.vidHeight = 900;
+            MH_TabLayout(&t);
+#define B(name, b) printf("\"%s\":[%g,%g,%g,%g],", name, (b).x, (b).y, (b).w, (b).h)
+            printf("{"); B("mode", t.modeT.box); B("sub", t.subT.box); B("rightLabel", t.rightLabelT.box); B("rightValue", t.rightValueT.box);
+            for (i = 0; i < (t.sideCount ? t.sideCount : 1); i++) { char key[32];
+                sprintf(key, "panel%d", i); B(key, t.panel[i]);
+                for (k = 0; k < t.colCount; k++) { sprintf(key, "head%d_%d", i, k); B(key, t.headT[i][k].box); } }
+            for (i = 0; i < t.sideCount; i++) { char key[32];
+                sprintf(key, "sideTitle%d", i); B(key, t.sideTitleT[i].box); sprintf(key, "sideNote%d", i); B(key, t.sideNoteT[i].box);
+                sprintf(key, "sideScore%d", i); B(key, t.sideScoreT[i].box); }
+            for (i = 0; i < t.teamCellCount; i++) { char key[32];
+                sprintf(key, "teamCell%d", i); B(key, t.teamCell[i]); sprintf(key, "teamCellName%d", i); B(key, t.teamCellNameT[i].box);
+                sprintf(key, "teamCellValue%d", i); B(key, t.teamCellValueT[i].box); sprintf(key, "teamCellPlace%d", i); B(key, t.teamCellPlaceT[i].box); }
+            for (i = 0; i < t.rowCount; i++) { char key[32];
+                sprintf(key, "row%d", i); B(key, t.row[i]); sprintf(key, "car%d", i); B(key, t.carT[i].box);
+                if (t.rowIcon[i]) { sprintf(key, "icon%d", i); B(key, t.icon[i]); }
+                for (k = 0; k < t.colCount; k++) { sprintf(key, "cell%d_%d", i, k); B(key, t.cellT[i][k].box); } }
+            B("specLabel", t.specLabelT.box); B("spec", t.specT.box); B("server", t.serverT.box);
+            printf("\"name0\":\"%s\"}\n", t.cellT[0][1].text);
+#undef B
         } else if (!strcmp(command, "hudend")) {
             /* hudend <view width>, then fields split by |, lists by ; and ~ */
             static mhEndLayout_t e; static char line[4096]; static char *f[24]; char *r, *item, *more, *p[6];
