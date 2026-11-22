@@ -539,9 +539,9 @@ seta sv_ladderUrl      "https://ladder.q3rally.com/index.php/matches"
 <table class="cvar-table">
 <tr><td class="cvar-name">laplimit</td><td class="cvar-default">5</td><td class="cvar-desc">Lap count. <code>0</code> uses the <code>laps</code> key of the map's <code>rally_startfinish</code>. Sprint maps always run 1 lap.</td></tr>
 <tr><td class="cvar-name">g_forceEngineStart</td><td class="cvar-default">60 s</td><td class="cvar-desc">Forces race start after this many seconds with a 10 s countdown warning.</td></tr>
-<tr><td class="cvar-name">g_finishRaceDelay</td><td class="cvar-default">30 s</td><td class="cvar-desc">Grace period after first finisher before the race ends.</td></tr>
+<tr><td class="cvar-name">g_finishRaceDelay</td><td class="cvar-default">30 s</td><td class="cvar-desc">Maximum time remaining after the first finish in circuit, sprint, team and ghost races, or after the winner is decided in Elimination. The server can end the race sooner once no drivers are still racing. Drag Race uses its own heat timing.</td></tr>
 <tr><td class="cvar-name">g_timeTrialLaps</td><td class="cvar-default">3</td><td class="cvar-desc">Lap count in GT_SINGLE_PLAYER time-trial mode.</td></tr>
-<tr><td class="cvar-name">g_timeTrialFinishDelay</td><td class="cvar-default">10 s</td><td class="cvar-desc">Finish grace period for GT_SINGLE_PLAYER.</td></tr>
+<tr><td class="cvar-name">g_timeTrialFinishDelay</td><td class="cvar-default">10 s</td><td class="cvar-desc">Finish grace period for GT_SINGLE_PLAYER. A value of 0 uses <code>g_finishRaceDelay</code>.</td></tr>
 <tr><td class="cvar-name">g_rallyReadyCheck</td><td class="cvar-default">1</td><td class="cvar-desc">Require all human players to signal ready before race start.</td></tr>
 <tr><td class="cvar-name">g_rallyIgnoreBots</td><td class="cvar-default">0</td><td class="cvar-desc">When set, bots are moved to spectator and excluded from the ready check.</td></tr>
 <tr><td class="cvar-name">g_weather</td><td class="cvar-default">1</td><td class="cvar-desc">Weather: 0 always dry, 1 as the map says (showers come and go during the race), 2 rain, 3 snow for the whole race on any map. Ghost Race is always dry. Serverinfo.</td></tr>

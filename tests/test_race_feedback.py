@@ -1,4 +1,4 @@
-"""Exercise production race warning decisions without a running renderer/server."""
+"""Exercise race feedback and finish timing without a running renderer/server."""
 import pathlib
 import shutil
 import subprocess
@@ -19,13 +19,18 @@ def function(source, marker):
 
 def test_race_feedback():
     server = (ROOT / 'engine/code/game/g_rally_mapents.c').read_text()
+    rules = (ROOT / 'engine/code/game/g_main.c').read_text()
+    rally = (ROOT / 'engine/code/game/g_rally_tools.c').read_text()
+    shared = (ROOT / 'engine/code/qcommon/q_shared.c').read_text()
     hud = (ROOT / 'engine/code/cgame/cg_hud_racing.c').read_text()
     harness = '#include "' + (ROOT / 'engine/code/game/g_local.h').as_posix() + '"\n'
     harness += r'''
 #include <assert.h>
+#include <limits.h>
 level_locals_t level;
+vmCvar_t g_gametype, g_finishRaceDelay, g_timeTrialFinishDelay;
 static int notices, recipient;
-static char message[256];
+static char message[256], broadcast[256];
 char *QDECL va(char *format, ...) {
     static char result[1024]; va_list ap;
     va_start(ap,format); vsnprintf(result,sizeof(result),format,ap); va_end(ap);
@@ -33,11 +38,78 @@ char *QDECL va(char *format, ...) {
 }
 void trap_SendServerCommand(int client, const char *text) {
     notices++; recipient=client; snprintf(message,sizeof(message),"%s",text);
+    if (client == -1) snprintf(broadcast, sizeof(broadcast), "%s", text);
 }
 '''
     harness += function(server, 'static void G_RallyWarnMissedCheckpoint(') + '\n'
+    harness += function(server, 'static const char *G_RallyPlaceString(') + '\n'
+    harness += function(server, 'static void G_RallyReportFinish(') + '\n'
+    harness += function(rules, 'static qboolean G_RaceFinishDelayElapsed(') + '\n'
+    harness += function(rally, 'qboolean isRallyDMRace(') + '\n'
+    harness += function(shared, 'float Com_Clamp(') + '\n'
     harness += function(hud, 'static qboolean CG_IsMovingAwayFromCheckpoint(') + '\n'
     harness += r'''
+static void TestFinishDelay(void) {
+    level.finishRaceTime = 20000;
+    g_finishRaceDelay.integer = 30;
+    g_timeTrialFinishDelay.integer = 10;
+    g_gametype.integer = GT_SINGLE_PLAYER;
+    level.time = 30000;
+    assert(!G_RaceFinishDelayElapsed());
+    level.time++;
+    assert(G_RaceFinishDelayElapsed());
+
+    g_gametype.integer = GT_TEAM_RACING;
+    assert(!G_RaceFinishDelayElapsed());
+    assert(g_finishRaceDelay.integer == 30);
+    level.time = 50001;
+    assert(G_RaceFinishDelayElapsed());
+
+    g_gametype.integer = GT_SINGLE_PLAYER;
+    g_timeTrialFinishDelay.integer = 0;
+    level.time = 30001;
+    assert(!G_RaceFinishDelayElapsed());
+    level.time = 50001;
+    assert(G_RaceFinishDelayElapsed());
+    g_finishRaceDelay.integer = INT_MAX;
+    assert(!G_RaceFinishDelayElapsed());
+}
+
+static void TestFinishMessages(gentity_t *car) {
+    const int pendingModes[] = {GT_RACING_DM, GT_TEAM_RACING, GT_TEAM_RACING_DM};
+    int i;
+
+    car->s.clientNum = 7;
+    car->client->finishRaceTime = 25000;
+    for (i = 0; i < ARRAY_LEN(pendingModes); i++) {
+        g_gametype.integer = pendingModes[i];
+        level.finishRaceTime = 0;
+        notices = 0;
+        G_RallyReportFinish(car);
+        assert(level.finishRaceTime == 25000 && level.winnerNumber == 7);
+        assert(notices == 2 && recipient == 7);
+        assert(strstr(broadcast, "finished the race") && strstr(message, "Race finished"));
+        car->client->ps.stats[STAT_POSITION] = 2;
+        G_RallyReportFinish(car);
+        assert(!strstr(broadcast, "place"));
+    }
+
+    level.finishRaceTime = 0;
+    g_gametype.integer = GT_GHOST;
+    notices = 0;
+    G_RallyReportFinish(car);
+    assert(notices == 1 && recipient == -1 && strstr(broadcast, "finished the race"));
+
+    level.finishRaceTime = 0;
+    g_gametype.integer = GT_SPRINT;
+    notices = 0;
+    G_RallyReportFinish(car);
+    assert(notices == 2 && recipient == 7 && strstr(message, "won the race"));
+    car->client->ps.stats[STAT_POSITION] = 2;
+    G_RallyReportFinish(car);
+    assert(strstr(broadcast, "second place"));
+}
+
 int main(void) {
     static gentity_t car, gate;
     static gclient_t client;
@@ -92,6 +164,8 @@ int main(void) {
     assert(!CG_IsMovingAwayFromCheckpoint(velocity,target,100));
     assert(!CG_IsMovingAwayFromCheckpoint(velocity,target,0));
     target[0]=0; assert(!CG_IsMovingAwayFromCheckpoint(velocity,target,180));
+    TestFinishDelay();
+    TestFinishMessages(&car);
     return 0;
 }
 '''
