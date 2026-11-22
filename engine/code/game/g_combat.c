@@ -51,13 +51,13 @@ AddScore
 Adds score to both the client and his team
 ============
 */
-void AddScore( gentity_t *ent, vec3_t origin, int score ) {
+qboolean AddScoreWithoutRankUpdate( gentity_t *ent, vec3_t origin, int score ) {
 	if ( !ent->client ) {
-		return;
+		return qfalse;
 	}
 	// no scoring during pre-match warmup
 	if ( level.warmupTime ) {
-		return;
+		return qfalse;
 	}
 	// show score plum
 	ScorePlum(ent, origin, score);
@@ -84,7 +84,13 @@ void AddScore( gentity_t *ent, vec3_t origin, int score ) {
 	}
 // END
 
-	CalculateRanks();
+	return qtrue;
+}
+
+void AddScore( gentity_t *ent, vec3_t origin, int score ) {
+	if ( AddScoreWithoutRankUpdate( ent, origin, score ) ) {
+		CalculateRanks();
+	}
         }
 
 /*

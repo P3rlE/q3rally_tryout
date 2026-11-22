@@ -895,29 +895,44 @@ static qboolean G_LadderGametypeIsTeamMode( int gametype ) {
                 || gametype == GT_AUTOBALL ) ? qtrue : qfalse;
 }
 
+static qboolean G_IsMatchParticipant( int clientNum ) {
+        const gclient_t *client;
+
+        if ( clientNum < 0 || clientNum >= level.maxclients ) {
+                return qfalse;
+        }
+        client = &level.clients[clientNum];
+        return client->pers.connected == CON_CONNECTED &&
+               client->sess.sessionTeam != TEAM_SPECTATOR;
+}
+
+static qboolean G_IsRaceFinisher( int clientNum ) {
+        return G_IsMatchParticipant( clientNum ) && level.startRaceTime > 0 &&
+               level.clients[clientNum].finishRaceTime > level.startRaceTime;
+}
+
 static int G_LadderWinnerForGametype( int gametype ) {
         int wi;
 
         switch ( gametype ) {
+        case GT_RACING:
         case GT_RACING_DM:
+        case GT_SPRINT:
+        case GT_SINGLE_PLAYER:
+                if ( gametype != GT_RACING_DM && G_IsRaceFinisher( level.winnerNumber ) ) {
+                        return level.winnerNumber;
+                }
                 for ( wi = 0; wi < level.numConnectedClients; ++wi ) {
                         int clientNum = level.sortedClients[wi];
-                        gclient_t *wc;
-
-                        if ( clientNum < 0 || clientNum >= level.maxclients ) {
-                                continue;
+                        if ( G_IsRaceFinisher( clientNum ) ) {
+                                return clientNum;
                         }
-
-                        wc = &level.clients[clientNum];
-                        if ( wc->pers.connected != CON_CONNECTED ) {
-                                continue;
-                        }
-                        if ( wc->sess.sessionTeam == TEAM_SPECTATOR ) {
-                                continue;
-                        }
-                        return clientNum;
                 }
-                return level.winnerNumber;
+                return -1;
+
+        case GT_DERBY:
+        case GT_LCS:
+                return G_IsMatchParticipant( level.winnerNumber ) ? level.winnerNumber : -1;
 
         case GT_DEATHMATCH:
                 {
@@ -1678,6 +1693,7 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 
 	// set some level globals
 	memset( &level, 0, sizeof( level ) );
+	level.winnerNumber = -1;
 	for ( i = 0; i < MAX_CLIENTS; i++ ) {
 		for ( j = 0; j < MAX_CLIENTS; j++ )
 			level.vehicleCollisionImpactFrame[i][j] = -2;
@@ -2057,6 +2073,24 @@ static void G_Profile_RecordMatchAchievements( gclient_t *client ) {
         }
 }
 
+static int G_TeamRaceWinner( void ) {
+        int team, bestTime = 0, winner = -1;
+
+        for ( team = TEAM_RED; team <= TEAM_YELLOW; team++ ) {
+                int time = level.teamTimes[team];
+                if ( time <= 0 ) {
+                        continue;
+                }
+                if ( !bestTime || time < bestTime ) {
+                        bestTime = time;
+                        winner = team;
+                } else if ( time == bestTime ) {
+                        winner = -1;
+                }
+        }
+        return winner;
+}
+
 /*
 =======================
 G_RecordMatchOutcome
@@ -2066,6 +2100,7 @@ static void G_RecordMatchOutcome( void ) {
         int                     clientNum;
         int                     winner;
         qboolean                teamGame;
+        qboolean                needsFinish;
 
 	if ( g_gametype.integer == GT_KOTH && level.kothMapInvalid ) {
 		return;
@@ -2101,9 +2136,11 @@ static void G_RecordMatchOutcome( void ) {
         teamGame = ( g_gametype.integer >= GT_TEAM );
 
         if ( teamGame ) {
-                int winningTeam = GetTeamAtRank( 1 );
+                qboolean teamRace = g_gametype.integer == GT_TEAM_RACING ||
+                                     g_gametype.integer == GT_TEAM_RACING_DM;
+                int winningTeam = teamRace ? G_TeamRaceWinner() : GetTeamAtRank( 1 );
 
-                if ( winningTeam < TEAM_RED || winningTeam >= TEAM_RED + 4 ) {
+                if ( !teamRace && ( winningTeam < TEAM_RED || winningTeam > TEAM_YELLOW ) ) {
                         return;
                 }
 
@@ -2121,7 +2158,7 @@ static void G_RecordMatchOutcome( void ) {
                         if ( client->sess.sessionTeam == winningTeam ) {
                                 client->sess.wins++;
                                 G_Profile_RecordWin( client );
-                        } else {
+                        } else if ( winningTeam >= TEAM_RED ) {
                                 client->sess.losses++;
                                 G_Profile_RecordLoss( client );
                         }
@@ -2142,25 +2179,18 @@ static void G_RecordMatchOutcome( void ) {
                 return;
         }
 
-        winner = -1;
-        for ( clientNum = 0; clientNum < level.numConnectedClients; ++clientNum ) {
-                int sortedClientNum = level.sortedClients[ clientNum ];
-                gclient_t *client = &level.clients[ sortedClientNum ];
-
-                if ( client->pers.connected != CON_CONNECTED ) {
-                        continue;
+        needsFinish = BG_GametypeHasRaceFinish( g_gametype.integer ) && g_gametype.integer != GT_GHOST;
+        if ( needsFinish || g_gametype.integer == GT_DERBY || g_gametype.integer == GT_LCS ) {
+                winner = G_LadderWinnerForGametype( g_gametype.integer );
+        } else {
+                winner = -1;
+                for ( clientNum = 0; clientNum < level.numConnectedClients; ++clientNum ) {
+                        int sortedClientNum = level.sortedClients[ clientNum ];
+                        if ( G_IsMatchParticipant( sortedClientNum ) ) {
+                                winner = sortedClientNum;
+                                break;
+                        }
                 }
-
-                if ( client->sess.sessionTeam == TEAM_SPECTATOR ) {
-                        continue;
-                }
-
-                winner = sortedClientNum;
-                break;
-        }
-
-        if ( winner < 0 ) {
-                return;
         }
 
         for ( clientNum = 0; clientNum < level.maxclients; ++clientNum ) {
@@ -2177,7 +2207,7 @@ static void G_RecordMatchOutcome( void ) {
                 if ( clientNum == winner ) {
                         client->sess.wins++;
                         G_Profile_RecordWin( client );
-                } else {
+                } else if ( winner >= 0 ) {
                         client->sess.losses++;
                         G_Profile_RecordLoss( client );
                 }
@@ -2185,7 +2215,9 @@ static void G_RecordMatchOutcome( void ) {
                 /* Modi-spezifische Lifetime-Stats */
                 {
                         int position = client->ps.persistant[PERS_RANK] + 1; /* 1-basiert */
-                        G_Profile_RecordRacePlacement( client, position );
+                        if ( !needsFinish || G_IsRaceFinisher( clientNum ) ) {
+                                G_Profile_RecordRacePlacement( client, position );
+                        }
 
                         if ( client->finishRaceTime > level.startRaceTime ) {
                                 int totalMs = client->finishRaceTime - level.startRaceTime;
@@ -2786,6 +2818,9 @@ void LogExit( const char *string ) {
 	qboolean won = qtrue;
 	team_t team = TEAM_RED;
 #endif
+	if ( level.intermissionQueued || level.intermissiontime ) {
+		return;
+	}
 	G_LogPrintf( "Exit: %s\n", string );
 
 	// Use the race cutoff for DNFs before recording or submitting team results.
@@ -3110,6 +3145,7 @@ void CheckExitRules( void ) {
 			if ( KOTH_HandleOvertime() ) {
 				trap_SendServerCommand( -1, "print \"KOTH overtime finished.\n\"" );
 				LogExit( "KOTH overtime finished." );
+				CalculateRanks();
 			}
 		}
 		return;
@@ -3220,6 +3256,12 @@ void CheckExitRules( void ) {
 
 			count++;
 			winner = cl;
+		}
+
+		if ( !count ) {
+			trap_SendServerCommand( -1, "print \"No cars survived Last Car Standing.\n\"" );
+			LogExit( "No cars survived Last Car Standing." );
+			return;
 		}
 
 		if (winner && count == 1 && level.derbyStartPlayerCount >= g_derbyMinPlayers.integer) {
@@ -3353,8 +3395,8 @@ void CheckExitRules( void ) {
 			return;
 		}
 
-		// Q3Rally Code Start - CTF4: also check Green and Yellow
-		if ( g_gametype.integer == GT_CTF4 ) {
+		// Four-team modes also check Green and Yellow.
+		if ( g_gametype.integer == GT_CTF4 || g_gametype.integer == GT_DOMINATION ) {
 			if ( level.teamScores[TEAM_GREEN] >= g_capturelimit.integer ) {
 				trap_SendServerCommand( -1, "print \"Green hit the capturelimit.\n\"" );
 				LogExit( "Capturelimit hit." );
@@ -3367,7 +3409,6 @@ void CheckExitRules( void ) {
 				return;
 			}
 		}
-		// Q3Rally Code END - CTF4
 	}
 
 	// Q3Rally Code Start - KOTH win condition

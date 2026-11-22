@@ -1302,7 +1302,7 @@ static void G_Autoball_ScoreGoal( gentity_t *ball, gentity_t *goal ) {
 		int i;
 
 		scorer->client->pers.autoballGoals++;
-		AddScore( scorer, ball->r.currentOrigin, AUTOBALL_GOAL_POINTS );
+		AddScoreWithoutRankUpdate( scorer, ball->r.currentOrigin, AUTOBALL_GOAL_POINTS );
 		/* newest teammate touch before the scorer's, within the window */
 		for ( i = 0; i < 4; i++ ) {
 			gentity_t *mate;
@@ -1317,7 +1317,8 @@ static void G_Autoball_ScoreGoal( gentity_t *ball, gentity_t *goal ) {
 				mate->client->sess.sessionTeam != scoringTeam )
 				continue;
 			mate->client->pers.autoballAssists++;
-			G_Autoball_Award( mate, AUTOBALL_ASSIST_POINTS, PERS_ASSIST_COUNT );
+			AddScoreWithoutRankUpdate( mate, mate->r.currentOrigin, AUTOBALL_ASSIST_POINTS );
+			mate->client->ps.persistant[PERS_ASSIST_COUNT]++;
 			trap_SendServerCommand( -1, va( "print \"Assist: %s^7\n\"", mate->client->pers.netname ) );
 			G_LogPrintf( "AutoballAssist: %i %i\n", num, scoringTeam );
 			break;
@@ -1327,8 +1328,6 @@ static void G_Autoball_ScoreGoal( gentity_t *ball, gentity_t *goal ) {
 	G_Autoball_GoalPush( ball->r.currentOrigin );
 	Rally_Sound( ball, EV_GLOBAL_SOUND, CHAN_AUTO, G_SoundIndex( AUTOBALL_SOUND_CROWD ) );
 	Rally_Sound( ball, EV_GLOBAL_SOUND, CHAN_ANNOUNCER, G_SoundIndex( AUTOBALL_SOUND_GOAL_HORN ) );
-	CalculateRanks();
-
 	te = G_TempEntity( ball->r.currentOrigin, EV_EXPLOSION );
 	te->s.eventParm = EXPLOSION_PARM_AUTOBALL_GOAL | ( scoringTeam & 0x0F );
 	te->r.svFlags |= SVF_BROADCAST;
@@ -1355,6 +1354,7 @@ static void G_Autoball_ScoreGoal( gentity_t *ball, gentity_t *goal ) {
 		delay = 15;
 	level.autoballStateEnd = level.time + delay * 1000;
 	G_Autoball_SetState( AUTOBALL_STATE_GOAL );
+	CalculateRanks();
 }
 
 static gentity_t *G_Autoball_GoalContaining( const vec3_t point ) {

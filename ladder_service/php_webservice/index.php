@@ -1472,6 +1472,7 @@ try {
         'filters.matches.limit.label': 'Lade-Limit',
         'filters.matches.limit.all': 'Alle',
         'filters.matches.refresh': 'Aktualisieren',
+        'filters.hideBots': 'Bots ausblenden',
         'matches.empty': 'Keine Bestzeiten gefunden. Lade weitere Renn-Matches oder passe die Filter an.',
         'leaderboard.headers.rank': 'Rang',
         'leaderboard.headers.player': 'Spieler',
@@ -1662,6 +1663,7 @@ try {
         'filters.matches.limit.label': 'Load limit',
         'filters.matches.limit.all': 'All',
         'filters.matches.refresh': 'Refresh',
+        'filters.hideBots': 'Hide bots',
         'matches.empty': 'No best times found. Load more racing matches or adjust the filters.',
         'leaderboard.headers.rank': 'Rank',
         'leaderboard.headers.player': 'Player',
@@ -1968,6 +1970,7 @@ const state = {
   activeMode: MODE_CONFIG.length ? MODE_CONFIG[0].key : 'gt_racing',
   activeSource: 'online',
   activeWeather: 'all',
+  hideBots: false,
   language: 'en',
   modeStatus: { key: null, params: {}, isError: false }
 };
@@ -3405,7 +3408,7 @@ function renderSourceToggle() {
 
   const bar = document.createElement('div');
   bar.id = 'source-toggle';
-  bar.style.cssText = 'display:inline-flex;gap:6px;margin-bottom:16px;align-items:center;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:12px;padding:5px';
+  bar.style.cssText = 'display:inline-flex;flex-wrap:wrap;max-width:100%;gap:6px;margin-bottom:16px;align-items:center;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:12px;padding:5px';
 
   [
     { key: 'online',  labelDe: 'Online',  labelEn: 'Online'  },
@@ -3432,6 +3435,21 @@ function renderSourceToggle() {
     bar.appendChild(btn);
   });
 
+  const botLabel = document.createElement('label');
+  botLabel.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:6px 14px;font-size:.9rem;cursor:pointer';
+  const botCheckbox = document.createElement('input');
+  botCheckbox.type = 'checkbox';
+  botCheckbox.id = 'hide-bots';
+  botCheckbox.checked = state.hideBots;
+  botCheckbox.addEventListener('change', () => {
+    state.hideBots = botCheckbox.checked;
+    rebuildForSource();
+  });
+  const botText = document.createElement('span');
+  botText.id = 'hide-bots-label';
+  botLabel.append(botCheckbox, botText);
+  bar.appendChild(botLabel);
+
   panel.insertBefore(bar, panel.firstChild);
   updateSourceToggleUI();
   if (state.activeMode === GHOST_TAB_KEY) {
@@ -3440,6 +3458,8 @@ function renderSourceToggle() {
 }
 
 function updateSourceToggleUI() {
+  const botText = document.getElementById('hide-bots-label');
+  if (botText) botText.textContent = t('filters.hideBots');
   const btns = document.querySelectorAll('#source-toggle button[data-source], #source-toggle button[data-weather]');
   btns.forEach((btn) => {
     const active = btn.dataset.source ? btn.dataset.source === state.activeSource
@@ -3487,9 +3507,9 @@ function setActiveWeather(weather) {
 }
 
 function rebuildForSource() {
-  if (state.activeWeather === 'all' && state.activeSource === 'online') {
+  if (!state.hideBots && state.activeWeather === 'all' && state.activeSource === 'online') {
     state.aggregation = state.aggregationOnline;
-  } else if (state.activeWeather === 'all' && state.activeSource === 'offline') {
+  } else if (!state.hideBots && state.activeWeather === 'all' && state.activeSource === 'offline') {
     state.aggregation = state.aggregationOffline;
   } else {
     // re-aggregate the matches of this source and weather
@@ -3502,7 +3522,7 @@ function rebuildForSource() {
       if (state.activeWeather !== 'all' && matchWeather(match) !== state.activeWeather) {
         continue;
       }
-      ingestMatchInto(match, state.aggregation);
+      ingestMatchInto(match, state.aggregation, state.hideBots);
     }
   }
   buildRaceLeaderboard();
@@ -3514,6 +3534,8 @@ function rebuildForSource() {
   updateSummary();
   updateModeOptions();
   MODE_CONFIG.forEach(({ key }) => renderModeTable(key));
+  setModeStatus(state.aggregation.totalMatches ? 'mode.status.ready' : 'mode.status.empty',
+                { count: state.aggregation.totalMatches });
 }
 
 async function loadMatches() {
@@ -3613,8 +3635,13 @@ function profileIdFor(entry) {
   return (latest && latest.id) || entry.playerId;
 }
 
-function ingestMatchInto(match, aggregation) {
+function ingestMatchInto(match, aggregation, hideBots = false) {
   if (!aggregation) {
+    return;
+  }
+
+  const entries = extractScoreboardEntries(match);
+  if (hideBots && !entries.some((entry) => !extractIsBot(entry))) {
     return;
   }
 
@@ -3630,7 +3657,8 @@ function ingestMatchInto(match, aggregation) {
     }
   }
 
-  const players = extractPlayers(match);
+  const players = hideBots ? entries.filter((entry) => !extractIsBot(entry)).map(extractLeaderboardPlayer)
+                           : extractPlayers(match);
   players.forEach((name) => {
     if (name) {
       aggregation.playerNames.add(name);
@@ -3649,7 +3677,6 @@ function ingestMatchInto(match, aggregation) {
     return;
   }
 
-  const entries = extractScoreboardEntries(match);
   if (!entries.length) {
     return;
   }
@@ -3666,7 +3693,8 @@ function ingestMatchInto(match, aggregation) {
     modeKey,
     matchId,
     startedAt,
-    recordedAt
+    recordedAt,
+    hideBots
   };
 
   if (RACE_MODE_KEYS.has(modeKey)) {
@@ -3695,6 +3723,7 @@ function extractDragResult(entry) {
 function ingestRaceEntries(aggregation, entries, context) {
   const { map, mapKey, modeKey, matchId, startedAt, recordedAt } = context;
   for (const entry of entries) {
+    if (context.hideBots && extractIsBot(entry)) continue;
     const player = extractLeaderboardPlayer(entry);
     if (!player) {
       continue;
@@ -3733,6 +3762,7 @@ function ingestRaceEntries(aggregation, entries, context) {
 function ingestDeathmatchEntries(aggregation, entries, context) {
   const { map, mapKey, modeKey, matchId, startedAt, recordedAt } = context;
   for (const entry of entries) {
+    if (context.hideBots && extractIsBot(entry)) continue;
     const player = extractLeaderboardPlayer(entry);
     if (!player) {
       continue;
@@ -3780,6 +3810,7 @@ function ingestDeathmatchEntries(aggregation, entries, context) {
 function ingestDerbyEntries(aggregation, entries, context) {
   const { map, mapKey, modeKey, matchId, startedAt, recordedAt } = context;
   for (const entry of entries) {
+    if (context.hideBots && extractIsBot(entry)) continue;
     const player = extractLeaderboardPlayer(entry);
     if (!player) {
       continue;
@@ -3837,6 +3868,7 @@ function ingestObjectiveEntries(aggregation, entries, context, customTargetMap =
 
   for (let index = 0; index < entries.length; index += 1) {
     const entry = entries[index];
+    if (context.hideBots && extractIsBot(entry)) continue;
     const player = extractLeaderboardPlayer(entry);
     if (!player) {
       continue;
@@ -6042,6 +6074,42 @@ function profile_collect_team_times(array $payload): array
     return $timesByTeam;
 }
 
+function match_reported_winner_client_num(array $payload): int
+{
+    foreach ([$payload, $payload['settings'] ?? []] as $source) {
+        if (is_array($source) && isset($source['winnerClientNum']) && is_numeric($source['winnerClientNum'])) {
+            return (int)$source['winnerClientNum'];
+        }
+    }
+    return -1;
+}
+
+function match_individual_winner_client_num(array $players, string $mode, int $reportedWinner): int
+{
+    $needsFinish = mode_is_race($mode);
+    if (!$needsFinish && $reportedWinner >= 0) {
+        return $reportedWinner;
+    }
+
+    $firstPlace = [];
+    foreach ($players as $player) {
+        if (!is_array($player) || ($needsFinish && extract_player_race_time($player, $mode) <= 0)) {
+            continue;
+        }
+        $clientNum = (int)($player['clientNum'] ?? -1);
+        if ($clientNum < 0) {
+            continue;
+        }
+        if ($clientNum === $reportedWinner) {
+            return $clientNum;
+        }
+        if (empty($player['isBot']) && (int)($player['position'] ?? 0) === 1) {
+            $firstPlace[] = $clientNum;
+        }
+    }
+    return count($firstPlace) === 1 ? $firstPlace[0] : -1;
+}
+
 function profile_upsert_from_payload(array $payload): void
 {
     $players = $payload['players'] ?? [];
@@ -6053,24 +6121,11 @@ function profile_upsert_from_payload(array $payload): void
     $teamModes = ['GT_TEAM', 'GT_TEAM_RACING', 'GT_TEAM_RACING_DM', 'GT_CTF', 'GT_CTF4', 'GT_DOMINATION', 'GT_KOTH', 'GT_AUTOBALL'];
     $isTeamMode = in_array($mode, $teamModes, true);
     $isTeamRaceMode = in_array($mode, ['GT_TEAM_RACING', 'GT_TEAM_RACING_DM'], true);
-    $winnerClientNum = -1;
-    $hasWinnerClientNum = false;
-    if (array_key_exists('winnerClientNum', $payload) &&
-        (is_int($payload['winnerClientNum']) ||
-         is_float($payload['winnerClientNum']) ||
-         (is_string($payload['winnerClientNum']) && is_numeric($payload['winnerClientNum'])))) {
-        $winnerClientNum = (int) $payload['winnerClientNum'];
-        $hasWinnerClientNum = $winnerClientNum >= 0;
-    } elseif (isset($payload['settings']) &&
-              is_array($payload['settings']) &&
-              array_key_exists('winnerClientNum', $payload['settings']) &&
-              (is_int($payload['settings']['winnerClientNum']) ||
-               is_float($payload['settings']['winnerClientNum']) ||
-               (is_string($payload['settings']['winnerClientNum']) && is_numeric($payload['settings']['winnerClientNum'])))) {
-        // Legacy fallback: old payloads nested the winner in settings.
-        $winnerClientNum = (int) $payload['settings']['winnerClientNum'];
-        $hasWinnerClientNum = $winnerClientNum >= 0;
+    $winnerClientNum = match_reported_winner_client_num($payload);
+    if (!$isTeamMode && $mode !== 'GT_DRAG') {
+        $winnerClientNum = match_individual_winner_client_num($players, $mode, $winnerClientNum);
     }
+    $hasWinnerClientNum = $winnerClientNum >= 0;
 
     $humanPlayers = [];
     foreach ($players as $candidate) {
@@ -6082,12 +6137,14 @@ function profile_upsert_from_payload(array $payload): void
         $humanPlayers[] = [
             'clientNum' => $candidateClientNum,
             'team' => $candidateTeam,
-            'position' => (int)($candidate['position'] ?? 0),
         ];
     }
 
     $winnerTeam = null;
-    if ($isTeamMode) {
+    $teamTimes = $isTeamRaceMode ? profile_collect_team_times($payload) : [];
+    if ($teamTimes) {
+        $winnerTeam = profile_pick_winner_team_by_lowest_time($teamTimes);
+    } elseif ($isTeamMode) {
         if ($hasWinnerClientNum) {
             foreach ($humanPlayers as $hp) {
                 if ($hp['clientNum'] === $winnerClientNum && $hp['team'] !== '') {
@@ -6095,9 +6152,6 @@ function profile_upsert_from_payload(array $payload): void
                     break;
                 }
             }
-        }
-        if ($winnerTeam === null && $isTeamRaceMode) {
-            $winnerTeam = profile_pick_winner_team_by_lowest_time(profile_collect_team_times($payload));
         }
         if ($winnerTeam === null && isset($payload['teams']) && is_array($payload['teams'])) {
             $teamScores = [];
@@ -6151,17 +6205,6 @@ function profile_upsert_from_payload(array $payload): void
             }
 
             $winnerTeam = profile_pick_winner_team_by_scores($teamScores);
-        }
-    }
-
-    if (!$hasWinnerClientNum && !$isTeamMode && $mode !== 'GT_DRAG') {
-        $positionOne = array_values(array_filter(
-            $humanPlayers,
-            static fn($hp) => (int)($hp['position'] ?? 0) === 1
-        ));
-        if (count($positionOne) === 1) {
-            $winnerClientNum = (int)$positionOne[0]['clientNum'];
-            $hasWinnerClientNum = $winnerClientNum >= 0;
         }
     }
 
@@ -6340,7 +6383,7 @@ function profile_upsert_from_payload(array $payload): void
 
         $isRaceCareerMode = in_array($mode, ['GT_RACING', 'GT_RACING_DM', 'GT_SPRINT', 'GT_TEAM_RACING', 'GT_TEAM_RACING_DM'], true);
         $racePosition = (int)($player['position'] ?? $player['rank'] ?? 0);
-        $isRacePodium = $racePosition > 0 && $racePosition <= 3;
+        $isRacePodium = $matchRaceMs > 0 && $racePosition > 0 && $racePosition <= 3;
         $raceTotalMs = $isRaceCareerMode ? max(0, $matchRaceMs) : 0;
 
         $careerDeltas = [
@@ -7047,16 +7090,7 @@ function index_derive_winner(array $payload, string $mode): array
     $isTeamMode = in_array($mode, $teamModes, true);
     $isTeamRaceMode = in_array($mode, ['GT_TEAM_RACING', 'GT_TEAM_RACING_DM'], true);
 
-    $winnerClientNum = -1;
-    $hasWinnerClientNum = false;
-    foreach ([$payload, $payload['settings'] ?? []] as $src) {
-        if (!is_array($src)) continue;
-        if (array_key_exists('winnerClientNum', $src) && is_numeric($src['winnerClientNum'])) {
-            $winnerClientNum = (int)$src['winnerClientNum'];
-            $hasWinnerClientNum = $winnerClientNum >= 0;
-            break;
-        }
-    }
+    $winnerClientNum = match_reported_winner_client_num($payload);
 
     $clientToName = [];
     $clientToTeam = [];
@@ -7070,39 +7104,21 @@ function index_derive_winner(array $payload, string $mode): array
     }
 
     if (!$isTeamMode) {
-        if (!$hasWinnerClientNum) {
-            foreach ((array)($payload['players'] ?? []) as $cp) {
-                if (!is_array($cp) || !empty($cp['isBot'])) continue;
-                if ((int)($cp['position'] ?? 0) === 1) {
-                    $winnerClientNum = (int)($cp['clientNum'] ?? -1);
-                    $hasWinnerClientNum = $winnerClientNum >= 0;
-                    break;
-                }
-            }
-        }
-        $name = ($hasWinnerClientNum && isset($clientToName[$winnerClientNum]))
-            ? $clientToName[$winnerClientNum] : '';
+        $winnerClientNum = match_individual_winner_client_num((array)($payload['players'] ?? []), $mode, $winnerClientNum);
+        $name = $clientToName[$winnerClientNum] ?? '';
         return ['winner' => $name, 'winnerTeam' => 0];
     }
 
     // Team racing uses lower aggregate team time. Team Racing DM already has
     // frag bonuses applied to teamTimes by the engine.
-    $winnerTeamInt = 0;
-    if ($hasWinnerClientNum && isset($clientToTeam[$winnerClientNum])) {
-        $winnerTeamInt = $clientToTeam[$winnerClientNum];
-    } elseif ($isTeamRaceMode) {
-        $wt = profile_pick_winner_team_by_lowest_time(profile_collect_team_times($payload));
-        if ($wt !== null) {
-            foreach ((array)($payload['players'] ?? []) as $cp) {
-                if (!is_array($cp)) continue;
-                if (profile_normalize_team_label($cp['team'] ?? null) === $wt) {
-                    $winnerTeamInt = (int)($cp['team'] ?? 0);
-                    break;
-                }
-            }
-        }
+    $teamTimes = $isTeamRaceMode ? profile_collect_team_times($payload) : [];
+    if ($teamTimes) {
+        $winningTeam = profile_pick_winner_team_by_lowest_time($teamTimes);
+        $teamId = array_search($winningTeam, [1 => 'red', 2 => 'blue', 3 => 'green', 4 => 'yellow'], true);
+        return ['winner' => '', 'winnerTeam' => $teamId ?: 0];
     }
 
+    $winnerTeamInt = $clientToTeam[$winnerClientNum] ?? 0;
     if ($winnerTeamInt !== 0) {
         return ['winner' => '', 'winnerTeam' => $winnerTeamInt];
     }
