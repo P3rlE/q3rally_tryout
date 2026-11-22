@@ -57,5 +57,7 @@ void CG_ResultTime( int ms, char *out, int size );
 /* the time column: the winner's total, "+1.142" for the others who
  * finished, "DNF" for those who did not */
 void CG_ResultGap( const cgRaceResult_t *winner, const cgRaceResult_t *d, char *out, int size );
+/* a difference in time, signed: "+2.070" "-6.140" "+1:02.100" */
+void CG_ResultDiff( int ms, char *out, int size );
 
 #endif

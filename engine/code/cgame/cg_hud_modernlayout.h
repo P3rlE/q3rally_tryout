@@ -221,6 +221,9 @@ typedef struct {
 #define MH_END_LAPS			12		/* the lap chart: the last ones */
 #define MH_END_ROWS			16		/* the classification; more: yours stays in */
 #define MH_END_AWARDS		3
+#define MH_END_TEAMS		4		/* team races: up to four teams */
+#define MH_END_DOTS			16		/* a team's drivers on the time axis */
+#define MH_END_MEMBERS		4		/* a team's drivers listed on its podium card */
 
 typedef struct {
 	/* inputs */
@@ -231,9 +234,22 @@ typedef struct {
 	const char	*doneLabel, *doneTime, *doneNote;	/* "FINISHED" "4:21.380" "+1.142 TO THE WINNER" */
 	int			statCount;
 	const char	*statLabel[MH_END_STATS], *statValue[MH_END_STATS], *statUnit[MH_END_STATS];
+	const char	*chartTitle, *chartNote;	/* NULL: "YOUR LAPS" "LOST TO YOUR BEST" */
 	int			lapCount;			/* the chart: the bars in 0..1, the line under each */
 	float		lapFrac[MH_END_LAPS];
 	const char	*lapValue[MH_END_LAPS], *lapName[MH_END_LAPS];
+	int			spreadCount;		/* team races, in place of the lap chart: a row per team, */
+	int			spreadDots[MH_END_TEAMS];	/* its drivers on the time axis (0..1), */
+	float		spreadDot[MH_END_TEAMS][MH_END_DOTS];
+	float		spreadTick[MH_END_TEAMS];	/* its average, the gap at the right */
+	const char	*spreadValue[MH_END_TEAMS];
+	qboolean	teamPodium;			/* the podium of teams: a 3px top, lower cars, the drivers under */
+	const char	*podiumYou;			/* NULL: "YOU" */
+	int			podiumMembers[3];
+	const char	*podiumMemberPos[3][MH_END_MEMBERS], *podiumMemberName[3][MH_END_MEMBERS];
+	int			teamCellCount;		/* the classification: the teams over the drivers */
+	const char	*teamCellName[MH_END_TEAMS], *teamCellValue[MH_END_TEAMS];
+	qboolean	rowSwatch;			/* a square in the team's colour before each name */
 	int			podiumCount;		/* places 1..3 there are */
 	const char	*podiumName[3], *podiumTime[3], *podiumGap[3], *podiumTag[3];
 	qboolean	podiumMe[3];
@@ -252,7 +268,12 @@ typedef struct {
 	mhText_t	statLabelT[MH_END_STATS], statValueT[MH_END_STATS], statUnitT[MH_END_STATS];
 	mhText_t	lapsTitleT, lapsNoteT, lapValueT[MH_END_LAPS], lapNameT[MH_END_LAPS];
 	wsRect_t	lapSlot[MH_END_LAPS], lapBar[MH_END_LAPS];
-	wsRect_t	podium[3], podiumCar[3];
+	wsRect_t	podium[3], podiumCar[3], podiumRule[3];
+	mhText_t	podiumMemberPosT[3][MH_END_MEMBERS], podiumMemberNameT[3][MH_END_MEMBERS];
+	wsRect_t	spreadSwatch[MH_END_TEAMS], spreadTrack[MH_END_TEAMS], spreadDotR[MH_END_TEAMS][MH_END_DOTS], spreadTickR[MH_END_TEAMS];
+	mhText_t	spreadValueT[MH_END_TEAMS];
+	wsRect_t	teamCell[MH_END_TEAMS], rowSwatchR[MH_END_ROWS];
+	mhText_t	teamCellNameT[MH_END_TEAMS], teamCellValueT[MH_END_TEAMS];
 	mhText_t	podiumPlaceT[3], podiumTagT[3], podiumYouT[3], podiumNameT[3], podiumTimeT[3], podiumGapT[3];
 	mhText_t	awardsTitleT;
 	wsRect_t	award[MH_END_AWARDS], awardIcon[MH_END_AWARDS];

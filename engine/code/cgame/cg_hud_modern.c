@@ -2578,11 +2578,20 @@ static struct {
 	const float		*statColor[MH_END_STATS];
 	qboolean		rowMe[MH_END_ROWS];
 	float			scale;				/* the page scaled down on a narrow screen */
+	/* team races */
+	qboolean		teams;
+	const float		*posColor;			/* the place and its label: the team's colour */
+	int				team[MH_END_TEAMS], teamCount;	/* the teams by their average */
+	int				podiumTeam[3], rowTeam[MH_END_ROWS];
+	char			doneLabel[40], teamName[MH_END_TEAMS][12], teamTime[MH_END_TEAMS][16], spreadValue[MH_END_TEAMS][16];
+	char			memberPos[3][MH_END_MEMBERS][8], memberName[3][MH_END_MEMBERS][40];
+	qboolean		memberMe[3][MH_END_MEMBERS];
 } mhEnd;
 
 qboolean CG_ModernHUD_EndActive( void ) {
 	int i;
-	if ( !cg_hudStyle.integer || !cg.snap || cg.snap->ps.pm_type != PM_INTERMISSION || cgs.gametype != GT_RACING ) return qfalse;
+	if ( !cg_hudStyle.integer || !cg.snap || cg.snap->ps.pm_type != PM_INTERMISSION ) return qfalse;
+	if ( cgs.gametype != GT_RACING && cgs.gametype != GT_TEAM_RACING ) return qfalse;
 	for ( i = 0; i < MAX_CLIENTS; i++ ) {
 		if ( CG_RaceResult( i )->present && CG_RaceResult( i )->finishTime ) return qtrue;
 	}
@@ -2592,6 +2601,215 @@ qboolean CG_ModernHUD_EndActive( void ) {
 /* the seconds a lap lost to the best one: "+1.22" */
 static void MH_EndLost( int ms, char *out, int size ) {
 	Com_sprintf( out, size, "+%d.%02d", ms / 1000, ( ms % 1000 ) / 10 );
+}
+
+static const char *mhEndTeamNames[MH_END_TEAMS] = { "RED", "BLUE", "GREEN", "YELLOW" };
+
+/* a team race: the teams on the podium by their average time, the server's
+ * ranking. Over what the race result put up: the place and the time are the
+ * team's, the lap chart gives way to how each average came about. */
+static void MH_EndTeams( const cgRaceResult_t *all, const int *order, int count, int me, const cgRaceResult_t *mine, int place ) {
+	mhEndLayout_t *e = &mhEnd.e;
+	int avg[MH_END_TEAMS], members[MH_END_TEAMS], i, k, t, myTeam = MH_Team( me ), myRank = 0, playerClient = -1, under = 0;
+	int lo = 0, hi = 0, span;
+	char text[40];
+
+	/* the teams with drivers, and their averages: the server's, or ours of
+	 * those home when it sent none */
+	mhEnd.teams = qtrue;
+	mhEnd.teamCount = 0;
+	for ( t = 0; t < MH_END_TEAMS; t++ ) {
+		int sum = 0, home = 0;
+		members[t] = 0;
+		for ( i = 0; i < count; i++ ) {
+			if ( MH_Team( order[i] ) != TEAM_RED + t ) continue;
+			members[t]++;
+			if ( all[order[i]].finishTime ) { sum += CG_ResultTotal( &all[order[i]] ); home++; }
+		}
+		avg[t] = cg.teamTimes[t] > 0 && cg.teamTimes[t] < ( 1 << 30 ) ? cg.teamTimes[t] : home ? sum / home : 0;
+		if ( members[t] ) mhEnd.team[mhEnd.teamCount++] = t;
+	}
+	for ( i = 1; i < mhEnd.teamCount; i++ ) {	/* by average, none last */
+		for ( k = i; k > 0; k-- ) {
+			int a = mhEnd.team[k - 1], b = mhEnd.team[k];
+			if ( avg[a] && ( !avg[b] || avg[a] <= avg[b] ) ) break;
+			mhEnd.team[k - 1] = b;
+			mhEnd.team[k] = a;
+		}
+	}
+	for ( i = 0; i < mhEnd.teamCount; i++ ) {
+		t = mhEnd.team[i];
+		Q_strncpyz( mhEnd.teamName[t], mhEndTeamNames[t], sizeof( mhEnd.teamName[t] ) );
+		if ( avg[t] ) CG_ResultTime( avg[t], mhEnd.teamTime[t], sizeof( mhEnd.teamTime[t] ) );
+		else Q_strncpyz( mhEnd.teamTime[t], "--", sizeof( mhEnd.teamTime[t] ) );
+		if ( TEAM_RED + t == myTeam ) myRank = i + 1;
+	}
+	if ( !myRank ) {	/* not in a team: the winners' */
+		myRank = 1;
+		myTeam = mhEnd.teamCount ? TEAM_RED + mhEnd.team[0] : TEAM_RED;
+	}
+	t = myTeam - TEAM_RED;
+
+	/* the header */
+	e->title = "TEAM RACE RESULT";
+	{
+		char *dot = strstr( mhEnd.sub, " \xb7 " );	/* the map, as the race put it */
+		char map[48];
+		Q_strncpyz( map, mhEnd.sub, sizeof( map ) );
+		if ( dot && dot - mhEnd.sub < (int)sizeof( map ) ) map[dot - mhEnd.sub] = '\0';
+		if ( cgs.laplimit > 0 )
+			Com_sprintf( mhEnd.sub, sizeof( mhEnd.sub ), "%s \xb7 %d LAP%s \xb7 %d TEAMS \xb7 %d DRIVERS", map, cgs.laplimit,
+			             cgs.laplimit == 1 ? "" : "S", mhEnd.teamCount, count );
+		else
+			Com_sprintf( mhEnd.sub, sizeof( mhEnd.sub ), "%s \xb7 %d TEAMS \xb7 %d DRIVERS", map, mhEnd.teamCount, count );
+	}
+
+	/* the left: your team's place and average, then yours */
+	mhEnd.posColor = MH_TeamColor( myTeam );
+	Com_sprintf( mhEnd.pos, sizeof( mhEnd.pos ), "P%d", myRank );
+	Com_sprintf( mhEnd.of, sizeof( mhEnd.of ), "/ %d", mhEnd.teamCount );
+	Com_sprintf( mhEnd.doneLabel, sizeof( mhEnd.doneLabel ), "TEAM %s \xb7 AVERAGE", mhEndTeamNames[t] );
+	e->doneLabel = mhEnd.doneLabel;
+	Q_strncpyz( mhEnd.doneTime, mhEnd.teamTime[t], sizeof( mhEnd.doneTime ) );
+	mhEnd.doneNote[0] = '\0';
+	if ( mhEnd.teamCount > 1 && avg[t] ) {
+		int other = myRank == 1 ? avg[mhEnd.team[1]] : avg[mhEnd.team[0]];
+		if ( other ) {
+			CG_ResultDiff( myRank == 1 ? other - avg[t] : avg[t] - other, text, sizeof( text ) );
+			if ( myRank == 1 ) Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), "WON BY %s", text + 1 );
+			else Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), "%s TO THE WINNER", text );
+		}
+	}
+
+	e->statLabel[0] = "YOUR PLACE";
+	if ( place ) Com_sprintf( mhEnd.stat[0], sizeof( mhEnd.stat[0] ), "P%d", place );
+	else Q_strncpyz( mhEnd.stat[0], "--", sizeof( mhEnd.stat[0] ) );
+	e->statLabel[1] = "YOUR TIME";
+	if ( mine->finishTime ) CG_ResultTime( CG_ResultTotal( mine ), mhEnd.stat[1], sizeof( mhEnd.stat[1] ) );
+	else Q_strncpyz( mhEnd.stat[1], "DNF", sizeof( mhEnd.stat[1] ) );
+	e->statUnit[1] = NULL;
+	e->statLabel[2] = "VS TEAM AVERAGE";
+	mhEnd.statColor[2] = mhWhite;
+	if ( mine->finishTime && avg[t] ) {
+		int d = CG_ResultTotal( mine ) - avg[t];
+		CG_ResultDiff( d, mhEnd.stat[2], sizeof( mhEnd.stat[2] ) );
+		mhEnd.statColor[2] = d < 0 ? mhFast : d > 0 ? mhAccent : mhWhite;
+	} else Q_strncpyz( mhEnd.stat[2], "--", sizeof( mhEnd.stat[2] ) );
+	e->statLabel[3] = "BEST LAP";
+	if ( CG_ResultBestLap( mine ) ) CG_ResultTime( CG_ResultBestLap( mine ), mhEnd.stat[3], sizeof( mhEnd.stat[3] ) );
+	else Q_strncpyz( mhEnd.stat[3], "--", sizeof( mhEnd.stat[3] ) );
+
+	/* how each average came about: a dot a driver home, the average a tick */
+	e->chartTitle = "TEAM AVERAGES";
+	e->chartNote = "A DOT A DRIVER \xb7 TO THE WINNER";
+	e->lapCount = 0;
+	for ( i = 0; i < count; i++ ) {
+		int ms;
+		if ( !all[order[i]].finishTime ) continue;
+		ms = CG_ResultTotal( &all[order[i]] );
+		if ( !lo || ms < lo ) lo = ms;
+		if ( ms > hi ) hi = ms;
+	}
+	for ( i = 0; i < mhEnd.teamCount; i++ ) {
+		int a = avg[mhEnd.team[i]];
+		if ( !a ) continue;
+		if ( !lo || a < lo ) lo = a;
+		if ( a > hi ) hi = a;
+	}
+	span = hi - lo;
+	if ( span < 1000 ) span = 1000;
+	lo -= span / 10;
+	span += span / 5;
+	for ( i = 0; i < mhEnd.teamCount && i < MH_END_TEAMS; i++ ) {
+		int team = mhEnd.team[i];
+		e->spreadCount++;
+		e->spreadTick[i] = avg[team] ? (float)( avg[team] - lo ) / span : 0.0f;
+		for ( k = 0; k < count && e->spreadDots[i] < MH_END_DOTS; k++ ) {
+			if ( MH_Team( order[k] ) != TEAM_RED + team || !all[order[k]].finishTime ) continue;
+			e->spreadDot[i][e->spreadDots[i]++] = (float)( CG_ResultTotal( &all[order[k]] ) - lo ) / span;
+		}
+		if ( i == 0 ) Q_strncpyz( mhEnd.spreadValue[i], "best", sizeof( mhEnd.spreadValue[i] ) );
+		else if ( avg[team] && avg[mhEnd.team[0]] ) CG_ResultDiff( avg[team] - avg[mhEnd.team[0]], mhEnd.spreadValue[i], sizeof( mhEnd.spreadValue[i] ) );
+		else Q_strncpyz( mhEnd.spreadValue[i], "--", sizeof( mhEnd.spreadValue[i] ) );
+		e->spreadValue[i] = mhEnd.spreadValue[i];
+	}
+
+	/* the podium: the first three teams, each with its best car; the drivers under */
+	e->teamPodium = qtrue;
+	e->podiumYou = "YOUR TEAM";
+	e->podiumCount = 0;
+	for ( i = 0; i < 3 && i < mhEnd.teamCount; i++ ) {
+		static const char *tags[3] = { "WINNER", "SECOND", "THIRD" };
+		int team = mhEnd.team[i], m = 0;
+		mhEnd.podiumTeam[i] = team;
+		mhEnd.client[i] = -1;
+		Q_strncpyz( mhEnd.podName[i], mhEndTeamNames[team], sizeof( mhEnd.podName[i] ) );
+		Q_strlwr( mhEnd.podName[i] + 1 );
+		Q_strncpyz( mhEnd.podTime[i], mhEnd.teamTime[team], sizeof( mhEnd.podTime[i] ) );
+		mhEnd.podGap[i][0] = '\0';
+		if ( i > 0 ) Q_strncpyz( mhEnd.podGap[i], mhEnd.spreadValue[i], sizeof( mhEnd.podGap[i] ) );
+		for ( k = 0; k < count; k++ ) {
+			if ( MH_Team( order[k] ) != TEAM_RED + team ) continue;
+			if ( mhEnd.client[i] < 0 ) mhEnd.client[i] = order[k];
+			if ( m < MH_END_MEMBERS ) {
+				Com_sprintf( mhEnd.memberPos[i][m], sizeof( mhEnd.memberPos[i][m] ), "P%d", k + 1 );
+				MH_Plain( cgs.clientinfo[order[k]].name, mhEnd.memberName[i][m], sizeof( mhEnd.memberName[i][m] ) );
+				mhEnd.memberMe[i][m] = order[k] == cg.snap->ps.clientNum;
+				e->podiumMemberPos[i][m] = mhEnd.memberPos[i][m];
+				e->podiumMemberName[i][m] = mhEnd.memberName[i][m];
+				m++;
+			}
+		}
+		e->podiumMembers[i] = m;
+		e->podiumName[i] = mhEnd.podName[i];
+		e->podiumTime[i] = mhEnd.podTime[i];
+		e->podiumGap[i] = mhEnd.podGap[i];
+		e->podiumTag[i] = tags[i];
+		e->podiumMe[i] = TEAM_RED + team == MH_Team( cg.snap->ps.clientNum );
+		e->podiumCount = i + 1;
+	}
+
+	/* the team player in place of the best sector: the most under the team's average */
+	for ( i = 0; i < count; i++ ) {
+		const cgRaceResult_t *r = &all[order[i]];
+		int team = MH_Team( order[i] ) - TEAM_RED, d;
+		if ( !r->finishTime || team < 0 || team >= MH_END_TEAMS || !avg[team] ) continue;
+		d = avg[team] - CG_ResultTotal( r );
+		if ( d > under ) { under = d; playerClient = order[i]; }
+	}
+	for ( k = 0; k < e->awardCount && Q_stricmp( e->awardLabel[k], "BEST SECTOR" ); k++ );
+	if ( k < e->awardCount && playerClient < 0 ) {	/* nobody under: the sector award goes */
+		for ( ; k < e->awardCount - 1; k++ ) {
+			e->awardLabel[k] = e->awardLabel[k + 1];
+			Q_strncpyz( mhEnd.awardName[k], mhEnd.awardName[k + 1], sizeof( mhEnd.awardName[k] ) );
+			Q_strncpyz( mhEnd.awardValue[k], mhEnd.awardValue[k + 1], sizeof( mhEnd.awardValue[k] ) );
+			mhEnd.awardColor[k] = mhEnd.awardColor[k + 1];
+			mhEnd.awardIcon[k] = mhEnd.awardIcon[k + 1];
+		}
+		e->awardCount--;
+	} else if ( playerClient >= 0 ) {
+		int team = MH_Team( playerClient ) - TEAM_RED;
+		if ( k >= e->awardCount ) k = e->awardCount < MH_END_AWARDS ? e->awardCount++ : MH_END_AWARDS - 1;
+		e->awardLabel[k] = "TEAM PLAYER";
+		MH_Plain( cgs.clientinfo[playerClient].name, mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ) );
+		CG_ResultDiff( under, text, sizeof( text ) );
+		Q_strcat( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), va( " \xb7 %s under ", text + 1 ) );
+		Q_strcat( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), mhEnd.teamName[team] );
+		Q_strlwr( mhEnd.awardName[k] + strlen( mhEnd.awardName[k] ) - strlen( mhEnd.teamName[team] ) );
+		CG_ResultDiff( -under, mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ) );
+		mhEnd.awardColor[k] = mhFast;
+		mhEnd.awardIcon[k] = mh.flag;
+	}
+
+	/* the classification: the teams over the drivers, each with the team's square */
+	e->listRight = "TEAM AVERAGE";
+	e->rowSwatch = qtrue;
+	for ( i = 0; i < e->rowCount; i++ ) mhEnd.rowTeam[i] = MH_Team( mhEnd.rowClient[i] );
+	e->teamCellCount = mhEnd.teamCount;
+	for ( i = 0; i < mhEnd.teamCount; i++ ) {
+		e->teamCellName[i] = mhEnd.teamName[mhEnd.team[i]];
+		e->teamCellValue[i] = mhEnd.teamTime[mhEnd.team[i]];
+	}
 }
 
 static void MH_EndPrepare( void ) {
@@ -2610,20 +2828,24 @@ static void MH_EndPrepare( void ) {
 	e->viewWidth = viewWidth / mhEnd.scale;
 	e->top = ( MH_DESIGN_HEIGHT / mhEnd.scale - MH_DESIGN_HEIGHT ) * 0.5f;
 
-	/* the order, drivers still in the game only */
+	/* the order, drivers still in the game only (in a team race: in a team) */
 	count = CG_ResultOrder( all, MAX_CLIENTS, order );
 	for ( i = 0; i < count; i++ ) {
-		if ( cgs.clientinfo[order[i]].infoValid ) order[n++] = order[i];
+		int team = MH_Team( order[i] );
+		if ( !cgs.clientinfo[order[i]].infoValid ) continue;
+		if ( cgs.gametype == GT_TEAM_RACING && ( team < TEAM_RED || team >= TEAM_RED + MH_END_TEAMS ) ) continue;
+		order[n++] = order[i];
 	}
 	count = n;
 	winner = count > 0 ? &all[order[0]] : NULL;
 	me = cg.snap->ps.clientNum;
 	mine = CG_RaceResult( me );
-	if ( !mine->present && count > 0 ) {
-		me = order[0];	/* a spectator: the winner's race */
-		mine = &all[me];
-	}
 	for ( i = 0; i < count; i++ ) if ( order[i] == me ) place = i + 1;
+	if ( !place && count > 0 ) {
+		me = order[0];	/* a spectator, or out of it: the winner's race */
+		mine = &all[me];
+		place = 1;
+	}
 
 	/* the header */
 	map = CG_ConfigString( CS_MESSAGE );
@@ -2756,10 +2978,6 @@ static void MH_EndPrepare( void ) {
 		mhEnd.awardColor[k] = mhAccent;
 		mhEnd.awardIcon[k] = mh.chevron;
 	}
-	for ( i = 0; i < e->awardCount; i++ ) {
-		e->awardName[i] = mhEnd.awardName[i];
-		e->awardValue[i] = mhEnd.awardValue[i];
-	}
 
 	/* the classification: past 16 the first 15 and yours */
 	e->listTitle = "FINAL CLASSIFICATION";
@@ -2784,6 +3002,14 @@ static void MH_EndPrepare( void ) {
 		e->rowName[k] = mhEnd.rowName[k];
 		e->rowTime[k] = mhEnd.rowTime[k];
 		e->rowBest[k] = mhEnd.rowBest[k];
+	}
+
+	mhEnd.teams = qfalse;
+	mhEnd.posColor = mhWhite;
+	if ( cgs.gametype == GT_TEAM_RACING ) MH_EndTeams( all, order, count, me, mine, place );
+	for ( i = 0; i < e->awardCount; i++ ) {
+		e->awardName[i] = mhEnd.awardName[i];
+		e->awardValue[i] = mhEnd.awardValue[i];
 	}
 
 	/* the keys; who is ready (bots do not count) */
@@ -2821,9 +3047,9 @@ void CG_ModernHUD_DrawEnd( void ) {
 
 	MH_Str( &e->titleT, mhAccent, 1.0f );
 	MH_Str( &e->subtitleT, mhMuted, 1.0f );
-	MH_Str( &e->posT, mhWhite, 1.0f );
+	MH_Str( &e->posT, mhEnd.posColor, 1.0f );
 	MH_Str( &e->ofT, mhDim, 1.0f );
-	MH_Str( &e->doneLabelT, mhLabel, 1.0f );
+	MH_Str( &e->doneLabelT, mhEnd.teams ? mhEnd.posColor : mhLabel, 1.0f );
 	MH_Str( &e->doneTimeT, mhWhite, 1.0f );
 	MH_Str( &e->doneNoteT, mhAccent, 1.0f );
 	MH_FillRect( &e->sep[0], mhLine, 1.0f );
@@ -2841,27 +3067,46 @@ void CG_ModernHUD_DrawEnd( void ) {
 		MH_Str( &e->lapValueT[i], isBest ? mhWhite : mhLabel, 1.0f );
 		MH_Str( &e->lapNameT[i], mhDim, 1.0f );
 	}
+	for ( i = 0; i < e->spreadCount; i++ ) {
+		const float *c = MH_TeamColor( TEAM_RED + mhEnd.team[i] );
+		MH_FillRect( &e->spreadSwatch[i], c, 1.0f );
+		MH_FillRect( &e->spreadTrack[i], mhTrack, 1.0f );
+		for ( k = 0; k < e->spreadDots[i]; k++ ) MH_Pic( &e->spreadDotR[i][k], 0.0f, mh.dot, c, 1.0f );
+		if ( e->spreadTick[i] > 0.0f ) MH_FillRect( &e->spreadTickR[i], mhWhite, 1.0f );
+		{
+			mhText_t v = e->spreadValueT[i];
+			v.box.x += v.box.w - WS_TextWidth( &v.style, v.text, strlen( v.text ) );
+			MH_Str( &v, i == 0 ? mhWhite : mhLabel, 1.0f );
+		}
+	}
 
 	/* the podium: the panels, then the cars, then the words */
 	for ( k = 0; k < e->podiumCount; k++ ) {
 		const float *top = k == 0 ? mhAccent : e->podiumMe[k] ? mhSoft : mhLine;
+		if ( mhEnd.teams ) top = MH_TeamColor( TEAM_RED + mhEnd.podiumTeam[k] );
 		MH_FillRect( &e->podium[k], mhPanel, 1.0f );
-		MH_Border( &e->podium[k], mhLine, 2.0f, top, 1.0f );
+		MH_Border( &e->podium[k], mhLine, mhEnd.teams ? 3.0f : 2.0f, top, 1.0f );
 		MH_FillRect( &e->podiumCar[k], mhShowroom, 1.0f );
 	}
 	for ( k = 0; k < e->podiumCount; k++ ) {
 		const wsRect_t *c = &e->podiumCar[k];
+		if ( mhEnd.client[k] < 0 ) continue;
 		CG_DrawShowroomCar( MH_Snap( c->x ), MH_Snap( c->y ), MH_Snap( c->x + c->w ) - MH_Snap( c->x ),
 		                    MH_Snap( c->y + c->h ) - MH_Snap( c->y ), mhEnd.client[k],
 		                    AngleMod( 150.0f + k * 40.0f + cg.time * 0.018f ) );
 	}
 	for ( k = 0; k < e->podiumCount; k++ ) {
-		MH_Str( &e->podiumPlaceT[k], k == 0 ? mhAccent : mhWhite, 1.0f );
+		MH_Str( &e->podiumPlaceT[k], mhEnd.teams ? MH_TeamColor( TEAM_RED + mhEnd.podiumTeam[k] ) : k == 0 ? mhAccent : mhWhite, 1.0f );
 		MH_Str( &e->podiumYouT[k], mhAccent, 1.0f );
 		MH_Str( &e->podiumTagT[k], mhMuted, 1.0f );
 		MH_Str( &e->podiumNameT[k], mhWhite, 1.0f );
 		MH_Str( &e->podiumTimeT[k], mhValue, 1.0f );
 		MH_Str( &e->podiumGapT[k], mhAccent, 1.0f );
+		if ( e->podiumMembers[k] ) MH_FillRect( &e->podiumRule[k], mhLine, 1.0f );
+		for ( i = 0; i < e->podiumMembers[k]; i++ ) {
+			MH_Str( &e->podiumMemberPosT[k][i], mhMuted, 1.0f );
+			MH_Str( &e->podiumMemberNameT[k][i], mhEnd.memberMe[k][i] ? mhAccent : mhWhite, 1.0f );
+		}
 	}
 
 	if ( e->awardCount ) MH_Str( &e->awardsTitleT, mhLabel, 1.0f );
@@ -2880,6 +3125,11 @@ void CG_ModernHUD_DrawEnd( void ) {
 	MH_Panel( &e->list, qtrue, 1.0f );
 	MH_Str( &e->listTitleT, mhLabel, 1.0f );
 	MH_Str( &e->listRightT, mhMuted, 1.0f );
+	for ( i = 0; i < e->teamCellCount; i++ ) {
+		MH_FillRect( &e->teamCell[i], MH_TeamColor( TEAM_RED + mhEnd.team[i] ), 1.0f );
+		MH_Str( &e->teamCellNameT[i], mhOnTeam, 1.0f );
+		MH_Str( &e->teamCellValueT[i], mhOnTeam, 1.0f );
+	}
 	for ( i = 0; i < 4; i++ ) {
 		mhText_t head = e->headT[i];
 		if ( i >= 2 ) head.box.x += head.box.w - WS_TextWidth( &head.style, head.text, strlen( head.text ) );
@@ -2890,6 +3140,7 @@ void CG_ModernHUD_DrawEnd( void ) {
 		if ( mhEnd.rowMe[i] ) MH_FillRect( &e->row[i], mhMe, 1.0f );
 		MH_Str( &e->rowPosT[i], !Q_stricmp( e->rowPos[i], "01" ) ? mhAccent : mhMuted, 1.0f );
 		MH_Str( &e->rowNameT[i], mhWhite, 1.0f );
+		if ( e->rowSwatch ) MH_FillRect( &e->rowSwatchR[i], MH_TeamColor( mhEnd.rowTeam[i] ), 1.0f );
 		time.box.x += time.box.w - WS_TextWidth( &time.style, time.text, strlen( time.text ) );
 		best.box.x += best.box.w - WS_TextWidth( &best.style, best.text, strlen( best.text ) );
 		MH_Str( &time, mhValue, 1.0f );

@@ -860,16 +860,121 @@ board('EndRacing.dc.html', 'Race result', None, [
     footer('WAITING FOR 5 DRIVERS', 3, 8),
 ])
 
+# ---------------------------------------------------------------------------
+# the end screen of a team race: the teams by their average time
+# ---------------------------------------------------------------------------
+
+def team_podium_card(place, team, car, avg, gap, members, w, h, me=False):
+    """A team on the podium: its lead car, the place in the team's colour, the
+    average time and who drove for it."""
+    tc = TEAM[team]
+    tag = {1: 'WINNER', 2: 'SECOND', 3: 'THIRD'}[place]
+    you = lab('YOUR TEAM', ACC, 11) if me else ''
+    chips = ''.join(f'<div style="display: flex; gap: 6px; align-items: baseline">{mono(p, 12, "#999999")}'
+                    f'{text(n, 14, "#ffffff", 700 if m else 400)}</div>' for p, n, m in members)
+    return (f'<div style="width: {w}px; background: {PANEL}; border: 1px solid {LINE}; border-top: 3px solid {tc}; '
+            f'box-sizing: border-box; display: flex; flex-direction: column">'
+            f'{car_view(car, w - 2, h)}'
+            f'<div style="padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px">'
+            f'<div style="display: flex; justify-content: space-between; align-items: flex-end">'
+            f'{big(str(place), 64 if place == 1 else 52, tc)}'
+            f'<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">{you}{lab(tag, "#999999", 11)}</div></div>'
+            f'{text(team.capitalize(), 20, "#ffffff", 700)}'
+            f'{row(mono(avg, 15, "#dddddd"), mono(gap, 13, ACC) if gap else "")}'
+            f'<div style="height: 1px; background: {LINE}; margin: 2px 0"></div>'
+            f'<div style="display: flex; flex-direction: column; gap: 3px">{chips}</div>'
+            f'</div></div>')
+
+
+def team_spread(teams, lo, hi):
+    """How each average came about: a row per team, a dot per driver on the
+    time axis (best finish at the left), the average a tick with its gap."""
+    span = hi - lo
+    out = []
+    for team, times, avg, gap in teams:
+        tc = TEAM[team]
+        dots = ''.join(f'<div style="position: absolute; left: {(t - lo) / span * 100:.1f}%; top: 5px; width: 10px; height: 10px; '
+                       f'margin-left: -5px; border-radius: 5px; background: {tc}"></div>' for t in times)
+        tick = (f'<div style="position: absolute; left: {(avg - lo) / span * 100:.1f}%; top: 0; width: 2px; height: 20px; '
+                f'margin-left: -1px; background: #ffffff"></div>')
+        out.append(f'<div style="display: grid; grid-template-columns: 22px 1fr 62px; gap: 10px; align-items: center">'
+                   f'{swatch(tc, 10)}'
+                   f'<div style="position: relative; height: 20px"><div style="position: absolute; left: 0; right: 0; top: 9px; '
+                   f'height: 2px; background: #2c2c2c"></div>{dots}{tick}</div>'
+                   f'<div style="text-align: right">{mono(gap, 12, "#ffffff" if gap == "best" else "#bbbbbb")}</div></div>')
+    return f'<div style="display: flex; flex-direction: column; gap: 10px">{"".join(out)}</div>'
+
+
+def team_classification(teams, rows):
+    """The teams' averages over the drivers, each driver with the team's square."""
+    cells = ''.join(f'<div style="flex: 1; background: {TEAM[t]}; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px">'
+                    f'{lab(t.upper(), "#111111", 10)}{mono(avg, 13, "#111111")}</div>' for t, avg in teams)
+    grid = 'display: grid; grid-template-columns: 34px 10px 1fr 82px 70px; gap: 10px'
+    head = (f'<div style="{grid}; padding: 0 8px">{lab("POS", "#999999", 11)}<div></div>{lab("DRIVER", "#999999", 11)}'
+            f'<div style="text-align: right">{lab("TIME", "#999999", 11)}</div>'
+            f'<div style="text-align: right">{lab("BEST", "#999999", 11)}</div></div>')
+    out = []
+    for pos, team, name, gap, best, me, fastest in rows:
+        bg = 'background: rgba(255,85,0,0.18);' if me else ''
+        out.append(f'<div style="{grid}; align-items: center; height: 34px; padding: 0 8px; {bg}">'
+                   f'{mono(pos, 14, ACC if pos == "01" else "#999999")}{swatch(TEAM[team], 10)}'
+                   f'{text(name, 16, "#ffffff", 700 if me else 400, "overflow: hidden; text-overflow: ellipsis")}'
+                   f'<div style="text-align: right">{mono(gap, 14, "#dddddd")}</div>'
+                   f'<div style="text-align: right">{mono(best, 14, PURPLE if fastest else "#999999")}</div></div>')
+    return panel(row(lab('Final classification'), lab('team average', '#999999'))
+                 + f'<div style="display: flex; gap: 2px">{cells}</div>' + head
+                 + f'<div style="display: flex; flex-direction: column; gap: 2px; margin: 0 -8px">{"".join(out)}</div>', gap=12)
+
+
+team_rows = [('01', 'blue', 'Sam', '4:20.238', '0:50.871', False, True), ('02', 'red', 'Carla', '+1.142', '0:51.204', False, False),
+             ('03', 'blue', 'Player', '+3.907', '0:51.660', True, False), ('04', 'green', 'Tony', '+5.415', '0:52.013', False, False),
+             ('05', 'red', 'Janine', '+8.770', '0:52.390', False, False), ('06', 'green', 'Ivan', '+11.004', '0:52.881', False, False),
+             ('07', 'blue', 'Minori', '+14.512', '0:53.120', False, False), ('08', 'red', 'Bee', '+19.120', '0:53.512', False, False)]
+
+board('EndTeamRacing.dc.html', 'Team race result', None, [
+    blurred(BG['racing']),
+    f'<div style="position: absolute; left: 56px; top: 48px; display: flex; gap: 16px; align-items: baseline">'
+    f'{lab("Team race result", ACC, 13)}{lab("Downtown · 5 laps · 3 teams · 8 drivers", "#999999", 12)}</div>',
+    # your team, then you
+    f'<div style="position: absolute; left: 56px; top: 92px; width: 380px; display: flex; flex-direction: column; gap: 22px">'
+    f'<div style="display: flex; align-items: baseline; gap: 14px">{big("P1", 168, TEAM["blue"])}{big("/ 3", 48, "#777777")}</div>'
+    f'<div style="display: flex; flex-direction: column; gap: 6px; margin-top: -18px">{lab("Team blue · average", TEAM["blue"])}'
+    f'{big("4:26.378", 44)}{lab("won by 2.070", ACC, 12)}</div>'
+    + sep() +
+    f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px">'
+    f'{stat("Your place", "P3")}{stat("Your time", "4:24.145")}'
+    f'{stat("Vs team average", "-2.233", FAST)}{stat("Best lap", "0:51.660")}</div>'
+    + sep() +
+    f'<div style="display: flex; flex-direction: column; gap: 12px">{row(lab("Team averages"), lab("a dot a driver · to the winner", "#777777", 11))}'
+    + team_spread([('blue', [260.238, 264.145, 274.750], 266.378, 'best'),
+                   ('red', [261.380, 269.008, 279.358], 269.915, '+3.537'),
+                   ('green', [265.653, 271.242], 268.448, '+2.070')], 258.0, 281.0) + '</div></div>',
+    # the teams on the podium
+    f'<div style="position: absolute; left: 476px; top: 92px; width: 600px; height: 410px; display: flex; gap: 12px; '
+    f'align-items: flex-end">'
+    + team_podium_card(2, 'green', 'db12', '4:28.448', '+2.070', [('P4', 'Tony', False), ('P6', 'Ivan', False)], 192, 128)
+    + team_podium_card(1, 'blue', 'murcielago', '4:26.378', '', [('P1', 'Sam', False), ('P3', 'Player', True), ('P7', 'Minori', False)], 210, 172, me=True)
+    + team_podium_card(3, 'red', 'viper', '4:29.915', '+3.537', [('P2', 'Carla', False), ('P5', 'Janine', False), ('P8', 'Bee', False)], 192, 92)
+    + '</div>',
+    f'<div style="position: absolute; left: 476px; top: 530px; width: 600px; display: flex; flex-direction: column; gap: 10px">'
+    f'{lab("Highlights")}'
+    + award('trophy', 'Fastest lap', 'Sam', '0:50.871', PURPLE)
+    + award('flag', 'Team player', 'Sam · 6.140 under blue', '-6.140', FAST)
+    + award('chevron', 'Biggest gain', 'Tony · P7 → P4', '+3', ACC) + '</div>',
+    col('right: 56px; top: 92px', team_classification([('blue', '4:26.378'), ('green', '4:28.448'), ('red', '4:29.915')], team_rows), 420),
+    footer('WAITING FOR 5 DRIVERS', 3, 8),
+])
+
 order = ['Main.dc.html', 'Zonen.dc.html', 'Sprint.dc.html', 'Ghost.dc.html',
          'Drag.dc.html', 'RacingDM.dc.html', 'Elimination.dc.html', 'LCS.dc.html',
          'Derby.dc.html', 'Deathmatch.dc.html', 'TeamDM.dc.html', 'CTF.dc.html',
-         'Domination.dc.html', 'KOTH.dc.html', 'Autoball.dc.html', 'Einblendungen.dc.html', 'EndRacing.dc.html']
+         'Domination.dc.html', 'KOTH.dc.html', 'Autoball.dc.html', 'Einblendungen.dc.html', 'EndRacing.dc.html', 'EndTeamRacing.dc.html']
 titles = {'Main.dc.html': 'Rennen (Racing, Team Racing)', 'Zonen.dc.html': 'Zonen und Bausteine', 'Sprint.dc.html': 'Sprint',
           'Ghost.dc.html': 'Ghost Race', 'Drag.dc.html': 'Drag Race', 'RacingDM.dc.html': 'Racing DM (auch Team Racing DM)',
           'Elimination.dc.html': 'Elimination', 'LCS.dc.html': 'Last Car Standing', 'Derby.dc.html': 'Derby',
           'Deathmatch.dc.html': 'Deathmatch', 'TeamDM.dc.html': 'Team Deathmatch', 'CTF.dc.html': 'CTF und CTF4',
           'Domination.dc.html': 'Domination', 'KOTH.dc.html': 'King of the Hill', 'Autoball.dc.html': 'Autoball',
-          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing (Test)'}
+          'Einblendungen.dc.html': 'Einblendungen, Großmeldungen, Jukebox', 'EndRacing.dc.html': 'Endbildschirm Racing', 'EndTeamRacing.dc.html': 'Endbildschirm Team Racing'}
 rows_titles = ['Aufbau und Rennen', 'Drag, Waffen und Überleben', 'Derby und Arena', 'Ziele, Autoball und Einblendungen',
                'Endbildschirme']
 boards, notes = {}, {}

@@ -119,7 +119,6 @@ void CG_ResultTime( int ms, char *out, int size ) {
 }
 
 void CG_ResultGap( const cgRaceResult_t *winner, const cgRaceResult_t *d, char *out, int size ) {
-	char buf[24], *p = buf;
 	int gap;
 	if ( !d->finishTime || !winner->finishTime ) {
 		CG_ResultCopy( out, size, "DNF" );
@@ -130,14 +129,19 @@ void CG_ResultGap( const cgRaceResult_t *winner, const cgRaceResult_t *d, char *
 		return;
 	}
 	gap = d->finishTime - winner->finishTime;
-	if ( gap < 0 ) gap = 0;
-	*p++ = '+';
-	if ( gap >= 60000 ) {
-		CG_ResultTime( gap, p, (int)sizeof( buf ) - 1 );
+	CG_ResultDiff( gap < 0 ? 0 : gap, out, size );
+}
+
+void CG_ResultDiff( int ms, char *out, int size ) {
+	char buf[24], *p = buf;
+	*p++ = ms < 0 ? '-' : '+';
+	if ( ms < 0 ) ms = -ms;
+	if ( ms >= 60000 ) {
+		CG_ResultTime( ms, p, (int)sizeof( buf ) - 1 );
 	} else {
-		p = CG_ResultDigits( p, gap / 1000, 1 );
+		p = CG_ResultDigits( p, ms / 1000, 1 );
 		*p++ = '.';
-		p = CG_ResultDigits( p, gap % 1000, 3 );
+		p = CG_ResultDigits( p, ms % 1000, 3 );
 		*p = '\0';
 	}
 	CG_ResultCopy( out, size, buf );

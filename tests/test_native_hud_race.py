@@ -19,6 +19,7 @@ GHOST = json.loads((ROOT / 'tests/fixtures/hud_ghost_layout.json').read_text())[
 TEAM_RACE = json.loads((ROOT / 'tests/fixtures/hud_teamrace_layout.json').read_text())['els']
 CTF = json.loads((ROOT / 'tests/fixtures/hud_ctf_layout.json').read_text())['els']
 END = json.loads((ROOT / 'tests/fixtures/hud_end_racing_layout.json').read_text())['els']
+END_TEAM = json.loads((ROOT / 'tests/fixtures/hud_end_teamracing_layout.json').read_text())['els']
 DRAG = json.loads((ROOT / 'tests/fixtures/hud_drag_layout.json').read_text())['els']
 AUTOBALL = json.loads((ROOT / 'tests/fixtures/hud_autoball_layout.json').read_text())['els']
 KOTH = json.loads((ROOT / 'tests/fixtures/hud_koth_layout.json').read_text())['els']
@@ -597,4 +598,71 @@ def test_native_end_screen_matches_the_design():
     pairs += [(f'keyName{i}', foot + f'/div:0/div:{i}/div:0') for i in range(3)]
     pairs += [(f'keyAction{i}', foot + f'/div:0/div:{i}/div:1') for i in range(3)]
     problems = check_all(mine, END, pairs)
+    assert not problems, problems
+
+
+def _spread(teams, lo=258.0, hi=281.0):
+    frac = lambda t: f'{(t - lo) / (hi - lo):.5f}'
+    return ';'.join(f"{','.join(frac(t) for t in times)}~{frac(avg)}~{gap}" for times, avg, gap in teams)
+
+
+END_TEAM_MODEL = ['TEAM RACE RESULT', 'DOWNTOWN \u00b7 5 LAPS \u00b7 3 TEAMS \u00b7 8 DRIVERS', 'P1', '/ 3',
+                  'TEAM BLUE \u00b7 AVERAGE', '4:26.378', 'WON BY 2.070',
+                  'YOUR PLACE~P3~;YOUR TIME~4:24.145~;VS TEAM AVERAGE~-2.233~;BEST LAP~0:51.660~',
+                  '',
+                  'Blue~4:26.378~~WINNER~1;Green~4:28.448~+2.070~SECOND~0;Red~4:29.915~+3.537~THIRD~0',
+                  'FASTEST LAP~Sam~0:50.871;TEAM PLAYER~Sam \u00b7 6.140 under blue~-6.140;BIGGEST GAIN~Tony \u00b7 P7 > P4~+3',
+                  'FINAL CLASSIFICATION', 'TEAM AVERAGE', 0,
+                  ';'.join(f'{p}~{n}~{t}~{b}' for p, n, t, b in [
+                      ('01', 'Sam', '4:20.238', '0:50.871'), ('02', 'Carla', '+1.142', '0:51.204'),
+                      ('03', 'Player', '+3.907', '0:51.660'), ('04', 'Tony', '+5.415', '0:52.013'),
+                      ('05', 'Janine', '+8.770', '0:52.390'), ('06', 'Ivan', '+11.004', '0:52.881'),
+                      ('07', 'Minori', '+14.512', '0:53.120'), ('08', 'Bee', '+19.120', '0:53.512')]),
+                  'FIRE~READY;TAB~DETAILS;ESC~MENU', 'WAITING FOR 5 DRIVERS', '3 / 8 READY',
+                  'TEAM AVERAGES~A DOT A DRIVER \u00b7 TO THE WINNER',
+                  _spread([([260.238, 264.145, 274.750], 266.378, 'best'),
+                           ([261.380, 269.008, 279.358], 269.915, '+3.537'),
+                           ([265.653, 271.242], 268.448, '+2.070')]),
+                  'YOUR TEAM',
+                  'P1:Sam,P3:Player,P7:Minori;P4:Tony,P6:Ivan;P2:Carla,P5:Janine,P8:Bee',
+                  'BLUE~4:26.378;GREEN~4:28.448;RED~4:29.915', 1]
+
+
+def test_native_team_end_screen_matches_the_design():
+    mine, = layouts(end_command(END_TEAM_MODEL))
+    left, pod, aw, lst = '/div:3', '/div:4', '/div:5', '/div:6/div:0'
+    spread = left + '/div:5/div:1'
+    pairs = [('pos', left + '/div:0/div:0'), ('of', left + '/div:0/div:1'),
+             ('doneLabel', left + '/div:1/div:0'), ('doneTime', left + '/div:1/div:1'), ('doneNote', left + '/div:1/div:2'),
+             ('lapsTitle', left + '/div:5/div:0/div:0'), ('lapsNote', left + '/div:5/div:0/div:1'),
+             ('awardsTitle', aw + '/div:0'), ('list', lst), ('listTitle', lst + '/div:0/div:0'),
+             ('listRight', lst + '/div:0/div:1')]
+    pairs += [(f'statValue{i}', left + f'/div:3/div:{i}/div:1') for i in range(4)]
+    dots = (3, 3, 2)
+    for t in range(3):
+        r = spread + f'/div:{t}'
+        pairs += [(f'spreadSwatch{t}', r + '/div:0'), (f'spreadTrack{t}', r + '/div:1/div:0'),
+                  (f'spreadTick{t}', r + f'/div:1/div:{dots[t] + 1}'), (f'spreadValue{t}', r + '/div:2/div:0')]
+        pairs += [(f'spreadDot{t}_{k}', r + f'/div:1/div:{k + 1}') for k in range(dots[t])]
+    members = (3, 2, 3)
+    for place, div in ((0, 1), (1, 0), (2, 2)):
+        card = pod + f'/div:{div}'
+        pairs += [(f'podium{place}', card), (f'podiumCar{place}', card + '/div:0'),
+                  (f'podiumPlace{place}', card + '/div:1/div:0/div:0'), (f'podiumTag{place}', card + '/div:1/div:0/div:1/div:' + ('1' if place == 0 else '0')),
+                  (f'podiumName{place}', card + '/div:1/div:1'), (f'podiumTime{place}', card + '/div:1/div:2/div:0'),
+                  (f'podiumRule{place}', card + '/div:1/div:3')]
+        pairs += [(f'member{place}_{k}', card + f'/div:1/div:4/div:{k}/div:1') for k in range(members[place])]
+        pairs += [(f'memberPos{place}_{k}', card + f'/div:1/div:4/div:{k}/div:0') for k in range(members[place])]
+    pairs += [('podiumYou0', pod + '/div:1/div:1/div:0/div:1/div:0')]
+    for i in range(2):
+        pairs += [(f'award{i}', aw + f'/div:{i + 1}'), (f'awardLabel{i}', aw + f'/div:{i + 1}/div:1/div:0'),
+                  (f'awardValue{i}', aw + f'/div:{i + 1}/div:2/div:0')]
+    for c in range(3):
+        pairs += [(f'teamCell{c}', lst + f'/div:1/div:{c}'), (f'teamCellName{c}', lst + f'/div:1/div:{c}/div:0'),
+                  (f'teamCellValue{c}', lst + f'/div:1/div:{c}/div:1')]
+    pairs += [('head0', lst + '/div:2/div:0'), ('head1', lst + '/div:2/div:2'),
+              ('head2', lst + '/div:2/div:3'), ('head3', lst + '/div:2/div:4')]
+    pairs += [(f'row{i}', lst + f'/div:3/div:{i}') for i in range(8)]
+    pairs += [(f'rowSwatch{i}', lst + f'/div:3/div:{i}/div:1') for i in range(8)]
+    problems = check_all(mine, END_TEAM, pairs)
     assert not problems, problems
