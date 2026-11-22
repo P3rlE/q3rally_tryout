@@ -419,6 +419,56 @@ int main(void) {
             printf("{"); B("box", sp.box); B("label", sp.labelT.box); B("name", sp.nameT.box);
             B("hint1", sp.hint1T.box); B("hint2", sp.hint2T.box); printf("\"nameText\":\"%s\"}\n", sp.nameT.text);
 #undef B
+        } else if (!strcmp(command, "hudend")) {
+            /* hudend <view width>, then fields split by |, lists by ; and ~ */
+            static mhEndLayout_t e; static char line[4096]; static char *f[20]; char *r, *item, *more, *p[6];
+            int n = 0, i, k;
+            memset(&e, 0, sizeof(e));
+            scanf("%f\n", &e.viewWidth);
+            fgets(line, sizeof(line), stdin); line[strcspn(line, "\n")] = 0;
+            for (r = line; n < 20; ) { f[n++] = r; r = strchr(r, '|'); if (!r) break; *r++ = 0; }
+#define SPLIT(src, cnt) for (k = 0, r = (src); k < (cnt); k++) { p[k] = r; r = r ? strchr(r, '~') : NULL; if (r) *r++ = 0; }
+#define EACH(src) for (item = (src); *item; item = more) { more = strchr(item, ';'); if (more) *more++ = 0; else more = item + strlen(item);
+            e.title = f[0]; e.subtitle = f[1]; e.pos = f[2]; e.of = f[3]; e.doneLabel = f[4]; e.doneTime = f[5]; e.doneNote = f[6];
+            EACH(f[7]) SPLIT(item, 3) e.statLabel[e.statCount] = p[0]; e.statValue[e.statCount] = p[1]; e.statUnit[e.statCount++] = p[2] ? p[2] : ""; }
+            EACH(f[8]) SPLIT(item, 3) e.lapFrac[e.lapCount] = atof(p[0]); e.lapValue[e.lapCount] = p[1]; e.lapName[e.lapCount++] = p[2]; }
+            EACH(f[9]) SPLIT(item, 5) i = e.podiumCount++; e.podiumName[i] = p[0]; e.podiumTime[i] = p[1]; e.podiumGap[i] = p[2];
+                e.podiumTag[i] = p[3]; e.podiumMe[i] = atoi(p[4]); }
+            EACH(f[10]) SPLIT(item, 3) e.awardLabel[e.awardCount] = p[0]; e.awardName[e.awardCount] = p[1]; e.awardValue[e.awardCount++] = p[2]; }
+            e.listTitle = f[11]; e.listRight = f[12]; e.compact = atoi(f[13]);
+            EACH(f[14]) SPLIT(item, 4) e.rowPos[e.rowCount] = p[0]; e.rowName[e.rowCount] = p[1]; e.rowTime[e.rowCount] = p[2]; e.rowBest[e.rowCount++] = p[3]; }
+            i = 0; EACH(f[15]) SPLIT(item, 2) e.keyName[i] = p[0]; e.keyAction[i++] = p[1]; }
+            e.readyLabel = f[16]; e.readyValue = f[17];
+#undef SPLIT
+#undef EACH
+            uis.glconfig.vidWidth = e.viewWidth; uis.glconfig.vidHeight = 900;
+            MH_EndLayout(&e);
+#define T(name, t) printf("\"%s\":[%g,%g,%g,%g],", name, (t).box.x, (t).box.y, (t).box.w, (t).box.h)
+            printf("{");
+            T("title", e.titleT); T("subtitle", e.subtitleT); T("pos", e.posT); T("of", e.ofT);
+            T("doneLabel", e.doneLabelT); T("doneTime", e.doneTimeT); T("doneNote", e.doneNoteT);
+            rect("sep0", e.sep[0]); rect("sep1", e.sep[1]);
+            for (i = 0; i < e.statCount; i++) { char key[24]; sprintf(key, "statLabel%d", i); T(key, e.statLabelT[i]);
+                sprintf(key, "statValue%d", i); T(key, e.statValueT[i]); }
+            T("lapsTitle", e.lapsTitleT); T("lapsNote", e.lapsNoteT);
+            for (i = 0; i < e.lapCount; i++) { char key[24]; sprintf(key, "lapSlot%d", i); rect(key, e.lapSlot[i]);
+                sprintf(key, "lapBar%d", i); rect(key, e.lapBar[i]); }
+            for (i = 0; i < e.podiumCount; i++) { char key[24]; sprintf(key, "podium%d", i); rect(key, e.podium[i]);
+                sprintf(key, "podiumCar%d", i); rect(key, e.podiumCar[i]); sprintf(key, "podiumPlace%d", i); T(key, e.podiumPlaceT[i]);
+                sprintf(key, "podiumName%d", i); T(key, e.podiumNameT[i]); sprintf(key, "podiumTag%d", i); T(key, e.podiumTagT[i]); }
+            T("awardsTitle", e.awardsTitleT);
+            for (i = 0; i < e.awardCount; i++) { char key[24]; sprintf(key, "award%d", i); rect(key, e.award[i]);
+                sprintf(key, "awardIcon%d", i); rect(key, e.awardIcon[i]); sprintf(key, "awardLabel%d", i); T(key, e.awardLabelT[i]);
+                sprintf(key, "awardValue%d", i); T(key, e.awardValueT[i]); }
+            rect("list", e.list); T("listTitle", e.listTitleT); T("listRight", e.listRightT);
+            for (i = 0; i < 4; i++) { char key[24]; sprintf(key, "head%d", i); T(key, e.headT[i]); }
+            for (i = 0; i < e.rowCount; i++) { char key[24]; sprintf(key, "row%d", i); rect(key, e.row[i]);
+                sprintf(key, "rowPos%d", i); T(key, e.rowPosT[i]); sprintf(key, "rowName%d", i); T(key, e.rowNameT[i]); }
+            for (i = 0; i < 3; i++) { char key[24]; sprintf(key, "keyName%d", i); T(key, e.keyNameT[i]);
+                sprintf(key, "keyAction%d", i); T(key, e.keyActionT[i]); }
+            T("readyLabel", e.readyLabelT); T("readyValue", e.readyValueT); rect("readyBar", e.readyBar);
+            printf("\"end\":0}\n");
+#undef T
         } else if (!strcmp(command, "hudrace")) {
             /* hudrace <view width>, then one line of fields split by |, lists by ; and : */
             static mhRaceLayout_t l; static char line[4096]; static char *f[56]; char *r, *next, *item, *more;

@@ -5114,3 +5114,100 @@ void CG_ResetPlayerEntity( centity_t *cent ) {
 */
 // END
 }
+
+/*
+===============
+CG_DrawShowroomCar
+
+A driver's car alone in a window of the screen (pixels), turning slowly:
+body with its paint, the four wheels on their tags, the plate. The end
+screen's podium.
+===============
+*/
+static void CG_ShowroomWheel( refEntity_t *body, const clientInfo_t *ci, char *tag, float roll ) {
+	refEntity_t wheel;
+	vec3_t angles;
+	if ( !ci->wheelModel || !CG_TagExists( body->hModel, tag ) ) return;
+	memset( &wheel, 0, sizeof( wheel ) );
+	wheel.hModel = ci->wheelModel;
+	wheel.customSkin = CG_TagExists( ci->wheelModel, "tag_polygonwheel" ) ? 0 : ci->wheelSkin;
+	VectorSet( angles, 0.0f, 0.0f, roll );
+	AnglesToAxis( angles, wheel.axis );
+	CG_PositionRotatedEntityOnTag( &wheel, body, body->hModel, tag );
+	VectorCopy( body->lightingOrigin, wheel.lightingOrigin );
+	wheel.renderfx = body->renderfx;
+	trap_R_AddRefEntityToScene( &wheel );
+}
+
+void CG_DrawShowroomCar( float x, float y, float w, float h, int clientNum, float yaw ) {
+	const clientInfo_t *ci;
+	refdef_t refdef;
+	refEntity_t body, plate;
+	vec3_t mins, maxs, centre, angles, viewAngles, forward;
+	float radius, dist, fovX = 26.0f;
+
+	if ( clientNum < 0 || clientNum >= MAX_CLIENTS || w < 2.0f || h < 2.0f ) return;
+	ci = &cgs.clientinfo[clientNum];
+	if ( !ci->infoValid || !ci->bodyModel ) return;
+
+	memset( &refdef, 0, sizeof( refdef ) );
+	refdef.rdflags = RDF_NOWORLDMODEL;
+	refdef.x = x;
+	refdef.y = y;
+	refdef.width = w;
+	refdef.height = h;
+	refdef.fov_x = fovX;
+	refdef.fov_y = atan2( tan( fovX * M_PI / 360.0f ) * h / w, 1.0f ) * 360.0f / M_PI;	/* the VM has atan2, not atan */
+	refdef.time = cg.time;
+	/* a little from above */
+	VectorSet( viewAngles, 12.0f, 0.0f, 0.0f );
+	AnglesToAxis( viewAngles, refdef.viewaxis );
+	VectorClear( refdef.vieworg );
+
+	/* the car's middle where the camera looks, far enough to fit */
+	trap_R_ModelBounds( ci->bodyModel, mins, maxs );
+	VectorAdd( mins, maxs, centre );
+	VectorScale( centre, 0.5f, centre );
+	radius = 0.5f * sqrt( ( maxs[0] - mins[0] ) * ( maxs[0] - mins[0] ) + ( maxs[1] - mins[1] ) * ( maxs[1] - mins[1] ) );
+	if ( radius < 16.0f ) radius = 16.0f;
+	dist = radius / tan( fovX * M_PI / 360.0f ) * 0.92f;	/* the body fills the window at every angle */
+	AngleVectors( viewAngles, forward, NULL, NULL );
+
+	memset( &body, 0, sizeof( body ) );
+	body.hModel = ci->bodyModel;
+	body.customSkin = ci->bodySkin;
+	body.renderfx = RF_NOSHADOW | RF_LIGHTING_ORIGIN;
+	VectorSet( angles, 0.0f, yaw, 0.0f );
+	AnglesToAxis( angles, body.axis );
+	/* the body's own middle onto the point the camera looks at */
+	VectorScale( forward, dist, body.origin );
+	VectorMA( body.origin, -centre[0], body.axis[0], body.origin );
+	VectorMA( body.origin, -centre[1], body.axis[1], body.origin );
+	VectorMA( body.origin, -centre[2], body.axis[2], body.origin );
+	VectorCopy( body.origin, body.oldorigin );
+	VectorCopy( body.origin, body.lightingOrigin );
+
+	trap_R_ClearScene();
+	trap_R_AddRefEntityToScene( &body );
+	CG_ShowroomWheel( &body, ci, "tag_wheelfl", 0.0f );
+	CG_ShowroomWheel( &body, ci, "tag_wheelfr", 0.0f );
+	CG_ShowroomWheel( &body, ci, "tag_wheelrl", 0.0f );
+	CG_ShowroomWheel( &body, ci, "tag_wheelrr", 0.0f );
+	if ( ci->plateModel && CG_TagExists( ci->bodyModel, "tag_plate" ) ) {
+		memset( &plate, 0, sizeof( plate ) );
+		plate.hModel = ci->plateModel;
+		plate.customShader = ci->plateShader;
+		CG_PositionEntityOnTag( &plate, &body, ci->bodyModel, "tag_plate" );
+		VectorCopy( body.lightingOrigin, plate.lightingOrigin );
+		plate.renderfx = body.renderfx;
+		trap_R_AddRefEntityToScene( &plate );
+	}
+	/* a key light over the camera's shoulder */
+	{
+		vec3_t light;
+		VectorMA( body.origin, -dist * 0.5f, forward, light );
+		light[2] += radius * 2.0f;
+		trap_R_AddLightToScene( light, radius * 6.0f, 1.0f, 0.95f, 0.9f );
+	}
+	trap_R_RenderScene( &refdef );
+}

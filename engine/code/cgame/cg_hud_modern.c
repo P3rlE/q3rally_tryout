@@ -98,7 +98,7 @@ static struct {
 	float			slipFrac, slipAlpha;
 	char			speed[16], gear[8], nos[8], fuel[8];
 	float			rpmFrac, nosFrac, fuelFrac;
-	qhandle_t		note, prev, play, next, chevron, message, gun, mine, smoke, flag, hill, dot;
+	qhandle_t		note, prev, play, next, chevron, message, gun, mine, smoke, flag, hill, dot, trophy;
 	char			slotValue[MH_SLOTS_MAX][8];
 	const float		*slotColor[MH_SLOTS_MAX];
 	char			killA[MH_KILLS_MAX][32], killB[MH_KILLS_MAX][32];
@@ -1560,6 +1560,7 @@ static void MH_Register( void ) {
 	mh.flag = trap_R_RegisterShaderNoMip( "menu/art/hud_flag" );
 	mh.hill = trap_R_RegisterShaderNoMip( "menu/art/hud_hill" );
 	mh.dot = trap_R_RegisterShaderNoMip( "menu/art/hud_dot" );
+	mh.trophy = trap_R_RegisterShaderNoMip( "menu/art/hud_trophy" );
 }
 
 static qboolean MH_Views( void ) {
@@ -1587,6 +1588,14 @@ static void MH_Prepare( void ) {
 	mh.lapColor = NULL;
 	mh.posLabelColor = NULL;
 	l->viewWidth = cgs.glconfig.vidWidth / mhScale;
+
+	/* the end screen's top speed: ours, while we race */
+	if ( cent->startRaceTime && !cent->finishRaceTime && cg.time >= cent->startRaceTime &&
+	     !( ps->pm_flags & PMF_FOLLOW ) && ps->pm_type == PM_NORMAL ) {
+		float v = Q3VelocityToRL( sqrt( cg.predictedPlayerState.velocity[0] * cg.predictedPlayerState.velocity[0] +
+		                                cg.predictedPlayerState.velocity[1] * cg.predictedPlayerState.velocity[1] ) );
+		if ( v > cg.raceTopSpeed ) cg.raceTopSpeed = v;
+	}
 
 	last = MH_RaceOrder( at, &local );
 	MH_Gaps( at, last );
@@ -2539,4 +2548,361 @@ void CG_ModernHUD_DrawAmmoWarning( const char *text, qboolean out ) {
 	t.box.x = ( mh.l.viewWidth - t.box.w ) * 0.5f;
 	t.box.y = 128.0f;
 	MH_ShadowStr( &t, out ? mhAccent : mhValue, 1.0f );
+}
+
+/* -------------------------------------------------------------------------
+   the end screen of a race (gen.py EndRacing): in the intermission, in
+   place of the scoreboard (TAB shows that one)
+   ------------------------------------------------------------------------- */
+
+static const vec4_t mhPurple = { 180 / 255.0f, 107 / 255.0f, 1.0f, 1.0f };	/* #b46bff: the fastest lap */
+static const vec4_t mhVeil  = { 0.0f, 0.0f, 0.0f, 0.68f };					/* over the world behind */
+static const vec4_t mhShowroom = { 24 / 255.0f, 23 / 255.0f, 22 / 255.0f, 1.0f };	/* behind a car */
+static const vec4_t mhLapBest = { 230 / 255.0f, 230 / 255.0f, 230 / 255.0f, 1.0f };	/* #e6e6e6 */
+static const vec4_t mhLapBar  = { 90 / 255.0f, 90 / 255.0f, 90 / 255.0f, 1.0f };	/* #5a5a5a */
+
+static struct {
+	mhEndLayout_t	e;
+	int				client[3];			/* on the podium, by place */
+	int				rowClient[MH_END_ROWS];
+	int				fastest;			/* the client with the fastest lap, -1 */
+	char			sub[96], pos[8], of[8], doneTime[16], doneNote[48];
+	char			stat[MH_END_STATS][16], lap[MH_END_LAPS][12], lapName[MH_END_LAPS][8];
+	char			podName[3][40], podTime[3][16], podGap[3][16];
+	char			awardName[MH_END_AWARDS][64], awardValue[MH_END_AWARDS][16];
+	const float		*awardColor[MH_END_AWARDS];
+	qhandle_t		awardIcon[MH_END_AWARDS];
+	char			rowPos[MH_END_ROWS][8], rowName[MH_END_ROWS][40], rowTime[MH_END_ROWS][16], rowBest[MH_END_ROWS][16];
+	char			listRight[16], readyLabel[40], readyValue[24];
+	float			readyFrac;
+	const float		*statColor[MH_END_STATS];
+	qboolean		rowMe[MH_END_ROWS];
+	float			scale;				/* the page scaled down on a narrow screen */
+} mhEnd;
+
+qboolean CG_ModernHUD_EndActive( void ) {
+	int i;
+	if ( !cg_hudStyle.integer || !cg.snap || cg.snap->ps.pm_type != PM_INTERMISSION || cgs.gametype != GT_RACING ) return qfalse;
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( CG_RaceResult( i )->present && CG_RaceResult( i )->finishTime ) return qtrue;
+	}
+	return qfalse;
+}
+
+/* the seconds a lap lost to the best one: "+1.22" */
+static void MH_EndLost( int ms, char *out, int size ) {
+	Com_sprintf( out, size, "+%d.%02d", ms / 1000, ( ms % 1000 ) / 10 );
+}
+
+static void MH_EndPrepare( void ) {
+	mhEndLayout_t *e = &mhEnd.e;
+	const cgRaceResult_t *all = CG_RaceResult( 0 ), *mine, *winner;
+	int order[MAX_CLIENTS], count, n = 0, i, k, me, place = 0, best, bestSector = 0, sectorClient = -1, gainClient = -1, gain = 0;
+	int fastest = 0, humans = 0, ready = 0, first;
+	const char *map;
+	char name[40];
+	float viewWidth;
+
+	MH_Prepare();
+	memset( e, 0, sizeof( *e ) );
+	viewWidth = cgs.glconfig.vidWidth / mhScale;
+	mhEnd.scale = viewWidth < 1600.0f ? viewWidth / 1600.0f : 1.0f;
+	e->viewWidth = viewWidth / mhEnd.scale;
+	e->top = ( MH_DESIGN_HEIGHT / mhEnd.scale - MH_DESIGN_HEIGHT ) * 0.5f;
+
+	/* the order, drivers still in the game only */
+	count = CG_ResultOrder( all, MAX_CLIENTS, order );
+	for ( i = 0; i < count; i++ ) {
+		if ( cgs.clientinfo[order[i]].infoValid ) order[n++] = order[i];
+	}
+	count = n;
+	winner = count > 0 ? &all[order[0]] : NULL;
+	me = cg.snap->ps.clientNum;
+	mine = CG_RaceResult( me );
+	if ( !mine->present && count > 0 ) {
+		me = order[0];	/* a spectator: the winner's race */
+		mine = &all[me];
+	}
+	for ( i = 0; i < count; i++ ) if ( order[i] == me ) place = i + 1;
+
+	/* the header */
+	map = CG_ConfigString( CS_MESSAGE );
+	if ( !map || !map[0] ) map = COM_SkipPath( cgs.mapname );
+	MH_Plain( map, name, sizeof( name ) );
+	COM_StripExtension( name, name, sizeof( name ) );
+	Q_strupr( name );
+	e->title = "RACE RESULT";
+	if ( cgs.laplimit > 0 )
+		Com_sprintf( mhEnd.sub, sizeof( mhEnd.sub ), "%s \xb7 %d LAP%s \xb7 %d DRIVERS", name, cgs.laplimit, cgs.laplimit == 1 ? "" : "S", count );
+	else
+		Com_sprintf( mhEnd.sub, sizeof( mhEnd.sub ), "%s \xb7 %d DRIVERS", name, count );
+	e->subtitle = mhEnd.sub;
+
+	/* the left: the place, the time */
+	Com_sprintf( mhEnd.pos, sizeof( mhEnd.pos ), "P%d", place );
+	Com_sprintf( mhEnd.of, sizeof( mhEnd.of ), "/ %d", count );
+	e->pos = mhEnd.pos;
+	e->of = mhEnd.of;
+	e->doneLabel = mine->finishTime ? "FINISHED" : "DID NOT FINISH";
+	if ( mine->finishTime ) CG_ResultTime( CG_ResultTotal( mine ), mhEnd.doneTime, sizeof( mhEnd.doneTime ) );
+	else Q_strncpyz( mhEnd.doneTime, "--", sizeof( mhEnd.doneTime ) );
+	e->doneTime = mhEnd.doneTime;
+	if ( place == 1 ) Q_strncpyz( mhEnd.doneNote, "WINNER", sizeof( mhEnd.doneNote ) );
+	else if ( mine->finishTime && winner ) {
+		char gap[16];
+		CG_ResultGap( winner, mine, gap, sizeof( gap ) );
+		Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), "%s TO THE WINNER", gap );
+	} else Com_sprintf( mhEnd.doneNote, sizeof( mhEnd.doneNote ), "%d LAP%s DONE", mine->lapCount, mine->lapCount == 1 ? "" : "S" );
+	e->doneNote = mhEnd.doneNote;
+
+	/* four figures */
+	best = CG_ResultBestLap( mine );
+	e->statCount = 4;
+	e->statLabel[0] = "BEST LAP";
+	if ( best ) CG_ResultTime( best, mhEnd.stat[0], sizeof( mhEnd.stat[0] ) );
+	else Q_strncpyz( mhEnd.stat[0], "--", sizeof( mhEnd.stat[0] ) );
+	e->statLabel[1] = "TOP SPEED";
+	if ( me == cg.snap->ps.clientNum && cg.raceTopSpeed > 0.0f ) {
+		Com_sprintf( mhEnd.stat[1], sizeof( mhEnd.stat[1] ), "%d", (int)( cg.raceTopSpeed + 0.5f ) );
+		e->statUnit[1] = cg_metricUnits.integer ? "KM/H" : "MPH";
+	} else Q_strncpyz( mhEnd.stat[1], "--", sizeof( mhEnd.stat[1] ) );
+	e->statLabel[2] = "PLACES GAINED";
+	mhEnd.statColor[2] = mhWhite;
+	if ( mine->grid > 0 && place > 0 ) {
+		int gained = mine->grid - place;
+		Com_sprintf( mhEnd.stat[2], sizeof( mhEnd.stat[2] ), gained > 0 ? "+%d" : gained < 0 ? "%d" : "0", gained );
+		mhEnd.statColor[2] = gained > 0 ? mhFast : gained < 0 ? mhAccent : mhWhite;
+	} else Q_strncpyz( mhEnd.stat[2], "--", sizeof( mhEnd.stat[2] ) );
+	e->statLabel[3] = "AVG LAP";
+	{
+		int sum = 0, laps = mine->lapCount < CG_RESULT_LAPS ? mine->lapCount : CG_RESULT_LAPS;
+		for ( i = 0; i < laps; i++ ) sum += mine->laps[i];
+		if ( laps > 0 ) CG_ResultTime( sum / laps, mhEnd.stat[3], sizeof( mhEnd.stat[3] ) );
+		else Q_strncpyz( mhEnd.stat[3], "--", sizeof( mhEnd.stat[3] ) );
+	}
+	for ( i = 0; i < 4; i++ ) {
+		e->statValue[i] = mhEnd.stat[i];
+		if ( i != 2 ) mhEnd.statColor[i] = mhWhite;
+	}
+
+	/* your laps, the last twelve: what each lost to the best */
+	{
+		int laps = mine->lapCount < CG_RESULT_LAPS ? mine->lapCount : CG_RESULT_LAPS, worst = 0;
+		first = laps > MH_END_LAPS ? laps - MH_END_LAPS : 0;
+		for ( i = first; i < laps; i++ ) if ( mine->laps[i] - best > worst ) worst = mine->laps[i] - best;
+		for ( i = first; i < laps; i++ ) {
+			int lost = mine->laps[i] - best;
+			k = e->lapCount++;
+			e->lapFrac[k] = worst > 0 ? (float)lost / worst : 0.0f;
+			if ( lost <= 0 ) Q_strncpyz( mhEnd.lap[k], "best", sizeof( mhEnd.lap[k] ) );
+			else MH_EndLost( lost, mhEnd.lap[k], sizeof( mhEnd.lap[k] ) );
+			Com_sprintf( mhEnd.lapName[k], sizeof( mhEnd.lapName[k] ), "L%d", i + 1 );
+			e->lapValue[k] = mhEnd.lap[k];
+			e->lapName[k] = mhEnd.lapName[k];
+		}
+	}
+
+	/* the podium: the first three home */
+	for ( i = 0; i < 3 && i < count && all[order[i]].finishTime; i++ ) {
+		static const char *tags[3] = { "WINNER", "SECOND", "THIRD" };
+		const cgRaceResult_t *r = &all[order[i]];
+		mhEnd.client[i] = order[i];
+		MH_Plain( cgs.clientinfo[order[i]].name, mhEnd.podName[i], sizeof( mhEnd.podName[i] ) );
+		CG_ResultTime( CG_ResultTotal( r ), mhEnd.podTime[i], sizeof( mhEnd.podTime[i] ) );
+		mhEnd.podGap[i][0] = '\0';
+		if ( i > 0 ) CG_ResultGap( winner, r, mhEnd.podGap[i], sizeof( mhEnd.podGap[i] ) );
+		e->podiumName[i] = mhEnd.podName[i];
+		e->podiumTime[i] = mhEnd.podTime[i];
+		e->podiumGap[i] = mhEnd.podGap[i];
+		e->podiumTag[i] = tags[i];
+		e->podiumMe[i] = order[i] == cg.snap->ps.clientNum;
+		e->podiumCount = i + 1;
+	}
+
+	/* the highlights */
+	mhEnd.fastest = -1;
+	for ( i = 0; i < count; i++ ) {
+		const cgRaceResult_t *r = &all[order[i]];
+		int b = CG_ResultBestLap( r );
+		if ( b && ( !fastest || b < fastest ) ) { fastest = b; mhEnd.fastest = order[i]; }
+		if ( r->bestSector && ( !bestSector || r->bestSector < bestSector ) ) { bestSector = r->bestSector; sectorClient = order[i]; }
+		if ( r->finishTime && r->grid > 0 && r->grid - ( i + 1 ) > gain ) { gain = r->grid - ( i + 1 ); gainClient = order[i]; }
+	}
+	if ( mhEnd.fastest >= 0 ) {
+		k = e->awardCount++;
+		e->awardLabel[k] = "FASTEST LAP";
+		MH_Plain( cgs.clientinfo[mhEnd.fastest].name, mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ) );
+		CG_ResultTime( fastest, mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ) );
+		mhEnd.awardColor[k] = mhPurple;
+		mhEnd.awardIcon[k] = mh.trophy;
+	}
+	if ( sectorClient >= 0 ) {
+		k = e->awardCount++;
+		e->awardLabel[k] = "BEST SECTOR";
+		MH_Plain( cgs.clientinfo[sectorClient].name, name, sizeof( name ) );
+		Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 S%d", name, all[sectorClient].bestSectorNum );
+		CG_ResultTime( bestSector, mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ) );
+		mhEnd.awardColor[k] = mhFast;
+		mhEnd.awardIcon[k] = mh.flag;
+	}
+	if ( gainClient >= 0 ) {
+		int to = 0;
+		for ( i = 0; i < count; i++ ) if ( order[i] == gainClient ) to = i + 1;
+		k = e->awardCount++;
+		e->awardLabel[k] = "BIGGEST GAIN";
+		MH_Plain( cgs.clientinfo[gainClient].name, name, sizeof( name ) );
+		Com_sprintf( mhEnd.awardName[k], sizeof( mhEnd.awardName[k] ), "%s \xb7 P%d to P%d", name, all[gainClient].grid, to );
+		Com_sprintf( mhEnd.awardValue[k], sizeof( mhEnd.awardValue[k] ), "+%d", gain );
+		mhEnd.awardColor[k] = mhAccent;
+		mhEnd.awardIcon[k] = mh.chevron;
+	}
+	for ( i = 0; i < e->awardCount; i++ ) {
+		e->awardName[i] = mhEnd.awardName[i];
+		e->awardValue[i] = mhEnd.awardValue[i];
+	}
+
+	/* the classification: past 16 the first 15 and yours */
+	e->listTitle = "FINAL CLASSIFICATION";
+	if ( cgs.laplimit > 0 ) Com_sprintf( mhEnd.listRight, sizeof( mhEnd.listRight ), "%d LAP%s", cgs.laplimit, cgs.laplimit == 1 ? "" : "S" );
+	else mhEnd.listRight[0] = '\0';
+	e->listRight = mhEnd.listRight;
+	e->compact = count > 8;
+	for ( i = 0; i < count && e->rowCount < MH_END_ROWS; i++ ) {
+		int at = i;
+		const cgRaceResult_t *r;
+		if ( count > MH_END_ROWS && e->rowCount == MH_END_ROWS - 1 && place > MH_END_ROWS - 1 ) at = place - 1;
+		r = &all[order[at]];
+		k = e->rowCount++;
+		mhEnd.rowClient[k] = order[at];
+		Com_sprintf( mhEnd.rowPos[k], sizeof( mhEnd.rowPos[k] ), "%02d", at + 1 );
+		MH_Plain( cgs.clientinfo[order[at]].name, mhEnd.rowName[k], sizeof( mhEnd.rowName[k] ) );
+		CG_ResultGap( winner, r, mhEnd.rowTime[k], sizeof( mhEnd.rowTime[k] ) );
+		if ( CG_ResultBestLap( r ) ) CG_ResultTime( CG_ResultBestLap( r ), mhEnd.rowBest[k], sizeof( mhEnd.rowBest[k] ) );
+		else Q_strncpyz( mhEnd.rowBest[k], "--", sizeof( mhEnd.rowBest[k] ) );
+		mhEnd.rowMe[k] = order[at] == cg.snap->ps.clientNum;
+		e->rowPos[k] = mhEnd.rowPos[k];
+		e->rowName[k] = mhEnd.rowName[k];
+		e->rowTime[k] = mhEnd.rowTime[k];
+		e->rowBest[k] = mhEnd.rowBest[k];
+	}
+
+	/* the keys; who is ready (bots do not count) */
+	e->keyName[0] = "FIRE";
+	e->keyAction[0] = ( cg.snap->ps.stats[STAT_CLIENTS_READY] & ( 1 << cg.snap->ps.clientNum ) ) ? "READY \xb7 OK" : "READY";
+	e->keyName[1] = "TAB";
+	e->keyAction[1] = "DETAILS";
+	e->keyName[2] = "ESC";
+	e->keyAction[2] = "MENU";
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		if ( !cgs.clientinfo[i].infoValid || cgs.clientinfo[i].botSkill ) continue;
+		humans++;
+		if ( i < 32 && ( cg.snap->ps.stats[STAT_CLIENTS_READY] & ( 1 << i ) ) ) ready++;
+	}
+	if ( humans < 1 ) humans = 1;
+	if ( ready >= humans ) Q_strncpyz( mhEnd.readyLabel, "EVERYBODY READY", sizeof( mhEnd.readyLabel ) );
+	else Com_sprintf( mhEnd.readyLabel, sizeof( mhEnd.readyLabel ), "WAITING FOR %d DRIVER%s", humans - ready, humans - ready == 1 ? "" : "S" );
+	Com_sprintf( mhEnd.readyValue, sizeof( mhEnd.readyValue ), "%d / %d READY", ready, humans );
+	mhEnd.readyFrac = (float)ready / humans;
+	e->readyLabel = mhEnd.readyLabel;
+	e->readyValue = mhEnd.readyValue;
+
+	MH_EndLayout( e );
+}
+
+void CG_ModernHUD_DrawEnd( void ) {
+	mhEndLayout_t *e = &mhEnd.e;
+	float base;
+	int i, k;
+
+	MH_EndPrepare();
+	WS_FillRect( 0, 0, cgs.glconfig.vidWidth, cgs.glconfig.vidHeight, mhVeil );
+	base = mhScale;
+	mhScale = base * mhEnd.scale;
+
+	MH_Str( &e->titleT, mhAccent, 1.0f );
+	MH_Str( &e->subtitleT, mhMuted, 1.0f );
+	MH_Str( &e->posT, mhWhite, 1.0f );
+	MH_Str( &e->ofT, mhDim, 1.0f );
+	MH_Str( &e->doneLabelT, mhLabel, 1.0f );
+	MH_Str( &e->doneTimeT, mhWhite, 1.0f );
+	MH_Str( &e->doneNoteT, mhAccent, 1.0f );
+	MH_FillRect( &e->sep[0], mhLine, 1.0f );
+	MH_FillRect( &e->sep[1], mhLine, 1.0f );
+	for ( i = 0; i < e->statCount; i++ ) {
+		MH_Str( &e->statLabelT[i], mhMuted, 1.0f );
+		MH_Str( &e->statValueT[i], mhEnd.statColor[i], 1.0f );
+		MH_Str( &e->statUnitT[i], mhDim, 1.0f );
+	}
+	MH_Str( &e->lapsTitleT, mhLabel, 1.0f );
+	MH_Str( &e->lapsNoteT, mhDim, 1.0f );
+	for ( i = 0; i < e->lapCount; i++ ) {
+		qboolean isBest = !Q_stricmp( e->lapValue[i], "best" );
+		MH_FillRect( &e->lapBar[i], isBest ? mhLapBest : mhLapBar, 1.0f );
+		MH_Str( &e->lapValueT[i], isBest ? mhWhite : mhLabel, 1.0f );
+		MH_Str( &e->lapNameT[i], mhDim, 1.0f );
+	}
+
+	/* the podium: the panels, then the cars, then the words */
+	for ( k = 0; k < e->podiumCount; k++ ) {
+		const float *top = k == 0 ? mhAccent : e->podiumMe[k] ? mhSoft : mhLine;
+		MH_FillRect( &e->podium[k], mhPanel, 1.0f );
+		MH_Border( &e->podium[k], mhLine, 2.0f, top, 1.0f );
+		MH_FillRect( &e->podiumCar[k], mhShowroom, 1.0f );
+	}
+	for ( k = 0; k < e->podiumCount; k++ ) {
+		const wsRect_t *c = &e->podiumCar[k];
+		CG_DrawShowroomCar( MH_Snap( c->x ), MH_Snap( c->y ), MH_Snap( c->x + c->w ) - MH_Snap( c->x ),
+		                    MH_Snap( c->y + c->h ) - MH_Snap( c->y ), mhEnd.client[k],
+		                    AngleMod( 150.0f + k * 40.0f + cg.time * 0.018f ) );
+	}
+	for ( k = 0; k < e->podiumCount; k++ ) {
+		MH_Str( &e->podiumPlaceT[k], k == 0 ? mhAccent : mhWhite, 1.0f );
+		MH_Str( &e->podiumYouT[k], mhAccent, 1.0f );
+		MH_Str( &e->podiumTagT[k], mhMuted, 1.0f );
+		MH_Str( &e->podiumNameT[k], mhWhite, 1.0f );
+		MH_Str( &e->podiumTimeT[k], mhValue, 1.0f );
+		MH_Str( &e->podiumGapT[k], mhAccent, 1.0f );
+	}
+
+	if ( e->awardCount ) MH_Str( &e->awardsTitleT, mhLabel, 1.0f );
+	for ( i = 0; i < e->awardCount; i++ ) {
+		wsRect_t strip = e->award[i];
+		strip.w = 3.0f;
+		MH_FillRect( &e->award[i], mhPanel, 1.0f );
+		MH_Border( &e->award[i], mhLine, 1.0f, NULL, 1.0f );
+		MH_FillRect( &strip, mhEnd.awardColor[i], 1.0f );
+		MH_Pic( &e->awardIcon[i], 0.0f, mhEnd.awardIcon[i], mhEnd.awardColor[i], 1.0f );
+		MH_Str( &e->awardLabelT[i], mhMuted, 1.0f );
+		MH_Str( &e->awardNameT[i], mhWhite, 1.0f );
+		MH_Str( &e->awardValueT[i], mhEnd.awardColor[i], 1.0f );
+	}
+
+	MH_Panel( &e->list, qtrue, 1.0f );
+	MH_Str( &e->listTitleT, mhLabel, 1.0f );
+	MH_Str( &e->listRightT, mhMuted, 1.0f );
+	for ( i = 0; i < 4; i++ ) {
+		mhText_t head = e->headT[i];
+		if ( i >= 2 ) head.box.x += head.box.w - WS_TextWidth( &head.style, head.text, strlen( head.text ) );
+		MH_Str( &head, mhMuted, 1.0f );
+	}
+	for ( i = 0; i < e->rowCount; i++ ) {
+		mhText_t time = e->rowTimeT[i], best = e->rowBestT[i];
+		if ( mhEnd.rowMe[i] ) MH_FillRect( &e->row[i], mhMe, 1.0f );
+		MH_Str( &e->rowPosT[i], !Q_stricmp( e->rowPos[i], "01" ) ? mhAccent : mhMuted, 1.0f );
+		MH_Str( &e->rowNameT[i], mhWhite, 1.0f );
+		time.box.x += time.box.w - WS_TextWidth( &time.style, time.text, strlen( time.text ) );
+		best.box.x += best.box.w - WS_TextWidth( &best.style, best.text, strlen( best.text ) );
+		MH_Str( &time, mhValue, 1.0f );
+		MH_Str( &best, mhEnd.rowClient[i] == mhEnd.fastest ? mhPurple : mhMuted, 1.0f );
+	}
+
+	for ( i = 0; i < 3; i++ ) {
+		MH_Str( &e->keyNameT[i], mhWhite, 1.0f );
+		MH_Str( &e->keyActionT[i], i == 0 && !Q_stricmp( e->keyAction[0], "READY \xb7 OK" ) ? mhAccent : mhDim, 1.0f );
+	}
+	MH_Str( &e->readyLabelT, mhLabel, 1.0f );
+	MH_Str( &e->readyValueT, mhWhite, 1.0f );
+	MH_Bar( &e->readyBar, mhEnd.readyFrac, mhAccent, mhTrack, 1.0f );
+
+	mhScale = base;
 }

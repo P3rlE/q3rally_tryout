@@ -76,4 +76,30 @@ and whom it shows. FIRE goes to the next driver, the rear attack key
 follow, track cameras, free camera, follow. A driver who has finished skips
 the free camera.
 
-Still to come: the other game modes.
+## End screens
+
+The race (Racing) ends on its own screen in the intermission (the
+`EndRacing.dc.html` board), in place of the scoreboard; TAB shows the
+scoreboard while held.
+
+- At the left: your place ("P2 / 8"), your time and the gap to the winner,
+  best lap, top speed, places gained (from the grid), average lap, and your
+  laps as bars: what each lost to your best one (the last twelve).
+- In the middle: the podium, second, winner, third, each with the driver's
+  own car turning in 3D (`CG_DrawShowroomCar`: body, paint, wheels,
+  plate), then the highlights: the fastest lap, the best sector (between
+  two checkpoints) and the biggest gain from the grid.
+- At the right: the classification, the time (the winner's total, the
+  others' gap, DNF) and every driver's best lap, the fastest in purple.
+  Over 8 drivers the rows are lower; over 16 the first 15 and yours.
+- At the bottom: FIRE READY, TAB DETAILS, ESC MENU, and how many drivers
+  are ready (bots do not count). Q3 waits for them; there is no next-map
+  clock.
+
+The figures come from what the server sends every client during the race
+(start, laps, checkpoints, finish, positions), collected by
+`cg_race_result.c` (tested in `tests/test_race_result.py`). Who joins during
+a race sees what happened from then on. A spectator sees the winner's race.
+A screen narrower than 16:9 shows the page scaled down.
+
+Still to come: the end screens of the other modes and the TAB table.
