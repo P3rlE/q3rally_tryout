@@ -20,6 +20,7 @@ TEAM_RACE = json.loads((ROOT / 'tests/fixtures/hud_teamrace_layout.json').read_t
 CTF = json.loads((ROOT / 'tests/fixtures/hud_ctf_layout.json').read_text())['els']
 END = json.loads((ROOT / 'tests/fixtures/hud_end_racing_layout.json').read_text())['els']
 END_TEAM = json.loads((ROOT / 'tests/fixtures/hud_end_teamracing_layout.json').read_text())['els']
+END_DRAG = json.loads((ROOT / 'tests/fixtures/hud_end_drag_layout.json').read_text())['els']
 DRAG = json.loads((ROOT / 'tests/fixtures/hud_drag_layout.json').read_text())['els']
 AUTOBALL = json.loads((ROOT / 'tests/fixtures/hud_autoball_layout.json').read_text())['els']
 KOTH = json.loads((ROOT / 'tests/fixtures/hud_koth_layout.json').read_text())['els']
@@ -778,4 +779,63 @@ def test_native_tab_table_matches_the_team_design():
             pairs += [(f'row{k * 4 + i}', r), (f'cell{k * 4 + i}_0', r + '/div:0/div:0'), (f'car{k * 4 + i}', r + '/div:0/div:1')]
             pairs += [(f'cell{k * 4 + i}_{c}', f'{r}/div:{c}') for c in range(1, 6)]
     problems = check_all(mine, TAB['ctf'], pairs)
+    assert not problems, problems
+
+
+
+def test_native_end_screen_list_columns_match_the_design():
+    mine, = layouts(end_command(END_MODEL))
+    lst = '/div:6/div:0'
+    pairs = []
+    for i in range(8):
+        r = f'{lst}/div:2/div:{i}'
+        pairs += [(f'rowName{i}', r + '/div:1'), (f'rowTime{i}', r + '/div:2'), (f'rowBest{i}', r + '/div:3')]
+    pairs += [(f'head{c}', f'{lst}/div:1/div:{c}') for c in range(4)]
+    problems = check_all(mine, END, pairs)
+    assert not problems, problems
+
+
+SLIP_LABELS = ['REACTION', '60 FT', '330 FT', '1/8 MILE', '1/4 MILE', 'TRAP']
+END_DRAG_MODEL = ['DRAG RESULT', 'AIRFIELD · QUARTER MILE · BEST OF 3', '2-1', '/ 3',
+                  'MATCH WON · YOUR QUICKEST RUN', '11.482', '0.107 QUICKER THAN VLAD',
+                  'BEST REACTION~0.396~;TOP TRAP~187.4~KM/H;BEST TOTAL~11.878~;FOULS~0~',
+                  '1~+0.131~H1;0~foul~H2;0~best~H3',
+                  '',
+                  'BEST REACTION~Vlad · heat 1~0.371;QUICKEST RUN~Player · heat 3~11.482',
+                  'HEATS', 'BEST OF 3', 0,
+                  'H1~Player~11.613~+0.054;H2~Vlad~11.667~FOUL;H3~Player~11.482~+0.107',
+                  'FIRE~READY;TAB~DETAILS;ESC~MENU', 'WAITING FOR 1 DRIVER', '1 / 2 READY',
+                  'YOUR HEATS~LOST TO YOUR QUICKEST', '', '', '', '', 0,
+                  'HEAT~WINNER~ET~MARGIN', 'HEAT 3 · DECIDING~BETTER FIGURE IN BLUE',
+                  'LEFT LANE~Player~1~1;RIGHT LANE~Vlad~0~0', '~'.join(SLIP_LABELS),
+                  '0.412~1.982~5.104~7.631~11.482~187.4 km/h;0.388~2.034~5.187~7.702~11.589~184.9 km/h']
+
+
+def test_native_drag_end_screen_matches_the_design():
+    mine, = layouts(end_command(END_DRAG_MODEL))
+    left, mid, aw, lst = '/div:3', '/div:4', '/div:5', '/div:6/div:0'
+    pairs = [('title', '/div:2/div:0'), ('subtitle', '/div:2/div:1'),
+             ('pos', left + '/div:0/div:0'), ('of', left + '/div:0/div:1'),
+             ('doneLabel', left + '/div:1/div:0'), ('doneTime', left + '/div:1/div:1'), ('doneNote', left + '/div:1/div:2'),
+             ('lapsTitle', left + '/div:5/div:0/div:0'), ('lapsNote', left + '/div:5/div:0/div:1'),
+             ('slipTitle', mid + '/div:0/div:0'), ('slipNote', mid + '/div:0/div:1'),
+             ('awardsTitle', aw + '/div:0'), ('list', lst), ('listTitle', lst + '/div:0/div:0'),
+             ('listRight', lst + '/div:0/div:1')]
+    pairs += [(f'statValue{i}', left + f'/div:3/div:{i}/div:1') for i in range(4)]
+    pairs += [(f'lapBar{i}', left + f'/div:5/div:1/div:{i}/div:0/div:0') for i in range(3)]
+    for k in range(2):
+        slip = f'{mid}/div:1/div:{k}'
+        pairs += [(f'slip{k}', slip), (f'slipCar{k}', slip + '/div:0'), (f'slipLane{k}', slip + '/div:1/div:0/div:0'),
+                  (f'slipName{k}', slip + '/div:1/div:1')]
+        for i in range(6):
+            r = f'{slip}/div:1/div:2/div:{i}'
+            pairs += [(f'slipLabel{k}_{i}', r + '/div:0'), (f'slipValue{k}_{i}', r + '/div:1')]
+    pairs += [('slipYou0', f'{mid}/div:1/div:0/div:1/div:0/div:1/div:0'), ('slipTag0', f'{mid}/div:1/div:0/div:1/div:0/div:1/div:1')]
+    for i in range(2):
+        pairs += [(f'award{i}', aw + f'/div:{i + 1}'), (f'awardValue{i}', aw + f'/div:{i + 1}/div:2/div:0')]
+    pairs += [(f'head{c}', f'{lst}/div:1/div:{c}') for c in range(4)]
+    for i in range(3):
+        r = f'{lst}/div:2/div:{i}'
+        pairs += [(f'row{i}', r), (f'rowName{i}', r + '/div:1'), (f'rowTime{i}', r + '/div:2'), (f'rowBest{i}', r + '/div:3')]
+    problems = check_all(mine, END_DRAG, pairs)
     assert not problems, problems
