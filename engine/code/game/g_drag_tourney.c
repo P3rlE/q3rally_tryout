@@ -298,6 +298,19 @@ void G_DragTourneyPublish( int recipient ) {
 		Q_strcat( text, sizeof( text ), va( " %d %d %d", dt.results[i].winner, dt.results[i].winsA, dt.results[i].winsB ) );
 	}
 	trap_SendServerCommand( recipient, text );
+
+	/* each bot's car from its bot file: the podium shows it after the bot
+	 * was sent away (a human's car comes with the human) */
+	Q_strncpyz( text, "dragTourneyCars", sizeof( text ) );
+	for ( i = 0; i < dt.size; i++ ) {
+		const char *model = "";
+		if ( DT_IsBot( i ) ) {
+			char *info = G_GetBotInfoByName( dt.field[i].name );
+			if ( info ) model = Info_ValueForKey( info, "model" );
+		}
+		Q_strcat( text, sizeof( text ), va( " \"%s\"", model ) );
+	}
+	trap_SendServerCommand( recipient, text );
 }
 
 /* A new map (not a restart of this one) starts over. */

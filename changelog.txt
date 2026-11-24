@@ -85,6 +85,9 @@ Changed:
   damage; team games: a panel a team with its score and the mode's
   figures), your row lit, the spectators and the server under it. It only
   comes up with TAB now, not when you are wrecked.
+- Drag tournament: `/dragskip` (and `/dragskip all`) also works from the
+  bracket between the matches, as the hint there says; the podium after
+  the final shows every car, also those of bots that already left.
 - The drag tournament in the v0.9 style: between the matches the bracket
   with the match up next, your way through the rounds and every match's
   heats, the one up next outlined; after the final the podium with the

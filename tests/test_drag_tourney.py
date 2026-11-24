@@ -44,9 +44,14 @@ char *QDECL va(char *format, ...) {
 }
 void QDECL G_LogPrintf(const char *fmt,...) {}
 
-static char lastBracket[MAX_STRING_CHARS], lastCp[256], console[1024];
+/* a bot file's entry: the model is the bot's name under "car/" */
+char *G_GetBotInfoByName(const char *name) { static char info[64]; snprintf(info,sizeof(info),"%s",name); return info; }
+char *Info_ValueForKey(const char *s,const char *key) { static char v[64]; snprintf(v,sizeof(v),"car/%s",s); return v; }
+
+static char lastBracket[MAX_STRING_CHARS], lastCars[MAX_STRING_CHARS], lastCp[256], console[1024];
 void trap_SendServerCommand(int recipient,const char *text) {
     if (!strncmp(text,"dragTourney ",12)) snprintf(lastBracket,sizeof(lastBracket),"%s",text);
+    if (!strncmp(text,"dragTourneyCars",15)) snprintf(lastCars,sizeof(lastCars),"%s",text);
     if (!strncmp(text,"cp ",3)) snprintf(lastCp,sizeof(lastCp),"%s",text);
 }
 void trap_SendConsoleCommand(int when,const char *text) { strncat(console,text,sizeof(console)-strlen(console)-1); }
@@ -141,6 +146,17 @@ int main(void) {
         assert(entrantOf(dt.field[i].name)==i);
     }
     assert(!strncmp(lastBracket,"dragTourney 8 3 0 ",18));
+    /* each bot's car from its bot file, none for the human */
+    {
+        char want[MAX_STRING_CHARS] = "dragTourneyCars";
+        for (i=0;i<8;i++) {
+            char one[64];
+            if (i==per) snprintf(one,sizeof(one)," \"\"");
+            else snprintf(one,sizeof(one)," \"car/%s\"",dt.field[i].name);
+            strcat(want,one);
+        }
+        assert(!strcmp(lastCars,want));
+    }
 
     /* Only the pairing drives: the human watches unless it is his match. */
     DT_MatchEntrants(0,&a,&b);
